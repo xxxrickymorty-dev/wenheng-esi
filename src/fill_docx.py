@@ -11,6 +11,7 @@ v0 范围（W2）：
 """
 import json
 import pathlib
+import re
 import shutil
 import sys
 
@@ -23,6 +24,7 @@ from docx.oxml.ns import qn  # noqa: E402
 
 import charts  # noqa: E402
 import compute  # noqa: E402
+import sentences  # noqa: E402
 from parse_ledger import DISCIPLINES_CN  # noqa: E402
 
 CELL_FONT = "楷体"
@@ -120,13 +122,75 @@ def insert_charts(doc, period_dir, discipline, table_idx, slots, chart_dir):
                       "source": f"charts/{slug}/{fname}"})
 
 
+def _replace_para(p, new_text):
+    """保留首 run 格式，替换整段文本（删除其余 run）。"""
+    runs = p.runs
+    if runs:
+        runs[0].text = new_text
+        for r in runs[1:]:
+            r._element.getparent().remove(r._element)
+    else:
+        p.add_run(new_text)
+
+
+def fill_texts(doc, ledger_dir, slots, period, prev, facts):
+    """概述 4 段 + 发展趋势段 + 态势段 + 封面期数（句骨架 + 数字槽）。"""
+    texts = sentences.build(facts, period, prev)
+    anchors = [
+        ("p1", lambda t: "ESI最新数据显示" in t),
+        ("p2", lambda t: "与ESI前1‰接近度较高" in t),
+        ("p3", lambda t: "国内排名继续呈现较大降幅" in t),
+        ("p4", lambda t: "篇顶尖论文" in t and "较上期总数增加" in t),
+        ("trend", lambda t: t.startswith("与上期数据相比")),
+        ("situation_head", lambda t: "前1%学科继续保持" in t),
+        ("situation", lambda t: "从国内排名上看" in t),
+        ("table2_title", lambda t: "主要参数情况" in t),
+        ("top_section", lambda t: "篇顶尖论文" in t and "排名前3位的学院" in t),
+        ("forecast_p1", lambda t: "接近度达到" in t),
+        ("forecast_p2", lambda t: "从预测情况看" in t),
+        ("province_p", lambda t: "云南高校ESI前1%学科总数" in t),
+    ]
+    for key, pred in anchors:
+        hit = False
+        for p in doc.paragraphs:
+            t = p.text.strip()
+            if pred(t):
+                _replace_para(p, texts[key])
+                slots.append({"location": f"正文/{key}", "old": t[:50],
+                              "new": texts[key][:50], "source": "sentences.py（句骨架+数字槽）"})
+                hit = True
+                break
+        if not hit:
+            slots.append({"location": f"正文/{key}", "old": "（未找到锚点段落）",
+                          "new": texts[key][:50], "source": "sentences.py"})
+
+    # 封面：期数 + 年月
+    pat_issue = re.compile(r"\d{4}年第\d+期（总第\d+期）")
+    pat_date = re.compile(r"\d{4}年\d{1,2}月")
+    for p in doc.paragraphs:
+        t = p.text.strip()
+        if pat_issue.fullmatch(t):
+            _replace_para(p, texts["cover_issue"])
+            slots.append({"location": "封面/期数", "old": t, "new": texts["cover_issue"],
+                          "source": "期次参数"})
+        elif "发展规划处" in t and pat_date.search(t):
+            hits = [r for r in p.runs if pat_date.search(r.text)]
+            old = t
+            if hits:
+                hits[-1].text = pat_date.sub(texts["cover_month"], hits[-1].text)
+            else:
+                _replace_para(p, pat_date.sub(texts["cover_month"], t))
+            slots.append({"location": "封面/年月", "old": pat_date.search(old).group(),
+                          "new": texts["cover_month"], "source": "期次参数"})
+
+
 def fill_header_month(doc, period_dir, slots):
-    """大表表头已处理；此处预留给封面/目录期数槽位（W3）。"""
+    """大表表头已处理；此处预留给目录页码（需 Word 分页，人工）。"""
     return
 
 
 def main(ledger_dir="out/202607", master=r"master\学科信息参考母版_2026第5期.docx",
-         out_path=None, charts_only_demo=True):
+         out_path=None, charts_only_demo=False):
     ledger_dir = pathlib.Path(ledger_dir)
     P = json.loads((ledger_dir / "meta.json").read_text(encoding="utf-8"))["period_current"]
     out_path = pathlib.Path(out_path or ledger_dir / f"报告初稿_{P}（试排）.docx")
@@ -135,12 +199,16 @@ def main(ledger_dir="out/202607", master=r"master\学科信息参考母版_2026�
     period, prev = compute.detect_periods(wide)
     prev_month = str(int(prev[4:]))
     t2 = compute.build_table2(wide, ni, nc, thr, period, prev)
+    ynd = pd.read_parquet(f"{ledger_dir}/wide/ynd_rank.parquet").set_index("period")
+    top_total = pd.read_parquet(f"{ledger_dir}/wide/top_total.parquet").set_index("period")["total"].to_dict()
+    facts = compute.build_overview(wide, ni, nc, thr, ynd, top_total, period, prev)
 
     shutil.copy(master, out_path)
     doc = Document(str(out_path))
     slots = []
 
     fill_big_table(doc, t2, slots, prev_month)
+    fill_texts(doc, ledger_dir, slots, period, prev, facts)
     charts_used = ["Chemistry"] if charts_only_demo else DETAIL_TABLES
     chart_dir = ledger_dir / "charts"
     for disc in charts_used:
@@ -153,20 +221,23 @@ def main(ledger_dir="out/202607", master=r"master\学科信息参考母版_2026�
         json.dumps(slots, ensure_ascii=False, indent=1), encoding="utf-8")
 
     n_img = sum(1 for s in slots if s["new"].startswith("[图]"))
+    n_text = sum(1 for s in slots if not s["location"].startswith("T01/r") and not s["new"].startswith("[图]"))
     md = [f"# 红色件清单 · {P} 期（试排）", "",
           f"- 报告初稿：`{out_path}`",
           f"- 大表数值格：{sum(1 for s in slots if s['location'].startswith('T01/r'))} 格（逐格见 red_slots.json）",
-          f"- 表头期次槽位：{sum(1 for s in slots if s['location'] == 'T01/表头')} 处",
-          f"- 图表槽位：{n_img} 张（本期先行 {len(charts_used)} 学科的 {len(CHART_SLOTS)} 图，其余学科同机制批量）", "",
-          "## 待生成（下一批）",
-          "- 概述与各段结语句（句骨架+数字槽，W3）",
-          "- 封面/目录 期数、日期、页码（W3）",
-          "- 其余 15 学科图表槽位批量替换（验收图表样式后）",
-          "- 省表各校数据、顶尖论文清单（台账外，人工贴入）", "",
+          f"- 文字/期次槽位：{n_text} 处（概述 4 段、发展趋势、态势统计、封面期数年月、大表表头）",
+          f"- 图表槽位：{n_img} 张（{len(charts_used)} 学科 × 6 图）", "",
+          "## 仍为手工的槽位（红色件中的【手工：…】）",
+          "- ESI 发布日期、当期全球机构总数（台账外，1 分钟可查）",
+          "- 去年同期升幅%；预测章的趋势描述/预计时间/发展力度评价（编辑判断）",
+          "- 学科数/学院数、学院贡献度前三、学院发文前三（顶尖论文清单口径）",
+          "- 云南高校总数/增减/新晋学科（省级对比，台账外）",
+          "- 目录页码（需 Word 分页后人工填）",
+          "- 省表其余高校数据、顶尖论文清单 275 行（台账外，人工贴入）", "",
           "## 说明", "签单核对方法：打开报告初稿，对照 red_slots.json 逐条核对“改了啥、来自哪”。"]
     (ledger_dir / "红色件清单.md").write_text("\n".join(md), encoding="utf-8")
     print(f"报告初稿 → {out_path}")
-    print(f"红色件：{len(slots)} 条（大表 {sum(1 for s in slots if s['location'].startswith('T01/r'))} 格 + 图 {n_img} 张）")
+    print(f"红色件：{len(slots)} 条（大表 {sum(1 for s in slots if s['location'].startswith('T01/r'))} 格 + 文字 {n_text} + 图 {n_img}）")
     return out_path
 
 

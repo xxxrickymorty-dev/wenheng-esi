@@ -97,6 +97,8 @@ def build_overview(wide, new_intl, new_cn, thr, ynd_rank, top_total, period=None
         "rank_intl_delta": int(ynd_rank.loc[prev, "rank_intl"] - ynd_rank.loc[period, "rank_intl"]),
         "rank_cn_inst_now": int(ynd_rank.loc[period, "rank_cn"]),
         "rank_cn_uni_now": int(ynd_rank.loc[period, "rank_cn_uni"]),
+        "rank_cn_inst_delta": int(ynd_rank.loc[prev, "rank_cn"] - ynd_rank.loc[period, "rank_cn"]),
+        "rank_cn_uni_delta": int(ynd_rank.loc[prev, "rank_cn_uni"] - ynd_rank.loc[period, "rank_cn_uni"]),
         "n_disc_1pct": int((pr[period] >= 1).sum()),
         "top_papers_now": int(top_total.get(period)),
         "top_papers_prev": int(top_total.get(prev)),
@@ -115,16 +117,52 @@ def build_overview(wide, new_intl, new_cn, thr, ynd_rank, top_total, period=None
     # 接近度变化最大两学科
     chg = ((pr[period] - pr[prev]) * 100).sort_values(ascending=False)
     facts["top2_prox_change"] = [(d, chg[d]) for d in chg.index[:2]]
-    # 国内排名降幅最大
+    # 国内排名升降统计（new_cn 口径）与降幅最大
     rn_now = new_cn.loc[:, ("rank", period)]
     rn_prev = new_cn.loc[:, ("rank", prev)]
-    delta = rn_now - rn_prev
-    worst = delta.idxmax()
+    d_rank = rn_prev - rn_now  # 正=上升
+    facts["rank_up"] = int((d_rank > 0).sum())
+    facts["rank_down"] = int((d_rank < 0).sum())
+    facts["rank_flat"] = int((d_rank == 0).sum())
+    worst = d_rank.idxmin()
     facts["worst_cn_rank"] = {
         "discipline": worst,
-        "drop": int(delta[worst]),
+        "drop": int(-d_rank[worst]),
         "rank": int(rn_now[worst]),
     }
+    # 顶尖论文前三档（含并列；并列内按接近度变化降序，与报告排序惯例一致）
+    tops = [(d, int(top[d])) for d in top.index if top[d] == top[d]]
+    order = {d: i for i, d in enumerate(chg.index)}
+    tops.sort(key=lambda x: order.get(x[0], 9_999))
+    gmap = {}
+    for d, v in tops:
+        gmap.setdefault(v, []).append(d)
+    facts["top3_groups"] = [(c, gmap[c]) for c in sorted(gmap, reverse=True)[:3]]
+    # 未进入 1% 学科中接近度前二（预测章目标学科）
+    ne = pr[period][pr[period] < 1].sort_values(ascending=False)
+    top2 = []
+    for d in ne.index[:2]:
+        top2.append({
+            "discipline": d,
+            "prox_pct": round(ne[d] * 100, 2),
+            "chg": round((pr.loc[d, period] - pr.loc[d, prev]) * 100, 2),
+        })
+    facts["top2_not_entered"] = top2
+    # 1‰ 状态与年化进入时间估算（按上期增速外推）
+    ratio_1pm = (c / tp).dropna()
+    facts["any_1permille"] = bool((ratio_1pm >= 1).any())
+    best_info = facts["best_1permille"]
+    growth = (best_info["prox_pct"] - best_info["prox_prev_pct"]) * 6  # 百分点/年（双月×6）
+    if growth > 0.1:
+        facts["permille_years_est"] = -(-(100 - best_info["prox_pct"]) // growth)  # ceil
+    else:
+        facts["permille_years_est"] = None
+    # 覆盖窗口与上期中文标签
+    import calendar
+    y, m = int(period[:4]), int(period[4:])
+    end_y, end_m = (y, m - 3) if m > 3 else (y - 1, m + 9)
+    facts["coverage_window"] = f"{end_y - 10}.1.1-{end_y}.{end_m}.{calendar.monthrange(end_y, end_m)[1]}"
+    facts["prev_label"] = f"{int(prev[:4])}年{int(prev[4:])}月"
     return facts
 
 
