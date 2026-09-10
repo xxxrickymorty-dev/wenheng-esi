@@ -133,6 +133,72 @@ def _replace_para(p, new_text):
         p.add_run(new_text)
 
 
+def _strip_images(p):
+    """删除段落中的图片/图表 run（用于替换母版残留旧图）。"""
+    n = 0
+    for r in list(p.runs):
+        el = r._element
+        if el.findall('.//' + qn('w:drawing')) or el.findall('.//' + qn('w:pict')):
+            el.getparent().remove(el)
+            n += 1
+    return n
+
+
+def _insert_picture_after(doc, anchor_para, png, width_cm=13.9):
+    """在锚点段后插入居中的图片段。"""
+    from docx.enum.text import WD_ALIGN_PARAGRAPH  # noqa: PLC0415
+    new_p = doc.add_paragraph()
+    anchor_para._p.addnext(new_p._p)
+    new_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    new_p.add_run().add_picture(str(png), width=Cm(width_cm))
+    return new_p
+
+
+def fill_body_charts(doc, ledger_dir, slots):
+    """正文概览图三张：我校排名（插入）、1%接近度（插入）、1‰潜力（替换旧图）。"""
+    ov = pathlib.Path(ledger_dir) / "charts" / "_overview"
+    plan = [
+        ("与上期数据相比", ov / "ynd_rank.png", "正文/我校排名图（新）", 13.9),
+        ("前1%学科继续保持", ov / "1pct.png", "正文/1%接近度图（新）", 14.3),
+    ]
+    for anchor, png, label, w in plan:
+        if not png.exists():
+            slots.append({"location": label, "old": "（缺图）", "new": str(png), "source": "charts/_overview"})
+            continue
+        hit = None
+        for p in doc.paragraphs:
+            if p.text.strip().startswith(anchor) or anchor in p.text:
+                hit = p
+                break
+        if hit is None:
+            slots.append({"location": label, "old": "（未找到锚点段落）", "new": str(png), "source": "charts/_overview"})
+            continue
+        _insert_picture_after(doc, hit, png, w)
+        slots.append({"location": label, "old": "（无图）", "new": f"[图] {png.name}",
+                      "source": f"charts/_overview/{png.name}"})
+
+    # 1‰ 潜力图：替换"我校ESI学科1‰潜力值："段的旧图
+    for p in doc.paragraphs:
+        if "我校ESI学科1‰潜力值" in p.text:
+            stripped = _strip_images(p)
+            png = ov / "1permille.png"
+            if png.exists():
+                p.add_run().add_picture(str(png), width=Cm(14.5))
+                slots.append({"location": "正文/1‰潜力图", "old": f"（母版旧图 ×{stripped}）",
+                              "new": f"[图] {png.name}", "source": "charts/_overview/1permille.png"})
+            break
+
+    # 预警：统计母版残留的原生图表（无法自动更新者，需人工确认）
+    n_charts = 0
+    for p in doc.paragraphs:
+        n_charts += len(p._element.findall('.//' + qn('c:chart')))
+    warn = []
+    if n_charts:
+        warn.append(f"母版残留原生图表 {n_charts} 张（预测章 4 张 + 学院统计 2 张等），"
+                    f"本期需人工替换/确认（映射清单见红色件清单）")
+    return warn
+
+
 def fill_texts(doc, ledger_dir, slots, period, prev, facts):
     """概述 4 段 + 发展趋势段 + 态势段 + 封面期数（句骨架 + 数字槽）。"""
     texts = sentences.build(facts, period, prev)
@@ -214,6 +280,7 @@ def main(ledger_dir="out/202607", master=r"master\学科信息参考母版_2026�
 
     fill_big_table(doc, t2, slots, prev_month)
     fill_texts(doc, ledger_dir, slots, period, prev, facts)
+    warns = fill_body_charts(doc, ledger_dir, slots)
     charts_used = ["Chemistry"] if charts_only_demo else DETAIL_TABLES
     chart_dir = ledger_dir / "charts"
     for disc in charts_used:
@@ -239,7 +306,15 @@ def main(ledger_dir="out/202607", master=r"master\学科信息参考母版_2026�
           "- 云南高校总数/增减/新晋学科（省级对比，台账外）",
           "- 目录页码（需 Word 分页后人工填）",
           "- 省表其余高校数据、顶尖论文清单 275 行（台账外，人工贴入）", "",
-          "## 说明", "签单核对方法：打开报告初稿，对照 red_slots.json 逐条核对“改了啥、来自哪”。"]
+          "## 预警（母版残留）"]
+    if warns:
+        md += [f"- {w}" for w in warns]
+    else:
+        md += ["- 无"]
+    md += [
+        "- 1‰接近度趋势图（「从国内排名上看」段原图）：需历史 1‰ 阈值列，台账现只存最近两期，暂无法重建；",
+        "  建议《千分之一被引阈值》表按列追存历史后由流水线自动生成。", "",
+        "## 说明", "签单核对方法：打开报告初稿，对照 red_slots.json 逐条核对“改了啥、来自哪”。"]
     (ledger_dir / "红色件清单.md").write_text("\n".join(md), encoding="utf-8")
     print(f"报告初稿 → {out_path}")
     print(f"红色件：{len(slots)} 条（大表 {sum(1 for s in slots if s['location'].startswith('T01/r'))} 格 + 文字 {n_text} + 图 {n_img}）")

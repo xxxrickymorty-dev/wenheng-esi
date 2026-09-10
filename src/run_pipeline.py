@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """每期一条命令：台账 xlsx → 规整数据 + 断言 + 大表 + 概述 + 预测 + 图表 + 报告初稿。
 
 用法（新一期数据贴进台账后）：
@@ -54,7 +54,7 @@ def main(ledger_path, out_root="out", run_backtest=False):
     mape = forecast.main(ledger_dir=str(out_dir), out_dir=str(out_dir))
     print(f"      整体 MAPE = {mape:.2f}%（验收线 <5%）")
 
-    print("[4/5] 图表渲染（16 学科 × 6 + 概览 2）")
+    print("[4/5] 图表渲染（16 学科 × 6 + 概览 3）")
     n_charts = charts.render_all(ledger_dir=str(out_dir))
 
     print("[5/5] 母版替换 → 报告初稿")

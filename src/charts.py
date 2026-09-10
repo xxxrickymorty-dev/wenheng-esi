@@ -13,6 +13,15 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib import font_manager
 
+try:
+    from parse_ledger import DISCIPLINES_CN
+except ImportError:  # 直接运行时的兜底
+    DISCIPLINES_CN = {}
+
+
+def _cn(en):
+    return DISCIPLINES_CN.get(en, en)
+
 FONT = "SimHei"  # Windows 黑体；服务器环境换 Noto Sans CJK
 plt.rcParams.update({
     "font.sans-serif": [FONT, "Microsoft YaHei", "sans-serif"],
@@ -41,8 +50,8 @@ def _slug(en):
     return re.sub(r"[^A-Za-z0-9]+", "", en)
 
 
-def _fig():
-    fig, ax = plt.subplots(figsize=(FIG_W, FIG_H))
+def _fig(w=FIG_W, h=FIG_H):
+    fig, ax = plt.subplots(figsize=(w, h))
     return fig, ax
 
 
@@ -150,33 +159,87 @@ def chart_q_dist(q1q4, disc, out_png):
     _save(fig, out_png)
 
 
-# ---------- 概览图：1% 接近度（红基线）----------
+# ---------- 概览图：我校 ESI 排名情况（对标第4期 P042 原生图表）----------
+def chart_ynd_rank(ynd_rank, out_png, end_period=None, n=7):
+    """我校排名三序列折线：国内排名 / 国内高校排名 / 国际排名（右轴）。"""
+    df = ynd_rank.set_index("period").sort_index()
+    df = df[df["rank_intl"].notna() | df["rank_cn"].notna()]
+    if end_period:
+        df = df[df.index <= end_period]
+    df = df.tail(n)
+    periods = [f"{p[:4]}.{p[4:]}" for p in df.index]
+
+    fig, ax = _fig()
+    ax.plot(range(len(df)), df["rank_cn"], marker="o", ms=3, lw=1.3, color=C_BLUE, label="国内排名")
+    ax.plot(range(len(df)), df["rank_cn_uni"], marker="s", ms=3, lw=1.3, color=C_ORANGE, label="国内高校排名")
+    ax2 = ax.twinx()
+    ax2.plot(range(len(df)), df["rank_intl"], marker="^", ms=3, lw=1.3, color=C_GRAY, ls="--", label="国际排名（右标）")
+    ax.set_xticks(range(len(df)))
+    ax.set_xticklabels(periods, rotation=45, fontsize=7)
+    ax.set_ylabel("国内排名", fontsize=8)
+    ax2.set_ylabel("国际排名（右标）", fontsize=8)
+    ax.grid(axis="y", color="#E7E6E6", linewidth=0.6)
+    ax.invert_yaxis()
+    ax2.invert_yaxis()
+    lines = ax.get_lines() + ax2.get_lines()
+    ax.legend(lines, [l.get_label() for l in lines], fontsize=6.5, loc="center left")
+    _save(fig, out_png)
+
+
+# ---------- 概览图：1% 接近度（红基线；对标第4期风格）----------
 def chart_overview_1pct(cites, threshold, out_png, period):
+    fig, ax = _fig(3.25, 3.15)
+    ratio = (cites[period] / threshold[period]) * 100
+    ratio = ratio.dropna().sort_values()
+    colors = ["#B4A7D6" if v >= 100 else "#A9D18E" for v in ratio]
+    ax.barh(range(len(ratio)), ratio, color=colors, height=0.7)
+    for i, v in enumerate(ratio):
+        ax.text(v + 8, i, f"{v:.2f}%", va="center", fontsize=6, color="#404040")
+    ax.axvline(100, color="red", lw=1.6)
+    ax.set_yticks(range(len(ratio)))
+    ax.set_yticklabels([_cn(d) for d in ratio.index], fontsize=6.5)
+    ax.set_xlabel("被引频次 / 1%阈值（%）", fontsize=8)
+    ax.grid(axis="x", color="#E7E6E6", linewidth=0.6)
+    from matplotlib.patches import Patch
+    ax.legend(handles=[Patch(color="#B4A7D6", label="与ESI前1%的接近度"),
+                       Patch(color="#A9D18E", label="与ESI前1%的差距"),
+                       Patch(color="red", label="ESI前1%基线")],
+              fontsize=6.5, loc="lower right")
+    _save(fig, out_png)
+
+
+# ---------- 概览图：1‰ 潜力（已进入1%学科，接近度+差距堆叠）----------
+def chart_overview_1permille(cites, thr_1permille, proximity_1pct, out_png, period):
+    fig, ax = _fig(3.25, 2.55)
+    entered = proximity_1pct[period][proximity_1pct[period] >= 1].index
+    ratio = (cites[period][entered] / thr_1permille[period][entered] * 100).dropna().sort_values()
+    gap = 100 - ratio
+    y = range(len(ratio))
+    ax.barh(y, ratio, color="#B4A7D6", height=0.7, label="1‰接近度")
+    ax.barh(y, gap, left=ratio, color="#A9D18E", height=0.7, label="与前1‰差距")
+    for i, v in enumerate(ratio):
+        ax.text(v + 2, i, f"{v:.2f}%", va="center", fontsize=6, color="#404040")
+    ax.set_yticks(list(y))
+    ax.set_yticklabels([_cn(d) for d in ratio.index], fontsize=6.5)
+    ax.set_xlim(0, 105)
+    ax.set_xlabel("占 1‰ 阈值比例（%）", fontsize=8)
+    ax.grid(axis="x", color="#E7E6E6", linewidth=0.6)
+    ax.legend(fontsize=6.5, loc="lower center", bbox_to_anchor=(0.5, 1.02), ncol=2, frameon=False)
+    _save(fig, out_png)
+
+
+# ---------- 旧版概览图（保留兼容）----------
+def chart_overview_1pct_v0(cites, threshold, out_png, period):
     fig, ax = _fig()
     ratio = (cites[period] / threshold[period]) * 100
     ratio = ratio.dropna().sort_values()
     colors = [C_BLUE if v < 100 else "#2E7D32" for v in ratio]
     ax.barh(range(len(ratio)), ratio, color=colors, height=0.65)
     ax.axvline(100, color="red", lw=1.4)
-    ax.text(100, -1.2, "ESI 1% 基线", color="red", fontsize=8, ha="center")
     ax.set_yticks(range(len(ratio)))
     ax.set_yticklabels(ratio.index, fontsize=6.5)
     ax.set_xlabel("被引频次 / 1%阈值（%）", fontsize=8)
     ax.grid(axis="x", color="#E7E6E6", linewidth=0.6)
-    _save(fig, out_png)
-
-
-# ---------- 概览图：1‰ 潜力 ----------
-def chart_overview_1permille(cites, thr_1permille, out_png, period):
-    fig, ax = _fig()
-    ratio = (cites[period] / thr_1permille[period]) * 100
-    ratio = ratio.dropna().sort_values(ascending=False).head(12)
-    ax.bar(range(len(ratio)), ratio, color=C_ORANGE, width=0.6)
-    ax.axhline(100, color="red", lw=1.2, ls="--")
-    ax.set_xticks(range(len(ratio)))
-    ax.set_xticklabels(ratio.index, rotation=60, fontsize=7, ha="right")
-    ax.set_ylabel("1‰ 接近度（%）", fontsize=8)
-    ax.grid(axis="y", color="#E7E6E6", linewidth=0.6)
     _save(fig, out_png)
 
 
@@ -185,7 +248,7 @@ def render_all(ledger_dir="out/202607", out_dir=None, n_periods=18, end_period=N
     ledger_dir = pathlib.Path(ledger_dir)
     out_dir = pathlib.Path(out_dir or ledger_dir) / "charts"
     w = {m: pd.read_parquet(ledger_dir / "wide" / f"{m}.parquet") for m in
-         ["total_cites", "papers", "cnci", "threshold_1pct", "top_papers"]}
+         ["total_cites", "papers", "cnci", "threshold_1pct", "top_papers", "proximity_1pct"]}
     thr_p = pd.read_parquet(ledger_dir / "wide" / "threshold_1permille.parquet")
     longdf = pd.read_parquet(ledger_dir / "ledger_long.parquet")
     q1q4 = pd.read_parquet(ledger_dir / "wide" / "q1q4.parquet")
@@ -213,10 +276,12 @@ def render_all(ledger_dir="out/202607", out_dir=None, n_periods=18, end_period=N
         made.append(d)
 
     ov = out_dir / "_overview"
+    ynd_rank = pd.read_parquet(ledger_dir / "wide" / "ynd_rank.parquet")
+    chart_ynd_rank(ynd_rank, ov / "ynd_rank.png", end_period=end_period)
     chart_overview_1pct(w["total_cites"], w["threshold_1pct"], ov / "1pct.png", P)
-    chart_overview_1permille(w["total_cites"], thr_p, ov / "1permille.png", P)
-    total = len(made) * 6 + 2
-    print(f"charts: {len(made)} 学科 × 6 图 + 2 概览 = {total} 张 → {out_dir}")
+    chart_overview_1permille(w["total_cites"], thr_p, w["proximity_1pct"], ov / "1permille.png", P)
+    total = len(made) * 6 + 3
+    print(f"charts: {len(made)} 学科 × 6 图 + 概览 3 张 = {total} 张 → {out_dir}")
     return total
 
 
