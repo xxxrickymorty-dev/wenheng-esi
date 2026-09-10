@@ -1,0 +1,441 @@
+# -*- coding: utf-8 -*-
+"""监测表 → 规整数据（长表 + 宽表 + 元数据 + 断言）
+
+唯一输入：input/<期次>/监测表.xlsx（馆员手工维护的 22 工作簿台账）
+唯一产出：out/<期次>/ 下的 ledger_long.parquet / wide/*.parquet / meta.json
+
+原则：只读单元格原值，不做任何“合理修正”；脏数据（%%、备注行）靠
+白名单与清洗规则处理，处理痕迹记录进 meta.json 的 clean_log。
+"""
+import json
+import re
+import sys
+from pathlib import Path
+
+import openpyxl
+import pandas as pd
+
+DISCIPLINES_EN = [
+    "Chemistry", "Plant & Animal Science", "Microbiology", "Engineering",
+    "Materials Science", "Mathematics", "Environment/Ecology",
+    "Biology & Biochemistry", "Pharmacology & Toxicology", "Geosciences",
+    "Agricultural Sciences", "Computer Science", "Clinical Medicine",
+    "Molecular Biology & Genetics", "Physics", "Social Sciences, general",
+    "Multidisciplinary", "Neuroscience & Behavior", "Space Science",
+    "Immunology", "Psychiatry/Psychology", "Economics & Business",
+]
+
+DISCIPLINES_CN = {
+    "Chemistry": "化学",
+    "Plant & Animal Science": "植物与动物学",
+    "Microbiology": "微生物学",
+    "Engineering": "工程学",
+    "Materials Science": "材料科学",
+    "Mathematics": "数学",
+    "Environment/Ecology": "环境生态学",
+    "Biology & Biochemistry": "生物学与生物化学",
+    "Pharmacology & Toxicology": "药理学与毒理学",
+    "Geosciences": "地球科学",
+    "Agricultural Sciences": "农业科学",
+    "Computer Science": "计算机科学",
+    "Clinical Medicine": "临床医学",
+    "Molecular Biology & Genetics": "分子生物学与遗传学",
+    "Physics": "物理学",
+    "Social Sciences, general": "社会科学",
+    "Multidisciplinary": "多学科",
+    "Neuroscience & Behavior": "神经系统科学与行为学",
+    "Space Science": "空间科学",
+    "Immunology": "免疫学",
+    "Psychiatry/Psychology": "精神病学与心理学",
+    "Economics & Business": "经济与商业",
+}
+
+WIDE_SHEETS = ["总被引", "论文数", "CNCI", "接近度", "ESI被引阈值", "TOP论文"]
+WIDE_METRIC = {
+    "总被引": "total_cites",
+    "论文数": "papers",
+    "CNCI": "cnci",
+    "接近度": "proximity_1pct",
+    "ESI被引阈值": "threshold_1pct",
+    "TOP论文": "top_papers",
+}
+
+
+def _num(v):
+    if v is None:
+        return None
+    if isinstance(v, (int, float)):
+        return float(v)
+    s = str(v).strip().replace(",", "").replace("％", "").replace("%%", "")
+    s = s.replace("%", "")
+    if s in ("", "—", "-", "√"):
+        return None
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def parse_wide(ws, clean_log):
+    """学科×期次 宽表：首行期次，首列学科英文名。"""
+    rows = list(ws.iter_rows(values_only=True))
+    header = rows[0]
+    periods = []
+    for h in header[1:]:
+        s = "" if h is None else str(h).strip()
+        if s:
+            periods.append(s)
+    data = {}
+    for r in rows[1:]:
+        name = "" if r[0] is None else str(r[0]).strip()
+        if name not in DISCIPLINES_EN or name in data:
+            continue  # 只取首个块（CNCI 表上下两块，报告用第一块）
+        data[name] = [_num(v) for v in r[1:1 + len(periods)]]
+    df = pd.DataFrame(data, index=periods).T
+    df.index.name = "discipline"
+    df = df.reindex(DISCIPLINES_EN)
+    clean_log.append(f"{ws.title}: 宽表 {len(periods)} 期 × {len(df)} 学科")
+    return df
+
+
+def parse_yun_da_rank(ws, clean_log):
+    """云大ESI排名：两块 4 列并排（期次/国际/国内/国内高校）。"""
+    rows = list(ws.iter_rows(values_only=True))
+    recs = []
+    for r in rows[1:]:
+        for base in (0, 6):
+            period = r[base]
+            if period is None or not str(period).strip():
+                continue
+            recs.append({
+                "period": str(period).strip(),
+                "rank_intl": _num(r[base + 1]),
+                "rank_cn": _num(r[base + 2]),
+                "rank_cn_uni": _num(r[base + 3]),
+            })
+    df = pd.DataFrame(recs).drop_duplicates("period").set_index("period").sort_index()
+    clean_log.append(f"{ws.title}: {len(df)} 期机构排名")
+    return df
+
+
+def parse_grouped(ws, group_size, period_row, metric_names, clean_log):
+    """每期一组（组宽 group_size）的学科宽表，组名在 period_row 行。"""
+    rows = list(ws.iter_rows(values_only=True))
+    hdr = rows[period_row]
+    groups = []
+    j = 1
+    while j < len(hdr):
+        s = "" if hdr[j] is None else str(hdr[j]).strip()
+        if s:
+            groups.append((j, s))
+        j += 1
+    out = {}
+    for r in rows[period_row + 1:]:
+        name = "" if r[0] is None else str(r[0]).strip()
+        if name not in DISCIPLINES_EN:
+            continue
+        out[name] = {}
+        for start, period in groups:
+            vals = [_num(v) for v in r[start:start + group_size]]
+            out[name][period] = vals
+    per = [p for _, p in groups]
+    df = pd.DataFrame(
+        [[d, p, *out[d][p]] for d in out for p in per],
+        columns=["discipline", "period"] + metric_names,
+    )
+    clean_log.append(f"{ws.title}: {len(groups)} 期 × {len(out)} 学科 × {group_size} 指标")
+    return df
+
+
+def parse_transposed(ws, clean_log):
+    """国际/国内排名：学科 3 列组（组名第 1 行），期次为行。"""
+    rows = list(ws.iter_rows(values_only=True))
+    hdr = rows[0]
+    groups = []
+    j = 1
+    while j < len(hdr):
+        s = "" if hdr[j] is None else str(hdr[j]).strip()
+        if s:
+            groups.append((j, s))
+        j += 1
+    recs = []
+    for r in rows[2:]:
+        period = "" if r[0] is None else str(r[0]).strip()
+        if not period:
+            continue
+        for start, disc in groups:
+            recs.append({
+                "discipline": disc, "period": period,
+                "n_inst_1pct": _num(r[start]),
+                "rank": _num(r[start + 1]),
+                "rank_pct": _num(r[start + 2]),
+            })
+    df = pd.DataFrame(recs)
+    df = df[df.discipline.isin(DISCIPLINES_EN)]
+    clean_log.append(f"{ws.title}: 转置表 {len(groups)} 学科 × {len(df.period.unique())} 期")
+    return df
+
+
+def parse_threshold_1permille(ws, clean_log):
+    rows = list(ws.iter_rows(values_only=True))
+    periods = [str(h).strip() for h in rows[0][1:] if h and str(h).strip()]
+    data = {}
+    for r in rows[1:]:
+        name = "" if r[0] is None else str(r[0]).strip()
+        if name not in DISCIPLINES_EN:
+            continue
+        data[name] = [_num(v) for v in r[1:1 + len(periods)]]
+    df = pd.DataFrame(data, index=periods).T
+    df.index.name = "discipline"
+    clean_log.append(f"{ws.title}: {periods}")
+    return df
+
+
+def parse_avg_cites(ws, clean_log):
+    """篇均被引：每期 3 列组（云大/中国大陆/国际）。"""
+    rows = list(ws.iter_rows(values_only=True))
+    hdr = rows[1]
+    groups = []
+    j = 1
+    while j < len(hdr):
+        s = "" if hdr[j] is None else str(hdr[j]).strip()
+        if s:
+            groups.append((j, s))
+        j += 1
+    recs = []
+    for r in rows[3:]:
+        name = "" if r[0] is None else str(r[0]).strip()
+        if name not in DISCIPLINES_EN:
+            continue
+        for start, period in groups:
+            recs.append({
+                "discipline": name, "period": period,
+                "avg_cites_ynd": _num(r[start]),
+                "avg_cites_cn": _num(r[start + 1]),
+                "avg_cites_global": _num(r[start + 2]),
+            })
+    df = pd.DataFrame(recs)
+    clean_log.append(f"{ws.title}: {len(groups)} 期 × {df.discipline.nunique()} 学科")
+    return df
+
+
+def parse_top_summary(ws, clean_log):
+    """TOP论文：宽表 + 合计行 + 年份行。"""
+    rows = list(ws.iter_rows(values_only=True))
+    hdr = ["" if h is None else str(h).strip() for h in rows[0][1:]]
+    periods = [h for h in hdr if h]
+    data, year_rows, total = {}, {}, None
+    for r in rows[1:]:
+        name = "" if r[0] is None else str(r[0]).strip()
+        if name in DISCIPLINES_EN:
+            data[name] = [_num(v) for v in r[1:1 + len(periods)]]
+        elif re.fullmatch(r"20\d\d", name):
+            year_rows[name] = [_num(v) for v in r[1:1 + len(periods)]]
+        elif name.startswith("高被引论文合计"):
+            total = {p: _num(v) for p, v in zip(periods, r[1:1 + len(periods)])}
+    df = pd.DataFrame(data, index=periods).T.reindex(DISCIPLINES_EN)
+    df.index.name = "discipline"
+    yr = pd.DataFrame(year_rows, index=periods).T
+    clean_log.append(f"{ws.title}: 宽表 {len(periods)} 期 + 年份行 {list(year_rows)}")
+    return df, yr, total
+
+
+def parse_province(ws, clean_log):
+    """高校学科发展：9 校指标行 + 前1%学科概况块。"""
+    rows = list(ws.iter_rows(values_only=True))
+    unis = ["" if v is None else str(v).strip() for v in rows[0][1:10]]
+    metrics = {}
+    for r in rows[2:9]:
+        label = "" if r[0] is None else str(r[0]).strip()
+        if not label:
+            continue
+        metrics[label] = {u: _num(r[i + 1]) for i, u in enumerate(unis)}
+    df = pd.DataFrame(metrics).T
+    entry_block = []
+    for r in rows[24:]:
+        name = "" if r[0] is None else str(r[0]).strip()
+        v = _num(r[1])
+        if name and name != "7所高校入围ESI前1%学科概况":
+            entry_block.append((name, v))
+    clean_log.append(f"{ws.title}: {list(metrics)} × 9 校；前1%学科概况 {len(entry_block)} 行")
+    return df, entry_block
+
+
+def parse_forecast_gap(ws, clean_log):
+    """实际与预测差值：期次范围 × 学科 × 指标 × 来源(incite/esi/差值)。"""
+    rows = list(ws.iter_rows(values_only=True))
+    hdr = rows[0]
+    groups = []
+    j = 2
+    while j < len(hdr):
+        s = "" if hdr[j] is None else str(hdr[j]).strip()
+        if s and j % 4 == 2:
+            groups.append((j, s))
+        j += 1
+    CN_TO_EN = {v: k for k, v in DISCIPLINES_CN.items()}
+    recs, cur_range = [], None
+    for r in rows[2:]:
+        rng = "" if r[0] is None else str(r[0]).strip()
+        src = "" if r[1] is None else str(r[1]).strip()
+        if rng:
+            cur_range = rng
+        if src in ("incite", "esi", "差值"):
+            for start, disc in groups:
+                disc_en = CN_TO_EN.get(disc)
+                if disc_en is None:
+                    continue
+                recs.append({
+                    "win": cur_range, "source": src, "discipline": disc_en,
+                    "papers": _num(r[start]), "cites": _num(r[start + 1]),
+                    "rank_intl": _num(r[start + 2]), "rank_cn": _num(r[start + 3]),
+                })
+    df = pd.DataFrame(recs)
+    clean_log.append(f"{ws.title}: {len(groups)} 学科 × {df.win.nunique()} 期范围 × 3 来源")
+    return df
+
+
+def load_ledger(path):
+    wb = openpyxl.load_workbook(path, data_only=True)
+    clean_log = []
+    wide = {WIDE_METRIC[n]: parse_wide(wb[n], clean_log) for n in WIDE_SHEETS}
+    ynd_rank = parse_yun_da_rank(wb["云大ESI排名"], clean_log)
+    new_intl = parse_grouped(wb["新国际排名"], 3, 0, ["n_inst_1pct", "rank", "rank_pct"], clean_log)
+    new_cn = parse_grouped(wb["新国内排名"], 3, 0, ["n_inst_1pct", "rank", "rank_pct"], clean_log)
+    intl = parse_transposed(wb["国际排名"], clean_log)
+    cn = parse_transposed(wb["国内排名"], clean_log)
+    thr_1p = parse_threshold_1permille(wb["千分之一被引阈值"], clean_log)
+    avg = parse_avg_cites(wb["篇均被引"], clean_log)
+    top, top_years, top_total = parse_top_summary(wb["TOP论文"], clean_log)
+    prov, prov_entry = parse_province(wb["高校学科发展"], clean_log)
+    gap = parse_forecast_gap(wb["实际与预测差值"], clean_log)
+    return {
+        "wide": wide,
+        "ynd_rank": ynd_rank,
+        "new_intl": new_intl,
+        "new_cn": new_cn,
+        "rank_intl": intl,
+        "rank_cn": cn,
+        "threshold_1permille": thr_1p,
+        "avg_cites": avg,
+        "top_papers": top,
+        "top_by_year": top_years,
+        "top_total": top_total,
+        "province": prov,
+        "province_entry": prov_entry,
+        "forecast_gap": gap,
+        "clean_log": clean_log,
+    }
+
+
+def run_assertions(ledger):
+    """机器断言闸：结构级不变量。返回 (ok, report)。"""
+    report, ok = [], True
+
+    def check(cond, msg):
+        nonlocal ok
+        report.append(("PASS" if cond else "FAIL", msg))
+        ok = ok and cond
+
+    P = "202607"
+    TOP_BLANK_OK = {"Multidisciplinary", "Neuroscience & Behavior", "Immunology"}
+    for m, df in ledger["wide"].items():
+        check(len(df) == 22, f"宽表 {m} 学科数=22 (实际 {len(df)})")
+        check(sorted(df.index) == sorted(DISCIPLINES_EN), f"宽表 {m} 学科名单一致")
+        check(P in df.columns, f"宽表 {m} 含期次 {P}")
+        if m == "top_papers":
+            na_set = set(df[P][df[P].isna()].index)
+            check(na_set <= TOP_BLANK_OK, f"宽表 {m} {P} 期空白仅限 {TOP_BLANK_OK} (实际 {sorted(na_set)})")
+        else:
+            check(df[P].notna().sum() == 22, f"宽表 {m} {P} 期无缺失")
+        if "202609" in df.columns:
+            if m == "cnci":
+                check(df["202609"].notna().sum() == 22, f"宽表 {m} 202609 列已贴数（InCites 月更先行）")
+            else:
+                check(df["202609"].isna().all(), f"宽表 {m} 202609 列为空（下期未贴数）")
+        bad = df.map(lambda v: isinstance(v, str) and "%" in v).any().any() if df.map(lambda v: isinstance(v, str)).any().any() else False
+        check(not bad, f"宽表 {m} 无残留 %% 脏值")
+
+    y = ledger["ynd_rank"]
+    check(P in y.index and y.loc[P, "rank_intl"] == 995, f"云大ESI排名 {P} 国际=995 (实际 {y.loc[P,'rank_intl'] if P in y.index else None})")
+    for df, nm in [(ledger["new_intl"], "新国际排名"), (ledger["new_cn"], "新国内排名")]:
+        check(df.period.nunique() == 9, f"{nm} 期组数=9")
+        check(df.discipline.nunique() == 22, f"{nm} 学科数=22")
+        check((df.period == P).sum() == 22, f"{nm} 含 {P} 全 22 行")
+    for df, nm in [(ledger["rank_intl"], "国际排名"), (ledger["rank_cn"], "国内排名")]:
+        check(df.period.nunique() >= 45, f"{nm} 期数≥45")
+        check((df.period == P).sum() == 22, f"{nm} 含 {P} 全 22 行")
+    check(P in ledger["threshold_1permille"].columns, f"千分之一阈值含 {P}")
+    check(ledger["top_total"] is not None and ledger["top_total"].get(P) == 274, f"顶尖论文合计 {P}=274 (实际 {ledger['top_total'].get(P) if ledger['top_total'] else None})")
+    check(ledger["province"].shape == (6, 9), f"省高校表 6 指标 × 9 校 (实际 {ledger['province'].shape})")
+    return ok, report
+
+
+def _jsonable(o):
+    if isinstance(o, dict):
+        return {k: _jsonable(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_jsonable(v) for v in o]
+    if hasattr(o, "item") and not isinstance(o, (str,)):
+        try:
+            return o.item()
+        except Exception:
+            pass
+    if isinstance(o, float):
+        return None if o != o else o
+    if o is None or isinstance(o, (str, int, float, bool)):
+        return o
+    return str(o)
+
+
+def main(path, out_dir):
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    ledger = load_ledger(path)
+    ok, report = run_assertions(ledger)
+
+    long_frames = []
+    for m, df in ledger["wide"].items():
+        long_frames.append(df.reset_index().melt(id_vars="discipline", var_name="period", value_name="value").assign(metric=m))
+    for key, cols in [("new_intl", ["n_inst_1pct", "rank", "rank_pct"]),
+                      ("new_cn", ["n_inst_1pct", "rank", "rank_pct"])]:
+        long_frames.append(ledger[key].melt(id_vars=["discipline", "period"], value_vars=cols,
+                                            var_name="metric", value_name="value").assign(source=key))
+    for key, cols in [("rank_intl", ["n_inst_1pct", "rank", "rank_pct"]),
+                      ("rank_cn", ["n_inst_1pct", "rank", "rank_pct"])]:
+        long_frames.append(ledger[key].melt(id_vars=["discipline", "period"], value_vars=cols,
+                                            var_name="metric", value_name="value").assign(source=key))
+    long_df = pd.concat(long_frames, ignore_index=True)
+    long_df.to_parquet(out_dir / "ledger_long.parquet", index=False)
+
+    wide_dir = out_dir / "wide"
+    wide_dir.mkdir(exist_ok=True)
+    for m, df in ledger["wide"].items():
+        df.to_parquet(wide_dir / f"{m}.parquet")
+    ledger["ynd_rank"].reset_index().to_parquet(wide_dir / "ynd_rank.parquet")
+    ledger["top_papers"].to_parquet(wide_dir / "top_papers.parquet")
+    pd.Series(ledger["top_total"], name="total").rename_axis("period").reset_index().to_parquet(wide_dir / "top_total.parquet")
+    ledger["threshold_1permille"].to_parquet(wide_dir / "threshold_1permille.parquet")
+    ledger["province"].to_parquet(wide_dir / "province.parquet")
+    ledger["forecast_gap"].to_parquet(wide_dir / "forecast_gap.parquet")
+
+    meta = {
+        "input": str(path),
+        "assertions_ok": ok,
+        "assertions": report,
+        "clean_log": ledger["clean_log"],
+        "provinces": ledger["province"].columns.tolist(),
+        "province_entry_block": ledger["province_entry"],
+        "top_total_by_period": ledger["top_total"],
+        "period_current": "202607",
+        "period_next_empty": "202609",
+    }
+    (out_dir / "meta.json").write_text(json.dumps(_jsonable(meta), ensure_ascii=False, indent=1), encoding="utf-8")
+    print(json.dumps(_jsonable(meta), ensure_ascii=False, indent=1))
+    return ok
+
+
+if __name__ == "__main__":
+    src = Path(sys.argv[1] if len(sys.argv) > 1 else r"input\202607\监测表.xlsx")
+    dst = Path(sys.argv[2] if len(sys.argv) > 2 else r"out\202607")
+    ok = main(src, dst)
+    sys.exit(0 if ok else 1)
