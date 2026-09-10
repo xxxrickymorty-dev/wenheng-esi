@@ -53,10 +53,13 @@ def build(facts, period, prev):
     else:
         years_text = f"按当前增速尚难估算{cn_name(best['discipline'])}进入ESI前1‰的时间。"
 
+    if best["prox_prev_pct"] is not None:
+        prev_clause = f"此数值较{prev_m}月上升{best['prox_pct'] - best['prox_prev_pct']:.2f}%，"
+    else:
+        prev_clause = f"此数值较{prev_m}月{MANUAL.format('升幅%（台账缺上期1‰阈值）')}，"
     p2 = (f"本期我校仍保持有ESI前1%学科{p1['n_disc_1pct']}个，位列云南省高校首位"
           f"{qianfen}。我校目前与ESI前1‰接近度较高的学科为{cn_name(best['discipline'])}，"
-          f"接近度为{best['prox_pct']:.2f}%，此数值较{prev_m}月上升"
-          f"{best['prox_pct'] - best['prox_prev_pct']:.2f}%，较一年前上升"
+          f"接近度为{best['prox_pct']:.2f}%，{prev_clause}较一年前上升"
           f"{MANUAL.format('去年同期升幅%')}，{years_text}")
 
     p3 = (f"本期我校{cn_name(d1)}和{cn_name(d2)}在ESI前1%接近度方面较{prev_m}月表现较好，"

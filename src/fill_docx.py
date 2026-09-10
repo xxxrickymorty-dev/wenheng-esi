@@ -190,13 +190,18 @@ def fill_header_month(doc, period_dir, slots):
 
 
 def main(ledger_dir="out/202607", master=r"master\学科信息参考母版_2026第5期.docx",
-         out_path=None, charts_only_demo=False):
+         out_path=None, charts_only_demo=False, period_override=None):
     ledger_dir = pathlib.Path(ledger_dir)
     P = json.loads((ledger_dir / "meta.json").read_text(encoding="utf-8"))["period_current"]
     out_path = pathlib.Path(out_path or ledger_dir / f"报告初稿_{P}（试排）.docx")
 
     wide, ni, nc, thr = compute.load_wide(str(ledger_dir))
-    period, prev = compute.detect_periods(wide)
+    if period_override:
+        filled = [c for c in wide["total_cites"].columns if wide["total_cites"][c].notna().any()]
+        period = period_override
+        prev = [c for c in filled if c < period][-1]
+    else:
+        period, prev = compute.detect_periods(wide)
     prev_month = str(int(prev[4:]))
     t2 = compute.build_table2(wide, ni, nc, thr, period, prev)
     ynd = pd.read_parquet(f"{ledger_dir}/wide/ynd_rank.parquet").set_index("period")
@@ -222,7 +227,7 @@ def main(ledger_dir="out/202607", master=r"master\学科信息参考母版_2026�
 
     n_img = sum(1 for s in slots if s["new"].startswith("[图]"))
     n_text = sum(1 for s in slots if not s["location"].startswith("T01/r") and not s["new"].startswith("[图]"))
-    md = [f"# 红色件清单 · {P} 期（试排）", "",
+    md = [f"# 红色件清单 · {period} 期", "",
           f"- 报告初稿：`{out_path}`",
           f"- 大表数值格：{sum(1 for s in slots if s['location'].startswith('T01/r'))} 格（逐格见 red_slots.json）",
           f"- 文字/期次槽位：{n_text} 处（概述 4 段、发展趋势、态势统计、封面期数年月、大表表头）",

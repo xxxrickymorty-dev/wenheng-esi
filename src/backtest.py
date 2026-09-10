@@ -45,7 +45,8 @@ def fmt_float(v, nd=2):
     return f"{round(v, nd)}"
 
 
-def main(docx_path, out_dir="out/202607", ledger_dir="out/202607"):
+def main(docx_path, out_dir="out/202607", ledger_dir="out/202607", period="202607", prev="202605"):
+    P, Q = period, prev
     wide, ni, nc, thr = compute.load_wide(ledger_dir)
     t2 = compute.build_table2(wide, ni, nc, thr, period=P, prev=Q)
     ynd = pd.read_parquet(f"{ledger_dir}/wide/ynd_rank.parquet").set_index("period")
@@ -54,7 +55,7 @@ def main(docx_path, out_dir="out/202607", ledger_dir="out/202607"):
 
     d, big, prov = load_doc_tables(docx_path)
 
-    lines = ["# 对照差异报告 · 回测第 4 期（2026年7月，期次 202607）", ""]
+    lines = [f"# 对照差异报告 · 回测期次 {P}", ""]
     n_pass = n_fail = 0
 
     # ---- Table 2 ----
@@ -166,7 +167,7 @@ def main(docx_path, out_dir="out/202607", ledger_dir="out/202607"):
 
     import pathlib
     pathlib.Path(out_dir).mkdir(parents=True, exist_ok=True)
-    report = pathlib.Path(out_dir) / "对照差异报告_第4期回测.md"
+    report = pathlib.Path(out_dir) / f"对照差异报告_{P}回测.md"
     report.write_text("\n".join(lines), encoding="utf-8")
     print("\n".join(lines))
     return n_fail == 0
@@ -174,5 +175,8 @@ def main(docx_path, out_dir="out/202607", ledger_dir="out/202607"):
 
 if __name__ == "__main__":
     docx_path = sys.argv[1] if len(sys.argv) > 1 else r"..\云南大学原报告\云南大学学科信息参考2026年第4期.docx"
-    ok = main(docx_path)
+    out_dir = sys.argv[2] if len(sys.argv) > 2 else "out/202607"
+    period = sys.argv[3] if len(sys.argv) > 3 else "202607"
+    prev = sys.argv[4] if len(sys.argv) > 4 else "202605"
+    ok = main(docx_path, out_dir=out_dir, ledger_dir=out_dir, period=period, prev=prev)
     sys.exit(0 if ok else 2)

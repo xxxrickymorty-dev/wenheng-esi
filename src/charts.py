@@ -180,8 +180,8 @@ def chart_overview_1permille(cites, thr_1permille, out_png, period):
     _save(fig, out_png)
 
 
-def render_all(ledger_dir="out/202607", out_dir=None, n_periods=18):
-    """渲染 16 学科 × 6 图 + 2 张概览图。"""
+def render_all(ledger_dir="out/202607", out_dir=None, n_periods=18, end_period=None):
+    """渲染 16 学科 × 6 图 + 2 张概览图。end_period=历史复跑时指定当期（如 202605）。"""
     ledger_dir = pathlib.Path(ledger_dir)
     out_dir = pathlib.Path(out_dir or ledger_dir) / "charts"
     w = {m: pd.read_parquet(ledger_dir / "wide" / f"{m}.parquet") for m in
@@ -192,6 +192,8 @@ def render_all(ledger_dir="out/202607", out_dir=None, n_periods=18):
 
     all_p = [str(c) for c in w["total_cites"].columns if str(c).isdigit()]
     filled = [c for c in all_p if w["total_cites"][c].notna().any()]
+    if end_period:
+        filled = [c for c in filled if c <= end_period]
     periods = filled[-n_periods:]
     P = filled[-1]
     rank_intl = longdf[(longdf.source == "rank_intl") & (longdf.metric == "rank_pct")] \

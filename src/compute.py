@@ -109,10 +109,12 @@ def build_overview(wide, new_intl, new_cn, thr, ynd_rank, top_total, period=None
     # 1‰ 接近度最高学科（未进入 1‰ 时即千分位阈值比最低者）
     r1p = (c / tp).dropna()
     best = r1p.idxmax()
+    has_prev_tp = prev in thr.columns and pd.notna(thr[prev].get(best))
     facts["best_1permille"] = {
         "discipline": best,
         "prox_pct": round(c[best] / tp[best] * 100, 2),
-        "prox_prev_pct": round(wide["total_cites"][prev][best] / thr[prev][best] * 100, 2),
+        "prox_prev_pct": (round(wide["total_cites"][prev][best] / thr[prev][best] * 100, 2)
+                          if has_prev_tp else None),
     }
     # 接近度变化最大两学科
     chg = ((pr[period] - pr[prev]) * 100).sort_values(ascending=False)
@@ -148,13 +150,14 @@ def build_overview(wide, new_intl, new_cn, thr, ynd_rank, top_total, period=None
             "chg": round((pr.loc[d, period] - pr.loc[d, prev]) * 100, 2),
         })
     facts["top2_not_entered"] = top2
-    # 1‰ 状态与年化进入时间估算（按上期增速外推）
+    # 1‰ 状态与年化进入时间估算（按上期增速外推；上期 1‰阈值缺失则不强算）
     ratio_1pm = (c / tp).dropna()
     facts["any_1permille"] = bool((ratio_1pm >= 1).any())
     best_info = facts["best_1permille"]
-    growth = (best_info["prox_pct"] - best_info["prox_prev_pct"]) * 6  # 百分点/年（双月×6）
-    if growth > 0.1:
-        facts["permille_years_est"] = -(-(100 - best_info["prox_pct"]) // growth)  # ceil
+    if best_info["prox_prev_pct"] is not None:
+        growth = (best_info["prox_pct"] - best_info["prox_prev_pct"]) * 6  # 百分点/年（双月×6）
+        facts["permille_years_est"] = (-(-(100 - best_info["prox_pct"]) // growth)
+                                       if growth > 0.1 else None)
     else:
         facts["permille_years_est"] = None
     # 覆盖窗口与上期中文标签

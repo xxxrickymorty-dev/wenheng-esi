@@ -220,10 +220,10 @@ def parse_avg_cites(ws, clean_log):
 
 
 def parse_top_summary(ws, clean_log):
-    """TOP论文：宽表 + 合计行 + 年份行。"""
+    """TOP论文：宽表 + 合计行 + 年份行。（表头期次有脏值 2023.3/2023.5，统一归一）"""
     rows = list(ws.iter_rows(values_only=True))
     hdr = ["" if h is None else str(h).strip() for h in rows[0][1:]]
-    periods = [h for h in hdr if h]
+    periods = [re.sub(r"\.(\d)$", r".0\1", h).replace(".", "") for h in hdr if h]
     data, year_rows, total = {}, {}, None
     for r in rows[1:]:
         name = "" if r[0] is None else str(r[0]).strip()
