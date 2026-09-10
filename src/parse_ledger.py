@@ -240,6 +240,32 @@ def parse_top_summary(ws, clean_log):
     return df, yr, total
 
 
+def parse_q1q4(ws, clean_log):
+    """Q1-Q4：季度 × 实体（云大/中国大陆/全球）× Q1-Q4 占比。"""
+    rows = list(ws.iter_rows(values_only=True))
+    hdr_q, hdr_e = rows[0], rows[1]
+    groups, cur_q = [], None
+    for j in range(1, len(hdr_q)):
+        q = hdr_q[j]
+        if q is not None and str(q).strip():
+            cur_q = str(q).strip()
+        e = hdr_e[j]
+        if e is not None and str(e).strip():
+            groups.append((j, cur_q, str(e).strip()))
+    recs = []
+    for r in rows[3:]:
+        name = "" if r[0] is None else str(r[0]).strip()
+        if name not in DISCIPLINES_EN:
+            continue
+        for start, q, ent in groups:
+            vals = [_num(v) for v in r[start:start + 4]]
+            recs.append({"discipline": name, "quarter": q, "entity": ent,
+                         "q1": vals[0], "q2": vals[1], "q3": vals[2], "q4": vals[3]})
+    df = pd.DataFrame(recs)
+    clean_log.append(f"{ws.title}: {df.quarter.nunique()} 季度 × {df.entity.nunique()} 实体 × {df.discipline.nunique()} 学科")
+    return df
+
+
 def parse_province(ws, clean_log):
     """高校学科发展：9 校指标行 + 前1%学科概况块。"""
     rows = list(ws.iter_rows(values_only=True))
@@ -305,6 +331,7 @@ def load_ledger(path):
     cn = parse_transposed(wb["国内排名"], clean_log)
     thr_1p = parse_threshold_1permille(wb["千分之一被引阈值"], clean_log)
     avg = parse_avg_cites(wb["篇均被引"], clean_log)
+    q1q4 = parse_q1q4(wb["Q1-Q4"], clean_log)
     top, top_years, top_total = parse_top_summary(wb["TOP论文"], clean_log)
     prov, prov_entry = parse_province(wb["高校学科发展"], clean_log)
     gap = parse_forecast_gap(wb["实际与预测差值"], clean_log)
@@ -317,6 +344,7 @@ def load_ledger(path):
         "rank_cn": cn,
         "threshold_1permille": thr_1p,
         "avg_cites": avg,
+        "q1q4": q1q4,
         "top_papers": top,
         "top_by_year": top_years,
         "top_total": top_total,
@@ -430,6 +458,7 @@ def write_outputs(ledger, path, out_dir):
     ledger["top_papers"].to_parquet(wide_dir / "top_papers.parquet")
     pd.Series(ledger["top_total"], name="total").rename_axis("period").reset_index().to_parquet(wide_dir / "top_total.parquet")
     ledger["threshold_1permille"].to_parquet(wide_dir / "threshold_1permille.parquet")
+    ledger["q1q4"].to_parquet(wide_dir / "q1q4.parquet")
     ledger["province"].to_parquet(wide_dir / "province.parquet")
     ledger["forecast_gap"].to_parquet(wide_dir / "forecast_gap.parquet")
 
