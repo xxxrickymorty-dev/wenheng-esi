@@ -10,8 +10,6 @@ Table2 十一列口径（已用第 4 期实物反推验证）：
 """
 import pandas as pd
 
-P, Q = "202607", "202605"
-
 
 def load_wide(out_dir="out/202607"):
     wide = {m: pd.read_parquet(f"{out_dir}/wide/{m}.parquet") for m in
@@ -23,6 +21,15 @@ def load_wide(out_dir="out/202607"):
         index="discipline", columns=["metric", "period"], values="value")
     thr = pd.read_parquet(f"{out_dir}/wide/threshold_1permille.parquet")
     return wide, new_intl, new_cn, thr
+
+
+def detect_periods(wide):
+    """当前期 = 总被引表最后一个有数据的期次；上期 = 其前一个（自动跟随台账更新）。"""
+    tc = wide["total_cites"]
+    filled = [c for c in tc.columns if tc[c].notna().any()]
+    if len(filled) < 2:
+        raise ValueError("台账被引表有效期次不足 2 期，无法定位当期")
+    return filled[-1], filled[-2]
 
 
 def fmt_rank_change(rank_now, rank_prev):
@@ -38,7 +45,9 @@ def fmt_pct_change(v):
     return f"{arrow}{abs(v):.2f}%"
 
 
-def build_table2(wide, new_intl, new_cn, thr, period=P, prev=Q):
+def build_table2(wide, new_intl, new_cn, thr, period=None, prev=None):
+    if period is None or prev is None:
+        period, prev = detect_periods(wide)
     c = wide["total_cites"][period]
     p = wide["papers"][period]
     cnci = wide["cnci"][period]
@@ -73,8 +82,10 @@ def build_table2(wide, new_intl, new_cn, thr, period=P, prev=Q):
     return df
 
 
-def build_overview(wide, new_intl, new_cn, thr, ynd_rank, top_total, period=P, prev=Q):
+def build_overview(wide, new_intl, new_cn, thr, ynd_rank, top_total, period=None, prev=None):
     """概述段与学校发展段的全部数字事实（供回测/填稿）。"""
+    if period is None or prev is None:
+        period, prev = detect_periods(wide)
     c = wide["total_cites"][period]
     pr = wide["proximity_1pct"]
     tp = thr[period]
@@ -118,8 +129,15 @@ def build_overview(wide, new_intl, new_cn, thr, ynd_rank, top_total, period=P, p
 
 
 if __name__ == "__main__":
-    import json
-    wide, ni, nc, thr = load_wide()
-    t2 = build_table2(wide, ni, nc, thr)
+    import sys
+    out_dir = sys.argv[1] if len(sys.argv) > 1 else None
+    if out_dir is None:
+        import pathlib
+        outs = sorted(pathlib.Path("out").glob("20*/"), key=lambda p: p.name)
+        out_dir = str(outs[-1]).replace("\\", "/")
+    wide, ni, nc, thr = load_wide(out_dir)
+    P, Q = detect_periods(wide)
+    t2 = build_table2(wide, ni, nc, thr, P, Q)
     pd.set_option("display.width", 200)
+    print(f"# 当期 {P} / 上期 {Q} (@{out_dir})")
     print(t2.to_string(index=False))

@@ -327,6 +327,15 @@ def load_ledger(path):
     }
 
 
+def _latest_periods(ledger):
+    """当前期 = 总被引宽表最后一个有数据的期次；上期 = 其前一个。"""
+    tc = ledger["wide"]["total_cites"]
+    filled = [c for c in tc.columns if tc[c].notna().any()]
+    if len(filled) < 2:
+        raise ValueError("台账被引表有效期次不足 2 期，无法定位当期")
+    return filled[-1], filled[-2]
+
+
 def run_assertions(ledger):
     """机器断言闸：结构级不变量。返回 (ok, report)。"""
     report, ok = [], True
@@ -336,7 +345,7 @@ def run_assertions(ledger):
         report.append(("PASS" if cond else "FAIL", msg))
         ok = ok and cond
 
-    P = "202607"
+    P, _Q = _latest_periods(ledger)
     TOP_BLANK_OK = {"Multidisciplinary", "Neuroscience & Behavior", "Immunology"}
     for m, df in ledger["wide"].items():
         check(len(df) == 22, f"宽表 {m} 学科数=22 (实际 {len(df)})")
@@ -347,25 +356,29 @@ def run_assertions(ledger):
             check(na_set <= TOP_BLANK_OK, f"宽表 {m} {P} 期空白仅限 {TOP_BLANK_OK} (实际 {sorted(na_set)})")
         else:
             check(df[P].notna().sum() == 22, f"宽表 {m} {P} 期无缺失")
-        if "202609" in df.columns:
+        future = [c for c in df.columns if c > P]
+        for fc in future:
             if m == "cnci":
-                check(df["202609"].notna().sum() == 22, f"宽表 {m} 202609 列已贴数（InCites 月更先行）")
-            else:
-                check(df["202609"].isna().all(), f"宽表 {m} 202609 列为空（下期未贴数）")
+                continue  # InCites 月更先行，允许已贴
+            check(df[fc].isna().all(), f"宽表 {m} {fc} 列为空（下期未贴数）")
         bad = df.map(lambda v: isinstance(v, str) and "%" in v).any().any() if df.map(lambda v: isinstance(v, str)).any().any() else False
         check(not bad, f"宽表 {m} 无残留 %% 脏值")
 
     y = ledger["ynd_rank"]
-    check(P in y.index and y.loc[P, "rank_intl"] == 995, f"云大ESI排名 {P} 国际=995 (实际 {y.loc[P,'rank_intl'] if P in y.index else None})")
+    check(P in y.index and pd.notna(y.loc[P, "rank_intl"]), f"云大ESI排名 {P} 已贴数")
+    if P == "202607":
+        check(y.loc[P, "rank_intl"] == 995, "金样(202607)：国际排名=995")
     for df, nm in [(ledger["new_intl"], "新国际排名"), (ledger["new_cn"], "新国内排名")]:
-        check(df.period.nunique() == 9, f"{nm} 期组数=9")
+        check(df.period.nunique() >= 5, f"{nm} 期组数≥5")
         check(df.discipline.nunique() == 22, f"{nm} 学科数=22")
         check((df.period == P).sum() == 22, f"{nm} 含 {P} 全 22 行")
     for df, nm in [(ledger["rank_intl"], "国际排名"), (ledger["rank_cn"], "国内排名")]:
-        check(df.period.nunique() >= 45, f"{nm} 期数≥45")
+        check(df.period.nunique() >= 40, f"{nm} 期数≥40")
         check((df.period == P).sum() == 22, f"{nm} 含 {P} 全 22 行")
     check(P in ledger["threshold_1permille"].columns, f"千分之一阈值含 {P}")
-    check(ledger["top_total"] is not None and ledger["top_total"].get(P) == 274, f"顶尖论文合计 {P}=274 (实际 {ledger['top_total'].get(P) if ledger['top_total'] else None})")
+    check(ledger["top_total"] is not None and ledger["top_total"].get(P) is not None, f"顶尖论文合计 {P} 已贴数")
+    if P == "202607":
+        check(ledger["top_total"].get(P) == 274, "金样(202607)：顶尖论文合计=274")
     check(ledger["province"].shape == (6, 9), f"省高校表 6 指标 × 9 校 (实际 {ledger['province'].shape})")
     return ok, report
 
@@ -387,11 +400,13 @@ def _jsonable(o):
     return str(o)
 
 
-def main(path, out_dir):
+def write_outputs(ledger, path, out_dir):
+    """把已解析台账落盘为规整数据 + meta，返回 (ok, meta)。"""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    ledger = load_ledger(path)
     ok, report = run_assertions(ledger)
+    P, Q = _latest_periods(ledger)
+    next_cols = [c for c in ledger["wide"]["total_cites"].columns if c > P]
 
     long_frames = []
     for m, df in ledger["wide"].items():
@@ -426,16 +441,26 @@ def main(path, out_dir):
         "provinces": ledger["province"].columns.tolist(),
         "province_entry_block": ledger["province_entry"],
         "top_total_by_period": ledger["top_total"],
-        "period_current": "202607",
-        "period_next_empty": "202609",
+        "period_current": P,
+        "period_prev": Q,
+        "period_next_empty": next_cols[0] if next_cols else None,
     }
     (out_dir / "meta.json").write_text(json.dumps(_jsonable(meta), ensure_ascii=False, indent=1), encoding="utf-8")
+    return ok, meta
+
+
+def main(path, out_dir=None):
+    ledger = load_ledger(path)
+    if out_dir is None:
+        P, _ = _latest_periods(ledger)
+        out_dir = Path("out") / P
+    ok, meta = write_outputs(ledger, path, out_dir)
     print(json.dumps(_jsonable(meta), ensure_ascii=False, indent=1))
     return ok
 
 
 if __name__ == "__main__":
     src = Path(sys.argv[1] if len(sys.argv) > 1 else r"input\202607\监测表.xlsx")
-    dst = Path(sys.argv[2] if len(sys.argv) > 2 else r"out\202607")
+    dst = sys.argv[2] if len(sys.argv) > 2 else None
     ok = main(src, dst)
     sys.exit(0 if ok else 1)

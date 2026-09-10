@@ -47,7 +47,7 @@ def fmt_float(v, nd=2):
 
 def main(docx_path, out_dir="out/202607", ledger_dir="out/202607"):
     wide, ni, nc, thr = compute.load_wide(ledger_dir)
-    t2 = compute.build_table2(wide, ni, nc, thr)
+    t2 = compute.build_table2(wide, ni, nc, thr, period=P, prev=Q)
     ynd = pd.read_parquet(f"{ledger_dir}/wide/ynd_rank.parquet").set_index("period")
     meta = __import__("json").load(open(f"{ledger_dir}/meta.json", encoding="utf-8"))
     top_total = pd.read_parquet(f"{ledger_dir}/wide/top_total.parquet").set_index("period")["total"].to_dict()
@@ -108,7 +108,7 @@ def main(docx_path, out_dir="out/202607", ledger_dir="out/202607"):
     lines.append("")
     paras = [p.text.strip() for p in d.paragraphs if p.text.strip()]
     ov = "\n".join(paras)
-    facts = compute.build_overview(wide, ni, nc, thr, ynd, top_total)
+    facts = compute.build_overview(wide, ni, nc, thr, ynd, top_total, period=P, prev=Q)
 
     checks = [
         ("国际排名 995", "995", f"{facts['rank_intl_now']}"),

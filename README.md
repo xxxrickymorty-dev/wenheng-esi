@@ -11,10 +11,21 @@
 
 ## 运行
 
+**每期一条命令（自动化入口）**：
+
+```powershell
+.venv\Scripts\python.exe src\run_pipeline.py input\<期次>\监测表.xlsx
+```
+
+自动完成：解析 22 sheet → 机器断言 → 大表 22×11 → 概述数字事实 → 预测回测 → `out/<期次>/run_log.json`。
+当期/上期从台账自动检测（以总被引表最后一个有数据的期次为准），新增一期只需把台账放进新目录、跑一次命令。
+
+分模块运行（调试用）：
+
 ```powershell
 .venv\Scripts\python.exe src\parse_ledger.py  # 输入台账 → out/<期次>/ 规整数据 + meta
-.venv\Scripts\python.exe src\compute.py
-.venv\Scripts\python.exe src\backtest.py      # 对照差异报告
+.venv\Scripts\python.exe src\compute.py       # 大表+概述（自动定位最新 out/<期次>）
+.venv\Scripts\python.exe src\backtest.py      # 金样回测（固定第 4 期）→ 对照差异报告
 .venv\Scripts\python.exe src\forecast.py      # 预测回测报告
 ```
 
