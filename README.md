@@ -18,11 +18,19 @@
 
 ## 运行
 
+**首次安装依赖（uv）**：
+
+```powershell
+uv sync        # 按 pyproject.toml + uv.lock 建 .venv（含演示站依赖）
+```
+
 **每期一条命令（自动化入口）**：
 
 ```powershell
-.venv\Scripts\python.exe src\run_pipeline.py input\<期次>\监测表.xlsx
+uv run python src\run_pipeline.py input\<期次>\监测表.xlsx
 ```
+
+（馆员日常也可直接双击 `一键出报告.bat`，等价于跑最新一期，不依赖 uv。）
 
 自动完成：解析 22 sheet → 机器断言 → 大表 22×11 → 概述数字事实 → 预测回测 → `out/<期次>/run_log.json`。
 当期/上期从台账自动检测（以总被引表最后一个有数据的期次为准），新增一期只需把台账放进新目录、跑一次命令。
@@ -30,12 +38,24 @@
 分模块运行（调试用）：
 
 ```powershell
-.venv\Scripts\python.exe src\parse_ledger.py  # 输入台账 → out/<期次>/ 规整数据 + meta
-.venv\Scripts\python.exe src\compute.py       # 大表+概述（自动定位最新 out/<期次>）
-.venv\Scripts\python.exe src\backtest.py      # 金样回测（固定第 4 期）→ 对照差异报告
-.venv\Scripts\python.exe src\forecast.py      # 预测回测报告
+uv run python src\parse_ledger.py   # 输入台账 → out/<期次>/ 规整数据 + meta
+uv run python src\compute.py        # 大表+概述（自动定位最新 out/<期次>）
+uv run python src\backtest.py       # 金样回测（固定第 4 期）→ 对照差异报告
+uv run python src\forecast.py       # 预测回测报告
 ```
 
 输入契约（v1.0）：唯一输入 = 馆员维护的《云大全学科排名、阈值动态检测表.xlsx》，
 放入 `input/<期次>/监测表.xlsx`；母版 = 第 5 期 docx（结构金母版）。
 数据下载与贴表由有权限馆员完成，agent 不碰。
+
+## 演示站（FastAPI）
+
+```powershell
+copy server\.env.example server\.env   # 改账号/密码/公网地址
+uv run uvicorn server.app:app --host 0.0.0.0 --port 8080
+```
+
+浏览器打开 `http://<服务器IP>:8080`，测试账号登录 → 选期次或上传台账 → 一键生成 →
+实时五步进度 + 控制台 → 下载报告初稿/红色件清单/审计数据（SSE 推送，单 worker）。
+部署：Linux 装 `fonts-noto-cjk`（图表字体回退），`uv sync` 后可用
+`server/deploy/wenheng-demo.service`（systemd，直连 `.venv/bin/python`）。

@@ -4,3 +4,7 @@ input/
 out/
 master/
 *.pyc
+server/.env
+server/.env.*
+!server/.env.example
+

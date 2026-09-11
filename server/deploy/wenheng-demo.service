@@ -1,0 +1,15 @@
+[Unit]
+Description=Wenheng ESI demo (FastAPI)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/wenheng
+ExecStart=/opt/wenheng/.venv/bin/python -m uvicorn server.app:app --host 0.0.0.0 --port 8080
+Environment=PYTHONIOENCODING=utf-8
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

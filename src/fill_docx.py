@@ -286,7 +286,7 @@ def fill_header_month(doc, period_dir, slots):
     return
 
 
-def main(ledger_dir="out/202607", master=r"master\学科信息参考母版_2026第5期.docx",
+def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026第5期.docx",
          out_path=None, charts_only_demo=False, period_override=None):
     ledger_dir = pathlib.Path(ledger_dir)
     P = json.loads((ledger_dir / "meta.json").read_text(encoding="utf-8"))["period_current"]

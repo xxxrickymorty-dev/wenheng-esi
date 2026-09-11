@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}红色件清单 · {{ job.period }} · 文衡{% endblock %}
+{% block content %}
+
+<section class="card">
+  <h1>红色件清单 · {{ job.period }} 期</h1>
+  <p class="muted">共 <b>{{ slots | length }}</b> 条。每条列出「改了什么、来自哪里」——全部数字可回溯到台账供数位置；发布前由馆员逐条签单确认。</p>
+  <div class="group-chips">
+    {% for name, n in groups %}<span class="chip">{{ name }} · {{ n }}</span>{% endfor %}
+  </div>
+  <div class="filters">
+    <input id="q" placeholder="搜索位置 / 数值 / 来源…">
+    <span id="count" class="muted small"></span>
+    <a class="btn ghost" href="/jobs/{{ job.id }}">返回任务</a>
+    <a class="btn ghost" href="/jobs/{{ job.id }}/download/red_list" download>下载 Markdown</a>
+  </div>
+  <div class="table-scroll">
+  <table class="slots" id="slots">
+    <thead><tr><th>#</th><th>位置</th><th>修改前</th><th>修改后</th><th>来源</th></tr></thead>
+    <tbody>
+      {% for s in slots %}
+      <tr>
+        <td class="muted">{{ loop.index }}</td>
+        <td class="mono">{{ s.location }}</td>
+        <td class="old">{{ s.old }}</td>
+        <td class="new">{{ s.new }}</td>
+        <td class="src">{{ s.source }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var q = document.getElementById('q');
+  var rows = Array.prototype.slice.call(document.querySelectorAll('#slots tbody tr'));
+  var count = document.getElementById('count');
+  function apply() {
+    var v = (q.value || '').trim().toLowerCase();
+    var n = 0;
+    rows.forEach(function (tr) {
+      var hit = !v || tr.textContent.toLowerCase().indexOf(v) >= 0;
+      tr.style.display = hit ? '' : 'none';
+      if (hit) n++;
+    });
+    count.textContent = '匹配 ' + n + ' / ' + rows.length + ' 条';
+  }
+  q.addEventListener('input', apply);
+  apply();
+})();
+</script>
+{% endblock %}

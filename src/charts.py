@@ -22,9 +22,24 @@ except ImportError:  # 直接运行时的兜底
 def _cn(en):
     return DISCIPLINES_CN.get(en, en)
 
-FONT = "SimHei"  # Windows 黑体；服务器环境换 Noto Sans CJK
+_FONT_CANDIDATES = ["SimHei", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC",
+                    "Source Han Sans SC", "WenQuanYi Zen Hei"]
+
+
+def _pick_font():
+    try:
+        avail = {f.name for f in font_manager.fontManager.ttflist}
+    except Exception:
+        avail = set()
+    for name in _FONT_CANDIDATES:
+        if name in avail:
+            return name
+    return "sans-serif"
+
+
+FONT = _pick_font()  # Windows=SimHei；Linux 服务器=Noto Sans CJK（先装 fonts-noto-cjk）
 plt.rcParams.update({
-    "font.sans-serif": [FONT, "Microsoft YaHei", "sans-serif"],
+    "font.sans-serif": [FONT, *_FONT_CANDIDATES, "sans-serif"],
     "axes.unicode_minus": False,
     "figure.dpi": 300,
     "font.size": 9,
