@@ -63,7 +63,7 @@ def _avail(df, periods):
 def _save(fig, path):
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.tight_layout(pad=0.4)
-    fig.savefig(path, dpi=300, bbox_inches="tight")
+    fig.savefig(path, dpi=300)  # 不用 bbox_inches，保持与母版槽位一致的精确比例 8.26:5.50
     plt.close(fig)
 
 

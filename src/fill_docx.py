@@ -106,17 +106,48 @@ def fill_big_table(doc, t2, slots, prev_month):
     return big
 
 
+def _apply_slot_geometry(tbl):
+    """恢复第 4 期槽位表几何：列宽 8.64+8.64cm（图 8.26cm 恰好放得下）。"""
+    grid = tbl._tbl.find(qn('w:tblGrid'))
+    if grid is not None:
+        for col in grid.findall(qn('w:gridCol'))[:2]:
+            col.set(qn('w:w'), str(int(8.64 * 567)))
+    for row in tbl.rows:
+        for cell in row.cells[:2]:
+            cell.width = Cm(8.64)
+
+
 def insert_charts(doc, period_dir, discipline, table_idx, slots, chart_dir):
-    """向指定槽位表插入 6 图（保持图题，图追加到单元格）。"""
+    """向指定槽位表插入 6 图：填入既有空段（保持 2 段结构，避免行高超限）。"""
     tbl = doc.tables[table_idx]
+    _apply_slot_geometry(tbl)
     slug = charts._slug(discipline)
     for (ri, ci), fname in CHART_SLOTS.items():
         png = pathlib.Path(chart_dir) / slug / fname
         if not png.exists():
             continue
         cell = tbl.rows[ri].cells[ci]
-        p = cell.add_paragraph()
-        p.add_run().add_picture(str(png), width=Cm(8.26))
+        img_p = None
+        for p in cell.paragraphs:  # 找最后一个空段（无文字无图）放图
+            if not p.text.strip() and not p._element.findall('.//' + qn('w:drawing')):
+                img_p = p
+        if img_p is None:
+            img_p = cell.add_paragraph()
+        img_p.alignment = 1  # 居中
+        img_p.add_run().add_picture(str(png), width=Cm(8.26))
+        # 归一：只保留 图题（首个非空段）+ 本图段；清除骨架残留（空段/碎字），保 2 段结构防行高超限
+        # 注意：cell.paragraphs 每次返回新包装对象，必须比较底层 XML 元素
+        cap_el = next((p._element for p in cell.paragraphs if p.text.strip()), None)
+        img_el = img_p._element
+        for p in list(cell.paragraphs):
+            el = p._element
+            if el is img_el or el is cap_el:
+                continue
+            if p.text.strip():
+                slots.append({"location": f"T{table_idx:02d}/r{ri}c{ci}",
+                              "old": p.text.strip()[:24], "new": "（清除母版残留文本）",
+                              "source": "母版清理"})
+            el.getparent().remove(el)
         slots.append({"location": f"T{table_idx:02d}/r{ri}c{ci}",
                       "old": "（空槽位）", "new": f"[图] {slug}/{fname}",
                       "source": f"charts/{slug}/{fname}"})
