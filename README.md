@@ -8,9 +8,13 @@
 - `src/compute.py` — 大表 22×11 + 概述数字事实（口径经第 4 期实物反推验证）
 - `src/backtest.py` — 回测闸：第 4 期 docx 逐格 diff → 《对照差异报告》
 - `src/forecast.py` — 预测模块（方法 B：InCites + 历史差值校准），MAPE 1.26% < 5% 验收线
-- `src/charts.py` — 图表库：16 学科 × 6 图（排名/CNCI/发文/被引阈值/顶尖/分区）+ 2 概览
+- `src/charts.py` — 图表库：16 学科 × 6 图（排名/CNCI/发文/被引阈值/顶尖/分区）+ 概览
 - `src/fill_docx.py` — 母版原地替换：大表填充 + 图表槽位 + 红色件清单（red_slots.json）
-- `src/run_pipeline.py` — 一键入口（全链路 16 秒）
+- `src/rerun_history.py` — 历史期次复现（`python src\rerun_history.py 202605`）
+- `src/run_pipeline.py` — 一键入口（全链路约 15 秒）
+
+> 配套 Agent 技能：`C:\Users\damn\.agents\skills\wenheng-esi-report`（操作流程 + 踩坑清单 + 结构验证脚本），
+> 新会话直接说「复现第 N 期报告 / 跑当期报告」即可。
 
 ## 运行
 
