@@ -1,0 +1,272 @@
+# -*- coding: utf-8 -*-
+"""文衡 Agent 层 · 固定编排（WH-DOC-03 §6；WH-DOC-04 §3.8）。
+
+**主干步骤与顺序硬编码在本文件**——模型不得增删步骤、不得改顺序
+（HLD §2 N2 / 架构设计 §0）。
+
+失败处置语义（2026-09-15 裁决，仲裁 HLD §6.1 / 架构设计 §4.2·§4.7 / 决策方案 §3 三说）
+--------------------------------------------------------------------------------
+    首轮拦停 → 一次自愈重试 → 再败即升级
+
+    1. 任一步失败，**立即停止**，不进入后续步骤（不"未过仍出稿"）；
+    2. 给该步**一次**自愈机会：按失败码匹配规则 → 重跑该步一次；
+    3. 重试仍失败 → 状态置 `escalated`，产出《诊断报告》，交人工。
+
+    该裁决同时取消了两处旧描述：架构设计 §4.7 的 `Warned = 断言未过仍出稿`
+    （本实现中 Warned 只表示"跑完了但有非阻断告警"），以及决策方案 §3 的
+    "全绿才放行"（本实现允许一次自愈后再判定）。
+
+用法：
+    python -m agent.flow input/202609/监测表.xlsx
+    python -m agent.flow input/202609/监测表.xlsx --run-dir out/_jobs/manual
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import pathlib
+import time
+
+from . import states, tools
+from .trace import Trace
+
+#: 主干步骤表（唯一事实源）。`server/config.py` 的 STEPS 应与之一致，
+#: 由 tests/test_agent_flow.py 断言防漂移。
+STEPS: tuple[dict, ...] = (
+    {"id": "parse", "label": "解析台账",
+     "desc": "22 个工作表归一化 + 机器断言", "tool": "run_parse"},
+    {"id": "compute", "label": "计算大表与概述",
+     "desc": "22 学科 × 11 列 + 概述数字事实", "tool": "run_compute"},
+    {"id": "forecast", "label": "预测回测",
+     "desc": "InCites + 历史差值校准（MAPE < 5%）", "tool": "run_forecast"},
+    {"id": "charts", "label": "图表渲染",
+     "desc": "16 学科 × 6 图 + 概览图", "tool": "run_charts"},
+    {"id": "docx", "label": "母版替换",
+     "desc": "红色件原地替换 → 报告初稿 + 红件清单", "tool": "run_docx"},
+)
+
+#: 自愈重试上限。裁决为"一次"，改这个数等于改口径——须同步 HLD。
+MAX_HEAL_ATTEMPTS = 1
+
+#: 视为"非阻断告警"的错误码：不拦停，但终态记 warned
+NON_BLOCKING = ("REF_MISSING",)
+
+
+def _heal_hook(failure, ctx):
+    """自愈钩子。M3 接入 `rules/repair_rules.yaml`；M2 阶段无可用规则，返回 None。
+
+    返回 dict 表示已应用修复（会被写进 `repair.yaml`）；返回 None 表示无规则可依。
+    """
+    try:
+        from . import heal                                     # noqa: PLC0415
+    except ImportError:
+        return None
+    return heal.attempt(failure, ctx)
+
+
+class RunResult:
+    __slots__ = ("status", "period", "steps", "failure", "run_dir", "elapsed",
+                 "warnings", "artifacts")
+
+    def __init__(self, status, run_dir):
+        self.status = status          # states.*
+        self.run_dir = str(run_dir)
+        self.period = None
+        self.steps = []               # [{step, status, attempt, elapsed}]
+        self.failure = None           # 失败步的 tool 错误 dict
+        self.warnings = []
+        self.artifacts = {}
+        self.elapsed = 0.0
+
+    def as_dict(self):
+        return {"status": self.status, "period": self.period, "run_dir": self.run_dir,
+                "steps": self.steps, "failure": self.failure,
+                "warnings": self.warnings, "artifacts": self.artifacts,
+                "elapsed": round(self.elapsed, 2)}
+
+
+def _write_diagnosis(run_dir, ledger, step, err, attempts):
+    """逾限升级时产出《诊断报告》（SRS R-26）。"""
+    p = pathlib.Path(run_dir) / "诊断报告.md"
+    body = [
+        "# 诊断报告 · 自愈逾限",
+        "",
+        f"- 台账：`{ledger}`",
+        f"- 失败步骤：**{step['label']}**（`{step['id']}` → 工具 `{step['tool']}`）",
+        f"- 错误码：`{err.get('code')}`",
+        f"- 错误说明：{err.get('message')}",
+        f"- 已尝试：首轮 + {attempts} 次自愈重试（上限 {MAX_HEAL_ATTEMPTS}）",
+        "",
+        "## 明细",
+        "",
+        f"```json\n{json.dumps(err, ensure_ascii=False, indent=2)}\n```",
+        "",
+        "## 处置",
+        "",
+        "1. 该运行已停止，**未继续后续步骤**，不产出报告初稿；",
+        "2. 请人工核对台账对应工作表/期次列，修正后重跑（重跑会新建运行，本记录保留）；",
+    ]
+    if err.get("fails"):
+        body += ["", "## 未通过的断言", ""] + [f"- {m}" for m in err["fails"]]
+    body += ["", "---", "",
+             "> 本报告由 `src/agent/flow.py` 自动生成，未经过模型加工。"]
+    p.write_text("\n".join(body), encoding="utf-8")
+    return p
+
+
+def run(ledger, out_root="out", run_dir=None, reference=None, backtest=False):
+    """跑一次受控编排。返回 `RunResult`。本函数**不抛异常**——失败以状态表达。"""
+    t0 = time.time()
+    ledger = str(ledger)
+    out_root = pathlib.Path(out_root)
+
+    # 运行目录：未指定则先落临时名，parse 拿到期次后再规整（与 _jobs 约定一致）
+    run_dir = pathlib.Path(run_dir) if run_dir else (out_root / "_jobs" / "manual")
+    tr = Trace(run_dir)
+
+    result = RunResult(states.PENDING, run_dir)
+    ctx = {"ledger": ledger, "out_root": str(out_root), "run_dir": str(run_dir),
+           "reference": reference}
+
+    tr.event("plan", observation=f"台账 {pathlib.Path(ledger).name}",
+             decision="run", reason=f"{len(STEPS)} 步主干（固定顺序）")
+    tr.transition(states.PENDING, states.RUNNING, trigger="start")
+
+    current = states.RUNNING
+    for step in STEPS:
+        tr.event("act", tool=step["tool"], args={"step": step["id"]})
+        started = time.time()
+        tool_err = None
+        attempt = 1
+
+        try:
+            payload = _invoke(step, ctx, result)
+        except tools.ToolError as e:
+            tool_err = e.as_dict()
+
+        # 非阻断告警（如无原件时的回测）：记警告，不拦停
+        if tool_err and tool_err["code"] in NON_BLOCKING:
+            result.warnings.append(f"{step['id']}: {tool_err['message']}")
+            tr.event("observe", tool=step["tool"], observation="跳过（可降级）",
+                     decision="continue", reason=tool_err["code"])
+            tr.task_run(step["id"], attempt, started, time.time(), "warn")
+            result.steps.append({"step": step["id"], "status": "warn", "attempt": attempt,
+                                 "elapsed": round(time.time() - started, 2)})
+            continue
+
+        # ---- 裁决落地：首轮拦停 → 一次自愈 → 再败升级 ----
+        if tool_err:
+            tr.event("observe", tool=step["tool"], observation=tool_err["message"],
+                     decision="halt", reason=tool_err["code"])
+            tr.event("decide", tool=step["tool"], decision="halt",
+                     reason="首轮失败即拦停，不进入后续步骤")
+            current = _transition(tr, current, states.RETRYING, trigger=tool_err["code"])
+            tr.task_run(step["id"], attempt, started, time.time(), "failed", )
+            result.steps.append({"step": step["id"], "status": "failed", "attempt": attempt,
+                                 "elapsed": round(time.time() - started, 2)})
+
+            repaired = None
+            if MAX_HEAL_ATTEMPTS > 0:
+                tr.event("plan", tool=step["tool"], decision="heal",
+                         reason=f"尝试自愈（上限 {MAX_HEAL_ATTEMPTS} 次）")
+                repaired = _heal_hook(tool_err, ctx)
+                tr.event("act", tool="apply_repair_rule", args=repaired,
+                         observation="已应用" if repaired else "无可用规则",
+                         decision="retry" if repaired or True else "stop",
+                         reason=None if repaired else "规则库无匹配（M3 交付）")
+
+            attempt = 2
+            started = time.time()
+            try:
+                payload = _invoke(step, ctx, result)
+                tool_err = None
+            except tools.ToolError as e:
+                tool_err = e.as_dict()
+
+            if tool_err:
+                tr.task_run(step["id"], attempt, started, time.time(), "failed")
+                result.steps.append({"step": step["id"], "status": "failed", "attempt": attempt,
+                                     "elapsed": round(time.time() - started, 2)})
+                tr.escalate(reason=f"{step['id']} 自愈逾限", detail=tool_err)
+                current = _transition(tr, current, states.ESCALATED,
+                                      trigger="heal_exhausted", attempt=attempt)
+                result.failure = {**tool_err, "step": step["id"]}
+                _write_diagnosis(run_dir, ledger, step, tool_err, MAX_HEAL_ATTEMPTS)
+                break
+            tr.task_run(step["id"], attempt, started, time.time(), "done")
+            result.steps.append({"step": step["id"], "status": "done", "attempt": attempt,
+                                 "elapsed": round(time.time() - started, 2)})
+            tr.event("observe", tool=step["tool"], observation="重试成功",
+                     decision="continue", reason="heal_ok")
+            current = _transition(tr, current, states.RUNNING, trigger="heal_ok")
+        else:
+            tr.task_run(step["id"], attempt, started, time.time(), "done")
+            result.steps.append({"step": step["id"], "status": "done", "attempt": attempt,
+                                 "elapsed": round(time.time() - started, 2)})
+            tr.event("observe", tool=step["tool"], observation="ok", decision="continue")
+
+        # 期次与产物随步骤回填
+        if step["id"] == "parse" and not result.failure:
+            result.period = payload.get("period")
+            if result.period and run_dir.name == "manual":
+                pass          # 保持调用方指定目录，不擅自改名
+        if isinstance(payload, dict):
+            result.artifacts.update({k: v for k, v in payload.items()
+                                     if k in ("out_dir", "table2", "docx")})
+
+    # ------------------------------------------------------------ 终态
+    if result.failure is None:
+        if current == states.RUNNING:
+            dst = states.WARNED if result.warnings else states.COMPLETED
+            _transition(tr, current, dst, trigger="all_steps_done")
+            result.status = dst
+    else:
+        result.status = states.ESCALATED
+
+    result.elapsed = time.time() - t0
+    (run_dir / "run_result.json").write_text(
+        json.dumps(result.as_dict(), ensure_ascii=False, indent=1), encoding="utf-8")
+    tr.event("decide", decision=result.status,
+             reason=f"{len(result.steps)} 次步骤执行 · 用时 {result.elapsed:.1f}s")
+    return result
+
+
+def _invoke(step, ctx, result):
+    """调用该步对应的工具。parse 步自动把产物目录定为 out/<期次>。"""
+    if step["id"] == "parse":
+        # 先探一次期次，好把产物落到期次目录（与 run_pipeline 行为一致）
+        out_dir = result.artifacts.get("out_dir") or str(
+            pathlib.Path(ctx["out_root"]) / "_pending")
+        payload = tools.call("run_parse", ledger=ctx["ledger"], out_dir=out_dir)
+        period = payload.get("period")
+        if period and out_dir.endswith("_pending"):
+            real = pathlib.Path(ctx["out_root"]) / period
+            payload = tools.call("run_parse", ledger=ctx["ledger"], out_dir=str(real))
+        return payload
+    out_dir = result.artifacts.get("out_dir") or str(
+        pathlib.Path(ctx["out_root"]) / (result.period or "_pending"))
+    if step["id"] == "docx":
+        return tools.call("run_docx", out_dir=out_dir)
+    return tools.call(step["tool"], out_dir=out_dir)
+
+
+def _transition(tr, src, dst, trigger, attempt=1):
+    tr.transition(src, dst, trigger=trigger, attempt=attempt)
+    return dst
+
+
+def main():
+    ap = argparse.ArgumentParser(description="文衡 Agent 层 · 固定编排（P1/M2）")
+    ap.add_argument("ledger")
+    ap.add_argument("--out-root", default="out")
+    ap.add_argument("--run-dir", default=None)
+    ap.add_argument("--reference", default=None, help="已出版原件 docx（用于回测）")
+    args = ap.parse_args()
+    r = run(args.ledger, out_root=args.out_root, run_dir=args.run_dir,
+            reference=args.reference)
+    print(json.dumps(r.as_dict(), ensure_ascii=False, indent=1))
+    return 0 if r.status in (states.COMPLETED, states.WARNED) else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
