@@ -17,6 +17,9 @@ dependencies = [
 ]
 
 [dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
 server = [
     "fastapi>=0.110",
     "uvicorn[standard]>=0.27",
@@ -28,4 +31,18 @@ server = [
 
 [tool.uv]
 package = false
-default-groups = ["server"]
+default-groups = ["server", "dev"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tools"]
+addopts = '-q --strict-markers -m "not slow"'
+markers = [
+    "slow: 端到端跑整条流水线（约 15 秒），默认也跑，可用 -m 'not slow' 跳过",
+]
+# 台账含图表/条件格式扩展，openpyxl 只读时必刷这两条警告——是噪音，
+# 且与「必须走 zip 级 XML 替换」的结论同源（见 .gitignore 上方注释与 README）。
+filterwarnings = [
+    "ignore:Unknown extension is not supported:UserWarning",
+    "ignore:Conditional Formatting extension is not supported:UserWarning",
+]

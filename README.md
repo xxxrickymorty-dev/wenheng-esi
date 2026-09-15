@@ -12,9 +12,12 @@
 - `src/fill_docx.py` — 母版原地替换：大表填充 + 图表槽位 + 红色件清单（red_slots.json）
 - `src/rerun_history.py` — 历史期次复现（`python src\rerun_history.py 202605`）
 - `src/run_pipeline.py` — 一键入口（全链路约 15 秒）
+- `tools/verify_report_docx.py` — 报告结构校验（16 学科 × 6 = 96 槽位 + 22 行大表）
+- `tools/compare_reports.py` — 原件 vs 生成稿的结构对照（骨架/图表/表格/占位）
+- `tests/` — pytest 回归套件，见下文「测试」
 
-> 配套 Agent 技能：`C:\Users\damn\.agents\skills\wenheng-esi-report`（操作流程 + 踩坑清单 + 结构验证脚本），
-> 新会话直接说「复现第 N 期报告 / 跑当期报告」即可。
+> 配套 Agent 技能：`C:\Users\damn\.agents\skills\wenheng-esi-report`（操作流程 + 踩坑清单），
+> 新会话直接说「复现第 N 期报告 / 跑当期报告」即可。校验脚本已收编进本仓库 `tools/`。
 
 ## 运行
 
@@ -45,8 +48,31 @@ uv run python src\forecast.py       # 预测回测报告
 ```
 
 输入契约（v1.0）：唯一输入 = 馆员维护的《云大全学科排名、阈值动态检测表.xlsx》，
-放入 `input/<期次>/监测表.xlsx`；母版 = 第 5 期 docx（结构金母版）。
-数据下载与贴表由有权限馆员完成，agent 不碰。
+放入 `input/<期次>/监测表.xlsx`；母版 = 第 5 期 docx（结构金母版，**已入库**）。
+数据下载与贴表由有权限馆员完成，agent 不碰。缺台账时 parse 步会明确报错，不会静默出空报告。
+
+## 测试
+
+```powershell
+uv run pytest            # 默认套件，约 20 秒（跳过端到端）
+uv run pytest -m ""      # 含端到端全链路，约 30 秒（会真跑一次流水线）
+uv run pytest -m slow    # 只跑端到端
+```
+
+| 测试组 | 覆盖什么 | 需要外部数据 |
+|---|---|---|
+| `test_compute_units` | 大表格式化口径（`139/↓4`、`↑33.87%`）、当期/上期自动检测 | 否 |
+| `test_permille_rule` | 1‰ 取位公式 ⌊(m+1)/10⌋、文本单元格转数、与台账已存列逐格对账、与 ThresholdESI 交叉校验 | ESI 原始包 |
+| `test_ledger_assertions` | 每期台账断言闸全绿、期次严格递增 | 台账 |
+| `test_report_structure` | 报告初稿 96 槽位 + 22 行大表（`tools/verify_report_docx.py`） | `out/` 产物 |
+| `test_pipeline_smoke` | parse→compute 主链路、端到端全链路 | 台账 |
+
+外部数据（`input/`、`out/`、ESI 原始包）按 `.gitignore` 不入库，
+**缺数据时夹具自动 skip**，不会误报红灯——新 clone 的仓库只会跑纯函数那一层。
+
+> ⚠️ 改 `compute.py` 的口径、`extract_1permille.py` 的取位公式、
+> 或母版槽位几何（列宽 8.64 / 图 8.26×5.50）时**先跑测试**。
+> 这几处改错了不会抛异常，只会静默产出错的报告。
 
 ## 演示站（FastAPI）
 
