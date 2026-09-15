@@ -83,3 +83,30 @@ def check_transition(src: str, dst: str) -> None:
 
 def is_terminal(status: str) -> bool:
     return status in TERMINAL
+
+
+# ---------------------------------------------------------------- 旧名兼容
+#: 演示站 2026-09-15 之前用的是 `done / warn / failed / interrupted` 这套。
+#: `out/_jobs/` 下的历史 `job.json` 里存的还是旧值，读盘时要能认。
+#: `interrupted`（服务重启中断）映射到 `failed`——10 态里没有它，
+#: 且语义上属"意外终止"而非"主动取消"。
+LEGACY: dict[str, str] = {
+    "done": COMPLETED,
+    "warn": WARNED,
+    "failed": FAILED,
+    "interrupted": FAILED,
+    "running": RUNNING,
+    "pending": PENDING,
+}
+
+
+def normalize(status: str) -> str:
+    """把历史/别名状态归一为 10 态之一。认不出的原样返回——不静默吞掉。"""
+    if not status:
+        return status
+    return LEGACY.get(status, status)
+
+
+def label(status: str) -> str:
+    """中文显示名。新旧名都能吃。"""
+    return LABELS.get(normalize(status), status)

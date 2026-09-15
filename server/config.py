@@ -37,10 +37,19 @@ PUBLIC_URL = os.environ.get("WENHENG_PUBLIC_URL", "")
 REFERENCE_DOCX = os.environ.get("WENHENG_REFERENCE_DOCX", "")
 SHOW_HINT = os.environ.get("WENHENG_SHOW_HINT", "") == "1"
 
-STEPS = [
-    {"id": "parse", "label": "解析台账", "desc": "22 个工作表归一化 + 机器断言"},
-    {"id": "compute", "label": "计算大表与概述", "desc": "22 学科 × 11 列 + 概述数字事实"},
-    {"id": "forecast", "label": "预测回测", "desc": "InCites + 历史差值校准（MAPE < 5%）"},
-    {"id": "charts", "label": "图表渲染", "desc": "16 学科 × 6 图 + 概览图"},
-    {"id": "docx", "label": "母版替换", "desc": "红色件原地替换 → 报告初稿 + 红件清单"},
-]
+# ---- Agent 层接入（2026-09-15）--------------------------------------------
+# 把 src/ 放进 sys.path，演示站才能直接用 agent 层的状态机与步骤表。
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
+from agent import states as agent_states                        # noqa: E402
+from agent.flow import STEPS as _FLOW_STEPS                     # noqa: E402
+
+#: 主干步骤表**唯一来源是 `src/agent/flow.py`**。前端五步进度与后端编排必须同源，
+#: 各存一份必然漂移（`tests/test_agent_flow.py` 有一致性断言守着这条）。
+STEPS = [{"id": s["id"], "label": s["label"], "desc": s["desc"]} for s in _FLOW_STEPS]
+
+#: 任务状态（10 态）与中文名，同样以 agent.states 为唯一来源
+STATES = agent_states.STATES
+STATUS_LABELS = agent_states.LABELS

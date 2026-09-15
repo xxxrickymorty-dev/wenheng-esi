@@ -1,6 +1,18 @@
 (function () {
   var job = window.__JOB__ || {};
-  var TERMINAL = ['done', 'warn', 'failed', 'interrupted'];
+
+  // ---- 任务状态（10 态）------------------------------------------------------
+  // 口径由服务端注入（job.html 里渲染 window.__STATUS_LABELS__ / __TERMINAL__），
+  // 唯一来源是 src/agent/states.py。这里不要自己列状态名。
+  var LABELS = window.__STATUS_LABELS__ || {};
+  var TERMINAL = window.__TERMINAL__ || ['completed', 'warned', 'escalated', 'failed', 'cancelled'];
+  // 旧名兜底：历史页面/缓存里的 done/warn/interrupted
+  var LEGACY = { done: 'completed', warn: 'warned', interrupted: 'failed' };
+  function norm(s) { return LEGACY[s] || s; }
+  function isTerminal(s) { return TERMINAL.indexOf(norm(s)) >= 0; }
+
+  // ⚠️ 下面这些 'start'/'done'/'warn'/'failed' 是**步骤级进度**的 CSS 类名，
+  //    不是任务状态机。别顺手把它们改成 10 态名——那会改坏样式。
   var stepsEl = document.getElementById('steps');
   var consoleEl = document.getElementById('console');
   var badge = document.getElementById('status-badge');
@@ -12,11 +24,9 @@
 
   function setBadge(status) {
     if (!badge) return;
-    badge.className = 'badge ' + status;
-    badge.textContent = {
-      done: '完成', warn: '断言未过（已出稿待复核）', failed: '失败',
-      running: '运行中', interrupted: '已中断'
-    }[status] || status;
+    var s = norm(status);
+    badge.className = 'badge ' + s;
+    badge.textContent = LABELS[s] || s;
   }
 
   function resetSteps() {
@@ -155,8 +165,8 @@
 
   // 页面刷新时的静态回放（SSE 连接后还会重放一遍，幂等）
   (window.__EVENTS__ || []).forEach(function (ev) { applyEvent(ev); trackStep(ev); });
-  if (job.status && TERMINAL.indexOf(job.status) >= 0) setBadge(job.status);
-  setRerunVisible(TERMINAL.indexOf(job.status) >= 0);
+  if (job.status && isTerminal(job.status)) setBadge(job.status);
+  setRerunVisible(isTerminal(job.status));
   startTimer(job.started_at, job.finished_at);
 
   if (rerunBtn) {
@@ -196,7 +206,7 @@
   es.addEventListener('status', function (e) {
     var j = JSON.parse(e.data);
     setBadge(j.status);
-    if (TERMINAL.indexOf(j.status) >= 0) {
+    if (isTerminal(j.status)) {
       es.close();
       if (window.__timerIv) clearInterval(window.__timerIv);
       setRerunVisible(true);

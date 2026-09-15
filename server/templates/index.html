@@ -88,7 +88,7 @@
         <tr>
           <td class="mono">{{ j.id }}</td>
           <td class="mono">{{ j.period }}</td>
-          <td><span class="badge {{ j.status }}">{{ {'done':'完成','warn':'断言未过','failed':'失败','running':'运行中','interrupted':'已中断'}.get(j.status, j.status) }}</span></td>
+          <td><span class="badge {{ j.status }}">{{ status_label(j.status) }}</span></td>
           <td class="mono" style="color:var(--ink-3)">{{ j.created_at }}</td>
           <td class="mono">{{ j.elapsed ~ 's' if j.elapsed else '—' }}</td>
           <td><a href="/jobs/{{ j.id }}">查看 →</a></td>

@@ -2,6 +2,17 @@
 """文衡演示站任务管理：创建任务 → 子进程跑流水线 → JSONL 进度 + 控制台日志。
 
 约定：单机单任务（一次只跑一期，约 15–20 秒）；uvicorn 单 worker。
+
+状态口径（2026-09-15 接线）
+--------------------------------------------------------------------------------
+任务状态**不再由本文件自己定义**，一律取自 `src/agent/states.py`（10 态，权威）。
+本文件此前用的是 `done / warn / failed / interrupted` 这套 4 态旧名，与
+WH-DOC-03 §6.3 / WH-DOC-02 R-13 要求的 10 态对不上——`done` 不等于文档里的
+`Completed`，`interrupted` 干脆是个文档里不存在的状态。
+
+改动要点：
+  · 写盘一律写新名；读盘经 `normalize()` 认旧名，历史 `out/_jobs/*/job.json` 无需迁移；
+  · `TERMINAL` 只保留一个来源，`app.py` 判终态请用 `is_terminal()`（会先归一）。
 """
 import asyncio
 import datetime as dt
@@ -15,10 +26,39 @@ import urllib.parse
 
 from . import config
 
-TERMINAL = {"done", "warn", "failed", "interrupted"}
+#: config 导入时已把 src/ 放进 sys.path，这里可直接拿到 agent 层
+from agent import states as agent_states
+
+#: 任务终态集合（5 个）。判终态请用 `is_terminal()`，它兼容旧名。
+TERMINAL = agent_states.TERMINAL
+
 PERIOD_RE = re.compile(r"^\d{6}$")
 PERIOD_DIR_RE = re.compile(r"^\d{6}")      # out/ 下的期次目录（可能是 202605_复现）
 _running: set = set()
+
+
+def is_terminal(status):
+    """终态判定。旧名（done/warn/interrupted）先归一，历史任务不会被判成"仍在跑"。"""
+    return agent_states.is_terminal(agent_states.normalize(status))
+
+
+def status_label(status):
+    """状态中文名。前端 badge 与列表页都走这里，避免各处再写字典。"""
+    return agent_states.label(status)
+
+
+def status_from_exit_code(code):
+    """流水线退出码 → 10 态任务状态。
+
+    0 全绿 → completed；1 有断言未过 → warned（产物仍在，待馆员复核）；
+    其它（含起不来进程的 -1）→ failed。抽成函数是为了可测：
+    这段映射错了不会抛异常，只会把失败显示成完成。
+    """
+    if code == 0:
+        return agent_states.COMPLETED
+    if code == 1:
+        return agent_states.WARNED
+    return agent_states.FAILED
 
 
 def _now():
@@ -34,9 +74,12 @@ def read_job(job_id):
     if not p.exists():
         return None
     try:
-        return json.loads(p.read_text(encoding="utf-8"))
+        j = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
+    if isinstance(j, dict) and "status" in j:
+        j["status"] = agent_states.normalize(j.get("status"))
+    return j
 
 
 def write_job(job):
@@ -60,20 +103,26 @@ def list_jobs(limit=20):
 def active_job():
     for jid in list(_running):
         j = read_job(jid)
-        if j and j.get("status") not in TERMINAL:
+        if j and not is_terminal(j.get("status")):
             return j
     return None
 
 
 def recover_stale():
-    """服务重启后，把没有存活进程的 running 任务标为中断。"""
+    """服务重启后，把没有存活进程的 running 任务结掉。
+
+    10 态里没有 `interrupted`（旧代码在这里造的词）。这里落 `failed`：
+    进程随服务一起消失属"意外终止"，不是馆员主动 `cancelled`；
+    也不落 `stalled`——停滞是**非终态**，留着会让任务永远挂在半途。
+    """
     if not config.JOBS_DIR.exists():
         return
     for d in config.JOBS_DIR.iterdir():
         j = read_job(d.name)
-        if j and j.get("status") == "running":
-            j["status"] = "interrupted"
+        if j and j.get("status") == agent_states.RUNNING:
+            j["status"] = agent_states.FAILED
             j["finished_at"] = _now()
+            j["recovered_from"] = "service_restart"
             write_job(j)
 
 
@@ -87,7 +136,7 @@ def create_job(period, input_path, actor, backtest=False):
     d.mkdir(parents=True, exist_ok=True)
     job = {
         "id": jid, "period": period, "input": str(input_path), "actor": actor,
-        "backtest": bool(backtest), "status": "running",
+        "backtest": bool(backtest), "status": agent_states.RUNNING,
         "created_at": _now(), "started_at": _now(), "finished_at": None,
         "exit_code": None, "progress": str(d / "progress.jsonl"),
         "console": str(d / "console.log"),
@@ -123,12 +172,13 @@ async def _run(job):
         err = f"{type(e).__name__}: {e}"
         code = -1
 
-    if code == 0:
-        status = "done"
-    elif code == 1:
-        status = "warn"  # 断言未过：仍产出初稿，需馆员复核
-    else:
-        status = "failed"
+    # 退出码 → 状态。语义与 `agent/flow.py` 的终态保持同一套词：
+    #   0 → completed：全绿，可直接进人工审批门
+    #   1 → warned   ：跑完了但断言未过，产物仍在，需馆员复核
+    #   其它 → failed ：脚本异常退出，无可用产物
+    # 注：`escalated`（自愈逾限）只在编排器 `agent/flow.py` 里产生，
+    # 演示站走的是 `run_pipeline.py` 直跑路径，不会自己造这个状态。
+    status = status_from_exit_code(code)
 
     job = read_job(jid) or job
     job.update({"status": status, "exit_code": code, "finished_at": _now()})

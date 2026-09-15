@@ -35,6 +35,15 @@ app.add_middleware(SessionMiddleware, secret_key=config.SECRET, same_site="lax")
 app.mount("/static", StaticFiles(directory=str(config.SERVER_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(config.SERVER_DIR / "templates"))
 
+# ---- 状态口径注入模板（2026-09-15）------------------------------------------
+# 唯一来源是 `src/agent/states.py`。模板里**不要再写** {'done':'完成', ...} 这类
+# 字面量字典——那正是旧 4 态与 10 态各说各话的来源。
+templates.env.globals.update(
+    status_label=jobs.status_label,          # {{ status_label(job.status) }}
+    status_labels=config.STATUS_LABELS,      # JS 用：window.__STATUS_LABELS__
+    terminal_states=sorted(jobs.TERMINAL),
+)
+
 _login_fails = {}
 
 
@@ -339,7 +348,7 @@ async def job_page(request: Request, job_id: str):
         return RedirectResponse("/", status_code=303)
     return page(request, "job.html", job=job, job_json=json.dumps(job, ensure_ascii=False),
                 steps=config.STEPS, events=jobs.read_progress(job),
-                artifacts=jobs.collect_artifacts(job), terminal=job["status"] in jobs.TERMINAL)
+                artifacts=jobs.collect_artifacts(job), terminal=jobs.is_terminal(job["status"]))
 
 
 @app.get("/jobs/{job_id}/redslots", response_class=HTMLResponse)
@@ -574,7 +583,7 @@ async def api_events(request: Request, job_id: str):
             for ev in flush_new():
                 yield ev
             cur = jobs.read_job(job_id)
-            if cur and cur.get("status") in jobs.TERMINAL:
+            if cur and jobs.is_terminal(cur.get("status")):
                 for ev in flush_new():
                     yield ev
                 yield _sse("status", json.dumps(cur, ensure_ascii=False))

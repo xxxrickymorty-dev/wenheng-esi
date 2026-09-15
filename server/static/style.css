@@ -229,14 +229,31 @@ input[type=checkbox] { width: auto; accent-color: var(--zhu); }
   border-radius: 0; text-transform: uppercase; white-space: nowrap;
 }
 .badge::before, .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); flex: none; }
-.badge.running { border-color: var(--zhu); color: var(--zhu); }
-.badge.running::before { background: var(--zhu); animation: pulseDot 1.1s infinite; }
+
+/* 10 态任务状态（唯一来源 src/agent/states.py，勿在别处另起名）。
+   语义分三档：进行中=朱砂脉动 / 正常收尾=墨绿 / 需人工或异常=朱砂 / 待签单=茶褐 */
+.badge.pending { border-color: var(--line-2); color: var(--ink-3); }
+.badge.pending::before { background: var(--ink-3); }
+.badge.running, .badge.retrying { border-color: var(--zhu); color: var(--zhu); }
+.badge.running::before, .badge.retrying::before { background: var(--zhu); animation: pulseDot 1.1s infinite; }
+.badge.stalled { border-color: var(--warn); color: var(--warn); }
+.badge.stalled::before { background: var(--warn); animation: pulseDot 1.1s infinite; }
+.badge.waiting_approval { border-color: var(--ink-2); color: var(--ink-2); }
+.badge.waiting_approval::before { background: var(--ink-2); }
+.badge.completed { border-color: var(--ok); color: var(--ok); }
+.badge.completed::before { background: var(--ok); }
+.badge.warned { border-color: var(--warn); color: var(--warn); }
+.badge.warned::before { background: var(--warn); }
+.badge.escalated, .badge.failed, .badge.cancelled { border-color: var(--zhu); color: var(--zhu); }
+.badge.escalated::before, .badge.failed::before, .badge.cancelled::before { background: var(--zhu); }
+
+/* 旧 4 态名：读盘已归一，这里只作历史缓存/书签页的兜底，新代码别再用 */
 .badge.done { border-color: var(--ok); color: var(--ok); }
 .badge.done::before { background: var(--ok); }
 .badge.warn { border-color: var(--warn); color: var(--warn); }
 .badge.warn::before { background: var(--warn); }
-.badge.failed, .badge.interrupted { border-color: var(--zhu); color: var(--zhu); }
-.badge.failed::before, .badge.interrupted::before { background: var(--zhu); }
+.badge.interrupted { border-color: var(--zhu); color: var(--zhu); }
+.badge.interrupted::before { background: var(--zhu); }
 .chip.ok { border-color: var(--ok); color: var(--ok); }
 .chip.ok::before { background: var(--ok); }
 .chip.bad { border-color: var(--zhu); color: var(--zhu); }
