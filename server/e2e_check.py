@@ -6,7 +6,7 @@
     服务地址可用环境变量覆盖：WENHENG_BASE=http://127.0.0.1:8080
 
 验收范围：登录 → 首屏对勘本 → 控制台 /run → 期次入口 /p/<期次> → 期次红件清单
-→ 任务入口与产物 → 签单闸门与落库（含撤回）→ 静态快照同源。
+→ 任务入口与产物 → 签单闸门与落库（含撤回）→ 静态快照同源 → 任务状态口径同源。
 只读 + 一次签单/撤回，不动流水线数据；结束后 202607 停在 unsigned。
 
 三个容易写错的地方（都踩过，记在这里省得下次再踩）：
@@ -220,6 +220,40 @@ check("快照 approvalStatus 强制 unsigned（不假造已签）", jget_str(sna
 check("快照 periods 为空 → 不渲染印记链", jget(snap, "periods") == "[")
 check("快照无 CDN", "cdn.jsdelivr" not in snap)
 check("快照内联全量 354 槽位", snap.count('"loc"') >= 350, f"n={snap.count(chr(34)+'loc'+chr(34))}")
+
+out("=== 11. 任务状态口径同源（10 态）===")
+# 演示站的状态名必须来自 src/agent/states.py（WH-DOC-03 §6.3 要求恰好 10 态）。
+# 这里只读校验：历史 job.json 里存的旧名（done/warn/interrupted）也必须在
+# 读取时被归一——否则「已完成」的任务会被判成「仍在跑」。
+sys.path.insert(0, str(WENHENG / "src"))
+from agent import states                                          # noqa: E402
+
+TEN = set(states.STATES)
+LEGACY = {"done", "warn", "interrupted"}
+
+st, runpage, _ = call("GET", "/run")
+pairs = re.findall(r'<span class="badge ([a-z_]+)">([^<]*)</span>', runpage)
+check("列表页徽章类名都落在 10 态内", all(c in TEN for c, _ in pairs),
+      str(sorted({c for c, _ in pairs})))
+check("列表页没有旧 4 态名", not any(c in LEGACY for c, _ in pairs),
+      str(sorted({c for c, _ in pairs} & LEGACY)))
+check("列表页文案取自状态机", all(t.strip() == states.LABELS[c] for c, t in pairs if c in states.LABELS),
+      str([t for c, t in pairs][:3]))
+
+if jobid:
+    st, jp2, _ = call("GET", f"/jobs/{jobid}")
+    mb = re.search(r'id="status-badge" class="badge ([a-z_]+)">([^<]*)<', jp2)
+    check("任务页 badge 类名是 10 态名", bool(mb) and mb.group(1) in TEN,
+          mb.group(1) if mb else "未匹配")
+    check("任务页 badge 文案 = 状态机中文名",
+          bool(mb) and mb.group(2).strip() == states.LABELS.get(mb.group(1)),
+          f"{mb.group(2)!r} vs {states.LABELS.get(mb.group(1))!r}" if mb else "")
+    check("任务页注入状态字典（前端不再写死名单）",
+          "__STATUS_LABELS__" in jp2 and "__TERMINAL__" in jp2)
+
+st, css, _ = call("GET", "/static/style.css")
+missing = [s for s in states.STATES if f".badge.{s}" not in css]
+check("每个状态都有 badge 配色", not missing, f"缺 {missing}")
 
 out("=" * 56)
 if FAILS:
