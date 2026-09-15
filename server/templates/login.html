@@ -1,21 +1,26 @@
 {% extends "base.html" %}
 {% block title %}登录 · 文衡{% endblock %}
+{% block sub %}学 科 信 息 参 考 · 演 示 环 境{% endblock %}
 {% block content %}
 <div class="login-wrap">
-  <div class="card login-card">
-    <h1>文衡 <span>学科信息参考自动化</span></h1>
-    <p class="muted">首届高校图书馆“AI+管理服务”大赛 · 演示环境</p>
-    {% if err %}<div class="alert err">{{ err }}</div>{% endif %}
-    <form method="post" action="/login" class="login-form">
-      <label>账号
-        <input name="username" autocomplete="username" required autofocus>
-      </label>
-      <label>密码
-        <input name="password" type="password" autocomplete="current-password" required>
-      </label>
-      <button class="btn primary wide" type="submit">登 录</button>
-    </form>
-    {% if hint %}<p class="muted small">演示提示：账号 <code>{{ show_hint_user }}</code>，密码见 server/.env 配置。</p>{% endif %}
+  <div class="plaque">
+    <div class="strip"><span>文 衡 · WENHENG</span><span>INTERNAL · 0.1</span></div>
+    <div class="body">
+      <div class="mark">文<i>衡</i></div>
+      <p class="tagline">首届高校图书馆「AI+管理服务」大赛 · 演示环境</p>
+      <hr>
+      {% if err %}<div class="alert err">{{ err }}</div>{% endif %}
+      <form method="post" action="/login" class="login-form">
+        <label>账号
+          <input name="username" autocomplete="username" required autofocus>
+        </label>
+        <label>密码
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <button class="btn primary wide" type="submit">登 录</button>
+      </form>
+      {% if hint %}<p class="muted small" style="margin-top:14px">演示提示：账号 <code>{{ show_hint_user }}</code>，密码见 server/.env 配置。</p>{% endif %}
+    </div>
   </div>
 </div>
 {% endblock %}

@@ -1,109 +1,124 @@
 {% extends "base.html" %}
 {% block title %}控制台 · 文衡{% endblock %}
+{% block sub %}学科信息参考 · 控 制 台{% endblock %}
 {% block content %}
 
-<section class="hero card">
-  <div class="hero-text">
-    <h1>《学科信息参考》自动化流水线</h1>
-    <p>台账即数据库 · 脚本做事实 · 人来拍板。贴表 → 一键运行 → 约 15 秒产出报告初稿、红色件清单与审计数据。</p>
-  </div>
-  <div class="kpis">
-    {% if last_stats %}
-    <div class="kpi"><b>{{ last_period }}</b><span>上次运行期次</span></div>
-    <div class="kpi"><b>{{ last_stats.elapsed_sec }}s</b><span>全链路耗时</span></div>
-    <div class="kpi"><b>{{ '全绿' if last_stats.assertions_ok else last_stats.assertions_fail ~ ' 项未过' }}</b><span>机器断言</span></div>
-    <div class="kpi"><b>{{ last_stats.predict_mape_overall }}%</b><span>预测 MAPE</span></div>
-    <div class="kpi"><b>{{ last_stats.charts }}</b><span>生成图表</span></div>
-    {% else %}
-    <div class="kpi"><b>~15s</b><span>单期全链路</span></div>
-    <div class="kpi"><b>99.5%</b><span>金样回测一致</span></div>
-    <div class="kpi"><b>1.26%</b><span>预测 MAPE</span></div>
-    <div class="kpi"><b>353</b><span>红件审计条数</span></div>
-    {% endif %}
-  </div>
+<section class="masthead">
+  <div class="kicker">文 衡 · 控 制 台 · 发 起 运 行</div>
+  <h1>《学科信息参考》自动化流水线</h1>
+  <p class="lead">台账即数据库 · 脚本做事实 · 人来拍板。贴表 → 一键运行 → 约 15 秒产出报告初稿、红色件清单与审计数据；报告本身在<span class="zhu">对勘本</span>里逐条比对、签单放行。</p>
 </section>
 
-<div class="grid2">
-  <section class="card">
-    <h2>开始生成</h2>
-    {% if active %}
-    <div class="alert warn">已有任务运行中：<a href="/jobs/{{ active.id }}">{{ active.period }}（{{ active.id }}）</a></div>
-    {% endif %}
-    <form id="run-form" class="run-form">
-      <label>选择已有台账
-        <select name="period_sel">
-          <option value="">— 选择期次 —</option>
-          {% for p in periods %}
-          <option value="{{ p.period }}">{{ p.period }}（{{ p.mtime }} 更新）</option>
-          {% endfor %}
-        </select>
-      </label>
-      <div class="or"><span>或上传新一期台账</span></div>
-      <label>台账文件（.xlsx）
-        <input type="file" name="file" accept=".xlsx">
-      </label>
-      <label>期次（上传时必填）
-        <input name="period_new" placeholder="如 202609" pattern="\d{6}" maxlength="6">
-      </label>
-      {% if reference_exists %}
-      <label class="check"><input type="checkbox" name="backtest" value="1"> 附加金样回测（与已出版手工版逐格比对）</label>
+{% if last_stats %}
+<div class="readouts">
+  <div class="readout"><div class="v">{{ last_period }}</div><div class="k">上次运行期次</div><div class="gauge"></div></div>
+  <div class="readout"><div class="v">{{ last_stats.elapsed_sec }}<span style="font-size:18px">s</span></div><div class="k">全链路耗时</div><div class="gauge"></div></div>
+  <div class="readout"><div class="v {{ 'ok' if last_stats.assertions_ok else 'zhu' }}">{{ '全绿' if last_stats.assertions_ok else last_stats.assertions_fail ~ ' 未过' }}</div><div class="k">机器断言闸</div><div class="gauge"></div></div>
+  <div class="readout"><div class="v">{{ last_stats.predict_mape_overall }}<span style="font-size:18px">%</span></div><div class="k">预测 MAPE</div><div class="gauge"></div></div>
+  <div class="readout"><div class="v">{{ last_stats.charts }}</div><div class="k">生成图表</div><div class="gauge"></div></div>
+</div>
+{% else %}
+<div class="readouts">
+  <div class="readout"><div class="v">~15<span style="font-size:18px">s</span></div><div class="k">单期全链路</div><div class="gauge"></div></div>
+  <div class="readout"><div class="v">99.5<span style="font-size:18px">%</span></div><div class="k">金样回测一致</div><div class="gauge"></div></div>
+  <div class="readout"><div class="v">1.26<span style="font-size:18px">%</span></div><div class="k">预测 MAPE</div><div class="gauge"></div></div>
+  <div class="readout"><div class="v">353</div><div class="k">红色件审计条数</div><div class="gauge"></div></div>
+</div>
+{% endif %}
+
+<div class="grid2" style="margin-top:22px">
+  <section class="panel">
+    <div class="panel-h"><span class="no">01</span><h2>开始生成</h2><span class="hint">贴表 → 跑</span></div>
+    <div class="panel-b">
+      {% if active %}
+      <div class="alert warn">已有任务运行中：<a href="/jobs/{{ active.id }}">{{ active.period }}（{{ active.id }}）</a></div>
       {% endif %}
-      <button class="btn primary wide" type="submit" {% if active %}disabled{% endif %}>一键生成</button>
-      <p id="run-msg" class="muted small"></p>
-    </form>
+      <form id="run-form" class="run-form">
+        <label>选择已有台账
+          <select name="period_sel">
+            <option value="">— 选择期次 —</option>
+            {% for p in periods %}
+            <option value="{{ p.period }}">{{ p.period }}（{{ p.mtime }} 更新）</option>
+            {% endfor %}
+          </select>
+        </label>
+        <div class="or"><span>或 上 传 新 一 期 台 账</span></div>
+        <label>台账文件（.xlsx）
+          <input type="file" name="file" accept=".xlsx">
+        </label>
+        <label>期次（上传时必填）
+          <input name="period_new" placeholder="如 202609" pattern="\d{6}" maxlength="6">
+        </label>
+        {% if reference_exists %}
+        <label class="check"><input type="checkbox" name="backtest" value="1"> 附加金样回测（与已出版手工版逐格比对）</label>
+        {% endif %}
+        <button class="btn primary wide" type="submit" {% if active %}disabled{% endif %}>一 键 生 成</button>
+        <p id="run-msg" class="muted small"></p>
+      </form>
+    </div>
   </section>
 
-  <section class="card">
-    <h2>流水线五步（每步均有断言闸）</h2>
-    <ol class="mini-steps">
-      {% for s in steps %}
-      <li><b>{{ s.label }}</b><span>{{ s.desc }}</span></li>
-      {% endfor %}
-    </ol>
-    <div class="engine">
-      <span class="chip {{ 'ok' if engine.pipeline else 'bad' }}">流水线{{ '就绪' if engine.pipeline else '缺失' }}</span>
-      <span class="chip {{ 'ok' if engine.master else 'bad' }}">金母版{{ '就绪' if engine.master else '缺失' }}</span>
-      <span class="chip {{ 'ok' if engine.python else 'bad' }}">Python{{ '就绪' if engine.python else '缺失' }}</span>
+  <section class="panel">
+    <div class="panel-h"><span class="no">02</span><h2>流水线五道工序</h2><span class="hint">每 步 均 有 断 言 闸</span></div>
+    <div class="panel-b">
+      <ol class="seq">
+        {% for s in steps %}
+        <li><span class="no">{{ '%02d' | format(loop.index) }}</span>
+          <div><b>{{ s.label }}</b><span class="desc">{{ s.desc }}</span></div>
+        </li>
+        {% endfor %}
+      </ol>
+      <div class="engine">
+        <span class="chip {{ 'ok' if engine.pipeline else 'bad' }}">流水线{{ '就绪' if engine.pipeline else '缺失' }}</span>
+        <span class="chip {{ 'ok' if engine.master else 'bad' }}">金母版{{ '就绪' if engine.master else '缺失' }}</span>
+        <span class="chip {{ 'ok' if engine.python else 'bad' }}">Python{{ '就绪' if engine.python else '缺失' }}</span>
+      </div>
     </div>
   </section>
 </div>
 
-<section class="card">
-  <h2>最近任务</h2>
+<section class="panel">
+  <div class="panel-h"><span class="no">03</span><h2>最近任务</h2><span class="hint">最 近 {{ recent | length }} 条</span></div>
   {% if recent %}
-  <table class="list">
-    <thead><tr><th>任务</th><th>期次</th><th>状态</th><th>发起时间</th><th>耗时</th><th></th></tr></thead>
-    <tbody>
-      {% for j in recent %}
-      <tr>
-        <td class="mono">{{ j.id }}</td>
-        <td>{{ j.period }}</td>
-        <td><span class="badge {{ j.status }}">{{ {'done':'完成','warn':'断言未过','failed':'失败','running':'运行中','interrupted':'已中断'}.get(j.status, j.status) }}</span></td>
-        <td class="muted">{{ j.created_at }}</td>
-        <td>{{ j.elapsed ~ 's' if j.elapsed else '—' }}</td>
-        <td><a href="/jobs/{{ j.id }}">查看</a></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="panel-b" style="padding:0">
+    <table class="dense list">
+      <thead><tr><th>任务编号</th><th>期次</th><th>状态</th><th>发起时间</th><th>耗时</th><th></th></tr></thead>
+      <tbody>
+        {% for j in recent %}
+        <tr>
+          <td class="mono">{{ j.id }}</td>
+          <td class="mono">{{ j.period }}</td>
+          <td><span class="badge {{ j.status }}">{{ {'done':'完成','warn':'断言未过','failed':'失败','running':'运行中','interrupted':'已中断'}.get(j.status, j.status) }}</span></td>
+          <td class="mono" style="color:var(--ink-3)">{{ j.created_at }}</td>
+          <td class="mono">{{ j.elapsed ~ 's' if j.elapsed else '—' }}</td>
+          <td><a href="/jobs/{{ j.id }}">查看 →</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% else %}
-  <p class="muted">暂无任务。选择期次或上传台账后点击“一键生成”。</p>
+  <div class="panel-b"><p class="muted">暂无任务。选择期次或上传台账后点击「一键生成」。</p></div>
   {% endif %}
 </section>
 
 <div class="grid2">
-  <section class="card">
-    <h2>治理机制（三道闸）</h2>
-    <ul class="ticks">
-      <li><b>机器断言闸</b>：当期列完整性、22 学科名单、跨章节数字互检，缺项即拦停。</li>
-      <li><b>金样回测闸</b>：与已出版原版逐格比对，一致率达标才放行。</li>
-      <li><b>人工审批门</b>：红色件清单逐条列明“改了什么、来自哪个单元格”，馆员签单后报送。</li>
-    </ul>
+  <section class="panel">
+    <div class="panel-h"><span class="no">04</span><h2>治理机制（三道闸）</h2></div>
+    <div class="panel-b">
+      <ul class="ticks">
+        <li><b>机器断言闸</b>：当期列完整性、22 学科名单、跨章节数字互检，缺项即拦停。</li>
+        <li><b>金样回测闸</b>：与已出版原版逐格比对，一致率达标才放行。</li>
+        <li><b>人工审批门</b>：对勘本逐条列明「改了什么、来自哪个单元格」，馆员钤印签单后报送。</li>
+      </ul>
+    </div>
   </section>
-  <section class="card qr-card">
-    <h2>扫码访问</h2>
-    <img src="/qr.png" alt="演示站二维码">
-    <p class="muted small">{{ public_url or '当前地址' }}</p>
+  <section class="panel qr-card">
+    <div class="panel-h"><span class="no">05</span><h2>扫码访问</h2></div>
+    <div class="panel-b">
+      <img src="/qr.png" alt="演示站二维码">
+      <p class="muted small">{{ public_url or '当前地址' }}</p>
+    </div>
   </section>
 </div>
 

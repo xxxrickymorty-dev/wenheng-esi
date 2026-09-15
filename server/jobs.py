@@ -11,11 +11,13 @@ import pathlib
 import re
 import secrets
 import time
+import urllib.parse
 
 from . import config
 
 TERMINAL = {"done", "warn", "failed", "interrupted"}
 PERIOD_RE = re.compile(r"^\d{6}$")
+PERIOD_DIR_RE = re.compile(r"^\d{6}")      # out/ 下的期次目录（可能是 202605_复现）
 _running: set = set()
 
 
@@ -165,41 +167,74 @@ def collect_artifacts(job):
     def fresh(path):
         return bool(path) and path.exists() and path.stat().st_mtime >= t_start
 
+    return _collect(out, f"/jobs/{job['id']}", f"/jobs/{job['id']}/download", fresh)
+
+
+def collect_period_artifacts(period_dir):
+    """按「期次」列产物（首屏对勘本用，没有任务上下文，也不做新鲜度过滤）。"""
+    out = config.OUT_DIR / period_dir
+
+    def fresh(path):
+        return bool(path) and path.exists()
+
+    q = urllib.parse.quote(str(period_dir))
+    return _collect(out, f"/p/{q}", f"/p/{q}/download", fresh)
+
+
+# 产物表：key, 中文名, 路径（None = 在线查看型）, 是否主产物
+def _artifact_table(out, fresh):
     report = next((p for p in out.glob("报告初稿_*.docx") if fresh(p)), None) if out.exists() else None
     diff = next((p for p in out.glob("对照差异报告*.md") if fresh(p)), None) if out.exists() else None
-    table = [
+    return [
         ("report", "报告初稿（Word）", report, True),
+        ("collation", "对勘本（正文级对照）", None, True),
         ("red_list", "红色件清单（Markdown）", out / "红色件清单.md", True),
-        ("red_view", "红色件清单（在线查看）", None, True),
+        ("approval", "审批记录（签单后生成）", out / "审批记录.md", False),
+        ("red_view", "红色件清单（逐格在线查看）", None, False),
         ("diff", "对照差异报告（金样回测）", diff, False),
         ("forecast", "预测回测报告", out / "预测回测报告.md", False),
         ("table2", "大表数据（CSV）", out / "table2.csv", False),
         ("red_json", "红色件审计明细（JSON）", out / "red_slots.json", False),
         ("runlog", "运行日志（JSON）", out / "run_log.json", False),
     ]
+
+
+def _collect(out, page_url, download_url, fresh):
     items = []
-    for key, label, path, primary in table:
-        if key == "red_view":
+    for key, label, path, primary in _artifact_table(out, fresh):
+        if key in ("red_view", "collation"):
             if fresh(out / "red_slots.json"):
-                items.append({"key": key, "label": label, "name": "红色件清单",
-                              "size": None, "url": f"/jobs/{job['id']}/redslots",
+                sub = "redslots" if key == "red_view" else "collation"
+                items.append({"key": key, "label": label,
+                              "name": "在线查看" if key == "collation" else "红色件清单",
+                              "size": None, "url": f"{page_url}/{sub}",
                               "primary": primary})
             continue
         if fresh(path):
             items.append({"key": key, "label": label, "name": path.name,
                           "size": path.stat().st_size,
-                          "url": f"/jobs/{job['id']}/download/{key}",
+                          "url": f"{download_url}/{key}",
                           "primary": primary})
     return items
 
 
-def resolve_artifact(job, key):
-    for a in collect_artifacts(job):
-        if a["key"] == key and key != "red_view":
-            p = config.OUT_DIR / (job.get("out_period") or job["period"]) / a["name"]
+def _resolve(items, out, key):
+    for a in items:
+        if a["key"] == key and key not in ("red_view", "collation"):
+            p = out / a["name"]
             if p.exists():
                 return p
     return None
+
+
+def resolve_artifact(job, key):
+    out = config.OUT_DIR / (job.get("out_period") or job["period"])
+    return _resolve(collect_artifacts(job), out, key)
+
+
+def resolve_period_artifact(period_dir, key):
+    return _resolve(collect_period_artifacts(period_dir),
+                    config.OUT_DIR / period_dir, key)
 
 
 def read_progress(job):

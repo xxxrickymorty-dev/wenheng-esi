@@ -153,6 +153,17 @@ def insert_charts(doc, period_dir, discipline, table_idx, slots, chart_dir):
                       "source": f"charts/{slug}/{fname}"})
 
 
+def _text_slot(location, old, new, source):
+    """正文槽位：old/new 存 50 字预览（红色件清单表用）；
+    超长时另存 old_full/new_full，供演示站「对勘本」做完整正文对照。"""
+    d = {"location": location, "old": old[:50], "new": new[:50], "source": source}
+    if len(old) > 50:
+        d["old_full"] = old
+    if len(new) > 50:
+        d["new_full"] = new
+    return d
+
+
 def _replace_para(p, new_text):
     """保留首 run 格式，替换整段文本（删除其余 run）。"""
     runs = p.runs
@@ -253,13 +264,12 @@ def fill_texts(doc, ledger_dir, slots, period, prev, facts):
             t = p.text.strip()
             if pred(t):
                 _replace_para(p, texts[key])
-                slots.append({"location": f"正文/{key}", "old": t[:50],
-                              "new": texts[key][:50], "source": "sentences.py（句骨架+数字槽）"})
+                slots.append(_text_slot(f"正文/{key}", t, texts[key],
+                                        "sentences.py（句骨架+数字槽）"))
                 hit = True
                 break
         if not hit:
-            slots.append({"location": f"正文/{key}", "old": "（未找到锚点段落）",
-                          "new": texts[key][:50], "source": "sentences.py"})
+            slots.append(_text_slot(f"正文/{key}", "（未找到锚点段落）", texts[key], "sentences.py"))
 
     # 封面：期数 + 年月
     pat_issue = re.compile(r"\d{4}年第\d+期（总第\d+期）")

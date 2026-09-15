@@ -6,6 +6,9 @@
   var badge = document.getElementById('status-badge');
   var elapsedEl = document.getElementById('elapsed');
   var resultsEl = document.getElementById('results');
+  var wfEl = document.getElementById('waterfall');
+  var rerunBtn = document.getElementById('rerun');
+  var stepMeta = {};
 
   function setBadge(status) {
     if (!badge) return;
@@ -22,6 +25,8 @@
       var d = li.querySelector('.detail');
       if (d) d.textContent = '';
     });
+    stepMeta = {};
+    if (wfEl) wfEl.innerHTML = '';
   }
 
   function setStep(id, status, detail) {
@@ -45,6 +50,42 @@
       return;
     }
     setStep(ev.step, ev.status, ev.detail);
+  }
+
+  function trackStep(ev) {
+    if (!ev || !ev.step || ev.step === 'done') return;
+    var s = stepMeta[ev.step] || (stepMeta[ev.step] = { name: ev.name || ev.step, start: null, end: null, status: 'running' });
+    if (ev.status === 'start') {
+      s.start = ev.elapsed;
+      s.status = 'running';
+    } else {
+      s.end = ev.elapsed;
+      s.status = ev.status || 'done';
+    }
+    renderWaterfall();
+  }
+
+  function renderWaterfall() {
+    if (!wfEl) return;
+    var ids = Object.keys(stepMeta);
+    if (!ids.length) return;
+    var total = 0;
+    ids.forEach(function (id) { var s = stepMeta[id]; if (s.end != null) total = Math.max(total, s.end); });
+    if (job.stats && job.stats.elapsed_sec) total = Math.max(total, job.stats.elapsed_sec);
+    if (!total) total = 1;
+    var html = '';
+    ids.forEach(function (id) {
+      var s = stepMeta[id];
+      var start = s.start != null ? s.start : 0;
+      var end = s.end != null ? s.end : start;
+      var left = Math.max(0, Math.min(100, start / total * 100));
+      var width = Math.max(1, (end - start) / total * 100);
+      var cls = s.end == null ? 'running' : (s.status === 'warn' ? 'warn' : 'done');
+      html += '<div class="wf-row"><span class="wf-label">' + s.name + '</span>'
+        + '<div class="wf-track"><div class="wf-bar ' + cls + '" style="left:' + left.toFixed(2) + '%;width:' + width.toFixed(2) + '%"></div></div>'
+        + '<span class="wf-time">' + (s.end != null ? (end - start).toFixed(1) + 's' : '…') + '</span></div>';
+    });
+    wfEl.innerHTML = html;
   }
 
   function appendLog(line) {
@@ -94,20 +135,46 @@
       .catch(function () {});
   }
 
-  function startTimer(started) {
+  function setRerunVisible(show) {
+    if (rerunBtn) rerunBtn.style.display = show ? '' : 'none';
+  }
+
+  function startTimer(started, finished) {
+    if (!elapsedEl) return;
     var t0 = Date.parse((started || '').replace(' ', 'T'));
     if (isNaN(t0)) return;
-    function tick() {
-      if (elapsedEl) elapsedEl.textContent = ((Date.now() - t0) / 1000).toFixed(1) + ' 秒';
+    function fmt(ms) { return (ms / 1000).toFixed(1) + ' 秒'; }
+    if (finished) {
+      var t1 = Date.parse(String(finished).replace(' ', 'T'));
+      if (!isNaN(t1)) { elapsedEl.textContent = fmt(t1 - t0); return; }
     }
-    tick();
-    setInterval(tick, 200);
+    elapsedEl.textContent = fmt(Date.now() - t0);
+    var iv = setInterval(function () { elapsedEl.textContent = fmt(Date.now() - t0); }, 200);
+    window.__timerIv = iv;
   }
 
   // 页面刷新时的静态回放（SSE 连接后还会重放一遍，幂等）
-  (window.__EVENTS__ || []).forEach(applyEvent);
+  (window.__EVENTS__ || []).forEach(function (ev) { applyEvent(ev); trackStep(ev); });
   if (job.status && TERMINAL.indexOf(job.status) >= 0) setBadge(job.status);
-  startTimer(job.started_at);
+  setRerunVisible(TERMINAL.indexOf(job.status) >= 0);
+  startTimer(job.started_at, job.finished_at);
+
+  if (rerunBtn) {
+    rerunBtn.addEventListener('click', function () {
+      if (!window.confirm('重跑本期将生成一条新的运行记录（旧记录保留），继续？')) return;
+      rerunBtn.disabled = true;
+      fetch('/api/jobs/' + job.id + '/rerun', { method: 'POST' })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+          if (!res.ok) throw new Error(res.d.error || '重跑失败');
+          location.href = res.d.url;
+        })
+        .catch(function (err) {
+          window.alert('重跑失败：' + err.message);
+          rerunBtn.disabled = false;
+        });
+    });
+  }
 
   var es = new EventSource('/api/jobs/' + job.id + '/events');
 
@@ -117,7 +184,11 @@
     resetSteps();
   };
   es.addEventListener('progress', function (e) {
-    try { applyEvent(JSON.parse(e.data)); } catch (_) {}
+    try {
+      var ev = JSON.parse(e.data);
+      applyEvent(ev);
+      trackStep(ev);
+    } catch (_) {}
   });
   es.addEventListener('log', function (e) {
     try { appendLog(JSON.parse(e.data).line); } catch (_) {}
@@ -127,6 +198,8 @@
     setBadge(j.status);
     if (TERMINAL.indexOf(j.status) >= 0) {
       es.close();
+      if (window.__timerIv) clearInterval(window.__timerIv);
+      setRerunVisible(true);
       loadArtifacts();
     }
   });
