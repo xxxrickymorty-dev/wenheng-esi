@@ -1,10 +1,36 @@
+# ---------- 环境 ----------
 .venv/
 __pycache__/
-input/
-out/
-master/
 *.pyc
+.pytest_cache/
+
+# ---------- 机密 ----------
 server/.env
 server/.env.*
 !server/.env.example
 
+# ---------- 输入：馆员维护的台账，不入库 ----------
+# 契约见 input/README.md；缺台账时流水线会在 parse 步明确报错。
+input/*
+!input/README.md
+
+# ---------- 母版 ----------
+# 注意：master/ 里的《学科信息参考母版》是**结构金母版**，必须入库——
+# 否则 clone 后 fill_docx 无母版可替换，整条流水线不可复现。
+# 历史上这里曾写 `master/`，是个隐患排查出来的错误，勿再加回。
+
+# ---------- 产物 ----------
+out/
+
+# ---------- 调试残留 ----------
+err*.log
+*.log
+/_*.txt
+/_*.py
+/tmp/
+
+# 验收产物：e2e_check.py 每次跑都重写，不入库
+server/e2e_report.txt
+
+# 截图/抓取的临时页（若有人在 static/ 下做过脚手架）
+server/static/_shots/
