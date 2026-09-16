@@ -83,5 +83,19 @@ uv run uvicorn server.app:app --host 0.0.0.0 --port 8080
 
 浏览器打开 `http://<服务器IP>:8080`，测试账号登录 → 选期次或上传台账 → 一键生成 →
 实时五步进度 + 控制台 → 下载报告初稿/红色件清单/审计数据（SSE 推送，单 worker）。
-部署：Linux 装 `fonts-noto-cjk`（图表字体回退），`uv sync` 后可用
-`server/deploy/wenheng-demo.service`（systemd，直连 `.venv/bin/python`）。
+
+**Linux 服务器部署（一键）**：
+
+```bash
+tar -C /opt -xzf wenheng-deploy-<日期>.tar.gz
+cd /opt/wenheng && sudo bash server/deploy/deploy_linux.sh http://<公网IP>:8080
+```
+
+脚本自动完成：装 `fonts-noto-cjk`（缺了图表中文变方框）→ 建 `.venv` 装依赖（默认清华源）
+→ 建服务用户 → 写 `server/.env`（**弱密钥自动换 64 位随机串**）→ 装 systemd 单元
+→ 放行本机防火墙 → 验活。幂等，可重复执行；改代码后重传重跑即可。
+
+⚠️ 部署包**不含 `.venv/`、`input/`、`out/`**（`.gitignore` 与打包排除所致），
+所以上传包必须自己打（含台账与产物），不能只 `git clone`——否则演示站打开是空的。
+前置：**阿里云安全组**需单独放行 8080/tcp（脚本管不了云控制台）。
+详见 `docs/部署手册（Linux 服务器）.md`；systemd 单元在 `server/deploy/wenheng-demo.service`。
