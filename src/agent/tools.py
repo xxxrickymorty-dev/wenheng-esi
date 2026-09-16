@@ -102,7 +102,12 @@ def schema():
 
 
 def _todo(milestone):
-    return lambda **kw: {"__not_implemented__": True, "milestone": milestone}
+    def fn(**kw):
+        return {"__not_implemented__": True, "milestone": milestone}
+    # 打标记，让外部能**枚举**出"契约已定、实现待补"的工具。
+    # 没有它，测试只能写死某个工具名——M4 三工具一落地，写死的用例立刻变红。
+    fn.__not_implemented__ = True
+    return fn
 
 
 # ================================================================== 已实现
@@ -278,7 +283,13 @@ def run_backtest(reference, out_dir):
       "陈旧数字残留清单", [], milestone="M4",
       note="审计闭环六项之一（LLD §6.6）")
 def scan_stale(out_dir, ledger):
-    return _todo("M4")()
+    """第 3 项审计。实现在 `audit.scan_stale`（本文件只做契约与错误码）。
+
+    扫的是**期次标签残留**：合法期次只有 {本期 P, 上期 Q}，出现其它 `20xxxx` 列可疑。
+    输出是**可疑清单**而非自动"0 残留"判定——图是 PNG 扫不到字，正文也可能正当引用早期期次。
+    """
+    from . import audit                                       # noqa: PLC0415
+    return audit.scan_stale(out_dir, ledger)
 
 
 @tool("apply_repair_rule",
@@ -316,7 +327,8 @@ def apply_repair_rule(rule, params=None):
       {"run_dir": (str, True, "运行目录")},
       "产物清单 + sha256", [], milestone="M4", note="归档包 manifest 来源")
 def collect_artifacts(run_dir):
-    return _todo("M4")()
+    from . import audit                                       # noqa: PLC0415
+    return audit.collect_artifacts(run_dir)
 
 
 @tool("run_college_stats",
@@ -328,8 +340,10 @@ def run_college_stats(csv, map_yaml=None):
 
 
 @tool("write_env_snapshot",
-      {},
+      {"run_dir": (str, False, "运行目录（默认 out/202607）")},
       "env_snapshot.json", [], milestone="M4",
-      note="python / deps_lock_sha256 / git_commit / os / tz（架构设计 §5.2）")
-def write_env_snapshot():
-    return _todo("M4")()
+      note="python / deps / git_commit / os / tz（架构设计 §5.2）；"
+           "**原契约无参**——2026-09-16 补一个可选 run_dir，否则不知道该写哪儿")
+def write_env_snapshot(run_dir="out/202607"):
+    from . import audit                                       # noqa: PLC0415
+    return audit.write_env_snapshot(run_dir)

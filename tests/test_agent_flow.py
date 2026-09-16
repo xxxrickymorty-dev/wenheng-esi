@@ -93,11 +93,43 @@ def test_未注册工具被拒绝():
     assert e.value.code == "TOOL_NOT_IMPLEMENTED"
 
 
+def _pending_tools():
+    """探测出「契约已定、实现待补」的工具：调用它会抛 TOOL_NOT_IMPLEMENTED。
+
+    用探测而不是维护一张清单，是因为清单一定会忘更新——M4 三工具落地时就是靠
+    写死 `scan_stale` 的旧用例才暴露出来的。探测的代价是要真的调一次，
+    所以**跳过无必填参数的工具**（调它们会真跑、有副作用）。
+    """
+    found = []
+    for t in tools.REGISTRY.values():
+        kwargs = {k: "x" for k, (_typ, req, _d) in t.args.items() if req}
+        if not kwargs:
+            continue
+        try:
+            tools.call(t.name, **kwargs)
+        except tools.ToolError as e:
+            if e.code == "TOOL_NOT_IMPLEMENTED":
+                found.append(t)
+        except Exception:                                     # noqa: BLE001
+            pass
+    return found
+
+
 def test_未实现工具报明确错误而非静默成功():
-    with pytest.raises(tools.ToolError) as e:
-        tools.call("scan_stale", out_dir="x", ledger="y")
-    assert e.value.code == "TOOL_NOT_IMPLEMENTED"
-    assert "M4" in e.value.message, "应指出实现归属的里程碑"
+    """契约已定、实现待补的工具，调用必须抛 TOOL_NOT_IMPLEMENTED 并指明归属里程碑。
+
+    ⚠ **不要写死工具名**。这条原本写死 `scan_stale`；M4 三工具 2026-09-16 落地后
+    它就成了"等着实现接上"的反用例——实现一接上反而红。改为遍历探测出来的待补工具，
+    并在一个都不剩时明确失败（否则"没东西可测"会伪造成全绿）。
+    """
+    todos = _pending_tools()
+    assert todos, "所有工具都已实现——本用例的遍历前提没了，需改用别的方式验证契约"
+    for t in todos:
+        kwargs = {k: "x" for k, (_typ, req, _d) in t.args.items() if req}
+        with pytest.raises(tools.ToolError) as e:
+            tools.call(t.name, **kwargs)
+        assert e.value.code == "TOOL_NOT_IMPLEMENTED", t.name
+        assert t.milestone in e.value.message, f"{t.name} 应指出实现归属的里程碑"
 
 
 def test_缺少必填参数被拒():
