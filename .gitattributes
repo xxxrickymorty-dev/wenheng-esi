@@ -8,3 +8,10 @@
 # 只钉 .bat/.cmd，不用 `* text=auto`，避免全仓重规范化产生海量 diff。
 *.bat text eol=crlf
 *.cmd text eol=crlf
+
+# Shell 脚本反过来必须钉死 LF —— 2026-09-16 踩到过：
+# 本仓 core.autocrlf=true，`git archive` 会把文本文件转成 CRLF。
+# 据此打出的部署包里 server/deploy/deploy_linux.sh 带了 188 个 CR，
+# 一上 Linux 就是满屏 `$'\r': command not found`（而且脚本仍能"跑完"前半段，最难查）。
+# 钉 eol=lf 才能保证归档与检出都是 LF。
+*.sh text eol=lf
