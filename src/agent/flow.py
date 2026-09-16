@@ -53,9 +53,10 @@ NON_BLOCKING = ("REF_MISSING",)
 
 
 def _heal_hook(failure, ctx):
-    """自愈钩子。M3 接入 `rules/repair_rules.yaml`；M2 阶段无可用规则，返回 None。
+    """自愈钩子。接入 `src/agent/heal.py` + `rules/repair_rules.yaml`（M3）。
 
-    返回 dict 表示已应用修复（会被写进 `repair.yaml`）；返回 None 表示无规则可依。
+    返回 dict 表示已定方案（会被写进 `repair.yaml`）；返回 None 表示规则库无匹配。
+    无论哪种，编排器都照裁决把该步**重跑一次**再判——自愈是"给一次机会"，不是"条件重试"。
     """
     try:
         from . import heal                                     # noqa: PLC0415
@@ -66,7 +67,7 @@ def _heal_hook(failure, ctx):
 
 class RunResult:
     __slots__ = ("status", "period", "steps", "failure", "run_dir", "elapsed",
-                 "warnings", "artifacts")
+                 "warnings", "artifacts", "repairs")
 
     def __init__(self, status, run_dir):
         self.status = status          # states.*
@@ -76,16 +77,18 @@ class RunResult:
         self.failure = None           # 失败步的 tool 错误 dict
         self.warnings = []
         self.artifacts = {}
+        self.repairs = []             # M3：自愈决策记录（rule / overlay / 拒绝项）
         self.elapsed = 0.0
 
     def as_dict(self):
         return {"status": self.status, "period": self.period, "run_dir": self.run_dir,
                 "steps": self.steps, "failure": self.failure,
                 "warnings": self.warnings, "artifacts": self.artifacts,
+                "repairs": self.repairs,
                 "elapsed": round(self.elapsed, 2)}
 
 
-def _write_diagnosis(run_dir, ledger, step, err, attempts):
+def _write_diagnosis(run_dir, ledger, step, err, attempts, repair=None):
     """逾限升级时产出《诊断报告》（SRS R-26）。"""
     p = pathlib.Path(run_dir) / "诊断报告.md"
     body = [
@@ -96,16 +99,32 @@ def _write_diagnosis(run_dir, ledger, step, err, attempts):
         f"- 错误码：`{err.get('code')}`",
         f"- 错误说明：{err.get('message')}",
         f"- 已尝试：首轮 + {attempts} 次自愈重试（上限 {MAX_HEAL_ATTEMPTS}）",
-        "",
-        "## 明细",
-        "",
-        f"```json\n{json.dumps(err, ensure_ascii=False, indent=2)}\n```",
-        "",
-        "## 处置",
-        "",
-        "1. 该运行已停止，**未继续后续步骤**，不产出报告初稿；",
-        "2. 请人工核对台账对应工作表/期次列，修正后重跑（重跑会新建运行，本记录保留）；",
     ]
+    # —— M3：把"自愈做了什么、为什么没成功"写清楚，否则人工接手要重新考古 ——
+    if repair:
+        body += ["", "## 自愈过程", "",
+                 f"- 结论：`{repair.get('outcome')}`",
+                 f"- 已应用规则：{repair.get('rules') or '（无）'}",
+                 f"- 记录：`{repair.get('repair_yaml') or '（未落盘）'}`"]
+        if repair.get("overlay"):
+            body += [f"- 提交的读表口径：`{json.dumps(repair['overlay'], ensure_ascii=False)}`"]
+        for a in repair.get("advice") or []:
+            body += ["", f"### 需人工：{a.get('rule') or '规则库'}", "",
+                     f"- 原因：{a.get('why')}", f"- 依据：{a.get('doc') or '—'}", "",
+                     f"> {a.get('advice') or '—'}"]
+    body += ["", "## 明细", "",
+             f"```json\n{json.dumps(err, ensure_ascii=False, indent=2)}\n```"]
+    unknown = (err.get("diagnostics") or {}).get("unmatched_names") or {}
+    if unknown:
+        body += ["", "## 台账里认不出来的学科名", "",
+                 "把下面这些名字与规范名单对上，或补进 `repair_rules.yaml` 的别名表：", ""]
+        for sheet, names in unknown.items():
+            body += [f"- `{sheet}` 首列：{names}"]
+    body += ["", "## 处置", "",
+             "1. 该运行已停止，**未继续后续步骤**，不产出报告初稿；",
+             "2. 请人工核对台账对应工作表/期次列，修正后重跑（重跑会新建运行，本记录保留）；",
+             "3. 若属新出现的脏例，请在 `src/agent/rules/repair_rules.yaml` 补规则并经馆员确认。",
+             ]
     if err.get("fails"):
         body += ["", "## 未通过的断言", ""] + [f"- {m}" for m in err["fails"]]
     body += ["", "---", "",
@@ -126,7 +145,7 @@ def run(ledger, out_root="out", run_dir=None, reference=None, backtest=False):
 
     result = RunResult(states.PENDING, run_dir)
     ctx = {"ledger": ledger, "out_root": str(out_root), "run_dir": str(run_dir),
-           "reference": reference}
+           "reference": reference, "overlay": None}   # overlay 由 heal 填入（M3）
 
     tr.event("plan", observation=f"台账 {pathlib.Path(ledger).name}",
              decision="run", reason=f"{len(STEPS)} 步主干（固定顺序）")
@@ -170,10 +189,18 @@ def run(ledger, out_root="out", run_dir=None, reference=None, backtest=False):
                 tr.event("plan", tool=step["tool"], decision="heal",
                          reason=f"尝试自愈（上限 {MAX_HEAL_ATTEMPTS} 次）")
                 repaired = _heal_hook(tool_err, ctx)
-                tr.event("act", tool="apply_repair_rule", args=repaired,
-                         observation="已应用" if repaired else "无可用规则",
-                         decision="retry" if repaired or True else "stop",
-                         reason=None if repaired else "规则库无匹配（M3 交付）")
+                applied = bool(repaired and repaired.get("overlay"))
+                obs = ("已提交读表口径 " + ",".join(repaired.get("rules") or [])
+                       if applied else
+                       ("规则命中但不能执行（" + ",".join(
+                           r.get("rule") or "?" for r in repaired.get("refused") or [])
+                        + "）" if repaired else "规则库无匹配"))
+                tr.event("act", tool="apply_repair_rule", args=repaired, observation=obs,
+                         decision="retry",
+                         reason=(f"自愈结论 {repaired.get('outcome')}" if repaired
+                                 else "无匹配规则，仍按裁决给一次重跑机会"))
+                if repaired:
+                    result.repairs.append(repaired)
 
             attempt = 2
             started = time.time()
@@ -191,7 +218,8 @@ def run(ledger, out_root="out", run_dir=None, reference=None, backtest=False):
                 current = _transition(tr, current, states.ESCALATED,
                                       trigger="heal_exhausted", attempt=attempt)
                 result.failure = {**tool_err, "step": step["id"]}
-                _write_diagnosis(run_dir, ledger, step, tool_err, MAX_HEAL_ATTEMPTS)
+                _write_diagnosis(run_dir, ledger, step, tool_err, MAX_HEAL_ATTEMPTS,
+                                 repair=repaired)
                 break
             tr.task_run(step["id"], attempt, started, time.time(), "done")
             result.steps.append({"step": step["id"], "status": "done", "attempt": attempt,
@@ -232,16 +260,23 @@ def run(ledger, out_root="out", run_dir=None, reference=None, backtest=False):
 
 
 def _invoke(step, ctx, result):
-    """调用该步对应的工具。parse 步自动把产物目录定为 out/<期次>。"""
+    """调用该步对应的工具。parse 步自动把产物目录定为 out/<期次>。
+
+    `ctx["overlay"]` 由 `heal.attempt()` 在首轮失败后填入（M3）：它只影响本次运行
+    的**读表口径**，台账文件不被改动。
+    """
+    overlay = ctx.get("overlay") or None
     if step["id"] == "parse":
         # 先探一次期次，好把产物落到期次目录（与 run_pipeline 行为一致）
         out_dir = result.artifacts.get("out_dir") or str(
             pathlib.Path(ctx["out_root"]) / "_pending")
-        payload = tools.call("run_parse", ledger=ctx["ledger"], out_dir=out_dir)
+        payload = tools.call("run_parse", ledger=ctx["ledger"], out_dir=out_dir,
+                             overlay=overlay)
         period = payload.get("period")
         if period and out_dir.endswith("_pending"):
             real = pathlib.Path(ctx["out_root"]) / period
-            payload = tools.call("run_parse", ledger=ctx["ledger"], out_dir=str(real))
+            payload = tools.call("run_parse", ledger=ctx["ledger"], out_dir=str(real),
+                                 overlay=overlay)
         return payload
     out_dir = result.artifacts.get("out_dir") or str(
         pathlib.Path(ctx["out_root"]) / (result.period or "_pending"))

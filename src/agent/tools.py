@@ -129,26 +129,45 @@ def inspect_ledger(xlsx):
 
 
 @tool("run_parse",
-      {"ledger": (str, True, "台账路径"), "out_dir": (str, True, "产物目录")},
-      "out_dir / meta.json / 断言清单",
+      {"ledger": (str, True, "台账路径"), "out_dir": (str, True, "产物目录"),
+       "overlay": (dict, False, "自愈注入的读表口径（默认 None＝既有口径，原件只读）")},
+      "out_dir / meta.json / 断言清单 / diagnostics",
       ["FILE_INVALID", "ASSERT_FAIL"])
-def run_parse(ledger, out_dir):
-    """解析 22 工作表并跑机器断言。断言 FAIL → 抛 ASSERT_FAIL（由编排器决定自愈/升级）。"""
+def run_parse(ledger, out_dir, overlay=None):
+    """解析 22 工作表并跑机器断言。断言 FAIL → 抛 ASSERT_FAIL（由编排器决定自愈/升级）。
+
+    `overlay` 来自 `heal.attempt()`（M3 自愈闭环），只改变**怎么读**台账，
+    不改变台账文件本身。失败时把 `diagnostics` 一并带出，供规则匹配与《诊断报告》引用。
+    """
     import parse_ledger
     p = pathlib.Path(ledger)
     if not p.exists():
         raise ToolError("FILE_INVALID", f"台账不存在：{p}")
-    led = parse_ledger.load_ledger(p)
+    led = parse_ledger.load_ledger(p, overlay=overlay)
     ok, report = parse_ledger.run_assertions(led)
     out = pathlib.Path(out_dir)
     parse_ledger.write_outputs(led, p, out)
     P, Q = parse_ledger._latest_periods(led)
+    diag = dict(led.get("diagnostics", {}))
     fails = [m for s, m in report if s == "FAIL"]
     if not ok:
+        # ⚠ 静默跳过 = 静默产错报告。某张宽表少了学科时，把那张表首列里
+        #    **认不出来的名字**一并送出去——否则规则库只知道"少了一个"，
+        #    不知道台账里现在写的是什么，人工只能回去数 22 行。
+        hints = {}
+        known_all = diag.get("known_names") or {}
+        unknown_all = diag.get("unknown_names") or {}
+        for m, df in led["wide"].items():
+            title = next((k for k, v in parse_ledger.WIDE_METRIC.items() if v == m), None)
+            known = set(known_all.get(title, df.index))
+            if set(parse_ledger.DISCIPLINES_EN) - known:
+                hints[m] = unknown_all.get(title, [])
+        diag["unmatched_names"] = {m: v for m, v in hints.items() if v}
         raise ToolError("ASSERT_FAIL", f"{len(fails)} 项断言未过",
-                        period=P, fails=fails[:10])
+                        period=P, fails=fails[:10], diagnostics=diag)
     return {"ok": True, "out_dir": str(out), "period": P, "prev": Q,
-            "assertions_ok": True, "n_checks": len(report)}
+            "assertions_ok": True, "n_checks": len(report),
+            "overlay_applied": sorted(overlay) if overlay else []}
 
 
 @tool("run_compute",
@@ -259,10 +278,33 @@ def scan_stale(out_dir, ledger):
 
 @tool("apply_repair_rule",
       {"rule": (str, True, "规则名"), "params": (dict, False, "规则参数")},
-      "repair.yaml（overlay）", ["RULE_UNAPPROVED"], milestone="M3",
-      note="原件只读；新规则类型首次使用须馆员确认")
+      "overlay 片段（写入 repair.yaml 由 heal.py 负责）", ["RULE_UNAPPROVED"], milestone="M3",
+      note="原件只读；新规则类型首次使用须馆员确认（规则库 approved_by 为空即拒绝）")
 def apply_repair_rule(rule, params=None):
-    return _todo("M3")()
+    """自愈规则的唯一执行闸。
+
+    在这里而不是在 heal.py 里做批准校验，是为了让**任何**调用方（编排器、看板、
+    将来的人工重放）都走同一道闸——绕过它的写法只有"直接 import parse_ledger"，
+    而那不叫自愈，叫改口径。
+    """
+    from . import heal                                          # noqa: PLC0415
+    r = heal.rule_by_id(rule)
+    if r is None:
+        raise ToolError("RULE_UNAPPROVED", f"规则库无此规则：{rule}")
+    if not heal.is_approved(r):
+        raise ToolError("RULE_UNAPPROVED",
+                        f"规则类型 {rule} 未经馆员确认，拒绝执行（R-24）",
+                        rule=rule, advice=r.get("advice_unapproved"))
+    if r["executable"] == heal.NEVER:
+        raise ToolError("RULE_UNAPPROVED",
+                        f"规则 {rule} 设计上不可修复，只出建议（{r.get('doc')}）",
+                        rule=rule, advice=r.get("advice_unapproved"))
+    ov = heal.overlay_of(r, params)
+    if not ov:
+        raise ToolError("RULE_UNAPPROVED",
+                        f"规则 {rule} 的参数尚未由馆员声明（declared 为空）",
+                        rule=rule, advice=r.get("advice_unapproved"))
+    return {"ok": True, "rule": rule, "params": params or {}, "overlay": ov}
 
 
 @tool("collect_artifacts",

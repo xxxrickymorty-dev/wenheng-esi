@@ -76,25 +76,76 @@ def _num(v):
         return None
 
 
-def parse_wide(ws, clean_log):
-    """学科×期次 宽表：首行期次，首列学科英文名。"""
+_PERIOD_RE = re.compile(r"(20\d{2})\D*(\d{1,2})\D*$")
+
+
+def _norm_period(s):
+    """脏期次 → YYYYMM。2023.3 / 2023-03 / 2023年3月 / 2023/3 / 20233 都收。
+
+    只在自愈 overlay 打开时启用（见 `load_ledger`）——默认口径不做任何"合理修正"，
+    这是本模块开篇的原则。归一是纯数字重排，幂等、可回退。
+    """
+    t = "" if s is None else str(s).strip()
+    m = _PERIOD_RE.fullmatch(t)
+    return f"{m.group(1)}{int(m.group(2)):02d}" if m else t
+
+
+def _canon(name, alias):
+    """学科名归一：命中别名表的换成规范名，未命中原样返回。
+
+    `alias` 默认空 = 完全按现状走（认不出就跳过）。别名表由馆员口径提供，
+    模块不臆测相似度 —— 猜错会把数据挂到别的学科上，且全程不报错。
+    """
+    return (alias or {}).get(name, name)
+
+
+def _parse_scope(overlay, sheet):
+    """从 overlay 里取出作用于某张工作表的读表参数。"""
+    ov = overlay or {}
+    return {
+        "header_row": (ov.get("header_offset") or {}).get(sheet, 0),
+        "group_size": (ov.get("group_size") or {}).get(sheet),
+        "normalize": bool(ov.get("normalize_period")),
+        "alias": ov.get("discipline_alias") or {},
+    }
+
+
+def parse_wide(ws, clean_log, header_row=0, normalize=False, alias=None, diag=None):
+    """学科×期次 宽表：首行期次，首列学科英文名。
+
+    `header_row` / `normalize` / `alias` 为自愈 overlay 入口，默认值＝既有口径。
+    `diag` 是诊断出口，记下**首列原样出现的名字**——宽表 reindex 到 22 个规范名后，
+    光看 `df.index` 已经分不清"少了谁"，断言与《诊断报告》都要靠这份原始名单。
+    """
     rows = list(ws.iter_rows(values_only=True))
-    header = rows[0]
+    header = rows[header_row] if header_row < len(rows) else []
     periods = []
     for h in header[1:]:
         s = "" if h is None else str(h).strip()
         if s:
-            periods.append(s)
-    data = {}
-    for r in rows[1:]:
-        name = "" if r[0] is None else str(r[0]).strip()
-        if name not in DISCIPLINES_EN or name in data:
+            periods.append(_norm_period(s) if normalize else s)
+    data, unknown = {}, []
+    for r in rows[header_row + 1:]:
+        raw = "" if r[0] is None else str(r[0]).strip()
+        name = _canon(raw, alias)
+        if name not in DISCIPLINES_EN:
+            if raw:
+                unknown.append(raw)      # 静默跳过的名字要留证，否则断言只会说"少了一个"
+            continue
+        if name in data:
             continue  # 只取首个块（CNCI 表上下两块，报告用第一块）
         data[name] = [_num(v) for v in r[1:1 + len(periods)]]
     df = pd.DataFrame(data, index=periods).T
     df.index.name = "discipline"
     df = df.reindex(DISCIPLINES_EN)
-    clean_log.append(f"{ws.title}: 宽表 {len(periods)} 期 × {len(df)} 学科")
+    # ⚠ reindex 之后 index 恒为 22 个规范名 —— 断言里**不能**用 df.index 判"名单一致"，
+    #   那两条断言会恒真。把真正被认出来的名字走 diag 通道送出去。
+    #   （不用 df.attrs：pandas 3 会把 attrs 写进 parquet 元数据，害得产物字节不再可复现。）
+    if diag is not None:
+        diag.setdefault("known_names", {})[ws.title] = sorted(data)
+        diag.setdefault("unknown_names", {})[ws.title] = sorted(set(unknown))
+    clean_log.append(f"{ws.title}: 宽表 {len(periods)} 期 × {len(df)} 学科"
+                     + (f"（首列未识别：{sorted(set(unknown))}）" if unknown else ""))
     return df
 
 
@@ -118,7 +169,7 @@ def parse_yun_da_rank(ws, clean_log):
     return df
 
 
-def parse_grouped(ws, group_size, period_row, metric_names, clean_log):
+def parse_grouped(ws, group_size, period_row, metric_names, clean_log, alias=None):
     """每期一组（组宽 group_size）的学科宽表，组名在 period_row 行。"""
     rows = list(ws.iter_rows(values_only=True))
     hdr = rows[period_row]
@@ -129,10 +180,13 @@ def parse_grouped(ws, group_size, period_row, metric_names, clean_log):
         if s:
             groups.append((j, s))
         j += 1
-    out = {}
+    out, unknown = {}, []
     for r in rows[period_row + 1:]:
-        name = "" if r[0] is None else str(r[0]).strip()
+        raw = "" if r[0] is None else str(r[0]).strip()
+        name = _canon(raw, alias)
         if name not in DISCIPLINES_EN:
+            if raw:
+                unknown.append(raw)
             continue
         out[name] = {}
         for start, period in groups:
@@ -143,14 +197,15 @@ def parse_grouped(ws, group_size, period_row, metric_names, clean_log):
         [[d, p, *out[d][p]] for d in out for p in per],
         columns=["discipline", "period"] + metric_names,
     )
-    clean_log.append(f"{ws.title}: {len(groups)} 期 × {len(out)} 学科 × {group_size} 指标")
+    clean_log.append(f"{ws.title}: {len(groups)} 期 × {len(out)} 学科 × {group_size} 指标"
+                     + (f"（首列未识别：{sorted(set(unknown))}）" if unknown else ""))
     return df
 
 
-def parse_transposed(ws, clean_log):
+def parse_transposed(ws, clean_log, header_row=0, alias=None):
     """国际/国内排名：学科 3 列组（组名第 1 行），期次为行。"""
     rows = list(ws.iter_rows(values_only=True))
-    hdr = rows[0]
+    hdr = rows[header_row] if header_row < len(rows) else []
     groups = []
     j = 1
     while j < len(hdr):
@@ -159,35 +214,45 @@ def parse_transposed(ws, clean_log):
             groups.append((j, s))
         j += 1
     recs = []
-    for r in rows[2:]:
+    for r in rows[header_row + 2:]:
         period = "" if r[0] is None else str(r[0]).strip()
         if not period:
             continue
         for start, disc in groups:
             recs.append({
-                "discipline": disc, "period": period,
+                "discipline": _canon(disc, alias), "period": period,
                 "n_inst_1pct": _num(r[start]),
                 "rank": _num(r[start + 1]),
                 "rank_pct": _num(r[start + 2]),
             })
     df = pd.DataFrame(recs)
-    df = df[df.discipline.isin(DISCIPLINES_EN)]
-    clean_log.append(f"{ws.title}: 转置表 {len(groups)} 学科 × {len(df.period.unique())} 期")
+    dropped = []
+    if not df.empty:
+        dropped = sorted(set(df.discipline) - set(DISCIPLINES_EN))
+        df = df[df.discipline.isin(DISCIPLINES_EN)]
+    clean_log.append(f"{ws.title}: 转置表 {len(groups)} 学科 × {df.period.nunique()} 期"
+                     + (f"（表头未识别：{dropped}）" if dropped else ""))
     return df
 
 
-def parse_threshold_1permille(ws, clean_log):
+def parse_threshold_1permille(ws, clean_log, header_row=0, normalize=False, alias=None):
     rows = list(ws.iter_rows(values_only=True))
-    periods = [str(h).strip() for h in rows[0][1:] if h and str(h).strip()]
-    data = {}
-    for r in rows[1:]:
-        name = "" if r[0] is None else str(r[0]).strip()
+    head = rows[header_row] if header_row < len(rows) else []
+    periods = [(_norm_period(h) if normalize else str(h).strip())
+               for h in head[1:] if h and str(h).strip()]
+    data, unknown = {}, []
+    for r in rows[header_row + 1:]:
+        raw = "" if r[0] is None else str(r[0]).strip()
+        name = _canon(raw, alias)
         if name not in DISCIPLINES_EN:
+            if raw:
+                unknown.append(raw)
             continue
         data[name] = [_num(v) for v in r[1:1 + len(periods)]]
     df = pd.DataFrame(data, index=periods).T
     df.index.name = "discipline"
-    clean_log.append(f"{ws.title}: {periods}")
+    clean_log.append(f"{ws.title}: {periods}"
+                     + (f"（首列未识别：{sorted(set(unknown))}）" if unknown else ""))
     return df
 
 
@@ -320,21 +385,55 @@ def parse_forecast_gap(ws, clean_log):
     return df
 
 
-def load_ledger(path):
+def load_ledger(path, overlay=None):
+    """读台账 → 规整数据。`overlay` 是自愈注入的**读表口径**（默认 None ＝ 既有口径）。
+
+    overlay 只改变"怎么读"，不改变"读了什么"：台账文件全程只读，
+    任何 overlay 都可以通过不传它来完全回退。字段见
+    `src/agent/rules/repair_rules.yaml`，由 `src/agent/heal.py` 生成。
+
+        header_offset      {工作表名: 表头行号(0 起)}
+        group_size         {工作表名: 每期列数}
+        normalize_period   bool  脏期次归一为 YYYYMM
+        discipline_alias   {别名: 规范名}
+    """
     wb = openpyxl.load_workbook(path, data_only=True)
-    clean_log = []
-    wide = {WIDE_METRIC[n]: parse_wide(wb[n], clean_log) for n in WIDE_SHEETS}
+    clean_log: list[str] = []
+    diag: dict = {"overlay": overlay or {},
+                  "overlay_applied": sorted(overlay) if overlay else []}
+    sc = {n: _parse_scope(overlay, n) for n in
+          ("总被引", "论文数", "CNCI", "接近度", "ESI被引阈值", "TOP论文",
+           "千分之一被引阈值", "新国际排名", "新国内排名", "国际排名", "国内排名")}
+    # 宽表 6 张用同一组读表参数（表头行 / 脏期次归一 / 学科别名）
+    wide_kw = {"header_row": sc["总被引"]["header_row"],
+               "normalize": sc["总被引"]["normalize"],
+               "alias": sc["总被引"]["alias"]}
+    wide = {WIDE_METRIC[n]: parse_wide(wb[n], clean_log, diag=diag, **wide_kw)
+            for n in WIDE_SHEETS}
     ynd_rank = parse_yun_da_rank(wb["云大ESI排名"], clean_log)
-    new_intl = parse_grouped(wb["新国际排名"], 3, 0, ["n_inst_1pct", "rank", "rank_pct"], clean_log)
-    new_cn = parse_grouped(wb["新国内排名"], 3, 0, ["n_inst_1pct", "rank", "rank_pct"], clean_log)
-    intl = parse_transposed(wb["国际排名"], clean_log)
-    cn = parse_transposed(wb["国内排名"], clean_log)
-    thr_1p = parse_threshold_1permille(wb["千分之一被引阈值"], clean_log)
+    new_intl = parse_grouped(wb["新国际排名"], sc["新国际排名"]["group_size"] or 3,
+                             sc["新国际排名"]["header_row"],
+                             ["n_inst_1pct", "rank", "rank_pct"], clean_log,
+                             alias=sc["新国际排名"]["alias"])
+    new_cn = parse_grouped(wb["新国内排名"], sc["新国内排名"]["group_size"] or 3,
+                           sc["新国内排名"]["header_row"],
+                           ["n_inst_1pct", "rank", "rank_pct"], clean_log,
+                           alias=sc["新国内排名"]["alias"])
+    intl = parse_transposed(wb["国际排名"], clean_log, header_row=sc["国际排名"]["header_row"],
+                            alias=sc["国际排名"]["alias"])
+    cn = parse_transposed(wb["国内排名"], clean_log, header_row=sc["国内排名"]["header_row"],
+                          alias=sc["国内排名"]["alias"])
+    thr_1p = parse_threshold_1permille(
+        wb["千分之一被引阈值"], clean_log, header_row=sc["千分之一被引阈值"]["header_row"],
+        normalize=sc["千分之一被引阈值"]["normalize"],
+        alias=sc["千分之一被引阈值"]["alias"])
     avg = parse_avg_cites(wb["篇均被引"], clean_log)
     q1q4 = parse_q1q4(wb["Q1-Q4"], clean_log)
     top, top_years, top_total = parse_top_summary(wb["TOP论文"], clean_log)
     prov, prov_entry = parse_province(wb["高校学科发展"], clean_log)
     gap = parse_forecast_gap(wb["实际与预测差值"], clean_log)
+    # 诊断信息：供自愈规则匹配与《诊断报告》引用（只读，不含台账明细值）
+    diag["periods_total_cites"] = [str(c) for c in wide["total_cites"].columns]
     return {
         "wide": wide,
         "ynd_rank": ynd_rank,
@@ -352,6 +451,7 @@ def load_ledger(path):
         "province_entry": prov_entry,
         "forecast_gap": gap,
         "clean_log": clean_log,
+        "diagnostics": diag,
     }
 
 
@@ -362,6 +462,18 @@ def _latest_periods(ledger):
     if len(filled) < 2:
         raise ValueError("台账被引表有效期次不足 2 期，无法定位当期")
     return filled[-1], filled[-2]
+
+
+def _known_names(ledger, metric, df):
+    """该宽表**真正被认出来**的学科名。
+
+    没有诊断记录时（例如由旧版产物/外部构造的 ledger 进来）退回 `df.index`，
+    但因为已经 reindex，那等于"全都认出来了"——所以 `run_assertions` 的调用方
+    必须走 `load_ledger`，别自己拼 ledger 字典。
+    """
+    title = next((k for k, v in WIDE_METRIC.items() if v == metric), None)
+    nm = (ledger.get("diagnostics") or {}).get("known_names") or {}
+    return set(nm.get(title, df.index))
 
 
 def run_assertions(ledger):
@@ -376,8 +488,15 @@ def run_assertions(ledger):
     P, _Q = _latest_periods(ledger)
     TOP_BLANK_OK = {"Multidisciplinary", "Neuroscience & Behavior", "Immunology"}
     for m, df in ledger["wide"].items():
-        check(len(df) == 22, f"宽表 {m} 学科数=22 (实际 {len(df)})")
-        check(sorted(df.index) == sorted(DISCIPLINES_EN), f"宽表 {m} 学科名单一致")
+        # ⚠ 宽表在 parse_wide 里已 reindex 到 22 个规范名，df.index 恒等 —— 必须用
+        #   diagnostics 里「真正认出来的名字」判名单，否则这两条断言永远为真
+        #   （学科名拼错也放行，最后只在"期无缺失"上朦胧地报一句）。
+        known = _known_names(ledger, m, df)
+        missing = sorted(set(DISCIPLINES_EN) - known)
+        check(len(known) == 22, f"宽表 {m} 学科数=22 (实际 {len(known)}"
+                                + (f"，缺 {missing}" if missing else "") + ")")
+        check(not missing, f"宽表 {m} 学科名单一致"
+                           + (f"（缺 {missing}）" if missing else ""))
         check(P in df.columns, f"宽表 {m} 含期次 {P}")
         if m == "top_papers":
             na_set = set(df[P][df[P].isna()].index)
@@ -473,6 +592,8 @@ def write_outputs(ledger, path, out_dir):
         "period_current": P,
         "period_prev": Q,
         "period_next_empty": next_cols[0] if next_cols else None,
+        # 自愈相关：本次读表用的 overlay 与未识别学科名（只读诊断，供《诊断报告》引用）
+        "diagnostics": ledger.get("diagnostics", {}),
     }
     (out_dir / "meta.json").write_text(json.dumps(_jsonable(meta), ensure_ascii=False, indent=1), encoding="utf-8")
     return ok, meta

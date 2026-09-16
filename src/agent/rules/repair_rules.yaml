@@ -1,0 +1,159 @@
+# 文衡 · 自愈规则库（M3）
+# 依据：WH-DOC-04 §3.8 / §6.5；SRS R-23（自愈闭环）/ R-24（原件只读 + 新规则类型首次使用须馆员确认）
+#
+# ── 读之前先看三条边界 ──────────────────────────────────────────────
+# 1. 规则只改「解析口径」，不改台账。台账永远只读 —— 本文件里的 overlay
+#    是喂给 parse_ledger 的读表参数，不是对 xlsx 的写指令。
+# 2. `approved_by` 为空 = 该规则类型**尚未被馆员确认** → 命中也会被拒绝执行
+#    （RULE_UNAPPROVED），只往《诊断报告》写一条建议，然后升级。
+#    馆员确认后在该字段填上名字，规则立即自动生效。
+# 3. `executable` 三档：
+#      auto    —— 机器可直接改口径（幂等、可回退、不改原件）
+#      declare —— 须馆员**预先声明**参数（表头行号 / 组宽）后才能用；未声明则拒绝
+#      never   —— 设计上不可修复，只出建议
+#
+# 新增规则类型时：先加到本文件 → 找卜彤确认 → 填 approved_by → 由 tests/test_agent_heal.py 守着口径。
+version: 1
+updated: "2026-09-16"
+owner: "卜彤（业务口径）· 项目组（实现）"
+
+rules:
+
+  # ────────────────────────────────────────────────────────────────
+  - id: discipline_alias_map
+    name: 学科名别名映射
+    doc: "WH-DOC-04 §6.5「学科名中英混排/别名」"
+    code: ASSERT_FAIL
+    match:
+      message_re: "学科数|学科名单"
+    executable: auto
+    approved_by: "项目组自测（待卜彤追认）"
+    advice_unapproved: "请馆员核对该学科归属后，在 repair_rules.yaml 填 approved_by"
+    overlay:
+      # parse_ledger 只在名字**完全命中** DISCIPLINES_EN 时才收该行，
+      # 拼写/语言不对就静默跳过 → 断言报「学科数=22 实际 21」但说不出是谁。
+      # 这张表就是那个「谁」的答案，来自馆员口径，不由模型臆测。
+      discipline_alias:
+        化学: Chemistry
+        植物与动物学: Plant & Animal Science
+        微生物学: Microbiology
+        工程学: Engineering
+        材料科学: Materials Science
+        数学: Mathematics
+        环境生态学: Environment/Ecology
+        生物学与生物化学: Biology & Biochemistry
+        药理学与毒理学: Pharmacology & Toxicology
+        地球科学: Geosciences
+        农业科学: Agricultural Sciences
+        计算机科学: Computer Science
+        临床医学: Clinical Medicine
+        分子生物学与遗传学: Molecular Biology & Genetics
+        物理学: Physics
+        社会科学: Social Sciences, general
+        多学科: Multidisciplinary
+        神经系统科学与行为学: Neuroscience & Behavior
+        空间科学: Space Science
+        免疫学: Immunology
+        精神病学与心理学: Psychiatry/Psychology
+        经济与商业: Economics & Business
+        # —— 英文常见写法（与规范名的差异只在空格 / 斜杠 / & 与 and）——
+        Social Sciences: Social Sciences, general
+        Environment / Ecology: Environment/Ecology
+        Environment & Ecology: Environment/Ecology
+        Plant and Animal Science: Plant & Animal Science
+        Neuroscience and Behavior: Neuroscience & Behavior
+        Biology and Biochemistry: Biology & Biochemistry
+        Pharmacology and Toxicology: Pharmacology & Toxicology
+        Molecular Biology and Genetics: Molecular Biology & Genetics
+        Psychiatry / Psychology: Psychiatry/Psychology
+        Business & Economics: Economics & Business
+        Business and Economics: Economics & Business
+
+  # ────────────────────────────────────────────────────────────────
+  - id: normalize_period
+    name: 脏期次归一
+    doc: "WH-DOC-04 §6.5「脏期次」；TOP论文表 2023.3 / 2023.5 是已见过的实例"
+    code: ASSERT_FAIL
+    match:
+      message_re: "期次|列为空"
+    executable: auto
+    approved_by: "项目组自测（待卜彤追认）"
+    advice_unapproved: "请馆员确认期次写法后，在 repair_rules.yaml 填 approved_by"
+    overlay:
+      # 把 2023.3 / 2023-03 / 2023年3月 / 2023/3 一律归一到 202303。
+      # 只做「数字重排」，不理解业务，故幂等且可回退（关掉即恢复原样）。
+      normalize_period: true
+
+  # ────────────────────────────────────────────────────────────────
+  - id: header_offset
+    name: 表头行偏移声明
+    doc: "WH-DOC-04 §6.5「多级/合并表头」——须馆员声明表头行号，机器不猜"
+    code: ASSERT_FAIL
+    match:
+      message_re: "学科名单一致|期数≥40|期组数≥5|学科数"
+    executable: declare
+    approved_by: null
+    declared: {}
+    # ↑ 馆员在此处**直接填映射**：{工作表名: 表头所在行号}，0 起数。
+    #   例：declared: {总被引: 2, 论文数: 1}
+    #   留空（{}）= 未声明 → 命中也被拒绝（RULE_UNAPPROVED），只出建议。
+    #   ⚠ 不要在这里再套一层参数名（写成 header_row: {...}）——
+    #     overlay 的最终形状就是 {header_offset: {工作表名: 行号}}，
+    #     多包一层会与 parse_ledger._parse_scope 错位、声明静默失效。
+    advice_unapproved: >-
+      命中「表头错位」形态。机器不猜表头行号（猜错会整体错位且不报错），
+      请馆员把 {工作表名: 表头行号} 填进本规则的 declared 后再重跑。
+    overlay_key: header_offset
+
+  # ────────────────────────────────────────────────────────────────
+  - id: split_column_group
+    name: 三列组切分声明
+    doc: "WH-DOC-04 §6.5「三列组表头偏移」——3 列一组切分并映射实体"
+    code: ASSERT_FAIL
+    match:
+      message_re: "全 22 行|期组数≥5|期数≥40"
+    executable: declare
+    approved_by: null
+    declared: {}
+    # ↑ 馆员在此处**直接填映射**：{工作表名: 每期占用的列数}，默认 3
+    #   （前1%机构数 / 排名 / 排名百分位）。例：declared: {新国际排名: 4}
+    #   留空（{}）= 未声明 → 命中也被拒绝（RULE_UNAPPROVED），只出建议。
+    #   ⚠ 同 header_offset：不要套参数名，直接给 {工作表名: 值}。
+    advice_unapproved: >-
+      排名类表按「每期 3 列」切分。若馆员台账里的列组宽度变了（例如多了排名变化列），
+      请把 {工作表名: 实际组宽} 填进本规则的 declared 后再重跑。
+    overlay_key: group_size
+
+  # ────────────────────────────────────────────────────────────────
+  - id: append_period_column
+    name: 缺当期列定位
+    doc: "WH-DOC-04 §6.5「缺当期列/漏贴」——定位表尾、校验列组完整性"
+    code: ASSERT_FAIL
+    match:
+      message_re: "含期次|已贴数|含 .* 全 22 行|顶尖论文合计"
+    executable: never
+    approved_by: null
+    advice_unapproved: >-
+      台账缺当期列。**本规则不改原件**：请馆员定位该工作表表尾、
+      核对该期列组是否完整（宽表 1 列；排名表每期 3 列），补录后重跑。
+      若该期确无数据（如占位模板），请在 input/ 下暂停该期任务。
+    overlay_key: null
+
+  # ────────────────────────────────────────────────────────────────
+  - id: overwritten_history
+    name: 历史列被覆盖
+    doc: "WH-DOC-04 §6.5 末行「不可修复 → 升级，附按列追存建议」"
+    code: ASSERT_FAIL
+    match:
+      message_re: "突变|量级|历史列|被覆盖"
+    executable: never
+    approved_by: null
+    advice_unapproved: >-
+      历史列疑似被覆盖（量级突变）。**不可自动修复** —— 已按列追存的历史一旦被覆盖，
+      原始值只在馆员的导出文件里。请馆员用当期原始 ESI 导出重录该格，
+      并遵守「新期次列一律贴在已有列后面」的约定。修完须重跑该学科全部模型。
+    overlay_key: null
+    note: >-
+      当前断言集尚不产出「量级突变」形态的失败消息（T01 只查结构不查量级），
+      故本规则目前是**策略声明**：M4 审计的突变检测接入后自动生效。
+      实例：台账「总被引」Economics & Business 202003 = 364（前后 28/35），见 评审文档/10 §P0-4。
