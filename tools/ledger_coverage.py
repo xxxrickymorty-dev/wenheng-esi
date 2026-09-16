@@ -8,15 +8,24 @@
 
 默认台账 = ..\\数据与复现\\云大全学科排名、阈值动态检测表.xlsx（唯一事实源）。
 
-输出三类信号：
+输出四类信号：
     1. 各页有数据的期次区间与期数（只填表头没填数的"空列"单独标出）
-    2. 期数 ≤ 12 的页给出逐期明细（看 1‰ 阈值这类短序列）
+    2. 期数 ≤ 12 的页给出逐期明细（看 1‰ 阈值这类短序列）；每页再给**末 3 期行数**
+       （行数为 1 的"末列"往往是批注残留，不是真数据）
     3. **期内空洞**：在整个双月期次网格内、该页连表头/首列都没有的期次
        （例：TOP论文缺 2023 上半年整 3 期——不是空值，是整列不存在）
+    4. **水位线异常**：以各页最末有数据期次的众数为"水位线"，
+       某页**抢跑**（比水位线多一期，如 CNCI 页填到了 202609，而 202609 数据集尚未发布）
+       或**落后**（比水位线少）都会标出 —— 抢跑必须核实来源
+
+⚠ 读输出时别把「末端空列」当缺口：台账习惯**提前建好下一期的表头列**，
+   而下一期 ESI 数据集往往还没发布（当期 202609 即如此）。那是占位列，不是缺数。
+   判断"缺"要看：**已发布期次**里有没有空 / 有没有整列空洞。
 退出码：0=正常，2=台账读不到。仅只读，绝不写台账。
 """
 import re
 import sys
+from collections import Counter
 from datetime import date
 
 import openpyxl
@@ -68,18 +77,32 @@ def find_periods(rows):
 def main(path=DEFAULT):
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     allp = grid()
+
+    # 先收一遍：算"水位线"——全表各页最末有数据期次的众数，用来发现某页抢跑/落后
+    info = []
+    for name in wb.sheetnames:
+        try:
+            hit = find_periods(list(wb[name].iter_rows(values_only=True)))
+        except Exception as e:  # noqa: BLE001
+            info.append((name, None, str(e)))
+            continue
+        info.append((name, hit, None))
+    wb.close()
+
+    lasts = [max(p for p, c in h.items() if c > 0) for _, h, _ in info if h and any(c > 0 for c in h.values())]
+    level = Counter(lasts).most_common(1)[0][0] if lasts else None
+
     print(f"台账：{path}")
     print(f"期次网格：{allp[0]} → {allp[-1]}（双月，共 {len(allp)} 期）")
+    if level:
+        print(f"水位线（各页最末有数据期次的众数）：{level}")
     print()
     print(f"{'页名':<20}{'期数':>4}  {'区间':<19}说明")
     print("-" * 92)
-    for name in wb.sheetnames:
-        try:
-            rows = list(wb[name].iter_rows(values_only=True))
-        except Exception as e:  # noqa: BLE001
-            print(f"{name:<20}{'--':>4}  读取失败：{e}")
+    for name, hit, err in info:
+        if err:
+            print(f"{name:<20}{'--':>4}  读取失败：{err}")
             continue
-        hit = find_periods(rows)
         if not hit:
             print(f"{name:<20}{0:>4}  {'—':<19}(非按期间组织)")
             continue
@@ -92,12 +115,19 @@ def main(path=DEFAULT):
         print(f"{name:<20}{len(filled):>4}  {span:<19}")
         if len(filled) <= SHORT:
             print(f"{'':<20}     明细：" + " ".join(f"{p}({hit[p]})" for p in filled))
+        print(f"{'':<20}     末 3 期行数：" + " ".join(f"{p}({hit[p]})" for p in filled[-3:]))
         if empty:
             print(f"{'':<20}     ⚠ 有表头但空列：" + " ".join(empty))
         holes = [p for p in allp if filled[0] <= p <= filled[-1] and p not in filled and p not in empty]
         if holes:
             print(f"{'':<20}     ⚠ 期内空洞（连列都没有）：" + " ".join(holes))
-    wb.close()
+        if level and filled[-1] > level:
+            print(f"{'':<20}     ⚠ 抢跑：填到了 {filled[-1]}，比全表水位线 {level} 还多一期 —— 核实来源！")
+        elif level and filled[-1] < level:
+            print(f"{'':<20}     ⚠ 落后：只到 {filled[-1]}，落后水位线 {level} —— 是否漏录？")
+    print()
+    print("注：末端「有表头但空列」通常是**下一期尚未发布**（台账提前建列），不是缺数；")
+    print("    判定缺数请看已发布期次内的空值 / 整列空洞。")
     return 0
 
 
