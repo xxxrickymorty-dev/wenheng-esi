@@ -20,13 +20,15 @@ import pathlib
 import pytest
 
 import extract_1permille
+from _guard_registry import skip_unless
 
 
 @pytest.fixture(scope="session")
 def esi_root():
     r = extract_1permille.DEFAULT_DATA_ROOT
     if not r.is_dir():
-        pytest.skip(f"ESI 原始包不在：{r}")
+        skip_unless(f"ESI 原始包不在：{r}",
+                    lambda: extract_1permille.DEFAULT_DATA_ROOT.is_dir())
     return r
 
 
@@ -34,7 +36,8 @@ def esi_root():
 def esi_periods(esi_root):
     ps = sorted(p.name for p in esi_root.iterdir() if p.is_dir() and p.name.isdigit())
     if not ps:
-        pytest.skip(f"{esi_root} 下无期次目录")
+        skip_unless(f"{esi_root} 下无期次目录",
+                    lambda: any(p.is_dir() for p in esi_root.iterdir()))
     return ps
 
 
@@ -43,7 +46,8 @@ def ledger():
     for p in extract_1permille.DEFAULT_LEDGERS:
         if p.exists():
             return p
-    pytest.skip("台账不在仓库内")
+    skip_unless("台账不在仓库内",
+                lambda: any(p.exists() for p in extract_1permille.DEFAULT_LEDGERS))
 
 
 def test_数据根常量指向真正含期次的那一层():
@@ -54,10 +58,14 @@ def test_数据根常量指向真正含期次的那一层():
     `数据与复现/<期次>/`，常量没跟着改，本文件 4 例守卫无声消失。
     """
     ws = pathlib.Path(__file__).resolve().parents[2]
-    period_dirs = [p for p in (ws / "数据与复现").rglob("[0-9]" * 6) if p.is_dir()]
-    if not period_dirs:
-        pytest.skip("工作区里没有 ESI 期次目录（原始包不入库，属正常）")
-    layers = {p.parent for p in period_dirs}
+
+    def _period_layers():
+        return {p.parent for p in (ws / "数据与复现").rglob("[0-9]" * 6) if p.is_dir()}
+
+    layers = _period_layers()
+    if not layers:
+        skip_unless("工作区里没有 ESI 期次目录（原始包不入库，属正常）",
+                    lambda: bool(_period_layers()))
     assert extract_1permille.DEFAULT_DATA_ROOT in layers, (
         f"期次目录所在层是 {sorted(str(p) for p in layers)}，"
         f"而 DEFAULT_DATA_ROOT = {extract_1permille.DEFAULT_DATA_ROOT} —— "

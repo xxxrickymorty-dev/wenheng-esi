@@ -145,8 +145,6 @@ def run_parse(ledger, out_dir, overlay=None):
         raise ToolError("FILE_INVALID", f"台账不存在：{p}")
     led = parse_ledger.load_ledger(p, overlay=overlay)
     ok, report = parse_ledger.run_assertions(led)
-    out = pathlib.Path(out_dir)
-    parse_ledger.write_outputs(led, p, out)
     P, Q = parse_ledger._latest_periods(led)
     diag = dict(led.get("diagnostics", {}))
     fails = [m for s, m in report if s == "FAIL"]
@@ -165,6 +163,13 @@ def run_parse(ledger, out_dir, overlay=None):
         diag["unmatched_names"] = {m: v for m, v in hints.items() if v}
         raise ToolError("ASSERT_FAIL", f"{len(fails)} 项断言未过",
                         period=P, fails=fails[:10], diagnostics=diag)
+
+    # ⚠ 落盘必须在断言闸**之后**。顺序反过来（先写后判）会让一次失败运行在
+    #    `out/<期次>/` 留下"本次的宽表 + 上一次的报告"：看板照旧展示旧 docx，
+    #    对勘本拿旧槽位配新格子，页面上没有任何警报——正是本项目最怕的
+    #    "静默产错报告"。这里让失败路径一个字节都不写。
+    out = pathlib.Path(out_dir)
+    parse_ledger.write_outputs(led, p, out)
     return {"ok": True, "out_dir": str(out), "period": P, "prev": Q,
             "assertions_ok": True, "n_checks": len(report),
             "overlay_applied": sorted(overlay) if overlay else []}

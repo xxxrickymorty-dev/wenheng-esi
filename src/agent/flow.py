@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import pathlib
 import time
@@ -51,6 +52,36 @@ MAX_HEAL_ATTEMPTS = 1
 #: 视为"非阻断告警"的错误码：不拦停，但终态记 warned
 NON_BLOCKING = ("REF_MISSING",)
 
+#: 一次运行的**成品**——只有它们会被当报告看。实现在 `parse_ledger.quarantine_final_products`
+#: （产物目录布局归它管），`run_pipeline.py` 直跑路径与这里**共用同一份**，别各写一套。
+FINAL_PRODUCTS: tuple[str, ...] = ("报告初稿_*.docx", "红色件清单.md", "red_slots.json")
+
+#: 撤下的成品去哪。放期次目录**内部**而不是 `out/` 下，是为了让"这一期的历史版本"
+#: 跟着这一期走，人工翻档不用两头找；也避开 `out/` 根目录的期次发现逻辑
+#: （`server.jobs.PERIOD_DIR_RE` 只认六位数字开头的目录名）。
+SUPERSEDED_DIR = "_superseded"
+
+
+def _file_sha256(path, chunk=1 << 20) -> str | None:
+    """文件指纹。文件不在返回 None（编排层测试普遍用假路径）。"""
+    p = pathlib.Path(path)
+    if not p.is_file():
+        return None
+    h = hashlib.sha256()
+    with p.open("rb") as f:
+        for blk in iter(lambda: f.read(chunk), b""):
+            h.update(blk)
+    return h.hexdigest()
+
+
+def _quarantine_final_products(out_dir, run_dir) -> list[str]:
+    """撤下期内已有的成品（委托实现见 `parse_ledger.quarantine_final_products`）。
+
+    调用点选在 parse 成功、期次已知的那一刻 —— 此刻"本次会写这个目录"已经成立。
+    """
+    import parse_ledger                                        # noqa: PLC0415
+    return parse_ledger.quarantine_final_products(out_dir, run_dir)
+
 
 def _heal_hook(failure, ctx):
     """自愈钩子。接入 `src/agent/heal.py` + `rules/repair_rules.yaml`（M3）。
@@ -67,7 +98,8 @@ def _heal_hook(failure, ctx):
 
 class RunResult:
     __slots__ = ("status", "period", "steps", "failure", "run_dir", "elapsed",
-                 "warnings", "artifacts", "repairs")
+                 "warnings", "artifacts", "repairs", "ledger_sha256",
+                 "superseded")
 
     def __init__(self, status, run_dir):
         self.status = status          # states.*
@@ -78,6 +110,8 @@ class RunResult:
         self.warnings = []
         self.artifacts = {}
         self.repairs = []             # M3：自愈决策记录（rule / overlay / 拒绝项）
+        self.ledger_sha256 = None     # 台账指纹（运行前后各取一次，用于只读护栏）
+        self.superseded = []          # 本次运行撤下的上版成品
         self.elapsed = 0.0
 
     def as_dict(self):
@@ -85,14 +119,21 @@ class RunResult:
                 "steps": self.steps, "failure": self.failure,
                 "warnings": self.warnings, "artifacts": self.artifacts,
                 "repairs": self.repairs,
+                "ledger_sha256": self.ledger_sha256,
+                "superseded": self.superseded,
                 "elapsed": round(self.elapsed, 2)}
 
 
 def _write_diagnosis(run_dir, ledger, step, err, attempts, repair=None):
-    """逾限升级时产出《诊断报告》（SRS R-26）。"""
+    """逾限升级时产出《诊断报告》（SRS R-26）。
+
+    两种触发共用一个出口：步骤自愈逾限，以及运行期原件只读护栏。后者不是"自愈没成"，
+    所以标题与处置都另走一套——否则人工会按"补一条规则"去处理一个跟规则无关的事故。
+    """
+    guard_fired = step["id"] == "guard"
     p = pathlib.Path(run_dir) / "诊断报告.md"
     body = [
-        "# 诊断报告 · 自愈逾限",
+        f"# 诊断报告 · {'原件只读护栏触发' if guard_fired else '自愈逾限'}",
         "",
         f"- 台账：`{ledger}`",
         f"- 失败步骤：**{step['label']}**（`{step['id']}` → 工具 `{step['tool']}`）",
@@ -101,7 +142,13 @@ def _write_diagnosis(run_dir, ledger, step, err, attempts, repair=None):
         f"- 已尝试：首轮 + {attempts} 次自愈重试（上限 {MAX_HEAL_ATTEMPTS}）",
     ]
     # —— M3：把"自愈做了什么、为什么没成功"写清楚，否则人工接手要重新考古 ——
-    if repair:
+    if repair and repair.get("library_error"):
+        body += ["", "## 规则库不可用", "",
+                 "自愈这次**没能开始工作**：规则库文件读不出来（不是台账脏）。",
+                 "", f"- 原因：`{repair['library_error']}`",
+                 "- 处置：修好 `src/agent/rules/repair_rules.yaml` 后重跑；"
+                 "在此之前自愈对所有失败都等于没有规则。"]
+    elif repair:
         body += ["", "## 自愈过程", "",
                  f"- 结论：`{repair.get('outcome')}`",
                  f"- 已应用规则：{repair.get('rules') or '（无）'}",
@@ -112,6 +159,13 @@ def _write_diagnosis(run_dir, ledger, step, err, attempts, repair=None):
             body += ["", f"### 需人工：{a.get('rule') or '规则库'}", "",
                      f"- 原因：{a.get('why')}", f"- 依据：{a.get('doc') or '—'}", "",
                      f"> {a.get('advice') or '—'}"]
+    if guard_fired:
+        body += ["", "## 台账指纹", "",
+                 f"- 运行前：`{err.get('before')}`",
+                 f"- 运行后：`{err.get('after')}`",
+                 "",
+                 "两者不等 = 本次运行期间台账文件被改写。**本次运行的全部结论作废**，"
+                 "因为无法保证报告数字对应的就是你刚拿到的那个台账。"]
     body += ["", "## 明细", "",
              f"```json\n{json.dumps(err, ensure_ascii=False, indent=2)}\n```"]
     unknown = (err.get("diagnostics") or {}).get("unmatched_names") or {}
@@ -120,11 +174,18 @@ def _write_diagnosis(run_dir, ledger, step, err, attempts, repair=None):
                  "把下面这些名字与规范名单对上，或补进 `repair_rules.yaml` 的别名表：", ""]
         for sheet, names in unknown.items():
             body += [f"- `{sheet}` 首列：{names}"]
-    body += ["", "## 处置", "",
-             "1. 该运行已停止，**未继续后续步骤**，不产出报告初稿；",
-             "2. 请人工核对台账对应工作表/期次列，修正后重跑（重跑会新建运行，本记录保留）；",
-             "3. 若属新出现的脏例，请在 `src/agent/rules/repair_rules.yaml` 补规则并经馆员确认。",
-             ]
+    if guard_fired:
+        body += ["", "## 处置", "",
+                 "1. 该运行已停止，产物不采信；",
+                 "2. 先查清是谁改的台账（手工编辑？脚本？同步盘？），"
+                 "拉到与馆员核对过的版本后重跑；",
+                 "3. 严禁把这条护栏当成「误报」关掉 —— 它拦的是「报告跟台账对不上」的最坏情况。"]
+    else:
+        body += ["", "## 处置", "",
+                 "1. 该运行已停止，**未继续后续步骤**，不产出报告初稿；",
+                 "2. 请人工核对台账对应工作表/期次列，修正后重跑（重跑会新建运行，本记录保留）；",
+                 "3. 若属新出现的脏例，请在 `src/agent/rules/repair_rules.yaml` 补规则并经馆员确认。",
+                 ]
     if err.get("fails"):
         body += ["", "## 未通过的断言", ""] + [f"- {m}" for m in err["fails"]]
     body += ["", "---", "",
@@ -146,6 +207,10 @@ def run(ledger, out_root="out", run_dir=None, reference=None, backtest=False):
     result = RunResult(states.PENDING, run_dir)
     ctx = {"ledger": ledger, "out_root": str(out_root), "run_dir": str(run_dir),
            "reference": reference, "overlay": None}   # overlay 由 heal 填入（M3）
+
+    #: 台账指纹（只读护栏的基准）。跑一次 7MB 的 sha256 约 20ms，换的是"原件只读"
+    #: 这条红线在**运行期**有人看着，而不是只在测试里被证明过。
+    led_sha0 = _file_sha256(ledger)
 
     tr.event("plan", observation=f"台账 {pathlib.Path(ledger).name}",
              decision="run", reason=f"{len(STEPS)} 步主干（固定顺序）")
@@ -190,11 +255,19 @@ def run(ledger, out_root="out", run_dir=None, reference=None, backtest=False):
                          reason=f"尝试自愈（上限 {MAX_HEAL_ATTEMPTS} 次）")
                 repaired = _heal_hook(tool_err, ctx)
                 applied = bool(repaired and repaired.get("overlay"))
-                obs = ("已提交读表口径 " + ",".join(repaired.get("rules") or [])
-                       if applied else
-                       ("规则命中但不能执行（" + ",".join(
-                           r.get("rule") or "?" for r in repaired.get("refused") or [])
-                        + "）" if repaired else "规则库无匹配"))
+                if repaired and repaired.get("library_error"):
+                    # 规则库自己坏了 ≠ 没有匹配规则。两者都照裁决"给一次重跑机会"，
+                    # 但轨迹与诊断报告必须说清是哪一种：否则人工会拿着"没有匹配规则"
+                    # 去台账里找一个并不存在的脏例，而真正该修的是规则库文件。
+                    obs = f"规则库不可用（{repaired['library_error']}）"
+                elif applied:
+                    obs = "已提交读表口径 " + ",".join(repaired.get("rules") or [])
+                elif repaired:
+                    obs = ("规则命中但不能执行（" + ",".join(
+                        r.get("rule") or "?" for r in repaired.get("refused") or [])
+                        + "）")
+                else:
+                    obs = "规则库无匹配"
                 tr.event("act", tool="apply_repair_rule", args=repaired, observation=obs,
                          decision="retry",
                          reason=(f"自愈结论 {repaired.get('outcome')}" if repaired
@@ -238,9 +311,41 @@ def run(ledger, out_root="out", run_dir=None, reference=None, backtest=False):
             result.period = payload.get("period")
             if result.period and run_dir.name == "manual":
                 pass          # 保持调用方指定目录，不擅自改名
+            if result.period:
+                # 此刻已确定"本次会改写 out/<期次>/"——先把上版成品撤下来。
+                # 撤下而不是删除：若本次失败，期内没有成品（诚实的"未出稿"），
+                # 而上一版仍完整躺在 _superseded/ 里可追溯。
+                moved = _quarantine_final_products(out_root / result.period, run_dir)
+                if moved:
+                    result.superseded += moved
+                    tr.event("observe", observation=f"撤下上版成品：{moved}",
+                             decision="continue",
+                             reason="避免失败运行留下「新表格 + 旧报告」混装")
         if isinstance(payload, dict):
             result.artifacts.update({k: v for k, v in payload.items()
                                      if k in ("out_dir", "table2", "docx")})
+
+    # ------------------------------------------------ 原件只读护栏（R-24 运行期落点）
+    # 测试里的 sha256 断言只证明了"我测的那条路径没改台账"。这条是运行期的：
+    # 自愈、工具、以及将来接进来的人工重放，只要动了原件，都在同一处被拦下。
+    result.ledger_sha256 = led_sha0
+    led_sha1 = _file_sha256(ledger)
+    if led_sha0 and led_sha1 and led_sha0 != led_sha1:
+        guard = {"code": "FILE_INVALID",
+                 "message": "台账在本次运行期间被改写 —— 原件只读红线（R-24）被破",
+                 "step": "guard", "before": led_sha0, "after": led_sha1}
+        result.warnings.append("guard: " + guard["message"])
+        tr.event("observe", observation=guard["message"], decision="halt",
+                 reason="ledger_mutated")
+        tr.event("decide", decision="escalated", reason="原件被改写，本次运行结果不可采信")
+        if current in (states.RUNNING, states.RETRYING):
+            current = _transition(tr, current, states.ESCALATED, trigger="ledger_mutated")
+        if result.failure is None:
+            result.failure = guard
+            _write_diagnosis(run_dir, ledger,
+                             {"id": "guard", "label": "原件只读护栏",
+                              "tool": "（运行期护栏，不属主干步骤）"},
+                             guard, 0)
 
     # ------------------------------------------------------------ 终态
     if result.failure is None:

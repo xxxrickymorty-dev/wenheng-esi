@@ -17,6 +17,7 @@ import pandas as pd
 import pytest
 
 import forecast_select as F
+from _guard_registry import skip_unless
 
 EXPECTED_8 = [
     "Economics & Business", "Immunology", "Molecular Biology & Genetics",
@@ -29,7 +30,8 @@ EXPECTED_8 = [
 def out_dir(repo):
     d = repo / "out" / "202607"
     if not (d / "wide" / "total_cites.parquet").exists():
-        pytest.skip("out/202607 派生数据缺失（不入库，属正常）")
+        skip_unless("out/202607 派生数据缺失（不入库，属正常）",
+                    lambda: (d / "wide" / "total_cites.parquet").exists())
     return d
 
 

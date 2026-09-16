@@ -215,11 +215,20 @@ def attempt(failure, ctx, rules_path=None):
     try:
         rules = load_rules(rules_path)
     except RuleError as e:
+        # 规则库坏了 ≠ 没有匹配规则。两者都会让本次自愈"不做任何事"，但人工要去的
+        # 方向截然相反（修规则库文件 vs 看台账）。所以 `library_error` 必须独立带出，
+        # 不能混在 `refused` 里只留一句 why —— flow.py 靠它换掉轨迹里的措辞。
+        why = f"规则库不可用：{e}"
         _write_repair_yaml(ctx.get("run_dir"), failure or {},
-                           [], [{"rule": None, "why": str(e), "error_code": "RULE_UNAPPROVED"}],
+                           [], [{"rule": None, "why": why, "error_code": "RULE_UNAPPROVED"}],
                            "refused")
-        return {"rules": [], "overlay": {}, "refused": [{"rule": None, "why": str(e)}],
-                "advice": [{"rule": None, "why": str(e)}], "outcome": "refused"}
+        return {"rules": [], "overlay": {},
+                "refused": [{"rule": None, "why": why}],
+                "advice": [{"rule": None, "why": why,
+                            "doc": "src/agent/rules/repair_rules.yaml",
+                            "advice": "修好规则库文件本身（不是改台账）；在修好之前，"
+                                      "自愈对所有失败都等同于没有规则。"}],
+                "library_error": why, "outcome": "refused"}
 
     hit, refused = _hits(failure or {}, rules)
     overlay = {k: v for h in hit for k, v in h["overlay"].items()}

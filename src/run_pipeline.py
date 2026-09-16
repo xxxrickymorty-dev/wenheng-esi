@@ -55,6 +55,17 @@ def main(ledger_path, out_root="out", run_backtest=False):
     ok, report = parse_ledger.run_assertions(ledger)
     P, Q = parse_ledger._latest_periods(ledger)
     out_dir = pathlib.Path(out_root) / P
+
+    # 当期算出来了 = 本次确定要改写 out/<当期>/ —— 先把上版成品撤下来。
+    # 不撤的话，一次在 charts / docx 步失败的运行会留下「本次的新表格 + 上一次的旧报告」：
+    # 看板照旧展示那份旧报告，对勘本拿旧槽位配新格子，页面上没有任何警报。
+    # （实现与 agent/flow.py 共用 parse_ledger.quarantine_final_products，别各写一套。）
+    _run_dir = (pathlib.Path(os.environ["WENHENG_PROGRESS_FILE"]).parent
+                if os.environ.get("WENHENG_PROGRESS_FILE") else None)
+    moved = parse_ledger.quarantine_final_products(out_dir, _run_dir)
+    if moved:
+        _emit("parse", "解析台账", "warn", f"已撤下上版成品：{'、'.join(moved)}")
+
     parse_ledger.write_outputs(ledger, p, out_dir)
     n_fail = sum(1 for s, _ in report if s == "FAIL")
     print(f"      当期={P} 上期={Q} 断言={'全绿' if ok else f'{n_fail} 项 FAIL'} → {out_dir}")

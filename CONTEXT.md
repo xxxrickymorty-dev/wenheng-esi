@@ -22,7 +22,7 @@
 | `tools/` | 校验脚本（单一来源），如 `verify_demo_run.py`、`crossing_by_report.py` |
 | `tests/` | 回归测试 |
 | `input/<期次>/监测表.xlsx` | 输入台账（馆员手工维护的原始导出） |
-| `out/<期次>/` | 产物：`报告初稿_*.docx`、`charts/`、`table2.csv`、`red_slots.json`、`approval.json` |
+| `out/<期次>/` | 产物：`报告初稿_*.docx`、`charts/`、`table2.csv`、`red_slots.json`、`approval.json`；`_superseded/<时间戳>/` 是被新运行撤下的上版成品 |
 | `out/_jobs/` | 运行档案（每个任务一个目录） |
 | `tmp/` | 临时脚本，用完归位或删 |
 
@@ -55,18 +55,34 @@
 2. 《云大全学科排名、阈值动态检测表.xlsx》是**唯一事实源**，馆员手工维护。
    **禁止用 openpyxl 存盘改它**（会丢 6 张图表、条件格式、打印设置）——只能 zip 级 XML 替换，改前备份。
    新期次列**贴在已有列后面**，按列追加，绝不覆盖历史。
-   **自愈同样改不了它**：`heal.py` 只产出「解析 overlay」（改变*怎么读*），台账文件在任何自愈路径上
-   都不变（`tests/test_agent_heal.py` 用 sha256 钉住）。规则库 `approved_by` 为空 = 未授权，
-   命中也不执行（`RULE_UNAPPROVED`），只往《诊断报告》写建议。
-3. **状态口径唯一来源**是 `src/agent/states.py`（10 态）；`server/jobs.py` 的 `TERMINAL` 直接引用，不许复制。
-4. **两套状态词别混**：
+   **自愈同样改不了它**：`heal.py` 只产出「解析 overlay」（改变*怎么读*）。两道护栏：
+   - **测试级**：`tests/test_agent_heal.py` 用 sha256 钉住自愈路径；
+   - **运行期**：`flow.run` 在开跑与收尾各取一次台账 sha256，不等即拦停（`escalated` +
+     《诊断报告》「原件只读护栏触发」）。这条覆盖**所有**路径，不只是自愈。
+
+   规则库 `approved_by` 为空 = 未授权，命中也不执行（`RULE_UNAPPROVED`），只往《诊断报告》写建议。
+3. **失败运行不在 `out/<期次>/` 留半成品**。两条规矩：
+   - `run_parse` **先过断言闸、再落盘**（顺序反了会留下「本次的新宽表 + 上一次的旧报告」）；
+   - `flow.run` 在期次确定后把**上版成品**（`报告初稿_*.docx` / `红色件清单.md` / `red_slots.json`）
+     撤进 `out/<期次>/_superseded/<时间戳>/`。撤下≠删除，要能追溯。
+
+   由此得到口径：**成品只在它所在目录开始被本次运行改写之后才撤下**。若解析两轮都没过
+   （目录压根没被碰过），上一版继续有效。看板据此显示"本期未出稿"，而不是展示一份跟新表格
+   对不上的旧报告。详见 `tests/test_agent_heal.py` §8。
+4. **状态口径唯一来源**是 `src/agent/states.py`（10 态）；`server/jobs.py` 的 `TERMINAL` 直接引用，不许复制。
+5. **两套状态词别混**：
    - 任务级 10 态：`pending / running / retrying / stalled / waiting_approval / completed / warned / escalated / failed / cancelled`
    - 步骤级 4 态：`start / done / warn / failed`（对应 `job.js` 的 CSS 类名，改会坏五步进度样式）
-5. **GET 不改状态**；数字只来自后端；产物只经 `/download/{key}` 白名单出去。守卫在 `tests/test_stack_contract.py`。
-6. **技术栈冻结**：FastAPI + Jinja2 服务端渲染；前端**零框架、零构建、零 CDN**。
+6. **GET 不改状态**；数字只来自后端；产物只经 `/download/{key}` 白名单出去。守卫在 `tests/test_stack_contract.py`。
+7. **技术栈冻结**：FastAPI + Jinja2 服务端渲染；前端**零框架、零构建、零 CDN**。
    图表由 matplotlib 出 PNG。别再提 React/Vue/Tailwind/Vite/WebSocket。
-7. `.bat` / `.cmd` **纯 ASCII + CRLF**（`.gitattributes` 已钉）。中文交给 Python 输出。
-8. `master/`、`云南大学原报告/`、`wenheng/` 的名称与位置被脚本引用，**不要改名移动**。
+8. `.bat` / `.cmd` **纯 ASCII + CRLF**（`.gitattributes` 已钉）。中文交给 Python 输出。
+9. `master/`、`云南大学原报告/`、`wenheng/` 的名称与位置被脚本引用，**不要改名移动**。
+10. **测试里的跳过必须登记**。数据驱动的用例（依赖 `input/`、`out/`、原始 ESI 包）在缺数据时
+    该 skip 而不是 fail，但代价是"数据整片丢失 → pytest 全绿"。所以一律用
+    `tests/_guard_registry.py` 的 `skip_unless(理由, 探针)`；会话收尾复核探针，
+    **探针说资源其实在就判整个会话失败**。裸 `pytest.skip` 由
+    `tests/test_guard_coverage.py` 结构性地禁止。
 
 ## 容易搞错的口径
 
@@ -85,13 +101,17 @@
 ## 验收三件套（改状态相关代码后按序跑）
 
 ```bash
-.venv\Scripts\python.exe -m pytest -m ""          # 全量 156 例（默认 154 例，跳过 2 个 slow）
+.venv\Scripts\python.exe -m pytest -m ""          # 全量 172 例（默认 170 例，2 个 slow 被 marker 排除）
 uvicorn server.app:app --port 8080                 # 起服务后跑 server/e2e_check.py（只读 96 断言）
 .venv\Scripts\python.exe tools/verify_demo_run.py <期次>   # 写路径验收
 ```
 
 **改这三处前必跑全套**（错了不抛异常，只静默产错报告）：
 ① `src/compute.py` 大表口径 ② `src/extract_1permille.py` 取位公式 ③ 母版槽位几何（列宽 8.64 / 图 8.26×5.50）。
+
+**验收判据（M3 起）**：里程碑的验收不是"断言全过 / 用例全绿"，而是**「报告数字对」**——
+自愈后的宽表与报告大表逐格对齐干净台账（`tests/test_agent_heal.py::test_自愈后的读数与干净原件逐格一致`）。
+断言全过只说明没触发已想到的不变量，不说明数字对。
 
 ## 当前未决 / 待办
 
@@ -100,7 +120,7 @@ uvicorn server.app:app --port 8080                 # 起服务后跑 server/e2e_
 | L1 | `SRS R-19` 要求 `approval.json` 含 `red_slots_sha256` | ❌ **未实现**：实际只有 `fingerprint: {文件名: "size:mtime"}`，全库零处 `sha256`。属实质缺口（内容变了而 size/mtime 没变就查不出来），**待决定是否本期补** |
 | L3 | 待裁决 13 号：两维度结论不一致时预测章以谁为准 | 待裁 |
 | L4 | #11 已定口径确认人＝卜彤，须当面知会馆员 | 待做 |
-| — | M3 自愈 | ✅ **已完成**（`187426a`）：`heal.py` + `rules/repair_rules.yaml`（6 条规则）+ `tests/test_agent_heal.py`（33 例，含真实台账端到端脏例）。2 条 auto 已生效；**2 条 declare 待卜彤填 `approved_by` 才生效**；2 条 never 只出建议 |
+| — | M3 自愈 | ✅ **已完成**（`187426a` + 09-16 补强）：`heal.py` + `rules/repair_rules.yaml`（6 条规则）+ `tests/test_agent_heal.py`（46 例，含真实台账端到端脏例与逐格对齐的「报告数字对」判据）。2 条 auto 已生效；**2 条 declare 待卜彤填 `approved_by` 才生效**；2 条 never 只出建议。补强项：失败运行不落盘 + 上版成品隔离（两条路径共用 `parse_ledger.quarantine_final_products`）+ 台账运行期 sha256 护栏 + 规则库故障与"无匹配"分开报 + 跳过登记复核 |
 | — | M4 审计闭环：`audit.py` / `scan_stale` / `collect_artifacts` / `out/_archive/` | 未开工 |
 | — | M4b 学院统计（`src/college_stats.py`，即 F34） | 已顺延 v2.0（赛后） |
 | — | M6 公网部署 | 未开工 |

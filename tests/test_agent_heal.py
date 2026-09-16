@@ -344,12 +344,9 @@ def test_诊断不写进产物_parquet字节可复现(tmp_path):
 
 # ============================================================ 5. 端到端脏例（需真实台账）
 @pytest.fixture(scope="module")
-def ledger_path():
-    leds = sorted((pathlib.Path(__file__).resolve().parent.parent / "input")
-                  .glob("*/监测表.xlsx"))
-    if not leds:
-        pytest.skip("input/ 下无台账（馆员数据不入库，属正常）")
-    return leds[-1]
+def ledger_path(all_ledgers):
+    """复用 conftest 的台账夹具：跳过的登记与复核只在那一处做，别在这里另起一套。"""
+    return all_ledgers[-1]
 
 
 @pytest.fixture(scope="module")
@@ -492,3 +489,266 @@ def test_规则库结构非法时报错(tmp_path, body, why):
     p.write_text(body, encoding="utf-8")
     with pytest.raises(heal.RuleError):
         heal.load_rules(p)
+
+
+# ============================================================ 7. 验收判据：报告数字对
+# 里程碑的验收条件从「断言全过」改成「报告数字对」（rick 2026-09-16 定）。
+# 理由：断言全过只说明没触发我们**已经想到**的那几条不变量；一处没被想到的解析
+# 偏斜照样能让断言全绿、而报告里的数字全是错的。逐格对齐才是"数字对"的证明。
+def _table2_of(led):
+    """就地从内存里算出报告大表。
+
+    与 `compute.load_wide` 走的是同一套变换（差别只是不落 parquet 再读回来），
+    所以 `table2.csv` 的每一格都在这儿了 —— 报告正文的数字全从这张表出。
+    """
+    import compute
+    P, Q = compute.detect_periods(led["wide"])
+
+    def pivot(key, cols):
+        # write_outputs 里对 ledger[key] 做 melt → 这里照搬同一步，别自己另捏一套
+        long = led[key].melt(id_vars=["discipline", "period"], value_vars=cols,
+                             var_name="metric", value_name="value")
+        return long.pivot_table(index="discipline", columns=["metric", "period"],
+                                values="value")
+
+    ni = pivot("new_intl", ["n_inst_1pct", "rank", "rank_pct"])
+    nc = pivot("new_cn", ["n_inst_1pct", "rank", "rank_pct"])
+    return compute.build_table2(led["wide"], ni, nc, led["threshold_1permille"], P, Q)
+
+
+def test_自愈后的读数与干净原件逐格一致(dirty_alias_ledger):
+    """**M3 的验收判据**：自愈之后，报告数字与拿干净台账跑出来的一模一样。
+
+    这条同时钉住了自愈的两种走偏：修得不够（还有格子差着）和修过了头
+    （把不该改的格子也改了）。断言的粒度是逐格，不是"没报错"。
+    """
+    import pandas as pd
+    from parse_ledger import load_ledger
+
+    ov = heal.attempt(
+        _assert_fail("宽表 total_cites 学科数=22 (实际 21，缺 ['Chemistry'])"),
+        {"run_dir": None})["overlay"]
+    clean = load_ledger(dirty_alias_ledger["src"])
+    healed = load_ledger(dirty_alias_ledger["path"], overlay=ov)
+
+    for m in clean["wide"]:
+        pd.testing.assert_frame_equal(clean["wide"][m], healed["wide"][m],
+                                      check_exact=True, obj=f"宽表 {m}")
+
+    t_clean, t_healed = _table2_of(clean), _table2_of(healed)
+    pd.testing.assert_frame_equal(t_clean, t_healed, check_exact=True, obj="报告大表")
+    # 正数自证：别拿两张空表比出"一致"
+    assert len(t_healed) == 22 and t_healed["total_cites"].notna().all()
+    assert t_healed.equals(t_clean)
+
+
+def test_没自愈的脏台账算出来的读数确实是错的(dirty_alias_ledger):
+    """"报告数字对"这条判据自身的阳性对照：不修的话数字真的不一样。
+
+    少了这条，上面那条测试可能只是在证明"两坨一样的东西相等"。
+    """
+    import pandas as pd
+    from parse_ledger import load_ledger
+    clean = load_ledger(dirty_alias_ledger["src"])["wide"]["total_cites"]
+    dirty = load_ledger(dirty_alias_ledger["path"])["wide"]["total_cites"]
+    with pytest.raises(AssertionError):
+        pd.testing.assert_frame_equal(clean, dirty)
+    # 具体错成什么样也钉住：认不出的学科被 reindex 成 NaN —— 报告里那一行就是空的。
+    # 只钉当期，未来列（下期还没贴数）本来就该空。
+    P = [c for c in clean.columns if clean[c].notna().any()][-1]
+    assert dirty.loc["Chemistry", P] != dirty.loc["Chemistry", P], "脏读数应缺当期值"
+    assert clean.loc["Chemistry", P] == clean.loc["Chemistry", P], "干净读数当期有值"
+    # 连大表都算不出来（int(NaN) 直接炸）。所以"数字不对"不是程度问题，是根本出不了稿。
+    with pytest.raises(ValueError, match="NaN"):
+        _table2_of(load_ledger(dirty_alias_ledger["path"]))
+
+
+# ============================================================ 8. 失败运行的产物边界
+# 取证复现的故障（2026-09-16）：`write_outputs` 曾排在断言闸**之前**，于是
+#     一次失败运行 = out/<期次>/ 里「本次的新宽表/新大表」+「上一次的报告 docx」
+# 对勘本照旧渲染那份旧报告，页面没有任何警报 —— 典型静默产错报告。
+def test_断言失败时解析一个字节都不落盘(dirty_unknown_ledger, monkeypatch, tmp_path):
+    """规则库救不了的脏例：两轮都失败，产物目录必须干净得像没跑过。"""
+    monkeypatch.setattr(flow, "STEPS", tuple(s for s in flow.STEPS if s["id"] == "parse"))
+    out = tmp_path / "out"
+    r = flow.run(str(dirty_unknown_ledger["path"]), out_root=out, run_dir=tmp_path / "run")
+    assert r.status == states.ESCALATED
+    assert not out.exists() or not list(out.rglob("*")), \
+        f"失败运行不该在产物目录留东西，实际：{[str(p) for p in out.rglob('*')]}"
+
+
+def test_解析成功时照常落盘(dirty_unknown_ledger, monkeypatch, tmp_path):
+    """上面那条的阳性对照：不是我为了让它过把落盘整个删了。"""
+    monkeypatch.setattr(flow, "STEPS", tuple(s for s in flow.STEPS if s["id"] == "parse"))
+    out = tmp_path / "out"
+    r = flow.run(str(dirty_unknown_ledger["src"]), out_root=out, run_dir=tmp_path / "run")
+    assert r.status == states.COMPLETED
+    assert (out / r.period / "wide" / "total_cites.parquet").exists()
+    assert (out / r.period / "meta.json").exists()
+
+
+def _seed_prev_products(period_dir):
+    """埋一份"上一版成功运行"的成品。"""
+    period_dir.mkdir(parents=True, exist_ok=True)
+    (period_dir / "报告初稿_202607（试排）.docx").write_bytes(b"OLD-REPORT")
+    (period_dir / "red_slots.json").write_text('{"old": 1}', encoding="utf-8")
+    (period_dir / "红色件清单.md").write_text("旧清单", encoding="utf-8")
+    (period_dir / "table2.csv").write_text("discipline,ranking\n", encoding="utf-8")
+
+
+def test_失败运行不会留下新表格配旧报告(monkeypatch, tmp_path):
+    """复现路径：先有一版成功产物 → 再跑一次 → 在 charts 步失败。
+
+    要求：旧成品被撤进 `_superseded/`（不是删掉，要能追溯），期内不再有 docx。
+    这样看板显示的是"本期未出稿"，而不是一份跟新表格对不上的旧报告。
+    """
+    out = tmp_path / "out"
+    d = out / "202607"
+    _seed_prev_products(d)
+
+    def behaviour(step, ctx, result):
+        if step["id"] == "parse":
+            d.joinpath("table2.csv").write_text("discipline,ranking\n新数据\n", encoding="utf-8")
+            return {"ok": True, "period": "202607", "out_dir": str(d)}
+        if step["id"] == "charts":
+            raise tools.ToolError("FONT_MISSING", "模拟字体缺失")
+        return {"ok": True, "period": "202607", "out_dir": str(d)}
+
+    monkeypatch.setattr(flow, "_invoke", behaviour)
+    r = flow.run("fake.xlsx", out_root=out, run_dir=tmp_path / "run")
+
+    assert r.status == states.ESCALATED
+    assert set(r.superseded) == {"报告初稿_202607（试排）.docx", "red_slots.json", "红色件清单.md"}
+    assert not list(d.glob("报告初稿_*.docx")), "旧报告必须撤下，否则看板会拿它配新表格"
+    assert not (d / "red_slots.json").exists(), "对勘本按它判「本期可看」，也要撤下"
+    arch = list((d / flow.SUPERSEDED_DIR).rglob("报告初稿_*.docx"))
+    assert len(arch) == 1 and arch[0].read_bytes() == b"OLD-REPORT", "撤下的旧稿要留着可追溯"
+    assert (d / "table2.csv").read_text(encoding="utf-8").endswith("新数据\n"), \
+        "中间产物不必撤 —— 它每步都被覆盖，且本次的这份是断言验过的"
+
+
+def test_自愈成功后仍要撤下上版成品(dirty_alias_ledger, monkeypatch, tmp_path):
+    """自愈成功≠上版没被顶掉。撤下的动作只跟"目录开始被改写"有关，与成败无关。"""
+    out = tmp_path / "out"
+    monkeypatch.setattr(flow, "STEPS", tuple(s for s in flow.STEPS if s["id"] == "parse"))
+    first = flow.run(str(dirty_alias_ledger["src"]), out_root=out, run_dir=tmp_path / "r1")
+    assert first.status == states.COMPLETED
+    _seed_prev_products(out / first.period)
+
+    second = flow.run(str(dirty_alias_ledger["path"]), out_root=out, run_dir=tmp_path / "r2")
+    assert second.status == states.COMPLETED, f"自愈应成功：{second.failure}"
+    assert second.superseded, "撤下清单要回填到 run_result 里，否则审计看不出稿去哪了"
+    assert not list((out / first.period).glob("red_slots.json"))
+    sup = list((out / first.period / flow.SUPERSEDED_DIR).rglob("red_slots.json"))
+    assert len(sup) == 1 and sup[0].read_text(encoding="utf-8") == '{"old": 1}'
+    assert (sup[0].parent / "_来源.txt").exists(), "要知道这批旧稿是被哪次运行撤下的"
+
+
+def test_解析没过时不撤上版成品(monkeypatch, tmp_path):
+    """边界：解析两轮都没过 → 期内压根没被改写 → 上一版继续有效，不该被藏起来。"""
+    out = tmp_path / "out"
+    d = out / "202607"
+    _seed_prev_products(d)
+
+    monkeypatch.setattr(flow, "_invoke",
+                        lambda step, ctx, result: (_ for _ in ()).throw(
+                            tools.ToolError("ASSERT_FAIL", "1 项断言未过", fails=["x"])))
+    r = flow.run("fake.xlsx", out_root=out, run_dir=tmp_path / "run")
+
+    assert r.status == states.ESCALATED
+    assert not r.superseded
+    assert (d / "报告初稿_202607（试排）.docx").exists(), "没被覆盖过的稿件不该被撤下"
+    assert not (d / flow.SUPERSEDED_DIR).exists()
+
+
+# —— 两条路径必须用同一份口径：演示站走 `run_pipeline.py` 直跑，不走 agent/flow.py ——
+def test_成品撤下与解析落盘的顺序被钉住():
+    """结构性防回归。这两处的顺序是这次修的 bug 本体，翻回去不抛异常、只静默产错报告：
+
+      · `run_parse` 必须先过断言闸再 `write_outputs`；
+      · `run_pipeline` 必须在 `write_outputs` 之前撤成品。
+    """
+    repo = pathlib.Path(__file__).resolve().parents[1]
+    tools_src = (repo / "src" / "agent" / "tools.py").read_text(encoding="utf-8")
+    body = tools_src[tools_src.index("def run_parse"):]
+    assert body.index("if not ok:") < body.index("write_outputs("), \
+        "run_parse 又开始先落盘后判断言了 —— 失败运行会在产物目录留半成品"
+
+    pipe_src = (repo / "src" / "run_pipeline.py").read_text(encoding="utf-8")
+    assert "quarantine_final_products" in pipe_src, \
+        "直跑路径（演示站主路径）漏了撤成品这一步"
+    assert pipe_src.index("quarantine_final_products") < pipe_src.index("write_outputs("), \
+        "直跑路径必须先撤成品再写盘"
+
+
+def test_成品定义只有一处_两路径不各写一套():
+    import parse_ledger
+    assert flow.SUPERSEDED_DIR == parse_ledger.SUPERSEDED_DIR
+    assert tuple(flow.FINAL_PRODUCTS) == tuple(parse_ledger.FINAL_PRODUCTS)
+
+
+# ============================================================ 9. 原件只读护栏（运行期）
+# 测试里的 sha256 断言只证明"我测的那条路径没改台账"。运行期这条护栏覆盖所有路径。
+def test_台账被改写时运行期护栏拦停(monkeypatch, tmp_path):
+    led = tmp_path / "监测表.xlsx"
+    led.write_bytes(b"v1")
+
+    def behaviour(step, ctx, result):
+        pathlib.Path(ctx["ledger"]).write_bytes(b"v2")      # 模拟原件被改写
+        return {"ok": True, "period": "202607", "out_dir": str(tmp_path / "o")}
+
+    monkeypatch.setattr(flow, "_invoke", behaviour)
+    r = flow.run(str(led), out_root=tmp_path / "out", run_dir=tmp_path / "run")
+
+    assert r.status == states.ESCALATED, "原件被改写，本次结论不可采信"
+    assert r.failure and r.failure["step"] == "guard"
+    doc = (tmp_path / "run" / "诊断报告.md").read_text(encoding="utf-8")
+    assert "原件只读护栏" in doc and "台账指纹" in doc
+    assert b"v1" != led.read_bytes()      # 自证：护栏确实是在"真被改了"之后触发的
+
+
+def test_台账没动时护栏不误报(monkeypatch, tmp_path):
+    """阳性对照。护栏要是见谁都拦，那就不是护栏，是停机键。"""
+    led = tmp_path / "监测表.xlsx"
+    led.write_bytes(b"v1")
+    monkeypatch.setattr(flow, "_invoke",
+                        lambda step, ctx, result: {"ok": True, "period": "202607",
+                                                   "out_dir": str(tmp_path / "o")})
+    r = flow.run(str(led), out_root=tmp_path / "out", run_dir=tmp_path / "run")
+    assert r.status == states.COMPLETED
+    assert r.ledger_sha256 and len(r.ledger_sha256) == 64
+
+
+# ============================================================ 10. 规则库故障 vs 无匹配
+def test_规则库坏掉时报库故障而非无匹配(tmp_path):
+    """两者都会让自愈"什么也没做"，但人工要去的方向相反：修规则库 vs 看台账。"""
+    r = heal.attempt(_assert_fail("宽表 total_cites 学科数=22 (实际 21，缺 ['Chemistry'])"),
+                     {"run_dir": str(tmp_path)},
+                     rules_path=tmp_path / "并没有这个文件.yaml")
+    assert r is not None, "库坏了不能等同于「没有匹配规则」"
+    assert "规则库不可用" in r["library_error"]
+    assert not r["overlay"], "库都读不出来，不能假装有方案"
+    assert "规则库不可用" in (tmp_path / "repair.yaml").read_text(encoding="utf-8")
+
+
+def test_规则库坏掉时轨迹不写成规则命中(monkeypatch, tmp_path):
+    why = "规则库不可用：规则库 YAML 解析失败"
+    monkeypatch.setattr(flow, "_heal_hook", lambda failure, ctx: {
+        "rules": [], "overlay": {}, "advice": [], "outcome": "refused",
+        "library_error": why, "refused": [{"rule": None, "why": why}]})
+
+    def behaviour(step, ctx, result):
+        if step["id"] == "parse":
+            raise tools.ToolError("ASSERT_FAIL", "1 项断言未过", fails=["x"])
+        return {"ok": True, "period": "202607"}
+
+    monkeypatch.setattr(flow, "_invoke", behaviour)
+    r = flow.run("fake.xlsx", out_root=tmp_path / "out", run_dir=tmp_path / "run")
+
+    assert r.status == states.ESCALATED
+    events = (tmp_path / "run" / "agent_events.jsonl").read_text(encoding="utf-8")
+    assert "规则库不可用" in events
+    assert "规则命中但不能执行" not in events, \
+        "库坏了却被写成「规则命中」，会让人拿着这条去台账里找一个并不存在的脏例"
+    doc = (tmp_path / "run" / "诊断报告.md").read_text(encoding="utf-8")
+    assert "## 规则库不可用" in doc

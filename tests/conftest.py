@@ -12,6 +12,12 @@
 跑法：
     uv run pytest                 # 全跑
     uv run pytest -m "not slow"   # 跳过端到端
+
+跳过不是无声的
+--------------------------------------------------------------------------------
+本文件末尾的 `pytest_sessionfinish` 会把"跳过了几条、理由是否成立"复核一遍：
+每次跳过都登记了复核探针（见 `_guard_registry.py`），**只要探针说那个资源还在，
+会话就判失败**。防的是"路径写错 → 整组守卫静默 skip → pytest 全绿"。
 """
 import pathlib
 import sys
@@ -19,6 +25,12 @@ import sys
 import pytest
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
+
+_TESTS_DIR = str(pathlib.Path(__file__).resolve().parent)
+if _TESTS_DIR not in sys.path:
+    sys.path.insert(0, _TESTS_DIR)
+
+from _guard_registry import outstanding, skip_unless, stats   # noqa: E402
 
 
 def _ensure_path():
@@ -48,6 +60,10 @@ def _out_dirs():
     return sorted(p for p in d.glob("20*") if p.is_dir())
 
 
+def _reports():
+    return [p for d in _out_dirs() for p in d.glob("报告初稿*.docx")]
+
+
 @pytest.fixture(scope="session")
 def repo():
     return REPO
@@ -58,7 +74,8 @@ def all_ledgers():
     """全部可用台账；一个都没有则 skip。"""
     leds = _ledgers()
     if not leds:
-        pytest.skip("input/ 下无台账（馆员数据不入库，属正常）")
+        skip_unless("input/ 下无台账（馆员数据不入库，属正常）",
+                    lambda: bool(_ledgers()))
     return leds
 
 
@@ -71,14 +88,39 @@ def latest_ledger(all_ledgers):
 def out_dirs():
     dirs = _out_dirs()
     if not dirs:
-        pytest.skip("out/ 下无历史产物")
+        skip_unless("out/ 下无历史产物", lambda: bool(_out_dirs()))
     return dirs
 
 
 @pytest.fixture(scope="session")
 def reports(out_dirs):
     """历史产物中的报告初稿 docx。"""
-    rs = [p for d in out_dirs for p in d.glob("报告初稿*.docx")]
+    rs = _reports()
     if not rs:
-        pytest.skip("out/ 下无报告初稿 docx")
+        skip_unless("out/ 下无报告初稿 docx", lambda: bool(_reports()))
     return rs
+
+
+# ---------------------------------------------------------------- 会话收尾复核
+def pytest_sessionfinish(session, exitstatus):
+    """把"跳过"从静默降级变成可核验的缺席。
+
+    只要有一条跳过站不住脚（探针说资源其实在），整个会话判失败 ——
+    这类错的症状就是"测试全绿但少跑了几十条"，唯一能让它现形的时机是收尾。
+    """
+    n_skips, n_bad = stats()
+    tr = session.config.pluginmanager.get_plugin("terminalreporter")
+    if not n_skips:
+        return
+    if n_bad:
+        if tr:
+            tr.write_sep("=", "守卫体检未过", red=True, bold=True)
+            for reason in outstanding():
+                tr.write_line(f"  · 跳过站不住脚：{reason}", red=True)
+            tr.write_line("  这些用例跳过了，但它们依赖的资源其实在仓库里 ——"
+                          " 多半是路径/常量写错了，不是数据缺失。", red=True)
+        session.exitstatus = 1
+        return
+    if tr:
+        tr.write_line(f"守卫体检：跳过 {n_skips} 条，均有可核验的缺席理由（探针已复核）")
+

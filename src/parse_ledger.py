@@ -10,6 +10,7 @@
 import json
 import re
 import sys
+import time
 from pathlib import Path
 
 import openpyxl
@@ -545,6 +546,56 @@ def _jsonable(o):
     if o is None or isinstance(o, (str, int, float, bool)):
         return o
     return str(o)
+
+
+#: 一次运行的**成品** —— 只有它们会被当报告看。中间产物（宽表 / 大表 / 图）每一步都
+#: 直接覆盖同名文件，留旧的无害；成品则必须先撤下：否则一次在 charts / docx 步失败的
+#: 运行会留下「本次的新宽表 + 上一次的旧报告」，看板照旧展示旧报告、对勘本拿旧槽位配
+#: 新格子，而页面上没有任何警报（2026-09-16 取证复现）。
+FINAL_PRODUCTS = ("报告初稿_*.docx", "红色件清单.md", "red_slots.json")
+
+#: 撤下的成品去哪。放期次目录**内部**而不是 `out/` 下：让"这一期的历史版本"跟着这一期走，
+#: 人工翻档不用两头找；也避开 `out/` 根目录的期次发现逻辑（`server.jobs.PERIOD_DIR_RE`
+#: 只认六位数字开头的目录名，`_superseded` 不会被当成一期）。
+SUPERSEDED_DIR = "_superseded"
+
+
+def quarantine_final_products(out_dir, run_dir=None):
+    """把期内已有的成品挪进 `_superseded/<时间戳>/`，返回挪走的文件名。
+
+    时机是这件事的全部：必须在**本次确定要改写这个期次目录之后、写成品之前**做。
+
+    - 挪早了（比如解析之前）：一次注定失败的运行会把上一版好报告也藏起来，
+      而它其实一个字节都没被覆盖过。
+    - 挪晚了（写完成品之后）：等于没挪。
+
+    两条调用路径（`agent/flow.py` 的编排、`run_pipeline.py` 的直跑）都在"当期算出来了"
+    的那一刻调它，口径因此一致：**成品只在它所在目录开始被本次运行改写之后才撤下**。
+    若解析这一步就没过（目录压根没被碰过），上一版继续有效。
+    """
+    out = Path(out_dir)
+    if not out.is_dir():
+        return []
+    todo = [p for pat in FINAL_PRODUCTS for p in out.glob(pat) if p.is_file()]
+    if not todo:
+        return []
+    dst = out / SUPERSEDED_DIR / time.strftime("%Y%m%dT%H%M%S")
+    try:
+        dst.mkdir(parents=True, exist_ok=True)
+        moved = []
+        for p in todo:
+            p.replace(dst / p.name)
+            moved.append(p.name)
+        (dst / "_来源.txt").write_text(
+            f"{time.strftime('%Y-%m-%d %H:%M:%S')}：{out.name} 期开始一次新运行，"
+            f"旧成品先撤到这里。\n"
+            f"发起方运行目录：{run_dir or '（未提供）'}\n"
+            f"若那次运行失败，本期期内将**没有**成品（＝未出稿），"
+            f"而不是让看板继续展示这一版 —— 因为期内其余文件已经是新数据了。\n",
+            encoding="utf-8")
+        return sorted(moved)
+    except OSError:
+        return []          # 搬迁/留痕失败不阻断生产（与 agent/trace.py 同口径）
 
 
 def write_outputs(ledger, path, out_dir):
