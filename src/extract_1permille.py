@@ -71,7 +71,12 @@ DISC_FILES = {
 }
 OVERALL_FILE = "Institutions.xlsx"          # 全校整体（台账不存，仅供信息）
 
-DEFAULT_DATA_ROOT = REPO.parent / "数据与复现" / "202601-03ESI数据"
+#: ESI 原始包根目录：其**子目录名即期次**（如 `<root>/202601/Chemistry.xlsx`）。
+#: 2026-09-16 原始包由 `数据与复现/202601-03ESI数据/<期次>/` 改为
+#: `数据与复现/<期次>/`（每期一个目录），此处随之更新。
+#: 常量过期不会报错，只会让 1‰ 取位守卫**静默跳过**（`tests/test_permille_rule.py`
+#: 四例全 skip），故一并把断言写进 tests。
+DEFAULT_DATA_ROOT = REPO.parent / "数据与复现"
 DEFAULT_LEDGERS = [
     REPO.parent / "数据与复现" / "云大全学科排名、阈值动态检测表.xlsx",
     REPO / "input" / "202607" / "监测表.xlsx",

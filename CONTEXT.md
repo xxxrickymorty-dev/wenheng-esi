@@ -72,6 +72,10 @@
 
 - **ESI 1% 阈值 = 榜单末位 Cites**；**1‰ 阈值 = 榜单第 ⌊(m+1)/10⌋ 位** Cites
   （`+1` 是因为馆员表含表头行，用 ⌊m/10⌋ 会差 1 位）。工具：`src/extract_1permille.py`。
+- ⚠ **`extract_1permille.DEFAULT_DATA_ROOT` 指向「子目录名即期次」的那一层**。
+  2026-09-16 原始包由 `数据与复现/202601-03ESI数据/<期次>/` 改为 `数据与复现/<期次>/`；
+  常量过期**不报错**，只会让 `test_permille_rule.py` 整组**静默 skip**（守卫生效 0）。
+  `test_数据根常量指向真正含期次的那一层` 现在盯着这件事——再挪目录它会响亮地红。
 - ESI 原始导出的**单元格是文本**，必须自行转数。
 - 阈值**不单调**（202603→202605 回落是真实回落，不是 bug）。
 - 预测有**两条线，别混**：生产线 = 方法 B（`src/forecast.py`）；研究线 = 五模型按学科选模
@@ -81,7 +85,7 @@
 ## 验收三件套（改状态相关代码后按序跑）
 
 ```bash
-.venv\Scripts\python.exe -m pytest -m ""          # 全量 155 例（默认 153 例，跳过 2 个 slow）
+.venv\Scripts\python.exe -m pytest -m ""          # 全量 156 例（默认 154 例，跳过 2 个 slow）
 uvicorn server.app:app --port 8080                 # 起服务后跑 server/e2e_check.py（只读 96 断言）
 .venv\Scripts\python.exe tools/verify_demo_run.py <期次>   # 写路径验收
 ```

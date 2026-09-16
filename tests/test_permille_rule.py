@@ -10,9 +10,13 @@
 这个 `+1` 曾让 Materials / Microbiology 两学科各偏 1 位，
 改成 ⌊(m+1)/10⌋ 后才 23/23 全中。所以这里必须焊死。
 
-数据来自 `../数据与复现/202601-03ESI数据/`（仓库外），
-缺失时整组自动 skip。
+数据来自 `../数据与复现/<期次>/`（仓库外，2026-09-16 起每期一个目录；
+此前是 `../数据与复现/202601-03ESI数据/<期次>/`），缺失时整组自动 skip。
+⚠ 路径常量过期时**不报错、只静默跳过**——整整一组守卫会无声消失，
+所以 `test_数据根目录存在且含期次子目录` 专门盯着这件事。
 """
+import pathlib
+
 import pytest
 
 import extract_1permille
@@ -40,6 +44,24 @@ def ledger():
         if p.exists():
             return p
     pytest.skip("台账不在仓库内")
+
+
+def test_数据根常量指向真正含期次的那一层():
+    """**守卫静默失效**的元凶就是"常量指向了一层旧目录"——不报错，整组 skip。
+
+    这里不猜目录名：先问工作区里哪一层直接含期次子目录，再要求常量指那一层。
+    2026-09-16 实例：原始包由 `数据与复现/202601-03ESI数据/<期次>/` 改为
+    `数据与复现/<期次>/`，常量没跟着改，本文件 4 例守卫无声消失。
+    """
+    ws = pathlib.Path(__file__).resolve().parents[2]
+    period_dirs = [p for p in (ws / "数据与复现").rglob("[0-9]" * 6) if p.is_dir()]
+    if not period_dirs:
+        pytest.skip("工作区里没有 ESI 期次目录（原始包不入库，属正常）")
+    layers = {p.parent for p in period_dirs}
+    assert extract_1permille.DEFAULT_DATA_ROOT in layers, (
+        f"期次目录所在层是 {sorted(str(p) for p in layers)}，"
+        f"而 DEFAULT_DATA_ROOT = {extract_1permille.DEFAULT_DATA_ROOT} —— "
+        f"过期常量会让整套 1‰ 取位守卫静默 skip")
 
 
 class TestNum:
