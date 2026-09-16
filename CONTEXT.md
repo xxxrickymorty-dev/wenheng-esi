@@ -16,7 +16,7 @@
 | 路径 | 作用 |
 |---|---|
 | `src/` | 确定性流水线（解析台账 → 算大表 → 预测回测 → 渲染图 → 替换母版） |
-| `src/agent/` | Agent 层：`states.py`(状态机) / `tools.py`(工具契约) / `flow.py`(编排) / `trace.py` |
+| `src/agent/` | Agent 层：`states.py`(状态机) / `tools.py`(工具契约) / `flow.py`(编排) / `heal.py`(自愈) / `trace.py` / `rules/repair_rules.yaml`(自愈规则库) |
 | `server/` | FastAPI + Jinja2 看板（服务端渲染） |
 | `master/` | **结构金母版** `学科信息参考母版_2026第5期.docx`，必须入库 |
 | `tools/` | 校验脚本（单一来源），如 `verify_demo_run.py`、`crossing_by_report.py` |
@@ -55,6 +55,9 @@
 2. 《云大全学科排名、阈值动态检测表.xlsx》是**唯一事实源**，馆员手工维护。
    **禁止用 openpyxl 存盘改它**（会丢 6 张图表、条件格式、打印设置）——只能 zip 级 XML 替换，改前备份。
    新期次列**贴在已有列后面**，按列追加，绝不覆盖历史。
+   **自愈同样改不了它**：`heal.py` 只产出「解析 overlay」（改变*怎么读*），台账文件在任何自愈路径上
+   都不变（`tests/test_agent_heal.py` 用 sha256 钉住）。规则库 `approved_by` 为空 = 未授权，
+   命中也不执行（`RULE_UNAPPROVED`），只往《诊断报告》写建议。
 3. **状态口径唯一来源**是 `src/agent/states.py`（10 态）；`server/jobs.py` 的 `TERMINAL` 直接引用，不许复制。
 4. **两套状态词别混**：
    - 任务级 10 态：`pending / running / retrying / stalled / waiting_approval / completed / warned / escalated / failed / cancelled`
@@ -78,7 +81,7 @@
 ## 验收三件套（改状态相关代码后按序跑）
 
 ```bash
-.venv\Scripts\python.exe -m pytest -m ""          # 122 例（默认 120 例，-m "" 含 e2e）
+.venv\Scripts\python.exe -m pytest -m ""          # 全量 155 例（默认 153 例，跳过 2 个 slow）
 uvicorn server.app:app --port 8080                 # 起服务后跑 server/e2e_check.py（只读 96 断言）
 .venv\Scripts\python.exe tools/verify_demo_run.py <期次>   # 写路径验收
 ```
@@ -93,7 +96,8 @@ uvicorn server.app:app --port 8080                 # 起服务后跑 server/e2e_
 | L1 | `SRS R-19` 要求 `approval.json` 含 `red_slots_sha256` | ❌ **未实现**：实际只有 `fingerprint: {文件名: "size:mtime"}`，全库零处 `sha256`。属实质缺口（内容变了而 size/mtime 没变就查不出来），**待决定是否本期补** |
 | L3 | 待裁决 13 号：两维度结论不一致时预测章以谁为准 | 待裁 |
 | L4 | #11 已定口径确认人＝卜彤，须当面知会馆员 | 待做 |
-| — | `src/agent/heal.py`（M3 自愈）、`audit.py` + `rules/repair_rules.yaml` | 未开工，**需先由人工手写验收标准** |
+| — | M3 自愈 | ✅ **已完成**（`187426a`）：`heal.py` + `rules/repair_rules.yaml`（6 条规则）+ `tests/test_agent_heal.py`（33 例，含真实台账端到端脏例）。2 条 auto 已生效；**2 条 declare 待卜彤填 `approved_by` 才生效**；2 条 never 只出建议 |
+| — | M4 审计闭环：`audit.py` / `scan_stale` / `collect_artifacts` / `out/_archive/` | 未开工 |
 | — | M4b 学院统计（`src/college_stats.py`，即 F34） | 已顺延 v2.0（赛后） |
 | — | M6 公网部署 | 未开工 |
 | — | `out/_archive/`（M4 期次归档） | 未开工 |
