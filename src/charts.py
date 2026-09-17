@@ -5,12 +5,14 @@
   1. 窗口＝**当期往前 7 期**（含当期）；期次标签写六位数字 `202507`，水平排列。
   2. 字体＝西文 **Times New Roman** + 中文 **宋体**（原件观感；服务器走 Noto Serif CJK）。
   3. **每点/每柱标数值**；图例**无框**——多系列在图内顶部居中，单系列在右上。
-  4. 纵轴：图1 **反向**（百分位下降＝上升趋势）；图2 固定 **0.5–2**；
-     图3/4/5 刻度 1:1 抄原件（逐图硬编码）。
+  4. 纵轴：图1 **反向**（百分位下降＝上升趋势）；**原件口径是「逐学科自适应」**——
+     数据完全落在原件基准区间内时沿用基准刻度（保 1:1），越界则按整齐步长向外扩，
+     保证任何学科都不会被裁成空白图（见 `_fit_axis`，2026-09-17 修 P0）。
   5. 颜色：系列1 蓝 `#4472C4`、系列2 绿 `#70AD47`、系列3 黄 `#FFC000`；只留左/下轴脊。
 
 图幅固定 8.26×5.50 cm @300dpi — 与母版槽位一致，**不随原件截图比例改动**（改这里要跑全套验收）。
 """
+import math
 import pathlib
 import re
 
@@ -146,6 +148,67 @@ def _legend_ur(ax, ncol=1):
               borderaxespad=0.4)
 
 
+# ---------- 纵轴自适应（原件口径＝逐学科自适应，而非全局常量）----------
+_NICE_MULTS = (1, 2, 2.5, 5, 10)
+
+
+def _nice_step(span, min_step, max_labels=8):
+    """挑一个整齐步长：刻度数 ≤ max_labels，且不小于 min_step。"""
+    span = abs(float(span)) or 1.0
+    raw = span / max(1, max_labels - 1)
+    mag = 10.0 ** math.floor(math.log10(raw))
+    for m in _NICE_MULTS:
+        s = m * mag
+        if s >= min_step and span / s <= max_labels - 1:
+            return s
+    s = mag * 10
+    while span / s > max_labels - 1:
+        s *= 2
+    return s
+
+
+def _fit_axis(vals, base, min_step, max_labels=8, pad=0.05):
+    """纵轴 (lo, hi, step)。
+
+    数据**完全**落在原件基准区间 `base` 内 → 原样返回基准且 `step=None`
+    （调用处继续保持原口径，这就是 1:1 复刻）；越界 → 与基准区间求并，
+    再按整齐步长向外扩到能容下全部数据。
+
+    🔴 2026-09-17 修 P0：原先把 Chemistry 样本的纵轴当成了全学科常量，
+    结果图1 有 10 科、图5 有 13 科、图4 有 1 科的数据整个落在轴外 → 渲染成**空白图**。
+    """
+    vs = [float(v) for v in vals if v is not None and not pd.isna(v)]
+    if not vs:
+        return base[0], base[1], None
+    lo_d, hi_d = min(vs), max(vs)
+    b_lo, b_hi = base
+    if b_lo <= lo_d and hi_d <= b_hi:
+        return b_lo, b_hi, None
+    lo, hi = lo_d, hi_d
+    if lo_d < b_hi and hi_d > b_lo:            # 与基准区间相交 → 把基准并进来
+        lo, hi = min(lo, b_lo), max(hi, b_hi)
+    span = (hi - lo) or (abs(hi) or 1.0)
+    lo, hi = lo - span * pad, hi + span * pad
+    step = _nice_step(hi - lo, min_step, max_labels)
+    return (math.floor(lo / step + 1e-9) * step,
+            math.ceil(hi / step - 1e-9) * step, step)
+
+
+def _apply_yaxis(ax, lo, hi, step, fmt=None, invert=False):
+    """套用自适应纵轴；step 为 None 表示沿用调用处的原件刻度，这里不动。"""
+    if step is None:
+        return
+    if invert:
+        ax.set_ylim(hi, lo)
+    else:
+        ax.set_ylim(lo, hi)
+    n = int(round((hi - lo) / step)) + 1
+    ticks = [round(lo + i * step, 10) for i in range(n)]
+    ax.set_yticks(ticks)
+    if fmt:
+        ax.set_yticklabels([fmt.format(v) for v in ticks])
+
+
 # ---------- C1 国内外排名百分位趋势 ----------
 def chart_rank_pct(rank_intl, rank_cn, disc, out_png, periods):
     periods = _avail(rank_intl, periods)
@@ -161,9 +224,13 @@ def chart_rank_pct(rank_intl, rank_cn, disc, out_png, periods):
     _xticks(ax, periods)
     _labels(ax, x, ri, "{:.2f}%")
     _labels(ax, x, rc, "{:.2f}%")
-    ax.set_ylim(40, 20)                      # 反向：数值越小（排名越好）越靠上
-    ax.set_yticks([20, 25, 30, 35, 40])
-    ax.set_yticklabels(["20%", "25%", "30%", "35%", "40%"])
+    ylo, yhi, ystep = _fit_axis(list(ri) + list(rc), (20, 40), min_step=5)
+    if ystep is None:
+        ax.set_ylim(40, 20)                  # 反向：数值越小（排名越好）越靠上
+        ax.set_yticks([20, 25, 30, 35, 40])
+        ax.set_yticklabels(["20%", "25%", "30%", "35%", "40%"])
+    else:
+        _apply_yaxis(ax, ylo, yhi, ystep, fmt="{:.0f}%", invert=True)
     _title(ax, "国内外排名百分位趋势")
     _legend_top(ax)
     _save(fig, out_png)
@@ -184,9 +251,13 @@ def chart_cnci(cnci, disc, out_png, periods):
     _xticks(ax, periods)
     _labels(ax, x, v, "{:.2f}")
     _labels(ax, x, base, "{:.0f}")
-    ax.set_ylim(0.5, 2.0)                    # 原件口径：基准线 1 落在约 1/3 高处
-    ax.set_yticks([0.5, 0.6, 0.9, 1.2, 1.5, 1.8, 2.0])
-    ax.set_yticklabels(["0.5", "0.6", "0.9", "1.2", "1.5", "1.8", "2"])
+    ylo, yhi, ystep = _fit_axis(list(v) + [1.0], (0.5, 2.0), min_step=0.1)
+    if ystep is None:
+        ax.set_ylim(0.5, 2.0)                # 原件口径：基准线 1 落在约 1/3 高处
+        ax.set_yticks([0.5, 0.6, 0.9, 1.2, 1.5, 1.8, 2.0])
+        ax.set_yticklabels(["0.5", "0.6", "0.9", "1.2", "1.5", "1.8", "2"])
+    else:
+        _apply_yaxis(ax, ylo, yhi, ystep, fmt="{:.3g}")
     _title(ax, "CNCI 变化情况")
     _legend_top(ax)
     _save(fig, out_png)
@@ -205,8 +276,12 @@ def chart_papers_delta(papers, disc, out_png, periods):
     _style(ax)
     _xticks(ax, ps)
     _labels(ax, x, d, "{:.0f}")
-    ax.set_ylim(-90, 120)
-    ax.set_yticks([-90, -60, -30, 0, 30, 60, 90, 120])
+    ylo, yhi, ystep = _fit_axis(list(d), (-90, 120), min_step=10)
+    if ystep is None:
+        ax.set_ylim(-90, 120)
+        ax.set_yticks([-90, -60, -30, 0, 30, 60, 90, 120])
+    else:
+        _apply_yaxis(ax, ylo, yhi, ystep, fmt="{:.0f}")
     _title(ax, "新增发文量（篇）")
     _legend_ur(ax)
     _save(fig, out_png)
@@ -227,9 +302,13 @@ def chart_cites_threshold(cites, threshold, disc, out_png, periods):
     _xticks(ax, periods)
     _labels(ax, x, c, "{:.0f}")   # 原件数据标签无千分位（轴刻度才有）
     _labels(ax, x, t, "{:.0f}")
-    ax.set_ylim(5000, 50000)
-    ax.set_yticks([5000, 10000, 20000, 30000, 40000, 50000])
-    ax.set_yticklabels(["5,000", "10,000", "20,000", "30,000", "40,000", "50,000"])
+    ylo, yhi, ystep = _fit_axis(list(c) + list(t), (5000, 50000), min_step=500)
+    if ystep is None:
+        ax.set_ylim(5000, 50000)
+        ax.set_yticks([5000, 10000, 20000, 30000, 40000, 50000])
+        ax.set_yticklabels(["5,000", "10,000", "20,000", "30,000", "40,000", "50,000"])
+    else:
+        _apply_yaxis(ax, ylo, yhi, ystep, fmt="{:,.0f}")
     _title(ax, "被引频次与 ESI 阈值变化")
     _legend_ur(ax, ncol=2)
     _save(fig, out_png)
@@ -245,8 +324,12 @@ def chart_top_papers(top, disc, out_png, periods):
     _style(ax)
     _xticks(ax, periods)
     _labels(ax, x, v, "{:.0f}")
-    ax.set_ylim(30, 45)                      # 原件口径：截断轴，不从 0 起
-    ax.set_yticks(list(range(30, 46)))
+    ylo, yhi, ystep = _fit_axis(list(v), (30, 45), min_step=1)
+    if ystep is None:
+        ax.set_ylim(30, 45)                  # 原件口径：截断轴，不从 0 起
+        ax.set_yticks(list(range(30, 46)))
+    else:
+        _apply_yaxis(ax, ylo, yhi, ystep, fmt="{:.0f}")
     _title(ax, "顶尖论文量（篇）")
     _legend_ur(ax)
     _save(fig, out_png)
@@ -285,8 +368,13 @@ def chart_q_dist(q1q4, disc, out_png, period):
     _style(ax)
     ax.set_xticks(centers)
     ax.set_xticklabels(["Q1", "Q2", "Q3", "Q4"], fontsize=FONT_SIZE)
-    ax.set_ylim(0, 60)
-    ax.set_yticks([0, 10, 20, 30, 40, 50, 60])
+    flat = [v for row in vals.values() for v in row]
+    ylo, yhi, ystep = _fit_axis(flat, (0, 60), min_step=5)
+    if ystep is None:
+        ax.set_ylim(0, 60)
+        ax.set_yticks([0, 10, 20, 30, 40, 50, 60])
+    else:
+        _apply_yaxis(ax, ylo, yhi, ystep, fmt="{:.0f}")
     _title(ax, "学科发文期刊分区占比情况")
     _legend_top(ax, ncol=3)              # 原件图 6 图例在顶部居中（不是右上）
     _save(fig, out_png)
