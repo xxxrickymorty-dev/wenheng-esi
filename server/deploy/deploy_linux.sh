@@ -8,6 +8,12 @@
 #   sudo bash server/deploy/deploy_linux.sh [公网URL]
 #   例：sudo bash server/deploy/deploy_linux.sh http://116.62.37.161:8080
 #
+# 🔴 若该机是「nginx 占 8080、反代到 uvicorn 8081」的拓扑（116.62.37.161 就是这样），
+#    **必须显式给 PORT=8081**，否则 uvicorn 去绑 8080 会和 nginx 撞，
+#    日志只有一行 `[Errno 98] address already in use`，外部看到的是 nginx 的 502：
+#       sudo PORT=8081 bash server/deploy/deploy_linux.sh http://116.62.37.161:8080
+#    （下面的「0.1 端口预检」会在撞之前拦住你）
+#
 # 前置条件：
 #   ① 部署包已解包到 /opt，即 /opt/wenheng/pyproject.toml 存在
 #      （tar -C /opt -xzf wenheng-deploy-*.tar.gz）
@@ -50,6 +56,19 @@ DEPS=(
 
 log "目标：APP_DIR=$APP_DIR  服务用户=$SVC_USER  端口=$PORT"
 [ -n "$PUBLIC_URL" ] && log "公网地址：$PUBLIC_URL" || warn "未传公网地址，二维码/说明书里的链接需事后补进 server/.env"
+
+# ------------------------------------------------- 0.1 端口占用预检（别再踩 502）
+# uvicorn 绑不上端口时**不会**让脚本失败——它只在 journal 里留一行 `[Errno 98]`，
+# systemd 反复重启，外部拿到的是 nginx 的 502，很容易误判成「代码有 bug」。
+# 已知拓扑：116.62.37.161 上 nginx 占 8080 并反代到 127.0.0.1:8081。
+if command -v ss >/dev/null 2>&1; then
+  HOLDER="$(ss -lntp 2>/dev/null | awk -v p=":$PORT\$" '$4 ~ p {print $NF}' | head -1)"
+  if [ -n "$HOLDER" ] && ! printf '%s' "$HOLDER" | grep -qi 'python'; then
+    die "端口 $PORT 已被占用：$HOLDER
+    本机若是「nginx 占 $PORT、反代到 uvicorn」的拓扑，请显式改用后端端口重跑，例如：
+      sudo PORT=8081 bash $0 ${PUBLIC_URL:-http://<公网IP>:$PORT}"
+  fi
+fi
 
 # ------------------------------------------------------- 1. 系统包（字体优先）
 # 中文字体是硬需求：缺了之后 matplotlib 出的图表中文全变方框，报告没法看。
