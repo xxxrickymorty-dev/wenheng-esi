@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}对勘本 · {{ data.period }} · 文衡{% endblock %}
 {% block sub %}学科信息参考 · 对 勘 本{% endblock %}
-{% block head %}<link rel="stylesheet" href="/static/collation.css">{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ asset('collation.css') }}">{% endblock %}
 {% block body_attrs %}class="whc-body"{% endblock %}
 {% block content %}
 
@@ -25,5 +25,5 @@
 {% endblock %}
 {% block scripts %}
 <script>window.__COLLATION__ = {{ data | tojson }};</script>
-<script src="/static/collation.js"></script>
+<script src="{{ asset('collation.js') }}"></script>
 {% endblock %}

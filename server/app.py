@@ -6,6 +6,7 @@
 """
 import asyncio
 import codecs
+import hashlib
 import io
 import json
 import pathlib
@@ -34,6 +35,46 @@ app = FastAPI(title="文衡 · 学科信息参考自动化演示", docs_url="/ap
 app.add_middleware(SessionMiddleware, secret_key=config.SECRET, same_site="lax")
 app.mount("/static", StaticFiles(directory=str(config.SERVER_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(config.SERVER_DIR / "templates"))
+
+
+# ---- 静态资源不能被浏览器自作主张缓存（2026-09-17）----------------------------
+# 踩过的坑：改完 collation.js/collation.css 重启服务、curl 也验过服务器发的是新文件，
+# 但页面上就是没变化。原因是 StaticFiles **只发 etag/last-modified、不发 Cache-Control**，
+# 浏览器于是套用「启发式新鲜度」（约等于距上次修改时间的 10%）—— 旧 JS 在本地缓存里
+# 能活好几个小时，**期间根本不回服务器问**。表现出来就是「功能好像没做」。
+# 双保险：① 模板里的 URL 带 `?v=<指纹>`，资源一变 URL 就变，缓存必然失效；
+# ② 静态响应一律 no-cache，即便有人手写了个不带版本的地址，也必须回源校验。
+@app.middleware("http")
+async def _static_revalidate(request: Request, call_next):
+    resp = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
+_ASSET_STAMP = {}
+
+
+def asset(name):
+    """静态资源 URL，带按（体积, 修改时间）算出的版本号。`name` 是 `/static/` 下的相对路径。
+
+    文件不在就退化成不带版本号的地址 —— 宁可 404 让人看见，也不要编个假版本号。
+    """
+    p = config.SERVER_DIR / "static" / name
+    try:
+        st = p.stat()
+        key = (st.st_size, st.st_mtime_ns)
+    except OSError:
+        return f"/static/{name}"
+    hit = _ASSET_STAMP.get(name)
+    if hit is None or hit[0] != key:
+        tag = hashlib.sha1(f"{key[0]}:{key[1]}".encode()).hexdigest()[:10]
+        hit = (key, tag)
+        _ASSET_STAMP[name] = hit
+    return f"/static/{name}?v={hit[1]}"
+
+
+templates.env.globals["asset"] = asset
 
 # ---- 状态口径注入模板（2026-09-15）------------------------------------------
 # 唯一来源是 `src/agent/states.py`。模板里**不要再写** {'done':'完成', ...} 这类

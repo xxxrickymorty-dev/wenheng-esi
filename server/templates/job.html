@@ -93,4 +93,4 @@ window.__STATUS_LABELS__ = {{ status_labels | tojson }};
 window.__TERMINAL__ = {{ terminal_states | tojson }};
 </script>
 {% endblock %}
-{% block scripts %}<script src="/static/job.js"></script>{% endblock %}
+{% block scripts %}<script src="{{ asset('job.js') }}"></script>{% endblock %}

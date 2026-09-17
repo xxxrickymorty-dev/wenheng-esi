@@ -200,9 +200,42 @@ def test_首页与控制台分家():
 
 
 # ============================================================ 前端不另立状态字典
+#: 本站脚本的两种合法写法：直接写 `/static/...`，或走 `asset()` 版本号助手
+#: （2026-09-17 起模板统一用后者，见 `test_静态资源引用都带版本号`）
+_OWN_SCRIPT = re.compile(r'^(?:/static/|\{\{\s*asset\()')
+
+
 def test_模板不引第三方脚本():
     for p in (SERVER / "templates").rglob("*.html"):
         text = p.read_text(encoding="utf-8")
         for src in re.findall(r'<script[^>]+src="([^"]+)"', text):
-            assert src.startswith("/static/"), \
+            assert _OWN_SCRIPT.match(src), \
                 f"{p.name} 引了非本站脚本：{src}（前端零依赖）"
+
+
+# ============================================================ 静态资源必须带版本号
+#: `href="/static/style.css"` 这种不带版本号的裸引用
+_BARE_ASSET = re.compile(r'(?:src|href)="/static/[^"]*\.(?:js|css)(?!\?v=)"')
+
+
+def test_静态资源引用都带版本号():
+    """模板里引用 JS/CSS 一律走 `asset()`，不许手写 `/static/x.js`。
+
+    为什么钉成断言（2026-09-17 真踩过）：`StaticFiles` 只发 etag/last-modified、
+    **不发 Cache-Control**，浏览器于是套用「启发式新鲜度」把 JS 缓存好几个小时且
+    不回源。改完 `collation.js`、服务器 curl 验过是新文件，页面上照样是旧样子，
+    看起来像「功能没做」，得按 Ctrl+F5 才见效——评审现场不能靠这个。
+    """
+    bad = []
+    for p in sorted((SERVER / "templates").rglob("*.html")):
+        for m in _BARE_ASSET.finditer(p.read_text(encoding="utf-8")):
+            bad.append(f"{p.name}: {m.group(0)}")
+    assert not bad, "以下引用没带版本号，浏览器会拿旧缓存：\n  " + "\n  ".join(bad)
+
+
+def test_asset助手给缺失文件降级不带版本号():
+    """文件不在就退化成不带版本号的地址——宁可 404 被看见，也不编假版本号骗缓存。"""
+    from server.app import asset
+
+    assert asset("style.css").startswith("/static/style.css?v=")
+    assert asset("__不存在的文件__.js") == "/static/__不存在的文件__.js"
