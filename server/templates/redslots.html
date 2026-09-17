@@ -31,7 +31,14 @@
         <td class="mono">{{ s.location }}</td>
         <td class="old">{{ s.old }}</td>
         <td class="new">{{ s.new }}</td>
-        <td class="src">{{ s.source }}</td>
+        <td class="src">
+          {% if s.chart_url %}
+          <a class="chart" href="{{ s.chart_url }}" target="_blank" rel="noopener" title="点击看原图（{{ s.new }}）">
+            <img src="{{ s.chart_url }}" alt="{{ s.new }}" loading="lazy">
+          </a>
+          {% endif %}
+          <span class="mono" style="font-size:11px">{{ s.source }}</span>
+        </td>
       </tr>
       {% endfor %}
     </tbody>

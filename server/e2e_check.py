@@ -309,6 +309,22 @@ if jobid:
           all(n in _jn for n in ("job/job.json", "job/progress.jsonl", "job/console.log")),
           str([n for n in _jn if n.startswith("job/")]))
 
+out("=== 13. 红件清单的图表预览与安全 ===")
+st, rs, _ = call("GET", "/p/202607/redslots")
+_imgs = re.findall(r'<img src="([^"]+)"', rs)
+check("图槽位渲染成图片（不再只是路径文本）", len(_imgs) >= 90, f"n={len(_imgs)}")
+if _imgs:
+    _st, _raw, _h = call_raw(_imgs[0])
+    check("图能取到且真是 PNG", _st == 200 and _raw[:4] == b"\x89PNG",
+          f"{_st} {(_h.get('content-type') or '')} {len(_raw)}B")
+    check("图响应带 PNG 的 Content-Type", "image/png" in (_h.get("content-type") or ""))
+# 这条路由直接服务磁盘文件，越界 = 任意文件读取（能读到 server/.env）
+for _bad in ("/p/202607/chart/../server/.env",
+             "/p/202607/chart/..%2Fserver%2F.env",
+             "/p/202607/chart/Chemistry/../../../.env"):
+    _s, _, _ = call("GET", _bad)
+    check(f"越界请求被拒 {_bad[-28:]}", _s == 404, f"got {_s}")
+
 out("=" * 56)
 if FAILS:
     out(f"结果：{len(FAILS)} 项未过")

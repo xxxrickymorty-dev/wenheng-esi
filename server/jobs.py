@@ -308,6 +308,43 @@ def resolve_period_artifact(period_dir, key):
                     config.OUT_DIR / period_dir, key)
 
 
+CHART_EXT = frozenset({".png"})
+
+
+def resolve_chart(out_dir, rel):
+    """把 `charts/<学科>/<图名>.png` 解析成磁盘路径；越界一律 None。
+
+    这个函数只有一件事：**拒绝一切越界请求**。`rel` 直接来自 URL，
+    放过一个 `..` 或绝对路径就是任意文件读取（能读到 `/opt/wenheng/server/.env`）。
+
+    三道闸：
+      1. 拒绝对路径与盘符（`(charts / "/etc/passwd")` 在 pathlib 下会**整体替换**
+         成绝对路径——不先挡住的话后面全白搭）；
+      2. 拒 `.` / `..` / 空段；
+      3. 解析后必须**真的落在** charts 目录里，且后缀是 .png。
+    """
+    if not rel:
+        return None
+    rel = str(rel).replace("\\", "/")
+    pp = pathlib.PurePosixPath(rel)
+    if pp.is_absolute() or ":" in (pp.parts[0] if pp.parts else ""):
+        return None
+    parts = [p for p in pp.parts if p not in ("", ".")]
+    if not parts or any(p == ".." for p in parts):
+        return None
+
+    charts = (pathlib.Path(out_dir) / "charts").resolve()
+    try:
+        p = (charts / pathlib.Path(*parts)).resolve()
+    except (OSError, ValueError):
+        return None
+    if p.suffix.lower() not in CHART_EXT:
+        return None
+    if p == charts or os.path.commonpath([str(charts), str(p)]) != str(charts):
+        return None
+    return p if p.is_file() else None
+
+
 def read_progress(job):
     p = pathlib.Path(job.get("progress", ""))
     if not p or not p.exists():

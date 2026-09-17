@@ -392,4 +392,13 @@ tr:hover td { background: var(--zhu-wash); }
   font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-align: center; max-width: var(--wrapw); margin: 0 auto;
 }
 
+/* ---------- 红件清单：图表槽位预览 ---------- */
+/* 图是白底 PNG（matplotlib 出的），在深色面板上必须给白底，否则边框糊掉 */
+.chart { display: block; margin-bottom: 5px; }
+.chart img {
+  display: block; width: 148px; height: auto; background: #fff;
+  border: 1px solid var(--line); transition: border-color .18s;
+}
+.chart:hover img { border-color: var(--zhu); }
+
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

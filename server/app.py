@@ -230,6 +230,14 @@ def _redslots_page(request, out_dir, job=None):
             group = loc.split("/")[0]
         stats[group] = stats.get(group, 0) + 1
     q = urllib.parse.quote(out_dir.name)
+    # 图槽位：`source` 是 `charts/<学科>/<图名>.png`。能解析出真实文件才给预览地址——
+    # 解析失败（文件缺失 / 路径越界）就不给，前端退回纯文本，绝不显示一个坏图。
+    for s in slots:
+        src = s.get("source") or ""
+        if isinstance(src, str) and src.startswith("charts/"):
+            rel = src[len("charts/"):]
+            if jobs.resolve_chart(out_dir, rel):
+                s["chart_url"] = f"/p/{q}/chart/" + urllib.parse.quote(rel)
     if job:
         back_url = f"/jobs/{job['id']}/collation"
         download_url = f"/jobs/{job['id']}/download/red_list"
@@ -360,6 +368,25 @@ async def period_archive(request: Request, period: str):
     if d is None:
         return RedirectResponse("/", status_code=303)
     return _archive_page(request, d)
+
+
+@app.get("/p/{period}/chart/{rel:path}")
+async def period_chart(request: Request, period: str, rel: str):
+    """图表原图（只读）。`rel` 是 `red_slots.json` 里 `source` 去掉 `charts/` 的部分。
+
+    越界请求由 `jobs.resolve_chart` 挡住——这条路由直接服务磁盘文件，
+    少一道检查就能读到 `server/.env`，别在这里省事。
+    """
+    if not current_user(request):
+        return RedirectResponse("/login", status_code=303)
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在"}, status_code=404)
+    p = jobs.resolve_chart(d, rel)
+    if not p:
+        return JSONResponse({"error": "图表不存在"}, status_code=404)
+    return FileResponse(p, media_type="image/png",
+                        headers={"Cache-Control": "private, max-age=3600"})
 
 
 @app.post("/p/{period}/sign")
