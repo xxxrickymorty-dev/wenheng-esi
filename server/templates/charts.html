@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}图表图册 · {{ period }} · 文衡{% endblock %}
+{% block sub %}图 表 图 册 · {{ period }}{% endblock %}
+{% block content %}
+
+<p class="crumb">
+  <a href="{{ backUrl }}">← 返回{% if job.id %}任务{% else %}对勘本{% endif %}</a>
+  <span class="sep">·</span>
+  <a href="{{ redUrl }}">红色件清单（{{ period }}）</a>
+</p>
+
+<section class="panel">
+  <div class="panel-h"><span class="no">01</span><h2>图表图册 · {{ period }} 期</h2><span class="hint">共 {{ total }} 张</span></div>
+  <div class="panel-b">
+    <p class="muted small" style="margin-bottom:14px">
+      本期报告写入的全部配图，按学科平铺。每张都可点开看原图。
+      这些图在<a href="{{ redUrl }}">红色件清单</a>里也逐条列了来源，但清单共 354 条、图夹在表数值后面，
+      所以另开这一页做「打开即看全」。
+    </p>
+    <div class="group-chips">
+      {% for name, items in groups %}<span class="chip">{{ '总览' if name == '_overview' else name }} · {{ items | length }}</span>{% endfor %}
+    </div>
+    <div class="filters">
+      <input id="q" placeholder="搜索图名（如 排名 / 阈值 / 篇均）…">
+      <span id="count" class="muted small"></span>
+    </div>
+  </div>
+</section>
+
+{% for name, items in groups %}
+<section class="panel gsec" data-sec="{{ name }}">
+  <div class="panel-b" style="padding-bottom:0">
+    <div class="gsec-h">
+      <h3>{{ '总览' if name == '_overview' else name }}</h3>
+      <span class="n">{{ items | length }} 张</span>
+    </div>
+    <div class="gallery">
+      {% for it in items %}
+      <a class="gcard" href="{{ it.url }}" target="_blank" rel="noopener" title="点开原图：{{ it.name }}">
+        <img src="{{ it.url }}" alt="{{ it.name }}" loading="lazy">
+        <span class="cap">{{ it.name }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endfor %}
+
+{% if not total %}
+<div class="alert">本期 <span class="mono">out/{{ period }}/charts/</span> 下没有图。先跑一次任务生成报告，图会出现在这里。</div>
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var q = document.getElementById('q');
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.gcard'));
+  var secs = Array.prototype.slice.call(document.querySelectorAll('.gsec'));
+  var count = document.getElementById('count');
+  if (!q) return;
+  function apply() {
+    var v = (q.value || '').trim().toLowerCase();
+    var n = 0;
+    cards.forEach(function (a) {
+      var hit = !v || a.getAttribute('title').toLowerCase().indexOf(v) >= 0;
+      a.style.display = hit ? '' : 'none';
+      if (hit) n++;
+    });
+    secs.forEach(function (s) {
+      var any = Array.prototype.slice.call(s.querySelectorAll('.gcard'))
+        .some(function (a) { return a.style.display !== 'none'; });
+      s.style.display = any ? '' : 'none';
+    });
+    count.textContent = '匹配 ' + n + ' / ' + cards.length + ' 张';
+  }
+  q.addEventListener('input', apply);
+  apply();
+})();
+</script>
+{% endblock %}

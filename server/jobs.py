@@ -345,6 +345,40 @@ def resolve_chart(out_dir, rel):
     return p if p.is_file() else None
 
 
+def list_charts(out_dir):
+    """枚举 `out_dir/charts/` 下的全部期次图，按子目录分组。
+
+    为什么要有这个：红件清单页共 354 条，图只占其中 99 条，而且位置字段写的是
+    「正文」、排在全部表数值（240 条）之后 —— 用户打开页面看到的是一屏 csv 来源的
+    数值行，**看不出哪里有图**，得先搜「png」才筛得出来。图册页给的是
+    「打开就能看全」的入口。
+
+    路径由服务端枚举而非来自 URL，但仍走 `resolve_chart` 复核一遍：
+    防的是符号链接、以及未来有人把这里改成接收外部输入。
+    返回 `[{group, name, rel}]`，`rel` 是相对 `charts/` 的 posix 路径。
+    """
+    root = pathlib.Path(out_dir) / "charts"
+    if not root.is_dir():
+        return []
+    items = []
+    for p in sorted(root.rglob("*")):
+        try:
+            if not p.is_file() or p.suffix.lower() not in CHART_EXT:
+                continue
+            rel = p.relative_to(root).as_posix()
+        except (OSError, ValueError):
+            continue
+        if resolve_chart(out_dir, rel) is None:
+            continue
+        head = pathlib.PurePosixPath(rel)
+        items.append({
+            "group": head.parts[0] if len(head.parts) > 1 else "（根目录）",
+            "name": p.name,
+            "rel": rel,
+        })
+    return items
+
+
 def read_progress(job):
     p = pathlib.Path(job.get("progress", ""))
     if not p or not p.exists():

@@ -401,4 +401,25 @@ tr:hover td { background: var(--zhu-wash); }
 }
 .chart:hover img { border-color: var(--zhu); }
 
+/* ---------- 图册页：一屏看全期次图 ---------- */
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+.gcard { display: block; border: 1px solid var(--line); background: var(--panel); transition: border-color .18s; }
+.gcard:hover { border-color: var(--zhu); }
+.gcard img {
+  display: block; width: 100%; height: auto; background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+.gcard .cap {
+  padding: 8px 10px; font-family: var(--mono); font-size: 10.5px; line-height: 1.5;
+  color: var(--ink-2); word-break: break-all;
+}
+.gcard:hover .cap { color: var(--zhu); }
+.gsec { margin-bottom: 8px; }
+.gsec-h {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 14px 0 10px; border-bottom: 1px solid var(--line); margin-bottom: 16px;
+}
+.gsec-h h3 { font-family: var(--serif); font-size: 14.5px; font-weight: 600; letter-spacing: .06em; }
+.gsec-h .n { margin-left: auto; font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); }
+
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

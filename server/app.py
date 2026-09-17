@@ -191,11 +191,13 @@ def _collation_data(out_dir, job=None, flash=None, self_url=None):
     if job:
         crumbs.append({"label": f"← 返回任务 {job['id']}", "href": f"/jobs/{job['id']}", "download": False})
         crumbs.append({"label": "运行档案", "href": f"/jobs/{job['id']}/archive", "download": False})
+        crumbs.append({"label": "图表图册", "href": f"/jobs/{job['id']}/charts", "download": False})
         crumbs.append({"label": "红色件清单", "href": f"/jobs/{job['id']}/redslots", "download": False})
         crumbs.append({"label": "下载报告初稿", "href": f"/jobs/{job['id']}/download/report", "download": True})
     else:
         crumbs.append({"label": "发起任务 / 历史任务", "href": "/run", "download": False})
         crumbs.append({"label": "运行档案", "href": f"/p/{q}/archive", "download": False})
+        crumbs.append({"label": "图表图册", "href": f"/p/{q}/charts", "download": False})
         crumbs.append({"label": "红色件清单", "href": f"/p/{q}/redslots", "download": False})
         crumbs.append({"label": "下载报告初稿", "href": f"/p/{q}/download/report", "download": True})
     data["crumbs"] = crumbs
@@ -244,9 +246,34 @@ def _redslots_page(request, out_dir, job=None):
     else:
         back_url = f"/p/{q}"
         download_url = f"/p/{q}/download/red_list"
+    # 图册入口：清单页里 99 张图夹在 240 条表数值后面、位置字段还写着「正文」，
+    # 不另给入口就没人找得到。这里与搜索框并列摆一个直达按钮。
+    charts_url = f"/jobs/{job['id']}/charts" if job else f"/p/{q}/charts"
     return page(request, "redslots.html", job=job or {}, period=out_dir.name,
                 slots=slots, groups=sorted(stats.items(), key=lambda kv: -kv[1]),
-                backUrl=back_url, downloadUrl=download_url)
+                backUrl=back_url, downloadUrl=download_url, chartsUrl=charts_url)
+
+
+def _charts_page(request, out_dir, job=None):
+    """图表图册：把 charts/ 下的期次图平铺展示，打开就能看全。
+
+    与红件清单页的分工：清单页是「逐条审计」（354 条，图只占 99 条，夹在表数值后面，
+    得先筛），图册页是「一眼看全」（99 张图按学科分组平铺）。两个入口都给。
+    """
+    q = urllib.parse.quote(out_dir.name)
+    groups = {}
+    for it in jobs.list_charts(out_dir):
+        it["url"] = f"/p/{q}/chart/" + urllib.parse.quote(it["rel"])
+        groups.setdefault(it["group"], []).append(it)
+    view = {
+        "period": out_dir.name,
+        "job": job or {},
+        "total": sum(len(v) for v in groups.values()),
+        "groups": sorted(groups.items()),
+        "backUrl": f"/jobs/{job['id']}/collation" if job else f"/p/{q}",
+        "redUrl": f"/jobs/{job['id']}/redslots" if job else f"/p/{q}/redslots",
+    }
+    return page(request, "charts.html", **view)
 
 
 def _archive_page(request, out_dir, job=None):
@@ -260,6 +287,7 @@ def _archive_page(request, out_dir, job=None):
         base, crumbs = f"/jobs/{job['id']}", [
             {"label": f"← 返回任务 {job['id']}", "href": f"/jobs/{job['id']}", "download": False},
             {"label": "对勘本", "href": f"/jobs/{job['id']}/collation", "download": False},
+            {"label": "图表图册", "href": f"/jobs/{job['id']}/charts", "download": False},
             {"label": "红色件清单", "href": f"/jobs/{job['id']}/redslots", "download": False},
         ]
         artifacts = jobs.collect_artifacts(job)
@@ -267,6 +295,7 @@ def _archive_page(request, out_dir, job=None):
         base, crumbs = f"/p/{q}", [
             {"label": "发起任务 / 历史任务", "href": "/run", "download": False},
             {"label": f"{out_dir.name} 期对勘本", "href": f"/p/{q}", "download": False},
+            {"label": "图表图册", "href": f"/p/{q}/charts", "download": False},
             {"label": "红色件清单", "href": f"/p/{q}/redslots", "download": False},
         ]
         artifacts = jobs.collect_period_artifacts(out_dir.name)
@@ -361,6 +390,15 @@ async def period_redslots(request: Request, period: str):
     return _redslots_page(request, d)
 
 
+@app.get("/p/{period}/charts", response_class=HTMLResponse)
+async def period_charts(request: Request, period: str):
+    """图表图册：99 张期次图按学科平铺，打开即看全（不用在清单页里筛）。"""
+    d = resolve_period_dir(period)
+    if d is None:
+        return RedirectResponse("/", status_code=303)
+    return _charts_page(request, d)
+
+
 @app.get("/p/{period}/archive", response_class=HTMLResponse)
 async def period_archive(request: Request, period: str):
     """期次运行档案（无需任务上下文也能回放）。"""
@@ -434,6 +472,16 @@ async def redslots_page(request: Request, job_id: str):
         return RedirectResponse("/", status_code=303)
     out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
     return _redslots_page(request, out_dir, job=job)
+
+
+@app.get("/jobs/{job_id}/charts", response_class=HTMLResponse)
+async def charts_page(request: Request, job_id: str):
+    """任务图册：与期次图册同一视图，多一层任务面包屑。"""
+    job = jobs.read_job(job_id)
+    if not job:
+        return RedirectResponse("/", status_code=303)
+    out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
+    return _charts_page(request, out_dir, job=job)
 
 
 @app.get("/jobs/{job_id}/archive", response_class=HTMLResponse)
