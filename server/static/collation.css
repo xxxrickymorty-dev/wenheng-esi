@@ -171,9 +171,18 @@ table.cells td.c-new .ins { text-emphasis: none; -webkit-text-emphasis: none; }
 .whc.clean table.cells td.c-old { display: none; }
 
 /* ---------- 图表槽 ---------- */
-.charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
 .chc { border: 1px solid var(--zline); background: var(--paper-2); padding: 12px 13px; }
 .chc b { display: block; font-size: 13px; letter-spacing: .04em; margin-bottom: 4px; }
+/* 缩略图：matplotlib 出的是白底 PNG，放暖灰卡上必须自己铺白底，否则边框糊在一起。
+   图例文字在这个尺寸下读不清是正常的 —— 点开就是原图，缩略图只负责「哪张图在哪一格」。 */
+.chc .thumb { display: block; margin: 0 0 9px; border: 1px solid var(--zline); background: #fff; }
+.chc .thumb img { display: block; width: 100%; height: auto; }
+.chc a.thumb:hover { border-color: var(--zhu); }
+.chc .thumb.miss {
+  background: var(--paper); border-style: dashed; color: var(--ink-3);
+  font-size: 11px; letter-spacing: .1em; text-align: center; padding: 20px 0;
+}
 .chc .fn { font-family: Consolas, monospace; font-size: 11.5px; color: var(--zhu); word-break: break-all; }
 .chc .src { font-family: Consolas, monospace; font-size: 10.5px; color: var(--ink-3); margin-top: 5px; word-break: break-all; }
 .chc .from { font-size: 11px; color: var(--ink-3); margin-top: 5px; letter-spacing: .06em; }

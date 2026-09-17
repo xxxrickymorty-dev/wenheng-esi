@@ -178,6 +178,21 @@ def _collation_data(out_dir, job=None, flash=None, self_url=None):
     """
     data = collation.build(out_dir)
     q = urllib.parse.quote(out_dir.name)
+    # 图表槽位就地铺图：`source` 是 `charts/<学科>/<图>.png`。能在磁盘上解析出真图才给地址
+    # （与红件清单页同一套 `resolve_chart` 守卫——安全不能只在图册页好用、在对勘本漏掉）。
+    # 解析不出就留空，前端退回纯文件名，绝不显示一个坏图。
+    n_pic = 0
+    for sec in data.get("sections") or []:
+        for it in sec.get("slots") or []:
+            if it.get("kind") != "chart":
+                continue
+            src = str(it.get("source") or "")
+            if src.startswith("charts/"):
+                rel = src[len("charts/"):]
+                if jobs.resolve_chart(out_dir, rel):
+                    it["chartUrl"] = f"/p/{q}/chart/" + urllib.parse.quote(rel)
+                    n_pic += 1
+    data["chartPics"] = n_pic
     data["live"] = True                  # 有服务端：签单可落库
     data["periodDir"] = out_dir.name
     data["periods"] = period_cards()

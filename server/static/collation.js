@@ -92,11 +92,24 @@
     return '<article class="dc" data-loc="' + esc(sl.loc) + '">' + head + '<div class="dc-b">' + body + '</div></article>';
   }
 
-  function chartsHTML(list) {
+  /* 图表槽位就地铺图：`chartUrl` 由服务端给（走 resolve_chart 解析磁盘真图后才会有），
+     没有就退回纯文件名 —— 宁可显示「未落盘」，也不放一个裂图。 */
+  function chartsHTML(list, live) {
     var out = '<div class="charts">';
     list.forEach(function (sl) {
       var fn = String(sl.new).replace('[图] ', '');
-      out += '<div class="chc" data-loc="' + esc(sl.loc) + '">' +
+      var u = sl.chartUrl || '';
+      /* 离线快照（make_collation_snapshot.py）没有服务端取图，整块缩略图就不渲染——
+         否则会满屏「图未落盘」，把真缺图的情况淹掉。 */
+      var pic = '';
+      if (u) {
+        pic = '<a class="thumb" href="' + esc(u) + '" target="_blank" rel="noopener"' +
+          ' title="点开原图：' + esc(fn) + '"><img src="' + esc(u) + '" alt="' + esc(fn) +
+          '" loading="lazy"></a>';
+      } else if (live) {
+        pic = '<div class="thumb miss">图未落盘</div>';
+      }
+      out += '<div class="chc" data-loc="' + esc(sl.loc) + '">' + pic +
         '<b>' + esc(sl.loc.replace('正文/', '')) + '</b>' +
         '<span class="fn">' + esc(fn) + '</span>' +
         '<div class="from">原状：' + esc(sl.old) + '</div>' +
@@ -294,8 +307,21 @@
     var sec = D.sections.filter(function (s) { return s.id === state.sec; })[0];
     if (!sec) return '<div class="whc-empty">该分组不存在。</div>';
     var list = filtered(sec);
+    /* 分组是按位置前缀切的，所以「学科图表槽位」里会夹进非图的格子（实测 T17/r0c1 是
+       「清除母版残留文本」）。提示按「图」计数，别把清理格也算成一张图。 */
+    var nChart = 0, nPic = 0;
+    list.forEach(function (s) {
+      if (s.kind !== 'chart') return;
+      nChart++;
+      if (s.chartUrl) nPic++;
+    });
+    var tipTxt = list.length + ' / ' + sec.count + ' 处 · 朱色为改动';
+    if (nChart) {
+      tipTxt = nChart + ' 张图已铺 ' + nPic +
+        (nPic < nChart ? '（缺 ' + (nChart - nPic) + '）' : '') + ' · 点图看原图';
+    }
     var head = '<div class="whc-mh"><h2>' + esc(sec.name) + '<em>' + esc(sec.note || '') + '</em></h2>' +
-      '<span class="tip">' + list.length + ' / ' + sec.count + ' 处 · 朱色为改动</span></div>';
+      '<span class="tip">' + tipTxt + '</span></div>';
     if (!list.length) return head + '<div class="whc-empty">没有匹配的槽位。</div>';
 
     var texts = [], charts = [], cells = [];
@@ -304,7 +330,7 @@
     });
     var out = head;
     texts.forEach(function (sl) { out += cardHTML(sl); });
-    if (charts.length) out += chartsHTML(charts);
+    if (charts.length) out += chartsHTML(charts, LIVE);
     if (cells.length) out += cellsHTML(cells, state.expandCells === sec.id);
     return out;
   }

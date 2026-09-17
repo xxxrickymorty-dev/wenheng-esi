@@ -325,6 +325,25 @@ for _bad in ("/p/202607/chart/../server/.env",
     _s, _, _ = call("GET", _bad)
     check(f"越界请求被拒 {_bad[-28:]}", _s == 404, f"got {_s}")
 
+out("=== 14. 对勘本图表槽位就地铺图 ===")
+# 缩略图是 collation.js 渲染的，裸 HTML 里没有 <img>——只能断言内联 JSON 里的
+# `chartUrl`（与第 13 节的坑同源），再抽一张验证它真能取到。
+# 数字记死：学科图表槽位 96 张 + 概览图槽位 3 张 = 99，与 charts/ 下的 png 数一致。
+_st, _rs, _ = call("GET", "/p/202607")
+_cu = re.findall(r'"chartUrl":\s*"([^"]+)"', _rs)
+check("图表槽位带上了图地址（前端据此就地铺图）", len(_cu) >= 90, f"n={len(_cu)}")
+check("合计 99 张（学科 96 + 概览 3）", len(_cu) == 99, f"n={len(_cu)}")
+check("都走 /p/202607/chart/ 这一条白名单路由",
+      bool(_cu) and all(u.startswith("/p/202607/chart/") for u in _cu))
+if _cu:
+    _st, _raw, _h = call_raw(_cu[0])
+    check("对勘本里的图能取到且真是 PNG", _st == 200 and _raw[:4] == b"\x89PNG",
+          f"{_st} {(_h.get('content-type') or '')} {len(_raw)}B")
+# 前端两个分支都要在：有地址给缩略图，没地址给兜底文案（离线快照则整块不渲染）
+_cjs = (ROOT / "static" / "collation.js").read_text(encoding="utf-8")
+check("collation.js 渲染缩略图", 'class="thumb"' in _cjs and "<img src=" in _cjs)
+check("collation.js 有缺图兜底（不显示裂图）", "图未落盘" in _cjs)
+
 out("=" * 56)
 if FAILS:
     out(f"结果：{len(FAILS)} 项未过")
