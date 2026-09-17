@@ -93,7 +93,9 @@ def main(ledger_path, out_root="out", run_backtest=False):
 
     _emit("charts", "图表渲染", "start")
     print("[4/5] 图表渲染（16 学科 × 6 + 概览 3）")
-    n_charts = charts.render_all(ledger_dir=str(out_dir))
+    # n_periods=7 + end_period=当期：与人工原件口径一致（近一年 7 期）。
+    # 只靠 render_all 内部推断也能工作，这里显式传是为了让主入口一眼可见窗口。
+    n_charts = charts.render_all(ledger_dir=str(out_dir), n_periods=7, end_period=P)
     _emit("charts", "图表渲染", "done", f"{n_charts} 张图 · 16 学科 × 6 + 概览")
 
     _emit("docx", "母版替换", "start")

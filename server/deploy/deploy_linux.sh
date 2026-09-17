@@ -57,11 +57,11 @@ log "安装系统依赖（中文字体 / venv / pip）"
 if command -v apt-get >/dev/null 2>&1; then
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -qq || warn "apt-get update 失败，继续尝试安装"
-  apt-get install -y -qq python3-venv python3-pip fonts-noto-cjk || warn "apt 安装部分失败"
+  apt-get install -y -qq python3-venv python3-pip fonts-noto-cjk fonts-noto-cjk-extra || warn "apt 安装部分失败"
 elif command -v dnf >/dev/null 2>&1; then
-  dnf install -y python3-pip google-noto-sans-cjk-ttc-fonts || warn "dnf 安装部分失败"
+  dnf install -y python3-pip google-noto-sans-cjk-ttc-fonts google-noto-serif-cjk-ttc-fonts || warn "dnf 安装部分失败"
 elif command -v yum >/dev/null 2>&1; then
-  yum install -y python3-pip google-noto-sans-cjk-ttc-fonts || warn "yum 安装部分失败"
+  yum install -y python3-pip google-noto-sans-cjk-ttc-fonts google-noto-serif-cjk-ttc-fonts || warn "yum 安装部分失败"
 else
   warn "未识别的包管理器，请手动确保已装中文字体（否则图表中文变方框）"
 fi
