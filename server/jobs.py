@@ -69,6 +69,26 @@ def job_dir(job_id):
     return config.JOBS_DIR / job_id
 
 
+def _relocate(j):
+    """把 `progress` / `console` 重新指回 `out/_jobs/<id>/` 下的同名文件。
+
+    为什么需要：历史 `job.json` 里存的是**绝对路径**，而工作区被搬过
+    （`首届高校图书馆“AI+管理服务”\\wenheng` → `首届高校图书馆\\wenheng`）。
+    路径失效后进度事件与控制台输出全读不到，档案页会静默显示"没有进度事件"——
+    读起来像"这次运行不是演示站发起的"，其实是**文件还在、指针过期**。
+
+    只在本职目录里找同名文件；找不到就保持原值（让上层显示为缺失，而不是假装存在）。
+    """
+    for key in ("progress", "console"):
+        old = j.get(key)
+        if not old:
+            continue
+        cand = job_dir(j["id"]) / pathlib.Path(old).name
+        if cand.exists():
+            j[key] = str(cand)
+    return j
+
+
 def read_job(job_id):
     p = job_dir(job_id) / "job.json"
     if not p.exists():
@@ -79,6 +99,7 @@ def read_job(job_id):
         return None
     if isinstance(j, dict) and "status" in j:
         j["status"] = agent_states.normalize(j.get("status"))
+        j = _relocate(j)
     return j
 
 

@@ -197,3 +197,36 @@ def test_步骤进度类名没被误改成状态名():
     js = (SERVER / "static" / "job.js").read_text(encoding="utf-8")
     assert "classList.remove('start', 'done', 'warn', 'failed')" in js, \
         "步骤级类名被改动会改坏五步进度的样式"
+
+
+# ============================================================ 历史任务路径漂移（2026-09-17）
+def test_进度文件路径失效时重定位到当前jobs目录(tmp_path, monkeypatch):
+    """工作区搬过家（`…“AI+管理服务”\\wenheng` → `…\\wenheng`），历史 job.json 里
+    存的是旧绝对路径。不重定位的话，运行档案页会显示"没有进度事件"——
+    读起来像这次运行没记录，其实文件一直在 `out/_jobs/<id>/` 下。"""
+    monkeypatch.setattr(jobs.config, "JOBS_DIR", tmp_path)
+    d = tmp_path / "j-old"
+    d.mkdir()
+    (d / "progress.jsonl").write_text('{"step":"parse","status":"done"}\n', encoding="utf-8")
+    (d / "job.json").write_text(json.dumps({
+        "id": "j-old", "status": "completed",
+        "progress": "D://旧工作区//wenheng//out//_jobs//j-old//progress.jsonl",
+        "console": "D://旧工作区//wenheng//out//_jobs//j-old//console.log",
+    }), encoding="utf-8")
+
+    j = jobs.read_job("j-old")
+    assert j["progress"] == str(d / "progress.jsonl"), "同名文件就在本职目录，应重定位"
+    assert j["console"] == "D://旧工作区//wenheng//out//_jobs//j-old//console.log", \
+        "文件确实不在（没建 console.log），不许假装存在——保持原值让上层显示为缺失"
+
+
+def test_路径本来就对时不动它(tmp_path, monkeypatch):
+    monkeypatch.setattr(jobs.config, "JOBS_DIR", tmp_path)
+    d = tmp_path / "j-new"
+    d.mkdir()
+    (d / "progress.jsonl").write_text("", encoding="utf-8")
+    (d / "job.json").write_text(json.dumps({
+        "id": "j-new", "status": "completed",
+        "progress": str(d / "progress.jsonl"),
+    }), encoding="utf-8")
+    assert jobs.read_job("j-new")["progress"] == str(d / "progress.jsonl")

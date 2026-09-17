@@ -255,6 +255,60 @@ st, css, _ = call("GET", "/static/style.css")
 missing = [s for s in states.STATES if f".badge.{s}" not in css]
 check("每个状态都有 badge 配色", not missing, f"缺 {missing}")
 
+out("=== 12. 运行档案页（SRS R-21：状态机回放 + 瀑布 + 产物 + 日志包）===")
+# 二进制要单独取：call() 会把响应 decode 成文本，zip 会被读坏。
+def call_raw(path):
+    try:
+        r = op.open(BASE + path)
+        return r.status, r.read(), dict(r.headers)
+    except urllib.error.HTTPError as e:
+        return e.code, e.read(), dict(e.headers)
+
+
+import io as _io                                                  # noqa: E402
+import zipfile as _zf                                             # noqa: E402
+
+st, arc, _ = call("GET", "/p/202607/archive")
+check("GET /p/202607/archive → 200", st == 200, f"got {st}")
+for k in ("状态机回放", "任务瀑布", "审计结论", "运行环境快照", "运行日志包", "Agent 轨迹文件"):
+    check(f"档案页含「{k}」", k in arc)
+check("审计总判定如实显示（不是粉饰成通过）", "待人工确认" in arc)
+check("轨迹缺口如实说明（直跑路径没有 trace 三件套）", "真实的记录缺口" in arc)
+
+st, raw, hdr = call_raw("/p/202607/download/logpack")
+check("GET 期次日志包 → 200", st == 200, f"got {st}")
+check("日志包 Content-Type 是 zip", "zip" in (hdr.get("content-type") or ""),
+      hdr.get("content-type", ""))
+check("日志包带 ASCII 文件名", "wenheng-logpack-202607-" in (hdr.get("content-disposition") or ""),
+      hdr.get("content-disposition", ""))
+try:
+    _z = _zf.ZipFile(_io.BytesIO(raw))
+    _names, _ok = _z.namelist(), _z.testzip() is None
+except Exception as _e:                                            # noqa: BLE001
+    _names, _ok = [], False
+check("日志包是完好的 zip", _ok)
+check("日志包含 README（说清与归档包的分工）", "README.txt" in _names)
+check("日志包含 run_log / audit_record / env_snapshot",
+      all(n in _names for n in ("period/run_log.json", "period/audit_record.json",
+                                "period/env_snapshot.json")), str(_names[:6]))
+check("日志包不含大件（docx/parquet/png）",
+      not any(n.endswith((".docx", ".parquet", ".png")) for n in _names),
+      str([n for n in _names if n.endswith((".docx", ".parquet", ".png"))]))
+
+if jobid:
+    st, jarc, _ = call("GET", f"/jobs/{jobid}/archive")
+    check("GET 任务档案页 → 200", st == 200, f"got {st}")
+    check("任务档案页认得 job（有返回任务的面包屑）", f"/jobs/{jobid}" in jarc)
+    st, jraw, _ = call_raw(f"/jobs/{jobid}/download/logpack")
+    try:
+        _jz = _zf.ZipFile(_io.BytesIO(jraw))
+        _jn = _jz.namelist()
+    except Exception:                                              # noqa: BLE001
+        _jn = []
+    check("任务日志包带 job 上下文三件套",
+          all(n in _jn for n in ("job/job.json", "job/progress.jsonl", "job/console.log")),
+          str([n for n in _jn if n.startswith("job/")]))
+
 out("=" * 56)
 if FAILS:
     out(f"结果：{len(FAILS)} 项未过")

@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import approval, collation, config, jobs
+from . import approval, archive, collation, config, jobs
 
 
 @asynccontextmanager
@@ -190,10 +190,12 @@ def _collation_data(out_dir, job=None, flash=None, self_url=None):
     crumbs = []
     if job:
         crumbs.append({"label": f"← 返回任务 {job['id']}", "href": f"/jobs/{job['id']}", "download": False})
+        crumbs.append({"label": "运行档案", "href": f"/jobs/{job['id']}/archive", "download": False})
         crumbs.append({"label": "红色件清单", "href": f"/jobs/{job['id']}/redslots", "download": False})
         crumbs.append({"label": "下载报告初稿", "href": f"/jobs/{job['id']}/download/report", "download": True})
     else:
         crumbs.append({"label": "发起任务 / 历史任务", "href": "/run", "download": False})
+        crumbs.append({"label": "运行档案", "href": f"/p/{q}/archive", "download": False})
         crumbs.append({"label": "红色件清单", "href": f"/p/{q}/redslots", "download": False})
         crumbs.append({"label": "下载报告初稿", "href": f"/p/{q}/download/report", "download": True})
     data["crumbs"] = crumbs
@@ -237,6 +239,40 @@ def _redslots_page(request, out_dir, job=None):
     return page(request, "redslots.html", job=job or {}, period=out_dir.name,
                 slots=slots, groups=sorted(stats.items(), key=lambda kv: -kv[1]),
                 backUrl=back_url, downloadUrl=download_url)
+
+
+def _archive_page(request, out_dir, job=None):
+    """运行档案页（SRS R-21）：状态机回放 + 任务瀑布 + 产物 + 日志包下载。
+
+    期次入口与任务入口共用，差别只有三处：下载链接指哪儿、面包屑、
+    以及有没有 job 上下文（控制台输出与状态链都挂在任务上）。
+    """
+    q = urllib.parse.quote(out_dir.name)
+    if job:
+        base, crumbs = f"/jobs/{job['id']}", [
+            {"label": f"← 返回任务 {job['id']}", "href": f"/jobs/{job['id']}", "download": False},
+            {"label": "对勘本", "href": f"/jobs/{job['id']}/collation", "download": False},
+            {"label": "红色件清单", "href": f"/jobs/{job['id']}/redslots", "download": False},
+        ]
+        artifacts = jobs.collect_artifacts(job)
+    else:
+        base, crumbs = f"/p/{q}", [
+            {"label": "发起任务 / 历史任务", "href": "/run", "download": False},
+            {"label": f"{out_dir.name} 期对勘本", "href": f"/p/{q}", "download": False},
+            {"label": "红色件清单", "href": f"/p/{q}/redslots", "download": False},
+        ]
+        artifacts = jobs.collect_period_artifacts(out_dir.name)
+    view = archive.build(out_dir, job=job, artifacts=artifacts)
+    # 用 update 而不是 `page(..., **view, period=…)`：view 自带 period/job，
+    # 关键字重复传会直接 TypeError——这类错只在打开页面时才现形。
+    view.update({"job": job or {}, "download_base": base, "crumbs": crumbs})
+    return page(request, "archive.html", **view)
+
+
+def _zip_response(data: bytes, filename: str):
+    """日志包下载。文件名是 ASCII（中文名在部分浏览器会乱码），说明写在包内 README。"""
+    return StreamingResponse(io.BytesIO(data), media_type="application/zip",
+                             headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
 def _flash(err="", signed="", revoked=""):
@@ -317,6 +353,15 @@ async def period_redslots(request: Request, period: str):
     return _redslots_page(request, d)
 
 
+@app.get("/p/{period}/archive", response_class=HTMLResponse)
+async def period_archive(request: Request, period: str):
+    """期次运行档案（无需任务上下文也能回放）。"""
+    d = resolve_period_dir(period)
+    if d is None:
+        return RedirectResponse("/", status_code=303)
+    return _archive_page(request, d)
+
+
 @app.post("/p/{period}/sign")
 async def period_sign(request: Request, period: str, note: str = Form(""),
                       ack: str = Form(""), back: str = Form("")):
@@ -333,8 +378,12 @@ async def period_revoke(request: Request, period: str, note: str = Form(""),
 async def period_download(request: Request, period: str, key: str):
     if not current_user(request):
         return RedirectResponse("/login", status_code=303)
-    if resolve_period_dir(period) is None:
+    d = resolve_period_dir(period)
+    if d is None:
         return RedirectResponse("/", status_code=303)
+    if key == archive.LOGPACK_KEY:
+        data, name = archive.pack(d, None)
+        return _zip_response(data, name)
     path = jobs.resolve_period_artifact(period, key)
     if not path:
         return JSONResponse({"error": "产物不存在"}, status_code=404)
@@ -358,6 +407,16 @@ async def redslots_page(request: Request, job_id: str):
         return RedirectResponse("/", status_code=303)
     out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
     return _redslots_page(request, out_dir, job=job)
+
+
+@app.get("/jobs/{job_id}/archive", response_class=HTMLResponse)
+async def job_archive(request: Request, job_id: str):
+    """任务运行档案：比期次档案多出控制台输出与状态链上下文。"""
+    job = jobs.read_job(job_id)
+    if not job:
+        return RedirectResponse("/", status_code=303)
+    out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
+    return _archive_page(request, out_dir, job=job)
 
 
 @app.get("/jobs/{job_id}/collation", response_class=HTMLResponse)
@@ -606,6 +665,10 @@ async def download(request: Request, job_id: str, key: str):
     job = jobs.read_job(job_id)
     if not job:
         return RedirectResponse("/", status_code=303)
+    if key == archive.LOGPACK_KEY:
+        out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
+        data, name = archive.pack(out_dir, job)
+        return _zip_response(data, name)
     path = jobs.resolve_artifact(job, key)
     if not path:
         return JSONResponse({"error": "产物不存在"}, status_code=404)

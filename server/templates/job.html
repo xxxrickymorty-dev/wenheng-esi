@@ -14,6 +14,7 @@
     <div class="job-status">
       <span id="status-badge" class="badge {{ job.status }}">{{ status_label(job.status) }}</span>
       <span>已用时 <b id="elapsed">—</b></span>
+      <a class="btn line" href="/jobs/{{ job.id }}/archive">运 行 档 案</a>
       <a class="btn line" href="/jobs/{{ job.id }}/collation">对 勘 本 →</a>
       <button id="rerun" class="btn line" style="display:none">重 跑 本 期</button>
     </div>
