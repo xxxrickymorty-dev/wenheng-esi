@@ -13,9 +13,11 @@
   <div class="panel-h"><span class="no">01</span><h2>图表图册 · {{ period }} 期</h2><span class="hint">共 {{ total }} 张</span></div>
   <div class="panel-b">
     <p class="muted small" style="margin-bottom:14px">
-      本期报告写入的全部配图，按学科平铺。每张都可点开看原图。
-      这些图在<a href="{{ redUrl }}">红色件清单</a>里也逐条列了来源，但清单共 354 条、图夹在表数值后面，
-      所以另开这一页做「打开即看全」。
+      本期报告写入的全部配图，按学科平铺，每张可点开看原图。
+      同一批图在对勘本的「学科图表槽位」里也<b>就地铺在对应格子上</b>（缩略图 + 来源），
+      想按图名找、或想脱离槽位单看图，就用这一页。
+      在<a href="{{ redUrl }}">红色件清单</a>里图只占 354 条中的 99 条、还排在表数值之后，
+      不适合当「看图」的入口。
     </p>
     <div class="group-chips">
       {% for name, items in groups %}<span class="chip">{{ '总览' if name == '_overview' else name }} · {{ items | length }}</span>{% endfor %}
