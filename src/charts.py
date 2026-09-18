@@ -217,36 +217,58 @@ def _labels(ax, xs, ys, fmt="{:.2f}", dy=4, size=FONT_SIZE, dodge=True):
         bb = _text_box(fig, t)
         if bb is not None:
             fixed.append(bb)
+    for t in ax.get_xticklabels():          # 横轴期次字（负值标签往下走时会撞它，20260918 服务器实测）
+        bb = _text_box(fig, t)
+        if bb is not None:
+            fixed.append(bb)
 
     gap = size * 1.35                       # 一档＝一行字高（**pt**！xyann 的单位是 pt，别塞 px）
     ab = ax.get_window_extent(r)            # 坐标区
-    # 允许最多越出轴顶两行：轴顶留白只够一行，挤在顶部的两三个标签要摞起来才行；
-    # 越过轴顶的那点空隙里除了图例/标题没别的东西，而那俩在 fixed 里，压上就会被扣分。
-    slack = gap / 72.0 * fig.dpi * 2
+    # 允许最多越出轴顶三行：轴顶留白只够一行，挤在顶部的几个标签要错落开才行；
+    # 越出去那条带子里只有图例/标题（都在 fixed 里，压上会被扣分），而图例已抬到
+    # 1.14（`_legend_top`），轴顶上方留了约 60px 的空带专供标签用。
+    slack = gap / 72.0 * fig.dpi * 3
     top_lim = ab.y1 + slack
+    bot_lim = ab.y0 - slack
     placed = []
+
+    def _ov(bb):
+        return (sum(_ov_area(bb, p) for p in placed)
+                + sum(_ov_area(bb, p) for p in fixed))
+
+    def _place(ann, up, base, k):
+        ann.xyann = (0, base + (k * gap if up else -k * gap))
+        ann.update_positions(r)
+        return ann.get_window_extent(r)
+
     for ann, up in zip(anns, ups):
         base = dy if up else -dy
-        best_k, best_ov = 0, None
-        for k in range(0, 40):              # 最多抬 40 档，够任何拥挤情况
-            ann.xyann = (0, base + (k * gap if up else -k * gap))
-            ann.update_positions(r)
-            bb = ann.get_window_extent(r)
+        best_k, best_ov, k_ok = 0, None, 0
+        for k in range(0, 40):              # 粗搜：一档＝一行字高，够任何拥挤情况
+            bb = _place(ann, up, base, k)
             if up:
                 if bb.y1 > top_lim:         # 再抬就飞到标题区了 → 别抬了
                     break
-            elif bb.y0 < ab.y0 - slack:
+            elif bb.y0 < bot_lim:           # 再降就沉到轴刻度字下方了 → 别降了
                 break
-            ov = sum(_ov_area(bb, p) for p in placed) \
-                + sum(_ov_area(bb, p) for p in fixed)
+            k_ok = k
+            ov = _ov(bb)
             if best_ov is None or ov < best_ov:
                 best_ov, best_k = ov, k
             if ov <= 0:
                 break
+        if best_ov:                         # 粗档之间还有缝（一行高 ≈ 39px）→ 再按 1/4 行细搜
+            for j in range(-4, 5):
+                k = best_k + j / 4.0
+                if not (0 <= k <= k_ok):
+                    continue
+                ov = _ov(_place(ann, up, base, k))
+                if ov < best_ov:
+                    best_ov, best_k = ov, k
+                if ov <= 0:
+                    break
         # 框内**重叠最少**的那一档；实在躲不开也只会退回原位，不会比原来更差
-        ann.xyann = (0, base + (best_k * gap if up else -best_k * gap))
-        ann.update_positions(r)
-        placed.append(ann.get_window_extent(r))
+        placed.append(_place(ann, up, base, best_k))
     return anns
 
 
@@ -280,7 +302,8 @@ def _nice_step(span, intervals, integer=False):
 
 def _auto_ylim(ax, series, include=None, intervals=5, pad=0.08, lo_pad=None,
                hi_pad=None, floor_zero=False, zero_base=False, integer=False,
-               clamp_zero=True, fmt=None, invert=False, reserve_top=_LABEL_PX):
+               clamp_zero=True, fmt=None, invert=False, reserve_top=_LABEL_PX,
+               reserve_bottom=None):
     """按**本学科数据**动态定纵轴（＝原件 Excel 自动轴的口径）。
 
     🔴 不要退回固定常量。原件那套刻度是 Excel 给**化学**调的，硬编码到全部学科会出事 ——
@@ -295,6 +318,8 @@ def _auto_ylim(ax, series, include=None, intervals=5, pad=0.08, lo_pad=None,
     reserve_top —— 在**视觉上端**多留这么高的空（px），给最顶上那行数值标签用。
                    只把 `set_ylim` 那一端往外挪，**刻度一个不动**（刻度仍按整齐步长排），
                    所以观感不变、不会多出一个难看的半格刻度。不需要留就传 None。
+    reserve_bottom —— 同理，留给**视觉下端**那行标签（图3 的负增量，标签标在柱下方，
+                   不留位就会压到横轴期次字）。默认 None＝不留。
     返回刻度列表；无数据时返回 None。
     """
     vals = []
@@ -328,18 +353,27 @@ def _auto_ylim(ax, series, include=None, intervals=5, pad=0.08, lo_pad=None,
     n = int(round((t_hi - t_lo) / step))
     ticks = [round(t_lo + i * step, 10) for i in range(n + 1)]
     y_lo, y_hi = t_lo, t_hi                     # 轴范围（可能比分度范围略宽）
-    if reserve_top and n > 0:
-        # 视觉上端多留一行标签的高度。不这么干的话，最顶上的柱子/点的数值标签会顶出
-        # 坐标区撞上图例（rick 2026-09-18 截图：顶尖论文 27 压在「顶尖论文发文量」上）。
+    if (reserve_top or reserve_bottom) and n > 0:
+        # 视觉上/下端多留一行标签的高度。不留的话，最顶上的柱子/点的数值标签会顶出
+        # 坐标区撞上图例（rick 2026-09-18 截图：顶尖论文 27 压在「顶尖论文发文量」上），
+        # 最底下的负值标签会沉下去压在横轴期次字上（同日服务器字体下实测）。
         # 只挪 set_ylim，不动 ticks —— 既不破观感，也不会多出半格刻度。
         _relayout(ax.figure)                    # 图例/标题已就位，量到的才是出图后的高度
         h = _axes_h_px(ax)
         if h > 0:
-            extra = reserve_top / h * (t_hi - t_lo)
-            if invert:                          # 反向轴：视觉上端＝数值小的一端
-                y_lo = min(y_lo, lo - extra)
-            else:
-                y_hi = max(y_hi, hi + extra)
+            span_t = t_hi - t_lo
+            if reserve_top:
+                extra = reserve_top / h * span_t
+                if invert:                      # 反向轴：视觉上端＝数值小的一端
+                    y_lo = min(y_lo, lo - extra)
+                else:
+                    y_hi = max(y_hi, hi + extra)
+            if reserve_bottom and lo < 0:       # 只有真有负值（标签标在点下方）才留
+                extra = reserve_bottom / h * span_t
+                if invert:                      # 反向轴：视觉下端＝数值大的一端
+                    y_hi = max(y_hi, hi + extra)
+                else:
+                    y_lo = min(y_lo, lo - extra)
     if invert:
         ax.set_ylim(y_hi, y_lo)
     else:
@@ -351,10 +385,17 @@ def _auto_ylim(ax, series, include=None, intervals=5, pad=0.08, lo_pad=None,
 
 
 def _legend_top(ax, ncol=2):
-    """多系列折线：**坐标区外**顶部居中、横排、无框（原件观感）。"""
+    """多系列折线：**坐标区外**顶部居中、横排、无框（原件观感）。
+
+    🔴 必须与轴顶**留出一段距离**（`borderaxespad` ≈1.6 字高 ≈46px，别贴上去）：
+    贴上去等于把轴顶那条带子整条封死，数值标签就没有上升通道了（2026-09-18 实测图 6：
+    中间那组的标签抬一档正好撞上图例，只能退而求其次留 400px² 的重叠）。
+    但**不能抬太高**（试过 bbox_to_anchor=1.14）：抬到 1.14 就顶到标题上，
+    16 学科 × 2 张图全部「标题压图例」。外移量走 borderaxespad 最稳。
+    """
     ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=ncol, frameon=False,
               fontsize=FONT_SIZE, handlelength=1.7, handletextpad=0.4,
-              columnspacing=1.2, borderaxespad=0.2)
+              columnspacing=1.2, borderaxespad=1.6)
 
 
 def _legend_ur(ax, ncol=1):
@@ -430,8 +471,9 @@ def chart_papers_delta(papers, disc, out_png, periods):
     _xticks(ax, ps)
     _title(ax, "新增发文量（篇）")
     _legend_ur(ax)
-    # 增量可正可负 → 0 必须在轴内；计数值 → 整数刻度
-    _auto_ylim(ax, [d], zero_base=True, intervals=6, pad=0.08, integer=True, fmt="{:.0f}")
+    # 增量可正可负 → 0 必须在轴内；计数值 → 整数刻度；负值标签标在柱下方，下端也要留位
+    _auto_ylim(ax, [d], zero_base=True, intervals=6, pad=0.08, integer=True,
+               fmt="{:.0f}", reserve_bottom=_LABEL_PX)
     _labels(ax, x, d, "{:.0f}")
     _save(fig, out_png)
 
