@@ -299,16 +299,26 @@ def fill_header_month(doc, period_dir, slots):
 def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026第5期.docx",
          out_path=None, charts_only_demo=False, period_override=None):
     ledger_dir = pathlib.Path(ledger_dir)
-    P = json.loads((ledger_dir / "meta.json").read_text(encoding="utf-8"))["period_current"]
-    out_path = pathlib.Path(out_path or ledger_dir / f"报告初稿_{P}（试排）.docx")
 
     wide, ni, nc, thr = compute.load_wide(str(ledger_dir))
+    filled = [c for c in wide["total_cites"].columns if wide["total_cites"][c].notna().any()]
+
+    # 期次三级优先：显式 override > **目录名**（out/202605_复现 → 202605）> 台账最新有效期的自动推断。
+    # 目录名这一级不可省：复现历史期次时若不认目录名，大表/概述会被填成**台账当期**数据，
+    # 产出「文件名是第 3 期、内容是第 4 期」的错稿（2026-09-18 回测发现）。
+    # `period_override` 只在 rerun_history 传；`run_pipeline` / `agent/tools.run_docx` 都不传，
+    # 那两处以前对复现目录会静默产错稿。charts._infer_end_period 早就有这级兜底，此处对齐。
+    m = re.search(r"(\d{6})", ledger_dir.name)
+    dir_period = m.group(1) if m else None
     if period_override:
-        filled = [c for c in wide["total_cites"].columns if wide["total_cites"][c].notna().any()]
         period = period_override
-        prev = [c for c in filled if c < period][-1]
+    elif dir_period and dir_period in filled:
+        period = dir_period
     else:
-        period, prev = compute.detect_periods(wide)
+        period, _ = compute.detect_periods(wide)
+    prev = [c for c in filled if c < period][-1]
+
+    out_path = pathlib.Path(out_path or ledger_dir / f"报告初稿_{period}（试排）.docx")
     prev_month = str(int(prev[4:]))
     t2 = compute.build_table2(wide, ni, nc, thr, period, prev)
     ynd = pd.read_parquet(f"{ledger_dir}/wide/ynd_rank.parquet").set_index("period")

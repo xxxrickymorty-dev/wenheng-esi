@@ -71,9 +71,14 @@ def build(facts, period, prev):
           f"论文量排名前三位的学科分别是{top3_text(p1['top3_groups'])}。"
           f"本期顶尖论文量及其被引频次学院贡献度排名前三位的是：{MANUAL.format('学院贡献度前三')}。")
 
-    trend = (f"与上期数据相比，我校在国内机构及高校的排名较{p1['prev_label']}均"
-             f"{updown_phrase(p1['rank_cn_inst_delta'])}，国内机构排名{p1['rank_cn_inst_now']}，"
-             f"国内高校排名{p1['rank_cn_uni_now']}；本期云南大学国际排名{p1['rank_intl_now']}位，"
+    # ⚠️ 国内机构 / 国内高校是**两个独立 delta**，不能合并成一个值。
+    # 2026-09-18 逐格回测发现：旧版写成「…排名较X月均{...inst_delta}…」，
+    # 但原件第 2/3 期两者并不相等（202603: +2/+1、202605: +3/+2；台账实测一致），
+    # 于是机器稿在 3 期里有 3 期把高校升降说错。现值各说各的。
+    trend = (f"与上期数据相比，我校国内机构排名较{p1['prev_label']}"
+             f"{updown_phrase(p1['rank_cn_inst_delta'])}，排在{p1['rank_cn_inst_now']}名；"
+             f"国内高校排名较{p1['prev_label']}{updown_phrase(p1['rank_cn_uni_delta'])}，"
+             f"排在{p1['rank_cn_uni_now']}名；本期云南大学国际排名{p1['rank_intl_now']}位，"
              f"较上期{updown_phrase(p1['rank_intl_delta'])}。")
 
     situation = (f"本期云南大学22个ESI学科从国内排名上看，有{p1['rank_up']}个学科排名上升，"
