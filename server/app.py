@@ -410,7 +410,8 @@ def _do_revoke(request, period, note, back):
 
 
 @app.get("/", response_class=HTMLResponse)
-async def home(request: Request, err: str = "", signed: str = "", revoked: str = ""):
+async def home(request: Request, err: str = "", signed: str = "",
+               revoked: str = "", rebuilt: str = ""):
     """**首屏 = 馆员工作台**（最新一期）。没有可对勘的期次时才退回控制台。
 
     2026-09-19 从「首屏=对勘本」改过来。对勘本回答的是"这份报告怎么拼出来的"
@@ -424,7 +425,7 @@ async def home(request: Request, err: str = "", signed: str = "", revoked: str =
         if d is not None:
             return page(request, "workbench.html",
                         **workbench.build(d),
-                        periods=cards,
+                        periods=cards, rebuilt=rebuilt,
                         flash=_flash(err, signed, revoked))
     return page(request, "index.html", **_run_ctx())
 
@@ -519,6 +520,57 @@ async def period_flag(request: Request, period: str, loc: str = Form(""), back: 
         return RedirectResponse(back or "/", status_code=303)
     workbench.toggle_flag(d, loc, by=user)
     return RedirectResponse(back or "/", status_code=303)
+
+
+def _flash_back(back, qs):
+    """把提示参数拼进回跳 URL 的**问号位置**。
+
+    🔴 不能写成 `back + "?err=…"`：back 常带锚点（`/#todo-panel`），
+    拼完是 `/#todo-panel?err=…` —— query 在 fragment 后面，浏览器**整段忽略**，
+    于是"保存失败"这类提示永远不会出现，页面看着像没反应（2026-09-20 实测）。
+    正确形状：`/?err=…#todo-panel`。
+    """
+    base, _, frag = (back or "/").partition("#")
+    if not base:
+        base = "/"
+    sep = "&" if "?" in base else "?"
+    return f"{base}{sep}{qs}" + (f"#{frag}" if frag else "")
+
+
+@app.post("/p/{period}/rebuild")
+async def period_rebuild(request: Request, period: str, back: str = Form("")):
+    """填完重出报告：把在线填的值叠加到报告初稿上。
+
+    三件事按这个顺序做，不能乱：
+      1. **先把旧成品撤到 `_superseded/`**（复用 `parse_ledger.quarantine_final_products`）
+         —— 覆盖前留一份机器稿，出了问题能回滚；
+      2. `fill_docx.main(..., manual_inputs=…)` 用**已解析的宽表**重出，
+         不重新解析台账（重解析会把填值对应不上的风险引进来）；
+      3. 只写 `out/<期次>/`，台账一个字节不碰。
+
+    耗时约 5–15 秒（要重新插 96 张图），同步阻塞 —— uvicorn 单 worker 是
+    项目既定约束（SSE + 内存态任务队列），演示时点一次等一下即可。
+    """
+    import parse_ledger                                         # noqa: PLC0415
+    import fill_docx                                            # noqa: PLC0415
+    from . import workbench                                     # noqa: PLC0415
+    user = current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    d = resolve_period_dir(period)
+    if d is None:
+        return RedirectResponse("/", status_code=303)
+    fills = workbench.load_fills(d)
+    if not fills:
+        return RedirectResponse(_flash_back(back, "err=还没有填写内容"), status_code=303)
+    parse_ledger.quarantine_final_products(d, None)
+    try:
+        fill_docx.main(ledger_dir=str(d), manual_inputs=fills)
+    except Exception as e:                                      # noqa: BLE001
+        return RedirectResponse(
+            _flash_back(back, f"err=重出失败：{type(e).__name__}"), status_code=303)
+    n = sum(1 for v in fills.values() if str(v.get("value") or "").strip())
+    return RedirectResponse(_flash_back(back, f"rebuilt={n}"), status_code=303)
 
 
 @app.get("/p/{period}/charts", response_class=HTMLResponse)

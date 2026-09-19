@@ -241,9 +241,48 @@ def fill_body_charts(doc, ledger_dir, slots):
     return warn
 
 
-def fill_texts(doc, ledger_dir, slots, period, prev, facts):
+def apply_manual_inputs(texts, fills, key_prefix="正文/"):
+    """把句骨架里的 `【手工：xxx】` 换成馆员在线填的值（2026-09-19 工作台闭环）。
+
+    三个边界，改这里前先读：
+    1. **只替换填过的**。没填的保留原样的 `【手工：…】` —— 报告上留着未完成的
+       标记，比悄悄抹平成空白要好（人工一眼能看到还剩几处）。
+    2. **键是 `位置::标记文字`**（如 `正文/p2::去年同期升幅%`），与工作台
+       `workbench._todo_from_slot` 生成的 id 同一套。**不能用序号**：重跑流水线
+       后 red_slots 行序会变，序号会错位到别的格子。
+    3. **只改报告文本，不碰台账、不改数字**。填进来的值原样落进 docx，
+       仍然过不了机器断言 —— 人工输入的可信度由「谁填的 + 什么时候填的」
+       （manual_inputs.json 有留痕）承担，而不是由系统假装校验过。
+
+    返回 `(新 texts, 用了 N 处)`。
+    """
+    if not fills:
+        return texts, 0
+    used = 0
+
+    def repl(key):
+        def f(m):
+            nonlocal used
+            v = fills.get(f"{key_prefix}{key}::{m.group(1).strip()}")
+            if v is None or not str(v.get("value") or "").strip():
+                return m.group(0)                   # 没填 → 原样保留标记
+            used += 1
+            return str(v["value"])
+        return f
+
+    out = {}
+    for k, t in texts.items():
+        out[k] = _HAND_RE.sub(repl(k), t) if isinstance(t, str) else t
+    return out, used
+
+
+_HAND_RE = re.compile(r"【手工：([^】]*)】")
+
+
+def fill_texts(doc, ledger_dir, slots, period, prev, facts, fills=None):
     """概述 4 段 + 发展趋势段 + 态势段 + 封面期数（句骨架 + 数字槽）。"""
     texts = sentences.build(facts, period, prev)
+    texts, n_filled = apply_manual_inputs(texts, fills)
     anchors = [
         ("p1", lambda t: "ESI最新数据显示" in t),
         ("p2", lambda t: "与ESI前1‰接近度较高" in t),
@@ -297,7 +336,15 @@ def fill_header_month(doc, period_dir, slots):
 
 
 def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026第5期.docx",
-         out_path=None, charts_only_demo=False, period_override=None):
+         out_path=None, charts_only_demo=False, period_override=None,
+         manual_inputs=None):
+    """`manual_inputs` 为 None 时**不应用**任何人工填值（机器稿保持纯机器产出）。
+
+    ⚠ 这条默认值是刻意的：`run_pipeline` / `agent/tools.run_docx` 都不传它，
+    所以流水线产出的永远是带 `【手工：…】` 占位的机器稿，可复现、可断言。
+    只有演示站的「重出报告」显式传入 `manual_inputs.json` —— 那份产物是
+    「叠加了人工输入、待签发」的稿子，两者不能混为一谈。
+    """
     ledger_dir = pathlib.Path(ledger_dir)
 
     wide, ni, nc, thr = compute.load_wide(str(ledger_dir))
@@ -330,7 +377,7 @@ def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026�
     slots = []
 
     fill_big_table(doc, t2, slots, prev_month)
-    fill_texts(doc, ledger_dir, slots, period, prev, facts)
+    fill_texts(doc, ledger_dir, slots, period, prev, facts, fills=manual_inputs)
     warns = fill_body_charts(doc, ledger_dir, slots)
     charts_used = ["Chemistry"] if charts_only_demo else DETAIL_TABLES
     chart_dir = ledger_dir / "charts"

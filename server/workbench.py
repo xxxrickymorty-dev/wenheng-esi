@@ -192,7 +192,12 @@ def _slots(out_dir):
 
 
 def _todo_from_slot(row, idx):
-    """把一个槽位里的【手工：…】标记拆成若干条待办（按**处**不是按槽位）。"""
+    """把一个槽位里的【手工：…】标记拆成若干条待办（按**处**不是按槽位）。
+
+    id 用 `位置::标记文字`（如 `正文/p2::去年同期升幅%`）而**不是序号**：
+    序号在重跑流水线后会错位（red_slots 行序变了），人工填的值就挂到别人身上了。
+    这个 id 同时是 `fill_docx` 回填时的查找键，两边必须一致。
+    """
     # ⚠ 必须在**全文**上探测：red_slots 的 new 被截断到 50 字，只扫 new 会漏判
     text = row.get("new_full") or row.get("new") or ""
     where = row.get("location") or "?"
@@ -200,7 +205,7 @@ def _todo_from_slot(row, idx):
     for i, m in enumerate(_HAND.finditer(text), 1):
         hint = (m.group(1) or "").strip()
         out.append({
-            "id": f"fill-{idx}-{i}",
+            "id": f"{where}::{hint}",
             "kind": "fill",                 # 可以且应该在线填
             "title": hint or "待人工填写",
             "where": where,
@@ -297,7 +302,10 @@ def build(out_dir, period=None, approval=None):
         t["filled"] = (f or {}).get("value")
         t["filled_by"] = (f or {}).get("by")
         t["filled_at"] = (f or {}).get("at")
-    n_filled = sum(1 for t in todo if t["filled"])
+    # 计数**独立于 todo**：重出报告后【手工：】标记被替换掉，todo 里那几条会消失，
+    # 但人工填过的值仍在 manual_inputs.json 里 —— 跟着 todo 算会显示成"已填 0"。
+    n_filled = sum(1 for v in fills.values() if str((v or {}).get("value") or "").strip())
+    n_applied = n_filled - sum(1 for t in todo if t["filled"])
 
     return {
         "period": period,
@@ -308,6 +316,7 @@ def build(out_dir, period=None, approval=None):
         "todo_confirm": [t for t in todo if t["kind"] == "confirm"],
         "pending": pending,
         "n_filled": n_filled,
+        "n_applied": n_applied,
         "n_doubt": len(load_review(out_dir)),
         "approval": approval or {},
         # 二级入口（审计视图）：给工程/评委深挖用，不占首屏

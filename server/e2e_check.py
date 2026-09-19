@@ -395,6 +395,21 @@ st, home2, _ = call("GET", "/")
 check("工作台三个数字可点（trace 链接完整）", 'href="/p/202607/trace"' in home2)
 check("待办区有在线填表单", 'class="fill-form"' in home2)
 check("待补数据说明诚实标注交互未定", "交互还没定" in home2)
+# 🔴 链接/表单 action 必须是**绝对路径**：写成 202607/trace 会从 / 解析成
+#    /202607/trace → 404，而 e2e 直接打绝对 URL 是抓不到的（2026-09-19 rick 实踩，
+#    2026-09-20 表单 action 又犯一次）。这条断言专治这个。
+check("表单 action 是绝对路径（不是相对路径）",
+      'action="/p/202607/fill"' in home2 and 'action="202607/fill"' not in home2
+      and 'action="/p/202607/rebuild"' in home2)
+# 重出报告：没有填写内容时**不执行**（安全分支，不覆盖任何产物）
+st, _rb, _rfin = call("POST", "/p/202605_%E5%A4%8D%E7%8E%B0/rebuild",
+                      {"back": "/#todo-panel"})
+# ⚠ 回跳带的提示是 URL 编码的；而且要拼在问号位置而不是锚点后面
+#   （写成 /#todo-panel?err=… 的话浏览器整段忽略，提示永远不显示）
+_rf = urllib.parse.unquote(_rfin)
+check("没填内容时 rebuild 拒绝执行", "还没有填写内容" in _rf, f"final={_rfin}")
+check("提示拼在问号位置而非锚点后", "?err=" in _rf and "?err=" not in _rf.split("#")[-1],
+      f"final={_rfin}")
 
 out("=" * 56)
 if FAILS:

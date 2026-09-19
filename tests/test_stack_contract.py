@@ -140,7 +140,7 @@ def test_没有原地修改语义():
 #: 登记时要回答三件事：① 真实表单 POST + 303（不依赖 JS）② 有登录校验
 #: ③ 写的是产物目录还是台账。fill/flag（2026-09-19 工作台）写的是
 #: out/<期次>/ 的 manual_inputs.json / review.json，**台账一个字节不碰**。
-POST_ALLOWED_SUFFIX = ("/login", "/sign", "/revoke", "/fill", "/flag")
+POST_ALLOWED_SUFFIX = ("/login", "/sign", "/revoke", "/fill", "/flag", "/rebuild")
 
 #: 非页面、非 API 的杂项 GET（下载/二维码/探活/登出）
 MISC_PATHS = ("/download/", "/qr.png", "/healthz", "/logout")
@@ -175,7 +175,7 @@ def test_状态变更都走表单POST而非AJAX():
     """
     posts = {p for m, p in _routes() if m == "post" and not p.startswith("/api/")}
     assert posts == {"/login", "/p/{period}/sign", "/p/{period}/revoke",
-                     "/p/{period}/fill", "/p/{period}/flag",
+                     "/p/{period}/fill", "/p/{period}/flag", "/p/{period}/rebuild",
                      "/jobs/{job_id}/collation/sign",
                      "/jobs/{job_id}/collation/revoke"}, f"表单 POST 清单变了：{sorted(posts)}"
 

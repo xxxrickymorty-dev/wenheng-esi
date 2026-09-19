@@ -14,6 +14,18 @@
 
 {% block content %}
 
+{% if flash and flash.err %}
+<div class="panel"><div class="panel-b" style="color:var(--zhu)">⚠ {{ flash.err }}</div></div>
+{% endif %}
+{% if rebuilt %}
+<div class="panel"><div class="panel-b" style="color:var(--ok)">
+  ✓ 已把 {{ rebuilt }} 处填写值写进报告初稿。原机器稿已备份到
+  <span class="mono">out/{{ period_dir }}/_superseded/</span>，可随时回滚。
+  <br>填写内容记在 <span class="mono">manual_inputs.json</span>，
+  <strong>台账没有被改动</strong>。
+</div></div>
+{% endif %}
+
 <div class="panel">
   <div class="panel-h">
     <span class="no">01</span>
@@ -53,7 +65,7 @@
   <div class="panel-h">
     <span class="no">02</span>
     <h2>需要你填（{{ todo_fill|length }} 处）</h2>
-    <span class="hint">已填 {{ n_filled }} · 填的是报告，不碰台账</span>
+    <span class="hint">已填 {{ n_filled }}{% if n_applied %} · 其中 {{ n_applied }} 处已写入报告{% endif %} · 填的是报告，不碰台账</span>
   </div>
   <div class="panel-b">
     {% if todo_fill %}
@@ -67,7 +79,7 @@
           <td>
             <!-- 真实表单 POST + 303 回跳（栈契约：状态变更不依赖 JS）。
                  back 带锚点，保存后落回待办区，不让人重新找位置 -->
-            <form class="fill-form" method="post" action="{{ period_dir }}/fill">
+            <form class="fill-form" method="post" action="/p/{{ period_dir }}/fill">
               <input type="hidden" name="id" value="{{ t.id }}">
               <input type="hidden" name="back" value="/#todo-panel">
               <input name="value" value="{{ t.filled or '' }}" placeholder="填入内容">
@@ -84,6 +96,14 @@
     {% else %}
     <p>没有需要人工填写的内容。</p>
     {% endif %}
+    <p style="margin-top:14px">
+      <form method="post" action="/p/{{ period_dir }}/rebuild" style="display:inline">
+        <input type="hidden" name="back" value="/#todo-panel">
+        <button type="submit" class="btn primary">填完重出报告（约 10 秒）</button>
+      </form>
+      <span style="color:var(--ink-3); margin-left:10px">
+        把填好的值写进报告初稿；原机器稿自动备份到 _superseded/，台账不受影响。</span>
+    </p>
   </div>
 </div>
 
@@ -102,7 +122,7 @@
           <td class="mono">{{ t.where }}</td>
           <td class="mono">{{ t.value or '—' }}</td>
           <td>
-            <form class="fill-form" method="post" action="{{ period_dir }}/fill">
+            <form class="fill-form" method="post" action="/p/{{ period_dir }}/fill">
               <input type="hidden" name="id" value="{{ t.id }}">
               <input type="hidden" name="back" value="/#todo-panel">
               <input name="value" value="{{ t.filled or t.value or '' }}">
