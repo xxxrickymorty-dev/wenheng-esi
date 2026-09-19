@@ -51,7 +51,8 @@ def test_断言未过时写出诊断报告(tmp_path):
     text = p.read_text(encoding="utf-8")
     assert "断言未过" in text
     assert "某某新学科" in text, "认不出的学科名是人工唯一能直接下手的线索"
-    assert "带病出稿" in text, "必须与 flow 那份（拦停不出稿）区分开"
+    assert "不要拿上一版的旧报告顶上" in text, \
+        '措辞不能预设「已经出稿」——缺数据时后续步骤会中断，那是预期行为'
 
 
 def test_叙事层抛异常时诊断报告照写(tmp_path, monkeypatch):
