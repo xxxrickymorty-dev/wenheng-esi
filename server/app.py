@@ -10,6 +10,7 @@ import hashlib
 import io
 import json
 import pathlib
+import re
 import time
 import urllib.parse
 from contextlib import asynccontextmanager
@@ -450,6 +451,63 @@ async def period_redslots(request: Request, period: str):
     if d is None:
         return RedirectResponse("/", status_code=303)
     return _redslots_page(request, d)
+
+
+@app.get("/p/{period}/trace", response_class=HTMLResponse)
+async def period_trace(request: Request, period: str):
+    """逐格溯源（354 那个数字的落点）。
+
+    **现场真读台账**（`workbench.trace` → `parse_ledger.load_ledger`），
+    不拿宽表 parquet 自证 —— 同源自证差异恒为 0，看起来严谨实际什么都没验。
+    加载 7MB 台账约 2–4 秒，换来的是"每个数字当场对给你看"。
+    """
+    from . import workbench                                     # noqa: PLC0415
+    d = resolve_period_dir(period)
+    if d is None:
+        return RedirectResponse("/", status_code=303)
+    ledger = _find_ledger(d)
+    data = workbench.trace(d, ledger, prev=None) if ledger else {
+        "bigtable": [], "charts": [], "texts": [], "n": 0,
+        "ledger": "（本地未找到台账 input/<期次>/监测表.xlsx）"}
+    review = workbench.load_review(d)
+    return page(request, "trace.html", period_dir=d.name, **data,
+                review=review, audit_base=f"/p/{urllib.parse.quote(d.name)}")
+
+
+def _find_ledger(period_dir):
+    """按期次找台账：input/<六位期次>/监测表.xlsx。找不到返回 None（页面降级说明）。"""
+    # ⚠ period_dir 常是完整路径（C:\...\out\202607），从**目录名**取期次，
+    #   从头匹配整条路径永远 None —— 这个 bug 刚刚让 trace 页空跑了一回。
+    name = pathlib.Path(period_dir).name
+    m = re.match(r"^(\d{6})", name)
+    if not m:
+        return None
+    p = config.INPUT_DIR / m.group(1) / "监测表.xlsx"
+    return p if p.exists() else None
+
+
+@app.post("/p/{period}/fill")
+async def period_fill(request: Request, period: str, id: str = Form(""), value: str = Form("")):
+    """在线填【手工：】项。**只写产物目录的 manual_inputs.json，台账一个字节不碰**
+    —— 填的是报告，不是数据源；这正是"可溯源"与"可修改"的边界。"""
+    from . import workbench                                     # noqa: PLC0415
+    d = resolve_period_dir(period)
+    if d is None or not id.strip():
+        return JSONResponse({"ok": False, "error": "bad request"}, status_code=400)
+    rec = workbench.save_fill(d, id, value, by=current_user(request) or "?")
+    return JSONResponse(rec)
+
+
+@app.post("/p/{period}/flag")
+async def period_flag(request: Request, period: str, loc: str = Form("")):
+    """大表格子**只能存疑，不能改**（数字来自台账，改了就破溯源）。
+    存疑是记一笔"这格我不认"，签单闸门会看到它。"""
+    from . import workbench                                     # noqa: PLC0415
+    d = resolve_period_dir(period)
+    if d is None or not loc.strip():
+        return JSONResponse({"ok": False, "error": "bad request"}, status_code=400)
+    rec = workbench.toggle_flag(d, loc, by=current_user(request) or "?")
+    return JSONResponse(rec)
 
 
 @app.get("/p/{period}/charts", response_class=HTMLResponse)

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block sub %}逐格溯源 · {{ period_dir }}{% endblock %}
+
+{% block head %}
+<style>
+  .same { color: var(--ok); }
+  .diff { color: var(--zhu); font-weight: 600; }
+  .derived { color: var(--ink-2); font-style: normal; }
+  table.dense td, table.dense th { padding: 4px 8px; }
+  .flag-btn { cursor: pointer; }
+  .flag-btn.on { background: var(--zhu); border-color: var(--zhu); color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="panel">
+  <div class="panel-h">
+    <span class="no">00</span>
+    <h2>逐格溯源 · {{ n }} 处</h2>
+    <span class="hint">台账：{{ ledger }}</span>
+  </div>
+  <div class="panel-b">
+    <p>左边是<strong>报告出稿时写进去的值</strong>，右边是<strong>现在现场重读台账得到的值</strong>。
+       两边不是同一次读取 —— 若台账后来被人改过，这里会现形。</p>
+    <p>派生格（阈值差、千分位、接近度变化、排名变化）不是台账里的数，
+       把<strong>算式和输入值</strong>一并展示。⚠ 数值格式两边不同（报告按原件格式化，
+       台账是原始精度），看数量级与有效数字，别逐字符比。</p>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-h">
+    <span class="no">01</span>
+    <h2>大表 · {{ bigtable|length }} 格</h2>
+    <span class="hint">直接格给出台账表名，派生格给出算式</span>
+  </div>
+  <div class="panel-b">
+    <table class="dense">
+      <thead><tr>
+        <th>位置</th><th>列</th><th>报告值</th><th>台账（现场重读）</th><th>来源</th><th>取法</th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for r in bigtable %}
+      <tr id="{{ r.loc }}">
+        <td class="mono">{{ r.loc }}</td>
+        <td>{{ r.col }}</td>
+        <td class="mono"><strong>{{ r.report or '—' }}</strong></td>
+        <td class="mono">{{ r.ledger }}</td>
+        <td class="mono">{{ r.sheet }}<br><span style="color:var(--ink-3)">{{ r.src_ref }}</span></td>
+        <td>{{ r.how }}</td>
+        <td><button class="btn flag-btn {% if review.get(r.loc) and review[r.loc].state == 'doubt' %}on{% endif %}"
+              data-loc="{{ r.loc }}" onclick="flag(this)">{{ '存疑中' if review.get(r.loc) and review[r.loc].state == 'doubt' else '存疑' }}</button></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-h">
+    <span class="no">02</span>
+    <h2>图表 · {{ charts|length }} 张</h2>
+    <span class="hint">图不是数字，溯源 = 数据来自哪张宽表</span>
+  </div>
+  <div class="panel-b">
+    <table class="dense">
+      <thead><tr><th>槽位</th><th>图</th><th>数据来源</th></tr></thead>
+      <tbody>
+      {% for c in charts %}
+      <tr><td class="mono">{{ c.loc }}</td><td>{{ c.report }}</td><td class="mono">{{ c.src }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-h">
+    <span class="no">03</span>
+    <h2>正文与其他 · {{ texts|length }} 处</h2>
+  </div>
+  <div class="panel-b">
+    <table class="dense">
+      <thead><tr><th>槽位</th><th>内容</th><th>来源</th></tr></thead>
+      <tbody>
+      {% for t in texts %}
+      <tr><td class="mono">{{ t.loc }}</td><td>{{ t.report }}</td><td class="mono">{{ t.src }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<p><a class="ghost" href="{{ audit_base }}">← 返回工作台</a></p>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function flag(btn) {
+  const loc = btn.dataset.loc;
+  fetch("{{ audit_base }}/flag", {
+    method: "POST",
+    headers: {"Content-Type": "application/x-www-form-urlencoded"},
+    body: "loc=" + encodeURIComponent(loc)
+  }).then(r => r.json()).then(d => {
+    if (!d.ok) return;
+    const on = d.state === "doubt";
+    btn.classList.toggle("on", on);
+    btn.textContent = on ? "存疑中" : "存疑";
+  });
+}
+</script>
+{% endblock %}

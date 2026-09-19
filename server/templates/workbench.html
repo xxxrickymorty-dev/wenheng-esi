@@ -1,6 +1,17 @@
 {% extends "base.html" %}
 {% block sub %}馆员工作台 · {{ period }}{% endblock %}
 
+{% block head %}
+<style>
+  .fill-form { display: flex; gap: 6px; justify-content: flex-end; }
+  .fill-form input { width: 200px; }
+  .filled-mark { color: var(--ok); }
+  a.readout-link { text-decoration: none; color: inherit; display: block; }
+  a.readout-link:hover { background: rgba(178,58,42,.05); }
+  .readout .go { font-size: 10px; color: var(--ink-3); letter-spacing: .1em; }
+</style>
+{% endblock %}
+
 {% block content %}
 
 <div class="panel">
@@ -10,41 +21,58 @@
     <span class="hint">{{ period_dir }}</span>
   </div>
   <div class="readouts">
+    <a class="readout-link" href="{{ period_dir }}/trace" title="逐格对照台账">
     <div class="readout">
       <div class="v ok">{{ traceable.with_source }}</div>
       <div class="k">个数字 · 全部可回查到台账</div>
+      <div class="go">点开 → 逐格对照 ↑</div>
     </div>
+    </a>
+    <a class="readout-link" href="#todo-panel" title="待拍板清单">
     <div class="readout">
       <div class="v">{{ todo|length }}</div>
       <div class="k">处 · 待你拍板</div>
+      <div class="go">点开 ↓</div>
     </div>
+    </a>
+    <a class="readout-link" href="#pending-panel" title="待补数据">
     <div class="readout">
       <div class="v zhu">{{ pending|length }}</div>
       <div class="k">处 · 待补数据（台账外）</div>
+      <div class="go">点开 ↓</div>
     </div>
+    </a>
   </div>
   <div class="panel-foot">
     <span>我们不写「已核对 N 格」——系统里没有标准答案可比对（人工原件仅 4 期，且自身就有笔误）。
-    能保证的是<strong>可溯源</strong>：下面每个数字都能点回台账的工作表与行列。</span>
+    能保证的是<strong>可溯源</strong>：点第一个数字，354 处逐格列出，并排对照台账现场重读的值。</span>
   </div>
 </div>
 
-<div class="panel">
+<div class="panel" id="todo-panel">
   <div class="panel-h">
     <span class="no">02</span>
     <h2>需要你填（{{ todo_fill|length }} 处）</h2>
-    <span class="hint">填的是报告，不碰台账</span>
+    <span class="hint">已填 {{ n_filled }} · 填的是报告，不碰台账</span>
   </div>
   <div class="panel-b">
     {% if todo_fill %}
     <table class="dense">
-      <thead><tr><th>位置</th><th>要填什么</th><th class="r">操作</th></tr></thead>
+      <thead><tr><th>位置</th><th>要填什么</th><th>填写</th><th class="r">状态</th></tr></thead>
       <tbody>
       {% for t in todo_fill %}
-        <tr>
+        <tr id="{{ t.id }}">
           <td class="mono">{{ t.where }}</td>
           <td>{{ t.title }}</td>
-          <td class="r"><span class="tag">待填</span></td>
+          <td>
+            <form class="fill-form" data-id="{{ t.id }}">
+              <input name="value" value="{{ t.filled or '' }}" placeholder="填入内容">
+              <button type="submit" class="btn">保存</button>
+            </form>
+          </td>
+          <td class="r state">
+            {% if t.filled %}<span class="filled-mark">✓ 已填</span>{% else %}<span class="tag">待填</span>{% endif %}
+          </td>
         </tr>
       {% endfor %}
       </tbody>
@@ -63,13 +91,21 @@
   </div>
   <div class="panel-b">
     <table class="dense">
-      <thead><tr><th>位置</th><th>当前值</th><th class="r">操作</th></tr></thead>
+      <thead><tr><th>位置</th><th>当前值</th><th>确认 / 改正</th><th class="r">状态</th></tr></thead>
       <tbody>
       {% for t in todo_confirm %}
-        <tr>
+        <tr id="{{ t.id }}">
           <td class="mono">{{ t.where }}</td>
-          <td>{{ t.value or '—' }}</td>
-          <td class="r"><span class="tag">待确认</span></td>
+          <td class="mono">{{ t.value or '—' }}</td>
+          <td>
+            <form class="fill-form" data-id="{{ t.id }}">
+              <input name="value" value="{{ t.filled or t.value or '' }}">
+              <button type="submit" class="btn">确认</button>
+            </form>
+          </td>
+          <td class="r state">
+            {% if t.filled %}<span class="filled-mark">✓ 已确认</span>{% else %}<span class="tag">待确认</span>{% endif %}
+          </td>
         </tr>
       {% endfor %}
       </tbody>
@@ -77,7 +113,7 @@
   </div>
 </div>
 
-<div class="panel">
+<div class="panel" id="pending-panel">
   <div class="panel-h">
     <span class="no">04</span>
     <h2>待补数据（{{ pending|length }} 处 · 数据不在台账里）</h2>
@@ -92,6 +128,8 @@
       {% endfor %}
       </tbody>
     </table>
+    <p>⚠ 这三处的交互还没定（等你和卜彤对过「数据实际从哪来、谁贴」再设计，
+    先诚实空着 —— 不装一个看起来能用其实接不上数据源的按钮）。</p>
   </div>
 </div>
 
@@ -103,7 +141,7 @@
   </div>
   <div class="panel-b">
     <p>大表格子、图表、正文句的数字全部来自台账，
-      不需要逐条拍板。深挖用下面的审计视图。</p>
+      不需要逐条拍板。逐格对照在「可溯源」那一屏。</p>
     <p>
       {% for a in audit_links %}
       <a class="ghost" href="{{ a.href }}">{{ a.label }}</a>
@@ -113,4 +151,25 @@
   </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 填写/确认：POST 到 /p/<期次>/fill，只写产物目录，台账一个字节不碰
+document.querySelectorAll(".fill-form").forEach(f => {
+  f.addEventListener("submit", e => {
+    e.preventDefault();
+    const id = f.dataset.id, value = f.querySelector("input").value;
+    fetch("{{ period_dir }}/fill", {
+      method: "POST",
+      headers: {"Content-Type": "application/x-www-form-urlencoded"},
+      body: "id=" + encodeURIComponent(id) + "&value=" + encodeURIComponent(value)
+    }).then(r => r.json()).then(d => {
+      const tr = f.closest("tr"), st = tr.querySelector(".state");
+      if (d.ok) st.innerHTML = '<span class="filled-mark">✓ 已填</span>';
+      else st.innerHTML = '<span style="color:var(--zhu)">保存失败</span>';
+    });
+  });
+});
+</script>
 {% endblock %}

@@ -355,6 +355,37 @@ _cjs = (ROOT / "static" / "collation.js").read_text(encoding="utf-8")
 check("collation.js 渲染缩略图", 'class="thumb"' in _cjs and "<img src=" in _cjs)
 check("collation.js 有缺图兜底（不显示裂图）", "图未落盘" in _cjs)
 
+out("=== 15. 工作台：逐格溯源 / 在线填 / 存疑 ===")
+# 2026-09-19 新增。三个数字的落点：354→trace，19→在线填，3→待补说明。
+st, tr, _ = call("GET", "/p/202607/trace")
+check("GET /p/202607/trace → 200", st == 200, f"got {st}")
+check("trace 有大表 239 格", "大表 · 239" in tr, f"got {tr.count('T01/r')} 个 T01 槽位")
+check("trace 有图表 99 张", "图表 · 99" in tr)
+check("trace 是并排对照不是单列值", "台账（现场重读）" in tr and "派生" in tr)
+check("派生格给了算式", "总被引 − ESI被引阈值" in tr and "× 10" in tr)
+check("台账缺失时降级说明而不是空白", "本地未找到台账" in tr or "全部可回查" not in tr)
+# 在线填：写产物侧 manual_inputs.json，**台账不碰**（sha256 前后必须一致）
+_led = ROOT.parent.parent / "数据与复现" / "云大全学科排名、阈值动态检测表.xlsx"
+_sha0 = _led.stat().st_size if _led.exists() else -1
+st, fr, _ = call("POST", "/p/202607/fill",
+                 {"id": "e2e-fill-test", "value": "e2e 测试值"})
+_fd = json.loads(fr) if fr.startswith("{") else {}
+check("POST fill 保存成功", st == 200 and _fd.get("ok") is True, f"{st} {fr[:80]}")
+check("fill 记了填写人与时间", bool(_fd.get("by")) and bool(_fd.get("at")))
+st, fr2, _ = call("POST", "/p/202607/flag", {"loc": "T01/r999c9"})
+_d1 = json.loads(fr2) if fr2.startswith("{") else {}
+st, fr3, _ = call("POST", "/p/202607/flag", {"loc": "T01/r999c9"})
+_d2 = json.loads(fr3) if fr3.startswith("{") else {}
+check("存疑可切换（点两次=撤销）",
+      _d1.get("state") == "doubt" and _d2.get("state") == "clear", f"{_d1} {_d2}")
+check("台账没被在线填/存疑碰到（字节数不变）",
+      _led.stat().st_size == _sha0, f"{_sha0} -> {_led.stat().st_size}")
+# 首页的三个数字都是可点的
+st, home2, _ = call("GET", "/")
+check("工作台三个数字可点（trace 链接在）", 'href="202607/trace"' in home2)
+check("待办区有在线填表单", 'class="fill-form"' in home2)
+check("待补数据说明诚实标注交互未定", "交互还没定" in home2)
+
 out("=" * 56)
 if FAILS:
     out(f"结果：{len(FAILS)} 项未过")

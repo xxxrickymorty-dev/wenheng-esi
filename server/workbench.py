@@ -36,6 +36,149 @@ _CONFIRM_SOURCE = ("期次参数",)
 
 _HAND = re.compile(r"【手工：([^】]*)】")
 
+# ================================================================== 逐格溯源
+# 大表 11 列 → 数据从哪来。c0 是学科名，c1..c10 对应 table2 的列序。
+# 直接格：值就在台账某张宽表里（sheet·学科·期次 三元组定位）；
+# 派生格：值是算出来的 → 给出算式，并把**输入值**一并展示（不然"可溯源"对它不成立）。
+_WIDE = ("papers", "cnci", "total_cites", "threshold_1pct", "proximity_1pct", "top_papers")
+
+
+def _cell(df, disc, period):
+    """从宽表取标量；行或列不存在返回 None（别抛，逐格溯源不能一格挂全页）。"""
+    try:
+        v = df.loc[disc, period]
+    except (KeyError, IndexError):
+        return None
+    return None if v != v else v          # NaN → None
+
+
+def _series(df, disc, period, col="rank"):
+    try:
+        r = df[(df["discipline"] == disc) & (df["period"] == period)]
+        v = r.iloc[0][col]
+    except (IndexError, KeyError):
+        return None
+    return None if v != v else v
+
+
+def _fmt(v):
+    if v is None:
+        return "—"
+    if isinstance(v, float):
+        return f"{v:.4f}".rstrip("0").rstrip(".") if v % 1 else str(int(v))
+    return str(v)
+
+
+def _bigtable_trace(rows, led, period, prev):
+    """大表 239 格逐格溯源。返回 [{loc, col, report, sheet, disc, src_ref, ledger, how}]"""
+    import parse_ledger                                   # noqa: PLC0415
+
+    wide = led.get("wide") or {}
+    rev = {v: k for k, v in parse_ledger.WIDE_METRIC.items()}   # metric → 台账中文名
+    cn = parse_ledger.DISCIPLINES_CN
+    out = []
+    for r in rows:
+        loc = r.get("location") or ""
+        if not loc.startswith("T01/r"):
+            continue
+        m = re.match(r"T01/r(\d+)c(\d+)", loc)
+        if not m:
+            continue
+        ci = int(m.group(2))
+        report = (r.get("new") or "").strip()
+        if ci == 0:                                       # 学科名列
+            disc_en = next((k for k, v in cn.items() if v == report), None)
+            out.append({"loc": loc, "col": "学科", "report": report,
+                        "sheet": "（22 学科规范名单）", "src_ref": disc_en or "?",
+                        "ledger": disc_en or "?", "how": "映射"})
+            continue
+        # 行号 → 学科：table2 行序 = 报告大表行序，但 LEDGER 的行序按学科名查，不依赖行号
+        # 先用本行 c0 的中文名反查英文名（同一 red_slots 列表里 r{n}c0 一定在前面）
+        cn_name = next((x.get("new") or "" for x in rows
+                        if x.get("location") == f"T01/r{m.group(1)}c0"), "")
+        disc_en = next((k for k, v in cn.items() if v == cn_name), cn_name)
+
+        def W(metric):
+            return _cell(wide.get(metric), disc_en, period)
+
+        if ci == 1:      # 国内排名/变化
+            a, b = _series(led["new_cn"], disc_en, period), _series(led["new_cn"], disc_en, prev)
+            out.append({"loc": loc, "col": "国内排名/变化", "report": report,
+                        "sheet": "新国内排名", "src_ref": f"{disc_en} · {period}/{prev} · rank",
+                        "ledger": f"{_fmt(a)}（上期 {_fmt(b)}）",
+                        "how": f"由两期排名算变化：{_fmt(a)} vs {_fmt(b)}"})
+        elif ci == 6:    # 1%阈值差 = 总被引 − 1%阈值（列序与 table2 对齐：c6 是 gap）
+            a, b = W("total_cites"), W("threshold_1pct")
+            d_ = (a - b) if a is not None and b is not None else None
+            out.append({"loc": loc, "col": "1%阈值差", "report": report,
+                        "sheet": f"{rev['total_cites']} − {rev['threshold_1pct']}",
+                        "src_ref": f"{disc_en} · {period}",
+                        "ledger": f"{_fmt(a)} − {_fmt(b)} = {_fmt(d_)}",
+                        "how": "派生：总被引 − 1%阈值"})
+        elif ci == 7:    # 1‰阈值
+            v = _cell(led.get("threshold_1permille"), disc_en, period)
+            out.append({"loc": loc, "col": "1‰阈值", "report": report,
+                        "sheet": "千分之一被引阈值", "src_ref": f"{disc_en} · {period}",
+                        "ledger": _fmt(v), "how": "直接取值"})
+        elif ci == 8:    # 千分位
+            p_ = _series(led["rank_intl"], disc_en, period, col="rank_pct")
+            d_ = p_ * 10 if p_ is not None else None
+            out.append({"loc": loc, "col": "千分位", "report": report,
+                        "sheet": "国际排名", "src_ref": f"{disc_en} · {period} · rank_pct",
+                        "ledger": f"{_fmt(p_)} × 10 = {_fmt(d_)}",
+                        "how": "派生：国际排名百分位 × 10"})
+        elif ci == 10:   # 接近度变化
+            a, b = W("proximity_1pct"), _cell(wide.get("proximity_1pct"), disc_en, prev)
+            d_ = (a - b) * 100 if a is not None and b is not None else None
+            out.append({"loc": loc, "col": "接近度变化", "report": report,
+                        "sheet": rev["proximity_1pct"], "src_ref": f"{disc_en} · {period}/{prev}",
+                        "ledger": f"{_fmt(a)} − {_fmt(b)} ×100 = {_fmt(d_)}",
+                        "how": "派生：(本期接近度 − 上期) × 100"})
+        elif ci == 9:    # 顶尖论文
+            v = W("top_papers")
+            out.append({"loc": loc, "col": "顶尖论文", "report": report,
+                        "sheet": rev["top_papers"], "src_ref": f"{disc_en} · {period}",
+                        "ledger": _fmt(v), "how": "直接取值"})
+        else:
+            metric = {2: "papers", 3: "cnci", 4: "total_cites", 5: "threshold_1pct"}.get(ci)
+            if metric is None:
+                out.append({"loc": loc, "col": f"c{ci}", "report": report,
+                            "sheet": "?", "src_ref": "—", "ledger": "—",
+                            "how": "未登记的列（别静默放过，来补映射）"})
+            else:
+                v = W(metric)
+                out.append({"loc": loc, "col": metric, "report": report,
+                            "sheet": rev[metric], "src_ref": f"{disc_en} · {period}",
+                            "ledger": _fmt(v), "how": "直接取值"})
+    return out
+
+
+def trace(out_dir, ledger_path, period=None, prev=None):
+    """逐格溯源装配。**现场真读台账**（load_ledger），不拿宽表 parquet 自证——
+    同源自证差异恒为 0，看起来严谨实际什么都没验（评审文档里的老教训）。"""
+    import parse_ledger                                   # noqa: PLC0415
+    rows = _slots(out_dir)
+    period = period or pathlib.Path(out_dir).name
+    try:
+        led = parse_ledger.load_ledger(pathlib.Path(ledger_path))
+        # 上期不由调用方猜 —— 用解析器自己的口径（脏期次归一、占位列剔除都在它里面）
+        if not prev:
+            _, prev = parse_ledger._latest_periods(led)
+        big = _bigtable_trace(rows, led, period, prev)
+    except Exception as e:                                # noqa: BLE001
+        big = [{"loc": "—", "col": "台账读取失败", "report": "—",
+                "sheet": str(pathlib.Path(ledger_path).name),
+                "src_ref": "—", "ledger": f"{type(e).__name__}: {e}", "how": "—"}]
+
+    charts = [{"loc": r.get("location"), "report": (r.get("new") or "").strip(),
+               "src": r.get("source") or ""}
+              for r in rows if (r.get("source") or "").startswith("charts")]
+    texts = [{"loc": r.get("location"), "report": (r.get("new") or "").strip()[:60],
+              "src": r.get("source") or ""}
+             for r in rows if (r.get("source") or "").startswith(("sentences", "期次参数", "母版"))]
+    return {"bigtable": big, "charts": charts, "texts": texts,
+            "n": len(rows), "ledger": str(ledger_path)}
+
 
 def _slots(out_dir):
     p = pathlib.Path(out_dir) / "red_slots.json"
@@ -64,6 +207,57 @@ def _todo_from_slot(row, idx):
             "source": row.get("source") or "",
         })
     return out
+
+
+# ================================================================== 在线填 / 存疑
+# 两个状态文件都落在 out/<期次>/（产物目录），**台账一个字节不碰**。
+# 破坏了这条，"354 个数字可溯源"就变成一句空话 —— 修改必须发生在报告侧。
+
+def _load_json(path):
+    p = pathlib.Path(path)
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8")) or {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def load_fills(out_dir):
+    return _load_json(pathlib.Path(out_dir) / "manual_inputs.json")
+
+
+def save_fill(out_dir, todo_id, value, by="?", at=None):
+    """保存一处人工填写。返回记录。**只写产物侧**，永不写台账。"""
+    import datetime as dt
+    p = pathlib.Path(out_dir) / "manual_inputs.json"
+    data = _load_json(p)
+    rec = {"value": value, "by": by,
+           "at": at or dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    data[todo_id] = rec
+    p.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    return {"ok": True, "id": todo_id, **rec, "n_filled": len(data)}
+
+
+def load_review(out_dir):
+    return _load_json(pathlib.Path(out_dir) / "review.json")
+
+
+def toggle_flag(out_dir, loc, by="?", at=None):
+    """存疑/取消存疑（切换）。返回 {loc, state}。"""
+    import datetime as dt
+    p = pathlib.Path(out_dir) / "review.json"
+    data = _load_json(p)
+    cur = data.get(loc) or {}
+    if cur.get("state") == "doubt":
+        del data[loc]                       # 再点一次 = 撤销存疑
+        state = "clear"
+    else:
+        data[loc] = {"state": "doubt", "by": by,
+                     "at": at or dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+        state = "doubt"
+    p.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    return {"ok": True, "loc": loc, "state": state, "n_doubt": len(data)}
 
 
 def build(out_dir, period=None, approval=None):
@@ -97,6 +291,14 @@ def build(out_dir, period=None, approval=None):
 
     pending = [dict(t) for t in PENDING_TABLES]
 
+    fills = load_fills(out_dir)
+    for t in todo:
+        f = fills.get(t["id"])
+        t["filled"] = (f or {}).get("value")
+        t["filled_by"] = (f or {}).get("by")
+        t["filled_at"] = (f or {}).get("at")
+    n_filled = sum(1 for t in todo if t["filled"])
+
     return {
         "period": period,
         "period_dir": pathlib.Path(out_dir).name,
@@ -105,6 +307,8 @@ def build(out_dir, period=None, approval=None):
         "todo_fill": [t for t in todo if t["kind"] == "fill"],
         "todo_confirm": [t for t in todo if t["kind"] == "confirm"],
         "pending": pending,
+        "n_filled": n_filled,
+        "n_doubt": len(load_review(out_dir)),
         "approval": approval or {},
         # 二级入口（审计视图）：给工程/评委深挖用，不占首屏
         "audit_links": [
