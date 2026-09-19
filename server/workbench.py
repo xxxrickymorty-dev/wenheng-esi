@@ -265,6 +265,37 @@ def toggle_flag(out_dir, loc, by="?", at=None):
     return {"ok": True, "loc": loc, "state": state, "n_doubt": len(data)}
 
 
+def _fill_state(key, pending_ids, slot_locs):
+    """一条填写记录的三种状态。
+
+    🔴 **别用「已填数 − 待办里还挂着的」去推「已写入报告」**：键对不上的历史残留
+    （旧版格式、测试写入）也会落进那个差额里，于是页面上出现"已填 2 处、2 处已写入"
+    而实际上一条都没进报告（2026-09-20 rick 实踩）。逐个判，判据要能自证。
+
+    - `pending`：对应位置的 `【手工：x】` 还在 → 填了，但**还没重出报告**
+    - `applied`：位置真实存在、标记已不在 → 值已经写进报告初稿
+    - `orphan` ：位置在当前产物里根本找不到 → 旧版残留或测试垃圾，**要能看出来**
+    """
+    if key in pending_ids:
+        return "pending"
+    loc = key.split("::", 1)[0]
+    return "applied" if loc in slot_locs else "orphan"
+
+
+def _fill_rows(fills, todo, rows):
+    order = {"pending": 0, "applied": 1, "orphan": 2}
+    pending_ids = {t["id"] for t in todo}
+    locs = {(r.get("location") or "") for r in rows}
+    out = []
+    for k, v in (fills or {}).items():
+        v = v or {}
+        out.append({"key": k, "value": v.get("value") or "",
+                    "by": v.get("by") or "", "at": v.get("at") or "",
+                    "state": _fill_state(k, pending_ids, locs)})
+    out.sort(key=lambda x: (order[x["state"]], x["key"]))
+    return out
+
+
 def build(out_dir, period=None, approval=None):
     """装配一屏所需的一切。返回 dict（纯读，不写任何文件）。"""
     rows = _slots(out_dir)
@@ -302,10 +333,10 @@ def build(out_dir, period=None, approval=None):
         t["filled"] = (f or {}).get("value")
         t["filled_by"] = (f or {}).get("by")
         t["filled_at"] = (f or {}).get("at")
-    # 计数**独立于 todo**：重出报告后【手工：】标记被替换掉，todo 里那几条会消失，
-    # 但人工填过的值仍在 manual_inputs.json 里 —— 跟着 todo 算会显示成"已填 0"。
-    n_filled = sum(1 for v in fills.values() if str((v or {}).get("value") or "").strip())
-    n_applied = n_filled - sum(1 for t in todo if t["filled"])
+    fills_list = _fill_rows(fills, todo, rows)
+    n_filled = sum(1 for f in fills_list if f["state"] != "orphan")
+    n_applied = sum(1 for f in fills_list if f["state"] == "applied")
+    n_orphan = sum(1 for f in fills_list if f["state"] == "orphan")
 
     return {
         "period": period,
@@ -315,8 +346,10 @@ def build(out_dir, period=None, approval=None):
         "todo_fill": [t for t in todo if t["kind"] == "fill"],
         "todo_confirm": [t for t in todo if t["kind"] == "confirm"],
         "pending": pending,
+        "fills_list": fills_list,
         "n_filled": n_filled,
         "n_applied": n_applied,
+        "n_orphan": n_orphan,
         "n_doubt": len(load_review(out_dir)),
         "approval": approval or {},
         # 二级入口（审计视图）：给工程/评委深挖用，不占首屏

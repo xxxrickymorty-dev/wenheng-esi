@@ -411,21 +411,25 @@ def _do_revoke(request, period, note, back):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, err: str = "", signed: str = "",
-               revoked: str = "", rebuilt: str = ""):
-    """**首屏 = 馆员工作台**（最新一期）。没有可对勘的期次时才退回控制台。
+               revoked: str = "", rebuilt: str = "", p: str = ""):
+    """**首屏 = 馆员工作台**（最新一期，可用 `?p=<期次>` 切换）。没有可对勘的期次时才退回控制台。
 
     2026-09-19 从「首屏=对勘本」改过来。对勘本回答的是"这份报告怎么拼出来的"
     （生产视角），而打开这个站的人要的是"这次要我做什么决定"（馆员视角）。
     对勘本 / 图册 / 档案页都还在，收进工作台底部的「审计视图」入口。
+
+    ⚠ 期次原先写死取最新一期（rick：「为什么标题栏 202607 常驻」）——
+    现在按 `?p=` 切换，切换器渲染在标题栏右侧。
     """
     from . import workbench                                     # noqa: PLC0415
     cards = period_cards()
     if cards:
-        d = resolve_period_dir(cards[0]["period"])
+        want = p or cards[0]["period"]
+        d = resolve_period_dir(want) or resolve_period_dir(cards[0]["period"])
         if d is not None:
             return page(request, "workbench.html",
                         **workbench.build(d),
-                        periods=cards, rebuilt=rebuilt,
+                        periods=cards, current=d.name, rebuilt=rebuilt,
                         flash=_flash(err, signed, revoked))
     return page(request, "index.html", **_run_ctx())
 

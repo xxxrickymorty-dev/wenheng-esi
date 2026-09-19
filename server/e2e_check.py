@@ -376,6 +376,15 @@ check("POST fill 走表单 303 回跳", st == 200 and fin.endswith("#todo-panel"
 _mi = ROOT.parent / "out" / "202607" / "manual_inputs.json"
 _mi_ok = _mi.exists() and "e2e-fill-test" in _mi.read_text(encoding="utf-8")
 check("manual_inputs.json 落在产物目录", _mi_ok)
+# 🔴 用完必须自己打扫：这条测试键会显示在馆员工作台的「已填」区里（2026-09-20
+#    rick 就看到了"已填 2 处"却哪也没填 —— 一条是这个，一条是更早的测试残留）。
+if _mi.exists():
+    _d = json.loads(_mi.read_text(encoding="utf-8"))
+    _d.pop("e2e-fill-test", None)
+    _mi.write_text(json.dumps(_d, ensure_ascii=False, indent=1), encoding="utf-8") if _d \
+        else _mi.unlink()
+check("e2e 写完自己清理掉测试键", not _mi.exists()
+      or "e2e-fill-test" not in _mi.read_text(encoding="utf-8"))
 st, fr2, _ = call("POST", "/p/202607/flag", {"loc": "T01/r999c9",
                                              "back": "/p/202607/trace"})
 _rv = ROOT.parent / "out" / "202607" / "review.json"
@@ -401,8 +410,10 @@ check("待补数据说明诚实标注交互未定", "交互还没定" in home2)
 check("表单 action 是绝对路径（不是相对路径）",
       'action="/p/202607/fill"' in home2 and 'action="202607/fill"' not in home2
       and 'action="/p/202607/rebuild"' in home2)
-# 重出报告：没有填写内容时**不执行**（安全分支，不覆盖任何产物）
-st, _rb, _rfin = call("POST", "/p/202605_%E5%A4%8D%E7%8E%B0/rebuild",
+# 重出报告：没有填写内容时**不执行**（安全分支，不覆盖任何产物）。
+# ⚠ 要用**确定没填过**的期次：202605_复现 有 2 条填写记录（演示样例），
+#   POST 上去会真的重出一次稿（2026-09-20 实测，断言因此误红）。
+st, _rb, _rfin = call("POST", "/p/202601_%E5%A4%8D%E7%8E%B0/rebuild",
                       {"back": "/#todo-panel"})
 # ⚠ 回跳带的提示是 URL 编码的；而且要拼在问号位置而不是锚点后面
 #   （写成 /#todo-panel?err=… 的话浏览器整段忽略，提示永远不显示）

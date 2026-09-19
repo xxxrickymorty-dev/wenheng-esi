@@ -30,7 +30,11 @@
   <div class="panel-h">
     <span class="no">01</span>
     <h2>本次出稿体检</h2>
-    <span class="hint">{{ period_dir }}</span>
+    <span class="hint">
+      {% for c in periods %}
+      <a href="/?p={{ c.period }}" {% if c.period == current %}style="color:var(--zhu);font-weight:600"{% endif %}>{{ c.period }}</a>{% if not loop.last %} · {% endif %}
+      {% endfor %}
+    </span>
   </div>
   <div class="readouts">
     <a class="readout-link" href="/p/{{ period_dir }}/trace" title="逐格对照台账">
@@ -57,7 +61,10 @@
   </div>
   <div class="panel-foot">
     <span>我们不写「已核对 N 格」——系统里没有标准答案可比对（人工原件仅 4 期，且自身就有笔误）。
-    能保证的是<strong>可溯源</strong>：点第一个数字，354 处逐格列出，并排对照台账现场重读的值。</span>
+    能保证的是<strong>可溯源</strong>：点第一个数字，逐格列出并排对照台账现场重读的值。</span>
+    <span style="float:right">
+      <a class="btn primary" href="/run">发起新任务（跑新一期）→</a>
+    </span>
   </div>
 </div>
 
@@ -65,7 +72,7 @@
   <div class="panel-h">
     <span class="no">02</span>
     <h2>需要你填（{{ todo_fill|length }} 处）</h2>
-    <span class="hint">已填 {{ n_filled }}{% if n_applied %} · 其中 {{ n_applied }} 处已写入报告{% endif %} · 填的是报告，不碰台账</span>
+    <span class="hint">待填 {{ todo_fill|length }} 处 · 已填 {{ n_filled }}{% if n_applied %}（{{ n_applied }} 处已写进报告）{% endif %} · 填的是报告，不碰台账</span>
   </div>
   <div class="panel-b">
     {% if todo_fill %}
@@ -107,9 +114,44 @@
   </div>
 </div>
 
-<div class="panel">
+<div class="panel" id="filled-panel">
   <div class="panel-h">
     <span class="no">03</span>
+    <h2>已填内容（{{ n_filled }} 处）</h2>
+    <span class="hint">填过什么、谁填的、进没进报告 —— 都在这儿</span>
+  </div>
+  <div class="panel-b">
+    {% if fills_list %}
+    <table class="dense">
+      <thead><tr><th>位置</th><th>填的内容</th><th>谁 · 何时</th><th class="r">状态</th></tr></thead>
+      <tbody>
+      {% for f in fills_list %}
+      <tr>
+        <td class="mono">{{ f.key }}</td>
+        <td>{{ f.value }}</td>
+        <td class="mono" style="color:var(--ink-3)">{{ f.by }} · {{ f.at }}</td>
+        <td class="r">
+          {% if f.state == 'applied' %}<span class="filled-mark">✓ 已写进报告</span>
+          {% elif f.state == 'pending' %}<span class="tag">待重出报告</span>
+          {% else %}<span style="color:var(--zhu)">⚠ 位置对不上</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% if n_orphan %}
+    <p style="color:var(--zhu)">⚠ 其中 {{ n_orphan }} 条的 key 在当前产物里找不到对应位置，
+      不会进报告（多半是旧版格式或测试残留）。这类记录应当清掉，留着会让人误以为填过了。</p>
+    {% endif %}
+    {% else %}
+    <p>还没有填过任何内容。填完后这里会列出「填了什么、谁填的、进没进报告」。</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="panel" id="confirm-panel">
+  <div class="panel-h">
+    <span class="no">04</span>
     <h2>需要你确认（{{ todo_confirm|length }} 项）</h2>
     <span class="hint">结构性项，填错整份报废</span>
   </div>
@@ -141,7 +183,7 @@
 
 <div class="panel" id="pending-panel">
   <div class="panel-h">
-    <span class="no">04</span>
+    <span class="no">05</span>
     <h2>待补数据（{{ pending|length }} 处 · 数据不在台账里）</h2>
     <span class="led bad"></span>
   </div>
@@ -161,7 +203,7 @@
 
 <div class="panel">
   <div class="panel-h">
-    <span class="no">05</span>
+    <span class="no">06</span>
     <h2>其余 {{ traceable.n - todo|length }} 处已可溯源</h2>
     <span class="hint">不进待办 —— 要查随时点开</span>
   </div>
