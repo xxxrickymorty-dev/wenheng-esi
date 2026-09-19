@@ -98,7 +98,9 @@ check("GET / (未登录) 落到 /login", "/login" in final, f"final={final}")
 
 out("=== 3. 登录 ===")
 st, body, final = call("POST", "/login", {"username": "demo", "password": "wenheng@2026"})
-check("POST /login 进入首页", final.rstrip("/").endswith("8080"), f"final={final}")
+# ⚠ 别写死 8080：用 `WENHENG_BASE` 换端口跑时，写死会让这条**假失败**
+#    （2026-09-19 用 8099 实测：final 明明是首页，断言却判未过）。
+check("POST /login 进入首页", final.rstrip("/") == BASE, f"final={final}")
 
 out("=== 4. 首屏 = 对勘本（最新一期） ===")
 st, home, _ = call("GET", "/")

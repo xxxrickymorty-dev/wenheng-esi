@@ -124,6 +124,36 @@ class RunResult:
                 "elapsed": round(self.elapsed, 2)}
 
 
+def _advice_block(err, repair):
+    """「需人工」若干小节（B 档；2026-09-19）。
+
+    旧写法直接贴规则库的 `advice_unapproved`：同一条规则，哪一期、哪个学科
+    失败写出来一字不差，人工还得回去自己数 22 行。`narrator` 把它换成
+    「本次实况 + 怎么核对（按上下文拼装）」。
+
+    🔴 这里**兜底到旧写法**而不是让异常冒出去：《诊断报告》是升级态交给人工的
+    唯一交接物，写不出来比写得朴素严重得多。
+    """
+    def legacy():
+        out = []
+        for a in repair.get("advice") or []:
+            out += ["", f"### 需人工：{a.get('rule') or '规则库'}", "",
+                    f"- 原因：{a.get('why')}", f"- 依据：{a.get('doc') or '—'}", "",
+                    f"> {a.get('advice') or '—'}"]
+        return out, {"backend": "rule", "mode": "rule", "metas": []}
+
+    if not (repair or {}).get("advice"):
+        return [], {"backend": "rule", "mode": "rule", "metas": []}
+    try:
+        from . import narrator                                 # noqa: PLC0415
+        seg, meta = narrator.compose(err, repair)
+        if seg:
+            return seg, meta
+        return legacy()                     # 拼不出任何一句 → 退回静态文案
+    except Exception:                                          # noqa: BLE001
+        return legacy()
+
+
 def _write_diagnosis(run_dir, ledger, step, err, attempts, repair=None):
     """逾限升级时产出《诊断报告》（SRS R-26）。
 
@@ -131,6 +161,7 @@ def _write_diagnosis(run_dir, ledger, step, err, attempts, repair=None):
     所以标题与处置都另走一套——否则人工会按"补一条规则"去处理一个跟规则无关的事故。
     """
     guard_fired = step["id"] == "guard"
+    narrative = None          # B 档：叙事后端留痕（末尾要交代报告有没有经模型加工）
     p = pathlib.Path(run_dir) / "诊断报告.md"
     body = [
         f"# 诊断报告 · {'原件只读护栏触发' if guard_fired else '自愈逾限'}",
@@ -155,10 +186,8 @@ def _write_diagnosis(run_dir, ledger, step, err, attempts, repair=None):
                  f"- 记录：`{repair.get('repair_yaml') or '（未落盘）'}`"]
         if repair.get("overlay"):
             body += [f"- 提交的读表口径：`{json.dumps(repair['overlay'], ensure_ascii=False)}`"]
-        for a in repair.get("advice") or []:
-            body += ["", f"### 需人工：{a.get('rule') or '规则库'}", "",
-                     f"- 原因：{a.get('why')}", f"- 依据：{a.get('doc') or '—'}", "",
-                     f"> {a.get('advice') or '—'}"]
+        advice_lines, narrative = _advice_block(err, repair)
+        body += advice_lines
     if guard_fired:
         body += ["", "## 台账指纹", "",
                  f"- 运行前：`{err.get('before')}`",
@@ -188,8 +217,18 @@ def _write_diagnosis(run_dir, ledger, step, err, attempts, repair=None):
                  ]
     if err.get("fails"):
         body += ["", "## 未通过的断言", ""] + [f"- {m}" for m in err["fails"]]
-    body += ["", "---", "",
-             "> 本报告由 `src/agent/flow.py` 自动生成，未经过模型加工。"]
+    # —— 有没有经过模型，必须写在报告上，不能靠猜 ——
+    tail = "> 本报告由 `src/agent/flow.py` 自动生成"
+    be = (narrative or {}).get("backend")
+    modes = [m.get("mode") for m in (narrative or {}).get("metas") or []]
+    if be and be != "rule" and "polished" in modes:
+        tail += (f"；「本次实况 / 怎么核对」两段经 **{be}** 后端润色，"
+                 "数字已过防护盾校验（占位符完备、无新增数字）。")
+    elif be and be != "rule":
+        tail += f"；**{be}** 后端不可用或校验未过，已回退规则输出，内容与规则库一致。"
+    else:
+        tail += "，未经过模型加工。"
+    body += ["", "---", "", tail]
     p.write_text("\n".join(body), encoding="utf-8")
     return p
 
