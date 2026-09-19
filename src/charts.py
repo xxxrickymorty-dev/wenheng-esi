@@ -25,6 +25,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib import font_manager
+from matplotlib.transforms import Bbox
 
 try:
     from parse_ledger import DISCIPLINES_CN
@@ -163,19 +164,42 @@ def _ov_area(a, b):
     return w * h if (w > 0 and h > 0) else 0.0
 
 
-def _labels(ax, xs, ys, fmt="{:.2f}", dy=4, size=FONT_SIZE, dodge=True):
-    """逐点标数值；正值标上方、负值自动标下方，并**自动避让**别压到任何字。
+_PAD_RATIO = 0.20      # 真碰撞判定：障碍外扩比例（按一行字高）。必须**小于**柱标签基线间隙
+                       # （`dy=4pt`≈16.7px，0.20 行≈7.9px），否则柱标签会被自己的柱子判成压字
+_SOFT_RATIO = 0.55     # 数值标签之间的「舒适间距」（按一行字高）——真碰撞/网格线都打平时按它择优
+_GRID_BAND_PX = 3.0    # 网格线等效厚度（px）：标签压上它就记压线（否则数字像被划了删除线）
+
+
+def _inflate(bb, px):
+    """包围盒四周外扩 px —— 障碍物用它，把「刚好不压」变成「留出可见间隙」。"""
+    return Bbox.from_extents(bb.x0 - px, bb.y0 - px, bb.x1 + px, bb.y1 + px)
+
+
+def _labels(ax, xs, ys, fmt="{:.2f}", dy=4, size=FONT_SIZE, dodge=True, two_sided=True):
+    """逐点标数值；默认正值标上方、负值标下方，并**自动避让**别压到任何字。
 
     🔴 必须防压字（rick 2026-09-18 截图：顶尖论文 27 压在「顶尖论文发文量」上）。
     两条线的数值贴在一起、或分组柱三根挨着时，标签比柱子还宽，按默认位置必叠。
 
     做法（贪心 + 取最优）：
       1. 全部先按默认位置放下，跑一次 `_relayout` 出图口径布局，再量**真实像素**包围盒；
-      2. 逐个候选档位（一档＝一行字高）试抬，障碍物＝**已归位的标签 + 图例 + 标题 +
-         轴标签 + 纵轴刻度字 + 同图前一次 `_labels` 放下的标签**；
+      2. 逐个候选档位（一档＝一行字高）试抬/试降，障碍物＝**已归位的标签 + 图例 + 标题 +
+         轴标签 + 纵轴刻度字 + 横轴期次字 + 柱体 + 横网格线 + 同图前一次 `_labels` 的标签**；
       3. 取**框内重叠面积最小**的那一档；一样差就守原位（绝不会比不打理更差）；
-      4. 允许最多越出坐标区顶两行 —— 轴顶留白只够一行，挤在顶部的两三个标签得摞起来；
+      4. 允许最多越出坐标区顶三行 —— 轴顶留白只够一行，挤在顶部的两三个标签得摞起来；
          越出去那点空隙里除了图例/标题没别的东西，而那俩是障碍物，压上就会扣分。
+
+    🔴 三条 2026-09-18 加深的防线（Rick 截图：图例压数字 / 两个数字贴成一片）：
+      · **障碍外扩留缝**（`_PAD_RATIO`）：只判「不相交」不够 —— 实测 Mathematics 的
+        `5490`×`5478` 只差 6.2px，框上不压、看着就是叠的。判定时把障碍物放大，
+        逼出可见间隙。
+      · **双向落位**（`two_sided`）：默认按正负号定上下，但两条线数值接近时
+        （图4 被引频次 vs ESI 阈值）**都在上方**就必然挤。现在两侧都试、取重叠小的那侧，
+        同分仍守自然侧（观感不变）。所以 down 侧必须同时改 `va`。
+      · **网格线当障碍**：横网格线穿过数字＝看着像划掉。把每条网格线扩成一条细带计入
+        重叠面积，标签能躲就躲（软约束：够小，不会为躲线而牺牲真压字）。
+      · **柱体当障碍**：柱状图不许把标签沉进柱子（否则双向落位会把标签塞进蓝柱里）。
+      · **标签当障碍**：label 全体作为 obstacle，避免两组标签交叉。
 
     ⚠️ 单位陷阱：`xyann` 是 **pt**，包围盒是 **px**（300dpi 下差 4.17 倍），别混。
     ⚠️ 调用顺序必须把 `_title` / `_legend_*` / `_auto_ylim` 排在 `_labels` **之前**
@@ -200,10 +224,14 @@ def _labels(ax, xs, ys, fmt="{:.2f}", dy=4, size=FONT_SIZE, dodge=True):
     _relayout(fig)                          # 先按出图口径布局，量到的像素才对得上最终那张
     fig.canvas.draw()                       # 再画一次，让 transform / renderer 就位
     r = fig.canvas.get_renderer()
-    fixed = []
+    ab = ax.get_window_extent(r)            # 坐标区
+    fixed = []                              # 「真障碍」：压上就是压字
+    label_prior = []                        # 其中「别的数值标签」单拎出来，供三级目标里的舒适间距用
+    legend_box = None                       # 图例包围盒（无框时不可见，但贴太近观感仍是「图例压数字」）
     leg = ax.get_legend()
     if leg is not None:
-        fixed.append(leg.get_window_extent(r))
+        legend_box = leg.get_window_extent(r)
+        fixed.append(legend_box)
     for t in (ax.title, ax.xaxis.label, ax.yaxis.label):
         if t.get_text().strip():
             bb = _text_box(fig, t)
@@ -213,6 +241,7 @@ def _labels(ax, xs, ys, fmt="{:.2f}", dy=4, size=FONT_SIZE, dodge=True):
         bb = _text_box(fig, t)
         if bb is not None:
             fixed.append(bb)
+            label_prior.append(bb)
     for t in ax.get_yticklabels():          # 纵轴刻度字（标签贴轴时会被压）
         bb = _text_box(fig, t)
         if bb is not None:
@@ -221,9 +250,25 @@ def _labels(ax, xs, ys, fmt="{:.2f}", dy=4, size=FONT_SIZE, dodge=True):
         bb = _text_box(fig, t)
         if bb is not None:
             fixed.append(bb)
+    for p in ax.patches:                    # 柱体：标签不许沉进柱子里
+        try:
+            bb = p.get_window_extent(r)
+        except Exception:                   # noqa: BLE001
+            continue
+        if bb.width > 0 and bb.height > 0:
+            fixed.append(bb)
+    bands = []                              # 「次级障碍」：横网格线，能躲就躲，但绝不为它牺牲真碰撞
+    y0d, y1d = ax.get_ylim()
+    for tv in ax.get_yticks():
+        if not (y0d <= tv <= y1d):
+            continue
+        gy = ax.transData.transform((0, tv))[1]
+        bands.append(Bbox.from_extents(ab.x0, gy - _GRID_BAND_PX,
+                                       ab.x1, gy + _GRID_BAND_PX))
 
     gap = size * 1.35                       # 一档＝一行字高（**pt**！xyann 的单位是 pt，别塞 px）
-    ab = ax.get_window_extent(r)            # 坐标区
+    pad_px = gap * _PAD_RATIO / 72.0 * fig.dpi
+    soft_px = gap * _SOFT_RATIO / 72.0 * fig.dpi
     # 允许最多越出轴顶三行：轴顶留白只够一行，挤在顶部的几个标签要错落开才行；
     # 越出去那条带子里只有图例/标题（都在 fixed 里，压上会被扣分），而图例已抬到
     # 1.14（`_legend_top`），轴顶上方留了约 60px 的空带专供标签用。
@@ -233,42 +278,76 @@ def _labels(ax, xs, ys, fmt="{:.2f}", dy=4, size=FONT_SIZE, dodge=True):
     placed = []
 
     def _ov(bb):
-        return (sum(_ov_area(bb, p) for p in placed)
-                + sum(_ov_area(bb, p) for p in fixed))
+        """三级目标 `(真碰撞, 网格线压线, 标签间舒适度)`——**严格按这个顺序比较**。
 
-    def _place(ann, up, base, k):
-        ann.xyann = (0, base + (k * gap if up else -k * gap))
+        🔴 不能合成一个总分：
+          · 合成之后「躲开一条 6px 网格线」和「撞进图例」都是几百 px²，标签会为了躲线
+            主动钻到图例底下（2026-09-18 实测：网格线穿标签 51→0 的同时，标签×图例
+            从 3 处涨到 12 处）。所以真碰撞必须优先。
+          · 再加第三级：真碰撞和网格线都打平时（都是 0），还要比**谁留的余量更大**。
+            否则会挑出「框上不压、看着就是叠的」那种解 —— Mathematics 实测：`5347` 为躲
+            一条网格线往上抬一行，离上方 `5492` 只剩 13.9px，而**往下是空的**（净空 113px），
+            只是两侧都是 0 分，前两级比不出来。
+        """
+        real = sum(_ov_area(bb, _inflate(p, pad_px)) for p in placed)
+        real += sum(_ov_area(bb, _inflate(p, pad_px)) for p in fixed)
+        grid = sum(_ov_area(bb, b) for b in bands)
+        soft = sum(_ov_area(bb, _inflate(p, soft_px)) for p in placed)
+        soft += sum(_ov_area(bb, _inflate(p, soft_px)) for p in label_prior)
+        if legend_box is not None:
+            # 图例无框（原件口径）→ 包围盒不可见，可「框上不压、看着还是贴」。服务器字体实测：
+            # 顶尖论文图 44/27/29 三个柱标离图例框只有 12.0–15.8px，Rick 就是这么截的图。
+            soft += _ov_area(bb, _inflate(legend_box, soft_px))
+        return real, grid, soft
+
+    def _place(ann, side, base, k):
+        """side=True 向上、False 向下；向下必须同时把 va 翻成 top，否则文字朝反方向长。"""
+        ann.set_va("bottom" if side else "top")
+        ann.xyann = (0, base + (k * gap if side else -k * gap))
         ann.update_positions(r)
         return ann.get_window_extent(r)
 
-    for ann, up in zip(anns, ups):
-        base = dy if up else -dy
-        best_k, best_ov, k_ok = 0, None, 0
+    def _best_on(ann, side, base):
+        """在一侧里找目标最小的档位；返回 ((真碰撞, 网格线, 舒适度), k)。"""
+        b_k, b_ov, k_ok = 0, None, 0
         for k in range(0, 40):              # 粗搜：一档＝一行字高，够任何拥挤情况
-            bb = _place(ann, up, base, k)
-            if up:
+            bb = _place(ann, side, base, k)
+            if side:
                 if bb.y1 > top_lim:         # 再抬就飞到标题区了 → 别抬了
                     break
             elif bb.y0 < bot_lim:           # 再降就沉到轴刻度字下方了 → 别降了
                 break
             k_ok = k
             ov = _ov(bb)
-            if best_ov is None or ov < best_ov:
-                best_ov, best_k = ov, k
-            if ov <= 0:
+            if b_ov is None or ov < b_ov:
+                b_ov, b_k = ov, k
+            if ov <= (0, 0, 0):
                 break
-        if best_ov:                         # 粗档之间还有缝（一行高 ≈ 39px）→ 再按 1/4 行细搜
+            if k >= 3 and ov[0] <= 0:
+                break                       # 真碰撞已清零：往更远处挪 >3 行只为躲网格线/找空隙，不值当
+        if b_ov and (b_ov[0] or b_ov[2]):   # 还有真碰撞或不够宽松 → 按 1/4 行细搜
             for j in range(-4, 5):
-                k = best_k + j / 4.0
+                k = b_k + j / 4.0
                 if not (0 <= k <= k_ok):
                     continue
-                ov = _ov(_place(ann, up, base, k))
-                if ov < best_ov:
-                    best_ov, best_k = ov, k
-                if ov <= 0:
+                ov = _ov(_place(ann, side, base, k))
+                if ov < b_ov:
+                    b_ov, b_k = ov, k
+                if ov <= (0, 0, 0):
                     break
-        # 框内**重叠最少**的那一档；实在躲不开也只会退回原位，不会比原来更差
-        placed.append(_place(ann, up, base, best_k))
+        return (b_ov if b_ov is not None else (0.0, 0.0, 0.0)), b_k
+
+    for ann, up0 in zip(anns, ups):
+        cands = []
+        for side in ((True, False) if two_sided else (up0,)):
+            ov, k = _best_on(ann, side, dy if side else -dy)
+            # 第 4 元＝「是否离开了自然侧」：三项分数都一样时守自然侧，观感与原件一致
+            cands.append((ov[0], ov[1], ov[2], 0 if side == up0 else 1, side, k))
+        cands.sort(key=lambda c: (c[0], c[1], c[2], c[3]))
+        _, _, _, _, side, k = cands[0]
+        # 目标最小的那一档；实在躲不开也只会退回原位，不会比原来更差
+        placed.append(_place(ann, side, dy if side else -dy, k))
+    return anns
     return anns
 
 
@@ -404,10 +483,14 @@ def _legend_ur(ax, ncol=1):
     🔴 不能放坐标区**内**的右上（原实现 `loc="upper right"`）：纵轴改成逐学科自适应后，
     柱子常常顶到轴顶，图例就跟最后一根柱的数值标签叠在一起（rick 2026-09-18 截图指正，
     Environment/Ecology 顶尖论文 27 压在「顶尖论文发文量」上）。
+    🔴 `borderaxespad` 必须给够：0.2 时图例底边只离轴顶 5.8px —— 柱顶那行数字顶格的
+    时候，两者在 8.26cm 宽的图里只隔约 1.3mm，肉眼就是「图例压着数字」（同日实测
+    Chemistry 44 / EnvEcology 27 / Engineering 29 三处，间隙仅 15–19px）。给到 1.0
+    （≈29px）才拉开；但**不能再大**，再大就顶到标题上（`_title` 的 pad 只有 24pt）。
     """
     ax.legend(loc="lower right", bbox_to_anchor=(1.0, 1.0), ncol=ncol, frameon=False,
               fontsize=FONT_SIZE, handlelength=1.2, handletextpad=0.4,
-              columnspacing=1.0, borderaxespad=0.2)
+              columnspacing=1.0, borderaxespad=1.0)
 
 
 # ---------- C1 国内外排名百分位趋势 ----------
