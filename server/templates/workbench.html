@@ -65,7 +65,11 @@
           <td class="mono">{{ t.where }}</td>
           <td>{{ t.title }}</td>
           <td>
-            <form class="fill-form" data-id="{{ t.id }}">
+            <!-- 真实表单 POST + 303 回跳（栈契约：状态变更不依赖 JS）。
+                 back 带锚点，保存后落回待办区，不让人重新找位置 -->
+            <form class="fill-form" method="post" action="{{ period_dir }}/fill">
+              <input type="hidden" name="id" value="{{ t.id }}">
+              <input type="hidden" name="back" value="/#todo-panel">
               <input name="value" value="{{ t.filled or '' }}" placeholder="填入内容">
               <button type="submit" class="btn">保存</button>
             </form>
@@ -98,7 +102,9 @@
           <td class="mono">{{ t.where }}</td>
           <td class="mono">{{ t.value or '—' }}</td>
           <td>
-            <form class="fill-form" data-id="{{ t.id }}">
+            <form class="fill-form" method="post" action="{{ period_dir }}/fill">
+              <input type="hidden" name="id" value="{{ t.id }}">
+              <input type="hidden" name="back" value="/#todo-panel">
               <input name="value" value="{{ t.filled or t.value or '' }}">
               <button type="submit" class="btn">确认</button>
             </form>
@@ -153,23 +159,4 @@
 
 {% endblock %}
 
-{% block scripts %}
-<script>
-// 填写/确认：POST 到 /p/<期次>/fill，只写产物目录，台账一个字节不碰
-document.querySelectorAll(".fill-form").forEach(f => {
-  f.addEventListener("submit", e => {
-    e.preventDefault();
-    const id = f.dataset.id, value = f.querySelector("input").value;
-    fetch("{{ period_dir }}/fill", {
-      method: "POST",
-      headers: {"Content-Type": "application/x-www-form-urlencoded"},
-      body: "id=" + encodeURIComponent(id) + "&value=" + encodeURIComponent(value)
-    }).then(r => r.json()).then(d => {
-      const tr = f.closest("tr"), st = tr.querySelector(".state");
-      if (d.ok) st.innerHTML = '<span class="filled-mark">✓ 已填</span>';
-      else st.innerHTML = '<span style="color:var(--zhu)">保存失败</span>';
-    });
-  });
-});
-</script>
-{% endblock %}
+{% block scripts %}{% endblock %}

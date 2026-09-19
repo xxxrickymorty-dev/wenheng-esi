@@ -136,7 +136,11 @@ def test_没有原地修改语义():
 
 
 #: 允许 POST 的路径后缀：状态变更一律集中在这里（边界约定 B-1 / B-2）
-POST_ALLOWED_SUFFIX = ("/login", "/sign", "/revoke")
+#: 白名单 = 允许写状态的表单 POST 后缀。新增写路由必须在这里登记 ——
+#: 登记时要回答三件事：① 真实表单 POST + 303（不依赖 JS）② 有登录校验
+#: ③ 写的是产物目录还是台账。fill/flag（2026-09-19 工作台）写的是
+#: out/<期次>/ 的 manual_inputs.json / review.json，**台账一个字节不碰**。
+POST_ALLOWED_SUFFIX = ("/login", "/sign", "/revoke", "/fill", "/flag")
 
 #: 非页面、非 API 的杂项 GET（下载/二维码/探活/登出）
 MISC_PATHS = ("/download/", "/qr.png", "/healthz", "/logout")
@@ -163,9 +167,15 @@ def test_GET不改状态_变更只走POST():
 
 
 def test_状态变更都走表单POST而非AJAX():
-    """签单/撤回/登录是**传统表单**提交（303 重定向），断网或禁用 JS 也要能用。"""
+    """签单/撤回/登录是**传统表单**提交（303 重定向），断网或禁用 JS 也要能用。
+
+    这是个**变更检测器**：清单多出或少了任何一条都必须有意识地改这里，
+    防止有人随手加写路由。fill/flag 是工作台的在线填与存疑（见
+    POST_ALLOWED_SUFFIX 处的三问），2026-09-19 rick 拍板加入。
+    """
     posts = {p for m, p in _routes() if m == "post" and not p.startswith("/api/")}
     assert posts == {"/login", "/p/{period}/sign", "/p/{period}/revoke",
+                     "/p/{period}/fill", "/p/{period}/flag",
                      "/jobs/{job_id}/collation/sign",
                      "/jobs/{job_id}/collation/revoke"}, f"表单 POST 清单变了：{sorted(posts)}"
 

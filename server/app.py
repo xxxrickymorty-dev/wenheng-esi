@@ -487,27 +487,38 @@ def _find_ledger(period_dir):
 
 
 @app.post("/p/{period}/fill")
-async def period_fill(request: Request, period: str, id: str = Form(""), value: str = Form("")):
+async def period_fill(request: Request, period: str, id: str = Form(""),
+                      value: str = Form(""), back: str = Form("")):
     """在线填【手工：】项。**只写产物目录的 manual_inputs.json，台账一个字节不碰**
-    —— 填的是报告，不是数据源；这正是"可溯源"与"可修改"的边界。"""
+    —— 填的是报告，不是数据源；这正是"可溯源"与"可修改"的边界。
+
+    走**真实表单 POST + 303 回跳**，不用 AJAX —— 栈契约（test_stack_contract）
+    要求状态变更不依赖 JS 跑通，填写/存疑也是状态变更，同样适用。
+    """
     from . import workbench                                     # noqa: PLC0415
+    user = current_user(request)                                # 登录保护，同 _do_sign
+    if not user:
+        return RedirectResponse("/login", status_code=303)
     d = resolve_period_dir(period)
     if d is None or not id.strip():
-        return JSONResponse({"ok": False, "error": "bad request"}, status_code=400)
-    rec = workbench.save_fill(d, id, value, by=current_user(request) or "?")
-    return JSONResponse(rec)
+        return RedirectResponse(back or "/", status_code=303)
+    workbench.save_fill(d, id, value, by=user)
+    return RedirectResponse(back or "/", status_code=303)
 
 
 @app.post("/p/{period}/flag")
-async def period_flag(request: Request, period: str, loc: str = Form("")):
+async def period_flag(request: Request, period: str, loc: str = Form(""), back: str = Form("")):
     """大表格子**只能存疑，不能改**（数字来自台账，改了就破溯源）。
-    存疑是记一笔"这格我不认"，签单闸门会看到它。"""
+    存疑是记一笔"这格我不认"，签单闸门会看到它。同样走表单 POST + 303。"""
     from . import workbench                                     # noqa: PLC0415
+    user = current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
     d = resolve_period_dir(period)
     if d is None or not loc.strip():
-        return JSONResponse({"ok": False, "error": "bad request"}, status_code=400)
-    rec = workbench.toggle_flag(d, loc, by=current_user(request) or "?")
-    return JSONResponse(rec)
+        return RedirectResponse(back or "/", status_code=303)
+    workbench.toggle_flag(d, loc, by=user)
+    return RedirectResponse(back or "/", status_code=303)
 
 
 @app.get("/p/{period}/charts", response_class=HTMLResponse)

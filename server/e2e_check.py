@@ -364,20 +364,28 @@ check("trace 有图表 99 张", "图表 · 99" in tr)
 check("trace 是并排对照不是单列值", "台账（现场重读）" in tr and "派生" in tr)
 check("派生格给了算式", "总被引 − ESI被引阈值" in tr and "× 10" in tr)
 check("台账缺失时降级说明而不是空白", "本地未找到台账" in tr or "全部可回查" not in tr)
-# 在线填：写产物侧 manual_inputs.json，**台账不碰**（sha256 前后必须一致）
+# 在线填：写产物侧 manual_inputs.json，**台账不碰**（字节数前后必须一致）。
+# fill/flag 走真实表单 POST + 303 回跳（栈契约：状态变更不依赖 JS），不是 AJAX。
 _led = ROOT.parent.parent / "数据与复现" / "云大全学科排名、阈值动态检测表.xlsx"
 _sha0 = _led.stat().st_size if _led.exists() else -1
-st, fr, _ = call("POST", "/p/202607/fill",
-                 {"id": "e2e-fill-test", "value": "e2e 测试值"})
-_fd = json.loads(fr) if fr.startswith("{") else {}
-check("POST fill 保存成功", st == 200 and _fd.get("ok") is True, f"{st} {fr[:80]}")
-check("fill 记了填写人与时间", bool(_fd.get("by")) and bool(_fd.get("at")))
-st, fr2, _ = call("POST", "/p/202607/flag", {"loc": "T01/r999c9"})
-_d1 = json.loads(fr2) if fr2.startswith("{") else {}
-st, fr3, _ = call("POST", "/p/202607/flag", {"loc": "T01/r999c9"})
-_d2 = json.loads(fr3) if fr3.startswith("{") else {}
+st, fr, fin = call("POST", "/p/202607/fill",
+                   {"id": "e2e-fill-test", "value": "e2e 测试值",
+                    "back": "/#todo-panel"})
+check("POST fill 走表单 303 回跳", st == 200 and fin.endswith("#todo-panel"),
+      f"{st} final={fin}")
+_mi = ROOT.parent / "out" / "202607" / "manual_inputs.json"
+_mi_ok = _mi.exists() and "e2e-fill-test" in _mi.read_text(encoding="utf-8")
+check("manual_inputs.json 落在产物目录", _mi_ok)
+st, fr2, _ = call("POST", "/p/202607/flag", {"loc": "T01/r999c9",
+                                             "back": "/p/202607/trace"})
+_rv = ROOT.parent / "out" / "202607" / "review.json"
+_d1 = (json.loads(_rv.read_text(encoding="utf-8")).get("T01/r999c9") or {}
+       if _rv.exists() else {})
+st, fr3, _ = call("POST", "/p/202607/flag", {"loc": "T01/r999c9",
+                                             "back": "/p/202607/trace"})
+_d2 = (json.loads(_rv.read_text(encoding="utf-8")) if _rv.exists() else {})
 check("存疑可切换（点两次=撤销）",
-      _d1.get("state") == "doubt" and _d2.get("state") == "clear", f"{_d1} {_d2}")
+      _d1.get("state") == "doubt" and "T01/r999c9" not in _d2, f"{_d1} | {_d2}")
 check("台账没被在线填/存疑碰到（字节数不变）",
       _led.stat().st_size == _sha0, f"{_sha0} -> {_led.stat().st_size}")
 # 首页的三个数字都是可点的
