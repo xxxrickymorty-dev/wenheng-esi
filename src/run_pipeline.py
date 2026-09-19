@@ -45,6 +45,51 @@ def _emit(step, name, status, detail=""):
 _T0 = time.time()
 
 
+def _write_diagnosis(led, P, out_dir, report, n_fail, run_dir=None):
+    """带病出稿时附一份《诊断报告》，落到 `out/<期次>/`（演示站产物列表收得到）。
+
+    ⚠ 它跟 `agent/flow.py` 那份**不是一回事**，正文里必须写清楚，别让人工拿混：
+      · `flow` 那份 = 自愈逾限、**拦停后**的交接物，**没有**报告产出；
+      · 这份        = 断言未过但**报告照出**，附一份"哪里脏、怎么核对"。
+    馆员真实场景里更常见的其实是后者（台账有点脏，报告还是得按时出）。
+    """
+    try:
+        from agent import heal, narrator                       # noqa: PLC0415
+    except Exception:                                          # noqa: BLE001
+        return None                       # 没接 agent 层就不附，不影响出稿
+    fails = [m for s, m in report if s == "FAIL"]
+    failure = {"code": "ASSERT_FAIL", "message": f"{n_fail} 项断言未过",
+               "period": P, "fails": fails,
+               "diagnostics": {"unmatched_names": parse_ledger.unmatched_name_hints(led)}}
+    try:
+        # run_dir 为 None 时 heal 不落 repair.yaml（传空串会写进 cwd，别传）
+        repair = heal.attempt(failure, {"run_dir": str(run_dir) if run_dir else None})
+    except Exception:                                          # noqa: BLE001
+        repair = None
+    try:
+        lines, meta = narrator.compose(failure, repair)
+    except Exception:                                          # noqa: BLE001
+        lines, meta = [], {"backend": "rule"}
+
+    body = [f"# 诊断报告 · 断言未过（带病出稿）", "",
+            f"- 期次：**{P}**",
+            f"- 未过断言：**{n_fail}** 项", "",
+            "> ⚠ 本次**已出报告初稿**，但下列断言未过。报告里的数字可能建立在"
+            "不完整或错位的台账读法上 —— 请先按下面指引核对，再决定要不要签发。",
+            "", "## 未通过的断言", ""] + [f"- {m}" for m in fails]
+    body += lines
+    be = (meta or {}).get("backend")
+    body += ["", "---", "",
+             f"> 本文件由 `src/run_pipeline.py` 生成（叙事后端：{be or 'rule'}）。"
+             "自愈逾限、拦停不出稿的那份《诊断报告》由 `src/agent/flow.py` 产出，两者不是一回事。"]
+    p = pathlib.Path(out_dir) / "诊断报告.md"
+    try:
+        p.write_text("\n".join(body), encoding="utf-8")
+        return p
+    except OSError:
+        return None
+
+
 def main(ledger_path, out_root="out", run_backtest=False):
     t0 = _T0
     p = pathlib.Path(ledger_path)
@@ -70,7 +115,15 @@ def main(ledger_path, out_root="out", run_backtest=False):
     n_fail = sum(1 for s, _ in report if s == "FAIL")
     print(f"      当期={P} 上期={Q} 断言={'全绿' if ok else f'{n_fail} 项 FAIL'} → {out_dir}")
     _emit("parse", "解析台账", "done" if ok else "warn",
-          f"当期 {P} · 上期 {Q} · 机器断言 {'全绿' if ok else f'{n_fail} 项未过'}")
+          f"当期 {P} · 上期 {Q} · 机器断言 {'全绿' if ok else f'{n_fail} 项未过（已附诊断报告）'}")
+
+    # 断言未过时**立刻**写诊断（不等后续步骤）：后面 charts/docx 若因缺数据崩掉，
+    # 人工至少还能拿到这份"哪里脏"的清单，而不是只剩一句 exit code。
+    diag_path = None
+    if not ok:
+        diag_path = _write_diagnosis(ledger, P, out_dir, report, n_fail, _run_dir)
+        if diag_path:
+            print(f"      诊断报告 → {diag_path}")
 
     _emit("compute", "计算大表与概述", "start")
     print("[2/5] 计算大表 + 概述事实")
@@ -119,6 +172,9 @@ def main(ledger_path, out_root="out", run_backtest=False):
         },
         "elapsed_sec": round(time.time() - t0, 1),
     }
+    if diag_path:
+        log["artifacts"]["diagnosis"] = str(diag_path)
+        log["diagnosis"] = True
     (out_dir / "run_log.json").write_text(json.dumps(log, ensure_ascii=False, indent=1), encoding="utf-8")
     print(json.dumps(log, ensure_ascii=False, indent=1))
     _emit("done", "完成", "done" if ok else "warn",

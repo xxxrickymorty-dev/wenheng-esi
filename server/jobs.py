@@ -263,6 +263,10 @@ def _artifact_table(out, fresh):
         ("approval", "审批记录（签单后生成）", out / "审批记录.md", False),
         ("red_view", "红色件清单（逐格在线查看）", None, False),
         ("diff", "对照差异报告（金样回测）", diff, False),
+        # 只在断言未过时产出（`run_pipeline.py` 带病出稿时附的核对指引）。
+        # ⚠ 它与 `agent/flow.py` 那份《诊断报告》同名但不同源：那份是自愈逾限、
+        #   拦停后的交接物，这份是报告照出时的"哪里脏、怎么核对"。
+        ("diagnosis", "诊断报告（断言未过时的核对指引）", out / "诊断报告.md", False),
         ("forecast", "预测回测报告", out / "预测回测报告.md", False),
         ("table2", "大表数据（CSV）", out / "table2.csv", False),
         ("red_json", "红色件审计明细（JSON）", out / "red_slots.json", False),

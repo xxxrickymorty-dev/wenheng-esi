@@ -659,6 +659,27 @@ def run_assertions(ledger):
     return ok, report
 
 
+def unmatched_name_hints(ledger) -> dict:
+    """宽表里「认不出来的学科名」：`{指标: [名字]}`。
+
+    断言报「学科数=22 实际 21」时，光看这个数说不出**是谁**——这份清单就是那个
+    「谁」的答案，人工拿它能直接去台账首列找。
+
+    `agent/tools.py::run_parse` 与 `run_pipeline.py` 都要用它，**别各写一份**：
+    两边写法一旦漂移，演示站产出的诊断报告就会跟编排器那份点名不一致。
+    """
+    diag = ledger.get("diagnostics") or {}
+    known_all = diag.get("known_names") or {}
+    unknown_all = diag.get("unknown_names") or {}
+    hints = {}
+    for m, df in ledger["wide"].items():
+        title = next((k for k, v in WIDE_METRIC.items() if v == m), None)
+        known = set(known_all.get(title, df.index))
+        if set(DISCIPLINES_EN) - known:
+            hints[m] = unknown_all.get(title, [])
+    return {m: v for m, v in hints.items() if v}
+
+
 def _jsonable(o):
     if isinstance(o, dict):
         return {k: _jsonable(v) for k, v in o.items()}

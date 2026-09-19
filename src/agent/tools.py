@@ -157,15 +157,7 @@ def run_parse(ledger, out_dir, overlay=None):
         # ⚠ 静默跳过 = 静默产错报告。某张宽表少了学科时，把那张表首列里
         #    **认不出来的名字**一并送出去——否则规则库只知道"少了一个"，
         #    不知道台账里现在写的是什么，人工只能回去数 22 行。
-        hints = {}
-        known_all = diag.get("known_names") or {}
-        unknown_all = diag.get("unknown_names") or {}
-        for m, df in led["wide"].items():
-            title = next((k for k, v in parse_ledger.WIDE_METRIC.items() if v == m), None)
-            known = set(known_all.get(title, df.index))
-            if set(parse_ledger.DISCIPLINES_EN) - known:
-                hints[m] = unknown_all.get(title, [])
-        diag["unmatched_names"] = {m: v for m, v in hints.items() if v}
+        diag["unmatched_names"] = parse_ledger.unmatched_name_hints(led)
         raise ToolError("ASSERT_FAIL", f"{len(fails)} 项断言未过",
                         period=P, fails=fails[:10], diagnostics=diag)
 
