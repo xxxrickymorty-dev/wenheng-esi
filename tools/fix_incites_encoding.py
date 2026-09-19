@@ -211,19 +211,29 @@ def main():
         files = files[:a.limit]
 
     tot = {"OK": 0, "FIXED": 0, "VOCAB": 0, "PARTIAL": 0, "FAIL": 0}
+    per_snap = {}                      # 顶层子目录（= 一次快照）→ 汇总
     n_files = 0
     for p in files:
+        # 🔴 43 个快照里文件名是重复的（每个都有 Agricultural Sciences.xlsx），
+        #    只 print(p.name) 无法定位到哪一期 → 必须输出相对路径并按快照汇总。
+        rel = p.relative_to(pathlib.Path(a.scan)) if a.scan else pathlib.Path(p.name)
+        snap = rel.parts[0] if len(rel.parts) > 1 else "."
         try:
             rows = analyze(p, vocab)
         except Exception as e:
-            print(f"[跳过] {p.name}: {type(e).__name__} {e}")
+            print(f"[跳过] {rel.as_posix()}: {type(e).__name__} {e}")
             continue
         stat = {k: sum(1 for r in rows if r[3] == k) for k in tot}
         for k in tot:
             tot[k] += stat[k]
+        d = per_snap.setdefault(snap, {k: 0 for k in tot} | {"_files": 0, "_badfiles": 0})
+        for k in tot:
+            d[k] += stat[k]
+        d["_files"] += 1
         if stat["FIXED"] or stat["VOCAB"] or stat["PARTIAL"] or stat["FAIL"]:
             n_files += 1
-            print(f"\n{p.name}")
+            d["_badfiles"] += 1
+            print(f"\n{rel.as_posix()}")
             print(f"   OK {stat['OK']} / 可还原 {stat['FIXED']} / 词表补全 {stat['VOCAB']} / "
                   f"部分还原 {stat['PARTIAL']} / 无法还原 {stat['FAIL']}")
             shown = 0
@@ -236,6 +246,18 @@ def main():
     print(f"\n合计（{len(files)} 个文件，有问题的 {n_files} 个）：")
     print(f"   干净 {tot['OK']} / 可完全还原 {tot['FIXED']} / 词表补全 {tot['VOCAB']} / "
           f"只能部分还原 {tot['PARTIAL']} / 无法还原 {tot['FAIL']}")
+    if per_snap:
+        bad = {s: d for s, d in per_snap.items() if d["_badfiles"]}
+        print(f"\n\n── 按快照目录汇总（共 {len(per_snap)} 个，其中 {len(bad)} 个有脏表头）──")
+        print(f"{'快照目录':<34}{'文件':>5}{'脏文件':>6}{'可还原':>7}"
+              f"{'词表补全':>8}{'部分还原':>8}{'无法还原':>8}")
+        for s in sorted(bad, key=lambda x: -bad[x]["_badfiles"]):
+            d = bad[s]
+            print(f"{s:<34}{d['_files']:>5}{d['_badfiles']:>6}{d['FIXED']:>7}"
+                  f"{d['VOCAB']:>8}{d['PARTIAL']:>8}{d['FAIL']:>8}")
+        clean = len(per_snap) - len(bad)
+        if clean:
+            print(f"（其余 {clean} 个快照表头全干净）")
     if tot["PARTIAL"] or tot["FAIL"]:
         print("\n   ⚠ 「部分/无法还原」的表头里有被 `?` 顶掉的字节，**不可逆**——"
               "加 --vocab-from 按词表补，或请馆员重新导出。")
