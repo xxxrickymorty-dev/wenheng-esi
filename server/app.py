@@ -410,15 +410,21 @@ def _do_revoke(request, period, note, back):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, err: str = "", signed: str = "", revoked: str = ""):
-    """**首屏 = 对勘本**（最新一期）。没有可对勘的期次时才退回控制台。
+    """**首屏 = 馆员工作台**（最新一期）。没有可对勘的期次时才退回控制台。
 
-    报告才是这个产品的主角，跑流水线是手段——所以控制台让位，退到 /run。
+    2026-09-19 从「首屏=对勘本」改过来。对勘本回答的是"这份报告怎么拼出来的"
+    （生产视角），而打开这个站的人要的是"这次要我做什么决定"（馆员视角）。
+    对勘本 / 图册 / 档案页都还在，收进工作台底部的「审计视图」入口。
     """
+    from . import workbench                                     # noqa: PLC0415
     cards = period_cards()
     if cards:
         d = resolve_period_dir(cards[0]["period"])
         if d is not None:
-            return _render_collation(request, d, flash=_flash(err, signed, revoked), self_url="/")
+            return page(request, "workbench.html",
+                        **workbench.build(d),
+                        periods=cards,
+                        flash=_flash(err, signed, revoked))
     return page(request, "index.html", **_run_ctx())
 
 

@@ -102,22 +102,24 @@ st, body, final = call("POST", "/login", {"username": "demo", "password": "wenhe
 #    （2026-09-19 用 8099 实测：final 明明是首页，断言却判未过）。
 check("POST /login 进入首页", final.rstrip("/") == BASE, f"final={final}")
 
-out("=== 4. 首屏 = 对勘本（最新一期） ===")
+out("=== 4. 首屏 = 馆员工作台（最新一期） ===")
+# 2026-09-19 改：首屏原是「对勘本」（生产视角：报告怎么拼出来的），
+# 换成「工作台」（馆员视角：这次要我做什么决定）。对勘本没删，挪到 /p/<期次>，
+# 下面第 6 段照旧守它 —— 别把断言删了，那等于把回归覆盖一起扔掉。
 st, home, _ = call("GET", "/")
 check("GET / → 200", st == 200, f"got {st}")
-check("首屏是【对勘本】而非控制台", "对勘本" in home and "whc-grid" in home)
-check("首屏不再是控制台表单", "run-form" not in home)
-check("periodDir = 202607（最新期次）", jget_str(home, "periodDir") == "202607", f"got {jget_str(home,'periodDir')!r}")
-check("periods 是数组且非空", jget(home, "periods") == "[", )
-check("periods 含 202607 与 202605_复现", len(re.findall(r'"period":\s*"202', home)) >= 2,
-      f"n={len(re.findall(chr(34) + 'period' + chr(34) + r':\s*' + chr(34) + '202', home))}")
-check("signUrl 指向 /p/202607/sign", jget_str(home, "signUrl") == "/p/202607/sign", f"got {jget_str(home,'signUrl')!r}")
-check("revokeUrl 指向 /p/202607/revoke", jget_str(home, "revokeUrl") == "/p/202607/revoke")
-check("backUrl 是首屏自身 /", jget_str(home, "backUrl") == "/", f"got {jget_str(home,'backUrl')!r}")
-check("crumbs 已注入", jget(home, "crumbs") == "[")
-check("面包屑含 /run 控制台入口", "/run" in home)
-check("live 为 true", jget(home, "live") is True)
-check("jobId 为空（首屏无任务上下文）", jget_str(home, "jobId") == "")
+check("首屏是【工作台】而非控制台", "本次出稿体检" in home and "run-form" not in home)
+check("首屏给可溯源总数（不是「已核对」）", "全部可回查到台账" in home)
+# ⚠ 只看**读数区**：页面正文里有一句「我们不写『已核对 N 格』」的说明，
+#   全文搜「已核对」会被这句自己命中（否定式断言的经典自伤）。
+_readouts = home.split('class="readouts"')[-1].split("panel-foot")[0]
+check("读数区不写「已核对」（没有 ground truth 就不能这么标）",
+      "已核对" not in _readouts)
+check("有待拍板清单", "需要你填" in home and "需要你确认" in home)
+check("有待补数据段（台账外）", "待补数据" in home)
+check("其余可溯源项不混进待办", "不进待办" in home)
+check("审计视图入口齐全", all(x in home for x in
+      ("/p/202607/redslots", "/p/202607/charts", "/p/202607/archive", "/run")))
 
 out("=== 5. 控制台 /run ===")
 st, run, _ = call("GET", "/run")
@@ -135,6 +137,13 @@ out("=== 6. 期次入口 /p/<期次> ===")
 st, p1, _ = call("GET", "/p/202607")
 check("GET /p/202607 → 200", st == 200, f"got {st}")
 check("/p/202607 是对勘本", "whc-grid" in p1)
+# 首屏改成工作台后，这批对勘本上下文断言挪到这儿守（原在 / 上）
+check("periodDir = 202607", jget_str(p1, "periodDir") == "202607", f"got {jget_str(p1,'periodDir')!r}")
+check("periods 是数组且非空", jget(p1, "periods") == "[")
+check("signUrl 指向 /p/202607/sign", jget_str(p1, "signUrl") == "/p/202607/sign")
+check("revokeUrl 指向 /p/202607/revoke", jget_str(p1, "revokeUrl") == "/p/202607/revoke")
+check("crumbs 已注入", jget(p1, "crumbs") == "[")
+check("live 为 true", jget(p1, "live") is True)
 check("/p/202607 的 periods 也带上（可切期次）", jget(p1, "periods") == "[")
 st, p2, _ = call("GET", "/p/202605_%E5%A4%8D%E7%8E%B0")
 check("GET /p/202605_复现 → 200", st == 200, f"got {st}")
