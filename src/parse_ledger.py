@@ -386,6 +386,115 @@ def parse_forecast_gap(ws, clean_log):
     return df
 
 
+#: 中文学科名 → 规范英文名的反查表（正向表见 `DISCIPLINES_CN`）。
+CN2EN = {v: k for k, v in DISCIPLINES_CN.items()}
+
+#: 「学科进入时间」表里出现过的**手写变体** → 规范中文名。
+#: 🔴 「生物与生物化学」必须显式列出：台账规范名是「**生物学**与生物化学」，
+#:    差一个「学」字 → 精确匹配落空 → 会被「化学」子串截胡（2026-09-19 实测踩到）。
+ENTRY_CN_ALIAS = {
+    "微生物": "微生物学",
+    "生物与生物化学": "生物学与生物化学",
+    "生物与生化": "生物学与生物化学",
+}
+
+#: 退出事件写在学科列的**注释文本**里，形如「2025年5月数学退出」。
+ENTRY_OUT_RE = re.compile(r"^(\d{4})年(\d{1,2})月(.+?)退出$")
+
+
+def _cn2en(name, alias=None):
+    """中文学科名 → 规范英文名。认不出时原样返回（由调用方记诊断，不臆测）。
+
+    匹配顺序是硬要求：**精确 → 按别名长度降序做包含**。任意顺序的宽松包含会让
+    「生物与生物化学」命中「化学」（后者是前者的子串）。
+    """
+    s = str(name or "").strip()
+    s = ENTRY_CN_ALIAS.get((alias or {}).get(s, s), (alias or {}).get(s, s))
+    if s in CN2EN:
+        return CN2EN[s]
+    for k in sorted(CN2EN, key=len, reverse=True):
+        if k and k in s:
+            return CN2EN[k]
+    return s
+
+
+def parse_entry_events(ws, clean_log, alias=None):
+    """解析「学科进入时间」工作表 → `[(期次, 学科英文名, "in"/"out")]`。
+
+    这张表是**馆员手填的流水账**，不是结构化状态矩阵。三条必须遵守（2026-09-19 实测定）：
+
+    1. **年月靠向下填充**：年份只在每年首行写一次，后续行留空（Excel 合并单元格的表现）。
+       逐行取 `row[0]`/`row[1]` 会漏掉 201307、201701、202503 等事件。
+    2. **退出写在学科列的注释文本里**（如「2025年5月数学退出」），只能靠正则提取；
+       学科行的「目前ESI前1%学科」√ 列**只描述当前状态，不是每期状态**。
+    3. **学科名是中文且有手写变体**，见 `ENTRY_CN_ALIAS`。
+
+    返回 (events, unparsed)，`unparsed` 是需要人工看一眼的行（无法定位年月或学科名）。
+    """
+    rows = list(ws.iter_rows(values_only=True))
+    events, unparsed = [], []
+    year = month = None
+    for r in rows[1:]:
+        y, m, name, _cur = (list(r) + [None] * 4)[:4]
+        if y is not None:
+            year = int(y)
+        if m:
+            month = m
+        s = str(name or "").strip()
+        if not s:
+            continue
+        mo = ENTRY_OUT_RE.match(s)
+        if mo:
+            events.append((f"{int(mo.group(1))}{int(mo.group(2)):02d}",
+                           _cn2en(mo.group(3), alias), "out"))
+            continue
+        if "退出" in s:                       # 含「退出」但年月格式认不出
+            unparsed.append(s)
+            continue
+        if not (year and month):
+            unparsed.append(s)
+            continue
+        ym = f"{year}{str(month).replace('月', '').zfill(2)}"
+        events.append((ym, _cn2en(s, alias), "in"))
+
+    known = {d for _, d, _ in events if d in DISCIPLINES_EN}
+    unknown = sorted({d for _, d, _ in events if d not in DISCIPLINES_EN})
+    clean_log.append(f"学科进入时间: 解析 {len(events)} 条事件"
+                     f"（进入 {sum(1 for e in events if e[2] == 'in')} / "
+                     f"退出 {sum(1 for e in events if e[2] == 'out')}），"
+                     f"覆盖 {len(known)} 个学科")
+    if unknown:
+        clean_log.append(f"[告警] 学科进入时间: 学科名未识别 {unknown} —— 这些事件未参与计算")
+    if unparsed:
+        clean_log.append(f"[告警] 学科进入时间: {len(unparsed)} 行无法定位年月，需人工核对：{unparsed}")
+    return events, unparsed
+
+
+def build_entered_1pct(events, periods, disciplines):
+    """事件表 → 学科 × 期次的 0/1 矩阵（1 = 该期已在 ESI 前 1% 内）。
+
+    🔴 必须**按时序交替回放** in/out，不能「先全部 in 再全部 out」：
+    微生物学 202505 退出、202507 再进入，先加后删会把 202507 之后的它误删掉。
+    同一期次既有 in 又有 out 时，**out 最后执行**（＝该期判为未进入，保守）。
+    """
+    merged = sorted([e for e in events if e[1] in disciplines],
+                    key=lambda x: (x[0], 0 if x[2] == "in" else 1))
+    periods = [str(p) for p in periods]
+    df = pd.DataFrame(0.0, index=pd.Index(list(disciplines), name="discipline"),
+                      columns=periods)
+    for p in periods:
+        cur = set()
+        for ym, d, typ in merged:
+            if ym <= p:
+                if typ == "in":
+                    cur.add(d)
+                else:
+                    cur.discard(d)
+        for d in cur:
+            df.loc[d, p] = 1.0
+    return df
+
+
 def load_ledger(path, overlay=None):
     """读台账 → 规整数据。`overlay` 是自愈注入的**读表口径**（默认 None ＝ 既有口径）。
 
@@ -433,10 +542,20 @@ def load_ledger(path, overlay=None):
     top, top_years, top_total = parse_top_summary(wb["TOP论文"], clean_log)
     prov, prov_entry = parse_province(wb["高校学科发展"], clean_log)
     gap = parse_forecast_gap(wb["实际与预测差值"], clean_log)
+    # 「某期是否已进入 ESI 前 1%」的**唯一权威来源**是这张事件流水表。
+    # 🔴 不能用接近度反推：未进入学科的接近度来自 InCites，与 ESI 阈值不是同一个量，
+    #    `接近度 >= 1` 会多算（实测第 1 期 202601 多算数学 1 个：14 vs 原件 13）。
+    tc = wide["total_cites"]
+    entry_events, entry_unparsed = parse_entry_events(
+        wb["学科进入时间"], clean_log, alias=(overlay or {}).get("discipline_alias"))
+    entered = build_entered_1pct(entry_events, tc.columns, tc.index)
     # 诊断信息：供自愈规则匹配与《诊断报告》引用（只读，不含台账明细值）
     diag["periods_total_cites"] = [str(c) for c in wide["total_cites"].columns]
+    diag["entry_unparsed"] = entry_unparsed
     return {
         "wide": wide,
+        "entered_1pct": entered,
+        "entry_events": entry_events,
         "ynd_rank": ynd_rank,
         "new_intl": new_intl,
         "new_cn": new_cn,
@@ -524,6 +643,15 @@ def run_assertions(ledger):
         check(df.period.nunique() >= 40, f"{nm} 期数≥40")
         check((df.period == P).sum() == 22, f"{nm} 含 {P} 全 22 行")
     check(P in ledger["threshold_1permille"].columns, f"千分之一阈值含 {P}")
+    ent = ledger["entered_1pct"]
+    check(ent.shape[0] == 22, f"进入前1%矩阵 学科数=22 (实际 {ent.shape[0]})")
+    check(P in ent.columns, f"进入前1%矩阵 含期次 {P}")
+    check(ent[P].notna().sum() == 22, f"进入前1%矩阵 {P} 期无缺失")
+    if "202601" in ent.columns:
+        # 🔴 金样锚点：第 1 期人工原件写「ESI前1%学科13个」。用接近度>=1 会算成 14（多算数学）。
+        #    这条断言锁死新口径，防止哪天被改回接近度口径而无人察觉。
+        check(int(ent["202601"].sum()) == 13,
+              f"金样(202601)：前1%学科数=13（人工原件口径，实际 {int(ent['202601'].sum())}）")
     check(ledger["top_total"] is not None and ledger["top_total"].get(P) is not None, f"顶尖论文合计 {P} 已贴数")
     if P == "202607":
         check(ledger["top_total"].get(P) == 274, "金样(202607)：顶尖论文合计=274")
@@ -628,6 +756,7 @@ def write_outputs(ledger, path, out_dir):
     ledger["top_papers"].to_parquet(wide_dir / "top_papers.parquet")
     pd.Series(ledger["top_total"], name="total").rename_axis("period").reset_index().to_parquet(wide_dir / "top_total.parquet")
     ledger["threshold_1permille"].to_parquet(wide_dir / "threshold_1permille.parquet")
+    ledger["entered_1pct"].to_parquet(wide_dir / "entered_1pct.parquet")
     ledger["q1q4"].to_parquet(wide_dir / "q1q4.parquet")
     ledger["province"].to_parquet(wide_dir / "province.parquet")
     ledger["forecast_gap"].to_parquet(wide_dir / "forecast_gap.parquet")

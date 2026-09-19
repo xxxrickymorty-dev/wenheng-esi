@@ -692,9 +692,14 @@ def chart_overview_1pct(cites, threshold, out_png, period):
 
 
 # ---------- 概览图：1‰ 潜力（已进入1%学科，接近度+差距堆叠）----------
-def chart_overview_1permille(cites, thr_1permille, proximity_1pct, out_png, period):
+def chart_overview_1permille(cites, thr_1permille, entered_1pct, out_png, period):
+    """🔴 `entered_1pct` 必须是**事件表推导的 0/1 矩阵**，不是接近度。
+
+    两者在第 1 期 202601 会差一个学科（数学）：接近度口径多算 → 图里多一条，
+    而正文按事件表写 13 个，图文自相矛盾。口径源见 `parse_ledger.build_entered_1pct`。
+    """
     fig, ax = _fig(3.25, 2.55)
-    entered = proximity_1pct[period][proximity_1pct[period] >= 1].index
+    entered = entered_1pct[period][entered_1pct[period] >= 1].index
     ratio = (cites[period][entered] / thr_1permille[period][entered] * 100).dropna().sort_values()
     gap = 100 - ratio
     y = range(len(ratio))
@@ -741,7 +746,8 @@ def render_all(ledger_dir="out/202607", out_dir=None, n_periods=7, end_period=No
     ledger_dir = pathlib.Path(ledger_dir)
     out_dir = pathlib.Path(out_dir or ledger_dir) / "charts"
     w = {m: pd.read_parquet(ledger_dir / "wide" / f"{m}.parquet") for m in
-         ["total_cites", "papers", "cnci", "threshold_1pct", "top_papers", "proximity_1pct"]}
+         ["total_cites", "papers", "cnci", "threshold_1pct", "top_papers",
+          "proximity_1pct", "entered_1pct"]}
     thr_p = pd.read_parquet(ledger_dir / "wide" / "threshold_1permille.parquet")
     longdf = pd.read_parquet(ledger_dir / "ledger_long.parquet")
     q1q4 = pd.read_parquet(ledger_dir / "wide" / "q1q4.parquet")
@@ -774,7 +780,7 @@ def render_all(ledger_dir="out/202607", out_dir=None, n_periods=7, end_period=No
     ynd_rank = pd.read_parquet(ledger_dir / "wide" / "ynd_rank.parquet")
     chart_ynd_rank(ynd_rank, ov / "ynd_rank.png", end_period=end_period, n=n_periods)
     chart_overview_1pct(w["total_cites"], w["threshold_1pct"], ov / "1pct.png", P)
-    chart_overview_1permille(w["total_cites"], thr_p, w["proximity_1pct"], ov / "1permille.png", P)
+    chart_overview_1permille(w["total_cites"], thr_p, w["entered_1pct"], ov / "1permille.png", P)
     total = len(made) * 6 + 3
     print(f"charts: {len(made)} 学科 × 6 图 + 概览 3 张 = {total} 张 → {out_dir}"
           f"（窗口 {periods[0]}–{P}，{len(periods)} 期）")

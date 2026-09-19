@@ -8,6 +8,8 @@ Table2 十一列口径（已用第 4 期实物反推验证）：
   千分位 = new_intl.rank_pct[P] × 10（3 位小数）
   接近度较Q月 = (接近度[P] - 接近度[Q]) × 100 → "↑33.87%"
 """
+import pathlib
+
 import pandas as pd
 
 
@@ -20,6 +22,15 @@ def load_wide(out_dir="out/202607"):
     new_cn = longdf[(longdf.source == "new_cn")].pivot_table(
         index="discipline", columns=["metric", "period"], values="value")
     thr = pd.read_parquet(f"{out_dir}/wide/threshold_1permille.parquet")
+    # 「某期是否已进入前 1%」的唯一权威来源。缺失必须报错，不能回退到接近度 ——
+    # 未进入学科的接近度来自 InCites，用它反推会多算（第 1 期 202601：14 vs 原件 13）。
+    ent = pathlib.Path(out_dir) / "wide" / "entered_1pct.parquet"
+    if not ent.is_file():
+        raise FileNotFoundError(
+            f"{ent} 缺失。该表由台账「学科进入时间」事件表推导（见 parse_ledger."
+            f"build_entered_1pct），是「是否已进前 1%」的唯一权威来源；"
+            f"请对本目录重跑 parse_ledger 生成后再算报告。")
+    wide["entered_1pct"] = pd.read_parquet(ent)
     return wide, new_intl, new_cn, thr
 
 
@@ -90,6 +101,11 @@ def build_overview(wide, new_intl, new_cn, thr, ynd_rank, top_total, period=None
     pr = wide["proximity_1pct"]
     tp = thr[period]
     top = wide["top_papers"][period]
+    # 「已进入前 1%」的唯一权威来源（parse_ledger.build_entered_1pct）。
+    # 生产路径由 load_wide 保证存在（缺失即报错）；此处兜底只为兼容手工构造的测试 dict，
+    # 且兜底与 charts.py 取的是同一个来源，不会出现「文字 13 个、图里 14 个」。
+    ent = wide.get("entered_1pct")
+    src = ent if (ent is not None and period in ent.columns) else pr
 
     facts = {
         "rank_intl_now": int(ynd_rank.loc[period, "rank_intl"]),
@@ -99,7 +115,7 @@ def build_overview(wide, new_intl, new_cn, thr, ynd_rank, top_total, period=None
         "rank_cn_uni_now": int(ynd_rank.loc[period, "rank_cn_uni"]),
         "rank_cn_inst_delta": int(ynd_rank.loc[prev, "rank_cn"] - ynd_rank.loc[period, "rank_cn"]),
         "rank_cn_uni_delta": int(ynd_rank.loc[prev, "rank_cn_uni"] - ynd_rank.loc[period, "rank_cn_uni"]),
-        "n_disc_1pct": int((pr[period] >= 1).sum()),
+        "n_disc_1pct": int((src[period] >= 1).sum()),
         "top_papers_now": int(top_total.get(period)),
         "top_papers_prev": int(top_total.get(prev)),
         "top_papers_delta": int(top_total.get(period)) - int(top_total.get(prev)),
