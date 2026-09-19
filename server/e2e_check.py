@@ -388,9 +388,11 @@ check("存疑可切换（点两次=撤销）",
       _d1.get("state") == "doubt" and "T01/r999c9" not in _d2, f"{_d1} | {_d2}")
 check("台账没被在线填/存疑碰到（字节数不变）",
       _led.stat().st_size == _sha0, f"{_sha0} -> {_led.stat().st_size}")
-# 首页的三个数字都是可点的
+# 首页的三个数字都是可点的。
+# 🔴 断言要写**完整路径**：之前写成 href="202607/trace"（少了 /p/ 前缀），
+#    断言照着 bug 写 → 点击 404 但 e2e 全绿（rick 2026-09-19 实踩）。
 st, home2, _ = call("GET", "/")
-check("工作台三个数字可点（trace 链接在）", 'href="202607/trace"' in home2)
+check("工作台三个数字可点（trace 链接完整）", 'href="/p/202607/trace"' in home2)
 check("待办区有在线填表单", 'class="fill-form"' in home2)
 check("待补数据说明诚实标注交互未定", "交互还没定" in home2)
 
