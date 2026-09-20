@@ -3,12 +3,21 @@
 
 {% block head %}
 <style>
-  .same { color: var(--ok); }
-  .diff { color: var(--zhu); font-weight: 600; }
   .derived { color: var(--ink-2); font-style: normal; }
   table.dense td, table.dense th { padding: 4px 8px; }
+  table.dense tr[hidden] { display: none; }
   .flag-btn { cursor: pointer; }
   .flag-btn.on { background: var(--zhu); border-color: var(--zhu); color: #fff; }
+  /* 筛选条：354 行没有筛选就只能目视滚（2026-09-20 UX review） */
+  .filters {
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+    padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel-2);
+    font-size: 12.5px;
+  }
+  .filters label { display: flex; align-items: center; gap: 6px; margin: 0; }
+  .filters select { width: auto; min-width: 150px; margin-top: 0; padding: 6px 8px; font-size: 12.5px; }
+  .filters .n { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+  .loc { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); }
 </style>
 {% endblock %}
 
@@ -31,18 +40,36 @@
 <div class="panel">
   <div class="panel-h">
     <span class="no">01</span>
-    <h2>大表 · {{ bigtable|length }} 格</h2>
+    <h2>大表 · <span id="f-shown">{{ bigtable|length }}</span> / {{ bigtable|length }} 格</h2>
     <span class="hint">直接格给出台账表名，派生格给出算式</span>
   </div>
+
+  <div class="filters">
+    <label>列
+      <select id="f-col">
+        <option value="">全部列</option>
+        {% for c in cols %}<option value="{{ c.key }}">{{ c.label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>学科
+      <select id="f-disc">
+        <option value="">全部学科</option>
+        {% for d in discs %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+      </select>
+    </label>
+    <button type="button" class="btn ghost" id="f-reset">清除筛选</button>
+    <span class="n" id="f-note"></span>
+  </div>
+
   <div class="panel-b">
     <table class="dense">
       <thead><tr>
         <th>位置</th><th>列</th><th>报告值</th><th>台账（现场重读）</th><th>来源</th><th>取法</th><th></th>
       </tr></thead>
-      <tbody>
+      <tbody id="bigtable-body">
       {% for r in bigtable %}
-      <tr id="{{ r.loc }}">
-        <td class="mono">{{ r.loc }}</td>
+      <tr id="{{ r.loc }}" data-col="{{ r.col }}" data-disc="{{ r.report if r.col == '学科' else '' }}">
+        <td>{{ r.label }}<br><span class="loc" title="程序用的槽位编号">{{ r.loc }}</span></td>
         <td>{{ r.col }}</td>
         <td class="mono"><strong>{{ r.report or '—' }}</strong></td>
         <td class="mono">{{ r.ledger }}</td>
@@ -78,7 +105,7 @@
       <tbody>
       {% for r in province %}
       <tr>
-        <td class="mono">{{ r.loc }}</td>
+        <td>{{ r.label }}<br><span class="loc">{{ r.loc }}</span></td>
         <td class="mono">{{ r.report }}</td>
         <td class="mono" style="color:var(--ink-3)">{{ r.src }}</td>
       </tr>
@@ -123,7 +150,53 @@
   </div>
 </div>
 
-<p><a class="ghost" href="{{ audit_base }}">← 返回工作台</a></p>
+<p><a class="ghost" href="/?p={{ period_dir }}">← 返回工作台</a></p>
 {% endblock %}
 
-{% block scripts %}{% endblock %}
+{% block scripts %}
+<script>
+// 大表筛选：354 行没有筛选就只能目视滚。
+// 筛选是**只读视图**、不是状态变更，所以用前端过滤不违反"状态变更走表单 POST"的契约；
+// 但状态同步进 URL（可深链、可后退），用 replaceState。
+(function () {
+  var colSel = document.getElementById("f-col");
+  var discSel = document.getElementById("f-disc");
+  var note = document.getElementById("f-note");
+  var shown = document.getElementById("f-shown");
+  var rows = Array.prototype.slice.call(
+    document.querySelectorAll("#bigtable-body tr"));
+  var total = rows.length;
+
+  function apply() {
+    var col = colSel.value, disc = discSel.value;
+    var n = 0;
+    rows.forEach(function (tr) {
+      // 学科行（data-col=学科）在筛学科时保留：不然只剩数值行，看不出是哪一科
+      var okCol = !col || tr.dataset.col === col;
+      var okDisc = !disc || tr.dataset.disc === disc
+                   || (tr.dataset.col === "学科" && !col);
+      var ok = okCol && okDisc;
+      tr.hidden = !ok;
+      if (ok) n++;
+    });
+    shown.textContent = n;
+    note.textContent = (col || disc) ? "（已筛选，共 " + total + " 格）" : "";
+    var q = new URLSearchParams();
+    if (col) q.set("col", col);
+    if (disc) q.set("disc", disc);
+    history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : ""));
+  }
+
+  // 进页面按 URL 还原（可深链给同事看"就这一列"）
+  var q0 = new URLSearchParams(location.search);
+  if (q0.get("col")) colSel.value = q0.get("col");
+  if (q0.get("disc")) discSel.value = q0.get("disc");
+  colSel.addEventListener("change", apply);
+  discSel.addEventListener("change", apply);
+  document.getElementById("f-reset").addEventListener("click", function () {
+    colSel.value = ""; discSel.value = ""; apply();
+  });
+  apply();
+})();
+</script>
+{% endblock %}

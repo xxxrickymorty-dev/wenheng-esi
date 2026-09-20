@@ -411,7 +411,7 @@ def _do_revoke(request, period, note, back):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, err: str = "", signed: str = "",
-               revoked: str = "", rebuilt: str = "", p: str = ""):
+               revoked: str = "", rebuilt: str = "", saved: str = "", p: str = ""):
     """**首屏 = 馆员工作台**（最新一期，可用 `?p=<期次>` 切换）。没有可对勘的期次时才退回控制台。
 
     2026-09-19 从「首屏=对勘本」改过来。对勘本回答的是"这份报告怎么拼出来的"
@@ -429,7 +429,7 @@ async def home(request: Request, err: str = "", signed: str = "",
         if d is not None:
             return page(request, "workbench.html",
                         **workbench.build(d),
-                        periods=cards, current=d.name, rebuilt=rebuilt,
+                        periods=cards, current=d.name, rebuilt=rebuilt, saved=saved,
                         flash=_flash(err, signed, revoked))
     return page(request, "index.html", **_run_ctx())
 
@@ -491,9 +491,23 @@ def _find_ledger(period_dir):
     return p if p.exists() else None
 
 
+async def _collect_fills(request):
+    """把表单里的填写项收成一个 dict。
+
+    两种形状都认：
+      · `v:<todo_id>=<值>` —— 工作台的**批量表单**（一次提交全部，取代逐条刷新）
+      · `id=<todo_id>&value=<值>` —— 单条，旧形状，e2e 与外部调用还在用
+    返回 `(items, back)`。
+    """
+    form = await request.form()
+    items = {k[2:]: str(v) for k, v in form.items() if k.startswith("v:")}
+    if form.get("id"):
+        items[str(form["id"])] = str(form.get("value") or "")
+    return items, str(form.get("back") or "")
+
+
 @app.post("/p/{period}/fill")
-async def period_fill(request: Request, period: str, id: str = Form(""),
-                      value: str = Form(""), back: str = Form("")):
+async def period_fill(request: Request, period: str):
     """在线填【手工：】项。**只写产物目录的 manual_inputs.json，台账一个字节不碰**
     —— 填的是报告，不是数据源；这正是"可溯源"与"可修改"的边界。
 
@@ -502,13 +516,18 @@ async def period_fill(request: Request, period: str, id: str = Form(""),
     """
     from . import workbench                                     # noqa: PLC0415
     user = current_user(request)                                # 登录保护，同 _do_sign
+    items, back = await _collect_fills(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
     d = resolve_period_dir(period)
-    if d is None or not id.strip():
+    if d is None:
         return RedirectResponse(back or "/", status_code=303)
-    workbench.save_fill(d, id, value, by=user)
-    return RedirectResponse(back or "/", status_code=303)
+    n = 0
+    for todo_id, value in items.items():
+        if todo_id.strip():
+            workbench.save_fill(d, todo_id, value, by=user)
+            n += 1
+    return RedirectResponse(_flash_back(back or "/", f"saved={n}"), status_code=303)
 
 
 @app.post("/p/{period}/flag")
@@ -542,34 +561,39 @@ def _flash_back(back, qs):
 
 
 @app.post("/p/{period}/rebuild")
-async def period_rebuild(request: Request, period: str, back: str = Form("")):
+async def period_rebuild(request: Request, period: str):
     """填完重出报告：把在线填的值叠加到报告初稿上。
 
     三件事按这个顺序做，不能乱：
-      1. **先把旧成品撤到 `_superseded/`**（复用 `parse_ledger.quarantine_final_products`）
+      1. **先把表单里的填写项存下来** —— 工作台把「保存」和「重出」放在同一个表单里，
+         用户点「填完重出」时那些改动还没落盘，不先存就等于白填（2026-09-20 发现）；
+      2. **再把旧成品撤到 `_superseded/`**（复用 `parse_ledger.quarantine_final_products`）
          —— 覆盖前留一份机器稿，出了问题能回滚；
-      2. `fill_docx.main(..., manual_inputs=…)` 用**已解析的宽表**重出，
-         不重新解析台账（重解析会把填值对应不上的风险引进来）；
-      3. 只写 `out/<期次>/`，台账一个字节不碰。
+      3. `fill_docx.main(..., manual_inputs=…)` 用**已解析的宽表**重出，
+         不重新解析台账（重解析会把填值对应不上的风险引进来）。
 
-    耗时约 5–15 秒（要重新插 96 张图），同步阻塞 —— uvicorn 单 worker 是
+    耗时约 2–15 秒（要重新插 96 张图），同步阻塞 —— uvicorn 单 worker 是
     项目既定约束（SSE + 内存态任务队列），演示时点一次等一下即可。
     """
     import parse_ledger                                         # noqa: PLC0415
     import fill_docx                                            # noqa: PLC0415
     from . import workbench                                     # noqa: PLC0415
     user = current_user(request)
+    items, back = await _collect_fills(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
     d = resolve_period_dir(period)
     if d is None:
         return RedirectResponse("/", status_code=303)
+    for todo_id, value in items.items():                        # ① 先存
+        if todo_id.strip():
+            workbench.save_fill(d, todo_id, value, by=user)
     fills = workbench.load_fills(d)
-    if not fills:
+    if not fills:                                               # ② 没内容就不动产物
         return RedirectResponse(_flash_back(back, "err=还没有填写内容"), status_code=303)
     parse_ledger.quarantine_final_products(d, None)
     try:
-        fill_docx.main(ledger_dir=str(d), manual_inputs=fills)
+        fill_docx.main(ledger_dir=str(d), manual_inputs=fills)  # ③ 重出
     except Exception as e:                                      # noqa: BLE001
         return RedirectResponse(
             _flash_back(back, f"err=重出失败：{type(e).__name__}"), status_code=303)

@@ -89,6 +89,14 @@ def test_每格都带溯源():
     assert not bad, f"这些格缺溯源：{bad[:5]}"
 
 
+def test_工作台与fill_docx的省域列名一致():
+    """两处各写一份列名表 → 漂移了就是静默失效：工作台把 T19/r5c3 翻成错的列名，
+    或者 fill_docx 按错的列序填表。"""
+    from server import workbench
+    import fill_docx
+    assert workbench.PROVINCE_COLS == fill_docx.PROVINCE_COLS
+
+
 def test_溯源指向ESI原始包():
     _need_esi()
     data = ep.compute(ESI.parent, "202607")

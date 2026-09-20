@@ -1,14 +1,37 @@
 {% extends "base.html" %}
 {% block sub %}馆员工作台 · {{ period }}{% endblock %}
 
+{# 发起新任务是这个站的主操作，放**顶栏**（页面最上方），不埋在面板里 ——
+   rick 2026-09-20：原先 float 在体检面板右下，看着像附属品，且视线要往下找 #}
+{% block nav_action %}
+<a class="btn primary" href="/run" style="margin-right:12px">发起新任务（跑新一期）→</a>
+{% endblock %}
+
 {% block head %}
 <style>
-  .fill-form { display: flex; gap: 6px; justify-content: flex-end; }
-  .fill-form input { width: 200px; }
-  .filled-mark { color: var(--ok); }
+  /* 填写区：一行一个输入框 + 一个「保存全部」，不再每行一个表单。
+     原来每保存一处就整页刷新、滚回锚点，填 16 处要点 16 次 + 刷 16 次。 */
+  .fill-grid { display: flex; gap: 8px; align-items: center; }
+  .fill-grid input { width: 100%; margin-top: 0; }
+  .fill-grid .btn { flex: none; white-space: nowrap; }
   a.readout-link { text-decoration: none; color: inherit; display: block; }
   a.readout-link:hover { background: rgba(178,58,42,.05); }
   .readout .go { font-size: 10px; color: var(--ink-3); letter-spacing: .1em; }
+  /* 期次切换：放页面第一行，别藏在面板标题里（rick：「为什么 202607 常驻」） */
+  .period-bar {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    padding: 10px 14px; margin-bottom: 18px;
+    border: 1px solid var(--line); background: var(--panel);
+    font-size: 12.5px; color: var(--ink-2);
+  }
+  .period-bar .k { font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: .14em; color: var(--ink-3); }
+  .period-bar a { color: var(--ink-2); }
+  .period-bar a.cur { color: var(--zhu); font-weight: 600; text-decoration: none; }
+  .save-bar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 14px 20px; border-top: 1px solid var(--line);
+  }
 </style>
 {% endblock %}
 
@@ -16,6 +39,12 @@
 
 {% if flash and flash.err %}
 <div class="panel"><div class="panel-b" style="color:var(--zhu)">⚠ {{ flash.err }}</div></div>
+{% endif %}
+{% if saved %}
+<div class="panel"><div class="panel-b" style="color:var(--ok)">
+  ✓ 已保存 {{ saved }} 处（写进 <span class="mono">manual_inputs.json</span>，台账未变）。
+  还没进报告 —— 要落到报告初稿上，点下面那个「填完重出报告」。
+</div></div>
 {% endif %}
 {% if rebuilt %}
 <div class="panel"><div class="panel-b" style="color:var(--ok)">
@@ -26,97 +55,138 @@
 </div></div>
 {% endif %}
 
+<div class="period-bar">
+  <span class="k">期次</span>
+  {% for c in periods %}
+  <a href="/?p={{ c.period }}" {% if c.period == current %}class="cur"{% endif %}>{{ c.period }}</a>{% if not loop.last %}<span style="color:var(--line-2)">·</span>{% endif %}
+  {% endfor %}
+  <span style="margin-left:auto; color:var(--ink-3)">
+    跑出哪一期由台账里最新有数据的期次决定，不在这里选。
+    <a href="/p/{{ period_dir }}/archive">运行档案 →</a>
+  </span>
+</div>
+
 <div class="panel">
   <div class="panel-h">
     <span class="no">01</span>
     <h2>本次出稿体检</h2>
-    <span class="hint">
-      {% for c in periods %}
-      <a href="/?p={{ c.period }}" {% if c.period == current %}style="color:var(--zhu);font-weight:600"{% endif %}>{{ c.period }}</a>{% if not loop.last %} · {% endif %}
-      {% endfor %}
-    </span>
+    <span class="hint">{{ period_dir }}</span>
   </div>
   <div class="readouts">
     <a class="readout-link" href="/p/{{ period_dir }}/trace" title="逐格对照台账">
     <div class="readout">
       <div class="v ok">{{ traceable.with_source }}</div>
       <div class="k">个数字 · 全部可溯源（台账 / ESI 原始包）</div>
-      <div class="go">点开 → 逐格对照 ↑</div>
+      <div class="go">点开 → 逐格对照</div>
     </div>
     </a>
     <a class="readout-link" href="#todo-panel" title="待拍板清单">
     <div class="readout">
       <div class="v">{{ todo|length }}</div>
       <div class="k">处 · 待你拍板</div>
-      <div class="go">点开 ↓</div>
+      <div class="go">↓ 就在下面</div>
     </div>
     </a>
     <a class="readout-link" href="#pending-panel" title="待补数据">
     <div class="readout">
       <div class="v zhu">{{ pending|length }}</div>
       <div class="k">处 · 待补数据（台账外）</div>
-      <div class="go">点开 ↓</div>
+      <div class="go">↓ 就在下面</div>
     </div>
     </a>
   </div>
   <div class="panel-foot">
     <span>我们不写「已核对 N 格」——系统里没有标准答案可比对（人工原件仅 4 期，且自身就有笔误）。
     能保证的是<strong>可溯源</strong>：点第一个数字，逐格列出并排对照台账现场重读的值。</span>
-    <span style="float:right">
-      <a class="btn primary" href="/run">发起新任务（跑新一期）→</a>
-    </span>
   </div>
 </div>
 
-<div class="panel" id="todo-panel">
-  <div class="panel-h">
-    <span class="no">02</span>
-    <h2>需要你填（{{ todo_fill|length }} 处）</h2>
-    <span class="hint">待填 {{ todo_fill|length }} 处 · 已填 {{ n_filled }}{% if n_applied %}（{{ n_applied }} 处已写进报告）{% endif %} · 填的是报告，不碰台账</span>
+{# ===== 待填 + 待确认 合成**一个表单**：一次提交取代 16 次整页刷新 ===== #}
+<form method="post" action="/p/{{ period_dir }}/fill">
+  <input type="hidden" name="back" value="/#todo-panel">
+
+  <div class="panel" id="todo-panel">
+    <div class="panel-h">
+      <span class="no">02</span>
+      <h2>需要你填（{{ todo_fill|length }} 处）</h2>
+      <span class="hint">填的是报告，不碰台账</span>
+    </div>
+    <div class="panel-b">
+      {% if todo_fill %}
+      <table class="dense">
+        <thead><tr><th style="width:22%">位置</th><th>要填什么</th><th style="width:34%">填写</th><th class="r">状态</th></tr></thead>
+        <tbody>
+        {% for t in todo_fill %}
+          <tr>
+            <td class="mono">{{ t.where }}</td>
+            <td>{{ t.title }}</td>
+            <td>
+              {# aria-label 必须有：16 个输入框对屏幕阅读器来说全是「编辑框」，
+                 不给名字根本分不清填的是哪一处 #}
+              <input name="v:{{ t.id }}" value="{{ t.filled or '' }}"
+                     aria-label="{{ t.where }} {{ t.title }}"
+                     autocomplete="off" placeholder="填入内容…">
+            </td>
+            <td class="r">
+              {% if t.filled %}<span class="filled-mark">✓ 已填</span>{% else %}<span class="tag">待填</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p>没有需要人工填写的内容。</p>
+      {% endif %}
+    </div>
   </div>
-  <div class="panel-b">
-    {% if todo_fill %}
-    <table class="dense">
-      <thead><tr><th>位置</th><th>要填什么</th><th>填写</th><th class="r">状态</th></tr></thead>
-      <tbody>
-      {% for t in todo_fill %}
-        <tr id="{{ t.id }}">
-          <td class="mono">{{ t.where }}</td>
-          <td>{{ t.title }}</td>
-          <td>
-            <!-- 真实表单 POST + 303 回跳（栈契约：状态变更不依赖 JS）。
-                 back 带锚点，保存后落回待办区，不让人重新找位置 -->
-            <form class="fill-form" method="post" action="/p/{{ period_dir }}/fill">
-              <input type="hidden" name="id" value="{{ t.id }}">
-              <input type="hidden" name="back" value="/#todo-panel">
-              <input name="value" value="{{ t.filled or '' }}" placeholder="填入内容">
-              <button type="submit" class="btn">保存</button>
-            </form>
-          </td>
-          <td class="r state">
-            {% if t.filled %}<span class="filled-mark">✓ 已填</span>{% else %}<span class="tag">待填</span>{% endif %}
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <p>没有需要人工填写的内容。</p>
-    {% endif %}
-    <p style="margin-top:14px">
-      <form method="post" action="/p/{{ period_dir }}/rebuild" style="display:inline">
-        <input type="hidden" name="back" value="/#todo-panel">
-        <button type="submit" class="btn primary">填完重出报告（约 10 秒）</button>
-      </form>
-      <span style="color:var(--ink-3); margin-left:10px">
+
+  <div class="panel" id="confirm-panel">
+    <div class="panel-h">
+      <span class="no">03</span>
+      <h2>需要你确认（{{ todo_confirm|length }} 项）</h2>
+      <span class="hint">结构性项，填错整份报废</span>
+    </div>
+    <div class="panel-b">
+      <table class="dense">
+        <thead><tr><th style="width:22%">位置</th><th style="width:28%">当前值</th><th>确认 / 改正</th><th class="r">状态</th></tr></thead>
+        <tbody>
+        {% for t in todo_confirm %}
+          <tr>
+            <td class="mono">{{ t.where }}</td>
+            <td class="mono">{{ t.value or '—' }}</td>
+            <td>
+              <input name="v:{{ t.id }}" value="{{ t.filled or t.value or '' }}"
+                     aria-label="确认 {{ t.where }}" autocomplete="off">
+            </td>
+            <td class="r">
+              {% if t.filled %}<span class="filled-mark">✓ 已确认</span>{% else %}<span class="tag">待确认</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="save-bar">
+      <button type="submit" class="btn primary">保存全部（{{ todo_fill|length + todo_confirm|length }} 处）</button>
+      <span style="color:var(--ink-3)">
+        一次提交，不用逐条刷新。空着的会保留【手工：】标记，不会被抹平。</span>
+    </div>
+    <div class="save-bar" style="border-top:none; padding-top:0">
+      <span style="color:var(--ink-3)">
+        填完 →&nbsp;</span>
+      <button type="submit" class="btn" formaction="/p/{{ period_dir }}/rebuild">填完重出报告（约 10 秒）</button>
+      <span style="color:var(--ink-3)">
         把填好的值写进报告初稿；原机器稿自动备份到 _superseded/，台账不受影响。</span>
-    </p>
+    </div>
   </div>
-</div>
+</form>
 
 <div class="panel" id="filled-panel">
   <div class="panel-h">
-    <span class="no">03</span>
+    <span class="no">04</span>
     <h2>已填内容（{{ n_filled }} 处）</h2>
     <span class="hint">填过什么、谁填的、进没进报告 —— 都在这儿</span>
   </div>
@@ -146,38 +216,6 @@
     {% else %}
     <p>还没有填过任何内容。填完后这里会列出「填了什么、谁填的、进没进报告」。</p>
     {% endif %}
-  </div>
-</div>
-
-<div class="panel" id="confirm-panel">
-  <div class="panel-h">
-    <span class="no">04</span>
-    <h2>需要你确认（{{ todo_confirm|length }} 项）</h2>
-    <span class="hint">结构性项，填错整份报废</span>
-  </div>
-  <div class="panel-b">
-    <table class="dense">
-      <thead><tr><th>位置</th><th>当前值</th><th>确认 / 改正</th><th class="r">状态</th></tr></thead>
-      <tbody>
-      {% for t in todo_confirm %}
-        <tr id="{{ t.id }}">
-          <td class="mono">{{ t.where }}</td>
-          <td class="mono">{{ t.value or '—' }}</td>
-          <td>
-            <form class="fill-form" method="post" action="/p/{{ period_dir }}/fill">
-              <input type="hidden" name="id" value="{{ t.id }}">
-              <input type="hidden" name="back" value="/#todo-panel">
-              <input name="value" value="{{ t.filled or t.value or '' }}">
-              <button type="submit" class="btn">确认</button>
-            </form>
-          </td>
-          <td class="r state">
-            {% if t.filled %}<span class="filled-mark">✓ 已确认</span>{% else %}<span class="tag">待确认</span>{% endif %}
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
   </div>
 </div>
 
@@ -211,7 +249,7 @@
     </table>
     <p>⚠ 状态是<strong>读生成稿实测</strong>的（按表格形状认表、算数据区非空占比），
        不是写死的清单 —— 写死了会对着产物撒谎。这三张表的<strong>数据历来不在台账里</strong>，
-       历期由馆员从 ESI 机构榜等外部来源补齐；机器只能生成台账里有的东西。</p>
+       历期由馆员从 ESI 机构榜等外部来源补齐；省域表 T19 现已自动（见 trace 页）。</p>
     <p>交互还没定（等你和卜彤对过「数据实际从哪来、谁贴」再设计，
        先诚实空着 —— 不装一个看起来能用其实接不上数据源的按钮）。</p>
   </div>
@@ -236,5 +274,3 @@
 </div>
 
 {% endblock %}
-
-{% block scripts %}{% endblock %}

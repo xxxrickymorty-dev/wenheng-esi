@@ -43,6 +43,12 @@ PENDING_SPECS = (
 #: 数据区非空占比低于这个值，判为「只有表头、数据行是空的」
 _EMPTY_RATIO = 0.02
 
+#: 省域表的列名（除首列机构名）。**必须与 `src/fill_docx.py` 的 `PROVINCE_COLS`
+#: 逐字一致** —— 这里只用于把 `T19/r5c3` 翻译成可读标签，真填表的是那边。
+#: 有测试（test_province）钉住两边相等，防漂移。
+PROVINCE_COLS = ("国内排名", "国际排名", "ESI前1%学科数", "发文量", "被引频次",
+                 "篇均被引频次", "顶尖论文", "高被引论文", "热点论文")
+
 #: 需要人工**确认**（不是填）的结构性项：这些填错整份报废
 _CONFIRM_PREFIX = ("封面/",)
 _CONFIRM_SOURCE = ("期次参数",)
@@ -54,6 +60,15 @@ _HAND = re.compile(r"【手工：([^】]*)】")
 # 直接格：值就在台账某张宽表里（sheet·学科·期次 三元组定位）；
 # 派生格：值是算出来的 → 给出算式，并把**输入值**一并展示（不然"可溯源"对它不成立）。
 _WIDE = ("papers", "cnci", "total_cites", "threshold_1pct", "proximity_1pct", "top_papers")
+
+
+#: 大表列名（程序用）→ 报告表头里的中文。label 要给馆员看，不能出现 `papers`。
+_COL_CN = {
+    "discipline": "学科", "rank_cn_change": "国内排名/变化", "papers": "论文数",
+    "cnci": "CNCI值", "total_cites": "总被引频次", "thr_1pct": "1%阈值",
+    "thr_1pct_gap": "1%阈值差", "thr_1permille": "1‰阈值", "permille_rank": "千分位",
+    "top_papers": "顶尖论文", "prox_change": "接近度变化",
+}
 
 
 def _cell(df, disc, period):
@@ -102,6 +117,7 @@ def _bigtable_trace(rows, led, period, prev):
         if ci == 0:                                       # 学科名列
             disc_en = next((k for k, v in cn.items() if v == report), None)
             out.append({"loc": loc, "col": "学科", "report": report,
+                        "label": f"{report}（学科列）",
                         "sheet": "（22 学科规范名单）", "src_ref": disc_en or "?",
                         "ledger": disc_en or "?", "how": "映射"})
             continue
@@ -163,6 +179,18 @@ def _bigtable_trace(rows, led, period, prev):
                 out.append({"loc": loc, "col": metric, "report": report,
                             "sheet": rev[metric], "src_ref": f"{disc_en} · {period}",
                             "ledger": _fmt(v), "how": "直接取值"})
+    # 统一补 label：`T01/r22c10` 这种位置码是给程序看的，馆员对不上 ——
+    # 换成「学科名 · 列名」，位置码退到 title 里备查（不丢信息）。
+    for rec in out:
+        if rec.get("label"):
+            continue
+        m = re.match(r"T01/r(\d+)c", rec.get("loc") or "")
+        cn_name = ""
+        if m:
+            cn_name = next((x.get("new") or "" for x in rows
+                            if x.get("location") == f"T01/r{m.group(1)}c0"), "")
+        col_cn = _COL_CN.get(rec.get("col"), rec.get("col"))
+        rec["label"] = f"{cn_name} · {col_cn}" if cn_name else (col_cn or "?")
     return out
 
 
@@ -191,10 +219,31 @@ def trace(out_dir, ledger_path, period=None, prev=None):
     province = [{"loc": r.get("location"), "report": (r.get("new") or "").strip(),
                  "src": r.get("source") or ""}
                 for r in rows if (r.get("location") or "").startswith("T19/")]
+    # 省域表同样把位置码换成可读标签：`T19/r5c3` → `云南农业大学 · ESI前1%学科数`
+    for rec in province:
+        m = re.match(r"T19/r(\d+)c(\d+)", rec["loc"] or "")
+        if not m:
+            continue
+        ri, ci = int(m.group(1)), int(m.group(2))
+        uname = next((x.get("new") or "" for x in rows
+                      if x.get("location") == f"T19/r{ri}c0"), "")
+        rec["label"] = uname if ci == 0 else (
+            f"{uname} · {PROVINCE_COLS[ci - 1]}" if ci <= len(PROVINCE_COLS) else uname)
     texts = [{"loc": r.get("location"), "report": (r.get("new") or "").strip()[:60],
               "src": r.get("source") or ""}
              for r in rows if (r.get("source") or "").startswith(("sentences", "期次参数", "母版"))]
+    # 筛选下拉的选项：按数据里真实出现的列/学科生成，不写死
+    seen_c, cols = set(), []
+    for rec in big:
+        k = rec.get("col")
+        if k and k not in seen_c and k != "学科":
+            seen_c.add(k)
+            cols.append({"key": k, "label": _COL_CN.get(k, k)})
+    discs = sorted({(x.get("new") or "") for x in rows
+                    if (x.get("location") or "").endswith("c0")
+                    and (x.get("location") or "").startswith("T01/r")})
     return {"bigtable": big, "charts": charts, "province": province, "texts": texts,
+            "cols": cols, "discs": discs,
             "n": len(rows), "ledger": str(ledger_path)}
 
 

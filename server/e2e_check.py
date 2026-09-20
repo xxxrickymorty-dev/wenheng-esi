@@ -366,7 +366,8 @@ out("=== 15. 工作台：逐格溯源 / 在线填 / 存疑 ===")
 # 2026-09-19 新增。三个数字的落点：354→trace，19→在线填，3→待补说明。
 st, tr, _ = call("GET", "/p/202607/trace")
 check("GET /p/202607/trace → 200", st == 200, f"got {st}")
-check("trace 有大表 239 格", "大表 · 239" in tr, f"got {tr.count('T01/r')} 个 T01 槽位")
+check("trace 大表格数正确（239）", 'id="f-shown">239<' in tr,
+      "标题里的计数被筛选用的 span 包住了，断言要查元素内容而不是纯文本")
 check("trace 有图表 99 张", "图表 · 99" in tr)
 check("trace 是并排对照不是单列值", "台账（现场重读）" in tr and "派生" in tr)
 check("派生格给了算式", "总被引 − ESI被引阈值" in tr and "× 10" in tr)
@@ -409,7 +410,12 @@ check("台账没被在线填/存疑碰到（字节数不变）",
 #    断言照着 bug 写 → 点击 404 但 e2e 全绿（rick 2026-09-19 实踩）。
 st, home2, _ = call("GET", "/")
 check("工作台三个数字可点（trace 链接完整）", 'href="/p/202607/trace"' in home2)
-check("待办区有在线填表单", 'class="fill-form"' in home2)
+check("待办区是一个批量表单（一次提交取代逐条刷新）",
+      'name="v:' in home2 and "保存全部" in home2)
+check("输入框有 aria-label（16 个同名框否则无法区分）",
+      home2.count('aria-label="正文') >= 5)
+check("发起新任务在顶栏（页面最上方）",
+      home2.split("</header>")[0].count("发起新任务") == 1)
 check("待补数据说明诚实标注交互未定", "交互还没定" in home2)
 # 🔴 链接/表单 action 必须是**绝对路径**：写成 202607/trace 会从 / 解析成
 #    /202607/trace → 404，而 e2e 直接打绝对 URL 是抓不到的（2026-09-19 rick 实踩，

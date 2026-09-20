@@ -186,7 +186,8 @@ main { padding-block: 30px 60px; }
 .btn {
   display: inline-block; padding: 9px 18px; border: 1px solid var(--ink);
   background: var(--ink); color: #fff; font-family: var(--mono); font-size: 12px;
-  letter-spacing: .16em; cursor: pointer; transition: all .18s;
+  letter-spacing: .16em; cursor: pointer; touch-action: manipulation;
+  transition: background-color .18s, border-color .18s, color .18s;
 }
 .btn:hover { background: var(--zhu); border-color: var(--zhu); color: #fff; }
 .btn.primary { background: var(--zhu); border-color: var(--zhu); }
@@ -203,10 +204,17 @@ label { display: block; font-size: 12.5px; color: var(--ink-2); margin-bottom: 1
 label.check { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); }
 input[type=text], input[type=password], input:not([type]), select, input[type=file] {
   width: 100%; margin-top: 6px; padding: 9px 10px; font-size: 13.5px;
-  border: 1px solid var(--line-2); background: #fff; color: var(--ink);
-  font-family: var(--sans); border-radius: 0; transition: border-color .18s;
+  border: 1px solid var(--line-2);
+  /* 显式给出底色与字色：Windows 暗色模式下原生 select 会变成黑底黑字（看不清） */
+  background: #fff; color: var(--ink);
+  font-family: var(--sans); border-radius: 0; touch-action: manipulation;
+  transition: border-color .18s;
 }
-input:focus, select:focus { outline: none; border-color: var(--zhu); }
+/* 键盘聚焦保留系统 outline（可见焦点），鼠标点击只变边框。
+   直接 `outline: none` 会让键盘用户彻底看不到焦点在哪。 */
+input:focus, select:focus { border-color: var(--zhu); }
+input:focus:not(:focus-visible), select:focus:not(:focus-visible) { outline: none; }
+input:focus-visible, select:focus-visible { outline: 2px solid var(--zhu); outline-offset: 1px; }
 input[type=checkbox] { width: auto; accent-color: var(--zhu); }
 .or {
   display: flex; align-items: center; gap: 12px; margin: 20px 0 16px;
@@ -423,3 +431,19 @@ tr:hover td { background: var(--zhu-wash); }
 .gsec-h .n { margin-left: auto; font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ---------- 数字排版 / 长列表 / 键盘可达（2026-09-20 UX review 后加） ---------- */
+/* 等宽数字：读数与表格里的数才能逐位对齐，「1」和「8」不等宽时列看着是歪的 */
+.readout .v, .mono, .tabular, table.dense td, table.dense th {
+  font-variant-numeric: tabular-nums;
+}
+/* 溯源页有 354+ 行：让浏览器跳过视口外的行（长列表不加这个会明显卡顿）。
+   只加在表格行上，锚点跳转（#todo-panel 等 div）不受影响。 */
+table.dense tbody tr { content-visibility: auto; contain-intrinsic-size: auto 30px; }
+/* 键盘用户跳过顶栏直达主内容：平时藏起来，聚焦时落在左上角 */
+.skip-link {
+  position: absolute; left: -9999px; top: 0; z-index: 200;
+  background: var(--zhu); color: #fff; padding: 8px 14px;
+  font-family: var(--mono); font-size: 12px; letter-spacing: .1em;
+}
+.skip-link:focus { left: 8px; top: 8px; }
