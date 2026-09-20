@@ -155,9 +155,7 @@ def main(ledger_path, out_root="out", run_backtest=False):
     _emit("province", "省域表（ESI 机构总表）", "start")
     try:
         import extract_province                                  # noqa: PLC0415
-        pdata = extract_province.compute(extract_province.DEFAULT_ESI_ROOT, P)
-        (out_dir / "province.json").write_text(
-            json.dumps(pdata, ensure_ascii=False, indent=1), encoding="utf-8")
+        pdata = extract_province.write_json(P, out_dir)
         print(f"      省域表 T19：{pdata['n_universities']} 校 × 9 列 → province.json")
         _emit("province", "省域表（ESI 机构总表）", "done",
               f"{pdata['n_universities']} 所高校 · 学科榜 {pdata['n_disciplines']} 个")
@@ -171,11 +169,7 @@ def main(ledger_path, out_root="out", run_backtest=False):
     _emit("matrix", "学科×高校矩阵（InCites）", "start")
     try:
         import extract_matrix                                    # noqa: PLC0415
-        mdata = extract_matrix.compute(
-            extract_matrix.DEFAULT_INCITES, extract_matrix.DEFAULT_LEDGER, P,
-            esi_root=extract_matrix.DEFAULT_ESI_ROOT)
-        (out_dir / "matrix.json").write_text(
-            json.dumps(mdata, ensure_ascii=False, indent=1), encoding="utf-8")
+        mdata = extract_matrix.write_json(P, out_dir)
         n_cell = sum(1 for r in mdata["matrix"].values() for x in r.values() if x.get("v"))
         print(f"      矩阵表 T20：{len(mdata['matrix'])} 学科 × 11 校 → {n_cell} 格"
               f"（快照 {mdata['snapshot']}）")

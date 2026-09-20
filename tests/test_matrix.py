@@ -20,6 +20,7 @@ for p in (str(REPO / "src"), str(REPO)):
         sys.path.insert(0, p)
 
 import extract_matrix as em                                     # noqa: E402
+import parse_ledger                                             # noqa: E402
 from _guard_registry import skip_unless                         # noqa: E402
 
 INC = REPO.parent / "数据与复现" / "incites"
@@ -74,7 +75,10 @@ def test_快照映射是逐期验证过的():
 def test_与人工原件逐格比对():
     data = _data()
     ok, total, diffs = em.compare_with_original(data, ORIG)
-    assert total > 200, f"应比 200 格以上，实为 {total}"
+    # 22 学科 × 11 校 = 242，写**精确值**而不是「大于 200」：少一行也要红。
+    # 2026-09-20 之前这里是 `> 200`，而实际只比了 231 格 —— 原件「植物学与动物学」
+    # 那一行因行名与台账规范名不一致被 `continue` 跳过，比对少 11 格却仍报"全对"。
+    assert total == 22 * 11, f"应覆盖全部 {22 * 11} 格，实为 {total}（有行名没匹配上）"
     # 唯一差异是「社会科学·财大」——已由 rick 与馆员核对确认**原件有误**
     # （原件 102.41% 的原料 2169 不属于任何一期 InCites 快照，而其余 230 格
     #  用当期快照全部吻合）。这不是"容忍误差"，是"差异已查清并确认"。
@@ -117,3 +121,39 @@ def test_脏文件名的学科表也能找到():
     assert p is not None and p.exists(), "农业科学的表没找到（文件名尾巴粘了 xlsx）"
     p2 = em._disc_file(snap, "Social Sciences, general")
     assert p2 is not None, "社会科学（小写 general）没找到"
+
+
+# ============================================================ ⑤ 行名归一（2026-09-20 加）
+def test_原件每行行名都能归一命中我们算的矩阵():
+    """🔴 守住「整行静默跳过」这一类失效。
+
+    母版与历期原件把「植物与动物学」写作「植物**学**与动物学」；台账规范名没有那个
+    「学」字。按行名精确匹配的后果是**两端一起哑**：
+      · 上游 `fill_docx.fill_matrix` 查不到 → 整行 11 格不填（报告留白）；
+      · 下游 `compare_with_original` 查不到 → `continue` 跳过 → 少比 11 格还报"全对"。
+    所以判据是：**原件 T20 的 22 个行名，归一后必须一个不少地查到数据。**
+    """
+    from docx import Document                                  # noqa: PLC0415
+
+    d = Document(str(ORIG))
+    t = next((x for x in d.tables
+              if "云大" in [c.text.strip() for c in x.rows[0].cells]), None)
+    assert t is not None, "原件里找不到 T20 矩阵表"
+    data = _data()
+    names = [r.cells[0].text.strip() for r in t.rows[1:]]
+    missed = [n for n in names if parse_ledger.norm_disc_cn(n) not in data["matrix"]]
+    assert not missed, f"这些行名归一后仍查不到矩阵数据（会静默留白）：{missed}"
+    assert len(names) == 22, f"原件 T20 应有 22 个学科行，实为 {len(names)}"
+
+
+def test_学科中文名别名表只做显式映射():
+    """别名表是显式的：不认识的写法原样返回，绝不做模糊包含匹配 ——
+    「生物与生物化学」会被「化学」截胡（`_cn2en` 踩过同一个坑）。"""
+    assert parse_ledger.norm_disc_cn("植物学与动物学") == "植物与动物学"
+    assert parse_ledger.norm_disc_cn("植物与动物学") == "植物与动物学"
+    assert parse_ledger.norm_disc_cn("化学") == "化学"
+    assert parse_ledger.norm_disc_cn("生物与生物化学") == "生物与生物化学"
+    assert parse_ledger.norm_disc_cn("  化学  ") == "化学"
+    assert parse_ledger.norm_disc_cn(None) == ""
+    # 别名表的值必须都是台账规范名，别把规范名指到别的写法上
+    assert set(parse_ledger.DISC_CN_ALIAS.values()) <= set(parse_ledger.DISCIPLINES_CN.values())

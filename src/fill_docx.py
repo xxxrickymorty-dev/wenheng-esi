@@ -25,7 +25,7 @@ from docx.oxml.ns import qn  # noqa: E402
 import charts  # noqa: E402
 import compute  # noqa: E402
 import sentences  # noqa: E402
-from parse_ledger import DISCIPLINES_CN  # noqa: E402
+from parse_ledger import DISCIPLINES_CN, norm_disc_cn  # noqa: E402
 
 CELL_FONT = "楷体"
 CELL_SIZE = Pt(10)
@@ -112,7 +112,10 @@ def fill_matrix(doc, ledger_dir, slots):
     col_of = {c.text.strip(): i for i, c in enumerate(t20.rows[0].cells)}
     n = 0
     for ri, row in enumerate(t20.rows[1:], start=1):
-        cn = row.cells[0].text.strip()
+        # 🔴 行名必须先归一：母版与历期原件把「植物与动物学」写作「植物**学**与动物学」，
+        #    而 matrix.json 的键是台账规范名。不归一 → mat.get 查不到 → **整行 11 格留白**，
+        #    且不报错（2026-09-20 逐格核验才发现）。
+        cn = norm_disc_cn(row.cells[0].text.strip())
         rec = mat.get(cn)
         if not rec:
             continue

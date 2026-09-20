@@ -244,6 +244,25 @@ def compute(incites_root, ledger_path, period, esi_root=None):
                              "ours_source": "1901（InCites 2026.04.30）÷ 2118，与其余 230 格同一套口径"}]}
 
 
+def write_json(period, out_dir, incites_root=None, ledger_path=None, esi_root=None):
+    """算好矩阵并落 `out/<期次>/matrix.json`，返回数据 dict。
+
+    `run_pipeline`（当期）与 `rerun_history`（历史期复现）**共用这一处** ——
+    两处各写一份会让「复现稿」和「当期稿」的矩阵来源悄悄分叉。
+    ⚠ 复现历史期次时 `period` 必须传**被复现的那一期**，不能传台账当期：
+      快照映射是逐期登记的，传错期整张表都错（见 `SNAP_MAP`）。
+    """
+    data = compute(incites_root if incites_root is not None else DEFAULT_INCITES,
+                   ledger_path if ledger_path is not None else DEFAULT_LEDGER,
+                   period,
+                   esi_root=esi_root if esi_root is not None else DEFAULT_ESI_ROOT)
+    out = pathlib.Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "matrix.json").write_text(
+        json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    return data
+
+
 def compare_with_original(data, orig_docx):
     """与人工原件 T20 逐格比对。返回 (一致, 总数, 差异)。
 
@@ -270,7 +289,10 @@ def compare_with_original(data, orig_docx):
     ok = bad = 0
     diffs = []
     for r in t.rows[1:]:
-        cn = r.cells[0].text.strip()
+        # 🔴 行名同样要归一：原件的行名是「植物**学**与动物学」，而 matrix.json 的键是
+        #    台账规范名「植物与动物学」。不归一 → 查不到 → `continue` 跳过 → 那一行
+        #    11 格**根本没被比过**，却报「231/231 全对」（2026-09-20 查实：231 = 21 学科 × 11）。
+        cn = parse_ledger.norm_disc_cn(r.cells[0].text.strip())
         rec = data["matrix"].get(cn)
         if not rec:
             continue

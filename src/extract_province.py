@@ -83,6 +83,12 @@ DISC_FILES = (
     "Psychiatry Psychology", "Social Sciences, General", "Space Science",
 )
 
+#: ⚠ **源端列差异**：ESI 机构总表在 202603 之前**没有** `Highly Cited Papers` /
+#: `Hot Papers` 两列（202601 / 202605 实测只有 6 列，202603 / 202607 有 8 列）。
+#: 后果：那两期的 T19「高被引论文」「热点论文」两列 × 11 校 = 22 格在源端就不存在，
+#: 只能留空。**不是漏填**，别去"修"它 —— 要补只能人工从 ESI 平台另导。
+#: `tools/verify_report_cells.py` 会把这类空格单独报成「提示」，与真差异分开。
+
 
 def _disc_workbooks(d):
     """{学科名: 路径}。先精确匹配，再宽松（去掉非字母后比较）——
@@ -193,6 +199,21 @@ def compute(esi_root, period):
             "n_disciplines": n_disc, "universities": out}
 
 
+def write_json(period, out_dir, esi_root=None):
+    """算好省域表并落 `out/<期次>/province.json`，返回数据 dict。
+
+    `run_pipeline`（当期）与 `rerun_history`（历史期复现）**共用这一处** ——
+    两处各写一份会让「复现稿」和「当期稿」的省域表来源悄悄分叉，
+    而这类分叉不会报错，只会在两份报告里出现不同的数。
+    """
+    data = compute(esi_root if esi_root is not None else DEFAULT_ESI_ROOT, period)
+    out = pathlib.Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "province.json").write_text(
+        json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    return data
+
+
 def compare_with_original(data, orig_docx, period):
     """与人工原件 T19 逐格比对。返回 (一致格数, 总格数, 差异列表)。"""
     try:
@@ -255,7 +276,6 @@ def main():
             json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
         print(f"\n→ {out / 'province.json'}")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

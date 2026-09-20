@@ -386,6 +386,29 @@ def parse_forecast_gap(ws, clean_log):
     return df
 
 
+#: **报告侧**出现过的学科中文名变体 → 台账规范名（即 `DISCIPLINES_CN` 的值）。
+#:
+#: 🔴 2026-09-20 加。历期人工原件与母版把「植物与动物学」写作「植物**学**与动物学」，
+#:    固定两处：矩阵表 T20 的行名、学科图章节小标题（「——近期植物学与动物学发展参考指标
+#:    变化情况」）。台账规范名没有那个「学」字。后果是**两端静默失效**：
+#:      · 上游 `fill_docx.fill_matrix` 按行名精确匹配 → 查不到 → 整行 11 格不填（留白）；
+#:      · 下游 `extract_matrix.compare_with_original` 按行名查我们的矩阵 → 查不到 → `continue`
+#:        → 只比 21 学科 × 11 校 = 231 格，还报"全对"。
+#:    两处都走 `norm_disc_cn`，覆盖率才能回到 242 格。
+#:
+#: 用**显式别名表**而不是模糊匹配：模糊匹配会让「生物与生物化学」命中「化学」
+#: （见 `_cn2en` 的同款坑）。新增变体请往这里加一条，别去放松匹配。
+DISC_CN_ALIAS = {
+    "植物学与动物学": "植物与动物学",
+}
+
+
+def norm_disc_cn(name):
+    """报告/母版里的学科中文名 → 台账规范名。认不出时原样返回（不臆测）。"""
+    s = str(name or "").strip()
+    return DISC_CN_ALIAS.get(s, s)
+
+
 #: 中文学科名 → 规范英文名的反查表（正向表见 `DISCIPLINES_CN`）。
 CN2EN = {v: k for k, v in DISCIPLINES_CN.items()}
 
