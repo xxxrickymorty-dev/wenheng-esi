@@ -75,10 +75,13 @@ def test_与人工原件逐格比对():
     data = _data()
     ok, total, diffs = em.compare_with_original(data, ORIG)
     assert total > 200, f"应比 200 格以上，实为 {total}"
-    # 已知分歧 1 格（社会科学·财大，原件口径与其余 230 格不一致）
+    # 唯一差异是「社会科学·财大」——已由 rick 与馆员核对确认**原件有误**
+    # （原件 102.41% 的原料 2169 不属于任何一期 InCites 快照，而其余 230 格
+    #  用当期快照全部吻合）。这不是"容忍误差"，是"差异已查清并确认"。
     known = {(d["disc"], d["school"]) for d in data.get("known_diffs") or []}
+    assert known == {("社会科学", "财大")}, "已确认分歧清单变了，需重新核查"
     got = {(cn, s) for cn, s, _ in diffs}
-    assert got <= known, f"出现了已知之外的差异：{sorted(got - known)[:5]}"
+    assert got <= known, f"出现了已确认之外的差异：{sorted(got - known)[:5]}"
     assert ok >= total - len(known)
 
 
