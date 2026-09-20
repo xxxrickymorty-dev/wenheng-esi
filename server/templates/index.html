@@ -36,12 +36,20 @@
       <form id="run-form" class="run-form">
         <label>选择已有台账
           <select name="period_sel">
-            <option value="">— 选择期次 —</option>
+            <option value="">— 选择台账文件 —</option>
             {% for p in periods %}
             <option value="{{ p.period }}">{{ p.period }}（{{ p.mtime }} 更新）</option>
             {% endfor %}
           </select>
         </label>
+        <!-- ⚠ 这里选的是**台账文件**，不是「要跑哪一期」：期次由台账里"最新有数据的
+             那一列"决定。两份台账的最新有效期都是 202607，所以选哪个都跑出 202607
+             （rick 2026-09-20 问「最近一直在跑 202607 吗」，就是被旧文案误导）。
+             历史期次的复现走 `src/rerun_history.py`，不在这个下拉里。 -->
+        <p class="muted" style="margin-top:-6px">
+          跑出哪一期由<strong>台账里最新有数据的期次</strong>决定，不由此处选择 ——
+          选文件只是选"用哪份台账"。历史期次的复现走命令行脚本，不在这里。
+        </p>
         <div class="or"><span>或 上 传 新 一 期 台 账</span></div>
         <label>台账文件（.xlsx）
           <input type="file" name="file" accept=".xlsx">
