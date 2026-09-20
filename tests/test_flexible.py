@@ -19,7 +19,8 @@ import pytest
 
 from _guard_registry import skip_unless
 
-from flexible import mdview, opinion, planner, queries, report, spec
+import local_llm
+from flexible import mdview, opinion, planner, polish, queries, report, spec
 from flexible.datasource import DataSource
 
 # ---------------------------------------------------------------- 夹具
@@ -164,7 +165,8 @@ class TestOpinion观点分级:
         pts = [{"period": "202601", "value": 1.0}, {"period": "202603", "value": 1.5}]
         a = opinion.descriptive_trend(pts, "接近度", "化学")
         b = opinion.descriptive_trend(pts, "接近度", "化学")
-        assert a == b and "上升" in a
+        # 🔴 别断言某个具体词（句式现在按数据形态分档，"上升"只是其中一种说法）
+        assert a == b and any(w in a for w in ("上升", "走高", "升到"))
 
 
 class TestPlanner无模型也能跑:
@@ -425,6 +427,104 @@ class Test规则后端产出完整分析稿:
         md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
         for sec in ("本期概览", "横向对比", "待验证假设", "需人工判断"):
             assert sec in md
+
+
+class Test语言不死板:
+    """rick 2026-09-21：「灵活报告并不灵活，语言还是很死板」。
+
+    死板的根因＝三条指标一律「X月至X月（7 期），X 的 Y 自 A 上升至 B，…」同一个句式连写三遍。
+    判据不是"读起来顺"，是**可测的三条**：句式随数据形态变、同报告内不撞句、结果可复现。
+    """
+
+    def _pts(self, vs, start=0):
+        return [{"period": f"2026{1 + i:02d}", "value": v} for i, v in enumerate(vs)]
+
+    @pytest.mark.parametrize("vs,kw", [
+        ([1, 2, 3, 4], ("走高", "上升", "升到")),          # 单调上行
+        ([4, 3, 2, 1], ("走低", "下滑", "降到")),          # 单调下行
+        ([1, 3, 2, 4], ("波动", "并非单边", "反复")),       # 震荡
+        ([1, 1, 1, 1], ("走平",)),                        # 走平
+        ([2, 2, 8, 7], ("集中在一期",)),                   # 台阶（跳一下再小幅回落）
+        ([1, 4, 2, 2], ("先升后降",)),                     # 反转
+    ])
+    def test_句式随数据形态变(self, vs, kw):
+        s = opinion.descriptive_trend(self._pts(vs), "某指标", "某学科")
+        assert any(k in s for k in kw), f"{vs} → {s}"
+
+    def test_同报告内三条指标不撞同一句(self, flex_report_out):
+        md = pathlib.Path(flex_report_out["report"]).read_text(encoding="utf-8")
+        seg = md.split("## 二、")[1].split("## 三、")[0]
+        lines = [l for l in seg.splitlines() if l.startswith("- ")]
+        assert len(lines) >= 3
+        heads = [l[:14] for l in lines]
+        assert len(set(heads)) == len(heads), f"三条开头撞了：{heads}"
+        # 旧句式「自 A 上升至 B」不该再出现三遍
+        assert seg.count("上升至") <= 1, "又退回模板句式了"
+
+    def test_规则后端可复现(self, src):
+        """句式变体必须**确定性** —— 同一份数据两次跑出同一句。"""
+        from flexible import queries
+        r = queries.series(src, "total_cites", "Chemistry", src.filled_periods[-5:])
+        a = opinion.descriptive_trend(r["points"], "总被引频次", "化学")
+        b = opinion.descriptive_trend(r["points"], "总被引频次", "化学")
+        assert a == b
+
+    def test_第二条起不再重复区间(self, src):
+        from flexible import queries
+        r = queries.series(src, "papers", "Chemistry", src.filled_periods[-5:])
+        s = opinion.descriptive_trend(r["points"], "论文数", "化学", with_span=False)
+        assert "至" not in s[:8], s
+
+    def test_概况引导句不再是同一句(self):
+        a = opinion.gap_lead("2026年7月", "化学", -120)
+        b = opinion.gap_lead("2026年7月", "化学", 120)
+        c = opinion.gap_lead("2026年7月", "化学", None)
+        assert "还差" in a and "高出" in b and "核心指标如下" in c
+        assert a != b
+
+    def test_相对位次句不再把学科数说两遍(self):
+        s = opinion.rank_sentence(22, 15, 14, "化学")
+        assert s.count("22") == 1, s
+        assert "后 1/3" in s
+
+
+class Test润色位是可选的:
+    """润色只改措辞、不改数字；不可用/失败一律原样返回（演示站永远走这条）。"""
+
+    def test_默认关闭(self, monkeypatch):
+        monkeypatch.delenv("WENHENG_FLEX_POLISH", raising=False)
+        assert polish.enabled() is False
+        assert polish.rewrite("接近度自 0.6 升至 0.8。") == "接近度自 0.6 升至 0.8。"
+
+    def test_模型不可用时原样返回(self, monkeypatch):
+        monkeypatch.setenv("WENHENG_FLEX_POLISH", "1")
+        monkeypatch.setattr(local_llm, "generate",
+                            lambda *a, **k: (_ for _ in ()).throw(OSError("down")))
+        txt = "总被引自 9,356 升至 11,558。"
+        assert polish.rewrite(txt) == txt
+
+    def test_校验不通过时原样返回(self, monkeypatch):
+        """模型把占位符弄丢 / 冒出新数字 → 必须退回原文，不许端上桌。"""
+        monkeypatch.setenv("WENHENG_FLEX_POLISH", "1")
+        monkeypatch.setattr(local_llm, "generate",
+                            lambda *a, **k: "接近度上升了 30% 左右。")
+        txt = "接近度自 0.6716 升至 0.845。"
+        assert polish.rewrite(txt) == txt
+
+    def test_不许动的标记不会被润掉(self, monkeypatch):
+        monkeypatch.setenv("WENHENG_FLEX_POLISH", "1")
+        monkeypatch.setattr(local_llm, "generate", lambda *a, **k: "这条被改写了。")
+        txt = "【手工：化学资源投入建议】"
+        assert polish.rewrite(txt) == txt
+
+    def test_规则后端不调模型(self, src, monkeypatch):
+        from conftest import REPO
+        import local_llm
+        calls = []
+        monkeypatch.setattr(local_llm, "generate",
+                            lambda *a, **k: calls.append(1) or "x")
+        report.generate(REPO / src.dir, "single_trend", backend="rule")
+        assert not calls, "规则后端绝不能碰模型（演示站无模型）"
 
 
 class TestHTML渲染:

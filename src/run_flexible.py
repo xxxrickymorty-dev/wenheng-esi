@@ -10,11 +10,19 @@
     # 切模型后端（本机 Ollama；不可用会自动回退 rule，不报错）
     .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend ollama
 
+    # 语言润色位（**可选**）：模型在位时把措辞再顺一遍。
+    # 数字走防护盾（[[n]] 占位 + 校验 + 还原），失败或不可用一律原样回退。
+    .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend ollama --polish
+    .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend ollama --no-polish
+
     # 列出某期次已生成的分析稿
     .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 --list
 
 意图：`single_trend`（单学科趋势诊断）/ `cross_compare`（多学科横向对比）。
 后端：`rule`（默认，无 LLM）/ `ollama` / `http`。
+
+🔴 `rule` 后端**永不调用模型** —— 演示站（2核2G）跑的就是它，
+死板与否由 `opinion.descriptive_trend` 的句式分档决定，不靠润色。
 """
 import pathlib
 import sys
@@ -42,7 +50,14 @@ def main(argv):
     if intent not in planner.INTENTS:
         print(f"未知意图 {intent!r}；可用：{sorted(planner.INTENTS)}")
         return 2
-    r = report.generate(out_dir, intent, backend=backend, disc=disc)
+    # `--polish` / `--no-polish`：语言润色位（可选，需本机 Ollama；默认随模型后端）
+    polish = None
+    for flag in argv[4:]:
+        if flag == "--polish":
+            polish = True
+        elif flag in ("--no-polish", "--raw"):
+            polish = False
+    r = report.generate(out_dir, intent, backend=backend, disc=disc, polish=polish)
     p = r["plan"]
     print(f"[灵活报告] {planner.INTENTS[intent]} → {r['report']}")
     print(f"  规划后端：{p['backend']}"

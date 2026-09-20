@@ -88,7 +88,19 @@ def _render_charts(src: DataSource, plan: dict, chart_dir, specs_out, charts,
     return "".join(out)
 
 
-def _build_single_trend(src: DataSource, plan: dict, chart_dir, specs_out) -> dict:
+def _polish(polish, text: str) -> str:
+    """润色位（可选）。`polish` 为假 → 原样返回，不碰模型。"""
+    if not polish or not text:
+        return text
+    try:
+        from . import polish as _p                              # noqa: PLC0415
+        return _p.rewrite(text)
+    except Exception:                                           # noqa: BLE001
+        return text
+
+
+def _build_single_trend(src: DataSource, plan: dict, chart_dir, specs_out,
+                        polish=False) -> dict:
     disc = plan["disc"]
     dcn = cn_name(disc)
     period = src.current_period()
@@ -111,15 +123,9 @@ def _build_single_trend(src: DataSource, plan: dict, chart_dir, specs_out) -> di
     th = q.series(src, "threshold_1pct", disc, [period])
     if tc["points"] and th["points"]:
         gap = tc["points"][0]["value"] - th["points"][0]["value"]
-    if gap is None:
-        lead = f"{period_label(period)}，{dcn}的核心指标如下。"
-    elif gap < 0:
-        lead = (f"{period_label(period)}，{dcn}的核心指标如下；"
-                f"总被引距 1% 阈值还差 **{_fmt(abs(gap))}**。")
-    else:
-        lead = (f"{period_label(period)}，{dcn}的核心指标如下；"
-                f"总被引已超 1% 阈值 **{_fmt(gap)}**。")
-    blocks.append(("一、当期概况", lead + "\n\n" + _kv_table(rows)))
+    # 🔴 引导句走 `gap_lead`（原来三支一律「…的核心指标如下」，模板腔）
+    lead = op.gap_lead(period_label(period), dcn, gap)
+    blocks.append(("一、当期概况", _polish(polish, lead) + "\n\n" + _kv_table(rows)))
 
     # ── 二、关键指标走势（描述性，规则生成；配 spec 图）
     trend_rows = []
@@ -128,9 +134,12 @@ def _build_single_trend(src: DataSource, plan: dict, chart_dir, specs_out) -> di
         sources.append(r)
         if r["points"]:
             trend_rows.append(r)
+    # 🔴 第一条带区间、后面两条换开头 —— 三条不能再是同一句式（rick 2026-09-21）
     desc = "\n\n".join(
-        "- " + op.descriptive_trend(r["points"], r["metric_cn"], dcn, r.get("better", "up"))
-        for r in trend_rows)
+        "- " + _polish(polish, op.descriptive_trend(
+            r["points"], r["metric_cn"], dcn, r.get("better", "up"),
+            with_span=(i == 0)))
+        for i, r in enumerate(trend_rows))
     body = desc + _render_charts(src, plan, chart_dir, specs_out, charts, disc)
     blocks.append(("二、关键指标走势", body))
 
@@ -145,14 +154,11 @@ def _build_single_trend(src: DataSource, plan: dict, chart_dir, specs_out) -> di
                       if x["discipline"] == disc), None)
     hard = next((i for i, x in enumerate(cmp_prox["rows"], 1)
                  if disc == x["discipline"]), None)
-    txt = (f"在本期 {cmp_prox['n']} 个学科中，{dcn}的{cmp_prox['metric_cn']}"
-           f"排第 **{rank_pos}** 位"
-           + (f"（共 {cmp_prox['n']} 个学科）" if rank_pos else "")
-           + f"；论文数排第 **{paper_pos}** 位。")
+    txt = op.rank_sentence(cmp_prox["n"], rank_pos, paper_pos, dcn)
     if hard:
         near = cmp_prox["rows"][rank_pos - 1] if rank_pos else None
         _ = near
-    blocks.append(("三、相对位次", txt))
+    blocks.append(("三、相对位次", _polish(polish, txt)))
 
     # ── 四、待验证假设（规则提出的也算假设，须标注来源）
     hyps = []
@@ -206,7 +212,8 @@ def _build_single_trend(src: DataSource, plan: dict, chart_dir, specs_out) -> di
 
 
 # ------------------------------------------------------------------ 横向对比
-def _build_cross_compare(src: DataSource, plan: dict, chart_dir, specs_out) -> dict:
+def _build_cross_compare(src: DataSource, plan: dict, chart_dir, specs_out,
+                         polish=False) -> dict:
     period = src.current_period()
     met = plan.get("metric") or "proximity_1pct"
     blocks, sources, charts = [], [], []
@@ -214,10 +221,11 @@ def _build_cross_compare(src: DataSource, plan: dict, chart_dir, specs_out) -> d
     sc = q.scope(src, period)
     sources.append(sc)
     n_ent = sc["n_entered_1pct"]
-    blocks.append(("一、本期概览",
-                   f"{period_label(period)}，云南大学共 **{n_ent}** 个学科进入 ESI 全球前 1%"
-                   f"（占 22 个监测学科的 {n_ent / 22 * 100:.0f}%）；"
-                   f"另有 **{sc['n_potential']}** 个学科尚未进入、列为潜力学科。"))
+    cmp_n = len(src.disciplines)          # 🔴 别写死 22（学科数会变）
+    blocks.append(("一、本期概览", _polish(polish, (
+        f"{period_label(period)}，云南大学共 **{n_ent}** 个学科进入 ESI 全球前 1%"
+        f"（占 {cmp_n} 个监测学科的 {n_ent / cmp_n * 100:.0f}%）；"
+        f"另有 **{sc['n_potential']}** 个学科尚未进入、列为潜力学科。"))))
 
     cmp_r = q.compare(src, met, None, period)
     sources.append(cmp_r)
@@ -353,23 +361,35 @@ def self_check(report_md: str, src: DataSource, built: dict) -> dict:
 
 
 def generate(out_dir, intent: str = "single_trend", *, backend=None,
-             disc=None, metric=None, n_periods=None) -> dict:
+             disc=None, metric=None, n_periods=None, polish=None) -> dict:
     """产出灵活报告。返回产物路径与自检结果。
 
     🔴 `out_dir` 是**期次目录**（`out/202607`）。产物一律落在
     `out/<期次>/flexible/<intent>/` 下，**不触碰**该期次的复刻报告产物。
+
+    `polish`：语言润色位（**可选**，见 `flexible/polish.py`）。
+      - `None`（默认）＝模型后端生效时才开；
+      - `True` / `False` ＝强制开 / 关。
+    关掉或模型不可用时，产出的就是**纯规则稿**（演示站永远如此）。
     """
     src = DataSource(out_dir)
     plan = planner.build(src, intent, backend=backend, disc=disc, metric=metric,
                          n_periods=n_periods)
+    if polish is None:
+        try:
+            from . import polish as _p                          # noqa: PLC0415
+            # 模型后端才润色；规则后端不碰模型（可复现 + 演示站无模型）
+            polish = (plan.get("backend") not in (None, "rule")) and _p.model_reachable()
+        except Exception:                                       # noqa: BLE001
+            polish = False
     d = _dir_for(out_dir, intent)
     chart_dir = d / "charts"
     chart_dir.mkdir(parents=True, exist_ok=True)
 
     specs_out: list[dict] = []
-    built = (_build_single_trend(src, plan, chart_dir, specs_out)
+    built = (_build_single_trend(src, plan, chart_dir, specs_out, polish)
              if intent == "single_trend" else
-             _build_cross_compare(src, plan, chart_dir, specs_out))
+             _build_cross_compare(src, plan, chart_dir, specs_out, polish))
 
     meta = {"generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
             "intent": intent, "backend": plan["backend"]}
