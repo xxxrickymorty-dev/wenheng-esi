@@ -184,20 +184,36 @@
 <div class="panel" id="pending-panel">
   <div class="panel-h">
     <span class="no">05</span>
-    <h2>待补数据（{{ pending|length }} 处 · 数据不在台账里）</h2>
-    <span class="led bad"></span>
+    <h2>台账外的大表（{{ pending|length }} 处待补 / 共 {{ pending_all|length }} 处）</h2>
+    <span class="led {% if pending %}bad{% else %}ok{% endif %}"></span>
   </div>
   <div class="panel-b">
     <table class="dense">
-      <thead><tr><th>表</th><th>为什么缺</th></tr></thead>
+      <thead><tr><th>表</th><th>生成稿现状</th><th>数据在哪</th><th class="r">状态</th></tr></thead>
       <tbody>
-      {% for t in pending %}
-        <tr><td>{{ t.title }}</td><td>{{ t.why }}</td></tr>
+      {% for t in pending_all %}
+        <tr>
+          <td>{{ t.title }}</td>
+          <td class="mono">
+            {% if t.filled is not none %}数据区非空 {{ (t.filled * 100) | round(1) }}%
+            {% else %}—{% endif %}
+          </td>
+          <td>{{ t.why }}</td>
+          <td class="r">
+            {% if t.state == 'empty' %}<span style="color:var(--zhu)">待补</span>
+            {% elif t.state == 'has_data' %}<span class="filled-mark">✓ 已有内容</span>
+            {% elif t.state == 'no_docx' %}<span class="tag">未出稿</span>
+            {% else %}<span class="tag">—</span>{% endif %}
+          </td>
+        </tr>
       {% endfor %}
       </tbody>
     </table>
-    <p>⚠ 这三处的交互还没定（等你和卜彤对过「数据实际从哪来、谁贴」再设计，
-    先诚实空着 —— 不装一个看起来能用其实接不上数据源的按钮）。</p>
+    <p>⚠ 状态是<strong>读生成稿实测</strong>的（按表格形状认表、算数据区非空占比），
+       不是写死的清单 —— 写死了会对着产物撒谎。这三张表的<strong>数据历来不在台账里</strong>，
+       历期由馆员从 ESI 机构榜等外部来源补齐；机器只能生成台账里有的东西。</p>
+    <p>交互还没定（等你和卜彤对过「数据实际从哪来、谁贴」再设计，
+       先诚实空着 —— 不装一个看起来能用其实接不上数据源的按钮）。</p>
   </div>
 </div>
 

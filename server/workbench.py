@@ -18,17 +18,29 @@ import json
 import pathlib
 import re
 
-#: 「待补数据」—— 这三张表**不在** red_slots.json 里：它们母版即空、数据在台账外，
-#: 机器压根没动过，所以只能列成静态清单。格数不写死（省表/矩阵的规模会变），
-#: 写死了就是下一个"编出来的数"。
-PENDING_TABLES = (
-    {"id": "T19", "title": "云南省高校学科对比表",
-     "why": "母版即空，数据不在台账里，需馆员从外部贴入"},
-    {"id": "T20", "title": "学科 × 高校矩阵表",
-     "why": "同上，母版即空"},
-    {"id": "T21", "title": "顶尖论文清单",
-     "why": "母版清单复用，本期需换成当期数据"},
+#: 台账外的三张大表：**规格写死，状态不写死**。
+#:
+#: 🔴 别把它们当成固定的「待补三条」——2026-09-20 rick 拿人工原件问「这里明明有
+#:    所有图表，为什么还有三个待补」，一查发现：T19/T20 在生成稿里确实只有表头
+#:    （数据不在台账里），而 **T21 与原件逐格相同**（202607 就是第 4 期，母版恰好
+#:    继承了它的清单）。写死常量会对着产物撒谎。
+#:    → 状态一律**读生成稿实测**（`_pending_from_docx`），这里只留规格与说明。
+#: 行×列 用来在 docx 里认出是哪张表（母版结构，逐期稳定）。
+#: 行×列 用来在 docx 里认出是哪张表（母版结构，逐期稳定）；
+#: `skip_head` 是**表头占几行** —— T19 是两级表头（第一行「排名」，第二行「国内/国际」），
+#: 只跳 1 行会把第二级表头算成数据，于是空表被判成"已有内容 8.3%"（2026-09-20 实测）。
+#: 这个数也得看实物定，不能照抄。
+PENDING_SPECS = (
+    {"id": "T19", "title": "云南省高校学科对比表", "rows": 13, "cols": 10, "skip_head": 2,
+     "why": "各校 ESI 指标不在台账里，历期由馆员从 ESI 机构榜等外部来源补齐"},
+    {"id": "T20", "title": "学科 × 高校矩阵表", "rows": 23, "cols": 12, "skip_head": 1,
+     "why": "同上，数据源在台账外"},
+    {"id": "T21", "title": "顶尖论文清单", "rows": 275, "cols": 7, "skip_head": 1,
+     "why": "清单随期次更新；本期若与母版一致则无需处理"},
 )
+
+#: 数据区非空占比低于这个值，判为「只有表头、数据行是空的」
+_EMPTY_RATIO = 0.02
 
 #: 需要人工**确认**（不是填）的结构性项：这些填错整份报废
 _CONFIRM_PREFIX = ("封面/",)
@@ -296,6 +308,57 @@ def _fill_rows(fills, todo, rows):
     return out
 
 
+def _table_fill(t, skip_head=1, skip_left=1):
+    """表格「数据区」的非空占比。表头行与首列（标签列）不算数据。"""
+    rows, cols = len(t.rows), len(t.columns)
+    total = 0
+    filled = 0
+    for r in t.rows[skip_head:]:
+        for c in r.cells[skip_left:]:
+            total += 1
+            if c.text.strip():
+                filled += 1
+    return (filled / total) if total else 0.0
+
+
+def _pending_from_docx(out_dir):
+    """**读生成稿实测**这三张大表是空的还是有内容 —— 别写死「待补三条」。
+
+    返回 `[{id,title,why,state,filled}]`，只有 `state == "empty"` 的才是真待补。
+    `state == "has_data"` 的也要返回（页面显示「母版已带内容，本期无需处理」），
+    否则人工会以为它不存在 —— rick 的疑问正是这么来的。
+    """
+    out = pathlib.Path(out_dir)
+    docx = next(iter(sorted(out.glob("报告初稿_*.docx"))), None)
+    rows = []
+    for spec in PENDING_SPECS:
+        rec = dict(spec)
+        rec.update({"state": "unknown", "filled": None})
+        rows.append(rec)
+    if docx is None:
+        for r in rows:
+            r["state"] = "no_docx"          # 还没出稿，无从判断
+        return rows, False
+    try:
+        from docx import Document                              # noqa: PLC0415
+        doc = Document(str(docx))
+    except Exception:                                          # noqa: BLE001
+        return rows, False
+    by_shape = {(len(t.rows), len(t.columns)): t for t in doc.tables}
+    for rec in rows:
+        t = by_shape.get((rec["rows"], rec["cols"]))
+        if t is None:
+            rec["state"] = "not_found"
+            continue
+        ratio = _table_fill(t, skip_head=rec.get("skip_head", 1), skip_left=1)
+        rec["filled"] = round(ratio, 4)
+        rec["state"] = "empty" if ratio < _EMPTY_RATIO else "has_data"
+        if rec["state"] == "has_data" and rec["id"] == "T21":
+            # 清单是从母版继承的：本期与母版一致 ≠ 下期也对（下期要换新清单）
+            rec["why"] = "清单继承自母版（本期与原件一致）；**换到下一期时需替换为新清单**"
+    return rows, True
+
+
 def build(out_dir, period=None, approval=None):
     """装配一屏所需的一切。返回 dict（纯读，不写任何文件）。"""
     rows = _slots(out_dir)
@@ -325,7 +388,9 @@ def build(out_dir, period=None, approval=None):
                 "source": src,
             })
 
-    pending = [dict(t) for t in PENDING_TABLES]
+    pending_all, has_docx = _pending_from_docx(out_dir)
+    pending = [r for r in pending_all if r["state"] == "empty"]
+    pending_ok = [r for r in pending_all if r["state"] == "has_data"]
 
     fills = load_fills(out_dir)
     for t in todo:
@@ -346,6 +411,8 @@ def build(out_dir, period=None, approval=None):
         "todo_fill": [t for t in todo if t["kind"] == "fill"],
         "todo_confirm": [t for t in todo if t["kind"] == "confirm"],
         "pending": pending,
+        "pending_ok": pending_ok,
+        "pending_all": pending_all,
         "fills_list": fills_list,
         "n_filled": n_filled,
         "n_applied": n_applied,
