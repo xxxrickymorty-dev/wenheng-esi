@@ -494,7 +494,12 @@ def _legend_ur(ax, ncol=1):
 
 
 # ---------- C1 国内外排名百分位趋势 ----------
-def chart_rank_pct(rank_intl, rank_cn, disc, out_png, periods):
+def chart_rank_pct(rank_intl, rank_cn, disc, out_png, periods, *, invert=None):
+    """`invert` 是给**灵活报告 spec** 用的语义开关（None＝本例的原口径：反向轴）。
+
+    🔴 所有 `*` 之后的语义参数都遵循同一约定：**None ＝ 保持本函数原有行为**。
+    复刻报告永不传它们，因此复刻出图逐字节不变（有 PNG 哈希判据守着）。
+    """
     periods = _avail(rank_intl, periods)
     fig, ax = _fig()
     ri = rank_intl.loc[disc, periods].astype(float) * 100
@@ -510,7 +515,8 @@ def chart_rank_pct(rank_intl, rank_cn, disc, out_png, periods):
     _legend_top(ax)
     # 反向轴：百分位越小＝排名越好＝越靠上；范围逐学科自适应
     # （轴放最后：_auto_ylim 要按 tight_layout 后的真实高度算「轴顶留白」）
-    _auto_ylim(ax, [ri, rc], intervals=4, pad=0.06, fmt="{:g}%", invert=True)
+    _auto_ylim(ax, [ri, rc], intervals=4, pad=0.06, fmt="{:g}%",
+               invert=(True if invert is None else bool(invert)))
     # 数值标签最后放：要躲开上面已定好的轴/标题/图例（两条线贴近时标签必压）
     _labels(ax, x, ri, "{:.2f}%")
     _labels(ax, x, rc, "{:.2f}%")
@@ -518,7 +524,8 @@ def chart_rank_pct(rank_intl, rank_cn, disc, out_png, periods):
 
 
 # ---------- C2 CNCI 变化 ----------
-def chart_cnci(cnci, disc, out_png, periods):
+def chart_cnci(cnci, disc, out_png, periods, *, include=None):
+    """`include`：必须出现在轴内的参照值。None ＝ 本函数原口径（锚住国际均值 1.0）。"""
     periods = _avail(cnci, periods)
     fig, ax = _fig()
     v = cnci.loc[disc, periods].astype(float)
@@ -533,7 +540,8 @@ def chart_cnci(cnci, disc, out_png, periods):
     _title(ax, "CNCI 变化情况")
     _legend_top(ax)
     # 基准线 1.0 必须始终可见（它是 CNCI 的判读参照），故 include 进来；下侧多留白
-    _auto_ylim(ax, [v], include=[1.0], intervals=5, pad=0.05, lo_pad=0.12, fmt="{:g}")
+    _auto_ylim(ax, [v], include=([1.0] if include is None else list(include)),
+               intervals=5, pad=0.05, lo_pad=0.12, fmt="{:g}")
     # 先放基准线那一排「1」，CNCI 值再来躲 —— 两者数值接近时才不会叠
     _labels(ax, x, base, "{:.0f}")
     _labels(ax, x, v, "{:.2f}")
@@ -541,8 +549,11 @@ def chart_cnci(cnci, disc, out_png, periods):
 
 
 # ---------- C3 新增发文量 ----------
-def chart_papers_delta(papers, disc, out_png, periods):
-    """periods 须含「窗口外上一期」：增量＝相邻期差分，只取 7 期会让首点变 NaN。"""
+def chart_papers_delta(papers, disc, out_png, periods, *, zero_base=None):
+    """periods 须含「窗口外上一期」：增量＝相邻期差分，只取 7 期会让首点变 NaN。
+
+    `zero_base`：None ＝ 本函数原口径（增量可正可负，0 必须在轴内）。
+    """
     ps = _avail(papers, periods)
     fig, ax = _fig()
     v = papers.loc[disc, ps].astype(float)
@@ -555,14 +566,17 @@ def chart_papers_delta(papers, disc, out_png, periods):
     _title(ax, "新增发文量（篇）")
     _legend_ur(ax)
     # 增量可正可负 → 0 必须在轴内；计数值 → 整数刻度；负值标签标在柱下方，下端也要留位
-    _auto_ylim(ax, [d], zero_base=True, intervals=6, pad=0.08, integer=True,
+    _auto_ylim(ax, [d], zero_base=(True if zero_base is None else bool(zero_base)),
+               intervals=6, pad=0.08, integer=True,
                fmt="{:.0f}", reserve_bottom=_LABEL_PX)
     _labels(ax, x, d, "{:.0f}")
     _save(fig, out_png)
 
 
 # ---------- C4 被引频次与 ESI 阈值 ----------
-def chart_cites_threshold(cites, threshold, disc, out_png, periods):
+def chart_cites_threshold(cites, threshold, disc, out_png, periods, *, zero_base=None,
+                          include=None):
+    """`zero_base` / `include`：None ＝ 本函数原口径（不锚零、不加参照值）。"""
     periods = _avail(cites, periods)
     fig, ax = _fig()
     c = cites.loc[disc, periods].astype(float)
@@ -576,14 +590,17 @@ def chart_cites_threshold(cites, threshold, disc, out_png, periods):
     _xticks(ax, periods)
     _title(ax, "被引频次与 ESI 阈值变化")
     _legend_top(ax, ncol=2)   # 双系列折线 → 顶部居中（原件口径；原先误用右上，轴收紧后会压字）
-    _auto_ylim(ax, [c, t], intervals=5, pad=0.06, fmt="{:,.0f}")
+    _auto_ylim(ax, [c, t], intervals=5, pad=0.06, fmt="{:,.0f}",
+               zero_base=(False if zero_base is None else bool(zero_base)),
+               include=(None if include is None else list(include)))
     _labels(ax, x, c, "{:.0f}")   # 原件数据标签无千分位（轴刻度才有）
     _labels(ax, x, t, "{:.0f}")
     _save(fig, out_png)
 
 
 # ---------- C5 顶尖论文量 ----------
-def chart_top_papers(top, disc, out_png, periods):
+def chart_top_papers(top, disc, out_png, periods, *, floor_zero=None):
+    """`floor_zero`：None ＝ 本函数原口径（截断轴，下界跟本学科最小值走，保留原件观感）。"""
     periods = _avail(top, periods)
     fig, ax = _fig()
     v = top.loc[disc, periods].fillna(0).astype(float)
@@ -594,7 +611,8 @@ def chart_top_papers(top, disc, out_png, periods):
     _title(ax, "顶尖论文量（篇）")
     _legend_ur(ax)
     # 原件是截断轴（不从 0 起），保留这个观感：下界跟着本学科最小值走
-    _auto_ylim(ax, [v], intervals=7, pad=0.06, integer=True, fmt="{:.0f}")
+    _auto_ylim(ax, [v], intervals=7, pad=0.06, integer=True, fmt="{:.0f}",
+               floor_zero=(False if floor_zero is None else bool(floor_zero)))
     _labels(ax, x, v, "{:.0f}")
     _save(fig, out_png)
 
@@ -605,7 +623,8 @@ Q_ENTITIES = [("云南大学", "云南大学", C_BLUE),
               ("全球", "国际", C_YELLOW)]   # 数据里叫「全球」，原件外显「国际」
 
 
-def chart_q_dist(q1q4, disc, out_png, period):
+def chart_q_dist(q1q4, disc, out_png, period, *, floor_zero=None):
+    """`floor_zero`：None ＝ 本函数原口径（占比柱状图必须有零基准）。"""
     fig, ax = _fig()
     qkey = f"{period[:4]}.{period[4:]}"      # q1q4.parquet 的 quarter 形如 2026.07
     vals, any_val = {}, False
@@ -636,7 +655,8 @@ def chart_q_dist(q1q4, disc, out_png, period):
     _title(ax, "学科发文期刊分区占比情况")
     _legend_top(ax, ncol=3)              # 原件图 6 图例在顶部居中（不是右上）
     # 占比柱状图：必须有零基准，上界跟本学科最大值走
-    _auto_ylim(ax, [flat], floor_zero=True, intervals=6, pad=0.05, integer=True, fmt="{:.0f}")
+    _auto_ylim(ax, [flat], floor_zero=(True if floor_zero is None else bool(floor_zero)),
+               intervals=6, pad=0.05, integer=True, fmt="{:.0f}")
     # 标签必须在轴/标题/图例定后再放（_labels 要靠真实像素位置避让）
     for ent, _, _ in Q_ENTITIES:
         # {:g} 按数据原样出位数：原件里既有 57.51% 也有 11.7% / 7.9%

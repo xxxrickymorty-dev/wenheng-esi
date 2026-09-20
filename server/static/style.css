@@ -447,3 +447,38 @@ table.dense tbody tr { content-visibility: auto; contain-intrinsic-size: auto 30
   font-family: var(--mono); font-size: 12px; letter-spacing: .1em;
 }
 .skip-link:focus { left: 8px; top: 8px; }
+
+/* ---------- 双模式产线：模式开关 + 灵活报告正文（2026-09-20 第二条产线） ---------- */
+/* 一个开关两条产线：并排两张卡，当前产线压朱色上边线，另一张是链接。 */
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 760px) { .modes { grid-template-columns: 1fr; } }
+.mode {
+  display: block; padding: 14px 16px; border: 1px solid var(--line);
+  border-top: 2px solid var(--line-2); border-radius: 3px;
+  background: var(--panel-2); color: inherit; text-decoration: none;
+}
+.mode.cur { border-top-color: var(--zhu); background: var(--panel); }
+a.mode:hover { border-color: var(--zhu); }
+.mode-h { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.mode-h b { font-family: var(--serif); font-size: 15px; letter-spacing: .04em; }
+.mode p { margin: 6px 0 0; font-size: 13px; line-height: 1.7; color: var(--ink-2); }
+.mode p.muted { color: var(--ink-3); }
+
+/* 灵活报告正文：内联渲染的 md 片段。表格复用 .dense，这里只补标题/引用/图的间距，
+   并把「非报送件」的性质在版心上做出来（左缘朱线 = 参考件，不是报送件）。 */
+.flexdoc { border-left: 3px solid var(--zhu); padding: 2px 0 2px 16px; margin: 4px 0 0; }
+.flexdoc h2 { font-family: var(--serif); font-size: 17px; font-weight: 600;
+  margin: 22px 0 8px; padding-bottom: 5px; border-bottom: 1px solid var(--line); }
+.flexdoc h3 { font-size: 15px; margin: 16px 0 6px; }
+.flexdoc h4 { font-size: 14px; margin: 12px 0 5px; }
+.flexdoc p { margin: 8px 0; line-height: 1.8; }
+.flexdoc ul, .flexdoc ol { padding-left: 22px; margin: 8px 0; }
+.flexdoc li { margin: 4px 0; line-height: 1.75; }
+.flexdoc blockquote { margin: 10px 0; padding: 8px 12px; background: var(--panel-2);
+  border-left: 2px solid var(--zhu); border-radius: 0 3px 3px 0; color: var(--ink-2); }
+.flexdoc blockquote p { margin: 3px 0; }
+.flexdoc figure { margin: 14px 0; text-align: center; }
+.flexdoc figure img { max-width: 100%; border: 1px solid var(--line);
+  border-radius: 3px; background: #fff; }
+.flexdoc hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
+.flexdoc table.dense { margin: 10px 0; font-size: 13px; }

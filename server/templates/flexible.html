@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}灵活报告 · {{ period_dir }} · 文衡{% endblock %}
+{% block sub %}学科信息参考 · 灵 活 报 告{% endblock %}
+
+{% block content %}
+<section class="masthead">
+  <p class="eyebrow">同一份事实源 · 两种用法</p>
+  <h1>灵活报告（第二条产线）</h1>
+  <p class="lede">
+    复刻报告回答「这一期该报什么」，走母版 704 槽位、可签发盖章；
+    <strong>灵活报告回答「某个问题怎么看」</strong>——AI 自主规划章节与图，产出<strong>内部参考件</strong>。
+    两条产线共用同一份数据底座与同一套审计链。
+  </p>
+</section>
+
+{% if flash %}
+  {% if flash.err %}<div class="alert warn">{{ flash.err }}</div>{% endif %}
+  {% if flash.ok %}<div class="alert ok">{{ flash.ok }}</div>{% endif %}
+{% endif %}
+
+<div class="panel">
+  <div class="panel-h">
+    <span class="no">01</span>
+    <h2>生成一份分析稿</h2>
+    <span class="hint">期次 {{ period_dir }}</span>
+  </div>
+  <div class="panel-b">
+    <form method="post" action="/p/{{ period_dir }}/flexible" class="run-form">
+      <label>分析意图
+        <select name="intent">
+          {% for i in intents %}
+          <option value="{{ i.id }}" {% if cur and cur.intent == i.id %}selected{% endif %}>{{ i.cn }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>规划后端
+        <select name="backend">
+          <option value="rule">rule（规则，无 LLM —— 演示站默认）</option>
+          <option value="ollama">ollama（本机小模型；不可用自动回退 rule）</option>
+          <option value="http">http（外部端点，需配置）</option>
+        </select>
+      </label>
+      <label>指定学科（可空 = 由规划器挑选）
+        <input name="disc" placeholder="如 Engineering">
+      </label>
+      <button class="btn primary wide" type="submit">生 成 分 析 稿</button>
+      <p class="muted small">
+        产出落在 <code>out/{{ period_dir }}/flexible/</code>，与复刻报告产物互不重叠。
+      </p>
+    </form>
+
+    <div class="engine">
+      <span class="chip ok">数字只来自台账</span>
+      <span class="chip ok">AI 不产出数字</span>
+      <span class="chip ok">AI 不指定纵轴范围</span>
+      <span class="chip ok">专业判断留空位</span>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-h">
+    <span class="no">02</span>
+    <h2>已生成的分析稿</h2>
+    <span class="hint">{{ reports | length }} 份</span>
+  </div>
+  {% if reports %}
+  <div class="panel-b" style="padding:0">
+    <table class="dense list">
+      <thead><tr><th>意图</th><th>标题</th><th>后端</th><th>图</th><th>自检</th><th></th></tr></thead>
+      <tbody>
+        {% for r in reports %}
+        <tr>
+          <td class="mono">{{ r.intent }}</td>
+          <td>{{ r.title }}</td>
+          <td>{{ r.meta.backend or '—' }}</td>
+          <td class="r">{{ r.meta.n_charts or 0 }}</td>
+          <td class="r">
+            {% if r.meta.check and r.meta.check.pass %}<span class="filled-mark">✓ 通过</span>
+            {% else %}<span class="tag">待看</span>{% endif %}
+          </td>
+          <td class="r"><a href="/p/{{ period_dir }}/flexible?intent={{ r.intent }}">查看</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="panel-b">
+    <p class="muted">还没有分析稿。选一个意图点「生成分析稿」即可 ——
+      <strong>规则后端下不需要任何模型</strong>，演示站（2核2G）也能跑。</p>
+  </div>
+  {% endif %}
+</div>
+
+{% if body %}
+<div class="panel">
+  <div class="panel-h">
+    <span class="no">03</span>
+    <h2>{{ cur.title }}</h2>
+    <span class="hint">{{ cur.intent }} · {{ cur.meta.generated_at or '' }}</span>
+  </div>
+  <div class="panel-b">
+    <p class="muted small">
+      独立件：<a href="#" onclick="return false" title="导出说明">out/{{ period_dir }}/flexible/{{ cur.intent }}/</a>
+      report.md · report.html · flex_specs.json · flex_sources.json
+    </p>
+    <article class="flexdoc">
+      {{ body | safe }}
+    </article>
+  </div>
+</div>
+{% endif %}
+
+<div class="panel">
+  <div class="panel-h">
+    <span class="no">04</span>
+    <h2>这条产线凭什么可信</h2>
+  </div>
+  <div class="panel-b">
+    <p><strong>AI 的输出类型里没有「数字」这个物种</strong>：它只能发结构化查询，
+      数字由工具从台账返回、回填骨架；图上每个点由引擎按 JSON 声明渲染，模型不接触坐标。
+      它的输出只有三种 —— <strong>查询、图表声明、待验证假设</strong>。</p>
+    <p class="muted small">
+      可用图型（{{ chart_catalog | length }} 种，全部复用复刻报告的排版设施）：
+      {% for c in chart_catalog %}{{ c.cn }}{% if not loop.last %} · {% endif %}{% endfor %}
+      <br>
+      图型只接受<strong>语义</strong>参数（反向轴 / 参考值 / 零基准），
+      <strong>代码里没有「纵轴上下界」这个字段</strong>。
+    </p>
+  </div>
+</div>
+{% endblock %}

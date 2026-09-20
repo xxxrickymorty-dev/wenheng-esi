@@ -315,17 +315,14 @@ def resolve_period_artifact(period_dir, key):
 CHART_EXT = frozenset({".png"})
 
 
-def resolve_chart(out_dir, rel):
-    """把 `charts/<学科>/<图名>.png` 解析成磁盘路径；越界一律 None。
+def _resolve_under(base, rel):
+    """把 `rel` 安全解析到 `base` 之下；越界/非图一律 None。
 
-    这个函数只有一件事：**拒绝一切越界请求**。`rel` 直接来自 URL，
-    放过一个 `..` 或绝对路径就是任意文件读取（能读到 `/opt/wenheng/server/.env`）。
-
-    三道闸：
-      1. 拒绝对路径与盘符（`(charts / "/etc/passwd")` 在 pathlib 下会**整体替换**
+    三道闸（与 `resolve_chart` 同口径，抽出来给灵活报告复用）：
+      1. 拒绝对路径与盘符（`(base / "/etc/passwd")` 在 pathlib 下会**整体替换**
          成绝对路径——不先挡住的话后面全白搭）；
       2. 拒 `.` / `..` / 空段；
-      3. 解析后必须**真的落在** charts 目录里，且后缀是 .png。
+      3. 解析后必须**真的落在** base 里，且后缀是允许的图片类型。
     """
     if not rel:
         return None
@@ -337,16 +334,41 @@ def resolve_chart(out_dir, rel):
     if not parts or any(p == ".." for p in parts):
         return None
 
-    charts = (pathlib.Path(out_dir) / "charts").resolve()
+    base = pathlib.Path(base).resolve()
     try:
-        p = (charts / pathlib.Path(*parts)).resolve()
+        p = (base / pathlib.Path(*parts)).resolve()
     except (OSError, ValueError):
         return None
     if p.suffix.lower() not in CHART_EXT:
         return None
-    if p == charts or os.path.commonpath([str(charts), str(p)]) != str(charts):
+    if p == base or os.path.commonpath([str(base), str(p)]) != str(base):
         return None
     return p if p.is_file() else None
+
+
+def resolve_chart(out_dir, rel):
+    """把 `charts/<学科>/<图名>.png` 解析成磁盘路径；越界一律 None。
+
+    这个函数只有一件事：**拒绝一切越界请求**。`rel` 直接来自 URL，
+    放过一个 `..` 或绝对路径就是任意文件读取（能读到 `/opt/wenheng/server/.env`）。
+    三道闸见 `_resolve_under`。
+    """
+    return _resolve_under(pathlib.Path(out_dir) / "charts", rel)
+
+
+def resolve_flex_chart(out_dir, intent, name):
+    """灵活报告的图：`flexible/<intent>/charts/<name>.png`。
+
+    与复刻报告**分开**：灵活图若混进 `out/<期次>/charts/`，
+    会破坏「99 张图 99 个唯一哈希」这条验收判据。
+    路径段仍逐层校验（intent 也必须无 `..` / 无分隔符）。
+    """
+    if not intent or not name:
+        return None
+    if any(sep in str(intent) for sep in ("/", "\\", "..")):
+        return None
+    base = pathlib.Path(out_dir) / "flexible" / intent / "charts"
+    return _resolve_under(base, name)
 
 
 def list_charts(out_dir):

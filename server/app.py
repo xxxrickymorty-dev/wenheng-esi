@@ -15,7 +15,7 @@ import time
 import urllib.parse
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
                                RedirectResponse, StreamingResponse)
 from fastapi.staticfiles import StaticFiles
@@ -608,6 +608,90 @@ async def period_charts(request: Request, period: str):
     if d is None:
         return RedirectResponse("/", status_code=303)
     return _charts_page(request, d)
+
+
+# ============================ 灵活报告（第二条产线）============================
+# 口径见 `评审文档/19-双模式报告设计方案v1（权威口径）`。
+# 🔴 复刻路径**完全不受影响**：这些路由只读 `out/<期次>/`、只写
+#    `out/<期次>/flexible/`，与复刻报告的产物（报告初稿 / red_slots / charts）互不重叠。
+
+def _flex_ctx(d, intent=None, flash=None):
+    """灵活报告页上下文。"""
+    import flexible.report as flex_report                           # noqa: PLC0415
+    from flexible import mdview, planner, spec                     # noqa: PLC0415
+    reports = flex_report.list_reports(d)
+    cur = next((r for r in reports if r["intent"] == intent), None) or \
+        (reports[0] if reports else None)
+    body = None
+    if cur:
+        md = pathlib.Path(cur["path"]).read_text(encoding="utf-8")
+        imgmap = {n: f"/p/{d.name}/flexible/chart/{cur['intent']}/"
+                     + urllib.parse.quote(n)
+                  for n in (cur.get("meta", {}).get("charts") or [])}
+        body = mdview.render(md, img_map=imgmap)
+    return {"period_dir": d.name, "reports": reports, "cur": cur, "body": body,
+            "intents": [{"id": k, "cn": v} for k, v in planner.INTENTS.items()],
+            "chart_catalog": spec.catalog(), "flash": flash}
+
+
+@app.get("/p/{period}/flexible", response_class=HTMLResponse)
+async def period_flexible(request: Request, period: str, intent: str = "",
+                          err: str = "", ok: str = ""):
+    """灵活报告：列出该期次已生成的分析稿，并内联展示最新一份。"""
+    d = resolve_period_dir(period)
+    if d is None:
+        return RedirectResponse("/", status_code=303)
+    # `ok` 是生成成功的回执（非错误），单独放一格，不复用 err
+    flash = {**_flash(err=err), "ok": ok} if (err or ok) else None
+    return page(request, "flexible.html", **_flex_ctx(d, intent or None, flash),
+                active_period=d.name)
+
+
+@app.post("/p/{period}/flexible")
+async def period_flexible_generate(request: Request, period: str):
+    """生成一份灵活报告。
+
+    登记进 `POST_ALLOWED_SUFFIX` 时回答的三问（`tests/test_stack_contract.py`）：
+      ① 真实表单 POST + 303 回跳（不依赖 JS）；
+      ② 有登录校验（未登录 → /login）；
+      ③ **写 `out/<期次>/flexible/`（产物目录），台账一个字节不碰**。
+    """
+    import flexible.report as flex_report                           # noqa: PLC0415
+    if not current_user(request):
+        return RedirectResponse("/login", status_code=303)
+    d = resolve_period_dir(period)
+    if d is None:
+        return RedirectResponse("/", status_code=303)
+    form = await request.form()
+    intent = str(form.get("intent") or "single_trend")
+    backend = str(form.get("backend") or "") or None
+    disc = str(form.get("disc") or "") or None
+    back = f"/p/{urllib.parse.quote(d.name)}/flexible"
+    try:
+        r = flex_report.generate(d, intent, backend=backend, disc=disc)
+    except Exception as e:                                          # noqa: BLE001
+        return RedirectResponse(
+            f"{back}?err={urllib.parse.quote('生成失败：' + type(e).__name__)}",
+            status_code=303)
+    c = r["check"]
+    msg = (f"已生成：{r['plan']['backend']} 后端，{r['n_charts']} 张图，"
+           f"数字可回溯 {c['trace']['ok']}/{c['trace']['checked']}")
+    return RedirectResponse(f"{back}?ok={urllib.parse.quote(msg)}", status_code=303)
+
+
+@app.get("/p/{period}/flexible/chart/{intent}/{name}")
+async def period_flexible_chart(request: Request, period: str,
+                                intent: str, name: str):
+    """灵活报告的图。**与复刻图分开解析** —— 归到 `flexible/<intent>/charts/` 下。"""
+    if not current_user(request):
+        return RedirectResponse("/login", status_code=303)
+    d = resolve_period_dir(period)
+    if d is None:
+        return RedirectResponse("/", status_code=303)
+    p = jobs.resolve_flex_chart(d, intent, name)
+    if p is None:
+        raise HTTPException(status_code=404)
+    return FileResponse(p, headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/p/{period}/archive", response_class=HTMLResponse)
