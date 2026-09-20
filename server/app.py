@@ -676,7 +676,10 @@ async def period_flexible_generate(request: Request, period: str):
     c = r["check"]
     msg = (f"已生成：{r['plan']['backend']} 后端，{r['n_charts']} 张图，"
            f"数字可回溯 {c['trace']['ok']}/{c['trace']['checked']}")
-    return RedirectResponse(f"{back}?ok={urllib.parse.quote(msg)}", status_code=303)
+    # 🔴 锚点拼在 query **之后**（`?ok=…#flex-report`）—— query 拼到锚点后面
+    #    会被浏览器整段忽略（本仓库在这条上踩过两次，见 tests）。
+    return RedirectResponse(
+        f"{back}?ok={urllib.parse.quote(msg)}#flex-report", status_code=303)
 
 
 @app.get("/p/{period}/flexible/chart/{intent}/{name}")

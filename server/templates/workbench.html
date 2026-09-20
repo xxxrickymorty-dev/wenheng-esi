@@ -32,6 +32,19 @@
     display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
     padding: 14px 20px; border-top: 1px solid var(--line);
   }
+  /* 产线切换：贴在期次条下面（第一屏就能看到）。
+     rick 2026-09-20：灵活报告原来只出现在第六格的一行审计链接里，
+     一般用户根本不知道入口在哪、也不知道它是什么。 */
+  .line-bar { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+  .line-bar .line {
+    flex: 1 1 320px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 12px 16px; border: 1px solid var(--line); background: var(--panel);
+    font-size: 12.5px; color: var(--ink-2); text-decoration: none;
+  }
+  .line-bar .line.cur { border-left: 3px solid var(--zhu); }
+  .line-bar .line:not(.cur):hover { border-left: 3px solid var(--zhu); background: rgba(178,58,42,.04); }
+  .line-bar b { font-size: 13.5px; color: var(--ink); }
+  .line-bar .go { margin-left: auto; color: var(--zhu); font-weight: 600; }
 </style>
 {% endblock %}
 
@@ -64,6 +77,20 @@
     跑出哪一期由台账里最新有数据的期次决定，不在这里选。
     <a href="/p/{{ period_dir }}/archive">运行档案 →</a>
   </span>
+</div>
+
+<div class="line-bar">
+  <div class="line cur">
+    <span class="chip ok">正在看</span>
+    <b>复刻报告</b>
+    <span style="color:var(--ink-3)">母版 704 槽位 · 可签发盖章 · 本页就是它的工作台</span>
+  </div>
+  <a class="line" href="/p/{{ period_dir }}/flexible">
+    <span class="chip">第二条产线</span>
+    <b>灵活报告</b>
+    <span style="color:var(--ink-3)">按问题出一份内部参考稿 —— 不需要模型，点开即生成</span>
+    <span class="go">进入 →</span>
+  </a>
 </div>
 
 <div class="panel">
@@ -265,12 +292,13 @@
     <p>大表格子、图表、正文句的数字全部来自台账，
       不需要逐条拍板。逐格对照在「可溯源」那一屏。</p>
     <p>
+      <span class="hint" style="letter-spacing:.12em">审计视图</span>
       {% for a in audit_links %}
       <a class="ghost" href="{{ a.href }}">{{ a.label }}</a>
       {% endfor %}
-      <a class="ghost" href="/p/{{ period_dir }}/flexible">灵活报告（第二条产线）→</a>
-      <a class="ghost" href="/run">发起新任务</a>
     </p>
+    <p class="muted small">这一排都是「这份报告怎么拼出来的」的核对视角，
+      不影响正常填报。发起新任务在页面右上角。</p>
   </div>
 </div>
 

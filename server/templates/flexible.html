@@ -43,11 +43,26 @@
       <label>指定学科（可空 = 由规划器挑选）
         <input name="disc" placeholder="如 Engineering">
       </label>
-      <button class="btn primary wide" type="submit">生 成 分 析 稿</button>
+      <button class="btn primary wide" type="submit" id="flex-go">生 成 分 析 稿</button>
       <p class="muted small">
         产出落在 <code>out/{{ period_dir }}/flexible/</code>，与复刻报告产物互不重叠。
+        <span id="flex-wait" style="display:none; color:var(--zhu)">
+          正在出稿与渲染图，约需几秒 —— 按钮按下后页面没动静是正常的，别连点。</span>
       </p>
     </form>
+    <script>
+    // 纯增强，不依赖 JS 也能用：提交后按钮置灰 + 给一句「在转」的提示，
+    // 否则出稿那几秒页面纹丝不动，看起来像没响应（rick 2026-09-20 就被它骗了）。
+    (function () {
+      var f = document.querySelector('form[action="/p/{{ period_dir }}/flexible"]');
+      if (!f) return;
+      f.addEventListener('submit', function () {
+        var b = document.getElementById('flex-go'), w = document.getElementById('flex-wait');
+        if (b) { b.disabled = true; b.textContent = '正在出稿…'; }
+        if (w) w.style.display = 'inline';
+      });
+    })();
+    </script>
 
     <div class="engine">
       <span class="chip ok">数字只来自台账</span>
@@ -94,7 +109,7 @@
 </div>
 
 {% if body %}
-<div class="panel">
+<div class="panel" id="flex-report">
   <div class="panel-h">
     <span class="no">03</span>
     <h2>{{ cur.title }}</h2>
@@ -102,7 +117,7 @@
   </div>
   <div class="panel-b">
     <p class="muted small">
-      独立件：<a href="#" onclick="return false" title="导出说明">out/{{ period_dir }}/flexible/{{ cur.intent }}/</a>
+      独立件在 <code>out/{{ period_dir }}/flexible/{{ cur.intent }}/</code> 下：
       report.md · report.html · flex_specs.json · flex_sources.json
     </p>
     <article class="flexdoc">

@@ -423,6 +423,20 @@ check("待补数据说明诚实标注交互未定", "交互还没定" in home2)
 check("表单 action 是绝对路径（不是相对路径）",
       'action="/p/202607/fill"' in home2 and 'action="202607/fill"' not in home2
       and 'action="/p/202607/rebuild"' in home2)
+# 产线入口必须**在第一屏**（rick 2026-09-20：原来只塞在第六格审计链接堆里，
+# 一般用户根本不知道入口在哪）。断言两件事：产线条里真的有灵活报告链接、
+# 且第六格的审计链接段落里**没有**「灵活报告」字样（防止以后又被塞回去）。
+# 🔴 产线条里有嵌套 div，别按 </div> 切 —— 要切到下一个 panel 才是完整一段。
+_band = home2.split('class="line-bar"')[1].split('class="panel"')[0] \
+    if 'class="line-bar"' in home2 else ""
+check("灵活报告入口在第一屏产线条（不在审计链接堆里）",
+      'href="/p/202607/flexible"' in _band
+      and home2.count("灵活报告") == 2        # 产线条一处 + <style> 注释一处
+      and "灵活报告" not in (home2.split("审计视图")[-1]))
+st, fp, _ = call("GET", "/p/202607/flexible")
+check("灵活页可开且生成表单齐备（意图/后端/学科/提交）",
+      st == 200 and 'name="intent"' in fp and 'name="backend"' in fp
+      and 'method="post"' in fp and 'id="flex-report"' in fp)
 # 重出报告：没有填写内容时**不执行**（安全分支，不覆盖任何产物）。
 # ⚠ 要用**确定没填过**的期次：202605_复现 有 2 条填写记录（演示样例），
 #   POST 上去会真的重出一次稿（2026-09-20 实测，断言因此误红）。
