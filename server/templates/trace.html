@@ -117,6 +117,34 @@
 
 <div class="panel">
   <div class="panel-h">
+    <span class="no">01c</span>
+    <h2>学科×高校矩阵 · {{ matrix|length }} 格</h2>
+    <span class="hint">⚠ 数据源不是台账，是 InCites 历史快照</span>
+  </div>
+  <div class="panel-b">
+    <p>22 学科 × 11 校的矩阵，历期手工填；现已由
+      <span class="mono">src/extract_matrix.py</span> 算：
+      <strong>接近度 = InCites 被引 ÷ 该学科当期 ESI 1% 阈值</strong>，
+      <strong>Y</strong> = 该机构在 ESI 该学科的 1% 榜内。
+      ⚠ 被引必须取<strong>当期对应那一期</strong>的快照 —— 那份表每期覆盖更新
+      （实测与人工原件 230/231 格吻合）。</p>
+    <table class="dense">
+      <thead><tr><th>位置</th><th>值</th><th>来源（可回查）</th></tr></thead>
+      <tbody>
+      {% for r in matrix %}
+      <tr>
+        <td>{{ r.label }}<br><span class="loc">{{ r.loc }}</span></td>
+        <td class="mono"><strong>{{ r.report }}</strong></td>
+        <td class="mono" style="color:var(--ink-3)">{{ r.src }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-h">
     <span class="no">02</span>
     <h2>图表 · {{ charts|length }} 张</h2>
     <span class="hint">图不是数字，溯源 = 数据来自哪张宽表</span>

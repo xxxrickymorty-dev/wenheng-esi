@@ -166,6 +166,26 @@ def main(ledger_path, out_root="out", run_backtest=False):
         _emit("province", "省域表（ESI 机构总表）", "warn",
               f"跳过：{type(e).__name__}（缺 ESI 原始包时属预期）")
 
+    # ---- 学科×高校矩阵（T20）：数据源是 InCites **历史快照**，同样不在台账里 ----
+    # 被引必须取「当期对应那一期」的快照：那份表每期覆盖更新，拿最新的算历史必然错。
+    _emit("matrix", "学科×高校矩阵（InCites）", "start")
+    try:
+        import extract_matrix                                    # noqa: PLC0415
+        mdata = extract_matrix.compute(
+            extract_matrix.DEFAULT_INCITES, extract_matrix.DEFAULT_LEDGER, P,
+            esi_root=extract_matrix.DEFAULT_ESI_ROOT)
+        (out_dir / "matrix.json").write_text(
+            json.dumps(mdata, ensure_ascii=False, indent=1), encoding="utf-8")
+        n_cell = sum(1 for r in mdata["matrix"].values() for x in r.values() if x.get("v"))
+        print(f"      矩阵表 T20：{len(mdata['matrix'])} 学科 × 11 校 → {n_cell} 格"
+              f"（快照 {mdata['snapshot']}）")
+        _emit("matrix", "学科×高校矩阵（InCites）", "done",
+              f"快照 {mdata['snapshot']} · {n_cell} 格")
+    except Exception as e:                                       # noqa: BLE001
+        print(f"      矩阵表 T20：跳过（{type(e).__name__}: {e}）")
+        _emit("matrix", "学科×高校矩阵（InCites）", "warn",
+              f"跳过：{type(e).__name__}（该期未登记快照映射时属预期，见 extract_matrix.SNAP_MAP）")
+
     _emit("charts", "图表渲染", "start")
     print("[4/5] 图表渲染（16 学科 × 6 + 概览 3）")
     # n_periods=7 + end_period=当期：与人工原件口径一致（近一年 7 期）。

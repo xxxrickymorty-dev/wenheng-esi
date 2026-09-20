@@ -232,6 +232,10 @@ def trace(out_dir, ledger_path, period=None, prev=None):
     texts = [{"loc": r.get("location"), "report": (r.get("new") or "").strip()[:60],
               "src": r.get("source") or ""}
              for r in rows if (r.get("source") or "").startswith(("sentences", "期次参数", "母版"))]
+    # 学科×高校矩阵 T20：数据源也不是台账（是 InCites 历史快照），单独一类
+    matrix = [{"loc": r.get("location"), "report": (r.get("new") or "").strip(),
+               "src": r.get("source") or ""}
+              for r in rows if (r.get("location") or "").startswith("T20/")]
     # 筛选下拉的选项：按数据里真实出现的列/学科生成，不写死
     seen_c, cols = set(), []
     for rec in big:
@@ -242,7 +246,15 @@ def trace(out_dir, ledger_path, period=None, prev=None):
     discs = sorted({(x.get("new") or "") for x in rows
                     if (x.get("location") or "").endswith("c0")
                     and (x.get("location") or "").startswith("T01/r")})
-    return {"bigtable": big, "charts": charts, "province": province, "texts": texts,
+    for rec in matrix:
+        m = re.match(r"T20/r(\d+)c(.+)", rec["loc"] or "")
+        if not m:
+            continue
+        disc = next((x.get("new") or "" for x in rows
+                     if x.get("location") == f"T20/r{m.group(1)}c0"), "")
+        rec["label"] = f"{disc} · {m.group(2)}" if disc else m.group(2)
+    return {"bigtable": big, "charts": charts, "province": province,
+            "matrix": matrix, "texts": texts,
             "cols": cols, "discs": discs,
             "n": len(rows), "ledger": str(ledger_path)}
 

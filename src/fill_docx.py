@@ -74,6 +74,65 @@ PROVINCE_COLS = ("国内排名", "国际排名", "ESI前1%学科数", "发文量
                  "篇均被引频次", "顶尖论文", "高被引论文", "热点论文")
 
 
+#: 学科×高校矩阵 T20 的 11 列（简称）→ 与 extract_matrix.py 的键一致
+MATRIX_COLS = ("云大", "昆工", "昆医", "师大", "农大", "大理大学", "财大",
+               "西林", "民大", "中医药大学", "曲靖师范")
+
+
+def fill_matrix(doc, ledger_dir, slots):
+    """填学科×高校矩阵 T20（23 行 × 12 列：表头 + 22 学科 × 11 校）。
+
+    数据来自 `src/extract_matrix.py` 落的 `out/<期次>/matrix.json`：
+    `接近度 = InCites(该期快照) 被引 ÷ 该学科当期 ESI 1% 阈值`，
+    `Y` = 该机构在 ESI 该学科的 1% 榜内。**必须用当期对应的历史快照** ——
+    最新一期快照的数据会覆盖旧值（rick 2026-09-20 指出）。
+
+    ⚠ 母版里 T20 有表头（学科/高校 + 11 校简称）与首列学科名，只有数据格是空的 →
+      按**首列学科名**对行、按**表头简称**对列，不要按序号盲填。
+    """
+    p = pathlib.Path(ledger_dir) / "matrix.json"
+    if not p.exists():
+        return 0
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return 0
+    mat = data.get("matrix") or {}
+    t20 = None
+    for cand in doc.tables:
+        try:
+            head = [c.text.strip() for c in cand.rows[0].cells]
+        except (IndexError, AttributeError):
+            continue
+        if "云大" in head and "昆工" in head:      # 按表头认表，别按形状
+            t20 = cand
+            break
+    if t20 is None:
+        return 0
+    col_of = {c.text.strip(): i for i, c in enumerate(t20.rows[0].cells)}
+    n = 0
+    for ri, row in enumerate(t20.rows[1:], start=1):
+        cn = row.cells[0].text.strip()
+        rec = mat.get(cn)
+        if not rec:
+            continue
+        for short in MATRIX_COLS:
+            ci = col_of.get(short)
+            if ci is None:
+                continue
+            item = rec.get(short) or {}
+            text = str(item.get("v") or "")
+            if not text:
+                continue
+            old = row.cells[ci].text.strip()
+            if old != text:
+                set_cell(row.cells[ci], text)
+                slots.append({"location": f"T20/r{ri}c{short}", "old": old,
+                              "new": text, "source": item.get("src") or "InCites 历史快照"})
+            n += 1
+    return n
+
+
 def fill_province(doc, ledger_dir, slots):
     """填省域对比表 T19（13 行 × 10 列，**两级表头**：r0 大类 / r1 细分）。
 
@@ -430,6 +489,9 @@ def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026�
     n_prov = fill_province(doc, ledger_dir, slots)
     if n_prov:
         print(f"      省域表 T19：填入 {n_prov} 格（数据源＝ESI 机构总表，见 province.json）")
+    n_mat = fill_matrix(doc, ledger_dir, slots)
+    if n_mat:
+        print(f"      矩阵表 T20：填入 {n_mat} 格（数据源＝InCites 历史快照，见 matrix.json）")
     fill_texts(doc, ledger_dir, slots, period, prev, facts, fills=manual_inputs)
     warns = fill_body_charts(doc, ledger_dir, slots)
     charts_used = ["Chemistry"] if charts_only_demo else DETAIL_TABLES
