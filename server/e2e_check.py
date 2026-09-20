@@ -109,7 +109,7 @@ out("=== 4. 首屏 = 馆员工作台（最新一期） ===")
 st, home, _ = call("GET", "/")
 check("GET / → 200", st == 200, f"got {st}")
 check("首屏是【工作台】而非控制台", "本次出稿体检" in home and "run-form" not in home)
-check("首屏给可溯源总数（不是「已核对」）", "全部可回查到台账" in home)
+check("首屏给可溯源总数（不是「已核对」）", "全部可溯源" in home)
 # ⚠ 只看**读数区**：页面正文里有一句「我们不写『已核对 N 格』」的说明，
 #   全文搜「已核对」会被这句自己命中（否定式断言的经典自伤）。
 _readouts = home.split('class="readouts"')[-1].split("panel-foot")[0]
@@ -160,7 +160,9 @@ check("非法期次回落首页（不是 500）", st == 200, f"got {st}")
 out("=== 7. 期次红色件清单（本次修的 500） ===")
 st, rs, _ = call("GET", "/p/202607/redslots")
 check("GET /p/202607/redslots → 200", st == 200, f"got {st}")
-check("清单渲染 354 行", rs.count("<tr>") == 355, f"rows={rs.count('<tr>') - 1}")
+check("清单行数与 red_slots.json 一致",
+      rs.count("<tr>") == len(json.loads((ROOT.parent / "out" / "202607" / "red_slots.json").read_text(encoding="utf-8"))) + 1,
+      f"rows={rs.count(chr(60) + chr(116) + chr(114) + chr(62)) - 1}")
 check("清单用朱色本期列", 'class="new"' in rs)
 check("清单回链指向 /p/202607", 'href="/p/202607"' in rs)
 check("清单下载指向期次端点", 'href="/p/202607/download/red_list"' in rs)
@@ -235,7 +237,7 @@ check("快照 signUrl 为空 → 降级只读", jget_str(snap, "signUrl") == "")
 check("快照 approvalStatus 强制 unsigned（不假造已签）", jget_str(snap, "approvalStatus") == "unsigned")
 check("快照 periods 为空 → 不渲染印记链", jget(snap, "periods") == "[")
 check("快照无 CDN", "cdn.jsdelivr" not in snap)
-check("快照内联全量 354 槽位", snap.count('"loc"') >= 350, f"n={snap.count(chr(34)+'loc'+chr(34))}")
+check("快照内联全量槽位", snap.count('"loc"') >= 350, f"n={snap.count(chr(34)+'loc'+chr(34))}")
 
 out("=== 11. 任务状态口径同源（10 态）===")
 # 演示站的状态名必须来自 src/agent/states.py（WH-DOC-03 §6.3 要求恰好 10 态）。

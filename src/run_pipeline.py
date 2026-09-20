@@ -149,6 +149,23 @@ def main(ledger_path, out_root="out", run_backtest=False):
     print(f"      整体 MAPE = {mape:.2f}%（验收线 <5%）")
     _emit("forecast", "预测回测", "done", f"整体 MAPE {mape:.2f}%（验收线 <5%）")
 
+    # ---- 省域表（T19）：数据源是 ESI 原始包，**不在台账里** ----
+    # 台账的《高校学科发展》是另一个口径（昆工发文量 19259 vs 机构总表 31045），
+    # 不能拿来填。ESI 包在就算、不在就跳过（服务器上没有 数据与复现/，会走到降级）。
+    _emit("province", "省域表（ESI 机构总表）", "start")
+    try:
+        import extract_province                                  # noqa: PLC0415
+        pdata = extract_province.compute(extract_province.DEFAULT_ESI_ROOT, P)
+        (out_dir / "province.json").write_text(
+            json.dumps(pdata, ensure_ascii=False, indent=1), encoding="utf-8")
+        print(f"      省域表 T19：{pdata['n_universities']} 校 × 9 列 → province.json")
+        _emit("province", "省域表（ESI 机构总表）", "done",
+              f"{pdata['n_universities']} 所高校 · 学科榜 {pdata['n_disciplines']} 个")
+    except Exception as e:                                       # noqa: BLE001
+        print(f"      省域表 T19：跳过（{type(e).__name__}: {e}）")
+        _emit("province", "省域表（ESI 机构总表）", "warn",
+              f"跳过：{type(e).__name__}（缺 ESI 原始包时属预期）")
+
     _emit("charts", "图表渲染", "start")
     print("[4/5] 图表渲染（16 学科 × 6 + 概览 3）")
     # n_periods=7 + end_period=当期：与人工原件口径一致（近一年 7 期）。

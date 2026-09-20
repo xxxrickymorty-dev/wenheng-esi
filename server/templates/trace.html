@@ -64,6 +64,32 @@
 
 <div class="panel">
   <div class="panel-h">
+    <span class="no">01b</span>
+    <h2>省域对比表 · {{ province|length }} 格</h2>
+    <span class="hint">⚠ 这一块的数据源不是台账，是 ESI 原始包</span>
+  </div>
+  <div class="panel-b">
+    <p>11 所高校 × 9 列的省域表，历期都是馆员手工填；现已由
+      <span class="mono">src/extract_province.py</span> 从 <strong>ESI 机构总表</strong>
+      自动算出（实测与人工原件 99/99 逐格一致）。
+      台账里的《高校学科发展》是<strong>另一个口径</strong>，数值对不上，不能用。</p>
+    <table class="dense">
+      <thead><tr><th>位置</th><th>值</th><th>来源（可回查）</th></tr></thead>
+      <tbody>
+      {% for r in province %}
+      <tr>
+        <td class="mono">{{ r.loc }}</td>
+        <td class="mono">{{ r.report }}</td>
+        <td class="mono" style="color:var(--ink-3)">{{ r.src }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-h">
     <span class="no">02</span>
     <h2>图表 · {{ charts|length }} 张</h2>
     <span class="hint">图不是数字，溯源 = 数据来自哪张宽表</span>

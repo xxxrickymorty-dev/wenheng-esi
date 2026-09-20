@@ -69,6 +69,56 @@ def fmt_val(v):
     return str(v)
 
 
+#: 省域对比表 T19 的列（除首列机构名）→ 与 `extract_province.py` 的键一致
+PROVINCE_COLS = ("国内排名", "国际排名", "ESI前1%学科数", "发文量", "被引频次",
+                 "篇均被引频次", "顶尖论文", "高被引论文", "热点论文")
+
+
+def fill_province(doc, ledger_dir, slots):
+    """填省域对比表 T19（13 行 × 10 列，**两级表头**：r0 大类 / r1 细分）。
+
+    🔴 这份数据**不来自台账**：台账的《高校学科发展》是另一个口径，数值对不上
+    （昆工发文量：机构总表 31045 / 台账 19259）。它来自 **ESI 原始包的机构总表**，
+    由 `src/extract_province.py` 算好落在 `out/<期次>/province.json`（每格带 src，
+    指回 ESI 文件名与行号）。实测 11 校 × 9 列 = 99/99 格与人工原件逐格一致。
+    """
+    p = pathlib.Path(ledger_dir) / "province.json"
+    if not p.exists():
+        return 0
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return 0
+    uni = data.get("universities") or {}
+    t19 = next((t for t in doc.tables if (len(t.rows), len(t.columns)) == (13, 10)), None)
+    if t19 is None:
+        return 0
+    n = 0
+    # ⚠ 母版里 T19 **整表是空的**（连机构名都没有），所以不能按首列已有名字去查 ——
+    #   按 province.json 的顺序逐行填，机构名一并写进去。
+    for i, (cn, rec) in enumerate(uni.items(), start=2):
+        if i >= len(t19.rows):
+            break
+        row = t19.rows[i]
+        if not row.cells[0].text.strip():
+            set_cell(row.cells[0], cn)
+            slots.append({"location": f"T19/r{i}c0", "old": "", "new": cn,
+                          "source": "extract_province（11 校名单来自人工原件）"})
+        for j, col in enumerate(PROVINCE_COLS, start=1):
+            item = rec.get(col) or {}
+            v = item.get("v")
+            if v is None:
+                continue
+            text = f"{v:.2f}" if col == "篇均被引频次" else str(v)
+            old = row.cells[j].text.strip()
+            if old != text:
+                set_cell(row.cells[j], text)
+                slots.append({"location": f"T19/r{i}c{j}", "old": old, "new": text,
+                              "source": item.get("src") or "ESI 机构总表"})
+            n += 1
+    return n
+
+
 def fill_big_table(doc, t2, slots, prev_month):
     """填充 T01 大表（23×11：r0 表头，r1-r22 数据）。"""
     big = [t for t in doc.tables if len(t.columns) >= 11 and len(t.rows) == 23][0]
@@ -377,6 +427,9 @@ def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026�
     slots = []
 
     fill_big_table(doc, t2, slots, prev_month)
+    n_prov = fill_province(doc, ledger_dir, slots)
+    if n_prov:
+        print(f"      省域表 T19：填入 {n_prov} 格（数据源＝ESI 机构总表，见 province.json）")
     fill_texts(doc, ledger_dir, slots, period, prev, facts, fills=manual_inputs)
     warns = fill_body_charts(doc, ledger_dir, slots)
     charts_used = ["Chemistry"] if charts_only_demo else DETAIL_TABLES

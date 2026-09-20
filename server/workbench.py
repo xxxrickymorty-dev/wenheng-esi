@@ -5,7 +5,8 @@
 ------------------------------------------------------------------
 1. **不判"对错"，只说"可溯源"**。系统里没有 ground truth（人工原件只有 1–4 期，
    且那 4 期自身还有笔误），所以顶部写的不是"已核对 N 格"，而是
-   "N 个数字全部可回查到台账"—— 这句是真的，且当场能点开验证。
+   "N 个数字全部可溯源"—— 这句是真的，且当场能点开验证。
+   注：多数来自台账，省域表 T19 的 110 格来自 ESI 原始包（extract_province.py）。
 2. **待拍板只收"不处理报告就出不来或不该出"的那批**（约 20 条），不是全部 354 条。
    239 个大表格子 + 99 张图的正确状态是"已可溯源、要查随时能点开"，把它们塞进
    待办清单，等于把"已完成"和"待处理"混在一起——那正是"找不到重点"的根源。
@@ -185,10 +186,15 @@ def trace(out_dir, ledger_path, period=None, prev=None):
     charts = [{"loc": r.get("location"), "report": (r.get("new") or "").strip(),
                "src": r.get("source") or ""}
               for r in rows if (r.get("source") or "").startswith("charts")]
+    # 省域表 T19：**数据源不是台账**（是 ESI 原始包），单独一类，
+    # 否则这 110 格在溯源页上看不到 —— 与"全部可溯源"自相矛盾。
+    province = [{"loc": r.get("location"), "report": (r.get("new") or "").strip(),
+                 "src": r.get("source") or ""}
+                for r in rows if (r.get("location") or "").startswith("T19/")]
     texts = [{"loc": r.get("location"), "report": (r.get("new") or "").strip()[:60],
               "src": r.get("source") or ""}
              for r in rows if (r.get("source") or "").startswith(("sentences", "期次参数", "母版"))]
-    return {"bigtable": big, "charts": charts, "texts": texts,
+    return {"bigtable": big, "charts": charts, "province": province, "texts": texts,
             "n": len(rows), "ledger": str(ledger_path)}
 
 
