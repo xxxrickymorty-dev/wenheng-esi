@@ -17,6 +17,9 @@
     <a class="brand" href="/"><span class="seal seal-sm">衡</span><span class="logo">文衡</span><span class="sub">{% block sub %}学科信息参考 · 自动化流水线{% endblock %}</span></a>
     <nav>
       {% block nav_action %}{% endblock %}
+      {% if user and request.url.path != '/forecast' %}
+      <a class="ghost" href="/forecast">潜力学科预测</a>
+      {% endif %}
       {% if user %}
       <span class="who">{{ user }}</span>
       <a class="ghost" href="/logout">退出</a>

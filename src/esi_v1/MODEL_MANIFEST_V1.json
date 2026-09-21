@@ -1,0 +1,28 @@
+{
+  "package_version": "V1.0",
+  "models": [
+    "Holt趋势模型",
+    "阻尼Holt模型",
+    "季节性ETS模型",
+    "SARIMA模型",
+    "经验贝叶斯状态空间模型"
+  ],
+  "seasonal_periods": 6,
+  "initial_train_size": 30,
+  "fit_mape_start_index": 6,
+  "reference_mape_percent": 5.0,
+  "tasks": {
+    "V1-Citation": [
+      "总被引",
+      "ESI前1%被引阈值"
+    ],
+    "V1-Rank": [
+      "云大国内排名",
+      "国内ESI前1%机构数"
+    ]
+  },
+  "field_correction": {
+    "ESI5%学科数": "国内ESI前1%机构数",
+    "status": "经业务确认属于旧表标注错误"
+  }
+}
