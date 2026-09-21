@@ -26,6 +26,15 @@ CDN_HOSTS = (
 #: WH-DOC-09 §1 声明的后端依赖（server 组）
 REQUIRED_SERVER_DEPS = ("fastapi", "uvicorn", "jinja2", "python-multipart", "itsdangerous")
 
+#: 扫描时排除的目录。`tmp/` 是 gitignore 的一次性脚本区、`out/` 是运行产物：
+#: 技术栈契约约束的是**交付内容**，这两处即使有 npm 脚手架也不进交付物。
+#: （2026-09-21 全量回归被 `tmp/three-build/` 的 node_modules 绊红，故显式排除。）
+SKIP_PARTS = {".venv", "tmp", ".pytest_cache", "out", ".git"}
+
+
+def _in_scope(p: pathlib.Path) -> bool:
+    return not (set(p.relative_to(REPO).parts) & SKIP_PARTS)
+
 
 def _pyproject():
     return tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))
@@ -41,12 +50,12 @@ def _dep_names(specs):
 
 # ============================================================ 零 JS 依赖
 def test_没有package_json():
-    found = [p for p in REPO.rglob("package.json") if ".venv" not in p.parts]
+    found = [p for p in REPO.rglob("package.json") if _in_scope(p)]
     assert not found, f"仓库里出现了 npm 工程文件：{found}（WH-DOC-09 §6 禁止）"
 
 
 def test_没有node_modules():
-    found = [p for p in REPO.rglob("node_modules") if p.is_dir()]
+    found = [p for p in REPO.rglob("node_modules") if p.is_dir() and _in_scope(p)]
     assert not found, f"仓库里出现了 node_modules：{found}"
 
 
@@ -61,7 +70,7 @@ def test_没有前端构建配置():
 
 
 def test_没有typescript源码():
-    found = [str(p.relative_to(REPO)) for p in REPO.rglob("*.ts") if ".venv" not in p.parts]
+    found = [str(p.relative_to(REPO)) for p in REPO.rglob("*.ts") if _in_scope(p)]
     assert not found, f"出现了 TypeScript 源码：{found}（零编译步骤，见 WH-DOC-09 §6）"
 
 
