@@ -37,7 +37,7 @@ default-groups = ["server", "dev"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src", "tools"]
+pythonpath = [".", "src", "tools"]
 addopts = '-q --strict-markers -m "not slow"'
 markers = [
     "slow: 端到端跑整条流水线（约 15 秒），默认也跑，可用 -m 'not slow' 跳过",

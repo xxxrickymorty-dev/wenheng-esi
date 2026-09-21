@@ -1,0 +1,3 @@
+ESI Workflow Model Package V1.0
+V1-Citation + V1-Rank
+Frozen: seasonal_periods=6, initial_train_size=30, five-model pool fixed.
