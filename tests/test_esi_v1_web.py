@@ -66,9 +66,17 @@ def test_v1固定参数与五模型名单():
 
 
 def test_v1核心与已验收交接包校验和一致():
+    """校验和按 **LF 字节** 计算。
+
+    🔴 Windows 检出（core.autocrlf=true）会把文件变成 CRLF，直接哈希必然与期望值
+    不符 —— 2026-09-22 本地实测（CI/Ubuntu 检出是 LF，反而是对的）。所以先归一到 LF。
+    """
+    def _lf(b: bytes) -> bytes:
+        return b.replace(b"\r\n", b"\n")
+
     root = pathlib.Path(config_v1.__file__).resolve().parent
-    config_bytes = (root / "config_v1.py").read_bytes()
-    core_bytes = (root / "model_core_v1.py").read_bytes().replace(
+    config_bytes = _lf((root / "config_v1.py").read_bytes())
+    core_bytes = _lf((root / "model_core_v1.py").read_bytes()).replace(
         b"from .config_v1 import", b"from config_v1 import")
     assert hashlib.sha256(config_bytes).hexdigest() == (
         "229750169cd45f471c20b15c2e11b008e846263ac96e5fe934bed28850360e96")
