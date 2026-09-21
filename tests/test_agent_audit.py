@@ -47,20 +47,24 @@ def test_六项检查齐全且与实现一一对应():
         assert callable(audit.CHECKS[name])
 
 
-def test_三个M4工具已接线不再是待实现():
-    """契约早就注册了，milestone 标 M4。实现没接上时调用会抛 TOOL_NOT_IMPLEMENTED。"""
+def test_三个M4工具已接线不再是待实现(tmp_path):
+    """契约早就注册了，milestone 标 M4。实现没接上时调用会抛 TOOL_NOT_IMPLEMENTED。
+
+    🔴 用 tmp_path 而不是真实 OUT：`write_env_snapshot` 会把目录建出来，
+       在空 clone / CI 上等于凭空造出一个 `out/202607/`，让后面所有
+       "out 在不在" 的守卫全部误判为"数据在"（2026-09-21 CI 空克隆实测）。
+    """
     from agent import tools
     for name in ("scan_stale", "collect_artifacts", "write_env_snapshot"):
         assert tools.REGISTRY[name].milestone == "M4"
-        assert not tools.REGISTRY[name].handler(**_dummy_args(name)).get("__not_implemented__")
+        assert not tools.REGISTRY[name].handler(
+            **_dummy_args(name, tmp_path)).get("__not_implemented__")
 
 
-def _dummy_args(name):
+def _dummy_args(name, tmp_path):
     if name == "scan_stale":
-        return {"out_dir": str(OUT), "ledger": str(LEDGER)}
-    if name == "collect_artifacts":
-        return {"run_dir": str(OUT)}
-    return {"run_dir": str(OUT)}
+        return {"out_dir": str(tmp_path), "ledger": str(LEDGER)}
+    return {"run_dir": str(tmp_path)}
 
 
 def test_工具总数仍是13个_没破栈契约():
@@ -230,3 +234,20 @@ def test_六项跑完落两份产物():
     # 真值链必须写进记录：审计能证明什么、不能证明什么，都得摆出来
     assert "does_not_cover" in rec["truth_chain"]
     assert "ledger_long" in rec["truth_chain"]["not_used"]
+
+
+def test_图验收不因子进程编码误判(monkeypatch):
+    """父进程带 PYTHONIOENCODING 时，check_figures 的子进程 stdout 必须照样读回。
+
+    2026-09-21 实测：`subprocess.run(text=True)` 按 locale 解码，而环境里带
+    `PYTHONIOENCODING=utf-8` 时子进程输出 UTF-8 → reader 线程 UnicodeDecodeError
+    → stdout 整段丢 → slots_ok=None → 审计误判 fail，档案页与 e2e 连带红。
+    """
+    _need(OUT / "table2.csv", "产物")
+    if not any(OUT.glob("报告初稿*.docx")):
+        skip_unless("缺报告 docx（out/ 按 .gitignore 不入库）",
+                    lambda: any(OUT.glob("报告初稿*.docx")))
+    monkeypatch.setenv("PYTHONIOENCODING", "utf-8")
+    r = audit.check_figures(str(OUT))
+    assert r["slots_ok"] == audit.FIGURE_SLOTS_TOTAL, r
+    assert r["status"] == "pass", r

@@ -47,6 +47,16 @@ def _need():
                     lambda: (INC / em.SNAP_MAP["202607"]).is_dir())
 
 
+def _need_esi():
+    if not ESI.is_dir():
+        skip_unless("缺 ESI 原始包（数据与复现/ESI数据）", lambda: ESI.is_dir())
+
+
+def _need_orig():
+    if not ORIG.exists():
+        skip_unless("缺人工原件（云南大学原报告/2026年第4期）", lambda: ORIG.exists())
+
+
 # ============================================================ ① 机构同名判定
 def test_云大不会被前缀串到云南财经或中医药():
     """`yunnan university` 是「云南财经大学」「云南中医药大学」的前缀 ——
@@ -74,6 +84,7 @@ def test_快照映射是逐期验证过的():
 # ============================================================ ② 逐格一致（核心）
 def test_与人工原件逐格比对():
     data = _data()
+    _need_orig()
     ok, total, diffs = em.compare_with_original(data, ORIG)
     # 22 学科 × 11 校 = 242，写**精确值**而不是「大于 200」：少一行也要红。
     # 2026-09-20 之前这里是 `> 200`，而实际只比了 231 格 —— 原件「植物学与动物学」
@@ -97,6 +108,7 @@ def test_Y的单元格必然在ESI榜内():
     （社会科学·财大 102.41%），说明判据是"在不在榜"，不是数值大小。
     """
     data = _data()
+    _need_esi()
     top = em._esi_top_schools(ESI, "202607", "Chemistry")
     assert top, "读不到 ESI 化学榜"
     for short, en_key in em.UNIVERSITIES:
@@ -116,6 +128,7 @@ def test_每格带溯源且指回快照():
 
 def test_脏文件名的学科表也能找到():
     """InCites 导出有脏写法：`Agricultural Sciencesxlsx.xlsx`、`Social Sciences, general`。"""
+    _need()
     snap = INC / em.SNAP_MAP["202607"]
     p = em._disc_file(snap, "Agricultural Sciences")
     assert p is not None and p.exists(), "农业科学的表没找到（文件名尾巴粘了 xlsx）"
@@ -135,6 +148,7 @@ def test_原件每行行名都能归一命中我们算的矩阵():
     """
     from docx import Document                                  # noqa: PLC0415
 
+    _need_orig()
     d = Document(str(ORIG))
     t = next((x for x in d.tables
               if "云大" in [c.text.strip() for c in x.rows[0].cells]), None)
