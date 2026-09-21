@@ -38,6 +38,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import pathlib
 import platform
 import random
@@ -428,8 +429,14 @@ def check_figures(out_dir, ledger=None):
     if not script.exists():
         return {"id": "figures", "status": "skipped", "reason": f"无脚本 {script}"}
     try:
+        # 🔴 子进程编码必须两头钉死：父进程若带 PYTHONIOENCODING=utf-8（脚本/CI 常见），
+        #    而这里用 text=True 按 locale（中文 Windows = GBK）解码，reader 线程会抛
+        #    UnicodeDecodeError → stdout 整段丢失 → 槽位读数解不出来 → 审计误判 fail。
+        #    2026-09-21 全量回归实测（档案页与 e2e 连带红）。
+        env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
         proc = subprocess.run([sys.executable, str(script), str(docx)],
-                              capture_output=True, text=True, timeout=300)
+                              capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", timeout=300, env=env)
     except Exception as e:                                    # noqa: BLE001
         return {"id": "figures", "status": "skipped",
                 "reason": f"调用失败：{type(e).__name__}: {e}"}
