@@ -97,6 +97,14 @@ st, body, final = call("GET", "/")
 check("GET / (未登录) 落到 /login", "/login" in final, f"final={final}")
 
 out("=== 3. 登录 ===")
+# 欢迎页 = 登录页（rick 2026-09-21 定：校园插画做首屏）。
+# 断言三件事：图在、图走 asset（带版本号，否则改图后浏览器吃缓存）、登录表单没被改坏。
+st, lp, _ = call("GET", "/login")
+check("欢迎页含校园插画且走 asset 版本号",
+      "/static/img/campus-welcome.jpg?v=" in lp, f"got {st}")
+check("欢迎页图带宽高（防加载抖动）", 'width="1024"' in lp and 'height="566"' in lp)
+check("登录表单完好（账号/密码/action）",
+      'name="username"' in lp and 'name="password"' in lp and 'action="/login"' in lp)
 st, body, final = call("POST", "/login", {"username": "demo", "password": "wenheng@2026"})
 # ⚠ 别写死 8080：用 `WENHENG_BASE` 换端口跑时，写死会让这条**假失败**
 #    （2026-09-19 用 8099 实测：final 明明是首页，断言却判未过）。
