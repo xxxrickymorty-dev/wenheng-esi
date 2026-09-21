@@ -20,6 +20,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "ruff>=0.16",
 ]
 server = [
     "fastapi>=0.110",
@@ -47,3 +48,13 @@ filterwarnings = [
     "ignore:Unknown extension is not supported:UserWarning",
     "ignore:Conditional Formatting extension is not supported:UserWarning",
 ]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+# 2026-09-21 冻结时只启用「致命级」规则（语法错 / 未定义名 / 无效 noqa 目标），
+# 保证 CI 立刻可用、且不为 lint 在提交前做大改。全量风格项（UP009/I001/RUF100
+# 等约 500 条）赛后逐批治理——扩规则时一次只开一类，改完一类再开下一类。
+select = ["E9", "F63", "F7", "F82"]

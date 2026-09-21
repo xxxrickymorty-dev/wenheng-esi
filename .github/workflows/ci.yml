@@ -1,0 +1,34 @@
+# 文衡 · 最小 CI（2026-09-21 冻结时落地）
+#
+# 目的只有一个：让「忘了跑验证」不再可能 —— 每次 push / PR 自动跑
+#   ① ruff 致命级 lint（语法错 / 未定义名）
+#   ② 全量 pytest（含端到端）
+#
+# 数据驱动的用例在无 input/、out/ 的机器上走 tests/_guard_registry 登记跳过，
+# 会话收尾复核探针（见 tests/conftest.py），不会静默降级成"全绿"。
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: 按 uv.lock 建环境
+        run: uv sync --locked
+
+      - name: lint（致命级）
+        run: uv run ruff check .
+
+      - name: 回归测试（全量，含端到端）
+        run: uv run pytest -m ""
