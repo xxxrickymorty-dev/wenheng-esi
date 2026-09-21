@@ -7,6 +7,9 @@
 
 这里把 WH-DOC-09 §6 的反选清单和 §4.3 的边界约定钉成断言。
 故意的：这些约束一旦被违反**不会报错**，只会在评审现场才发现。
+
+2026-09-22（ADR-0001）：新增 `web/` 工作区系统（React + Vite），
+「零 JS 依赖」四条**限定为旧站作用域**（server/ + 仓库根）；web/ 的护栏见本节末两条。
 """
 import pathlib
 import re
@@ -31,9 +34,15 @@ REQUIRED_SERVER_DEPS = ("fastapi", "uvicorn", "jinja2", "python-multipart", "its
 #: （2026-09-21 全量回归被 `tmp/three-build/` 的 node_modules 绊红，故显式排除。）
 SKIP_PARTS = {".venv", "tmp", ".pytest_cache", "out", ".git"}
 
+#: 2026-09-22 ADR-0001：`web/` 是新工作区系统（React + Vite），不受「零 JS 依赖」约束；
+#: 旧站（server/ + 仓库根）继续受约束。scope 判定按目录名，别用「有没有 package.json」反推。
+WEB = REPO / "web"
 
-def _in_scope(p: pathlib.Path) -> bool:
-    return not (set(p.relative_to(REPO).parts) & SKIP_PARTS)
+
+def _legacy_scope(p: pathlib.Path) -> bool:
+    """旧站作用域：排除 web/ 与 SKIP_PARTS。"""
+    parts = set(p.relative_to(REPO).parts)
+    return not (parts & SKIP_PARTS) and "web" not in parts
 
 
 def _pyproject():
@@ -50,28 +59,48 @@ def _dep_names(specs):
 
 # ============================================================ 零 JS 依赖
 def test_没有package_json():
-    found = [p for p in REPO.rglob("package.json") if _in_scope(p)]
-    assert not found, f"仓库里出现了 npm 工程文件：{found}（WH-DOC-09 §6 禁止）"
+    found = [p for p in REPO.rglob("package.json") if _legacy_scope(p)]
+    assert not found, f"旧站出现了 npm 工程文件：{found}（WH-DOC-09 §6 只管旧站；web/ 见 ADR-0001）"
 
 
 def test_没有node_modules():
-    found = [p for p in REPO.rglob("node_modules") if p.is_dir() and _in_scope(p)]
-    assert not found, f"仓库里出现了 node_modules：{found}"
+    found = [p for p in REPO.rglob("node_modules") if p.is_dir() and _legacy_scope(p)]
+    assert not found, f"旧站出现了 node_modules：{found}"
 
 
 def test_没有前端构建配置():
+    """只扫仓库根与 server/——web/ 是构建工程，配置本来就在那儿（ADR-0001）。"""
     banned = ("vite.config", "webpack.config", "rollup.config", "tsconfig.json",
               "tailwind.config", "postcss.config")
     found = [p.name for p in REPO.iterdir()
              if p.is_file() and p.name.startswith(banned)]
     found += [p.name for p in SERVER.rglob("*")
               if p.is_file() and p.name.startswith(banned)]
-    assert not found, f"出现了前端构建配置：{found}"
+    assert not found, f"旧站出现了前端构建配置：{found}"
 
 
 def test_没有typescript源码():
-    found = [str(p.relative_to(REPO)) for p in REPO.rglob("*.ts") if _in_scope(p)]
-    assert not found, f"出现了 TypeScript 源码：{found}（零编译步骤，见 WH-DOC-09 §6）"
+    found = [str(p.relative_to(REPO)) for p in REPO.rglob("*.ts") if _legacy_scope(p)]
+    assert not found, f"旧站出现了 TypeScript 源码：{found}（零编译步骤，见 WH-DOC-09 §6）"
+
+
+# ---- web/ 工作区系统（ADR-0001）的两条新护栏 ----
+def test_web_node_modules不入库():
+    """node_modules 只能存在于本机：靠 .gitignore 挡住，避免整包进仓。"""
+    gi = (REPO / ".gitignore").read_text(encoding="utf-8")
+    assert "web/node_modules" in gi, \
+        "wenheng/.gitignore 缺 web/node_modules —— 前端依赖会被误提交"
+
+
+def test_web构建产物不含外链():
+    """`dist/` 要能跟着部署包上服务器（无 Node），所以它必须是自足的：
+    index.html 里只允许相对/绝对路径的本站资源，出现 http(s) 外链即断网崩版。"""
+    idx = WEB / "dist" / "index.html"
+    assert idx.is_file(), \
+        "web/dist/index.html 不存在——改完 web/ 源码必须 `npm run build` 并提交 dist/（ADR-0001）"
+    externals = [m for m in re.findall(r'(?:src|href)="([^"]+)"', idx.read_text(encoding="utf-8"))
+                 if m.startswith(("http://", "https://", "//"))]
+    assert not externals, f"构建产物引了外链：{externals}"
 
 
 # ============================================================ 零 CDN

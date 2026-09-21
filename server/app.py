@@ -25,6 +25,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from . import approval, archive, collation, config, jobs
 from . import forecasting
+from src import period as period_mod  # 期次口径唯一来源（ADR-0001：新工作区 API 也用它）
 
 
 @asynccontextmanager
@@ -37,6 +38,10 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="文衡 · 学科信息参考自动化演示", docs_url="/api/docs", lifespan=lifespan)
 app.add_middleware(SessionMiddleware, secret_key=config.SECRET, same_site="lax")
 app.mount("/static", StaticFiles(directory=str(config.SERVER_DIR / "static")), name="static")
+# 新工作区系统（React SPA，构建产物 web/dist 入库）——见 docs/adr/0001。
+# check_dir=False：干净 clone 里 dist 缺失时不要拖垮整个服务启动，让它 404 就行。
+app.mount("/app", StaticFiles(directory=str(config.ROOT / "web" / "dist"), html=True,
+                              check_dir=False), name="web")
 templates = Jinja2Templates(directory=str(config.SERVER_DIR / "templates"))
 
 
@@ -50,7 +55,7 @@ templates = Jinja2Templates(directory=str(config.SERVER_DIR / "templates"))
 @app.middleware("http")
 async def _static_revalidate(request: Request, call_next):
     resp = await call_next(request)
-    if request.url.path.startswith("/static/"):
+    if request.url.path.startswith(("/static/", "/app/")):
         resp.headers["Cache-Control"] = "no-cache"
     return resp
 
@@ -877,6 +882,28 @@ async def api_status():
     active = jobs.active_job()
     last = next((j for j in jobs.list_jobs(20) if j.get("stats")), None)
     return {"active": (active or {}).get("id"), "last": last}
+
+
+@app.get("/api/periods")
+async def api_periods(request: Request):
+    """期次列表（新工作区系统 /app 的数据源）——与首屏印记链同源（period_cards）。
+
+    期次文案走 src/period.py（口径唯一来源）；带后缀目录（如 202605_复现）算不出
+    总期号时退回目录名，不编假期号。
+    """
+    if not current_user(request):
+        return JSONResponse({"error": "未登录"}, status_code=401)
+    out = []
+    for c in period_cards():
+        try:
+            _idx, total = period_mod.issue_of(c["period"])
+            label = f"第 {total} 期 · {period_mod.label(c['period'])}"
+        except (period_mod.PeriodUndetectable, period_mod.PeriodBeforeAnchor):
+            label = c["period"]
+        out.append({"period": c["period"], "label": label,
+                    "signed": c["status"] == "signed", "status": c["status"],
+                    "url": c["url"]})
+    return {"periods": out}
 
 
 @app.get("/api/forecast/meta")
