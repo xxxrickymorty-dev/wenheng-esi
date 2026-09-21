@@ -32,12 +32,12 @@ ORIG = REPO.parent / "云南大学原报告" / "云南大学学科信息参考20
 def _need_esi():
     if not (ESI / "institutions.xlsx").exists():
         skip_unless("缺 ESI 原始包（数据与复现/ESI数据/202607）",
-                    (ESI / "institutions.xlsx").exists())
+                    lambda: (ESI / "institutions.xlsx").exists())
 
 
 def _need_orig():
     if not ORIG.exists():
-        skip_unless("缺人工原件（云南大学原报告/2026年第4期）", ORIG.exists())
+        skip_unless("缺人工原件（云南大学原报告/2026年第4期）", lambda: ORIG.exists())
 
 
 # ============================================================ ① 名单

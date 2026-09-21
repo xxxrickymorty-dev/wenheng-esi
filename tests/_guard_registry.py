@@ -30,7 +30,15 @@ def skip_unless(reason, probe):
 
     `probe` 必须已经在前面调用过（也就是 `skip_unless` 只在真的要走跳过分支时调用），
     所以探针本身只需表达"那个资源在不在"。
+
+    🔴 `probe` 必须是**可调用对象**（通常是 `lambda: ...`），不能是已求值的 bool：
+    后者在会话收尾复核时会 `TypeError` 崩掉整个会话，而且只有"数据缺席"的环境
+    （新 clone / CI）才会踩到 —— 本地有数据时永远发现不了。
     """
+    if not callable(probe):
+        raise TypeError(
+            f"skip_unless 的探针必须可调用（如 lambda: p.exists()），收到 {probe!r}；"
+            f"理由：{reason}")
     SKIPS.append((reason, probe))
     pytest.skip(reason)
 

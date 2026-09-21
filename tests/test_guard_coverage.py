@@ -11,6 +11,8 @@
 import pathlib
 import re
 
+import pytest
+
 import _guard_registry as G
 
 
@@ -46,3 +48,11 @@ def test_没有绕过登记簿的裸pytest_skip():
     assert not offenders, (
         f"这些地方绕过了跳过登记，会重新打开『静默跳过』的口子：{offenders} —— "
         f"改用 tests/_guard_registry.py 的 skip_unless(理由, 探针)")
+
+
+def test_探针传成bool必须当场报错():
+    """已求值的 bool 探针只有"数据缺席"的环境（新 clone / CI）才会爆——
+    2026-09-21 CI 空克隆模拟实测：会话收尾 `outstanding()` 直接 TypeError。
+    所以必须当场拦住，不能等收尾。"""
+    with pytest.raises(TypeError, match="可调用"):
+        G.skip_unless("测试用：探针写成了 bool", True)

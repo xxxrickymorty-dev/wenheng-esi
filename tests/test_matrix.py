@@ -44,7 +44,7 @@ def _data():
 def _need():
     if not (INC / em.SNAP_MAP["202607"]).is_dir():
         skip_unless("缺 InCites 快照（数据与复现/incites）",
-                    (INC / em.SNAP_MAP["202607"]).is_dir())
+                    lambda: (INC / em.SNAP_MAP["202607"]).is_dir())
 
 
 # ============================================================ ① 机构同名判定
