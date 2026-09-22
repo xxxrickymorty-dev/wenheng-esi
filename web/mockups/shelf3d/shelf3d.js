@@ -1188,7 +1188,7 @@ window.WH_SHELF3D = {
       };
     });
   },
-  /* 把封面单独画一张吐出来（供取色校验用，不参与渲染） */
+  /* 把封面单独画一张吐出来（供取色校验与陈列层展示用，不参与渲染） */
   coverPreview: function (period) {
     var pal = paletteOf(period);
     var t = coverArtTexture({ period: period, no: 1 }, pal.vol);
@@ -1196,6 +1196,7 @@ window.WH_SHELF3D = {
     try { t.dispose(); } catch (e) {}
     return img.toDataURL('image/png');
   },
+  paletteOf: paletteOf,
   tiers: function () {
     return tiers.map(function (t, i) {
       return { index: i, y: t.y, books: t.books.length };

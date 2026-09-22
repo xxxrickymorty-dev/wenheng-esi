@@ -12,7 +12,13 @@
   .cap{position:fixed;left:22px;bottom:20px;font-size:13.5px;color:#b8ab99;letter-spacing:.02em;line-height:1.9}
   .cap b{color:#e8dfd2;font-weight:600}
   .cap kbd{border:1px solid #6b5a45;border-radius:4px;padding:0 5px;font-size:12px;color:#c9a06a}
-  .tip{position:fixed;right:22px;bottom:20px;font-size:13px;color:#9d9080;text-align:right;line-height:1.9}
+  :root{
+    /* 卷色：由 JS 按当前期次覆盖——每卷一套，像 G 那样「一卷一色」 */
+    --vol:#B8422C; --vol-deep:#8A2A18; --vol-lift:#D65A38;
+    --cream:#F7F0E2; --cream-2:rgba(247,240,226,.74); --cream-3:rgba(247,240,226,.46);
+    --cream-4:rgba(247,240,226,.2);
+    --bd:52px;                       /* 书厚 */
+  }
   .warn{position:fixed;left:22px;top:18px;font-size:13px;color:#c9a06a;
     border:1px dashed #6b5a45;border-radius:8px;padding:8px 12px;background:rgba(43,38,34,.7)}
   .tiers{position:fixed;right:22px;top:18px;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
@@ -21,14 +27,6 @@
     border:1px solid #4a3f34;border-radius:8px;padding:7px 12px;cursor:pointer;text-align:right}
   .tiers button[aria-current="true"]{color:#f0e6d4;border-color:#c9a06a;background:rgba(60,48,36,.9)}
   .tiers button:hover{border-color:#8a7458}
-
-  /* ---------- 陈列态提示 ---------- */
-  #flow-hint{position:fixed;left:50%;top:22px;transform:translateX(-50%);
-    background:rgba(43,38,34,.88);border:1px solid #6b5a45;border-radius:10px;
-    padding:10px 18px;font-size:14px;color:#e8dfd2;text-align:center;line-height:1.8}
-  #flow-hint b{color:#c9a06a}
-  #flow-hint .sub{color:#b8ab99;font-size:13px}
-  #flow-hint kbd{border:1px solid #6b5a45;border-radius:4px;padding:0 5px;font-size:12px;color:#c9a06a}
 
   /* ---------- 声音开关（默认关；演示现场多半静音） ---------- */
   .snd{position:fixed;right:22px;top:78px;font:inherit;font-size:13px;
@@ -50,24 +48,91 @@
   .vh-foot .cmds button:hover{color:#e8dfd2;border-bottom-color:#c9a06a}
   .vh-foot .cmds button[hidden]{display:none}
 
-  /* ---------- 陈列态右栏：规格表（数字全部可回溯到台账） ---------- */
-  .spec-panel{position:fixed;right:22px;top:120px;width:296px;z-index:28;
-    background:rgba(43,38,34,.9);border:1px solid #6b5a45;border-radius:10px;
-    padding:16px 18px;color:#e8dfd2;opacity:0;visibility:hidden;pointer-events:none;
-    transition:opacity .35s ease, visibility 0s linear .35s}
-  body[data-flow="featured"] .spec-panel{opacity:1;visibility:visible;pointer-events:auto;
-    transition:opacity .35s ease, visibility 0s linear 0s}
-  .spec-panel .eyebrow{font-size:11px;letter-spacing:.18em;color:#c9a06a;
-    font-family:Consolas,monospace;text-transform:uppercase}
-  .spec-panel h2{margin:6px 0 4px;font-family:"Source Han Serif SC","Songti SC",SimSun,serif;
-    font-size:20px;letter-spacing:.04em;color:#f0e6d4}
-  .spec-panel .lead{margin:8px 0 14px;font-size:12.5px;line-height:1.8;color:#b8ab99}
-  .spec-panel .spec{display:flex;gap:10px;padding:6px 0;border-top:1px solid #4a3f34;font-size:12.5px}
-  .spec-panel .spec .k{flex:0 0 68px;color:#9d9080}
-  .spec-panel .spec .v{flex:1;color:#e8dfd2;font-family:Consolas,monospace;font-variant-numeric:tabular-nums}
-  .spec-panel .spec .v .u{color:#c9a06a}
-  .spec-panel .src{margin:12px 0 0;padding-top:10px;border-top:1px dashed #4a3f34;
-    font-size:11px;color:#8a7d6c;line-height:1.7}
+  /* ==================================================================
+     取书后的那一页（陈列态）——按 G-复刻WorkingVolumes 的实测数值做
+     整屏铺满**该卷的卷色**（G2-已抽取 实测：卷色占 81.7%），中间一本大书 + 长投影。
+     只做这一层；书架与封面不碰。
+     ================================================================== */
+  #display{position:fixed;inset:0;z-index:35;display:none;
+    background:var(--vol);color:var(--cream);
+    transition:background .5s ease}
+  body[data-flow="featured"] #display{display:block}
+  /* 三维画布在陈列/翻书时必须 visibility:hidden 才真正退出命中测试
+     （只写 opacity+pointer-events 仍会拦住点击——技能坑） */
+  body[data-flow="featured"] #scene,
+  body[data-flow="reading"] #scene{opacity:0;pointer-events:none;visibility:hidden;
+    transition:opacity 420ms linear, visibility 0s linear 420ms}
+  #scene{transition:opacity 420ms linear, visibility 0s linear 0s}
+
+  .dsp-main{height:100%;display:grid;grid-template-columns:1fr minmax(400px,520px);
+    padding:0 40px;align-items:center;min-height:0}
+  @media (max-width:1000px){.dsp-main{grid-template-columns:1fr;padding-bottom:96px}}
+
+  /* 左舞台：大书 + 长投影。尺寸/角度取 G 的实测值 */
+  .dsp-stage{position:relative;display:grid;place-items:center;min-height:0}
+  .book3d{position:relative;height:clamp(380px,74vh,648px);aspect-ratio:.72;
+    transform-style:preserve-3d;
+    transform:rotateX(5deg) rotateY(-16deg);
+    transition:transform 120ms linear;    /* 拖拽要跟手，故用线性短过渡 */
+    cursor:grab}
+  .book3d.grabbing{cursor:grabbing}
+  /* 长投影：模糊椭圆压在书下（软件渲染下实时阴影不出影，见技能坑 4） */
+  .dsp-ground{position:absolute;left:50%;bottom:12%;width:82%;height:9%;
+    transform:translateX(-50%) scaleY(.42);
+    background:rgba(0,0,0,.5);border-radius:50%;filter:blur(22px);z-index:-1}
+
+  /* 露边层：精装书的封面比书芯小一圈，四边露书芯（左露书脊深色、右露奶白书口）。
+     少了这层，封面就只是贴在背景上的一张图。 */
+  .face{position:absolute;top:0;left:0;width:100%;height:100%;backface-visibility:hidden}
+  .f-body{transform:translateZ(calc(var(--bd) / 2 - 1px));
+    background:linear-gradient(90deg,var(--vol-deep) 0 13px,#F4EBD9 13px 100%);
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
+  .f-cover{top:5px;left:14px;right:22px;bottom:6px;width:auto;height:auto;
+    transform:translateZ(calc(var(--bd) / 2));
+    border-radius:2px 3px 3px 2px;overflow:hidden;
+    box-shadow:inset 0 0 0 1px rgba(247,240,226,.15), inset 0 0 40px rgba(0,0,0,.3)}
+  .f-cover img{width:100%;height:100%;display:block;object-fit:cover}
+  .f-back{transform:translateZ(calc(var(--bd) / -2)) rotateY(180deg);background:var(--vol-deep)}
+  .f-right{left:calc(100% - var(--bd));width:var(--bd);height:100%;
+    transform:translateZ(calc(var(--bd) / -2)) rotateY(90deg);transform-origin:right center;
+    background:repeating-linear-gradient(180deg,#F4EBD9 0 2px,#E4D8BE 2px 3px)}
+  .f-top{height:var(--bd);width:100%;
+    transform:translateZ(calc(var(--bd) / -2)) rotateX(90deg);transform-origin:center top;
+    background:var(--vol-deep)}
+  .f-bottom{height:var(--bd);top:auto;bottom:0;width:100%;
+    transform:translateZ(calc(var(--bd) / -2)) rotateX(-90deg);transform-origin:center bottom;
+    background:var(--vol-deep)}
+  /* 书签带：从封头垂下 */
+  .ribbon{position:absolute;top:-8px;left:56%;width:6px;height:96px;
+    background:var(--vol-deep);transform:translateZ(calc(var(--bd) / 2 + 3px));
+    box-shadow:1px 2px 5px rgba(0,0,0,.3)}
+
+  /* 右详情栏（G 的规格表是主信息，不是附注） */
+  .dsp-detail{display:flex;flex-direction:column;justify-content:center;
+    padding:0 0 0 20px;min-height:0}
+  .dsp-detail .eyebrow{font-family:Consolas,monospace;font-size:10px;letter-spacing:.24em;
+    color:var(--cream-3);margin-bottom:14px}
+  .dsp-detail h1{font-family:"Source Han Serif SC","Songti SC",SimSun,serif;font-weight:700;
+    font-size:clamp(40px,5.4vw,70px);line-height:1.08;letter-spacing:.03em;
+    color:var(--cream);margin:0 0 18px}
+  .dsp-detail .lead{font-family:"Source Han Serif SC","Songti SC",SimSun,serif;
+    font-size:14.5px;line-height:1.9;color:var(--cream-2);margin:0}
+  .dsp-detail .rule{height:1px;background:var(--cream-4);margin:24px 0}
+  .dsp-detail .specs{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+  .dsp-detail .spec .k{font-family:Consolas,monospace;font-size:9px;letter-spacing:.2em;
+    color:var(--cream-3);margin-bottom:5px}
+  .dsp-detail .spec .v{font-family:"Source Han Serif SC","Songti SC",SimSun,serif;
+    font-size:14px;line-height:1.45;color:var(--cream);
+    font-variant-numeric:tabular-nums}
+  .dsp-detail .spec .v .u{color:var(--cream-2)}
+  .dsp-detail .src{margin:24px 0 0;font-size:11px;line-height:1.7;color:var(--cream-3)}
+
+  /* 命令与提示在卷色底上要换色（原来那套是暗底配的） */
+  body[data-flow="featured"] .vh-foot{color:var(--cream-3)}
+  body[data-flow="featured"] .vh-foot .cmds button{color:var(--cream-2)}
+  body[data-flow="featured"] .vh-foot .cmds button:hover{color:var(--cream);border-bottom-color:var(--cream)}
+  body[data-flow="featured"] .snd{color:var(--cream-2);border-color:var(--cream-4);background:rgba(0,0,0,.15)}
+  body[data-flow="featured"] .snd[aria-pressed="true"]{color:var(--vol);background:var(--cream);border-color:var(--cream)}
 
   /* ---------- 翻书态（2D 覆盖层） ---------- */
   #reader{position:fixed;inset:0;z-index:40;background:#241f1b;
@@ -144,14 +209,13 @@
 </head>
 <body>
 <canvas id="scene"></canvas>
-<div class="warn">静态稿 · 待审核：三层书架 + 相机切换</div>
 
 <div class="tiers" id="tiers" role="group" aria-label="按系列切换"></div>
 
 <button type="button" id="snd" class="snd" aria-pressed="false"
         title="声音默认关着；要听得到得先点一下（浏览器规定）">♪ 声音 关</button>
 
-<div id="flow-hint" hidden></div>
+<p id="live" role="status" aria-live="polite" style="position:absolute;left:-9999px"></p>
 
 <div id="reader" class="content" aria-label="翻书">
   <div id="reader-bar">
@@ -167,13 +231,30 @@
   <b>文衡 · 历期卷宗</b>　顶＝<b>ESI 双月报告</b> / 中＝学科发展态势 / 底＝年报
 </div>
 
-<aside class="spec-panel content" id="specPanel" aria-label="这一册的规格">
-  <div class="eyebrow" id="dEyebrow">—</div>
-  <h2 id="dTitle">学科信息参考</h2>
-  <p class="lead" id="dLead">—</p>
-  <div id="dSpecs"></div>
-  <p class="src" id="dSrc">数字全部来自《云大全学科排名、阈值动态检测表》，可在演示站逐格回溯。</p>
-</aside>
+<section id="display" class="content" aria-label="陈列这一册">
+  <div class="dsp-main">
+    <div class="dsp-stage">
+      <div class="book3d" id="dspBook" title="拖拽可转动">
+        <div class="face f-body"></div>
+        <div class="face f-cover"><img id="dspArt" alt="书封"></div>
+        <div class="ribbon"></div>
+        <div class="face f-back"></div>
+        <div class="face f-right"></div>
+        <div class="face f-top"></div>
+        <div class="face f-bottom"></div>
+      </div>
+      <div class="dsp-ground"></div>
+    </div>
+    <aside class="dsp-detail">
+      <div class="eyebrow" id="dEyebrow">—</div>
+      <h1 id="dTitle">学科信息参考</h1>
+      <p class="lead" id="dLead">—</p>
+      <div class="rule"></div>
+      <div class="specs" id="dSpecs"></div>
+      <p class="src" id="dSrc">数字全部来自《云大全学科排名、阈值动态检测表》，可在演示站逐格回溯。</p>
+    </aside>
+  </div>
+</section>
 
 <footer class="vh-foot">
   <span id="footHint"></span>
@@ -183,8 +264,6 @@
     <button type="button" id="cmdReset">复位视角</button>
   </div>
 </footer>
-
-<p id="live" role="status" aria-live="polite" style="position:absolute;left:-9999px"></p>
 
 <script src="three-bundle.js"></script>
 <script src="data.js"></script>

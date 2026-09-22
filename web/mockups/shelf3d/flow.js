@@ -144,9 +144,54 @@ function syncCommands() {
   if (cmdReset) cmdReset.hidden = (cur === 'reading');
 }
 
+/* 陈列层：整屏铺满该卷的卷色 + 中间一本大书（封面用 coverArtTexture 的同一张，
+   **封面画法不动**，只是放大展示）。卷色与 G 同源：一卷一色。 */
+function renderDisplay() {
+  var b = pick ? bookRec(pick.period) : null;
+  var pal = (S && S.paletteOf) ? S.paletteOf(pick ? pick.period : '') : null;
+  if (!pal) pal = { vol: '#B8422C', deep: '#8A2A18', lift: '#D65A38' };
+  var root = document.documentElement.style;
+  root.setProperty('--vol', pal.vol);
+  root.setProperty('--vol-deep', pal.deep);
+  root.setProperty('--vol-lift', pal.lift);
+
+  var img = document.getElementById('dspArt');
+  if (img && S && S.coverPreview && pick) {
+    try { img.src = S.coverPreview(pick.period); } catch (e) {}
+  }
+  renderSpec();
+}
+
+/* 大书：点它＝翻开；拖它＝转动（G 的手感：拖拽用线性短过渡才跟手） */
+function wireBook() {
+  var el = document.getElementById('dspBook');
+  if (!el || el.__wired) return;
+  el.__wired = true;
+  var drag = null;
+  el.addEventListener('pointerdown', function (e) {
+    drag = { x: e.clientX, y: e.clientY, ry: -16, rx: 5 };
+    el.classList.add('grabbing');
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    var ry = drag.ry + (e.clientX - drag.x) * .4;
+    var rx = Math.max(-18, Math.min(24, drag.rx - (e.clientY - drag.y) * .25));
+    el.style.transform = 'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
+  });
+  el.addEventListener('pointerup', function (e) {
+    var moved = drag && (Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) > 6);
+    drag = null;
+    el.classList.remove('grabbing');
+    if (!moved) openBook();                 /* 没拖动＝点击＝翻开 */
+  });
+  el.addEventListener('pointercancel', function () {
+    drag = null; el.classList.remove('grabbing');
+  });
+}
+
 function enter(from, to) {
   document.body.setAttribute('data-flow', to);
-  var hint = document.getElementById('flow-hint');
   var A = window.WH_AUDIO;
   syncCommands();
 
@@ -154,22 +199,17 @@ function enter(from, to) {
     if (S && S.feature) S.feature(pick);
     if (A && from === 'overview') A.pull();          /* 从架上抽出这一本 */
     if (A && from === 'reading') A.close();          /* 合上再退回陈列 */
-    renderSpec();
-    if (hint) {
-      hint.hidden = false;
-      hint.innerHTML = '<b>' + (pick ? pick.title : '') + '</b>';
-    }
+    renderDisplay();
+    wireBook();
   } else if (to === 'reading') {
     if (S && S.stop) S.stop();                 /* 翻书时不必再跑三维循环 */
     if (A) A.open();                            /* 开卷 */
-    if (hint) hint.hidden = true;
     openReader();
   } else {                                     /* overview */
     closeReader();
     if (A && from === 'featured') A.pull();    /* 归架：搬回去 */
     if (S && S.unfeature) S.unfeature();
     if (S && S.start) S.start();
-    if (hint) hint.hidden = true;
   }
 }
 
