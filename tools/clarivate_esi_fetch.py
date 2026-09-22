@@ -99,10 +99,31 @@ def cmd_institutions(page: Page, out: Path, fmt: str) -> None:
     export(page, out / "Institutions.xlsx", fmt)
 
 
+# Step 5a：三张阈值表（端点抄自 Thresholds 页 getThresholdsExport()）
+# ⚠ HCP / Hot 的 sort 属性是 `FIELD`，ESI 那张是 `researchField`——用错返回 97 B 服务端报错。
+_THRESHOLDS = [
+    ("ThresholdESI", "thresholdsTop", "researchField", "ThresholdESI.xlsx"),
+    ("ThresholdHighlyCited", "thresholdsHighlyCited", "FIELD", "ThresholdHighlyCited.xlsx"),
+    ("ThresholdHot", "thresholdsHot", "FIELD", "ThresholdHot.xlsx"),
+]
+
+
 def cmd_thresholds(page: Page, out: Path, fmt: str) -> None:
-    page.goto(f"{ESI}/ThresholdsAction.action", wait_until="domcontentloaded")
-    page.wait_for_timeout(3500)
-    export(page, out / "ThresholdESI.xlsx", fmt)
+    """Step 5a：三张阈值表（ESI / Highly Cited / Hot）。"""
+    out.mkdir(parents=True, exist_ok=True)
+    for action, fb, prop, fname in _THRESHOLDS:
+        sort = f"%5B%7B%22property%22%3A%22{prop}%22%2C%22direction%22%3A%22ASC%22%7D%5D"
+        url = (
+            f"{ESI}/{action}.action?exportFile&_dc=1&sort={sort}"
+            f"&groupBy=Thresholds&filterBy={fb}&exportType=Thresholds&fileType=Excel&f={action}.xlsx"
+        )
+        resp = page.request.get(url)
+        if not resp.ok or not _looks_like_xlsx(resp.body()):
+            print(f"[FAIL] {fname}: HTTP {resp.status}, {len(resp.body())} B（非 xlsx）")
+            continue
+        target = out / fname
+        target.write_bytes(resp.body())
+        print(f"[OK] {fname}  ({target.stat().st_size} B)")
 
 
 # Step 2：22 个 ESI 学科（顺序照《ESI数据下载流程.docx》）
