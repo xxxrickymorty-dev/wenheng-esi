@@ -97,10 +97,16 @@ def export(page: Page, out_path: Path, fmt: str = "Excel") -> Path:
     return out_path
 
 
-# 导出列：9 列＝默认（含 Highly Cited Papers + Hot Papers）；7 列＝历史版式
-_SUBJECT_COLS9 = ("RowSeq,,Institutions,Countries/Regions,Web of Science Documents,Cites,Cites/Paper,"
-                  "Top Papers,Highly Cited Papers,Hot Papers")
-_SUBJECT_COLS7 = "RowSeq,,Institutions,Countries/Regions,Web of Science Documents,Cites,Cites/Paper,Top Papers"
+# 导出列三档（机构表与学科表同一套）：
+#   15 列＝默认：Base 6 列 + Top / Highly Cited / Hot 各 3 列（Papers、Cites to、Cites per）
+#    9 列＝202607 那版（三组只保留 Papers 计数）；7 列＝更早的历史版式
+_COLS15 = ("RowSeq,,Institutions,Countries/Regions,Web of Science Documents,Cites,Cites/Paper,"
+           "Top Papers,Cites to Top Papers,Cites/Top Paper,"
+           "Highly Cited Papers,Cites to Highly Cited Papers,Cites/Highly Cited Paper,"
+           "Hot Papers,Cites to Hot Papers,Cites/Hot Paper")
+_COLS9 = ("RowSeq,,Institutions,Countries/Regions,Web of Science Documents,Cites,Cites/Paper,"
+          "Top Papers,Highly Cited Papers,Hot Papers")
+_COLS7 = "RowSeq,,Institutions,Countries/Regions,Web of Science Documents,Cites,Cites/Paper,Top Papers"
 
 # Step 1 全球机构总表（无筛选）的导出 URL（实测抄下：filterValue= 空、limit 给大值）
 _INSTITUTIONS_URL = (
@@ -112,9 +118,9 @@ _INSTITUTIONS_URL = (
 
 
 def cmd_institutions(page: Page, out: Path, fmt: str) -> None:
-    """Step 1：全球机构总表（9 列，含 Highly Cited Papers / Hot Papers）。"""
+    """Step 1：全球机构总表（默认 15 列）。"""
     out.mkdir(parents=True, exist_ok=True)
-    enc = _SUBJECT_COLS9.replace(",", "%2C").replace(" ", "+")
+    enc = _COLS15.replace(",", "%2C").replace(" ", "+")
     resp = page.request.get(_INSTITUTIONS_URL.format(cols=enc))
     if not resp.ok or not _looks_like_xlsx(resp.body()):
         print(f"[FAIL] Institutions.xlsx: HTTP {resp.status}, {len(resp.body())} B（非 xlsx）")
@@ -193,13 +199,18 @@ def _run_subjects(page: Page, out: Path, force: bool, cols: str) -> None:
 
 
 def cmd_subjects(page: Page, out: Path, fmt: str, force: bool = False) -> None:
-    """Step 2：22 个分学科机构排名表（默认 9 列，含 Highly Cited / Hot Papers）。"""
-    _run_subjects(page, out, force, _SUBJECT_COLS9)
+    """Step 2：22 个分学科机构排名表（默认 15 列）。"""
+    _run_subjects(page, out, force, _COLS15)
+
+
+def cmd_subjects_9col(page: Page, out: Path, fmt: str, force: bool = False) -> None:
+    """Step 2 变体：9 列（202607 那版，Top/HCP/Hot 只保 Papers 计数）。"""
+    _run_subjects(page, out, force, _COLS9)
 
 
 def cmd_subjects_7col(page: Page, out: Path, fmt: str, force: bool = False) -> None:
-    """Step 2 历史版式：22 张学科表（7 列，末列 Top Papers）——用于复现旧期次。"""
-    _run_subjects(page, out, force, _SUBJECT_COLS7)
+    """Step 2 历史版式：7 列（末列 Top Papers）——用于复现旧期次。"""
+    _run_subjects(page, out, force, _COLS7)
 
 
 # Research Fields 视图的导出 URL（无筛选那张实测抄下；过滤拼在末尾，f= 必须 ASCII，中文名会被服务端按 Latin-1 处理而返回空表）
@@ -309,6 +320,7 @@ def cmd_baselines(page: Page, out: Path, fmt: str) -> None:
 COMMANDS = {
     "institutions": cmd_institutions,
     "subjects": cmd_subjects,
+    "subjects-9col": cmd_subjects_9col,
     "subjects-7col": cmd_subjects_7col,
     "fields": cmd_fields,
     "toppapers": cmd_toppapers,
@@ -329,7 +341,7 @@ def main() -> int:
         browser = p.chromium.connect_over_cdp(CDP)
         page = get_esi_page(browser)
         fn = COMMANDS[args.command]
-        if args.command in ("subjects", "subjects-7col"):
+        if args.command in ("subjects", "subjects-9col", "subjects-7col"):
             fn(page, Path(args.out), args.format, args.force)
         else:
             fn(page, Path(args.out), args.format)
