@@ -153,33 +153,28 @@ function coverArtTexture(bk, baseHex) {
   ruleRect(14, 'rgba(247,244,236,.55)', 1);
   ruleRect(21, 'rgba(247,244,236,.55)', 1);
 
-  /* ③ 朱丝栏界行：两道竖线把版面切栏（左宽栏放期号、右窄栏放书名） */
-  [CW * 0.30, CW * 0.56].forEach(function (gx) {
+  /* ③ 朱丝栏界行：两道竖线切栏——左＝钤印，右＝竖排题名与期次 */
+  [CW * 0.26, CW * 0.50].forEach(function (gx) {
     x.strokeStyle = 'rgba(247,244,236,.34)';
     x.lineWidth = 1;
     x.beginPath(); x.moveTo(gx, 34); x.lineTo(gx, CH - 34); x.stroke();
   });
 
-  /* ④ 竖排刊刻书名：**直接写在封面卷色上**（rick：不要白底签条盖上去）。
-     底是深卷色，字走乳白。
-     ⚠ 竖排必须逐字下落且不换列——用 fillText 逐字画，比 CSS 竖排稳 */
-  var title = '学科信息参考';
-  x.fillStyle = CREAM;
-  x.textAlign = 'center';
-  x.font = '700 36px "Songti SC","Source Han Serif SC",SimSun,serif';
-  var tY = 84, step = 47;
-  for (var k = 0; k < title.length; k++) {
-    x.fillText(title[k], CW * 0.74, tY + k * step);
+  /* ④ 竖排三栏：题名 / 期次（时间） / 期号——**全部竖排，与标题同一处理**（rick 要求）。
+     逐字下落，不换列（竖排用 fillText 逐字画，比 CSS 竖排稳）。
+     ⚠ 三栏右起、上端对齐，像线装书的题名栏与次栏。 */
+  function vtext(str, cx, top, size, step, fill) {
+    str = String(str || '');
+    x.fillStyle = fill;
+    x.textAlign = 'center';
+    x.font = '700 ' + size + 'px "Songti SC","Source Han Serif SC",SimSun,serif';
+    for (var i = 0; i < str.length; i++) x.fillText(str[i], cx, top + i * step);
   }
-
-  /* ⑤ 数字期号：大（rick：期号放大） */
-  x.textAlign = 'left';
-  x.fillStyle = CREAM;
-  x.font = '600 46px Consolas,"Courier New",monospace';
-  x.fillText(String(bk.period || ''), 34, CH * 0.60);
-  x.font = '500 17px "Songti SC",SimSun,serif';
-  x.fillStyle = 'rgba(247,244,236,.72)';
-  x.fillText(bk.caption || ('总第 ' + (bk.no || '') + ' 期'), 36, CH * 0.60 + 30);
+  var TOP = 84;
+  vtext('学科信息参考', CW * 0.80, TOP, 36, 47, CREAM);
+  vtext(bk.period, CW * 0.80 - 48, TOP, 24, 31, 'rgba(247,244,236,.84)');
+  vtext(bk.caption || ('总第' + (bk.no || '') + '期'), CW * 0.80 - 86, TOP, 18, 24,
+        'rgba(247,244,236,.62)');
 
   /* ⑥ 钤印：朱砂方印，微转 -3°，边缘略有不齐 */
   x.save();
@@ -204,11 +199,7 @@ function coverArtTexture(bk, baseHex) {
   x.fillText(bk.placeholder ? '示' : '衡', 0, 12);
   x.restore();
 
-  /* ⑦ 出版项（烫金细体）——期号在 ⑤ 已放大，这里只留出版项 */
-  x.textAlign = 'left';
-  x.fillStyle = 'rgba(169,138,92,.92)';
-  x.font = '400 12px "Songti SC",SimSun,serif';
-  x.fillText('云南大学图书馆', 36, CH - 34);
+  /* ⑦ 出版项已按 rick 要求去掉（原在左下「云南大学图书馆」） */
 
   /* 示意书：斜水印，别让人误以为是真出的报告 */
   if (bk.placeholder) {

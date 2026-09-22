@@ -42,19 +42,26 @@
   .tiers button[aria-current="true"]{color:#f0e6d4;border-color:#c9a06a;background:rgba(60,48,36,.9)}
   .tiers button:hover{border-color:#8a7458}
 
-  /* ---------- 声音开关（并进右下命令区；别单独浮在右上，会压住系列切换） ---------- */
-  .snd{font:inherit;font-size:11px;letter-spacing:.16em;
-    color:#c9a06a;background:rgba(60,48,36,.55);border:1px solid #6b5a45;
-    border-radius:6px;padding:5px 11px;cursor:pointer}
-  .snd[aria-pressed="true"]{color:#f0e6d4;border-color:#c9a06a;background:rgba(60,48,36,.9)}
-  .snd:hover{border-color:#c9a06a}
+  /* ---------- 声音开关：**照 G-复刻WorkingVolumes 的原设计**（34×34 圆钮 + 扬声器图标）
+     不自己发挥。注意 .snd-btn:hover 不跟 .x-btn 一起转 90°——扬声器转了会被读成「关闭」 */
+  .x-btn{width:34px; height:34px; border-radius:50%; border:1px solid var(--cream-3);
+    display:grid; place-items:center; color:var(--cream-2); flex:none; background:none;
+    cursor:pointer; padding:0;
+    transition:border-color .2s, color .2s, transform .25s}
+  .x-btn:hover{border-color:var(--cream); color:var(--cream); transform:rotate(90deg)}
+  .x-btn svg{width:13px; height:13px; display:block}
+  .snd-btn:hover{transform:none; background:var(--cream); color:var(--vol); border-color:var(--cream)}
+  .snd-btn svg{width:15px; height:15px}
+  .snd-btn .off{display:none}
+  .snd-btn[aria-pressed="false"] .wave{display:none}
+  .snd-btn[aria-pressed="false"] .off{display:block}
 
   /* ---------- 页脚：左提示 / 右动作（唯一一条底部信息带，别再叠别的） ---------- */
   .vh-foot{position:fixed;left:0;right:0;bottom:0;z-index:50;
     display:flex;align-items:center;justify-content:space-between;
     padding:0 26px 18px;font-family:Consolas,"Courier New",monospace;
     font-size:11px;letter-spacing:.16em;color:#9d9080;pointer-events:none}
-  .vh-foot .cmds{display:flex;gap:24px;pointer-events:auto}
+  .vh-foot .cmds{display:flex;gap:20px;align-items:center;pointer-events:auto}
   .vh-foot .cmds button{font:inherit;font-size:11px;letter-spacing:.16em;
     color:#b8ab99;background:none;border:none;border-bottom:1px solid transparent;
     padding:2px 0;cursor:pointer}
@@ -144,8 +151,7 @@
   body[data-flow="featured"] .vh-foot{color:var(--cream-3)}
   body[data-flow="featured"] .vh-foot .cmds button{color:var(--cream-2)}
   body[data-flow="featured"] .vh-foot .cmds button:hover{color:var(--cream);border-bottom-color:var(--cream)}
-  body[data-flow="featured"] .snd{color:var(--cream-2);border-color:var(--cream-4);background:rgba(0,0,0,.15)}
-  body[data-flow="featured"] .snd[aria-pressed="true"]{color:var(--vol);background:var(--cream);border-color:var(--cream)}
+  body[data-flow="featured"] .x-btn{color:var(--cream-2);border-color:var(--cream-4)}
 
   /* ---------- 翻书态（2D 覆盖层） ---------- */
   #reader{position:fixed;inset:0;z-index:60;background:#241f1b;
@@ -263,8 +269,16 @@
 <footer class="vh-foot">
   <span id="footHint"></span>
   <div class="cmds">
-    <button type="button" id="snd" class="snd" aria-pressed="false"
-            title="首次点击页面即开声；也可在此开关">♪ 声音 关</button>
+    <button class="x-btn snd-btn" id="snd" aria-pressed="false"
+            title="声音（默认关闭）" aria-label="声音开关">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor"
+           stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 6h2.4L9 3.3v9.4L5.4 10H3z"/>
+        <path class="wave w1" d="M11.3 5.7a3.3 3.3 0 010 4.6"/>
+        <path class="wave w2" d="M13.2 4a5.8 5.8 0 010 8"/>
+        <path class="off" d="M2.6 13.4L13.4 2.6"/>
+      </svg>
+    </button>
     <button type="button" id="cmdOpen">抽取</button>
     <button type="button" id="cmdShelf" hidden>归架</button>
     <button type="button" id="cmdReset">复位视角</button>
@@ -397,7 +411,6 @@ window.WH_DATA.tiers = [
   function syncSnd() {
     var v = A && A.on();
     snd.setAttribute('aria-pressed', v ? 'true' : 'false');
-    snd.textContent = v ? '♪ 声音 开' : '♪ 声音 关';
   }
   snd.addEventListener('click', function () { if (A) A.toggle(); syncSnd(); });
   /* 手势自动开声也要把按钮同步过来（否则开关显示「关」但已经在响） */
