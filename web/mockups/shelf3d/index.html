@@ -122,10 +122,7 @@
   .f-bottom{height:var(--bd);top:auto;bottom:0;width:100%;
     transform:translateZ(calc(var(--bd) / -2)) rotateX(-90deg);transform-origin:center bottom;
     background:var(--vol-deep)}
-  /* 书签带：从封头垂下 */
-  .ribbon{position:absolute;top:-8px;left:56%;width:6px;height:96px;
-    background:var(--vol-deep);transform:translateZ(calc(var(--bd) / 2 + 3px));
-    box-shadow:1px 2px 5px rgba(0,0,0,.3)}
+  /* 书签带已按 rick 要求去掉（原在封头垂下，挡住封面文字） */
 
   /* 右详情栏（G 的规格表是主信息，不是附注） */
   .dsp-detail{display:flex;flex-direction:column;justify-content:center;
@@ -247,7 +244,6 @@
       <div class="book3d" id="dspBook" title="拖拽可转动">
         <div class="face f-body"></div>
         <div class="face f-cover"><img id="dspArt" alt="书封"></div>
-        <div class="ribbon"></div>
         <div class="face f-back"></div>
         <div class="face f-right"></div>
         <div class="face f-top"></div>
@@ -287,6 +283,7 @@
 
 <script src="three-bundle.js"></script>
 <script src="data.js"></script>
+<script src="cover-assets.js"></script>
 <script>
 /* ⚠ data.js 是 `window.WH_DATA = {books:…}` **整体覆盖**——摆位数据必须在它之后补，
    否则 tiers 被抹掉，WH_DATA.tiers[i] 读成 undefined[2]，init 当场断掉、点击全绑不上。 */

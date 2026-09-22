@@ -124,6 +124,22 @@ function clothMaps(hex, seed) {
      ⑦ 出版项与期次（烫金细体）
    慎用（A 稿定的）：圆角卡片 / 渐变 / emoji / 抽象装饰纹样。
    ⚠ 画布比例必须等于书封比例（0.44:0.68），否则字被拉长（技能坑 6）。 */
+/* 左下角标记图：内嵌 data URL（file:// 图片上画布会污染画布，toDataURL 会炸）。
+   Image 解码是异步的，未就绪时封面先不带它，就绪后重画一遍。 */
+var coverMark = null;
+(function () {
+  var src = window.WH_COVER_IMG && window.WH_COVER_IMG.mark;
+  if (!src) return;
+  coverMark = new Image();
+  coverMark.onload = function () {
+    if (window.WH_SHELF3D && window.WH_SHELF3D.refreshCovers) window.WH_SHELF3D.refreshCovers();
+  };
+  coverMark.src = src;
+})();
+function coverMarkReady() {
+  return !!(coverMark && coverMark.complete && coverMark.naturalWidth > 0);
+}
+
 function coverArtTexture(bk, baseHex) {
   var CW = 384, CH = 594;
   var c = makeCanvas(CW, CH), x = c.getContext('2d');
@@ -176,30 +192,16 @@ function coverArtTexture(bk, baseHex) {
   vtext(bk.caption || ('总第' + (bk.no || '') + '期'), CW * 0.80 - 86, TOP, 18, 24,
         'rgba(247,244,236,.62)');
 
-  /* ⑥ 钤印：朱砂方印，微转 -3°，边缘略有不齐 */
-  x.save();
-  x.translate(CW * 0.185, CH * 0.22);
-  x.rotate(-3 * Math.PI / 180);
-  x.fillStyle = bk.placeholder ? 'rgba(132,127,117,.9)' : ZHU;
-  x.fillRect(-30, -30, 60, 60);
-  x.fillStyle = 'rgba(0,0,0,.10)';                  /* 内框留白线 */
-  x.fillRect(-30, -30, 60, 3); x.fillRect(-30, 27, 60, 3);
-  x.fillRect(-30, -30, 3, 60); x.fillRect(27, -30, 3, 60);
-  for (i = 0; i < 26; i++) {                        /* 用旧了：边缘敲掉几处 */
-    x.fillStyle = baseHex;
-    var edge = r() * 4 | 0, t2 = r() * 56 - 28;
-    if (edge === 0) x.fillRect(t2, -30, 2 + r() * 3 | 0, 1 + r() * 2 | 0);
-    else if (edge === 1) x.fillRect(t2, 28, 2 + r() * 3 | 0, 1 + r() * 2 | 0);
-    else if (edge === 2) x.fillRect(-30, t2, 1 + r() * 2 | 0, 2 + r() * 3 | 0);
-    else x.fillRect(28, t2, 1 + r() * 2 | 0, 2 + r() * 3 | 0);
+  /* ⑥ 左下角：Snipaste 标记图（缩小贴入）。图是**透明底**的，不会糊出白块。
+     ⚠ 必须在 onload 后才画得出来，所以未就绪时先跳过，就绪后 refreshCovers() 重画。 */
+  if (coverMarkReady()) {
+    var mw = 96, mh = 96, mx = 30, my = CH - mw - 34;
+    x.globalAlpha = .92;
+    x.drawImage(coverMark, mx, my, mw, mh);
+    x.globalAlpha = 1;
   }
-  x.fillStyle = PAPER;
-  x.textAlign = 'center';
-  x.font = '700 34px "Songti SC",SimSun,serif';
-  x.fillText(bk.placeholder ? '示' : '衡', 0, 12);
-  x.restore();
 
-  /* ⑦ 出版项已按 rick 要求去掉（原在左下「云南大学图书馆」） */
+  /* ⑦ 钤印已按 rick 要求去掉（原「衡」方印）；出版项也已去掉 */
 
   /* 示意书：斜水印，别让人误以为是真出的报告 */
   if (bk.placeholder) {
@@ -1171,13 +1173,31 @@ window.WH_SHELF3D = {
       };
     });
   },
-  /* 把封面单独画一张吐出来（供取色校验与陈列层展示用，不参与渲染） */
+  /* 把封面单独画一张吐出来（供取色校验与陈列层展示用，不参与渲染）。
+     ⚠ 期号要取**真实的那本**——写死 no:1 会把「总第35期」显示成「总第1期」 */
   coverPreview: function (period) {
     var pal = paletteOf(period);
-    var t = coverArtTexture({ period: period, no: 1 }, pal.vol);
+    var rec = null, list = (window.WH_DATA && window.WH_DATA.books) || [];
+    for (var i = 0; i < list.length; i++) if (list[i].period === period) rec = list[i];
+    var t = coverArtTexture(rec || { period: period, no: '' }, pal.vol);
     var img = t.image;
     try { t.dispose(); } catch (e) {}
     return img.toDataURL('image/png');
+  },
+  /* 标记图解码完成后把架上每本的封面重画一遍 */
+  refreshCovers: function () {
+    allBooks().forEach(function (b) {
+      var bk = b.userData.bk;
+      var mats = b.userData.mats || [];
+      var front = mats[3];                 /* [cloth, spine, paper, front, band] */
+      if (!bk || !front) return;
+      try {
+        var t = coverArtTexture(bk, paletteOf(bk.period || '').vol);
+        if (front.map) { try { front.map.dispose(); } catch (e) {} }
+        front.map = t;
+        front.needsUpdate = true;          /* 换 map 必须 needsUpdate，否则不生效 */
+      } catch (e) { console.warn('[封面] 重画失败', e); }
+    });
   },
   paletteOf: paletteOf,
   tiers: function () {
