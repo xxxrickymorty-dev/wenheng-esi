@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>书架 · 质感对齐版（静态稿 · 待审核）</title>
+<style>
+  /* 书架态的底色用中性深褐（不跟随某一卷的卷色）——
+     四卷色相各异，底色跟着某一卷走会把靛青与松绿压成同一种暗棕。 */
+  html,body{height:100%}
+  body{margin:0;background:#2b2622;overflow:hidden;
+    font:15px/1.6 system-ui,-apple-system,"Microsoft YaHei",sans-serif;color:#e8dfd2}
+  #scene{display:block;width:100vw;height:100vh}
+  .cap{position:fixed;left:22px;bottom:20px;font-size:13.5px;color:#b8ab99;letter-spacing:.02em}
+  .cap b{color:#e8dfd2;font-weight:600}
+  .tip{position:fixed;right:22px;bottom:20px;font-size:13px;color:#9d9080}
+  .warn{position:fixed;left:22px;top:18px;font-size:13px;color:#c9a06a;
+    border:1px dashed #6b5a45;border-radius:8px;padding:8px 12px;background:rgba(43,38,34,.7)}
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div class="warn">静态稿 · 待审核：只调了「光与材质」，没动交互与页面结构</div>
+<div class="cap"><b>书架 · 质感对齐版</b>　环境光照 + 一盏投影主光 + 五盏擦光 + 材质分层（布有 sheen / 烫金高金属 / 纸高粗糙）</div>
+<div class="tip">拖动可转视角 · 滚轮缩放</div>
+
+<script>
+/* 本期数据（真实期次与卷色；正式版由服务端注入，这里为静态稿内联） */
+window.WH_DATA = {
+  books: [
+    { period: '202607', no: 38 },
+    { period: '202605', no: 37 },
+    { period: '202603', no: 36 },
+    { period: '202601', no: 35 }
+  ]
+};
+</script>
+<script src="three-bundle.js"></script>
+<script src="shelf3d.js"></script>
+<script>
+(function () {
+  var ok = window.WH_SHELF3D.init(document.getElementById('scene'));
+  if (ok) window.WH_SHELF3D.start();
+  window.__SHELF_INFO = window.WH_SHELF3D.info();
+})();
+</script>
+</body>
+</html>
