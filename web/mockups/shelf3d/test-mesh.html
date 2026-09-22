@@ -3,21 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>增量 ① · Blender 链路自检（静态稿 · 待审核）</title>
+<title>增量 ①② · Blender 链路自检（静态稿 · 待审核）</title>
 <style>
   html,body{height:100%}
   body{margin:0;background:#2b2622;overflow:hidden;
     font:15px/1.6 system-ui,-apple-system,"Microsoft YaHei",sans-serif;color:#e8dfd2}
   #scene{display:block;width:100vw;height:100vh;cursor:pointer}
-  .panel{position:fixed;left:22px;top:18px;background:rgba(43,38,34,.86);
-    border:1px solid #6b5a45;border-radius:10px;padding:14px 18px;min-width:320px}
-  .panel h1{margin:0 0 8px;font-size:16px;color:#c9a06a;letter-spacing:.02em}
-  .panel table{border-collapse:collapse;font-size:13.5px;width:100%}
+  .panel{position:fixed;left:22px;top:18px;background:rgba(43,38,34,.90);
+    border:1px solid #6b5a45;border-radius:10px;padding:14px 18px;width:390px;
+    max-height:calc(100vh - 120px);overflow:auto}
+  .panel h1{margin:0 0 4px;font-size:16px;color:#c9a06a;letter-spacing:.02em}
+  .panel h2{margin:14px 0 6px;font-size:13.5px;color:#e8dfd2;font-weight:600;
+    border-top:1px solid #4a3f34;padding-top:10px}
+  .panel table{border-collapse:collapse;font-size:13px;width:100%}
   .panel td{padding:3px 8px 3px 0;vertical-align:top}
   .panel td:first-child{color:#b8ab99;white-space:nowrap}
   .panel .num{font-family:Consolas,"Courier New",monospace;font-variant-numeric:tabular-nums}
   .ok{color:#8fce7b}
   .bad{color:#e8836f}
+  .sw{display:inline-block;width:11px;height:11px;border-radius:2px;
+    vertical-align:-1px;margin-right:5px;border:1px solid rgba(0,0,0,.35)}
   .cap{position:fixed;left:22px;bottom:20px;font-size:13px;color:#b8ab99;line-height:1.9}
   .cap b{color:#e8dfd2}
   .tip{position:fixed;right:22px;bottom:20px;font-size:13px;color:#9d9080;text-align:right;line-height:1.9}
@@ -27,17 +32,22 @@
 <canvas id="scene"></canvas>
 
 <div class="panel" id="panel">
-  <h1>增量 ① · 方块从 Blender 到屏幕</h1>
-  <table id="rows"><tbody>
-    <tr><td>读取中…</td><td></td></tr>
+  <h1>增量 ①② · 从 Blender 到屏幕</h1>
+  <table><tbody>
+    <tr><td>方块（链路）</td><td id="cube-line" class="num">…</td></tr>
+    <tr><td>桌子（多部件）</td><td id="desk-line" class="num">…</td></tr>
   </tbody></table>
+  <h2>桌子逐件核对</h2>
+  <table id="desk-rows"><tbody><tr><td>…</td><td></td></tr></tbody></table>
+  <h2>判据</h2>
+  <table id="verdict"><tbody><tr><td>…</td><td></td></tr></tbody></table>
 </div>
 
 <div class="cap">
-  <b>链路自检</b>　Blender 里建的方块 → 导出 → 这里出现<br>
-  判据：尺寸与原点与 Blender 一致，误差 ≤ 1 毫米
+  <b>链路自检</b>　Blender 里建的几何 → 导出 → 这里出现<br>
+  增量① 方块通了；增量② 换成「桌面 + 4 腿」，看多部件与材质槽丢不丢
 </div>
-<div class="tip">拖动可转视角 · 滚轮缩放<br>灰色格子 = 1 米见方的参照</div>
+<div class="tip">拖动可转视角 · 滚轮缩放<br>棕＝木头（桌面）　银＝金属（腿）</div>
 
 <script src="three-bundle.js"></script>
 <script src="meshes.js"></script>
@@ -69,6 +79,21 @@ function buildGeometry(part) {
   return g;
 }
 
+/* 材质槽 → 桌面上的两套质感。名字对不上就退回一个亮粉色，一眼看出槽丢了。 */
+var MAT_FACTORY = {
+  wood: function () { return new THREE.MeshPhysicalMaterial({
+    color: 0x8a6a4a, roughness: 0.62, metalness: 0.04 }); },
+  metal: function () { return new THREE.MeshPhysicalMaterial({
+    color: 0x9a9b9e, roughness: 0.19, metalness: 0.90 }); },
+  fabric: function () { return new THREE.MeshPhysicalMaterial({
+    color: 0x6b5a45, roughness: 0.85, metalness: 0.0, sheen: 0.30 }); },
+  _missing: function () { return new THREE.MeshBasicMaterial({ color: 0xff00aa }); }
+};
+function makeMat(name) {
+  var f = MAT_FACTORY[name] || MAT_FACTORY._missing;
+  return f();
+}
+
 /* ---------- 场景 ---------- */
 var canvas = document.getElementById('scene');
 var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
@@ -80,97 +105,138 @@ var scene = new THREE.Scene();
 scene.background = new THREE.Color(0x2b2622);
 
 var camera = new THREE.PerspectiveCamera(32, window.innerWidth / window.innerHeight, 0.05, 60);
-camera.position.set(0.85, 0.55, 0.95);
+camera.position.set(1.7, 1.15, 1.85);
 
 var controls = new OrbitControls(camera, canvas);
-controls.target.set(0, 0.08, 0);
+controls.target.set(0, 0.36, 0);
 controls.update();
 
-/* 光：一盏主光 + 一盏补光，够看清棱角就行 */
-var key = new THREE.DirectionalLight(0xfff2dd, 2.1);
-key.position.set(-1.2, 1.8, 1.3);
+var key = new THREE.DirectionalLight(0xfff2dd, 2.2);
+key.position.set(-1.6, 2.4, 1.7);
 scene.add(key);
-scene.add(new THREE.AmbientLight(0xb8ab99, 0.55));
+scene.add(new THREE.AmbientLight(0xb8ab99, 0.6));
 
-/* 参照：1 米见方的地面格子（灰线），一眼看出方块是 0.30 × 0.20 */
-var grid = new THREE.GridHelper(2, 2, 0x6b5a45, 0x4a3f34);
+/* 地面格子：每格 0.5 米，一眼看出桌子是 1.2 × 0.7 */
+var grid = new THREE.GridHelper(4, 8, 0x6b5a45, 0x4a3f34);
 grid.position.y = 0.0005;
 scene.add(grid);
 
-/* 三根 0.1 米的小标尺（红=X 宽、绿=Y 高、蓝=Z 深），对着方块的三条边 */
-function axisBar(from, to, color) {
-  var dir = new THREE.Vector3().subVectors(to, from);
-  var len = dir.length();
-  var mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(len, 0.006, 0.006),
-    new THREE.MeshBasicMaterial({ color: color })
-  );
-  mesh.position.copy(from).addScaledVector(dir, 0.5);
-  mesh.lookAt(to);
-  mesh.rotateY(Math.PI / 2);
-  return mesh;
-}
-
-/* ---------- 装入方块 ---------- */
-var M = (window.WH_MESHES || {})['test-cube'];
-var panelBody = document.querySelector('#rows tbody');
-function rows(list) {
-  panelBody.innerHTML = list.map(function (r) {
+/* ---------- 面板文字 ---------- */
+function setRows(tbody, list) {
+  tbody.innerHTML = list.map(function (r) {
     return '<tr><td>' + r[0] + '</td><td class="' + (r[2] || '') + '">' + r[1] + '</td></tr>';
   }).join('');
 }
-
-if (!M) {
-  rows([['读取 meshes.js', '没找到 test-cube，导出是不是没跑？', 'bad']]);
-} else {
-  var part = M.parts[0];
-  var geo = buildGeometry(part);
-  var mat = new THREE.MeshPhysicalMaterial({
-    color: 0x8a6a4a, roughness: 0.62, metalness: 0.04   /* 先用木头的质感占位 */
-  });
-  var mesh = new THREE.Mesh(geo, mat);
-  /* 导出时原点已在底面中心，直接放地上 */
-  scene.add(mesh);
-
-  var bb = geo.boundingBox;
-  var measured = [bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z];
-  var expected = M.bbox;
-  var tolM = 0.001;  /* 1 毫米 */
-
-  function fmt(x) { return (x * 1000).toFixed(1) + ' mm'; }
-  function cmp(a, b) {
-    var d = Math.abs(a - b);
-    return (d <= tolM ? '<span class="ok">✓</span> ' : '<span class="bad">✗</span> ')
-         + '差 ' + fmt(d);
-  }
-
-  rows([
-    ['Blender 报的尺寸', '宽 ' + fmt(expected[0]) + ' · 高 ' + fmt(expected[1]) + ' · 深 ' + fmt(expected[2])],
-    ['屏幕上量的尺寸', '宽 ' + fmt(measured[0]) + ' · 高 ' + fmt(measured[1]) + ' · 深 ' + fmt(measured[2])],
-    ['宽 对不对', cmp(measured[0], expected[0]), measured[0] - expected[0] <= tolM ? 'ok' : 'bad'],
-    ['高 对不对', cmp(measured[1], expected[1]), measured[1] - expected[1] <= tolM ? 'ok' : 'bad'],
-    ['深 对不对', cmp(measured[2], expected[2]), measured[2] - expected[2] <= tolM ? 'ok' : 'bad'],
-    ['底面高度（应为 0）', fmt(bb.min.y) + ' ' + cmp(bb.min.y, 0)],
-    ['左右对称（应为 ±150）', fmt(bb.min.x) + ' … ' + fmt(bb.max.x)],
-    ['前后对称（应为 ±100）', fmt(bb.min.z) + ' … ' + fmt(bb.max.z)],
-    ['网格规模', M.parts.length + ' 个部件 · ' + (part.idx ? decodeU16(part.idx).length / 3 : 0) + ' 个三角面']
-  ]);
-
-  /* 三条彩色标尺贴着方块的三条边，长度都是 0.30 / 0.15 / 0.20 米 */
-  scene.add(axisBar(new THREE.Vector3(bb.min.x, -0.004, bb.max.z + 0.012),
-                    new THREE.Vector3(bb.max.x, -0.004, bb.max.z + 0.012), 0xd66a4a));
-  scene.add(axisBar(new THREE.Vector3(bb.max.x + 0.012, bb.min.y, bb.max.z + 0.012),
-                    new THREE.Vector3(bb.max.x + 0.012, bb.max.y, bb.max.z + 0.012), 0x7bb86a));
-  scene.add(axisBar(new THREE.Vector3(bb.max.x + 0.012, -0.004, bb.min.z),
-                    new THREE.Vector3(bb.max.x + 0.012, -0.004, bb.max.z), 0x6a8fd6));
-
-  window.__MESH_CHECK = {
-    expected: expected,
-    measured: measured.map(function (x) { return Math.round(x * 1e6) / 1e6; }),
-    min: [bb.min.x, bb.min.y, bb.min.z],
-    tris: decodeU16(part.idx).length / 3
-  };
+function fmt(x) { return (x * 1000).toFixed(1) + ' mm'; }
+function tick(ok) { return ok ? '<span class="ok">✓</span>' : '<span class="bad">✗</span>'; }
+function sw(name) {
+  var c = { wood: '#8a6a4a', metal: '#9a9b9e', fabric: '#6b5a45' }[name] || '#ff00aa';
+  return '<span class="sw" style="background:' + c + '"></span>' + name;
 }
+
+var M = window.WH_MESHES || {};
+var tolM = 0.001;
+var verdicts = [];
+var deskInfo = { parts: [], legs: 0, mats: {} };
+
+/* ---------- 方块（增量①，回归） ---------- */
+var cubeLine = '没读到';
+(function () {
+  var e = M['test-cube'];
+  if (!e) { cubeLine = '没读到 test-cube'; return; }
+  var geo = buildGeometry(e.parts[0]);
+  var mesh = new THREE.Mesh(geo, makeMat(e.parts[0].mat));
+  mesh.position.set(-1.35, 0, 0);
+  scene.add(mesh);
+  var bb = geo.boundingBox;
+  var meas = [bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z];
+  var d = Math.max(Math.abs(meas[0] - e.bbox[0]), Math.abs(meas[1] - e.bbox[1]), Math.abs(meas[2] - e.bbox[2]));
+  var ok = d <= tolM;
+  verdicts.push(['方块尺寸没跑偏', tick(ok) + ' 最大差 ' + fmt(d), ok ? 'ok' : 'bad']);
+  cubeLine = tick(ok) + ' 1 部件 · ' + decodeU16(e.parts[0].idx).length / 3 + ' 面 · 最大差 ' + fmt(d);
+})();
+
+/* ---------- 桌子（增量②） ---------- */
+(function () {
+  var e = M['test-desk'];
+  if (!e) {
+    setRows(document.querySelector('#desk-rows tbody'), [['读取 meshes.js', '没找到 test-desk，导出是不是没跑？', 'bad']]);
+    return;
+  }
+  var group = new THREE.Group();
+  scene.add(group);
+
+  var rows = [];
+  var seenName = {}, seenMat = {};
+  var legCenters = [];
+
+  e.parts.forEach(function (part) {
+    var geo = buildGeometry(part);
+    var mesh = new THREE.Mesh(geo, makeMat(part.mat));
+    group.add(mesh);
+    var bb = geo.boundingBox;
+    var meas = [bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z];
+
+    seenName[part.name] = true;
+    seenMat[part.mat] = (seenMat[part.mat] || 0) + 1;
+    if (part.name.indexOf('leg') === 0) {
+      deskInfo.legs++;
+      legCenters.push([
+        Math.round((bb.min.x + bb.max.x) / 2 * 1000),
+        Math.round((bb.min.z + bb.max.z) / 2 * 1000)
+      ]);
+    }
+    deskInfo.parts.push(part.name + '/' + part.mat);
+
+    rows.push([
+      part.name + ' · ' + sw(part.mat),
+      '尺寸 ' + fmt(meas[0]) + ' × ' + fmt(meas[1]) + ' × ' + fmt(meas[2])
+      + '　底 ' + fmt(bb.min.y),
+      'num'
+    ]);
+  });
+
+  rows.push(['合计', e.parts.length + ' 个部件 · ' + e.bbox.map(fmt).join(' × '), 'num']);
+  setRows(document.querySelector('#desk-rows tbody'), rows);
+
+  /* 判据 */
+  var hasTop = !!seenName['top'];
+  var legsOk = deskInfo.legs === 4;
+  var matSplit = Object.keys(seenMat).length >= 2 && (seenMat['wood'] || 0) >= 1 && (seenMat['metal'] || 0) >= 4;
+  var uniq = {};
+  legCenters.forEach(function (c) { uniq[c[0] + ',' + c[1]] = true; });
+  var legsApart = Object.keys(uniq).length === 4;
+  var topY = 0;
+  e.parts.forEach(function (part) {
+    if (part.name === 'top') {
+      var geo = buildGeometry(part);
+      topY = geo.boundingBox.max.y;
+    }
+  });
+  var topH = Math.abs(topY - 0.75) <= tolM;
+
+  var overAll = [0, 0, 0];
+  e.parts.forEach(function (part) {
+    var geo = buildGeometry(part);
+    overAll[0] = Math.max(overAll[0], geo.boundingBox.max.x - geo.boundingBox.min.x);
+  });
+
+  verdicts.push(['桌面在（名叫 top）', tick(hasTop), hasTop ? 'ok' : 'bad']);
+  verdicts.push(['4 条腿都在', tick(legsOk) + ' 实际 ' + deskInfo.legs + ' 条', legsOk ? 'ok' : 'bad']);
+  verdicts.push(['4 条腿在四个角（不重叠）', tick(legsApart) + ' ' + Object.keys(uniq).length + ' 个位置', legsApart ? 'ok' : 'bad']);
+  verdicts.push(['材质可分（木 + 金属）', tick(matSplit) + ' ' + Object.keys(seenMat).map(sw).join(' '), matSplit ? 'ok' : 'bad']);
+  verdicts.push(['桌面上沿 = 0.75 m', tick(topH) + ' 实际 ' + fmt(topY), topH ? 'ok' : 'bad']);
+
+  deskInfo.rows = rows;
+})();
+
+setRows(document.querySelector('#verdict tbody'), verdicts);
+
+window.__MESH_CHECK = {
+  desk_parts: deskInfo.parts,
+  desk_legs: deskInfo.legs,
+  verdicts: verdicts.map(function (v) { return [v[0], v[2]]; })
+};
 
 window.addEventListener('resize', function () {
   camera.aspect = window.innerWidth / window.innerHeight;

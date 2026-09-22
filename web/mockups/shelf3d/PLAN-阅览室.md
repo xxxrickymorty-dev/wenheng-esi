@@ -26,6 +26,12 @@
 ⚠️ 插件**在 headless 下自动不起**（`bpy.app.background` 直接 return）。
 所以 MCP 只用于「人在 Blender 看着调」的场合；自动化一律走脚本。这正好与生产分工一致。
 
+⚠️ **安全模式下连 `import sys` 都会被拦**，外部 `.py` 更读不了（`import wh_models` 直接拒绝）——
+只放行 `bpy` / `bmesh` / `mathutils` 与极少数纯标准库。所以 **MCP 里跑的建模代码要内联**，
+不能 `import` 仓库里的模块；几何的**唯一事实源**仍是 `wh_models.py`（无头脚本用它），
+MCP 内联那份是「让你在 Blender 里看得见」的副本，改了几何要两边同步（或只改 `wh_models.py` 再内联过来）。
+已实测（2026-09-22）：`import sys` → `Rejected by safe mode`。
+
 ## 2. 空间构成（从镜头里看，从近到远）
 
 默认机位：`fov 32`（长焦压缩）、相机 z≈5.05（整柜）/ 2.55（单层焦点）。
