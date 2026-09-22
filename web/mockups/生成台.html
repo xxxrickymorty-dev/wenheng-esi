@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="zh-CN" data-palette="zhu" data-state="ready">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 生成台（静态稿 · 待审核）</title>
+<style>
+/* ============================================================
+   这是给 rick 审核的静态稿：单文件、双击即开、零依赖。
+   两套配色可切换（右上角）：① 朱批原色系（沿用演示站令牌）② 莫兰迪
+   四个状态可切换：待生成 / 生成中 / 已完成 / 失败
+   字号按「馆员与评委年龄偏大」定：正文 17px 起，最小标签 13px
+   ============================================================ */
+:root{
+  /* 朱批原色系（来自演示站 style.css 的 :root 令牌，保持同源）
+     全部文字/底色组合已实测 ≥4.5:1（WCAG AA）——年龄偏大的用户不靠猜 */
+  --bg:#f3efe6; --card:#fbf8f1; --panel:#f6f1e7;
+  --ink:#2f2a24; --ink-2:#5b5248; --ink-3:#6f6558;
+  --line:#d9cfbc; --line-2:#e7dfd0;
+  --zhu:#b23a2a; --zhu-soft:#f0dcd5;
+  --gold:#a9853f; --gold-soft:#efe3c9;
+  --ok:#3f6b4a; --ok-soft:#e2ece0;
+  --warn:#7d5518; --warn-soft:#f5ead2;
+  --bad:#a8321f; --bad-soft:#f4ddd7;
+  --shadow:0 1px 2px rgba(47,42,36,.06), 0 8px 24px rgba(47,42,36,.06);
+  --r:14px; --r-sm:10px;
+}
+html[data-palette="morandi"]{
+  /* 莫兰迪（灰调、低饱和）：原版对比度不够，已按实测调深至全部 ≥4.5:1 */
+  --bg:#eceae6; --card:#f7f6f3; --panel:#f1efeb;
+  --ink:#33322f; --ink-2:#5f5c56; --ink-3:#6b665e;
+  --line:#d7d3cb; --line-2:#e5e2dc;
+  --zhu:#85564e; --zhu-soft:#ece0dd;
+  --gold:#8f8a72; --gold-soft:#e8e6dc;
+  --ok:#4f6a58; --ok-soft:#e4ebe5;
+  --warn:#6f5c3c; --warn-soft:#eee9dd;
+  --bad:#85564b; --bad-soft:#eee2de;
+  --shadow:0 1px 2px rgba(51,50,47,.05), 0 8px 22px rgba(51,50,47,.05);
+}
+html[data-palette="mix"]{
+  /* 莫兰迪底 + 朱砂点睛：大面积走灰调，朱砂只留给「签章 / 需要人拍板 / 主按钮」 */
+  --bg:#eae7e2; --card:#f8f6f2; --panel:#f1efea;
+  --ink:#312e2a; --ink-2:#5c5852; --ink-3:#6b665e;
+  --line:#d8d4cc; --line-2:#e6e3dd;
+  --zhu:#a8442f; --zhu-soft:#f0dcd6;
+  --gold:#8f8a72; --gold-soft:#e8e6dc;
+  --ok:#4f6a58; --ok-soft:#e4ebe5;
+  --warn:#6f5c3c; --warn-soft:#eee9dd;
+  --bad:#9a4b3c; --bad-soft:#f0e0db;
+  --shadow:0 1px 2px rgba(49,46,42,.05), 0 8px 22px rgba(49,46,42,.05);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:17px/1.7 system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-family:"Source Han Serif SC","Noto Serif SC",SimSun,serif;font-weight:600;margin:0}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--zhu);outline-offset:3px;border-radius:6px}
+
+/* ---------- 审核工具条（正式上线时会去掉） ---------- */
+.review{
+  display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;
+  padding:12px 22px;background:var(--panel);border-bottom:1px dashed var(--line);
+  font-size:14px;color:var(--ink-2)
+}
+.review b{color:var(--ink)}
+.seg{display:flex;gap:6px}
+.seg button{
+  padding:6px 14px;border:1px solid var(--line);background:var(--card);
+  border-radius:999px;cursor:pointer;font-size:14px
+}
+.seg button[aria-pressed="true"]{background:var(--zhu);border-color:var(--zhu);color:#fff}
+
+/* ---------- 顶栏 ---------- */
+.topbar{
+  display:flex;align-items:center;gap:18px;padding:14px 22px;
+  background:var(--card);border-bottom:1px solid var(--line)
+}
+.brand{display:flex;align-items:baseline;gap:10px;font-family:"Source Han Serif SC",SimSun,serif}
+.brand strong{font-size:23px;letter-spacing:.06em}
+.brand span{font-size:14px;color:var(--ink-3);letter-spacing:.18em}
+.nav{display:flex;gap:6px;margin-left:auto}
+.nav a{
+  display:flex;align-items:center;gap:7px;padding:9px 14px;border-radius:var(--r-sm);
+  color:var(--ink-2);text-decoration:none;font-size:15px
+}
+.nav a[aria-current="page"]{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
+.nav a:hover{background:var(--panel)}
+.who{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-2);padding-left:12px;border-left:1px solid var(--line)}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);
+  display:grid;place-items:center;font-size:14px;font-weight:700}
+
+/* ---------- 版心 ---------- */
+main{max-width:1120px;margin:0 auto;padding:26px 22px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.period{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:20px 24px 0}
+.period h1{font-size:26px;letter-spacing:.02em}
+.period .tag{
+  font-size:14px;color:var(--gold);border:1px solid var(--gold-soft);
+  background:var(--gold-soft);border-radius:999px;padding:3px 12px
+}
+.period .switch{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:15px;color:var(--ink-2)}
+.period .switch select{
+  font:inherit;padding:9px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--card);color:var(--ink)
+}
+
+/* ---------- 三步条 ---------- */
+.steps{display:flex;align-items:stretch;gap:0;padding:18px 24px 4px;flex-wrap:wrap}
+.step{flex:1 1 220px;display:flex;gap:12px;padding:16px 18px;border-radius:var(--r-sm);align-items:flex-start}
+.step + .step{border-left:1px dashed var(--line-2)}
+.step .no{
+  flex:0 0 30px;height:30px;border-radius:50%;display:grid;place-items:center;
+  border:1.5px solid var(--line);color:var(--ink-3);font-size:15px;font-weight:700
+}
+.step.done .no{background:var(--ok);border-color:var(--ok);color:#fff}
+.step .t{display:block;font-weight:600;font-size:17px}
+.step .d{display:block;font-size:14.5px;color:var(--ink-3);margin-top:2px}
+.step.done .d{color:var(--ok)}
+.step .d .link{color:var(--zhu);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+/* ---------- 主按钮区 ---------- */
+.actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:18px 24px 22px}
+.btn{
+  display:inline-flex;align-items:center;gap:9px;padding:13px 24px;border-radius:var(--r-sm);
+  border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:17px;font-weight:600
+}
+.btn:hover{background:var(--panel)}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;padding:14px 30px;font-size:18px}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ghost{border-style:dashed;color:var(--ink-2);font-weight:500}
+.hint{font-size:14.5px;color:var(--ink-3)}
+
+/* ---------- 预测模型 ---------- */
+.model{margin:0 24px 20px;border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--panel)}
+.model summary{
+  display:flex;align-items:center;gap:10px;padding:14px 18px;cursor:pointer;font-size:16px;list-style:none
+}
+.model summary::-webkit-details-marker{display:none}
+.model summary .k{font-weight:600}
+.model summary .v{color:var(--ink-2)}
+.model summary .arrow{margin-left:auto;color:var(--ink-3);transition:transform .2s}
+.model[open] summary .arrow{transform:rotate(90deg)}
+.model .body{padding:0 18px 16px}
+table{width:100%;border-collapse:collapse;font-size:15.5px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line-2);vertical-align:top}
+th{color:var(--ink-3);font-weight:600;font-size:14px;letter-spacing:.04em}
+td select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+.mdesc{display:block;color:var(--ink-3);font-size:13.5px;margin-top:3px}
+
+/* ---------- 报告区 ---------- */
+.report{margin-top:22px;padding:22px 24px}
+.report h2{font-size:20px;display:flex;align-items:center;gap:10px}
+.empty{
+  margin-top:14px;border:1px dashed var(--line);border-radius:var(--r-sm);
+  padding:34px 20px;text-align:center;color:var(--ink-3);font-size:16px
+}
+
+/* ---------- 状态条 / 提示条 ---------- */
+.banner{display:flex;gap:12px;align-items:flex-start;padding:16px 18px;border-radius:var(--r-sm);margin:0 24px 18px;font-size:16px}
+.banner.ok{background:var(--ok-soft);color:var(--ok)}
+.banner.bad{background:var(--bad-soft);color:var(--bad)}
+.banner.warn{background:var(--warn-soft);color:var(--warn)}
+.banner .ico{flex:0 0 22px;margin-top:2px}
+.banner b.title{display:block;font-size:17px;margin-bottom:2px}
+.banner .next{color:inherit;opacity:.95}
+.banner .acts{margin-top:10px;display:flex;gap:10px;flex-wrap:wrap}
+.banner .acts .btn{padding:9px 16px;font-size:15px;background:transparent;border-color:currentColor;color:inherit;font-weight:600}
+
+/* ---------- 进度 ---------- */
+.progress{margin:0 24px 6px}
+.prow{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-2);font-size:16px}
+.prow:last-child{border-bottom:none}
+.prow .name{flex:0 0 132px;color:var(--ink-2)}
+.prow .bar{flex:1;height:10px;border-radius:99px;background:var(--line-2);overflow:hidden}
+.prow .bar i{display:block;height:100%;background:var(--ok);border-radius:99px}
+.prow.now .bar i{background:var(--gold)}
+.prow .pct{flex:0 0 74px;text-align:right;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.prow .tick{flex:0 0 22px;color:var(--ok)}
+.spin{animation:spin 1.2s linear infinite;transform-origin:center}
+@keyframes spin{to{transform:rotate(360deg)}}
+.elapsed{display:flex;align-items:center;gap:8px;color:var(--ink-3);font-size:15px;padding:2px 24px 18px}
+
+/* ---------- 完成态：产物卡 ---------- */
+.artifacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:14px}
+.art{display:flex;gap:12px;align-items:flex-start;padding:16px;border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--panel)}
+.art .ico{flex:0 0 24px;color:var(--zhu);margin-top:2px}
+.art .n{font-weight:600}
+.art .m{font-size:14px;color:var(--ink-3)}
+.art .go{margin-left:auto;align-self:center;color:var(--zhu);font-size:15px;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+.seal{
+  display:inline-flex;align-items:center;gap:8px;color:var(--zhu);border:1.5px solid var(--zhu);
+  border-radius:8px;padding:4px 10px;font-size:14.5px;font-weight:700;letter-spacing:.08em
+}
+
+/* ---------- 四态切换（任务区 #s-* 与报告区 #r-* 必须成对出现） ---------- */
+.state{display:none}
+html[data-state="ready"]   #s-ready,   html[data-state="ready"]   #r-ready,
+html[data-state="running"] #s-running, html[data-state="running"] #r-running,
+html[data-state="done"]    #s-done,    html[data-state="done"]    #r-done,
+html[data-state="failed"]  #s-failed,  html[data-state="failed"]  #r-failed{display:block}
+
+/* ---------- 窄屏 ---------- */
+@media (max-width:760px){
+  body{font-size:16.5px}
+  .nav{display:none}
+  .steps{flex-direction:column}
+  .step + .step{border-left:none;border-top:1px dashed var(--line-2)}
+  .prow .name{flex-basis:96px}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 审核工具条：正式页面里没有这一段 ===== -->
+<div class="review">
+  <span><b>静态稿</b>（待 rick 审核；正式页面不含本工具条）</span>
+  <span class="seg" role="group" aria-label="配色">
+    <button type="button" data-pal="zhu" aria-pressed="true">朱批原色系</button>
+    <button type="button" data-pal="morandi" aria-pressed="false">莫兰迪</button>
+    <button type="button" data-pal="mix" aria-pressed="false">莫兰迪 + 朱砂点睛</button>
+  </span>
+  <span class="seg" role="group" aria-label="状态">
+    <button type="button" data-st="ready" aria-pressed="true">待生成</button>
+    <button type="button" data-st="running" aria-pressed="false">生成中</button>
+    <button type="button" data-st="done" aria-pressed="false">已完成</button>
+    <button type="button" data-st="failed" aria-pressed="false">失败</button>
+  </span>
+</div>
+
+<!-- ===== 图标（统一一套：24 视框、1.7 描边、圆头） ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5 19 12 7 19.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7zm0 0v4h4M9 13h6M9 17h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-seal" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 4.5 3.4 7.7 8 9 4.6-1.3 8-4.5 8-9V6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m8.5 12 2.5 2.5 4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v12m0 0 5-5m-5 5-5-5M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 2.8 20h18.4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 10v4.5M12 17.4v.1" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10m5 10V5m5 15v-7m5 7V8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M4.5 20c1.2-3.6 4-5.4 7.5-5.4S18.3 16.4 19.5 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+</svg>
+
+<!-- ===== 顶栏 ===== -->
+<header class="topbar">
+  <div class="brand"><strong>文衡</strong><span>学科信息参考</span></div>
+  <nav class="nav" aria-label="工作区">
+    <a href="#" aria-current="page"><svg width="20" height="20"><use href="#i-play"/></svg>生成台</a>
+    <a href="#"><svg width="20" height="20"><use href="#i-list"/></svg>报告库</a>
+    <a href="#"><svg width="20" height="20"><use href="#i-seal"/></svg>审核台</a>
+    <a href="#"><svg width="20" height="20"><use href="#i-chart"/></svg>分析台</a>
+    <a href="#"><svg width="20" height="20"><use href="#i-doc"/></svg>台账</a>
+  </nav>
+  <div class="who"><span class="avatar">卜</span>卜彤 · 管理员</div>
+</header>
+
+<main>
+
+  <!-- ===== 期次头 + 三步条（四个状态共用） ===== -->
+  <section class="card">
+    <div class="period">
+      <h1>202609 · 2026年9月</h1>
+      <span class="tag">第 40 期</span>
+      <span class="switch">切换期次
+        <select aria-label="切换期次">
+          <option selected>202609 · 2026年9月</option>
+          <option>202607 · 2026年7月</option>
+          <option>202605 · 2026年5月</option>
+        </select>
+      </span>
+    </div>
+
+    <ol class="steps">
+      <li class="step done">
+        <span class="no"><svg width="17" height="17"><use href="#i-check"/></svg></span>
+        <span>
+          <span class="t">取数贴表</span>
+          <span class="d">台账已齐 · <span class="link">再看一眼</span></span>
+        </span>
+      </li>
+      <li class="step done">
+        <span class="no"><svg width="17" height="17"><use href="#i-check"/></svg></span>
+        <span>
+          <span class="t">放入监测表</span>
+          <span class="d">已就位 · 2.1 MB · 今天 09:14</span>
+        </span>
+      </li>
+      <li class="step">
+        <span class="no">3</span>
+        <span>
+          <span class="t">一键生成</span>
+          <span class="d">约 20 秒出报告</span>
+        </span>
+      </li>
+    </ol>
+
+    <!-- ===== 状态一：待生成 ===== -->
+    <div class="state" id="s-ready">
+      <div class="actions">
+        <button class="btn primary"><svg width="22" height="22"><use href="#i-play"/></svg>开始生成</button>
+        <span class="hint">上一期 202607 已签发 · 卜彤 · 09-22 10:12</span>
+      </div>
+
+      <details class="model">
+        <summary>
+          <svg width="20" height="20"><use href="#i-arrow"/></svg>
+          <span class="k">预测模型</span>
+          <span class="v">用推荐（按学科，22 科已分别指定）</span>
+        </summary>
+        <div class="body">
+          <p style="margin:6px 0 12px;color:var(--ink-2);font-size:15.5px">
+            推荐值来自各学科历史数据的特征。想自己指定时，逐科改选即可——每科上方是推荐值，下面一行是模型说明。
+          </p>
+          <table>
+            <thead><tr><th>学科</th><th>推荐</th><th>我的选择</th></tr></thead>
+            <tbody>
+              <tr><td>化学</td><td>季节性 ETS 模型</td><td>
+                <select aria-label="化学的预测模型">
+                  <option selected>季节性 ETS 模型</option><option>Holt 趋势模型</option>
+                  <option>阻尼 Holt 模型</option><option>SARIMA 模型</option>
+                  <option>经验贝叶斯状态空间模型</option>
+                </select>
+                <span class="mdesc">抓「6 期一轮」的双月节律，适合受学年与发布节奏影响的指标。</span>
+              </td></tr>
+              <tr><td>工程学</td><td>SARIMA 模型</td><td>
+                <select aria-label="工程学的预测模型">
+                  <option selected>SARIMA 模型</option><option>Holt 趋势模型</option>
+                  <option>阻尼 Holt 模型</option><option>季节性 ETS 模型</option>
+                  <option>经验贝叶斯状态空间模型</option>
+                </select>
+                <span class="mdesc">趋势与季节都管，参数在最初 30 期定好后固定，通用、稳。</span>
+              </td></tr>
+              <tr><td>材料科学</td><td>阻尼 Holt 模型</td><td>
+                <select aria-label="材料科学的预测模型">
+                  <option selected>阻尼 Holt 模型</option><option>Holt 趋势模型</option>
+                  <option>季节性 ETS 模型</option><option>SARIMA 模型</option>
+                  <option>经验贝叶斯状态空间模型</option>
+                </select>
+                <span class="mdesc">趋势会「减速」——越往前推越保守，适合增长在放缓的学科。</span>
+              </td></tr>
+              <tr><td colspan="3" style="color:var(--ink-3);font-size:14.5px">… 其余 19 个学科同理（本稿只列 3 科示意）</td></tr>
+            </tbody>
+          </table>
+          <p style="margin:12px 0 0;color:var(--ink-2);font-size:15.5px">
+            ⚠ 本次预测的是<b>被引</b>路线（另一条是排名路线，两条结论不一定一致，报告里会分别标注）。
+          </p>
+        </div>
+      </details>
+    </div>
+
+    <!-- ===== 状态二：生成中 ===== -->
+    <div class="state" id="s-running">
+      <div class="elapsed"><svg width="20" height="20" class="spin"><use href="#i-refresh"/></svg>正在生成 · 已用 8 秒</div>
+      <div class="progress">
+        <div class="prow"><span class="tick"><svg width="20" height="20"><use href="#i-check"/></svg></span><span class="name">读取台账</span><span class="bar"><i style="width:100%"></i></span><span class="pct">完成</span></div>
+        <div class="prow"><span class="tick"><svg width="20" height="20"><use href="#i-check"/></svg></span><span class="name">汇总数据</span><span class="bar"><i style="width:100%"></i></span><span class="pct">完成</span></div>
+        <div class="prow"><span class="tick"><svg width="20" height="20"><use href="#i-check"/></svg></span><span class="name">预测与回看</span><span class="bar"><i style="width:100%"></i></span><span class="pct">完成</span></div>
+        <div class="prow now"><span class="tick"><svg width="20" height="20" class="spin"><use href="#i-refresh"/></svg></span><span class="name">画图</span><span class="bar"><i style="width:69%"></i></span><span class="pct">68 / 99</span></div>
+        <div class="prow"><span class="tick" style="color:var(--ink-3)"><svg width="20" height="20"><use href="#i-clock"/></svg></span><span class="name">装配报告</span><span class="bar"><i style="width:0%"></i></span><span class="pct">等待</span></div>
+      </div>
+      <div class="actions">
+        <button class="btn"><svg width="20" height="20"><use href="#i-list"/></svg>看详细过程</button>
+        <button class="btn ghost">停止生成</button>
+        <span class="hint">可以切到别的页面，进度不会丢。</span>
+      </div>
+    </div>
+
+    <!-- ===== 状态三：已完成 ===== -->
+    <div class="state" id="s-done">
+      <div class="banner ok">
+        <span class="ico"><svg width="22" height="22"><use href="#i-check"/></svg></span>
+        <span>
+          <b class="title">生成完成 · 用时 17 秒</b>
+          <span class="next">报告初稿已就绪：99 张图 · 待人工补充 7 处 · 需要你复核后签单。</span>
+          <span class="acts">
+            <button class="btn"><svg width="20" height="20"><use href="#i-doc"/></svg>打开报告</button>
+            <button class="btn"><svg width="20" height="20"><use href="#i-seal"/></svg>复核并签单</button>
+          </span>
+        </span>
+      </div>
+      <div class="actions" style="padding-top:0">
+        <span class="hint">重新生成会撤下当前这一版（旧版可追溯，不会丢）。</span>
+        <button class="btn ghost"><svg width="20" height="20"><use href="#i-refresh"/></svg>重新生成</button>
+      </div>
+    </div>
+
+    <!-- ===== 状态四：失败 ===== -->
+    <div class="state" id="s-failed">
+      <div class="banner bad">
+        <span class="ico"><svg width="22" height="22"><use href="#i-alert"/></svg></span>
+        <span>
+          <b class="title">数据还没齐，这次没有出报告</b>
+          <span class="next">
+            台账里《千分之一被引阈值》缺少 <b>2026年9月</b> 这一列。回 Excel 补上这一列，再点「重新生成」即可。<br>
+            另外还差：《篇均被引》缺少 2026年9月 一列、《Q1-Q4》缺少 2026年9月 一列。
+          </span>
+          <span class="acts">
+            <button class="btn"><svg width="20" height="20"><use href="#i-refresh"/></svg>重新生成</button>
+            <button class="btn"><svg width="20" height="20"><use href="#i-list"/></svg>看缺哪些（可打印）</button>
+          </span>
+        </span>
+      </div>
+      <div class="banner warn">
+        <span class="ico"><svg width="22" height="22"><use href="#i-clock"/></svg></span>
+        <span>
+          <b class="title">上一版报告仍然有效</b>
+          <span class="next">202607 · 第 38 期 · 已签发（卜彤 · 09-22 10:12）。本次失败没有动它。</span>
+        </span>
+      </div>
+      <div class="actions" style="padding-top:0">
+        <span class="hint">失败在第 1 步就停住了，用时 2 秒——没有白等。</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 报告区 ===== -->
+  <section class="card report">
+    <h2><svg width="22" height="22" style="color:var(--zhu)"><use href="#i-doc"/></svg>本期报告</h2>
+
+    <div class="state" id="r-ready">
+      <div class="empty">本期还没生成报告。<br>点上面的「开始生成」，大约 20 秒后这里会出现报告。</div>
+    </div>
+
+    <div class="state" id="r-running">
+      <div class="empty">正在生成……完成后报告会出现在这里。</div>
+    </div>
+
+    <div class="state" id="r-done">
+      <div class="artifacts">
+        <div class="art"><span class="ico"><svg width="22" height="22"><use href="#i-doc"/></svg></span>
+          <span><span class="n">报告初稿</span><span class="m">Word · 7.8 MB · 待补 7 处人工内容</span></span>
+          <span class="go">打开</span></div>
+        <div class="art"><span class="ico"><svg width="22" height="22"><use href="#i-list"/></svg></span>
+          <span><span class="n">改动清单</span><span class="m">704 处 · 每处都能点回台账</span></span>
+          <span class="go">查看</span></div>
+        <div class="art"><span class="ico"><svg width="22" height="22"><use href="#i-chart"/></svg></span>
+          <span><span class="n">图表册</span><span class="m">99 张 · 按期次</span></span>
+          <span class="go">浏览</span></div>
+        <div class="art"><span class="ico"><svg width="22" height="22"><use href="#i-download"/></svg></span>
+          <span><span class="n">大表数据</span><span class="m">CSV · 22 学科 × 11 列</span></span>
+          <span class="go">下载</span></div>
+      </div>
+      <p style="margin:16px 0 0;color:var(--ink-2);font-size:15.5px">
+        当前状态：<span class="seal"><svg width="16" height="16"><use href="#i-seal"/></svg>未签单</span>
+        <span style="color:var(--ink-3)">（签单后这一版才会被标记为「可交付」）</span>
+      </p>
+    </div>
+
+    <div class="state" id="r-failed">
+      <div class="empty">本次没有出报告——修好台账里的缺列，再点「重新生成」。<br>
+        <span style="color:var(--ink-3)">上一版 202607 的报告仍在上方「报告库」里，不受影响。</span></div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+/* 静态稿的切换逻辑：只改 html 上的两个属性，没有别的 */
+document.querySelectorAll('.review [data-pal]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    document.documentElement.dataset.palette = b.dataset.pal;
+    document.querySelectorAll('.review [data-pal]').forEach(function (x) {
+      x.setAttribute('aria-pressed', String(x === b));
+    });
+  });
+});
+document.querySelectorAll('.review [data-st]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    document.documentElement.dataset.state = b.dataset.st;
+    document.querySelectorAll('.review [data-st]').forEach(function (x) {
+      x.setAttribute('aria-pressed', String(x === b));
+    });
+  });
+});
+</script>
+</body>
+</html>
