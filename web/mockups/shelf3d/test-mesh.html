@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>增量 ① · Blender 链路自检（静态稿 · 待审核）</title>
+<style>
+  html,body{height:100%}
+  body{margin:0;background:#2b2622;overflow:hidden;
+    font:15px/1.6 system-ui,-apple-system,"Microsoft YaHei",sans-serif;color:#e8dfd2}
+  #scene{display:block;width:100vw;height:100vh;cursor:pointer}
+  .panel{position:fixed;left:22px;top:18px;background:rgba(43,38,34,.86);
+    border:1px solid #6b5a45;border-radius:10px;padding:14px 18px;min-width:320px}
+  .panel h1{margin:0 0 8px;font-size:16px;color:#c9a06a;letter-spacing:.02em}
+  .panel table{border-collapse:collapse;font-size:13.5px;width:100%}
+  .panel td{padding:3px 8px 3px 0;vertical-align:top}
+  .panel td:first-child{color:#b8ab99;white-space:nowrap}
+  .panel .num{font-family:Consolas,"Courier New",monospace;font-variant-numeric:tabular-nums}
+  .ok{color:#8fce7b}
+  .bad{color:#e8836f}
+  .cap{position:fixed;left:22px;bottom:20px;font-size:13px;color:#b8ab99;line-height:1.9}
+  .cap b{color:#e8dfd2}
+  .tip{position:fixed;right:22px;bottom:20px;font-size:13px;color:#9d9080;text-align:right;line-height:1.9}
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<div class="panel" id="panel">
+  <h1>增量 ① · 方块从 Blender 到屏幕</h1>
+  <table id="rows"><tbody>
+    <tr><td>读取中…</td><td></td></tr>
+  </tbody></table>
+</div>
+
+<div class="cap">
+  <b>链路自检</b>　Blender 里建的方块 → 导出 → 这里出现<br>
+  判据：尺寸与原点与 Blender 一致，误差 ≤ 1 毫米
+</div>
+<div class="tip">拖动可转视角 · 滚轮缩放<br>灰色格子 = 1 米见方的参照</div>
+
+<script src="three-bundle.js"></script>
+<script src="meshes.js"></script>
+<script>
+(function () {
+'use strict';
+
+var W = window.WH3D, THREE = W.THREE, OrbitControls = W.OrbitControls;
+
+/* 把 base64 还原成数字数组。导出时按「小端」排的，现在的电脑都是小端。 */
+function decodeF32(s) {
+  var bin = atob(s), u8 = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new Float32Array(u8.buffer);
+}
+function decodeU16(s) {
+  var bin = atob(s), u8 = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new Uint16Array(u8.buffer);
+}
+
+function buildGeometry(part) {
+  var g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(decodeF32(part.pos), 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(decodeF32(part.nrm), 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(decodeF32(part.uv), 2));
+  g.setIndex(new THREE.BufferAttribute(decodeU16(part.idx), 1));
+  g.computeBoundingBox();
+  return g;
+}
+
+/* ---------- 场景 ---------- */
+var canvas = document.getElementById('scene');
+var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x2b2622);
+
+var camera = new THREE.PerspectiveCamera(32, window.innerWidth / window.innerHeight, 0.05, 60);
+camera.position.set(0.85, 0.55, 0.95);
+
+var controls = new OrbitControls(camera, canvas);
+controls.target.set(0, 0.08, 0);
+controls.update();
+
+/* 光：一盏主光 + 一盏补光，够看清棱角就行 */
+var key = new THREE.DirectionalLight(0xfff2dd, 2.1);
+key.position.set(-1.2, 1.8, 1.3);
+scene.add(key);
+scene.add(new THREE.AmbientLight(0xb8ab99, 0.55));
+
+/* 参照：1 米见方的地面格子（灰线），一眼看出方块是 0.30 × 0.20 */
+var grid = new THREE.GridHelper(2, 2, 0x6b5a45, 0x4a3f34);
+grid.position.y = 0.0005;
+scene.add(grid);
+
+/* 三根 0.1 米的小标尺（红=X 宽、绿=Y 高、蓝=Z 深），对着方块的三条边 */
+function axisBar(from, to, color) {
+  var dir = new THREE.Vector3().subVectors(to, from);
+  var len = dir.length();
+  var mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(len, 0.006, 0.006),
+    new THREE.MeshBasicMaterial({ color: color })
+  );
+  mesh.position.copy(from).addScaledVector(dir, 0.5);
+  mesh.lookAt(to);
+  mesh.rotateY(Math.PI / 2);
+  return mesh;
+}
+
+/* ---------- 装入方块 ---------- */
+var M = (window.WH_MESHES || {})['test-cube'];
+var panelBody = document.querySelector('#rows tbody');
+function rows(list) {
+  panelBody.innerHTML = list.map(function (r) {
+    return '<tr><td>' + r[0] + '</td><td class="' + (r[2] || '') + '">' + r[1] + '</td></tr>';
+  }).join('');
+}
+
+if (!M) {
+  rows([['读取 meshes.js', '没找到 test-cube，导出是不是没跑？', 'bad']]);
+} else {
+  var part = M.parts[0];
+  var geo = buildGeometry(part);
+  var mat = new THREE.MeshPhysicalMaterial({
+    color: 0x8a6a4a, roughness: 0.62, metalness: 0.04   /* 先用木头的质感占位 */
+  });
+  var mesh = new THREE.Mesh(geo, mat);
+  /* 导出时原点已在底面中心，直接放地上 */
+  scene.add(mesh);
+
+  var bb = geo.boundingBox;
+  var measured = [bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z];
+  var expected = M.bbox;
+  var tolM = 0.001;  /* 1 毫米 */
+
+  function fmt(x) { return (x * 1000).toFixed(1) + ' mm'; }
+  function cmp(a, b) {
+    var d = Math.abs(a - b);
+    return (d <= tolM ? '<span class="ok">✓</span> ' : '<span class="bad">✗</span> ')
+         + '差 ' + fmt(d);
+  }
+
+  rows([
+    ['Blender 报的尺寸', '宽 ' + fmt(expected[0]) + ' · 高 ' + fmt(expected[1]) + ' · 深 ' + fmt(expected[2])],
+    ['屏幕上量的尺寸', '宽 ' + fmt(measured[0]) + ' · 高 ' + fmt(measured[1]) + ' · 深 ' + fmt(measured[2])],
+    ['宽 对不对', cmp(measured[0], expected[0]), measured[0] - expected[0] <= tolM ? 'ok' : 'bad'],
+    ['高 对不对', cmp(measured[1], expected[1]), measured[1] - expected[1] <= tolM ? 'ok' : 'bad'],
+    ['深 对不对', cmp(measured[2], expected[2]), measured[2] - expected[2] <= tolM ? 'ok' : 'bad'],
+    ['底面高度（应为 0）', fmt(bb.min.y) + ' ' + cmp(bb.min.y, 0)],
+    ['左右对称（应为 ±150）', fmt(bb.min.x) + ' … ' + fmt(bb.max.x)],
+    ['前后对称（应为 ±100）', fmt(bb.min.z) + ' … ' + fmt(bb.max.z)],
+    ['网格规模', M.parts.length + ' 个部件 · ' + (part.idx ? decodeU16(part.idx).length / 3 : 0) + ' 个三角面']
+  ]);
+
+  /* 三条彩色标尺贴着方块的三条边，长度都是 0.30 / 0.15 / 0.20 米 */
+  scene.add(axisBar(new THREE.Vector3(bb.min.x, -0.004, bb.max.z + 0.012),
+                    new THREE.Vector3(bb.max.x, -0.004, bb.max.z + 0.012), 0xd66a4a));
+  scene.add(axisBar(new THREE.Vector3(bb.max.x + 0.012, bb.min.y, bb.max.z + 0.012),
+                    new THREE.Vector3(bb.max.x + 0.012, bb.max.y, bb.max.z + 0.012), 0x7bb86a));
+  scene.add(axisBar(new THREE.Vector3(bb.max.x + 0.012, -0.004, bb.min.z),
+                    new THREE.Vector3(bb.max.x + 0.012, -0.004, bb.max.z), 0x6a8fd6));
+
+  window.__MESH_CHECK = {
+    expected: expected,
+    measured: measured.map(function (x) { return Math.round(x * 1e6) / 1e6; }),
+    min: [bb.min.x, bb.min.y, bb.min.z],
+    tris: decodeU16(part.idx).length / 3
+  };
+}
+
+window.addEventListener('resize', function () {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
+});
+
+(function loop() {
+  requestAnimationFrame(loop);
+  renderer.render(scene, camera);
+})();
+})();
+</script>
+</body>
+</html>
