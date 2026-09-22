@@ -103,13 +103,18 @@ SUBJECTS = [
     "Psychiatry/Psychology", "Social Sciences, general", "Space Science",
 ]
 
-_PERIOD = [2016, 2026]          # 10 年窗口（照馆员流程「例如 2016–2026」）
 _TAKE = 100_000                 # 服务端按「取到多少算多少」返回，超量无害（实测 15348 行榜返回全量）
 
 
-def _base_filters() -> dict:
+def _window(dates: dict) -> list[int]:
+    """10 年滚动窗口 [起, 止]（随 WoS 截止年推进：2026 年 = 2016-2026，与历史归档同规律）。"""
+    end = int(str(dates["wosextractdate"])[:4])
+    return [end - 10, end]
+
+
+def _base_filters(period: list[int]) -> dict:
     return {
-        "period": {"is": list(_PERIOD)},
+        "period": {"is": list(period)},
         "schema": {"is": "Essential Science Indicators"},
         "personIdTypeGroup": {"is": "authorRecord"},
         "geographicCollabType": {"is": "All"},
@@ -122,8 +127,8 @@ def _base_filters() -> dict:
     }
 
 
-def _subj_filters() -> dict:
-    f = _base_filters()
+def _subj_filters(period: list[int]) -> dict:
+    f = _base_filters(period)
     f["assprsnIdTypeGroup"] = {"is": "authorRecord"}
     f["assprsnIdType"] = {"is": "authorRecord"}
     return f
@@ -235,11 +240,12 @@ def _run_item(page, sid, dates, *, entity, filters, indicators, fname, target: P
     counters["ok"] += 1
 
 
-def cmd_subjects(page: Page, sid: str, dates: dict, out: Path, force: bool) -> dict:
+def cmd_subjects(page: Page, sid: str, dates: dict, period: list[int],
+                 out: Path, force: bool) -> dict:
     """22 个「分学科全球机构排名表」（Organizations + Research Area=各学科）。"""
     counters = {"ok": 0, "skip": 0, "fail": 0}
     for s in SUBJECTS:
-        f = _base_filters()
+        f = _base_filters(period)
         f["sbjname"] = {"is": [s]}
         fname = s.replace("/", " ")
         target = out / f"{fname}.xlsx"
@@ -257,11 +263,12 @@ _FIELD_ITEMS = [
 ]
 
 
-def cmd_fields(page: Page, sid: str, dates: dict, out: Path, force: bool) -> dict:
+def cmd_fields(page: Page, sid: str, dates: dict, period: list[int],
+               out: Path, force: bool) -> dict:
     """全球 / 中国 / 云南大学 三张「22 学科汇总」（Research Areas 视图）。"""
     counters = {"ok": 0, "skip": 0, "fail": 0}
     for fname, extra in _FIELD_ITEMS:
-        f = _subj_filters()
+        f = _subj_filters(period)
         f.update(extra)
         _run_item(page, sid, dates, entity="subject", filters=f,
                   indicators=_SUBJ_INDICATORS, fname=fname, target=out / f"{fname}.xlsx",
@@ -269,7 +276,8 @@ def cmd_fields(page: Page, sid: str, dates: dict, out: Path, force: bool) -> dic
     return counters
 
 
-def cmd_institutions(page: Page, sid: str, dates: dict, out: Path, force: bool) -> dict:
+def cmd_institutions(page: Page, sid: str, dates: dict, period: list[int],
+                     out: Path, force: bool) -> dict:
     """全球机构排名表（Organizations，不分学科，按被引频次默认排序）。
 
     ⚠ 整表一次导出（2 万余行 × 97 列）会被网关 **HTTP 524** —— 改**分块** skip/take 拉取后合并；
@@ -295,7 +303,7 @@ def cmd_institutions(page: Page, sid: str, dates: dict, out: Path, force: bool) 
             for _ in range(3):                      # 524 多为瞬时限流，重试 ≤3 次
                 try:
                     data = _export(page, sid, dates, entity="organization",
-                                   filters=_base_filters(), indicators=_ORG_INDICATORS,
+                                   filters=_base_filters(period), indicators=_ORG_INDICATORS,
                                    fname="全球机构排名", take=_INSTITUTIONS_CHUNK, skip=skip)
                     last_err = None
                     break
@@ -353,15 +361,17 @@ def main() -> int:
         browser = p.chromium.connect_over_cdp(CDP)
         page = _get_incites_page(browser)
         sid, dates = _session(page)
+        period = _window(dates)
         #: 快照目录名 = 数据覆盖<period起>-<period止>.<WoS 内容截止 MM.DD>（照历史归档）
         if args.out:
             out = Path(args.out)
         else:
             y, m, d = dates["wosextractdate"].split("-")
-            out = DEFAULT_OUT_ROOT / f"数据覆盖{_PERIOD[0]}-{_PERIOD[1]}.{m}.{d}"
-        print(f"[i] 数据集更新 {dates['deploydate']}，WoS 内容截止 {dates['wosextractdate']}")
+            out = DEFAULT_OUT_ROOT / f"数据覆盖{period[0]}-{period[1]}.{m}.{d}"
+        print(f"[i] 数据集更新 {dates['deploydate']}，WoS 内容截止 {dates['wosextractdate']}"
+              f"（窗口 {period[0]}-{period[1]}）")
         print(f"[i] 产出目录 {out}")
-        counters = COMMANDS[args.command](page, sid, dates, out, args.force)
+        counters = COMMANDS[args.command](page, sid, dates, period, out, args.force)
     print(f"[=] ok={counters['ok']} skip={counters['skip']} fail={counters['fail']}")
     return 1 if counters["fail"] else 0
 
