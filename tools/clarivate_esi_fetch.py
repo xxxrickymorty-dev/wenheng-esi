@@ -246,15 +246,28 @@ _DOC_URL = (
 _TOPPAPERS = [("Top", "top"), ("highlyCited", "highly cited"), ("Hot", "hot papers")]
 
 
-def _data_rows(path: Path) -> int:
-    """明细导出的数据行数 = 总行数 − 8（前 5 行空/标题 + 表头 + 2 行页脚）。"""
-    wb = openpyxl.load_workbook(path, data_only=True)
-    ws = wb[wb.sheetnames[0]]
-    return max(ws.max_row - 8, 0)
+def _write_esi_csv(rows: list[tuple], path: Path) -> None:
+    """按 ESI 导出的 CSV 观感写盘：标题行 + 表头 + 数据行（逐字段加引号）+ 页脚。
+
+    这样产出的 CSV 与「学院顶尖论文清单.csv」（馆员手工另存的那份）同形，可替代人工贴入。
+    """
+    body = [r for r in rows if any(c is not None for c in r)]
+    lines: list[str] = []
+    for i, r in enumerate(body):
+        cells = ["" if c is None else str(c) for c in r]
+        head = cells[0]
+        if i < 2 or head.startswith(("Copyright", "Export Date")):
+            lines.append(",".join(cells).rstrip(","))
+        else:
+            lines.append(",".join('"' + c.replace('"', '""') + '"' for c in cells))
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8-sig")
 
 
 def cmd_toppapers(page: Page, out: Path, fmt: str) -> None:
-    """Step 4：云大 Top / Highly Cited / Hot 论文明细三张，文件名「数字在前」（如 274top.xlsx）。"""
+    """Step 4：云大 Top / Highly Cited / Hot 论文明细，出 xlsx + 同形 CSV。
+
+    文件名「数字在前」（如 274top.xlsx / 274top.csv）。
+    """
     out.mkdir(parents=True, exist_ok=True)
     for show, suffix in _TOPPAPERS:
         resp = page.request.get(_DOC_URL.format(show=show))
@@ -263,12 +276,17 @@ def cmd_toppapers(page: Page, out: Path, fmt: str) -> None:
             continue
         tmp = out / f"_tmp_{show}.xlsx"
         tmp.write_bytes(resp.body())
-        n = _data_rows(tmp)
+        wb = openpyxl.load_workbook(tmp, data_only=True)
+        ws = wb[wb.sheetnames[0]]
+        rows = list(ws.iter_rows(values_only=True))
+        n = max(ws.max_row - 8, 0)
         target = out / f"{n}{suffix}.xlsx"
         if target.exists():
             target.unlink()
         tmp.replace(target)
-        print(f"[OK] {target.name}  ({target.stat().st_size} B)  show={show}  篇数={n}")
+        csv_path = out / f"{n}{suffix}.csv"
+        _write_esi_csv(rows, csv_path)
+        print(f"[OK] {target.name}  ({target.stat().st_size} B) + {csv_path.name}  篇数={n}")
 
 
 def cmd_fields(page: Page, out: Path, fmt: str) -> None:
