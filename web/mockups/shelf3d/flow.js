@@ -50,31 +50,114 @@ function on(fn) { listeners.push(fn); fn(cur, cur); }   /* 首屏也补调一次
 var pick = null;         /* {tierIndex, period, placeholder, title, no} */
 
 function titleOf(sel) {
-  var no = sel.no;
   if (sel.placeholder) return '示意样书';
-  if (sel.period === '202601') return '学科信息参考 · 总第 35 期';
-  if (sel.period === '202603') return '学科信息参考 · 总第 36 期';
-  if (sel.period === '202605') return '学科信息参考 · 总第 37 期';
-  if (sel.period === '202607') return '学科信息参考 · 总第 38 期';
+  var b = bookRec(sel.period);
+  if (b) return '学科信息参考 · 总第 ' + b.no + ' 期';
   return '学科信息参考';
+}
+
+/* 这一期的真实数字（来自 data.js，可回溯到台账） */
+function bookRec(period) {
+  var list = (window.WH_DATA && window.WH_DATA.books) || [];
+  for (var i = 0; i < list.length; i++) if (list[i].period === period) return list[i];
+  return null;
+}
+
+function cnNo(n) {
+  var d = '〇一二三四五六七八九', s = String(n), out = '';
+  if (s.length === 2) {
+    if (s[0] !== '1') out += d[+s[0]];
+    out += '十';
+    if (s[1] !== '0') out += d[+s[1]];
+  } else out = d[+s] || s;
+  return out;
+}
+
+function fmt(n) {
+  return (n == null) ? '—' : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function deltaTxt(v) {
+  if (v == null) return '—';
+  return v > 0 ? '↑' + v : v < 0 ? '↓' + (-v) : '持平';
+}
+
+/* 陈列态右栏：规格表。**每一条都来自台账**，不编。 */
+function renderSpec() {
+  var el = document.getElementById('dSpecs');
+  if (!el) return;
+  var b = pick ? bookRec(pick.period) : null;
+  var eb = document.getElementById('dEyebrow');
+  var tt = document.getElementById('dTitle');
+  var ld = document.getElementById('dLead');
+  if (!b) {
+    if (eb) eb.textContent = pick && pick.placeholder ? '示意 · 未出刊' : '—';
+    if (tt) tt.textContent = pick ? pick.title : '学科信息参考';
+    if (ld) ld.textContent = '这一册还没有出刊。架上留位子是为了让「连续的架」读得出来。';
+    el.innerHTML = '';
+    return;
+  }
+  if (eb) eb.textContent = '卷之' + cnNo(b.no) + ' — 学科态势';
+  if (tt) tt.textContent = '学科信息参考';
+  if (ld) ld.textContent = '以 ESI / InCites 指标为基准的双月学科态势报告。' +
+    '数字只来自台账，正文由骨架出句，模型不进入数据路径 —— 本期覆盖 ' +
+    (b.coverage || '—') + '，流水线断言 ' + b.n_assert_pass + '/' + b.n_assert_total + ' 全绿。';
+
+  var tpTxt = b.top_papers_delta == null ? '—' : deltaTxt(b.top_papers_delta);
+  var specs = [
+    ['期次', b.period + ' · 总第 ' + b.no + ' 期'],
+    ['覆盖窗口', (b.coverage || '—').replace(/-/g, ' – ')],
+    ['数据源', '台账 · ESI/InCites 原始包'],
+    ['断言', b.n_assert_pass + ' / ' + b.n_assert_total + ' <span class="u">全绿</span>'],
+    ['国际排名', fmt(b.rank_intl_now) + ' <span class="u">位 ' + deltaTxt(b.rank_intl_delta) + '</span>'],
+    ['顶尖论文', fmt(b.top_papers_now) + ' <span class="u">篇 ' + tpTxt + '</span>']
+  ];
+  el.innerHTML = specs.map(function (s) {
+    return '<div class="spec"><div class="k">' + s[0] + '</div><div class="v">' + s[1] + '</div></div>';
+  }).join('');
 }
 
 /* ------------------------------------------------------------------
    三态的表现
    ------------------------------------------------------------------ */
+/* 命令区随状态变——拿掉「关闭」按钮换成点背景退出之后，
+   不把退出方式写出来就没人知道。同一屏不重复说两遍。
+   ⚠ 首屏也要调一次：只挂「状态变化」回调，初始态没变化就永远同步不到。
+   ⚠ 「抽取」在书架态就在（G 的做法）：单击即命中，但**显式按钮**才是可发现的那条路。 */
+function syncCommands() {
+  var fh = document.getElementById('footHint');
+  var cmdOpen = document.getElementById('cmdOpen');
+  var cmdShelf = document.getElementById('cmdShelf');
+  var cmdReset = document.getElementById('cmdReset');
+  if (fh) {
+    fh.textContent = cur === 'overview'
+      ? '↑↓ 换层 · 点书或「抽取」取下一册 ·'
+      : cur === 'featured'
+        ? '「翻开」进正文 · 点背景或「归架」放回去 ·'
+        : '点书页外的背景合上 · ← → 翻页 ·';
+  }
+  if (cmdOpen) {
+    cmdOpen.hidden = (cur === 'reading');
+    cmdOpen.textContent = (cur === 'featured') ? '翻开' : '抽取';
+  }
+  if (cmdShelf) cmdShelf.hidden = (cur === 'overview');
+  if (cmdReset) cmdReset.hidden = (cur === 'reading');
+}
+
 function enter(from, to) {
   document.body.setAttribute('data-flow', to);
   var hint = document.getElementById('flow-hint');
   var A = window.WH_AUDIO;
+  syncCommands();
 
   if (to === 'featured') {
     if (S && S.feature) S.feature(pick);
     if (A && from === 'overview') A.pull();          /* 从架上抽出这一本 */
     if (A && from === 'reading') A.close();          /* 合上再退回陈列 */
+    renderSpec();
     if (hint) {
       hint.hidden = false;
-      hint.innerHTML = '<b>' + (pick ? pick.title : '') + '</b><br>' +
-        '<span class="sub">点它<b>翻开</b>　·　<kbd>Esc</kbd> 退回整柜</span>';
+      hint.innerHTML = '<b>' + (pick ? pick.title : '') + '</b>';
     }
   } else if (to === 'reading') {
     if (S && S.stop) S.stop();                 /* 翻书时不必再跑三维循环 */
@@ -112,25 +195,41 @@ function page(cls, inner) {
 }
 
 /* 报告内页：纸面 + 朱批 + 钤印（跟 v2 陈列面同一个母题）。
+   **数字全部来自 data.js**（out/<期>/ 的真实产物，可回溯），不编。
    ⚠ 竖排标题必须 white-space:nowrap，否则会静默折列，把书名排坏。 */
 function buildPages(sel) {
-  var t = sel ? sel.title : '学科信息参考';
+  var b = sel ? bookRec(sel.period) : null;
   var period = sel ? (sel.period || '') : '';
   var rows = '';
-  var names = ['化学', '工程学', '材料科学', '临床医学', '植物与动物学', '环境/生态学',
-               '计算机科学', '农业科学', '生物与生化', '药理学与毒物学'];
-  for (var i = 0; i < names.length; i++) {
-    rows += '<tr><td>' + names[i] + '</td><td class="n">' + (12 + i * 3) + '</td>' +
-            '<td class="n">' + (900 + i * 27) + '</td><td class="n">' + (3 + (i % 4)) + '</td></tr>';
+  var tbl = (b && b.table) || [];
+  for (var i = 0; i < Math.min(tbl.length, 10); i++) {
+    var r = tbl[i];
+    rows += '<tr><td>' + r.cn + '</td><td class="n">' + fmt(r.papers) + '</td>' +
+            '<td class="n">' + fmt(r.cites) + '</td><td class="n">' + r.top + '</td>' +
+            '<td class="n">' + r.prox + '</td></tr>';
   }
+  if (!rows) {
+    ['化学', '工程学', '材料科学', '临床医学', '植物与动物学'].forEach(function (nm, i) {
+      rows += '<tr><td>' + nm + '</td><td class="n">—</td><td class="n">—</td>' +
+              '<td class="n">—</td><td class="n">—</td></tr>';
+    });
+  }
+  var rankNow = b ? fmt(b.rank_intl_now) : '—';
+  var rankD = b ? deltaTxt(b.rank_intl_delta) : '—';
+  var topNow = b ? fmt(b.top_papers_now) : '—';
+  var topD = b ? deltaTxt(b.top_papers_delta) : '—';
+  var disc1 = b ? b.n_disc_1pct : '—';
+  var cov = b ? (b.coverage || '—') : '—';
+  var asn = b ? (b.n_assert_pass + ' / ' + b.n_assert_total) : '—';
+  var top3 = (b && b.top3) || [];
 
   return [
-    /* 1 封面：双线栏 + 纸签条 + 竖排刊刻书名 + 钤印（与 3D 书封同一个设计 DNA） */
+    /* 1 封面 */
     page('pg-cover', '<div class="cv-frame">' +
          '<div class="cv-slip"><div class="vtitle">学科信息参考</div>' +
          '<div class="cv-period">' + (period || '') + '</div></div>' +
          '<div class="seal">衡</div>' +
-         '<div class="cv-foot">' + (period ? period.slice(0, 4) + ' 年' : '') + '</div>' +
+         '<div class="cv-foot">' + (b ? ('总第 ' + b.no + ' 期') : '') + '</div>' +
          '<div class="cv-press">云南大学图书馆</div></div>'),
 
     /* 2 目录 */
@@ -140,19 +239,22 @@ function buildPages(sel) {
 
     /* 3 国际排名 */
     page('pg-body', '<h2>一、国际排名</h2>' +
-         '<p>本期综合排名进入全球前 <b class="num">995</b>，较上期前进 <b class="num">2</b> 位。</p>' +
-         '<p>覆盖 <b class="num">22</b> 个学科，其中 <b class="num">4</b> 个进入全球前 1‰。</p>' +
+         '<p>本期综合排名进入全球前 <b class="num">' + rankNow + '</b>，较上期 <b class="num">' + rankD + '</b>。</p>' +
+         '<p>顶尖论文 <b class="num">' + topNow + '</b> 篇（' + topD + '），其中 <b class="num">' + disc1 + '</b> 个学科进入全球前 1‰。</p>' +
+         (top3.length ? '<p>贡献前三：' + top3.map(function (t) {
+             return t[0] + ' <b class="num">' + t[1] + '</b>';
+           }).join('、') + '。</p>' : '') +
          '<div class="zhu">朱批：排名口径以当期台账为准</div>'),
 
     /* 4 学科态势（大表） */
     page('pg-table', '<h2>二、学科态势</h2>' +
-         '<table class="big"><thead><tr><th>学科</th><th>位次</th><th>被引</th><th>前 1‰</th></tr></thead>' +
+         '<table class="big"><thead><tr><th>学科</th><th>论文</th><th>被引</th><th>顶尖</th><th>逼近</th></tr></thead>' +
          '<tbody>' + rows + '</tbody></table>' +
-         '<div class="zhu">朱批：共 22 行，此处节选</div>'),
+         '<div class="zhu">朱批：共 ' + ((b && b.table && b.table.length) || '—') + ' 行，此处节选</div>'),
 
     /* 5 顶尖论文 */
     page('pg-body', '<h2>三、顶尖论文</h2>' +
-         '<p>本期高水平论文合计 <b class="num">274</b> 篇，分布于 <b class="num">22</b> 个学科。</p>' +
+         '<p>本期高水平论文合计 <b class="num">' + topNow + '</b> 篇，较上期 <b class="num">' + topD + '</b>。</p>' +
          '<p>清单由馆员逐条核对后附于本节末。</p>'),
 
     /* 6 需馆员补充 */
@@ -164,6 +266,7 @@ function buildPages(sel) {
     /* 7 数据来源 */
     page('pg-body', '<h2>五、数据来源</h2>' +
          '<p>全部数字来自《云大全学科排名、阈值动态检测表》，按列追加，不改历史列。</p>' +
+         '<p>本期覆盖 <b class="num">' + cov + '</b>，流水线自检 <b class="num">' + asn + '</b> 全绿。</p>' +
          '<p class="small">正文由固定句式生成，运行期不经过大模型。</p>'),
 
     /* 8 封底 */
@@ -207,7 +310,7 @@ function openReader() {
       var A = window.WH_AUDIO;
       if (A) A.page();
       var lbl = document.getElementById('reader-page');
-      if (lbl) lbl.textContent = '第 ' + (pf.getCurrentPageIndex() + 1) + ' / ' + pf.getPageCount() + ' 页';
+      if (lbl) lbl.textContent = (pf.getCurrentPageIndex() + 1) + ' / ' + pf.getPageCount();
     });
   } catch (e) {
     console.error('[flow] 翻书层起不来：', e);
@@ -257,6 +360,22 @@ function pickBook(sel) {
 
 function openBook() { return go('reading'); }
 
+/* 抽取：书架态取「焦点层里第一本真书」。跟点那本书是同一个动作，
+   但按钮是可发现的那条路（G 的做法：单击即命中，命令区再给一个显式入口）。 */
+function pullFocused() {
+  if (cur !== 'featured') {
+    var S3 = window.WH_SHELF3D;
+    var list = (S3 && S3.bookRects) ? S3.bookRects() : [];
+    var pick2 = null;
+    for (var i = 0; i < list.length; i++) {
+      if (!list[i].placeholder && list[i].rect && list[i].rect.width > 8) { pick2 = list[i]; break; }
+    }
+    if (!pick2) return false;
+    return pickBook(pick2);
+  }
+  return openBook();
+}
+
 function back() {
   if (cur === 'reading') return go('featured');
   if (cur === 'featured') return go('overview');
@@ -305,10 +424,15 @@ window.__DEBUG_API = {
   on: on
 };
 
+/* 首屏补调一次（技能里的静默坑：只挂「状态变化」回调，初始态没变化就永远同步不到） */
+document.body.setAttribute('data-flow', cur);
+syncCommands();
+
 return {
   state: function () { return cur; },
   history: function () { return hist.slice(); },
   pickBook: pickBook, openBook: openBook, back: back, toOverview: toOverview,
+  pullFocused: pullFocused,
   on: on, onBlankClick: onBlankClick
 };
 })();

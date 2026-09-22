@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>书架 · 三层版（静态稿 · 待审核）</title>
+<title>文衡 · 历期卷宗（书架陈列）</title>
 <style>
   html,body{height:100%}
   body{margin:0;background:#2b2622;overflow:hidden;
@@ -36,6 +36,38 @@
     border-radius:8px;padding:7px 12px;cursor:pointer;z-index:30}
   .snd[aria-pressed="true"]{color:#f0e6d4;border-color:#c9a06a;background:rgba(60,48,36,.9)}
   .snd:hover{border-color:#8a7458}
+
+  /* ---------- 页脚：左提示 / 右命令（G 的做法：提示随状态变） ----------
+     拿掉「关闭」按钮换成点背景退出时，必须把提示写出来——不写没人知道 */
+  .vh-foot{position:fixed;left:0;right:0;bottom:0;z-index:30;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 26px 18px;font-family:Consolas,"Courier New",monospace;
+    font-size:11px;letter-spacing:.16em;color:#9d9080;pointer-events:none}
+  .vh-foot .cmds{display:flex;gap:24px;pointer-events:auto}
+  .vh-foot .cmds button{font:inherit;font-size:11px;letter-spacing:.16em;
+    color:#b8ab99;background:none;border:none;border-bottom:1px solid transparent;
+    padding:2px 0;cursor:pointer}
+  .vh-foot .cmds button:hover{color:#e8dfd2;border-bottom-color:#c9a06a}
+  .vh-foot .cmds button[hidden]{display:none}
+
+  /* ---------- 陈列态右栏：规格表（数字全部可回溯到台账） ---------- */
+  .spec-panel{position:fixed;right:22px;top:120px;width:296px;z-index:28;
+    background:rgba(43,38,34,.9);border:1px solid #6b5a45;border-radius:10px;
+    padding:16px 18px;color:#e8dfd2;opacity:0;visibility:hidden;pointer-events:none;
+    transition:opacity .35s ease, visibility 0s linear .35s}
+  body[data-flow="featured"] .spec-panel{opacity:1;visibility:visible;pointer-events:auto;
+    transition:opacity .35s ease, visibility 0s linear 0s}
+  .spec-panel .eyebrow{font-size:11px;letter-spacing:.18em;color:#c9a06a;
+    font-family:Consolas,monospace;text-transform:uppercase}
+  .spec-panel h2{margin:6px 0 4px;font-family:"Source Han Serif SC","Songti SC",SimSun,serif;
+    font-size:20px;letter-spacing:.04em;color:#f0e6d4}
+  .spec-panel .lead{margin:8px 0 14px;font-size:12.5px;line-height:1.8;color:#b8ab99}
+  .spec-panel .spec{display:flex;gap:10px;padding:6px 0;border-top:1px solid #4a3f34;font-size:12.5px}
+  .spec-panel .spec .k{flex:0 0 68px;color:#9d9080}
+  .spec-panel .spec .v{flex:1;color:#e8dfd2;font-family:Consolas,monospace;font-variant-numeric:tabular-nums}
+  .spec-panel .spec .v .u{color:#c9a06a}
+  .spec-panel .src{margin:12px 0 0;padding-top:10px;border-top:1px dashed #4a3f34;
+    font-size:11px;color:#8a7d6c;line-height:1.7}
 
   /* ---------- 翻书态（2D 覆盖层） ---------- */
   #reader{position:fixed;inset:0;z-index:40;background:#241f1b;
@@ -124,42 +156,64 @@
 <div id="reader" class="content" aria-label="翻书">
   <div id="reader-bar">
     <button type="button" id="btn-prev">← 上一页</button>
-    <span id="reader-page">—</span>
+    <span id="reader-page">1 / 8</span>
     <button type="button" id="btn-next">下一页 →</button>
-    <span><kbd>←</kbd><kbd>→</kbd> 翻页　<kbd>Esc</kbd> 合上</span>
+    <span class="hint">点书页外的背景合上 · <kbd>←</kbd><kbd>→</kbd> 翻页</span>
   </div>
   <div id="reader-slot"></div>
 </div>
 
 <div class="cap">
-  <b>书架 · 三层</b>　顶＝<b>ESI 双月报告</b> / 中＝学科发展态势 / 底＝年报<br>
-  <kbd>点某层</kbd> 推近到那层　<kbd>↑</kbd><kbd>↓</kbd> 换层　<kbd>Esc</kbd> 或点空白 退回整柜
+  <b>文衡 · 历期卷宗</b>　顶＝<b>ESI 双月报告</b> / 中＝学科发展态势 / 底＝年报
 </div>
-<div class="tip">拖动可转视角 · 滚轮缩放<br>虚线方框＝该期还没出刊　·　左侧密排＝更早的期次（放不下）</div>
 
-<script>
-/* 三层数据：底＝ESI 真实四期；中/顶＝示意（该系列尚未出刊，封面上有「示意」水印） */
-window.WH_DATA = {
-  tiers: [
-    { key: 'annual', label: '年报', short: '年报', sub: '每年一本 · 待出刊',
-      items: [{ kind: 'empty' }, { kind: 'empty' },
-              { kind: 'book', period: 'ANNUAL', no: 1, placeholder: true, caption: '示意 · 未出刊' },
-              { kind: 'empty' }, { kind: 'empty' }] },
-    { key: 'trend', label: '学科发展态势报告', short: '学科态势', sub: '每期一本 · 待出刊',
-      items: [{ kind: 'empty' }, { kind: 'empty' },
-              { kind: 'book', period: 'TREND', no: 1, placeholder: true, caption: '示意 · 未出刊' },
-              { kind: 'empty' }, { kind: 'empty' }] },
-    { key: 'esi', label: 'ESI 双月报告', short: 'ESI 双月', sub: '已出 38 期',
-      items: [{ kind: 'dense', count: 5, label: '更早 34 期' },
-              { kind: 'book', period: '202601', no: 35 },
-              { kind: 'book', period: '202603', no: 36 },
-              { kind: 'book', period: '202605', no: 37 },
-              { kind: 'book', period: '202607', no: 38 },
-              { kind: 'empty' }] }
-  ]
-};
-</script>
+<aside class="spec-panel content" id="specPanel" aria-label="这一册的规格">
+  <div class="eyebrow" id="dEyebrow">—</div>
+  <h2 id="dTitle">学科信息参考</h2>
+  <p class="lead" id="dLead">—</p>
+  <div id="dSpecs"></div>
+  <p class="src" id="dSrc">数字全部来自《云大全学科排名、阈值动态检测表》，可在演示站逐格回溯。</p>
+</aside>
+
+<footer class="vh-foot">
+  <span id="footHint"></span>
+  <div class="cmds">
+    <button type="button" id="cmdOpen">抽取</button>
+    <button type="button" id="cmdShelf" hidden>归架</button>
+    <button type="button" id="cmdReset">复位视角</button>
+  </div>
+</footer>
+
+<p id="live" role="status" aria-live="polite" style="position:absolute;left:-9999px"></p>
+
 <script src="three-bundle.js"></script>
+<script src="data.js"></script>
+<script>
+/* ⚠ data.js 是 `window.WH_DATA = {books:…}` **整体覆盖**——摆位数据必须在它之后补，
+   否则 tiers 被抹掉，WH_DATA.tiers[i] 读成 undefined[2]，init 当场断掉、点击全绑不上。 */
+window.WH_DATA = window.WH_DATA || {};
+if (!window.WH_DATA.books) window.WH_DATA.books = [];
+/* 三层摆放：底＝年报 / 中＝学科态势 / 顶＝ESI 双月（rick 定的信息架构）。
+   期次的真实数字在上面 data.js 的 books 里（来自 out/<期>/，可回溯），
+   这里只管「摆在哪一层、哪几个位子」。 */
+window.WH_DATA.tiers = [
+  { key: 'annual', label: '年报', short: '年报', sub: '每年一本 · 待出刊',
+    items: [{ kind: 'empty' }, { kind: 'empty' },
+            { kind: 'book', period: 'ANNUAL', no: 1, placeholder: true, caption: '示意 · 未出刊' },
+            { kind: 'empty' }, { kind: 'empty' }] },
+  { key: 'trend', label: '学科发展态势报告', short: '学科态势', sub: '每期一本 · 待出刊',
+    items: [{ kind: 'empty' }, { kind: 'empty' },
+            { kind: 'book', period: 'TREND', no: 1, placeholder: true, caption: '示意 · 未出刊' },
+            { kind: 'empty' }, { kind: 'empty' }] },
+  { key: 'esi', label: 'ESI 双月报告', short: 'ESI 双月', sub: '已出 38 期',
+    items: [{ kind: 'dense', count: 5, label: '更早 34 期' },
+            { kind: 'book', period: '202601', no: 35 },
+            { kind: 'book', period: '202603', no: 36 },
+            { kind: 'book', period: '202605', no: 37 },
+            { kind: 'book', period: '202607', no: 38 },
+            { kind: 'empty' }] }
+];
+</script>
 <script src="meshes.js"></script>
 <script src="shelf3d.js"></script>
 <script src="vendor/page-flip.browser.js"></script>
@@ -239,6 +293,20 @@ window.WH_DATA = {
     window.__DEBUG_API.flipPrev(); sync();
   });
 
+  /* 命令区：抽取 / 归架 / 复位视角（跟 G 一样，三个动作都是显式按钮，
+     不指望用户猜手势） */
+  document.getElementById('cmdOpen').addEventListener('click', function () {
+    if (F.pullFocused()) sync();
+  });
+  document.getElementById('cmdShelf').addEventListener('click', function () {
+    F.toOverview(); sync();
+  });
+  document.getElementById('cmdReset').addEventListener('click', function () {
+    S.overview(); sync();
+    var el = document.getElementById('live');
+    if (el) el.textContent = '视角已复位';
+  });
+
   /* 声音开关：默认关；点一下才开（浏览器要一次用户手势） */
   var A = window.WH_AUDIO, snd = document.getElementById('snd');
   function syncSnd() {
@@ -253,8 +321,11 @@ window.WH_DATA = {
   F.on(function (st) {
     var lbl = document.getElementById('reader-page');
     if (lbl) lbl.textContent = st === 'reading'
-      ? ('第 ' + (window.__DEBUG_API.pageIndex() + 1) + ' / ' + window.__DEBUG_API.pageCount() + ' 页')
+      ? ((window.__DEBUG_API.pageIndex() + 1) + ' / ' + window.__DEBUG_API.pageCount())
       : '—';
+    var live = document.getElementById('live');
+    if (live && st) live.textContent =
+      st === 'overview' ? '整柜' : st === 'featured' ? '陈列态' : '翻书';
   });
   sync();
 
