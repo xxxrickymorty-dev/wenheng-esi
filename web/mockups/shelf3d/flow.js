@@ -65,9 +65,12 @@ function titleOf(sel) {
 function enter(from, to) {
   document.body.setAttribute('data-flow', to);
   var hint = document.getElementById('flow-hint');
+  var A = window.WH_AUDIO;
 
   if (to === 'featured') {
     if (S && S.feature) S.feature(pick);
+    if (A && from === 'overview') A.pull();          /* 从架上抽出这一本 */
+    if (A && from === 'reading') A.close();          /* 合上再退回陈列 */
     if (hint) {
       hint.hidden = false;
       hint.innerHTML = '<b>' + (pick ? pick.title : '') + '</b><br>' +
@@ -75,10 +78,12 @@ function enter(from, to) {
     }
   } else if (to === 'reading') {
     if (S && S.stop) S.stop();                 /* 翻书时不必再跑三维循环 */
+    if (A) A.open();                            /* 开卷 */
     if (hint) hint.hidden = true;
     openReader();
   } else {                                     /* overview */
     closeReader();
+    if (A && from === 'featured') A.pull();    /* 归架：搬回去 */
     if (S && S.unfeature) S.unfeature();
     if (S && S.start) S.start();
     if (hint) hint.hidden = true;
@@ -120,11 +125,13 @@ function buildPages(sel) {
   }
 
   return [
-    /* 1 封面 */
-    page('pg-cover', '<div class="vtitle">学科信息参考</div>' +
-         '<div class="pno">' + (period ? period.slice(0, 4) + ' 年第 ' +
-           (parseInt(period.slice(4), 10) === 1 ? 1 : 2) + ' 期' : '') + '</div>' +
-         '<div class="seal">文衡</div><div class="cover-foot">云南大学图书馆</div>'),
+    /* 1 封面：双线栏 + 纸签条 + 竖排刊刻书名 + 钤印（与 3D 书封同一个设计 DNA） */
+    page('pg-cover', '<div class="cv-frame">' +
+         '<div class="cv-slip"><div class="vtitle">学科信息参考</div>' +
+         '<div class="cv-period">' + (period || '') + '</div></div>' +
+         '<div class="seal">衡</div>' +
+         '<div class="cv-foot">' + (period ? period.slice(0, 4) + ' 年' : '') + '</div>' +
+         '<div class="cv-press">云南大学图书馆</div></div>'),
 
     /* 2 目录 */
     page('pg-toc', '<h2>目 录</h2><ol class="toc">' +
@@ -160,7 +167,8 @@ function buildPages(sel) {
          '<p class="small">正文由固定句式生成，运行期不经过大模型。</p>'),
 
     /* 8 封底 */
-    page('pg-cover pg-back', '<div class="vtitle">云南大学图书馆</div><div class="seal gold">文衡</div>')
+    page('pg-cover pg-back', '<div class="cv-frame"><div class="vtitle">云南大学图书馆</div>' +
+         '<div class="seal gold">衡</div></div>')
   ].join('');
 }
 
@@ -194,6 +202,13 @@ function openReader() {
       showPageCorners: true, maxShadowOpacity: .35
     });
     pf.loadFromHTML(host.querySelectorAll('.page'));
+    /* 翻页声挂在「页码变了」上——拖角预览不算翻页，不该响 */
+    pf.on('flip', function () {
+      var A = window.WH_AUDIO;
+      if (A) A.page();
+      var lbl = document.getElementById('reader-page');
+      if (lbl) lbl.textContent = '第 ' + (pf.getCurrentPageIndex() + 1) + ' / ' + pf.getPageCount() + ' 页';
+    });
   } catch (e) {
     console.error('[flow] 翻书层起不来：', e);
   }

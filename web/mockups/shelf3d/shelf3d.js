@@ -113,72 +113,127 @@ function clothMaps(hex, seed) {
 
 /* 封面：同心波纹 + 竖排书名 + 期次 + 钤印。
    ⚠ 画布比例必须等于书封比例（0.44:0.68），否则字被纵向拉长（技能里的坑 6）。 */
+/* 封面：**分层几何构成**（设计 DNA 见 cover-dna.json，取自 A-朱批·学术志稿）。
+   七层各司其职，不是一团花纹：
+     ① 卷色布面（每期一色，一眼认出是哪一期）＋ 纸颗粒
+     ② 双线栏外框（6px 带、上下各 1px 线）—— 刊刻本的版框
+     ③ 朱丝栏界行：两道竖向细线，把版面切栏
+     ④ 签条：右侧一条**宣纸色**签条（真线装书就是贴签条的），书名用墨色写在上面
+     ⑤ 竖排刊刻书名（宋体、字距拉开）
+     ⑥ 钤印：朱砂方印，微转 -3°，边缘略有不齐（用旧了的手感）
+     ⑦ 出版项与期次（烫金细体）
+   慎用（A 稿定的）：圆角卡片 / 渐变 / emoji / 抽象装饰纹样。
+   ⚠ 画布比例必须等于书封比例（0.44:0.68），否则字被拉长（技能坑 6）。 */
 function coverArtTexture(bk, baseHex) {
   var CW = 384, CH = 594;
   var c = makeCanvas(CW, CH), x = c.getContext('2d');
   var r = seededRandom(parseInt(bk.period, 10) || 202607);
+
+  var PAPER = '#f7f4ec', PAPER_2 = '#ede7d8';
+  var INK = '#241f1c', INK_3 = '#847f75';
+  var ZHU = '#b13c2c', GOLD = '#a98a5c', LINE = '#cbc6bd';
+
+  /* ① 卷色布面 + 纸颗粒 */
   x.fillStyle = baseHex; x.fillRect(0, 0, CW, CH);
-
-  var cx = CW * (.46 + r() * .12), cy = CH * (.40 + r() * .08);
-  var rings = 7 + Math.floor(r() * 4), base = CW * (.055 + r() * .02);
-  x.lineCap = 'round';
-  for (var i = rings; i >= 1; i--) {
-    var t = i / rings, rx = base * i * (.9 + r() * .18), ry = base * i * (1.15 + r() * .2);
-    var wob = .13 + r() * .16;
-    x.beginPath();
-    for (var a = 0; a <= 72; a++) {
-      var th = a / 72 * Math.PI * 2;
-      var kk = 1 + Math.sin(th * 3 + i) * wob * .5 + Math.cos(th * 5 - i) * wob * .3;
-      var px = cx + Math.cos(th) * rx * kk, py = cy + Math.sin(th) * ry * kk;
-      a ? x.lineTo(px, py) : x.moveTo(px, py);
-    }
-    x.closePath();
-    x.strokeStyle = 'rgba(244,232,206,' + (.14 + (1 - t) * .42).toFixed(2) + ')';
-    x.lineWidth = 1.2 + (1 - t) * 1.5;
-    x.stroke();
+  for (var i = 0; i < 2600; i++) {
+    x.fillStyle = 'rgba(0,0,0,' + (r() * .07 + .015).toFixed(3) + ')';
+    x.fillRect(r() * CW | 0, r() * CH | 0, 1 + (r() * 2 | 0), 1);
   }
-  x.beginPath(); x.arc(cx, cy, 6, 0, Math.PI * 2);
-  x.fillStyle = 'rgba(244,232,206,.75)'; x.fill();
+  for (i = 0; i < 380; i++) {                       /* 纤维短划，横向 */
+    x.fillStyle = 'rgba(255,248,232,' + (r() * .05 + .01).toFixed(3) + ')';
+    x.fillRect(r() * CW | 0, r() * CH | 0, 3 + (r() * 9 | 0), 1);
+  }
 
-  x.fillStyle = 'rgba(246,236,212,.94)';
-  x.textAlign = 'center';
-  x.font = '600 30px "Songti SC", SimSun, serif';
+  /* ② 双线栏外框 */
+  function ruleRect(inset, col, w) {
+    x.strokeStyle = col; x.lineWidth = w;
+    x.strokeRect(inset, inset, CW - inset * 2, CH - inset * 2);
+  }
+  ruleRect(14, 'rgba(247,244,236,.55)', 1);
+  ruleRect(21, 'rgba(247,244,236,.55)', 1);
+
+  /* ③ 朱丝栏界行：两道竖线把版面切栏（左窄栏放钤印、右宽栏放签条） */
+  [CW * 0.30, CW * 0.52].forEach(function (gx) {
+    x.strokeStyle = 'rgba(247,244,236,.34)';
+    x.lineWidth = 1;
+    x.beginPath(); x.moveTo(gx, 34); x.lineTo(gx, CH - 34); x.stroke();
+  });
+
+  /* ④ 签条：宣纸色，贴在右栏（线装书的做法） */
+  var sx = Math.round(CW * 0.55), sw = Math.round(CW * 0.34);
+  var sy = 64, sh = CH - 128;
+  x.fillStyle = PAPER;
+  x.fillRect(sx, sy, sw, sh);
+  x.strokeStyle = 'rgba(36,31,28,.55)'; x.lineWidth = 1;
+  x.strokeRect(sx + .5, sy + .5, sw - 1, sh - 1);
+  x.fillStyle = PAPER_2;                            /* 签条下沿一道浅色，像压过一层纸 */
+  x.fillRect(sx + 1, sy + sh - 6, sw - 2, 5);
+
+  /* ⑤ 竖排刊刻书名（写在签条上，墨色）。
+     ⚠ 竖排必须逐字下落且不换列——用 fillText 逐字画，比 CSS 竖排稳 */
   var title = '学科信息参考';
-  for (var k = 0; k < title.length; k++) {
-    x.fillText(title[k], CW - 44, 74 + k * 40);
-  }
-  x.textAlign = 'left';
-  x.font = '500 17px Consolas, monospace';
-  x.fillStyle = 'rgba(246,236,212,.80)';
-  x.fillText(String(bk.period), 26, CH - 54);
-  x.font = '500 15px "Songti SC", SimSun, serif';
-  x.fillStyle = 'rgba(246,236,212,.62)';
-  x.fillText(bk.caption || ('第 ' + bk.no + ' 期'), 26, CH - 30);
-
-  /* 钤印：已签发＝朱印（把"可签发"画在封面上） */
-  x.fillStyle = bk.placeholder ? 'rgba(120,110,96,.85)' : 'rgba(178,58,42,.92)';
-  x.fillRect(24, 26, 44, 44);
-  x.fillStyle = 'rgba(255,248,238,.95)';
+  x.fillStyle = INK;
   x.textAlign = 'center';
-  x.font = '600 30px "Songti SC", SimSun, serif';
-  x.fillText(bk.placeholder ? '示' : '衡', 46, 60);
+  x.font = '700 34px "Songti SC","Source Han Serif SC",SimSun,serif';
+  var tY = sy + 62, step = 44;
+  for (var k = 0; k < title.length; k++) {
+    x.fillText(title[k], sx + sw / 2, tY + k * step);
+  }
+  x.font = '500 13px Consolas,monospace';
+  x.fillStyle = INK_3;
+  x.fillText(String(bk.period || ''), sx + sw / 2, tY + title.length * step + 10);
 
-  /* 示意书：盖一道斜的水印，别让人误以为是真出的报告（技能里的"真实"门） */
+  /* ⑥ 钤印：朱砂方印，微转 -3°，边缘略有不齐 */
+  x.save();
+  x.translate(CW * 0.185, CH * 0.22);
+  x.rotate(-3 * Math.PI / 180);
+  x.fillStyle = bk.placeholder ? 'rgba(132,127,117,.9)' : ZHU;
+  x.fillRect(-30, -30, 60, 60);
+  x.fillStyle = 'rgba(0,0,0,.10)';                  /* 内框留白线 */
+  x.fillRect(-30, -30, 60, 3); x.fillRect(-30, 27, 60, 3);
+  x.fillRect(-30, -30, 3, 60); x.fillRect(27, -30, 3, 60);
+  for (i = 0; i < 26; i++) {                        /* 用旧了：边缘敲掉几处 */
+    x.fillStyle = baseHex;
+    var edge = r() * 4 | 0, t2 = r() * 56 - 28;
+    if (edge === 0) x.fillRect(t2, -30, 2 + r() * 3 | 0, 1 + r() * 2 | 0);
+    else if (edge === 1) x.fillRect(t2, 28, 2 + r() * 3 | 0, 1 + r() * 2 | 0);
+    else if (edge === 2) x.fillRect(-30, t2, 1 + r() * 2 | 0, 2 + r() * 3 | 0);
+    else x.fillRect(28, t2, 1 + r() * 2 | 0, 2 + r() * 3 | 0);
+  }
+  x.fillStyle = PAPER;
+  x.textAlign = 'center';
+  x.font = '700 34px "Songti SC",SimSun,serif';
+  x.fillText(bk.placeholder ? '示' : '衡', 0, 12);
+  x.restore();
+
+  /* ⑦ 期次 + 出版项（烫金细体，左栏） */
+  x.textAlign = 'left';
+  x.fillStyle = GOLD;
+  x.font = '500 15px Consolas,monospace';
+  x.fillText(String(bk.period || ''), 34, CH - 52);
+  x.font = '400 12px "Songti SC",SimSun,serif';
+  x.fillStyle = 'rgba(169,138,92,.85)';
+  x.fillText(bk.caption || ('第 ' + (bk.no || '') + ' 期'), 34, CH - 32);
+  x.fillStyle = 'rgba(247,244,236,.45)';
+  x.font = '400 11px "Songti SC",SimSun,serif';
+  x.fillText('云南大学图书馆', CW - 34 - x.measureText('云南大学图书馆').width, 44);
+
+  /* 示意书：斜水印，别让人误以为是真出的报告 */
   if (bk.placeholder) {
     x.save();
     x.translate(CW / 2, CH / 2);
     x.rotate(-Math.PI / 7);
     x.textAlign = 'center';
-    x.font = '600 54px "Songti SC", SimSun, serif';
+    x.font = '600 54px "Songti SC",SimSun,serif';
     x.fillStyle = 'rgba(250,242,226,.22)';
     x.fillText('示 意', 0, 0);
     x.restore();
   }
 
-  var t2 = new THREE.CanvasTexture(c);
-  t2.colorSpace = THREE.SRGBColorSpace;
-  t2.anisotropy = aniso(12);
-  return t2;
+  var tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;   /* 颜色贴图必须声明 sRGB，否则发灰发粉 */
+  tex.anisotropy = aniso(8);
+  return tex;
 }
 
 function pageEdgeTexture() {
@@ -1132,6 +1187,14 @@ window.WH_SHELF3D = {
         placeholder: b.userData.placeholder, rect: projectGroupRect(b)
       };
     });
+  },
+  /* 把封面单独画一张吐出来（供取色校验用，不参与渲染） */
+  coverPreview: function (period) {
+    var pal = paletteOf(period);
+    var t = coverArtTexture({ period: period, no: 1 }, pal.vol);
+    var img = t.image;
+    try { t.dispose(); } catch (e) {}
+    return img.toDataURL('image/png');
   },
   tiers: function () {
     return tiers.map(function (t, i) {

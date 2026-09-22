@@ -30,6 +30,13 @@
   #flow-hint .sub{color:#b8ab99;font-size:13px}
   #flow-hint kbd{border:1px solid #6b5a45;border-radius:4px;padding:0 5px;font-size:12px;color:#c9a06a}
 
+  /* ---------- 声音开关（默认关；演示现场多半静音） ---------- */
+  .snd{position:fixed;right:22px;top:78px;font:inherit;font-size:13px;
+    color:#b8ab99;background:rgba(43,38,34,.72);border:1px solid #4a3f34;
+    border-radius:8px;padding:7px 12px;cursor:pointer;z-index:30}
+  .snd[aria-pressed="true"]{color:#f0e6d4;border-color:#c9a06a;background:rgba(60,48,36,.9)}
+  .snd:hover{border-color:#8a7458}
+
   /* ---------- 翻书态（2D 覆盖层） ---------- */
   #reader{position:fixed;inset:0;z-index:40;background:#241f1b;
     display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;
@@ -71,12 +78,26 @@
     display:grid;place-items:center;color:#b23a2a;font-size:19px;font-weight:700;
     background:rgba(244,235,217,.55)}
   .page .seal.gold{border-color:#a9853f;color:#a9853f}
-  .pg-cover{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+  .pg-cover{display:block;padding:24px}
+  /* 封面七层构成：双线栏框 / 纸签条 / 竖排书名 / 钤印 / 出版项（见 cover-dna.json） */
+  .cv-frame{position:relative;height:100%;border:1px solid #cbc6bd;
+    box-shadow:inset 0 0 0 6px #f4ebd9, inset 0 0 0 7px #cbc6bd}
+  .cv-slip{position:absolute;right:12%;top:8%;bottom:8%;width:34%;
+    background:#f7f4ec;border:1px solid rgba(36,31,28,.55);
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+    padding:28px 0 18px}
   /* 坑：竖排必须 nowrap，否则会静默折列，把书名排成两个词 */
   .pg-cover .vtitle{writing-mode:vertical-rl;text-orientation:upright;white-space:nowrap;
-    font-size:30px;letter-spacing:.32em;color:#2f2a24}
-  .pg-cover .pno{font-size:14px;color:#6f6558;letter-spacing:.14em}
-  .pg-cover .cover-foot{font-size:12.5px;color:#a9853f;letter-spacing:.22em}
+    font-size:30px;letter-spacing:.32em;color:#241f1c;font-weight:700}
+  .cv-period{margin-top:14px;font-size:12px;color:#847f75;
+    font-family:Consolas,monospace;letter-spacing:.08em}
+  .cv-foot{position:absolute;left:8%;bottom:5%;font-size:13px;color:#a98a5c;letter-spacing:.14em}
+  .cv-press{position:absolute;right:8%;top:4%;font-size:11px;color:rgba(36,31,28,.45);letter-spacing:.12em}
+  .page .seal{position:absolute;left:11%;top:18%;width:62px;height:62px;
+    background:#b13c2c;border-radius:3px;transform:rotate(-3deg);
+    display:grid;place-items:center;color:#f7f4ec;font-size:22px;font-weight:700;
+    box-shadow:inset 0 0 0 3px rgba(247,242,230,.22)}
+  .page .seal.gold{background:transparent;color:#a98a5c;box-shadow:inset 0 0 0 3px #a98a5c}
   .toc{margin:0;padding-left:1.4em;font-size:16px;line-height:2.4}
   .big{width:100%;border-collapse:collapse;font-size:13px}
   .big th,.big td{border-bottom:1px solid #d9cfbc;padding:5px 6px;text-align:left}
@@ -94,6 +115,9 @@
 <div class="warn">静态稿 · 待审核：三层书架 + 相机切换</div>
 
 <div class="tiers" id="tiers" role="group" aria-label="按系列切换"></div>
+
+<button type="button" id="snd" class="snd" aria-pressed="false"
+        title="声音默认关着；要听得到得先点一下（浏览器规定）">♪ 声音 关</button>
 
 <div id="flow-hint" hidden></div>
 
@@ -139,6 +163,8 @@ window.WH_DATA = {
 <script src="meshes.js"></script>
 <script src="shelf3d.js"></script>
 <script src="vendor/page-flip.browser.js"></script>
+<script src="audio/sfx-data.js"></script>
+<script src="audio.js"></script>
 <script src="flow.js"></script>
 <script>
 (function () {
@@ -213,6 +239,16 @@ window.WH_DATA = {
     window.__DEBUG_API.flipPrev(); sync();
   });
 
+  /* 声音开关：默认关；点一下才开（浏览器要一次用户手势） */
+  var A = window.WH_AUDIO, snd = document.getElementById('snd');
+  function syncSnd() {
+    var v = A && A.on();
+    snd.setAttribute('aria-pressed', v ? 'true' : 'false');
+    snd.textContent = v ? '♪ 声音 开' : '♪ 声音 关';
+  }
+  snd.addEventListener('click', function () { if (A) A.toggle(); syncSnd(); });
+  syncSnd();
+
   /* 首屏也要同步一次（只靠「状态变化」监听会漏掉初始值） */
   F.on(function (st) {
     var lbl = document.getElementById('reader-page');
@@ -223,6 +259,7 @@ window.WH_DATA = {
   sync();
 
   window.__SHELF_INFO = S.info();
+  window.__AUDIO_INFO = A ? A.info() : null;
 })();
 </script>
 </body>
