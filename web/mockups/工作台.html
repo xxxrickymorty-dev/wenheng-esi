@@ -1,0 +1,636 @@
+<!doctype html>
+<!--
+  文衡 · 工作台（静态稿 · 待 rick 审核）
+  ------------------------------------------------------------------
+  依据：web/UX.md（第一性原理与视觉基线）+ web/UX-生成台.md（工作区 1 规格）
+        + web/mockups/PLAN-工作台.md（增量表与被否选项）。
+  第一屏 = 「这一期现在到哪一步、下一步做什么」——任务视图，不是工作区菜单（UX.md §七）。
+  文案一律人话：不写机器内部的步骤名、文件校验值这类工程词。
+  正式页面不含顶部那条「评审工具条」。
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 工作台</title>
+<style>
+  /* ============ 三套配色（UX.md §九：可切换；朱砂只标「签章/待拍板/主按钮」） ============ */
+  body[data-pal="zhu"]{
+    --bg:#f3efe6; --bg-2:#fbf8f1; --bg-3:#ede7d8;
+    --ink:#2f2a24; --ink-2:#6f6558; --ink-3:#8d8577;
+    --line:#d9cfbc; --line-2:#c4b79c;
+    --zhu:#a8331f; --zhu-deep:#8e2416; --zhu-wash:rgba(168,51,31,.09);
+    --gold:#8f6d2a; --ok:#356b45; --warn:#a05f12; --bad:#9c2b1b;
+  }
+  body[data-pal="morandi"]{
+    --bg:#eeece7; --bg-2:#f8f7f4; --bg-3:#e2dfd8;
+    --ink:#2b2c2e; --ink-2:#63656a; --ink-3:#82858b;
+    --line:#d5d2cb; --line-2:#bdb9b1;
+    --zhu:#5f6f7a; --zhu-deep:#46545e; --zhu-wash:rgba(95,111,122,.12);
+    --gold:#7a6f5c; --ok:#3f6b52; --warn:#8a6a2e; --bad:#8a3a30;
+  }
+  body[data-pal="mix"]{
+    --bg:#f0eee9; --bg-2:#faf9f6; --bg-3:#e6e2da;
+    --ink:#2a2b2d; --ink-2:#5f6167; --ink-3:#7d8087;
+    --line:#d7d3cb; --line-2:#c0bcb3;
+    --zhu:#a8331f; --zhu-deep:#8e2416; --zhu-wash:rgba(168,51,31,.08);
+    --gold:#8a7448; --ok:#3a6a4c; --warn:#9a6a1e; --bad:#99291a;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:17px/1.7 "Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+  }
+  /* 数字用等宽 lining figures，不与汉字争 */
+  .num{font-family:Consolas,"Cascadia Mono","Courier New",monospace;
+    font-variant-numeric:lining-nums tabular-nums}
+  button{font:inherit;color:inherit;cursor:pointer}
+  kbd{border:1px solid var(--line-2);border-radius:4px;padding:0 5px;
+    font:13px/1.6 Consolas,monospace;color:var(--ink-2)}
+
+  /* ============ 评审工具条（正式页面不含） ============ */
+  .review{position:sticky;top:0;z-index:60;display:flex;flex-wrap:wrap;gap:14px;align-items:center;
+    padding:10px 22px;background:var(--bg-3);border-bottom:1px solid var(--line-2);
+    font-size:13.5px;color:var(--ink-2)}
+  .review b{color:var(--zhu)}
+  .seg{display:inline-flex;border:1px solid var(--line-2);border-radius:8px;overflow:hidden}
+  .seg button{background:var(--bg-2);border:none;padding:6px 11px;font-size:13.5px;
+    border-right:1px solid var(--line);color:var(--ink-2)}
+  .seg button:last-child{border-right:none}
+  .seg button[aria-pressed="true"]{background:var(--zhu);color:#fbf8f1}
+  .review .note{font-size:12.5px;color:var(--ink-3)}
+
+  /* ============ 顶栏 ============ */
+  .top{display:flex;align-items:center;gap:22px;padding:18px 32px;border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:baseline;gap:11px}
+  .brand .seal{display:inline-grid;place-items:center;width:32px;height:32px;background:var(--zhu);
+    color:#fbf8f1;font-weight:700;font-size:18px;border-radius:2px;transform:rotate(-3deg);
+    box-shadow:inset 0 0 0 2px rgba(251,248,241,.22)}
+  .brand h1{font-size:21px;letter-spacing:.04em}
+  .nav{display:flex;gap:4px;margin-left:8px}
+  .nav button{background:none;border:none;padding:8px 13px;border-radius:7px;
+    font-size:15px;color:var(--ink-2);border-bottom:2px solid transparent}
+  .nav button[aria-current="true"]{color:var(--ink);border-bottom-color:var(--zhu)}
+  .nav button:hover{background:var(--zhu-wash)}
+  .who{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:15px;color:var(--ink-2)}
+  .who .role{border:1px solid var(--line-2);border-radius:7px;padding:6px 12px;background:var(--bg-2)}
+  .who .demo{font-size:12.5px;color:var(--ink-3)}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:26px 32px 80px}
+
+  /* ============ 本期任务条（第一屏主角） ============ */
+  .task{background:var(--bg-2);border:1px solid var(--line-2);border-radius:12px;padding:26px 28px}
+  .task .head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+  .task .head h2{font-size:24px;letter-spacing:.03em}
+  .task .head .sub{font-size:15px;color:var(--ink-2)}
+  .task .head .switch{margin-left:auto;background:none;border:1px solid var(--line-2);
+    border-radius:7px;padding:7px 13px;font-size:14.5px;color:var(--ink-2)}
+
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media (max-width:820px){.steps{grid-template-columns:1fr}}
+  .step{border:1px solid var(--line);border-radius:10px;padding:16px 18px;background:var(--bg);
+    display:flex;flex-direction:column;gap:8px}
+  .step .n{font-family:Consolas,monospace;font-size:13px;letter-spacing:.18em;color:var(--ink-3)}
+  .step .t{font-size:18px;font-weight:700;display:flex;align-items:center;gap:9px}
+  .step .d{font-size:14.5px;color:var(--ink-2);line-height:1.65}
+  .step .st{display:flex;align-items:center;gap:7px;font-size:15px;margin-top:2px}
+  .step[data-s="done"] .st{color:var(--ok)}
+  .step[data-s="todo"] .st{color:var(--ink-3)}
+  .step[data-s="act"]{border-color:var(--zhu);background:var(--zhu-wash)}
+  .step[data-s="act"] .st{color:var(--zhu)}
+  .step .go{align-self:flex-start;margin-top:6px;background:var(--zhu);color:#fbf8f1;border:none;
+    border-radius:8px;padding:11px 20px;font-size:18px}
+  .step .go:hover{background:var(--zhu-deep)}
+  .step .go[disabled]{background:var(--bg-3);color:var(--ink-3);cursor:not-allowed}
+  .step .link{align-self:flex-start;background:none;border:none;padding:0;color:var(--gold);
+    font-size:14.5px;text-decoration:underline;text-underline-offset:3px}
+  .ic{width:20px;height:20px;flex:none;display:block}
+
+  .task .foot{display:flex;flex-wrap:wrap;gap:20px;align-items:center;
+    margin-top:20px;padding-top:16px;border-top:1px solid var(--line);font-size:15px;color:var(--ink-2)}
+  .task .foot .grow{margin-left:auto}
+
+  /* 预测模型：第一层只问一句话 */
+  .model{margin-top:18px;border-top:1px solid var(--line);padding-top:16px}
+  .model .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:16px}
+  .model .row .hint{font-size:14px;color:var(--ink-3)}
+  .model .exp{background:none;border:none;color:var(--gold);text-decoration:underline;
+    text-underline-offset:3px;font-size:14.5px}
+  .model .tbl{margin-top:14px;border:1px solid var(--line);border-radius:9px;overflow:auto}
+  .model table{width:100%;border-collapse:collapse;font-size:15px}
+  .model th,.model td{border-bottom:1px solid var(--line);padding:9px 13px;text-align:left}
+  .model th{background:var(--bg-3);font-weight:600;font-size:14px;color:var(--ink-2)}
+  .model tr:last-child td{border-bottom:none}
+  .model select{font:inherit;font-size:15px;padding:6px 9px;border:1px solid var(--line-2);
+    border-radius:6px;background:var(--bg-2);color:var(--ink)}
+  .model .why{font-size:13.5px;color:var(--ink-3);line-height:1.6}
+  .route{margin-top:12px;font-size:14px;color:var(--warn);display:flex;gap:8px;align-items:flex-start}
+
+  /* ============ 生成中 / 结果条 ============ */
+  .runbar{margin-top:18px;border:1px solid var(--line-2);border-radius:10px;padding:18px 20px;
+    background:var(--bg)}
+  .runbar .top2{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:16px}
+  .runbar .top2 .t{color:var(--ink-2)}
+  .runbar .acts{margin-left:auto;display:flex;gap:12px}
+  .runbar .acts button{background:none;border:1px solid var(--line-2);border-radius:7px;
+    padding:8px 14px;font-size:15px}
+  .plist{margin-top:14px;display:grid;gap:8px}
+  .plist .p{display:flex;align-items:center;gap:10px;font-size:15.5px}
+  .plist .p .nm{min-width:7.5em}
+  .plist .p .bar{flex:1;height:6px;background:var(--bg-3);border-radius:3px;overflow:hidden;max-width:320px}
+  .plist .p .bar i{display:block;height:100%;background:var(--ok);width:0}
+  .plist .p[data-s="ok"]{color:var(--ok)}
+  .plist .p[data-s="run"]{color:var(--zhu)}
+  .plist .p[data-s="wait"]{color:var(--ink-3)}
+
+  /* ============ 结果 / 错误卡 ============ */
+  .card{margin-top:18px;border:1px solid var(--line-2);border-radius:10px;padding:18px 20px;background:var(--bg-2)}
+  .card h3{font-size:19px;display:flex;align-items:center;gap:9px;margin-bottom:8px}
+  .card p{font-size:15.5px;color:var(--ink-2);line-height:1.75}
+  .card .next{margin-top:12px;font-size:15.5px}
+  .card .next b{color:var(--ink)}
+  .card .acts{margin-top:14px;display:flex;gap:12px;flex-wrap:wrap}
+  .card .acts button{border-radius:8px;padding:11px 18px;font-size:17px;border:1px solid var(--line-2);
+    background:var(--bg)}
+  .card .acts .pri{background:var(--zhu);color:#fbf8f1;border-color:var(--zhu)}
+  .card .acts .pri:hover{background:var(--zhu-deep)}
+  .card.ok{border-left:4px solid var(--ok)}
+  .card.bad{border-left:4px solid var(--bad)}
+  .card.warn{border-left:4px solid var(--warn)}
+  .card.seal{border-left:4px solid var(--zhu)}
+  .stamp{display:inline-grid;place-items:center;width:46px;height:46px;background:var(--zhu);
+    color:#fbf8f1;font-weight:700;font-size:15px;border-radius:3px;transform:rotate(-4deg);
+    letter-spacing:.05em;box-shadow:inset 0 0 0 2px rgba(251,248,241,.22)}
+  .stamp.old{background:var(--gold)}
+
+  /* ============ 报告区 ============ */
+  .rep{margin-top:26px}
+  .rep h2{font-size:20px;letter-spacing:.03em;margin-bottom:12px}
+  .rep .empty{border:1px dashed var(--line-2);border-radius:10px;padding:26px;color:var(--ink-2);
+    font-size:15.5px}
+  .rep .doc{border:1px solid var(--line-2);border-radius:10px;background:var(--bg-2);padding:26px 30px}
+  .rep .doc .ttl{font-size:22px;letter-spacing:.05em;margin-bottom:4px}
+  .rep .doc .meta{font-size:14px;color:var(--ink-3);margin-bottom:16px}
+  .rep .doc .readout{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:18px}
+  @media (max-width:820px){.rep .doc .readout{grid-template-columns:1fr}}
+  .rep .doc .ro{border:1px solid var(--line);border-radius:9px;padding:14px 16px;background:var(--bg)}
+  .rep .doc .ro .k{font-family:Consolas,monospace;font-size:11px;letter-spacing:.2em;color:var(--ink-3)}
+  .rep .doc .ro .v{font-family:Consolas,monospace;font-size:34px;font-variant-numeric:tabular-nums;
+    color:var(--zhu);font-weight:700;line-height:1.15;margin-top:4px}
+  .rep .doc .ro .u{font-family:inherit;font-size:14px;color:var(--ink-2);font-weight:400}
+  .rep .doc .src{font-size:12.5px;color:var(--ink-3);border-top:1px dashed var(--line-2);padding-top:10px}
+
+  .sr{position:absolute;left:-9999px}
+</style>
+</head>
+<body data-pal="zhu" data-state="ready" data-role="admin">
+
+<!-- 图标：一套内联 SVG（24 视框 / 1.7 描边 / 圆头），改一处全局一致 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5 19 12 7 19.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7zm0 0v4h4M9 13h6M9 17h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-seal" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 4.5 3.4 7.7 8 9 4.6-1.3 8-4.5 8-9V6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m8.5 12 2.5 2.5 4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 2.8 20h18.4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 10v4.5M12 17.4v.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-wait" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-dasharray="3 3"/></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24"><path d="M4 6h16v12H4zM4 10h16M10 10v8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+  <symbol id="i-in" viewBox="0 0 24 24"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<!-- ===== 评审工具条：正式页面不含这一段 ===== -->
+<div class="review">
+  <span><b>静态稿</b> · 待 rick 审核</span>
+  <span class="seg" role="group" aria-label="界面状态">
+    <button type="button" data-st="empty" aria-pressed="false">空</button>
+    <button type="button" data-st="ready" aria-pressed="true">待生成</button>
+    <button type="button" data-st="running" aria-pressed="false">生成中</button>
+    <button type="button" data-st="done" aria-pressed="false">成功</button>
+    <button type="button" data-st="failed-parse" aria-pressed="false">失败·缺数</button>
+    <button type="button" data-st="failed-other" aria-pressed="false">失败·其他</button>
+    <button type="button" data-st="stalled" aria-pressed="false">中断</button>
+    <button type="button" data-st="signed" aria-pressed="false">已签发</button>
+  </span>
+  <span class="seg" role="group" aria-label="配色">
+    <button type="button" data-pal="zhu" aria-pressed="true">朱批原色系</button>
+    <button type="button" data-pal="morandi" aria-pressed="false">莫兰迪</button>
+    <button type="button" data-pal="mix" aria-pressed="false">莫兰迪 + 朱砂点睛</button>
+  </span>
+  <span class="seg" role="group" aria-label="角色">
+    <button type="button" data-role="admin" aria-pressed="true">馆员（可编辑）</button>
+    <button type="button" data-role="guest" aria-pressed="false">普通用户（只读）</button>
+  </span>
+  <span class="note">角色开关<span>仅演示用</span>，真权限在后端</span>
+</div>
+
+<div class="top">
+  <div class="brand"><span class="seal">衡</span><h1>文衡 · 工作台</h1></div>
+  <nav class="nav" aria-label="工作区">
+    <button type="button" aria-current="true">生成台</button>
+    <button type="button" aria-current="false">报告库</button>
+    <button type="button" aria-current="false">审核台</button>
+    <button type="button" aria-current="false">分析台</button>
+    <button type="button" aria-current="false">台账</button>
+  </nav>
+  <div class="who">
+    <span class="role" id="whoRole">👤 卜彤 · 馆员</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ===== 本期任务条（第一屏主角） ===== -->
+  <section class="task" aria-label="本期任务">
+    <div class="head">
+      <h2>本期 <span class="num" id="tPeriod">—</span> · 总第 <span class="num" id="tNo">—</span> 期</h2>
+      <span class="sub">三步走完就出报告</span>
+      <button class="switch" type="button">切换期次 ▾</button>
+    </div>
+
+    <div class="steps" id="steps">
+      <div class="step" data-s="done" id="st1">
+        <div class="n">STEP 1</div>
+        <div class="t"><svg class="ic"><use href="#i-table"/></svg>取数贴表</div>
+        <div class="d">从 ESI 官网与 InCites 取当期数字，<b>按列追加</b>进台账（不覆盖历史列）。</div>
+        <div class="st"><svg class="ic"><use href="#i-check"/></svg><span>台账已齐</span></div>
+        <button class="link" type="button">点这复查缺哪张表哪一列</button>
+      </div>
+      <div class="step" data-s="done" id="st2">
+        <div class="n">STEP 2</div>
+        <div class="t"><svg class="ic"><use href="#i-in"/></svg>放入输入</div>
+        <div class="d">把台账存成 <span class="num">监测表.xlsx</span> 放进本期输入目录。</div>
+        <div class="st"><svg class="ic"><use href="#i-check"/></svg><span>已就位 · <span class="num" id="tSize">2.1 MB</span> · 今天 09:14</span></div>
+      </div>
+      <div class="step" data-s="act" id="st3">
+        <div class="n">STEP 3</div>
+        <div class="t"><svg class="ic"><use href="#i-play"/></svg>一键生成</div>
+        <div class="d">机器跑约 <b>20 秒</b>，出可签发的 Word 报告初稿。</div>
+        <div class="st"><svg class="ic"><use href="#i-dot"/></svg><span id="st3txt">等你点下面这颗按钮</span></div>
+        <button class="go" id="btnGo" type="button">开始生成</button>
+      </div>
+    </div>
+
+    <!-- 预测模型：第一层只问一句话，不打断三步动线 -->
+    <div class="model">
+      <div class="row">
+        <span>预测模型：<b id="mMode">用推荐</b>（按学科，5 科已指定）</span>
+        <button class="exp" type="button" id="btnModel" aria-expanded="false">展开自定义</button>
+        <span class="hint">每种模型边上都写了它是干什么的</span>
+      </div>
+      <div class="tbl" id="mTbl" hidden>
+        <table>
+          <thead><tr><th>学科</th><th>推荐</th><th>我的选择</th><th>这模型是干什么的</th></tr></thead>
+          <tbody id="mBody"></tbody>
+        </table>
+      </div>
+      <div class="route">
+        <svg class="ic"><use href="#i-alert"/></svg>
+        <span>本次预测的是<b>哪条路线</b>要说清：<b>被引</b>与<b>排名</b>两条路线在过去的结论一致率只有 2/8，
+        任何一条都不能单独当学科结论。</span>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>上一期 <span class="num">202607</span>：</span>
+      <span class="stamp old" aria-hidden="true">已签</span>
+      <span>已签发 · 卜彤 · <span class="num">09-22 10:12</span></span>
+      <span class="grow"></span>
+      <span class="num" id="tSrc">本期数字：国际排名 <b id="tRank">—</b> 位 · 顶尖论文 <b id="tTop">—</b> 篇</span>
+    </div>
+  </section>
+
+  <!-- ===== 生成中 / 结果（随状态切换） ===== -->
+  <div id="runbar" class="runbar" hidden>
+    <div class="top2">
+      <svg class="ic"><use href="#i-clock"/></svg>
+      <span><b>生成中</b> · 已用 <span class="num" id="rt">0</span> 秒</span>
+      <span class="t" id="runNow">正在解析台账…</span>
+      <span class="acts">
+        <button type="button">看日志</button>
+        <button type="button">取消</button>
+      </span>
+    </div>
+    <div class="plist" id="plist"></div>
+  </div>
+
+  <div id="cards"></div>
+
+  <!-- ===== 报告区（报告是主角） ===== -->
+  <section class="rep">
+    <h2>报告</h2>
+    <div id="repBody"></div>
+  </section>
+</div>
+
+<p class="sr" id="live" role="status" aria-live="polite"></p>
+
+<script src="shelf3d/data.js"></script>
+<script>
+(function () {
+'use strict';
+
+/* 真实数字全部来自 data.js（out/<期>/ 的产物，可逐格回溯）——不编 */
+var B = (window.WH_DATA && window.WH_DATA.books) || [];
+var CUR = B.filter(function (x) { return x.period === '202607'; })[0] || B[B.length - 1] || {};
+var PREV = B.filter(function (x) { return x.period === '202605'; })[0] || B[0] || {};
+
+function fmt(n) { return (n == null) ? '—' : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+function delta(v) { return v == null ? '—' : (v > 0 ? '↑' + v : v < 0 ? '↓' + (-v) : '持平'); }
+function $(s) { return document.querySelector(s); }
+function el(tag, cls, html) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html != null) e.innerHTML = html;
+  return e;
+}
+function ic(name) { return '<svg class="ic"><use href="#i-' + name + '"/></svg>'; }
+
+/* ---------- 顶上的数字 ---------- */
+$('#tPeriod').textContent = CUR.period || '—';
+$('#tNo').textContent = CUR.no || '—';
+$('#tRank').textContent = fmt(CUR.rank_intl_now);
+$('#tTop').textContent = fmt(CUR.top_papers_now);
+if (CUR.n_assert_pass != null) {
+  $('#tSrc').insertAdjacentHTML('beforeend',
+    ' · 本期自查 <b>' + CUR.n_assert_pass + '/' + CUR.n_assert_total + '</b> 全绿');
+}
+
+/* ---------- 预测模型：默认「用推荐」，展开是学科表 + 人话简介 ---------- */
+var MODELS = {
+  'Holt趋势模型': '只抓长期趋势、不管季节。适合稳定上升/下降的学科，外推最直接。',
+  '阻尼Holt模型': '趋势会「减速」——越往前推越保守。适合增长在放缓的学科。',
+  '季节性ETS模型': '抓「6 期一轮」的双月节律。适合受学年/发布节奏影响的指标。',
+  'SARIMA模型': '趋势 + 季节都管，参数在最初 30 期选定后固定。通用、稳。',
+  '经验贝叶斯状态空间模型': '把趋势与季节当「状态」逐期更新。对噪声大的序列更稳健。'
+};
+var RECO = {
+  '化学': '季节性ETS模型', '工程学': 'SARIMA模型', '材料科学': 'Holt趋势模型',
+  '临床医学': '阻尼Holt模型', '植物与动物学': '季节性ETS模型'
+};
+var DISCS = ((CUR.table || []).map(function (t) { return t.cn; }));
+if (!DISCS.length) DISCS = ['化学', '工程学', '材料科学', '临床医学', '植物与动物学'];
+/* 默认只显已指定的 5 科，其余「展开全部」（方案 §4 风险第 3 条） */
+var shown = 0;
+function fillModels() {
+  var tb = $('#mBody'); tb.innerHTML = '';
+  shown = 0;
+  DISCS.forEach(function (d, i) {
+    var rec = RECO[d] || 'SARIMA模型';
+    var collapsed = (i >= 5);
+    var tr = el('tr');
+    tr.innerHTML = '<td>' + d + '</td><td>' + rec + '</td>' +
+      '<td><select aria-label="' + d + ' 用哪个模型">' +
+      Object.keys(MODELS).map(function (m) {
+        return '<option' + (m === rec ? ' selected' : '') + '>' + m + '</option>';
+      }).join('') + '</select></td>' +
+      '<td class="why">' + MODELS[rec] + '</td>';
+    if (collapsed) { tr.dataset.more = '1'; tr.hidden = true; } else shown++;
+    tb.appendChild(tr);
+  });
+  if (DISCS.length > 5) {
+    var tr = el('tr');
+    var td = el('td'); td.colSpan = 4;
+    var b = el('button', 'exp', '展开其余 ' + (DISCS.length - 5) + ' 个学科');
+    b.type = 'button';
+    b.addEventListener('click', function () {
+      Array.prototype.forEach.call(tb.querySelectorAll('tr[data-more]'), function (r) { r.hidden = false; });
+      b.parentElement.parentElement.remove();
+    });
+    td.appendChild(b); tr.appendChild(td); tb.appendChild(tr);
+  }
+}
+fillModels();
+$('#btnModel').addEventListener('click', function () {
+  var t = $('#mTbl'), open = !t.hidden;
+  t.hidden = open;
+  this.setAttribute('aria-expanded', String(!open));
+  this.textContent = open ? '展开自定义' : '收起';
+  $('#mMode').textContent = open ? '用推荐' : '我自己指定';
+});
+
+/* ---------- 五步进度（说人话，不写机器内部的步骤名） ---------- */
+var PROCS = [
+  { n: '① 解析台账', now: '正在解析台账…' },
+  { n: '② 算大表', now: '正在算大表…' },
+  { n: '③ 预测回测', now: '正在做预测与回测…' },
+  { n: '④ 出图', now: '正在出图' },
+  { n: '⑤ 装配报告', now: '正在装配 Word 报告…' }
+];
+function renderProc(k, frac) {
+  var w = $('#plist'); w.innerHTML = '';
+  PROCS.forEach(function (p, i) {
+    var s = i < k ? 'ok' : i === k ? 'run' : 'wait';
+    var d = el('div', 'p');
+    d.dataset.s = s;
+    d.innerHTML = (s === 'ok' ? ic('check') : s === 'run' ? ic('dot') : ic('wait')) +
+      '<span class="nm">' + p.n + '</span>' +
+      '<span class="bar"><i style="width:' + (s === 'ok' ? 100 : s === 'run' ? (frac * 100) : 0) + '%"></i></span>' +
+      (s === 'run' && k === 3 ? '<span class="num" id="cnt">(0/99)</span>' : '') +
+      (s === 'ok' ? '<span>✓</span>' : s === 'run' ? '<span>⟳</span>' : '<span>…</span>');
+    w.appendChild(d);
+  });
+}
+
+/* ---------- 八态（§3 状态清单 + §4 错误文案，全实装） ---------- */
+var CARDS = {
+  empty: null,                       /* 空态由 steps 区表达 */
+  ready: null,
+  running: null,
+  done: function () {
+    return { cls: 'ok', h: ic('check') + '已生成 · 用时 <span class="num">17</span> 秒',
+      p: '红色件 <span class="num">704</span> 条 · <span class="num">99</span> 张图 · 待人工补充 <span class="num">6</span> 处。',
+      next: '下一步：<b>复核并签单</b>（数字都能点开回溯到台账）',
+      acts: [['打开报告', 1], ['复核并签单', 0]] };
+  },
+  'failed-parse': function () {
+    return { cls: 'bad', h: ic('alert') + '解析没通过：台账缺数',
+      p: '台账里《千分之一被引阈值》还没有 <span class="num">202609</span> 列。',
+      next: '下一步：<b>回 Excel 把这一列补上</b>，回来点「重新生成」。你的台账和上一版报告都没被动过。',
+      acts: [['重新生成', 1], ['看详情', 0]] };
+  },
+  'failed-other': function () {
+    return { cls: 'bad', h: ic('alert') + '出图没走完',
+      p: '第 <span class="num">4</span> 步（出图）在 <span class="num">68/99</span> 停住了。',
+      next: '下一步：<b>点「重新生成」</b>。本次没有出稿，<b>上一版报告仍然有效</b>（旧稿已收好，可追溯）。',
+      acts: [['重新生成', 1], ['看日志', 0]] };
+  },
+  stalled: function () {
+    return { cls: 'warn', h: ic('clock') + '看起来卡住了',
+      p: '已经 <span class="num">3</span> 分钟没有新进展（第 2 次重试中…）。',
+      next: '下一步：<b>再等等</b>，或者点「取消」停下来重跑。',
+      acts: [['取消', 1], ['再等等', 0]] };
+  },
+  signed: function () {
+    return { cls: 'seal', h: '<span class="stamp">签发</span>本期已签发',
+      p: '卜彤 · <span class="num">09-22 10:12</span>。这份可以报送了。',
+      next: '注意：<b>再点「开始生成」会让这次签名失效</b>（会变成「待重签」），重跑完要重新签。',
+      acts: [['打开报告', 0], ['撤回重签', 0]] };
+  }
+};
+var EMPTY_STEPS = {
+  empty: ['todo', 'todo', 'todo'],
+  ready: ['done', 'done', 'act'],
+  running: ['done', 'done', 'act'],
+  done: ['done', 'done', 'done'],
+  'failed-parse': ['bad', 'done', 'bad'],
+  'failed-other': ['done', 'done', 'bad'],
+  stalled: ['done', 'done', 'act'],
+  signed: ['done', 'done', 'done']
+};
+
+var timer = null;
+function apply(st) {
+  document.body.dataset.state = st;
+  var steps = EMPTY_STEPS[st] || ['done', 'done', 'act'];
+  for (var i = 1; i <= 3; i++) {
+    var s = $('#st' + i);
+    s.dataset.s = steps[i - 1] === 'bad' ? 'act' : steps[i - 1];
+  }
+  /* 三步的副文案按状态走 */
+  $('#st3txt').textContent =
+    st === 'empty' ? '先做完前两步' :
+    st === 'running' ? '机器在跑，别关页面' :
+    st === 'done' ? '已经出稿了' :
+    st === 'signed' ? '本期已签发' :
+    st === 'failed-parse' ? '上一步缺数，没跑成' :
+    st === 'failed-other' ? '跑到一半停住了' :
+    st === 'stalled' ? '像是卡住了' : '等你点下面这颗按钮';
+  $('#btnGo').textContent =
+    (st === 'failed-parse' || st === 'failed-other') ? '重新生成' :
+    st === 'signed' ? '重新生成（会作废签名）' :
+    st === 'empty' ? '开始生成' : '开始生成';
+  $('#btnGo').disabled = (st === 'empty' || st === 'running' || st === 'signed');
+
+  /* 空态：第一步之前就告诉馆员「还没有监测表」 */
+  var st1 = $('#st1');
+  if (st === 'empty') {
+    st1.querySelector('.st').innerHTML = ic('alert') + '<span>本期还没有放入监测表</span>';
+    st1.querySelector('.link').textContent = '上传监测表（只收 .xlsx，不超过 50 MB）';
+    $('#st2').querySelector('.st').innerHTML = ic('wait') + '<span>等第一步</span>';
+  } else {
+    st1.querySelector('.st').innerHTML = ic('check') + '<span>台账已齐</span>';
+    st1.querySelector('.link').textContent = '点这复查缺哪张表哪一列';
+    $('#st2').querySelector('.st').innerHTML = ic('check') +
+      '<span>已就位 · <span class="num">2.1 MB</span> · 今天 09:14</span>';
+  }
+
+  /* 生成中条 */
+  var rb = $('#runbar');
+  rb.hidden = (st !== 'running' && st !== 'stalled');
+  if (timer) { clearInterval(timer); timer = null; }
+  if (!rb.hidden) {
+    var k = 0, frac = 0, t0 = 0;
+    renderProc(0, 0);
+    $('#runNow').textContent = PROCS[0].now;
+    timer = setInterval(function () {
+      t0 += 1;
+      $('#rt').textContent = t0;
+      frac += 0.34;
+      if (frac >= 1) { frac = 0; k = Math.min(k + 1, PROCS.length - 1); }
+      renderProc(k, frac);
+      $('#runNow').textContent = PROCS[k].now + (k === 3 ? '（' + Math.round(frac * 99) + '/99）' : '');
+      var c = $('#cnt'); if (c) c.textContent = '(' + Math.round(frac * 99) + '/99)';
+    }, 700);
+  }
+
+  /* 结果卡 */
+  var box = $('#cards'); box.innerHTML = '';
+  var f = CARDS[st];
+  if (f) {
+    var c = f();
+    var d = el('div', 'card ' + c.cls);
+    d.innerHTML = '<h3>' + c.h + '</h3><p>' + c.p + '</p>' +
+      (c.next ? '<p class="next">' + c.next + '</p>' : '') +
+      '<div class="acts"></div>';
+    c.acts.forEach(function (a) {
+      var b = el('button', a[1] ? 'pri' : '', a[0]); b.type = 'button';
+      d.querySelector('.acts').appendChild(b);
+    });
+    box.appendChild(d);
+  }
+
+  /* 报告区 */
+  var rb2 = $('#repBody');
+  if (st === 'empty' || st === 'ready' || st === 'running' || st === 'stalled') {
+    rb2.innerHTML = '<div class="empty">本期报告还没生成。走完上面三步，这里就是报告本身。</div>';
+  } else if (st === 'failed-parse' || st === 'failed-other') {
+    rb2.innerHTML = '<div class="empty">本次没有出稿 —— <b>上一版报告仍然有效</b>，可以照常报送。</div>';
+  } else {
+    rb2.innerHTML =
+      '<div class="doc"><div class="ttl">学科信息参考 · ESI 双月报告</div>' +
+      '<div class="meta"><span class="num">' + CUR.period + '</span> · 总第 <span class="num">' + CUR.no +
+      '</span> 期 · 覆盖 <span class="num">' + (CUR.coverage || '—') + '</span></div>' +
+      '<div class="readout">' +
+      '<div class="ro"><div class="k">INTL RANK</div><div class="v">' + fmt(CUR.rank_intl_now) +
+      '<span class="u"> 位 ' + delta(CUR.rank_intl_delta) + '</span></div></div>' +
+      '<div class="ro"><div class="k">TOP PAPERS</div><div class="v">' + fmt(CUR.top_papers_now) +
+      '<span class="u"> 篇 ' + delta(CUR.top_papers_delta) + '</span></div></div>' +
+      '<div class="ro"><div class="k">DISC TOP 1‰</div><div class="v">' + (CUR.n_disc_1pct == null ? '—' : CUR.n_disc_1pct) +
+      '<span class="u"> 个学科</span></div></div></div>' +
+      '<div class="src">数字全部来自《云大全学科排名、阈值动态检测表》，点任一数字可逐格回溯到台账。</div></div>';
+  }
+  $('#live').textContent = '当前状态：' + st;
+}
+
+/* ---------- 角色（仅演示；真权限在后端） ---------- */
+function setRole(r) {
+  document.body.dataset.role = r;
+  $('#whoRole').textContent = r === 'admin' ? '👤 卜彤 · 馆员' : '👤 来访者 · 普通用户';
+  /* 普通用户：看不到生成入口（权限分级的直接体现） */
+  var hide = (r !== 'admin');
+  $('#btnGo').style.display = hide ? 'none' : '';
+  $('#st3').style.opacity = hide ? '.45' : '';
+  if (hide) $('#st3txt').textContent = '普通用户看不到生成入口';
+  Array.prototype.forEach.call(document.querySelectorAll('.model'), function (m) {
+    m.style.display = hide ? 'none' : '';
+  });
+}
+
+/* ---------- 评审工具条 ---------- */
+Array.prototype.forEach.call(document.querySelectorAll('.review [data-st]'), function (b) {
+  b.addEventListener('click', function () {
+    Array.prototype.forEach.call(document.querySelectorAll('.review [data-st]'),
+      function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+    apply(b.dataset.st);
+  });
+});
+Array.prototype.forEach.call(document.querySelectorAll('.review [data-pal]'), function (b) {
+  b.addEventListener('click', function () {
+    Array.prototype.forEach.call(document.querySelectorAll('.review [data-pal]'),
+      function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+    document.body.dataset.pal = b.dataset.pal;
+  });
+});
+Array.prototype.forEach.call(document.querySelectorAll('.review [data-role]'), function (b) {
+  b.addEventListener('click', function () {
+    Array.prototype.forEach.call(document.querySelectorAll('.review [data-role]'),
+      function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+    setRole(b.dataset.role);
+  });
+});
+$('#btnGo').addEventListener('click', function () {
+  Array.prototype.forEach.call(document.querySelectorAll('.review [data-st]'), function (o) {
+    var on = (o.dataset.st === 'running');
+    o.setAttribute('aria-pressed', String(on));
+    if (on) apply('running');
+  });
+});
+
+/* 首屏补调一次（只靠「状态变化」监听会漏掉初始值——老坑） */
+apply('ready');
+setRole('admin');
+
+/* 自检口（无头脚本靠它核对） */
+window.__WBAPI = {
+  state: function () { return document.body.dataset.state; },
+  role: function () { return document.body.dataset.role; },
+  apply: apply, setRole: setRole,
+  data: function () { return { cur: CUR.period, no: CUR.no, rank: CUR.rank_intl_now }; }
+};
+})();
+</script>
+</body>
+</html>
