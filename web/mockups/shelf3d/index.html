@@ -1,37 +1,51 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>书架 · 质感对齐版（静态稿 · 待审核）</title>
+<title>书架 · 三层版（静态稿 · 待审核）</title>
 <style>
-  /* 书架态的底色用中性深褐（不跟随某一卷的卷色）——
-     四卷色相各异，底色跟着某一卷走会把靛青与松绿压成同一种暗棕。 */
   html,body{height:100%}
   body{margin:0;background:#2b2622;overflow:hidden;
     font:15px/1.6 system-ui,-apple-system,"Microsoft YaHei",sans-serif;color:#e8dfd2}
-  #scene{display:block;width:100vw;height:100vh}
-  .cap{position:fixed;left:22px;bottom:20px;font-size:13.5px;color:#b8ab99;letter-spacing:.02em}
+  #scene{display:block;width:100vw;height:100vh;cursor:pointer}
+  .cap{position:fixed;left:22px;bottom:20px;font-size:13.5px;color:#b8ab99;letter-spacing:.02em;line-height:1.9}
   .cap b{color:#e8dfd2;font-weight:600}
-  .tip{position:fixed;right:22px;bottom:20px;font-size:13px;color:#9d9080}
+  .cap kbd{border:1px solid #6b5a45;border-radius:4px;padding:0 5px;font-size:12px;color:#c9a06a}
+  .tip{position:fixed;right:22px;bottom:20px;font-size:13px;color:#9d9080;text-align:right;line-height:1.9}
   .warn{position:fixed;left:22px;top:18px;font-size:13px;color:#c9a06a;
     border:1px dashed #6b5a45;border-radius:8px;padding:8px 12px;background:rgba(43,38,34,.7)}
+  .tiers{position:fixed;right:22px;top:18px;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+  .tiers button{
+    font:inherit;font-size:13.5px;color:#b8ab99;background:rgba(43,38,34,.72);
+    border:1px solid #4a3f34;border-radius:8px;padding:7px 12px;cursor:pointer;text-align:right}
+  .tiers button[aria-current="true"]{color:#f0e6d4;border-color:#c9a06a;background:rgba(60,48,36,.9)}
+  .tiers button:hover{border-color:#8a7458}
 </style>
 </head>
 <body>
 <canvas id="scene"></canvas>
-<div class="warn">静态稿 · 待审核：只调了「光与材质」，没动交互与页面结构</div>
-<div class="cap"><b>书架 · 质感对齐版</b>　环境光照 + 一盏投影主光 + 五盏擦光 + 材质分层（布有 sheen / 烫金高金属 / 纸高粗糙）</div>
-<div class="tip">拖动可转视角 · 滚轮缩放</div>
+<div class="warn">静态稿 · 待审核：三层书架 + 相机切换</div>
+
+<div class="tiers" id="tiers" role="group" aria-label="按系列切换"></div>
+
+<div class="cap">
+  <b>书架 · 三层</b>　顶＝年报 / 中＝学科发展态势 / 底＝ESI 双月报告<br>
+  <kbd>点某层</kbd> 推近到那层　<kbd>↑</kbd><kbd>↓</kbd> 换层　<kbd>Esc</kbd> 或点空白 退回整柜
+</div>
+<div class="tip">拖动可转视角 · 滚轮缩放<br>虚线方框＝该期还没出刊</div>
 
 <script>
-/* 本期数据（真实期次与卷色；正式版由服务端注入，这里为静态稿内联） */
+/* 三层数据：底＝ESI 真实四期；中/顶＝示意（该系列尚未出刊，封面上有「示意」水印） */
 window.WH_DATA = {
-  books: [
-    { period: '202607', no: 38 },
-    { period: '202605', no: 37 },
-    { period: '202603', no: 36 },
-    { period: '202601', no: 35 }
+  tiers: [
+    { key: 'esi', label: 'ESI 双月报告', short: 'ESI 双月', sub: '每期一本',
+      books: [{ period: '202607', no: 38 }, { period: '202605', no: 37 },
+              { period: '202603', no: 36 }, { period: '202601', no: 35 }] },
+    { key: 'trend', label: '学科发展态势报告', short: '学科态势', sub: '每期一本',
+      books: [null, null, { period: 'TREND', no: 1, placeholder: true, caption: '示意 · 未出刊' }, null, null] },
+    { key: 'annual', label: '年报', short: '年报', sub: '每年一本',
+      books: [null, null, { period: 'ANNUAL', no: 1, placeholder: true, caption: '示意 · 未出刊' }, null, null] }
   ]
 };
 </script>
@@ -39,9 +53,47 @@ window.WH_DATA = {
 <script src="shelf3d.js"></script>
 <script>
 (function () {
-  var ok = window.WH_SHELF3D.init(document.getElementById('scene'));
-  if (ok) window.WH_SHELF3D.start();
-  window.__SHELF_INFO = window.WH_SHELF3D.info();
+  var S = window.WH_SHELF3D;
+  var canvas = document.getElementById('scene');
+  if (!S.init(canvas)) return;
+  S.start();
+
+  /* 右侧系列按钮（键盘也能用） */
+  var box = document.getElementById('tiers');
+  var tiers = S.tiers();
+  tiers.slice().reverse().forEach(function (t) {          /* 顶在上、底在下，跟书架一致 */
+    var cfg = window.WH_DATA.tiers[t.index];
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = cfg.label;
+    b.setAttribute('aria-current', 'false');
+    b.addEventListener('click', function () { S.focus(t.index); sync(); });
+    box.appendChild(b);
+  });
+  function sync() {
+    var cur = S.focusIndex();
+    Array.prototype.forEach.call(box.children, function (el, i) {
+      el.setAttribute('aria-current', String((tiers.length - 1 - i) === cur));
+    });
+  }
+  sync();
+
+  /* 点：书 → 推近那层；空白 → 退回整柜 */
+  canvas.addEventListener('click', function (e) {
+    var hit = S.hitTest(e.clientX, e.clientY);
+    if (!hit) { S.overview(); sync(); return; }
+    S.focus(hit.tierIndex); sync();
+  });
+
+  /* ↑↓ 换层；Esc 退回整柜 */
+  window.addEventListener('keydown', function (e) {
+    var n = tiers.length, cur = S.focusIndex();
+    if (e.key === 'ArrowUp') { S.focus(cur + 1); sync(); e.preventDefault(); }
+    else if (e.key === 'ArrowDown') { S.focus(cur - 1); sync(); e.preventDefault(); }
+    else if (e.key === 'Escape') { S.overview(); sync(); }
+  });
+
+  window.__SHELF_INFO = S.info();
 })();
 </script>
 </body>
