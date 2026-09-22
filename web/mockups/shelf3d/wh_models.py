@@ -57,7 +57,7 @@ def build_test_cube():
 
 
 def build_test_desk():
-    """桌面 + 4 条腿，用来验「多部件 + 材质槽」那条链路。
+    """桌面 + 4 条腿，用来验「多部件 + 材质槽」那条链路（增量②）。
 
     桌面高 0.75 米（真实书桌高度）；桌面走木头、腿走金属——两种材质在网页里
     必须一眼分得开，分不开就说明材质槽丢了。
@@ -74,4 +74,21 @@ def build_test_desk():
                 "metal",
                 box_bm((0.07, 0.07, 0.71), (sx * 0.50, sy * 0.25, 0.355)),
             )
+    return parts
+
+
+def build_reading_desk():
+    """阅览桌（真道具）：桌面 + 一圈横撑 + 4 条腿。
+
+    比 build_test_desk 多一圈「横撑」——就是桌面下沿那圈木框。
+    没有它，桌子看着像幼儿园的拼装桌；有了它才像一件家具。
+    尺寸与 build_test_desk 一致，好拿来做前后对照。
+    """
+    parts = build_test_desk()
+    # 横撑：挂在桌面下沿（0.71）往下 0.09，四根把 4 条腿连起来
+    z_apron = 0.665
+    parts["apron-f"] = ("wood", box_bm((1.00, 0.028, 0.09), (0, 0.25, z_apron)))
+    parts["apron-b"] = ("wood", box_bm((1.00, 0.028, 0.09), (0, -0.25, z_apron)))
+    parts["apron-l"] = ("wood", box_bm((0.028, 0.44, 0.09), (-0.50, 0, z_apron)))
+    parts["apron-r"] = ("wood", box_bm((0.028, 0.44, 0.09), (0.50, 0, z_apron)))
     return parts

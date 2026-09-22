@@ -797,6 +797,68 @@ function overview() {
 /* ------------------------------------------------------------------
    初始化
    ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------
+   Blender 道具（增量③起）：从 meshes.js 读顶点，摆进阅览室
+   几何在 Blender 里做（wh_models.py），这里只管「读进来 + 摆位 + 上材质」。
+   ------------------------------------------------------------------ */
+function decodeF32(s) {
+  var bin = atob(s), u8 = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new Float32Array(u8.buffer);
+}
+function decodeU16(s) {
+  var bin = atob(s), u8 = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new Uint16Array(u8.buffer);
+}
+function geomFromPart(part) {
+  var g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(decodeF32(part.pos), 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(decodeF32(part.nrm), 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(decodeF32(part.uv), 2));
+  g.setIndex(new THREE.BufferAttribute(decodeU16(part.idx), 1));
+  return g;
+}
+
+/* 阅览桌：右下前景、**只露一角**（被画幅裁切）——整张摆进来就成了玩具箱 */
+function buildReadingDesk() {
+  var g = new THREE.Group();
+  var entry = (window.WH_MESHES || {})['reading-desk'];
+  if (!entry) return g;                 /* meshes.js 没跟上就安静跳过，不挡书架 */
+
+  var wood = new THREE.MeshPhysicalMaterial({
+    map: woodTexture(12), roughness: .62, metalness: .04, color: 0x7a5f45
+  });
+  var metal = new THREE.MeshPhysicalMaterial({
+    color: 0x8a8b8e, roughness: .19, metalness: .90
+  });
+
+  entry.parts.forEach(function (part) {
+    var mat = (part.mat === 'metal') ? metal : wood;
+    var mesh = new THREE.Mesh(geomFromPart(part), mat);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    g.add(mesh);
+  });
+
+  /* 桌下压一片接触影（软件渲染下实时阴影不出影，见技能坑 4） */
+  var cs = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.5, 1.0),
+    new THREE.MeshBasicMaterial({
+      map: contactShadowTexture(), transparent: true, opacity: .5,
+      color: 0x000000, depthWrite: false
+    })
+  );
+  cs.rotation.x = -Math.PI / 2;
+  cs.position.y = .004;
+  g.add(cs);
+
+  /* 摆位：右下前景；斜 12°（不斜就是一张平卡，看不到厚度） */
+  g.position.set(1.5, 0, 1.7);
+  g.rotation.y = -.21;
+  return g;
+}
+
 function init(canvasEl) {
   if (!canvasEl) return false;
   if (!renderer) {
@@ -820,6 +882,7 @@ function init(canvasEl) {
     root = built.group;
     scene.add(root);
     scene.add(buildRoom());          /* 阅览室背景（全部压暗、低对比） */
+    scene.add(buildReadingDesk());   /* 阅览桌（增量③）：右下前景，只露一角 */
     /* 默认焦点＝ESI 层（最上面那层，主系列） */
     focusIndex = tiers.length - 1;
 
