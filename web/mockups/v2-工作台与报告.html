@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="zh-CN" data-palette="zhu" data-screen="report">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · v2（工作台与报告 · 静态稿 · 待审核）</title>
+<style>
+/* ============================================================================
+   v2 静态稿 · 两屏可切换：工作台（工具面）/ 报告（陈列面）
+   定调（rick 2026-09-22 认可）：工具面＝设计系统风 / 陈列面＝杂志编辑风 / 母题＝朱批校勘
+   自检（renaissance-rococo-web-design 的 quality gates）：
+     · 命名过的焦点事件 = 期次印记链 + 超大标题（不对称）
+     · 密度梯度 = 读数带（疏）→ 正文（安静）→ 大表（密）
+     · 不是只设计封面 = 工作台与报告两屏都做了
+     · 材质可见 = 朱印/金印/虚线空位、金线、纸面（不用噪声与做旧）
+   字号与对比度：正文 19px / 行高 1.9 / 每行约 36 字；文字对比度全部 ≥4.5:1
+   ========================================================================== */
+:root{
+  --bg:#f3efe6; --card:#fbf8f1; --panel:#f6f1e7;
+  --ink:#2f2a24; --ink-2:#5b5248; --ink-3:#6f6558;
+  --line:#d9cfbc; --line-2:#e7dfd0;
+  --zhu:#b23a2a; --zhu-soft:#f0dcd5;
+  --gold:#a9853f; --gold-soft:#efe3c9; --gold-ink:#7d6122;
+  --ok:#3f6b4a; --ok-soft:#e2ece0;
+  --warn:#7d5518; --warn-soft:#f5ead2;
+  --bad:#a8321f; --bad-soft:#f4ddd7;
+  --serif:"Source Han Serif SC","Noto Serif SC",Songti SC,SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+}
+html[data-palette="morandi"]{
+  --bg:#eceae6; --card:#f7f6f3; --panel:#f1efeb;
+  --ink:#33322f; --ink-2:#5f5c56; --ink-3:#6b665e;
+  --line:#d7d3cb; --line-2:#e5e2dc;
+  --zhu:#85564e; --zhu-soft:#ece0dd; --gold:#8f8a72; --gold-soft:#e8e6dc; --gold-ink:#6b6547;
+  --ok:#4f6a58; --ok-soft:#e4ebe5; --warn:#6f5c3c; --warn-soft:#eee9dd;
+  --bad:#85564b; --bad-soft:#eee2de;
+}
+html[data-palette="mix"]{
+  --bg:#eae7e2; --card:#f8f6f2; --panel:#f1efea;
+  --ink:#312e2a; --ink-2:#5c5852; --ink-3:#6b665e;
+  --line:#d8d4cc; --line-2:#e6e3dd;
+  --zhu:#a8442f; --zhu-soft:#f0dcd6; --gold:#8f8a72; --gold-soft:#e8e6dc; --gold-ink:#6b6547;
+  --ok:#4f6a58; --ok-soft:#e4ebe5; --warn:#6f5c3c; --warn-soft:#eee9dd;
+  --bad:#9a4b3c; --bad-soft:#f0e0db;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.7 var(--sans);
+  -webkit-font-smoothing:antialiased}
+:focus-visible{outline:3px solid var(--zhu);outline-offset:3px;border-radius:6px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ---------- 审核工具条（正式页面没有） ---------- */
+.review{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;
+  padding:11px 20px;background:var(--panel);border-bottom:1px dashed var(--line);font-size:13.5px;color:var(--ink-2)}
+.review b{color:var(--ink)}
+.seg{display:flex;gap:6px}
+.seg button{padding:5px 13px;border:1px solid var(--line);background:var(--card);
+  border-radius:999px;cursor:pointer;font:inherit;font-size:13.5px;color:inherit}
+.seg button[aria-pressed="true"]{background:var(--zhu);border-color:var(--zhu);color:#fff}
+
+/* ---------- 顶栏（两屏共用，克制） ---------- */
+.topbar{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--card);
+  border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:9px;font-family:var(--serif)}
+.brand strong{font-size:21px;letter-spacing:.04em}
+.brand span{font-size:12.5px;color:var(--ink-3);letter-spacing:.1em}
+.nav{display:flex;gap:4px;margin-left:auto}
+.nav a{display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:8px;
+  color:var(--ink-2);text-decoration:none;font-size:14.5px}
+.nav a[aria-current="page"]{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
+.who{display:flex;align-items:center;gap:7px;font-size:13.5px;color:var(--ink-2);
+  padding-left:12px;border-left:1px solid var(--line)}
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);
+  display:grid;place-items:center;font-size:13px;font-weight:700}
+
+/* ============================================================================
+   屏 1 · 工作台（工具面：素净、高密度、一处朱色焦点）
+   ========================================================================== */
+.wrap{max-width:1180px;margin:0 auto;padding:24px 22px 64px}
+.strip{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  display:flex;align-items:center;gap:22px;padding:20px 24px;flex-wrap:wrap}
+.strip .period{font-family:var(--serif);font-size:23px}
+.strip .period em{font-style:normal;color:var(--ink-3);font-size:15px;margin-left:8px;
+  font-family:var(--sans)}
+.steps{display:flex;gap:18px;flex-wrap:wrap;margin-left:auto}
+.step{display:flex;align-items:center;gap:9px;font-size:15px;color:var(--ink-2)}
+.dot{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
+  font-size:12.5px;font-weight:700;border:1.5px solid var(--line);color:var(--ink-3)}
+.step.on .dot{background:var(--ok);border-color:var(--ok);color:#fff}
+.step.now .dot{border-color:var(--zhu);color:var(--zhu)}
+/* 焦点：整屏唯一一处朱色实心块 */
+.focus{margin-top:18px;background:var(--card);border:1px solid var(--zhu);
+  border-left:5px solid var(--zhu);border-radius:12px;padding:22px 26px;
+  display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.focus .big{font-size:19px;font-weight:600}
+.focus .sub{color:var(--ink-2);font-size:15px;margin-top:4px}
+.focus .cta{margin-left:auto;display:flex;gap:12px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:9px;
+  border:1px solid var(--line);background:var(--card);cursor:pointer;font:inherit;
+  font-size:16px;font-weight:600;color:inherit}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-size:17px;padding:13px 28px}
+.btn:hover{filter:brightness(.97)}
+.hint{color:var(--ink-3);font-size:14px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:18px}
+.mini{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.mini h3{margin:0 0 8px;font-size:15px;color:var(--ink-2);font-weight:600}
+.mini p{margin:0;font-size:14.5px;color:var(--ink-3);line-height:1.65}
+
+/* ============================================================================
+   屏 2 · 报告（陈列面：杂志编辑风 + 页边朱批）
+   ========================================================================== */
+.report-head{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:36px;
+  padding:34px 0 0;align-items:start}
+@media (max-width:900px){.report-head{grid-template-columns:1fr}}
+.eyebrow{font-size:13px;color:var(--gold-ink);letter-spacing:.14em;text-transform:uppercase}
+.display{margin:10px 0 0;font-family:var(--serif);font-weight:600;line-height:1.06;
+  font-size:clamp(2.6rem,6.4vw,4.6rem);letter-spacing:-.02em}
+.display small{display:block;font-size:.34em;font-weight:400;color:var(--ink-2);
+  letter-spacing:.02em;margin-top:.5em;line-height:1.5}
+.rule{height:1px;background:linear-gradient(90deg,var(--gold),transparent);margin:22px 0 0}
+
+/* 记忆点：期次印记链 */
+.chain{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 18px}
+.chain h3{margin:0 0 4px;font-size:14px;color:var(--ink-2);font-weight:600}
+.chain .cap{margin:0 0 16px;font-size:13px;color:var(--ink-3)}
+.seals{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px}
+.sealbox{display:flex;flex-direction:column;align-items:center;gap:6px}
+.seal{width:42px;height:42px;border-radius:7px;display:grid;place-items:center;
+  font-family:var(--serif);font-size:16px;font-weight:700;position:relative;overflow:hidden;
+  transition:transform .18s ease}
+/* 钤印的手感：每枚印落纸时都有轻微偏转（固定值，不是随机） */
+.seals .sealbox:nth-child(1) .seal{rotate:-1.4deg}
+.seals .sealbox:nth-child(2) .seal{rotate:.9deg}
+.seals .sealbox:nth-child(3) .seal{rotate:-.6deg}
+.seals .sealbox:nth-child(4) .seal{rotate:1.3deg}
+.seals .sealbox:nth-child(5) .seal{rotate:-1deg}
+.seals .sealbox:nth-child(6) .seal{rotate:0deg}
+.seal::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(circle at 32% 26%,rgba(255,255,255,.30),transparent 58%),
+             radial-gradient(circle at 72% 82%,rgba(0,0,0,.16),transparent 62%)}
+.seal.signed{background:var(--zhu);color:#fff;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.34), 0 1px 2px rgba(47,42,36,.18)}
+.seal.stale{background:transparent;color:var(--gold);
+  box-shadow:inset 0 0 0 2px var(--gold), 0 0 0 1px var(--gold-soft)}
+.seal.empty{border:2px dashed var(--line);color:var(--ink-3);background:transparent;
+  font-size:10.5px;font-weight:600;letter-spacing:0}
+.seal.now{scale:1.14;translate:0 -2px}
+.sealbox:hover .seal{translate:0 -3px}
+.sealbox .lbl{font-size:12px;color:var(--ink-3);font-family:var(--mono)}
+.sealbox .now-tag{font-size:11.5px;color:var(--zhu);font-weight:700;letter-spacing:.06em}
+.legend{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line-2);
+  display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-3)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;
+  vertical-align:-1px}
+
+/* 读数带：疏 */
+.readouts{display:flex;gap:44px;flex-wrap:wrap;padding:26px 0 4px}
+.readout .k{font-size:13.5px;color:var(--ink-3)}
+.readout .v{font-family:var(--serif);font-size:clamp(2rem,3.4vw,2.7rem);line-height:1.15;
+  margin-top:2px}
+.readout .d{font-size:13.5px;color:var(--zhu);font-family:var(--mono)}
+
+/* 正文 + 页边朱批 */
+.body-grid{display:grid;grid-template-columns:minmax(0,36em) 1fr;gap:44px;
+  padding:34px 0 8px;align-items:start}
+@media (max-width:900px){.body-grid{grid-template-columns:1fr}}
+.prose{font-size:19px;line-height:1.9;font-family:var(--serif);color:var(--ink)}
+.prose p{margin:0 0 1.1em;text-indent:2em}
+.prose .lead::first-letter{font-size:1.05em;color:var(--zhu)}
+.margin-note{border-left:2px solid var(--zhu);padding:2px 0 2px 14px;margin-bottom:26px}
+.margin-note .tag{font-size:12.5px;color:var(--zhu);font-weight:700;letter-spacing:.06em}
+.margin-note p{margin:6px 0 0;font-size:14.5px;line-height:1.7;color:var(--ink-2);
+  font-family:var(--sans)}
+.margin-note.gold{border-left-color:var(--gold)}
+.margin-note.gold .tag{color:var(--gold-ink)}
+
+/* 溯源标记：点状下划线 = 可回溯来源（悬停见出处）。不加尾巴字符——试过竖线，像乱码 */
+.trace{position:relative;cursor:help;border-bottom:1.5px dotted var(--gold)}
+.trace:hover::before{content:attr(data-src);position:absolute;left:0;bottom:130%;
+  background:var(--ink);color:var(--card);font-size:13px;font-family:var(--sans);
+  padding:7px 11px;border-radius:8px;white-space:nowrap;z-index:9;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+
+/* 大表：密 */
+.tablewrap{margin-top:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+table{width:100%;border-collapse:collapse;font-size:15.5px}
+caption{text-align:left;padding:14px 18px 10px;font-size:14px;color:var(--ink-2)}
+th,td{padding:10px 14px;border-bottom:1px solid var(--line-2);text-align:right}
+th:first-child,td:first-child{text-align:left}
+thead th{background:var(--panel);color:var(--ink-2);font-weight:600;font-size:13.5px}
+tbody tr:hover{background:var(--panel)}
+td.chg{color:var(--zhu);font-weight:600}
+.footnote{padding:14px 18px;font-size:13.5px;color:var(--ink-3);
+  border-top:1px solid var(--line-2);background:var(--panel)}
+
+/* ---------- 两屏切换 ---------- */
+.screen{display:none}
+html[data-screen="workbench"] #scr-workbench,
+html[data-screen="report"]    #scr-report{display:block}
+</style>
+</head>
+<body>
+
+<!-- 统一图标：一套内联 SVG（24 视框 / 1.7 描边 / 圆头），改一处全局一致 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5 19 12 7 19.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+  <symbol id="i-seal" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 4.5 3.4 7.7 8 9 4.6-1.3 8-4.5 8-9V6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m8.5 12 2.5 2.5 4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10m5 10V5m5 15v-7m5 7V8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7zm0 0v4h4M9 13h6M9 17h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<div class="review">
+  <span><b>v2 静态稿</b>（待审核；正式页面不含本工具条）</span>
+  <span class="seg" role="group" aria-label="屏">
+    <button type="button" data-scr="workbench" aria-pressed="false">工作台（工具面）</button>
+    <button type="button" data-scr="report" aria-pressed="true">报告（陈列面）</button>
+  </span>
+  <span class="seg" role="group" aria-label="配色">
+    <button type="button" data-pal="zhu" aria-pressed="true">朱批原色系</button>
+    <button type="button" data-pal="morandi" aria-pressed="false">莫兰迪</button>
+    <button type="button" data-pal="mix" aria-pressed="false">莫兰迪+朱砂点睛</button>
+  </span>
+</div>
+
+<header class="topbar">
+  <div class="brand"><strong>文衡</strong><span>学科信息参考</span></div>
+  <nav class="nav" aria-label="工作区">
+    <a href="#" aria-current="page"><svg width="19" height="19"><use href="#i-play"/></svg>生成台</a>
+    <a href="#"><svg width="19" height="19"><use href="#i-list"/></svg>报告库</a>
+    <a href="#"><svg width="19" height="19"><use href="#i-seal"/></svg>审核台</a>
+    <a href="#"><svg width="19" height="19"><use href="#i-chart"/></svg>分析台</a>
+    <a href="#"><svg width="19" height="19"><use href="#i-doc"/></svg>台账</a>
+  </nav>
+  <div class="who"><span class="avatar">卜</span>卜彤 · 管理员</div>
+</header>
+
+<!-- ======================= 屏 1 · 工作台 ======================= -->
+<section class="screen" id="scr-workbench">
+<div class="wrap">
+  <div class="strip">
+    <div class="period">202609<em>2026年9月 · 第 40 期</em></div>
+    <ol class="steps" style="list-style:none;margin:0;padding:0">
+      <li class="step on"><span class="dot"><svg width="13" height="13"><use href="#i-check"/></svg></span>取数贴表</li>
+      <li class="step on"><span class="dot"><svg width="13" height="13"><use href="#i-check"/></svg></span>放入监测表</li>
+      <li class="step now"><span class="dot">3</span>一键生成</li>
+    </ol>
+  </div>
+
+  <!-- 全屏唯一的朱色实心焦点 -->
+  <div class="focus">
+    <div>
+      <div class="big">这一期还差最后一步：生成报告</div>
+      <div class="sub">台账已齐、监测表已就位 · 上一期 202607 已签发（卜彤 · 09-22 10:12）</div>
+    </div>
+    <div class="cta">
+      <span class="hint">约 20 秒</span>
+      <button class="btn primary"><svg width="20" height="20"><use href="#i-play"/></svg>开始生成</button>
+    </div>
+  </div>
+
+  <div class="grid3">
+    <div class="mini"><h3>预测模型</h3><p>用推荐（按学科，22 科已分别指定）· 可逐科改选，每个模型旁有说明。</p></div>
+    <div class="mini"><h3>上次生成</h3><p>202607 · 用时 17 秒 · 99 张图 · 待人工补充 7 处</p></div>
+    <div class="mini"><h3>台账</h3><p>《云大全学科排名、阈值动态检测表》· 按列追加，不改历史列。</p></div>
+  </div>
+</div>
+</section>
+
+<!-- ======================= 屏 2 · 报告 ======================= -->
+<section class="screen" id="scr-report">
+<div class="wrap">
+
+  <div class="report-head">
+    <div>
+      <div class="eyebrow">学科信息参考 · ESI 双月报告</div>
+      <h1 class="display">2026 年第 4 期
+        <small>覆盖窗口 2026年5月—7月 · 数据源 ESI + InCites · 总第 38 期</small>
+      </h1>
+      <div class="rule"></div>
+
+      <!-- 疏：读数带 -->
+      <div class="readouts">
+        <div class="readout">
+          <div class="k">国际排名</div>
+          <div class="v"><span class="trace" data-src="台账《云大ESI排名》202607 列">995</span></div>
+          <div class="d">较上期 ↑12</div>
+        </div>
+        <div class="readout">
+          <div class="k">顶尖论文</div>
+          <div class="v"><span class="trace" data-src="台账《TOP论文》202607 列">274</span></div>
+          <div class="d">22 学科合计</div>
+        </div>
+        <div class="readout">
+          <div class="k">覆盖学科</div>
+          <div class="v">22</div>
+          <div class="d">6 张宽表</div>
+        </div>
+        <div class="readout">
+          <div class="k">图表</div>
+          <div class="v">99</div>
+          <div class="d">全量重绘</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 记忆点：期次印记链 -->
+    <aside class="chain">
+      <h3>期次印记链</h3>
+      <p class="cap">按时间从左到右。签过是朱印，签名失效是金印，未出刊留虚线空位。</p>
+      <div class="seals">
+        <div class="sealbox"><span class="seal signed">34</span><span class="lbl">2025-11</span></div>
+        <div class="sealbox"><span class="seal stale" title="报告重跑过，签名已失效">35</span><span class="lbl">2026-01</span></div>
+        <div class="sealbox"><span class="seal signed">36</span><span class="lbl">2026-03</span></div>
+        <div class="sealbox"><span class="seal signed">37</span><span class="lbl">2026-05</span></div>
+        <div class="sealbox"><span class="now-tag">本期</span>
+          <span class="seal signed now">38</span><span class="lbl">2026-07</span></div>
+        <div class="sealbox"><span class="seal empty">未出刊</span><span class="lbl">2026-09</span></div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--zhu)"></i>已签发</span>
+        <span><i style="box-shadow:inset 0 0 0 2px var(--gold)"></i>签名失效</span>
+        <span><i style="border:2px dashed var(--line)"></i>未出刊</span>
+      </div>
+    </aside>
+  </div>
+
+  <!-- 安静：正文 + 页边朱批 -->
+  <div class="body-grid">
+    <div class="prose">
+      <p class="lead">本期云南大学共有 22 个学科进入 ESI 全球前 1%，较上期增加 1 个。国际排名由第 1007 位升至
+        <span class="trace" data-src="台账《云大ESI排名》202607 列">第 995 位</span>，为近四期最大升幅。</p>
+      <p>从学科构成看，化学、工程学、材料科学仍为引用贡献的主体；植物学与动物学本期首次进入前 1%，
+        是本期排名上升的主要来源。六个宽表与 99 张图表均按期重算，未使用任何上期图。</p>
+      <p>预测章按本期所选模型出具，并附该模型的解读。全部数字可回溯至台账对应单元格，
+        正文措辞由句骨架生成，运行期不经过大模型。</p>
+    </div>
+
+    <div>
+      <div class="margin-note">
+        <div class="tag">朱批 · 本期改动</div>
+        <p>植物学与动物学首次进榜 —— 该行 11 格全部为新值，已在改动清单中单列。</p>
+      </div>
+      <div class="margin-note">
+        <div class="tag">朱批 · 待你拍板</div>
+        <p>多学科国内排名：台账算得 ↑4，人工原件写 ↑12。按「表为权威」先跟台账，等你确认。</p>
+      </div>
+      <div class="margin-note gold">
+        <div class="tag">金批 · 已知口径</div>
+        <p>前 1% 学科数（n_disc_1pct）在历史期次存在已知口径缺口，报告中已附风险说明。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 密：大表节选 -->
+  <div class="tablewrap">
+    <table>
+      <caption>大表节选（22 学科 × 11 列，此处示 5 行）· 点状下划线的数字可回溯来源</caption>
+      <thead>
+        <tr><th>学科</th><th>国际排名</th><th>变化</th><th>论文数</th><th>总被引</th><th>篇均被引</th><th>顶尖论文</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>化学</td><td class="num"><span class="trace" data-src="台账《学科总被引》202607 列">212</span></td><td class="num">↑8</td><td class="num">4,318</td><td class="num">86,204</td><td class="num">19.96</td><td class="num">42</td></tr>
+        <tr><td>工程学</td><td class="num"><span class="trace" data-src="台账《学科总被引》202607 列">356</span></td><td class="num">↑14</td><td class="num">2,905</td><td class="num">41,882</td><td class="num">14.42</td><td class="num">31</td></tr>
+        <tr><td>材料科学</td><td class="num"><span class="trace" data-src="台账《学科总被引》202607 列">289</span></td><td class="num">↑5</td><td class="num">2,144</td><td class="num">33,517</td><td class="num">15.63</td><td class="num">27</td></tr>
+        <tr><td class="chg">植物学与动物学</td><td class="num chg"><span class="trace" data-src="台账《学科总被引》202607 列">741</span></td><td class="num chg">新进</td><td class="num chg">1,852</td><td class="num chg">18,930</td><td class="num chg">10.22</td><td class="num chg">9</td></tr>
+        <tr><td>数学</td><td class="num"><span class="trace" data-src="台账《学科总被引》202607 列">488</span></td><td class="num">↓3</td><td class="num">1,206</td><td class="num">12,455</td><td class="num">10.33</td><td class="num">6</td></tr>
+      </tbody>
+    </table>
+    <div class="footnote">
+      朱色 = 本期相对上期发生变化的格（共 704 处，完整清单见「审核台」）。
+      <b style="color:var(--ink-2)">点状下划线</b> = 这个数字可回溯到台账，悬停看具体来源。
+      本表数字均来自台账，未做任何前端计算。
+    </div>
+  </div>
+</div>
+</section>
+
+<script>
+document.querySelectorAll('.review [data-scr]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    document.documentElement.dataset.screen = b.dataset.scr;
+    document.querySelectorAll('.review [data-scr]').forEach(function (x) {
+      x.setAttribute('aria-pressed', String(x === b));
+    });
+  });
+});
+document.querySelectorAll('.review [data-pal]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    document.documentElement.dataset.palette = b.dataset.pal;
+    document.querySelectorAll('.review [data-pal]').forEach(function (x) {
+      x.setAttribute('aria-pressed', String(x === b));
+    });
+  });
+});
+</script>
+</body>
+</html>
