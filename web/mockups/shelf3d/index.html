@@ -21,6 +21,72 @@
     border:1px solid #4a3f34;border-radius:8px;padding:7px 12px;cursor:pointer;text-align:right}
   .tiers button[aria-current="true"]{color:#f0e6d4;border-color:#c9a06a;background:rgba(60,48,36,.9)}
   .tiers button:hover{border-color:#8a7458}
+
+  /* ---------- 陈列态提示 ---------- */
+  #flow-hint{position:fixed;left:50%;top:22px;transform:translateX(-50%);
+    background:rgba(43,38,34,.88);border:1px solid #6b5a45;border-radius:10px;
+    padding:10px 18px;font-size:14px;color:#e8dfd2;text-align:center;line-height:1.8}
+  #flow-hint b{color:#c9a06a}
+  #flow-hint .sub{color:#b8ab99;font-size:13px}
+  #flow-hint kbd{border:1px solid #6b5a45;border-radius:4px;padding:0 5px;font-size:12px;color:#c9a06a}
+
+  /* ---------- 翻书态（2D 覆盖层） ---------- */
+  #reader{position:fixed;inset:0;z-index:40;background:#241f1b;
+    display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;
+    opacity:0;visibility:hidden;pointer-events:none;
+    transition:opacity 420ms linear, visibility 0s linear 0s}
+  body[data-flow="reading"] #reader{opacity:1;visibility:visible;pointer-events:auto;
+    transition:opacity 420ms linear, visibility 0s linear 0s}
+  /* 三维画布在翻书时不能拦点击（opacity/pointer-events 不够，visibility 要挂在延迟上） */
+  body[data-flow="reading"] #scene{opacity:.22;pointer-events:none;visibility:hidden;
+    transition:opacity 420ms linear, visibility 0s linear 420ms}
+  #scene{transition:opacity 420ms linear, visibility 0s linear 0s}
+  #reader-slot{width:min(96vw, calc((100vh - 132px) * 1.294));aspect-ratio:1.294;
+    max-height:calc(100vh - 132px)}
+  @media (max-width:900px),(max-height:560px){
+    #reader-slot{width:min(94vw, calc((100vh - 120px) * .648));aspect-ratio:.648}
+  }
+  #reader-bar{display:flex;gap:14px;align-items:center;color:#b8ab99;font-size:13.5px}
+  #reader-bar button{font:inherit;font-size:13.5px;color:#e8dfd2;background:rgba(43,38,34,.8);
+    border:1px solid #6b5a45;border-radius:8px;padding:7px 14px;cursor:pointer}
+  #reader-bar button:hover{border-color:#c9a06a}
+  #reader-bar kbd{border:1px solid #6b5a45;border-radius:4px;padding:0 5px;font-size:12px;color:#c9a06a}
+
+  /* ---------- 报告内页（纸面 + 朱批 + 钤印，跟 v2 陈列面同一个母题） ----------
+     坑 4：页容器别用 flex 列——空间不够时会被压扁而不是溢出，检测抓不到 */
+  .page{box-sizing:border-box;padding:34px 36px 30px;background:#f4ebd9;color:#2f2a24;
+    font:16px/1.85 "Source Han Serif SC","Noto Serif SC",Songti SC,SimSun,serif;
+    overflow:hidden;position:relative}
+  .page > *{flex:0 0 auto}
+  .page h2{margin:0 0 14px;font-size:21px;letter-spacing:.03em;color:#2f2a24}
+  .page p{margin:0 0 10px;font-size:15.5px;line-height:1.9}
+  .page .small{font-size:13.5px;color:#6f6558}
+  .page .num{font-family:Consolas,"Courier New",monospace;font-variant-numeric:tabular-nums;
+    color:#b23a2a;font-weight:700}
+  .page .zhu{position:absolute;right:14px;top:46px;width:96px;
+    font-size:12.5px;line-height:1.7;color:#b23a2a;opacity:.8;
+    border-left:2px solid #b23a2a;padding-left:8px}
+  .page .seal{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) rotate(-3deg);
+    width:64px;height:64px;border:3px solid #b23a2a;border-radius:8px;
+    display:grid;place-items:center;color:#b23a2a;font-size:19px;font-weight:700;
+    background:rgba(244,235,217,.55)}
+  .page .seal.gold{border-color:#a9853f;color:#a9853f}
+  .pg-cover{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+  /* 坑：竖排必须 nowrap，否则会静默折列，把书名排成两个词 */
+  .pg-cover .vtitle{writing-mode:vertical-rl;text-orientation:upright;white-space:nowrap;
+    font-size:30px;letter-spacing:.32em;color:#2f2a24}
+  .pg-cover .pno{font-size:14px;color:#6f6558;letter-spacing:.14em}
+  .pg-cover .cover-foot{font-size:12.5px;color:#a9853f;letter-spacing:.22em}
+  .toc{margin:0;padding-left:1.4em;font-size:16px;line-height:2.4}
+  .big{width:100%;border-collapse:collapse;font-size:13px}
+  .big th,.big td{border-bottom:1px solid #d9cfbc;padding:5px 6px;text-align:left}
+  .big th{color:#6f6558;font-weight:600;font-size:12.5px}
+  .big td.n{font-family:Consolas,monospace;text-align:right;font-variant-numeric:tabular-nums}
+  .todo{margin:0;padding-left:1.3em;font-size:15.5px;line-height:2.2}
+  /* 坑 2：库有 .stf__parent canvas{position:absolute;...} 宽泛选择器——
+     页内要放 canvas 必须用更高特异性压回去 */
+  .page .chart-box{position:relative;width:100%;height:180px;flex:0 0 auto}
+  .stf__parent .page .chart-box canvas{position:static;width:100%;height:100%;display:block}
 </style>
 </head>
 <body>
@@ -28,6 +94,18 @@
 <div class="warn">静态稿 · 待审核：三层书架 + 相机切换</div>
 
 <div class="tiers" id="tiers" role="group" aria-label="按系列切换"></div>
+
+<div id="flow-hint" hidden></div>
+
+<div id="reader" class="content" aria-label="翻书">
+  <div id="reader-bar">
+    <button type="button" id="btn-prev">← 上一页</button>
+    <span id="reader-page">—</span>
+    <button type="button" id="btn-next">下一页 →</button>
+    <span><kbd>←</kbd><kbd>→</kbd> 翻页　<kbd>Esc</kbd> 合上</span>
+  </div>
+  <div id="reader-slot"></div>
+</div>
 
 <div class="cap">
   <b>书架 · 三层</b>　顶＝<b>ESI 双月报告</b> / 中＝学科发展态势 / 底＝年报<br>
@@ -60,6 +138,8 @@ window.WH_DATA = {
 <script src="three-bundle.js"></script>
 <script src="meshes.js"></script>
 <script src="shelf3d.js"></script>
+<script src="vendor/page-flip.browser.js"></script>
+<script src="flow.js"></script>
 <script>
 (function () {
   var S = window.WH_SHELF3D;
@@ -87,20 +167,60 @@ window.WH_DATA = {
   }
   sync();
 
-  /* 点：书 → 推近那层；空白 → 退回整柜 */
+  /* 点：书 → 陈列态；陈列态里点同一本 → 翻书；点别的书 → 换一本端详；空白 → 退回 */
+  var F = window.WH_FLOW;
   canvas.addEventListener('click', function (e) {
+    var st = F.state();
+    if (st === 'reading') return;
     var hit = S.hitTest(e.clientX, e.clientY);
+    if (hit && hit.period != null) {
+      var picked = window.__DEBUG_API.pick();
+      if (st === 'featured' && picked && picked.period === hit.period) {
+        F.openBook(); sync(); return;
+      }
+      F.pickBook(hit); sync(); return;
+    }
+    if (st === 'featured') { F.back(); sync(); return; }
     if (!hit) { S.overview(); sync(); return; }
     S.focus(hit.tierIndex); sync();
   });
 
-  /* ↑↓ 换层；Esc 退回整柜 */
+  /* 点空白退出：由流程层统一判（要同时看状态与点中的目标，见坑 22） */
+  document.addEventListener('click', function (e) {
+    var before = F.state();
+    F.onBlankClick(e);
+    if (F.state() !== before) sync();
+  });
+
+  /* ↑↓ 换层（只在整柜态）；Esc / Enter 交给流程层 */
   window.addEventListener('keydown', function (e) {
+    if (F.state() !== 'overview') return;
     var n = tiers.length, cur = S.focusIndex();
     if (e.key === 'ArrowUp') { S.focus(cur + 1); sync(); e.preventDefault(); }
     else if (e.key === 'ArrowDown') { S.focus(cur - 1); sync(); e.preventDefault(); }
-    else if (e.key === 'Escape') { S.overview(); sync(); }
   });
+
+  /* 右侧系列按钮：在陈列/翻书态点它要先回整柜 */
+  box.addEventListener('click', function (e) {
+    if (e.target.tagName !== 'BUTTON') return;
+    if (F.state() !== 'overview') { F.toOverview(); sync(); }
+  }, true);
+
+  document.getElementById('btn-next').addEventListener('click', function () {
+    window.__DEBUG_API.flipNext(); sync();
+  });
+  document.getElementById('btn-prev').addEventListener('click', function () {
+    window.__DEBUG_API.flipPrev(); sync();
+  });
+
+  /* 首屏也要同步一次（只靠「状态变化」监听会漏掉初始值） */
+  F.on(function (st) {
+    var lbl = document.getElementById('reader-page');
+    if (lbl) lbl.textContent = st === 'reading'
+      ? ('第 ' + (window.__DEBUG_API.pageIndex() + 1) + ' / ' + window.__DEBUG_API.pageCount() + ' 页')
+      : '—';
+  });
+  sync();
 
   window.__SHELF_INFO = S.info();
 })();

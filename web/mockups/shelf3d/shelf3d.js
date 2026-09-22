@@ -752,6 +752,73 @@ function applyFocusVisuals() {
   });
 }
 
+/* ------------------------------------------------------------------
+   陈列态：把一本书单独拎出来端详
+   ------------------------------------------------------------------ */
+var featuredBook = null, featuredSaved = null;
+
+function findBook(sel) {
+  if (!sel) return null;
+  var books = allBooks(), b, i;
+  for (i = 0; i < books.length; i++) {
+    b = books[i];
+    if (sel.period && b.userData.period !== sel.period) continue;
+    if (sel.tierIndex != null && b.userData.tierIndex !== sel.tierIndex) continue;
+    return b;
+  }
+  return null;
+}
+
+function applyFeatureVisuals() {
+  tiers.forEach(function (t) {
+    (t.mats || []).forEach(function (m) {
+      if (!m.userData.base) m.userData.base = m.color.clone();
+      m.color.copy(m.userData.base).multiplyScalar(.3);
+    });
+  });
+  if (featuredBook) {
+    (featuredBook.userData.mats || []).forEach(function (m) {
+      if (!m.userData.base) m.userData.base = m.color.clone();
+      m.color.copy(m.userData.base).multiplyScalar(1);
+    });
+  }
+}
+
+function feature(sel) {
+  var b = findBook(sel);
+  if (!b) return false;
+  if (featuredBook && featuredSaved) {          /* 先还原上一次的偏移 */
+    featuredBook.rotation.y = featuredSaved.rotY;
+    featuredBook.position.z = featuredSaved.z;
+  }
+  featuredBook = b;
+  featuredSaved = { rotY: b.rotation.y, z: b.position.z };
+
+  var p = new THREE.Vector3();
+  b.getWorldPosition(p);
+  moveCamera({
+    pos: [p.x * .5, p.y + .02, 1.15],
+    target: [p.x, p.y - .01, 0]
+  }, 620);
+
+  /* 书探出来、侧转 10°（不斜就是一张平卡，看不到厚度） */
+  b.rotation.y = -.18;
+  b.position.z = featuredSaved.z + .12;
+  applyFeatureVisuals();
+  return true;
+}
+
+function unfeature() {
+  if (featuredBook && featuredSaved) {
+    featuredBook.rotation.y = featuredSaved.rotY;
+    featuredBook.position.z = featuredSaved.z;
+  }
+  featuredBook = null;
+  featuredSaved = null;
+  applyFocusVisuals();
+  moveCamera(VIEW.overview, 620);
+}
+
 function moveCamera(dest, ms) {
   tween = {
     t0: performance.now(), ms: ms,
@@ -1057,6 +1124,15 @@ function hitTest(clientX, clientY) {
 window.WH_SHELF3D = {
   init: init, render: render, start: start, stop: stop,
   hitTest: hitTest, focus: focus, overview: overview,
+  feature: feature, unfeature: unfeature,
+  bookRects: function () {
+    return allBooks().map(function (b) {
+      return {
+        period: b.userData.period, tierIndex: b.userData.tierIndex,
+        placeholder: b.userData.placeholder, rect: projectGroupRect(b)
+      };
+    });
+  },
   tiers: function () {
     return tiers.map(function (t, i) {
       return { index: i, y: t.y, books: t.books.length };
