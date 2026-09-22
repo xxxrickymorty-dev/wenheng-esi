@@ -20,11 +20,9 @@
 from __future__ import annotations
 
 import argparse
-import re
 import sys
-import time
 from pathlib import Path
-from urllib.parse import quote, urljoin
+from urllib.parse import quote
 
 import openpyxl
 from playwright.sync_api import Page, sync_playwright
@@ -32,18 +30,6 @@ from playwright.sync_api import Page, sync_playwright
 CDP = "http://127.0.0.1:9222"
 ESI = "https://esi.clarivate.com"
 DEFAULT_OUT = Path(__file__).resolve().parents[1] / "tmp" / "clarivate_dl"
-
-# 钩住 window.open（应用的导出全靠它，但会被浏览器弹窗拦截）
-HOOK_JS = """() => {
-    window.__esiExport = null;
-    if (!window.__esiHooked) {
-        const ow = window.open;
-        window.open = function (u) { window.__esiExport = String(u); return null; };
-        window.__esiHooked = true;
-    }
-    return true;
-}"""
-
 
 def get_esi_page(browser) -> Page:
     ctx = browser.contexts[0]
@@ -54,47 +40,6 @@ def get_esi_page(browser) -> Page:
     pg = ctx.new_page()
     pg.goto(f"{ESI}/IndicatorsAction.action?app=esi&Init=Yes", wait_until="domcontentloaded")
     return pg
-
-
-def export(page: Page, out_path: Path, fmt: str = "Excel") -> Path:
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    page.evaluate(HOOK_JS)
-
-    popup = page.locator(".popup-action-download")
-    if popup.count() == 0 or not popup.first.is_visible():
-        page.locator("a.action-download.icon").first.click(timeout=15000)
-        page.wait_for_timeout(1000)
-
-    clicked = page.evaluate(
-        """(fmt) => {
-            const pop = document.querySelector('.popup-action-download');
-            if (!pop) return false;
-            const a = [...pop.querySelectorAll('a')].find(x => x.innerText.trim().toUpperCase() === fmt.toUpperCase());
-            if (!a) return false;
-            a.click();
-            return true;
-        }""",
-        fmt,
-    )
-    if not clicked:
-        raise RuntimeError(f"下载弹层里没有 {fmt} 选项")
-
-    deadline = time.time() + 15
-    url = None
-    while time.time() < deadline:
-        time.sleep(0.5)
-        url = page.evaluate("() => window.__esiExport")
-        if url:
-            break
-    if not url:
-        raise RuntimeError("没拿到导出 URL（window.open 未被调用）")
-
-    resp = page.request.get(urljoin(page.url, url))
-    if not resp.ok:
-        raise RuntimeError(f"导出请求失败：{resp.status}")
-    out_path.write_bytes(resp.body())
-    print(f"[OK] {out_path.name}  ({out_path.stat().st_size} B)  [{fmt}]  {url.split('?')[0]}")
-    return out_path
 
 
 # 导出列三档（机构表与学科表同一套）：
@@ -218,14 +163,22 @@ _FIELD_URL = (
     ESI + "/IndicatorsExport.action?exportFile&_dc=1&groupBy=ResearchFields&start=0&limit=22&show=Top"
     '&sort=%5B%7B%22property%22:%22cites%22%2C%22direction%22:%22DESC%22%7D%5D'
     "&colFilterVal=&exportType=indicators"
-    "&colNames=RowSeq%2C%2CResearch+Fields%2CWeb+of+Science+Documents%2CCites%2CCites%2FPaper%2CTop+Papers"
+    "&colNames={cols}"
     "&fileType=Excel&f={fname}&{filter_qs}"
 )
 
+# Research Fields 视图的列：全球/中国 7 列；云大 14 列（再带 Top/HCP/Hot 各 Cites to / Cites-per）
+_FIELD_COLS7 = "RowSeq,,Research Fields,Web of Science Documents,Cites,Cites/Paper,Top Papers"
+_FIELD_COLS14 = ("RowSeq,,Research Fields,Web of Science Documents,Cites,Cites/Paper,"
+                 "Top Papers,Cites to Top Papers,Cites/Top Paper,"
+                 "Highly Cited Papers,Cites to Highly Cited Papers,Cites/Highly Cited Paper,"
+                 "Hot Papers,Cites to Hot Papers,Cites/Hot Paper")
+
 # filter_qs 各自参数名不同（实测）：机构用 filterValue；国家用 filterBy=Countries-Territories（不是 Countries/Regions！）
 _FIELD_FILTERS = [
-    ("云大学科.xlsx", "ynu.xlsx", "filterBy=Institutions&filterValue=YUNNAN%20UNIVERSITY"),
-    ("中国学科.xlsx", "cn.xlsx", "filterBy=Countries-Territories&filterValue=CHINA%20MAINLAND"),
+    ("全球学科.xlsx", "global.xlsx", "filterBy=ResearchFields&filterValue=", _FIELD_COLS7),
+    ("云大学科.xlsx", "ynu.xlsx", "filterBy=Institutions&filterValue=YUNNAN%20UNIVERSITY", _FIELD_COLS14),
+    ("中国学科.xlsx", "cn.xlsx", "filterBy=Countries-Territories&filterValue=CHINA%20MAINLAND", _FIELD_COLS7),
 ]
 
 
@@ -290,15 +243,12 @@ def cmd_toppapers(page: Page, out: Path, fmt: str) -> None:
 
 
 def cmd_fields(page: Page, out: Path, fmt: str) -> None:
-    """Step 3：Research Fields 汇总表三张 —— 全球学科（无筛选）+ 云大学科 + 中国学科。"""
-    page.goto(f"{ESI}/IndicatorsAction.action?app=esi&Init=Yes", wait_until="domcontentloaded")
-    page.wait_for_timeout(3000)
-    page.select_option("#groupBy", "Research Fields")
-    page.wait_for_timeout(3500)
-    export(page, out / "全球学科.xlsx", fmt)
+    """Step 3：Research Fields 汇总三张 —— 全球学科（7 列）+ 中国学科（7 列）+ 云大学科（14 列）。"""
+    out.mkdir(parents=True, exist_ok=True)
 
-    for fname, ascii_f, filter_qs in _FIELD_FILTERS:
-        resp = page.request.get(_FIELD_URL.format(fname=ascii_f, filter_qs=filter_qs))
+    for fname, ascii_f, filter_qs, cols in _FIELD_FILTERS:
+        enc = cols.replace(",", "%2C").replace(" ", "+")
+        resp = page.request.get(_FIELD_URL.format(fname=ascii_f, filter_qs=filter_qs, cols=enc))
         if not resp.ok or not _looks_like_xlsx(resp.body()):
             print(f"[FAIL] {fname}: HTTP {resp.status}, {len(resp.body())} B（非 xlsx）")
             continue
