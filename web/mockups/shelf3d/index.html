@@ -30,22 +30,30 @@
 <div class="tiers" id="tiers" role="group" aria-label="按系列切换"></div>
 
 <div class="cap">
-  <b>书架 · 三层</b>　顶＝年报 / 中＝学科发展态势 / 底＝ESI 双月报告<br>
+  <b>书架 · 三层</b>　顶＝<b>ESI 双月报告</b> / 中＝学科发展态势 / 底＝年报<br>
   <kbd>点某层</kbd> 推近到那层　<kbd>↑</kbd><kbd>↓</kbd> 换层　<kbd>Esc</kbd> 或点空白 退回整柜
 </div>
-<div class="tip">拖动可转视角 · 滚轮缩放<br>虚线方框＝该期还没出刊</div>
+<div class="tip">拖动可转视角 · 滚轮缩放<br>虚线方框＝该期还没出刊　·　左侧密排＝更早的期次（放不下）</div>
 
 <script>
 /* 三层数据：底＝ESI 真实四期；中/顶＝示意（该系列尚未出刊，封面上有「示意」水印） */
 window.WH_DATA = {
   tiers: [
-    { key: 'esi', label: 'ESI 双月报告', short: 'ESI 双月', sub: '每期一本',
-      books: [{ period: '202607', no: 38 }, { period: '202605', no: 37 },
-              { period: '202603', no: 36 }, { period: '202601', no: 35 }] },
-    { key: 'trend', label: '学科发展态势报告', short: '学科态势', sub: '每期一本',
-      books: [null, null, { period: 'TREND', no: 1, placeholder: true, caption: '示意 · 未出刊' }, null, null] },
-    { key: 'annual', label: '年报', short: '年报', sub: '每年一本',
-      books: [null, null, { period: 'ANNUAL', no: 1, placeholder: true, caption: '示意 · 未出刊' }, null, null] }
+    { key: 'annual', label: '年报', short: '年报', sub: '每年一本 · 待出刊',
+      items: [{ kind: 'empty' }, { kind: 'empty' },
+              { kind: 'book', period: 'ANNUAL', no: 1, placeholder: true, caption: '示意 · 未出刊' },
+              { kind: 'empty' }, { kind: 'empty' }] },
+    { key: 'trend', label: '学科发展态势报告', short: '学科态势', sub: '每期一本 · 待出刊',
+      items: [{ kind: 'empty' }, { kind: 'empty' },
+              { kind: 'book', period: 'TREND', no: 1, placeholder: true, caption: '示意 · 未出刊' },
+              { kind: 'empty' }, { kind: 'empty' }] },
+    { key: 'esi', label: 'ESI 双月报告', short: 'ESI 双月', sub: '已出 38 期',
+      items: [{ kind: 'dense', count: 5, label: '更早 34 期' },
+              { kind: 'book', period: '202601', no: 35 },
+              { kind: 'book', period: '202603', no: 36 },
+              { kind: 'book', period: '202605', no: 37 },
+              { kind: 'book', period: '202607', no: 38 },
+              { kind: 'empty' }] }
   ]
 };
 </script>

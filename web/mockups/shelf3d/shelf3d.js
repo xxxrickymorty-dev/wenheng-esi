@@ -228,7 +228,93 @@ function backdropTexture() {
   return t;
 }
 
-/* 接触影贴片：书底那道窄暗带。少了它，书会像"浮"在板上 */
+/* ------------------------------------------------------------------
+   阅览室（背景）：地板 + 台灯光池 + 左侧高窗 + 远处书架剪影
+   ------------------------------------------------------------------
+   纪律：**全部压暗、低对比**——背景一抢眼，书就不是主角了。
+   （"花木纹背景"是最容易翻车的一处，所以地板只给微弱的木纹 + 低粗糙度，
+     让灯光能在上面拖出一条光带，而不是把纹理画清楚。）
+   ------------------------------------------------------------------ */
+function buildRoom() {
+  var g = new THREE.Group();
+
+  /* 地板：暗木 + 低粗糙度（灯光会在上面拖出光带） */
+  var floorTex = woodTexture(5);
+  floorTex.repeat.set(7, 7);
+  var floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(30, 22),
+    new THREE.MeshPhysicalMaterial({
+      map: floorTex, roughness: .50, metalness: .04, color: 0x6f5844
+    })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(0, 0, 5.5);
+  floor.receiveShadow = true;
+  g.add(floor);
+
+  /* 台灯光池：柜脚前的一片暖光晕（"有人在这看书"的暗示） */
+  var pool = new THREE.Mesh(
+    new THREE.PlaneGeometry(11, 7),
+    new THREE.MeshBasicMaterial({
+      map: contactShadowTexture(), transparent: true, opacity: .30,
+      color: 0xffcf94, depthWrite: false
+    })
+  );
+  pool.rotation.x = -Math.PI / 2;
+  pool.position.set(0, .006, 1.5);
+  g.add(pool);
+
+  /* 左侧高窗：暖白的光块 + 一圈柔光晕 + 暗窗框（阅览室的标志） */
+  var glow = makeCanvas(256, 256), gx = glow.getContext('2d');
+  var gg = gx.createRadialGradient(128, 128, 6, 128, 128, 128);
+  gg.addColorStop(0, 'rgba(255,232,196,.85)');
+  gg.addColorStop(.45, 'rgba(255,226,184,.28)');
+  gg.addColorStop(1, 'rgba(255,220,180,0)');
+  gx.fillStyle = gg; gx.fillRect(0, 0, 256, 256);
+  var glowTex = new THREE.CanvasTexture(glow);
+  glowTex.colorSpace = THREE.SRGBColorSpace;
+  var glowMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(7, 5.4),
+    new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, opacity: .55,
+      depthWrite: false, blending: THREE.AdditiveBlending })
+  );
+  glowMesh.position.set(-2.85, 2.0, -1.4);
+  glowMesh.rotation.y = .9;
+  g.add(glowMesh);
+
+  var pane = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.05, 2.5),
+    new THREE.MeshBasicMaterial({ color: 0xffe6c0, transparent: true, opacity: .34 })
+  );
+  pane.position.set(-2.9, 2.05, -1.35);
+  pane.rotation.y = .9;
+  g.add(pane);
+
+  /* 远处书架剪影：竖条纹理的暗块，低对比、只说"这里还有书" */
+  var sil = makeCanvas(256, 256), sx2 = sil.getContext('2d');
+  sx2.fillStyle = '#1b1815'; sx2.fillRect(0, 0, 256, 256);
+  var r2 = seededRandom(21);
+  for (var i = 0; i < 46; i++) {
+    var w = 3 + r2() * 7, x0 = r2() * 256;
+    sx2.fillStyle = 'rgba(' + (70 + r2() * 60 | 0) + ',' + (58 + r2() * 46 | 0) + ',' + (44 + r2() * 34 | 0) + ',' + (r2() * .5 + .25).toFixed(2) + ')';
+    sx2.fillRect(x0, 24, w, 208);
+  }
+  sx2.fillStyle = '#141110';
+  for (var b2 = 0; b2 < 4; b2++) sx2.fillRect(0, 24 + b2 * 52 + 44, 256, 8);
+  var silTex = new THREE.CanvasTexture(sil);
+  silTex.colorSpace = THREE.SRGBColorSpace;
+  [-1, 1].forEach(function (s) {
+    var m = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.6, 2.6),
+      new THREE.MeshBasicMaterial({ map: silTex, transparent: true, opacity: .26 })
+    );
+    m.position.set(s * 3.7, 1.5, -2.3);
+    m.rotation.y = -s * .45;
+    g.add(m);
+  });
+
+  return g;
+}
 function contactShadowTexture() {
   var S = 128, c = makeCanvas(S, S), x = c.getContext('2d');
   var g = x.createRadialGradient(S / 2, S / 2, 2, S / 2, S / 2, S / 2);
@@ -279,15 +365,29 @@ var D = {
 };
 var SLOTS = 5;
 
-/* 三层＝三个系列。数据来自页面（WH_DATA.tiers）；缺省用内置的示意数据。 */
+/* 三层＝三个系列，**从下往上**排（数组 0 是最底层）。
+   rick 2026-09-22 定：ESI 在最上、年报在最下。
+   每层用 items 描述（从左到右）：
+     {kind:'dense', count:n, label:'更早 34 期'}  密排书脊——表示"还有很多期，放不下"
+     {kind:'book', period, no}                   封面朝外的真书
+     {kind:'empty'}                              虚线空位（这一期还没出刊）
+   为什么用密排：38 期书架放不下，真图书馆也是"最近几本立着、更早的密排"。 */
 var DEFAULT_TIERS = [
-  { key: 'esi', label: 'ESI 双月报告', short: 'ESI 双月', sub: '每期一本',
-    books: [{ period: '202607', no: 38 }, { period: '202605', no: 37 },
-            { period: '202603', no: 36 }, { period: '202601', no: 35 }] },
-  { key: 'trend', label: '学科发展态势报告', short: '学科态势', sub: '每期一本',
-    books: [null, null, { period: 'TREND', no: 1, placeholder: true, caption: '示意 · 未出刊' }, null, null] },
-  { key: 'annual', label: '年报', short: '年报', sub: '每年一本',
-    books: [null, null, { period: 'ANNUAL', no: 1, placeholder: true, caption: '示意 · 未出刊' }, null, null] }
+  { key: 'annual', label: '年报', short: '年报', sub: '每年一本 · 待出刊',
+    items: [{ kind: 'empty' }, { kind: 'empty' },
+            { kind: 'book', period: 'ANNUAL', no: 1, placeholder: true, caption: '示意 · 未出刊' },
+            { kind: 'empty' }, { kind: 'empty' }] },
+  { key: 'trend', label: '学科发展态势报告', short: '学科态势', sub: '每期一本 · 待出刊',
+    items: [{ kind: 'empty' }, { kind: 'empty' },
+            { kind: 'book', period: 'TREND', no: 1, placeholder: true, caption: '示意 · 未出刊' },
+            { kind: 'empty' }, { kind: 'empty' }] },
+  { key: 'esi', label: 'ESI 双月报告', short: 'ESI 双月', sub: '已出 38 期',
+    items: [{ kind: 'dense', count: 5, label: '更早 34 期' },
+            { kind: 'book', period: '202601', no: 35 },
+            { kind: 'book', period: '202603', no: 36 },
+            { kind: 'book', period: '202605', no: 37 },
+            { kind: 'book', period: '202607', no: 38 },
+            { kind: 'empty' }] }
 ];
 
 /* ------------------------------------------------------------------
@@ -444,11 +544,75 @@ function buildBook(bk, dimmable) {
   return g;
 }
 
+/* 本层各件的位置与宽度（以层中心为 0） */
+var BOOK_W = .46, DENSE_W = .082, ITEM_GAP = .05;
+function tierLayout(tier) {
+  var widths = tier.items.map(function (it) {
+    return it.kind === 'dense' ? it.count * DENSE_W : BOOK_W;
+  });
+  var total = widths.reduce(function (a, b) { return a + b; }, 0)
+            + ITEM_GAP * (tier.items.length - 1);
+  var x = -total / 2, list = [];
+  tier.items.forEach(function (it, k) {
+    list.push({ item: it, x: x + widths[k] / 2, w: widths[k] });
+    x += widths[k] + ITEM_GAP;
+  });
+  return { list: list, total: total };
+}
+
+/* 密排书脊：表示"还有更多期，放不下"。薄、只做布面 + 一条烫金细线，省开销。 */
+function buildDenseRun(count) {
+  var g = new THREE.Group();
+  var DENSE_T = .066, pitch = DENSE_W;
+  var start = -(count - 1) * pitch / 2;
+  var PAL = ['#B8422C', '#8A6A34', '#2E4B5E', '#3F5C42', '#7A3B2E'];
+  for (var k = 0; k < count; k++) {
+    var cm = clothMaps(PAL[k % PAL.length], 500 + k * 7);
+    var mat = new THREE.MeshPhysicalMaterial({
+      map: cm.map, normalMap: cm.normalMap, roughnessMap: cm.roughnessMap,
+      roughness: .98, metalness: .02, sheen: .30, sheenRoughness: .72,
+      sheenColor: new THREE.Color(FOIL_GOLD)
+    });
+    mat.normalScale.set(.6, .6);
+    var b = new THREE.Mesh(
+      new THREE.BoxGeometry(DENSE_T, D.bookH - .035, D.depth * .8), mat);
+    b.position.set(start + k * pitch, 0, .01);
+    b.castShadow = true;
+    g.add(b);
+    /* 书脊上的烫金细线（真书脊上就是这么一条） */
+    var foil = new THREE.Mesh(
+      new THREE.PlaneGeometry(DENSE_T * .42, .34),
+      new THREE.MeshPhysicalMaterial({
+        color: 0xe8cf9a, metalness: .90, roughness: .22,
+        transparent: true, opacity: .8
+      }));
+    foil.position.set(b.position.x, .10, D.depth * .4 + .012);
+    g.add(foil);
+  }
+  g.userData.mats = g.children.map(function (o) { return o.material; });
+  return g;
+}
+
+/* 案头小标签：写在层板前沿的一行小字（如「更早 34 期」） */
+function makeCaption(text, wm) {
+  var Wd = 512, Ht = 64, c = makeCanvas(Wd, Ht), x = c.getContext('2d');
+  x.clearRect(0, 0, Wd, Ht);
+  x.textAlign = 'center';
+  x.font = '500 40px "Songti SC", SimSun, serif';
+  x.fillStyle = 'rgba(236,220,178,.72)';
+  x.fillText(text, Wd / 2, 46);
+  var tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  var m = new THREE.Mesh(
+    new THREE.PlaneGeometry(wm, wm * Ht / Wd),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+  return m;
+}
+
 /* ---------- 一层 ---------- */
-function buildTier(tier, i) {
+function buildTier(tier, i, innerW) {
   var g = new THREE.Group();
   var y0 = tierY(i);
-  var innerW = SLOTS * D.slot;
   var outerW = innerW + .14;
 
   var wood = new THREE.MeshPhysicalMaterial({
@@ -463,7 +627,7 @@ function buildTier(tier, i) {
   g.add(board);
 
   /* 层标：层板前沿左侧的一枚小铜牌（只写系列短名）。
-     ⚠ 别做大：做成 2 米宽就成"大字报"了，会把书压住（第一版就是这么翻车的）。 */
+     ⚠ 别做大：做成 2 米宽就成"大字报"了（第一版就是这么翻车的）。 */
   var plate = makeCanvas(512, 96), px = plate.getContext('2d');
   px.clearRect(0, 0, 512, 96);
   px.textAlign = 'left';
@@ -482,41 +646,54 @@ function buildTier(tier, i) {
   plateMesh.position.set(-outerW / 2 + .28, y0 - D.boardT / 2 - .001, D.depth / 2 + .005);
   g.add(plateMesh);
 
-  /* 书 + 空位 */
-  var slotX = function (k) { return -innerW / 2 + D.slot / 2 + k * D.slot; };
-  var books = [];
+  /* 逐件摆：密排段 / 封面朝外的书 / 虚线空位 */
+  var L = tierLayout(tier);
+  var books = [], mats = [];
   var emptyTex = emptySlotTexture();
-  for (var k = 0; k < SLOTS; k++) {
-    var bk = tier.books[k];
-    if (bk) {
-      var b = buildBook(bk, true);
-      b.position.set(slotX(k), y0 + D.bookH / 2, .01);
+  L.list.forEach(function (slot) {
+    var it = slot.item;
+    if (it.kind === 'book') {
+      var b = buildBook(it, true);
+      b.position.set(slot.x, y0 + D.bookH / 2, .01);
       b.userData.baseY = b.position.y;
-      b.userData.slotIndex = k;
       b.userData.tierIndex = i;
       g.add(b);
       books.push(b);
+      mats = mats.concat(b.userData.mats);
+    } else if (it.kind === 'dense') {
+      var run = buildDenseRun(it.count);
+      run.position.set(slot.x, y0 + (D.bookH - .035) / 2, 0);
+      g.add(run);
+      mats = mats.concat(run.userData.mats);
+      if (it.label) {
+        var cap = makeCaption(it.label, slot.w * .95);
+        cap.position.set(slot.x, y0 - D.boardT / 2 - .001, D.depth / 2 + .006);
+        g.add(cap);
+      }
     } else {
-      /* 空位：层板上的虚线方框（诚实态——这一格还在等它那一期） */
-      var slot = new THREE.Mesh(
-        new THREE.PlaneGeometry(D.bookT * 3.6, D.depth * .7),
+      var m = new THREE.Mesh(
+        new THREE.PlaneGeometry(slot.w * .82, D.depth * .7),
         new THREE.MeshBasicMaterial({
           map: emptyTex, transparent: true, opacity: .95, depthWrite: false
         })
       );
-      slot.rotation.x = -Math.PI / 2;
-      slot.position.set(slotX(k), y0 + .004, .01);
-      g.add(slot);
+      m.rotation.x = -Math.PI / 2;
+      m.position.set(slot.x, y0 + .004, .01);
+      g.add(m);
     }
-  }
-  return { group: g, books: books, y: y0, outerW: outerW };
+  });
+
+  return { group: g, books: books, mats: mats, y: y0, outerW: outerW };
 }
 
 /* ---------- 柜体：背板 + 三层 + 踢脚 ---------- */
 function buildShelf() {
   var cfg = (window.WH_DATA && window.WH_DATA.tiers) || DEFAULT_TIERS;
   var g = new THREE.Group();
-  var outerW = SLOTS * D.slot + .14;
+  /* 统一层宽＝最宽那层（各层件数不同，宽度要对齐才像柜子） */
+  var innerW = 0;
+  cfg.forEach(function (tier) { innerW = Math.max(innerW, tierLayout(tier).total); });
+  var outerW = innerW + .14;
   var topY = tierY(cfg.length - 1) + D.bookH + .16;
   var outerH = topY + D.boardT;
 
@@ -524,12 +701,12 @@ function buildShelf() {
     map: woodTexture(77), roughness: .74, metalness: .02, color: 0x8a755e, sheen: .08
   });
 
-  /* 背板：暗色纯面（不是花木纹——花木纹是廉价感第一来源） */
+  /* 后墙：推到远处当"房间的墙"（原来贴在柜子后背上，会把阅览室全挡住） */
   var back = new THREE.Mesh(
-    new THREE.PlaneGeometry(outerW + 3, outerH + 2),
+    new THREE.PlaneGeometry(outerW + 12, outerH + 4.5),
     new THREE.MeshBasicMaterial({ map: backdropTexture() })
   );
-  back.position.set(0, outerH / 2 + .3, -D.depth / 2 - .18);
+  back.position.set(0, outerH / 2 + 1.1, -4.4);
   g.add(back);
 
   /* 侧板：薄，只用来收边 */
@@ -549,9 +726,9 @@ function buildShelf() {
   plinth.position.set(0, D.plinth / 2, .008);
   g.add(plinth);
 
-  /* 三层 */
+  /* 三层（数据顺序＝从下往上） */
   cfg.forEach(function (tier, i) {
-    var t = buildTier(tier, i);
+    var t = buildTier(tier, i, innerW);
     g.add(t.group);
     tiers.push(t);
   });
@@ -573,12 +750,10 @@ var OVERVIEW_Z = 5.05;          /* 相机比这近 → 算"推近"状态 */
 
 function applyFocusVisuals() {
   tiers.forEach(function (t, i) {
-    var on = i === focusIndex;
-    t.books.forEach(function (b) {
-      var f = on ? 1 : .55;
-      b.userData.mats.forEach(function (m) {
-        m.color.setScalar(f);
-      });
+    var f = (i === focusIndex) ? 1 : .55;
+    (t.mats || []).forEach(function (m) {
+      if (!m.userData.base) m.userData.base = m.color.clone();
+      m.color.copy(m.userData.base).multiplyScalar(f);
     });
   });
 }
@@ -650,6 +825,9 @@ function init(canvasEl) {
     var built = buildShelf();
     root = built.group;
     scene.add(root);
+    scene.add(buildRoom());          /* 阅览室背景（全部压暗、低对比） */
+    /* 默认焦点＝ESI 层（最上面那层，主系列） */
+    focusIndex = tiers.length - 1;
 
     controls = new OrbitControls(camera, canvasEl);
     controls.enableDamping = true;
