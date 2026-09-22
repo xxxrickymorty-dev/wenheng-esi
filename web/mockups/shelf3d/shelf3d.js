@@ -820,43 +820,119 @@ function geomFromPart(part) {
   return g;
 }
 
-/* 阅览桌：右下前景、**只露一角**（被画幅裁切）——整张摆进来就成了玩具箱 */
-function buildReadingDesk() {
+/* 材质槽 → 质感。名字对不上就退回亮粉色，一眼看出槽丢了。 */
+var MAT_CACHE = {};
+function matFor(slot) {
+  if (MAT_CACHE[slot]) return MAT_CACHE[slot];
+  var m;
+  if (slot === 'metal') {
+    m = new THREE.MeshPhysicalMaterial({
+      color: 0x8a8b8e, roughness: .19, metalness: .90, clearcoat: .4
+    });
+  } else if (slot === 'glass') {
+    /* 绿玻璃罩：**自发光**——桌面那片光池就靠它 */
+    m = new THREE.MeshPhysicalMaterial({
+      color: 0x2f6b4a, roughness: .12, metalness: 0,
+      transparent: true, opacity: .84, side: THREE.DoubleSide,
+      emissive: 0x2e6a46, emissiveIntensity: .9
+    });
+  } else if (slot === 'fabric') {
+    m = new THREE.MeshPhysicalMaterial({
+      color: 0x6b5a45, roughness: .88, metalness: 0, sheen: .30
+    });
+  } else if (slot === 'carpet') {
+    m = new THREE.MeshPhysicalMaterial({
+      map: woodTexture(3), color: 0x4e3828, roughness: .96, metalness: 0
+    });
+  } else {                                  /* wood 与未知槽都按木头 */
+    m = new THREE.MeshPhysicalMaterial({
+      map: woodTexture(12), roughness: .62, metalness: .04, color: 0x7a5f45
+    });
+  }
+  MAT_CACHE[slot] = m;
+  return m;
+}
+
+/* 读一件道具（meshes.js 里的名字），按 place 摆到世界里 */
+function buildProp(meshName, place) {
   var g = new THREE.Group();
-  var entry = (window.WH_MESHES || {})['reading-desk'];
-  if (!entry) return g;                 /* meshes.js 没跟上就安静跳过，不挡书架 */
-
-  var wood = new THREE.MeshPhysicalMaterial({
-    map: woodTexture(12), roughness: .62, metalness: .04, color: 0x7a5f45
-  });
-  var metal = new THREE.MeshPhysicalMaterial({
-    color: 0x8a8b8e, roughness: .19, metalness: .90
-  });
-
+  var entry = (window.WH_MESHES || {})[meshName];
+  if (!entry) return g;                 /* 没跟上就安静跳过，不挡书架 */
   entry.parts.forEach(function (part) {
-    var mat = (part.mat === 'metal') ? metal : wood;
-    var mesh = new THREE.Mesh(geomFromPart(part), mat);
+    var mesh = new THREE.Mesh(geomFromPart(part), matFor(part.mat));
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     g.add(mesh);
   });
+  if (place) {
+    if (place.pos) g.position.set(place.pos[0], place.pos[1], place.pos[2]);
+    if (place.rotY) g.rotation.y = place.rotY;
+    if (place.rotX) g.rotation.x = place.rotX;
+  }
+  return g;
+}
 
-  /* 桌下压一片接触影（软件渲染下实时阴影不出影，见技能坑 4） */
-  var cs = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.5, 1.0),
+/* 桌下压一片接触影（软件渲染下实时阴影不出影，见技能坑 4） */
+function contactPatch(w, d, opacity) {
+  var m = new THREE.Mesh(
+    new THREE.PlaneGeometry(w, d),
     new THREE.MeshBasicMaterial({
-      map: contactShadowTexture(), transparent: true, opacity: .5,
+      map: contactShadowTexture(), transparent: true, opacity: opacity,
       color: 0x000000, depthWrite: false
     })
   );
-  cs.rotation.x = -Math.PI / 2;
-  cs.position.y = .004;
-  g.add(cs);
+  m.rotation.x = -Math.PI / 2;
+  m.position.y = .004;
+  return m;
+}
 
-  /* 摆位：右下前景；斜 12°（不斜就是一张平卡，看不到厚度） */
-  g.position.set(1.5, 0, 1.7);
-  g.rotation.y = -.21;
+/* 整间阅览室的摆位。三条纪律：
+   桌面只露一角（右下前景、被画幅裁切）／椅背不正对镜头／窗在左、台灯在右。 */
+var DESK_POS = [1.5, 0, 1.7], DESK_ROT = -.21;
+var LAMP_POS = [1.25, .75, 1.6];
+
+function buildProps() {
+  var g = new THREE.Group();
+
+  /* 地毯先铺，免得盖住别的 */
+  g.add(buildProp('carpet', { pos: DESK_POS, rotY: DESK_ROT }));
+
+  /* 阅览桌 */
+  var desk = buildProp('reading-desk', { pos: DESK_POS, rotY: DESK_ROT });
+  var sh = contactPatch(1.5, 1.0, .5);
+  sh.position.set(DESK_POS[0], .004, DESK_POS[2]);
+  sh.rotation.z = DESK_ROT;
+  g.add(sh);
+  g.add(desk);
+
+  /* 绿罩台灯：坐在桌面左后侧 */
+  g.add(buildProp('bankers-lamp', { pos: LAMP_POS, rotY: DESK_ROT }));
+
+  /* 扶手椅：左前景，背对镜头偏一点（正对就成主角了） */
+  g.add(buildProp('armchair', { pos: [-1.05, 0, 2.5], rotY: .5 }));
+
+  /* 窗套线脚 + 窗台：左侧高窗（原点在窗台下沿，所以 y 要垫到窗台高度） */
+  g.add(buildProp('window-trim', { pos: [-2.9, .64, -1.35], rotY: .9 }));
+
+  /* 踢脚线：后墙与两侧 */
+  g.add(buildProp('baseboard', { pos: [0, 0, 0] }));
+
   return g;
+}
+
+/* 两盏叙事光：台灯（暖、近）+ 窗（暖金、远） */
+var lampLight = null, windowLight = null;
+function buildPropLights() {
+  /* 台灯点光：画面第二亮点。衰减快，只照亮桌面那一片 */
+  lampLight = new THREE.PointLight(0xffcf94, 6.5, 3.2, 2);
+  lampLight.position.set(LAMP_POS[0], LAMP_POS[1] + .42, LAMP_POS[2]);
+  scene.add(lampLight);
+
+  /* 窗光：左侧大面积柔光，暖白偏金（「下午」的天光） */
+  windowLight = new THREE.RectAreaLight(0xffe2b0, 3.2, 1.2, 2.4);
+  windowLight.position.set(-2.7, 2.0, -1.2);
+  windowLight.lookAt(0, 1.0, .4);
+  scene.add(windowLight);
 }
 
 function init(canvasEl) {
@@ -882,7 +958,8 @@ function init(canvasEl) {
     root = built.group;
     scene.add(root);
     scene.add(buildRoom());          /* 阅览室背景（全部压暗、低对比） */
-    scene.add(buildReadingDesk());   /* 阅览桌（增量③）：右下前景，只露一角 */
+    scene.add(buildProps());         /* 阅览室道具：桌 / 灯 / 椅 / 窗套 / 地毯 / 踢脚 */
+    buildPropLights();               /* 两盏叙事光：台灯点光 + 窗光 */
     /* 默认焦点＝ESI 层（最上面那层，主系列） */
     focusIndex = tiers.length - 1;
 
