@@ -28,12 +28,13 @@
   .tiers button[aria-current="true"]{color:#f0e6d4;border-color:#c9a06a;background:rgba(60,48,36,.9)}
   .tiers button:hover{border-color:#8a7458}
 
-  /* ---------- 声音开关（默认关；演示现场多半静音） ---------- */
-  .snd{position:fixed;right:22px;top:78px;font:inherit;font-size:13px;
-    color:#b8ab99;background:rgba(43,38,34,.72);border:1px solid #4a3f34;
-    border-radius:8px;padding:7px 12px;cursor:pointer;z-index:30}
-  .snd[aria-pressed="true"]{color:#f0e6d4;border-color:#c9a06a;background:rgba(60,48,36,.9)}
-  .snd:hover{border-color:#8a7458}
+  /* ---------- 声音开关（首次手势自动开；可随时关） ---------- */
+  .snd{position:fixed;right:22px;top:78px;font:inherit;font-size:14px;
+    color:#e8dfd2;background:rgba(60,48,36,.9);border:1px solid #c9a06a;
+    border-radius:8px;padding:9px 16px;cursor:pointer;z-index:30;
+    box-shadow:0 2px 10px rgba(0,0,0,.25)}
+  .snd[aria-pressed="true"]{color:#241f1c;border-color:#f0e6d4;background:#f0e6d4}
+  .snd:hover{border-color:#f0e6d4}
 
   /* ---------- 页脚：左提示 / 右命令（G 的做法：提示随状态变） ----------
      拿掉「关闭」按钮换成点背景退出时，必须把提示写出来——不写没人知道 */
@@ -394,6 +395,8 @@ window.WH_DATA.tiers = [
     snd.textContent = v ? '♪ 声音 开' : '♪ 声音 关';
   }
   snd.addEventListener('click', function () { if (A) A.toggle(); syncSnd(); });
+  /* 手势自动开声也要把按钮同步过来（否则开关显示「关」但已经在响） */
+  window.addEventListener('wh:audio', syncSnd);
   syncSnd();
 
   /* 首屏也要同步一次（只靠「状态变化」监听会漏掉初始值） */

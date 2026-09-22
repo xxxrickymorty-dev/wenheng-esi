@@ -288,6 +288,7 @@ function set(v) {
     startMusic();
     if (ctx) grain(ctx.currentTime + .01, .028, 4200, .06);   /* 开启确认音，定调 */
   } else stopMusic();
+  try { window.dispatchEvent(new CustomEvent('wh:audio', { detail: on })); } catch (e) {}
   return on;
 }
 
@@ -301,6 +302,21 @@ document.addEventListener('visibilitychange', function () {
     if (bgmEl && bgmEl.paused) { var p = bgmEl.play(); if (p && p.catch) p.catch(function () {}); }
   }
 });
+
+/* 首次手势自动开声：浏览器规定「要一次用户手势才能响」，
+   但手势之后就没理由再让听不见——rick 要听得见声音。
+   明确关过（localStorage='0'）就不再自作主张。 */
+var gestured = false;
+function firstGesture() {
+  if (gestured) return;
+  gestured = true;
+  var remembered = null;
+  try { remembered = localStorage.getItem(PREF); } catch (e) {}
+  if (remembered === '0') return;          /* 用户明确关过，尊重 */
+  if (!on) set(true);
+}
+window.addEventListener('pointerdown', firstGesture, { once: false });
+window.addEventListener('keydown', firstGesture, { once: false });
 
 return {
   set: set,

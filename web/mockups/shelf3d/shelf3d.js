@@ -131,6 +131,7 @@ function coverArtTexture(bk, baseHex) {
 
   var PAPER = '#f7f4ec', PAPER_2 = '#ede7d8';
   var INK = '#241f1c', INK_3 = '#847f75';
+  var CREAM = '#F7F0E2';                   /* 深卷色底上的字色（G 同值） */
   var ZHU = '#b13c2c', GOLD = '#a98a5c', LINE = '#cbc6bd';
 
   /* ① 卷色布面 + 纸颗粒 */
@@ -152,36 +153,33 @@ function coverArtTexture(bk, baseHex) {
   ruleRect(14, 'rgba(247,244,236,.55)', 1);
   ruleRect(21, 'rgba(247,244,236,.55)', 1);
 
-  /* ③ 朱丝栏界行：两道竖线把版面切栏（左窄栏放钤印、右宽栏放签条） */
-  [CW * 0.30, CW * 0.52].forEach(function (gx) {
+  /* ③ 朱丝栏界行：两道竖线把版面切栏（左宽栏放期号、右窄栏放书名） */
+  [CW * 0.30, CW * 0.56].forEach(function (gx) {
     x.strokeStyle = 'rgba(247,244,236,.34)';
     x.lineWidth = 1;
     x.beginPath(); x.moveTo(gx, 34); x.lineTo(gx, CH - 34); x.stroke();
   });
 
-  /* ④ 签条：宣纸色，贴在右栏（线装书的做法） */
-  var sx = Math.round(CW * 0.55), sw = Math.round(CW * 0.34);
-  var sy = 64, sh = CH - 128;
-  x.fillStyle = PAPER;
-  x.fillRect(sx, sy, sw, sh);
-  x.strokeStyle = 'rgba(36,31,28,.55)'; x.lineWidth = 1;
-  x.strokeRect(sx + .5, sy + .5, sw - 1, sh - 1);
-  x.fillStyle = PAPER_2;                            /* 签条下沿一道浅色，像压过一层纸 */
-  x.fillRect(sx + 1, sy + sh - 6, sw - 2, 5);
-
-  /* ⑤ 竖排刊刻书名（写在签条上，墨色）。
+  /* ④ 竖排刊刻书名：**直接写在封面卷色上**（rick：不要白底签条盖上去）。
+     底是深卷色，字走乳白。
      ⚠ 竖排必须逐字下落且不换列——用 fillText 逐字画，比 CSS 竖排稳 */
   var title = '学科信息参考';
-  x.fillStyle = INK;
+  x.fillStyle = CREAM;
   x.textAlign = 'center';
-  x.font = '700 34px "Songti SC","Source Han Serif SC",SimSun,serif';
-  var tY = sy + 62, step = 44;
+  x.font = '700 36px "Songti SC","Source Han Serif SC",SimSun,serif';
+  var tY = 84, step = 47;
   for (var k = 0; k < title.length; k++) {
-    x.fillText(title[k], sx + sw / 2, tY + k * step);
+    x.fillText(title[k], CW * 0.74, tY + k * step);
   }
-  x.font = '500 13px Consolas,monospace';
-  x.fillStyle = INK_3;
-  x.fillText(String(bk.period || ''), sx + sw / 2, tY + title.length * step + 10);
+
+  /* ⑤ 数字期号：大（rick：期号放大） */
+  x.textAlign = 'left';
+  x.fillStyle = CREAM;
+  x.font = '600 46px Consolas,"Courier New",monospace';
+  x.fillText(String(bk.period || ''), 34, CH * 0.60);
+  x.font = '500 17px "Songti SC",SimSun,serif';
+  x.fillStyle = 'rgba(247,244,236,.72)';
+  x.fillText(bk.caption || ('总第 ' + (bk.no || '') + ' 期'), 36, CH * 0.60 + 30);
 
   /* ⑥ 钤印：朱砂方印，微转 -3°，边缘略有不齐 */
   x.save();
@@ -206,17 +204,11 @@ function coverArtTexture(bk, baseHex) {
   x.fillText(bk.placeholder ? '示' : '衡', 0, 12);
   x.restore();
 
-  /* ⑦ 期次 + 出版项（烫金细体，左栏） */
+  /* ⑦ 出版项（烫金细体）——期号在 ⑤ 已放大，这里只留出版项 */
   x.textAlign = 'left';
-  x.fillStyle = GOLD;
-  x.font = '500 15px Consolas,monospace';
-  x.fillText(String(bk.period || ''), 34, CH - 52);
+  x.fillStyle = 'rgba(169,138,92,.92)';
   x.font = '400 12px "Songti SC",SimSun,serif';
-  x.fillStyle = 'rgba(169,138,92,.85)';
-  x.fillText(bk.caption || ('第 ' + (bk.no || '') + ' 期'), 34, CH - 32);
-  x.fillStyle = 'rgba(247,244,236,.45)';
-  x.font = '400 11px "Songti SC",SimSun,serif';
-  x.fillText('云南大学图书馆', CW - 34 - x.measureText('云南大学图书馆').width, 44);
+  x.fillText('云南大学图书馆', 36, CH - 34);
 
   /* 示意书：斜水印，别让人误以为是真出的报告 */
   if (bk.placeholder) {
