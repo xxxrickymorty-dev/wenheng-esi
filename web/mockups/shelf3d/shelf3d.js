@@ -701,13 +701,7 @@ function buildShelf() {
     map: woodTexture(77), roughness: .74, metalness: .02, color: 0x8a755e, sheen: .08
   });
 
-  /* 后墙：推到远处当"房间的墙"（原来贴在柜子后背上，会把阅览室全挡住） */
-  var back = new THREE.Mesh(
-    new THREE.PlaneGeometry(outerW + 12, outerH + 4.5),
-    new THREE.MeshBasicMaterial({ map: backdropTexture() })
-  );
-  back.position.set(0, outerH / 2 + 1.1, -4.4);
-  g.add(back);
+    /* 背板去掉了（rick 2026-09-22）：柜子通透，后面直接是阅览室的暗处 */
 
   /* 侧板：薄，只用来收边 */
   [-1, 1].forEach(function (s) {
