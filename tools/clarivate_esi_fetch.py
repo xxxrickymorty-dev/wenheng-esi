@@ -8,9 +8,14 @@
 
 前置：双击 start-clarivate-chrome.bat（带 CDP 9222 的 Chrome，已登录 ESI/InCites）。
 
-用法：
-    python tools/clarivate_esi_fetch.py institutions [--out DIR] [--format Excel]
-    python tools/clarivate_esi_fetch.py thresholds   [--out DIR] [--format Excel]
+用法（命令名见下方 COMMANDS）：
+    python tools/clarivate_esi_fetch.py institutions     # Step 1 全球机构总表（9 列）
+    python tools/clarivate_esi_fetch.py subjects         # Step 2 22 学科机构表（9 列；--force 覆盖）
+    python tools/clarivate_esi_fetch.py subjects-7col    # 同上，历史 7 列版式
+    python tools/clarivate_esi_fetch.py fields           # Step 3 全球/云大/中国 学科汇总
+    python tools/clarivate_esi_fetch.py toppapers        # Step 4 云大论文明细 ×3（文件名「数字在前」）
+    python tools/clarivate_esi_fetch.py thresholds       # Step 5a 阈值 ×3
+    python tools/clarivate_esi_fetch.py baselines        # Step 5b 基线 ×3
 """
 from __future__ import annotations
 
@@ -21,6 +26,7 @@ import time
 from pathlib import Path
 from urllib.parse import quote, urljoin
 
+import openpyxl
 from playwright.sync_api import Page, sync_playwright
 
 CDP = "http://127.0.0.1:9222"
@@ -91,12 +97,31 @@ def export(page: Page, out_path: Path, fmt: str = "Excel") -> Path:
     return out_path
 
 
+# 导出列：9 列＝默认（含 Highly Cited Papers + Hot Papers）；7 列＝历史版式
+_SUBJECT_COLS9 = ("RowSeq,,Institutions,Countries/Regions,Web of Science Documents,Cites,Cites/Paper,"
+                  "Top Papers,Highly Cited Papers,Hot Papers")
+_SUBJECT_COLS7 = "RowSeq,,Institutions,Countries/Regions,Web of Science Documents,Cites,Cites/Paper,Top Papers"
+
+# Step 1 全球机构总表（无筛选）的导出 URL（实测抄下：filterValue= 空、limit 给大值）
+_INSTITUTIONS_URL = (
+    ESI + "/IndicatorsExport.action?exportFile&_dc=1&groupBy=Institutions&start=0&limit=30000"
+    "&filterBy=Institutions&filterValue=&show=Top"
+    "&sort=%5B%7B%22property%22%3A%22cites%22%2C%22direction%22%3A%22DESC%22%7D%5D"
+    "&colFilterVal=&exportType=indicators&colNames={cols}&fileType=Excel&f=Institutions.xlsx"
+)
+
+
 def cmd_institutions(page: Page, out: Path, fmt: str) -> None:
-    page.goto(f"{ESI}/IndicatorsAction.action?app=esi&Init=Yes", wait_until="domcontentloaded")
-    page.wait_for_timeout(3000)
-    page.select_option("#groupBy", "Institutions")
-    page.wait_for_timeout(3500)
-    export(page, out / "Institutions.xlsx", fmt)
+    """Step 1：全球机构总表（9 列，含 Highly Cited Papers / Hot Papers）。"""
+    out.mkdir(parents=True, exist_ok=True)
+    enc = _SUBJECT_COLS9.replace(",", "%2C").replace(" ", "+")
+    resp = page.request.get(_INSTITUTIONS_URL.format(cols=enc))
+    if not resp.ok or not _looks_like_xlsx(resp.body()):
+        print(f"[FAIL] Institutions.xlsx: HTTP {resp.status}, {len(resp.body())} B（非 xlsx）")
+        return
+    target = out / "Institutions.xlsx"
+    target.write_bytes(resp.body())
+    print(f"[OK] {target.name}  ({target.stat().st_size} B)")
 
 
 # Step 5a：三张阈值表（端点抄自 Thresholds 页 getThresholdsExport()）
@@ -146,10 +171,6 @@ _SUBJECT_URL = (
     "&fileType=Excel&f={fname}"
 )
 
-# 导出列：7 列＝默认；9 列＝再带 Highly Cited Papers + Hot Papers（《流程.docx》Step 2 的可选做法）
-_SUBJECT_COLS7 = "RowSeq,,Institutions,Countries/Regions,Web of Science Documents,Cites,Cites/Paper,Top Papers"
-_SUBJECT_COLS9 = _SUBJECT_COLS7 + ",Highly Cited Papers,Hot Papers"
-
 
 def _run_subjects(page: Page, out: Path, force: bool, cols: str) -> None:
     """Step 2：22 个分学科机构排名表；cols 决定导出里带哪些列。"""
@@ -172,13 +193,13 @@ def _run_subjects(page: Page, out: Path, force: bool, cols: str) -> None:
 
 
 def cmd_subjects(page: Page, out: Path, fmt: str, force: bool = False) -> None:
-    """Step 2：22 个分学科机构排名表（默认 7 列，末列 Top Papers）。"""
-    _run_subjects(page, out, force, _SUBJECT_COLS7)
-
-
-def cmd_subjects_hcphot(page: Page, out: Path, fmt: str, force: bool = False) -> None:
-    """Step 2 变体：22 张学科表再带 Highly Cited Papers + Hot Papers（9 列）。"""
+    """Step 2：22 个分学科机构排名表（默认 9 列，含 Highly Cited / Hot Papers）。"""
     _run_subjects(page, out, force, _SUBJECT_COLS9)
+
+
+def cmd_subjects_7col(page: Page, out: Path, fmt: str, force: bool = False) -> None:
+    """Step 2 历史版式：22 张学科表（7 列，末列 Top Papers）——用于复现旧期次。"""
+    _run_subjects(page, out, force, _SUBJECT_COLS7)
 
 
 # Research Fields 视图的导出 URL（无筛选那张实测抄下；过滤拼在末尾，f= 必须 ASCII，中文名会被服务端按 Latin-1 处理而返回空表）
@@ -211,24 +232,32 @@ _DOC_URL = (
     "&colNames=Accession+Number,DOI,PMID,Article+Name,Authors,Source,Research+Field,Times+Cited,"
     "Countries,Addresses,Institutions,Publication+Date&fileType=Excel&f=DocumentsExport.xls"
 )
-_TOPPAPERS = [
-    ("Top", "顶尖论文_top.xlsx"),
-    ("highlyCited", "顶尖论文_highlycited.xlsx"),
-    ("Hot", "顶尖论文_hot.xlsx"),
-]
+_TOPPAPERS = [("Top", "top"), ("highlyCited", "highly cited"), ("Hot", "hot papers")]
+
+
+def _data_rows(path: Path) -> int:
+    """明细导出的数据行数 = 总行数 − 8（前 5 行空/标题 + 表头 + 2 行页脚）。"""
+    wb = openpyxl.load_workbook(path, data_only=True)
+    ws = wb[wb.sheetnames[0]]
+    return max(ws.max_row - 8, 0)
 
 
 def cmd_toppapers(page: Page, out: Path, fmt: str) -> None:
-    """Step 4：云大 Top / Highly Cited / Hot 论文明细三张。"""
+    """Step 4：云大 Top / Highly Cited / Hot 论文明细三张，文件名「数字在前」（如 274top.xlsx）。"""
     out.mkdir(parents=True, exist_ok=True)
-    for show, fname in _TOPPAPERS:
+    for show, suffix in _TOPPAPERS:
         resp = page.request.get(_DOC_URL.format(show=show))
         if not resp.ok or not _looks_like_xlsx(resp.body()):
-            print(f"[FAIL] {fname}: HTTP {resp.status}, {len(resp.body())} B（非 xlsx）")
+            print(f"[FAIL] {suffix}: HTTP {resp.status}, {len(resp.body())} B（非 xlsx）")
             continue
-        target = out / fname
-        target.write_bytes(resp.body())
-        print(f"[OK] {fname}  ({target.stat().st_size} B)  show={show}")
+        tmp = out / f"_tmp_{show}.xlsx"
+        tmp.write_bytes(resp.body())
+        n = _data_rows(tmp)
+        target = out / f"{n}{suffix}.xlsx"
+        if target.exists():
+            target.unlink()
+        tmp.replace(target)
+        print(f"[OK] {target.name}  ({target.stat().st_size} B)  show={show}  篇数={n}")
 
 
 def cmd_fields(page: Page, out: Path, fmt: str) -> None:
@@ -280,7 +309,7 @@ def cmd_baselines(page: Page, out: Path, fmt: str) -> None:
 COMMANDS = {
     "institutions": cmd_institutions,
     "subjects": cmd_subjects,
-    "subjects-hcphot": cmd_subjects_hcphot,
+    "subjects-7col": cmd_subjects_7col,
     "fields": cmd_fields,
     "toppapers": cmd_toppapers,
     "thresholds": cmd_thresholds,
@@ -300,7 +329,7 @@ def main() -> int:
         browser = p.chromium.connect_over_cdp(CDP)
         page = get_esi_page(browser)
         fn = COMMANDS[args.command]
-        if args.command in ("subjects", "subjects-hcphot"):
+        if args.command in ("subjects", "subjects-7col"):
             fn(page, Path(args.out), args.format, args.force)
         else:
             fn(page, Path(args.out), args.format)
