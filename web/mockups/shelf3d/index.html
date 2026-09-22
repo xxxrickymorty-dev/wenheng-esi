@@ -9,7 +9,8 @@
   body{margin:0;background:#2b2622;overflow:hidden;
     font:15px/1.6 system-ui,-apple-system,"Microsoft YaHei",sans-serif;color:#e8dfd2}
   #scene{display:block;width:100vw;height:100vh;cursor:pointer}
-  .cap{position:fixed;left:22px;bottom:20px;font-size:13.5px;color:#b8ab99;letter-spacing:.02em;line-height:1.9}
+  /* 底部只剩一条信息带（#footHint 左 / .cmds 右）——
+     别再往上叠第二块说明文字，叠了就是「左下重影」 */
   .cap b{color:#e8dfd2;font-weight:600}
   .cap kbd{border:1px solid #6b5a45;border-radius:4px;padding:0 5px;font-size:12px;color:#c9a06a}
   :root{
@@ -21,24 +22,35 @@
   }
   .warn{position:fixed;left:22px;top:18px;font-size:13px;color:#c9a06a;
     border:1px dashed #6b5a45;border-radius:8px;padding:8px 12px;background:rgba(43,38,34,.7)}
-  .tiers{position:fixed;right:22px;top:18px;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+  /* ==================================================================
+     布局分区（改这里之前先看下面这张表——重叠就是这么来的）
+       右上  .tiers   系列切换（**只在整柜态**，端详一册时不必换系列）
+       左下  #footHint 命令提示（唯一一处文字，别再叠别的）
+       右下  .cmds   动作：声音 / 抽取 / 归架 / 复位
+     层级：#scene 0 < .tiers 20 < #display 40 < .vh-foot 50 < #reader 60
+     （页脚必须在陈列层**之上**，否则陈列态点不到命令）
+     ================================================================== */
+  .tiers{position:fixed;right:22px;top:18px;display:flex;flex-direction:column;gap:6px;
+    align-items:flex-end;z-index:20}
+  body[data-flow="featured"] .tiers,
+  body[data-flow="reading"] .tiers{opacity:0;pointer-events:none;visibility:hidden;
+    transition:opacity .3s linear, visibility 0s linear .3s}
+  .tiers{transition:opacity .3s linear, visibility 0s linear 0s}
   .tiers button{
     font:inherit;font-size:13.5px;color:#b8ab99;background:rgba(43,38,34,.72);
     border:1px solid #4a3f34;border-radius:8px;padding:7px 12px;cursor:pointer;text-align:right}
   .tiers button[aria-current="true"]{color:#f0e6d4;border-color:#c9a06a;background:rgba(60,48,36,.9)}
   .tiers button:hover{border-color:#8a7458}
 
-  /* ---------- 声音开关（首次手势自动开；可随时关） ---------- */
-  .snd{position:fixed;right:22px;top:78px;font:inherit;font-size:14px;
-    color:#e8dfd2;background:rgba(60,48,36,.9);border:1px solid #c9a06a;
-    border-radius:8px;padding:9px 16px;cursor:pointer;z-index:30;
-    box-shadow:0 2px 10px rgba(0,0,0,.25)}
-  .snd[aria-pressed="true"]{color:#241f1c;border-color:#f0e6d4;background:#f0e6d4}
-  .snd:hover{border-color:#f0e6d4}
+  /* ---------- 声音开关（并进右下命令区；别单独浮在右上，会压住系列切换） ---------- */
+  .snd{font:inherit;font-size:11px;letter-spacing:.16em;
+    color:#c9a06a;background:rgba(60,48,36,.55);border:1px solid #6b5a45;
+    border-radius:6px;padding:5px 11px;cursor:pointer}
+  .snd[aria-pressed="true"]{color:#f0e6d4;border-color:#c9a06a;background:rgba(60,48,36,.9)}
+  .snd:hover{border-color:#c9a06a}
 
-  /* ---------- 页脚：左提示 / 右命令（G 的做法：提示随状态变） ----------
-     拿掉「关闭」按钮换成点背景退出时，必须把提示写出来——不写没人知道 */
-  .vh-foot{position:fixed;left:0;right:0;bottom:0;z-index:30;
+  /* ---------- 页脚：左提示 / 右动作（唯一一条底部信息带，别再叠别的） ---------- */
+  .vh-foot{position:fixed;left:0;right:0;bottom:0;z-index:50;
     display:flex;align-items:center;justify-content:space-between;
     padding:0 26px 18px;font-family:Consolas,"Courier New",monospace;
     font-size:11px;letter-spacing:.16em;color:#9d9080;pointer-events:none}
@@ -54,7 +66,7 @@
      整屏铺满**该卷的卷色**（G2-已抽取 实测：卷色占 81.7%），中间一本大书 + 长投影。
      只做这一层；书架与封面不碰。
      ================================================================== */
-  #display{position:fixed;inset:0;z-index:35;display:none;
+  #display{position:fixed;inset:0;z-index:40;display:none;
     background:var(--vol);color:var(--cream);
     transition:background .5s ease}
   body[data-flow="featured"] #display{display:block}
@@ -136,7 +148,7 @@
   body[data-flow="featured"] .snd[aria-pressed="true"]{color:var(--vol);background:var(--cream);border-color:var(--cream)}
 
   /* ---------- 翻书态（2D 覆盖层） ---------- */
-  #reader{position:fixed;inset:0;z-index:40;background:#241f1b;
+  #reader{position:fixed;inset:0;z-index:60;background:#241f1b;
     display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;
     opacity:0;visibility:hidden;pointer-events:none;
     transition:opacity 420ms linear, visibility 0s linear 0s}
@@ -213,11 +225,6 @@
 
 <div class="tiers" id="tiers" role="group" aria-label="按系列切换"></div>
 
-<button type="button" id="snd" class="snd" aria-pressed="false"
-        title="声音默认关着；要听得到得先点一下（浏览器规定）">♪ 声音 关</button>
-
-<p id="live" role="status" aria-live="polite" style="position:absolute;left:-9999px"></p>
-
 <div id="reader" class="content" aria-label="翻书">
   <div id="reader-bar">
     <button type="button" id="btn-prev">← 上一页</button>
@@ -226,10 +233,6 @@
     <span class="hint">点书页外的背景合上 · <kbd>←</kbd><kbd>→</kbd> 翻页</span>
   </div>
   <div id="reader-slot"></div>
-</div>
-
-<div class="cap">
-  <b>文衡 · 历期卷宗</b>　顶＝<b>ESI 双月报告</b> / 中＝学科发展态势 / 底＝年报
 </div>
 
 <section id="display" class="content" aria-label="陈列这一册">
@@ -260,6 +263,8 @@
 <footer class="vh-foot">
   <span id="footHint"></span>
   <div class="cmds">
+    <button type="button" id="snd" class="snd" aria-pressed="false"
+            title="首次点击页面即开声；也可在此开关">♪ 声音 关</button>
     <button type="button" id="cmdOpen">抽取</button>
     <button type="button" id="cmdShelf" hidden>归架</button>
     <button type="button" id="cmdReset">复位视角</button>
