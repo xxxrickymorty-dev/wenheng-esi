@@ -142,15 +142,19 @@ _SUBJECT_URL = (
     "&filterBy=ResearchFields&filterValue={val}&show=Top"
     "&sort=%5B%7B%22property%22%3A%22cites%22%2C%22direction%22%3A%22DESC%22%7D%5D"
     "&colFilterVal=&exportType=indicators"
-    "&colNames=RowSeq%2C%2CInstitutions%2CCountries%2FRegions"
-    "%2CWeb+of+Science+Documents%2CCites%2CCites%2FPaper%2CTop+Papers"
+    "&colNames={cols}"
     "&fileType=Excel&f={fname}"
 )
 
+# 导出列：7 列＝默认；9 列＝再带 Highly Cited Papers + Hot Papers（《流程.docx》Step 2 的可选做法）
+_SUBJECT_COLS7 = "RowSeq,,Institutions,Countries/Regions,Web of Science Documents,Cites,Cites/Paper,Top Papers"
+_SUBJECT_COLS9 = _SUBJECT_COLS7 + ",Highly Cited Papers,Hot Papers"
 
-def cmd_subjects(page: Page, out: Path, fmt: str, force: bool = False) -> None:
-    """Step 2：22 个分学科机构排名表 → <学科>.xlsx。"""
+
+def _run_subjects(page: Page, out: Path, force: bool, cols: str) -> None:
+    """Step 2：22 个分学科机构排名表；cols 决定导出里带哪些列。"""
     out.mkdir(parents=True, exist_ok=True)
+    enc = cols.replace(",", "%2C").replace(" ", "+")
     for s in SUBJECTS:
         # 历史归档把 / 写成空格（Environment/Ecology → Environment Ecology.xlsx）
         fname = s.replace("/", " ")
@@ -158,13 +162,23 @@ def cmd_subjects(page: Page, out: Path, fmt: str, force: bool = False) -> None:
         if target.exists() and not force:
             print(f"[skip] {target.name} 已存在")
             continue
-        url = _SUBJECT_URL.format(val=quote(s.upper()), fname=quote(f"{fname}.xlsx"))
+        url = _SUBJECT_URL.format(val=quote(s.upper()), fname=quote(f"{fname}.xlsx"), cols=enc)
         resp = page.request.get(url)
         if not resp.ok or not _looks_like_xlsx(resp.body()):
             print(f"[FAIL] {s}: HTTP {resp.status}, {len(resp.body())} B（非 xlsx）")
             continue
         target.write_bytes(resp.body())
         print(f"[OK] {target.name}  ({target.stat().st_size} B)")
+
+
+def cmd_subjects(page: Page, out: Path, fmt: str, force: bool = False) -> None:
+    """Step 2：22 个分学科机构排名表（默认 7 列，末列 Top Papers）。"""
+    _run_subjects(page, out, force, _SUBJECT_COLS7)
+
+
+def cmd_subjects_hcphot(page: Page, out: Path, fmt: str, force: bool = False) -> None:
+    """Step 2 变体：22 张学科表再带 Highly Cited Papers + Hot Papers（9 列）。"""
+    _run_subjects(page, out, force, _SUBJECT_COLS9)
 
 
 # Research Fields 视图的导出 URL（无筛选那张实测抄下；过滤拼在末尾，f= 必须 ASCII，中文名会被服务端按 Latin-1 处理而返回空表）
@@ -266,6 +280,7 @@ def cmd_baselines(page: Page, out: Path, fmt: str) -> None:
 COMMANDS = {
     "institutions": cmd_institutions,
     "subjects": cmd_subjects,
+    "subjects-hcphot": cmd_subjects_hcphot,
     "fields": cmd_fields,
     "toppapers": cmd_toppapers,
     "thresholds": cmd_thresholds,
@@ -285,7 +300,7 @@ def main() -> int:
         browser = p.chromium.connect_over_cdp(CDP)
         page = get_esi_page(browser)
         fn = COMMANDS[args.command]
-        if args.command == "subjects":
+        if args.command in ("subjects", "subjects-hcphot"):
             fn(page, Path(args.out), args.format, args.force)
         else:
             fn(page, Path(args.out), args.format)
