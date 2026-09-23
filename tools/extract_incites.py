@@ -126,7 +126,9 @@ def read_esi_list(path: pathlib.Path) -> dict:
     hdr = [str(c).strip() if c is not None else "" for c in rows[hi]]
     ni = hdr.index("Institutions")
     gi = next((j for j, h in enumerate(hdr) if "Countries" in h), None)
-    data = []                                   # [(序号, 大写机构名, 大写国家)]
+    di = next((j for j, h in enumerate(hdr) if "Documents" in h), None)
+    ci = next((j for j, h in enumerate(hdr) if h.strip() == "Cites"), None)
+    data = []                                   # [(序号, 大写机构名, 大写国家, docs, cites)]
     seq = 0
     for r in rows[hi + 1:]:
         if not r:
@@ -139,11 +141,16 @@ def read_esi_list(path: pathlib.Path) -> dict:
         s = _num(r[0]) if len(r) else None
         seq = int(s) if s and s > 0 else seq + 1
         ctry = str(r[gi]).strip().upper() if gi is not None and gi < len(r) and r[gi] else ""
-        data.append((seq, inst.upper(), ctry))
-    ypos = next((s for s, inst, _c in data if "YUNNAN UNIVERSITY" in inst), None)
-    cn = sum(1 for _s, _i, c in data if "CHINA" in c)
-    cn_pos = sum(1 for s, _i, c in data if ypos is not None and s <= ypos and "CHINA" in c) or None
-    return {"m": len(data), "ypos": ypos, "cn": cn, "cn_pos": cn_pos}
+        docs = _num(r[di]) if di is not None and di < len(r) else None
+        cites = _num(r[ci]) if ci is not None and ci < len(r) else None
+        data.append((seq, inst.upper(), ctry, docs, cites))
+    yrow = next((d for d in data if "YUNNAN UNIVERSITY" in d[1]), None)
+    ypos = yrow[0] if yrow else None
+    cn = sum(1 for _s, _i, c, _d, _x in data if "CHINA" in c)
+    cn_pos = sum(1 for s, _i, c, _d, _x in data if ypos is not None and s <= ypos and "CHINA" in c) or None
+    return {"m": len(data), "ypos": ypos, "cn": cn, "cn_pos": cn_pos,
+            "y_docs": int(yrow[3]) if yrow and yrow[3] is not None else None,
+            "y_cites": int(yrow[4]) if yrow and yrow[4] is not None else None}
 
 
 def read_esi(esi_dir: pathlib.Path) -> dict:
@@ -276,12 +283,15 @@ def edit_cells(xml: str, ops: dict) -> tuple[str, int]:
             if er != rn:
                 continue
             if op[0] == "set" and ec in cells:
-                cells[ec] = (_drop_t(cells[ec][0]), f"<v>{_fmt(op[1])}</v>")
+                v = op[1]
+                cells[ec] = (_drop_t(cells[ec][0]),
+                             f"<v>{_fmt(v)}</v>" if v is not None else None)
                 changed += 1
             elif ec not in cells:
                 if op[0] == "set":
                     style = _style_fallback(cells)
-                    cells[ec] = (_drop_t(style), f"<v>{_fmt(op[1])}</v>")
+                    v = op[1]
+                    cells[ec] = (_drop_t(style), f"<v>{_fmt(v)}</v>" if v is not None else None)
                 else:
                     _k, style, t_attr, inner = op
                     cells[ec] = (f'{_drop_t(style)} {t_attr}'.strip(), inner)
@@ -890,7 +900,8 @@ def _do_write(tx: LedgerTx, ledger: pathlib.Path, args, tag: str, preview_log: d
     if args.out:
         out = pathlib.Path(args.out)
         out.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(ledger, out)
+        if out.resolve() != ledger.resolve():          # 同路径（就地写副本）不复制
+            shutil.copy2(ledger, out)
         tx.path = out
     result = tx.commit()
     print(f"[写] {tx.path}")

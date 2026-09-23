@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 """一键清洗：两路数据 → 台账当期列（一张监测表），顺序跑三个既有工具。
 
-    1. extract_esi.py       —— ESI 侧：云大ESI排名 / 总被引·论文数·TOP论文（在榜学科）/ 篇均三列 / ESI被引阈值
-    2. extract_incites.py   —— InCites 侧：新·国际/国内排名、CNCI、未进榜学科的总被引·论文数·篇均、Q1-Q4
-    3. extract_1permille.py —— 千分之一被引阈值（ESI 各科榜取位）
+    1. extract_esi.py             —— ESI 侧：云大ESI排名 / 总被引·论文数·TOP论文（在榜学科）/ 篇均三列 / ESI被引阈值
+                                   （+ 在榜学科进/退事件核对，--append-events 可落表）
+    2. extract_incites.py         —— InCites 侧：新·国际/国内排名、CNCI、未进榜学科的总被引·论文数·篇均、Q1-Q4
+    3. extract_1permille.py       —— 千分之一被引阈值（ESI 各科榜取位）
+    4. extract_forecast_pairs.py  —— 《实际与预测差值》三行（incite/esi/差值）＝方法B 预测的校准语料
 
-三个工具各自带「冲突拒写 + 自动备份 + zip 级 XML 自检」，本脚本只做顺序调度与汇总。
+四个工具各自带「冲突拒写 + 自动备份 + zip 级 XML 自检」，本脚本只做顺序调度与汇总。
 
 用法（wenheng/ 下，.venv 的 python）：
     python tools\\clean_ledger.py 202609                    # 只预览（不写）：三个工具各自的比对/预览
@@ -63,12 +65,17 @@ def main() -> int:
     esi_args = [period] + (["--esi-root", args.esi_root] if args.esi_root else [])
     if args.append_events:
         esi_args += ["--append-events"]
+    pairs_args = [period] + (["--snapshot", args.snapshot] if args.snapshot else [])
+    if args.esi_root:
+        pairs_args += ["--esi-root", args.esi_root]
 
     if not (args.out or args.write):
         r1 = run("extract_esi.py", esi_args)
         r2 = run("extract_incites.py", incites_args)
         r3 = 0 if args.skip_permille else run("extract_1permille.py", perm_args)
-        bad = [n for n, r in (("extract_esi", r1), ("extract_incites", r2), ("extract_1permille", r3)) if r]
+        r4 = run("extract_forecast_pairs.py", pairs_args)
+        bad = [n for n, r in (("extract_esi", r1), ("extract_incites", r2),
+                              ("extract_1permille", r3), ("extract_forecast_pairs", r4)) if r]
         print(f"\n[预览汇总] 非零退出：{bad or '无'}")
         return 1 if bad else 0
 
@@ -77,6 +84,7 @@ def main() -> int:
               run("extract_incites.py", incites_args + ["--write"])]
         if not args.skip_permille:
             rs.append(run("extract_1permille.py", perm_args + ["--ledger", str(ledger), "--write"]))
+        rs.append(run("extract_forecast_pairs.py", pairs_args + ["--ledger", str(ledger), "--write"]))
         bad = [r for r in rs if r]
         print(f"\n[写台账汇总] 非零退出 {len(bad)} 个（每个工具各自备份在 归档/台账备份/）")
         return 1 if bad else 0
@@ -84,7 +92,8 @@ def main() -> int:
     # 副本模式：链路走 tmp 工作目录，最后复制到 --out
     wd = SCRATCH / f"_clean_{period}"
     wd.mkdir(parents=True, exist_ok=True)
-    step1, step2, step3 = wd / "1_esi.xlsx", wd / "2_incites.xlsx", wd / "3_permille.xlsx"
+    step1, step2, step3, step4 = (wd / "1_esi.xlsx", wd / "2_incites.xlsx",
+                                  wd / "3_permille.xlsx", wd / "4_pairs.xlsx")
     rs = [run("extract_esi.py", esi_args + ["--ledger", str(ledger), "--out", str(step1)]),
           run("extract_incites.py", incites_args + ["--ledger", str(step1), "--out", str(step2)])]
     last = step2
@@ -92,6 +101,10 @@ def main() -> int:
         shutil.copy2(step2, step3)
         rs.append(run("extract_1permille.py", perm_args + ["--ledger", str(step3), "--write"]))
         last = step3
+    shutil.copy2(last, step4)
+    rs.append(run("extract_forecast_pairs.py",
+                  pairs_args + ["--ledger", str(step4), "--out", str(step4)]))
+    last = step4
     out = pathlib.Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(last, out)
