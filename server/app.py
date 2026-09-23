@@ -945,7 +945,7 @@ async def api_period_detail(request: Request, period: str):
             pass
     m = re.match(r"^(\d{6})", d.name)
     pid = m.group(1) if m else period
-    ledger_ok = (config.INPUT_DIR / pid / "台账.xlsx").exists()
+    ledger_ok = (config.INPUT_DIR / pid / "监测表.xlsx").exists()
     generated_ok = (d / "red_slots.json").exists()
     steps = {"ledger": ledger_ok, "input": ledger_ok, "generated": generated_ok}
     last = next((j for j in jobs.list_jobs(30) if j.get("period") == pid), None)
@@ -1143,10 +1143,10 @@ async def api_ledger_sheets(request: Request, period: str = ""):
     import openpyxl                                        # noqa: PLC0415
     m = jobs.PERIOD_RE.match(period or "")
     if m:
-        lp = config.INPUT_DIR / m.group(0) / "台账.xlsx"
+        lp = config.INPUT_DIR / m.group(0) / "监测表.xlsx"
     else:
         lp = None
-        for d in sorted(config.INPUT_DIR.glob("*/台账.xlsx"), reverse=True):
+        for d in sorted(config.INPUT_DIR.glob("*/监测表.xlsx"), reverse=True):
             lp = d
             break
     if lp is None or not lp.exists():
