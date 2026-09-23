@@ -36,11 +36,27 @@ def top3_text(groups):
     return "、".join(parts)
 
 
-def build(facts, period, prev):
+def _college_clauses(college):
+    """学院统计（college_stats.json）→ 文句子句素材；缺数据时返回 None（沿用旧稿措辞）。"""
+    if not college or not college.get("units"):
+        return None
+    units = college["units"]                      # 已按（发文量降序, 被引降序）
+    by_cites = sorted(units, key=lambda u: (-u["cites"], u["unit"]))[:3]
+    tot = college.get("n_cites") or sum(u["cites"] for u in units) or 1
+    return {
+        "n_subjects": college.get("n_subjects") or 0,
+        "n_units": college.get("n_units") or len(units),
+        "by_papers": units[:3],
+        "by_cites": [(u["unit"], u["cites"] / tot * 100) for u in by_cites],
+    }
+
+
+def build(facts, period, prev, college=None):
     y, m = period[:4], str(int(period[4:]))
     prev_m = str(int(prev[4:]))
     p1 = facts
     best = p1["best_1permille"]
+    col = _college_clauses(college)
     d1, c1 = p1["top2_prox_change"][0]
     d2, c2 = p1["top2_prox_change"][1]
     d3 = p1["worst_cn_rank"]
@@ -66,9 +82,16 @@ def build(facts, period, prev):
           f"分别上升{c1:.2f}%和{c2:.2f}%；值得关注的是{cn_name(d3['discipline'])}国内排名"
           f"继续呈现较大降幅，该学科本期较{prev_m}月下降了{d3['drop']}位，国内排名为{d3['rank']}。")
 
-    p4 = (f"本期我校共有{p1['top_papers_now']}篇顶尖论文，较上期总数增加{p1['top_papers_delta']}篇，"
-          f"覆盖{MANUAL.format('学科数')}个学科。"
-          f"论文量排名前三位的学科分别是{top3_text(p1['top3_groups'])}。")
+    if col:
+        p4 = (f"本期我校共有{p1['top_papers_now']}篇顶尖论文，较上期总数增加{p1['top_papers_delta']}篇，"
+              f"分别有{col['n_subjects']}个学科来自{col['n_units']}个学院。"
+              f"论文量排名前三位的学科分别是{top3_text(p1['top3_groups'])}。"
+              f"本期顶尖论文量及其被引频次学院贡献度排名前三位的是："
+              f"{'、'.join(u for u, _p in col['by_cites'])}。")
+    else:
+        p4 = (f"本期我校共有{p1['top_papers_now']}篇顶尖论文，较上期总数增加{p1['top_papers_delta']}篇，"
+              f"覆盖{MANUAL.format('学科数')}个学科。"
+              f"论文量排名前三位的学科分别是{top3_text(p1['top3_groups'])}。")
 
     # ⚠️ 国内机构 / 国内高校是**两个独立 delta**，不能合并成一个值。
     # 2026-09-18 逐格回测发现：旧版写成「…排名较X月均{...inst_delta}…」，
@@ -95,9 +118,18 @@ def build(facts, period, prev):
     sit_head = (f"本期云南大学ESI前1%学科继续保持{p1['n_disc_1pct']}个。下图红线为ESI前1%基线。"
                 f"各数值为论文被引频次与该学科进入ESI阈值的比值百分数，通过该图展示出我校各学科"
                 f"与ESI全球前1%学科的接近度，数值大于100%则为ESI前1%学科。")
-    top_section = (f"本期我校共有{p1['top_papers_now']}篇顶尖论文，较上期总数增加"
-                   f"{p1['top_papers_delta']}篇，覆盖{MANUAL.format('学科数')}个学科。"
-                   f"论文量排名前三位的学科分别是{top3_paren}。")
+    if col:
+        by_p = "、".join(f"{u['unit']}（{u['papers']}篇）" for u in col["by_papers"])
+        by_c = "、".join(f"{u}（{p:.2f}%）" for u, p in col["by_cites"])
+        top_section = (f"本期我校共有{p1['top_papers_now']}篇顶尖论文，较上期总数增加"
+                       f"{p1['top_papers_delta']}篇，分别有{col['n_subjects']}个学科来自"
+                       f"{col['n_units']}个学院。论文量排名前三位的学科分别是{top3_paren}。"
+                       f"本期顶尖论文量排名前3位的学院分别是{by_p}；"
+                       f"顶尖论文被引频次学院贡献度排名前三位的是：{by_c}。")
+    else:
+        top_section = (f"本期我校共有{p1['top_papers_now']}篇顶尖论文，较上期总数增加"
+                       f"{p1['top_papers_delta']}篇，覆盖{MANUAL.format('学科数')}个学科。"
+                       f"论文量排名前三位的学科分别是{top3_paren}。")
 
     def _dir_chg(v):
         return ("上升" if v >= 0 else "下降") + f"{abs(v):.2f}%"

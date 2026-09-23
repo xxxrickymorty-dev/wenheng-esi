@@ -19,10 +19,13 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 import pandas as pd  # noqa: E402
 from docx import Document  # noqa: E402
+from docx.oxml import parse_xml  # noqa: E402
+from docx.oxml.ns import nsdecls, qn  # noqa: E402
 from docx.shared import Cm, Pt, RGBColor  # noqa: E402
-from docx.oxml.ns import qn  # noqa: E402
+from docx.table import Table  # noqa: E402
 
 import charts  # noqa: E402
+import college_stats  # noqa: E402
 import compute  # noqa: E402
 import sentences  # noqa: E402
 from parse_ledger import DISCIPLINES_CN, norm_disc_cn  # noqa: E402
@@ -298,27 +301,6 @@ def _strip_images(p):
     return n
 
 
-def _remove_paragraph(p):
-    """整段删除（用于学院件等本期不出现在报告里的内容）。"""
-    p._element.getparent().remove(p._element)
-
-
-def _strip_runs_with_media(doc, media_names):
-    """按媒体文件名删 run（不管图挂在哪一段）——学院贡献度两张饼图走这里。"""
-    n = 0
-    for p in doc.paragraphs:
-        for r in list(p.runs):
-            blips = r._element.findall('.//' + qn('a:blip'))
-            for b in blips:
-                rid = b.get(qn('r:embed'))
-                if rid and rid in doc.part.rels and \
-                        doc.part.rels[rid].target_ref in media_names:
-                    r._element.getparent().remove(r._element)
-                    n += 1
-                    break
-    return n
-
-
 def _strip_native_chart_runs(doc, title_keyword):
     """删掉内嵌原生图表 run（按 chart 部件标题匹配，如「我校主要学科近期发展趋势」）。"""
     import re as _re
@@ -340,18 +322,6 @@ def _strip_native_chart_runs(doc, title_keyword):
                     hits += 1
                     break
     return hits
-
-
-def _remove_tables_containing(doc, text):
-    """删除含指定文字的整张表（如「学院顶尖论文发文量与被引频次统计表」）。"""
-    n = 0
-    for t in list(doc.tables):
-        for row in t.rows:
-            if any(text in c.text for c in row.cells):
-                t._element.getparent().remove(t._element)
-                n += 1
-                break
-    return n
 
 
 def _insert_picture_after(doc, anchor_para, png, width_cm=13.9):
@@ -418,20 +388,9 @@ def fill_body_charts(doc, ledger_dir, slots):
         slots.append({"location": label, "old": f"（替换旧图 ×{stripped}）", "new": f"[图] {png.name}",
                       "source": f"charts/_overview/{png.name}"})
 
-    # —— 学院件本期不出（学院还没分清）：两张贡献度饼图 / 两个标题 / 学院统计表 ——
-    n_pie = _strip_runs_with_media(doc, {"media/image2.png", "media/image3.png"})
-    n_cap = n_tbl = 0
-    for kw in ("顶尖论文被引频次学院贡献度", "顶尖论文发文量学院贡献度", "学院顶尖论文发文量与被引频次统计表"):
-        for p in list(doc.paragraphs):
-            if kw in p.text:
-                if kw.startswith("顶尖论文"):
-                    _strip_images(p)
-                _remove_paragraph(p)
-                n_cap += 1
-    n_tbl = _remove_tables_containing(doc, "学院名称")
-    if n_pie or n_cap or n_tbl:
-        slots.append({"location": "正文/学院件（本期删除）", "old": f"饼图×{n_pie} 标题×{n_cap} 表×{n_tbl}",
-                      "new": "已删除（学院归属未分清）", "source": "fill_docx._remove"})
+    # —— 学院件（数据源＝馆员《<期次>论文清单》）：两张饼图 + 统计表 + 附录清单表 ——
+    warn = []
+    fill_college(doc, ledger_dir, slots, warn)
 
     # 母版残留：趋势图（旧数据原生图表）删掉，改由生成图替代；其余原生图表预警
     n_stale = _strip_native_chart_runs(doc, "我校主要学科近期发展趋势")
@@ -441,10 +400,190 @@ def fill_body_charts(doc, ledger_dir, slots):
     n_charts = 0
     for p in doc.paragraphs:
         n_charts += len(p._element.findall('.//' + qn('c:chart')))
-    warn = []
     if n_charts:
         warn.append(f"母版残留原生图表 {n_charts} 张（预测章 4 张等），本期需人工替换/确认（映射清单见红色件清单）")
     return warn
+
+
+def _cell_set_keepfont(cell, text):
+    """写单元格但**保留原格式**（只动第一个 run 的文字；统计表/附录清单表用）。"""
+    ps = cell.paragraphs
+    p = ps[0]
+    if p.runs:
+        p.runs[0].text = text
+        for r in p.runs[1:]:
+            r._element.getparent().remove(r._element)
+    else:
+        p.add_run(text)
+    for q in ps[1:]:
+        q._element.getparent().remove(q._element)
+
+
+def _find_top_list_table(doc):
+    """定位附录《我校顶尖论文清单》表（7 列、第 2 列表头含 WOS）。"""
+    for t in doc.tables:
+        if len(t.columns) == 7 and "WOS" in t.rows[0].cells[1].text:
+            return t
+    return None
+
+
+def _clone_stat_table3(doc, widths=(4676, 2809, 2809)):
+    """从附录清单表克隆出 3 列统计表骨架（表头行 + 1 行数据模板），列宽单位 twips。"""
+    import copy
+
+    src = _find_top_list_table(doc)
+    if src is None:
+        return None
+    tbl = copy.deepcopy(src._tbl)
+    trs = tbl.findall(qn("w:tr"))
+    for tr in trs[2:]:
+        tbl.remove(tr)
+    grid = tbl.find(qn("w:tblGrid"))
+    for gc in grid.findall(qn("w:gridCol"))[3:]:
+        grid.remove(gc)
+    for gc, w in zip(grid.findall(qn("w:gridCol")), widths):
+        gc.set(qn("w:w"), str(w))
+    tbl_pr = tbl.find(qn("w:tblPr"))
+    tbl_w = tbl_pr.find(qn("w:tblW"))
+    if tbl_w is None:
+        tbl_w = parse_xml(f'<w:tblW {nsdecls("w")}/>')
+        tbl_pr.append(tbl_w)
+    tbl_w.set(qn("w:w"), "5000")
+    tbl_w.set(qn("w:type"), "pct")
+    for tr in tbl.findall(qn("w:tr")):
+        tcs = tr.findall(qn("w:tc"))
+        for tc in tcs[3:]:
+            tr.remove(tc)
+        for tc, w in zip(tcs[:3], widths):
+            tc_pr = tc.find(qn("w:tcPr"))
+            if tc_pr is None:
+                tc_pr = parse_xml(f'<w:tcPr {nsdecls("w")}/>')
+                tc.insert(0, tc_pr)
+            tc_w = tc_pr.find(qn("w:tcW"))
+            if tc_w is None:
+                tc_w = parse_xml(f'<w:tcW {nsdecls("w")}/>')
+                tc_pr.append(tc_w)
+            tc_w.set(qn("w:w"), str(w))
+            tc_w.set(qn("w:type"), "dxa")
+    return tbl
+
+
+def fill_college(doc, ledger_dir, slots, warns):
+    """学院件：两张贡献度饼图（替换母版旧图）+ 学院统计表（替换空占位）+ 附录清单表。"""
+    ledger_dir = pathlib.Path(ledger_dir)
+    m = re.search(r"(\d{6})", ledger_dir.name)
+    period = m.group(1) if m else ""
+    cs = college_stats.load(ledger_dir, period, save=True)
+    if cs is None:
+        warns.append("学院件：未找到《<期次>论文清单.xlsx》→ 两张饼图/统计表/附录清单表未填")
+        return
+
+    ov = ledger_dir / "charts" / "_overview"
+    for cap_kw, png, label in (
+            ("顶尖论文被引频次学院贡献度", ov / "college_cites.png", "正文/学院贡献度饼图（被引频次）"),
+            ("顶尖论文发文量学院贡献度", ov / "college_papers.png", "正文/学院贡献度饼图（发文量）")):
+        if not png.exists():
+            slots.append({"location": label, "old": "（缺图）", "new": str(png),
+                          "source": "charts/_overview"})
+            continue
+        tgt = None
+        paras = doc.paragraphs
+        for i, p in enumerate(paras):
+            t = p.text.strip()
+            # 必须整段就是标题：正文句里含「…被引频次学院贡献度…」会被误命中（p36 教训）
+            if t == cap_kw or (t.startswith(cap_kw) and len(t) < 40):
+                for q in paras[i + 1:i + 4]:
+                    if q._element.findall(".//" + qn("a:blip")):
+                        tgt = q
+                        break
+                break
+        if tgt is None:
+            slots.append({"location": label, "old": "（未找到母版旧图）", "new": str(png),
+                          "source": "charts/_overview"})
+            continue
+        n = _strip_images(tgt)
+        from docx.enum.text import WD_ALIGN_PARAGRAPH  # noqa: PLC0415
+        tgt.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        tgt.add_run().add_picture(str(png), width=Cm(13.6))
+        slots.append({"location": label, "old": f"（母版旧图 ×{n}）", "new": f"[图] {png.name}",
+                      "source": f"charts/_overview/{png.name}"})
+
+    # —— 学院统计表：替换「学院顶尖论文发文量与被引频次统计表」后方的空占位表 ——
+    units = cs["units"]
+    tbl = _clone_stat_table3(doc)
+    if tbl is None:
+        warns.append("学院统计表：母版缺 7 列附录清单表模板，无法克隆 3 列表")
+    else:
+        import copy
+
+        tpl_tr = copy.deepcopy(tbl.findall(qn("w:tr"))[1])
+        for _ in range(len(units)):              # 现成 1 行当首个学院行；合计行随之
+            tbl.append(copy.deepcopy(tpl_tr))
+        nt = Table(tbl, doc._body)
+        _cell_set_keepfont(nt.cell(0, 0), "学院名称")
+        _cell_set_keepfont(nt.cell(0, 1), "顶尖论文发文量（篇）")
+        _cell_set_keepfont(nt.cell(0, 2), "被引频次")
+        for i, u in enumerate(units, start=1):
+            _cell_set_keepfont(nt.cell(i, 0), u["unit"])
+            _cell_set_keepfont(nt.cell(i, 1), str(u["papers"]))
+            _cell_set_keepfont(nt.cell(i, 2), str(u["cites"]))
+        _cell_set_keepfont(nt.cell(len(units) + 1, 0), "合计")
+        _cell_set_keepfont(nt.cell(len(units) + 1, 1), str(cs["n_papers"]))
+        _cell_set_keepfont(nt.cell(len(units) + 1, 2), str(cs["n_cites"]))
+        cap = next((p for p in doc.paragraphs
+                    if "学院顶尖论文发文量与被引频次统计表" in p.text), None)
+        old_desc = "（未找到标题段，未插入）"
+        placed = False
+        if cap is not None:
+            sib = cap._element.getnext()
+            for _ in range(4):
+                if sib is None or sib.tag == qn("w:tbl"):
+                    break
+                sib = sib.getnext()
+            if sib is not None and sib.tag == qn("w:tbl"):
+                old_desc = "空占位表（1×2）"
+                sib.addprevious(tbl)
+                sib.getparent().remove(sib)
+            else:
+                old_desc = "（无占位表，插在标题后）"
+                cap._element.addnext(tbl)
+            placed = True
+        slots.append({"location": "正文/学院顶尖论文发文量与被引频次统计表", "old": old_desc,
+                      "new": f"{len(units)} 行学院 + 合计（{cs['n_papers']} 篇 / {cs['n_cites']} 次）",
+                      "source": "college_stats.json（馆员论文清单）"})
+        if not placed:
+            warns.append("学院统计表：未找到标题段，表已构好但未插入")
+
+    fill_top_list(doc, cs, slots, warns)
+
+
+def fill_top_list(doc, college, slots, warns):
+    """附录《我校顶尖论文清单》：按馆员清单逐行填入（行数随清单增减）。"""
+    rows = (college or {}).get("rows") or []
+    if not rows:
+        warns.append("附录顶尖论文清单：无清单数据，未填（母版仍是上一期行）")
+        return
+    import copy
+
+    t = _find_top_list_table(doc)
+    if t is None:
+        warns.append("附录顶尖论文清单：未找到 7 列清单表")
+        return
+    trs = t._tbl.findall(qn("w:tr"))
+    n_data = len(trs) - 1
+    if len(rows) > n_data:
+        tpl = copy.deepcopy(trs[-1])
+        for _ in range(len(rows) - n_data):
+            t._tbl.append(copy.deepcopy(tpl))
+    elif len(rows) < n_data:
+        for tr in trs[1 + len(rows):]:
+            t._tbl.remove(tr)
+    for i, vals in enumerate(rows, start=1):
+        for c, v in enumerate(vals):
+            _cell_set_keepfont(t.rows[i].cells[c], v)
+    slots.append({"location": "附录/我校顶尖论文清单", "old": f"{n_data} 行（母版遗留）",
+                  "new": f"{len(rows)} 行（馆员清单逐行）",
+                  "source": "college_stats.json rows"})
 
 
 def apply_manual_inputs(texts, fills, key_prefix="正文/"):
@@ -487,7 +626,8 @@ _HAND_RE = re.compile(r"【手工：([^】]*)】")
 
 def fill_texts(doc, ledger_dir, slots, period, prev, facts, fills=None):
     """概述 4 段 + 发展趋势段 + 态势段 + 封面期数（句骨架 + 数字槽）。"""
-    texts = sentences.build(facts, period, prev)
+    college = college_stats.load(pathlib.Path(ledger_dir), period, save=True)
+    texts = sentences.build(facts, period, prev, college=college)
     texts, n_filled = apply_manual_inputs(texts, fills)
     anchors = [
         ("p1", lambda t: "ESI最新数据显示" in t),
@@ -498,17 +638,21 @@ def fill_texts(doc, ledger_dir, slots, period, prev, facts, fills=None):
         ("situation_head", lambda t: "前1%学科继续保持" in t),
         ("situation", lambda t: "从国内排名上看" in t),
         ("table2_title", lambda t: "主要参数情况" in t),
-        ("top_section", lambda t: "篇顶尖论文" in t and "排名前3位的学院" in t),
+        ("top_section", lambda t: "篇顶尖论文" in t and "学科分别" in t),
         ("forecast_p1", lambda t: "接近度达到" in t),
         ("forecast_p2", lambda t: "从预测情况看" in t),
         ("province_p", lambda t: "云南高校ESI前1%学科总数" in t),
     ]
+    used = set()
     for key, pred in anchors:
         hit = False
         for p in doc.paragraphs:
+            if p._element in used:               # 防同一段被两个锚点先后命中
+                continue
             t = p.text.strip()
             if pred(t):
                 _replace_para(p, texts[key])
+                used.add(p._element)
                 slots.append(_text_slot(f"正文/{key}", t, texts[key],
                                         "sentences.py（句骨架+数字槽）"))
                 hit = True
@@ -612,10 +756,9 @@ def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026�
           "## 仍为手工的槽位（红色件中的【手工：…】）",
           "- ESI 发布日期、当期全球机构总数（台账外，1 分钟可查）",
           "- 去年同期升幅%；预测章的趋势描述/预计时间/发展力度评价（编辑判断）",
-          "- 学科数/学院数、学院贡献度前三、学院发文前三（顶尖论文清单口径）",
           "- 云南高校总数/增减/新晋学科（省级对比，台账外）",
           "- 目录页码（需 Word 分页后人工填）",
-          "- 省表其余高校数据、顶尖论文清单 275 行（台账外，人工贴入）", "",
+          "- 省表其余高校数据（台账外，人工贴入）", "",
           "## 预警（母版残留）"]
     if warns:
         md += [f"- {w}" for w in warns]

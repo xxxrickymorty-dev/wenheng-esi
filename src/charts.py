@@ -33,6 +33,8 @@ try:
 except ImportError:  # 直接运行时的兜底
     DISCIPLINES_CN = {}
 
+import college_stats  # noqa: E402
+
 
 def _cn(en):
     return DISCIPLINES_CN.get(en, en)
@@ -821,6 +823,42 @@ def chart_top_by_subject(top_papers, out_png, period):
     _save(fig, out_png)
 
 
+def chart_college_pie(stats, out_png, mode):
+    """学院贡献度饼图（对标第4期两张）：mode='cites' 被引频次实心饼 / 'papers' 发文量环形。
+
+    <1.5% 的份额合并为「其他（k 个单位）」，避免小份额标签挤成一团。
+    """
+    units = stats["units"]
+    raw = [((u["cites"] if mode == "cites" else u["papers"]), u["unit"]) for u in units]
+    total = sum(v for v, _u in raw) or 1
+    TH = 0.015
+    keep = [(v, u) for v, u in raw if v / total >= TH]
+    small = [(v, u) for v, u in raw if v / total < TH]
+    if small:
+        keep.append((sum(v for v, _u in small), f"其他（{len(small)} 个单位）"))
+    vals = [v for v, _u in keep]
+    labels = [u for _v, u in keep]
+    palette = ["#4472C4", "#A9D18E", "#FFC000", "#ED7D31", "#7030A0", "#00B0F0", "#C00000",
+               "#548235", "#BF8F00", "#2E75B6", "#948A54", "#C55A11", "#5B9BD5", "#70AD47"]
+    fig = Figure(figsize=(5.6, 3.6))
+    ax = fig.add_axes([0.01, 0.01, 0.98, 0.98])
+    ax.set_aspect("equal")
+    wedges, _ = ax.pie(vals, startangle=90, counterclock=False,
+                       colors=[palette[i % len(palette)] for i in range(len(vals))],
+                       wedgeprops=dict(width=0.42 if mode == "papers" else 1.0,
+                                       edgecolor="white", linewidth=0.5))
+    for w, lab, v in zip(wedges, labels, vals):
+        ang = math.radians((w.theta1 + w.theta2) / 2)
+        x, y = math.cos(ang), math.sin(ang)
+        ax.annotate(f"{lab}：{v / total * 100:.2f}%", xy=(x * 0.95, y * 0.95),
+                    xytext=(x * 1.30, y * 1.30), ha="left" if x >= 0 else "right",
+                    va="center", fontsize=6.2, color=C_TEXT,
+                    arrowprops=dict(arrowstyle="-", color="#BFBFBF", lw=0.6))
+    ax.set_xlim(-3.2, 3.2)
+    ax.set_ylim(-1.8, 1.8)
+    _save_raw(fig, out_png)
+
+
 # ---------- 概览图：1% 接近度（红基线；对标第4期风格）----------
 def chart_overview_1pct(cites, threshold, out_png, period):
     fig, ax = _fig(3.25, 3.15)
@@ -940,7 +978,11 @@ def render_all(ledger_dir="out/202607", out_dir=None, n_periods=7, end_period=No
     by_year_path = ledger_dir / "wide" / "top_by_year.parquet"
     if by_year_path.exists():
         chart_top_by_year(pd.read_parquet(by_year_path), ov / "top_by_year.png", P)
-    total = len(made) * 6 + 6
+    cs = college_stats.load(ledger_dir, end_period, save=True)
+    if cs:
+        chart_college_pie(cs, ov / "college_cites.png", "cites")
+        chart_college_pie(cs, ov / "college_papers.png", "papers")
+    total = len(made) * 6 + 8
     print(f"charts: {len(made)} 学科 × 6 图 + 概览 6 张 = {total} 张 → {out_dir}"
           f"（窗口 {periods[0]}–{P}，{len(periods)} 期）")
     return total
