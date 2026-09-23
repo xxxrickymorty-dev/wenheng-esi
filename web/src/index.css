@@ -148,11 +148,21 @@ a{color:inherit}
   padding:11px 14px;font-size:14.5px;color:var(--ink-3);background:transparent}
 .degraded b{color:var(--ink-2)}
 
+/* 宽表：在容器里横向滚动，而不是把整页撑破（台账 19 行的表就是这么撑破 2217px 的） */
+.tablewrap{overflow-x:auto; -webkit-overflow-scrolling:touch}
+.tablewrap table{min-width:520px}
+
 @media (max-width:760px){
   body{font-size:16.5px}
-  .nav{display:none}
   .steplist{margin-left:0}
   .focus .cta{margin-left:0}
+  /* 🔴 窄屏**不藏导航**：藏了就没法切工作区。改成可横滑的一行。 */
+  .topbar{flex-wrap:wrap; gap:8px 12px}
+  .nav{order:3; width:100%; margin-left:0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  .nav a{white-space:nowrap; padding:8px 11px; font-size:14.5px}
+  .who{font-size:12.5px; padding-left:0; border-left:0}
+  .report-head{grid-template-columns:1fr}
+  .wrap{padding:18px 14px 60px}
 }
 
 /* ============================================================================

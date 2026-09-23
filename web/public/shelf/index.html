@@ -4205,6 +4205,7 @@ window.WH_VOL = {
   /* 只在被前端托管时加的两条样式（file:// 双击打开时页面保持原样） */
   var st = document.createElement('style');
   st.textContent =
+    '.shelf-view, body{overflow-x:hidden}' +   /* 装饰性背板在窄屏会溢出，只裁横向 */
     '.api-note{position:fixed; left:50%; bottom:14px; transform:translateX(-50%);' +
     ' font-family:var(--mono); font-size:11px; letter-spacing:.08em;' +
     ' color:rgba(240,232,216,.62); pointer-events:none; white-space:nowrap}' +

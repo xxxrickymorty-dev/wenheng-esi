@@ -205,7 +205,7 @@ export default function App() {
         </a>
 
         {view === 'workbench' && (
-        <section className="card" style={{ marginTop: 18, overflow: 'hidden' }}>
+        <section className="card tablewrap" style={{ marginTop: 18 }}>
           <table className="periods">
             <thead>
               <tr>

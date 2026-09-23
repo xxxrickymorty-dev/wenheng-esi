@@ -64,6 +64,7 @@ export function Ledger() {
         )}
 
         {!err && rows && rows.length > 0 && (
+          <div className="tablewrap">
           <table className="periods" style={{ marginTop: 14 }}>
             <thead>
               <tr><th>工作表</th><th>列数</th><th>期次覆盖</th></tr>
@@ -78,6 +79,7 @@ export function Ledger() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </section>
 
