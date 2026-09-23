@@ -3,8 +3,10 @@
    设计取自静态稿 mockups/v2-工作台与报告.html；状态与文案规格见 web/UX-生成台.md。 */
 
 import type { ApiError, Me, Period, PeriodDetail } from './api'
+import { useState } from 'react'
 import { Icon } from './icons'
 import { failureCopy, STATE_LABEL, type Workbench as WB, type WBState } from './wb'
+import type { Run } from './App'
 
 const MODEL_DESC: Record<string, string> = {
   'Holt趋势模型': '只抓长期趋势、不管季节。适合稳定上升/下降的学科，外推最直接。',
@@ -60,6 +62,39 @@ function Progress() {
             </span>
           </div>
         ))}
+      </div>
+    </>
+  )
+}
+
+/** 真实生成过程：后端推来的状态 + 最后一行进度 + 可展开的日志 */
+function LiveRun({ run }: { run: Run }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <div className="elapsed">
+        <Icon name="refresh" size={20} />
+        {run.status ? `后端状态：${run.status}` : '正在生成……'}
+      </div>
+      <div className="progress">
+        <div className="prow">
+          <span className="name">最新进度</span>
+          <span style={{ flex: 1, color: 'var(--ink-2)' }}>{run.last ?? '（等第一行进度…）'}</span>
+        </div>
+      </div>
+      <div style={{ padding: '0 24px 16px' }}>
+        <button className="btn" onClick={() => setOpen(!open)}>
+          <Icon name="list" size={18} />{open ? '收起日志' : '看详细过程'}
+        </button>
+        {open && (
+          <pre style={{
+            marginTop: 10, maxHeight: 260, overflow: 'auto', background: 'var(--panel)',
+            border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px',
+            fontSize: 12.5, fontFamily: 'var(--mono)', color: 'var(--ink-2)',
+          }}>
+            {run.lines.length ? run.lines.join('\n') : '（暂无日志行）'}
+          </pre>
+        )}
       </div>
     </>
   )
@@ -162,13 +197,14 @@ function ModelPicker() {
 }
 
 export function Workbench({
-  period, me, wb, err, healthy, onGenerate,
+  period, me, wb, err, healthy, run, onGenerate,
 }: {
   period: string | null
   me: Me | null
   wb: WB
   err: ApiError | null
   healthy: boolean
+  run?: Run | null
   onGenerate: () => void
 }) {
   const canGenerate = me?.role === 'admin' && period != null
@@ -221,7 +257,7 @@ export function Workbench({
           </p>
         )}
 
-        {wb.state === 'running' && <Progress />}
+        {run ? <LiveRun run={run} /> : wb.state === 'running' ? <Progress /> : null}
         <Banners wb={wb} err={err} healthy={healthy} onRerun={onGenerate} />
 
         {wb.note && (

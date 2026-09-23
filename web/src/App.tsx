@@ -4,13 +4,16 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import {
-  getHealth, getMe, getPeriodDetail, getPeriods, postJob,
+  getHealth, getMe, getPeriodDetail, getPeriods, jobEventsUrl, postJob,
   type ApiError, type Me, type Period, type PeriodDetail,
 } from './api'
+
+/** 一次真实生成的过程（SSE 推来的）：状态 / 最后一行进度 / 最近若干行日志 */
+export type Run = { jobId: string; status?: string; last?: string; lines: string[] }
 import { Icon, Sprite } from './icons'
 import { Workbench } from './Workbench'
 import { Report } from './Report'
-import { deriveWorkbench, type WBState } from './wb'
+import { deriveWorkbench, isTerminal, statusToWB, type WBState } from './wb'
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'fail-ledger', 'fail-other', 'stalled', 'signed']
 
@@ -22,6 +25,7 @@ export default function App() {
   const [detail, setDetail] = useState<PeriodDetail | null>(null)
   const [err, setErr] = useState<ApiError | null>(null)
   const [busy, setBusy] = useState(false)
+  const [run, setRun] = useState<Run | null>(null)
 
   const view = new URLSearchParams(location.search).get('view') === 'report' ? 'report' : 'workbench'
 
@@ -57,14 +61,21 @@ export default function App() {
     return () => { alive = false }
   }, [selected])
 
-  const wb = deriveWorkbench(selected, periods, detail, healthy === true, demo)
+  const wb0 = deriveWorkbench(selected, periods, detail, healthy === true, demo)
+  /* 真实生成进行中/刚结束：状态以后端任务为准（权威），不被列表推断盖过 */
+  const wb = run && run.status && !isTerminal(run.status)
+    ? { ...wb0, state: statusToWB(run.status) }
+    : run && run.status
+      ? { ...wb0, state: statusToWB(run.status) }
+      : wb0
 
   async function onGenerate() {
     if (!selected) return
     setBusy(true)
     setErr(null)
     try {
-      await postJob(selected)
+      const r = await postJob(selected)
+      setRun({ jobId: r.job_id, lines: [] })
     } catch (e) {
       const h = e as { status?: number; body?: ApiError; message?: string }
       setErr(h.body ?? { error: h.message ?? '生成请求失败' })
@@ -72,6 +83,37 @@ export default function App() {
       setBusy(false)
     }
   }
+
+  /* 订阅任务事件流：progress＝进度行 / log＝{line} / status＝任务对象。
+     流在后端结束时关闭；终态到了就刷新期次列表（让"已出稿/已签发"跟着变）。 */
+  useEffect(() => {
+    const id = run?.jobId
+    if (!id) return
+    const es = new EventSource(jobEventsUrl(id))
+    es.addEventListener('progress', (e) => {
+      const line = (e as MessageEvent).data as string
+      setRun((r) => (r && r.jobId === id ? { ...r, last: line } : r))
+    })
+    es.addEventListener('log', (e) => {
+      try {
+        const d = JSON.parse((e as MessageEvent).data) as { line: string }
+        setRun((r) => (r && r.jobId === id
+          ? { ...r, lines: [...r.lines.slice(-60), d.line] } : r))
+      } catch { /* 非 JSON 的日志行忽略 */ }
+    })
+    es.addEventListener('status', (e) => {
+      try {
+        const j = JSON.parse((e as MessageEvent).data) as { status?: string }
+        setRun((r) => (r && r.jobId === id ? { ...r, status: j.status } : r))
+        if (isTerminal(j.status)) {
+          es.close()
+          getPeriods().then(setPeriods).catch(() => { /* 列表刷新失败不影响过程展示 */ })
+        }
+      } catch { /* 忽略 */ }
+    })
+    es.onerror = () => { es.close() }   /* 后端关闭/断线：停掉，不要让浏览器反复重连 */
+    return () => es.close()
+  }, [run?.jobId])
 
   return (
     <>
@@ -120,6 +162,7 @@ export default function App() {
             wb={wb}
             err={err}
             healthy={healthy === true}
+            run={run}
             onGenerate={onGenerate}
           />
         )}

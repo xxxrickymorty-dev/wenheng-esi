@@ -131,3 +131,31 @@ export function deriveWorkbench(
 
   return { state, stepsKnown: !!detail, steps, note: notes, ...FOCUS[state] }
 }
+
+/** 后端任务状态（src/agent/states.py 的 10 态，权威）→ 工作台八态 */
+const TERMINAL = new Set(['completed', 'warned', 'escalated', 'failed', 'cancelled'])
+
+export function isTerminal(status?: string): boolean {
+  return !!status && TERMINAL.has(status)
+}
+
+export function statusToWB(status?: string): WBState {
+  switch (status) {
+    case 'completed':
+    case 'warned':
+    case 'waiting_approval':
+      return 'done'
+    case 'escalated':
+    case 'failed':
+    case 'cancelled':
+      return 'fail-other'
+    case 'stalled':
+      return 'stalled'
+    case 'pending':
+    case 'running':
+    case 'retrying':
+      return 'running'
+    default:
+      return 'ready'
+  }
+}

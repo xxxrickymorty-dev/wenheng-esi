@@ -87,12 +87,28 @@ export async function getPeriodDetail(period: string): Promise<PeriodDetail | nu
   }
 }
 
-export async function postJob(period: string): Promise<{ id: string }> {
-  return req<{ id: string }>('/api/jobs', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ period }),
-  })
+/** 触发一次生成。⚠️ 后端收的是**表单**（period 字段），不是 JSON —— 发错了会 400/422 */
+export async function postJob(period: string): Promise<{ job_id: string; url: string }> {
+  const fd = new FormData()
+  fd.append('period', period)
+  return req<{ job_id: string; url: string }>('/api/jobs', { method: 'POST', body: fd })
+}
+
+/** 任务事件流（SSE）：progress＝进度行 / log＝{line} / status＝任务对象 JSON */
+export function jobEventsUrl(jobId: string): string {
+  return `/api/jobs/${encodeURIComponent(jobId)}/events`
+}
+
+export type Job = {
+  id: string
+  status?: string
+  period?: string
+  stats?: Record<string, unknown>
+  [k: string]: unknown
+}
+
+export async function getJob(jobId: string): Promise<Job> {
+  return req<Job>(`/api/jobs/${encodeURIComponent(jobId)}`)
 }
 
 /** 最近一次有产出的任务（老接口，字段形状见 jobs.list_jobs） */
