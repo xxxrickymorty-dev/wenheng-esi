@@ -1,134 +1,164 @@
-import gsap from 'gsap'
-import { useEffect, useRef, useState } from 'react'
+/* 文衡 · 工作台（外壳）
+   一个应用两屏：工作台（工具面，本文件）→ 陈列馆（G 的体验，挂在 /app/shelf/）。
+   数据全部来自后端 API；接口没就绪的地方**如实标注"未就绪"**，不编数据。 */
 
-type Period = {
-  period: string
-  signed: boolean
-  label: string
-}
+import { useEffect, useMemo, useState } from 'react'
+import {
+  getHealth, getMe, getPeriodDetail, getPeriods, postJob,
+  type ApiError, type Me, type Period, type PeriodDetail,
+} from './api'
+import { Icon, Sprite } from './icons'
+import { Workbench } from './Workbench'
+import { deriveWorkbench, type WBState } from './wb'
 
-type State =
-  | { status: 'loading' }
-  | { status: 'error' }
-  | { status: 'ready'; periods: Period[] }
+const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'fail-ledger', 'fail-other', 'stalled', 'signed']
 
-function App() {
-  const [state, setState] = useState<State>({ status: 'loading' })
-  const listRef = useRef<HTMLUListElement>(null)
+export default function App() {
+  const [healthy, setHealthy] = useState<boolean | null>(null)
+  const [me, setMe] = useState<Me | null>(null)
+  const [periods, setPeriods] = useState<Period[]>([])
+  const [selected, setSelected] = useState<string | null>(null)
+  const [detail, setDetail] = useState<PeriodDetail | null>(null)
+  const [err, setErr] = useState<ApiError | null>(null)
+  const [busy, setBusy] = useState(false)
 
-  useEffect(() => {
-    let cancelled = false
-
-    fetch('/api/periods')
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json() as Promise<{ periods?: Period[] }>
-      })
-      .then((data) => {
-        if (!cancelled) setState({ status: 'ready', periods: data.periods ?? [] })
-      })
-      .catch(() => {
-        if (!cancelled) setState({ status: 'error' })
-      })
-
-    return () => {
-      cancelled = true
-    }
+  const demo = useMemo(() => {
+    const v = new URLSearchParams(location.search).get('demo') as WBState | null
+    return v && DEMO_STATES.includes(v) ? v : null
   }, [])
 
   useEffect(() => {
-    if (state.status !== 'ready' || !listRef.current) return
-    const items = listRef.current.querySelectorAll('li')
-    if (items.length === 0) return
+    let alive = true
+    ;(async () => {
+      const ok = await getHealth()
+      if (!alive) return
+      setHealthy(ok)
+      if (!ok) return
+      setMe(await getMe())
+      try {
+        const list = await getPeriods()
+        if (!alive) return
+        setPeriods(list)
+        setSelected(list[0]?.period ?? null)
+      } catch (e) {
+        if (alive) setErr(e as ApiError)
+      }
+    })()
+    return () => { alive = false }
+  }, [])
 
-    const tween = gsap.fromTo(
-      items,
-      { opacity: 0, y: 12 },
-      { opacity: 1, y: 0, duration: 0.4, stagger: 0.06, ease: 'power2.out' },
-    )
+  useEffect(() => {
+    if (!selected) { setDetail(null); return }
+    let alive = true
+    getPeriodDetail(selected).then((d) => { if (alive) setDetail(d) })
+    return () => { alive = false }
+  }, [selected])
 
-    return () => {
-      tween.kill()
+  const wb = deriveWorkbench(selected, periods, detail, healthy === true, demo)
+
+  async function onGenerate() {
+    if (!selected) return
+    setBusy(true)
+    setErr(null)
+    try {
+      await postJob(selected)
+    } catch (e) {
+      const h = e as { status?: number; body?: ApiError; message?: string }
+      setErr(h.body ?? { error: h.message ?? '生成请求失败' })
+    } finally {
+      setBusy(false)
     }
-  }, [state.status])
+  }
 
   return (
-    <main className="min-h-screen bg-neutral-50 text-neutral-900">
-      <div className="mx-auto w-full max-w-2xl px-6 py-16">
-        <header>
-          <h1 className="text-3xl font-semibold tracking-tight">文衡 · 工作区</h1>
-          <p className="mt-2 text-sm text-neutral-500">
-            学科信息服务的工作入口，按期次查看与流转。
-          </p>
-        </header>
+    <>
+      <Sprite />
+      <header className="topbar">
+        <div className="brand">
+          <strong>文衡</strong>
+          <span>学科信息参考</span>
+        </div>
+        <nav className="nav" aria-label="工作区">
+          <a href="/app/" aria-current="page"><Icon name="play" size={19} />生成台</a>
+          <a href="/app/shelf/"><Icon name="book" size={19} />陈列馆</a>
+        </nav>
+        <div className="who">
+          <span className="avatar">{me?.name?.slice(0, 1) ?? '？'}</span>
+          {me?.name ?? '角色未知'}
+          {me?.role ? ` · ${me.role === 'admin' ? '管理员' : '游客'}` : '（未提供 /api/me）'}
+        </div>
+      </header>
 
-        {/* 陈列馆入口：历期卷宗（G 的体验，作为静态子应用挂在 /app/shelf/） */}
-        <a
-          href="/app/shelf/"
-          className="mt-8 flex items-center justify-between gap-4 rounded-xl border border-neutral-300 bg-white px-5 py-4 no-underline transition hover:border-neutral-900"
-        >
-          <span>
-            <span className="block text-base font-medium">陈列馆 · 历期卷宗</span>
-            <span className="mt-0.5 block text-sm text-neutral-500">
-              按期翻看已出刊的报告（书架 → 端详 → 开卷）
+      <main className="wrap">
+        {healthy === false && (
+          <div className="banner bad" style={{ marginTop: 0 }}>
+            <span className="ico"><Icon name="alert" size={22} /></span>
+            <span>
+              <b className="title">连不上本机服务</b>
+              <ul>
+                <li>后端没有响应 —— 检查它是否在运行（`/healthz`）。</li>
+                <li>下面显示的期次列表可能不完整；你的台账与已出的报告都没有受影响。</li>
+              </ul>
             </span>
+          </div>
+        )}
+
+        <Workbench
+          period={selected}
+          me={me}
+          wb={wb}
+          err={err}
+          healthy={healthy === true}
+          onGenerate={onGenerate}
+        />
+
+        <a className="entry" href="/app/shelf/">
+          <span>
+            <span className="t">陈列馆 · 历期卷宗</span>
+            <span className="d">按期翻看已出刊的报告（书架 → 端详 → 开卷）</span>
           </span>
-          <span aria-hidden="true" className="text-lg text-neutral-400">
-            →
-          </span>
+          <span className="go" aria-hidden="true">→</span>
         </a>
 
-        <section className="mt-10">
-          {state.status === 'loading' && (
-            <p className="text-sm text-neutral-500">加载中…</p>
-          )}
-
-          {state.status === 'error' && (
-            <p
-              role="status"
-              className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
-            >
-              接口未就绪，暂时无法获取期次列表。
-            </p>
-          )}
-
-          {state.status === 'ready' && state.periods.length === 0 && (
-            <p className="text-sm text-neutral-500">暂无期次。</p>
-          )}
-
-          {state.status === 'ready' && state.periods.length > 0 && (
-            <ul
-              ref={listRef}
-              className="divide-y divide-neutral-200 overflow-hidden rounded-xl border border-neutral-200 bg-white"
-            >
-              {state.periods.map((item) => (
-                <li
-                  key={item.period}
-                  className="flex items-center justify-between gap-4 px-5 py-4"
-                >
-                  <div className="flex items-baseline gap-3">
-                    <span className="text-sm font-medium">{item.label}</span>
-                    <span className="font-mono text-xs text-neutral-400">
-                      {item.period}
+        <section className="card" style={{ marginTop: 18, overflow: 'hidden' }}>
+          <table className="periods">
+            <thead>
+              <tr>
+                <th>期次</th><th>目录名</th><th>状态</th><th style={{ width: 90 }}>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {periods.length === 0 && (
+                <tr><td colSpan={4} style={{ color: 'var(--ink-3)' }}>
+                  {healthy === false ? '服务未启动，读不到期次。' : '暂无期次。'}
+                </td></tr>
+              )}
+              {periods.map((p) => (
+                <tr key={p.period}
+                    onClick={() => setSelected(p.period)}
+                    style={{ cursor: 'pointer', background: p.period === selected ? 'var(--panel)' : undefined }}>
+                  <td>{p.label}</td>
+                  <td className="mono">{p.period}</td>
+                  <td>
+                    <span className={`pill ${p.status === 'signed' ? 'signed' : p.status === 'stale' ? 'stale' : 'unsigned'}`}>
+                      {p.status === 'signed' ? '已签发' : p.status === 'stale' ? '签名已失效' : '未签发'}
                     </span>
-                  </div>
-                  <span
-                    className={
-                      item.signed
-                        ? 'rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs text-emerald-700'
-                        : 'rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-500'
-                    }
-                  >
-                    {item.signed ? '已签署' : '未签署'}
-                  </span>
-                </li>
+                  </td>
+                  <td>
+                    <a href={p.url} onClick={(e) => e.stopPropagation()}>打开</a>
+                  </td>
+                </tr>
               ))}
-            </ul>
-          )}
+            </tbody>
+          </table>
         </section>
-      </div>
-    </main>
+
+        <p className="hint" style={{ marginTop: 14 }}>
+          {busy && '正在提交生成请求……'}
+          {!busy && '演示时想直接看某个状态（空/生成中/失败…）可在网址后加 '}
+          {!busy && <code>?demo=fail-ledger</code>}
+        </p>
+      </main>
+    </>
   )
 }
-
-export default App

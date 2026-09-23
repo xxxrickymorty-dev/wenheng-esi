@@ -1,1 +1,156 @@
 @import "tailwindcss";
+
+/* ============================================================================
+   文衡 · 工作台令牌（朱批原色系）
+   取值来自静态稿实测：所有「文字/底色」组合 ≥4.5:1（WCAG AA），不靠目测。
+   改配色只改这一处。
+   ========================================================================== */
+:root{
+  --bg:#f3efe6; --card:#fbf8f1; --panel:#f6f1e7;
+  --ink:#2f2a24; --ink-2:#5b5248; --ink-3:#6f6558;
+  --line:#d9cfbc; --line-2:#e7dfd0;
+  --zhu:#b23a2a; --zhu-soft:#f0dcd5;
+  --gold:#a9853f; --gold-soft:#efe3c9; --gold-ink:#7d6122;
+  --ok:#3f6b4a; --ok-soft:#e2ece0;
+  --warn:#7d5518; --warn-soft:#f5ead2;
+  --bad:#a8321f; --bad-soft:#f4ddd7;
+  --serif:"Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  --r:14px; --r-sm:10px;
+  --shadow:0 1px 2px rgba(47,42,36,.06),0 8px 24px rgba(47,42,36,.06);
+}
+html,body,#root{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:17px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0}
+:focus-visible{outline:3px solid var(--zhu);outline-offset:3px;border-radius:6px}
+a{color:inherit}
+
+/* ---------- 顶栏 ---------- */
+.topbar{display:flex;align-items:center;gap:18px;padding:13px 22px;background:var(--card);
+  border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:10px;font-family:var(--serif)}
+.brand strong{font-size:22px;letter-spacing:.05em}
+.brand span{font-size:13px;color:var(--ink-3);letter-spacing:.16em}
+.nav{display:flex;gap:4px;margin-left:auto}
+.nav a{display:flex;align-items:center;gap:7px;padding:9px 13px;border-radius:var(--r-sm);
+  color:var(--ink-2);text-decoration:none;font-size:15px}
+.nav a[aria-current="page"]{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
+.nav a:hover{background:var(--panel)}
+.who{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-2);
+  padding-left:12px;border-left:1px solid var(--line)}
+.avatar{width:29px;height:29px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);
+  display:grid;place-items:center;font-size:13px;font-weight:700}
+
+.wrap{max-width:1180px;margin:0 auto;padding:26px 22px 70px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+
+/* ---------- 三步条 ---------- */
+.steps{display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:20px 24px}
+.steps h1{font-size:25px}
+.steps .tag{font-size:14px;color:var(--gold-ink);border:1px solid var(--gold-soft);
+  background:var(--gold-soft);border-radius:999px;padding:3px 12px}
+.steplist{display:flex;gap:20px;flex-wrap:wrap;margin-left:auto;list-style:none;margin-block:0;padding:0}
+.step{display:flex;align-items:center;gap:9px;font-size:15.5px;color:var(--ink-2)}
+.step .dot{width:23px;height:23px;border-radius:50%;display:grid;place-items:center;
+  font-size:12.5px;font-weight:700;border:1.5px solid var(--line);color:var(--ink-3);flex:0 0 auto}
+.step.on .dot{background:var(--ok);border-color:var(--ok);color:#fff}
+.step.now .dot{border-color:var(--zhu);color:var(--zhu)}
+.step small{display:block;font-size:13px;color:var(--ink-3)}
+
+/* ---------- 焦点块：全屏唯一一处朱色实心 ---------- */
+.focus{margin-top:18px;background:var(--card);border:1px solid var(--zhu);
+  border-left:5px solid var(--zhu);border-radius:12px;padding:22px 26px;
+  display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.focus .big{font-size:19px;font-weight:600}
+.focus .sub{color:var(--ink-2);font-size:15px;margin-top:4px}
+.focus .cta{margin-left:auto;display:flex;gap:12px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:9px;
+  border:1px solid var(--line);background:var(--card);cursor:pointer;font:inherit;
+  font-size:16px;font-weight:600;color:inherit;text-decoration:none}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-size:17px;padding:13px 28px}
+.btn:hover{filter:brightness(.97)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.hint{color:var(--ink-3);font-size:14px}
+
+/* ---------- 状态条（颜色 + 图标 + 文字 三重编码） ---------- */
+.banner{display:flex;gap:12px;align-items:flex-start;padding:16px 18px;border-radius:var(--r-sm);
+  margin-top:18px;font-size:16px}
+.banner.ok{background:var(--ok-soft);color:var(--ok)}
+.banner.bad{background:var(--bad-soft);color:var(--bad)}
+.banner.warn{background:var(--warn-soft);color:var(--warn)}
+.banner .ico{flex:0 0 22px;margin-top:2px}
+.banner b.title{display:block;font-size:17px;margin-bottom:2px}
+.banner .acts{margin-top:10px;display:flex;gap:10px;flex-wrap:wrap}
+.banner .acts .btn{padding:9px 16px;font-size:15px;background:transparent;
+  border-color:currentColor;color:inherit;font-weight:600}
+.banner ul{margin:6px 0 0;padding-left:20px}
+.banner li{margin:2px 0}
+
+/* ---------- 五步进度 ---------- */
+.progress{padding:4px 24px 8px}
+.prow{display:flex;align-items:center;gap:12px;padding:11px 0;
+  border-bottom:1px solid var(--line-2);font-size:16px}
+.prow:last-child{border-bottom:none}
+.prow .name{flex:0 0 132px;color:var(--ink-2)}
+.prow .bar{flex:1;height:10px;border-radius:99px;background:var(--line-2);overflow:hidden}
+.prow .bar i{display:block;height:100%;background:var(--ok);border-radius:99px;transition:width .3s}
+.prow.now .bar i{background:var(--gold)}
+.prow .pct{flex:0 0 80px;text-align:right;color:var(--ink-3);
+  font-family:var(--mono);font-size:14px}
+.elapsed{display:flex;align-items:center;gap:8px;color:var(--ink-3);font-size:15px;padding:2px 24px 14px}
+
+/* ---------- 小卡片 ---------- */
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:18px}
+.mini{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.mini h3{margin:0 0 8px;font-size:15px;color:var(--ink-2);font-weight:600}
+.mini p{margin:0;font-size:14.5px;color:var(--ink-3);line-height:1.65}
+
+/* ---------- 预测模型 ---------- */
+.model{margin-top:18px;background:var(--card);border:1px solid var(--line);border-radius:12px}
+.model summary{display:flex;align-items:center;gap:10px;padding:15px 20px;cursor:pointer;
+  font-size:16px;list-style:none}
+.model summary::-webkit-details-marker{display:none}
+.model summary .k{font-weight:600}
+.model summary .v{color:var(--ink-2)}
+.model .body{padding:0 20px 18px}
+.model table{width:100%;border-collapse:collapse;font-size:15.5px}
+.model th,.model td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line-2);
+  vertical-align:top}
+.model th{color:var(--ink-3);font-weight:600;font-size:14px}
+.model select{font:inherit;padding:7px 10px;border:1px solid var(--line);
+  border-radius:8px;background:var(--card);color:var(--ink)}
+.model .mdesc{display:block;color:var(--ink-3);font-size:13.5px;margin-top:3px}
+
+/* ---------- 期次表 ---------- */
+.periods{width:100%;border-collapse:collapse;font-size:16px}
+.periods th,.periods td{padding:13px 16px;border-bottom:1px solid var(--line-2);text-align:left}
+.periods th{background:var(--panel);color:var(--ink-2);font-weight:600;font-size:14px}
+.periods tbody tr:hover{background:var(--panel)}
+.periods .mono{font-family:var(--mono);color:var(--ink-3);font-size:14px}
+.pill{border-radius:999px;padding:3px 11px;font-size:13.5px;display:inline-block}
+.pill.signed{background:var(--zhu-soft);color:var(--zhu)}
+.pill.stale{background:var(--gold-soft);color:var(--gold-ink)}
+.pill.unsigned{background:var(--panel);color:var(--ink-3)}
+
+/* ---------- 陈列馆入口 ---------- */
+.entry{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  margin-top:18px;background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:18px 20px;text-decoration:none;transition:border-color .15s}
+.entry:hover{border-color:var(--zhu)}
+.entry .t{display:block;font-size:17px;font-weight:600}
+.entry .d{display:block;font-size:14.5px;color:var(--ink-3);margin-top:3px}
+.entry .go{color:var(--zhu);font-size:20px}
+
+/* ---------- 降级提示（诚实态：接口没就绪就明说） ---------- */
+.degraded{margin-top:14px;border:1px dashed var(--line);border-radius:var(--r-sm);
+  padding:11px 14px;font-size:14.5px;color:var(--ink-3);background:transparent}
+.degraded b{color:var(--ink-2)}
+
+@media (max-width:760px){
+  body{font-size:16.5px}
+  .nav{display:none}
+  .steplist{margin-left:0}
+  .focus .cta{margin-left:0}
+}
