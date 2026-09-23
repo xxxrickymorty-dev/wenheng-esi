@@ -985,6 +985,34 @@ async def api_period_sign_json(request: Request, period: str):
 
 
 @app.post("/api/periods/{period}/forecast-choice")
+async def api_forecast_choice_get(request: Request, period: str):
+    """读回已存的预测模型选择。guest 可读（只读不改状态）。"""
+    if not current_user(request):
+        return JSONResponse({"error": "未登录"}, status_code=401)
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在"}, status_code=404)
+    fc = d / "forecast_choice.json"
+    if not fc.exists():
+        return {"period": period, "choice": {}, "by": "", "at": ""}
+    try:
+        rec = json.loads(fc.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"period": period, "choice": {}, "by": "", "at": ""}
+    return {"period": period,
+            "choice": rec.get("choice", {}),
+            "by": rec.get("by", ""),
+            "at": rec.get("at", "")}
+
+
+@app.get("/api/periods/{period}/forecast-choice")
+async def api_forecast_choice_read(request: Request, period: str):
+    if not current_user(request):
+        return JSONResponse({"error": "未登录"}, status_code=401)
+    return await api_forecast_choice_get(request, period)
+
+
+@app.post("/api/periods/{period}/forecast-choice")
 async def api_forecast_choice(request: Request, period: str):
     guard = require_admin(request)
     if isinstance(guard, JSONResponse):
@@ -1223,6 +1251,7 @@ async def api_analyze(request: Request):
         return guard
     body = await request.json()
     period = str(body.get("period", "")).strip()
+    question = str(body.get("question", "")).strip()
     scope = str(body.get("scope", "")).strip()
     d = resolve_period_dir(period) if period else None
     if d is None:
@@ -1245,6 +1274,19 @@ async def api_analyze(request: Request):
     # scope 过滤：空=全部；否则只取匹配 key 的段落
     if scope:
         texts = {k: v for k, v in texts.items() if scope in k or k in scope}
+    # question 匹配：把问句拆词去匹配 section key + 正文，命中的段落排前
+    if question:
+        q_words = [w for w in question.replace("，", " ").replace("。", " ")
+                    .replace("？", " ").split() if len(w) >= 2]
+        scored = {}
+        for k, v in texts.items():
+            score = sum(1 for w in q_words if w in k or w in v)
+            if score > 0:
+                scored[k] = (score, v)
+        if scored:
+            texts = {k: v for k, (_, v) in sorted(scored.items(), key=lambda x: -x[1][0])}
+        else:
+            texts = dict(list(texts.items())[:3])
     # 数字防护盾：protect() 把数字换成占位符，shields 记录映射
     shields = []
     for key, t in texts.items():
@@ -1254,8 +1296,8 @@ async def api_analyze(request: Request):
             "n_numbers": len(mapping),
             "protected_len": len(protected),
         })
-    return {"period": P, "prev": Q, "text": texts, "shields": shields,
-            "n_sections": len(texts), "backend": "sentences"}
+    return {"period": P, "prev": Q, "question": question, "text": texts,
+            "shields": shields, "n_sections": len(texts), "backend": "sentences"}
 
 
 @app.get("/api/forecast/meta")
