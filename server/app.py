@@ -957,6 +957,96 @@ async def api_period_detail(request: Request, period: str):
     }
 
 
+def _paginate(items, limit, offset):
+    """统一分页：?limit=&offset= -> {rows, total, limit, offset, has_more}"""
+    total = len(items)
+    offset = max(0, offset)
+    limit = min(max(1, limit), 500)
+    rows = items[offset:offset + limit]
+    return {"rows": rows, "total": total, "limit": limit, "offset": offset,
+            "has_more": offset + limit < total}
+
+
+@app.get("/api/periods/{period}/redslots")
+async def api_period_redslots(request: Request, period: str,
+                              limit: int = 50, offset: int = 0):
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在"}, status_code=404)
+    raw = []
+    rp = d / "red_slots.json"
+    if rp.exists():
+        try:
+            raw = json.loads(rp.read_text(encoding="utf-8")) or []
+        except (OSError, json.JSONDecodeError):
+            raw = []
+    rows = []
+    for s in raw:
+        if not isinstance(s, dict):
+            continue
+        loc = str(s.get("location", ""))
+        new_p = str(s.get("new", ""))
+        src = str(s.get("source", ""))
+        group = loc.split("/")[0] if "/" in loc else loc
+        if loc.startswith("T01/r"):
+            group = "大表数值"
+        elif loc.startswith("T0") or loc.startswith("T1"):
+            group = loc.split("/")[0]
+        kind = "chart" if (new_p.startswith("[图]") or ("图" in loc and loc.startswith("综述/"))) else (
+            "cell" if loc.startswith("T") and "/" in loc else "text")
+        rows.append({"group": group, "label": loc,
+                     "old": str(s.get("old_full") or s.get("old", "")),
+                     "new": str(s.get("new_full") or new_p),
+                     "src": src, "kind": kind})
+    page = _paginate(rows, limit, offset)
+    page["count"] = page["total"]
+    return page
+
+
+@app.get("/api/periods/{period}/collation")
+async def api_period_collation(request: Request, period: str,
+                               limit: int = 50, offset: int = 0):
+    if not current_user(request):
+        return JSONResponse({"error": "未登录"}, status_code=401)
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在"}, status_code=404)
+    data = collation.build(d)
+    sections = [{"id": s["id"], "name": s["name"], "note": s.get("note", ""),
+                 "count": s.get("count", 0), "text": s.get("text", 0),
+                 "cell": s.get("cell", 0), "chart": s.get("chart", 0),
+                 "manual": s.get("manual", 0)}
+                for s in data.get("sections", [])]
+    all_slots = []
+    for s in data.get("sections", []):
+        for it in s.get("slots", []):
+            all_slots.append({"section": s["id"], **it})
+    page = _paginate(all_slots, limit, offset)
+    page["sections"] = sections
+    page["period"] = data.get("period", "")
+    page["assertions"] = data.get("assertions", {})
+    return page
+
+
+@app.get("/api/periods/{period}/charts")
+async def api_period_charts_json(request: Request, period: str,
+                                 limit: int = 50, offset: int = 0):
+    if not current_user(request):
+        return JSONResponse({"error": "未登录"}, status_code=401)
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在"}, status_code=404)
+    q = urllib.parse.quote(d.name)
+    items = []
+    for it in jobs.list_charts(d):
+        items.append({"name": it["name"], "group": it["group"],
+                      "url": f"/p/{q}/chart/" + urllib.parse.quote(it["rel"])})
+    return _paginate(items, limit, offset)
+
+
 @app.get("/api/forecast/meta")
 async def api_forecast_meta(request: Request):
     guard = require_admin(request)
