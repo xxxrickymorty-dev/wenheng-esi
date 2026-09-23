@@ -14,6 +14,7 @@ import { Icon, Sprite } from './icons'
 import { Workbench } from './Workbench'
 import { Report } from './Report'
 import { Review } from './Review'
+import { Ledger } from './Ledger'
 import { deriveWorkbench, isTerminal, statusToWB, type WBState } from './wb'
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'fail-ledger', 'fail-other', 'stalled', 'signed']
@@ -29,8 +30,11 @@ export default function App() {
   const [run, setRun] = useState<Run | null>(null)
 
   const _v = new URLSearchParams(location.search).get('view')
-  const view: 'workbench' | 'report' | 'review' =
-    _v === 'report' ? 'report' : _v === 'review' ? 'review' : 'workbench'
+  const view: 'workbench' | 'report' | 'review' | 'ledger' =
+    _v === 'report' ? 'report'
+      : _v === 'review' ? 'review'
+        : _v === 'ledger' ? 'ledger'
+          : 'workbench'
 
   const demo = useMemo(() => {
     const v = new URLSearchParams(location.search).get('demo') as WBState | null
@@ -136,6 +140,9 @@ export default function App() {
           <a href="/app/?view=review" aria-current={view === 'review' ? 'page' : undefined}>
             <Icon name="seal" size={19} />审核台
           </a>
+          <a href="/app/?view=ledger" aria-current={view === 'ledger' ? 'page' : undefined}>
+            <Icon name="doc" size={19} />台账
+          </a>
           <a href="/app/shelf/"><Icon name="book" size={19} />陈列馆</a>
         </nav>
         <div className="who">
@@ -159,7 +166,9 @@ export default function App() {
           </div>
         )}
 
-        {view === 'review' ? (
+        {view === 'ledger' ? (
+          <Ledger />
+        ) : view === 'review' ? (
           <Review
             period={selected}
             me={me}
