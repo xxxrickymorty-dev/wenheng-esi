@@ -238,3 +238,12 @@ a{color:inherit}
 /* 产物卡：标题与文件名各占一行，别黏在一起 */
 .art .n{display:block}
 .art .m{display:block}
+
+/* 报告深入视图（P0-3/4）：搜索框 / 分类 chips / 图册网格 / 分组小标题 */
+.toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.search{flex:1;min-width:220px;max-width:380px;padding:9px 12px;border:1px solid var(--line);
+  border-radius:var(--r-sm);background:#fff;color:var(--ink);font:inherit;font-size:15px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.gal{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));margin-top:12px}
+.gal a{text-decoration:none}
+.sec-h{display:flex;align-items:baseline;gap:10px;margin-top:20px}

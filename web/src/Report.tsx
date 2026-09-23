@@ -171,6 +171,15 @@ function PeriodData({ period }: { period: string | null }) {
               </div>
             ))}
           </div>
+          {/* 红件全量清单入口（P0-3）：本屏只给入口，全量表在 ?view=red */}
+          <a className="entry" style={{ marginTop: 12 }}
+             href={`/app/?view=red${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+            <span>
+              <span className="t">红色件清单</span>
+              <span className="d">签单依据：逐格列出「改了什么、来自哪里」，可搜索、可下载 Markdown</span>
+            </span>
+            <span className="go">→</span>
+          </a>
         </div>
 
         {/* 页边朱批：待人工的那几处（本屏的"需要你拍板"） */}
@@ -206,26 +215,21 @@ function PeriodData({ period }: { period: string | null }) {
         <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
           <Icon name="chart" size={21} />图册
           <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>
-            （真数据：共 {charts.length} 张，本屏示前 24 张）
+            （真数据：共 {charts.length} 张）
           </span>
         </h2>
-        <div style={{
-          marginTop: 12, display: 'grid', gap: 8,
-          gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))',
-        }}>
-          {charts.slice(0, 24).map((c) => (
-            <a key={c.url} href={c.url} target="_blank" rel="noreferrer"
-               title={`${c.group} / ${c.name}`} style={{ textDecoration: 'none' }}>
-              <img src={c.url} alt={c.name} loading="lazy"
-                   style={{ width: '100%', border: '1px solid var(--line-2)',
-                            borderRadius: 8, background: 'var(--panel)' }} />
-              <span className="hint" style={{ fontSize: 12.5 }}>{c.group}</span>
-            </a>
-          ))}
-        </div>
-        <p className="hint" style={{ marginTop: 12 }}>
-          看全部：<a href={`/p/${period}/charts`} target="_blank" rel="noreferrer">图册页（可搜索）</a>
+        <p className="hint" style={{ marginTop: 8 }}>
+          本期报告写入的全部配图——按学科平铺、可按图名搜，点开看原图。
         </p>
+        {/* 图册全量入口（P0-4）：以前这里指老站 /p/<期次>/charts，现已改指新站自己的图册页 */}
+        <a className="entry" style={{ marginTop: 12 }}
+           href={`/app/?view=charts${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+          <span>
+            <span className="t">打开图册</span>
+            <span className="d">{charts.length} 张 · 按学科分组 · 可搜索</span>
+          </span>
+          <span className="go">→</span>
+        </a>
       </section>
     </>
   )
