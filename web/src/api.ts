@@ -10,16 +10,16 @@ export type Period = {
   url: string
 }
 
-/** 单期详情（契约 §2.2 #2）——后端未就绪时返回 null，界面显式说明"未就绪"，不编数据 */
+/** 单期详情（契约 §2.2 #2，后端 Batch 1 已交付）——形状按实测的响应写，别按猜的 */
 export type PeriodDetail = {
   period: string
   label?: string
   no?: number
   total?: number
   window?: string
-  palette?: { vol: string; deep: string; lift: string }
+  palette?: { primary: string; deep: string; lift: string }
   steps?: { ledger?: boolean; input?: boolean; generated?: boolean }
-  lastJob?: { id?: string; at?: string; seconds?: number; artifacts?: number }
+  lastJob?: { id?: string; status?: string; created_at?: string }
 }
 
 export type Me = { name: string; role: 'admin' | 'guest' }
