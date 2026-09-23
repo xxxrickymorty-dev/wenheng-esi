@@ -28,6 +28,7 @@ import pandas as pd
 from matplotlib import font_manager
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
+from matplotlib.patches import Rectangle
 from matplotlib.transforms import Bbox
 from PIL import Image, ImageChops
 
