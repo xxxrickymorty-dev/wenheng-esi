@@ -73,6 +73,19 @@ def out(line=""):
     LOG.append(line)
 
 
+def home_period(html):
+    """从首页 HTML 动态提取当前期次。
+
+    首屏语义是「最新一期」——out/ 里多跑一期（如 202609）期次就会切换，
+    断言不能硬编码某一期。优先用 trace 链接做锚点（工作台三个数字），
+    回退到任意 /p/<期次>/ 链接。
+    """
+    m = re.search(r'href="/p/([^"/]+)/trace"', html)
+    if not m:
+        m = re.search(r'/p/(20\d{4}[^"/]*)/', html)
+    return m.group(1) if m else ""
+
+
 def check(name, cond, extra=""):
     msg = ("  OK   " if cond else "  FAIL ") + name + (("  " + extra) if extra else "")
     out(msg)
@@ -147,8 +160,12 @@ check("有待补数据段（台账外）", "待补数据" in home)
 check("待补判定走实测而非写死（T21 显示已有内容）",
       "共 3 处" in home and "已有内容" in home, "应显示「N 处待补 / 共 3 处」且 T21 标已有内容")
 check("其余可溯源项不混进待办", "不进待办" in home)
-check("审计视图入口齐全", all(x in home for x in
-      ("/p/202607/redslots", "/p/202607/charts", "/p/202607/archive", "/run")))
+# 🔴 期次动态提取：首屏按「最新一期」渲染，out/ 多一期就切换。
+#    2026-09-23 实踩：202609 产物落盘后首页从 202607 切走，硬编码断言全红。
+_hp = home_period(home)
+check("审计视图入口齐全", bool(_hp) and all(x in home for x in
+      (f"/p/{_hp}/redslots", f"/p/{_hp}/charts", f"/p/{_hp}/archive", "/run")),
+      f"period={_hp}")
 
 out("=== 5. 控制台 /run ===")
 st, run, _ = call("GET", "/run")
@@ -433,7 +450,9 @@ check("台账没被在线填/存疑碰到（字节数不变）",
 # 🔴 断言要写**完整路径**：之前写成 href="202607/trace"（少了 /p/ 前缀），
 #    断言照着 bug 写 → 点击 404 但 e2e 全绿（rick 2026-09-19 实踩）。
 st, home2, _ = call("GET", "/")
-check("工作台三个数字可点（trace 链接完整）", 'href="/p/202607/trace"' in home2)
+_hp2 = home_period(home2)
+check("工作台三个数字可点（trace 链接完整）",
+      bool(_hp2) and f'href="/p/{_hp2}/trace"' in home2, f"period={_hp2}")
 check("待办区是一个批量表单（一次提交取代逐条刷新）",
       'name="v:' in home2 and "保存全部" in home2)
 check("输入框有 aria-label（16 个同名框否则无法区分）",
@@ -445,8 +464,8 @@ check("待补数据说明诚实标注交互未定", "交互还没定" in home2)
 #    /202607/trace → 404，而 e2e 直接打绝对 URL 是抓不到的（2026-09-19 rick 实踩，
 #    2026-09-20 表单 action 又犯一次）。这条断言专治这个。
 check("表单 action 是绝对路径（不是相对路径）",
-      'action="/p/202607/fill"' in home2 and 'action="202607/fill"' not in home2
-      and 'action="/p/202607/rebuild"' in home2)
+      f'action="/p/{_hp2}/fill"' in home2 and f'action="{_hp2}/fill"' not in home2
+      and f'action="/p/{_hp2}/rebuild"' in home2, f"period={_hp2}")
 # 产线入口必须**在第一屏**（rick 2026-09-20：原来只塞在第六格审计链接堆里，
 # 一般用户根本不知道入口在哪）。断言两件事：产线条里真的有灵活报告链接、
 # 且第六格的审计链接段落里**没有**「灵活报告」字样（防止以后又被塞回去）。
@@ -454,9 +473,9 @@ check("表单 action 是绝对路径（不是相对路径）",
 _band = home2.split('class="line-bar"')[1].split('class="panel"')[0] \
     if 'class="line-bar"' in home2 else ""
 check("灵活报告入口在第一屏产线条（不在审计链接堆里）",
-      'href="/p/202607/flexible"' in _band
+      f'href="/p/{_hp2}/flexible"' in _band
       and home2.count("灵活报告") == 2        # 产线条一处 + <style> 注释一处
-      and "灵活报告" not in (home2.split("审计视图")[-1]))
+      and "灵活报告" not in (home2.split("审计视图")[-1]), f"period={_hp2}")
 st, fp, _ = call("GET", "/p/202607/flexible")
 check("灵活页可开且生成表单齐备（意图/后端/学科/提交）",
       st == 200 and 'name="intent"' in fp and 'name="backend"' in fp
