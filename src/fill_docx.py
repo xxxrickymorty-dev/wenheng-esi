@@ -338,7 +338,6 @@ def fill_body_charts(doc, ledger_dir, slots):
     """正文概览图三张：我校排名（插入）、1%接近度（插入）、1‰潜力（替换旧图）。"""
     ov = pathlib.Path(ledger_dir) / "charts" / "_overview"
     plan = [
-        ("与上期数据相比", ov / "ynd_rank.png", "正文/我校排名图（新）", 13.9),
         ("前1%学科继续保持", ov / "1pct.png", "正文/1%接近度图（新）", 14.3),
     ]
     for anchor, png, label, w in plan:
@@ -384,6 +383,11 @@ def fill_body_charts(doc, ledger_dir, slots):
             slots.append({"location": label, "old": "（未找到锚点段落）", "new": str(png), "source": "charts/_overview"})
             continue
         stripped = _strip_images(hit)
+        if png.name == "rank_table.png":
+            # 图内已带「我校ESI排名情况」标题 → 清掉母版占位图题「（图）」，避免页面上出现两次；
+            # 同时删掉「与上期数据相比」段尾部遗留的旧版排名图（ynd_rank.png 已停用）
+            for r in list(hit.runs):
+                r._element.getparent().remove(r._element)
         _insert_picture_after(doc, hit, png, w)
         slots.append({"location": label, "old": f"（替换旧图 ×{stripped}）", "new": f"[图] {png.name}",
                       "source": f"charts/_overview/{png.name}"})
@@ -391,6 +395,8 @@ def fill_body_charts(doc, ledger_dir, slots):
     # —— 学院件（数据源＝馆员《<期次>论文清单》）：两张饼图 + 统计表 + 附录清单表 ——
     warn = []
     fill_college(doc, ledger_dir, slots, warn)
+    # —— 预测章 4 张模型预测图：替换母版原生图表 ——
+    fill_forecast_charts(doc, ledger_dir, slots, warn)
 
     # 母版残留：趋势图（旧数据原生图表）删掉，改由生成图替代；其余原生图表预警
     n_stale = _strip_native_chart_runs(doc, "我校主要学科近期发展趋势")
@@ -555,6 +561,65 @@ def fill_college(doc, ledger_dir, slots, warns):
             warns.append("学院统计表：未找到标题段，表已构好但未插入")
 
     fill_top_list(doc, cs, slots, warns)
+
+
+def _strip_chart_runs(p):
+    """删掉段落里内嵌的原生图表 run（返回删掉的 run 数）。"""
+    n = 0
+    for r in list(p.runs):
+        if r._element.findall(".//" + qn("c:chart")):
+            r._element.getparent().remove(r._element)
+            n += 1
+    return n
+
+
+def fill_forecast_charts(doc, ledger_dir, slots, warns):
+    """预测章 4 张「模型预测图」：按位置把母版原生图表换成生成图。
+
+    对位规则：母版图题按「学科1 被引频次 → 学科1 国内排名 → 学科2 被引 → 学科2 排名」
+    出现；生成图 `forecast_{1|2}_{cites|rank}.png` 同序（见 report_forecast——
+    母版图题里的学科写法与台账名有历史差异，**不能按名字匹配**）。
+    """
+    ledger_dir = pathlib.Path(ledger_dir)
+    ov = ledger_dir / "charts" / "_overview"
+    caps = [i for i, p in enumerate(doc.paragraphs)
+            if p.text.strip().endswith("的模型预测图")]
+    if len(caps) != 4:
+        warns.append(f"预测图：母版里应有 4 条「…的模型预测图」图题，实际找到 {len(caps)} 条")
+        return
+    meta = {}
+    mp = ledger_dir / "forecast_charts.json"
+    if mp.exists():
+        try:
+            meta = {c["png"]: c for c in json.loads(mp.read_text(encoding="utf-8"))["charts"]}
+        except Exception:                                      # noqa: BLE001
+            meta = {}
+    plan = [(1, "cites"), (1, "rank"), (2, "cites"), (2, "rank")]
+    for cap_idx, (subj_i, kind) in zip(caps, plan):
+        png = ov / f"forecast_{subj_i}_{kind}.png"
+        label = ("预测章/预测图（学科%d·%s）"
+                 % (subj_i, "被引频次与阈值" if kind == "cites" else "国内排名与机构数"))
+        if not png.exists():
+            slots.append({"location": label, "old": "（缺生成图）", "new": str(png),
+                          "source": "report_forecast"})
+            continue
+        paras = doc.paragraphs
+        tgt = paras[cap_idx]
+        for q in paras[cap_idx + 1:cap_idx + 3]:
+            if q._element.findall(".//" + qn("c:chart")):
+                tgt = q
+                break
+        n = _strip_chart_runs(tgt)
+        from docx.enum.text import WD_ALIGN_PARAGRAPH  # noqa: PLC0415
+        tgt.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        tgt.add_run().add_picture(str(png), width=Cm(14.0))
+        info = meta.get(png.name, {})
+        new_desc = f"[图] {png.name}"
+        if info.get("model"):
+            new_desc += (f"（{info.get('subject', '')}·{info['model']}，"
+                         f"预计过线 {info.get('first_crossing') or '区间内未过线'}）")
+        slots.append({"location": label, "old": f"母版原生图表 ×{n}",
+                      "new": new_desc, "source": "report_forecast（V1 推荐模型）"})
 
 
 def fill_top_list(doc, college, slots, warns):
@@ -752,7 +817,7 @@ def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026�
           f"- 报告初稿：`{out_path}`",
           f"- 大表数值格：{sum(1 for s in slots if s['location'].startswith('T01/r'))} 格（逐格见 red_slots.json）",
           f"- 文字/期次槽位：{n_text} 处（概述 4 段、发展趋势、态势统计、封面期数年月、大表表头）",
-          f"- 图表槽位：{n_img} 张（{len(charts_used)} 学科 × 6 图）", "",
+          f"- 图表槽位：{n_img} 张（{len(charts_used)} 学科 × 6 图 + 概览/学院/预测图）", "",
           "## 仍为手工的槽位（红色件中的【手工：…】）",
           "- ESI 发布日期、当期全球机构总数（台账外，1 分钟可查）",
           "- 去年同期升幅%；预测章的趋势描述/预计时间/发展力度评价（编辑判断）",

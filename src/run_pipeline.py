@@ -185,7 +185,15 @@ def main(ledger_path, out_root="out", run_backtest=False):
     # n_periods=7 + end_period=当期：与人工原件口径一致（近一年 7 期）。
     # 只靠 render_all 内部推断也能工作，这里显式传是为了让主入口一眼可见窗口。
     n_charts = charts.render_all(ledger_dir=str(out_dir), n_periods=7, end_period=P)
-    _emit("charts", "图表渲染", "done", f"{n_charts} 张图 · 16 学科 × 6 + 概览")
+    n_fc = 0
+    try:
+        import report_forecast                                   # noqa: PLC0415
+        n_fc = report_forecast.generate(out_dir)
+        print(f"      预测图：{n_fc} 张（V1 推荐模型，递推 {report_forecast.HORIZON} 期）")
+    except Exception as e:                                       # noqa: BLE001
+        print(f"      预测图：跳过（{type(e).__name__}: {e}）")
+    _emit("charts", "图表渲染", "done",
+          f"{n_charts} 张图 · 16 学科 × 6 + 概览" + (f" · 预测 {n_fc} 张" if n_fc else "（预测图跳过）"))
 
     _emit("docx", "母版替换", "start")
     print("[5/5] 母版替换 → 报告初稿")
@@ -197,6 +205,7 @@ def main(ledger_path, out_root="out", run_backtest=False):
         "assertions_ok": ok, "assertions_fail": n_fail, "missing": missing,
         "predict_mape_overall": round(float(mape), 3),
         "charts": n_charts,
+        "forecast_charts": n_fc,
         "docx": str(docx_path),
         "artifacts": {
             "ledger_long": str(out_dir / "ledger_long.parquet"),

@@ -61,8 +61,13 @@ def validate_known_v1_inputs(total: pd.DataFrame, subjects_en: list[str]) -> Non
             "请修正台账并重跑流水线。预测模块没有改写数据。")
 
 
-def load_standard_input(period_dir: pathlib.Path) -> tuple[pd.DataFrame, dict]:
-    """生成 V1 标准长表；只保留四个指标同时齐备的公共期次。"""
+def load_standard_input(period_dir: pathlib.Path, validate: bool = True) -> tuple[pd.DataFrame, dict]:
+    """生成 V1 标准长表；只保留四个指标同时齐备的公共期次。
+
+    `validate=True`（默认）执行已确认输入修正闸门（经济与商业 2020-03）。
+    历史期次快照可能早于该修正（如 out/202607 的旧值），出图/复现路径可在
+    **目标学科不含该闸门学科**时显式关闭（调用方自行把关，见 report_forecast）。
+    """
     wide = period_dir / "wide"
     total = _period_columns(pd.read_parquet(wide / "total_cites.parquet"))
     threshold = _period_columns(pd.read_parquet(wide / "threshold_1pct.parquet"))
@@ -80,13 +85,18 @@ def load_standard_input(period_dir: pathlib.Path) -> tuple[pd.DataFrame, dict]:
     periods = sorted(c for c in total.columns if PERIOD_RE.fullmatch(c))
     if not periods:
         raise ValueError("总被引派生表没有有效期次。")
-    current = periods[-1]
-    if current not in proximity.columns:
-        raise ValueError(f"接近度派生表缺少当前期次 {current}。")
+    # 当期 = 最后一个**总被引非空且接近度表同期存在**的期次。
+    # ⚠ 不能直接取 periods[-1]：派生宽表带完整期次骨架，老期次目录（如 out/202607）
+    # 末尾会带一列全空的 `202609`，直接取末列会误判当期、并在接近度表上找不到该期。
+    filled = [p for p in periods if p in proximity.columns and total[p].notna().any()]
+    if not filled:
+        raise ValueError("总被引派生表没有有效期次（或接近度表缺同期列）。")
+    current = filled[-1]
 
     current_proximity = pd.to_numeric(proximity[current], errors="coerce")
     subjects_en = sorted(current_proximity[(current_proximity < 1) & current_proximity.notna()].index)
-    validate_known_v1_inputs(total, subjects_en)
+    if validate:
+        validate_known_v1_inputs(total, subjects_en)
     frames = {
         "总被引": total,
         "ESI前1%被引阈值": threshold,

@@ -218,7 +218,15 @@ def run_charts(out_dir):
         n = charts.render_all(ledger_dir=str(out_dir))
     except Exception as e:                                    # noqa: BLE001
         raise ToolError("FONT_MISSING", f"图表渲染失败：{e}") from e
-    return {"ok": True, "n_charts": n}
+    # 预测章配图（V1 推荐模型）：缺数据/模型失败**不拦停**——母版原生图表会保留，
+    # 红色件清单照常预警；拦停反而让整期报告出不来。
+    n_fc = 0
+    try:
+        import report_forecast
+        n_fc = report_forecast.generate(out_dir)
+    except Exception:                                         # noqa: BLE001
+        pass
+    return {"ok": True, "n_charts": n, "n_forecast_charts": n_fc}
 
 
 @tool("run_docx",

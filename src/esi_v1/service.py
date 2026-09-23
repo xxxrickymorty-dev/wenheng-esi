@@ -138,6 +138,20 @@ def _one_model(periods: list[int], series: dict[str, np.ndarray], task: str,
     }
 
 
+def fit_and_forecast(model_name: str, values: np.ndarray, horizon: int):
+    """出图用：一次给出「历史拟合值 + 递推预测值」（与页面同一冻结口径）。
+
+    返回 `(fitted_values, future_values, meta)`；`fitted_values` 长度与输入一致，
+    前几期可能为 NaN（差分/初始化），出图侧自行跳过。
+    """
+    y = np.asarray(values, dtype=float)
+    sarima, state_space_params, meta = _frozen_inputs(model_name, y)
+    fitted = np.asarray(
+        fit_model(model_name, y, sarima, state_space_params).fitted_values, dtype=float)
+    future = _iterative_forecast(model_name, y, horizon, sarima, state_space_params)
+    return fitted, future, meta
+
+
 def run_prediction(subject: str, periods: list[int], series: dict[str, np.ndarray],
                    task: str, model: str, horizon: int) -> dict:
     if task not in TASK_COLUMNS:
