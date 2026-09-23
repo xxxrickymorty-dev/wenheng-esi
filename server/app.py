@@ -1056,6 +1056,50 @@ async def api_period_flag_json(request: Request, period: str):
     return {"ok": True, "loc": r["loc"], "state": r["state"], "n_doubt": r["n_doubt"]}
 
 
+@app.get("/api/periods/{period}/facts")
+async def api_period_facts(request: Request, period: str):
+    """读数带数据：overview_facts.json + meta.json 摘要。guest 可读。"""
+    if not current_user(request):
+        return JSONResponse({"error": "未登录"}, status_code=401)
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在"}, status_code=404)
+    facts_file = d / "overview_facts.json"
+    meta_file = d / "meta.json"
+    if not facts_file.exists():
+        return JSONResponse({"error": "该期次尚无 overview_facts.json"}, status_code=404)
+    try:
+        facts = json.loads(facts_file.read_text(encoding="utf-8"))
+        meta = json.loads(meta_file.read_text(encoding="utf-8")) if meta_file.exists() else {}
+    except (OSError, json.JSONDecodeError) as exc:
+        return JSONResponse({"error": f"数据读取失败：{exc}"}, status_code=500)
+    assertions = meta.get("assertions") or []
+    n_fail = sum(1 for a in assertions if isinstance(a, (list, tuple)) and a and a[0] != "PASS")
+    return {
+        "period": meta.get("period_current", ""),
+        "period_prev": meta.get("period_prev", ""),
+        "facts": facts,
+        "assertions": {"total": len(assertions), "fail": n_fail},
+        "missing": meta.get("missing", []),
+    }
+
+
+@app.get("/api/periods/{period}/workbench")
+async def api_period_workbench(request: Request, period: str):
+    """工作台全量数据：todo/fills/pending/approval。admin 可读。"""
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在"}, status_code=404)
+    from . import workbench, approval as _appr               # noqa: PLC0415
+    rec = _appr.read(d)
+    data = workbench.build(d, approval=rec)
+    data["approvalStatus"] = _appr.status(d, rec)
+    return data
+
+
 @app.get("/api/periods/{period}/redslots")
 async def api_period_redslots(request: Request, period: str,
                               limit: int = 50, offset: int = 0):
