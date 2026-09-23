@@ -12,6 +12,7 @@ import {
   getArtifacts, getStatus, humanSize,
   type Artifact, type Period,
 } from './api'
+import { getCharts, getCollation, type ChartRow, type CollationRow } from './api2'
 import { Icon } from './icons'
 
 /** 期次印记链：签过＝朱印 / 签名失效＝金印 / 未签发＝墨线框。这是产品的原创资产，也是本屏的记忆点。 */
@@ -113,6 +114,123 @@ function Artifacts() {
   )
 }
 
+/** 页边朱批 + 对勘分区 + 图册：都用 Batch 2 的真数据（后端 7223ba5 交付） */
+function PeriodData({ period }: { period: string | null }) {
+  const [col, setCol] = useState<CollationRow[] | null>(null)
+  const [charts, setCharts] = useState<ChartRow[] | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!period) return
+    let alive = true
+    setCol(null); setCharts(null); setNote(null)
+    ;(async () => {
+      try {
+        const [c, ch] = await Promise.all([getCollation(period), getCharts(period)])
+        if (!alive) return
+        setCol(c); setCharts(ch)
+      } catch (e) {
+        const h = e as { status?: number }
+        if (alive) setNote(h.status === 403 ? '这些数据需要管理员权限。'
+          : h.status === 404 ? '这一期还没有对勘数据（可能尚未出稿）。'
+            : '读对勘/图册失败。')
+      }
+    })()
+    return () => { alive = false }
+  }, [period])
+
+  if (note) return <div className="pending-box">{note}</div>
+  if (!col || !charts) return <div className="pending-box">正在读对勘与图册……</div>
+
+  /* 页边朱批盯的是"要人补的地方"——manual 由后端标，前端只筛不算 */
+  const manual = col.filter((r) => r.manual)
+  /* 分区计数：让"这期报告有多少块"一眼可见（列表自己的条数，不是报告口径数字） */
+  const bySection = col.reduce<Record<string, number>>((acc, r) => {
+    acc[r.section] = (acc[r.section] ?? 0) + 1
+    return acc
+  }, {})
+
+  return (
+    <>
+      <div className="body-grid" style={{ paddingTop: 22 }}>
+        <div>
+          <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Icon name="list" size={21} />对勘分区
+            <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>
+              （真数据：母版原文 ↔ 本期生成，共 {col.length} 处）
+            </span>
+          </h2>
+          <div className="artifacts" style={{ marginTop: 12 }}>
+            {Object.entries(bySection).map(([sec, n]) => (
+              <div className="art" key={sec}>
+                <span className="ico"><Icon name="doc" size={20} /></span>
+                <span>
+                  <span className="n">{sec}</span>
+                  <span className="m">{n} 处</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 页边朱批：待人工的那几处（本屏的"需要你拍板"） */}
+        <div>
+          <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Icon name="alert" size={20} />待你补 / 拍板
+          </h2>
+          {manual.length === 0 ? (
+            <div className="pending-box" style={{ marginTop: 12 }}>
+              这一期没有标「待人工」的地方。
+            </div>
+          ) : (
+            <div style={{ marginTop: 12 }}>
+              {manual.slice(0, 8).map((r) => (
+                <div className="margin-note" key={r.section + r.loc}>
+                  <div className="tag">朱批 · {r.loc}</div>
+                  <p>
+                    {(r.oldPreview || r.old) ? `原：${r.oldPreview ?? r.old}` : ''}
+                    {(r.oldPreview || r.old) ? ' ' : ''}
+                    {`→ 待填${r.source ? `（${r.source}）` : ''}`}
+                  </p>
+                </div>
+              ))}
+              {manual.length > 8 && (
+                <p className="hint">还有 {manual.length - 8} 处待人工，完整清单见「红色件清单」。</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <section className="card" style={{ marginTop: 22, padding: '20px 22px' }}>
+        <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Icon name="chart" size={21} />图册
+          <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>
+            （真数据：共 {charts.length} 张，本屏示前 24 张）
+          </span>
+        </h2>
+        <div style={{
+          marginTop: 12, display: 'grid', gap: 8,
+          gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))',
+        }}>
+          {charts.slice(0, 24).map((c) => (
+            <a key={c.url} href={c.url} target="_blank" rel="noreferrer"
+               title={`${c.group} / ${c.name}`} style={{ textDecoration: 'none' }}>
+              <img src={c.url} alt={c.name} loading="lazy"
+                   style={{ width: '100%', border: '1px solid var(--line-2)',
+                            borderRadius: 8, background: 'var(--panel)' }} />
+              <span className="hint" style={{ fontSize: 12.5 }}>{c.group}</span>
+            </a>
+          ))}
+        </div>
+        <p className="hint" style={{ marginTop: 12 }}>
+          看全部：<a href={`/p/${period}/charts`} target="_blank" rel="noreferrer">图册页（可搜索）</a>
+        </p>
+      </section>
+    </>
+  )
+}
+
 export function Report({
   periods, current, onPick,
 }: {
@@ -146,15 +264,19 @@ export function Report({
             ))}
           </div>
           <div className="pending-box">
-            <b>这一屏还差什么（前端已就位，等后端）</b>
+            <b>读数带还差一个端点</b>
             <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
-              <li><code>GET /api/periods/&#123;期次&#125;</code> → 覆盖窗口、期号/总期号、卷色、三步状态（契约 §2.2 #2）</li>
-              <li><code>GET /api/periods/&#123;期次&#125;/redslots</code> → 页边朱批与"本期改动"（§2.2 #4）</li>
-              <li><code>GET /api/periods/&#123;期次&#125;/collation</code> → 大表与逐格溯源（§2.2 #5）</li>
-              <li><code>GET /api/periods/&#123;期次&#125;/charts</code> → 图册（§2.2 #6）</li>
+              <li>
+                概览数字（国际排名 / 顶尖论文 / 学科数 / 图数）目前没有接口 ——
+                建议加 <code>GET /api/periods/&#123;期次&#125;/facts</code>（流水线的
+                <code>overview_facts.json</code> 已经落盘，读出来序列化即可）。
+              </li>
+              <li>
+                朱批、对勘、图册已经接上（见下方「对勘分区 / 待你补·拍板 / 图册」）。
+              </li>
             </ul>
             <div style={{ marginTop: 8 }}>
-              接口一到，这一屏就自动长出读数带、朱批与大表——<b>不需要前端再改结构</b>。
+              <b>不填假数</b>：这四个格宁可写「待接口」，也不放占位数字。
             </div>
           </div>
         </div>
@@ -162,6 +284,9 @@ export function Report({
         {/* 印记链：今天就有真数据 */}
         <Chain periods={periods} current={current} onPick={onPick} />
       </div>
+
+      {/* 对勘分区 / 页边朱批 / 图册 —— Batch 2 的真数据 */}
+      <PeriodData period={current} />
 
       <section className="card" style={{ marginTop: 26, padding: '20px 22px' }}>
         <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>

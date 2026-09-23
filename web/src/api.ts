@@ -37,7 +37,7 @@ export class HttpError extends Error {
   }
 }
 
-async function req<T>(url: string, init?: RequestInit): Promise<T> {
+export async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     credentials: 'same-origin',
     headers: { Accept: 'application/json' },
