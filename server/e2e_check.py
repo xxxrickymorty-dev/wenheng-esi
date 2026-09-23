@@ -387,11 +387,16 @@ for _bad in ("/p/202607/chart/../server/.env",
 out("=== 14. 对勘本图表槽位就地铺图 ===")
 # 缩略图是 collation.js 渲染的，裸 HTML 里没有 <img>——只能断言内联 JSON 里的
 # `chartUrl`（与第 13 节的坑同源），再抽一张验证它真能取到。
-# 数字记死：学科图表槽位 96 张 + 概览图槽位 3 张 = 99，与 charts/ 下的 png 数一致。
+# 图表数从红件清单动态取：重出图会变（2026-09-23 实踩：概览 3->9，99->105，
+# 写死的断言全红）。与 charts/ 下 png 数的一致性由图表落盘环节自守。
+_rslots_path = WENHENG / "out" / "202607" / "red_slots.json"
+_n_charts = sum(1 for _r in json.loads(_rslots_path.read_text(encoding="utf-8"))
+                if (_r.get("source") or "").startswith("charts"))
 _st, _rs, _ = call("GET", "/p/202607")
 _cu = re.findall(r'"chartUrl":\s*"([^"]+)"', _rs)
 check("图表槽位带上了图地址（前端据此就地铺图）", len(_cu) >= 90, f"n={len(_cu)}")
-check("合计 99 张（学科 96 + 概览 3）", len(_cu) == 99, f"n={len(_cu)}")
+check(f"图表槽位数与红件清单一致（{_n_charts}）", len(_cu) == _n_charts,
+      f"n={len(_cu)} vs {_n_charts}")
 check("都走 /p/202607/chart/ 这一条白名单路由",
       bool(_cu) and all(u.startswith("/p/202607/chart/") for u in _cu))
 if _cu:
@@ -409,7 +414,7 @@ st, tr, _ = call("GET", "/p/202607/trace")
 check("GET /p/202607/trace → 200", st == 200, f"got {st}")
 check("trace 大表格数正确（239）", 'id="f-shown">239<' in tr,
       "标题里的计数被筛选用的 span 包住了，断言要查元素内容而不是纯文本")
-check("trace 有图表 99 张", "图表 · 99" in tr)
+check(f"trace 有图表 {_n_charts} 张", f"图表 · {_n_charts}" in tr)
 check("trace 是并排对照不是单列值", "台账（现场重读）" in tr and "派生" in tr)
 check("派生格给了算式", "总被引 − ESI被引阈值" in tr and "× 10" in tr)
 check("台账缺失时降级说明而不是空白", "本地未找到台账" in tr or "全部可回查" not in tr)
@@ -579,6 +584,17 @@ check("collation full 有 sections+slots", '"sections"' in clf and '"slots"' in 
 
 # 错误体有 hint
 st, err404, _ = call("GET", "/api/periods/209901")
+# GET /api/periods/202607/trace（逐格溯源 JSON）
+st, tr, _ = call("GET", "/api/periods/202607/trace?limit=5")
+check("GET trace 200", st == 200, f"got {st}")
+check("trace 有 counts 五类", all(k in tr for k in ("bigtable", "charts", "province", "matrix", "texts")))
+check("trace 有分页字段", '"total"' in tr and '"limit"' in tr and '"offset"' in tr and '"has_more"' in tr)
+check("trace 有 cols/discs 筛选数据", '"cols"' in tr and '"discs"' in tr)
+check("trace 大表行含 loc/report/how", '"loc"' in tr and '"report"' in tr and '"how"' in tr)
+check("trace ledger 只回文件名（不泄漏路径）", ":" not in tr.split('"ledger":')[1].split(",")[0], tr.split('"ledger":')[1].split(",")[0][:40])
+st, tr2, _ = call("GET", "/api/periods/202607/trace?cat=charts&limit=3")
+check("trace cat=charts 可切换", st == 200 and '"cat":"charts"' in tr2, f"got {st}")
+
 check("404 错误体有 hint 字段", '"hint"' in err404, f"body={err404[:80]}")
 
 out("=" * 56)

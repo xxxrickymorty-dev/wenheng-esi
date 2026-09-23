@@ -1125,6 +1125,55 @@ async def api_period_workbench(request: Request, period: str):
     return data
 
 
+_TRACE_CATS = ("bigtable", "charts", "province", "matrix", "texts")
+
+
+@app.get("/api/periods/{period}/trace")
+async def api_period_trace(request: Request, period: str, cat: str = "bigtable",
+                           limit: int = 60, offset: int = 0):
+    """逐格溯源 JSON。现场真读台账（与老站同源）。
+
+    cat 选类别：bigtable/charts/province/matrix/texts；
+    limit/offset 分页（大件不一次性塞满，契约 §3）。
+    """
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+    if cat not in _TRACE_CATS:
+        cat = "bigtable"
+    ledger = _find_ledger(d)
+    if ledger is None:
+        empty = {k: 0 for k in _TRACE_CATS}
+        return {"period": d.name, "ledger": "", "ledger_ok": False,
+                "ledger_error": "本地未找到台账 input/<期次>/监测表.xlsx",
+                "n": 0, "cat": cat, "counts": empty,
+                "rows": [], "total": 0, "limit": limit, "offset": offset,
+                "has_more": False, "cols": [], "discs": [], "review": {}}
+    from . import workbench                                  # noqa: PLC0415
+    data = workbench.trace(d, ledger, prev=None)
+    counts = {k: len(data.get(k) or []) for k in _TRACE_CATS}
+    page = _paginate(data.get(cat) or [], limit, offset)
+    return {
+        "period": d.name,
+        "ledger": pathlib.Path(ledger).name,
+        "ledger_ok": True,
+        "n": data.get("n", 0),
+        "cat": cat,
+        "counts": counts,
+        "rows": page["rows"],
+        "total": page["total"],
+        "limit": page["limit"],
+        "offset": page["offset"],
+        "has_more": page["has_more"],
+        "cols": data.get("cols", []),
+        "discs": data.get("discs", []),
+        "review": workbench.load_review(d),
+    }
+
+
 @app.get("/api/periods/{period}/redslots")
 async def api_period_redslots(request: Request, period: str,
                               limit: int = 50, offset: int = 0):
