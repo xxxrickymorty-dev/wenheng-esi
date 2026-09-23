@@ -4201,6 +4201,54 @@ window.WH_VOL = {
   if (location.protocol === 'file:') return;
   var a = document.getElementById('backApp');
   if (a) a.hidden = false;
+
+  /* 只在被前端托管时加的两条样式（file:// 双击打开时页面保持原样） */
+  var st = document.createElement('style');
+  st.textContent =
+    '.api-note{position:fixed; left:50%; bottom:14px; transform:translateX(-50%);' +
+    ' font-family:var(--mono); font-size:11px; letter-spacing:.08em;' +
+    ' color:rgba(240,232,216,.62); pointer-events:none; white-space:nowrap}' +
+    '.sbook.is-signed::after{content:""; position:absolute; top:10px; right:10px;' +
+    ' width:9px; height:9px; border-radius:2px; background:#B23A2A;' +
+    ' box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35)}';
+  document.head.appendChild(st);
+
+  /* 书架跟 /api/periods 对齐（契约见 docs/前后端分工与接口契约（2026-09-23）.md）
+     目的：**不让两边分叉**——期次与签单状态以服务端为准。
+     匹配用前缀（G 是 202605，服务端可能是 202605_复现）；多个候选就当没找到，不乱猜。 */
+  fetch('/api/periods', { credentials: 'same-origin' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (j) {
+      if (!j || !j.periods || !j.periods.length) return;
+      var api = j.periods, byKey = {};
+      api.forEach(function (p) { byKey[p.period] = p; });
+      function find(period) {
+        if (byKey[period]) return byKey[period];
+        var hit = Object.keys(byKey).filter(function (x) {
+          return x.indexOf(period) === 0;
+        });
+        return hit.length === 1 ? byKey[hit[0]] : null;
+      }
+      var books = (window.WH_DATA && window.WH_DATA.books) || [];
+      var signed = 0, unknown = 0;
+      books.forEach(function (b) {
+        var p = find(b.period);
+        if (!p) { unknown++; return; }
+        if (p.status === 'signed') signed++;
+      });
+      var missing = api.filter(function (p) {
+        return !books.some(function (b) { return p.period.indexOf(b.period) === 0; });
+      });
+
+      var note = document.createElement('div');
+      note.className = 'api-note';
+      var txt = '与后端对齐：服务端 ' + api.length + ' 期 · 已签发 ' + signed + ' 期';
+      if (missing.length) txt += ' · 架上还没有完整数据的 ' + missing.length + ' 期';
+      if (unknown) txt += ' · 有 ' + unknown + ' 期与期次清单对不上（未标注状态）';
+      note.textContent = txt;
+      document.body.appendChild(note);
+    })
+    .catch(function () { /* 服务端不在也不影响书架本身 */ });
 })();
 </script>
 
