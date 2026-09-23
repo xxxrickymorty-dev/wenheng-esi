@@ -107,6 +107,15 @@ def require_user(request: Request):
     return user
 
 
+def require_admin(request: Request):
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"error": "未登录"}, status_code=401)
+    if config.role_of(user) != "admin":
+        return JSONResponse({"error": "需要管理员权限"}, status_code=403)
+    return user
+
+
 def page(request: Request, name: str, **ctx):
     user = current_user(request)
     if not user:
@@ -858,8 +867,9 @@ async def collation_revoke(request: Request, job_id: str, note: str = Form("")):
 
 @app.get("/api/jobs/{job_id}/approval")
 async def api_approval(request: Request, job_id: str):
-    if not current_user(request):
-        return JSONResponse({"error": "未登录"}, status_code=401)
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
     job = jobs.read_job(job_id)
     if not job:
         return JSONResponse({"error": "任务不存在"}, status_code=404)
@@ -906,17 +916,60 @@ async def api_periods(request: Request):
     return {"periods": out}
 
 
-@app.get("/api/forecast/meta")
-async def api_forecast_meta(request: Request):
+@app.get("/api/me")
+async def api_me(request: Request):
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"error": "未登录"}, status_code=401)
+    return {"name": user, "role": config.role_of(user)}
+
+
+@app.get("/api/periods/{period}")
+async def api_period_detail(request: Request, period: str):
     if not current_user(request):
         return JSONResponse({"error": "未登录"}, status_code=401)
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在"}, status_code=404)
+    try:
+        no, total = period_mod.issue_of(period)
+        label = f"第 {total} 期 \u00b7 {period_mod.label(period)}"
+    except (period_mod.PeriodUndetectable, period_mod.PeriodBeforeAnchor):
+        no, total, label = None, None, period
+    window = ""
+    facts = d / "overview_facts.json"
+    if facts.exists():
+        try:
+            window = json.loads(facts.read_text(encoding="utf-8")).get("coverage_window", "")
+        except (OSError, json.JSONDecodeError):
+            pass
+    m = re.match(r"^(\d{6})", d.name)
+    pid = m.group(1) if m else period
+    ledger_ok = (config.INPUT_DIR / pid / "台账.xlsx").exists()
+    generated_ok = (d / "red_slots.json").exists()
+    steps = {"ledger": ledger_ok, "input": ledger_ok, "generated": generated_ok}
+    last = next((j for j in jobs.list_jobs(30) if j.get("period") == pid), None)
+    return {
+        "period": pid, "label": label, "no": no, "total": total,
+        "window": window, "palette": config.PALETTE, "steps": steps,
+        "lastJob": {"id": last["id"], "status": last["status"],
+                    "created_at": last.get("created_at")} if last else None,
+    }
+
+
+@app.get("/api/forecast/meta")
+async def api_forecast_meta(request: Request):
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
     return forecasting.page_context()
 
 
 @app.post("/api/forecast/run")
 async def api_forecast_run(request: Request):
-    if not current_user(request):
-        return JSONResponse({"error": "未登录"}, status_code=401)
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
     try:
         payload = await request.json()
         # 五模型滚动回测属于 CPU 密集型同步计算，放进线程池，避免卡住
@@ -933,8 +986,9 @@ async def api_create_job(request: Request,
                          period: str = Form(""),
                          file: UploadFile = File(None),
                          backtest: str = Form("0")):
-    if not current_user(request):
-        return JSONResponse({"error": "未登录"}, status_code=401)
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
     period = (period or "").strip()
     dest = None
     if file is not None and file.filename:
@@ -966,8 +1020,9 @@ async def api_create_job(request: Request,
 
 @app.get("/api/jobs/{job_id}")
 async def api_job(request: Request, job_id: str):
-    if not current_user(request):
-        return JSONResponse({"error": "未登录"}, status_code=401)
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
     job = jobs.read_job(job_id)
     if not job:
         return JSONResponse({"error": "任务不存在"}, status_code=404)
@@ -976,8 +1031,9 @@ async def api_job(request: Request, job_id: str):
 
 @app.get("/api/jobs/{job_id}/artifacts")
 async def api_artifacts(request: Request, job_id: str):
-    if not current_user(request):
-        return JSONResponse({"error": "未登录"}, status_code=401)
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
     job = jobs.read_job(job_id)
     if not job:
         return JSONResponse({"error": "任务不存在"}, status_code=404)
@@ -986,9 +1042,10 @@ async def api_artifacts(request: Request, job_id: str):
 
 @app.post("/api/jobs/{job_id}/rerun")
 async def api_rerun_job(request: Request, job_id: str):
-    user = current_user(request)
-    if not user:
-        return JSONResponse({"error": "未登录"}, status_code=401)
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    user = guard
     job = jobs.read_job(job_id)
     if not job:
         return JSONResponse({"error": "任务不存在"}, status_code=404)
@@ -1045,8 +1102,9 @@ def _flush(state):
 
 @app.get("/api/jobs/{job_id}/events")
 async def api_events(request: Request, job_id: str):
-    if not current_user(request):
-        return JSONResponse({"error": "未登录"}, status_code=401)
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
     job = jobs.read_job(job_id)
     if not job:
         return JSONResponse({"error": "任务不存在"}, status_code=404)

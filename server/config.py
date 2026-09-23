@@ -37,6 +37,19 @@ PUBLIC_URL = os.environ.get("WENHENG_PUBLIC_URL", "")
 REFERENCE_DOCX = os.environ.get("WENHENG_REFERENCE_DOCX", "")
 SHOW_HINT = os.environ.get("WENHENG_SHOW_HINT", "") == "1"
 
+GUEST_USER = os.environ.get("WENHENG_GUEST_USER", "guest")
+GUEST_PASS = os.environ.get("WENHENG_GUEST_PASS", "guest@2026")
+
+PALETTE = {"primary": "#B8422C", "deep": "#8A2A18", "lift": "#D65A38"}
+
+
+def role_of(username):
+    """用户名 -> 角色。admin 管生成台/审核台；guest 只看陈列馆+报告阅读。"""
+    if username == DEMO_USER:
+        return "admin"
+    return "guest"
+
+
 # ---- Agent 层接入（2026-09-15）--------------------------------------------
 # 把 src/ 放进 sys.path，演示站才能直接用 agent 层的状态机与步骤表。
 SRC = ROOT / "src"

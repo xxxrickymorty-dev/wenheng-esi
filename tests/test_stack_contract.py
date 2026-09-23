@@ -233,7 +233,7 @@ def test_JSON接口都有登录保护():
         path = m.group(2)
         if path in ("/api/status", "/api/docs"):
             continue
-        if "current_user(request)" not in b:
+        if "current_user(request)" not in b and "require_admin(request)" not in b:
             unguarded.append(path)
     assert not unguarded, f"这些 /api 端点没有登录检查：{unguarded}"
 
