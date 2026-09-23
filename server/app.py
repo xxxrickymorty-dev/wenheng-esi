@@ -1002,6 +1002,60 @@ async def api_forecast_choice(request: Request, period: str):
     return {"ok": True, "saved": len(choice), "path": str(out.name)}
 
 
+@app.post("/api/periods/{period}/revoke")
+async def api_period_revoke_json(request: Request, period: str):
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在"}, status_code=404)
+    body = await request.json()
+    note = str(body.get("note", ""))
+    ok, res = approval.revoke(d, guard, note=note)
+    if not ok:
+        return JSONResponse({"error": str(res)}, status_code=409)
+    return {"status": approval.status(d, res)}
+
+
+@app.post("/api/periods/{period}/fill")
+async def api_period_fill_json(request: Request, period: str):
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在"}, status_code=404)
+    body = await request.json()
+    items = body.get("items") or {}
+    if not isinstance(items, dict):
+        return JSONResponse({"error": "items 必须是 {todo_id: value}"}, status_code=400)
+    from . import workbench                                     # noqa: PLC0415
+    n = 0
+    for todo_id, value in items.items():
+        if str(todo_id).strip():
+            workbench.save_fill(d, str(todo_id), str(value), by=guard)
+            n += 1
+    return {"ok": True, "saved": n}
+
+
+@app.post("/api/periods/{period}/flag")
+async def api_period_flag_json(request: Request, period: str):
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在"}, status_code=404)
+    body = await request.json()
+    loc = str(body.get("loc", "")).strip()
+    if not loc:
+        return JSONResponse({"error": "loc 不能为空"}, status_code=400)
+    from . import workbench                                     # noqa: PLC0415
+    r = workbench.toggle_flag(d, loc, by=guard)
+    return {"ok": True, "loc": r["loc"], "state": r["state"], "n_doubt": r["n_doubt"]}
+
+
 @app.get("/api/periods/{period}/redslots")
 async def api_period_redslots(request: Request, period: str,
                               limit: int = 50, offset: int = 0):

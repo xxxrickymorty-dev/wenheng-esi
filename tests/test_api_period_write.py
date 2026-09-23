@@ -71,3 +71,31 @@ class Test路由存在:
     def test_forecast_choice路由是POST_api(self):
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
         assert '@app.post("/api/periods/{period}/forecast-choice")' in src
+
+class TestP2写操作:
+    def test_revoke路由存在(self):
+        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
+        assert '@app.post("/api/periods/{period}/revoke")' in src
+
+    def test_fill路由存在(self):
+        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
+        assert '@app.post("/api/periods/{period}/fill")' in src
+
+    def test_flag路由存在(self):
+        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
+        assert '@app.post("/api/periods/{period}/flag")' in src
+
+    def test_revoke用require_admin(self):
+        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
+        block = src.split("async def api_period_revoke_json")[1].split("@app.")[0]
+        assert "require_admin" in block
+
+    def test_fill用require_admin(self):
+        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
+        block = src.split("async def api_period_fill_json")[1].split("@app.")[0]
+        assert "require_admin" in block
+
+    def test_flag用require_admin(self):
+        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
+        block = src.split("async def api_period_flag_json")[1].split("@app.")[0]
+        assert "require_admin" in block
