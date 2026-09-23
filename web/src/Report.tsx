@@ -190,6 +190,15 @@ function PeriodData({ period }: { period: string | null }) {
             </span>
             <span className="go">→</span>
           </a>
+          {/* 逐格溯源入口（P1）：报告里的值 ↔ 台账现场重读 */}
+          <a className="entry" style={{ marginTop: 12 }}
+             href={`/app/?view=trace${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+            <span>
+              <span className="t">逐格溯源</span>
+              <span className="d">报告里每个数字 ↔ 台账现场重读的值并排对照，写清来源表与「怎么来的」</span>
+            </span>
+            <span className="go">→</span>
+          </a>
         </div>
 
         {/* 页边朱批：待人工的那几处（本屏的"需要你拍板"） */}
