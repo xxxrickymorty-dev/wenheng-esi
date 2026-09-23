@@ -94,3 +94,35 @@ export async function postJob(period: string): Promise<{ id: string }> {
     body: JSON.stringify({ period }),
   })
 }
+
+/** 最近一次有产出的任务（老接口，字段形状见 jobs.list_jobs） */
+export type JobStatus = { active?: string | null; last?: { id?: string; period?: string } | null }
+
+export async function getStatus(): Promise<JobStatus> {
+  return req<JobStatus>('/api/status')
+}
+
+/** 产物：{key,label,name,size,url,primary}（jobs.collect_artifacts 的落盘形状） */
+export type Artifact = {
+  key: string
+  label: string
+  name: string
+  size: number | null
+  url: string
+  primary: boolean
+}
+
+export async function getArtifacts(jobId: string): Promise<Artifact[]> {
+  const r = await req<{ job: unknown; artifacts: Artifact[] }>(
+    `/api/jobs/${encodeURIComponent(jobId)}/artifacts`,
+  )
+  return r.artifacts ?? []
+}
+
+/** 字节数转人类可读——这是**格式**不是口径，允许在前端做 */
+export function humanSize(n: number | null): string {
+  if (n == null) return ''
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`
+  return `${(n / 1024 / 1024).toFixed(1)} MB`
+}

@@ -9,6 +9,7 @@ import {
 } from './api'
 import { Icon, Sprite } from './icons'
 import { Workbench } from './Workbench'
+import { Report } from './Report'
 import { deriveWorkbench, type WBState } from './wb'
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'fail-ledger', 'fail-other', 'stalled', 'signed']
@@ -21,6 +22,8 @@ export default function App() {
   const [detail, setDetail] = useState<PeriodDetail | null>(null)
   const [err, setErr] = useState<ApiError | null>(null)
   const [busy, setBusy] = useState(false)
+
+  const view = new URLSearchParams(location.search).get('view') === 'report' ? 'report' : 'workbench'
 
   const demo = useMemo(() => {
     const v = new URLSearchParams(location.search).get('demo') as WBState | null
@@ -79,7 +82,12 @@ export default function App() {
           <span>学科信息参考</span>
         </div>
         <nav className="nav" aria-label="工作区">
-          <a href="/app/" aria-current="page"><Icon name="play" size={19} />生成台</a>
+          <a href="/app/" aria-current={view === 'workbench' ? 'page' : undefined}>
+            <Icon name="play" size={19} />生成台
+          </a>
+          <a href="/app/?view=report" aria-current={view === 'report' ? 'page' : undefined}>
+            <Icon name="chart" size={19} />报告
+          </a>
           <a href="/app/shelf/"><Icon name="book" size={19} />陈列馆</a>
         </nav>
         <div className="who">
@@ -103,14 +111,18 @@ export default function App() {
           </div>
         )}
 
-        <Workbench
-          period={selected}
-          me={me}
-          wb={wb}
-          err={err}
-          healthy={healthy === true}
-          onGenerate={onGenerate}
-        />
+        {view === 'report' ? (
+          <Report periods={periods} current={selected} onPick={setSelected} />
+        ) : (
+          <Workbench
+            period={selected}
+            me={me}
+            wb={wb}
+            err={err}
+            healthy={healthy === true}
+            onGenerate={onGenerate}
+          />
+        )}
 
         <a className="entry" href="/app/shelf/">
           <span>
@@ -120,6 +132,7 @@ export default function App() {
           <span className="go" aria-hidden="true">→</span>
         </a>
 
+        {view === 'workbench' && (
         <section className="card" style={{ marginTop: 18, overflow: 'hidden' }}>
           <table className="periods">
             <thead>
@@ -152,6 +165,7 @@ export default function App() {
             </tbody>
           </table>
         </section>
+        )}
 
         <p className="hint" style={{ marginTop: 14 }}>
           {busy && '正在提交生成请求……'}

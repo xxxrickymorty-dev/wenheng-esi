@@ -154,3 +154,77 @@ a{color:inherit}
   .steplist{margin-left:0}
   .focus .cta{margin-left:0}
 }
+
+/* ============================================================================
+   报告（数据视图）——取自静态稿 mockups/v2-工作台与报告.html 的报告屏
+   ========================================================================== */
+.report-head{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:34px;
+  padding:32px 0 0;align-items:start}
+@media (max-width:900px){.report-head{grid-template-columns:1fr}}
+.eyebrow{font-size:13px;color:var(--gold-ink);letter-spacing:.14em}
+.display{margin:10px 0 0;font-family:var(--serif);font-weight:600;line-height:1.08;
+  font-size:clamp(2.2rem,5vw,3.8rem);letter-spacing:-.02em}
+.display small{display:block;font-size:.32em;font-weight:400;color:var(--ink-2);
+  letter-spacing:.02em;margin-top:.6em;line-height:1.5}
+.rule{height:1px;background:linear-gradient(90deg,var(--gold),transparent);margin:20px 0 0}
+
+/* 期次印记链：记忆点 */
+.chain{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px 18px}
+.chain h3{margin:0 0 4px;font-size:14.5px;color:var(--ink-2)}
+.chain .cap{margin:0 0 16px;font-size:13px;color:var(--ink-3);line-height:1.6}
+.seals{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px}
+.sealbox{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.seal{width:44px;height:44px;border-radius:7px;display:grid;place-items:center;
+  font-family:var(--mono);font-size:11.5px;font-weight:700;position:relative;overflow:hidden;
+  transition:translate .18s ease}
+.seal::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(circle at 32% 26%,rgba(255,255,255,.30),transparent 58%),
+             radial-gradient(circle at 72% 82%,rgba(0,0,0,.16),transparent 62%)}
+.seal.signed{background:var(--zhu);color:#fff;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.34),0 1px 2px rgba(47,42,36,.18)}
+.seal.stale{background:transparent;color:var(--gold-ink);
+  box-shadow:inset 0 0 0 2px var(--gold),0 0 0 1px var(--gold-soft)}
+.seal.unsigned{background:transparent;color:var(--ink-3);box-shadow:inset 0 0 0 2px var(--line)}
+.seals .sealbox:nth-child(1) .seal{rotate:-1.4deg}
+.seals .sealbox:nth-child(2) .seal{rotate:.9deg}
+.seals .sealbox:nth-child(3) .seal{rotate:-.6deg}
+.seals .sealbox:nth-child(4) .seal{rotate:1.3deg}
+.seals .sealbox:nth-child(5) .seal{rotate:-1deg}
+.seals .sealbox:nth-child(6) .seal{rotate:.3deg}
+.seal.now{scale:1.12;translate:0 -2px}
+.sealbox:hover .seal{translate:0 -3px}
+.sealbox .lbl{font-size:12.5px;color:var(--ink-3);line-height:1.45}
+.sealbox .now-tag{font-size:11.5px;color:var(--zhu);font-weight:700;letter-spacing:.06em}
+.legend{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line-2);
+  display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-3)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;
+  vertical-align:-1px;border:1px solid transparent}
+
+/* 读数带（待接口时整块说清"等什么"） */
+.readouts{display:flex;gap:40px;flex-wrap:wrap;padding:24px 0 4px}
+.readout .k{font-size:13.5px;color:var(--ink-3)}
+.readout .v{font-family:var(--serif);font-size:clamp(1.7rem,3vw,2.3rem);line-height:1.15;margin-top:2px}
+.readout .d{font-size:13.5px;color:var(--zhu);font-family:var(--mono)}
+.readout .v.pending{color:var(--ink-3);font-size:1.4rem}
+
+/* 待接口的整块说明（诚实态，不填假数） */
+.pending-box{border:1px dashed var(--line);border-radius:var(--r-sm);padding:16px 18px;
+  margin-top:18px;color:var(--ink-3);font-size:14.5px;line-height:1.75}
+.pending-box b{color:var(--ink-2)}
+.pending-box code{font-family:var(--mono);font-size:13px;color:var(--ink-2)}
+
+/* 产物卡（真数据） */
+.artifacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-top:14px}
+.art{display:flex;gap:12px;align-items:flex-start;padding:15px 16px;border:1px solid var(--line-2);
+  border-radius:var(--r-sm);background:var(--panel)}
+.art .ico{flex:0 0 24px;color:var(--zhu);margin-top:2px}
+.art .n{font-weight:600;font-size:15.5px}
+.art .m{font-size:13.5px;color:var(--ink-3);margin-top:2px}
+.art .go{margin-left:auto;align-self:center;color:var(--zhu);font-size:14.5px;white-space:nowrap}
+.art a{text-decoration:none}
+
+/* 印记链：每格都留出「本期」标签那一行，否则当前期会被挤下去、整排不齐 */
+.sealbox .now-tag{display:block;min-height:1.35em}
+/* 产物卡：标题与文件名各占一行，别黏在一起 */
+.art .n{display:block}
+.art .m{display:block}
