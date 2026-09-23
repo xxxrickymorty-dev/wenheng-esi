@@ -263,6 +263,69 @@ def plan_events(tx: T.LedgerTx, adds: list) -> tuple[str, dict]:
     return xml, {"cells": n}
 
 
+def read_top_counts(esi_dir: pathlib.Path) -> tuple[dict, dict, int]:
+    """Top 论文清单（`291top.xlsx` / `top274.xlsx`）→（学科计数, 年度计数, 合计）。
+
+    口径（2026-09-23 与台账逐格对上）：逐科计数 = 该学科 Top 论文篇数（含未进 ESI 榜的学科）；
+    合计 = 清单总篇数（202607=274、202609=291）；年度行 = 按 Publication Date 年份计数。
+    """
+    cands = sorted(p for p in esi_dir.glob("*top*.xlsx")
+                   if "highly" not in p.name.lower() and "hot" not in p.name.lower())
+    if not cands:
+        raise SystemExit(f"[缺件] {esi_dir.name} 里没有 Top 论文清单（形如 291top.xlsx）")
+    rows = _rows(cands[0])
+    hi = next((i for i, r in enumerate(rows[:14])
+               if r and any(str(c).strip() in ("Research Field", "Research Fields")
+                            for c in r if c is not None)), None)
+    if hi is None:
+        raise SystemExit(f"[缺表头] {cands[0].name} 里找不到 Research Field 表头")
+    h = [str(c).strip() if c is not None else "" for c in rows[hi]]
+    fi = _col(h, "Research Field")
+    yi = _col(h, "Publication Date")
+    subj, years, total = {}, {}, 0
+    for r in rows[hi + 1:]:
+        if not r or fi >= len(r) or r[fi] is None:
+            continue
+        nm = str(r[fi]).strip().upper()
+        if nm not in UP2EN:
+            continue
+        total += 1
+        subj[UP2EN[nm]] = subj.get(UP2EN[nm], 0) + 1
+        y = str(r[yi]).strip()[:4] if yi is not None and yi < len(r) and r[yi] is not None else ""
+        if y.isdigit():
+            years[y] = years.get(y, 0) + 1
+    return subj, years, total
+
+
+def plan_top_extra(xml: str, ledger: pathlib.Path, period: str, years: dict,
+                   total: int) -> tuple[str, dict]:
+    """在（已追加期次列的）TOP论文 XML 上补：「高被引论文合计（篇）」两行 + 年度行。"""
+    g, shared = T.read_grid(ledger, "TOP论文")
+    hdr = {cn: str(T.gtext(g, shared, 1, cn) or "").strip() for cn in g.get(1, {})}
+    period_cols = [(T.col_index(cn), cn) for cn, v in hdr.items() if re.fullmatch(r"20\d{4}", v)]
+    last_i, _last_cn = max(period_cols)
+    period_col = next((cn for _i, cn in period_cols if hdr[cn] == period), None) or T.col_letter(last_i + 1)
+    prev_col = T.col_letter(T.col_index(period_col) - 1)
+    ops = {}
+    for rn in sorted(g):
+        nm = str(T.gtext(g, shared, rn, "A") or "").strip()
+        if nm.startswith("高被引论文合计"):
+            v = total
+        elif re.fullmatch(r"20\d\d", nm):
+            v = years.get(nm)
+        else:
+            continue
+        if period_col in g.get(rn, {}):
+            ops[(rn, period_col)] = ("set", v)
+        else:
+            style = g.get(rn, {}).get(prev_col, ("", None))[0]
+            inner = f"<v>{T._fmt(v)}</v>" if v is not None else None
+            ops[(rn, period_col)] = ("new", style, "", inner)
+    xml, n = T.edit_cells(xml, ops)
+    xml = T.fix_dimension(xml, T.col_index(period_col), T.max_row_xml(xml))
+    return xml, {"cells": n}
+
+
 def read_thresholds(esi_dir: pathlib.Path) -> dict:
     p = esi_dir / "ThresholdESI.xlsx"
     if not p.exists():
@@ -431,7 +494,13 @@ def main() -> int:
     apply("云大ESI排名", plan_esi_rank(tx, period, rank))
     apply("总被引", T.plan_wide(tx, "总被引", period, {s: v[1] for s, v in ynu.items()}))
     apply("论文数", T.plan_wide(tx, "论文数", period, {s: v[0] for s, v in ynu.items()}))
-    apply("TOP论文", T.plan_wide(tx, "TOP论文", period, {s: v[3] for s, v in ynu.items()}))
+    # TOP论文：逐科计数改用**Top 论文清单**（覆盖含未进 ESI 榜的 5 科），再补合计行与年度行
+    top_subj, top_years, top_total = read_top_counts(esi_dir)
+    xml_top, log_top = T.plan_wide(tx, "TOP论文", period, {s: top_subj.get(s) for s in SUBJECTS})
+    xml_top, log_top2 = plan_top_extra(xml_top, tx.path, period, top_years, top_total)
+    tx.put_sheet("TOP论文", xml_top)
+    log["TOP论文"] = {"cells": log_top["cells"] + log_top2["cells"]}
+    print(f"    TOP论文：学科 {len(top_subj)} 科 + 年度 {len(top_years)} 行 + 合计 {top_total}")
     apply("ESI被引阈值", T.plan_wide(tx, "ESI被引阈值", period, thr))
     # 篇均被引：3 列（云大 / 中国大陆 / 国际）——云大只写在榜学科；中国/国际写能取到的学科
     avg_vals = {}
