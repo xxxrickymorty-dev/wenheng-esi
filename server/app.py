@@ -1136,6 +1136,84 @@ async def api_period_charts_json(request: Request, period: str,
     return _paginate(items, limit, offset)
 
 
+@app.get("/api/ledger/sheets")
+async def api_ledger_sheets(request: Request, period: str = ""):
+    if not current_user(request):
+        return JSONResponse({"error": "未登录"}, status_code=401)
+    import openpyxl                                        # noqa: PLC0415
+    m = jobs.PERIOD_RE.match(period or "")
+    if m:
+        lp = config.INPUT_DIR / m.group(0) / "台账.xlsx"
+    else:
+        lp = None
+        for d in sorted(config.INPUT_DIR.glob("*/台账.xlsx"), reverse=True):
+            lp = d
+            break
+    if lp is None or not lp.exists():
+        return JSONResponse({"error": "台账文件不存在"}, status_code=404)
+    try:
+        wb = openpyxl.load_workbook(str(lp), read_only=True, data_only=True)
+    except Exception as exc:                               # noqa: BLE001
+        return JSONResponse({"error": f"台账读取失败：{exc}"}, status_code=500)
+    sheets = []
+    for ws in wb.worksheets:
+        rows = ws.iter_rows(max_row=2, values_only=True)
+        header = next(rows, ()) or ()
+        cols = [str(c).strip() if c is not None else "" for c in header]
+        periods = [c for c in cols[1:] if c and c[0].isdigit() and len(c) == 6]
+        sheets.append({
+            "name": ws.title,
+            "columns": cols[:20],
+            "n_columns": len(cols),
+            "periods": periods[:30],
+            "n_periods": len(periods),
+        })
+    wb.close()
+    return {"file": lp.name, "sheets": sheets, "n_sheets": len(sheets)}
+
+
+@app.post("/api/analyze")
+async def api_analyze(request: Request):
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    body = await request.json()
+    period = str(body.get("period", "")).strip()
+    scope = str(body.get("scope", "")).strip()
+    d = resolve_period_dir(period) if period else None
+    if d is None:
+        return JSONResponse({"error": "期次不存在"}, status_code=404)
+    facts_file = d / "overview_facts.json"
+    meta_file = d / "meta.json"
+    if not facts_file.exists():
+        return JSONResponse({"error": "该期次尚无 overview_facts.json"}, status_code=404)
+    try:
+        facts = json.loads(facts_file.read_text(encoding="utf-8"))
+        meta = json.loads(meta_file.read_text(encoding="utf-8")) if meta_file.exists() else {}
+    except (OSError, json.JSONDecodeError) as exc:
+        return JSONResponse({"error": f"数据读取失败：{exc}"}, status_code=500)
+    # 硬约束：LLM 不进数据路径。text 由 sentences.build() 组装。
+    import sentences                                      # noqa: PLC0415
+    import local_llm                                      # noqa: PLC0415
+    P = meta.get("period_current") or period
+    Q = meta.get("period_prev") or ""
+    texts = sentences.build(facts, P, Q)
+    # scope 过滤：空=全部；否则只取匹配 key 的段落
+    if scope:
+        texts = {k: v for k, v in texts.items() if scope in k or k in scope}
+    # 数字防护盾：protect() 把数字换成占位符，shields 记录映射
+    shields = []
+    for key, t in texts.items():
+        protected, mapping = local_llm.protect(t)
+        shields.append({
+            "key": key,
+            "n_numbers": len(mapping),
+            "protected_len": len(protected),
+        })
+    return {"period": P, "prev": Q, "text": texts, "shields": shields,
+            "n_sections": len(texts), "backend": "sentences"}
+
+
 @app.get("/api/forecast/meta")
 async def api_forecast_meta(request: Request):
     guard = require_admin(request)
