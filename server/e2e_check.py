@@ -232,6 +232,16 @@ if jobid:
     st, rp, _ = call("GET", f"/jobs/{jobid}/redslots")
     check(f"GET /jobs/{jobid}/redslots → 200", st == 200, f"got {st}")
     check("任务入口清单回链指向任务对勘本", f'href="/jobs/{jobid}/collation"' in rp)
+    # GET /api/jobs/{jobid}/progress（任务瀑布 JSON，老站模板那步的前移）
+    st, pg, _ = call("GET", f"/api/jobs/{jobid}/progress")
+    check(f"GET /api/jobs/{jobid}/progress → 200", st == 200, f"got {st}")
+    check("progress 有 events/waterfall/total_sec",
+          '"events"' in pg and '"waterfall"' in pg and '"total_sec"' in pg)
+    if '"missing": false' in pg:
+        check("progress 的 waterfall 有真数据（sec/step）",
+              '"sec"' in pg and '"step"' in pg)
+    else:
+        check("progress missing 时给 note 说明", '"note"' in pg)
 
 out("=== 9. 签单闸门与落库（先归零） ===")
 st, _, f0 = call("POST", "/p/202607/revoke", {"note": "e2e 前置归零", "back": "/p/202607"})

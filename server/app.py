@@ -879,6 +879,37 @@ async def api_approval(request: Request, job_id: str):
     return rec
 
 
+@app.get("/api/jobs/{job_id}/progress")
+async def api_job_progress(request: Request, job_id: str):
+    """任务潜布：parse progress.jsonl -> events + 每步耗时。
+
+    与档案页同口径：复用 `archive.waterfall`（start/收工配对、
+    累计 elapsed 转本步耗时、orphan 标注）。数字只来自后端。
+
+    直跑路径（一键出报告.bat）没有 progress.jsonl：missing=true 降级，不 500。
+    """
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    job = jobs.read_job(job_id)
+    if not job:
+        return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
+    prog = pathlib.Path(job.get("progress") or "")
+    missing = bool(prog) and not prog.exists()
+    events = jobs.read_progress(job)
+    wf = archive.waterfall(events)
+    return {
+        "job_id": job_id,
+        "status": job.get("status", ""),
+        "events": events,
+        "waterfall": wf,
+        "total_sec": round(sum(r["sec"] for r in wf), 1),
+        "missing": missing,
+        "note": ("本次运行没有 progress.jsonl（不是由演示站发起的，"
+                 "例如一键出报告.bat 直跑）") if missing else "",
+    }
+
+
 # ---------------- API ----------------
 
 @app.get("/healthz")
