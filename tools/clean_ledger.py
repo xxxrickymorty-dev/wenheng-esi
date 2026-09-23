@@ -46,6 +46,8 @@ def main() -> int:
     ap.add_argument("--out", default=None, help="产出清洗后副本（原台账不动）")
     ap.add_argument("--write", action="store_true", help="顺序写台账")
     ap.add_argument("--skip-permille", action="store_true", help="跳过第 3 步（千分之一被引阈值）")
+    ap.add_argument("--append-events", action="store_true",
+                    help="在榜核对发现新进/退出时，追加到《学科进入时间》（默认只提示不写）")
     args = ap.parse_args()
     period = args.period
     ledger = pathlib.Path(args.ledger)
@@ -59,6 +61,8 @@ def main() -> int:
     if args.esi_root:
         perm_args += ["--data-root", args.esi_root]
     esi_args = [period] + (["--esi-root", args.esi_root] if args.esi_root else [])
+    if args.append_events:
+        esi_args += ["--append-events"]
 
     if not (args.out or args.write):
         r1 = run("extract_esi.py", esi_args)

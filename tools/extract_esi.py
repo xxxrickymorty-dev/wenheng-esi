@@ -203,6 +203,66 @@ def read_cn_global(esi_dir: pathlib.Path) -> tuple[dict, dict, list]:
     return cn, gl, notes
 
 
+def read_in_list(esi_dir: pathlib.Path) -> tuple[set, list, list]:
+    """本期各学科 ESI 榜里有没有云大 → (在榜集合, 缺件, 解析异常)。"""
+    hit, miss, bad = set(), [], []
+    for s in SUBJECTS:
+        p = T._resolve_file(esi_dir, s)
+        if p is None:
+            miss.append(s)
+            continue
+        try:
+            if T.read_esi_list(p)["ypos"]:
+                hit.add(s)
+        except Exception as e:                                     # noqa: BLE001
+            bad.append((s, str(e)))
+    return hit, miss, bad
+
+
+def read_entry_state(led: pathlib.Path, period: str) -> set:
+    """《学科进入时间》事件推到 period 为止的在榜集合。"""
+    wb = openpyxl.load_workbook(str(led), data_only=True)
+    try:
+        events, _ = PL.parse_entry_events(wb["学科进入时间"], [])
+    finally:
+        wb.close()
+    cur = set()
+    for ym, d, typ in sorted(events, key=lambda x: (x[0], 0 if x[2] == "in" else 1)):
+        if ym <= period:
+            cur.add(d) if typ == "in" else cur.discard(d)
+    return cur
+
+
+def plan_events(tx: T.LedgerTx, adds: list) -> tuple[str, dict]:
+    """往《学科进入时间》表尾追加事件行；adds: [(期次, 学科EN, "in"|"out")]。"""
+    sheet = "学科进入时间"
+    xml = tx.sheet_xml(sheet)
+    g, shared = T.read_grid(tx.path, sheet)
+    last = T.max_row_xml(xml)
+    styles = {cn: (g.get(last, {}).get(cn, ("", None))[0] or "") for cn in ("A", "B", "C", "D")}
+    rn = last
+    n = 0
+    for ym, en, typ in adds:
+        rn += 1
+        cn_name = PL.DISCIPLINES_CN.get(en) or en
+        ops = {}
+        if typ == "in":
+            ops[(rn, "A")] = ("new", styles["A"], "", f"<v>{ym[:4]}</v>")
+            t_attr, inner = T.text_op(shared, f"{int(ym[4:])}月")
+            ops[(rn, "B")] = ("new", styles["B"], t_attr, inner)
+            t_attr, inner = T.text_op(shared, cn_name)
+            ops[(rn, "C")] = ("new", styles["C"], t_attr, inner)
+            t_attr, inner = T.text_op(shared, "是")
+            ops[(rn, "D")] = ("new", styles["D"], t_attr, inner)
+        else:
+            t_attr, inner = T.text_op(shared, f"{ym[:4]}年{int(ym[4:])}月{cn_name}退出")
+            ops[(rn, "C")] = ("new", styles["C"], t_attr, inner)
+        xml = T.append_row(xml, rn, ops, 4, shared)
+        n += len(ops)
+    xml = T.fix_dimension(xml, 4, rn)
+    return xml, {"cells": n}
+
+
 def read_thresholds(esi_dir: pathlib.Path) -> dict:
     p = esi_dir / "ThresholdESI.xlsx"
     if not p.exists():
@@ -295,6 +355,8 @@ def main() -> int:
     ap.add_argument("--out", default=None)
     ap.add_argument("--write", action="store_true")
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--append-events", action="store_true",
+                    help="把「在榜核对」查出的新进/退出事件追加到《学科进入时间》表尾")
     args = ap.parse_args()
     period = args.period
     esi_dir = pathlib.Path(args.esi_root) / period
@@ -306,12 +368,31 @@ def main() -> int:
     ynu = read_ynu_fields(esi_dir)
     cn_cpp, gl_cpp, notes = read_cn_global(esi_dir)
     thr = read_thresholds(esi_dir)
+    in_list, miss, bad = read_in_list(esi_dir)
+    state = read_entry_state(ledger, period)
     for n in notes:
         print(f"[!] {n}")
 
     print(f"== 云大ESI排名 {period}: 国际={rank['国际排名']} 国内={rank['国内排名']} 高校={rank['国内高校排名']}")
     print(f"== 在榜学科 {len(ynu)} 个（总被引/论文数/TOP论文）+ 篇均：云大 {len(ynu)} / 中国 {len(cn_cpp)} / 国际 {len(gl_cpp)}")
     print(f"== ESI被引阈值 {len(thr)} 学科（示例 Chemistry={thr.get('Chemistry')}）")
+    adds = []
+    if miss or bad:
+        print(f"== 在榜核对：缺件 {len(miss)} / 解析异常 {len(bad)} → 跳过事件推断（不瞎报）")
+    else:
+        need_in = [s for s in SUBJECTS if s in in_list - state]
+        need_out = [s for s in SUBJECTS if s in state - in_list]
+        if need_in or need_out:
+            print(f"== 在榜核对：ESI 包 {len(in_list)} 个 vs 台账事件状态 {len(state)} 个 → 有差异")
+            for s in need_in:
+                print(f"    [建议·进入] {period[:4]}年{int(period[4:])}月 {PL.DISCIPLINES_CN.get(s) or s}")
+                adds.append((period, s, "in"))
+            for s in need_out:
+                print(f"    [建议·退出] {period[:4]}年{int(period[4:])}月 {PL.DISCIPLINES_CN.get(s) or s}退出")
+                adds.append((period, s, "out"))
+            print("    （《学科进入时间》缺以上事件；--append-events 可自动追加）")
+        else:
+            print(f"== 在榜核对：ESI 包 {len(in_list)} 个 == 台账事件状态 {len(state)} 个 ✓")
 
     ex = existing_extra(ledger, period)
     bad = []
@@ -361,6 +442,8 @@ def main() -> int:
         if a is not None or b is not None or c is not None:
             avg_vals[s] = (a, b, c)
     apply("篇均被引", plan_avg3(tx, "篇均被引", period, avg_vals))
+    if args.append_events and adds:
+        apply("学科进入时间", plan_events(tx, adds))
     T._do_write(tx, ledger, args, tag=f"回填{period}ESI侧前", preview_log=log)
     return 0
 
