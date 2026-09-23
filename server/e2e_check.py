@@ -473,7 +473,7 @@ check("没填内容时 rebuild 拒绝执行", "还没有填写内容" in _rf, f"
 check("提示拼在问号位置而非锚点后", "?err=" in _rf and "?err=" not in _rf.split("#")[-1],
       f"final={_rfin}")
 
-out("=== 16. 新 API 端点（契约 §2.2 #1-#10） ===")
+out("=== 16. 新 API 端点（契约 §2.2 #1-#12） ===")
 # GET /api/me
 st, me, _ = call("GET", "/api/me")
 check("GET /api/me 200", st == 200, f"got {st}")
