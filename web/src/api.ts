@@ -111,6 +111,44 @@ export async function getJob(jobId: string): Promise<Job> {
   return req<Job>(`/api/jobs/${encodeURIComponent(jobId)}`)
 }
 
+/** 任务瀑布里的一步（契约 §2.2 #15）。sec 是**后端算好的**本步耗时，前端不自己减。 */
+export type WaterfallRow = {
+  step: string
+  name: string
+  status: string
+  detail: string
+  sec: number
+  at: string
+  /** 只有开工或只有收工记录：耗时不闭合，界面要标出来 */
+  orphan: boolean
+}
+
+/** 原始进度记录（一步可能有好几条：开工 / 提醒 / 收工） */
+export type ProgressEvent = {
+  ts?: string
+  step?: string
+  name?: string
+  status?: string
+  detail?: string
+  elapsed?: number
+}
+
+export type JobProgress = {
+  job_id: string
+  status: string
+  events: ProgressEvent[]
+  waterfall: WaterfallRow[]
+  total_sec: number
+  /** 这台机器上读不到进度记录（如工作区迁移过） */
+  missing: boolean
+  note: string
+}
+
+/** 这次运行每一步用了多久（后端把进度事件换算好；生成中可反复取） */
+export async function getJobProgress(jobId: string): Promise<JobProgress> {
+  return req<JobProgress>(`/api/jobs/${encodeURIComponent(jobId)}/progress`)
+}
+
 /** 最近一次有产出的任务（老接口，字段形状见 jobs.list_jobs） */
 export type JobStatus = { active?: string | null; last?: { id?: string; period?: string } | null }
 

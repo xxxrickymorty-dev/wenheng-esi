@@ -279,6 +279,25 @@ a{color:inherit}
   border-radius:var(--r-sm);padding:8px 12px;font:inherit;font-size:14px;color:var(--ink-2);cursor:pointer}
 .switch.on{background:var(--zhu-soft, rgba(178,58,42,.12));border-color:var(--zhu);color:var(--zhu)}
 .pill.manual{background:var(--zhu-soft, rgba(178,58,42,.12));border-color:var(--zhu);color:var(--zhu)}
+
+/* 任务瀑布（生成台·工具卡）：每步一行——名称/状态/横条/秒数。
+   横条只是「相对快慢」的示意，宽度用后端给的每步秒数直接画，前端不另算数。 */
+.wf{margin-top:10px;display:flex;flex-direction:column}
+.wf-row{display:flex;align-items:center;gap:14px;padding:9px 0;border-bottom:1px solid var(--line-2)}
+.wf-row:last-child{border-bottom:none}
+.wf-name{flex:0 0 210px;min-width:0;line-height:1.45}
+.wf-name b{display:block;font-size:15.5px;font-weight:600}
+.wf-name small{display:block;color:var(--ink-3);font-size:13.5px}
+.wf-state{flex:0 0 88px;display:flex;align-items:center;gap:6px;font-size:13.5px}
+.wf-track{flex:1;height:10px;border-radius:99px;background:var(--line-2);overflow:hidden}
+.wf-track i{display:block;height:100%;border-radius:99px;transition:width .3s}
+.wf-sec{flex:0 0 92px;text-align:right;font-family:var(--mono);font-size:14.5px;color:var(--ink-2)}
+@media (max-width:760px){
+  .wf-row{flex-wrap:wrap;gap:6px 12px}
+  .wf-name{flex:1 1 100%}
+  .wf-track{flex:1 1 120px}
+  .wf-sec{flex:0 0 auto}
+}
 @media (max-width:1000px){
   .reading-grid{grid-template-columns:1fr}
   .col-l,.col-m{border-right:0;border-bottom:1px solid var(--line)}

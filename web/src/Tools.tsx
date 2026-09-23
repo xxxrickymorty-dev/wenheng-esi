@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react'
 import { getArtifacts, getStatus, postJobWithFile, rerunJob } from './api'
 import { Icon } from './icons'
+import { Waterfall } from './Waterfall'
 
 export function Tools({ period, jobId, onUploaded }: {
   period: string | null
@@ -126,6 +127,9 @@ export function Tools({ period, jobId, onUploaded }: {
           <p className="hint" style={{ marginTop: 6, fontSize: 13 }}>扫一下，同一页在手机上打开</p>
         </div>
       </div>
+
+      {/* 这次运行每一步用了多久（跑完也能回看；生成中自动刷新） */}
+      {effJobId && <Waterfall jobId={effJobId} />}
     </section>
   )
 }
