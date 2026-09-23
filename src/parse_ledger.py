@@ -620,13 +620,20 @@ def _known_names(ledger, metric, df):
 
 
 def run_assertions(ledger):
-    """机器断言闸：结构级不变量。返回 (ok, report)。"""
-    report, ok = [], True
+    """机器断言闸：结构级不变量。返回 (ok, report, missing)。
 
-    def check(cond, msg):
+    missing 是结构化的「缺什么」：`[{sheet, column, note}]`，
+    供生成台失败文案直接用（"缺哪张表哪一列 + 下一步做什么"），
+    不让前端去解析断言文本。契约 §2.3。
+    """
+    report, missing, ok = [], [], True
+
+    def check(cond, msg, sheet=None, column=None):
         nonlocal ok
         report.append(("PASS" if cond else "FAIL", msg))
-        ok = ok and cond
+        if not cond:
+            ok = False
+            missing.append({"sheet": sheet or "", "column": column or "", "note": msg})
 
     P, _Q = _latest_periods(ledger)
     TOP_BLANK_OK = {"Multidisciplinary", "Neuroscience & Behavior", "Immunology"}
@@ -637,15 +644,15 @@ def run_assertions(ledger):
         known = _known_names(ledger, m, df)
         missing = sorted(set(DISCIPLINES_EN) - known)
         check(len(known) == 22, f"宽表 {m} 学科数=22 (实际 {len(known)}"
-                                + (f"，缺 {missing}" if missing else "") + ")")
+                                + (f"，缺 {missing}" if missing else "") + ")", sheet=m)
         check(not missing, f"宽表 {m} 学科名单一致"
-                           + (f"（缺 {missing}）" if missing else ""))
-        check(P in df.columns, f"宽表 {m} 含期次 {P}")
+                           + (f"（缺 {missing}）" if missing else ""), sheet=m, column="discipline")
+        check(P in df.columns, f"宽表 {m} 含期次 {P}", sheet=m, column=P)
         if m == "top_papers":
             na_set = set(df[P][df[P].isna()].index)
             check(na_set <= TOP_BLANK_OK, f"宽表 {m} {P} 期空白仅限 {TOP_BLANK_OK} (实际 {sorted(na_set)})")
         else:
-            check(df[P].notna().sum() == 22, f"宽表 {m} {P} 期无缺失")
+            check(df[P].notna().sum() == 22, f"宽表 {m} {P} 期无缺失", sheet=m, column=P)
         future = [c for c in df.columns if c > P]
         for fc in future:
             if m == "cnci":
@@ -660,16 +667,16 @@ def run_assertions(ledger):
         check(y.loc[P, "rank_intl"] == 995, "金样(202607)：国际排名=995")
     for df, nm in [(ledger["new_intl"], "新国际排名"), (ledger["new_cn"], "新国内排名")]:
         check(df.period.nunique() >= 5, f"{nm} 期组数≥5")
-        check(df.discipline.nunique() == 22, f"{nm} 学科数=22")
+        check(df.discipline.nunique() == 22, f"{nm} 学科数=22", sheet=nm, column="discipline")
         check((df.period == P).sum() == 22, f"{nm} 含 {P} 全 22 行")
     for df, nm in [(ledger["rank_intl"], "国际排名"), (ledger["rank_cn"], "国内排名")]:
         check(df.period.nunique() >= 40, f"{nm} 期数≥40")
         check((df.period == P).sum() == 22, f"{nm} 含 {P} 全 22 行")
-    check(P in ledger["threshold_1permille"].columns, f"千分之一阈值含 {P}")
+    check(P in ledger["threshold_1permille"].columns, f"千分之一阈值含 {P}", sheet="threshold_1permille", column=P)
     ent = ledger["entered_1pct"]
-    check(ent.shape[0] == 22, f"进入前1%矩阵 学科数=22 (实际 {ent.shape[0]})")
-    check(P in ent.columns, f"进入前1%矩阵 含期次 {P}")
-    check(ent[P].notna().sum() == 22, f"进入前1%矩阵 {P} 期无缺失")
+    check(ent.shape[0] == 22, f"进入前1%矩阵 学科数=22 (实际 {ent.shape[0]})", sheet="entered_1pct", column="discipline")
+    check(P in ent.columns, f"进入前1%矩阵 含期次 {P}", sheet="entered_1pct", column=P)
+    check(ent[P].notna().sum() == 22, f"进入前1%矩阵 {P} 期无缺失", sheet="entered_1pct", column=P)
     if "202601" in ent.columns:
         # 🔴 金样锚点：第 1 期人工原件写「ESI前1%学科13个」。用接近度>=1 会算成 14（多算数学）。
         #    这条断言锁死新口径，防止哪天被改回接近度口径而无人察觉。
@@ -679,7 +686,7 @@ def run_assertions(ledger):
     if P == "202607":
         check(ledger["top_total"].get(P) == 274, "金样(202607)：顶尖论文合计=274")
     check(ledger["province"].shape == (6, 9), f"省高校表 6 指标 × 9 校 (实际 {ledger['province'].shape})")
-    return ok, report
+    return ok, report, missing
 
 
 def unmatched_name_hints(ledger) -> dict:
@@ -774,7 +781,7 @@ def write_outputs(ledger, path, out_dir):
     """把已解析台账落盘为规整数据 + meta，返回 (ok, meta)。"""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    ok, report = run_assertions(ledger)
+    ok, report, missing = run_assertions(ledger)
     P, Q = _latest_periods(ledger)
     next_cols = [c for c in ledger["wide"]["total_cites"].columns if c > P]
 
@@ -809,6 +816,7 @@ def write_outputs(ledger, path, out_dir):
         "input": str(path),
         "assertions_ok": ok,
         "assertions": report,
+        "missing": missing,
         "clean_log": ledger["clean_log"],
         "provinces": ledger["province"].columns.tolist(),
         "province_entry_block": ledger["province_entry"],

@@ -102,7 +102,7 @@ def main(ledger_path, out_root="out", run_backtest=False):
     _emit("parse", "解析台账", "start", f"输入：{p.name}")
     print(f"[1/5] 解析台账: {p}")
     ledger = parse_ledger.load_ledger(p)
-    ok, report = parse_ledger.run_assertions(ledger)
+    ok, report, missing = parse_ledger.run_assertions(ledger)
     P, Q = parse_ledger._latest_periods(ledger)
     out_dir = pathlib.Path(out_root) / P
 
@@ -194,7 +194,7 @@ def main(ledger_path, out_root="out", run_backtest=False):
 
     log = {
         "period": P, "prev": Q, "input": str(p),
-        "assertions_ok": ok, "assertions_fail": n_fail,
+        "assertions_ok": ok, "assertions_fail": n_fail, "missing": missing,
         "predict_mape_overall": round(float(mape), 3),
         "charts": n_charts,
         "docx": str(docx_path),

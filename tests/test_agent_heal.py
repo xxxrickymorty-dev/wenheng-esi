@@ -386,7 +386,7 @@ def test_学科名写错时断言点名到具体学科(dirty_alias_ledger, tmp_p
     """⚠ 回归护栏：宽表 reindex 后 df.index 恒为 22 个规范名，
     若断言用 df.index 判名单，这两条断言会**恒真**——学科名写错也放行。"""
     from parse_ledger import load_ledger, run_assertions
-    ok, report = run_assertions(load_ledger(dirty_alias_ledger["path"]))
+    ok, report, _missing = run_assertions(load_ledger(dirty_alias_ledger["path"]))
     fails = [m for s, m in report if s == "FAIL"]
     assert not ok, "拼错的学科名必须被拦住"
     assert any("Chemistry" in m for m in fails), f"应点名缺的是谁，实际：{fails[:3]}"

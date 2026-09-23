@@ -1205,6 +1205,9 @@ async def api_job(request: Request, job_id: str):
     job = jobs.read_job(job_id)
     if not job:
         return JSONResponse({"error": "任务不存在"}, status_code=404)
+    # 契约 §2.3：失败态给结构化的「缺什么」，不让前端解析断言文本
+    if job.get("missing"):
+        job["ok"] = False
     return job
 
 

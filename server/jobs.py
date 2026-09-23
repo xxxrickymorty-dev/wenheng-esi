@@ -218,6 +218,8 @@ async def _run(job):
         job["out_period"] = newest.parent.name
         try:
             job["stats"] = json.loads(newest.read_text(encoding="utf-8"))
+            if job["stats"].get("missing"):
+                job["missing"] = job["stats"]["missing"]
         except (OSError, json.JSONDecodeError):
             pass
     write_job(job)

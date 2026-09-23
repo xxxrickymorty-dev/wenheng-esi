@@ -26,7 +26,7 @@ T2_COLUMNS = [
 
 def test_台账到产物主链路(latest_ledger, tmp_path):
     ledger = parse_ledger.load_ledger(latest_ledger)
-    ok, _ = parse_ledger.run_assertions(ledger)
+    ok, _, _missing = parse_ledger.run_assertions(ledger)
     assert ok, "断言闸未过，主链路不应继续"
 
     P, Q = parse_ledger._latest_periods(ledger)

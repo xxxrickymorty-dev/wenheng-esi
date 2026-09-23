@@ -14,7 +14,7 @@ def test_所有台账断言全绿(all_ledgers):
     bad = []
     for led in all_ledgers:
         ledger = parse_ledger.load_ledger(led)
-        ok, report = parse_ledger.run_assertions(ledger)
+        ok, report, _missing = parse_ledger.run_assertions(ledger)
         if not ok:
             fails = [m for s, m in report if s == "FAIL"]
             bad.append(f"{led.parent.name}: {fails}")

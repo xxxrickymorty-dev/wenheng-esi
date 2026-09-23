@@ -149,7 +149,7 @@ def run_parse(ledger, out_dir, overlay=None):
     if not p.exists():
         raise ToolError("FILE_INVALID", f"台账不存在：{p}")
     led = parse_ledger.load_ledger(p, overlay=overlay)
-    ok, report = parse_ledger.run_assertions(led)
+    ok, report, _missing = parse_ledger.run_assertions(led)
     P, Q = parse_ledger._latest_periods(led)
     diag = dict(led.get("diagnostics", {}))
     fails = [m for s, m in report if s == "FAIL"]
