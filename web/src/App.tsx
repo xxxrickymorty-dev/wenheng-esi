@@ -13,6 +13,7 @@ export type Run = { jobId: string; status?: string; last?: string; lines: string
 import { Icon, Sprite } from './icons'
 import { Workbench } from './Workbench'
 import { Report } from './Report'
+import { Review } from './Review'
 import { deriveWorkbench, isTerminal, statusToWB, type WBState } from './wb'
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'fail-ledger', 'fail-other', 'stalled', 'signed']
@@ -27,7 +28,9 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [run, setRun] = useState<Run | null>(null)
 
-  const view = new URLSearchParams(location.search).get('view') === 'report' ? 'report' : 'workbench'
+  const _v = new URLSearchParams(location.search).get('view')
+  const view: 'workbench' | 'report' | 'review' =
+    _v === 'report' ? 'report' : _v === 'review' ? 'review' : 'workbench'
 
   const demo = useMemo(() => {
     const v = new URLSearchParams(location.search).get('demo') as WBState | null
@@ -130,6 +133,9 @@ export default function App() {
           <a href="/app/?view=report" aria-current={view === 'report' ? 'page' : undefined}>
             <Icon name="chart" size={19} />报告
           </a>
+          <a href="/app/?view=review" aria-current={view === 'review' ? 'page' : undefined}>
+            <Icon name="seal" size={19} />审核台
+          </a>
           <a href="/app/shelf/"><Icon name="book" size={19} />陈列馆</a>
         </nav>
         <div className="who">
@@ -153,7 +159,14 @@ export default function App() {
           </div>
         )}
 
-        {view === 'report' ? (
+        {view === 'review' ? (
+          <Review
+            period={selected}
+            me={me}
+            periods={periods}
+            onChanged={() => { getPeriods().then(setPeriods).catch(() => { /* 刷新失败不影响操作结果 */ }) }}
+          />
+        ) : view === 'report' ? (
           <Report periods={periods} current={selected} onPick={setSelected} />
         ) : (
           <Workbench
