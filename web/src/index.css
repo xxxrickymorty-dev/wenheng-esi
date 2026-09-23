@@ -247,3 +247,39 @@ a{color:inherit}
 .gal{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));margin-top:12px}
 .gal a{text-decoration:none}
 .sec-h{display:flex;align-items:baseline;gap:10px;margin-top:20px}
+
+/* 对勘本正文级阅读（P0-2）：三栏 / 分组导航 / 改动卡 / 校记 / 出处浮层
+   注：容器叫 .reading-grid —— .grid3 已被报告屏的 auto-fit 卡片布局占用，别混用 */
+.reading-grid{display:grid;grid-template-columns:210px minmax(0,1fr) 290px}
+.col-l{border-right:1px solid var(--line);padding:16px 0}
+.col-m{padding:16px 20px;border-right:1px solid var(--line);min-width:0}
+.col-r{padding:16px 18px;background:var(--panel-2)}
+.nav-i{display:flex;justify-content:space-between;gap:10px;padding:8px 18px;font-size:15px;
+  color:var(--ink-2);border-left:3px solid transparent;cursor:pointer;text-decoration:none}
+.nav-i[aria-current=true]{border-left-color:var(--zhu);background:var(--panel);color:var(--ink);font-weight:600}
+.nav-i .n{font-family:var(--mono);color:var(--ink-3)}
+.chg{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);margin-bottom:12px;outline:none}
+.chg:focus-visible{outline:3px solid var(--zhu);outline-offset:2px}
+.chg-h{display:flex;align-items:center;gap:10px;padding:9px 13px;border-bottom:1px solid var(--line);
+  background:var(--panel-2);border-radius:var(--r) var(--r) 0 0}
+.chg-h .loc{font-family:var(--mono);font-size:13.5px;color:var(--ink-3)}
+.chg-b{padding:11px 13px;font-size:15px}
+.chg-b .row{display:flex;gap:12px;padding:3px 0}
+.chg-b .row .t{flex:0 0 62px;font-family:var(--mono);font-size:13px;color:var(--ink-3);padding-top:3px}
+.chg-b .old{color:var(--ink-3);text-decoration:line-through}
+.chg-b .new{color:var(--zhu);font-weight:600}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:14.5px;
+  border-bottom:1px solid var(--line-2)}
+.kv .k{color:var(--ink-3)}
+.kv .v{font-family:var(--mono)}
+.pop{margin-top:10px;background:var(--ink);color:#f2eee3;border-radius:var(--r-sm);padding:11px 14px;font-size:13.5px}
+.pop .ph{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:#9a9587}
+.pop .pc{font-family:var(--mono);color:#fff;word-break:break-word;margin:4px 0}
+.switch{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-2);background:var(--panel-2);
+  border-radius:var(--r-sm);padding:8px 12px;font:inherit;font-size:14px;color:var(--ink-2);cursor:pointer}
+.switch.on{background:var(--zhu-soft, rgba(178,58,42,.12));border-color:var(--zhu);color:var(--zhu)}
+.pill.manual{background:var(--zhu-soft, rgba(178,58,42,.12));border-color:var(--zhu);color:var(--zhu)}
+@media (max-width:1000px){
+  .reading-grid{grid-template-columns:1fr}
+  .col-l,.col-m{border-right:0;border-bottom:1px solid var(--line)}
+}

@@ -162,15 +162,25 @@ function PeriodData({ period }: { period: string | null }) {
           </h2>
           <div className="artifacts" style={{ marginTop: 12 }}>
             {Object.entries(bySection).map(([sec, n]) => (
-              <div className="art" key={sec}>
+              <a className="art" key={sec} style={{ textDecoration: 'none', color: 'inherit' }}
+                 href={`/app/?view=reading&period=${encodeURIComponent(period ?? '')}&section=${encodeURIComponent(sec)}`}>
                 <span className="ico"><Icon name="doc" size={20} /></span>
                 <span>
                   <span className="n">{sec}</span>
-                  <span className="m">{n} 处</span>
+                  <span className="m">{n} 处 · 点开逐句对照</span>
                 </span>
-              </div>
+              </a>
             ))}
           </div>
+          {/* 对勘本入口卡（P0-2）：正文级阅读视图 */}
+          <a className="entry" style={{ marginTop: 12 }}
+             href={`/app/?view=reading${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+            <span>
+              <span className="t">打开对勘本（正文级对照）</span>
+              <span className="d">左分组 / 中改动卡 / 右校记 · 可搜、可只看待人工、← → 换分组</span>
+            </span>
+            <span className="go">→</span>
+          </a>
           {/* 红件全量清单入口（P0-3）：本屏只给入口，全量表在 ?view=red */}
           <a className="entry" style={{ marginTop: 12 }}
              href={`/app/?view=red${period ? `&period=${encodeURIComponent(period)}` : ''}`}>

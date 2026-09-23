@@ -18,6 +18,7 @@ import { Ledger } from './Ledger'
 import { Analysis } from './Analysis'
 import { RedList } from './RedList'
 import { Charts } from './Charts'
+import { Reading } from './Reading'
 import { deriveWorkbench, isTerminal, statusToWB, type WBState } from './wb'
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'fail-ledger', 'fail-other', 'stalled', 'signed']
@@ -35,14 +36,15 @@ export default function App() {
   /* ?period= 深链：从老站迁移过来的等价地址（老站 /p/<期次> → 新站 ?view=report&period=<期次>） */
   const wantPeriod = new URLSearchParams(location.search).get('period')
   const _v = new URLSearchParams(location.search).get('view')
-  const view: 'workbench' | 'report' | 'review' | 'ledger' | 'analysis' | 'red' | 'charts' =
+  const view: 'workbench' | 'report' | 'review' | 'ledger' | 'analysis' | 'red' | 'charts' | 'reading' =
     _v === 'report' ? 'report'
       : _v === 'review' ? 'review'
         : _v === 'ledger' ? 'ledger'
           : _v === 'analysis' ? 'analysis'
             : _v === 'red' ? 'red'
               : _v === 'charts' ? 'charts'
-                : 'workbench'
+                : _v === 'reading' ? 'reading'
+                  : 'workbench'
 
   const demo = useMemo(() => {
     const v = new URLSearchParams(location.search).get('demo') as WBState | null
@@ -183,7 +185,9 @@ export default function App() {
           </div>
         )}
 
-        {view === 'charts' ? (
+        {view === 'reading' ? (
+          <Reading period={selected} />
+        ) : view === 'charts' ? (
           <Charts period={selected} />
         ) : view === 'red' ? (
           <RedList period={selected} />
