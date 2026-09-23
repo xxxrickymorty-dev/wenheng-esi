@@ -62,6 +62,22 @@ function App() {
           </p>
         </header>
 
+        {/* 陈列馆入口：历期卷宗（G 的体验，作为静态子应用挂在 /app/shelf/） */}
+        <a
+          href="/app/shelf/"
+          className="mt-8 flex items-center justify-between gap-4 rounded-xl border border-neutral-300 bg-white px-5 py-4 no-underline transition hover:border-neutral-900"
+        >
+          <span>
+            <span className="block text-base font-medium">陈列馆 · 历期卷宗</span>
+            <span className="mt-0.5 block text-sm text-neutral-500">
+              按期翻看已出刊的报告（书架 → 端详 → 开卷）
+            </span>
+          </span>
+          <span aria-hidden="true" className="text-lg text-neutral-400">
+            →
+          </span>
+        </a>
+
         <section className="mt-10">
           {state.status === 'loading' && (
             <p className="text-sm text-neutral-500">加载中…</p>
