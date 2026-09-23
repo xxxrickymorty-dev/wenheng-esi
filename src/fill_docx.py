@@ -280,10 +280,27 @@ def _text_slot(location, old, new, source):
 
 
 def _replace_para(p, new_text):
-    """保留首 run 格式，替换整段文本（删除其余 run）。"""
+    """保留首 run 格式，替换整段文本（删除其余 run）。
+
+    ⚠️ 母版有的段落首 run 是空跑/无字号，真格式在后面的 run 上（实测「本期云南大学
+    22个ESI学科…」段：首 run 无字号、其后 run 均 15pt）——直接沿用首 run 会把整段
+    掉到 Normal 10.5pt（rick 截图：这段字特别小）。首 run 无显式字号时，借同段
+    首个带字号 run 的 rPr。
+    """
+    import copy
+
     runs = p.runs
     if runs:
-        runs[0].text = new_text
+        first = runs[0]
+        if first.font.size is None:
+            donor = next((r for r in runs[1:] if r.font.size is not None), None)
+            donor_rpr = donor._element.find(qn("w:rPr")) if donor is not None else None
+            if donor_rpr is not None:
+                old = first._element.find(qn("w:rPr"))
+                if old is not None:
+                    first._element.remove(old)
+                first._element.insert(0, copy.deepcopy(donor_rpr))
+        first.text = new_text
         for r in runs[1:]:
             r._element.getparent().remove(r._element)
     else:
@@ -356,13 +373,14 @@ def fill_body_charts(doc, ledger_dir, slots):
         slots.append({"location": label, "old": "（无图）", "new": f"[图] {png.name}",
                       "source": f"charts/_overview/{png.name}"})
 
-    # 1‰ 潜力图：替换"我校ESI学科1‰潜力值："段的旧图
+    # 1‰ 潜力图：清掉"我校ESI学科1‰潜力值："段的旧图/旧原生图表，**另起一段**插新图
+    # （图挤在文字段里，Word 里会和相邻内容叠成一片——rick 截图的「两个表格重叠」）
     for p in doc.paragraphs:
         if "我校ESI学科1‰潜力值" in p.text:
-            stripped = _strip_images(p)
+            stripped = _strip_images(p) + _strip_chart_runs(p)
             png = ov / "1permille.png"
             if png.exists():
-                p.add_run().add_picture(str(png), width=Cm(14.5))
+                _insert_picture_after(doc, p, png, 14.5)
                 slots.append({"location": "正文/1‰潜力图", "old": f"（母版旧图 ×{stripped}）",
                               "new": f"[图] {png.name}", "source": f"charts/_overview/1permille.png"})
             break

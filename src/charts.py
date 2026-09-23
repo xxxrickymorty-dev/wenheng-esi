@@ -760,7 +760,7 @@ def chart_ynd_rank(ynd_rank, out_png, end_period=None, n=7):
 
 
 def _trend_data_table(fig, rect, col_labels, row_labels, rows, row_colors, *,
-                      label_frac=0.22, fontsize=6.8):
+                      label_frac=0.22, fontsize=8.2, ink="#1F1F1F"):
     """Excel 式「数据表」：贴在绘图区正下方，数据列与折线数据点一一对齐。
 
     行标签列（学科名）向左伸出坐标区、文字用系列色 —— 原件**没有图例**，这张表就是图例
@@ -782,14 +782,14 @@ def _trend_data_table(fig, rect, col_labels, row_labels, rows, row_colors, *,
                                     edgecolor=C_AXIS, lw=0.4))
     for j, lab in enumerate(col_labels):
         tax.text((xs[j + 1] + xs[j + 2]) / 2, 1 - rh / 2, str(lab), ha="center", va="center",
-                 fontsize=fontsize, color=C_TEXT)
+                 fontsize=fontsize, color=ink)
     for i, (name, row) in enumerate(zip(row_labels, rows)):
         yc = 1 - (i + 1.5) * rh
         tax.text(label_frac / 2, yc, name, ha="center", va="center",
                  fontsize=fontsize, color=row_colors[i])
         for j, v in enumerate(row):
             tax.text((xs[j + 1] + xs[j + 2]) / 2, yc, v, ha="center", va="center",
-                     fontsize=fontsize, color=C_TEXT)
+                     fontsize=fontsize, color=ink)
     return tax
 
 
@@ -830,27 +830,36 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
     periods = [str(c) for c in df.columns]
     # 原件配色＝Office 主题色按系列序（其 chart XML 只显式写了 #7030A0 与红）：化学=accent1、
     # 植物与动物学=#7030A0、环境生态学=accent3、工程学=accent4。
-    colors = [C_LIGHTBLUE, "#7030A0", C_GRAY, "#FFC000"]
+    # accent3 原色 #A5A5A5 太浅（rick 反馈颜色浅）→ 稍加深到 #8C8C8C（线/标签同色）。
+    colors = [C_LIGHTBLUE, "#7030A0", "#8C8C8C", "#FFC000"]
 
-    fig = Figure(figsize=(5.5, 3.55))
-    ax = fig.add_axes([0.262, 0.515, 0.710, 0.330])
+    ink = "#1F1F1F"
+    fig = Figure(figsize=(6.6, 4.5))
+    FigureCanvasAgg(fig)   # 🔴 _labels 要量像素包围盒，裸 Figure 的 FigureCanvasBase 没有 get_renderer
+    ax = fig.add_axes([0.225, 0.485, 0.745, 0.375])
     for i, d in enumerate(picks):
-        ax.plot(range(len(periods)), picked.loc[d], color=colors[i % len(colors)], lw=1.6)
-    ax.axhline(100, color="#FF0000", lw=1.6)
+        ax.plot(range(len(periods)), picked.loc[d], color=colors[i % len(colors)], lw=1.8)
+    ax.axhline(100, color="#FF0000", lw=1.8)
     ax.set_xticks(range(len(periods)))
-    ax.set_xticklabels(periods, fontsize=FONT_SIZE)
+    ax.set_xticklabels(periods, fontsize=9)
     ax.set_ylim(0, 100)
     ax.set_yticks(range(0, 101, 20))
-    ax.set_yticklabels([f"{v:.2f}%" for v in range(0, 101, 20)], fontsize=FONT_SIZE)
+    ax.set_yticklabels([f"{v:.2f}%" for v in range(0, 101, 20)], fontsize=9)
     for s in ("top", "right", "bottom"):    # 底轴不画线：表格顶边框就是那条线（原件同款）
         ax.spines[s].set_visible(False)
-    ax.tick_params(length=0, labelsize=FONT_SIZE, colors=C_TEXT)
+    ax.tick_params(length=0, labelsize=9, colors=ink)
     ax.tick_params(axis="x", pad=2)
     title = fig.text(0.517, 0.975, "我校主要学科近期发展趋势", ha="center", va="top",
                      fontsize=13, color="#1F1F1F")
     # 宋体/Noto Serif 没有可命中的 bold 字面（matplotlib 会静默回退成常规字重）→ 用描边假粗，
     # 与原件「标题加粗」观感一致，且 Windows/Linux 两端表现一致。
     title.set_path_effects([path_effects.withStroke(linewidth=0.7, foreground="#1F1F1F")])
+    # 数值标注：4 线 × 7 期全标会挤成一团（避让后数字离点太远）→ 每条线只标最后一期，
+    # 全量数值在下方数据表（已加大加深）。ESI1‰ 基线不标。
+    x = list(range(len(periods)))
+    for d in picks:
+        vals = [float(v) for v in picked.loc[d]]
+        _labels(ax, [x[-1]], [vals[-1]], "{:.2f}%", size=8.0, color=ink)
     rows = [[("" if picked.loc[d, p] != picked.loc[d, p]
               else f"{float(picked.loc[d, p]):.2f}%") for p in periods] for d in picks]
     rows.append(["100%"] * len(periods))     # 原件 ESI1‰ 行是 0% 格式（不写两位小数）
@@ -1001,7 +1010,9 @@ def chart_overview_1permille(cites, thr_1permille, entered_1pct, out_png, period
     两者在第 1 期 202601 会差一个学科（数学）：接近度口径多算 → 图里多一条，
     而正文按事件表写 13 个，图文自相矛盾。口径源见 `parse_ledger.build_entered_1pct`。
     """
-    fig, ax = _fig(3.25, 2.55)
+    # 字号/颜色按 rick 反馈加大加深（与排名图同规格；原图表图例在底部：chart2 legendPos=b）
+    ink = "#1F1F1F"
+    fig, ax = _fig(3.7, 2.95)
     entered = entered_1pct[period][entered_1pct[period] >= 1].index
     ratio = (cites[period][entered] / thr_1permille[period][entered] * 100).dropna().sort_values()
     gap = 100 - ratio
@@ -1009,13 +1020,15 @@ def chart_overview_1permille(cites, thr_1permille, entered_1pct, out_png, period
     ax.barh(y, ratio, color="#B4A7D6", height=0.7, label="1‰接近度")
     ax.barh(y, gap, left=ratio, color="#A9D18E", height=0.7, label="与前1‰差距")
     for i, v in enumerate(ratio):
-        ax.text(v + 2, i, f"{v:.2f}%", va="center", fontsize=6, color=C_TEXT)
+        ax.text(v + 1.5, i, f"{v:.2f}%", va="center", fontsize=7.5, color=ink)
     ax.set_yticks(list(y))
-    ax.set_yticklabels([_cn(d) for d in ratio.index], fontsize=6.5)
+    ax.set_yticklabels([_cn(d) for d in ratio.index], fontsize=8.5)
     ax.set_xlim(0, 105)
-    ax.set_xlabel("占 1‰ 阈值比例（%）", fontsize=8)
+    ax.set_xlabel("占 1‰ 阈值比例（%）", fontsize=10, color=ink)
     ax.grid(axis="x", color=C_GRID, linewidth=0.6)
-    ax.legend(fontsize=6.5, loc="lower center", bbox_to_anchor=(0.5, 1.02), ncol=2, frameon=False)
+    ax.tick_params(axis="both", length=0, labelsize=8.5, colors=ink)
+    ax.legend(fontsize=8.5, loc="upper center", bbox_to_anchor=(0.5, -0.15),
+              ncol=2, frameon=False, labelcolor=ink)
     _save(fig, out_png)
 
 
