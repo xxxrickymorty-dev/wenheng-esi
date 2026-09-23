@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-"""生成《仍需馆员提供的数据清单》docx（发卜彤）。
+"""生成《仍需馆员提供的数据清单》docx（发卜彤）· v2。
 
-背景：2026-09-23 起 ESI 8 项 + InCites 6 项取数已全部脚本化并自动贴入台账
-（含顶尖论文清单 = ESI Top Papers 明细自动导出、在榜学科进/退事件自动核对），
-馆员侧只剩少数「下载数据里没有的东西」。
+v2 修订（2026-09-23，按 rick 意见）：
+  · 删除「ESI 发布日期」项——取数即发布，日期由我们下载时自动记录（_下载信息.json）；
+  · 学院映射改为「已用《新学院英文对照（含成果平台）.xlsx》自动匹配 137/150」，
+    只把 13 个未命中片段 + 非学院平台单元口径 + 274/275 差异留给馆员；
+  · 「22 学院名单」不再需要圈改（以对照表“教学科研机构”39 个单元为准）。
 
 用法（wenheng/ 下，.venv 的 python）：
     .venv\\Scripts\\python.exe tools\\make_librarian_ask_docx.py
@@ -11,7 +13,6 @@
 """
 from __future__ import annotations
 
-import datetime as dt
 import pathlib
 import sys
 
@@ -25,13 +26,44 @@ OUT = REPO.parent / "评审文档" / "27-仍需馆员提供的数据清单（送
 
 TODAY = "2026-09-23"
 
+# 自动匹配结果（2026-09-23 用《新学院英文对照（含成果平台）.xlsx》跑出）
+MATCHED, TOTAL = 137, 150
+UNMATCHED = [
+    ("SCH MAT SCI & ENGN", 6),
+    ("(无系所信息)", 3),
+    ("YUNNAN PROV KEY LAB MICRONANO MAT & TECHNOL", 1),
+    ("SCH PHYS SCI & TECHNOL", 1),
+    ("INT JOINT RES CTR SUSTAINABLE UTILIZATIONOF CORDYC", 1),
+    ("KEY LAB QUANTUM INFORMAT YUNNAN PROV", 1),
+    ("COLL BASIC MED", 1),
+    ("INST INT RIVERS & ECOL SECUR", 1),
+    ("INST ECOL RES & POLLUT CONTROL PLATEAU LAKES SCH E", 1),
+    ("DEPT EDUC | KEY LAB DIGITAL HUMAN TECHNOL R&D APPLICAT APPLICA", 1),
+    ("INT JOINT RES CTR OPTOELECT & ENGN RES | LAKESIDE AR VR LAB", 1),
+    ("YUNNAN KEY LAB SERV COMP", 1),
+    ("SCH STAT & MATH", 1),
+]
+PLATFORMS = [
+    ("云南生物资源国家重点实验室", 12),
+    ("云南马来亚学院（现代工学院）", 9),
+    ("中国（西南）天文研究所", 6),
+    ("云南大学附属医院（云南省第二人民医院、云南省眼科医院）", 5),
+    ("西南联合研究生院综合事务部", 4),
+    ("药学院（教育部自然资源药物化学重点实验室）", 2),
+    ("古生物研究院", 2),
+    ("植被结构功能与建造全国重点实验室", 1),
+]
+EN_ONLY = ["Int Joint Res Ctr Sustainable Utilizat Cordyceps", "Minist Educ",
+           "Biocontrol Engn Res Ctr Crop Dis & Pest", "Yunnan Key Lab Plant Reprod Adaptat & Evolutionar",
+           "State Key Lab Conservat & Utilizat Bio resources", "Inst Int Rivers & Eco Secur"]
+
 
 def set_cn_font(doc):
     st = doc.styles["Normal"]
     st.font.name = "等线"
     st.font.size = Pt(10.5)
     st.element.rPr.rFonts.set(qn("w:eastAsia"), "等线")
-    for s in ("Title", "Heading 1", "Heading 2"):
+    for s in ("Title", "Heading 1"):
         try:
             st2 = doc.styles[s]
             st2.font.name = "等线"
@@ -84,43 +116,47 @@ def main():
     t.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run(f"（《云南大学学科信息参考》取数自动化上线后 · {TODAY}）").italic = True
+    p.add_run(f"（《云南大学学科信息参考》取数自动化上线后 · {TODAY} · v2）").italic = True
 
     table(doc, ["项目", "内容"], [
         ["编制", "文衡项目组"],
         ["送交", "卜彤老师（请核对/提供）"],
-        ["目的", "说明：自 2026-09-23 起，原《每期取数工作清单》里的 ESI 8 项、InCites 6 项、"
-                 "顶尖论文清单已全部由程序自动下载并自动贴入监测表；本清单只列**程序无论如何拿不到、"
-                 "必须由馆内提供**的少数几项，并逐项说明原因。"],
+        ["目的", "原《每期取数工作清单》里的 ESI 8 项、InCites 6 项、顶尖论文清单均已由程序自动下载并自动"
+                 "贴入监测表；本清单只列**程序拿不到、必须由馆内提供/确认**的少数几项，并逐项说明原因。"],
+        ["v2 修订", "（1）删除「ESI 发布日期」——取数即发布，日期由程序在下载时自动记录；"
+                    "（2）学院映射已按《新学院英文对照（含成果平台）.xlsx》自动匹配 137/150，"
+                    "仅剩 13 个片段与平台口径需确认；（3）「22 学院名单」无需圈改，以对照表为准。"],
     ], widths=[60, 380])
     doc.add_paragraph()
 
-    h(doc, "一、每期需提供（2 项）", 1)
+    h(doc, "一、每期需提供（1 项）", 1)
     table(doc, ["项目", "用途", "为什么无法从下载数据 / 台账中提取", "请提供的形态"], [
         ["《实际与预测差值》里的\n“预测值”记录（SPSS）",
          "监测表《实际与预测差值》表；报告预测章与历史回测基准。",
          "这套预测值是馆内 SPSS 模型跑出来的结果，不在 ESI / InCites / WoS 任何导出文件里；"
          "台账里能自动算出的只有“实际值”（由两路数据推导），没有“预测值”的外部来源。",
          "按现有表格格式提供每期预测值（贴回监测表或单独发一张表/截图均可）。"],
-        ["当期 ESI 发布日期\n（报告数据说明用）",
-         "报告“数据来源/说明”中需要写明 ESI 数据为哪一天发布。",
-         "ESI 导出文件里只有内容（机构、学科、阈值等），**没有发布日期字段**；"
-         "InCites 的 “dataset updated” 是 InCites 自己的更新日，不等于 ESI 官方发布日。",
-         "一句话即可（官网/邮件通知上的发布日）。"],
     ], widths=[100, 110, 230, 130])
-    para(doc, "※ 同属“报告里要写的信息”：若报告口径还需要“当期全球机构总数”，我们可以直接从 ESI 机构总表"
-              "数出来（202607 期为 10428 家），请确认是否就用这个数；如另有官方口径，请给出数字。", indent=12)
 
     h(doc, "二、一次性确认（2 项）", 1)
-    para(doc, "1. 学院归属映射（《学院映射草表（待卜彤确认）》）：24 组建议归属 + 4 个重点判断", bold=True)
-    para(doc, "为什么无法自动：WoS/ESI 导出的地址字段只有英文片段（如 SCH MAT & ENERGY、"
-              "INST ECOL RES & POLLUT CONTROL PLATEAU LAKES），**没有到学院的对应关系**；"
-              "全台账搜索也没有“学院级映射”（0 处）。学院统计表要用它把论文归到学院，只能由熟悉"
-              "校内机构的老师确认。", indent=12)
-    para(doc, "请做什么：在草表里每行三选一圈改——☐同意 ｜ ☐修改（写正确学院）｜ ☐合并到上一条；"
-              "重点回答四件事：① 22 个学院名单是否照草案；② 国重室/研究院是否单列或挂靠；"
-              "③ 附属医院是否单列；④ “SCH ENGN”（9 篇）对应哪个学院。"
-              "（另：本次导出 274 条与馆内“275 行”差 1，也请一并说明。）", indent=12)
+    para(doc, f"1. 学院归属映射：已自动完成 {MATCHED}/{TOTAL}，剩 3 个小问题", bold=True)
+    para(doc, "怎么做的：把《学院映射草表》的 150 个地址片段（344 篇论文）与"
+              "《新学院英文对照（含成果平台）.xlsx》逐条比对，137 个片段直接命中对照表；"
+              "其中 69 处我们初稿的建议与对照表不一致，一律**以对照表为准**（如 SCH ENGN → "
+              "云南马来亚学院（现代工学院）、DEPT ATMOSPHER SCI → 地球科学学院、"
+              "SCH SOFTWARE → 软件学院（人工智能学院）等）。", indent=12)
+    para(doc, "为什么还要问：（对照表里没有的东西，程序无法猜）", indent=12)
+    para(doc, "① 以下 13 个片段在对照表里查不到，请给中文单元名（括号内为涉及论文数）：", indent=24)
+    for frag, n in UNMATCHED:
+        para(doc, f"· {frag}（{n} 篇）", indent=36)
+    para(doc, "② 以下“非学院平台”在报告学院统计表里是**单列**还是**并入挂靠学院**？"
+              "若并入请给对应关系（括号内为涉及论文数）：", indent=24)
+    for u, n in PLATFORMS:
+        para(doc, f"· {u}（{n} 篇）", indent=36)
+    para(doc, "③ 另 6 个片段在对照表里只对应到英文单元名，也需要中文名：", indent=24)
+    para(doc, "、".join(EN_ONLY) + "。", indent=36)
+    para(doc, "④ 顺带说明：本期 Top Papers 明细导出 274 条，馆内口径为“275 行”，差 1 条请指认（清单已发）。",
+         indent=24)
     doc.add_paragraph()
     para(doc, "2. 省级对比口径（报告第四章省表）", bold=True)
     para(doc, "为什么无法自动：“云南省高校总数”来自教育主管部门名单，不在 ESI/InCites 任何表里；"
@@ -150,21 +186,24 @@ def main():
         "② InCites 侧 6 项：22 学科国际/国内排名与百分位、未进入学科论文数/被引、篇均被引、Q1–Q4、"
         "云南省高校对比底料；",
         "③ WoS 侧 1 项：**顶尖论文清单**——已由 ESI “机构=云南大学 + Top Papers”明细自动导出，"
-        "列与馆员导出完全同构（含 Authors / Addresses / Institutions），无需再手工导出；",
-        "④ 台账《InCites快照》登记表、接近度等派生列也自动维护。",
+        "列与馆员导出完全同构（含 Authors / Addresses / Institutions）；",
+        "④ 报告里「ESI 发布日期」取**下载日**（发布即下载，程序自动记入 `_下载信息.json`）；"
+        "「当期全球机构总数」由程序从 ESI 机构总表直接计数（202607 期为 10428 家）；",
+        "⑤ 台账《InCites快照》登记表、接近度等派生列也自动维护。",
     ):
         para(doc, line, indent=24)
 
     h(doc, "五、交付方式与时间", 1)
     for line in (
-        "· 每期在出稿前 1–2 天提供即可；文本类信息（发布日期等）直接微信/邮件一句话即可。",
-        "· 表格类（预测值、学院映射圈改）可发回电子版，或贴回监测表对应工作表。",
+        "· 每期在出稿前 1–2 天提供即可；文本类信息直接微信/邮件一句话即可。",
+        "· 表格类（预测值、学院映射 13 条/平台口径）可发回电子版，或贴回监测表对应工作表。",
         "· 历史原件请放/发到项目目录（或扫描件）。",
         "· 收到后我们会跑一致性检查（含在榜学科自动核对）再出稿；有冲突会逐条回报。",
     ):
         para(doc, line, indent=12)
     doc.add_paragraph()
-    para(doc, f"编制日期：{TODAY}　·　本清单随自动化进度更新，如有与本清单不一致的历史习惯，以卜老师意见为准并回改。", size=9)
+    para(doc, f"编制日期：{TODAY}　·　本清单随自动化进度更新；如有与本清单不一致的历史习惯，"
+              f"以卜老师意见为准并回改。", size=9)
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     doc.save(str(OUT))

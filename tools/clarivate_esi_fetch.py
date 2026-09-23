@@ -297,6 +297,28 @@ COMMANDS = {
 }
 
 
+def write_fetch_meta(out: Path, command: str) -> Path:
+    """记下载信息：报告里「ESI 发布日期」槽位就用**下载日**（发布即下载），不再向馆员要。"""
+    import datetime as dt
+    import json
+
+    out.mkdir(parents=True, exist_ok=True)
+    meta_path = out / "_下载信息.json"
+    meta = {}
+    if meta_path.exists():
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except Exception:                                          # noqa: BLE001
+            meta = {}
+    meta.setdefault("首次下载", dt.date.today().isoformat())
+    meta["最近下载"] = dt.date.today().isoformat()
+    meta["最近命令"] = command
+    meta["说明"] = "报告里「ESI 发布日期」槽位取本文件首次/最近下载日（ESI 发布即下载）"
+    meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"[meta] {meta_path}  下载日 {meta['最近下载']}")
+    return meta_path
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("command", choices=sorted(COMMANDS))
@@ -313,6 +335,7 @@ def main() -> int:
             fn(page, Path(args.out), args.format, args.force)
         else:
             fn(page, Path(args.out), args.format)
+    write_fetch_meta(Path(args.out), args.command)
     return 0
 
 
