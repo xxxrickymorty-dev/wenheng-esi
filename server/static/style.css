@@ -48,6 +48,11 @@
   --wrapw: 1120px;
   --mono-label: 10px;        /* 等宽微标签字号，瑞士制的最小文字层 */
 
+  /* --- 圆角与投影（2026-09-23 与新工作区系统对齐：同名同值，两套界面同源） --- */
+  --r: 14px;
+  --r-sm: 10px;
+  --shadow: 0 1px 2px rgba(47, 42, 36, .06), 0 8px 24px rgba(47, 42, 36, .06);
+
   /* --- collation.css 旧名别名（同源，不再各自维护色板） --- */
   --paper: var(--bg);
   --paper-2: var(--panel);
@@ -96,7 +101,7 @@ code, .mono, pre, kbd { font-family: var(--mono); }
 /* 钤印（A 资产）：朱底白字、微旋转、内描边模拟印泥 */
 .seal {
   display: inline-grid; place-items: center; background: var(--zhu); color: #F7F2E6;
-  font-family: var(--serif); font-weight: 700; border-radius: 3px;
+  font-family: var(--serif); font-weight: 700; border-radius: 7px;
   box-shadow: inset 0 0 0 2px rgba(247, 242, 230, .22);
   transform: rotate(-3deg); letter-spacing: 0; flex: none;
 }
@@ -137,10 +142,11 @@ main { padding-block: 30px 60px; }
 .crumb .sep { padding: 0 9px; color: var(--line-2); }
 
 /* ---------- 面板（取代圆角白卡） ---------- */
-.panel { background: var(--panel); border: 1px solid var(--line); margin-bottom: 22px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); margin-bottom: 22px; }
 .panel-h {
   display: flex; align-items: center; gap: 12px; padding: 11px 18px;
   border-bottom: 1px solid var(--line); background: var(--panel-2);
+  border-radius: var(--r) var(--r) 0 0;
 }
 .panel-h .no { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; color: var(--ink-3); flex: none; }
 .panel-h h1, .panel-h h2 { font-family: var(--serif); font-size: 15px; font-weight: 600; letter-spacing: .08em; }
@@ -153,6 +159,7 @@ main { padding-block: 30px 60px; }
 .panel-b > p:last-child { margin-bottom: 0; }
 .panel-foot {
   padding: 11px 18px; border-top: 1px solid var(--line); background: var(--panel-2);
+  border-radius: 0 0 var(--r) var(--r);
   font-size: 11.5px; color: var(--ink-3); letter-spacing: .04em;
 }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
@@ -160,12 +167,13 @@ main { padding-block: 30px 60px; }
 @media (max-width: 880px) { .grid2 { grid-template-columns: 1fr; } }
 
 /* 兼容旧类名：仍按面板渲染，避免漏改处退化成裸块 */
-.card { background: var(--panel); border: 1px solid var(--line); margin-bottom: 22px; padding: 20px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); margin-bottom: 22px; padding: 20px; }
 
 /* ---------- 读数格（B 资产：4+1 张大数字，42px 等宽） ---------- */
 .readouts {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   border-top: 2px solid var(--ink); background: var(--panel);
+  border-radius: var(--r); overflow: hidden;
 }
 .readout { padding: 20px 22px 16px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .readout:last-child { border-right: none; }
@@ -184,7 +192,7 @@ main { padding-block: 30px 60px; }
 
 /* ---------- 按钮 ---------- */
 .btn {
-  display: inline-block; padding: 9px 18px; border: 1px solid var(--ink);
+  display: inline-block; padding: 9px 18px; border: 1px solid var(--ink); border-radius: 9px;
   background: var(--ink); color: #fff; font-family: var(--mono); font-size: 12px;
   letter-spacing: .16em; cursor: pointer; touch-action: manipulation;
   transition: background-color .18s, border-color .18s, color .18s;
@@ -207,7 +215,7 @@ input[type=text], input[type=password], input:not([type]), select, input[type=fi
   border: 1px solid var(--line-2);
   /* 显式给出底色与字色：Windows 暗色模式下原生 select 会变成黑底黑字（看不清） */
   background: #fff; color: var(--ink);
-  font-family: var(--sans); border-radius: 0; touch-action: manipulation;
+  font-family: var(--sans); border-radius: var(--r-sm); touch-action: manipulation;
   transition: border-color .18s;
 }
 /* 键盘聚焦保留系统 outline（可见焦点），鼠标点击只变边框。
@@ -225,16 +233,16 @@ input[type=checkbox] { width: auto; accent-color: var(--zhu); }
 .run-form { margin-top: 2px; }
 
 /* ---------- 提示条 ---------- */
-.alert { padding: 9px 13px; font-size: 12.5px; margin-bottom: 14px; border-left: 3px solid var(--ink-3); background: var(--panel-2); }
+.alert { padding: 9px 13px; font-size: 12.5px; margin-bottom: 14px; border-left: 3px solid var(--ink-3); background: var(--panel-2); border-radius: var(--r-sm); }
 .alert.err { border-left-color: var(--zhu); color: var(--zhu); background: var(--zhu-wash); }
 .alert.warn { border-left-color: var(--warn); color: var(--warn); background: var(--warn-wash); }
 
-/* ---------- 状态标签（直角 tag，非 pill） ---------- */
+/* ---------- 状态标签（药丸形；2026-09-23 起与新工作区系统一致） ---------- */
 .badge, .chip {
   display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px;
   font-family: var(--mono); font-size: var(--mono-label); letter-spacing: .14em;
   border: 1px solid var(--line-2); background: var(--panel); color: var(--ink-2);
-  border-radius: 0; text-transform: uppercase; white-space: nowrap;
+  border-radius: 999px; text-transform: uppercase; white-space: nowrap;
 }
 .badge::before, .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); flex: none; }
 
@@ -379,7 +387,7 @@ tr:hover td { background: var(--zhu-wash); }
 
 /* ---------- 登录：牌匾（B 资产） ---------- */
 .login-wrap { display: flex; justify-content: center; align-items: center; min-height: 78vh; padding: 40px 0; }
-.plaque { width: min(430px, 100%); background: var(--panel); border: 1px solid var(--line-2); box-shadow: 14px 14px 0 rgba(21, 23, 27, .05); }
+.plaque { width: min(430px, 100%); background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow); }
 .plaque .strip {
   display: flex; justify-content: space-between; background: var(--ink); color: #EDEAE2;
   padding: 9px 18px; font-family: var(--mono); font-size: var(--mono-label); letter-spacing: .2em;
@@ -454,7 +462,7 @@ table.dense tbody tr { content-visibility: auto; contain-intrinsic-size: auto 30
 @media (max-width: 760px) { .modes { grid-template-columns: 1fr; } }
 .mode {
   display: block; padding: 14px 16px; border: 1px solid var(--line);
-  border-top: 2px solid var(--line-2); border-radius: 3px;
+  border-top: 2px solid var(--line-2); border-radius: var(--r-sm);
   background: var(--panel-2); color: inherit; text-decoration: none;
 }
 .mode.cur { border-top-color: var(--zhu); background: var(--panel); }
@@ -475,10 +483,10 @@ a.mode:hover { border-color: var(--zhu); }
 .flexdoc ul, .flexdoc ol { padding-left: 22px; margin: 8px 0; }
 .flexdoc li { margin: 4px 0; line-height: 1.75; }
 .flexdoc blockquote { margin: 10px 0; padding: 8px 12px; background: var(--panel-2);
-  border-left: 2px solid var(--zhu); border-radius: 0 3px 3px 0; color: var(--ink-2); }
+  border-left: 2px solid var(--zhu); border-radius: 0 var(--r-sm) var(--r-sm) 0; color: var(--ink-2); }
 .flexdoc blockquote p { margin: 3px 0; }
 .flexdoc figure { margin: 14px 0; text-align: center; }
 .flexdoc figure img { max-width: 100%; border: 1px solid var(--line);
-  border-radius: 3px; background: #fff; }
+  border-radius: var(--r-sm); background: #fff; }
 .flexdoc hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
 .flexdoc table.dense { margin: 10px 0; font-size: 13px; }

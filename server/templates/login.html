@@ -18,7 +18,7 @@
     gap: 40px; align-items: stretch; min-height: 78vh; padding: 30px 0;
   }
   /* --- 左：图版 --- */
-  .plate { border: 1px solid var(--line-2); background: var(--panel); box-shadow: 14px 14px 0 rgba(21, 23, 27, .05); }
+  .plate { border: 1px solid var(--line-2); background: var(--panel); border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow); }
   .plate .mat { padding: 12px; }                       /* 卡纸留边，像装裱 */
   .plate .mat img {
     display: block; width: 100%;
@@ -27,7 +27,7 @@
        （实测 676×566，比例 1.19 —— 图被垂直拉长），`aspect-ratio` 形同虚设。
        加了 height:auto 才是 676×374（1.81，与原图一致）。 */
     height: auto; aspect-ratio: 1024 / 566; object-fit: cover;
-    border: 1px solid var(--line); background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--panel-2);
   }
   .plate .mat .frame { position: relative; }
   /* 朱色细线内框 —— 藏书票/图版的语汇，不是装饰色，是"这是件被装裱的东西" */

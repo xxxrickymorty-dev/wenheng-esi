@@ -263,3 +263,20 @@ table.cells td.c-new .ins { text-emphasis: none; -webkit-text-emphasis: none; }
 .whc-flash.err { border-left-color: var(--zhu); color: var(--zhu); }
 .whc-flash.ok { border-left-color: var(--zc-ok); color: var(--zc-ok); }
 .whc-flash.warn { border-left-color: var(--gold); color: var(--gold); }
+
+
+/* ---------- 圆角统一（2026-09-23 与新工作区系统对齐）----------
+   令牌在 style.css 的 :root（本文件不得自带色板/令牌声明，测试钉着）。
+   只圆「盒子」；通栏条、连接段（.whc-chain .ch-i）与表格保持直角。 */
+.whc-btn { border-radius: 9px; }
+.whc-q { border-radius: var(--r-sm); }
+.whc-more button, .sd-bar button { border-radius: var(--r-sm); }
+.whc-pop { border-radius: var(--r-sm); }
+.whc-signpanel { border-radius: var(--r-sm); }
+.whc-signpanel .ro-note { border-radius: var(--r-sm); }
+.whc-sw .dot { border-radius: 99px; }
+.dc { border-radius: var(--r); }
+.dc-tag { border-radius: 999px; }
+.chc { border-radius: var(--r); }
+.chc .thumb { border-radius: var(--r-sm); }
+.cellwrap { border-radius: var(--r-sm); }
