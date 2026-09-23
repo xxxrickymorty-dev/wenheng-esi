@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>静态稿 · 报告深入视图（对勘本 / 红件清单 / 图册）· 文衡</title>
+<!--
+  这是给 rick 审核的**静态稿**：单文件、双击即开、零依赖（与离线演示件同规格）。
+  里面的数字全部是 202607 期的**真实实测值**（不是编的）：
+    · 本期改动 704 处 · 槽位 704 · 文字/大表/图表 14/591/99 · 待人工补录 7 处 · 机器断言 54/54
+    · 红件清单 354 条（大表数值格 239 / 正文 15 / T17 7 / T03–T18 各 6 / 封面 2 / T01 1）
+    · 图册 99 张（16 学科 × 6 + 概览 3）
+  审核通过后再动 React（web/src/）。
+  设计意图：
+    ① 报告屏上今天的三块「简版」（对勘分区 / 待你补前 8 / 图册前 24）改成**入口卡**，点进全量子页——一功能一入口；
+    ② 三个子页共用同一副外壳：期次 + 面包屑（← 回报告）+ 工具条（搜索 / 筛选），与老站对勘本的操作习惯一致；
+    ③ 数据源都已有 JSON 接口（collation / redslots / charts），不需要后端加接口。
+-->
+<style>
+  :root{
+    --bg:#EFEDE7; --panel:#FBFAF7; --panel-2:#F4F2EC; --card:#FBFAF7;
+    --ink:#15171B; --ink-2:#4C5057; --ink-3:#8C9095;
+    --line:#D8D5CC; --line-2:#C7C3B8;
+    --zhu:#B23A2A; --zhu-deep:#8E2B1D; --zhu-wash:rgba(178,58,42,.07); --zhu-soft:rgba(178,58,42,.12);
+    --gold:#A98A5C; --ok:#0E8F5A; --ok-wash:rgba(14,143,90,.08); --warn:#C77B00;
+    --sans:"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif;
+    --serif:"Songti SC","Noto Serif SC",SimSun,serif;
+    --mono:Consolas,"Cascadia Mono","Courier New",monospace;
+    --r:14px; --r-sm:10px;
+    --shadow:0 1px 2px rgba(47,42,36,.06),0 8px 24px rgba(47,42,36,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.7}
+  .wrap{max-width:1280px;margin:0 auto;padding:26px 24px 70px}
+  a{color:inherit}
+  code{font-family:var(--mono);font-size:.92em}
+
+  /* 静态稿自己的提示条（成品里没有） */
+  .mock-note{background:var(--zhu-wash);border:1px solid var(--zhu-soft);border-radius:var(--r-sm);
+    padding:12px 16px;font-size:14px;color:var(--ink-2);margin-bottom:18px}
+  .mock-note b{color:var(--zhu)}
+
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+  .tabs button{border:1px solid var(--line-2);background:var(--panel);border-radius:999px;
+    padding:9px 18px;font:inherit;font-size:15px;color:var(--ink-2);cursor:pointer}
+  .tabs button[aria-selected=true]{background:var(--zhu);border-color:var(--zhu);color:#fff}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+  .pad{padding:20px 22px}
+  h1{font-family:var(--serif);font-size:27px;letter-spacing:.04em}
+  h2{font-family:var(--serif);font-size:19px;letter-spacing:.05em;display:flex;align-items:center;gap:10px}
+  h3{font-size:15px;letter-spacing:.04em}
+  .hint{color:var(--ink-3);font-size:14px}
+  .mono{font-family:var(--mono)}
+  .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-2);background:var(--panel);
+    border-radius:999px;padding:3px 11px;font-family:var(--mono);font-size:13px;color:var(--ink-2)}
+  .pill.signed{background:var(--zhu);border-color:var(--zhu);color:#fff}
+  .pill.ok{background:var(--ok-wash);border-color:var(--ok);color:var(--ok)}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:9px;
+    border:1px solid var(--ink);background:var(--ink);color:#fff;font:inherit;font-size:15px;cursor:pointer;text-decoration:none}
+  .btn.primary{background:var(--zhu);border-color:var(--zhu)}
+  .btn.line{background:transparent;color:var(--ink)}
+  .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:14px 0 0}
+  .search{flex:1;min-width:220px;max-width:380px;padding:9px 12px;border:1px solid var(--line-2);
+    border-radius:var(--r-sm);background:#fff;font:inherit;font-size:15px}
+  .switch{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-2);background:var(--panel-2);
+    border-radius:var(--r-sm);padding:7px 12px;font-size:14px;color:var(--ink-2);cursor:pointer}
+  .crumb{font-size:14px;color:var(--ink-3);margin-bottom:12px}
+  .crumb a{color:var(--ink-2);text-decoration:none;border-bottom:1px solid var(--line-2)}
+
+  /* ── 视图一：报告屏上的三张入口卡 ─────────────────────────── */
+  .entry-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:14px}
+  .entry{display:block;text-decoration:none;background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--r);padding:18px 20px;transition:border-color .18s}
+  .entry:hover{border-color:var(--zhu)}
+  .entry .k{font-family:var(--mono);font-size:13px;letter-spacing:.16em;color:var(--ink-3)}
+  .entry .v{font-family:var(--mono);font-size:32px;font-weight:600;line-height:1.15;margin-top:6px}
+  .entry .d{font-size:14.5px;color:var(--ink-2);margin-top:4px}
+  .entry .go{margin-top:10px;font-size:14px;color:var(--zhu)}
+
+  /* ── 视图二：对勘本（正文级阅读）三栏 ─────────────────────── */
+  .grid3{display:grid;grid-template-columns:216px minmax(0,1fr) 300px;gap:0;margin-top:14px}
+  .col-l{border-right:1px solid var(--line);padding:16px 0}
+  .col-m{padding:16px 22px;border-right:1px solid var(--line)}
+  .col-r{padding:16px 18px;background:var(--panel-2)}
+  .nav-i{display:flex;justify-content:space-between;gap:10px;padding:8px 18px;font-size:15px;color:var(--ink-2);
+    border-left:3px solid transparent;cursor:pointer}
+  .nav-i[aria-current=true]{border-left-color:var(--zhu);background:var(--panel);color:var(--ink);font-weight:600}
+  .nav-i .n{font-family:var(--mono);color:var(--ink-3)}
+  .chg{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);margin-bottom:12px}
+  .chg-h{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);
+    background:var(--panel-2);border-radius:var(--r) var(--r) 0 0}
+  .chg-h .loc{font-family:var(--mono);font-size:13.5px;color:var(--ink-3)}
+  .chg-b{padding:12px 14px;font-size:15px}
+  .chg-b .row{display:flex;gap:12px;padding:3px 0}
+  .chg-b .row .t{flex:0 0 62px;font-family:var(--mono);font-size:13px;color:var(--ink-3);padding-top:3px}
+  .chg-b .old{color:var(--ink-3);text-decoration:line-through}
+  .chg-b .new{color:var(--zhu);font-weight:600}
+  .kv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:14.5px;border-bottom:1px solid var(--line-2)}
+  .kv:last-child{border-bottom:0}
+  .kv .k{color:var(--ink-3)}
+  .kv .v{font-family:var(--mono)}
+  .gate{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:6px 0;color:var(--ink-2)}
+  .gate i{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:7px}
+  .gate .g-ok i{background:var(--ok)} .gate .g-wait i{background:transparent;border:1px solid var(--gold)}
+  .pop{margin-top:12px;background:var(--ink);color:#f2eee3;border-radius:var(--r-sm);padding:12px 15px;font-size:13.5px}
+  .pop .ph{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:#9a9587}
+  .pop .pc{font-family:var(--mono);color:#fff;word-break:break-all;margin:5px 0}
+
+  /* ── 视图三：红件全量清单 ─────────────────────────────────── */
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  table{width:100%;border-collapse:collapse;font-size:14.5px;margin-top:12px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-2);vertical-align:top}
+  th{font-family:var(--mono);font-size:12.5px;letter-spacing:.1em;color:var(--ink-3);border-bottom:1px solid var(--line)}
+  td.loc{font-family:var(--mono);font-size:13.5px;color:var(--ink-3);white-space:nowrap}
+  td.old{color:var(--ink-3)} td.new{color:var(--zhu)}
+  .tablewrap{overflow-x:auto}
+
+  /* ── 视图四：图册全量 ─────────────────────────────────────── */
+  .gal{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));margin-top:12px}
+  .gal a{text-decoration:none}
+  .thumb{aspect-ratio:4/3;border:1px solid var(--line);border-radius:var(--r-sm);background:
+    repeating-linear-gradient(45deg,var(--panel-2) 0 10px,var(--panel) 10px 20px);
+    display:grid;place-items:center;font-family:var(--mono);font-size:12.5px;color:var(--ink-3);text-align:center;padding:8px}
+  .gal .cap{font-size:13px;color:var(--ink-3);margin-top:5px}
+  .sec-h{margin-top:20px;display:flex;align-items:baseline;gap:10px}
+  .sec-h .n{font-family:var(--mono);font-size:13px;color:var(--ink-3)}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="mock-note">
+    <b>静态稿</b>（单文件、双击即开）。数字是 <b>202607 期的真实实测值</b>，未编造；图册里的方块是<b>占位示意</b>（真实页为图表 PNG）。
+    审核要点：① 报告屏的三块「简版」改成<b>入口卡</b>是否合意；② 三个子页共用「期次 + 面包屑 + 工具条」这副外壳是否顺手；
+    ③ 对勘本的三栏布局与老站操作习惯（搜索 / 朱批层 / 仅看待人工 / ← → 换分组 / 悬停看台账出处）是否保留够。
+  </div>
+
+  <h1>报告深入视图 · 静态稿</h1>
+  <p class="hint" style="margin-top:6px">期次 202607 · 数据源：对勘 collation / 红件 redslots / 图册 charts（三个 JSON 接口都已就绪，不需要后端加接口）</p>
+
+  <div class="tabs" role="tablist" style="margin-top:18px">
+    <button role="tab" aria-selected="true" data-v="v1">① 报告屏 · 三张入口卡</button>
+    <button role="tab" aria-selected="false" data-v="v2">② 对勘本（正文级阅读）</button>
+    <button role="tab" aria-selected="false" data-v="v3">③ 红件全量清单</button>
+    <button role="tab" aria-selected="false" data-v="v4">④ 图册全量</button>
+  </div>
+
+  <!-- ══════════ ① 报告屏入口卡 ══════════ -->
+  <section id="v1">
+    <div class="card pad">
+      <h2>报告屏 · 把「简版」换成入口卡</h2>
+      <p class="hint" style="margin-top:8px">
+        今天报告屏上是三块简版：对勘分区（按节计数）、待你补（前 8 条）、图册（前 24 张）。
+        改成下面三张卡：<b>只给读数与入口</b>，点进去看全量——一功能一入口，不再两处都有。
+      </p>
+      <div class="entry-grid">
+        <a class="entry" href="#" data-v="v2">
+          <div class="k">对勘本 · 正文级对照</div>
+          <div class="v">704 <span style="font-size:15px;font-weight:400">处</span></div>
+          <div class="d">逐句对照母版与本期，改在哪、来自台账哪个格，一条条列明</div>
+          <div class="go">打开对勘本 →</div>
+        </a>
+        <a class="entry" href="#" data-v="v3">
+          <div class="k">红色件清单</div>
+          <div class="v">354 <span style="font-size:15px;font-weight:400">条</span></div>
+          <div class="d">签单依据：大表数值格 239 · 正文 15 · 图表槽 99（可搜索、可下载 Markdown）</div>
+          <div class="go">打开清单 →</div>
+        </a>
+        <a class="entry" href="#" data-v="v4">
+          <div class="k">图册</div>
+          <div class="v">99 <span style="font-size:15px;font-weight:400">张</span></div>
+          <div class="d">16 学科 × 6 张 + 概览 3 张，按学科平铺，点开看原图</div>
+          <div class="go">打开图册 →</div>
+        </a>
+      </div>
+      <p class="hint" style="margin-top:14px">
+        另：报告屏保留「待你补 / 拍板」的<b>读数与最近 3 条</b>（那一块是「现在该做什么」，不是清单），完整清单走上面的红件卡。
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════ ② 对勘本 ══════════ -->
+  <section id="v2" hidden>
+    <p class="crumb"><a href="#" data-v="v1">← 回报告</a> · 期次 202607 · 上期 202605</p>
+    <div class="card">
+      <div class="pad" style="padding-bottom:6px">
+        <h2>本期改动 704 处，逐条指向台账单元格
+          <span class="pill" style="margin-left:auto">机器断言 54/54 · 全绿</span>
+          <span class="pill">待人工补录 7 处</span>
+        </h2>
+        <div class="toolbar">
+          <input class="search" placeholder="搜索位置 / 改动文字 / 来源…">
+          <span class="switch">◐ 朱批层</span>
+          <span class="switch">仅看待人工 <b class="mono" style="color:var(--zhu)">7</b></span>
+          <span class="hint">点位置看台账来源 · 按 <b class="mono">← →</b> 换分组</span>
+        </div>
+      </div>
+
+      <div class="grid3">
+        <!-- 左：槽位分组 -->
+        <nav class="col-l">
+          <div class="hint mono" style="padding:0 18px 8px;letter-spacing:.2em">槽 位 分 组</div>
+          <div class="nav-i"><span>封面</span><span class="n">2</span></div>
+          <div class="nav-i"><span>概述正文</span><span class="n">4</span></div>
+          <div class="nav-i"><span>发展趋势</span><span class="n">1</span></div>
+          <div class="nav-i"><span>学科态势</span><span class="n">2</span></div>
+          <div class="nav-i" aria-current="true"><span>大表与表题</span><span class="n">241</span></div>
+          <div class="nav-i"><span>学科图表槽位</span><span class="n">447</span></div>
+          <div class="nav-i"><span>顶尖论文</span><span class="n">1</span></div>
+          <div class="nav-i"><span>预测回测</span><span class="n">2</span></div>
+          <div class="nav-i"><span>云南省对比</span><span class="n">1</span></div>
+          <div class="nav-i"><span>概览图槽位</span><span class="n">3</span></div>
+          <div class="kv" style="margin:12px 18px 0;border-top:1px solid var(--line);padding-top:10px">
+            <span class="k">命中</span><span class="v">704</span>
+          </div>
+        </nav>
+
+        <!-- 中：改动卡 -->
+        <div class="col-m">
+          <h3>大表与表题 <span class="hint">期数 · 年月</span><span class="hint" style="float:right">2 / 241 处</span></h3>
+
+          <div class="chg" style="margin-top:12px">
+            <div class="chg-h"><span class="loc">大表与表题/r3c1</span>
+              <span class="pill" style="padding:1px 9px">已替换</span>
+              <span class="hint" style="margin-left:auto">来源：table2.csv</span></div>
+            <div class="chg-b">
+              <div class="row"><span class="t">母版原文</span><span class="old">1 000</span></div>
+              <div class="row"><span class="t">本期</span><span class="new">1 012</span></div>
+            </div>
+          </div>
+
+          <div class="chg">
+            <div class="chg-h"><span class="loc">封面/期数</span>
+              <span class="pill" style="padding:1px 9px">已替换</span>
+              <span class="hint" style="margin-left:auto">来源：期次参数（上期月份）</span></div>
+            <div class="chg-b">
+              <div class="row"><span class="t">母版原文</span><span class="old">2026年第5期（总第39期）</span></div>
+              <div class="row"><span class="t">本期</span><span class="new">2026年第4期（总第38期）</span></div>
+            </div>
+          </div>
+
+          <div class="chg">
+            <div class="chg-h"><span class="loc">概述正文/p1</span>
+              <span class="pill" style="padding:1px 9px;background:var(--zhu-wash);border-color:var(--zhu);color:var(--zhu)">待人工</span>
+              <span class="hint" style="margin-left:auto">来源：句骨架 + 数字槽</span></div>
+            <div class="chg-b">
+              <div class="row"><span class="t">母版原文</span><span class="old">【手工：ESI发布日期】</span></div>
+              <div class="row"><span class="t">本期</span><span class="new">（待你补：这一格没有权威来源）</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右：校记 -->
+        <aside class="col-r">
+          <h3>校 记 <span class="hint" style="float:right">202607 · 汇总</span></h3>
+          <div class="kv" style="margin-top:10px"><span class="k">本期槽位</span><span class="v">704 处</span></div>
+          <div class="kv"><span class="k">文字 / 大表 / 图表</span><span class="v">14 / 591 / 99</span></div>
+          <div class="kv"><span class="k">待人工补录</span><span class="v" style="color:var(--zhu)">7 处</span></div>
+          <div class="kv"><span class="k">机器断言</span><span class="v" style="color:var(--ok)">54 / 54 · 全绿</span></div>
+          <p class="hint" style="margin-top:10px">把光标移到左侧任意一条改动上，这里显示它的台账出处。</p>
+          <div class="pop">
+            <div class="ph">台账出处</div>
+            <div class="pc">《云大全学科排名、阈值动态检测表.xlsx》→ 总被引 → 202607 → 化学</div>
+            <div class="ph" style="margin-top:6px">值</div>
+            <div class="pc">49 394</div>
+          </div>
+          <div style="margin-top:12px">
+            <div class="gate g-ok"><span>机器断言闸</span><span>全绿</span></div>
+            <div class="gate g-ok"><span>金样回测闸</span><span>逐格比对</span></div>
+            <div class="gate g-wait"><span>人工审批门</span><span>待签单</span></div>
+          </div>
+          <div style="margin-top:14px"><span class="btn primary" style="width:100%;justify-content:center">钤印签单</span></div>
+          <p class="hint" style="margin-top:8px">签单仍走审核台（两道闸在那边；这里只读）。</p>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ ③ 红件全量清单 ══════════ -->
+  <section id="v3" hidden>
+    <p class="crumb"><a href="#" data-v="v1">← 回报告</a> · 期次 202607</p>
+    <div class="card pad">
+      <h2>红色件清单 · 202607 <span class="hint" style="font-weight:400">共 354 条</span>
+        <a class="btn line" style="margin-left:auto;padding:7px 14px;font-size:14px" href="#">下载 Markdown</a>
+      </h2>
+      <p class="hint" style="margin-top:8px">每条列出「改了什么、来自哪里」——全部数字可回溯到台账供数位置；发布前由馆员逐条签单确认。</p>
+      <div class="chips">
+        <span class="pill">大表数值格 239</span><span class="pill">正文 15</span><span class="pill">T17 · 7</span>
+        <span class="pill">T03–T16、T18 · 各 6</span><span class="pill">封面 2</span><span class="pill">T01 · 1</span>
+      </div>
+      <div class="toolbar">
+        <input class="search" placeholder="搜索位置 / 修改前 / 修改后 / 来源…">
+        <span class="hint">匹配 <b class="mono">354 / 354</b> 条</span>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th style="width:56px">#</th><th style="width:150px">位置</th><th>修改前</th><th>修改后</th><th style="width:190px">来源</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">1</td><td class="loc">T01/表头</td><td class="old">接近度较7月</td><td class="new">接近度较5月</td><td>期次参数（上期月份）</td></tr>
+            <tr><td class="mono">2</td><td class="loc">T01/r1c0</td><td class="old">工程学</td><td class="new">工程学</td><td>table2.csv</td></tr>
+            <tr><td class="mono">3</td><td class="loc">T01/r1c1</td><td class="old">200/-</td><td class="new">200/-</td><td>table2.csv</td></tr>
+            <tr><td class="mono">…</td><td class="loc">正文/p1</td><td class="old">【手工：当期机构总数】</td><td class="new">（待人工补录）</td><td>句骨架 + 数字槽</td></tr>
+            <tr><td class="mono">…</td><td class="loc">学科图表槽位/化学</td><td class="old">（母版旧图）</td><td class="new">chart_chemistry_1.png</td><td>charts.py 渲染</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="hint" style="margin-top:12px">表里只示意 5 行；真实页是 354 条全量，带搜索与分类筛选，图槽位就地出缩略图。</p>
+    </div>
+  </section>
+
+  <!-- ══════════ ④ 图册全量 ══════════ -->
+  <section id="v4" hidden>
+    <p class="crumb"><a href="#" data-v="v1">← 回报告</a> · 期次 202607</p>
+    <div class="card pad">
+      <h2>图表图册 · 202607 <span class="hint" style="font-weight:400">共 99 张</span></h2>
+      <p class="hint" style="margin-top:8px">
+        本期报告写入的全部配图，按学科平铺，点开看原图。同一批图在对勘本的「学科图表槽位」里也铺在对应格子上；
+        想按图名找、或脱离槽位单看图，就用这一页。
+      </p>
+      <div class="toolbar"><input class="search" placeholder="搜索图名 / 学科…"><span class="hint">匹配 <b class="mono">99 / 99</b> 张</span></div>
+
+      <div class="sec-h"><h3>化学 CHEMISTRY</h3><span class="n">6 张</span></div>
+      <div class="gal">
+        <a href="#"><div class="thumb">chem · 排名趋势<br>（示意）</div><div class="cap">排名趋势</div></a>
+        <a href="#"><div class="thumb">chem · 被引趋势<br>（示意）</div><div class="cap">被引趋势</div></a>
+        <a href="#"><div class="thumb">chem · 接近度<br>（示意）</div><div class="cap">接近度</div></a>
+        <a href="#"><div class="thumb">chem · 阈值对比<br>（示意）</div><div class="cap">阈值对比</div></a>
+        <a href="#"><div class="thumb">chem · 论文结构<br>（示意）</div><div class="cap">论文结构</div></a>
+        <a href="#"><div class="thumb">chem · 预测<br>（示意）</div><div class="cap">预测回测</div></a>
+      </div>
+
+      <div class="sec-h"><h3>材料科学 MATERIALS SCIENCE</h3><span class="n">6 张</span></div>
+      <div class="gal">
+        <div class="thumb">materials · 排名趋势<br>（示意）</div><div class="thumb">materials · 被引趋势<br>（示意）</div>
+        <div class="thumb">materials · 接近度<br>（示意）</div><div class="thumb">materials · 阈值对比<br>（示意）</div>
+        <div class="thumb">materials · 论文结构<br>（示意）</div><div class="thumb">materials · 预测<br>（示意）</div>
+      </div>
+
+      <div class="sec-h"><h3>概览图</h3><span class="n">3 张</span></div>
+      <div class="gal">
+        <div class="thumb">总览 · 学科分布<br>（示意）</div>
+        <div class="thumb">总览 · 1% 接近度<br>（示意）</div>
+        <div class="thumb">总览 · 1‰ 潜力<br>（示意）</div>
+      </div>
+      <p class="hint" style="margin-top:14px">真实页按 16 个学科分组，共 99 张；这里是 3 组示意（含概览 3 张）。</p>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  // 静态稿的视图切换（成品里是 /app/?view=reading|red|charts 三个地址）
+  const btns = [...document.querySelectorAll('.tabs button')]
+  const secs = { v1: 'v1', v2: 'v2', v3: 'v3', v4: 'v4' }
+  function show(v) {
+    for (const [k, id] of Object.entries(secs)) document.getElementById(id).hidden = (k !== v)
+    btns.forEach(b => b.setAttribute('aria-selected', String(b.dataset.v === v)))
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  btns.forEach(b => b.onclick = () => show(b.dataset.v))
+  document.querySelectorAll('[data-v]').forEach(el => {
+    if (!el.matches('.tabs button')) el.addEventListener('click', (e) => { e.preventDefault(); show(el.dataset.v) })
+  })
+</script>
+</body>
+</html>
