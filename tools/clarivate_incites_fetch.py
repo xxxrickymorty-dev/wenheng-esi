@@ -36,6 +36,20 @@ from urllib.parse import quote
 from playwright.sync_api import Page, sync_playwright
 
 CDP = "http://127.0.0.1:9222"
+
+def resolve_cdp() -> str:
+    """CDP 地址：优先 127.0.0.1；被别的进程占用（Chrome 153 只监听 ::1）时退 localhost。"""
+    import urllib.request
+
+    for url in ("http://127.0.0.1:9222", "http://localhost:9222"):
+        try:
+            with urllib.request.urlopen(url + "/json/version", timeout=2) as r:
+                if r.status == 200:
+                    return url
+        except Exception:                                          # noqa: BLE001
+            continue
+    return "http://127.0.0.1:9222"
+
 INCITES = "https://incites.clarivate.com"
 DEFAULT_OUT_ROOT = Path(__file__).resolve().parents[2] / "数据与复现" / "incites"
 
@@ -358,7 +372,7 @@ def main() -> int:
     args = ap.parse_args()
 
     with sync_playwright() as p:
-        browser = p.chromium.connect_over_cdp(CDP)
+        browser = p.chromium.connect_over_cdp(resolve_cdp())
         page = _get_incites_page(browser)
         sid, dates = _session(page)
         period = _window(dates)

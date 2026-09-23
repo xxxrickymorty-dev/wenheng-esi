@@ -46,7 +46,7 @@ UP2EN = {s.upper(): s for s in SUBJECTS}
 
 # ------------------------------------------------------------------ 源文件小工具
 def _rows(p: pathlib.Path):
-    wb = openpyxl.load_workbook(p, read_only=True, data_only=True)
+    wb = openpyxl.load_workbook(p, data_only=True)  # ESI 新导出 dimension 常坏，普通模式才读得全
     try:
         rows = [list(r) for r in wb[wb.sheetnames[0]].iter_rows(values_only=True)]
     finally:

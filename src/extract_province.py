@@ -132,7 +132,7 @@ def compute(esi_root, period):
     rows, cn_rank = {}, {}
     cn_seen = 0
     # 表头在第 6 行（1-based），数据从第 7 行起；列序见 INST_COLS 的映射
-    wb = openpyxl.load_workbook(inst_file, read_only=True, data_only=True)
+    wb = openpyxl.load_workbook(inst_file, data_only=True)  # ESI 新导出 dimension 常坏，普通模式才读得全
     ws = wb[wb.sheetnames[0]]
     for ridx, row in enumerate(ws.iter_rows(min_row=7, max_col=9, values_only=True), start=7):
         nm = str(row[1]).strip() if row[1] else ""
@@ -161,7 +161,7 @@ def compute(esi_root, period):
         print(f"  ⚠ 只找到 {n_disc}/{len(DISC_FILES)} 个学科榜，缺：{missing}", file=sys.stderr)
     for disc, f in wbs.items():
         try:
-            wb = openpyxl.load_workbook(f, read_only=True, data_only=True)
+            wb = openpyxl.load_workbook(f, data_only=True)  # ESI 新导出 dimension 常坏，普通模式才读得全
             ws = wb[wb.sheetnames[0]]
             for row in ws.iter_rows(min_row=6, max_col=2, values_only=True):
                 nm = str(row[1]).strip() if row[1] else ""

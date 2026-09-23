@@ -113,7 +113,7 @@ def _resolve_file(d: pathlib.Path, subject: str) -> pathlib.Path | None:
 # ------------------------------------------------------------------ 读源
 def read_esi_list(path: pathlib.Path) -> dict:
     """ESI 机构榜 → {m, ypos, cn, cn_pos}（位次优先取「序号」列，缺序号按行序顺延）。"""
-    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    wb = openpyxl.load_workbook(path, data_only=True)  # ESI 新导出 dimension 常坏，普通模式才读得全
     try:
         ws = wb[wb.sheetnames[0]]
         rows = list(ws.iter_rows(values_only=True))

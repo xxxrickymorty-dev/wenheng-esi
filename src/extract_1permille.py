@@ -146,7 +146,7 @@ def parse_ranking(path):
     202501/Biology & Biochemistry.xlsx 的**首行序号是空的**
     （`['', 'UNIVERSITY OF CALIFORNIA', …]`），拿序号当判据会一行都读不到。
     """
-    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    wb = openpyxl.load_workbook(path, data_only=True)  # ESI 新导出 dimension 常坏，普通模式才读得全
     best = None
     try:
         for sn in wb.sheetnames:
@@ -359,7 +359,7 @@ def crosscheck_t1pct(data_root, period, res):
     p = pathlib.Path(data_root) / str(period) / "ThresholdESI.xlsx"
     if not p.exists():
         return None
-    wb = openpyxl.load_workbook(p, read_only=True, data_only=True)
+    wb = openpyxl.load_workbook(p, data_only=True)  # ESI 新导出 dimension 常坏，普通模式才读得全
     try:
         ws = wb[wb.sheetnames[0]]
         try:
