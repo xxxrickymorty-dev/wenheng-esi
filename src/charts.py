@@ -964,20 +964,22 @@ def chart_college_pie(stats, out_png, mode):
 
 # ---------- 预测章配图：实际 + 模型（拟合历史 + 递推预测）----------
 def chart_forecast(hist_periods, hist, model_hist, fut_periods, fut,
-                   labels, colors, out_png, grid=True, figsize=(7.4, 3.6)):
+                   labels, colors, out_png, grid=True, figsize=(7.0, 3.5)):
     """预测章「模型预测图」：两个指标各画「实际（实线）+ 模型（虚线，含历史拟合段）」。
 
     · `hist` / `model_hist` / `fut` 均为 **(指标1, 指标2)** 二元组；
     · `labels` / `colors` 四元组：指标1、指标1预测值、指标2、指标2预测值；
     · 模型历史段从首个有限拟合值画起（V1 口径前 6 期无拟合）。
+    · 字号按 rick 反馈加大（插图 14cm 宽时图例/刻度需 ≥8pt 可读）。
     """
+    ink = "#1F1F1F"
     fig, ax = _fig(*figsize)
     xh = list(range(len(hist_periods)))
     n_h = len(hist_periods)
     all_p = [str(p) for p in list(hist_periods) + list(fut_periods)]
 
     for j in range(2):
-        ax.plot(xh, hist[j], color=colors[2 * j], lw=1.5, label=labels[2 * j], zorder=3)
+        ax.plot(xh, hist[j], color=colors[2 * j], lw=1.8, label=labels[2 * j], zorder=3)
         line_x, line_y = [], []
         for x, v in zip(xh, model_hist[j]):
             try:
@@ -989,20 +991,21 @@ def chart_forecast(hist_periods, hist, model_hist, fut_periods, fut,
         if line_x:
             line_x = line_x + [n_h + k for k in range(len(fut_periods))]
             line_y = line_y + [float(v) for v in fut[j]]
-            ax.plot(line_x, line_y, color=colors[2 * j + 1], lw=1.3, ls="--",
+            ax.plot(line_x, line_y, color=colors[2 * j + 1], lw=1.5, ls="--",
                     label=labels[2 * j + 1], zorder=2)
 
     xt = [i for i, p in enumerate(all_p) if p.endswith("01")]
     if len(xt) > 10:
         xt = xt[::2]
     ax.set_xticks(xt)
-    ax.set_xticklabels([all_p[i] for i in xt], fontsize=6.2)
+    ax.set_xticklabels([all_p[i] for i in xt], fontsize=9)
     ax.set_xlim(-0.6, len(all_p) - 0.4)
     _style(ax)
+    ax.tick_params(labelsize=9, colors=ink)
     if not grid:
         ax.grid(False)
-    ax.legend(fontsize=6.8, loc="lower center", bbox_to_anchor=(0.5, -0.38),
-              ncol=4, frameon=False)
+    ax.legend(fontsize=10, loc="lower center", bbox_to_anchor=(0.5, -0.33),
+              ncol=4, frameon=False, labelcolor=ink)
     _save(fig, out_png)
 
 
