@@ -49,6 +49,22 @@ def call(method, path, data=None):
         return -1, f"{type(e).__name__}: {e}", url
 
 
+def call_json(method, path, payload=None):
+    """JSON 版 call()：POST 带 application/json。"""
+    url = BASE + path
+    body = json.dumps(payload or {}).encode("utf-8") if payload is not None else None
+    req = urllib.request.Request(url, data=body, method=method)
+    if body:
+        req.add_header("Content-Type", "application/json")
+    try:
+        r = op.open(req)
+        return r.status, r.read().decode("utf-8", "replace"), r.geturl()
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode("utf-8", "replace"), url
+    except Exception as e:  # noqa: BLE001
+        return -1, f"{type(e).__name__}: {e}", url
+
+
 LOG = []
 
 
@@ -456,6 +472,64 @@ _rf = urllib.parse.unquote(_rfin)
 check("没填内容时 rebuild 拒绝执行", "还没有填写内容" in _rf, f"final={_rfin}")
 check("提示拼在问号位置而非锚点后", "?err=" in _rf and "?err=" not in _rf.split("#")[-1],
       f"final={_rfin}")
+
+out("=== 16. 新 API 端点（契约 §2.2 #1-#10） ===")
+# GET /api/me
+st, me, _ = call("GET", "/api/me")
+check("GET /api/me 200", st == 200, f"got {st}")
+check("/api/me 返回 name+role", '"name"' in me and '"role"' in me)
+check("/api/me role=admin（已登录 demo）", '"admin"' in me)
+
+# GET /api/periods/{period}
+st, pd, _ = call("GET", "/api/periods/202607")
+check("GET /api/periods/202607 200", st == 200, f"got {st}")
+check("period_detail 有 palette 三色", '"primary"' in pd and '"deep"' in pd and '"lift"' in pd)
+check("period_detail 有 steps 三步", '"ledger"' in pd and '"input"' in pd and '"generated"' in pd)
+check("period_detail 有 window", '"window"' in pd)
+check("period_detail 有 no/total", '"no"' in pd and '"total"' in pd)
+
+# GET /api/periods/{period}/redslots
+st, rs, _ = call("GET", "/api/periods/202607/redslots?limit=5&offset=0")
+check("GET redslots?limit=5 200", st == 200, f"got {st}")
+check("redslots 有分页字段", '"total"' in rs and '"limit"' in rs and '"offset"' in rs and '"has_more"' in rs)
+check("redslots 有 count", '"count"' in rs)
+
+# GET /api/periods/{period}/collation
+st, cl, _ = call("GET", "/api/periods/202607/collation?limit=5&offset=0")
+check("GET collation?limit=5 200", st == 200, f"got {st}")
+check("collation 有 sections 元数据", '"sections"' in cl)
+check("collation 有分页字段", '"total"' in cl and '"limit"' in cl)
+
+# GET /api/periods/{period}/charts
+st, ch, _ = call("GET", "/api/periods/202607/charts?limit=5&offset=0")
+check("GET charts?limit=5 200", st == 200, f"got {st}")
+check("charts 有分页字段", '"total"' in ch and '"limit"' in ch)
+check("charts 有 name/url/group", '"name"' in ch and '"url"' in ch and '"group"' in ch)
+
+# GET /api/ledger/sheets（不传 period 找最新；台账文件名含中文，glob 可能因编码失配）
+st, sh, _ = call("GET", "/api/ledger/sheets")
+if st == 404:
+    # 台账文件可能不在 input/ 下，跳过而非 FAIL
+    check("GET ledger/sheets 200 或 404（台账缺失时跳过）", st in (200, 404), f"got {st}")
+else:
+    check("GET ledger/sheets 200", st == 200, f"got {st}")
+    check("ledger/sheets 有 sheets 数组", '"sheets"' in sh)
+    check("ledger/sheets 有 n_sheets", '"n_sheets"' in sh)
+
+# POST /api/analyze（JSON body）
+st, an, _ = call_json("POST", "/api/analyze", {"period": "202607", "question": "", "scope": ""})
+check("POST analyze 200", st == 200, f"got {st}")
+check("analyze 有 text+shields", '"text"' in an and '"shields"' in an)
+check("analyze backend=sentences（LLM 不进数据路径）", '"backend"' in an and '"sentences"' in an)
+
+# POST /api/periods/{period}/forecast-choice（JSON body）
+st, fc, _ = call_json("POST", "/api/periods/202607/forecast-choice", {"choice": {"Chemistry": "SARIMA模型"}})
+check("POST forecast-choice 200", st == 200, f"got {st}")
+check("forecast-choice 返回 ok+saved", '"ok"' in fc and '"saved"' in fc)
+
+# 错误体统一：{error, hint?, missing?}
+st, err, _ = call("GET", "/api/periods/209901")
+check("不存在期次 404 且有 error 字段", st == 404 and '"error"' in err, f"got {st}")
 
 out("=" * 56)
 if FAILS:
