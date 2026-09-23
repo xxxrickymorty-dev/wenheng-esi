@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import type { Me, Period } from './api'
 import { getCollation, type CollationRow } from './api2'
 import { flagLoc, revokePeriod, signPeriod } from './api3'
+import { req } from './api'
 import { getWorkbench, postFill, type TodoItem, type WorkbenchData } from './api4'
 import { Icon } from './icons'
 
@@ -18,6 +19,7 @@ function FillSection({ period, isAdmin }: { period: string | null; isAdmin: bool
   const [note, setNote] = useState<string | null>(null)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  const [rebuilding, setRebuilding] = useState(false)
 
   useEffect(() => {
     if (!period) return
@@ -59,6 +61,27 @@ function FillSection({ period, isAdmin }: { period: string | null; isAdmin: bool
       const h = e as { status?: number; body?: { error?: string }; message?: string }
       setMsg({ ok: false, text: h.body?.error ?? h.message ?? '保存失败' })
     } finally { setBusy(false) }
+  }
+
+  /* 填完重出：把填值交给后端，撤下旧成品（进 _superseded/，能回滚）再重出报告。
+     后端口径：不重新解析台账，2–15 秒（重插图），同步阻塞——所以按钮要挡住重复点。 */
+  async function rebuild() {
+    if (!period || !wb) return
+    const items: Record<string, string> = {}
+    for (const [k, v] of Object.entries(vals)) if (v.trim()) items[k] = v
+    setRebuilding(true); setMsg(null)
+    try {
+      const r = await req<Record<string, unknown>>(
+        `/api/periods/${encodeURIComponent(period)}/rebuild`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }) },
+      )
+      const saved = typeof r?.saved === 'number' ? `已带上 ${r.saved} 处填值 · ` : ''
+      setMsg({ ok: true, text: `${saved}报告已重出（旧成品已撤到 _superseded/）——回报告屏可看新版` })
+      setWb(await getWorkbench(period))
+    } catch (e) {
+      const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
+      setMsg({ ok: false, text: (h.body?.error ?? h.message ?? '重出失败') + (h.body?.hint ? `（${h.body.hint}）` : '') })
+    } finally { setRebuilding(false) }
   }
 
   const row2 = (t: TodoItem, withInput: boolean) => (
@@ -125,13 +148,37 @@ function FillSection({ period, isAdmin }: { period: string | null; isAdmin: bool
           )}
 
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 14, flexWrap: 'wrap' }}>
-            <button className="btn primary" onClick={save} disabled={!isAdmin || busy}>
+            <button className="btn primary" onClick={save} disabled={!isAdmin || busy || rebuilding}>
               <Icon name="doc" size={19} />保存填写
+            </button>
+            <button className="btn" onClick={rebuild} disabled={!isAdmin || busy || rebuilding}
+                    title="把填值交给后端重出报告；旧成品会撤到 _superseded/（可回滚），约 2–15 秒">
+              <Icon name="refresh" size={19} />{rebuilding ? '正在重出……' : '保存并重出报告'}
             </button>
             {msg && (
               <span className="hint" style={{ color: msg.ok ? 'var(--ok)' : 'var(--bad)' }}>{msg.text}</span>
             )}
           </div>
+
+          {/* 已填列表：谁填的、什么时候（数据来自 workbench 的 todo_fill，后端字段直出） */}
+          {wb.todo_fill.some((t) => t.filled) && (
+            <>
+              <h3 style={{ fontSize: 16, marginTop: 16 }}>已填（{wb.todo_fill.filter((t) => t.filled).length} 处）</h3>
+              <div>
+                {wb.todo_fill.filter((t) => t.filled).map((t) => (
+                  <div key={`f-${t.id}`} style={{ display: 'flex', gap: 12, alignItems: 'baseline',
+                                                padding: '8px 0', borderBottom: '1px solid var(--line-2)' }}>
+                    <span className="mono" style={{ flex: '0 0 160px', color: 'var(--ink-3)', fontSize: 13.5 }}>{t.where}</span>
+                    <span style={{ flex: '0 0 180px', fontSize: 14.5 }}>{t.title}</span>
+                    <b style={{ flex: 1, color: 'var(--zhu)' }}>{t.filled}</b>
+                    <span className="hint" style={{ fontSize: 12.5 }}>
+                      {t.filled_by ?? '—'}{t.filled_at ? ` · ${t.filled_at}` : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </>
       )}
     </>
