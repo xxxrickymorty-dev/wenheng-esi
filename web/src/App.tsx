@@ -30,6 +30,8 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [run, setRun] = useState<Run | null>(null)
 
+  /* ?period= 深链：从老站迁移过来的等价地址（老站 /p/<期次> → 新站 ?view=report&period=<期次>） */
+  const wantPeriod = new URLSearchParams(location.search).get('period')
   const _v = new URLSearchParams(location.search).get('view')
   const view: 'workbench' | 'report' | 'review' | 'ledger' | 'analysis' =
     _v === 'report' ? 'report'
@@ -41,7 +43,7 @@ export default function App() {
   const demo = useMemo(() => {
     const v = new URLSearchParams(location.search).get('demo') as WBState | null
     return v && DEMO_STATES.includes(v) ? v : null
-  }, [])
+  }, [])   // eslint-disable-line react-hooks/exhaustive-deps -- wantPeriod 只在首屏读一次
 
   useEffect(() => {
     let alive = true
@@ -55,7 +57,8 @@ export default function App() {
         const list = await getPeriods()
         if (!alive) return
         setPeriods(list)
-        setSelected(list[0]?.period ?? null)
+        const hit = wantPeriod && list.some((p) => p.period === wantPeriod)
+        setSelected(hit ? wantPeriod : (list[0]?.period ?? null))
       } catch (e) {
         if (alive) setErr(e as ApiError)
       }
@@ -133,19 +136,24 @@ export default function App() {
           <span>学科信息参考</span>
         </div>
         <nav className="nav" aria-label="工作区">
-          <a href="/app/" aria-current={view === 'workbench' ? 'page' : undefined}>
+          <a href={`/app/${selected ? `?period=${encodeURIComponent(selected)}` : ''}`}
+             aria-current={view === 'workbench' ? 'page' : undefined}>
             <Icon name="play" size={19} />生成台
           </a>
-          <a href="/app/?view=report" aria-current={view === 'report' ? 'page' : undefined}>
+          <a href={`/app/?view=report${selected ? `&period=${encodeURIComponent(selected)}` : ''}`}
+             aria-current={view === 'report' ? 'page' : undefined}>
             <Icon name="chart" size={19} />报告
           </a>
-          <a href="/app/?view=review" aria-current={view === 'review' ? 'page' : undefined}>
+          <a href={`/app/?view=review${selected ? `&period=${encodeURIComponent(selected)}` : ''}`}
+             aria-current={view === 'review' ? 'page' : undefined}>
             <Icon name="seal" size={19} />审核台
           </a>
-          <a href="/app/?view=ledger" aria-current={view === 'ledger' ? 'page' : undefined}>
+          <a href={`/app/?view=ledger${selected ? `&period=${encodeURIComponent(selected)}` : ''}`}
+             aria-current={view === 'ledger' ? 'page' : undefined}>
             <Icon name="doc" size={19} />台账
           </a>
-          <a href="/app/?view=analysis" aria-current={view === 'analysis' ? 'page' : undefined}>
+          <a href={`/app/?view=analysis${selected ? `&period=${encodeURIComponent(selected)}` : ''}`}
+             aria-current={view === 'analysis' ? 'page' : undefined}>
             <Icon name="chart" size={19} />分析台
           </a>
           <a href="/app/shelf/"><Icon name="book" size={19} />陈列馆</a>
@@ -230,7 +238,8 @@ export default function App() {
                     </span>
                   </td>
                   <td>
-                    <a href={p.url} onClick={(e) => e.stopPropagation()}>打开</a>
+                    <a href={`/app/?view=report&period=${encodeURIComponent(p.period)}`}
+                       onClick={(e) => e.stopPropagation()}>打开</a>
                   </td>
                 </tr>
               ))}

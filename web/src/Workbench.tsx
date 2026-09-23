@@ -100,7 +100,7 @@ function LiveRun({ run }: { run: Run }) {
   )
 }
 
-function Banners({ wb, err, healthy, onRerun }: { wb: WB; err: ApiError | null; healthy: boolean; onRerun: () => void }) {
+function Banners({ wb, err, healthy, onRerun, period }: { wb: WB; err: ApiError | null; healthy: boolean; onRerun: () => void; period: string | null }) {
   if (wb.state === 'done' || wb.state === 'signed') {
     return (
       <div className="banner ok">
@@ -109,8 +109,8 @@ function Banners({ wb, err, healthy, onRerun }: { wb: WB; err: ApiError | null; 
           <b className="title">{wb.state === 'signed' ? '本期已签发' : '本期报告已生成'}</b>
           <span>报告初稿与改动清单都在这期目录里；复核后在审核台签单。</span>
           <span className="acts">
-            <a className="btn" href="/" target="_blank" rel="noreferrer"><Icon name="doc" size={19} />打开报告</a>
-            <a className="btn" href="/" target="_blank" rel="noreferrer"><Icon name="seal" size={19} />去审核台</a>
+            <a className="btn" href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="doc" size={19} />打开报告</a>
+            <a className="btn" href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="seal" size={19} />去审核台</a>
           </span>
         </span>
       </div>
@@ -238,10 +238,10 @@ export function Workbench({
               </button>
             )}
             {wb.focusAction === 'sign' && (
-              <a className="btn primary" href="/"><Icon name="seal" size={20} />复核并签单</a>
+              <a className="btn primary" href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="seal" size={20} />复核并签单</a>
             )}
             {wb.focusAction === 'open' && (
-              <a className="btn" href="/"><Icon name="doc" size={20} />打开报告</a>
+              <a className="btn" href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="doc" size={20} />打开报告</a>
             )}
           </div>
         </div>
@@ -258,7 +258,7 @@ export function Workbench({
         )}
 
         {run ? <LiveRun run={run} /> : wb.state === 'running' ? <Progress /> : null}
-        <Banners wb={wb} err={err} healthy={healthy} onRerun={onGenerate} />
+        <Banners wb={wb} err={err} healthy={healthy} onRerun={onGenerate} period={period} />
 
         {wb.note && (
           <div style={{ padding: '0 24px 20px' }}>
