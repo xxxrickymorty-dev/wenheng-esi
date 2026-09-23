@@ -2,9 +2,8 @@
    与 G 的翻书**分工**：翻书＝读正文（人的阅读）；这里＝看数据与改动（大表 / 朱批 / 溯源 / 印记链）。
 
    🔴 诚实边界（项目红线：缺数据不填假数）：
-     今天能拿真数据的只有三样——**期次、印记链（签单状态）、产物列表**。
-     读数带 / 页边朱批 / 大表 / 溯源 都要等契约 §2.2 的接口；就绪前整块写明"等什么"，
-     不放占位数字、不假装有内容。
+     读数带 / 印记链 / 产物 / 对勘 / 朱批 / 图册 都已接真数据；
+     哪一块没接上就整块写明"等什么"，不放占位数字、不假装有内容。
 */
 
 import { useEffect, useState } from 'react'
@@ -13,6 +12,7 @@ import {
   type Artifact, type Period,
 } from './api'
 import { getCharts, getCollation, type ChartRow, type CollationRow } from './api2'
+import { getFacts, type Facts } from './api4'
 import { Icon } from './icons'
 
 /** 期次印记链：签过＝朱印 / 签名失效＝金印 / 未签发＝墨线框。这是产品的原创资产，也是本屏的记忆点。 */
@@ -231,6 +231,87 @@ function PeriodData({ period }: { period: string | null }) {
   )
 }
 
+/** 读数带：真数据（GET /api/periods/{p}/facts，源与报告同款）。
+    🔴 数字原样来自后端——这里只排版，不换算、不聚合、不四舍五入。 */
+function FactsStrip({ period }: { period: string | null }) {
+  const [f, setF] = useState<Facts | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!period) return
+    let alive = true
+    setF(null); setNote(null)
+    getFacts(period)
+      .then((x) => { if (alive) setF(x) })
+      .catch((e: { status?: number }) => {
+        if (!alive) return
+        setNote(
+          e.status === 403 ? '读数需要管理员权限（后端按角色拦的）。'
+            : e.status === 404 ? '这一期还没有概览数字（可能尚未出稿）。'
+              : '读读数失败。',
+        )
+      })
+    return () => { alive = false }
+  }, [period])
+
+  if (note) return <div className="pending-box">{note}</div>
+  if (!f) return <div className="pending-box">正在读读数……</div>
+
+  const x = f.facts
+  const dir = (n: number) => (n > 0 ? `升 ${n}` : n < 0 ? `降 ${-n}` : '持平')
+  const cards: { k: string; v: string; d: string; good?: boolean; bad?: boolean }[] = [
+    {
+      k: '国际排名', v: String(x.rank_intl_now),
+      d: `比上期${dir(x.rank_intl_delta)}（上期 ${x.rank_intl_prev}）`,
+      good: x.rank_intl_delta > 0, bad: x.rank_intl_delta < 0,
+    },
+    {
+      k: '国内高校排名', v: String(x.rank_cn_uni_now),
+      d: `比上期${dir(x.rank_cn_uni_delta)} · 国内机构 ${x.rank_cn_inst_now}（${dir(x.rank_cn_inst_delta)}）`,
+      good: x.rank_cn_uni_delta > 0, bad: x.rank_cn_uni_delta < 0,
+    },
+    {
+      k: '前 1% 学科', v: String(x.n_disc_1pct),
+      d: x.any_1permille ? '已有学科进入 1‰' : '尚无学科进入 1‰',
+    },
+    {
+      k: '顶尖论文', v: String(x.top_papers_now),
+      d: `比上期增 ${x.top_papers_delta} 篇（上期 ${x.top_papers_prev}）`,
+    },
+    {
+      k: '学科升降', v: `${x.rank_up} 升`,
+      d: `降 ${x.rank_down} · 持平 ${x.rank_flat}`,
+    },
+  ]
+
+  return (
+    <>
+      <div className="readouts">
+        {cards.map((c) => (
+          <div className="readout" key={c.k}>
+            <div className="k">{c.k}</div>
+            <div className="v" style={c.good ? { color: 'var(--ok)' } : c.bad ? { color: 'var(--bad)' } : undefined}>
+              {c.v}
+            </div>
+            <div className="d">{c.d}</div>
+          </div>
+        ))}
+      </div>
+      <p className="hint" style={{ marginTop: 10 }}>
+        数字体检：{f.assertions.total} 项核对
+        {f.assertions.fail === 0 ? '全部通过' : `有 ${f.assertions.fail} 项不符 ❗`}
+        {' · '}覆盖窗口 {x.coverage_window} · 上期 {x.prev_label}
+        {f.missing.length > 0 ? ` · 缺：${f.missing.join('、')}` : ''}
+      </p>
+      <p className="hint" style={{ marginTop: 6 }}>
+        最接近 1‰：{x.best_1permille.discipline} {x.best_1permille.prox_pct}%
+        （上期 {x.best_1permille.prox_prev_pct}%）· 按顶尖论文数的三甲：
+        {x.top3_by_top_papers.map(([d, n]) => `${d} ${n}`).join('、')}
+      </p>
+    </>
+  )
+}
+
 export function Report({
   periods, current, onPick,
 }: {
@@ -248,37 +329,13 @@ export function Report({
           <h1 className="display">
             {row?.label ?? '（选择期次）'}
             <small>
-              目录名 {current ?? '—'} · 数据源与覆盖窗口等待接口（见下方说明）
+              目录名 {current ?? '—'} · 读数与覆盖窗口见下方读数带
             </small>
           </h1>
           <div className="rule" />
 
-          {/* 读数带：等契约 §2.2 #2（单期详情） */}
-          <div className="readouts">
-            {['国际排名', '顶尖论文', '覆盖学科', '图表'].map((k) => (
-              <div className="readout" key={k}>
-                <div className="k">{k}</div>
-                <div className="v pending">待接口</div>
-                <div className="d" style={{ color: 'var(--ink-3)' }}>不填假数</div>
-              </div>
-            ))}
-          </div>
-          <div className="pending-box">
-            <b>读数带还差一个端点</b>
-            <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
-              <li>
-                概览数字（国际排名 / 顶尖论文 / 学科数 / 图数）目前没有接口 ——
-                建议加 <code>GET /api/periods/&#123;期次&#125;/facts</code>（流水线的
-                <code>overview_facts.json</code> 已经落盘，读出来序列化即可）。
-              </li>
-              <li>
-                朱批、对勘、图册已经接上（见下方「对勘分区 / 待你补·拍板 / 图册」）。
-              </li>
-            </ul>
-            <div style={{ marginTop: 8 }}>
-              <b>不填假数</b>：这四个格宁可写「待接口」，也不放占位数字。
-            </div>
-          </div>
+          {/* 读数带：真数据（后端 facts 接口已交付） */}
+          <FactsStrip period={current} />
         </div>
 
         {/* 印记链：今天就有真数据 */}

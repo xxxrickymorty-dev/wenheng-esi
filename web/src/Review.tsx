@@ -1,13 +1,142 @@
 /* 审核台（工作区 3）——把「可签发」这件事做成可操作的。
    契约 §2.2 #7/#8；后端 Batch 3/4 已交付 sign/revoke/flag 的 JSON 版。
    🔴 前端只是入口，**真正的门在后端**（require_admin）；这里按角色隐藏只是不打扰人。
-   在线填（fill）需要 todo 列表，后端目前只有服务端渲染页——没有 GET，所以此处如实标注。 */
+   在线填也是真数据了：GET workbench（todo/fills）+ POST fill（批量补录）。 */
 
 import { useEffect, useState } from 'react'
 import type { Me, Period } from './api'
 import { getCollation, type CollationRow } from './api2'
 import { flagLoc, revokePeriod, signPeriod } from './api3'
+import { getWorkbench, postFill, type TodoItem, type WorkbenchData } from './api4'
 import { Icon } from './icons'
+
+/** 在线填：真数据（GET /api/periods/{p}/workbench）+ 批量补录（POST .../fill）。
+    后端口径：只写产物目录里的填写记录，**台账一个字节不动**——填的是报告，不是数据源。 */
+function FillSection({ period, isAdmin }: { period: string | null; isAdmin: boolean }) {
+  const [wb, setWb] = useState<WorkbenchData | null>(null)
+  const [vals, setVals] = useState<Record<string, string>>({})
+  const [note, setNote] = useState<string | null>(null)
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (!period) return
+    let alive = true
+    setWb(null); setNote(null); setMsg(null); setVals({})
+    getWorkbench(period)
+      .then((x) => {
+        if (!alive) return
+        setWb(x)
+        const v: Record<string, string> = {}
+        for (const t of x.todo_fill) if (t.filled) v[t.id] = t.filled
+        setVals(v)
+      })
+      .catch((e: { status?: number }) => {
+        if (!alive) return
+        setNote(
+          e.status === 403 ? '在线填需要管理员权限（后端按角色拦的）。'
+            : e.status === 404 ? '这一期还没有工作台数据。'
+              : '读工作台数据失败。',
+        )
+      })
+    return () => { alive = false }
+  }, [period])
+
+  async function save() {
+    if (!period || !wb) return
+    const items: Record<string, string> = {}
+    for (const [k, v] of Object.entries(vals)) if (v.trim()) items[k] = v
+    if (Object.keys(items).length === 0) {
+      setMsg({ ok: false, text: '还没有填写任何一处。' })
+      return
+    }
+    setBusy(true); setMsg(null)
+    try {
+      const r = await postFill(period, items)
+      setMsg({ ok: true, text: `已保存 ${r.saved} 处` })
+      setWb(await getWorkbench(period))
+    } catch (e) {
+      const h = e as { status?: number; body?: { error?: string }; message?: string }
+      setMsg({ ok: false, text: h.body?.error ?? h.message ?? '保存失败' })
+    } finally { setBusy(false) }
+  }
+
+  const row2 = (t: TodoItem, withInput: boolean) => (
+    <div key={t.id} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '9px 0',
+                            borderBottom: '1px solid var(--line-2)' }}>
+      <span className="mono" style={{ flex: '0 0 160px', color: 'var(--ink-3)', fontSize: 13.5 }}>
+        {t.where}
+      </span>
+      <span style={{ flex: '0 0 200px', fontSize: 14.5 }}>
+        {t.title}
+        <br />
+        <span className="hint" style={{ fontSize: 12.5 }}>来自 {t.source}</span>
+      </span>
+      {withInput ? (
+        <input
+          type="text"
+          value={vals[t.id] ?? ''}
+          placeholder={t.filled ? '' : '填在这里'}
+          onChange={(e) => setVals((s) => ({ ...s, [t.id]: e.target.value }))}
+          disabled={!isAdmin || busy}
+          style={{ flex: 1, font: 'inherit', padding: '7px 10px', color: 'inherit',
+                   border: '1px solid var(--line)', borderRadius: 8, background: 'var(--card)' }}
+        />
+      ) : (
+        <span className="hint" style={{ flex: 1 }}>（待你核过再定）</span>
+      )}
+    </div>
+  )
+
+  return (
+    <>
+      <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Icon name="doc" size={20} />在线填 · 报告里的空
+        {wb && (
+          <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>
+            （待补录 {wb.todo_fill.length} 处 · 待确认 {wb.todo_confirm.length} 处 · 已存 {wb.n_filled} 处）
+          </span>
+        )}
+      </h2>
+      <p className="hint" style={{ marginTop: 8 }}>
+        填的是报告里的空，<b>台账一个字节都不动</b>。
+        {wb && wb.traceable.n > 0 && (
+          <> 本期 {wb.traceable.n} 个数字，{wb.traceable.with_source} 个标了出处。</>
+        )}
+      </p>
+
+      {note ? (
+        <div className="pending-box" style={{ marginTop: 12 }}>{note}</div>
+      ) : !wb ? (
+        <div className="pending-box" style={{ marginTop: 12 }}>正在读待办……</div>
+      ) : wb.todo_fill.length === 0 && wb.todo_confirm.length === 0 ? (
+        <div className="pending-box" style={{ marginTop: 12 }}>这一期没有要人填的地方。</div>
+      ) : (
+        <>
+          <div style={{ marginTop: 8 }}>{wb.todo_fill.map((t) => row2(t, true))}</div>
+
+          {wb.todo_confirm.length > 0 && (
+            <>
+              <h3 style={{ fontSize: 16, marginTop: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Icon name="alert" size={17} />待确认（{wb.todo_confirm.length} 处）
+              </h3>
+              <div>{wb.todo_confirm.map((t) => row2(t, false))}</div>
+            </>
+          )}
+
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 14, flexWrap: 'wrap' }}>
+            <button className="btn primary" onClick={save} disabled={!isAdmin || busy}>
+              <Icon name="doc" size={19} />保存填写
+            </button>
+            {msg && (
+              <span className="hint" style={{ color: msg.ok ? 'var(--ok)' : 'var(--bad)' }}>{msg.text}</span>
+            )}
+          </div>
+        </>
+      )}
+    </>
+  )
+}
 
 export function Review({
   period, me, periods, onChanged,
@@ -181,15 +310,7 @@ export function Review({
       </section>
 
       <section className="card" style={{ marginTop: 18, padding: '20px 24px' }}>
-        <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Icon name="doc" size={20} />在线填（待接口）
-        </h2>
-        <div className="pending-box" style={{ marginTop: 12 }}>
-          <b>缺一个 GET</b>：填表的 todo 列表目前只在服务端渲染页里（`workbench.build()`），
-          没有 JSON 端点——前端拿不到 todo_id。建议加
-          <code> GET /api/periods/&#123;期次&#125;/workbench</code>（返回 todos / fills / flags），
-          接上之后这一块就能像签单一样可用。
-        </div>
+        <FillSection period={period} isAdmin={isAdmin} />
       </section>
     </>
   )
