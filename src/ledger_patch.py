@@ -93,9 +93,17 @@ def read_grid(ledger, sheetname):
 
 
 def cell_text(attrs, inner, shared):
-    """把 (attrs, inner) 还原成用户看到的文本/数字字符串。"""
+    """把 (attrs, inner) 还原成用户看到的文本/数字字符串。
+
+    支持三类：共享字符串（t="s"）、**行内字符串**（t="inlineStr"，工具新写的期次标签用这种）、
+    其余数字/普通文本。
+    """
     if inner is None:
         return None
+    if "<is>" in inner:                                   # 行内字符串（可含多段 <t>）
+        parts = re.findall(r"<t[^>]*>(.*?)</t>", inner, re.S)
+        if parts:
+            return html.unescape("".join(parts))
     if 't="s"' in attrs:
         m = re.search(r"<v>(\d+)</v>", inner)
         return html.unescape(shared[int(m.group(1))]) if m else None

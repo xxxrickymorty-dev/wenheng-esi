@@ -318,6 +318,25 @@ def append_row(xml: str, rn: int, ops: dict, spans_max: int, shared) -> str:
     return xml.replace("</sheetData>", f'<row r="{rn}" spans="1:{spans_max}">{body}</row></sheetData>')
 
 
+def insert_row(xml: str, rn: int, ops: dict, spans_max: int) -> str:
+    """按行号**插入**新行（保持物理排序；两块并排的表必须用这个，不能用 append_row）。"""
+    cells = {}
+    for (_er, cn), op in ops.items():
+        if op[0] == "set":
+            cells[cn] = ("", f"<v>{_fmt(op[1])}</v>")
+        else:
+            _k, style, t_attr, inner = op
+            cells[cn] = (f'{_drop_t(style)} {t_attr}'.strip(), inner)
+    body = "".join(f'<c r="{cn}{rn}"{_A(a)}>{i}</c>' if i is not None
+                   else f'<c r="{cn}{rn}"{_A(a)}/>'
+                   for cn, (a, i) in sorted(cells.items(), key=lambda kv: col_index(kv[0])))
+    row = f'<row r="{rn}" spans="1:{spans_max}">{body}</row>'
+    for m in ROW_RE.finditer(xml):
+        if int(m.group(1)) > rn:
+            return xml[:m.start()] + row + xml[m.start():]
+    return xml.replace("</sheetData>", row + "</sheetData>")
+
+
 def fix_dimension(xml: str, max_col: int, max_row: int) -> str:
     return re.sub(r'<dimension ref="A1:[A-Z]+\d+"/>',
                   f'<dimension ref="A1:{col_letter(max_col)}{max_row}"/>', xml)
@@ -569,7 +588,98 @@ def plan_avg(tx: LedgerTx, sheet: str, period: str, table: dict) -> tuple[str, d
             style = g.get(rn, {}).get(prev_cn, ("", None))[0]
             ops[(rn, vcol)] = ("new", style, "", f"<v>{_fmt(rec['avg'])}</v>")
     xml, n = edit_cells(xml, ops)
-    xml = fix_dimension(xml, col_index(vcol), max_row_xml(xml))
+    xml = fix_dimension(xml, col_index(vcol) + 2, max_row_xml(xml))
+    return xml, {"cells": n}
+
+
+# ------------------------------------------------------------------ Q1–Q4（InCites 研究领域）
+_Q1Q4_ENTITIES = (
+    ("云南大学", ("云南大学研究领域.xlsx", "云大 研究领域.xlsx", "云大研究领域.xlsx")),
+    ("中国大陆", ("中国研究领域.xlsx",)),
+    ("全球", ("全球 研究领域.xlsx", "全球 研究领域 .xlsx", "全球研究领域.xlsx")),
+)
+_Q1Q4_LABELS = ("Q1 %", "Q2%", "Q3 %", "Q4 %")
+
+
+def read_q1q4(snap_dir: pathlib.Path) -> tuple[dict, list]:
+    """{学科: {实体: (Q1%, Q2%, Q3%, Q4%)}} + 缺件说明。来源=快照的三张研究领域文件。"""
+    out, notes = {}, []
+    for ent, cands in _Q1Q4_ENTITIES:
+        p = next((snap_dir / n for n in cands if (snap_dir / n).exists()), None)
+        if p is None:
+            notes.append(f"缺 {ent}「研究领域」文件（{'、'.join(cands)}）")
+            continue
+        wb = openpyxl.load_workbook(str(p), read_only=True, data_only=True)
+        try:
+            ws = wb[wb.sheetnames[0]]
+            it = ws.iter_rows(values_only=True)
+            hdr = [str(c).strip() if c is not None else "" for c in next(it)]
+            qi = []
+            for n in (1, 2, 3, 4):
+                idx = next((i for i, h in enumerate(hdr)
+                            if h.startswith(f"Q{n}") and "百分比" in h), None)
+                if idx is not None:
+                    qi.append(idx)
+            if len(qi) != 4:
+                notes.append(f"{p.name} 缺 Q1–Q4 百分比列")
+                continue
+            for r in it:
+                name = str(r[0] or "").strip()
+                if name in SUBJECTS:
+                    out.setdefault(name, {})[ent] = tuple(float(_num(r[i]) or 0) for i in qi)
+        finally:
+            wb.close()
+    return out, notes
+
+
+def plan_q1q4(tx: LedgerTx, period: str, table: dict) -> tuple[str, dict]:
+    """Q1-Q4：每期 12 列（3 实体 × Q1..Q4），行=22 学科（第 4 行起）。"""
+    sheet = "Q1-Q4"
+    xml = tx.sheet_xml(sheet)
+    g, shared = read_grid(tx.path, sheet)
+    label = f"{period[:4]}.{period[4:]}"
+    starts = sorted(col_index(cn) for cn, (a, i) in g[1].items()
+                    if re.fullmatch(r"20\d{2}\.\d{2}", str(LP.cell_text(a, i, shared) or "").strip()))
+    period_col = next((cn for cn, (a, i) in g[1].items()
+                       if str(LP.cell_text(a, i, shared) or "").strip() == label), None)
+    row_of = subject_rows(g, shared, set(SUBJECTS))
+    ops = {}
+    if period_col is None:
+        base, prev_base = starts[-1] + 12, starts[-1]
+        t_attr, inner = text_op(shared, label)
+        ops[(1, col_letter(base))] = ("new", g[1][col_letter(prev_base)][0], t_attr, inner)
+        for e, (ent, _c) in enumerate(_Q1Q4_ENTITIES):
+            t_attr, inner = text_op(shared, ent)
+            style = g[2][col_letter(prev_base + e * 4)][0] if 2 in g else ""
+            ops[(2, col_letter(base + e * 4))] = ("new", style, t_attr, inner)
+            for k, lab in enumerate(_Q1Q4_LABELS):
+                t_attr, inner = text_op(shared, lab)
+                style = g[3][col_letter(prev_base + k)][0] if 3 in g else ""
+                ops[(3, col_letter(base + e * 4 + k))] = ("new", style, t_attr, inner)
+        if "<mergeCells" in xml:
+            xml = add_merge(xml, f"{col_letter(base)}1:{col_letter(base + 11)}1")
+            for e in range(3):
+                xml = add_merge(xml, f"{col_letter(base + e * 4)}2:{col_letter(base + e * 4 + 3)}2")
+    else:
+        base, prev_base = col_index(period_col), col_index(period_col) - 12
+    for s, per_ent in table.items():
+        rn = row_of.get(s)
+        if rn is None:
+            continue
+        for e, (ent, _c) in enumerate(_Q1Q4_ENTITIES):
+            vals = per_ent.get(ent)
+            if vals is None:
+                continue
+            for k, v in enumerate(vals):
+                cn = col_letter(base + e * 4 + k)
+                if cn in g.get(rn, {}):
+                    ops[(rn, cn)] = ("set", v)
+                else:
+                    style = g.get(rn, {}).get(col_letter(prev_base + e * 4 + k), ("", None))[0]
+                    ops[(rn, cn)] = ("new", style, "", f"<v>{_fmt(v)}</v>")
+    xml, n = edit_cells(xml, ops)
+    xml = fix_dimension(xml, max(base + 11, max((col_index(c) for c in (period_col,) if c), default=0)),
+                        max_row_xml(xml))
     return xml, {"cells": n}
 
 
@@ -628,6 +738,19 @@ def existing_values(led: pathlib.Path, period: str) -> dict:
                 v = gtext(g, shared, prow, col_letter(ci + k))
                 if v not in (None, ""):
                     out[(sheet, s, str(k))] = v
+    # Q1-Q4（12 列/期：3 实体 × Q1..Q4）
+    g, shared = read_grid(led, "Q1-Q4")
+    label = f"{period[:4]}.{period[4:]}"
+    qcol = next((cn for cn, (a, i) in g[1].items()
+                 if str(LP.cell_text(a, i, shared) or "").strip() == label), None)
+    if qcol is not None:
+        base = col_index(qcol)
+        for s, rn in subject_rows(g, shared, set(SUBJECTS)).items():
+            for e, (ent, _c) in enumerate(_Q1Q4_ENTITIES):
+                for k in range(4):
+                    v = gtext(g, shared, rn, col_letter(base + e * 4 + k))
+                    if v not in (None, ""):
+                        out[("Q1-Q4", s, f"{ent}.{k}")] = v
     return out
 
 
@@ -792,11 +915,20 @@ def cmd_period(args) -> int:
     if not have_esi:
         print(f"[!] ESI 原始包未到位（{esi_dir}）：分母/位次算不了，只预览 InCites 侧。")
     table = compute(snap_dir, esi_dir if have_esi else None)
+    q1_table, q1_notes = read_q1q4(snap_dir)
+    for n in q1_notes:
+        print(f"[!] {n}")
     show(table, esi_missing=not have_esi)
 
     if have_esi:
         ex = existing_values(ledger, period)
         bad = conflicts(table, ex)
+        for s, per_ent in q1_table.items():
+            for ent, vals in per_ent.items():
+                for k, v in enumerate(vals):
+                    old = ex.get(("Q1-Q4", s, f"{ent}.{k}"))
+                    if old is not None and not _eq(old, v):
+                        bad.append(("Q1-Q4", s, f"{ent}.{k}", old, v))
         if bad:
             print(f"\n[!] 与台账现有值冲突 {len(bad)} 处（口径变化须人工确认）：")
             for sheet, s, f, o, n in bad[:15]:
@@ -831,6 +963,8 @@ def cmd_period(args) -> int:
     apply("论文数", plan_wide(tx, "论文数", period,
                               {s: (None if r["in_esi"] else r["papers"]) for s, r in table.items()}))
     apply("篇均被引", plan_avg(tx, "篇均被引", period, table))
+    if q1_table:
+        apply("Q1-Q4", plan_q1q4(tx, period, q1_table))
     _do_write(tx, ledger, args, tag=f"回填{period}前", preview_log=log)
     return 0
 
