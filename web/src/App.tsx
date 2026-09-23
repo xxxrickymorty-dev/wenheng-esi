@@ -20,6 +20,7 @@ import { RedList } from './RedList'
 import { Charts } from './Charts'
 import { Reading } from './Reading'
 import { Trace } from './Trace'
+import { Tools } from './Tools'
 import { deriveWorkbench, isTerminal, statusToWB, type WBState } from './wb'
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'fail-ledger', 'fail-other', 'stalled', 'signed']
@@ -88,6 +89,11 @@ export default function App() {
     : run && run.status
       ? { ...wb0, state: statusToWB(run.status) }
       : wb0
+
+  /* 上传台账 / 重跑后的接续：与 onGenerate 同一套（订阅同一个任务的事件流） */
+  function attachRun(jobId: string) {
+    setRun({ jobId, lines: [] })
+  }
 
   async function onGenerate() {
     if (!selected) return
@@ -209,15 +215,18 @@ export default function App() {
         ) : view === 'report' ? (
           <Report periods={periods} current={selected} onPick={setSelected} />
         ) : (
-          <Workbench
-            period={selected}
-            me={me}
-            wb={wb}
-            err={err}
-            healthy={healthy === true}
-            run={run}
-            onGenerate={onGenerate}
-          />
+          <>
+                      <Workbench
+                        period={selected}
+                        me={me}
+                        wb={wb}
+                        err={err}
+                        healthy={healthy === true}
+                        run={run}
+                        onGenerate={onGenerate}
+                      />
+            <Tools period={selected} jobId={run?.jobId ?? null} onUploaded={(jid) => attachRun(jid)} />
+          </>
         )}
 
         <a className="entry" href="/app/shelf/">

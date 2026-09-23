@@ -142,3 +142,21 @@ export function humanSize(n: number | null): string {
   if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`
   return `${(n / 1024 / 1024).toFixed(1)} MB`
 }
+
+
+/** 上传台账并开跑（与老站 index.js 同一套：同一个 /api/jobs，带 file 字段） */
+export async function postJobWithFile(period: string, file: File): Promise<{ job_id: string; url: string }> {
+  const fd = new FormData()
+  fd.append('period', period)
+  fd.append('file', file)
+  return req<{ job_id: string; url: string }>('/api/jobs', { method: 'POST', body: fd })
+}
+
+/** 重跑本期（老站 job.js 一直在用的端点；旧稿撤到 _superseded/） */
+export async function rerunJob(jobId: string): Promise<{ job_id?: string; url?: string }> {
+  return req<{ job_id?: string; url?: string }>(`/api/jobs/${encodeURIComponent(jobId)}/rerun`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  })
+}

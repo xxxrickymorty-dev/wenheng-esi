@@ -1,0 +1,118 @@
+/* 生成台工具卡（阶段 1 · P1 收尾）：上传新台账 / 扫码在手机上看 / 产物下载 / 重跑本期。
+   数据源都是现成的：POST /api/jobs（带 file 字段）· /qr.png · GET /api/jobs/{id}/artifacts ·
+   POST /api/jobs/{id}/rerun（老站 job.js 一直在用）。🔴 只透传，不编造。 */
+
+import { useEffect, useState } from 'react'
+import { getArtifacts, postJobWithFile, rerunJob } from './api'
+import { Icon } from './icons'
+
+export function Tools({ period, jobId, onUploaded }: {
+  period: string | null
+  jobId: string | null
+  onUploaded: (jobId: string, period: string) => void
+}) {
+  const [file, setFile] = useState<File | null>(null)
+  const [newPeriod, setNewPeriod] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [arts, setArts] = useState<{ key?: string; name?: string; url: string; size?: string }[] | null>(null)
+  const [rerunning, setRerunning] = useState(false)
+
+  /* 产物：有任务号就去取；取不到就不显示（不摆空架子） */
+  useEffect(() => {
+    if (!jobId) { setArts(null); return }
+    let alive = true
+    getArtifacts(jobId).then((a) => { if (alive) setArts(a as unknown as typeof arts) }).catch(() => { if (alive) setArts(null) })
+    return () => { alive = false }
+  }, [jobId])
+
+  async function upload() {
+    if (!file) { setMsg({ ok: false, text: '先选一个台账文件（.xlsx）。' }); return }
+    if (!/^\d{6}$/.test(newPeriod.trim())) { setMsg({ ok: false, text: '期次要填 6 位数，如 202609。' }); return }
+    setBusy(true); setMsg(null)
+    try {
+      const r = await postJobWithFile(newPeriod.trim(), file)
+      onUploaded(r.job_id, newPeriod.trim())
+      setMsg({ ok: true, text: `已开始生成 ${newPeriod.trim()}——进度就在上面。` })
+      setFile(null); setNewPeriod('')
+    } catch (e) {
+      const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
+      setMsg({ ok: false, text: (h.body?.error ?? h.message ?? '上传失败') + (h.body?.hint ? `（${h.body.hint}）` : '') })
+    } finally { setBusy(false) }
+  }
+
+  async function rerun() {
+    if (!jobId) return
+    setRerunning(true); setMsg(null)
+    try {
+      const r = await rerunJob(jobId)
+      onUploaded(r.job_id ?? jobId, period ?? '')
+      setMsg({ ok: true, text: '已重新开始——旧稿会撤到 _superseded/，不会悄悄覆盖。' })
+    } catch (e) {
+      const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
+      setMsg({ ok: false, text: (h.body?.error ?? h.message ?? '重跑失败') + (h.body?.hint ? `（${h.body.hint}）` : '') })
+    } finally { setRerunning(false) }
+  }
+
+  return (
+    <section className="card" style={{ marginTop: 18, padding: '18px 22px' }}>
+      <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Icon name="doc" size={21} />这一期的工具
+      </h2>
+
+      <div style={{ display: 'grid', gap: 18, gridTemplateColumns: 'minmax(0,1fr) 190px', marginTop: 12 }}>
+        <div>
+          {/* 上传新台账（老站同一套口径：期次 6 位必填） */}
+          <h3 style={{ fontSize: 15 }}>上传新台账</h3>
+          <p className="hint" style={{ marginTop: 4 }}>
+            贴好表的《监测表.xlsx》直接传上来就能跑；期次填 6 位（如 202609）。
+          </p>
+          <div className="toolbar">
+            <input type="file" accept=".xlsx"
+                   onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            <input className="search" style={{ maxWidth: 150 }} value={newPeriod}
+                   onChange={(e) => setNewPeriod(e.target.value)} placeholder="期次 202609" />
+            <button className="btn" onClick={upload} disabled={busy || rerunning}>
+              <Icon name="refresh" size={19} />{busy ? '正在上传……' : '上传并生成'}
+            </button>
+          </div>
+
+          {/* 产物下载 + 重跑 */}
+          <h3 style={{ fontSize: 15, marginTop: 18 }}>产物与重跑</h3>
+          {!jobId ? (
+            <p className="hint" style={{ marginTop: 4 }}>先跑一次（或从上面上传），这里就出这一期的产物下载。</p>
+          ) : !arts || arts.length === 0 ? (
+            <p className="hint" style={{ marginTop: 4 }}>这次还没有产物（或还没跑完）。</p>
+          ) : (
+            <div className="chips" style={{ marginTop: 8 }}>
+              {arts.map((a) => (
+                <a className="pill" key={a.key ?? a.url} href={a.url}
+                   {...(a.key && !['red_view', 'collation'].includes(a.key) ? { download: '' } : {})}>
+                  {a.name}{a.size ? ` · ${a.size}` : ''}
+                </a>
+              ))}
+            </div>
+          )}
+          {jobId && (
+            <div className="toolbar">
+              <button className="btn" onClick={rerun} disabled={busy || rerunning}
+                      title="按同一期台账再跑一遍；旧稿撤到 _superseded/（可回滚）">
+                <Icon name="refresh" size={19} />{rerunning ? '正在重跑……' : '重跑本期'}
+              </button>
+              {msg && <span className="hint" style={{ color: msg.ok ? 'var(--ok)' : 'var(--bad)' }}>{msg.text}</span>}
+            </div>
+          )}
+          {!jobId && msg && <p className="hint" style={{ color: msg.ok ? 'var(--ok)' : 'var(--bad)' }}>{msg.text}</p>}
+        </div>
+
+        {/* 扫码在手机上看 */}
+        <div style={{ textAlign: 'center' }}>
+          <h3 style={{ fontSize: 15 }}>手机上接着看</h3>
+          <img src="/qr.png" alt="扫码打开本页" width={150} height={150}
+               style={{ marginTop: 8, border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', background: '#fff' }} />
+          <p className="hint" style={{ marginTop: 6, fontSize: 13 }}>扫一下，同一页在手机上打开</p>
+        </div>
+      </div>
+    </section>
+  )
+}
