@@ -3,7 +3,7 @@
    POST /api/jobs/{id}/rerun（老站 job.js 一直在用）。🔴 只透传，不编造。 */
 
 import { useEffect, useState } from 'react'
-import { getArtifacts, postJobWithFile, rerunJob } from './api'
+import { getArtifacts, getStatus, postJobWithFile, rerunJob } from './api'
 import { Icon } from './icons'
 
 export function Tools({ period, jobId, onUploaded }: {
@@ -17,14 +17,26 @@ export function Tools({ period, jobId, onUploaded }: {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [arts, setArts] = useState<{ key?: string; name?: string; url: string; size?: string }[] | null>(null)
   const [rerunning, setRerunning] = useState(false)
+  const [lastId, setLastId] = useState<string | null>(null)
+  const effJobId = jobId ?? lastId
+
+  /* 没在本会话跑过时，回退到后端记录的最近一个任务——这样一打开就能看上一期的产物与瀑布 */
+  useEffect(() => {
+    if (jobId) return
+    let alive = true
+    getStatus().then((st) => { if (alive) setLastId(st.last?.id ?? null) }).catch(() => { /* 取不到就不显示 */ })
+    return () => { alive = false }
+  }, [effJobId])
+
 
   /* 产物：有任务号就去取；取不到就不显示（不摆空架子） */
   useEffect(() => {
-    if (!jobId) { setArts(null); return }
+    const id = effJobId
+    if (!id) { setArts(null); return }
     let alive = true
-    getArtifacts(jobId).then((a) => { if (alive) setArts(a as unknown as typeof arts) }).catch(() => { if (alive) setArts(null) })
+    getArtifacts(id).then((a) => { if (alive) setArts(a as unknown as typeof arts) }).catch(() => { if (alive) setArts(null) })
     return () => { alive = false }
-  }, [jobId])
+  }, [effJobId])
 
   async function upload() {
     if (!file) { setMsg({ ok: false, text: '先选一个台账文件（.xlsx）。' }); return }
@@ -42,11 +54,12 @@ export function Tools({ period, jobId, onUploaded }: {
   }
 
   async function rerun() {
-    if (!jobId) return
+    const id = effJobId
+    if (!id) return
     setRerunning(true); setMsg(null)
     try {
-      const r = await rerunJob(jobId)
-      onUploaded(r.job_id ?? jobId, period ?? '')
+      const r = await rerunJob(id)
+      onUploaded(r.job_id ?? id, period ?? '')
       setMsg({ ok: true, text: '已重新开始——旧稿会撤到 _superseded/，不会悄悄覆盖。' })
     } catch (e) {
       const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
@@ -79,7 +92,7 @@ export function Tools({ period, jobId, onUploaded }: {
 
           {/* 产物下载 + 重跑 */}
           <h3 style={{ fontSize: 15, marginTop: 18 }}>产物与重跑</h3>
-          {!jobId ? (
+          {!effJobId ? (
             <p className="hint" style={{ marginTop: 4 }}>先跑一次（或从上面上传），这里就出这一期的产物下载。</p>
           ) : !arts || arts.length === 0 ? (
             <p className="hint" style={{ marginTop: 4 }}>这次还没有产物（或还没跑完）。</p>
@@ -93,7 +106,7 @@ export function Tools({ period, jobId, onUploaded }: {
               ))}
             </div>
           )}
-          {jobId && (
+          {effJobId && (
             <div className="toolbar">
               <button className="btn" onClick={rerun} disabled={busy || rerunning}
                       title="按同一期台账再跑一遍；旧稿撤到 _superseded/（可回滚）">
@@ -102,7 +115,7 @@ export function Tools({ period, jobId, onUploaded }: {
               {msg && <span className="hint" style={{ color: msg.ok ? 'var(--ok)' : 'var(--bad)' }}>{msg.text}</span>}
             </div>
           )}
-          {!jobId && msg && <p className="hint" style={{ color: msg.ok ? 'var(--ok)' : 'var(--bad)' }}>{msg.text}</p>}
+          {!effJobId && msg && <p className="hint" style={{ color: msg.ok ? 'var(--ok)' : 'var(--bad)' }}>{msg.text}</p>}
         </div>
 
         {/* 扫码在手机上看 */}
