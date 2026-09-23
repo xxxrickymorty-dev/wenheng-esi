@@ -331,7 +331,13 @@ st, arc, _ = call("GET", "/p/202607/archive")
 check("GET /p/202607/archive → 200", st == 200, f"got {st}")
 for k in ("状态机回放", "任务瀑布", "审计结论", "运行环境快照", "运行日志包", "Agent 轨迹文件"):
     check(f"档案页含「{k}」", k in arc)
-check("审计总判定如实显示（不是粉饰成通过）", "待人工确认" in arc)
+# 动态取（2026-09-23 实踩：审计 verdict 会随产物状态在 pass/review/fail 间变，
+# 写死某一档会假红）。断言本意是「页面如实显示审计结论、不粉饰」，比对标签即可。
+_arc_rec = json.loads((WENHENG / "out" / "202607" / "audit_record.json").read_text(encoding="utf-8"))
+_arc_label = {"pass": "全部通过", "review": "待人工确认", "fail": "不通过"}.get(_arc_rec.get("verdict", ""), "")
+check("审计总判定如实显示（不是粉饰成通过）",
+      bool(_arc_label) and _arc_label in arc,
+      f"verdict={_arc_rec.get('verdict')} label={_arc_label}")
 check("轨迹缺口如实说明（直跑路径没有 trace 三件套）", "真实的记录缺口" in arc)
 
 st, raw, hdr = call_raw("/p/202607/download/logpack")
@@ -592,6 +598,10 @@ check("trace 有分页字段", '"total"' in tr and '"limit"' in tr and '"offset"
 check("trace 有 cols/discs 筛选数据", '"cols"' in tr and '"discs"' in tr)
 check("trace 大表行含 loc/report/how", '"loc"' in tr and '"report"' in tr and '"how"' in tr)
 check("trace ledger 只回文件名（不泄漏路径）", ":" not in tr.split('"ledger":')[1].split(",")[0], tr.split('"ledger":')[1].split(",")[0][:40])
+# POST /api/periods/202601_复现/rebuild（没有填值应 409 拒绝，不碰产物）
+st, rb, _ = call_json("POST", "/api/periods/202601_%E5%A4%8D%E7%8E%B0/rebuild", {})
+check("rebuild 无填值时 409 拒绝", st == 409 and '"error"' in rb, f"got {st}")
+
 st, tr2, _ = call("GET", "/api/periods/202607/trace?cat=charts&limit=3")
 check("trace cat=charts 可切换", st == 200 and '"cat":"charts"' in tr2, f"got {st}")
 

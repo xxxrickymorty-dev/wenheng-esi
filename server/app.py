@@ -1081,6 +1081,46 @@ async def api_period_flag_json(request: Request, period: str):
     return {"ok": True, "loc": r["loc"], "state": r["state"], "n_doubt": r["n_doubt"]}
 
 
+@app.post("/api/periods/{period}/rebuild")
+async def api_period_rebuild_json(request: Request, period: str):
+    """填完重出（JSON 版）——与表单版同一套三步。
+
+    ① 先存 body.items 里的填值（可空，用已落盘的）
+    ② 旧成品撤到 _superseded/（覆盖前留机器稿，能回滚）
+    ③ fill_docx 用已解析宽表重出，不重新解析台账
+    转 2-15 秒（重插 96 张图），同步阻塞 —— uvicorn 单 worker 是项目既定约束。
+    """
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+    body = await request.json()
+    items = body.get("items") or {}
+    if not isinstance(items, dict):
+        return JSONResponse({"error": "items 必须是 {todo_id: value}", "hint": "可省略，用已落盘的填值"}, status_code=400)
+    import fill_docx                                        # noqa: PLC0415
+    import parse_ledger                                     # noqa: PLC0415
+    from . import workbench                                 # noqa: PLC0415
+    for todo_id, value in items.items():                    # ① 先存
+        if str(todo_id).strip():
+            workbench.save_fill(d, str(todo_id), str(value), by=guard)
+    fills = workbench.load_fills(d)
+    if not fills:                                           # ② 没内容就不动产物
+        return JSONResponse({"error": "还没有填写内容", "hint": "先在工作台填值再重出"}, status_code=409)
+    t0 = time.time()
+    parse_ledger.quarantine_final_products(d, None)
+    try:
+        fill_docx.main(ledger_dir=str(d), manual_inputs=fills)  # ③ 重出
+    except Exception as e:                                  # noqa: BLE001
+        return JSONResponse({"error": f"重出失败：{type(e).__name__}", "hint": str(e)[:200]}, status_code=500)
+    n = sum(1 for v in fills.values() if str(v.get("value") or "").strip())
+    docx = next((p.name for p in d.glob("报告初稿_*.docx")), "")
+    return {"ok": True, "rebuilt": n, "period": d.name, "docx": docx,
+            "elapsed": round(time.time() - t0, 1)}
+
+
 @app.get("/api/periods/{period}/facts")
 async def api_period_facts(request: Request, period: str):
     """读数带数据：overview_facts.json + meta.json 摘要。guest 可读。"""
