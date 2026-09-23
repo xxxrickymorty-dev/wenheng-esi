@@ -967,6 +967,41 @@ def _paginate(items, limit, offset):
             "has_more": offset + limit < total}
 
 
+@app.post("/api/periods/{period}/sign")
+async def api_period_sign_json(request: Request, period: str):
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在"}, status_code=404)
+    body = await request.json()
+    note = str(body.get("note", ""))
+    manual_ack = bool(body.get("known", body.get("manual_ack", False)))
+    ok, res = approval.sign(d, guard, collation.build(d), note=note, manual_ack=manual_ack)
+    if not ok:
+        return JSONResponse({"error": str(res)}, status_code=409)
+    return {"status": approval.status(d, res), "fingerprint": approval.fingerprint(d)}
+
+
+@app.post("/api/periods/{period}/forecast-choice")
+async def api_forecast_choice(request: Request, period: str):
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在"}, status_code=404)
+    body = await request.json()
+    choice = body.get("choice")
+    if not isinstance(choice, dict):
+        return JSONResponse({"error": "choice 必须是 {学科: 模型名}"}, status_code=400)
+    out = d / "forecast_choice.json"
+    rec = {"choice": choice, "by": guard, "at": time.strftime("%Y-%m-%d %H:%M:%S")}
+    out.write_text(json.dumps(rec, ensure_ascii=False, indent=1), encoding="utf-8")
+    return {"ok": True, "saved": len(choice), "path": str(out.name)}
+
+
 @app.get("/api/periods/{period}/redslots")
 async def api_period_redslots(request: Request, period: str,
                               limit: int = 50, offset: int = 0):
