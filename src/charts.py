@@ -28,8 +28,8 @@ import pandas as pd
 from matplotlib import font_manager
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
-from matplotlib.patches import Rectangle
 from matplotlib.transforms import Bbox
+from PIL import Image, ImageChops
 
 try:
     from parse_ledger import DISCIPLINES_CN
@@ -912,6 +912,17 @@ def chart_top_by_subject(top_papers, out_png, period):
     _save(fig, out_png)
 
 
+def _trim_white(path, pad=12):
+    """裁掉图片四周白边（300dpi 下 pad≈0.1cm）——插入同宽时内容更大（rick：上下空白太大）。"""
+    img = Image.open(path).convert("RGB")
+    bbox = ImageChops.difference(img, Image.new("RGB", img.size, (255, 255, 255))).getbbox()
+    if not bbox:
+        return
+    x0, y0, x1, y1 = bbox
+    img.crop((max(0, x0 - pad), max(0, y0 - pad),
+              min(img.width, x1 + pad), min(img.height, y1 + pad))).save(path)
+
+
 def chart_college_pie(stats, out_png, mode):
     """学院贡献度饼图（对标第4期两张）：mode='cites' 被引频次实心饼 / 'papers' 发文量环形。
 
@@ -929,9 +940,11 @@ def chart_college_pie(stats, out_png, mode):
     labels = [u for _v, u in keep]
     palette = ["#4472C4", "#A9D18E", "#FFC000", "#ED7D31", "#7030A0", "#00B0F0", "#C00000",
                "#548235", "#BF8F00", "#2E75B6", "#948A54", "#C55A11", "#5B9BD5", "#70AD47"]
-    fig = Figure(figsize=(5.6, 3.6))
-    ax = fig.add_axes([0.01, 0.01, 0.98, 0.98])
-    ax.set_aspect("equal")
+    fig = Figure(figsize=(6.4, 3.6))
+    ax = fig.add_axes([0.005, 0.005, 0.99, 0.99])
+    # adjustable="datalim"：保持图区铺满画布（不压边留白带），超出的那一维自动放限。
+    # 纵限 ±1.8 配 6.4×3.6 画布 → 横限自动放到 ±3.2，长标签（≈2.7）不裁；白边交给 _trim_white。
+    ax.set_aspect("equal", adjustable="datalim")
     wedges, _ = ax.pie(vals, startangle=90, counterclock=False,
                        colors=[palette[i % len(palette)] for i in range(len(vals))],
                        wedgeprops=dict(width=0.42 if mode == "papers" else 1.0,
@@ -940,12 +953,13 @@ def chart_college_pie(stats, out_png, mode):
         ang = math.radians((w.theta1 + w.theta2) / 2)
         x, y = math.cos(ang), math.sin(ang)
         ax.annotate(f"{lab}：{v / total * 100:.2f}%", xy=(x * 0.95, y * 0.95),
-                    xytext=(x * 1.30, y * 1.30), ha="left" if x >= 0 else "right",
-                    va="center", fontsize=6.2, color=C_TEXT,
-                    arrowprops=dict(arrowstyle="-", color="#BFBFBF", lw=0.6))
+                    xytext=(x * 1.32, y * 1.32), ha="left" if x >= 0 else "right",
+                    va="center", fontsize=7.2, color="#1F1F1F",
+                    arrowprops=dict(arrowstyle="-", color="#A6A6A6", lw=0.6))
     ax.set_xlim(-3.2, 3.2)
     ax.set_ylim(-1.8, 1.8)
     _save_raw(fig, out_png)
+    _trim_white(out_png)
 
 
 # ---------- 预测章配图：实际 + 模型（拟合历史 + 递推预测）----------
