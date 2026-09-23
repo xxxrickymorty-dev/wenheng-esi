@@ -22,6 +22,7 @@ import re
 
 import matplotlib
 matplotlib.use("Agg")
+import matplotlib.patheffects as path_effects
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib import font_manager
@@ -180,7 +181,8 @@ def _inflate(bb, px):
     return Bbox.from_extents(bb.x0 - px, bb.y0 - px, bb.x1 + px, bb.y1 + px)
 
 
-def _labels(ax, xs, ys, fmt="{:.2f}", dy=4, size=FONT_SIZE, dodge=True, two_sided=True):
+def _labels(ax, xs, ys, fmt="{:.2f}", dy=4, size=FONT_SIZE, dodge=True, two_sided=True,
+            color=None):
     """逐点标数值；默认正值标上方、负值标下方，并**自动避让**别压到任何字。
 
     🔴 必须防压字（rick 2026-09-18 截图：顶尖论文 27 压在「顶尖论文发文量」上）。
@@ -221,7 +223,7 @@ def _labels(ax, xs, ys, fmt="{:.2f}", dy=4, size=FONT_SIZE, dodge=True, two_side
                                 textcoords="offset points",
                                 xytext=(0, dy if up else -dy),
                                 ha="center", va="bottom" if up else "top",
-                                fontsize=size, color=C_TEXT))
+                                fontsize=size, color=(color or C_TEXT)))
         ups.append(up)
     if not anns or not dodge:
         return anns
@@ -677,7 +679,7 @@ def _save_raw(fig, path):
     plt.close(fig)
 
 
-def _data_table(fig, rect, col_labels, row_labels, rows, *, fontsize=6.2):
+def _data_table(fig, rect, col_labels, row_labels, rows, *, fontsize=6.2, color=None):
     """在 fig 指定区域放一张数据表（第4期原生图表下方的数据表样式）。"""
     tax = fig.add_axes(rect)
     tax.axis("off")
@@ -690,7 +692,7 @@ def _data_table(fig, rect, col_labels, row_labels, rows, *, fontsize=6.2):
         cell.set_linewidth(0.4)
         cell.set_edgecolor("#BFBFBF")
         try:
-            cell.get_text().set_color(C_TEXT)
+            cell.get_text().set_color(color or C_TEXT)
         except AttributeError:
             pass
     return tb
@@ -709,16 +711,18 @@ def chart_rank_table(ynd_rank, out_png, end_period=None, n=7):
     df = df.tail(n)
     periods = [str(p) for p in df.index]
 
-    fig = Figure(figsize=(5.2, 4.6))
+    # 字号/颜色按 rick 反馈加大加深（只影响本图；全局常量不动）
+    ink = "#1F1F1F"
+    fig = Figure(figsize=(5.6, 4.9))
     FigureCanvasAgg(fig)   # 🔴 _labels 要量像素包围盒，裸 Figure 的 FigureCanvasBase 没有 get_renderer
-    ax = fig.add_axes([0.155, 0.46, 0.635, 0.40])
+    ax = fig.add_axes([0.15, 0.47, 0.64, 0.38])
     ax2 = ax.twinx()
     x = list(range(len(df)))
-    ln1, = ax.plot(x, df["rank_cn"], marker="o", ms=4, lw=1.6, color="#ED7D31", label="国内排名")
-    ln2, = ax.plot(x, df["rank_cn_uni"], marker="o", ms=4, lw=1.6, color="#FFC000", label="国内高校排名")
-    ln3, = ax2.plot(x, df["rank_intl"], marker="o", ms=4, lw=1.6, color="#4472C4", label="国际排名（右标）")
+    ln1, = ax.plot(x, df["rank_cn"], marker="o", ms=4.5, lw=1.8, color="#ED7D31", label="国内排名")
+    ln2, = ax.plot(x, df["rank_cn_uni"], marker="o", ms=4.5, lw=1.8, color="#FFC000", label="国内高校排名")
+    ln3, = ax2.plot(x, df["rank_intl"], marker="o", ms=4.5, lw=1.8, color="#4472C4", label="国际排名（右标）")
     ax.set_xticks(x)
-    ax.set_xticklabels(periods, fontsize=FONT_SIZE)
+    ax.set_xticklabels(periods, fontsize=9)
     ax.set_xlim(-0.6, len(df) - 0.4)
     # 轴范围对齐原件（均为反序：名次越小越靠上）
     ax.set_ylim(170, 120)
@@ -730,22 +734,23 @@ def chart_rank_table(ynd_rank, out_png, end_period=None, n=7):
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)
         ax2.spines[s].set_visible(False)
-    ax.tick_params(length=0, labelsize=FONT_SIZE, colors=C_TEXT)
-    ax2.tick_params(length=0, labelsize=FONT_SIZE, colors=C_TEXT)
-    ax.set_title("我校ESI排名情况", fontsize=TITLE_SIZE + 1.5, color="#1F1F1F", pad=10)
+    ax.tick_params(length=0, labelsize=9, colors=ink)
+    ax2.tick_params(length=0, labelsize=9, colors=ink)
+    ax.set_title("我校ESI排名情况", fontsize=13, color=ink, pad=10)
     # 图例：底部左侧（原件样式）；挂在 ax 上，_labels 才能把它当障碍避让
     ax.legend([ln1, ln2, ln3], [l.get_label() for l in (ln1, ln2, ln3)],
-              fontsize=7, loc="upper left", bbox_to_anchor=(-0.13, -0.11),
-              ncol=3, frameon=False)
+              fontsize=9, loc="upper left", bbox_to_anchor=(-0.12, -0.13),
+              ncol=3, frameon=False, labelcolor=ink)
     # 逐点数值（国内/高校左轴，国际右轴）——必须在标题/图例/轴范围之后再放
-    _labels(ax, x, [float(v) for v in df["rank_cn"]], "{:.0f}", size=6.0)
-    _labels(ax, x, [float(v) for v in df["rank_cn_uni"]], "{:.0f}", size=6.0)
-    _labels(ax2, x, [float(v) for v in df["rank_intl"]], "{:.0f}", size=6.0)
-    _data_table(fig, [0.255, 0.045, 0.585, 0.27], periods,
+    _labels(ax, x, [float(v) for v in df["rank_cn"]], "{:.0f}", size=8.0, color=ink)
+    _labels(ax, x, [float(v) for v in df["rank_cn_uni"]], "{:.0f}", size=8.0, color=ink)
+    _labels(ax2, x, [float(v) for v in df["rank_intl"]], "{:.0f}", size=8.0, color=ink)
+    _data_table(fig, [0.25, 0.05, 0.60, 0.26], periods,
                 ["国内排名", "国内高校排名", "国际排名（右标）"],
                 [[df["rank_cn"].get(p) for p in df.index],
                  [df["rank_cn_uni"].get(p) for p in df.index],
-                 [df["rank_intl"].get(p) for p in df.index]])
+                 [df["rank_intl"].get(p) for p in df.index]],
+                fontsize=8.0, color=ink)
     _save_raw(fig, out_png)
 
 
@@ -823,7 +828,9 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
         picks.sort(key=lambda d: (_first_in(d), -cite_last[d]))
     picked = df.loc[picks]
     periods = [str(c) for c in df.columns]
-    colors = ["#4472C4", "#7030A0", C_GRAY, "#FFC000"]
+    # 原件配色＝Office 主题色按系列序（其 chart XML 只显式写了 #7030A0 与红）：化学=accent1、
+    # 植物与动物学=#7030A0、环境生态学=accent3、工程学=accent4。
+    colors = [C_LIGHTBLUE, "#7030A0", C_GRAY, "#FFC000"]
 
     fig = Figure(figsize=(5.5, 3.55))
     ax = fig.add_axes([0.262, 0.515, 0.710, 0.330])
@@ -839,8 +846,11 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
         ax.spines[s].set_visible(False)
     ax.tick_params(length=0, labelsize=FONT_SIZE, colors=C_TEXT)
     ax.tick_params(axis="x", pad=2)
-    fig.text(0.517, 0.975, "我校主要学科近期发展趋势", ha="center", va="top",
-             fontsize=13, fontweight="bold", color="#1F1F1F")
+    title = fig.text(0.517, 0.975, "我校主要学科近期发展趋势", ha="center", va="top",
+                     fontsize=13, color="#1F1F1F")
+    # 宋体/Noto Serif 没有可命中的 bold 字面（matplotlib 会静默回退成常规字重）→ 用描边假粗，
+    # 与原件「标题加粗」观感一致，且 Windows/Linux 两端表现一致。
+    title.set_path_effects([path_effects.withStroke(linewidth=0.7, foreground="#1F1F1F")])
     rows = [[("" if picked.loc[d, p] != picked.loc[d, p]
               else f"{float(picked.loc[d, p]):.2f}%") for p in periods] for d in picks]
     rows.append(["100%"] * len(periods))     # 原件 ESI1‰ 行是 0% 格式（不写两位小数）
