@@ -110,9 +110,9 @@ def require_user(request: Request):
 def require_admin(request: Request):
     user = current_user(request)
     if not user:
-        return JSONResponse({"error": "未登录"}, status_code=401)
+        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
     if config.role_of(user) != "admin":
-        return JSONResponse({"error": "需要管理员权限"}, status_code=403)
+        return JSONResponse({"error": "需要管理员权限", "hint": "游客不能执行此操作"}, status_code=403)
     return user
 
 
@@ -742,7 +742,7 @@ async def period_chart(request: Request, period: str, rel: str):
         return RedirectResponse("/login", status_code=303)
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在"}, status_code=404)
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
     p = jobs.resolve_chart(d, rel)
     if not p:
         return JSONResponse({"error": "图表不存在"}, status_code=404)
@@ -872,7 +872,7 @@ async def api_approval(request: Request, job_id: str):
         return guard
     job = jobs.read_job(job_id)
     if not job:
-        return JSONResponse({"error": "任务不存在"}, status_code=404)
+        return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
     out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
     rec = approval.read(out_dir)
     rec["status"] = approval.status(out_dir, rec)
@@ -902,7 +902,7 @@ async def api_periods(request: Request):
     总期号时退回目录名，不编假期号。
     """
     if not current_user(request):
-        return JSONResponse({"error": "未登录"}, status_code=401)
+        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
     out = []
     for c in period_cards():
         try:
@@ -920,17 +920,17 @@ async def api_periods(request: Request):
 async def api_me(request: Request):
     user = current_user(request)
     if not user:
-        return JSONResponse({"error": "未登录"}, status_code=401)
+        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
     return {"name": user, "role": config.role_of(user)}
 
 
 @app.get("/api/periods/{period}")
 async def api_period_detail(request: Request, period: str):
     if not current_user(request):
-        return JSONResponse({"error": "未登录"}, status_code=401)
+        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在"}, status_code=404)
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
     try:
         no, total = period_mod.issue_of(period)
         label = f"第 {total} 期 \u00b7 {period_mod.label(period)}"
@@ -974,13 +974,13 @@ async def api_period_sign_json(request: Request, period: str):
         return guard
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在"}, status_code=404)
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
     body = await request.json()
     note = str(body.get("note", ""))
     manual_ack = bool(body.get("known", body.get("manual_ack", False)))
     ok, res = approval.sign(d, guard, collation.build(d), note=note, manual_ack=manual_ack)
     if not ok:
-        return JSONResponse({"error": str(res)}, status_code=409)
+        return JSONResponse({"error": str(res), "hint": "请先解决闸门拒绝的原因"}, status_code=409)
     return {"status": approval.status(d, res), "fingerprint": approval.fingerprint(d)}
 
 
@@ -988,10 +988,10 @@ async def api_period_sign_json(request: Request, period: str):
 async def api_forecast_choice_get(request: Request, period: str):
     """读回已存的预测模型选择。guest 可读（只读不改状态）。"""
     if not current_user(request):
-        return JSONResponse({"error": "未登录"}, status_code=401)
+        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在"}, status_code=404)
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
     fc = d / "forecast_choice.json"
     if not fc.exists():
         return {"period": period, "choice": {}, "by": "", "at": ""}
@@ -1005,25 +1005,22 @@ async def api_forecast_choice_get(request: Request, period: str):
             "at": rec.get("at", "")}
 
 
-@app.get("/api/periods/{period}/forecast-choice")
-async def api_forecast_choice_read(request: Request, period: str):
-    if not current_user(request):
-        return JSONResponse({"error": "未登录"}, status_code=401)
-    return await api_forecast_choice_get(request, period)
-
-
-@app.post("/api/periods/{period}/forecast-choice")
+@app.api_route("/api/periods/{period}/forecast-choice", methods=["GET", "POST"])
 async def api_forecast_choice(request: Request, period: str):
+    if request.method == "GET":
+        if not current_user(request):
+            return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
+        return await api_forecast_choice_get(request, period)
     guard = require_admin(request)
     if isinstance(guard, JSONResponse):
         return guard
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在"}, status_code=404)
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
     body = await request.json()
     choice = body.get("choice")
     if not isinstance(choice, dict):
-        return JSONResponse({"error": "choice 必须是 {学科: 模型名}"}, status_code=400)
+        return JSONResponse({"error": "choice 必须是 {学科: 模型名}", "hint": "例：{'Chemistry': 'SARIMA模型'}"}, status_code=400)
     out = d / "forecast_choice.json"
     rec = {"choice": choice, "by": guard, "at": time.strftime("%Y-%m-%d %H:%M:%S")}
     out.write_text(json.dumps(rec, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -1037,12 +1034,12 @@ async def api_period_revoke_json(request: Request, period: str):
         return guard
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在"}, status_code=404)
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
     body = await request.json()
     note = str(body.get("note", ""))
     ok, res = approval.revoke(d, guard, note=note)
     if not ok:
-        return JSONResponse({"error": str(res)}, status_code=409)
+        return JSONResponse({"error": str(res), "hint": "请先解决闸门拒绝的原因"}, status_code=409)
     return {"status": approval.status(d, res)}
 
 
@@ -1053,11 +1050,11 @@ async def api_period_fill_json(request: Request, period: str):
         return guard
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在"}, status_code=404)
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
     body = await request.json()
     items = body.get("items") or {}
     if not isinstance(items, dict):
-        return JSONResponse({"error": "items 必须是 {todo_id: value}"}, status_code=400)
+        return JSONResponse({"error": "items 必须是 {todo_id: value}", "hint": "例：{'T01_r9c3': '33.87'}"}, status_code=400)
     from . import workbench                                     # noqa: PLC0415
     n = 0
     for todo_id, value in items.items():
@@ -1074,11 +1071,11 @@ async def api_period_flag_json(request: Request, period: str):
         return guard
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在"}, status_code=404)
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
     body = await request.json()
     loc = str(body.get("loc", "")).strip()
     if not loc:
-        return JSONResponse({"error": "loc 不能为空"}, status_code=400)
+        return JSONResponse({"error": "loc 不能为空", "hint": "例：T01/r9c3"}, status_code=400)
     from . import workbench                                     # noqa: PLC0415
     r = workbench.toggle_flag(d, loc, by=guard)
     return {"ok": True, "loc": r["loc"], "state": r["state"], "n_doubt": r["n_doubt"]}
@@ -1088,14 +1085,14 @@ async def api_period_flag_json(request: Request, period: str):
 async def api_period_facts(request: Request, period: str):
     """读数带数据：overview_facts.json + meta.json 摘要。guest 可读。"""
     if not current_user(request):
-        return JSONResponse({"error": "未登录"}, status_code=401)
+        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在"}, status_code=404)
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
     facts_file = d / "overview_facts.json"
     meta_file = d / "meta.json"
     if not facts_file.exists():
-        return JSONResponse({"error": "该期次尚无 overview_facts.json"}, status_code=404)
+        return JSONResponse({"error": "该期次尚无 overview_facts.json", "hint": "请先跑一次生成流水线"}, status_code=404)
     try:
         facts = json.loads(facts_file.read_text(encoding="utf-8"))
         meta = json.loads(meta_file.read_text(encoding="utf-8")) if meta_file.exists() else {}
@@ -1120,7 +1117,7 @@ async def api_period_workbench(request: Request, period: str):
         return guard
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在"}, status_code=404)
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
     from . import workbench, approval as _appr               # noqa: PLC0415
     rec = _appr.read(d)
     data = workbench.build(d, approval=rec)
@@ -1136,7 +1133,7 @@ async def api_period_redslots(request: Request, period: str,
         return guard
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在"}, status_code=404)
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
     raw = []
     rp = d / "red_slots.json"
     if rp.exists():
@@ -1169,24 +1166,30 @@ async def api_period_redslots(request: Request, period: str,
 
 @app.get("/api/periods/{period}/collation")
 async def api_period_collation(request: Request, period: str,
-                               limit: int = 50, offset: int = 0):
+                               limit: int = 50, offset: int = 0,
+                               full: bool = False):
     if not current_user(request):
-        return JSONResponse({"error": "未登录"}, status_code=401)
+        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在"}, status_code=404)
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
     data = collation.build(d)
     sections = [{"id": s["id"], "name": s["name"], "note": s.get("note", ""),
                  "count": s.get("count", 0), "text": s.get("text", 0),
                  "cell": s.get("cell", 0), "chart": s.get("chart", 0),
-                 "manual": s.get("manual", 0)}
+                 "manual": s.get("manual", 0),
+                 "slots": s.get("slots", [])}
                 for s in data.get("sections", [])]
     all_slots = []
     for s in data.get("sections", []):
         for it in s.get("slots", []):
             all_slots.append({"section": s["id"], **it})
+    if full:
+        return {"sections": sections, "rows": all_slots,
+                "total": len(all_slots), "period": data.get("period", ""),
+                "assertions": data.get("assertions", {})}
     page = _paginate(all_slots, limit, offset)
-    page["sections"] = sections
+    page["sections"] = [{k: v for k, v in s.items() if k != "slots"} for s in sections]
     page["period"] = data.get("period", "")
     page["assertions"] = data.get("assertions", {})
     return page
@@ -1196,10 +1199,10 @@ async def api_period_collation(request: Request, period: str,
 async def api_period_charts_json(request: Request, period: str,
                                  limit: int = 50, offset: int = 0):
     if not current_user(request):
-        return JSONResponse({"error": "未登录"}, status_code=401)
+        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在"}, status_code=404)
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
     q = urllib.parse.quote(d.name)
     items = []
     for it in jobs.list_charts(d):
@@ -1211,7 +1214,7 @@ async def api_period_charts_json(request: Request, period: str,
 @app.get("/api/ledger/sheets")
 async def api_ledger_sheets(request: Request, period: str = ""):
     if not current_user(request):
-        return JSONResponse({"error": "未登录"}, status_code=401)
+        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
     import openpyxl                                        # noqa: PLC0415
     m = jobs.PERIOD_RE.match(period or "")
     if m:
@@ -1222,7 +1225,7 @@ async def api_ledger_sheets(request: Request, period: str = ""):
             lp = d
             break
     if lp is None or not lp.exists():
-        return JSONResponse({"error": "台账文件不存在"}, status_code=404)
+        return JSONResponse({"error": "台账文件不存在", "hint": "请先在控制台上传监测表.xlsx"}, status_code=404)
     try:
         wb = openpyxl.load_workbook(str(lp), read_only=True, data_only=True)
     except Exception as exc:                               # noqa: BLE001
@@ -1255,11 +1258,11 @@ async def api_analyze(request: Request):
     scope = str(body.get("scope", "")).strip()
     d = resolve_period_dir(period) if period else None
     if d is None:
-        return JSONResponse({"error": "期次不存在"}, status_code=404)
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
     facts_file = d / "overview_facts.json"
     meta_file = d / "meta.json"
     if not facts_file.exists():
-        return JSONResponse({"error": "该期次尚无 overview_facts.json"}, status_code=404)
+        return JSONResponse({"error": "该期次尚无 overview_facts.json", "hint": "请先跑一次生成流水线"}, status_code=404)
     try:
         facts = json.loads(facts_file.read_text(encoding="utf-8"))
         meta = json.loads(meta_file.read_text(encoding="utf-8")) if meta_file.exists() else {}
@@ -1368,7 +1371,7 @@ async def api_job(request: Request, job_id: str):
         return guard
     job = jobs.read_job(job_id)
     if not job:
-        return JSONResponse({"error": "任务不存在"}, status_code=404)
+        return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
     # 契约 §2.3：失败态给结构化的「缺什么」，不让前端解析断言文本
     if job.get("missing"):
         job["ok"] = False
@@ -1382,7 +1385,7 @@ async def api_artifacts(request: Request, job_id: str):
         return guard
     job = jobs.read_job(job_id)
     if not job:
-        return JSONResponse({"error": "任务不存在"}, status_code=404)
+        return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
     return {"job": job, "artifacts": jobs.collect_artifacts(job)}
 
 
@@ -1394,7 +1397,7 @@ async def api_rerun_job(request: Request, job_id: str):
     user = guard
     job = jobs.read_job(job_id)
     if not job:
-        return JSONResponse({"error": "任务不存在"}, status_code=404)
+        return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
     input_path = pathlib.Path(job.get("input", ""))
     if not input_path.exists():
         return JSONResponse({"error": "原输入文件已不存在，请重新上传台账"}, status_code=404)
@@ -1453,7 +1456,7 @@ async def api_events(request: Request, job_id: str):
         return guard
     job = jobs.read_job(job_id)
     if not job:
-        return JSONResponse({"error": "任务不存在"}, status_code=404)
+        return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
 
     async def gen():
         prog = pathlib.Path(job.get("progress", ""))

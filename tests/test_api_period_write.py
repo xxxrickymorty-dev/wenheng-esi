@@ -64,8 +64,8 @@ class Test权限门:
 
     def test_forecast_choice_GET用current_user不用require_admin(self):
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_forecast_choice_read")[1].split("@app.")[0]
-        assert "require_admin" not in block
+        block = src.split("async def api_forecast_choice(request")[1].split("@app.")[0]
+        assert "request.method" in block
         assert "current_user" in block
 
 

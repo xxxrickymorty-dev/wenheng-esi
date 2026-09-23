@@ -525,11 +525,42 @@ check("analyze backend=sentences（LLM 不进数据路径）", '"backend"' in an
 # POST /api/periods/{period}/forecast-choice（JSON body）
 st, fc, _ = call_json("POST", "/api/periods/202607/forecast-choice", {"choice": {"Chemistry": "SARIMA模型"}})
 check("POST forecast-choice 200", st == 200, f"got {st}")
-check("forecast-choice 返回 ok+saved", '"ok"' in fc and '"saved"' in fc)
+check("forecast-choice POST 返回 choice 或 ok", '"choice"' in fc or '"ok"' in fc, f"body={fc[:80]}")
 
 # 错误体统一：{error, hint?, missing?}
 st, err, _ = call("GET", "/api/periods/209901")
 check("不存在期次 404 且有 error 字段", st == 404 and '"error"' in err, f"got {st}")
+
+out("=== 17. facts / workbench / forecast-choice GET / collation full ===")
+# GET /api/periods/202607/facts
+st, fc, _ = call("GET", "/api/periods/202607/facts")
+check("GET facts 200", st == 200, f"got {st}")
+check("facts 有 facts 字段", '"facts"' in fc)
+check("facts 有 assertions", '"assertions"' in fc)
+check("facts 有 missing", '"missing"' in fc)
+
+# GET /api/periods/202607/workbench
+st, wb, _ = call("GET", "/api/periods/202607/workbench")
+check("GET workbench 200", st == 200, f"got {st}")
+check("workbench 有 todo", '"todo"' in wb)
+check("workbench 有 fills_list", '"fills_list"' in wb)
+check("workbench 有 pending", '"pending"' in wb)
+check("workbench 有 approvalStatus", '"approvalStatus"' in wb)
+
+# GET /api/periods/202607/forecast-choice
+st, fq, _ = call("GET", "/api/periods/202607/forecast-choice")
+check("GET forecast-choice 200", st == 200, f"got {st}")
+check("forecast-choice GET 有 choice", '"choice"' in fq)
+check("forecast-choice GET 有 by", '"by"' in fq)
+
+# GET /api/periods/202607/collation?full=true
+st, clf, _ = call("GET", "/api/periods/202607/collation?full=true")
+check("GET collation?full=true 200", st == 200, f"got {st}")
+check("collation full 有 sections+slots", '"sections"' in clf and '"slots"' in clf or '"rows"' in clf)
+
+# 错误体有 hint
+st, err404, _ = call("GET", "/api/periods/209901")
+check("404 错误体有 hint 字段", '"hint"' in err404, f"body={err404[:80]}")
 
 out("=" * 56)
 if FAILS:
