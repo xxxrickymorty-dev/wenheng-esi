@@ -938,26 +938,45 @@ def chart_college_pie(stats, out_png, mode):
         keep.append((sum(v for v, _u in small), f"其他（{len(small)} 个单位）"))
     vals = [v for v, _u in keep]
     labels = [u for _v, u in keep]
-    palette = ["#4472C4", "#A9D18E", "#FFC000", "#ED7D31", "#7030A0", "#00B0F0", "#C00000",
-               "#548235", "#BF8F00", "#2E75B6", "#948A54", "#C55A11", "#5B9BD5", "#70AD47"]
-    fig = Figure(figsize=(6.4, 3.6))
+    # 配色：Office 家族蓝/绿/金/橙/紫/青/红 + 浅色系（不含褐/橄榄；rick 反馈配色不协调）。
+    # 「其他」永远排最后 → 拿最后一格的**中性灰**，和真实学院区分开。
+    palette = ["#4472C4", "#70AD47", "#FFC000", "#ED7D31", "#7030A0", "#00B0F0", "#C00000",
+               "#F4B183", "#8FAADC", "#C5E0B4", "#FFE699", "#B4A7D6", "#9DC3E6", "#A9D18E",
+               "#D9D9D9"]
+    colors_list = [palette[i % len(palette)] for i in range(len(vals))]
+    if small:
+        colors_list[-1] = "#D9D9D9"     # 「其他」恒为中性灰（与真实学院区分，不靠调色板位置）
+    fig = Figure(figsize=(6.6, 3.6))
     ax = fig.add_axes([0.005, 0.005, 0.99, 0.99])
     # adjustable="datalim"：保持图区铺满画布（不压边留白带），超出的那一维自动放限。
-    # 纵限 ±1.8 配 6.4×3.6 画布 → 横限自动放到 ±3.2，长标签（≈2.7）不裁；白边交给 _trim_white。
     ax.set_aspect("equal", adjustable="datalim")
     wedges, _ = ax.pie(vals, startangle=90, counterclock=False,
-                       colors=[palette[i % len(palette)] for i in range(len(vals))],
+                       colors=colors_list,
                        wedgeprops=dict(width=0.42 if mode == "papers" else 1.0,
                                        edgecolor="white", linewidth=0.5))
-    for w, lab, v in zip(wedges, labels, vals):
+    # 标签左右分栏 + 等距堆叠（rick：原来沿角度摆，顶部/左上几条挤在一起看不清）。
+    # 扇区按 cos 分左右，各自按 y 排序后均布在 ±1.55；指引线连到扇形边缘。
+    cols = {"L": [], "R": []}
+    for k, w in enumerate(wedges):
+        ang = math.radians((w.theta1 + w.theta2) / 2)
+        cols["R" if math.cos(ang) >= 0 else "L"].append((k, math.sin(ang)))
+    ty_of = {}
+    for k_list in cols.values():
+        k_list.sort(key=lambda t: -t[1])
+        n = len(k_list)
+        for i, (k, _sy) in enumerate(k_list):
+            ty_of[k] = (1.55 - (i + 0.5) * (3.1 / n)) if n > 1 else 0.0
+    for k, (w, lab, v) in enumerate(zip(wedges, labels, vals)):
         ang = math.radians((w.theta1 + w.theta2) / 2)
         x, y = math.cos(ang), math.sin(ang)
-        ax.annotate(f"{lab}：{v / total * 100:.2f}%", xy=(x * 0.95, y * 0.95),
-                    xytext=(x * 1.32, y * 1.32), ha="left" if x >= 0 else "right",
-                    va="center", fontsize=7.2, color="#1F1F1F",
+        right = x >= 0
+        ax.annotate(f"{lab}：{v / total * 100:.2f}%", xy=(x * 0.98, y * 0.98),
+                    xytext=(1.58 if right else -1.58, ty_of[k]),
+                    ha="left" if right else "right", va="center",
+                    fontsize=7.0, color="#1F1F1F",
                     arrowprops=dict(arrowstyle="-", color="#A6A6A6", lw=0.6))
-    ax.set_xlim(-3.2, 3.2)
-    ax.set_ylim(-1.8, 1.8)
+    ax.set_xlim(-3.3, 3.3)
+    ax.set_ylim(-1.85, 1.85)
     _save_raw(fig, out_png)
     _trim_white(out_png)
 
