@@ -67,9 +67,8 @@ def build(facts, period, prev):
           f"继续呈现较大降幅，该学科本期较{prev_m}月下降了{d3['drop']}位，国内排名为{d3['rank']}。")
 
     p4 = (f"本期我校共有{p1['top_papers_now']}篇顶尖论文，较上期总数增加{p1['top_papers_delta']}篇，"
-          f"分别有{MANUAL.format('学科数')}个学科来自{MANUAL.format('学院数')}个学院。"
-          f"论文量排名前三位的学科分别是{top3_text(p1['top3_groups'])}。"
-          f"本期顶尖论文量及其被引频次学院贡献度排名前三位的是：{MANUAL.format('学院贡献度前三')}。")
+          f"覆盖{MANUAL.format('学科数')}个学科。"
+          f"论文量排名前三位的学科分别是{top3_text(p1['top3_groups'])}。")
 
     # ⚠️ 国内机构 / 国内高校是**两个独立 delta**，不能合并成一个值。
     # 2026-09-18 逐格回测发现：旧版写成「…排名较X月均{...inst_delta}…」，
@@ -97,10 +96,8 @@ def build(facts, period, prev):
                 f"各数值为论文被引频次与该学科进入ESI阈值的比值百分数，通过该图展示出我校各学科"
                 f"与ESI全球前1%学科的接近度，数值大于100%则为ESI前1%学科。")
     top_section = (f"本期我校共有{p1['top_papers_now']}篇顶尖论文，较上期总数增加"
-                   f"{p1['top_papers_delta']}篇，分别有{MANUAL.format('学科数')}个学科来自"
-                   f"{MANUAL.format('学院数')}个学院。论文量排名前三位的学科分别是{top3_paren}。"
-                   f"本期顶尖论文量排名前3位的学院分别是{MANUAL.format('学院前三（篇数）')}；"
-                   f"顶尖论文被引频次学院贡献度排名前三位的是：{MANUAL.format('学院贡献度（%）')}。")
+                   f"{p1['top_papers_delta']}篇，覆盖{MANUAL.format('学科数')}个学科。"
+                   f"论文量排名前三位的学科分别是{top3_paren}。")
 
     def _dir_chg(v):
         return ("上升" if v >= 0 else "下降") + f"{abs(v):.2f}%"

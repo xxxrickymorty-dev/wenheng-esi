@@ -806,6 +806,8 @@ def write_outputs(ledger, path, out_dir):
     ledger["ynd_rank"].reset_index().to_parquet(wide_dir / "ynd_rank.parquet")
     ledger["top_papers"].to_parquet(wide_dir / "top_papers.parquet")
     pd.Series(ledger["top_total"], name="total").rename_axis("period").reset_index().to_parquet(wide_dir / "top_total.parquet")
+    # 顶尖论文年代分布（year × period）——供 charts.chart_top_by_year 用（对标第4期 chart4）
+    pd.DataFrame(ledger["top_by_year"]).to_parquet(wide_dir / "top_by_year.parquet")
     ledger["threshold_1permille"].to_parquet(wide_dir / "threshold_1permille.parquet")
     ledger["entered_1pct"].to_parquet(wide_dir / "entered_1pct.parquet")
     ledger["q1q4"].to_parquet(wide_dir / "q1q4.parquet")

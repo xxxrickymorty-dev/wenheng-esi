@@ -298,6 +298,62 @@ def _strip_images(p):
     return n
 
 
+def _remove_paragraph(p):
+    """整段删除（用于学院件等本期不出现在报告里的内容）。"""
+    p._element.getparent().remove(p._element)
+
+
+def _strip_runs_with_media(doc, media_names):
+    """按媒体文件名删 run（不管图挂在哪一段）——学院贡献度两张饼图走这里。"""
+    n = 0
+    for p in doc.paragraphs:
+        for r in list(p.runs):
+            blips = r._element.findall('.//' + qn('a:blip'))
+            for b in blips:
+                rid = b.get(qn('r:embed'))
+                if rid and rid in doc.part.rels and \
+                        doc.part.rels[rid].target_ref in media_names:
+                    r._element.getparent().remove(r._element)
+                    n += 1
+                    break
+    return n
+
+
+def _strip_native_chart_runs(doc, title_keyword):
+    """删掉内嵌原生图表 run（按 chart 部件标题匹配，如「我校主要学科近期发展趋势」）。"""
+    import re as _re
+
+    hits = 0
+    for p in doc.paragraphs:
+        for r in list(p.runs):
+            for ch in r._element.findall('.//' + qn('c:chart')):
+                rid = ch.get(qn('r:id'))
+                if not rid or rid not in doc.part.rels:
+                    continue
+                part = doc.part.rels[rid].target_part
+                try:
+                    xml = part.blob.decode("utf-8", "ignore")
+                except Exception:                               # noqa: BLE001
+                    continue
+                if title_keyword in "".join(_re.findall(r"<a:t>(.*?)</a:t>", xml)):
+                    r._element.getparent().remove(r._element)
+                    hits += 1
+                    break
+    return hits
+
+
+def _remove_tables_containing(doc, text):
+    """删除含指定文字的整张表（如「学院顶尖论文发文量与被引频次统计表」）。"""
+    n = 0
+    for t in list(doc.tables):
+        for row in t.rows:
+            if any(text in c.text for c in row.cells):
+                t._element.getparent().remove(t._element)
+                n += 1
+                break
+    return n
+
+
 def _insert_picture_after(doc, anchor_para, png, width_cm=13.9):
     """在锚点段后插入居中的图片段。"""
     from docx.enum.text import WD_ALIGN_PARAGRAPH  # noqa: PLC0415
@@ -339,17 +395,55 @@ def fill_body_charts(doc, ledger_dir, slots):
             if png.exists():
                 p.add_run().add_picture(str(png), width=Cm(14.5))
                 slots.append({"location": "正文/1‰潜力图", "old": f"（母版旧图 ×{stripped}）",
-                              "new": f"[图] {png.name}", "source": "charts/_overview/1permille.png"})
+                              "new": f"[图] {png.name}", "source": f"charts/_overview/1permille.png"})
             break
 
-    # 预警：统计母版残留的原生图表（无法自动更新者，需人工确认）
+    # —— 对标第4期 fmt（带数据表 / 顶尖论文分布）：新增/替换 ——
+    plan2 = [
+        ("我校ESI排名情况", ov / "rank_table.png", "正文/排名情况图（第4期格式·带数据表）", 13.9),
+        ("下图显示的是近期我校主要学科", ov / "trend_table.png", "正文/发展趋势图（第4期格式·带数据表）", 14.5),
+        ("顶尖论文学科分布（篇）", ov / "top_by_subject.png", "正文/顶尖论文·学科分布", 13.5),
+        ("顶尖论文年代分布（篇）", ov / "top_by_year.png", "正文/顶尖论文·年代分布", 13.5),
+    ]
+    for anchor, png, label, w in plan2:
+        if not png.exists():
+            slots.append({"location": label, "old": "（缺图）", "new": str(png), "source": "charts/_overview"})
+            continue
+        hit = next((p for p in doc.paragraphs if anchor in p.text), None)
+        if hit is None:
+            slots.append({"location": label, "old": "（未找到锚点段落）", "new": str(png), "source": "charts/_overview"})
+            continue
+        stripped = _strip_images(hit)
+        _insert_picture_after(doc, hit, png, w)
+        slots.append({"location": label, "old": f"（替换旧图 ×{stripped}）", "new": f"[图] {png.name}",
+                      "source": f"charts/_overview/{png.name}"})
+
+    # —— 学院件本期不出（学院还没分清）：两张贡献度饼图 / 两个标题 / 学院统计表 ——
+    n_pie = _strip_runs_with_media(doc, {"media/image2.png", "media/image3.png"})
+    n_cap = n_tbl = 0
+    for kw in ("顶尖论文被引频次学院贡献度", "顶尖论文发文量学院贡献度", "学院顶尖论文发文量与被引频次统计表"):
+        for p in list(doc.paragraphs):
+            if kw in p.text:
+                if kw.startswith("顶尖论文"):
+                    _strip_images(p)
+                _remove_paragraph(p)
+                n_cap += 1
+    n_tbl = _remove_tables_containing(doc, "学院名称")
+    if n_pie or n_cap or n_tbl:
+        slots.append({"location": "正文/学院件（本期删除）", "old": f"饼图×{n_pie} 标题×{n_cap} 表×{n_tbl}",
+                      "new": "已删除（学院归属未分清）", "source": "fill_docx._remove"})
+
+    # 母版残留：趋势图（旧数据原生图表）删掉，改由生成图替代；其余原生图表预警
+    n_stale = _strip_native_chart_runs(doc, "我校主要学科近期发展趋势")
+    if n_stale:
+        slots.append({"location": "正文/趋势图（母版旧原生图表）", "old": f"×{n_stale}",
+                      "new": "已删除，改用 trend_table.png", "source": "fill_docx._strip_native"})
     n_charts = 0
     for p in doc.paragraphs:
         n_charts += len(p._element.findall('.//' + qn('c:chart')))
     warn = []
     if n_charts:
-        warn.append(f"母版残留原生图表 {n_charts} 张（预测章 4 张 + 学院统计 2 张等），"
-                    f"本期需人工替换/确认（映射清单见红色件清单）")
+        warn.append(f"母版残留原生图表 {n_charts} 张（预测章 4 张等），本期需人工替换/确认（映射清单见红色件清单）")
     return warn
 
 

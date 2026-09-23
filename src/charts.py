@@ -25,6 +25,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib import font_manager
+from matplotlib.figure import Figure
 from matplotlib.transforms import Bbox
 
 try:
@@ -689,6 +690,137 @@ def chart_ynd_rank(ynd_rank, out_png, end_period=None, n=7):
     _save(fig, out_png)
 
 
+# ---------- 概览图（对标第4期原生图表）：带数据表的排名图 / 发展趋势图 ----------
+def _save_raw(fig, path):
+    """不跑 tight_layout 的出图（表格式版面自己摆位）。"""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, dpi=300)
+    plt.close(fig)
+
+
+def _data_table(fig, rect, col_labels, row_labels, rows, *, fontsize=6.2):
+    """在 fig 指定区域放一张数据表（第4期原生图表下方的数据表样式）。"""
+    tax = fig.add_axes(rect)
+    tax.axis("off")
+    text = [[("" if v is None else (f"{v:g}" if isinstance(v, float) else str(v))) for v in row] for row in rows]
+    tb = tax.table(cellText=text, rowLabels=row_labels, colLabels=col_labels,
+                   cellLoc="center", rowLoc="center", loc="center", bbox=[0, 0, 1, 1])
+    tb.auto_set_font_size(False)
+    tb.set_fontsize(fontsize)
+    for cell in tb.get_celld().values():
+        cell.set_linewidth(0.4)
+        cell.set_edgecolor("#BFBFBF")
+        try:
+            cell.get_text().set_color(C_TEXT)
+        except AttributeError:
+            pass
+    return tb
+
+
+def chart_rank_table(ynd_rank, out_png, end_period=None, n=7):
+    """我校 ESI 排名情况（对标第4期 chart1：三序列 + 下方数据表，双轴反序）。"""
+    df = ynd_rank.set_index("period").sort_index()
+    df = df[df["rank_intl"].notna() | df["rank_cn"].notna()]
+    if end_period:
+        df = df[df.index <= str(end_period)]
+    df = df.tail(n)
+    periods = [str(p) for p in df.index]
+
+    fig = Figure(figsize=(4.9, 4.2))
+    ax = fig.add_axes([0.20, 0.44, 0.64, 0.44])
+    ax2 = ax.twinx()
+    ax.plot(range(len(df)), df["rank_cn"], marker="o", ms=4, lw=1.6, color=C_BLUE, label="国内排名")
+    ax.plot(range(len(df)), df["rank_cn_uni"], marker="s", ms=4, lw=1.6, color=C_ORANGE, label="国内高校排名")
+    ax2.plot(range(len(df)), df["rank_intl"], marker="^", ms=4, lw=1.6, color=C_GRAY, ls="--", label="国际排名（右标）")
+    ax.set_xticks(range(len(df)))
+    ax.set_xticklabels(periods, fontsize=FONT_SIZE)
+    ax.invert_yaxis()
+    ax2.invert_yaxis()
+    ax.grid(axis="y", color=C_GRID, linewidth=0.7)
+    ax.set_axisbelow(True)
+    for s in ("top", "right"):
+        ax.spines[s].set_visible(False)
+        ax2.spines[s].set_visible(False)
+    ax.tick_params(length=0, labelsize=FONT_SIZE, colors=C_TEXT)
+    ax2.tick_params(length=0, labelsize=FONT_SIZE, colors=C_TEXT)
+    lines = ax.get_lines() + ax2.get_lines()
+    ax.legend(lines, [l.get_label() for l in lines], fontsize=7, loc="upper left",
+              frameon=False, ncol=3, bbox_to_anchor=(0, 1.22))
+    _data_table(fig, [0.255, 0.045, 0.585, 0.30], periods,
+                ["国内排名", "国内高校排名", "国际排名（右标）"],
+                [[df["rank_cn"].get(p) for p in df.index],
+                 [df["rank_cn_uni"].get(p) for p in df.index],
+                 [df["rank_intl"].get(p) for p in df.index]])
+    _save_raw(fig, out_png)
+
+
+def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k=4):
+    """我校主要学科近期发展趋势（对标第4期 chart2：**1‰ 接近度**前 4 学科 + ESI1‰ 线 + 数据表）。"""
+    df = (cites / thr_1permille * 100.0).copy()
+    df.columns = [str(c) for c in df.columns]
+    if end_period:
+        df = df[[c for c in df.columns if c <= str(end_period)]]
+    df = df.iloc[:, -n:]
+    latest = df.iloc[:, -1].dropna().sort_values(ascending=False)
+    picks = list(latest.index[:top_k])
+    picked = df.loc[picks]
+    periods = [str(c) for c in df.columns]
+
+    fig = Figure(figsize=(4.9, 4.4))
+    ax = fig.add_axes([0.20, 0.44, 0.74, 0.44])
+    colors = ("#4472C4", "#7030A0", "#BFBFBF", "#FFC000")
+    for i, d in enumerate(picks):
+        ax.plot(range(len(picked.columns)), picked.loc[d], marker="o", ms=3.2, lw=1.5,
+                color=colors[i % len(colors)], label=_cn(d))
+    ax.axhline(100, color="red", lw=1.4, label="ESI1‰")
+    ax.set_xticks(range(len(periods)))
+    ax.set_xticklabels(periods, fontsize=FONT_SIZE)
+    ax.set_ylim(0, 105)
+    ax.grid(axis="y", color=C_GRID, linewidth=0.7)
+    ax.set_axisbelow(True)
+    for s in ("top", "right"):
+        ax.spines[s].set_visible(False)
+    ax.tick_params(length=0, labelsize=FONT_SIZE, colors=C_TEXT)
+    ax.legend(fontsize=6.6, loc="upper left", frameon=False, ncol=3, bbox_to_anchor=(0, 1.2))
+    rows = [[round(float(picked.loc[d, p]), 2) for p in periods] for d in picks]
+    rows.append([100.0] * len(periods))
+    _data_table(fig, [0.25, 0.045, 0.69, 0.30], periods,
+                [_cn(d) for d in picks] + ["ESI1‰"], rows)
+    _save_raw(fig, out_png)
+
+
+def chart_top_by_year(by_year, out_png, period):
+    """顶尖论文年代分布（篇）（对标第4期 chart4：按出版年柱状）。"""
+    s = by_year[period] if period in by_year.columns else by_year.iloc[:, -1]
+    s = s.dropna()
+    s = s[s > 0]
+    fig, ax = _fig(4.4, 2.6)
+    ax.bar(range(len(s)), [float(v) for v in s], color=C_ORANGE, width=0.66)
+    for i, v in enumerate(s):
+        ax.text(i, float(v) + 0.6, f"{int(v)}", ha="center", fontsize=6.2, color=C_TEXT)
+    ax.set_xticks(range(len(s)))
+    ax.set_xticklabels([str(i) for i in s.index], fontsize=FONT_SIZE)
+    _style(ax)
+    _title(ax, "顶尖论文年代分布（篇）")
+    _save(fig, out_png)
+
+
+def chart_top_by_subject(top_papers, out_png, period):
+    """顶尖论文学科分布（篇）（对标第4期 chart5：按学科柱状）。"""
+    s = top_papers[period] if period in top_papers.columns else top_papers.iloc[:, -1]
+    s = s.dropna()
+    s = s[s > 0].sort_values(ascending=False)
+    fig, ax = _fig(4.6, 2.8)
+    ax.bar(range(len(s)), [float(v) for v in s], color=C_BLUE, width=0.62)
+    for i, v in enumerate(s):
+        ax.text(i, float(v) + 0.6, f"{int(v)}", ha="center", fontsize=6.0, color=C_TEXT)
+    ax.set_xticks(range(len(s)))
+    ax.set_xticklabels([_cn(d) for d in s.index], fontsize=5.6, rotation=38, ha="right")
+    _style(ax)
+    _title(ax, "顶尖论文学科分布（篇）")
+    _save(fig, out_png)
+
+
 # ---------- 概览图：1% 接近度（红基线；对标第4期风格）----------
 def chart_overview_1pct(cites, threshold, out_png, period):
     fig, ax = _fig(3.25, 3.15)
@@ -801,8 +933,15 @@ def render_all(ledger_dir="out/202607", out_dir=None, n_periods=7, end_period=No
     chart_ynd_rank(ynd_rank, ov / "ynd_rank.png", end_period=end_period, n=n_periods)
     chart_overview_1pct(w["total_cites"], w["threshold_1pct"], ov / "1pct.png", P)
     chart_overview_1permille(w["total_cites"], thr_p, w["entered_1pct"], ov / "1permille.png", P)
-    total = len(made) * 6 + 3
-    print(f"charts: {len(made)} 学科 × 6 图 + 概览 3 张 = {total} 张 → {out_dir}"
+    # 对标第4期原生图表：排名（带数据表）、发展趋势（带数据表）、顶尖论文年代/学科分布
+    chart_rank_table(ynd_rank, ov / "rank_table.png", end_period=end_period, n=n_periods)
+    chart_trend_table(w["total_cites"], thr_p, ov / "trend_table.png", end_period=end_period, n=n_periods)
+    chart_top_by_subject(w["top_papers"], ov / "top_by_subject.png", P)
+    by_year_path = ledger_dir / "wide" / "top_by_year.parquet"
+    if by_year_path.exists():
+        chart_top_by_year(pd.read_parquet(by_year_path), ov / "top_by_year.png", P)
+    total = len(made) * 6 + 6
+    print(f"charts: {len(made)} 学科 × 6 图 + 概览 6 张 = {total} 张 → {out_dir}"
           f"（窗口 {periods[0]}–{P}，{len(periods)} 期）")
     return total
 
