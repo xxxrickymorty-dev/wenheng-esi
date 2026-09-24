@@ -446,7 +446,8 @@ check("analyze backend=sentences（LLM 不进数据路径）", '"backend"' in an
 # POST /api/periods/{period}/forecast-choice（JSON body）
 st, fc, _ = call_json("POST", "/api/periods/202607/forecast-choice", {"choice": {"Chemistry": "SARIMA模型"}})
 check("POST forecast-choice 200", st == 200, f"got {st}")
-check("forecast-choice POST 返回 choice 或 ok", '"choice"' in fc or '"ok"' in fc, f"body={fc[:80]}")
+check("forecast-choice POST 返回 ok+saved（防被读回路由抢先）",
+      '"ok"' in fc and '"saved"' in fc, f"body={fc[:100]}")
 
 # 错误体统一：{error, hint?, missing?}
 st, err, _ = call("GET", "/api/periods/209901")
@@ -472,6 +473,7 @@ check("workbench 有 approvalStatus", '"approvalStatus"' in wb)
 st, fq, _ = call("GET", "/api/periods/202607/forecast-choice")
 check("GET forecast-choice 200", st == 200, f"got {st}")
 check("forecast-choice GET 有 choice", '"choice"' in fq)
+check("读回能见刚保存的值（保存确实落盘）", "SARIMA" in fq, f"body={fq[:120]}")
 check("forecast-choice GET 有 by", '"by"' in fq)
 
 # GET /api/periods/202607/collation?full=true
