@@ -51,7 +51,76 @@ def _college_clauses(college):
     }
 
 
-def build(facts, period, prev, college=None):
+def _fmt_period_cn(period):
+    """202709 → '2027年9月'；None/空 → None。"""
+    if not period:
+        return None
+    p = str(int(period))
+    return f"{p[:4]}年{int(p[4:])}月"
+
+
+def _forecast_index(forecast):
+    """forecast_charts.json 的 charts 列表 → {(index, task): meta}（脏数据跳过）。"""
+    out = {}
+    for c in forecast or []:
+        try:
+            out[(int(c["index"]), str(c["task"]))] = c
+        except (KeyError, TypeError, ValueError):
+            continue
+    return out
+
+
+def _cross_clauses(model1, model2, cross1, cross2):
+    """模型说明子句（rick 2026-09-24 定稿样式）：
+    两线同名模型 →「采用拟合度较好的X得到的预测显示，其…」；
+    不同模型 →「采用拟合度较好的X与Y分别对被引频次、国内排名进行预测，…」。
+    """
+    if model1 and model1 == model2:
+        head = f"采用拟合度较好的{model1}得到的预测显示，其"
+    else:
+        head = f"采用拟合度较好的{model1}与{model2}分别对被引频次、国内排名进行预测，"
+    t1 = (f"被引频次预测曲线预计于{_fmt_period_cn(cross1)}前后越过ESI前1%阈值预测曲线"
+          if cross1 else "被引频次预测曲线在预测区间内尚未越过ESI前1%阈值预测曲线")
+    t2 = (f"国内排名预测曲线预计于{_fmt_period_cn(cross2)}前后与国内ESI前1%机构数预测曲线交叉"
+          if cross2 else "国内排名预测曲线在预测区间内尚未与国内ESI前1%机构数预测曲线交叉")
+    return f"{head}{t1}，{t2}"
+
+
+def _prox_phrases(tail):
+    """近一年接近度尾迹 → (趋势描述, 发展力度评价)；数据不足返回 (None, None)（保留手工槽）。"""
+    vals = [float(v) for v in (tail or []) if v is not None and v == v]
+    if len(vals) < 2:
+        return None, None
+    rising = all(b >= a for a, b in zip(vals, vals[1:]))
+    net = vals[-1] - vals[0]
+    if rising:
+        return "一直呈稳步上升趋势", "持续增强"
+    if net > 0:
+        return "呈波动上升趋势", "持续增强"
+    return "呈波动趋势", "需要继续加强"
+
+
+def _eta_goal(cross1, cross2):
+    """第一学科口径：取两线较晚的交叉点 →「可能将在2027年前后实现」；无交叉点保留手工槽。"""
+    pts = [int(c) for c in (cross1, cross2) if c]
+    if not pts:
+        return MANUAL.format("预计时间（两线交叉点）")
+    return f"可能将在{max(pts) // 100}年前后实现"
+
+
+def _eta_expect(cross1, cross2):
+    """第二学科口径：两线跨年（11 月/次年 1 月型）→「有望在2027年底至2028年初进入ESI前1%」；
+    否则以较晚交叉点 →「有望在YYYY年前后进入ESI前1%」；无交叉点保留手工槽。"""
+    pts = sorted(int(c) for c in (cross1, cross2) if c)
+    if not pts:
+        return MANUAL.format("预计时间（两线交叉点）")
+    first, last = pts[0], pts[-1]
+    if last // 100 - first // 100 == 1 and first % 100 >= 10 and last % 100 <= 3:
+        return f"有望在{first // 100}年底至{last // 100}年初进入ESI前1%"
+    return f"有望在{last // 100}年前后进入ESI前1%"
+
+
+def build(facts, period, prev, college=None, forecast=None):
     y, m = period[:4], str(int(period[4:]))
     prev_m = str(int(prev[4:]))
     p1 = facts
@@ -139,6 +208,25 @@ def build(facts, period, prev, college=None):
            f"学科如按目前的态势发展，进入ESI前1%的目标{MANUAL.format('预计时间（两线交叉点）')}。")
     fc2 = (f"我校{cn_name(ne2['discipline'])}学科本期ESI前1%接近度为{ne2['prox_pct']:.2f}%，"
            f"较上期{_dir_chg(ne2['chg'])}。从预测情况看，{MANUAL.format('发展力度评价')}。")
+
+    # 有预测图元数据（forecast_charts.json）时把上面的手工槽换成模型说明：
+    # 数字/日期只来自 report_forecast 的 V1 推荐模型结果，措辞分档是确定的（见 _prox_phrases）。
+    fm = _forecast_index(forecast)
+    f1c, f1r = fm.get((1, "citation")), fm.get((1, "rank"))
+    f2c, f2r = fm.get((2, "citation")), fm.get((2, "rank"))
+    trend1, _strength1 = _prox_phrases(ne1.get("prox_tail"))
+    _trend2, strength2 = _prox_phrases(ne2.get("prox_tail"))
+    if f1c and f1r and f2c and f2r and trend1 and strength2:
+        fc1 = (f"我校{cn_name(ne1['discipline'])}学科的发展{trend1}，本期该学科的ESI前1%接近度达到"
+               f"{ne1['prox_pct']:.2f}%，较上期{_dir_chg(ne1['chg'])}；从预测情况看，"
+               f"{_cross_clauses(f1c['model'], f1r['model'], f1c.get('first_crossing'), f1r.get('first_crossing'))}，"
+               f"学科如按目前的态势发展，进入ESI前1%的目标"
+               f"{_eta_goal(f1c.get('first_crossing'), f1r.get('first_crossing'))}。（两线交叉点）")
+        fc2 = (f"我校{cn_name(ne2['discipline'])}学科本期ESI前1%接近度为{ne2['prox_pct']:.2f}%，"
+               f"较上期{_dir_chg(ne2['chg'])}。从预测情况看，我校{cn_name(ne2['discipline'])}进入ESI前1%的"
+               f"发展力度{strength2}，"
+               f"{_cross_clauses(f2c['model'], f2r['model'], f2c.get('first_crossing'), f2r.get('first_crossing'))}，"
+               f"{_eta_expect(f2c.get('first_crossing'), f2r.get('first_crossing'))}。")
 
     return {
         "p1": (f"据{MANUAL.format('ESI发布日期')}ESI最新数据显示（ESI数据覆盖时间范围为"

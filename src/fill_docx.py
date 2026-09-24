@@ -318,6 +318,69 @@ def _strip_images(p):
     return n
 
 
+def _inline_to_anchor(inline, relative_height):
+    """`wp:inline` → `wp:anchor`（上下型环绕、水平居中、垂直锚在本段）。
+
+    **备选方案**：能解「图被遮挡」，但实测浮动图不随文字流走——页底放不下时图会被
+    顶到下一页、在原页留下半页空白（预测章实测：每张图一页）。因此当前改用
+    `relax_image_line_spacing`（内嵌图 + 放宽固定行距）。此函数留作 rick 若坚持
+    上下型环绕时的现成实现；子元素必须按 CT_Anchor 的 schema 顺序搬：
+    extent → effectExtent → wrap → docPr → cNvGraphicFramePr → graphic（错了 Word 报文档损坏）。
+    """
+    xmlns = nsdecls("wp", "a")
+    anchor = parse_xml(
+        f'<wp:anchor {xmlns} distT="0" distB="0" distL="114300" distR="114300" simplePos="0"'
+        f' relativeHeight="{relative_height}" behindDoc="0" locked="0" layoutInCell="1"'
+        ' allowOverlap="1"><wp:simplePos x="0" y="0"/>'
+        '<wp:positionH relativeFrom="column"><wp:align>center</wp:align></wp:positionH>'
+        '<wp:positionV relativeFrom="paragraph"><wp:posOffset>299720</wp:posOffset></wp:positionV>'
+        "</wp:anchor>")
+    for tag in ("wp:extent", "wp:effectExtent"):
+        el = inline.find(qn(tag))
+        if el is not None:
+            anchor.append(el)
+    anchor.append(parse_xml(f'<wp:wrapTopAndBottom {xmlns}/>'))
+    for tag in ("wp:docPr", "wp:cNvGraphicFramePr", "a:graphic"):
+        el = inline.find(qn(tag))
+        if el is not None:
+            anchor.append(el)
+    inline.getparent().replace(inline, anchor)
+
+
+def _relax_exact_spacing(p):
+    """把「固定行距」（lineRule=exact/atLeast）改成单倍行距——返回是否改动。"""
+    pPr = p.find(qn("w:pPr"))
+    if pPr is None:
+        return False
+    sp = pPr.find(qn("w:spacing"))
+    if sp is None:
+        return False
+    if sp.get(qn("w:lineRule")) in ("exact", "atLeast"):
+        sp.set(qn("w:lineRule"), "auto")
+        sp.set(qn("w:line"), "240")
+        return True
+    return False
+
+
+def relax_image_line_spacing(doc):
+    """正文（不含表格/页眉页脚）里带图的段落：放宽「固定行距」，让图不再被遮挡。
+
+    🔴 根因（rick 2026-09-23「你插入的图片有时候被遮挡」）：母版有图段行距是
+    `w:lineRule="exact"`（预测章 20pt）——内嵌图不参与行高，图会压住上下文字。
+    两种修法实测对比（Word 导出 PDF 逐页核对）：
+      · 上下型环绕浮动图 → 图不参与文字流，页底放不下就被顶到下一页，
+        原页留半页空白（预测章一度变成 4 页、每页一张图）；
+      · 放宽为单倍行距（本实现）→ 图仍随文流走，行高按图撑开，不压字也不丢页。
+    返回改动的段落数。
+    ⚠ 表格槽位里的 96 张学科图**不动**：单元格行高本来靠内嵌图撑开。
+    """
+    n = 0
+    for p in doc.paragraphs:
+        if p._p.findall(".//" + qn("wp:inline")) and _relax_exact_spacing(p._p):
+            n += 1
+    return n
+
+
 def _strip_native_chart_runs(doc, title_keyword):
     """删掉内嵌原生图表 run（按 chart 部件标题匹配，如「我校主要学科近期发展趋势」）。"""
     import re as _re
@@ -628,6 +691,14 @@ def fill_forecast_charts(doc, ledger_dir, slots, warns):
                 tgt = q
                 break
         n = _strip_chart_runs(tgt)
+        # 🔴 母版在「学科1·国内排名」图段里埋了一个**硬分页符**（第4期原件同款）：
+        #    不删就会把第 2 张图顶到下一页、页底留大片空白（rick 打开的是待排版稿，
+        #    出版件里这个分页符也是没有的）。删掉后「段落 + 两图」一页放得下。
+        n_br = 0
+        for br in list(tgt._p.findall(".//" + qn("w:br"))):
+            if br.get(qn("w:type")) == "page":
+                br.getparent().remove(br)
+                n_br += 1
         from docx.enum.text import WD_ALIGN_PARAGRAPH  # noqa: PLC0415
         tgt.alignment = WD_ALIGN_PARAGRAPH.CENTER
         tgt.add_run().add_picture(str(png), width=Cm(14.0))
@@ -636,7 +707,8 @@ def fill_forecast_charts(doc, ledger_dir, slots, warns):
         if info.get("model"):
             new_desc += (f"（{info.get('subject', '')}·{info['model']}，"
                          f"预计过线 {info.get('first_crossing') or '区间内未过线'}）")
-        slots.append({"location": label, "old": f"母版原生图表 ×{n}",
+        slots.append({"location": label,
+                      "old": f"母版原生图表 ×{n}" + (f" + 硬分页符 ×{n_br}" if n_br else ""),
                       "new": new_desc, "source": "report_forecast（V1 推荐模型）"})
 
 
@@ -707,10 +779,25 @@ def apply_manual_inputs(texts, fills, key_prefix="正文/"):
 _HAND_RE = re.compile(r"【手工：([^】]*)】")
 
 
+def _forecast_meta(ledger_dir):
+    """预测图元数据（`report_forecast` 落的 forecast_charts.json）→ 预测章模型说明句。
+
+    缺文件/坏了都返回 None：段落退回 `【手工：…】` 槽（可复现性优先，不让填稿挂掉）。
+    """
+    p = pathlib.Path(ledger_dir) / "forecast_charts.json"
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8")).get("charts")
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return None
+
+
 def fill_texts(doc, ledger_dir, slots, period, prev, facts, fills=None):
     """概述 4 段 + 发展趋势段 + 态势段 + 封面期数（句骨架 + 数字槽）。"""
     college = college_stats.load(pathlib.Path(ledger_dir), period, save=True)
-    texts = sentences.build(facts, period, prev, college=college)
+    texts = sentences.build(facts, period, prev, college=college,
+                            forecast=_forecast_meta(ledger_dir))
     texts, n_filled = apply_manual_inputs(texts, fills)
     anchors = [
         ("p1", lambda t: "ESI最新数据显示" in t),
@@ -824,6 +911,13 @@ def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026�
         idx = 3 + DETAIL_TABLES.index(disc)
         insert_charts(doc, ledger_dir, disc, idx, slots, chart_dir)
 
+    # 带图段落统一「放宽固定行距」（rick 反馈：exact 行距段里内嵌图会压字）；表格槽位图不动。
+    n_relax = relax_image_line_spacing(doc)
+    if n_relax:
+        slots.append({"location": "正文/图片行距", "old": f"{n_relax} 个图段固定行距",
+                      "new": f"{n_relax} 个图段改为单倍行距（图不再压字、仍随文流走）",
+                      "source": "rick 2026-09-23（防 exact 行距压图）"})
+
     doc.save(out_path)
 
     (ledger_dir / "red_slots.json").write_text(
@@ -838,10 +932,13 @@ def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026�
           f"- 图表槽位：{n_img} 张（{len(charts_used)} 学科 × 6 图 + 概览/学院/预测图）", "",
           "## 仍为手工的槽位（红色件中的【手工：…】）",
           "- ESI 发布日期、当期全球机构总数（台账外，1 分钟可查）",
-          "- 去年同期升幅%；预测章的趋势描述/预计时间/发展力度评价（编辑判断）",
+          "- 去年同期升幅%（台账外）",
           "- 云南高校总数/增减/新晋学科（省级对比，台账外）",
           "- 目录页码（需 Word 分页后人工填）",
           "- 省表其余高校数据（台账外，人工贴入）", "",
+          "## 由流水线自动生成（不再留手工槽）",
+          "- 预测章模型说明（趋势/发展力度/模型名/两线交叉期）：来自 `report_forecast` 的 V1 推荐模型结果；"
+          "只有缺 `forecast_charts.json`（预测图跳过）时才退回【手工：…】", "",
           "## 预警（母版残留）"]
     if warns:
         md += [f"- {w}" for w in warns]

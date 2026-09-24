@@ -984,13 +984,19 @@ def chart_college_pie(stats, out_png, mode):
 
 # ---------- 预测章配图：实际 + 模型（拟合历史 + 递推预测）----------
 def chart_forecast(hist_periods, hist, model_hist, fut_periods, fut,
-                   labels, colors, out_png, grid=True, figsize=(7.0, 3.5)):
+                   labels, colors, out_png, grid=True, figsize=(7.2, 3.2)):
     """预测章「模型预测图」：两个指标各画「实际（实线）+ 模型（虚线，含历史拟合段）」。
 
     · `hist` / `model_hist` / `fut` 均为 **(指标1, 指标2)** 二元组；
     · `labels` / `colors` 四元组：指标1、指标1预测值、指标2、指标2预测值；
     · 模型历史段从首个有限拟合值画起（V1 口径前 6 期无拟合）。
-    · 字号按 rick 反馈加大（插图 14cm 宽时图例/刻度需 ≥8pt 可读）。
+    · 横轴＝**样本期次每 2 期一个刻度（竖排）**，与样本同密度（rick 2026-09-23：
+      「样本有这么多期，你的图里只有几期，和样本对齐」；原件即每 4 个月一个标签）。
+    · 字号按 14cm 插图反算加大（rick 2026-09-23：「图例太小了，字体增加」）：
+      插图缩放 ≈14/18.3≈0.77，图例 13pt→实际 ≈10pt。
+    · 画幅 7.2×3.2in（比例 2.25）＝ 14cm 插图后 6.22cm 高：预测章一页要放
+      「段落 + 两图」（母版里第 2 张图段还埋了硬分页符，见 fill_docx.fill_forecast_charts），
+      图再高一点第 2 张就会被挤到下一页（Word 实测）。
     """
     ink = "#1F1F1F"
     fig, ax = _fig(*figsize)
@@ -1014,19 +1020,26 @@ def chart_forecast(hist_periods, hist, model_hist, fut_periods, fut,
             ax.plot(line_x, line_y, color=colors[2 * j + 1], lw=1.5, ls="--",
                     label=labels[2 * j + 1], zorder=2)
 
-    xt = [i for i, p in enumerate(all_p) if p.endswith("01")]
-    if len(xt) > 10:
-        xt = xt[::2]
+    xt = list(range(0, len(all_p), 2))          # 每 2 期一个刻度（双月 → 每 4 个月）
     ax.set_xticks(xt)
-    ax.set_xticklabels([all_p[i] for i in xt], fontsize=9)
+    ax.set_xticklabels([all_p[i] for i in xt], fontsize=10, rotation=90)
     ax.set_xlim(-0.6, len(all_p) - 0.4)
     _style(ax)
-    ax.tick_params(labelsize=9, colors=ink)
+    ax.tick_params(labelsize=10.5, colors=ink)
     if not grid:
         ax.grid(False)
-    ax.legend(fontsize=10, loc="lower center", bbox_to_anchor=(0.5, -0.33),
-              ncol=4, frameon=False, labelcolor=ink)
-    _save(fig, out_png)
+    # 图例走 figure 坐标、tight_layout 预留底部空间：竖排刻度字较长，ax.legend 的负锚点
+    # 会跟它们抢位置（本图不用 _save：它默认整个画布都留给 axes）。
+    # 图例间距收窄（handlelength/columnspacing）：4 个中文词条在 6.9in 画布里一行放得下，
+    # 13pt 插图缩放后 ≈10.4pt（rick 要求「字体增加」）。
+    handles, legend_labels = ax.get_legend_handles_labels()
+    pathlib.Path(out_png).parent.mkdir(parents=True, exist_ok=True)
+    fig.tight_layout(pad=_LAYOUT_PAD, rect=(0.0, 0.11, 1.0, 1.0))
+    fig.legend(handles, legend_labels, fontsize=13, loc="lower center", ncol=4,
+               frameon=False, labelcolor=ink, handlelength=1.3, columnspacing=1.2,
+               handletextpad=0.6, bbox_to_anchor=(0.5, 0.012), bbox_transform=fig.transFigure)
+    fig.savefig(out_png, dpi=300)
+    plt.close(fig)
 
 
 # ---------- 概览图：1% 接近度（红基线；对标第4期风格）----------

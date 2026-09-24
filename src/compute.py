@@ -160,10 +160,16 @@ def build_overview(wide, new_intl, new_cn, thr, ynd_rank, top_total, period=None
     ne = pr[period][pr[period] < 1].sort_values(ascending=False)
     top2 = []
     for d in ne.index[:2]:
+        # 近 7 期（含当期，≈1 年）接近度尾迹：预测章「趋势描述 / 发展力度评价」的措辞依据
+        # （sentences._prox_phrases 按「是否连涨 + 净变化」分档，不给数字）。
+        hist_cols = [c for c in pr.columns
+                     if isinstance(c, str) and c.isdigit() and c <= str(period)
+                     and pd.notna(pr.at[d, c])]
         top2.append({
             "discipline": d,
             "prox_pct": round(ne[d] * 100, 2),
             "chg": round((pr.loc[d, period] - pr.loc[d, prev]) * 100, 2),
+            "prox_tail": [round(float(pr.at[d, c]), 4) for c in hist_cols[-7:]],
         })
     facts["top2_not_entered"] = top2
     # 1‰ 状态与年化进入时间估算（按上期增速外推；上期 1‰阈值缺失则不强算）
