@@ -378,6 +378,20 @@ a{color:inherit}
 .bt-cell .s{display:block;font-size:12.5px;color:var(--ink-3);margin-top:6px;line-height:1.6}
 
 /* ============================================================================
+   学科板（预测台 01）——8 潜力学科 × 路线的现状卡：接近度条 / 模型 / 过线期
+   ========================================================================== */
+.bd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:14px}
+.bd-card{border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--panel);padding:12px 14px}
+.bd-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.bd-top b{font-size:15.5px}
+.bd-prox{font-family:var(--serif);font-size:19px;color:var(--zhu)}
+.bd-bar{display:block;height:8px;border-radius:99px;background:var(--line-2);overflow:hidden;margin:8px 0 9px}
+.bd-bar i{display:block;height:100%;border-radius:99px;background:var(--gold)}
+.bd-meta{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--ink-3);flex-wrap:wrap}
+.bd-cross{margin-top:7px;font-size:13.5px;color:var(--ink-3)}
+.bd-cross.on{color:var(--ok);font-weight:600}
+
+/* ============================================================================
    顶尖论文增长轨迹（报告页首屏，借「学科分析平台」那版版式）——纯 SVG，零依赖
    ========================================================================== */
 .tr-wrap{margin-top:16px;border:1px solid var(--line-2);border-radius:var(--r-sm);

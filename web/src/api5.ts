@@ -101,6 +101,38 @@ export async function saveForecastChoice(
   )
 }
 
+/* ---------------------------------------------------------------- 学科板（#20） */
+
+export type ForecastBoardRow = {
+  subject: string
+  model: string
+  fit_mape: number | null
+  rolling_mape: number | null
+  cur_value: number | null
+  threshold: number | null
+  gap: number | null
+  both_under_5: boolean
+  /** 接近度（百分数点值：14.23 表示 14.23%） */
+  prox: number | null
+  /** 最早/最可能/最晚过线期；空串＝该窗口内未过线 */
+  t1: string
+  t2: string
+  t3: string
+}
+
+export type ForecastBoard = {
+  period: string
+  window: string
+  routes: Record<string, ForecastBoardRow[]>
+  note: string
+}
+
+/** 选模与过线学科板（源：out/<期次>/预测选模与过线.md）——纯只读 */
+export async function getForecastBoard(period?: string): Promise<ForecastBoard> {
+  const q = period ? `?period=${encodeURIComponent(period)}` : ''
+  return req<ForecastBoard>(`/api/forecast/board${q}`)
+}
+
 /* ---------------------------------------------------------------- 灵活报告（#21） */
 
 export type FlexibleReport = { intent: string; title: string; meta: Record<string, unknown> }

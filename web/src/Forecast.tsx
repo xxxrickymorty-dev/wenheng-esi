@@ -5,9 +5,10 @@
    本页不做任何换算：表上图上都是后端给的数（只有"怎么显示"的格式化，见 fmtNum）。 */
 
 import { useEffect, useState } from 'react'
+import { req } from './api'
 import {
-  getForecastChoice, getForecastMeta, runForecast, saveForecastChoice,
-  type ForecastMeta, type ForecastModelResult, type ForecastRun,
+  getForecastBoard, getForecastChoice, getForecastMeta, runForecast, saveForecastChoice,
+  type ForecastBoard, type ForecastMeta, type ForecastModelResult, type ForecastRun,
 } from './api5'
 import { Icon } from './icons'
 import { MODEL_DESC } from './Workbench'
@@ -109,7 +110,7 @@ function Trial({ meta }: { meta: ForecastMeta }) {
   return (
     <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
       <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span className="fc-no">02</span>试跑一个学科（验证）
+        <span className="fc-no">03</span>试跑一个学科（验证）
       </h2>
       <p className="fc-lead" style={{ fontSize: 15.5 }}>
         选学科、路线、模型，跑一次看看：滚动样本外误差、首次模型过线期、逐期预测值。
@@ -173,6 +174,103 @@ function Trial({ meta }: { meta: ForecastMeta }) {
   )
 }
 
+/* ---------------------------------------------------------------- 学科板（现状与研判） */
+
+/** 期次 2027-01 → 2027-01（原样）；空串＝窗口内未过线 */
+const fmtT = (v: string) => (v ? v : '窗口内未过线')
+
+/** 英文名 → 中文名的小桥：逐格溯源接口的「学科」列同时带中英（后端数据）。
+    契约 #22 落地后（facts/board 自带中文名）这里就可以删掉。 */
+async function discNameMap(period: string): Promise<Record<string, string>> {
+  try {
+    const j = await req<{ rows?: { col?: string; report?: string; src_ref?: string }[] }>(
+      `/api/periods/${encodeURIComponent(period)}/trace?cat=bigtable&limit=300`)
+    const m: Record<string, string> = {}
+    for (const r of j.rows ?? []) {
+      if (r.col === '学科' && r.src_ref && r.report) m[r.src_ref] = r.report
+    }
+    return m
+  } catch {
+    return {}
+  }
+}
+
+function Board({ meta }: { meta: ForecastMeta }) {
+  const [d, setD] = useState<ForecastBoard | null>(null)
+  const [cn, setCn] = useState<Record<string, string>>({})
+  const [note, setNote] = useState<string | null>(null)
+  const [route, setRoute] = useState(meta.routes[0]?.value ?? '')
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const b = await getForecastBoard()
+        if (!alive) return
+        setD(b)
+        if (!b.routes?.[route] && Object.keys(b.routes ?? {}).length) setRoute(Object.keys(b.routes)[0])
+        if (b.period) setCn(await discNameMap(b.period))
+      } catch {
+        if (alive) setNote('学科板暂时读不到（这份选模表还没生成）。')
+      }
+    })()
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const rows = (d?.routes ?? {})[route] ?? []
+
+  return (
+    <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
+      <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span className="fc-no">01</span>学科板 · 现状与研判
+        <span className="hint">
+          选模与过线（源：{d?.period ?? '—'} · 窗口 {d?.window ?? '—'}）
+        </span>
+      </h2>
+      <p className="fc-lead" style={{ fontSize: 15.5 }}>
+        8 个潜力学科两条路线一眼看完：接近度（离门槛还有多远）、预计过线期、用的模型与它的滚动误差。
+        「接近度」是百分数点值；过线是滚动监测信号，不等同于正式入榜时间。
+      </p>
+
+      <div className="fc-tabs" role="tablist" aria-label="预测路线">
+        {meta.routes.map((r) => (
+          <button key={r.value} role="tab" aria-selected={r.value === route}
+                  className={r.value === route ? 'on' : ''} onClick={() => setRoute(r.value)}>
+            {r.label}
+          </button>
+        ))}
+      </div>
+
+      {note && <div className="pending-box" style={{ marginTop: 12 }}>{note}</div>}
+
+      {!!rows.length && (
+        <div className="bd-grid">
+          {rows.map((r) => (
+            <div className="bd-card" key={r.subject}>
+              <div className="bd-top">
+                <b>{cn[r.subject] ?? r.subject}</b>
+                <span className="bd-prox">{r.prox == null ? '—' : `${r.prox}%`}</span>
+              </div>
+              <span className="bd-bar" aria-hidden="true">
+                <i style={{ width: `${Math.min(100, Math.max(0, r.prox ?? 0))}%` }} />
+              </span>
+              <div className="bd-meta">
+                <span>模型 {r.model}</span>
+                <span>滚动 MAPE {r.rolling_mape == null ? '—' : `${r.rolling_mape}%`}</span>
+              </div>
+              <div className={`bd-cross${r.t1 ? ' on' : ''}`}>
+                {r.t1 ? `预计过线 ${fmtT(r.t1)}${r.t3 && r.t3 !== r.t1 ? `（最晚 ${r.t3}）` : ''}` : fmtT(r.t1)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {d?.note && <p className="hint" style={{ marginTop: 10 }}>{d.note}</p>}
+    </section>
+  )
+}
+
 /* ---------------------------------------------------------------- 逐科选择 */
 
 function PickTable({ meta, picks, setPicks, saved, saving, saveErr, onSave }: {
@@ -191,7 +289,7 @@ function PickTable({ meta, picks, setPicks, saved, saving, saveErr, onSave }: {
   return (
     <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
       <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span className="fc-no">01</span>本期用哪个模型
+        <span className="fc-no">02</span>本期用哪个模型
       </h2>
       <p className="fc-lead" style={{ fontSize: 15.5 }}>
         默认就用 V1 推荐；想改哪科改哪科，改完保存。两条路线的推荐不一样，先选你在改哪条路线。
@@ -370,13 +468,14 @@ export function Forecast() {
 
       {meta && meta.available && (
         <>
+          <Board meta={meta} />
           <PickTable meta={meta} picks={picks} setPicks={setPicks}
                      saved={saved} saving={saving} saveErr={saveErr} onSave={onSave} />
           <Trial meta={meta} />
 
           <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
             <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span className="fc-no">03</span>口径说明
+              <span className="fc-no">04</span>口径说明
             </h2>
             <ul className="fc-ticks">
               <li><b>被引路线</b>：预测总被引达到或超过预测 ESI 前1%被引阈值时，记为模型过线。</li>
