@@ -254,6 +254,50 @@ function PeriodData({ period }: { period: string | null }) {
   )
 }
 
+/** 顶尖论文增长轨迹（契约 #19 的 trend 序列；借「学科分析平台」那版的版式）。
+    曲线与点都是后端给的数；轴上只标**真实值**（0 / 序列最大值 / 本期），不另造刻度数。 */
+function TrendCard({ trend, period }: { trend: Record<string, number>; period: string | null }) {
+  const pts = Object.entries(trend).sort((a, b) => a[0].localeCompare(b[0]))
+  if (pts.length < 2) return null
+  const max = Math.max(...pts.map(([, v]) => v))
+  const W = 760, H = 190, L = 58, R = 16, T = 14, B = 26
+  const iw = W - L - R, ih = H - T - B
+  const x = (i: number) => L + (i * iw) / (pts.length - 1)
+  const y = (v: number) => T + ih - (v / (max || 1)) * ih
+  const line = pts.map(([, v], i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ')
+  const area = `${line} L${x(pts.length - 1).toFixed(1)} ${(T + ih).toFixed(1)} L${L} ${(T + ih).toFixed(1)} Z`
+  const ci = Math.max(0, pts.findIndex(([k]) => k === period))
+  const [ck, cv] = pts[ci]
+  const fmtP = (k: string) => `${k.slice(0, 4)}.${k.slice(4)}`
+
+  return (
+    <div className="tr-wrap">
+      <div className="tr-head">
+        <div>
+          <b>顶尖论文增长轨迹</b>
+          <span className="hint">按双月期次 · 单位 篇（{pts.length} 期，{fmtP(pts[0][0])}–{fmtP(pts[pts.length - 1][0])}）</span>
+        </div>
+        <div className="tr-now"><b>{cv}</b><span>本期 · {fmtP(ck)}</span></div>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="tr-svg" role="img"
+           aria-label={`顶尖论文历期增长趋势图：${pts.length} 期，本期 ${cv} 篇`}>
+        {[0, 0.25, 0.5, 0.75, 1].map((q) => (
+          <line key={q} className="tr-grid" x1={L} x2={W - R} y1={T + ih * (1 - q)} y2={T + ih * (1 - q)} />
+        ))}
+        <text className="tr-tick" x={L - 10} y={T + 4} textAnchor="end">{max}</text>
+        <text className="tr-tick" x={L - 10} y={T + ih + 4} textAnchor="end">0</text>
+        <path className="tr-area" d={area} />
+        <path className="tr-line" d={line} />
+        <circle className="tr-dot" cx={x(ci)} cy={y(cv)} r="4.5" />
+        <text className="tr-tick" x={x(ci)} y={y(cv) - 10} textAnchor="middle">{fmtP(ck)}</text>
+        <text className="tr-tick" x={L} y={H - 6}>{fmtP(pts[0][0])}</text>
+        <text className="tr-tick" x={W - R} y={H - 6} textAnchor="end">{fmtP(pts[pts.length - 1][0])}</text>
+      </svg>
+      <p className="hint">每个点都是台账派生的历期数字，不掺预测值。</p>
+    </div>
+  )
+}
+
 /** 读数带：真数据（GET /api/periods/{p}/facts，源与报告同款）。
     🔴 数字原样来自后端——这里只排版，不换算、不聚合、不四舍五入。 */
 function FactsStrip({ period }: { period: string | null }) {
@@ -320,6 +364,11 @@ function FactsStrip({ period }: { period: string | null }) {
           </div>
         ))}
       </div>
+
+      {/* 首屏读数：四卡下面就把「这几年怎么走过来的」摆出来（趋势序列来自后端） */}
+      {f.trend && Object.keys(f.trend).length > 1 && (
+        <TrendCard trend={f.trend} period={period} />
+      )}
       <p className="hint" style={{ marginTop: 10 }}>
         数字体检：{f.assertions.total} 项核对
         {f.assertions.fail === 0 ? '全部通过' : `有 ${f.assertions.fail} 项不符 ❗`}

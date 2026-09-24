@@ -38,6 +38,8 @@ export type Facts = {
   assertions: { total: number; fail: number }
   /** 缺什么（空 = 齐） */
   missing: string[]
+  /** 历期序列（契约 #19）：期次 → 顶尖论文数；票数少或无序列时缺省 */
+  trend?: Record<string, number>
 }
 
 export const getFacts = (period: string) =>
