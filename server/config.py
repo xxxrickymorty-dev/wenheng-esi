@@ -66,6 +66,7 @@ LEGACY_REDIRECTS = {
 LEGACY_LIVE = (
     "/",
     "/run",
+    "/p/{period}",
     "/jobs/{job_id}",
     "/jobs/{job_id}/collation",
     "/jobs/{job_id}/redslots",

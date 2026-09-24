@@ -155,24 +155,8 @@ out("=== 4/5. 旧首屏与旧控制台（已下线） ===")
 # 老工作台 / 老控制台的内容断言随页面一起下线（ADR-0002 阶段 2）；
 # 302 落点已在 §3.5 逐条覆盖。
 
-out("=== 6. 期次入口 /p/<期次> ===")
-st, p1, _ = call("GET", "/p/202607")
-check("GET /p/202607 → 200", st == 200, f"got {st}")
-check("/p/202607 是对勘本", "whc-grid" in p1)
-# 首屏改成工作台后，这批对勘本上下文断言挪到这儿守（原在 / 上）
-check("periodDir = 202607", jget_str(p1, "periodDir") == "202607", f"got {jget_str(p1,'periodDir')!r}")
-check("periods 是数组且非空", jget(p1, "periods") == "[")
-check("signUrl 指向 /p/202607/sign", jget_str(p1, "signUrl") == "/p/202607/sign")
-check("revokeUrl 指向 /p/202607/revoke", jget_str(p1, "revokeUrl") == "/p/202607/revoke")
-check("crumbs 已注入", jget(p1, "crumbs") == "[")
-check("live 为 true", jget(p1, "live") is True)
-check("/p/202607 的 periods 也带上（可切期次）", jget(p1, "periods") == "[")
-st, p2, _ = call("GET", "/p/202605_%E5%A4%8D%E7%8E%B0")
-check("GET /p/202605_复现 → 200", st == 200, f"got {st}")
-check("/p/202605_复现 的 periodDir 是带后缀目录", jget_str(p2, "periodDir") == "202605_复现",
-      f"got {jget_str(p2,'periodDir')!r}")
-st, pb, _ = call("GET", "/p/199901")
-check("非法期次回落首页（不是 500）", st == 200, f"got {st}")
+out("=== 6. 期次入口（已下线，302 见 §3.5） ===")
+# 老对勘本页已 302 到 /app/?view=reading&period=...；内容断言随页面下线。
 
 out("=== 7. 期次红色件清单（本次修的 500） ===")
 st, rs, _ = call("GET", "/p/202607/redslots")
@@ -199,26 +183,34 @@ if jobid:
     else:
         check("progress missing 时给 note 说明", '"note"' in pg)
 
-out("=== 9. 签单闸门与落库（先归零） ===")
-st, _, f0 = call("POST", "/p/202607/revoke", {"note": "e2e 前置归零", "back": "/p/202607"})
-st, pz, _ = call("GET", "/p/202607")
-base_state = jget_str(pz, "approvalStatus")
-check("前置：状态归零到 unsigned", base_state == "unsigned", f"got {base_state!r}")
+out("=== 9. 签单闸门与落库（JSON API；老表单已随对勘本下线） ===")
+# 老对勘本页（含其表单 POST /p/{期次}/sign|revoke）已 302；签单走新站 JSON API
+# （审核台在用）。闸门语义不变：不勾「已知悉」被拒且不落盘；签/撤留历史。
 
-st, _, f1 = call("POST", "/p/202607/sign", {"note": "e2e", "ack": "", "back": "/p/202607"})
-err1 = urllib.parse.unquote(f1.split("err=")[-1]) if "err=" in f1 else ""
-check("不勾「已知悉」→ 被闸门拦下", "err=" in f1, f"final={f1}")
-check("拦截原因是待人工项未勾选", "已知悉" in err1 or "手工" in err1, f"err={err1!r}")
-check("被拦时不落盘（状态仍 unsigned）", jget_str(call("GET", "/p/202607")[1], "approvalStatus") == "unsigned")
+def _wstate():
+    return jget_str(call("GET", "/api/periods/202607/workbench")[1], "approvalStatus")
 
-st, _, f2 = call("POST", "/p/202607/sign", {"note": "e2e 验收", "ack": "1", "back": "/p/202607"})
-check("勾已知悉 → 签单成功", "signed=1" in f2, f"final={f2}")
-check("回跳到 back 指定的 /p/202607", "/p/202607" in f2, f2)
-st, ps, _ = call("GET", "/p/202607")
-check("签后 approvalStatus = signed", jget_str(ps, "approvalStatus") == "signed",
-      f"got {jget_str(ps,'approvalStatus')!r}")
-check("签后 periodDir 仍正确", jget_str(ps, "periodDir") == "202607")
-check("印记链反映已签（periods 里出现 signed）", '"status": "signed"' in ps or '"status":"signed"' in ps)
+
+call_json("POST", "/api/periods/202607/revoke", {"note": "e2e 前置归零"})
+check("前置：状态归零到 unsigned", _wstate() == "unsigned", f"got {_wstate()!r}")
+
+st, _e1, _ = call_json("POST", "/api/periods/202607/sign", {"note": "e2e"})
+check("不勾「已知悉」→ 409 被闸门拦下", st == 409, f"got {st}")
+_e1j = json.loads(_e1) if _e1.strip().startswith("{") else {}
+check("拦截原因是待人工项未勾选",
+      "已知悉" in str(_e1j.get("error", "")) or "手工" in str(_e1j.get("error", "")),
+      f"err={str(_e1j.get('error'))[:80]!r}")
+check("被拦时不落盘（状态仍 unsigned）", _wstate() == "unsigned", f"got {_wstate()!r}")
+
+st, _s2, _ = call_json("POST", "/api/periods/202607/sign",
+                       {"note": "e2e 验收", "known": True})
+_s2j = json.loads(_s2) if _s2.strip().startswith("{") else {}
+check("勾已知悉 → 签单成功", st == 200 and _s2j.get("status") == "signed",
+      f"{st} {str(_s2j)[:80]}")
+check("签单返回报告指纹", bool(_s2j.get("fingerprint")), str(_s2j.get("fingerprint"))[:60])
+check("签后 approvalStatus = signed", _wstate() == "signed", f"got {_wstate()!r}")
+_pl = call("GET", "/api/periods")[1]
+check("印记链反映已签（periods 里出现 signed）", '"signed"' in _pl)
 check("审批记录已落盘", (WENHENG / "out/202607/approval.json").exists())
 check("审批记录 Markdown 已导出", (WENHENG / "out/202607/审批记录.md").exists())
 rec = json.loads((WENHENG / "out/202607/approval.json").read_text(encoding="utf-8"))
@@ -226,10 +218,10 @@ check("记录里绑了报告指纹", bool(rec.get("fingerprint")), str(rec.get("
 check("记录含批注", rec.get("note") == "e2e 验收", f"note={rec.get('note')!r}")
 check("记录含操作历史", isinstance(rec.get("history"), list) and len(rec["history"]) >= 1)
 
-st, _, f3 = call("POST", "/p/202607/revoke", {"note": "e2e 撤回", "back": "/p/202607"})
-check("撤回成功", "revoked=1" in f3, f"final={f3}")
-st, pr, _ = call("GET", "/p/202607")
-check("撤回后回到 unsigned", jget_str(pr, "approvalStatus") == "unsigned")
+st, _r3, _ = call_json("POST", "/api/periods/202607/revoke", {"note": "e2e 撤回"})
+_r3j = json.loads(_r3) if _r3.strip().startswith("{") else {}
+check("撤回成功", st == 200 and _r3j.get("status") == "unsigned", f"{st} {str(_r3j)[:60]}")
+check("撤回后回到 unsigned", _wstate() == "unsigned", f"got {_wstate()!r}")
 rec2 = json.loads((WENHENG / "out/202607/approval.json").read_text(encoding="utf-8"))
 hist = [h.get("action") for h in rec2.get("history", [])]
 check("历史保留 sign→…→revoke", "sign" in hist and "revoke" in hist, str(hist))
@@ -336,29 +328,27 @@ for _bad in ("/p/202607/chart/../server/.env",
     _s, _, _ = call("GET", _bad)
     check(f"越界请求被拒 {_bad[-28:]}", _s == 404, f"got {_s}")
 
-out("=== 14. 对勘本图表槽位就地铺图 ===")
-# 缩略图是 collation.js 渲染的，裸 HTML 里没有 <img>——只能断言内联 JSON 里的
-# `chartUrl`（与第 13 节的坑同源），再抽一张验证它真能取到。
-# 图表数从红件清单动态取：重出图会变（2026-09-23 实踩：概览 3->9，99->105，
-# 写死的断言全红）。与 charts/ 下 png 数的一致性由图表落盘环节自守。
+out("=== 14. 对勘本图表槽位（JSON API；老页面已 302） ===")
+# 老对勘本页的 chartUrl 就地铺图随页面下线；数据层等价物走 collation JSON：
+# 槽位带 kind/source，源文件仍走 /p/{期次}/chart/ 白名单路由（新站直接引用）。
 _rslots_path = WENHENG / "out" / "202607" / "red_slots.json"
 _n_charts = sum(1 for _r in json.loads(_rslots_path.read_text(encoding="utf-8"))
                 if (_r.get("source") or "").startswith("charts"))
-_st, _rs, _ = call("GET", "/p/202607")
-_cu = re.findall(r'"chartUrl":\s*"([^"]+)"', _rs)
-check("图表槽位带上了图地址（前端据此就地铺图）", len(_cu) >= 90, f"n={len(_cu)}")
-check(f"图表槽位数与红件清单一致（{_n_charts}）", len(_cu) == _n_charts,
-      f"n={len(_cu)} vs {_n_charts}")
-check("都走 /p/202607/chart/ 这一条白名单路由",
-      bool(_cu) and all(u.startswith("/p/202607/chart/") for u in _cu))
-if _cu:
-    _st, _raw, _h = call_raw(_cu[0])
-    check("对勘本里的图能取到且真是 PNG", _st == 200 and _raw[:4] == b"\x89PNG",
+_st, _cl, _ = call("GET", "/api/periods/202607/collation?full=true")
+_clj = json.loads(_cl)
+_chart_rows = [r for r in _clj.get("rows", [])
+               if (r.get("source") or "").startswith("charts/")]
+check("对勘 JSON 带全量图表槽位", len(_chart_rows) >= 90, f"n={len(_chart_rows)}")
+check(f"图表槽位数与红件清单一致（{_n_charts}）", len(_chart_rows) == _n_charts,
+      f"n={len(_chart_rows)} vs {_n_charts}")
+_src = _chart_rows[0]["source"] if _chart_rows else ""
+if _src.startswith("charts/"):
+    # 路由口径与 _redslots_page 一致：rel 是去掉 charts/ 前缀的相对路径
+    _rel = _src[len("charts/"):]
+    _st, _raw, _h = call_raw(f"/p/202607/chart/{_rel}")
+    check("图表源文件走 /p/202607/chart/ 能取到且真是 PNG",
+          _st == 200 and _raw[:4] == b"\x89PNG",
           f"{_st} {(_h.get('content-type') or '')} {len(_raw)}B")
-# 前端两个分支都要在：有地址给缩略图，没地址给兜底文案（离线快照则整块不渲染）
-_cjs = (ROOT / "static" / "collation.js").read_text(encoding="utf-8")
-check("collation.js 渲染缩略图", 'class="thumb"' in _cjs and "<img src=" in _cjs)
-check("collation.js 有缺图兜底（不显示裂图）", "图未落盘" in _cjs)
 
 out("=== 15. 逐格溯源 / 存疑（老工作台已下线） ===")
 # 2026-09-19 新增。三个数字的落点：354→trace，19→在线填，3→待补说明。

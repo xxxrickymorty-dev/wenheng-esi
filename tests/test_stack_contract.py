@@ -214,10 +214,8 @@ def test_状态变更都走表单POST而非AJAX():
     POST_ALLOWED_SUFFIX 处的三问），2026-09-19 rick 拍板加入。
     """
     posts = {p for m, p in _routes() if m == "post" and not p.startswith("/api/")}
-    assert posts == {"/login", "/p/{period}/sign", "/p/{period}/revoke",
-                     "/p/{period}/flag", "/p/{period}/flexible",
-                     "/jobs/{job_id}/collation/sign",
-                     "/jobs/{job_id}/collation/revoke"}, f"表单 POST 清单变了：{sorted(posts)}"
+    assert posts == {"/login", "/p/{period}/flag", "/p/{period}/flexible"}, \
+        f"表单 POST 清单变了：{sorted(posts)}"
 
 
 def test_JSON接口都有登录保护():

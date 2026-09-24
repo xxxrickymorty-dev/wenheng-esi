@@ -241,65 +241,6 @@ def resolve_period_dir(period):
     return None
 
 
-def _collation_data(out_dir, job=None, flash=None, self_url=None):
-    """对勘本上下文。任务入口与期次入口共用，差别只在面包屑与身份信息。
-
-    签单/撤回统一投到 `/p/<期次>/…`：审批记录本来就按期次落盘，任务只是
-    「谁跑的」这一层身份；表单目标跟着期次走，两个入口就不会各拼一套 URL。
-    `self_url` 是签完单回跳的落点（首屏是 `/`，期次页是 `/p/...`）。
-    """
-    data = collation.build(out_dir)
-    q = urllib.parse.quote(out_dir.name)
-    # 图表槽位就地铺图：`source` 是 `charts/<学科>/<图>.png`。能在磁盘上解析出真图才给地址
-    # （与红件清单页同一套 `resolve_chart` 守卫——安全不能只在图册页好用、在对勘本漏掉）。
-    # 解析不出就留空，前端退回纯文件名，绝不显示一个坏图。
-    n_pic = 0
-    for sec in data.get("sections") or []:
-        for it in sec.get("slots") or []:
-            if it.get("kind") != "chart":
-                continue
-            src = str(it.get("source") or "")
-            if src.startswith("charts/"):
-                rel = src[len("charts/"):]
-                if jobs.resolve_chart(out_dir, rel):
-                    it["chartUrl"] = f"/p/{q}/chart/" + urllib.parse.quote(rel)
-                    n_pic += 1
-    data["chartPics"] = n_pic
-    data["live"] = True                  # 有服务端：签单可落库
-    data["periodDir"] = out_dir.name
-    data["periods"] = period_cards()
-    data["backUrl"] = self_url or f"/p/{q}"
-    data["signUrl"] = f"/p/{q}/sign"
-    data["revokeUrl"] = f"/p/{q}/revoke"
-    data["jobId"] = job["id"] if job else ""
-    data["actor"] = (job.get("actor") if job else "") or ""
-    data["status"] = (job.get("status") if job else "") or ""
-    crumbs = []
-    if job:
-        crumbs.append({"label": f"← 返回任务 {job['id']}", "href": f"/jobs/{job['id']}", "download": False})
-        crumbs.append({"label": "运行档案", "href": f"/jobs/{job['id']}/archive", "download": False})
-        crumbs.append({"label": "图表图册", "href": f"/jobs/{job['id']}/charts", "download": False})
-        crumbs.append({"label": "红色件清单", "href": f"/jobs/{job['id']}/redslots", "download": False})
-        crumbs.append({"label": "下载报告初稿", "href": f"/jobs/{job['id']}/download/report", "download": True})
-    else:
-        crumbs.append({"label": "发起任务 / 历史任务", "href": "/run", "download": False})
-        crumbs.append({"label": "运行档案", "href": f"/p/{q}/archive", "download": False})
-        crumbs.append({"label": "图表图册", "href": f"/p/{q}/charts", "download": False})
-        crumbs.append({"label": "红色件清单", "href": f"/p/{q}/redslots", "download": False})
-        crumbs.append({"label": "下载报告初稿", "href": f"/p/{q}/download/report", "download": True})
-    data["crumbs"] = crumbs
-    rec = approval.read(out_dir)
-    data["approval"] = rec
-    data["approvalStatus"] = approval.status(out_dir, rec)
-    data["flash"] = flash or {}
-    return data
-
-
-def _render_collation(request, out_dir, job=None, flash=None, self_url=None):
-    return page(request, "collation.html", job=job or {},
-                data=_collation_data(out_dir, job=job, flash=flash, self_url=self_url))
-
-
 def _redslots_page(request, out_dir, job=None):
     """逐格红色件清单。任务入口与期次入口共用，只差返回/下载链接指哪儿。"""
     p = out_dir / "red_slots.json"
@@ -403,42 +344,6 @@ def _flash(err="", signed="", revoked=""):
     return {"err": err, "signed": signed, "revoked": revoked}
 
 
-def _safe_back(back, fallback):
-    """只接受站内相对路径，防止被拼成开放重定向。"""
-    b = (back or "").strip()
-    return b if b.startswith("/") and not b.startswith("//") else fallback
-
-
-def _do_sign(request, period, note, ack, back):
-    user = current_user(request)
-    if not user:
-        return RedirectResponse("/login", status_code=303)
-    d = resolve_period_dir(period)
-    if d is None:
-        return RedirectResponse("/", status_code=303)
-    ok, res = approval.sign(d, user, collation.build(d), note=note, manual_ack=bool(ack))
-    target = _safe_back(back, "/p/" + urllib.parse.quote(period))
-    sep = "&" if "?" in target else "?"
-    if not ok:
-        return RedirectResponse(f"{target}{sep}err={urllib.parse.quote(str(res))}", status_code=303)
-    return RedirectResponse(f"{target}{sep}signed=1", status_code=303)
-
-
-def _do_revoke(request, period, note, back):
-    user = current_user(request)
-    if not user:
-        return RedirectResponse("/login", status_code=303)
-    d = resolve_period_dir(period)
-    if d is None:
-        return RedirectResponse("/", status_code=303)
-    ok, res = approval.revoke(d, user, note=note)
-    target = _safe_back(back, "/p/" + urllib.parse.quote(period))
-    sep = "&" if "?" in target else "?"
-    if not ok:
-        return RedirectResponse(f"{target}{sep}err={urllib.parse.quote(str(res))}", status_code=303)
-    return RedirectResponse(f"{target}{sep}revoked=1", status_code=303)
-
-
 @app.get("/", response_class=HTMLResponse)
 
 async def home(request: Request, err: str = "", signed: str = "",
@@ -468,11 +373,14 @@ async def forecast_page(request: Request):
 @app.get("/p/{period}", response_class=HTMLResponse)
 async def period_collation(request: Request, period: str,
                            err: str = "", signed: str = "", revoked: str = ""):
+    """老对勘本已下线（ADR-0002 阶段 2）—— 302 到新工作区阅读视图。
+
+    非法/不存在的期次落回新站首页（保留旧「回落首页」语义）。
+    """
     d = resolve_period_dir(period)
-    if d is None:
-        return RedirectResponse("/", status_code=303)
-    return _render_collation(request, d, flash=_flash(err, signed, revoked),
-                             self_url=request.url.path)
+    key = "/p/{period}" if d is not None else "/"
+    return _legacy_redirect(request, key,
+                            period=urllib.parse.quote(d.name) if d is not None else "")
 
 
 @app.get("/p/{period}/redslots", response_class=HTMLResponse)
@@ -532,29 +440,6 @@ async def _collect_fills(request):
 
 
 
-async def period_fill(request: Request, period: str):
-    """在线填【手工：】项。**只写产物目录的 manual_inputs.json，台账一个字节不碰**
-    —— 填的是报告，不是数据源；这正是"可溯源"与"可修改"的边界。
-
-    走**真实表单 POST + 303 回跳**，不用 AJAX —— 栈契约（test_stack_contract）
-    要求状态变更不依赖 JS 跑通，填写/存疑也是状态变更，同样适用。
-    """
-    from . import workbench                                     # noqa: PLC0415
-    user = current_user(request)                                # 登录保护，同 _do_sign
-    items, back = await _collect_fills(request)
-    if not user:
-        return RedirectResponse("/login", status_code=303)
-    d = resolve_period_dir(period)
-    if d is None:
-        return RedirectResponse(back or "/", status_code=303)
-    n = 0
-    for todo_id, value in items.items():
-        if todo_id.strip():
-            workbench.save_fill(d, todo_id, value, by=user)
-            n += 1
-    return RedirectResponse(_flash_back(back or "/", f"saved={n}"), status_code=303)
-
-
 @app.post("/p/{period}/flag")
 async def period_flag(request: Request, period: str, loc: str = Form(""), back: str = Form("")):
     """大表格子**只能存疑，不能改**（数字来自台账，改了就破溯源）。
@@ -584,46 +469,6 @@ def _flash_back(back, qs):
     sep = "&" if "?" in base else "?"
     return f"{base}{sep}{qs}" + (f"#{frag}" if frag else "")
 
-
-
-async def period_rebuild(request: Request, period: str):
-    """填完重出报告：把在线填的值叠加到报告初稿上。
-
-    三件事按这个顺序做，不能乱：
-      1. **先把表单里的填写项存下来** —— 工作台把「保存」和「重出」放在同一个表单里，
-         用户点「填完重出」时那些改动还没落盘，不先存就等于白填（2026-09-20 发现）；
-      2. **再把旧成品撤到 `_superseded/`**（复用 `parse_ledger.quarantine_final_products`）
-         —— 覆盖前留一份机器稿，出了问题能回滚；
-      3. `fill_docx.main(..., manual_inputs=…)` 用**已解析的宽表**重出，
-         不重新解析台账（重解析会把填值对应不上的风险引进来）。
-
-    耗时约 2–15 秒（要重新插 96 张图），同步阻塞 —— uvicorn 单 worker 是
-    项目既定约束（SSE + 内存态任务队列），演示时点一次等一下即可。
-    """
-    import parse_ledger                                         # noqa: PLC0415
-    import fill_docx                                            # noqa: PLC0415
-    from . import workbench                                     # noqa: PLC0415
-    user = current_user(request)
-    items, back = await _collect_fills(request)
-    if not user:
-        return RedirectResponse("/login", status_code=303)
-    d = resolve_period_dir(period)
-    if d is None:
-        return RedirectResponse("/", status_code=303)
-    for todo_id, value in items.items():                        # ① 先存
-        if todo_id.strip():
-            workbench.save_fill(d, todo_id, value, by=user)
-    fills = workbench.load_fills(d)
-    if not fills:                                               # ② 没内容就不动产物
-        return RedirectResponse(_flash_back(back, "err=还没有填写内容"), status_code=303)
-    parse_ledger.quarantine_final_products(d, None)
-    try:
-        fill_docx.main(ledger_dir=str(d), manual_inputs=fills)  # ③ 重出
-    except Exception as e:                                      # noqa: BLE001
-        return RedirectResponse(
-            _flash_back(back, f"err=重出失败：{type(e).__name__}"), status_code=303)
-    n = sum(1 for v in fills.values() if str(v.get("value") or "").strip())
-    return RedirectResponse(_flash_back(back, f"rebuilt={n}"), status_code=303)
 
 
 @app.get("/p/{period}/charts", response_class=HTMLResponse)
@@ -753,18 +598,6 @@ async def period_chart(request: Request, period: str, rel: str):
                         headers={"Cache-Control": "private, max-age=3600"})
 
 
-@app.post("/p/{period}/sign")
-async def period_sign(request: Request, period: str, note: str = Form(""),
-                      ack: str = Form(""), back: str = Form("")):
-    return _do_sign(request, period, note, ack, back)
-
-
-@app.post("/p/{period}/revoke")
-async def period_revoke(request: Request, period: str, note: str = Form(""),
-                        back: str = Form("")):
-    return _do_revoke(request, period, note, back)
-
-
 @app.get("/p/{period}/download/{key}")
 async def period_download(request: Request, period: str, key: str):
     if not current_user(request):
@@ -827,41 +660,6 @@ async def collation_page(request: Request, job_id: str,
         return RedirectResponse("/app/", status_code=302)
     period = urllib.parse.quote(job.get("out_period") or job["period"])
     return _legacy_redirect(request, "/jobs/{job_id}/collation", period=period)
-
-@app.post("/jobs/{job_id}/collation/sign")
-async def collation_sign(request: Request, job_id: str,
-                         note: str = Form(""), ack: str = Form("")):
-    """签单落库。闸门不过就拒绝，把原因回带页面上。"""
-    user = current_user(request)
-    if not user:
-        return RedirectResponse("/login", status_code=303)
-    job = jobs.read_job(job_id)
-    if not job:
-        return RedirectResponse("/", status_code=303)
-    out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
-    ok, res = approval.sign(out_dir, user, collation.build(out_dir),
-                            note=note, manual_ack=bool(ack))
-    if not ok:
-        q = urllib.parse.quote(str(res))
-        return RedirectResponse(f"/jobs/{job_id}/collation?err={q}", status_code=303)
-    return RedirectResponse(f"/jobs/{job_id}/collation?signed=1", status_code=303)
-
-
-@app.post("/jobs/{job_id}/collation/revoke")
-async def collation_revoke(request: Request, job_id: str, note: str = Form("")):
-    user = current_user(request)
-    if not user:
-        return RedirectResponse("/login", status_code=303)
-    job = jobs.read_job(job_id)
-    if not job:
-        return RedirectResponse("/", status_code=303)
-    out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
-    ok, res = approval.revoke(out_dir, user, note=note)
-    if not ok:
-        q = urllib.parse.quote(str(res))
-        return RedirectResponse(f"/jobs/{job_id}/collation?err={q}", status_code=303)
-    return RedirectResponse(f"/jobs/{job_id}/collation?revoked=1", status_code=303)
-
 
 @app.get("/api/jobs/{job_id}/approval")
 async def api_approval(request: Request, job_id: str):
