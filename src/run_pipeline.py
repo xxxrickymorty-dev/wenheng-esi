@@ -186,12 +186,19 @@ def main(ledger_path, out_root="out", run_backtest=False):
     # 只靠 render_all 内部推断也能工作，这里显式传是为了让主入口一眼可见窗口。
     n_charts = charts.render_all(ledger_dir=str(out_dir), n_periods=7, end_period=P)
     n_fc = 0
+    fc_warnings = []
     try:
         import report_forecast                                   # noqa: PLC0415
         n_fc = report_forecast.generate(out_dir)
-        print(f"      预测图：{n_fc} 张（V1 推荐模型，递推 {report_forecast.HORIZON} 期）")
+        fc_warnings = report_forecast.load_warnings(out_dir)
+        print(f"      预测图：{n_fc} 张（按预测台选模，未选＝V1 推荐；"
+              f"递推 {report_forecast.HORIZON} 期）")
+        for w in fc_warnings:
+            print(f"      ⚠ {w}")
     except Exception as e:                                       # noqa: BLE001
         print(f"      预测图：跳过（{type(e).__name__}: {e}）")
+    if fc_warnings:
+        _emit("charts", "预测选模", "warn", "；".join(fc_warnings))
     _emit("charts", "图表渲染", "done",
           f"{n_charts} 张图 · 16 学科 × 6 + 概览" + (f" · 预测 {n_fc} 张" if n_fc else "（预测图跳过）"))
 
@@ -206,6 +213,7 @@ def main(ledger_path, out_root="out", run_backtest=False):
         "predict_mape_overall": round(float(mape), 3),
         "charts": n_charts,
         "forecast_charts": n_fc,
+        "forecast_warnings": fc_warnings,
         "docx": str(docx_path),
         "artifacts": {
             "ledger_long": str(out_dir / "ledger_long.parquet"),
