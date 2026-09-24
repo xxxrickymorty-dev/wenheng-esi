@@ -489,6 +489,16 @@ check("archive logpack_url 指保留下载端点", "/download/logpack" in ar)
 check("archive 对勘本链接已修（不再出现无路由的 /p/{期次}/collation）",
       '"/p/202607/collation"' not in ar)
 
+# GET /api/forecast/board（学科板，契约 #20）
+st, bd, _ = call("GET", "/api/forecast/board")
+check("GET forecast/board 200", st == 200, f"got {st}")
+check("board 有 period/window/routes",
+      '"period"' in bd and '"window"' in bd and '"routes"' in bd)
+check("board 两条路线各 8 学科",
+      bd.count('"subject"') >= 16, f"subjects={bd.count(chr(34) + 'subject' + chr(34))}")
+check("board 行带 model/prox/t1/both_under_5",
+      all(k in bd for k in ('"model"', '"prox"', '"t1"', '"both_under_5"')))
+
 out("=" * 56)
 if FAILS:
     out(f"结果：{len(FAILS)} 项未过")

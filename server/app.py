@@ -848,10 +848,14 @@ async def api_period_facts(request: Request, period: str):
         return JSONResponse({"error": f"数据读取失败：{exc}"}, status_code=500)
     assertions = meta.get("assertions") or []
     n_fail = sum(1 for a in assertions if isinstance(a, (list, tuple)) and a and a[0] != "PASS")
+    # 顶尖论文历期序列（纯序列化 meta；空值＝未来期空列，滤掉）——契约 #19
+    trend = {k: v for k, v in (meta.get("top_total_by_period") or {}).items()
+             if isinstance(v, (int, float))}
     return {
         "period": meta.get("period_current", ""),
         "period_prev": meta.get("period_prev", ""),
         "facts": facts,
+        "trend": trend,
         "assertions": {"total": len(assertions), "fail": n_fail},
         "missing": meta.get("missing", []),
     }
@@ -1157,6 +1161,21 @@ async def api_analyze(request: Request):
         })
     return {"period": P, "prev": Q, "question": question, "text": texts,
             "shields": shields, "n_sections": len(texts), "backend": "sentences"}
+
+
+@app.get("/api/forecast/board")
+async def api_forecast_board(request: Request, period: str = ""):
+    """预测台「学科板」（契约 #20）—— 解析预测选模与过线.md 的两张表。
+
+    不重算；缺文件时返回空板 + note（不 500）。`?period=` 可指定，
+    默认取最新有该文件的期次。
+    """
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    if period and resolve_period_dir(period) is None:
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+    return forecasting.board_context(period or None)
 
 
 @app.get("/api/forecast/meta")

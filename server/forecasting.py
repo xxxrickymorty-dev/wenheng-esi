@@ -5,6 +5,8 @@ from __future__ import annotations
 import base64
 import io
 import math
+import pathlib
+import re
 
 import matplotlib
 matplotlib.use("Agg")
@@ -67,6 +69,106 @@ def page_context() -> dict:
             "recommendation_baseline": RECOMMENDATION_BASELINE,
             "load_error": str(exc),
         }
+
+
+# ---------------------------------------------------------------- 学科板（契约 #20）
+_PERIOD_TITLE_RE = re.compile(r"[（(]基准期\s*(20\d{4})[）)]")
+_WINDOW_RE = re.compile(r"(20\d{4})[～~—-](20\d{4})")
+_EMPTY_CELLS = ("", "-", "--", "—", "–")
+
+
+def _pct(s):
+    """百分数单元格 -> float（"37.62%" -> 37.62）；空值 -> None。"""
+    s = (s or "").strip()
+    if s in _EMPTY_CELLS:
+        return None
+    try:
+        return float(s.rstrip("%"))
+    except ValueError:
+        return None
+
+
+def _cell_date(s):
+    s = (s or "").strip()
+    return "" if s in _EMPTY_CELLS else s
+
+
+def _board_row(cells):
+    """12 列表格行 -> 学科单条（两条路线共用，第 5/6 列含义随路线不同）。"""
+    return {
+        "subject": cells[0],
+        "model": cells[1],
+        "fit_mape": _pct(cells[2]),
+        "rolling_mape": _pct(cells[3]),
+        "cur_value": _pct(cells[4]),
+        "threshold": _pct(cells[5]),
+        "gap": _pct(cells[6]),
+        "both_under_5": cells[7].strip() == "是",
+        "prox": _pct(cells[8]),
+        "t1": _cell_date(cells[9]),
+        "t2": _cell_date(cells[10]),
+        "t3": _cell_date(cells[11]),
+    }
+
+
+def _split_md_tables(text):
+    """把 markdown 里的连续 | 行切成若干张表（每张 = 行列表）。"""
+    tables, cur = [], []
+    for ln in text.splitlines():
+        if ln.startswith("|"):
+            cur.append(ln)
+        elif cur:
+            tables.append(cur)
+            cur = []
+    if cur:
+        tables.append(cur)
+    return tables
+
+
+def board_context(period=None):
+    """预测台「学科板」（契约 #20）：解析 `out/<期次>/预测选模与过线.md` 的两张表。
+
+    不重算任何东西——md 是预测阶段写定的；此处只把它序列化。
+    缺文件（没跑过预测阶段）返回空板 + note，不 500。
+    """
+    out = pathlib.Path(config.OUT_DIR)
+    if period:
+        md = out / period / "预测选模与过线.md"
+    else:
+        cands = sorted(out.glob("*/预测选模与过线.md"))
+        md = cands[-1] if cands else None
+    empty = {"period": (period or ""), "window": "",
+             "routes": {"citation": [], "rank": []},
+             "note": "未找到 预测选模与过线.md（跑一次预测阶段后生成）"}
+    if md is None or not md.exists():
+        return empty
+
+    text = md.read_text(encoding="utf-8")
+    m_period = _PERIOD_TITLE_RE.search(text)
+    m_window = _WINDOW_RE.search(text)
+    routes = {"citation": [], "rank": []}
+    for table in _split_md_tables(text):
+        header = [c.strip() for c in table[0].strip("|").split("|")]
+        kind = None
+        if "总被引" in "".join(header):          # 被引维度：总被引 / 前1%阈值
+            kind = "citation"
+        elif "云大国内排名" in "".join(header):   # 排名维度
+            kind = "rank"
+        if kind is None:
+            continue
+        for ln in table[2:]:                         # table[1] 是 |---| 分隔行
+            cells = [c.strip() for c in ln.strip("|").split("|")]
+            if len(cells) >= 12 and not all(set(c) <= {"-", ":"} for c in cells):
+                routes[kind].append(_board_row(cells))
+
+    return {
+        "period": (m_period.group(1) if m_period else md.parent.name),
+        "window": (f"{m_window.group(1)}-{m_window.group(2)}" if m_window else ""),
+        "routes": routes,
+        "note": ("源：预测选模与过线.md；"
+                 "t1/t2/t3 空串＝该窗口内未过线；"
+                 "数值为百分数点值（如 37.62 表示 37.62%）"),
+    }
 
 
 def _chart(result: dict, item: dict) -> str:
