@@ -459,6 +459,7 @@ check("GET facts 200", st == 200, f"got {st}")
 check("facts 有 facts 字段", '"facts"' in fc)
 check("facts 有 assertions", '"assertions"' in fc)
 check("facts 有 missing", '"missing"' in fc)
+check("facts 学科名已是中文（契约 #22）", "分子生物学与遗传学" in fc, f"body={fc[:100]}")
 
 # GET /api/periods/202607/workbench
 st, wb, _ = call("GET", "/api/periods/202607/workbench")
@@ -522,6 +523,7 @@ check("board 两条路线各 8 学科",
       bd.count('"subject"') >= 16, f"subjects={bd.count(chr(34) + 'subject' + chr(34))}")
 check("board 行带 model/prox/t1/both_under_5",
       all(k in bd for k in ('"model"', '"prox"', '"t1"', '"both_under_5"')))
+check("board 学科名已是中文（契约 #22）", "分子生物学与遗传学" in bd, f"body={bd[:100]}")
 
 # GET /api/periods/{period}/flexible（灵活报告 JSON，契约 #21①）
 st, fx, _ = call("GET", "/api/periods/202607/flexible")

@@ -26,6 +26,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from . import approval, archive, collation, config, jobs
 from . import forecasting
 from src import period as period_mod  # 期次口径唯一来源（ADR-0001：新工作区 API 也用它）
+from esi_v1.data import display_name  # 学科名中文化（契约 #22）
 
 
 @asynccontextmanager
@@ -841,6 +842,42 @@ async def api_period_rebuild_json(request: Request, period: str):
             "elapsed": round(time.time() - t0, 1)}
 
 
+def _discipline_cn(name):
+    """学科英文名 → 中文展示名（契约 #22）；未知名字原样返回（不猜、不丢）。"""
+    return display_name(name) if isinstance(name, str) else name
+
+
+def _localize_facts(facts: dict) -> dict:
+    """契约 #22：facts 里展示用的学科名就地换中文。
+
+    只动接口响应——磁盘产物 `overview_facts.json` 保持英文，逐格溯源链不断。
+    换的是五处展示位（前端据此删掉自己的名字桥）：
+    `best_1permille` / `worst_cn_rank` / `top2_not_entered[].discipline`，以及并列组
+    `top3_by_top_papers[][0]`、`top3_groups[][1][]`（名字在固定位置，只能就地换）；
+    顺带 `top2_prox_change[][0]`（同类展示位，避免下一个用它的页面再踩英文）。
+    """
+    for key in ("best_1permille", "worst_cn_rank"):
+        item = facts.get(key)
+        if isinstance(item, dict) and "discipline" in item:
+            item["discipline"] = _discipline_cn(item["discipline"])
+    for item in facts.get("top2_not_entered") or []:
+        if isinstance(item, dict) and "discipline" in item:
+            item["discipline"] = _discipline_cn(item["discipline"])
+    for key in ("top3_by_top_papers", "top2_prox_change"):
+        rows = facts.get(key)
+        if isinstance(rows, list):
+            facts[key] = [[_discipline_cn(r[0]), *r[1:]]
+                          if isinstance(r, (list, tuple)) and r else r for r in rows]
+    groups = facts.get("top3_groups")
+    if isinstance(groups, list):
+        facts["top3_groups"] = [
+            [r[0], [_discipline_cn(d) for d in r[1]]]
+            if isinstance(r, (list, tuple)) and len(r) >= 2 and isinstance(r[1], (list, tuple))
+            else r
+            for r in groups]
+    return facts
+
+
 @app.get("/api/periods/{period}/facts")
 async def api_period_facts(request: Request, period: str):
     """读数带数据：overview_facts.json + meta.json 摘要。guest 可读。"""
@@ -858,6 +895,7 @@ async def api_period_facts(request: Request, period: str):
         meta = json.loads(meta_file.read_text(encoding="utf-8")) if meta_file.exists() else {}
     except (OSError, json.JSONDecodeError) as exc:
         return JSONResponse({"error": f"数据读取失败：{exc}"}, status_code=500)
+    facts = _localize_facts(facts)
     assertions = meta.get("assertions") or []
     n_fail = sum(1 for a in assertions if isinstance(a, (list, tuple)) and a and a[0] != "PASS")
     # 顶尖论文历期序列（纯序列化 meta；空值＝未来期空列，滤掉）——契约 #19

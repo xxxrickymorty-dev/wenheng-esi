@@ -15,7 +15,7 @@ from matplotlib.figure import Figure
 from charts import STACK as CHART_FONT_STACK
 from esi_v1.config_v1 import (BASELINE_RECOMMENDATIONS_202607, MODEL_NAMES,
                                 MODEL_PACKAGE_VERSION)
-from esi_v1.data import latest_ready_period, load_standard_input, subject_task_data
+from esi_v1.data import display_name, latest_ready_period, load_standard_input, subject_task_data
 from esi_v1.service import run_prediction
 
 from . import config
@@ -94,9 +94,12 @@ def _cell_date(s):
 
 
 def _board_row(cells):
-    """12 列表格行 -> 学科单条（两条路线共用，第 5/6 列含义随路线不同）。"""
+    """12 列表格行 -> 学科单条（两条路线共用，第 5/6 列含义随路线不同）。
+
+    学科名出接口前换中文（契约 #22）——md 里是英文名，前端不再自己搭名字桥。
+    """
     return {
-        "subject": cells[0],
+        "subject": display_name(cells[0]),
         "model": cells[1],
         "fit_mape": _pct(cells[2]),
         "rolling_mape": _pct(cells[3]),
