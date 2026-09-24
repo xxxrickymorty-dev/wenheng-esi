@@ -73,19 +73,6 @@ def out(line=""):
     LOG.append(line)
 
 
-def home_period(html):
-    """从首页 HTML 动态提取当前期次。
-
-    首屏语义是「最新一期」——out/ 里多跑一期（如 202609）期次就会切换，
-    断言不能硬编码某一期。优先用 trace 链接做锚点（工作台三个数字），
-    回退到任意 /p/<期次>/ 链接。
-    """
-    m = re.search(r'href="/p/([^"/]+)/trace"', html)
-    if not m:
-        m = re.search(r'/p/(20\d{4}[^"/]*)/', html)
-    return m.group(1) if m else ""
-
-
 def check(name, cond, extra=""):
     msg = ("  OK   " if cond else "  FAIL ") + name + (("  " + extra) if extra else "")
     out(msg)
@@ -137,47 +124,36 @@ check("登录表单完好（账号/密码/action）",
 st, body, final = call("POST", "/login", {"username": "demo", "password": "wenheng@2026"})
 # ⚠ 别写死 8080：用 `WENHENG_BASE` 换端口跑时，写死会让这条**假失败**
 #    （2026-09-19 用 8099 实测：final 明明是首页，断言却判未过）。
-check("POST /login 进入首页", final.rstrip("/") == BASE, f"final={final}")
+check("POST /login 进入新工作区 /app/", final.rstrip("/") == BASE + "/app", f"final={final}")
 
-out("=== 4. 首屏 = 馆员工作台（最新一期） ===")
-# 2026-09-19 改：首屏原是「对勘本」（生产视角：报告怎么拼出来的），
-# 换成「工作台」（馆员视角：这次要我做什么决定）。对勘本没删，挪到 /p/<期次>，
-# 下面第 6 段照旧守它 —— 别把断言删了，那等于把回归覆盖一起扔掉。
-st, home, _ = call("GET", "/")
-check("GET / → 200", st == 200, f"got {st}")
-check("首屏是【工作台】而非控制台", "本次出稿体检" in home and "run-form" not in home)
-check("首屏给可溯源总数（不是「已核对」）", "全部可溯源" in home)
-# ⚠ 只看**读数区**：页面正文里有一句「我们不写『已核对 N 格』」的说明，
-#   全文搜「已核对」会被这句自己命中（否定式断言的经典自伤）。
-_readouts = home.split('class="readouts"')[-1].split("panel-foot")[0]
-check("读数区不写「已核对」（没有 ground truth 就不能这么标）",
-      "已核对" not in _readouts)
-check("有待拍板清单", "需要你填" in home and "需要你确认" in home)
-check("有待补数据段（台账外）", "待补数据" in home)
-# 待补那三张大表**必须读生成稿实测**，不能写死"待补三条"：
-# 2026-09-20 rick 拿人工原件问「明明有图表为什么说待补」——一查 T21 与原件逐格相同，
-# 写死的常量在对着产物撒谎。现在 T19/T20 空（0.0%）、T21 有内容（90.6%）。
-check("待补判定走实测而非写死（T21 显示已有内容）",
-      "共 3 处" in home and "已有内容" in home, "应显示「N 处待补 / 共 3 处」且 T21 标已有内容")
-check("其余可溯源项不混进待办", "不进待办" in home)
-# 🔴 期次动态提取：首屏按「最新一期」渲染，out/ 多一期就切换。
-#    2026-09-23 实踩：202609 产物落盘后首页从 202607 切走，硬编码断言全红。
-_hp = home_period(home)
-check("审计视图入口齐全", bool(_hp) and all(x in home for x in
-      (f"/p/{_hp}/redslots", f"/p/{_hp}/charts", f"/p/{_hp}/archive", "/run")),
-      f"period={_hp}")
+out("=== 3.5 老站 302 落点（ADR-0002 阶段 2） ===")
+# 期望落点的单一事实源在 server/config.py 的 LEGACY_REDIRECTS；
+# 这里逐条打老 URL（自动跟随 302），断言最终落在新工作区对应视图。
+_job_cands = sorted((WENHENG / "out" / "_jobs").glob("*/job.json"))
+jobid = _job_cands[-1].parent.name if _job_cands else ""
+_job_rec = (json.loads((WENHENG / "out" / "_jobs" / jobid / "job.json").read_text(encoding="utf-8"))
+            if jobid else {})
+_job_period = _job_rec.get("out_period") or _job_rec.get("period") or ""
+import sys as _sys
+_sys.path.insert(0, str(WENHENG))
+from server import config as _cfg                                  # noqa: E402
+for _old in _cfg.LEGACY_LIVE:
+    _tpl = _cfg.LEGACY_REDIRECTS[_old]
+    if "{job_id}" in _old:
+        if not jobid:
+            continue
+        _old_path = _old.format(job_id=jobid)
+        _target = _tpl.format(period=urllib.parse.quote(_job_period))
+    else:
+        _old_path = _old.format(period="202607")
+        _target = _tpl.format(period="202607")
+    _st, _b, _fin = call("GET", _old_path)
+    check(f"{_old_path} 302 落点正确", _target in _fin, f"expect~{_target} final={_fin}")
 
-out("=== 5. 控制台 /run ===")
-st, run, _ = call("GET", "/run")
-check("GET /run → 200", st == 200, f"got {st}")
-check("/run 是控制台", "run-form" in run and "开始生成" in run)
-check("/run 用 B 读数格 .readouts", 'class="readouts"' in run and 'class="readout"' in run)
-check("/run 用面板 .panel-h", "panel-h" in run)
-check("/run 用工序表 .seq", 'class="seq"' in run)
-check("/run 含钤印品牌 .seal-sm", "seal-sm" in run)
-check("/run 含套准十字", 'class="reg tl"' in run)
-check("/run 去掉旧的圆角 hero card", "hero card" not in run)
-check("/run 无 CDN 字体", "cdn.jsdelivr" not in run and "fonts.googleapis" not in run)
+
+out("=== 4/5. 旧首屏与旧控制台（已下线） ===")
+# 老工作台 / 老控制台的内容断言随页面一起下线（ADR-0002 阶段 2）；
+# 302 落点已在 §3.5 逐条覆盖。
 
 out("=== 6. 期次入口 /p/<期次> ===")
 st, p1, _ = call("GET", "/p/202607")
@@ -210,28 +186,8 @@ check("清单下载指向期次端点", 'href="/p/202607/download/red_list"' in 
 check("无空任务链接 /jobs//", "/jobs//" not in rs)
 check("清单用统一面板与套准十字", "panel-h" in rs and 'class="reg tl"' in rs)
 
-out("=== 8. 任务入口仍可用 ===")
-cands = sorted((WENHENG / "out" / "_jobs").glob("*/job.json"))
-jobid = cands[-1].parent.name if cands else ""
-check("找到历史任务", bool(jobid), f"job={jobid!r}")
+out("=== 8. 任务进度 API（老任务页已下线，302 见 §3.5） ===")
 if jobid:
-    st, jp, _ = call("GET", f"/jobs/{jobid}")
-    check(f"GET /jobs/{jobid} → 200", st == 200, f"got {st}")
-    check("任务页用 .panel/.panel-h", "panel-h" in jp)
-    check("任务页有产物区", 'id="results"' in jp)
-    check("任务页有对勘本入口", f"/jobs/{jobid}/collation" in jp)
-    check("任务页仍保留 job.js 依赖的 #status-badge.badge", 'id="status-badge"' in jp and 'class="badge' in jp)
-    st, cp, _ = call("GET", f"/jobs/{jobid}/collation")
-    check(f"GET /jobs/{jobid}/collation → 200", st == 200, f"got {st}")
-    check("任务入口面包屑回任务页", f"← 返回任务 {jobid}" in cp)
-    check("任务入口 signUrl 仍投期次端点", jget_str(cp, "signUrl").startswith("/p/"),
-          f"got {jget_str(cp,'signUrl')!r}")
-    check("任务入口 backUrl 是任务对勘本页", jget_str(cp, "backUrl") == f"/jobs/{jobid}/collation",
-          f"got {jget_str(cp,'backUrl')!r}")
-    check("任务入口 jobId 非空", bool(jget_str(cp, "jobId")))
-    st, rp, _ = call("GET", f"/jobs/{jobid}/redslots")
-    check(f"GET /jobs/{jobid}/redslots → 200", st == 200, f"got {st}")
-    check("任务入口清单回链指向任务对勘本", f'href="/jobs/{jobid}/collation"' in rp)
     # GET /api/jobs/{jobid}/progress（任务瀑布 JSON，老站模板那步的前移）
     st, pg, _ = call("GET", f"/api/jobs/{jobid}/progress")
     check(f"GET /api/jobs/{jobid}/progress → 200", st == 200, f"got {st}")
@@ -299,26 +255,6 @@ from agent import states                                          # noqa: E402
 
 TEN = set(states.STATES)
 LEGACY = {"done", "warn", "interrupted"}
-
-st, runpage, _ = call("GET", "/run")
-pairs = re.findall(r'<span class="badge ([a-z_]+)">([^<]*)</span>', runpage)
-check("列表页徽章类名都落在 10 态内", all(c in TEN for c, _ in pairs),
-      str(sorted({c for c, _ in pairs})))
-check("列表页没有旧 4 态名", not any(c in LEGACY for c, _ in pairs),
-      str(sorted({c for c, _ in pairs} & LEGACY)))
-check("列表页文案取自状态机", all(t.strip() == states.LABELS[c] for c, t in pairs if c in states.LABELS),
-      str([t for c, t in pairs][:3]))
-
-if jobid:
-    st, jp2, _ = call("GET", f"/jobs/{jobid}")
-    mb = re.search(r'id="status-badge" class="badge ([a-z_]+)">([^<]*)<', jp2)
-    check("任务页 badge 类名是 10 态名", bool(mb) and mb.group(1) in TEN,
-          mb.group(1) if mb else "未匹配")
-    check("任务页 badge 文案 = 状态机中文名",
-          bool(mb) and mb.group(2).strip() == states.LABELS.get(mb.group(1)),
-          f"{mb.group(2)!r} vs {states.LABELS.get(mb.group(1))!r}" if mb else "")
-    check("任务页注入状态字典（前端不再写死名单）",
-          "__STATUS_LABELS__" in jp2 and "__TERMINAL__" in jp2)
 
 st, css, _ = call("GET", "/static/style.css")
 missing = [s for s in states.STATES if f".badge.{s}" not in css]
@@ -424,7 +360,7 @@ _cjs = (ROOT / "static" / "collation.js").read_text(encoding="utf-8")
 check("collation.js 渲染缩略图", 'class="thumb"' in _cjs and "<img src=" in _cjs)
 check("collation.js 有缺图兜底（不显示裂图）", "图未落盘" in _cjs)
 
-out("=== 15. 工作台：逐格溯源 / 在线填 / 存疑 ===")
+out("=== 15. 逐格溯源 / 存疑（老工作台已下线） ===")
 # 2026-09-19 新增。三个数字的落点：354→trace，19→在线填，3→待补说明。
 st, tr, _ = call("GET", "/p/202607/trace")
 check("GET /p/202607/trace → 200", st == 200, f"got {st}")
@@ -438,23 +374,6 @@ check("台账缺失时降级说明而不是空白", "本地未找到台账" in t
 # fill/flag 走真实表单 POST + 303 回跳（栈契约：状态变更不依赖 JS），不是 AJAX。
 _led = ROOT.parent.parent / "数据与复现" / "云大全学科排名、阈值动态检测表.xlsx"
 _sha0 = _led.stat().st_size if _led.exists() else -1
-st, fr, fin = call("POST", "/p/202607/fill",
-                   {"id": "e2e-fill-test", "value": "e2e 测试值",
-                    "back": "/#todo-panel"})
-check("POST fill 走表单 303 回跳", st == 200 and fin.endswith("#todo-panel"),
-      f"{st} final={fin}")
-_mi = ROOT.parent / "out" / "202607" / "manual_inputs.json"
-_mi_ok = _mi.exists() and "e2e-fill-test" in _mi.read_text(encoding="utf-8")
-check("manual_inputs.json 落在产物目录", _mi_ok)
-# 🔴 用完必须自己打扫：这条测试键会显示在馆员工作台的「已填」区里（2026-09-20
-#    rick 就看到了"已填 2 处"却哪也没填 —— 一条是这个，一条是更早的测试残留）。
-if _mi.exists():
-    _d = json.loads(_mi.read_text(encoding="utf-8"))
-    _d.pop("e2e-fill-test", None)
-    _mi.write_text(json.dumps(_d, ensure_ascii=False, indent=1), encoding="utf-8") if _d \
-        else _mi.unlink()
-check("e2e 写完自己清理掉测试键", not _mi.exists()
-      or "e2e-fill-test" not in _mi.read_text(encoding="utf-8"))
 st, fr2, _ = call("POST", "/p/202607/flag", {"loc": "T01/r999c9",
                                              "back": "/p/202607/trace"})
 _rv = ROOT.parent / "out" / "202607" / "review.json"
@@ -470,48 +389,10 @@ check("台账没被在线填/存疑碰到（字节数不变）",
 # 首页的三个数字都是可点的。
 # 🔴 断言要写**完整路径**：之前写成 href="202607/trace"（少了 /p/ 前缀），
 #    断言照着 bug 写 → 点击 404 但 e2e 全绿（rick 2026-09-19 实踩）。
-st, home2, _ = call("GET", "/")
-_hp2 = home_period(home2)
-check("工作台三个数字可点（trace 链接完整）",
-      bool(_hp2) and f'href="/p/{_hp2}/trace"' in home2, f"period={_hp2}")
-check("待办区是一个批量表单（一次提交取代逐条刷新）",
-      'name="v:' in home2 and "保存全部" in home2)
-check("输入框有 aria-label（16 个同名框否则无法区分）",
-      home2.count('aria-label="正文') >= 5)
-check("发起新任务在顶栏（页面最上方）",
-      home2.split("</header>")[0].count("发起新任务") == 1)
-check("待补数据说明诚实标注交互未定", "交互还没定" in home2)
-# 🔴 链接/表单 action 必须是**绝对路径**：写成 202607/trace 会从 / 解析成
-#    /202607/trace → 404，而 e2e 直接打绝对 URL 是抓不到的（2026-09-19 rick 实踩，
-#    2026-09-20 表单 action 又犯一次）。这条断言专治这个。
-check("表单 action 是绝对路径（不是相对路径）",
-      f'action="/p/{_hp2}/fill"' in home2 and f'action="{_hp2}/fill"' not in home2
-      and f'action="/p/{_hp2}/rebuild"' in home2, f"period={_hp2}")
-# 产线入口必须**在第一屏**（rick 2026-09-20：原来只塞在第六格审计链接堆里，
-# 一般用户根本不知道入口在哪）。断言两件事：产线条里真的有灵活报告链接、
-# 且第六格的审计链接段落里**没有**「灵活报告」字样（防止以后又被塞回去）。
-# 🔴 产线条里有嵌套 div，别按 </div> 切 —— 要切到下一个 panel 才是完整一段。
-_band = home2.split('class="line-bar"')[1].split('class="panel"')[0] \
-    if 'class="line-bar"' in home2 else ""
-check("灵活报告入口在第一屏产线条（不在审计链接堆里）",
-      f'href="/p/{_hp2}/flexible"' in _band
-      and home2.count("灵活报告") == 2        # 产线条一处 + <style> 注释一处
-      and "灵活报告" not in (home2.split("审计视图")[-1]), f"period={_hp2}")
 st, fp, _ = call("GET", "/p/202607/flexible")
 check("灵活页可开且生成表单齐备（意图/后端/学科/提交）",
       st == 200 and 'name="intent"' in fp and 'name="backend"' in fp
       and 'method="post"' in fp and 'id="flex-report"' in fp)
-# 重出报告：没有填写内容时**不执行**（安全分支，不覆盖任何产物）。
-# ⚠ 要用**确定没填过**的期次：202605_复现 有 2 条填写记录（演示样例），
-#   POST 上去会真的重出一次稿（2026-09-20 实测，断言因此误红）。
-st, _rb, _rfin = call("POST", "/p/202601_%E5%A4%8D%E7%8E%B0/rebuild",
-                      {"back": "/#todo-panel"})
-# ⚠ 回跳带的提示是 URL 编码的；而且要拼在问号位置而不是锚点后面
-#   （写成 /#todo-panel?err=… 的话浏览器整段忽略，提示永远不显示）
-_rf = urllib.parse.unquote(_rfin)
-check("没填内容时 rebuild 拒绝执行", "还没有填写内容" in _rf, f"final={_rfin}")
-check("提示拼在问号位置而非锚点后", "?err=" in _rf and "?err=" not in _rf.split("#")[-1],
-      f"final={_rfin}")
 
 out("=== 16. 新 API 端点（契约 §2.2 #1-#12） ===")
 # GET /api/me

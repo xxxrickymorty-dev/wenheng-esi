@@ -116,6 +116,20 @@ def require_admin(request: Request):
     return user
 
 
+def _legacy_redirect(request, key, **fmt):
+    """老路由 302 的统一出口：先过登录闸（与 page() 同口径），再跳新站。
+
+    未登录的访问与旧页面一样落到 /login（303）——新站只认 /api/me 的 401，
+    老 URL 的闸得在老站这一侧关住。
+    """
+    if not current_user(request):
+        return RedirectResponse("/login", status_code=303)
+    target = config.LEGACY_REDIRECTS[key]
+    if fmt:
+        target = target.format(**fmt)
+    return RedirectResponse(target, status_code=302)
+
+
 def page(request: Request, name: str, **ctx):
     user = current_user(request)
     if not user:
@@ -426,34 +440,23 @@ def _do_revoke(request, period, note, back):
 
 
 @app.get("/", response_class=HTMLResponse)
+
 async def home(request: Request, err: str = "", signed: str = "",
                revoked: str = "", rebuilt: str = "", saved: str = "", p: str = ""):
-    """**首屏 = 馆员工作台**（最新一期，可用 `?p=<期次>` 切换）。没有可对勘的期次时才退回控制台。
+    """旧首页已下线（ADR-0002 阶段 2）—— 302 到新工作区系统。
 
-    2026-09-19 从「首屏=对勘本」改过来。对勘本回答的是"这份报告怎么拼出来的"
-    （生产视角），而打开这个站的人要的是"这次要我做什么决定"（馆员视角）。
-    对勘本 / 图册 / 档案页都还在，收进工作台底部的「审计视图」入口。
-
-    ⚠ 期次原先写死取最新一期（rick：「为什么标题栏 202607 常驻」）——
-    现在按 `?p=` 切换，切换器渲染在标题栏右侧。
+    旧工作台（workbench.html）与控制台入口都在 /app/。
+    保留函数签名：老链接可能带 ?p= / ?rebuilt= 等参数，接下来丢弃即可。
     """
-    from . import workbench                                     # noqa: PLC0415
-    cards = period_cards()
-    if cards:
-        want = p or cards[0]["period"]
-        d = resolve_period_dir(want) or resolve_period_dir(cards[0]["period"])
-        if d is not None:
-            return page(request, "workbench.html",
-                        **workbench.build(d),
-                        periods=cards, current=d.name, rebuilt=rebuilt, saved=saved,
-                        flash=_flash(err, signed, revoked))
-    return page(request, "index.html", **_run_ctx())
+    return _legacy_redirect(request, "/")
 
 
 @app.get("/run", response_class=HTMLResponse)
+
+
 async def run_page(request: Request):
-    """控制台：选期次 / 上传台账 / 一键生成 + 最近任务。"""
-    return page(request, "index.html", **_run_ctx())
+    """旧控制台已下线（ADR-0002 阶段 2）—— 302 到新工作区系统。"""
+    return _legacy_redirect(request, "/run")
 
 
 @app.get("/forecast", response_class=HTMLResponse)
@@ -528,7 +531,7 @@ async def _collect_fills(request):
     return items, str(form.get("back") or "")
 
 
-@app.post("/p/{period}/fill")
+
 async def period_fill(request: Request, period: str):
     """在线填【手工：】项。**只写产物目录的 manual_inputs.json，台账一个字节不碰**
     —— 填的是报告，不是数据源；这正是"可溯源"与"可修改"的边界。
@@ -582,7 +585,7 @@ def _flash_back(back, qs):
     return f"{base}{sep}{qs}" + (f"#{frag}" if frag else "")
 
 
-@app.post("/p/{period}/rebuild")
+
 async def period_rebuild(request: Request, period: str):
     """填完重出报告：把在线填的值叠加到报告初稿上。
 
@@ -779,33 +782,30 @@ async def period_download(request: Request, period: str, key: str):
 
 
 @app.get("/jobs/{job_id}", response_class=HTMLResponse)
-async def job_page(request: Request, job_id: str):
-    job = jobs.read_job(job_id)
-    if not job:
-        return RedirectResponse("/", status_code=303)
-    return page(request, "job.html", job=job, job_json=json.dumps(job, ensure_ascii=False),
-                steps=config.STEPS, events=jobs.read_progress(job),
-                artifacts=jobs.collect_artifacts(job), terminal=jobs.is_terminal(job["status"]))
 
+async def job_page(request: Request, job_id: str):
+    """旧任务页已下线（ADR-0002 阶段 2）—— 302 到新工作区系统。"""
+    return _legacy_redirect(request, "/jobs/{job_id}")
 
 @app.get("/jobs/{job_id}/redslots", response_class=HTMLResponse)
+
 async def redslots_page(request: Request, job_id: str):
+    """旧任务红件清单已下线—— 302 到新工作区（动态填任务的期次）。"""
     job = jobs.read_job(job_id)
     if not job:
-        return RedirectResponse("/", status_code=303)
-    out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
-    return _redslots_page(request, out_dir, job=job)
-
+        return RedirectResponse("/app/", status_code=302)
+    period = urllib.parse.quote(job.get("out_period") or job["period"])
+    return _legacy_redirect(request, "/jobs/{job_id}/redslots", period=period)
 
 @app.get("/jobs/{job_id}/charts", response_class=HTMLResponse)
+
 async def charts_page(request: Request, job_id: str):
-    """任务图册：与期次图册同一视图，多一层任务面包屑。"""
+    """旧任务图册已下线—— 302 到新工作区（动态填任务的期次）。"""
     job = jobs.read_job(job_id)
     if not job:
-        return RedirectResponse("/", status_code=303)
-    out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
-    return _charts_page(request, out_dir, job=job)
-
+        return RedirectResponse("/app/", status_code=302)
+    period = urllib.parse.quote(job.get("out_period") or job["period"])
+    return _legacy_redirect(request, "/jobs/{job_id}/charts", period=period)
 
 @app.get("/jobs/{job_id}/archive", response_class=HTMLResponse)
 async def job_archive(request: Request, job_id: str):
@@ -818,17 +818,15 @@ async def job_archive(request: Request, job_id: str):
 
 
 @app.get("/jobs/{job_id}/collation", response_class=HTMLResponse)
+
 async def collation_page(request: Request, job_id: str,
                          err: str = "", signed: str = "", revoked: str = ""):
-    """对勘本：正文级「上期 → 本期」对照，与红色件清单读同一份 red_slots.json。"""
+    """旧任务对勘本已下线—— 302 到新工作区（动态填任务的期次）。"""
     job = jobs.read_job(job_id)
     if not job:
-        return RedirectResponse("/", status_code=303)
-    out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
-    return _render_collation(request, out_dir, job=job,
-                             flash=_flash(err, signed, revoked),
-                             self_url=f"/jobs/{job_id}/collation")
-
+        return RedirectResponse("/app/", status_code=302)
+    period = urllib.parse.quote(job.get("out_period") or job["period"])
+    return _legacy_redirect(request, "/jobs/{job_id}/collation", period=period)
 
 @app.post("/jobs/{job_id}/collation/sign")
 async def collation_sign(request: Request, job_id: str,

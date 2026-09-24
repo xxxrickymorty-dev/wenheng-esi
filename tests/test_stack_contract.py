@@ -215,8 +215,7 @@ def test_状态变更都走表单POST而非AJAX():
     """
     posts = {p for m, p in _routes() if m == "post" and not p.startswith("/api/")}
     assert posts == {"/login", "/p/{period}/sign", "/p/{period}/revoke",
-                     "/p/{period}/fill", "/p/{period}/flag", "/p/{period}/rebuild",
-                     "/p/{period}/flexible",
+                     "/p/{period}/flag", "/p/{period}/flexible",
                      "/jobs/{job_id}/collation/sign",
                      "/jobs/{job_id}/collation/revoke"}, f"表单 POST 清单变了：{sorted(posts)}"
 
@@ -278,6 +277,14 @@ def test_302映射落点都指向新工作区():
 
     bad = [k for k, v in config.LEGACY_REDIRECTS.items() if not v.startswith("/app/")]
     assert not bad, f"这些映射落点不在 /app/ 下：{bad}"
+
+
+def test_已下线清单是映射表的子集():
+    """LEGACY_LIVE（302 已生效）只能是映射表的子集；每下线一页追加一条。"""
+    from server import config
+
+    extra = set(config.LEGACY_LIVE) - set(config.LEGACY_REDIRECTS)
+    assert not extra, f"LEGACY_LIVE 里有映射表没有的路由：{extra}"
 
 
 def test_P2三页不在映射表():

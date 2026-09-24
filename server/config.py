@@ -61,6 +61,17 @@ LEGACY_REDIRECTS = {
     "/jobs/{job_id}/charts": "/app/?view=charts&period={period}",
 }
 
+#: 已下线（302 已生效）的条目——随每个页面下线追加。
+#: e2e 只对这份清单逐条验收；未列入的条目仍在过渡期（保留原页）。
+LEGACY_LIVE = (
+    "/",
+    "/run",
+    "/jobs/{job_id}",
+    "/jobs/{job_id}/collation",
+    "/jobs/{job_id}/redslots",
+    "/jobs/{job_id}/charts",
+)
+
 #: P2 未迁、本轮**不下线**的三页（保留原样，不进映射表）。
 #: 见 docs/老站下线清单（阶段 2）.md §五。
 LEGACY_KEEP_PAGES = (

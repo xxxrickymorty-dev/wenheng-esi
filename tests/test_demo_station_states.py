@@ -160,30 +160,7 @@ def test_重启不碰非running的活跃态(tmp_path, monkeypatch):
     assert jobs.read_job("waiting")["status"] == "waiting_approval"
 
 
-# ============================================================ 前端不另起名
-def test_前端不再写死状态名单():
-    js = (SERVER / "static" / "job.js").read_text(encoding="utf-8")
-    assert "__STATUS_LABELS__" in js, "应从服务端注入状态中文名"
-    assert "__TERMINAL__" in js, "应从服务端注入终态名单"
-    assert "TERMINAL = ['done'" not in js, "前端仍在写死旧 4 态名单"
-    assert "断言未过（已出稿待复核）" not in js, \
-        "该文案来自已被裁决推翻的『断言未过仍出稿』，不该再出现在新品"
-
-
-def test_前端保留旧名兜底():
-    """老书签页 / 缓存页里可能还带着 done，前端要能自己认下来。"""
-    js = (SERVER / "static" / "job.js").read_text(encoding="utf-8")
-    assert "LEGACY" in js and "isTerminal" in js
-
-
-@pytest.mark.parametrize("tpl", ["job.html", "index.html"])
-def test_模板不再内联状态字典(tpl):
-    text = (SERVER / "templates" / tpl).read_text(encoding="utf-8")
-    assert "status_label(" in text, f"{tpl} 应调用服务端注入的 status_label"
-    assert "已中断" not in text, f"{tpl} 仍有旧状态中文名"
-    assert "'done':'完成'" not in text, f"{tpl} 仍内联状态字典"
-
-
+# ============================================================ 前端不再自造状态名
 def test_每个状态都有badge样式():
     """加了状态却忘了配色，前端会退化成无样式的裸文字。"""
     css = (SERVER / "static" / "style.css").read_text(encoding="utf-8")
@@ -192,14 +169,6 @@ def test_每个状态都有badge样式():
 
 
 # ============================================================ 步骤级不受牵连
-def test_步骤进度类名没被误改成状态名():
-    """job.js 里的 start/done/warn/failed 是**步骤进度**的 CSS 类，与任务状态机无关。"""
-    js = (SERVER / "static" / "job.js").read_text(encoding="utf-8")
-    assert "classList.remove('start', 'done', 'warn', 'failed')" in js, \
-        "步骤级类名被改动会改坏五步进度的样式"
-
-
-# ============================================================ 历史任务路径漂移（2026-09-17）
 def test_进度文件路径失效时重定位到当前jobs目录(tmp_path, monkeypatch):
     """工作区搬过家（`…“AI+管理服务”\\wenheng` → `…\\wenheng`），历史 job.json 里
     存的是旧绝对路径。不重定位的话，运行档案页会显示"没有进度事件"——
