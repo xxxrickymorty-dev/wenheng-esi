@@ -13,6 +13,7 @@ import {
 } from './api'
 import { getCharts, getCollation, type ChartRow, type CollationRow } from './api2'
 import { getFacts, type Facts } from './api4'
+import { discNameMap } from './api5'
 import { Icon } from './icons'
 
 /** 期次印记链：签过＝朱印 / 签名失效＝金印 / 未签发＝墨线框。这是产品的原创资产，也是本屏的记忆点。 */
@@ -303,11 +304,12 @@ function TrendCard({ trend, period }: { trend: Record<string, number>; period: s
 function FactsStrip({ period }: { period: string | null }) {
   const [f, setF] = useState<Facts | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  const [cn, setCn] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!period) return
     let alive = true
-    setF(null); setNote(null)
+    setF(null); setNote(null); setCn({})
     getFacts(period)
       .then((x) => { if (alive) setF(x) })
       .catch((e: { status?: number }) => {
@@ -318,6 +320,9 @@ function FactsStrip({ period }: { period: string | null }) {
               : '读读数失败。',
         )
       })
+    /* 观察行的学科名：后端这两处只给英文，用逐格溯源接口的学科列桥成中文
+       （契约 #22 落地后这里连同 api5.discNameMap 一起删） */
+    discNameMap(period).then((m) => { if (alive) setCn(m) })
     return () => { alive = false }
   }, [period])
 
@@ -325,6 +330,7 @@ function FactsStrip({ period }: { period: string | null }) {
   if (!f) return <div className="pending-box">正在读读数……</div>
 
   const x = f.facts
+  const zh = (name: string) => cn[name] ?? name
   const dir = (n: number) => (n > 0 ? `升 ${n}` : n < 0 ? `降 ${-n}` : '持平')
   const cards: { k: string; v: string; d: string; good?: boolean; bad?: boolean }[] = [
     {
@@ -376,9 +382,9 @@ function FactsStrip({ period }: { period: string | null }) {
         {f.missing.length > 0 ? ` · 缺：${f.missing.join('、')}` : ''}
       </p>
       <p className="hint" style={{ marginTop: 6 }}>
-        最接近 1‰：{x.best_1permille.discipline} {x.best_1permille.prox_pct}%
+        最接近 1‰：{zh(x.best_1permille.discipline)} {x.best_1permille.prox_pct}%
         （上期 {x.best_1permille.prox_prev_pct}%）· 按顶尖论文数的三甲：
-        {x.top3_by_top_papers.map(([d, n]) => `${d} ${n}`).join('、')}
+        {x.top3_by_top_papers.map(([d, n]) => `${zh(d)} ${n}`).join('、')}
       </p>
     </>
   )

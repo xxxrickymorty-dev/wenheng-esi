@@ -5,9 +5,8 @@
    本页不做任何换算：表上图上都是后端给的数（只有"怎么显示"的格式化，见 fmtNum）。 */
 
 import { useEffect, useState } from 'react'
-import { req } from './api'
 import {
-  getForecastBoard, getForecastChoice, getForecastMeta, runForecast, saveForecastChoice,
+  discNameMap, getForecastBoard, getForecastChoice, getForecastMeta, runForecast, saveForecastChoice,
   type ForecastBoard, type ForecastMeta, type ForecastModelResult, type ForecastRun,
 } from './api5'
 import { Icon } from './icons'
@@ -178,22 +177,6 @@ function Trial({ meta }: { meta: ForecastMeta }) {
 
 /** 期次 2027-01 → 2027-01（原样）；空串＝窗口内未过线 */
 const fmtT = (v: string) => (v ? v : '窗口内未过线')
-
-/** 英文名 → 中文名的小桥：逐格溯源接口的「学科」列同时带中英（后端数据）。
-    契约 #22 落地后（facts/board 自带中文名）这里就可以删掉。 */
-async function discNameMap(period: string): Promise<Record<string, string>> {
-  try {
-    const j = await req<{ rows?: { col?: string; report?: string; src_ref?: string }[] }>(
-      `/api/periods/${encodeURIComponent(period)}/trace?cat=bigtable&limit=300`)
-    const m: Record<string, string> = {}
-    for (const r of j.rows ?? []) {
-      if (r.col === '学科' && r.src_ref && r.report) m[r.src_ref] = r.report
-    }
-    return m
-  } catch {
-    return {}
-  }
-}
 
 function Board({ meta }: { meta: ForecastMeta }) {
   const [d, setD] = useState<ForecastBoard | null>(null)

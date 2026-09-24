@@ -101,6 +101,22 @@ export async function saveForecastChoice(
   )
 }
 
+/** 英文名 → 中文名的小桥：逐格溯源接口的「学科」列同时带中英（后端数据）。
+    契约 #22 落地后（facts/board 自带中文名）这里就可以删掉。 */
+export async function discNameMap(period: string): Promise<Record<string, string>> {
+  try {
+    const j = await req<{ rows?: { col?: string; report?: string; src_ref?: string }[] }>(
+      `/api/periods/${encodeURIComponent(period)}/trace?cat=bigtable&limit=300`)
+    const m: Record<string, string> = {}
+    for (const r of j.rows ?? []) {
+      if (r.col === '学科' && r.src_ref && r.report) m[r.src_ref] = r.report
+    }
+    return m
+  } catch {
+    return {}
+  }
+}
+
 /* ---------------------------------------------------------------- 学科板（#20） */
 
 export type ForecastBoardRow = {

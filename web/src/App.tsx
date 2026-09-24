@@ -145,6 +145,23 @@ export default function App() {
     return () => es.close()
   }, [run?.jobId])
 
+  /* 工作区导航（契约 §4：前端按 /api/me 的 role 决定显示什么；**真门在后端**，这里只是不打扰）。
+     游客只留 报告 / 台账 / 陈列馆；管理页直连也挡在这里，给一句人话 + 去处。 */
+  const NAV: { view: string; label: string; icon: string; href: string; admin?: boolean }[] = [
+    { view: 'workbench', label: '生成台', icon: 'play', href: '/app/', admin: true },
+    { view: 'report', label: '报告', icon: 'chart', href: '/app/?view=report' },
+    { view: 'review', label: '审核台', icon: 'seal', href: '/app/?view=review', admin: true },
+    { view: 'ledger', label: '台账', icon: 'doc', href: '/app/?view=ledger' },
+    { view: 'analysis', label: '分析台', icon: 'chart', href: '/app/?view=analysis', admin: true },
+    { view: 'forecast', label: '预测台', icon: 'trend', href: '/app/?view=forecast', admin: true },
+    { view: 'shelf', label: '陈列馆', icon: 'book', href: '/app/shelf/' },
+  ]
+  const isGuest = me?.role === 'guest'
+  const ADMIN_VIEWS = new Set(['workbench', 'review', 'analysis', 'forecast', 'archive', 'trace', 'red', 'charts'])
+  const denied = isGuest && ADMIN_VIEWS.has(view)
+  const navHref = (h: string) =>
+    (selected && h.startsWith('/app/?') ? `${h}&period=${encodeURIComponent(selected)}` : h)
+
   return (
     <>
       <Sprite />
@@ -154,31 +171,12 @@ export default function App() {
           <span>学科信息参考</span>
         </div>
         <nav className="nav" aria-label="工作区">
-          <a href={`/app/${selected ? `?period=${encodeURIComponent(selected)}` : ''}`}
-             aria-current={view === 'workbench' ? 'page' : undefined}>
-            <Icon name="play" size={19} />生成台
-          </a>
-          <a href={`/app/?view=report${selected ? `&period=${encodeURIComponent(selected)}` : ''}`}
-             aria-current={view === 'report' ? 'page' : undefined}>
-            <Icon name="chart" size={19} />报告
-          </a>
-          <a href={`/app/?view=review${selected ? `&period=${encodeURIComponent(selected)}` : ''}`}
-             aria-current={view === 'review' ? 'page' : undefined}>
-            <Icon name="seal" size={19} />审核台
-          </a>
-          <a href={`/app/?view=ledger${selected ? `&period=${encodeURIComponent(selected)}` : ''}`}
-             aria-current={view === 'ledger' ? 'page' : undefined}>
-            <Icon name="doc" size={19} />台账
-          </a>
-          <a href={`/app/?view=analysis${selected ? `&period=${encodeURIComponent(selected)}` : ''}`}
-             aria-current={view === 'analysis' ? 'page' : undefined}>
-            <Icon name="chart" size={19} />分析台
-          </a>
-          <a href="/app/?view=forecast"
-             aria-current={view === 'forecast' ? 'page' : undefined}>
-            <Icon name="trend" size={19} />预测台
-          </a>
-          <a href="/app/shelf/"><Icon name="book" size={19} />陈列馆</a>
+          {NAV.filter((n) => !n.admin || !isGuest).map((n) => (
+            <a key={n.view} href={navHref(n.href)}
+               aria-current={view === n.view ? 'page' : undefined}>
+              <Icon name={n.icon} size={19} />{n.label}
+            </a>
+          ))}
         </nav>
         <div className="who">
           <span className="avatar">{me?.name?.slice(0, 1) ?? '？'}</span>
@@ -201,7 +199,14 @@ export default function App() {
           </div>
         )}
 
-        {view === 'archive' ? (
+        {denied ? (
+          <div className="pending-box" style={{ marginTop: 0 }}>
+            <b>这一屏要馆员账号</b> —— 生成台 / 审核台 / 分析台 / 预测台是馆员的工作区，
+            你现在是游客身份（只能看已出的东西）。
+            想看这一期报告去「<a href={navHref('/app/?view=report')}>报告</a>」，
+            想按期翻看卷宗去「<a href="/app/shelf/">陈列馆</a>」。
+          </div>
+        ) : view === 'archive' ? (
           <Archive period={selected} />
         ) : view === 'forecast' ? (
           <Forecast />
