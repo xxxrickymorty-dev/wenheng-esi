@@ -1044,23 +1044,39 @@ def chart_forecast(hist_periods, hist, model_hist, fut_periods, fut,
 
 # ---------- 概览图：1% 接近度（红基线；对标第4期风格）----------
 def chart_overview_1pct(cites, threshold, out_png, period):
-    fig, ax = _fig(3.25, 3.15)
-    ratio = (cites[period] / threshold[period]) * 100
-    ratio = ratio.dropna().sort_values()
-    colors = ["#B4A7D6" if v >= 100 else "#A9D18E" for v in ratio]
-    ax.barh(range(len(ratio)), ratio, color=colors, height=0.7)
+    """1% 接近度（对标第 4 期原件）。
+
+    🔴 rick 2026-09-24：「**紫色是实际数据，绿色是差距**」——
+    <100% 的学科画「紫柱＝实际接近度 + 绿段＝到红基线的差距（堆叠）」，
+    ≥100% 只有紫柱；**不能把 <100% 整根画成绿柱**（那等于把实际值当差距，
+    图例与图形自相矛盾）。横轴＝整百刻度、两位小数带 %；图例在轴下一行（同原件）。
+    """
+    ink = "#1F1F1F"
+    fig, ax = _fig(5.75, 5.9)                   # 与第4期原件同规格（14.6×15.0cm 插图）：字号 1:1
+    ratio = ((cites[period] / threshold[period]) * 100).dropna().sort_values()
+    y = list(range(len(ratio)))
+    gap = (100 - ratio).clip(lower=0)           # 已进 1% 的不画差距段
+    ax.barh(y, ratio, color="#B4A7D6", height=0.7, label="与ESI前1%的接近度")
+    ax.barh(y, gap, left=ratio, color="#A9D18E", height=0.7, label="与ESI前1%的差距")
     for i, v in enumerate(ratio):
-        ax.text(v + 8, i, f"{v:.2f}%", va="center", fontsize=6, color=C_TEXT)
+        ax.text(v + 8, i, f"{v:.2f}%", va="center", fontsize=7, color=C_TEXT)
     ax.axvline(100, color="red", lw=1.6)
-    ax.set_yticks(range(len(ratio)))
-    ax.set_yticklabels([_cn(d) for d in ratio.index], fontsize=6.5)
-    ax.set_xlabel("被引频次 / 1%阈值（%）", fontsize=8)
+    xmax = int(math.ceil(max(float(ratio.max()), 100.0) / 100.0) * 100)
+    ax.set_xlim(0, xmax)
+    ticks = list(range(0, xmax + 1, 100))
+    ax.set_xticks(ticks)
+    ax.set_xticklabels([f"{t:.2f}%" for t in ticks], fontsize=6.5, color=ink)
+    ax.set_yticks(y)
+    ax.set_yticklabels([_cn(d) for d in ratio.index], fontsize=7, color=ink)
+    ax.set_xlabel("被引频次 / 1%阈值（%）", fontsize=9.5, color=ink)
     ax.grid(axis="x", color=C_GRID, linewidth=0.6)
     from matplotlib.patches import Patch
     ax.legend(handles=[Patch(color="#B4A7D6", label="与ESI前1%的接近度"),
                        Patch(color="#A9D18E", label="与ESI前1%的差距"),
                        Patch(color="red", label="ESI前1%基线")],
-              fontsize=6.5, loc="lower right", frameon=False)
+              fontsize=9, loc="upper center", bbox_to_anchor=(0.5, -0.075),
+              ncol=3, frameon=False, labelcolor=ink,
+              handlelength=1.3, columnspacing=1.2, handletextpad=0.6)
     _save(fig, out_png)
 
 
