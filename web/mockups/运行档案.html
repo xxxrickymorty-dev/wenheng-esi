@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="zh-CN" data-palette="zhu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 运行档案（静态稿 · 待审核）</title>
+<style>
+/* ============================================================
+   给 rick 审核的静态稿：单文件、双击即开、零依赖。
+   数据是真的：202607 期 · 任务 20260924-070905-4beb（archive.build 实读）。
+   后端数据口 GET /api/periods/{p}/archive 还没加（契约 #18 已写形状）。
+   ============================================================ */
+:root{
+  --bg:#f3efe6; --card:#fbf8f1; --panel:#f6f1e7;
+  --ink:#2f2a24; --ink-2:#5b5248; --ink-3:#6f6558;
+  --line:#d9cfbc; --line-2:#e7dfd0;
+  --zhu:#b23a2a; --zhu-soft:#f0dcd5;
+  --gold:#a9853f; --gold-soft:#efe3c9; --gold-ink:#7d6122;
+  --ok:#3f6b4a; --ok-soft:#e2ece0;
+  --warn:#7d5518; --warn-soft:#f5ead2;
+  --bad:#a8321f; --bad-soft:#f4ddd7;
+  --serif:"Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  --shadow:0 1px 2px rgba(47,42,36,.06),0 8px 24px rgba(47,42,36,.06);
+  --r:14px; --r-sm:10px;
+}
+html[data-palette="morandi"]{
+  --bg:#eceae6; --card:#f7f6f3; --panel:#f1efeb;
+  --ink:#33322f; --ink-2:#5f5c56; --ink-3:#6b665e;
+  --line:#d7d3cb; --line-2:#e5e2dc;
+  --zhu:#85564e; --zhu-soft:#ece0dd;
+  --gold:#8f8a72; --gold-soft:#e8e6dc; --gold-ink:#6f6a52;
+  --ok:#4f6a58; --ok-soft:#e4ebe5;
+  --warn:#6f5c3c; --warn-soft:#eee9dd;
+  --bad:#85564b; --bad-soft:#eee2de;
+  --shadow:0 1px 2px rgba(51,50,47,.05),0 8px 22px rgba(51,50,47,.05);
+}
+html[data-palette="mix"]{
+  --bg:#eae7e2; --card:#f8f6f2; --panel:#f1efea;
+  --ink:#312e2a; --ink-2:#5c5852; --ink-3:#6b665e;
+  --line:#d8d4cc; --line-2:#e6e3dd;
+  --zhu:#a8442f; --zhu-soft:#f0dcd6;
+  --gold:#8f8a72; --gold-soft:#e8e6dc; --gold-ink:#6f6a52;
+  --ok:#4f6a58; --ok-soft:#e4ebe5;
+  --warn:#6f5c3c; --warn-soft:#eee9dd;
+  --bad:#9a4b3c; --bad-soft:#f0e0db;
+  --shadow:0 1px 2px rgba(49,46,42,.05),0 8px 22px rgba(49,46,42,.05);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:17px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0}
+button{font:inherit;color:inherit}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--zhu);outline-offset:3px;border-radius:6px}
+.mono{font-family:var(--mono)}
+.muted{color:var(--ink-3)}
+
+/* ---------- 审核工具条（正式上线时去掉） ---------- */
+.review{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;
+  padding:11px 22px;background:var(--panel);border-bottom:1px dashed var(--line);
+  font-size:14px;color:var(--ink-2)}
+.review b{color:var(--ink)}
+.seg{display:flex;gap:6px}
+.seg button{padding:5px 13px;border:1px solid var(--line);background:var(--card);
+  border-radius:999px;cursor:pointer;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--zhu);border-color:var(--zhu);color:#fff}
+
+/* ---------- 顶栏 ---------- */
+.topbar{display:flex;align-items:center;gap:18px;padding:13px 22px;
+  background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:10px;font-family:var(--serif)}
+.brand strong{font-size:22px;letter-spacing:.05em}
+.brand span{font-size:13px;color:var(--ink-3);letter-spacing:.16em}
+.nav{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+.nav a{display:flex;align-items:center;gap:7px;padding:9px 13px;border-radius:var(--r-sm);
+  text-decoration:none;color:var(--ink-2);font-size:15px}
+.who{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-2);padding-left:12px;border-left:1px solid var(--line)}
+.avatar{width:29px;height:29px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);
+  display:grid;place-items:center;font-weight:600}
+
+/* ---------- 版面 ---------- */
+main{max-width:1180px;margin:0 auto;padding:20px 22px 70px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);padding:20px 22px;margin-top:18px}
+.card > h2{font-size:19px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.no{font-family:var(--mono);font-size:12px;letter-spacing:.18em;color:var(--zhu);
+  background:var(--zhu-soft);border-radius:6px;padding:2px 7px}
+.hint{color:var(--ink-3);font-size:14px}
+.lead{color:var(--ink-2);font-size:15.5px;margin:8px 0 0;max-width:78ch}
+.crumb{font-size:14.5px;color:var(--ink-3);margin-top:2px}
+.crumb a{color:var(--ink-2);text-decoration:none;border-bottom:1px solid var(--line)}
+.badge{border-radius:999px;padding:3px 11px;font-size:13.5px;display:inline-block}
+.badge.ok{background:var(--ok-soft);color:var(--ok)}
+.badge.review{background:var(--warn-soft);color:var(--warn)}
+.badge.bad{background:var(--bad-soft);color:var(--bad)}
+.badge.plain{background:var(--panel);color:var(--ink-3)}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:9px;
+  border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:15.5px;
+  text-decoration:none}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-weight:600}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+
+table{width:100%;border-collapse:collapse;font-size:15.5px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line-2);vertical-align:top}
+th{color:var(--ink-3);font-weight:600;font-size:14px;background:var(--panel)}
+tbody tr:last-child td{border-bottom:none}
+td.num,td.mono{font-family:var(--mono)}
+td.num{text-align:right}
+
+/* 瀑布 */
+.wf-row{display:flex;align-items:center;gap:14px;padding:9px 0;border-bottom:1px solid var(--line-2)}
+.wf-row:last-child{border-bottom:none}
+.wf-name{flex:0 0 210px;min-width:0;line-height:1.45}
+.wf-name b{display:block;font-size:15.5px;font-weight:600}
+.wf-name small{display:block;color:var(--ink-3);font-size:13.5px}
+.wf-state{flex:0 0 78px;font-size:13.5px}
+.wf-track{flex:1;height:10px;border-radius:99px;background:var(--line-2);overflow:hidden}
+.wf-track i{display:block;height:100%;border-radius:99px;background:var(--ok)}
+.wf-sec{flex:0 0 84px;text-align:right;font-family:var(--mono);font-size:14.5px;color:var(--ink-2)}
+
+/* 键值表 */
+.kv{margin:8px 0 0}
+.kv div{display:flex;gap:14px;padding:7px 0;border-bottom:1px solid var(--line-2);font-size:15px}
+.kv div:last-child{border-bottom:none}
+.kv dt{flex:0 0 130px;color:var(--ink-3);font-size:14px}
+.kv dd{margin:0;word-break:break-all}
+
+/* 产物卡 */
+.arts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px}
+.art{display:block;padding:13px 15px;border:1px solid var(--line-2);border-radius:var(--r-sm);
+  background:var(--panel);text-decoration:none}
+.art.primary{border-color:var(--gold)}
+.art b{font-size:15.5px}
+.art .m{display:block;font-size:13px;color:var(--ink-3);margin-top:3px;word-break:break-all}
+.note{margin-top:14px;border:1px dashed var(--line);border-radius:var(--r-sm);
+  padding:10px 14px;font-size:14px;color:var(--ink-3);line-height:1.75}
+.note b{color:var(--ink-2)}
+.foot{margin-top:10px;font-size:13.5px;color:var(--ink-3)}
+@media (max-width:760px){
+  .topbar{flex-wrap:wrap;gap:8px 12px}
+  .nav{order:3;width:100%;margin-left:0;overflow-x:auto}
+  main{padding:16px 14px 60px}
+  .wf-row{flex-wrap:wrap;gap:6px 12px}
+  .wf-name{flex:1 1 100%}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 审核工具条（正式上线时去掉） ===== -->
+<div class="review">
+  <b>静态稿 · 待 rick 审核</b>
+  <span>配色：</span>
+  <div class="seg" id="pal">
+    <button data-p="zhu" aria-pressed="true">朱批原色</button>
+    <button data-p="morandi">莫兰迪</button>
+    <button data-p="mix">莫兰迪+朱砂</button>
+  </div>
+  <span>本稿数据：<b>真实</b>——202607 期任务 <span class="mono">20260924-070905-4beb</span>（archive 实读）</span>
+</div>
+
+<!-- ===== 顶栏（档案是下钻页，不在工作区导航里） ===== -->
+<header class="topbar">
+  <div class="brand"><strong>文衡</strong><span>学科信息参考</span></div>
+  <nav class="nav" aria-label="工作区">
+    <a href="#">生成台</a>
+    <a href="#">报告</a>
+    <a href="#">审核台</a>
+    <a href="#">台账</a>
+    <a href="#">分析台</a>
+    <a href="#">预测台</a>
+    <a href="#">陈列馆</a>
+  </nav>
+  <div class="who"><span class="avatar">卜</span>卜彤 · 管理员</div>
+</header>
+
+<main>
+
+  <p class="crumb"><a href="#">← 回到生成台 · 202607 期</a></p>
+
+  <!-- ===== 页头 ===== -->
+  <section class="card">
+    <h1 style="font-size:24px">运行档案 · 202607 期</h1>
+    <p class="lead">
+      这次运行的完整回放：状态怎么走的、每一步用了多久、审计怎么判的、日志包里都有什么。
+      只读页——不改任何东西。
+    </p>
+    <div class="kv" style="margin-top:12px">
+      <div><dt>任务号</dt><dd class="mono">20260924-070905-4beb</dd></div>
+      <div><dt>输出目录</dt><dd class="mono">out/202607/</dd></div>
+      <div><dt>台账输入</dt><dd class="mono">input\202607\监测表.xlsx</dd></div>
+      <div><dt>发起人</dt><dd>demo</dd></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px">
+      <span class="badge ok">已完成</span>
+      <span class="badge bad">审计：不通过</span>
+      <a class="btn primary" href="#" style="margin-left:auto">下载日志包（13 个文件 · 163.4 KB）</a>
+    </div>
+  </section>
+
+  <!-- ===== 01 状态机回放 ===== -->
+  <section class="card">
+    <h2><span class="no">01</span>状态机回放<span class="hint">2 次迁移</span></h2>
+    <table style="margin-top:10px">
+      <thead><tr><th style="width:26%">时刻</th><th style="width:42%">迁移</th><th>触发</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="mono">2026-09-24 07:09:05</td>
+          <td><span class="badge plain">排队中</span> <span class="muted">→</span> <span class="badge review">运行中</span> <span class="badge plain">合成</span></td>
+          <td>提交任务</td>
+        </tr>
+        <tr>
+          <td class="mono">2026-09-24 07:10:43</td>
+          <td><span class="badge review">运行中</span> <span class="muted">→</span> <span class="badge ok">已完成</span> <span class="badge plain">合成</span></td>
+          <td>流水线退出码 0</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="foot">⚠ 演示站直跑路径不产生状态历史文件，此链由任务记录合成——只含确定发生过的迁移，不臆造自愈/升级环节。</p>
+  </section>
+
+  <!-- ===== 02 任务瀑布 ===== -->
+  <section class="card">
+    <h2><span class="no">02</span>任务瀑布（各步耗时）</h2>
+    <div style="margin-top:8px">
+      <div class="wf-row">
+        <span class="wf-name"><b>解析台账</b><small>当期 202607 · 上期 202605 · 机器断言 全绿</small></span>
+        <span class="wf-state">完成</span>
+        <span class="wf-track" aria-hidden="true"><i style="width:0.3%"></i></span>
+        <span class="wf-sec">0.5 秒</span>
+      </div>
+      <div class="wf-row">
+        <span class="wf-name"><b>计算大表与概述</b><small>大表 22 学科 × 11 列 · 概述 11 项数字事实</small></span>
+        <span class="wf-state">完成</span>
+        <span class="wf-track" aria-hidden="true"><i style="width:0.1%"></i></span>
+        <span class="wf-sec">0.1 秒</span>
+      </div>
+      <div class="wf-row">
+        <span class="wf-name"><b>预测回测</b><small>整体 MAPE 1.26%（验收线 &lt;5%）</small></span>
+        <span class="wf-state">完成</span>
+        <span class="wf-track" aria-hidden="true"><i style="width:0.2%"></i></span>
+        <span class="wf-sec">0.3 秒</span>
+      </div>
+      <div class="wf-row">
+        <span class="wf-name"><b>省域表（ESI 机构总表）</b><small>11 所高校 · 学科榜 22 个</small></span>
+        <span class="wf-state">完成</span>
+        <span class="wf-track" aria-hidden="true"><i style="width:1.6%"></i></span>
+        <span class="wf-sec">3.1 秒</span>
+      </div>
+      <div class="wf-row">
+        <span class="wf-name"><b>学科×高校矩阵（InCites）</b><small>快照 数据覆盖2016-2026.04.30 · 240 格</small></span>
+        <span class="wf-state">完成</span>
+        <span class="wf-track" aria-hidden="true"><i style="width:32.3%"></i></span>
+        <span class="wf-sec">62.4 秒</span>
+      </div>
+      <div class="wf-row">
+        <span class="wf-name"><b>图表渲染</b><small>104 张图 · 16 学科 × 6 + 概览 · 预测 4 张</small></span>
+        <span class="wf-state">完成</span>
+        <span class="wf-track" aria-hidden="true"><i style="width:13.9%"></i></span>
+        <span class="wf-sec">26.9 秒</span>
+      </div>
+      <div class="wf-row">
+        <span class="wf-name"><b>母版替换</b><small>报告初稿 + 红色件清单：报告初稿_202607（试排）.docx</small></span>
+        <span class="wf-state">完成</span>
+        <span class="wf-track" aria-hidden="true"><i style="width:1.7%"></i></span>
+        <span class="wf-sec">3.2 秒</span>
+      </div>
+    </div>
+    <p class="foot">全链路 96.5 秒 · 断言 全绿 · 大表 22×11 · 图 104 张 · MAPE 1.26%</p>
+  </section>
+
+  <!-- ===== 03 审计结论 ===== -->
+  <section class="card">
+    <h2><span class="no">03</span>审计结论<span class="hint">2026-09-24T15:00:21 · 耗时 0.76s</span></h2>
+    <table style="margin-top:10px">
+      <thead><tr><th style="width:22%">审计项</th><th style="width:12%">判定</th><th style="width:26%">实测</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><b>大表全量回查</b></td><td><span class="badge ok">通过</span></td><td class="mono">242/242 格，差异 0</td><td class="muted">—</td></tr>
+        <tr><td><b>槽位抽样回查</b></td><td><span class="badge ok">通过</span></td><td class="mono">抽 72/716 处，差异 0</td><td class="muted">—</td></tr>
+        <tr><td><b>陈旧期次残留扫描</b></td><td><span class="badge bad">不通过</span></td><td class="mono">扫 16 个文件，高危 6 处</td><td class="muted">⚠ 这 6 处是预测章的未来期次（2027-07 / 2028-09 / 2029-07 等过线期），被当成残留——<b>误报，已报后端</b>（见审核注）</td></tr>
+        <tr><td><b>金样回测</b></td><td><span class="badge review">待确认</span></td><td class="mono">95.45%（行级 21/22 行）</td><td class="muted">只解析到行级口径，而基线 99.5% 是格级。行级 100% 不等于格级达标（一行里错一格，行级看不出来）——口径不同，待人工确认</td></tr>
+        <tr><td><b>手工槽清点</b></td><td><span class="badge review">待确认</span></td><td class="mono">待签 3 处 / 共 716 槽</td><td class="muted">—</td></tr>
+        <tr><td><b>figures</b></td><td><span class="badge ok">通过</span></td><td class="mono">—</td><td class="muted">⚠ 标题还是英文 id（后端待补中文名）</td></tr>
+      </tbody>
+    </table>
+    <p class="foot">真值链：台账原件 → 解析 → 计算（重推）；不拿派生产物自证；覆盖写盘 / 读回 / CSV 浮点往返 / 报告装配。</p>
+  </section>
+
+  <div class="grid2">
+    <!-- ===== 04 运行环境快照 ===== -->
+    <section class="card">
+      <h2><span class="no">04</span>运行环境快照</h2>
+      <dl class="kv">
+        <div><dt>Python</dt><dd class="mono">3.13.9</dd></div>
+        <div><dt>平台</dt><dd class="mono">Windows-11-10.0.26200-SP0</dd></div>
+        <div><dt>pandas</dt><dd class="mono">3.0.5</dd></div>
+        <div><dt>statsmodels</dt><dd class="mono">0.15.0</dd></div>
+        <div><dt>代码版本</dt><dd class="mono">6e2fe488507e…</dd></div>
+        <div><dt>快照时间</dt><dd>2026-09-21T22:32:23</dd></div>
+      </dl>
+      <p class="foot">⚠ 快照是 09-21 的（直跑路径不刷新快照）——复现时以这份为准。</p>
+    </section>
+
+    <!-- ===== 05 运行指标 ===== -->
+    <section class="card">
+      <h2><span class="no">05</span>运行指标</h2>
+      <dl class="kv">
+        <div><dt>当期 / 上期</dt><dd>202607 / 202605</dd></div>
+        <div><dt>机器断言</dt><dd>全绿</dd></div>
+        <div><dt>预测 MAPE</dt><dd class="mono">1.26%</dd></div>
+        <div><dt>生成图表</dt><dd class="mono">104 张</dd></div>
+        <div><dt>全链路耗时</dt><dd class="mono">96.5 秒</dd></div>
+      </dl>
+      <p class="foot">数字全部来自台账单元格；运行期大模型不进入数据路径。</p>
+    </section>
+  </div>
+
+  <!-- ===== 06 产物与日志包 ===== -->
+  <section class="card">
+    <h2><span class="no">06</span>产物与日志包<span class="hint">日志包 13 个文件 · 163.4 KB</span></h2>
+    <div class="arts">
+      <a class="art primary" href="#"><b>运行日志包（ZIP）</b><span class="m">回放最小集 · 13 文件 · 163.4 KB</span></a>
+      <a class="art primary" href="#"><b>报告初稿（Word）</b><span class="m">报告初稿_202607（试排）.docx · 7.4 MB</span></a>
+      <a class="art primary" href="#"><b>对勘本（正文级对照）</b><span class="m">在线查看</span></a>
+      <a class="art primary" href="#"><b>红色件清单（Markdown）</b><span class="m">红色件清单.md · 1.3 KB</span></a>
+      <a class="art" href="#"><b>审批记录（签单后生成）</b><span class="m">审批记录.md · 14.0 KB</span></a>
+      <a class="art" href="#"><b>红色件清单（逐格在线查看）</b><span class="m">红色件清单</span></a>
+      <a class="art" href="#"><b>对照差异报告（金样回测）</b><span class="m">对照差异报告_202607回测.md · 4.2 KB</span></a>
+      <a class="art" href="#"><b>预测回测报告</b><span class="m">预测回测报告.md · 0.9 KB</span></a>
+      <a class="art" href="#"><b>大表数据（CSV）</b><span class="m">table2.csv · 2.1 KB</span></a>
+      <a class="art" href="#"><b>红色件审计明细（JSON）</b><span class="m">red_slots.json · 115.2 KB</span></a>
+      <a class="art" href="#"><b>运行日志（JSON）</b><span class="m">run_log.json · 0.6 KB</span></a>
+    </div>
+    <p class="foot">日志包只含回放所需文本件；完整产物快照（docx、parquet、图表 PNG）在归档目录 out/_archive/202607/。</p>
+  </section>
+
+  <!-- ===== 07 Agent 轨迹文件 ===== -->
+  <section class="card">
+    <h2><span class="no">07</span>Agent 轨迹文件<span class="hint">0 / 3</span></h2>
+    <p class="lead">
+      本次运行没有轨迹三件套（agent_events / state_history / task_runs）——演示站主入口走流水线直跑，
+      轨迹由 Agent 编排器才写。档案页因此退化为「进度事件 + 任务状态」，这是<b>真实的记录缺口</b>，
+      不是页面没渲染出来。
+    </p>
+  </section>
+
+  <section class="card">
+    <p class="note">
+      <b>审核注</b>：① 数据口 `GET /api/periods/{p}/archive` 后端还没加（契约 #18 已写形状），本稿用真数据渲染，接口一到就能接线；
+      ② 瀑布的「合计」暂不显示——后端把最后一条「完成」汇总事件也算成一步，合计翻倍（193.0 vs 96.5），已报；
+      ③ 审计「不通过」是 stale_scan 把预测章的未来期次当残留（误报），已报后端；
+      ④ 审计项标题里 `figures` 还是英文 id，后端补个中文名即可。
+    </p>
+  </section>
+
+</main>
+
+<script>
+document.getElementById("pal").addEventListener("click", function (e) {
+  var b = e.target.closest("button"); if (!b) return;
+  document.documentElement.dataset.palette = b.dataset.p;
+  this.querySelectorAll("button").forEach(function (x) {
+    x.setAttribute("aria-pressed", String(x === b));
+  });
+});
+</script>
+</body>
+</html>
