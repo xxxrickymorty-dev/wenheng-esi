@@ -15,6 +15,10 @@ r"""端到端：`/app`（React 工作区）在真实浏览器里跑通「登录 
     .venv\Scripts\python.exe -m uvicorn server.app:app --host 127.0.0.1 --port 8080
     & "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe" tools\check_web_app.py
 
+⚠ 锚点只认**结构**、不写死中文值：2026-09-24 实踩——写 `nav[aria-label="工作台"]`
+  时实际值已改叫「工作区」，选择器恒 0 命中；`#coverArt` 在详情面板里初始隐藏，
+  首屏可见的是 `#flipbook`。改锚点前先跑一遍，别凭记忆写。
+
 退出码 0 = 通过；1 = 有断言失败（失败项打印在前）。
 """
 import http.cookiejar
@@ -68,10 +72,10 @@ def main():
         check("GET /app/ → 200", bool(resp) and resp.status == 200,
               f"got {resp.status if resp else '?'}")
         try:
-            page.wait_for_selector('nav[aria-label="工作台"]', timeout=10000)
-            check("工作台导航已渲染（nav[aria-label=工作台]）", True)
+            page.wait_for_selector("nav[aria-label]", timeout=10000)
+            check("工作区导航已渲染（nav[aria-label]，不写死具体值）", True)
         except Exception as e:                                       # noqa: BLE001
-            check("工作台导航已渲染（nav[aria-label=工作台]）", False, str(e)[:80])
+            check("工作区导航已渲染（nav[aria-label]，不写死具体值）", False, str(e)[:80])
         n_blocks = page.eval_on_selector_all("section, li, article", "els => els.length")
         check("工作台渲染出内容块（section/li/article ≥ 1）", n_blocks >= 1, f"{n_blocks} 块")
         page.screenshot(path=str(SHOT), full_page=False)
@@ -81,10 +85,10 @@ def main():
         check("GET /app/shelf/ → 200", bool(resp2) and resp2.status == 200,
               f"got {resp2.status if resp2 else '?'}")
         try:
-            page.wait_for_selector("#coverArt, #flipbook", timeout=10000)
-            check("陈列馆渲染（书架 canvas 出现）", True)
+            page.wait_for_selector("#flipbook, #shelfView", timeout=10000)
+            check("陈列馆渲染（书台/书架可见）", True)
         except Exception as e:                                       # noqa: BLE001
-            check("陈列馆渲染（书架 canvas 出现）", False, str(e)[:80])
+            check("陈列馆渲染（书台/书架可见）", False, str(e)[:80])
 
         # ---- 3) 零报错（覆盖上面两次导航） ----
         check("零 pageerror / console.error", not problems, "; ".join(problems[:3]))
