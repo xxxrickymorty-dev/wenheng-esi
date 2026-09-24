@@ -130,6 +130,14 @@ export function Tools({ period, jobId, onUploaded }: {
 
       {/* 这次运行每一步用了多久（跑完也能回看；生成中自动刷新） */}
       {effJobId && <Waterfall jobId={effJobId} />}
+
+      {period && (
+        <p className="hint" style={{ marginTop: 10 }}>
+          <a href={`/app/?view=archive&period=${encodeURIComponent(period)}`}>
+            看这一期的运行档案（状态回放 / 审计结论 / 下载日志包）→
+          </a>
+        </p>
+      )}
     </section>
   )
 }

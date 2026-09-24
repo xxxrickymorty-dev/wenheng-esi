@@ -376,6 +376,29 @@ a{color:inherit}
 .bt-cell .k{font-size:12.5px;color:var(--ink-3)}
 .bt-cell b{font-size:17px;font-family:var(--mono)}
 .bt-cell .s{display:block;font-size:12.5px;color:var(--ink-3);margin-top:6px;line-height:1.6}
+
+/* ============================================================================
+   运行档案（下钻页，不在顶栏）——状态机回放 / 瀑布 / 审计 / 环境 / 日志包
+   ⚠ 类名一律 ar- 前缀：`.kv`（对勘本）与 `.art`（报告页产物卡）是既有类，别复用。
+   ========================================================================== */
+.ar-kv{margin:8px 0 0}
+.ar-kv div{display:flex;gap:14px;padding:7px 0;border-bottom:1px solid var(--line-2);font-size:15px}
+.ar-kv div:last-child{border-bottom:none}
+.ar-kv dt{flex:0 0 120px;color:var(--ink-3);font-size:14px}
+.ar-kv dd{margin:0;word-break:break-all}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+.ar-tbl{width:100%;border-collapse:collapse;font-size:15px;min-width:620px}
+.ar-tbl th,.ar-tbl td{padding:10px 12px;border-bottom:1px solid var(--line-2);
+  text-align:left;vertical-align:top}
+.ar-tbl th{background:var(--panel);color:var(--ink-3);font-weight:600;font-size:13.5px}
+.ar-tbl td.mono{font-family:var(--mono)}
+.ar-arts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px}
+.ar-art{display:block;padding:13px 15px;border:1px solid var(--line-2);border-radius:var(--r-sm);
+  background:var(--panel);text-decoration:none}
+.ar-art.primary{border-color:var(--gold)}
+.ar-art b{font-size:15.5px}
+.ar-art .m{display:block;font-size:13px;color:var(--ink-3);margin-top:3px;word-break:break-all}
 @media (max-width:760px){
   .fc-pick,.fc-tbl{min-width:640px}
 }

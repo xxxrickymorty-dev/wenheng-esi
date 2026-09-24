@@ -1,9 +1,10 @@
 /* 任务瀑布：这次运行每一步用了多久（老站任务页「03 任务瀑布」的对应物）。
-   数字全部来自 GET /api/jobs/{id}/progress——后端把进度记录换算成每步秒数，
-   前端只排版、不自己算。生成中每 2 秒自己刷新一次，跑完自动停。 */
+   数字全部来自后端——每步秒数是后端换算好的，前端只排版、不自己算。
+   生成中每 2 秒自己刷新一次，跑完自动停。
+   收束汇总事件（「全链路 … 秒」）后端单列在 summary 里、不进步骤数组（2026-09-24 已修）。 */
 
 import { useEffect, useState } from 'react'
-import { getJobProgress, type JobProgress, type ProgressEvent, type WaterfallRow } from './api'
+import { getJobProgress, type WaterfallRow, type WaterfallSummary } from './api'
 import { Icon } from './icons'
 import { isTerminal } from './wb'
 
@@ -14,39 +15,76 @@ const STEP_COLOR: Record<string, string> = {
   done: 'var(--ok)', warn: 'var(--warn)', failed: 'var(--bad)',
 }
 
-/** 瀑布里带着最后一条「完成」汇总记录（与运行档案页同口径）。
-    它不是流水线的一步，这里不单列——老站任务页也是这么处理的。 */
-const isSummary = (r: WaterfallRow) => r.step === 'done'
-
-/** 后端按「秒」给行排序，同一秒里开工的几步会按名字先后排（解析可能排到计算后面）。
-    这里用原始记录里的出现次序把同一秒内的先后摆正——只调顺序，不产生数字。 */
-function ordered(rows: WaterfallRow[], events: ProgressEvent[]): WaterfallRow[] {
-  const firstSeen = new Map<string, number>()
-  events.forEach((e, i) => {
-    const s = e?.step
-    if (s && !firstSeen.has(s)) firstSeen.set(s, i)
-  })
-  return [...rows].sort((a, b) => {
-    const byTime = (a.at || '').localeCompare(b.at || '')
-    if (byTime !== 0) return byTime
-    return (firstSeen.get(a.step) ?? 0) - (firstSeen.get(b.step) ?? 0)
-  })
+/** 瀑布行的渲染（生成台与运行档案共用；行原样来自后端，前端不减不加） */
+export function WaterfallRows({ rows, totalSec, running, summary }: {
+  rows: WaterfallRow[]
+  totalSec: number
+  running?: boolean
+  summary?: WaterfallSummary | null
+}) {
+  const closedOrphan = rows.some((r) => r.orphan && !running)
+  return (
+    <>
+      <div className="wf">
+        {rows.map((r) => {
+          const inProgress = !!running && r.orphan
+          const color = inProgress ? 'var(--zhu)' : (STEP_COLOR[r.status] ?? 'var(--ink-3)')
+          const pct = totalSec > 0 ? Math.min(100, Math.max(0, (r.sec / totalSec) * 100)) : 0
+          return (
+            <div className="wf-row" key={r.step}>
+              <span className="wf-name">
+                <b>{r.name}</b>
+                {r.detail && <small>{r.detail}</small>}
+              </span>
+              <span className="wf-state" style={{ color }}>
+                <Icon name={inProgress ? 'refresh' : (STEP_ICON[r.status] ?? 'clock')} size={16} />
+                {inProgress ? '运行中' : (STEP_LABEL[r.status] ?? r.status)}
+              </span>
+              <span className="wf-track" aria-hidden="true">
+                <i style={{ width: `${pct}%`, background: color }} />
+              </span>
+              <span className="wf-sec">{inProgress ? '计时中…' : `${r.sec} 秒${r.orphan ? '*' : ''}`}</span>
+            </div>
+          )
+        })}
+      </div>
+      {summary?.detail && (
+        <p className="hint" style={{ marginTop: 10 }}>{summary.detail}</p>
+      )}
+      {closedOrphan && (
+        <p className="hint" style={{ marginTop: 8, fontSize: 13.5 }}>
+          * 这一步只有开工或只有收工记录，耗时对不上（多半是中途插入的提醒或中断）。
+        </p>
+      )}
+    </>
+  )
 }
 
 export function Waterfall({ jobId }: { jobId: string }) {
-  const [p, setP] = useState<JobProgress | null>(null)
+  const [rows, setRows] = useState<WaterfallRow[]>([])
+  const [summary, setSummary] = useState<WaterfallSummary | null>(null)
+  const [total, setTotal] = useState(0)
+  const [running, setRunning] = useState(false)
+  const [missing, setMissing] = useState<{ note: string } | null>(null)
   const [gone, setGone] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let alive = true
     let timer: number | undefined
-    setP(null); setGone(false)
+    setGone(false); setMissing(null); setLoading(true)
     const load = async () => {
       try {
         const r = await getJobProgress(jobId)
         if (!alive) return
-        setP(r)
-        if (r.status && !isTerminal(r.status)) timer = window.setTimeout(load, 2000)
+        setRows(r.waterfall ?? [])
+        setSummary(r.summary ?? null)
+        setTotal(r.total_sec ?? 0)
+        const run = !!r.status && !isTerminal(r.status)
+        setRunning(run)
+        setMissing(r.missing ? { note: r.note } : null)
+        setLoading(false)
+        if (run) timer = window.setTimeout(load, 2000)
       } catch {
         if (alive) setGone(true)   /* 读不到（老任务 / 无权限）就不显示这一块 */
       }
@@ -57,55 +95,22 @@ export function Waterfall({ jobId }: { jobId: string }) {
 
   if (gone) return null
 
-  const running = !!p && !!p.status && !isTerminal(p.status)
-  const rows = ordered((p?.waterfall ?? []).filter((r) => !isSummary(r)), p?.events ?? [])
-  const closedOrphan = rows.some((r) => r.orphan && !running)
-
   return (
     <div style={{ marginTop: 18, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
       <h3 style={{ fontSize: 15 }}>任务瀑布（各步耗时）</h3>
 
-      {!p ? (
+      {loading ? (
         <p className="hint" style={{ marginTop: 6 }}>正在读这次运行的记录……</p>
-      ) : p.missing ? (
+      ) : missing ? (
         running
           ? <p className="hint" style={{ marginTop: 6 }}>这次运行刚起步，每步记录还没写下来……</p>
-          : <div className="pending-box" style={{ marginTop: 8 }}>{p.note || '这次运行没有留下每步记录。'}</div>
+          : <div className="pending-box" style={{ marginTop: 8 }}>{missing.note || '这次运行没有留下每步记录。'}</div>
       ) : rows.length === 0 ? (
         <p className="hint" style={{ marginTop: 6 }}>
           {running ? '运行开始后，这里显示每一步用了多久。' : '这次运行没有记录到每步耗时。'}
         </p>
       ) : (
-        <>
-          <div className="wf">
-            {rows.map((r) => {
-              const inProgress = running && r.orphan
-              const color = inProgress ? 'var(--zhu)' : (STEP_COLOR[r.status] ?? 'var(--ink-3)')
-              const pct = p.total_sec > 0 ? Math.min(100, Math.max(0, (r.sec / p.total_sec) * 100)) : 0
-              return (
-                <div className="wf-row" key={r.step}>
-                  <span className="wf-name">
-                    <b>{r.name}</b>
-                    {r.detail && <small>{r.detail}</small>}
-                  </span>
-                  <span className="wf-state" style={{ color }}>
-                    <Icon name={inProgress ? 'refresh' : (STEP_ICON[r.status] ?? 'clock')} size={16} />
-                    {inProgress ? '运行中' : (STEP_LABEL[r.status] ?? r.status)}
-                  </span>
-                  <span className="wf-track" aria-hidden="true">
-                    <i style={{ width: `${pct}%`, background: color }} />
-                  </span>
-                  <span className="wf-sec">{inProgress ? '计时中…' : `${r.sec} 秒${r.orphan ? '*' : ''}`}</span>
-                </div>
-              )
-            })}
-          </div>
-          {closedOrphan && (
-            <p className="hint" style={{ marginTop: 8, fontSize: 13.5 }}>
-              * 这一步只有开工或只有收工记录，耗时对不上（多半是中途插入的提醒或中断）。
-            </p>
-          )}
-        </>
+        <WaterfallRows rows={rows} totalSec={total} running={running} summary={summary} />
       )}
     </div>
   )

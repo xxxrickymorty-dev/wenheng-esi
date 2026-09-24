@@ -123,6 +123,9 @@ export type WaterfallRow = {
   orphan: boolean
 }
 
+/** 收束汇总事件（「全链路 96.5 秒…」那一条）——不是流水线的一步，单列不混进步骤数组 */
+export type WaterfallSummary = { name: string; detail: string; at: string; sec: number }
+
 /** 原始进度记录（一步可能有好几条：开工 / 提醒 / 收工） */
 export type ProgressEvent = {
   ts?: string
@@ -138,6 +141,7 @@ export type JobProgress = {
   status: string
   events: ProgressEvent[]
   waterfall: WaterfallRow[]
+  summary?: WaterfallSummary
   total_sec: number
   /** 这台机器上读不到进度记录（如工作区迁移过） */
   missing: boolean
@@ -147,6 +151,47 @@ export type JobProgress = {
 /** 这次运行每一步用了多久（后端把进度事件换算好；生成中可反复取） */
 export async function getJobProgress(jobId: string): Promise<JobProgress> {
   return req<JobProgress>(`/api/jobs/${encodeURIComponent(jobId)}/progress`)
+}
+
+/** 运行档案（契约 §2.2 #18）：一次运行的完整回放 */
+export type ArchiveReplay = {
+  chain: { from: string; to: string; trigger: string; ts: string; attempt?: number; synthetic?: boolean }[]
+  synthetic: boolean
+  note: string
+  n: number
+}
+export type ArchiveAudit = {
+  exists: boolean
+  verdict: string
+  verdict_label: string
+  rows: { id: string; title: string; status: string; metric: string; reason: string }[]
+  generated_at: string
+  truth_chain: string
+  elapsed_s: number
+}
+export type ArchiveData = {
+  period: string
+  job: Record<string, unknown>
+  job_id: string
+  stats: Record<string, unknown>
+  run_log?: Record<string, unknown>
+  waterfall: WaterfallRow[]
+  waterfall_summary?: WaterfallSummary
+  waterfall_total: number
+  progress_missing: boolean
+  replay: ArchiveReplay
+  audit: ArchiveAudit
+  env: Record<string, unknown>
+  artifacts: Artifact[]
+  logpack: { key: string; n_files: number; bytes: number; files?: { name: string; size: number }[] }
+  logpack_url: string
+  download_base: string
+  trace_files: string[]
+}
+
+/** 这次运行的完整档案（状态机回放 / 瀑布 / 审计 / 环境 / 日志包）——只读 */
+export async function getArchive(period: string): Promise<ArchiveData> {
+  return req<ArchiveData>(`/api/periods/${encodeURIComponent(period)}/archive`)
 }
 
 /** 最近一次有产出的任务（老接口，字段形状见 jobs.list_jobs） */

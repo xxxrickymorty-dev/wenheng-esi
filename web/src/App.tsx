@@ -22,6 +22,7 @@ import { Reading } from './Reading'
 import { Trace } from './Trace'
 import { Tools } from './Tools'
 import { Forecast } from './Forecast'
+import { Archive } from './Archive'
 import { deriveWorkbench, isTerminal, statusToWB, type WBState } from './wb'
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'fail-ledger', 'fail-other', 'stalled', 'signed']
@@ -39,7 +40,7 @@ export default function App() {
   /* ?period= 深链：从老站迁移过来的等价地址（老站 /p/<期次> → 新站 ?view=report&period=<期次>） */
   const wantPeriod = new URLSearchParams(location.search).get('period')
   const _v = new URLSearchParams(location.search).get('view')
-  const view: 'workbench' | 'report' | 'review' | 'ledger' | 'analysis' | 'red' | 'charts' | 'reading' | 'trace' | 'forecast' =
+  const view: 'workbench' | 'report' | 'review' | 'ledger' | 'analysis' | 'red' | 'charts' | 'reading' | 'trace' | 'forecast' | 'archive' =
     _v === 'report' ? 'report'
       : _v === 'review' ? 'review'
         : _v === 'ledger' ? 'ledger'
@@ -49,7 +50,8 @@ export default function App() {
                 : _v === 'reading' ? 'reading'
                   : _v === 'trace' ? 'trace'
                     : _v === 'forecast' ? 'forecast'
-                      : 'workbench'
+                      : _v === 'archive' ? 'archive'
+                        : 'workbench'
 
   const demo = useMemo(() => {
     const v = new URLSearchParams(location.search).get('demo') as WBState | null
@@ -199,7 +201,9 @@ export default function App() {
           </div>
         )}
 
-        {view === 'forecast' ? (
+        {view === 'archive' ? (
+          <Archive period={selected} />
+        ) : view === 'forecast' ? (
           <Forecast />
         ) : view === 'trace' ? (
           <Trace period={selected} />
