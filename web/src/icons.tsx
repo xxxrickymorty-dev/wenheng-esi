@@ -36,6 +36,10 @@ function Sprite() {
       <symbol id="i-book" viewBox="0 0 24 24">
         <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v16H6.5A2.5 2.5 0 0 0 4 21zM4 5.5v15" {...S} />
       </symbol>
+      <symbol id="i-trend" viewBox="0 0 24 24">
+        <path d="M4 17.5 9.5 11l3.5 3L20 6" {...S} />
+        <path d="M15.5 6H20v4.5" {...S} />
+      </symbol>
     </svg>
   )
 }

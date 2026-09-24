@@ -298,6 +298,59 @@ a{color:inherit}
   .wf-track{flex:1 1 120px}
   .wf-sec{flex:0 0 auto}
 }
+
+/* ============================================================================
+   预测台——逐科模型选择 + 试跑（静态稿 mockups/预测台.html 的落地版）
+   ========================================================================== */
+.fc-lead{color:var(--ink-2);font-size:16px;margin:8px 0 0;max-width:74ch}
+.fc-no{font-family:var(--mono);font-size:12px;letter-spacing:.18em;color:var(--zhu);
+  background:var(--zhu-soft);border-radius:6px;padding:2px 7px}
+.fc-stamps{display:flex;gap:22px;flex-wrap:wrap;margin-top:14px;font-size:14px;color:var(--ink-3)}
+.fc-stamps b{color:var(--ink-2)}
+.fc-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.fc-tabs button{padding:9px 16px;border:1px solid var(--line);background:var(--panel);
+  border-radius:999px;cursor:pointer;font:inherit;font-size:15px;color:var(--ink-2)}
+.fc-tabs button.on{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:600}
+.fc-pick{width:100%;border-collapse:collapse;font-size:15.5px;min-width:760px}
+.fc-pick th,.fc-pick td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line-2);
+  vertical-align:top}
+.fc-pick th{background:var(--panel);color:var(--ink-3);font-weight:600;font-size:14px}
+.fc-pick select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;
+  background:var(--card);color:var(--ink)}
+.fc-pick .mdesc{display:block;color:var(--ink-3);font-size:13.5px;max-width:46ch}
+.fc-stat{display:block;color:var(--ink-3);font-size:13px;margin-top:4px}
+.fc-rec{color:var(--ink-2)}
+.fc-save{margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.fc-form{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:14px}
+.fc-form label{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--ink-2)}
+.fc-form select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;
+  background:var(--card);color:var(--ink)}
+.fc-readouts{display:flex;gap:38px;flex-wrap:wrap;margin-top:18px;
+  border-top:1px solid var(--line-2);padding-top:16px}
+.fc-readouts .k{font-size:13.5px;color:var(--ink-3)}
+.fc-readouts .v{font-family:var(--serif);font-size:1.55rem;line-height:1.2}
+.fc-model{border:1px solid var(--line);border-radius:var(--r);margin-top:16px;overflow:hidden}
+.fc-model-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;
+  background:var(--panel);border-bottom:1px solid var(--line)}
+.fc-model-h h3{font-size:16.5px}
+.fc-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:2px;
+  background:var(--line-2)}
+.fc-metrics div{background:var(--card);padding:12px 16px}
+.fc-metrics b{display:block;font-family:var(--serif);font-size:1.3rem}
+.fc-metrics span{font-size:13px;color:var(--ink-3)}
+.fc-break{margin:0;padding:9px 16px;font-size:13.5px;color:var(--ink-3);
+  border-top:1px solid var(--line-2)}
+.fc-chart{display:block;width:100%;height:auto;border-top:1px solid var(--line-2);background:#fbfaf7}
+.fc-tbl{width:100%;border-collapse:collapse;font-size:14.5px;min-width:560px}
+.fc-tbl th,.fc-tbl td{padding:9px 14px;border-bottom:1px solid var(--line-2);text-align:left}
+.fc-tbl th{background:var(--panel);color:var(--ink-3);font-weight:600;font-size:13.5px}
+.fc-tbl td.num{text-align:right;font-family:var(--mono)}
+.fc-tbl tr.crossed td{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
+.fc-ticks{margin:10px 0 0;padding-left:22px;color:var(--ink-2)}
+.fc-ticks li{margin:5px 0}
+@media (max-width:760px){
+  .fc-pick,.fc-tbl{min-width:640px}
+}
 @media (max-width:1000px){
   .reading-grid{grid-template-columns:1fr}
   .col-l,.col-m{border-right:0;border-bottom:1px solid var(--line)}

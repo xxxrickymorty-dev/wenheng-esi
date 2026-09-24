@@ -8,7 +8,8 @@ import { Icon } from './icons'
 import { failureCopy, STATE_LABEL, type Workbench as WB, type WBState } from './wb'
 import type { Run } from './App'
 
-const MODEL_DESC: Record<string, string> = {
+/** 五个模型的一句话说明（界面上"帮馆员选"的文案；预测台也用同一份，改一处两边一致） */
+export const MODEL_DESC: Record<string, string> = {
   'Holt趋势模型': '只抓长期趋势、不管季节。适合稳定上升/下降的学科，外推最直接。',
   '阻尼Holt模型': '趋势会「减速」——越往前推越保守。适合增长在放缓的学科。',
   '季节性ETS模型': '抓「6 期一轮」的双月节律。适合受学年与发布节奏影响的指标。',

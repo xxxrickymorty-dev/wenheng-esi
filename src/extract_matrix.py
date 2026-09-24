@@ -168,7 +168,7 @@ def _esi_top_schools(esi_root, period, disc):
     if not f.exists():
         return None
     try:
-        wb = openpyxl.load_workbook(f, read_only=True, data_only=True)
+        wb = openpyxl.load_workbook(f, data_only=True)  # ESI 新导出的 dimension 坏，必须普通模式
         ws = wb[wb.sheetnames[0]]
         names = set()
         for r in ws.iter_rows(min_row=6, max_col=2, values_only=True):
