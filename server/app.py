@@ -1178,6 +1178,61 @@ async def api_forecast_board(request: Request, period: str = ""):
     return forecasting.board_context(period or None)
 
 
+@app.get("/api/periods/{period}/flexible")
+async def api_period_flexible(request: Request, period: str, intent: str = ""):
+    """灵活报告 JSON（契约 #21①）：列已生成 + 当前稿的 body_html。
+
+    body_html 用**后端同一个 mdview.render**（图已指向
+    `/p/<期次>/flexible/chart/<intent>/<name>`）——前端不引 md 渲染器。
+    未生成过的期次返回空列表 + cur=null + body_html=""，不 500。
+    """
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+    ctx = _flex_ctx(d, intent or None)
+    return {
+        "period": ctx["period_dir"],
+        "intents": ctx["intents"],
+        "reports": [{"intent": r["intent"], "title": r["title"], "meta": r["meta"]}
+                    for r in ctx["reports"]],
+        "cur": (ctx["cur"] or {}).get("intent") or None,
+        "body_html": ctx["body"] or "",
+    }
+
+
+@app.post("/api/periods/{period}/flexible")
+async def api_period_flexible_generate(request: Request, period: str):
+    """生成一份灵活报告（契约 #21②）—— 同步几秒。
+
+    只写 `out/<期次>/flexible/`（产物目录），台账一字节不碰。
+    """
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+    body = await request.json()
+    intent = str(body.get("intent") or "").strip()
+    backend = str(body.get("backend") or "").strip() or None
+    disc = str(body.get("disc") or "").strip() or None
+    import flexible.planner as flex_planner                         # noqa: PLC0415
+    if intent not in flex_planner.INTENTS:
+        return JSONResponse({"error": f"未知意图：{intent}",
+                             "hint": "可选：" + "、".join(flex_planner.INTENTS)}, status_code=400)
+    import flexible.report as flex_report                           # noqa: PLC0415
+    t0 = time.time()
+    try:
+        r = flex_report.generate(d, intent, backend=backend, disc=disc)
+    except Exception as e:                                          # noqa: BLE001
+        return JSONResponse({"error": f"生成失败：{type(e).__name__}", "hint": str(e)[:200]}, status_code=500)
+    return {"ok": True, "intent": intent, "elapsed": round(time.time() - t0, 1),
+            "n_charts": r.get("n_charts"), "backend": (r.get("plan") or {}).get("backend", "")}
+
+
 @app.get("/api/forecast/meta")
 async def api_forecast_meta(request: Request):
     guard = require_admin(request)

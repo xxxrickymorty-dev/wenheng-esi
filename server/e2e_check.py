@@ -499,6 +499,14 @@ check("board 两条路线各 8 学科",
 check("board 行带 model/prox/t1/both_under_5",
       all(k in bd for k in ('"model"', '"prox"', '"t1"', '"both_under_5"')))
 
+# GET /api/periods/{period}/flexible（灵活报告 JSON，契约 #21①）
+st, fx, _ = call("GET", "/api/periods/202607/flexible")
+check("GET flexible API 200", st == 200, f"got {st}")
+check("flexible 有 intents/reports/cur/body_html",
+      all(k in fx for k in ('"intents"', '"reports"', '"cur"', '"body_html"')))
+check("flexible 列到两份报告", fx.count('"intent"') >= 3, f"n={fx.count(chr(34) + 'intent' + chr(34))}")
+check("flexible body_html 指向图表保留路由", "/p/202607/flexible/chart/" in fx)
+
 out("=" * 56)
 if FAILS:
     out(f"结果：{len(FAILS)} 项未过")
