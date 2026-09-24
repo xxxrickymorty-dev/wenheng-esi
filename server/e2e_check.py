@@ -7,7 +7,7 @@
 
 验收范围：登录 → 首屏对勘本 → 控制台 /run → 期次入口 /p/<期次> → 期次红件清单
 → 任务入口与产物 → 签单闸门与落库（含撤回）→ 静态快照同源 → 任务状态口径同源。
-只读 + 一次签单/撤回，不动流水线数据；结束后 202607 停在 unsigned。
+只读 + 一次签单/撤回 + 一次选模往返（验完写回原值），不动流水线数据；结束后 202607 停在 unsigned。
 
 三个容易写错的地方（都踩过，记在这里省得下次再踩）：
 1. Jinja 的 tojson 输出 `"k": "v"`（冒号后有空格），断言 JSON 时正则要允许空白；
@@ -422,11 +422,15 @@ check("POST analyze 200", st == 200, f"got {st}")
 check("analyze 有 text+shields", '"text"' in an and '"shields"' in an)
 check("analyze backend=sentences（LLM 不进数据路径）", '"backend"' in an and '"sentences"' in an)
 
-# POST /api/periods/{period}/forecast-choice（JSON body）
-st, fc, _ = call_json("POST", "/api/periods/202607/forecast-choice", {"choice": {"Chemistry": "SARIMA模型"}})
-check("POST forecast-choice 200", st == 200, f"got {st}")
-check("forecast-choice POST 返回 ok+saved（防被读回路由抢先）",
-      '"ok"' in fc and '"saved"' in fc, f"body={fc[:100]}")
+# POST /api/periods/{period}/forecast-choice（JSON body，契约 #17 嵌套形状）
+# 先取检查前的选择：验完写回——e2e 不把测试选模留在 202607（重出报告会带上它）。
+st, fq0, _ = call("GET", "/api/periods/202607/forecast-choice")
+prev_choice = json.loads(fq0).get("choice", {}) if st == 200 else {}
+st, fc, _ = call_json("POST", "/api/periods/202607/forecast-choice",
+                      {"choice": {"citation": {"化学": "SARIMA模型"}}})
+check("POST forecast-choice 200（嵌套形状）", st == 200, f"got {st}")
+check("forecast-choice POST 返回 ok+saved+saved_routes（防被读回路由抢先）",
+      '"ok"' in fc and '"saved"' in fc and '"saved_routes"' in fc, f"body={fc[:120]}")
 
 # 错误体统一：{error, hint?, missing?}
 st, err, _ = call("GET", "/api/periods/209901")
@@ -452,8 +456,12 @@ check("workbench 有 approvalStatus", '"approvalStatus"' in wb)
 st, fq, _ = call("GET", "/api/periods/202607/forecast-choice")
 check("GET forecast-choice 200", st == 200, f"got {st}")
 check("forecast-choice GET 有 choice", '"choice"' in fq)
-check("读回能见刚保存的值（保存确实落盘）", "SARIMA" in fq, f"body={fq[:120]}")
+check("读回能见刚保存的嵌套值（保存确实落盘）",
+      '"citation"' in fq and "化学" in fq and "SARIMA" in fq, f"body={fq[:160]}")
 check("forecast-choice GET 有 by", '"by"' in fq)
+# 写回检查前的选择（e2e 不留测试残留；原本为空就写回 {}＝无选择态）
+st, _, _ = call_json("POST", "/api/periods/202607/forecast-choice", {"choice": prev_choice})
+check("forecast-choice 写回检查前的选择", st == 200, f"got {st}")
 
 # GET /api/periods/202607/collation?full=true
 st, clf, _ = call("GET", "/api/periods/202607/collation?full=true")

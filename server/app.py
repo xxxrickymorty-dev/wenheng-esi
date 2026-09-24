@@ -724,7 +724,9 @@ async def api_forecast_choice(request: Request, period: str):
     body = await request.json()
     choice = body.get("choice")
     if not isinstance(choice, dict):
-        return JSONResponse({"error": "choice 必须是 {学科: 模型名}", "hint": "例：{'Chemistry': 'SARIMA模型'}"}, status_code=400)
+        return JSONResponse(
+            {"error": "choice 必须是 {路线: {学科: 模型名}}",
+             "hint": '例：{"citation": {"物理学": "SARIMA模型"}}'}, status_code=400)
     out = d / "forecast_choice.json"
     rec = {"choice": choice, "by": guard, "at": time.strftime("%Y-%m-%d %H:%M:%S")}
     out.write_text(json.dumps(rec, ensure_ascii=False, indent=1), encoding="utf-8")
