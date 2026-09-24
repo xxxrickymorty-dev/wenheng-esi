@@ -479,6 +479,16 @@ check("trace cat=charts 可切换", st == 200 and '"cat":"charts"' in tr2, f"got
 
 check("404 错误体有 hint 字段", '"hint"' in err404, f"body={err404[:80]}")
 
+# GET /api/periods/202607/archive（运行档案 JSON，契约 §2.2 #16）
+st, ar, _ = call("GET", "/api/periods/202607/archive")
+check("GET archive 200", st == 200, f"got {st}")
+check("archive 有 replay/audit/logpack/artifacts",
+      all(k in ar for k in ("replay", "audit", "logpack", "artifacts")))
+check("archive 不回绝对路径", '"out_dir"' not in ar and "C:" not in ar and "Desktop" not in ar)
+check("archive logpack_url 指保留下载端点", "/download/logpack" in ar)
+check("archive 对勘本链接已修（不再出现无路由的 /p/{期次}/collation）",
+      '"/p/202607/collation"' not in ar)
+
 out("=" * 56)
 if FAILS:
     out(f"结果：{len(FAILS)} 项未过")

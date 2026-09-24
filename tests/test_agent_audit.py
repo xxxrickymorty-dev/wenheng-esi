@@ -153,7 +153,8 @@ def test_手工槽只认手工标记_机器图槽不算(tmp_path):
 
 # ================================================================== 第 3 项
 def test_期次残留按严重程度分档(tmp_path):
-    """上期及更早的期次多为历史序列正当引用（low）；未来期次必是残留（high）。"""
+    """上期及更早＝low；夹在两期之间＝high（不存在期次，必是写错）；
+    晚于本期＝future（预测目标/下期引用，2026-09-24 修，见下一条）。"""
     (tmp_path / "meta.json").write_text(
         json.dumps({"period_current": "202607", "period_prev": "202605"}),
         encoding="utf-8")
@@ -166,14 +167,38 @@ def test_期次残留按严重程度分档(tmp_path):
     assert {s["period"] for s in r["suspicious"]} == {"201903", "202509"}
 
 
-def test_未来期次判失败(tmp_path):
+def test_未来期次列可疑但不判失败_预测目标合法(tmp_path):
+    """2026-09-24 修：forecast_charts.json / red_slots.json 的预测过线期次
+    （202707/202809/202907）曾按「未来必是残留」误判 high 致 fail（前端实报）。
+    未来期次多为预测目标/下期引用 → 列 suspicious（severity=future）供人工扫，不判失败。"""
     (tmp_path / "meta.json").write_text(
         json.dumps({"period_current": "202607", "period_prev": "202605"}),
         encoding="utf-8")
-    (tmp_path / "x.md").write_text("本期 202609 已出数。", encoding="utf-8")
+    (tmp_path / "x.md").write_text("预计过线 202707，下期 202609 发布。", encoding="utf-8")
+    r = audit.scan_stale(str(tmp_path))
+    assert r["status"] == "pass"
+    assert r["n_high"] == 0
+    assert r["n_future"] == 2
+    assert {s["severity"] for s in r["suspicious"]} == {"future"}
+
+
+def test_夹在两期之间的期次判失败(tmp_path):
+    """唯一自动判失败档：prev < tok < 本期 —— 双月报告不存在这期，必是写错。"""
+    (tmp_path / "meta.json").write_text(
+        json.dumps({"period_current": "202607", "period_prev": "202605"}),
+        encoding="utf-8")
+    (tmp_path / "y.md").write_text("引用 202606 期数据。", encoding="utf-8")
     r = audit.scan_stale(str(tmp_path))
     assert r["status"] == "fail"
     assert r["n_high"] == 1
+
+
+def test_缺meta时不放过任何期次(tmp_path):
+    """没有 meta 就没有基准：非 allowed 的期次一律保守判 high。"""
+    (tmp_path / "x.md").write_text("提到 202609 与 201903。", encoding="utf-8")
+    r = audit.scan_stale(str(tmp_path))
+    assert r["status"] == "fail"
+    assert r["n_high"] == 2
 
 
 # ================================================================== 归档

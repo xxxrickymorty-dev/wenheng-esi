@@ -853,6 +853,29 @@ async def api_period_workbench(request: Request, period: str):
 _TRACE_CATS = ("bigtable", "charts", "province", "matrix", "texts")
 
 
+@app.get("/api/periods/{period}/archive")
+async def api_period_archive(request: Request, period: str):
+    """期次运行档案 JSON（契约 §2.2 #16）—— 状态机回放 + 瀑布 + 审计 + 日志包清单。
+
+    与档案页同源（`archive.build`）。安全：**不回服务器绝对路径**；
+    日志包下载走保留的 `/p/{period}/download/logpack`。
+    期次上下文没有任务级进度事件，`waterfall` 为空是正常的（与老页一致）。
+    """
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+    q = urllib.parse.quote(d.name)
+    view = archive.build(d, job=None, artifacts=jobs.collect_period_artifacts(d.name))
+    view.pop("out_dir", None)                                  # 不回绝对路径
+    view.pop("progress_path", None)
+    view["download_base"] = f"/p/{q}"
+    view["logpack_url"] = f"/p/{q}/download/{view['logpack']['key']}"
+    return view
+
+
 @app.get("/api/periods/{period}/trace")
 async def api_period_trace(request: Request, period: str, cat: str = "bigtable",
                            limit: int = 60, offset: int = 0):

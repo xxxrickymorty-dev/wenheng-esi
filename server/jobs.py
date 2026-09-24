@@ -251,7 +251,8 @@ def collect_period_artifacts(period_dir):
         return bool(path) and path.exists()
 
     q = urllib.parse.quote(str(period_dir))
-    return _collect(out, f"/p/{q}", f"/p/{q}/download", fresh)
+    return _collect(out, f"/p/{q}", f"/p/{q}/download", fresh,
+                    collation_url=f"/p/{q}")
 
 
 # 产物表：key, 中文名, 路径（None = 在线查看型）, 是否主产物
@@ -276,16 +277,25 @@ def _artifact_table(out, fresh):
     ]
 
 
-def _collect(out, page_url, download_url, fresh):
+def _collect(out, page_url, download_url, fresh, collation_url=None):
     items = []
     for key, label, path, primary in _artifact_table(out, fresh):
         if key in ("red_view", "collation"):
             if fresh(out / "red_slots.json"):
-                sub = "redslots" if key == "red_view" else "collation"
-                items.append({"key": key, "label": label,
-                              "name": "在线查看" if key == "collation" else "红色件清单",
-                              "size": None, "url": f"{page_url}/{sub}",
-                              "primary": primary})
+                if key == "red_view":
+                    items.append({"key": key, "label": label,
+                                  "name": "红色件清单",
+                                  "size": None, "url": f"{page_url}/redslots",
+                                  "primary": primary})
+                else:
+                    # 🔴 期次上下文没有 /p/{期次}/collation 这条路由（2026-09-24 修：
+                    #    原来一律拼 {page_url}/collation，期次档案页的「对勘本」链接 404）。
+                    #    期次的对勘本就是 /p/{期次} 本身（现 302 到新站阅读视图）。
+                    items.append({"key": key, "label": label,
+                                  "name": "在线查看",
+                                  "size": None,
+                                  "url": collation_url or f"{page_url}/collation",
+                                  "primary": primary})
             continue
         if fresh(path):
             items.append({"key": key, "label": label, "name": path.name,

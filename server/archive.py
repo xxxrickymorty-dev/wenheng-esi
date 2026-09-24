@@ -169,17 +169,22 @@ def waterfall(events):
     rows = []
     for b in buckets.values():
         s, e = b["start"], b["end"]
+        # 「完成」（step=done）是收束汇总事件：只有收工、elapsed=全链路总时长，
+        # **不是一步**。sec 记 0 并标 summary——否则合计翻倍（96.5→193.0，
+        # 2026-09-24 前端实报）。总时长看 waterfall_total/total_sec。
+        summary = b["step"] == "done" and s is None and e is not None
         if s is not None and e is not None:
             sec = round(max(0.0, e - s), 1)
             orphan = False
         elif s is not None:
             sec, orphan = 0.0, True          # 只有开工没有收工：多半中途失败
         elif e is not None:
-            sec, orphan = round(e, 1), True  # 只有收工没有开工：中途插入的事件
+            sec, orphan = (0.0 if summary else round(e, 1)), True
         else:
             sec, orphan = 0.0, True
         rows.append({"step": b["step"], "name": b["name"], "status": b["status"] or "done",
-                     "detail": b["detail"], "sec": sec, "at": b["ts"], "orphan": orphan})
+                     "detail": b["detail"], "sec": sec, "at": b["ts"],
+                     "orphan": orphan, "summary": summary})
     rows.sort(key=lambda r: (r["at"] or "", r["step"]))
     return rows
 

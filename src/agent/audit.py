@@ -270,6 +270,8 @@ def scan_stale(out_dir, ledger=None):
     扫的是**期次标签残留**——双月报告最典型的陈旧数字：本该跟着本期走的字符串
     （"接近度较7月"、正文里的期次）还留着上上期的。合法出现的期次只有
     {本期 P, 上期 Q}，出现其它 `20xxxx` 一律列**可疑**等人工确认。
+    分档：夹在 P/Q 之间＝high（唯一判失败档）；晚于 P＝future（预测目标/下期引用）；
+    早于等于 Q＝low（历史引用）。
 
     ⚠ 输出是**可疑清单**，不是自动判定"0 残留"：图是 PNG 扫不到文字，
     正文里历史叙述也可能正当引用早期期次。清单清空才叫 0 残留。
@@ -312,24 +314,37 @@ def scan_stale(out_dir, ledger=None):
             continue
         for tok in sorted(set(PERIOD_RE.findall(text))):
             if tok not in allowed:
-                # 严重程度分档，否则历史序列的正常引用会淹没真正的残留：
-                #   > 本期  → high（未来期次，必是残留）
-                #   > 上期  → high（夹在两期之间，不该出现）
-                #   ≤ 上期  → low（历史序列起点/对比年份，多为正当引用）
-                sev = "low" if (prev and tok <= prev) else "high"
+                # 严重程度分档，否则历史序列/预测目标的正常引用会淹没真正的残留：
+                #   ≤ 上期      → low（历史序列起点/对比年份，多为正当引用）
+                #   夹在两期之间 → high（不存在的期次，必是写错——唯一自动判失败档）
+                #   > 本期      → future（预测目标/下期引用；2026-09-24 修：
+                #                   forecast_charts.json / red_slots.json 的预测过线期次
+                #                   （202707/202809/202907）曾按"必是残留"误判 high 致 fail）
+                if not period:
+                    sev = "high"          # 缺 meta：无基准可比，保守不放过
+                elif prev and tok <= prev:
+                    sev = "low"
+                elif tok < period:
+                    sev = "high"
+                else:
+                    sev = "future"
                 suspicious.append({"file": f.name, "period": tok, "severity": sev})
 
     n_high = sum(1 for s in suspicious if s["severity"] == "high")
+    n_future = sum(1 for s in suspicious if s["severity"] == "future")
     return {
         "id": "stale_scan",
-        "status": "fail" if n_high else ("pass" if not suspicious else "pass"),
+        "status": "fail" if n_high else "pass",
         "period": period, "prev": prev,
         "files_scanned": len(targets),
         "n_suspicious": len(suspicious),
         "n_high": n_high,
+        "n_future": n_future,
         "suspicious": suspicious[:30],
-        "note": "仅 high 档判失败；low 档＝上期及更早的期次引用，多为历史序列正当引用，"
-                "列出供人工扫一眼。图（PNG）内文字不在扫描范围",
+        "note": "仅 high 档判失败（夹在两期之间、不存在的期次＝必是写错）。"
+                "future＝晚于本期的期次（预测目标/下期引用，不算残留）；"
+                "low＝上期及更早的历史引用。两档只列出供人工扫一眼。"
+                "图（PNG）内文字不在扫描范围",
     }
 
 

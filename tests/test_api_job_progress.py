@@ -42,6 +42,26 @@ class Test瀑布口径:
         rows = archive.waterfall(ev)
         assert rows[0]["orphan"] is True and rows[0]["sec"] == 0.0
 
+    def test_完成汇总行不计入合计(self):
+        """「完成」只有收工、elapsed=总时长，不是一步——sec 记 0 并标 summary，
+        否则合计翻倍（96.5→193.0，2026-09-24 前端实报）。"""
+        ev = [
+            {"ts": "10:00", "step": "charts", "name": "图表渲染", "status": "start", "elapsed": 66.4},
+            {"ts": "10:00:26", "step": "charts", "name": "图表渲染", "status": "done", "elapsed": 93.3},
+            {"ts": "10:00:26", "step": "done", "name": "完成", "status": "done", "elapsed": 96.5},
+        ]
+        rows = archive.waterfall(ev)
+        by = {r["step"]: r for r in rows}
+        assert by["done"]["summary"] is True
+        assert by["done"]["sec"] == 0.0
+        # 合计＝各步之和（26.9），不再把总时长算进去翻倍
+        assert round(sum(r["sec"] for r in rows), 1) == 26.9
+
+    def test_普通行都带summary字段(self):
+        rows = archive.waterfall(_sample_events())
+        assert all("summary" in r for r in rows)
+        assert not any(r["summary"] for r in rows)
+
     def test_空事件返回空(self):
         assert archive.waterfall([]) == []
         assert archive.waterfall(None) == []
