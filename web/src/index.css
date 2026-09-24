@@ -348,6 +348,34 @@ a{color:inherit}
 .fc-tbl tr.crossed td{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
 .fc-ticks{margin:10px 0 0;padding-left:22px;color:var(--ink-2)}
 .fc-ticks li{margin:5px 0}
+
+/* ============================================================================
+   学科数据总览（分析台·读数版）——22 学科 × 六列；点一行展开逐格来源
+   ========================================================================== */
+.bt-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.bt-search{display:flex;align-items:center;gap:7px;padding:0 12px;border:1px solid var(--line);
+  border-radius:8px;background:var(--card);color:var(--ink-3)}
+.bt-search input{font:inherit;padding:9px 0;border:0;background:transparent;color:var(--ink);width:190px}
+.bt-search input:focus{outline:none}
+.bt-tbl{width:100%;border-collapse:collapse;font-size:15px;min-width:780px}
+.bt-tbl th,.bt-tbl td{padding:10px 12px;border-bottom:1px solid var(--line-2);text-align:left}
+.bt-tbl th{background:var(--panel);color:var(--ink-3);font-weight:600;font-size:13.5px}
+.bt-tbl td.num{text-align:right;font-family:var(--mono)}
+.bt-tbl tbody tr{cursor:pointer}
+.bt-tbl tbody tr:hover{background:var(--panel)}
+.bt-tbl tbody tr.on{background:var(--zhu-soft)}
+.bt-tbl tbody tr:focus-visible{outline-offset:-2px}
+.bt-en{display:block;color:var(--ink-3);font-size:12.5px;font-weight:400}
+.bt-up{color:var(--ok)}
+.bt-down{color:var(--bad)}
+.bt-detail{margin-top:16px;border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:14px 16px;background:var(--panel)}
+.bt-detail h3{font-size:16.5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bt-cells{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-top:10px}
+.bt-cell{border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--card);padding:10px 12px}
+.bt-cell .k{font-size:12.5px;color:var(--ink-3)}
+.bt-cell b{font-size:17px;font-family:var(--mono)}
+.bt-cell .s{display:block;font-size:12.5px;color:var(--ink-3);margin-top:6px;line-height:1.6}
 @media (max-width:760px){
   .fc-pick,.fc-tbl{min-width:640px}
 }

@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { req } from './api'
 import { Icon } from './icons'
+import { BigTable } from './BigTable'
 
 type Shield = { key: string; n_numbers: number; protected_len: number }
 type AnalyzeResp = {
@@ -46,7 +47,10 @@ export function Analysis({ period }: { period: string | null }) {
 
   return (
     <>
-      <section className="card" style={{ padding: '22px 24px' }}>
+      {/* 先看数、再看解读：学科数据总览（读数版） */}
+      <BigTable period={period} />
+
+      <section className="card" style={{ marginTop: 18, padding: '22px 24px' }}>
         <h2 style={{ fontSize: 22, display: 'flex', alignItems: 'center', gap: 10 }}>
           <Icon name="chart" size={22} />分析 · 按节解读
           <span className="tag" style={{ marginLeft: 6 }}>{period ?? '（选择期次）'}</span>

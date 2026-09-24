@@ -40,6 +40,10 @@ function Sprite() {
         <path d="M4 17.5 9.5 11l3.5 3L20 6" {...S} />
         <path d="M15.5 6H20v4.5" {...S} />
       </symbol>
+      <symbol id="i-search" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="6.5" {...S} />
+        <path d="m16 16 4.5 4.5" {...S} />
+      </symbol>
     </svg>
   )
 }
