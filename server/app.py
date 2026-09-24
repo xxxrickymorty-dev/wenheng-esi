@@ -274,8 +274,12 @@ async def run_page(request: Request):
 
 @app.get("/forecast", response_class=HTMLResponse)
 async def forecast_page(request: Request):
-    """V1双路线预测工作台；只读派生数据，不修改台账或既有报告。"""
-    return page(request, "forecast.html", **forecasting.page_context())
+    """老预测页已下线（ADR-0002 阶段 2）—— 302 到新预测台 `?view=forecast`。
+
+    数据面（`/api/forecast/meta`、`/api/forecast/run`）不变，仍由
+    `forecasting.page_context()` 供给。
+    """
+    return _legacy_redirect(request, "/forecast")
 
 
 @app.get("/p/{period}", response_class=HTMLResponse)
@@ -553,6 +557,8 @@ async def api_job_progress(request: Request, job_id: str):
         "status": job.get("status", ""),
         "events": events,
         "waterfall": wf,
+        # 「完成」汇总单列（不进 waterfall 数组）——混进去会让合计翻倍
+        "summary": archive.waterfall_summary(events),
         "total_sec": round(sum(r["sec"] for r in wf), 1),
         "missing": missing,
         "note": ("本次运行没有 progress.jsonl（不是由演示站发起的，"
@@ -690,6 +696,19 @@ async def api_forecast_choice_get(request: Request, period: str):
             "at": rec.get("at", "")}
 
 
+def _count_forecast_choice(choice):
+    """改选统计：新形状 `{route: {学科: 模型}}` 按各路线学科数求和；
+    旧扁平形状 `{学科: 模型}` 按条目数。返回 (学科总数, 路线数或 None)。
+
+    🔴 嵌套形状下 `len(choice)` 恒为 2（路线数），拿它当 saved 是错的
+    （2026-09-24 前端实报 #17）。
+    """
+    nested = bool(choice) and all(isinstance(v, dict) for v in choice.values())
+    if nested:
+        return sum(len(v) for v in choice.values()), len(choice)
+    return len(choice), None
+
+
 @app.api_route("/api/periods/{period}/forecast-choice", methods=["GET", "POST"])
 async def api_forecast_choice(request: Request, period: str):
     if request.method == "GET":
@@ -709,7 +728,11 @@ async def api_forecast_choice(request: Request, period: str):
     out = d / "forecast_choice.json"
     rec = {"choice": choice, "by": guard, "at": time.strftime("%Y-%m-%d %H:%M:%S")}
     out.write_text(json.dumps(rec, ensure_ascii=False, indent=1), encoding="utf-8")
-    return {"ok": True, "saved": len(choice), "path": str(out.name)}
+    n_subjects, n_routes = _count_forecast_choice(choice)
+    resp = {"ok": True, "saved": n_subjects, "path": str(out.name)}
+    if n_routes is not None:
+        resp["saved_routes"] = n_routes
+    return resp
 
 
 @app.post("/api/periods/{period}/revoke")
@@ -853,13 +876,37 @@ async def api_period_workbench(request: Request, period: str):
 _TRACE_CATS = ("bigtable", "charts", "province", "matrix", "texts")
 
 
-@app.get("/api/periods/{period}/archive")
-async def api_period_archive(request: Request, period: str):
-    """期次运行档案 JSON（契约 §2.2 #16）—— 状态机回放 + 瀑布 + 审计 + 日志包清单。
+def _rel_path(p):
+    """绝对路径 -> 仓库相对（跨机器可读；API 不回服务器目录结构）。
 
-    与档案页同源（`archive.build`）。安全：**不回服务器绝对路径**；
-    日志包下载走保留的 `/p/{period}/download/logpack`。
-    期次上下文没有任务级进度事件，`waterfall` 为空是正常的（与老页一致）。
+    转不了（不在仓库内）就只回文件名。
+    """
+    try:
+        return str(pathlib.Path(p).resolve().relative_to(config.ROOT)).replace("\\", "/")
+    except (ValueError, OSError, TypeError):
+        return pathlib.Path(str(p)).name
+
+
+def _sanitize_paths(obj, keys):
+    """把 dict 里指定键的路径值换成仓库相对形式（原对象不改）。"""
+    if not isinstance(obj, dict):
+        return obj
+    out = dict(obj)
+    for k in keys:
+        if out.get(k):
+            out[k] = _rel_path(out[k])
+    if isinstance(out.get("stats"), dict):          # 嵌套的 stats 里也有 input
+        out["stats"] = _sanitize_paths(out["stats"], keys)
+    return out
+
+
+@app.get("/api/periods/{period}/archive")
+async def api_period_archive(request: Request, period: str, job: str = ""):
+    """期次运行档案 JSON（契约 §2.2 #18）—— 状态机回放 + 瀑布 + 审计 + 日志包清单。
+
+    与档案页同源（`archive.build`）。**自动挂该期最近一次任务**
+    （否则 replay 只能是空链、waterfall 无事件）；`?job=<id>` 可指定某次运行。
+    安全：**不回服务器绝对路径**；日志包下载走保留的 `/p/{period}/download/logpack`。
     """
     guard = require_admin(request)
     if isinstance(guard, JSONResponse):
@@ -867,10 +914,22 @@ async def api_period_archive(request: Request, period: str):
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+    if job:
+        target = jobs.read_job(job)
+        if target is None:
+            return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
+    else:
+        target = next((j for j in jobs.list_jobs(50)
+                       if d.name in (j.get("period"), j.get("out_period"))), None)
     q = urllib.parse.quote(d.name)
-    view = archive.build(d, job=None, artifacts=jobs.collect_period_artifacts(d.name))
+    view = archive.build(d, job=target, artifacts=jobs.collect_period_artifacts(d.name))
     view.pop("out_dir", None)                                  # 不回绝对路径
     view.pop("progress_path", None)
+    # job/stats/run_log 里还有 input/progress/console 等本机路径：转仓库相对
+    _path_keys = ("input", "progress", "console", "run_dir", "out_dir")
+    view["job"] = _sanitize_paths(view.get("job"), _path_keys)
+    view["stats"] = _sanitize_paths(view.get("stats"), _path_keys)
+    view["run_log"] = _sanitize_paths(view.get("run_log"), _path_keys)
     view["download_base"] = f"/p/{q}"
     view["logpack_url"] = f"/p/{q}/download/{view['logpack']['key']}"
     return view

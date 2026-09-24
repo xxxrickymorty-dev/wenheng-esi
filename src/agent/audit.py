@@ -303,6 +303,7 @@ def scan_stale(out_dir, ledger=None):
         targets.append(docx)
 
     suspicious = []
+    futures = []          # 晚于本期的期次（预测目标/下期引用）：不算可疑，但留痕可查
     for f in targets:
         try:
             if f.suffix == ".docx":
@@ -328,10 +329,12 @@ def scan_stale(out_dir, ledger=None):
                     sev = "high"
                 else:
                     sev = "future"
-                suspicious.append({"file": f.name, "period": tok, "severity": sev})
+                item = {"file": f.name, "period": tok, "severity": sev}
+                # future 单列：预测章合法带未来期次（202707 等），混进可疑清单会淹
+                # 掉真正要看的 low/high（2026-09-24 前端验收：suspicious 无预测期次）。
+                (futures if sev == "future" else suspicious).append(item)
 
     n_high = sum(1 for s in suspicious if s["severity"] == "high")
-    n_future = sum(1 for s in suspicious if s["severity"] == "future")
     return {
         "id": "stale_scan",
         "status": "fail" if n_high else "pass",
@@ -339,11 +342,12 @@ def scan_stale(out_dir, ledger=None):
         "files_scanned": len(targets),
         "n_suspicious": len(suspicious),
         "n_high": n_high,
-        "n_future": n_future,
+        "n_future": len(futures),
         "suspicious": suspicious[:30],
+        "futures": futures[:30],
         "note": "仅 high 档判失败（夹在两期之间、不存在的期次＝必是写错）。"
-                "future＝晚于本期的期次（预测目标/下期引用，不算残留）；"
-                "low＝上期及更早的历史引用。两档只列出供人工扫一眼。"
+                "low＝上期及更早的历史引用，列出供人工扫一眼；"
+                "future＝晚于本期的期次（预测目标/下期引用），单列 futures 不算可疑。"
                 "图（PNG）内文字不在扫描范围",
     }
 

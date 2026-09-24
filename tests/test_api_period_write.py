@@ -134,3 +134,22 @@ class TestP2写操作:
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
         block = src.split("async def api_period_flag_json")[1].split("@app.")[0]
         assert "require_admin" in block
+
+class TestForecastChoice计数:
+    """#17：嵌套形状 {route: {学科: 模型}} 下 len(choice) 恒为路线数——saved 要数学科。"""
+
+    def test_嵌套形状按学科求和(self):
+        from server.app import _count_forecast_choice
+        n, routes = _count_forecast_choice(
+            {"citation": {"A": "m1", "B": "m2"}, "rank": {"C": "m3"}})
+        assert n == 3 and routes == 2          # 验收：saved=3
+
+    def test_旧扁平形状按条目数(self):
+        from server.app import _count_forecast_choice
+        n, routes = _count_forecast_choice({"A": "m1", "B": "m2"})
+        assert n == 2 and routes is None
+
+    def test_空选择(self):
+        from server.app import _count_forecast_choice
+        assert _count_forecast_choice({}) == (0, None)
+

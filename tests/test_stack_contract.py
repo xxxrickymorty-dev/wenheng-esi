@@ -255,10 +255,11 @@ EXPECTED_LEGACY_REDIRECTS = {
     "/jobs/{job_id}/collation": "/app/?view=reading&period={period}",
     "/jobs/{job_id}/redslots": "/app/?view=red&period={period}",
     "/jobs/{job_id}/charts": "/app/?view=charts&period={period}",
+    "/forecast": "/app/?view=forecast",
 }
 
 #: P2 未迁、本轮不下线的三页——**不许**出现在映射表里（迁完再进第二轮）。
-P2_KEEP_PAGES = ("/p/{period}/archive", "/p/{period}/flexible", "/forecast")
+P2_KEEP_PAGES = ("/p/{period}/archive", "/p/{period}/flexible")
 
 
 def test_302映射表与清单一致():

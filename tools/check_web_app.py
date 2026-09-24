@@ -5,12 +5,17 @@ r"""端到端：`/app`（React 工作区）在真实浏览器里跑通「登录 
 ——dist 没重新构建、接口 401、基路径写错、外链被断网拦掉——**都不会让 pytest 变红**，
 只会在评审现场看到白屏。所以给它一条真实浏览器的端到端路径。
 
+2026-09-24 重写：按现版两屏结构（工作台 + 陈列馆 `#/app/shelf/`）。
+旧版断言挂在 9-22 骨架版（期次列表 + GSAP）上，现版首屏是工作台、全仓已无 gsap 引用，
+旧断言恒失败——别再按"列表 + 动画"查，按 stable 锚点查：
+  工作台：nav[aria-label="工作台"]；陈列馆：#coverArt / #flipbook。
+
 跑法（playwright 在**系统 Python** 里，不在 `.venv`）：
 
     .venv\Scripts\python.exe -m uvicorn server.app:app --host 127.0.0.1 --port 8080
     & "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe" tools\check_web_app.py
 
-退出码：0 = 通过；1 = 有断言失败（失败项打印在前）。
+退出码 0 = 通过；1 = 有断言失败（失败项打印在前）。
 """
 import http.cookiejar
 import pathlib
@@ -58,20 +63,32 @@ def main():
         page.on("console", lambda m: problems.append("console.error: " + m.text)
                 if m.type == "error" else None)
 
-        page.goto(BASE + "/app/", wait_until="networkidle")
-        page.wait_for_selector("li", timeout=10000)
-        items = page.eval_on_selector_all("li", "els => els.map(e => e.innerText)")
-        check("期次列表已渲染（≥1 项）", len(items) >= 1, f"{len(items)} 项")
-        check("首项带期号与中文标签",
-              bool(items) and "期" in items[0] and any(ch.isdigit() for ch in items[0]),
-              items[0].replace("\n", " | ") if items else "")
-        moving = page.eval_on_selector_all(
-            "li", "els => els.filter(e => e.style.transform || e.style.opacity).length")
-        check("GSAP 动画生效（列表项带内联 transform/opacity）", moving >= 1, f"{moving} 项")
+        # ---- 1) 首屏 = 工作台 ----
+        resp = page.goto(BASE + "/app/", wait_until="networkidle")
+        check("GET /app/ → 200", bool(resp) and resp.status == 200,
+              f"got {resp.status if resp else '?'}")
+        try:
+            page.wait_for_selector('nav[aria-label="工作台"]', timeout=10000)
+            check("工作台导航已渲染（nav[aria-label=工作台]）", True)
+        except Exception as e:                                       # noqa: BLE001
+            check("工作台导航已渲染（nav[aria-label=工作台]）", False, str(e)[:80])
+        n_blocks = page.eval_on_selector_all("section, li, article", "els => els.length")
+        check("工作台渲染出内容块（section/li/article ≥ 1）", n_blocks >= 1, f"{n_blocks} 块")
+        page.screenshot(path=str(SHOT), full_page=False)
+
+        # ---- 2) 陈列馆（G 的体验，挂在 /app/shelf/） ----
+        resp2 = page.goto(BASE + "/app/shelf/", wait_until="networkidle")
+        check("GET /app/shelf/ → 200", bool(resp2) and resp2.status == 200,
+              f"got {resp2.status if resp2 else '?'}")
+        try:
+            page.wait_for_selector("#coverArt, #flipbook", timeout=10000)
+            check("陈列馆渲染（书架 canvas 出现）", True)
+        except Exception as e:                                       # noqa: BLE001
+            check("陈列馆渲染（书架 canvas 出现）", False, str(e)[:80])
+
+        # ---- 3) 零报错（覆盖上面两次导航） ----
         check("零 pageerror / console.error", not problems, "; ".join(problems[:3]))
 
-        SHOT.parent.mkdir(parents=True, exist_ok=True)
-        page.screenshot(path=str(SHOT), full_page=False)
         browser.close()
 
     print("结果：" + ("全部通过" if not failures else f"{len(failures)} 项失败：{failures}"))

@@ -59,6 +59,8 @@ LEGACY_REDIRECTS = {
     "/jobs/{job_id}/collation": "/app/?view=reading&period={period}",
     "/jobs/{job_id}/redslots": "/app/?view=red&period={period}",
     "/jobs/{job_id}/charts": "/app/?view=charts&period={period}",
+    # 2026-09-24：老预测页已被新预测台（/app/?view=forecast）取代（前端确认）。
+    "/forecast": "/app/?view=forecast",
 }
 
 #: 已下线（302 已生效）的条目——随每个页面下线追加。
@@ -74,6 +76,7 @@ LEGACY_LIVE = (
     "/jobs/{job_id}/collation",
     "/jobs/{job_id}/redslots",
     "/jobs/{job_id}/charts",
+    "/forecast",
 )
 
 #: P2 未迁、本轮**不下线**的三页（保留原样，不进映射表）。
@@ -81,7 +84,6 @@ LEGACY_LIVE = (
 LEGACY_KEEP_PAGES = (
     "/p/{period}/archive",
     "/p/{period}/flexible",
-    "/forecast",
 )
 
 

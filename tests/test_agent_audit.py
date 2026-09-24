@@ -47,6 +47,14 @@ def test_六项检查齐全且与实现一一对应():
         assert callable(audit.CHECKS[name])
 
 
+def test_每个审计项都有中文标题():
+    """标题表（server/archive.py 的 _AUDIT_TITLE）键名必须跟 CHECKS 注册的 id 一致——
+    旧表写的是 charts、注册的是 figures，查不到就原样吐英文 id（2026-09-24 前端实报）。"""
+    from server import archive as arch
+    for iid in audit.AUDIT_ITEMS:
+        assert arch._AUDIT_TITLE.get(iid), f"{iid} 缺中文标题"
+
+
 def test_三个M4工具已接线不再是待实现(tmp_path):
     """契约早就注册了，milestone 标 M4。实现没接上时调用会抛 TOOL_NOT_IMPLEMENTED。
 
@@ -164,13 +172,15 @@ def test_期次残留按严重程度分档(tmp_path):
     assert r["period"] == "202607"        # 键名必须是 period_current，不是 period
     assert r["status"] == "pass"          # 只有 low 档 → 不判失败
     assert r["n_high"] == 0
+    assert r["n_future"] == 0
     assert {s["period"] for s in r["suspicious"]} == {"201903", "202509"}
 
 
-def test_未来期次列可疑但不判失败_预测目标合法(tmp_path):
+def test_未来期次单列futures不判失败(tmp_path):
     """2026-09-24 修：forecast_charts.json / red_slots.json 的预测过线期次
     （202707/202809/202907）曾按「未来必是残留」误判 high 致 fail（前端实报）。
-    未来期次多为预测目标/下期引用 → 列 suspicious（severity=future）供人工扫，不判失败。"""
+    未来期次多为预测目标/下期引用 → 单列 futures（不漏痕），不进 suspicious、不判失败
+    （前端验收：suspicious 无预测期次）。"""
     (tmp_path / "meta.json").write_text(
         json.dumps({"period_current": "202607", "period_prev": "202605"}),
         encoding="utf-8")
@@ -179,7 +189,8 @@ def test_未来期次列可疑但不判失败_预测目标合法(tmp_path):
     assert r["status"] == "pass"
     assert r["n_high"] == 0
     assert r["n_future"] == 2
-    assert {s["severity"] for s in r["suspicious"]} == {"future"}
+    assert r["suspicious"] == []                       # 预测期次不在可疑清单里
+    assert {s["period"] for s in r["futures"]} == {"202707", "202609"}
 
 
 def test_夹在两期之间的期次判失败(tmp_path):

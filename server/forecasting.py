@@ -11,12 +11,17 @@ matplotlib.use("Agg")
 from matplotlib.figure import Figure
 
 from charts import STACK as CHART_FONT_STACK
-from esi_v1.config_v1 import MODEL_NAMES, MODEL_PACKAGE_VERSION
+from esi_v1.config_v1 import (BASELINE_RECOMMENDATIONS_202607, MODEL_NAMES,
+                                MODEL_PACKAGE_VERSION)
 from esi_v1.data import latest_ready_period, load_standard_input, subject_task_data
 from esi_v1.service import run_prediction
 
 from . import config
 
+
+#: V1 基线推荐的冻结期次（与 BASELINE_RECOMMENDATIONS_202607 成对）。
+#: 前端不写死基线表——写死会跟冻结口径漂移（契约 #16）。
+RECOMMENDATION_BASELINE = "202607"
 
 ROUTES = [
     {"value": "citation", "label": "路线1 · 总被引 / ESI前1%被引阈值"},
@@ -45,6 +50,9 @@ def page_context() -> dict:
             "routes": ROUTES,
             "models": MODEL_OPTIONS,
             "model_version": MODEL_PACKAGE_VERSION,
+            # V1 基线推荐（按路线分）：前端「V1 推荐」列直接读它
+            "recommendations": BASELINE_RECOMMENDATIONS_202607,
+            "recommendation_baseline": RECOMMENDATION_BASELINE,
             "load_error": "",
         }
     except Exception as exc:
@@ -55,6 +63,8 @@ def page_context() -> dict:
             "routes": ROUTES,
             "models": MODEL_OPTIONS,
             "model_version": MODEL_PACKAGE_VERSION,
+            "recommendations": BASELINE_RECOMMENDATIONS_202607,
+            "recommendation_baseline": RECOMMENDATION_BASELINE,
             "load_error": str(exc),
         }
 

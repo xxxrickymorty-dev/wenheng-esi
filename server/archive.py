@@ -139,17 +139,21 @@ _DONE_STATUS = ("done", "warn", "failed")
 
 
 def waterfall(events):
-    """`progress.jsonl` → 每步耗时。
+    """`progress.jsonl` → 每步耗时（**不含**「完成」汇总事件，见 `waterfall_summary`）。
 
     `elapsed` 是**累计秒**（从进程启动算起），本步耗时 = 收工时刻 − 开工时刻。
     没有 start 的步（脚本中途插入的 warn）按 0 计并标 `orphan`。
+    顺序：按**开工累计秒**排（真执行序）；同一秒开工的多步保持**事件出现序**——
+    按名字排会把 compute 排到 parse 前（2026-09-24 前端实报）。
     """
     buckets: dict = {}
-    for e in events or []:
+    for i, e in enumerate(events or []):
         step = e.get("step") or e.get("name") or "?"
+        if step == "done":
+            continue        # 「完成」是收束汇总（elapsed=全链路总时长），不是一步
         b = buckets.setdefault(step, {"step": step, "name": e.get("name") or step,
                                       "start": None, "end": None, "status": "",
-                                      "detail": "", "ts": e.get("ts", "")})
+                                      "detail": "", "ts": e.get("ts", ""), "order": i})
         st = (e.get("status") or "").lower()
         el = e.get("elapsed")
         el = float(el) if isinstance(el, (int, float)) else None
@@ -166,27 +170,49 @@ def waterfall(events):
         elif not b["status"]:
             b["status"] = st or b["status"]
 
-    rows = []
+    pairs = []
     for b in buckets.values():
         s, e = b["start"], b["end"]
-        # 「完成」（step=done）是收束汇总事件：只有收工、elapsed=全链路总时长，
-        # **不是一步**。sec 记 0 并标 summary——否则合计翻倍（96.5→193.0，
-        # 2026-09-24 前端实报）。总时长看 waterfall_total/total_sec。
-        summary = b["step"] == "done" and s is None and e is not None
         if s is not None and e is not None:
             sec = round(max(0.0, e - s), 1)
             orphan = False
         elif s is not None:
             sec, orphan = 0.0, True          # 只有开工没有收工：多半中途失败
         elif e is not None:
-            sec, orphan = (0.0 if summary else round(e, 1)), True
+            sec, orphan = round(e, 1), True  # 只有收工没有开工：中途插入的事件
         else:
             sec, orphan = 0.0, True
-        rows.append({"step": b["step"], "name": b["name"], "status": b["status"] or "done",
-                     "detail": b["detail"], "sec": sec, "at": b["ts"],
-                     "orphan": orphan, "summary": summary})
-    rows.sort(key=lambda r: (r["at"] or "", r["step"]))
-    return rows
+        # 排序键：开工累计秒优先；缺失退收工；再缺就靠事件序兜底。
+        # 同值（同一秒开工）用事件出现序——执行序，不按名字排。
+        key = s if s is not None else e
+        pairs.append(((key, b["order"]), {"step": b["step"], "name": b["name"],
+                                          "status": b["status"] or "done",
+                                          "detail": b["detail"], "sec": sec,
+                                          "at": b["ts"], "orphan": orphan}))
+
+    def _key(item):
+        k, order = item[0]
+        return (float("inf") if k is None else k, order)
+
+    pairs.sort(key=_key)
+    return [r for _, r in pairs]
+
+
+def waterfall_summary(events):
+    """「完成」汇总事件 → `{name, detail, at, sec}`（**不进步骤数组**；无则 None）。
+
+    sec 是全链路总时长（累计 elapsed）。它混进步骤数组会让合计翻倍
+    （96.5→193.0，2026-09-24 前端实报）——单列出来给展示用。
+    """
+    done = next((e for e in reversed(events or [])
+                 if (e.get("step") or "") == "done"), None)
+    if not done:
+        return None
+    sec = done.get("elapsed")
+    return {"name": done.get("name") or "完成",
+            "detail": done.get("detail") or "",
+            "at": done.get("ts") or "",
+            "sec": round(float(sec), 1) if isinstance(sec, (int, float)) else None}
 
 
 # ---------------------------------------------------------------- 审计摘要
@@ -196,7 +222,9 @@ _AUDIT_TITLE = {
     "stale_scan": "陈旧期次残留扫描",
     "golden_bt": "金样回测",
     "manual_slots": "手工槽清点",
-    "charts": "图表验收",
+    # 🔴 键名要跟 CHECKS 注册的 id 一致（旧表写的是 charts，注册的是 figures——
+    #    查不到就原样吐英文 id，2026-09-24 前端实报）。
+    "figures": "图表抽查",
 }
 
 
@@ -270,6 +298,7 @@ def build(out_dir, job=None, artifacts=None):
         "run_log": run_log,
         "stats": (job or {}).get("stats") or run_log,
         "waterfall": wf,
+        "waterfall_summary": waterfall_summary(events),
         "waterfall_total": round(sum(r["sec"] for r in wf), 1),
         "progress_path": str(prog) if prog else "",
         "progress_missing": progress_missing,

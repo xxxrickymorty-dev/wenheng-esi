@@ -42,25 +42,35 @@ class Test瀑布口径:
         rows = archive.waterfall(ev)
         assert rows[0]["orphan"] is True and rows[0]["sec"] == 0.0
 
-    def test_完成汇总行不计入合计(self):
-        """「完成」只有收工、elapsed=总时长，不是一步——sec 记 0 并标 summary，
-        否则合计翻倍（96.5→193.0，2026-09-24 前端实报）。"""
+    def test_完成汇总不进步骤数组(self):
+        """「完成」只有收工、elapsed=总时长，不是一步——不进 waterfall 数组
+        （混进去合计翻倍 96.5→193.0，2026-09-24 前端实报）；单列 waterfall_summary。"""
         ev = [
             {"ts": "10:00", "step": "charts", "name": "图表渲染", "status": "start", "elapsed": 66.4},
             {"ts": "10:00:26", "step": "charts", "name": "图表渲染", "status": "done", "elapsed": 93.3},
-            {"ts": "10:00:26", "step": "done", "name": "完成", "status": "done", "elapsed": 96.5},
+            {"ts": "10:00:26", "step": "done", "name": "完成", "status": "done",
+             "detail": "全链路 96.5 秒", "elapsed": 96.5},
         ]
         rows = archive.waterfall(ev)
-        by = {r["step"]: r for r in rows}
-        assert by["done"]["summary"] is True
-        assert by["done"]["sec"] == 0.0
-        # 合计＝各步之和（26.9），不再把总时长算进去翻倍
-        assert round(sum(r["sec"] for r in rows), 1) == 26.9
+        assert [r["step"] for r in rows] == ["charts"]        # 无「完成」伪步骤
+        assert round(sum(r["sec"] for r in rows), 1) == 26.9  # 合计不翻倍
+        s = archive.waterfall_summary(ev)
+        assert s["sec"] == 96.5 and s["name"] == "完成" and "96.5" in s["detail"]
 
-    def test_普通行都带summary字段(self):
-        rows = archive.waterfall(_sample_events())
-        assert all("summary" in r for r in rows)
-        assert not any(r["summary"] for r in rows)
+    def test_无完成事件时summary为None(self):
+        assert archive.waterfall_summary(_sample_events()) is None
+
+    def test_同秒步骤按事件顺序不按名字(self):
+        """同一秒开工的四步：parse → compute → forecast → province（执行序）。
+        旧实现按名字排会把 compute 排到 parse 前（2026-09-24 前端实报）。"""
+        ev = []
+        for st in ("parse", "compute", "forecast", "province"):
+            ev.append({"ts": "10:00:00", "step": st, "name": st, "status": "start",
+                       "elapsed": 0.0})
+            ev.append({"ts": "10:00:01", "step": st, "name": st, "status": "done",
+                       "elapsed": 1.0})
+        rows = archive.waterfall(ev)
+        assert [r["step"] for r in rows] == ["parse", "compute", "forecast", "province"]
 
     def test_空事件返回空(self):
         assert archive.waterfall([]) == []
