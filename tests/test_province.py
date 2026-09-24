@@ -102,3 +102,71 @@ def test_溯源指向ESI原始包():
     data = ep.compute(ESI.parent, "202607")
     src = data["universities"]["云南大学"]["发文量"]["src"]
     assert "institutions.xlsx" in src and "ESI数据" in src
+
+
+# ============================================================ ⑤ 列序会变（按表头读）
+HDR_15 = ["", "Institutions", "Countries/Regions", "Web of Science Documents", "Cites",
+          "Cites/Paper", "Top Papers", "Cites to Top Papers", "Cites/Top Paper",
+          "Highly Cited Papers", "Cites to Highly Cited Papers", "Cites/Highly Cited Paper",
+          "Hot Papers", "Cites to Hot Papers", "Cites/Hot Paper"]
+ROW_15 = [1, "YUNNAN UNIVERSITY", "CHINA MAINLAND", 21720, 327007, 15.06, 291,
+          41979, 144.26, 290, 41979, 144.75, 13, 1000, 76.9]
+HDR_9 = ["", "Institutions", "Countries/Regions", "Web of Science Documents", "Cites",
+         "Cites/Paper", "Top Papers", "Highly Cited Papers", "Hot Papers"]
+ROW_9 = [1, "YUNNAN UNIVERSITY", "CHINA MAINLAND", 21009, 309949, 14.75, 274, 272, 11]
+HDR_7 = ["", "Institutions", "Countries/Regions", "Web of Science Documents", "Cites",
+         "Cites/Paper", "Top Papers"]
+ROW_7 = [1, "YUNNAN UNIVERSITY", "CHINA MAINLAND", 19596, 273732, 13.97, 245]
+
+
+def _make_inst(tmp_path, period, hdr, row):
+    import openpyxl
+    d = pathlib.Path(tmp_path) / period
+    d.mkdir(parents=True, exist_ok=True)
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Sheet0"
+    ws.cell(5, 1, "Indicators Results")
+    for j, h in enumerate(hdr, 1):
+        ws.cell(6, j, h)
+    for j, v in enumerate(row, 1):
+        ws.cell(7, j, v)
+    wb.save(d / "Institutions.xlsx")
+
+
+def test_十五列新导出按表头读高被引与热点(tmp_path):
+    """🔴 2026-09-24 rick 问「热点论文为什么不填写」的真因：202609 起机构总表默认
+    15 列（三组各带 Cites to / Cites per），`Hot Papers` 从第 9 列挪到第 13 列。
+    按固定下标读 → 高被引被填成 `Cites to Top Papers`（41979）、热点读空。
+    本测试用同构合成表钉住「按表头找列」。"""
+    _make_inst(tmp_path, "202609", HDR_15, ROW_15)
+    rec = ep.compute(tmp_path, "202609")["universities"]["云南大学"]
+    assert rec["高被引论文"]["v"] == 290, "读到 Cites to Top Papers 了（=41979）"
+    assert rec["热点论文"]["v"] == 13, "热点论文被读成空"
+    assert rec["顶尖论文"]["v"] == 291 and rec["被引频次"]["v"] == 327007
+
+
+def test_旧九列版式仍读对(tmp_path):
+    """202607 那版 9 列：高被引第 8 列、热点第 9 列 —— 不能被新逻辑读错。"""
+    _make_inst(tmp_path, "202607", HDR_9, ROW_9)
+    rec = ep.compute(tmp_path, "202607")["universities"]["云南大学"]
+    assert rec["高被引论文"]["v"] == 272 and rec["热点论文"]["v"] == 11
+
+
+def test_七列老版式两列留空(tmp_path):
+    """202601/202605 版源端就没有这两列 → None（填表时留空，不是漏填）。"""
+    _make_inst(tmp_path, "202601", HDR_7, ROW_7)
+    rec = ep.compute(tmp_path, "202601")["universities"]["云南大学"]
+    assert rec["高被引论文"]["v"] is None and rec["热点论文"]["v"] is None
+    assert rec["顶尖论文"]["v"] == 245
+
+
+def test_表头认不出必需列时拒绝出数(tmp_path):
+    """宁可拒绝，不许带病出表：缺 Top Papers 的表头直接拦停。"""
+    _make_inst(tmp_path, "209901", HDR_7[:6], ROW_7[:6])
+    try:
+        ep.compute(tmp_path, "209901")
+    except SystemExit as e:
+        assert "认不出" in str(e)
+    else:
+        raise AssertionError("表头缺列时应该拒绝")

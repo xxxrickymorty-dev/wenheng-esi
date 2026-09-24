@@ -83,11 +83,33 @@ DISC_FILES = (
     "Psychiatry Psychology", "Social Sciences, General", "Space Science",
 )
 
-#: ⚠ **源端列差异**：ESI 机构总表在 202603 之前**没有** `Highly Cited Papers` /
-#: `Hot Papers` 两列（202601 / 202605 实测只有 6 列，202603 / 202607 有 8 列）。
-#: 后果：那两期的 T19「高被引论文」「热点论文」两列 × 11 校 = 22 格在源端就不存在，
-#: 只能留空。**不是漏填**，别去"修"它 —— 要补只能人工从 ESI 平台另导。
-#: `tools/verify_report_cells.py` 会把这类空格单独报成「提示」，与真差异分开。
+#: ⚠ **机构总表的列序会变，必须按表头名找列**（不能按固定下标）：
+#:   · 202601 / 202605 版 = 7 列：只有 `Top Papers`，**没有**高被引/热点两列
+#:     → T19「高被引论文」「热点论文」× 11 校 = 22 格源端不存在，只能留空（非漏填）；
+#:   · 202607 版 = 9 列：高被引第 8 列、热点第 9 列；
+#:   · **202609 起（取数默认）= 15 列**：三组各带 `Cites to …` / `Cites/…` 两列，
+#:     高被引挪到第 10 列、热点挪到第 13 列。
+#: 🔴 2026-09-24 实测踩过：按下标读 15 列版 → 「高被引论文」被填成
+#:   `Cites to Top Papers`（云大 41979，真值 290）、「热点论文」读成空
+#:   （rick 问「最后一列热点论文为什么不填写」即此）。填表器与校验器共用同一读法，
+#:   属于**自证式漏报** —— 换列序的期次必须按表头核一遍。
+_INST_HEADERS = {
+    "webofsciencedocuments": "Web of Science Documents",
+    "cites": "Cites",
+    "citespaper": "Cites/Paper",
+    "toppapers": "Top Papers",
+    "highlycitedpapers": "Highly Cited Papers",
+    "hotpapers": "Hot Papers",
+}
+
+
+def _norm_header(v):
+    """表头归一：小写 + 只留字母。`Cites/Top Paper`→`citestoppaper`，
+    与 `Cites`→`cites`、`Highly Cited Papers`→`highlycitedpapers` 互不混淆。"""
+    import re
+
+    return re.sub(r"[^a-z]", "", str(v or "").lower())
+
 
 
 def _disc_workbooks(d):
@@ -131,25 +153,42 @@ def compute(esi_root, period):
     want = {en: cn for cn, en in UNIVERSITIES}
     rows, cn_rank = {}, {}
     cn_seen = 0
-    # 表头在第 6 行（1-based），数据从第 7 行起；列序见 INST_COLS 的映射
+    # 表头在第 6 行（1-based；第 5 行是 "Indicators Results"），数据从第 7 行起。
+    # 列**按表头名定位**（见 _INST_HEADERS 的上方注释：15 列版会把下标全打乱）。
     wb = openpyxl.load_workbook(inst_file, data_only=True)  # ESI 新导出 dimension 常坏，普通模式才读得全
     ws = wb[wb.sheetnames[0]]
-    for ridx, row in enumerate(ws.iter_rows(min_row=7, max_col=9, values_only=True), start=7):
-        nm = str(row[1]).strip() if row[1] else ""
+    col_of, i_inst, i_country = {}, 1, 2
+    for ridx, row in enumerate(ws.iter_rows(min_row=5, values_only=True), start=5):
+        if not col_of:
+            norm = [_norm_header(v) for v in row]
+            if "institutions" in norm:
+                col_of = {_INST_HEADERS[n]: i for i, n in enumerate(norm) if n in _INST_HEADERS}
+                missing = [c for c in ("Web of Science Documents", "Cites", "Cites/Paper",
+                                       "Top Papers") if c not in col_of]
+                if missing:
+                    raise SystemExit(f"[拒绝] 机构总表表头认不出这些列：{missing}"
+                                     f"（表头={list(row)}）")
+                i_inst = norm.index("institutions")
+                i_country = norm.index("countriesregions") if "countriesregions" in norm else 2
+            continue
+        nm = str(row[i_inst] or "").strip()
         if not nm:
             continue
-        if str(row[2] or "").strip().upper() == "CHINA MAINLAND":
+        if str(row[i_country] or "").strip().upper() == "CHINA MAINLAND":
             cn_seen += 1
             cn_rank[nm] = cn_seen
         if nm in want:
-            rows[nm] = {
+            rec = {
                 "_row": ridx,
-                "序号": _num(row[0]), "Web of Science Documents": _num(row[3]),
-                "Cites": _num(row[4]), "Cites/Paper": _fnum(row[5]),
-                "Top Papers": _num(row[6]),
-                "Highly Cited Papers": _num(row[7]) if len(row) > 7 else None,
-                "Hot Papers": _num(row[8]) if len(row) > 8 else None,
+                "序号": _num(row[0]),
+                "Web of Science Documents": _num(row[col_of["Web of Science Documents"]]),
+                "Cites": _num(row[col_of["Cites"]]),
+                "Cites/Paper": _fnum(row[col_of["Cites/Paper"]]),
+                "Top Papers": _num(row[col_of["Top Papers"]]),
             }
+            for key in ("Highly Cited Papers", "Hot Papers"):
+                rec[key] = _num(row[col_of[key]]) if key in col_of else None
+            rows[nm] = rec
     wb.close()
 
     # 学科榜：数每校在几个学科里出现 → ESI前1%学科数
