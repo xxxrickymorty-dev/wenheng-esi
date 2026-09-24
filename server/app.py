@@ -160,7 +160,7 @@ async def do_login(request: Request, username: str = Form(""), password: str = F
     rec = _login_fails.setdefault(ip, {"n": 0, "until": 0.0})
     if rec["until"] > time.time():
         return RedirectResponse("/login?err=尝试过于频繁，请稍后再试", status_code=303)
-    if username == config.DEMO_USER and password == config.DEMO_PASS:
+    if check_credentials(username, password):
         request.session["user"] = username
         _login_fails.pop(ip, None)
         return RedirectResponse("/", status_code=303)
@@ -168,6 +168,16 @@ async def do_login(request: Request, username: str = Form(""), password: str = F
     if rec["n"] >= 5:
         rec.update({"n": 0, "until": time.time() + 60})
     return RedirectResponse("/login?err=账号或密码不正确", status_code=303)
+
+
+def check_credentials(username: str, password: str) -> bool:
+    """登录口令校验：admin（demo）与只读游客（guest）各一套。
+
+    ⚠ 2026-09-24 修：此前只放行 demo，`config.GUEST_USER/GUEST_PASS` 定义了却登不进来
+    （游客角色只能靠打桩验，演示时也没法真登）。`role_of` 早就认 guest，缺的就是这道口。
+    """
+    return ((username == config.DEMO_USER and password == config.DEMO_PASS)
+            or (username == config.GUEST_USER and password == config.GUEST_PASS))
 
 
 @app.get("/logout")

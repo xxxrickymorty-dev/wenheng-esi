@@ -34,14 +34,14 @@ op.addheaders = [("User-Agent", "wenheng-e2e")]
 FAILS = []
 
 
-def call(method, path, data=None):
+def call(method, path, data=None, opener=None):
     url = BASE + path
     body = urllib.parse.urlencode(data).encode() if data else None
     req = urllib.request.Request(url, data=body, method=method)
     if body:
         req.add_header("Content-Type", "application/x-www-form-urlencoded")
     try:
-        r = op.open(req)
+        r = (opener or op).open(req)
         return r.status, r.read().decode("utf-8", "replace"), r.geturl()
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode("utf-8", "replace"), url
@@ -135,6 +135,22 @@ st, body, final = call("POST", "/login", {"username": "demo", "password": "wenhe
 # ⚠ 别写死 8080：用 `WENHENG_BASE` 换端口跑时，写死会让这条**假失败**
 #    （2026-09-19 用 8099 实测：final 明明是首页，断言却判未过）。
 check("POST /login 进入新工作区 /app/", final.rstrip("/") == BASE + "/app", f"final={final}")
+
+out("=== 3.1 游客账号（guest）真登 + 角色门（契约 §4） ===")
+# 2026-09-24 修：/login 此前只放行 demo，guest 定义了却登不进来（游客角色只能打桩验）。
+# 用独立 cookie 罐登录，不打扰上面的 demo 会话。
+GUEST_U = os.environ.get("WENHENG_GUEST_USER", "guest")
+GUEST_P = os.environ.get("WENHENG_GUEST_PASS", "guest@2026")
+gop = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+st, _, gfinal = call("POST", "/login", {"username": GUEST_U, "password": GUEST_P}, opener=gop)
+check("POST /login（guest）进入新工作区 /app/",
+      gfinal.rstrip("/") == BASE + "/app", f"final={gfinal}")
+st, gme, _ = call("GET", "/api/me", opener=gop)
+check("GET /api/me（guest）→ 200", st == 200, f"got {st}")
+check("guest 角色是 guest", '"role":"guest"' in gme or '"role": "guest"' in gme,
+      f"body={gme[:100]}")
+st, _, _ = call("GET", "/api/periods/202607/redslots", opener=gop)
+check("guest 访问 admin 端点被挡（403）", st == 403, f"got {st}")
 
 out("=== 3.5 老站 302 落点（ADR-0002 阶段 2） ===")
 # 期望落点的单一事实源在 server/config.py 的 LEGACY_REDIRECTS；

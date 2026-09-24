@@ -52,6 +52,25 @@ class TestRequireAdmin:
         assert r == config.DEMO_USER
 
 
+class TestLogin口令:
+    """2026-09-24 修：/login 只认 demo，guest 定义了却登不进来（前端实报）。"""
+
+    def test_demo可登(self):
+        from server.app import check_credentials
+        assert check_credentials(config.DEMO_USER, config.DEMO_PASS)
+
+    def test_guest可登(self):
+        from server.app import check_credentials
+        assert check_credentials(config.GUEST_USER, config.GUEST_PASS)
+
+    def test_错口令与陌生账号不可登(self):
+        from server.app import check_credentials
+        assert not check_credentials(config.DEMO_USER, "wrong")
+        assert not check_credentials(config.GUEST_USER, "wrong")
+        assert not check_credentials("random", "random")
+        assert not check_credentials("", "")
+
+
 class TestAdmin端点上锁:
     def test_forecast_meta用require_admin(self):
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
