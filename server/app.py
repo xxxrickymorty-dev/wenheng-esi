@@ -1015,9 +1015,13 @@ async def api_period_sign_json(request: Request, period: str):
     return {"status": approval.status(d, res), "fingerprint": approval.fingerprint(d)}
 
 
-@app.post("/api/periods/{period}/forecast-choice")
+@app.get("/api/periods/{period}/forecast-choice")
 async def api_forecast_choice_get(request: Request, period: str):
-    """读回已存的预测模型选择。guest 可读（只读不改状态）。"""
+    """读回已存的预测模型选择。guest 可读（只读不改状态）。
+
+    ⚠️ 这条是 **GET**（2026-09-24 修）：此前被误挂成 `@app.post`，又注册在下面的
+    `api_route(methods=["GET","POST"])` 之前——FastAPI 按注册顺序匹配，POST 会被这条
+    抢先接走，导致「保存选择」永远只读回、不落盘。改装饰器前先想一遍注册顺序。"""
     if not current_user(request):
         return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
     d = resolve_period_dir(period)
