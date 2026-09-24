@@ -243,11 +243,69 @@ def test_SSE端点存在且是GET():
     assert "/api/jobs/{job_id}/events" in paths
 
 
+# ============================================================ 老站下线（ADR-0002 阶段 2）
+#: 302 映射表钉死（单一事实源在 server/config.py）。老站页面逐个下线，
+#: 这张表是「哪些老路由还在、各自落在哪」的变更检测器——
+#: 手滑删了重定向、或改了落点，这里必须跟着有意识地改。
+EXPECTED_LEGACY_REDIRECTS = {
+    "/": "/app/",
+    "/run": "/app/",
+    "/p/{period}": "/app/?view=reading&period={period}",
+    "/p/{period}/redslots": "/app/?view=red&period={period}",
+    "/p/{period}/charts": "/app/?view=charts&period={period}",
+    "/p/{period}/trace": "/app/?view=trace&period={period}",
+    "/jobs/{job_id}": "/app/",
+    "/jobs/{job_id}/collation": "/app/?view=reading&period={period}",
+    "/jobs/{job_id}/redslots": "/app/?view=red&period={period}",
+    "/jobs/{job_id}/charts": "/app/?view=charts&period={period}",
+}
+
+#: P2 未迁、本轮不下线的三页——**不许**出现在映射表里（迁完再进第二轮）。
+P2_KEEP_PAGES = ("/p/{period}/archive", "/p/{period}/flexible", "/forecast")
+
+
+def test_302映射表与清单一致():
+    from server import config
+
+    assert config.LEGACY_REDIRECTS == EXPECTED_LEGACY_REDIRECTS, (
+        "302 映射表变了——若是有意为之，同步更新本测试与 "
+        "docs/老站下线清单（阶段 2）.md §二"
+    )
+
+
+def test_302映射落点都指向新工作区():
+    from server import config
+
+    bad = [k for k, v in config.LEGACY_REDIRECTS.items() if not v.startswith("/app/")]
+    assert not bad, f"这些映射落点不在 /app/ 下：{bad}"
+
+
+def test_P2三页不在映射表():
+    from server import config
+
+    for page in P2_KEEP_PAGES:
+        assert page not in config.LEGACY_REDIRECTS, (
+            f"{page} 是 P2 未迁页，不许重定向——见清单 §五"
+        )
+    assert set(config.LEGACY_KEEP_PAGES) == set(P2_KEEP_PAGES)
+
+
+def test_映射键都是真实路由():
+    """每个映射键必须是 app.py 里真实存在的 GET 路由（离线解析源码）。"""
+    paths = {p for m, p in _routes() if m == "get"}
+    missing = [k for k in EXPECTED_LEGACY_REDIRECTS if k not in paths]
+    assert not missing, f"映射表里有 app.py 里不存在的路由：{missing}"
+
+
 def test_首页与控制台分家():
     """`/` 是对勘本（报告是主角），控制台在 `/run`。
     这条曾经踩过：验收脚本打 `/` 取「最近任务」表，一条都匹配不上。"""
     paths = [p for _, p in _routes()]
     assert "/" in paths and "/run" in paths
+    # 阶段 2 起：这两个入口改为 302 到 /app/（见 test_302映射表与清单一致）
+    from server import config
+    assert config.LEGACY_REDIRECTS["/"] == "/app/"
+    assert config.LEGACY_REDIRECTS["/run"] == "/app/"
 
 
 # ============================================================ 前端不另立状态字典

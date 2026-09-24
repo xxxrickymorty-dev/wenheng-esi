@@ -43,6 +43,33 @@ GUEST_PASS = os.environ.get("WENHENG_GUEST_PASS", "guest@2026")
 PALETTE = {"primary": "#B8422C", "deep": "#8A2A18", "lift": "#D65A38"}
 
 
+#: 老站下线（ADR-0002 阶段 2）的 302 映射表：老路由 -> 新工作区地址。
+#: 单一事实源：路由（server/app.py）与测试（tests/test_stack_contract.py）都读它。
+#: 值里的 `{period}` 由调用方按上下文填：
+#: 期次页直接取路由参数；`/jobs/*` 先查任务的期次再填。
+#: 实例期次名可带后缀（如 202605_复现），转发时用原样字符串（quote），不做归一化。
+LEGACY_REDIRECTS = {
+    "/": "/app/",
+    "/run": "/app/",
+    "/p/{period}": "/app/?view=reading&period={period}",
+    "/p/{period}/redslots": "/app/?view=red&period={period}",
+    "/p/{period}/charts": "/app/?view=charts&period={period}",
+    "/p/{period}/trace": "/app/?view=trace&period={period}",
+    "/jobs/{job_id}": "/app/",
+    "/jobs/{job_id}/collation": "/app/?view=reading&period={period}",
+    "/jobs/{job_id}/redslots": "/app/?view=red&period={period}",
+    "/jobs/{job_id}/charts": "/app/?view=charts&period={period}",
+}
+
+#: P2 未迁、本轮**不下线**的三页（保留原样，不进映射表）。
+#: 见 docs/老站下线清单（阶段 2）.md §五。
+LEGACY_KEEP_PAGES = (
+    "/p/{period}/archive",
+    "/p/{period}/flexible",
+    "/forecast",
+)
+
+
 def role_of(username):
     """用户名 -> 角色。admin 管生成台/审核台；guest 只看陈列馆+报告阅读。"""
     if username == DEMO_USER:
