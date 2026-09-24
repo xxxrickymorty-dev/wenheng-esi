@@ -798,8 +798,9 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
                       entered=None):
     """我校主要学科近期发展趋势（对标第 3/4/5 期原生图：1‰ 接近度前 4 学科 + ESI1‰ 线 + 图下数据表）。
 
-    与原件逐项对齐（其 chart XML 口径）：粗体标题；纵轴 0–105%、`0.00%` 两位小数，
-    **100% 的 1‰ 阈值线必须画进图里**（rick 2026-09-24；不能只用红字注明、也不能只留在表里）；
+    与原件逐项对齐（其 chart XML 口径）：粗体标题；纵轴 20–100%、`0.00%` 两位小数，
+    **100% 的 1‰ 阈值线必须画进图里**（rick 2026-09-24；不能只用红字注明、也不能只留在表里；
+    起点 20 是 rick 定调「趋势明显点」）；
     数据表贴在图下、列与数据点对齐、行标签用系列色，**不再带「ESI1‰ 100%」那行**。
     折线带图例 + 末点数值（rick 反馈：原件那套无图例无标记看不清，故此处比原件多这两样）。
     系列顺序＝**进入 ESI 1% 的先后**（原件三期一致：化学→植物与动物学→环境生态学→工程学），
@@ -847,15 +848,16 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
                 lw=1.8, marker=markers[i % len(markers)], ms=4.5, label=_cn(d))
     ax.set_xticks(range(len(periods)))
     ax.set_xticklabels([])                   # 期次标签只在下方表头行出现一次（Excel 数据表同款）
-    # 🔴 纵轴 0–105%：**必须看得到 1‰ 阈值线（100%）**（rick 2026-09-24：「这张图必须要有
-    # 千分之一的阈值线，可以画大一点」）。旧实现聚焦 25–65%、基线只用右上角红字注明 → 不合格；
-    # 线条密度靠加大画幅（6.6×5.4in）补偿，不再靠裁窗口。
-    ax.set_ylim(0, 105)
-    ax.set_yticks(range(0, 101, 20))
-    ax.set_yticklabels([f"{v:.2f}%" for v in range(0, 101, 20)], fontsize=9)
+    # 🔴 纵轴 **20–100%**：**必须看得到 1‰ 阈值线（100%）**（rick 2026-09-24：「这张图必须要有
+    # 千分之一的阈值线」；随后「纵坐标改成从20到100吧，这样趋势明显点」）。起点虽非 0，
+    # 但基线在窗口内、趋势段占比更大（数据带 31–57% 占轴高 32%，0–105 只有 25%）。
+    # 旧实现聚焦 25–65%、基线只用右上角红字注明 → 不合格；线上文字改贴在基线**下方**（线在轴顶）。
+    ax.set_ylim(20, 100)
+    ax.set_yticks(range(20, 101, 20))
+    ax.set_yticklabels([f"{v:.2f}%" for v in range(20, 101, 20)], fontsize=9)
     ax.axhline(100, color="#FF0000", lw=1.6, zorder=2)
-    ax.text(0.99, 101.5, "ESI1‰ 基线 = 100%", transform=ax.get_yaxis_transform(),
-            ha="right", va="bottom", color="#FF0000", fontsize=8)
+    ax.text(0.99, 98.2, "ESI1‰ 基线 = 100%", transform=ax.get_yaxis_transform(),
+            ha="right", va="top", color="#FF0000", fontsize=8)
     for s in ("top", "right", "bottom"):    # 底轴不画线：表格顶边框就是那条线（原件同款）
         ax.spines[s].set_visible(False)
     ax.tick_params(length=0, labelsize=9, colors=ink)
