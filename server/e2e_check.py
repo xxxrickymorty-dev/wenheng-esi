@@ -337,35 +337,37 @@ if _src.startswith("charts/"):
           _st == 200 and _raw[:4] == b"\x89PNG",
           f"{_st} {(_h.get('content-type') or '')} {len(_raw)}B")
 
-out("=== 15. 逐格溯源 / 存疑（老工作台已下线） ===")
-# 2026-09-19 新增。三个数字的落点：354→trace，19→在线填，3→待补说明。
-st, tr, _ = call("GET", "/p/202607/trace")
-check("GET /p/202607/trace → 200", st == 200, f"got {st}")
-check("trace 大表格数正确（239）", 'id="f-shown">239<' in tr,
-      "标题里的计数被筛选用的 span 包住了，断言要查元素内容而不是纯文本")
-check(f"trace 有图表 {_n_charts} 张", f"图表 · {_n_charts}" in tr)
-check("trace 是并排对照不是单列值", "台账（现场重读）" in tr and "派生" in tr)
-check("派生格给了算式", "总被引 − ESI被引阈值" in tr and "× 10" in tr)
-check("台账缺失时降级说明而不是空白", "本地未找到台账" in tr or "全部可回查" not in tr)
-# 在线填：写产物侧 manual_inputs.json，**台账不碰**（字节数前后必须一致）。
-# fill/flag 走真实表单 POST + 303 回跳（栈契约：状态变更不依赖 JS），不是 AJAX。
+out("=== 15. 逐格溯源 / 存疑（JSON API；老页面已 302） ===")
+# 老溯源页已 302 到 /app/?view=trace；数据等价物走 trace JSON（现场真读台账）。
+st, _tr, _ = call("GET", "/api/periods/202607/trace?limit=5")
+_trj = json.loads(_tr)
+check("trace JSON 200 且台账读得到", st == 200 and _trj.get("ledger_ok") is True, f"got {st}")
+check("trace 大表格数正确（239）", _trj.get("counts", {}).get("bigtable") == 239,
+      f"got {_trj.get('counts', {}).get('bigtable')}")
+check(f"trace 有图表 {_n_charts} 张", _trj.get("counts", {}).get("charts") == _n_charts,
+      f"got {_trj.get('counts', {}).get('charts')}")
+# 并排对照语义：行里带台账原值（ledger）与对法（how）
+_bt_rows = json.loads(call("GET", "/api/periods/202607/trace?cat=bigtable&limit=500")[1]).get("rows", [])
+check("溯源行带台账原值与对法", bool(_bt_rows) and all("ledger" in r and "how" in r for r in _bt_rows),
+      f"n={len(_bt_rows)}")
+_derived = [r for r in _bt_rows if "派生" in (r.get("how") or "")]
+check("派生格给了算式", bool(_derived) and any(
+    "−" in r["how"] or "×" in r["how"] for r in _derived),
+    f"n_derived={len(_derived)}")
+# 存疑走 JSON API（老表单已随页面下线）：可切换、台账一个字节不碰
 _led = ROOT.parent.parent / "数据与复现" / "云大全学科排名、阈值动态检测表.xlsx"
 _sha0 = _led.stat().st_size if _led.exists() else -1
-st, fr2, _ = call("POST", "/p/202607/flag", {"loc": "T01/r999c9",
-                                             "back": "/p/202607/trace"})
-_rv = ROOT.parent / "out" / "202607" / "review.json"
-_d1 = (json.loads(_rv.read_text(encoding="utf-8")).get("T01/r999c9") or {}
-       if _rv.exists() else {})
-st, fr3, _ = call("POST", "/p/202607/flag", {"loc": "T01/r999c9",
-                                             "back": "/p/202607/trace"})
-_d2 = (json.loads(_rv.read_text(encoding="utf-8")) if _rv.exists() else {})
-check("存疑可切换（点两次=撤销）",
-      _d1.get("state") == "doubt" and "T01/r999c9" not in _d2, f"{_d1} | {_d2}")
+st, _f1, _ = call_json("POST", "/api/periods/202607/flag", {"loc": "T01/r999c9"})
+_f1j = json.loads(_f1) if _f1.strip().startswith("{") else {}
+check("存疑接口 200 且落 doubt", st == 200 and _f1j.get("state") == "doubt",
+      f"{st} {str(_f1j)[:60]}")
+st, _f2, _ = call_json("POST", "/api/periods/202607/flag", {"loc": "T01/r999c9"})
+_f2j = json.loads(_f2) if _f2.strip().startswith("{") else {}
+check("再点一次撤销（可切换）", st == 200 and _f2j.get("state") == "clear",
+      f"{st} {str(_f2j)[:60]}")
 check("台账没被在线填/存疑碰到（字节数不变）",
       _led.stat().st_size == _sha0, f"{_sha0} -> {_led.stat().st_size}")
-# 首页的三个数字都是可点的。
-# 🔴 断言要写**完整路径**：之前写成 href="202607/trace"（少了 /p/ 前缀），
-#    断言照着 bug 写 → 点击 404 但 e2e 全绿（rick 2026-09-19 实踩）。
+# 灵活报告页按 §五 保留（P2 未迁）
 st, fp, _ = call("GET", "/p/202607/flexible")
 check("灵活页可开且生成表单齐备（意图/后端/学科/提交）",
       st == 200 and 'name="intent"' in fp and 'name="backend"' in fp

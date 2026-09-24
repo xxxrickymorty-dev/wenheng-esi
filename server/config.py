@@ -69,6 +69,7 @@ LEGACY_LIVE = (
     "/p/{period}",
     "/p/{period}/redslots",
     "/p/{period}/charts",
+    "/p/{period}/trace",
     "/jobs/{job_id}",
     "/jobs/{job_id}/collation",
     "/jobs/{job_id}/redslots",

@@ -177,35 +177,6 @@ async def logout(request: Request):
 
 
 # ---------------- 页面 ----------------
-
-def _ledger_periods():
-    """input/ 下可选的台账期次（控制台表单用）。"""
-    out = []
-    if config.INPUT_DIR.exists():
-        for p in sorted(config.INPUT_DIR.glob("*/监测表.xlsx"), reverse=True):
-            if jobs.PERIOD_RE.match(p.parent.name):
-                out.append({"period": p.parent.name,
-                            "mtime": time.strftime("%m-%d %H:%M", time.localtime(p.stat().st_mtime))})
-    return out
-
-
-def _run_ctx():
-    """控制台（发起任务）页面的上下文。"""
-    recent = [{"id": j["id"], "period": j["period"], "status": j["status"],
-               "created_at": j["created_at"], "elapsed": (j.get("stats") or {}).get("elapsed_sec")}
-              for j in jobs.list_jobs(8)]
-    last = next((j for j in jobs.list_jobs(20) if j.get("stats")), None)
-    return {
-        "periods": _ledger_periods(), "steps": config.STEPS,
-        "recent": recent, "active": jobs.active_job(),
-        "last_stats": (last or {}).get("stats"), "last_period": (last or {}).get("period"),
-        "public_url": config.PUBLIC_URL,
-        "reference_exists": bool(config.REFERENCE_DOCX and pathlib.Path(config.REFERENCE_DOCX).exists()),
-        "engine": {"pipeline": config.PIPELINE.exists(), "master": config.MASTER.exists(),
-                   "python": pathlib.Path(config.PYTHON).exists()},
-    }
-
-
 def period_cards():
     """可对勘的期次（out/<期次>/ 且有 red_slots.json），按新到旧，带签单状态。
 
@@ -331,23 +302,15 @@ async def period_redslots(request: Request, period: str):
 
 @app.get("/p/{period}/trace", response_class=HTMLResponse)
 async def period_trace(request: Request, period: str):
-    """逐格溯源（354 那个数字的落点）。
+    """老逐格溯源页已下线（ADR-0002 阶段 2）—— 302 到新工作区。
 
-    **现场真读台账**（`workbench.trace` → `parse_ledger.load_ledger`），
-    不拿宽表 parquet 自证 —— 同源自证差异恒为 0，看起来严谨实际什么都没验。
-    加载 7MB 台账约 2–4 秒，换来的是"每个数字当场对给你看"。
+    数据等价物走 `GET /api/periods/{period}/trace`（现场真读台账，同一套
+    `workbench.trace` 装配）。
     """
-    from . import workbench                                     # noqa: PLC0415
     d = resolve_period_dir(period)
-    if d is None:
-        return RedirectResponse("/", status_code=303)
-    ledger = _find_ledger(d)
-    data = workbench.trace(d, ledger, prev=None) if ledger else {
-        "bigtable": [], "charts": [], "texts": [], "n": 0,
-        "ledger": "（本地未找到台账 input/<期次>/监测表.xlsx）"}
-    review = workbench.load_review(d)
-    return page(request, "trace.html", period_dir=d.name, **data,
-                review=review, audit_base=f"/p/{urllib.parse.quote(d.name)}")
+    key = "/p/{period}/trace" if d is not None else "/"
+    return _legacy_redirect(request, key,
+                            period=urllib.parse.quote(d.name) if d is not None else "")
 
 
 def _find_ledger(period_dir):
@@ -360,53 +323,6 @@ def _find_ledger(period_dir):
         return None
     p = config.INPUT_DIR / m.group(1) / "监测表.xlsx"
     return p if p.exists() else None
-
-
-async def _collect_fills(request):
-    """把表单里的填写项收成一个 dict。
-
-    两种形状都认：
-      · `v:<todo_id>=<值>` —— 工作台的**批量表单**（一次提交全部，取代逐条刷新）
-      · `id=<todo_id>&value=<值>` —— 单条，旧形状，e2e 与外部调用还在用
-    返回 `(items, back)`。
-    """
-    form = await request.form()
-    items = {k[2:]: str(v) for k, v in form.items() if k.startswith("v:")}
-    if form.get("id"):
-        items[str(form["id"])] = str(form.get("value") or "")
-    return items, str(form.get("back") or "")
-
-
-
-@app.post("/p/{period}/flag")
-async def period_flag(request: Request, period: str, loc: str = Form(""), back: str = Form("")):
-    """大表格子**只能存疑，不能改**（数字来自台账，改了就破溯源）。
-    存疑是记一笔"这格我不认"，签单闸门会看到它。同样走表单 POST + 303。"""
-    from . import workbench                                     # noqa: PLC0415
-    user = current_user(request)
-    if not user:
-        return RedirectResponse("/login", status_code=303)
-    d = resolve_period_dir(period)
-    if d is None or not loc.strip():
-        return RedirectResponse(back or "/", status_code=303)
-    workbench.toggle_flag(d, loc, by=user)
-    return RedirectResponse(back or "/", status_code=303)
-
-
-def _flash_back(back, qs):
-    """把提示参数拼进回跳 URL 的**问号位置**。
-
-    🔴 不能写成 `back + "?err=…"`：back 常带锚点（`/#todo-panel`），
-    拼完是 `/#todo-panel?err=…` —— query 在 fragment 后面，浏览器**整段忽略**，
-    于是"保存失败"这类提示永远不会出现，页面看着像没反应（2026-09-20 实测）。
-    正确形状：`/?err=…#todo-panel`。
-    """
-    base, _, frag = (back or "/").partition("#")
-    if not base:
-        base = "/"
-    sep = "&" if "?" in base else "?"
-    return f"{base}{sep}{qs}" + (f"#{frag}" if frag else "")
-
 
 
 @app.get("/p/{period}/charts", response_class=HTMLResponse)
