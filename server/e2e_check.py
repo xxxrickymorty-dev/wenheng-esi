@@ -272,22 +272,12 @@ st, css, _ = call("GET", "/static/style.css")
 missing = [s for s in states.STATES if f".badge.{s}" not in css]
 check("每个状态都有 badge 配色", not missing, f"缺 {missing}")
 
-out("=== 12. 运行档案页（SRS R-21：状态机回放 + 瀑布 + 产物 + 日志包）===")
+out("=== 12. 运行档案：老页已 302（§3.5），数据走 JSON API + 保留下载端点 ===")
+# 2026-09-24 第二轮：/p/202607/archive 与 /jobs/<id>/archive 已 302 到 ?view=archive
+# （落点由 §3.5 逐条验）。原页面的内容断言前移到 §16 的 archive JSON
+# （replay/audit/logpack/artifacts、不回绝对路径都在那里）。这里只留保留下来的下载端点。
 import io as _io                                                  # noqa: E402
 import zipfile as _zf                                             # noqa: E402
-
-st, arc, _ = call("GET", "/p/202607/archive")
-check("GET /p/202607/archive → 200", st == 200, f"got {st}")
-for k in ("状态机回放", "任务瀑布", "审计结论", "运行环境快照", "运行日志包", "Agent 轨迹文件"):
-    check(f"档案页含「{k}」", k in arc)
-# 动态取（2026-09-23 实踩：审计 verdict 会随产物状态在 pass/review/fail 间变，
-# 写死某一档会假红）。断言本意是「页面如实显示审计结论、不粉饰」，比对标签即可。
-_arc_rec = json.loads((WENHENG / "out" / "202607" / "audit_record.json").read_text(encoding="utf-8"))
-_arc_label = {"pass": "全部通过", "review": "待人工确认", "fail": "不通过"}.get(_arc_rec.get("verdict", ""), "")
-check("审计总判定如实显示（不是粉饰成通过）",
-      bool(_arc_label) and _arc_label in arc,
-      f"verdict={_arc_rec.get('verdict')} label={_arc_label}")
-check("轨迹缺口如实说明（直跑路径没有 trace 三件套）", "真实的记录缺口" in arc)
 
 st, raw, hdr = call_raw("/p/202607/download/logpack")
 check("GET 期次日志包 → 200", st == 200, f"got {st}")
@@ -310,9 +300,7 @@ check("日志包不含大件（docx/parquet/png）",
       str([n for n in _names if n.endswith((".docx", ".parquet", ".png"))]))
 
 if jobid:
-    st, jarc, _ = call("GET", f"/jobs/{jobid}/archive")
-    check("GET 任务档案页 → 200", st == 200, f"got {st}")
-    check("任务档案页认得 job（有返回任务的面包屑）", f"/jobs/{jobid}" in jarc)
+    # 任务档案页已 302（§3.5 按任务期次验落点）；任务日志包下载端点保留。
     st, jraw, _ = call_raw(f"/jobs/{jobid}/download/logpack")
     try:
         _jz = _zf.ZipFile(_io.BytesIO(jraw))
@@ -394,11 +382,7 @@ if _led:
           _led.stat().st_size == _sha0, f"{_led.name} {_sha0} -> {_led.stat().st_size}")
 else:
     out("  SKIP 台账未随包（部署环境属正常）——跳过字节数比对")
-# 灵活报告页按 §五 保留（P2 未迁）
-st, fp, _ = call("GET", "/p/202607/flexible")
-check("灵活页可开且生成表单齐备（意图/后端/学科/提交）",
-      st == 200 and 'name="intent"' in fp and 'name="backend"' in fp
-      and 'method="post"' in fp and 'id="flex-report"' in fp)
+# 灵活报告页已 302 到分析台（落点 §3.5）；保留下来的图路由与 JSON API 在 §16 验。
 
 out("=== 16. 新 API 端点（契约 §2.2 #1-#12） ===")
 # GET /api/me
@@ -546,6 +530,14 @@ check("flexible 有 intents/reports/cur/body_html",
       all(k in fx for k in ('"intents"', '"reports"', '"cur"', '"body_html"')))
 check("flexible 列到两份报告", fx.count('"intent"') >= 3, f"n={fx.count(chr(34) + 'intent' + chr(34))}")
 check("flexible body_html 指向图表保留路由", "/p/202607/flexible/chart/" in fx)
+# 页面下线后这条图路由必须还活着（body_html 直接引用它，删了图全裂）
+_m_chart = re.search(r"/p/202607/flexible/chart/[^\"\\\s]+", fx)
+if _m_chart:
+    _st_c, _c_bytes, _ = call_raw(_m_chart.group(0))
+    check("保留的灵活图路由可开", _st_c == 200 and len(_c_bytes) > 100,
+          f"got {_st_c} {len(_c_bytes)}B {_m_chart.group(0)[:60]}")
+else:
+    check("body_html 里有可直接打开的图地址", False, fx[:120])
 
 out("=" * 56)
 if FAILS:

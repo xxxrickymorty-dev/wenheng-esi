@@ -223,44 +223,10 @@ def resolve_period_dir(period):
     return None
 
 
-def _archive_page(request, out_dir, job=None):
-    """运行档案页（SRS R-21）：状态机回放 + 任务瀑布 + 产物 + 日志包下载。
-
-    期次入口与任务入口共用，差别只有三处：下载链接指哪儿、面包屑、
-    以及有没有 job 上下文（控制台输出与状态链都挂在任务上）。
-    """
-    q = urllib.parse.quote(out_dir.name)
-    if job:
-        base, crumbs = f"/jobs/{job['id']}", [
-            {"label": f"← 返回任务 {job['id']}", "href": f"/jobs/{job['id']}", "download": False},
-            {"label": "对勘本", "href": f"/jobs/{job['id']}/collation", "download": False},
-            {"label": "图表图册", "href": f"/jobs/{job['id']}/charts", "download": False},
-            {"label": "红色件清单", "href": f"/jobs/{job['id']}/redslots", "download": False},
-        ]
-        artifacts = jobs.collect_artifacts(job)
-    else:
-        base, crumbs = f"/p/{q}", [
-            {"label": "发起任务 / 历史任务", "href": "/run", "download": False},
-            {"label": f"{out_dir.name} 期对勘本", "href": f"/p/{q}", "download": False},
-            {"label": "图表图册", "href": f"/p/{q}/charts", "download": False},
-            {"label": "红色件清单", "href": f"/p/{q}/redslots", "download": False},
-        ]
-        artifacts = jobs.collect_period_artifacts(out_dir.name)
-    view = archive.build(out_dir, job=job, artifacts=artifacts)
-    # 用 update 而不是 `page(..., **view, period=…)`：view 自带 period/job，
-    # 关键字重复传会直接 TypeError——这类错只在打开页面时才现形。
-    view.update({"job": job or {}, "download_base": base, "crumbs": crumbs})
-    return page(request, "archive.html", **view)
-
-
 def _zip_response(data: bytes, filename: str):
     """日志包下载。文件名是 ASCII（中文名在部分浏览器会乱码），说明写在包内 README。"""
     return StreamingResponse(io.BytesIO(data), media_type="application/zip",
                              headers={"Content-Disposition": f'attachment; filename="{filename}"'})
-
-
-def _flash(err="", signed="", revoked=""):
-    return {"err": err, "signed": signed, "revoked": revoked}
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -377,51 +343,19 @@ def _flex_ctx(d, intent=None, flash=None):
 
 
 @app.get("/p/{period}/flexible", response_class=HTMLResponse)
+
 async def period_flexible(request: Request, period: str, intent: str = "",
                           err: str = "", ok: str = ""):
-    """灵活报告：列出该期次已生成的分析稿，并内联展示最新一份。"""
-    d = resolve_period_dir(period)
-    if d is None:
-        return RedirectResponse("/", status_code=303)
-    # `ok` 是生成成功的回执（非错误），单独放一格，不复用 err
-    flash = {**_flash(err=err), "ok": ok} if (err or ok) else None
-    return page(request, "flexible.html", **_flex_ctx(d, intent or None, flash),
-                active_period=d.name)
+    """老灵活报告页已下线（ADR-0002 第二轮）—— 302 到分析台（灵活报告是其中一块）。
 
-
-@app.post("/p/{period}/flexible")
-async def period_flexible_generate(request: Request, period: str):
-    """生成一份灵活报告。
-
-    登记进 `POST_ALLOWED_SUFFIX` 时回答的三问（`tests/test_stack_contract.py`）：
-      ① 真实表单 POST + 303 回跳（不依赖 JS）；
-      ② 有登录校验（未登录 → /login）；
-      ③ **写 `out/<期次>/flexible/`（产物目录），台账一个字节不碰**。
+    保留函数签名：老链接可能带 `?intent=` / `?err=` / `?ok=`，接下来丢弃即可。
+    🔴 **图表路由 `/p/{period}/flexible/chart/*` 与 JSON API 不动**——
+       新站分析台的 body_html 直接引用那些图地址（契约 #21）。
     """
-    import flexible.report as flex_report                           # noqa: PLC0415
-    if not current_user(request):
-        return RedirectResponse("/login", status_code=303)
     d = resolve_period_dir(period)
-    if d is None:
-        return RedirectResponse("/", status_code=303)
-    form = await request.form()
-    intent = str(form.get("intent") or "single_trend")
-    backend = str(form.get("backend") or "") or None
-    disc = str(form.get("disc") or "") or None
-    back = f"/p/{urllib.parse.quote(d.name)}/flexible"
-    try:
-        r = flex_report.generate(d, intent, backend=backend, disc=disc)
-    except Exception as e:                                          # noqa: BLE001
-        return RedirectResponse(
-            f"{back}?err={urllib.parse.quote('生成失败：' + type(e).__name__)}",
-            status_code=303)
-    c = r["check"]
-    msg = (f"已生成：{r['plan']['backend']} 后端，{r['n_charts']} 张图，"
-           f"数字可回溯 {c['trace']['ok']}/{c['trace']['checked']}")
-    # 🔴 锚点拼在 query **之后**（`?ok=…#flex-report`）—— query 拼到锚点后面
-    #    会被浏览器整段忽略（本仓库在这条上踩过两次，见 tests）。
-    return RedirectResponse(
-        f"{back}?ok={urllib.parse.quote(msg)}#flex-report", status_code=303)
+    key = "/p/{period}/flexible" if d is not None else "/"
+    return _legacy_redirect(request, key,
+                            period=urllib.parse.quote(d.name) if d is not None else "")
 
 
 @app.get("/p/{period}/flexible/chart/{intent}/{name}")
@@ -440,12 +374,17 @@ async def period_flexible_chart(request: Request, period: str,
 
 
 @app.get("/p/{period}/archive", response_class=HTMLResponse)
+
 async def period_archive(request: Request, period: str):
-    """期次运行档案（无需任务上下文也能回放）。"""
+    """老运行档案页已下线（ADR-0002 第二轮）—— 302 到新档案视图。
+
+    数据等价物走 `GET /api/periods/{period}/archive`（契约 #18）；
+    下载端点 `/p/{period}/download/logpack` 保留（§六 保留项）。
+    """
     d = resolve_period_dir(period)
-    if d is None:
-        return RedirectResponse("/", status_code=303)
-    return _archive_page(request, d)
+    key = "/p/{period}/archive" if d is not None else "/"
+    return _legacy_redirect(request, key,
+                            period=urllib.parse.quote(d.name) if d is not None else "")
 
 
 @app.get("/p/{period}/chart/{rel:path}")
@@ -510,13 +449,14 @@ async def charts_page(request: Request, job_id: str):
     return _legacy_redirect(request, "/jobs/{job_id}/charts", period=period)
 
 @app.get("/jobs/{job_id}/archive", response_class=HTMLResponse)
+
 async def job_archive(request: Request, job_id: str):
-    """任务运行档案：比期次档案多出控制台输出与状态链上下文。"""
+    """老任务档案页已下线（ADR-0002 第二轮）—— 302 到新档案视图（动态填任务的期次）。"""
     job = jobs.read_job(job_id)
     if not job:
-        return RedirectResponse("/", status_code=303)
-    out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
-    return _archive_page(request, out_dir, job=job)
+        return RedirectResponse("/app/", status_code=302)
+    period = urllib.parse.quote(job.get("out_period") or job["period"])
+    return _legacy_redirect(request, "/jobs/{job_id}/archive", period=period)
 
 
 @app.get("/jobs/{job_id}/collation", response_class=HTMLResponse)

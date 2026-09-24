@@ -61,6 +61,11 @@ LEGACY_REDIRECTS = {
     "/jobs/{job_id}/charts": "/app/?view=charts&period={period}",
     # 2026-09-24：老预测页已被新预测台（/app/?view=forecast）取代（前端确认）。
     "/forecast": "/app/?view=forecast",
+    # 2026-09-24 第二轮：P2 两页迁完（前端走查通过）——运行档案 → 档案视图、
+    # 灵活报告 → 分析台（灵活报告是其中一块）。任务档案同落档案视图（自动挂该期任务）。
+    "/p/{period}/archive": "/app/?view=archive&period={period}",
+    "/p/{period}/flexible": "/app/?view=analysis&period={period}",
+    "/jobs/{job_id}/archive": "/app/?view=archive&period={period}",
 }
 
 #: 已下线（302 已生效）的条目——随每个页面下线追加。
@@ -77,14 +82,14 @@ LEGACY_LIVE = (
     "/jobs/{job_id}/redslots",
     "/jobs/{job_id}/charts",
     "/forecast",
-)
-
-#: P2 未迁、本轮**不下线**的三页（保留原样，不进映射表）。
-#: 见 docs/老站下线清单（阶段 2）.md §五。
-LEGACY_KEEP_PAGES = (
     "/p/{period}/archive",
     "/p/{period}/flexible",
+    "/jobs/{job_id}/archive",
 )
+
+#: 过渡期保留页：2026-09-24 第二轮后**已清空**——老站页面全部 302。
+#: 保留项只剩基础设施（/api/*、下载、图、登录、探活）与离线快照，见 ADR-0002 §决定 2。
+LEGACY_KEEP_PAGES = ()
 
 
 def role_of(username):

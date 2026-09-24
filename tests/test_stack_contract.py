@@ -174,13 +174,10 @@ def test_没有原地修改语义():
 
 
 #: 允许 POST 的路径后缀：状态变更一律集中在这里（边界约定 B-1 / B-2）
-#: 白名单 = 允许写状态的表单 POST 后缀。新增写路由必须在这里登记 ——
-#: 登记时要回答三件事：① 真实表单 POST + 303（不依赖 JS）② 有登录校验
-#: ③ 写的是产物目录还是台账。fill/flag（2026-09-19 工作台）写的是
-#: out/<期次>/ 的 manual_inputs.json / review.json，**台账一个字节不碰**。
-#: flexible（2026-09-20 第二条产线）写 out/<期次>/flexible/，**同样不碰台账**。
-POST_ALLOWED_SUFFIX = ("/login", "/sign", "/revoke", "/fill", "/flag", "/rebuild",
-                       "/flexible")
+#: 白名单 = 允许写状态的**表单 POST** 后缀。2026-09-24 第二轮后只剩 `/login`：
+#: 老站的 sign/revoke/fill/flag/rebuild/flexible 表单 POST 随各自页面下线（走 /api/* JSON 版），
+#: 真正无 JS 的写路径就此消失（ADR-0002「代价」已记）。新增写路由必须在这里登记。
+POST_ALLOWED_SUFFIX = ("/login",)
 
 #: 非页面、非 API 的杂项 GET（下载/二维码/探活/登出）
 MISC_PATHS = ("/download/", "/qr.png", "/healthz", "/logout")
@@ -207,15 +204,14 @@ def test_GET不改状态_变更只走POST():
 
 
 def test_状态变更都走表单POST而非AJAX():
-    """签单/撤回/登录是**传统表单**提交（303 重定向），断网或禁用 JS 也要能用。
+    """登录是**传统表单**提交（303 重定向），断网或禁用 JS 也要能用。
 
-    这是个**变更检测器**：清单多出或少了任何一条都必须有意识地改这里，
-    防止有人随手加写路由。fill/flag 是工作台的在线填与存疑（见
-    POST_ALLOWED_SUFFIX 处的三问），2026-09-19 rick 拍板加入。
+    这是个**变更检测器**：清单多出或少了任何一条都必须有意识地改这里。
+    2026-09-24 第二轮后只剩 `/login` —— 最后一条 no-JS 写路径（灵活报告表单）
+    随页面下线（ADR-0002「代价」已记：写操作此后全依赖 JS）。
     """
     posts = {p for m, p in _routes() if m == "post" and not p.startswith("/api/")}
-    assert posts == {"/login", "/p/{period}/flexible"}, \
-        f"表单 POST 清单变了：{sorted(posts)}"
+    assert posts == {"/login"}, f"表单 POST 清单变了：{sorted(posts)}"
 
 
 def test_JSON接口都有登录保护():
@@ -256,10 +252,11 @@ EXPECTED_LEGACY_REDIRECTS = {
     "/jobs/{job_id}/redslots": "/app/?view=red&period={period}",
     "/jobs/{job_id}/charts": "/app/?view=charts&period={period}",
     "/forecast": "/app/?view=forecast",
+    # 2026-09-24 第二轮：P2 两页迁完（archive → 档案视图、flexible → 分析台）。
+    "/p/{period}/archive": "/app/?view=archive&period={period}",
+    "/p/{period}/flexible": "/app/?view=analysis&period={period}",
+    "/jobs/{job_id}/archive": "/app/?view=archive&period={period}",
 }
-
-#: P2 未迁、本轮不下线的三页——**不许**出现在映射表里（迁完再进第二轮）。
-P2_KEEP_PAGES = ("/p/{period}/archive", "/p/{period}/flexible")
 
 
 def test_302映射表与清单一致():
@@ -286,14 +283,18 @@ def test_已下线清单是映射表的子集():
     assert not extra, f"LEGACY_LIVE 里有映射表没有的路由：{extra}"
 
 
-def test_P2三页不在映射表():
+def test_第二轮两页已下线_keep清单清空():
+    """2026-09-24 第二轮：archive/flexible 迁完（前端走查通过）→ 302。
+
+    KEEP 清单清空 = 老站页面全部下线；这两页必须同时在映射表与 LEGACY_LIVE 里，
+    否则「下线了但没验落点」或「清单说下了其实没下」都会静默存在。
+    """
     from server import config
 
-    for page in P2_KEEP_PAGES:
-        assert page not in config.LEGACY_REDIRECTS, (
-            f"{page} 是 P2 未迁页，不许重定向——见清单 §五"
-        )
-    assert set(config.LEGACY_KEEP_PAGES) == set(P2_KEEP_PAGES)
+    assert config.LEGACY_KEEP_PAGES == (), "KEEP 清单应已清空（第二轮收口）"
+    for page in ("/p/{period}/archive", "/p/{period}/flexible"):
+        assert page in config.LEGACY_REDIRECTS, f"{page} 未进映射表"
+        assert page in config.LEGACY_LIVE, f"{page} 未进 LEGACY_LIVE（e2e 不会验落点）"
 
 
 def test_映射键都是真实路由():
