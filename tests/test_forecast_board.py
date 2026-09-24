@@ -40,14 +40,24 @@ class TestBoard解析:
             assert isinstance(row["t1"], str)
 
     def test_金银样行抽查(self):
-        """Economics & Business 被引线 SARIMA、接近度 14.23%、未过线（t 全空）。"""
+        """经济与商业被引线 SARIMA、接近度 14.23%、未过线（t 全空）。
+
+        2026-09-24（契约 #22）：学科名出接口即中文，金样行按中文名抽查。
+        """
         b = _board_or_skip()
         rows = {r["subject"]: r for r in b["routes"]["citation"]}
-        eb = rows.get("Economics & Business")
-        assert eb is not None
+        eb = rows.get("经济与商业")
+        assert eb is not None, sorted(rows)
         assert eb["model"] == "SARIMA"
         assert abs(eb["prox"] - 14.23) < 1e-9
         assert eb["t1"] == "" and eb["t2"] == "" and eb["t3"] == ""
+
+    def test_学科名全中文(self):
+        """契约 #22：board 的 subject 直接给中文（前端不再搭名字桥）。"""
+        b = _board_or_skip()
+        subs = [r["subject"] for r in b["routes"]["citation"] + b["routes"]["rank"]]
+        assert subs
+        assert all(not any(ch.isascii() and ch.isalpha() for ch in s) for s in subs), subs
 
     def test_period与window来自正文(self):
         b = _board_or_skip()

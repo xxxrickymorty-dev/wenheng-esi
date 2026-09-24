@@ -54,6 +54,16 @@ DEPS=(
 [ "$(id -u)" -eq 0 ] || die "请用 root 运行：sudo bash $0"
 [ -f "$APP_DIR/pyproject.toml" ] || die "未找到 $APP_DIR/pyproject.toml —— 先把部署包解包到 /opt"
 
+# --------------------------------------------- 0.2 首屏资产预检（ADR-0001 要求）
+# /app 是 web/dist 的构建产物（服务器不装 Node，dist 必须随包带）。缺了它服务**照样起得来**，
+# 只有浏览器里白屏——所以在这里拦死，别等验收现场才发现。重新打包用 tools/make_deploy_pkg.py。
+[ -f "$APP_DIR/web/dist/index.html" ] \
+  || die "未找到 $APP_DIR/web/dist/index.html —— 部署包必须含 web/dist（/app 首屏）。
+    在本地 wenheng/ 下重新打包：python tools/make_deploy_pkg.py"
+[ -d "$APP_DIR/web/dist/assets" ] \
+  || die "未找到 $APP_DIR/web/dist/assets —— web/dist 不完整（index.html 引的资源不在）。
+    在本地 wenheng/ 下重新构建并打包：cd web && npm run build && cd .. && python tools/make_deploy_pkg.py"
+
 log "目标：APP_DIR=$APP_DIR  服务用户=$SVC_USER  端口=$PORT"
 [ -n "$PUBLIC_URL" ] && log "公网地址：$PUBLIC_URL" || warn "未传公网地址，二维码/说明书里的链接需事后补进 server/.env"
 

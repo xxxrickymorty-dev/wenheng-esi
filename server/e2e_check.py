@@ -371,8 +371,16 @@ check("派生格给了算式", bool(_derived) and any(
     "−" in r["how"] or "×" in r["how"] for r in _derived),
     f"n_derived={len(_derived)}")
 # 存疑走 JSON API（老表单已随页面下线）：可切换、台账一个字节不碰
-_led = ROOT.parent.parent / "数据与复现" / "云大全学科排名、阈值动态检测表.xlsx"
-_sha0 = _led.stat().st_size if _led.exists() else -1
+# 台账路径两处都找：开发机是 <工作区>/数据与复现/（原始事实源）；部署包/服务器上
+# 只有 input/<期次>/监测表.xlsx（服务端实际读的那份）。两处都没有就跳过比对——
+# 2026-09-24 实踩：写死工作区布局，在解包目录里 `_led.stat()` 直接 FileNotFoundError，
+# 整个 e2e 崩在中途（服务器上必然复现）。
+_led_cands = (
+    ROOT.parent.parent / "数据与复现" / "云大全学科排名、阈值动态检测表.xlsx",
+    ROOT.parent / "input" / "202607" / "监测表.xlsx",
+)
+_led = next((p for p in _led_cands if p.exists()), None)
+_sha0 = _led.stat().st_size if _led else -1
 st, _f1, _ = call_json("POST", "/api/periods/202607/flag", {"loc": "T01/r999c9"})
 _f1j = json.loads(_f1) if _f1.strip().startswith("{") else {}
 check("存疑接口 200 且落 doubt", st == 200 and _f1j.get("state") == "doubt",
@@ -381,8 +389,11 @@ st, _f2, _ = call_json("POST", "/api/periods/202607/flag", {"loc": "T01/r999c9"}
 _f2j = json.loads(_f2) if _f2.strip().startswith("{") else {}
 check("再点一次撤销（可切换）", st == 200 and _f2j.get("state") == "clear",
       f"{st} {str(_f2j)[:60]}")
-check("台账没被在线填/存疑碰到（字节数不变）",
-      _led.stat().st_size == _sha0, f"{_sha0} -> {_led.stat().st_size}")
+if _led:
+    check("台账没被在线填/存疑碰到（字节数不变）",
+          _led.stat().st_size == _sha0, f"{_led.name} {_sha0} -> {_led.stat().st_size}")
+else:
+    out("  SKIP 台账未随包（部署环境属正常）——跳过字节数比对")
 # 灵活报告页按 §五 保留（P2 未迁）
 st, fp, _ = call("GET", "/p/202607/flexible")
 check("灵活页可开且生成表单齐备（意图/后端/学科/提交）",
@@ -495,9 +506,12 @@ check("trace 有分页字段", '"total"' in tr and '"limit"' in tr and '"offset"
 check("trace 有 cols/discs 筛选数据", '"cols"' in tr and '"discs"' in tr)
 check("trace 大表行含 loc/report/how", '"loc"' in tr and '"report"' in tr and '"how"' in tr)
 check("trace ledger 只回文件名（不泄漏路径）", ":" not in tr.split('"ledger":')[1].split(",")[0], tr.split('"ledger":')[1].split(",")[0][:40])
-# POST /api/periods/202601_复现/rebuild（没有填值应 409 拒绝，不碰产物）
+# POST /api/periods/202601_复现/rebuild（没有填值应拒绝，不碰产物）
+# 复现期次是开发机产物、不随演示包分发（包内只有 202607）→ 服务器上退化为 404
+# 「期次不存在」；本地有它时必须 409（有产物、没填值）。两种情况都要求「拒绝 + error 体」。
 st, rb, _ = call_json("POST", "/api/periods/202601_%E5%A4%8D%E7%8E%B0/rebuild", {})
-check("rebuild 无填值时 409 拒绝", st == 409 and '"error"' in rb, f"got {st}")
+_expect = 409 if (WENHENG / "out" / "202601_复现").is_dir() else 404
+check(f"rebuild 无填值被拒（{_expect}）", st == _expect and '"error"' in rb, f"got {st}")
 
 st, tr2, _ = call("GET", "/api/periods/202607/trace?cat=charts&limit=3")
 check("trace cat=charts 可切换", st == 200 and '"cat":"charts"' in tr2, f"got {st}")

@@ -1,5 +1,12 @@
 # 部署手册（Linux 服务器）
 
+> ⚠ **2026-09-24 起以 `server/deploy/部署执行清单.md` 为准**（本文只作背景存档）。
+> 三个变化点先记住：
+> ① 打包改用 `tools/make_deploy_pkg.py`——含 `web/dist`（/app 首屏必需），
+>    **不含 `server/.env`**（下面 §1 的旧 tar 命令会把密钥打进包，别再用）；
+> ② 首屏是新工作区 `/app/`（`/` 302 过去），不再是老站对勘本；
+> ③ 老站页面已 302 到新站对应视图；目标拓扑是 nginx:8080 → uvicorn:8081。
+
 演示站 = FastAPI + uvicorn，**单 worker**，端口 8080，目标目录 `/opt/wenheng`。
 一键脚本：`server/deploy/deploy_linux.sh`，适配 Ubuntu/Debian 与 CentOS/RHEL/阿里云 Linux。
 

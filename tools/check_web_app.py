@@ -15,6 +15,9 @@ r"""端到端：`/app`（React 工作区）在真实浏览器里跑通「登录 
     .venv\Scripts\python.exe -m uvicorn server.app:app --host 127.0.0.1 --port 8080
     & "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe" tools\check_web_app.py
 
+服务不在默认地址时用 `WENHENG_BASE` 覆盖（与 e2e_check.py 同一套约定）：
+    $env:WENHENG_BASE="http://127.0.0.1:8099"; & "...\python.exe" tools\check_web_app.py
+
 ⚠ 锚点只认**结构**、不写死中文值：2026-09-24 实踩——写 `nav[aria-label="工作台"]`
   时实际值已改叫「工作区」，选择器恒 0 命中；`#coverArt` 在详情面板里初始隐藏，
   首屏可见的是 `#flipbook`。改锚点前先跑一遍，别凭记忆写。
@@ -22,12 +25,13 @@ r"""端到端：`/app`（React 工作区）在真实浏览器里跑通「登录 
 退出码 0 = 通过；1 = 有断言失败（失败项打印在前）。
 """
 import http.cookiejar
+import os
 import pathlib
 import sys
 import urllib.parse
 import urllib.request
 
-BASE = "http://127.0.0.1:8080"
+BASE = os.environ.get("WENHENG_BASE", "http://127.0.0.1:8080").rstrip("/")
 USER, PASS = "demo", "wenheng@2026"
 SHOT = pathlib.Path(r"C:\Users\damn\AppData\Local\Temp\opencode\wh_app.png")
 
