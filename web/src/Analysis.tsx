@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { req } from './api'
 import { Icon } from './icons'
 import { BigTable } from './BigTable'
+import { Flexible } from './Flexible'
 
 type Shield = { key: string; n_numbers: number; protected_len: number }
 type AnalyzeResp = {
@@ -114,6 +115,9 @@ export function Analysis({ period }: { period: string | null }) {
           })}
         </section>
       )}
+
+      {/* 两块解读挨着：先「按节解读」（固定），再「灵活报告」（灵活） */}
+      <Flexible period={period} />
     </>
   )
 }

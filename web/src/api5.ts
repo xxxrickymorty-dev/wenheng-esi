@@ -1,4 +1,4 @@
-/* 预测台的数据口（契约 §2.1 的 forecast 两件 + §2.2 #3 选择落盘）。
+/* 预测台 + 灵活报告的数据口（契约 §2.1 的 forecast 两件、§2.2 #3 选择落盘、#21 灵活报告两口）。
    🔴 数字只来自后端：这一层只取形状，不做任何换算、聚合、四舍五入。 */
 
 import { req } from './api'
@@ -98,5 +98,33 @@ export async function saveForecastChoice(
   return req<{ ok: boolean; saved: number; path: string }>(
     `/api/periods/${encodeURIComponent(period)}/forecast-choice`,
     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ choice }) },
+  )
+}
+
+/* ---------------------------------------------------------------- 灵活报告（#21） */
+
+export type FlexibleReport = { intent: string; title: string; meta: Record<string, unknown> }
+
+export type FlexibleData = {
+  period: string
+  intents: { id: string; cn: string }[]
+  reports: FlexibleReport[]
+  cur: string | null
+  /** 正文（后端同一个 md 渲染器出的 html，图已指向 /p/<期次>/flexible/chart/…） */
+  body_html: string
+}
+
+export async function getFlexible(period: string, intent?: string): Promise<FlexibleData> {
+  const q = intent ? `?intent=${encodeURIComponent(intent)}` : ''
+  return req<FlexibleData>(`/api/periods/${encodeURIComponent(period)}/flexible${q}`)
+}
+
+export async function runFlexible(
+  period: string,
+  body: { intent: string; backend?: string; disc?: string },
+): Promise<{ ok: boolean; intent: string; elapsed: number; n_charts?: number; backend?: string }> {
+  return req<{ ok: boolean; intent: string; elapsed: number; n_charts?: number; backend?: string }>(
+    `/api/periods/${encodeURIComponent(period)}/flexible`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
   )
 }

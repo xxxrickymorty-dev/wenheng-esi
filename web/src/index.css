@@ -378,6 +378,41 @@ a{color:inherit}
 .bt-cell .s{display:block;font-size:12.5px;color:var(--ink-3);margin-top:6px;line-height:1.6}
 
 /* ============================================================================
+   灵活报告（分析台第三块，紧挨「按节解读」）——表单 / 已出稿 chips / 后端渲染的正文
+   ⚠ fx- 前缀：正文样式只作用于 .fx-md，别外溢（md 渲染器出来的骨架见 mdview）
+   ========================================================================== */
+.fx-form{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:14px}
+.fx-form label{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--ink-2)}
+.fx-form select,.fx-form input{font:inherit;padding:8px 11px;border:1px solid var(--line);
+  border-radius:8px;background:var(--card);color:var(--ink);min-width:150px}
+.fx-note{font-size:13.5px;color:var(--ink-3);margin:8px 0 0}
+.fx-chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:16px;
+  font-size:14px;color:var(--ink-3)}
+.fx-chips button{padding:7px 14px;border:1px solid var(--line);background:var(--panel);
+  border-radius:999px;cursor:pointer;font:inherit;font-size:14.5px;color:var(--ink-2)}
+.fx-chips button.on{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:600}
+.fx-md{margin-top:16px;border-top:1px solid var(--line);padding-top:16px;font-size:16.5px}
+.fx-md h2{font-size:21px;margin-top:6px}
+.fx-md h3{font-size:18px;margin:22px 0 8px;padding-left:10px;border-left:3px solid var(--zhu)}
+.fx-md p{margin:8px 0;line-height:1.85}
+.fx-md blockquote{margin:10px 0;padding:10px 15px;background:var(--gold-soft);
+  border-left:3px solid var(--gold);border-radius:0 var(--r-sm) var(--r-sm) 0;
+  color:var(--ink-2);font-size:15px}
+.fx-md blockquote p{margin:3px 0}
+.fx-md hr{border:0;border-top:1px dashed var(--line);margin:18px 0}
+.fx-md code{font-family:var(--mono);font-size:13.5px;background:var(--panel);
+  border:1px solid var(--line-2);border-radius:6px;padding:1px 6px}
+.fx-md table{width:100%;border-collapse:collapse;font-size:15px;margin:10px 0}
+.fx-md th,.fx-md td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line-2)}
+.fx-md th{background:var(--panel);color:var(--ink-3);font-size:13.5px}
+.fx-md table.dense td:first-child{width:64px;color:var(--ink-3);font-family:var(--mono)}
+.fx-md figure{margin:16px 0;text-align:center}
+.fx-md img{max-width:100%;border:1px solid var(--line);border-radius:var(--r-sm)}
+.fx-md figcaption{font-size:13.5px;color:var(--ink-3);margin-top:6px}
+.fx-md ul,.fx-md ol{margin:8px 0;padding-left:24px}
+.fx-md li{margin:5px 0}
+
+/* ============================================================================
    运行档案（下钻页，不在顶栏）——状态机回放 / 瀑布 / 审计 / 环境 / 日志包
    ⚠ 类名一律 ar- 前缀：`.kv`（对勘本）与 `.art`（报告页产物卡）是既有类，别复用。
    ========================================================================== */

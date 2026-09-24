@@ -156,10 +156,15 @@ main{max-width:1180px;margin:0 auto;padding:22px 22px 70px}
     <div class="ph">（已上线：22 学科 × 六列读数表，可搜可排、点行展开逐格来源 —— 本稿不再画，见现行分析台）</div>
   </section>
 
-  <!-- ================= 新增：第二块 ================= -->
+  <!-- ================= 新增：第三块（两块解读挨着） ================= -->
+  <section class="card">
+    <h2><span class="no">02</span>分析 · 按节解读</h2>
+    <div class="ph">（已上线：14 节确定性句骨架 + 数字防护盾 —— 本稿不再画，见现行分析台）</div>
+  </section>
+
   <section class="card">
     <h2>
-      <span class="no">02</span>灵活报告 · 第二条产线
+      <span class="no">03</span>灵活报告 · 第二条产线
       <span class="badge gold">内部参考件</span>
     </h2>
     <p class="lead">
@@ -279,13 +284,8 @@ main{max-width:1180px;margin:0 auto;padding:22px 22px 70px}
 <p>*内部参考 · 非报送件｜灵活报告产线｜不带盖章位*</p></article>
   </section>
 
-  <section class="card">
-    <h2><span class="no">03</span>分析 · 按节解读</h2>
-    <div class="ph">（已上线：14 节确定性句骨架 + 数字防护盾 —— 本稿不再画，见现行分析台）</div>
-  </section>
-
   <p class="note">
-    <b>审核注</b>：① 位置按你说的放「第二块」（挨着 01 读数表）；若你想让它与「按节解读」挨着（两块都是解读），一句话我调。
+    <b>审核注</b>：① 位置已按你定的：**两块解读挨着** —— 01 读数表 → 02 按节解读（固定）→ 03 灵活报告（灵活）。
     ② 数据口要两个：<span class="mono">GET /api/periods/{p}/flexible</span>（意图清单 + 已出稿 + 正文，正文由后端同一 md 渲染器出 html）
     与 <span class="mono">POST /api/periods/{p}/flexible</span>（生成，同步约几秒）—— 已写进契约 #21，等后端。
     ③ 本稿正文是 <b>真跑</b>的 cross_compare 分析稿（md→html 保真），两张图是产物里的真图（JPEG 内嵌压缩）；期次/生成时间/数据来源链都是真的。
