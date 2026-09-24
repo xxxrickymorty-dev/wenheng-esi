@@ -186,12 +186,12 @@ tr.crossed td{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
   <section class="card">
     <h1 style="font-size:25px">潜力学科预测</h1>
     <p class="lead">
-      报告预测章用哪套模型，在这里定：<b>8 个潜力学科</b>各有一条 V1 基线推荐，想改哪科就改，改完保存到本期档案。
+      报告预测章用哪套模型，在这里定：<b>8 个潜力学科</b>各有一条 V1 基线推荐，想改哪科就改，改完保存。
       想先看某个模型准不准，在下面试跑一次——滚动误差、首次过线期都摆出来。
     </p>
     <div class="stamps">
       <span>模型版本 <b class="mono">V1.0</b></span>
-      <span>数据期次 <b class="mono">202609</b>（最新一期台账派生产物）</span>
+      <span>数据期次 <b class="mono">202609</b>（最新一期台账派生产物 · 选择与试跑都绑在这一期）</span>
       <span>运行路径 <b>确定性计算 · 大模型不参与数据路径</b></span>
     </div>
   </section>
@@ -222,12 +222,12 @@ tr.crossed td{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
 
     <div class="saved">
       <button class="btn primary" id="save-btn">保存本期选择</button>
-      <span class="hint" id="save-hint">尚未保存——保存后这份选择随本期报告一起存档。</span>
+      <span class="hint" id="save-hint">尚未保存——保存到 202609 期档案（最新一期，与数据源同期）。</span>
     </div>
 
     <p class="note">
-      <b>审核注</b>：保存已可用（接口已交付）；「报告预测章按所选模型出解读」这条后端还在接线，
-      接线前报告仍用 V1 基线推荐——文案按接线后的样子写在这里，供你一并过目。
+      <b>审核注</b>：① 保存已可用（接口已交付），选择与试跑都绑在<b>最新一期</b>（现在是 202609）——
+      期次滚动后自动跟到新一期；②「报告预测章按所选模型出解读」后端还在接线，接线前报告仍用 V1 基线推荐。
     </p>
   </section>
 
@@ -271,10 +271,9 @@ tr.crossed td{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
       </label>
       <label>预测期数
         <select id="f-horizon">
-          <option value="6">6 期</option>
-          <option value="12">12 期</option>
-          <option value="18" selected>18 期</option>
-          <option value="24">24 期</option>
+          <option value="12">12 期（2 年）</option>
+          <option value="18" selected>18 期（3 年 · 与报告一致）</option>
+          <option value="24">24 期（4 年 · V1 上限）</option>
         </select>
       </label>
       <button class="btn primary" id="run-btn">运行预测</button>
