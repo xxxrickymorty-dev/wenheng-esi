@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from 'react'
 import {
-  discNameMap, getForecastBoard, getForecastChoice, getForecastMeta, runForecast, saveForecastChoice,
+  getForecastBoard, getForecastChoice, getForecastMeta, runForecast, saveForecastChoice,
   type ForecastBoard, type ForecastMeta, type ForecastModelResult, type ForecastRun,
 } from './api5'
 import { Icon } from './icons'
@@ -180,7 +180,6 @@ const fmtT = (v: string) => (v ? v : '窗口内未过线')
 
 function Board({ meta }: { meta: ForecastMeta }) {
   const [d, setD] = useState<ForecastBoard | null>(null)
-  const [cn, setCn] = useState<Record<string, string>>({})
   const [note, setNote] = useState<string | null>(null)
   const [route, setRoute] = useState(meta.routes[0]?.value ?? '')
 
@@ -192,7 +191,6 @@ function Board({ meta }: { meta: ForecastMeta }) {
         if (!alive) return
         setD(b)
         if (!b.routes?.[route] && Object.keys(b.routes ?? {}).length) setRoute(Object.keys(b.routes)[0])
-        if (b.period) setCn(await discNameMap(b.period))
       } catch {
         if (alive) setNote('学科板暂时读不到（这份选模表还没生成）。')
       }
@@ -232,7 +230,7 @@ function Board({ meta }: { meta: ForecastMeta }) {
           {rows.map((r) => (
             <div className="bd-card" key={r.subject}>
               <div className="bd-top">
-                <b>{cn[r.subject] ?? r.subject}</b>
+                <b>{r.subject}</b>
                 <span className="bd-prox">{r.prox == null ? '—' : `${r.prox}%`}</span>
               </div>
               <span className="bd-bar" aria-hidden="true">

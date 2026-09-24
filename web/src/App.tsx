@@ -157,6 +157,8 @@ export default function App() {
     { view: 'shelf', label: '陈列馆', icon: 'book', href: '/app/shelf/' },
   ]
   const isGuest = me?.role === 'guest'
+  /* 角色还没拿到时，先不渲染只给管理员的块（避免游客先发出被拒的请求） */
+  const noAdminBits = !me || isGuest
   const ADMIN_VIEWS = new Set(['workbench', 'review', 'analysis', 'forecast', 'archive', 'trace', 'red', 'charts'])
   const denied = isGuest && ADMIN_VIEWS.has(view)
   const navHref = (h: string) =>
@@ -230,7 +232,7 @@ export default function App() {
             onChanged={() => { getPeriods().then(setPeriods).catch(() => { /* 刷新失败不影响操作结果 */ }) }}
           />
         ) : view === 'report' ? (
-          <Report periods={periods} current={selected} onPick={setSelected} />
+          <Report periods={periods} current={selected} onPick={setSelected} guest={noAdminBits} />
         ) : (
           <>
                       <Workbench
@@ -242,7 +244,7 @@ export default function App() {
                         run={run}
                         onGenerate={onGenerate}
                       />
-            <Tools period={selected} jobId={run?.jobId ?? null} onUploaded={(jid) => attachRun(jid)} />
+            {!noAdminBits && <Tools period={selected} jobId={run?.jobId ?? null} onUploaded={(jid) => attachRun(jid)} />}
           </>
         )}
 
