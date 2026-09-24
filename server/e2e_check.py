@@ -65,6 +65,16 @@ def call_json(method, path, payload=None):
         return -1, f"{type(e).__name__}: {e}", url
 
 
+# 二进制要单独取：call() 会把响应 decode 成文本，zip 会被读坏。
+def call_raw(path):
+    try:
+        r = op.open(BASE + path)
+        return r.status, r.read(), dict(r.headers)
+    except urllib.error.HTTPError as e:
+        return e.code, e.read(), dict(e.headers)
+
+
+
 LOG = []
 
 
@@ -158,17 +168,11 @@ out("=== 4/5. 旧首屏与旧控制台（已下线） ===")
 out("=== 6. 期次入口（已下线，302 见 §3.5） ===")
 # 老对勘本页已 302 到 /app/?view=reading&period=...；内容断言随页面下线。
 
-out("=== 7. 期次红色件清单（本次修的 500） ===")
-st, rs, _ = call("GET", "/p/202607/redslots")
-check("GET /p/202607/redslots → 200", st == 200, f"got {st}")
-check("清单行数与 red_slots.json 一致",
-      rs.count("<tr>") == len(json.loads((ROOT.parent / "out" / "202607" / "red_slots.json").read_text(encoding="utf-8"))) + 1,
-      f"rows={rs.count(chr(60) + chr(116) + chr(114) + chr(62)) - 1}")
-check("清单用朱色本期列", 'class="new"' in rs)
-check("清单回链指向 /p/202607", 'href="/p/202607"' in rs)
-check("清单下载指向期次端点", 'href="/p/202607/download/red_list"' in rs)
-check("无空任务链接 /jobs//", "/jobs//" not in rs)
-check("清单用统一面板与套准十字", "panel-h" in rs and 'class="reg tl"' in rs)
+out("=== 7. 红件清单下载端点（老页面已 302，清单数据走 §16 API） ===")
+# 老清单页已 302 到 /app/?view=red；下载端点按 §六 保留（新站直接引用）
+_st, _dl, _h = call_raw("/p/202607/download/red_list")
+check("GET /p/202607/download/red_list → 200", _st == 200, f"got {_st}")
+check("下载内容非空", len(_dl) >= 100, f"{len(_dl)}B")
 
 out("=== 8. 任务进度 API（老任务页已下线，302 见 §3.5） ===")
 if jobid:
@@ -253,15 +257,6 @@ missing = [s for s in states.STATES if f".badge.{s}" not in css]
 check("每个状态都有 badge 配色", not missing, f"缺 {missing}")
 
 out("=== 12. 运行档案页（SRS R-21：状态机回放 + 瀑布 + 产物 + 日志包）===")
-# 二进制要单独取：call() 会把响应 decode 成文本，zip 会被读坏。
-def call_raw(path):
-    try:
-        r = op.open(BASE + path)
-        return r.status, r.read(), dict(r.headers)
-    except urllib.error.HTTPError as e:
-        return e.code, e.read(), dict(e.headers)
-
-
 import io as _io                                                  # noqa: E402
 import zipfile as _zf                                             # noqa: E402
 
@@ -312,16 +307,8 @@ if jobid:
           all(n in _jn for n in ("job/job.json", "job/progress.jsonl", "job/console.log")),
           str([n for n in _jn if n.startswith("job/")]))
 
-out("=== 13. 红件清单的图表预览与安全 ===")
-st, rs, _ = call("GET", "/p/202607/redslots")
-_imgs = re.findall(r'<img src="([^"]+)"', rs)
-check("图槽位渲染成图片（不再只是路径文本）", len(_imgs) >= 90, f"n={len(_imgs)}")
-if _imgs:
-    _st, _raw, _h = call_raw(_imgs[0])
-    check("图能取到且真是 PNG", _st == 200 and _raw[:4] == b"\x89PNG",
-          f"{_st} {(_h.get('content-type') or '')} {len(_raw)}B")
-    check("图响应带 PNG 的 Content-Type", "image/png" in (_h.get("content-type") or ""))
-# 这条路由直接服务磁盘文件，越界 = 任意文件读取（能读到 server/.env）
+out("=== 13. 图表路由的越界防护（老清单页已 302，路由按 §六 保留） ===")
+# /p/{期次}/chart/ 直接服务磁盘文件，越界 = 任意文件读取（能读到 server/.env）
 for _bad in ("/p/202607/chart/../server/.env",
              "/p/202607/chart/..%2Fserver%2F.env",
              "/p/202607/chart/Chemistry/../../../.env"):

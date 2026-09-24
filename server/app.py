@@ -241,69 +241,6 @@ def resolve_period_dir(period):
     return None
 
 
-def _redslots_page(request, out_dir, job=None):
-    """逐格红色件清单。任务入口与期次入口共用，只差返回/下载链接指哪儿。"""
-    p = out_dir / "red_slots.json"
-    slots = []
-    if p.exists():
-        try:
-            slots = json.loads(p.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            slots = []
-    stats = {}
-    for s in slots:
-        loc = s.get("location", "")
-        group = loc.split("/")[0] if "/" in loc else loc
-        if loc.startswith("T01/r"):
-            group = "大表数值格"
-        elif loc.startswith("T0") or loc.startswith("T1"):
-            group = loc.split("/")[0]
-        stats[group] = stats.get(group, 0) + 1
-    q = urllib.parse.quote(out_dir.name)
-    # 图槽位：`source` 是 `charts/<学科>/<图名>.png`。能解析出真实文件才给预览地址——
-    # 解析失败（文件缺失 / 路径越界）就不给，前端退回纯文本，绝不显示一个坏图。
-    for s in slots:
-        src = s.get("source") or ""
-        if isinstance(src, str) and src.startswith("charts/"):
-            rel = src[len("charts/"):]
-            if jobs.resolve_chart(out_dir, rel):
-                s["chart_url"] = f"/p/{q}/chart/" + urllib.parse.quote(rel)
-    if job:
-        back_url = f"/jobs/{job['id']}/collation"
-        download_url = f"/jobs/{job['id']}/download/red_list"
-    else:
-        back_url = f"/p/{q}"
-        download_url = f"/p/{q}/download/red_list"
-    # 图册入口：清单页里 99 张图夹在 240 条表数值后面、位置字段还写着「正文」，
-    # 不另给入口就没人找得到。这里与搜索框并列摆一个直达按钮。
-    charts_url = f"/jobs/{job['id']}/charts" if job else f"/p/{q}/charts"
-    return page(request, "redslots.html", job=job or {}, period=out_dir.name,
-                slots=slots, groups=sorted(stats.items(), key=lambda kv: -kv[1]),
-                backUrl=back_url, downloadUrl=download_url, chartsUrl=charts_url)
-
-
-def _charts_page(request, out_dir, job=None):
-    """图表图册：把 charts/ 下的期次图平铺展示，打开就能看全。
-
-    与红件清单页的分工：清单页是「逐条审计」（354 条，图只占 99 条，夹在表数值后面，
-    得先筛），图册页是「一眼看全」（99 张图按学科分组平铺）。两个入口都给。
-    """
-    q = urllib.parse.quote(out_dir.name)
-    groups = {}
-    for it in jobs.list_charts(out_dir):
-        it["url"] = f"/p/{q}/chart/" + urllib.parse.quote(it["rel"])
-        groups.setdefault(it["group"], []).append(it)
-    view = {
-        "period": out_dir.name,
-        "job": job or {},
-        "total": sum(len(v) for v in groups.values()),
-        "groups": sorted(groups.items()),
-        "backUrl": f"/jobs/{job['id']}/collation" if job else f"/p/{q}",
-        "redUrl": f"/jobs/{job['id']}/redslots" if job else f"/p/{q}/redslots",
-    }
-    return page(request, "charts.html", **view)
-
-
 def _archive_page(request, out_dir, job=None):
     """运行档案页（SRS R-21）：状态机回放 + 任务瀑布 + 产物 + 日志包下载。
 
@@ -385,10 +322,11 @@ async def period_collation(request: Request, period: str,
 
 @app.get("/p/{period}/redslots", response_class=HTMLResponse)
 async def period_redslots(request: Request, period: str):
+    """老红件清单页已下线（ADR-0002 阶段 2）—— 302 到新工作区。"""
     d = resolve_period_dir(period)
-    if d is None:
-        return RedirectResponse("/", status_code=303)
-    return _redslots_page(request, d)
+    key = "/p/{period}/redslots" if d is not None else "/"
+    return _legacy_redirect(request, key,
+                            period=urllib.parse.quote(d.name) if d is not None else "")
 
 
 @app.get("/p/{period}/trace", response_class=HTMLResponse)
@@ -473,11 +411,11 @@ def _flash_back(back, qs):
 
 @app.get("/p/{period}/charts", response_class=HTMLResponse)
 async def period_charts(request: Request, period: str):
-    """图表图册：99 张期次图按学科平铺，打开即看全（不用在清单页里筛）。"""
+    """老图册页已下线（ADR-0002 阶段 2）—— 302 到新工作区。"""
     d = resolve_period_dir(period)
-    if d is None:
-        return RedirectResponse("/", status_code=303)
-    return _charts_page(request, d)
+    key = "/p/{period}/charts" if d is not None else "/"
+    return _legacy_redirect(request, key,
+                            period=urllib.parse.quote(d.name) if d is not None else "")
 
 
 # ============================ 灵活报告（第二条产线）============================
