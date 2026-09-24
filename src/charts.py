@@ -798,8 +798,10 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
                       entered=None):
     """我校主要学科近期发展趋势（对标第 3/4/5 期原生图：1‰ 接近度前 4 学科 + ESI1‰ 线 + 图下数据表）。
 
-    与原件逐项对齐（其 chart XML 口径）：粗体标题；纵轴 0–100%、`0.00%` 两位小数；
-    **无图例 / 无网格 / 无数据点标记**；数据表贴在图下、列与数据点对齐、行标签用系列色。
+    与原件逐项对齐（其 chart XML 口径）：粗体标题；纵轴 0–105%、`0.00%` 两位小数，
+    **100% 的 1‰ 阈值线必须画进图里**（rick 2026-09-24；不能只用红字注明、也不能只留在表里）；
+    数据表贴在图下、列与数据点对齐、行标签用系列色，**不再带「ESI1‰ 100%」那行**。
+    折线带图例 + 末点数值（rick 反馈：原件那套无图例无标记看不清，故此处比原件多这两样）。
     系列顺序＝**进入 ESI 1% 的先后**（原件三期一致：化学→植物与动物学→环境生态学→工程学），
     由 `entered`（wide/entered_1pct.parquet）的首次在榜期给出；同期的按末列总被引降序兜底
     （矩阵左端截断会把老学科并列到同一期）。不传 `entered` 时退回按最新接近度降序。
@@ -836,22 +838,24 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
 
     ink = "#1F1F1F"
     markers = ("o", "s", "^", "D")
-    fig = Figure(figsize=(6.6, 4.5))
+    fig = Figure(figsize=(6.6, 6.4))
     FigureCanvasAgg(fig)   # 🔴 _labels 要量像素包围盒，裸 Figure 的 FigureCanvasBase 没有 get_renderer
     # 图区横向必须与下方数据表的数据列一一对齐（表数据区 = 0.062+0.910×0.22 … 0.972）
-    ax = fig.add_axes([0.262, 0.485, 0.710, 0.375])
+    ax = fig.add_axes([0.262, 0.315, 0.710, 0.585])
     for i, d in enumerate(picks):
         ax.plot(range(len(periods)), picked.loc[d], color=colors[i % len(colors)],
                 lw=1.8, marker=markers[i % len(markers)], ms=4.5, label=_cn(d))
     ax.set_xticks(range(len(periods)))
     ax.set_xticklabels([])                   # 期次标签只在下方表头行出现一次（Excel 数据表同款）
-    # 纵轴聚焦数据带（rick：几根线粘连）——0–100 会把 43–57% 挤成一条；100% 基线移出窗口，
-    # 用右上角红字注明（全量 100% 在表格 ESI1‰ 行）。
-    ax.set_ylim(25, 65)
-    ax.set_yticks(range(25, 66, 5))
-    ax.set_yticklabels([f"{v:.2f}%" for v in range(25, 66, 5)], fontsize=9)
-    ax.text(1.0, 0.98, "ESI1‰ 基线 = 100%", transform=ax.transAxes, ha="right", va="top",
-            color="#FF0000", fontsize=8)
+    # 🔴 纵轴 0–105%：**必须看得到 1‰ 阈值线（100%）**（rick 2026-09-24：「这张图必须要有
+    # 千分之一的阈值线，可以画大一点」）。旧实现聚焦 25–65%、基线只用右上角红字注明 → 不合格；
+    # 线条密度靠加大画幅（6.6×5.4in）补偿，不再靠裁窗口。
+    ax.set_ylim(0, 105)
+    ax.set_yticks(range(0, 101, 20))
+    ax.set_yticklabels([f"{v:.2f}%" for v in range(0, 101, 20)], fontsize=9)
+    ax.axhline(100, color="#FF0000", lw=1.6, zorder=2)
+    ax.text(0.99, 101.5, "ESI1‰ 基线 = 100%", transform=ax.get_yaxis_transform(),
+            ha="right", va="bottom", color="#FF0000", fontsize=8)
     for s in ("top", "right", "bottom"):    # 底轴不画线：表格顶边框就是那条线（原件同款）
         ax.spines[s].set_visible(False)
     ax.tick_params(length=0, labelsize=9, colors=ink)
@@ -863,21 +867,20 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
     # 宋体/Noto Serif 没有可命中的 bold 字面（matplotlib 会静默回退成常规字重）→ 用描边假粗，
     # 与原件「标题加粗」观感一致，且 Windows/Linux 两端表现一致。
     title.set_path_effects([path_effects.withStroke(linewidth=0.7, foreground="#1F1F1F")])
-    # 数值标注：4 线 × 7 期全标会挤成一团（避让后数字离点太远）→ 每条线只标最后一期，
-    # 全量数值在下方数据表（已加大加深）。ESI1‰ 基线不标。
-    # 逐条单独放（dodge=False）：4 个末点纵向已拉开，直接贴在各自点上方；
-    # 开避让反而会和前一个标签互相顶走，出现「数字跑到别条线头上」的错配。
+    # 数值标注：4 线 × 7 期全标会挤成一团 → 每条线只标最后一期，全量数值在下方数据表。
+    # 🔴 `dodge=False`：**别开避让**——避让按整行字高挪标签，会把「47.89%」挪到紫线头上，
+    # 数字与线错配（实测）。纵轴 0–105% 后 4 个末点只差 ~10pt，靠加大画幅（6.6×6.0in）
+    # 让 8pt 数字正好排在各自点上方（间距 9.8pt > 字高 8pt）。
     x = list(range(len(periods)))
     for d in picks:
         vals = [float(v) for v in picked.loc[d]]
         _labels(ax, [x[-1]], [vals[-1]], "{:.2f}%", size=8.0, color=ink, dodge=False)
     rows = [[("" if picked.loc[d, p] != picked.loc[d, p]
               else f"{float(picked.loc[d, p]):.2f}%") for p in periods] for d in picks]
-    rows.append(["100%"] * len(periods))     # 原件 ESI1‰ 行是 0% 格式（不写两位小数）
-    # 学科名统一墨色（rick：不要给学科字体上色）；ESI1‰ 基线行仍是红的
-    _trend_data_table(fig, [0.062, 0.102, 0.910, 0.360], periods,
-                      [_cn(d) for d in picks] + ["ESI1‰"], rows,
-                      [ink] * len(picks) + ["#FF0000"])
+    # 🔴 表格不再带「ESI1‰ 100% …」行（rick 2026-09-24：去掉表格最后一行的 ESI 行）——
+    # 基线已画进图里，表里再列一行 100% 是冗余。
+    _trend_data_table(fig, [0.062, 0.075, 0.910, 0.22], periods,
+                      [_cn(d) for d in picks], rows, [ink] * len(picks))
     _save_raw(fig, out_png)
 
 
