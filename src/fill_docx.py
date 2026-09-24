@@ -232,9 +232,24 @@ def _apply_slot_geometry(tbl):
             cell.width = Cm(8.64)
 
 
-def insert_charts(doc, period_dir, discipline, table_idx, slots, chart_dir):
-    """向指定槽位表插入 6 图：填入既有空段（保持 2 段结构，避免行高超限）。"""
-    tbl = doc.tables[table_idx]
+def insert_charts(doc, period_dir, discipline, slots, chart_dir):
+    """向指定槽位表插入 6 图：填入既有空段（保持 2 段结构，避免行高超限）。
+
+    🔴 **不能用 `doc.tables[idx]` 盲取**：学院统计表改成两张后，其后的表序号整体后移
+    （2026-09-24 实测：6 张学科图被塞进「被引频次学院统计表」里）。改为按内容找——
+    第 k 个「表头以『国内外排名百分位趋势』开头」的表 = `charts.DETAIL_TABLES[k]`；
+    槽位标签用**实测序号**（对勘本/在线填按 T<序号> 回查 docx，必须与真实位置一致）。
+    """
+    cands = [t for t in doc.tables if t.rows and t.rows[0].cells
+             and t.rows[0].cells[0].text.strip().startswith("国内外排名百分位趋势")]
+    k = charts.DETAIL_TABLES.index(discipline)
+    if k >= len(cands):
+        slots.append({"location": f"T?/{discipline}", "old": "（找不到槽位表）", "new": "跳过",
+                      "source": "fill_docx.insert_charts"})
+        return
+    tbl = cands[k]
+    # ⚠ `doc.tables` 每次返回新的包装对象 → 必须比较底层 XML 元素（不是 `in`/`.index`）
+    table_idx = next(i for i, t in enumerate(doc.tables) if t._tbl is tbl._tbl)
     _apply_slot_geometry(tbl)
     slug = charts._slug(discipline)
     for (ri, ci), fname in CHART_SLOTS.items():
@@ -514,45 +529,129 @@ def _find_top_list_table(doc):
     return None
 
 
-def _clone_stat_table3(doc, widths=(4676, 2809, 2809)):
-    """从附录清单表克隆出 3 列统计表骨架（表头行 + 1 行数据模板），列宽单位 twips。"""
-    import copy
-
-    src = _find_top_list_table(doc)
-    if src is None:
-        return None
-    tbl = copy.deepcopy(src._tbl)
-    trs = tbl.findall(qn("w:tr"))
-    for tr in trs[2:]:
-        tbl.remove(tr)
-    grid = tbl.find(qn("w:tblGrid"))
-    for gc in grid.findall(qn("w:gridCol"))[3:]:
-        grid.remove(gc)
-    for gc, w in zip(grid.findall(qn("w:gridCol")), widths):
-        gc.set(qn("w:w"), str(w))
+def _tbl_pr_set(tbl, el, *succ):
+    """在 `w:tblPr` 里按 OOXML 的 schema 顺序放入/替换一个子元素（顺序错 Word 报文档损坏）。"""
     tbl_pr = tbl.find(qn("w:tblPr"))
-    tbl_w = tbl_pr.find(qn("w:tblW"))
-    if tbl_w is None:
-        tbl_w = parse_xml(f'<w:tblW {nsdecls("w")}/>')
-        tbl_pr.append(tbl_w)
-    tbl_w.set(qn("w:w"), "5000")
-    tbl_w.set(qn("w:type"), "pct")
-    for tr in tbl.findall(qn("w:tr")):
-        tcs = tr.findall(qn("w:tc"))
-        for tc in tcs[3:]:
-            tr.remove(tc)
-        for tc, w in zip(tcs[:3], widths):
-            tc_pr = tc.find(qn("w:tcPr"))
-            if tc_pr is None:
-                tc_pr = parse_xml(f'<w:tcPr {nsdecls("w")}/>')
-                tc.insert(0, tc_pr)
-            tc_w = tc_pr.find(qn("w:tcW"))
-            if tc_w is None:
-                tc_w = parse_xml(f'<w:tcW {nsdecls("w")}/>')
-                tc_pr.append(tc_w)
-            tc_w.set(qn("w:w"), str(w))
-            tc_w.set(qn("w:type"), "dxa")
+    for old in tbl_pr.findall(el.tag):
+        tbl_pr.remove(old)
+    tbl_pr.insert_element_before(el, *succ)
+
+
+#: 学院统计表（两张）：列宽 twips ≈ 10.5cm + 3.0cm；行高 0.46cm；微软雅黑 9pt
+_COLLEGE_W = (5953, 1701)
+_COLLEGE_FONT = "微软雅黑"
+_COLLEGE_HEAD_FILL = "F3F4F6"
+_COLLEGE_TOTAL_FILL = "F9FAFB"
+_COLLEGE_RULE = "E5E7EB"
+
+
+def _college_cell(cell, text, *, align="left", size=9, bold=False, fill=None, color="1F2937"):
+    """一格：微软雅黑（中西文都设）+ 对齐 + 可选底纹 + 垂直居中。"""
+    from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    p = cell.paragraphs[0]
+    for r in list(p.runs):
+        r._element.getparent().remove(r._element)
+    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT if align == "right" else WD_ALIGN_PARAGRAPH.LEFT
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(0)
+    p.paragraph_format.line_spacing = Pt(10)      # 固定行高：两张表（各 25 行）才排得进一页
+    run = p.add_run(str(text))
+    run.font.size = Pt(size)
+    run.font.bold = bold
+    run.font.color.rgb = RGBColor.from_string(color)
+    rpr = run._element.get_or_add_rPr()
+    rpr.insert(0, parse_xml(
+        f'<w:rFonts {nsdecls("w")} w:ascii="{_COLLEGE_FONT}" w:hAnsi="{_COLLEGE_FONT}"'
+        f' w:eastAsia="{_COLLEGE_FONT}"/>'))
+    cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+    if fill:
+        cell._tc.get_or_add_tcPr().append(
+            parse_xml(f'<w:shd {nsdecls("w")} w:val="clear" w:color="auto" w:fill="{fill}"/>'))
+    return cell
+
+
+def _college_block(doc, head1, rows1, head2, rows2):
+    """学院统计表：**一张 Word 表里排两个子表**（论文量降序 / 被引频次降序，对照出版件第 7 页）。
+
+    🔴 为什么不是两个 `w:tbl`：加一张表会让其后所有表的序号整体后移——
+    `insert_charts`（学科 96 张图）、`verify_report_docx`（tables[3..18]）、
+    T19/T20 的位置码（工作台翻译、逐格回验）全靠序号，实测踩过：6 张学科图被塞进
+    「被引频次学院统计表」。所以两个子表共用一个表元素，中间加一行**无边框空行**当间隔，
+    视觉上就是上下两张表，序号一个不动。
+    美化：只留横向细线（无竖线/外框）；表头浅底纹 + 深一档下边线；总计行浅底纹加粗。
+    """
+    n_rows = 1 + len(rows1) + 1 + 1 + 1 + len(rows2) + 1     # 表头+数据+总计+间隔+表头+数据+总计
+    nt = doc.add_table(rows=n_rows, cols=2)
+    tbl = nt._tbl
+    _tbl_pr_set(tbl, parse_xml(
+        f'<w:tblW {nsdecls("w")} w:w="{sum(_COLLEGE_W)}" w:type="dxa"/>'),
+        "w:jc", "w:tblCellSpacing", "w:tblInd", "w:tblBorders", "w:shd", "w:tblLayout",
+        "w:tblCellMar", "w:tblLook")
+    _tbl_pr_set(tbl, parse_xml(f'<w:jc {nsdecls("w")} w:val="center"/>'),
+                "w:tblCellSpacing", "w:tblInd", "w:tblBorders", "w:shd", "w:tblLayout",
+                "w:tblCellMar", "w:tblLook")
+    _tbl_pr_set(tbl, parse_xml(
+        f'<w:tblBorders {nsdecls("w")}>'
+        f'<w:top w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+        f'<w:left w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+        f'<w:bottom w:val="single" w:sz="4" w:space="0" w:color="{_COLLEGE_RULE}"/>'
+        f'<w:right w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+        f'<w:insideH w:val="single" w:sz="4" w:space="0" w:color="{_COLLEGE_RULE}"/>'
+        f'<w:insideV w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+        f"</w:tblBorders>"), "w:shd", "w:tblLayout", "w:tblCellMar", "w:tblLook")
+    _tbl_pr_set(tbl, parse_xml(
+        f'<w:tblCellMar {nsdecls("w")}>'
+        f'<w:top w:w="10" w:type="dxa"/><w:left w:w="90" w:type="dxa"/>'
+        f'<w:bottom w:w="10" w:type="dxa"/><w:right w:w="90" w:type="dxa"/>'
+        f"</w:tblCellMar>"), "w:tblLook")
+    grid = tbl.find(qn("w:tblGrid"))
+    for gc, w in zip(grid.findall(qn("w:gridCol")), _COLLEGE_W):
+        gc.set(qn("w:w"), str(w))
+    gap_idx = 1 + len(rows1) + 1                             # 两个子表之间的间隔行
+    for i, tr in enumerate(tbl.findall(qn("w:tr"))):
+        h = 120 if i == gap_idx else 200                     # 间隔行矮一点：两张子表才排得进一页
+        tr.get_or_add_trPr().append(parse_xml(
+            f'<w:trHeight {nsdecls("w")} w:val="{h}" w:hRule="atLeast"/>'))
+    i = 0
+    for head, rows in ((head1, rows1), (head2, rows2)):      # 表头
+        _college_cell(nt.cell(i, 0), "学院名称", fill=_COLLEGE_HEAD_FILL, color="374151")
+        _college_cell(nt.cell(i, 1), head, align="right", fill=_COLLEGE_HEAD_FILL,
+                      color="374151")
+        _college_rule(nt.cell(i, 0), "D1D5DB")
+        _college_rule(nt.cell(i, 1), "D1D5DB")
+        i += 1
+        for name, value, is_total in rows:                   # 数据 + 总计
+            fill = _COLLEGE_TOTAL_FILL if is_total else None
+            _college_cell(nt.cell(i, 0), name, fill=fill, bold=is_total)
+            _college_cell(nt.cell(i, 1), value, align="right", fill=fill, bold=is_total)
+            i += 1
+        if i < len(nt.rows):                                 # 两个子表之间的无边框空行
+            for ci in (0, 1):
+                cell = nt.cell(i, ci)
+                _college_cell(cell, "", size=1)
+                _college_rule(cell, None)
+                for p in cell.paragraphs:                    # 空行压到 2pt：省出一行的地儿
+                    p.paragraph_format.line_spacing = Pt(2)
+            i += 1
     return tbl
+
+
+def _college_rule(cell, color):
+    """给一格加/去下边线（color=None → 四边全无，用于子表之间的间隔行）。"""
+    tc_pr = cell._tc.get_or_add_tcPr()
+    if color is None:
+        tc_pr.append(parse_xml(
+            f'<w:tcBorders {nsdecls("w")}>'
+            f'<w:top w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+            f'<w:bottom w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+            f"</w:tcBorders>"))
+    else:
+        tc_pr.append(parse_xml(
+            f'<w:tcBorders {nsdecls("w")}>'
+            f'<w:bottom w:val="single" w:sz="8" w:space="0" w:color="{color}"/>'
+            f"</w:tcBorders>"))
 
 
 def fill_college(doc, ledger_dir, slots, warns):
@@ -595,51 +694,46 @@ def fill_college(doc, ledger_dir, slots, warns):
         slots.append({"location": label, "old": f"（母版旧图 ×{n}）", "new": f"[图] {png.name}",
                       "source": f"charts/_overview/{png.name}"})
 
-    # —— 学院统计表：替换「学院顶尖论文发文量与被引频次统计表」后方的空占位表 ——
+    # —— 学院统计表：**两张**（论文量降序 / 被引频次降序，对照出版件第 7 页），
+    #    替换「学院顶尖论文发文量与被引频次统计表」后方的空占位表 ——
     units = cs["units"]
-    tbl = _clone_stat_table3(doc)
-    if tbl is None:
-        warns.append("学院统计表：母版缺 7 列附录清单表模板，无法克隆 3 列表")
-    else:
-        import copy
-
-        tpl_tr = copy.deepcopy(tbl.findall(qn("w:tr"))[1])
-        for _ in range(len(units)):              # 现成 1 行当首个学院行；合计行随之
-            tbl.append(copy.deepcopy(tpl_tr))
-        nt = Table(tbl, doc._body)
-        _cell_set_keepfont(nt.cell(0, 0), "学院名称")
-        _cell_set_keepfont(nt.cell(0, 1), "顶尖论文发文量（篇）")
-        _cell_set_keepfont(nt.cell(0, 2), "被引频次")
-        for i, u in enumerate(units, start=1):
-            _cell_set_keepfont(nt.cell(i, 0), u["unit"])
-            _cell_set_keepfont(nt.cell(i, 1), str(u["papers"]))
-            _cell_set_keepfont(nt.cell(i, 2), str(u["cites"]))
-        _cell_set_keepfont(nt.cell(len(units) + 1, 0), "合计")
-        _cell_set_keepfont(nt.cell(len(units) + 1, 1), str(cs["n_papers"]))
-        _cell_set_keepfont(nt.cell(len(units) + 1, 2), str(cs["n_cites"]))
-        cap = next((p for p in doc.paragraphs
-                    if "学院顶尖论文发文量与被引频次统计表" in p.text), None)
-        old_desc = "（未找到标题段，未插入）"
-        placed = False
-        if cap is not None:
-            sib = cap._element.getnext()
-            for _ in range(4):
-                if sib is None or sib.tag == qn("w:tbl"):
-                    break
-                sib = sib.getnext()
-            if sib is not None and sib.tag == qn("w:tbl"):
-                old_desc = "空占位表（1×2）"
-                sib.addprevious(tbl)
-                sib.getparent().remove(sib)
-            else:
-                old_desc = "（无占位表，插在标题后）"
-                cap._element.addnext(tbl)
-            placed = True
-        slots.append({"location": "正文/学院顶尖论文发文量与被引频次统计表", "old": old_desc,
-                      "new": f"{len(units)} 行学院 + 合计（{cs['n_papers']} 篇 / {cs['n_cites']} 次）",
-                      "source": "college_stats.json（馆员论文清单）"})
-        if not placed:
-            warns.append("学院统计表：未找到标题段，表已构好但未插入")
+    rows_p = [(u["unit"], str(u["papers"]), False) for u in units]
+    rows_p.sort(key=lambda x: (-int(x[1]), x[0]))
+    rows_p.append(("总计", str(cs["n_papers"]), True))
+    rows_c = sorted(((u["unit"], str(u["cites"]), False) for u in units),
+                    key=lambda x: (-int(x[1]), x[0]))
+    rows_c.append(("总计", str(cs["n_cites"]), True))
+    tbl_p = _college_block(doc, "论文量（篇）", rows_p, "被引频次", rows_c)
+    cap = next((p for p in doc.paragraphs
+                if "学院顶尖论文发文量与被引频次统计表" in p.text), None)
+    old_desc = "（未找到标题段，未插入）"
+    placed = False
+    if cap is not None:
+        from docx.text.paragraph import Paragraph                  # noqa: PLC0415
+        sib = cap._element.getnext()
+        skipped = []
+        for _ in range(4):
+            if sib is None or sib.tag == qn("w:tbl"):
+                break
+            skipped.append(sib)
+            sib = sib.getnext()
+        if sib is not None and sib.tag == qn("w:tbl"):
+            old_desc = "空占位表（1×2）+ 旧 1 张 3 列表"
+            sib.addprevious(tbl_p)              # 换掉占位表（表数不变 → 后续序号不漂）
+            sib.getparent().remove(sib)
+            for sp in skipped:                  # 顺手清掉标题与表之间的空段（两张子表才排得进一页）
+                if not Paragraph(sp, doc._body).text.strip():
+                    sp.getparent().remove(sp)
+        else:
+            old_desc = "（无占位表，插在标题后）"
+            cap._element.addnext(tbl_p)
+        placed = True
+    slots.append({"location": "正文/学院顶尖论文发文量与被引频次统计表", "old": old_desc,
+                  "new": f"两个子表（论文量降序 / 被引频次降序，各 {len(units)} 行学院 + 总计；"
+                         f"{cs['n_papers']} 篇 / {cs['n_cites']} 次）",
+                  "source": "college_stats.json（馆员论文清单）"})
+    if not placed:
+        warns.append("学院统计表：未找到标题段，表已构好但未插入")
 
     fill_top_list(doc, cs, slots, warns)
 
@@ -908,8 +1002,7 @@ def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026�
     charts_used = ["Chemistry"] if charts_only_demo else DETAIL_TABLES
     chart_dir = ledger_dir / "charts"
     for disc in charts_used:
-        idx = 3 + DETAIL_TABLES.index(disc)
-        insert_charts(doc, ledger_dir, disc, idx, slots, chart_dir)
+        insert_charts(doc, ledger_dir, disc, slots, chart_dir)
 
     # 带图段落统一「放宽固定行距」（rick 反馈：exact 行距段里内嵌图会压字）；表格槽位图不动。
     n_relax = relax_image_line_spacing(doc)

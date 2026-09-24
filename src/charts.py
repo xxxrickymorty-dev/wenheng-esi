@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """图表模板库 C1–C6：从台账序列重绘《学科信息参考》全部期次图。
 
 样式口径（WH-DOC-13，2026-09-17 按第 4 期原件 1:1 复刻，见 `评审文档/13`）：
@@ -43,12 +43,12 @@ import college_stats  # noqa: E402
 def _cn(en):
     return DISCIPLINES_CN.get(en, en)
 
-# 西文衬线在前（数字/字母走 Times），中文回退到宋体族——与原件一致。
-# 末段是**兜底**：Linux 服务器若没装 fonts-noto-cjk-extra（不含 Serif），至少退到黑体不出方框。
-_FONT_CANDIDATES = ["Times New Roman", "SimSun", "Noto Serif CJK SC", "Noto Serif SC",
-                    "Source Han Serif SC", "STSong", "Songti SC", "AR PL UMing CN",
-                    "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Zen Hei", "SimHei",
-                    "Microsoft YaHei", "AR PL UKai CN", "Droid Sans Fallback"]
+# 🔴 2026-09-24 rick 定调「先做 B」：全图换**无衬线**（微软雅黑 / Noto Sans）——
+# 宋体数字在 8pt 插图里发糊、观感旧。末段仍是 Linux 兜底（Noto Sans CJK 缺失时退黑体，不出方框）。
+# ⚠ 换字体必须重跑防压字检测（tmp/diag_text_overlap.py，四期）——字宽变了，避让结果跟着变。
+_FONT_CANDIDATES = ["Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC",
+                    "Source Han Sans SC", "PingFang SC", "WenQuanYi Zen Hei", "SimHei",
+                    "Droid Sans Fallback", "DejaVu Sans"]
 
 
 def _font_stack():
@@ -66,8 +66,8 @@ FONT = STACK[0]  # 兼容既有引用（Windows=Times New Roman；Linux=Noto Ser
 # Excel 默认配色
 C_BLUE, C_ORANGE, C_GRAY, C_YELLOW, C_LIGHTBLUE = "#4472C4", "#ED7D31", "#A5A5A5", "#FFC000", "#5B9BD5"
 C_GREEN = "#70AD47"        # 原件「系列2」＝绿：国内排名 / CNCI 国际均值 / ESI 阈值 / 中国大陆
-C_AXIS, C_GRID, C_TEXT = "#BFBFBF", "#D9D9D9", "#404040"
-FONT_SIZE, TITLE_SIZE = 7, 9.5
+C_AXIS, C_GRID, C_TEXT = "#D1D5DB", "#E8EAED", "#1F2937"
+FONT_SIZE, TITLE_SIZE = 8, 11
 FIG_W, FIG_H = 8.26 / 2.54, 5.50 / 2.54  # 3.25 x 2.17 inch
 
 plt.rcParams.update({
@@ -146,13 +146,17 @@ def _style(ax):
     for s in ("left", "bottom"):
         ax.spines[s].set_color(C_AXIS)
         ax.spines[s].set_linewidth(0.8)
-    ax.tick_params(axis="both", length=0, pad=3.5, labelsize=FONT_SIZE, colors=C_TEXT)
+    ax.tick_params(axis="both", length=0, pad=7, labelsize=FONT_SIZE, colors=C_TEXT)
     ax.grid(axis="y", color=C_GRID, linewidth=0.7)
     ax.set_axisbelow(True)
 
 
 def _title(ax, text):
-    ax.set_title(text, fontsize=TITLE_SIZE, color="#1F1F1F", pad=24)
+    """标题：加大 + 加粗（描边假粗——微软雅黑/Noto Sans 在 matplotlib 里没有可命中的
+    bold 字面，直接 fontweight="bold" 会静默回退；描边在两端口径一致）。"""
+    t = ax.set_title(text, fontsize=TITLE_SIZE, color="#111827", pad=30)
+    t.set_path_effects([path_effects.withStroke(linewidth=0.7, foreground="#111827")])
+    return t
 
 
 def _text_box(fig, artist):
@@ -526,8 +530,10 @@ def chart_rank_pct(rank_intl, rank_cn, disc, out_png, periods, *, invert=None):
     _auto_ylim(ax, [ri, rc], intervals=4, pad=0.06, fmt="{:g}%",
                invert=(True if invert is None else bool(invert)))
     # 数值标签最后放：要躲开上面已定好的轴/标题/图例（两条线贴近时标签必压）
-    _labels(ax, x, ri, "{:.2f}%")
-    _labels(ax, x, rc, "{:.2f}%")
+    # 🔴 这图 14 个标签（两线 × 7 期）**不跟全局 +1**：8pt 时四期各多 1–3 处压字
+    #    （含 202601 '30.86%'×期次行 929px²）；7.5pt 也还有 1 处，7pt 是 0 的上限。
+    _labels(ax, x, ri, "{:.2f}%", size=7)
+    _labels(ax, x, rc, "{:.2f}%", size=7)
     _save(fig, out_png)
 
 
@@ -645,7 +651,7 @@ def chart_q_dist(q1q4, disc, out_png, period, *, floor_zero=None):
             any_val = any_val or not pd.isna(v)
         vals[ent] = row
     if not any_val:
-        ax.text(0.5, 0.5, "（无分区数据）", ha="center", va="center", fontsize=9)
+        ax.text(0.5, 0.5, "（无分区数据）", ha="center", va="center", fontsize=10)
         _save(fig, out_png)
         return
     group_w = 0.40                       # 原件组宽/周期 ≈ 0.4
@@ -658,17 +664,24 @@ def chart_q_dist(q1q4, disc, out_png, period, *, floor_zero=None):
         ax.bar(pos, vals[ent], width=width * 0.92, color=col, label=lab)
     _style(ax)
     ax.set_xticks(centers)
-    ax.set_xticklabels(["Q1", "Q2", "Q3", "Q4"], fontsize=FONT_SIZE)
+    # 期次标签 7pt（不跟全局 +1）：这图 12 个数值标签要上下避让，横轴字再大就没地方了
+    ax.set_xticklabels(["Q1", "Q2", "Q3", "Q4"], fontsize=7)
     flat = [v for row in vals.values() for v in row]
     _title(ax, "学科发文期刊分区占比情况")
     _legend_top(ax, ncol=3)              # 原件图 6 图例在顶部居中（不是右上）
-    # 占比柱状图：必须有零基准，上界跟本学科最大值走
+    # 占比柱状图：必须有零基准，上界跟本学科最大值走。
+    # 🔴 `reserve_top=140`：这张图每组 3 柱 × 4 组 = 12 个数值标签，标签比柱子宽得多，
+    #    顶上空不出 ~3 行字（≈140px）就摆不开——默认的 1 行（_LABEL_PX≈61px）会让避让
+    #    把它们挤成一团（字号 +1 后实测 3 处压字）。`reserve_top` 只外挪视觉上端、
+    #    刻度一个不动，观感不变。
     _auto_ylim(ax, [flat], floor_zero=(True if floor_zero is None else bool(floor_zero)),
-               intervals=6, pad=0.05, integer=True, fmt="{:.0f}")
+               intervals=6, pad=0.05, integer=True, fmt="{:.0f}", reserve_top=180)
     # 标签必须在轴/标题/图例定后再放（_labels 要靠真实像素位置避让）
     for ent, _, _ in Q_ENTITIES:
         # {:g} 按数据原样出位数：原件里既有 57.51% 也有 11.7% / 7.9%
-        _labels(ax, pos_of[ent], vals[ent], "{:g}%", dy=3, size=6.5)
+        # 🔴 字号**不跟全局 +1**：这图 12 个标签（3 柱 × 4 组）要在 canvas 里上下避让，
+        #    7.5pt 时必撞（Microbiology/Mathematics 实测）；6.5pt 是能排开的上限。
+        _labels(ax, pos_of[ent], vals[ent], "{:g}%", dy=3, size=6.2)
     _save(fig, out_png)
 
 
@@ -680,7 +693,7 @@ def _save_raw(fig, path):
     plt.close(fig)
 
 
-def _data_table(fig, rect, col_labels, row_labels, rows, *, fontsize=6.2, color=None):
+def _data_table(fig, rect, col_labels, row_labels, rows, *, fontsize=7.2, color=None):
     """在 fig 指定区域放一张数据表（第4期原生图表下方的数据表样式）。"""
     tax = fig.add_axes(rect)
     tax.axis("off")
@@ -723,7 +736,7 @@ def chart_rank_table(ynd_rank, out_png, end_period=None, n=7):
     ln2, = ax.plot(x, df["rank_cn_uni"], marker="o", ms=4.5, lw=1.8, color="#FFC000", label="国内高校排名")
     ln3, = ax2.plot(x, df["rank_intl"], marker="o", ms=4.5, lw=1.8, color="#4472C4", label="国际排名（右标）")
     ax.set_xticks(x)
-    ax.set_xticklabels(periods, fontsize=9)
+    ax.set_xticklabels(periods, fontsize=10)
     ax.set_xlim(-0.6, len(df) - 0.4)
     # 轴范围对齐原件（均为反序：名次越小越靠上）
     ax.set_ylim(170, 120)
@@ -735,23 +748,23 @@ def chart_rank_table(ynd_rank, out_png, end_period=None, n=7):
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)
         ax2.spines[s].set_visible(False)
-    ax.tick_params(length=0, labelsize=9, colors=ink)
-    ax2.tick_params(length=0, labelsize=9, colors=ink)
-    ax.set_title("我校ESI排名情况", fontsize=13, color=ink, pad=10)
+    ax.tick_params(length=0, labelsize=10, colors=ink)
+    ax2.tick_params(length=0, labelsize=10, colors=ink)
+    ax.set_title("我校ESI排名情况", fontsize=14, color=ink, pad=10)
     # 图例：底部左侧（原件样式）；挂在 ax 上，_labels 才能把它当障碍避让
     ax.legend([ln1, ln2, ln3], [l.get_label() for l in (ln1, ln2, ln3)],
-              fontsize=9, loc="upper left", bbox_to_anchor=(-0.12, -0.13),
+              fontsize=10, loc="upper left", bbox_to_anchor=(-0.12, -0.13),
               ncol=3, frameon=False, labelcolor=ink)
     # 逐点数值（国内/高校左轴，国际右轴）——必须在标题/图例/轴范围之后再放
-    _labels(ax, x, [float(v) for v in df["rank_cn"]], "{:.0f}", size=8.0, color=ink)
-    _labels(ax, x, [float(v) for v in df["rank_cn_uni"]], "{:.0f}", size=8.0, color=ink)
-    _labels(ax2, x, [float(v) for v in df["rank_intl"]], "{:.0f}", size=8.0, color=ink)
+    _labels(ax, x, [float(v) for v in df["rank_cn"]], "{:.0f}", size=9, color=ink)
+    _labels(ax, x, [float(v) for v in df["rank_cn_uni"]], "{:.0f}", size=9, color=ink)
+    _labels(ax2, x, [float(v) for v in df["rank_intl"]], "{:.0f}", size=9, color=ink)
     _data_table(fig, [0.25, 0.05, 0.60, 0.26], periods,
                 ["国内排名", "国内高校排名", "国际排名（右标）"],
                 [[df["rank_cn"].get(p) for p in df.index],
                  [df["rank_cn_uni"].get(p) for p in df.index],
                  [df["rank_intl"].get(p) for p in df.index]],
-                fontsize=8.0, color=ink)
+                fontsize=9, color=ink)
     _save_raw(fig, out_png)
 
 
@@ -761,7 +774,7 @@ def chart_ynd_rank(ynd_rank, out_png, end_period=None, n=7):
 
 
 def _trend_data_table(fig, rect, col_labels, row_labels, rows, row_colors, *,
-                      label_frac=0.22, fontsize=8.2, ink="#1F1F1F"):
+                      label_frac=0.22, fontsize=9.2, ink="#1F1F1F"):
     """Excel 式「数据表」：贴在绘图区正下方，数据列与折线数据点一一对齐。
 
     行标签列（学科名）向左伸出坐标区、文字用系列色 —— 原件**没有图例**，这张表就是图例
@@ -839,7 +852,7 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
 
     ink = "#1F1F1F"
     markers = ("o", "s", "^", "D")
-    fig = Figure(figsize=(6.6, 6.4))
+    fig = Figure(figsize=(6.6, 6.6))
     FigureCanvasAgg(fig)   # 🔴 _labels 要量像素包围盒，裸 Figure 的 FigureCanvasBase 没有 get_renderer
     # 图区横向必须与下方数据表的数据列一一对齐：表 = [0.025, 0.075, 0.945, 0.22] +
     # label_frac=0.15 → 数据列从 0.025+0.945×0.15 = 0.167 起。
@@ -858,18 +871,18 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
     # 旧实现聚焦 25–65%、基线只用右上角红字注明 → 不合格；线上文字改贴在基线**下方**（线在轴顶）。
     ax.set_ylim(20, 100)
     ax.set_yticks(range(20, 101, 20))
-    ax.set_yticklabels([f"{v:.2f}%" for v in range(20, 101, 20)], fontsize=9)
+    ax.set_yticklabels([f"{v:.2f}%" for v in range(20, 101, 20)], fontsize=10)
     ax.axhline(100, color="#FF0000", lw=1.6, zorder=2)
     ax.text(0.99, 98.2, "ESI1‰ 基线 = 100%", transform=ax.get_yaxis_transform(),
-            ha="right", va="top", color="#FF0000", fontsize=8)
+            ha="right", va="top", color="#FF0000", fontsize=9)
     for s in ("top", "right", "bottom"):    # 底轴不画线：表格顶边框就是那条线（原件同款）
         ax.spines[s].set_visible(False)
-    ax.tick_params(length=0, labelsize=9, colors=ink)
+    ax.tick_params(length=0, labelsize=10, colors=ink)
     ax.tick_params(axis="x", pad=2)
-    ax.legend(fontsize=8.5, loc="lower center", bbox_to_anchor=(0.5, 1.01),
+    ax.legend(fontsize=9.5, loc="lower center", bbox_to_anchor=(0.5, 1.01),
               ncol=4, frameon=False, labelcolor=ink)
     title = fig.text(0.517, 0.975, "我校主要学科近期发展趋势", ha="center", va="top",
-                     fontsize=13, color="#1F1F1F")
+                     fontsize=14, color="#1F1F1F")
     # 宋体/Noto Serif 没有可命中的 bold 字面（matplotlib 会静默回退成常规字重）→ 用描边假粗，
     # 与原件「标题加粗」观感一致，且 Windows/Linux 两端表现一致。
     title.set_path_effects([path_effects.withStroke(linewidth=0.7, foreground="#1F1F1F")])
@@ -880,7 +893,7 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
     x = list(range(len(periods)))
     for d in picks:
         vals = [float(v) for v in picked.loc[d]]
-        _labels(ax, [x[-1]], [vals[-1]], "{:.2f}%", size=8.0, color=ink, dodge=False)
+        _labels(ax, [x[-1]], [vals[-1]], "{:.2f}%", size=9, color=ink, dodge=False)
     rows = [[("" if picked.loc[d, p] != picked.loc[d, p]
               else f"{float(picked.loc[d, p]):.2f}%") for p in periods] for d in picks]
     # 🔴 表格不再带「ESI1‰ 100% …」行（rick 2026-09-24：去掉表格最后一行的 ESI 行）——
@@ -899,7 +912,7 @@ def chart_top_by_year(by_year, out_png, period):
     fig, ax = _fig(4.4, 2.6)
     ax.bar(range(len(s)), [float(v) for v in s], color=C_ORANGE, width=0.66)
     for i, v in enumerate(s):
-        ax.text(i, float(v) + 0.6, f"{int(v)}", ha="center", fontsize=6.2, color=C_TEXT)
+        ax.text(i, float(v) + 0.6, f"{int(v)}", ha="center", fontsize=7.2, color=C_TEXT)
     ax.set_xticks(range(len(s)))
     ax.set_xticklabels([str(i) for i in s.index], fontsize=FONT_SIZE)
     _style(ax)
@@ -915,9 +928,9 @@ def chart_top_by_subject(top_papers, out_png, period):
     fig, ax = _fig(4.6, 2.8)
     ax.bar(range(len(s)), [float(v) for v in s], color=C_BLUE, width=0.62)
     for i, v in enumerate(s):
-        ax.text(i, float(v) + 0.6, f"{int(v)}", ha="center", fontsize=6.0, color=C_TEXT)
+        ax.text(i, float(v) + 0.6, f"{int(v)}", ha="center", fontsize=7, color=C_TEXT)
     ax.set_xticks(range(len(s)))
-    ax.set_xticklabels([_cn(d) for d in s.index], fontsize=5.6, rotation=38, ha="right")
+    ax.set_xticklabels([_cn(d) for d in s.index], fontsize=6.6, rotation=38, ha="right")
     _style(ax)
     _title(ax, "顶尖论文学科分布（篇）")
     _save(fig, out_png)
@@ -984,7 +997,7 @@ def chart_college_pie(stats, out_png, mode):
         ax.annotate(f"{lab}：{v / total * 100:.2f}%", xy=(x * 0.98, y * 0.98),
                     xytext=(1.58 if right else -1.58, ty_of[k]),
                     ha="left" if right else "right", va="center",
-                    fontsize=7.0, color="#1F1F1F",
+                    fontsize=8, color="#1F1F1F",
                     arrowprops=dict(arrowstyle="-", color="#A6A6A6", lw=0.6))
     ax.set_xlim(-3.3, 3.3)
     ax.set_ylim(-1.85, 1.85)
@@ -1032,10 +1045,10 @@ def chart_forecast(hist_periods, hist, model_hist, fut_periods, fut,
 
     xt = list(range(0, len(all_p), 2))          # 每 2 期一个刻度（双月 → 每 4 个月）
     ax.set_xticks(xt)
-    ax.set_xticklabels([all_p[i] for i in xt], fontsize=10, rotation=90)
+    ax.set_xticklabels([all_p[i] for i in xt], fontsize=11, rotation=90)
     ax.set_xlim(-0.6, len(all_p) - 0.4)
     _style(ax)
-    ax.tick_params(labelsize=10.5, colors=ink)
+    ax.tick_params(labelsize=11.5, colors=ink)
     if not grid:
         ax.grid(False)
     # 图例走 figure 坐标、tight_layout 预留底部空间：竖排刻度字较长，ax.legend 的负锚点
@@ -1045,9 +1058,11 @@ def chart_forecast(hist_periods, hist, model_hist, fut_periods, fut,
     handles, legend_labels = ax.get_legend_handles_labels()
     pathlib.Path(out_png).parent.mkdir(parents=True, exist_ok=True)
     fig.tight_layout(pad=_LAYOUT_PAD, rect=(0.0, 0.11, 1.0, 1.0))
-    fig.legend(handles, legend_labels, fontsize=13, loc="lower center", ncol=4,
-               frameon=False, labelcolor=ink, handlelength=1.3, columnspacing=1.2,
-               handletextpad=0.6, bbox_to_anchor=(0.5, 0.012), bbox_transform=fig.transFigure)
+    # 间距再收窄（空格由 1.3/1.2/0.6 收到 1.1/0.9/0.5）：字号 +1 后 4 个词条在 7.2in 里
+    # 正好顶到两侧边，留点余量免得改字体就裁字
+    fig.legend(handles, legend_labels, fontsize=14, loc="lower center", ncol=4,
+               frameon=False, labelcolor=ink, handlelength=1.1, columnspacing=0.9,
+               handletextpad=0.5, bbox_to_anchor=(0.5, 0.012), bbox_transform=fig.transFigure)
     fig.savefig(out_png, dpi=300)
     plt.close(fig)
 
@@ -1069,22 +1084,22 @@ def chart_overview_1pct(cites, threshold, out_png, period):
     ax.barh(y, ratio, color="#B4A7D6", height=0.7, label="与ESI前1%的接近度")
     ax.barh(y, gap, left=ratio, color="#A9D18E", height=0.7, label="与ESI前1%的差距")
     for i, v in enumerate(ratio):
-        ax.text(v + 8, i, f"{v:.2f}%", va="center", fontsize=7, color=C_TEXT)
+        ax.text(v + 8, i, f"{v:.2f}%", va="center", fontsize=8, color=C_TEXT)
     ax.axvline(100, color="red", lw=1.6)
     xmax = int(math.ceil(max(float(ratio.max()), 100.0) / 100.0) * 100)
     ax.set_xlim(0, xmax)
     ticks = list(range(0, xmax + 1, 100))
     ax.set_xticks(ticks)
-    ax.set_xticklabels([f"{t:.2f}%" for t in ticks], fontsize=6.5, color=ink)
+    ax.set_xticklabels([f"{t:.2f}%" for t in ticks], fontsize=7.5, color=ink)
     ax.set_yticks(y)
-    ax.set_yticklabels([_cn(d) for d in ratio.index], fontsize=7, color=ink)
-    ax.set_xlabel("被引频次 / 1%阈值（%）", fontsize=9.5, color=ink)
+    ax.set_yticklabels([_cn(d) for d in ratio.index], fontsize=8, color=ink)
+    ax.set_xlabel("被引频次 / 1%阈值（%）", fontsize=10.5, color=ink)
     ax.grid(axis="x", color=C_GRID, linewidth=0.6)
     from matplotlib.patches import Patch
     ax.legend(handles=[Patch(color="#B4A7D6", label="与ESI前1%的接近度"),
                        Patch(color="#A9D18E", label="与ESI前1%的差距"),
                        Patch(color="red", label="ESI前1%基线")],
-              fontsize=9, loc="upper center", bbox_to_anchor=(0.5, -0.075),
+              fontsize=10, loc="upper center", bbox_to_anchor=(0.5, -0.075),
               ncol=3, frameon=False, labelcolor=ink,
               handlelength=1.3, columnspacing=1.2, handletextpad=0.6)
     _save(fig, out_png)
@@ -1107,14 +1122,14 @@ def chart_overview_1permille(cites, thr_1permille, entered_1pct, out_png, period
     ax.barh(y, ratio, color="#B4A7D6", height=0.7, label="1‰接近度")
     ax.barh(y, gap, left=ratio, color="#A9D18E", height=0.7, label="与前1‰差距")
     for i, v in enumerate(ratio):
-        ax.text(v + 1.5, i, f"{v:.2f}%", va="center", fontsize=7.5, color=ink)
+        ax.text(v + 1.5, i, f"{v:.2f}%", va="center", fontsize=8.5, color=ink)
     ax.set_yticks(list(y))
-    ax.set_yticklabels([_cn(d) for d in ratio.index], fontsize=8.5)
+    ax.set_yticklabels([_cn(d) for d in ratio.index], fontsize=9.5)
     ax.set_xlim(0, 105)
-    ax.set_xlabel("占 1‰ 阈值比例（%）", fontsize=10, color=ink)
+    ax.set_xlabel("占 1‰ 阈值比例（%）", fontsize=11, color=ink)
     ax.grid(axis="x", color=C_GRID, linewidth=0.6)
-    ax.tick_params(axis="both", length=0, labelsize=8.5, colors=ink)
-    ax.legend(fontsize=8.5, loc="upper center", bbox_to_anchor=(0.5, -0.15),
+    ax.tick_params(axis="both", length=0, labelsize=9.5, colors=ink)
+    ax.legend(fontsize=9.5, loc="upper center", bbox_to_anchor=(0.5, -0.15),
               ncol=2, frameon=False, labelcolor=ink)
     _save(fig, out_png)
 
@@ -1128,8 +1143,8 @@ def chart_overview_1pct_v0(cites, threshold, out_png, period):
     ax.barh(range(len(ratio)), ratio, color=colors, height=0.65)
     ax.axvline(100, color="red", lw=1.4)
     ax.set_yticks(range(len(ratio)))
-    ax.set_yticklabels(ratio.index, fontsize=6.5)
-    ax.set_xlabel("被引频次 / 1%阈值（%）", fontsize=8)
+    ax.set_yticklabels(ratio.index, fontsize=7.5)
+    ax.set_xlabel("被引频次 / 1%阈值（%）", fontsize=9)
     ax.grid(axis="x", color=C_GRID, linewidth=0.6)
     _save(fig, out_png)
 

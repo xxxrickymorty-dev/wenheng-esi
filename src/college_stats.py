@@ -18,6 +18,18 @@ import openpyxl
 
 CAND_DIRS = ("input/{period}", "../数据与复现", "out/{period}", "{ledger_dir}")
 
+#: 学院/机构名归一（同一机构的清单写法可能不同）。
+#: 2026-09 实测：清单里 `天文研究所`（5 篇/617 引）与 `中国（西南）天文研究所`（1 篇/8 引）
+#: 各占一行 → 报告出现两行；**出版件第 7 页是合并成一行 6 篇/625 引**（对照模板发现）。
+UNIT_ALIAS = {
+    "天文研究所": "中国（西南）天文研究所",
+}
+
+#: 解析器版本：改动 `parse()` 的口径（别名表、取段规则…）就 +1 ——
+#: 缓存 `college_stats.json` 版本不匹配会**重新解析**，避免"改了规则但旧缓存照用"
+#: （2026-09-24 实测踩过：加了别名，报告里天文所仍是两行）。
+_PARSER_VERSION = 2
+
 
 def find_list(ledger_dir: pathlib.Path, period: str) -> pathlib.Path | None:
     """按优先级找清单：input/<期次>/ → ../数据与复现/ → out/<期次>/。"""
@@ -48,6 +60,7 @@ def parse(path: pathlib.Path) -> dict:
         s = re.sub(r"\s+", "", str(r[ia] or ""))
         parts = [x for x in re.split(r"/+", s) if x]
         unit = parts[-1] if parts else ""
+        unit = UNIT_ALIAS.get(unit, unit)
         if not unit:
             no_unit.append(str(r[ia])[:40])
         papers[unit] += 1
@@ -64,7 +77,8 @@ def parse(path: pathlib.Path) -> dict:
     if ie is not None:
         n_subjects = len({re.sub(r"\s+", "", str(r[ie]))
                           for r in rows[1:] if r and r[ie] not in (None, "")})
-    return {"source": str(path), "units": units, "rows": rows_out, "header": hdr[:7],
+    return {"parser": _PARSER_VERSION, "source": str(path), "units": units,
+            "rows": rows_out, "header": hdr[:7],
             "n_papers": sum(papers.values()), "n_cites": sum(cites.values()),
             "n_units": len(units), "n_subjects": n_subjects, "no_unit": no_unit[:10]}
 
@@ -73,7 +87,9 @@ def load(ledger_dir: pathlib.Path, period: str, *, save: bool = False) -> dict |
     j = pathlib.Path(ledger_dir) / "college_stats.json"
     if j.exists():
         try:
-            return json.loads(j.read_text(encoding="utf-8"))
+            st = json.loads(j.read_text(encoding="utf-8"))
+            if st.get("parser") == _PARSER_VERSION:
+                return st
         except Exception:                                          # noqa: BLE001
             pass
     p = find_list(pathlib.Path(ledger_dir), period)
