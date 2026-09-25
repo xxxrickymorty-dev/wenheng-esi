@@ -12,11 +12,15 @@ from . import config
 class AdminStaticFiles(StaticFiles):
     """仅匹配到的静态文件限管理员；其余页面与素材保持原有可访问性。"""
 
-    def __init__(self, *args, protected_paths=(), guest_responses=None, **kwargs):
+    def __init__(self, *args, protected_paths=(), guest_responses=None,
+                 admin_responses=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.protected_paths = {self._normal_path(p) for p in protected_paths}
         self.guest_responses = {
             self._normal_path(path): callback for path, callback in (guest_responses or {}).items()
+        }
+        self.admin_responses = {
+            self._normal_path(path): callback for path, callback in (admin_responses or {}).items()
         }
 
     @staticmethod
@@ -47,15 +51,17 @@ class AdminStaticFiles(StaticFiles):
             if not user:
                 return RedirectResponse("/login", status_code=303,
                                         headers={"Cache-Control": "no-store"})
+            normalized_path = self._normal_path(path)
+            callback = (self.admin_responses if config.role_of(user) == "admin"
+                        else self.guest_responses).get(normalized_path)
+            if callback:
+                response = callback()
+                if inspect.isawaitable(response):
+                    response = await response
+                response.headers["Cache-Control"] = "private, no-store"
+                response.headers["Vary"] = "Cookie"
+                return response
             if config.role_of(user) != "admin":
-                guest_response = self.guest_responses.get(self._normal_path(path))
-                if guest_response:
-                    response = guest_response()
-                    if inspect.isawaitable(response):
-                        response = await response
-                    response.headers["Cache-Control"] = "private, no-store"
-                    response.headers["Vary"] = "Cookie"
-                    return response
                 return JSONResponse(
                     {"error": "需要管理员权限", "hint": "游客不能查看报告内容"},
                     status_code=403, headers={"Cache-Control": "no-store"})

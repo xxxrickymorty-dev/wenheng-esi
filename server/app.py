@@ -22,7 +22,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import approval, archive, collation, config, jobs, shelf_preview
+from . import approval, archive, collation, config, jobs, shelf_data, shelf_preview
 from . import forecasting
 from .protected_static import AdminStaticFiles
 from src import period as period_mod  # 期次口径唯一来源（ADR-0001：新工作区 API 也用它）
@@ -46,9 +46,15 @@ async def _shelf_guest_data():
     return await run_in_threadpool(shelf_preview.javascript_response, period_cards())
 
 
+async def _shelf_admin_data():
+    """每次请求均从已部署期次构建，避免把指标留在静态构建产物。"""
+    return await run_in_threadpool(shelf_data.javascript_response, period_cards())
+
+
 app.mount("/app", AdminStaticFiles(directory=str(config.ROOT / "web" / "dist"), html=True,
                                    check_dir=False, protected_paths=("shelf/data.js",),
-                                   guest_responses={"shelf/data.js": _shelf_guest_data}), name="web")
+                                   guest_responses={"shelf/data.js": _shelf_guest_data},
+                                   admin_responses={"shelf/data.js": _shelf_admin_data}), name="web")
 templates = Jinja2Templates(directory=str(config.SERVER_DIR / "templates"))
 
 

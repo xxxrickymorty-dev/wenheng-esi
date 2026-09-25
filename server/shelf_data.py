@@ -1,0 +1,172 @@
+# -*- coding: utf-8 -*-
+"""管理员书架的数据组装。
+
+完整指标只在服务端按请求从已部署的 ``out/<期次>`` 读取；这里刻意不读取
+``web/public`` 或 ``web/dist``，避免构建产物成为数据副本。缺失或损坏的期次
+会被跳过，因此只打包 202607 的演示环境只展示该期。
+"""
+import csv
+import json
+import math
+from pathlib import Path
+
+from starlette.responses import Response
+
+from . import config
+from src import period as period_mod
+from src.parse_ledger import DISCIPLINES_CN, norm_disc_cn
+
+
+EN2CN_SAFE = {en: norm_disc_cn(cn) for en, cn in DISCIPLINES_CN.items()}
+EMPTY_FORECAST = {"rows": [], "impl": "", "window": ""}
+
+
+def _read_json(path):
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def _number(value, cast=float):
+    try:
+        number = float((value or "").strip())
+    except (AttributeError, TypeError, ValueError):
+        return None
+    if not math.isfinite(number):
+        return None
+    return cast(number)
+
+
+def _read_table(path):
+    try:
+        with path.open(encoding="utf-8-sig", newline="") as source:
+            rows = list(csv.DictReader(source))
+    except (OSError, UnicodeDecodeError, csv.Error):
+        return None
+    required = {"discipline", "papers", "total_cites", "cnci", "top_papers", "thr_1pct",
+                "thr_1pct_gap", "prox_change", "rank_cn_change"}
+    if not rows or not all(required <= set(row) for row in rows):
+        return None
+
+    table = []
+    for row in rows:
+        english = (row.get("discipline") or "").strip()
+        if not english:
+            continue
+        table.append({
+            "en": english,
+            "cn": EN2CN_SAFE.get(english, english),
+            "papers": _number(row.get("papers"), int),
+            "cites": _number(row.get("total_cites"), int),
+            "cnci": _number(row.get("cnci")),
+            "top": _number(row.get("top_papers"), int),
+            "thr": _number(row.get("thr_1pct"), int),
+            "gap": _number(row.get("thr_1pct_gap"), int),
+            "prox": (row.get("prox_change") or "").strip(),
+            "rank": (row.get("rank_cn_change") or "").strip(),
+        })
+    if not table:
+        return None
+    table.sort(key=lambda row: (row["top"] is None, -(row["top"] or 0)))
+    return table
+
+
+def _read_forecast(period_dir):
+    """读取可选预测摘要；没有这项产物不阻止该期书架展示。"""
+    try:
+        markdown = (period_dir / "预测选模与过线.md").read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return dict(EMPTY_FORECAST)
+    if "## 被引维度" not in markdown or "## 排名维度" not in markdown:
+        return dict(EMPTY_FORECAST)
+    section = markdown.split("## 被引维度", 1)[1].split("## 排名维度", 1)[0]
+    rows = []
+    for line in section.splitlines():
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if not line.strip().startswith("|") or len(cells) < 12:
+            continue
+        if cells[0] == "学科" or set(cells[0]) <= set("-: "):
+            continue
+        rows.append({"en": cells[0], "model": cells[1], "mape": cells[3],
+                     "prox": cells[8], "t1": cells[9], "t2": cells[10], "t3": cells[11]})
+
+    def grab(prefix):
+        for line in markdown.splitlines():
+            if line.strip().startswith(prefix):
+                text = line.replace("**", "").strip()
+                return text.split("：", 1)[-1].strip() if "：" in text else text
+        return ""
+
+    return {"rows": rows, "impl": "；".join(grab("**实现口径").split("；")[:2]),
+            "window": grab("**序列窗口").split("。", 1)[0]}
+
+
+def _book(card, out_dir):
+    period_dir = Path(out_dir) / str(card.get("period", ""))
+    facts = _read_json(period_dir / "overview_facts.json")
+    meta = _read_json(period_dir / "meta.json")
+    table = _read_table(period_dir / "table2.csv")
+    if facts is None or meta is None or table is None:
+        return None
+    period = period_mod.from_dir(period_dir.name)
+    if not period:
+        return None
+    try:
+        _, issue = period_mod.issue_of(period)
+    except ValueError:
+        return None
+    assertions = meta.get("assertions", [])
+    passed = sum(isinstance(item, (list, tuple)) and item and item[0] == "PASS"
+                 for item in assertions) if isinstance(assertions, list) else 0
+    total = len(assertions) if isinstance(assertions, list) else 0
+    return {
+        "period": period, "no": issue, "label": period_mod.label(period),
+        "coverage": facts.get("coverage_window", ""), "prev_label": facts.get("prev_label", ""),
+        "rank_intl_now": facts.get("rank_intl_now"), "rank_intl_delta": facts.get("rank_intl_delta"),
+        "rank_cn_uni_now": facts.get("rank_cn_uni_now"),
+        "top_papers_now": facts.get("top_papers_now"), "top_papers_delta": facts.get("top_papers_delta"),
+        "top3": facts.get("top3_by_top_papers", []), "best_permille": facts.get("best_1permille", []),
+        "not_entered": facts.get("top2_not_entered", []), "n_disc_1pct": facts.get("n_disc_1pct"),
+        "n_assert_pass": passed, "n_assert_total": total, "table": table,
+        "forecast": _read_forecast(period_dir), "_trend": meta.get("trend", meta.get("top_total_by_period", {})),
+    }
+
+
+def build_data(cards, out_dir=None):
+    """根据 ``period_cards`` 的部署清单同步组装；不缓存，下一请求即可反映文件变化。"""
+    out_dir = config.OUT_DIR if out_dir is None else out_dir
+    books = []
+    for card in cards:
+        try:
+            book = _book(card, out_dir)
+        except (OSError, TypeError, ValueError):
+            book = None
+        if book:
+            try:
+                json.dumps(book, allow_nan=False)
+            except (TypeError, ValueError):
+                book = None
+        if book:
+            books.append(book)
+    books.sort(key=lambda book: book["period"])
+    trend = books[-1].pop("_trend", {}) if books else {}
+    for book in books:
+        book.pop("_trend", None)
+    trend = trend if isinstance(trend, (dict, list)) else {}
+    try:
+        json.dumps(trend, allow_nan=False)
+    except (TypeError, ValueError):
+        trend = {}
+    return {"books": books, "trend": trend}
+
+
+def javascript_response(cards):
+    """即使所有期次损坏也回传可执行的空数据，绝不回退到静态完整数据。"""
+    try:
+        payload = build_data(cards)
+        encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    except (TypeError, ValueError):
+        encoded = '{"books":[],"trend":{}}'
+    return Response(f"window.WH_DATA = {encoded};\n", media_type="application/javascript")
