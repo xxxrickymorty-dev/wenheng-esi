@@ -537,8 +537,10 @@ def _tbl_pr_set(tbl, el, *succ):
     tbl_pr.insert_element_before(el, *succ)
 
 
-#: 学院统计表（两张）：列宽 twips ≈ 10.5cm + 3.0cm；行高 0.46cm；微软雅黑 9pt
-_COLLEGE_W = (5953, 1701)
+#: 学院统计表（左右并排两个子表）：列宽 twips ≈ 名称 5.0cm + 值 2.0cm，中间 0.6cm 空列当间隔；
+#: 行高 0.40cm；微软雅黑 9pt
+_COLLEGE_W = (2835, 1134)
+_COLLEGE_GAP = 340
 _COLLEGE_FONT = "微软雅黑"
 _COLLEGE_HEAD_FILL = "F3F4F6"
 _COLLEGE_TOTAL_FILL = "F9FAFB"
@@ -573,20 +575,23 @@ def _college_cell(cell, text, *, align="left", size=9, bold=False, fill=None, co
 
 
 def _college_block(doc, head1, rows1, head2, rows2):
-    """学院统计表：**一张 Word 表里排两个子表**（论文量降序 / 被引频次降序，对照出版件第 7 页）。
+    """学院统计表：**左右两个子表并排**（论文量降序 / 被引频次降序，rick 2026-09-25 定）。
 
     🔴 为什么不是两个 `w:tbl`：加一张表会让其后所有表的序号整体后移——
     `insert_charts`（学科 96 张图）、`verify_report_docx`（tables[3..18]）、
     T19/T20 的位置码（工作台翻译、逐格回验）全靠序号，实测踩过：6 张学科图被塞进
-    「被引频次学院统计表」。所以两个子表共用一个表元素，中间加一行**无边框空行**当间隔，
-    视觉上就是上下两张表，序号一个不动。
+    「被引频次学院统计表」。Word 里两张独立表也没法并排（只能上下），所以用**一个表、
+    五列**：名称 | 值 | 空列（当间隔） | 名称 | 值 —— 视觉上就是左右两张表，序号一个不动。
     美化：只留横向细线（无竖线/外框）；表头浅底纹 + 深一档下边线；总计行浅底纹加粗。
     """
-    n_rows = 1 + len(rows1) + 1 + 1 + 1 + len(rows2) + 1     # 表头+数据+总计+间隔+表头+数据+总计
-    nt = doc.add_table(rows=n_rows, cols=2)
+    if len(rows1) != len(rows2):
+        raise ValueError("左右两半行数必须一致（都是 学院数 + 总计）")
+    n_rows = 1 + len(rows1)
+    nt = doc.add_table(rows=n_rows, cols=5)
     tbl = nt._tbl
+    widths = (_COLLEGE_W[0], _COLLEGE_W[1], _COLLEGE_GAP, _COLLEGE_W[0], _COLLEGE_W[1])
     _tbl_pr_set(tbl, parse_xml(
-        f'<w:tblW {nsdecls("w")} w:w="{sum(_COLLEGE_W)}" w:type="dxa"/>'),
+        f'<w:tblW {nsdecls("w")} w:w="{sum(widths)}" w:type="dxa"/>'),
         "w:jc", "w:tblCellSpacing", "w:tblInd", "w:tblBorders", "w:shd", "w:tblLayout",
         "w:tblCellMar", "w:tblLook")
     _tbl_pr_set(tbl, parse_xml(f'<w:jc {nsdecls("w")} w:val="center"/>'),
@@ -601,40 +606,48 @@ def _college_block(doc, head1, rows1, head2, rows2):
         f'<w:insideH w:val="single" w:sz="4" w:space="0" w:color="{_COLLEGE_RULE}"/>'
         f'<w:insideV w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
         f"</w:tblBorders>"), "w:shd", "w:tblLayout", "w:tblCellMar", "w:tblLook")
+    # 🔴 固定列宽（tblLayout=fixed）：不加的话 Word 自动适配会压缩名称列，
+    # 「云南生物资源国家重点实验室」这类长名会折成两行（实测）。
+    _tbl_pr_set(tbl, parse_xml(f'<w:tblLayout {nsdecls("w")} w:type="fixed"/>'),
+                "w:tblCellMar", "w:tblLook")
     _tbl_pr_set(tbl, parse_xml(
         f'<w:tblCellMar {nsdecls("w")}>'
-        f'<w:top w:w="10" w:type="dxa"/><w:left w:w="90" w:type="dxa"/>'
-        f'<w:bottom w:w="10" w:type="dxa"/><w:right w:w="90" w:type="dxa"/>'
+        f'<w:top w:w="10" w:type="dxa"/><w:left w:w="72" w:type="dxa"/>'
+        f'<w:bottom w:w="10" w:type="dxa"/><w:right w:w="72" w:type="dxa"/>'
         f"</w:tblCellMar>"), "w:tblLook")
     grid = tbl.find(qn("w:tblGrid"))
-    for gc, w in zip(grid.findall(qn("w:gridCol")), _COLLEGE_W):
+    for gc, w in zip(grid.findall(qn("w:gridCol")), widths):
         gc.set(qn("w:w"), str(w))
-    gap_idx = 1 + len(rows1) + 1                             # 两个子表之间的间隔行
-    for i, tr in enumerate(tbl.findall(qn("w:tr"))):
-        h = 120 if i == gap_idx else 200                     # 间隔行矮一点：两张子表才排得进一页
+    for tr in tbl.findall(qn("w:tr")):
+        for tc, w in zip(tr.findall(qn("w:tc")), widths):
+            tc_pr = tc.find(qn("w:tcPr"))
+            if tc_pr is None:
+                tc_pr = parse_xml(f'<w:tcPr {nsdecls("w")}/>')
+                tc.insert(0, tc_pr)
+            old = tc_pr.find(qn("w:tcW"))
+            if old is not None:
+                tc_pr.remove(old)
+            tc_pr.append(parse_xml(
+                f'<w:tcW {nsdecls("w")} w:w="{w}" w:type="dxa"/>'))
         tr.get_or_add_trPr().append(parse_xml(
-            f'<w:trHeight {nsdecls("w")} w:val="{h}" w:hRule="atLeast"/>'))
-    i = 0
-    for head, rows in ((head1, rows1), (head2, rows2)):      # 表头
-        _college_cell(nt.cell(i, 0), "学院名称", fill=_COLLEGE_HEAD_FILL, color="374151")
-        _college_cell(nt.cell(i, 1), head, align="right", fill=_COLLEGE_HEAD_FILL,
-                      color="374151")
-        _college_rule(nt.cell(i, 0), "D1D5DB")
-        _college_rule(nt.cell(i, 1), "D1D5DB")
-        i += 1
-        for name, value, is_total in rows:                   # 数据 + 总计
-            fill = _COLLEGE_TOTAL_FILL if is_total else None
-            _college_cell(nt.cell(i, 0), name, fill=fill, bold=is_total)
-            _college_cell(nt.cell(i, 1), value, align="right", fill=fill, bold=is_total)
-            i += 1
-        if i < len(nt.rows):                                 # 两个子表之间的无边框空行
-            for ci in (0, 1):
-                cell = nt.cell(i, ci)
-                _college_cell(cell, "", size=1)
-                _college_rule(cell, None)
-                for p in cell.paragraphs:                    # 空行压到 2pt：省出一行的地儿
-                    p.paragraph_format.line_spacing = Pt(2)
-            i += 1
+            f'<w:trHeight {nsdecls("w")} w:val="200" w:hRule="atLeast"/>'))
+    # 表头：左右各一组（名称 | 值），中间空列
+    _college_cell(nt.cell(0, 0), "学院名称", fill=_COLLEGE_HEAD_FILL, color="374151")
+    _college_cell(nt.cell(0, 1), head1, align="right", fill=_COLLEGE_HEAD_FILL,
+                  color="374151")
+    _college_cell(nt.cell(0, 3), "学院名称", fill=_COLLEGE_HEAD_FILL, color="374151")
+    _college_cell(nt.cell(0, 4), head2, align="right", fill=_COLLEGE_HEAD_FILL,
+                  color="374151")
+    for ci in (0, 1, 3, 4):
+        _college_rule(nt.cell(0, ci), "D1D5DB")
+    # 数据行：左半第 i 行 + 右半第 i 行
+    for i, ((n1, v1, t1), (n2, v2, t2)) in enumerate(zip(rows1, rows2), start=1):
+        f1 = _COLLEGE_TOTAL_FILL if t1 else None
+        f2 = _COLLEGE_TOTAL_FILL if t2 else None
+        _college_cell(nt.cell(i, 0), n1, fill=f1, bold=t1)
+        _college_cell(nt.cell(i, 1), v1, align="right", fill=f1, bold=t1)
+        _college_cell(nt.cell(i, 3), n2, fill=f2, bold=t2)
+        _college_cell(nt.cell(i, 4), v2, align="right", fill=f2, bold=t2)
     return tbl
 
 

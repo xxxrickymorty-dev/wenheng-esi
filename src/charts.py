@@ -861,7 +861,7 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
     # 🔴 学科名列别留太宽（rick 2026-09-24：「左边空白太多了…或者把下面学科列缩短」）：
     # 0.22 → 0.15（≈1in，仍容得下最长名「生物学与生物化学」8 字 @8.2pt），图区因此
     # 从 0.262 左移到 0.167、宽度 0.710 → 0.805（线条横向拉伸 13%）。
-    ax = fig.add_axes([0.167, 0.315, 0.805, 0.585])
+    ax = fig.add_axes([0.167, 0.325, 0.805, 0.605])
     for i, d in enumerate(picks):
         ax.plot(range(len(periods)), picked.loc[d], color=colors[i % len(colors)],
                 lw=1.8, marker=markers[i % len(markers)], ms=4.5, label=_cn(d))
@@ -881,8 +881,12 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
         ax.spines[s].set_visible(False)
     ax.tick_params(length=0, labelsize=10, colors=ink)
     ax.tick_params(axis="x", pad=2)
-    ax.legend(fontsize=9.5, loc="lower center", bbox_to_anchor=(0.5, 1.01),
-              ncol=4, frameon=False, labelcolor=ink)
+    # 🔴 图例放**最下面**（数据表之下）：rick 2026-09-25「把图例放在最下面，不要放在标题下，
+    # 挤在一起了」——原来挂轴顶上方，和加粗标题只差几个像素。放底部后轴顶也腾出来了。
+    handles, legend_labels = ax.get_legend_handles_labels()
+    fig.legend(handles, legend_labels, fontsize=9.5, loc="lower center", ncol=4,
+               frameon=False, labelcolor=ink, bbox_to_anchor=(0.5, 0.008),
+               bbox_transform=fig.transFigure)
     title = fig.text(0.517, 0.975, "我校主要学科近期发展趋势", ha="center", va="top",
                      fontsize=14, color="#1F1F1F")
     # 宋体/Noto Serif 没有可命中的 bold 字面（matplotlib 会静默回退成常规字重）→ 用描边假粗，
@@ -900,7 +904,7 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
               else f"{float(picked.loc[d, p]):.2f}%") for p in periods] for d in picks]
     # 🔴 表格不再带「ESI1‰ 100% …」行（rick 2026-09-24：去掉表格最后一行的 ESI 行）——
     # 基线已画进图里，表里再列一行 100% 是冗余。
-    _trend_data_table(fig, [0.025, 0.075, 0.945, 0.22], periods,
+    _trend_data_table(fig, [0.025, 0.105, 0.945, 0.22], periods,
                       [_cn(d) for d in picks], rows, [ink] * len(picks),
                       label_frac=0.15)
     _save_raw(fig, out_png)
