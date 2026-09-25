@@ -304,13 +304,18 @@ def _labels(ax, xs, ys, fmt="{:.2f}", dy=4, size=FONT_SIZE, dodge=True, two_side
         real = sum(_ov_area(bb, _inflate(p, pad_px)) for p in placed)
         real += sum(_ov_area(bb, _inflate(p, pad_px)) for p in fixed)
         grid = sum(_ov_area(bb, b) for b in bands)
+        # 「越出轴底」单列一级（排在网格线之后、舒适度之前）：rick 2026-09-25 截图——
+        # 第六张图有数字被挤到横坐标下面去了。越出去多少就算多少（高度×宽），
+        # 只在真碰撞/网格线都打平时才起作用；刻意只罚**轴底以下**（轴顶上方那三行
+        # 是留给挤在顶部的标签摞起来的，见 slack）。
+        below = max(0.0, ab.y0 - bb.y0) * bb.width
         soft = sum(_ov_area(bb, _inflate(p, soft_px)) for p in placed)
         soft += sum(_ov_area(bb, _inflate(p, soft_px)) for p in label_prior)
         if legend_box is not None:
             # 图例无框（原件口径）→ 包围盒不可见，可「框上不压、看着还是贴」。服务器字体实测：
             # 顶尖论文图 44/27/29 三个柱标离图例框只有 12.0–15.8px，Rick 就是这么截的图。
             soft += _ov_area(bb, _inflate(legend_box, soft_px))
-        return real, grid, soft
+        return real, grid, below, soft
 
     def _place(ann, side, base, k):
         """side=True 向上、False 向下；向下必须同时把 va 翻成 top，否则文字朝反方向长。"""
@@ -523,7 +528,7 @@ def chart_rank_pct(rank_intl, rank_cn, disc, out_png, periods, *, invert=None):
             color=C_GREEN, label="国内排名百分位值")
     _style(ax)
     _xticks(ax, periods)
-    _title(ax, "国内外排名百分位趋势")
+    # 图内不写标题：Word 图题已在图上方（rick 2026-09-25：「里面无需再写文字标题，图片已经有标题了」）
     _legend_top(ax)
     # 反向轴：百分位越小＝排名越好＝越靠上；范围逐学科自适应
     # （轴放最后：_auto_ylim 要按 tight_layout 后的真实高度算「轴顶留白」）
@@ -551,7 +556,6 @@ def chart_cnci(cnci, disc, out_png, periods, *, include=None):
             color=C_GREEN, label="CNCI 国际均值")
     _style(ax)
     _xticks(ax, periods)
-    _title(ax, "CNCI 变化情况")
     _legend_top(ax)
     # 基准线 1.0 必须始终可见（它是 CNCI 的判读参照），故 include 进来；下侧多留白
     _auto_ylim(ax, [v], include=([1.0] if include is None else list(include)),
@@ -577,7 +581,6 @@ def chart_papers_delta(papers, disc, out_png, periods, *, zero_base=None):
     ax.bar(x, d, color=C_BLUE, width=0.16, label="新增发文量")
     _style(ax)
     _xticks(ax, ps)
-    _title(ax, "新增发文量（篇）")
     _legend_ur(ax)
     # 增量可正可负 → 0 必须在轴内；计数值 → 整数刻度；负值标签标在柱下方，下端也要留位
     _auto_ylim(ax, [d], zero_base=(True if zero_base is None else bool(zero_base)),
@@ -602,7 +605,6 @@ def chart_cites_threshold(cites, threshold, disc, out_png, periods, *, zero_base
             color=C_GREEN, label="ESI 阈值")
     _style(ax)
     _xticks(ax, periods)
-    _title(ax, "被引频次与 ESI 阈值变化")
     _legend_top(ax, ncol=2)   # 双系列折线 → 顶部居中（原件口径；原先误用右上，轴收紧后会压字）
     _auto_ylim(ax, [c, t], intervals=5, pad=0.06, fmt="{:,.0f}",
                zero_base=(False if zero_base is None else bool(zero_base)),
@@ -622,7 +624,6 @@ def chart_top_papers(top, disc, out_png, periods, *, floor_zero=None):
     ax.bar(x, v, color=C_BLUE, width=0.16, label="顶尖论文发文量")
     _style(ax)
     _xticks(ax, periods)
-    _title(ax, "顶尖论文量（篇）")
     _legend_ur(ax)
     # 原件是截断轴（不从 0 起），保留这个观感：下界跟着本学科最小值走
     _auto_ylim(ax, [v], intervals=7, pad=0.06, integer=True, fmt="{:.0f}",
@@ -667,7 +668,6 @@ def chart_q_dist(q1q4, disc, out_png, period, *, floor_zero=None):
     # 期次标签 7pt（不跟全局 +1）：这图 12 个数值标签要上下避让，横轴字再大就没地方了
     ax.set_xticklabels(["Q1", "Q2", "Q3", "Q4"], fontsize=7)
     flat = [v for row in vals.values() for v in row]
-    _title(ax, "学科发文期刊分区占比情况")
     _legend_top(ax, ncol=3)              # 原件图 6 图例在顶部居中（不是右上）
     # 占比柱状图：必须有零基准，上界跟本学科最大值走。
     # 🔴 `reserve_top=140`：这张图每组 3 柱 × 4 组 = 12 个数值标签，标签比柱子宽得多，
@@ -680,8 +680,10 @@ def chart_q_dist(q1q4, disc, out_png, period, *, floor_zero=None):
     for ent, _, _ in Q_ENTITIES:
         # {:g} 按数据原样出位数：原件里既有 57.51% 也有 11.7% / 7.9%
         # 🔴 字号**不跟全局 +1**：这图 12 个标签（3 柱 × 4 组）要在 canvas 里上下避让，
-        #    7.5pt 时必撞（Microbiology/Mathematics 实测）；6.5pt 是能排开的上限。
-        _labels(ax, pos_of[ent], vals[ent], "{:g}%", dy=3, size=6.2)
+        #    7.5pt 时必撞（Microbiology/Mathematics 实测）；6.2pt 是能排开的上限。
+        # 🔴 `two_sided=False`：**只许往上抬**（rick 2026-09-25 截图：有数字跑到横坐标下面）——
+        #    原件就是「都标在柱上方、相邻的允许贴住」；往下找位会掉出坐标区。
+        _labels(ax, pos_of[ent], vals[ent], "{:g}%", dy=3, size=6.2, two_sided=False)
     _save(fig, out_png)
 
 
