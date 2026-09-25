@@ -1019,8 +1019,8 @@ def chart_forecast(hist_periods, hist, model_hist, fut_periods, fut,
     · `hist` / `model_hist` / `fut` 均为 **(指标1, 指标2)** 二元组；
     · `labels` / `colors` 四元组：指标1、指标1预测值、指标2、指标2预测值；
     · 模型历史段从首个有限拟合值画起（V1 口径前 6 期无拟合）。
-    · 横轴＝**样本期次每 2 期一个刻度（竖排）**，与样本同密度（rick 2026-09-23：
-      「样本有这么多期，你的图里只有几期，和样本对齐」；原件即每 4 个月一个标签）。
+    · 横轴刻度＝**约 10 个**（每年 1 月一个，横排）：rick 2026-09-23 先说「和样本对齐」，
+      按每 2 期一个（≈30 个）太密；2026-09-25 定「不需要这么多，10 个左右就行」。
     · 字号按 14cm 插图反算加大（rick 2026-09-23：「图例太小了，字体增加」）：
       插图缩放 ≈14/18.3≈0.77，图例 13pt→实际 ≈10pt。
     · 画幅 7.2×3.2in（比例 2.25）＝ 14cm 插图后 6.22cm 高：预测章一页要放
@@ -1049,9 +1049,13 @@ def chart_forecast(hist_periods, hist, model_hist, fut_periods, fut,
             ax.plot(line_x, line_y, color=colors[2 * j + 1], lw=1.5, ls="--",
                     label=labels[2 * j + 1], zorder=2)
 
-    xt = list(range(0, len(all_p), 2))          # 每 2 期一个刻度（双月 → 每 4 个月）
+    # 横轴刻度：**约 10 个**（每年 1 月一个；rick 2026-09-25「这个横坐标不需要这么多，
+    # 10 个左右就行」——前一轮按样本每 2 期一个（≈30 个）太密了）。横排，不旋转。
+    xt = [i for i, p in enumerate(all_p) if p.endswith("01")]
+    if len(xt) > 12:
+        xt = xt[::2]
     ax.set_xticks(xt)
-    ax.set_xticklabels([all_p[i] for i in xt], fontsize=11, rotation=90)
+    ax.set_xticklabels([all_p[i] for i in xt], fontsize=10)
     ax.set_xlim(-0.6, len(all_p) - 0.4)
     _style(ax)
     ax.tick_params(labelsize=11.5, colors=ink)
