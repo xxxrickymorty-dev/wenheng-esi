@@ -25,15 +25,25 @@ def test_书架页面仍可打开_数据仅管理员可读(tmp_path):
     assert asyncio.run(files.get_response("shelf/index.html", _scope(config.GUEST_USER))).status_code == 200
     anonymous = asyncio.run(files.get_response("shelf/data.js", _scope()))
     guest = asyncio.run(files.get_response("shelf/data.js", _scope(config.GUEST_USER)))
+    admin = asyncio.run(files.get_response("shelf/data.js", _scope(config.DEMO_USER)))
     assert anonymous.status_code == 303 and anonymous.headers["cache-control"] == "no-store"
     assert guest.status_code == 403 and guest.headers["cache-control"] == "no-store"
-    assert asyncio.run(files.get_response("shelf/data.js", _scope(config.DEMO_USER))).status_code == 200
+    assert admin.status_code == 200
+    assert admin.headers["cache-control"] == "private, no-store"
+    assert admin.headers["vary"] == "Cookie"
 
 
 def test_反斜杠与父目录绕过不能读到书架数据(tmp_path):
     files = _files(tmp_path)
     assert asyncio.run(files.get_response("shelf\\data.js", _scope(config.GUEST_USER))).status_code == 403
     assert asyncio.run(files.get_response("x/../shelf/data.js", _scope(config.DEMO_USER))).status_code == 404
+
+
+def test_Windows_大小写和尾随点空格别名不能绕过(tmp_path):
+    files = _files(tmp_path)
+    assert asyncio.run(files.get_response("shelf/DATA.JS", _scope(config.GUEST_USER))).status_code == 403
+    assert asyncio.run(files.get_response("shelf/data.js. ", _scope(config.GUEST_USER))).status_code == 403
+    assert asyncio.run(files.get_response("COLLATION-DEMO.HTML. ", _scope(config.GUEST_USER))).status_code == 403
 
 
 def test_对勘快照同样保护(tmp_path):

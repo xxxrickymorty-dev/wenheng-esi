@@ -17,12 +17,18 @@ class AdminStaticFiles(StaticFiles):
 
     @staticmethod
     def _normal_path(path):
-        return "/".join(PurePosixPath(path.replace("\\", "/")).parts)
+        """生成与 Windows 文件系统别名一致的相对路径。"""
+        normalized = PurePosixPath(str(path).replace("\\", "/"))
+        if normalized.is_absolute() or ".." in normalized.parts:
+            return None
+        parts = [part.rstrip(" .").casefold() for part in normalized.parts]
+        if not parts or any(not part for part in parts):
+            return None
+        return "/".join(parts)
 
     def _is_protected(self, path):
         normalized = self._normal_path(path)
-        parts = PurePosixPath(normalized).parts
-        if ".." in parts:
+        if normalized is None:
             return None
         return normalized in self.protected_paths
 
@@ -39,4 +45,8 @@ class AdminStaticFiles(StaticFiles):
                 return JSONResponse(
                     {"error": "需要管理员权限", "hint": "游客不能查看报告内容"},
                     status_code=403, headers={"Cache-Control": "no-store"})
-        return await super().get_response(path, scope)
+        response = await super().get_response(path, scope)
+        if protected:
+            response.headers["Cache-Control"] = "private, no-store"
+            response.headers["Vary"] = "Cookie"
+        return response
