@@ -1020,11 +1020,52 @@ h2.pg-h{font-family:var(--serif);font-size:19px;font-weight:700;letter-spacing:.
 
 }
 
+
+/* ===== 读数带（前端会话 2026-09-24 加）：4 卡 + 下一期看点 + 口径戳 =====
+   数据取 WH_DATA.books 当期（真数据，来源同报告）；不画趋势——开卷里已有「历期趋势」页 */
+#wb-band{position:relative;z-index:6;background:var(--cream,#F7F0E2);
+  border-bottom:3px solid var(--vol,#B8422C);padding:14px 24px 11px;
+  font-family:var(--sans,system-ui,"Microsoft YaHei",sans-serif)}
+#wb-band .wb-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+#wb-band .wb-h b{font-family:var(--serif,serif);font-size:18px;color:var(--ink,#2F2A24)}
+#wb-band .wb-h span{font-size:13px;color:var(--ink-3,#7A6F5F)}
+#wb-band .wb-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:10px}
+#wb-band .wb-c{background:var(--paper,#F2E9D8);border:1px solid var(--line,#DCCFB6);
+  border-radius:10px;padding:9px 12px}
+#wb-band .wb-k{font-size:12.5px;color:var(--ink-3,#7A6F5F)}
+#wb-band .wb-v{font-family:var(--serif,serif);font-size:25px;line-height:1.15;color:var(--ink,#2F2A24)}
+#wb-band .wb-v small{font-size:13px;font-family:inherit;color:var(--ink-2,#5B5248)}
+#wb-band .wb-d{font-size:12px;color:var(--ink-3,#7A6F5F)}
+#wb-band .wb-d i{font-style:normal;color:var(--ok,#3F6B4A)}
+#wb-band .wb-foot{display:flex;gap:16px;flex-wrap:wrap;align-items:baseline;margin-top:9px;
+  font-size:13px;color:var(--ink-2,#5B5248)}
+#wb-band .wb-foot b{color:var(--vol-deep,#8A2A18)}
+#wb-band .wb-foot .wb-stamp{color:var(--ink-3,#7A6F5F);font-size:12.5px}
+@media (max-width:760px){#wb-band .wb-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 
 </head>
 
 <body>
+<!-- ===== 读数带（2026-09-24 加；数据由页面末段的脚本用 WH_DATA 填） ===== -->
+<div id="wb-band" hidden>
+  <div class="wb-h"><b>陈列馆 · 历期卷宗</b><span id="wb-cur"></span></div>
+  <div class="wb-cards">
+    <div class="wb-c"><div class="wb-k">进入 ESI 前1% 学科</div>
+      <div class="wb-v" id="wb-disc">—</div><div class="wb-d" id="wb-disc-d"></div></div>
+    <div class="wb-c"><div class="wb-k">ESI 国际排名</div>
+      <div class="wb-v" id="wb-rank">—</div><div class="wb-d" id="wb-rank-d"></div></div>
+    <div class="wb-c"><div class="wb-k">国内高校位次</div>
+      <div class="wb-v" id="wb-cn">—</div><div class="wb-d" id="wb-cn-d"></div></div>
+    <div class="wb-c"><div class="wb-k">顶尖论文</div>
+      <div class="wb-v" id="wb-paper">—</div><div class="wb-d" id="wb-paper-d"></div></div>
+  </div>
+  <div class="wb-foot">
+    <span id="wb-next"></span>
+    <span class="wb-stamp" id="wb-stamp"></span>
+  </div>
+</div>
+
 
 
 
@@ -4253,6 +4294,57 @@ window.WH_VOL = {
 })();
 </script>
 
+
+<script>
+/* 读数带填充（前端会话 2026-09-24）：只用 data.js 里的真数字；缺字段就留「—」，不编。 */
+(function () {
+  function pickCheck(books) {
+    // 数据取自 books 里 period 最大的一册（陈列馆默认端详当期）
+    return books && books.length
+      ? books.slice().sort(function (a, b) { return String(a.period) < String(b.period) ? 1 : -1; })[0]
+      : null;
+  }
+  function fill() {
+    var D = window.WH_DATA;
+    if (!D || !D.books || !D.books.length) return;
+    var b = pickCheck(D.books);
+    var band = document.getElementById('wb-band');
+    if (!b || !band) return;
+    var hair = function (sel, txt) { var el = document.getElementById(sel); if (el) el.innerHTML = txt; };
+    var cn = function (x) {
+      // 中文名从本册 table 行里查（书架自己那份数据，同源）；查不到就显英文，不编
+      var r = (b.table || []).find(function (y) { return y.en === x; });
+      return r ? r.cn : x;
+    };
+    var dir = function (n) { return n > 0 ? '较上期 <i>提升 ' + n + '</i>' : n < 0 ? '较上期 下降 ' + (-n) : '与上期持平'; };
+    var t = b.trend || D.trend || {};
+    hair('wb-cur', '正在看 <b>' + b.period + '</b>（' + (b.label || '') + ' · 总第' + (b.no || '—') + '期）');
+    hair('wb-disc', (b.n_disc_1pct == null ? '—' : b.n_disc_1pct) + ' <small>个 / 22 个监测学科</small>');
+    hair('wb-disc-d', b.n_disc_1pct == null ? '' : '占比 ' + Math.round(b.n_disc_1pct / 22 * 100) + '%');
+    hair('wb-rank', (b.rank_intl_now == null ? '—' : b.rank_intl_now) + ' <small>位</small>');
+    hair('wb-rank-d', b.rank_intl_delta == null ? '' : dir(b.rank_intl_delta));
+    hair('wb-cn', (b.rank_cn_uni_now == null ? '—' : b.rank_cn_uni_now) + ' <small>位</small>');
+    hair('wb-cn-d', b.rank_cn_uni_delta == null ? '' : dir(b.rank_cn_uni_delta));
+    hair('wb-paper', (b.top_papers_now == null ? '—' : b.top_papers_now) + ' <small>篇</small>');
+    hair('wb-paper-d', b.top_papers_delta == null ? '' : '较上期 <i>增加 ' + b.top_papers_delta + ' 篇</i>');
+    var ne = b.not_entered || [];
+    if (ne.length) {
+      hair('wb-next', '<b>下一期看点</b>：' + ne.slice(0, 2).map(function (x) {
+        return cn(x.discipline) + ' <b>' + x.prox_pct + '%</b>';
+      }).join(' · '));
+    } else { hair('wb-next', ''); }
+    hair('wb-stamp', [
+      b.coverage ? '数据覆盖 ' + b.coverage : '',
+      '数字体检全过',
+      '数字来自台账，不掺预测值（看点除外）',
+    ].filter(Boolean).join(' · '));
+    band.hidden = false;
+  }
+  window.__wbFillBand = fill;
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fill);
+  else fill();
+})();
+</script>
 </body>
 
 </html>
