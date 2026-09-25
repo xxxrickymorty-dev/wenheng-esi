@@ -3,6 +3,7 @@
 
 验的是：sign 走 approval.sign 同一闸门；forecast-choice 落盘 forecast_choice.json。
 """
+import asyncio
 import json
 import pathlib
 import sys
@@ -14,6 +15,12 @@ for p in (str(REPO), str(REPO / "src")):
 
 from server import approval                                    # noqa: E402
 from server.app import resolve_period_dir                      # noqa: E402
+from server import app as app_module, config                   # noqa: E402
+
+
+class _Req:
+    def __init__(self, user):
+        self.session = {"user": user}
 
 
 class TestSign闸门:
@@ -62,11 +69,12 @@ class Test权限门:
         block = src.split("async def api_forecast_choice(request")[1].split("@app.")[0]
         assert "require_admin" in block
 
-    def test_forecast_choice_GET用current_user不用require_admin(self):
+    def test_forecast_choice_GET用require_admin且拒绝guest(self):
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_forecast_choice(request")[1].split("@app.")[0]
-        assert "request.method" in block
-        assert "current_user" in block
+        block = src.split("async def api_forecast_choice_get")[1].split("\n\n@app.", 1)[0]
+        assert "require_admin" in block
+        response = asyncio.run(app_module.api_forecast_choice_get(_Req(config.GUEST_USER), "202609"))
+        assert response.status_code == 403
 
 
 class Test路由存在:

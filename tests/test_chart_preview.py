@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import pathlib
 import sys
@@ -23,9 +24,14 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from server import jobs                                           # noqa: E402
+from server import app as app_module, config, jobs                # noqa: E402
 
 OUT = ROOT / "out" / "202607"
+
+
+class _Req:
+    def __init__(self, user):
+        self.session = {"user": user}
 
 
 def _make(tmp_path):
@@ -127,8 +133,10 @@ def test_图片路由是GET且接受多级路径():
         "图表路由丢了 `:path` 转换器——带斜杠的路径会被截成 404"
 
 
-def test_图片路由有登录检查():
+def test_图片路由有管理员文件门且拒绝guest():
     src = (ROOT / "server" / "app.py").read_text(encoding="utf-8")
     i = src.index('/p/{period}/chart/{rel:path}')
     block = src[i:i + 900]
-    assert "current_user(request)" in block, "图表是期次产物，未登录不应可见"
+    assert "require_admin_file(request)" in block, "图表是期次产物，游客不应可见"
+    response = asyncio.run(app_module.period_chart(_Req(config.GUEST_USER), "202609", "chart.png"))
+    assert response.status_code == 403

@@ -3,6 +3,7 @@
 
 验的是分页形状 + redslots 的 group/label/old/new/src/kind 字段 + collation 的 sections 元数据。
 """
+import asyncio
 import json
 import pathlib
 import sys
@@ -14,6 +15,12 @@ for p in (str(REPO), str(REPO / "src")):
 
 from server import collation, jobs                             # noqa: E402
 from server.app import _paginate, resolve_period_dir           # noqa: E402
+from server import app as app_module, config                    # noqa: E402
+
+
+class _Req:
+    def __init__(self, user):
+        self.session = {"user": user}
 
 
 class TestPaginate:
@@ -98,12 +105,14 @@ class Test权限门:
         block = src.split("async def api_period_redslots")[1].split("@app.")[0]
         assert "require_admin" in block
 
-    def test_collation不用require_admin(self):
+    def test_collation用require_admin且拒绝guest(self):
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
         block = src.split("async def api_period_collation")[1].split("@app.")[0]
-        assert "require_admin" not in block
+        assert "require_admin" in block
+        assert asyncio.run(app_module.api_period_collation(_Req(config.GUEST_USER), "202609")).status_code == 403
 
-    def test_charts不用require_admin(self):
+    def test_charts用require_admin且拒绝guest(self):
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
         block = src.split("async def api_period_charts_json")[1].split("@app.")[0]
-        assert "require_admin" not in block
+        assert "require_admin" in block
+        assert asyncio.run(app_module.api_period_charts_json(_Req(config.GUEST_USER), "202609")).status_code == 403

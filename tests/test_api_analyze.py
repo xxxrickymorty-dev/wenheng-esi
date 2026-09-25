@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Batch 6 测试：ledger/sheets + analyze（契约 §2.2 #9 #10）。"""
+import asyncio
 import json
 import pathlib
 import sys
@@ -13,6 +14,12 @@ from _guard_registry import skip_unless                         # noqa: E402
 import sentences                                              # noqa: E402
 import local_llm                                              # noqa: E402
 from server.app import resolve_period_dir                     # noqa: E402
+from server import app as app_module, config                  # noqa: E402
+
+
+class _Req:
+    def __init__(self, user):
+        self.session = {"user": user}
 
 
 class TestSentences组装:
@@ -78,10 +85,11 @@ class Test权限门:
         block = src.split("async def api_analyze")[1].split("@app.")[0]
         assert "require_admin" in block
 
-    def test_ledger_sheets用current_user(self):
+    def test_ledger_sheets用require_admin且拒绝guest(self):
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
         block = src.split("async def api_ledger_sheets")[1].split("@app.")[0]
-        assert "require_admin" not in block
+        assert "require_admin" in block
+        assert asyncio.run(app_module.api_ledger_sheets(_Req(config.GUEST_USER))).status_code == 403
 
     def test_analyze路由存在(self):
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
