@@ -7,9 +7,11 @@ from docx import Document
 from server import shelf_preview
 
 
-def _report(path, *, valid=True):
+def _report(path, *, valid=True, cover=True, delayed_body=False, issue="2026年第5期（总第39期）",
+            month="2026年9月"):
     document = Document()
-    for line in ("封面留白", "学科信息参考", "2026年第5期", "云南大学图书馆"):
+    cover_lines = ("   ", "学科信息参考", issue, f"云南大学发展规划处  图书馆编      {month}")
+    for line in (cover_lines if cover else cover_lines[1:]):
         document.add_paragraph(line)
     table = document.add_table(rows=2, cols=2)
     table.cell(0, 0).text = "名词解释" if valid else "正文数据"
@@ -17,8 +19,11 @@ def _report(path, *, valid=True):
     table.cell(1, 0).text = "一 概述"
     table.cell(1, 1).text = "1"
     document.add_paragraph("名词解释：")
-    document.add_paragraph("高被引论文")
-    document.add_paragraph("用于说明术语。")
+    for term in shelf_preview._GLOSSARY_TERMS:
+        document.add_paragraph(term)
+        document.add_paragraph(f"{term}的说明。")
+    if delayed_body:
+        document.add_paragraph("正文秘密：291 篇及运行路径 C:/private/out")
     document.add_paragraph("一 概述")
     document.add_paragraph("正文秘密：291 篇及运行路径 C:/private/out")
     document.add_table(rows=1, cols=1).cell(0, 0).text = "表二秘密"
@@ -33,10 +38,10 @@ def test_只提取封面目录和名词解释_正文哨兵不泄漏(tmp_path):
     payload = shelf_preview.build_preview([{"period": "202609"}], out_dir=tmp_path)
     book = payload["books"][0]
     assert payload["preview"] is True and payload["trend"] == {}
-    assert set(book) == {"period", "cover", "toc", "glossary"}
-    assert book["cover"] == ["封面留白", "学科信息参考", "2026年第5期", "云南大学图书馆"]
+    assert set(book) == {"period", "cover", "toc", "glossary", "label", "no"}
+    assert book["cover"] == ["   ", "学科信息参考", "2026年第5期（总第39期）", "云南大学发展规划处  图书馆编      2026年9月"]
     assert book["toc"] == [{"title": "名词解释", "page": ""}, {"title": "一 概述", "page": "1"}]
-    assert book["glossary"] == [{"term": "高被引论文", "definition": "用于说明术语。"}]
+    assert book["label"] == "2026年9月" and book["no"] == 39
     assert "正文秘密" not in json.dumps(payload, ensure_ascii=False)
     assert "表二秘密" not in json.dumps(payload, ensure_ascii=False)
 
@@ -49,3 +54,31 @@ def test_缺文件或结构异常逐期关闭(tmp_path):
     payload = shelf_preview.build_preview(
         [{"period": "202609"}, {"period": "202607"}], out_dir=tmp_path)
     assert payload == {"preview": True, "books": [], "trend": {}}
+
+
+def test_缺封面标志或延迟正文标题都关闭(tmp_path):
+    missing_cover = tmp_path / "202601"
+    delayed_heading = tmp_path / "202603"
+    missing_cover.mkdir()
+    delayed_heading.mkdir()
+    _report(missing_cover / "报告初稿_202601.docx", cover=False)
+    _report(delayed_heading / "报告初稿_202603.docx", delayed_body=True)
+
+    payload = shelf_preview.build_preview(
+        [{"period": "202601"}, {"period": "202603"}], out_dir=tmp_path)
+    assert payload == {"preview": True, "books": [], "trend": {}}
+
+
+def test_按期次升序并补齐书架封面字段(tmp_path):
+    old = tmp_path / "202601"
+    latest = tmp_path / "202609"
+    old.mkdir()
+    latest.mkdir()
+    _report(old / "报告初稿_202601.docx", issue="2026年第1期（总第35期）", month="2026年1月")
+    _report(latest / "报告初稿_202609.docx")
+
+    payload = shelf_preview.build_preview(
+        [{"period": "202609"}, {"period": "202601"}], out_dir=tmp_path)
+    assert [(book["period"], book["label"], book["no"]) for book in payload["books"]] == [
+        ("202601", "2026年1月", 35), ("202609", "2026年9月", 39),
+    ]

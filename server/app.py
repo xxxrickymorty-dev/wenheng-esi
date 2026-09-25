@@ -42,8 +42,8 @@ app.mount("/static", AdminStaticFiles(directory=str(config.SERVER_DIR / "static"
                                        protected_paths=("collation-demo.html",)), name="static")
 # 新工作区系统（React SPA，构建产物 web/dist 入库）——见 docs/adr/0001。
 # check_dir=False：干净 clone 里 dist 缺失时不要拖垮整个服务启动，让它 404 就行。
-def _shelf_guest_data():
-    return shelf_preview.javascript_response(period_cards())
+async def _shelf_guest_data():
+    return await run_in_threadpool(shelf_preview.javascript_response, period_cards())
 
 
 app.mount("/app", AdminStaticFiles(directory=str(config.ROOT / "web" / "dist"), html=True,
@@ -184,7 +184,8 @@ async def do_login(request: Request, username: str = Form(""), password: str = F
     if check_credentials(username, password):
         request.session["user"] = username
         _login_fails.pop(ip, None)
-        return RedirectResponse("/", status_code=303)
+        target = "/app/shelf/" if config.role_of(username) == "guest" else "/"
+        return RedirectResponse(target, status_code=303)
     rec["n"] += 1
     if rec["n"] >= 5:
         rec.update({"n": 0, "until": time.time() + 60})
@@ -570,8 +571,9 @@ async def api_periods(request: Request):
     期次文案走 src/period.py（口径唯一来源）；带后缀目录（如 202605_复现）算不出
     总期号时退回目录名，不编假期号。
     """
-    if not current_user(request):
-        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
     out = []
     for c in period_cards():
         try:
@@ -595,9 +597,9 @@ async def api_me(request: Request):
 
 @app.get("/api/periods/{period}")
 async def api_period_detail(request: Request, period: str):
-    user = current_user(request)
-    if not user:
-        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -608,13 +610,6 @@ async def api_period_detail(request: Request, period: str):
         no, total, label = None, None, period
     m = re.match(r"^(\d{6})", d.name)
     pid = m.group(1) if m else period
-    detail = {
-        "period": pid, "label": label, "no": no, "total": total,
-        "palette": config.PALETTE,
-    }
-    if config.role_of(user) != "admin":
-        return detail
-
     window = ""
     facts = d / "overview_facts.json"
     if facts.exists():
@@ -627,7 +622,8 @@ async def api_period_detail(request: Request, period: str):
     steps = {"ledger": ledger_ok, "input": ledger_ok, "generated": generated_ok}
     last = next((j for j in jobs.list_jobs(30) if j.get("period") == pid), None)
     return {
-        **detail, "window": window, "steps": steps,
+        "period": pid, "label": label, "no": no, "total": total,
+        "window": window, "palette": config.PALETTE, "steps": steps,
         "lastJob": {"id": last["id"], "status": last["status"],
                     "created_at": last.get("created_at")} if last else None,
     }

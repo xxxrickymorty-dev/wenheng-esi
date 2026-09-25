@@ -145,8 +145,8 @@ GUEST_U = os.environ.get("WENHENG_GUEST_USER", "guest")
 GUEST_P = os.environ.get("WENHENG_GUEST_PASS", "guest@2026")
 gop = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
 st, _, gfinal = call("POST", "/login", {"username": GUEST_U, "password": GUEST_P}, opener=gop)
-check("POST /login（guest）进入新工作区 /app/",
-      gfinal.rstrip("/") == BASE + "/app", f"final={gfinal}")
+check("POST /login（guest）进入陈列馆 /app/shelf/",
+      gfinal.rstrip("/") == BASE + "/app/shelf", f"final={gfinal}")
 st, gme, _ = call("GET", "/api/me", opener=gop)
 check("GET /api/me（guest）→ 200", st == 200, f"got {st}")
 check("guest 角色是 guest", '"role":"guest"' in gme or '"role": "guest"' in gme,

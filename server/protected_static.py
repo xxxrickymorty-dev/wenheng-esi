@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """对内嵌报告内容的静态文件补上角色门。"""
+import inspect
 from pathlib import PurePosixPath
 
 from starlette.responses import JSONResponse, RedirectResponse
@@ -50,6 +51,8 @@ class AdminStaticFiles(StaticFiles):
                 guest_response = self.guest_responses.get(self._normal_path(path))
                 if guest_response:
                     response = guest_response()
+                    if inspect.isawaitable(response):
+                        response = await response
                     response.headers["Cache-Control"] = "private, no-store"
                     response.headers["Vary"] = "Cookie"
                     return response

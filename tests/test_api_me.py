@@ -4,6 +4,7 @@
 仓库测试惯例是函数级（不依赖 httpx/TestClient），HTTP 级由 e2e_check.py 覆盖。
 这里验的是 role_of / require_admin 的门真的门住了。
 """
+import asyncio
 import pathlib
 import sys
 
@@ -14,6 +15,7 @@ for p in (str(REPO), str(REPO / "src")):
 
 from fastapi.responses import JSONResponse                  # noqa: E402
 from server import config                                    # noqa: E402
+from server import app as app_module                         # noqa: E402
 from server.app import require_admin                         # noqa: E402
 
 
@@ -70,6 +72,21 @@ class TestLogin口令:
         assert not check_credentials("random", "random")
         assert not check_credentials("", "")
 
+    def test_guest登录直达陈列馆_admin保持原落点(self, monkeypatch):
+        class LoginRequest:
+            client = type("Client", (), {"host": "test"})()
+
+            def __init__(self):
+                self.session = {}
+
+        monkeypatch.setattr(app_module, "_login_fails", {})
+        guest_request = LoginRequest()
+        admin_request = LoginRequest()
+        guest = asyncio.run(app_module.do_login(guest_request, config.GUEST_USER, config.GUEST_PASS))
+        admin = asyncio.run(app_module.do_login(admin_request, config.DEMO_USER, config.DEMO_PASS))
+        assert guest.headers["location"] == "/app/shelf/"
+        assert admin.headers["location"] == "/"
+
 
 class TestAdmin端点上锁:
     def test_forecast_meta用require_admin(self):
@@ -104,20 +121,20 @@ class TestAdmin端点上锁:
 
 
 class TestGuest可读端点:
-    def test_api_periods不锁admin(self):
+    def test_api_periods已锁admin(self):
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
         block = src.split("async def api_periods")[1].split("@app.")[0]
-        assert "require_admin" not in block
+        assert "require_admin" in block
 
     def test_api_me不锁admin(self):
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
         block = src.split("async def api_me")[1].split("@app.")[0]
         assert "require_admin" not in block
 
-    def test_api_period_detail不锁admin(self):
+    def test_api_period_detail已锁admin(self):
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
         block = src.split("async def api_period_detail")[1].split("@app.")[0]
-        assert "require_admin" not in block
+        assert "require_admin" in block
 
 
 class TestPalette:

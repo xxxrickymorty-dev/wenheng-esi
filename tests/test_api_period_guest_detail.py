@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""游客的单期元数据只能用于封面，不读取报告事实或任务。"""
+"""游客不能通过普通工作区 API 取得期次元数据。"""
 import asyncio
 
 from server import config
@@ -11,15 +11,13 @@ class _Req:
         self.session = {"user": user}
 
 
-def test_guest单期元数据不读取facts或任务(monkeypatch, tmp_path):
-    period_dir = tmp_path / "202609"
-    period_dir.mkdir()
-    (period_dir / "overview_facts.json").write_text('{"coverage_window":"秘密"}', encoding="utf-8")
-    monkeypatch.setattr(app_module, "resolve_period_dir", lambda _period: period_dir)
-    monkeypatch.setattr(app_module.json, "loads", lambda *_args: (_ for _ in ()).throw(AssertionError("不应读 facts")))
-    monkeypatch.setattr(app_module.jobs, "list_jobs", lambda *_args: (_ for _ in ()).throw(AssertionError("不应读任务")))
-
+def test_guest单期元数据在读文件前被拒绝(monkeypatch):
+    monkeypatch.setattr(app_module, "resolve_period_dir", lambda *_args: (_ for _ in ()).throw(AssertionError("不应读期次")))
     response = asyncio.run(app_module.api_period_detail(_Req(config.GUEST_USER), "202609"))
-    assert set(response) == {"period", "label", "no", "total", "palette"}
-    assert response["period"] == "202609"
-    assert "秘密" not in str(response)
+    assert response.status_code == 403
+
+
+def test_guest期次列表同样被拒绝(monkeypatch):
+    monkeypatch.setattr(app_module, "period_cards", lambda: (_ for _ in ()).throw(AssertionError("不应读期次")))
+    response = asyncio.run(app_module.api_periods(_Req(config.GUEST_USER)))
+    assert response.status_code == 403
