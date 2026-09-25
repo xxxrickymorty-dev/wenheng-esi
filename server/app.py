@@ -22,7 +22,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import approval, archive, collation, config, jobs
+from . import approval, archive, collation, config, jobs, shelf_preview
 from . import forecasting
 from .protected_static import AdminStaticFiles
 from src import period as period_mod  # 期次口径唯一来源（ADR-0001：新工作区 API 也用它）
@@ -42,8 +42,13 @@ app.mount("/static", AdminStaticFiles(directory=str(config.SERVER_DIR / "static"
                                        protected_paths=("collation-demo.html",)), name="static")
 # 新工作区系统（React SPA，构建产物 web/dist 入库）——见 docs/adr/0001。
 # check_dir=False：干净 clone 里 dist 缺失时不要拖垮整个服务启动，让它 404 就行。
+def _shelf_guest_data():
+    return shelf_preview.javascript_response(period_cards())
+
+
 app.mount("/app", AdminStaticFiles(directory=str(config.ROOT / "web" / "dist"), html=True,
-                                   check_dir=False, protected_paths=("shelf/data.js",)), name="web")
+                                   check_dir=False, protected_paths=("shelf/data.js",),
+                                   guest_responses={"shelf/data.js": _shelf_guest_data}), name="web")
 templates = Jinja2Templates(directory=str(config.SERVER_DIR / "templates"))
 
 
@@ -590,7 +595,8 @@ async def api_me(request: Request):
 
 @app.get("/api/periods/{period}")
 async def api_period_detail(request: Request, period: str):
-    if not current_user(request):
+    user = current_user(request)
+    if not user:
         return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
     d = resolve_period_dir(period)
     if d is None:
@@ -600,6 +606,15 @@ async def api_period_detail(request: Request, period: str):
         label = f"第 {total} 期 \u00b7 {period_mod.label(period)}"
     except (period_mod.PeriodUndetectable, period_mod.PeriodBeforeAnchor):
         no, total, label = None, None, period
+    m = re.match(r"^(\d{6})", d.name)
+    pid = m.group(1) if m else period
+    detail = {
+        "period": pid, "label": label, "no": no, "total": total,
+        "palette": config.PALETTE,
+    }
+    if config.role_of(user) != "admin":
+        return detail
+
     window = ""
     facts = d / "overview_facts.json"
     if facts.exists():
@@ -607,15 +622,12 @@ async def api_period_detail(request: Request, period: str):
             window = json.loads(facts.read_text(encoding="utf-8")).get("coverage_window", "")
         except (OSError, json.JSONDecodeError):
             pass
-    m = re.match(r"^(\d{6})", d.name)
-    pid = m.group(1) if m else period
     ledger_ok = (config.INPUT_DIR / pid / "监测表.xlsx").exists()
     generated_ok = (d / "red_slots.json").exists()
     steps = {"ledger": ledger_ok, "input": ledger_ok, "generated": generated_ok}
     last = next((j for j in jobs.list_jobs(30) if j.get("period") == pid), None)
     return {
-        "period": pid, "label": label, "no": no, "total": total,
-        "window": window, "palette": config.PALETTE, "steps": steps,
+        **detail, "window": window, "steps": steps,
         "lastJob": {"id": last["id"], "status": last["status"],
                     "created_at": last.get("created_at")} if last else None,
     }

@@ -4,6 +4,7 @@ import asyncio
 
 from server import config
 from server.protected_static import AdminStaticFiles
+from starlette.responses import Response
 
 
 def _scope(user=None):
@@ -53,6 +54,23 @@ def test_Windows_大小写和尾随点空格别名不能绕过(tmp_path):
     assert asyncio.run(files.get_response("shelf/DATA.JS", _scope(config.GUEST_USER))).status_code == 403
     assert asyncio.run(files.get_response("shelf/data.js. ", _scope(config.GUEST_USER))).status_code == 403
     assert asyncio.run(files.get_response("COLLATION-DEMO.HTML. ", _scope(config.GUEST_USER))).status_code == 403
+
+
+def test_陈列馆数据按三种身份分别响应(tmp_path):
+    (tmp_path / "shelf").mkdir()
+    (tmp_path / "shelf" / "data.js").write_text("window.WH_DATA={secret:true}", encoding="utf-8")
+    files = AdminStaticFiles(
+        directory=str(tmp_path), protected_paths=("shelf/data.js",),
+        guest_responses={"shelf/data.js": lambda: Response("window.WH_DATA={preview:true}")},
+    )
+    anonymous = asyncio.run(files.get_response("shelf/data.js", _scope()))
+    guest = asyncio.run(files.get_response("shelf/data.js", _scope(config.GUEST_USER)))
+    admin = asyncio.run(files.get_response("shelf/data.js", _scope(config.DEMO_USER)))
+    assert anonymous.status_code == 303
+    assert guest.status_code == 200 and b"preview" in guest.body and b"secret" not in guest.body
+    assert guest.headers["cache-control"] == "private, no-store"
+    assert guest.headers["vary"] == "Cookie"
+    assert admin.status_code == 200 and str(admin.path).endswith("data.js")
 
 
 def test_对勘快照同样保护(tmp_path):
