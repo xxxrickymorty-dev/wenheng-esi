@@ -92,15 +92,42 @@ def test_web_node_modules不入库():
         "wenheng/.gitignore 缺 web/node_modules —— 前端依赖会被误提交"
 
 
+#: dist 产物里允许出现的 http(s) 字符串——都是**字符串/命名空间，不是网络请求**：
+#: - `http://www.w3.org/…`：SVG / MathML / xlink / XML 的命名空间标识符，
+#:   浏览器拿它选解析器，不会真去访问这个域名（React `createElementNS` 的参数）；
+#: - `https://react.dev/errors/…`：React 生产构建的报错说明链接，只拼在异常消息里；
+#: - `https://tailwindcss.com`：Tailwind 生成 CSS 时的文件头注释。
+DIST_URL_ALLOWED = (
+    "http://www.w3.org/",
+    "https://react.dev/errors/",
+    "https://tailwindcss.com",
+)
+
+#: 抓 URL 到引号/反引号/括号/尖括号/空白为止。若还吞进尾部标点也无妨——
+#: 判定用 startswith(白名单)，不为了收尾另写复杂正则。
+DIST_URL_RE = re.compile(r"https?://[^\s\"'`)\]}>]+")
+
+
 def test_web构建产物不含外链():
     """`dist/` 要能跟着部署包上服务器（无 Node），所以它必须是自足的：
-    index.html 里只允许相对/绝对路径的本站资源，出现 http(s) 外链即断网崩版。"""
+    HTML/JS/CSS 产物里只允许上面白名单里的字符串级 URL，出现会发请求的 http(s)
+    外链（CDN 字体、远程脚本、`url(https://…)`、`@import "https://…"`）即断网崩版。"""
     idx = WEB / "dist" / "index.html"
     assert idx.is_file(), \
         "web/dist/index.html 不存在——改完 web/ 源码必须 `npm run build` 并提交 dist/（ADR-0001）"
-    externals = [m for m in re.findall(r'(?:src|href)="([^"]+)"', idx.read_text(encoding="utf-8"))
-                 if m.startswith(("http://", "https://", "//"))]
-    assert not externals, f"构建产物引了外链：{externals}"
+    hits = set()
+    for p in sorted((WEB / "dist").rglob("*")):
+        if p.suffix.lower() not in (".html", ".js", ".css"):
+            continue
+        text = p.read_text(encoding="utf-8", errors="replace")
+        for url in DIST_URL_RE.findall(text):
+            if not url.startswith(DIST_URL_ALLOWED):
+                hits.add((str(p.relative_to(WEB / "dist")), url))
+    listed = "\n  ".join(f"{rel} → {url}" for rel, url in sorted(hits)[:5])
+    assert not hits, (
+        "构建产物里出现了白名单外的 URL（断网/拦 CDN 会崩版；"
+        "确非网络请求再登记 DIST_URL_ALLOWED）：\n  "
+        + listed + (f"\n  …另有 {len(hits) - 5} 条" if len(hits) > 5 else ""))
 
 
 # ============================================================ 零 CDN
@@ -161,10 +188,19 @@ def test_运行时依赖不含web框架():
 # ============================================================ 边界约定
 def _routes():
     """从 app.py 源码里抽 (method, path)。源码解析而非导入 app——
-    避免测试引入 FastAPI 依赖与导入副作用。"""
+    避免测试引入 FastAPI 依赖与导入副作用。
+
+    两类写法都要认：`@app.get("…")` 这类单方法装饰器，以及
+    `@app.api_route("…", methods=["GET", "POST"])`（methods 可跨行、带空格）。
+    """
     src = (SERVER / "app.py").read_text(encoding="utf-8")
-    return [(m, p) for m, p in
-            re.findall(r'@app\.(get|post|put|patch|delete)\(\s*"([^"]+)"', src)]
+    routes = [(m, p) for m, p in
+              re.findall(r'@app\.(get|post|put|patch|delete)\(\s*"([^"]+)"', src)]
+    for path, methods in re.findall(
+            r'@app\.api_route\(\s*"([^"]+)"\s*,\s*methods\s*=\s*\[([^\]]*)\]',
+            src, flags=re.S):
+        routes.extend((m.lower(), path) for m in re.findall(r'"([^"]+)"', methods))
+    return routes
 
 
 def test_路由不为空():
@@ -220,15 +256,17 @@ def test_状态变更都走表单POST而非AJAX():
 
 
 def test_JSON接口都有登录保护():
-    """app.py 里除 /api/status 外的 /api 端点首行应检查登录。"""
+    """app.py 里除白名单外的 /api 端点（含 `api_route` 多方法写法）都要检查登录。"""
     src = (SERVER / "app.py").read_text(encoding="utf-8")
     blocks = re.split(r"\n@app\.", src)
+    pat_single = re.compile(r'(?:get|post)\("(/api/[^"]+)"\)')
+    pat_route = re.compile(r'api_route\("(/api/[^"]+)"')
     unguarded = []
     for b in blocks:
-        m = re.match(r'(get|post)\("(/api/[^"]+)"\)', b)
+        m = pat_single.match(b) or pat_route.match(b)
         if not m:
             continue
-        path = m.group(2)
+        path = m.group(1)
         if path in ("/api/status", "/api/docs"):
             continue
         if "current_user(request)" not in b and "require_admin(request)" not in b:
