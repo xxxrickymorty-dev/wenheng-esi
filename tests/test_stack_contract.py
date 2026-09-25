@@ -121,13 +121,18 @@ def _strip_css_comments(text):
     return re.sub(r"/\*.*?\*/", "", text, flags=re.S)
 
 
-def test_样式令牌单点声明():
-    """色板只在 style.css 的 :root 声明一次；collation.css 不得另立一套。"""
-    coll = _strip_css_comments(
-        (SERVER / "static" / "collation.css").read_text(encoding="utf-8"))
-    assert ":root" not in coll, \
-        "collation.css 又自带了 :root 色板——两份色板必然漂移，改色只改 style.css 一处"
-    assert "--zhu:" not in coll, "collation.css 重复定义了 --zhu"
+def test_离线快照单文件自足且色板只一份():
+    """2026-09-24（⑦）：collation.css/js 已删——样式与脚本只存在于离线快照里。
+
+    原守卫（collation.css 不得另带一套 :root 色板）换成这条：快照必须自带样式与脚本
+    （无外部 `<link>`/`<script src>`），且内联的色板只有一份（防复制粘贴出第二套）。
+    """
+    snap = (SERVER / "static" / "collation-demo.html").read_text(encoding="utf-8")
+    assert not re.findall(r'<link[^>]+href="(?!#)[^"]+"', snap), "快照还在引外部样式"
+    assert not re.findall(r'<script[^>]+src="[^"]+"', snap), "快照还在引外部脚本"
+    assert 'id="whc-snapshot-style"' in snap and 'id="whc-snapshot-script"' in snap, \
+        "快照缺内联标记（生成器没跑新版？）"
+    assert snap.count("--zhu:") == 1, "内联色板抄了多份——色板只该有一处"
 
 
 def test_全站色板确实声明在style_css():
@@ -339,8 +344,9 @@ def test_静态资源引用都带版本号():
 
     为什么钉成断言（2026-09-17 真踩过）：`StaticFiles` 只发 etag/last-modified、
     **不发 Cache-Control**，浏览器于是套用「启发式新鲜度」把 JS 缓存好几个小时且
-    不回源。改完 `collation.js`、服务器 curl 验过是新文件，页面上照样是旧样子，
+    不回源。当时改完 `collation.js`、服务器 curl 验过是新文件，页面上照样是旧样子，
     看起来像「功能没做」，得按 Ctrl+F5 才见效——评审现场不能靠这个。
+    （collation.js 2026-09-24 起已并入离线快照内联；这条守护的是所有模板资产。）
     """
     bad = []
     for p in sorted((SERVER / "templates").rglob("*.html")):

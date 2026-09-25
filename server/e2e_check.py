@@ -249,7 +249,9 @@ check("历史保留 sign→…→revoke", "sign" in hist and "revoke" in hist, s
 out("=== 10. 静态快照同源 ===")
 st, snap, _ = call("GET", "/static/collation-demo.html")
 check("GET 快照 → 200", st == 200, f"got {st}")
-check("快照引用 style.css（新令牌来源）", 'href="style.css"' in snap)
+check("快照单文件自足（样式/脚本已内联，无外部 link/script src）",
+      'id="whc-snapshot-style"' in snap and 'id="whc-snapshot-script"' in snap
+      and 'href="style.css"' not in snap and 'src="collation.js"' not in snap)
 check("快照含钤印品牌", "seal-sm" in snap)
 check("快照含套准十字", 'class="reg tl"' in snap)
 check("快照 signUrl 为空 → 降级只读", jget_str(snap, "signUrl") == "")

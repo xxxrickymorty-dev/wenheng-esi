@@ -12,7 +12,8 @@
    1. 零 CDN。全部系统字体栈，断网/评审电脑拦 CDN 也不会崩版。
    2. 不用深色底做主背景。评审现场多为投影，打印稿也要能看。
 
-   令牌在本文件 :root 单点声明，collation.css 不再自带一套色板；
+   令牌在本文件 :root 单点声明；对勘本样式（原 collation.css，2026-09-24 已并入
+   离线快照内联）不再自带一套色板；
    --paper/--zline/--song 等旧名保留为别名，两页同源。
 */
 :root {
@@ -53,7 +54,7 @@
   --r-sm: 10px;
   --shadow: 0 1px 2px rgba(47, 42, 36, .06), 0 8px 24px rgba(47, 42, 36, .06);
 
-  /* --- collation.css 旧名别名（同源，不再各自维护色板） --- */
+  /* --- 对勘本（离线快照）的旧名别名（同源，色板只在上面的 :root 声明） --- */
   --paper: var(--bg);
   --paper-2: var(--panel);
   --paper-3: #E7E3D9;
@@ -131,8 +132,8 @@ main { padding-block: 30px 60px; }
 .masthead .lead .zhu { font-weight: 600; }
 
 /* ---------- 面包屑 ---------- */
-/* 注意：别在非对勘本页面借用 collation.css 的 .whc-crumb——那个文件只在
-   body.whc-body 下加载，借来的类不会生效，面包屑会贴着顶栏被压掉。 */
+/* 注意：别在非对勘本页面借用 .whc-crumb——对勘本样式只在快照/对勘页
+   body.whc-body 下生效，借来的类不会生效，面包屑会贴着顶栏被压掉。 */
 .crumb {
   display: flex; align-items: center; flex-wrap: wrap; margin-bottom: 18px;
   font-family: var(--mono); font-size: 11px; letter-spacing: .08em; color: var(--ink-3);

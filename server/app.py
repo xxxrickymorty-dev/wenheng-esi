@@ -47,8 +47,9 @@ templates = Jinja2Templates(directory=str(config.SERVER_DIR / "templates"))
 
 
 # ---- 静态资源不能被浏览器自作主张缓存（2026-09-17）----------------------------
-# 踩过的坑：改完 collation.js/collation.css 重启服务、curl 也验过服务器发的是新文件，
-# 但页面上就是没变化。原因是 StaticFiles **只发 etag/last-modified、不发 Cache-Control**，
+# 踩过的坑：当年改完 collation.js（现已删，2026-09-24 并入离线快照内联）重启服务、
+# curl 也验过服务器发的是新文件，但页面上就是没变化。原因是 StaticFiles
+# **只发 etag/last-modified、不发 Cache-Control**，
 # 浏览器于是套用「启发式新鲜度」（约等于距上次修改时间的 10%）—— 旧 JS 在本地缓存里
 # 能活好几个小时，**期间根本不回服务器问**。表现出来就是「功能好像没做」。
 # 双保险：① 模板里的 URL 带 `?v=<指纹>`，资源一变 URL 就变，缓存必然失效；
