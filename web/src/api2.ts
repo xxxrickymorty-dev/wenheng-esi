@@ -4,10 +4,20 @@ import { req } from './api'
 
 export type ChartRow = { name: string; group: string; url: string }
 
-/** 图册：99 张期次图，按分组 */
+/** 图册：期次图，按分组。后端按 50/页分页——这里循环拉全，
+    「共 N 张」与图册全量页要的是全部，不是第一页。 */
 export async function getCharts(period: string): Promise<ChartRow[]> {
-  const r = await req<{ rows: ChartRow[] }>(`/api/periods/${encodeURIComponent(period)}/charts`)
-  return r.rows ?? []
+  const out: ChartRow[] = []
+  let offset = 0
+  for (;;) {
+    const r = await req<{ rows: ChartRow[]; has_more?: boolean }>(
+      `/api/periods/${encodeURIComponent(period)}/charts?limit=500&offset=${offset}`)
+    const rows = r.rows ?? []
+    out.push(...rows)
+    offset += rows.length
+    if (!r.has_more || rows.length === 0) break
+  }
+  return out
 }
 
 export type RedRow = {
@@ -39,8 +49,10 @@ export type CollationRow = {
   manual?: boolean
 }
 
-/** 对勘：母版原文 ↔ 本期生成（含正文/大表/图槽位），溯源信息在这一层 */
-export async function getCollation(period: string): Promise<CollationRow[]> {
-  const r = await req<{ rows: CollationRow[] }>(`/api/periods/${encodeURIComponent(period)}/collation`)
+/** 对勘：母版原文 ↔ 本期生成（含正文/大表/图槽位），溯源信息在这一层。
+    `full=true` 取全量——分区计数与待人工清单必须用全量，别拿分页前 50 行当全部 */
+export async function getCollation(period: string, full = false): Promise<CollationRow[]> {
+  const q = full ? '?full=true' : ''
+  const r = await req<{ rows: CollationRow[] }>(`/api/periods/${encodeURIComponent(period)}/collation${q}`)
   return r.rows ?? []
 }

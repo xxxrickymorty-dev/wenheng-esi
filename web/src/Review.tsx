@@ -208,7 +208,8 @@ export function Review({
     if (!period) return
     let alive = true
     setCol(null); setMsg(null); setNDoubt(null)
-    getCollation(period).then((c) => { if (alive) setCol(c) }).catch(() => { if (alive) setCol([]) })
+    /* 全量：签单前要看的「待人工/待确认」清单不能只剩分页前 50 行（会漏审） */
+    getCollation(period, true).then((c) => { if (alive) setCol(c) }).catch(() => { if (alive) setCol([]) })
     return () => { alive = false }
   }, [period])
 

@@ -22,7 +22,9 @@ export function Reading({ period }: { period: string | null }) {
     if (!period) return
     let alive = true
     setRows(null); setNote(null); setQ(''); setOnlyManual(false); setSec(null); setHover(null); setAssertions(null)
-    getCollation(period)
+    /* 全量（716 处量级）：分组、搜索、待人工都在全量上做——
+       后端默认分页 50 行，拿它当全量会只剩前几组。 */
+    getCollation(period, true)
       .then((r) => { if (alive) setRows(r) })
       .catch((e: { status?: number }) => {
         if (!alive) return

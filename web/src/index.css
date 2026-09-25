@@ -161,7 +161,7 @@ a{color:inherit}
   .nav{order:3; width:100%; margin-left:0; overflow-x:auto; -webkit-overflow-scrolling:touch}
   .nav a{white-space:nowrap; padding:8px 11px; font-size:14.5px}
   .who{font-size:12.5px; padding-left:0; border-left:0}
-  .report-head{grid-template-columns:1fr}
+  .report-head{grid-template-columns:minmax(0,1fr)}
   .wrap{padding:18px 14px 60px}
 }
 
@@ -170,7 +170,7 @@ a{color:inherit}
    ========================================================================== */
 .report-head{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:34px;
   padding:32px 0 0;align-items:start}
-@media (max-width:900px){.report-head{grid-template-columns:1fr}}
+@media (max-width:900px){.report-head{grid-template-columns:minmax(0,1fr)}}
 .eyebrow{font-size:13px;color:var(--gold-ink);letter-spacing:.14em}
 .display{margin:10px 0 0;font-family:var(--serif);font-weight:600;line-height:1.08;
   font-size:clamp(2.2rem,5vw,3.8rem);letter-spacing:-.02em}
@@ -232,6 +232,18 @@ a{color:inherit}
 .art .m{font-size:13.5px;color:var(--ink-3);margin-top:2px}
 .art .go{margin-left:auto;align-self:center;color:var(--zhu);font-size:14.5px;white-space:nowrap}
 .art a{text-decoration:none}
+
+/* 本期产物：3 列（rick 定 2026-09-25）——4 列时标题会折行、9 张还留孤行 */
+.art-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:1100px){.art-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:700px){.art-grid{grid-template-columns:1fr}}
+
+/* 对勘分区：按分区数整行排（rick 定 2026-09-25）——分区 11 个，
+   4 列 3 行不留大片空档；不写死列数，分区增减都自适应 */
+.sections-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:12px}
+@media (max-width:1100px){.sections-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:760px){.sections-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.sections-grid{grid-template-columns:1fr}}
 
 /* 印记链：每格都留出「本期」标签那一行，否则当前期会被挤下去、整排不齐 */
 .sealbox .now-tag{display:block;min-height:1.35em}
@@ -402,15 +414,15 @@ a{color:inherit}
 .tr-now{text-align:right}
 .tr-now b{font-family:var(--serif);font-size:24px;line-height:1.1;display:block}
 .tr-now span{font-size:12.5px;color:var(--ink-3)}
-.tr-svg{display:block;width:100%;height:auto;margin-top:8px}
+/* 45 期按固定宽度排开（每期都标数值），卡片装不下就横向拉动——不缩成一团 */
+.tr-scroll{overflow-x:auto;overflow-y:hidden;margin-top:6px}
+.tr-svg{display:block}
 .tr-grid{stroke:var(--line-2);stroke-width:1}
 .tr-area{fill:var(--ok);opacity:.12;stroke:none}
 .tr-line{fill:none;stroke:var(--ok);stroke-width:2}
 .tr-dot{fill:var(--zhu);stroke:var(--card);stroke-width:2}
 .tr-tick{font:12px var(--mono);fill:var(--ink-3)}
-/* 窄屏下 SVG 等比缩小：刻度字号按 viewBox 单位放大，实显才读得清（375px 下约 9px） */
-@media (max-width:600px){.tr-tick{font-size:16px}}
-@media (max-width:480px){.tr-tick{font-size:22px}}
+.tr-val{font:11px var(--mono);fill:var(--ink-2)}
 
 /* ============================================================================
    灵活报告（分析台第三块，紧挨「按节解读」）——表单 / 已出稿 chips / 后端渲染的正文

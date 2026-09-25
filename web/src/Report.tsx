@@ -100,7 +100,7 @@ function Artifacts({ guest }: { guest?: boolean }) {
   if (!items) return <div className="pending-box">正在读产物清单……</div>
 
   return (
-    <div className="artifacts">
+    <div className="artifacts art-grid">
       {items.map((a) => (
         <div className="art" key={a.key}>
           <span className="ico"><Icon name={a.key === 'report' ? 'doc' : a.key.includes('red') ? 'list' : 'chart'} size={22} /></span>
@@ -130,7 +130,9 @@ function PeriodData({ period }: { period: string | null }) {
     setCol(null); setCharts(null); setNote(null)
     ;(async () => {
       try {
-        const [c, ch] = await Promise.all([getCollation(period), getCharts(period)])
+        /* 全量对勘：分区计数 / 待人工清单要的是全部（716 处量级），
+           不是分页默认的 50 行——否则分区只出现前几组、计数也少。 */
+        const [c, ch] = await Promise.all([getCollation(period, true), getCharts(period)])
         if (!alive) return
         setCol(c); setCharts(ch)
       } catch (e) {
@@ -164,7 +166,7 @@ function PeriodData({ period }: { period: string | null }) {
               （真数据：母版原文 ↔ 本期生成，共 {col.length} 处）
             </span>
           </h2>
-          <div className="artifacts" style={{ marginTop: 12 }}>
+          <div className="sections-grid">
             {Object.entries(bySection).map(([sec, n]) => (
               <a className="art" key={sec} style={{ textDecoration: 'none', color: 'inherit' }}
                  href={`/app/?view=reading&period=${encodeURIComponent(period ?? '')}&section=${encodeURIComponent(sec)}`}>
@@ -259,14 +261,18 @@ function PeriodData({ period }: { period: string | null }) {
 }
 
 /** 顶尖论文增长轨迹（契约 #19 的 trend 序列；借「学科分析平台」那版的版式）。
-    曲线与点都是后端给的数；轴上只标**真实值**（0 / 序列最大值 / 本期），不另造刻度数。 */
+    曲线与点都是后端给的数；**每期数值直接标在点上**——45 期按固定绘制宽度横向排开
+    （卡片装不下就横向拉动），不缩成一团（rick 定 2026-09-25）。
+    轴上只标**真实值**（0 / 序列最大值），不另造刻度数。 */
 function TrendCard({ trend, period }: { trend: Record<string, number>; period: string | null }) {
   const pts = Object.entries(trend).sort((a, b) => a[0].localeCompare(b[0]))
   if (pts.length < 2) return null
   const max = Math.max(...pts.map(([, v]) => v))
-  const W = 760, H = 190, L = 58, R = 16, T = 14, B = 26
-  const iw = W - L - R, ih = H - T - B
-  const x = (i: number) => L + (i * iw) / (pts.length - 1)
+  /* 每期固定 30px 绘制宽度：45 期全标数字也不挤（窄屏/小屏横向拉动看） */
+  const STEP = 30, H = 236, L = 58, R = 24, T = 28, B = 42
+  const W = L + (pts.length - 1) * STEP + R
+  const ih = H - T - B
+  const x = (i: number) => L + i * STEP
   const y = (v: number) => T + ih - (v / (max || 1)) * ih
   const line = pts.map(([, v], i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ')
   const area = `${line} L${x(pts.length - 1).toFixed(1)} ${(T + ih).toFixed(1)} L${L} ${(T + ih).toFixed(1)} Z`
@@ -274,7 +280,6 @@ function TrendCard({ trend, period }: { trend: Record<string, number>; period: s
      序列里找不到就不标——不拿首点冒充本期。 */
   const ci = pts.findIndex(([k]) => k === period)
   const nowEntry = ci >= 0 ? pts[ci] : null
-  const ck = nowEntry?.[0] ?? ''
   const cv = nowEntry?.[1] ?? 0
   const fmtP = (k: string) => `${k.slice(0, 4)}.${k.slice(4)}`
 
@@ -285,32 +290,40 @@ function TrendCard({ trend, period }: { trend: Record<string, number>; period: s
           <b>顶尖论文增长轨迹</b>
           <span className="hint">按双月期次 · 单位 篇（{pts.length} 期，{fmtP(pts[0][0])}–{fmtP(pts[pts.length - 1][0])}）</span>
         </div>
-        {nowEntry && <div className="tr-now"><b>{cv}</b><span>本期 · {fmtP(ck)}</span></div>}
+        {nowEntry && <div className="tr-now"><b>{cv}</b><span>本期 · {fmtP(pts[ci][0])}</span></div>}
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="tr-svg" role="img"
-           aria-label={nowEntry
-             ? `顶尖论文历期增长趋势图：${pts.length} 期，本期 ${cv} 篇`
-             : `顶尖论文历期增长趋势图：${pts.length} 期（本期不在序列中）`}>
-        {[0, 0.25, 0.5, 0.75, 1].map((q) => (
-          <line key={q} className="tr-grid" x1={L} x2={W - R} y1={T + ih * (1 - q)} y2={T + ih * (1 - q)} />
-        ))}
-        <text className="tr-tick" x={L - 10} y={T + 4} textAnchor="end">{max}</text>
-        <text className="tr-tick" x={L - 10} y={T + ih + 4} textAnchor="end">0</text>
-        <path className="tr-area" d={area} />
-        <path className="tr-line" d={line} />
-        {nowEntry && <circle className="tr-dot" cx={x(ci)} cy={y(cv)} r="4.5" />}
-        {nowEntry && <text className="tr-tick" x={x(ci)} y={y(cv) - 10} textAnchor="middle">{fmtP(ck)}</text>}
-        <text className="tr-tick" x={L} y={H - 6}>{fmtP(pts[0][0])}</text>
-        <text className="tr-tick" x={W - R} y={H - 6} textAnchor="end">{fmtP(pts[pts.length - 1][0])}</text>
-      </svg>
-      <p className="hint">每个点都是台账派生的历期数字，不掺预测值。</p>
+      <div className="tr-scroll">
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="tr-svg" role="img"
+             aria-label={nowEntry
+               ? `顶尖论文历期增长趋势图：${pts.length} 期，本期 ${cv} 篇`
+               : `顶尖论文历期增长趋势图：${pts.length} 期（本期不在序列中）`}>
+          {[0, 0.25, 0.5, 0.75, 1].map((q) => (
+            <line key={q} className="tr-grid" x1={L} x2={W - R} y1={T + ih * (1 - q)} y2={T + ih * (1 - q)} />
+          ))}
+          <text className="tr-tick" x={L - 10} y={T + 4} textAnchor="end">{max}</text>
+          <text className="tr-tick" x={L - 10} y={T + ih + 4} textAnchor="end">0</text>
+          <path className="tr-area" d={area} />
+          <path className="tr-line" d={line} />
+          {pts.map(([k, v], i) => (
+            <text key={k} className="tr-val" x={x(i)} y={y(v) - 7} textAnchor="middle">{v}</text>
+          ))}
+          {nowEntry && <circle className="tr-dot" cx={x(ci)} cy={y(cv)} r="4" />}
+          <text className="tr-tick" x={L} y={H - 8}>{fmtP(pts[0][0])}</text>
+          <text className="tr-tick" x={W - R} y={H - 8} textAnchor="end">{fmtP(pts[pts.length - 1][0])}</text>
+        </svg>
+      </div>
+      <p className="hint">每个点上的数字都是台账派生的历期值，不掺预测值；图比屏宽时可横向拉动。</p>
     </div>
   )
 }
 
 /** 读数带：真数据（GET /api/periods/{p}/facts，源与报告同款）。
-    🔴 数字原样来自后端——这里只排版，不换算、不聚合、不四舍五入。 */
-function FactsStrip({ period }: { period: string | null }) {
+    🔴 数字原样来自后端——这里只排版，不换算、不聚合、不四舍五入。
+    趋势图不在这里画：它要占满整页宽（见 Report 里的 TrendCard），数据经 onFacts 上交。 */
+function FactsStrip({ period, onFacts }: {
+  period: string | null
+  onFacts?: (f: Facts | null) => void
+}) {
   const [f, setF] = useState<Facts | null>(null)
   const [note, setNote] = useState<string | null>(null)
 
@@ -318,8 +331,9 @@ function FactsStrip({ period }: { period: string | null }) {
     if (!period) return
     let alive = true
     setF(null); setNote(null)
+    onFacts?.(null)
     getFacts(period)
-      .then((x) => { if (alive) setF(x) })
+      .then((x) => { if (alive) { setF(x); onFacts?.(x) } })
       .catch((e: { status?: number }) => {
         if (!alive) return
         setNote(
@@ -329,7 +343,7 @@ function FactsStrip({ period }: { period: string | null }) {
         )
       })
     return () => { alive = false }
-  }, [period])
+  }, [period, onFacts])
 
   if (note) return <div className="pending-box">{note}</div>
   if (!f) return <div className="pending-box">正在读读数……</div>
@@ -375,12 +389,6 @@ function FactsStrip({ period }: { period: string | null }) {
         ))}
       </div>
 
-      {/* 首屏读数：四卡下面就把「这几年怎么走过来的」摆出来（趋势序列来自后端）
-          「本期」用后端给的 facts.period——选择期次带 _复现 后缀时 URL 里的期次
-          与序列键对不上，不能拿它当本期。 */}
-      {f.trend && Object.keys(f.trend).length > 1 && (
-        <TrendCard trend={f.trend} period={f.period || period} />
-      )}
       <p className="hint" style={{ marginTop: 10 }}>
         数字体检：{f.assertions.total} 项核对
         {f.assertions.fail === 0 ? '全部通过' : `有 ${f.assertions.fail} 项不符 ❗`}
@@ -405,6 +413,8 @@ export function Report({
   guest?: boolean
 }) {
   const row = periods.find((p) => p.period === current) ?? null
+  /* 趋势图要占满整页宽：facts 由 FactsStrip 取回后交上来（读数带仍在左列） */
+  const [facts, setFacts] = useState<Facts | null>(null)
 
   return (
     <>
@@ -420,12 +430,18 @@ export function Report({
           <div className="rule" />
 
           {/* 读数带：真数据（后端 facts 接口已交付） */}
-          <FactsStrip period={current} />
+          <FactsStrip period={current} onFacts={setFacts} />
         </div>
 
         {/* 印记链：今天就有真数据 */}
         <Chain periods={periods} current={current} onPick={onPick} />
       </div>
+
+      {/* 顶尖论文增长轨迹——全页宽（rick 定 2026-09-25）：45 期每期标数值，
+          「本期」用后端 facts.period（选 _复现 期次时 URL 期次与序列键对不上）。 */}
+      {facts?.trend && Object.keys(facts.trend).length > 1 && (
+        <TrendCard trend={facts.trend} period={facts.period || current} />
+      )}
 
       {/* 对勘分区 / 页边朱批 / 图册 —— Batch 2 的真数据 */}
       <PeriodData period={current} />
