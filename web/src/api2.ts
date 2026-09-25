@@ -2,22 +2,28 @@
 
 import { req } from './api'
 
-export type ChartRow = { name: string; group: string; url: string }
-
-/** 图册：期次图，按分组。后端按 50/页分页——这里循环拉全，
-    「共 N 张」与图册全量页要的是全部，不是第一页。 */
-export async function getCharts(period: string): Promise<ChartRow[]> {
-  const out: ChartRow[] = []
+/** 循环拉全分页接口（后端上限 500/页）——页面上写「共 N 条/张」就得是真数，
+    别把默认第一页（50）当全部。 */
+async function reqAll<T>(url: string): Promise<T[]> {
+  const out: T[] = []
   let offset = 0
   for (;;) {
-    const r = await req<{ rows: ChartRow[]; has_more?: boolean }>(
-      `/api/periods/${encodeURIComponent(period)}/charts?limit=500&offset=${offset}`)
+    const sep = url.includes('?') ? '&' : '?'
+    const r = await req<{ rows: T[]; has_more?: boolean }>(
+      `${url}${sep}limit=500&offset=${offset}`)
     const rows = r.rows ?? []
     out.push(...rows)
     offset += rows.length
     if (!r.has_more || rows.length === 0) break
   }
   return out
+}
+
+export type ChartRow = { name: string; group: string; url: string }
+
+/** 图册：期次图，按分组（109 张量级，全量） */
+export async function getCharts(period: string): Promise<ChartRow[]> {
+  return reqAll<ChartRow>(`/api/periods/${encodeURIComponent(period)}/charts`)
 }
 
 export type RedRow = {
@@ -29,10 +35,9 @@ export type RedRow = {
   kind: string
 }
 
-/** 红色件（逐格全量表）：704 条量级——**别一次全渲染**，调用方要截断 */
+/** 红件（逐格全量表）：716 条量级，全量拉回；页面自己搜索/截断 */
 export async function getRedSlots(period: string): Promise<RedRow[]> {
-  const r = await req<{ rows: RedRow[] }>(`/api/periods/${encodeURIComponent(period)}/redslots`)
-  return r.rows ?? []
+  return reqAll<RedRow>(`/api/periods/${encodeURIComponent(period)}/redslots`)
 }
 
 export type CollationRow = {

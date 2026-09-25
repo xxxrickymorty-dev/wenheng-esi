@@ -261,15 +261,14 @@ function PeriodData({ period }: { period: string | null }) {
 }
 
 /** 顶尖论文增长轨迹（契约 #19 的 trend 序列；借「学科分析平台」那版的版式）。
-    曲线与点都是后端给的数；**每期数值直接标在点上**——45 期按固定绘制宽度横向排开
-    （卡片装不下就横向拉动），不缩成一团（rick 定 2026-09-25）。
-    轴上只标**真实值**（0 / 序列最大值），不另造刻度数。 */
+    曲线与点都是后端给的数；**数字隔期标注、本期必标**——45 期按每期 23px 排开，
+    一屏放得下（rick 定 2026-09-25：隔期标，不滚动）。轴上只标真实值（0 / 序列最大值）。 */
 function TrendCard({ trend, period }: { trend: Record<string, number>; period: string | null }) {
   const pts = Object.entries(trend).sort((a, b) => a[0].localeCompare(b[0]))
   if (pts.length < 2) return null
   const max = Math.max(...pts.map(([, v]) => v))
-  /* 每期固定 30px 绘制宽度：45 期全标数字也不挤（窄屏/小屏横向拉动看） */
-  const STEP = 30, H = 236, L = 58, R = 24, T = 28, B = 42
+  /* 每期 23px：隔期标的数字间距 46px，一屏宽（约 1100px）全放下，不用横向拉 */
+  const STEP = 23, H = 236, L = 58, R = 24, T = 28, B = 42
   const W = L + (pts.length - 1) * STEP + R
   const ih = H - T - B
   const x = (i: number) => L + i * STEP
@@ -304,15 +303,15 @@ function TrendCard({ trend, period }: { trend: Record<string, number>; period: s
           <text className="tr-tick" x={L - 10} y={T + ih + 4} textAnchor="end">0</text>
           <path className="tr-area" d={area} />
           <path className="tr-line" d={line} />
-          {pts.map(([k, v], i) => (
+          {pts.map(([k, v], i) => ((i % 2 === 0 || i === ci) ? (
             <text key={k} className="tr-val" x={x(i)} y={y(v) - 7} textAnchor="middle">{v}</text>
-          ))}
+          ) : null))}
           {nowEntry && <circle className="tr-dot" cx={x(ci)} cy={y(cv)} r="4" />}
           <text className="tr-tick" x={L} y={H - 8}>{fmtP(pts[0][0])}</text>
           <text className="tr-tick" x={W - R} y={H - 8} textAnchor="end">{fmtP(pts[pts.length - 1][0])}</text>
         </svg>
       </div>
-      <p className="hint">每个点上的数字都是台账派生的历期值，不掺预测值；图比屏宽时可横向拉动。</p>
+      <p className="hint">每个点上的数字都是台账派生的历期值（隔期标注 · 本期必标），不掺预测值。</p>
     </div>
   )
 }
