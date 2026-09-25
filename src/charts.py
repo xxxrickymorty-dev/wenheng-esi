@@ -1083,18 +1083,23 @@ def chart_overview_1pct(cites, threshold, out_png, period):
     gap = (100 - ratio).clip(lower=0)           # 已进 1% 的不画差距段
     ax.barh(y, ratio, color="#B4A7D6", height=0.7, label="与ESI前1%的接近度")
     ax.barh(y, gap, left=ratio, color="#A9D18E", height=0.7, label="与ESI前1%的差距")
-    for i, v in enumerate(ratio):
-        ax.text(v + 8, i, f"{v:.2f}%", va="center", fontsize=8, color=C_TEXT)
-    ax.axvline(100, color="red", lw=1.6)
+    # 数值标签放**柱左端**（rick 2026-09-24 对照第4期原件定的）：统一贴在轴右侧一点点，
+    # 读起来是「标签 + 柱长」；小柱的标签会越过柱尾落到差距段上（原件同款，深色字在
+    # 浅紫/浅绿上都清楚）。
     xmax = int(math.ceil(max(float(ratio.max()), 100.0) / 100.0) * 100)
+    for i, v in enumerate(ratio):
+        ax.text(xmax * 0.004, i, f"{v:.2f}%", va="center", ha="left", fontsize=8,
+                color=C_TEXT)
+    ax.axvline(100, color="red", lw=1.6)
     ax.set_xlim(0, xmax)
     ticks = list(range(0, xmax + 1, 100))
     ax.set_xticks(ticks)
-    ax.set_xticklabels([f"{t:.2f}%" for t in ticks], fontsize=7.5, color=ink)
+    ax.set_xticklabels([f"{t:.2f}%" for t in ticks], fontsize=6.5, color=ink)
     ax.set_yticks(y)
-    ax.set_yticklabels([_cn(d) for d in ratio.index], fontsize=8, color=ink)
-    ax.set_xlabel("被引频次 / 1%阈值（%）", fontsize=10.5, color=ink)
-    ax.grid(axis="x", color=C_GRID, linewidth=0.6)
+    ax.set_yticklabels([_cn(d) for d in ratio.index], fontsize=7, color=ink)
+    ax.set_xlabel("被引频次 / 1%阈值（%）", fontsize=9.5, color=ink)
+    ax.grid(False)          # 原件无网格线（rick 2026-09-24 定）
+    ax.tick_params(length=0, pad=4)      # 原件无刻度短线（默认那截短线会插在学科名后面）
     from matplotlib.patches import Patch
     ax.legend(handles=[Patch(color="#B4A7D6", label="与ESI前1%的接近度"),
                        Patch(color="#A9D18E", label="与ESI前1%的差距"),
