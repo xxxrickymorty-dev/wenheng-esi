@@ -21,8 +21,10 @@ class AdminStaticFiles(StaticFiles):
         normalized = PurePosixPath(str(path).replace("\\", "/"))
         if normalized.is_absolute() or ".." in normalized.parts:
             return None
+        if not normalized.parts:
+            return ""
         parts = [part.rstrip(" .").casefold() for part in normalized.parts]
-        if not parts or any(not part for part in parts):
+        if any(not part for part in parts):
             return None
         return "/".join(parts)
 

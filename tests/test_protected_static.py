@@ -7,7 +7,7 @@ from server.protected_static import AdminStaticFiles
 
 
 def _scope(user=None):
-    return {"method": "GET", "headers": [], "session": {"user": user} if user else {}}
+    return {"method": "GET", "headers": [], "path": "/", "session": {"user": user} if user else {}}
 
 
 def _files(tmp_path):
@@ -18,6 +18,15 @@ def _files(tmp_path):
     (tmp_path / "collation-demo.html").write_text("secret", encoding="utf-8")
     return AdminStaticFiles(directory=str(tmp_path),
                             protected_paths=("shelf/data.js", "collation-demo.html"))
+
+
+def test_静态挂载根路径仍返回首页(tmp_path):
+    (tmp_path / "index.html").write_text("public home", encoding="utf-8")
+    files = AdminStaticFiles(directory=str(tmp_path), html=True)
+    guest = asyncio.run(files.get_response(".", _scope(config.GUEST_USER)))
+    admin = asyncio.run(files.get_response(".", _scope(config.DEMO_USER)))
+    assert guest.status_code == 200
+    assert admin.status_code == 200
 
 
 def test_书架页面仍可打开_数据仅管理员可读(tmp_path):
