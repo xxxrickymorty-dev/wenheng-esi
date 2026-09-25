@@ -18,13 +18,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
                                RedirectResponse, StreamingResponse)
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import approval, archive, collation, config, jobs
 from . import forecasting
+from .protected_static import AdminStaticFiles
 from src import period as period_mod  # 期次口径唯一来源（ADR-0001：新工作区 API 也用它）
 from esi_v1.data import display_name  # 学科名中文化（契约 #22）
 
@@ -38,11 +38,12 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="文衡 · 学科信息参考自动化演示", docs_url="/api/docs", lifespan=lifespan)
 app.add_middleware(SessionMiddleware, secret_key=config.SECRET, same_site="lax")
-app.mount("/static", StaticFiles(directory=str(config.SERVER_DIR / "static")), name="static")
+app.mount("/static", AdminStaticFiles(directory=str(config.SERVER_DIR / "static"),
+                                       protected_paths=("collation-demo.html",)), name="static")
 # 新工作区系统（React SPA，构建产物 web/dist 入库）——见 docs/adr/0001。
 # check_dir=False：干净 clone 里 dist 缺失时不要拖垮整个服务启动，让它 404 就行。
-app.mount("/app", StaticFiles(directory=str(config.ROOT / "web" / "dist"), html=True,
-                              check_dir=False), name="web")
+app.mount("/app", AdminStaticFiles(directory=str(config.ROOT / "web" / "dist"), html=True,
+                                   check_dir=False, protected_paths=("shelf/data.js",)), name="web")
 templates = Jinja2Templates(directory=str(config.SERVER_DIR / "templates"))
 
 
@@ -58,7 +59,7 @@ templates = Jinja2Templates(directory=str(config.SERVER_DIR / "templates"))
 async def _static_revalidate(request: Request, call_next):
     resp = await call_next(request)
     if request.url.path.startswith(("/static/", "/app/")):
-        resp.headers["Cache-Control"] = "no-cache"
+        resp.headers.setdefault("Cache-Control", "no-cache")
     return resp
 
 
@@ -115,6 +116,16 @@ def require_admin(request: Request):
         return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
     if config.role_of(user) != "admin":
         return JSONResponse({"error": "需要管理员权限", "hint": "游客不能执行此操作"}, status_code=403)
+    return user
+
+
+def require_admin_file(request: Request):
+    """附件与图沿用旧的未登录跳转，guest 明确拒绝。"""
+    user = current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    if config.role_of(user) != "admin":
+        return JSONResponse({"error": "需要管理员权限", "hint": "游客不能查看报告内容"}, status_code=403)
     return user
 
 
@@ -366,8 +377,9 @@ async def period_flexible(request: Request, period: str, intent: str = "",
 async def period_flexible_chart(request: Request, period: str,
                                 intent: str, name: str):
     """灵活报告的图。**与复刻图分开解析** —— 归到 `flexible/<intent>/charts/` 下。"""
-    if not current_user(request):
-        return RedirectResponse("/login", status_code=303)
+    guard = require_admin_file(request)
+    if isinstance(guard, (JSONResponse, RedirectResponse)):
+        return guard
     d = resolve_period_dir(period)
     if d is None:
         return RedirectResponse("/", status_code=303)
@@ -398,8 +410,9 @@ async def period_chart(request: Request, period: str, rel: str):
     越界请求由 `jobs.resolve_chart` 挡住——这条路由直接服务磁盘文件，
     少一道检查就能读到 `server/.env`，别在这里省事。
     """
-    if not current_user(request):
-        return RedirectResponse("/login", status_code=303)
+    guard = require_admin_file(request)
+    if isinstance(guard, (JSONResponse, RedirectResponse)):
+        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -412,8 +425,9 @@ async def period_chart(request: Request, period: str, rel: str):
 
 @app.get("/p/{period}/download/{key}")
 async def period_download(request: Request, period: str, key: str):
-    if not current_user(request):
-        return RedirectResponse("/login", status_code=303)
+    guard = require_admin_file(request)
+    if isinstance(guard, (JSONResponse, RedirectResponse)):
+        return guard
     d = resolve_period_dir(period)
     if d is None:
         return RedirectResponse("/", status_code=303)
@@ -532,8 +546,9 @@ async def healthz():
 @app.get("/api/status")
 async def api_status(request: Request):
     """工作区任务入口：只提供前端跳转所需的任务标识，不暴露落盘记录。"""
-    if not current_user(request):
-        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
     active = jobs.active_job()
     last = next((j for j in jobs.list_jobs(20) if j.get("stats")), None)
     return {
@@ -606,6 +621,36 @@ async def api_period_detail(request: Request, period: str):
     }
 
 
+@app.get("/api/periods/{period}/artifacts")
+async def api_period_artifacts(request: Request, period: str):
+    """按期次列运行产物，仅管理员可读。"""
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+    return {"period": d.name, "artifacts": jobs.collect_period_artifacts(d.name)}
+
+
+@app.get("/api/periods/{period}/download/{key}")
+async def api_period_download(request: Request, period: str, key: str):
+    """期次产物下载仅管理员可读。"""
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    d = resolve_period_dir(period)
+    if d is None:
+        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+    if key == archive.LOGPACK_KEY:
+        data, name = archive.pack(d, None)
+        return _zip_response(data, name)
+    path = jobs.resolve_period_artifact(d.name, key)
+    if not path:
+        return JSONResponse({"error": "产物不存在"}, status_code=404)
+    return FileResponse(path, filename=path.name, media_type="application/octet-stream")
+
+
 def _paginate(items, limit, offset):
     """统一分页：?limit=&offset= -> {rows, total, limit, offset, has_more}"""
     total = len(items)
@@ -635,13 +680,14 @@ async def api_period_sign_json(request: Request, period: str):
 
 @app.get("/api/periods/{period}/forecast-choice")
 async def api_forecast_choice_get(request: Request, period: str):
-    """读回已存的预测模型选择。guest 可读（只读不改状态）。
+    """读回已存的预测模型选择，仅管理员可读。
 
     ⚠️ 这条是 **GET**（2026-09-24 修）：此前被误挂成 `@app.post`，又注册在下面的
     `api_route(methods=["GET","POST"])` 之前——FastAPI 按注册顺序匹配，POST 会被这条
     抢先接走，导致「保存选择」永远只读回、不落盘。改装饰器前先想一遍注册顺序。"""
-    if not current_user(request):
-        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -674,8 +720,9 @@ def _count_forecast_choice(choice):
 @app.api_route("/api/periods/{period}/forecast-choice", methods=["GET", "POST"])
 async def api_forecast_choice(request: Request, period: str):
     if request.method == "GET":
-        if not current_user(request):
-            return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
+        guard = require_admin(request)
+        if isinstance(guard, JSONResponse):
+            return guard
         return await api_forecast_choice_get(request, period)
     guard = require_admin(request)
     if isinstance(guard, JSONResponse):
@@ -831,9 +878,10 @@ def _localize_facts(facts: dict) -> dict:
 
 @app.get("/api/periods/{period}/facts")
 async def api_period_facts(request: Request, period: str):
-    """读数带数据：overview_facts.json + meta.json 摘要。guest 可读。"""
-    if not current_user(request):
-        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
+    """读数带数据：overview_facts.json + meta.json 摘要，仅管理员可读。"""
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -1029,8 +1077,9 @@ async def api_period_redslots(request: Request, period: str,
 async def api_period_collation(request: Request, period: str,
                                limit: int = 50, offset: int = 0,
                                full: bool = False):
-    if not current_user(request):
-        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -1059,8 +1108,9 @@ async def api_period_collation(request: Request, period: str,
 @app.get("/api/periods/{period}/charts")
 async def api_period_charts_json(request: Request, period: str,
                                  limit: int = 50, offset: int = 0):
-    if not current_user(request):
-        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -1074,8 +1124,9 @@ async def api_period_charts_json(request: Request, period: str,
 
 @app.get("/api/ledger/sheets")
 async def api_ledger_sheets(request: Request, period: str = ""):
-    if not current_user(request):
-        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
     import openpyxl                                        # noqa: PLC0415
     m = jobs.PERIOD_RE.match(period or "")
     if m:
@@ -1320,6 +1371,25 @@ async def api_artifacts(request: Request, job_id: str):
     return {"job": job, "artifacts": jobs.collect_artifacts(job)}
 
 
+@app.get("/api/jobs/{job_id}/download/{key}")
+async def api_job_download(request: Request, job_id: str, key: str):
+    """任务产物与日志包只属于管理员运行工作区。"""
+    guard = require_admin(request)
+    if isinstance(guard, JSONResponse):
+        return guard
+    job = jobs.read_job(job_id)
+    if not job:
+        return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
+    if key == archive.LOGPACK_KEY:
+        out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
+        data, name = archive.pack(out_dir, job)
+        return _zip_response(data, name)
+    path = jobs.resolve_artifact(job, key)
+    if not path:
+        return JSONResponse({"error": "产物不存在"}, status_code=404)
+    return FileResponse(path, filename=path.name, media_type="application/octet-stream")
+
+
 @app.post("/api/jobs/{job_id}/rerun")
 async def api_rerun_job(request: Request, job_id: str):
     guard = require_admin(request)
@@ -1431,8 +1501,9 @@ async def api_events(request: Request, job_id: str):
 
 @app.get("/jobs/{job_id}/download/{key}")
 async def download(request: Request, job_id: str, key: str):
-    if not current_user(request):
-        return RedirectResponse("/login", status_code=303)
+    guard = require_admin_file(request)
+    if isinstance(guard, (JSONResponse, RedirectResponse)):
+        return guard
     job = jobs.read_job(job_id)
     if not job:
         return RedirectResponse("/", status_code=303)

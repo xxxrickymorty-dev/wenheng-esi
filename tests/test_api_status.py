@@ -35,7 +35,7 @@ class TestApiStatus:
         assert response.status_code == 401
         assert _body(response) == {"error": "未登录", "hint": "请先登录"}
 
-    def test_guest与admin可读取最小任务标识(self, monkeypatch):
+    def test_guest不能读取任务标识(self, monkeypatch):
         active = {"id": "running-1", "period": "202609", "stats": {"secret": 1}}
         last = {
             "id": "done-1",
@@ -46,11 +46,11 @@ class TestApiStatus:
         monkeypatch.setattr(app_module.jobs, "active_job", lambda: active)
         monkeypatch.setattr(app_module.jobs, "list_jobs", lambda _limit: [last])
 
-        expected = {"active": "running-1", "last": {"id": "done-1", "period": "202607"}}
-        assert _call(config.GUEST_USER) == expected
-        assert _call(config.DEMO_USER) == expected
+        guest = _call(config.GUEST_USER)
+        assert guest.status_code == 403
+        assert _call(config.DEMO_USER) == {"active": "running-1", "last": {"id": "done-1", "period": "202607"}}
 
     def test_无已完成任务返回空last(self, monkeypatch):
         monkeypatch.setattr(app_module.jobs, "active_job", lambda: None)
         monkeypatch.setattr(app_module.jobs, "list_jobs", lambda _limit: [])
-        assert _call(config.GUEST_USER) == {"active": None, "last": None}
+        assert _call(config.DEMO_USER) == {"active": None, "last": None}
