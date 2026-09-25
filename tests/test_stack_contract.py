@@ -107,6 +107,12 @@ DIST_URL_ALLOWED = (
 #: 判定用 startswith(白名单)，不为了收尾另写复杂正则。
 DIST_URL_RE = re.compile(r"https?://[^\s\"'`)\]}>]+")
 
+#: 协议相对外链（`//host/…`）只在「真会发请求的语境」里查：
+#: JS 里 `//` 是注释，全局扫会满屏误报；而 src=/href= 属性与 CSS url() 里的
+#: `//` 一旦存在就是跨域资源（旧守卫只查 index.html 属性，这里补齐到全产物）。
+PROTO_REL_RE = re.compile(
+    r"""(?:src|href)\s*=\s*["'](//[^"']+)["']|url\(\s*["']?(//[^)"']+)""")
+
 
 def test_web构建产物不含外链():
     """`dist/` 要能跟着部署包上服务器（无 Node），所以它必须是自足的：
@@ -119,10 +125,13 @@ def test_web构建产物不含外链():
     for p in sorted((WEB / "dist").rglob("*")):
         if p.suffix.lower() not in (".html", ".js", ".css"):
             continue
+        rel = str(p.relative_to(WEB / "dist"))
         text = p.read_text(encoding="utf-8", errors="replace")
         for url in DIST_URL_RE.findall(text):
             if not url.startswith(DIST_URL_ALLOWED):
-                hits.add((str(p.relative_to(WEB / "dist")), url))
+                hits.add((rel, url))
+        for m in PROTO_REL_RE.finditer(text):
+            hits.add((rel, m.group(1) or m.group(2)))
     listed = "\n  ".join(f"{rel} → {url}" for rel, url in sorted(hits)[:5])
     assert not hits, (
         "构建产物里出现了白名单外的 URL（断网/拦 CDN 会崩版；"
