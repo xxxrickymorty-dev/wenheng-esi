@@ -8,8 +8,13 @@ from docx import Document
 
 from . import config
 
-_ISSUE_LINE = re.compile(r"^\d{4}年第\d+期（总第(?P<no>\d+)期）$")
+_ISSUE_LINE = re.compile(r"^(?P<year>\d{4})年第\d+期（总第(?P<no>\d+)期）$")
 _MONTH_LINE = re.compile(r"(\d{4}年\d{1,2}月)\s*$")
+_PAGE_NUMBER = re.compile(r"^[1-9]\d*$")
+_TOC_TITLES = (
+    "名词解释", "一 概述", "二 我校学科发展情况", "三 我校潜力学科趋势预测",
+    "四 云南省主要高校学科发展基本情况", "五 我校顶尖论文清单",
+)
 _GLOSSARY_TERMS = (
     "高被引论文（Highly Cited Paper）", "热点论文（Hot Paper）", "顶尖论文（Top paper）", "阈值",
     "潜力学科", "学科规范化引文影响力（CNCI）", "排名百分位", "引文影响力",
@@ -36,8 +41,8 @@ def _preview_from_docx(docx_path: Path):
             if not title:
                 return None
             toc.append({"title": title, "page": page})
-        if (len(toc) < 2 or toc[0] != {"title": "名词解释", "page": ""}
-                or toc[1]["title"] != "一 概述" or not toc[1]["page"].isdigit()):
+        if (tuple(row["title"] for row in toc) != _TOC_TITLES or toc[0]["page"] != ""
+                or any(not _PAGE_NUMBER.fullmatch(row["page"]) for row in toc[1:])):
             return None
 
         paragraphs = [paragraph.text.strip() for paragraph in doc.paragraphs]
@@ -69,7 +74,11 @@ def build_preview(cards, *, out_dir=config.OUT_DIR):
         if len(docx_files) != 1:
             continue
         preview = _preview_from_docx(docx_files[0])
-        if preview is not None:
+        period_match = re.match(r"^(?P<year>\d{4})(?P<month>\d{2})", period)
+        expected_month = (f"{period_match.group('year')}年{int(period_match.group('month'))}月"
+                          if period_match else None)
+        if (preview is not None and period_match and preview["label"] == expected_month
+                and preview["cover"][2].strip().startswith(period_match.group("year"))):
             books.append({"period": period, **preview})
     books.sort(key=lambda book: book["period"])
     return {"preview": True, "books": books, "trend": {}}
