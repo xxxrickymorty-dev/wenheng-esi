@@ -408,6 +408,9 @@ a{color:inherit}
 .tr-line{fill:none;stroke:var(--ok);stroke-width:2}
 .tr-dot{fill:var(--zhu);stroke:var(--card);stroke-width:2}
 .tr-tick{font:12px var(--mono);fill:var(--ink-3)}
+/* 窄屏下 SVG 等比缩小：刻度字号按 viewBox 单位放大，实显才读得清（375px 下约 9px） */
+@media (max-width:600px){.tr-tick{font-size:16px}}
+@media (max-width:480px){.tr-tick{font-size:22px}}
 
 /* ============================================================================
    灵活报告（分析台第三块，紧挨「按节解读」）——表单 / 已出稿 chips / 后端渲染的正文

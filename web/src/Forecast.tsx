@@ -212,11 +212,14 @@ function Board({ meta }: { meta: ForecastMeta }) {
       <p className="fc-lead" style={{ fontSize: 15.5 }}>
         8 个潜力学科两条路线一眼看完：接近度（离门槛还有多远）、预计过线期、用的模型与它的滚动误差。
         「接近度」是百分数点值；过线是滚动监测信号，不等同于正式入榜时间。
+        <br />
+        这一板的模型是预测阶段的选模记录（逐期滚动比较的结果），<b>不是</b>报告最终采用的模型——
+        报告用哪套，看下面 02 的「V1 推荐」与你的选择。
       </p>
 
-      <div className="fc-tabs" role="tablist" aria-label="预测路线">
+      <div className="fc-tabs" role="group" aria-label="预测路线">
         {meta.routes.map((r) => (
-          <button key={r.value} role="tab" aria-selected={r.value === route}
+          <button key={r.value} type="button" aria-pressed={r.value === route}
                   className={r.value === route ? 'on' : ''} onClick={() => setRoute(r.value)}>
             {r.label}
           </button>
@@ -276,9 +279,9 @@ function PickTable({ meta, picks, setPicks, saved, saving, saveErr, onSave }: {
         默认就用 V1 推荐；想改哪科改哪科，改完保存。两条路线的推荐不一样，先选你在改哪条路线。
       </p>
 
-      <div className="fc-tabs" role="tablist" aria-label="预测路线">
+      <div className="fc-tabs" role="group" aria-label="预测路线">
         {meta.routes.map((r) => (
-          <button key={r.value} role="tab" aria-selected={r.value === route}
+          <button key={r.value} type="button" aria-pressed={r.value === route}
                   className={r.value === route ? 'on' : ''} onClick={() => setRoute(r.value)}>
             {r.label}
           </button>
@@ -286,6 +289,8 @@ function PickTable({ meta, picks, setPicks, saved, saving, saveErr, onSave }: {
       </div>
       <p className="hint" style={{ marginTop: 8 }}>
         两条路线的结论不一定一致——报告里会分别标注，不合成一个结论。
+        「V1 推荐」是 202607 冻结的基线推荐（报告预测章默认按它出图），
+        和上方学科板的「选模记录」来源不同、值可能不一样。
       </p>
 
       <div className="tablewrap" style={{ marginTop: 12 }}>
@@ -341,8 +346,8 @@ function PickTable({ meta, picks, setPicks, saved, saving, saveErr, onSave }: {
       </div>
 
       <div className="degraded">
-        <b>这一块的后端进度</b>：选择已能落盘（存进本期档案）；把选择带进报告预测章、
-        并逐科显示 V1 推荐的具体模型名，这两条后端还在接线——接线前报告仍用 V1 基线推荐。
+        <b>与报告的关系</b>：这里保存的选择进报告预测章——下次重出报告时，选中的学科按你的选择出图，
+        未改的用 V1 推荐；所选模型若跑不出来，会自动退回推荐。
       </div>
     </section>
   )

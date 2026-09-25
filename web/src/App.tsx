@@ -30,6 +30,8 @@ const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'fail-ledge
 export default function App() {
   const [healthy, setHealthy] = useState<boolean | null>(null)
   const [me, setMe] = useState<Me | null>(null)
+  /* 角色是否已有结论：false = 还没问过（探活失败 / 首屏）；true = 问过了（me 为 null 即未登录） */
+  const [roleKnown, setRoleKnown] = useState(false)
   const [periods, setPeriods] = useState<Period[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [detail, setDetail] = useState<PeriodDetail | null>(null)
@@ -65,7 +67,10 @@ export default function App() {
       if (!alive) return
       setHealthy(ok)
       if (!ok) return
-      setMe(await getMe())
+      const m = await getMe()
+      if (!alive) return
+      setMe(m)
+      setRoleKnown(true)
       try {
         const list = await getPeriods()
         if (!alive) return
@@ -146,7 +151,7 @@ export default function App() {
   }, [run?.jobId])
 
   /* 工作区导航（契约 §4：前端按 /api/me 的 role 决定显示什么；**真门在后端**，这里只是不打扰）。
-     游客只留 报告 / 台账 / 陈列馆；管理页直连也挡在这里，给一句人话 + 去处。 */
+     游客只留 报告 / 台账 / 陈列馆 这些「看已出的东西」的屏；管理页直连也挡在这里，给一句人话 + 去处。 */
   const NAV: { view: string; label: string; icon: string; href: string; admin?: boolean }[] = [
     { view: 'workbench', label: '生成台', icon: 'play', href: '/app/', admin: true },
     { view: 'report', label: '报告', icon: 'chart', href: '/app/?view=report' },
@@ -157,10 +162,14 @@ export default function App() {
     { view: 'shelf', label: '陈列馆', icon: 'book', href: '/app/shelf/' },
   ]
   const isGuest = me?.role === 'guest'
-  /* 角色还没拿到时，先不渲染只给管理员的块（避免游客先发出被拒的请求） */
-  const noAdminBits = !me || isGuest
-  const ADMIN_VIEWS = new Set(['workbench', 'review', 'analysis', 'forecast', 'archive', 'trace', 'red', 'charts'])
-  const denied = isGuest && ADMIN_VIEWS.has(view)
+  const notLoggedIn = roleKnown && !me
+  /* 未登录按游客待遇：管理入口不渲染（此前 fail-open——401 被当成「角色未知」，管理页照常开） */
+  const gated = notLoggedIn || isGuest
+  /* 角色还没确认时，先不渲染只给管理员的块（避免游客先发出被拒的请求） */
+  const noAdminBits = !roleKnown || gated
+  /* charts（图册）后端允许 guest 读（契约 §7.1），所以不进这张表 */
+  const ADMIN_VIEWS = new Set(['workbench', 'review', 'analysis', 'forecast', 'archive', 'trace', 'red'])
+  const denied = gated && ADMIN_VIEWS.has(view)
   const navHref = (h: string) =>
     (selected && h.startsWith('/app/?') ? `${h}&period=${encodeURIComponent(selected)}` : h)
 
@@ -173,7 +182,7 @@ export default function App() {
           <span>学科信息参考</span>
         </div>
         <nav className="nav" aria-label="工作区">
-          {NAV.filter((n) => !n.admin || !isGuest).map((n) => (
+          {NAV.filter((n) => !n.admin || !gated).map((n) => (
             <a key={n.view} href={navHref(n.href)}
                aria-current={view === n.view ? 'page' : undefined}>
               <Icon name={n.icon} size={19} />{n.label}
@@ -182,8 +191,12 @@ export default function App() {
         </nav>
         <div className="who">
           <span className="avatar">{me?.name?.slice(0, 1) ?? '？'}</span>
-          {me?.name ?? '角色未知'}
-          {me?.role ? ` · ${me.role === 'admin' ? '管理员' : '游客'}` : '（未提供 /api/me）'}
+          {me?.name ?? (roleKnown ? '未登录' : '角色未知')}
+          {me?.role
+            ? ` · ${me.role === 'admin' ? '管理员' : '游客'}`
+            : notLoggedIn
+              ? <> · <a href="/login">去登录</a></>
+              : '（未提供 /api/me）'}
         </div>
       </header>
 
@@ -203,8 +216,15 @@ export default function App() {
 
         {denied ? (
           <div className="pending-box" style={{ marginTop: 0 }}>
-            <b>这一屏要馆员账号</b> —— 生成台 / 审核台 / 分析台 / 预测台是馆员的工作区，
-            你现在是游客身份（只能看已出的东西）。
+            {notLoggedIn ? (
+              <><b>请先登录</b> —— 生成台 / 审核台 / 分析台 / 预测台要馆员账号，
+                <a href="/login">去登录</a>后再来（游客账号只能看已出的东西）。
+              </>
+            ) : (
+              <><b>这一屏要馆员账号</b> —— 生成台 / 审核台 / 分析台 / 预测台是馆员的工作区，
+                你现在是游客身份（只能看已出的东西）。
+              </>
+            )}
             想看这一期报告去「<a href={navHref('/app/?view=report')}>报告</a>」，
             想按期翻看卷宗去「<a href="/app/shelf/">陈列馆</a>」。
           </div>

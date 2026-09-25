@@ -65,6 +65,8 @@ function Artifacts({ guest }: { guest?: boolean }) {
   const [items, setItems] = useState<Artifact[] | null>(null)
   const [note, setNote] = useState<string | null>(null)
 
+  /* 角色的确定晚于首屏（App 先探活再取 /api/me）：guest 由 true 变 false 时
+     这个 effect 必须重跑，否则管理员的产物清单永远停在"正在读……"。 */
   useEffect(() => {
     if (guest) return   // 游客不请求（后端也会拒）
     let alive = true
@@ -91,7 +93,7 @@ function Artifacts({ guest }: { guest?: boolean }) {
       }
     })()
     return () => { alive = false }
-  }, [])
+  }, [guest])
 
   if (guest) return null
   if (note) return <div className="pending-box">{note}</div>
@@ -268,8 +270,12 @@ function TrendCard({ trend, period }: { trend: Record<string, number>; period: s
   const y = (v: number) => T + ih - (v / (max || 1)) * ih
   const line = pts.map(([, v], i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ')
   const area = `${line} L${x(pts.length - 1).toFixed(1)} ${(T + ih).toFixed(1)} L${L} ${(T + ih).toFixed(1)} Z`
-  const ci = Math.max(0, pts.findIndex(([k]) => k === period))
-  const [ck, cv] = pts[ci]
+  /* 「本期」只认传入的期次（FactsStrip 用的是后端 facts.period）；
+     序列里找不到就不标——不拿首点冒充本期。 */
+  const ci = pts.findIndex(([k]) => k === period)
+  const nowEntry = ci >= 0 ? pts[ci] : null
+  const ck = nowEntry?.[0] ?? ''
+  const cv = nowEntry?.[1] ?? 0
   const fmtP = (k: string) => `${k.slice(0, 4)}.${k.slice(4)}`
 
   return (
@@ -279,10 +285,12 @@ function TrendCard({ trend, period }: { trend: Record<string, number>; period: s
           <b>顶尖论文增长轨迹</b>
           <span className="hint">按双月期次 · 单位 篇（{pts.length} 期，{fmtP(pts[0][0])}–{fmtP(pts[pts.length - 1][0])}）</span>
         </div>
-        <div className="tr-now"><b>{cv}</b><span>本期 · {fmtP(ck)}</span></div>
+        {nowEntry && <div className="tr-now"><b>{cv}</b><span>本期 · {fmtP(ck)}</span></div>}
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="tr-svg" role="img"
-           aria-label={`顶尖论文历期增长趋势图：${pts.length} 期，本期 ${cv} 篇`}>
+           aria-label={nowEntry
+             ? `顶尖论文历期增长趋势图：${pts.length} 期，本期 ${cv} 篇`
+             : `顶尖论文历期增长趋势图：${pts.length} 期（本期不在序列中）`}>
         {[0, 0.25, 0.5, 0.75, 1].map((q) => (
           <line key={q} className="tr-grid" x1={L} x2={W - R} y1={T + ih * (1 - q)} y2={T + ih * (1 - q)} />
         ))}
@@ -290,8 +298,8 @@ function TrendCard({ trend, period }: { trend: Record<string, number>; period: s
         <text className="tr-tick" x={L - 10} y={T + ih + 4} textAnchor="end">0</text>
         <path className="tr-area" d={area} />
         <path className="tr-line" d={line} />
-        <circle className="tr-dot" cx={x(ci)} cy={y(cv)} r="4.5" />
-        <text className="tr-tick" x={x(ci)} y={y(cv) - 10} textAnchor="middle">{fmtP(ck)}</text>
+        {nowEntry && <circle className="tr-dot" cx={x(ci)} cy={y(cv)} r="4.5" />}
+        {nowEntry && <text className="tr-tick" x={x(ci)} y={y(cv) - 10} textAnchor="middle">{fmtP(ck)}</text>}
         <text className="tr-tick" x={L} y={H - 6}>{fmtP(pts[0][0])}</text>
         <text className="tr-tick" x={W - R} y={H - 6} textAnchor="end">{fmtP(pts[pts.length - 1][0])}</text>
       </svg>
@@ -367,9 +375,11 @@ function FactsStrip({ period }: { period: string | null }) {
         ))}
       </div>
 
-      {/* 首屏读数：四卡下面就把「这几年怎么走过来的」摆出来（趋势序列来自后端） */}
+      {/* 首屏读数：四卡下面就把「这几年怎么走过来的」摆出来（趋势序列来自后端）
+          「本期」用后端给的 facts.period——选择期次带 _复现 后缀时 URL 里的期次
+          与序列键对不上，不能拿它当本期。 */}
       {f.trend && Object.keys(f.trend).length > 1 && (
-        <TrendCard trend={f.trend} period={period} />
+        <TrendCard trend={f.trend} period={f.period || period} />
       )}
       <p className="hint" style={{ marginTop: 10 }}>
         数字体检：{f.assertions.total} 项核对

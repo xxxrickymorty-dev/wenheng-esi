@@ -11,7 +11,10 @@ type TraceRow = {
   loc: string; col?: string; report?: string; label?: string
   sheet?: string; src_ref?: string; ledger?: string; how?: string
 }
-type TraceData = { period?: string; rows?: TraceRow[]; total?: number; n?: number }
+type TraceData = {
+  period?: string; rows?: TraceRow[]; total?: number; n?: number
+  ledger?: string; ledger_ok?: boolean; ledger_error?: string
+}
 
 /** 六列的键就是溯源数据里的 col 键名（后端定的，别改名） */
 const COLS = [
@@ -71,6 +74,11 @@ export function BigTable({ period }: { period: string | null }) {
         if (!alive) return
         setRows(groupByDiscipline(j.rows ?? []))
         setTotal(j.total ?? (j.rows ?? []).length)
+        /* 台账不在本机：后端给的人话不能丢——否则页面只剩一张空表，
+           看着像"这期没数据"，其实是台账文件没找到。 */
+        if (j.ledger_ok === false) {
+          setNote(`${j.ledger_error || '本地未找到这一期的台账文件'}——没有可回读的数；先上传台账并跑一次生成。`)
+        }
       } catch (e) {
         const h = e as { status?: number }
         if (alive) {
@@ -133,7 +141,8 @@ export function BigTable({ period }: { period: string | null }) {
             <tbody>
               {view.map((r) => (
                 <tr key={r.cn} className={r.cn === sel ? 'on' : ''} tabIndex={0}
-                    role="button" aria-label={`查看${r.cn}的逐格来源`}
+                    role="button" aria-expanded={r.cn === sel}
+                    aria-label={`查看${r.cn}的逐格来源`}
                     onClick={() => setSel(r.cn === sel ? null : r.cn)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSel(r.cn === sel ? null : r.cn) }

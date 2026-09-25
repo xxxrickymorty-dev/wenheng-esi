@@ -78,7 +78,7 @@ export async function getPeriods(): Promise<Period[]> {
   return r.periods ?? []
 }
 
-/** 单期详情：404/401 都当"未就绪"（契约里的 P0#2 还没上），界面据此标注 */
+/** 单期详情：404/401 都当"未就绪"处理（拿不到就标注未就绪，不编数据）——契约 #2 已交付 */
 export async function getPeriodDetail(period: string): Promise<PeriodDetail | null> {
   try {
     return await req<PeriodDetail>(`/api/periods/${encodeURIComponent(period)}`)
