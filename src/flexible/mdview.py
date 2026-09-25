@@ -20,7 +20,8 @@ _BOLD = re.compile(r"\*\*([^*]+)\*\*")
 
 def _inline(s: str) -> str:
     """行内：先转义，再还原我们自己的标记（顺序不能反）。"""
-    s = html.escape(s, quote=False)
+    # 图片标记会被还原成 HTML 属性；必须同时转义引号，不能只转义标签。
+    s = html.escape(s, quote=True)
     s = _IMG.sub(r'<img src="\2" alt="\1">', s)
     s = _CODE.sub(r"<code>\1</code>", s)
     s = _BOLD.sub(r"<strong>\1</strong>", s)

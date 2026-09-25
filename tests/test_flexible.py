@@ -547,6 +547,12 @@ class TestHTML渲染:
         h = mdview.render("普通文本 <script>alert(1)</script>")
         assert "<script>" not in h
 
+    def test_行内图片属性引号也会转义(self):
+        h = mdview.render('![x" onerror="alt](chart.png" onerror="src)')
+        assert '<img src="chart.png&quot; onerror=&quot;src"' in h
+        assert 'alt="x&quot; onerror=&quot;alt"' in h
+        assert ' onerror="' not in h
+
     def test_独立件是自包含的(self):
         h = mdview.standalone("# 标题", "t")
         assert h.startswith("<!doctype html>") and "<style>" in h
