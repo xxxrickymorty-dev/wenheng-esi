@@ -129,6 +129,18 @@
             <button class="btn primary wide" type="submit">登 录</button>
           </form>
           {% if hint %}<p class="muted small" style="margin-top:14px">演示提示：账号 <code>{{ show_hint_user }}</code>，密码见 server/.env 配置。</p>{% endif %}
+          {% if show_guest %}
+          <!-- 只读游客入口：纯表单 POST（无 JS）；凭据来自 server/.env 的 WENHENG_GUEST_*，
+               显示由 WENHENG_SHOW_GUEST 控制（默认显示，=0 隐藏）。 -->
+          <form method="post" action="/login" style="margin-top:10px">
+            <input type="hidden" name="username" value="{{ guest_user }}">
+            <input type="hidden" name="password" value="{{ guest_pass }}">
+            <button class="btn line wide" type="submit">以游客身份浏览（只读）</button>
+          </form>
+          <p class="muted small" style="margin-top:8px">
+            游客可看：报告 / 台账 / 陈列馆；生成、审核、分析、预测要馆员账号。
+          </p>
+          {% endif %}
         </div>
       </div>
     </div>

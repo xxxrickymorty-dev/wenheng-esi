@@ -153,7 +153,10 @@ async def login_page(request: Request, err: str = ""):
     return templates.TemplateResponse(
         request, "login.html",
         {"request": request, "err": err, "hint": config.SHOW_HINT,
-         "show_hint_user": config.DEMO_USER if config.SHOW_HINT else ""})
+         "show_hint_user": config.DEMO_USER if config.SHOW_HINT else "",
+         "show_guest": config.SHOW_GUEST,
+         "guest_user": config.GUEST_USER if config.SHOW_GUEST else "",
+         "guest_pass": config.GUEST_PASS if config.SHOW_GUEST else ""})
 
 
 @app.post("/login")
