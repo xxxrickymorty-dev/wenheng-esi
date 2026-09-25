@@ -530,10 +530,17 @@ async def healthz():
 
 
 @app.get("/api/status")
-async def api_status():
+async def api_status(request: Request):
+    """工作区任务入口：只提供前端跳转所需的任务标识，不暴露落盘记录。"""
+    if not current_user(request):
+        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
     active = jobs.active_job()
     last = next((j for j in jobs.list_jobs(20) if j.get("stats")), None)
-    return {"active": (active or {}).get("id"), "last": last}
+    return {
+        "active": (active or {}).get("id"),
+        "last": ({"id": last.get("id"), "period": last.get("period")}
+                 if last else None),
+    }
 
 
 @app.get("/api/periods")
