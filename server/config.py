@@ -99,7 +99,7 @@ LEGACY_KEEP_PAGES = ()
 
 
 def role_of(username):
-    """用户名 -> 角色。admin 管生成台/审核台；guest 只看陈列馆+报告阅读。"""
+    """用户名 -> 角色。admin 管工作台；guest 只看陈列馆的封面、目录和名词解释。"""
     if username == DEMO_USER:
         return "admin"
     return "guest"

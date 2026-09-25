@@ -153,6 +153,13 @@ check("guest 角色是 guest", '"role":"guest"' in gme or '"role": "guest"' in g
       f"body={gme[:100]}")
 st, _, _ = call("GET", "/api/periods/202607/redslots", opener=gop)
 check("guest 访问 admin 端点被挡（403）", st == 403, f"got {st}")
+st, gdata, _ = call("GET", "/app/shelf/data.js", opener=gop)
+check("guest 陈列馆数据只有预览投影",
+      st == 200 and '"preview":true' in gdata and '"rank_intl_now"' not in gdata,
+      f"got {st}, bytes={len(gdata)}")
+st, _, glegacy = call("GET", "/p/202607", opener=gop)
+check("guest 旧报告路由回陈列馆",
+      glegacy.rstrip("/") == BASE + "/app/shelf", f"final={glegacy}")
 
 out("=== 3.5 老站 302 落点（ADR-0002 阶段 2） ===")
 # 期望落点的单一事实源在 server/config.py 的 LEGACY_REDIRECTS；

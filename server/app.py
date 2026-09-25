@@ -140,14 +140,25 @@ def require_admin_file(request: Request):
     return user
 
 
+def _legacy_admin_gate(request):
+    """旧页面先按身份分流，游客请求不探测期次或任务是否存在。"""
+    user = current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    if config.role_of(user) != "admin":
+        return RedirectResponse("/app/shelf/", status_code=303)
+    return None
+
+
 def _legacy_redirect(request, key, **fmt):
-    """老路由 302 的统一出口：先过登录闸（与 page() 同口径），再跳新站。
+    """老路由 302 的统一出口：仅管理员可进入对应的新工作台。
 
     未登录的访问与旧页面一样落到 /login（303）——新站只认 /api/me 的 401，
     老 URL 的闸得在老站这一侧关住。
     """
-    if not current_user(request):
-        return RedirectResponse("/login", status_code=303)
+    gate = _legacy_admin_gate(request)
+    if gate:
+        return gate
     target = config.LEGACY_REDIRECTS[key]
     if fmt:
         target = target.format(**fmt)
@@ -293,6 +304,9 @@ async def period_collation(request: Request, period: str,
 
     非法/不存在的期次落回新站首页（保留旧「回落首页」语义）。
     """
+    gate = _legacy_admin_gate(request)
+    if gate:
+        return gate
     d = resolve_period_dir(period)
     key = "/p/{period}" if d is not None else "/"
     return _legacy_redirect(request, key,
@@ -302,6 +316,9 @@ async def period_collation(request: Request, period: str,
 @app.get("/p/{period}/redslots", response_class=HTMLResponse)
 async def period_redslots(request: Request, period: str):
     """老红件清单页已下线（ADR-0002 阶段 2）—— 302 到新工作区。"""
+    gate = _legacy_admin_gate(request)
+    if gate:
+        return gate
     d = resolve_period_dir(period)
     key = "/p/{period}/redslots" if d is not None else "/"
     return _legacy_redirect(request, key,
@@ -315,6 +332,9 @@ async def period_trace(request: Request, period: str):
     数据等价物走 `GET /api/periods/{period}/trace`（现场真读台账，同一套
     `workbench.trace` 装配）。
     """
+    gate = _legacy_admin_gate(request)
+    if gate:
+        return gate
     d = resolve_period_dir(period)
     key = "/p/{period}/trace" if d is not None else "/"
     return _legacy_redirect(request, key,
@@ -336,6 +356,9 @@ def _find_ledger(period_dir):
 @app.get("/p/{period}/charts", response_class=HTMLResponse)
 async def period_charts(request: Request, period: str):
     """老图册页已下线（ADR-0002 阶段 2）—— 302 到新工作区。"""
+    gate = _legacy_admin_gate(request)
+    if gate:
+        return gate
     d = resolve_period_dir(period)
     key = "/p/{period}/charts" if d is not None else "/"
     return _legacy_redirect(request, key,
@@ -379,6 +402,9 @@ async def period_flexible(request: Request, period: str, intent: str = "",
     🔴 **图表路由 `/p/{period}/flexible/chart/*` 与 JSON API 不动**——
        新站分析台的 body_html 直接引用那些图地址（契约 #21）。
     """
+    gate = _legacy_admin_gate(request)
+    if gate:
+        return gate
     d = resolve_period_dir(period)
     key = "/p/{period}/flexible" if d is not None else "/"
     return _legacy_redirect(request, key,
@@ -409,6 +435,9 @@ async def period_archive(request: Request, period: str):
     数据等价物走 `GET /api/periods/{period}/archive`（契约 #18）；
     下载端点 `/p/{period}/download/logpack` 保留（§六 保留项）。
     """
+    gate = _legacy_admin_gate(request)
+    if gate:
+        return gate
     d = resolve_period_dir(period)
     key = "/p/{period}/archive" if d is not None else "/"
     return _legacy_redirect(request, key,
@@ -462,6 +491,9 @@ async def job_page(request: Request, job_id: str):
 
 async def redslots_page(request: Request, job_id: str):
     """旧任务红件清单已下线—— 302 到新工作区（动态填任务的期次）。"""
+    gate = _legacy_admin_gate(request)
+    if gate:
+        return gate
     job = jobs.read_job(job_id)
     if not job:
         return RedirectResponse("/app/", status_code=302)
@@ -472,6 +504,9 @@ async def redslots_page(request: Request, job_id: str):
 
 async def charts_page(request: Request, job_id: str):
     """旧任务图册已下线—— 302 到新工作区（动态填任务的期次）。"""
+    gate = _legacy_admin_gate(request)
+    if gate:
+        return gate
     job = jobs.read_job(job_id)
     if not job:
         return RedirectResponse("/app/", status_code=302)
@@ -482,6 +517,9 @@ async def charts_page(request: Request, job_id: str):
 
 async def job_archive(request: Request, job_id: str):
     """老任务档案页已下线（ADR-0002 第二轮）—— 302 到新档案视图（动态填任务的期次）。"""
+    gate = _legacy_admin_gate(request)
+    if gate:
+        return gate
     job = jobs.read_job(job_id)
     if not job:
         return RedirectResponse("/app/", status_code=302)
@@ -494,6 +532,9 @@ async def job_archive(request: Request, job_id: str):
 async def collation_page(request: Request, job_id: str,
                          err: str = "", signed: str = "", revoked: str = ""):
     """旧任务对勘本已下线—— 302 到新工作区（动态填任务的期次）。"""
+    gate = _legacy_admin_gate(request)
+    if gate:
+        return gate
     job = jobs.read_job(job_id)
     if not job:
         return RedirectResponse("/app/", status_code=302)
@@ -551,8 +592,7 @@ async def api_job_progress(request: Request, job_id: str):
 
 @app.get("/healthz")
 async def healthz():
-    return {"ok": True, "pipeline": config.PIPELINE.exists(),
-            "jobs_dir": str(config.JOBS_DIR)}
+    return {"ok": True}
 
 
 @app.get("/api/status")
