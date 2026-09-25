@@ -1326,6 +1326,9 @@ async def api_create_job(request: Request,
     if isinstance(guard, JSONResponse):
         return guard
     period = (period or "").strip()
+    busy = jobs.active_job()
+    if busy:
+        return JSONResponse({"error": f"已有任务运行中（{busy['period']}），请稍候"}, status_code=409)
     dest = None
     if file is not None and file.filename:
         if not file.filename.lower().endswith(".xlsx"):
@@ -1336,6 +1339,10 @@ async def api_create_job(request: Request,
         if len(data) > 50 * 1024 * 1024:
             return JSONResponse({"error": "文件超过 50MB"}, status_code=400)
         dest = config.INPUT_DIR / period / "监测表.xlsx"
+        # file.read() 会让出事件循环；恢复后必须再次确认，才能碰已有输入文件。
+        busy = jobs.active_job()
+        if busy:
+            return JSONResponse({"error": f"已有任务运行中（{busy['period']}），请稍候"}, status_code=409)
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(data)
     else:
@@ -1349,7 +1356,9 @@ async def api_create_job(request: Request,
         return JSONResponse({"error": f"已有任务运行中（{busy['period']}），请稍候"}, status_code=409)
     try:
         job = jobs.create_job(period, dest, current_user(request), backtest=(backtest == "1"))
-    except (ValueError, RuntimeError) as e:
+    except RuntimeError as e:
+        return JSONResponse({"error": str(e)}, status_code=409)
+    except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     return {"job_id": job["id"], "url": f"/jobs/{job['id']}"}
 
