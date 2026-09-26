@@ -666,7 +666,7 @@ async def api_period_detail(request: Request, period: str):
     ledger_ok = (config.INPUT_DIR / pid / "监测表.xlsx").exists()
     generated_ok = (d / "red_slots.json").exists()
     steps = {"ledger": ledger_ok, "input": ledger_ok, "generated": generated_ok}
-    last = next((j for j in jobs.list_jobs(30) if j.get("period") == pid), None)
+    last = next(iter(jobs.list_jobs(limit=30, period=pid)), None)
     return {
         "period": pid, "label": label, "no": no, "total": total,
         "window": window, "palette": config.PALETTE, "steps": steps,

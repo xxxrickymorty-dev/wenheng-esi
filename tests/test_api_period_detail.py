@@ -3,6 +3,7 @@
 
 验的是组装逻辑：resolve_period_dir + period_mod.issue_of + steps 三步 + lastJob。
 """
+import asyncio
 import json
 import pathlib
 import sys
@@ -13,6 +14,7 @@ for p in (str(REPO), str(REPO / "src")):
         sys.path.insert(0, p)
 
 from server import config, jobs                               # noqa: E402
+from server import app as app_module                          # noqa: E402
 from server.app import resolve_period_dir                     # noqa: E402
 import period as period_mod                                   # noqa: E402
 
@@ -55,3 +57,64 @@ class TestPeriodMeta:
 
     def test_palette是三色(self):
         assert set(config.PALETTE.keys()) == {"primary", "deep", "lift"}
+
+
+def _prepare_old_period_job(tmp_path, monkeypatch):
+    out_root = tmp_path / "out"
+    input_root = tmp_path / "input"
+    jobs_root = out_root / "_jobs"
+    period_dir = out_root / "202607"
+    period_dir.mkdir(parents=True)
+    (period_dir / "red_slots.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(config, "OUT_DIR", out_root)
+    monkeypatch.setattr(config, "INPUT_DIR", input_root)
+    monkeypatch.setattr(config, "JOBS_DIR", jobs_root)
+
+    for day in range(1, 31):
+        jobs.write_job({
+            "id": f"new-{day:02d}",
+            "period": "202609",
+            "status": "completed",
+            "created_at": f"2026-09-{day:02d} 10:00:00",
+        })
+    jobs.write_job({
+        "id": "old-202607-01",
+        "period": "202607",
+        "status": "completed",
+        "created_at": "2026-07-01 10:00:00",
+    })
+    jobs.write_job({
+        "id": "old-202607-02",
+        "period": "202607",
+        "status": "warned",
+        "created_at": "2026-07-20 10:00:00",
+    })
+    return jobs_root
+
+
+def test_period_detail_finds_latest_old_job_outside_global_limit(
+    tmp_path, monkeypatch
+):
+    _prepare_old_period_job(tmp_path, monkeypatch)
+    monkeypatch.setattr(app_module, "require_admin", lambda _request: "rick")
+
+    response = asyncio.run(
+        app_module.api_period_detail(object(), "202607")
+    )
+
+    assert response["lastJob"] == {
+        "id": "old-202607-02",
+        "status": "warned",
+        "created_at": "2026-07-20 10:00:00",
+    }
+
+
+def test_list_jobs_default_remains_global_latest_limit(tmp_path, monkeypatch):
+    _prepare_old_period_job(tmp_path, monkeypatch)
+
+    latest = jobs.list_jobs(30)
+
+    assert len(latest) == 30
+    assert [job["id"] for job in latest] == [
+        f"new-{day:02d}" for day in range(30, 0, -1)
+    ]

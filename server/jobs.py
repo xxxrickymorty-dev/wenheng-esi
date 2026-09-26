@@ -110,12 +110,12 @@ def write_job(job):
         json.dumps(job, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
-def list_jobs(limit=20):
+def list_jobs(limit=20, period=None):
     jobs = []
     if config.JOBS_DIR.exists():
         for d in config.JOBS_DIR.iterdir():
             j = read_job(d.name)
-            if j:
+            if j and (period is None or j.get("period") == period):
                 jobs.append(j)
     jobs.sort(key=lambda j: j.get("created_at", ""), reverse=True)
     return jobs[:limit]
