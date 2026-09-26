@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>文衡 · T07 任务状态补充稿</title>
+  <style>
+    :root {
+      --bg: #f3efe6;
+      --card: #fbf8f1;
+      --panel: #f6f1e7;
+      --ink: #2f2a24;
+      --ink-2: #5b5248;
+      --ink-3: #6f6558;
+      --line: #d9cfbc;
+      --line-2: #e7dfd0;
+      --zhu: #b23a2a;
+      --zhu-soft: #f0dcd5;
+      --gold: #a9853f;
+      --gold-ink: #7d6122;
+      --gold-soft: #efe3c9;
+      --ok: #3f6b4a;
+      --ok-soft: #e2ece0;
+      --warn: #7d5518;
+      --warn-soft: #f5ead2;
+      --sans: system-ui, -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+      --serif: "Source Han Serif SC", "Noto Serif SC", Songti SC, SimSun, serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 17px/1.7 var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+    :focus-visible { outline: 3px solid var(--zhu); outline-offset: 3px; border-radius: 6px; }
+    .review {
+      padding: 10px 22px;
+      background: var(--panel);
+      border-bottom: 1px dashed var(--line);
+      color: var(--ink-2);
+      font-size: 13.5px;
+    }
+    .review b { color: var(--ink); }
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 22px;
+      background: var(--card);
+      border-bottom: 1px solid var(--line);
+    }
+    .brand { display: flex; align-items: baseline; gap: 9px; font-family: var(--serif); }
+    .brand strong { font-size: 21px; letter-spacing: .04em; }
+    .brand span { color: var(--ink-3); font-size: 12.5px; letter-spacing: .1em; }
+    .nav { display: flex; gap: 4px; margin-left: auto; }
+    .nav a {
+      padding: 8px 12px;
+      border-radius: 8px;
+      color: var(--ink-2);
+      font-size: 14.5px;
+      text-decoration: none;
+    }
+    .nav a[aria-current="page"] { background: var(--zhu-soft); color: var(--zhu); font-weight: 600; }
+    .who {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding-left: 12px;
+      border-left: 1px solid var(--line);
+      color: var(--ink-2);
+      font-size: 13.5px;
+    }
+    .avatar {
+      display: grid;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--zhu-soft);
+      color: var(--zhu);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 22px 64px; }
+    .eyebrow { color: var(--gold-ink); font-size: 13px; letter-spacing: .14em; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 5px; font: 600 clamp(2rem, 4vw, 2.8rem)/1.15 var(--serif); }
+    .intro { margin: 0 0 20px; color: var(--ink-2); }
+    .strip {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      flex-wrap: wrap;
+      padding: 20px 24px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+    }
+    .period { font: 23px var(--serif); }
+    .period em { margin-left: 8px; color: var(--ink-3); font: 15px var(--sans); }
+    .period-control { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 14px; }
+    .period-control select {
+      min-height: 44px;
+      padding: 7px 32px 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--card);
+      color: var(--ink);
+      font: 15px var(--sans);
+    }
+    .steps { display: flex; gap: 18px; flex-wrap: wrap; margin: 0 0 0 auto; padding: 0; list-style: none; }
+    .step { display: flex; align-items: center; gap: 9px; color: var(--ink-2); font-size: 15px; }
+    .dot {
+      display: grid;
+      width: 22px;
+      height: 22px;
+      place-items: center;
+      border: 1.5px solid var(--line);
+      border-radius: 50%;
+      color: var(--ink-3);
+      font-size: 12.5px;
+      font-weight: 700;
+    }
+    .step.on .dot { border-color: var(--ok); background: var(--ok); color: #fff; }
+    .step.now .dot { border-color: var(--zhu); color: var(--zhu); }
+    .focus {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+      padding: 22px 26px;
+      border: 1px solid var(--zhu);
+      border-left: 5px solid var(--zhu);
+      border-radius: 12px;
+      background: var(--card);
+    }
+    .focus .big { font-size: 19px; font-weight: 600; }
+    .focus .sub { margin-top: 4px; color: var(--ink-2); font-size: 15px; }
+    .cta { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+    .hint { color: var(--ink-3); font-size: 14px; }
+    .btn {
+      display: inline-flex;
+      min-height: 44px;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--card);
+      color: inherit;
+      font: 600 16px var(--sans);
+    }
+    .btn.primary { border-color: var(--zhu); background: var(--zhu); color: #fff; }
+    .btn:disabled { border-color: var(--line); background: var(--panel); color: var(--ink-3); cursor: not-allowed; }
+    .section-title { margin: 26px 0 10px; font-size: 18px; }
+    .grid3, .approval-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+    .mini {
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+    }
+    .mini h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; color: var(--ink-2); font-size: 15px; }
+    .mini p { margin: 0; color: var(--ink-3); font-size: 14.5px; line-height: 1.65; }
+    .mini ul { margin: 9px 0 0; padding-left: 20px; color: var(--ink-2); font-size: 14px; line-height: 1.6; }
+    .mini.warn { border-left: 4px solid var(--gold); }
+    .mini.good { border-left: 4px solid var(--ok); }
+    .mini.pending { border-left: 4px solid var(--line); }
+    .mini .small-label { display: block; margin-bottom: 7px; color: var(--ink-3); font-size: 12.5px; letter-spacing: .04em; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--ink-2);
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .pill.warn { border-color: var(--gold); background: var(--warn-soft); color: var(--warn); }
+    .pill.good { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); }
+    .approval-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    .approval-head h2 { margin: 0; font-size: 18px; }
+    .approval-note { margin: 0 0 12px; color: var(--ink-3); font-size: 14px; }
+    @media (max-width: 780px) {
+      .topbar { flex-wrap: wrap; }
+      .nav { order: 3; width: 100%; margin: 0; overflow: auto; }
+      .steps { margin-left: 0; }
+      .cta { margin-left: 0; }
+      .who { margin-left: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="review"><b>T07 · 任务状态补充稿</b>（静态示例，供审核；不连接数据）</div>
+
+  <header class="topbar">
+    <div class="brand"><strong>文衡</strong><span>学科信息参考</span></div>
+    <nav class="nav" aria-label="工作区">
+      <a href="#" aria-current="page">生成台</a>
+      <a href="#">报告</a>
+      <a href="#">审核台</a>
+    </nav>
+    <div class="who"><span class="avatar">卜</span>卜彤 · 管理员</div>
+  </header>
+
+  <main class="wrap">
+    <div class="eyebrow">生成台 · 任务状态</div>
+    <h1>任务进度与签发状态</h1>
+    <p class="intro">刷新时优先显示仍在进行的任务；这里只切换查看期次，不会启动新的生成任务。任务状态与报告签发状态分别显示。</p>
+
+    <section class="strip" aria-label="当前期次进度">
+      <div class="period">202609<em>2026 年 9 月 · 当前期次</em></div>
+      <label class="period-control" for="period-select">
+        手动选择期次
+        <select id="period-select" aria-label="手动选择期次">
+          <option value="202609" selected>202609 · 当前</option>
+          <option value="202607">202607</option>
+        </select>
+      </label>
+      <ol class="steps">
+        <li class="step on"><span class="dot" aria-hidden="true">✓</span>取数贴表</li>
+        <li class="step on"><span class="dot" aria-hidden="true">✓</span>放入监测表</li>
+        <li class="step now"><span class="dot" aria-hidden="true">3</span>一键生成</li>
+      </ol>
+    </section>
+
+    <section class="focus" aria-label="刷新后当前查看期次">
+      <div>
+        <div class="big">刷新后当前期次：202609</div>
+        <div class="sub">地址期次 A：202607；正在进行的任务期次 B：202609。刷新后当前查看期次切换到 B；你仍可用上方期次选择框手动选择其他期次。</div>
+      </div>
+      <div class="cta">
+        <span class="pill">任务状态 · 正在生成</span>
+        <button class="btn primary" type="button">查看任务进度</button>
+      </div>
+    </section>
+
+    <h2 class="section-title">任务状态示例</h2>
+    <section class="grid3" aria-label="任务状态样例">
+      <article class="mini warn">
+        <span class="small-label">连接恢复</span>
+        <h3><span class="pill warn">连接中断，正在恢复</span></h3>
+        <p>暂时连不上服务，页面正在重新接回任务进度。若连接一时未恢复，页面仍会定时更新状态，直到任务结束。</p>
+      </article>
+
+      <article class="mini pending">
+        <span class="small-label">任务尚在等待</span>
+        <h3><span class="pill">等待馆员审批</span></h3>
+        <p>任务仍在等待馆员确认。任务状态与本期签发状态分别显示；等待确认不代表已经签发。</p>
+      </article>
+
+      <article class="mini good">
+        <span class="small-label">任务已结束</span>
+        <h3><span class="pill good">已生成</span></h3>
+        <p>任务已经生成报告。请查看本期审核状态；任务结束本身不代表报告合格或已经签发。</p>
+      </article>
+
+      <article class="mini warn">
+        <span class="small-label">任务已结束 · 有提醒</span>
+        <h3><span class="pill warn">已生成，有校验提醒</span></h3>
+        <p>有校验未通过项，但系统仍生成了带提醒的初稿。这不代表报告合格或已签发。</p>
+        <ul>
+          <li>显示本期具体未通过的校验项与对应说明（示意）。</li>
+        </ul>
+      </article>
+    </section>
+
+    <section aria-labelledby="approval-title">
+      <div class="approval-head">
+        <h2 id="approval-title">本期审批状态</h2>
+        <span class="hint">与上方任务状态分开呈现</span>
+      </div>
+      <p class="approval-note">当前以管理员身份示例。任务可以已经生成，但本期是否签发仍以审批记录单独显示。</p>
+      <div class="approval-grid">
+        <article class="mini pending">
+          <span class="small-label">管理员示例 A · 尚未签发</span>
+          <h3><span class="pill">未签发</span></h3>
+          <p>当前管理员账号的本期报告还没有签发记录。</p>
+          <button class="btn" type="button" disabled aria-disabled="true">下载初稿</button>
+          <p style="margin-top: 8px">管理员当前不能下载未签发初稿。</p>
+        </article>
+        <article class="mini good">
+          <span class="small-label">审批示例 B · 已签发</span>
+          <h3><span class="pill good">已签发</span></h3>
+          <p>本期审核记录显示已签发。该状态来自审批记录，不由任务完成状态推断。</p>
+        </article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

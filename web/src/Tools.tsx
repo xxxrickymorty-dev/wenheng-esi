@@ -14,16 +14,26 @@ import { Waterfall } from './Waterfall'
 type PeriodJobView = {
   period: string | null
   propJobId: string | null
+  refreshToken: number
   effJobId: string | null
   artifacts: Artifact[] | null
   loading: boolean
   note: string | null
 }
 
-export function Tools({ period, jobId, onUploaded }: {
+export function Tools({
+  period, jobId, approvalStatus, actionsLocked, actionLockReason,
+  onActionStart, onActionEnd, onUploaded, refreshToken = 0,
+}: {
   period: string | null
   jobId: string | null
+  approvalStatus: string
+  actionsLocked: boolean
+  actionLockReason: string | null
+  onActionStart: (action: 'upload' | 'rerun') => boolean
+  onActionEnd: (action: 'upload' | 'rerun') => void
   onUploaded: (jobId: string, period: string) => void
+  refreshToken?: number
 }) {
   const [file, setFile] = useState<File | null>(null)
   const [newPeriod, setNewPeriod] = useState('')
@@ -31,10 +41,10 @@ export function Tools({ period, jobId, onUploaded }: {
   const [msg, setMsg] = useState<{ period: string | null; ok: boolean; text: string } | null>(null)
   const [rerunning, setRerunning] = useState(false)
   const [jobView, setJobView] = useState<PeriodJobView>({
-    period: null, propJobId: null, effJobId: null, artifacts: null,
+    period: null, propJobId: null, refreshToken: -1, effJobId: null, artifacts: null,
     loading: false, note: null,
   })
-  const currentView = jobView.period === period && jobView.propJobId === jobId
+  const currentView = jobView.period === period && jobView.propJobId === jobId && jobView.refreshToken === refreshToken
     ? jobView
     : null
   const effJobId = currentView?.effJobId ?? null
@@ -44,7 +54,7 @@ export function Tools({ period, jobId, onUploaded }: {
   useEffect(() => {
     let alive = true
     const emptyView: PeriodJobView = {
-      period, propJobId: jobId, effJobId: null, artifacts: null,
+      period, propJobId: jobId, refreshToken, effJobId: null, artifacts: null,
       loading: !!period, note: null,
     }
     if (!period) return () => { alive = false }
@@ -87,12 +97,14 @@ export function Tools({ period, jobId, onUploaded }: {
       }
     })()
     return () => { alive = false }
-  }, [period, jobId])
+  }, [period, jobId, refreshToken])
 
   async function upload() {
+    if (actionsLocked || busy || rerunning) return
     const actionPeriod = period
     if (!file) { setMsg({ period: actionPeriod, ok: false, text: '先选一个台账文件（.xlsx）。' }); return }
     if (!/^\d{6}$/.test(newPeriod.trim())) { setMsg({ period: actionPeriod, ok: false, text: '期次要填 6 位数，如 202609。' }); return }
+    if (!onActionStart('upload')) return
     setBusy(true); setMsg(null)
     try {
       const r = await postJobWithFile(newPeriod.trim(), file)
@@ -102,13 +114,18 @@ export function Tools({ period, jobId, onUploaded }: {
     } catch (e) {
       const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
       setMsg({ period: actionPeriod, ok: false, text: (h.body?.error ?? h.message ?? '上传失败') + (h.body?.hint ? `（${h.body.hint}）` : '') })
-    } finally { setBusy(false) }
+    } finally {
+      setBusy(false)
+      onActionEnd('upload')
+    }
   }
 
   async function rerun() {
+    if (actionsLocked || busy || rerunning) return
     const id = effJobId
     const actionPeriod = period
     if (!id || !actionPeriod) return
+    if (!onActionStart('rerun')) return
     setRerunning(true); setMsg(null)
     try {
       const r = await rerunJob(id)
@@ -117,7 +134,10 @@ export function Tools({ period, jobId, onUploaded }: {
     } catch (e) {
       const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
       setMsg({ period: actionPeriod, ok: false, text: (h.body?.error ?? h.message ?? '重跑失败') + (h.body?.hint ? `（${h.body.hint}）` : '') })
-    } finally { setRerunning(false) }
+    } finally {
+      setRerunning(false)
+      onActionEnd('rerun')
+    }
   }
 
   return (
@@ -125,6 +145,9 @@ export function Tools({ period, jobId, onUploaded }: {
       <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
         <Icon name="doc" size={21} />这一期的工具
       </h2>
+      {actionsLocked && actionLockReason && (
+        <p className="hint" style={{ marginTop: 8 }}>{actionLockReason}</p>
+      )}
 
       <div style={{ display: 'grid', gap: 18, gridTemplateColumns: 'minmax(0,1fr) 190px', marginTop: 12 }}>
         <div>
@@ -138,7 +161,7 @@ export function Tools({ period, jobId, onUploaded }: {
                    onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             <input className="search" style={{ maxWidth: 150 }} value={newPeriod}
                    onChange={(e) => setNewPeriod(e.target.value)} placeholder="期次 202609" />
-            <button className="btn" onClick={upload} disabled={busy || rerunning}>
+            <button className="btn" onClick={upload} disabled={actionsLocked || busy || rerunning}>
               <Icon name="refresh" size={19} />{busy ? '正在上传……' : '上传并生成'}
             </button>
           </div>
@@ -156,16 +179,20 @@ export function Tools({ period, jobId, onUploaded }: {
           ) : (
             <div className="chips" style={{ marginTop: 8 }}>
               {currentView.artifacts.map((a) => (
-                <a className="pill" key={a.key} href={a.url}
-                   {...(a.key && !['red_view', 'collation'].includes(a.key) ? { download: '' } : {})}>
-                  {a.name}{a.size ? ` · ${a.size}` : ''}
-                </a>
+                a.key === 'report' && approvalStatus !== 'signed'
+                  ? <span className="pill" key={a.key} role="note" aria-disabled="true">
+                      {a.name}{a.size ? ` · ${a.size}` : ''} · 未签发，管理员暂不能下载
+                    </span>
+                  : <a className="pill" key={a.key} href={a.url}
+                       {...(a.key && !['red_view', 'collation'].includes(a.key) ? { download: '' } : {})}>
+                      {a.key === 'diagnosis' ? '校验说明' : a.name}{a.size ? ` · ${a.size}` : ''}
+                    </a>
               ))}
             </div>
           )}
           {period && effJobId && (
             <div className="toolbar">
-              <button className="btn" onClick={rerun} disabled={busy || rerunning}
+              <button className="btn" onClick={rerun} disabled={actionsLocked || busy || rerunning}
                       title="按同一期台账再跑一遍；旧稿撤到 _superseded/（可回滚）">
                 <Icon name="refresh" size={19} />{rerunning ? '正在重跑……' : '重跑本期'}
               </button>

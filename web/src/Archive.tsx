@@ -21,7 +21,7 @@ function str(v: unknown): string {
   return v == null || v === '' ? '—' : String(v)
 }
 
-export function Archive({ period }: { period: string | null }) {
+export function Archive({ period, approvalStatus }: { period: string | null; approvalStatus: string }) {
   const [d, setD] = useState<ArchiveData | null>(null)
   const [note, setNote] = useState<string | null>(null)
 
@@ -230,10 +230,15 @@ export function Archive({ period }: { period: string | null }) {
                 </a>
               )}
               {d.artifacts.map((a) => (
-                <a className={`ar-art${a.primary ? ' primary' : ''}`} key={a.key} href={a.url}>
-                  <b>{a.label}</b>
-                  <span className="m">{a.name}{a.size ? ` · ${humanSize(a.size)}` : ''}</span>
-                </a>
+                a.key === 'report' && approvalStatus !== 'signed'
+                  ? <div className={`ar-art${a.primary ? ' primary' : ''}`} key={a.key} aria-disabled="true">
+                      <b>{a.label}</b>
+                      <span className="m">{a.name}{a.size ? ` · ${humanSize(a.size)}` : ''} · 未签发，管理员暂不能下载</span>
+                    </div>
+                  : <a className={`ar-art${a.primary ? ' primary' : ''}`} key={a.key} href={a.url}>
+                      <b>{a.label}</b>
+                      <span className="m">{a.name}{a.size ? ` · ${humanSize(a.size)}` : ''}</span>
+                    </a>
               ))}
             </div>
             <p className="hint" style={{ marginTop: 10 }}>

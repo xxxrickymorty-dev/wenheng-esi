@@ -5,8 +5,8 @@
 import type { ApiError, Me, Period, PeriodDetail } from './api'
 import { useState } from 'react'
 import { Icon } from './icons'
-import { failureCopy, STATE_LABEL, type Workbench as WB, type WBState } from './wb'
-import type { Run } from './App'
+import { failureCopy, isTerminal, STATE_LABEL, type Workbench as WB, type WBState } from './wb'
+import type { ActivityState, Run } from './hooks/useJobRun'
 
 /** 五个模型的一句话说明（界面上"帮馆员选"的文案；预测台也用同一份，改一处两边一致） */
 export const MODEL_DESC: Record<string, string> = {
@@ -68,19 +68,35 @@ function Progress() {
   )
 }
 
-/** 真实生成过程：后端推来的状态 + 最后一行进度 + 可展开的日志 */
-function LiveRun({ run }: { run: Run }) {
+/** 真实生成过程：任务状态与本期审批状态分开显示。 */
+function LiveRun({ run, approvalStatus }: { run: Run; approvalStatus: string }) {
   const [open, setOpen] = useState(false)
+  const taskLabel: Record<string, string> = {
+    pending: '等待开始', running: '正在生成', retrying: '正在重试',
+    waiting_approval: '等待馆员审批', completed: '已生成',
+    warned: '已生成，有校验提醒', escalated: '已转交人工处理',
+    failed: '生成失败', cancelled: '已取消', stalled: '暂时没有进展',
+  }
+  const approvalLabel = approvalStatus === 'signed' ? '已签发'
+    : approvalStatus === 'stale' ? '签发记录已失效' : '未签发'
+  const connectionLabel = run.connection === 'live' ? '页面正在更新进度'
+    : run.connection === 'snapshot' ? '正在读取任务进度'
+      : run.connection === 'reconnecting' ? '连接中断，正在恢复进度'
+        : '暂时连不上服务，页面会继续更新进度'
   return (
     <>
       <div className="elapsed">
         <Icon name="refresh" size={20} />
-        {run.status ? `后端状态：${run.status}` : '正在生成……'}
+        {`任务：${run.status ? taskLabel[run.status] ?? '任务状态已更新' : '正在读取状态'} · 任务期次 ${run.requestedPeriod}${run.outputPeriod ? ` · 报告期次 ${run.outputPeriod}` : ''} · ${connectionLabel}`}
       </div>
       <div className="progress">
         <div className="prow">
+          <span className="name">任务期次审批</span>
+          <span style={{ flex: 1, color: 'var(--ink-2)' }}>{approvalLabel}</span>
+        </div>
+        <div className="prow">
           <span className="name">最新进度</span>
-          <span style={{ flex: 1, color: 'var(--ink-2)' }}>{run.last ?? '（等第一行进度…）'}</span>
+          <span style={{ flex: 1, color: 'var(--ink-2)' }}>{run.last ?? '（进度还未返回…）'}</span>
         </div>
       </div>
       <div style={{ padding: '0 24px 16px' }}>
@@ -101,14 +117,55 @@ function LiveRun({ run }: { run: Run }) {
   )
 }
 
-function Banners({ wb, err, healthy, onRerun, period }: { wb: WB; err: ApiError | null; healthy: boolean; onRerun: () => void; period: string | null }) {
+function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }: {
+  wb: WB
+  err: ApiError | null
+  healthy: boolean
+  onRerun: () => void
+  canRerun: boolean
+  period: string | null
+  approvalStatus: string
+}) {
+  const approvalLabel = approvalStatus === 'signed' ? '已签发'
+    : approvalStatus === 'stale' ? '签发记录已失效' : '未签发'
+  if (wb.state === 'warned') {
+    return (
+      <div className="banner warn">
+        <span className="ico"><Icon name="alert" size={22} /></span>
+        <span>
+          <b className="title">已生成，有校验提醒</b>
+          <ul>
+            <li>本次校验有未通过项，但系统仍生成了提醒初稿。</li>
+            <li>任务完成与报告是否合格、是否签发是两回事。</li>
+            <li>具体未通过项与核对说明，请在报告页本期产物中打开“校验说明”。</li>
+            <li>本期审批状态：{approvalLabel}。</li>
+            {approvalStatus !== 'signed' && <li>管理员当前不能下载未签发初稿。</li>}
+          </ul>
+          <span className="acts">
+            <a className="btn" href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="doc" size={19} />查看报告与校验说明</a>
+            <a className="btn" href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="seal" size={19} />查看审核状态</a>
+          </span>
+        </span>
+      </div>
+    )
+  }
+  if (wb.state === 'waiting-approval') {
+    return (
+      <div className="banner warn">
+        <span className="ico"><Icon name="clock" size={22} /></span>
+        <span><b className="title">等待馆员审批</b><span>生成任务还在等待馆员审批；本期签发状态请在审核台查看。</span></span>
+      </div>
+    )
+  }
   if (wb.state === 'done' || wb.state === 'signed') {
     return (
       <div className="banner ok">
         <span className="ico"><Icon name="check" size={22} /></span>
         <span>
           <b className="title">{wb.state === 'signed' ? '本期已签发' : '本期报告已生成'}</b>
-          <span>报告初稿与改动清单都在这期目录里；复核后在审核台签单。</span>
+          <span>本期审批状态：{approvalLabel}。{approvalStatus === 'signed'
+            ? ''
+            : '任务结束不代表报告合格或已签发；管理员当前不能下载未签发初稿。'}</span>
           <span className="acts">
             <a className="btn" href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="doc" size={19} />打开报告</a>
             <a className="btn" href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="seal" size={19} />去审核台</a>
@@ -129,7 +186,7 @@ function Banners({ wb, err, healthy, onRerun, period }: { wb: WB; err: ApiError 
             <b className="title">{c.title}</b>
             <ul>{c.lines.map((l, i) => <li key={i}>{l}</li>)}</ul>
             <span className="acts">
-              <button className="btn" onClick={onRerun}><Icon name="refresh" size={19} />重新生成</button>
+              <button className="btn" onClick={onRerun} disabled={!canRerun}><Icon name="refresh" size={19} />重新生成</button>
             </span>
           </span>
         </div>
@@ -198,7 +255,8 @@ function ModelPicker() {
 }
 
 export function Workbench({
-  period, me, wb, err, healthy, run, onGenerate,
+  period, me, wb, err, healthy, run, approvalStatus, runApprovalStatus, activityState,
+  actionLockReason, activeRun, actionsLocked, submitting, onGenerate,
 }: {
   period: string | null
   me: Me | null
@@ -206,9 +264,18 @@ export function Workbench({
   err: ApiError | null
   healthy: boolean
   run?: Run | null
+  approvalStatus: string
+  runApprovalStatus: string
+  activityState: ActivityState
+  actionLockReason: string | null
+  activeRun: boolean
+  actionsLocked: boolean
+  submitting: boolean
   onGenerate: () => void
 }) {
-  const canGenerate = me?.role === 'admin' && period != null
+  const canGenerate = me?.role === 'admin' && period != null && !actionsLocked && !activeRun && !submitting
+    && (!run || isTerminal(run.status ?? undefined))
+  const hasGenerateAction = wb.focusAction === 'generate' || wb.focusAction === 'rerun'
 
   return (
     <>
@@ -247,19 +314,26 @@ export function Workbench({
           </div>
         </div>
 
-        {!canGenerate && (
+        {!canGenerate && hasGenerateAction && (
           <p className="hint" style={{ padding: '0 24px 18px' }}>
-            {me == null
-              ? <>角色<b>未知</b>（后端未提供 /api/me，契约 §2.2 的 P0 #1）——为安全起见，生成按钮先禁用。
-                  这不是「你是游客」，只是前端<b>不知道</b>你是谁。</>
+            {actionLockReason ?? (me == null
+              ? <>系统暂时无法确认你的身份，为保护数据，生成按钮暂时不能使用。</>
               : me.role === 'admin'
-                ? <>生成按钮暂不可用：还没有选中期次。</>
-                : <>当前账号是<b>游客</b>：只能看报告目录与成品，不能生成或编辑。</>}
-          </p>
+                ? <>先选择一期，再开始生成。</>
+                : <>当前账号是<b>游客</b>：只能看报告目录与成品，不能生成或编辑。</>)}
+        </p>
         )}
 
-        {run ? <LiveRun run={run} /> : wb.state === 'running' ? <Progress /> : null}
-        <Banners wb={wb} err={err} healthy={healthy} onRerun={onGenerate} period={period} />
+        {run ? <LiveRun run={run} approvalStatus={runApprovalStatus} />
+          : activeRun ? (
+            <div className="elapsed"><Icon name="refresh" size={20} />正在读取当前任务状态，完成后才能开始新的生成。</div>
+          ) : wb.state === 'running' ? <Progress /> : null}
+        <Banners wb={wb} err={err} healthy={healthy} onRerun={onGenerate} canRerun={canGenerate} period={period}
+          approvalStatus={approvalStatus} />
+
+        {activityState === 'unknown' && !hasGenerateAction && (
+          <p className="hint" style={{ padding: '0 24px 18px' }}>{actionLockReason}</p>
+        )}
 
         {wb.note && (
           <div style={{ padding: '0 24px 20px' }}>

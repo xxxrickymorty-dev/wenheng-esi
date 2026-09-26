@@ -61,21 +61,27 @@ function Chain({
 }
 
 /** 产物卡：始终读取当前选择期次的产物清单。 */
-function Artifacts({ period, guest }: { period: string | null; guest?: boolean }) {
+function Artifacts({ period, guest, approvalStatus, refreshToken }: {
+  period: string | null
+  guest?: boolean
+  approvalStatus: string
+  refreshToken: number
+}) {
   const isGuest = !!guest
   const [result, setResult] = useState<{
     period: string | null
     guest: boolean
+    refreshToken: number
     items: Artifact[] | null
     note: string | null
-  }>({ period: null, guest: false, items: null, note: null })
+  }>({ period: null, guest: false, refreshToken: -1, items: null, note: null })
 
   useEffect(() => {
     let alive = true
     if (isGuest || !period) return () => { alive = false }
 
     getPeriodArtifacts(period).then((items) => {
-      if (alive) setResult({ period, guest: isGuest, items, note: null })
+      if (alive) setResult({ period, guest: isGuest, refreshToken, items, note: null })
     }).catch((e: unknown) => {
       const h = e as { status?: number }
       if (!alive) return
@@ -84,14 +90,14 @@ function Artifacts({ period, guest }: { period: string | null; guest?: boolean }
         : h.status === 401
           ? '需要登录才能看产物清单。'
           : '读取这一期的产物清单失败。'
-      setResult({ period, guest: isGuest, items: null, note })
+      setResult({ period, guest: isGuest, refreshToken, items: null, note })
     })
     return () => { alive = false }
-  }, [period, isGuest])
+  }, [period, isGuest, refreshToken])
 
   if (isGuest) return null
   if (!period) return <div className="pending-box">先选一期，再查看这一期的产物。</div>
-  const current = result.period === period && result.guest === isGuest ? result : null
+  const current = result.period === period && result.guest === isGuest && result.refreshToken === refreshToken ? result : null
   if (current?.note) return <div className="pending-box">{current.note}</div>
   if (!current?.items) return <div className="pending-box">正在读取这一期的产物清单……</div>
   if (current.items.length === 0) return <div className="pending-box">这一期目前没有可用产物。</div>
@@ -102,13 +108,19 @@ function Artifacts({ period, guest }: { period: string | null; guest?: boolean }
         <div className="art" key={a.key}>
           <span className="ico"><Icon name={a.key === 'report' ? 'doc' : a.key.includes('red') ? 'list' : 'chart'} size={22} /></span>
           <span>
-            <span className="n">{a.label}</span>
+            <span className="n">{a.key === 'diagnosis' ? '校验说明' : a.label}</span>
             <span className="m">
               {a.name}
               {a.size != null ? ` · ${humanSize(a.size)}` : ''}
             </span>
           </span>
-          <span className="go"><a href={a.url} target="_blank" rel="noreferrer">打开</a></span>
+          <span className="go">
+            {a.key === 'report' && approvalStatus !== 'signed'
+              ? <span className="hint" role="note" style={{ display: 'inline-block', maxWidth: 150, whiteSpace: 'normal', textAlign: 'right' }}>
+                  未签发，管理员暂不能下载
+                </span>
+              : <a href={a.url} target="_blank" rel="noreferrer">打开</a>}
+          </span>
         </div>
       ))}
     </div>
@@ -401,12 +413,13 @@ function FactsStrip({ period, onFacts }: {
 }
 
 export function Report({
-  periods, current, onPick, guest,
+  periods, current, onPick, guest, refreshToken = 0,
 }: {
   periods: Period[]
   current: string | null
   onPick: (p: string) => void
   guest?: boolean
+  refreshToken?: number
 }) {
   const row = periods.find((p) => p.period === current) ?? null
   /* 趋势图要占满整页宽：facts 由 FactsStrip 取回后交上来（读数带仍在左列） */
@@ -449,7 +462,7 @@ export function Report({
             （真数据：来自所选期次的产物清单）
           </span>
         </h2>
-        <Artifacts period={current} guest={guest} />
+        <Artifacts period={current} guest={guest} approvalStatus={row?.status ?? 'unsigned'} refreshToken={refreshToken} />
       </section>
     </>
   )

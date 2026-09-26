@@ -2,14 +2,12 @@
    一个应用两屏：工作台（工具面，本文件）→ 陈列馆（G 的体验，挂在 /app/shelf/）。
    数据全部来自后端 API；接口没就绪的地方**如实标注"未就绪"**，不编数据。 */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  getHealth, getMe, getPeriodDetail, getPeriods, jobEventsUrl, postJob,
+  getHealth, getMe, getPeriodDetail, getPeriods, postJob,
   type ApiError, type Me, type Period, type PeriodDetail,
 } from './api'
-
-/** 一次真实生成的过程（SSE 推来的）：状态 / 最后一行进度 / 最近若干行日志 */
-export type Run = { jobId: string; status?: string; last?: string; lines: string[] }
+import { useJobRun, type Run } from './hooks/useJobRun'
 import { Icon, Sprite } from './icons'
 import { Workbench } from './Workbench'
 import { Report } from './Report'
@@ -23,9 +21,9 @@ import { Trace } from './Trace'
 import { Tools } from './Tools'
 import { Forecast } from './Forecast'
 import { Archive } from './Archive'
-import { deriveWorkbench, isTerminal, statusToWB, type WBState } from './wb'
+import { deriveWorkbench, statusToWB, type WBState } from './wb'
 
-const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'fail-ledger', 'fail-other', 'stalled', 'signed']
+const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'warned', 'waiting-approval', 'fail-ledger', 'fail-other', 'stalled', 'signed']
 
 export default function App() {
   const [healthy, setHealthy] = useState<boolean | null>(null)
@@ -34,10 +32,39 @@ export default function App() {
   const [roleKnown, setRoleKnown] = useState(false)
   const [periods, setPeriods] = useState<Period[]>([])
   const [selected, setSelected] = useState<string | null>(null)
-  const [detail, setDetail] = useState<PeriodDetail | null>(null)
+  const [urlRestorePeriod, setUrlRestorePeriod] = useState<string | null>(null)
+  const [detailsByPeriod, setDetailsByPeriod] = useState<Record<string, PeriodDetail | null>>({})
+  const [artifactRefreshByPeriod, setArtifactRefreshByPeriod] = useState<Record<string, number>>({})
   const [err, setErr] = useState<ApiError | null>(null)
   const [busy, setBusy] = useState(false)
-  const [run, setRun] = useState<Run | null>(null)
+  const [toolAction, setToolAction] = useState<'upload' | 'rerun' | null>(null)
+  const actionOwnerRef = useRef<'generate' | 'upload' | 'rerun' | null>(null)
+  const manualSelectionRef = useRef(false)
+  const restoredActivePeriodRef = useRef<string | null>(null)
+  const periodsRequestRef = useRef(0)
+  const detailRequestByPeriodRef = useRef<Record<string, number>>({})
+
+  const refreshPeriods = useCallback(async () => {
+    const request = ++periodsRequestRef.current
+    const list = await getPeriods()
+    if (request !== periodsRequestRef.current) return null
+    setPeriods(list)
+    return list
+  }, [])
+
+  const refreshDetail = useCallback((period: string) => {
+    const request = (detailRequestByPeriodRef.current[period] ?? 0) + 1
+    detailRequestByPeriodRef.current[period] = request
+    void getPeriodDetail(period).then((detail) => {
+      if (detailRequestByPeriodRef.current[period] !== request) return
+      setDetailsByPeriod((current) => ({ ...current, [period]: detail }))
+    }).catch(() => {
+      if (detailRequestByPeriodRef.current[period] !== request) return
+      setDetailsByPeriod((current) => ({ ...current, [period]: null }))
+    })
+  }, [])
+
+  useEffect(() => () => { periodsRequestRef.current += 1 }, [])
 
   /* ?period= 深链：从老站迁移过来的等价地址（老站 /p/<期次> → 新站 ?view=report&period=<期次>） */
   const wantPeriod = new URLSearchParams(location.search).get('period')
@@ -60,6 +87,52 @@ export default function App() {
     return v && DEMO_STATES.includes(v) ? v : null
   }, [])   // eslint-disable-line react-hooks/exhaustive-deps -- wantPeriod 只在首屏读一次
 
+  const onActivePeriod = useCallback((period: string) => {
+    restoredActivePeriodRef.current = period
+    if (!manualSelectionRef.current) setSelected(period)
+  }, [])
+
+  const onRunTerminal = useCallback((finished: {
+    requestedPeriod: string; outputPeriod: string | null
+  }) => {
+    void refreshPeriods().catch(() => { /* 列表刷新失败不影响过程展示 */ })
+    const affectedPeriods = [...new Set([finished.requestedPeriod, finished.outputPeriod].filter(
+      (period): period is string => !!period,
+    ))]
+    for (const period of affectedPeriods) refreshDetail(period)
+    setArtifactRefreshByPeriod((current) => {
+      const next = { ...current }
+      for (const period of affectedPeriods) next[period] = (next[period] ?? 0) + 1
+      return next
+    })
+  }, [refreshDetail, refreshPeriods])
+
+  const runEnabled = healthy === true && roleKnown && me?.role === 'admin'
+  const { run, attach, activity } = useJobRun({
+    enabled: runEnabled,
+    restorePeriod: urlRestorePeriod,
+    onActivePeriod,
+    onTerminal: onRunTerminal,
+  })
+
+  const beginToolAction = useCallback((action: 'upload' | 'rerun') => {
+    if (!runEnabled || activity !== 'idle' || actionOwnerRef.current) return false
+    actionOwnerRef.current = action
+    setToolAction(action)
+    return true
+  }, [activity, runEnabled])
+
+  const endToolAction = useCallback((action: 'upload' | 'rerun') => {
+    if (actionOwnerRef.current !== action) return
+    actionOwnerRef.current = null
+    setToolAction(null)
+  }, [])
+
+  function pickPeriod(period: string) {
+    manualSelectionRef.current = true
+    setSelected(period)
+  }
+
   useEffect(() => {
     let alive = true
     ;(async () => {
@@ -72,83 +145,77 @@ export default function App() {
       setMe(m)
       setRoleKnown(true)
       try {
-        const list = await getPeriods()
-        if (!alive) return
-        setPeriods(list)
+        const list = await refreshPeriods()
+        if (!alive || !list) return
         const hit = wantPeriod && list.some((p) => p.period === wantPeriod)
-        setSelected(hit ? wantPeriod : (list[0]?.period ?? null))
+        if (hit) setUrlRestorePeriod(wantPeriod)
+        if (!manualSelectionRef.current) {
+          setSelected(restoredActivePeriodRef.current ?? (hit ? wantPeriod : (list[0]?.period ?? null)))
+        }
       } catch (e) {
         if (alive) setErr(e as ApiError)
       }
     })()
     return () => { alive = false }
-  }, [])
+  }, [refreshPeriods, wantPeriod])
 
   useEffect(() => {
-    if (!selected) { setDetail(null); return }
-    let alive = true
-    getPeriodDetail(selected).then((d) => { if (alive) setDetail(d) })
-    return () => { alive = false }
-  }, [selected])
+    if (selected) refreshDetail(selected)
+  }, [selected, refreshDetail])
 
+  const detail = selected ? detailsByPeriod[selected] ?? null : null
+  const runForSelected: Run | null = run?.requestedPeriod === selected ? run : null
+  const approvalStatus = periods.find((p) => p.period === selected)?.status ?? 'unsigned'
+  const runApprovalStatus = periods.find((p) => p.period === run?.requestedPeriod)?.status ?? 'unsigned'
+  const runForWorkbench = run && (run.requestedPeriod === selected || activity === 'active') ? run : null
   const wb0 = deriveWorkbench(selected, periods, detail, healthy === true, demo)
-  /* 真实生成进行中/刚结束：状态以后端任务为准（权威），不被列表推断盖过 */
-  const wb = run && run.status && !isTerminal(run.status)
-    ? { ...wb0, state: statusToWB(run.status) }
-    : run && run.status
-      ? { ...wb0, state: statusToWB(run.status) }
-      : wb0
-
-  /* 上传台账 / 重跑后的接续：与 onGenerate 同一套（订阅同一个任务的事件流） */
-  function attachRun(jobId: string) {
-    setRun({ jobId, lines: [] })
-  }
+  /* 任务状态独立显示；期次列表仍保留签发状态这一审批事实。 */
+  const runState: WBState | null = runForSelected?.status === 'warned'
+    ? 'warned'
+    : runForSelected?.status === 'completed' && approvalStatus === 'signed'
+      ? 'signed'
+      : runForSelected?.status
+        ? statusToWB(runForSelected.status)
+        : null
+  const wb = runState
+    ? { ...wb0, state: runState }
+    : wb0
+  const actionLockReason = healthy === false
+    ? '服务未连接，生成、上传与重跑暂不能使用。'
+    : healthy === null
+      ? '正在连接服务，暂不能开始生成、上传或重跑。'
+      : activity === 'checking'
+      ? '正在确认是否有任务在进行；确认前暂不能生成、上传或重跑。'
+      : activity === 'unknown'
+        ? '暂时无法确认当前任务状态。为避免重复开始任务，生成、上传与重跑暂不可用；刷新页面后再试。'
+      : activity === 'active'
+          ? '已有任务正在进行，任务结束后才能开始新的生成、上传或重跑。'
+          : busy
+            ? '正在生成，请稍候。'
+            : toolAction === 'upload'
+              ? '正在上传并开始生成，请稍候。'
+              : toolAction === 'rerun'
+                ? '正在重跑，请稍候。'
+                : null
+  const jobActionsLocked = !runEnabled || activity !== 'idle' || busy || toolAction !== null
 
   async function onGenerate() {
-    if (!selected) return
+    if (!selected || jobActionsLocked || actionOwnerRef.current) return
+    const requestedPeriod = selected
+    actionOwnerRef.current = 'generate'
     setBusy(true)
     setErr(null)
     try {
-      const r = await postJob(selected)
-      setRun({ jobId: r.job_id, lines: [] })
+      const r = await postJob(requestedPeriod)
+      attach(r.job_id, requestedPeriod)
     } catch (e) {
       const h = e as { status?: number; body?: ApiError; message?: string }
       setErr(h.body ?? { error: h.message ?? '生成请求失败' })
     } finally {
+      if (actionOwnerRef.current === 'generate') actionOwnerRef.current = null
       setBusy(false)
     }
   }
-
-  /* 订阅任务事件流：progress＝进度行 / log＝{line} / status＝任务对象。
-     流在后端结束时关闭；终态到了就刷新期次列表（让"已出稿/已签发"跟着变）。 */
-  useEffect(() => {
-    const id = run?.jobId
-    if (!id) return
-    const es = new EventSource(jobEventsUrl(id))
-    es.addEventListener('progress', (e) => {
-      const line = (e as MessageEvent).data as string
-      setRun((r) => (r && r.jobId === id ? { ...r, last: line } : r))
-    })
-    es.addEventListener('log', (e) => {
-      try {
-        const d = JSON.parse((e as MessageEvent).data) as { line: string }
-        setRun((r) => (r && r.jobId === id
-          ? { ...r, lines: [...r.lines.slice(-60), d.line] } : r))
-      } catch { /* 非 JSON 的日志行忽略 */ }
-    })
-    es.addEventListener('status', (e) => {
-      try {
-        const j = JSON.parse((e as MessageEvent).data) as { status?: string }
-        setRun((r) => (r && r.jobId === id ? { ...r, status: j.status } : r))
-        if (isTerminal(j.status)) {
-          es.close()
-          getPeriods().then(setPeriods).catch(() => { /* 列表刷新失败不影响过程展示 */ })
-        }
-      } catch { /* 忽略 */ }
-    })
-    es.onerror = () => { es.close() }   /* 后端关闭/断线：停掉，不要让浏览器反复重连 */
-    return () => es.close()
-  }, [run?.jobId])
 
   /* 工作区导航（契约 §4：前端按 /api/me 的 role 决定显示什么；**真门在后端**，这里只是不打扰）。
      游客只留 报告 / 台账 / 陈列馆 这些「看已出的东西」的屏；管理页直连也挡在这里，给一句人话 + 去处。 */
@@ -229,7 +296,7 @@ export default function App() {
             想按期翻看卷宗去「<a href="/app/shelf/">陈列馆</a>」。
           </div>
         ) : view === 'archive' ? (
-          <Archive period={selected} />
+          <Archive period={selected} approvalStatus={approvalStatus} />
         ) : view === 'forecast' ? (
           <Forecast />
         ) : view === 'trace' ? (
@@ -249,10 +316,11 @@ export default function App() {
             period={selected}
             me={me}
             periods={periods}
-            onChanged={() => { getPeriods().then(setPeriods).catch(() => { /* 刷新失败不影响操作结果 */ }) }}
+            onChanged={() => { void refreshPeriods().catch(() => { /* 刷新失败不影响操作结果 */ }) }}
           />
         ) : view === 'report' ? (
-          <Report periods={periods} current={selected} onPick={setSelected} guest={noAdminBits} />
+          <Report periods={periods} current={selected} onPick={pickPeriod} guest={noAdminBits}
+            refreshToken={selected ? artifactRefreshByPeriod[selected] ?? 0 : 0} />
         ) : (
           <>
                       <Workbench
@@ -261,10 +329,27 @@ export default function App() {
                         wb={wb}
                         err={err}
                         healthy={healthy === true}
-                        run={run}
+                        run={runForWorkbench}
+                        approvalStatus={approvalStatus}
+                        runApprovalStatus={runApprovalStatus}
+                        activityState={activity}
+                        actionLockReason={actionLockReason}
+                        activeRun={activity === 'active'}
+                        actionsLocked={jobActionsLocked}
+                        submitting={busy}
                         onGenerate={onGenerate}
                       />
-            {!noAdminBits && <Tools period={selected} jobId={run?.jobId ?? null} onUploaded={(jid) => attachRun(jid)} />}
+            {!noAdminBits && <Tools
+              period={selected}
+              jobId={runForSelected?.jobId ?? null}
+              approvalStatus={approvalStatus}
+              actionsLocked={jobActionsLocked}
+              actionLockReason={actionLockReason}
+              onActionStart={beginToolAction}
+              onActionEnd={endToolAction}
+              onUploaded={(jobId, period) => { pickPeriod(period); attach(jobId, period) }}
+              refreshToken={selected ? artifactRefreshByPeriod[selected] ?? 0 : 0}
+            />}
           </>
         )}
 
@@ -292,7 +377,7 @@ export default function App() {
               )}
               {periods.map((p) => (
                 <tr key={p.period}
-                    onClick={() => setSelected(p.period)}
+                    onClick={() => pickPeriod(p.period)}
                     style={{ cursor: 'pointer', background: p.period === selected ? 'var(--panel)' : undefined }}>
                   <td>{p.label}</td>
                   <td className="mono">{p.period}</td>

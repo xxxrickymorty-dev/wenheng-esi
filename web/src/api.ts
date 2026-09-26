@@ -103,6 +103,7 @@ export type Job = {
   id: string
   status?: string
   period?: string
+  out_period?: string
   stats?: Record<string, unknown>
   [k: string]: unknown
 }

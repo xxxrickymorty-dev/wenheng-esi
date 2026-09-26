@@ -5,7 +5,7 @@
 import type { ApiError, Period, PeriodDetail } from './api'
 
 export type WBState =
-  | 'empty' | 'ready' | 'running' | 'done'
+  | 'empty' | 'ready' | 'running' | 'done' | 'warned' | 'waiting-approval'
   | 'fail-ledger' | 'fail-other' | 'stalled' | 'signed'
 
 export const STATE_LABEL: Record<WBState, string> = {
@@ -13,6 +13,8 @@ export const STATE_LABEL: Record<WBState, string> = {
   ready: '待生成',
   running: '生成中',
   done: '已生成',
+  warned: '已生成，有校验提醒',
+  'waiting-approval': '等待馆员审批',
   'fail-ledger': '数据还没齐',
   'fail-other': '这次没有出稿',
   stalled: '看起来卡住了',
@@ -123,6 +125,8 @@ export function deriveWorkbench(
     ready: { focusTitle: '这一期还差最后一步：生成报告', focusSub: '前两步已就绪 · 约 20 秒出报告', focusAction: 'generate' },
     running: { focusTitle: '正在生成……', focusSub: '可以切到别的页面，进度不会丢', focusAction: 'none' },
     done: { focusTitle: '本期报告已就绪', focusSub: '复核后签单，这一版才会被标记为「可交付」', focusAction: 'sign' },
+    warned: { focusTitle: '已生成，有校验提醒', focusSub: '任务结束不代表报告合格或已签发', focusAction: 'open' },
+    'waiting-approval': { focusTitle: '等待馆员审批', focusSub: '任务仍在等待审批流程完成', focusAction: 'none' },
     'fail-ledger': { focusTitle: '数据还没齐，这次没有出报告', focusSub: '补上缺的列再重跑', focusAction: 'rerun' },
     'fail-other': { focusTitle: '这次没有出稿', focusSub: '上一版报告仍然有效', focusAction: 'rerun' },
     stalled: { focusTitle: '看起来卡住了', focusSub: '已有一段时间没有进展，可以取消重跑', focusAction: 'rerun' },
@@ -142,9 +146,11 @@ export function isTerminal(status?: string): boolean {
 export function statusToWB(status?: string): WBState {
   switch (status) {
     case 'completed':
-    case 'warned':
-    case 'waiting_approval':
       return 'done'
+    case 'warned':
+      return 'warned'
+    case 'waiting_approval':
+      return 'waiting-approval'
     case 'escalated':
     case 'failed':
     case 'cancelled':
