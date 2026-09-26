@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react'
 import {
-  getArtifacts, getStatus, humanSize,
+  getPeriodArtifacts, humanSize,
   type Artifact, type Period,
 } from './api'
 import { getCharts, getCollation, type ChartRow, type CollationRow } from './api2'
@@ -60,48 +60,45 @@ function Chain({
   )
 }
 
-/** 产物卡：真数据（/api/status 取最近一次任务 → /api/jobs/{id}/artifacts） */
-function Artifacts({ guest }: { guest?: boolean }) {
-  const [items, setItems] = useState<Artifact[] | null>(null)
-  const [note, setNote] = useState<string | null>(null)
+/** 产物卡：始终读取当前选择期次的产物清单。 */
+function Artifacts({ period, guest }: { period: string | null; guest?: boolean }) {
+  const isGuest = !!guest
+  const [result, setResult] = useState<{
+    period: string | null
+    guest: boolean
+    items: Artifact[] | null
+    note: string | null
+  }>({ period: null, guest: false, items: null, note: null })
 
-  /* 角色的确定晚于首屏（App 先探活再取 /api/me）：guest 由 true 变 false 时
-     这个 effect 必须重跑，否则管理员的产物清单永远停在"正在读……"。 */
   useEffect(() => {
-    if (guest) return   // 游客不请求（后端也会拒）
     let alive = true
-    ;(async () => {
-      try {
-        const st = await getStatus()
-        const id = st.last?.id
-        if (!id) {
-          if (alive) setNote('还没有任何一次生成记录。')
-          return
-        }
-        const list = await getArtifacts(id)
-        if (alive) setItems(list)
-      } catch (e) {
-        const h = e as { status?: number }
-        if (!alive) return
-        setNote(
-          h.status === 403
-            ? '产物清单需要管理员权限（后端按角色拦的，不是前端藏起来的）。'
-            : h.status === 401
-              ? '需要登录才能看产物清单。'
-              : '读产物清单失败。',
-        )
-      }
-    })()
-    return () => { alive = false }
-  }, [guest])
+    if (isGuest || !period) return () => { alive = false }
 
-  if (guest) return null
-  if (note) return <div className="pending-box">{note}</div>
-  if (!items) return <div className="pending-box">正在读产物清单……</div>
+    getPeriodArtifacts(period).then((items) => {
+      if (alive) setResult({ period, guest: isGuest, items, note: null })
+    }).catch((e: unknown) => {
+      const h = e as { status?: number }
+      if (!alive) return
+      const note = h.status === 403
+        ? '产物清单需要管理员权限。'
+        : h.status === 401
+          ? '需要登录才能看产物清单。'
+          : '读取这一期的产物清单失败。'
+      setResult({ period, guest: isGuest, items: null, note })
+    })
+    return () => { alive = false }
+  }, [period, isGuest])
+
+  if (isGuest) return null
+  if (!period) return <div className="pending-box">先选一期，再查看这一期的产物。</div>
+  const current = result.period === period && result.guest === isGuest ? result : null
+  if (current?.note) return <div className="pending-box">{current.note}</div>
+  if (!current?.items) return <div className="pending-box">正在读取这一期的产物清单……</div>
+  if (current.items.length === 0) return <div className="pending-box">这一期目前没有可用产物。</div>
 
   return (
     <div className="artifacts art-grid">
-      {items.map((a) => (
+      {current.items.map((a) => (
         <div className="art" key={a.key}>
           <span className="ico"><Icon name={a.key === 'report' ? 'doc' : a.key.includes('red') ? 'list' : 'chart'} size={22} /></span>
           <span>
@@ -449,10 +446,10 @@ export function Report({
         <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
           <Icon name="doc" size={21} />本期产物
           <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>
-            （真数据：来自最近一次生成任务的产物清单）
+            （真数据：来自所选期次的产物清单）
           </span>
         </h2>
-        <Artifacts guest={guest} />
+        <Artifacts period={current} guest={guest} />
       </section>
     </>
   )

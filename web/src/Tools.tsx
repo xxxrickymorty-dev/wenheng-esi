@@ -3,9 +3,22 @@
    POST /api/jobs/{id}/rerun（老站 job.js 一直在用）。🔴 只透传，不编造。 */
 
 import { useEffect, useState } from 'react'
-import { getArtifacts, getStatus, postJobWithFile, rerunJob } from './api'
+import {
+  choosePeriodJobId, getJob, getPeriodArtifacts, getPeriodDetail,
+  postJobWithFile, rerunJob,
+  type Artifact, type Job,
+} from './api'
 import { Icon } from './icons'
 import { Waterfall } from './Waterfall'
+
+type PeriodJobView = {
+  period: string | null
+  propJobId: string | null
+  effJobId: string | null
+  artifacts: Artifact[] | null
+  loading: boolean
+  note: string | null
+}
 
 export function Tools({ period, jobId, onUploaded }: {
   period: string | null
@@ -15,56 +28,95 @@ export function Tools({ period, jobId, onUploaded }: {
   const [file, setFile] = useState<File | null>(null)
   const [newPeriod, setNewPeriod] = useState('')
   const [busy, setBusy] = useState(false)
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  const [arts, setArts] = useState<{ key?: string; name?: string; url: string; size?: string }[] | null>(null)
+  const [msg, setMsg] = useState<{ period: string | null; ok: boolean; text: string } | null>(null)
   const [rerunning, setRerunning] = useState(false)
-  const [lastId, setLastId] = useState<string | null>(null)
-  const effJobId = jobId ?? lastId
+  const [jobView, setJobView] = useState<PeriodJobView>({
+    period: null, propJobId: null, effJobId: null, artifacts: null,
+    loading: false, note: null,
+  })
+  const currentView = jobView.period === period && jobView.propJobId === jobId
+    ? jobView
+    : null
+  const effJobId = currentView?.effJobId ?? null
+  const message = msg?.period === period ? msg : null
 
-  /* 没在本会话跑过时，回退到后端记录的最近一个任务——这样一打开就能看上一期的产物与瀑布 */
+  /* 任务按请求期次选；文件列表从精确期次目录读取。 */
   useEffect(() => {
-    if (jobId) return
     let alive = true
-    getStatus().then((st) => { if (alive) setLastId(st.last?.id ?? null) }).catch(() => { /* 取不到就不显示 */ })
-    return () => { alive = false }
-  }, [effJobId])
+    const emptyView: PeriodJobView = {
+      period, propJobId: jobId, effJobId: null, artifacts: null,
+      loading: !!period, note: null,
+    }
+    if (!period) return () => { alive = false }
 
+    const artifactsRequest = getPeriodArtifacts(period)
+      .then((artifacts) => ({ artifacts, note: null as string | null }))
+      .catch(() => ({ artifacts: null, note: '读取这一期的产物失败。' }))
 
-  /* 产物：有任务号就去取；取不到就不显示（不摆空架子） */
-  useEffect(() => {
-    const id = effJobId
-    if (!id) { setArts(null); return }
-    let alive = true
-    getArtifacts(id).then((a) => { if (alive) setArts(a as unknown as typeof arts) }).catch(() => { if (alive) setArts(null) })
+    const taskRequest = (async () => {
+      let detail: Awaited<ReturnType<typeof getPeriodDetail>>
+      try {
+        detail = await getPeriodDetail(period)
+      } catch {
+        return null
+      }
+      if (!alive) return null
+
+      let candidate: Job | null = null
+      if (jobId) {
+        try {
+          candidate = await getJob(jobId)
+        } catch {
+          candidate = null
+        }
+      }
+      if (!alive) return null
+
+      return choosePeriodJobId(
+        period, detail?.period ?? period, jobId, candidate, detail?.lastJob?.id ?? null,
+      )
+    })()
+
+    ;(async () => {
+      const [id, result] = await Promise.all([taskRequest, artifactsRequest])
+      if (alive) {
+        setJobView({
+          ...emptyView, effJobId: id, artifacts: result.artifacts,
+          loading: false, note: result.note,
+        })
+      }
+    })()
     return () => { alive = false }
-  }, [effJobId])
+  }, [period, jobId])
 
   async function upload() {
-    if (!file) { setMsg({ ok: false, text: '先选一个台账文件（.xlsx）。' }); return }
-    if (!/^\d{6}$/.test(newPeriod.trim())) { setMsg({ ok: false, text: '期次要填 6 位数，如 202609。' }); return }
+    const actionPeriod = period
+    if (!file) { setMsg({ period: actionPeriod, ok: false, text: '先选一个台账文件（.xlsx）。' }); return }
+    if (!/^\d{6}$/.test(newPeriod.trim())) { setMsg({ period: actionPeriod, ok: false, text: '期次要填 6 位数，如 202609。' }); return }
     setBusy(true); setMsg(null)
     try {
       const r = await postJobWithFile(newPeriod.trim(), file)
       onUploaded(r.job_id, newPeriod.trim())
-      setMsg({ ok: true, text: `已开始生成 ${newPeriod.trim()}——进度就在上面。` })
+      setMsg({ period: actionPeriod, ok: true, text: `已开始生成 ${newPeriod.trim()}——进度就在上面。` })
       setFile(null); setNewPeriod('')
     } catch (e) {
       const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
-      setMsg({ ok: false, text: (h.body?.error ?? h.message ?? '上传失败') + (h.body?.hint ? `（${h.body.hint}）` : '') })
+      setMsg({ period: actionPeriod, ok: false, text: (h.body?.error ?? h.message ?? '上传失败') + (h.body?.hint ? `（${h.body.hint}）` : '') })
     } finally { setBusy(false) }
   }
 
   async function rerun() {
     const id = effJobId
-    if (!id) return
+    const actionPeriod = period
+    if (!id || !actionPeriod) return
     setRerunning(true); setMsg(null)
     try {
       const r = await rerunJob(id)
-      onUploaded(r.job_id ?? id, period ?? '')
-      setMsg({ ok: true, text: '已重新开始——旧稿会撤到 _superseded/，不会悄悄覆盖。' })
+      onUploaded(r.job_id ?? id, actionPeriod)
+      setMsg({ period: actionPeriod, ok: true, text: '已重新开始——旧稿会撤到 _superseded/，不会悄悄覆盖。' })
     } catch (e) {
       const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
-      setMsg({ ok: false, text: (h.body?.error ?? h.message ?? '重跑失败') + (h.body?.hint ? `（${h.body.hint}）` : '') })
+      setMsg({ period: actionPeriod, ok: false, text: (h.body?.error ?? h.message ?? '重跑失败') + (h.body?.hint ? `（${h.body.hint}）` : '') })
     } finally { setRerunning(false) }
   }
 
@@ -93,30 +145,34 @@ export function Tools({ period, jobId, onUploaded }: {
 
           {/* 产物下载 + 重跑 */}
           <h3 style={{ fontSize: 15, marginTop: 18 }}>产物与重跑</h3>
-          {!effJobId ? (
-            <p className="hint" style={{ marginTop: 4 }}>先跑一次（或从上面上传），这里就出这一期的产物下载。</p>
-          ) : !arts || arts.length === 0 ? (
-            <p className="hint" style={{ marginTop: 4 }}>这次还没有产物（或还没跑完）。</p>
+          {!period ? (
+            <p className="hint" style={{ marginTop: 4 }}>先选一期，再查看这一期的产物。</p>
+          ) : currentView?.note ? (
+            <p className="hint" style={{ marginTop: 4 }}>{currentView.note}</p>
+          ) : !currentView || currentView.loading ? (
+            <p className="hint" style={{ marginTop: 4 }}>正在读取这一期的产物……</p>
+          ) : !currentView.artifacts || currentView.artifacts.length === 0 ? (
+            <p className="hint" style={{ marginTop: 4 }}>这一期暂时没有产物。</p>
           ) : (
             <div className="chips" style={{ marginTop: 8 }}>
-              {arts.map((a) => (
-                <a className="pill" key={a.key ?? a.url} href={a.url}
+              {currentView.artifacts.map((a) => (
+                <a className="pill" key={a.key} href={a.url}
                    {...(a.key && !['red_view', 'collation'].includes(a.key) ? { download: '' } : {})}>
                   {a.name}{a.size ? ` · ${a.size}` : ''}
                 </a>
               ))}
             </div>
           )}
-          {effJobId && (
+          {period && effJobId && (
             <div className="toolbar">
               <button className="btn" onClick={rerun} disabled={busy || rerunning}
                       title="按同一期台账再跑一遍；旧稿撤到 _superseded/（可回滚）">
                 <Icon name="refresh" size={19} />{rerunning ? '正在重跑……' : '重跑本期'}
               </button>
-              {msg && <span className="hint" style={{ color: msg.ok ? 'var(--ok)' : 'var(--bad)' }}>{msg.text}</span>}
+              {message && <span className="hint" style={{ color: message.ok ? 'var(--ok)' : 'var(--bad)' }}>{message.text}</span>}
             </div>
           )}
-          {!effJobId && msg && <p className="hint" style={{ color: msg.ok ? 'var(--ok)' : 'var(--bad)' }}>{msg.text}</p>}
+          {message && !(period && effJobId) && <p className="hint" style={{ color: message.ok ? 'var(--ok)' : 'var(--bad)' }}>{message.text}</p>}
         </div>
 
         {/* 扫码在手机上看 */}
@@ -129,7 +185,7 @@ export function Tools({ period, jobId, onUploaded }: {
       </div>
 
       {/* 这次运行每一步用了多久（跑完也能回看；生成中自动刷新） */}
-      {effJobId && <Waterfall jobId={effJobId} />}
+      {period && effJobId && <Waterfall jobId={effJobId} />}
 
       {period && (
         <p className="hint" style={{ marginTop: 10 }}>

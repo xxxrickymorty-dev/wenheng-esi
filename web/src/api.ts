@@ -111,6 +111,20 @@ export async function getJob(jobId: string): Promise<Job> {
   return req<Job>(`/api/jobs/${encodeURIComponent(jobId)}`)
 }
 
+/** 按任务记录中的请求期次选择任务；期次详情提供受限回退。 */
+export function choosePeriodJobId(
+  period: string | null,
+  canonicalPeriod: string,
+  candidateId: string | null,
+  candidate: Job | null,
+  fallbackId: string | null,
+): string | null {
+  if (!period) return null
+  if (candidateId && candidate?.period === canonicalPeriod) return candidateId
+  // api_period_detail 已按所请求期次筛选 lastJob；其 ID 是本期受限回退。
+  return fallbackId
+}
+
 /** 任务瀑布里的一步（契约 §2.2 #15）。sec 是**后端算好的**本步耗时，前端不自己减。 */
 export type WaterfallRow = {
   step: string
@@ -209,6 +223,14 @@ export type Artifact = {
   size: number | null
   url: string
   primary: boolean
+}
+
+/** 某一期的产物清单；每张卡始终从所选期次读取。 */
+export async function getPeriodArtifacts(period: string): Promise<Artifact[]> {
+  const r = await req<{ period: string; artifacts: Artifact[] }>(
+    `/api/periods/${encodeURIComponent(period)}/artifacts`,
+  )
+  return r.artifacts ?? []
 }
 
 export async function getArtifacts(jobId: string): Promise<Artifact[]> {
