@@ -18,6 +18,7 @@
 | `src/` | 确定性流水线（解析台账 → 算大表 → 预测回测 → 渲染图 → 替换母版） |
 | `src/agent/` | Agent 层：`states.py`(状态机) / `tools.py`(工具契约) / `flow.py`(编排) / `heal.py`(自愈) / `trace.py` / `rules/repair_rules.yaml`(自愈规则库) |
 | `server/` | FastAPI + Jinja2 看板（服务端渲染） |
+| `web/` | 新工作区前端：React + TypeScript + Vite；经 FastAPI `/api/*` 取数，本机构建 `dist/` 并入库，由 FastAPI 挂载于 `/app/` |
 | `master/` | **结构金母版** `学科信息参考母版_2026第5期.docx`，必须入库 |
 | `tools/` | 校验脚本（单一来源），如 `verify_demo_run.py`、`crossing_by_report.py` |
 | `tests/` | 回归测试 |
@@ -74,8 +75,8 @@
    - 任务级 10 态：`pending / running / retrying / stalled / waiting_approval / completed / warned / escalated / failed / cancelled`
    - 步骤级 4 态：`start / done / warn / failed`（对应 `job.js` 的 CSS 类名，改会坏五步进度样式）
 6. **GET 不改状态**；数字只来自后端；产物只经 `/download/{key}` 白名单出去。守卫在 `tests/test_stack_contract.py`。
-7. **技术栈冻结**：FastAPI + Jinja2 服务端渲染；前端**零框架、零构建、零 CDN**。
-   图表由 matplotlib 出 PNG。别再提 React/Vue/Tailwind/Vite/WebSocket。
+7. **前端按站点区分**：旧站 `server/` 模板与 `static/` 继续使用 FastAPI + Jinja2 和原生 HTML/CSS/JS，保持**零框架、零构建、零 CDN**；此冻结只约束旧站。新工作区 `web/` 使用 React + TypeScript + Vite，通过 FastAPI `/api/*` 取数；本机运行 `npm run build` 后将 `web/dist/` 入库，由 FastAPI 挂载于 `/app/`（Vite 基路径 `/app/`）。`web/` 遵循 `web/AGENTS.md` 和 `web/UX.md`。旧站继续留在 `server/`，不迁入 React。
+   图表由 matplotlib 出 PNG。
 8. `.bat` / `.cmd` **纯 ASCII + CRLF**（`.gitattributes` 已钉）。中文交给 Python 输出。
 9. `master/`、`云南大学原报告/`、`wenheng/` 的名称与位置被脚本引用，**不要改名移动**。
 10. **测试里的跳过必须登记**。数据驱动的用例（依赖 `input/`、`out/`、原始 ESI 包）在缺数据时

@@ -33,7 +33,8 @@
 
 - **运行期 LLM 不进数据路径**：数字只来自台账，正文由 `src/sentences.py` 出句骨架。
 - **台账只读**：禁 openpyxl 存盘改台账（只能 zip 级 XML 替换，改前备份）；运行期有 sha256 护栏。
-- **技术栈冻结**：FastAPI + Jinja2 服务端渲染，前端零框架 / 零构建 / 零 CDN（`tests/test_stack_contract.py` 守着）。
+- **旧站技术栈冻结**：`server/` 模板与 `static/` 继续使用 FastAPI + Jinja2 / 原生 HTML、CSS、JS；零框架 / 零构建 / 零 CDN。`tests/test_stack_contract.py` 的对应约束只适用于旧站。
+- **新工作区**：`web/` 使用 React + TypeScript + Vite，经 FastAPI `/api/*` 获取数据；在本机执行 `npm run build` 生成并入库 `web/dist/`，由 FastAPI 挂载到 `/app/`。开发、构建与 UX 遵循 `web/AGENTS.md` 和 `web/UX.md`。
 - **`tests/` 下禁止裸 `pytest.skip`**：数据驱动用例一律 `_guard_registry.skip_unless(理由, lambda: 探针)`，
   探针必须可调用；会话收尾会复核（探针说资源在却跳过 = 整个会话判失败）。
 - **改口径必跑逐格核验**：`compute.py` 大表口径 / `extract_1permille.py` 取位 / 母版槽位几何，
