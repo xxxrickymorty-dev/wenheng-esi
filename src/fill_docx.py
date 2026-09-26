@@ -222,14 +222,24 @@ def fill_big_table(doc, t2, slots, prev_month):
 
 
 def _apply_slot_geometry(tbl):
-    """恢复第 4 期槽位表几何：列宽 8.64+8.64cm（图 8.26cm 恰好放得下）。"""
+    """恢复槽位表几何，并固定布局，避免保存时按母版总宽重新分配列宽。"""
+    slot_width = int(8.64 * 567)
     grid = tbl._tbl.find(qn('w:tblGrid'))
     if grid is not None:
         for col in grid.findall(qn('w:gridCol'))[:2]:
-            col.set(qn('w:w'), str(int(8.64 * 567)))
+            col.set(qn('w:w'), str(slot_width))
     for row in tbl.rows:
         for cell in row.cells[:2]:
             cell.width = Cm(8.64)
+
+    # 网格和单元格总宽为 9796 twips；母版中的 tblW 仍是各表原始宽度，
+    # 继续使用旧总宽会让 Word/WPS 在自动布局时改写网格列宽。
+    table_width = tbl._tbl.tblPr.find(qn('w:tblW'))
+    if table_width is None:
+        raise ValueError("槽位表缺少 w:tblW，无法固定列宽")
+    table_width.set(qn('w:w'), str(slot_width * 2))
+    table_width.set(qn('w:type'), 'dxa')
+    tbl.autofit = False
 
 
 def insert_charts(doc, period_dir, discipline, slots, chart_dir):
