@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · T08 真实模型选择（静态提案）</title>
+<style>
+:root{
+  --bg:#f3efe6;--card:#fbf8f1;--panel:#f6f1e7;
+  --ink:#2f2a24;--ink-2:#5b5248;--ink-3:#6f6558;
+  --line:#d9cfbc;--line-2:#e7dfd0;
+  --zhu:#b23a2a;--zhu-soft:#f0dcd5;
+  --gold:#a9853f;--gold-soft:#efe3c9;--gold-ink:#7d6122;
+  --ok:#3f6b4a;--ok-soft:#e2ece0;--warn:#7d5518;--warn-soft:#f5ead2;
+  --serif:"Source Han Serif SC","Noto Serif SC",Songti SC,SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
+:focus-visible{outline:3px solid var(--zhu);outline-offset:3px;border-radius:6px}
+button,select{font:inherit;color:inherit}
+.review{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding:10px 22px;background:var(--panel);border-bottom:1px dashed var(--line);font-size:13.5px;color:var(--ink-2)}
+.review strong{color:var(--ink)}.review .mark{color:var(--gold-ink);font-weight:700}
+.topbar{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:9px;font-family:var(--serif);white-space:nowrap}.brand strong{font-size:21px;letter-spacing:.04em}.brand span{font-size:12px;color:var(--ink-3);letter-spacing:.08em}
+.nav{display:flex;gap:4px;margin-left:auto}.nav a{padding:7px 11px;color:var(--ink-2);text-decoration:none;border-radius:8px;font-size:14px;white-space:nowrap}.nav a.active{background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+.who{display:flex;align-items:center;gap:8px;border-left:1px solid var(--line);padding-left:14px;color:var(--ink-2);font-size:13px;white-space:nowrap}.avatar{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);font-weight:700}
+.wrap{max-width:1180px;margin:auto;padding:24px 22px 58px}
+.period-bar{display:flex;align-items:center;gap:24px;flex-wrap:wrap;padding:17px 21px;background:var(--card);border:1px solid var(--line);border-radius:12px}
+.period{font:24px/1.2 var(--serif)}.period small{display:block;margin-top:5px;font:14px var(--sans);color:var(--ink-3)}
+.steps{display:flex;gap:18px;flex-wrap:wrap;margin-left:auto}.step{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-size:14px}.dot{display:grid;place-items:center;width:22px;height:22px;border:1.5px solid var(--line);border-radius:50%;font-size:12px;color:var(--ink-3)}.step.done .dot{background:var(--ok);border-color:var(--ok);color:#fff}.step.now{color:var(--zhu);font-weight:650}.step.now .dot{border-color:var(--zhu);color:var(--zhu)}
+.focus{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;margin-top:16px;padding:19px 23px;background:var(--card);border:1px solid var(--line);border-left:5px solid var(--zhu);border-radius:12px}
+.focus h1{margin:0;font:clamp(22px,3vw,30px)/1.25 var(--serif);font-weight:600}.focus p{margin:7px 0 0;color:var(--ink-2);font-size:14px}.cta{display:flex;align-items:center;gap:10px}.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 15px;border:1px solid var(--line);border-radius:9px;background:var(--card);font-weight:650;cursor:pointer}.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff}.btn:disabled{cursor:not-allowed;opacity:.48}.hint{color:var(--ink-3);font-size:13px}
+.card{margin-top:18px;padding:21px 23px;background:var(--card);border:1px solid var(--line);border-radius:12px}.head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.eyebrow{display:grid;place-items:center;width:27px;height:27px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);font:700 12px var(--mono)}h2{margin:0;font:21px/1.35 var(--serif);font-weight:600}.badge{padding:3px 9px;border-radius:999px;background:var(--gold-soft);color:var(--gold-ink);font-size:12px;font-weight:650}.lead{max-width:850px;margin:9px 0 15px;color:var(--ink-2);font-size:14px}
+.periods{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:15px 0;padding:12px 14px;background:var(--panel);border:1px solid var(--line-2);border-radius:10px}.periods div{min-width:0}.periods label{display:block;color:var(--ink-3);font-size:12px}.periods strong{display:block;margin-top:2px;font:17px var(--mono);font-variant-numeric:tabular-nums}.periods .actual strong{color:var(--gold-ink);font:14px var(--sans)}
+.proposal-note{display:flex;align-items:flex-start;gap:10px;margin:13px 0 15px;padding:11px 13px;border-left:3px solid var(--gold);background:#faf5e9;color:var(--ink-2);font-size:13px}.proposal-note b{color:var(--gold-ink)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 10px}.tabs button{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:13px;cursor:pointer}.tabs button[aria-pressed="true"]{border-color:var(--zhu);background:var(--zhu-soft);color:var(--zhu);font-weight:700}
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:10px}table{width:100%;min-width:820px;border-collapse:collapse;font-size:13.5px}th,td{padding:11px 13px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line-2)}thead th{background:var(--panel);color:var(--ink-2);font-weight:650;font-size:12px}tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#faf7f0}.subject{font-weight:650;white-space:nowrap}.recommended{color:var(--ink-2);white-space:nowrap}.selector{min-width:192px}.selector select{width:100%;padding:7px 9px;background:#fffdf8;border:1px solid var(--line);border-radius:7px;font-size:13px}.desc{max-width:430px;color:var(--ink-2);font-size:12.5px;line-height:1.55}.choice-tag{display:block;margin-top:4px;color:var(--ink-3);font-size:11.5px}.choice-tag.changed{color:var(--zhu);font-weight:650}
+.savebar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:13px;border-top:1px solid var(--line-2)}.save-status{font-size:13px;color:var(--ok)}.save-status.dirty{color:var(--warn);font-weight:650}.save-status.saved{color:var(--ok)}
+.relation{margin-top:14px;padding:12px 14px;background:var(--panel);border-radius:9px;color:var(--ink-2);font-size:13px}.relation strong{color:var(--ink)}
+.foot{margin-top:18px;color:var(--ink-3);font-size:12px;text-align:center}
+@media(max-width:850px){.topbar{flex-wrap:wrap}.nav{order:3;width:100%;margin:0;overflow:auto}.who{margin-left:auto}.periods{grid-template-columns:1fr}.steps{margin-left:0}}
+@media(max-width:520px){.review,.topbar{padding-left:14px;padding-right:14px}.wrap{padding:14px 12px 38px}.period-bar,.focus,.card{padding:15px}.cta{width:100%;justify-content:flex-end}.nav a{padding:7px 9px}}
+</style>
+</head>
+<body>
+<div class="review">
+  <strong>T08 静态提案稿</strong>
+  <span class="mark">待审核 · 此页只演示交互，不会保存真实配置</span>
+  <span>按任务期次记配置；数据来源期次、实际输出期次单独呈现。</span>
+</div>
+<header class="topbar">
+  <div class="brand"><strong>文衡</strong><span>学科信息参考</span></div>
+  <nav class="nav" aria-label="工作区">
+    <a class="active" href="#">生成台</a><a href="#">报告</a><a href="#">审核台</a><a href="#">分析台</a><a href="#">台账</a><a href="#">预测台</a>
+  </nav>
+  <div class="who"><span class="avatar">卜</span>卜彤 · 管理员</div>
+</header>
+
+<main class="wrap">
+  <section class="period-bar" aria-label="生成进度">
+    <div class="period">202609<small>当前任务期次 · 配置按此期保存</small></div>
+    <ol class="steps" style="list-style:none;margin-top:0;margin-bottom:0;padding:0">
+      <li class="step done"><span class="dot">✓</span>取数贴表</li>
+      <li class="step done"><span class="dot">✓</span>放入监测表</li>
+      <li class="step now"><span class="dot">3</span>一键生成</li>
+    </ol>
+  </section>
+
+  <section class="focus">
+    <div>
+      <h1>这一期还差最后一步：生成报告</h1>
+      <p>台账已齐，监测表已就位。模型选择保存后，本次任务启动时会固定使用当时的设置。</p>
+    </div>
+    <div class="cta"><span class="hint" id="generateHint">模型选择已保存</span><button class="btn primary" id="generate" type="button">开始生成</button></div>
+  </section>
+
+  <section class="card" aria-labelledby="modelsTitle">
+    <div class="head"><span class="eyebrow">01</span><h2 id="modelsTitle">预测模型</h2><span class="badge">逐科选择 · 默认 V1 推荐</span></div>
+    <p class="lead">两条路线分别保存，模型简介随选择切换。下方学科与推荐是静态示例；正式页面按接口返回的候选学科动态显示。</p>
+
+    <div class="periods" aria-label="三种期次">
+      <div><label>配置对应的任务期次</label><strong>202609</strong></div>
+      <div><label>预测数据来源期次</label><strong>202607</strong></div>
+      <div class="actual"><label>本次报告实际输出期次</label><strong>运行结束后由系统显示</strong></div>
+    </div>
+    <div class="proposal-note"><span aria-hidden="true">◆</span><span><b>期次说明：</b>202609 是任务期次，配置随本次任务保存；预测数据目前来自 202607。运行结束后，报告可能落在另一实际期次，系统会单独标明。本次报告仅应用实际进入预测章的学科；其余已保存偏好不会改变本期数值。</span></div>
+
+    <div class="tabs" role="group" aria-label="模型路线">
+      <button type="button" data-route="citation" aria-pressed="true">路线 1 · 总被引 / ESI 前 1% 被引阈值</button>
+      <button type="button" data-route="rank" aria-pressed="false">路线 2 · 国内排名 / 国内前 1% 机构数</button>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>潜力学科</th><th>V1 基线推荐</th><th>我的选择</th><th>模型说明</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+
+    <div class="savebar">
+      <button class="btn" id="save" type="button" disabled>保存 202609 期选择</button>
+      <span class="save-status saved" id="saveStatus" role="status">示意状态：已保存 · 未手动改选，采用 V1 推荐</span>
+    </div>
+
+    <div class="relation"><strong>与报告的关系：</strong>报告预测章按现有筛选结果选取学科，并读取相应路线与学科的已保存模型；没有单独设置的学科使用 V1 推荐。设置在任务启动时固定，运行中再改只影响后续任务。所选模型若无法运行，仍按既有规则回退 V1 推荐并留下提醒。</div>
+  </section>
+  <p class="foot">文衡 · T08 审核用静态稿 · 页面示例不写入或读取项目数据</p>
+</main>
+
+<script>
+const MODEL_DESC = {
+  'Holt趋势模型': '只抓长期趋势、不管季节。适合稳定上升/下降的学科，外推最直接。',
+  '阻尼Holt模型': '趋势会「减速」——越往前推越保守。适合增长在放缓的学科。',
+  '季节性ETS模型': '抓「6 期一轮」的双月节律。适合受学年与发布节奏影响的指标。',
+  'SARIMA模型': '趋势 + 季节都管，参数在最初 30 期按 AIC 选定后固定。通用、稳。',
+  '经验贝叶斯状态空间模型': '把趋势与季节当「状态」逐期更新。对噪声大的序列更稳健。',
+};
+const MODELS = Object.keys(MODEL_DESC);
+const SUBJECTS = [
+  '分子生物学与遗传学', '物理学', '经济与商业', '免疫学',
+  '神经科学与行为科学', '精神病学与心理学', '空间科学', '多学科',
+];
+const RECOMMENDED = {
+  citation: {
+    '分子生物学与遗传学':'季节性ETS模型','物理学':'经验贝叶斯状态空间模型',
+    '经济与商业':'SARIMA模型','免疫学':'季节性ETS模型',
+    '神经科学与行为科学':'季节性ETS模型','精神病学与心理学':'经验贝叶斯状态空间模型',
+    '空间科学':'SARIMA模型','多学科':'Holt趋势模型',
+  },
+  rank: {
+    '分子生物学与遗传学':'阻尼Holt模型','物理学':'经验贝叶斯状态空间模型',
+    '经济与商业':'阻尼Holt模型','免疫学':'阻尼Holt模型',
+    '神经科学与行为科学':'SARIMA模型','精神病学与心理学':'SARIMA模型',
+    '空间科学':'SARIMA模型','多学科':'阻尼Holt模型',
+  },
+};
+const picks = { citation:{}, rank:{} };
+let route = 'citation';
+let dirty = false;
+let savedCount = 0;
+const rows = document.querySelector('#rows');
+const saveStatus = document.querySelector('#saveStatus');
+const generate = document.querySelector('#generate');
+const generateHint = document.querySelector('#generateHint');
+const saveButton = document.querySelector('#save');
+
+function renderRows(){
+  rows.replaceChildren();
+  for(const subject of SUBJECTS){
+    const rec = RECOMMENDED[route][subject];
+    const selected = picks[route][subject] || '';
+    const actual = selected || rec;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="subject"></td><td class="recommended"></td><td class="selector"><select aria-label="此学科的模型选择"><option value="">跟随 V1 推荐</option>${MODELS.map(m=>`<option value="${m}">${m}</option>`).join('')}</select><span class="choice-tag"></span></td><td class="desc"></td>`;
+    tr.querySelector('.subject').textContent = subject;
+    tr.querySelector('.recommended').textContent = rec;
+    const select = tr.querySelector('select');
+    select.value = selected;
+    select.addEventListener('change', () => {
+      picks[route][subject] = select.value;
+      dirty = true;
+      renderRows();
+      renderStatus();
+    });
+    tr.querySelector('.choice-tag').textContent = selected ? `已改选：${selected}` : '使用 V1 推荐';
+    tr.querySelector('.choice-tag').classList.toggle('changed', Boolean(selected));
+    tr.querySelector('.desc').textContent = MODEL_DESC[actual] || '由 V1 基线按学科指定。';
+    rows.append(tr);
+  }
+}
+function renderStatus(){
+  const total = Object.values(picks).reduce((n,byRoute)=>n+Object.values(byRoute).filter(Boolean).length,0);
+  savedCount = total;
+  saveStatus.className = `save-status ${dirty?'dirty':'saved'}`;
+  saveStatus.textContent = dirty
+    ? '有未保存修改 · 保存后才会用于之后开始的任务'
+    : `示意状态：已保存 · ${savedCount ? `${savedCount} 项手动改选` : '未手动改选，采用 V1 推荐'}`;
+  saveButton.disabled = !dirty;
+  generate.disabled = dirty;
+  generateHint.textContent = dirty ? '请先保存选择' : '模型选择已保存';
+}
+document.querySelectorAll('[data-route]').forEach(btn=>btn.addEventListener('click',()=>{
+  route=btn.dataset.route;
+  document.querySelectorAll('[data-route]').forEach(b=>b.setAttribute('aria-pressed',String(b===btn)));
+  renderRows();
+}));
+document.querySelector('#save').addEventListener('click',()=>{
+  dirty=false;
+  renderStatus();
+  saveStatus.textContent = `静态演示：已保存 · ${savedCount ? `${savedCount} 项手动改选` : '未手动改选，采用 V1 推荐'}`;
+});
+generate.addEventListener('click',()=>{
+  if(!dirty) alert('静态演示：任务会读取启动时冻结的已保存选择。');
+});
+renderRows();
+renderStatus();
+</script>
+</body>
+</html>
