@@ -18,6 +18,7 @@
 """
 import json
 import pathlib
+import tempfile
 import time
 
 APPROVAL_NAME = "approval.json"
@@ -113,7 +114,8 @@ def sign(out_dir, actor, data, note="", manual_ack=False):
         "note": rec["note"], "manual_ack": bool(manual_ack),
         "manual_open": counts.get("manual", 0),
     })
-    _write(p, rec)
+    if not _write(p, rec):
+        return False, "审批记录写入失败，签发未生效"
     _write_record(out_dir, rec)
     return True, rec
 
@@ -134,16 +136,38 @@ def revoke(out_dir, actor, note=""):
         "action": "revoke", "actor": actor, "at": rec["revoked_at"],
         "note": (note or "").strip(),
     })
-    _write(p, rec)
+    if not _write(p, rec):
+        return False, "审批记录写入失败，撤回未生效"
     _write_record(out_dir, rec)
     return True, rec
 
 
 def _write(path, obj):
+    path = pathlib.Path(path)
+    temp_path = None
     try:
-        path.write_text(json.dumps(obj, ensure_ascii=False, indent=1), encoding="utf-8")
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as temp_file:
+            temp_path = pathlib.Path(temp_file.name)
+            temp_file.write(json.dumps(obj, ensure_ascii=False, indent=1))
+        temp_path.replace(path)
+        return True
     except OSError:
-        pass
+        return False
+    finally:
+        if temp_path is not None:
+            try:
+                temp_path.unlink()
+            except FileNotFoundError:
+                pass
+            except OSError:
+                pass
 
 
 def _write_record(out_dir, rec):
