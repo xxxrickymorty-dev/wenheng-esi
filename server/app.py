@@ -140,6 +140,13 @@ def require_admin_file(request: Request):
     return user
 
 
+def _signed_report_download_guard(out_dir, key: str):
+    """报告初稿只允许管理员下载当前指纹有效的已签发版本。"""
+    if key != "report" or approval.status(out_dir) == "signed":
+        return None
+    return JSONResponse({"error": "报告未签发或签发已失效，不能下载"}, status_code=403)
+
+
 def _legacy_admin_gate(request):
     """旧页面先按身份分流，游客请求不探测期次或任务是否存在。"""
     user = current_user(request)
@@ -475,6 +482,9 @@ async def period_download(request: Request, period: str, key: str):
     if key == archive.LOGPACK_KEY:
         data, name = archive.pack(d, None)
         return _zip_response(data, name)
+    report_guard = _signed_report_download_guard(d, key)
+    if report_guard:
+        return report_guard
     path = jobs.resolve_period_artifact(period, key)
     if not path:
         return JSONResponse({"error": "产物不存在"}, status_code=404)
@@ -699,6 +709,9 @@ async def api_period_download(request: Request, period: str, key: str):
     if key == archive.LOGPACK_KEY:
         data, name = archive.pack(d, None)
         return _zip_response(data, name)
+    report_guard = _signed_report_download_guard(d, key)
+    if report_guard:
+        return report_guard
     path = jobs.resolve_period_artifact(d.name, key)
     if not path:
         return JSONResponse({"error": "产物不存在"}, status_code=404)
@@ -1447,6 +1460,10 @@ async def api_job_download(request: Request, job_id: str, key: str):
         out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
         data, name = archive.pack(out_dir, job)
         return _zip_response(data, name)
+    out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
+    report_guard = _signed_report_download_guard(out_dir, key)
+    if report_guard:
+        return report_guard
     path = jobs.resolve_artifact(job, key)
     if not path:
         return JSONResponse({"error": "产物不存在"}, status_code=404)
@@ -1574,6 +1591,10 @@ async def download(request: Request, job_id: str, key: str):
         out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
         data, name = archive.pack(out_dir, job)
         return _zip_response(data, name)
+    out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
+    report_guard = _signed_report_download_guard(out_dir, key)
+    if report_guard:
+        return report_guard
     path = jobs.resolve_artifact(job, key)
     if not path:
         return JSONResponse({"error": "产物不存在"}, status_code=404)
