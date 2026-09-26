@@ -7,8 +7,8 @@
 三件事：
 
 1. **落盘**：`out/<期次>/approval.json`（含操作历史）+ 导出一份 `审批记录.md`。
-2. **绑版本**：签单时给报告初稿与 `red_slots.json` 取指纹（mtime + size）。流水线一重跑，
-   指纹就变了，签名立刻标记为 `stale`（已失效）——否则「签过」这两个字会跟着一份
+2. **绑版本**：签单时对报告初稿、`table2.csv` 与 `red_slots.json` 取 SHA-256 内容指纹。
+   内容一变，签名立刻标记为 `stale`（已失效）——否则「签过」这两个字会跟着一份
    没人看过的稿子走，这是审批里最危险的事。
 3. **闸门**：签之前必过
    - 机器断言无 FAIL；
@@ -16,6 +16,7 @@
 
 不落库、不过闸的签单，等于没签。
 """
+import hashlib
 import json
 import pathlib
 import tempfile
@@ -26,6 +27,8 @@ RECORD_NAME = "审批记录.md"
 
 # 指纹覆盖的产物：任何一份变了，签名即失效
 FINGERPRINT_GLOBS = ["red_slots.json", "报告初稿_*.docx", "table2.csv"]
+FINGERPRINT_ALGORITHM = "sha256"
+FINGERPRINT_VERSION = 1
 
 
 def _now():
@@ -38,17 +41,24 @@ def _paths(out_dir):
 
 
 def fingerprint(out_dir):
-    """报告状态指纹：{文件名: size:mtime}。读不到的文件不进指纹。"""
+    """报告状态指纹：版本化的文件名到 SHA-256 内容哈希映射。"""
     out_dir = pathlib.Path(out_dir)
-    fp = {}
+    files = {}
     for pat in FINGERPRINT_GLOBS:
         for p in sorted(out_dir.glob(pat)):
             try:
-                st = p.stat()
+                digest = hashlib.sha256()
+                with p.open("rb") as source:
+                    for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                        digest.update(chunk)
             except OSError:
                 continue
-            fp[p.name] = f"{st.st_size}:{int(st.st_mtime)}"
-    return fp
+            files[p.name] = digest.hexdigest()
+    return {
+        "algorithm": FINGERPRINT_ALGORITHM,
+        "version": FINGERPRINT_VERSION,
+        "files": files,
+    }
 
 
 def read(out_dir):
@@ -72,7 +82,13 @@ def status(out_dir, rec=None):
     rec = rec if rec is not None else read(out_dir)
     if not rec.get("signed"):
         return "unsigned"
-    if rec.get("fingerprint") != fingerprint(out_dir):
+    recorded_fingerprint = rec.get("fingerprint")
+    if (
+        not isinstance(recorded_fingerprint, dict)
+        or recorded_fingerprint.get("algorithm") != FINGERPRINT_ALGORITHM
+        or recorded_fingerprint.get("version") != FINGERPRINT_VERSION
+        or recorded_fingerprint != fingerprint(out_dir)
+    ):
         return "stale"
     return "signed"
 
@@ -94,6 +110,7 @@ def sign(out_dir, actor, data, note="", manual_ack=False):
     if counts.get("manual") and not manual_ack:
         return False, f"仍有 {counts['manual']} 处待人工补录项，需显式确认「已知悉并放行」"
 
+    report_fingerprint = fingerprint(out_dir)
     rec.update({
         "signed": True,
         "actor": actor,
@@ -106,7 +123,8 @@ def sign(out_dir, actor, data, note="", manual_ack=False):
             "assertions": assertions,
             "bigtable": (data or {}).get("bigtable") or {},
         },
-        "fingerprint": fingerprint(out_dir),
+        "fingerprint": report_fingerprint,
+        "red_slots_sha256": report_fingerprint["files"].get("red_slots.json"),
         "revoked_at": "",
     })
     rec.setdefault("history", []).append({

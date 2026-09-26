@@ -104,7 +104,7 @@
 ## 验收三件套（改状态相关代码后按序跑）
 
 ```bash
-.venv\Scripts\python.exe -m pytest -m ""          # 全量 717 例（默认 713 例，4 个 slow 被 marker 排除）
+.venv\Scripts\python.exe -m pytest -m ""          # 全量 725 例（默认 721 例，4 个 slow 被 marker 排除）
 uvicorn server.app:app --port 8080                 # 起服务后跑 server/e2e_check.py（只读 166 断言）
 .venv\Scripts\python.exe tools/verify_demo_run.py <期次>   # 写路径验收
 ```
@@ -120,7 +120,7 @@ uvicorn server.app:app --port 8080                 # 起服务后跑 server/e2e_
 
 | # | 事项 | 状态 |
 |---|---|---|
-| L1 | `SRS R-19` 要求 `approval.json` 含 `red_slots_sha256` | ❌ **未实现**：实际只有 `fingerprint: {文件名: "size:mtime"}`，全库零处 `sha256`。属实质缺口（内容变了而 size/mtime 没变就查不出来），**待决定是否本期补** |
+| L1 | `SRS R-19` 要求 `approval.json` 含 `red_slots_sha256` | ✅ **T04 已实现（2026-09-26）**：签发记录保存红色件 SHA-256（缺少 `red_slots.json` 时为 `null`）；报告指纹为版本化 SHA-256 内容哈希。同大小、同时间戳的内容变化会使旧签发 `stale`；旧 `size:mtime` 与空 `{}` 指纹保持可读但未验证/失效，不自动回填哈希 |
 | L3 | 待裁决 13 号：两维度结论不一致时预测章以谁为准 | 待裁 |
 | L4 | #11 已定口径确认人＝卜彤，须当面知会馆员 | 待做 |
 | — | M3 自愈 | ✅ **已完成**（`187426a` + 09-16 补强）：`heal.py` + `rules/repair_rules.yaml`（6 条规则）+ `tests/test_agent_heal.py`（46 例，含真实台账端到端脏例与逐格对齐的「报告数字对」判据）。2 条 auto 已生效；**2 条 declare 待卜彤填 `approved_by` 才生效**；2 条 never 只出建议。补强项：失败运行不落盘 + 上版成品隔离（两条路径共用 `parse_ledger.quarantine_final_products`）+ 台账运行期 sha256 护栏 + 规则库故障与"无匹配"分开报 + 跳过登记复核 |
