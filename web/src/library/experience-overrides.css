@@ -1,0 +1,71 @@
+.room-catalog-list {
+  position: absolute;
+  z-index: 5;
+  top: 42%;
+  right: clamp(24px, 4vw, 80px);
+  width: min(300px, 28vw);
+  max-height: 38vh;
+  overflow: auto;
+  border: 1px solid #d9d1b77a;
+  background: rgba(14, 39, 34, .82);
+  color: #eee7d7;
+  backdrop-filter: blur(10px);
+  pointer-events: auto;
+}
+
+.room-catalog-list summary {
+  padding: 12px 15px;
+  color: #e3dcc8;
+  cursor: pointer;
+  letter-spacing: .08em;
+}
+
+.room-catalog-list ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0 10px 10px;
+  list-style: none;
+}
+
+.room-catalog-list button {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid #d9d1b744;
+  background: #17392f;
+  color: #eee7d7;
+  text-align: left;
+  cursor: pointer;
+}
+
+.room-catalog-list button:hover {
+  border-color: #d9d1b7;
+  background: #244b3b;
+}
+
+.room-catalog-list :focus-visible {
+  outline: 2px solid #eddbac;
+  outline-offset: 2px;
+}
+
+@media (max-width: 800px) {
+  .room-catalog-list {
+    top: auto;
+    right: 18px;
+    bottom: 126px;
+    width: min(280px, 52vw);
+    max-height: 31vh;
+  }
+}
+
+@media (max-width: 460px) {
+  .room-catalog-list {
+    right: 13px;
+    bottom: 128px;
+    width: min(250px, 57vw);
+  }
+}
+
+.topbar-right button {
+  min-height: 44px;
+}
