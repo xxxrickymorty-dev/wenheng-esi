@@ -7,11 +7,11 @@
 <title>文衡 · 自动取数台（静态稿）</title>
 <style>
 :root{
-  --bg:#eae7e2; --card:#f8f6f2; --panel:#f1efea; --panel-2:#eeebe5;
-  --ink:#312e2a; --ink-2:#514c46; --muted:#68625a; --line:#d8d4cc; --line-soft:#e6e3dd;
-  --accent:#a8442f; --accent-soft:#f0dcd6; --gold:#74551d; --gold-soft:#eee7d8;
-  --ok:#3f6748; --ok-soft:#e2ebe1; --warn:#725117; --warn-soft:#f2ead6;
-  --bad:#963d31; --bad-soft:#f2e1dc; --shadow:0 2px 5px rgba(49,46,42,.045),0 14px 34px rgba(49,46,42,.055);
+  --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB; --panel-2:#E8ECE5;
+  --ink:#222B25; --ink-2:#3F4C42; --muted:#58655C; --line:#DDE1D8; --line-soft:#E6E9E2;
+  --accent:#1A4B27; --accent-soft:#E5ECE3; --gold:#B19A65; --gold-soft:#F1EBDD;
+  --ok:#28643A; --ok-soft:#E6EFE6; --warn:#62501F; --warn-soft:#F2EDDF;
+  --bad:#B43B31; --bad-soft:#F4E6E2; --shadow:0 2px 5px rgba(34,43,37,.045),0 14px 34px rgba(34,43,37,.055);
   --radius:16px; --radius-sm:11px;
 }
 html[data-palette="zhu"]{
@@ -20,20 +20,6 @@ html[data-palette="zhu"]{
   --accent:#a52f23; --accent-soft:#f0dcd5; --gold:#705017; --gold-soft:#efe3c9;
   --ok:#356342; --ok-soft:#e2ece0; --warn:#70490f; --warn-soft:#f5ead2;
   --bad:#9b2f1d; --bad-soft:#f4ddd7;
-}
-html[data-palette="morandi"]{
-  --bg:#eceae6; --card:#f7f6f3; --panel:#f1efeb; --panel-2:#e9e7e1;
-  --ink:#302f2c; --ink-2:#4c4943; --muted:#625d55; --line:#d7d3cb; --line-soft:#e5e2dc;
-  --accent:#75473f; --accent-soft:#ece0dd; --gold:#625d45; --gold-soft:#e8e6dc;
-  --ok:#3d5946; --ok-soft:#e4ebe5; --warn:#5e4c2f; --warn-soft:#eee9dd;
-  --bad:#75453d; --bad-soft:#eee2de;
-}
-html[data-palette="ynu"]{
-  --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB; --panel-2:#E8ECE5;
-  --ink:#222B25; --ink-2:#3F4C42; --muted:#58655C; --line:#DDE1D8; --line-soft:#E6E9E2;
-  --accent:#1A4B27; --accent-soft:#E5ECE3; --gold:#B19A65; --gold-soft:#F1EBDD;
-  --ok:#28643A; --ok-soft:#E6EFE6; --warn:#62501F; --warn-soft:#F2EDDF;
-  --bad:#B43B31; --bad-soft:#F4E6E2; --shadow:0 2px 5px rgba(34,43,37,.045),0 14px 34px rgba(34,43,37,.055);
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -320,9 +306,7 @@ html[data-palette="ynu"] .flow{box-shadow:0 3px 12px rgba(34,43,37,.035)}
   <div class="review-group" role="group" aria-label="切换配色">
     <span>配色</span>
     <button class="seg-btn" type="button" data-palette-choice="ynu" aria-pressed="true">云大绿</button>
-    <button class="seg-btn" type="button" data-palette-choice="mix" aria-pressed="false">莫兰迪 + 朱砂</button>
-    <button class="seg-btn" type="button" data-palette-choice="zhu" aria-pressed="false">朱批</button>
-    <button class="seg-btn" type="button" data-palette-choice="morandi" aria-pressed="false">莫兰迪</button>
+    <button class="seg-btn" type="button" data-palette-choice="zhu" aria-pressed="false">朱砂</button>
   </div>
 </div>
 
