@@ -1,9 +1,12 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 
 // 后端地址（开发时把 API 与登录转发过去，保持同源 → cookie 直接生效）
 const BACKEND = process.env.WENHENG_BACKEND ?? 'http://127.0.0.1:8080'
+const WEB_ROOT = fileURLToPath(new URL('.', import.meta.url))
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -16,6 +19,15 @@ export default defineConfig({
       '/login': BACKEND,
       '/logout': BACKEND,
       '/healthz': BACKEND,
+      '^/app/shelf/data\\.js$': BACKEND,
+    },
+  },
+  build: {
+    rolldownOptions: {
+      input: {
+        workspace: resolve(WEB_ROOT, 'index.html'),
+        shelf: resolve(WEB_ROOT, 'shelf/index.html'),
+      },
     },
   },
 })
