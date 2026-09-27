@@ -51,12 +51,20 @@ class TestArchive组装:
             assert k in view, k
         assert view["logpack"]["key"] == "logpack"
 
-    def test_接口层剥掉绝对路径(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_period_archive")[1].split("@app.")[0]
-        assert 'view.pop("out_dir"' in block
-        assert 'view.pop("progress_path"' in block
-        assert '"logpack_url"' in block
+    def test_接口层剥掉绝对路径(self, tmp_path, monkeypatch):
+        d = tmp_path / "202609"
+        monkeypatch.setattr(app_module, "resolve_period_dir", lambda period: d)
+        monkeypatch.setattr(app_module.jobs, "list_jobs", lambda *a, **k: [])
+        monkeypatch.setattr(app_module.jobs, "collect_period_artifacts", lambda name: [])
+        raw = {"out_dir": "C:/abs/out", "progress_path": "C:/abs/p.jsonl",
+               "job": {"input": "C:/abs/input/监测表.xlsx"}, "stats": {}, "run_log": {},
+               "logpack": {"key": "logpack"}}
+        monkeypatch.setattr(app_module.archive, "build", lambda *a, **k: dict(raw))
+        view = asyncio.run(app_module.api_period_archive(_Req(config.DEMO_USER), "202609"))
+        assert "out_dir" not in view and "progress_path" not in view
+        assert view["job"]["input"] == "监测表.xlsx", "绝对路径必须转仓库相对/文件名"
+        assert view["download_base"] == "/p/202609"
+        assert view["logpack_url"] == "/p/202609/download/logpack"
 
 
 class Test权限:

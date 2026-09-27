@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """契约 #19（facts 加 trend）/ #20（forecast/board）——2026-09-24 前端清单。"""
 import asyncio
+import json
 import pathlib
 import sys
 
@@ -103,8 +104,13 @@ class TestFactsTrend:
         assert "202607" in finite and finite["202607"] == 274.0
         assert all(isinstance(v, (int, float)) for v in finite.values())
 
-    def test_facts端点带trend字段(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_period_facts")[1].split("@app.")[0]
-        assert '"trend": trend' in block
-        assert "top_total_by_period" in block
+    def test_facts端点带trend字段(self, tmp_path, monkeypatch):
+        d = tmp_path / "202609"
+        d.mkdir()
+        (d / "overview_facts.json").write_text("{}", encoding="utf-8")
+        (d / "meta.json").write_text(json.dumps({
+            "top_total_by_period": {"202607": 274.0, "bad": "x"}},
+            ensure_ascii=False), encoding="utf-8")
+        monkeypatch.setattr(app_module, "resolve_period_dir", lambda period: d)
+        r = asyncio.run(app_module.api_period_facts(_Req(config.DEMO_USER), "202609"))
+        assert r["trend"] == {"202607": 274.0}, "trend 只保留数值（非数值滤掉）"

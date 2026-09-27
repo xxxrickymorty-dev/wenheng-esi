@@ -108,12 +108,22 @@ class Test路由与权限:
             _Req(config.GUEST_USER), "jid")).status_code == 403
         assert asyncio.run(app_module.api_job_progress(_Req(None), "jid")).status_code == 401
 
-    def test_复用archive_waterfall不重造轮子(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_job_progress")[1].split("@app.")[0]
-        assert "archive.waterfall" in block
+    def test_复用archive_waterfall不重造轮子(self, monkeypatch):
+        sentinel = [{"step": "parse", "sec": 1.0}]
+        monkeypatch.setattr(app_module.jobs, "read_job",
+                            lambda jid: {"status": "done", "progress": ""})
+        monkeypatch.setattr(app_module.jobs, "read_progress", lambda job: [])
+        monkeypatch.setattr(app_module.archive, "waterfall", lambda events: sentinel)
+        monkeypatch.setattr(app_module.archive, "waterfall_summary", lambda events: {})
+        r = asyncio.run(app_module.api_job_progress(_Req(config.DEMO_USER), "jid"))
+        assert r["waterfall"] is sentinel, "必须委托 archive.waterfall，不要各自实现"
 
-    def test_missing降级不500(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_job_progress")[1].split("@app.")[0]
-        assert '"missing": missing' in block and '"note"' in block
+    def test_missing降级不500(self, tmp_path, monkeypatch):
+        missing = tmp_path / "nope.jsonl"
+        monkeypatch.setattr(app_module.jobs, "read_job",
+                            lambda jid: {"status": "done", "progress": str(missing)})
+        monkeypatch.setattr(app_module.jobs, "read_progress", lambda job: [])
+        monkeypatch.setattr(app_module.archive, "waterfall", lambda events: [])
+        monkeypatch.setattr(app_module.archive, "waterfall_summary", lambda events: {})
+        r = asyncio.run(app_module.api_job_progress(_Req(config.DEMO_USER), "jid"))
+        assert r["missing"] is True and r["note"]

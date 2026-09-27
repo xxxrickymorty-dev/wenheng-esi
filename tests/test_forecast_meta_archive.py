@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """#5 forecast/meta recommendations + #18 archive 自动挂任务（2026-09-24 前端清单）。"""
+import asyncio
 import json
 import os
 import pathlib
@@ -13,6 +14,12 @@ for p in (str(REPO), str(REPO / "src")):
         sys.path.insert(0, p)
 
 from server import forecasting                                # noqa: E402
+from server import app as app_module                          # noqa: E402
+
+
+class _Req:
+    def __init__(self, user=None):
+        self.session = {"user": user} if user else {}
 
 
 class TestForecastMeta推荐:
@@ -196,12 +203,31 @@ class TestForecastMeta推荐:
 
 
 class TestArchive自动挂任务:
-    def test_接口层会找最近任务(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_period_archive")[1].split("@app.")[0]
-        assert "jobs.list_jobs(50)" in block
-        assert "jobs.read_job(job)" in block          # ?job= 支持
-        assert "job=target" in block                   # 传给 archive.build
+    def test_接口层会找最近任务(self, tmp_path, monkeypatch):
+        from server import config
+        d = tmp_path / "202609"
+        d.mkdir()
+        seen = {}
+        monkeypatch.setattr(app_module, "resolve_period_dir", lambda period: d)
+        monkeypatch.setattr(app_module.jobs, "collect_period_artifacts", lambda name: [])
+        monkeypatch.setattr(app_module.archive, "build",
+                            lambda out_dir, job=None, artifacts=None:
+                            seen.update(job=job) or {"logpack": {"key": "logpack"}})
+
+        def _list_jobs(limit=20, period=None):
+            seen["limit"] = limit
+            return []
+        monkeypatch.setattr(app_module.jobs, "list_jobs", _list_jobs)
+
+        asyncio.run(app_module.api_period_archive(_Req(config.DEMO_USER), "202609"))
+        assert seen["limit"] == 50, "应自动挂该期最近一次任务（list_jobs(50)）"
+        assert seen["job"] is None
+
+        target = {"id": "j1"}
+        monkeypatch.setattr(app_module.jobs, "read_job", lambda jid: target)
+        asyncio.run(app_module.api_period_archive(
+            _Req(config.DEMO_USER), "202609", "j1"))
+        assert seen["job"] is target, "?job= 指定的任务要传给 archive.build"
 
     def test_挂任务后replay不是空链(self):
         """有任务上下文时 replay 应给出真实链（对比 job=None 的合成空链）。"""

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """契约 #21：灵活报告两口（2026-09-24 前端清单）。"""
 import asyncio
+import json
 import pathlib
 import sys
 
@@ -14,8 +15,12 @@ from server.app import _flex_ctx, resolve_period_dir          # noqa: E402
 
 
 class _Req:
-    def __init__(self, user=None):
+    def __init__(self, user=None, body=None):
         self.session = {"user": user} if user else {}
+        self.body = body
+
+    async def json(self):
+        return self.body
 
 
 def _ctx_or_skip():
@@ -71,14 +76,29 @@ class Test路由与权限:
             assert asyncio.run(fn(_Req(config.GUEST_USER), "202609")).status_code == 403
             assert asyncio.run(fn(_Req(None), "202609")).status_code == 401
 
-    def test_POST只写flexible目录(self):
-        """生成只动 out/<期次>/flexible/ —— 源码层确认没碰 input/ 或台账。"""
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_period_flexible_generate")[1].split("@app.")[0]
-        assert "flex_report.generate" in block
-        assert "INPUT_DIR" not in block and "监测表" not in block
+    def test_POST只写flexible目录(self, tmp_path, monkeypatch):
+        """生成只动 out/<期次>/flexible/；config.INPUT_DIR 被触碰即失败。"""
+        seen = {}
+        monkeypatch.setattr(appmod, "resolve_period_dir", lambda period: tmp_path)
 
-    def test_未知意图400(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_period_flexible_generate")[1].split("@app.")[0]
-        assert "INTENTS" in block and "400" in block
+        class _BombPath:
+            def __truediv__(self, other):
+                raise AssertionError("生成不应触碰 input/ 或台账")
+        monkeypatch.setattr(appmod.config, "INPUT_DIR", _BombPath())
+
+        import flexible.report as flex_report
+        monkeypatch.setattr(
+            flex_report, "generate",
+            lambda d, intent, **k: seen.update(dir=d, intent=intent)
+            or {"n_charts": 1, "plan": {"backend": "rule"}})
+        r = asyncio.run(appmod.api_period_flexible_generate(
+            _Req(config.DEMO_USER, {"intent": "single_trend"}), "202609"))
+        assert r["ok"] is True
+        assert seen == {"dir": tmp_path, "intent": "single_trend"}
+
+    def test_未知意图400(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(appmod, "resolve_period_dir", lambda period: tmp_path)
+        r = asyncio.run(appmod.api_period_flexible_generate(
+            _Req(config.DEMO_USER, {"intent": "不存在的意图"}), "202609"))
+        assert r.status_code == 400
+        assert "未知意图" in json.loads(r.body)["error"]
