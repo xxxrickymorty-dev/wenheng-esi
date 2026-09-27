@@ -3,6 +3,7 @@
 
 与档案页同口径：archive.waterfall 把 progress.jsonl 事件转成每步耗时。
 """
+import asyncio
 import pathlib
 import sys
 
@@ -11,7 +12,13 @@ for p in (str(REPO), str(REPO / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from server import archive, jobs                              # noqa: E402
+from server import archive, config, jobs                       # noqa: E402
+from server import app as app_module                           # noqa: E402
+
+
+class _Req:
+    def __init__(self, user=None):
+        self.session = {"user": user} if user else {}
 
 
 def _sample_events():
@@ -97,9 +104,9 @@ class Test路由与权限:
         assert '@app.get("/api/jobs/{job_id}/progress")' in src
 
     def test_用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_job_progress")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_job_progress(
+            _Req(config.GUEST_USER), "jid")).status_code == 403
+        assert asyncio.run(app_module.api_job_progress(_Req(None), "jid")).status_code == 401
 
     def test_复用archive_waterfall不重造轮子(self):
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")

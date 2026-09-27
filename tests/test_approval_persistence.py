@@ -125,6 +125,8 @@ def test_sign_route_returns_409_when_approval_persistence_fails(
     monkeypatch.setattr(os, "replace", _fail_replace_for(approval.APPROVAL_NAME))
 
     class _Request:
+        session = {"user": "rick"}
+
         async def json(self):
             return {"note": "", "known": False}
 

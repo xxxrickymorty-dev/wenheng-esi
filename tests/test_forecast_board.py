@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """契约 #19（facts 加 trend）/ #20（forecast/board）——2026-09-24 前端清单。"""
+import asyncio
 import pathlib
 import sys
 
@@ -8,8 +9,14 @@ for p in (str(REPO), str(REPO / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from server import forecasting                                # noqa: E402
+from server import config, forecasting                        # noqa: E402
+from server import app as app_module                          # noqa: E402
 from server.app import resolve_period_dir                     # noqa: E402
+
+
+class _Req:
+    def __init__(self, user=None):
+        self.session = {"user": user} if user else {}
 
 
 def _board_or_skip():
@@ -77,9 +84,9 @@ class TestBoard路由与权限:
         assert '@app.get("/api/forecast/board")' in src
 
     def test_用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_forecast_board")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_forecast_board(
+            _Req(config.GUEST_USER))).status_code == 403
+        assert asyncio.run(app_module.api_forecast_board(_Req(None))).status_code == 401
 
 
 class TestFactsTrend:

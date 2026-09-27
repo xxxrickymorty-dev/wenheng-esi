@@ -101,18 +101,19 @@ class TestCharts:
 
 class Test权限门:
     def test_redslots用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_period_redslots")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_period_redslots(
+            _Req(config.GUEST_USER), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_redslots(
+            _Req(None), "202609")).status_code == 401
 
     def test_collation用require_admin且拒绝guest(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_period_collation")[1].split("@app.")[0]
-        assert "require_admin" in block
-        assert asyncio.run(app_module.api_period_collation(_Req(config.GUEST_USER), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_collation(
+            _Req(config.GUEST_USER), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_collation(
+            _Req(None), "202609")).status_code == 401
 
     def test_charts用require_admin且拒绝guest(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_period_charts_json")[1].split("@app.")[0]
-        assert "require_admin" in block
-        assert asyncio.run(app_module.api_period_charts_json(_Req(config.GUEST_USER), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_charts_json(
+            _Req(config.GUEST_USER), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_charts_json(
+            _Req(None), "202609")).status_code == 401

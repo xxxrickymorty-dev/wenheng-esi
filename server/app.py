@@ -24,6 +24,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from . import approval, archive, collation, config, jobs, shelf_data, shelf_preview
 from . import forecasting
+from .guards import admin_file_route, admin_route
 from .protected_static import AdminStaticFiles
 from src import period as period_mod  # 期次口径唯一来源（ADR-0001：新工作区 API 也用它）
 from src import forecast_choice  # 预测选模的唯一 implementation（读写/快照/留痕）
@@ -420,12 +421,10 @@ async def period_flexible(request: Request, period: str, intent: str = "",
 
 
 @app.get("/p/{period}/flexible/chart/{intent}/{name}")
+@admin_file_route
 async def period_flexible_chart(request: Request, period: str,
                                 intent: str, name: str):
     """灵活报告的图。**与复刻图分开解析** —— 归到 `flexible/<intent>/charts/` 下。"""
-    guard = require_admin_file(request)
-    if isinstance(guard, (JSONResponse, RedirectResponse)):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return RedirectResponse("/", status_code=303)
@@ -453,15 +452,13 @@ async def period_archive(request: Request, period: str):
 
 
 @app.get("/p/{period}/chart/{rel:path}")
+@admin_file_route
 async def period_chart(request: Request, period: str, rel: str):
     """图表原图（只读）。`rel` 是 `red_slots.json` 里 `source` 去掉 `charts/` 的部分。
 
     越界请求由 `jobs.resolve_chart` 挡住——这条路由直接服务磁盘文件，
     少一道检查就能读到 `server/.env`，别在这里省事。
     """
-    guard = require_admin_file(request)
-    if isinstance(guard, (JSONResponse, RedirectResponse)):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -473,10 +470,8 @@ async def period_chart(request: Request, period: str, rel: str):
 
 
 @app.get("/p/{period}/download/{key}")
+@admin_file_route
 async def period_download(request: Request, period: str, key: str):
-    guard = require_admin_file(request)
-    if isinstance(guard, (JSONResponse, RedirectResponse)):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return RedirectResponse("/", status_code=303)
@@ -553,10 +548,8 @@ async def collation_page(request: Request, job_id: str,
     return _legacy_redirect(request, "/jobs/{job_id}/collation", period=period)
 
 @app.get("/api/jobs/{job_id}/approval")
+@admin_route
 async def api_approval(request: Request, job_id: str):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     job = jobs.read_job(job_id)
     if not job:
         return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
@@ -567,6 +560,7 @@ async def api_approval(request: Request, job_id: str):
 
 
 @app.get("/api/jobs/{job_id}/progress")
+@admin_route
 async def api_job_progress(request: Request, job_id: str):
     """任务潜布：parse progress.jsonl -> events + 每步耗时。
 
@@ -575,9 +569,6 @@ async def api_job_progress(request: Request, job_id: str):
 
     直跑路径（一键出报告.bat）没有 progress.jsonl：missing=true 降级，不 500。
     """
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     job = jobs.read_job(job_id)
     if not job:
         return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
@@ -607,11 +598,9 @@ async def healthz():
 
 
 @app.get("/api/status")
+@admin_route
 async def api_status(request: Request):
     """工作区任务入口：只提供前端跳转所需的任务标识，不暴露落盘记录。"""
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     active = jobs.active_job()
     last = next((j for j in jobs.list_jobs(20) if j.get("stats")), None)
     return {
@@ -622,15 +611,13 @@ async def api_status(request: Request):
 
 
 @app.get("/api/periods")
+@admin_route
 async def api_periods(request: Request):
     """期次列表（新工作区系统 /app 的数据源）——与首屏印记链同源（period_cards）。
 
     期次文案走 src/period.py（口径唯一来源）；带后缀目录（如 202605_复现）算不出
     总期号时退回目录名，不编假期号。
     """
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     out = []
     for c in period_cards():
         try:
@@ -653,10 +640,8 @@ async def api_me(request: Request):
 
 
 @app.get("/api/periods/{period}")
+@admin_route
 async def api_period_detail(request: Request, period: str):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -687,11 +672,9 @@ async def api_period_detail(request: Request, period: str):
 
 
 @app.get("/api/periods/{period}/artifacts")
+@admin_route
 async def api_period_artifacts(request: Request, period: str):
     """按期次列运行产物，仅管理员可读。"""
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -699,11 +682,9 @@ async def api_period_artifacts(request: Request, period: str):
 
 
 @app.get("/api/periods/{period}/download/{key}")
+@admin_route
 async def api_period_download(request: Request, period: str, key: str):
     """期次产物下载仅管理员可读。"""
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -730,32 +711,28 @@ def _paginate(items, limit, offset):
 
 
 @app.post("/api/periods/{period}/sign")
+@admin_route
 async def api_period_sign_json(request: Request, period: str):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
     body = await request.json()
     note = str(body.get("note", ""))
     manual_ack = bool(body.get("known", body.get("manual_ack", False)))
-    ok, res = approval.sign(d, guard, collation.build(d), note=note, manual_ack=manual_ack)
+    ok, res = approval.sign(d, current_user(request), collation.build(d), note=note, manual_ack=manual_ack)
     if not ok:
         return JSONResponse({"error": str(res), "hint": "请先解决闸门拒绝的原因"}, status_code=409)
     return {"status": approval.status(d, res), "fingerprint": approval.fingerprint(d)}
 
 
 @app.get("/api/periods/{period}/forecast-choice")
+@admin_route
 async def api_forecast_choice_get(request: Request, period: str):
     """读回请求期次的预测模型选择，仅管理员可读。
 
     ⚠️ 这条是 **GET**（2026-09-24 修）：此前被误挂成 `@app.post`，又注册在下面的
     `api_route(methods=["GET","POST"])` 之前——FastAPI 按注册顺序匹配，POST 会被这条
     抢先接走，导致「保存选择」永远只读回、不落盘。改装饰器前先想一遍注册顺序。"""
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     if not _forecast_choice_period_is_safe(period):
         return JSONResponse({"error": "期次格式无效"}, status_code=400)
     entry = forecast_choice.read_entry(
@@ -774,15 +751,10 @@ _count_forecast_choice = forecast_choice.count
 
 
 @app.api_route("/api/periods/{period}/forecast-choice", methods=["GET", "POST"])
+@admin_route
 async def api_forecast_choice(request: Request, period: str):
     if request.method == "GET":
-        guard = require_admin(request)
-        if isinstance(guard, JSONResponse):
-            return guard
         return await api_forecast_choice_get(request, period)
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     if not _forecast_choice_period_is_safe(period):
         return JSONResponse({"error": "期次格式无效"}, status_code=400)
     try:
@@ -801,7 +773,7 @@ async def api_forecast_choice(request: Request, period: str):
     ok, error = forecast_choice.validate(choice, subjects=candidate_subjects)
     if not ok:
         return JSONResponse({"error": error}, status_code=400)
-    forecast_choice.write_entry(period, choice, by=guard, at=forecast_choice.now(),
+    forecast_choice.write_entry(period, choice, by=current_user(request), at=forecast_choice.now(),
                                 choices_dir=config.FORECAST_CHOICES_DIR)
     n_subjects, n_routes = forecast_choice.count(choice)
     resp = {"ok": True, "saved": n_subjects,
@@ -812,26 +784,22 @@ async def api_forecast_choice(request: Request, period: str):
 
 
 @app.post("/api/periods/{period}/revoke")
+@admin_route
 async def api_period_revoke_json(request: Request, period: str):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
     body = await request.json()
     note = str(body.get("note", ""))
-    ok, res = approval.revoke(d, guard, note=note)
+    ok, res = approval.revoke(d, current_user(request), note=note)
     if not ok:
         return JSONResponse({"error": str(res), "hint": "请先解决闸门拒绝的原因"}, status_code=409)
     return {"status": approval.status(d, res)}
 
 
 @app.post("/api/periods/{period}/fill")
+@admin_route
 async def api_period_fill_json(request: Request, period: str):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -843,16 +811,14 @@ async def api_period_fill_json(request: Request, period: str):
     n = 0
     for todo_id, value in items.items():
         if str(todo_id).strip():
-            workbench.save_fill(d, str(todo_id), str(value), by=guard)
+            workbench.save_fill(d, str(todo_id), str(value), by=current_user(request))
             n += 1
     return {"ok": True, "saved": n}
 
 
 @app.post("/api/periods/{period}/flag")
+@admin_route
 async def api_period_flag_json(request: Request, period: str):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -861,11 +827,12 @@ async def api_period_flag_json(request: Request, period: str):
     if not loc:
         return JSONResponse({"error": "loc 不能为空", "hint": "例：T01/r9c3"}, status_code=400)
     from . import workbench                                     # noqa: PLC0415
-    r = workbench.toggle_flag(d, loc, by=guard)
+    r = workbench.toggle_flag(d, loc, by=current_user(request))
     return {"ok": True, "loc": r["loc"], "state": r["state"], "n_doubt": r["n_doubt"]}
 
 
 @app.post("/api/periods/{period}/rebuild")
+@admin_route
 async def api_period_rebuild_json(request: Request, period: str):
     """填完重出（JSON 版）——与表单版同一套三步。
 
@@ -874,9 +841,6 @@ async def api_period_rebuild_json(request: Request, period: str):
     ③ fill_docx 用已解析宽表重出，不重新解析台账
     转 2-15 秒（重插 96 张图），同步阻塞 —— uvicorn 单 worker 是项目既定约束。
     """
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -889,7 +853,7 @@ async def api_period_rebuild_json(request: Request, period: str):
     from . import workbench                                 # noqa: PLC0415
     for todo_id, value in items.items():                    # ① 先存
         if str(todo_id).strip():
-            workbench.save_fill(d, str(todo_id), str(value), by=guard)
+            workbench.save_fill(d, str(todo_id), str(value), by=current_user(request))
     fills = workbench.load_fills(d)
     if not fills:                                           # ② 没内容就不动产物
         return JSONResponse({"error": "还没有填写内容", "hint": "先在工作台填值再重出"}, status_code=409)
@@ -942,11 +906,9 @@ def _localize_facts(facts: dict) -> dict:
 
 
 @app.get("/api/periods/{period}/facts")
+@admin_route
 async def api_period_facts(request: Request, period: str):
     """读数带数据：overview_facts.json + meta.json 摘要，仅管理员可读。"""
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -976,11 +938,9 @@ async def api_period_facts(request: Request, period: str):
 
 
 @app.get("/api/periods/{period}/workbench")
+@admin_route
 async def api_period_workbench(request: Request, period: str):
     """工作台全量数据：todo/fills/pending/approval。admin 可读。"""
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -1019,6 +979,7 @@ def _sanitize_paths(obj, keys):
 
 
 @app.get("/api/periods/{period}/archive")
+@admin_route
 async def api_period_archive(request: Request, period: str, job: str = ""):
     """期次运行档案 JSON（契约 §2.2 #18）—— 状态机回放 + 瀑布 + 审计 + 日志包清单。
 
@@ -1026,9 +987,6 @@ async def api_period_archive(request: Request, period: str, job: str = ""):
     （否则 replay 只能是空链、waterfall 无事件）；`?job=<id>` 可指定某次运行。
     安全：**不回服务器绝对路径**；日志包下载走保留的 `/p/{period}/download/logpack`。
     """
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -1054,6 +1012,7 @@ async def api_period_archive(request: Request, period: str, job: str = ""):
 
 
 @app.get("/api/periods/{period}/trace")
+@admin_route
 async def api_period_trace(request: Request, period: str, cat: str = "bigtable",
                            limit: int = 60, offset: int = 0):
     """逐格溯源 JSON。现场真读台账（与老站同源）。
@@ -1061,9 +1020,6 @@ async def api_period_trace(request: Request, period: str, cat: str = "bigtable",
     cat 选类别：bigtable/charts/province/matrix/texts；
     limit/offset 分页（大件不一次性塞满，契约 §3）。
     """
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -1100,11 +1056,9 @@ async def api_period_trace(request: Request, period: str, cat: str = "bigtable",
 
 
 @app.get("/api/periods/{period}/redslots")
+@admin_route
 async def api_period_redslots(request: Request, period: str,
                               limit: int = 50, offset: int = 0):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -1139,12 +1093,10 @@ async def api_period_redslots(request: Request, period: str,
 
 
 @app.get("/api/periods/{period}/collation")
+@admin_route
 async def api_period_collation(request: Request, period: str,
                                limit: int = 50, offset: int = 0,
                                full: bool = False):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -1171,11 +1123,9 @@ async def api_period_collation(request: Request, period: str,
 
 
 @app.get("/api/periods/{period}/charts")
+@admin_route
 async def api_period_charts_json(request: Request, period: str,
                                  limit: int = 50, offset: int = 0):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -1188,10 +1138,8 @@ async def api_period_charts_json(request: Request, period: str,
 
 
 @app.get("/api/ledger/sheets")
+@admin_route
 async def api_ledger_sheets(request: Request, period: str = ""):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     import openpyxl                                        # noqa: PLC0415
     m = jobs.PERIOD_RE.match(period or "")
     if m:
@@ -1225,10 +1173,8 @@ async def api_ledger_sheets(request: Request, period: str = ""):
 
 
 @app.post("/api/analyze")
+@admin_route
 async def api_analyze(request: Request):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     body = await request.json()
     period = str(body.get("period", "")).strip()
     question = str(body.get("question", "")).strip()
@@ -1281,21 +1227,20 @@ async def api_analyze(request: Request):
 
 
 @app.get("/api/forecast/board")
+@admin_route
 async def api_forecast_board(request: Request, period: str = ""):
     """预测台「学科板」（契约 #20）—— 解析预测选模与过线.md 的两张表。
 
     不重算；缺文件时返回空板 + note（不 500）。`?period=` 可指定，
     默认取最新有该文件的期次。
     """
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     if period and resolve_period_dir(period) is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
     return forecasting.board_context(period or None)
 
 
 @app.get("/api/periods/{period}/flexible")
+@admin_route
 async def api_period_flexible(request: Request, period: str, intent: str = ""):
     """灵活报告 JSON（契约 #21①）：列已生成 + 当前稿的 body_html。
 
@@ -1303,9 +1248,6 @@ async def api_period_flexible(request: Request, period: str, intent: str = ""):
     `/p/<期次>/flexible/chart/<intent>/<name>`）——前端不引 md 渲染器。
     未生成过的期次返回空列表 + cur=null + body_html=""，不 500。
     """
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -1321,14 +1263,12 @@ async def api_period_flexible(request: Request, period: str, intent: str = ""):
 
 
 @app.post("/api/periods/{period}/flexible")
+@admin_route
 async def api_period_flexible_generate(request: Request, period: str):
     """生成一份灵活报告（契约 #21②）—— 同步几秒。
 
     只写 `out/<期次>/flexible/`（产物目录），台账一字节不碰。
     """
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     d = resolve_period_dir(period)
     if d is None:
         return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
@@ -1351,18 +1291,14 @@ async def api_period_flexible_generate(request: Request, period: str):
 
 
 @app.get("/api/forecast/meta")
+@admin_route
 async def api_forecast_meta(request: Request):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     return forecasting.page_context()
 
 
 @app.post("/api/forecast/run")
+@admin_route
 async def api_forecast_run(request: Request):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     try:
         payload = await request.json()
         # 五模型滚动回测属于 CPU 密集型同步计算，放进线程池，避免卡住
@@ -1375,13 +1311,11 @@ async def api_forecast_run(request: Request):
 
 
 @app.post("/api/jobs")
+@admin_route
 async def api_create_job(request: Request,
                          period: str = Form(""),
                          file: UploadFile = File(None),
                          backtest: str = Form("0")):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     period = (period or "").strip()
     busy = jobs.active_job()
     if busy:
@@ -1421,10 +1355,8 @@ async def api_create_job(request: Request,
 
 
 @app.get("/api/jobs/{job_id}")
+@admin_route
 async def api_job(request: Request, job_id: str):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     job = jobs.read_job(job_id)
     if not job:
         return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
@@ -1435,10 +1367,8 @@ async def api_job(request: Request, job_id: str):
 
 
 @app.get("/api/jobs/{job_id}/artifacts")
+@admin_route
 async def api_artifacts(request: Request, job_id: str):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     job = jobs.read_job(job_id)
     if not job:
         return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
@@ -1446,11 +1376,9 @@ async def api_artifacts(request: Request, job_id: str):
 
 
 @app.get("/api/jobs/{job_id}/download/{key}")
+@admin_route
 async def api_job_download(request: Request, job_id: str, key: str):
     """任务产物与日志包只属于管理员运行工作区。"""
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     job = jobs.read_job(job_id)
     if not job:
         return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
@@ -1469,11 +1397,9 @@ async def api_job_download(request: Request, job_id: str, key: str):
 
 
 @app.post("/api/jobs/{job_id}/rerun")
+@admin_route
 async def api_rerun_job(request: Request, job_id: str):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
-    user = guard
+    user = current_user(request)
     job = jobs.read_job(job_id)
     if not job:
         return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
@@ -1529,10 +1455,8 @@ def _flush(state):
 
 
 @app.get("/api/jobs/{job_id}/events")
+@admin_route
 async def api_events(request: Request, job_id: str):
-    guard = require_admin(request)
-    if isinstance(guard, JSONResponse):
-        return guard
     job = jobs.read_job(job_id)
     if not job:
         return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
@@ -1578,10 +1502,8 @@ async def api_events(request: Request, job_id: str):
 # ---------------- 下载 / 二维码 ----------------
 
 @app.get("/jobs/{job_id}/download/{key}")
+@admin_file_route
 async def download(request: Request, job_id: str, key: str):
-    guard = require_admin_file(request)
-    if isinstance(guard, (JSONResponse, RedirectResponse)):
-        return guard
     job = jobs.read_job(job_id)
     if not job:
         return RedirectResponse("/", status_code=303)

@@ -134,9 +134,8 @@ def test_图片路由是GET且接受多级路径():
 
 
 def test_图片路由有管理员文件门且拒绝guest():
-    src = (ROOT / "server" / "app.py").read_text(encoding="utf-8")
-    i = src.index('/p/{period}/chart/{rel:path}')
-    block = src[i:i + 900]
-    assert "require_admin_file(request)" in block, "图表是期次产物，游客不应可见"
-    response = asyncio.run(app_module.period_chart(_Req(config.GUEST_USER), "202609", "chart.png"))
-    assert response.status_code == 403
+    response = asyncio.run(app_module.period_chart(
+        _Req(config.GUEST_USER), "202609", "chart.png"))
+    assert response.status_code == 403, "图表是期次产物，游客不应可见"
+    anon = asyncio.run(app_module.period_chart(_Req(None), "202609", "chart.png"))
+    assert anon.status_code == 303 and anon.headers["location"] == "/login"

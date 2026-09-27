@@ -3,6 +3,7 @@
 
 验的是：workbench.trace 的装配（真读台账）+ 分页形状 + 权限门 + ledger 不回绝对路径。
 """
+import asyncio
 import pathlib
 import sys
 
@@ -11,8 +12,14 @@ for p in (str(REPO), str(REPO / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from server import workbench                                   # noqa: E402
+from server import config, workbench                           # noqa: E402
+from server import app as app_module                           # noqa: E402
 from server.app import _TRACE_CATS, _paginate, _find_ledger, resolve_period_dir  # noqa: E402
+
+
+class _Req:
+    def __init__(self, user=None):
+        self.session = {"user": user} if user else {}
 
 
 def _trace_of(period):
@@ -79,9 +86,10 @@ class Test分页适配:
 
 class Test权限与安全:
     def test_trace用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_period_trace")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_period_trace(
+            _Req(config.GUEST_USER), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_trace(
+            _Req(None), "202609")).status_code == 401
 
     def test_trace路由是GET_api(self):
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")

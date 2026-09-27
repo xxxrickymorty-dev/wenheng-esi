@@ -196,23 +196,22 @@ class TestForecastChoice落盘:
 
 class Test权限门:
     def test_sign用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_period_sign_json")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_period_sign_json(
+            _Req(config.GUEST_USER, "POST", {}), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_sign_json(
+            _Req(None, "POST", {}), "202609")).status_code == 401
 
     def test_forecast_choice用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_forecast_choice(request")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_forecast_choice(
+            _Req(config.GUEST_USER, "POST", {"choice": {}}), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_forecast_choice(
+            _Req(None, "POST", {"choice": {}}), "202609")).status_code == 401
 
     def test_forecast_choice_GET用require_admin且拒绝guest(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_forecast_choice_get")[1].split("\n\n@app.", 1)[0]
-        assert "require_admin" in block
-        response = asyncio.run(app_module.api_forecast_choice_get(_Req(config.GUEST_USER), "202609"))
-        assert response.status_code == 403
-        response = asyncio.run(app_module.api_forecast_choice_get(_Req(None), "202609"))
-        assert response.status_code == 401
+        assert asyncio.run(app_module.api_forecast_choice_get(
+            _Req(config.GUEST_USER), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_forecast_choice_get(
+            _Req(None), "202609")).status_code == 401
 
 
 class Test路由存在:
@@ -262,19 +261,22 @@ class TestP2写操作:
         assert '@app.post("/api/periods/{period}/flag")' in src
 
     def test_revoke用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_period_revoke_json")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_period_revoke_json(
+            _Req(config.GUEST_USER, "POST", {}), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_revoke_json(
+            _Req(None, "POST", {}), "202609")).status_code == 401
 
     def test_fill用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_period_fill_json")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_period_fill_json(
+            _Req(config.GUEST_USER, "POST", {}), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_fill_json(
+            _Req(None, "POST", {}), "202609")).status_code == 401
 
     def test_flag用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_period_flag_json")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_period_flag_json(
+            _Req(config.GUEST_USER, "POST", {}), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_flag_json(
+            _Req(None, "POST", {}), "202609")).status_code == 401
 
 class TestForecastChoice计数:
     """#17：嵌套形状 {route: {学科: 模型}} 下 len(choice) 恒为路线数——saved 要数学科。"""

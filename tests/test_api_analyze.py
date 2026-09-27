@@ -81,15 +81,14 @@ class Test数字防护盾:
 
 class Test权限门:
     def test_analyze用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_analyze")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_analyze(
+            _Req(config.GUEST_USER))).status_code == 403
+        assert asyncio.run(app_module.api_analyze(_Req(None))).status_code == 401
 
     def test_ledger_sheets用require_admin且拒绝guest(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_ledger_sheets")[1].split("@app.")[0]
-        assert "require_admin" in block
-        assert asyncio.run(app_module.api_ledger_sheets(_Req(config.GUEST_USER))).status_code == 403
+        assert asyncio.run(app_module.api_ledger_sheets(
+            _Req(config.GUEST_USER))).status_code == 403
+        assert asyncio.run(app_module.api_ledger_sheets(_Req(None))).status_code == 401
 
     def test_analyze路由存在(self):
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")

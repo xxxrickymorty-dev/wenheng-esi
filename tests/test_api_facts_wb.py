@@ -36,10 +36,10 @@ class TestFacts:
         assert '@app.get("/api/periods/{period}/facts")' in src
 
     def test_facts用require_admin且拒绝guest(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_period_facts")[1].split("@app.")[0]
-        assert "require_admin" in block
-        assert asyncio.run(app_module.api_period_facts(_Req(config.GUEST_USER), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_facts(
+            _Req(config.GUEST_USER), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_facts(
+            _Req(None), "202609")).status_code == 401
 
 
 class TestWorkbench:
@@ -60,6 +60,7 @@ class TestWorkbench:
         assert '@app.get("/api/periods/{period}/workbench")' in src
 
     def test_workbench用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_period_workbench")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_period_workbench(
+            _Req(config.GUEST_USER), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_workbench(
+            _Req(None), "202609")).status_code == 401

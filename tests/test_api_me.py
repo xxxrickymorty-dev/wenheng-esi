@@ -89,52 +89,55 @@ class TestLogin口令:
 
 
 class TestAdmin端点上锁:
+    """守卫行为：guest 403 / 匿名 401（判别统一由 @admin_route 承担）。"""
+
     def test_forecast_meta用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_forecast_meta")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_forecast_meta(
+            _Req(config.GUEST_USER))).status_code == 403
+        assert asyncio.run(app_module.api_forecast_meta(_Req(None))).status_code == 401
 
     def test_forecast_run用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_forecast_run")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_forecast_run(
+            _Req(config.GUEST_USER))).status_code == 403
+        assert asyncio.run(app_module.api_forecast_run(_Req(None))).status_code == 401
 
     def test_create_job用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_create_job")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_create_job(
+            _Req(config.GUEST_USER))).status_code == 403
+        assert asyncio.run(app_module.api_create_job(_Req(None))).status_code == 401
 
     def test_api_job用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_job(")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_job(
+            _Req(config.GUEST_USER), "jid")).status_code == 403
+        assert asyncio.run(app_module.api_job(_Req(None), "jid")).status_code == 401
 
     def test_api_events用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_events")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_events(
+            _Req(config.GUEST_USER), "jid")).status_code == 403
+        assert asyncio.run(app_module.api_events(_Req(None), "jid")).status_code == 401
 
     def test_api_approval用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_approval")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_approval(
+            _Req(config.GUEST_USER), "jid")).status_code == 403
+        assert asyncio.run(app_module.api_approval(_Req(None), "jid")).status_code == 401
 
 
 class TestGuest可读端点:
     def test_api_periods已锁admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_periods")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_periods(
+            _Req(config.GUEST_USER))).status_code == 403
+        assert asyncio.run(app_module.api_periods(_Req(None))).status_code == 401
 
     def test_api_me不锁admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_me")[1].split("@app.")[0]
-        assert "require_admin" not in block
+        me = asyncio.run(app_module.api_me(_Req(config.GUEST_USER)))
+        assert me["name"] == config.GUEST_USER and me["role"] == "guest"
+        assert asyncio.run(app_module.api_me(_Req(None))).status_code == 401
 
     def test_api_period_detail已锁admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_period_detail")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_period_detail(
+            _Req(config.GUEST_USER), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_detail(
+            _Req(None), "202609")).status_code == 401
 
 
 class TestPalette:

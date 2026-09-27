@@ -5,6 +5,7 @@
   ① 先存填值 -> ② 旧成品撤到 _superseded/ -> ③ fill_docx 重出
 关键安全语义：**没填值时不碰产物**（在 quarantine 之前就返回）。
 """
+import asyncio
 import pathlib
 import sys
 
@@ -12,6 +13,14 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 for p in (str(REPO), str(REPO / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
+
+from server import config                                     # noqa: E402
+from server import app as app_module                          # noqa: E402
+
+
+class _Req:
+    def __init__(self, user=None):
+        self.session = {"user": user} if user else {}
 
 
 def _block():
@@ -25,7 +34,10 @@ class Test路由与权限:
         assert '@app.post("/api/periods/{period}/rebuild")' in src
 
     def test_rebuild用require_admin(self):
-        assert "require_admin" in _block()
+        assert asyncio.run(app_module.api_period_rebuild_json(
+            _Req(config.GUEST_USER), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_rebuild_json(
+            _Req(None), "202609")).status_code == 401
 
     def test_items参数校验(self):
         assert '"items"' in _block() and "isinstance(items, dict)" in _block()

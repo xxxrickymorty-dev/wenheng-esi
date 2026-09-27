@@ -5,6 +5,7 @@
 另锁一个 2026-09-24 修的既有 bug：期次上下文的「对勘本」产物链接
 原拼成 /p/{期次}/collation（无此路由）→ 现指回 /p/{期次}。
 """
+import asyncio
 import json
 import pathlib
 import sys
@@ -14,8 +15,14 @@ for p in (str(REPO), str(REPO / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from server import archive, jobs                              # noqa: E402
-from server.app import resolve_period_dir                     # noqa: E402
+from server import archive, config, jobs                       # noqa: E402
+from server.app import resolve_period_dir                      # noqa: E402
+from server import app as app_module                           # noqa: E402
+
+
+class _Req:
+    def __init__(self, user=None):
+        self.session = {"user": user} if user else {}
 
 
 class Test产物链接修复:
@@ -54,9 +61,10 @@ class TestArchive组装:
 
 class Test权限:
     def test_用require_admin(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_period_archive")[1].split("@app.")[0]
-        assert "require_admin" in block
+        assert asyncio.run(app_module.api_period_archive(
+            _Req(config.GUEST_USER), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_archive(
+            _Req(None), "202609")).status_code == 401
 
     def test_路由是GET(self):
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
