@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-palette="mix" data-state="ready">
+<html lang="zh-CN" data-palette="ynu" data-state="ready">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -28,6 +28,13 @@ html[data-palette="morandi"]{
   --ok:#3d5946; --ok-soft:#e4ebe5; --warn:#5e4c2f; --warn-soft:#eee9dd;
   --bad:#75453d; --bad-soft:#eee2de;
 }
+html[data-palette="ynu"]{
+  --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB; --panel-2:#E8ECE5;
+  --ink:#222B25; --ink-2:#3F4C42; --muted:#58655C; --line:#DDE1D8; --line-soft:#E6E9E2;
+  --accent:#1A4B27; --accent-soft:#E5ECE3; --gold:#B19A65; --gold-soft:#F1EBDD;
+  --ok:#28643A; --ok-soft:#E6EFE6; --warn:#62501F; --warn-soft:#F2EDDF;
+  --bad:#B43B31; --bad-soft:#F4E6E2; --shadow:0 2px 5px rgba(34,43,37,.045),0 14px 34px rgba(34,43,37,.055);
+}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--ink);font:16.5px/1.62 system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;-webkit-font-smoothing:antialiased}
@@ -48,6 +55,7 @@ svg{display:block;flex:none}
 .seg-btn{min-height:34px;padding:4px 11px;border:1px solid #c9c3b8;border-radius:999px;background:#f5f3ee;font-size:13px;transition:background .16s,border-color .16s,color .16s}
 .seg-btn:hover{background:white}
 .seg-btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:white}
+.seg-btn[aria-pressed="true"]:hover{background:var(--accent);border-color:var(--accent);color:#fff}
 
 .topbar{display:flex;align-items:center;gap:24px;padding:12px max(20px,calc((100vw - 1240px)/2));background:var(--card);border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:11px;min-width:max-content;text-decoration:none}
@@ -249,6 +257,36 @@ h1{margin:0;font-size:32px;line-height:1.3;letter-spacing:.015em}
   .action-row .btn{width:100%}.action-note{width:100%;text-align:center}
   .handoff{grid-template-columns:1fr}.handoff-icon{display:none}.handoff .btn{grid-column:auto;width:100%}
 }
+html[data-palette="ynu"] .reviewbar{background:#E8ECE5;border-bottom-color:#CDD5CA;color:var(--ink-2)}
+html[data-palette="ynu"] .review-label{color:var(--ink)}
+html[data-palette="ynu"] .review-group>span{color:var(--ink-2)}
+html[data-palette="ynu"] .seg-btn{border-color:#C8D0C6;background:var(--card)}
+html[data-palette="ynu"] .seg-btn:hover{background:#EEF1EA}
+html[data-palette="ynu"] .seg-btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+html[data-palette="ynu"] .demo-pill{border-color:var(--gold);background:var(--accent-soft);color:var(--accent)}
+html[data-palette="ynu"] .hero{align-items:center;margin:0 0 18px;padding:23px 24px;border-radius:16px;background:var(--accent);color:#F6F4EA}
+html[data-palette="ynu"] .hero .eyebrow{color:#DCCB9E}
+html[data-palette="ynu"] .hero h1{color:#FCFAF1}
+html[data-palette="ynu"] .hero-copy p{color:rgba(246,244,234,.86)}
+html[data-palette="ynu"] .hero .demo-pill{border-color:rgba(217,201,157,.64);background:rgba(177,154,101,.2);color:#F4ECD2}
+html[data-palette="ynu"] .hero .period-box{color:var(--ink)}
+html[data-palette="ynu"] .hero .period-box select{color:var(--ink)}
+html[data-palette="ynu"] .crumb-sep{color:#829086}
+html[data-palette="ynu"] .group-card{background:var(--card)}
+html[data-palette="ynu"] .group-card.active{border-color:var(--gold);box-shadow:0 0 0 2px rgba(177,154,101,.16)}
+html[data-palette="ynu"] .group-card.problem{border-color:#DDAEA7;background:#FCF7F5}
+html[data-palette="ynu"] .group-card.all-done{border-color:#BFD2C0}
+html[data-palette="ynu"] .period-box{box-shadow:0 2px 6px rgba(34,43,37,.035)}
+html[data-palette="ynu"] .flow{box-shadow:0 3px 12px rgba(34,43,37,.035)}
+/* 让评审工具条的当前选项在所有配色和悬停状态下都保持清晰 */
+.reviewbar .seg-btn[aria-pressed="true"],
+.reviewbar .seg-btn[aria-pressed="true"]:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (max-width:760px){html[data-palette="ynu"] .hero{align-items:flex-start;padding:20px 18px}}
+@media (max-width:760px){
+  html[data-palette="ynu"] .hero .eyebrow{flex-wrap:wrap;align-items:center}
+  html[data-palette="ynu"] .hero .eyebrow>span:nth-child(-n+3){flex:none;white-space:nowrap}
+  html[data-palette="ynu"] .hero .demo-pill{flex:0 0 auto}
+}
 </style>
 </head>
 <body>
@@ -281,7 +319,8 @@ h1{margin:0;font-size:32px;line-height:1.3;letter-spacing:.015em}
   </div>
   <div class="review-group" role="group" aria-label="切换配色">
     <span>配色</span>
-    <button class="seg-btn" type="button" data-palette-choice="mix" aria-pressed="true">莫兰迪 + 朱砂</button>
+    <button class="seg-btn" type="button" data-palette-choice="ynu" aria-pressed="true">云大绿</button>
+    <button class="seg-btn" type="button" data-palette-choice="mix" aria-pressed="false">莫兰迪 + 朱砂</button>
     <button class="seg-btn" type="button" data-palette-choice="zhu" aria-pressed="false">朱批</button>
     <button class="seg-btn" type="button" data-palette-choice="morandi" aria-pressed="false">莫兰迪</button>
   </div>
