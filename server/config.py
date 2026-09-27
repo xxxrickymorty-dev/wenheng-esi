@@ -25,6 +25,7 @@ _load_dotenv()
 INPUT_DIR = ROOT / "input"
 OUT_DIR = ROOT / "out"
 JOBS_DIR = OUT_DIR / "_jobs"
+FORECAST_CHOICES_DIR = OUT_DIR / "_forecast_choices"
 PIPELINE = ROOT / "src" / "run_pipeline.py"
 MASTER = ROOT / "master" / "学科信息参考母版_2026第5期.docx"
 

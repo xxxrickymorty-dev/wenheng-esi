@@ -19,8 +19,15 @@ from server import app as app_module, config                   # noqa: E402
 
 
 class _Req:
-    def __init__(self, user):
+    def __init__(self, user, method="GET", body=None):
         self.session = {"user": user}
+        self.method = method
+        self.body = body
+
+    async def json(self):
+        if isinstance(self.body, Exception):
+            raise self.body
+        return self.body
 
 
 class TestSign闸门:
@@ -48,14 +55,143 @@ class TestSign闸门:
 
 
 class TestForecastChoice落盘:
-    def test_写入forecast_choice_json(self, tmp_path):
-        rec = {"choice": {"Chemistry": "SARIMA模型"},
-               "by": "demo", "at": "2026-09-23 10:00:00"}
-        out = tmp_path / "forecast_choice.json"
-        out.write_text(json.dumps(rec, ensure_ascii=False, indent=1), encoding="utf-8")
-        loaded = json.loads(out.read_text(encoding="utf-8"))
-        assert loaded["choice"]["Chemistry"] == "SARIMA模型"
-        assert loaded["by"] == "demo"
+    def test_新请求期次无产物目录也可保存并读回(self, tmp_path, monkeypatch):
+        out_dir = tmp_path / "out"
+        choices_dir = out_dir / "_forecast_choices"
+        monkeypatch.setattr(config, "OUT_DIR", out_dir)
+        monkeypatch.setattr(config, "FORECAST_CHOICES_DIR", choices_dir)
+        monkeypatch.setattr(app_module.forecasting, "page_context",
+                            lambda: {"subjects": ["物理学"]})
+
+        choice = {"citation": {"物理学": "SARIMA模型"}}
+        saved = asyncio.run(app_module.api_forecast_choice(
+            _Req(config.DEMO_USER, "POST", {"choice": choice}), "202609"))
+        assert isinstance(saved, dict)
+        assert saved["ok"] is True
+        assert saved["saved"] == 1
+        assert saved["path"] == "_forecast_choices/202609.json"
+        assert (choices_dir / "202609.json").is_file()
+        assert not (out_dir / "202609").exists()
+
+        loaded = asyncio.run(app_module.api_forecast_choice_get(
+            _Req(config.DEMO_USER), "202609"))
+        assert isinstance(loaded, dict)
+        assert loaded["period"] == "202609"
+        assert loaded["choice"] == choice
+        assert loaded["by"] == config.DEMO_USER
+        assert loaded["at"]
+
+    def test_POST保存后缀期次时保留原名(self, tmp_path, monkeypatch):
+        out_dir = tmp_path / "out"
+        choices_dir = out_dir / "_forecast_choices"
+        monkeypatch.setattr(config, "OUT_DIR", out_dir)
+        monkeypatch.setattr(config, "FORECAST_CHOICES_DIR", choices_dir)
+        period = "202605_复现"
+
+        saved = asyncio.run(app_module.api_forecast_choice(
+            _Req(config.DEMO_USER, "POST", {"choice": {}}), period))
+        assert saved["path"] == f"_forecast_choices/{period}.json"
+        assert (choices_dir / f"{period}.json").is_file()
+        assert not (out_dir / "202605").exists()
+
+    def test_POST按ForecastMeta_subjects接受动态候选(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(config, "FORECAST_CHOICES_DIR", tmp_path / "choices")
+        monkeypatch.setattr(app_module.forecasting, "page_context",
+                            lambda: {"subjects": ["运行期候选学科"]})
+        result = asyncio.run(app_module.api_forecast_choice(
+            _Req(config.DEMO_USER, "POST", {
+                "choice": {"citation": {"运行期候选学科": "SARIMA模型"}},
+            }), "202609"))
+        assert result["ok"] is True
+        assert result["saved"] == 1
+
+    def test_POST拒绝不在ForecastMeta_subjects中的学科(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(config, "FORECAST_CHOICES_DIR", tmp_path / "choices")
+        monkeypatch.setattr(app_module.forecasting, "page_context",
+                            lambda: {"subjects": ["物理学"]})
+        response = asyncio.run(app_module.api_forecast_choice(
+            _Req(config.DEMO_USER, "POST", {
+                "choice": {"citation": {"候选缺失": "SARIMA模型"}},
+            }), "202609"))
+        assert response.status_code == 400
+
+    def test_GET兼容读取旧文件但不迁移且新配置优先(self, tmp_path, monkeypatch):
+        out_dir = tmp_path / "out"
+        choices_dir = out_dir / "_forecast_choices"
+        period = "202605_复现"
+        old_choice = {"citation": {"物理学": "SARIMA模型"}}
+        new_choice = {"rank": {"物理学": "recommended"}}
+        old_file = out_dir / period / "forecast_choice.json"
+        old_file.parent.mkdir(parents=True)
+        old_file.write_text(json.dumps({
+            "choice": old_choice, "by": "old-admin", "at": "old-time",
+        }, ensure_ascii=False), encoding="utf-8")
+        monkeypatch.setattr(config, "OUT_DIR", out_dir)
+        monkeypatch.setattr(config, "FORECAST_CHOICES_DIR", choices_dir)
+
+        old = asyncio.run(app_module.api_forecast_choice_get(
+            _Req(config.DEMO_USER), period))
+        assert old == {
+            "period": period, "choice": old_choice,
+            "by": "old-admin", "at": "old-time",
+        }
+        assert not choices_dir.exists()
+        assert json.loads(old_file.read_text(encoding="utf-8"))["choice"] == old_choice
+
+        new_file = choices_dir / f"{period}.json"
+        new_file.parent.mkdir(parents=True)
+        new_file.write_text(json.dumps({
+            "choice": new_choice, "by": "new-admin", "at": "new-time",
+        }, ensure_ascii=False), encoding="utf-8")
+        preferred = asyncio.run(app_module.api_forecast_choice_get(
+            _Req(config.DEMO_USER), period))
+        assert preferred["choice"] == new_choice
+        assert preferred["by"] == "new-admin"
+
+    def test_空选择表示全部使用推荐(self, tmp_path, monkeypatch):
+        choices_dir = tmp_path / "out" / "_forecast_choices"
+        monkeypatch.setattr(config, "FORECAST_CHOICES_DIR", choices_dir)
+        monkeypatch.setattr(app_module.forecasting, "page_context",
+                            lambda: {"subjects": []})
+        result = asyncio.run(app_module.api_forecast_choice(
+            _Req(config.DEMO_USER, "POST", {"choice": {}}), "202609"))
+        assert result["ok"] is True
+        assert result["saved"] == 0
+        assert json.loads((choices_dir / "202609.json").read_text(encoding="utf-8"))["choice"] == {}
+
+    def test_POST拒绝无效JSON形状和期次路径(self, tmp_path, monkeypatch):
+        choices_dir = tmp_path / "out" / "_forecast_choices"
+        monkeypatch.setattr(config, "FORECAST_CHOICES_DIR", choices_dir)
+        monkeypatch.setattr(app_module.forecasting, "page_context",
+                            lambda: {"subjects": ["物理学"]})
+        invalid_bodies = [
+            [],
+            {"choice": []},
+            {"choice": {"unknown": {"物理学": "SARIMA模型"}}},
+            {"choice": {"citation": []}},
+            {"choice": {"citation": {"不存在的学科": "SARIMA模型"}}},
+            {"choice": {"citation": {"物理学": "不存在的模型"}}},
+            {"choice": {"citation": {"物理学": []}}},
+            json.JSONDecodeError("bad JSON", "", 0),
+        ]
+        for body in invalid_bodies:
+            response = asyncio.run(app_module.api_forecast_choice(
+                _Req(config.DEMO_USER, "POST", body), "202609"))
+            assert response.status_code == 400
+
+        response = asyncio.run(app_module.api_forecast_choice(
+            _Req(config.DEMO_USER, "POST", {"choice": {}}), "202609/../../outside"))
+        assert response.status_code == 400
+        assert not (tmp_path / "outside.json").exists()
+
+    def test_POST只允许管理员(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(config, "FORECAST_CHOICES_DIR", tmp_path / "choices")
+        response = asyncio.run(app_module.api_forecast_choice(
+            _Req(config.GUEST_USER, "POST", {"choice": {}}), "202609"))
+        assert response.status_code == 403
+        response = asyncio.run(app_module.api_forecast_choice(
+            _Req(None, "POST", {"choice": {}}), "202609"))
+        assert response.status_code == 401
 
 
 class Test权限门:
@@ -75,6 +211,8 @@ class Test权限门:
         assert "require_admin" in block
         response = asyncio.run(app_module.api_forecast_choice_get(_Req(config.GUEST_USER), "202609"))
         assert response.status_code == 403
+        response = asyncio.run(app_module.api_forecast_choice_get(_Req(None), "202609"))
+        assert response.status_code == 401
 
 
 class Test路由存在:
@@ -109,11 +247,6 @@ class Test路由顺序不打架:
 
     def test_GET_forecast_choice由读回处理器接住(self):
         assert self._first_hit("/api/periods/{period}/forecast-choice", "GET") == "api_forecast_choice_get"
-
-    def test_写入处理器真的落盘(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        block = src.split("async def api_forecast_choice(request")[1].split("@app.")[0]
-        assert "forecast_choice.json" in block and "write_text" in block
 
 class TestP2写操作:
     def test_revoke路由存在(self):

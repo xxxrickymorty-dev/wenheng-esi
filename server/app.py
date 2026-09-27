@@ -747,7 +747,7 @@ async def api_period_sign_json(request: Request, period: str):
 
 @app.get("/api/periods/{period}/forecast-choice")
 async def api_forecast_choice_get(request: Request, period: str):
-    """读回已存的预测模型选择，仅管理员可读。
+    """读回请求期次的预测模型选择，仅管理员可读。
 
     ⚠️ 这条是 **GET**（2026-09-24 修）：此前被误挂成 `@app.post`，又注册在下面的
     `api_route(methods=["GET","POST"])` 之前——FastAPI 按注册顺序匹配，POST 会被这条
@@ -755,20 +755,31 @@ async def api_forecast_choice_get(request: Request, period: str):
     guard = require_admin(request)
     if isinstance(guard, JSONResponse):
         return guard
-    d = resolve_period_dir(period)
-    if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
-    fc = d / "forecast_choice.json"
+    if not _forecast_choice_period_is_safe(period):
+        return JSONResponse({"error": "期次格式无效"}, status_code=400)
+    fc = config.FORECAST_CHOICES_DIR / f"{period}.json"
+    if not fc.exists():
+        fc = config.OUT_DIR / period / "forecast_choice.json"
     if not fc.exists():
         return {"period": period, "choice": {}, "by": "", "at": ""}
     try:
         rec = json.loads(fc.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return {"period": period, "choice": {}, "by": "", "at": ""}
+    if not isinstance(rec, dict):
+        return {"period": period, "choice": {}, "by": "", "at": ""}
+    choice = rec.get("choice", {})
+    if not isinstance(choice, dict):
+        choice = {}
     return {"period": period,
-            "choice": rec.get("choice", {}),
-            "by": rec.get("by", ""),
-            "at": rec.get("at", "")}
+            "choice": choice,
+            "by": rec.get("by", "") if isinstance(rec.get("by", ""), str) else "",
+            "at": rec.get("at", "") if isinstance(rec.get("at", ""), str) else ""}
+
+
+def _forecast_choice_period_is_safe(period):
+    """允许 YYYYMM 及带原样后缀的期次名，不让请求值拼出子路径。"""
+    return bool(re.fullmatch(r"\d{6}(?:_[\w-]+)?", period or ""))
 
 
 def _count_forecast_choice(choice):
@@ -794,20 +805,36 @@ async def api_forecast_choice(request: Request, period: str):
     guard = require_admin(request)
     if isinstance(guard, JSONResponse):
         return guard
-    d = resolve_period_dir(period)
-    if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
-    body = await request.json()
+    if not _forecast_choice_period_is_safe(period):
+        return JSONResponse({"error": "期次格式无效"}, status_code=400)
+    try:
+        body = await request.json()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JSONResponse({"error": "请求必须是合法 JSON 对象"}, status_code=400)
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "请求必须是合法 JSON 对象"}, status_code=400)
     choice = body.get("choice")
     if not isinstance(choice, dict):
         return JSONResponse(
             {"error": "choice 必须是 {路线: {学科: 模型名}}",
              "hint": '例：{"citation": {"物理学": "SARIMA模型"}}'}, status_code=400)
-    out = d / "forecast_choice.json"
+    routes = {route["value"] for route in forecasting.ROUTES}
+    models = {model["value"] for model in forecasting.MODEL_OPTIONS}
+    candidate_subjects = (set(forecasting.page_context().get("subjects") or [])
+                          if choice else set())
+    for route, subjects in choice.items():
+        if route not in routes or not isinstance(subjects, dict):
+            return JSONResponse({"error": "choice 的路线或路线值无效"}, status_code=400)
+        for subject, model in subjects.items():
+            if subject not in candidate_subjects or not isinstance(model, str) or model not in models:
+                return JSONResponse({"error": "choice 的学科或模型无效"}, status_code=400)
+    out = config.FORECAST_CHOICES_DIR / f"{period}.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
     rec = {"choice": choice, "by": guard, "at": time.strftime("%Y-%m-%d %H:%M:%S")}
     out.write_text(json.dumps(rec, ensure_ascii=False, indent=1), encoding="utf-8")
     n_subjects, n_routes = _count_forecast_choice(choice)
-    resp = {"ok": True, "saved": n_subjects, "path": str(out.name)}
+    resp = {"ok": True, "saved": n_subjects,
+            "path": f"_forecast_choices/{period}.json"}
     if n_routes is not None:
         resp["saved_routes"] = n_routes
     return resp
