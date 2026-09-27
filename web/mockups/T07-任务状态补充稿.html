@@ -6,25 +6,48 @@
   <title>文衡 · T07 任务状态补充稿</title>
   <style>
     :root {
-      --bg: #f3efe6;
-      --card: #fbf8f1;
-      --panel: #f6f1e7;
-      --ink: #2f2a24;
-      --ink-2: #5b5248;
-      --ink-3: #6f6558;
-      --line: #d9cfbc;
-      --line-2: #e7dfd0;
-      --zhu: #b23a2a;
-      --zhu-soft: #f0dcd5;
-      --gold: #a9853f;
-      --gold-ink: #7d6122;
-      --gold-soft: #efe3c9;
-      --ok: #3f6b4a;
-      --ok-soft: #e2ece0;
-      --warn: #7d5518;
-      --warn-soft: #f5ead2;
+      --bg: #F4F3ED;
+      --card: #FFFDF8;
+      --panel: #EDF1EB;
+      --ink: #222B25;
+      --ink-2: #4F5B51;
+      --ink-3: #58655C;
+      --line: #DDE1D8;
+      --line-2: #E9EEE6;
+      --accent: #1A4B27;
+      --accent-soft: #E7F0E7;
+      --zhu: #B43B31;
+      --zhu-soft: #F7E4E1;
+      --gold: #B19A65;
+      --gold-ink: #6E521B;
+      --gold-soft: #F3ECDD;
+      --ok: #28643A;
+      --ok-soft: #E7F0E7;
+      --warn: #6E521B;
+      --warn-soft: #F3ECDD;
       --sans: system-ui, -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
       --serif: "Source Han Serif SC", "Noto Serif SC", Songti SC, SimSun, serif;
+    }
+    html[data-theme="zhu"] {
+      --bg: #F3EFE6;
+      --card: #FBF8F1;
+      --panel: #F6F1E7;
+      --ink: #2F2A24;
+      --ink-2: #5B5248;
+      --ink-3: #6F6558;
+      --line: #D9CFBC;
+      --line-2: #E7DFD0;
+      --accent: #B43B31;
+      --accent-soft: #F5E3E0;
+      --zhu: #8E2D25;
+      --zhu-soft: #F7E1DE;
+      --gold: #B19A65;
+      --gold-ink: #6E521B;
+      --gold-soft: #F3EADD;
+      --ok: #28643A;
+      --ok-soft: #E7F0E7;
+      --warn: #6E521B;
+      --warn-soft: #F3EADD;
     }
     * { box-sizing: border-box; }
     body {
@@ -34,7 +57,7 @@
       font: 17px/1.7 var(--sans);
       -webkit-font-smoothing: antialiased;
     }
-    :focus-visible { outline: 3px solid var(--zhu); outline-offset: 3px; border-radius: 6px; }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
     .review {
       padding: 10px 22px;
       background: var(--panel);
@@ -62,7 +85,10 @@
       font-size: 14.5px;
       text-decoration: none;
     }
-    .nav a[aria-current="page"] { background: var(--zhu-soft); color: var(--zhu); font-weight: 600; }
+    .nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+    .theme-switch { display: flex; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); }
+    .theme-switch button { min-height: 38px; padding: 6px 10px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); cursor: pointer; font: 600 13px var(--sans); }
+    .theme-switch button[aria-pressed="true"] { background: var(--accent); color: #fff; }
     .who {
       display: flex;
       align-items: center;
@@ -78,8 +104,8 @@
       height: 28px;
       place-items: center;
       border-radius: 50%;
-      background: var(--zhu-soft);
-      color: var(--zhu);
+      background: var(--accent-soft);
+      color: var(--accent);
       font-size: 13px;
       font-weight: 700;
     }
@@ -124,7 +150,7 @@
       font-weight: 700;
     }
     .step.on .dot { border-color: var(--ok); background: var(--ok); color: #fff; }
-    .step.now .dot { border-color: var(--zhu); color: var(--zhu); }
+    .step.now .dot { border-color: var(--accent); color: var(--accent); }
     .focus {
       display: flex;
       align-items: center;
@@ -132,8 +158,8 @@
       flex-wrap: wrap;
       margin-top: 18px;
       padding: 22px 26px;
-      border: 1px solid var(--zhu);
-      border-left: 5px solid var(--zhu);
+      border: 1px solid var(--accent);
+      border-left: 5px solid var(--accent);
       border-radius: 12px;
       background: var(--card);
     }
@@ -153,7 +179,7 @@
       color: inherit;
       font: 600 16px var(--sans);
     }
-    .btn.primary { border-color: var(--zhu); background: var(--zhu); color: #fff; }
+    .btn.primary { border-color: var(--accent); background: var(--accent); color: #fff; }
     .btn:disabled { border-color: var(--line); background: var(--panel); color: var(--ink-3); cursor: not-allowed; }
     .section-title { margin: 26px 0 10px; font-size: 18px; }
     .grid3, .approval-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
@@ -191,6 +217,7 @@
     @media (max-width: 780px) {
       .topbar { flex-wrap: wrap; }
       .nav { order: 3; width: 100%; margin: 0; overflow: auto; }
+      .theme-switch { order: 2; }
       .steps { margin-left: 0; }
       .cta { margin-left: 0; }
       .who { margin-left: auto; }
@@ -207,6 +234,10 @@
       <a href="#">报告</a>
       <a href="#">审核台</a>
     </nav>
+    <div class="theme-switch" role="group" aria-label="切换配色">
+      <button type="button" data-theme="ynu" aria-pressed="true">云大绿</button>
+      <button type="button" data-theme="zhu" aria-pressed="false">朱砂</button>
+    </div>
     <div class="who"><span class="avatar">卜</span>卜彤 · 管理员</div>
   </header>
 
@@ -294,5 +325,16 @@
       </div>
     </section>
   </main>
+  <script>
+    document.querySelectorAll("button[data-theme]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        if (button.dataset.theme === "zhu") document.documentElement.dataset.theme = "zhu";
+        else document.documentElement.removeAttribute("data-theme");
+        document.querySelectorAll("button[data-theme]").forEach(function (item) {
+          item.setAttribute("aria-pressed", String(item === button));
+        });
+      });
+    });
+  </script>
 </body>
 </html>
