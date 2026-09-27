@@ -315,11 +315,6 @@ def build(out_dir, job=None, artifacts=None):
     }
 
 
-def _job_dir_hint(out_dir):
-    """out/<期次>/_jobs/ 不一定存在，仅作兜底探测路径（不创建）。"""
-    return pathlib.Path(out_dir) / "_jobs"
-
-
 # ---------------------------------------------------------------- 日志包
 def logpack_files(out_dir, job=None):
     """日志包内文件清单（供页面展示与打包共用，避免两处各列一遍）。"""

@@ -116,13 +116,6 @@ def current_user(request: Request):
     return request.session.get("user")
 
 
-def require_user(request: Request):
-    user = current_user(request)
-    if not user:
-        raise PermissionError
-    return user
-
-
 def require_admin(request: Request):
     user = current_user(request)
     if not user:
@@ -149,6 +142,36 @@ def _signed_report_download_guard(out_dir, key: str):
     return JSONResponse({"error": "报告未签发或签发已失效，不能下载"}, status_code=403)
 
 
+def _period_missing():
+    """API 侧「期次不存在」的统一 404（老路由仍是 303，两种口径都在 tests 里钉着）。"""
+    return JSONResponse(
+        {"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+
+
+def _job_missing():
+    """「任务不存在」的统一 404。"""
+    return JSONResponse(
+        {"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
+
+
+def _serve_artifact(*, out_dir, key, pack_job, resolve):
+    """产物 / 日志包下载共段：logpack → 签发门 → 文件流。四条下载路由共用。
+
+    `resolve` 是产物适配器（期次路由用 `resolve_period_artifact`，任务路由用
+    `resolve_artifact`）；缺产物统一 404。路由间的 303/404 差异由调用方决定。
+    """
+    if key == archive.LOGPACK_KEY:
+        data, name = archive.pack(out_dir, pack_job)
+        return _zip_response(data, name)
+    report_guard = _signed_report_download_guard(out_dir, key)
+    if report_guard:
+        return report_guard
+    path = resolve()
+    if not path:
+        return JSONResponse({"error": "产物不存在"}, status_code=404)
+    return FileResponse(path, filename=path.name, media_type="application/octet-stream")
+
+
 def _legacy_admin_gate(request):
     """旧页面先按身份分流，游客请求不探测期次或任务是否存在。"""
     user = current_user(request)
@@ -172,20 +195,6 @@ def _legacy_redirect(request, key, **fmt):
     if fmt:
         target = target.format(**fmt)
     return RedirectResponse(target, status_code=302)
-
-
-def page(request: Request, name: str, **ctx):
-    user = current_user(request)
-    if not user:
-        return RedirectResponse("/login", status_code=303)
-    ctx.update({"request": request, "user": user})
-    return templates.TemplateResponse(request, name, ctx)
-
-
-@app.on_event("startup")
-async def _startup():
-    config.JOBS_DIR.mkdir(parents=True, exist_ok=True)
-    jobs.recover_stale()
 
 
 # ---------------- 认证 ----------------
@@ -461,7 +470,7 @@ async def period_chart(request: Request, period: str, rel: str):
     """
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     p = jobs.resolve_chart(d, rel)
     if not p:
         return JSONResponse({"error": "图表不存在"}, status_code=404)
@@ -475,16 +484,8 @@ async def period_download(request: Request, period: str, key: str):
     d = resolve_period_dir(period)
     if d is None:
         return RedirectResponse("/", status_code=303)
-    if key == archive.LOGPACK_KEY:
-        data, name = archive.pack(d, None)
-        return _zip_response(data, name)
-    report_guard = _signed_report_download_guard(d, key)
-    if report_guard:
-        return report_guard
-    path = jobs.resolve_period_artifact(period, key)
-    if not path:
-        return JSONResponse({"error": "产物不存在"}, status_code=404)
-    return FileResponse(path, filename=path.name, media_type="application/octet-stream")
+    return _serve_artifact(out_dir=d, key=key, pack_job=None,
+                           resolve=lambda: jobs.resolve_period_artifact(period, key))
 
 
 @app.get("/jobs/{job_id}", response_class=HTMLResponse)
@@ -552,7 +553,7 @@ async def collation_page(request: Request, job_id: str,
 async def api_approval(request: Request, job_id: str):
     job = jobs.read_job(job_id)
     if not job:
-        return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
+        return _job_missing()
     out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
     rec = approval.read(out_dir)
     rec["status"] = approval.status(out_dir, rec)
@@ -571,7 +572,7 @@ async def api_job_progress(request: Request, job_id: str):
     """
     job = jobs.read_job(job_id)
     if not job:
-        return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
+        return _job_missing()
     prog = pathlib.Path(job.get("progress") or "")
     missing = bool(prog) and not prog.exists()
     events = jobs.read_progress(job)
@@ -644,7 +645,7 @@ async def api_me(request: Request):
 async def api_period_detail(request: Request, period: str):
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     try:
         no, total = period_mod.issue_of(period)
         label = f"第 {total} 期 \u00b7 {period_mod.label(period)}"
@@ -677,7 +678,7 @@ async def api_period_artifacts(request: Request, period: str):
     """按期次列运行产物，仅管理员可读。"""
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     return {"period": d.name, "artifacts": jobs.collect_period_artifacts(d.name)}
 
 
@@ -687,17 +688,9 @@ async def api_period_download(request: Request, period: str, key: str):
     """期次产物下载仅管理员可读。"""
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
-    if key == archive.LOGPACK_KEY:
-        data, name = archive.pack(d, None)
-        return _zip_response(data, name)
-    report_guard = _signed_report_download_guard(d, key)
-    if report_guard:
-        return report_guard
-    path = jobs.resolve_period_artifact(d.name, key)
-    if not path:
-        return JSONResponse({"error": "产物不存在"}, status_code=404)
-    return FileResponse(path, filename=path.name, media_type="application/octet-stream")
+        return _period_missing()
+    return _serve_artifact(out_dir=d, key=key, pack_job=None,
+                           resolve=lambda: jobs.resolve_period_artifact(d.name, key))
 
 
 def _paginate(items, limit, offset):
@@ -715,7 +708,7 @@ def _paginate(items, limit, offset):
 async def api_period_sign_json(request: Request, period: str):
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     body = await request.json()
     note = str(body.get("note", ""))
     manual_ack = bool(body.get("known", body.get("manual_ack", False)))
@@ -788,7 +781,7 @@ async def api_forecast_choice(request: Request, period: str):
 async def api_period_revoke_json(request: Request, period: str):
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     body = await request.json()
     note = str(body.get("note", ""))
     ok, res = approval.revoke(d, current_user(request), note=note)
@@ -802,7 +795,7 @@ async def api_period_revoke_json(request: Request, period: str):
 async def api_period_fill_json(request: Request, period: str):
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     body = await request.json()
     items = body.get("items") or {}
     if not isinstance(items, dict):
@@ -821,7 +814,7 @@ async def api_period_fill_json(request: Request, period: str):
 async def api_period_flag_json(request: Request, period: str):
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     body = await request.json()
     loc = str(body.get("loc", "")).strip()
     if not loc:
@@ -843,7 +836,7 @@ async def api_period_rebuild_json(request: Request, period: str):
     """
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     body = await request.json()
     items = body.get("items") or {}
     if not isinstance(items, dict):
@@ -911,7 +904,7 @@ async def api_period_facts(request: Request, period: str):
     """读数带数据：overview_facts.json + meta.json 摘要，仅管理员可读。"""
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     facts_file = d / "overview_facts.json"
     meta_file = d / "meta.json"
     if not facts_file.exists():
@@ -943,7 +936,7 @@ async def api_period_workbench(request: Request, period: str):
     """工作台全量数据：todo/fills/pending/approval。admin 可读。"""
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     from . import workbench, approval as _appr               # noqa: PLC0415
     rec = _appr.read(d)
     data = workbench.build(d, approval=rec)
@@ -989,11 +982,11 @@ async def api_period_archive(request: Request, period: str, job: str = ""):
     """
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     if job:
         target = jobs.read_job(job)
         if target is None:
-            return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
+            return _job_missing()
     else:
         target = next((j for j in jobs.list_jobs(50)
                        if d.name in (j.get("period"), j.get("out_period"))), None)
@@ -1022,7 +1015,7 @@ async def api_period_trace(request: Request, period: str, cat: str = "bigtable",
     """
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     if cat not in _TRACE_CATS:
         cat = "bigtable"
     ledger = _find_ledger(d)
@@ -1061,7 +1054,7 @@ async def api_period_redslots(request: Request, period: str,
                               limit: int = 50, offset: int = 0):
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     raw = []
     rp = d / "red_slots.json"
     if rp.exists():
@@ -1099,7 +1092,7 @@ async def api_period_collation(request: Request, period: str,
                                full: bool = False):
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     data = collation.build(d)
     sections = [{"id": s["id"], "name": s["name"], "note": s.get("note", ""),
                  "count": s.get("count", 0), "text": s.get("text", 0),
@@ -1128,7 +1121,7 @@ async def api_period_charts_json(request: Request, period: str,
                                  limit: int = 50, offset: int = 0):
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     q = urllib.parse.quote(d.name)
     items = []
     for it in jobs.list_charts(d):
@@ -1181,7 +1174,7 @@ async def api_analyze(request: Request):
     scope = str(body.get("scope", "")).strip()
     d = resolve_period_dir(period) if period else None
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     facts_file = d / "overview_facts.json"
     meta_file = d / "meta.json"
     if not facts_file.exists():
@@ -1235,7 +1228,7 @@ async def api_forecast_board(request: Request, period: str = ""):
     默认取最新有该文件的期次。
     """
     if period and resolve_period_dir(period) is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     return forecasting.board_context(period or None)
 
 
@@ -1250,7 +1243,7 @@ async def api_period_flexible(request: Request, period: str, intent: str = ""):
     """
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     ctx = _flex_ctx(d, intent or None)
     return {
         "period": ctx["period_dir"],
@@ -1271,7 +1264,7 @@ async def api_period_flexible_generate(request: Request, period: str):
     """
     d = resolve_period_dir(period)
     if d is None:
-        return JSONResponse({"error": "期次不存在", "hint": "请先在控制台上传台账生成该期次"}, status_code=404)
+        return _period_missing()
     body = await request.json()
     intent = str(body.get("intent") or "").strip()
     backend = str(body.get("backend") or "").strip() or None
@@ -1359,7 +1352,7 @@ async def api_create_job(request: Request,
 async def api_job(request: Request, job_id: str):
     job = jobs.read_job(job_id)
     if not job:
-        return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
+        return _job_missing()
     # 契约 §2.3：失败态给结构化的「缺什么」，不让前端解析断言文本
     if job.get("missing"):
         job["ok"] = False
@@ -1371,7 +1364,7 @@ async def api_job(request: Request, job_id: str):
 async def api_artifacts(request: Request, job_id: str):
     job = jobs.read_job(job_id)
     if not job:
-        return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
+        return _job_missing()
     return {"job": job, "artifacts": jobs.collect_artifacts(job)}
 
 
@@ -1381,19 +1374,10 @@ async def api_job_download(request: Request, job_id: str, key: str):
     """任务产物与日志包只属于管理员运行工作区。"""
     job = jobs.read_job(job_id)
     if not job:
-        return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
-    if key == archive.LOGPACK_KEY:
-        out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
-        data, name = archive.pack(out_dir, job)
-        return _zip_response(data, name)
+        return _job_missing()
     out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
-    report_guard = _signed_report_download_guard(out_dir, key)
-    if report_guard:
-        return report_guard
-    path = jobs.resolve_artifact(job, key)
-    if not path:
-        return JSONResponse({"error": "产物不存在"}, status_code=404)
-    return FileResponse(path, filename=path.name, media_type="application/octet-stream")
+    return _serve_artifact(out_dir=out_dir, key=key, pack_job=job,
+                           resolve=lambda: jobs.resolve_artifact(job, key))
 
 
 @app.post("/api/jobs/{job_id}/rerun")
@@ -1402,7 +1386,7 @@ async def api_rerun_job(request: Request, job_id: str):
     user = current_user(request)
     job = jobs.read_job(job_id)
     if not job:
-        return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
+        return _job_missing()
     input_path = pathlib.Path(job.get("input", ""))
     if not input_path.exists():
         return JSONResponse({"error": "原输入文件已不存在，请重新上传台账"}, status_code=404)
@@ -1446,20 +1430,12 @@ def _tail(path: pathlib.Path, state: dict):
     return [l for l in lines if l.strip()]
 
 
-def _flush(state):
-    if state.get("buf"):
-        line, state["buf"] = state["buf"], ""
-        if line.strip():
-            return [line]
-    return []
-
-
 @app.get("/api/jobs/{job_id}/events")
 @admin_route
 async def api_events(request: Request, job_id: str):
     job = jobs.read_job(job_id)
     if not job:
-        return JSONResponse({"error": "任务不存在", "hint": "请检查任务 ID 是否正确"}, status_code=404)
+        return _job_missing()
 
     async def gen():
         prog = pathlib.Path(job.get("progress", ""))
@@ -1507,19 +1483,9 @@ async def download(request: Request, job_id: str, key: str):
     job = jobs.read_job(job_id)
     if not job:
         return RedirectResponse("/", status_code=303)
-    if key == archive.LOGPACK_KEY:
-        out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
-        data, name = archive.pack(out_dir, job)
-        return _zip_response(data, name)
     out_dir = config.OUT_DIR / (job.get("out_period") or job["period"])
-    report_guard = _signed_report_download_guard(out_dir, key)
-    if report_guard:
-        return report_guard
-    path = jobs.resolve_artifact(job, key)
-    if not path:
-        return JSONResponse({"error": "产物不存在"}, status_code=404)
-    return FileResponse(path, filename=path.name,
-                        media_type="application/octet-stream")
+    return _serve_artifact(out_dir=out_dir, key=key, pack_job=job,
+                           resolve=lambda: jobs.resolve_artifact(job, key))
 
 
 @app.get("/qr.png")
