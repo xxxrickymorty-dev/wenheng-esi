@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """#5 forecast/meta recommendations + #18 archive 自动挂任务（2026-09-24 前端清单）。"""
 import json
+import os
 import pathlib
 import sys
 
@@ -26,6 +27,70 @@ class TestForecastMeta推荐:
         from esi_v1.config_v1 import BASELINE_RECOMMENDATIONS_202607
         ctx = forecasting.page_context()
         assert ctx["recommendations"] is BASELINE_RECOMMENDATIONS_202607
+
+    def test_来源时间仅由本机工作簿与完整运行记录核实(self, tmp_path, monkeypatch):
+        root = tmp_path / "wenheng"
+        root.mkdir()
+        monkeypatch.setattr(forecasting.config, "ROOT", root)
+        workbook = root.parent / "数据与复现" / "云大全学科排名、阈值动态检测表.xlsx"
+        workbook.parent.mkdir()
+        workbook.write_bytes(b"master")
+        period_dir = root / "out" / "202609"
+        period_dir.mkdir(parents=True)
+        input_file = root / "input" / "202609" / "监测表.xlsx"
+        input_file.parent.mkdir(parents=True)
+        input_file.write_bytes(b"input")
+        run_log = period_dir / "run_log.json"
+        run_log.write_text(json.dumps({
+            "period": "202609", "assertions_ok": True,
+            "input": r"input\202609\监测表.xlsx",
+        }), encoding="utf-8")
+        os.utime(run_log, (1_000, 1_000))
+        os.utime(input_file, (900, 900))
+        os.utime(workbook, (2_000, 2_000))
+
+        provenance = forecasting._data_provenance(period_dir)
+
+        assert provenance["upstream_workbook"]["name"] == workbook.name
+        assert provenance["upstream_workbook"]["last_modified_at"] == "1970-01-01T00:33:20Z"
+        assert provenance["processed_input"] == {
+            "name": "监测表.xlsx", "last_modified_at": "1970-01-01T00:15:00Z",
+        }
+        assert provenance["run_record_at"] == "1970-01-01T00:16:40Z"
+        assert provenance["data_freshness"] == "needs_check"
+        assert provenance["master_workbook_consumption_verified"] is False
+
+    def test_缺少或未通过的运行记录时不判断新旧(self, tmp_path, monkeypatch):
+        root = tmp_path / "wenheng"
+        root.mkdir()
+        monkeypatch.setattr(forecasting.config, "ROOT", root)
+        period_dir = root / "out" / "202609"
+        period_dir.mkdir(parents=True)
+
+        provenance = forecasting._data_provenance(period_dir)
+
+        assert provenance["upstream_workbook"]["last_modified_at"] is None
+        assert provenance["run_record_at"] is None
+        assert provenance["data_freshness"] == "unverified"
+        assert provenance["master_workbook_consumption_verified"] is False
+
+        workbook = root.parent / "数据与复现" / "云大全学科排名、阈值动态检测表.xlsx"
+        workbook.parent.mkdir()
+        workbook.write_bytes(b"master")
+        run_log = period_dir / "run_log.json"
+        run_log.write_text(json.dumps({
+            "period": "202609", "assertions_ok": False,
+            "input": r"input\202609\监测表.xlsx",
+        }), encoding="utf-8")
+        os.utime(run_log, (1_000, 1_000))
+        os.utime(workbook, (2_000, 2_000))
+
+        failed_run = forecasting._data_provenance(period_dir)
+
+        assert failed_run["upstream_workbook"]["last_modified_at"] is not None
+        assert failed_run["processed_input"]["last_modified_at"] is None
+        assert failed_run["run_record_at"] is None
+        assert failed_run["data_freshness"] == "unverified"
 
 
 class TestArchive自动挂任务:

@@ -7,6 +7,10 @@ import {
   getHealth, getMe, getPeriodDetail, getPeriods, postJob,
   type ApiError, type Me, type Period, type PeriodDetail,
 } from './api'
+import {
+  getForecastChoice, getForecastMeta, saveForecastChoice,
+  type ForecastChoiceEntry, type ForecastMeta,
+} from './api5'
 import { useJobRun, type Run } from './hooks/useJobRun'
 import { Icon, Sprite } from './icons'
 import { Workbench } from './Workbench'
@@ -25,6 +29,31 @@ import { deriveWorkbench, statusToWB, type WBState } from './wb'
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'warned', 'waiting-approval', 'fail-ledger', 'fail-other', 'stalled', 'signed']
 
+function sameForecastChoice(
+  left: Record<string, Record<string, string>>,
+  right: Record<string, Record<string, string>>,
+  meta: ForecastMeta,
+): boolean {
+  return meta.routes.every((route) => meta.subjects.every((subject) =>
+    (left[route.value]?.[subject] ?? '') === (right[route.value]?.[subject] ?? '')))
+}
+
+function savedForecastChoice(
+  choice: Record<string, Record<string, string>>,
+  meta: ForecastMeta,
+): Record<string, Record<string, string>> {
+  const result: Record<string, Record<string, string>> = {}
+  for (const route of meta.routes) {
+    const bySubject: Record<string, string> = {}
+    for (const subject of meta.subjects) {
+      const model = choice[route.value]?.[subject]
+      if (model) bySubject[subject] = model
+    }
+    result[route.value] = bySubject
+  }
+  return result
+}
+
 export default function App() {
   const [healthy, setHealthy] = useState<boolean | null>(null)
   const [me, setMe] = useState<Me | null>(null)
@@ -35,6 +64,9 @@ export default function App() {
   const [urlRestorePeriod, setUrlRestorePeriod] = useState<string | null>(null)
   const [detailsByPeriod, setDetailsByPeriod] = useState<Record<string, PeriodDetail | null>>({})
   const [artifactRefreshByPeriod, setArtifactRefreshByPeriod] = useState<Record<string, number>>({})
+  const [forecastMeta, setForecastMeta] = useState<ForecastMeta | null>(null)
+  const [forecastMetaError, setForecastMetaError] = useState('')
+  const [forecastChoiceByPeriod, setForecastChoiceByPeriod] = useState<Record<string, ForecastChoiceEntry>>({})
   const [err, setErr] = useState<ApiError | null>(null)
   const [busy, setBusy] = useState(false)
   const [toolAction, setToolAction] = useState<'upload' | 'rerun' | null>(null)
@@ -43,6 +75,7 @@ export default function App() {
   const restoredActivePeriodRef = useRef<string | null>(null)
   const periodsRequestRef = useRef(0)
   const detailRequestByPeriodRef = useRef<Record<string, number>>({})
+  const forecastChoiceRequestRef = useRef<Record<string, number>>({})
 
   const refreshPeriods = useCallback(async () => {
     const request = ++periodsRequestRef.current
@@ -50,6 +83,21 @@ export default function App() {
     if (request !== periodsRequestRef.current) return null
     setPeriods(list)
     return list
+  }, [])
+
+  const refreshForecastMeta = useCallback(async () => {
+    try {
+      const next = await getForecastMeta()
+      setForecastMeta(next)
+      setForecastMetaError('')
+      return next
+    } catch (e) {
+      const h = e as { status?: number; body?: { error?: string }; message?: string }
+      setForecastMetaError(h.status === 403
+        ? '预测模型设置需要管理员权限。'
+        : h.body?.error ?? h.message ?? '暂时读不到模型清单。')
+      return null
+    }
   }, [])
 
   const refreshDetail = useCallback((period: string) => {
@@ -65,6 +113,10 @@ export default function App() {
   }, [])
 
   useEffect(() => () => { periodsRequestRef.current += 1 }, [])
+
+  useEffect(() => {
+    if (roleKnown && me?.role === 'admin') void refreshForecastMeta()
+  }, [me?.role, refreshForecastMeta, roleKnown])
 
   /* ?period= 深链：从老站迁移过来的等价地址（老站 /p/<期次> → 新站 ?view=report&period=<期次>） */
   const wantPeriod = new URLSearchParams(location.search).get('period')
@@ -96,6 +148,7 @@ export default function App() {
     requestedPeriod: string; outputPeriod: string | null
   }) => {
     void refreshPeriods().catch(() => { /* 列表刷新失败不影响过程展示 */ })
+    void refreshForecastMeta()
     const affectedPeriods = [...new Set([finished.requestedPeriod, finished.outputPeriod].filter(
       (period): period is string => !!period,
     ))]
@@ -105,7 +158,7 @@ export default function App() {
       for (const period of affectedPeriods) next[period] = (next[period] ?? 0) + 1
       return next
     })
-  }, [refreshDetail, refreshPeriods])
+  }, [refreshDetail, refreshForecastMeta, refreshPeriods])
 
   const runEnabled = healthy === true && roleKnown && me?.role === 'admin'
   const { run, attach, activity } = useJobRun({
@@ -114,19 +167,6 @@ export default function App() {
     onActivePeriod,
     onTerminal: onRunTerminal,
   })
-
-  const beginToolAction = useCallback((action: 'upload' | 'rerun') => {
-    if (!runEnabled || activity !== 'idle' || actionOwnerRef.current) return false
-    actionOwnerRef.current = action
-    setToolAction(action)
-    return true
-  }, [activity, runEnabled])
-
-  const endToolAction = useCallback((action: 'upload' | 'rerun') => {
-    if (actionOwnerRef.current !== action) return
-    actionOwnerRef.current = null
-    setToolAction(null)
-  }, [])
 
   function pickPeriod(period: string) {
     manualSelectionRef.current = true
@@ -163,7 +203,128 @@ export default function App() {
     if (selected) refreshDetail(selected)
   }, [selected, refreshDetail])
 
+  useEffect(() => {
+    if (!roleKnown || me?.role !== 'admin' || !selected) return
+    const existing = forecastChoiceByPeriod[selected]
+    if (existing?.loaded || existing?.loading || existing?.error) return
+    const request = (forecastChoiceRequestRef.current[selected] ?? 0) + 1
+    forecastChoiceRequestRef.current[selected] = request
+    setForecastChoiceByPeriod((current) => ({
+      ...current,
+      [selected]: {
+        loaded: false, loading: true, saving: false, error: '',
+        choice: {}, saved: {}, by: '', at: '',
+      },
+    }))
+    void getForecastChoice(selected).then((record) => {
+      if (forecastChoiceRequestRef.current[selected] !== request) return
+      setForecastChoiceByPeriod((current) => ({
+        ...current,
+        [selected]: {
+          loaded: true, loading: false, saving: false, error: '',
+          choice: record.choice ?? {}, saved: record.choice ?? {}, by: record.by ?? '', at: record.at ?? '',
+        },
+      }))
+    }).catch((e) => {
+      if (forecastChoiceRequestRef.current[selected] !== request) return
+      const h = e as { status?: number; body?: { error?: string }; message?: string }
+      setForecastChoiceByPeriod((current) => ({
+        ...current,
+        [selected]: {
+          loaded: false, loading: false, saving: false,
+          error: h.status === 403 ? '本期模型设置需要管理员权限。'
+            : h.body?.error ?? h.message ?? '暂时读不到本期模型设置。',
+          choice: {}, saved: {}, by: '', at: '',
+        },
+      }))
+    })
+  }, [forecastChoiceByPeriod, me?.role, roleKnown, selected])
+
   const detail = selected ? detailsByPeriod[selected] ?? null : null
+  const selectedForecastChoice = selected ? forecastChoiceByPeriod[selected] ?? null : null
+  const selectedForecastChoiceDirty = !!(forecastMeta && selectedForecastChoice?.loaded
+    && !sameForecastChoice(selectedForecastChoice.choice, selectedForecastChoice.saved, forecastMeta))
+  const anyForecastChoiceDirty = !!forecastMeta && Object.values(forecastChoiceByPeriod).some((entry) =>
+    entry.loaded && !sameForecastChoice(entry.choice, entry.saved, forecastMeta))
+  const choiceLoadLockReason = selected && !forecastMeta
+    ? forecastMetaError || '正在读取模型清单，读取完成后才能开始生成。'
+    : selected && !selectedForecastChoice?.loaded
+      ? selectedForecastChoice?.error || '正在读取本期已保存的模型选择，读取完成后才能开始生成。'
+      : selectedForecastChoiceDirty
+        ? '本期模型选择有未保存修改，请保存并确认成功后再开始生成。'
+        : null
+
+  useEffect(() => {
+    if (!anyForecastChoiceDirty) return
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warnBeforeLeaving)
+    return () => window.removeEventListener('beforeunload', warnBeforeLeaving)
+  }, [anyForecastChoiceDirty])
+
+  function reloadForecastChoice() {
+    if (!selected) return
+    forecastChoiceRequestRef.current[selected] = (forecastChoiceRequestRef.current[selected] ?? 0) + 1
+    setForecastChoiceByPeriod((current) => ({
+      ...current,
+      [selected]: {
+        loaded: false, loading: false, saving: false, error: '',
+        choice: {}, saved: {}, by: '', at: '',
+      },
+    }))
+  }
+
+  function changeForecastChoice(route: string, subject: string, model: string) {
+    if (!selected || !selectedForecastChoice?.loaded) return
+    setForecastChoiceByPeriod((current) => {
+      const entry = current[selected]
+      if (!entry?.loaded) return current
+      return {
+        ...current,
+        [selected]: {
+          ...entry, error: '',
+          choice: { ...entry.choice, [route]: { ...(entry.choice[route] ?? {}), [subject]: model } },
+        },
+      }
+    })
+  }
+
+  async function saveSelectedForecastChoice() {
+    if (!selected || !forecastMeta || !selectedForecastChoice?.loaded || !selectedForecastChoiceDirty) return
+    const period = selected
+    const entry = selectedForecastChoice
+    const payload = savedForecastChoice(entry.choice, forecastMeta)
+    setForecastChoiceByPeriod((current) => ({
+      ...current,
+      [period]: { ...current[period], saving: true, error: '' },
+    }))
+    try {
+      await saveForecastChoice(period, payload)
+      const readback = await getForecastChoice(period)
+      if (!sameForecastChoice(payload, readback.choice ?? {}, forecastMeta)) {
+        throw new Error('保存后确认到的选择与页面不一致，请重试。')
+      }
+      setForecastChoiceByPeriod((current) => ({
+        ...current,
+        [period]: {
+          loaded: true, loading: false, saving: false, error: '',
+          choice: readback.choice ?? {}, saved: readback.choice ?? {},
+          by: readback.by ?? '', at: readback.at ?? '',
+        },
+      }))
+    } catch (e) {
+      const h = e as { status?: number; body?: { error?: string }; message?: string }
+      setForecastChoiceByPeriod((current) => ({
+        ...current,
+        [period]: {
+          ...current[period], saving: false,
+          error: h.body?.error ?? h.message ?? '保存失败，选择仍未保存。',
+        },
+      }))
+    }
+  }
   const runForSelected: Run | null = run?.requestedPeriod === selected ? run : null
   const approvalStatus = periods.find((p) => p.period === selected)?.status ?? 'unsigned'
   const runApprovalStatus = periods.find((p) => p.period === run?.requestedPeriod)?.status ?? 'unsigned'
@@ -194,10 +355,27 @@ export default function App() {
             ? '正在生成，请稍候。'
             : toolAction === 'upload'
               ? '正在上传并开始生成，请稍候。'
-              : toolAction === 'rerun'
-                ? '正在重跑，请稍候。'
-                : null
+            : toolAction === 'rerun'
+              ? '正在重跑，请稍候。'
+              : selected && !/^\d{6}$/.test(selected)
+                ? '历史复现期次不能直接新建任务，请选择六位正式期次。'
+                : choiceLoadLockReason
+  const selectedPeriodCanStartJob = !!selected && /^\d{6}$/.test(selected)
   const jobActionsLocked = !runEnabled || activity !== 'idle' || busy || toolAction !== null
+    || !!choiceLoadLockReason || !selectedPeriodCanStartJob
+
+  const beginToolAction = useCallback((action: 'upload' | 'rerun') => {
+    if (!runEnabled || activity !== 'idle' || actionOwnerRef.current || jobActionsLocked) return false
+    actionOwnerRef.current = action
+    setToolAction(action)
+    return true
+  }, [activity, jobActionsLocked, runEnabled])
+
+  const endToolAction = useCallback((action: 'upload' | 'rerun') => {
+    if (actionOwnerRef.current !== action) return
+    actionOwnerRef.current = null
+    setToolAction(null)
+  }, [])
 
   async function onGenerate() {
     if (!selected || jobActionsLocked || actionOwnerRef.current) return
@@ -298,7 +476,19 @@ export default function App() {
         ) : view === 'archive' ? (
           <Archive period={selected} approvalStatus={approvalStatus} />
         ) : view === 'forecast' ? (
-          <Forecast />
+          <Forecast
+            period={selected}
+            periods={periods}
+            actualOutputPeriod={run?.outputPeriod ?? null}
+            meta={forecastMeta}
+            metaError={forecastMetaError}
+            choice={selectedForecastChoice}
+            choiceDirty={selectedForecastChoiceDirty}
+            onPickPeriod={pickPeriod}
+            onChoiceChange={changeForecastChoice}
+            onSaveChoice={saveSelectedForecastChoice}
+            onReloadChoice={reloadForecastChoice}
+          />
         ) : view === 'trace' ? (
           <Trace period={selected} />
         ) : view === 'reading' ? (
@@ -338,6 +528,16 @@ export default function App() {
                         actionsLocked={jobActionsLocked}
                         submitting={busy}
                         onGenerate={onGenerate}
+                        periods={periods}
+                        forecastMeta={forecastMeta}
+                        forecastMetaError={forecastMetaError}
+                        actualOutputPeriod={run?.outputPeriod ?? null}
+                        forecastChoice={selectedForecastChoice}
+                        forecastChoiceDirty={selectedForecastChoiceDirty}
+                        onPickPeriod={pickPeriod}
+                        onForecastChoiceChange={changeForecastChoice}
+                        onSaveForecastChoice={saveSelectedForecastChoice}
+                        onReloadForecastChoice={reloadForecastChoice}
                       />
             {!noAdminBits && <Tools
               period={selected}

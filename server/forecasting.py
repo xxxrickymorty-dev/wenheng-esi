@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import base64
+import datetime as dt
 import io
+import json
 import math
 import pathlib
 import re
@@ -42,12 +44,70 @@ def _load():
     return period_dir, data, meta
 
 
+def _data_provenance(period_dir: pathlib.Path) -> dict:
+    """只回报能从本机文件和完整运行记录核实的来源时间。"""
+    workbook = (pathlib.Path(config.ROOT).parent / "数据与复现"
+                / "云大全学科排名、阈值动态检测表.xlsx")
+    run_log = period_dir / "run_log.json"
+
+    def modified_at(path: pathlib.Path) -> tuple[float | None, str | None]:
+        try:
+            stamp = path.stat().st_mtime
+        except OSError:
+            return None, None
+        value = dt.datetime.fromtimestamp(stamp, tz=dt.timezone.utc)
+        return stamp, value.isoformat(timespec="seconds").replace("+00:00", "Z")
+
+    workbook_mtime, workbook_at = modified_at(workbook)
+    run_record_mtime = None
+    run_record_at = None
+    input_info = {"name": None, "last_modified_at": None}
+    input_mtime = None
+    try:
+        record = json.loads(run_log.read_text(encoding="utf-8"))
+        if (isinstance(record, dict)
+                and record.get("period") == period_dir.name
+                and record.get("assertions_ok") is True):
+            run_record_mtime, run_record_at = modified_at(run_log)
+            raw_input = record.get("input")
+            if isinstance(raw_input, str) and raw_input.strip():
+                rel = pathlib.PurePosixPath(raw_input.strip().replace("\\", "/"))
+                if not rel.is_absolute() and ".." not in rel.parts:
+                    input_file = pathlib.Path(config.ROOT).joinpath(*rel.parts)
+                    input_mtime, input_at = modified_at(input_file)
+                    input_info = {"name": rel.name, "last_modified_at": input_at}
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        pass
+
+    if run_record_mtime is None or workbook_mtime is None:
+        freshness = "unverified"
+    elif workbook_mtime > run_record_mtime or (
+            input_mtime is not None and input_mtime > run_record_mtime):
+        freshness = "needs_check"
+    else:
+        # 旧记录没有台账和输入文件的版本信息，仅凭时间不能确认当前文件已被处理。
+        freshness = "unverified"
+
+    return {
+        "upstream_workbook": {
+            "name": workbook.name,
+            "last_modified_at": workbook_at,
+        },
+        "processed_input": input_info,
+        "run_record_at": run_record_at,
+        "data_freshness": freshness,
+        # 运行记录单独列出处理所用文件，不能证明预测直接读取了工作区主台账。
+        "master_workbook_consumption_verified": False,
+    }
+
+
 def page_context() -> dict:
     try:
         period_dir, _data, meta = _load()
         return {
             "available": True,
             "source_period": period_dir.name,
+            **_data_provenance(period_dir),
             "subjects": meta["subjects"],
             "routes": ROUTES,
             "models": MODEL_OPTIONS,
@@ -61,6 +121,14 @@ def page_context() -> dict:
         return {
             "available": False,
             "source_period": "",
+            "upstream_workbook": {
+                "name": "云大全学科排名、阈值动态检测表.xlsx",
+                "last_modified_at": None,
+            },
+            "processed_input": {"name": None, "last_modified_at": None},
+            "run_record_at": None,
+            "data_freshness": "unverified",
+            "master_workbook_consumption_verified": False,
             "subjects": [],
             "routes": ROUTES,
             "models": MODEL_OPTIONS,

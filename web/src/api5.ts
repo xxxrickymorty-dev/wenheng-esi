@@ -10,6 +10,11 @@ export type ForecastModelOption = { value: string; label: string }
 export type ForecastMeta = {
   available: boolean
   source_period: string
+  upstream_workbook: { name: string; last_modified_at: string | null }
+  processed_input: { name: string | null; last_modified_at: string | null }
+  run_record_at: string | null
+  data_freshness: 'needs_check' | 'unverified'
+  master_workbook_consumption_verified: boolean
   subjects: string[]
   routes: ForecastRoute[]
   models: ForecastModelOption[]
@@ -18,6 +23,15 @@ export type ForecastMeta = {
   /** 逐科 V1 推荐：recommendations[路线][学科] = 模型名（契约 #16；未就绪时缺省） */
   recommendations?: Record<string, Record<string, string>>
   recommendation_baseline?: string
+}
+
+export function formatProvenanceTime(value: string | null | undefined): string {
+  if (!value) return '无法核实'
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return '无法核实'
+  return new Intl.DateTimeFormat('zh-CN', {
+    dateStyle: 'medium', timeStyle: 'medium', timeZone: 'Asia/Shanghai',
+  }).format(date)
 }
 
 export async function getForecastMeta(): Promise<ForecastMeta> {
@@ -83,6 +97,17 @@ export async function runForecast(body: {
 export type ForecastChoice = {
   period: string
   choice: Record<string, Record<string, string>>
+  by: string
+  at: string
+}
+
+export type ForecastChoiceEntry = {
+  loaded: boolean
+  loading: boolean
+  saving: boolean
+  error: string
+  choice: ForecastChoice['choice']
+  saved: ForecastChoice['choice']
   by: string
   at: string
 }

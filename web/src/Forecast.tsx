@@ -1,14 +1,13 @@
-/* 预测台（工作区）——潜力学科各用什么模型 + 试跑验证。
-   数据全部来自后端：模型池/学科/路线来自 /api/forecast/meta，试跑走 /api/forecast/run，
-   逐科选择落盘走 /api/periods/{期次}/forecast-choice——期次就是数据来源那一期
-   （meta.source_period，最新一期），选择和试跑绑在同一期上。
-   本页不做任何换算：表上图上都是后端给的数（只有"怎么显示"的格式化，见 fmtNum）。 */
+/* 预测台——潜力学科模型现状与试跑验证。
+   学科、路线和模型说明来自服务端；模型选择与生成台共用当前任务期次。
+   学科板和试跑仍读取最新完整预测数据；本页只显示结果，不重新计算。 */
 
 import { useEffect, useState } from 'react'
 import {
-  getForecastBoard, getForecastChoice, getForecastMeta, runForecast, saveForecastChoice,
-  type ForecastBoard, type ForecastMeta, type ForecastModelResult, type ForecastRun,
+  formatProvenanceTime, getForecastBoard, runForecast,
+  type ForecastBoard, type ForecastChoiceEntry, type ForecastMeta, type ForecastModelResult, type ForecastRun,
 } from './api5'
+import type { Period } from './api'
 import { Icon } from './icons'
 import { MODEL_DESC } from './Workbench'
 
@@ -91,6 +90,14 @@ function Trial({ meta }: { meta: ForecastMeta }) {
   const [busy, setBusy] = useState(false)
   const [data, setData] = useState<ForecastRun | null>(null)
   const [err, setErr] = useState('')
+
+  useEffect(() => {
+    if (!meta.subjects.includes(subject)) setSubject(meta.subjects[0] ?? '')
+  }, [meta.subjects, subject])
+
+  useEffect(() => {
+    if (!meta.routes.some((route) => route.value === task)) setTask(meta.routes[0]?.value ?? '')
+  }, [meta.routes, task])
 
   async function onRun() {
     setBusy(true)
@@ -197,7 +204,7 @@ function Board({ meta }: { meta: ForecastMeta }) {
     })()
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [meta.source_period])
 
   const rows = (d?.routes ?? {})[route] ?? []
 
@@ -257,18 +264,30 @@ function Board({ meta }: { meta: ForecastMeta }) {
 
 /* ---------------------------------------------------------------- 逐科选择 */
 
-function PickTable({ meta, picks, setPicks, saved, saving, saveErr, onSave }: {
+function PickTable({
+  meta, period, periods, actualOutputPeriod, choice, dirty, metaError,
+  onPickPeriod, onChange, onSave, onReload,
+}: {
   meta: ForecastMeta
-  picks: Record<string, Record<string, string>>
-  setPicks: (p: Record<string, Record<string, string>>) => void
-  saved: { n: number; by: string; at: string } | null
-  saving: boolean
-  saveErr: string
+  period: string | null
+  periods: Period[]
+  actualOutputPeriod: string | null
+  choice: ForecastChoiceEntry | null
+  dirty: boolean
+  metaError: string
+  onPickPeriod: (period: string) => void
+  onChange: (route: string, subject: string, model: string) => void
   onSave: () => void
+  onReload: () => void
 }) {
   const [route, setRoute] = useState(meta.routes[0]?.value ?? '')
   const models = meta.models.filter((m) => m.value !== 'recommended' && m.value !== 'all')
-  const recOf = (s: string) => meta.recommendations?.[route]?.[s] ?? ''
+  const currentRoute = meta.routes.some((item) => item.value === route) ? route : (meta.routes[0]?.value ?? '')
+  const recOf = (s: string) => meta.recommendations?.[currentRoute]?.[s] ?? ''
+  const source = meta.upstream_workbook
+  const freshnessText = meta.data_freshness === 'needs_check'
+    ? '上游台账在最近一次完整处理后有更新；无法确认这次更新是否已进入预测所用数据，请重新处理确认。'
+    : '现有记录无法确认上游台账是否已进入预测所用数据。请以最新完整预测数据为准。'
 
   return (
     <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
@@ -279,17 +298,36 @@ function PickTable({ meta, picks, setPicks, saved, saving, saveErr, onSave }: {
         默认就用 V1 推荐；想改哪科改哪科，改完保存。两条路线的推荐不一样，先选你在改哪条路线。
       </p>
 
+      <div className="fc-stamps">
+        <label>模型配置对应的任务期次
+          <select value={period ?? ''} onChange={(e) => onPickPeriod(e.target.value)}>
+            {!period && <option value="">请选择期次</option>}
+            {periods.map((item) => <option key={item.period} value={item.period}>{item.period}</option>)}
+            {period && !periods.some((item) => item.period === period) && <option value={period}>{period}</option>}
+          </select>
+        </label>
+        <span>最新完整预测数据 <b className="mono">{meta.source_period || '未就绪'}</b></span>
+        <span>本次实际输出期次 <b className="mono">{actualOutputPeriod ?? '任务完成后显示'}</b></span>
+        <span>上游只读台账 <b>{source.name}</b><br />最后修改（北京时间）<b className="mono">{source.last_modified_at ? formatProvenanceTime(source.last_modified_at) : '本机未找到'}</b></span>
+      </div>
+      <div className="degraded">
+        <b>期次与数据说明</b>：{freshnessText} 现有记录无法确认主台账是否被预测流程读取。
+        推荐基线为 {meta.recommendation_baseline ?? '—'}，不是预测数据期次。
+        <br />最近一次完整处理时间（北京时间）：{formatProvenanceTime(meta.run_record_at)}；上次处理使用的文件：{meta.processed_input.name ?? '无法核实'}
+        {meta.processed_input.last_modified_at ? `（文件最后修改：${formatProvenanceTime(meta.processed_input.last_modified_at)}）` : ''}。
+      </div>
+
       <div className="fc-tabs" role="group" aria-label="预测路线">
         {meta.routes.map((r) => (
-          <button key={r.value} type="button" aria-pressed={r.value === route}
-                  className={r.value === route ? 'on' : ''} onClick={() => setRoute(r.value)}>
+          <button key={r.value} type="button" aria-pressed={r.value === currentRoute}
+                  className={r.value === currentRoute ? 'on' : ''} onClick={() => setRoute(r.value)}>
             {r.label}
           </button>
         ))}
       </div>
       <p className="hint" style={{ marginTop: 8 }}>
         两条路线的结论不一定一致——报告里会分别标注，不合成一个结论。
-        「V1 推荐」是 202607 冻结的基线推荐（报告预测章默认按它出图），
+        「V1 推荐」是 {meta.recommendation_baseline ?? '—'} 冻结的基线推荐（报告预测章默认按它出图），
         和上方学科板的「选模记录」来源不同、值可能不一样。
       </p>
 
@@ -305,7 +343,7 @@ function PickTable({ meta, picks, setPicks, saved, saving, saveErr, onSave }: {
           </thead>
           <tbody>
             {meta.subjects.map((s) => {
-              const mine = picks[route]?.[s] ?? ''
+              const mine = choice?.choice[currentRoute]?.[s] ?? ''
               const rec = recOf(s)
               return (
                 <tr key={s}>
@@ -313,10 +351,8 @@ function PickTable({ meta, picks, setPicks, saved, saving, saveErr, onSave }: {
                   <td className="fc-rec">{rec || 'V1 基线推荐'}</td>
                   <td>
                     <select value={mine} aria-label={`${s}的预测模型`}
-                            onChange={(e) => setPicks({
-                              ...picks,
-                              [route]: { ...(picks[route] ?? {}), [s]: e.target.value },
-                            })}>
+                            disabled={!choice?.loaded || choice.saving}
+                            onChange={(e) => onChange(currentRoute, s, e.target.value)}>
                       <option value="">用 V1 推荐</option>
                       {models.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
                     </select>
@@ -335,15 +371,22 @@ function PickTable({ meta, picks, setPicks, saved, saving, saveErr, onSave }: {
       </div>
 
       <div className="fc-save">
-        <button className="btn primary" onClick={onSave} disabled={saving}>
-          {saving ? '正在保存……' : '保存本期选择'}
+        <button className="btn primary" onClick={onSave} disabled={!choice?.loaded || !dirty || choice.saving || !period}>
+          {choice?.saving ? '正在保存……' : `保存${period ?? '本期'}选择`}
         </button>
-        <span className="hint">
-          {saveErr ? saveErr : saved
-            ? `已保存 ${saved.n} 科改选${saved.by ? ` · ${saved.by}` : ''}${saved.at ? ` · ${saved.at}` : ''}（未改的学科用 V1 推荐）`
-            : '尚未保存——只存改过的学科，未改的用 V1 推荐。'}
+        <span className="hint" role="status" style={dirty ? { color: 'var(--warn)', fontWeight: 650 } : undefined}>
+          {choice?.error || (dirty
+            ? '有未保存修改 · 保存并确认成功后，才会用于之后开始的任务。'
+            : choice?.loaded
+              ? `已保存${choice.by ? ` · ${choice.by}` : ''}${choice.at ? ` · ${choice.at}` : ''} · 未改的学科使用 V1 推荐`
+              : '正在读取本期已保存的选择……')}
         </span>
       </div>
+
+      {!choice?.loaded && <div className="pending-box" style={{ marginTop: 12 }}>
+        {metaError || choice?.error || '正在读取本期已保存的选择。'}
+        {choice?.error && <button type="button" className="btn" onClick={onReload} style={{ marginLeft: 10 }}>重新读取</button>}
+      </div>}
 
       <div className="degraded">
         <b>与报告的关系</b>：这里保存的选择进报告预测章——下次重出报告时，选中的学科按你的选择出图，
@@ -355,111 +398,56 @@ function PickTable({ meta, picks, setPicks, saved, saving, saveErr, onSave }: {
 
 /* ---------------------------------------------------------------- 页面 */
 
-export function Forecast() {
-  const [meta, setMeta] = useState<ForecastMeta | null>(null)
-  const [metaErr, setMetaErr] = useState('')
-  const [picks, setPicks] = useState<Record<string, Record<string, string>>>({})
-  const [saved, setSaved] = useState<{ n: number; by: string; at: string } | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [saveErr, setSaveErr] = useState('')
-
-  useEffect(() => {
-    let alive = true
-    ;(async () => {
-      try {
-        const m = await getForecastMeta()
-        if (!alive) return
-        setMeta(m)
-        if (!m.available || !m.source_period) return
-        const c = await getForecastChoice(m.source_period)
-        if (!alive) return
-        const init: Record<string, Record<string, string>> = {}
-        let n = 0
-        for (const r of m.routes) {
-          init[r.value] = {}
-          for (const s of m.subjects) {
-            const v = c.choice?.[r.value]?.[s] ?? ''
-            init[r.value][s] = v
-            if (v) n += 1
-          }
-        }
-        setPicks(init)
-        if (n > 0) setSaved({ n, by: c.by, at: c.at })
-      } catch (e) {
-        const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
-        if (!alive) return
-        setMetaErr(h.status === 403
-          ? '预测台要管理员权限——用馆员账号登录后再来。'
-          : (h.body?.error ?? h.message ?? '读不到预测台的数据。'))
-      }
-    })()
-    return () => { alive = false }
-  }, [])
-
-  async function onSave() {
-    if (!meta) return
-    setSaving(true)
-    setSaveErr('')
-    try {
-      const payload: Record<string, Record<string, string>> = {}
-      let n = 0
-      for (const r of meta.routes) {
-        const per: Record<string, string> = {}
-        for (const s of meta.subjects) {
-          const v = picks[r.value]?.[s]
-          if (v) { per[s] = v; n += 1 }
-        }
-        payload[r.value] = per
-      }
-      await saveForecastChoice(meta.source_period, payload)
-      /* 存完回读核对：**看到文件里确实有**才算保存成功（不靠响应自报） */
-      const c = await getForecastChoice(meta.source_period)
-      const landed = meta.routes.every((r) => meta.subjects.every(
-        (s) => (payload[r.value]?.[s] ?? '') === (c.choice?.[r.value]?.[s] ?? '')))
-      if (!landed) {
-        setSaveErr('这次没有保存成功——后端的保存接口有故障（已记下，等后端修）。改的选择现在只在页面上，刷新会丢。')
-        return
-      }
-      setSaved({ n, by: c.by, at: c.at })
-    } catch (e) {
-      const h = e as { body?: { error?: string; hint?: string }; message?: string }
-      setSaveErr(h.body?.error ?? h.message ?? '保存失败。')
-    } finally {
-      setSaving(false)
-    }
-  }
-
+export function Forecast({
+  period, periods, actualOutputPeriod, meta, metaError, choice, choiceDirty,
+  onPickPeriod, onChoiceChange, onSaveChoice, onReloadChoice,
+}: {
+  period: string | null
+  periods: Period[]
+  actualOutputPeriod: string | null
+  meta: ForecastMeta | null
+  metaError: string
+  choice: ForecastChoiceEntry | null
+  choiceDirty: boolean
+  onPickPeriod: (period: string) => void
+  onChoiceChange: (route: string, subject: string, model: string) => void
+  onSaveChoice: () => void
+  onReloadChoice: () => void
+}) {
   return (
     <>
       <section className="card" style={{ padding: '22px 24px' }}>
         <h1 style={{ fontSize: 25 }}>潜力学科预测</h1>
         <p className="fc-lead">
-          报告预测章用哪套模型，在这里定：<b>潜力学科</b>各有一条 V1 基线推荐，想改哪科就改，改完保存。
-          想先看某个模型准不准，在下面试跑一次——滚动误差、首次过线期都摆出来。
+          报告预测章用哪套模型，在这里按任务期次设置；学科板和试跑使用最新完整派生产物，供当前查看和比较。
         </p>
         <div className="fc-stamps">
           <span>模型版本 <b className="mono">{meta?.model_version ?? '—'}</b></span>
-          <span>数据期次 <b className="mono">{meta?.source_period || '未就绪'}</b>（最新一期派生产物 · 选择与试跑都绑在这一期）</span>
+          <span>预测预览数据期次 <b className="mono">{meta?.source_period || '未就绪'}</b>（最新完整派生产物）</span>
           <span>运行路径 <b>确定性计算 · 大模型不参与数据路径</b></span>
         </div>
       </section>
 
-      {metaErr && <div className="pending-box" style={{ marginTop: 14 }}>{metaErr}</div>}
+      {metaError && <div className="pending-box" style={{ marginTop: 14 }}>{metaError}</div>}
+      {!meta && !metaError && <div className="pending-box" style={{ marginTop: 14 }}>正在读取预测模型清单……</div>}
 
       {meta && !meta.available && (
         <div className="pending-box" style={{ marginTop: 14 }}>
-          这一期的派生产物还没就绪，暂时跑不了预测：{meta.load_error}
+          最新完整预测数据尚未就绪，暂时跑不了预测：{meta.load_error}
         </div>
       )}
 
-      {meta && meta.available && (
+      {meta && (
         <>
-          <Board meta={meta} />
-          <PickTable meta={meta} picks={picks} setPicks={setPicks}
-                     saved={saved} saving={saving} saveErr={saveErr} onSave={onSave} />
-          <Trial meta={meta} />
+          {meta.available && <Board meta={meta} />}
+          <PickTable meta={meta} period={period} periods={periods}
+                     actualOutputPeriod={actualOutputPeriod} choice={choice}
+                     dirty={choiceDirty} metaError={metaError}
+                     onPickPeriod={onPickPeriod} onChange={onChoiceChange}
+                     onSave={onSaveChoice} onReload={onReloadChoice} />
+          {meta.available && <Trial meta={meta} />}
 
-          <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
+          {meta.available && <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
             <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
               <span className="fc-no">04</span>口径说明
             </h2>
@@ -470,7 +458,7 @@ export function Forecast() {
               <li><b>多期外推</b>：正式验证范围是一步预测；页面逐期追加预测值并重新拟合，用于形成监测趋势。</li>
               <li><b>结果边界</b>：预测过线是滚动监测信号，不等同于正式入榜时间或入榜概率。</li>
             </ul>
-          </section>
+          </section>}
         </>
       )}
 

@@ -3,6 +3,7 @@
    设计取自静态稿 mockups/v2-工作台与报告.html；状态与文案规格见 web/UX-生成台.md。 */
 
 import type { ApiError, Me, Period, PeriodDetail } from './api'
+import { formatProvenanceTime, type ForecastChoiceEntry, type ForecastMeta } from './api5'
 import { useState } from 'react'
 import { Icon } from './icons'
 import { failureCopy, isTerminal, STATE_LABEL, type Workbench as WB, type WBState } from './wb'
@@ -16,7 +17,6 @@ export const MODEL_DESC: Record<string, string> = {
   'SARIMA模型': '趋势 + 季节都管，参数在最初 30 期按 AIC 选定后固定。通用、稳。',
   '经验贝叶斯状态空间模型': '把趋势与季节当「状态」逐期更新。对噪声大的序列更稳健。',
 }
-const MODELS = Object.keys(MODEL_DESC)
 
 function Steps({ wb }: { wb: WB }) {
   return (
@@ -201,62 +201,156 @@ function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }
   return null
 }
 
-function ModelPicker() {
+function ModelPicker({
+  period, periods, meta, metaError, actualOutputPeriod, state, dirty,
+  onPickPeriod, onChange, onSave, onReload,
+}: {
+  period: string | null
+  periods: Period[]
+  meta: ForecastMeta | null
+  metaError: string
+  actualOutputPeriod: string | null
+  state: ForecastChoiceEntry | null
+  dirty: boolean
+  onPickPeriod: (period: string) => void
+  onChange: (route: string, subject: string, model: string) => void
+  onSave: () => void
+  onReload: () => void
+}) {
+  const [route, setRoute] = useState(meta?.routes[0]?.value ?? '')
+  const routes = meta?.routes ?? []
+  const subjects = meta?.subjects ?? []
+  const models = (meta?.models ?? []).filter((m) => m.value !== 'recommended' && m.value !== 'all')
+  const source = meta?.upstream_workbook
+  const sourceTime = source?.last_modified_at ?? null
+  const freshnessText = meta?.data_freshness === 'needs_check'
+    ? '上游台账在最近一次完整处理后有更新；无法确认这次更新是否已进入预测所用数据，请重新处理确认。'
+    : '现有记录无法确认上游台账是否已进入预测所用数据。预测预览仍读取下方所示的最新完整预测数据。'
+  const currentRoute = routes.some((item) => item.value === route) ? route : (routes[0]?.value ?? '')
+
   return (
-    <details className="model">
-      <summary>
-        <Icon name="arrow" size={19} />
-        <span className="k">预测模型</span>
-        <span className="v">用推荐（按学科，22 科已分别指定）</span>
-      </summary>
-      <div className="body">
-        <p style={{ margin: '2px 0 12px', color: 'var(--ink-2)', fontSize: 15.5 }}>
-          推荐值来自各学科历史数据的特征。想自己指定就逐科改选——每科下方是模型说明。
-          <br />
-          <span style={{ color: 'var(--ink-3)', fontSize: 14.5 }}>
-            本次预测的是<b>被引</b>路线；另一条是排名路线，两条结论不一定一致，报告里会分别标注。
-          </span>
-        </p>
-        <table>
-          <thead>
-            <tr><th>学科</th><th>推荐</th><th>我的选择</th></tr>
-          </thead>
-          <tbody>
-            {[
-              { d: '化学', rec: '季节性ETS模型' },
-              { d: '工程学', rec: 'SARIMA模型' },
-              { d: '材料科学', rec: '阻尼Holt模型' },
-            ].map((row) => (
-              <tr key={row.d}>
-                <td>{row.d}</td>
-                <td>{row.rec}</td>
-                <td>
-                  <select defaultValue={row.rec} aria-label={`${row.d}的预测模型`}>
-                    {MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                  <span className="mdesc">{MODEL_DESC[row.rec]}</span>
-                </td>
-              </tr>
-            ))}
-            <tr>
-              <td colSpan={3} style={{ color: 'var(--ink-3)', fontSize: 14.5 }}>
-                … 其余 19 个学科同理（本屏只列 3 科示意）
-                <br />
-                <span style={{ color: 'var(--gold-ink)' }}>
-                  说明：模型清单与"推荐哪一科用哪个"目前还是前端占位——等契约 §2.2 #3 的接口。
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span className="fc-no">01</span>
+        <h2 style={{ fontSize: 21 }}>预测模型</h2>
+        <span style={{ padding: '3px 9px', borderRadius: 999, background: 'var(--gold-soft)', color: 'var(--gold-ink)', fontSize: 12, fontWeight: 650 }}>
+          逐科选择 · 默认 V1 推荐
+        </span>
       </div>
-    </details>
+      <p style={{ margin: '9px 0 14px', color: 'var(--ink-2)', fontSize: 15.5 }}>
+        两条路线分别按任务期次保存。想改哪科就改哪科；模型说明会随选择切换。
+        本期报告只应用实际进入预测章的学科，其他已保存选择不改变本期数值。
+      </p>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 14px', background: 'var(--panel)', border: '1px solid var(--line-2)', borderRadius: 10 }}>
+        <label htmlFor="workbench-task-period" style={{ display: 'grid', gap: 4, color: 'var(--ink-3)', fontSize: 13 }}>
+          模型配置对应的任务期次
+          <select id="workbench-task-period" value={period ?? ''} onChange={(e) => onPickPeriod(e.target.value)}
+                  style={{ minWidth: 170, padding: '5px 9px', border: '1px solid var(--line)', borderRadius: 7, background: 'var(--card)', color: 'var(--ink)', font: 'inherit', fontSize: 16 }}>
+            {!period && <option value="">请选择期次</option>}
+            {periods.map((item) => <option key={item.period} value={item.period}>{item.period}</option>)}
+            {period && !periods.some((item) => item.period === period) && <option value={period}>{period}</option>}
+          </select>
+        </label>
+        <div style={{ minWidth: 160 }}>
+          <small style={{ display: 'block', color: 'var(--ink-3)', fontSize: 13 }}>最新完整预测数据</small>
+          <strong style={{ fontFamily: 'var(--mono)', fontSize: 16 }}>{meta?.source_period || '未就绪'}</strong>
+        </div>
+        <div style={{ minWidth: 190 }}>
+          <small style={{ display: 'block', color: 'var(--ink-3)', fontSize: 13 }}>本次实际输出期次</small>
+          <strong style={{ color: 'var(--gold-ink)', fontSize: 15 }}>{actualOutputPeriod || '任务完成后显示'}</strong>
+        </div>
+        <div style={{ minWidth: 260, flex: 1 }}>
+          <small style={{ display: 'block', color: 'var(--ink-3)', fontSize: 13 }}>上游只读台账文件</small>
+          <strong style={{ fontSize: 14 }}>{source?.name ?? '云大全学科排名、阈值动态检测表.xlsx'}</strong>
+          <span style={{ display: 'block', color: 'var(--ink-3)', fontSize: 13 }}>
+            最后修改（北京时间）：{sourceTime ? formatProvenanceTime(sourceTime) : '本机未找到'}
+          </span>
+        </div>
+      </div>
+
+      <div className="degraded" style={{ borderLeft: meta?.data_freshness === 'needs_check' ? '3px solid var(--gold)' : undefined }}>
+        <b>期次与数据说明</b>：{freshnessText} 现有记录无法确认主台账是否被预测流程读取。V1 推荐基线为 {meta?.recommendation_baseline ?? '—'}，它不是预测数据期次。
+        <br />最近一次完整处理时间（北京时间）：{formatProvenanceTime(meta?.run_record_at)}；上次处理使用的文件：{meta?.processed_input?.name ?? '无法核实'}{meta?.processed_input?.last_modified_at ? `（文件最后修改：${formatProvenanceTime(meta.processed_input.last_modified_at)}）` : ''}。
+      </div>
+
+      {routes.length > 0 && (
+        <div role="group" aria-label="模型路线" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '14px 0 10px' }}>
+          {routes.map((item) => (
+            <button key={item.value} type="button" className="btn" aria-pressed={item.value === currentRoute}
+                    onClick={() => setRoute(item.value)} style={item.value === currentRoute ? { borderColor: 'var(--zhu)', background: 'var(--zhu-soft)', color: 'var(--zhu)' } : undefined}>
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!meta ? (
+        <div className="pending-box" style={{ marginTop: 12 }}>{metaError || '正在读取模型清单……'}</div>
+      ) : !state?.loaded ? (
+        <div className="pending-box" style={{ marginTop: 12 }}>
+          {state?.error || (state?.loading ? '正在读取本期已保存的选择……' : '尚未读取本期已保存的选择。')}
+          {state?.error && <button type="button" className="btn" onClick={onReload} style={{ marginLeft: 10 }}>重新读取</button>}
+        </div>
+      ) : !meta?.available ? (
+        <div className="pending-box" style={{ marginTop: 12 }}>预测数据尚未就绪，暂时没有可供选择的候选学科。</div>
+      ) : (
+        <>
+          <div className="tablewrap" style={{ marginTop: 12 }}>
+            <table>
+              <thead><tr><th>潜力学科</th><th>V1 基线推荐</th><th>我的选择</th><th>模型说明（跟着选择变）</th></tr></thead>
+              <tbody>
+                {subjects.map((subject) => {
+                  const rec = meta.recommendations?.[currentRoute]?.[subject] ?? ''
+                  const mine = state.choice[currentRoute]?.[subject] ?? ''
+                  const actual = mine || rec
+                  return (
+                    <tr key={subject}>
+                      <td>{subject}</td>
+                      <td>{rec || 'V1 基线推荐'}</td>
+                      <td>
+                        <select value={mine} aria-label={`${subject}的预测模型`}
+                                disabled={state.saving}
+                                onChange={(e) => onChange(currentRoute, subject, e.target.value)}>
+                          <option value="">用 V1 推荐</option>
+                          {models.map((model) => <option key={model.value} value={model.value}>{model.label}</option>)}
+                        </select>
+                        <span className="mdesc" style={{ color: mine ? 'var(--zhu)' : 'var(--ink-3)' }}>
+                          {mine ? `已改选：${mine}` : '使用 V1 推荐'}
+                        </span>
+                      </td>
+                      <td><span className="mdesc">{MODEL_DESC[actual] ?? '由 V1 基线按学科指定。'}</span></td>
+                    </tr>
+                  )
+                })}
+                {subjects.length === 0 && <tr><td colSpan={4} style={{ color: 'var(--ink-3)' }}>接口暂未返回候选学科。</td></tr>}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--line-2)' }}>
+            <button className="btn" type="button" onClick={onSave} disabled={!dirty || state.saving || !period}>
+              {state.saving ? '正在保存……' : `保存${period ?? '本期'}选择`}
+            </button>
+            <span role="status" className="hint" style={dirty ? { color: 'var(--warn)', fontWeight: 650 } : { color: 'var(--ok)' }}>
+              {state.error || (dirty
+                ? '有未保存修改 · 保存并确认成功后，才会用于之后开始的任务。'
+                : `已保存${state.by ? ` · ${state.by}` : ''}${state.at ? ` · ${state.at}` : ''} · 未改选的学科使用 V1 推荐`)}
+            </span>
+          </div>
+        </>
+      )}
+
+      <div className="degraded"><b>与报告的关系</b>：任务启动时固定读取本期已保存选择。选择在本期报告进入预测章的学科上生效；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</div>
+    </section>
   )
 }
 
 export function Workbench({
   period, me, wb, err, healthy, run, approvalStatus, runApprovalStatus, activityState,
   actionLockReason, activeRun, actionsLocked, submitting, onGenerate,
+  periods, forecastMeta, forecastMetaError, actualOutputPeriod, forecastChoice, forecastChoiceDirty,
+  onPickPeriod, onForecastChoiceChange, onSaveForecastChoice, onReloadForecastChoice,
 }: {
   period: string | null
   me: Me | null
@@ -272,8 +366,18 @@ export function Workbench({
   actionsLocked: boolean
   submitting: boolean
   onGenerate: () => void
+  periods: Period[]
+  forecastMeta: ForecastMeta | null
+  forecastMetaError: string
+  actualOutputPeriod: string | null
+  forecastChoice: ForecastChoiceEntry | null
+  forecastChoiceDirty: boolean
+  onPickPeriod: (period: string) => void
+  onForecastChoiceChange: (route: string, subject: string, model: string) => void
+  onSaveForecastChoice: () => void
+  onReloadForecastChoice: () => void
 }) {
-  const canGenerate = me?.role === 'admin' && period != null && !actionsLocked && !activeRun && !submitting
+  const canGenerate = me?.role === 'admin' && period != null && /^\d{6}$/.test(period) && !actionsLocked && !activeRun && !submitting
     && (!run || isTerminal(run.status ?? undefined))
   const hasGenerateAction = wb.focusAction === 'generate' || wb.focusAction === 'rerun'
 
@@ -342,7 +446,11 @@ export function Workbench({
         )}
       </section>
 
-      <ModelPicker />
+      <ModelPicker period={period} periods={periods} meta={forecastMeta} metaError={forecastMetaError}
+                   actualOutputPeriod={actualOutputPeriod} state={forecastChoice}
+                   dirty={forecastChoiceDirty} onPickPeriod={onPickPeriod}
+                   onChange={onForecastChoiceChange} onSave={onSaveForecastChoice}
+                   onReload={onReloadForecastChoice} />
     </>
   )
 }
