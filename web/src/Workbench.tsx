@@ -224,7 +224,7 @@ function ModelPicker({
   const source = meta?.upstream_workbook
   const sourceTime = source?.last_modified_at ?? null
   const freshnessText = meta?.data_freshness === 'needs_check'
-    ? '上游台账在最近一次完整处理后有更新；无法确认这次更新是否已进入预测所用数据，请重新处理确认。'
+    ? '检测到台账或处理输入文件的修改时间晚于最近一次完整运行记录；无法确认这次更新是否已进入预测数据，请重新处理确认。'
     : '现有记录无法确认上游台账是否已进入预测所用数据。预测预览仍读取下方所示的最新完整预测数据。'
   const currentRoute = routes.some((item) => item.value === route) ? route : (routes[0]?.value ?? '')
 
@@ -271,7 +271,7 @@ function ModelPicker({
 
       <div className="degraded" style={{ borderLeft: meta?.data_freshness === 'needs_check' ? '3px solid var(--gold)' : undefined }}>
         <b>期次与数据说明</b>：{freshnessText} 现有记录无法确认主台账是否被预测流程读取。V1 推荐基线为 {meta?.recommendation_baseline ?? '—'}，它不是预测数据期次。
-        <br />最近一次完整处理时间（北京时间）：{formatProvenanceTime(meta?.run_record_at)}；上次处理使用的文件：{meta?.processed_input?.name ?? '无法核实'}{meta?.processed_input?.last_modified_at ? `（文件最后修改：${formatProvenanceTime(meta.processed_input.last_modified_at)}）` : ''}。
+        <br />最近一次完整运行记录写入时间（北京时间）：{formatProvenanceTime(meta?.run_record_at)}；上次处理使用的文件：{meta?.processed_input?.name ?? '无法核实'}{meta?.processed_input?.last_modified_at ? `（文件最后修改：${formatProvenanceTime(meta.processed_input.last_modified_at)}）` : ''}。
       </div>
 
       {routes.length > 0 && (
