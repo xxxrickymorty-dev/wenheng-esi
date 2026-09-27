@@ -1,20 +1,30 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-palette="ynu">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>文衡 · T08 真实模型选择（静态提案）</title>
 <style>
 :root{
-  --bg:#f3efe6;--card:#fbf8f1;--panel:#f6f1e7;
-  --ink:#2f2a24;--ink-2:#5b5248;--ink-3:#6f6558;
-  --line:#d9cfbc;--line-2:#e7dfd0;
-  --zhu:#b23a2a;--zhu-soft:#f0dcd5;
-  --gold:#a9853f;--gold-soft:#efe3c9;--gold-ink:#7d6122;
-  --ok:#3f6b4a;--ok-soft:#e2ece0;--warn:#7d5518;--warn-soft:#f5ead2;
+  --bg:#F4F3ED;--card:#FFFDF8;--panel:#F0F1EB;
+  --ink:#222B25;--ink-2:#3F4C42;--ink-3:#58655C;
+  --line:#DDE1D8;--line-2:#E6E9E2;
+  --zhu:#1A4B27;--zhu-soft:#E3EDE4;
+  --gold:#B19A65;--gold-soft:#F1EBDD;--gold-ink:#62501F;
+  --ok:#28643A;--ok-soft:#E2EEE4;--warn:#75622D;--warn-soft:#F6EED8;
+  --bad:#B43B31;--bad-soft:#F4E6E2;
   --serif:"Source Han Serif SC","Noto Serif SC",Songti SC,SimSun,serif;
   --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
   --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+}
+html[data-palette="zhu"]{
+  --bg:#F3EFE6;--card:#FBF8F1;--panel:#F6F1E7;
+  --ink:#2F2A24;--ink-2:#5B5248;--ink-3:#6F6558;
+  --line:#D9CFBC;--line-2:#E7DFD0;
+  --zhu:#B43B31;--zhu-soft:#F0DCD5;
+  --gold:#A9853F;--gold-soft:#EFE3C9;--gold-ink:#7D6122;
+  --ok:#3F6B4A;--ok-soft:#E2ECE0;--warn:#7D5518;--warn-soft:#F5EAD2;
+  --bad:#B43B31;--bad-soft:#F4DDD7;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
@@ -22,6 +32,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 var(--sans);-w
 button,select{font:inherit;color:inherit}
 .review{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding:10px 22px;background:var(--panel);border-bottom:1px dashed var(--line);font-size:13.5px;color:var(--ink-2)}
 .review strong{color:var(--ink)}.review .mark{color:var(--gold-ink);font-weight:700}
+.theme-controls{display:flex;gap:6px;flex-wrap:wrap}.theme-controls button{padding:5px 11px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:13px;cursor:pointer}.theme-controls button[aria-pressed="true"]{background:var(--zhu);border-color:var(--zhu);color:#fff}
 .topbar{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--card);border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:baseline;gap:9px;font-family:var(--serif);white-space:nowrap}.brand strong{font-size:21px;letter-spacing:.04em}.brand span{font-size:12px;color:var(--ink-3);letter-spacing:.08em}
 .nav{display:flex;gap:4px;margin-left:auto}.nav a{padding:7px 11px;color:var(--ink-2);text-decoration:none;border-radius:8px;font-size:14px;white-space:nowrap}.nav a.active{background:var(--zhu-soft);color:var(--zhu);font-weight:650}
@@ -47,6 +58,7 @@ button,select{font:inherit;color:inherit}
 <body>
 <div class="review">
   <strong>T08 静态提案稿</strong>
+  <span class="theme-controls" role="group" aria-label="配色"><button type="button" data-palette-choice="ynu" aria-pressed="true">云大绿</button><button type="button" data-palette-choice="zhu" aria-pressed="false">朱砂</button></span>
   <span class="mark">待审核 · 此页只演示交互，不会保存真实配置</span>
   <span>任务期次可选；上游台账文件、已处理数据期次与实际输出期次分别呈现。</span>
 </div>
@@ -211,6 +223,10 @@ document.querySelector('#save').addEventListener('click',()=>{
 generate.addEventListener('click',()=>{
   if(!dirty) alert('静态演示：任务会读取启动时冻结的已保存选择。');
 });
+document.querySelectorAll('[data-palette-choice]').forEach(button=>button.addEventListener('click',()=>{
+  document.documentElement.dataset.palette=button.dataset.paletteChoice;
+  document.querySelectorAll('[data-palette-choice]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
+}));
 renderRows();
 renderStatus();
 </script>
