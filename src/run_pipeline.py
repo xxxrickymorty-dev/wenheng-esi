@@ -95,6 +95,40 @@ def _write_diagnosis(led, P, out_dir, report, n_fail, run_dir=None):
         return None
 
 
+def _apply_forecast_choice_snapshot(snapshot_path, out_dir, output_period):
+    """把 job 私有快照写成实际输出期次的选模输入，并补齐来源留痕。"""
+    try:
+        snapshot = json.loads(pathlib.Path(snapshot_path).read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"任务选模快照读取失败：{exc}") from exc
+    if not isinstance(snapshot, dict) or not isinstance(snapshot.get("choice", {}), dict):
+        raise ValueError("任务选模快照形状无效")
+
+    request_period = snapshot.get("request_period") or snapshot.get("period")
+    if not isinstance(request_period, str) or not request_period:
+        raise ValueError("任务选模快照缺少请求期次")
+    operator = snapshot.get("by", "")
+    if not isinstance(operator, str):
+        operator = ""
+    config_updated_at = snapshot.get("at", "")
+    if not isinstance(config_updated_at, str):
+        config_updated_at = ""
+
+    applied = dict(snapshot)
+    applied.update({
+        "period": output_period,
+        "request_period": request_period,
+        "source_period": snapshot.get("source_period", request_period),
+        "output_period": output_period,
+        "operator": operator,
+        "config_updated_at": config_updated_at,
+    })
+    target = pathlib.Path(out_dir) / "forecast_choice.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(applied, ensure_ascii=False, indent=1), encoding="utf-8")
+    return target
+
+
 def main(ledger_path, out_root="out", run_backtest=False):
     t0 = _T0
     p = pathlib.Path(ledger_path)
@@ -117,6 +151,9 @@ def main(ledger_path, out_root="out", run_backtest=False):
         _emit("parse", "解析台账", "warn", f"已撤下上版成品：{'、'.join(moved)}")
 
     parse_ledger.write_outputs(ledger, p, out_dir)
+    snapshot_path = os.environ.get("WENHENG_FORECAST_CHOICE_SNAPSHOT")
+    if snapshot_path:
+        _apply_forecast_choice_snapshot(snapshot_path, out_dir, P)
     n_fail = sum(1 for s, _ in report if s == "FAIL")
     print(f"      当期={P} 上期={Q} 断言={'全绿' if ok else f'{n_fail} 项 FAIL'} → {out_dir}")
     _emit("parse", "解析台账", "done" if ok else "warn",
@@ -196,6 +233,8 @@ def main(ledger_path, out_root="out", run_backtest=False):
         for w in fc_warnings:
             print(f"      ⚠ {w}")
     except Exception as e:                                       # noqa: BLE001
+        # 即使预测模块的清理遇到瞬时文件错误，也不要让 fill_docx 读到旧图/元数据。
+        report_forecast.quarantine_forecast_artifacts(out_dir)
         print(f"      预测图：跳过（{type(e).__name__}: {e}）")
     if fc_warnings:
         _emit("charts", "预测选模", "warn", "；".join(fc_warnings))

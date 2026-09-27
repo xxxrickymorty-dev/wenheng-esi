@@ -20,6 +20,7 @@ import json
 import pathlib
 import re
 import sys
+import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
@@ -112,6 +113,53 @@ def load_warnings(period_dir) -> list[str]:
     return [str(w) for w in warnings] if isinstance(warnings, list) else []
 
 
+def quarantine_forecast_artifacts(period_dir) -> list[str]:
+    """把旧预测元数据和图移出活动路径，避免失败运行复用上一版。"""
+    period_dir = pathlib.Path(period_dir)
+    overview = period_dir / "charts" / "_overview"
+    stale = [period_dir / "forecast_charts.json"]
+    if overview.is_dir():
+        stale.extend(overview.glob("forecast_*.png"))
+    stale = sorted({p for p in stale if p.is_file()})
+    if not stale:
+        return []
+
+    stamp = time.strftime("%Y%m%dT%H%M%S") + f"-{time.time_ns()}"
+    archive = period_dir / "_superseded" / "forecast" / stamp
+    moved = []
+    for path in stale:
+        target = archive / path.relative_to(period_dir)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        path.replace(target)
+        moved.append(path.relative_to(period_dir).as_posix())
+    return moved
+
+
+def _choice_provenance(period_dir, output_period):
+    """返回可随 forecast_charts.json 审计的配置来源字段。"""
+    try:
+        record = json.loads((pathlib.Path(period_dir) / CHOICE_FILE).read_text(encoding="utf-8-sig"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        record = {}
+    if not isinstance(record, dict):
+        record = {}
+
+    def text_field(key, fallback=""):
+        value = record.get(key, fallback)
+        return value if isinstance(value, str) else fallback
+
+    return {
+        "request_period": text_field("request_period", output_period),
+        "source_period": text_field("source_period", output_period),
+        "output_period": text_field("output_period", output_period),
+        "config_updated_at": text_field("config_updated_at", text_field("at")),
+        "operator": text_field("operator", text_field("by")),
+        "snapshot_at": text_field("snapshot_at"),
+        "snapshot_source": text_field("snapshot_source"),
+        "snapshot_source_path": text_field("snapshot_source_path"),
+    }
+
+
 def _run_with_choice(subject, periods, series, task, model, warnings):
     """按预测台选择跑模型；所选模型失败 → 降级 V1 推荐并记警告（不拦停出图）。"""
     try:
@@ -125,6 +173,17 @@ def _run_with_choice(subject, periods, series, task, model, warnings):
 
 
 def generate(period_dir) -> int:
+    """先隔离旧产物；若本次生成中途失败，也隔离本次的不完整图。"""
+    period_dir = pathlib.Path(period_dir)
+    quarantine_forecast_artifacts(period_dir)
+    try:
+        return _generate(period_dir)
+    except Exception:
+        quarantine_forecast_artifacts(period_dir)
+        raise
+
+
+def _generate(period_dir) -> int:
     """渲染 4 张预测图；返回张数（异常向上抛，由调用方决定降级策略）。"""
     period_dir = pathlib.Path(period_dir)
     subjects_cn, period = pick_subjects(period_dir)
@@ -190,7 +249,8 @@ def generate(period_dir) -> int:
                 "png": png.name,
             })
 
-    meta = {"period": period, "horizon": HORIZON, "generated": len(made),
+    meta = {"period": period, **_choice_provenance(period_dir, period),
+            "horizon": HORIZON, "generated": len(made),
             "warnings": warnings, "charts": chart_meta}
     (period_dir / "forecast_charts.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")

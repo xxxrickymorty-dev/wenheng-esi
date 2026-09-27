@@ -110,6 +110,44 @@ def write_job(job):
         json.dumps(job, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
+def _forecast_choice_snapshot(period):
+    """按 forecast-choice GET 的读序冻结配置，不改写 legacy 文件。"""
+    primary = config.FORECAST_CHOICES_DIR / f"{period}.json"
+    legacy = config.OUT_DIR / period / "forecast_choice.json"
+    if primary.exists():
+        source, path = "primary", primary
+        source_path = f"_forecast_choices/{period}.json"
+    elif legacy.exists():
+        source, path = "legacy", legacy
+        source_path = f"{period}/forecast_choice.json"
+    else:
+        source, path, source_path = "default", None, ""
+
+    record = {}
+    if path is not None:
+        try:
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                record = loaded
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            pass
+
+    snapshot = dict(record)
+    choice = record.get("choice", {})
+    snapshot.update({
+        "period": period,
+        "request_period": period,
+        "source_period": period,
+        "choice": choice if isinstance(choice, dict) else {},
+        "by": record.get("by", "") if isinstance(record.get("by", ""), str) else "",
+        "at": record.get("at", "") if isinstance(record.get("at", ""), str) else "",
+        "snapshot_at": _now(),
+        "snapshot_source": source,
+        "snapshot_source_path": source_path,
+    })
+    return snapshot
+
+
 def list_jobs(limit=20, period=None):
     jobs = []
     if config.JOBS_DIR.exists():
@@ -155,12 +193,20 @@ def create_job(period, input_path, actor, backtest=False):
     jid = time.strftime("%Y%m%d-%H%M%S") + "-" + secrets.token_hex(2)
     d = job_dir(jid)
     d.mkdir(parents=True, exist_ok=True)
+    snapshot_path = d / "forecast_choice.json"
+    snapshot = _forecast_choice_snapshot(period)
+    snapshot_path.write_text(
+        json.dumps(snapshot, ensure_ascii=False, indent=1), encoding="utf-8")
     job = {
         "id": jid, "period": period, "input": str(input_path), "actor": actor,
         "backtest": bool(backtest), "status": agent_states.RUNNING,
         "created_at": _now(), "started_at": _now(), "finished_at": None,
         "exit_code": None, "progress": str(d / "progress.jsonl"),
         "console": str(d / "console.log"),
+        "forecast_choice_snapshot": str(snapshot_path),
+        "forecast_choice_request_period": period,
+        "forecast_choice_source_period": period,
+        "forecast_choice_source": snapshot["snapshot_source"],
     }
     write_job(job)
     _running.add(jid)
@@ -176,6 +222,7 @@ async def _run(job):
     env["WENHENG_PROGRESS_FILE"] = str(d / "progress.jsonl")
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUNBUFFERED"] = "1"
+    env["WENHENG_FORECAST_CHOICE_SNAPSHOT"] = job["forecast_choice_snapshot"]
     if config.REFERENCE_DOCX:
         env["WENHENG_REFERENCE_DOCX"] = config.REFERENCE_DOCX
     cmd = [config.PYTHON, str(config.PIPELINE), job["input"]]

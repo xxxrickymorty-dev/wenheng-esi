@@ -25,10 +25,11 @@ import report_forecast                                          # noqa: E402
 SUBJECTS = ["分子生物学与遗传学", "物理学"]
 
 
-def _write_choice(period_dir, choice):
+def _write_choice(period_dir, choice, **provenance):
+    record = {"choice": choice, "by": "demo", "at": "2026-09-24 12:00:00"}
+    record.update(provenance)
     (pathlib.Path(period_dir) / report_forecast.CHOICE_FILE).write_text(
-        json.dumps({"choice": choice, "by": "demo", "at": "2026-09-24 12:00:00"},
-                   ensure_ascii=False), encoding="utf-8")
+        json.dumps(record, ensure_ascii=False), encoding="utf-8")
 
 
 def _stub_generate(monkeypatch, run_prediction):
@@ -177,6 +178,77 @@ class Test出图接线:
         assert by_key[("物理学", "citation")]["requested"] == "SARIMA模型"
         assert len(meta["warnings"]) == 1 and "已降级" in meta["warnings"][0]
         assert report_forecast.load_warnings(tmp_path) == meta["warnings"]
+
+    def test_无持久化设置使用推荐并记录最终模型(self, tmp_path, monkeypatch):
+        def fake(subject, periods, series, task, model, horizon):
+            assert model == "recommended"
+            return {"results": [{"model": "季节性ETS模型", "rolling_mape": 1.0,
+                                 "first_crossing": None,
+                                 "forecast": [{"period": 202609}]}]}
+
+        _stub_generate(monkeypatch, fake)
+        assert report_forecast.generate(tmp_path) == 4
+        meta = json.loads((tmp_path / "forecast_charts.json").read_text(encoding="utf-8"))
+        assert all(c["requested"] == "recommended" for c in meta["charts"])
+        assert all(c["model"] == "季节性ETS模型" for c in meta["charts"])
+        assert meta["warnings"] == []
+
+    def test_预测元数据留存请求与输出期次来源(self, tmp_path, monkeypatch):
+        def fake(subject, periods, series, task, model, horizon):
+            return {"results": [{"model": "季节性ETS模型", "rolling_mape": 1.0,
+                                 "first_crossing": None,
+                                 "forecast": [{"period": 202609}]}]}
+
+        _stub_generate(monkeypatch, fake)
+        _write_choice(
+            tmp_path, {"citation": {"物理学": "SARIMA模型"}},
+            request_period="202610", source_period="202610", output_period="202612",
+            config_updated_at="2026-09-27 10:00:00", operator="librarian",
+            snapshot_at="2026-09-27 10:01:00", snapshot_source="primary")
+        assert report_forecast.generate(tmp_path) == 4
+
+        meta = json.loads((tmp_path / "forecast_charts.json").read_text(encoding="utf-8"))
+        assert meta["request_period"] == "202610"
+        assert meta["source_period"] == "202610"
+        assert meta["output_period"] == "202612"
+        assert meta["config_updated_at"] == "2026-09-27 10:00:00"
+        assert meta["operator"] == "librarian"
+        assert meta["snapshot_at"] == "2026-09-27 10:01:00"
+
+    def test_生成失败时旧预测元数据和图已隔离(self, tmp_path, monkeypatch):
+        overview = tmp_path / "charts" / "_overview"
+        overview.mkdir(parents=True)
+        stale_meta = tmp_path / "forecast_charts.json"
+        stale_meta.write_text(json.dumps({"charts": [{"model": "旧模型"}]}), encoding="utf-8")
+        stale_pngs = []
+        for name in ("forecast_1_cites.png", "forecast_1_rank.png",
+                     "forecast_2_cites.png", "forecast_2_rank.png"):
+            path = overview / name
+            path.write_bytes(b"old forecast")
+            stale_pngs.append(path)
+
+        def predicted(*args, **kwargs):
+            return {"results": [{"model": "季节性ETS模型", "rolling_mape": 1.0,
+                                 "first_crossing": None,
+                                 "forecast": [{"period": 202609}]}]}
+
+        def fail_after_partial_png(*args, **kwargs):
+            pathlib.Path(args[-1]).write_bytes(b"partial forecast")
+            raise ValueError("预测图写入失败")
+
+        _stub_generate(monkeypatch, predicted)
+        monkeypatch.setattr(report_forecast.charts, "chart_forecast", fail_after_partial_png)
+        with pytest.raises(ValueError, match="预测图写入失败"):
+            report_forecast.generate(tmp_path)
+
+        assert not stale_meta.exists()
+        assert all(not path.exists() for path in stale_pngs)
+        archived = list((tmp_path / "_superseded" / "forecast").rglob("*"))
+        assert any(p.name == stale_meta.name and p.read_text(encoding="utf-8")
+                   for p in archived if p.is_file())
+        assert {p.name for p in archived if p.is_file()} >= {p.name for p in stale_pngs} \
+            | {stale_meta.name}
+        assert any(p.is_file() and p.read_bytes() == b"partial forecast" for p in archived)
 
 
 class Testrun_log留痕:
