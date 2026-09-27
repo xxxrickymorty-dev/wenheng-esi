@@ -1,20 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { loadShelfPreviews } from './data'
-import type { ShelfBookPreview, ShelfLoadResult } from './types'
+import Reader, { type ReaderSection } from './Reader'
+import ShelfScene from './scene/ShelfScene'
+import type { ShelfLoadResult } from './types'
 import './library.css'
 
 type PageState =
   | { kind: 'loading' }
   | Exclude<ShelfLoadResult, { kind: 'admin' }>
 
-function bookLabel(book: ShelfBookPreview): string {
-  return book.cover[2]?.trim() || book.cover[1]?.trim() || '查看封面'
-}
-
 export default function ShelfPage() {
   const [state, setState] = useState<PageState>({ kind: 'loading' })
-  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [activeReader, setActiveReader] = useState<{ bookIndex: number; section: ReaderSection } | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const returnFocusRef = useRef<HTMLButtonElement | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -26,7 +25,6 @@ export default function ShelfPage() {
         window.location.replace('/app/')
         return
       }
-      setSelectedIndex(0)
       setState(result)
     }).catch(() => {
       if (!controller.signal.aborted) setState({ kind: 'unavailable' })
@@ -34,6 +32,13 @@ export default function ShelfPage() {
 
     return () => controller.abort()
   }, [attempt])
+
+  useEffect(() => {
+    if (!activeReader && returnFocusRef.current) {
+      returnFocusRef.current.focus()
+      returnFocusRef.current = null
+    }
+  }, [activeReader])
 
   function retry() {
     setAttempt((current) => current + 1)
@@ -107,70 +112,30 @@ export default function ShelfPage() {
     )
   }
 
-  const selectedBook = state.books[selectedIndex] ?? state.books[0]
+  const activeBook = activeReader ? state.books[activeReader.bookIndex] : undefined
 
   return (
     <main className="library-page">
       <div className="library-shell">
-        <LibraryHeading />
-        <div className="library-layout">
-          <nav className="library-periods" aria-label="选择可预览期次">
-            <h2>可预览期次</h2>
-            <ul>
-              {state.books.map((book, index) => (
-                <li key={index}>
-                  <button
-                    className="library-period-button"
-                    type="button"
-                    aria-pressed={selectedIndex === index}
-                    onClick={() => setSelectedIndex(index)}
-                  >
-                    <span>{bookLabel(book)}</span>
-                    <span className="library-period-hint">打开预览</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </nav>
-
-          <article className="library-preview" aria-label="馆藏安全预览">
-            <section className="library-cover" aria-labelledby="library-cover-title">
-              <p className="library-eyebrow">封面</p>
-              <h2 id="library-cover-title">{selectedBook.cover[1]}</h2>
-              <div className="library-cover-lines">
-                {selectedBook.cover.filter((line) => line.trim().length > 0).map((line, index) => (
-                  <p key={`${index}-${line}`}>{line}</p>
-                ))}
-              </div>
-            </section>
-
-            <section className="library-section" aria-labelledby="library-toc-title">
-              <p className="library-eyebrow">目录</p>
-              <h2 id="library-toc-title">报告章节</h2>
-              <ol className="library-toc">
-                {selectedBook.toc.map((entry, index) => (
-                  <li key={`${index}-${entry.title}`}>
-                    <span>{entry.title}</span>
-                  </li>
-                ))}
-              </ol>
-            </section>
-
-            <section className="library-section" aria-labelledby="library-glossary-title">
-              <p className="library-eyebrow">名词解释</p>
-              <h2 id="library-glossary-title">报告中的用语</h2>
-              <dl className="library-glossary">
-                {selectedBook.glossary.map((entry, index) => (
-                  <div className="library-glossary-entry" key={`${index}-${entry.term}`}>
-                    <dt>{entry.term}</dt>
-                    <dd>{entry.definition}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          </article>
+        <div className="library-shelf-view" hidden={Boolean(activeReader && activeBook)}>
+          <LibraryHeading />
+          <ShelfScene
+            books={state.books}
+            onOpen={(bookIndex, section, trigger) => {
+              returnFocusRef.current = trigger
+              setActiveReader({ bookIndex, section })
+            }}
+          />
+          <p className="library-footnote">此处只展示封面、目录和名词解释。</p>
         </div>
-        <p className="library-footnote">此处只展示封面、目录和名词解释。</p>
+        {activeReader && activeBook && (
+          <Reader
+            key={`${activeReader.bookIndex}-${activeReader.section}`}
+            book={activeBook}
+            initialSection={activeReader.section}
+            onClose={() => setActiveReader(null)}
+          />
+        )}
       </div>
     </main>
   )
