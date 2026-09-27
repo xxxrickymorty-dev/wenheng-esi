@@ -1,6 +1,6 @@
 <!doctype html>
 
-<html lang="zh-CN">
+<html lang="zh-CN" data-palette="ynu">
 
 <head>
 
@@ -49,9 +49,8 @@
 
 :root{
 
-  /* 卷色：由 JS 按当前期次覆盖 —— 每卷一套，像参考站的 burnt orange → burgundy */
-
-  --vol:#B8422C; --vol-deep:#8A2A18; --vol-lift:#D65A38;
+  --vol:#1A4B27; --vol-deep:#103A1D; --vol-lift:#356B42;
+  --stamp:#B43B31;
 
   --cream:#F7F0E2; --cream-2:rgba(247,240,226,.74); --cream-3:rgba(247,240,226,.46);
 
@@ -71,6 +70,11 @@
 
   --bd:52px;                       /* 书厚 */
 
+}
+
+html[data-palette="zhu"]{
+  --vol:#B43B31; --vol-deep:#8A2A18; --vol-lift:#D65A38;
+  --stamp:#B43B31;
 }
 
 
@@ -129,6 +133,12 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 }
 .back-app:hover{opacity:1; border-color:rgba(255,255,255,.6)}
 .head-right{display:flex; align-items:flex-start; gap:26px}
+
+.theme-switch{display:flex; gap:3px; padding:3px; border:1px solid var(--cream-3); border-radius:999px}
+.theme-switch button{min-height:44px; padding:6px 11px; border-radius:999px; font-family:var(--mono); font-size:13.5px;
+  letter-spacing:.06em; color:var(--cream-2)}
+.theme-switch button[aria-pressed="true"]{background:var(--cream); color:var(--vol-deep)}
+.theme-switch button:focus-visible{outline:3px solid var(--cream); outline-offset:3px}
 
 .edition{text-align:right}
 
@@ -242,15 +252,9 @@ body[data-state="shelf"] .detail{opacity:0; pointer-events:none; visibility:hidd
 
   transition:opacity 420ms linear, visibility 0s linear 420ms}
 
-/* 书架态的背景换成**中性深褐**，不跟随卷色：
+/* 书架态随主题使用深色底，木板仍保持中性材质。 */
 
-   四卷各有各的色相（朱砂 / 赭金 / 靛青 / 松绿），如果底也跟着某一卷走，
-
-   靛青与松绿在暗红底上会被压成同一种暗棕 —— 「一卷一色」就白做了。
-
-   深褐本身也贴书房/木架的调性。 */
-
-body[data-state="shelf"]{background:#2A211D}
+body[data-state="shelf"]{background:var(--vol-deep)}
 
 
 
@@ -1017,6 +1021,9 @@ h2.pg-h{font-family:var(--serif);font-size:19px;font-weight:700;letter-spacing:.
   .specs{grid-template-columns:1fr; gap:18px}
 
   .vh-head, .vh-main, .vh-foot{padding-inline:20px}
+  .vh-head{flex-wrap:wrap; gap:12px}
+  .head-right{width:100%; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:10px}
+  .edition{margin-left:auto}
 
 }
 
@@ -1041,12 +1048,17 @@ h2.pg-h{font-family:var(--serif);font-size:19px;font-weight:700;letter-spacing:.
   <div class="head-right">
     <a class="back-app" id="backApp" href="/app/" hidden>&larr; 回工作台</a>
 
+    <div class="theme-switch" role="group" aria-label="切换配色">
+      <button type="button" data-palette-choice="ynu" aria-pressed="true">云大绿</button>
+      <button type="button" data-palette-choice="zhu" aria-pressed="false">朱砂</button>
+    </div>
+
 
     <div class="edition">
 
       <div class="no" id="edNo">第 38 期 — 2026</div>
 
-      <div class="pal" id="edPal">朱砂 · 乳白 · 酒红</div>
+      <div class="pal" id="edPal">云大绿</div>
 
     </div>
 
@@ -1282,27 +1294,16 @@ var T = { turn: 640, swap: 260 };
 
 
 
-/* ------------------------------------------------------------------
-
-   卷色：每期一套（复刻参考站「一卷一色」的做法）。
-
-   当期用朱砂，其余三期走古典印刷色族，切换时整屏换色。
-
-   ------------------------------------------------------------------ */
-
-var PALETTE = {
-
-  '202607': { vol: '#B8422C', deep: '#8A2A18', lift: '#D65A38', name: '朱砂 · 乳白 · 酒红' },
-
-  '202605': { vol: '#8A6A34', deep: '#5C441E', lift: '#B08C4C', name: '赭金 · 乳白 · 深褐' },
-
-  '202603': { vol: '#2E4B5E', deep: '#1A2E3C', lift: '#446C82', name: '靛青 · 乳白 · 松烟' },
-
-  '202601': { vol: '#3F5C42', deep: '#25362A', lift: '#5B7F60', name: '松绿 · 乳白 · 墨' }
-
+var PALETTES = {
+  ynu: { vol: '#1A4B27', deep: '#103A1D', lift: '#356B42', name: '云大绿' },
+  zhu: { vol: '#B43B31', deep: '#8A2A18', lift: '#D65A38', name: '朱砂' }
 };
 
-var FALLBACK = { vol: '#B8422C', deep: '#8A2A18', lift: '#D65A38', name: '朱砂 · 乳白 · 酒红' };
+var PALETTE_KEY = 'wenheng-palette';
+var palette = 'ynu';
+
+try { if (localStorage.getItem(PALETTE_KEY) === 'zhu') palette = 'zhu'; } catch (e) {}
+document.documentElement.dataset.palette = palette;
 
 
 
@@ -3272,13 +3273,13 @@ var curIdx = 0;
 
 
 
-function paletteOf(period) { return PALETTE[period] || FALLBACK; }
+function paletteOf() { return PALETTES[palette]; }
 
 
 
-function applyPalette(period) {
+function applyPalette() {
 
-  var p = paletteOf(period);
+  var p = paletteOf();
 
   var s = document.documentElement.style;
 
@@ -3298,6 +3299,33 @@ function applyPalette(period) {
 
   meta.content = p.vol;
 
+}
+
+function refreshThemeArt() {
+  var p = paletteOf();
+  var current = books[curIdx];
+
+  if (current) drawCoverArt($('#coverArt'), current.period);
+
+  shelfEls.forEach(function (book, index) {
+    book.style.setProperty('--sc', p.vol);
+    drawCoverArt($('canvas', book), books[index].period, 280, 450);
+  });
+}
+
+function setPalette(next) {
+  palette = next === 'zhu' ? 'zhu' : 'ynu';
+  document.documentElement.dataset.palette = palette;
+  try { localStorage.setItem(PALETTE_KEY, palette); } catch (e) {}
+
+  applyPalette();
+  refreshThemeArt();
+
+  $$('[data-palette-choice]').forEach(function (button) {
+    button.setAttribute('aria-pressed', String(button.dataset.paletteChoice === palette));
+  });
+
+  live('已切换为' + paletteOf().name);
 }
 
 
@@ -3468,7 +3496,7 @@ function buildShelf() {
 
     b.type = 'button';
 
-    b.style.setProperty('--sc', p.vol);      /* 书脊用它自己那一卷的色 */
+    b.style.setProperty('--sc', p.vol);
 
     b.setAttribute('aria-label', bk.label + ' 总第' + bk.no + '期，抽取查阅');
 
@@ -4114,6 +4142,13 @@ function boot() {
 
   TEX.install();
 
+  applyPalette();
+
+  $$('[data-palette-choice]').forEach(function (button) {
+    button.setAttribute('aria-pressed', String(button.dataset.paletteChoice === palette));
+    button.addEventListener('click', function () { setPalette(button.dataset.paletteChoice); });
+  });
+
   $('#dots').innerHTML = books.map(function () { return '<button type="button"></button>'; }).join('');
 
   document.body.dataset.state = SM.get();   /* 初始态也要落到 DOM 上，否则首屏两套视图同时可见 */
@@ -4210,7 +4245,7 @@ window.WH_VOL = {
     ' font-family:var(--mono); font-size:11px; letter-spacing:.08em;' +
     ' color:rgba(240,232,216,.62); pointer-events:none; white-space:nowrap}' +
     '.sbook.is-signed::after{content:""; position:absolute; top:10px; right:10px;' +
-    ' width:9px; height:9px; border-radius:2px; background:#B23A2A;' +
+    ' width:9px; height:9px; border-radius:2px; background:var(--stamp);' +
     ' box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35)}';
   document.head.appendChild(st);
 
