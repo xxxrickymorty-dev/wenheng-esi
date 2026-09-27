@@ -23,7 +23,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import pathlib
 import time
@@ -63,15 +62,9 @@ SUPERSEDED_DIR = "_superseded"
 
 
 def _file_sha256(path, chunk=1 << 20) -> str | None:
-    """文件指纹。文件不在返回 None（编排层测试普遍用假路径）。"""
-    p = pathlib.Path(path)
-    if not p.is_file():
-        return None
-    h = hashlib.sha256()
-    with p.open("rb") as f:
-        for blk in iter(lambda: f.read(chunk), b""):
-            h.update(blk)
-    return h.hexdigest()
+    """文件指纹。文件不在返回 None（编排层测试普遍用假路径）。实现在 parse_ledger。"""
+    import parse_ledger                                        # noqa: PLC0415
+    return parse_ledger.file_sha256(path, chunk)
 
 
 def _quarantine_final_products(out_dir, run_dir) -> list[str]:

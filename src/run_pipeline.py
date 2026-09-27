@@ -114,9 +114,23 @@ def _cleanup_failed_forecast(out_dir, report_forecast=None):
             png.unlink(missing_ok=True)
 
 
+def _ledger_guard(before, after):
+    """原件只读护栏（R-24 运行期落点，与 `agent/flow.py` 同口径）。
+
+    返回 None＝未发现改写；否则返回护栏记录——本次运行结果不可采信，
+    调用方负责落 run_log 并让退出码非 0。文件不在（测试假路径）不误报。
+    """
+    if before and after and before != after:
+        return {"code": "FILE_INVALID",
+                "message": "台账在本次运行期间被改写 —— 原件只读红线（R-24）被破",
+                "step": "guard", "before": before, "after": after}
+    return None
+
+
 def main(ledger_path, out_root="out", run_backtest=False):
     t0 = _T0
     p = pathlib.Path(ledger_path)
+    led_sha0 = parse_ledger.file_sha256(p)
 
     _emit("parse", "解析台账", "start", f"输入：{p.name}")
     print(f"[1/5] 解析台账: {p}")
@@ -233,9 +247,17 @@ def main(ledger_path, out_root="out", run_backtest=False):
     docx_path = fill_docx.main(ledger_dir=str(out_dir))
     _emit("docx", "母版替换", "done", f"报告初稿 + 红色件清单：{pathlib.Path(docx_path).name}")
 
+    # 原件只读护栏：直跑路径过去只有测试级守卫，这里补运行期检查。
+    ledger_guard = _ledger_guard(led_sha0, parse_ledger.file_sha256(p))
+    if ledger_guard:
+        print(f"      ⚠ {ledger_guard['message']}")
+        _emit("guard", "原件只读护栏", "failed", ledger_guard["message"])
+
     log = {
         "period": P, "prev": Q, "input": str(p),
         "assertions_ok": ok, "assertions_fail": n_fail, "missing": missing,
+        "ledger_sha256": led_sha0,
+        "ledger_mutated": ledger_guard is not None,
         "predict_mape_overall": round(float(mape), 3),
         "charts": n_charts,
         "forecast_charts": n_fc,
@@ -259,6 +281,9 @@ def main(ledger_path, out_root="out", run_backtest=False):
     _emit("done", "完成", "done" if ok else "warn",
           f"全链路 {log['elapsed_sec']} 秒 · 断言 {'全绿' if ok else f'{n_fail} 项 FAIL'} · "
           f"大表 22×11 · 图 {n_charts} 张 · MAPE {mape:.2f}%")
+
+    if ledger_guard:
+        return 2
 
     if run_backtest:
         import backtest

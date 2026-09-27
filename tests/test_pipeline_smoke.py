@@ -24,6 +24,15 @@ T2_COLUMNS = [
 ]
 
 
+def test_台账只读护栏_前后指纹不同即判改写():
+    """运行期护栏（R-24）：与 agent/flow.py 同口径；文件不在不误报。"""
+    assert run_pipeline._ledger_guard("a", "a") is None
+    assert run_pipeline._ledger_guard(None, "a") is None
+    assert run_pipeline._ledger_guard("a", None) is None
+    guard = run_pipeline._ledger_guard("a", "b")
+    assert guard["code"] == "FILE_INVALID" and "R-24" in guard["message"]
+
+
 def test_台账到产物主链路(latest_ledger, tmp_path):
     ledger = parse_ledger.load_ledger(latest_ledger)
     ok, _, _missing = parse_ledger.run_assertions(ledger)
@@ -74,6 +83,8 @@ def test_端到端全链路(latest_ledger, tmp_path):
     log = json.loads((d / "run_log.json").read_text(encoding="utf-8"))
     assert log["assertions_ok"] is True
     assert log["charts"] > 0
+    assert len(log["ledger_sha256"]) == 64, "run_log 应留台账指纹（R-24）"
+    assert log["ledger_mutated"] is False
 
     for name in ("table2.csv", "overview_facts.json", "red_slots.json",
                  "红色件清单.md", "预测回测报告.md"):
