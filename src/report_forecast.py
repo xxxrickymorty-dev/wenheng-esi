@@ -58,7 +58,7 @@ def pick_subjects(period_dir):
     return subjects[:2], cols[-1]
 
 
-def load_choice(period_dir):
+def load_choice(period_dir, choice_path=None):
     """读预测台落盘的模型选择 → `{(路线, 学科): 模型名}`，附警告清单。
 
     只认契约 #17 的新嵌套形状 `{choice: {"citation": {学科: 模型}, "rank": {...}}}`：
@@ -69,7 +69,7 @@ def load_choice(period_dir):
     """
     period_dir = pathlib.Path(period_dir)
     warnings = []
-    p = period_dir / CHOICE_FILE
+    p = pathlib.Path(choice_path) if choice_path else period_dir / CHOICE_FILE
     if not p.exists():
         return {}, warnings
     try:
@@ -135,10 +135,11 @@ def quarantine_forecast_artifacts(period_dir) -> list[str]:
     return moved
 
 
-def _choice_provenance(period_dir, output_period):
+def _choice_provenance(period_dir, data_period, choice_path=None):
     """返回可随 forecast_charts.json 审计的配置来源字段。"""
     try:
-        record = json.loads((pathlib.Path(period_dir) / CHOICE_FILE).read_text(encoding="utf-8-sig"))
+        path = pathlib.Path(choice_path) if choice_path else pathlib.Path(period_dir) / CHOICE_FILE
+        record = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         record = {}
     if not isinstance(record, dict):
@@ -149,9 +150,12 @@ def _choice_provenance(period_dir, output_period):
         return value if isinstance(value, str) else fallback
 
     return {
-        "request_period": text_field("request_period", output_period),
-        "source_period": text_field("source_period", output_period),
-        "output_period": text_field("output_period", output_period),
+        "request_period": text_field(
+            "request_period", text_field("choice_period", data_period)),
+        "choice_period": text_field(
+            "choice_period", text_field("request_period", data_period)),
+        "source_period": data_period,
+        "output_period": text_field("output_period", data_period),
         "config_updated_at": text_field("config_updated_at", text_field("at")),
         "operator": text_field("operator", text_field("by")),
         "snapshot_at": text_field("snapshot_at"),
@@ -172,18 +176,18 @@ def _run_with_choice(subject, periods, series, task, model, warnings):
         return run_prediction(subject, periods, series, task, "recommended", HORIZON)
 
 
-def generate(period_dir) -> int:
+def generate(period_dir, choice_path=None) -> int:
     """先隔离旧产物；若本次生成中途失败，也隔离本次的不完整图。"""
     period_dir = pathlib.Path(period_dir)
     quarantine_forecast_artifacts(period_dir)
     try:
-        return _generate(period_dir)
+        return _generate(period_dir, choice_path)
     except Exception:
         quarantine_forecast_artifacts(period_dir)
         raise
 
 
-def _generate(period_dir) -> int:
+def _generate(period_dir, choice_path=None) -> int:
     """渲染 4 张预测图；返回张数（异常向上抛，由调用方决定降级策略）。"""
     period_dir = pathlib.Path(period_dir)
     subjects_cn, period = pick_subjects(period_dir)
@@ -207,7 +211,7 @@ def _generate(period_dir) -> int:
         raise ValueError(f"潜力学科不在 V1 标准输入里：{'、'.join(missing)}")
 
     ov = period_dir / "charts" / "_overview"
-    choices, warnings = load_choice(period_dir)
+    choices, warnings = load_choice(period_dir, choice_path)
     made, chart_meta = [], []
     for i, cn in enumerate(subjects_cn, 1):
         for task, kind, labels, colors in (
@@ -249,7 +253,7 @@ def _generate(period_dir) -> int:
                 "png": png.name,
             })
 
-    meta = {"period": period, **_choice_provenance(period_dir, period),
+    meta = {"period": period, **_choice_provenance(period_dir, period, choice_path),
             "horizon": HORIZON, "generated": len(made),
             "warnings": warnings, "charts": chart_meta}
     (period_dir / "forecast_charts.json").write_text(

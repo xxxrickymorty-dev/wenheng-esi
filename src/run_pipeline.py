@@ -104,7 +104,8 @@ def _apply_forecast_choice_snapshot(snapshot_path, out_dir, output_period):
     if not isinstance(snapshot, dict) or not isinstance(snapshot.get("choice", {}), dict):
         raise ValueError("任务选模快照形状无效")
 
-    request_period = snapshot.get("request_period") or snapshot.get("period")
+    request_period = (snapshot.get("request_period") or snapshot.get("choice_period")
+                      or snapshot.get("period"))
     if not isinstance(request_period, str) or not request_period:
         raise ValueError("任务选模快照缺少请求期次")
     operator = snapshot.get("by", "")
@@ -118,15 +119,29 @@ def _apply_forecast_choice_snapshot(snapshot_path, out_dir, output_period):
     applied.update({
         "period": output_period,
         "request_period": request_period,
-        "source_period": snapshot.get("source_period", request_period),
+        "choice_period": request_period,
+        "source_period": output_period,
         "output_period": output_period,
         "operator": operator,
         "config_updated_at": config_updated_at,
     })
-    target = pathlib.Path(out_dir) / "forecast_choice.json"
+    target = pathlib.Path(out_dir) / "_forecast_choice_applied.json"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(applied, ensure_ascii=False, indent=1), encoding="utf-8")
     return target
+
+
+def _cleanup_failed_forecast(out_dir, report_forecast=None):
+    """预测模块可用时隔离残留；模块导入失败时直接清除，防止带旧图出稿。"""
+    if report_forecast is not None:
+        report_forecast.quarantine_forecast_artifacts(out_dir)
+        return
+    out_dir = pathlib.Path(out_dir)
+    (out_dir / "forecast_charts.json").unlink(missing_ok=True)
+    overview = out_dir / "charts" / "_overview"
+    if overview.is_dir():
+        for png in overview.glob("forecast_*.png"):
+            png.unlink(missing_ok=True)
 
 
 def main(ledger_path, out_root="out", run_backtest=False):
@@ -152,8 +167,9 @@ def main(ledger_path, out_root="out", run_backtest=False):
 
     parse_ledger.write_outputs(ledger, p, out_dir)
     snapshot_path = os.environ.get("WENHENG_FORECAST_CHOICE_SNAPSHOT")
+    applied_choice_path = None
     if snapshot_path:
-        _apply_forecast_choice_snapshot(snapshot_path, out_dir, P)
+        applied_choice_path = _apply_forecast_choice_snapshot(snapshot_path, out_dir, P)
     n_fail = sum(1 for s, _ in report if s == "FAIL")
     print(f"      当期={P} 上期={Q} 断言={'全绿' if ok else f'{n_fail} 项 FAIL'} → {out_dir}")
     _emit("parse", "解析台账", "done" if ok else "warn",
@@ -224,17 +240,18 @@ def main(ledger_path, out_root="out", run_backtest=False):
     n_charts = charts.render_all(ledger_dir=str(out_dir), n_periods=7, end_period=P)
     n_fc = 0
     fc_warnings = []
+    forecast_module = None
     try:
-        import report_forecast                                   # noqa: PLC0415
-        n_fc = report_forecast.generate(out_dir)
-        fc_warnings = report_forecast.load_warnings(out_dir)
+        import report_forecast as forecast_module               # noqa: PLC0415
+        n_fc = forecast_module.generate(out_dir, choice_path=applied_choice_path)
+        fc_warnings = forecast_module.load_warnings(out_dir)
         print(f"      预测图：{n_fc} 张（按预测台选模，未选＝V1 推荐；"
-              f"递推 {report_forecast.HORIZON} 期）")
+              f"递推 {forecast_module.HORIZON} 期）")
         for w in fc_warnings:
             print(f"      ⚠ {w}")
     except Exception as e:                                       # noqa: BLE001
         # 即使预测模块的清理遇到瞬时文件错误，也不要让 fill_docx 读到旧图/元数据。
-        report_forecast.quarantine_forecast_artifacts(out_dir)
+        _cleanup_failed_forecast(out_dir, forecast_module)
         print(f"      预测图：跳过（{type(e).__name__}: {e}）")
     if fc_warnings:
         _emit("charts", "预测选模", "warn", "；".join(fc_warnings))

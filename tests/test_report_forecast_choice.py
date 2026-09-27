@@ -200,16 +200,22 @@ class Test出图接线:
                                  "forecast": [{"period": 202609}]}]}
 
         _stub_generate(monkeypatch, fake)
-        _write_choice(
-            tmp_path, {"citation": {"物理学": "SARIMA模型"}},
-            request_period="202610", source_period="202610", output_period="202612",
-            config_updated_at="2026-09-27 10:00:00", operator="librarian",
-            snapshot_at="2026-09-27 10:01:00", snapshot_source="primary")
-        assert report_forecast.generate(tmp_path) == 4
+        monkeypatch.setattr(report_forecast, "pick_subjects",
+                            lambda d: (list(SUBJECTS), "202612"))
+        applied_choice = tmp_path / "_forecast_choice_applied.json"
+        applied_choice.write_text(json.dumps({
+            "choice": {"citation": {"物理学": "SARIMA模型"}},
+            "request_period": "202610", "choice_period": "202610",
+            "source_period": "202612", "output_period": "202612",
+            "config_updated_at": "2026-09-27 10:00:00", "operator": "librarian",
+            "snapshot_at": "2026-09-27 10:01:00", "snapshot_source": "primary",
+        }, ensure_ascii=False), encoding="utf-8")
+        assert report_forecast.generate(tmp_path, choice_path=applied_choice) == 4
 
         meta = json.loads((tmp_path / "forecast_charts.json").read_text(encoding="utf-8"))
         assert meta["request_period"] == "202610"
-        assert meta["source_period"] == "202610"
+        assert meta["choice_period"] == "202610"
+        assert meta["source_period"] == "202612"
         assert meta["output_period"] == "202612"
         assert meta["config_updated_at"] == "2026-09-27 10:00:00"
         assert meta["operator"] == "librarian"

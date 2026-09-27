@@ -132,20 +132,17 @@ def _forecast_choice_snapshot(period):
         except (OSError, UnicodeDecodeError, json.JSONDecodeError):
             pass
 
-    snapshot = dict(record)
     choice = record.get("choice", {})
-    snapshot.update({
-        "period": period,
+    return {
         "request_period": period,
-        "source_period": period,
+        "choice_period": period,
         "choice": choice if isinstance(choice, dict) else {},
         "by": record.get("by", "") if isinstance(record.get("by", ""), str) else "",
         "at": record.get("at", "") if isinstance(record.get("at", ""), str) else "",
         "snapshot_at": _now(),
         "snapshot_source": source,
         "snapshot_source_path": source_path,
-    })
-    return snapshot
+    }
 
 
 def list_jobs(limit=20, period=None):
@@ -203,10 +200,6 @@ def create_job(period, input_path, actor, backtest=False):
         "created_at": _now(), "started_at": _now(), "finished_at": None,
         "exit_code": None, "progress": str(d / "progress.jsonl"),
         "console": str(d / "console.log"),
-        "forecast_choice_snapshot": str(snapshot_path),
-        "forecast_choice_request_period": period,
-        "forecast_choice_source_period": period,
-        "forecast_choice_source": snapshot["snapshot_source"],
     }
     write_job(job)
     _running.add(jid)
@@ -222,7 +215,7 @@ async def _run(job):
     env["WENHENG_PROGRESS_FILE"] = str(d / "progress.jsonl")
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUNBUFFERED"] = "1"
-    env["WENHENG_FORECAST_CHOICE_SNAPSHOT"] = job["forecast_choice_snapshot"]
+    env["WENHENG_FORECAST_CHOICE_SNAPSHOT"] = str(d / "forecast_choice.json")
     if config.REFERENCE_DOCX:
         env["WENHENG_REFERENCE_DOCX"] = config.REFERENCE_DOCX
     cmd = [config.PYTHON, str(config.PIPELINE), job["input"]]

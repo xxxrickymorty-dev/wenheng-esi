@@ -136,7 +136,7 @@ def test_创建任务冻结请求期次配置且后续保存不改变快照(tmp_
     choices.mkdir(parents=True)
     primary = choices / f"{period}.json"
     original = {"choice": {"citation": {"物理学": "SARIMA模型"}},
-                "by": "librarian", "at": "2026-09-27 10:00:00", "custom": "kept"}
+                "by": "librarian", "at": "2026-09-27 10:00:00"}
     primary.write_text(json.dumps(original, ensure_ascii=False), encoding="utf-8")
     legacy = out_root / period / "forecast_choice.json"
     legacy.parent.mkdir(parents=True)
@@ -144,14 +144,15 @@ def test_创建任务冻结请求期次配置且后续保存不改变快照(tmp_
                       encoding="utf-8")
 
     job = _create_isolated_job(monkeypatch, out_root, period)
-    snapshot_path = pathlib.Path(job["forecast_choice_snapshot"])
+    snapshot_path = jobs.job_dir(job["id"]) / "forecast_choice.json"
     snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
     assert snapshot_path.parent == jobs.job_dir(job["id"])
+    assert "forecast_choice_snapshot" not in job
     assert snapshot["choice"] == original["choice"]
-    assert snapshot["custom"] == "kept"
-    assert snapshot["request_period"] == snapshot["source_period"] == period
+    assert snapshot["by"] == original["by"] and snapshot["at"] == original["at"]
+    assert snapshot["request_period"] == snapshot["choice_period"] == period
     assert snapshot["snapshot_source"] == "primary"
-    assert job["forecast_choice_source_period"] == period
+    assert "forecast_choice_config_period" not in job
 
     primary.write_text(json.dumps({"choice": {}, "by": "later"}), encoding="utf-8")
     assert json.loads(snapshot_path.read_text(encoding="utf-8"))["choice"] == original["choice"]
@@ -168,15 +169,17 @@ def test_创建任务按旧文件回退且无配置保存空快照(tmp_path, mon
     legacy.write_text(legacy_text, encoding="utf-8")
 
     job = _create_isolated_job(monkeypatch, out_root, period)
-    snapshot = json.loads(pathlib.Path(job["forecast_choice_snapshot"]).read_text(encoding="utf-8"))
+    snapshot = json.loads((jobs.job_dir(job["id"]) / "forecast_choice.json")
+                          .read_text(encoding="utf-8"))
     assert snapshot["choice"] == legacy_record["choice"]
     assert snapshot["by"] == legacy_record["by"]
+    assert snapshot["choice_period"] == period
     assert snapshot["snapshot_source"] == "legacy"
     assert legacy.read_text(encoding="utf-8") == legacy_text
 
     empty = _create_isolated_job(monkeypatch, tmp_path / "empty-out", "202611")
     empty_snapshot = json.loads(
-        pathlib.Path(empty["forecast_choice_snapshot"]).read_text(encoding="utf-8"))
+        (jobs.job_dir(empty["id"]) / "forecast_choice.json").read_text(encoding="utf-8"))
     assert empty_snapshot["choice"] == {}
     assert empty_snapshot["snapshot_source"] == "default"
 
@@ -198,7 +201,21 @@ def test_任务子进程收到私有快照路径(tmp_path, monkeypatch):
     monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
     asyncio.run(jobs._run(job))
     assert captured["env"]["WENHENG_FORECAST_CHOICE_SNAPSHOT"] == \
-        job["forecast_choice_snapshot"]
+        str(jobs.job_dir(job["id"]) / "forecast_choice.json")
+
+
+def test_预测模块不可用时清除旧图和旧元数据(tmp_path):
+    out_dir = tmp_path / "out" / PERIOD
+    overview = out_dir / "charts" / "_overview"
+    overview.mkdir(parents=True)
+    metadata = out_dir / "forecast_charts.json"
+    metadata.write_text('{"charts": []}', encoding="utf-8")
+    png = overview / "forecast_1_cites.png"
+    png.write_bytes(b"stale")
+
+    run_pipeline._cleanup_failed_forecast(out_dir, report_forecast=None)
+    assert not metadata.exists()
+    assert not png.exists()
 
 
 def test_任务请求期次配置应用到不同的实际输出期次(tmp_path):
@@ -206,9 +223,8 @@ def test_任务请求期次配置应用到不同的实际输出期次(tmp_path):
     snapshot_path = tmp_path / "_jobs" / "job-1" / "forecast_choice.json"
     snapshot_path.parent.mkdir(parents=True)
     snapshot_path.write_text(json.dumps({
-        "period": request_period,
         "request_period": request_period,
-        "source_period": request_period,
+        "choice_period": request_period,
         "choice": {"citation": {"物理学": "SARIMA模型"}},
         "by": "librarian",
         "at": "2026-09-27 10:00:00",
@@ -217,15 +233,37 @@ def test_任务请求期次配置应用到不同的实际输出期次(tmp_path):
         "snapshot_source_path": f"_forecast_choices/{request_period}.json",
     }, ensure_ascii=False), encoding="utf-8")
     out_dir = tmp_path / "out" / output_period
+    out_dir.mkdir(parents=True)
+    old_choice = {"choice": {"citation": {"物理学": "阻尼Holt模型"}},
+                  "by": "old-run", "at": "old-time"}
+    (out_dir / "forecast_choice.json").write_text(
+        json.dumps(old_choice, ensure_ascii=False), encoding="utf-8")
 
     applied = run_pipeline._apply_forecast_choice_snapshot(snapshot_path, out_dir, output_period)
+    assert applied.name == "_forecast_choice_applied.json"
+    assert json.loads((out_dir / "forecast_choice.json").read_text(encoding="utf-8")) == old_choice
     record = json.loads(applied.read_text(encoding="utf-8"))
-    picked, warnings = report_forecast.load_choice(out_dir)
+    picked, warnings = report_forecast.load_choice(out_dir, choice_path=applied)
     assert picked == {("citation", "物理学"): "SARIMA模型"}
     assert warnings == []
     assert record["request_period"] == request_period
-    assert record["source_period"] == request_period
+    assert record["choice_period"] == request_period
+    assert record["source_period"] == output_period
     assert record["output_period"] == output_period
     assert record["config_updated_at"] == "2026-09-27 10:00:00"
     assert record["operator"] == "librarian"
     assert record["snapshot_at"] == "2026-09-27 10:01:00"
+
+    second_snapshot = tmp_path / "_jobs" / "job-2" / "forecast_choice.json"
+    second_snapshot.parent.mkdir(parents=True)
+    second_snapshot.write_text(json.dumps({
+        "request_period": "202611", "choice_period": "202611", "choice": {},
+        "by": "librarian", "at": "2026-09-27 11:00:00",
+        "snapshot_at": "2026-09-27 11:01:00",
+    }, ensure_ascii=False), encoding="utf-8")
+    second_applied = run_pipeline._apply_forecast_choice_snapshot(
+        second_snapshot, out_dir, output_period)
+    second_choice, warnings = report_forecast.load_choice(
+        out_dir, choice_path=second_applied)
+    assert second_choice == {} and warnings == []
+    assert json.loads(second_applied.read_text(encoding="utf-8"))["choice"] == {}
