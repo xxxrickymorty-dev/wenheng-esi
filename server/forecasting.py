@@ -7,6 +7,7 @@ import datetime as dt
 import io
 import json
 import math
+import os
 import pathlib
 import re
 
@@ -44,6 +45,52 @@ def _load():
     return period_dir, data, meta
 
 
+def _resolve_processed_input(raw_input: str) -> tuple[pathlib.Path, str] | None:
+    """解析运行记录里的输入路径，并仅接受项目 input/ 内可核验的文件。"""
+    value = raw_input.strip()
+    if not value:
+        return None
+
+    windows_path = pathlib.PureWindowsPath(value)
+    posix_path = pathlib.PurePosixPath(value)
+    windows_absolute = windows_path.is_absolute()
+    posix_absolute = posix_path.is_absolute()
+
+    if windows_absolute:
+        if os.name != "nt":
+            return None
+        candidate = pathlib.Path(value)
+        basename = windows_path.name
+    elif posix_absolute:
+        if os.name == "nt":
+            return None
+        candidate = pathlib.Path(value)
+        basename = posix_path.name
+    else:
+        normalized = value.replace("\\", "/")
+        relative = pathlib.PurePosixPath(normalized)
+        if ".." in relative.parts or windows_path.drive:
+            return None
+        candidate = pathlib.Path(config.ROOT).joinpath(*relative.parts)
+        basename = relative.name
+
+    if not candidate.is_absolute():
+        return None
+
+    try:
+        root = pathlib.Path(config.ROOT).resolve(strict=True)
+        input_root = (root / "input").resolve(strict=True)
+        resolved = candidate.resolve(strict=True)
+        input_root.relative_to(root)
+        resolved.relative_to(input_root)
+    except (OSError, RuntimeError, ValueError):
+        return None
+
+    if not resolved.is_file():
+        return None
+    return resolved, basename
+
+
 def _data_provenance(period_dir: pathlib.Path) -> dict:
     """只回报能从本机文件和完整运行记录核实的来源时间。"""
     workbook = (pathlib.Path(config.ROOT).parent / "数据与复现"
@@ -71,11 +118,15 @@ def _data_provenance(period_dir: pathlib.Path) -> dict:
             run_record_mtime, run_record_at = modified_at(run_log)
             raw_input = record.get("input")
             if isinstance(raw_input, str) and raw_input.strip():
-                rel = pathlib.PurePosixPath(raw_input.strip().replace("\\", "/"))
-                if not rel.is_absolute() and ".." not in rel.parts:
-                    input_file = pathlib.Path(config.ROOT).joinpath(*rel.parts)
+                resolved_input = _resolve_processed_input(raw_input)
+                if resolved_input is not None:
+                    input_file, basename = resolved_input
                     input_mtime, input_at = modified_at(input_file)
-                    input_info = {"name": rel.name, "last_modified_at": input_at}
+                    if input_mtime is not None:
+                        input_info = {
+                            "name": basename,
+                            "last_modified_at": input_at,
+                        }
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         pass
 
