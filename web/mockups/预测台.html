@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-palette="zhu">
+<html lang="zh-CN" data-palette="ynu">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,41 +12,32 @@
    配色可切换（顶部工具条）——正式上线时工具条去掉。
    ============================================================ */
 :root{
-  --bg:#f3efe6; --card:#fbf8f1; --panel:#f6f1e7;
-  --ink:#2f2a24; --ink-2:#5b5248; --ink-3:#6f6558;
-  --line:#d9cfbc; --line-2:#e7dfd0;
-  --zhu:#b23a2a; --zhu-soft:#f0dcd5;
-  --gold:#a9853f; --gold-soft:#efe3c9; --gold-ink:#7d6122;
-  --ok:#3f6b4a; --ok-soft:#e2ece0;
-  --warn:#7d5518; --warn-soft:#f5ead2;
-  --bad:#a8321f; --bad-soft:#f4ddd7;
+  --bg:#F4F3ED; --card:#FFFDF8; --panel:#EDF1EB;
+  --ink:#222B25; --ink-2:#4F5B51; --ink-3:#58655C;
+  --line:#DDE1D8; --line-2:#E9EEE6;
+  --accent:#1A4B27; --accent-soft:#E7F0E7;
+  --zhu:#B43B31; --zhu-soft:#F7E4E1;
+  --gold:#B19A65; --gold-soft:#F3ECDD; --gold-ink:#6E521B;
+  --ok:#28643A; --ok-soft:#E7F0E7;
+  --warn:#6E521B; --warn-soft:#F3ECDD;
+  --bad:#B43B31; --bad-soft:#F7E4E1;
   --serif:"Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
   --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
   --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
-  --shadow:0 1px 2px rgba(47,42,36,.06),0 8px 24px rgba(47,42,36,.06);
+  --shadow:0 1px 2px rgba(26,75,39,.06),0 8px 24px rgba(26,75,39,.08);
   --r:14px; --r-sm:10px;
 }
-html[data-palette="morandi"]{
-  --bg:#eceae6; --card:#f7f6f3; --panel:#f1efeb;
-  --ink:#33322f; --ink-2:#5f5c56; --ink-3:#6b665e;
-  --line:#d7d3cb; --line-2:#e5e2dc;
-  --zhu:#85564e; --zhu-soft:#ece0dd;
-  --gold:#8f8a72; --gold-soft:#e8e6dc; --gold-ink:#6f6a52;
-  --ok:#4f6a58; --ok-soft:#e4ebe5;
-  --warn:#6f5c3c; --warn-soft:#eee9dd;
-  --bad:#85564b; --bad-soft:#eee2de;
-  --shadow:0 1px 2px rgba(51,50,47,.05),0 8px 22px rgba(51,50,47,.05);
-}
-html[data-palette="mix"]{
-  --bg:#eae7e2; --card:#f8f6f2; --panel:#f1efea;
-  --ink:#312e2a; --ink-2:#5c5852; --ink-3:#6b665e;
-  --line:#d8d4cc; --line-2:#e6e3dd;
-  --zhu:#a8442f; --zhu-soft:#f0dcd6;
-  --gold:#8f8a72; --gold-soft:#e8e6dc; --gold-ink:#6f6a52;
-  --ok:#4f6a58; --ok-soft:#e4ebe5;
-  --warn:#6f5c3c; --warn-soft:#eee9dd;
-  --bad:#9a4b3c; --bad-soft:#f0e0db;
-  --shadow:0 1px 2px rgba(49,46,42,.05),0 8px 22px rgba(49,46,42,.05);
+html[data-palette="zhu"]{
+  --bg:#F3EFE6; --card:#FBF8F1; --panel:#F6F1E7;
+  --ink:#2F2A24; --ink-2:#5B5248; --ink-3:#6F6558;
+  --line:#D9CFBC; --line-2:#E7DFD0;
+  --accent:#B43B31; --accent-soft:#F5E3E0;
+  --zhu:#8E2D25; --zhu-soft:#F7E1DE;
+  --gold:#B19A65; --gold-soft:#F3EADD; --gold-ink:#6E521B;
+  --ok:#28643A; --ok-soft:#E7F0E7;
+  --warn:#6E521B; --warn-soft:#F3EADD;
+  --bad:#8E2D25; --bad-soft:#F7E1DE;
+  --shadow:0 1px 2px rgba(98,42,34,.06),0 8px 24px rgba(98,42,34,.08);
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
@@ -54,8 +45,8 @@ body{margin:0;background:var(--bg);color:var(--ink);
 h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0}
 button{font:inherit;color:inherit}
 select{font:inherit;color:var(--ink);padding:7px 10px;border:1px solid var(--line);
-  border-radius:var(--r-sm);background:#fff}
-:focus-visible{outline:3px solid var(--zhu);outline-offset:3px;border-radius:6px}
+  border-radius:var(--r-sm);background:var(--card)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:6px}
 .mono{font-family:var(--mono)}
 
 /* ---------- 审核工具条（正式上线时去掉） ---------- */
@@ -66,7 +57,7 @@ select{font:inherit;color:var(--ink);padding:7px 10px;border:1px solid var(--lin
 .seg{display:flex;gap:6px}
 .seg button{padding:5px 13px;border:1px solid var(--line);background:var(--card);
   border-radius:999px;cursor:pointer;font-size:14px}
-.seg button[aria-pressed="true"]{background:var(--zhu);border-color:var(--zhu);color:#fff}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
 
 /* ---------- 顶栏 ---------- */
 .topbar{display:flex;align-items:center;gap:18px;padding:13px 22px;
@@ -77,9 +68,9 @@ select{font:inherit;color:var(--ink);padding:7px 10px;border:1px solid var(--lin
 .nav{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
 .nav a{display:flex;align-items:center;gap:7px;padding:9px 13px;border-radius:var(--r-sm);
   text-decoration:none;color:var(--ink-2);font-size:15px}
-.nav a[aria-current="page"]{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
+.nav a[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
 .who{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-2)}
-.avatar{width:29px;height:29px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);
+.avatar{width:29px;height:29px;border-radius:50%;background:var(--accent-soft);color:var(--accent);
   display:grid;place-items:center;font-weight:600}
 
 /* ---------- 版面 ---------- */
@@ -87,18 +78,18 @@ main{max-width:1180px;margin:0 auto;padding:26px 22px 70px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
   box-shadow:var(--shadow);padding:22px 24px;margin-top:18px}
 .card > h2{font-size:19px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.no{font-family:var(--mono);font-size:12px;letter-spacing:.18em;color:var(--zhu);
-  border:1px solid var(--zhu-soft);background:var(--zhu-soft);border-radius:6px;padding:2px 7px}
+.no{font-family:var(--mono);font-size:12px;letter-spacing:.18em;color:var(--accent);
+  border:1px solid var(--accent-soft);background:var(--accent-soft);border-radius:6px;padding:2px 7px}
 .hint{color:var(--ink-3);font-size:14px}
 .lead{color:var(--ink-2);font-size:16px;margin:8px 0 0;max-width:74ch}
 .stamps{display:flex;gap:22px;flex-wrap:wrap;margin-top:14px;font-size:14px;color:var(--ink-3)}
 .stamps b{color:var(--ink-2)}
 .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:9px;
   border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:15.5px}
-.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-size:17px;padding:12px 26px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-size:17px;padding:12px 26px}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
 .badge{border-radius:999px;padding:3px 11px;font-size:13.5px;display:inline-block}
-.badge.rec{background:var(--zhu-soft);color:var(--zhu)}
+.badge.rec{background:var(--accent-soft);color:var(--accent)}
 .badge.review{background:var(--warn-soft);color:var(--warn)}
 .badge.pass{background:var(--ok-soft);color:var(--ok)}
 
@@ -106,7 +97,7 @@ main{max-width:1180px;margin:0 auto;padding:26px 22px 70px}
 .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .tabs button{padding:9px 16px;border:1px solid var(--line);background:var(--panel);
   border-radius:999px;cursor:pointer;font-size:15px;color:var(--ink-2)}
-.tabs button[aria-pressed="true"]{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:600}
+.tabs button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
 .route-note{margin-top:10px;font-size:14.5px;color:var(--ink-3);max-width:78ch}
 
 /* ---------- 选择表 ---------- */
@@ -141,7 +132,7 @@ tbody tr:last-child td{border-bottom:none}
 .tbl-wrap{overflow-x:auto;border-top:1px solid var(--line-2)}
 .tbl-wrap table{min-width:520px}
 .tbl-wrap td.num{text-align:right;font-family:var(--mono)}
-tr.crossed td{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
+tr.crossed td{background:var(--accent-soft);color:var(--accent);font-weight:600}
 .ticks{margin:10px 0 0;padding-left:22px;color:var(--ink-2)}
 .ticks li{margin:5px 0}
 @media (max-width:760px){
@@ -158,9 +149,8 @@ tr.crossed td{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
   <b>静态稿 · 待 rick 审核</b>
   <span>配色：</span>
   <div class="seg" id="pal">
-    <button data-p="zhu" aria-pressed="true">朱批原色</button>
-    <button data-p="morandi">莫兰迪</button>
-    <button data-p="mix">莫兰迪+朱砂</button>
+    <button data-p="ynu" aria-pressed="true">云大绿</button>
+    <button data-p="zhu" aria-pressed="false">朱砂</button>
   </div>
   <span>本稿数据：<b>真实</b>——推荐值来自 V1 基线，试跑与趋势图是「物理学 · 被引路线 · 推荐模型」的真跑</span>
 </div>
