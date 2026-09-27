@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-palette="zhu" data-state="ready">
+<html lang="zh-CN" data-palette="ynu" data-state="ready">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,47 +7,34 @@
 <style>
 /* ============================================================
    这是给 rick 审核的静态稿：单文件、双击即开、零依赖。
-   两套配色可切换（右上角）：① 朱批原色系（沿用演示站令牌）② 莫兰迪
+   两套配色可切换（右上角）：① 云大绿（默认）② 朱砂
    四个状态可切换：待生成 / 生成中 / 已完成 / 失败
    字号按「馆员与评委年龄偏大」定：正文 17px 起，最小标签 13px
    ============================================================ */
 :root{
-  /* 朱批原色系（来自演示站 style.css 的 :root 令牌，保持同源）
-     全部文字/底色组合已实测 ≥4.5:1（WCAG AA）——年龄偏大的用户不靠猜 */
-  --bg:#f3efe6; --card:#fbf8f1; --panel:#f6f1e7;
-  --ink:#2f2a24; --ink-2:#5b5248; --ink-3:#6f6558;
-  --line:#d9cfbc; --line-2:#e7dfd0;
-  --zhu:#b23a2a; --zhu-soft:#f0dcd5;
-  --gold:#a9853f; --gold-soft:#efe3c9;
-  --ok:#3f6b4a; --ok-soft:#e2ece0;
-  --warn:#7d5518; --warn-soft:#f5ead2;
-  --bad:#a8321f; --bad-soft:#f4ddd7;
-  --shadow:0 1px 2px rgba(47,42,36,.06), 0 8px 24px rgba(47,42,36,.06);
+  /* 云大绿：与学科分析平台共用色板；--zhu 是既有强调色别名，此主题映射为主绿。 */
+  --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB;
+  --ink:#222B25; --ink-2:#3F4C42; --ink-3:#58655C;
+  --line:#DDE1D8; --line-2:#E6E9E2;
+  --zhu:#1A4B27; --zhu-soft:#E3EDE4;
+  --gold:#B19A65; --gold-soft:#F1EBDD; --gold-ink:#62501F;
+  --ok:#28643A; --ok-soft:#E2EEE4;
+  --warn:#75622D; --warn-soft:#F6EED8;
+  --bad:#B43B31; --bad-soft:#F7E1DE;
+  --shadow:0 1px 2px rgba(34,43,37,.05), 0 8px 24px rgba(34,43,37,.06);
   --r:14px; --r-sm:10px;
 }
-html[data-palette="morandi"]{
-  /* 莫兰迪（灰调、低饱和）：原版对比度不够，已按实测调深至全部 ≥4.5:1 */
-  --bg:#eceae6; --card:#f7f6f3; --panel:#f1efeb;
-  --ink:#33322f; --ink-2:#5f5c56; --ink-3:#6b665e;
-  --line:#d7d3cb; --line-2:#e5e2dc;
-  --zhu:#85564e; --zhu-soft:#ece0dd;
-  --gold:#8f8a72; --gold-soft:#e8e6dc;
-  --ok:#4f6a58; --ok-soft:#e4ebe5;
-  --warn:#6f5c3c; --warn-soft:#eee9dd;
-  --bad:#85564b; --bad-soft:#eee2de;
-  --shadow:0 1px 2px rgba(51,50,47,.05), 0 8px 22px rgba(51,50,47,.05);
-}
-html[data-palette="mix"]{
-  /* 莫兰迪底 + 朱砂点睛：大面积走灰调，朱砂只留给「签章 / 需要人拍板 / 主按钮」 */
-  --bg:#eae7e2; --card:#f8f6f2; --panel:#f1efea;
-  --ink:#312e2a; --ink-2:#5c5852; --ink-3:#6b665e;
-  --line:#d8d4cc; --line-2:#e6e3dd;
-  --zhu:#a8442f; --zhu-soft:#f0dcd6;
-  --gold:#8f8a72; --gold-soft:#e8e6dc;
-  --ok:#4f6a58; --ok-soft:#e4ebe5;
-  --warn:#6f5c3c; --warn-soft:#eee9dd;
-  --bad:#9a4b3c; --bad-soft:#f0e0db;
-  --shadow:0 1px 2px rgba(49,46,42,.05), 0 8px 22px rgba(49,46,42,.05);
+html[data-palette="zhu"]{
+  /* 朱砂：保留原稿的暖纸质感，朱砂作为操作与签章色。 */
+  --bg:#F3EFE6; --card:#FBF8F1; --panel:#F6F1E7;
+  --ink:#2F2A24; --ink-2:#5B5248; --ink-3:#6F6558;
+  --line:#D9CFBC; --line-2:#E7DFD0;
+  --zhu:#B43B31; --zhu-soft:#F0DCD5;
+  --gold:#A9853F; --gold-soft:#EFE3C9; --gold-ink:#7D6122;
+  --ok:#3F6B4A; --ok-soft:#E2ECE0;
+  --warn:#7D5518; --warn-soft:#F5EAD2;
+  --bad:#B43B31; --bad-soft:#F4DDD7;
+  --shadow:0 1px 2px rgba(47,42,36,.06), 0 8px 24px rgba(47,42,36,.06);
 }
 *{box-sizing:border-box}
 body{
@@ -98,7 +85,7 @@ main{max-width:1120px;margin:0 auto;padding:26px 22px 60px}
 .period{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:20px 24px 0}
 .period h1{font-size:26px;letter-spacing:.02em}
 .period .tag{
-  font-size:14px;color:var(--gold);border:1px solid var(--gold-soft);
+  font-size:14px;color:var(--gold-ink);border:1px solid var(--gold-soft);
   background:var(--gold-soft);border-radius:999px;padding:3px 12px
 }
 .period .switch{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:15px;color:var(--ink-2)}
@@ -217,9 +204,8 @@ html[data-state="failed"]  #s-failed,  html[data-state="failed"]  #r-failed{disp
 <div class="review">
   <span><b>静态稿</b>（待 rick 审核；正式页面不含本工具条）</span>
   <span class="seg" role="group" aria-label="配色">
-    <button type="button" data-pal="zhu" aria-pressed="true">朱批原色系</button>
-    <button type="button" data-pal="morandi" aria-pressed="false">莫兰迪</button>
-    <button type="button" data-pal="mix" aria-pressed="false">莫兰迪 + 朱砂点睛</button>
+    <button type="button" data-pal="ynu" aria-pressed="true">云大绿</button>
+    <button type="button" data-pal="zhu" aria-pressed="false">朱砂</button>
   </span>
   <span class="seg" role="group" aria-label="状态">
     <button type="button" data-st="ready" aria-pressed="true">待生成</button>
