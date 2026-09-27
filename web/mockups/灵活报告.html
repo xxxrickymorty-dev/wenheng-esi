@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-palette="zhu">
+<html lang="zh-CN" data-palette="ynu">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,41 +12,30 @@
    由后端同一个 md 渲染器转 html（保真）；两张图是产物里的真图（JPEG 内嵌）。
    ============================================================ */
 :root{
-  --bg:#f3efe6; --card:#fbf8f1; --panel:#f6f1e7;
-  --ink:#2f2a24; --ink-2:#5b5248; --ink-3:#6f6558;
-  --line:#d9cfbc; --line-2:#e7dfd0;
-  --zhu:#b23a2a; --zhu-soft:#f0dcd5;
-  --gold:#a9853f; --gold-soft:#efe3c9; --gold-ink:#7d6122;
-  --ok:#3f6b4a; --ok-soft:#e2ece0;
-  --warn:#7d5518; --warn-soft:#f5ead2;
-  --bad:#a8321f; --bad-soft:#f4ddd7;
+  --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB;
+  --ink:#222B25; --ink-2:#3F4C42; --ink-3:#58655C;
+  --line:#DDE1D8; --line-2:#E6E9E2;
+  --zhu:#1A4B27; --zhu-soft:#E3EDE4;
+  --gold:#B19A65; --gold-soft:#F1EBDD; --gold-ink:#62501F;
+  --ok:#28643A; --ok-soft:#E2EEE4;
+  --warn:#75622D; --warn-soft:#F6EED8;
+  --bad:#B43B31; --bad-soft:#F4E6E2;
   --serif:"Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
   --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
   --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
-  --shadow:0 1px 2px rgba(47,42,36,.06),0 8px 24px rgba(47,42,36,.06);
+  --shadow:0 1px 2px rgba(34,43,37,.05),0 8px 24px rgba(34,43,37,.06);
   --r:14px; --r-sm:10px;
 }
-html[data-palette="morandi"]{
-  --bg:#eceae6; --card:#f7f6f3; --panel:#f1efeb;
-  --ink:#33322f; --ink-2:#5f5c56; --ink-3:#6b665e;
-  --line:#d7d3cb; --line-2:#e5e2dc;
-  --zhu:#85564e; --zhu-soft:#ece0dd;
-  --gold:#8f8a72; --gold-soft:#e8e6dc; --gold-ink:#6f6a52;
-  --ok:#4f6a58; --ok-soft:#e4ebe5;
-  --warn:#6f5c3c; --warn-soft:#eee9dd;
-  --bad:#85564b; --bad-soft:#eee2de;
-  --shadow:0 1px 2px rgba(51,50,47,.05),0 8px 22px rgba(51,50,47,.05);
-}
-html[data-palette="mix"]{
-  --bg:#eae7e2; --card:#f8f6f2; --panel:#f1efea;
-  --ink:#312e2a; --ink-2:#5c5852; --ink-3:#6b665e;
-  --line:#d8d4cc; --line-2:#e6e3dd;
-  --zhu:#a8442f; --zhu-soft:#f0dcd6;
-  --gold:#8f8a72; --gold-soft:#e8e6dc; --gold-ink:#6f6a52;
-  --ok:#4f6a58; --ok-soft:#e4ebe5;
-  --warn:#6f5c3c; --warn-soft:#eee9dd;
-  --bad:#9a4b3c; --bad-soft:#f0e0db;
-  --shadow:0 1px 2px rgba(49,46,42,.05),0 8px 22px rgba(49,46,42,.05);
+html[data-palette="zhu"]{
+  --bg:#F3EFE6; --card:#FBF8F1; --panel:#F6F1E7;
+  --ink:#2F2A24; --ink-2:#5B5248; --ink-3:#6F6558;
+  --line:#D9CFBC; --line-2:#E7DFD0;
+  --zhu:#B43B31; --zhu-soft:#F0DCD5;
+  --gold:#A9853F; --gold-soft:#EFE3C9; --gold-ink:#7D6122;
+  --ok:#3F6B4A; --ok-soft:#E2ECE0;
+  --warn:#7D5518; --warn-soft:#F5EAD2;
+  --bad:#B43B31; --bad-soft:#F4DDD7;
+  --shadow:0 1px 2px rgba(47,42,36,.06),0 8px 24px rgba(47,42,36,.06);
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
@@ -123,6 +112,7 @@ main{max-width:1180px;margin:0 auto;padding:22px 22px 70px}
 .md-body figure{margin:16px 0;text-align:center}
 .md-body img{max-width:100%;border:1px solid var(--line);border-radius:var(--r-sm)}
 .md-body figcaption{font-size:13.5px;color:var(--ink-3);margin-top:6px}
+@media (max-width:760px){.md-body table{display:block;max-width:100%;overflow-x:auto}}
 .md-body ul,.md-body ol{margin:8px 0;padding-left:24px}
 .md-body li{margin:5px 0}
 </style>
@@ -133,9 +123,8 @@ main{max-width:1180px;margin:0 auto;padding:22px 22px 70px}
   <b>静态稿 · 待 rick 审核</b>
   <span>配色：</span>
   <div class="seg" id="pal">
-    <button data-p="zhu" aria-pressed="true">朱批原色</button>
-    <button data-p="morandi">莫兰迪</button>
-    <button data-p="mix">莫兰迪+朱砂</button>
+    <button data-p="ynu" aria-pressed="true">云大绿</button>
+    <button data-p="zhu" aria-pressed="false">朱砂</button>
   </div>
   <span>本稿只新增<b>第二块</b>；正文/图是真跑产物（cross_compare 分析稿）</span>
 </div>
