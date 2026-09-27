@@ -7,20 +7,30 @@
 <style>
 /* ============================================================
    给 rick 审核的静态稿：陈列馆（书架）首屏加一条「读数带」。
-   配色取自书架本体（G 版 working-volumes）：--vol #B8422C / --cream / --paper。
+   默认云大绿，朱砂为第二套主题；读数与书架结构保持不变。
    数据是真的：202607 期 facts + 45 点趋势（trend 序列）。
    书架本身是示意（真书架是 StPageFlip 翻书：端详 / 开卷 / 书脊 / 规格栏）。
    ============================================================ */
 :root{
-  --vol:#B8422C; --vol-deep:#8A2A18; --vol-lift:#D65A38;
-  --cream:#F7F0E2; --paper:#F2E9D8;
-  --ink:#2F2A24; --ink-2:#5B5248; --ink-3:#7A6F5F;
-  --line:#DCCFB6; --line-2:#E9DFC9;
-  --ok:#3F6B4A; --bad:#A8321F;
+  --vol:#1A4B27; --vol-deep:#153F23; --vol-lift:#28643A;
+  --cream:#FFFDF8; --paper:#F4F3ED;
+  --ink:#222B25; --ink-2:#4F5B51; --ink-3:#707B71;
+  --line:#DDE1D8; --line-2:#E9EEE6;
+  --ok:#28643A; --bad:#B43B31;
+  --night:#153F23; --night-soft:#10331C; --night-line:#6A8370; --night-ink:#F6F4EA; --night-muted:#D9E2D7;
   --serif:"Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
   --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
   --mono:"Cascadia Mono",Consolas,monospace;
-  --shadow:0 1px 2px rgba(47,42,36,.07),0 10px 26px rgba(47,42,36,.08);
+  --shadow:0 1px 2px rgba(26,75,39,.07),0 10px 26px rgba(26,75,39,.1);
+}
+html[data-theme="zhu"]{
+  --vol:#B43B31; --vol-deep:#8E2D25; --vol-lift:#C84E42;
+  --cream:#FFFDF8; --paper:#F7F2EC;
+  --ink:#2F2523; --ink-2:#685955; --ink-3:#8A746D;
+  --line:#E3D6D1; --line-2:#F0E5E0;
+  --ok:#28643A; --bad:#8E2D25;
+  --night:#73251F; --night-soft:#5B1D18; --night-line:#9A645C; --night-ink:#FFF6F2; --night-muted:#F0D9D3;
+  --shadow:0 1px 2px rgba(98,42,34,.07),0 10px 26px rgba(98,42,34,.1);
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--vol-deep);color:var(--ink);font:17px/1.7 var(--sans)}
@@ -28,12 +38,12 @@ h1,h2,h3{margin:0;font-family:var(--serif);font-weight:600}
 .mono{font-family:var(--mono)}
 .hint{color:var(--ink-3);font-size:14px}
 .review{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;padding:10px 22px;
-  background:#241a16;color:#e9dcc6;font-size:14px}
-.review b{color:#fff}
+  background:var(--night);color:var(--night-muted);font-size:14px}
+.review b{color:var(--night-ink)}
 .seg{display:flex;gap:6px}
-.seg button{padding:5px 13px;border:1px solid #5a4436;background:#3a2b23;color:#e9dcc6;
+.seg button{padding:5px 13px;border:1px solid var(--night-line);background:var(--night-soft);color:var(--night-muted);
   border-radius:999px;cursor:pointer;font:inherit;font-size:13.5px}
-.seg button[aria-pressed="true"]{background:var(--vol);border-color:var(--vol);color:#fff}
+.seg button[aria-pressed="true"]{background:var(--vol);border-color:var(--vol);color:var(--night-ink)}
 
 /* 整屏：上读数带 / 下书架（示意） */
 .screen{min-height:100vh;display:flex;flex-direction:column}
@@ -74,9 +84,9 @@ h1,h2,h3{margin:0;font-family:var(--serif);font-weight:600}
   opacity:.55}
 .spine.on{opacity:1;transform:translateY(-10px)}
 .spine::after{content:attr(data-t);position:absolute;left:50%;top:16px;transform:translateX(-50%);
-  writing-mode:vertical-rl;color:#fdf6ea;font-size:13px;letter-spacing:.14em}
+  writing-mode:vertical-rl;color:var(--night-ink);font-size:13px;letter-spacing:.14em}
 .spine .no{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);
-  color:#fdf6ea;font-size:11px;font-family:var(--mono)}
+  color:var(--night-ink);font-size:11px;font-family:var(--mono)}
 .spec{background:var(--cream);border-radius:14px;padding:18px 20px;align-self:start;
   box-shadow:var(--shadow)}
 .spec h2{font-size:17px;margin-bottom:8px}
@@ -84,10 +94,10 @@ h1,h2,h3{margin:0;font-family:var(--serif);font-weight:600}
 .spec dl div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;
   border-bottom:1px solid var(--line-2)}
 .spec dd{margin:0;color:var(--ink-2)}
-.note{margin:0 26px 26px;padding:12px 16px;border:1px dashed #7a6a55;border-radius:12px;
-  color:#e9dcc6;font-size:13.5px;line-height:1.85;background:rgba(0,0,0,.14)}
-.note b{color:#fff}
-.note code{font-family:var(--mono);color:#f4e6cf}
+.note{margin:0 26px 26px;padding:12px 16px;border:1px dashed var(--night-line);border-radius:12px;
+  color:var(--night-muted);font-size:13.5px;line-height:1.85;background:color-mix(in srgb,var(--night) 86%,transparent)}
+.note b{color:var(--night-ink)}
+.note code{font-family:var(--mono);color:var(--night-ink)}
 </style>
 </head>
 <body>
@@ -96,8 +106,8 @@ h1,h2,h3{margin:0;font-family:var(--serif);font-weight:600}
   <b>静态稿 · 待 rick 审核</b>
   <span>配色：</span>
   <div class="seg" id="pal">
-    <button data-p="zhu" aria-pressed="true">朱批原色（书架同款）</button>
-    <button data-p="plain">去底色（素纸）</button>
+    <button data-p="ynu" aria-pressed="true">云大绿</button>
+    <button data-p="zhu" aria-pressed="false">朱砂</button>
   </div>
   <span>数据：<b>真</b>——202607 期 facts 四卡 + 45 点趋势；书架为示意</span>
 </div>
@@ -187,15 +197,11 @@ h1,h2,h3{margin:0;font-family:var(--serif);font-weight:600}
 /* 真数据：45 点顶尖论文序列（由本仓 facts.trend 注入）——只用来画线，不显示刻度数字 */
 const TREND = {"201903": 35.0, "201905": 38.0, "201907": 36.0, "201909": 38.0, "201911": 39.0, "202001": 42.0, "202003": 42.0, "202005": 39.0, "202007": 44.0, "202009": 50.0, "202011": 56.0, "202101": 57.0, "202103": 58.0, "202105": 56.0, "202107": 59.0, "202109": 60.0, "202111": 62.0, "202201": 67.0, "202203": 69.0, "202205": 68.0, "202207": 78.0, "202209": 84.0, "202211": 96.0, "202301": 97.0, "202303": 102.0, "202305": 106.0, "202307": 116.0, "202309": 128.0, "202311": 130.0, "202401": 137.0, "202403": 139.0, "202405": 137.0, "202407": 146.0, "202409": 153.0, "202411": 166.0, "202501": 178.0, "202503": 210.0, "202505": 210.0, "202507": 222.0, "202509": 225.0, "202511": 231.0, "202601": 245.0, "202603": 263.0, "202605": 252.0, "202607": 274.0};
 
-/* 配色切换（素纸版：去掉饱和底色，贴合打印/投影） */
+/* 配色切换：默认云大绿，朱砂为第二套主题。 */
 document.getElementById("pal").addEventListener("click", function (e) {
   var b = e.target.closest("button"); if (!b) return;
-  var plain = b.dataset.p === "plain";
-  document.body.style.background = plain ? "#EFE7D6" : "";
-  document.querySelector(".shelf").style.background = plain ? "transparent" : "";
-  document.querySelectorAll(".spine").forEach(function (s) {
-    s.style.boxShadow = plain ? "0 8px 14px rgba(0,0,0,.18)" : "";
-  });
+  if (b.dataset.p === "zhu") document.documentElement.dataset.theme = "zhu";
+  else document.documentElement.removeAttribute("data-theme");
   this.querySelectorAll("button").forEach(function (x) {
     x.setAttribute("aria-pressed", String(x === b));
   });
