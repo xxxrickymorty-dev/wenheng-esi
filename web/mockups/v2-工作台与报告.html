@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-palette="zhu" data-screen="report">
+<html lang="zh-CN" data-palette="ynu" data-screen="report">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,33 +16,27 @@
    字号与对比度：正文 19px / 行高 1.9 / 每行约 36 字；文字对比度全部 ≥4.5:1
    ========================================================================== */
 :root{
-  --bg:#f3efe6; --card:#fbf8f1; --panel:#f6f1e7;
-  --ink:#2f2a24; --ink-2:#5b5248; --ink-3:#6f6558;
-  --line:#d9cfbc; --line-2:#e7dfd0;
-  --zhu:#b23a2a; --zhu-soft:#f0dcd5;
-  --gold:#a9853f; --gold-soft:#efe3c9; --gold-ink:#7d6122;
-  --ok:#3f6b4a; --ok-soft:#e2ece0;
-  --warn:#7d5518; --warn-soft:#f5ead2;
-  --bad:#a8321f; --bad-soft:#f4ddd7;
+  --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB;
+  --ink:#222B25; --ink-2:#3F4C42; --ink-3:#58655C;
+  --line:#DDE1D8; --line-2:#E6E9E2;
+  --zhu:#1A4B27; --zhu-soft:#E3EDE4;
+  --gold:#B19A65; --gold-soft:#F1EBDD; --gold-ink:#62501F;
+  --ok:#28643A; --ok-soft:#E2EEE4;
+  --warn:#75622D; --warn-soft:#F6EED8;
+  --bad:#B43B31; --bad-soft:#F4E6E2;
   --serif:"Source Han Serif SC","Noto Serif SC",Songti SC,SimSun,serif;
   --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
   --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
 }
-html[data-palette="morandi"]{
-  --bg:#eceae6; --card:#f7f6f3; --panel:#f1efeb;
-  --ink:#33322f; --ink-2:#5f5c56; --ink-3:#6b665e;
-  --line:#d7d3cb; --line-2:#e5e2dc;
-  --zhu:#85564e; --zhu-soft:#ece0dd; --gold:#8f8a72; --gold-soft:#e8e6dc; --gold-ink:#6b6547;
-  --ok:#4f6a58; --ok-soft:#e4ebe5; --warn:#6f5c3c; --warn-soft:#eee9dd;
-  --bad:#85564b; --bad-soft:#eee2de;
-}
-html[data-palette="mix"]{
-  --bg:#eae7e2; --card:#f8f6f2; --panel:#f1efea;
-  --ink:#312e2a; --ink-2:#5c5852; --ink-3:#6b665e;
-  --line:#d8d4cc; --line-2:#e6e3dd;
-  --zhu:#a8442f; --zhu-soft:#f0dcd6; --gold:#8f8a72; --gold-soft:#e8e6dc; --gold-ink:#6b6547;
-  --ok:#4f6a58; --ok-soft:#e4ebe5; --warn:#6f5c3c; --warn-soft:#eee9dd;
-  --bad:#9a4b3c; --bad-soft:#f0e0db;
+html[data-palette="zhu"]{
+  --bg:#F3EFE6; --card:#FBF8F1; --panel:#F6F1E7;
+  --ink:#2F2A24; --ink-2:#5B5248; --ink-3:#6F6558;
+  --line:#D9CFBC; --line-2:#E7DFD0;
+  --zhu:#B43B31; --zhu-soft:#F0DCD5;
+  --gold:#A9853F; --gold-soft:#EFE3C9; --gold-ink:#7D6122;
+  --ok:#3F6B4A; --ok-soft:#E2ECE0;
+  --warn:#7D5518; --warn-soft:#F5EAD2;
+  --bad:#A8321F; --bad-soft:#F4DDD7;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.7 var(--sans);
@@ -141,7 +135,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.7 var(--sans);
              radial-gradient(circle at 72% 82%,rgba(0,0,0,.16),transparent 62%)}
 .seal.signed{background:var(--zhu);color:#fff;
   box-shadow:inset 0 0 0 2px rgba(255,255,255,.34), 0 1px 2px rgba(47,42,36,.18)}
-.seal.stale{background:transparent;color:var(--gold);
+.seal.stale{background:transparent;color:var(--gold-ink);
   box-shadow:inset 0 0 0 2px var(--gold), 0 0 0 1px var(--gold-soft)}
 .seal.empty{border:2px dashed var(--line);color:var(--ink-3);background:transparent;
   font-size:10.5px;font-weight:600;letter-spacing:0}
@@ -197,6 +191,15 @@ td.chg{color:var(--zhu);font-weight:600}
 .screen{display:none}
 html[data-screen="workbench"] #scr-workbench,
 html[data-screen="report"]    #scr-report{display:block}
+
+@media (max-width:560px){
+  .topbar{flex-wrap:wrap;padding:12px 16px}
+  .nav{order:3;width:100%;margin-left:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+  .nav a{justify-content:center;padding:8px 5px;font-size:13px}
+  .who{margin-left:auto}
+  .wrap{padding:20px 16px 48px}
+  .tablewrap{max-width:100%;overflow-x:auto}
+}
 </style>
 </head>
 <body>
@@ -218,9 +221,8 @@ html[data-screen="report"]    #scr-report{display:block}
     <button type="button" data-scr="report" aria-pressed="true">报告（陈列面）</button>
   </span>
   <span class="seg" role="group" aria-label="配色">
-    <button type="button" data-pal="zhu" aria-pressed="true">朱批原色系</button>
-    <button type="button" data-pal="morandi" aria-pressed="false">莫兰迪</button>
-    <button type="button" data-pal="mix" aria-pressed="false">莫兰迪+朱砂点睛</button>
+    <button type="button" data-pal="ynu" aria-pressed="true">云大绿</button>
+    <button type="button" data-pal="zhu" aria-pressed="false">朱砂</button>
   </span>
 </div>
 
