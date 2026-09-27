@@ -28,6 +28,7 @@ main{width:min(1280px,calc(100% - 48px));margin:auto;padding:38px 0 68px}.eyebro
 @media(max-width:740px){.bar{width:calc(100% - 32px);min-height:auto;flex-wrap:wrap;gap:8px 12px;padding:12px 0}.brand{min-width:0;flex:1}.spacer{display:none}.preview,.header-controls{width:100%}.header-controls{flex-wrap:wrap}.switch{width:100%}.switch button{flex:1}main{width:calc(100% - 32px);padding-top:24px}.heading{align-items:flex-start;flex-direction:column;gap:12px}.layout{grid-template-columns:minmax(0,1fr)}.side{grid-template-columns:repeat(2,minmax(0,1fr))}.preview-state{grid-column:1/-1}}
 @media(max-width:540px){body{font-size:17px}.bar,main{width:calc(100% - 28px)}main{padding:21px 0 48px}h1{font-size:32px}.current{white-space:normal}.focus{gap:14px;padding:18px 16px}.status-head{align-items:flex-start}.focus h2{font-size:20px}.focus-action,.focus-action .button{width:100%}.steps{grid-template-columns:minmax(0,1fr);padding:12px 15px}.steps li,.steps li:nth-child(3){min-height:61px;padding:7px 8px 8px 12px;border-left:1px solid var(--line)}.steps li:first-child{border-left:0}.steps p{margin-top:3px}.shortcuts{grid-template-columns:minmax(0,1fr)}.shortcut{min-height:108px}.side{grid-template-columns:minmax(0,1fr)}.collection-tools{align-items:flex-start;flex-direction:column}.choices{align-items:stretch}.choice{flex:1}.bookcard{grid-template-columns:minmax(0,1fr);gap:16px;padding:14px}.cover{min-height:260px}.bookmeta{padding:0 3px 3px}.coverpage{grid-template-columns:minmax(0,1fr);gap:15px}.coverpage .cover{min-height:265px}.glossary{grid-template-columns:minmax(0,1fr)}.term{min-height:0}.readerhead{align-items:flex-start;flex-direction:column;padding:15px}.tabs{padding:8px 8px 0}.tab{flex:1;padding:8px 5px;font-size:14.5px}.content{min-height:0;padding:18px 15px}.readerfoot{padding:12px 14px}.readerfoot .button{flex:1}.desttop{align-items:flex-start;flex-direction:column}.desttop .button{width:100%}.empty,.error{grid-template-columns:40px minmax(0,1fr);gap:11px;padding:16px}.emptyicon{width:38px;height:38px}}
 @media(max-width:540px){.period-status{width:100%;grid-template-columns:repeat(2,minmax(0,1fr))}.period-status .current{white-space:normal;text-align:center}}@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+.admin-route{max-width:850px;min-height:0;margin:16px auto;padding:clamp(24px,5vw,52px)}.admin-route .eyebrow{margin-bottom:14px}.admin-route .lede{margin:0 0 24px}.admin-route .owner{max-width:700px;margin:20px 0 24px}
 </style>
 </head>
 <body>
@@ -44,42 +45,19 @@ main{width:min(1280px,calc(100% - 48px));margin:auto;padding:38px 0 68px}.eyebro
 <header id="top"><div class="bar">
 <a class="brand" href="#top" aria-label="文衡首页"><span class="brandmark"><svg aria-hidden="true"><use href="#book"/></svg></span><span><strong>文衡</strong><small>学科信息参考 · 阅览室</small></span></a>
 <span class="spacer"></span><span class="preview">静态稿视图预览</span>
-<div class="header-controls"><div class="switch" role="group" aria-label="切换界面示意"><button type="button" data-role="admin" aria-pressed="true">馆员任务</button><button type="button" data-role="guest" aria-pressed="false">访客阅览</button></div><div class="theme-switch" role="group" aria-label="切换配色"><button type="button" data-theme="ynu" aria-pressed="true">云大绿</button><button type="button" data-theme="zhu" aria-pressed="false">朱砂</button></div></div>
+<div class="header-controls"><div class="switch" role="group" aria-label="切换界面示意"><button type="button" data-role="admin" aria-pressed="false">管理员入口</button><button type="button" data-role="guest" aria-pressed="true">访客阅览</button></div><div class="theme-switch" role="group" aria-label="切换配色"><button type="button" data-theme="ynu" aria-pressed="true">云大绿</button><button type="button" data-theme="zhu" aria-pressed="false">朱砂</button></div></div>
 </div></header>
 <main id="main">
-<section id="adminView" aria-labelledby="adminTitle">
-<div id="adminHome"><div class="layout">
-<div class="column">
-<div class="heading"><div class="heading-copy"><p class="eyebrow">馆员工作区 · 本期任务</p><h1 id="adminTitle" tabindex="-1">先看本期进度，再向前一步</h1><p class="lede">把数据准备、生成报告、核对补录和签单放在一条清楚的工作线上。先确认本期状态，再进入唯一的下一步。</p></div><div class="period-status" aria-label="期次与上期签发状态"><span class="current">当前期次 · 由系统提供</span><span class="current">上期签发状态 · 由系统提供</span></div></div>
-<section id="taskFocus" class="focus" data-task-state="loading" aria-labelledby="taskTitle"><div><div class="status-head"><span class="status-icon"><svg aria-hidden="true"><use id="taskStatusIcon" href="#clock"/></svg></span><span><span class="status-label">本期状态 · 稿件示意</span><h2 id="taskTitle">正在读取本期任务状态</h2></span></div><p id="taskCopy" aria-live="polite">状态确认前不展示任务进度；读取后，这里只提示当前环节和下一步。</p></div><div class="focus-action"><button id="taskAction" class="button primary" type="button"><span id="taskActionLabel">重新读取状态</span><svg aria-hidden="true"><use href="#arrow"/></svg></button></div></section>
-<h2 class="rule">本期报告的四个环节</h2>
-<ol class="steps" aria-label="本期工作顺序">
-<li data-step="prepare"><div class="stephead"><span class="stepnum">一</span><strong>数据准备</strong></div><p>核对数据与输入文件</p></li>
-<li data-step="generate"><div class="stephead"><span class="stepnum">二</span><strong>生成报告</strong></div><p>按本期资料生成报告</p></li>
-<li data-step="review"><div class="stephead"><span class="stepnum">三</span><strong>核对补录</strong></div><p>检查内容并补齐人工项</p></li>
-<li data-step="sign"><div class="stephead"><span class="stepnum">四</span><strong>签单</strong></div><p>确认后完成签发</p></li>
-</ol>
-<h2 class="rule">按需进入已有工作区</h2>
-<div class="shortcuts" aria-label="馆员工作区入口">
-<button class="shortcut" type="button" data-dest="report"><span class="sicon"><svg aria-hidden="true"><use href="#report"/></svg></span><span><h3>报告与校验</h3><p>查看报告、核对说明和签发状态。</p><em>进入报告页 →</em></span></button>
-<button class="shortcut" type="button" data-dest="analysis"><span class="sicon"><svg aria-hidden="true"><use href="#chart"/></svg></span><span><h3>学科表与解读</h3><p>从已有分析台查看学科表和分节解读。</p><em>进入分析台 →</em></span></button>
-<button class="shortcut" type="button" data-dest="trend"><span class="sicon"><svg aria-hidden="true"><use href="#chart"/></svg></span><span><h3>历期趋势</h3><p>沿用报告页的趋势与图表入口。</p><em>进入报告页 →</em></span></button>
-<button class="shortcut" type="button" data-dest="forecast"><span class="sicon"><svg aria-hidden="true"><use href="#chart"/></svg></span><span><h3>预测研判</h3><p>沿用已有预测台与模型选择说明。</p><em>进入预测台 →</em></span></button>
-<button class="shortcut" type="button" data-dest="source"><span class="sicon"><svg aria-hidden="true"><use href="#list"/></svg></span><span><h3>数据来源与口径</h3><p>查阅报告数据的来源和统计口径。</p><em>查看来源说明 →</em></span></button>
-<button class="shortcut" type="button" data-dest="archive"><span class="sicon"><svg aria-hidden="true"><use href="#report"/></svg></span><span><h3>运行档案</h3><p>回看任务状态、过程和运行记录。</p><em>查看运行档案 →</em></span></button>
-</div>
-</div>
-<aside class="side" aria-label="使用说明">
-<section class="card sidecard"><p class="eyebrow">先看状态</p><h2>任务完成不等于报告已签发</h2><div class="goldline"></div><p>任务进度、报告核对和签发状态各自说明。页面根据本期真实记录显示下一步，不用建筑场景才能进入工作。</p></section>
-<section class="card sidecard safe"><p class="eyebrow">数据去向</p><h2>数字内容只在馆员工作区</h2><ul><li>学科表、趋势和预测继续使用各自的正式页面。</li><li>数据来源与口径、运行档案分开查看。</li><li>访客只进入安全预览。</li></ul></section>
-<details class="preview-state"><summary>状态演示 · 查看空状态与读取失败</summary><div class="state-list" role="group" aria-label="馆员任务状态示意"><button class="state-btn" type="button" data-task="loading" aria-pressed="true">读取中</button><button class="state-btn" type="button" data-task="empty" aria-pressed="false">没有可显示的任务</button><button class="state-btn" type="button" data-task="error" aria-pressed="false">暂时读不到状态</button><button class="state-btn" type="button" data-task="ready" aria-pressed="false">状态已载入</button></div></details>
-<p class="note">本页按钮只演示界面动线。正式页面会沿用已有登录方式和馆员工作区。</p>
-</aside></div></div>
-<section id="adminDestination" class="destination card" hidden aria-labelledby="destTitle"><div class="desttop"><div><p class="eyebrow">馆员工作区 · 入口说明</p><h2 id="destTitle" tabindex="-1">工作区</h2></div><button class="button" type="button" data-home><svg aria-hidden="true"><use href="#arrow"/></svg>返回本期任务</button></div><div class="destbody"><p id="destCopy"></p><p id="destExtra"></p><div class="owner"><strong id="ownerTitle">功能归属</strong><span id="ownerCopy"></span></div></div></section>
-<footer class="footer">静态集成稿：只展示导航与安全预览结构，不代表正式页面已经接入。</footer>
-</section>
-
-<section id="guestView" hidden aria-labelledby="guestTitle">
+<section id="adminView" hidden aria-labelledby="adminTitle">
+<article class="destination card admin-route">
+<p class="eyebrow">管理员入口</p>
+<h1 id="adminTitle" tabindex="-1">管理员使用本期工作台</h1>
+<p class="lede">正式页面会把管理员带回现有工作台，继续处理本期任务；阅览室只提供访客安全预览。</p>
+<div class="owner"><strong>访客可阅内容</strong><span>仅封面、目录和名词解释。管理员的报告处理与数字内容继续留在原工作区。</span></div>
+<button id="adminWorkstation" class="button primary" type="button">返回工作台</button>
+<p class="note">本静态稿只示意入口去向；按钮不会打开正式页面。</p>
+</article>
+</section><section id="guestView" aria-labelledby="guestTitle">
 <div id="guestShelf">
 <div class="heading"><div class="heading-copy"><p class="eyebrow">访客阅览 · 历期馆藏</p><h1 id="guestTitle">在馆藏中取阅一份报告</h1><p class="lede">打开封面、目录或名词解释。阅读从这里开始，也可以随时归架返回。</p></div><span class="current">仅限安全预览</span></div>
 <div class="banner"><svg aria-hidden="true"><use href="#shield"/></svg><p><strong>访客可阅内容</strong>封面、目录和名词解释。阅览室不提供报告正文、数值页、图表、下载或运行状态。</p></div>
@@ -120,28 +98,13 @@ main{width:min(1280px,calc(100% - 48px));margin:auto;padding:38px 0 68px}.eyebro
 "use strict";
 var $=function(selector){return document.querySelector(selector)};
 var $$=function(selector){return Array.prototype.slice.call(document.querySelectorAll(selector))};
-var toastTimer=0,taskMode="loading",collectionMode="sample",activeTab=0;
+var toastTimer=0,collectionMode="sample",activeTab=0;
 var tabs=$$("[role=tab]"),panels=[$("#panel-cover"),$("#panel-toc"),$("#panel-terms")];
 function announce(message){var el=$("#toast");el.textContent=message;el.hidden=false;window.clearTimeout(toastTimer);toastTimer=window.setTimeout(function(){el.hidden=true},3200)}
 function closeReader(returnFocus){var reader=$("#reader");if(reader.hidden)return;reader.hidden=true;$("#guestShelf").hidden=false;if(returnFocus&&collectionMode==="sample")$("[data-open]").focus()}
-$$("[data-role]").forEach(function(button){button.addEventListener("click",function(){var guest=button.dataset.role==="guest";$("#adminView").hidden=guest;$("#guestView").hidden=!guest;$$("[data-role]").forEach(function(item){item.setAttribute("aria-pressed",String(item===button))});$("#adminHome").hidden=false;$("#adminDestination").hidden=true;closeReader(false)})});
+$$("[data-role]").forEach(function(button){button.addEventListener("click",function(){var guest=button.dataset.role==="guest";$("#adminView").hidden=guest;$("#guestView").hidden=!guest;$$("[data-role]").forEach(function(item){item.setAttribute("aria-pressed",String(item===button))});closeReader(false)})});
 $$('button[data-theme]').forEach(function(button){button.addEventListener("click",function(){var theme=button.dataset.theme;if(theme==="zhu")document.documentElement.dataset.theme="zhu";else document.documentElement.removeAttribute("data-theme");$$('button[data-theme]').forEach(function(item){item.setAttribute("aria-pressed",String(item===button))})})});
-var destinations={
-report:["报告与校验","从现有报告页查看报告内容、校验说明、签发状态和图册入口。此静态稿只保留入口，不重复绘制报告数据。","历史报告仍从同一期次的报告入口返回；阅览室只负责访客安全预览。","沿用正式报告与审核页面。"],
-analysis:["学科表与解读","从现有分析台进入学科表和按节解读。学科数据保留在馆员工作区内，本页不展示或复制数值。","搜索与表格版式可借鉴学科分析静态稿；实际数据仍只在正式页面读取。","学科表与分析解读由正式分析台承载。"],
-trend:["历期趋势","沿用现有报告页中的趋势入口。访客馆藏不重复展示趋势内容。","回到本期任务后，可继续查看报告与校验。","历期趋势归正式报告页。"],
-forecast:["预测研判","沿用现有预测台与生成台中的模型选择说明。报告预测仍从馆员页面进入。","馆藏页不展示预测结果、过线期或预测图。","预测结果与模型选择归正式预测台及生成台。"],
-source:["数据来源与口径","在馆员工作区查看数据来自哪里、使用什么统计口径。此入口用于解释报告内容的来源。","这里说明“数据是什么、怎么来的”，不播放任务过程。","数据来源与口径解释报告内容；运行档案记录任务状态和过程。"],
-archive:["运行档案","回看任务状态、处理过程和运行记录。此入口说明“任务怎样运行”，不代替报告来源说明。","运行档案保持在馆员工作区，不出现在访客阅览中。","运行档案记录任务；数据来源与口径解释报告中的内容。"],
-workflow:["本期任务","本期状态由正式工作区读取，页面按实际进度给出下一步。此稿只展示四个环节和状态反馈位置。","任务状态尚未确认时，不显示进度、不猜测已完成环节。","按本期真实状态进入数据准备、生成报告、核对补录和签单。"]
-};
-function openDestination(key){var item=destinations[key];if(!item)return;$("#destTitle").textContent=item[0];$("#destCopy").textContent=item[1];$("#destExtra").textContent=item[2];$("#ownerCopy").textContent=item[3];$("#adminHome").hidden=true;$("#adminDestination").hidden=false;$("#destTitle").focus();window.scrollTo(0,0)}
-$$("[data-dest]").forEach(function(button){button.addEventListener("click",function(){openDestination(button.dataset.dest)})});
-$$("[data-home]").forEach(function(button){button.addEventListener("click",function(){$("#adminDestination").hidden=true;$("#adminHome").hidden=false;$("#adminTitle").focus();window.scrollTo(0,0)})});
-var taskStates={loading:["正在读取本期任务状态","状态确认前不展示任务进度；读取后，这里只提示当前环节和下一步。","重新读取状态","","clock"],empty:["暂时没有可显示的本期任务","先确认期次与输入文件，再从数据准备继续。页面不会把上一次运行误当成本期状态。","查看本期任务","prepare","book"],error:["暂时读不到本期状态","请稍后再试一次；如果仍无法读取，请联系馆员。报告和原始资料不会因为页面读取失败而改变。","再试一次","","alert"],ready:["本期任务状态已载入 · 示例","示意下一步：进入报告与校验，完成内容核对及人工补录。正式页面会根据本期记录显示下一步。","进入报告与校验","review","list"]};
-function setTask(mode){taskMode=mode;var state=taskStates[mode];$("#taskFocus").dataset.taskState=mode;$("#taskTitle").textContent=state[0];$("#taskCopy").textContent=state[1];$("#taskActionLabel").textContent=state[2];$("#taskStatusIcon").setAttribute("href","#"+state[4]);$$("[data-task]").forEach(function(button){button.setAttribute("aria-pressed",String(button.dataset.task===mode))});$$("[data-step]").forEach(function(step){step.classList.toggle("current",step.dataset.step===state[3])})}
-$$("[data-task]").forEach(function(button){button.addEventListener("click",function(){setTask(button.dataset.task)})});
-$("#taskAction").addEventListener("click",function(){if(taskMode==="error")announce("此稿不连接实际内容；正式页面会重新读取本期状态。");else if(taskMode==="empty")openDestination("workflow");else if(taskMode==="ready")openDestination("report");else announce("此稿仅展示读取中状态；正式页面会读取本期任务状态。")});
+$("#adminWorkstation").addEventListener("click",function(){announce("正式页面中，管理员会返回本期工作台。")});
 function setCollection(mode){collectionMode=mode;$("#sampleCard").hidden=mode!=="sample";$("#guestEmpty").hidden=mode!=="empty";$("#guestError").hidden=mode!=="error";$$("[data-collection]").forEach(function(button){button.setAttribute("aria-pressed",String(button.dataset.collection===mode))});closeReader(false)}
 $$("[data-collection]").forEach(function(button){button.addEventListener("click",function(){setCollection(button.dataset.collection)})});
 function selectTab(index,focus){activeTab=(index+tabs.length)%tabs.length;tabs.forEach(function(tab,i){var selected=i===activeTab;tab.setAttribute("aria-selected",String(selected));tab.tabIndex=selected?0:-1;panels[i].hidden=!selected});$("#position").textContent="当前内容："+["封面","目录","名词解释"][activeTab];if(focus)tabs[activeTab].focus()}
@@ -149,7 +112,7 @@ tabs.forEach(function(tab,index){tab.addEventListener("click",function(){selectT
 $$("[data-open]").forEach(function(button){button.addEventListener("click",function(){if(collectionMode!=="sample")return;$("#guestShelf").hidden=true;$("#reader").hidden=false;selectTab(0,false);$("#readerTitle").focus();window.scrollTo(0,0)})});
 $$("[data-close]").forEach(function(button){button.addEventListener("click",function(){closeReader(true)})});
 document.addEventListener("keydown",function(event){if(event.key==="Escape"&&!$("#reader").hidden)closeReader(true)});
-setTask("loading");setCollection("sample");
+setCollection("sample");
 }());
 </script>
 </body>
