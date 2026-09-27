@@ -90,21 +90,17 @@ function Trial({ meta }: { meta: ForecastMeta }) {
   const [busy, setBusy] = useState(false)
   const [data, setData] = useState<ForecastRun | null>(null)
   const [err, setErr] = useState('')
-
-  useEffect(() => {
-    if (!meta.subjects.includes(subject)) setSubject(meta.subjects[0] ?? '')
-  }, [meta.subjects, subject])
-
-  useEffect(() => {
-    if (!meta.routes.some((route) => route.value === task)) setTask(meta.routes[0]?.value ?? '')
-  }, [meta.routes, task])
+  const selectedSubject = meta.subjects.includes(subject) ? subject : meta.subjects[0] ?? ''
+  const selectedTask = meta.routes.some((route) => route.value === task)
+    ? task
+    : meta.routes[0]?.value ?? ''
 
   async function onRun() {
     setBusy(true)
     setErr('')
     setData(null)
     try {
-      setData(await runForecast({ subject, task, model, horizon }))
+      setData(await runForecast({ subject: selectedSubject, task: selectedTask, model, horizon }))
     } catch (e) {
       const h = e as { body?: { error?: string; hint?: string }; message?: string }
       setErr(h.body?.error ?? h.message ?? '运行失败')
@@ -125,12 +121,12 @@ function Trial({ meta }: { meta: ForecastMeta }) {
 
       <div className="fc-form">
         <label>潜力学科
-          <select value={subject} onChange={(e) => setSubject(e.target.value)}>
+          <select value={selectedSubject} onChange={(e) => setSubject(e.target.value)}>
             {meta.subjects.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </label>
         <label>预测路线
-          <select value={task} onChange={(e) => setTask(e.target.value)}>
+          <select value={selectedTask} onChange={(e) => setTask(e.target.value)}>
             {meta.routes.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
         </label>
@@ -144,7 +140,7 @@ function Trial({ meta }: { meta: ForecastMeta }) {
             {HORIZONS.map((h) => <option key={h} value={h}>{h} 期{h === 18 ? '（与报告一致）' : h === 24 ? '（模型上限）' : ''}</option>)}
           </select>
         </label>
-        <button className="btn primary" onClick={onRun} disabled={busy || !subject}>
+        <button className="btn primary" onClick={onRun} disabled={busy || !selectedSubject || !selectedTask}>
           {busy ? '运行中……' : '运行预测'}
         </button>
       </div>

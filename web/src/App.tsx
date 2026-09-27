@@ -479,7 +479,7 @@ export default function App() {
           <Forecast
             period={selected}
             periods={periods}
-            actualOutputPeriod={runForSelected?.outputPeriod ?? null}
+            actualOutputPeriod={busy || toolAction ? null : runForSelected?.outputPeriod ?? null}
             meta={forecastMeta}
             metaError={forecastMetaError}
             choice={selectedForecastChoice}
@@ -531,7 +531,7 @@ export default function App() {
                         periods={periods}
                         forecastMeta={forecastMeta}
                         forecastMetaError={forecastMetaError}
-                        actualOutputPeriod={runForSelected?.outputPeriod ?? null}
+                        actualOutputPeriod={busy || toolAction ? null : runForSelected?.outputPeriod ?? null}
                         forecastChoice={selectedForecastChoice}
                         forecastChoiceDirty={selectedForecastChoiceDirty}
                         onPickPeriod={pickPeriod}
