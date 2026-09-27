@@ -21,7 +21,9 @@ function readToc(value: unknown): TocEntry[] | null {
   const entries: TocEntry[] = []
   for (const item of value) {
     if (!isRecord(item) || typeof item.title !== 'string') return null
-    entries.push({ title: item.title })
+    if (item.page !== undefined && typeof item.page !== 'string') return null
+    const page = typeof item.page === 'string' && item.page.trim() ? item.page : undefined
+    entries.push(page ? { title: item.title, page } : { title: item.title })
   }
   return entries
 }

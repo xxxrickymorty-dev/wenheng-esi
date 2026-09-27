@@ -35,11 +35,16 @@ export default function ShelfPage() {
     if (state.kind !== 'guest') return
 
     const onVisibility = () => libraryAudio.handleVisibility(document.hidden)
+    const armAudio = () => libraryAudio.arm()
 
     document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pointerdown', armAudio, { capture: true, once: true })
+    window.addEventListener('keydown', armAudio, { capture: true, once: true })
 
     return () => {
       document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pointerdown', armAudio, true)
+      window.removeEventListener('keydown', armAudio, true)
     }
   }, [state.kind])
 
@@ -133,6 +138,13 @@ export default function ShelfPage() {
     setStage('room')
   }
 
+  function switchReaderBook(index: number) {
+    setActiveReader((current) => {
+      if (!current || state.kind !== 'guest' || !state.books[index]) return current
+      return { ...current, bookIndex: index }
+    })
+  }
+
   if (state.kind === 'loading') {
     return (
       <main className="library-page">
@@ -221,15 +233,18 @@ export default function ShelfPage() {
       />
     </div>}
 
-    {stage === 'reader' && activeBook && activeReader && <main className="library-page">
-      <div className="library-shell">
-        <Reader
-          key={`${activeReader.bookIndex}-${activeReader.section}`}
-          book={activeBook}
-          initialSection={activeReader.section}
-          onClose={closeReader}
-        />
-      </div>
-    </main>}
+    {stage === 'reader' && activeBook && activeReader && <Reader
+      key={`${activeReader.bookIndex}-${activeReader.section}`}
+      books={state.books}
+      bookIndex={activeReader.bookIndex}
+      initialSection={activeReader.section}
+      motion={motion}
+      soundEnabled={soundEnabled}
+      onMotionChange={setMotion}
+      onSoundToggle={toggleSound}
+      onBackHome={returnHome}
+      onSelectBook={switchReaderBook}
+      onClose={closeReader}
+    />}
   </>
 }

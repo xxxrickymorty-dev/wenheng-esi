@@ -1,5 +1,7 @@
 export type TocEntry = {
   title: string
+  /** 报告目录里标注的页码；名词解释一行没有页码。 */
+  page?: string
 }
 
 export type GlossaryEntry = {
