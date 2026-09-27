@@ -1,23 +1,34 @@
 @import "tailwindcss";
 
 /* ============================================================================
-   文衡 · 工作台令牌（朱批原色系）
+   文衡 · 工作台令牌（云大绿 / 朱砂）
    取值来自静态稿实测：所有「文字/底色」组合 ≥4.5:1（WCAG AA），不靠目测。
    改配色只改这一处。
    ========================================================================== */
 :root{
-  --bg:#f3efe6; --card:#fbf8f1; --panel:#f6f1e7;
-  --ink:#2f2a24; --ink-2:#5b5248; --ink-3:#6f6558;
-  --line:#d9cfbc; --line-2:#e7dfd0;
-  --zhu:#b23a2a; --zhu-soft:#f0dcd5;
-  --gold:#a9853f; --gold-soft:#efe3c9; --gold-ink:#7d6122;
-  --ok:#3f6b4a; --ok-soft:#e2ece0;
-  --warn:#7d5518; --warn-soft:#f5ead2;
-  --bad:#a8321f; --bad-soft:#f4ddd7;
+  --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB;
+  --ink:#222B25; --ink-2:#3F4C42; --ink-3:#58655C;
+  --line:#DDE1D8; --line-2:#E6E9E2;
+  --zhu:#1A4B27; --zhu-soft:#E3EDE4;
+  --gold:#B19A65; --gold-soft:#F1EBDD; --gold-ink:#62501F;
+  --ok:#28643A; --ok-soft:#E2EEE4;
+  --warn:#75622D; --warn-soft:#F6EED8;
+  --bad:#B43B31; --bad-soft:#F4E6E2;
   --serif:"Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
   --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
   --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
   --r:14px; --r-sm:10px;
+  --shadow:0 1px 2px rgba(34,43,37,.06),0 8px 24px rgba(34,43,37,.06);
+}
+html[data-palette="zhu"]{
+  --bg:#F3EFE6; --card:#FBF8F1; --panel:#F6F1E7;
+  --ink:#2F2A24; --ink-2:#5B5248; --ink-3:#6F6558;
+  --line:#D9CFBC; --line-2:#E7DFD0;
+  --zhu:#B43B31; --zhu-soft:#F0DCD5;
+  --gold:#A9853F; --gold-soft:#EFE3C9; --gold-ink:#7D6122;
+  --ok:#3F6B4A; --ok-soft:#E2ECE0;
+  --warn:#7D5518; --warn-soft:#F5EAD2;
+  --bad:#A8321F; --bad-soft:#F4DDD7;
   --shadow:0 1px 2px rgba(47,42,36,.06),0 8px 24px rgba(47,42,36,.06);
 }
 html,body,#root{height:100%}
@@ -42,6 +53,10 @@ a{color:inherit}
   padding-left:12px;border-left:1px solid var(--line)}
 .avatar{width:29px;height:29px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);
   display:grid;place-items:center;font-size:13px;font-weight:700}
+.palette-switch{display:flex;gap:4px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}
+.palette-switch button{border:0;border-radius:999px;padding:5px 9px;background:transparent;color:var(--ink-2);
+  font:inherit;font-size:12.5px;cursor:pointer}
+.palette-switch button[aria-pressed="true"]{background:var(--zhu);color:#fff}
 
 .wrap{max-width:1180px;margin:0 auto;padding:26px 22px 70px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
@@ -161,6 +176,7 @@ a{color:inherit}
   .nav{order:3; width:100%; margin-left:0; overflow-x:auto; -webkit-overflow-scrolling:touch}
   .nav a{white-space:nowrap; padding:8px 11px; font-size:14.5px}
   .who{font-size:12.5px; padding-left:0; border-left:0}
+  .palette-switch{margin-left:auto}
   .report-head{grid-template-columns:minmax(0,1fr)}
   .wrap{padding:18px 14px 60px}
 }

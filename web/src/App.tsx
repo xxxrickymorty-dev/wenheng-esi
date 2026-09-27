@@ -28,6 +28,16 @@ import { Archive } from './Archive'
 import { deriveWorkbench, statusToWB, type WBState } from './wb'
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'warned', 'waiting-approval', 'fail-ledger', 'fail-other', 'stalled', 'signed']
+type Palette = 'ynu' | 'zhu'
+const PALETTE_STORAGE_KEY = 'wenheng-palette'
+
+function initialPalette(): Palette {
+  try {
+    return localStorage.getItem(PALETTE_STORAGE_KEY) === 'zhu' ? 'zhu' : 'ynu'
+  } catch {
+    return 'ynu'
+  }
+}
 
 function sameForecastChoice(
   left: Record<string, Record<string, string>>,
@@ -55,6 +65,7 @@ function savedForecastChoice(
 }
 
 export default function App() {
+  const [palette, setPalette] = useState<Palette>(initialPalette)
   const [healthy, setHealthy] = useState<boolean | null>(null)
   const [me, setMe] = useState<Me | null>(null)
   /* 角色是否已有结论：false = 还没问过（探活失败 / 首屏）；true = 问过了（me 为 null 即未登录） */
@@ -76,6 +87,15 @@ export default function App() {
   const periodsRequestRef = useRef(0)
   const detailRequestByPeriodRef = useRef<Record<string, number>>({})
   const forecastChoiceRequestRef = useRef<Record<string, number>>({})
+
+  useEffect(() => {
+    document.documentElement.dataset.palette = palette
+    try {
+      localStorage.setItem(PALETTE_STORAGE_KEY, palette)
+    } catch {
+      // 浏览器不允许保存时，当前页面仍可正常切换。
+    }
+  }, [palette])
 
   const refreshPeriods = useCallback(async () => {
     const request = ++periodsRequestRef.current
@@ -434,6 +454,10 @@ export default function App() {
             </a>
           ))}
         </nav>
+        <div className="palette-switch" role="group" aria-label="切换配色">
+          <button type="button" aria-pressed={palette === 'ynu'} onClick={() => setPalette('ynu')}>云大绿</button>
+          <button type="button" aria-pressed={palette === 'zhu'} onClick={() => setPalette('zhu')}>朱砂</button>
+        </div>
         <div className="who">
           <span className="avatar">{me?.name?.slice(0, 1) ?? '？'}</span>
           {me?.name ?? (roleKnown ? '未登录' : '角色未知')}
