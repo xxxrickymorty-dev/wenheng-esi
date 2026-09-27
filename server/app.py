@@ -26,6 +26,7 @@ from . import approval, archive, collation, config, jobs, shelf_data, shelf_prev
 from . import forecasting
 from .protected_static import AdminStaticFiles
 from src import period as period_mod  # 期次口径唯一来源（ADR-0001：新工作区 API 也用它）
+from src import forecast_choice  # 预测选模的唯一 implementation（读写/快照/留痕）
 from esi_v1.data import display_name  # 学科名中文化（契约 #22）
 
 
@@ -757,24 +758,10 @@ async def api_forecast_choice_get(request: Request, period: str):
         return guard
     if not _forecast_choice_period_is_safe(period):
         return JSONResponse({"error": "期次格式无效"}, status_code=400)
-    fc = config.FORECAST_CHOICES_DIR / f"{period}.json"
-    if not fc.exists():
-        fc = config.OUT_DIR / period / "forecast_choice.json"
-    if not fc.exists():
-        return {"period": period, "choice": {}, "by": "", "at": ""}
-    try:
-        rec = json.loads(fc.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-        return {"period": period, "choice": {}, "by": "", "at": ""}
-    if not isinstance(rec, dict):
-        return {"period": period, "choice": {}, "by": "", "at": ""}
-    choice = rec.get("choice", {})
-    if not isinstance(choice, dict):
-        choice = {}
-    return {"period": period,
-            "choice": choice,
-            "by": rec.get("by", "") if isinstance(rec.get("by", ""), str) else "",
-            "at": rec.get("at", "") if isinstance(rec.get("at", ""), str) else ""}
+    entry = forecast_choice.read_entry(
+        period, choices_dir=config.FORECAST_CHOICES_DIR, out_dir=config.OUT_DIR)
+    return {"period": period, "choice": entry["choice"],
+            "by": entry["by"], "at": entry["at"]}
 
 
 def _forecast_choice_period_is_safe(period):
@@ -782,17 +769,8 @@ def _forecast_choice_period_is_safe(period):
     return bool(re.fullmatch(r"\d{6}(?:_[\w-]+)?", period or ""))
 
 
-def _count_forecast_choice(choice):
-    """改选统计：新形状 `{route: {学科: 模型}}` 按各路线学科数求和；
-    旧扁平形状 `{学科: 模型}` 按条目数。返回 (学科总数, 路线数或 None)。
-
-    🔴 嵌套形状下 `len(choice)` 恒为 2（路线数），拿它当 saved 是错的
-    （2026-09-24 前端实报 #17）。
-    """
-    nested = bool(choice) and all(isinstance(v, dict) for v in choice.values())
-    if nested:
-        return sum(len(v) for v in choice.values()), len(choice)
-    return len(choice), None
+#: 兼容别名：形状统计的唯一实现在 `forecast_choice.count`（tests 仍从本 module 取用）。
+_count_forecast_choice = forecast_choice.count
 
 
 @app.api_route("/api/periods/{period}/forecast-choice", methods=["GET", "POST"])
@@ -818,21 +796,14 @@ async def api_forecast_choice(request: Request, period: str):
         return JSONResponse(
             {"error": "choice 必须是 {路线: {学科: 模型名}}",
              "hint": '例：{"citation": {"物理学": "SARIMA模型"}}'}, status_code=400)
-    routes = {route["value"] for route in forecasting.ROUTES}
-    models = {model["value"] for model in forecasting.MODEL_OPTIONS}
     candidate_subjects = (set(forecasting.page_context().get("subjects") or [])
                           if choice else set())
-    for route, subjects in choice.items():
-        if route not in routes or not isinstance(subjects, dict):
-            return JSONResponse({"error": "choice 的路线或路线值无效"}, status_code=400)
-        for subject, model in subjects.items():
-            if subject not in candidate_subjects or not isinstance(model, str) or model not in models:
-                return JSONResponse({"error": "choice 的学科或模型无效"}, status_code=400)
-    out = config.FORECAST_CHOICES_DIR / f"{period}.json"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    rec = {"choice": choice, "by": guard, "at": time.strftime("%Y-%m-%d %H:%M:%S")}
-    out.write_text(json.dumps(rec, ensure_ascii=False, indent=1), encoding="utf-8")
-    n_subjects, n_routes = _count_forecast_choice(choice)
+    ok, error = forecast_choice.validate(choice, subjects=candidate_subjects)
+    if not ok:
+        return JSONResponse({"error": error}, status_code=400)
+    forecast_choice.write_entry(period, choice, by=guard, at=forecast_choice.now(),
+                                choices_dir=config.FORECAST_CHOICES_DIR)
+    n_subjects, n_routes = forecast_choice.count(choice)
     resp = {"ok": True, "saved": n_subjects,
             "path": f"_forecast_choices/{period}.json"}
     if n_routes is not None:

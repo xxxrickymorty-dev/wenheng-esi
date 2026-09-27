@@ -100,11 +100,15 @@
 - 预测有**两条线，别混**：生产线 = 方法 B（`src/forecast.py`）；研究线 = 五模型按学科选模
   （`src/forecast_select.py`）。两维度（被引 / 排名）结论一致率仅 2/8，
   **任一维度都不能单独当学科结论**。
+- **预测选模的记录读写归 `src/forecast_choice.py`**（T08 后收敛）：读序 primary
+  （`out/_forecast_choices/<期次>.json`）→ legacy（`out/<期次>/forecast_choice.json`）；
+  建任务时冻结进 job 快照，运行时写 `out/<期次>/_forecast_choice_applied.json`。
+  server / jobs / run_pipeline / report_forecast 都只是它的 adapter，别各自再实现读序。
 
 ## 验收三件套（改状态相关代码后按序跑）
 
 ```bash
-.venv\Scripts\python.exe -m pytest -m ""          # 全量 760 例（默认 756 例，4 个 slow 被 marker 排除）
+.venv\Scripts\python.exe -m pytest -m ""          # 全量 801 例（默认 797 例，4 个 slow 被 marker 排除）
 uvicorn server.app:app --port 8080                 # 起服务后跑 server/e2e_check.py（只读 166 断言）
 .venv\Scripts\python.exe tools/verify_demo_run.py <期次>   # 写路径验收
 ```

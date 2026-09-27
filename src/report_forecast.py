@@ -3,10 +3,11 @@
 
 - 数据：`out/<期次>/` 的只读派生产物（经 `esi_v1.data` 组装四列标准输入）
 - 口径：V1 交接包调用副本 —— 模型默认 `"recommended"`（202607 基线推荐模型）；
-  `out/<期次>/forecast_choice.json`（预测台落盘，契约 #17 嵌套形状）里列出的
-  (路线, 学科) 按所选模型出图，未列出＝推荐；所选模型失败降级推荐并在 `warnings`
-  留痕（`run_pipeline` 收进 run_log）。多期结果按 V1 的逐期递推外推 `HORIZON` 期
-  （与网页预测工作台同一口径）
+  选模记录（契约 #17 嵌套形状）的读写统一走 `forecast_choice`：运行时 applied 快照
+  优先，否则按 primary（`out/_forecast_choices/<期次>.json`）→ legacy
+  （`out/<期次>/forecast_choice.json`）读回；记录里列出的 (路线, 学科) 按所选模型出图，
+  未列出＝推荐；所选模型失败降级推荐并在 `warnings` 留痕（`run_pipeline` 收进 run_log）。
+  多期结果按 V1 的逐期递推外推 `HORIZON` 期（与网页预测工作台同一口径）
 - 产物：`out/<期次>/charts/_overview/forecast_{1|2}_{cites|rank}.png`
   + `out/<期次>/forecast_charts.json`（学科/模型/过线期/选模警告，红色件清单与 run_log 引用）
 
@@ -28,16 +29,16 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 import charts  # noqa: E402
-from esi_v1.config_v1 import FIT_MAPE_START_INDEX, MODEL_NAMES  # noqa: E402
+import forecast_choice  # noqa: E402
+from esi_v1.config_v1 import FIT_MAPE_START_INDEX  # noqa: E402
 from esi_v1.data import display_name, load_standard_input, subject_task_data  # noqa: E402
 from esi_v1.service import TASK_COLUMNS, fit_and_forecast, run_prediction  # noqa: E402
 
 HORIZON = 18  # 3 年（双月 6 期/年；与网页预测工作台默认一致）
 
-CHOICE_FILE = "forecast_choice.json"   # 预测台落盘的模型选择（契约 #17 嵌套形状）
-ROUTES = ("citation", "rank")
-#: 可选模型：recommended＝V1 基线推荐；all＝五模型全跑取滚动 MAPE 最小者（与预测台一致）。
-VALID_MODELS = frozenset({"recommended", "all", *MODEL_NAMES})
+CHOICE_FILE = forecast_choice.CHOICE_FILE   # 预测台落盘的模型选择（契约 #17 嵌套形状）
+ROUTES = forecast_choice.ROUTES             # 选模语义（读序/形状/常量）唯一实现在 forecast_choice
+VALID_MODELS = forecast_choice.VALID_MODELS
 
 CITES_LABELS = ("被引频次", "被引频次预测值", "阈值", "阈值预测值")
 CITES_COLORS = ("#00B050", "#92D050", "#4472C4", "#9DC3E6")
@@ -61,46 +62,13 @@ def pick_subjects(period_dir):
 def load_choice(period_dir, choice_path=None):
     """读预测台落盘的模型选择 → `{(路线, 学科): 模型名}`，附警告清单。
 
-    只认契约 #17 的新嵌套形状 `{choice: {"citation": {学科: 模型}, "rank": {...}}}`：
-    中文学科键、只存改过的学科。旧扁平形状（`{"Chemistry": "SARIMA模型"}`，英文键）
-    **整份忽略**——旧键跟中文学科名匹配不上，硬接会把选择错配到别的学科
-    （前端提醒 #9 已确认口径）。形状/模型不合法都只记警告、不拦停出图：
+    实现统一在 `forecast_choice.load`（primary → legacy 读序与服务端 GET 一致）：
+    只认契约 #17 的新嵌套形状 `{choice: {"citation": {学科: 模型}, "rank": {...}}}`；
+    中文学科键、只存改过的学科。旧扁平形状（英文键）**整份忽略**——硬接会把选择
+    错配到别的学科（前端提醒 #9 已确认口径）。形状/模型不合法都只记警告、不拦停：
     未列出的学科保持 `"recommended"`。
     """
-    period_dir = pathlib.Path(period_dir)
-    warnings = []
-    p = pathlib.Path(choice_path) if choice_path else period_dir / CHOICE_FILE
-    if not p.exists():
-        return {}, warnings
-    try:
-        # utf-8-sig：容忍手工编辑（记事本另存）时带上的 BOM——前端/服务端写盘不带 BOM。
-        rec = json.loads(p.read_text(encoding="utf-8-sig"))
-    except (OSError, json.JSONDecodeError) as exc:
-        warnings.append(f"预测选模：{CHOICE_FILE} 读取失败（{exc}），全部按 V1 推荐出图")
-        return {}, warnings
-    choice = rec.get("choice") if isinstance(rec, dict) else None
-    if choice == {} or choice is None:
-        return {}, warnings
-    if not isinstance(choice, dict):
-        warnings.append(f"预测选模：{CHOICE_FILE} 形状不识别，整份忽略，全部按 V1 推荐出图")
-        return {}, warnings
-    if not all(isinstance(v, dict) for v in choice.values()):
-        warnings.append(
-            f"预测选模：{CHOICE_FILE} 是旧扁平形状（英文键），整份忽略，全部按 V1 推荐出图")
-        return {}, warnings
-    picked = {}
-    for route, entries in choice.items():
-        if route not in ROUTES:
-            warnings.append(f"预测选模：未知路线「{route}」已忽略")
-            continue
-        for subject, model in entries.items():
-            if not isinstance(model, str) or model not in VALID_MODELS:
-                warnings.append(
-                    f"预测选模：{route}/{subject} 的模型「{model}」不在可选模型里，"
-                    "已忽略（按 V1 推荐）")
-                continue
-            picked[(route, str(subject))] = model
-    return picked, warnings
+    return forecast_choice.load(period_dir, choice_path)
 
 
 def load_warnings(period_dir) -> list[str]:
@@ -136,32 +104,8 @@ def quarantine_forecast_artifacts(period_dir) -> list[str]:
 
 
 def _choice_provenance(period_dir, data_period, choice_path=None):
-    """返回可随 forecast_charts.json 审计的配置来源字段。"""
-    try:
-        path = pathlib.Path(choice_path) if choice_path else pathlib.Path(period_dir) / CHOICE_FILE
-        record = json.loads(path.read_text(encoding="utf-8-sig"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-        record = {}
-    if not isinstance(record, dict):
-        record = {}
-
-    def text_field(key, fallback=""):
-        value = record.get(key, fallback)
-        return value if isinstance(value, str) else fallback
-
-    return {
-        "request_period": text_field(
-            "request_period", text_field("choice_period", data_period)),
-        "choice_period": text_field(
-            "choice_period", text_field("request_period", data_period)),
-        "source_period": data_period,
-        "output_period": text_field("output_period", data_period),
-        "config_updated_at": text_field("config_updated_at", text_field("at")),
-        "operator": text_field("operator", text_field("by")),
-        "snapshot_at": text_field("snapshot_at"),
-        "snapshot_source": text_field("snapshot_source"),
-        "snapshot_source_path": text_field("snapshot_source_path"),
-    }
+    """返回可随 forecast_charts.json 审计的配置来源字段（见 forecast_choice.provenance）。"""
+    return forecast_choice.provenance(period_dir, data_period, choice_path)
 
 
 def _run_with_choice(subject, periods, series, task, model, warnings):

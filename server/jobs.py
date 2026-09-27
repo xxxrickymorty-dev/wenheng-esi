@@ -28,6 +28,7 @@ from . import config
 
 #: config 导入时已把 src/ 放进 sys.path，这里可直接拿到 agent 层
 from agent import states as agent_states
+from src import forecast_choice
 
 #: 任务终态集合（5 个）。判终态请用 `is_terminal()`，它兼容旧名。
 TERMINAL = agent_states.TERMINAL
@@ -111,38 +112,10 @@ def write_job(job):
 
 
 def _forecast_choice_snapshot(period):
-    """按 forecast-choice GET 的读序冻结配置，不改写 legacy 文件。"""
-    primary = config.FORECAST_CHOICES_DIR / f"{period}.json"
-    legacy = config.OUT_DIR / period / "forecast_choice.json"
-    if primary.exists():
-        source, path = "primary", primary
-        source_path = f"_forecast_choices/{period}.json"
-    elif legacy.exists():
-        source, path = "legacy", legacy
-        source_path = f"{period}/forecast_choice.json"
-    else:
-        source, path, source_path = "default", None, ""
-
-    record = {}
-    if path is not None:
-        try:
-            loaded = json.loads(path.read_text(encoding="utf-8"))
-            if isinstance(loaded, dict):
-                record = loaded
-        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-            pass
-
-    choice = record.get("choice", {})
-    return {
-        "request_period": period,
-        "choice_period": period,
-        "choice": choice if isinstance(choice, dict) else {},
-        "by": record.get("by", "") if isinstance(record.get("by", ""), str) else "",
-        "at": record.get("at", "") if isinstance(record.get("at", ""), str) else "",
-        "snapshot_at": _now(),
-        "snapshot_source": source,
-        "snapshot_source_path": source_path,
-    }
+    """按 forecast-choice GET 的读序冻结配置，不改写 legacy 文件（见 forecast_choice.snapshot）。"""
+    return forecast_choice.snapshot(
+        period, choices_dir=config.FORECAST_CHOICES_DIR,
+        out_dir=config.OUT_DIR, snapshot_at=_now())
 
 
 def list_jobs(limit=20, period=None):

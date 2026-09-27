@@ -25,6 +25,7 @@ import charts  # noqa: E402
 import compute  # noqa: E402
 import fill_docx  # noqa: E402
 import forecast  # noqa: E402
+import forecast_choice  # noqa: E402
 import parse_ledger  # noqa: E402
 
 
@@ -96,39 +97,8 @@ def _write_diagnosis(led, P, out_dir, report, n_fail, run_dir=None):
 
 
 def _apply_forecast_choice_snapshot(snapshot_path, out_dir, output_period):
-    """把 job 私有快照写成实际输出期次的选模输入，并补齐来源留痕。"""
-    try:
-        snapshot = json.loads(pathlib.Path(snapshot_path).read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise ValueError(f"任务选模快照读取失败：{exc}") from exc
-    if not isinstance(snapshot, dict) or not isinstance(snapshot.get("choice", {}), dict):
-        raise ValueError("任务选模快照形状无效")
-
-    request_period = (snapshot.get("request_period") or snapshot.get("choice_period")
-                      or snapshot.get("period"))
-    if not isinstance(request_period, str) or not request_period:
-        raise ValueError("任务选模快照缺少请求期次")
-    operator = snapshot.get("by", "")
-    if not isinstance(operator, str):
-        operator = ""
-    config_updated_at = snapshot.get("at", "")
-    if not isinstance(config_updated_at, str):
-        config_updated_at = ""
-
-    applied = dict(snapshot)
-    applied.update({
-        "period": output_period,
-        "request_period": request_period,
-        "choice_period": request_period,
-        "source_period": output_period,
-        "output_period": output_period,
-        "operator": operator,
-        "config_updated_at": config_updated_at,
-    })
-    target = pathlib.Path(out_dir) / "_forecast_choice_applied.json"
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(applied, ensure_ascii=False, indent=1), encoding="utf-8")
-    return target
+    """把 job 私有快照写成实际输出期次的选模输入，并补齐来源留痕（见 forecast_choice）。"""
+    return forecast_choice.apply_snapshot(snapshot_path, out_dir, output_period)
 
 
 def _cleanup_failed_forecast(out_dir, report_forecast=None):
