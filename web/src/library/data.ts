@@ -71,7 +71,8 @@ function readPreviewScript(source: string): ShelfBookPreview[] | null {
   return books
 }
 
-/** 先确认当前账号。只有访客会继续读取馆藏预览。 */
+/** 先确认当前账号；登录后一律读馆藏预览投影——管理员从工作区进陈列馆也看同一份
+    （管理员完整数据在 `shelf/data.js`，暂未接前端）。 */
 export async function loadShelfPreviews(signal: AbortSignal): Promise<ShelfLoadResult> {
   let me: unknown
   try {
@@ -83,11 +84,10 @@ export async function loadShelfPreviews(signal: AbortSignal): Promise<ShelfLoadR
   }
 
   if (!isRoleResponse(me)) return { kind: 'unavailable' }
-  if (me.role === 'admin') return { kind: 'admin' }
 
   let response: Response
   try {
-    response = await fetch('/app/shelf/data.js', {
+    response = await fetch('/app/shelf/preview.js', {
       credentials: 'same-origin',
       headers: { Accept: 'application/javascript' },
       cache: 'no-store',

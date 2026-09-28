@@ -55,9 +55,11 @@ async def _shelf_admin_data():
 
 app.mount("/app", AdminStaticFiles(directory=str(config.ROOT / "web" / "dist"), html=True,
                                    check_dir=False, require_login=True,
-                                   protected_paths=("shelf/data.js",),
-                                   guest_responses={"shelf/data.js": _shelf_guest_data},
-                                   admin_responses={"shelf/data.js": _shelf_admin_data}), name="web")
+                                   protected_paths=("shelf/data.js", "shelf/preview.js"),
+                                   guest_responses={"shelf/data.js": _shelf_guest_data,
+                                                    "shelf/preview.js": _shelf_guest_data},
+                                   admin_responses={"shelf/data.js": _shelf_admin_data,
+                                                    "shelf/preview.js": _shelf_guest_data}), name="web")
 templates = Jinja2Templates(directory=str(config.SERVER_DIR / "templates"))
 
 
@@ -205,10 +207,7 @@ async def login_page(request: Request, err: str = ""):
     return templates.TemplateResponse(
         request, "login.html",
         {"request": request, "err": err, "hint": config.SHOW_HINT,
-         "show_hint_user": config.DEMO_USER if config.SHOW_HINT else "",
-         "show_guest": config.SHOW_GUEST,
-         "guest_user": config.GUEST_USER if config.SHOW_GUEST else "",
-         "guest_pass": config.GUEST_PASS if config.SHOW_GUEST else ""})
+         "show_hint_user": config.DEMO_USER if config.SHOW_HINT else ""})
 
 
 @app.post("/login")

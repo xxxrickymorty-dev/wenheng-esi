@@ -2,21 +2,11 @@
 {% block title %}欢迎 · 文衡{% endblock %}
 {% block sub %}学 科 信 息 参 考 · 演 示 环 境{% endblock %}
 {% block body_attrs %}class="theme-ynu"{% endblock %}
-{% block nav_action %}
-{% if show_guest %}
-{# 顶栏的「陈列馆」就是游客入口：陈列馆数据需要会话，纯链接会让访客落到「读不到数据」的页；
-   这里用纯表单 POST（不依赖 JS）以游客身份登录，后端 303 直达 /app/shelf/（只读预览）。 #}
-<form method="post" action="/login" class="nav-guest">
-  <input type="hidden" name="username" value="{{ guest_user }}">
-  <input type="hidden" name="password" value="{{ guest_pass }}">
-  <button type="submit" class="ghost" title="以游客身份浏览陈列馆（只读）">陈列馆</button>
-</form>
-{% endif %}
-{% endblock %}
 
 {# 欢迎页 ＝ 登录页（rick 2026-09-21 定：把建筑图做首屏；2026-09-28 二改：满屏图书馆背景；
    2026-09-28 三改：登录卡改玻璃拟态（参考 CodePen「Glassmorphism | Login Form」bGwYYPQ 的
-   视觉语汇——毛玻璃卡片 + 浮动玻璃方块 + 浮动标签输入框）。
+   视觉语汇——毛玻璃卡片 + 浮动玻璃方块 + 浮动标签输入框）；四改：陈列馆入口移入
+   工作区导航（工作区顶部「陈列馆」），登录页不再设游客入口。
    适配本仓铁律：**零 CDN**——原稿的 Google 字体（El Messiri）、Font Awesome、外链眼睛
    图标全部不引，改用系统字体 + 内联 SVG 复刻；背景仍是本馆照片，不给卡通渐变。
    为什么放在登录页而不是 `/`：`/` 是馆员工作台（2026-09-19 刻意改过去的，
@@ -45,14 +35,6 @@
     display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(340px, .75fr);
     gap: 40px; align-items: center; min-height: calc(100vh - 164px); padding: 34px 0;
   }
-  /* 顶栏游客入口：与导航项同貌（button 版 .ghost 的重置） */
-  .topbar nav form { display: inline-flex; }
-  .topbar nav button.ghost {
-    font: inherit; background: none; border: 0; border-bottom: 1px solid transparent;
-    padding: 0; cursor: pointer; color: inherit; transition: border-color .18s, color .18s;
-  }
-  .topbar nav button.ghost:hover { color: #FFF6D8; border-bottom-color: #FFF6D8; }
-
   /* --- 左：文案（暗底上全部转米白，强调符用金） --- */
   .welcome-copy { padding: 0 4px; }
   .welcome-copy .eyebrow {

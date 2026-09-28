@@ -85,13 +85,30 @@ def main():
         n_blocks = page.eval_on_selector_all("section, li, article", "els => els.length")
         check("工作台渲染出内容块（section/li/article ≥ 1）", n_blocks >= 1, f"{n_blocks} 块")
         shelf_links = page.eval_on_selector_all('a[href="/app/shelf/"]', "els => els.length")
-        check("工作区不再有陈列馆入口（无 /app/shelf/ 链接）", shelf_links == 0, f"{shelf_links} 个")
+        check("工作区有陈列馆入口（/app/shelf/ 链接）", shelf_links >= 1, f"{shelf_links} 个")
         body_text = page.inner_text("body")
-        check("工作区文案不再提「陈列馆」", "陈列馆" not in body_text,
-              body_text[:60] if "陈列馆" in body_text else "")
+        check("工作区导航含「陈列馆」", "陈列馆" in body_text)
         page.screenshot(path=str(SHOT))
 
-        # ---- 2) 陈列馆（独立入口 /app/shelf/；guest 专属，admin 会被送回工作台） ----
+        # ---- 1b) 管理员进陈列馆（2026-09-28：入口移入工作区导航；看同一份访客投影，不再弹回） ----
+        admin_ctx = browser.new_context(viewport={"width": 1280, "height": 900})
+        admin_ctx.add_cookies(login_cookies())
+        admin_shelf = admin_ctx.new_page()
+        admin_shelf_problems = []
+        admin_shelf.on("pageerror", lambda e: admin_shelf_problems.append("pageerror: " + str(e)))
+        admin_shelf.on("console", lambda m: admin_shelf_problems.append("console.error: " + m.text)
+                       if m.type == "error" else None)
+        resp3 = admin_shelf.goto(BASE + "/app/shelf/", wait_until="networkidle")
+        check("管理员 GET /app/shelf/ → 200", bool(resp3) and resp3.status == 200,
+              f"got {resp3.status if resp3 else '?'}")
+        try:
+            admin_shelf.wait_for_selector(".home-book-item", timeout=15000)
+            check("管理员进陈列馆能看到册位（不弹回）", True)
+        except Exception as e:                                       # noqa: BLE001
+            check("管理员进陈列馆能看到册位（不弹回）", False,
+                  f"url={admin_shelf.url} {str(e)[:60]}")
+
+        # ---- 2) 陈列馆（/app/shelf/；管理员与游客都看同一份访客投影） ----
         guest_ctx = browser.new_context(viewport={"width": 1280, "height": 900})
         guest_ctx.add_cookies(login_cookies(GUEST_USER, GUEST_PASS))
         guest = guest_ctx.new_page()
@@ -124,8 +141,10 @@ def main():
             check("翻页阅读器打开（#flipbook 带页）", False, str(e)[:80])
         guest.screenshot(path=str(SHOT_SHELF))
 
-        # ---- 3) 零报错（覆盖上面两次导航） ----
+        # ---- 3) 零报错（覆盖上面几次导航） ----
         check("工作台零 pageerror / console.error", not problems, "; ".join(problems[:3]))
+        check("陈列馆（管理员）零 pageerror / console.error", not admin_shelf_problems,
+              "; ".join(admin_shelf_problems[:3]))
         check("陈列馆零 pageerror / console.error", not guest_problems,
               "; ".join(guest_problems[:3]))
 

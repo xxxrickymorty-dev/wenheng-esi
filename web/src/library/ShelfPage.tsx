@@ -9,7 +9,7 @@ import './library.css'
 
 type PageState =
   | { kind: 'loading' }
-  | Exclude<ShelfLoadResult, { kind: 'admin' }>
+  | ShelfLoadResult
 
 type Stage = 'home' | ExperienceStage | 'reader'
 type ReaderReturnTo = 'home' | 'room'
@@ -54,10 +54,6 @@ export default function ShelfPage() {
 
     void loadShelfPreviews(controller.signal).then((result) => {
       if (controller.signal.aborted) return
-      if (result.kind === 'admin') {
-        window.location.replace('/app/')
-        return
-      }
       setState(result)
     }).catch(() => {
       if (!controller.signal.aborted) setState({ kind: 'unavailable' })

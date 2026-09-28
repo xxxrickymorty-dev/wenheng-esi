@@ -430,6 +430,7 @@ export default function App() {
     { view: 'ledger', label: '台账', icon: 'doc', href: '/app/?view=ledger' },
     { view: 'analysis', label: '分析台', icon: 'chart', href: '/app/?view=analysis', admin: true },
     { view: 'forecast', label: '预测台', icon: 'trend', href: '/app/?view=forecast', admin: true },
+    { view: 'shelf', label: '陈列馆', icon: 'book', href: '/app/shelf/' },
   ]
   const isGuest = me?.role === 'guest'
   const notLoggedIn = roleKnown && !me

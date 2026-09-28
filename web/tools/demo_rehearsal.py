@@ -121,16 +121,15 @@ def main() -> int:
         rows = pg.eval_on_selector_all("table tbody tr", "e => e.length")
         check("⑥ 台账 19 张表", rows == 19, f"{rows} 行", t)
 
-        # ⑦ 陈列馆：独立入口。管理员点不进去（前端 `location.replace('/app/')` 送回工作台），
-        #    游客才是陈列馆的身份——另开一个上下文走真实登录。
+        # ⑦ 陈列馆：入口在工作区导航（2026-09-28 二次裁定）；管理员也进得去（读同一份访客投影）。
         t = time.time()
-        pg.goto(B + "/app/shelf/", wait_until="domcontentloaded")
+        pg.goto(B + "/app/shelf/", wait_until="networkidle")
         try:
-            pg.wait_for_url("**/app/", timeout=10000)
-            bounced = True
+            pg.wait_for_selector(".home-book-item", timeout=15000)
+            entered = True
         except Exception:                                            # noqa: BLE001
-            bounced = False
-        check("⑦ 陈列馆独立：管理员进入被送回工作台", bounced, f"url={pg.url}", t)
+            entered = False
+        check("⑦ 陈列馆：管理员从工作区进得去（不弹回）", entered, f"url={pg.url}", t)
 
         t = time.time()
         gp_page = b.new_context(viewport={"width": 1440, "height": 900},

@@ -41,12 +41,6 @@ SHOW_HINT = os.environ.get("WENHENG_SHOW_HINT", "") == "1"
 GUEST_USER = os.environ.get("WENHENG_GUEST_USER", "guest")
 GUEST_PASS = os.environ.get("WENHENG_GUEST_PASS", "guest@2026")
 
-#: 登录页是否显示「以游客身份浏览」入口。**默认显示**（演示要一眼看得见）；
-#: 不想公开只读入口就设 `WENHENG_SHOW_GUEST=0`。
-#: 入口是纯表单 POST（不依赖 JS），凭据以隐藏字段写在页面里——游客只读，这是演示需要；
-#: 公网部署时游客口令照样该改（见 server/deploy/部署执行清单.md §4.3）。
-SHOW_GUEST = os.environ.get("WENHENG_SHOW_GUEST", "1") == "1"
-
 PALETTE = {"primary": "#B8422C", "deep": "#8A2A18", "lift": "#D65A38"}
 
 

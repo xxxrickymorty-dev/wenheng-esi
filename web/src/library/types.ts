@@ -17,7 +17,6 @@ export type ShelfBookPreview = {
 }
 
 export type ShelfLoadResult =
-  | { kind: 'admin' }
   | { kind: 'guest'; books: ShelfBookPreview[] }
   | { kind: 'login' }
   | { kind: 'forbidden' }
