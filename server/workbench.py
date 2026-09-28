@@ -485,6 +485,9 @@ def build(out_dir, period=None, approval=None):
         "n_applied": n_applied,
         "n_orphan": n_orphan,
         "n_doubt": len(load_review(out_dir)),
+        # 存疑明细（loc → {state,by,at}）：审核台要按位置显示「这处已标存疑」。
+        # 只读透传 review.json，不在装配层再加工。
+        "review": load_review(out_dir),
         "approval": approval or {},
         # 二级入口（审计视图）：给工程/评委深挖用，不占首屏
         "audit_links": [

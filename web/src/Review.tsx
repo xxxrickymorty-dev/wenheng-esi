@@ -1,194 +1,113 @@
-/* 审核台（工作区 3）——把「可签发」这件事做成可操作的。
-   契约 §2.2 #7/#8；后端 Batch 3/4 已交付 sign/revoke/flag 的 JSON 版。
-   🔴 前端只是入口，**真正的门在后端**（require_admin）；这里按角色隐藏只是不打扰人。
-   在线填也是真数据了：GET workbench（todo/fills）+ POST fill（批量补录）。 */
+/* 审核台（工作区 3）——"报告形态"的复核（2026-09-28 rick 定）：
+   整篇试排报告从头到尾铺开、报告里的空就地填、签单与下载同屏。
+   退出「对勘本 / T19-r2c0 / extract_province」那一套技术行话——那是审计视图（读报屏 → 对勘本）。
 
-import { useEffect, useState } from 'react'
+   数据三路：
+   - GET report-preview：docx 全文块 + 报告里的空（id 与工作台同一套键）；
+   - GET workbench：填写记录 / 存疑状态；
+   - GET facts：数据核对读数。
+   🔴 真门在后端：签单 / 重出 / 下载都由后端闸门把关，前端只把它们摆到顺手的位置。 */
+
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { Me, Period } from './api'
-import { getCollation, type CollationRow } from './api2'
+import { getFacts } from './api4'
 import { flagLoc, revokePeriod, signPeriod } from './api3'
-import { req } from './api'
-import { getWorkbench, postFill, type TodoItem, type WorkbenchData } from './api4'
+import { getWorkbench, postFill, type WorkbenchData } from './api4'
+import {
+  getReportPreview, rebuildPeriod, reportImageUrl,
+  type PreviewBlock, type PreviewSeg, type ReportPreview,
+} from './api6'
 import { ConfirmButton } from './ConfirmButton'
 import { Icon } from './icons'
 
-/** 在线填：真数据（GET /api/periods/{p}/workbench）+ 批量补录（POST .../fill）。
-    后端口径：只写产物目录里的填写记录，**台账一个字节不动**——填的是报告，不是数据源。 */
-function FillSection({ period, isAdmin }: { period: string | null; isAdmin: boolean }) {
-  const [wb, setWb] = useState<WorkbenchData | null>(null)
-  const [vals, setVals] = useState<Record<string, string>>({})
-  const [note, setNote] = useState<string | null>(null)
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [rebuilding, setRebuilding] = useState(false)
+type Msg = { ok: boolean; text: string } | null
 
-  useEffect(() => {
-    if (!period) return
-    let alive = true
-    setWb(null); setNote(null); setMsg(null); setVals({})
-    getWorkbench(period)
-      .then((x) => {
-        if (!alive) return
-        setWb(x)
-        const v: Record<string, string> = {}
-        for (const t of x.todo_fill) if (t.filled) v[t.id] = t.filled
-        setVals(v)
-      })
-      .catch((e: { status?: number }) => {
-        if (!alive) return
-        setNote(
-          e.status === 403 ? '在线填需要管理员权限（后端按角色拦的）。'
-            : e.status === 404 ? '这一期还没有工作台数据。'
-              : '读工作台数据失败。',
-        )
-      })
-    return () => { alive = false }
-  }, [period])
-
-  async function save() {
-    if (!period || !wb) return
-    const items: Record<string, string> = {}
-    for (const [k, v] of Object.entries(vals)) if (v.trim()) items[k] = v
-    if (Object.keys(items).length === 0) {
-      setMsg({ ok: false, text: '还没有填写任何一处。' })
-      return
-    }
-    setBusy(true); setMsg(null)
-    try {
-      const r = await postFill(period, items)
-      setMsg({ ok: true, text: `已保存 ${r.saved} 处` })
-      setWb(await getWorkbench(period))
-    } catch (e) {
-      const h = e as { status?: number; body?: { error?: string }; message?: string }
-      setMsg({ ok: false, text: h.body?.error ?? h.message ?? '保存失败' })
-    } finally { setBusy(false) }
-  }
-
-  /* 填完重出：把填值交给后端，撤下旧成品（进 _superseded/，能回滚）再重出报告。
-     后端口径：不重新解析台账，2–15 秒（重插图），同步阻塞——所以按钮要挡住重复点。 */
-  async function rebuild() {
-    if (!period || !wb) return
-    const items: Record<string, string> = {}
-    for (const [k, v] of Object.entries(vals)) if (v.trim()) items[k] = v
-    setRebuilding(true); setMsg(null)
-    try {
-      const r = await req<Record<string, unknown>>(
-        `/api/periods/${encodeURIComponent(period)}/rebuild`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }) },
-      )
-      const saved = typeof r?.saved === 'number' ? `已带上 ${r.saved} 处填值 · ` : ''
-      setMsg({ ok: true, text: `${saved}报告已重出（旧版已先撤下、可回滚）——回报告屏可看新版` })
-      setWb(await getWorkbench(period))
-    } catch (e) {
-      const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
-      setMsg({ ok: false, text: (h.body?.error ?? h.message ?? '重出失败') + (h.body?.hint ? `（${h.body.hint}）` : '') })
-    } finally { setRebuilding(false) }
-  }
-
-  const row2 = (t: TodoItem, withInput: boolean) => (
-    <div key={t.id} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '9px 0',
-                            borderBottom: '1px solid var(--line-2)' }}>
-      <span className="mono" style={{ flex: '0 0 160px', color: 'var(--ink-3)', fontSize: 13.5 }}>
-        {t.where}
-      </span>
-      <span style={{ flex: '0 0 200px', fontSize: 14.5 }}>
-        {t.title}
-        <br />
-        <span className="hint" style={{ fontSize: 12.5 }}>来自 {t.source}</span>
-      </span>
-      {withInput ? (
-        <input
-          type="text"
-          value={vals[t.id] ?? ''}
-          placeholder={t.filled ? '' : '填在这里'}
-          onChange={(e) => setVals((s) => ({ ...s, [t.id]: e.target.value }))}
-          disabled={!isAdmin || busy}
-          style={{ flex: 1, font: 'inherit', padding: '7px 10px', color: 'inherit',
-                   border: '1px solid var(--line)', borderRadius: 8, background: 'var(--card)' }}
-        />
-      ) : (
-        <span className="hint" style={{ flex: 1 }}>（待你核过再定）</span>
-      )}
-    </div>
-  )
-
+/** 段落里的片段：文字按 docx 的字号/加粗呈现；空位就地变输入框（宽随内容长）。 */
+function Runs({
+  segs, vals, onVal, disabled,
+}: {
+  segs: PreviewSeg[]
+  vals: Record<string, string>
+  onVal: (id: string, v: string) => void
+  disabled: boolean
+}) {
   return (
     <>
-      <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <Icon name="doc" size={20} />在线填 · 报告里的空
-        {wb && (
-          <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>
-            （待补录 {wb.todo_fill.length} 处 · 待确认 {wb.todo_confirm.length} 处 · 已存 {wb.n_filled} 处）
-          </span>
-        )}
-      </h2>
-      <p className="hint" style={{ marginTop: 8 }}>
-        填的是报告里的空，<b>台账一个字节都不动</b>。
-        {wb && wb.traceable.n > 0 && (
-          <> 本期 {wb.traceable.n} 个数字，{wb.traceable.with_source} 个标了出处。</>
-        )}
-      </p>
-
-      {note ? (
-        <div className="pending-box" style={{ marginTop: 12 }}>{note}</div>
-      ) : !wb ? (
-        <div className="pending-box" style={{ marginTop: 12 }}>正在读待办……</div>
-      ) : wb.todo_fill.length === 0 && wb.todo_confirm.length === 0 ? (
-        <div className="pending-box" style={{ marginTop: 12 }}>
-          这一期没有要人填的地方。{period && (
-            <> <a href={`/app/?view=report&period=${encodeURIComponent(period)}`}>打开报告 →</a></>
-          )}
-        </div>
-      ) : (
-        <>
-          <div style={{ marginTop: 8 }}>{wb.todo_fill.map((t) => row2(t, true))}</div>
-
-          {wb.todo_confirm.length > 0 && (
-            <>
-              <h3 style={{ fontSize: 16, marginTop: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Icon name="alert" size={17} />待确认（{wb.todo_confirm.length} 处）
-              </h3>
-              <div>{wb.todo_confirm.map((t) => row2(t, false))}</div>
-            </>
-          )}
-
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 14, flexWrap: 'wrap' }}>
-            <button className="btn primary" onClick={save} disabled={!isAdmin || busy || rebuilding}>
-              <Icon name="doc" size={19} />保存填写
-            </button>
-            <ConfirmButton className="btn" disabled={!isAdmin || busy || rebuilding}
-                           confirmText="确认重出？旧版会先撤下"
-                           title="把填值交给后端重出报告；旧版会先撤下、可回滚，约 2–15 秒"
-                           onConfirm={rebuild}>
-              <Icon name="refresh" size={19} />{rebuilding ? '正在重出……' : '保存并重出报告'}
-            </ConfirmButton>
-            {msg && (
-              <span className="hint" style={{ color: msg.ok ? 'var(--ok)' : 'var(--bad)' }}>{msg.text}</span>
-            )}
-          </div>
-
-          {/* 已填列表：谁填的、什么时候（数据来自 workbench 的 todo_fill，后端字段直出） */}
-          {wb.todo_fill.some((t) => t.filled) && (
-            <>
-              <h3 style={{ fontSize: 16, marginTop: 16 }}>已填（{wb.todo_fill.filter((t) => t.filled).length} 处）</h3>
-              <div>
-                {wb.todo_fill.filter((t) => t.filled).map((t) => (
-                  <div key={`f-${t.id}`} style={{ display: 'flex', gap: 12, alignItems: 'baseline',
-                                                padding: '8px 0', borderBottom: '1px solid var(--line-2)' }}>
-                    <span className="mono" style={{ flex: '0 0 160px', color: 'var(--ink-3)', fontSize: 13.5 }}>{t.where}</span>
-                    <span style={{ flex: '0 0 180px', fontSize: 14.5 }}>{t.title}</span>
-                    <b style={{ flex: 1, color: 'var(--zhu)' }}>{t.filled}</b>
-                    <span className="hint" style={{ fontSize: 12.5 }}>
-                      {t.filled_by ?? '—'}{t.filled_at ? ` · ${t.filled_at}` : ''}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </>
-      )}
+      {segs.map((seg, i) => {
+        if ('ph' in seg) {
+          const v = vals[seg.ph] ?? ''
+          const w = Math.min(26, Math.max(9, ((v || seg.title || '').length) + 5))
+          return (
+            <input
+              key={`ph-${i}`}
+              id={`rv-ph-${seg.ph}`}
+              className={`rv-in${v.trim() ? ' filled' : ''}`}
+              value={v}
+              placeholder={seg.title}
+              title={seg.title}
+              aria-label={seg.title}
+              disabled={disabled}
+              style={{ width: `${w}em` }}
+              onChange={(e) => onVal(seg.ph, e.target.value)}
+            />
+          )
+        }
+        const style: CSSProperties = {}
+        if (seg.size) style.fontSize = `${seg.size}pt`
+        const text = seg.t
+        return <span key={`t-${i}`} style={style}>{seg.b ? <b>{text}</b> : text}</span>
+      })}
     </>
+  )
+}
+
+/** 一个块：段落 / 表格（可带图）/ 插图。全部按 docx 原顺序、原内容。 */
+function BlockView({
+  block, vals, onVal, disabled, period,
+}: {
+  block: PreviewBlock
+  vals: Record<string, string>
+  onVal: (id: string, v: string) => void
+  disabled: boolean
+  period: string
+}) {
+  if (block.t === 'p') {
+    const cls = `rv-para${block.align === 'center' ? ' rv-center' : ''}`
+    const ta = block.align && block.align !== 'justify'
+      ? ({ textAlign: block.align } as CSSProperties) : undefined
+    return (
+      <p className={cls} style={ta}>
+        <Runs segs={block.runs} vals={vals} onVal={onVal} disabled={disabled} />
+      </p>
+    )
+  }
+  if (block.t === 'img') {
+    return (
+      <p className="rv-img">
+        <img src={reportImageUrl(period, block.rid)} alt="报告插图" loading="lazy"
+             style={block.w_cm ? { width: `${Math.round(block.w_cm * 37.8)}px` } : undefined} />
+      </p>
+    )
+  }
+  return (
+    <div className="rv-tblwrap">
+      <table>
+        <tbody>
+          {block.rows.map((row, ri) => (
+            <tr key={ri}>
+              {row.map((cell, ci) => (
+                <td key={ci} colSpan={cell.span || undefined}>
+                  {cell.text}
+                  {(cell.imgs ?? []).map((rid) => (
+                    <img key={rid} src={reportImageUrl(period, rid)} alt="图表" loading="lazy" />
+                  ))}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
@@ -200,12 +119,16 @@ export function Review({
   periods: Period[]
   onChanged: () => void
 }) {
+  const [preview, setPreview] = useState<ReportPreview | null>(null)
+  const [previewNote, setPreviewNote] = useState<string | null>(null)
+  const [wb, setWb] = useState<WorkbenchData | null>(null)
+  const [wbNote, setWbNote] = useState<string | null>(null)
+  const [vals, setVals] = useState<Record<string, string>>({})
+  const [assertions, setAssertions] = useState<{ total: number; fail: number } | null>(null)
   const [note, setNote] = useState('')
   const [known, setKnown] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  const [col, setCol] = useState<CollationRow[] | null>(null)
-  const [nDoubt, setNDoubt] = useState<number | null>(null)
+  const [busy, setBusy] = useState<null | 'sign' | 'rebuild' | 'save' | 'revoke'>(null)
+  const [msg, setMsg] = useState<Msg>(null)
 
   const row = periods.find((p) => p.period === period) ?? null
   const status = row?.status ?? 'unsigned'
@@ -214,33 +137,145 @@ export function Review({
   useEffect(() => {
     if (!period) return
     let alive = true
-    setCol(null); setMsg(null); setNDoubt(null)
-    /* 全量：签单前要看的「待人工/待确认」清单不能只剩分页前 50 行（会漏审） */
-    getCollation(period, true).then((c) => { if (alive) setCol(c) }).catch(() => { if (alive) setCol([]) })
+    setPreview(null); setPreviewNote(null); setWb(null); setWbNote(null)
+    setVals({}); setMsg(null); setKnown(false); setAssertions(null); setNote('')
+
+    getReportPreview(period)
+      .then((pv) => { if (alive) setPreview(pv) })
+      .catch((e: { status?: number }) => {
+        if (!alive) return
+        setPreviewNote(
+          e.status === 403 ? '审核台需要管理员权限（后端按角色拦的）。'
+            : e.status === 404 ? '这一期还没有出稿。'
+              : '读试排报告失败（服务没有回应）。',
+        )
+      })
+    getWorkbench(period)
+      .then((w) => {
+        if (!alive) return
+        setWb(w)
+        const v: Record<string, string> = {}
+        for (const t of w.todo_fill) if (t.filled?.trim()) v[t.id] = t.filled
+        setVals(v)
+      })
+      .catch((e: { status?: number }) => {
+        if (!alive) return
+        setWbNote(e.status === 403 ? '填写数据需要管理员权限。' : '读填写数据失败。')
+      })
+    getFacts(period)
+      .then((f) => { if (alive) setAssertions(f.assertions) })
+      .catch(() => { /* 读数取不到就不显示，不编 */ })
     return () => { alive = false }
   }, [period])
 
-  async function doSign() {
+  async function refreshPreview() {
     if (!period) return
-    setBusy(true); setMsg(null)
+    setPreview(await getReportPreview(period))
+  }
+
+  async function refreshWb() {
+    if (!period) return
+    const w = await getWorkbench(period)
+    setWb(w)
+    const v: Record<string, string> = {}
+    for (const t of w.todo_fill) if (t.filled?.trim()) v[t.id] = t.filled
+    setVals(v)
+  }
+
+  const fields = useMemo(() => Object.entries(preview?.fields ?? {}), [preview])
+  const nField = fields.length
+  const nLeft = fields.filter(([id]) => !(vals[id] ?? '').trim()).length
+
+  const fills = wb?.fills_list ?? []
+  const pendingN = fills.filter((f) => f.state === 'pending').length
+  const appliedN = fills.filter((f) => f.state === 'applied').length
+  const doubt = wb?.review ?? {}
+
+  function collectItems(): Record<string, string> {
+    const items: Record<string, string> = {}
+    for (const [k, v] of Object.entries(vals)) if (v.trim()) items[k] = v.trim()
+    return items
+  }
+
+  function dirty(): boolean {
+    if (!wb) return Object.keys(collectItems()).length > 0
+    const saved: Record<string, string> = {}
+    for (const t of wb.todo_fill) saved[t.id] = (t.filled ?? '').trim()
+    for (const [k, v] of Object.entries(vals)) {
+      if (v.trim() !== (saved[k] ?? '')) return true
+    }
+    return false
+  }
+
+  async function doSave() {
+    if (!period || !wb) return
+    const items = collectItems()
+    if (Object.keys(items).length === 0) {
+      setMsg({ ok: false, text: '还没有填写任何一处。' })
+      return
+    }
+    setBusy('save'); setMsg(null)
     try {
-      const r = await signPeriod(period, { known: known, note })
-      setMsg({ ok: true, text: `已签单（状态 ${r.status}）` })
-      onChanged()
+      const r = await postFill(period, items)
+      setMsg({ ok: true, text: `已保存 ${r.saved} 处（还没写进报告——点「保存并重出报告」才写入）` })
+      await refreshWb()
     } catch (e) {
       const h = e as { status?: number; body?: { error?: string }; message?: string }
+      setMsg({ ok: false, text: h.body?.error ?? h.message ?? '保存失败' })
+    } finally { setBusy(null) }
+  }
+
+  async function doRebuild() {
+    if (!period || !wb) return
+    const items = collectItems()
+    if (Object.keys(items).length === 0) {
+      setMsg({ ok: false, text: '还没有填写任何一处。' })
+      return
+    }
+    setBusy('rebuild'); setMsg(null)
+    try {
+      const r = await rebuildPeriod(period, items)
+      setMsg({ ok: true, text: `报告已重出（用时 ${r.elapsed} 秒，旧稿留档可回滚）——填的值已写进正文` })
+      await refreshPreview()
+      await refreshWb()
+      onChanged()
+    } catch (e) {
+      const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
+      setMsg({ ok: false, text: (h.body?.error ?? h.message ?? '重出失败') + (h.body?.hint ? `（${h.body.hint}）` : '') })
+    } finally { setBusy(null) }
+  }
+
+  /* 签单 = 「把已填的写进报告（如果有）→ 签」一步完成。
+     防的就是 2026-09-28 rick 踩的那次：填了日期直接签，下载的稿里没有日期。 */
+  async function doSign() {
+    if (!period) return
+    const items = collectItems()
+    const needRebuild = pendingN > 0 || (dirty() && Object.keys(items).length > 0)
+    setBusy('sign'); setMsg(null)
+    try {
+      if (needRebuild) {
+        setMsg({ ok: true, text: '正在把填的值写进报告……' })
+        const r = await rebuildPeriod(period, items)
+        setMsg({ ok: true, text: `已把填写写进报告（用时 ${r.elapsed} 秒），正在签单……` })
+        await refreshPreview()
+        await refreshWb()
+      }
+      const r = await signPeriod(period, { known: known, note })
+      setMsg({ ok: true, text: `已签单（状态 ${r.status}）。右侧即可下载这一版报告。` })
+      onChanged()
+    } catch (e) {
+      const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
       setMsg({
         ok: false,
-        text: h.status === 409
-          ? `${h.body?.error ?? '服务端拒绝了这次签单'}`
-          : h.body?.error ?? h.message ?? '签单失败',
+        text: (h.status === 409 ? (h.body?.error ?? '服务端拒绝了这次签单') : (h.body?.error ?? h.message ?? '签单失败'))
+          + (h.body?.hint ? `（${h.body.hint}）` : ''),
       })
-    } finally { setBusy(false) }
+    } finally { setBusy(null) }
   }
 
   async function doRevoke() {
     if (!period) return
-    setBusy(true); setMsg(null)
+    setBusy('revoke'); setMsg(null)
     try {
       const r = await revokePeriod(period, note)
       setMsg({ ok: true, text: `已撤回（状态 ${r.status}）` })
@@ -248,125 +283,225 @@ export function Review({
     } catch (e) {
       const h = e as { body?: { error?: string }; message?: string }
       setMsg({ ok: false, text: h.body?.error ?? h.message ?? '撤回失败' })
-    } finally { setBusy(false) }
+    } finally { setBusy(null) }
   }
 
   async function doFlag(loc: string) {
     if (!period) return
     try {
-      const r = await flagLoc(period, loc)
-      setNDoubt(r.n_doubt)
-      setMsg({ ok: true, text: `${loc} → ${r.state === 'doubt' ? '已标存疑' : '已取消存疑'}` })
+      await flagLoc(period, loc)
+      await refreshWb()
     } catch (e) {
       const h = e as { body?: { error?: string }; message?: string }
       setMsg({ ok: false, text: h.body?.error ?? h.message ?? '标记失败' })
     }
   }
 
-  const manual = (col ?? []).filter((r) => r.manual)
+  function jumpTo(id: string) {
+    const el = document.getElementById(`rv-ph-${id}`)
+    if (el) {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      ;(el as HTMLInputElement).focus({ preventScroll: true })
+    }
+  }
+
+  if (!period) {
+    return (
+      <section className="card" style={{ padding: '22px 24px' }}>
+        <h2 style={{ fontSize: 22, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Icon name="seal" size={22} />审核台
+        </h2>
+        <div className="pending-box" style={{ marginTop: 12 }}>先在顶栏选中一个期次。</div>
+      </section>
+    )
+  }
+
+  const back = `/app/?view=report&period=${encodeURIComponent(period)}`
+  const signed = status === 'signed'
+  const busyText = busy === 'sign' ? '正在处理…' : busy === 'rebuild' ? '正在重出……' :
+    busy === 'save' ? '正在保存……' : busy === 'revoke' ? '正在撤回……' : ''
 
   return (
     <>
-      <section className="card" style={{ padding: '22px 24px' }}>
-        <h2 style={{ fontSize: 22, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Icon name="seal" size={22} />审核 · 签单
-          <span className="tag" style={{ marginLeft: 6 }}>{period ?? '（选择期次）'}</span>
-          <span className={`pill ${status === 'signed' ? 'signed' : status === 'stale' ? 'stale' : 'unsigned'}`}
-                style={{ marginLeft: 'auto' }}>
-            {status === 'signed' ? '已签发' : status === 'stale' ? '签名已失效' : '未签发'}
-          </span>
+      <div className="rv-lead">
+        <a className="hint" href={back} style={{ textDecoration: 'none' }}>← 回报告</a>
+        <span style={{ color: 'var(--line)' }}>·</span>
+        <span className="hint">期次 <b className="mono">{period}</b></span>
+        <h2 style={{ fontSize: 22, display: 'flex', alignItems: 'center', gap: 10, marginLeft: 4 }}>
+          <Icon name="seal" size={22} />审核 · 试排报告
         </h2>
-
-        {!isAdmin && (
-          <div className="pending-box" style={{ marginTop: 14 }}>
-            当前角色{me ? `（${me.role}）` : '未知'}不能审核——签单需要管理员权限。
-            这是服务端的权限设置挡的，不是前端藏起来的。
-          </div>
-        )}
-
-        <p className="hint" style={{ marginTop: 12 }}>
-          签单会绑在这一版的指纹上：流水线重跑一次报告就变了，签名会自动失效并提示重签。
-        </p>
-
-        <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 14 }}>
-          <input type="checkbox" checked={known} onChange={(e) => setKnown(e.target.checked)} disabled={!isAdmin} />
-          <span>
-            我已逐项看过<b>待人工</b>与<b>存疑</b>处
-            {manual.length > 0 ? `（本期待人工 ${manual.length} 处）` : ''}，同意放行。
+        <span className={`pill ${signed ? 'signed' : status === 'stale' ? 'stale' : 'unsigned'}`}>
+          {signed ? '已签单' : status === 'stale' ? '签名已失效' : '未签单'}
+        </span>
+        {assertions && (
+          <span className="hint">
+            数据核对 {assertions.total - assertions.fail}/{assertions.total}
+            {assertions.fail === 0 ? ' 全部通过' : `（${assertions.fail} 处对不上）`}
           </span>
-        </label>
+        )}
+        {preview && preview.docx && (
+          <span className="hint">
+            报告里的空 {nField} 处{nLeft > 0 ? `（还剩 ${nLeft} 处待填）` : '（已填齐）'}
+          </span>
+        )}
+      </div>
 
-        <div style={{ marginTop: 12 }}>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="批注（可选）：这一版为什么可以签发、还有哪些已知问题"
-            rows={3}
-            disabled={!isAdmin}
-            style={{
-              width: '100%', font: 'inherit', padding: '10px 12px', color: 'inherit',
-              border: '1px solid var(--line)', borderRadius: 10, background: 'var(--card)',
-            }}
-          />
+      {!isAdmin && (
+        <div className="pending-box" style={{ marginTop: 12 }}>
+          当前角色{me ? `（${me.role}）` : '未知'}是只读——签单与填写需要管理员权限。这是服务端的权限设置挡的。
         </div>
+      )}
 
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
-          <button className="btn primary" onClick={doSign}
-                  disabled={!isAdmin || busy || !period || status === 'signed'}>
-            <Icon name="seal" size={20} />签单
-          </button>
-          <ConfirmButton className="btn" disabled={!isAdmin || busy || status === 'unsigned'}
-                         confirmText="确认撤回？签名会失效" onConfirm={doRevoke}>
-            <Icon name="refresh" size={19} />撤回
-          </ConfirmButton>
-          {msg && (
-            <span className="hint" style={{ color: msg.ok ? 'var(--ok)' : 'var(--bad)' }}>
-              {msg.text}
-            </span>
+      {previewNote ? (
+        <div className="pending-box" style={{ marginTop: 14 }}>
+          {previewNote}
+          {previewNote.includes('还没有出稿') && (
+            <> <a href={`/app/?period=${encodeURIComponent(period)}`}>去生成这一期 →</a></>
+          )}
+          {!previewNote.includes('权限') && (
+            <> <button className="btn" style={{ padding: '4px 10px', fontSize: 13.5 }}
+                     onClick={() => location.reload()}>重新读取</button></>
           )}
         </div>
-      </section>
-
-      <section className="card" style={{ marginTop: 18, padding: '20px 24px' }}>
-        <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Icon name="alert" size={20} />待人工处 · 标存疑
-          {nDoubt != null && <span className="hint" style={{ fontWeight: 400 }}>本页操作后存疑 {nDoubt} 处</span>}
-        </h2>
-        {col == null ? (
-          <div className="pending-box">正在读对勘……</div>
-        ) : manual.length === 0 ? (
-          <div className="pending-box">这一期没有标「待人工」的地方（后端 collation 的 manual 都是 false）。</div>
-        ) : (
-          <div style={{ marginTop: 12 }}>
-            {manual.slice(0, 12).map((r) => (
-              <div key={r.section + r.loc}
-                   style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '9px 0',
-                            borderBottom: '1px solid var(--line-2)' }}>
-                <span className="mono" style={{ flex: '0 0 150px', color: 'var(--ink-3)', fontSize: 13.5 }}>
-                  {r.loc}
-                </span>
-                <span style={{ flex: 1, color: 'var(--ink-2)', fontSize: 14.5 }}>
-                  {(r.oldPreview || r.old) ? `原：${r.oldPreview ?? r.old}` : '（母版此处为空）'}
-                  {r.source ? ` · 来源 ${r.source}` : ''}
-                </span>
-                <button className="btn" style={{ padding: '6px 12px', fontSize: 14 }}
-                        onClick={() => doFlag(r.loc)} disabled={!isAdmin}>
-                  标存疑
-                </button>
-              </div>
+      ) : !preview ? (
+        <div className="pending-box" style={{ marginTop: 14 }}>正在读试排报告……</div>
+      ) : (
+        <div className="rv-grid">
+          <section className="card rv-report" aria-label="试排报告全文">
+            <p className="rv-docmeta">
+              本稿由流水线生成 · {preview.updated_at || '—'} · 数字全部来自台账；带虚线框的空请就地填写。
+            </p>
+            {preview.blocks.map((b, i) => (
+              <BlockView key={i} block={b} vals={vals} onVal={(id, v) => setVals((s) => ({ ...s, [id]: v }))}
+                         disabled={!isAdmin || busy !== null} period={period} />
             ))}
-            {manual.length > 12 && (
-              <p className="hint" style={{ marginTop: 10 }}>
-                另有 {manual.length - 12} 处，完整清单见「红色件清单」。
-              </p>
-            )}
-          </div>
-        )}
-      </section>
+          </section>
 
-      <section className="card" style={{ marginTop: 18, padding: '20px 24px' }}>
-        <FillSection period={period} isAdmin={isAdmin} />
-      </section>
+          <aside className="rv-side">
+            {/* ------- 签单 ------- */}
+            <section className="card rv-card">
+              <h3><Icon name="seal" size={19} />审核 · 签单</h3>
+              <div className="rv-kv"><span>报告版本</span><b className="rv-docname">{preview.docx ?? '—'}</b></div>
+              <div className="rv-kv"><span>生成时间</span><b>{preview.updated_at || '—'}</b></div>
+              <div className="rv-kv"><span>报告里的空</span><b>{nField} 处（待填 {nLeft}）</b></div>
+              <label className="rv-ack">
+                <input type="checkbox" checked={known} disabled={!isAdmin || busy !== null}
+                       onChange={(e) => setKnown(e.target.checked)} />
+                <span>我已逐项看过<b>待人工</b>与<b>存疑</b>处，同意放行。</span>
+              </label>
+              <textarea
+                className="rv-note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="批注（可选）：这一版为什么可以签单、还有哪些已知问题"
+                rows={2}
+                disabled={!isAdmin}
+              />
+              <div className="rv-btns">
+                <button className="btn primary" onClick={doSign}
+                        disabled={!isAdmin || busy !== null || signed}>
+                  <Icon name="seal" size={19} />{busy === 'sign' ? '正在处理…' : '签单'}
+                </button>
+                <ConfirmButton className="btn" disabled={!isAdmin || busy !== null || !signed}
+                               confirmText="确认撤回？签名会失效" onConfirm={doRevoke}>
+                  <Icon name="refresh" size={18} />撤回
+                </ConfirmButton>
+              </div>
+              {pendingN > 0 && (
+                <p className="rv-warn" role="note">
+                  {signed
+                    ? `有 ${pendingN} 处填写还没写进报告——点下方「保存并重出报告」写入；重出后签名失效，需重新签单。`
+                    : `有 ${pendingN} 处填写还没写进报告——点「签单」会先自动写进报告再签。`}
+                </p>
+              )}
+              {busyText && <p className="rv-busy" role="status">{busyText}</p>}
+              {msg && <p className={msg.ok ? 'rv-msg ok' : 'rv-msg bad'} role="status">{msg.text}</p>}
+              <p className="hint" style={{ marginTop: 8 }}>
+                签单会绑定这一版报告；重跑或重出后签名自动失效、需重签。
+              </p>
+            </section>
+
+            {/* ------- 下载 ------- */}
+            <section className="card rv-card">
+              <h3><Icon name="doc" size={19} />报告文件</h3>
+              {signed ? (
+                <a className="btn primary rv-dl" href={`/api/periods/${encodeURIComponent(period)}/download/report`}>
+                  <Icon name="doc" size={19} />下载报告（Word）
+                </a>
+              ) : (
+                <button className="btn rv-dl" disabled>
+                  <Icon name="doc" size={19} />下载报告（Word）
+                </button>
+              )}
+              <p className="hint" style={{ marginTop: 8 }}>
+                {signed ? '已签单，点击即可下载到本地。'
+                  : status === 'stale' ? '签名已失效：重新签单后可下载。'
+                    : '签单后可下载到本地。'}
+              </p>
+            </section>
+
+            {/* ------- 报告里的空 ------- */}
+            <section className="card rv-card">
+              <h3><Icon name="list" size={19} />报告里的空
+                <span className="hint" style={{ fontWeight: 400, marginLeft: 'auto' }}>
+                  {nLeft > 0 ? `还剩 ${nLeft} 处` : '已填齐'}
+                </span>
+              </h3>
+              {nField === 0 ? (
+                <p className="hint" style={{ marginTop: 8 }}>这一期没有要人填的地方。</p>
+              ) : (
+                <ul className="rv-todo">
+                  {fields.map(([id, meta]) => {
+                    const v = vals[id] ?? ''
+                    const isDoubt = !!doubt[meta.where]
+                    return (
+                      <li key={id}>
+                        <button type="button" className="rv-jump" onClick={() => jumpTo(id)}>
+                          <span className={`rv-dot${v.trim() ? ' done' : ''}`} aria-hidden="true" />
+                          <span className="rv-todo-t">{meta.title}</span>
+                          <span className="rv-todo-v">{v.trim() ? '已填' : '待填'}</span>
+                        </button>
+                        <button type="button" className={`rv-flag${isDoubt ? ' on' : ''}`}
+                                title={isDoubt ? '取消存疑' : '这一处标存疑'}
+                                onClick={() => doFlag(meta.where)} disabled={!isAdmin || busy !== null}>
+                          {isDoubt ? '已存疑' : '存疑'}
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+              {(wb?.todo_confirm ?? []).length > 0 && (
+                <>
+                  <p className="hint" style={{ marginTop: 10 }}>另需核一眼（不用填）：</p>
+                  <ul className="rv-todo rv-confirm">
+                    {wb!.todo_confirm.map((t) => (
+                      <li key={t.id}><span className="rv-todo-t">{t.title}</span></li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {wbNote && <p className="hint" style={{ color: 'var(--bad)' }}>{wbNote}</p>}
+              <div className="rv-btns" style={{ marginTop: 12 }}>
+                <button className="btn" onClick={doSave}
+                        disabled={!isAdmin || busy !== null || nField === 0}>
+                  <Icon name="doc" size={18} />保存填写
+                </button>
+                <ConfirmButton className="btn primary rv-wide"
+                               disabled={!isAdmin || busy !== null || nField === 0}
+                               confirmText="确认重出？旧稿会先撤下、可回滚"
+                               title="把填的值写进报告并重出（约 2–15 秒）"
+                               onConfirm={doRebuild}>
+                  <Icon name="refresh" size={18} />{busy === 'rebuild' ? '正在重出……' : '保存并重出报告'}
+                </ConfirmButton>
+              </div>
+              <p className="hint" style={{ marginTop: 8 }}>
+                填的值只进报告，台账一个字节不动{appliedN > 0 ? `；已写入 ${appliedN} 处` : ''}。
+              </p>
+            </section>
+          </aside>
+        </div>
+      )}
     </>
   )
 }

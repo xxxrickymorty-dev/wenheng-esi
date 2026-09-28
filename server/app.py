@@ -17,12 +17,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
-                               RedirectResponse, StreamingResponse)
+                               RedirectResponse, Response, StreamingResponse)
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import approval, archive, collation, config, jobs, shelf_data, shelf_preview
+from . import approval, archive, collation, config, jobs, report_preview, shelf_data, shelf_preview
 from . import forecasting
 from .guards import admin_file_route, admin_route
 from src import parse_ledger  # 成品隔离/回滚的唯一口径（FINAL_PRODUCTS / SUPERSEDED_DIR）
@@ -713,6 +713,15 @@ async def api_period_sign_json(request: Request, period: str):
     body = await request.json()
     note = str(body.get("note", ""))
     manual_ack = bool(body.get("known", body.get("manual_ack", False)))
+    # 闸门加一道「已填未写入」：填了值但还没重出报告时，签的就是一份不含填值的稿。
+    # 拦下来让馆员先重出——审核台会在签单前自动做这件事，这里兜直接调接口的手。
+    from . import workbench                                    # noqa: PLC0415
+    pending = [f for f in workbench.build(d).get("fills_list", []) if f.get("state") == "pending"]
+    if pending:
+        return JSONResponse(
+            {"error": f"还有 {len(pending)} 处填写没有写进报告，先重出再签单",
+             "hint": "点「保存并重出报告」把填值写进报告，再签单"},
+            status_code=409)
     ok, res = approval.sign(d, current_user(request), collation.build(d), note=note, manual_ack=manual_ack)
     if not ok:
         return JSONResponse({"error": str(res), "hint": "请先解决闸门拒绝的原因"}, status_code=409)
@@ -943,6 +952,39 @@ async def api_period_workbench(request: Request, period: str):
     data = workbench.build(d, approval=rec)
     data["approvalStatus"] = _appr.status(d, rec)
     return data
+
+
+@app.get("/api/periods/{period}/report-preview")
+@admin_route
+async def api_period_report_preview(request: Request, period: str):
+    """审核台用：把这一期的试排报告（docx）拆成可渲染的块 + 在线填空字段。
+
+    只读产物；不重算任何数字。没出稿时 404，让前端给出「去生成」的下一步。
+    """
+    d = resolve_period_dir(period)
+    if d is None:
+        return _period_missing()
+    data = await run_in_threadpool(report_preview.build, d)
+    if not data.get("docx"):
+        return JSONResponse(
+            {"error": "这一期还没有出稿", "hint": "先在生成台生成这一期，再回来审核"},
+            status_code=404)
+    return data
+
+
+@app.get("/api/periods/{period}/report-image/{rid}")
+@admin_route
+async def api_period_report_image(request: Request, period: str, rid: str):
+    """报告预览里的插图（按 docx 内部 rId 取，只读、不落盘）。"""
+    d = resolve_period_dir(period)
+    if d is None:
+        return _period_missing()
+    hit = await run_in_threadpool(report_preview.image, d, rid)
+    if hit is None:
+        return JSONResponse({"error": "图片不存在"}, status_code=404)
+    blob, ctype = hit
+    return Response(content=blob, media_type=ctype,
+                    headers={"Cache-Control": "no-cache"})
 
 
 _TRACE_CATS = ("bigtable", "charts", "province", "matrix", "texts")

@@ -544,6 +544,78 @@ a{color:inherit}
 .ar-art.primary{border-color:var(--gold)}
 .ar-art b{font-size:15.5px}
 .ar-art .m{display:block;font-size:13px;color:var(--ink-3);margin-top:3px;word-break:break-all}
+/* ============================================================================
+   审核台 · 试排报告（2026-09-28 rick 定：整篇报告 + 就地填空 + 签单/下载同屏）
+   ⚠ rv- 前缀：报告区内部与右栏自成一体，不碰既有类。
+   ========================================================================== */
+.rv-lead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 2px 0}
+.rv-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start;margin-top:14px}
+@media (max-width:1080px){.rv-grid{grid-template-columns:1fr}.rv-side{position:static!important}}
+
+/* 报告纸 */
+.rv-report{background:#FFFEFA;padding:30px 38px 42px;font-family:var(--serif);min-width:0}
+.rv-docmeta{margin:0 0 20px;font-size:12.5px;color:var(--ink-3);font-family:var(--sans);
+  border-bottom:1px dashed var(--line);padding-bottom:10px}
+.rv-para{margin:0 0 10px;text-indent:2em;font-size:15.5pt;line-height:1.95;text-align:justify;
+  overflow-wrap:break-word}
+.rv-center{text-indent:0;text-align:center!important}
+.rv-img{text-indent:0;text-align:center;margin:14px 0}
+.rv-img img,.rv-tblwrap img{max-width:100%;height:auto}
+.rv-tblwrap{overflow-x:auto;margin:12px 0 16px}
+.rv-tblwrap table{border-collapse:collapse;width:100%;font-size:13.5px;font-family:var(--sans);line-height:1.6}
+.rv-tblwrap td{border:1px solid var(--line);padding:4px 7px;vertical-align:middle;white-space:pre-line}
+.rv-tblwrap tr:first-child td{background:var(--panel);font-weight:600}
+.rv-tblwrap img{max-width:230px;vertical-align:top}
+
+/* 就地填空：虚线朱框 = 待填；浅底实线 = 已填（还没重出） */
+.rv-in{font:inherit;font-size:.92em;color:var(--bad);min-width:110px;max-width:26em;
+  padding:1px 8px;margin:0 2px;border:1.5px dashed var(--bad);border-radius:7px;
+  background:var(--bad-soft);text-align:center;font-family:var(--sans)}
+.rv-in::placeholder{color:var(--bad);opacity:.75}
+.rv-in.filled{border-style:solid;background:#fff;color:var(--ink);font-weight:600}
+.rv-in:focus{outline:3px solid var(--zhu-soft);outline-offset:1px}
+
+/* 右栏 */
+.rv-side{position:sticky;top:12px;display:grid;gap:14px;min-width:0}
+.rv-card{padding:16px 16px 14px}
+.rv-card h3{font-size:16.5px;display:flex;align-items:center;gap:8px}
+.rv-kv{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:5px 0;
+  border-bottom:1px dashed var(--line-2)}
+.rv-kv b{font-variant-numeric:tabular-nums;font-weight:600}
+.rv-docname{word-break:break-all;text-align:right;font-size:13px}
+.rv-ack{display:flex;gap:9px;align-items:flex-start;font-size:14px;margin-top:10px;line-height:1.55}
+.rv-ack span{flex:1}
+.rv-note{width:100%;font:inherit;font-size:14px;margin-top:10px;padding:8px 10px;
+  border:1px solid var(--line);border-radius:9px;background:var(--card);color:inherit;resize:vertical}
+.rv-btns{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.rv-btns .btn{flex:1;min-width:118px;justify-content:center}
+.rv-wide{flex-basis:100%}
+.rv-dl{width:100%;margin-top:8px}
+.rv-warn{margin:10px 0 0;padding:8px 11px;border-radius:8px;background:var(--warn-soft);
+  color:var(--warn);font-size:13.5px;line-height:1.55}
+.rv-busy{margin:10px 0 0;color:var(--gold-ink);font-size:13.5px}
+.rv-msg{margin:10px 0 0;padding:8px 11px;border-radius:8px;font-size:13.5px;line-height:1.55}
+.rv-msg.ok{background:var(--ok-soft);color:var(--ok)}
+.rv-msg.bad{background:var(--bad-soft);color:var(--bad)}
+
+/* 报告里的空：清单 + 跳转 + 存疑 */
+.rv-todo{list-style:none;margin:8px 0 0;padding:0}
+.rv-todo li{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--line-2)}
+.rv-todo li:last-child{border-bottom:none}
+.rv-todo-t{flex:1;font-size:14px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rv-todo-v{font-size:12px;color:var(--ink-3);flex:0 0 auto}
+.rv-jump{display:flex;align-items:center;gap:8px;flex:1;min-width:0;border:0;background:transparent;
+  font:inherit;color:inherit;cursor:pointer;padding:3px 4px;border-radius:7px;text-align:left}
+.rv-jump:hover{background:var(--panel)}
+.rv-dot{width:9px;height:9px;border-radius:50%;background:var(--bad);flex:0 0 auto}
+.rv-dot.done{background:var(--ok)}
+.rv-flag{border:1px solid var(--line);background:var(--card);border-radius:999px;
+  font-size:12px;color:var(--ink-3);padding:2px 9px;cursor:pointer;flex:0 0 auto}
+.rv-flag:hover{border-color:var(--gold);color:var(--gold-ink)}
+.rv-flag.on{background:var(--gold-soft);border-color:var(--gold);color:var(--gold-ink);font-weight:600}
+.rv-flag[disabled]{opacity:.5;cursor:not-allowed}
+.rv-confirm li{color:var(--ink-2)}
+
 @media (max-width:760px){
   .fc-pick,.fc-tbl{min-width:640px}
 }

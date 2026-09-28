@@ -59,6 +59,18 @@ export type TodoItem = {
   filled_at: string | null
 }
 
+/** 一条填写记录的处置状态：pending=填了还没写进报告 / applied=已写入 / orphan=对不上位置的旧残留 */
+export type FillRow = {
+  key: string
+  value: string
+  by: string
+  at: string
+  state: 'pending' | 'applied' | 'orphan'
+}
+
+/** 存疑明细：loc → 记录（存在即已标存疑） */
+export type DoubtMap = Record<string, { state?: string; by?: string; at?: string }>
+
 /** GET /api/periods/{p}/workbench —— 工作台全量数据（admin 可读） */
 export type WorkbenchData = {
   period: string
@@ -72,6 +84,10 @@ export type WorkbenchData = {
   n_applied: number
   n_orphan: number
   n_doubt: number
+  /** 填写记录的逐条处置（审核台据此判断「有值还没写进报告」） */
+  fills_list?: FillRow[]
+  /** 存疑明细（审核台的「标存疑」按位置显示状态） */
+  review?: DoubtMap
   approvalStatus?: string
   [k: string]: unknown
 }
