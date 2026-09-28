@@ -121,6 +121,8 @@ check("GET /healthz → 200", st == 200, f"got {st}")
 out("=== 2. 未登录应跳登录 ===")
 st, body, final = call("GET", "/")
 check("GET / (未登录) 落到 /login", "/login" in final, f"final={final}")
+st, body, final = call("GET", "/app/")
+check("GET /app/ (未登录) 也落到 /login", "/login" in final, f"final={final}")
 
 out("=== 3. 登录 ===")
 # 欢迎页 = 登录页（rick 2026-09-21 定：建筑图做首屏；2026-09-28 二改：满屏背景 + 云大绿）。

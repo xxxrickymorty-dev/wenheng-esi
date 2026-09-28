@@ -54,7 +54,8 @@ async def _shelf_admin_data():
 
 
 app.mount("/app", AdminStaticFiles(directory=str(config.ROOT / "web" / "dist"), html=True,
-                                   check_dir=False, protected_paths=("shelf/data.js",),
+                                   check_dir=False, require_login=True,
+                                   protected_paths=("shelf/data.js",),
                                    guest_responses={"shelf/data.js": _shelf_guest_data},
                                    admin_responses={"shelf/data.js": _shelf_admin_data}), name="web")
 templates = Jinja2Templates(directory=str(config.SERVER_DIR / "templates"))

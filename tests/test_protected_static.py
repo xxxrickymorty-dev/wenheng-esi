@@ -78,3 +78,33 @@ def test_陈列馆数据按三种身份分别响应(tmp_path):
 def test_对勘快照同样保护(tmp_path):
     files = _files(tmp_path)
     assert asyncio.run(files.get_response("collation-demo.html", _scope(config.GUEST_USER))).status_code == 403
+
+
+def test_挂载级登录门_未登录一律回登录页(tmp_path):
+    """`/app` 用 require_login=True：不登录连页面带素材都进不去（2026-09-28 用户裁定）。"""
+    (tmp_path / "index.html").write_text("workspace", encoding="utf-8")
+    files = AdminStaticFiles(directory=str(tmp_path), html=True, require_login=True)
+    anonymous = asyncio.run(files.get_response(".", _scope()))
+    assert anonymous.status_code == 303 and anonymous.headers["location"] == "/login"
+    assert anonymous.headers["cache-control"] == "no-store"
+    # 找不到的文件也先回登录页：不向未登录者泄漏路径存在性
+    assert asyncio.run(files.get_response("nope.js", _scope())).status_code == 303
+    for user in (config.GUEST_USER, config.DEMO_USER):
+        assert asyncio.run(files.get_response(".", _scope(user))).status_code == 200
+
+
+def test_登录门与角色门组合_游客仍可看书架但拿不到完整数据(tmp_path):
+    (tmp_path / "shelf").mkdir()
+    (tmp_path / "shelf" / "index.html").write_text("shelf", encoding="utf-8")
+    (tmp_path / "shelf" / "data.js").write_text("secret", encoding="utf-8")
+    files = AdminStaticFiles(
+        directory=str(tmp_path), require_login=True, protected_paths=("shelf/data.js",),
+        guest_responses={"shelf/data.js": lambda: Response("window.WH_DATA={preview:true}")},
+        admin_responses={"shelf/data.js": lambda: Response("window.WH_DATA={metrics:true}")},
+    )
+    assert asyncio.run(files.get_response("shelf/index.html", _scope())).status_code == 303
+    assert asyncio.run(files.get_response("shelf/data.js", _scope())).status_code == 303
+    guest = asyncio.run(files.get_response("shelf/data.js", _scope(config.GUEST_USER)))
+    assert guest.status_code == 200 and b"preview" in guest.body and b"secret" not in guest.body
+    admin = asyncio.run(files.get_response("shelf/data.js", _scope(config.DEMO_USER)))
+    assert admin.status_code == 200 and b"metrics" in admin.body

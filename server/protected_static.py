@@ -10,11 +10,18 @@ from . import config
 
 
 class AdminStaticFiles(StaticFiles):
-    """仅匹配到的静态文件限管理员；其余页面与素材保持原有可访问性。"""
+    """挂载级门 + 单文件角色门。
+
+    - `require_login=True`：**整个挂载只许已登录**（游客或管理员），未登录一律 303 回
+      `/login`——`/app` 用它挡住「直接输网址进工作区」；找不到的文件也先回登录页，
+      不泄漏路径存在性。
+    - `protected_paths`：挂载内个别文件的角色门（照旧；组合使用时先过登录门）。
+    """
 
     def __init__(self, *args, protected_paths=(), guest_responses=None,
-                 admin_responses=None, **kwargs):
+                 admin_responses=None, require_login=False, **kwargs):
         super().__init__(*args, **kwargs)
+        self.require_login = require_login
         self.protected_paths = {self._normal_path(p) for p in protected_paths}
         self.guest_responses = {
             self._normal_path(path): callback for path, callback in (guest_responses or {}).items()
@@ -46,8 +53,11 @@ class AdminStaticFiles(StaticFiles):
         protected = self._is_protected(path)
         if protected is None:
             return JSONResponse({"error": "文件路径不合法"}, status_code=404)
+        user = scope.get("session", {}).get("user")
+        if self.require_login and not user:
+            return RedirectResponse("/login", status_code=303,
+                                    headers={"Cache-Control": "no-store"})
         if protected:
-            user = scope.get("session", {}).get("user")
             if not user:
                 return RedirectResponse("/login", status_code=303,
                                         headers={"Cache-Control": "no-store"})
