@@ -3,80 +3,81 @@
 {% block sub %}学 科 信 息 参 考 · 演 示 环 境{% endblock %}
 {% block body_attrs %}class="theme-ynu"{% endblock %}
 
-{# 欢迎页 ＝ 登录页（rick 2026-09-21 定：把校园插画做首屏）。
+{# 欢迎页 ＝ 登录页（rick 2026-09-21 定：把建筑图做首屏；2026-09-28 二改：
+   图书馆照片做满屏背景，语汇对齐陈列馆首页——暗绿压暗、米白文字、登录卡浮在照片上）。
    为什么放在登录页而不是 `/`：`/` 是馆员工作台（2026-09-19 刻意改过去的，
    回答"这次要我做什么决定"），不该被一张宣传图顶掉；而未登录的人第一眼看到的
    就是这一页 —— 它才是系统真正的门面。
-   🔴 图走 `asset()` 拿版本号（改图后浏览器才不会吃缓存），这是本仓的守卫要求。 #}
+   🔴 背景图走 `asset()` 拿版本号（改图后浏览器才不会吃缓存），这是本仓的守卫要求。 #}
 {% block head %}
 <style>
-  /* 欢迎页专属版式：左图版 + 右登录卡。令牌取自 style.css（:root + body.theme-ynu
-     云大绿主题），别在本页另开色板。 */
-  /* 这一页要比别页宽：图版是主角，挤在默认 880px 里会显小。
-     只在本页的 style 块里改，别的页不受影响。 */
+  /* 背景图 + 两层渐变（左侧压暗保文案对比度，底部收暗接页脚）。
+     令牌取自 style.css（:root + body.theme-ynu 云大绿主题），别在本页另开色板。 */
+  body.theme-ynu {
+    background-color: #123619;
+    background-image:
+      linear-gradient(92deg, rgba(8, 30, 23, .92) 0%, rgba(8, 30, 23, .58) 44%,
+                      rgba(8, 30, 23, .30) 66%, rgba(8, 30, 23, .52) 100%),
+      linear-gradient(0deg, rgba(6, 26, 20, .74) 0%, rgba(6, 26, 20, 0) 46%),
+      url("{{ asset('img/library-exterior.jpg') }}");
+    background-size: cover;
+    background-position: center 58%;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
   main.wrap { max-width: 1200px; }
+  /* 左文案 / 右登录卡；高度扣掉顶栏与页脚，视觉重心居中 */
   .welcome {
-    display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(340px, .7fr);
-    gap: 40px; align-items: stretch; min-height: 78vh; padding: 30px 0;
+    display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(340px, .75fr);
+    gap: 40px; align-items: center; min-height: calc(100vh - 164px); padding: 34px 0;
   }
-  /* --- 左：图版 --- */
-  .plate { border: 1px solid var(--line-2); background: var(--panel); border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow); }
-  .plate .mat { padding: 12px; }                       /* 卡纸留边，像装裱 */
-  .plate .mat img {
-    display: block; width: 100%;
-    /* 🔴 必须写 `height: auto`：`<img>` 上的 `height` 属性会作为「表现提示」生效，
-       只覆盖 width 不覆盖 height 的话图会被**钉死在属性高度**（曾实测被垂直拉长），
-       `aspect-ratio` 形同虚设。加了 height:auto 才跟原图比例一致（1280×720，16:9）。 */
-    height: auto; aspect-ratio: 16 / 9; object-fit: cover;
-    border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--panel-2);
-  }
-  .plate .mat .frame { position: relative; }
-  /* 朱色细线内框 —— 藏书票/图版的语汇，不是装饰色，是"这是件被装裱的东西" */
-  .plate .mat .frame::after {
-    content: ""; position: absolute; inset: 7px; border: 1px solid var(--zhu); opacity: .5;
-    pointer-events: none;
-  }
-  .plate .cap {
-    padding: 4px 14px 14px; font-family: var(--kai); font-size: 12.5px;
-    color: var(--ink-3); letter-spacing: .06em;
-  }
-  .plate .cap b { font-weight: 400; color: var(--zhu); }
-  .welcome-copy { padding: 22px 4px 0; }
+  /* --- 左：文案（暗底上全部转米白，强调符用金） --- */
+  .welcome-copy { padding: 0 4px; }
   .welcome-copy .eyebrow {
-    display: flex; align-items: center; gap: 10px;
+    display: flex; align-items: center; gap: 11px;
     font-family: var(--mono, monospace); font-size: 10.5px; letter-spacing: .18em;
-    color: var(--ink-3); text-transform: uppercase;
+    color: rgba(240, 236, 214, .78); text-transform: uppercase;
   }
-  .welcome-copy .emblem { width: 34px; height: 34px; flex: none; }
+  .welcome-copy .emblem {
+    width: 38px; height: 38px; flex: none;
+    background: #F2EDDC; border-radius: 50%; padding: 2px;
+  }
   .welcome-copy h1 {
-    margin: 10px 0 0; font-family: var(--serif); font-weight: 700;
-    font-size: 44px; letter-spacing: .1em; line-height: 1.15;
+    margin: 14px 0 0; font-family: var(--serif); font-weight: 700;
+    font-size: 46px; letter-spacing: .1em; line-height: 1.15; color: #F6F1DE;
   }
-  .welcome-copy h1 i { font-style: normal; color: var(--zhu); }
+  .welcome-copy h1 i { font-style: normal; color: var(--gold); }
   .welcome-copy .lede {
-    margin: 14px 0 0; max-width: 46em; font-size: 14px; line-height: 1.75; color: var(--ink-2);
+    margin: 14px 0 0; max-width: 44em; font-size: 14px; line-height: 1.85;
+    color: rgba(240, 236, 220, .88);
   }
-  .welcome-facts { list-style: none; margin: 20px 0 0; padding: 0; display: grid; gap: 9px; }
+  .welcome-copy .lede strong { color: #F6F1DE; }
+  .welcome-facts { list-style: none; margin: 22px 0 0; padding: 0; display: grid; gap: 9px; }
   .welcome-facts li {
-    position: relative; padding-left: 18px; font-size: 12.5px; color: var(--ink-2);
+    position: relative; padding-left: 18px; font-size: 12.5px; color: rgba(240, 236, 220, .78);
   }
   .welcome-facts li::before {
     content: ""; position: absolute; left: 2px; top: 7px;
-    width: 6px; height: 6px; border: 1px solid var(--zhu); transform: rotate(45deg);
+    width: 6px; height: 6px; border: 1px solid var(--gold); transform: rotate(45deg);
   }
-  /* --- 右：登录卡（沿用原 .plaque，只去掉它自带的外层留白） ---
-     卡片在整列里**垂直居中**：左列是「图+文案」的长条，卡片短，
-     不居中就会浮在半空中、跟左边对不齐（第一版就是这样）。 */
+  .welcome-facts li strong { color: #F6F1DE; }
+  /* --- 右：登录卡浮在照片上（卡片自身仍是纸面，压深投影） --- */
   .welcome .login-wrap {
     min-height: 0; padding: 0; height: 100%;
     display: flex; align-items: center; justify-content: center;
   }
-  .welcome .plaque { width: 100%; }
-  /* --- 窄屏：图在上、卡在下 --- */
+  .welcome .plaque { width: 100%; box-shadow: 0 22px 60px rgba(5, 22, 16, .5); }
+  /* --- 窄屏：文案在上、卡在下；固定背景在窄屏上改为跟随滚动 --- */
   @media (max-width: 940px) {
-    .welcome { grid-template-columns: 1fr; gap: 26px; min-height: 0; padding: 22px 0; }
-    .welcome-copy h1 { font-size: 32px; }
+    body.theme-ynu { background-attachment: scroll; }
+    .welcome { grid-template-columns: 1fr; gap: 28px; min-height: 0; padding: 26px 0; }
+    .welcome-copy h1 { font-size: 34px; }
     .welcome .plaque { max-width: 430px; margin: 0 auto; }
+  }
+  /* 手机顶栏：品牌不折行；副标题让位（否则「文衡」会被挤成两行） */
+  @media (max-width: 760px) {
+    body.theme-ynu .topbar .sub { display: none; }
+    body.theme-ynu .topbar .logo { white-space: nowrap; }
   }
 </style>
 {% endblock %}
@@ -84,36 +85,21 @@
 {% block content %}
 <div class="welcome">
 
-  <section>
-    <figure class="plate" style="margin:0">
-      <div class="mat">
-        <div class="frame">
-          <img src="{{ asset('img/library-exterior.jpg') }}"
-               alt="云南大学图书馆 —— 中央玻璃穹顶、红砖翼楼与入口广场"
-               width="1280" height="720" loading="eager" decoding="async">
-        </div>
-      </div>
-      <figcaption class="cap">
-        <b>图版一</b>　云南大学图书馆 · 中央穹顶与入口广场
-      </figcaption>
-    </figure>
-
-    <div class="welcome-copy">
-      <p class="eyebrow">
-        <img class="emblem" src="{{ asset('img/ynu-emblem.png') }}" alt="云南大学校徽" width="34" height="34">
-        <span>云南大学图书馆 · 学科信息参考</span>
-      </p>
-      <h1>文<i>衡</i></h1>
-      <p class="lede">
-        把《学科信息参考》双月报告从「人工搬数」变成一条<strong>可复核的流水线</strong>：
-        解析台账 → 断言闸 → 出数 → 出图 → 填母版，每一步都留下可回查的痕迹。
-      </p>
-      <ul class="welcome-facts">
-        <li>复刻产线按馆约定出稿，母版 <strong>704 槽位</strong>逐格替换，可签发盖章</li>
-        <li>报告里每一个数字都能指回<strong>台账的某一个单元格</strong></li>
-        <li>大模型<strong>不进入数据路径</strong> —— 数字只来自台账</li>
-      </ul>
-    </div>
+  <section class="welcome-copy">
+    <p class="eyebrow">
+      <img class="emblem" src="{{ asset('img/ynu-emblem.png') }}" alt="云南大学校徽" width="38" height="38">
+      <span>云南大学图书馆 · 学科信息参考</span>
+    </p>
+    <h1>文<i>衡</i></h1>
+    <p class="lede">
+      把《学科信息参考》双月报告从「人工搬数」变成一条<strong>可复核的流水线</strong>：
+      解析台账 → 断言闸 → 出数 → 出图 → 填母版，每一步都留下可回查的痕迹。
+    </p>
+    <ul class="welcome-facts">
+      <li>复刻产线按馆约定出稿，母版 <strong>704 槽位</strong>逐格替换，可签发盖章</li>
+      <li>报告里每一个数字都能指回<strong>台账的某一个单元格</strong></li>
+      <li>大模型<strong>不进入数据路径</strong> —— 数字只来自台账</li>
+    </ul>
   </section>
 
   <section>

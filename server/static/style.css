@@ -82,7 +82,22 @@ body.theme-ynu {
   --gold: #B19A65;
 }
 body.theme-ynu ::selection { background: rgba(26, 75, 39, .16); }
-body.theme-ynu .topbar { border-bottom-color: var(--zhu-deep); }
+/* 满屏背景页的顶栏 / 页脚 / 装饰（背景图本身在页面 <style> 里，走 asset 版本号）：
+   顶栏改深绿实底（同陈列馆首页），文字转米白；套准十字在暗底上收掉。 */
+body.theme-ynu .topbar { background: var(--zhu-deep); border-bottom-color: rgba(237, 234, 226, .16); }
+body.theme-ynu .topbar .logo { color: #F4EFDF; }
+body.theme-ynu .topbar .sub { color: #AEBBA4; border-left-color: rgba(237, 234, 226, .22); }
+body.theme-ynu .topbar nav .ghost { color: #E7E2CE; }
+body.theme-ynu .topbar nav .ghost:hover { color: #FFF6D8; border-bottom-color: #FFF6D8; }
+body.theme-ynu .topbar .seal {
+  background: #E9E2CC; color: var(--zhu-deep);
+  box-shadow: inset 0 0 0 2px rgba(18, 54, 25, .2);
+}
+body.theme-ynu .reg { display: none; }
+body.theme-ynu .foot {
+  background: transparent; color: rgba(237, 234, 226, .6);
+  border-top-color: rgba(237, 234, 226, .14);
+}
 body.theme-ynu .plaque .strip { background: var(--zhu-deep); }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
