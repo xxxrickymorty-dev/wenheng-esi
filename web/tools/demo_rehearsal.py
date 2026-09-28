@@ -103,17 +103,19 @@ def main() -> int:
         shields = pg.eval_on_selector_all(".pill", "e => e.filter(x=>x.innerText.includes('盾')).length")
         check("④ 分节解读 + 数字防护盾", arts >= 5 and shields >= 5, f"{arts} 节 / {shields} 盾", t)
 
-        # ⑤ 审核台：只读核对（🔴 签单是写操作，脚本不替你签——
-        #    2026-09-23 踩过：旧版这里点了「钤印签单」，后端闸门当时已改成
-        #    「勾选知悉即可签」，于是真写进了一条签单记录，只能按设计路径撤回。
-        #    要现场签单，由演示人自己点。）
+        # ⑤ 审核台：整篇试排报告 + 就地填空（2026-09-28 rick 定稿的形态）。
+        #    🔴 签单是写操作，脚本不替你签——2026-09-23 踩过：旧版这里点了「钤印签单」，
+        #    后端闸门当时已改成「勾选知悉即可签」，于是真写进了一条签单记录。
+        #    要现场签单，由演示人自己点。
         t = time.time()
-        pg.goto(B + "/app/?view=review", wait_until="networkidle"); pg.wait_for_timeout(2000)
+        pg.goto(B + "/app/?view=review", wait_until="networkidle"); pg.wait_for_timeout(3000)
         txt = pg.inner_text("main")
-        inputs = pg.eval_on_selector_all("input[type=text]", "e => e.length")
-        check("⑤ 在线填 16 处待补录", inputs == 16 and "待补录 16 处" in txt, f"{inputs} 个框", t)
-        check("⑤ 签单区说明了会绑指纹",
-              "指纹" in txt and "钤印签单" in txt, "（脚本不点它）")
+        n_in = pg.eval_on_selector_all(".rv-in", "e => e.length")
+        n_tbl = pg.eval_on_selector_all(".rv-tblwrap", "e => e.length")
+        check("⑤ 审核台铺开整篇试排报告（标题 + 大表都在）",
+              "学科信息参考" in txt and n_tbl >= 10, f"{n_tbl} 张表", t)
+        check("⑤ 报告里的空就地成输入框", n_in >= 1 and "报告里的空" in txt, f"{n_in} 个空位")
+        check("⑤ 签单区说明了会绑指纹", "签单会绑定这一版报告" in txt, "（脚本不点它）")
 
         # ⑥ 台账
         t = time.time()

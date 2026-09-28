@@ -502,6 +502,23 @@ st, clf, _ = call("GET", "/api/periods/202607/collation?full=true")
 check("GET collation?full=true 200", st == 200, f"got {st}")
 check("collation full 有 sections+slots", '"sections"' in clf and '"slots"' in clf or '"rows"' in clf)
 
+# GET /api/periods/202607/report-preview（审核台试排报告，契约 #24）
+st, pv, _ = call("GET", "/api/periods/202607/report-preview")
+check("GET report-preview 200", st == 200, f"got {st}")
+check("report-preview 有 blocks/fields/docx",
+      all(k in pv for k in ('"blocks"', '"fields"', '"docx"')))
+check("report-preview 段落块带 runs（可按原格式渲染）", '"runs"' in pv)
+check("report-preview 字段是工作台同套键（含 ::）", "::" in pv or '"fields":{}' in pv.replace(" ", ""))
+_m = re.search(r'"rid"\s*:\s*"(rId\d+)"', pv)
+if _m:
+    st, raw_img, hdr = call_raw(f"/api/periods/202607/report-image/{_m.group(1)}")
+    check("report-image 按 rId 可取图", st == 200 and (hdr.get("content-type") or "").startswith("image/"),
+          f"got {st} {hdr.get('content-type')}")
+else:
+    check("report-preview 含插图 rId", False, "no rid found")
+st, _, _ = call("GET", "/api/periods/202607/report-image/not-a-rid")
+check("report-image 非法 rid 拒绝", st == 404, f"got {st}")
+
 # 错误体有 hint
 st, err404, _ = call("GET", "/api/periods/209901")
 # GET /api/periods/202607/trace（逐格溯源 JSON）
