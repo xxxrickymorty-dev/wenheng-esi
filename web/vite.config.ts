@@ -19,6 +19,7 @@ export default defineConfig({
       '/login': BACKEND,
       '/logout': BACKEND,
       '/healthz': BACKEND,
+      '/qr.png': BACKEND,   // 工具卡「手机上接着看」的二维码（此前未代理，dev 下假 404）
       '^/app/shelf/data\\.js$': BACKEND,
     },
   },

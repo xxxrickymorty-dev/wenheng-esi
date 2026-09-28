@@ -64,6 +64,10 @@ a{color:inherit}
 .palette-switch button{border:0;border-radius:999px;padding:5px 9px;background:transparent;color:var(--ink-2);
   font:inherit;font-size:12.5px;cursor:pointer}
 .palette-switch button[aria-pressed="true"]{background:var(--zhu);color:#fff}
+/* 顶栏期次章（票 03）：全站唯一的期次切入口；一改即写 URL，各屏跟随 */
+.period-chip{display:flex;align-items:center;gap:6px;color:var(--ink-3);font-size:13.5px;white-space:nowrap}
+.period-chip select{font:inherit;font-size:14px;font-variant-numeric:tabular-nums;padding:6px 10px;
+  border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
 
 .wrap{max-width:1180px;margin:0 auto;padding:26px 22px 70px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}

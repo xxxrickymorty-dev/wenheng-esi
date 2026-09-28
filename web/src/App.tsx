@@ -11,6 +11,7 @@ import {
   getForecastChoice, getForecastMeta, saveForecastChoice,
   type ForecastChoiceEntry, type ForecastMeta,
 } from './api5'
+import { applyPeriod } from './lib/period'
 import { useJobRun, type Run } from './hooks/useJobRun'
 import { Icon, Sprite } from './icons'
 import { Workbench } from './Workbench'
@@ -191,6 +192,7 @@ export default function App() {
   function pickPeriod(period: string) {
     manualSelectionRef.current = true
     setSelected(period)
+    applyPeriod(period)   /* 票 03：期次变更一律写 URL（唯一真相） */
   }
 
   useEffect(() => {
@@ -216,7 +218,10 @@ export default function App() {
         const hit = wantPeriod && list.some((p) => p.period === wantPeriod)
         if (hit) setUrlRestorePeriod(wantPeriod)
         if (!manualSelectionRef.current) {
-          setSelected(restoredActivePeriodRef.current ?? (hit ? wantPeriod : (list[0]?.period ?? null)))
+          const chosen = restoredActivePeriodRef.current ?? (hit ? wantPeriod : (list[0]?.period ?? null))
+          setSelected(chosen)
+          /* 票 03：URL 是期次的唯一真相——缺省期次也写进地址栏，复制链接/刷新不丢期 */
+          if (!hit && chosen) applyPeriod(chosen)
         }
       } catch (e) {
         if (alive) setErr(e as ApiError)
@@ -442,7 +447,10 @@ export default function App() {
   const ADMIN_VIEWS = new Set(['workbench', 'review', 'analysis', 'forecast', 'archive', 'trace', 'red'])
   const denied = gated && ADMIN_VIEWS.has(view)
   const navHref = (h: string) =>
-    (selected && h.startsWith('/app/?') ? `${h}&period=${encodeURIComponent(selected)}` : h)
+    (selected
+      ? h === '/app/' ? `/app/?period=${encodeURIComponent(selected)}`
+        : h.startsWith('/app/?') ? `${h}&period=${encodeURIComponent(selected)}` : h
+      : h)
 
   /* 游客（非管理员）已被 effect 送回陈列馆；这里先不渲染工作区，避免跳转前闪一帧。 */
   if (roleKnown && me && me.role !== 'admin') return null
@@ -463,6 +471,15 @@ export default function App() {
             </a>
           ))}
         </nav>
+        {periods.length > 0 && (
+          <label className="period-chip">
+            <span>期次</span>
+            <select value={selected ?? ''} onChange={(e) => pickPeriod(e.target.value)}
+                    aria-label="切换期次" title="切换后地址栏与各屏一起跟随">
+              {periods.map((p) => <option key={p.period} value={p.period}>{p.period}</option>)}
+            </select>
+          </label>
+        )}
         <div className="palette-switch" role="group" aria-label="切换配色">
           <button type="button" aria-pressed={palette === 'ynu'} onClick={() => setPalette('ynu')}>云大绿</button>
           <button type="button" aria-pressed={palette === 'zhu'} onClick={() => setPalette('zhu')}>朱砂</button>
