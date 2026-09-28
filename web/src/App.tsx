@@ -466,15 +466,20 @@ export default function App() {
           <button type="button" aria-pressed={palette === 'ynu'} onClick={() => setPalette('ynu')}>云大绿</button>
           <button type="button" aria-pressed={palette === 'zhu'} onClick={() => setPalette('zhu')}>朱砂</button>
         </div>
-        <div className="who">
-          <span className="avatar">{me?.name?.slice(0, 1) ?? '？'}</span>
-          {me?.name ?? (roleKnown ? '未登录' : '角色未知')}
-          {me?.role
-            ? ` · ${me.role === 'admin' ? '管理员' : '游客'}`
-            : notLoggedIn
-              ? <> · <a href="/login">去登录</a></>
-              : '（未提供 /api/me）'}
-        </div>
+        {me?.role ? (
+          /* 右上角身份芯片 = 退出入口：点它清会话回登录页（/logout 是旧站路由，纯链接、无 JS） */
+          <a className="who who-exit" href="/logout" title="退出登录，回到登录页">
+            <span className="avatar">{me.name?.slice(0, 1) ?? '？'}</span>
+            {me.name}{me.role === 'admin' ? ' · 管理员' : ' · 游客'}
+            <span className="exit">退出</span>
+          </a>
+        ) : (
+          <div className="who">
+            <span className="avatar">？</span>
+            {roleKnown ? '未登录' : '角色未知'}
+            {notLoggedIn ? <> · <a href="/login">去登录</a></> : '（未提供 /api/me）'}
+          </div>
+        )}
       </header>
 
       <main className="wrap">
