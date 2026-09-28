@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 运行档案「问答与模型调用」（静态提案）</title>
+<style>
+:root{
+  --bg:#F4F3ED;--card:#FFFDF8;--panel:#F0F1EB;
+  --ink:#222B25;--ink-2:#3F4C42;--ink-3:#58655C;
+  --line:#DDE1D8;--line-2:#E6E9E2;
+  --zhu:#1A4B27;--zhu-soft:#E3EDE4;
+  --gold:#B19A65;--gold-soft:#F1EBDD;--gold-ink:#62501F;
+  --ok:#28643A;--ok-soft:#E6F0E7;
+  --warn:#75622D;--warn-soft:#F6EED8;
+  --bad:#8C3B2E;--bad-soft:#F6E4DF;
+  --serif:"Source Han Serif SC","Noto Serif SC",Songti SC,SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 var(--sans)}
+.review{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding:9px 22px;background:var(--panel);border-bottom:1px dashed var(--line);font-size:12.5px;color:var(--ink-2)}
+.review b{color:var(--gold-ink)}
+.topbar{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:9px;font-family:var(--serif);white-space:nowrap}
+.brand strong{font-size:21px;letter-spacing:.04em}
+.brand span{font-size:12px;color:var(--ink-3);letter-spacing:.08em}
+.nav{display:flex;gap:4px;margin-left:auto}
+.nav a{padding:7px 11px;color:var(--ink-2);text-decoration:none;border-radius:8px;font-size:14px;white-space:nowrap}
+.nav a.active{background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+.who{display:flex;align-items:center;gap:8px;border-left:1px solid var(--line);padding-left:14px;color:var(--ink-2);font-size:13px;white-space:nowrap}
+.avatar{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);font-weight:700}
+.wrap{max-width:1150px;margin:auto;padding:18px 22px 70px}
+.crumb{color:var(--ink-3);font-size:13.5px;margin:0 0 12px}
+.crumb a{color:var(--zhu)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 22px;box-shadow:0 1px 2px rgba(34,43,37,.05)}
+.card+.card{margin-top:16px}
+h2{margin:0;font-family:var(--serif);font-size:19px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+h3{font-size:14.5px;margin:14px 0 6px}
+.hint{color:var(--ink-3);font-size:13px}
+.mono{font-family:var(--mono)}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:650}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.zhu{background:var(--zhu-soft);color:var(--zhu)}
+.pill.plain{background:var(--panel);color:var(--ink-2)}
+.sum{display:flex;gap:10px 18px;flex-wrap:wrap;align-items:center;background:var(--panel);border:1px solid var(--line-2);border-radius:10px;padding:9px 14px;margin-top:14px;color:var(--ink-2);font-size:13.5px}
+.sum b{color:var(--ink)}
+.fchips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.fchips button{padding:5px 13px;border:1px solid var(--line);border-radius:999px;background:var(--card);font:inherit;font-size:13px;color:var(--ink-2);cursor:pointer}
+.fchips button[aria-pressed="true"]{border-color:var(--zhu);background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+/* 问答条目（复用「运行档案-智能体调度」的步骤样式） */
+.qlist{margin-top:12px;display:grid;gap:8px}
+.step{border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden;cursor:pointer}
+.step[hidden]{display:none}
+.step-h{display:flex;align-items:center;gap:12px;padding:9px 14px;flex-wrap:wrap}
+.step-h .tm{font:12.5px var(--mono);color:var(--ink-3);min-width:46px}
+.step-h .nm{font-weight:650;font-size:14px}
+.step-h .dt{color:var(--ink-2);font-size:13px;flex:1;min-width:180px}
+.step-h .sec{font:12.5px var(--mono);color:var(--ink-3)}
+.step-h .pills{display:flex;gap:6px;flex-wrap:wrap}
+.step-body{display:none;padding:10px 14px 12px;border-top:1px dashed var(--line-2)}
+.step.open .step-body{display:block}
+.chainline{display:flex;gap:0;flex-wrap:wrap;align-items:stretch}
+.cl{display:grid;gap:2px;padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:var(--card);min-width:118px;max-width:240px}
+.cl .a{font-size:13px;font-weight:650}
+.cl .b{font-size:12px;color:var(--ink-3)}
+.cl.ok{border-color:#BED7C2;background:var(--ok-soft)}
+.cl.bad{border-color:#E4B8AC;background:var(--bad-soft)}
+.cl.bad .a{color:var(--bad)}
+.arrow{display:grid;place-items:center;padding:0 8px;color:var(--ink-3);font-size:16px}
+.step-note{margin:9px 0 0;color:var(--ink-2);font-size:13px}
+.step-note a{color:var(--zhu)}
+.foot{margin:12px 0 0;color:var(--ink-3);font-size:12.5px}
+/* 运行级 */
+.map-row{display:grid;grid-template-columns:132px minmax(0,1fr);gap:12px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--card);margin-top:8px}
+@media (max-width:860px){.map-row{grid-template-columns:1fr}}
+.map-row .lb{font-size:13px;color:var(--ink-3)}
+.flow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.fbox{padding:5px 11px;border-radius:8px;font-size:13px;background:var(--ok-soft);color:var(--ok);border:1px solid #BED7C2;white-space:nowrap}
+.fbox.opt{background:var(--gold-soft);color:var(--gold-ink);border-color:#E4D6AD}
+.fbox.none{background:var(--panel);color:var(--ink-3);border-color:var(--line)}
+.map-note{margin-top:8px;color:var(--ink-3);font-size:12.5px}
+.pins{margin:8px 0 0;padding-left:20px;color:var(--ink-2);font-size:13.5px}
+.pins li{margin:5px 0}
+/* 折叠与清单 */
+.fold{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-top:16px}
+.fold summary{padding:11px 18px;cursor:pointer;font-size:14.5px;display:flex;align-items:center;gap:10px;list-style:none}
+.fold summary::-webkit-details-marker{display:none}
+.fold summary::before{content:"▸";color:var(--zhu)}
+.fold[open] summary::before{content:"▾"}
+.fold summary .sm{color:var(--ink-3);font-size:13px;margin-left:auto}
+.fold-body{padding:2px 18px 14px;border-top:1px dashed var(--line-2)}
+.fold-body p{margin:8px 0 0;font-size:13.5px;color:var(--ink-2);line-height:1.85}
+.check ul{margin:8px 0 0;padding-left:20px;color:var(--ink-2);font-size:13.5px}
+.check li{margin:5px 0}
+.dot{width:20px;height:20px;min-width:20px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--card);color:var(--ink-3);font:12px/18px var(--serif);cursor:pointer}
+.dot:hover{border-color:var(--zhu);color:var(--zhu)}
+.pop{position:fixed;z-index:50;max-width:360px;display:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 13px;box-shadow:0 8px 26px rgba(34,43,37,.16);font-size:13px;color:var(--ink-2)}
+.pop b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="review">
+  <b>静态提案稿 · 运行档案「问答与模型调用」块</b>
+  <span>与《分析台-问答入口》配套：问答的每一步都在这有记录。示例问答取 202607 真实值；条数与耗时为示意。待审。</span>
+</div>
+
+<header class="topbar">
+  <div class="brand"><strong>文衡</strong><span>学科信息参考</span></div>
+  <nav class="nav" aria-label="工作区">
+    <a href="#">生成台</a><a href="#">报告</a><a href="#">审核台</a><a href="#">台账</a><a href="#">分析台</a><a href="#">预测台</a>
+  </nav>
+  <div class="who"><span class="avatar">卜</span>卜彤 · 管理员</div>
+</header>
+
+<main class="wrap">
+  <p class="crumb"><a href="#">← 回生成台</a> · 运行档案 · 期次 <b class="mono">202607</b> · <span class="hint">本稿＝新增块提案（接在「02 调度」之后）</span></p>
+
+  <!-- ============ 问答记录 ============ -->
+  <section class="card">
+    <h2>问文衡 · 问答记录
+      <span class="hint">每条都能展开成「问 → 工具 → 模型 → 校验」的完整链</span>
+      <button class="dot" type="button" data-info="<b>记录里有什么</b><br>问题、每次工具调用（读了什么、耗时）、模型调用（用了哪个模型、是否成功）、校验结果（盾）。不含完整提示词正文。">ⓘ</button>
+    </h2>
+    <div class="sum">
+      <span>本期 <b>23</b> 次</span><span>模型作答 <b>21</b></span><span>回落 <b>2</b></span><span>平均 <b>4.6 秒</b></span><span>最近一次 <b class="mono">09-28 16:02</b></span>
+    </div>
+    <div class="fchips" id="fchips" role="group" aria-label="筛选问答记录">
+      <button type="button" aria-pressed="true" data-kind="all">全部</button>
+      <button type="button" aria-pressed="false" data-kind="model">模型作答</button>
+      <button type="button" aria-pressed="false" data-kind="rule">规则回落</button>
+    </div>
+
+    <div class="qlist" id="qlist">
+      <!-- #0023 -->
+      <div class="step open" data-kind="model">
+        <div class="step-h">
+          <span class="tm">16:02</span>
+          <span class="nm">这期哪些学科离前 1% 最近？</span>
+          <span class="dt"></span>
+          <span class="pills"><span class="pill zhu">模型作答</span><span class="pill ok">校验 5/5</span></span>
+          <span class="sec">#0023 · 4.3 秒</span>
+        </div>
+        <div class="step-body">
+          <div class="chainline">
+            <div class="cl"><span class="a">问</span><span class="b">分析台 · 问文衡</span></div>
+            <span class="arrow">→</span>
+            <div class="cl"><span class="a">读台账</span><span class="b">表「接近度」· 0.4 秒</span></div>
+            <span class="arrow">→</span>
+            <div class="cl"><span class="a">读某一格</span><span class="b">分子生物学与遗传学 · 0.2 秒</span></div>
+            <span class="arrow">→</span>
+            <div class="cl"><span class="a">对比上一期</span><span class="b">2026年5月 · 0.6 秒</span></div>
+            <span class="arrow">→</span>
+            <div class="cl ok"><span class="a">云模型作答</span><span class="b">通义千问 · 2.8 秒</span></div>
+            <span class="arrow">→</span>
+            <div class="cl ok"><span class="a">校验</span><span class="b">盾 · 5 个数字全登记</span></div>
+          </div>
+          <p class="step-note">结果与分析台「问文衡」同源；数字来源格 5 处，可在分析台同款来源弹层里逐点开。<a href="分析台-问答入口.html">打开分析台看这条回答 ↗</a></p>
+        </div>
+      </div>
+      <!-- #0022 -->
+      <div class="step" data-kind="rule">
+        <div class="step-h">
+          <span class="tm">15:40</span>
+          <span class="nm">这期前 1% 学科有几门？</span>
+          <span class="dt"></span>
+          <span class="pills"><span class="pill warn">规则回落</span><span class="pill ok">校验 1/1</span></span>
+          <span class="sec">#0022 · 16.2 秒</span>
+        </div>
+        <div class="step-body">
+          <div class="chainline">
+            <div class="cl"><span class="a">问</span><span class="b">分析台 · 问文衡</span></div>
+            <span class="arrow">→</span>
+            <div class="cl"><span class="a">读台账</span><span class="b">表「前 1% 学科清单」· 0.3 秒</span></div>
+            <span class="arrow">→</span>
+            <div class="cl"><span class="a">读某一格</span><span class="b">清单计数 · 0.2 秒</span></div>
+            <span class="arrow">→</span>
+            <div class="cl bad"><span class="a">模型调用 · 超时</span><span class="b">15.0 秒 · 未返回</span></div>
+            <span class="arrow">→</span>
+            <div class="cl"><span class="a">规则作答</span><span class="b">0.1 秒</span></div>
+            <span class="arrow">→</span>
+            <div class="cl ok"><span class="a">校验</span><span class="b">盾 · 1 个数字登记</span></div>
+          </div>
+          <p class="step-note">回落原因：云端大模型未在 15 秒内返回；回答照常给出，并在分析台如实标注「本次由规则作答」。</p>
+        </div>
+      </div>
+      <!-- #0021 -->
+      <div class="step" data-kind="model">
+        <div class="step-h">
+          <span class="tm">11:07</span>
+          <span class="nm">国际排名这期变化如何？</span>
+          <span class="dt"></span>
+          <span class="pills"><span class="pill zhu">模型作答</span><span class="pill ok">校验 2/2</span></span>
+          <span class="sec">#0021 · 3.9 秒</span>
+        </div>
+        <div class="step-body">
+          <div class="chainline">
+            <div class="cl"><span class="a">问</span><span class="b">分析台 · 问文衡</span></div>
+            <span class="arrow">→</span>
+            <div class="cl"><span class="a">读台账</span><span class="b">表「新国际排名」· 0.4 秒</span></div>
+            <span class="arrow">→</span>
+            <div class="cl ok"><span class="a">云模型作答</span><span class="b">通义千问 · 2.6 秒</span></div>
+            <span class="arrow">→</span>
+            <div class="cl ok"><span class="a">校验</span><span class="b">盾 · 2 个数字登记</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="foot">记录只读、可回放；问答记录保留 90 天。点击每条可展开/收起。</p>
+  </section>
+
+  <!-- ============ 运行级：模型参与 ============ -->
+  <section class="card">
+    <h2>运行级 · 模型参与
+      <span class="hint">主体流水线零模型；模型只出现在问答与决策环</span>
+    </h2>
+    <div class="map-row">
+      <span class="lb">本期出稿运行</span>
+      <div class="flow">
+        <span class="fbox">主体步骤 · 零模型</span>
+        <span class="fbox opt">诊断叙事 · 规则版</span>
+        <span class="fbox none">灵活报告 · 未启用润色</span>
+        <span class="fbox opt">问答 · 3 次（见上）</span>
+      </div>
+    </div>
+    <h3 style="margin:14px 0 4px">配套埋点 <span class="hint">（本块的数据来源；随本线一起补）</span></h3>
+    <ol class="pins">
+      <li><b>工具级留痕</b>：每次工具调用记「工具 · 读了什么 · 结果摘要 · 耗时」——本块每条链的左半边。</li>
+      <li><b>结构化决定</b>：自愈与闸门的决定进进度流（此前只在修复记录里）。</li>
+      <li><b>模型字段</b>：运行记录补「用了哪个模型、调用是否成功」——本块右半边与运行级一行。</li>
+      <li><b>规划事件</b>：灵活报告的规划过程单独留痕——随灵活线补。</li>
+    </ol>
+    <p class="map-note">注：前 3 条随本线落地；第 4 条随灵活参考线。落成后，运行档案从「进度可看」升级为「问答与模型调用可回放」。</p>
+  </section>
+
+  <!-- ============ 说明 ============ -->
+  <details class="fold">
+    <summary>说明 · 口径、来源与只读声明<span class="sm">本页仅此一份</span></summary>
+    <div class="fold-body">
+      <p>① 记录只读，不改动任何数据；回答内容与数字来源与分析台「问文衡」同源，逐格可回溯。</p>
+      <p>② 问答记录含工具调用与模型调用摘要（模型名、耗时、是否回落），不含完整提示词正文。</p>
+      <p>③ 模型记录从本条线启用起生效；启用前的历史运行标注「未记录」，不猜测、不补造。</p>
+      <p>来源：运行档案 · out/202607/。</p>
+    </div>
+  </details>
+
+  <!-- ============ 审稿看点 ============ -->
+  <section class="card check" style="margin-top:16px">
+    <h2>这稿看什么 <span class="hint">（审过再进 React）</span></h2>
+    <ul>
+      <li><b>可回放</b>：每条问答展开就是「问 → 工具 → 模型 → 校验」；模型那格写了用哪个模型、几秒、成不成。</li>
+      <li><b>回落上账</b>：模型超时这条如实记录（示例 #0022），与分析台的「本次由规则作答」对得上。</li>
+      <li><b>运行级分离</b>：主体流水线仍是零模型；模型只在问答与决策环，一眼分得清。</li>
+      <li><b>同一份记录</b>：运行档案与分析台不打架——回答、来源、校验数完全一致。</li>
+    </ul>
+    <p class="foot">盲测三问：① 怎么看「上次问答用了什么模型」？② 模型失败过吗，哪里看？③ 流水线本身用没用模型？——示例数据来自 out/202607/（真实）。</p>
+  </section>
+</main>
+
+<div class="pop" id="pop"></div>
+
+<script>
+/* ---------- ⓘ 弹层 ---------- */
+const pop = document.getElementById("pop");
+document.querySelectorAll("[data-info]").forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (pop.style.display === "block" && pop.dataset.src === btn.dataset.info) { pop.style.display = "none"; return; }
+    pop.innerHTML = btn.dataset.info; pop.dataset.src = btn.dataset.info;
+    pop.style.display = "block";
+    const r = btn.getBoundingClientRect();
+    pop.style.left = Math.max(10, Math.min(window.innerWidth - 380, r.left - 40)) + "px";
+    pop.style.top = Math.min(window.innerHeight - 180, r.bottom + 8) + "px";
+  });
+});
+document.addEventListener("click", () => { pop.style.display = "none"; });
+
+/* ---------- 条目展开 / 收起 ---------- */
+document.querySelectorAll(".step").forEach((el) => {
+  el.addEventListener("click", () => el.classList.toggle("open"));
+});
+
+/* ---------- 筛选 ---------- */
+const chips = document.querySelectorAll("#fchips button");
+chips.forEach((b) => {
+  b.addEventListener("click", () => {
+    chips.forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    const kind = b.dataset.kind;
+    document.querySelectorAll("#qlist .step").forEach((row) => {
+      row.hidden = !(kind === "all" || row.dataset.kind === kind);
+    });
+  });
+});
+</script>
+</body>
+</html>

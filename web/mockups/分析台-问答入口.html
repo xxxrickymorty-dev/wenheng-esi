@@ -59,6 +59,13 @@ h2{margin:0;font-family:var(--serif);font-size:19px;display:flex;align-items:cen
 .qchip:hover{border-color:var(--zhu);color:var(--zhu)}
 .gate{margin-top:14px;padding:9px 12px;border-radius:9px;background:var(--panel);border:1px solid var(--line-2);color:var(--ink-2);font-size:13px;display:none}
 .gate.on{display:block}
+.switch{display:inline-flex;align-items:center;gap:7px;padding:4px 11px;border:1px solid var(--line);border-radius:999px;background:var(--card);font:inherit;font-size:12.5px;font-weight:650;color:var(--ink-2);cursor:pointer}
+.switch .sw{width:9px;height:9px;border-radius:50%;background:var(--ok)}
+.switch[aria-pressed="false"] .sw{background:var(--ink-3)}
+.card.off #qaBody{display:none}
+.qa-off{display:none;margin-top:14px;padding:12px 14px;border:1px dashed var(--line);border-radius:10px;color:var(--ink-2);font-size:13.5px}
+.card.off .qa-off{display:block}
+.qa-off p{margin:0 0 10px}
 
 /* ---- 回答卡 ---- */
 .demo-cap{margin:22px 0 9px;font-size:13px;color:var(--ink-3);display:flex;gap:9px;align-items:center;flex-wrap:wrap}
@@ -127,7 +134,7 @@ h2{margin:0;font-family:var(--serif);font-size:19px;display:flex;align-items:cen
 <body>
 <div class="review">
   <b>静态提案稿 · 分析台「问文衡」问答入口</b>
-  <span>数据用 202607 真实值；示例问题、数字角标、工具回执、「看规则版」都可点。待审通过再进 React。</span>
+  <span>数据用 202607 真实值；示例问题、数字角标、工具回执、「看规则版」、右上开关都可点。待审通过再进 React。</span>
 </div>
 
 <header class="topbar">
@@ -142,13 +149,14 @@ h2{margin:0;font-family:var(--serif);font-size:19px;display:flex;align-items:cen
   <p class="crumb"><a href="#">← 回生成台</a> · 分析台 · 期次 <b class="mono">202607</b> · <span class="hint">本稿只呈现新增块（放置位置：读数总览之下、「按节解读」之上）</span></p>
 
   <!-- ================= 问文衡（新增块） ================= -->
-  <section class="card">
+  <section class="card" id="qaCard">
     <h2>问文衡
       <span class="pill plain mono">202607</span>
       <span class="pill zhu">可选增强</span>
-      <span class="pill plain">管理员可关闭</span>
+      <button class="switch" id="qaSwitch" type="button" aria-pressed="true" title="管理员可关闭问答"><span class="sw"></span>已开启</button>
       <button class="dot" type="button" data-info="<b>这一块的边界</b><br>数字只来自台账；大模型只组织语言、不计算任何数字；模型不可用时自动回落规则版，并在回答上如实标注。">ⓘ</button>
     </h2>
+    <div id="qaBody">
     <p class="lead">问这一期数据的问题。数字来自台账，回答由大模型组织；模型不可用时自动用规则版。</p>
 
     <div class="ask">
@@ -241,6 +249,12 @@ h2{margin:0;font-family:var(--serif);font-size:19px;display:flex;align-items:cen
         <button class="btn" type="button" data-swap="这期顶尖论文有多少篇？">换个问法</button>
       </div>
     </article>
+    </div><!-- /qaBody -->
+
+    <div class="qa-off" id="qaOff">
+      <p>问答已关闭（管理员）。数字总览、按节解读与灵活报告不受影响。</p>
+      <button class="btn" id="qaOnBtn" type="button">开启问文衡</button>
+    </div>
   </section>
 
   <!-- ================= 唯一一份说明 ================= -->
@@ -263,6 +277,7 @@ h2{margin:0;font-family:var(--serif);font-size:19px;display:flex;align-items:cen
       <li><b>数字角标</b>：回答里每个数字都能点开看来源格（台账），这就是「可核」。</li>
       <li><b>失败态</b>：大模型不可用时自动回落规则版并如实标注（示例二），一键可重试。</li>
       <li><b>边界只出现一次</b>：口径与来源统一放页尾「说明」，块内不复读。</li>
+      <li><b>开关与关闭态</b>：块头一键关闭（管理员），关闭后只剩一行说明，分析台其余部分不受影响。</li>
     </ul>
     <p class="foot">盲测三问：① 这一块是干什么的？② 回答里的数字你怎么验？③ 模型坏了会怎样？——示例数据来自 out/202607/（真实）。本稿只到区块样式；进 React 时按 UX.md 信息减负指标另行自检。</p>
   </section>
@@ -312,6 +327,17 @@ document.getElementById("askBtn").addEventListener("click", () => {
   el.classList.add("flash");
   setTimeout(() => el.classList.remove("flash"), 1300);
 });
+
+/* ---------- 开关与关闭态 ---------- */
+const qaCard = document.getElementById("qaCard");
+const qaSwitch = document.getElementById("qaSwitch");
+function setQa(on) {
+  qaCard.classList.toggle("off", !on);
+  qaSwitch.setAttribute("aria-pressed", String(on));
+  qaSwitch.innerHTML = '<span class="sw"></span>' + (on ? "已开启" : "已关闭");
+}
+qaSwitch.addEventListener("click", () => setQa(qaCard.classList.contains("off")));
+document.getElementById("qaOnBtn").addEventListener("click", () => setQa(true));
 
 /* ---------- 换个问法 → 填入输入框 ---------- */
 document.querySelectorAll("[data-swap]").forEach((btn) => {
