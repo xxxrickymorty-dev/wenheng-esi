@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 审核台与报告减负 · 改前 / 改后对照稿（票 14）</title>
+<style>
+:root{
+  --bg:#F4F3ED;--card:#FFFDF8;--panel:#F0F1EB;
+  --ink:#222B25;--ink-2:#3F4C42;--ink-3:#58655C;
+  --line:#DDE1D8;--line-2:#E6E9E2;
+  --zhu:#1A4B27;--zhu-soft:#E3EDE4;
+  --gold:#B19A65;--gold-soft:#F1EBDD;--gold-ink:#62501F;
+  --ok:#28643A;--ok-soft:#E6F0E7;
+  --warn:#75622D;--warn-soft:#F6EED8;
+  --bad:#B43B31;--bad-soft:#F7E4E1;
+  --serif:"Source Han Serif SC","Noto Serif SC",Songti SC,SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 var(--sans)}
+h1,h2,h3{font-family:var(--serif)}
+.review{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding:9px 22px;background:var(--panel);border-bottom:1px dashed var(--line);font-size:12.5px;color:var(--ink-2)}
+.review b{color:var(--gold-ink)}
+.topbar{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:9px;font-family:var(--serif);white-space:nowrap}
+.brand strong{font-size:21px;letter-spacing:.04em}
+.brand span{font-size:12px;color:var(--ink-3);letter-spacing:.08em}
+.nav{display:flex;gap:4px;margin-left:auto}
+.nav a{padding:7px 11px;color:var(--ink-2);text-decoration:none;border-radius:8px;font-size:14px;white-space:nowrap}
+.nav a.active{background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+.period-chip{display:flex;align-items:center;gap:6px;color:var(--ink-3);font-size:13.5px;white-space:nowrap}
+.period-chip select{font:inherit;font-size:14px;font-family:var(--mono);padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.who{display:flex;align-items:center;gap:8px;border-left:1px solid var(--line);padding-left:14px;color:var(--ink-2);font-size:13px;white-space:nowrap}
+.avatar{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);font-weight:700}
+.wrap{max-width:1560px;margin:auto;padding:18px 22px 70px}
+.legend{display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;color:var(--ink-2);font-size:13px;margin:6px 0 12px}
+.legend b{color:var(--gold-ink)}
+.legend .k{padding:2px 9px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:12.5px}
+.sec-title{font-family:var(--serif);font-size:20px;margin:26px 2px 4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sec-title .sub{font-family:var(--sans);font-size:13px;color:var(--ink-3);font-weight:400}
+.cmp2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start;margin-top:12px}
+@media (max-width:1180px){.cmp2{grid-template-columns:1fr}}
+.pane{min-width:0}
+.pane-h{margin:0 0 8px;font-family:var(--serif);font-size:17px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2.5px 10px;border-radius:999px;font-size:12.5px}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.zhu{background:var(--zhu-soft);color:var(--zhu)}
+.pill.plain{background:var(--panel);color:var(--ink-2);border:1px solid var(--line)}
+.pane-body{position:relative;border:1px solid var(--line);border-radius:12px;background:var(--bg);padding:14px;box-shadow:0 1px 2px rgba(34,43,37,.05)}
+.cu-note{margin:9px 2px 0;color:var(--ink-2);font-size:13px}
+.cu-note b{color:var(--ink)}
+.hint{color:var(--ink-3);font-size:13px}
+.mono{font-family:var(--mono)}
+.btn{padding:7px 13px;border:1px solid var(--line);border-radius:8px;background:var(--card);font:inherit;font-size:13.5px;cursor:pointer;color:var(--ink)}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-weight:650}
+.btn.primary[disabled]{opacity:.45;cursor:not-allowed}
+/* ---------- 审核台侧栏复刻（rvx） ---------- */
+.rv-mini{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:14px;align-items:start}
+@media (max-width:760px){.rv-mini{grid-template-columns:1fr}}
+.paper-strip{border:1px solid var(--line);border-radius:10px;background:#FFFEFA;padding:18px 20px;min-height:340px;overflow:hidden}
+.paper-strip .pt{font-family:var(--serif);text-align:center;font-size:22px;letter-spacing:.18em;color:var(--ink-2)}
+.paper-strip .pl{height:9px;border-radius:99px;background:var(--panel);margin:12px 0}
+.paper-strip .pl.short{width:62%}
+.rvx{display:grid;gap:12px}
+.rvx-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 15px}
+.rvx-card h3{margin:0 0 6px;font-size:15.5px;display:flex;align-items:center;gap:8px}
+.rvx-card h3 .right{margin-left:auto;font-weight:400;font-size:12.5px;color:var(--ink-3)}
+.rvx-kv{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:5px 0;border-bottom:1px dashed var(--line-2);color:var(--ink-3)}
+.rvx-kv b{color:var(--ink);font-weight:600;font-family:var(--mono);font-size:13px}
+.rvx-ack{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;margin-top:9px;line-height:1.55}
+.rvx-ack input{margin-top:3px}
+.rvx-note{width:100%;font:inherit;font-size:13.5px;color:var(--ink-3);margin-top:9px;padding:7px 9px;border:1px solid var(--line);border-radius:9px;background:var(--card);resize:none}
+.rvx-btns{display:flex;gap:8px;margin-top:10px}
+.rvx-btns .btn{flex:1;min-width:0;justify-content:center;display:inline-flex}
+.rvx-todo{list-style:none;margin:8px 0 0;padding:0}
+.rvx-todo li{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--line-2);font-size:13.5px}
+.rvx-todo li:last-child{border-bottom:none}
+.rvx-todo .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rvx-todo .v{font-size:12px;color:var(--ink-3)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--bad);flex:0 0 auto}
+.dot.done{background:var(--ok)}
+.flag{border:1px solid var(--line);background:var(--card);border-radius:999px;font-size:12px;padding:2px 9px;color:var(--ink-3);cursor:pointer}
+.flag.on{background:var(--gold-soft);border-color:var(--gold);color:var(--gold-ink);font-weight:650}
+.rvx-strip{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 13px;font-size:13.5px;color:var(--ink-2)}
+.rvx-strip .zhu{color:var(--gold-ink);font-weight:650}
+.rvx-warn{margin:9px 0 0;padding:7px 10px;border-radius:8px;background:var(--warn-soft);color:var(--warn);font-size:12.5px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 2px}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:12.5px;color:var(--ink-2)}
+.chip.on{border-color:var(--zhu);background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+/* ---------- 报告页复刻（rb） ---------- */
+.rb-h{font-family:var(--serif);font-size:18px;margin:0 0 10px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.rb-h .hint{font-weight:400}
+.sec-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:860px){.sec-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.sec-card{display:block;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:9px 11px;text-decoration:none;color:inherit}
+.sec-card b{font-size:13.5px}
+.sec-card span{display:block;font-size:12px;color:var(--ink-3);margin-top:2px}
+.entry{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:11px 14px;margin-top:10px;text-decoration:none;color:inherit}
+.entry .t{display:block;font-weight:650;font-size:14.5px}
+.entry .d{display:block;font-size:12.5px;color:var(--ink-3);margin-top:2px}
+.entry .go{margin-left:auto;color:var(--zhu);font-weight:700}
+.entry.slim{padding:8px 14px}
+.doors{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px}
+@media (max-width:760px){.doors{grid-template-columns:1fr}}
+.door{display:block;border:1px solid var(--zhu);border-radius:12px;background:var(--card);padding:13px 15px;text-decoration:none;color:inherit}
+.door.alt{border-color:var(--line)}
+.door b{display:block;font-size:15px}
+.door span{display:block;font-size:12.5px;color:var(--ink-3);margin-top:3px}
+.fold2{border:1px solid var(--line);border-radius:10px;background:var(--card);margin-top:10px}
+.fold2 summary{padding:10px 14px;cursor:pointer;font-size:13.5px;list-style:none;display:flex;gap:8px;align-items:center}
+.fold2 summary::-webkit-details-marker{display:none}
+.fold2 summary::before{content:"▸";color:var(--zhu)}
+.fold2[open] summary::before{content:"▾"}
+.fold2 .body{padding:0 14px 12px;border-top:1px dashed var(--line-2)}
+.mn{border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;background:var(--card);padding:10px 13px;margin-top:10px}
+.mn .tag{font-size:12.5px;color:var(--gold-ink);font-weight:650}
+.mn p{margin:4px 0 0;font-size:13.5px;color:var(--ink-2)}
+.mn .acts{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+.measure{margin-top:10px;display:flex;gap:8px 14px;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+.measure .v{font:650 14px var(--mono);color:var(--ink)}
+.measure .v.good{color:var(--ok)}
+.check{margin-top:26px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px}
+.check h3{margin:0 0 6px;font-size:15px}
+.check ul,.check ol{margin:6px 0 0;padding-left:20px;color:var(--ink-2);font-size:13.5px}
+.check li{margin:4px 0}
+.pop{position:fixed;z-index:50;max-width:340px;display:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 13px;box-shadow:0 8px 26px rgba(34,43,37,.16);font-size:13px;color:var(--ink-2)}
+.foldnote{color:var(--ink-3);font-size:12.5px;margin:8px 2px 0}
+</style>
+</head>
+<body>
+<div class="review">
+  <b>静态对照稿 · 审核台与报告减负（票 14）</b>
+  <span>左＝现状（真机复刻）｜右＝提案。审核台只做三处微调（2026-09-28 已改「试排报告」形态，不重起炉灶）；报告页两处：对勘入口去重、待办块给动作。真机基线（2026-09-29 06:0x 实测）：未勾知悉签单按钮照样可点 · 存疑无汇总 · 对勘块 11 卡 + 3 门 · 5 条朱批 0 动作。</span>
+</div>
+
+<header class="topbar">
+  <div class="brand"><strong>文衡</strong><span>学科信息参考</span></div>
+  <nav class="nav" aria-label="工作区">
+    <a href="#">生成台</a><a href="#">报告</a><a class="active" href="#">审核台</a><a href="#">台账</a><a href="#">分析台</a><a href="#">预测台</a><a href="#">陈列馆</a>
+  </nav>
+  <label class="period-chip"><span>期次</span><select><option>202607</option></select></label>
+  <div class="who"><span class="avatar">卜</span>卜彤 · 管理员</div>
+</header>
+
+<main class="wrap">
+  <div class="legend">
+    <b>票 14 四件事：</b>
+    <span class="k">知悉＝真闸门（未勾禁用签单）</span>
+    <span class="k">存疑随时可数</span>
+    <span class="k">空错态补动作</span>
+    <span class="k">报告页：入口去重 + 待办给动作</span>
+    <span class="hint">（facts 失败重试票 10 已做，本票不重做）</span>
+  </div>
+
+  <h2 class="sec-title">一、审核台 · 三处微调 <span class="sub">试排报告形态已有：整篇铺开 · 就地填空 · 签单与下载同屏；这里只补「签单前的把关」与「数得出来的存疑」。</span></h2>
+
+  <!-- ===== A 知悉拦签单 ===== -->
+  <div class="cmp2">
+    <section class="pane">
+      <h3 class="pane-h">A · 现状：未勾知悉也能点签单 <span class="pill warn">前端不拦</span></h3>
+      <div class="pane-body">
+        <div class="rv-mini">
+          <div class="paper-strip" aria-hidden="true">
+            <div class="pt">学科信息参考</div>
+            <div class="pl"></div><div class="pl short"></div><div class="pl"></div><div class="pl short"></div><div class="pl"></div>
+          </div>
+          <div class="rvx">
+            <div class="rvx-card">
+              <h3>审核 · 签单</h3>
+              <div class="rvx-kv"><span>报告版本</span><b>报告初稿_202607（试排）.docx</b></div>
+              <div class="rvx-kv"><span>生成时间</span><b>2026-09-28 08:32:24</b></div>
+              <div class="rvx-kv"><span>报告里的空</span><b>8 处（待填 8）</b></div>
+              <label class="rvx-ack"><input type="checkbox" id="ack-before"><span>我已逐项看过<b>待人工</b>与<b>存疑</b>处，同意放行。</span></label>
+              <textarea class="rvx-note" rows="2" placeholder="批注（可选）：这一版为什么可以签单、还有哪些已知问题"></textarea>
+              <div class="rvx-btns">
+                <button class="btn primary" id="sign-before">签单</button>
+                <button class="btn" disabled>撤回</button>
+              </div>
+              <p class="hint" style="margin:8px 0 0">签单会绑定这一版报告；重跑或重出后签名自动失效、需重签。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="cu-note">真机实测：复选框空着，<b>签单照样可点</b>；点到后端才被拒（「需显式确认『已知悉并放行』」）——馆员白跑一趟。</p>
+    </section>
+
+    <section class="pane">
+      <h3 class="pane-h">A · 提案：知悉勾选参与按钮可用性 <span class="pill ok">未勾禁用</span></h3>
+      <div class="pane-body">
+        <div class="rv-mini">
+          <div class="paper-strip" aria-hidden="true">
+            <div class="pt">学科信息参考</div>
+            <div class="pl"></div><div class="pl short"></div><div class="pl"></div><div class="pl short"></div><div class="pl"></div>
+          </div>
+          <div class="rvx">
+            <div class="rvx-card">
+              <h3>审核 · 签单</h3>
+              <div class="rvx-kv"><span>报告版本</span><b>报告初稿_202607（试排）.docx</b></div>
+              <div class="rvx-kv"><span>生成时间</span><b>2026-09-28 08:32:24</b></div>
+              <div class="rvx-kv"><span>报告里的空</span><b>8 处（待填 8）</b></div>
+              <label class="rvx-ack"><input type="checkbox" id="ack-after"><span>我已逐项看过<b>待人工 8 处、存疑 0 处</b>，同意放行。</span></label>
+              <textarea class="rvx-note" rows="2" placeholder="批注（可选）：这一版为什么可以签单、还有哪些已知问题"></textarea>
+              <div class="rvx-btns">
+                <button class="btn primary" id="sign-after" disabled>签单</button>
+                <button class="btn" disabled>撤回</button>
+              </div>
+              <p class="rvx-warn" id="ack-hint">先勾选上方「我已逐项看过」，签单才可用。</p>
+              <p class="hint" style="margin:8px 0 0">签单会绑定这一版报告；重跑或重出后签名自动失效、需重签。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="cu-note">点一下复选框试试：按钮随勾选开/关。<b>后端那道闸不变</b>（仍是真门），前端只是把门提前关上，不让馆员白跑。本期没有待人工与存疑时，不需要勾，按钮直接可用。</p>
+    </section>
+  </div>
+
+  <!-- ===== B 存疑可见 ===== -->
+  <div class="cmp2" style="margin-top:22px">
+    <section class="pane">
+      <h3 class="pane-h">B · 现状：逐个可见，但没有「数」 <span class="pill plain">要自己扫</span></h3>
+      <div class="pane-body">
+        <div class="rvx-strip">数据核对 54/54 全部通过 · 报告里的空 8 处（还剩 8 处待填）</div>
+        <div class="rvx-card" style="margin-top:10px">
+          <h3>报告里的空 <span class="right">还剩 8 处</span></h3>
+          <ul class="rvx-todo">
+            <li><i class="dot"></i><span class="t">ESI发布日期</span><em class="v">待填</em><button class="flag on">已存疑</button></li>
+            <li><i class="dot"></i><span class="t">当期机构总数</span><em class="v">待填</em><button class="flag">存疑</button></li>
+            <li><i class="dot"></i><span class="t">去年同期升幅%</span><em class="v">待填</em><button class="flag">存疑</button></li>
+            <li><i class="dot"></i><span class="t">其余 5 处……</span><em class="v">待填</em></li>
+          </ul>
+        </div>
+      </div>
+      <p class="cu-note">逐项状态其实看得到（「试排报告」形态 2026-09-28 已做）——但<b>页头与签单卡都没有数</b>：签单的人得在 8 行里自己扫「标了几处、哪几处」；确认语「待人工与存疑处」也没有数字。</p>
+    </section>
+
+    <section class="pane">
+      <h3 class="pane-h">B · 提案：三个地方都有数 <span class="pill ok">点存疑试试</span></h3>
+      <div class="pane-body">
+        <div class="rvx-strip">数据核对 54/54 全部通过 · 报告里的空 8 处（还剩 8 处待填） · <span class="zhu" id="doubt-lead">存疑 1 处</span></div>
+        <div class="rvx-card" style="margin-top:10px">
+          <h3>报告里的空 <span class="right" id="doubt-card-head">还剩 8 处 · 存疑 1 处</span></h3>
+          <div class="chips">
+            <span class="chip on">全部 8</span>
+            <button class="chip" id="doubt-chip" type="button">只看存疑 <b id="doubt-chip-n">1</b></button>
+          </div>
+          <ul class="rvx-todo">
+            <li><i class="dot"></i><span class="t" id="doubt-item-t">ESI发布日期</span><em class="v">待填</em><button class="flag on" id="flag-1">已存疑</button></li>
+            <li><i class="dot"></i><span class="t">当期机构总数</span><em class="v">待填</em><button class="flag" id="flag-2">存疑</button></li>
+            <li><i class="dot"></i><span class="t">去年同期升幅%</span><em class="v">待填</em><button class="flag">存疑</button></li>
+            <li><i class="dot"></i><span class="t">其余 5 处……</span><em class="v">待填</em></li>
+          </ul>
+        </div>
+        <div class="rvx-card" style="margin-top:10px">
+          <h3>审核 · 签单 <span class="right">摘录</span></h3>
+          <div class="rvx-kv"><span>存疑</span><b id="doubt-kv">1 处</b></div>
+          <label class="rvx-ack"><input type="checkbox" checked><span id="ack-text">我已逐项看过<b>待人工 8 处、存疑 1 处</b>，同意放行。</span></label>
+        </div>
+      </div>
+      <p class="cu-note">三处同源：<b>页头 · 签单卡（含确认语的数字）· 列表头与「只看存疑」筛选</b>。点任意「存疑」按钮，四个数一起变——签单的人不用扫列表就能报出「几处存疑、哪几处」。数据来自已有的填写记录（`n_doubt`），前端不再各自数。</p>
+    </section>
+  </div>
+
+  <!-- ===== C 空错态 ===== -->
+  <div style="margin-top:22px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px">
+    <h3 class="pane-h" style="margin-bottom:8px">C · 空错态：补两个动作 <span class="pill plain">其余已达标</span></h3>
+    <table style="width:100%;border-collapse:collapse;font-size:13.5px">
+      <thead>
+        <tr style="color:var(--ink-3);font-size:12.5px;text-align:left">
+          <th style="width:170px;padding:7px 10px;border-bottom:1px solid var(--line-2)">场景</th>
+          <th style="padding:7px 10px;border-bottom:1px solid var(--line-2)">现状</th>
+          <th style="padding:7px 10px;border-bottom:1px solid var(--line-2)">提案</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:9px 10px;border-bottom:1px solid var(--line-2)">本期没有要人填的<br><span class="hint">8 处 → 0 处</span></td>
+          <td style="padding:9px 10px;border-bottom:1px solid var(--line-2);color:var(--ink-2)">「这一期没有要人填的地方。」<br><span class="hint">只有解释，没有下一步</span></td>
+          <td style="padding:9px 10px;border-bottom:1px solid var(--line-2)">「这一期没有要人填的地方——可直接签单。」 <a href="#" style="color:var(--zhu);font-weight:650">去签单 ↓</a></td>
+        </tr>
+        <tr>
+          <td style="padding:9px 10px;border-bottom:1px solid var(--line-2)">填写记录读不到<br><span class="hint">服务故障/被占用</span></td>
+          <td style="padding:9px 10px;border-bottom:1px solid var(--line-2);color:var(--ink-2)">「读填写数据失败。」<br><span class="hint">红字，没有重试</span></td>
+          <td style="padding:9px 10px;border-bottom:1px solid var(--line-2)">「填写记录暂时读不到——可能服务刚重启。」 <button class="btn" style="padding:3px 10px;font-size:12.5px">重新读取</button></td>
+        </tr>
+        <tr>
+          <td style="padding:9px 10px">未出稿 / 权限 / 未选期次</td>
+          <td style="padding:9px 10px;color:var(--ink-2)">已有：404 给「去生成这一期 →」、权限说明、未选期次提示</td>
+          <td style="padding:9px 10px;color:var(--ok)">已达标（票 10 + 试排报告形态已做），不动</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="sec-title">二、报告页 · 两处 <span class="sub">对勘三入口现在在同一列里叠了 11 张章节卡 + 3 条入口；待办块 5 条朱批没有一个动作。</span></h2>
+
+  <!-- ===== D 入口去重 ===== -->
+  <div class="cmp2">
+    <section class="pane">
+      <h3 class="pane-h">D · 现状：同一目的地，三扇门 <span class="pill warn" id="d-before-pill">块高 …</span></h3>
+      <div class="pane-body">
+        <div id="d-before">
+          <h3 class="rb-h">对勘分区 <span class="hint">（真数据：母版原文 ↔ 本期生成，共 712 处）</span></h3>
+          <div class="sec-grid">
+            <span class="sec-card"><b>cover</b><span>2 处 · 点开逐句对照</span></span>
+            <span class="sec-card"><b>overview</b><span>4 处 · 点开逐句对照</span></span>
+            <span class="sec-card"><b>trend</b><span>1 处 · 点开逐句对照</span></span>
+            <span class="sec-card"><b>situation</b><span>2 处 · 点开逐句对照</span></span>
+            <span class="sec-card"><b>bigtable</b><span>241 处 · 点开逐句对照</span></span>
+            <span class="sec-card"><b>dcharts</b><span>447 处 · 点开逐句对照</span></span>
+            <span class="sec-card"><b>top</b><span>1 处 · 点开逐句对照</span></span>
+            <span class="sec-card"><b>forecast</b><span>2 处 · 点开逐句对照</span></span>
+            <span class="sec-card"><b>province</b><span>1 处 · 点开逐句对照</span></span>
+            <span class="sec-card"><b>charts</b><span>5 处 · 点开逐句对照</span></span>
+            <span class="sec-card"><b>other</b><span>6 处 · 点开逐句对照</span></span>
+          </div>
+          <a class="entry" href="#"><span><span class="t">打开对勘本（正文级对照）</span><span class="d">左分组 / 中改动卡 / 右校记 · 可搜、可只看待人工、← → 换分组</span></span><span class="go">→</span></a>
+          <a class="entry" href="#"><span><span class="t">红色件清单</span><span class="d">签单依据：逐格列出「改了什么、来自哪里」，可搜索、可下载 Markdown</span></span><span class="go">→</span></a>
+          <a class="entry" href="#"><span><span class="t">逐格溯源</span><span class="d">报告里每个数字 ↔ 台账现场重读的值并排对照，写清来源表与「怎么来的」</span></span><span class="go">→</span></a>
+        </div>
+      </div>
+      <p class="cu-note">三扇门都通「对勘」：11 张章节卡（对勘本某一章）＋ 对勘本 ＋ 红色件清单。对勘本里本来就能<b>换分组、搜、只看待人工</b>——章节卡是重复的第三道门，白占一屏。</p>
+    </section>
+
+    <section class="pane">
+      <h3 class="pane-h">D · 提案：一张卡两扇门 <span class="pill ok" id="d-after-pill">块高 …</span></h3>
+      <div class="pane-body">
+        <div id="d-after">
+          <h3 class="rb-h">对勘 · 红色件 <span class="hint">共 712 处 · 待人工 5 处 · 图表 107 槽</span></h3>
+          <div class="doors">
+            <a class="door" href="#"><b>打开对勘本 · 正文级对照</b><span>可搜、只看待人工、换分组；712 处逐句对照</span></a>
+            <a class="door alt" href="#"><b>红色件清单 · 签单依据</b><span>逐格列出「改了什么、来自哪里」，可下载</span></a>
+          </div>
+          <details class="fold2">
+            <summary>按章节直达（11 章）<span class="hint" style="margin-left:auto">cover 2 · overview 4 · trend 1 · situation 2 · bigtable 241 · dcharts 447 · top 1 · forecast 2 · province 1 · charts 5 · other 6</span></summary>
+            <div class="body"><div class="chips">
+              <span class="chip">cover 2</span><span class="chip">overview 4</span><span class="chip">trend 1</span><span class="chip">situation 2</span><span class="chip">bigtable 241</span><span class="chip">dcharts 447</span><span class="chip">top 1</span><span class="chip">forecast 2</span><span class="chip">province 1</span><span class="chip">charts 5</span><span class="chip">other 6</span>
+            </div></div>
+          </details>
+          <a class="entry slim" href="#" style="margin-top:10px"><span><span class="t">逐格溯源</span><span class="d">报告里每个数字 ↔ 台账现场重读的值并排对照</span></span><span class="go">→</span></a>
+        </div>
+      </div>
+      <p class="cu-note">两扇门摆在明面（对勘本 / 红色件），章节直达收进折叠——想按章看的还看得到，不想看的不占屏。逐格溯源是另一件事，保留但降成一行。</p>
+    </section>
+  </div>
+  <div class="measure">
+    <span>对勘块高度：现状 <span class="v" id="d-before-h">…</span> px → 提案 <span class="v good" id="d-after-h">…</span> px</span>
+  </div>
+
+  <!-- ===== E 待办块给动作 ===== -->
+  <div class="cmp2" style="margin-top:22px">
+    <section class="pane">
+      <h3 class="pane-h">E · 现状：5 条朱批，0 个动作 <span class="pill warn">找不到去补的路</span></h3>
+      <div class="pane-body">
+        <h3 class="rb-h">待你补 / 拍板</h3>
+        <div class="mn"><div class="tag">朱批 · 正文/p1</div><p>原：据2026年7月9日ESI最新数据显示（ESI数据覆盖时间范围为2016年1月1日-2026年4月3… → 待填（sentences.py（句骨架+数字槽））</p></div>
+        <div class="mn"><div class="tag">朱批 · 正文/p2</div><p>原：本期我校仍保持有ESI前1%学科14个，位列云南省高校首位… → 待填（sentences.py（句骨架+数字槽））</p></div>
+        <p class="hint" style="margin-top:8px">还有 3 处待人工，完整清单见「红色件清单」。</p>
+      </div>
+      <p class="cu-note">朱批只给「原：… → 待填」，<b>没有一个能点的</b>；还有内部脚本名直出面客（`sentences.py（句骨架+数字槽）`）。馆员要去审核台，得自己找位置。</p>
+    </section>
+
+    <section class="pane">
+      <h3 class="pane-h">E · 提案：每条「去补 →」+ 段级入口 <span class="pill ok">点了直达</span></h3>
+      <div class="pane-body">
+        <h3 class="rb-h">待你补 / 拍板 <a href="#" style="font-size:13px;font-weight:650;color:var(--zhu);text-decoration:none;margin-left:auto">去审核台逐项处理（5 处）→</a></h3>
+        <div class="mn">
+          <div class="tag">朱批 · 正文/p1</div>
+          <p>原：据2026年7月9日ESI最新数据显示（ESI数据覆盖时间范围为2016年1月1日-2026年4月3…。<b>待你补：正文里这一句。</b></p>
+          <div class="acts"><a class="btn" style="text-decoration:none" href="#">去补 →</a><span class="hint" style="align-self:center">直达审核台里这一处空位</span></div>
+        </div>
+        <div class="mn">
+          <div class="tag">朱批 · 正文/p2</div>
+          <p>原：本期我校仍保持有ESI前1%学科14个，位列云南省高校首位…。<b>待你补：正文里这一句。</b></p>
+          <div class="acts"><a class="btn" style="text-decoration:none" href="#">去补 →</a></div>
+        </div>
+        <p class="hint" style="margin-top:8px">还有 3 处待人工，完整清单见「红色件清单」。</p>
+      </div>
+      <p class="cu-note">「去补」落到审核台对应空位（`?view=review&period=202607&focus=正文/p1`，滚到并高亮那一格）；内部脚本名换成人话「待你补：正文里这一句」。</p>
+    </section>
+  </div>
+
+  <section class="check">
+    <h3>验收清单（10 秒盲测用）</h3>
+    <ul>
+      <li><b>问题一</b>：「签单前系统要求你确认什么？」——答「有待人工时，先勾『我已逐项看过』」即过。</li>
+      <li><b>问题二</b>：「本期哪些处标了存疑？」——页头或签单卡一眼有数，不翻列表。</li>
+      <li><b>问题三</b>：「报告里 5 处要补的，怎么去补？」——任意一条「去补 →」直接到那一格。</li>
+    </ul>
+    <h3 style="margin-top:12px">落 React 清单（票 14）</h3>
+    <ol>
+      <li><code>Review.tsx</code>：① 知悉勾选参与按钮可用性（待人工/存疑 &gt; 0 时未勾禁用，勾选文案带数字）；② 存疑汇总（页头 + 签单卡 + 列表头/筛选，同源 `n_doubt`）；③ 空态补动作（无待填 → 「去签单」；填写记录读不到 → 「重新读取」）。</li>
+      <li><code>Report.tsx</code>：① 对勘块并成「一张卡两扇门 + 章节折叠」；② 待办块每条「去补 →」（`focus` 参数，Review 滚到并高亮）＋段级入口；③ `source` 文案人话。</li>
+      <li>浏览器端验收抽 1 条：<b>未勾知悉 → 签单禁用</b>；存疑计数联动（勾 1 处 → 三处数字同变）。</li>
+      <li>已覆盖不重做：facts 失败重试、未出稿 404「去生成」、权限说明（票 10 / 试排报告形态已落地）。</li>
+    </ol>
+    <p class="foldnote">审过即按上表进 React；改完照常跑全量测试 + 真浏览器验收 + 构建 dist。左栏两处「块高」为页内实测，右栏数字由本页脚本实时量出。</p>
+  </section>
+</main>
+
+<div class="pop" id="pop"></div>
+
+<script>
+/* ---------- A：知悉拦签单演示 ---------- */
+const ackAfter = document.getElementById("ack-after");
+const signAfter = document.getElementById("sign-after");
+const ackHint = document.getElementById("ack-hint");
+ackAfter.addEventListener("change", () => {
+  signAfter.disabled = !ackAfter.checked;
+  ackHint.textContent = ackAfter.checked ? "已确认知悉——可以签单。" : "先勾选上方「我已逐项看过」，签单才可用。";
+  ackHint.style.color = ackAfter.checked ? "var(--ok)" : "var(--warn)";
+});
+
+/* ---------- B：存疑计数联动演示 ---------- */
+let doubtN = 1;
+const doubtFlagOn = new Set(["flag-1"]);
+function paintDoubt(){
+  document.getElementById("doubt-lead").textContent = `存疑 ${doubtN} 处`;
+  document.getElementById("doubt-chip-n").textContent = doubtN;
+  document.getElementById("doubt-card-head").textContent = `还剩 8 处 · 存疑 ${doubtN} 处`;
+  document.getElementById("doubt-kv").textContent = `${doubtN} 处`;
+  document.getElementById("ack-text").innerHTML = `我已逐项看过<b>待人工 8 处、存疑 ${doubtN} 处</b>，同意放行。`;
+  document.getElementById("doubt-kv").style.color = doubtN > 0 ? "var(--gold-ink)" : "var(--ink)";
+}
+["flag-1","flag-2"].forEach((id) => {
+  const el = document.getElementById(id);
+  el.addEventListener("click", () => {
+    const on = !doubtFlagOn.has(id);
+    if (on) doubtFlagOn.add(id); else doubtFlagOn.delete(id);
+    el.classList.toggle("on", on);
+    el.textContent = on ? "已存疑" : "存疑";
+    doubtN = doubtFlagOn.size;
+    paintDoubt();
+  });
+});
+paintDoubt();
+
+/* ---------- D：块高实测 ---------- */
+function measure(){
+  const b = document.getElementById("d-before").getBoundingClientRect().height;
+  const a = document.getElementById("d-after").getBoundingClientRect().height;
+  document.getElementById("d-before-h").textContent = Math.round(b);
+  document.getElementById("d-after-h").textContent = Math.round(a);
+  document.getElementById("d-before-pill").textContent = "块高 " + Math.round(b) + " px";
+  document.getElementById("d-after-pill").textContent = "块高 " + Math.round(a) + " px";
+}
+window.addEventListener("load", measure);
+document.querySelectorAll("details").forEach((d) => d.addEventListener("toggle", measure));
+
+/* ---------- ⓘ（保留：口径弹层，本页暂无绑定） ---------- */
+</script>
+</body>
+</html>
