@@ -26,6 +26,27 @@ function fmtPeriod(v: number | null | undefined): string {
 /** 期数档位：默认 18 与报告一致；24 是模型包的硬上限（要更远得升模型版本） */
 const HORIZONS = [12, 18, 24]
 
+/** 图结果缓存：内存 + sessionStorage（刷新不用重跑；配额满就静默放弃）。
+    键里带数据期次——期次变了就重跑，不拿旧图冒充新数据。 */
+const STORE_PREFIX = 'wh-fc-gal:'
+
+function loadStoredRun(key: string): ForecastRun | null {
+  try {
+    const raw = sessionStorage.getItem(STORE_PREFIX + key)
+    return raw ? JSON.parse(raw) as ForecastRun : null
+  } catch {
+    return null
+  }
+}
+
+function storeRun(key: string, run: ForecastRun) {
+  try {
+    sessionStorage.setItem(STORE_PREFIX + key, JSON.stringify(run))
+  } catch {
+    /* 配额满/隐私模式：不缓存，不影响运行 */
+  }
+}
+
 /* ---------------------------------------------------------------- 试跑结果 */
 
 /** 逐期预测值表——单模型详版与五模型图卡里的折叠块共用。 */
@@ -89,8 +110,8 @@ function ModelCard({ run, r }: { run: ForecastRun; r: ForecastModelResult }) {
   )
 }
 
-/** 五模型预测图（rick 2026-09-28）：两列图卡，卡上直接改选；
-    选择写进 02「本期用哪个模型」的同一份状态，保存仍在那里。 */
+/** 五模型预测图（rick 2026-09-28）：页内 02 节直接摆图，打开页面自动跑一次；
+    两列图卡，卡上直接改选；选择写进 03「本期用哪个模型」的同一份状态，保存仍在那里。 */
 function ModelGallery({
   run, choice, recommendations, onChoiceChange,
 }: {
@@ -111,7 +132,7 @@ function ModelGallery({
         {mine ? `（已从 V1 推荐「${rec}」改选）` : '（未改，跟随 V1 推荐）'}
         {mine && <button type="button" className="btn fc-gal-reset" disabled={!pickable}
                           onClick={() => onChoiceChange(run.task, run.subject, '')}>恢复 V1 推荐</button>}
-        <span className="hint"> · 改选后到 02 保存</span>
+        <span className="hint"> · 改选后到 03 保存</span>
       </p>
 
       <div className="fc-gal">
@@ -179,43 +200,61 @@ function Trial({ meta, choice, onChoiceChange }: {
   const [data, setData] = useState<ForecastRun | null>(null)
   const [err, setErr] = useState('')
   const cache = useRef(new Map<string, ForecastRun>())
+  const autoRan = useRef(false)
   const selectedSubject = meta.subjects.includes(subject) ? subject : meta.subjects[0] ?? ''
   const selectedTask = meta.routes.some((route) => route.value === task)
     ? task
     : meta.routes[0]?.value ?? ''
-  const runKey = `${selectedSubject}|${selectedTask}|${model}|${horizon}`
+  const runKey = `${meta.source_period}|${selectedSubject}|${selectedTask}|${model}|${horizon}`
 
-  // 参数一变先看有没有跑过：有缓存就立刻显示，没有就清空等用户点运行。
-  useEffect(() => {
-    const cached = cache.current.get(runKey)
-    setData(cached ?? null)
-    setErr('')
-  }, [runKey])
-
-  async function onRun() {
+  async function run(subjectName: string, taskName: string, modelName: string, h: number, key: string) {
     setBusy(true)
     setErr('')
     try {
-      const result = await runForecast({ subject: selectedSubject, task: selectedTask, model, horizon })
-      cache.current.set(runKey, result)
+      const result = await runForecast({ subject: subjectName, task: taskName, model: modelName, horizon: h })
+      cache.current.set(key, result)
+      storeRun(key, result)
       setData(result)
     } catch (e) {
-      const h = e as { body?: { error?: string; hint?: string }; message?: string }
+      const body = e as { body?: { error?: string; hint?: string }; message?: string }
       setData(null)
-      setErr(h.body?.error ?? h.message ?? '运行失败')
+      setErr(body.body?.error ?? body.message ?? '运行失败')
     } finally {
       setBusy(false)
     }
   }
 
+  // 参数一变先看缓存（内存 → 会话）；都没有就清空；首屏自动跑一次默认学科/路线。
+  useEffect(() => {
+    const cached = cache.current.get(runKey) ?? loadStoredRun(runKey)
+    if (cached) {
+      cache.current.set(runKey, cached)
+      setData(cached)
+      setErr('')
+      return
+    }
+    setData(null)
+    setErr('')
+    if (!autoRan.current) {
+      autoRan.current = true
+      void run(selectedSubject, selectedTask, model, horizon, runKey)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runKey])
+
+  function onRun() {
+    if (busy) return
+    void run(selectedSubject, selectedTask, model, horizon, runKey)
+  }
+
   return (
     <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
       <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span className="fc-no">03</span>全模型预测图（选前先看）
+        <span className="fc-no">02</span>全模型预测图（选前先看）
       </h2>
       <p className="fc-lead" style={{ fontSize: 15.5 }}>
         选学科和路线，跑一次五模型：每个候选模型的预测图、滚动误差与首次过线都摆出来，
-        图上可直接改选——改完到 02 保存。单模型也能单独跑。
+        图上可直接改选——改完到 03 保存。打开页面时会自动跑一次当前学科/路线；同一组参数跑过就记下来，切回来不用重跑。
         「V1 基线推荐」是各学科冻结下来的那一个；「五模型全部运行比较」只做横向比较，改选不改写推荐。
       </p>
 
@@ -247,13 +286,13 @@ function Trial({ meta, choice, onChoiceChange }: {
 
       {err && <div className="pending-box" style={{ marginTop: 14 }}>{err}</div>}
       {busy && (
-        <p className="hint" style={{ marginTop: 14 }}>
-          {model === 'all' ? '正在跑五模型滚动回测与预测，需要一点时间……' : '正在跑模型，请稍候……'}
-        </p>
+        <div className="pending-box" style={{ marginTop: 14 }} role="status">
+          {model === 'all' ? '正在跑五模型滚动回测与预测……大约十几秒（跑过会记下来，切回来不用重跑）。' : '正在跑模型，请稍候……'}
+        </div>
       )}
       {!busy && !data && !err && (
         <p className="hint" style={{ marginTop: 14 }}>
-          还没有跑过这组参数——点「运行预测」出图；同一组参数再切回来不会重跑。
+          这组参数还没跑过——点「运行预测」出图；同一组参数切回来不重跑。
         </p>
       )}
 
@@ -325,7 +364,7 @@ function Board({ meta }: { meta: ForecastMeta }) {
         「接近度」是百分数点值；过线是滚动监测信号，不等同于正式入榜时间。
         <br />
         这一板的模型是预测阶段的选模记录（逐期滚动比较的结果），<b>不是</b>报告最终采用的模型——
-        报告用哪套，看下面 02 的「V1 推荐」与你的选择。
+        报告用哪套，看下面 03 的「V1 推荐」与你的选择。
       </p>
 
       <div className="fc-tabs" role="group" aria-label="预测路线">
@@ -396,7 +435,7 @@ function PickTable({
   return (
     <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
       <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span className="fc-no">02</span>本期用哪个模型
+        <span className="fc-no">03</span>本期用哪个模型
       </h2>
       <p className="fc-lead" style={{ fontSize: 15.5 }}>
         默认就用 V1 推荐；想改哪科改哪科，改完保存。两条路线的推荐不一样，先选你在改哪条路线。
@@ -544,12 +583,12 @@ export function Forecast({
       {meta && (
         <>
           {meta.available && <Board meta={meta} />}
+          {meta.available && <Trial meta={meta} choice={choice} onChoiceChange={onChoiceChange} />}
           <PickTable meta={meta} period={period} periods={periods}
                      actualOutputPeriod={actualOutputPeriod} choice={choice}
                      dirty={choiceDirty} metaError={metaError}
                      onPickPeriod={onPickPeriod} onChange={onChoiceChange}
                      onSave={onSaveChoice} onReload={onReloadChoice} />
-          {meta.available && <Trial meta={meta} choice={choice} onChoiceChange={onChoiceChange} />}
 
           {meta.available && <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
             <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
