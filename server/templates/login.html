@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}欢迎 · 文衡{% endblock %}
 {% block sub %}学 科 信 息 参 考 · 演 示 环 境{% endblock %}
+{% block body_attrs %}class="theme-ynu"{% endblock %}
 
 {# 欢迎页 ＝ 登录页（rick 2026-09-21 定：把校园插画做首屏）。
    为什么放在登录页而不是 `/`：`/` 是馆员工作台（2026-09-19 刻意改过去的，
@@ -9,7 +10,8 @@
    🔴 图走 `asset()` 拿版本号（改图后浏览器才不会吃缓存），这是本仓的守卫要求。 #}
 {% block head %}
 <style>
-  /* 欢迎页专属版式：左图版 + 右登录卡。令牌全部取自 style.css :root，别另开色板。 */
+  /* 欢迎页专属版式：左图版 + 右登录卡。令牌取自 style.css（:root + body.theme-ynu
+     云大绿主题），别在本页另开色板。 */
   /* 这一页要比别页宽：图版是主角，挤在默认 880px 里会显小。
      只在本页的 style 块里改，别的页不受影响。 */
   main.wrap { max-width: 1200px; }
@@ -22,17 +24,16 @@
   .plate .mat { padding: 12px; }                       /* 卡纸留边，像装裱 */
   .plate .mat img {
     display: block; width: 100%;
-    /* 🔴 必须写 `height: auto`：`<img>` 上的 `height="566"` 属性会作为
-       「表现提示」生效，只覆盖 width 不覆盖 height 的话，图会被**钉死在 566px 高**
-       （实测 676×566，比例 1.19 —— 图被垂直拉长），`aspect-ratio` 形同虚设。
-       加了 height:auto 才是 676×374（1.81，与原图一致）。 */
-    height: auto; aspect-ratio: 1024 / 566; object-fit: cover;
+    /* 🔴 必须写 `height: auto`：`<img>` 上的 `height` 属性会作为「表现提示」生效，
+       只覆盖 width 不覆盖 height 的话图会被**钉死在属性高度**（曾实测被垂直拉长），
+       `aspect-ratio` 形同虚设。加了 height:auto 才跟原图比例一致（1280×720，16:9）。 */
+    height: auto; aspect-ratio: 16 / 9; object-fit: cover;
     border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--panel-2);
   }
   .plate .mat .frame { position: relative; }
   /* 朱色细线内框 —— 藏书票/图版的语汇，不是装饰色，是"这是件被装裱的东西" */
   .plate .mat .frame::after {
-    content: ""; position: absolute; inset: 7px; border: 1px solid rgba(178, 58, 42, .55);
+    content: ""; position: absolute; inset: 7px; border: 1px solid var(--zhu); opacity: .5;
     pointer-events: none;
   }
   .plate .cap {
@@ -42,9 +43,11 @@
   .plate .cap b { font-weight: 400; color: var(--zhu); }
   .welcome-copy { padding: 22px 4px 0; }
   .welcome-copy .eyebrow {
+    display: flex; align-items: center; gap: 10px;
     font-family: var(--mono, monospace); font-size: 10.5px; letter-spacing: .18em;
     color: var(--ink-3); text-transform: uppercase;
   }
+  .welcome-copy .emblem { width: 34px; height: 34px; flex: none; }
   .welcome-copy h1 {
     margin: 10px 0 0; font-family: var(--serif); font-weight: 700;
     font-size: 44px; letter-spacing: .1em; line-height: 1.15;
@@ -85,18 +88,21 @@
     <figure class="plate" style="margin:0">
       <div class="mat">
         <div class="frame">
-          <img src="{{ asset('img/campus-welcome.jpg') }}"
-               alt="云南大学校园全景 —— 会泽院与广场喷泉的插画"
-               width="1024" height="566" loading="eager" decoding="async">
+          <img src="{{ asset('img/library-exterior.jpg') }}"
+               alt="云南大学图书馆 —— 中央玻璃穹顶、红砖翼楼与入口广场"
+               width="1280" height="720" loading="eager" decoding="async">
         </div>
       </div>
       <figcaption class="cap">
-        <b>图版一</b>　云南大学校园 · 东陆校区，插画
+        <b>图版一</b>　云南大学图书馆 · 中央穹顶与入口广场
       </figcaption>
     </figure>
 
     <div class="welcome-copy">
-      <p class="eyebrow">云南大学图书馆 · 学科信息参考</p>
+      <p class="eyebrow">
+        <img class="emblem" src="{{ asset('img/ynu-emblem.png') }}" alt="云南大学校徽" width="34" height="34">
+        <span>云南大学图书馆 · 学科信息参考</span>
+      </p>
       <h1>文<i>衡</i></h1>
       <p class="lede">
         把《学科信息参考》双月报告从「人工搬数」变成一条<strong>可复核的流水线</strong>：

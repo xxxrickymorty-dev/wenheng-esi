@@ -123,12 +123,13 @@ st, body, final = call("GET", "/")
 check("GET / (未登录) 落到 /login", "/login" in final, f"final={final}")
 
 out("=== 3. 登录 ===")
-# 欢迎页 = 登录页（rick 2026-09-21 定：校园插画做首屏）。
+# 欢迎页 = 登录页（rick 2026-09-21 定：建筑图做首屏；2026-09-28 换云大绿 + 图书馆素材）。
 # 断言三件事：图在、图走 asset（带版本号，否则改图后浏览器吃缓存）、登录表单没被改坏。
 st, lp, _ = call("GET", "/login")
-check("欢迎页含校园插画且走 asset 版本号",
-      "/static/img/campus-welcome.jpg?v=" in lp, f"got {st}")
-check("欢迎页图带宽高（防加载抖动）", 'width="1024"' in lp and 'height="566"' in lp)
+check("欢迎页含图书馆建筑图与校徽且走 asset 版本号",
+      "/static/img/library-exterior.jpg?v=" in lp and "/static/img/ynu-emblem.png?v=" in lp,
+      f"got {st}")
+check("欢迎页图带宽高（防加载抖动）", 'width="1280"' in lp and 'height="720"' in lp)
 check("登录表单完好（账号/密码/action）",
       'name="username"' in lp and 'name="password"' in lp and 'action="/login"' in lp)
 check("登录页有游客入口（只读，纯表单 POST）",

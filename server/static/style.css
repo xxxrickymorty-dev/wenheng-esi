@@ -65,6 +65,26 @@
   --song: var(--serif);
 }
 
+/* 云大绿主题（登录页）：令牌与新工作区「云大绿」同值，只在启用页面生效。
+   语义不变 —— --zhu 仍是「强调色」，只是这套主题里强调色是云大绿（#1A4B27）。 */
+body.theme-ynu {
+  --bg: #F4F3ED;
+  --panel: #F0F1EB;
+  --panel-2: #E9EBE3;
+  --ink: #222B25;
+  --ink-2: #3F4C42;
+  --ink-3: #66746A;
+  --line: #DDE1D8;
+  --line-2: #CFD6C9;
+  --zhu: #1A4B27;
+  --zhu-deep: #123619;
+  --zhu-wash: rgba(26, 75, 39, .08);
+  --gold: #B19A65;
+}
+body.theme-ynu ::selection { background: rgba(26, 75, 39, .16); }
+body.theme-ynu .topbar { border-bottom-color: var(--zhu-deep); }
+body.theme-ynu .plaque .strip { background: var(--zhu-deep); }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 body {
