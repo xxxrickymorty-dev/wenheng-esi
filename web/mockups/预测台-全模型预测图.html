@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-CN" data-palette="ynu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 预测台 · 全模型预测图（静态提案）</title>
+<style>
+:root{
+  --bg:#F4F3ED;--card:#FFFDF8;--panel:#F0F1EB;
+  --ink:#222B25;--ink-2:#3F4C42;--ink-3:#58655C;
+  --line:#DDE1D8;--line-2:#E6E9E2;
+  --zhu:#1A4B27;--zhu-soft:#E3EDE4;
+  --gold:#B19A65;--gold-soft:#F1EBDD;--gold-ink:#62501F;
+  --ok:#28643A;--warn:#75622D;--warn-soft:#F6EED8;
+  --serif:"Source Han Serif SC","Noto Serif SC",Songti SC,SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 var(--sans)}
+h1,h2,h3{font-family:var(--serif)}
+.review{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding:9px 22px;background:var(--panel);border-bottom:1px dashed var(--line);font-size:12.5px;color:var(--ink-2)}
+.review b{color:var(--gold-ink)}
+.topbar{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:9px;font-family:var(--serif);white-space:nowrap}
+.brand strong{font-size:21px;letter-spacing:.04em}
+.brand span{font-size:12px;color:var(--ink-3);letter-spacing:.08em}
+.nav{display:flex;gap:4px;margin-left:auto}
+.nav a{padding:7px 11px;color:var(--ink-2);text-decoration:none;border-radius:8px;font-size:14px;white-space:nowrap}
+.nav a.active{background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+.who{display:flex;align-items:center;gap:8px;border-left:1px solid var(--line);padding-left:14px;color:var(--ink-2);font-size:13px;white-space:nowrap}
+.avatar{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);font-weight:700}
+.wrap{max-width:1240px;margin:auto;padding:22px 22px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 22px;box-shadow:0 1px 2px rgba(34,43,37,.06)}
+.head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.eyebrow{display:grid;place-items:center;width:27px;height:27px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);font:700 12px var(--mono)}
+h2{margin:0;font-size:21px;font-weight:600}
+.lead{max-width:880px;margin:9px 0 14px;color:var(--ink-2);font-size:14px}
+.pick{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;padding:12px 14px;background:var(--panel);border:1px solid var(--line-2);border-radius:10px}
+.pick label{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--ink-2)}
+.pick select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);min-width:230px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tabs button{padding:8px 13px;border:1px solid var(--line);border-radius:999px;background:var(--card);font:inherit;font-size:13.5px;color:var(--ink-2);cursor:pointer}
+.tabs button[aria-pressed="true"]{border-color:var(--zhu);background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+.meta{margin-left:auto;color:var(--ink-3);font-size:12.5px;text-align:right}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}
+@media (max-width:1020px){.grid{grid-template-columns:1fr}}
+.model{border:1px solid var(--line);border-radius:10px;background:var(--card);padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.model.pick-on{border-color:var(--zhu);box-shadow:0 0 0 1px var(--zhu) inset}
+.model header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.model h3{margin:0;font-size:15.5px}
+.model .tag{padding:2px 9px;border-radius:999px;font-size:11.5px;background:var(--zhu-soft);color:var(--zhu)}
+.model .tag.rec{background:var(--gold-soft);color:var(--gold-ink)}
+.model .tag.none{background:var(--panel);color:var(--ink-3)}
+.model .nums{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2)}
+.model .nums b{font:15px var(--mono)}
+.model img{width:100%;height:auto;border:1px solid var(--line-2);border-radius:6px;background:#FBFAF7}
+.model .acts{margin-top:auto;display:flex;gap:8px;align-items:center}
+.btn{padding:7px 13px;border:1px solid var(--line);border-radius:8px;background:var(--card);font:inherit;font-size:13.5px;cursor:pointer;color:var(--ink)}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-weight:650}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+.foot{margin-top:14px;color:var(--ink-3);font-size:12.5px;border-top:1px solid var(--line-2);padding-top:10px}
+@media (max-width:760px){.nav{order:3;width:100%;overflow:auto}.who{margin-left:auto}.wrap{padding:14px 12px 40px}.pick select{min-width:180px}}
+</style>
+</head>
+<body>
+<div class="review">
+  <b>预测台 · 全模型预测图 · 静态提案稿</b>
+  <span>为「预测模型选择」配图：每个候选模型一张预测图，选前先看。图库快照 = 基准期 202607（确定性重算）。正式页可接实时接口。</span>
+</div>
+
+<header class="topbar">
+  <div class="brand"><strong>文衡</strong><span>学科信息参考</span></div>
+  <nav class="nav" aria-label="工作区">
+    <a href="#">生成台</a><a href="#">报告</a><a href="#">审核台</a><a href="#">分析台</a><a href="#">台账</a><a class="active" href="#">预测台</a>
+  </nav>
+  <div class="who"><span class="avatar">卜</span>卜彤 · 管理员</div>
+</header>
+
+<main class="wrap">
+  <section class="card">
+    <div class="head"><span class="eyebrow">01</span><h2>预测模型 · 全模型预测图</h2></div>
+    <p class="lead">逐科选择前先看图：每个候选模型各自的「历史拟合（虚线）+ 18 期预测」，以及它的滚动误差与首次过线。点「选用此模型」记为示意选择（正式页写回选择台账）。</p>
+
+    <div class="pick">
+      <label>潜力学科<select id="subject"></select></label>
+      <div class="tabs" id="routes" role="group" aria-label="预测路线"></div>
+      <div class="meta" id="meta"></div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <p class="foot" id="foot"></p>
+  </section>
+</main>
+
+<script src="../public/forecast/202607/index.js"></script>
+<script>
+(function(){
+  const DATA = window.WH_FORECAST_GALLERY;
+  const grid = document.getElementById('grid');
+  if(!DATA){ grid.innerHTML = '<p class="lead">未找到图库索引（web/public/forecast/202607/index.js）。</p>'; return; }
+  document.getElementById('foot').textContent =
+    '图库快照：基准期 ' + DATA.period + '（' + DATA.generated_from + '）· 外推 ' + DATA.horizon + ' 期 · ' +
+    DATA.note + ' 正式页接 /api/forecast/run（model=all）时用最新完整期次实时出图，本页为静态示意。';
+
+  const subjectSel = document.getElementById('subject');
+  DATA.subjects.forEach(function(s, i){
+    const o = document.createElement('option');
+    o.value = String(i); o.textContent = s.cn + '（' + s.en + '）';
+    subjectSel.appendChild(o);
+  });
+
+  const state = { subject: 0, route: 'citation', chosen: {} };
+  const ROUTE_LABEL = { citation: '路线 1 · 总被引 / 前 1% 阈值', rank: '路线 2 · 国内排名 / 前 1% 机构数' };
+
+  function pct(v){ return v == null ? '—' : (v*100).toFixed(2) + '%'; }
+  function per(v){ return v ? v.slice(0,4) + '-' + v.slice(4) : '窗口内未过线'; }
+
+  function renderRoutes(){
+    const box = document.getElementById('routes');
+    box.replaceChildren();
+    Object.keys(DATA.subjects[state.subject].routes).forEach(function(k){
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = ROUTE_LABEL[k];
+      b.setAttribute('aria-pressed', String(k === state.route));
+      b.addEventListener('click', function(){ state.route = k; render(); });
+      box.appendChild(b);
+    });
+  }
+
+  function renderGrid(){
+    const s = DATA.subjects[state.subject];
+    const route = s.routes[state.route];
+    document.getElementById('meta').innerHTML =
+      s.cn + ' · ' + route.label + '<br>当前接近度 ' + pct(route.cur_ratio) + ' → ' + per(route.horizon_end) + ' ' + pct(route.models.find(function(m){ return m.name === route.selected; }).end_ratio);
+    grid.replaceChildren();
+    route.models.forEach(function(m){
+      const card = document.createElement('article');
+      card.className = 'model' + ((state.chosen[state.route] || route.selected) === m.name ? ' pick-on' : '');
+      card.innerHTML =
+        '<header><h3></h3>' +
+        (m.name === route.selected ? '<span class="tag rec">V1 推荐</span>' : '') +
+        ((state.chosen[state.route] || route.selected) === m.name ? '<span class="tag">当前选用</span>' : '') +
+        (m.point_crossing ? '' : '<span class="tag none">窗口内未过线</span>') +
+        '</header>' +
+        '<div class="nums">' +
+          '<span>滚动 MAPE <b class="v-roll"></b></span>' +
+          '<span>拟合 MAPE <b class="v-fit"></b></span>' +
+          '<span>首次过线 <b class="v-cross"></b></span>' +
+          '<span>区间 <b class="v-band"></b></span>' +
+        '</div>' +
+        '<img alt="">' +
+        '<div class="acts"><button class="btn" type="button"></button></div>';
+      card.querySelector('h3').textContent = m.name;
+      card.querySelector('.v-roll').textContent = m.rolling_mape == null ? '—' : m.rolling_mape.toFixed(2) + '%';
+      card.querySelector('.v-fit').textContent = m.fit_mape == null ? '—' : m.fit_mape.toFixed(2) + '%';
+      card.querySelector('.v-cross').textContent = per(m.point_crossing);
+      card.querySelector('.v-band').textContent =
+        (m.earliest || m.latest) ? per(m.earliest) + ' ～ ' + per(m.latest) : '—';
+      const img = card.querySelector('img');
+      img.src = '../public/forecast/' + DATA.period + '/' + m.png;
+      img.alt = s.cn + ' · ' + m.name + ' 预测图';
+      const btn = card.querySelector('button');
+      const active = (state.chosen[state.route] || route.selected) === m.name;
+      btn.textContent = active ? '当前选用（示意）' : '选用此模型（示意）';
+      btn.disabled = active;
+      if(!active){
+        btn.addEventListener('click', function(){
+          state.chosen[state.route] = m.name;
+          renderGrid();
+        });
+      }
+      grid.appendChild(card);
+    });
+  }
+
+  function render(){ renderRoutes(); renderGrid(); }
+
+  subjectSel.addEventListener('change', function(){
+    state.subject = Number(subjectSel.value);
+    state.route = 'citation';
+    render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>

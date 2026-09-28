@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>云南大学数字图书馆 · ESI预测（静态提案）</title>
+<style>
+:root{
+  --green:#102b22; --green2:#173d31; --green3:#1e4b3b;
+  --cream:#eee7d7; --cream2:#d8d2bf; --gold:#cbb98d; --gold2:#e0cd9a;
+  --paper:#f6f1e4; --card:#fffdf8; --line:#ded5c0; --ink:#22332b; --ink2:#4d5c50; --ink3:#77836f;
+  --zhu:#a84a3c; --zhu-soft:#f3e2dd; --teal:#2f6f5f; --teal-soft:#e0efe8;
+  --gold-soft:#f1e9d6; --gold-ink:#7c611f;
+  --serif:Georgia,"Noto Serif CJK SC","Songti SC",SimSun,serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--green);color:var(--cream);font:15px/1.75 var(--serif);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button,select{font:inherit;color:inherit}
+.review{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding:9px 26px;background:#0b1f19;border-bottom:1px solid #2a4a3d;font-size:12.5px;color:#bfc7b4}
+.review b{color:var(--gold2)}
+.topbar{display:flex;align-items:center;gap:26px;padding:16px clamp(20px,4vw,64px);border-bottom:1px solid rgba(228,223,197,.2)}
+.brand{display:flex;align-items:baseline;gap:12px;white-space:nowrap}
+.brand .mark{font-size:21px;letter-spacing:.08em}
+.brand .sub{font-size:11.5px;letter-spacing:.22em;color:var(--gold)}
+.nav{display:flex;gap:6px;margin-left:auto;font-size:14px;letter-spacing:.08em}
+.nav a{padding:8px 13px;color:#d5d3c3;border-radius:6px}
+.nav a.active{color:var(--gold2);border-bottom:2px solid var(--gold);border-radius:0}
+.nav a:hover{color:var(--gold2)}
+.enter{padding:10px 15px;border:1px solid var(--gold);background:transparent;color:var(--gold2);font-size:13px;letter-spacing:.1em;cursor:pointer;white-space:nowrap}
+.enter:hover{background:rgba(203,185,141,.12)}
+main{padding:clamp(20px,4vw,44px) clamp(20px,4vw,64px) 70px;max-width:1720px;margin:0 auto}
+.head{max-width:900px}
+.eyebrow{margin:0;color:var(--gold);font-size:12px;letter-spacing:.3em}
+.head h1{margin:10px 0 6px;font-size:clamp(30px,3.4vw,46px);font-weight:400;letter-spacing:.12em}
+.head .lead{margin:6px 0 4px;color:#d9d7c7;font-size:15.5px}
+.head .meta{margin:0;color:#a9b4a6;font-size:12.5px;letter-spacing:.04em}
+.layout{display:grid;grid-template-columns:308px minmax(0,1fr);gap:26px;margin-top:30px;align-items:start}
+.list{display:grid;gap:0;border-top:1px solid rgba(228,223,197,.24)}
+.disc{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:12px;
+  padding:13px 10px 13px 6px;border:0;border-bottom:1px solid rgba(228,223,197,.16);
+  background:transparent;text-align:left;cursor:pointer;transition:background .15s}
+.disc:hover{background:rgba(238,231,215,.06)}
+.disc[aria-pressed="true"]{background:rgba(238,231,215,.1);box-shadow:inset 3px 0 0 var(--gold)}
+.disc .no{font:12px Georgia;color:var(--gold);letter-spacing:.1em}
+.disc .cn{display:block;font-size:14.5px;letter-spacing:.06em;color:var(--cream)}
+.disc .en{display:block;margin-top:2px;font:10px Georgia;letter-spacing:.06em;color:#9aa694}
+.badge{padding:2.5px 9px;border-radius:999px;font-size:11px;letter-spacing:.06em;white-space:nowrap}
+.badge.both{background:var(--zhu-soft);color:var(--zhu)}
+.badge.one{background:#f6ecd7;color:#8a5a1f}
+.badge.near{background:var(--gold-soft);color:var(--gold-ink)}
+.badge.watch{background:var(--teal-soft);color:var(--teal)}
+.detail{background:var(--paper);color:var(--ink);border-radius:12px;padding:clamp(16px,2.2vw,30px);min-height:520px}
+.detail-head{position:relative;padding-right:120px}
+.detail-head .badge{position:absolute;top:2px;right:0;border:1px solid rgba(0,0,0,.08)}
+.detail-head h2{margin:8px 0 2px;font-size:clamp(26px,2.6vw,38px);font-weight:400;letter-spacing:.08em}
+.detail-head .en{margin:0;color:var(--ink3);font:13px Georgia;letter-spacing:.1em}
+.note{margin:16px 0 18px;padding:11px 14px;background:#e9e7d8;border-left:3px solid var(--gold);color:var(--ink2);font-size:13.5px}
+.note b{color:var(--ink)}
+.routes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:1180px){.routes{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px 12px;display:flex;flex-direction:column}
+.card header{border-bottom:1px solid var(--line);padding-bottom:8px}
+.card .route-no{font:11px Georgia;color:var(--gold-ink);letter-spacing:.22em}
+.card h3{margin:3px 0 0;font-size:15.5px;font-weight:600;letter-spacing:.04em}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;padding:11px 2px 4px}
+.stats label{display:block;color:var(--ink3);font-size:11.5px;letter-spacing:.05em}
+.stats b{font-size:15.5px;font-weight:650}
+.stats select{width:100%;margin-top:2px;padding:5px 7px;border:1px solid var(--line);border-radius:6px;background:#fffdf8;font-size:13px;color:var(--ink)}
+.stats .hintline{display:block;color:var(--ink3);font-size:11px;margin-top:2px}
+.card figure{margin:8px 0 4px;border-top:1px dashed var(--line);padding-top:8px}
+.card img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:6px;background:#fbfaf7}
+.card .foot{margin-top:auto;padding-top:8px;border-top:1px dashed var(--line);color:var(--ink2);font-size:12.5px}
+.card .foot b{color:var(--ink)}
+.provenance{margin-top:18px;color:var(--ink3);font-size:12px;line-height:1.9;border-top:1px solid var(--line);padding-top:10px}
+@media (max-width:980px){
+  .topbar{flex-wrap:wrap;gap:10px 18px}
+  .nav{order:3;width:100%;overflow:auto}
+  .layout{grid-template-columns:1fr}
+  .detail-head{padding-right:0}
+  .detail-head .badge{position:static;display:inline-block;margin-top:8px}
+}
+</style>
+</head>
+<body>
+<div class="review">
+  <b>ESI预测 · 静态提案稿</b>
+  <span>布局参照 rick 提供的截图；图为真实可复现产物（基准期 202607，五模型）。待审核后再进 React。</span>
+</div>
+
+<header class="topbar">
+  <a class="brand" href="#"><span class="mark">雲南大學</span><span class="sub">图书馆 · YUNNAN UNIVERSITY LIBRARY</span></a>
+  <nav class="nav">
+    <a href="#">首页</a><a href="#">馆藏</a><a href="#">学科索引</a><a class="active" href="#" aria-current="page">ESI预测</a><a href="#">数据档案</a>
+  </nav>
+  <button class="enter" type="button">进入3D图书馆 ↗</button>
+</header>
+
+<main>
+  <section class="head">
+    <p class="eyebrow">YNU LIBRARY · ESI FORECAST</p>
+    <h1>ESI预测</h1>
+    <p class="lead">选择学科，查看两条路线的预测图：五个候选模型，选谁看谁。</p>
+    <p class="meta" id="headMeta"></p>
+  </section>
+
+  <div class="layout">
+    <aside class="list" id="discList" aria-label="潜力学科列表"></aside>
+    <section class="detail" id="detail" aria-live="polite"></section>
+  </div>
+</main>
+
+<script src="../public/forecast/202607/index.js"></script>
+<script>
+(function(){
+  const DATA = window.WH_FORECAST_GALLERY;
+  if(!DATA){ document.getElementById('detail').innerHTML = '<p>未找到预测图索引（web/public/forecast/202607/index.js）。</p>'; return; }
+  document.getElementById('headMeta').textContent =
+    '基准期 ' + DATA.period + ' · 外推 ' + DATA.horizon + ' 期 · ' + DATA.generated_from + ' · 数据源：监测表台账派生产物';
+
+  const BADGE_CLASS = {'双线信号':'both','单线信号':'one','临近基线':'near','持续观察':'watch'};
+  const state = { subject: 0, model: {} };
+
+  function pct(v){ return v == null ? '—' : (v*100).toFixed(2) + '%'; }
+  function mape(v){ return v == null ? '—' : v.toFixed(2) + '%'; }
+  function period(v){ return v ? (v.slice(0,4) + '-' + v.slice(4)) : '未过线'; }
+
+  function routeKeys(){ return Object.keys(DATA.subjects[state.subject].routes); }
+
+  function resetModels(){
+    const routes = DATA.subjects[state.subject].routes;
+    for(const k of Object.keys(routes)){
+      state.model[k] = routes[k].selected;
+    }
+  }
+
+  function renderList(){
+    const list = document.getElementById('discList');
+    list.replaceChildren();
+    DATA.subjects.forEach(function(s, i){
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'disc';
+      b.setAttribute('aria-pressed', String(i === state.subject));
+      b.innerHTML = '<span class="no"></span><span><span class="cn"></span><span class="en"></span></span><span class="badge"></span>';
+      b.querySelector('.no').textContent = String(i+1).padStart(2,'0');
+      b.querySelector('.cn').textContent = s.cn;
+      b.querySelector('.en').textContent = s.en;
+      const badge = b.querySelector('.badge');
+      badge.textContent = s.badge;
+      badge.classList.add(BADGE_CLASS[s.badge] || 'watch');
+      b.addEventListener('click', function(){
+        state.subject = i;
+        resetModels();
+        render();
+      });
+      list.appendChild(b);
+    });
+  }
+
+  function signalSummary(s){
+    const cites = s.routes.citation, rank = s.routes.rank;
+    const pick = function(route){
+      const m = route.models.find(function(x){ return x.name === route.selected; });
+      return m ? m.point_crossing : null;
+    };
+    const p1 = pick(cites), p2 = pick(rank);
+    if(p1 && p2) return '两条路线均已出现模型过线信号（路线 1 ' + period(p1) + '、路线 2 ' + period(p2) + '）；过线是滚动监测信号，与正式入选时间不是同一件事。';
+    if(p1 || p2) return '两条路线中只有路线 ' + (p1 ? '1' : '2') + ' 出现过线信号（' + period(p1 || p2) + '），另一条按接近度继续观察。';
+    return '两条路线暂未出现过线信号，按当前接近度持续观察；下方可切换五个模型对比各自轨迹。';
+  }
+
+  function routeCard(kind, route, badgeText){
+    const aName = kind === 'citation' ? '总被引' : '排名';
+    const bName = kind === 'citation' ? '阈值' : '机构数';
+    const card = document.createElement('article');
+    card.className = 'card';
+    card.innerHTML =
+      '<header><span class="route-no"></span><h3></h3></header>' +
+      '<div class="stats">' +
+        '<div><label>当前模型（可切换五个）</label><select></select></div>' +
+        '<div><label>综合滚动 MAPE</label><b class="s-roll"></b></div>' +
+        '<div><label><span class="s-ab-label"></span> MAPE</label><b class="s-ab"></b></div>' +
+        '<div><label>首次过线</label><b class="s-cross"></b><span class="hintline s-band"></span></div>' +
+      '</div>' +
+      '<figure><img alt=""></figure>' +
+      '<p class="foot"></p>';
+    card.querySelector('.route-no').textContent = kind === 'citation' ? '路线 1' : '路线 2';
+    card.querySelector('h3').textContent = route.metric_a + ' × ' + route.metric_b;
+    card.querySelector('.s-ab-label').textContent = aName + ' / ' + bName;
+
+    const select = card.querySelector('select');
+    route.models.forEach(function(m){
+      const opt = document.createElement('option');
+      opt.value = m.name;
+      opt.textContent = m.name + (m.name === route.selected ? '（推荐）' : '');
+      select.appendChild(opt);
+    });
+    select.value = state.model[kind] || route.selected;
+
+    function paint(){
+      const m = route.models.find(function(x){ return x.name === select.value; });
+      if(!m) return;
+      card.querySelector('.s-roll').textContent = mape(m.rolling_mape);
+      card.querySelector('.s-ab').textContent = mape(m.rolling_a) + ' / ' + mape(m.rolling_b);
+      card.querySelector('.s-cross').textContent = m.point_crossing ? period(m.point_crossing) : '窗口内未过线';
+      card.querySelector('.s-band').textContent =
+        (m.earliest || m.latest) ? '区间 ' + (m.earliest ? period(m.earliest) : '—') + ' ～ ' + (m.latest ? period(m.latest) : '—') : '';
+      const img = card.querySelector('img');
+      img.src = '../public/forecast/' + DATA.period + '/' + m.png;
+      img.alt = DATA.subjects[state.subject].cn + ' · ' + m.name + ' 预测图';
+      card.querySelector('.foot').innerHTML =
+        '当前接近度 <b>' + pct(m.cur_ratio) + '</b> → ' + route.horizon_end.slice(0,4) + '-' + route.horizon_end.slice(4) +
+        ' <b>' + pct(m.end_ratio) + '</b>';
+    }
+    select.addEventListener('change', function(){
+      state.model[kind] = select.value;
+      paint();
+    });
+    paint();
+    return card;
+  }
+
+  function renderDetail(){
+    const s = DATA.subjects[state.subject];
+    const detail = document.getElementById('detail');
+    detail.replaceChildren();
+    const head = document.createElement('div');
+    head.className = 'detail-head';
+    head.innerHTML = '<p class="eyebrow">SELECTED DISCIPLINE</p><span class="badge"></span><h2></h2><p class="en"></p>';
+    head.querySelector('h2').textContent = s.cn;
+    head.querySelector('.en').textContent = s.en;
+    const badge = head.querySelector('.badge');
+    badge.textContent = s.badge;
+    badge.classList.add(BADGE_CLASS[s.badge] || 'watch');
+    detail.appendChild(head);
+    const note = document.createElement('p');
+    note.className = 'note';
+    note.textContent = signalSummary(s);
+    detail.appendChild(note);
+    const routes = document.createElement('div');
+    routes.className = 'routes';
+    for(const k of routeKeys()){
+      routes.appendChild(routeCard(k, s.routes[k], s.badge));
+    }
+    detail.appendChild(routes);
+    const prov = document.createElement('p');
+    prov.className = 'provenance';
+    prov.textContent = DATA.note.replace(/。$/, '') + '。图的数字来自本项目确定性重算（' + DATA.generated_from + '），与正式报告口径的差异以报告说明为准。';
+    detail.appendChild(prov);
+  }
+
+  function render(){
+    renderList();
+    renderDetail();
+  }
+
+  resetModels();
+  render();
+})();
+</script>
+</body>
+</html>
