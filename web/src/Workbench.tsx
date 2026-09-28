@@ -201,9 +201,9 @@ function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }
   return null
 }
 
-function ModelPicker({
+function ModelSummary({
   period, periods, meta, metaError, actualOutputPeriod, state, dirty,
-  onPickPeriod, onChange, onSave, onReload,
+  onPickPeriod, onReload,
 }: {
   period: string | null
   periods: Period[]
@@ -213,14 +213,11 @@ function ModelPicker({
   state: ForecastChoiceEntry | null
   dirty: boolean
   onPickPeriod: (period: string) => void
-  onChange: (route: string, subject: string, model: string) => void
-  onSave: () => void
   onReload: () => void
 }) {
   const [route, setRoute] = useState(meta?.routes[0]?.value ?? '')
   const routes = meta?.routes ?? []
   const subjects = meta?.subjects ?? []
-  const models = (meta?.models ?? []).filter((m) => m.value !== 'recommended' && m.value !== 'all')
   const source = meta?.upstream_workbook
   const sourceTime = source?.last_modified_at ?? null
   const freshnessText = meta?.data_freshness === 'needs_check'
@@ -232,19 +229,19 @@ function ModelPicker({
     <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <span className="fc-no">01</span>
-        <h2 style={{ fontSize: 21 }}>预测模型</h2>
+        <h2 style={{ fontSize: 21 }}>预测模型 · 本期已选</h2>
         <span style={{ padding: '3px 9px', borderRadius: 999, background: 'var(--gold-soft)', color: 'var(--gold-ink)', fontSize: 12, fontWeight: 650 }}>
-          逐科选择 · 默认 V1 推荐
+          只读 · 改选去预测台
         </span>
       </div>
       <p style={{ margin: '9px 0 14px', color: 'var(--ink-2)', fontSize: 15.5 }}>
-        两条路线分别按任务期次保存。想改哪科就改哪科；模型说明会随选择切换。
-        本期报告只应用实际进入预测章的学科，其他已保存选择不改变本期数值。
+        模型选择只有一份，按期次保存；这里只显示本期配置，改选集中在预测台——那边能对着五个模型的预测图挑。
+        改完保存后回到这里会同步显示；本期报告只应用实际进入预测章的学科。
       </p>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 14px', background: 'var(--panel)', border: '1px solid var(--line-2)', borderRadius: 10 }}>
         <label htmlFor="workbench-task-period" style={{ display: 'grid', gap: 4, color: 'var(--ink-3)', fontSize: 13 }}>
-          模型配置对应的任务期次
+          当前期次
           <select id="workbench-task-period" value={period ?? ''} onChange={(e) => onPickPeriod(e.target.value)}
                   style={{ minWidth: 170, padding: '5px 9px', border: '1px solid var(--line)', borderRadius: 7, background: 'var(--card)', color: 'var(--ink)', font: 'inherit', fontSize: 16 }}>
             {!period && <option value="">请选择期次</option>}
@@ -298,7 +295,7 @@ function ModelPicker({
         <>
           <div className="tablewrap" style={{ marginTop: 12 }}>
             <table>
-              <thead><tr><th>潜力学科</th><th>V1 基线推荐</th><th>我的选择</th><th>模型说明（跟着选择变）</th></tr></thead>
+              <thead><tr><th>潜力学科</th><th>V1 基线推荐</th><th>本期已选</th><th>模型说明</th></tr></thead>
               <tbody>
                 {subjects.map((subject) => {
                   const rec = meta.recommendations?.[currentRoute]?.[subject] ?? ''
@@ -309,14 +306,9 @@ function ModelPicker({
                       <td>{subject}</td>
                       <td>{rec || 'V1 基线推荐'}</td>
                       <td>
-                        <select value={mine} aria-label={`${subject}的预测模型`}
-                                disabled={state.saving}
-                                onChange={(e) => onChange(currentRoute, subject, e.target.value)}>
-                          <option value="">用 V1 推荐</option>
-                          {models.map((model) => <option key={model.value} value={model.value}>{model.label}</option>)}
-                        </select>
+                        <b>{actual || '—'}</b>
                         <span className="mdesc" style={{ color: mine ? 'var(--zhu)' : 'var(--ink-3)' }}>
-                          {mine ? `已改选：${mine}` : '使用 V1 推荐'}
+                          {mine ? '已改选' : '跟随 V1 推荐'}
                         </span>
                       </td>
                       <td><span className="mdesc">{MODEL_DESC[actual] ?? '由 V1 基线按学科指定。'}</span></td>
@@ -329,14 +321,21 @@ function ModelPicker({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--line-2)' }}>
-            <button className="btn" type="button" onClick={onSave} disabled={!dirty || state.saving || !period}>
-              {state.saving ? '正在保存……' : `保存${period ?? '本期'}选择`}
-            </button>
-            <span role="status" className="hint" style={dirty ? { color: 'var(--warn)', fontWeight: 650 } : { color: 'var(--ok)' }}>
-              {state.error || (dirty
-                ? '有未保存修改 · 保存并确认成功后，才会用于之后开始的任务。'
-                : `已保存${state.by ? ` · ${state.by}` : ''}${state.at ? ` · ${state.at}` : ''} · 未改选的学科使用 V1 推荐`)}
-            </span>
+            <a className="btn primary" href={`/app/?view=forecast${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+              去预测台看图改选 →
+            </a>
+            {dirty ? (
+              <>
+                <span role="status" className="hint" style={{ color: 'var(--warn)', fontWeight: 650 }}>
+                  有未保存修改（在预测台改的）——保存后才可开始生成。
+                </span>
+                <button type="button" className="btn" onClick={onReload}>放弃修改并重新读取</button>
+              </>
+            ) : (
+              <span role="status" className="hint" style={{ color: 'var(--ok)' }}>
+                {state?.error || `已保存${state?.by ? ` · ${state.by}` : ''}${state?.at ? ` · ${state.at}` : ''} · 未改选的学科使用 V1 推荐`}
+              </span>
+            )}
           </div>
         </>
       )}
@@ -350,7 +349,7 @@ export function Workbench({
   period, me, wb, err, healthy, run, approvalStatus, runApprovalStatus, activityState,
   actionLockReason, activeRun, actionsLocked, submitting, onGenerate,
   periods, forecastMeta, forecastMetaError, actualOutputPeriod, forecastChoice, forecastChoiceDirty,
-  onPickPeriod, onForecastChoiceChange, onSaveForecastChoice, onReloadForecastChoice,
+  onPickPeriod, onReloadForecastChoice,
 }: {
   period: string | null
   me: Me | null
@@ -373,8 +372,6 @@ export function Workbench({
   forecastChoice: ForecastChoiceEntry | null
   forecastChoiceDirty: boolean
   onPickPeriod: (period: string) => void
-  onForecastChoiceChange: (route: string, subject: string, model: string) => void
-  onSaveForecastChoice: () => void
   onReloadForecastChoice: () => void
 }) {
   const canGenerate = me?.role === 'admin' && period != null && /^\d{6}$/.test(period) && !actionsLocked && !activeRun && !submitting
@@ -446,11 +443,10 @@ export function Workbench({
         )}
       </section>
 
-      <ModelPicker period={period} periods={periods} meta={forecastMeta} metaError={forecastMetaError}
-                   actualOutputPeriod={actualOutputPeriod} state={forecastChoice}
-                   dirty={forecastChoiceDirty} onPickPeriod={onPickPeriod}
-                   onChange={onForecastChoiceChange} onSave={onSaveForecastChoice}
-                   onReload={onReloadForecastChoice} />
+      <ModelSummary period={period} periods={periods} meta={forecastMeta} metaError={forecastMetaError}
+                    actualOutputPeriod={actualOutputPeriod} state={forecastChoice}
+                    dirty={forecastChoiceDirty} onPickPeriod={onPickPeriod}
+                    onReload={onReloadForecastChoice} />
     </>
   )
 }

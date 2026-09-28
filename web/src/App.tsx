@@ -277,7 +277,7 @@ export default function App() {
     : selected && !selectedForecastChoice?.loaded
       ? selectedForecastChoice?.error || '正在读取本期已保存的模型选择，读取完成后才能开始生成。'
       : selectedForecastChoiceDirty
-        ? '本期模型选择有未保存修改，请保存并确认成功后再开始生成。'
+        ? '本期模型选择有未保存修改——去预测台保存，或在生成台点「放弃修改并重新读取」后再开始生成。'
         : null
 
   useEffect(() => {
@@ -563,8 +563,6 @@ export default function App() {
                         forecastChoice={selectedForecastChoice}
                         forecastChoiceDirty={selectedForecastChoiceDirty}
                         onPickPeriod={pickPeriod}
-                        onForecastChoiceChange={changeForecastChoice}
-                        onSaveForecastChoice={saveSelectedForecastChoice}
                         onReloadForecastChoice={reloadForecastChoice}
                       />
             {!noAdminBits && <Tools
