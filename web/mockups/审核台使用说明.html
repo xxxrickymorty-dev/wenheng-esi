@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>文衡 · 审核台使用说明</title>
+<style>
+  :root{
+    --paper:#f6f3ea; --card:#fffdf7; --ink:#22301f; --ink-2:#5c6653; --ink-3:#8a9179;
+    --line:#ddd6c4; --line-2:#e9e3d3;
+    --green:#12362a; --green-2:#1d4a37; --gold:#a9915d;
+    --zhu:#b8422c; --zhu-soft:#f7e3dd; --ok:#2f7d4f; --bad:#b03024;
+    --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+    --serif:Georgia,"Songti SC","Noto Serif SC",SimSun,serif;
+    --body:"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font:15.5px/1.85 var(--body)}
+  .wrap{max-width:980px;margin:0 auto;padding:44px 26px 80px}
+  header.doc{border-bottom:2px solid var(--green);padding-bottom:22px;margin-bottom:34px}
+  .kicker{font:12px var(--mono);letter-spacing:.22em;color:var(--gold);text-transform:uppercase}
+  h1{font:500 34px/1.35 var(--serif);margin:10px 0 6px}
+  .sub{color:var(--ink-2);margin:0}
+  h2{font:500 23px/1.5 var(--serif);margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--zhu)}
+  h3{font:600 17px/1.6 var(--body);margin:26px 0 8px}
+  p{margin:8px 0}
+  .lead{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--green);
+        border-radius:10px;padding:16px 20px;margin:18px 0 26px}
+  .lead b{color:var(--green)}
+  .tag{display:inline-block;font:12px var(--mono);background:var(--green);color:#f2ecd9;
+       border-radius:999px;padding:2px 10px;margin-right:8px;vertical-align:2px}
+  .tag.zhu{background:var(--zhu)}
+  .tag.gold{background:var(--gold);color:#241f12}
+  /* ------- 流程图 ------- */
+  .flow{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;margin:20px 0}
+  .step{flex:1 1 150px;background:var(--card);border:1px solid var(--line);border-radius:12px;
+        padding:13px 14px;position:relative}
+  .step .no{font:12px var(--mono);color:var(--gold);letter-spacing:.1em}
+  .step .t{font-weight:600;margin:5px 0 3px}
+  .step .d{font-size:13px;color:var(--ink-2);line-height:1.7}
+  .step.hot{border-color:var(--zhu);box-shadow:0 0 0 1px var(--zhu) inset}
+  .step .who{position:absolute;top:11px;right:12px;font:11px var(--mono);color:var(--ink-3)}
+  /* ------- 卡片详解 ------- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+        padding:18px 22px;margin:16px 0}
+  .card h3{margin-top:0;display:flex;align-items:center;gap:10px}
+  .card .ui{font:13px var(--mono);background:#f1ecdd;border:1px solid var(--line);
+            border-radius:7px;padding:1px 8px;white-space:nowrap}
+  ul{margin:8px 0;padding-left:22px}
+  li{margin:5px 0}
+  .red{color:var(--zhu);font-weight:600}
+  .ok{color:var(--ok);font-weight:600}
+  .muted{color:var(--ink-3);font-size:13.5px}
+  code{font:13.5px var(--mono);background:#f1ecdd;border:1px solid var(--line-2);
+       border-radius:5px;padding:1px 6px}
+  table{border-collapse:collapse;width:100%;margin:14px 0;background:var(--card)}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top;font-size:14.5px}
+  th{background:#efe9d9;font-weight:600}
+  .qa{border-top:1px dashed var(--line);padding:13px 2px}
+  .qa b{color:var(--green-2)}
+  .check{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 22px}
+  .check li{list-style:none;position:relative;padding-left:30px}
+  .check li:before{content:"";position:absolute;left:0;top:7px;width:15px;height:15px;
+                   border:1.6px solid var(--ink-3);border-radius:4px;background:#fff}
+  .warn{background:var(--zhu-soft);border:1px solid #e5bdb2;border-radius:10px;padding:12px 18px;margin:14px 0}
+  .warn b{color:var(--bad)}
+  footer{margin-top:50px;border-top:1px solid var(--line);padding-top:16px;
+         font-size:12.5px;color:var(--ink-3);font:12.5px/1.9 var(--mono)}
+  @media print{
+    body{background:#fff}
+    .wrap{padding:0;max-width:none}
+    .step,.card,.check{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc">
+  <div class="kicker">Wenheng · Review Desk Guide</div>
+  <h1>审核台使用说明</h1>
+  <p class="sub">机器把红色件都替换完之后，「这一期能不能报出去」由人拍板的地方。</p>
+</header>
+
+<div class="lead">
+  <b>一句话：</b>审核台 = 核版 → 处理待办 → 勾选放行 → <b>钤印签单</b>。签单会绑在这一版报告的指纹上；
+  以后只要重跑一次、报告内容变了，签名自动失效，必须重新核对再签。<br>
+  <span class="muted">入口：顶栏「审核台」；只对管理员开放（游客连按钮都看不到，后端还会再挡一道）。</span>
+</div>
+
+<h2>0 · 什么时候用它</h2>
+<ul>
+  <li>生成台跑完、报告初稿出来后：<b>先审后签</b>，没签的稿子不能下载（管理员也不行）。</li>
+  <li>带病出稿（断言有未过项）时：先看《诊断报告》，修台账重跑；断言未过<b>签不了</b>。</li>
+  <li>改了报告里的人工补录、重出了新版后：旧签名失效，要重新走一遍。</li>
+</ul>
+
+<h2>1 · 整个流程一图流</h2>
+<div class="flow">
+  <div class="step"><span class="who">生成台</span><div class="no">①</div><div class="t">出稿</div>
+    <div class="d">流水线跑完，产出报告初稿 + 红色件清单 + 对勘数据</div></div>
+  <div class="step"><span class="who">审核台</span><div class="no">②</div><div class="t">核版</div>
+    <div class="d">看状态章、待人工、存疑；打开报告/红色件清单逐项核对</div></div>
+  <div class="step hot"><span class="who">审核台</span><div class="no">③</div><div class="t">处理待办</div>
+    <div class="d">能补的「在线填」→ 保存；拿不准的「标存疑」；<b>保存并重出报告</b>让填值进稿</div></div>
+  <div class="step"><span class="who">审核台</span><div class="no">④</div><div class="t">勾选放行</div>
+    <div class="d">勾「我已逐项看过待人工与存疑处，同意放行」，可写批注</div></div>
+  <div class="step hot"><span class="who">审核台</span><div class="no">⑤</div><div class="t">钤印签单</div>
+    <div class="d">过三道闸门 → 落盘 <code>approval.json</code> + <code>审批记录.md</code>，绑定指纹</div></div>
+  <div class="step"><span class="who">报告 / 下载</span><div class="no">⑥</div><div class="t">签发后</div>
+    <div class="d">报告期次链盖朱印；管理员可以下载这一版；重跑 → 签名失效 → 回到②</div></div>
+</div>
+
+<h2>2 · 三块卡片，各自干什么</h2>
+
+<div class="card">
+  <h3><span class="tag zhu">卡片一</span>审核 · 签单</h3>
+  <p>截图里最上面那张。四个部件：</p>
+  <table>
+    <tr><th style="width:150px">部件</th><th>说明</th></tr>
+    <tr><td><b>状态章</b>（右上）</td>
+        <td><b>未签发</b>＝还没签；<b>已签发</b>＝签名有效、和当前这版报告对得上；
+            <b>签名已失效</b>＝签过，但报告被重新生成过（指纹变了），<span class="red">不能当已签发用</span>。</td></tr>
+    <tr><td><b>放行勾选框</b></td>
+        <td>文案「我已逐项看过待人工与存疑处（本期待人工 N 处），同意放行」。
+            <b>本期待人工 &gt; 0 时，不勾就签不了</b>——这是后端闸门，不是提示。</td></tr>
+    <tr><td><b>批注框</b>（可选）</td>
+        <td>写「为什么这版可以签 / 还有哪些已知问题」。会原文进《审批记录.md》的操作历史，可追责。</td></tr>
+    <tr><td><b>钤印签单 / 撤回</b></td>
+        <td>签单＝落盘并绑指纹；撤回＝取消签发，<b>保留全部历史记录不删除</b>，状态回「未签发」。</td></tr>
+  </table>
+  <h3>签单时后端过三道闸门（任何一道不过都会拒绝并给原因）</h3>
+  <ul>
+    <li><b>闸门一：</b>本期没签过（防止重复签）；</li>
+    <li><b>闸门二：</b>机器断言 <code>fail = 0</code>（有一条 FAIL 都不行）；</li>
+    <li><b>闸门三：</b>待人工补录为 0，或者你显式勾选了「已知悉并放行」。</li>
+  </ul>
+  <p class="muted">签单那一刻会对 <code>报告初稿_*.docx</code>、<code>table2.csv</code>、<code>red_slots.json</code>
+     三件产物取内容指纹（SHA-256）。以后这三件任何一件变了（重跑/重出），签名即失效。</p>
+</div>
+
+<div class="card">
+  <h3><span class="tag">卡片二</span>待人工处 · 标存疑</h3>
+  <ul>
+    <li>列出报告里仍带 <code>【手工：…】</code> 占位的位置（如 正文/p1、正文/p2、省域表 province_p），
+        也就是机器不敢替你编、必须人来定的数字槽。</li>
+    <li>「<b>标存疑</b>」＝把这一处记进 <code>out/&lt;期次&gt;/review.json</code>（留痕：谁、什么时候）；
+        再点一次＝取消存疑。它不硬拦签单，但签单前你必须勾选知悉。</li>
+    <li>列表只展示前 12 处；<b>更多看完整版 → 报告屏的「红色件清单」</b>。</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3><span class="tag">卡片三</span>在线填 · 报告里的空</h3>
+  <ul>
+    <li><b>待补录 N 处</b>：可以直接填的（数字槽）。填完把对应位置的值写在这里就行。</li>
+    <li><b>待确认 M 处</b>：结构性项（封面期次、年月、大表列名等），<b>只核对、不填</b>——这些填错整份报废。</li>
+    <li><b>保存填写</b>：把填值存到 <code>out/&lt;期次&gt;/manual_inputs.json</code>（记录填的人和时间）。
+        <span class="red">此步还没进报告。</span></li>
+    <li><b>保存并重出报告</b>：把填值交给后端 → 旧成品撤到 <code>_superseded/</code>（可回滚）→
+        不重新解析台账 → 约 2–15 秒重出一版新报告。<b>这一步做完，值才真正进稿。</b></li>
+  </ul>
+  <div class="warn"><b>红线：</b>你填的是<b>报告里的空</b>，<b>台账一个字节都不会动</b>——改了台账，整份报告的溯源就断了。</div>
+  <p class="muted">「已填」列表三种状态：<b>pending</b>＝填了但还没重出（标记还在）；
+     <b>applied</b>＝已写进报告初稿；<b>orphan</b>＝在本次产物里找不到这个位置（旧版残留，需人工看看，别当已生效）。</p>
+</div>
+
+<h2>3 · 每期操作清单（照着走）</h2>
+<div class="check">
+<ul>
+  <li>① 生成台确认本期跑完；带《诊断报告》的先修台账重跑，别硬签。</li>
+  <li>② 审核台确认期次正确（顶栏选期次），看状态章：未签发 / 签名已失效都要走下面全程。</li>
+  <li>③ 打开报告与红色件清单，逐项核对；把需要人工的数字槽在「在线填」里补齐。</li>
+  <li>④ 拿不准的先「标存疑」，批注里写清楚为什么放行。</li>
+  <li>⑤ 点「保存并重出报告」，回报告屏复核新版确实带上了你填的值。</li>
+  <li>⑥ 勾选「我已逐项看过待人工与存疑处，同意放行」。</li>
+  <li>⑦ 点「钤印签单」；收到「已签单」提示后，状态章应变「已签发」。</li>
+  <li>⑧ 需要下载报告，签发后再下（未签发/失效状态会被后端挡住）。</li>
+  <li>⑨ 如果之后又重跑了流水线/重出了报告：回来重新签到（状态会是「签名已失效」）。</li>
+  <li>⑩ 发现签错/要改：点「撤回」，改完后重新走 ②–⑦。</li>
+</ul>
+</div>
+
+<h2>4 · 常见问题</h2>
+<div class="qa"><b>Q：点「钤印签单」报「闸门没放行」？</b><br>
+三种可能，报错里会写清楚：① 本期已经签过了；② 机器断言还有 FAIL（先修台账重跑）；
+③ 还有待人工项没勾「同意放行」。按提示处理即可。</div>
+<div class="qa"><b>Q：我在「在线填」填了值，报告里怎么还是空的？</b><br>
+「保存填写」只存了填值，没改报告。要点 <b>「保存并重出报告」</b>，等它重出完再回报告屏看。</div>
+<div class="qa"><b>Q：为什么刚签完，过一会儿变成「签名已失效」？</b><br>
+说明这份报告在三件产物上被重新生成过（重跑流水线、重出报告、或被别的任务改写）。
+旧签名只认它签的那一版，必须重新核对、重新签。</div>
+<div class="qa"><b>Q：标了「存疑」还能签吗？</b><br>
+能，但签字前必须勾「已逐项看过待人工与存疑处，同意放行」；勾选动作和历史都留在《审批记录.md》里。</div>
+<div class="qa"><b>Q：签发前能不能先把报告下载下来看看？</b><br>
+不能。未签发或签名已失效的版本都被下载闸门挡住（管理员也一样）；签发之后可以下载。</div>
+<div class="qa"><b>Q：游客能看到审核台吗？</b><br>
+看不到。审核台、签单、下载都只对管理员开放；游客进的是独立的陈列馆（封面/目录/名词解释预览）。</div>
+
+<h2>5 · 它背后落了哪些文件（出问题时可查）</h2>
+<table>
+  <tr><th style="width:300px">文件</th><th>作用</th></tr>
+  <tr><td><code>out/&lt;期次&gt;/approval.json</code></td><td>签单记录本体：签单人、时间、批注、放行快照、指纹、操作历史（含撤回）。</td></tr>
+  <tr><td><code>out/&lt;期次&gt;/审批记录.md</code></td><td>给人看的同一份记录（谁、何时、放了什么行）。</td></tr>
+  <tr><td><code>out/&lt;期次&gt;/manual_inputs.json</code></td><td>在线填的内容（谁在什么时候填的哪一处）。</td></tr>
+  <tr><td><code>out/&lt;期次&gt;/review.json</code></td><td>「存疑」标记。</td></tr>
+  <tr><td><code>out/&lt;期次&gt;/_superseded/&lt;时间戳&gt;/</code></td><td>重出前的旧成品（可回滚）；失败运行不会留下「新表格+旧报告」的混装。</td></tr>
+  <tr><td><code>out/&lt;期次&gt;/诊断报告.md</code></td><td>带病出稿时由生成台附上：哪条断言没过、怎么修。</td></tr>
+</table>
+
+<footer>
+  文衡 · 学科信息参考 — 审核台使用说明（离线单文件，零依赖；2026-09-28 版）<br>
+  口径来源：web/src/Review.tsx · server/approval.py · server/workbench.py —— 页面行为如与本文不符，以代码为准。
+</footer>
+
+</div>
+</body>
+</html>
