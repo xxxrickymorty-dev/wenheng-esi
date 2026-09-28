@@ -65,8 +65,8 @@ def main() -> int:
 
         t = time.time()
         pg.goto(B + "/login", wait_until="networkidle")
-        pg.fill("input[name=username]", U); pg.fill("input[name=password]", P)
-        pg.click("button[type=submit]"); pg.wait_for_load_state("networkidle")
+        pg.fill(".login-form input[name=username]", U); pg.fill(".login-form input[name=password]", P)
+        pg.click(".login-form button[type=submit]"); pg.wait_for_load_state("networkidle")
         check("① 登录", "生成台" in pg.inner_text("body"), "", t)
 
         # ② 生成台：第一屏就回答「我现在该做什么」
@@ -137,8 +137,8 @@ def main() -> int:
                                 device_scale_factor=1).new_page()
         gp_page.on("pageerror", lambda e: PAGE_ERRORS.append("guest: " + str(e)))
         gp_page.goto(B + "/login", wait_until="networkidle")
-        gp_page.fill("input[name=username]", GU); gp_page.fill("input[name=password]", GP)
-        gp_page.click("button[type=submit]")
+        gp_page.fill(".login-form input[name=username]", GU); gp_page.fill(".login-form input[name=password]", GP)
+        gp_page.click(".login-form button[type=submit]")
         gp_page.wait_for_url("**/app/shelf/**", timeout=10000)
         gp_page.wait_for_selector(".home-book-item", timeout=10000)
         books = gp_page.eval_on_selector_all(".home-book-item", "e => e.length")

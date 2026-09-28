@@ -2,6 +2,17 @@
 {% block title %}欢迎 · 文衡{% endblock %}
 {% block sub %}学 科 信 息 参 考 · 演 示 环 境{% endblock %}
 {% block body_attrs %}class="theme-ynu"{% endblock %}
+{% block nav_action %}
+{% if show_guest %}
+{# 顶栏的「陈列馆」就是游客入口：陈列馆数据需要会话，纯链接会让访客落到「读不到数据」的页；
+   这里用纯表单 POST（不依赖 JS）以游客身份登录，后端 303 直达 /app/shelf/（只读预览）。 #}
+<form method="post" action="/login" class="nav-guest">
+  <input type="hidden" name="username" value="{{ guest_user }}">
+  <input type="hidden" name="password" value="{{ guest_pass }}">
+  <button type="submit" class="ghost" title="以游客身份浏览陈列馆（只读）">陈列馆</button>
+</form>
+{% endif %}
+{% endblock %}
 
 {# 欢迎页 ＝ 登录页（rick 2026-09-21 定：把建筑图做首屏；2026-09-28 二改：满屏图书馆背景；
    2026-09-28 三改：登录卡改玻璃拟态（参考 CodePen「Glassmorphism | Login Form」bGwYYPQ 的
@@ -34,6 +45,14 @@
     display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(340px, .75fr);
     gap: 40px; align-items: center; min-height: calc(100vh - 164px); padding: 34px 0;
   }
+  /* 顶栏游客入口：与导航项同貌（button 版 .ghost 的重置） */
+  .topbar nav form { display: inline-flex; }
+  .topbar nav button.ghost {
+    font: inherit; background: none; border: 0; border-bottom: 1px solid transparent;
+    padding: 0; cursor: pointer; color: inherit; transition: border-color .18s, color .18s;
+  }
+  .topbar nav button.ghost:hover { color: #FFF6D8; border-bottom-color: #FFF6D8; }
+
   /* --- 左：文案（暗底上全部转米白，强调符用金） --- */
   .welcome-copy { padding: 0 4px; }
   .welcome-copy .eyebrow {
@@ -112,11 +131,11 @@
   body.theme-ynu .plaque hr { border-top: 1px solid rgba(255, 255, 255, .18); }
 
   /* 输入框：浮动标签（input 在前、span 在后，`:focus`/`:valid` 提起）+ 内联 SVG 前导图标 */
-  body.theme-ynu .plaque .inputBx { position: relative; margin-bottom: 20px; }
+  body.theme-ynu .plaque .inputBx { position: relative; margin-bottom: 18px; }
   body.theme-ynu .plaque .inputBx input {
-    width: 100%; margin-top: 0; padding: 13px 46px 13px 42px;
+    width: 100%; margin-top: 0; padding: 10px 42px 10px 40px;
     background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .28);
-    border-radius: 14px; color: #fff; font-size: 15px;
+    border-radius: 12px; color: #fff; font-size: 14.5px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, .12);
     transition: border-color .2s, background .2s;
   }
@@ -130,27 +149,28 @@
     -webkit-text-fill-color: #fff; transition: background-color 9999s ease-out;
   }
   body.theme-ynu .plaque .inputBx span {
-    position: absolute; left: 42px; top: 13px; color: rgba(255, 255, 255, .85);
-    font-size: 14.5px; letter-spacing: .04em; pointer-events: none; transition: .25s ease;
+    position: absolute; left: 40px; top: 10px; color: rgba(255, 255, 255, .85);
+    font-size: 14px; line-height: 1.4; letter-spacing: .04em; pointer-events: none;
+    transition: .25s ease;
   }
   body.theme-ynu .plaque .inputBx input:focus ~ span,
   body.theme-ynu .plaque .inputBx input:valid ~ span {
-    transform: translate(-34px, -26px) scale(.82);
+    transform: translate(-32px, -26px) scale(.78);
     transform-origin: left top; color: rgba(255, 255, 255, .78);
   }
   body.theme-ynu .plaque .inputBx .lead-ic {
-    position: absolute; left: 13px; top: 12px; width: 20px; height: 20px;
+    position: absolute; left: 12px; top: 11px; width: 18px; height: 18px;
     stroke: rgba(255, 255, 255, .85); fill: none; stroke-width: 1.7;
     stroke-linecap: round; stroke-linejoin: round; pointer-events: none;
   }
   /* 密码显示切换（原稿的眼睛；内联 SVG 替代外链图标） */
   body.theme-ynu .plaque .pwd-toggle {
-    position: absolute; right: 8px; top: 7px; width: 32px; height: 32px;
+    position: absolute; right: 6px; top: 6px; width: 30px; height: 30px;
     display: grid; place-items: center; border: 0; background: transparent;
     cursor: pointer; border-radius: 9px;
   }
   body.theme-ynu .plaque .pwd-toggle svg {
-    width: 20px; height: 20px; stroke: rgba(255, 255, 255, .8); fill: none;
+    width: 18px; height: 18px; stroke: rgba(255, 255, 255, .8); fill: none;
     stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
   }
   body.theme-ynu .plaque .pwd-toggle:hover { background: rgba(255, 255, 255, .12); }
@@ -264,18 +284,6 @@
               <button class="btn primary wide" type="submit">登 录</button>
             </form>
             {% if hint %}<p class="muted small" style="margin-top:14px">演示提示：账号 <code>{{ show_hint_user }}</code>，密码见 server/.env 配置。</p>{% endif %}
-            {% if show_guest %}
-            <!-- 只读游客入口：纯表单 POST（无 JS 也能用）；凭据来自 server/.env 的 WENHENG_GUEST_*，
-                 显示由 WENHENG_SHOW_GUEST 控制（默认显示，=0 隐藏）。 -->
-            <form method="post" action="/login" style="margin-top:10px">
-              <input type="hidden" name="username" value="{{ guest_user }}">
-              <input type="hidden" name="password" value="{{ guest_pass }}">
-              <button class="btn line wide" type="submit">以游客身份浏览（只读）</button>
-            </form>
-            <p class="muted small" style="margin-top:8px">
-              游客仅可在陈列馆查看封面、目录和名词解释，不能看全文、下载、指标或数据档案。
-            </p>
-            {% endif %}
           </div>
         </div>
       </div>

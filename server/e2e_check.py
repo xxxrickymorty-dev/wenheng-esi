@@ -131,8 +131,8 @@ check("欢迎页背景图 + 校徽走 asset 版本号",
       f"got {st}")
 check("登录表单完好（账号/密码/action）",
       'name="username"' in lp and 'name="password"' in lp and 'action="/login"' in lp)
-check("登录页有游客入口（只读，纯表单 POST）",
-      "以游客身份浏览" in lp and 'type="hidden" name="username"' in lp)
+check("顶栏有陈列馆入口（游客只读，纯表单 POST）",
+      "陈列馆" in lp and lp.count('action="/login"') >= 2)
 st, body, final = call("POST", "/login", {"username": "demo", "password": "wenheng@2026"})
 # ⚠ 别写死 8080：用 `WENHENG_BASE` 换端口跑时，写死会让这条**假失败**
 #    （2026-09-19 用 8099 实测：final 明明是首页，断言却判未过）。
