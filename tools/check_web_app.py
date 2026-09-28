@@ -26,6 +26,7 @@ r"""端到端：`/app`（React 工作区）在真实浏览器里跑通「登录 
 import http.cookiejar
 import os
 import pathlib
+import re
 import sys
 import urllib.parse
 import urllib.request
@@ -130,6 +131,45 @@ def main():
                   f"templates={len(pages_text)} 字")
         except Exception as e:                                       # noqa: BLE001
             check("管理员开书含全内容册页（数字体检 / 学科大表 / 双路线预测）", False, str(e)[:80])
+
+        # ---- 1c) 界面禁用词（票 09）：词表单源 web/src/lib/banned.ts ----
+        # 策略：只扫**前端自撰区块**（标题/导语/提示/按钮/空错态等），不扫数据表、日志、
+        # 进度明细与带 data-src="backend" 的后端文字——那类内容由后端措辞负责，误报会淹掉真信号。
+        def banned_terms():
+            src = pathlib.Path(__file__).resolve().parent.parent / "web" / "src" / "lib" / "banned.ts"
+            if not src.exists():
+                return []
+            text = src.read_text(encoding="utf-8")
+            block = text.split("string[] = [", 1)[-1].split("]", 1)[0]
+            return re.findall(r"'([^']+)'", block)
+
+        terms = banned_terms()
+        check("禁用词表可读（banned.ts ≥ 20 条）", len(terms) >= 20, f"{len(terms)} 条")
+        AUTHORED = ("h1,h2,h3,p.hint,p.fc-lead,p.lead,button,.pending-box,.banner,.degraded,"
+                    "label,summary,.note")
+        extract = ("els => els.filter(e => !e.closest('[data-src=backend]'))"
+                   ".map(e => e.innerText).join('\\n')")
+        hits = {}
+        for v in ("workbench", "report", "review", "ledger", "analysis", "forecast",
+                  "charts", "reading", "trace", "red", "archive"):
+            url = BASE + ("/app/?period=202607" if v == "workbench"
+                          else f"/app/?view={v}&period=202607")
+            page.goto(url, wait_until="domcontentloaded")
+            page.wait_for_timeout(1200)
+            text = page.eval_on_selector_all(AUTHORED, extract)
+            found = sorted({x for x in terms if x in text})
+            if found:
+                hits[v] = found
+        check("工作区各页自撰文案无禁用词（只扫标题/导语/提示/按钮等）",
+              not hits, str(hits))
+
+        # 自证有效：往自撰区块注入一个禁用词，必须能抓到（再移除）
+        page.evaluate("() => { const p = document.createElement('p');"
+                      " p.className = 'hint'; p.id = 'banned-canary';"
+                      " p.textContent = 'canary run_parse'; document.body.appendChild(p); }")
+        canary = sorted({x for x in terms if x in page.eval_on_selector_all(AUTHORED, extract)})
+        check("黑名单检查自证有效（注入 run_parse 能抓到）", "run_parse" in canary, str(canary[:3]))
+        page.evaluate("() => document.getElementById('banned-canary')?.remove()")
 
         # ---- 2) 陈列馆（/app/shelf/；管理员与游客都看同一份访客投影） ----
         guest_ctx = browser.new_context(viewport={"width": 1280, "height": 900})

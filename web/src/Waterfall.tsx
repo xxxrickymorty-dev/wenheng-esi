@@ -49,7 +49,7 @@ export function WaterfallRows({ rows, totalSec, running, summary }: {
         })}
       </div>
       {summary?.detail && (
-        <p className="hint" style={{ marginTop: 10 }}>{summary.detail}</p>
+        <p className="hint" data-src="backend" style={{ marginTop: 10 }}>{summary.detail}</p>
       )}
       {closedOrphan && (
         <p className="hint" style={{ marginTop: 8, fontSize: 13.5 }}>

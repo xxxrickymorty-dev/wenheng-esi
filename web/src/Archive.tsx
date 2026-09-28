@@ -118,7 +118,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
               <p className="hint" style={{ marginTop: 8 }}>无状态迁移记录。</p>
             )}
             {d.replay.synthetic && (
-              <p className="hint" style={{ marginTop: 10 }}>
+              <p className="hint" data-src="backend" style={{ marginTop: 10 }}>
                 ⚠ {d.replay.note}——合成链只含确定发生过的迁移，不臆造自愈/升级环节。
               </p>
             )}
