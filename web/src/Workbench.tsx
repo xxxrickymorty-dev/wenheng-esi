@@ -188,13 +188,16 @@ function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }
             <ul>{c.lines.map((l, i) => <li key={i}>{l}</li>)}</ul>
             <span className="acts">
               <button className="btn" onClick={onRerun} disabled={!canRerun}><Icon name="refresh" size={19} />重新生成</button>
+              {!healthy && (
+                <button className="btn" onClick={() => location.reload()}><Icon name="refresh" size={19} />重新检查服务</button>
+              )}
             </span>
           </span>
         </div>
         <div className="banner warn">
           <span className="ico"><Icon name="clock" size={22} /></span>
           <span><b className="title">上一版报告仍然有效</b>
-            <span>本次失败没有动它；旧稿被隔离在 `_superseded/`，可追溯。</span></span>
+            <span>本次失败没有动它；旧稿会先被撤下、可回滚，可追溯。</span></span>
         </div>
       </>
     )
@@ -291,7 +294,7 @@ function ModelSummary({
           {state?.error && <button type="button" className="btn" onClick={onReload} style={{ marginLeft: 10 }}>重新读取</button>}
         </div>
       ) : !meta?.available ? (
-        <div className="pending-box" style={{ marginTop: 12 }}>预测数据尚未就绪，暂时没有可供选择的候选学科。</div>
+        <div className="pending-box" style={{ marginTop: 12 }}>预测数据随报告一起产出——先完成一次生成，这里就会出现候选学科。</div>
       ) : (
         <>
           <div className="tablewrap" style={{ marginTop: 12 }}>

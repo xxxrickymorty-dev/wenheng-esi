@@ -353,7 +353,20 @@ function FactsStrip({ period, onFacts }: {
     return () => { alive = false }
   }, [period, onFacts])
 
-  if (note) return <div className="pending-box">{note}</div>
+  if (note) {
+    return (
+      <div className="pending-box">
+        {note}
+        {note.includes('可能尚未出稿') && period && (
+          <> <a href={`/app/?period=${encodeURIComponent(period)}`}>去生成这一期 →</a></>
+        )}
+        {!note.includes('管理员权限') && (
+          <> <button className="btn" style={{ padding: '4px 10px', fontSize: 13.5 }}
+                     onClick={() => location.reload()}>重新读取</button></>
+        )}
+      </div>
+    )
+  }
   if (!f) return <div className="pending-box">正在读读数……</div>
 
   const x = f.facts

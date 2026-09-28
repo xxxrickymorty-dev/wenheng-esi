@@ -70,7 +70,12 @@ export function Trace({ period }: { period: string | null }) {
       </p>
 
       {note ? (
-        <div className="pending-box" style={{ marginTop: 12 }}>{note}</div>
+        <div className="pending-box" style={{ marginTop: 12 }}>
+          {note}
+          {note.includes('可能尚未出稿') && period && (
+            <> <a href={`/app/?period=${encodeURIComponent(period)}`}>去生成这一期 →</a></>
+          )}
+        </div>
       ) : !data ? (
         <div className="pending-box" style={{ marginTop: 12 }}>正在回台账重读……</div>
       ) : (

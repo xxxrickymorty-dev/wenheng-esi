@@ -142,7 +142,7 @@ export function Tools({
   }
 
   return (
-    <section className="card" style={{ marginTop: 18, padding: '18px 22px' }}>
+    <section className="card" id="tools" style={{ marginTop: 18, padding: '18px 22px' }}>
       <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
         <Icon name="doc" size={21} />这一期的工具
       </h2>
@@ -178,7 +178,7 @@ export function Tools({
           ) : !currentView || currentView.loading ? (
             <p className="hint" style={{ marginTop: 4 }}>正在读取这一期的产物……</p>
           ) : !currentView.artifacts || currentView.artifacts.length === 0 ? (
-            <p className="hint" style={{ marginTop: 4 }}>这一期暂时没有产物。</p>
+            <p className="hint" style={{ marginTop: 4 }}>这一期暂时没有产物。先点上方「开始生成」出稿，产物会出现在这里。</p>
           ) : (
             <div className="chips" style={{ marginTop: 8 }}>
               {currentView.artifacts.map((a) => (

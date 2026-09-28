@@ -38,22 +38,11 @@ export function Ledger() {
 
         {err && (
           <div className="pending-box" style={{ marginTop: 14 }}>
-            <b>后端现在读不到台账：{err}</b>
-            <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
-              <li>
-                它找的是 <code>input/&lt;期次&gt;/台账.xlsx</code>（投喂副本）。
-                本机盘上**这两个文件是存在的**：<code>input/202607/台账.xlsx</code>、
-                <code>input/202609/台账.xlsx</code>（各约 0.3 MB）。
-              </li>
-              <li>
-                唯一事实源在 <code>数据与复现/云大全学科排名、阈值动态检测表.xlsx</code>
-                （约 0.29 MB，19 个 sheet）。
-              </li>
-              <li>
-                看起来是后端那一侧的路径/glob 没命中（Windows 下中文目录 + 相对根都可能踩），
-                请后端会话核 <code>config.INPUT_DIR</code> 的实际取值。
-              </li>
-            </ul>
+            <b>暂时读不到台账。</b>文件可能正被占用（比如 Excel 开着），或服务刚重启——
+            <button className="btn" style={{ padding: '4px 10px', fontSize: 13.5, margin: '0 4px' }}
+                    onClick={() => location.reload()}>重新检查</button>
+            后如果还读不到，把这一屏截图给开发。
+            <span className="hint" style={{ display: 'block', marginTop: 6 }}>（技术细节：{err}）</span>
           </div>
         )}
 

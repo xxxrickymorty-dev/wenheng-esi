@@ -596,7 +596,14 @@ export default function App() {
             <tbody>
               {periods.length === 0 && (
                 <tr><td colSpan={4} style={{ color: 'var(--ink-3)' }}>
-                  {healthy === false ? '服务未启动，读不到期次。' : '暂无期次。'}
+                  {healthy === false ? (
+                    <>服务未启动，读不到期次。起好服务后
+                      <button className="btn" style={{ padding: '4px 10px', fontSize: 13.5, margin: '0 6px' }}
+                              onClick={() => location.reload()}>重新检查</button>
+                      一次。</>
+                  ) : (
+                    <>还没有任何期次。先在下方「这一期的工具」上传监测表，生成第一期。<a href="#tools">去上传 →</a></>
+                  )}
                 </td></tr>
               )}
               {periods.map((p) => (

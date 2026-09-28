@@ -134,7 +134,11 @@ function FillSection({ period, isAdmin }: { period: string | null; isAdmin: bool
       ) : !wb ? (
         <div className="pending-box" style={{ marginTop: 12 }}>正在读待办……</div>
       ) : wb.todo_fill.length === 0 && wb.todo_confirm.length === 0 ? (
-        <div className="pending-box" style={{ marginTop: 12 }}>这一期没有要人填的地方。</div>
+        <div className="pending-box" style={{ marginTop: 12 }}>
+          这一期没有要人填的地方。{period && (
+            <> <a href={`/app/?view=report&period=${encodeURIComponent(period)}`}>打开报告 →</a></>
+          )}
+        </div>
       ) : (
         <>
           <div style={{ marginTop: 8 }}>{wb.todo_fill.map((t) => row2(t, true))}</div>

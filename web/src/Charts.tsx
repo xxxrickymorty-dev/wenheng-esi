@@ -60,7 +60,12 @@ export function Charts({ period }: { period: string | null }) {
       </p>
 
       {note ? (
-        <div className="pending-box" style={{ marginTop: 12 }}>{note}</div>
+        <div className="pending-box" style={{ marginTop: 12 }}>
+          {note}
+          {note.includes('可能尚未出稿') && period && (
+            <> <a href={`/app/?period=${encodeURIComponent(period)}`}>去生成这一期 →</a></>
+          )}
+        </div>
       ) : !rows ? (
         <div className="pending-box" style={{ marginTop: 12 }}>正在读图册……</div>
       ) : (
@@ -89,7 +94,7 @@ export function Charts({ period }: { period: string | null }) {
             </div>
           ))}
           {shown.length === 0 && (
-            <p className="hint" style={{ marginTop: 10 }}>没有匹配「{q}」的图。</p>
+            <p className="hint" style={{ marginTop: 10 }}>{q.trim() ? `没有匹配「${q}」的图。` : '这一期还没有图表。'}</p>
           )}
         </>
       )}

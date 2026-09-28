@@ -106,8 +106,13 @@ export function Reading({ period }: { period: string | null }) {
           )}
         </h2>
 
-        {note ? (
-          <div className="pending-box" style={{ margin: '12px 0 16px' }}>{note}</div>
+      {note ? (
+        <div className="pending-box" style={{ margin: '12px 0 16px' }}>
+          {note}
+          {note.includes('可能尚未出稿') && period && (
+            <> <a href={`/app/?period=${encodeURIComponent(period)}`}>去生成这一期 →</a></>
+          )}
+        </div>
         ) : !rows ? (
           <div className="pending-box" style={{ margin: '12px 0 16px' }}>正在读对勘数据……</div>
         ) : (
