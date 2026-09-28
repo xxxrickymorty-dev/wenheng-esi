@@ -1,0 +1,523 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 预测台信息减负 · 改前 / 改后对照稿（票 13）</title>
+<style>
+:root{
+  --bg:#F4F3ED;--card:#FFFDF8;--panel:#F0F1EB;
+  --ink:#222B25;--ink-2:#3F4C42;--ink-3:#58655C;
+  --line:#DDE1D8;--line-2:#E6E9E2;
+  --zhu:#1A4B27;--zhu-soft:#E3EDE4;
+  --gold:#B19A65;--gold-soft:#F1EBDD;--gold-ink:#62501F;
+  --ok:#28643A;--ok-soft:#E6F0E7;
+  --warn:#75622D;--warn-soft:#F6EED8;
+  --bad:#B43B31;--bad-soft:#F7E4E1;
+  --serif:"Source Han Serif SC","Noto Serif SC",Songti SC,SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 var(--sans)}
+h1,h2,h3{font-family:var(--serif)}
+.review{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding:9px 22px;background:var(--panel);border-bottom:1px dashed var(--line);font-size:12.5px;color:var(--ink-2)}
+.review b{color:var(--gold-ink)}
+.topbar{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:9px;font-family:var(--serif);white-space:nowrap}
+.brand strong{font-size:21px;letter-spacing:.04em}
+.brand span{font-size:12px;color:var(--ink-3);letter-spacing:.08em}
+.nav{display:flex;gap:4px;margin-left:auto}
+.nav a{padding:7px 11px;color:var(--ink-2);text-decoration:none;border-radius:8px;font-size:14px;white-space:nowrap}
+.nav a.active{background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+.period-chip{display:flex;align-items:center;gap:6px;color:var(--ink-3);font-size:13.5px;white-space:nowrap}
+.period-chip select{font:inherit;font-size:14px;font-family:var(--mono);padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.who{display:flex;align-items:center;gap:8px;border-left:1px solid var(--line);padding-left:14px;color:var(--ink-2);font-size:13px;white-space:nowrap}
+.avatar{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);font-weight:700}
+.wrap{max-width:1720px;margin:auto;padding:18px 22px 70px}
+.legend{display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;color:var(--ink-2);font-size:13px;margin:6px 0 14px}
+.legend b{color:var(--gold-ink)}
+.legend .k{padding:2px 9px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:12.5px}
+.cmp{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:1280px){.cmp{grid-template-columns:1fr}}
+.col{min-width:0}
+.col>h2{margin:0 0 8px;font-family:var(--serif);font-size:19px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2.5px 10px;border-radius:999px;font-size:12.5px}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.zhu{background:var(--zhu-soft);color:var(--zhu)}
+.pill.plain{background:var(--panel);color:var(--ink-2);border:1px solid var(--line)}
+.frame{position:relative;height:860px;border:1px solid var(--line);border-radius:12px;background:var(--bg);box-shadow:0 1px 2px rgba(34,43,37,.05)}
+.frame.clip{overflow:hidden}
+.frame.scroll{overflow:auto}
+.frame.clip::after{content:"";position:absolute;left:0;right:0;bottom:0;height:70px;background:linear-gradient(transparent,rgba(244,243,237,.96));pointer-events:none}
+.frame-tag{position:absolute;top:8px;right:10px;z-index:5;font:11.5px var(--mono);color:var(--ink-3);background:rgba(255,253,248,.92);border:1px solid var(--line);border-radius:999px;padding:1px 9px}
+.frame-inner{padding:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:0 1px 2px rgba(34,43,37,.05)}
+.card+.card{margin-top:14px}
+.card h1{font-size:25px;margin:0}
+.card h2{font-size:19px;margin:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hint{color:var(--ink-3);font-size:13px}
+.mono{font-family:var(--mono)}
+.btn{padding:7px 13px;border:1px solid var(--line);border-radius:8px;background:var(--card);font:inherit;font-size:13.5px;cursor:pointer;color:var(--ink)}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-weight:650}
+.btn.primary[disabled]{opacity:.45;cursor:not-allowed}
+.btn.big{padding:10px 20px;font-size:15px}
+.fc-no{font-family:var(--mono);font-size:12px;letter-spacing:.18em;color:var(--zhu);background:var(--zhu-soft);border-radius:99px;padding:2px 9px}
+.fc-lead{color:var(--ink-2);font-size:15px;margin:8px 0 0;max-width:74ch}
+.fc-stamps{display:flex;gap:20px;flex-wrap:wrap;margin-top:12px;font-size:13.5px;color:var(--ink-3)}
+.fc-stamps b{color:var(--ink-2)}
+.fc-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.fc-tabs button{padding:8px 14px;border:1px solid var(--line);background:var(--panel);border-radius:999px;font:inherit;font-size:13.5px;color:var(--ink-2);cursor:pointer}
+.fc-tabs button.on{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:650}
+.bd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:14px}
+.bd-card{border:1px solid var(--line-2);border-radius:10px;background:var(--panel);padding:12px 14px}
+.bd-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.bd-top b{font-size:15px}
+.bd-prox{font-family:var(--serif);font-size:17px}
+.bd-bar{display:block;height:8px;border-radius:99px;background:var(--line-2);overflow:hidden;margin:8px 0 9px}
+.bd-bar i{display:block;height:100%;border-radius:99px;background:var(--gold)}
+.bd-meta{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--ink-3);flex-wrap:wrap}
+.bd-cross{margin-top:7px;font-size:13px;color:var(--ink-3)}
+.bd-cross.on{color:var(--ok);font-weight:600}
+.fc-form{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-top:12px}
+.fc-form label{display:flex;flex-direction:column;gap:5px;font-size:13.5px;color:var(--ink-2)}
+.fc-form select{font:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);min-width:150px}
+.fc-readouts{display:flex;gap:34px;flex-wrap:wrap;margin-top:16px}
+.fc-readouts .k{font-size:13px;color:var(--ink-3)}
+.fc-readouts .v{font-family:var(--serif);font-size:22px;line-height:1.2}
+.fc-gal{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+.fc-model{border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden}
+.fc-model-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 13px;border-bottom:1px solid var(--line-2)}
+.fc-model-h h3{font-size:15.5px;margin:0}
+.fc-model-h .right{margin-left:auto;font-size:12.5px;color:var(--ink-3)}
+.tag{padding:2px 9px;border-radius:999px;font-size:11.5px;background:var(--zhu-soft);color:var(--zhu)}
+.tag.rec{background:var(--gold-soft);color:var(--gold-ink)}
+.fc-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--line-2);border-bottom:1px solid var(--line-2)}
+.fc-metrics div{background:var(--card);padding:9px 13px}
+.fc-metrics b{display:block;font-family:var(--serif);font-size:19px}
+.fc-metrics span{font-size:12.5px;color:var(--ink-3)}
+.fc-chart{display:block;width:100%;height:auto;background:#fbfaf7;border-bottom:1px solid var(--line-2)}
+.fc-acts{padding:9px 13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fc-more{border-top:1px dashed var(--line-2)}
+.fc-more summary{padding:8px 13px;cursor:pointer;font-size:13px;color:var(--ink-2);list-style:none;display:flex;align-items:center;gap:8px}
+.fc-more summary::-webkit-details-marker{display:none}
+.fc-more summary::before{content:"▸";color:var(--zhu)}
+.fc-more[open] summary::before{content:"▾"}
+.fc-save{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pending-box{border:1px dashed var(--line);border-radius:10px;padding:14px 16px;color:var(--ink-3);background:var(--panel)}
+.degraded{margin-top:12px;border:1px dashed var(--line);border-radius:10px;padding:11px 14px;color:var(--ink-2);font-size:13px;background:var(--panel)}
+.degraded b{color:var(--ink-2)}
+/* ---- 改后专属 ---- */
+.band{position:sticky;top:0;z-index:6;display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 16px;box-shadow:0 2px 8px rgba(34,43,37,.05)}
+.band .kv{display:flex;align-items:baseline;gap:6px;color:var(--ink-3);font-size:13px}
+.band .kv b{color:var(--ink);font-size:14px}
+.band .save-state{margin-left:auto;color:var(--ok);font-size:13px}
+.band .save-state.dirty{color:var(--warn);font-weight:650}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--panel)}
+.seg button{border:0;background:transparent;font:inherit;font-size:13.5px;color:var(--ink-2);padding:8px 15px;cursor:pointer;white-space:nowrap}
+.seg button.on{background:var(--zhu);color:#fff;font-weight:650}
+.route-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;color:var(--ink-3);font-size:13.5px}
+.dot{width:20px;height:20px;min-width:20px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--card);color:var(--ink-3);font:12px/18px var(--serif);cursor:pointer}
+.dot:hover{border-color:var(--zhu);color:var(--zhu)}
+.fold{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-top:14px}
+.fold summary{padding:12px 16px;cursor:pointer;font-size:14.5px;display:flex;align-items:center;gap:10px;list-style:none}
+.fold summary::-webkit-details-marker{display:none}
+.fold summary::before{content:"▸";color:var(--zhu)}
+.fold[open] summary::before{content:"▾"}
+.fold summary .sm{color:var(--ink-3);font-size:13px;margin-left:auto}
+.fold-body{padding:2px 16px 14px;border-top:1px dashed var(--line-2)}
+.fold-body p{margin:8px 0;color:var(--ink-2);font-size:14px}
+.pop{position:fixed;z-index:50;max-width:360px;display:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 13px;box-shadow:0 8px 26px rgba(34,43,37,.16);font-size:13px;color:var(--ink-2)}
+.pop b{color:var(--ink)}
+.metrics{margin-top:10px;display:flex;gap:8px 14px;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+.metrics .v{font:650 15px var(--mono);color:var(--ink)}
+.metrics .v.good{color:var(--ok)}
+.metrics .v.bad{color:var(--warn)}
+.changes{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px}
+.changes h3{margin:0 0 6px;font-size:15px}
+.changes ol{margin:6px 0 0;padding-left:22px;color:var(--ink-2);font-size:13.5px}
+.changes li{margin:5px 0}
+/* ---- 病灶特写 ---- */
+.closeups{margin-top:14px;display:grid;gap:12px}
+.closeup{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 15px}
+.cu-h{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:650}
+.cu-no{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--warn-soft);color:var(--warn);font:700 11.5px var(--mono)}
+.cu-body{margin-top:9px;background:var(--panel);border:1px dashed var(--line);border-radius:9px;padding:10px 12px}
+.cu-note{margin:8px 0 0;color:var(--ink-2);font-size:13px}
+.cu-note b{color:var(--ink)}
+.mini-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:9px}
+@media (max-width:620px){.mini-cards{grid-template-columns:1fr}}
+.mini-card{border:1px solid var(--line-2);border-radius:9px;background:var(--card);padding:9px 11px;font-size:12.5px}
+.mini-h{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:13.5px}
+.mini-h .right{margin-left:auto;color:var(--ink-3);font-size:11.5px}
+.mini-metric{margin-top:6px;color:var(--ink-2)}
+.mini-foot{margin-top:6px;color:var(--ink-3);font-size:12px}
+.foldnote{color:var(--ink-3);font-size:12.5px;margin:8px 2px 0}
+.check{margin-top:18px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px}
+.check h3{margin:0 0 6px;font-size:15px}
+.check ul{margin:6px 0 0;padding-left:20px;color:var(--ink-2);font-size:13.5px}
+.check li{margin:4px 0}
+</style>
+</head>
+<body>
+<div class="review">
+  <b>静态对照稿 · 预测台减负（票 13）</b>
+  <span>左＝现状（按真机复刻）｜右＝提案（路线控件 3→1、期次说法 5→2、单模型卡统一）。两栏同高 860px＝一屏视口；右下角实时统计「首屏可见字数」。左栏下方附四处病灶特写。真机基线（2026-09-28 22:55 实测）：首屏 656 字 · 路线控件 3 套 · 期次说法 5 个。</span>
+</div>
+
+<header class="topbar">
+  <div class="brand"><strong>文衡</strong><span>学科信息参考</span></div>
+  <nav class="nav" aria-label="工作区">
+    <a href="#">生成台</a><a href="#">报告</a><a href="#">审核台</a><a href="#">台账</a><a href="#">分析台</a><a class="active" href="#">预测台</a><a href="#">陈列馆</a>
+  </nav>
+  <label class="period-chip"><span>期次</span><select><option>202607</option></select></label>
+  <div class="who"><span class="avatar">卜</span>卜彤 · 管理员</div>
+</header>
+
+<main class="wrap">
+  <div class="legend">
+    <b>本轮数字上限：</b>
+    <span class="k">小字 ≤24 字/条</span>
+    <span class="k">导语 ≤60 字</span>
+    <span class="k">首屏 ≤180 字</span>
+    <span class="k">说明全站仅 1 份</span>
+    <span class="hint">（两栏统一按 860px 视口计量，与生成台对照稿同款量法）</span>
+  </div>
+
+  <div class="cmp">
+    <!-- ================= 改前 ================= -->
+    <section class="col">
+      <h2>改前 · 现在打开预测台
+        <span class="pill warn">首屏 <b class="mono" id="nBefore">…</b> 字</span>
+        <span class="pill plain">路线控件 3 套</span>
+        <span class="pill plain">期次说法 5 个</span>
+      </h2>
+      <div class="frame clip" id="frameBefore">
+        <span class="frame-tag">视口 860px</span>
+        <div class="frame-inner">
+          <section class="card">
+            <h1>潜力学科预测</h1>
+            <p class="fc-lead">报告预测章用哪套模型，在这里按任务期次设置；学科板和试跑使用最新完整派生产物，供当前查看和比较。</p>
+            <div class="fc-stamps">
+              <span>模型版本 <b class="mono">V1.0</b></span>
+              <span>预测预览数据期次 <b class="mono">202609</b>（最新完整派生产物）</span>
+              <span>运行路径 <b>确定性计算 · 大模型不参与数据路径</b></span>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2><span class="fc-no">01</span>学科板 · 现状与研判
+              <span class="hint" style="font-weight:400">选模与过线（源：202607 · 窗口 201909-202607）</span>
+            </h2>
+            <p class="fc-lead">8 个潜力学科两条路线一眼看完：接近度（离门槛还有多远）、预计过线期、用的模型与它的滚动误差。 「接近度」是百分数点值；过线是滚动监测信号，不等同于正式入榜时间。<br>
+              这一板的模型是预测阶段的选模记录（逐期滚动比较的结果），<b>不是</b>报告最终采用的模型—— 报告用哪套，看下面 03 的「V1 推荐」与你的选择。</p>
+            <div class="fc-tabs"><button class="on">路线1 · 总被引 / ESI前1%被引阈值</button><button>路线2 · 国内排名 / 国内前1%机构数</button></div>
+            <div class="bd-grid">
+              <div class="bd-card"><div class="bd-top"><b>经济与商业</b><span class="bd-prox">14.23%</span></div><span class="bd-bar"><i style="width:14%"></i></span><div class="bd-meta"><span>模型 SARIMA</span><span>滚动 MAPE 1.26%</span></div><div class="bd-cross">窗口内未过线</div></div>
+              <div class="bd-card"><div class="bd-top"><b>免疫学</b><span class="bd-prox">19.93%</span></div><span class="bd-bar"><i style="width:20%"></i></span><div class="bd-meta"><span>模型 季节性ETS</span><span>滚动 MAPE 3.03%</span></div><div class="bd-cross">窗口内未过线</div></div>
+              <div class="bd-card"><div class="bd-top"><b>分子生物学与遗传学</b><span class="bd-prox">84.5%</span></div><span class="bd-bar"><i style="width:85%"></i></span><div class="bd-meta"><span>模型 季节性ETS</span><span>滚动 MAPE 1.91%</span></div><div class="bd-cross on">预计过线 2027-01（最晚 2028-07）</div></div>
+              <div class="bd-card"><div class="bd-top"><b>多学科</b><span class="bd-prox">12.58%</span></div><span class="bd-bar"><i style="width:13%"></i></span><div class="bd-meta"><span>模型 SARIMA</span><span>滚动 MAPE 5.06%</span></div><div class="bd-cross">窗口内未过线</div></div>
+              <div class="bd-card"><div class="bd-top"><b>神经科学与行为科学</b><span class="bd-prox">17.52%</span></div><span class="bd-bar"><i style="width:18%"></i></span><div class="bd-meta"><span>模型 季节性ETS</span><span>滚动 MAPE 2.38%</span></div><div class="bd-cross">窗口内未过线</div></div>
+              <div class="bd-card"><div class="bd-top"><b>物理学</b><span class="bd-prox">75.13%</span></div><span class="bd-bar"><i style="width:75%"></i></span><div class="bd-meta"><span>模型 经验贝叶斯状态空间</span><span>滚动 MAPE 3.33%</span></div><div class="bd-cross on">预计过线 2027-05（最晚 2030-03）</div></div>
+              <div class="bd-card"><div class="bd-top"><b>精神病学与心理学</b><span class="bd-prox">27.25%</span></div><span class="bd-bar"><i style="width:27%"></i></span><div class="bd-meta"><span>模型 经验贝叶斯状态空间</span><span>滚动 MAPE 1.43%</span></div><div class="bd-cross">窗口内未过线</div></div>
+              <div class="bd-card"><div class="bd-top"><b>空间科学</b><span class="bd-prox">29.42%</span></div><span class="bd-bar"><i style="width:29%"></i></span><div class="bd-meta"><span>模型 SARIMA</span><span>滚动 MAPE 1.63%</span></div><div class="bd-cross">窗口内未过线</div></div>
+            </div>
+            <p class="hint" style="margin-top:10px">源：预测选模与过线.md；t1/t2/t3 空串＝该窗口内未过线；数值为百分数点值（如 37.62 表示 37.62%）</p>
+          </section>
+        </div>
+      </div>
+      <p class="foldnote">▼ 视口之外还有：<b>02 全模型预测图</b>（五张图卡 + 四个下拉 + 读数列）· <b>03 本期用哪个模型</b>（期次区 + 路线页签 + 8 行表 + 保存行）· <b>04 口径说明</b>（5 条）· 页尾「说明·全站仅此一份」。当前首屏可见 <b class="mono" id="nBefore2">…</b> 字（本复刻栏）；真机 1440 宽实测 656。</p>
+
+      <div class="closeups">
+        <div class="closeup">
+          <div class="cu-h"><span class="cu-no">A</span>01 学科板的「路线」页签 —— 第 1 套</div>
+          <div class="cu-body"><div class="fc-tabs" style="margin-top:0"><button class="on">路线1 · 总被引 / ESI前1%被引阈值</button><button>路线2 · 国内排名 / 国内前1%机构数</button></div></div>
+          <p class="cu-note">只切「学科板」。下面 02、03 不跟——切完这一板变了，图区还停在旧路线。</p>
+        </div>
+        <div class="closeup">
+          <div class="cu-h"><span class="cu-no">B</span>02 试跑表单里的「预测路线」下拉 —— 第 2 套</div>
+          <div class="cu-body">
+            <div class="fc-form" style="margin-top:0">
+              <label>潜力学科<select><option>免疫学</option></select></label>
+              <label>预测路线<select><option>路线1 · 总被引 / ESI前1%被引阈值</option></select></label>
+              <label>模型<select><option>五模型全部运行比较</option></select></label>
+              <label>预测期数<select><option>18 期（与报告一致）</option></select></label>
+              <button class="btn primary">运行预测</button>
+            </div>
+          </div>
+          <p class="cu-note">只切「试跑」。真机实测：切了路线后<b>图区清空、只剩「这组参数还没跑过」</b>，要手动再点运行——「五模型图缺图」的观感就出在这里；切回原路线才秒回缓存。</p>
+        </div>
+        <div class="closeup">
+          <div class="cu-h"><span class="cu-no">C</span>03 逐科选择里的「路线」页签 —— 第 3 套，也是「改 A 存 B」的空档</div>
+          <div class="cu-body">
+            <div class="fc-stamps" style="margin-top:0">
+              <span>模型配置对应的任务期次 <select style="font:inherit;font-size:13px;padding:4px 8px;border:1px solid var(--line);border-radius:7px;background:var(--card)"><option>202607</option></select></span>
+              <span>最新完整预测数据 <b class="mono">202609</b></span>
+              <span>本次实际输出期次 <b class="mono">202607</b></span>
+            </div>
+            <div class="fc-tabs"><button class="on">路线1 · 总被引 / ESI前1%被引阈值</button><button>路线2 · 国内排名 / 国内前1%机构数</button></div>
+            <div class="fc-save" style="margin-top:10px"><button class="btn primary">保存202607选择</button><span class="hint">已保存 · demo · 2026-09-28 08:49 · 未改的学科使用 V1 推荐</span></div>
+          </div>
+          <p class="cu-note">在 02 里对着图改的选（按 02 的路线），到 03 却按<b>另一条路线的页签</b>保存——两边页签不同步，就是「改 A 存 B」。同一屏期次说法三个（任务期次 / 最新完整预测数据 / 实际输出期次），加页头与基线期次共五个。</p>
+        </div>
+        <div class="closeup">
+          <div class="cu-h"><span class="cu-no">D</span>单模型试跑 vs 五模型图 —— 同一份结果、两副卡面</div>
+          <div class="mini-cards">
+            <div class="mini-card">
+              <div class="mini-h"><b>Holt趋势模型</b><span class="right">数据来源 202609 期派生产物</span></div>
+              <div class="mini-metric">3.47% <span class="hint">综合滚动 MAPE（验收线 &lt;5%）</span></div>
+              <div class="mini-foot">表格 19 行常驻展开 · 无按钮 · 无折叠</div>
+            </div>
+            <div class="mini-card">
+              <div class="mini-h"><b>Holt趋势模型</b><span class="tag rec">V1 推荐</span><span class="right">202609 期数据</span></div>
+              <div class="mini-metric">3.47% <span class="hint">综合滚动 MAPE</span></div>
+              <div class="mini-foot">[选用此模型] · 逐期预测值（18 期）▸</div>
+            </div>
+          </div>
+          <p class="cu-note">真机实测：单模型卡头写「数据来源 202609 期派生产物」、表格全展开、零按钮；五图卡头是「202609 期数据」+ 标签 + 「选用此模型」+ 折叠。卡题、标签、按钮、折叠全不同。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 改后 ================= -->
+    <section class="col">
+      <h2>改后 · 提案（一屏装完）
+        <span class="pill ok">首屏 <b class="mono" id="nAfter">…</b> 字</span>
+        <span class="pill plain">路线控件 1 套</span>
+        <span class="pill plain">期次说法 2 个</span>
+      </h2>
+      <div class="frame scroll" id="frameAfter">
+        <span class="frame-tag">视口 860px · 可滚动</span>
+        <div class="frame-inner">
+          <section class="card" style="padding:18px 20px 16px">
+            <h1>潜力学科预测</h1>
+            <p class="fc-lead" style="font-size:14.5px;margin-top:6px">先看图，再定稿</p>
+          </section>
+
+          <div class="band" style="margin-top:12px">
+            <span class="kv">期次 <b class="mono">202607</b></span>
+            <span class="kv">数据截至 <b class="mono">2026-09</b></span>
+            <button class="dot" data-info="<b>两个期次各指什么</b><br>「期次 202607」＝本期配置与报告的归档期（就是你要保存进这一期的选择）。<br>「数据截至 2026-09」＝图与试跑实际读的那批完整数据。哪个数字来自哪个期、窗口是什么，收在本页末尾「预测口径与边界」里。">ⓘ</button>
+            <div class="seg" id="routeSeg" role="group" aria-label="预测路线">
+              <button class="on" data-route="citation">总被引</button>
+              <button data-route="rank">国内排名</button>
+            </div>
+            <button class="dot" data-info="<b>两条路线各指什么</b><br>路线1 · 总被引 / ESI前1%被引阈值：预测总被引何时达到前1%阈值。<br>路线2 · 国内排名 / 国内前1%机构数：预测国内排名何时进入前1%机构数以内。<br>两条路线的结论不一定一致，报告里分开标注、不合成一个结论。">ⓘ</button>
+            <span class="save-state" id="saveState">已保存</span>
+            <button class="btn primary" id="saveBtn" disabled>保存选择</button>
+          </div>
+
+          <section class="card">
+            <h2><span class="fc-no">01</span>预测图
+              <span class="hint" style="font-weight:400" id="galHint">免疫学 · 自动出图</span>
+            </h2>
+            <div class="fc-form">
+              <label>学科<select><option>免疫学</option><option>分子生物学与遗传学</option></select></label>
+              <label><span>模型 <button class="dot" style="vertical-align:-4px" data-info="<b>模型怎么选</b><br>「五模型全部运行比较」＝五个候选模型各出一张图，选前先看（默认）。<br>选单个模型＝只跑它一张，卡面与五图完全一致；看全部再切回「五模型全部运行比较」。">ⓘ</button></span><select><option>五模型全部运行比较</option><option>V1基线推荐模型</option><option>Holt趋势模型</option></select></label>
+              <label>期数<select><option>18 期</option><option>12 期</option><option>24 期</option></select></label>
+            </div>
+            <p class="hint" style="margin-top:9px">当前 <b>季节性ETS</b><span id="resetWrap" hidden> · <button class="btn" style="padding:3px 9px;font-size:12.5px" id="resetBtn">恢复推荐</button></span></p>
+            <div class="fc-gal">
+              <article class="fc-model">
+                <div class="fc-model-h">
+                  <h3>Holt趋势模型</h3>
+                  <span class="tag" id="cardTag" hidden>当前选用</span>
+                  
+                </div>
+                <div class="fc-metrics">
+                  <div><b>3.47%</b><span>滚动 MAPE</span></div>
+                  <div><b>3.05%</b><span>拟合 MAPE</span></div>
+                  <div><b>未过线</b><span>首次过线</span></div>
+                  <div><b>通过</b><span>运行状态</span></div>
+                </div>
+                <img class="fc-chart" src="../public/forecast/202607/charts/immunology--citation--holt.png" alt="免疫学 · Holt趋势模型 预测趋势图">
+                <div class="fc-acts">
+                  <button class="btn" id="pickBtn">选用此模型</button>
+                </div>
+                <details class="fc-more">
+                  <summary>分项与逐期（18 期）</summary>
+                </details>
+              </article>
+              <article class="fc-model">
+                <div class="fc-model-h">
+                  <h3>季节性ETS模型</h3>
+                  <span class="tag rec">V1 推荐</span>
+                  
+                </div>
+                <div class="fc-metrics">
+                  <div><b>2.91%</b><span>滚动 MAPE</span></div>
+                  <div><b>3.17%</b><span>拟合 MAPE</span></div>
+                  <div><b>未过线</b><span>首次过线</span></div>
+                  <div><b>需复核</b><span>运行状态</span></div>
+                </div>
+                <img class="fc-chart" src="../public/forecast/202607/charts/immunology--citation--seasonal_ets.png" alt="免疫学 · 季节性ETS模型 预测趋势图">
+                <div class="fc-acts">
+                  <button class="btn" disabled>正在使用</button>
+                </div>
+                <details class="fc-more">
+                  <summary>分项与逐期（18 期）</summary>
+                </details>
+              </article>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2><span class="fc-no">02</span>本期用哪个模型
+              <span class="hint" style="font-weight:400">默认 V1 推荐；只改你要改的科</span>
+            </h2>
+            <div style="margin-top:10px;overflow:hidden">
+              <table style="width:100%;border-collapse:collapse;font-size:14px">
+                <thead><tr style="color:var(--ink-3);font-size:12.5px">
+                  <th style="text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-2)">潜力学科</th>
+                  <th style="text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-2)">V1 推荐</th>
+                  <th style="text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-2)">我的选择</th>
+                </tr></thead>
+                <tbody>
+                  <tr><td style="padding:7px 10px;border-bottom:1px solid var(--line-2)">免疫学</td><td style="padding:7px 10px;border-bottom:1px solid var(--line-2)">季节性ETS模型</td><td style="padding:7px 10px;border-bottom:1px solid var(--line-2)"><select style="font:inherit;font-size:13.5px;padding:5px 8px;border:1px solid var(--line);border-radius:7px;background:var(--card)"><option>用 V1 推荐</option></select></td></tr>
+                  <tr><td style="padding:7px 10px;border-bottom:1px solid var(--line-2)">分子生物学与遗传学</td><td style="padding:7px 10px;border-bottom:1px solid var(--line-2)">季节性ETS模型</td><td style="padding:7px 10px;border-bottom:1px solid var(--line-2)"><select style="font:inherit;font-size:13.5px;padding:5px 8px;border:1px solid var(--line);border-radius:7px;background:var(--card)"><option>用 V1 推荐</option></select></td></tr>
+                  <tr><td style="padding:7px 10px;border-bottom:1px solid var(--line-2)">多学科</td><td style="padding:7px 10px;border-bottom:1px solid var(--line-2)">Holt趋势模型</td><td style="padding:7px 10px;border-bottom:1px solid var(--line-2)"><select style="font:inherit;font-size:13.5px;padding:5px 8px;border:1px solid var(--line);border-radius:7px;background:var(--card)"><option>用 V1 推荐</option></select></td></tr>
+                  <tr><td style="padding:7px 10px;border-bottom:1px solid var(--line-2)">物理学</td><td style="padding:7px 10px;border-bottom:1px solid var(--line-2)">经验贝叶斯状态空间模型</td><td style="padding:7px 10px;border-bottom:1px solid var(--line-2)"><select style="font:inherit;font-size:13.5px;padding:5px 8px;border:1px solid var(--line);border-radius:7px;background:var(--card)"><option>用 V1 推荐</option></select></td></tr>
+                  <tr><td style="padding:7px 10px;border-bottom:1px solid var(--line-2)">其余 4 科</td><td style="padding:7px 10px;border-bottom:1px solid var(--line-2)">—</td><td style="padding:7px 10px;border-bottom:1px solid var(--line-2)"><span class="hint">同表展开，共 8 行（图示节选）</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="hint" style="margin-top:9px">改完统一点页头「保存本期选择」；跑不出来的模型自动退回 V1 推荐。</p>
+          </section>
+
+          <details class="fold">
+            <summary>03 学科板 · 现状（本路线 8 科）<span class="sm">2 科预计过线：分子生物 2027-01 · 物理 2027-05</span></summary>
+            <div class="fold-body">
+              <p>与旧版同一块内容（8 科接近度 / 所选模型 / 滚动误差 / 预计过线），随页头「路线」一起切换；口径为预测选模记录，不是报告最终采用。</p>
+            </div>
+          </details>
+          <details class="fold">
+            <summary>04 预测口径与边界<span class="sm">过线定义 · 模型冻结 · 多期外推 · 边界</span></summary>
+            <div class="fold-body">
+              <p>被引路线 / 排名路线怎么算「过线」；SARIMA 阶数与状态空间方差只用初始 30 期冻结；正式验证范围是一步预测，页面多期结果为递推外推；预测过线是滚动监测信号，不等同正式入榜时间或概率。</p>
+            </div>
+          </details>
+        </div>
+      </div>
+      <div class="metrics">
+        <span>首屏可见 <span class="v" id="nAfter2">…</span> 字（目标 ≤180）</span>
+        <span>路线控件 <span class="v good">1</span> 套（原 3）</span>
+        <span>期次说法 <span class="v good">2</span> 个（原 5）</span>
+        <span>主动作 <span class="v good" id="nPrimary">…</span> 个（目标 ≤1）</span>
+        <span>折叠 <span class="v">2</span> 处 · ⓘ <span class="v">2</span> 处</span>
+      </div>
+      <div class="changes">
+        <h3>变化清单（票 13 对账）</h3>
+        <ol>
+          <li><b>路线控件 3 → 1</b>：页头一把「总被引路线 / 国内排名路线」开关，学科板、预测图、逐科表同切；切换即出图（跑过秒回缓存），不再「切了路线、图没了」。</li>
+          <li><b>改 A 存 B 不可能</b>：保存动作只有页头一处（粘性跟随，滚动不丢）；02 图卡里改选、03 表里改选，都汇成同一句「有 N 处未保存改动 · 保存本期选择」。</li>
+          <li><b>期次说法 5 → 2</b>：全页只留「期次 202607」（配置/归档期）＋「数据截至 2026-09」（图与试跑的数据）；实际输出期次、推荐基线、窗口源、模型版本都收进 ⓘ 与折叠。</li>
+          <li><b>单模型卡 = 五图卡</b>：同一张卡组件，卡题、标签、按钮、折叠一致；单模型时只出一张并提示如何看全。缺图观感随路线控件收敛一并消失（确认并入本票，不单开缺陷票）。</li>
+          <li><b>减负</b>：学科板折成一行现状摘要；口径 5 条并成一个折叠；页内不再复读只读声明（页尾全站一份）。</li>
+        </ol>
+      </div>
+    </section>
+  </div>
+
+  <section class="check">
+    <h3>验收清单（10 秒盲测用）</h3>
+    <ul>
+      <li><b>问题一</b>：「这一页现在让你做什么？」——答「看图选模型、改完保存」即过。</li>
+      <li><b>问题二</b>：「现在是哪一期、数据到什么时候？」——页头一行能答。</li>
+      <li><b>问题三</b>：「两条路线怎么切？」——只看页头那一个开关，不找第二处。</li>
+    </ul>
+    <p class="foldnote">审过即进 React（票 13）：浏览器端抽两条验证——① 在 02 改选后到 03 保存，保存内容与该路线一致；② 切路线后图区自动恢复（缓存或重跑），不出现空图提示。改前首屏（真机 1440 宽）656 字 → 改后首屏 <b class="mono" id="nAfter3">…</b> 字（本页计量、含上方两栏差异说明）。左栏四处特写 A–D 即票 13 的四条改动依据。</p>
+  </section>
+</main>
+
+<div class="pop" id="pop"></div>
+
+<script>
+/* ---------- 首屏可见字数：按 860px 视口实测（Range API 逐个文本节点量） ---------- */
+function visibleChars(frame){
+  const box = frame.getBoundingClientRect();
+  const top = box.top, bottom = box.top + frame.clientHeight;
+  const walker = document.createTreeWalker(frame, NodeFilter.SHOW_TEXT);
+  let n = 0, node;
+  while((node = walker.nextNode())){
+    const t = (node.nodeValue || "").replace(/\s+/g, "");
+    if(!t) continue;
+    if(node.parentElement && (node.parentElement.closest("details:not([open])") || node.parentElement.closest(".frame-tag"))) continue;
+    const r = document.createRange();
+    r.selectNodeContents(node);
+    const rect = r.getBoundingClientRect();
+    if(rect.width === 0 && rect.height === 0) continue;
+    if(rect.bottom > top && rect.top < bottom) n += t.length;
+  }
+  return n;
+}
+function refresh(){
+  const b = visibleChars(document.getElementById("frameBefore"));
+  const a = visibleChars(document.getElementById("frameAfter"));
+  const primary = document.querySelectorAll("#frameAfter .btn.primary").length;
+  ["nBefore","nBefore2","nBefore3"].forEach((id) => { const el = document.getElementById(id); if(el) el.textContent = b; });
+  ["nAfter","nAfter2","nAfter3"].forEach((id) => { const el = document.getElementById(id); if(el) el.textContent = a; });
+  const p = document.getElementById("nPrimary"); if(p) p.textContent = primary;
+  const aEl = document.getElementById("nAfter");
+  if(aEl) aEl.closest(".pill").className = "pill " + (a <= 180 ? "ok" : "warn");
+  const bEl = document.getElementById("nBefore");
+  if(bEl) bEl.closest(".pill").className = "pill " + (b <= 180 ? "ok" : "warn");
+}
+window.addEventListener("load", refresh);
+document.querySelectorAll(".fold").forEach((d) => d.addEventListener("toggle", refresh));
+
+/* ---------- 改后演示：路线切换 + 改选 → 保存 ---------- */
+const saveState = document.getElementById("saveState");
+const saveBtn = document.getElementById("saveBtn");
+const pickBtn = document.getElementById("pickBtn");
+const cardTag = document.getElementById("cardTag");
+const resetWrap = document.getElementById("resetWrap");
+const galHint = document.getElementById("galHint");
+let dirty = false;
+
+document.querySelectorAll("#routeSeg button").forEach((b) => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll("#routeSeg button").forEach((x) => x.classList.remove("on"));
+    b.classList.add("on");
+    const rank = b.dataset.route === "rank";
+    galHint.textContent = "免疫学 · " + (rank ? "国内排名" : "总被引") + " · 自动出图";
+  });
+});
+
+function setDirty(on){
+  dirty = on;
+  saveState.textContent = on ? "有 1 处未保存改动（免疫学 · Holt趋势模型）" : "已保存";
+  saveState.classList.toggle("dirty", on);
+  saveBtn.disabled = !on;
+}
+function pickHolt(on){
+  const acts = pickBtn.closest(".fc-acts");
+  acts.innerHTML = on
+    ? '<button class="btn" disabled>当前选用</button>'
+    : '<button class="btn" id="pickBtn">选用此模型</button>';
+  cardTag.hidden = !on;
+  resetWrap.hidden = !on;
+  if(!on) document.getElementById("pickBtn").addEventListener("click", () => pickHolt(true));
+  setDirty(on);
+}
+pickBtn.addEventListener("click", () => pickHolt(true));
+document.getElementById("resetBtn").addEventListener("click", () => pickHolt(false));
+saveBtn.addEventListener("click", () => setDirty(false));
+
+/* ---------- ⓘ 弹层：点开=该块口径+来源 ---------- */
+const pop = document.getElementById("pop");
+document.querySelectorAll(".dot").forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if(pop.style.display === "block" && pop.dataset.src === btn.dataset.info){ pop.style.display = "none"; return; }
+    pop.innerHTML = btn.dataset.info; pop.dataset.src = btn.dataset.info;
+    pop.style.display = "block";
+    const r = btn.getBoundingClientRect();
+    pop.style.left = Math.max(10, Math.min(window.innerWidth - 380, r.left - 40)) + "px";
+    pop.style.top = (r.bottom + 8) + "px";
+  });
+});
+document.addEventListener("click", () => { pop.style.display = "none"; });
+</script>
+</body>
+</html>
