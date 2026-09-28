@@ -94,6 +94,9 @@ a{color:inherit}
 .btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-size:17px;padding:13px 28px}
 .btn:hover{filter:brightness(.97)}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
+/* 行内二次确认态（票 06）：与警告同色系——醒目但不吓人，3 秒自动还原 */
+.btn.confirming{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+.btn.primary.confirming{background:var(--warn);border-color:var(--warn);color:#fff}
 .hint{color:var(--ink-3);font-size:14px}
 
 /* ---------- 状态条（颜色 + 图标 + 文字 三重编码） ---------- */

@@ -5,6 +5,7 @@
 import type { ApiError, Me, Period, PeriodDetail } from './api'
 import { formatProvenanceTime, type ForecastChoiceEntry, type ForecastMeta } from './api5'
 import { useState } from 'react'
+import { ConfirmButton } from './ConfirmButton'
 import { Icon } from './icons'
 import { failureCopy, isTerminal, STATE_LABEL, type Workbench as WB, type WBState } from './wb'
 import type { ActivityState, Run } from './hooks/useJobRun'
@@ -329,7 +330,7 @@ function ModelSummary({
                 <span role="status" className="hint" style={{ color: 'var(--warn)', fontWeight: 650 }}>
                   有未保存修改（在预测台改的）——保存后才可开始生成。
                 </span>
-                <button type="button" className="btn" onClick={onReload}>放弃修改并重新读取</button>
+                <ConfirmButton className="btn" confirmText="确认放弃？会回到上次保存的版本" onConfirm={onReload}>放弃修改并重新读取</ConfirmButton>
               </>
             ) : (
               <span role="status" className="hint" style={{ color: 'var(--ok)' }}>
@@ -402,9 +403,10 @@ export function Workbench({
               </>
             )}
             {wb.focusAction === 'rerun' && (
-              <button className="btn" onClick={onGenerate} disabled={!canGenerate}>
+              <ConfirmButton className="btn" disabled={!canGenerate}
+                             confirmText="确认重跑？会撤下当前成品" onConfirm={onGenerate}>
                 <Icon name="refresh" size={20} />重新生成
-              </button>
+              </ConfirmButton>
             )}
             {wb.focusAction === 'sign' && (
               <a className="btn primary" href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="seal" size={20} />复核并签单</a>

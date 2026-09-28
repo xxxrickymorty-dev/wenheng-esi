@@ -8,6 +8,7 @@ import {
   postJobWithFile, rerunJob,
   type Artifact, type Job,
 } from './api'
+import { ConfirmButton } from './ConfirmButton'
 import { Icon } from './icons'
 import { Waterfall } from './Waterfall'
 
@@ -161,9 +162,11 @@ export function Tools({
                    onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             <input className="search" style={{ maxWidth: 150 }} value={newPeriod}
                    onChange={(e) => setNewPeriod(e.target.value)} placeholder="期次 202609" />
-            <button className="btn" onClick={upload} disabled={actionsLocked || busy || rerunning}>
+            <ConfirmButton className="btn" disabled={actionsLocked || busy || rerunning}
+                           confirmText="确认上传？会覆盖本期的监测表"
+                           onConfirm={upload}>
               <Icon name="refresh" size={19} />{busy ? '正在上传……' : '上传并生成'}
-            </button>
+            </ConfirmButton>
           </div>
 
           {/* 产物下载 + 重跑 */}
@@ -192,10 +195,12 @@ export function Tools({
           )}
           {period && effJobId && (
             <div className="toolbar">
-              <button className="btn" onClick={rerun} disabled={actionsLocked || busy || rerunning}
-                      title="按同一期台账再跑一遍；旧稿撤到 _superseded/（可回滚）">
+              <ConfirmButton className="btn" disabled={actionsLocked || busy || rerunning}
+                             confirmText="确认重跑？会撤下当前成品"
+                             title="按同一期台账再跑一遍；旧稿先撤下、可回滚"
+                             onConfirm={rerun}>
                 <Icon name="refresh" size={19} />{rerunning ? '正在重跑……' : '重跑本期'}
-              </button>
+              </ConfirmButton>
               {message && <span className="hint" style={{ color: message.ok ? 'var(--ok)' : 'var(--bad)' }}>{message.text}</span>}
             </div>
           )}

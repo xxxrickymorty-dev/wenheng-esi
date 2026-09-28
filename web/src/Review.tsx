@@ -9,6 +9,7 @@ import { getCollation, type CollationRow } from './api2'
 import { flagLoc, revokePeriod, signPeriod } from './api3'
 import { req } from './api'
 import { getWorkbench, postFill, type TodoItem, type WorkbenchData } from './api4'
+import { ConfirmButton } from './ConfirmButton'
 import { Icon } from './icons'
 
 /** 在线填：真数据（GET /api/periods/{p}/workbench）+ 批量补录（POST .../fill）。
@@ -151,10 +152,12 @@ function FillSection({ period, isAdmin }: { period: string | null; isAdmin: bool
             <button className="btn primary" onClick={save} disabled={!isAdmin || busy || rebuilding}>
               <Icon name="doc" size={19} />保存填写
             </button>
-            <button className="btn" onClick={rebuild} disabled={!isAdmin || busy || rebuilding}
-                    title="把填值交给后端重出报告；旧成品会撤到 _superseded/（可回滚），约 2–15 秒">
+            <ConfirmButton className="btn" disabled={!isAdmin || busy || rebuilding}
+                           confirmText="确认重出？旧版会先撤下"
+                           title="把填值交给后端重出报告；旧版会先撤下、可回滚，约 2–15 秒"
+                           onConfirm={rebuild}>
               <Icon name="refresh" size={19} />{rebuilding ? '正在重出……' : '保存并重出报告'}
-            </button>
+            </ConfirmButton>
             {msg && (
               <span className="hint" style={{ color: msg.ok ? 'var(--ok)' : 'var(--bad)' }}>{msg.text}</span>
             )}
@@ -308,10 +311,10 @@ export function Review({
                   disabled={!isAdmin || busy || !period || status === 'signed'}>
             <Icon name="seal" size={20} />钤印签单
           </button>
-          <button className="btn" onClick={doRevoke}
-                  disabled={!isAdmin || busy || status === 'unsigned'}>
+          <ConfirmButton className="btn" disabled={!isAdmin || busy || status === 'unsigned'}
+                         confirmText="确认撤回？签名会失效" onConfirm={doRevoke}>
             <Icon name="refresh" size={19} />撤回
-          </button>
+          </ConfirmButton>
           {msg && (
             <span className="hint" style={{ color: msg.ok ? 'var(--ok)' : 'var(--bad)' }}>
               {msg.text}
