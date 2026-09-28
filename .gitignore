@@ -36,6 +36,9 @@ err*.log
 /_*.py
 /tmp/
 
+# ---------- 工作票（to-tickets 本地模式，见 docs/agents/issue-tracker.md）----------
+.scratch/
+
 # 验收产物：e2e_check.py 每次跑都重写，不入库
 server/e2e_report.txt
 
