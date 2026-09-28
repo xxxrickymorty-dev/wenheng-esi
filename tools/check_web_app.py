@@ -9,6 +9,10 @@ r"""端到端：`/app`（React 工作区）在真实浏览器里跑通「登录 
 前端送回工作台，旧断言恒超时），并跟随现版结构——陈列馆首页等 `.home-hero`，
 点第一本馆藏后等 `#flipbook`（翻页阅读器宿主）。锚点只认结构，不写死中文值。
 
+2026-09-28 增：工作区与陈列馆各自独立——管理员工作区不再出现陈列馆入口/文案
+（断言无 `/app/shelf/` 链接、无「陈列馆」字样）；游客访问 /app/?view=... 必须被
+前端送回 `/app/shelf/`。
+
 跑法（playwright 在**系统 Python** 里，不在 `.venv`）：
 
     .venv\Scripts\python.exe -m uvicorn server.app:app --host 127.0.0.1 --port 8080
@@ -80,9 +84,14 @@ def main():
             check("工作区导航已渲染（nav[aria-label]，不写死具体值）", False, str(e)[:80])
         n_blocks = page.eval_on_selector_all("section, li, article", "els => els.length")
         check("工作台渲染出内容块（section/li/article ≥ 1）", n_blocks >= 1, f"{n_blocks} 块")
+        shelf_links = page.eval_on_selector_all('a[href="/app/shelf/"]', "els => els.length")
+        check("工作区不再有陈列馆入口（无 /app/shelf/ 链接）", shelf_links == 0, f"{shelf_links} 个")
+        body_text = page.inner_text("body")
+        check("工作区文案不再提「陈列馆」", "陈列馆" not in body_text,
+              body_text[:60] if "陈列馆" in body_text else "")
         page.screenshot(path=str(SHOT))
 
-        # ---- 2) 陈列馆（G 的体验，挂在 /app/shelf/；admin 会被送回工作台，必须用 guest） ----
+        # ---- 2) 陈列馆（独立入口 /app/shelf/；guest 专属，admin 会被送回工作台） ----
         guest_ctx = browser.new_context(viewport={"width": 1280, "height": 900})
         guest_ctx.add_cookies(login_cookies(GUEST_USER, GUEST_PASS))
         guest = guest_ctx.new_page()
@@ -90,6 +99,13 @@ def main():
         guest.on("pageerror", lambda e: guest_problems.append("pageerror: " + str(e)))
         guest.on("console", lambda m: guest_problems.append("console.error: " + m.text)
                  if m.type == "error" else None)
+
+        guest.goto(BASE + "/app/?view=report", wait_until="domcontentloaded")
+        try:
+            guest.wait_for_url("**/app/shelf/**", timeout=10000)
+            check("游客访问工作区被送回陈列馆", True)
+        except Exception:                                            # noqa: BLE001
+            check("游客访问工作区被送回陈列馆", False, f"url={guest.url}")
 
         resp2 = guest.goto(BASE + "/app/shelf/", wait_until="networkidle")
         check("GET /app/shelf/ → 200", bool(resp2) and resp2.status == 200,

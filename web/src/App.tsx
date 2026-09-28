@@ -1,6 +1,6 @@
 /* 文衡 · 工作台（外壳）
-   一个应用两屏：工作台（工具面，本文件）→ 陈列馆（G 的体验，挂在 /app/shelf/）。
-   数据全部来自后端 API；接口没就绪的地方**如实标注"未就绪"**，不编数据。 */
+   只对馆员开放的工作区；游客（含其它非管理员身份）一律送回独立的陈列馆（/app/shelf/），
+   工作区不提供陈列馆入口。数据全部来自后端 API；接口没就绪的地方**如实标注"未就绪"**，不编数据。 */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -204,6 +204,12 @@ export default function App() {
       if (!alive) return
       setMe(m)
       setRoleKnown(true)
+      /* 工作区只对馆员开放：游客身份直接送回陈列馆（/app/shelf/ 是独立入口）。
+         未登录留在本页（不跳转），由下方 gated 块给「去登录」。 */
+      if (m && m.role !== 'admin') {
+        window.location.replace('/app/shelf/')
+        return
+      }
       try {
         const list = await refreshPeriods()
         if (!alive || !list) return
@@ -416,7 +422,7 @@ export default function App() {
   }
 
   /* 工作区导航（契约 §4：前端按 /api/me 的 role 决定显示什么；**真门在后端**，这里只是不打扰）。
-     游客只留 报告 / 台账 / 陈列馆 这些「看已出的东西」的屏；管理页直连也挡在这里，给一句人话 + 去处。 */
+     游客在首屏已被送回陈列馆，这里只剩未登录要挡。 */
   const NAV: { view: string; label: string; icon: string; href: string; admin?: boolean }[] = [
     { view: 'workbench', label: '生成台', icon: 'play', href: '/app/', admin: true },
     { view: 'report', label: '报告', icon: 'chart', href: '/app/?view=report' },
@@ -424,7 +430,6 @@ export default function App() {
     { view: 'ledger', label: '台账', icon: 'doc', href: '/app/?view=ledger' },
     { view: 'analysis', label: '分析台', icon: 'chart', href: '/app/?view=analysis', admin: true },
     { view: 'forecast', label: '预测台', icon: 'trend', href: '/app/?view=forecast', admin: true },
-    { view: 'shelf', label: '陈列馆', icon: 'book', href: '/app/shelf/' },
   ]
   const isGuest = me?.role === 'guest'
   const notLoggedIn = roleKnown && !me
@@ -437,6 +442,9 @@ export default function App() {
   const denied = gated && ADMIN_VIEWS.has(view)
   const navHref = (h: string) =>
     (selected && h.startsWith('/app/?') ? `${h}&period=${encodeURIComponent(selected)}` : h)
+
+  /* 游客（非管理员）已被 effect 送回陈列馆；这里先不渲染工作区，避免跳转前闪一帧。 */
+  if (roleKnown && me && me.role !== 'admin') return null
 
   return (
     <>
@@ -487,15 +495,11 @@ export default function App() {
           <div className="pending-box" style={{ marginTop: 0 }}>
             {notLoggedIn ? (
               <><b>请先登录</b> —— 生成台 / 审核台 / 分析台 / 预测台要馆员账号，
-                <a href="/login">去登录</a>后再来（游客账号只能看已出的东西）。
+                <a href="/login">去登录</a>后再来。
               </>
             ) : (
-              <><b>这一屏要馆员账号</b> —— 生成台 / 审核台 / 分析台 / 预测台是馆员的工作区，
-                你现在是游客身份（只能看已出的东西）。
-              </>
+              <><b>这一屏要馆员账号</b> —— 工作区只对馆员开放。</>
             )}
-            想看这一期报告去「<a href={navHref('/app/?view=report')}>报告</a>」，
-            想按期翻看卷宗去「<a href="/app/shelf/">陈列馆</a>」。
           </div>
         ) : view === 'archive' ? (
           <Archive period={selected} approvalStatus={approvalStatus} />
@@ -576,14 +580,6 @@ export default function App() {
             />}
           </>
         )}
-
-        <a className="entry" href="/app/shelf/">
-          <span>
-            <span className="t">陈列馆 · 历期卷宗</span>
-            <span className="d">按期翻看已出刊的报告（书架 → 端详 → 开卷）</span>
-          </span>
-          <span className="go" aria-hidden="true">→</span>
-        </a>
 
         {view === 'workbench' && (
         <section className="card tablewrap" style={{ marginTop: 18 }}>

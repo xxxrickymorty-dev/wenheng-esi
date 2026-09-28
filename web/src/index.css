@@ -149,7 +149,7 @@ a{color:inherit}
 .pill.stale{background:var(--gold-soft);color:var(--gold-ink)}
 .pill.unsigned{background:var(--panel);color:var(--ink-3)}
 
-/* ---------- 陈列馆入口 ---------- */
+/* ---------- 入口卡（报告屏的对照 / 红件 / 溯源入口） ---------- */
 .entry{display:flex;align-items:center;justify-content:space-between;gap:16px;
   margin-top:18px;background:var(--card);border:1px solid var(--line);border-radius:12px;
   padding:18px 20px;text-decoration:none;transition:border-color .15s}

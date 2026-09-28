@@ -458,14 +458,6 @@ export function Forecast({
         </>
       )}
 
-      <a className="entry" href="/app/shelf/">
-        <span>
-          <span className="t">陈列馆 · 历期卷宗</span>
-          <span className="d">按期翻看已出刊的报告（书架 → 端详 → 开卷）</span>
-        </span>
-        <span className="go" aria-hidden="true">→</span>
-      </a>
-
       <p className="hint" style={{ marginTop: 14 }}>
         <Icon name="clock" size={15} /> 预测是只读推演：不改台账、不改报告，跑多少次都不会动已有产物。
       </p>
