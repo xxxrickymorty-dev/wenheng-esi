@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 生成台信息减负 · 改前 / 改后对照稿</title>
+<style>
+:root{
+  --bg:#F4F3ED;--card:#FFFDF8;--panel:#F0F1EB;
+  --ink:#222B25;--ink-2:#3F4C42;--ink-3:#58655C;
+  --line:#DDE1D8;--line-2:#E6E9E2;
+  --zhu:#1A4B27;--zhu-soft:#E3EDE4;
+  --gold:#B19A65;--gold-soft:#F1EBDD;--gold-ink:#62501F;
+  --ok:#28643A;--ok-soft:#E6F0E7;
+  --warn:#75622D;--warn-soft:#F6EED8;
+  --serif:"Source Han Serif SC","Noto Serif SC",Songti SC,SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 var(--sans)}
+.review{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding:9px 22px;background:var(--panel);border-bottom:1px dashed var(--line);font-size:12.5px;color:var(--ink-2)}
+.review b{color:var(--gold-ink)}
+.topbar{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:9px;font-family:var(--serif);white-space:nowrap}
+.brand strong{font-size:21px;letter-spacing:.04em}
+.brand span{font-size:12px;color:var(--ink-3);letter-spacing:.08em}
+.nav{display:flex;gap:4px;margin-left:auto}
+.nav a{padding:7px 11px;color:var(--ink-2);text-decoration:none;border-radius:8px;font-size:14px;white-space:nowrap}
+.nav a.active{background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+.who{display:flex;align-items:center;gap:8px;border-left:1px solid var(--line);padding-left:14px;color:var(--ink-2);font-size:13px;white-space:nowrap}
+.avatar{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);font-weight:700}
+.wrap{max-width:1720px;margin:auto;padding:18px 22px 70px}
+.legend{display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;color:var(--ink-2);font-size:13px;margin:6px 0 14px}
+.legend b{color:var(--gold-ink)}
+.legend .k{padding:2px 9px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:12.5px}
+.cmp{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:1280px){.cmp{grid-template-columns:1fr}}
+.col{min-width:0}
+.col>h2{margin:0 0 8px;font-family:var(--serif);font-size:19px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.col>h2 .pill{font-weight:650}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2.5px 10px;border-radius:999px;font-size:12.5px}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.zhu{background:var(--zhu-soft);color:var(--zhu)}
+.pill.plain{background:var(--panel);color:var(--ink-2);border:1px solid var(--line)}
+.frame{position:relative;height:860px;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:var(--bg);box-shadow:0 1px 2px rgba(34,43,37,.05)}
+.frame::after{content:"";position:absolute;left:0;right:0;bottom:0;height:70px;background:linear-gradient(transparent,rgba(244,243,237,.96));pointer-events:none}
+.frame-tag{position:absolute;top:8px;right:10px;z-index:5;font:11.5px var(--mono);color:var(--ink-3);background:rgba(255,253,248,.9);border:1px solid var(--line);border-radius:999px;padding:1px 9px}
+.frame-inner{padding:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;box-shadow:0 1px 2px rgba(34,43,37,.05)}
+.card+.card{margin-top:14px}
+h1{font-family:var(--serif);font-size:23px;margin:0}
+h2{font-family:var(--serif);margin:0}
+.hint{color:var(--ink-3);font-size:13px}
+.mono{font-family:var(--mono)}
+.btn{padding:7px 13px;border:1px solid var(--line);border-radius:8px;background:var(--card);font:inherit;font-size:13.5px;cursor:pointer;color:var(--ink)}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-weight:650}
+.btn.big{padding:11px 22px;font-size:15.5px}
+.steps{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+/* ---- 改前 ---- */
+.b-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.b-focus{margin:14px 0 0;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.b-focus .big{font-size:19px;font-weight:650}
+.b-focus .sub{color:var(--ink-2);margin:4px 0 12px}
+.b-banner{margin-top:14px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.degraded{margin-top:12px;padding:11px 14px;border:1px dashed var(--line);border-radius:10px;background:var(--panel);color:var(--ink-2);font-size:13.5px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line-2);text-align:left;vertical-align:top}
+th{color:var(--ink-3);font-weight:650;font-size:12.5px}
+.mdesc{color:var(--ink-3);font-size:12.5px}
+.tabs{display:flex;gap:8px;margin:10px 0}
+.tabs span{padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:13px}
+.tabs span.on{border-color:var(--zhu);background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+/* ---- 改后 ---- */
+.a-first{display:grid;gap:14px}
+.band{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.band .big{font-family:var(--serif);font-size:22px}
+.act{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.act .txt{font-size:16px}
+.act .go{margin-left:auto;display:flex;gap:10px;align-items:center}
+.lastrun{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 16px;color:var(--ink-2);font-size:13.5px}
+.lastrun b{color:var(--ink)}
+.dot{width:20px;height:20px;min-width:20px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--card);color:var(--ink-3);font:12px/18px var(--serif);cursor:pointer}
+.dot:hover{border-color:var(--zhu);color:var(--zhu)}
+.fold{background:var(--card);border:1px solid var(--line);border-radius:12px}
+.fold summary{padding:11px 16px;cursor:pointer;font-size:14.5px;display:flex;align-items:center;gap:10px;list-style:none}
+.fold summary::-webkit-details-marker{display:none}
+.fold summary::before{content:"▸";color:var(--zhu)}
+.fold[open] summary::before{content:"▾"}
+.fold summary .sm{color:var(--ink-3);font-size:13px;margin-left:auto}
+.fold-body{padding:2px 16px 14px;border-top:1px dashed var(--line-2)}
+.fold-body .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line-2)}
+.fold-body .row:last-child{border-bottom:0}
+.pop{position:fixed;z-index:50;max-width:340px;display:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 13px;box-shadow:0 8px 26px rgba(34,43,37,.16);font-size:13px;color:var(--ink-2)}
+.pop b{color:var(--ink)}
+.metrics{margin-top:10px;display:flex;gap:8px 14px;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+.metrics .v{font:650 15px var(--mono);color:var(--ink)}
+.metrics .v.good{color:var(--ok)}
+.metrics .v.bad{color:var(--warn)}
+.check{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px}
+.check h3{margin:0 0 6px;font-size:15px}
+.check ul{margin:6px 0 0;padding-left:20px;color:var(--ink-2);font-size:13.5px}
+.check li{margin:4px 0}
+.foldnote{color:var(--ink-3);font-size:12.5px;margin:8px 2px 0}
+</style>
+</head>
+<body>
+<div class="review">
+  <b>静态对照稿 · 生成台信息减负</b>
+  <span>左=现状（按真实结构复刻）｜右=提案（渐进披露＋文案压缩）。两栏同高 860px＝一屏视口；右下角实时统计"首屏可见字数"。</span>
+</div>
+
+<header class="topbar">
+  <div class="brand"><strong>文衡</strong><span>学科信息参考</span></div>
+  <nav class="nav" aria-label="工作区">
+    <a class="active" href="#">生成台</a><a href="#">报告</a><a href="#">审核台</a><a href="#">台账</a><a href="#">分析台</a><a href="#">预测台</a>
+  </nav>
+  <div class="who"><span class="avatar">卜</span>卜彤 · 管理员</div>
+</header>
+
+<main class="wrap">
+  <div class="legend">
+    <b>本轮定的数字上限：</b>
+    <span class="k">小字 ≤24 字/条</span>
+    <span class="k">导语 ≤60 字</span>
+    <span class="k">首屏 ≤180 字</span>
+    <span class="k">说明全站仅 1 份 ≤300 字</span>
+    <span class="hint">（两栏统一按 860px 视口计量）</span>
+  </div>
+
+  <div class="cmp">
+    <!-- ================= 改前 ================= -->
+    <section class="col">
+      <h2>改前 · 现在打开生成台 <span class="pill warn">首屏 <b class="mono" id="nBefore">…</b> 字</span> <span class="pill plain">主动作 3 个</span></h2>
+      <div class="frame" id="frameBefore">
+        <span class="frame-tag">视口 860px</span>
+        <div class="frame-inner">
+          <!-- 卡片一：状态 + 步骤 + focus + 横幅 -->
+          <div class="card">
+            <div class="b-head">
+              <h1>202607</h1><span class="pill ok">已生成</span>
+              <div class="steps">
+                <span>✓ 取数贴表 · 台账已齐</span><span>✓ 放入监测表 · 已就位</span><span>✓ 一键生成 · 已出稿</span>
+              </div>
+            </div>
+            <div class="b-focus">
+              <div class="big">本期报告已就绪</div>
+              <div class="sub">复核后签单，这一版才会被标记为「可交付」</div>
+              <button class="btn primary">✓ 复核并签单</button>
+            </div>
+            <div class="b-banner">
+              <b>✓ 本期报告已生成</b>
+              <p style="margin:6px 0 10px">本期审批状态：未签发。任务结束不代表报告合格或已签发；管理员当前不能下载未签发初稿。</p>
+              <button class="btn">📄 打开报告</button> <button class="btn">✓ 去审核台</button>
+            </div>
+          </div>
+          <!-- 卡片二：01 预测模型 · 本期已选（只读） -->
+          <div class="card">
+            <div class="b-head">
+              <span class="pill zhu">01</span>
+              <h2 style="font-size:18px">预测模型 · 本期已选</h2>
+              <span class="pill plain">只读 · 改选去预测台</span>
+            </div>
+            <p style="margin:8px 0 12px;color:var(--ink-2)">模型选择只有一份，按期次保存；这里只显示本期配置，改选集中在预测台——那边能对着五个模型的预测图挑。改完保存后回到这里会同步显示；本期报告只应用实际进入预测章的学科。</p>
+            <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:13px;color:var(--ink-3);padding:10px 12px;background:var(--panel);border:1px solid var(--line-2);border-radius:10px">
+              <span>当前期次 <b class="mono">202607</b></span>
+              <span>最新完整预测数据 <b class="mono">202609</b></span>
+              <span>本次实际输出期次 <b>任务完成后显示</b></span>
+              <span>上游只读台账文件 <b>云大全学科排名、阈值动态检测表.xlsx</b> 最后修改（北京时间）：2026年9月28日 07:55:24</span>
+            </div>
+            <div class="degraded">期次与数据说明：检测到台账或处理输入文件的修改时间晚于最近一次完整运行记录；无法确认这次更新是否已进入预测数据，请重新处理确认。现有记录无法确认主台账是否被预测流程读取。V1 推荐基线为 202607，它不是预测数据期次。最近一次完整运行记录写入时间（北京时间）：2026年9月25日 08:44:17；上次处理使用的文件：监测表.xlsx（文件最后修改：2026年9月28日 08:29:20）。</div>
+            <div class="tabs"><span class="on">路线1 · 总被引 / ESI前1%被引阈值</span><span>路线2 · 国内排名 / 国内前1%机构数</span></div>
+            <div class="tablewrap">
+              <table>
+                <thead><tr><th>潜力学科</th><th>V1 基线推荐</th><th>本期已选</th><th>模型说明</th></tr></thead>
+                <tbody>
+                  <tr><td>免疫学</td><td>季节性ETS模型</td><td><b>季节性ETS模型</b><span class="mdesc"> 跟随 V1 推荐</span></td><td><span class="mdesc">抓「6 期一轮」的双月节律。适合受学年与发布节奏影响的指标。</span></td></tr>
+                  <tr><td>分子生物学与遗传学</td><td>季节性ETS模型</td><td><b>季节性ETS模型</b><span class="mdesc"> 跟随 V1 推荐</span></td><td><span class="mdesc">抓「6 期一轮」的双月节律。适合受学年与发布节奏影响的指标。</span></td></tr>
+                  <tr><td>经济与商业</td><td>SARIMA模型</td><td><b>SARIMA模型</b><span class="mdesc"> 跟随 V1 推荐</span></td><td><span class="mdesc">趋势＋周期都能抓，序列够长时按 AIC 选参，稳健通用。</span></td></tr>
+                  <tr><td>多学科</td><td>SARIMA模型</td><td><b>SARIMA模型</b><span class="mdesc"> 跟随 V1 推荐</span></td><td><span class="mdesc">趋势＋周期都能抓，序列够长时按 AIC 选参，稳健通用。</span></td></tr>
+                  <tr><td>神经科学与行为科学</td><td>季节性ETS模型</td><td><b>季节性ETS模型</b><span class="mdesc"> 跟随 V1 推荐</span></td><td><span class="mdesc">抓「6 期一轮」的双月节律。适合受学年与发布节奏影响的指标。</span></td></tr>
+                  <tr><td>物理学</td><td>经验贝叶斯状态空间模型</td><td><b>经验贝叶斯状态空间模型</b><span class="mdesc"> 跟随 V1 推荐</span></td><td><span class="mdesc">趋势项与季节项都是状态，随期更新。适合噪声大、波动剧烈的学科。</span></td></tr>
+                  <tr><td>精神病学与心理学</td><td>经验贝叶斯状态空间模型</td><td><b>经验贝叶斯状态空间模型</b><span class="mdesc"> 跟随 V1 推荐</span></td><td><span class="mdesc">趋势项与季节项都是状态，随期更新。适合噪声大、波动剧烈的学科。</span></td></tr>
+                  <tr><td>空间科学</td><td>SARIMA模型</td><td><b>SARIMA模型</b><span class="mdesc"> 跟随 V1 推荐</span></td><td><span class="mdesc">趋势＋周期都能抓，序列够长时按 AIC 选参，稳健通用。</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="foldnote">▼ 这个视口之外还有：模型表余下部分 · 「去预测台看图改选」按钮 · 已保存状态行 · 「与报告的关系」说明 · 这一期的工具 · 全部期次表 · 页尾提示。当前首屏可见 <b class="mono" id="nBefore2">…</b> 字。</p>
+    </section>
+
+    <!-- ================= 改后 ================= -->
+    <section class="col">
+      <h2>改后 · 提案（一屏装完） <span class="pill ok">首屏 <b class="mono" id="nAfter">…</b> 字</span> <span class="pill plain">主动作 1 个</span></h2>
+      <div class="frame" id="frameAfter">
+        <span class="frame-tag">视口 860px</span>
+        <div class="frame-inner">
+          <div class="a-first">
+            <!-- ① 状态带 -->
+            <div class="band">
+              <span class="big mono">202607</span>
+              <span class="pill ok">已完成</span>
+              <span class="pill warn">未签发</span>
+              <button class="dot" data-info="<b>状态从哪来</b><br>期次与任务状态来自本期任务记录；审批状态来自审核台签单。本页只读，不改任何数据。">ⓘ</button>
+            </div>
+            <!-- ② 主动作 -->
+            <div class="act">
+              <span class="txt">这一版报告等你复核签单。</span>
+              <span class="go">
+                <a class="hint" href="#">打开报告 ↗</a>
+                <button class="btn primary big">✓ 复核并签单</button>
+              </span>
+            </div>
+            <!-- ③ 最近一次运行 -->
+            <div class="lastrun">
+              <span>最近运行 <b>09-28 10:39</b> · 全绿 · <b>247.9 秒</b> · 104 张图 · MAPE 1.27%</span>
+              <a class="hint" href="#">查看运行档案 →</a>
+              <button class="dot" data-info="<b>这行数字从哪来</b><br>来自这次运行的档案：进度、断言结果与产物清单（out/_jobs/）。数字只来自馆员维护的台账，运行期大模型不进数据路径。">ⓘ</button>
+            </div>
+            <!-- 折叠 ×3 -->
+            <details class="fold">
+              <summary>本期模型 · 8 科（跟随 V1 推荐）<span class="sm">去预测台改选</span></summary>
+              <div class="fold-body">
+                <div class="row"><b>免疫学</b><span class="hint">季节性ETS</span><span class="hint">跟随 V1 推荐</span></div>
+                <div class="row"><b>分子生物学与遗传学</b><span class="hint">季节性ETS</span><span class="hint">跟随 V1 推荐</span></div>
+                <div class="row"><b>经济与商业</b><span class="hint">SARIMA</span><span class="hint">跟随 V1 推荐</span></div>
+                <div class="row"><b>多学科</b><span class="hint">SARIMA</span><span class="hint">跟随 V1 推荐</span></div>
+                <div class="row"><b>神经科学与行为科学</b><span class="hint">季节性ETS</span><span class="hint">跟随 V1 推荐</span></div>
+                <div class="row"><b>物理学</b><span class="hint">经验贝叶斯状态空间</span><span class="hint">跟随 V1 推荐</span></div>
+                <div class="row"><b>精神病学与心理学</b><span class="hint">经验贝叶斯状态空间</span><span class="hint">跟随 V1 推荐</span></div>
+                <div class="row"><b>空间科学</b><span class="hint">SARIMA</span><span class="hint">跟随 V1 推荐</span></div>
+                <p class="foldnote">完整对照（每条模型说明与改选记录）在预测台；本页只读。</p>
+              </div>
+            </details>
+            <details class="fold">
+              <summary>这一期的工具<span class="sm">3 项</span></summary>
+              <div class="fold-body">
+                <div class="row"><button class="btn">上传监测表</button><span class="hint">放入 input/202607/</span></div>
+                <div class="row"><button class="btn">重新生成</button><span class="hint">约 20 秒</span></div>
+                <div class="row"><button class="btn">下载日志包</button><span class="hint">运行留痕</span></div>
+              </div>
+            </details>
+            <details class="fold">
+              <summary>全部期次<span class="sm">共 12 期</span></summary>
+              <div class="fold-body">
+                <div class="row"><b class="mono">202607</b><span class="pill ok">已签发</span><span class="hint">当前</span></div>
+                <div class="row"><b class="mono">202609</b><span class="pill warn">未签发</span></div>
+                <div class="row"><b class="mono">202605</b><span class="pill ok">已签发</span></div>
+                <p class="foldnote">往下还有 9 期……</p>
+              </div>
+            </details>
+            <!-- 唯一一份说明 -->
+            <details class="fold">
+              <summary>说明 · 口径、来源与只读声明<span class="sm">全站仅此一份</span></summary>
+              <div class="fold-body">
+                <p class="hint" style="font-size:13px;line-height:1.8;margin:8px 0 0">
+                  ① 数字只来自馆员维护的台账与派生产物，运行期大模型不进入数据路径；
+                  ② 本页是只读视图，不修改台账与报告；③ 预测章按「本期已选」的已保存选择执行，未列学科用 V1 推荐；
+                  ④ 期次与状态以任务记录为准，未签发报告不可下载。来源：out/202607/ · out/_jobs/ · _forecast_choices/。
+                </p>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+      <div class="metrics">
+        <span>首屏可见 <span class="v good" id="nAfter2">…</span> 字（目标 ≤180）</span>
+        <span>主动作 <span class="v good" id="nPrimary">…</span> 个（目标 ≤1）</span>
+        <span>折叠 <span class="v">4</span> 处 · 说明 <span class="v">1</span> 份</span>
+        <span>ⓘ <span class="v">4</span> 处（点开=口径+来源+只读）</span>
+      </div>
+    </section>
+  </div>
+
+  <section class="check">
+    <h3>验收清单（10 秒盲测用）</h3>
+    <ul>
+      <li><b>问题一</b>：「这一页现在让你做什么？」——答「复核签单」即过。</li>
+      <li><b>问题二</b>：「这页的数字从哪来？」——点任意 ⓘ 或展开「说明」，3 秒内能答。</li>
+      <li><b>问题三</b>：「想换学科模型 / 看历史期次？」——能找到对应折叠即过。</li>
+    </ul>
+    <p class="foldnote">改前首屏 <b class="mono" id="nBefore3">…</b> 字 → 改后首屏 <b class="mono" id="nAfter3">…</b> 字。审过即进 React（生成台），并把上面四个数字上限写进 web/UX.md。</p>
+  </section>
+</main>
+
+<div class="pop" id="pop"></div>
+
+<script>
+/* ---------- 首屏可见字数：按 860px 视口实测（Range API 逐个文本节点量） ---------- */
+function visibleChars(frame){
+  const box = frame.getBoundingClientRect();
+  const top = box.top, bottom = box.top + frame.clientHeight;   /* clientHeight = 860 */
+  const walker = document.createTreeWalker(frame, NodeFilter.SHOW_TEXT);
+  let n = 0, node;
+  while((node = walker.nextNode())){
+    const t = (node.nodeValue || "").replace(/\s+/g, "");
+    if(!t) continue;
+    if(node.parentElement && node.parentElement.closest("details:not([open])")) continue;  /* 折叠内容不算首屏 */
+    const r = document.createRange();
+    r.selectNodeContents(node);
+    const rect = r.getBoundingClientRect();
+    if(rect.width === 0 && rect.height === 0) continue;         /* 被折叠的内容量不到 */
+    if(rect.bottom > top && rect.top < bottom) n += t.length;
+  }
+  return n;
+}
+function fmt(v){ return v; }
+function refresh(){
+  const b = visibleChars(document.getElementById("frameBefore"));
+  const a = visibleChars(document.getElementById("frameAfter"));
+  const primary = document.querySelectorAll("#frameAfter .btn.primary").length;
+  ["nBefore","nBefore2","nBefore3"].forEach((id) => { const el = document.getElementById(id); if(el) el.textContent = fmt(b); });
+  ["nAfter","nAfter2","nAfter3"].forEach((id) => { const el = document.getElementById(id); if(el) el.textContent = fmt(a); });
+  const p = document.getElementById("nPrimary"); if(p) p.textContent = primary;
+  const aEl = document.getElementById("nAfter");
+  if(aEl) aEl.closest(".pill").className = "pill " + (a <= 180 ? "ok" : "warn");
+}
+window.addEventListener("load", refresh);
+document.querySelectorAll(".fold").forEach((d) => d.addEventListener("toggle", refresh));
+
+/* ---------- ⓘ 弹层：点开=该块口径+来源+只读 ---------- */
+const pop = document.getElementById("pop");
+document.querySelectorAll(".dot").forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if(pop.style.display === "block" && pop.dataset.src === btn.dataset.info){ pop.style.display = "none"; return; }
+    pop.innerHTML = btn.dataset.info; pop.dataset.src = btn.dataset.info;
+    pop.style.display = "block";
+    const r = btn.getBoundingClientRect();
+    pop.style.left = Math.max(10, Math.min(window.innerWidth - 360, r.left - 40)) + "px";
+    pop.style.top = (r.bottom + 8) + "px";
+  });
+});
+document.addEventListener("click", () => { pop.style.display = "none"; });
+</script>
+</body>
+</html>
