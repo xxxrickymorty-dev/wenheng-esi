@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>陈列馆 · 报告全内容页（静态稿）</title>
+<!--
+  陈列馆「报告全内容页」静态稿（2026-09-28，Q1·A 第一步，供 rick 审核版式）。
+  数据全部为 202607 的真实产物：
+    overview_facts.json / meta.json / table2.csv / 预测选模与过线.md（路线1+路线2）。
+  单文件、零依赖、零 CDN（本仓铁律）。React 实现前以本稿版式为准。
+  待接入（改 React 时）：① 书数据扩路2/断言明细；② 「访客安全预览」字样退役。
+-->
+<style>
+  :root {
+    --bg: #0f2b20; --paper: #F8F5EC; --paper-2: #F1ECDD; --line: #D8D2BE; --line-2: #E7E1D0;
+    --ink: #222B25; --ink-2: #46524A; --ink-3: #6E7A70;
+    --green: #12362a; --green-2: #1d4a37; --gold: #B19A65; --gold-deep: #8A7440;
+    --zhu: #B43B31; --zhu-soft: #F4E3DE;
+    --mono: "Cascadia Mono", Consolas, "Courier New", monospace;
+    --serif: "Source Han Serif SC", "Noto Serif SC", "Songti SC", SimSun, serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15.5px/1.75 system-ui, -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif; }
+  .toolbar { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; gap: 6px;
+             align-items: center; padding: 12px 22px; background: #0d2419e6;
+             border-bottom: 1px solid #bcad8533; backdrop-filter: blur(8px); }
+  .toolbar .title { color: #f0ead8; font-family: var(--serif); letter-spacing: .12em; margin-right: 14px; }
+  .toolbar button { border: 1px solid #bcad8566; background: transparent; color: #d9d3bd;
+                    border-radius: 999px; padding: 5px 13px; font-size: 13px; cursor: pointer; }
+  .toolbar button[aria-pressed="true"] { background: #eee7d1; color: #153b2d; border-color: #eee7d1; }
+  .stage { max-width: 960px; margin: 26px auto 70px; padding: 0 18px; }
+  .page { display: none; background: var(--paper); border: 1px solid #bcad8550;
+          border-radius: 4px; box-shadow: 0 24px 60px #05171099; padding: 42px 52px 46px;
+          min-height: 72vh; }
+  .page.on { display: block; }
+  .page .run { display: flex; justify-content: space-between; align-items: baseline;
+               border-bottom: 1px solid var(--line); padding-bottom: 10px; margin-bottom: 26px;
+               font: 11.5px var(--mono); letter-spacing: .14em; color: var(--ink-3); }
+  h1 { font: 600 27px/1.4 var(--serif); margin: 0 0 6px; letter-spacing: .08em; }
+  h2 { font: 600 19px/1.4 var(--serif); margin: 0 0 14px; letter-spacing: .06em; }
+  .sub { color: var(--ink-2); margin: 0 0 22px; }
+  .kicker { font: 11px var(--mono); letter-spacing: .2em; color: var(--gold-deep); margin: 0 0 10px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+  th, td { border-bottom: 1px solid var(--line-2); padding: 6px 8px; text-align: left; font-size: 13px; }
+  th { color: var(--ink-3); font-weight: 600; background: var(--paper-2); border-bottom: 1px solid var(--line); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 18px 0 8px; }
+  .kpi { border: 1px solid var(--line); border-radius: 10px; padding: 13px 15px; background: #FFFDF6; }
+  .kpi span { display: block; font-size: 12px; color: var(--ink-3); letter-spacing: .06em; }
+  .kpi strong { font: 600 30px/1.25 var(--serif); color: var(--green); }
+  .kpi i { font-style: normal; font-size: 12.5px; color: var(--zhu); margin-left: 6px; }
+  .badge { display: inline-block; font-size: 11.5px; border-radius: 999px; padding: 1px 9px; }
+  .badge.sig { background: var(--zhu-soft); color: var(--zhu); }
+  .badge.watch { background: #EDEDE2; color: var(--ink-2); }
+  .badge.base { background: #F3ECD8; color: #7A6528; }
+  .box { border: 1px solid var(--line); background: #FFFDF6; border-radius: 10px; padding: 13px 16px; margin: 12px 0; font-size: 13.5px; }
+  .box h3 { margin: 0 0 6px; font-size: 14.5px; }
+  .muted { color: var(--ink-3); font-size: 12.5px; }
+  .cover { text-align: center; padding-top: 10vh; }
+  .cover .seal { display: inline-grid; place-items: center; width: 74px; height: 74px; border-radius: 12px;
+                 background: var(--green); color: #F3EEDC; font: 600 34px/1 var(--serif); }
+  .cover h1 { font-size: 34px; margin: 22px 0 4px; }
+  .cover .issue { font: 15px var(--mono); color: var(--ink-3); letter-spacing: .18em; margin-top: 10px; }
+  .cover .note { margin-top: 40px; display: inline-block; border: 1px dashed var(--gold); color: var(--gold-deep);
+                 border-radius: 999px; padding: 4px 16px; font-size: 12.5px; }
+  footer.pg { margin-top: 30px; padding-top: 10px; border-top: 1px solid var(--line);
+              font: 11px var(--mono); color: var(--ink-3); display: flex; justify-content: space-between; }
+  @media (max-width: 720px) {
+    .page { padding: 26px 20px 30px; }
+    .kpis { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="title">陈列馆 · 报告全内容页（静态稿）</span>
+  <button data-p="cover" aria-pressed="true">封面</button>
+  <button data-p="existing">目录·名词解释</button>
+  <button data-p="check">数字体检</button>
+  <button data-p="kpi">本期指标</button>
+  <button data-p="table">学科大表</button>
+  <button data-p="top">顶尖论文·近线</button>
+  <button data-p="forecast">双路线预测</button>
+</div>
+
+<div class="stage">
+
+  <!-- 1 封面 -->
+  <section class="page on" id="p-cover">
+    <div class="run"><span>学科信息参考 · 双月报告</span><span>202607</span></div>
+    <div class="cover">
+      <div class="seal">衡</div>
+      <h1>学科信息参考</h1>
+      <p class="sub">云南大学图书馆 · 学科情报服务</p>
+      <p class="issue">第 38 期 · 2026 年 7 月　|　数字体检 54/54 通过</p>
+      <span class="note">静态稿：版式审核用，数据为 202607 真实产物</span>
+    </div>
+  </section>
+
+  <!-- 2 现有两页（示意） -->
+  <section class="page" id="p-existing">
+    <div class="run"><span>学科信息参考 · 第 38 期</span><span>02</span></div>
+    <h2>目录与名词解释（现状已有，本次不改）</h2>
+    <p class="sub">陈列馆现在的书只有这三样：封面、六行目录、名词解释。
+      本次改造要新增的是后面四类页；这两页保持原样，仅把「访客安全预览」字样退役。</p>
+    <div class="box"><h3>改造范围说明</h3>
+      <p style="margin:0">新增：<b>数字体检</b> / <b>本期指标</b> / <b>学科大表</b> / <b>顶尖论文·近线</b> / <b>双路线预测</b>（本稿的第 3–7 页）。
+      数据全部来自服务器已组装的实时产物，与工作台同源。</p>
+    </div>
+  </section>
+
+  <!-- 3 数字体检 -->
+  <section class="page" id="p-check">
+    <div class="run"><span>学科信息参考 · 第 38 期</span><span>03</span></div>
+    <h2>数字体检</h2>
+    <p class="sub">出稿前机器断言逐项自检；不通过时报告会带《诊断报告》。</p>
+    <div class="kpis" style="grid-template-columns: repeat(3, 1fr)">
+      <div class="kpi"><span>断言通过</span><strong>54<i>/54</i></strong></div>
+      <div class="kpi"><span>数据覆盖窗口</span><strong style="font-size:20px">2016.1.1–2026.4.30</strong></div>
+      <div class="kpi"><span>上期对照</span><strong style="font-size:20px">2026 年 5 月</strong></div>
+    </div>
+    <div class="box"><h3>说明（待接入项）</h3>
+      <p style="margin:0">当前书数据只带「通过数/总数」。React 版可再带
+      <b>未过断言明细</b>（现成来源：《诊断报告》/ 红色件清单），有未过项时在本页红字列出。</p>
+    </div>
+  </section>
+
+  <!-- 4 本期指标 -->
+  <section class="page" id="p-kpi">
+    <div class="run"><span>学科信息参考 · 第 38 期</span><span>04</span></div>
+    <h2>本期指标</h2>
+    <p class="sub">与上期（2026 年 5 月）相比。</p>
+    <div class="kpis">
+      <div class="kpi"><span>国际排名</span><strong>995<i>↑13</i></strong></div>
+      <div class="kpi"><span>国内高校排名</span><strong>130</strong></div>
+      <div class="kpi"><span>前 1% 学科</span><strong>14</strong></div>
+      <div class="kpi"><span>顶尖论文</span><strong>274<i>↑22</i></strong></div>
+    </div>
+    <div class="box"><h3>落点提示</h3>
+      <p style="margin:0">数字均取自 `overview_facts.json`（与报告首屏同一份事实）。陈列馆与工作台从此读同一个源，不再存在「预览数字」。</p>
+    </div>
+  </section>
+
+  <!-- 5 学科大表 -->
+  <section class="page" id="p-table">
+    <div class="run"><span>学科信息参考 · 第 38 期</span><span>05</span></div>
+    <h2>学科大表（22 学科）</h2>
+    <p class="sub">论文数 / 被引 / CNCI / 顶尖论文 / 阈值 / 差距 / 接近度 / 位次；数据源 table2.csv。</p>
+    <table>
+      <thead><tr>
+        <th>学科</th><th>English</th><th class="num">论文</th><th class="num">被引</th>
+        <th class="num">CNCI</th><th class="num">顶尖</th><th class="num">阈值</th>
+        <th class="num">差距</th><th class="num">接近度</th><th class="num">位次</th>
+      </tr></thead>
+      <tbody>
+        <tr><td>化学</td><td>Chemistry</td><td class="num">2534</td><td class="num">49394</td><td class="num">1.49</td><td class="num">44</td><td class="num">7703</td><td class="num">41691</td><td class="num">↑22.81%</td><td class="num">153/-</td></tr>
+        <tr><td>材料科学</td><td>Materials Science</td><td class="num">1705</td><td class="num">39473</td><td class="num">1.49</td><td class="num">36</td><td class="num">8583</td><td class="num">30890</td><td class="num">↑16.04%</td><td class="num">179/-</td></tr>
+        <tr><td>工程学</td><td>Engineering</td><td class="num">1852</td><td class="num">27166</td><td class="num">1.36</td><td class="num">29</td><td class="num">3847</td><td class="num">23319</td><td class="num">↑33.87%</td><td class="num">200/-</td></tr>
+        <tr><td>植物与动物学</td><td>Plant &amp; Animal Science</td><td class="num">1684</td><td class="num">20071</td><td class="num">1.44</td><td class="num">29</td><td class="num">3081</td><td class="num">16990</td><td class="num">↑33.30%</td><td class="num">70/↑1</td></tr>
+        <tr><td>环境生态学</td><td>Environment/Ecology</td><td class="num">2009</td><td class="num">33628</td><td class="num">1.37</td><td class="num">27</td><td class="num">5454</td><td class="num">28174</td><td class="num">↑21.66%</td><td class="num">97/-</td></tr>
+        <tr><td>地球科学</td><td>Geosciences</td><td class="num">1989</td><td class="num">25664</td><td class="num">1.14</td><td class="num">26</td><td class="num">6092</td><td class="num">19572</td><td class="num">↑13.59%</td><td class="num">80/↓1</td></tr>
+        <tr><td>物理学</td><td>Physics</td><td class="num">1355</td><td class="num">13978</td><td class="num">1.17</td><td class="num">20</td><td class="num">18604</td><td class="num">-4626</td><td class="num">↑4.77%</td><td class="num">163/↑3</td></tr>
+        <tr><td>计算机科学</td><td>Computer Science</td><td class="num">1118</td><td class="num">13323</td><td class="num">1.06</td><td class="num">10</td><td class="num">5885</td><td class="num">7438</td><td class="num">↑0.39%</td><td class="num">113/-</td></tr>
+        <tr><td>临床医学</td><td>Clinical Medicine</td><td class="num">719</td><td class="num">12441</td><td class="num">2.15</td><td class="num">9</td><td class="num">4162</td><td class="num">8279</td><td class="num">↑13.00%</td><td class="num">171/↑1</td></tr>
+        <tr><td>社会科学</td><td>Social Sciences, general</td><td class="num">416</td><td class="num">3943</td><td class="num">1.45</td><td class="num">8</td><td class="num">2118</td><td class="num">1825</td><td class="num">↑7.36%</td><td class="num">148/-</td></tr>
+        <tr><td>生物学与生物化学</td><td>Biology &amp; Biochemistry</td><td class="num">650</td><td class="num">10920</td><td class="num">1.09</td><td class="num">8</td><td class="num">7353</td><td class="num">3567</td><td class="num">↑4.94%</td><td class="num">161/↓2</td></tr>
+        <tr><td>空间科学</td><td>Space Science</td><td class="num">1174</td><td class="num">16167</td><td class="num">1.04</td><td class="num">8</td><td class="num">54959</td><td class="num">-38792</td><td class="num">↑1.03%</td><td class="num">19/-</td></tr>
+        <tr><td>数学</td><td>Mathematics</td><td class="num">886</td><td class="num">5395</td><td class="num">1.09</td><td class="num">7</td><td class="num">5195</td><td class="num">200</td><td class="num">↑1.47%</td><td class="num">89/-</td></tr>
+        <tr><td>分子生物学与遗传学</td><td>Molecular Biology &amp; Genetics</td><td class="num">630</td><td class="num">11558</td><td class="num">0.96</td><td class="num">5</td><td class="num">13678</td><td class="num">-2120</td><td class="num">↑3.57%</td><td class="num">143/-</td></tr>
+        <tr><td>精神病学与心理学</td><td>Psychiatry/Psychology</td><td class="num">107</td><td class="num">1161</td><td class="num">1.36</td><td class="num">3</td><td class="num">4261</td><td class="num">-3100</td><td class="num">↑2.01%</td><td class="num">192/↑2</td></tr>
+        <tr><td>农业科学</td><td>Agricultural Sciences</td><td class="num">661</td><td class="num">8604</td><td class="num">1.20</td><td class="num">2</td><td class="num">3748</td><td class="num">4856</td><td class="num">↑6.64%</td><td class="num">156/↑1</td></tr>
+        <tr><td>微生物学</td><td>Microbiology</td><td class="num">629</td><td class="num">6486</td><td class="num">0.67</td><td class="num">1</td><td class="num">5555</td><td class="num">931</td><td class="num">↑3.77%</td><td class="num">96/↑1</td></tr>
+        <tr><td>经济与商业</td><td>Economics &amp; Business</td><td class="num">127</td><td class="num">1147</td><td class="num">1.00</td><td class="num">1</td><td class="num">8062</td><td class="num">-6915</td><td class="num">↑0.72%</td><td class="num">205/↓2</td></tr>
+        <tr><td>药理学与毒理学</td><td>Pharmacology &amp; Toxicology</td><td class="num">526</td><td class="num">7190</td><td class="num">0.94</td><td class="num">1</td><td class="num">4109</td><td class="num">3081</td><td class="num">↑0.31%</td><td class="num">139/↓4</td></tr>
+        <tr><td>多学科</td><td>Multidisciplinary</td><td class="num">30</td><td class="num">422</td><td class="num">0.97</td><td class="num">—</td><td class="num">3354</td><td class="num">-2932</td><td class="num">↑1.15%</td><td class="num">167/↑4</td></tr>
+        <tr><td>免疫学</td><td>Immunology</td><td class="num">102</td><td class="num">1079</td><td class="num">0.92</td><td class="num">—</td><td class="num">5414</td><td class="num">-4335</td><td class="num">↑0.90%</td><td class="num">258/↑1</td></tr>
+        <tr><td>神经系统科学与行为学</td><td>Neuroscience &amp; Behavior</td><td class="num">121</td><td class="num">1425</td><td class="num">0.94</td><td class="num">—</td><td class="num">8132</td><td class="num">-6707</td><td class="num">↑0.55%</td><td class="num">236/↓1</td></tr>
+      </tbody>
+    </table>
+    <p class="muted">表内为 202607 真实数值（table2.csv）；「差距」为负表示已超阈值。</p>
+  </section>
+
+  <!-- 6 顶尖论文与近线学科 -->
+  <section class="page" id="p-top">
+    <div class="run"><span>学科信息参考 · 第 38 期</span><span>06</span></div>
+    <h2>顶尖论文与近线学科</h2>
+    <p class="sub">顶尖论文按学科取前 3；近线学科列出已过阈值与最接近 1‰ 的学科。</p>
+    <div class="box">
+      <h3>顶尖论文 · 学科前 3</h3>
+      <p style="margin:0">化学 44 篇 · 材料科学 36 篇 · 植物与动物学 29 篇（全期合计 274 篇，较上期 +22）。</p>
+    </div>
+    <div class="box">
+      <h3>最接近 ESI 前 1‰</h3>
+      <p style="margin:0">植物与动物学 —— 接近度 <b>55.13%</b>（上期 53.62%，+1.51pp）。</p>
+    </div>
+    <div class="box">
+      <h3>未进榜但已接近 1% 阈值的学科</h3>
+      <p style="margin:0">分子生物学与遗传学 —— 接近度 <b>84.50%</b>（较上期 +3.57pp，近 7 期持续上升）；<br>
+        物理学 —— 接近度 <b>75.13%</b>（较上期 +4.77pp）。</p>
+    </div>
+  </section>
+
+  <!-- 7 双路线预测 -->
+  <section class="page" id="p-forecast">
+    <div class="run"><span>学科信息参考 · 第 38 期</span><span>07</span></div>
+    <h2>双路线预测</h2>
+    <p class="sub">路线 1 比总被引与 ESI 前 1% 阈值；路线 2 比国内排名与前 1% 机构数（辅助判断）。
+      序列窗口 <b>201909～202607 共 42 期</b>，预测 18 期。数据源：预测选模与过线.md（实时产物）。</p>
+
+    <h3 style="margin:16px 0 4px">路线 1 · 总被引 / 前 1% 阈值</h3>
+    <table>
+      <thead><tr><th>学科</th><th>当前模型</th><th class="num">滚动 MAPE</th><th class="num">接近度</th>
+        <th class="num">最早过线</th><th class="num">较可能</th><th class="num">最晚</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td>分子生物学与遗传学</td><td>季节性ETS</td><td class="num">1.91%</td><td class="num">84.50%</td><td class="num">2027-01</td><td class="num">2027-07</td><td class="num">2028-07</td><td><span class="badge sig">双线信号</span></td></tr>
+        <tr><td>物理学</td><td>经验贝叶斯状态空间</td><td class="num">3.33%</td><td class="num">75.13%</td><td class="num">2027-05</td><td class="num">2028-01</td><td class="num">2030-03</td><td><span class="badge sig">双线信号</span></td></tr>
+        <tr><td>空间科学</td><td>SARIMA</td><td class="num">1.63%</td><td class="num">29.42%</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td><span class="badge watch">持续观察</span></td></tr>
+        <tr><td>精神病学与心理学</td><td>经验贝叶斯状态空间</td><td class="num">1.43%</td><td class="num">27.25%</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td><span class="badge watch">持续观察</span></td></tr>
+        <tr><td>免疫学</td><td>季节性ETS</td><td class="num">3.03%</td><td class="num">19.93%</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td><span class="badge watch">持续观察</span></td></tr>
+        <tr><td>神经系统科学与行为学</td><td>季节性ETS</td><td class="num">2.38%</td><td class="num">17.52%</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td><span class="badge watch">持续观察</span></td></tr>
+        <tr><td>经济与商业</td><td>SARIMA</td><td class="num">1.26%</td><td class="num">14.23%</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td><span class="badge watch">持续观察</span></td></tr>
+        <tr><td>多学科</td><td>SARIMA</td><td class="num">5.06%</td><td class="num">12.58%</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td><span class="badge base">临时基线</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin:18px 0 4px">路线 2 · 国内排名 / 前 1% 机构数（辅助）</h3>
+    <table>
+      <thead><tr><th>学科</th><th>当前模型</th><th class="num">滚动 MAPE</th><th class="num">接近度</th>
+        <th class="num">最早过线</th><th class="num">较可能</th><th class="num">最晚</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td>分子生物学与遗传学</td><td>阻尼Holt</td><td class="num">1.70%</td><td class="num">90.21%</td><td class="num">2027-03</td><td class="num">2027-07</td><td class="num">—</td><td><span class="badge sig">双线信号</span></td></tr>
+        <tr><td>物理学</td><td>经验贝叶斯状态空间</td><td class="num">2.32%</td><td class="num">79.14%</td><td class="num">2027-05</td><td class="num">2028-09</td><td class="num">—</td><td><span class="badge sig">双线信号</span></td></tr>
+        <tr><td>空间科学</td><td>SARIMA</td><td class="num">2.25%</td><td class="num">52.63%</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td><span class="badge watch">持续观察</span></td></tr>
+        <tr><td>免疫学</td><td>阻尼Holt</td><td class="num">2.19%</td><td class="num">38.76%</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td><span class="badge watch">持续观察</span></td></tr>
+        <tr><td>精神病学与心理学</td><td>SARIMA</td><td class="num">1.45%</td><td class="num">36.98%</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td><span class="badge watch">持续观察</span></td></tr>
+        <tr><td>神经系统科学与行为学</td><td>SARIMA</td><td class="num">1.67%</td><td class="num">35.17%</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td><span class="badge watch">持续观察</span></td></tr>
+        <tr><td>经济与商业</td><td>阻尼Holt</td><td class="num">1.15%</td><td class="num">30.73%</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td><span class="badge watch">持续观察</span></td></tr>
+        <tr><td>多学科</td><td>阻尼Holt</td><td class="num">8.62%</td><td class="num">7.78%</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td><span class="badge base">临时基线</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="box"><h3>判定口径</h3>
+      <p style="margin:0">路线 1：预测总被引 ÷ 预测 ESI 前 1% 阈值 × 100%，达到 100% 记为首次过线。
+      路线 2：预测前 1% 机构数 ÷ 预测云大国内排名 × 100%，排名不大于机构数时记为辅助条件达到。
+      预测过线是滚动监测信号，<b>不等同于正式入榜时间或入榜概率</b>。</p>
+      <p class="muted" style="margin:8px 0 0">实现口径：Holt/季节性ETS 走 tsa.holtwinters；SARIMA 在初始 30 期内按 AIC 从 12 组候选选阶后固定。</p>
+    </div>
+    <p class="muted">待接入：书数据目前只带路线 1（服务器 `_read_forecast` 只解析「被引维度」）；
+      改 React 时把它扩成双路线（数据源同一份 md）。</p>
+  </section>
+
+  <footer class="pg">
+    <span>静态稿 · 2026-09-28 · 数据 = out/202607 实时产物</span>
+    <span>待审核：版式与页数取舍</span>
+  </footer>
+</div>
+
+<script>
+  var btns = document.querySelectorAll('.toolbar button');
+  function show(id) {
+    document.querySelectorAll('.page').forEach(function (p) { p.classList.remove('on'); });
+    var target = document.getElementById('p-' + id);
+    if (target) target.classList.add('on');
+    document.querySelectorAll('.toolbar button').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.p === id));
+    });
+    window.scrollTo({ top: 0 });
+  }
+  btns.forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.p); }); });
+</script>
+</body>
+</html>
