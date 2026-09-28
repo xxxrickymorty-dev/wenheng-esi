@@ -299,7 +299,10 @@ def read_top_counts(esi_dir: pathlib.Path) -> tuple[dict, dict, int]:
 
 def plan_top_extra(xml: str, ledger: pathlib.Path, period: str, years: dict,
                    total: int) -> tuple[str, dict]:
-    """在（已追加期次列的）TOP论文 XML 上补：「高被引论文合计（篇）」两行 + 年度行。"""
+    """在（已追加期次列的）TOP论文 XML 上补：「TOP论文合计（篇）」两行 + 年度行。
+
+    合计行标签以「TOP论文合计（篇）」为准；识别兼容旧名「高被引论文合计（篇）」。
+    """
     g, shared = T.read_grid(ledger, "TOP论文")
     hdr = {cn: str(T.gtext(g, shared, 1, cn) or "").strip() for cn in g.get(1, {})}
     period_cols = [(T.col_index(cn), cn) for cn, v in hdr.items() if re.fullmatch(r"20\d{4}", v)]
@@ -309,7 +312,7 @@ def plan_top_extra(xml: str, ledger: pathlib.Path, period: str, years: dict,
     ops = {}
     for rn in sorted(g):
         nm = str(T.gtext(g, shared, rn, "A") or "").strip()
-        if nm.startswith("高被引论文合计"):
+        if nm.startswith(("TOP论文合计", "高被引论文合计")):
             v = total
         elif re.fullmatch(r"20\d\d", nm):
             v = years.get(nm)

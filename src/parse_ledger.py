@@ -299,7 +299,11 @@ def parse_avg_cites(ws, clean_log):
 
 
 def parse_top_summary(ws, clean_log):
-    """TOP论文：宽表 + 合计行 + 年份行。（表头期次有脏值 2023.3/2023.5，统一归一）"""
+    """TOP论文：宽表 + 合计行 + 年份行。（表头期次有脏值 2023.3/2023.5，统一归一）
+
+    合计行标签以「TOP论文合计（篇）」为准（2026-09-28 统一）；旧名
+    「高被引论文合计（篇）」仅作为 202607 及之前历史文件的读取兼容。
+    """
     rows = list(ws.iter_rows(values_only=True))
     hdr = ["" if h is None else str(h).strip() for h in rows[0][1:]]
     periods = [re.sub(r"\.(\d)$", r".0\1", h).replace(".", "") for h in hdr if h]
@@ -310,7 +314,7 @@ def parse_top_summary(ws, clean_log):
             data[name] = [_num(v) for v in r[1:1 + len(periods)]]
         elif re.fullmatch(r"20\d\d", name):
             year_rows[name] = [_num(v) for v in r[1:1 + len(periods)]]
-        elif name.startswith("高被引论文合计"):
+        elif name.startswith(("TOP论文合计", "高被引论文合计")):
             total = {p: _num(v) for p, v in zip(periods, r[1:1 + len(periods)])}
     df = pd.DataFrame(data, index=periods).T.reindex(DISCIPLINES_EN)
     df.index.name = "discipline"

@@ -109,7 +109,7 @@
 ## 验收三件套（改状态相关代码后按序跑）
 
 ```bash
-.venv\Scripts\python.exe -m pytest -m ""          # 全量 801 例（默认 797 例，4 个 slow 被 marker 排除）
+.venv\Scripts\python.exe -m pytest -m ""          # 全量 803 例（默认 799 例，4 个 slow 被 marker 排除）
 uvicorn server.app:app --port 8080                 # 起服务后跑 server/e2e_check.py（只读 166 断言）
 .venv\Scripts\python.exe tools/verify_demo_run.py <期次>   # 写路径验收
 ```

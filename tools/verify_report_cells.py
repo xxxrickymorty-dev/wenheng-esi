@@ -291,7 +291,8 @@ def verify_top_papers(tbl, book, period, big_tbl):
     # 台账合计
     sh = "TOP论文"
     r_tot = next((i for i, r in enumerate(book.sheets[sh])
-                  if r and str(r[0] or "").strip().startswith("高被引论文合计")), None)
+                  if r and str(r[0] or "").strip().startswith(
+                      ("TOP论文合计", "高被引论文合计"))), None)
     c = book.col_of(sh, period, norm=top_norm)
     tot, loc = book.at(sh, r_tot, c)
     is_current = tot is not None and int(tot) == len(rows)
