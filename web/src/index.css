@@ -68,6 +68,14 @@ a{color:inherit}
 .period-chip{display:flex;align-items:center;gap:6px;color:var(--ink-3);font-size:13.5px;white-space:nowrap}
 .period-chip select{font:inherit;font-size:14px;font-variant-numeric:tabular-nums;padding:6px 10px;
   border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+/* 就地折叠（票 11；UX.md 第十节）：包卡片的折叠壳，展开后卡片自身描边去掉 */
+.fold{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-top:18px;overflow:hidden}
+.fold>summary{display:flex;align-items:center;gap:10px;padding:13px 18px;cursor:pointer;font-size:15px;list-style:none}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::before{content:"▸";color:var(--zhu)}
+.fold[open]>summary::before{content:"▾"}
+.fold>summary .sm{color:var(--ink-3);font-size:13px;margin-left:auto}
+.fold .card{margin-top:0!important;border:0;border-radius:0;box-shadow:none}
 
 .wrap{max-width:1180px;margin:0 auto;padding:26px 22px 70px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}

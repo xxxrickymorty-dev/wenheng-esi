@@ -443,10 +443,13 @@ export function Workbench({
         )}
       </section>
 
-      <ModelSummary period={period} periods={periods} meta={forecastMeta} metaError={forecastMetaError}
-                    actualOutputPeriod={actualOutputPeriod} state={forecastChoice}
-                    dirty={forecastChoiceDirty} onPickPeriod={onPickPeriod}
-                    onReload={onReloadForecastChoice} />
+      <details className="fold">
+        <summary>本期模型 · 预测选模（只读）<span className="sm">改选去预测台</span></summary>
+        <ModelSummary period={period} periods={periods} meta={forecastMeta} metaError={forecastMetaError}
+                      actualOutputPeriod={actualOutputPeriod} state={forecastChoice}
+                      dirty={forecastChoiceDirty} onPickPeriod={onPickPeriod}
+                      onReload={onReloadForecastChoice} />
+      </details>
     </>
   )
 }
