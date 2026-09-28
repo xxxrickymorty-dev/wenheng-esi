@@ -60,7 +60,11 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 clamp(24px, 4vw, 80px);
-  border-bottom: 1px solid rgba(228, 223, 197, .23);
+  /* 2026-09-28：导航栏对齐首页（图一）——深绿实底 + 象牙白文字 + 金线底边，
+     建筑页 / 阅览室 / 阅读器三屏同一条顶栏。 */
+  background: #12362a;
+  color: #f0ead8;
+  border-bottom: 1px solid #bcad8550;
   font-family: Georgia, 'Noto Serif CJK SC', serif;
 }
 
