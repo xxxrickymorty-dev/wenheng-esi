@@ -3,8 +3,11 @@
 {% block sub %}学 科 信 息 参 考 · 演 示 环 境{% endblock %}
 {% block body_attrs %}class="theme-ynu"{% endblock %}
 
-{# 欢迎页 ＝ 登录页（rick 2026-09-21 定：把建筑图做首屏；2026-09-28 二改：
-   图书馆照片做满屏背景，语汇对齐陈列馆首页——暗绿压暗、米白文字、登录卡浮在照片上）。
+{# 欢迎页 ＝ 登录页（rick 2026-09-21 定：把建筑图做首屏；2026-09-28 二改：满屏图书馆背景；
+   2026-09-28 三改：登录卡改玻璃拟态（参考 CodePen「Glassmorphism | Login Form」bGwYYPQ 的
+   视觉语汇——毛玻璃卡片 + 浮动玻璃方块 + 浮动标签输入框）。
+   适配本仓铁律：**零 CDN**——原稿的 Google 字体（El Messiri）、Font Awesome、外链眼睛
+   图标全部不引，改用系统字体 + 内联 SVG 复刻；背景仍是本馆照片，不给卡通渐变。
    为什么放在登录页而不是 `/`：`/` 是馆员工作台（2026-09-19 刻意改过去的，
    回答"这次要我做什么决定"），不该被一张宣传图顶掉；而未登录的人第一眼看到的
    就是这一页 —— 它才是系统真正的门面。
@@ -61,18 +64,133 @@
     width: 6px; height: 6px; border: 1px solid var(--gold); transform: rotate(45deg);
   }
   .welcome-facts li strong { color: #F6F1DE; }
-  /* --- 右：登录卡浮在照片上（卡片自身仍是纸面，压深投影） --- */
+
+  /* ===================== 右：玻璃拟态登录卡 ===================== */
   .welcome .login-wrap {
     min-height: 0; padding: 0; height: 100%;
     display: flex; align-items: center; justify-content: center;
   }
-  .welcome .plaque { width: 100%; box-shadow: 0 22px 60px rgba(5, 22, 16, .5); }
-  /* --- 窄屏：文案在上、卡在下；固定背景在窄屏上改为跟随滚动 --- */
+  .glass-wrap { position: relative; width: 100%; max-width: 430px; }
+  /* 浮动玻璃方块（原稿的 square(n)，位置按本页收窄，避免压到左列文案） */
+  .glass-square {
+    position: absolute; background: rgba(255, 255, 255, .10);
+    -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+    box-shadow: 0 25px 45px rgba(0, 0, 0, .18);
+    border: 1px solid rgba(255, 255, 255, .18); border-radius: 15px;
+    animation: glass-float 10s linear infinite;
+    animation-delay: calc(-1s * var(--i));
+    pointer-events: none; z-index: 0;
+  }
+  @keyframes glass-float {
+    0%, 100% { transform: translateY(-20px); }
+    50% { transform: translateY(20px); }
+  }
+  .glass-square:nth-child(1) { width: 100px; height: 100px; top: -40px; right: -50px; }
+  .glass-square:nth-child(2) { width: 140px; height: 140px; top: 120px; left: -90px; }
+  .glass-square:nth-child(3) { width: 60px; height: 60px; bottom: 70px; right: -40px; }
+  .glass-square:nth-child(4) { width: 50px; height: 50px; bottom: 20px; left: -60px; }
+  .glass-square:nth-child(5) { width: 45px; height: 45px; top: -30px; left: -45px; }
+  .glass-square:nth-child(6) { width: 80px; height: 80px; top: 210px; right: -90px; }
+
+  /* 卡片本体：深色毛玻璃（原稿 .container 的语汇；这里压暗一档，
+     因为背景是亮照片——纯白玻璃上白字对比度不够）。压深投影，浮在照片上 */
+  body.theme-ynu .plaque {
+    position: relative; z-index: 1;
+    width: 100%; background: rgba(10, 30, 23, .42);
+    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, .20); border-radius: 16px;
+    box-shadow: 0 25px 45px rgba(0, 0, 0, .35);
+  }
+  body.theme-ynu .plaque::after {
+    content: ""; position: absolute; inset: 5px; border-radius: 11px; pointer-events: none;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, .10), rgba(255, 255, 255, .02) 32%, transparent 62%);
+  }
+  body.theme-ynu .plaque .body { padding: 30px 28px 26px; position: relative; z-index: 1; }
+  body.theme-ynu .plaque .mark { color: #F6F1DE; }
+  body.theme-ynu .plaque .mark i { color: var(--gold); }
+  body.theme-ynu .plaque .tagline { color: rgba(240, 236, 220, .72); }
+  body.theme-ynu .plaque hr { border-top: 1px solid rgba(255, 255, 255, .18); }
+
+  /* 输入框：浮动标签（input 在前、span 在后，`:focus`/`:valid` 提起）+ 内联 SVG 前导图标 */
+  body.theme-ynu .plaque .inputBx { position: relative; margin-bottom: 20px; }
+  body.theme-ynu .plaque .inputBx input {
+    width: 100%; margin-top: 0; padding: 13px 46px 13px 42px;
+    background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .28);
+    border-radius: 14px; color: #fff; font-size: 15px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, .12);
+    transition: border-color .2s, background .2s;
+  }
+  body.theme-ynu .plaque .inputBx input:focus {
+    border-color: rgba(255, 255, 255, .65); background: rgba(255, 255, 255, .2);
+  }
+  body.theme-ynu .plaque .inputBx input:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, .7); outline-offset: 1px;
+  }
+  body.theme-ynu .plaque .inputBx input:-webkit-autofill {
+    -webkit-text-fill-color: #fff; transition: background-color 9999s ease-out;
+  }
+  body.theme-ynu .plaque .inputBx span {
+    position: absolute; left: 42px; top: 13px; color: rgba(255, 255, 255, .85);
+    font-size: 14.5px; letter-spacing: .04em; pointer-events: none; transition: .25s ease;
+  }
+  body.theme-ynu .plaque .inputBx input:focus ~ span,
+  body.theme-ynu .plaque .inputBx input:valid ~ span {
+    transform: translate(-34px, -26px) scale(.82);
+    transform-origin: left top; color: rgba(255, 255, 255, .78);
+  }
+  body.theme-ynu .plaque .inputBx .lead-ic {
+    position: absolute; left: 13px; top: 12px; width: 20px; height: 20px;
+    stroke: rgba(255, 255, 255, .85); fill: none; stroke-width: 1.7;
+    stroke-linecap: round; stroke-linejoin: round; pointer-events: none;
+  }
+  /* 密码显示切换（原稿的眼睛；内联 SVG 替代外链图标） */
+  body.theme-ynu .plaque .pwd-toggle {
+    position: absolute; right: 8px; top: 7px; width: 32px; height: 32px;
+    display: grid; place-items: center; border: 0; background: transparent;
+    cursor: pointer; border-radius: 9px;
+  }
+  body.theme-ynu .plaque .pwd-toggle svg {
+    width: 20px; height: 20px; stroke: rgba(255, 255, 255, .8); fill: none;
+    stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+  }
+  body.theme-ynu .plaque .pwd-toggle:hover { background: rgba(255, 255, 255, .12); }
+  body.theme-ynu .plaque .pwd-toggle .slash { opacity: 0; transition: opacity .15s; }
+  body.theme-ynu .plaque .pwd-toggle.is-visible .slash { opacity: 1; }
+
+  /* 提交（原稿 input[type=submit]：白底深字，hover 玻璃化）/ 游客次按钮 */
+  body.theme-ynu .plaque .btn.primary {
+    background: #fff; color: #123619; border: 0; border-radius: 14px;
+    padding: 12px 16px; font-size: 15px; letter-spacing: .28em; text-indent: .28em;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .28);
+    transition: background .4s, color .4s, box-shadow .3s;
+  }
+  body.theme-ynu .plaque .btn.primary:hover {
+    background: linear-gradient(115deg, rgba(255, 255, 255, .28), rgba(255, 255, 255, .6));
+    color: #fff;
+  }
+  body.theme-ynu .plaque .btn.line {
+    background: transparent; color: rgba(255, 255, 255, .92);
+    border: 1px solid rgba(255, 255, 255, .4); border-radius: 14px;
+  }
+  body.theme-ynu .plaque .btn.line:hover {
+    background: rgba(255, 255, 255, .14); color: #fff; border-color: rgba(255, 255, 255, .65);
+  }
+  body.theme-ynu .plaque .muted { color: rgba(240, 236, 220, .66); }
+  body.theme-ynu .plaque code {
+    background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .2); color: #F6F1DE;
+  }
+  body.theme-ynu .plaque .alert.err {
+    background: rgba(255, 120, 100, .16); border: 1px solid rgba(255, 120, 100, .35);
+    border-left: 3px solid #FF9C86; color: #FFD9D0; border-radius: 10px;
+  }
+
+  /* --- 窄屏：文案在上、卡在下；固定背景跟随滚动；方块收掉防溢出 --- */
   @media (max-width: 940px) {
     body.theme-ynu { background-attachment: scroll; }
     .welcome { grid-template-columns: 1fr; gap: 28px; min-height: 0; padding: 26px 0; }
     .welcome-copy h1 { font-size: 34px; }
-    .welcome .plaque { max-width: 430px; margin: 0 auto; }
+    .glass-wrap { max-width: 430px; margin: 0 auto; }
+    .glass-square { display: none; }
   }
   /* 手机顶栏：品牌不折行；副标题让位（否则「文衡」会被挤成两行） */
   @media (max-width: 760px) {
@@ -104,39 +222,79 @@
 
   <section>
     <div class="login-wrap">
-      <div class="plaque">
-        <div class="strip"><span>文 衡 · WENHENG</span><span>INTERNAL · 0.1</span></div>
-        <div class="body">
-          <div class="mark">文<i>衡</i></div>
-          <p class="tagline">首届高校图书馆「AI+管理服务」大赛 · 演示环境</p>
-          <hr>
-          {% if err %}<div class="alert err">{{ err }}</div>{% endif %}
-          <form method="post" action="/login" class="login-form">
-            <label>账号
-              <input name="username" autocomplete="username" required autofocus>
-            </label>
-            <label>密码
-              <input name="password" type="password" autocomplete="current-password" required>
-            </label>
-            <button class="btn primary wide" type="submit">登 录</button>
-          </form>
-          {% if hint %}<p class="muted small" style="margin-top:14px">演示提示：账号 <code>{{ show_hint_user }}</code>，密码见 server/.env 配置。</p>{% endif %}
-          {% if show_guest %}
-          <!-- 只读游客入口：纯表单 POST（无 JS）；凭据来自 server/.env 的 WENHENG_GUEST_*，
-               显示由 WENHENG_SHOW_GUEST 控制（默认显示，=0 隐藏）。 -->
-          <form method="post" action="/login" style="margin-top:10px">
-            <input type="hidden" name="username" value="{{ guest_user }}">
-            <input type="hidden" name="password" value="{{ guest_pass }}">
-            <button class="btn line wide" type="submit">以游客身份浏览（只读）</button>
-          </form>
-          <p class="muted small" style="margin-top:8px">
-            游客仅可在陈列馆查看封面、目录和名词解释，不能看全文、下载、指标或数据档案。
-          </p>
-          {% endif %}
+      <div class="glass-wrap">
+        <div class="glass-square" style="--i:0"></div>
+        <div class="glass-square" style="--i:1"></div>
+        <div class="glass-square" style="--i:2"></div>
+        <div class="glass-square" style="--i:3"></div>
+        <div class="glass-square" style="--i:4"></div>
+        <div class="glass-square" style="--i:5"></div>
+
+        <div class="plaque">
+          <div class="body">
+            <div class="mark">文<i>衡</i></div>
+            <p class="tagline">首届高校图书馆「AI+管理服务」大赛 · 演示环境</p>
+            <hr>
+            {% if err %}<div class="alert err">{{ err }}</div>{% endif %}
+            <form method="post" action="/login" class="login-form">
+              <div class="inputBx">
+                <input name="username" autocomplete="username" required autofocus aria-label="账号">
+                <span>账号</span>
+                <svg class="lead-ic" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="8" r="4"></circle>
+                  <path d="M4.5 20c1.6-3.7 4.6-5.5 7.5-5.5s5.9 1.8 7.5 5.5"></path>
+                </svg>
+              </div>
+              <div class="inputBx">
+                <input id="wh-password" name="password" type="password"
+                       autocomplete="current-password" required aria-label="密码">
+                <span>密码</span>
+                <svg class="lead-ic" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"></rect>
+                  <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"></path>
+                </svg>
+                <button type="button" class="pwd-toggle" onclick="whTogglePassword(this)" aria-label="显示密码">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"></path>
+                    <circle cx="12" cy="12" r="2.7"></circle>
+                    <path class="slash" d="M4.5 19.5 19.5 4.5"></path>
+                  </svg>
+                </button>
+              </div>
+              <button class="btn primary wide" type="submit">登 录</button>
+            </form>
+            {% if hint %}<p class="muted small" style="margin-top:14px">演示提示：账号 <code>{{ show_hint_user }}</code>，密码见 server/.env 配置。</p>{% endif %}
+            {% if show_guest %}
+            <!-- 只读游客入口：纯表单 POST（无 JS 也能用）；凭据来自 server/.env 的 WENHENG_GUEST_*，
+                 显示由 WENHENG_SHOW_GUEST 控制（默认显示，=0 隐藏）。 -->
+            <form method="post" action="/login" style="margin-top:10px">
+              <input type="hidden" name="username" value="{{ guest_user }}">
+              <input type="hidden" name="password" value="{{ guest_pass }}">
+              <button class="btn line wide" type="submit">以游客身份浏览（只读）</button>
+            </form>
+            <p class="muted small" style="margin-top:8px">
+              游客仅可在陈列馆查看封面、目录和名词解释，不能看全文、下载、指标或数据档案。
+            </p>
+            {% endif %}
+          </div>
         </div>
       </div>
     </div>
   </section>
 
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  /* 密码显示切换（原稿 show_hide_password）：原生 JS、无依赖；无 JS 时表单照常 POST。 */
+  function whTogglePassword(btn) {
+    var input = document.getElementById('wh-password');
+    if (!input) return;
+    var show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.classList.toggle('is-visible', show);
+    btn.setAttribute('aria-label', show ? '隐藏密码' : '显示密码');
+  }
+</script>
 {% endblock %}
