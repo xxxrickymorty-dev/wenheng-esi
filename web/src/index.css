@@ -377,6 +377,21 @@ a{color:inherit}
 .fc-ticks{margin:10px 0 0;padding-left:22px;color:var(--ink-2)}
 .fc-ticks li{margin:5px 0}
 
+/* 全模型预测图（试跑 · 五模型两列网格 + 卡上改选，rick 2026-09-28） */
+.fc-gal{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+.fc-gal .fc-model{margin-top:0}
+.fc-gal .fc-model-h{padding:10px 13px}
+.fc-gal .fc-model-h h3{font-size:15.5px}
+.fc-gal .fc-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+.fc-gal .fc-metrics div{padding:9px 13px}
+.fc-gal .fc-metrics b{font-size:1.15rem}
+.fc-gal .fc-break{padding:7px 13px}
+.fc-gal .fc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 13px;border-top:1px solid var(--line-2)}
+.fc-gal-reset{margin-left:10px;padding:3px 9px;font-size:12.5px}
+.fc-more{border-top:1px dashed var(--line-2)}
+.fc-more summary{padding:8px 13px;font-size:13px;color:var(--ink-3);cursor:pointer}
+@media (max-width:1020px){.fc-gal{grid-template-columns:1fr}}
+
 /* ============================================================================
    学科数据总览（分析台·读数版）——22 学科 × 六列；点一行展开逐格来源
    ========================================================================== */

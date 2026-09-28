@@ -2,7 +2,7 @@
    学科、路线和模型说明来自服务端；模型选择与生成台共用当前任务期次。
    学科板和试跑仍读取最新完整预测数据；本页只显示结果，不重新计算。 */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   formatProvenanceTime, getForecastBoard, runForecast,
   type ForecastBoard, type ForecastChoiceEntry, type ForecastMeta, type ForecastModelResult, type ForecastRun,
@@ -27,6 +27,34 @@ function fmtPeriod(v: number | null | undefined): string {
 const HORIZONS = [12, 18, 24]
 
 /* ---------------------------------------------------------------- 试跑结果 */
+
+/** 逐期预测值表——单模型详版与五模型图卡里的折叠块共用。 */
+function ForecastTable({ run, r }: { run: ForecastRun; r: ForecastModelResult }) {
+  return (
+    <div className="tablewrap">
+      <table className="fc-tbl">
+        <thead>
+          <tr>
+            <th>期次</th>
+            <th style={{ textAlign: 'right' }}>{run.metric_names[0]}</th>
+            <th style={{ textAlign: 'right' }}>{run.metric_names[1]}</th>
+            <th style={{ textAlign: 'right' }}>接近度</th>
+          </tr>
+        </thead>
+        <tbody>
+          {r.forecast.map((p) => (
+            <tr key={p.period} className={p.crossed ? 'crossed' : ''}>
+              <td>{fmtPeriod(p.period)}</td>
+              <td className="num">{fmtNum(p.metric1)}</td>
+              <td className="num">{fmtNum(p.metric2)}</td>
+              <td className="num">{fmtNum(p.proximity, 2)}%</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
 
 function ModelCard({ run, r }: { run: ForecastRun; r: ForecastModelResult }) {
   const isRec = r.model === run.recommended_model
@@ -56,53 +84,124 @@ function ModelCard({ run, r }: { run: ForecastRun; r: ForecastModelResult }) {
 
       <img className="fc-chart" src={r.chart} alt={`${run.subject} · ${r.model} 预测趋势图`} />
 
-      <div className="tablewrap">
-        <table className="fc-tbl">
-          <thead>
-            <tr>
-              <th>期次</th>
-              <th style={{ textAlign: 'right' }}>{run.metric_names[0]}</th>
-              <th style={{ textAlign: 'right' }}>{run.metric_names[1]}</th>
-              <th style={{ textAlign: 'right' }}>接近度</th>
-            </tr>
-          </thead>
-          <tbody>
-            {r.forecast.map((p) => (
-              <tr key={p.period} className={p.crossed ? 'crossed' : ''}>
-                <td>{fmtPeriod(p.period)}</td>
-                <td className="num">{fmtNum(p.metric1)}</td>
-                <td className="num">{fmtNum(p.metric2)}</td>
-                <td className="num">{fmtNum(p.proximity, 2)}%</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ForecastTable run={run} r={r} />
     </article>
   )
 }
 
-function Trial({ meta }: { meta: ForecastMeta }) {
+/** 五模型预测图（rick 2026-09-28）：两列图卡，卡上直接改选；
+    选择写进 02「本期用哪个模型」的同一份状态，保存仍在那里。 */
+function ModelGallery({
+  run, choice, recommendations, onChoiceChange,
+}: {
+  run: ForecastRun
+  choice: ForecastChoiceEntry | null
+  recommendations?: Record<string, Record<string, string>>
+  onChoiceChange: (route: string, subject: string, model: string) => void
+}) {
+  const mine = choice?.choice?.[run.task]?.[run.subject] ?? ''
+  const rec = recommendations?.[run.task]?.[run.subject] ?? run.recommended_model
+  const effective = mine || rec
+  const pickable = choice?.loaded && !choice?.saving
+
+  return (
+    <>
+      <p className="hint" style={{ marginTop: 12 }} role="status">
+        当前选用：<b>{effective || '未定'}</b>
+        {mine ? `（已从 V1 推荐「${rec}」改选）` : '（未改，跟随 V1 推荐）'}
+        {mine && <button type="button" className="btn fc-gal-reset" disabled={!pickable}
+                          onClick={() => onChoiceChange(run.task, run.subject, '')}>恢复 V1 推荐</button>}
+        <span className="hint"> · 改选后到 02 保存</span>
+      </p>
+
+      <div className="fc-gal">
+        {run.results.map((r) => {
+          const isRec = r.model === run.recommended_model
+          const isBest = r.model === run.comparison_best_model
+          const isMine = r.model === mine
+          const isActive = r.model === effective
+          return (
+            <article className="fc-model" key={r.model}>
+              <div className="fc-model-h">
+                <h3>{r.model}</h3>
+                {isRec && <span className="pill signed">V1 基线推荐</span>}
+                {isBest && <span className="pill stale">本次误差最低</span>}
+                {isMine && <span className="pill manual">当前选用</span>}
+                {!mine && isRec && <span className="pill">正在使用</span>}
+                <span className="hint" style={{ marginLeft: 'auto' }}>{run.source_period} 期数据</span>
+              </div>
+
+              <div className="fc-metrics">
+                <div><b>{fmtNum(r.rolling_mape, 2)}%</b><span>综合滚动 MAPE</span></div>
+                <div><b>{fmtNum(r.fit_mape, 2)}%</b><span>历史拟合 MAPE</span></div>
+                <div><b>{fmtPeriod(r.first_crossing)}</b><span>首次模型过线</span></div>
+                <div><b>{r.status === 'PASS' ? '通过' : '需复核'}</b><span>V1 运行状态</span></div>
+              </div>
+
+              {r.metric_mapes && (
+                <p className="fc-break">
+                  分项滚动：
+                  {Object.entries(r.metric_mapes).map(([name, m]) => `${name} ${fmtNum(m.rolling, 2)}%`).join(' · ')}
+                </p>
+              )}
+
+              <img className="fc-chart" src={r.chart} alt={`${run.subject} · ${r.model} 预测趋势图`} />
+
+              <div className="fc-actions">
+                {isActive
+                  ? <button type="button" className="btn" disabled>{isMine ? '当前选用' : '正在使用（V1 推荐）'}</button>
+                  : <button type="button" className="btn primary" disabled={!pickable}
+                            onClick={() => onChoiceChange(run.task, run.subject, r.model)}>选用此模型</button>}
+              </div>
+
+              <details className="fc-more">
+                <summary>逐期预测值（{r.forecast.length} 期）</summary>
+                <ForecastTable run={run} r={r} />
+              </details>
+            </article>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+function Trial({ meta, choice, onChoiceChange }: {
+  meta: ForecastMeta
+  choice: ForecastChoiceEntry | null
+  onChoiceChange: (route: string, subject: string, model: string) => void
+}) {
   const [subject, setSubject] = useState(meta.subjects[0] ?? '')
   const [task, setTask] = useState(meta.routes[0]?.value ?? '')
-  const [model, setModel] = useState('recommended')
+  const [model, setModel] = useState('all')
   const [horizon, setHorizon] = useState(18)
   const [busy, setBusy] = useState(false)
   const [data, setData] = useState<ForecastRun | null>(null)
   const [err, setErr] = useState('')
+  const cache = useRef(new Map<string, ForecastRun>())
   const selectedSubject = meta.subjects.includes(subject) ? subject : meta.subjects[0] ?? ''
   const selectedTask = meta.routes.some((route) => route.value === task)
     ? task
     : meta.routes[0]?.value ?? ''
+  const runKey = `${selectedSubject}|${selectedTask}|${model}|${horizon}`
+
+  // 参数一变先看有没有跑过：有缓存就立刻显示，没有就清空等用户点运行。
+  useEffect(() => {
+    const cached = cache.current.get(runKey)
+    setData(cached ?? null)
+    setErr('')
+  }, [runKey])
 
   async function onRun() {
     setBusy(true)
     setErr('')
-    setData(null)
     try {
-      setData(await runForecast({ subject: selectedSubject, task: selectedTask, model, horizon }))
+      const result = await runForecast({ subject: selectedSubject, task: selectedTask, model, horizon })
+      cache.current.set(runKey, result)
+      setData(result)
     } catch (e) {
       const h = e as { body?: { error?: string; hint?: string }; message?: string }
+      setData(null)
       setErr(h.body?.error ?? h.message ?? '运行失败')
     } finally {
       setBusy(false)
@@ -112,11 +211,12 @@ function Trial({ meta }: { meta: ForecastMeta }) {
   return (
     <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
       <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span className="fc-no">03</span>试跑一个学科（验证）
+        <span className="fc-no">03</span>全模型预测图（选前先看）
       </h2>
       <p className="fc-lead" style={{ fontSize: 15.5 }}>
-        选学科、路线、模型，跑一次看看：滚动样本外误差、首次模型过线期、逐期预测值。
-        「V1 基线推荐」是各学科冻结下来的那一个；「五模型全部运行比较」只做横向比较，不改写推荐。
+        选学科和路线，跑一次五模型：每个候选模型的预测图、滚动误差与首次过线都摆出来，
+        图上可直接改选——改完到 02 保存。单模型也能单独跑。
+        「V1 基线推荐」是各学科冻结下来的那一个；「五模型全部运行比较」只做横向比较，改选不改写推荐。
       </p>
 
       <div className="fc-form">
@@ -151,6 +251,11 @@ function Trial({ meta }: { meta: ForecastMeta }) {
           {model === 'all' ? '正在跑五模型滚动回测与预测，需要一点时间……' : '正在跑模型，请稍候……'}
         </p>
       )}
+      {!busy && !data && !err && (
+        <p className="hint" style={{ marginTop: 14 }}>
+          还没有跑过这组参数——点「运行预测」出图；同一组参数再切回来不会重跑。
+        </p>
+      )}
 
       {data && (
         <>
@@ -167,7 +272,10 @@ function Trial({ meta }: { meta: ForecastMeta }) {
             </div>
           )}
 
-          {data.results.map((r) => <ModelCard key={r.model} run={data} r={r} />)}
+          {data.compared_all
+            ? <ModelGallery run={data} choice={choice} recommendations={meta.recommendations}
+                            onChoiceChange={onChoiceChange} />
+            : data.results.map((r) => <ModelCard key={r.model} run={data} r={r} />)}
 
           <p className="hint" style={{ marginTop: 12 }}>{data.notice}</p>
         </>
@@ -441,7 +549,7 @@ export function Forecast({
                      dirty={choiceDirty} metaError={metaError}
                      onPickPeriod={onPickPeriod} onChange={onChoiceChange}
                      onSave={onSaveChoice} onReload={onReloadChoice} />
-          {meta.available && <Trial meta={meta} />}
+          {meta.available && <Trial meta={meta} choice={choice} onChoiceChange={onChoiceChange} />}
 
           {meta.available && <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
             <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
