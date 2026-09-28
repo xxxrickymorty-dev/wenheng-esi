@@ -21,6 +21,12 @@ function str(v: unknown): string {
   return v == null || v === '' ? '—' : String(v)
 }
 
+/** 步骤 → 能力中文名（票 12）：界面不出现工具名（禁用词表）。 */
+const STEP_ABILITY: Record<string, string> = {
+  parse: '解析台账', compute: '计算大表', forecast: '预测回测',
+  province: '省域表', matrix: '学科矩阵', charts: '图表渲染', docx: '母版替换',
+}
+
 export function Archive({ period, approvalStatus }: { period: string | null; approvalStatus: string }) {
   const [d, setD] = useState<ArchiveData | null>(null)
   const [note, setNote] = useState<string | null>(null)
@@ -140,7 +146,46 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
             )}
           </section>
 
-          {/* ===== 03 审计结论 ===== */}
+          {/* ===== 03 智能体 · 规划与调度（票 12；静态稿 web/mockups/运行档案-智能体调度.html） ===== */}
+          <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
+            <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span className="fc-no">03</span>智能体 · 规划与调度
+              <span className="hint">{d.replay.n} 次状态迁移 · {d.waterfall.length} 步记录</span>
+            </h2>
+            <h3 style={{ fontSize: 15, marginTop: 12 }}>规划 · 状态机怎么走</h3>
+            {d.replay.chain.length ? (
+              <div className="ar-chain">
+                {d.replay.chain.map((r, i) => (
+                  <span className="ar-chain-node" key={i}>
+                    <span>{STATUS_CN[r.from] ?? r.from}<i> → </i>{STATUS_CN[r.to] ?? r.to}</span>
+                    <small>{r.ts || '—'}{r.trigger ? ` · ${r.trigger}` : ''}{r.synthetic ? ' · 合成' : ''}</small>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="hint" style={{ marginTop: 6 }}>无状态迁移记录。</p>
+            )}
+            <h3 style={{ fontSize: 15, marginTop: 16 }}>调度 · 每一步用了哪个能力</h3>
+            {d.waterfall.length ? (
+              <div className="ar-steps">
+                {d.waterfall.map((r) => (
+                  <div className="ar-step" key={r.step}>
+                    <span className="ar-step-name">{r.name}</span>
+                    {STEP_ABILITY[r.step] && <span className="pill">{STEP_ABILITY[r.step]}</span>}
+                    <span className="ar-step-detail">{r.detail || '—'}</span>
+                    <span className="ar-step-sec">{r.sec} 秒</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="pending-box" style={{ marginTop: 6 }}>这次运行没有留下每步记录。</p>
+            )}
+            <p className="hint" style={{ marginTop: 10 }}>
+              能力按步骤对应（演示站直跑线不逐步记录工具调用）；状态与数字都来自运行档案，不改任何数据。
+            </p>
+          </section>
+
+          {/* ===== 04 审计结论 ===== */}
           <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
             <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span className="fc-no">03</span>审计结论
@@ -183,11 +228,13 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
             )}
           </section>
 
-          {/* ===== 04 / 05 ===== */}
-          <div className="grid2" style={{ marginTop: 18 }}>
+          {/* ===== 05 / 06 运行环境与指标（折叠，票 12） ===== */}
+          <details className="fold">
+            <summary>运行环境与指标<span className="sm">供排查与复现</span></summary>
+            <div className="grid2" style={{ marginTop: 0 }}>
             <section className="card" style={{ padding: '20px 22px' }}>
               <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <span className="fc-no">04</span>运行环境快照
+                <span className="fc-no">05</span>运行环境快照
               </h2>
               <dl className="ar-kv">
                 <div><dt>Python</dt><dd className="mono">{str(env.python ?? deps.python)}</dd></div>
@@ -203,7 +250,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
 
             <section className="card" style={{ padding: '20px 22px' }}>
               <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <span className="fc-no">05</span>运行指标
+                <span className="fc-no">06</span>运行指标
               </h2>
               <dl className="ar-kv">
                 <div><dt>当期 / 上期</dt><dd>{str(stats.period ?? d.period)} / {str(stats.prev)}</dd></div>
@@ -215,8 +262,9 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
               <p className="hint" style={{ marginTop: 8 }}>数字全部来自台账单元格；运行期大模型不进入数据路径。</p>
             </section>
           </div>
+          </details>
 
-          {/* ===== 06 产物与日志包 ===== */}
+          {/* ===== 07 产物与日志包 ===== */}
           <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
             <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span className="fc-no">06</span>产物与日志包
@@ -246,7 +294,9 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
             </p>
           </section>
 
-          {/* ===== 07 轨迹文件 ===== */}
+          {/* ===== 08 智能体轨迹文件（折叠，票 12） ===== */}
+          <details className="fold">
+            <summary>智能体轨迹文件<span className="sm">{d.trace_files.length} / 3</span></summary>
           <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
             <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span className="fc-no">07</span>智能体轨迹文件
@@ -270,6 +320,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
               </p>
             )}
           </section>
+          </details>
         </>
       )}
     </>

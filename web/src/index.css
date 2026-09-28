@@ -76,6 +76,16 @@ a{color:inherit}
 .fold[open]>summary::before{content:"▾"}
 .fold>summary .sm{color:var(--ink-3);font-size:13px;margin-left:auto}
 .fold .card{margin-top:0!important;border:0;border-radius:0;box-shadow:none}
+/* 运行档案 · 智能体规划与调度（票 12） */
+.ar-chain{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.ar-chain-node{display:grid;gap:2px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:13.5px}
+.ar-chain-node i{color:var(--ink-3);font-style:normal}
+.ar-chain-node small{color:var(--ink-3);font-size:12px}
+.ar-steps{display:grid;gap:6px;margin-top:8px}
+.ar-step{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--line-2);border-radius:9px;background:var(--card)}
+.ar-step-name{font-weight:650;font-size:14px}
+.ar-step-detail{flex:1;min-width:180px;color:var(--ink-2);font-size:13.5px}
+.ar-step-sec{color:var(--ink-3);font-size:12.5px;font-variant-numeric:tabular-nums}
 
 .wrap{max-width:1180px;margin:0 auto;padding:26px 22px 70px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
