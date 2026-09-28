@@ -116,6 +116,24 @@ def main() -> int:
               "学科信息参考" in txt and n_tbl >= 10, f"{n_tbl} 张表", t)
         check("⑤ 报告里的空就地成输入框", n_in >= 1 and "报告里的空" in txt, f"{n_in} 个空位")
         check("⑤ 签单区说明了会绑指纹", "签单会绑定这一版报告" in txt, "（脚本不点它）")
+        # 右栏限高可内滚（2026-09-29 加：报告很长时，「报告里的空」必须够得着，不必拖整页到底）
+        ok_scroll = pg.evaluate("""() => {
+          const el = document.querySelector('.rv-side');
+          if (!el) return false;
+          const cs = getComputedStyle(el);
+          return cs.position === 'sticky' && cs.overflowY === 'auto';
+        }""")
+        check("⑤ 右栏限高可内滚（空位清单够得着）", bool(ok_scroll))
+        # 「跳到下一处」把光标带到空位输入框
+        ok_jump = pg.evaluate("""() => {
+          const b = [...document.querySelectorAll('button')].find(
+            x => x.textContent.includes('跳到下一处') && !x.disabled);
+          if (!b) return false;
+          b.click();
+          const el = document.activeElement;
+          return !!el && el.classList && el.classList.contains('rv-in');
+        }""")
+        check("⑤ 「跳到下一处」把光标带到空位", bool(ok_jump))
 
         # ⑥ 台账
         t = time.time()

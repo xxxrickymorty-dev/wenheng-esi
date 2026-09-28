@@ -550,12 +550,24 @@ a{color:inherit}
    ========================================================================== */
 .rv-lead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 2px 0}
 .rv-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start;margin-top:14px}
-@media (max-width:1080px){.rv-grid{grid-template-columns:1fr}.rv-side{position:static!important}}
+@media (max-width:1080px){
+  .rv-grid{grid-template-columns:1fr}
+  /* 窄屏单列：右栏回到普通流，取消吸顶与内滚（!important 压过后面的基础规则） */
+  .rv-side{position:static!important;max-height:none!important;overflow:visible!important}
+}
 
 /* 报告纸 */
 .rv-report{background:#FFFEFA;padding:30px 38px 42px;font-family:var(--serif);min-width:0}
-.rv-docmeta{margin:0 0 20px;font-size:12.5px;color:var(--ink-3);font-family:var(--sans);
+.rv-docmeta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin:0 0 20px;font-size:12.5px;color:var(--ink-3);font-family:var(--sans);
   border-bottom:1px dashed var(--line);padding-bottom:10px}
+.rv-docmeta span{flex:1;min-width:260px}
+/* 行内「跳到下一处」小胶囊（报告顶部一个；右栏清单里一个全宽按钮） */
+.rv-next{margin-left:auto;border:1px solid var(--zhu);background:var(--card);color:var(--zhu);
+  border-radius:999px;font:inherit;font-size:12.5px;font-weight:600;padding:4px 13px;
+  cursor:pointer;white-space:nowrap}
+.rv-next:hover{background:var(--zhu-soft)}
+.rv-nextbtn{width:100%;margin-top:9px;justify-content:center;font-size:14.5px;padding:9px 12px}
 .rv-para{margin:0 0 10px;text-indent:2em;font-size:15.5pt;line-height:1.95;text-align:justify;
   overflow-wrap:break-word}
 .rv-center{text-indent:0;text-align:center!important}
@@ -576,7 +588,9 @@ a{color:inherit}
 .rv-in:focus{outline:3px solid var(--zhu-soft);outline-offset:1px}
 
 /* 右栏 */
-.rv-side{position:sticky;top:12px;display:grid;gap:14px;min-width:0}
+/* 右栏吸顶 + 限高内滚：报告很长时，签单/下载/空位清单永远够得着，不用把整页拖到底 */
+.rv-side{position:sticky;top:12px;display:grid;gap:14px;min-width:0;
+  max-height:calc(100vh - 24px);overflow-y:auto;padding-right:2px}
 .rv-card{padding:16px 16px 14px}
 .rv-card h3{font-size:16.5px;display:flex;align-items:center;gap:8px}
 .rv-kv{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:5px 0;

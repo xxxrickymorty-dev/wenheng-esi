@@ -129,6 +129,8 @@ export function Review({
   const [known, setKnown] = useState(false)
   const [busy, setBusy] = useState<null | 'sign' | 'rebuild' | 'save' | 'revoke'>(null)
   const [msg, setMsg] = useState<Msg>(null)
+  // 「跳到下一处」的游标：连点就按报告顺序依次落到每个空位（填完一处自动跳过）
+  const [cursor, setCursor] = useState(0)
 
   const row = periods.find((p) => p.period === period) ?? null
   const status = row?.status ?? 'unsigned'
@@ -184,7 +186,12 @@ export function Review({
 
   const fields = useMemo(() => Object.entries(preview?.fields ?? {}), [preview])
   const nField = fields.length
-  const nLeft = fields.filter(([id]) => !(vals[id] ?? '').trim()).length
+  // 未填的空（按报告顺序）：清单高亮、「下一处」跳转、计数共用这一份
+  const emptyIds = useMemo(
+    () => fields.filter(([id]) => !(vals[id] ?? '').trim()).map(([id]) => id),
+    [fields, vals],
+  )
+  const nLeft = emptyIds.length
 
   const fills = wb?.fills_list ?? []
   const pendingN = fills.filter((f) => f.state === 'pending').length
@@ -305,6 +312,12 @@ export function Review({
     }
   }
 
+  function jumpNext() {
+    if (emptyIds.length === 0) return
+    jumpTo(emptyIds[cursor % emptyIds.length])
+    setCursor((c) => (c + 1) % emptyIds.length)
+  }
+
   if (!period) {
     return (
       <section className="card" style={{ padding: '22px 24px' }}>
@@ -369,7 +382,12 @@ export function Review({
         <div className="rv-grid">
           <section className="card rv-report" aria-label="试排报告全文">
             <p className="rv-docmeta">
-              本稿由流水线生成 · {preview.updated_at || '—'} · 数字全部来自台账；带虚线框的空请就地填写。
+              <span>本稿由流水线生成 · {preview.updated_at || '—'} · 数字全部来自台账；带虚线框的空请就地填写。</span>
+              {emptyIds.length > 0 && (
+                <button type="button" className="rv-next" onClick={jumpNext}>
+                  还剩 {emptyIds.length} 处 · 跳到下一处 ↓
+                </button>
+              )}
             </p>
             {preview.blocks.map((b, i) => (
               <BlockView key={i} block={b} vals={vals} onVal={(id, v) => setVals((s) => ({ ...s, [id]: v }))}
@@ -447,6 +465,13 @@ export function Review({
                   {nLeft > 0 ? `还剩 ${nLeft} 处` : '已填齐'}
                 </span>
               </h3>
+              {nField > 0 && (
+                <button type="button" className="btn rv-nextbtn" onClick={jumpNext}
+                        disabled={emptyIds.length === 0}
+                        title="按报告顺序跳到下一处未填的空，并聚焦到输入框">
+                  {emptyIds.length > 0 ? `跳到下一处未填（还剩 ${emptyIds.length} 处）` : '都已填齐'}
+                </button>
+              )}
               {nField === 0 ? (
                 <p className="hint" style={{ marginTop: 8 }}>这一期没有要人填的地方。</p>
               ) : (
