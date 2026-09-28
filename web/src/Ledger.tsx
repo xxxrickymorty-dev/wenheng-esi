@@ -79,21 +79,21 @@ export function Ledger() {
         <div className="margin-note" style={{ marginTop: 14 }}>
           <div className="tag">唯一事实源</div>
           <p>
-            报告里的每个数字都来自台账；台账由馆员手工维护、**按列追加**（不改历史列）。
+            报告里的每个数字都来自台账；台账由馆员手工维护、按列追加（不改历史列）。
             改台账只能走 zip 级 XML 替换 + 先备份——用 Excel 类库存盘会丢图表与条件格式。
           </p>
         </div>
         <div className="margin-note">
           <div className="tag">运行期只读</div>
           <p>
-            流水线开跑与收尾各取一次台账指纹（sha256），不一致即拦停并出诊断报告。
+            流水线开跑与收尾各取一次台账的内容指纹（防中途被改），不一致即拦停并出诊断报告。
             所以页面上的任何操作都不会写台账。
           </p>
         </div>
         <div className="margin-note">
           <div className="tag">缺数据不填假数</div>
           <p>
-            台账缺列/缺数时，流水线在第一步断言闸就失败并写明「缺哪张表哪一期」，
+            台账缺列/缺数时，流水线在第一步数据校验就失败并写明「缺哪张表哪一期」，
             不会带着缺口往下跑。前端同理：拿不到就显示「未就绪」，不放占位数字。
           </p>
         </div>

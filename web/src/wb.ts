@@ -14,10 +14,10 @@ export const STATE_LABEL: Record<WBState, string> = {
   running: '生成中',
   done: '已生成',
   warned: '已生成，有校验提醒',
-  'waiting-approval': '等待馆员审批',
+  'waiting-approval': '待签单',
   'fail-ledger': '数据还没齐',
   'fail-other': '这次没有出稿',
-  stalled: '看起来卡住了',
+  stalled: '已停住',
   signed: '已签发',
 }
 
@@ -110,12 +110,12 @@ export function deriveWorkbench(
   }
 
   if (!detail && healthy) {
-    notes = '后端未提供单期详情（契约 §2.2 的 P0 #2），前两步的状态暂时无法显示；' +
+    notes = '后端未提供单期详情，前两步的状态暂时无法显示；' +
       '「是否已出稿 / 是否已签发」来自期次列表，是真的。'
   }
   if (demo) {
     state = demo
-    notes = `演示模式（?demo=${demo}）：这不是真实状态。`
+    notes = `演示模式：下面显示的是示例状态，不是真实状态。`
   }
 
   const steps = buildSteps(detail, generated, period ?? '本期')
@@ -126,10 +126,10 @@ export function deriveWorkbench(
     running: { focusTitle: '正在生成……', focusSub: '可以切到别的页面，进度不会丢', focusAction: 'none' },
     done: { focusTitle: '本期报告已就绪', focusSub: '复核后签单，这一版才会被标记为「可交付」', focusAction: 'sign' },
     warned: { focusTitle: '已生成，有校验提醒', focusSub: '任务结束不代表报告合格或已签发', focusAction: 'open' },
-    'waiting-approval': { focusTitle: '等待馆员审批', focusSub: '任务仍在等待审批流程完成', focusAction: 'none' },
+    'waiting-approval': { focusTitle: '待签单', focusSub: '报告已出，等你在审核台签单', focusAction: 'none' },
     'fail-ledger': { focusTitle: '数据还没齐，这次没有出报告', focusSub: '补上缺的列再重跑', focusAction: 'rerun' },
     'fail-other': { focusTitle: '这次没有出稿', focusSub: '上一版报告仍然有效', focusAction: 'rerun' },
-    stalled: { focusTitle: '看起来卡住了', focusSub: '已有一段时间没有进展，可以取消重跑', focusAction: 'rerun' },
+    stalled: { focusTitle: '已停住', focusSub: '已有一段时间没有进展，可以重跑试试', focusAction: 'rerun' },
     signed: { focusTitle: '本期已签发', focusSub: '重新生成会使签名失效（页面会提示重签）', focusAction: 'open' },
   }
 

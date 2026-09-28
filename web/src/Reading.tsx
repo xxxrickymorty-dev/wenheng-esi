@@ -101,7 +101,7 @@ export function Reading({ period }: { period: string | null }) {
           </span>
           {assertions && (
             <span className="pill" style={{ marginLeft: 'auto' }}>
-              机器断言 {assertions.total}/{assertions.total} {assertions.fail === 0 ? '全绿' : `有 ${assertions.fail} 项不符`}
+              数据校验 {assertions.total}/{assertions.total} {assertions.fail === 0 ? '全部通过' : `${assertions.fail} 处对不上`}
             </span>
           )}
         </h2>
@@ -179,7 +179,7 @@ export function Reading({ period }: { period: string | null }) {
               {shown.length > CAP && (
                 <p className="hint">
                   还有 {shown.length - CAP} 处没铺开（这一组太大）——用上面的搜索定位，或到
-                  <a href={`/app/?view=red${period ? `&period=${encodeURIComponent(period)}` : ''}`}> 红件清单 </a>看全量。
+                  <a href={`/app/?view=red${period ? `&period=${encodeURIComponent(period)}` : ''}`}> 红色件清单 </a>看全量。
                 </p>
               )}
               {shown.length === 0 && <p className="hint">{onlyManual ? '这一组没有待人工的地方。' : '这一组没有匹配的改动。'}</p>}
@@ -195,9 +195,9 @@ export function Reading({ period }: { period: string | null }) {
             <div className="kv"><span className="k">槽位分组</span><span className="v">{sections.length} 组</span></div>
             <div className="kv"><span className="k">待人工</span><span className="v" style={{ color: 'var(--zhu)' }}>{nManual} 处</span></div>
             {assertions && (
-              <div className="kv"><span className="k">机器断言</span>
+              <div className="kv"><span className="k">数据校验</span>
                 <span className="v" style={{ color: assertions.fail === 0 ? 'var(--ok)' : 'var(--bad)' }}>
-                  {assertions.total - assertions.fail} / {assertions.total} {assertions.fail === 0 ? '· 全绿' : ''}
+                  {assertions.total - assertions.fail} / {assertions.total} {assertions.fail === 0 ? '· 全部通过' : ''}
                 </span></div>
             )}
             <p className="hint" style={{ marginTop: 10 }}>把光标移到左侧任意一条改动上，这里显示它的出处。</p>

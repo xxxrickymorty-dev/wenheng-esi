@@ -207,7 +207,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
               </h2>
               <dl className="ar-kv">
                 <div><dt>当期 / 上期</dt><dd>{str(stats.period ?? d.period)} / {str(stats.prev)}</dd></div>
-                <div><dt>机器断言</dt><dd>{stats.assertions_ok ? '全绿' : `${str(stats.assertions_fail)} 项未过`}</dd></div>
+                <div><dt>数据校验</dt><dd>{stats.assertions_ok ? '全部通过' : `${str(stats.assertions_fail)} 处对不上`}</dd></div>
                 <div><dt>预测 MAPE</dt><dd className="mono">{stats.predict_mape_overall == null ? '—' : `${stats.predict_mape_overall}%`}</dd></div>
                 <div><dt>生成图表</dt><dd className="mono">{stats.charts == null ? '—' : `${stats.charts} 张`}</dd></div>
                 <div><dt>全链路耗时</dt><dd className="mono">{stats.elapsed_sec == null ? '—' : `${stats.elapsed_sec} 秒`}</dd></div>
@@ -249,7 +249,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
           {/* ===== 07 轨迹文件 ===== */}
           <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
             <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span className="fc-no">07</span>Agent 轨迹文件
+              <span className="fc-no">07</span>智能体轨迹文件
               <span className="hint">{d.trace_files.length} / 3</span>
             </h2>
             {d.trace_files.length ? (
@@ -264,8 +264,8 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
               </div>
             ) : (
               <p className="hint" style={{ marginTop: 8 }}>
-                本次运行没有轨迹三件套（agent_events / state_history / task_runs）——演示站主入口走流水线直跑，
-                轨迹由 Agent 编排器才写。档案页因此退化为「进度事件 + 任务状态」，这是<b>真实的记录缺口</b>，
+                本次运行没有留下智能体轨迹文件——演示站主入口走流水线直跑，
+                轨迹要由智能体编排器才写。档案页因此退化为「进度事件 + 任务状态」，这是<b>真实的记录缺口</b>，
                 不是页面没渲染出来。
               </p>
             )}

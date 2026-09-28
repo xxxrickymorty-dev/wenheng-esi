@@ -20,9 +20,9 @@ export function RedList({ period }: { period: string | null }) {
       .catch((e: { status?: number }) => {
         if (!alive) return
         setNote(
-          e.status === 403 ? '红件清单需要管理员权限（后端按角色拦的）。'
-            : e.status === 404 ? '这一期还没有红件清单（可能尚未出稿）。'
-              : '读红件清单失败。',
+          e.status === 403 ? '红色件清单需要管理员权限（后端按角色拦的）。'
+            : e.status === 404 ? '这一期还没有红色件清单（可能尚未出稿）。'
+              : '读红色件清单失败。',
         )
       })
     return () => { alive = false }

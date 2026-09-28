@@ -131,7 +131,7 @@ export function Tools({
     try {
       const r = await rerunJob(id)
       onUploaded(r.job_id ?? id, actionPeriod)
-      setMsg({ period: actionPeriod, ok: true, text: '已重新开始——旧稿会撤到 _superseded/，不会悄悄覆盖。' })
+      setMsg({ period: actionPeriod, ok: true, text: '已重新开始——旧稿会先撤下（可回滚），不会悄悄覆盖。' })
     } catch (e) {
       const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
       setMsg({ period: actionPeriod, ok: false, text: (h.body?.error ?? h.message ?? '重跑失败') + (h.body?.hint ? `（${h.body.hint}）` : '') })

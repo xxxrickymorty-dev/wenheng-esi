@@ -6,6 +6,7 @@ import type { ApiError, Me, Period, PeriodDetail } from './api'
 import { formatProvenanceTime, type ForecastChoiceEntry, type ForecastMeta } from './api5'
 import { useState } from 'react'
 import { ConfirmButton } from './ConfirmButton'
+import { taskLabel as runStatusText } from './lib/status'
 import { Icon } from './icons'
 import { failureCopy, isTerminal, STATE_LABEL, type Workbench as WB, type WBState } from './wb'
 import type { ActivityState, Run } from './hooks/useJobRun'
@@ -72,14 +73,8 @@ function Progress() {
 /** 真实生成过程：任务状态与本期审批状态分开显示。 */
 function LiveRun({ run, approvalStatus }: { run: Run; approvalStatus: string }) {
   const [open, setOpen] = useState(false)
-  const taskLabel: Record<string, string> = {
-    pending: '等待开始', running: '正在生成', retrying: '正在重试',
-    waiting_approval: '等待馆员审批', completed: '已生成',
-    warned: '已生成，有校验提醒', escalated: '已转交人工处理',
-    failed: '生成失败', cancelled: '已取消', stalled: '暂时没有进展',
-  }
   const approvalLabel = approvalStatus === 'signed' ? '已签发'
-    : approvalStatus === 'stale' ? '签发记录已失效' : '未签发'
+    : approvalStatus === 'stale' ? '签名已失效' : '未签发'
   const connectionLabel = run.connection === 'live' ? '页面正在更新进度'
     : run.connection === 'snapshot' ? '正在读取任务进度'
       : run.connection === 'reconnecting' ? '连接中断，正在恢复进度'
@@ -88,11 +83,11 @@ function LiveRun({ run, approvalStatus }: { run: Run; approvalStatus: string }) 
     <>
       <div className="elapsed">
         <Icon name="refresh" size={20} />
-        {`任务：${run.status ? taskLabel[run.status] ?? '任务状态已更新' : '正在读取状态'} · 任务期次 ${run.requestedPeriod}${run.outputPeriod ? ` · 报告期次 ${run.outputPeriod}` : ''} · ${connectionLabel}`}
+        {`任务：${run.status ? runStatusText(run.status) : '正在读取状态'} · 期次 ${run.requestedPeriod}${run.outputPeriod && run.outputPeriod !== run.requestedPeriod ? `（实际输出 ${run.outputPeriod}）` : ''} · ${connectionLabel}`}
       </div>
       <div className="progress">
         <div className="prow">
-          <span className="name">任务期次审批</span>
+          <span className="name">签单状态</span>
           <span style={{ flex: 1, color: 'var(--ink-2)' }}>{approvalLabel}</span>
         </div>
         <div className="prow">
@@ -128,7 +123,7 @@ function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }
   approvalStatus: string
 }) {
   const approvalLabel = approvalStatus === 'signed' ? '已签发'
-    : approvalStatus === 'stale' ? '签发记录已失效' : '未签发'
+    : approvalStatus === 'stale' ? '签名已失效' : '未签发'
   if (wb.state === 'warned') {
     return (
       <div className="banner warn">
@@ -139,7 +134,7 @@ function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }
             <li>本次校验有未通过项，但系统仍生成了提醒初稿。</li>
             <li>任务完成与报告是否合格、是否签发是两回事。</li>
             <li>具体未通过项与核对说明，请在报告页本期产物中打开“校验说明”。</li>
-            <li>本期审批状态：{approvalLabel}。</li>
+            <li>本期签单状态：{approvalLabel}。</li>
             {approvalStatus !== 'signed' && <li>管理员当前不能下载未签发初稿。</li>}
           </ul>
           <span className="acts">
@@ -154,7 +149,7 @@ function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }
     return (
       <div className="banner warn">
         <span className="ico"><Icon name="clock" size={22} /></span>
-        <span><b className="title">等待馆员审批</b><span>生成任务还在等待馆员审批；本期签发状态请在审核台查看。</span></span>
+        <span><b className="title">待签单</b><span>报告已出，等你在审核台签单。</span></span>
       </div>
     )
   }
@@ -164,7 +159,7 @@ function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }
         <span className="ico"><Icon name="check" size={22} /></span>
         <span>
           <b className="title">{wb.state === 'signed' ? '本期已签发' : '本期报告已生成'}</b>
-          <span>本期审批状态：{approvalLabel}。{approvalStatus === 'signed'
+          <span>本期签单状态：{approvalLabel}。{approvalStatus === 'signed'
             ? ''
             : '任务结束不代表报告合格或已签发；管理员当前不能下载未签发初稿。'}</span>
           <span className="acts">
@@ -177,7 +172,7 @@ function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }
   }
   if (wb.state === 'fail-ledger' || wb.state === 'fail-other' || wb.state === 'stalled') {
     const c = wb.state === 'stalled'
-      ? { title: '看起来卡住了', lines: ['已有一段时间没有进展，可以取消重跑。', '上一版报告仍然有效。'] }
+      ? { title: '已停住', lines: ['已有一段时间没有进展，可以重跑试试。', '上一版报告仍然有效。'] }
       : failureCopy(err, healthy)
     return (
       <>
@@ -226,7 +221,7 @@ function ModelSummary({
   const sourceTime = source?.last_modified_at ?? null
   const freshnessText = meta?.data_freshness === 'needs_check'
     ? '检测到台账或处理输入文件的修改时间晚于最近一次完整运行记录；无法确认这次更新是否已进入预测数据，请重新处理确认。'
-    : '现有记录无法确认上游台账是否已进入预测所用数据。预测预览仍读取下方所示的最新完整预测数据。'
+    : '现有记录无法确认上游台账是否已进入预测所用数据。预测预览仍读取下方所示的预测数据。'
   const currentRoute = routes.some((item) => item.value === route) ? route : (routes[0]?.value ?? '')
 
   return (
@@ -245,7 +240,7 @@ function ModelSummary({
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 14px', background: 'var(--panel)', border: '1px solid var(--line-2)', borderRadius: 10 }}>
         <label htmlFor="workbench-task-period" style={{ display: 'grid', gap: 4, color: 'var(--ink-3)', fontSize: 13 }}>
-          当前期次
+          期次
           <select id="workbench-task-period" value={period ?? ''} onChange={(e) => onPickPeriod(e.target.value)}
                   style={{ minWidth: 170, padding: '5px 9px', border: '1px solid var(--line)', borderRadius: 7, background: 'var(--card)', color: 'var(--ink)', font: 'inherit', fontSize: 16 }}>
             {!period && <option value="">请选择期次</option>}
@@ -254,15 +249,15 @@ function ModelSummary({
           </select>
         </label>
         <div style={{ minWidth: 160 }}>
-          <small style={{ display: 'block', color: 'var(--ink-3)', fontSize: 13 }}>最新完整预测数据</small>
+          <small style={{ display: 'block', color: 'var(--ink-3)', fontSize: 13 }}>预测数据</small>
           <strong style={{ fontFamily: 'var(--mono)', fontSize: 16 }}>{meta?.source_period || '未就绪'}</strong>
         </div>
         <div style={{ minWidth: 190 }}>
-          <small style={{ display: 'block', color: 'var(--ink-3)', fontSize: 13 }}>本次实际输出期次</small>
+          <small style={{ display: 'block', color: 'var(--ink-3)', fontSize: 13 }}>实际输出</small>
           <strong style={{ color: 'var(--gold-ink)', fontSize: 15 }}>{actualOutputPeriod || '任务完成后显示'}</strong>
         </div>
         <div style={{ minWidth: 260, flex: 1 }}>
-          <small style={{ display: 'block', color: 'var(--ink-3)', fontSize: 13 }}>上游只读台账文件</small>
+          <small style={{ display: 'block', color: 'var(--ink-3)', fontSize: 13 }}>台账文件</small>
           <strong style={{ fontSize: 14 }}>{source?.name ?? '云大全学科排名、阈值动态检测表.xlsx'}</strong>
           <span style={{ display: 'block', color: 'var(--ink-3)', fontSize: 13 }}>
             最后修改（北京时间）：{sourceTime ? formatProvenanceTime(sourceTime) : '本机未找到'}
@@ -271,7 +266,7 @@ function ModelSummary({
       </div>
 
       <div className="degraded" style={{ borderLeft: meta?.data_freshness === 'needs_check' ? '3px solid var(--gold)' : undefined }}>
-        <b>期次与数据说明</b>：{freshnessText} 现有记录无法确认主台账是否被预测流程读取。V1 推荐基线为 {meta?.recommendation_baseline ?? '—'}，它不是预测数据期次。
+        <b>期次与数据说明</b>：{freshnessText} 现有记录无法确认主台账是否被预测流程读取。V1 推荐的基线是 {meta?.recommendation_baseline ?? '—'}，它不是预测数据期次。
         <br />最近一次完整运行记录写入时间（北京时间）：{formatProvenanceTime(meta?.run_record_at)}；上次处理使用的文件：{meta?.processed_input?.name ?? '无法核实'}{meta?.processed_input?.last_modified_at ? `（文件最后修改：${formatProvenanceTime(meta.processed_input.last_modified_at)}）` : ''}。
       </div>
 
@@ -299,7 +294,7 @@ function ModelSummary({
         <>
           <div className="tablewrap" style={{ marginTop: 12 }}>
             <table>
-              <thead><tr><th>潜力学科</th><th>V1 基线推荐</th><th>本期已选</th><th>模型说明</th></tr></thead>
+              <thead><tr><th>潜力学科</th><th>V1 推荐</th><th>本期已选</th><th>模型说明</th></tr></thead>
               <tbody>
                 {subjects.map((subject) => {
                   const rec = meta.recommendations?.[currentRoute]?.[subject] ?? ''
@@ -308,14 +303,14 @@ function ModelSummary({
                   return (
                     <tr key={subject}>
                       <td>{subject}</td>
-                      <td>{rec || 'V1 基线推荐'}</td>
+                      <td>{rec || 'V1 推荐'}</td>
                       <td>
                         <b>{actual || '—'}</b>
                         <span className="mdesc" style={{ color: mine ? 'var(--zhu)' : 'var(--ink-3)' }}>
                           {mine ? '已改选' : '跟随 V1 推荐'}
                         </span>
                       </td>
-                      <td><span className="mdesc">{MODEL_DESC[actual] ?? '由 V1 基线按学科指定。'}</span></td>
+                      <td><span className="mdesc">{MODEL_DESC[actual] ?? '由 V1 推荐按学科指定。'}</span></td>
                     </tr>
                   )
                 })}

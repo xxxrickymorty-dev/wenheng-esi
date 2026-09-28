@@ -84,7 +84,7 @@ function ModelCard({ run, r }: { run: ForecastRun; r: ForecastModelResult }) {
     <article className="fc-model">
       <div className="fc-model-h">
         <h3>{r.model}</h3>
-        {isRec && <span className="pill signed">V1 基线推荐</span>}
+        {isRec && <span className="pill signed">V1 推荐</span>}
         {isBest && <span className="pill stale">本次误差最低</span>}
         <span className="hint" style={{ marginLeft: 'auto' }}>数据来源 {run.source_period} 期派生产物</span>
       </div>
@@ -145,7 +145,7 @@ function ModelGallery({
             <article className="fc-model" key={r.model}>
               <div className="fc-model-h">
                 <h3>{r.model}</h3>
-                {isRec && <span className="pill signed">V1 基线推荐</span>}
+                {isRec && <span className="pill signed">V1 推荐</span>}
                 {isBest && <span className="pill stale">本次误差最低</span>}
                 {isMine && <span className="pill manual">当前选用</span>}
                 {!mine && isRec && <span className="pill">正在使用</span>}
@@ -255,7 +255,7 @@ function Trial({ meta, choice, onChoiceChange }: {
       <p className="fc-lead" style={{ fontSize: 15.5 }}>
         选学科和路线，跑一次五模型：每个候选模型的预测图、滚动误差与首次过线都摆出来，
         图上可直接改选——改完到 03 保存。打开页面时会自动跑一次当前学科/路线；同一组参数跑过就记下来，切回来不用重跑。
-        「V1 基线推荐」是各学科冻结下来的那一个；「五模型全部运行比较」只做横向比较，改选不改写推荐。
+        「V1 推荐」是各学科冻结下来的那一个；「五模型全部运行比较」只做横向比较，改选不改写推荐。
       </p>
 
       <div className="fc-form">
@@ -491,7 +491,7 @@ function PickTable({
               return (
                 <tr key={s}>
                   <td>{s}</td>
-                  <td className="fc-rec">{rec || 'V1 基线推荐'}</td>
+                  <td className="fc-rec">{rec || 'V1 推荐'}</td>
                   <td>
                     <select value={mine} aria-label={`${s}的预测模型`}
                             disabled={!choice?.loaded || choice.saving}
@@ -501,7 +501,7 @@ function PickTable({
                     </select>
                   </td>
                   <td>
-                    <span className="mdesc">{MODEL_DESC[mine || rec] ?? '由 V1 基线按学科指定。'}</span>
+                    <span className="mdesc">{MODEL_DESC[mine || rec] ?? '由 V1 推荐按学科指定。'}</span>
                     <span className="fc-stat">
                       {mine ? (rec ? `已改：由 ${rec} 改为 ${mine}` : `已改：${mine}`) : '用推荐'}
                     </span>

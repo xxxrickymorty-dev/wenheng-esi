@@ -77,7 +77,7 @@ function FillSection({ period, isAdmin }: { period: string | null; isAdmin: bool
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }) },
       )
       const saved = typeof r?.saved === 'number' ? `已带上 ${r.saved} 处填值 · ` : ''
-      setMsg({ ok: true, text: `${saved}报告已重出（旧成品已撤到 _superseded/）——回报告屏可看新版` })
+      setMsg({ ok: true, text: `${saved}报告已重出（旧版已先撤下、可回滚）——回报告屏可看新版` })
       setWb(await getWorkbench(period))
     } catch (e) {
       const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
@@ -232,7 +232,7 @@ export function Review({
       setMsg({
         ok: false,
         text: h.status === 409
-          ? `闸门没放行：${h.body?.error ?? '服务端拒绝了这次签单'}`
+          ? `${h.body?.error ?? '服务端拒绝了这次签单'}`
           : h.body?.error ?? h.message ?? '签单失败',
       })
     } finally { setBusy(false) }
@@ -280,7 +280,7 @@ export function Review({
         {!isAdmin && (
           <div className="pending-box" style={{ marginTop: 14 }}>
             当前角色{me ? `（${me.role}）` : '未知'}不能审核——签单需要管理员权限。
-            这是后端 `require_admin` 挡的，不是前端藏起来的。
+            这是服务端的权限设置挡的，不是前端藏起来的。
           </div>
         )}
 
@@ -313,7 +313,7 @@ export function Review({
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
           <button className="btn primary" onClick={doSign}
                   disabled={!isAdmin || busy || !period || status === 'signed'}>
-            <Icon name="seal" size={20} />钤印签单
+            <Icon name="seal" size={20} />签单
           </button>
           <ConfirmButton className="btn" disabled={!isAdmin || busy || status === 'unsigned'}
                          confirmText="确认撤回？签名会失效" onConfirm={doRevoke}>

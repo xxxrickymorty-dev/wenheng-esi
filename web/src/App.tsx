@@ -497,7 +497,7 @@ export default function App() {
           <div className="who">
             <span className="avatar">？</span>
             {roleKnown ? '未登录' : '角色未知'}
-            {notLoggedIn ? <> · <a href="/login">去登录</a></> : '（未提供 /api/me）'}
+            {notLoggedIn ? <> · <a href="/login">去登录</a></> : '（身份服务没有回应）'}
           </div>
         )}
       </header>
@@ -509,7 +509,7 @@ export default function App() {
             <span>
               <b className="title">连不上本机服务</b>
               <ul>
-                <li>后端没有响应 —— 检查它是否在运行（`/healthz`）。</li>
+                <li>后端没有响应 —— 检查它是否在运行。</li>
                 <li>下面显示的期次列表可能不完整；你的台账与已出的报告都没有受影响。</li>
               </ul>
             </span>
@@ -649,8 +649,6 @@ export default function App() {
 
         <p className="hint" style={{ marginTop: 14 }}>
           {busy && '正在提交生成请求……'}
-          {!busy && '演示时想直接看某个状态（空/生成中/失败…）可在网址后加 '}
-          {!busy && <code>?demo=fail-ledger</code>}
         </p>
       </main>
     </>
