@@ -171,6 +171,37 @@ def main():
         check("黑名单检查自证有效（注入 run_parse 能抓到）", "run_parse" in canary, str(canary[:3]))
         page.evaluate("() => document.getElementById('banned-canary')?.remove()")
 
+        # ---- 1d) 预测台减负回归（票 13）：路线一套控件 / 打开即出图 / 切路线自动恢复 / 改选亮保存 ----
+        # 只读：改选只动内存，不点保存、不写任何数据。
+        try:
+            page.goto(BASE + "/app/?view=forecast&period=202607", wait_until="domcontentloaded")
+            page.wait_for_selector(".fc-band", timeout=20000)
+            page.wait_for_selector(".fc-band .fc-seg button", timeout=30000)   # 等模型清单到位（路线控件随之出现）
+            n_seg = page.locator(".fc-band .fc-seg button").count()
+            n_save = page.locator(".fc-band button.btn.primary").count()
+            check("预测台页头带：路线一套控件 + 保存一处", n_seg == 2 and n_save == 1,
+                  f"seg={n_seg} save={n_save}")
+            page.wait_for_selector(".fc-gal img", timeout=120000)      # 打开即出图（五模型）
+            n0 = page.locator(".fc-gal .fc-model").count()
+            check("预测台打开即出图（五模型卡）", n0 >= 5, f"{n0} 卡")
+            page.click(".fc-band .fc-seg button:nth-child(2)")         # 切到路线 2：应自动重跑
+            page.wait_for_selector(".fc-gal img", state="detached", timeout=60000)   # 旧图先撤下
+            page.wait_for_selector(".fc-gal img", timeout=120000)                    # 新图自动回来
+            page.wait_for_timeout(300)
+            n1 = page.locator(".fc-gal .fc-model").count()
+            check("切路线后图区自动恢复（不再空图）", n1 >= 5, f"{n1} 卡")
+            pick = page.locator(".fc-gal .fc-model .fc-actions .btn.primary").first
+            if pick.count():
+                pick.click()
+                page.wait_for_timeout(250)
+                state = page.inner_text(".fc-band-state")
+                check("改选后保存带亮起（有未保存改动）",
+                      "未保存" in state and not page.is_disabled(".fc-band button.btn.primary"), state)
+            else:
+                check("改选后保存带亮起（有未保存改动）", False, "没有可改选的模型卡")
+        except Exception as e:                                          # noqa: BLE001
+            check("预测台减负回归（票 13）", False, str(e)[:100])
+
         # ---- 2) 陈列馆（/app/shelf/；管理员与游客都看同一份访客投影） ----
         guest_ctx = browser.new_context(viewport={"width": 1280, "height": 900})
         guest_ctx.add_cookies(login_cookies(GUEST_USER, GUEST_PASS))
