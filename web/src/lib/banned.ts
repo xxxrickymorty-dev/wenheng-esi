@@ -12,6 +12,8 @@ export const BANNED_UI_TERMS: readonly string[] = [
   'run_parse', 'run_compute', 'run_forecast', 'run_charts', 'run_docx', 'inspect_ledger',
   'read_cell', 'run_backtest', 'scan_stale', 'apply_repair_rule', 'collect_artifacts',
   'run_college_stats', 'write_env_snapshot',
+  // 导师明确禁用的称谓（对外一律写「云南大学图书馆」）
+  '数字图书馆',
   // 内部词汇
   '断言', '机器断言',
   // 裸 Markdown 记号（前端未渲染 Markdown 时不许露星号）

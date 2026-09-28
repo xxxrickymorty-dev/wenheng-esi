@@ -197,6 +197,7 @@ export default function ShelfPage() {
     {showHome && <div hidden={stage !== 'home'}>
       <LibraryHome
         books={state.books}
+        backToWorkspace={state.kind === 'full'}
         onEnterExterior={enterExterior}
         onOpenBook={(bookIndex, section, trigger) => openReader(bookIndex, section, 'home', trigger)}
       />

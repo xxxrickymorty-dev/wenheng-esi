@@ -569,7 +569,7 @@ export default function Reader({
     <div className="grain" aria-hidden="true" />
 
     <header className="topbar">
-      <button className="brand" type="button" onClick={onBackHome} aria-label="返回数字图书馆首页">
+      <button className="brand" type="button" onClick={onBackHome} aria-label="返回云南大学图书馆首页">
         <span className="brand-mark">雲</span>
         <span><strong>云南大学图书馆</strong><small>YUNNAN UNIVERSITY LIBRARY</small></span>
       </button>
