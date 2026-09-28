@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 分析台「问文衡」问答入口（静态提案）</title>
+<style>
+:root{
+  --bg:#F4F3ED;--card:#FFFDF8;--panel:#F0F1EB;
+  --ink:#222B25;--ink-2:#3F4C42;--ink-3:#58655C;
+  --line:#DDE1D8;--line-2:#E6E9E2;
+  --zhu:#1A4B27;--zhu-soft:#E3EDE4;
+  --gold:#B19A65;--gold-soft:#F1EBDD;--gold-ink:#62501F;
+  --ok:#28643A;--ok-soft:#E6F0E7;
+  --warn:#75622D;--warn-soft:#F6EED8;
+  --bad:#8C3B2E;--bad-soft:#F6E4DF;
+  --serif:"Source Han Serif SC","Noto Serif SC",Songti SC,SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 var(--sans)}
+.review{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding:9px 22px;background:var(--panel);border-bottom:1px dashed var(--line);font-size:12.5px;color:var(--ink-2)}
+.review b{color:var(--gold-ink)}
+.topbar{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:9px;font-family:var(--serif);white-space:nowrap}
+.brand strong{font-size:21px;letter-spacing:.04em}
+.brand span{font-size:12px;color:var(--ink-3);letter-spacing:.08em}
+.nav{display:flex;gap:4px;margin-left:auto}
+.nav a{padding:7px 11px;color:var(--ink-2);text-decoration:none;border-radius:8px;font-size:14px;white-space:nowrap}
+.nav a.active{background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+.who{display:flex;align-items:center;gap:8px;border-left:1px solid var(--line);padding-left:14px;color:var(--ink-2);font-size:13px;white-space:nowrap}
+.avatar{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);font-weight:700}
+.wrap{max-width:1150px;margin:auto;padding:18px 22px 70px}
+.crumb{color:var(--ink-3);font-size:13.5px;margin:0 0 12px}
+.crumb a{color:var(--zhu)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 22px;box-shadow:0 1px 2px rgba(34,43,37,.05)}
+.card+.card{margin-top:16px}
+h2{margin:0;font-family:var(--serif);font-size:19px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lead{margin:8px 0 0;color:var(--ink-2);font-size:14.5px}
+.hint{color:var(--ink-3);font-size:13px}
+.mono{font-family:var(--mono)}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:650}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.zhu{background:var(--zhu-soft);color:var(--zhu)}
+.pill.plain{background:var(--panel);color:var(--ink-2)}
+.btn{padding:7px 13px;border:1px solid var(--line);border-radius:8px;background:var(--card);font:inherit;font-size:13.5px;cursor:pointer;color:var(--ink)}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-weight:650}
+.btn.big{padding:11px 22px;font-size:15.5px}
+
+/* ---- 问文衡 · 入口 ---- */
+.ask{display:flex;gap:10px;margin-top:14px}
+.ask input{flex:1;min-width:0;font:inherit;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:inherit}
+.ask input:focus{outline:2px solid var(--zhu-soft);border-color:var(--zhu)}
+.qchips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.qchips .lb{color:var(--ink-3);font-size:13px}
+.qchip{padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);font:inherit;font-size:13px;color:var(--ink-2);cursor:pointer}
+.qchip:hover{border-color:var(--zhu);color:var(--zhu)}
+.gate{margin-top:14px;padding:9px 12px;border-radius:9px;background:var(--panel);border:1px solid var(--line-2);color:var(--ink-2);font-size:13px;display:none}
+.gate.on{display:block}
+
+/* ---- 回答卡 ---- */
+.demo-cap{margin:22px 0 9px;font-size:13px;color:var(--ink-3);display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.ans{border:1px solid var(--line);border-radius:12px;background:var(--card);box-shadow:0 1px 2px rgba(34,43,37,.05);transition:box-shadow .25s}
+.ans.flash{box-shadow:0 0 0 3px var(--zhu-soft)}
+.ans-h{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 16px;border-bottom:1px dashed var(--line-2)}
+.qmark{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);font:700 12.5px var(--sans)}
+.qtext{font-weight:650;font-size:14.5px}
+.ans-h .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+/* 工具回执条 */
+.receipt{margin:11px 16px 0;border:1px solid var(--line-2);border-radius:10px;background:var(--panel);overflow:hidden}
+.receipt summary{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 12px;font-size:13px;color:var(--ink-2);cursor:pointer;list-style:none}
+.receipt summary::-webkit-details-marker{display:none}
+.receipt summary::before{content:"▸";color:var(--zhu)}
+.receipt[open] summary::before{content:"▾"}
+.receipt summary b{color:var(--ink)}
+.rc-chain{font-size:12.5px;color:var(--ink-3)}
+.rc-chain i{font-style:normal;color:var(--zhu);font-weight:650}
+.receipt-b{display:none;border-top:1px dashed var(--line);padding:6px 12px 10px}
+.receipt[open] .receipt-b{display:block}
+.rrow{display:flex;gap:10px;align-items:baseline;padding:4px 0;font-size:13px;color:var(--ink-2);border-bottom:1px solid var(--line-2)}
+.rrow:last-of-type{border-bottom:0}
+.rrow .no{color:var(--zhu);font-weight:700;min-width:16px}
+.rrow .nm{font-weight:650;color:var(--ink);min-width:104px}
+.rrow .res{flex:1;min-width:180px}
+.rrow .sec{font:12px var(--mono);color:var(--ink-3);white-space:nowrap}
+.receipt .foot{margin:6px 0 0;color:var(--ink-3);font-size:12.5px}
+.receipt .foot a{color:var(--zhu)}
+/* 回落横幅 */
+.deg{margin:11px 16px 0;padding:9px 12px;border:1px dashed #E4D6AD;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.deg .btn{margin-left:auto;font-size:12.5px;padding:5px 10px;background:transparent}
+/* 回答正文 */
+.ans-b{padding:12px 16px 2px}
+.ans-b p{margin:0;font-family:var(--serif);font-size:16.5px;line-height:1.9}
+.r-version{display:none}
+.ans.rule .m-version{display:none}
+.ans.rule .r-version{display:block}
+/* 数字角标 */
+.num{display:inline;border:0;padding:1px 7px;margin:0 1px;border-radius:7px;background:var(--zhu-soft);color:var(--zhu);font:650 .92em var(--sans);cursor:pointer;border-bottom:1px dotted var(--zhu)}
+.num:hover{background:#D5E4D7}
+/* 卡脚 */
+.ans-f{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 16px 13px;border-top:1px dashed var(--line-2);margin-top:10px}
+.ans-f .sp{flex:1}
+.ans-f .btn{font-size:13px}
+/* ⓘ */
+.dot{width:20px;height:20px;min-width:20px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--card);color:var(--ink-3);font:12px/18px var(--serif);cursor:pointer}
+.dot:hover{border-color:var(--zhu);color:var(--zhu)}
+/* 说明与清单 */
+.fold{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-top:16px}
+.fold summary{padding:11px 18px;cursor:pointer;font-size:14.5px;display:flex;align-items:center;gap:10px;list-style:none}
+.fold summary::-webkit-details-marker{display:none}
+.fold summary::before{content:"▸";color:var(--zhu)}
+.fold[open] summary::before{content:"▾"}
+.fold summary .sm{color:var(--ink-3);font-size:13px;margin-left:auto}
+.fold-body{padding:2px 18px 14px;border-top:1px dashed var(--line-2)}
+.fold-body p{margin:8px 0 0;font-size:13.5px;color:var(--ink-2);line-height:1.85}
+.check ul{margin:8px 0 0;padding-left:20px;color:var(--ink-2);font-size:13.5px}
+.check li{margin:5px 0}
+.foot{margin:12px 0 0;color:var(--ink-3);font-size:12.5px}
+/* 弹层 */
+.pop{position:fixed;z-index:50;max-width:360px;display:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 13px;box-shadow:0 8px 26px rgba(34,43,37,.16);font-size:13px;color:var(--ink-2)}
+.pop b{color:var(--ink)}
+.pop a{color:var(--zhu)}
+</style>
+</head>
+<body>
+<div class="review">
+  <b>静态提案稿 · 分析台「问文衡」问答入口</b>
+  <span>数据用 202607 真实值；示例问题、数字角标、工具回执、「看规则版」都可点。待审通过再进 React。</span>
+</div>
+
+<header class="topbar">
+  <div class="brand"><strong>文衡</strong><span>学科信息参考</span></div>
+  <nav class="nav" aria-label="工作区">
+    <a href="#">生成台</a><a href="#">报告</a><a href="#">审核台</a><a href="#">台账</a><a class="active" href="#">分析台</a><a href="#">预测台</a>
+  </nav>
+  <div class="who"><span class="avatar">卜</span>卜彤 · 管理员</div>
+</header>
+
+<main class="wrap">
+  <p class="crumb"><a href="#">← 回生成台</a> · 分析台 · 期次 <b class="mono">202607</b> · <span class="hint">本稿只呈现新增块（放置位置：读数总览之下、「按节解读」之上）</span></p>
+
+  <!-- ================= 问文衡（新增块） ================= -->
+  <section class="card">
+    <h2>问文衡
+      <span class="pill plain mono">202607</span>
+      <span class="pill zhu">可选增强</span>
+      <span class="pill plain">管理员可关闭</span>
+      <button class="dot" type="button" data-info="<b>这一块的边界</b><br>数字只来自台账；大模型只组织语言、不计算任何数字；模型不可用时自动回落规则版，并在回答上如实标注。">ⓘ</button>
+    </h2>
+    <p class="lead">问这一期数据的问题。数字来自台账，回答由大模型组织；模型不可用时自动用规则版。</p>
+
+    <div class="ask">
+      <input id="askInput" type="text" placeholder="问一句，如：这期哪些学科离前 1% 最近？" aria-label="输入问题">
+      <button class="btn primary big" id="askBtn" type="button">问一问</button>
+    </div>
+    <div class="qchips">
+      <span class="lb">试试：</span>
+      <button class="qchip" type="button" data-target="demoA">这期哪些学科离前 1% 最近？</button>
+      <button class="qchip" type="button">国际排名这期变化如何？</button>
+      <button class="qchip" type="button" data-target="demoB">这期前 1% 学科有几门？</button>
+    </div>
+    <div class="gate" id="gate">静态提案：真实版本在这里会先调工具取数、再请大模型作答。下面两条示例展示了两种回答形态。</div>
+
+    <!-- 示例一 -->
+    <p class="demo-cap"><span class="pill zhu">示例一</span>大模型作答 · 数字来自台账（点「看规则版」看备用回答；点数字看来源格）</p>
+    <article class="ans" id="demoA">
+      <div class="ans-h">
+        <span class="qmark">问</span>
+        <span class="qtext">这期哪些学科离前 1% 最近？</span>
+        <span class="right">
+          <span class="pill zhu" id="badgeA">大模型作答</span>
+          <button class="dot" type="button" data-info="<b>这条回答怎么来的</b><br>① 工具从台账读出相关数字（见上方工具回执）；② 数字登记进「盾」；③ 大模型把数字组织成句子。任一环节校验不过，整段回退规则版。">ⓘ</button>
+        </span>
+      </div>
+
+      <details class="receipt" open>
+        <summary>
+          <span>本次调度 <b>3</b> 个工具 <span class="hint">（只读，不改数据）</span></span>
+          <span class="rc-chain"><i>读台账</i> › <i>读某一格</i> › <i>对比上一期</i></span>
+        </summary>
+        <div class="receipt-b">
+          <div class="rrow"><span class="no">①</span><span class="nm">读台账</span><span class="res">表「接近度」· 返回 22 个学科 × 近 7 期</span><span class="sec">0.4 秒</span></div>
+          <div class="rrow"><span class="no">②</span><span class="nm">读某一格</span><span class="res">分子生物学与遗传学 · 本期接近度 84.5%</span><span class="sec">0.2 秒</span></div>
+          <div class="rrow"><span class="no">③</span><span class="nm">对比上一期</span><span class="res">2026年5月 · 近 7 期趋势齐</span><span class="sec">0.6 秒</span></div>
+          <p class="foot">工具调用记录已存入 <a href="#">运行档案 →</a></p>
+        </div>
+      </details>
+
+      <div class="ans-b">
+        <p class="m-version">离前 1% 最近的是<b>分子生物学与遗传学</b>，接近度 <button class="num" type="button" data-info="<b>来源：本期接近度</b><br>数据期 202607 · 分子生物学与遗传学 · 由工具从台账与当期数据算出。<br>数字来自台账，非模型生成。<br><a href=#>打开溯源 ↗</a>">84.5%</button>，比上期提高 <button class="num" type="button" data-info="<b>来源：两期接近度对比</b><br>202607 与 202605 之差 · 由工具对比得出。<br><a href=#>打开溯源 ↗</a>">3.57 个百分点</button>；其次是<b>物理学</b>，接近度 <button class="num" type="button" data-info="<b>来源：本期接近度</b><br>数据期 202607 · 物理学 · 由工具从台账与当期数据算出。<br><a href=#>打开溯源 ↗</a>">75.13%</button>，提高 <button class="num" type="button" data-info="<b>来源：两期接近度对比</b><br>202607 与 202605 之差 · 由工具对比得出。<br><a href=#>打开溯源 ↗</a>">4.77 个百分点</button>。这两门是本学期离前 1% 最近的学科（接近度越高越接近）；本期已在 ESI 全球前 1% 榜内的学科共 <button class="num" type="button" data-info="<b>来源：前 1% 学科清单</b><br>数据期 202607 · 学科进入前 1% 记录。<br><a href=#>打开溯源 ↗</a>">14</button> 门。</p>
+        <p class="r-version">分子生物学与遗传学：接近度 84.5%（较上期 +3.57 个百分点）。物理学：接近度 75.13%（+4.77 个百分点）。本期在 ESI 前 1% 榜内学科：14 门。以上按固定口径拼出，措辞可预期。</p>
+      </div>
+
+      <div class="ans-f">
+        <span class="pill ok">盾 · 5 个数字已登记</span>
+        <span class="hint">数字点开看来源格</span>
+        <span class="sp"></span>
+        <button class="btn" id="ruleToggle" type="button" aria-pressed="false">看规则版</button>
+        <button class="btn" type="button" data-swap="国际排名这期变化如何？">换个问法</button>
+      </div>
+    </article>
+
+    <!-- 示例二 -->
+    <p class="demo-cap"><span class="pill warn">示例二</span>大模型不可用时 · 自动回落规则版并如实标注</p>
+    <article class="ans" id="demoB">
+      <div class="ans-h">
+        <span class="qmark">问</span>
+        <span class="qtext">这期前 1% 学科有几门？</span>
+        <span class="right">
+          <span class="pill warn">本次由规则作答</span>
+          <button class="dot" type="button" data-info="<b>为什么退回规则版</b><br>云端大模型未在规定时间内返回（超时）。规则版按固定口径拼句，数字与工具调用不受影响；大模型恢复后自动切回。">ⓘ</button>
+        </span>
+      </div>
+
+      <div class="deg">
+        <span>大模型暂时连不上（超时）。已改用规则版回答，数字不受影响。</span>
+        <button class="btn" type="button">重试大模型作答</button>
+      </div>
+
+      <details class="receipt">
+        <summary>
+          <span>本次调度 <b>2</b> 个工具 <span class="hint">（只读，不改数据）</span></span>
+          <span class="rc-chain"><i>读台账</i> › <i>读某一格</i></span>
+        </summary>
+        <div class="receipt-b">
+          <div class="rrow"><span class="no">①</span><span class="nm">读台账</span><span class="res">表「前 1% 学科清单」· 返回本期清单</span><span class="sec">0.3 秒</span></div>
+          <div class="rrow"><span class="no">②</span><span class="nm">读某一格</span><span class="res">清单计数 · 14 门</span><span class="sec">0.2 秒</span></div>
+          <p class="foot">工具调用记录已存入 <a href="#">运行档案 →</a></p>
+        </div>
+      </details>
+
+      <div class="ans-b">
+        <p>本期（202607）在 ESI 全球前 1% 榜内的学科共 <button class="num" type="button" data-info="<b>来源：前 1% 学科清单</b><br>数据期 202607 · 学科进入前 1% 记录。<br><a href=#>打开溯源 ↗</a>">14</button> 门。规则版按固定口径生成，不含自由表述；大模型恢复后自动换回。</p>
+      </div>
+
+      <div class="ans-f">
+        <span class="pill ok">盾 · 1 个数字已登记</span>
+        <span class="sp"></span>
+        <button class="btn" type="button" data-swap="这期顶尖论文有多少篇？">换个问法</button>
+      </div>
+    </article>
+  </section>
+
+  <!-- ================= 唯一一份说明 ================= -->
+  <details class="fold">
+    <summary>说明 · 口径、来源与只读声明<span class="sm">全站仅此一份</span></summary>
+    <div class="fold-body">
+      <p>① 数字只来自馆员维护的台账与派生产物；问答不改动任何数据。</p>
+      <p>② 回答由大模型组织语言，数字由工具读取并逐一登记（盾），大模型不计算任何数字；校验不过整段回退规则版。</p>
+      <p>③ 提问会连同所需的一小段数据摘要发送到云端大模型服务，仅用于生成回答；管理员可整体关闭本功能，关闭后分析台其余部分不受影响。</p>
+      <p>④ 大模型不可用时自动回落规则版，并如实标注；工具调用与模型使用记录存入运行档案，可回放。</p>
+      <p>来源：out/202607/ · 台账 · 运行档案。</p>
+    </div>
+  </details>
+
+  <!-- ================= 审稿看点 ================= -->
+  <section class="card check" style="margin-top:16px">
+    <h2>这稿看什么 <span class="hint">（审过再进 React；先静态、后接线）</span></h2>
+    <ul>
+      <li><b>工具回执条</b>：把「智能体调度」翻成人话——这次用了哪几个工具、读到了什么、各花多久；明细可展开，记录进运行档案。</li>
+      <li><b>数字角标</b>：回答里每个数字都能点开看来源格（台账），这就是「可核」。</li>
+      <li><b>失败态</b>：大模型不可用时自动回落规则版并如实标注（示例二），一键可重试。</li>
+      <li><b>边界只出现一次</b>：口径与来源统一放页尾「说明」，块内不复读。</li>
+    </ul>
+    <p class="foot">盲测三问：① 这一块是干什么的？② 回答里的数字你怎么验？③ 模型坏了会怎样？——示例数据来自 out/202607/（真实）。本稿只到区块样式；进 React 时按 UX.md 信息减负指标另行自检。</p>
+  </section>
+</main>
+
+<div class="pop" id="pop"></div>
+
+<script>
+/* ---------- ⓘ / 角标 弹层 ---------- */
+const pop = document.getElementById("pop");
+document.querySelectorAll("[data-info]").forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (pop.style.display === "block" && pop.dataset.src === btn.dataset.info) { pop.style.display = "none"; return; }
+    pop.innerHTML = btn.dataset.info; pop.dataset.src = btn.dataset.info;
+    pop.style.display = "block";
+    const r = btn.getBoundingClientRect();
+    pop.style.left = Math.max(10, Math.min(window.innerWidth - 380, r.left - 40)) + "px";
+    pop.style.top = Math.min(window.innerHeight - 180, r.bottom + 8) + "px";
+  });
+});
+document.addEventListener("click", () => { pop.style.display = "none"; });
+
+/* ---------- 示例问题 → 填入输入框 / 定位示例卡 ---------- */
+const input = document.getElementById("askInput");
+const gate = document.getElementById("gate");
+document.querySelectorAll(".qchip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    input.value = chip.textContent.trim();
+    const t = chip.dataset.target;
+    if (t) {
+      const el = document.getElementById(t);
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("flash");
+      setTimeout(() => el.classList.remove("flash"), 1300);
+    } else {
+      input.focus();
+      gate.classList.add("on");
+    }
+  });
+});
+document.getElementById("askBtn").addEventListener("click", () => {
+  input.focus();
+  gate.classList.add("on");
+  const el = document.getElementById("demoA");
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  el.classList.add("flash");
+  setTimeout(() => el.classList.remove("flash"), 1300);
+});
+
+/* ---------- 换个问法 → 填入输入框 ---------- */
+document.querySelectorAll("[data-swap]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    input.value = btn.dataset.swap;
+    input.focus();
+    gate.classList.add("on");
+    input.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+});
+
+/* ---------- 看规则版 / 看模型版 ---------- */
+const ansA = document.getElementById("demoA");
+const badgeA = document.getElementById("badgeA");
+const ruleToggle = document.getElementById("ruleToggle");
+ruleToggle.addEventListener("click", () => {
+  const on = ansA.classList.toggle("rule");
+  badgeA.textContent = on ? "规则版作答" : "大模型作答";
+  badgeA.className = "pill " + (on ? "plain" : "zhu");
+  ruleToggle.textContent = on ? "看模型版" : "看规则版";
+  ruleToggle.setAttribute("aria-pressed", String(on));
+});
+</script>
+</body>
+</html>
