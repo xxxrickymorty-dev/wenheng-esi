@@ -18,7 +18,7 @@ from src.parse_ledger import DISCIPLINES_CN, norm_disc_cn
 
 
 EN2CN_SAFE = {en: norm_disc_cn(cn) for en, cn in DISCIPLINES_CN.items()}
-EMPTY_FORECAST = {"rows": [], "impl": "", "window": ""}
+EMPTY_FORECAST = {"rows": [], "rows2": [], "impl": "", "window": ""}
 
 
 def _read_json(path):
@@ -73,15 +73,9 @@ def _read_table(path):
     return table
 
 
-def _read_forecast(period_dir):
-    """读取可选预测摘要；没有这项产物不阻止该期书架展示。"""
-    try:
-        markdown = (period_dir / "预测选模与过线.md").read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        return dict(EMPTY_FORECAST)
-    if "## 被引维度" not in markdown or "## 排名维度" not in markdown:
-        return dict(EMPTY_FORECAST)
-    section = markdown.split("## 被引维度", 1)[1].split("## 排名维度", 1)[0]
+def _forecast_rows(markdown, marker):
+    """从「预测选模与过线.md」的一个维度段落抽表（被引 / 排名共用）。"""
+    section = markdown.split(marker, 1)[1].split("## ", 1)[0]
     rows = []
     for line in section.splitlines():
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
@@ -91,6 +85,23 @@ def _read_forecast(period_dir):
             continue
         rows.append({"en": cells[0], "model": cells[1], "mape": cells[3],
                      "prox": cells[8], "t1": cells[9], "t2": cells[10], "t3": cells[11]})
+    return rows
+
+
+def _read_forecast(period_dir):
+    """读取可选预测摘要；没有这项产物不阻止该期书架展示。
+
+    `rows` = 被引维度（路线 1），`rows2` = 排名维度（路线 2，辅助）；
+    两者同源同一份 md，展示层据此外出「双路线预测」页。
+    """
+    try:
+        markdown = (period_dir / "预测选模与过线.md").read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return dict(EMPTY_FORECAST)
+    if "## 被引维度" not in markdown or "## 排名维度" not in markdown:
+        return dict(EMPTY_FORECAST)
+    rows = _forecast_rows(markdown, "## 被引维度")
+    rows2 = _forecast_rows(markdown, "## 排名维度")
 
     def grab(prefix):
         for line in markdown.splitlines():
@@ -99,7 +110,7 @@ def _read_forecast(period_dir):
                 return text.split("：", 1)[-1].strip() if "：" in text else text
         return ""
 
-    return {"rows": rows, "impl": "；".join(grab("**实现口径").split("；")[:2]),
+    return {"rows": rows, "rows2": rows2, "impl": "；".join(grab("**实现口径").split("；")[:2]),
             "window": grab("**序列窗口").split("。", 1)[0]}
 
 

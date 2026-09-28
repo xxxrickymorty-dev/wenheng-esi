@@ -129,7 +129,7 @@ function BookshelfSection({ books, onOpenBook, onEnterExterior }: LibraryHomePro
 function ArchiveSection() {
   return <section id="archive" className="home-archive"><div className="home-container home-archive-grid home-reveal">
     <div className="home-archive-copy"><p className="home-kicker light">SAFE PREVIEW</p><h2>每一本馆藏，<br />都有清晰的阅览边界。</h2><p>登录后可查看已开放期次的封面、目录与名词解释。点击馆藏即可在阅览室中打开安全预览。</p><a className="home-text-link" href="#bookshelf">浏览历期馆藏 <ArrowRight /></a></div>
-    <div className="home-archive-card"><div className="home-archive-card-head"><span>访客阅览范围</span><small>COLLECTION ACCESS</small></div><dl><div><dt>封面</dt><dd>期次与编者信息</dd></div><div><dt>目录</dt><dd>章节标题与顺序</dd></div><div><dt>名词解释</dt><dd>专业术语与说明</dd></div><div><dt>其他报告内容</dt><dd>不在访客预览中显示</dd></div></dl><p className="home-archive-note">访客阅览仅开放安全预览内容</p></div>
+    <div className="home-archive-card"><div className="home-archive-card-head"><span>馆藏阅读范围</span><small>COLLECTION ACCESS</small></div><dl><div><dt>封面</dt><dd>期次与编者信息</dd></div><div><dt>目录</dt><dd>章节标题与顺序</dd></div><div><dt>名词解释</dt><dd>专业术语与说明</dd></div><div><dt>其他报告内容</dt><dd>在册页中逐页阅览</dd></div></dl><p className="home-archive-note">登录后可阅览报告全内容</p></div>
   </div></section>
 }
 
@@ -151,14 +151,14 @@ function PreviewIndexSection({ books, onOpenBook }: Pick<LibraryHomeProps, 'book
   }
 
   return <section id="disciplines" className="home-disciplines home-container home-reveal">
-    <div className="home-section-heading"><div><p className="home-kicker">SAFE CONTENT INDEX</p><h2>从目录，进入馆藏。</h2></div><p>仅检索访客可阅的目录标题<br />与名词解释。</p></div>
+    <div className="home-section-heading"><div><p className="home-kicker">SAFE CONTENT INDEX</p><h2>从目录，进入馆藏。</h2></div><p>检索目录标题与名词解释，<br />更多内容在册页中翻阅。</p></div>
     {selectedBook ? <div className="home-discipline-layout"><div className="home-index-panel">
       <label className="home-search" htmlFor="preview-search"><SearchIcon /><input id="preview-search" aria-label="检索目录与名词解释" type="search" placeholder="检索目录标题或名词解释" value={query} onChange={updateQuery} /><span>公开预览</span></label>
       <div className="home-index-head"><span>目录与名词解释</span><span>安全预览</span></div>
       <div className="home-index-results" aria-live="polite">{filtered.length ? filtered.slice(0, 8).map((entry) => <button key={`${entry.kind}-${entry.title}`} onClick={(event) => onOpenBook(selectedBookIndex, entry.kind, event.currentTarget)} className={`home-index-row ${active?.title === entry.title ? 'is-selected' : ''}`} aria-pressed={active?.title === entry.title}><span>{entry.title}<small>{entry.kind === 'toc' ? '目录' : '名词解释'}</small></span><span><ArrowUpRight size={17} /></span></button>) : <p className="home-search-empty">没有找到可阅内容，请换个关键词试试。</p>}</div>
       <p className="home-show-all" aria-live="polite">{filtered.length ? '选择一项，在阅览器中查看' : '当前没有匹配内容'}</p>
     </div>
-    <article className="home-data-detail" aria-label="安全预览内容"><div className="home-data-heading"><p className="home-kicker">{monthLabel(selectedBook)} / {issueLabel(selectedBook)}</p><span>访客预览</span></div><h3>{active?.title ?? '安全预览'}</h3><p className="home-data-en">{active?.kind === 'toc' ? 'TABLE OF CONTENTS' : active?.kind === 'glossary' ? 'GLOSSARY' : 'COVER · CONTENTS · GLOSSARY'}</p><p className="home-preview-summary">{active?.detail || '封面、目录与名词解释可在阅览器中查阅。报告正文、数值页、图表与附件不属于访客预览。'}</p><button type="button" className="home-detail-link" onClick={(event) => onOpenBook(selectedBookIndex, active?.kind ?? 'cover', event.currentTarget)}>在阅览器中查看 <ArrowUpRight size={17} /></button></article>
+    <article className="home-data-detail" aria-label="安全预览内容"><div className="home-data-heading"><p className="home-kicker">{monthLabel(selectedBook)} / {issueLabel(selectedBook)}</p><span>馆藏全内容</span></div><h3>{active?.title ?? '安全预览'}</h3><p className="home-data-en">{active?.kind === 'toc' ? 'TABLE OF CONTENTS' : active?.kind === 'glossary' ? 'GLOSSARY' : 'COVER · CONTENTS · GLOSSARY'}</p><p className="home-preview-summary">{active?.detail || '封面、目录与名词解释可在阅览器中查阅；登录后还可翻到指标、学科大表与双路线预测。'}</p><button type="button" className="home-detail-link" onClick={(event) => onOpenBook(selectedBookIndex, active?.kind ?? 'cover', event.currentTarget)}>在阅览器中查看 <ArrowUpRight size={17} /></button></article>
     </div> : <p className="home-empty-collection" role="status">目前没有可预览的目录或名词解释。</p>}
   </section>
 }
@@ -185,7 +185,7 @@ export default function LibraryHome({ books, onEnterExterior, onOpenBook }: Libr
     <Header onEnterExterior={onEnterExterior} />
     <main>
       <HeroSection onEnterExterior={onEnterExterior} />
-      <div className="home-record-strip"><div className="home-container"><span>学科情报阅览室<small>DISCIPLINE INTELLIGENCE READING ROOM</small></span><div><span>访客可阅</span><strong>封面 / 目录 / 名词解释</strong></div></div></div>
+      <div className="home-record-strip"><div className="home-container"><span>学科情报阅览室<small>DISCIPLINE INTELLIGENCE READING ROOM</small></span><div><span>可阅览</span><strong>全内容册页</strong></div></div></div>
       <CollectionSection />
       <BookshelfSection books={books} onOpenBook={onOpenBook} onEnterExterior={onEnterExterior} />
       <ArchiveSection />

@@ -16,7 +16,7 @@ export default function ShelfScene({ books, onOpen }: ShelfSceneProps) {
     <section className="library-shelf-scene" aria-labelledby="library-shelf-title">
       <header className="library-shelf-heading">
         <div>
-          <p className="library-eyebrow">访客阅览 · 历期馆藏</p>
+          <p className="library-eyebrow">历期馆藏 · 全内容</p>
           <h2 id="library-shelf-title">在馆藏中取阅一份报告</h2>
           <p>每个可预览期次各陈列一册，可直接打开封面、目录或名词解释。</p>
         </div>
@@ -25,7 +25,7 @@ export default function ShelfScene({ books, onOpen }: ShelfSceneProps) {
 
       <div className="library-shelf-banner" role="note">
         <span className="library-shelf-banner-mark" aria-hidden="true">阅</span>
-        <p><strong>访客可阅内容</strong>封面、目录和名词解释。阅览室不提供报告正文、数值页、图表、下载或运行状态。</p>
+        <p><strong>本期全内容</strong>封面、目录、名词解释、指标、学科大表与双路线预测。</p>
       </div>
 
       <div className="library-book-grid">

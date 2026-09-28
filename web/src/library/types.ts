@@ -17,8 +17,59 @@ export type ShelfBookPreview = {
 }
 
 export type ShelfLoadResult =
-  | { kind: 'guest'; books: ShelfBookPreview[] }
+  | { kind: 'guest'; books: ShelfBook[] }
+  | { kind: 'full'; books: ShelfBook[] }
   | { kind: 'login' }
   | { kind: 'forbidden' }
   | { kind: 'unavailable' }
   | { kind: 'invalid-data' }
+
+/** 预测一行（被引 / 排名维度共用形状）。 */
+export type ForecastRow = {
+  en: string
+  model: string
+  mape: string
+  prox: string
+  t1: string
+  t2: string
+  t3: string
+}
+
+/** 学科大表一行（table2.csv 的展示投影）。 */
+export type ShelfTableRow = {
+  en: string
+  cn: string
+  papers?: number | null
+  cites?: number | null
+  cnci?: number | null
+  top?: number | null
+  thr?: number | null
+  gap?: number | null
+  prox?: string
+  rank?: string
+}
+
+/** 服务器组装的完整书（管理员阅读「全内容」用；形状按需读，不做深校验）。 */
+export type ShelfBookFull = {
+  period?: string
+  no?: number
+  label?: string
+  coverage?: string
+  prev_label?: string
+  rank_intl_now?: number | null
+  rank_intl_delta?: number | null
+  rank_cn_uni_now?: number | null
+  top_papers_now?: number | null
+  top_papers_delta?: number | null
+  n_disc_1pct?: number | null
+  n_assert_pass?: number | null
+  n_assert_total?: number | null
+  top3?: [string, number][]
+  best_permille?: { discipline: string; prox_pct?: number | null; prox_prev_pct?: number | null } | null
+  not_entered?: { discipline: string; prox_pct?: number | null; chg?: number | null }[]
+  table?: ShelfTableRow[]
+  forecast?: { rows?: ForecastRow[]; rows2?: ForecastRow[]; impl?: string; window?: string }
+}
+
+/** 一本书：预览三件套 +（管理员）完整数据。 */
+export type ShelfBook = ShelfBookPreview & { period?: string; full?: ShelfBookFull }

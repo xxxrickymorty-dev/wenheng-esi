@@ -1,5 +1,7 @@
 import { HttpError, req, type Me } from '../api'
-import type { GlossaryEntry, ShelfBookPreview, ShelfLoadResult, TocEntry } from './types'
+import type {
+  GlossaryEntry, ShelfBook, ShelfBookFull, ShelfLoadResult, ShelfBookPreview, TocEntry,
+} from './types'
 
 const DATA_PREFIX = 'window.WH_DATA = '
 
@@ -38,7 +40,7 @@ function readGlossary(value: unknown): GlossaryEntry[] | null {
   return entries
 }
 
-function readBook(value: unknown): ShelfBookPreview | null {
+function readBook(value: unknown): ShelfBook | null {
   if (!isRecord(value)) return null
   const cover = readStrings(value.cover)
   const toc = readToc(value.toc)
@@ -46,11 +48,13 @@ function readBook(value: unknown): ShelfBookPreview | null {
   if (!cover || cover.length !== 4 || cover[0].trim() !== '' || cover[1] !== '学科信息参考'
       || !cover[2].trim() || !cover[3].trim() || !toc || !glossary) return null
 
-  // 只把封面、目录和名词解释交给页面；其他内容不会进入页面数据。
-  return { cover: [cover[0], cover[1], cover[2], cover[3]], toc, glossary }
+  // 只把封面、目录和名词解释交给页面；期次号用于与完整数据按期次配对。
+  const period = typeof value.period === 'string' && value.period ? value.period : undefined
+  return { cover: [cover[0], cover[1], cover[2], cover[3]], toc, glossary,
+           ...(period ? { period } : {}) }
 }
 
-function readPreviewScript(source: string): ShelfBookPreview[] | null {
+function readPreviewScript(source: string): ShelfBook[] | null {
   const script = source.trim()
   if (!script.startsWith(DATA_PREFIX) || !script.endsWith(';')) return null
 
@@ -67,6 +71,26 @@ function readPreviewScript(source: string): ShelfBookPreview[] | null {
     const book = readBook(value)
     if (!book) return null
     books.push(book)
+  }
+  return books
+}
+
+function readFullScript(source: string): ShelfBookFull[] | null {
+  const script = source.trim()
+  if (!script.startsWith(DATA_PREFIX) || !script.endsWith(';')) return null
+
+  let payload: unknown
+  try {
+    payload = JSON.parse(script.slice(DATA_PREFIX.length, -1)) as unknown
+  } catch {
+    return null
+  }
+  if (!isRecord(payload) || !Array.isArray(payload.books)) return null
+
+  // 服务器组装的形状，字段在渲染处按需读；这里只筛掉非对象项。
+  const books: ShelfBookFull[] = []
+  for (const value of payload.books) {
+    if (isRecord(value)) books.push(value as ShelfBookFull)
   }
   return books
 }
@@ -113,5 +137,39 @@ export async function loadShelfPreviews(signal: AbortSignal): Promise<ShelfLoadR
   }
 
   const books = readPreviewScript(script)
-  return books ? { kind: 'guest', books } : { kind: 'invalid-data' }
+  if (!books) return { kind: 'invalid-data' }
+
+  // 管理员：再取服务器组装的完整数据，按期次挂到同一本书上（陈列馆全内容）。
+  // 没有游客模式之后，登录用户看到的就是报告全内容；完整数据取不到时退回预览三件套。
+  if (me.role === 'admin') {
+    try {
+      const fullResponse = await fetch('/app/shelf/data.js', {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/javascript' },
+        cache: 'no-store',
+        signal,
+      })
+      if (fullResponse.ok && !fullResponse.redirected) {
+        const fullBooks = readFullScript(await fullResponse.text())
+        if (fullBooks) {
+          const byPeriod = new Map<string, ShelfBookFull>()
+          for (const full of fullBooks) {
+            if (typeof full.period === 'string' && full.period) byPeriod.set(full.period, full)
+          }
+          return {
+            kind: 'full',
+            books: books.map((book) => {
+              const full = book.period ? byPeriod.get(book.period) : undefined
+              return full ? { ...book, full } : book
+            }),
+          }
+        }
+      }
+    } catch (error) {
+      if (signal.aborted) throw error
+    }
+    return { kind: 'guest', books }
+  }
+
+  return { kind: 'guest', books }
 }

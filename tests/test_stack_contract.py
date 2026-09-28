@@ -100,9 +100,12 @@ def test_web_node_modules不入库():
 #: - `https://react.dev/errors/…`：React 生产构建的报错说明链接，只拼在异常消息里；
 #: - `https://tailwindcss.com`：Tailwind 生成 CSS 时的文件头注释；
 #: - `https://jcgt.org/published/…`：three.js 源码里的论文引用注释（2026-09-28 登记，
-#:   随 three 打进 shelf 产物；是注释文本不是资源请求）。
+#:   随 three 打进 shelf 产物；是注释文本不是资源请求）；
+#: - `http://placeholder.local`：`web/src/lib/period.ts` 拿它当 `new URL(href, …)` 的解析
+#:   基底（只取 pathname，从不发请求；2026-09-28 登记）。
 DIST_URL_ALLOWED = (
     "http://www.w3.org/",
+    "http://placeholder.local",
     "https://react.dev/errors/",
     "https://tailwindcss.com",
     "https://jcgt.org/published/",

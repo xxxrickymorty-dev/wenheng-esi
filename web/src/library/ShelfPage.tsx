@@ -106,7 +106,7 @@ export default function ShelfPage() {
   }
 
   function openReader(bookIndex: number, section: ReaderSection, returnTo: ReaderReturnTo, trigger?: HTMLButtonElement) {
-    if (state.kind !== 'guest' || !state.books[bookIndex]) return
+    if ((state.kind !== 'guest' && state.kind !== 'full') || !state.books[bookIndex]) return
     returnFocusRef.current = trigger
       ?? document.querySelector<HTMLElement>('.room-catalog-list summary')
       ?? document.querySelector<HTMLElement>('.room-heading h1')
@@ -134,18 +134,11 @@ export default function ShelfPage() {
     setStage('room')
   }
 
-  function switchReaderBook(index: number) {
-    setActiveReader((current) => {
-      if (!current || state.kind !== 'guest' || !state.books[index]) return current
-      return { ...current, bookIndex: index }
-    })
-  }
-
   if (state.kind === 'loading') {
     return (
       <main className="library-page">
         <div className="library-shell">
-          <p className="library-status" role="status" aria-live="polite">正在确认身份并读取馆藏预览……</p>
+          <p className="library-status" role="status" aria-live="polite">正在确认身份并调取馆藏……</p>
         </div>
       </main>
     )
@@ -157,7 +150,7 @@ export default function ShelfPage() {
         <div className="library-shell">
           <section className="library-message" role="alert">
             <h1>请先登录</h1>
-            <p>登录后才能查看已开放的馆藏预览。</p>
+            <p>登录后才能阅览馆藏全内容。</p>
             <a className="library-action" href="/login">前往登录</a>
           </section>
         </div>
@@ -170,8 +163,8 @@ export default function ShelfPage() {
       <main className="library-page">
         <div className="library-shell">
           <section className="library-message" role="alert">
-            <h1>暂时无法打开预览</h1>
-            <p>当前账号无法查看这份馆藏预览。</p>
+            <h1>暂时无法打开馆藏</h1>
+            <p>当前账号无法查看这份馆藏内容。</p>
             <button className="library-action" type="button" onClick={retry}>再试一次</button>
           </section>
         </div>
@@ -184,10 +177,10 @@ export default function ShelfPage() {
       <main className="library-page">
         <div className="library-shell">
           <section className="library-message" role="alert">
-            <h1>馆藏预览暂不可用</h1>
+            <h1>馆藏暂不可用</h1>
             <p>{state.kind === 'invalid-data'
-              ? '目前读到的内容不符合预览范围，因此没有显示。'
-              : '现在无法确认身份或读取馆藏预览，请稍后重试。'}</p>
+              ? '目前读到的内容不符合可阅览范围，因此没有显示。'
+              : '现在无法确认身份或读取馆藏内容，请稍后重试。'}</p>
             <button className="library-action" type="button" onClick={retry}>再试一次</button>
           </section>
         </div>
@@ -239,7 +232,6 @@ export default function ShelfPage() {
       onMotionChange={setMotion}
       onSoundToggle={toggleSound}
       onBackHome={returnHome}
-      onSelectBook={switchReaderBook}
       onClose={closeReader}
     />}
   </>

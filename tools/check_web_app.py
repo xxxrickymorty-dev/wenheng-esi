@@ -119,6 +119,17 @@ def main():
         except Exception as e:                                       # noqa: BLE001
             check("管理员进陈列馆能看到册位（不弹回）", False,
                   f"url={admin_shelf.url} {str(e)[:60]}")
+        # 管理员开书应看到全内容册页（数字体检 / 学科大表 / 双路线预测）
+        try:
+            admin_shelf.click(".home-book-item")
+            admin_shelf.wait_for_selector("#flipbook", timeout=15000)
+            pages_text = admin_shelf.evaluate(
+                "() => document.querySelector('.flip-page-templates')?.textContent ?? ''")
+            check("管理员开书含全内容册页（数字体检 / 学科大表 / 双路线预测）",
+                  all(token in pages_text for token in ("数字体检", "学科大表", "双路线预测")),
+                  f"templates={len(pages_text)} 字")
+        except Exception as e:                                       # noqa: BLE001
+            check("管理员开书含全内容册页（数字体检 / 学科大表 / 双路线预测）", False, str(e)[:80])
 
         # ---- 2) 陈列馆（/app/shelf/；管理员与游客都看同一份访客投影） ----
         guest_ctx = browser.new_context(viewport={"width": 1280, "height": 900})

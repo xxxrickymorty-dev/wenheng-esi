@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { libraryAudio } from './library-audio'
-import type { GlossaryEntry, ShelfBookPreview } from './types'
+import type { ForecastRow, GlossaryEntry, ShelfBook, ShelfTableRow } from './types'
 import './experience.css'
 import './flip-reader.css'
 
 export type ReaderSection = 'cover' | 'toc' | 'glossary'
 
 type ReaderProps = {
-  books: ShelfBookPreview[]
+  books: ShelfBook[]
   bookIndex: number
   initialSection: ReaderSection
   motion: boolean
@@ -15,7 +15,6 @@ type ReaderProps = {
   onMotionChange: (motion: boolean) => void
   onSoundToggle: () => void
   onBackHome: () => void
-  onSelectBook: (index: number) => void
   onClose: () => void
 }
 
@@ -81,22 +80,46 @@ type FlipLeafModel =
   | { kind: 'record' }
   | { kind: 'toc' }
   | { kind: 'glossary'; entries: GlossaryEntry[]; part: number; parts: number }
+  | { kind: 'checkup' }
+  | { kind: 'kpi' }
+  | { kind: 'table'; rows: ShelfTableRow[]; offset: number; total: number; part: number; parts: number }
+  | { kind: 'top' }
+  | { kind: 'forecast'; route: 1 | 2; rows: ForecastRow[] }
   | { kind: 'end' }
 
-/** 访客安全预览的册页：封面 → 馆藏登记 → 目录 → 名词解释 → 阅毕归架。 */
-function buildLeaves(book: ShelfBookPreview): FlipLeafModel[] {
+/** 册页：封面 → 馆藏登记 → 目录 → 名词解释 →（有完整数据时）数字体检 / 本期指标 /
+    学科大表 / 顶尖论文·近线 / 双路线预测 → 阅毕归架。 */
+function buildLeaves(book: ShelfBook): FlipLeafModel[] {
   const groups: GlossaryEntry[][] = []
   for (let index = 0; index < book.glossary.length; index += 4) {
     groups.push(book.glossary.slice(index, index + 4))
   }
 
-  return [
+  const leaves: FlipLeafModel[] = [
     { kind: 'cover' },
     { kind: 'record' },
     { kind: 'toc' },
     ...groups.map((entries, index) => ({ kind: 'glossary' as const, entries, part: index + 1, parts: groups.length })),
-    { kind: 'end' },
   ]
+
+  const full = book.full
+  if (full) {
+    leaves.push({ kind: 'checkup' })
+    leaves.push({ kind: 'kpi' })
+    const rows = full.table ?? []
+    const chunk = 12
+    const parts = Math.max(1, Math.ceil(rows.length / chunk))
+    for (let index = 0; index < parts; index += 1) {
+      leaves.push({ kind: 'table', rows: rows.slice(index * chunk, (index + 1) * chunk),
+                    offset: index * chunk, total: rows.length, part: index + 1, parts })
+    }
+    leaves.push({ kind: 'top' })
+    leaves.push({ kind: 'forecast', route: 1, rows: full.forecast?.rows ?? [] })
+    leaves.push({ kind: 'forecast', route: 2, rows: full.forecast?.rows2 ?? [] })
+  }
+
+  leaves.push({ kind: 'end' })
+  return leaves
 }
 
 function startLeafIndex(leaves: FlipLeafModel[], section: ReaderSection) {
@@ -105,7 +128,7 @@ function startLeafIndex(leaves: FlipLeafModel[], section: ReaderSection) {
   return index >= 0 ? index : 0
 }
 
-function issueParts(book: ShelfBookPreview) {
+function issueParts(book: ShelfBook) {
   const matched = book.cover[2].match(/^(\d{4}年第\d+期)（(总第\d+期)）$/)
   return {
     periodLabel: matched?.[1] ?? book.cover[2],
@@ -115,7 +138,7 @@ function issueParts(book: ShelfBookPreview) {
   }
 }
 
-function Leaf({ book, n, children }: { book: ShelfBookPreview; n: number; children: ReactNode }) {
+function Leaf({ book, n, children }: { book: ShelfBook; n: number; children: ReactNode }) {
   const label = String(n + 1).padStart(2, '0')
   return <>
     <div className="page-head"><span>云南大学图书馆 / 学科信息参考</span><span>{label}</span></div>
@@ -124,7 +147,7 @@ function Leaf({ book, n, children }: { book: ShelfBookPreview; n: number; childr
   </>
 }
 
-function ReferenceCover({ book }: { book: ShelfBookPreview }) {
+function ReferenceCover({ book }: { book: ShelfBook }) {
   const { periodLabel, totalIssueLabel } = issueParts(book)
   return <div className="cover-page reference-cover">
     <div className="reference-cover-top">
@@ -153,7 +176,26 @@ function ReferenceCover({ book }: { book: ShelfBookPreview }) {
   </div>
 }
 
-function leafContent(book: ShelfBookPreview, leaf: FlipLeafModel, n: number) {
+function subjectCn(book: ShelfBook): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const row of book.full?.table ?? []) {
+    if (row.en && row.cn) map.set(row.en, row.cn)
+  }
+  return map
+}
+
+function pctText(value?: number | null): string {
+  return typeof value === 'number' ? `${value.toFixed(2)}%` : '—'
+}
+
+function forecastStatus(row: ForecastRow): { text: string; cls: string } {
+  const mape = Number.parseFloat(row.mape)
+  if (Number.isFinite(mape) && mape >= 5) return { text: '临时基线', cls: 'base' }
+  if (row.t1 && row.t1 !== '—') return { text: '过线信号', cls: 'sig' }
+  return { text: '持续观察', cls: 'watch' }
+}
+
+function leafContent(book: ShelfBook, leaf: FlipLeafModel, n: number) {
   if (leaf.kind === 'cover') return <ReferenceCover book={book} />
   if (leaf.kind === 'record') return <Leaf book={book} n={n}>
     <p className="kicker">COLLECTION RECORD</p>
@@ -187,11 +229,153 @@ function leafContent(book: ShelfBookPreview, leaf: FlipLeafModel, n: number) {
       </div>)}
     </dl>
   </Leaf>
+  if (leaf.kind === 'checkup') {
+    const full = book.full
+    return <Leaf book={book} n={n}>
+      <p className="kicker">DIGITAL CHECKUP</p>
+      <h2>数字体检</h2>
+      <div className="kpi-grid">
+        <div className="kpi"><span>断言通过</span>
+          <strong>{full?.n_assert_pass ?? '—'}<i>/{full?.n_assert_total ?? '—'}</i></strong></div>
+        <div className="kpi"><span>覆盖窗口</span>
+          <strong className="small">{full?.coverage || '—'}</strong></div>
+        <div className="kpi"><span>上期对照</span>
+          <strong className="small">{full?.prev_label || '—'}</strong></div>
+      </div>
+      <div className="note-box">出稿前机器逐项自检；有一条未过，报告会带《诊断报告》并可回查。</div>
+    </Leaf>
+  }
+  if (leaf.kind === 'kpi') {
+    const full = book.full
+    const delta = (value?: number | null) =>
+      typeof value === 'number' && value > 0 ? <i>↑{value}</i> : null
+    return <Leaf book={book} n={n}>
+      <p className="kicker">THIS ISSUE</p>
+      <h2>本期指标</h2>
+      <div className="kpi-grid">
+        <div className="kpi"><span>国际排名</span>
+          <strong>{full?.rank_intl_now ?? '—'}{delta(full?.rank_intl_delta)}</strong></div>
+        <div className="kpi"><span>国内高校排名</span>
+          <strong>{full?.rank_cn_uni_now ?? '—'}</strong></div>
+        <div className="kpi"><span>前 1% 学科</span>
+          <strong>{full?.n_disc_1pct ?? '—'}</strong></div>
+        <div className="kpi"><span>顶尖论文</span>
+          <strong>{full?.top_papers_now ?? '—'}{delta(full?.top_papers_delta)}</strong></div>
+      </div>
+      <div className="note-box">与上期（{full?.prev_label || '上期'}）相比；数字取自本机部署产物，与工作台同一份事实。</div>
+    </Leaf>
+  }
+  if (leaf.kind === 'table') {
+    return <Leaf book={book} n={n}>
+      <p className="kicker">DISCIPLINE TABLE</p>
+      <h2>学科大表{leaf.parts > 1 ? `（${leaf.part}/${leaf.parts}）` : ''}</h2>
+      <table className="data-table">
+        <thead><tr>
+          <th>学科</th><th className="num">论文</th><th className="num">被引</th>
+          <th className="num">CNCI</th><th className="num">顶尖</th><th className="num">阈值</th>
+          <th className="num">差距</th><th className="num">接近度</th><th className="num">位次</th>
+        </tr></thead>
+        <tbody>
+          {leaf.rows.map((row) => <tr key={`${row.en}-${row.cn}`}>
+            <td>{row.cn || row.en}</td>
+            <td className="num">{row.papers ?? '—'}</td>
+            <td className="num">{row.cites ?? '—'}</td>
+            <td className="num">{typeof row.cnci === 'number' ? row.cnci.toFixed(2) : '—'}</td>
+            <td className="num">{row.top ?? '—'}</td>
+            <td className="num">{row.thr ?? '—'}</td>
+            <td className="num">{row.gap ?? '—'}</td>
+            <td className="num">{row.prox || '—'}</td>
+            <td className="num">{row.rank || '—'}</td>
+          </tr>)}
+        </tbody>
+      </table>
+      <p className="table-note">共 {leaf.total} 个学科 · 数据源 table2.csv（第 {leaf.offset + 1}–{leaf.offset + leaf.rows.length} 行）</p>
+    </Leaf>
+  }
+  if (leaf.kind === 'top') {
+    const cn = subjectCn(book)
+    const full = book.full
+    const top3 = full?.top3 ?? []
+    const best = full?.best_permille
+    const near = full?.not_entered ?? []
+    return <Leaf book={book} n={n}>
+      <p className="kicker">TOP PAPERS &amp; NEAR-LINE</p>
+      <h2>顶尖论文与近线学科</h2>
+      <div className="note-box">
+        <strong>顶尖论文学科前 3</strong>
+        <p>{top3.length
+          ? top3.map(([en, count]) => `${cn.get(en) ?? en} ${count} 篇`).join(' · ')
+          : '—'}</p>
+      </div>
+      <div className="note-box">
+        <strong>最接近 ESI 前 1‰</strong>
+        <p>{best
+          ? `${cn.get(best.discipline) ?? best.discipline} —— 接近度 ${pctText(best.prox_pct)}`
+          : '—'}</p>
+      </div>
+      <div className="note-box">
+        <strong>未进榜但已接近 1% 阈值</strong>
+        {near.length
+          ? near.map((item) => <p key={item.discipline}>
+              {cn.get(item.discipline) ?? item.discipline} —— 接近度 {pctText(item.prox_pct)}
+              {typeof item.chg === 'number'
+                ? `（较上期 ${item.chg >= 0 ? '+' : ''}${item.chg.toFixed(2)}pp）` : ''}
+            </p>)
+          : <p>—</p>}
+      </div>
+    </Leaf>
+  }
+  if (leaf.kind === 'forecast') {
+    const cn = subjectCn(book)
+    const full = book.full
+    return <Leaf book={book} n={n}>
+      <p className="kicker">FORECAST · ROUTE {leaf.route}</p>
+      <h2>{leaf.route === 1 ? '双路线预测 · 总被引 / 前 1% 阈值'
+                            : '双路线预测 · 国内排名 / 前 1% 机构数'}</h2>
+      {leaf.rows.length === 0
+        ? <div className="note-box"><strong>本期暂无预测产物</strong>
+            <p>该期未生成「预测选模与过线」，因此本页留空；有产物的期次会完整列出。</p></div>
+        : <table className="data-table">
+        <thead><tr>
+          <th>学科</th><th>当前模型</th><th className="num">滚动 MAPE</th><th className="num">接近度</th>
+          <th className="num">最早</th><th className="num">较可能</th><th className="num">最晚</th><th>状态</th>
+        </tr></thead>
+        <tbody>
+          {leaf.rows.map((row) => {
+            const status = forecastStatus(row)
+            return <tr key={`${leaf.route}-${row.en}`}>
+              <td>{cn.get(row.en) ?? row.en}</td>
+              <td>{row.model}</td>
+              <td className="num">{row.mape}</td>
+              <td className="num">{row.prox}</td>
+              <td className="num">{row.t1}</td>
+              <td className="num">{row.t2}</td>
+              <td className="num">{row.t3}</td>
+              <td><span className={`badge ${status.cls}`}>{status.text}</span></td>
+            </tr>
+          })}
+        </tbody>
+      </table>}
+      {leaf.route === 2 && <div className="note-box">
+        <strong>判定口径</strong>
+        <p>路线 1：预测总被引 ÷ 预测 ESI 前 1% 阈值；路线 2：预测前 1% 机构数 ÷ 预测云大国内排名（辅助条件）。
+          过线是滚动监测信号，不等同于正式入榜时间或入榜概率。</p>
+        {full?.forecast?.window && <p className="muted-small">
+          序列窗口 {full.forecast.window}{full.forecast.impl ? ` · 实现口径 ${full.forecast.impl}` : ''}
+        </p>}
+      </div>}
+      {leaf.route === 1 && <p className="table-note">
+        路线 1 为报告预测章采用的图（{leaf.rows.length} 个学科）；路线 2 在下一页。
+      </p>}
+    </Leaf>
+  }
   return <Leaf book={book} n={n}>
     <div className="end-page">
       <span className="end-emblem" aria-hidden="true">雲</span>
       <h2>阅毕归架</h2>
-      <p>本册为访客安全预览，开放封面、目录与名词解释；报告正文、数值页、图表与附件不在预览范围内。</p>
+      <p>{book.full
+        ? '本册开放本期报告全内容：指标、学科大表、顶尖论文与双路线预测。'
+        : '本册开放封面、目录与名词解释。'}</p>
       <div className="end-rule" aria-hidden="true" />
       <strong>云南大学图书馆<br />学科情报特藏</strong>
       <small>YUNNAN UNIVERSITY LIBRARY</small>
@@ -199,8 +383,9 @@ function leafContent(book: ShelfBookPreview, leaf: FlipLeafModel, n: number) {
   </Leaf>
 }
 
-/** 文字版：屏幕阅读器与翻页组件加载失败时都能完整读到预览内容。 */
-function ReadableSections({ book }: { book: ShelfBookPreview }) {
+/** 文字版：屏幕阅读器与翻页组件加载失败时都能完整读到册页内容。 */
+function ReadableSections({ book }: { book: ShelfBook }) {
+  const full = book.full
   return <>
     <section>
       <h3>封面</h3>
@@ -215,6 +400,36 @@ function ReadableSections({ book }: { book: ShelfBookPreview }) {
       <h3>名词解释</h3>
       <dl>{book.glossary.map((entry, index) => <div key={`${index}-${entry.term}`}><dt>{entry.term}</dt><dd>{entry.definition}</dd></div>)}</dl>
     </section>
+    {full && <>
+      <section>
+        <h3>数字体检</h3>
+        <p>断言通过 {full.n_assert_pass ?? '—'}/{full.n_assert_total ?? '—'} · 覆盖窗口 {full.coverage || '—'}</p>
+      </section>
+      <section>
+        <h3>本期指标</h3>
+        <p>国际排名 {full.rank_intl_now ?? '—'} · 国内高校排名 {full.rank_cn_uni_now ?? '—'} ·
+          前 1% 学科 {full.n_disc_1pct ?? '—'} · 顶尖论文 {full.top_papers_now ?? '—'}</p>
+      </section>
+      <section>
+        <h3>学科大表</h3>
+        <table>
+          <thead><tr><th>学科</th><th>论文</th><th>被引</th><th>CNCI</th><th>顶尖</th><th>接近度</th><th>位次</th></tr></thead>
+          <tbody>
+            {(full.table ?? []).map((row) => <tr key={`${row.en}-${row.cn}`}>
+              <td>{row.cn || row.en}</td><td>{row.papers ?? '—'}</td><td>{row.cites ?? '—'}</td>
+              <td>{typeof row.cnci === 'number' ? row.cnci.toFixed(2) : '—'}</td>
+              <td>{row.top ?? '—'}</td><td>{row.prox || '—'}</td><td>{row.rank || '—'}</td>
+            </tr>)}
+          </tbody>
+        </table>
+      </section>
+      <section>
+        <h3>双路线预测</h3>
+        <p>路线 1（总被引 / 前 1% 阈值）：{full.forecast?.rows?.length ?? 0} 个学科；
+          路线 2（国内排名 / 前 1% 机构数）：{full.forecast?.rows2?.length ?? 0} 个学科。</p>
+        {full.forecast?.window && <p>序列窗口 {full.forecast.window}。</p>}
+      </section>
+    </>}
   </>
 }
 
@@ -227,7 +442,6 @@ export default function Reader({
   onMotionChange,
   onSoundToggle,
   onBackHome,
-  onSelectBook,
   onClose,
 }: ReaderProps) {
   const book = books[bookIndex]
@@ -238,7 +452,6 @@ export default function Reader({
   const headingRef = useRef<HTMLHeadingElement>(null)
   const motionRef = useRef(motion)
   motionRef.current = motion
-  const [pageIndex, setPageIndex] = useState(0)
   const [flipError, setFlipError] = useState(false)
 
   const previousPage = useCallback(() => flipRef.current?.flipPrev(), [])
@@ -255,7 +468,6 @@ export default function Reader({
     let cancelled = false
     let instance: PageFlipInstance | null = null
 
-    setPageIndex(0)
     setFlipError(false)
 
     const init = async () => {
@@ -277,9 +489,9 @@ export default function Reader({
           height: 600,
           size: 'stretch',
           minWidth: 280,
-          maxWidth: 700,
+          maxWidth: 780,
           minHeight: 400,
-          maxHeight: 1000,
+          maxHeight: 1080,
           maxShadowOpacity: 0.34,
           showCover: true,
           mobileScrollSupport: false,
@@ -296,11 +508,8 @@ export default function Reader({
 
         flipRef.current = instance
         instance.loadFromHTML(pages)
-        // 起始页在装载时已定位（如从名词解释直接进入），同步页码后再监听翻页，
-        // 避免装载本身触发一次翻页音效。
-        setPageIndex(instance.getCurrentPageIndex())
-        instance.on('flip', (event) => {
-          setPageIndex(Number(event.data) || 0)
+        // 起始页在装载时已定位（如从名词解释直接进入）；翻页只留声音反馈。
+        instance.on('flip', () => {
           libraryAudio.playPage()
         })
       } catch (error) {
@@ -351,12 +560,6 @@ export default function Reader({
 
   const { totalIssueLabel } = issueParts(book)
   const pageCount = leaves.length
-  const counter = String(Math.min(pageCount, pageIndex + 1)).padStart(2, '0')
-  const issueOption = (item: ShelfBookPreview) => {
-    const parts = issueParts(item)
-    const date = parts.month ? `${parts.month[1]}年${Number(parts.month[2])}月` : item.cover[2]
-    return parts.issueNumber ? `总第 ${parts.issueNumber} 期 · ${date}` : item.cover[2]
-  }
 
   return <section className="site stage-reader">
     <div className="scene-wrap" aria-hidden="true">
@@ -391,15 +594,12 @@ export default function Reader({
     </header>
 
     <h2 className="reader-sr-only" tabIndex={-1} ref={headingRef}>
-      学科信息参考 · {book.cover[2]} 访客安全预览
+      学科信息参考 · {book.cover[2]} 馆藏阅览
     </h2>
 
     <div className="reader flip-reader">
-      <div className="reader-toolbar">
-        <button type="button" onClick={onClose}>← 归架</button>
-        <span>云南大学图书馆 <i>·</i> 学科情报阅览室</span>
-        <button type="button" onClick={onClose}>关闭 ×</button>
-      </div>
+      {/* 归架＝关闭（同一个动作），合并成一个浮层按钮；腾出的纵向空间全给书 */}
+      <button className="reader-exit" type="button" onClick={onClose}>← 归架</button>
 
       <div className="reading-area flip-reading-area">
         <div className="flip-wrap" ref={wrapRef}>
@@ -410,6 +610,10 @@ export default function Reader({
         </div>
       </div>
 
+      <p className="reader-hint flip-hint" aria-hidden="true">
+        点击书页或拖动页角翻页 · ← → 键翻页 · 左上「归架」退出
+      </p>
+
       <div className="flip-page-templates" ref={templatesRef} aria-hidden="true">
         {leaves.map((leaf, index) => <article
           key={`${book.cover[2]}-${index}`}
@@ -418,36 +622,6 @@ export default function Reader({
         >
           <div className="flip-page-shell">{leafContent(book, leaf, index)}</div>
         </article>)}
-      </div>
-
-      <div className="reader-controls flip-reader-controls">
-        <div className="issue-switch">
-          <label htmlFor="reader-issue">馆藏期次</label>
-          <select
-            id="reader-issue"
-            value={bookIndex}
-            onChange={(event) => {
-              const nextIndex = Number(event.target.value)
-              if (nextIndex === bookIndex) return
-              libraryAudio.playPull()
-              onSelectBook(nextIndex)
-            }}
-          >
-            {books.map((item, index) => <option key={`${item.cover[2]}-${index}`} value={index}>
-              {issueOption(item)}
-            </option>)}
-          </select>
-        </div>
-
-        <div className="page-controls">
-          <button type="button" onClick={previousPage} disabled={pageIndex <= 0} aria-label="上一页">←</button>
-          <span className="page-counter" aria-live="polite" aria-atomic="true">
-            {counter}<small> / {pageCount}</small>
-          </span>
-          <button type="button" onClick={nextPage} disabled={pageIndex >= pageCount - 1} aria-label="下一页">→</button>
-        </div>
-
-        <span className="reader-hint">拖动页角翻页 · ← → 键翻页 · ESC 归架</span>
       </div>
     </div>
 

@@ -99,7 +99,7 @@ export default function LibraryExperience({
         </button>
         <div className="entry-number">
           <strong>阅</strong>
-          <span>访客安全预览<br />封面 · 目录 · 名词解释</span>
+          <span>报告全内容<br />指标 · 大表 · 预测 · 全文</span>
         </div>
       </section>
 
@@ -136,7 +136,7 @@ export default function LibraryExperience({
 
     <footer className="site-footer">
       <span>会泽百家　至公天下</span>
-      <span>YNU · DIGITAL COLLECTION <b>—</b> 访客安全预览</span>
+      <span>YNU · DIGITAL COLLECTION <b>—</b> 馆藏全内容</span>
     </footer>
   </section>
 }
