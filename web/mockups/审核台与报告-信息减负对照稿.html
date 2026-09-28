@@ -209,6 +209,7 @@ h1,h2,h3{font-family:var(--serif)}
               </div>
               <p class="rvx-warn" id="ack-hint">先勾选上方「我已逐项看过」，签单才可用。</p>
               <p class="hint" style="margin:8px 0 0">签单会绑定这一版报告；重跑或重出后签名自动失效、需重签。</p>
+              <p class="hint" style="margin:8px 0 0">签前想核改动：<a href="#" style="color:var(--zhu);font-weight:650;text-decoration:none">看本期全部改动（对勘本）→</a></p>
             </div>
           </div>
         </div>
@@ -391,7 +392,7 @@ h1,h2,h3{font-family:var(--serif)}
     </ul>
     <h3 style="margin-top:12px">落 React 清单（票 14）</h3>
     <ol>
-      <li><code>Review.tsx</code>：① 知悉勾选参与按钮可用性（待人工/存疑 &gt; 0 时未勾禁用，勾选文案带数字）；② 存疑汇总（页头 + 签单卡 + 列表头/筛选，同源 `n_doubt`）；③ 空态补动作（无待填 → 「去签单」；填写记录读不到 → 「重新读取」）。</li>
+      <li><code>Review.tsx</code>：① 知悉勾选参与按钮可用性（待人工/存疑 &gt; 0 时未勾禁用，勾选文案带数字）；② 存疑汇总（页头 + 签单卡 + 列表头/筛选，同源 `n_doubt`）；③ 空态补动作（无待填 → 「去签单」；填写记录读不到 → 「重新读取」）；④（2026-09-29 定）签单卡加一条「看本期全部改动（对勘本）→」——审核台管结果面，对勘本管差异面，从签单处一步到证据。</li>
       <li><code>Report.tsx</code>：① 对勘块并成「一张卡两扇门 + 章节折叠」；② 待办块每条「去补 →」（`focus` 参数，Review 滚到并高亮）＋段级入口；③ `source` 文案人话。</li>
       <li>浏览器端验收抽 1 条：<b>未勾知悉 → 签单禁用</b>；存疑计数联动（勾 1 处 → 三处数字同变）。</li>
       <li>已覆盖不重做：facts 失败重试、未出稿 404「去生成」、权限说明（票 10 / 试排报告形态已落地）。</li>

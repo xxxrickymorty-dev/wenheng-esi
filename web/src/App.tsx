@@ -533,13 +533,10 @@ export default function App() {
         ) : view === 'forecast' ? (
           <Forecast
             period={selected}
-            periods={periods}
-            actualOutputPeriod={busy || toolAction ? null : runForSelected?.outputPeriod ?? null}
             meta={forecastMeta}
             metaError={forecastMetaError}
             choice={selectedForecastChoice}
             choiceDirty={selectedForecastChoiceDirty}
-            onPickPeriod={pickPeriod}
             onChoiceChange={changeForecastChoice}
             onSaveChoice={saveSelectedForecastChoice}
             onReloadChoice={reloadForecastChoice}

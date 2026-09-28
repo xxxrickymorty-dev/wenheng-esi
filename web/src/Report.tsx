@@ -15,6 +15,12 @@ import { getCharts, getCollation, type ChartRow, type CollationRow } from './api
 import { getFacts, type Facts } from './api4'
 import { Icon } from './icons'
 
+/** 人工空位的来源说人话（票 14）：内部脚本名不直出面客 */
+function humanSource(source?: string): string {
+  if (source && source.includes('sentences.py')) return '正文里这一句'
+  return source ?? ''
+}
+
 /** 期次印记链：签过＝朱印 / 签名失效＝金印 / 未签发＝墨线框。这是产品的原创资产，也是本屏的记忆点。 */
 function Chain({
   periods, current, onPick,
@@ -169,42 +175,43 @@ function PeriodData({ period }: { period: string | null }) {
     <>
       <div className="body-grid" style={{ paddingTop: 22 }}>
         <div>
-          <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Icon name="list" size={21} />对勘分区
+          <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <Icon name="list" size={21} />对勘 · 红色件
             <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>
-              （真数据：母版原文 ↔ 本期生成，共 {col.length} 处）
+              （母版原文 ↔ 本期生成，共 {col.length} 处 · 待人工 {manual.length} 处）
             </span>
           </h2>
-          <div className="sections-grid">
-            {Object.entries(bySection).map(([sec, n]) => (
-              <a className="art" key={sec} style={{ textDecoration: 'none', color: 'inherit' }}
-                 href={`/app/?view=reading&period=${encodeURIComponent(period ?? '')}&section=${encodeURIComponent(sec)}`}>
-                <span className="ico"><Icon name="doc" size={20} /></span>
-                <span>
-                  <span className="n">{sec}</span>
-                  <span className="m">{n} 处 · 点开逐句对照</span>
-                </span>
-              </a>
-            ))}
+          {/* 两扇门摆在明面：对勘本（正文级对照）/ 红色件清单（签单依据） */}
+          <div className="rc-doors">
+            <a className="entry" href={`/app/?view=reading${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+              <span>
+                <span className="t">打开对勘本 · 正文级对照</span>
+                <span className="d">左分组 / 中改动卡 / 右校记 · 可搜、可只看待人工、← → 换分组</span>
+              </span>
+              <span className="go">→</span>
+            </a>
+            <a className="entry" href={`/app/?view=red${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+              <span>
+                <span className="t">红色件清单 · 签单依据</span>
+                <span className="d">逐格列出「改了什么、来自哪里」，可搜索、可下载 Markdown</span>
+              </span>
+              <span className="go">→</span>
+            </a>
           </div>
-          {/* 对勘本入口卡（P0-2）：正文级阅读视图 */}
-          <a className="entry" style={{ marginTop: 12 }}
-             href={`/app/?view=reading${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
-            <span>
-              <span className="t">打开对勘本（正文级对照）</span>
-              <span className="d">左分组 / 中改动卡 / 右校记 · 可搜、可只看待人工、← → 换分组</span>
-            </span>
-            <span className="go">→</span>
-          </a>
-          {/* 红件全量清单入口（P0-3）：本屏只给入口，全量表在 ?view=red */}
-          <a className="entry" style={{ marginTop: 12 }}
-             href={`/app/?view=red${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
-            <span>
-              <span className="t">红色件清单</span>
-              <span className="d">签单依据：逐格列出「改了什么、来自哪里」，可搜索、可下载 Markdown</span>
-            </span>
-            <span className="go">→</span>
-          </a>
+          {/* 章节直达收进折叠：对勘本自己就能换分组，11 张卡不再占屏（票 14） */}
+          <details className="fold">
+            <summary>按章节直达（{Object.keys(bySection).length} 章）</summary>
+            <div className="fold-inner">
+              <div className="rc-chips">
+                {Object.entries(bySection).map(([sec, n]) => (
+                  <a className="rc-chip" key={sec}
+                     href={`/app/?view=reading&period=${encodeURIComponent(period ?? '')}&section=${encodeURIComponent(sec)}`}>
+                    {sec} <b>{n}</b>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </details>
           {/* 逐格溯源入口（P1）：报告里的值 ↔ 台账现场重读 */}
           <a className="entry" style={{ marginTop: 12 }}
              href={`/app/?view=trace${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
@@ -216,10 +223,16 @@ function PeriodData({ period }: { period: string | null }) {
           </a>
         </div>
 
-        {/* 页边朱批：待人工的那几处（本屏的"需要你拍板"） */}
+        {/* 页边朱批：待人工的那几处——每条带「去补」，直落审核台对应空位（票 14） */}
         <div>
-          <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <Icon name="alert" size={20} />待你补 / 拍板
+            {manual.length > 0 && (
+              <a className="hint" style={{ marginLeft: 'auto', color: 'var(--zhu)', fontWeight: 650, textDecoration: 'none' }}
+                 href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+                去审核台逐项处理（{manual.length} 处）→
+              </a>
+            )}
           </h2>
           {manual.length === 0 ? (
             <div className="pending-box" style={{ marginTop: 12 }}>
@@ -233,8 +246,14 @@ function PeriodData({ period }: { period: string | null }) {
                   <p>
                     {(r.oldPreview || r.old) ? `原：${r.oldPreview ?? r.old}` : ''}
                     {(r.oldPreview || r.old) ? ' ' : ''}
-                    {`→ 待填${r.source ? `（${r.source}）` : ''}`}
+                    {`→ 待你补${r.source ? `（${humanSource(r.source)}）` : ''}`}
                   </p>
+                  <div className="mn-acts">
+                    <a className="btn"
+                       href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}${r.loc ? `&focus=${encodeURIComponent(r.loc)}` : ''}`}>
+                      去补 →
+                    </a>
+                  </div>
                 </div>
               ))}
               {manual.length > 8 && (
