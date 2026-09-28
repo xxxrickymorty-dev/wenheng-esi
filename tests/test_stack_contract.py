@@ -32,7 +32,9 @@ REQUIRED_SERVER_DEPS = ("fastapi", "uvicorn", "jinja2", "python-multipart", "its
 #: 扫描时排除的目录。`tmp/` 是 gitignore 的一次性脚本区、`out/` 是运行产物：
 #: 技术栈契约约束的是**交付内容**，这两处即使有 npm 脚手架也不进交付物。
 #: （2026-09-21 全量回归被 `tmp/three-build/` 的 node_modules 绊红，故显式排除。）
-SKIP_PARTS = {".venv", "tmp", ".pytest_cache", "out", ".git"}
+#: （2026-09-28 `数字图书馆阅览室/` 是 rick 拷进来的原型素材目录（未跟踪、非交付物），
+#: 它自带 npm 工程不属旧站约束范围——显式排除，别拿它绊红回归。）
+SKIP_PARTS = {".venv", "tmp", ".pytest_cache", "out", ".git", "数字图书馆阅览室"}
 
 #: 2026-09-22 ADR-0001：`web/` 是新工作区系统（React + Vite），不受「零 JS 依赖」约束；
 #: 旧站（server/ + 仓库根）继续受约束。scope 判定按目录名，别用「有没有 package.json」反推。
@@ -96,11 +98,14 @@ def test_web_node_modules不入库():
 #: - `http://www.w3.org/…`：SVG / MathML / xlink / XML 的命名空间标识符，
 #:   浏览器拿它选解析器，不会真去访问这个域名（React `createElementNS` 的参数）；
 #: - `https://react.dev/errors/…`：React 生产构建的报错说明链接，只拼在异常消息里；
-#: - `https://tailwindcss.com`：Tailwind 生成 CSS 时的文件头注释。
+#: - `https://tailwindcss.com`：Tailwind 生成 CSS 时的文件头注释；
+#: - `https://jcgt.org/published/…`：three.js 源码里的论文引用注释（2026-09-28 登记，
+#:   随 three 打进 shelf 产物；是注释文本不是资源请求）。
 DIST_URL_ALLOWED = (
     "http://www.w3.org/",
     "https://react.dev/errors/",
     "https://tailwindcss.com",
+    "https://jcgt.org/published/",
 )
 
 #: 抓 URL 到引号/反引号/括号/尖括号/空白为止。若还吞进尾部标点也无妨——

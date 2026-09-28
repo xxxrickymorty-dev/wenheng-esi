@@ -446,11 +446,17 @@ check("analyze backend=sentences（LLM 不进数据路径）", '"backend"' in an
 
 # POST /api/periods/{period}/forecast-choice（JSON body，契约 #17 嵌套形状）
 # 先取检查前的选择：验完写回——e2e 不把测试选模留在 202607（重出报告会带上它）。
+# 学科名从接口现取：候选学科随数据期次滚动，写死会过期（曾写「化学」，2026-09-28 已不在候选里）。
+st, meta_body, _ = call("GET", "/api/forecast/meta")
+try:
+    e2e_subject = (json.loads(meta_body).get("subjects") or ["分子生物学与遗传学"])[0]
+except (json.JSONDecodeError, AttributeError):
+    e2e_subject = "分子生物学与遗传学"
 st, fq0, _ = call("GET", "/api/periods/202607/forecast-choice")
 prev_choice = json.loads(fq0).get("choice", {}) if st == 200 else {}
 st, fc, _ = call_json("POST", "/api/periods/202607/forecast-choice",
-                      {"choice": {"citation": {"化学": "SARIMA模型"}}})
-check("POST forecast-choice 200（嵌套形状）", st == 200, f"got {st}")
+                      {"choice": {"citation": {e2e_subject: "SARIMA模型"}}})
+check("POST forecast-choice 200（嵌套形状）", st == 200, f"got {st} subject={e2e_subject}")
 check("forecast-choice POST 返回 ok+saved+saved_routes（防被读回路由抢先）",
       '"ok"' in fc and '"saved"' in fc and '"saved_routes"' in fc, f"body={fc[:120]}")
 
@@ -480,7 +486,7 @@ st, fq, _ = call("GET", "/api/periods/202607/forecast-choice")
 check("GET forecast-choice 200", st == 200, f"got {st}")
 check("forecast-choice GET 有 choice", '"choice"' in fq)
 check("读回能见刚保存的嵌套值（保存确实落盘）",
-      '"citation"' in fq and "化学" in fq and "SARIMA" in fq, f"body={fq[:160]}")
+      '"citation"' in fq and e2e_subject in fq and "SARIMA" in fq, f"body={fq[:160]}")
 check("forecast-choice GET 有 by", '"by"' in fq)
 # 写回检查前的选择（e2e 不留测试残留；原本为空就写回 {}＝无选择态）
 st, _, _ = call_json("POST", "/api/periods/202607/forecast-choice", {"choice": prev_choice})
