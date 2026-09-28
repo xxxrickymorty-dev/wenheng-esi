@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESI 预测模块对比 · 原型 vs 文衡工作台</title>
+<!--
+  只读对比文档（2026-09-28）：ynu-digital-library 的 /prediction 静态模块
+  vs wenheng 工作台的预测台 + 预测流水线。不改任何一侧代码。
+  单文件、零依赖、零 CDN（本仓铁律）。
+-->
+<style>
+  :root {
+    --bg: #F4F3ED; --card: #FFFDF8; --line: #DDE1D8; --line-2: #E6E9E2;
+    --ink: #222B25; --ink-2: #3F4C42; --ink-3: #66746A;
+    --zhu: #1A4B27; --zhu-soft: #E3EDE4; --gold: #B19A65; --gold-soft: #F1EBDD;
+    --warn: #8A5A00; --warn-soft: #F7EFDC;
+    --r: 14px; --r-sm: 10px;
+    --shadow: 0 1px 2px rgba(34,43,37,.06), 0 8px 24px rgba(34,43,37,.06);
+    --mono: "Cascadia Mono", Consolas, "Courier New", monospace;
+    --serif: "Source Han Serif SC", "Noto Serif SC", "Songti SC", SimSun, serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.8 system-ui, -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 44px 26px 80px; }
+  header.doc { border-bottom: 2px solid var(--zhu); padding-bottom: 20px; margin-bottom: 30px; }
+  .kicker { font: 12px var(--mono); letter-spacing: .2em; color: var(--gold); text-transform: uppercase; }
+  h1 { font: 500 32px/1.4 var(--serif); margin: 10px 0 6px; }
+  .sub { color: var(--ink-2); margin: 0; }
+  h2 { font: 500 22px/1.5 var(--serif); margin: 40px 0 12px; padding-left: 12px; border-left: 4px solid var(--zhu); }
+  h3 { font-size: 16px; margin: 0 0 8px; }
+  p { margin: 8px 0; }
+  code { font: 13.5px var(--mono); background: #F1ECDD; border: 1px solid var(--line-2);
+         border-radius: 5px; padding: 1px 6px; }
+  .verdict { background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--zhu);
+             border-radius: var(--r); padding: 16px 20px; margin: 16px 0 26px; box-shadow: var(--shadow); }
+  .verdict b { color: var(--zhu); }
+  table { border-collapse: collapse; width: 100%; background: var(--card); box-shadow: var(--shadow); }
+  th, td { border: 1px solid var(--line); padding: 10px 13px; text-align: left; vertical-align: top; font-size: 14.5px; }
+  th { background: #EFEAE0; font-weight: 600; }
+  th:first-child, td:first-child { width: 132px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  @media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+  .pane { background: var(--card); border: 1px solid var(--line); border-radius: var(--r);
+          padding: 16px 18px; box-shadow: var(--shadow); }
+  .pane h3 { display: flex; align-items: center; gap: 8px; }
+  .tag { font: 12px var(--mono); border-radius: 999px; padding: 1px 9px; }
+  .tag.proto { background: var(--gold-soft); color: #6B551F; }
+  .tag.prod { background: var(--zhu-soft); color: var(--zhu); }
+  ul { margin: 6px 0; padding-left: 20px; }
+  li { margin: 4px 0; }
+  .muted { color: var(--ink-3); font-size: 13.5px; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; margin: 14px 0; }
+  .step { flex: 1 1 150px; background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+          padding: 10px 12px; font-size: 13px; }
+  .step .t { font-weight: 600; font-size: 14px; margin-bottom: 3px; }
+  .step.proto { border-color: #D8C9A2; background: #FBF5E6; }
+  .step.prod { border-color: #B9CDBB; background: #F2F7F0; }
+  .note { background: var(--warn-soft); border: 1px solid #E3D3AC; border-radius: 10px;
+          padding: 12px 16px; margin: 14px 0; font-size: 14.5px; }
+  footer { margin-top: 46px; border-top: 1px solid var(--line); padding-top: 14px;
+           font: 12px/1.9 var(--mono); color: var(--ink-3); }
+  @media print { body { background: #fff; } .wrap { padding: 0; max-width: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc">
+  <div class="kicker">Comparison · no code changed</div>
+  <h1>ESI 预测模块对比</h1>
+  <p class="sub">左侧：<code>ynu-digital-library</code> 原型的 <code>/prediction</code> 静态模块 ·
+     右侧：<code>wenheng</code> 工作台的预测台 + 预测流水线。2026-09-28，只对比不改动。</p>
+</header>
+
+<div class="verdict">
+  <b>一句话结论：</b>两边是同一套 V1 五模型选模成果的两个「出口」——
+  原型是**静态展示橱窗**（数字冻结在 2026-07 的已核验样张，图表是 16 张预生成 PNG，页面无任何请求）；
+  文衡是**可操作的生产流水线**（实时读台账衍生数据、逐学科选模、快照冻结进报告、有鉴权与追溯）。
+  <b>结论：图版式可借鉴原型，数字必须取文衡</b>——这也正是陈列馆改造选「接服务器实时数据」的原因。
+</div>
+
+<h2>一、并排事实表</h2>
+<table>
+  <tr><th></th><th>原型 /prediction（展示橱窗）</th><th>文衡 预测台 + 流水线（生产）</th></tr>
+  <tr><td><b>定位</b></td>
+      <td>“已确认结果的展示版”；页面明写 <i>静态展示版 · 自动化接口待接入</i></td>
+      <td>“可复核、可操作”的生产模块；页面盖戳「确定性计算 · 大模型不参与数据路径」</td></tr>
+  <tr><td><b>数据来源</b></td>
+      <td><code>app/prediction/data.ts</code> 硬编码 8 学科 × 2 路线；无任何 <code>fetch</code></td>
+      <td>实时读 <code>out/&lt;期次&gt;/</code>：预测选模与过线.md、forecast_charts.json、回测报告；
+          试跑走 <code>POST /api/forecast/run</code> 现场算图</td></tr>
+  <tr><td><b>数据形态</b></td>
+      <td>只有百分比与日期（接近度、MAPE、首次过线）；原始总被引/阈值/排名/机构数只在 PNG 与 docx 里</td>
+      <td>完整：逐期原始值 + 阈值 + 预测带 + 逐指标 MAPE + 过线期（12/18/24 期可调）</td></tr>
+  <tr><td><b>模型</b></td>
+      <td>结果里出现的：季节性 ETS / 阻尼 Holt / 经验贝叶斯状态空间 / SARIMA / Holt（临时基线）</td>
+      <td>五模型全在：Holt 趋势 / 阻尼 Holt / 季节性 ETS / SARIMA / 经验贝叶斯状态空间；
+          另有 V1 基线推荐表（8×2 冻结，202607）与 recommended / all / 单模型三种跑法</td></tr>
+  <tr><td><b>选模操作</b></td>
+      <td>无（结果已定稿）</td>
+      <td>逐学科改选、保存到 <code>out/_forecast_choices/&lt;期次&gt;.json</code>；
+          建任务时冻结快照 → 报告内实际生效；失败自动降级 V1 并留痕</td></tr>
+  <tr><td><b>图表</b></td>
+      <td>16 张 PNG（8 学科 × 2 路线，3274×1466），点击灯箱放大</td>
+      <td>报告内 4 张持久化 PNG + 试跑图内联 base64；另有批量导出工具
+          <code>tools/export_forecast_gallery.py</code>（8×2×5=80 张）已产出但前端未接</td></tr>
+  <tr><td><b>报告下载</b></td>
+      <td>2 份 docx 静态下载（双路线 18 期预估 / 路线 1 五模型选模）</td>
+      <td><code>/api/periods/{期次}/download/forecast</code> = 预测回测报告.md（admin）；
+          报告本体走签单流程</td></tr>
+  <tr><td><b>鉴定与审计</b></td>
+      <td>无鉴权、无版本历史、无留痕；一份数据一个日期</td>
+      <td>全部端点 <code>@admin_route</code>；快照带 request/choice/source/output 期次、操作人、时间；
+          e2e 与 90+ 条测试钉死</td></tr>
+  <tr><td><b>过线口径</b></td>
+      <td>路线1 = 总被引 ÷ ESI前1%阈值；路线2 = 机构数 ÷ 国内排名（辅助）</td>
+      <td>同口径（研究线 forecast_select 出过线期与 80% 预测带），且明确标注
+          「不等同入榜概率/正式入榜时间」</td></tr>
+</table>
+
+<h2>二、两边各自的长处（互补清单）</h2>
+<div class="two">
+  <div class="pane">
+    <h3><span class="tag proto">原型有</span>展示层做得好</h3>
+    <ul>
+      <li>每学科每路线一张大图 + 灯箱，适合当面讲解；</li>
+      <li>「双路线总览表 + 研判工作台」的浏览动线完整；</li>
+      <li>两份成稿 docx 直接下载，胜过现场等计算；</li>
+      <li>状态徽章（双线信号 / 持续观察 / 临时基线）一眼可读。</li>
+    </ul>
+  </div>
+  <div class="pane">
+    <h3><span class="tag prod">文衡有</span>生产层做得对</h3>
+    <ul>
+      <li>数字全来自台账衍生数据，改一期数据全链路自动更新；</li>
+      <li>选模可操作、可保存、可追溯（快照 + operator + 降级警告）；</li>
+      <li>口径写死在代码与测试里（经济与商业 202003=31 等数据门）；</li>
+      <li>鉴权、审计、报告签单闸门齐全。</li>
+    </ul>
+  </div>
+</div>
+
+<h2>三、关系图（谁是谁的上游）</h2>
+<div class="flow">
+  <div class="step"><div class="t">台账 / 衍生宽表</div>总被引、阈值、排名、机构数<br/><span class="muted">唯一事实源</span></div>
+  <div class="step prod"><div class="t">文衡流水线</div>五模型选模 → 预测图 → 报告<br/><span class="muted">快照冻结 · 可追溯</span></div>
+  <div class="step prod"><div class="t">out/&lt;期次&gt;/ 产物</div>forecast_charts.json · 预测选模与过线.md · 4 张报告图</div>
+  <div class="step prod"><div class="t">工作台预测台</div>选模 / 试跑 / 学科板<br/><span class="muted">操作台</span></div>
+  <div class="step proto"><div class="t">陈列馆展示层</div>原型仅作版式参照；<br/>数字改为读上游产物<br/><span class="muted">（Q1 选 A 的方向）</span></div>
+</div>
+<div class="note">
+  ⚠ 原型 README 自己写明：<i>“当前为静态展示版，尚未接入『上传数据 → 自动运行模型 → 自动刷新页面』的 FastAPI 工作流。”</i>
+  这句就是两边差距的完整总结——那条 FastAPI 工作流，文衡这边已经跑在生产上。
+</div>
+
+<h2>四、对陈列馆改造（Q1·A）的直接启示</h2>
+<ul>
+  <li><b>可复用的现成件</b>：原型的两条路线版式、状态徽章、灯箱交互；
+      <code>tools/export_forecast_gallery.py</code> 已经能批量导出 80 张趋势图（8×2×5）——展示层要的图，工具早就备好了。</li>
+  <li><b>不能照搬的</b>：原型的 <code>data.ts</code> 数字（冻结在 2026-07）与两份静态 docx；
+      陈列馆里应改为读 <code>out/&lt;期次&gt;/</code> 的实时产物（与预测台同一事实源）。</li>
+  <li><b>页数取舍建议</b>：陈列馆的书先接「数字体检 / 学科大表 / 顶尖论文 / 双路线预测」四类页，
+      版式借原型、数字取文衡；「访客安全预览」字样随改造一并退役。</li>
+</ul>
+
+<footer>
+  事实来源（只读）：ynu-digital-library/app/prediction/*、README.md；
+  wenheng web/src/Forecast.tsx、server/forecasting.py、src/report_forecast.py、src/forecast_select.py、
+  tools/export_forecast_gallery.py、out/202607/* —— 2026-09-28 版。
+</footer>
+
+</div>
+</body>
+</html>
