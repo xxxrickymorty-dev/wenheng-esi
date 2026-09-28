@@ -8,6 +8,10 @@
 
 这个脚本**不写任何数据**：补录只填不保存，签单只看不点（签单会留下记录，由演示人自己决定）。
 加 --generate 才会真的跑一次流水线（产物确定性一致，是既有验收步骤）。
+
+⑦ 陈列馆：工作区与陈列馆各自独立——管理员进 `/app/shelf/` 会被前端送回工作台，
+所以这一步用**游客账号另开一个上下文**；册位选择器随新书架用 `.home-book-item`
+（旧 `#shelfRail` 已随 legacy 书架退役）。
 """
 
 import argparse
@@ -42,11 +46,16 @@ def main() -> int:
     args = ap.parse_args()
     B = args.base.rstrip("/")
 
-    m = re.search(r"^WENHENG_USER=(.*)$", ENV.read_text(encoding="utf-8"), re.M)
-    p = re.search(r"^WENHENG_PASS=(.*)$", ENV.read_text(encoding="utf-8"), re.M)
+    env_text = ENV.read_text(encoding="utf-8")
+    m = re.search(r"^WENHENG_USER=(.*)$", env_text, re.M)
+    p = re.search(r"^WENHENG_PASS=(.*)$", env_text, re.M)
     if not m or not p:
         print("读不到 server/.env 里的演示账号"); return 2
     U, P = m.group(1).strip(), p.group(1).strip()
+    gu = re.search(r"^WENHENG_GUEST_USER=(.*)$", env_text, re.M)
+    gp = re.search(r"^WENHENG_GUEST_PASS=(.*)$", env_text, re.M)
+    GU = gu.group(1).strip() if gu else "guest"
+    GP = gp.group(1).strip() if gp else "guest@2026"
 
     with sync_playwright() as pw:
         b = pw.chromium.launch(channel="chrome", headless=True,
@@ -58,7 +67,7 @@ def main() -> int:
         pg.goto(B + "/login", wait_until="networkidle")
         pg.fill("input[name=username]", U); pg.fill("input[name=password]", P)
         pg.click("button[type=submit]"); pg.wait_for_load_state("networkidle")
-        check("① 登录", "工作台" in pg.inner_text("body"), "", t)
+        check("① 登录", "生成台" in pg.inner_text("body"), "", t)
 
         # ② 生成台：第一屏就回答「我现在该做什么」
         t = time.time()
@@ -112,11 +121,32 @@ def main() -> int:
         rows = pg.eval_on_selector_all("table tbody tr", "e => e.length")
         check("⑥ 台账 19 张表", rows == 19, f"{rows} 行", t)
 
-        # ⑦ 陈列馆
+        # ⑦ 陈列馆：独立入口。管理员点不进去（前端 `location.replace('/app/')` 送回工作台），
+        #    游客才是陈列馆的身份——另开一个上下文走真实登录。
         t = time.time()
-        pg.goto(B + "/app/shelf/", wait_until="networkidle"); pg.wait_for_timeout(2500)
-        books = pg.eval_on_selector_all("#shelfRail > *", "e => e.length")
-        check("⑦ 陈列馆出册位 + 回工作台入口", books >= 4, f"{books} 册位", t)
+        pg.goto(B + "/app/shelf/", wait_until="domcontentloaded")
+        try:
+            pg.wait_for_url("**/app/", timeout=10000)
+            bounced = True
+        except Exception:                                            # noqa: BLE001
+            bounced = False
+        check("⑦ 陈列馆独立：管理员进入被送回工作台", bounced, f"url={pg.url}", t)
+
+        t = time.time()
+        gp_page = b.new_context(viewport={"width": 1440, "height": 900},
+                                device_scale_factor=1).new_page()
+        gp_page.on("pageerror", lambda e: PAGE_ERRORS.append("guest: " + str(e)))
+        gp_page.goto(B + "/login", wait_until="networkidle")
+        gp_page.fill("input[name=username]", GU); gp_page.fill("input[name=password]", GP)
+        gp_page.click("button[type=submit]")
+        gp_page.wait_for_url("**/app/shelf/**", timeout=10000)
+        gp_page.wait_for_selector(".home-book-item", timeout=10000)
+        books = gp_page.eval_on_selector_all(".home-book-item", "e => e.length")
+        gp_page.click(".home-book-item")
+        gp_page.wait_for_selector("#flipbook", timeout=10000)
+        pages = gp_page.eval_on_selector_all(".flip-page", "e => e.length")
+        check("⑦b 陈列馆（游客）：出册位 + 翻页可开", books >= 1 and pages >= 3,
+              f"{books} 册位 / {pages} 页", t)
 
         # ⑧ 救场卡：八态都能直接打开，且都标明「这不是真实状态」
         t = time.time()
