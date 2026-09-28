@@ -432,7 +432,7 @@ export function Workbench({
 
         {run ? <LiveRun run={run} approvalStatus={runApprovalStatus} />
           : activeRun ? (
-            <div className="elapsed"><Icon name="refresh" size={20} />正在读取当前任务状态，完成后才能开始新的生成。</div>
+            <div className="elapsed"><Icon name="refresh" size={20} />有任务正在进行——完成后才能开始新的生成；想跟进进度，切到任务所属期次。</div>
           ) : wb.state === 'running' ? <Progress /> : null}
         <Banners wb={wb} err={err} healthy={healthy} onRerun={onGenerate} canRerun={canGenerate} period={period}
           approvalStatus={approvalStatus} />

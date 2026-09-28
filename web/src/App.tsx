@@ -12,6 +12,7 @@ import {
   type ForecastChoiceEntry, type ForecastMeta,
 } from './api5'
 import { applyPeriod } from './lib/period'
+import { pickRunForPeriod } from './lib/run'
 import { useJobRun, type Run } from './hooks/useJobRun'
 import { Icon, Sprite } from './icons'
 import { Workbench } from './Workbench'
@@ -356,10 +357,11 @@ export default function App() {
       }))
     }
   }
-  const runForSelected: Run | null = run?.requestedPeriod === selected ? run : null
+  const runForSelected: Run | null = pickRunForPeriod(run, selected)
   const approvalStatus = periods.find((p) => p.period === selected)?.status ?? 'unsigned'
   const runApprovalStatus = periods.find((p) => p.period === run?.requestedPeriod)?.status ?? 'unsigned'
-  const runForWorkbench = run && (run.requestedPeriod === selected || activity === 'active') ? run : null
+  /* 票 05：执行条只画同期次的运行；别期在跑由工作台的一行提示说明（A3） */
+  const runForWorkbench: Run | null = runForSelected
   const wb0 = deriveWorkbench(selected, periods, detail, healthy === true, demo)
   /* 任务状态独立显示；期次列表仍保留签发状态这一审批事实。 */
   const runState: WBState | null = runForSelected?.status === 'warned'
