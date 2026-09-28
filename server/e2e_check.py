@@ -34,12 +34,14 @@ op.addheaders = [("User-Agent", "wenheng-e2e")]
 FAILS = []
 
 
-def call(method, path, data=None, opener=None):
+def call(method, path, data=None, opener=None, headers=None):
     url = BASE + path
     body = urllib.parse.urlencode(data).encode() if data else None
     req = urllib.request.Request(url, data=body, method=method)
     if body:
         req.add_header("Content-Type", "application/x-www-form-urlencoded")
+    for key, value in (headers or {}).items():
+        req.add_header(key, value)
     try:
         r = (opener or op).open(req)
         return r.status, r.read().decode("utf-8", "replace"), r.geturl()
@@ -121,8 +123,9 @@ check("GET /healthz → 200", st == 200, f"got {st}")
 out("=== 2. 未登录应跳登录 ===")
 st, body, final = call("GET", "/")
 check("GET / (未登录) 落到 /login", "/login" in final, f"final={final}")
-st, body, final = call("GET", "/app/")
-check("GET /app/ (未登录) 也落到 /login", "/login" in final, f"final={final}")
+st, body, _final = call("GET", "/app/", headers={"Accept": "text/html"})
+check("GET /app/ (未登录) 显示「请先登录」页",
+      st == 200 and "请先登录" in body and 'href="/login"' in body, f"got {st}")
 
 out("=== 3. 登录 ===")
 # 欢迎页 = 登录页（rick 2026-09-21 定：建筑图做首屏；2026-09-28 二改：满屏背景 + 云大绿）。

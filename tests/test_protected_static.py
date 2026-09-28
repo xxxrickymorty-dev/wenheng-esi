@@ -11,6 +11,12 @@ def _scope(user=None):
     return {"method": "GET", "headers": [], "path": "/", "session": {"user": user} if user else {}}
 
 
+def _html_scope(user=None):
+    scope = _scope(user)
+    scope["headers"] = [(b"accept", b"text/html,application/xhtml+xml")]
+    return scope
+
+
 def _files(tmp_path):
     shelf = tmp_path / "shelf"
     shelf.mkdir()
@@ -80,14 +86,19 @@ def test_对勘快照同样保护(tmp_path):
     assert asyncio.run(files.get_response("collation-demo.html", _scope(config.GUEST_USER))).status_code == 403
 
 
-def test_挂载级登录门_未登录一律回登录页(tmp_path):
-    """`/app` 用 require_login=True：不登录连页面带素材都进不去（2026-09-28 用户裁定）。"""
+def test_登录门_导航显示请先登录页_其余请求回登录页(tmp_path):
+    """`/app` 用 require_login=True：未登录的**导航**请求看到「请先登录」卡（不跳转）；
+    fetch/素材等非导航请求仍 303 回 /login（前端据此识别登录态）。"""
     (tmp_path / "index.html").write_text("workspace", encoding="utf-8")
     files = AdminStaticFiles(directory=str(tmp_path), html=True, require_login=True)
-    anonymous = asyncio.run(files.get_response(".", _scope()))
-    assert anonymous.status_code == 303 and anonymous.headers["location"] == "/login"
-    assert anonymous.headers["cache-control"] == "no-store"
-    # 找不到的文件也先回登录页：不向未登录者泄漏路径存在性
+    gate = asyncio.run(files.get_response(".", _html_scope()))
+    body = gate.body.decode("utf-8")
+    assert gate.status_code == 200
+    assert "请先登录" in body and "前往登录" in body and 'href="/login"' in body
+    assert gate.headers["cache-control"] == "no-store"
+    # 非导航（没有 Accept: text/html）：303 回登录页；找不到的文件也不泄漏存在性
+    redirect = asyncio.run(files.get_response(".", _scope()))
+    assert redirect.status_code == 303 and redirect.headers["location"] == "/login"
     assert asyncio.run(files.get_response("nope.js", _scope())).status_code == 303
     for user in (config.GUEST_USER, config.DEMO_USER):
         assert asyncio.run(files.get_response(".", _scope(user))).status_code == 200

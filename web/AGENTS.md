@@ -45,7 +45,7 @@ npm run lint
 
 - `/app` → `web/dist`（`server/app.py` 的 StaticFiles 挂载，`html=True`，`check_dir=False`）
 - 基路径是 `/app/`（`vite.config.ts` 的 `base`）：前端引资源、写路由都要带它
-- `/app/**` 与 `/static/**` 一样强制 `Cache-Control: no-cache`（改了要立刻可见）；**未登录访问 `/app/**` 一律 303 回 `/login`**（页面与素材一并挡，工作区只从登录页进）。
+- `/app/**` 与 `/static/**` 一样强制 `Cache-Control: no-cache`（改了要立刻可见）；**未登录访问 `/app/**`：导航请求显示「请先登录」页（`server/static/gate.html`，含前往登录按钮），其余请求 303 回 `/login`**（工作区只从登录页进）。
 
 ## 验证
 

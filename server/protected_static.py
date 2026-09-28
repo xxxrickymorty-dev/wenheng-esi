@@ -3,10 +3,28 @@
 import inspect
 from pathlib import PurePosixPath
 
-from starlette.responses import JSONResponse, RedirectResponse
+from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse
 from starlette.staticfiles import StaticFiles
 
 from . import config
+
+
+def _wants_html(scope):
+    """导航请求（浏览器地址栏/链接）才给登录门页面；fetch/素材照旧 303。"""
+    for name, value in scope.get("headers") or ():
+        if name == b"accept":
+            return b"text/html" in value.lower()
+    return False
+
+
+def _login_gate_response():
+    """未登录导航请求：显示「请先登录」页（不跳转），按钮指向 /login。"""
+    try:
+        html = (config.SERVER_DIR / "static" / "gate.html").read_text(encoding="utf-8")
+    except OSError:
+        html = ("<!doctype html><meta charset='utf-8'>"
+                "<h1>请先登录</h1><p><a href=\"/login\">前往登录</a></p>")
+    return HTMLResponse(html, status_code=200, headers={"Cache-Control": "no-store"})
 
 
 class AdminStaticFiles(StaticFiles):
@@ -55,6 +73,8 @@ class AdminStaticFiles(StaticFiles):
             return JSONResponse({"error": "文件路径不合法"}, status_code=404)
         user = scope.get("session", {}).get("user")
         if self.require_login and not user:
+            if _wants_html(scope):
+                return _login_gate_response()
             return RedirectResponse("/login", status_code=303,
                                     headers={"Cache-Control": "no-store"})
         if protected:

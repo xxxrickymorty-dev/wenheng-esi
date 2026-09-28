@@ -65,6 +65,18 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(channel="chrome", headless=True)
 
+        # ---- 0) 未登录：/app/** 导航显示「请先登录」页（不跳转，按钮去 /login） ----
+        anon_ctx = browser.new_context(viewport={"width": 1280, "height": 900})
+        anon = anon_ctx.new_page()
+        anon.goto(BASE + "/app/", wait_until="networkidle")
+        anon_text = anon.inner_text("body")
+        check("未登录 /app/ 显示「请先登录」页",
+              "请先登录" in anon_text and "前往登录" in anon_text
+              and anon.url.rstrip("/").endswith("/app"), f"url={anon.url}")
+        anon.goto(BASE + "/app/shelf/", wait_until="networkidle")
+        check("未登录 /app/shelf/ 同样显示「请先登录」页",
+              "请先登录" in anon.inner_text("body"), f"url={anon.url}")
+
         # ---- 1) 首屏 = 工作台（admin） ----
         ctx = browser.new_context(viewport={"width": 1280, "height": 900})
         ctx.add_cookies(cookies)
