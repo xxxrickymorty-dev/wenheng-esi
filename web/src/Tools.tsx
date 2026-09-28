@@ -5,12 +5,18 @@
 import { useEffect, useState } from 'react'
 import {
   choosePeriodJobId, getJob, getPeriodArtifacts, getPeriodDetail,
-  postJobWithFile, rerunJob,
-  type Artifact, type Job,
+  getRollbackPoints, postJobWithFile, rerunJob, rollbackPeriod,
+  type Artifact, type Job, type RollbackPoint,
 } from './api'
 import { ConfirmButton } from './ConfirmButton'
 import { Icon } from './icons'
 import { Waterfall } from './Waterfall'
+
+/** 留档目录名 20260928T083041 → 09-28 08:30 */
+function fmtPoint(id: string): string {
+  const m = id.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/)
+  return m ? `${m[2]}-${m[3]} ${m[4]}:${m[5]}` : id
+}
 
 type PeriodJobView = {
   period: string | null
@@ -31,8 +37,8 @@ export function Tools({
   approvalStatus: string
   actionsLocked: boolean
   actionLockReason: string | null
-  onActionStart: (action: 'upload' | 'rerun') => boolean
-  onActionEnd: (action: 'upload' | 'rerun') => void
+  onActionStart: (action: 'upload' | 'rerun' | 'rollback') => boolean
+  onActionEnd: (action: 'upload' | 'rerun' | 'rollback') => void
   onUploaded: (jobId: string, period: string) => void
   refreshToken?: number
 }) {
@@ -50,6 +56,23 @@ export function Tools({
     : null
   const effJobId = currentView?.effJobId ?? null
   const message = msg?.period === period ? msg : null
+  const [points, setPoints] = useState<RollbackPoint[]>([])
+  const [point, setPoint] = useState('')
+  const [localRefresh, setLocalRefresh] = useState(0)
+
+  /* 回滚点（票 07）：切期次/操作后重取；没有留档就整块不显示。 */
+  useEffect(() => {
+    if (!period) { setPoints([]); setPoint(''); return }
+    let alive = true
+    getRollbackPoints(period)
+      .then((ps) => {
+        if (!alive) return
+        setPoints(ps)
+        setPoint((cur) => (ps.some((p) => p.id === cur) ? cur : ps[0]?.id ?? ''))
+      })
+      .catch(() => { if (alive) setPoints([]) })
+    return () => { alive = false }
+  }, [period, localRefresh])
 
   /* 任务按请求期次选；文件列表从精确期次目录读取。 */
   useEffect(() => {
@@ -98,7 +121,7 @@ export function Tools({
       }
     })()
     return () => { alive = false }
-  }, [period, jobId, refreshToken])
+  }, [period, jobId, refreshToken, localRefresh])
 
   async function upload() {
     if (actionsLocked || busy || rerunning) return
@@ -138,6 +161,26 @@ export function Tools({
     } finally {
       setRerunning(false)
       onActionEnd('rerun')
+    }
+  }
+
+  async function rollback() {
+    if (actionsLocked || busy || rerunning) return
+    const actionPeriod = period
+    if (!actionPeriod || !point) return
+    if (!onActionStart('rollback')) return
+    setRerunning(true); setMsg(null)
+    try {
+      const r = await rollbackPeriod(actionPeriod, point)
+      setMsg({ period: actionPeriod, ok: true,
+               text: `已回滚到 ${fmtPoint(point)}（${r.restored.length} 个文件）；回滚前的成品已另存留档，报告变了以后签名需重签。` })
+      setLocalRefresh((n) => n + 1)
+    } catch (e) {
+      const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
+      setMsg({ period: actionPeriod, ok: false, text: (h.body?.error ?? h.message ?? '回滚失败') + (h.body?.hint ? `（${h.body.hint}）` : '') })
+    } finally {
+      setRerunning(false)
+      onActionEnd('rollback')
     }
   }
 
@@ -202,6 +245,21 @@ export function Tools({
                 <Icon name="refresh" size={19} />{rerunning ? '正在重跑……' : '重跑本期'}
               </ConfirmButton>
               {message && <span className="hint" style={{ color: message.ok ? 'var(--ok)' : 'var(--bad)' }}>{message.text}</span>}
+            </div>
+          )}
+          {period && points.length > 0 && (
+            <div className="toolbar" style={{ marginTop: 10 }}>
+              <span className="hint">旧版留档</span>
+              <select value={point} onChange={(e) => setPoint(e.target.value)} aria-label="选择要回滚到的版本"
+                      style={{ maxWidth: 220, padding: '7px 10px', border: '1px solid var(--line)',
+                               borderRadius: 8, background: 'var(--card)', color: 'var(--ink)', font: 'inherit' }}>
+                {points.map((p) => <option key={p.id} value={p.id}>{fmtPoint(p.id)} · {p.files.length} 个文件</option>)}
+              </select>
+              <ConfirmButton className="btn" disabled={actionsLocked || busy || rerunning}
+                             confirmText="确认回滚？当前成品会先撤下"
+                             onConfirm={rollback}>
+                <Icon name="refresh" size={19} />回滚到这一版
+              </ConfirmButton>
             </div>
           )}
           {message && !(period && effJobId) && <p className="hint" style={{ color: message.ok ? 'var(--ok)' : 'var(--bad)' }}>{message.text}</p>}

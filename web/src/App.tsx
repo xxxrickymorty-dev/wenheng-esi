@@ -82,8 +82,8 @@ export default function App() {
   const [forecastChoiceByPeriod, setForecastChoiceByPeriod] = useState<Record<string, ForecastChoiceEntry>>({})
   const [err, setErr] = useState<ApiError | null>(null)
   const [busy, setBusy] = useState(false)
-  const [toolAction, setToolAction] = useState<'upload' | 'rerun' | null>(null)
-  const actionOwnerRef = useRef<'generate' | 'upload' | 'rerun' | null>(null)
+  const [toolAction, setToolAction] = useState<'upload' | 'rerun' | 'rollback' | null>(null)
+  const actionOwnerRef = useRef<'generate' | 'upload' | 'rerun' | 'rollback' | null>(null)
   const manualSelectionRef = useRef(false)
   const restoredActivePeriodRef = useRef<string | null>(null)
   const periodsRequestRef = useRef(0)
@@ -390,6 +390,8 @@ export default function App() {
               ? '正在上传并开始生成，请稍候。'
             : toolAction === 'rerun'
               ? '正在重跑，请稍候。'
+            : toolAction === 'rollback'
+              ? '正在回滚到上一版，请稍候。'
               : selected && !/^\d{6}$/.test(selected)
                 ? '历史复现期次不能直接新建任务，请选择六位正式期次。'
                 : choiceLoadLockReason
@@ -397,14 +399,14 @@ export default function App() {
   const jobActionsLocked = !runEnabled || activity !== 'idle' || busy || toolAction !== null
     || !!choiceLoadLockReason || !selectedPeriodCanStartJob
 
-  const beginToolAction = useCallback((action: 'upload' | 'rerun') => {
+  const beginToolAction = useCallback((action: 'upload' | 'rerun' | 'rollback') => {
     if (!runEnabled || activity !== 'idle' || actionOwnerRef.current || jobActionsLocked) return false
     actionOwnerRef.current = action
     setToolAction(action)
     return true
   }, [activity, jobActionsLocked, runEnabled])
 
-  const endToolAction = useCallback((action: 'upload' | 'rerun') => {
+  const endToolAction = useCallback((action: 'upload' | 'rerun' | 'rollback') => {
     if (actionOwnerRef.current !== action) return
     actionOwnerRef.current = null
     setToolAction(null)

@@ -25,6 +25,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from . import approval, archive, collation, config, jobs, shelf_data, shelf_preview
 from . import forecasting
 from .guards import admin_file_route, admin_route
+from src import parse_ledger  # 成品隔离/回滚的唯一口径（FINAL_PRODUCTS / SUPERSEDED_DIR）
 from .protected_static import AdminStaticFiles
 from src import period as period_mod  # 期次口径唯一来源（ADR-0001：新工作区 API 也用它）
 from src import forecast_choice  # 预测选模的唯一 implementation（读写/快照/留痕）
@@ -1399,6 +1400,83 @@ async def api_rerun_job(request: Request, job_id: str):
     except (ValueError, RuntimeError) as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     return {"job_id": new_job["id"], "url": f"/jobs/{new_job['id']}"}
+
+
+# ---------------- 回滚到上一版（票 07） ----------------
+
+def _rollback_dir(period: str):
+    """回滚只认两件事：期次名合法 + 期次目录里有 _superseded/。
+
+    与 resolve_period_dir 不同：**允许当前没有成品**——重跑失败之后回来回滚，正是主场景。
+    """
+    if not jobs.PERIOD_DIR_RE.match(period or ""):
+        return None
+    d = config.OUT_DIR / period
+    if d.is_dir() and (d / parse_ledger.SUPERSEDED_DIR).is_dir():
+        return d
+    return None
+
+
+def _rollback_points(out_dir: pathlib.Path):
+    """列回滚点（新→旧）：只列真带成品的留档目录（下划线开头的是标记文件）。"""
+    sup = out_dir / parse_ledger.SUPERSEDED_DIR
+    points = []
+    for d in sorted((p for p in sup.iterdir() if p.is_dir()), key=lambda p: p.name, reverse=True):
+        files = sorted(p.name for p in d.iterdir() if p.is_file() and not p.name.startswith("_"))
+        if files:
+            points.append({"id": d.name, "files": files})
+    return points
+
+
+@app.get("/api/periods/{period}/rollback-points")
+@admin_route
+async def api_rollback_points(request: Request, period: str):
+    out_dir = _rollback_dir(period)
+    if not out_dir:
+        return JSONResponse({"error": "这一期没有可回滚的留档"}, status_code=404)
+    return {"period": period, "points": _rollback_points(out_dir)}
+
+
+@app.post("/api/periods/{period}/rollback")
+@admin_route
+async def api_rollback(request: Request, period: str):
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = {}
+    point = str((body or {}).get("point") or "")
+    out_dir = _rollback_dir(period)
+    if not out_dir:
+        return JSONResponse({"error": "这一期没有可回滚的留档"}, status_code=404)
+    busy = jobs.active_job()
+    if busy:
+        return JSONResponse({"error": f"已有任务运行中（{busy['period']}），回滚会跟它打架，请稍候"},
+                            status_code=409)
+    points = _rollback_points(out_dir)
+    if not points:
+        return JSONResponse({"error": "没有可回滚的版本（每次重跑/重出都会把旧版留档）"}, status_code=404)
+    target = next((p for p in points if p["id"] == point), None) if point else points[0]
+    if not target:
+        return JSONResponse({"error": "指定的回滚点不存在"}, status_code=404)
+    src = out_dir / parse_ledger.SUPERSEDED_DIR / target["id"]
+    # 先把当前成品撤进新的留档目录——让「回滚」本身也能再回滚
+    quarantined = parse_ledger.quarantine_final_products(out_dir)
+    restored = []
+    for name in target["files"]:
+        p = src / name
+        if p.is_file():
+            p.replace(out_dir / name)
+            restored.append(name)
+    try:
+        (src / "_已回滚.txt").write_text(
+            f"{time.strftime('%Y-%m-%d %H:%M:%S')}：这一版成品已回滚到 {period} 期目录；"
+            f"回滚前的成品另存了新留档目录。\n",
+            encoding="utf-8",
+        )
+    except OSError:
+        pass
+    return {"ok": True, "period": period, "point": target["id"],
+            "restored": restored, "pre_rollback_quarantined": quarantined}
 
 
 # ---------------- SSE ----------------

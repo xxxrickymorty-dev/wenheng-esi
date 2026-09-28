@@ -266,3 +266,20 @@ export async function rerunJob(jobId: string): Promise<{ job_id?: string; url?: 
     body: '{}',
   })
 }
+
+/** 回滚点（票 07）：旧版留档清单，新→旧；只列真带成品的目录。 */
+export type RollbackPoint = { id: string; files: string[] }
+
+export async function getRollbackPoints(period: string): Promise<RollbackPoint[]> {
+  const r = await req<{ points?: RollbackPoint[] }>(
+    `/api/periods/${encodeURIComponent(period)}/rollback-points`,
+  )
+  return r.points ?? []
+}
+
+export async function rollbackPeriod(period: string, point: string): Promise<{ ok: boolean; restored: string[] }> {
+  return req<{ ok: boolean; restored: string[] }>(
+    `/api/periods/${encodeURIComponent(period)}/rollback`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ point }) },
+  )
+}
