@@ -39,41 +39,8 @@ function Steps({ wb, period }: { wb: WB; period: string | null }) {
   )
 }
 
-function Progress() {
-  const rows = [
-    { name: '读取台账', pct: 100, state: 'done' },
-    { name: '汇总数据', pct: 100, state: 'done' },
-    { name: '预测与回看', pct: 100, state: 'done' },
-    { name: '画图', pct: 69, state: 'now' },
-    { name: '装配报告', pct: 0, state: 'wait' },
-  ]
-  return (
-    <>
-      <div className="elapsed">
-        <Icon name="refresh" size={20} />
-        正在生成 · 已用 8 秒
-      </div>
-      <div className="progress">
-        {rows.map((r) => (
-          <div key={r.name} className={`prow ${r.state === 'now' ? 'now' : ''}`}>
-            <span style={{ flex: '0 0 22px', color: r.state === 'done' ? 'var(--ok)' : 'var(--ink-3)' }}>
-              <Icon name={r.state === 'done' ? 'check' : r.state === 'now' ? 'refresh' : 'clock'} size={19} />
-            </span>
-            <span className="name">{r.name}</span>
-            <span className="bar">
-              <i style={{ width: `${r.pct}%` }} />
-            </span>
-            <span className="pct">
-              {r.state === 'done' ? '完成' : r.state === 'now' ? `${r.pct}%` : '等待'}
-            </span>
-          </div>
-        ))}
-      </div>
-    </>
-  )
-}
-
-/** 真实生成过程：任务状态与本期审批状态分开显示。 */
+/** 真实生成过程：任务状态与本期审批状态分开显示。
+    （原先的「五步假进度」演示组件已删——固定百分比属于编造，违反只透传红线，2026-09-29） */
 function LiveRun({ run, approvalStatus }: { run: Run; approvalStatus: string }) {
   const [open, setOpen] = useState(false)
   const approvalLabel = approvalStatus === 'signed' ? '已签发'
@@ -82,38 +49,27 @@ function LiveRun({ run, approvalStatus }: { run: Run; approvalStatus: string }) 
     : run.connection === 'snapshot' ? '正在读取任务进度'
       : run.connection === 'reconnecting' ? '连接中断，正在恢复进度'
         : '暂时连不上服务，页面会继续更新进度'
+  /* 一条工具栏：任务 / 签单状态 / 看详细过程（rick 2026-09-29：原来三行各占一行、右侧全空） */
   return (
     <>
-      <div className="elapsed">
-        <Icon name="refresh" size={20} />
-        {`任务：${run.status ? runStatusText(run.status) : '正在读取状态'} · 期次 ${run.requestedPeriod}${run.outputPeriod && run.outputPeriod !== run.requestedPeriod ? `（实际输出 ${run.outputPeriod}）` : ''} · ${connectionLabel}`}
-      </div>
-      <div className="progress">
-        <div className="prow">
-          <span className="name">签单状态</span>
-          <span style={{ flex: 1, color: 'var(--ink-2)' }}>{approvalLabel}</span>
-        </div>
-        {/* 「最新进度」收进「看详细过程」面板（rick 2026-09-29：原始进度串馆员看不懂） */}
-      </div>
-      <div style={{ padding: '0 24px 16px' }}>
-        <button className="btn" onClick={() => setOpen(!open)}>
-          <Icon name="list" size={18} />{open ? '收起日志' : '看详细过程'}
+      <div className="runbar">
+        <span className="elapsed">
+          <Icon name="refresh" size={19} />
+          {`任务：${run.status ? runStatusText(run.status) : '正在读取状态'} · 期次 ${run.requestedPeriod}${run.outputPeriod && run.outputPeriod !== run.requestedPeriod ? `（实际输出 ${run.outputPeriod}）` : ''} · ${connectionLabel}`}
+        </span>
+        <span className="runbar-state">签单状态<b>{approvalLabel}</b></span>
+        <button className="btn runbar-log" onClick={() => setOpen(!open)}>
+          <Icon name="list" size={17} />{open ? '收起日志' : '看详细过程'}
         </button>
-        {open && (
-          <>
-            <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>
-              最新进度：{run.last ?? '（进度还未返回…）'}
-            </p>
-            <pre style={{
-              marginTop: 10, maxHeight: 260, overflow: 'auto', background: 'var(--panel)',
-              border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px',
-              fontSize: 12.5, fontFamily: 'var(--mono)', color: 'var(--ink-2)',
-            }}>
-              {run.lines.length ? run.lines.join('\n') : '（暂无日志行）'}
-            </pre>
-          </>
-        )}
       </div>
+      {open && (
+        <div className="runlog">
+          <p className="hint" style={{ marginBottom: 8 }}>
+            最新进度：{run.last ?? '（进度还未返回…）'}
+          </p>
+          <pre>{run.lines.length ? run.lines.join('\n') : '（暂无日志行）'}</pre>
+        </div>
+      )}
     </>
   )
 }
@@ -438,7 +394,13 @@ export function Workbench({
         {run ? <LiveRun run={run} approvalStatus={runApprovalStatus} />
           : activeRun ? (
             <div className="elapsed"><Icon name="refresh" size={20} />有任务正在进行——完成后才能开始新的生成；想跟进进度，切到任务所属期次。</div>
-          ) : wb.state === 'running' ? <Progress /> : null}
+          ) : wb.state === 'running' ? (
+            /* 页面刚回来、进度还没接上时的如实提示（原先是固定百分比假进度，已删） */
+            <div className="elapsed">
+              <Icon name="refresh" size={19} />
+              任务正在生成——正在获取进度，稍等片刻这里会显示实况。
+            </div>
+          ) : null}
         <Banners wb={wb} err={err} healthy={healthy} onRerun={onGenerate} canRerun={canGenerate} period={period}
           approvalStatus={approvalStatus} />
 

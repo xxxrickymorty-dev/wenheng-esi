@@ -7,7 +7,16 @@ import { useEffect, useState } from 'react'
 import { req } from './api'
 import { Icon } from './icons'
 
-type SheetRow = { name?: string; sheet?: string; columns?: number; cols?: number; periods?: string }
+type SheetRow = {
+  name?: string
+  sheet?: string
+  /** 列名数组（后端原样）；列数是 n_columns */
+  columns?: string[]
+  n_columns?: number
+  /** 期次数组（后端原样）；期次数是 n_periods */
+  periods?: string[]
+  n_periods?: number
+}
 
 /** 表清单。形状按**实测响应**写；拿不到就如实显示后端的话（不编表名）。 */
 export function Ledger() {
@@ -56,16 +65,25 @@ export function Ledger() {
           <div className="tablewrap">
           <table className="periods" style={{ marginTop: 14 }}>
             <thead>
-              <tr><th>工作表</th><th>列数</th><th>期次覆盖</th></tr>
+              <tr>
+                <th>工作表</th><th className="num">列数</th><th>列名</th><th>期次覆盖</th>
+              </tr>
             </thead>
             <tbody>
-              {rows.map((r, i) => (
-                <tr key={(r.name ?? r.sheet ?? '') + i}>
-                  <td>{r.name ?? r.sheet ?? '（未命名字段）'}</td>
-                  <td className="mono">{r.columns ?? r.cols ?? '—'}</td>
-                  <td className="mono">{r.periods ?? '—'}</td>
-                </tr>
-              ))}
+              {rows.map((r, i) => {
+                /* 后端给的是数组（列名 / 期次），渲染成串要自己加分隔、限宽，
+                   否则 47 列的期次连成一串把表格撑出屏幕（2026-09-29 修） */
+                const cols = Array.isArray(r.columns) ? r.columns.filter(Boolean) : []
+                const periods = Array.isArray(r.periods) ? r.periods : []
+                return (
+                  <tr key={(r.name ?? r.sheet ?? '') + i}>
+                    <td>{r.name ?? r.sheet ?? '（未命名字段）'}</td>
+                    <td className="num mono">{r.n_columns ?? (cols.length || '—')}</td>
+                    <td className="ellip" title={cols.join('、')}>{cols.join('、') || '—'}</td>
+                    <td title={periods.join('、')}>{r.n_periods ? `${r.n_periods} 期` : '—'}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
           </div>
