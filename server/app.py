@@ -476,6 +476,26 @@ async def period_flexible_chart(request: Request, period: str,
     return FileResponse(p, headers={"Cache-Control": "no-cache"})
 
 
+@app.get("/p/{period}/flexible/{intent}/report.html")
+@admin_file_route
+async def period_flexible_report(request: Request, period: str, intent: str):
+    """灵活报告整篇下载（rick 2026-09-29：出稿后「下载报告」）。
+
+    report.html 原样返回；页内图走相对路径 `charts/*.png`，连同目录产物可看图。
+    """
+    if not re.fullmatch(r"[a-z0-9_]+", intent or ""):
+        raise HTTPException(status_code=404)
+    d = resolve_period_dir(period)
+    if d is None:
+        return RedirectResponse("/", status_code=303)
+    p = d / "flexible" / intent / "report.html"
+    if not p.exists():
+        raise HTTPException(status_code=404)
+    return FileResponse(p, media_type="text/html",
+                        filename=f"灵活报告_{period}_{intent}.html",
+                        headers={"Cache-Control": "no-cache"})
+
+
 @app.get("/p/{period}/archive", response_class=HTMLResponse)
 
 async def period_archive(request: Request, period: str):
@@ -779,6 +799,7 @@ async def api_period_acquisition(request: Request, period: str):
         return {"period": period, "started": False}
     return {"period": period, "started": True, **state}
 
+
 # ------------------------------------------------------------------ 自动取数台 · 写动作（X3）
 # 全部由**人按键**触发（R-1）：这里是拉起 `tools/acquire.py` 的**非交互执行口**，
 # 进度由取数流程写回 `out/_acquisition/<期次>.json`，前端轮询读取。不做任何数据加工。
@@ -868,7 +889,6 @@ async def api_acq_preflight(request: Request, period: str):
     st = acquisition.load(period) or {}
     pf = st.get("preflight") or {}
     return {"ok": r.returncode == 0, "preflight": pf}
-
 
 
 @app.get("/api/periods/{period}/artifacts")

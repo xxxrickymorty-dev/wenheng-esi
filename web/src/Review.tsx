@@ -10,7 +10,6 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { Me, Period } from './api'
-import { getFacts } from './api4'
 import { flagLoc, revokePeriod, signPeriod } from './api3'
 import { getWorkbench, postFill, type WorkbenchData } from './api4'
 import {
@@ -124,7 +123,6 @@ export function Review({
   const [wb, setWb] = useState<WorkbenchData | null>(null)
   const [wbNote, setWbNote] = useState<string | null>(null)
   const [vals, setVals] = useState<Record<string, string>>({})
-  const [assertions, setAssertions] = useState<{ total: number; fail: number } | null>(null)
   const [note, setNote] = useState('')
   const [known, setKnown] = useState(false)
   const [busy, setBusy] = useState<null | 'sign' | 'rebuild' | 'save' | 'revoke'>(null)
@@ -142,7 +140,7 @@ export function Review({
     if (!period) return
     let alive = true
     setPreview(null); setPreviewNote(null); setWb(null); setWbNote(null)
-    setVals({}); setMsg(null); setKnown(false); setAssertions(null); setNote(''); setOnlyDoubt(false)
+    setVals({}); setMsg(null); setKnown(false); setNote(''); setOnlyDoubt(false)
 
     getReportPreview(period)
       .then((pv) => { if (alive) setPreview(pv) })
@@ -166,9 +164,6 @@ export function Review({
         if (!alive) return
         setWbNote(e.status === 403 ? '填写数据需要管理员权限。' : '读填写数据失败。')
       })
-    getFacts(period)
-      .then((f) => { if (alive) setAssertions(f.assertions) })
-      .catch(() => { /* 读数取不到就不显示，不编 */ })
     return () => { alive = false }
   }, [period])
 
@@ -365,24 +360,9 @@ export function Review({
       <div className="rv-lead">
         <a className="hint" href={back} style={{ textDecoration: 'none' }}>← 回报告</a>
         <span style={{ color: 'var(--line)' }}>·</span>
-        <span className="hint">期次 <b className="mono">{period}</b></span>
         <h2 style={{ fontSize: 22, display: 'flex', alignItems: 'center', gap: 10, marginLeft: 4 }}>
           <Icon name="seal" size={22} />审核 · 试排报告
         </h2>
-        <span className={`pill ${signed ? 'signed' : status === 'stale' ? 'stale' : 'unsigned'}`}>
-          {signed ? '已签单' : status === 'stale' ? '签名已失效' : '未签单'}
-        </span>
-        {assertions && (
-          <span className="hint">
-            数据核对 {assertions.total - assertions.fail}/{assertions.total}
-            {assertions.fail === 0 ? ' 全部通过' : `（${assertions.fail} 处对不上）`}
-          </span>
-        )}
-        {preview && preview.docx && (
-          <span className="hint">
-            报告里的空 {nField} 处{nLeft > 0 ? `（还剩 ${nLeft} 处待填）` : '（已填齐）'}
-          </span>
-        )}
         {doubtN > 0 && <span className="hint" style={{ color: 'var(--gold-ink)', fontWeight: 650 }}>存疑 {doubtN} 处</span>}
       </div>
 

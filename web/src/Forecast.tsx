@@ -167,7 +167,6 @@ function Trial({
   const [err, setErr] = useState('')
   const cache = useRef(new Map<string, ForecastRun>())
   const selectedSubject = meta.subjects.includes(subject) ? subject : meta.subjects[0] ?? ''
-  const routeLabel = meta.routes.find((r) => r.value === route)?.label ?? ''
   const runKey = `${meta.source_period}|${selectedSubject}|${route}|${model}|${horizon}`
   const runKeyRef = useRef(runKey)
   runKeyRef.current = runKey
@@ -216,9 +215,6 @@ function Trial({
     <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
       <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <span className="fc-no">01</span>预测图
-        <span className="hint" style={{ fontWeight: 400 }}>
-          {selectedSubject}{route ? ` · ${shortRoute(routeLabel)}` : ''} · 自动出图
-        </span>
       </h2>
 
       <div className="fc-form">
@@ -244,12 +240,11 @@ function Trial({
 
       <p className="hint" style={{ marginTop: 9 }} role="status">
         当前选用：<b>{effective || '未定'}</b>
-        {mine ? `（已从 V1 推荐「${rec}」改选）` : effective ? '（跟随 V1 推荐）' : ''}
+        {mine ? `（已从 V1 推荐「${rec}」改选）` : ''}
         {mine && (
           <button type="button" className="btn fc-gal-reset" disabled={!pickable}
                   onClick={() => onChoiceChange(route, selectedSubject, '')}>恢复推荐</button>
         )}
-        <span> · 改完点上方「保存选择」</span>
       </p>
 
       {err && (
@@ -261,7 +256,7 @@ function Trial({
       )}
       {busy && (
         <div className="pending-box" style={{ marginTop: 12 }} role="status">
-          正在跑{model === 'all' ? '五模型滚动回测与预测' : '模型'}……大约十几秒（跑过会记下来，切回来不用重跑）。
+          正在跑{model === 'all' ? '五模型滚动回测与预测' : '模型'}……大约十几秒。
         </div>
       )}
 
@@ -303,7 +298,6 @@ function PickTable({
     <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
       <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <span className="fc-no">02</span>本期用哪个模型
-        <span className="hint" style={{ fontWeight: 400 }}>只改你要改的科，其余走 V1 推荐</span>
       </h2>
 
       {!choice?.loaded && (

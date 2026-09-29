@@ -321,10 +321,10 @@ export function Flexible({ period }: { period: string | null }) {
                     AI 润色
                   </button>
                 )}
-                <button className="btn small" disabled={busy}
-                        onClick={() => { setIntent(m.intent); onGen() }}>
-                  重新生成
-                </button>
+                <a className="btn small" download
+                   href={`/p/${encodeURIComponent(period ?? '')}/flexible/${encodeURIComponent(m.intent)}/report.html`}>
+                  <Icon name="doc" size={15} />下载报告
+                </a>
               </div>
             )}
           </div>

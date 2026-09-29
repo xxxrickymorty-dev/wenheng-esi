@@ -439,7 +439,7 @@ export default function App() {
     { view: 'workbench', label: '生成台', icon: 'play', href: '/app/', admin: true },
     { view: 'report', label: '报告', icon: 'chart', href: '/app/?view=report' },
     { view: 'review', label: '审核台', icon: 'seal', href: '/app/?view=review', admin: true },
-    { view: 'analysis', label: '分析台', icon: 'chart', href: '/app/?view=analysis', admin: true },
+    { view: 'analysis', label: 'AI 分析台', icon: 'chart', href: '/app/?view=analysis', admin: true },
     { view: 'forecast', label: '预测台', icon: 'trend', href: '/app/?view=forecast', admin: true },
     { view: 'shelf', label: '陈列馆', icon: 'book', href: '/app/shelf/' },
   ]
@@ -519,7 +519,7 @@ export default function App() {
         {denied ? (
           <div className="pending-box" style={{ marginTop: 0 }}>
             {notLoggedIn ? (
-              <><b>请先登录</b> —— 生成台 / 审核台 / 分析台 / 预测台要馆员账号，
+              <><b>请先登录</b> —— 生成台 / 审核台 / AI 分析台 / 预测台要馆员账号，
                 <a href="/login">去登录</a>后再来。
               </>
             ) : (

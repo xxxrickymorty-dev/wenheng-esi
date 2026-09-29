@@ -312,7 +312,7 @@ function TrendCard({ trend, period }: { trend: Record<string, number>; period: s
       <div className="tr-head">
         <div>
           <b>顶尖论文增长轨迹</b>
-          <span className="hint">按双月期次 · 单位 篇（{pts.length} 期，{fmtP(pts[0][0])}–{fmtP(pts[pts.length - 1][0])}）</span>
+          <span className="hint">按双月期次 · 单位 篇</span>
         </div>
         {nowEntry && <div className="tr-now"><b>{cv}</b><span>本期 · {fmtP(pts[ci][0])}</span></div>}
       </div>
@@ -424,18 +424,6 @@ function FactsStrip({ period, onFacts }: {
           </div>
         ))}
       </div>
-
-      <p className="hint" style={{ marginTop: 10 }}>
-        数字体检：{f.assertions.total} 项核对
-        {f.assertions.fail === 0 ? '全部通过' : `有 ${f.assertions.fail} 项不符 ❗`}
-        {' · '}覆盖窗口 {x.coverage_window} · 上期 {x.prev_label}
-        {f.missing.length > 0 ? ` · 缺：${f.missing.join('、')}` : ''}
-      </p>
-      <p className="hint" style={{ marginTop: 6 }}>
-        最接近 1‰：{x.best_1permille.discipline} {x.best_1permille.prox_pct}%
-        （上期 {x.best_1permille.prox_prev_pct}%）· 按顶尖论文数的三甲：
-        {x.top3_by_top_papers.map(([d, n]) => `${d} ${n}`).join('、')}
-      </p>
     </>
   )
 }
