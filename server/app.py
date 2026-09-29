@@ -1554,7 +1554,6 @@ async def api_period_flexible_generate(request: Request, period: str):
         return _period_missing()
     body = await request.json()
     intent = str(body.get("intent") or "").strip()
-    backend = str(body.get("backend") or "").strip() or None
     disc = str(body.get("disc") or "").strip() or None
     import flexible.planner as flex_planner                         # noqa: PLC0415
     if intent not in flex_planner.INTENTS:
@@ -1563,7 +1562,7 @@ async def api_period_flexible_generate(request: Request, period: str):
     import flexible.report as flex_report                           # noqa: PLC0415
     t0 = time.time()
     try:
-        r = flex_report.generate(d, intent, backend=backend, disc=disc)
+        r = flex_report.generate(d, intent, disc=disc)
     except Exception as e:                                          # noqa: BLE001
         return JSONResponse({"error": f"生成失败：{type(e).__name__}", "hint": str(e)[:200]}, status_code=500)
     return {"ok": True, "intent": intent, "elapsed": round(time.time() - t0, 1),

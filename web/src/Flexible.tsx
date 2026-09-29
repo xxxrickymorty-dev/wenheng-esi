@@ -9,19 +9,12 @@ import { useEffect, useState } from 'react'
 import { getFlexible, runFlexible, type FlexibleData } from './api5'
 import { Icon } from './icons'
 
-const BACKENDS = [
-  { value: 'rule', label: 'rule（规则，无 LLM —— 演示站默认）' },
-  { value: 'ollama', label: 'ollama（本机小模型；不可用自动回退 rule）' },
-  { value: 'http', label: 'http（外部端点，需配置）' },
-]
-
 export function Flexible({ period }: { period: string | null }) {
   const [d, setD] = useState<FlexibleData | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [gen, setGen] = useState(false)
   const [intent, setIntent] = useState('')
-  const [backend, setBackend] = useState('rule')
   const [disc, setDisc] = useState('')
 
   useEffect(() => {
@@ -61,7 +54,7 @@ export function Flexible({ period }: { period: string | null }) {
     if (!period || !intent) return
     setGen(true); setNote(null)
     try {
-      const r = await runFlexible(period, { intent, backend, disc: disc.trim() || undefined })
+      const r = await runFlexible(period, { intent, disc: disc.trim() || undefined })
       const j = await getFlexible(period, intent)
       setD(j)
       setNote(`已生成${j.cur ? `「${j.reports.find((x) => x.intent === j.cur)?.title ?? j.cur}」` : ''}`
@@ -93,11 +86,6 @@ export function Flexible({ period }: { period: string | null }) {
         <label>分析意图
           <select value={intent} onChange={(e) => setIntent(e.target.value)}>
             {(d?.intents ?? []).map((i) => <option key={i.id} value={i.id}>{i.cn}</option>)}
-          </select>
-        </label>
-        <label>规划后端
-          <select value={backend} onChange={(e) => setBackend(e.target.value)}>
-            {BACKENDS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
           </select>
         </label>
         <label>指定学科（可空 = 由规划器挑）

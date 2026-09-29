@@ -19,7 +19,6 @@ import pytest
 
 from _guard_registry import skip_unless
 
-import local_llm
 from flexible import mdview, opinion, planner, polish, queries, report, spec
 from flexible.datasource import DataSource
 
@@ -53,7 +52,7 @@ def flex_report_out(src, tmp_path_factory):
     """生成一次灵活报告（规则后端），供多条用例复用。"""
     from conftest import REPO
     d = REPO / src.dir
-    r = report.generate(d, "single_trend", backend="rule")
+    r = report.generate(d, "single_trend")
     return r
 
 
@@ -170,60 +169,82 @@ class TestOpinion观点分级:
 
 
 class TestPlanner无模型也能跑:
-    """**本设计的核心主张**：模型位可插拔，无模型时流程照跑。"""
+    """**本设计的核心主张**：模型位可插拔，无模型时流程照跑（D6 后唯一出口＝ai 内部口）。"""
 
-    def test_规则后端不碰网络(self, src, monkeypatch):
-        """把 urlopen 打成炸弹：规则后端下规划必须照样成立。"""
+    def test_未配云不碰网络(self, src, monkeypatch):
+        """把 urlopen 打成炸弹：没配云时规划必须照样成立、零网络。"""
         import urllib.request
 
         def boom(*a, **k):
-            raise AssertionError("规则后端不应发起任何网络调用")
+            raise AssertionError("未配云时不应发起任何网络调用")
 
         monkeypatch.setattr(urllib.request, "urlopen", boom)
-        plan = planner.build(src, "single_trend", backend="rule")
+        plan = planner.build(src, "single_trend")
         assert plan["backend"] == "rule"
         assert plan["charts"] and plan["disc"] and plan["periods"]
 
-    def test_ollama不可用即回退规则(self, src, monkeypatch):
-        """服务不可达不是错误，是降级 —— 演示站（2核2G）永远走这条。"""
-        import local_llm
-
-        def boom(*a, **k):
-            raise OSError("connection refused")
-
-        monkeypatch.setattr(local_llm, "generate", boom)
-        plan = planner.build(src, "single_trend", backend="ollama")
+    def test_模型不可用即回退规则(self, src):
+        """调用失败不是错误，是降级 —— 演示站永远走这条。"""
+        from _ai_helpers import FailingBrain
+        import ai
+        with ai.using(brain=FailingBrain()):
+            plan = planner.build(src, "single_trend")
         assert plan["backend"] == "rule"
         assert plan["fallback_reason"]
         assert plan["charts"], "回退后仍须给出完整规划"
 
-    def test_模型给出越权键则整份回退(self, src, monkeypatch):
+    def test_规划出网前数字已占位(self, src):
+        """🔴 唯一出口的硬纪律：发给模型的规划依据里没有任何数字原值。"""
+        from _ai_helpers import ScriptedBrain, Turn, raw_digits
+        import ai
+        brain = ScriptedBrain([lambda b: Turn(text='{"disc": "Chemistry", "charts": '
+                                                   '[{"kind": "cnci", "disc": "Chemistry"}]}')])
+        with ai.using(brain=brain):
+            plan = planner.build(src, "single_trend")
+        assert plan["backend"] == "scripted"
+        assert brain.briefs, "应有一次外发"
+        for t in brain.briefs[0].egress_texts():
+            assert not raw_digits(t), f"外发含数字原值：{t[:80]!r}"
+
+    def test_模型给出越权键则整份回退(self, src):
         """模型想给纵轴范围 → 不接受、不崩溃，回退规则规划。"""
-        import local_llm
-        monkeypatch.setattr(local_llm, "generate",
-                            lambda *a, **k: '{"disc": "Chemistry", "ylim": [0, 10]}')
-        plan = planner.build(src, "single_trend", backend="ollama")
+        from _ai_helpers import ScriptedBrain, Turn
+        import ai
+        with ai.using(brain=ScriptedBrain(
+                [Turn(text='{"disc": "Chemistry", "ylim": "auto"}')])):
+            plan = planner.build(src, "single_trend")
         assert plan["backend"] == "rule"
         assert "越权键" in plan["fallback_reason"]
 
-    def test_模型给出非法学科被过滤(self, src, monkeypatch):
-        import local_llm
-        monkeypatch.setattr(
-            local_llm, "generate",
-            lambda *a, **k: '{"disc": "Chemistry", "charts": '
-                            '[{"kind": "cnci", "disc": "NoSuchDisc"}, '
-                            '{"kind": "cnci", "disc": "Physics"}]}')
-        plan = planner.build(src, "single_trend", backend="ollama")
+    def test_模型带入新数字整份回退(self, src):
+        """模型自造/回填数字 → 盾拒，整份回退规则（规划输出不许有数字）。"""
+        from _ai_helpers import ScriptedBrain, Turn
+        import ai
+        with ai.using(brain=ScriptedBrain(
+                [Turn(text='{"disc": "Chemistry", "n_periods": 7}')])):
+            plan = planner.build(src, "single_trend")
+        assert plan["backend"] == "rule"
+        assert plan["fallback_reason"]
+
+    def test_模型给出非法学科被过滤(self, src):
+        from _ai_helpers import ScriptedBrain, Turn
+        import ai
+        with ai.using(brain=ScriptedBrain(
+                [Turn(text='{"disc": "Chemistry", "charts": '
+                           '[{"kind": "cnci", "disc": "NoSuchDisc"}, '
+                           '{"kind": "cnci", "disc": "Physics"}]}')])):
+            plan = planner.build(src, "single_trend")
         # 非法图型项被丢掉；剩下那条也是合法学科
         for c in plan["charts"]:
             assert c["kind"] in spec.KINDS
             if c.get("disc"):
                 assert c["disc"] in src.disciplines
 
-    def test_模型返回非JSON不崩(self, src, monkeypatch):
-        import local_llm
-        monkeypatch.setattr(local_llm, "generate", lambda *a, **k: "我建议关注工程学。")
-        plan = planner.build(src, "single_trend", backend="ollama")
+    def test_模型返回非JSON不崩(self, src):
+        from _ai_helpers import ScriptedBrain, Turn
+        import ai
+        with ai.using(brain=ScriptedBrain([Turn(text="我建议关注工程学。")])):
+            plan = planner.build(src, "single_trend")
         assert plan["backend"] == "rule"
 
 
@@ -368,7 +389,7 @@ class Test规则后端产出完整分析稿:
         """🔴 `0/0 全对`是老毛病：真实模型选了非默认图型时旧代码出 0 张图，
         而自检照样判过。没有图的分析稿不算完整稿。"""
         from conftest import REPO
-        r = report.generate(REPO / src.dir, "single_trend", backend="rule")
+        r = report.generate(REPO / src.dir, "single_trend")
         built = {"blocks": [], "sources": [], "charts": [], "hyps": [
             {"text": "t", "verify": "v", "source": "s"}]}
         c = report.self_check("# 标题\n\n正文", src, built)
@@ -376,17 +397,17 @@ class Test规则后端产出完整分析稿:
         assert not c["has_charts"]
         _ = r
 
-    def test_模型选了非默认图型也要出图(self, src, monkeypatch):
-        """图型清单以 `spec.KINDS` 为准，报告层不许再列白名单。"""
-        import local_llm
+    def test_模型选了非默认图型也要出图(self, src):
+        """图型清单以 `spec.KINDS` 为准，报告层不许再列白名单（D6 后经 ai 内部口）。"""
+        from _ai_helpers import ScriptedBrain, Turn
         from conftest import REPO
-        monkeypatch.setattr(
-            local_llm, "generate",
-            lambda *a, **k: '{"disc": "Agricultural Sciences", "charts": '
-                            '[{"kind": "overview_1permille"}, '
-                            '{"kind": "cnci", "disc": "Agricultural Sciences"}]}')
-        r = report.generate(REPO / src.dir, "single_trend", backend="ollama")
-        assert r["plan"]["backend"] == "ollama"
+        import ai
+        brain = ScriptedBrain([Turn(text='{"disc": "Agricultural Sciences", "charts": '
+                                         '[{"kind": "overview_1permille"}, '
+                                         '{"kind": "cnci", "disc": "Agricultural Sciences"}]}')])
+        with ai.using(brain=brain):
+            r = report.generate(REPO / src.dir, "single_trend")
+        assert r["plan"]["backend"] == "scripted"
         assert r["n_charts"] == 2, r["plan"]["charts"]
         assert r["check"]["pass"]
 
@@ -412,7 +433,7 @@ class Test规则后端产出完整分析稿:
         `flexible/charts/`（不存在的目录），报告看起来一切正常、图全空。
         """
         from conftest import REPO
-        r = report.generate(REPO / src.dir, intent, backend="rule")
+        r = report.generate(REPO / src.dir, intent)
         rp = pathlib.Path(r["report"])
         links = re.findall(r"!\[[^\]]*\]\(([^)]+)\)", rp.read_text(encoding="utf-8"))
         assert links, "正文里一张图都没有"
@@ -422,7 +443,7 @@ class Test规则后端产出完整分析稿:
 
     def test_两条意图都能出稿(self, src):
         from conftest import REPO
-        r = report.generate(REPO / src.dir, "cross_compare", backend="rule")
+        r = report.generate(REPO / src.dir, "cross_compare")
         assert r["check"]["pass"]
         md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
         for sec in ("本期概览", "横向对比", "待验证假设", "需人工判断"):
@@ -489,7 +510,10 @@ class Test语言不死板:
 
 
 class Test润色位是可选的:
-    """润色只改措辞、不改数字；不可用/失败一律原样返回（演示站永远走这条）。"""
+    """润色只改措辞、不改数字；不可用/失败一律原样返回（演示站永远走这条）。
+
+    D6（2026-09-29）后经 `ai._llm` 内部口出网：测试用 `ai.using(brain=…)` 注入替身。
+    """
 
     def test_默认关闭(self, monkeypatch):
         monkeypatch.delenv("WENHENG_FLEX_POLISH", raising=False)
@@ -497,34 +521,48 @@ class Test润色位是可选的:
         assert polish.rewrite("接近度自 0.6 升至 0.8。") == "接近度自 0.6 升至 0.8。"
 
     def test_模型不可用时原样返回(self, monkeypatch):
+        from _ai_helpers import FailingBrain
+        import ai
         monkeypatch.setenv("WENHENG_FLEX_POLISH", "1")
-        monkeypatch.setattr(local_llm, "generate",
-                            lambda *a, **k: (_ for _ in ()).throw(OSError("down")))
         txt = "总被引自 9,356 升至 11,558。"
-        assert polish.rewrite(txt) == txt
+        with ai.using(brain=FailingBrain()):
+            assert polish.rewrite(txt) == txt
+
+    def test_校验通过才还原_数字一个不少(self, monkeypatch):
+        from _ai_helpers import ScriptedBrain, Turn
+        import ai
+        monkeypatch.setenv("WENHENG_FLEX_POLISH", "1")
+        txt = "接近度自 0.6 升至 0.8。"
+        with ai.using(brain=ScriptedBrain(
+                [Turn(text="接近度由 [[1]] 升至 [[2]]。")])):
+            assert polish.rewrite(txt) == "接近度由 0.6 升至 0.8。"
 
     def test_校验不通过时原样返回(self, monkeypatch):
         """模型把占位符弄丢 / 冒出新数字 → 必须退回原文，不许端上桌。"""
+        from _ai_helpers import ScriptedBrain, Turn
+        import ai
         monkeypatch.setenv("WENHENG_FLEX_POLISH", "1")
-        monkeypatch.setattr(local_llm, "generate",
-                            lambda *a, **k: "接近度上升了 30% 左右。")
         txt = "接近度自 0.6716 升至 0.845。"
-        assert polish.rewrite(txt) == txt
+        with ai.using(brain=ScriptedBrain([Turn(text="接近度上升了 30% 左右。")])):
+            assert polish.rewrite(txt) == txt
 
     def test_不许动的标记不会被润掉(self, monkeypatch):
+        from _ai_helpers import ScriptedBrain, Turn
+        import ai
         monkeypatch.setenv("WENHENG_FLEX_POLISH", "1")
-        monkeypatch.setattr(local_llm, "generate", lambda *a, **k: "这条被改写了。")
         txt = "【手工：化学资源投入建议】"
-        assert polish.rewrite(txt) == txt
+        with ai.using(brain=ScriptedBrain([Turn(text="这条被改写了。")])):
+            assert polish.rewrite(txt) == txt
 
-    def test_规则后端不调模型(self, src, monkeypatch):
+    def test_未配云不调模型(self, src, monkeypatch):
+        import urllib.request
+
+        def boom(*a, **k):
+            raise AssertionError("未配云时绝不能碰模型（演示站无模型）")
+
+        monkeypatch.setattr(urllib.request, "urlopen", boom)
         from conftest import REPO
-        import local_llm
-        calls = []
-        monkeypatch.setattr(local_llm, "generate",
-                            lambda *a, **k: calls.append(1) or "x")
-        report.generate(REPO / src.dir, "single_trend", backend="rule")
-        assert not calls, "规则后端绝不能碰模型（演示站无模型）"
+        report.generate(REPO / src.dir, "single_trend")
 
 
 class TestHTML渲染:

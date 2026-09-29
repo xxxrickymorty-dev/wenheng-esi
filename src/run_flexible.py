@@ -3,25 +3,23 @@
 
 用法（workdir=wenheng）：
 
-    .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend rule
-    .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 cross_compare rule
-    .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend rule Engineering
+    .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend
+    .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 cross_compare
+    .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend Engineering
 
-    # 切模型后端（本机 Ollama；不可用会自动回退 rule，不报错）
-    .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend ollama
-
-    # 语言润色位（**可选**）：模型在位时把措辞再顺一遍。
+    # 语言润色位（**可选**，默认关）：配了云 + 开 `WENHENG_FLEX_POLISH=1` 才生效。
     # 数字走防护盾（[[n]] 占位 + 校验 + 还原），失败或不可用一律原样回退。
-    .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend ollama --polish
-    .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend ollama --no-polish
+    .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend --polish
+    .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend --no-polish
 
     # 列出某期次已生成的分析稿
     .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 --list
 
 意图：`single_trend`（单学科趋势诊断）/ `cross_compare`（多学科横向对比）。
-后端：`rule`（默认，无 LLM）/ `ollama` / `http`。
+规划后端（D6 收编后）：**规则**（默认，无 LLM）/ 云端模型（配 `WENHENG_AI_*` 才启用，
+经 AI 层出网、失败自动回退规则）。旧的 `ollama` / `http` 直连已废弃。
 
-🔴 `rule` 后端**永不调用模型** —— 演示站（2核2G）跑的就是它，
+🔴 规则规划**永不调用模型** —— 演示站跑的就是它，
 死板与否由 `opinion.descriptive_trend` 的句式分档决定，不靠润色。
 """
 import pathlib
@@ -45,19 +43,18 @@ def main(argv):
                   f"→ {r['path']}")
         return 0
     intent = argv[1] if len(argv) > 1 else "single_trend"
-    backend = argv[2] if len(argv) > 2 else None
-    disc = argv[3] if len(argv) > 3 else None
+    disc = argv[2] if len(argv) > 2 and not argv[2].startswith("-") else None
     if intent not in planner.INTENTS:
         print(f"未知意图 {intent!r}；可用：{sorted(planner.INTENTS)}")
         return 2
-    # `--polish` / `--no-polish`：语言润色位（可选，需本机 Ollama；默认随模型后端）
+    # `--polish` / `--no-polish`：语言润色位（可选，需配云；默认关）
     polish = None
-    for flag in argv[4:]:
+    for flag in argv[2:]:
         if flag == "--polish":
             polish = True
         elif flag in ("--no-polish", "--raw"):
             polish = False
-    r = report.generate(out_dir, intent, backend=backend, disc=disc, polish=polish)
+    r = report.generate(out_dir, intent, disc=disc, polish=polish)
     p = r["plan"]
     print(f"[灵活报告] {planner.INTENTS[intent]} → {r['report']}")
     print(f"  规划后端：{p['backend']}"

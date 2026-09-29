@@ -54,7 +54,15 @@ def cloud_config() -> dict:
 
 
 def build_brain():
-    """按部署事实装配 Brain。默认与一切不齐备的配置都落到 `RuleBrain`（回落终点）。"""
+    """按部署事实装配 Brain。默认与一切不齐备的配置都落到 `RuleBrain`（回落终点）。
+
+    测试/脚本可用 `ai.using(brain=…)` 覆盖（此处显式尊重，内部口 `ai._llm` 也走这里）。
+    """
+    from . import _runtime                                         # noqa: PLC0415
+
+    override = _runtime.overrides().get("brain")
+    if override is not None:
+        return override
     cfg = cloud_config()
     if cfg["profile"] == "demo":
         return RuleBrain()                       # 演示站永远 rule（显式锁）

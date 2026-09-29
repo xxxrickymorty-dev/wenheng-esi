@@ -178,7 +178,7 @@ export async function getFlexible(period: string, intent?: string): Promise<Flex
 
 export async function runFlexible(
   period: string,
-  body: { intent: string; backend?: string; disc?: string },
+  body: { intent: string; disc?: string },
 ): Promise<{ ok: boolean; intent: string; elapsed: number; n_charts?: number; backend?: string }> {
   return req<{ ok: boolean; intent: string; elapsed: number; n_charts?: number; backend?: string }>(
     `/api/periods/${encodeURIComponent(period)}/flexible`,

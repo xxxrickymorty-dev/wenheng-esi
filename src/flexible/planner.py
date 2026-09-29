@@ -1,26 +1,27 @@
 # -*- coding: utf-8 -*-
 """章节规划器 —— **模型位可插拔，无模型时流程照跑**（本设计的核心主张）。
 
-三个后端：
+两个后端（D6 归口，2026-09-29）：
 
 | 后端 | 行为 |
 |---|---|
-| `rule`（**默认**） | 纯规则挑科/挑指/挑期，**零依赖、确定性、可复现**。演示站永远用这个（2核2G 跑不了 LLM） |
-| `ollama` | 本机小模型给规划建议；**规划不合法即回退 rule**（不是报错） |
-| `http` | 通用 HTTP 模型端点（环境变量配置），同样回退 rule |
+| `rule`（**默认**） | 纯规则挑科/挑指/挑期，**零依赖、确定性、可复现**。演示站永远用这个 |
+| 云端模型 | 经 `src/ai` 的内部口出网（OpenAI 兼容，`WENHENG_AI_*` 配置）；**不合法即回退 rule**（不是报错） |
+
+旧的 `ollama` / `http` 直连已废弃——模型出口统一走 AI 层（含数字盾），否则
+「唯一模型出口」不成立。
 
 🔴 红线落点：**模型拿不到任何数值**。
 送给模型的只有 `spec.catalog()`（图型目录）、`queries.SCHEMA`（字段字典）、
-`summary.summarize()`（**planning_input**，带溯源且显式标记为规划依据）。
+`summary.summarize()`（**planning_input**，带溯源且显式标记为规划依据）——
+其中出现的数字在出口处全部变成 `[[n]]` 占位符。
 模型返回的**只有** 选哪个学科 / 哪个指标 / 哪几期 / 哪些图型 ——
-没有数字这个物种可言。任何越权字段（含纵轴范围）在 `_validate_plan` 里被剥掉。
+任何越权字段（含纵轴范围）在 `_validate_plan` 里被剥掉；带新数字的输出整份回退。
 """
 from __future__ import annotations
 
 import json
-import os
 import re
-import urllib.request
 
 from . import queries as q
 from . import spec as sp
@@ -32,10 +33,16 @@ INTENTS = {
     "cross_compare": "多学科横向对比",
 }
 
-DEFAULT_BACKEND = "rule"
-
 #: 规划的合法键（模型多给的键一律丢弃；纵轴类键在这里也进不来）
 _PLAN_KEYS = ("intent", "disc", "metric", "periods", "n_periods", "charts", "title")
+
+_PLAN_SYSTEM = (
+    "你是学科分析报告的**章节规划器**。你只决定「写哪个学科、配哪些图」这几个选择，"
+    "不要输出任何数字、不要计算、不要给纵轴范围。"
+    "所有数字都已替换为 [[n]] 占位标记：不要改写、不要删除、也不要新增任何数字与标记。"
+    "只输出一个 JSON 对象，键仅允许：" + "、".join(_PLAN_KEYS) + "。"
+    "其中 charts 是数组，元素形如 {\"kind\": \"图型名\", \"disc\": \"学科英文名\"}。"
+)
 
 
 def _rule_plan(src: DataSource, intent: str, *, disc=None, metric=None,
@@ -108,32 +115,16 @@ def _model_prompt(src: DataSource, intent: str) -> str:
     )
 
 
-def _ollama_plan(src, intent) -> dict | None:
-    try:
-        from local_llm import DEFAULT_MODEL, generate
-    except ImportError:
-        return None
-    try:
-        raw = generate(_model_prompt(src, intent), model=DEFAULT_MODEL, temperature=0.1)
-    except Exception:                                            # noqa: BLE001
-        return None                       # 服务不可达 → 回退 rule（不报错）
-    return _parse_json(raw)
+def _brain_plan(src, intent):
+    """经 AI 层内部口问云端（盾保护 + 校验）。返回 `(规划 JSON | None, 原因, 后端名)`。"""
+    from ai import _llm                                             # noqa: PLC0415
 
-
-def _http_plan(src, intent) -> dict | None:
-    url = os.environ.get("WENHENG_LLM_HTTP")
-    if not url:
-        return None
-    try:
-        body = json.dumps({"prompt": _model_prompt(src, intent), "stream": False}).encode()
-        req = urllib.request.Request(url, data=body,
-                                     headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=120) as r:
-            data = json.load(r)
-        raw = data.get("response") or data.get("text") or ""
-    except Exception:                                            # noqa: BLE001
-        return None
-    return _parse_json(raw)
+    out, info = _llm.think(_model_prompt(src, intent), system=_PLAN_SYSTEM,
+                           ability="flex-plan", anchored=False,
+                           allow_substrings=tuple(sp.KINDS))
+    if out is None:
+        return None, info.get("reason"), ""
+    return _parse_json(out), None, str(info.get("backend") or "model")
 
 
 def _parse_json(raw: str) -> dict | None:
@@ -226,25 +217,21 @@ def _clean_title(title, disc, fallback_title):
 
 
 # ------------------------------------------------------------------ 主入口
-def build(src: DataSource, intent: str = "single_trend", *, backend=None,
+def build(src: DataSource, intent: str = "single_trend", *,
           disc=None, metric=None, n_periods=None) -> dict:
-    """产出章节规划。`backend=None` 时读环境变量 `WENHENG_LLM_BACKEND`（默认 `rule`）。"""
+    """产出章节规划：默认规则；配了云才问模型（不合法/失败一律回退规则）。"""
     if intent not in INTENTS:
         raise ValueError(f"未登记的意图 {intent!r}（允许：{sorted(INTENTS)}）")
-    backend = (backend or os.environ.get("WENHENG_LLM_BACKEND") or DEFAULT_BACKEND).lower()
-    if backend not in ("rule", "ollama", "http"):
-        backend = DEFAULT_BACKEND
 
     fallback = _rule_plan(src, intent, disc=disc, metric=metric, n_periods=n_periods)
     fallback["backend"] = "rule"
     fallback["fallback_reason"] = None
-    if backend == "rule":
-        return fallback
 
-    got = _ollama_plan(src, intent) if backend == "ollama" else _http_plan(src, intent)
-    if not got:
-        fallback["fallback_reason"] = f"{backend} 后端不可用或未返回规划，已回退规则规划"
+    got, reason, backend_name = _brain_plan(src, intent)
+    if got is None:
+        if reason not in (None, "rule"):
+            fallback["fallback_reason"] = "云端模型不可用或未通过校验，已回退规则规划"
         return fallback
     plan = _validate_plan(src, got, intent, fallback)
-    plan["backend"] = backend if plan.get("fallback_reason") is None else "rule"
+    plan["backend"] = backend_name if plan.get("fallback_reason") is None else "rule"
     return plan

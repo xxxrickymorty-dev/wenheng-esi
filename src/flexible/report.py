@@ -360,26 +360,26 @@ def self_check(report_md: str, src: DataSource, built: dict) -> dict:
     }
 
 
-def generate(out_dir, intent: str = "single_trend", *, backend=None,
+def generate(out_dir, intent: str = "single_trend", *,
              disc=None, metric=None, n_periods=None, polish=None) -> dict:
     """产出灵活报告。返回产物路径与自检结果。
 
     🔴 `out_dir` 是**期次目录**（`out/202607`）。产物一律落在
     `out/<期次>/flexible/<intent>/` 下，**不触碰**该期次的复刻报告产物。
 
-    `polish`：语言润色位（**可选**，见 `flexible/polish.py`）。
-      - `None`（默认）＝模型后端生效时才开；
+    `polish`：语言润色位（**可选**，见 `flexible/polish.py`，D6 收编为 AI 层内部模式）。
+      - `None`（默认）＝配了云且开着 `WENHENG_FLEX_POLISH` 才开；
       - `True` / `False` ＝强制开 / 关。
-    关掉或模型不可用时，产出的就是**纯规则稿**（演示站永远如此）。
+    关掉、模型不可用或校验不过时，产出的就是**纯规则稿**（演示站永远如此）。
     """
     src = DataSource(out_dir)
-    plan = planner.build(src, intent, backend=backend, disc=disc, metric=metric,
+    plan = planner.build(src, intent, disc=disc, metric=metric,
                          n_periods=n_periods)
     if polish is None:
         try:
             from . import polish as _p                          # noqa: PLC0415
-            # 模型后端才润色；规则后端不碰模型（可复现 + 演示站无模型）
-            polish = (plan.get("backend") not in (None, "rule")) and _p.model_reachable()
+            # 只有「配了云 + 开关打开」才尝试润色；盾与回落都在 AI 层，失败原样返回
+            polish = _p.enabled() and _p.model_reachable()
         except Exception:                                       # noqa: BLE001
             polish = False
     d = _dir_for(out_dir, intent)
@@ -445,20 +445,19 @@ def list_reports(out_dir) -> list[dict]:
 
 # ------------------------------------------------------------------ 命令行
 def main(argv=None):
-    """CLI：`python src/flexible/report.py [期次目录] [意图] [后端] [学科]`。
+    """CLI：`python src/flexible/report.py [期次目录] [意图] [学科]`。
 
     例：
-        python src/flexible/report.py out/202607 single_trend rule
-        python src/flexible/report.py out/202607 cross_compare rule
-        WENHENG_LLM_BACKEND=ollama python src/flexible/report.py out/202607 single_trend
+        python src/flexible/report.py out/202607 single_trend
+        python src/flexible/report.py out/202607 cross_compare
+    （规划后端不再是参数：默认规则；配了云 `WENHENG_AI_*` 时自动问模型、失败回退。）
     """
     import sys
     argv = list(sys.argv[1:] if argv is None else argv)
     out_dir = argv[0] if argv else "out/202607"
     intent = argv[1] if len(argv) > 1 else "single_trend"
-    backend = argv[2] if len(argv) > 2 else None
-    disc = argv[3] if len(argv) > 3 else None
-    r = generate(out_dir, intent, backend=backend, disc=disc)
+    disc = argv[2] if len(argv) > 2 else None
+    r = generate(out_dir, intent, disc=disc)
     print(f"[灵活报告] {planner.INTENTS.get(intent, intent)} → {r['report']}")
     print(f"  规划后端：{r['plan']['backend']}"
           + (f"（{r['plan']['fallback_reason']}）" if r["plan"].get("fallback_reason") else ""))
