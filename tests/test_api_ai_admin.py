@@ -74,3 +74,34 @@ def test_两口都是admin门():
     for user, code in ((config.GUEST_USER, 403), (None, 401)):
         assert asyncio.run(app_module.api_ai_capabilities(_ReqJson(user))).status_code == code
         assert asyncio.run(app_module.api_ai_switch(_ReqJson(user))).status_code == code
+
+
+def test_ai_calls只回摘要并按新到旧(monkeypatch, tmp_path):
+    import json as _json
+    d = tmp_path / "202607"
+    d.mkdir()
+    rows = [
+        {"kind": "switch", "capability": "qa", "from": True, "to": False},          # 审计行：滤掉
+        {"kind": "call", "record_id": "ai-qa-1", "ts": "2026-09-29T10:00:00",
+         "capability": "qa", "mode": "model", "backend": "openai:m", "fallback": None,
+         "shield": {"checked": 5, "passed": 5}, "tools": [], "question": "q1",
+         "elapsed_ms": 2000, "text_preview": "不该透出"},
+        "{坏行不炸}",
+        {"kind": "call", "record_id": "ai-review-2", "ts": "2026-09-29T11:00:00",
+         "capability": "review", "mode": "rule", "backend": "rule",
+         "fallback": "empty_reply", "shield": {"checked": 2, "passed": 2},
+         "tools": [{"tool": "x"}], "question": "", "elapsed_ms": 4000},
+    ]
+    (d / "ai_calls.jsonl").write_text(
+        "\n".join(_json.dumps(r, ensure_ascii=False) if isinstance(r, dict) else r for r in rows),
+        encoding="utf-8")
+    monkeypatch.setattr(app_module, "resolve_period_dir", lambda p: d if p == "202607" else None)
+
+    r = asyncio.run(app_module.api_period_ai_calls(_ReqJson(config.DEMO_USER), "202607"))
+    assert [c["record_id"] for c in r["calls"]] == ["ai-review-2", "ai-qa-1"], "新→旧，坏行与审计行跳过"
+    assert "text_preview" not in r["calls"][0], "只回摘要"
+    assert r["calls"][0]["n_tools"] == 1 and r["calls"][0]["fallback"] == "empty_reply"
+    assert r["stats"] == {"n": 2, "model": 1, "fallback": 1, "avg_sec": 3.0,
+                          "last_ts": "2026-09-29T11:00:00"}
+    assert asyncio.run(app_module.api_period_ai_calls(
+        _ReqJson(config.GUEST_USER), "202607")).status_code == 403

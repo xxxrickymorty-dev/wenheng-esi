@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from 'react'
 import { getAcquisition, getArchive, humanSize, type AcquisitionState, type ArchiveData } from './api'
+import { AiRecords } from './AiRecords'
 import { Icon } from './icons'
 import { WaterfallRows } from './Waterfall'
 
@@ -232,7 +233,10 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
             </p>
           </section>
 
-          {/* ===== 04 审计结论 ===== */}
+          {/* ===== 04 问文衡 · 问答与模型调用（票 06 块；静态稿 web/mockups/运行档案-问答与模型调用.html） ===== */}
+          <AiRecords period={period} />
+
+          {/* ===== 审计结论 ===== */}
           <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
             <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span className="fc-no">03</span>审计结论

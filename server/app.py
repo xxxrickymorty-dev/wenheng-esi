@@ -1439,6 +1439,55 @@ async def api_ai_capabilities(request: Request):
     return {"capabilities": rows}
 
 
+@app.get("/api/periods/{period}/ai-calls")
+@admin_route
+async def api_period_ai_calls(request: Request, period: str, limit: int = 100):
+    """问答与模型调用记录（契约 #30；票 06 块）：只读 `out/<期次>/ai_calls.jsonl`。
+
+    记录面照留痕纪律：只返回摘要（问题占位面、模式、后端、回落原因、盾计数、
+    工具条数、耗时），**不返回回答正文与提示词**；坏行跳过，不猜。
+    """
+    d = resolve_period_dir(period)
+    if d is None:
+        return _period_missing()
+    path = d / "ai_calls.jsonl"
+    calls = []
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                r = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if r.get("kind") != "call":
+                continue
+            calls.append({
+                "record_id": r.get("record_id") or "",
+                "ts": r.get("ts") or "",
+                "capability": r.get("capability") or "",
+                "mode": r.get("mode") or "",
+                "backend": r.get("backend") or "",
+                "fallback": r.get("fallback"),
+                "shield": r.get("shield") or {"checked": 0, "passed": 0},
+                "n_tools": len(r.get("tools") or []),
+                "question": r.get("question") or "",
+                "elapsed_ms": int(r.get("elapsed_ms") or 0),
+            })
+    limit = max(1, min(int(limit or 100), 500))
+    calls = calls[-limit:][::-1]                                  # 新 → 旧
+    n_fb = sum(1 for c in calls if c["fallback"])
+    stats = {
+        "n": len(calls),
+        "model": sum(1 for c in calls if c["mode"] == "model"),
+        "fallback": n_fb,
+        "avg_sec": round(sum(c["elapsed_ms"] for c in calls) / len(calls) / 1000, 1) if calls else 0,
+        "last_ts": calls[0]["ts"] if calls else "",
+    }
+    return {"period": period, "calls": calls, "stats": stats}
+
+
 @app.post("/api/ai/switch")
 @admin_route
 async def api_ai_switch(request: Request):

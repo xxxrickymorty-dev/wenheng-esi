@@ -368,3 +368,27 @@ export async function postAiSwitch(capability: string, enabled: boolean): Promis
     body: JSON.stringify({ capability, enabled }),
   })
 }
+
+/** 问答与模型调用记录（契约 §2.2 #30；运行档案「问答与模型调用」块）。
+    只有摘要（问题占位面/模式/后端/回落原因/盾计数/耗时），不含回答正文与提示词。 */
+export type AiCall = {
+  record_id: string
+  ts: string
+  capability: string
+  mode: string
+  backend: string
+  fallback: string | null
+  shield: { checked: number; passed: number }
+  n_tools: number
+  question: string
+  elapsed_ms: number
+}
+export type AiCalls = {
+  period: string
+  calls: AiCall[]
+  stats: { n: number; model: number; fallback: number; avg_sec: number; last_ts: string }
+}
+
+export async function getAiCalls(period: string): Promise<AiCalls> {
+  return req<AiCalls>(`/api/periods/${encodeURIComponent(period)}/ai-calls`)
+}
