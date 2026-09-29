@@ -30,17 +30,22 @@ from playwright.sync_api import Page, sync_playwright
 CDP = "http://127.0.0.1:9222"
 
 def resolve_cdp() -> str:
-    """CDP 地址：优先 127.0.0.1；被别的进程占用（Chrome 153 只监听 ::1）时退 localhost。"""
+    """CDP 地址：先试 127.0.0.1，再试 localhost（本机 IPv4 端口被占时 Chrome 可能只听 ::1）。
+
+    只认**能解析出 CDP 版本 JSON** 的地址（别的服务占着 9222 也回 200 的坑踩过）；
+    两个都不通就人话拒绝，别把连接错误糊成一段 traceback。
+    """
+    import json as _json
     import urllib.request
 
     for url in ("http://127.0.0.1:9222", "http://localhost:9222"):
         try:
             with urllib.request.urlopen(url + "/json/version", timeout=2) as r:
-                if r.status == 200:
+                if r.status == 200 and _json.loads(r.read()).get("Browser"):
                     return url
         except Exception:                                          # noqa: BLE001
             continue
-    return "http://127.0.0.1:9222"
+    raise SystemExit("[拒绝] 取数浏览器没连上：先双击「取数专用浏览器」并确认窗口已打开，再重试。")
 
 ESI = "https://esi.clarivate.com"
 DEFAULT_OUT = Path(__file__).resolve().parents[1] / "tmp" / "clarivate_dl"

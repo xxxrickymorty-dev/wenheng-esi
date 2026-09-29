@@ -113,6 +113,14 @@ def test_period_group_continuation():
     assert (5, "F") in bad
 
 
+def test_dotted_period_labels_attributed():
+    """Q1-Q4 / 实际与预测差值的期次标签是 `2026.09` 点格式——归因也要认（覆盖审计抓到的坑）。"""
+    cells = {(1, "B"): "2026.09", (2, "B"): "0.31", (5, "D"): "2026.07"}
+    ok, bad = LM.attribute(cells, "202609")
+    assert (1, "B") in ok and (2, "B") in ok
+    assert (5, "D") in bad
+
+
 def test_review_summary_lists_changed_sheets(files):
     master, copy = files
     rows = LM.review_summary(master, copy, "202609")

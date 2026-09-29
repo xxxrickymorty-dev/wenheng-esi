@@ -34,12 +34,20 @@ SHEET_SOURCE = {
     "云大ESI排名": "ESI", "总被引": "ESI", "论文数": "ESI", "ESI被引阈值": "ESI",
     "千分之一被引阈值": "ESI", "接近度": "本地派生", "新国际排名": "InCites",
     "新国内排名": "InCites", "国际排名": "InCites", "国内排名": "InCites",
-    "TOP论文": "ESI", "篇均被引": "ESI＋InCites", "Q1-Q4": "InCites",
+    "TOP论文": "ESI", "篇均被引": "ESI＋InCites", "Q1-Q4": "InCites", "CNCI": "InCites",
     "实际与预测差值": "ESI＋InCites", "InCites快照": "InCites", "学科进入时间": "ESI",
 }
 CHAIN_SHEETS = tuple(SHEET_SOURCE)
 
 _PERIOD_TXT = re.compile(r"20\d{4}")
+#: 期次标签在台账里不止一种写法：多数表写 `202609`，Q1-Q4 / 实际与预测差值写 `2026.09`
+#  （写入方 extract_incites.plan_q1q4 / extract_forecast_pairs.block_label）。
+#  归因前先把 . - / 去掉再找期次号，两种格式都认；找不到原文期的检查照旧。
+_SEP_RE = re.compile(r"[.\-/]")
+
+
+def _norm(txt) -> str:
+    return _SEP_RE.sub("", str(txt))
 
 
 def sha256_file(p: pathlib.Path) -> str:
@@ -98,7 +106,7 @@ def period_marks(cells: dict, period: str, *, label_cols: int = 3,
     col_has_period: dict = {}
     row_has_period: dict = {}
     for (rn, cn), txt in cells.items():
-        if period in str(txt):
+        if period in _norm(txt):
             if rn <= header_rows:
                 col_has_period[cn] = True
             if _col_index(cn) <= label_cols:

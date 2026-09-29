@@ -107,7 +107,7 @@ export function Acquire({ period }: { period: string | null }) {
         const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
         setState(null)
         setNote(h.status === 403 ? '取数台要管理员权限（用馆员账号登录后再来）。'
-          : h.status === 404 ? '这个期次还认不出来（期次用六位数字）。'
+          : h.status === 404 ? '没读到这一期的取数状态——确认期次是六位数，或稍等片刻重试。'
             : (h.body?.hint ?? h.body?.error ?? h.message ?? '读取数状态失败。'))
       })
       .finally(() => { if (!silent) setLoading(false) })
