@@ -10,7 +10,7 @@
 - `src/forecast.py` — 预测模块（方法 B：InCites + 历史差值校准），MAPE 1.26% < 5% 验收线
 - `src/charts.py` — 图表库：16 学科 × 6 图（排名/CNCI/发文/被引阈值/顶尖/分区）+ 概览
 - `src/fill_docx.py` — 母版原地替换：大表填充 + 图表槽位 + 红色件清单（red_slots.json）
-- `src/rerun_history.py` — 历史期次复现（`python src\rerun_history.py 202605`）
+- `src/rerun_history.py` — 历史期次补跑（`python src\rerun_history.py 202605`；产物按正常期次命名）
 - `src/run_pipeline.py` — 一键入口（全链路约 15 秒）
 - `tools/verify_report_docx.py` — 报告结构校验（16 学科 × 6 = 96 槽位 + 22 行大表）
 - `tools/compare_reports.py` — 原件 vs 生成稿的结构对照（骨架/图表/表格/占位）

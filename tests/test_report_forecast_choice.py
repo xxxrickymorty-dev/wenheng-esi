@@ -34,10 +34,11 @@ def _write_choice(period_dir, choice, **provenance):
 
 def _stub_generate(monkeypatch, run_prediction):
     """把 generate 的数据源与绘图全换成桩：只验选模接线，不碰 parquet/母版。"""
+    # upto：report_forecast 的补跑截断参数（2026-09-29 加）——桩照收，行为不变
     monkeypatch.setattr(report_forecast, "pick_subjects",
-                        lambda d: (list(SUBJECTS), "202607"))
+                        lambda d, upto=None: (list(SUBJECTS), "202607"))
     monkeypatch.setattr(report_forecast, "load_standard_input",
-                        lambda d, validate=True: (pd.DataFrame({"学科": SUBJECTS}), {}))
+                        lambda d, validate=True, upto=None: (pd.DataFrame({"学科": SUBJECTS}), {}))
     monkeypatch.setattr(
         report_forecast, "subject_task_data",
         lambda data, cn, task: ([202601, 202603],
@@ -201,7 +202,7 @@ class Test出图接线:
 
         _stub_generate(monkeypatch, fake)
         monkeypatch.setattr(report_forecast, "pick_subjects",
-                            lambda d: (list(SUBJECTS), "202612"))
+                            lambda d, upto=None: (list(SUBJECTS), "202612"))
         applied_choice = tmp_path / "_forecast_choice_applied.json"
         applied_choice.write_text(json.dumps({
             "choice": {"citation": {"物理学": "SARIMA模型"}},

@@ -9,7 +9,7 @@
 用法：
     python tools/verify_report_cells.py 202607
     python tools/verify_report_cells.py 202607 --docx out/202607/报告初稿_202607（试排）.docx
-    python tools/verify_report_cells.py 202605 --docx out/202605_复现/报告初稿_202605（试排）.docx
+    python tools/verify_report_cells.py 202605   # 补跑产物同样按 out/<期次>/ 找（也兼容旧 _复现 目录）
 
 覆盖：
     T01 大表    逐格回读台账（3 个派生列现场重算）

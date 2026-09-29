@@ -61,12 +61,17 @@ def validate_known_v1_inputs(total: pd.DataFrame, subjects_en: list[str]) -> Non
             "请修正台账并重跑流水线。预测模块没有改写数据。")
 
 
-def load_standard_input(period_dir: pathlib.Path, validate: bool = True) -> tuple[pd.DataFrame, dict]:
+def load_standard_input(period_dir: pathlib.Path, validate: bool = True,
+                        upto: str | None = None) -> tuple[pd.DataFrame, dict]:
     """生成 V1 标准长表；只保留四个指标同时齐备的公共期次。
 
     `validate=True`（默认）执行已确认输入修正闸门（经济与商业 2020-03）。
     历史期次快照可能早于该修正（如 out/202607 的旧值），出图/复现路径可在
     **目标学科不含该闸门学科**时显式关闭（调用方自行把关，见 report_forecast）。
+
+    `upto`（如 "202605"）：把窗口截断到该期（含）为止 —— 补跑历史期时必须传，
+    否则会拿台账当期的接近度选学科、并把预测画到今天（与 WH-DOC-13 同类的
+    "期次漂移"，2026-09-29 修）。
     """
     wide = period_dir / "wide"
     total = _period_columns(pd.read_parquet(wide / "total_cites.parquet"))
@@ -85,6 +90,10 @@ def load_standard_input(period_dir: pathlib.Path, validate: bool = True) -> tupl
     periods = sorted(c for c in total.columns if PERIOD_RE.fullmatch(c))
     if not periods:
         raise ValueError("总被引派生表没有有效期次。")
+    if upto:
+        periods = [c for c in periods if c <= str(upto)]
+        if not periods:
+            raise ValueError(f"总被引派生表在 {upto} 之前没有有效期次。")
     # 当期 = 最后一个**总被引非空且接近度表同期存在**的期次。
     # ⚠ 不能直接取 periods[-1]：派生宽表带完整期次骨架，老期次目录（如 out/202607）
     # 末尾会带一列全空的 `202609`，直接取末列会误判当期、并在接近度表上找不到该期。
@@ -114,6 +123,8 @@ def load_standard_input(period_dir: pathlib.Path, validate: bool = True) -> tupl
             if english in frame.index:
                 all_periods.update(c for c in frame.columns if PERIOD_RE.fullmatch(c))
         for period in sorted(all_periods):
+            if upto and period > str(upto):
+                continue                          # 补跑历史期：序列截到该期为止
             row = {"学科": chinese, "期次": int(period)}
             for column, frame in frames.items():
                 value = frame.at[english, period] if english in frame.index and period in frame.columns else None

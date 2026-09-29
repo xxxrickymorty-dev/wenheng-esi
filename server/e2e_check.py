@@ -532,8 +532,10 @@ check("trace ledger 只回文件名（不泄漏路径）", ":" not in tr.split('
 # POST /api/periods/202601_复现/rebuild（没有填值应拒绝，不碰产物）
 # 复现期次是开发机产物、不随演示包分发（包内只有 202607）→ 服务器上退化为 404
 # 「期次不存在」；本地有它时必须 409（有产物、没填值）。两种情况都要求「拒绝 + error 体」。
-st, rb, _ = call_json("POST", "/api/periods/202601_%E5%A4%8D%E7%8E%B0/rebuild", {})
-_expect = 409 if (WENHENG / "out" / "202601_复现").is_dir() else 404
+st, rb, _ = call_json("POST", "/api/periods/202601/rebuild", {})
+# 2026-09-29 起历史补跑产物按正常期次命名（out/202601），不再带 _复现 后缀；
+# 开发机有该目录 → 409（有产物、没填值）；部署包内没有 → 404。
+_expect = 409 if (WENHENG / "out" / "202601").is_dir() else 404
 check(f"rebuild 无填值被拒（{_expect}）", st == _expect and '"error"' in rb, f"got {st}")
 
 st, tr2, _ = call("GET", "/api/periods/202607/trace?cat=charts&limit=3")

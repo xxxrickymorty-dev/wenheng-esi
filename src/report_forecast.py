@@ -33,6 +33,7 @@ import forecast_choice  # noqa: E402
 from esi_v1.config_v1 import FIT_MAPE_START_INDEX  # noqa: E402
 from esi_v1.data import display_name, load_standard_input, subject_task_data  # noqa: E402
 from esi_v1.service import TASK_COLUMNS, fit_and_forecast, run_prediction  # noqa: E402
+from period import from_dir as _period_from_dir   # noqa: E402
 
 HORIZON = 18  # 3 年（双月 6 期/年；与网页预测工作台默认一致）
 
@@ -48,10 +49,27 @@ RANK_LABELS = ("云大排名", "云大排名预测值", "国内机构数", "国�
 RANK_COLORS = ("#7030A0", "#B08BD0", "#FF0000", "#FF9E9E")
 
 
-def pick_subjects(period_dir):
-    """未进入 1%（接近度<1）的学科中接近度前二 —— 与概述 facts 同一规则。"""
+def _forecast_upto(period_dir, period_override=None):
+    """预测窗口截到哪一期：显式 override 优先，否则认目录名（out/202605 → 202605）。
+
+    补跑历史期时不截断会拿**台账当期**的接近度选学科、并把预测画到今天
+    （`wide` 是完整台账，`load_standard_input` 默认取最后一期）。目录名认不出
+    的（如 out/对样包_202607）返回 None ＝ 老行为（当期口径）。
+    """
+    if period_override:
+        return str(period_override)
+    return _period_from_dir(period_dir)
+
+
+def pick_subjects(period_dir, upto=None):
+    """未进入 1%（接近度<1）的学科中接近度前二 —— 与概述 facts 同一规则。
+
+    `upto`（如 "202605"）：只认该期（含）之前的接近度列，补跑历史期时必传。
+    """
     prox = pd.read_parquet(pathlib.Path(period_dir) / "wide" / "proximity_1pct.parquet")
     cols = [str(c) for c in prox.columns if re.fullmatch(r"\d{6}", str(c))]
+    if upto:
+        cols = [c for c in cols if c <= str(upto)]
     if not cols:
         raise ValueError("proximity_1pct 没有有效期次。")
     col = prox[cols[-1]].dropna()
@@ -120,26 +138,31 @@ def _run_with_choice(subject, periods, series, task, model, warnings):
         return run_prediction(subject, periods, series, task, "recommended", HORIZON)
 
 
-def generate(period_dir, choice_path=None) -> int:
-    """先隔离旧产物；若本次生成中途失败，也隔离本次的不完整图。"""
+def generate(period_dir, choice_path=None, period_override=None) -> int:
+    """先隔离旧产物；若本次生成中途失败，也隔离本次的不完整图。
+
+    `period_override`：补跑历史期时显式指定被补跑期（不传＝按目录名推断，
+    见 `_forecast_upto`）。
+    """
     period_dir = pathlib.Path(period_dir)
     quarantine_forecast_artifacts(period_dir)
     try:
-        return _generate(period_dir, choice_path)
+        return _generate(period_dir, choice_path, period_override)
     except Exception:
         quarantine_forecast_artifacts(period_dir)
         raise
 
 
-def _generate(period_dir, choice_path=None) -> int:
+def _generate(period_dir, choice_path=None, period_override=None) -> int:
     """渲染 4 张预测图；返回张数（异常向上抛，由调用方决定降级策略）。"""
     period_dir = pathlib.Path(period_dir)
-    subjects_cn, period = pick_subjects(period_dir)
+    upto = _forecast_upto(period_dir, period_override)
+    subjects_cn, period = pick_subjects(period_dir, upto=upto)
     if len(subjects_cn) < 2:
         raise ValueError("未进入 1% 的潜力学科不足 2 个，预测图无从生成。")
 
     try:
-        data, _meta = load_standard_input(period_dir)
+        data, _meta = load_standard_input(period_dir, upto=upto)
     except ValueError as exc:
         # 历史期次快照可能早于台账修正（如 经济与商业 202003：旧 364 → 现行 31）。
         # 报告只画当期潜力学科前二：只要这两个学科不含闸门学科，即放行出图；
@@ -148,7 +171,7 @@ def _generate(period_dir, choice_path=None) -> int:
             raise
         if "经济与商业" in subjects_cn:
             raise ValueError(f"本期目标学科命中 V1 数据修正闸门，禁止降级出图：{exc}") from exc
-        data, _meta = load_standard_input(period_dir, validate=False)
+        data, _meta = load_standard_input(period_dir, validate=False, upto=upto)
     known = set(data["学科"])
     missing = [s for s in subjects_cn if s not in known]
     if missing:
