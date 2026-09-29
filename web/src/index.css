@@ -1,4 +1,9 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+/* dark: 变体只认 .dark 容器（项目无暗色模式 → dark: 永不生效）。
+   别删：不加这句，Tailwind v4 的 dark: 会跟随系统暗色，系统暗色下组件会变色。 */
+@custom-variant dark (&:is(.dark *));
 
 /* ============================================================================
    文衡 · 工作台令牌（云大绿 / 朱砂）
@@ -29,7 +34,61 @@ html[data-palette="zhu"]{
   --ok:#3F6B4A; --ok-soft:#E2ECE0;
   --warn:#7D5518; --warn-soft:#F5EAD2;
   --bad:#A8321F; --bad-soft:#F4DDD7;
-  --shadow:0 1px 2px rgba(47,42,36,.06),0 8px 24px rgba(47,42,36,.06);
+  --shadow:0 1px 2px rgba(47,42,36,.06), 0 8px 24px rgba(47,42,36,.06);
+}
+
+/* ============================================================================
+   shadcn/ui 桥接（2026-09-29 安装时手配）
+   —— 把 shadcn 的标准变量指到文衡令牌：组件自动跟随「云大绿 / 朱砂」双主题，
+   不引入第二套配色。⚠ --card 不复写：与项目 --card 语义一致（卡片底色），直接复用。
+   @theme inline：让 bg-background / bg-card 等工具类内联引用上面这些变量，
+   不会在 :root 另注册一份，避免与项目变量撞名。
+   ========================================================================== */
+:root{
+  --radius:var(--r);
+  --background:var(--bg);
+  --foreground:var(--ink);
+  --card-foreground:var(--ink);
+  --popover:var(--card);
+  --popover-foreground:var(--ink);
+  --primary:var(--zhu);
+  --primary-foreground:#FFFFFF;
+  --secondary:var(--panel);
+  --secondary-foreground:var(--ink);
+  --muted:var(--panel);
+  --muted-foreground:var(--ink-3);
+  --accent:var(--zhu-soft);
+  --accent-foreground:var(--zhu);
+  --destructive:var(--bad);
+  --destructive-foreground:#FFFFFF;
+  --border:var(--line);
+  --input:var(--line);
+  --ring:var(--zhu);
+}
+@theme inline{
+  --color-background:var(--background);
+  --color-foreground:var(--foreground);
+  --color-card:var(--card);
+  --color-card-foreground:var(--card-foreground);
+  --color-popover:var(--popover);
+  --color-popover-foreground:var(--popover-foreground);
+  --color-primary:var(--primary);
+  --color-primary-foreground:var(--primary-foreground);
+  --color-secondary:var(--secondary);
+  --color-secondary-foreground:var(--secondary-foreground);
+  --color-muted:var(--muted);
+  --color-muted-foreground:var(--muted-foreground);
+  --color-accent:var(--accent);
+  --color-accent-foreground:var(--accent-foreground);
+  --color-destructive:var(--destructive);
+  --color-destructive-foreground:var(--destructive-foreground);
+  --color-border:var(--border);
+  --color-input:var(--input);
+  --color-ring:var(--ring);
+  --radius-sm:calc(var(--radius) - 4px);
+  --radius-md:calc(var(--radius) - 2px);
+  --radius-lg:var(--radius);
+  --radius-xl:calc(var(--radius) + 4px);
 }
 html,body,#root{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);
