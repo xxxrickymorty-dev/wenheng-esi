@@ -729,3 +729,20 @@ a{color:inherit}
   .reading-grid{grid-template-columns:1fr}
   .col-l,.col-m{border-right:0;border-bottom:1px solid var(--line)}
 }
+
+/* ============================================================================
+   全局滚动条：浅绿 · 细一半（rick 2026-09-29）。
+   ——一处定义、全站生效（页面 / 右栏 / 表格 / 日志等所有滚动容器），
+   以后别再给单个容器另写滚动条样式。
+   分浏览器：Chrome/Edge/Safari 用 ::-webkit-scrollbar 精确 8px（默认 ≈15px 的一半）；
+   Firefox 不认伪元素，走标准属性 thin。Chrome 121+ 注意：标准属性一旦设置
+   非初始值会禁用伪元素，所以标准属性只放进 @supports not（即只给 Firefox）。
+   ========================================================================== */
+:root{--scroll:#A9C6AE;--scroll-hover:#84B28D}
+*::-webkit-scrollbar{width:8px;height:8px}
+*::-webkit-scrollbar-track,*::-webkit-scrollbar-corner{background:transparent}
+*::-webkit-scrollbar-thumb{background:var(--scroll);border-radius:99px}
+*::-webkit-scrollbar-thumb:hover{background:var(--scroll-hover)}
+@supports not selector(::-webkit-scrollbar){
+  *{scrollbar-width:thin;scrollbar-color:var(--scroll) transparent}
+}
