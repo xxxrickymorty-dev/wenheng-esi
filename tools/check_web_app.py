@@ -204,13 +204,24 @@ def main():
             check("预测台减负回归（票 13）", False, str(e)[:100])
 
         # ---- 1e) 审核台知悉闸（票 14）：未勾选 → 签单禁用；勾选 → 可用（只读，不点签单） ----
+        # 闸门只为「待人工空位」而设：先按真实数据取空位数（2026-09-29 修——202607 重出后
+        # 待人工=0，写死「必禁用」会在干净数据上假失败，e2e 同批已改按状态分支）。
         try:
+            manual = 0
+            try:
+                secs = (page.request.get(BASE + "/api/periods/202607/collation?full=true")
+                        .json().get("sections") or [])
+                manual = sum(int(s.get("manual") or 0) for s in secs)
+            except Exception:                                           # noqa: BLE001
+                manual = 0
             page.goto(BASE + "/app/?view=review&period=202607", wait_until="domcontentloaded")
             page.wait_for_selector(".rv-grid", timeout=30000)
-            page.wait_for_selector(".rv-ack input", timeout=15000)
-            if page.locator(".rv-lead .pill", has_text="已签单").count():
+            if manual == 0:
+                check("审核台知悉闸（本期无待人工空位，闸门不适用）", True, "0 处待人工")
+            elif page.locator(".rv-lead .pill", has_text="已签单").count():
                 check("审核台知悉闸（本期已签单，按钮态不适用）", True, "已签单")
             else:
+                page.wait_for_selector(".rv-ack input", timeout=15000)
                 sign = page.locator("#rv-sign button.btn.primary").first
                 page.wait_for_selector("#rv-sign button.btn.primary", timeout=15000)
                 disabled_before = sign.is_disabled()
