@@ -620,6 +620,12 @@ a{color:inherit}
    审核台 · 试排报告（2026-09-28 rick 定：整篇报告 + 就地填空 + 签单/下载同屏）
    ⚠ rv- 前缀：报告区内部与右栏自成一体，不碰既有类。
    ========================================================================== */
+/* 左侧竖排合规声明（rick 2026-09-29）：贴在视口左缘，随滚动常在；窄屏隐藏 */
+.rv-claim{position:fixed;left:10px;top:30%;writing-mode:vertical-rl;
+  font-size:13px;letter-spacing:.22em;color:var(--ink-3);opacity:.75;
+  user-select:none;pointer-events:none;z-index:5}
+@media (max-width:1080px){.rv-claim{display:none}}
+
 .rv-lead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 2px 0}
 .rv-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start;margin-top:14px}
 @media (max-width:1080px){

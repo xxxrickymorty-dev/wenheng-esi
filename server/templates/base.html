@@ -16,6 +16,7 @@
 <header class="topbar">
   <div class="wrap">
     <a class="brand" href="/"><span class="seal seal-sm">衡</span><span class="logo">文衡</span><span class="sub">{% block sub %}学科信息参考 · 自动化流水线{% endblock %}</span></a>
+    <span class="claim">分析报告属于内部资料，仅用于参赛，禁止外传。</span>
     <nav>
       {% block nav_action %}{% endblock %}
       {% if user and request.url.path != '/forecast' %}

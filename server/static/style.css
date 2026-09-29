@@ -148,6 +148,10 @@ code, .mono, pre, kbd { font-family: var(--mono); }
   border-left: 1px solid var(--line-2); padding-left: 13px;
 }
 .topbar nav { display: flex; align-items: center; gap: 16px; font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); }
+/* 顶栏合规声明（rick 2026-09-29）：brand 与 nav 之间居中段，低调小字；深绿主题用米白 */
+.topbar .claim { font-size: 12.5px; letter-spacing: .04em; color: var(--ink-3); white-space: nowrap; }
+body.theme-ynu .topbar .claim { color: rgba(240, 236, 214, .72); }
+@media (max-width: 900px) { .topbar .claim { display: none; } }
 .who { color: var(--ink-2); }
 .ghost { color: var(--ink-3); border-bottom: 1px solid transparent; transition: border-color .18s, color .18s; }
 .ghost:hover { color: var(--zhu); border-bottom-color: var(--zhu); }
