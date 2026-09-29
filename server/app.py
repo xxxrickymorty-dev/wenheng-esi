@@ -1288,55 +1288,31 @@ async def api_ledger_sheets(request: Request, period: str = ""):
 @app.post("/api/analyze")
 @admin_route
 async def api_analyze(request: Request):
+    """问文衡（qa 能力）**薄适配**（SPEC §4 步骤 2）：调用方只认 Answer 字段面，
+    不知道盾、回落、工具、留痕、开关任何一件。
+
+    请求 `{period, question}`（旧版 `scope` 遗留字段被忽略——问句匹配在模块内）；
+    响应＝`Answer.as_dict()`（`mode/backend/text/rule_text/notice/sources/shield/record_id`）。
+    该期无产物 → 404（前端按「尚未出稿」处理）；能力被管理员关闭 → 409。
+    """
     body = await request.json()
     period = str(body.get("period", "")).strip()
     question = str(body.get("question", "")).strip()
-    scope = str(body.get("scope", "")).strip()
     d = resolve_period_dir(period) if period else None
     if d is None:
         return _period_missing()
-    facts_file = d / "overview_facts.json"
-    meta_file = d / "meta.json"
-    if not facts_file.exists():
-        return JSONResponse({"error": "该期次尚无 overview_facts.json", "hint": "请先跑一次生成流水线"}, status_code=404)
-    try:
-        facts = json.loads(facts_file.read_text(encoding="utf-8"))
-        meta = json.loads(meta_file.read_text(encoding="utf-8")) if meta_file.exists() else {}
-    except (OSError, json.JSONDecodeError) as exc:
-        return JSONResponse({"error": f"数据读取失败：{exc}"}, status_code=500)
-    # 硬约束：LLM 不进数据路径。text 由 sentences.build() 组装。
-    import sentences                                      # noqa: PLC0415
-    import local_llm                                      # noqa: PLC0415
-    P = meta.get("period_current") or period
-    Q = meta.get("period_prev") or ""
-    texts = sentences.build(facts, P, Q)
-    # scope 过滤：空=全部；否则只取匹配 key 的段落
-    if scope:
-        texts = {k: v for k, v in texts.items() if scope in k or k in scope}
-    # question 匹配：把问句拆词去匹配 section key + 正文，命中的段落排前
-    if question:
-        q_words = [w for w in question.replace("，", " ").replace("。", " ")
-                    .replace("？", " ").split() if len(w) >= 2]
-        scored = {}
-        for k, v in texts.items():
-            score = sum(1 for w in q_words if w in k or w in v)
-            if score > 0:
-                scored[k] = (score, v)
-        if scored:
-            texts = {k: v for k, (_, v) in sorted(scored.items(), key=lambda x: -x[1][0])}
-        else:
-            texts = dict(list(texts.items())[:3])
-    # 数字防护盾：protect() 把数字换成占位符，shields 记录映射
-    shields = []
-    for key, t in texts.items():
-        protected, mapping = local_llm.protect(t)
-        shields.append({
-            "key": key,
-            "n_numbers": len(mapping),
-            "protected_len": len(protected),
-        })
-    return {"period": P, "prev": Q, "question": question, "text": texts,
-            "shields": shields, "n_sections": len(texts), "backend": "sentences"}
+    import ai                                                     # noqa: PLC0415
+    ans = await run_in_threadpool(ai.run, "qa", period,
+                                  payload={"question": question},
+                                  actor=config.role_of(current_user(request) or ""))
+    if ans.mode == "unavailable":
+        return JSONResponse({"error": ans.notice,
+                             "hint": "请先跑一次生成流水线"}, status_code=404)
+    if ans.mode == "denied":
+        return JSONResponse({"error": ans.notice}, status_code=403)
+    if ans.mode == "closed":
+        return JSONResponse({"error": ans.notice}, status_code=409)
+    return ans.as_dict()
 
 
 @app.get("/api/forecast/board")

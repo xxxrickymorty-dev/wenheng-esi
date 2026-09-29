@@ -227,40 +227,83 @@ def _wstate():
     return jget_str(call("GET", "/api/periods/202607/workbench")[1], "approvalStatus")
 
 
+def _pending_fills():
+    """工作台里「已填未写入」条数（签单前的填值闸要读它）。"""
+    _st, _wb, _ = call("GET", "/api/periods/202607/workbench")
+    try:
+        rows = json.loads(_wb).get("fills_list") or []
+    except (json.JSONDecodeError, AttributeError):
+        rows = []
+    return [f for f in rows if f.get("state") == "pending"]
+
+
+def _manual_slots():
+    """待人工空位数（签单的「已知悉」闸只在有它时要勾）——从对勘数据现取。"""
+    _st, _cl, _ = call("GET", "/api/periods/202607/collation?full=true")
+    try:
+        secs = json.loads(_cl).get("sections") or []
+    except (json.JSONDecodeError, AttributeError):
+        secs = []
+    return sum(int(s.get("manual") or 0) for s in secs)
+
+
+# 闸门预期按工作台**真实状态**取（2026-09-29 修）：
+#   有「已填未写入」→ 填值闸先拦（先重出再签）；
+#   有待人工空位   → 不勾「已知悉」被知悉闸拦；
+#   两者都没有     → 不勾也直接可签（闸门只为待人工而设）——写死「必 409」会在干净数据上假失败。
+_pend, _manual = _pending_fills(), _manual_slots()
+
 call_json("POST", "/api/periods/202607/revoke", {"note": "e2e 前置归零"})
 check("前置：状态归零到 unsigned", _wstate() == "unsigned", f"got {_wstate()!r}")
 
-st, _e1, _ = call_json("POST", "/api/periods/202607/sign", {"note": "e2e"})
-check("不勾「已知悉」→ 409 被闸门拦下", st == 409, f"got {st}")
-_e1j = json.loads(_e1) if _e1.strip().startswith("{") else {}
-check("拦截原因是待人工项未勾选",
-      "已知悉" in str(_e1j.get("error", "")) or "手工" in str(_e1j.get("error", "")),
-      f"err={str(_e1j.get('error'))[:80]!r}")
-check("被拦时不落盘（状态仍 unsigned）", _wstate() == "unsigned", f"got {_wstate()!r}")
+if _pend:
+    st, _e1, _ = call_json("POST", "/api/periods/202607/sign",
+                           {"note": "e2e 验收", "known": True})
+    _e1j = json.loads(_e1) if _e1.strip().startswith("{") else {}
+    check("有「已填未写入」→ 签单被填值闸拦下（先重出再签）",
+          st == 409 and "写进报告" in str(_e1j.get("error", "")),
+          f"{st} err={str(_e1j.get('error'))[:70]!r}")
+    check("被拦时不落盘（状态仍 unsigned）", _wstate() == "unsigned", f"got {_wstate()!r}")
+    print(f"  ⚠ 跳过签/撤往返：本期还有 {len(_pend)} 处填写没写进报告"
+          "——先在审核台「保存并重出报告」，再跑完整 e2e")
+else:
+    if _manual:
+        st, _e1, _ = call_json("POST", "/api/periods/202607/sign", {"note": "e2e"})
+        _e1j = json.loads(_e1) if _e1.strip().startswith("{") else {}
+        check("不勾「已知悉」→ 409 被闸门拦下", st == 409, f"got {st}")
+        check("拦截原因是待人工项未勾选",
+              "已知悉" in str(_e1j.get("error", "")) or "手工" in str(_e1j.get("error", "")),
+              f"err={str(_e1j.get('error'))[:80]!r}")
+        check("被拦时不落盘（状态仍 unsigned）", _wstate() == "unsigned", f"got {_wstate()!r}")
+    else:
+        st, _e1, _ = call_json("POST", "/api/periods/202607/sign", {"note": "e2e 探针"})
+        check("无待人工项：不勾「已知悉」也可直接签（闸门只为待人工而设）",
+              st == 200, f"got {st}")
+        call_json("POST", "/api/periods/202607/revoke", {"note": "e2e 探针归零"})
 
-st, _s2, _ = call_json("POST", "/api/periods/202607/sign",
-                       {"note": "e2e 验收", "known": True})
-_s2j = json.loads(_s2) if _s2.strip().startswith("{") else {}
-check("勾已知悉 → 签单成功", st == 200 and _s2j.get("status") == "signed",
-      f"{st} {str(_s2j)[:80]}")
-check("签单返回报告指纹", bool(_s2j.get("fingerprint")), str(_s2j.get("fingerprint"))[:60])
-check("签后 approvalStatus = signed", _wstate() == "signed", f"got {_wstate()!r}")
-_pl = call("GET", "/api/periods")[1]
-check("印记链反映已签（periods 里出现 signed）", '"signed"' in _pl)
-check("审批记录已落盘", (WENHENG / "out/202607/approval.json").exists())
-check("审批记录 Markdown 已导出", (WENHENG / "out/202607/审批记录.md").exists())
-rec = json.loads((WENHENG / "out/202607/approval.json").read_text(encoding="utf-8"))
-check("记录里绑了报告指纹", bool(rec.get("fingerprint")), str(rec.get("fingerprint"))[:60])
-check("记录含批注", rec.get("note") == "e2e 验收", f"note={rec.get('note')!r}")
-check("记录含操作历史", isinstance(rec.get("history"), list) and len(rec["history"]) >= 1)
+    st, _s2, _ = call_json("POST", "/api/periods/202607/sign",
+                           {"note": "e2e 验收", "known": True})
+    _s2j = json.loads(_s2) if _s2.strip().startswith("{") else {}
+    check("勾已知悉 → 签单成功", st == 200 and _s2j.get("status") == "signed",
+          f"{st} {str(_s2j)[:80]}")
+    check("签单返回报告指纹", bool(_s2j.get("fingerprint")), str(_s2j.get("fingerprint"))[:60])
+    check("签后 approvalStatus = signed", _wstate() == "signed", f"got {_wstate()!r}")
+    _pl = call("GET", "/api/periods")[1]
+    check("印记链反映已签（periods 里出现 signed）", '"signed"' in _pl)
+    check("审批记录已落盘", (WENHENG / "out/202607/approval.json").exists())
+    check("审批记录 Markdown 已导出", (WENHENG / "out/202607/审批记录.md").exists())
+    rec = json.loads((WENHENG / "out/202607/approval.json").read_text(encoding="utf-8"))
+    check("记录里绑了报告指纹", bool(rec.get("fingerprint")), str(rec.get("fingerprint"))[:60])
+    check("记录含批注", rec.get("note") == "e2e 验收", f"note={rec.get('note')!r}")
+    check("记录含操作历史", isinstance(rec.get("history"), list) and len(rec["history"]) >= 1)
 
-st, _r3, _ = call_json("POST", "/api/periods/202607/revoke", {"note": "e2e 撤回"})
-_r3j = json.loads(_r3) if _r3.strip().startswith("{") else {}
-check("撤回成功", st == 200 and _r3j.get("status") == "unsigned", f"{st} {str(_r3j)[:60]}")
-check("撤回后回到 unsigned", _wstate() == "unsigned", f"got {_wstate()!r}")
-rec2 = json.loads((WENHENG / "out/202607/approval.json").read_text(encoding="utf-8"))
-hist = [h.get("action") for h in rec2.get("history", [])]
-check("历史保留 sign→…→revoke", "sign" in hist and "revoke" in hist, str(hist))
+    st, _r3, _ = call_json("POST", "/api/periods/202607/revoke", {"note": "e2e 撤回"})
+    _r3j = json.loads(_r3) if _r3.strip().startswith("{") else {}
+    check("撤回成功", st == 200 and _r3j.get("status") == "unsigned", f"{st} {str(_r3j)[:60]}")
+    check("撤回后回到 unsigned", _wstate() == "unsigned", f"got {_wstate()!r}")
+    rec2 = json.loads((WENHENG / "out/202607/approval.json").read_text(encoding="utf-8"))
+    hist = [h.get("action") for h in rec2.get("history", [])]
+    check("历史保留 sign→…→revoke", "sign" in hist and "revoke" in hist, str(hist))
 
 out("=== 10. 静态快照同源 ===")
 st, snap, _ = call("GET", "/static/collation-demo.html")
@@ -455,11 +498,24 @@ else:
     check("ledger/sheets 有 sheets 数组", '"sheets"' in sh)
     check("ledger/sheets 有 n_sheets", '"n_sheets"' in sh)
 
-# POST /api/analyze（JSON body）
-st, an, _ = call_json("POST", "/api/analyze", {"period": "202607", "question": "", "scope": ""})
+# POST /api/analyze（JSON body；qa 能力薄适配，契约 §2.2 #9，2026-09-29 D2 接线）
+st, an, _ = call_json("POST", "/api/analyze", {"period": "202607", "question": "顶尖论文"})
 check("POST analyze 200", st == 200, f"got {st}")
-check("analyze 有 text+shields", '"text"' in an and '"shields"' in an)
-check("analyze backend=sentences（LLM 不进数据路径）", '"backend"' in an and '"sentences"' in an)
+try:
+    _aj = json.loads(an)
+except json.JSONDecodeError:
+    _aj = {}
+check("analyze 是 Answer 字段面（mode/backend/text/rule_text/sources/shield）",
+      all(k in _aj for k in ("mode", "backend", "text", "rule_text", "sources", "shield")),
+      str(sorted(_aj))[:120])
+check("analyze mode ∈ {rule, model} 且 text 非空",
+      _aj.get("mode") in ("rule", "model") and bool(str(_aj.get("text") or "").strip()),
+      f"mode={_aj.get('mode')!r}")
+check("analyze 盾计数与来源数一致（第 k 个数字 ↔ sources[k]）",
+      isinstance(_aj.get("sources"), list)
+      and (_aj.get("shield") or {}).get("checked")
+      == (_aj.get("shield") or {}).get("passed") == len(_aj.get("sources") or []),
+      f"shield={_aj.get('shield')} n_sources={len(_aj.get('sources') or [])}")
 
 # POST /api/periods/{period}/forecast-choice（JSON body，契约 #17 嵌套形状）
 # 先取检查前的选择：验完写回——e2e 不把测试选模留在 202607（重出报告会带上它）。

@@ -79,6 +79,62 @@ class Test数字防护盾:
         assert detail["missing"] or detail["stray"]
 
 
+class TestQa薄适配:
+    """D2（2026-09-29）：/api/analyze 变薄——Answer 字段面原样透出，故障映射 404。"""
+
+    class _ReqJson:
+        def __init__(self, user, body):
+            self.session = {"user": user}
+            self._body = body
+
+        async def json(self):
+            return self._body
+
+    def test_Answer原样透出且参数正确(self, monkeypatch, tmp_path):
+        from ai import _types
+        fake = _types.Answer(
+            mode="rule", backend="rule", text="本期…", rule_text="本期…",
+            sources=(_types.Source(index=1, kind="product",
+                                   pointer="overview_facts.json#rank_intl_now",
+                                   value="995"),),
+            shield=_types.Shield(1, 1), record_id="rec-1")
+        seen = {}
+
+        def fake_run(cap, period, *, payload=None, actor=None):
+            seen.update(cap=cap, period=period, payload=payload, actor=actor)
+            return fake
+
+        monkeypatch.setattr("ai.run", fake_run)
+        monkeypatch.setattr(app_module, "resolve_period_dir",
+                            lambda p: tmp_path / p if p == "202607" else None)
+        r = asyncio.run(app_module.api_analyze(
+            self._ReqJson(config.DEMO_USER, {"period": "202607", "question": "顶尖论文"})))
+        assert r["mode"] == "rule" and r["text"] == "本期…"
+        assert r["sources"][0]["index"] == 1 and r["shield"]["checked"] == 1
+        assert seen == {"cap": "qa", "period": "202607",
+                        "payload": {"question": "顶尖论文"}, "actor": "admin"}, \
+            "路由只做转译：能力/期次/问句/角色原样交给 ai.run（用户名经 config.role_of）"
+
+    def test_无产物映射404(self, monkeypatch, tmp_path):
+        from ai import _types
+        fake = _types.Answer(mode="unavailable", backend="rule",
+                             notice="该期数据暂不可用，无法作答。")
+        monkeypatch.setattr("ai.run", lambda *a, **k: fake)
+        monkeypatch.setattr(app_module, "resolve_period_dir", lambda p: tmp_path / p)
+        r = asyncio.run(app_module.api_analyze(
+            self._ReqJson(config.DEMO_USER, {"period": "202607", "question": "x"})))
+        assert r.status_code == 404
+
+    def test_关闭映射409(self, monkeypatch, tmp_path):
+        from ai import _types
+        fake = _types.Answer(mode="closed", backend="rule", notice="此功能已由管理员关闭。")
+        monkeypatch.setattr("ai.run", lambda *a, **k: fake)
+        monkeypatch.setattr(app_module, "resolve_period_dir", lambda p: tmp_path / p)
+        r = asyncio.run(app_module.api_analyze(
+            self._ReqJson(config.DEMO_USER, {"period": "202607", "question": "x"})))
+        assert r.status_code == 409
+
+
 class Test权限门:
     def test_analyze用require_admin(self):
         assert asyncio.run(app_module.api_analyze(
