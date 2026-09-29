@@ -12,6 +12,10 @@
     .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend --polish
     .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend --no-polish
 
+    # 写作位（**可选**，默认关）：配了云 + 开 `WENHENG_FLEX_WRITE=1`，把叙述段
+    # 按「规则稿＋事实摘要」写成分析体（数字/图表/来源链不动，失败整段回退）。
+    .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend 化学 --write
+
     # 列出某期次已生成的分析稿
     .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 --list
 
@@ -54,7 +58,8 @@ def main(argv):
             polish = True
         elif flag in ("--no-polish", "--raw"):
             polish = False
-    r = report.generate(out_dir, intent, disc=disc, polish=polish)
+    write = "--write" in argv
+    r = report.generate(out_dir, intent, disc=disc, polish=polish, write=write)
     p = r["plan"]
     print(f"[灵活报告] {planner.INTENTS[intent]} → {r['report']}")
     print(f"  规划后端：{p['backend']}"

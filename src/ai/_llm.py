@@ -28,19 +28,22 @@ def think(task, *, system: str, ability: str, anchored: bool = True,
     if getattr(brain, "is_rule", False):
         return None, {"reason": "rule"}
     protected, mapping = _shield.protect(str(task or ""))
+    base = {"protected": protected, "egress_items": 1,
+            "egress_bytes": len(protected.encode("utf-8")),
+            "shield": {"checked": len(mapping), "passed": 0}}
     brief = _brain.Brief(ability=ability, system=system, task=protected,
                          rule_protected=protected)
     try:
         turn = brain.think(brief)
     except _brain.BrainError as e:
-        return None, {"reason": f"brain_error:{getattr(e, 'code', type(e).__name__)}"}
+        return None, {"reason": f"brain_error:{getattr(e, 'code', type(e).__name__)}", **base}
     except Exception as e:                                     # noqa: BLE001
-        return None, {"reason": f"error:{type(e).__name__}"}
+        return None, {"reason": f"error:{type(e).__name__}", **base}
     if turn.calls:
-        return None, {"reason": "calls_unsupported"}
+        return None, {"reason": "calls_unsupported", **base}
     candidate = turn.text or ""
     if not candidate.strip():
-        return None, {"reason": "empty_reply"}
+        return None, {"reason": "empty_reply", **base}
     if anchored:
         ok, detail = _shield.validate(candidate, mapping)
     else:
@@ -49,6 +52,8 @@ def think(task, *, system: str, ability: str, anchored: bool = True,
             probe = probe.replace(s, "")
         ok, detail = _shield.validate_free(probe, mapping)
     if not ok:
-        return None, {"reason": "shield_reject", "detail": detail}
+        return None, {"reason": "shield_reject", "detail": detail, **base}
+    base["shield"] = {"checked": len(mapping), "passed": len(mapping)}
     return _shield.restore(candidate, mapping), {"reason": None,
-                                                 "backend": getattr(brain, "name", "")}
+                                                 "backend": getattr(brain, "name", ""),
+                                                 **base}

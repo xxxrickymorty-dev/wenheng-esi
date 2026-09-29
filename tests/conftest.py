@@ -88,9 +88,12 @@ def _isolate_ai_env(monkeypatch):
     """AI 层云配置对每个测试隐身：本机 server/.env 配了 key 也不许测试走模型/出网。
 
     - 「默认 = 规则版」是金样对拍与 determinism 测试的前提；
-    - 云适配器测试自己用 `monkeypatch.setenv` 显式开（tests/test_ai_openai.py）。
+    - 云适配器测试自己用 `monkeypatch.setenv` 显式开（tests/test_ai_openai.py）；
+    - 灵活报告的两个开关（润色/写作位）同样收口：开发机开着也不许漏进测试。
     """
-    for key in [k for k in os.environ if k.startswith("WENHENG_AI_")]:
+    for key in [k for k in os.environ
+                if k.startswith("WENHENG_AI_")
+                or k in ("WENHENG_FLEX_WRITE", "WENHENG_FLEX_POLISH")]:
         monkeypatch.delenv(key, raising=False)
 
 

@@ -103,10 +103,39 @@ def render(md: str, *, img_prefix: str = "", img_map=None) -> str:
         mi = _IMG.match(raw.strip())
         if mi:
             close()
-            src = _img_url(mi.group(2), img_prefix, img_map)
-            out.append(f'<figure><img src="{html.escape(src, quote=True)}" '
-                       f'alt="{html.escape(mi.group(1))}"></figure>')
-            i += 1
+            figs = []
+            while True:
+                alt, src = mi.group(1), mi.group(2)
+                cap = None
+                j = i + 1
+                while j < len(lines) and not lines[j].strip():
+                    j += 1
+                if j < len(lines):
+                    m2 = re.match(r"^\*([^*].*)\*$", lines[j].strip())
+                    if m2:
+                        cap = m2.group(1)
+                        i = j
+                figs.append((alt, _img_url(src, img_prefix, img_map), cap))
+                i += 1
+                k = i
+                while k < len(lines) and not lines[k].strip():
+                    k += 1
+                if k < len(lines):
+                    mi = _IMG.match(lines[k].strip())
+                    if mi:
+                        i = k
+                        continue
+                break
+            # 连续图合成一组 → CSS 两列（rick 2026-09-29：图缩小、一排放两张）
+            parts = []
+            for alt, src, cap in figs:
+                fig = (f'<figure><img src="{html.escape(src, quote=True)}" '
+                       f'alt="{html.escape(alt)}">')
+                if cap:
+                    fig += f"<figcaption>{_inline(cap)}</figcaption>"
+                fig += "</figure>"
+                parts.append(fig)
+            out.append('<div class="figrow">' + "".join(parts) + "</div>")
             continue
 
         m = re.match(r"^[-*]\s+(.*)$", raw)
@@ -170,6 +199,11 @@ code{{font-family:var(--mono);font-size:12.5px;background:#F0EAE0;
 padding:1px 5px;border-radius:3px}}
 figure{{margin:16px 0;text-align:center}}
 figure img{{max-width:100%;border:1px solid var(--line);border-radius:3px;background:#fff}}
+/* 连续图两列一组（一篇里图不占满宽，观感更紧凑） */
+.figrow{{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}}
+.figrow figure{{margin:0}}
+.figrow figcaption{{font-size:12.5px;color:var(--ink-3);margin-top:5px}}
+@media (max-width:640px){{.figrow{{grid-template-columns:1fr}}}}
 hr{{border:0;border-top:1px solid var(--line);margin:26px 0}}
 ul,ol{{padding-left:22px}} li{{margin:5px 0}}
 a{{color:var(--zhu)}}

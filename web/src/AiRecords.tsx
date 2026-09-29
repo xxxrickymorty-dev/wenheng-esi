@@ -10,6 +10,7 @@ import { getAiCalls, type AiCall, type AiCalls } from './api'
 
 const CAP_CN: Record<string, string> = {
   qa: '问文衡', review: '复核参谋', diagnose: '诊断参谋', brief: '期次导读',
+  polish: '解读润色',
 }
 
 /** 回落原因码 → 馆员看得懂的话（不出现内部词） */

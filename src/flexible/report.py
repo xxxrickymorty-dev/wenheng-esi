@@ -13,6 +13,13 @@
       ↓
     渲染 md                  内部参考件（页脚标注，不带盖章位）
 
+**写作位（可选，默认关）**：`WENHENG_FLEX_WRITE` 开且配云时，叙述段交给
+`ai._writer`（规则稿 + 该段事实摘要 → 分析体叙述）；数字/图表/来源链一律不变，
+任何校验不过整段回退规则稿。见 `.scratch/wayfinder/llm-api-jieru/dev/任务-灵活报告写作位（交接）.md`。
+
+**逐节回调与流式**：`_generate(..., on_event=…)` 在「规划完成」「每节完成」时回调；
+`generate_stream()` 是同一个核的流式包装（真实事件，不做假进度）。
+
 🔴 三条自检在 `self_check()` 里，产出后立即跑，结果随报告一起落盘：
 
 1. 正文里没有【手工：…】**之外**的专业判断措辞（`opinion.guard`）
@@ -23,6 +30,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import shutil
 import time
 
 from . import opinion as op
@@ -35,6 +43,9 @@ BANNER = "内部参考 · 非报送件"
 BANNER_NOTE = ("> **本件为内部参考，非报送件** —— 由灵活报告产线（第二条产线）生成，"
                "路径由 AI 自主规划；**不带盖章位、不作为对外报送材料**。"
                "正式对外件请用复刻报告产线（母版 704 槽位、三道闸、可签发）。")
+
+#: 章节序号（灵活报告节数有限，够用即可）
+_CN_NUM = "一二三四五六七八九十"
 
 
 def _dir_for(out_dir, intent: str) -> pathlib.Path:
@@ -55,15 +66,88 @@ def _kv_table(rows: list[tuple]) -> str:
     return "\n".join(out)
 
 
+def _numbered(labels: list[str]) -> list[str]:
+    return [f"{_CN_NUM[i]}、{lab}" for i, lab in enumerate(labels)]
+
+
+def _section_labels(src: DataSource, plan: dict) -> list[str]:
+    """本章程的「节名表」——标题与流式大纲同源，防两处漂移。"""
+    if plan["intent"] == "single_trend":
+        return ["当期概况", "关键指标走势", "相对位次",
+                "待验证假设（规则提出，非结论）",
+                "需人工判断（本产线不生成专业判断）"]
+    labels = ["本期概览"]
+    disc = plan.get("disc")
+    if disc:
+        dcn = cn_name(disc)
+        labels += [f"{dcn} · 当期落点", f"{dcn} · 近 7 期走势"]
+    labels.append("横向对比")
+    if (plan.get("metric") or "proximity_1pct") == "proximity_1pct":
+        labels.append("梯队分布")
+    labels += ["待验证假设（规则提出，非结论）",
+               "需人工判断（本产线不生成专业判断）"]
+    return labels
+
+
+def _push(blocks, title, body, on_section):
+    blocks.append((title, body))
+    if on_section:
+        on_section(title, body)
+
+
 # ------------------------------------------------------------------ 单学科诊断
+def _snapshot(src: DataSource, disc: str, sources: list) -> tuple[list, float | None]:
+    """当期核心指标快照（概况/落点两处共用）。返回 (kv 行, 距阈值差)。"""
+    period = src.current_period()
+    rows = []
+    for met in ("proximity_1pct", "rank", "total_cites", "threshold_1pct", "top_papers"):
+        r = q.series(src, met, disc, [period])
+        sources.append(r)
+        if r["points"]:
+            p = r["points"][0]
+            rows.append((r["metric_cn"], p["value"], p["source"]))
+    tc = q.series(src, "total_cites", disc, [period])
+    th = q.series(src, "threshold_1pct", disc, [period])
+    sources.extend([tc, th])
+    gap = (tc["points"][0]["value"] - th["points"][0]["value"]
+           if tc["points"] and th["points"] else None)
+    return rows, gap
+
+
+def _snapshot_facts(rows: list, gap) -> list[str]:
+    facts = [f"{name}：{_fmt(val)}" for name, val, _ in rows]
+    if gap is not None:
+        facts.append("距 1% 阈值：" + (f"高出 {_fmt(gap)} 次" if gap >= 0
+                                       else f"还差 {_fmt(abs(gap))} 次"))
+    return facts
+
+
+def _series_facts(r: dict) -> list[str]:
+    if not r.get("points"):
+        return []
+    vs = "、".join(_fmt(p["value"]) for p in r["points"])
+    return [f"{r['metric_cn']}：{vs}（{r['points'][0]['period']}–{r['points'][-1]['period']}）"]
+
+
+def _rank_facts(cmp_prox: dict, cmp_papers: dict, disc: str) -> list[str]:
+    facts = []
+    for c in (cmp_prox, cmp_papers):
+        pos = next((i for i, x in enumerate(c["rows"], 1) if x["discipline"] == disc), None)
+        if pos:
+            facts.append(f"{c['metric_cn']}位次：第 {pos} 位（共 {c['n']}）")
+    return facts
+
+
 def _render_charts(src: DataSource, plan: dict, chart_dir, specs_out, charts,
-                   default_disc=None) -> str:
+                   default_disc=None, only_scope=None) -> str:
     """按规划**逐张**出图，返回 markdown 片段。
 
     🔴 这里曾经硬编码只认 3 个图型（cites_threshold / papers_delta / rank_pct）。
     真实模型一旦选了别的（实测 qwen2.5:3b 选了 `overview_1permille` + `cnci`），
     一张图都不出 —— 而正文和自检照常报"通过"。图型清单以 `spec.KINDS` 为准，
     这里不许再列白名单。
+
+    `only_scope`：只渲染某类图（锚定稿把单学科图放走势节、总览图放对比节）。
     """
     out = []
     for c in plan["charts"]:
@@ -71,6 +155,8 @@ def _render_charts(src: DataSource, plan: dict, chart_dir, specs_out, charts,
         if kind not in sp.KINDS:
             continue
         scope = sp.KINDS[kind]["disc_scope"]
+        if only_scope and scope != only_scope:
+            continue
         if scope == "single":
             disc = c.get("disc") or default_disc
             if not disc:
@@ -88,44 +174,54 @@ def _render_charts(src: DataSource, plan: dict, chart_dir, specs_out, charts,
     return "".join(out)
 
 
-def _polish(polish, text: str) -> str:
-    """润色位（可选）。`polish` 为假 → 原样返回，不碰模型。"""
-    if not polish or not text:
+def _polish(mode, text: str, label: str = "", *, facts=(), period: str = "",
+            log: list | None = None) -> str:
+    """写作/润色位。`mode ∈ {"off","polish","write"}`；假值 → 原样返回，不碰模型。
+
+    - `write`：规则稿 + 事实摘要 → 分析体叙述（`ai._writer`；守卫在 flexible 侧通过
+      `veto` 传入——ai 层不 import flexible）。
+    - `polish`：旧润色位（只顺措辞），行为不变。
+    任何失败都返回原文（写作/润色不是产出步骤）。
+    """
+    if not text or mode in (None, False, "off"):
         return text
     try:
-        from . import polish as _p                              # noqa: PLC0415
+        if mode == "write":
+            from ai import _writer                                     # noqa: PLC0415
+            st: dict = {}
+            got = _writer.write(text, facts=facts, period=period, label=label,
+                                veto=lambda t: bool(op.guard(t)), status=st)
+            if log is not None:
+                log.append({"label": label, "fallback": st.get("fallback"),
+                            "changed": got != text})
+            return got
+        from . import polish as _p                                      # noqa: PLC0415
         return _p.rewrite(text)
-    except Exception:                                           # noqa: BLE001
+    except Exception:                                                   # noqa: BLE001
         return text
 
 
-def _build_single_trend(src: DataSource, plan: dict, chart_dir, specs_out,
-                        polish=False) -> dict:
+def _build_single_trend(src: DataSource, plan: dict, chart_dir, specs_out, mode,
+                        period_name="", on_section=None) -> dict:
     disc = plan["disc"]
     dcn = cn_name(disc)
     period = src.current_period()
     prev = src.periods[src.periods.index(period) - 1]
     win = plan["periods"]
+    titles = _numbered(_section_labels(src, plan))
 
     blocks, sources, charts = [], [], []
+    log: list = []
+
+    def P(text, label, facts=()):
+        return _polish(mode, text, label, facts=facts, period=period_name, log=log)
 
     # ── 一、当期概况（每个数都走查询，带链）
-    rows, pts = [], []
-    for met in ("proximity_1pct", "rank", "total_cites", "threshold_1pct", "top_papers"):
-        r = q.series(src, met, disc, [period])
-        sources.append(r)
-        if r["points"]:
-            p = r["points"][0]
-            rows.append((r["metric_cn"], p["value"], p["source"]))
-            pts.append(p)
-    gap = None
-    tc = q.series(src, "total_cites", disc, [period])
-    th = q.series(src, "threshold_1pct", disc, [period])
-    if tc["points"] and th["points"]:
-        gap = tc["points"][0]["value"] - th["points"][0]["value"]
+    rows, gap = _snapshot(src, disc, sources)
     # 🔴 引导句走 `gap_lead`（原来三支一律「…的核心指标如下」，模板腔）
-    lead = op.gap_lead(period_label(period), dcn, gap)
-    blocks.append(("一、当期概况", _polish(polish, lead) + "\n\n" + _kv_table(rows)))
+    lead = P(op.gap_lead(period_label(period), dcn, gap),
+             "flexible/single_trend/概况", _snapshot_facts(rows, gap))
+    _push(blocks, titles[0], lead + "\n\n" + _kv_table(rows), on_section)
 
     # ── 二、关键指标走势（描述性，规则生成；配 spec 图）
     trend_rows = []
@@ -136,12 +232,12 @@ def _build_single_trend(src: DataSource, plan: dict, chart_dir, specs_out,
             trend_rows.append(r)
     # 🔴 第一条带区间、后面两条换开头 —— 三条不能再是同一句式（rick 2026-09-21）
     desc = "\n\n".join(
-        "- " + _polish(polish, op.descriptive_trend(
+        "- " + P(op.descriptive_trend(
             r["points"], r["metric_cn"], dcn, r.get("better", "up"),
-            with_span=(i == 0)))
+            with_span=(i == 0)), "flexible/single_trend/趋势", _series_facts(r))
         for i, r in enumerate(trend_rows))
     body = desc + _render_charts(src, plan, chart_dir, specs_out, charts, disc)
-    blocks.append(("二、关键指标走势", body))
+    _push(blocks, titles[1], body, on_section)
 
     # ── 三、相对位次（跨学科横截面）
     cmp_prox = q.compare(src, "proximity_1pct", None, period)
@@ -152,13 +248,9 @@ def _build_single_trend(src: DataSource, plan: dict, chart_dir, specs_out,
     sources.append(cmp_papers)
     paper_pos = next((i for i, x in enumerate(cmp_papers["rows"], 1)
                       if x["discipline"] == disc), None)
-    hard = next((i for i, x in enumerate(cmp_prox["rows"], 1)
-                 if disc == x["discipline"]), None)
-    txt = op.rank_sentence(cmp_prox["n"], rank_pos, paper_pos, dcn)
-    if hard:
-        near = cmp_prox["rows"][rank_pos - 1] if rank_pos else None
-        _ = near
-    blocks.append(("三、相对位次", _polish(polish, txt)))
+    txt = P(op.rank_sentence(cmp_prox["n"], rank_pos, paper_pos, dcn),
+            "flexible/single_trend/相对位次", _rank_facts(cmp_prox, cmp_papers, disc))
+    _push(blocks, titles[2], txt, on_section)
 
     # ── 四、待验证假设（规则提出的也算假设，须标注来源）
     hyps = []
@@ -194,89 +286,156 @@ def _build_single_trend(src: DataSource, plan: dict, chart_dir, specs_out,
             f"{dcn}在本期未出现显著异动，其接近度变化的主因未在规则层显现。",
             f"可扩展核对 {win[0]}–{win[-1]} 的《总被引》《论文数》《TOP论文》三表联合走势。",
             op.SRC_RULE))
-    blocks.append(("四、待验证假设（规则提出，非结论）",
-                   "\n".join(op.render_hypothesis(h) for h in hyps)
-                   + "\n\n> 上述均为**待验证假设**，不是结论。灵活报告不产出学科结论。"))
+    _push(blocks, titles[3], "\n".join(op.render_hypothesis(h) for h in hyps)
+          + "\n\n> 上述均为**待验证假设**，不是结论。灵活报告不产出学科结论。", on_section)
 
     # ── 五、需人工判断（专业判断一律不生成）
-    blocks.append(("五、需人工判断（本产线不生成专业判断）",
-                   "\n".join([
-                       f"- {op.manual(f'{dcn}发展力度评价')}",
-                       f"- {op.manual(f'{dcn}资源投入建议')}",
-                       "- " + op.manual("是否需要向学院核实数据口径"),
-                   ])
-                   + "\n\n> 专业判断（要不要加投入、值不值得重点建设）**不由本产线生成** —— "
-                     "与复刻报告同一机制，留空位由馆员填写。"))
+    _push(blocks, titles[4], "\n".join([
+        f"- {op.manual(f'{dcn}发展力度评价')}",
+        f"- {op.manual(f'{dcn}资源投入建议')}",
+        "- " + op.manual("是否需要向学院核实数据口径"),
+    ])
+        + "\n\n> 专业判断（要不要加投入、值不值得重点建设）**不由本产线生成** —— "
+          "与复刻报告同一机制，留空位由馆员填写。", on_section)
+
     return {"blocks": blocks, "sources": sources, "charts": charts, "hyps": hyps,
+            "write_log": log,
             "selected": {"disc": disc, "disc_cn": dcn, "period": period, "prev": prev}}
 
 
 # ------------------------------------------------------------------ 横向对比
-def _build_cross_compare(src: DataSource, plan: dict, chart_dir, specs_out,
-                         polish=False) -> dict:
+def _build_cross_compare(src: DataSource, plan: dict, chart_dir, specs_out, mode,
+                         period_name="", on_section=None) -> dict:
     period = src.current_period()
     met = plan.get("metric") or "proximity_1pct"
-    blocks, sources, charts = [], [], []
+    disc = plan.get("disc")
+    dcn = cn_name(disc) if disc else ""
+    win = plan.get("periods") or src.filled_periods[-7:]
+    titles = _numbered(_section_labels(src, plan))
 
+    blocks, sources, charts = [], [], []
+    log: list = []
+
+    def P(text, label, facts=()):
+        return _polish(mode, text, label, facts=facts, period=period_name, log=log)
+
+    i = 0
+    # ── 一、本期概览
     sc = q.scope(src, period)
     sources.append(sc)
     n_ent = sc["n_entered_1pct"]
     cmp_n = len(src.disciplines)          # 🔴 别写死 22（学科数会变）
-    blocks.append(("一、本期概览", _polish(polish, (
-        f"{period_label(period)}，云南大学共 **{n_ent}** 个学科进入 ESI 全球前 1%"
-        f"（占 {cmp_n} 个监测学科的 {n_ent / cmp_n * 100:.0f}%）；"
-        f"另有 **{sc['n_potential']}** 个学科尚未进入、列为潜力学科。"))))
+    lead = (f"{period_label(period)}，云南大学共 **{n_ent}** 个学科进入 ESI 全球前 1%"
+            f"（占 {cmp_n} 个监测学科的 {n_ent / cmp_n * 100:.0f}%）；"
+            f"另有 **{sc['n_potential']}** 个学科尚未进入、列为潜力学科。")
+    _push(blocks, titles[i], P(lead, "flexible/cross_compare/概览",
+          [f"进入前1%学科数：{n_ent}", f"监测学科数：{cmp_n}",
+           f"潜力学科数：{sc['n_potential']}"]), on_section)
+    i += 1
 
+    # ── 指定学科锚定：落点 + 走势（rick 2026-09-29：指定了学科就得围着它写）
+    if disc:
+        rows, gap = _snapshot(src, disc, sources)
+        cmp_prox = q.compare(src, "proximity_1pct", None, period)
+        sources.append(cmp_prox)
+        rank_pos = next((x for x in cmp_prox["rows"] if x["discipline"] == disc), None)
+        pos1 = next((k for k, x in enumerate(cmp_prox["rows"], 1)
+                     if x["discipline"] == disc), None)
+        cmp_papers = q.compare(src, "papers", None, period)
+        sources.append(cmp_papers)
+        pos2 = next((k for k, x in enumerate(cmp_papers["rows"], 1)
+                     if x["discipline"] == disc), None)
+        lead2 = P(op.gap_lead(period_label(period), dcn, gap),
+                  "flexible/cross_compare/落点", _snapshot_facts(rows, gap))
+        anchor = (lead2 + "\n\n" + _kv_table(rows) + "\n\n"
+                  + op.rank_sentence(cmp_prox["n"], pos1, pos2, dcn))
+        _push(blocks, titles[i], anchor, on_section)
+        i += 1
+
+        lines = []
+        for j, met2 in enumerate(("proximity_1pct", "total_cites", "papers")):
+            r = q.series(src, met2, disc, win)
+            sources.append(r)
+            if not r["points"]:
+                continue
+            lines.append("- " + P(op.descriptive_trend(
+                r["points"], r["metric_cn"], dcn, r.get("better", "up"),
+                with_span=(j == 0)), "flexible/cross_compare/走势", _series_facts(r)))
+        body2 = "\n\n".join(lines) + _render_charts(
+            src, plan, chart_dir, specs_out, charts, disc, only_scope="single")
+        _push(blocks, titles[i], body2, on_section)
+        i += 1
+        _ = rank_pos
+
+    # ── 横向对比（全池表 + 总览图）
     cmp_r = q.compare(src, met, None, period)
     sources.append(cmp_r)
-    top = cmp_r["rows"][:3]
     tail = cmp_r["rows"][-3:]
     body = (f"本期 {cmp_r['n']} 个学科的{cmp_r['metric_cn']}排序如下"
             f"（{'由低到高' if cmp_r['better'] == 'down' else '由高到低'}，好在前）。\n\n"
             + "| 位次 | 学科 | 数值 | 来源 |\n|---:|---|---:|---|\n"
-            + "\n".join(f"| {i} | {x['discipline_cn']} | {_fmt(x['value'])} | "
-                        f"`{x['source']['origin_sheet']}` |"
-                        for i, x in enumerate(cmp_r["rows"][:8], 1))
+            + "\n".join(f"| {k} | {'**' if x['discipline'] == disc else ''}"
+                        f"{x['discipline_cn']}{'**' if x['discipline'] == disc else ''} | "
+                        f"{_fmt(x['value'])} | `{x['source']['origin_sheet']}` |"
+                        for k, x in enumerate(cmp_r["rows"][:8], 1))
             + f"\n\n（末 3 位：{'、'.join(x['discipline_cn'] for x in tail)}）")
-    body += _render_charts(src, plan, chart_dir, specs_out, charts)
-    blocks.append(("二、横向对比", body))
+    body += _render_charts(src, plan, chart_dir, specs_out, charts, disc,
+                           only_scope=("overview" if disc else None))
+    _push(blocks, titles[i], body, on_section)
+    i += 1
 
-    # 梯队划分（规则）
+    # ── 梯队划分（规则）
     rows = cmp_r["rows"]
     if met == "proximity_1pct":
         entered = [x for x in rows if float(x["value"]) >= 1.0]
         near = [x for x in rows if 0.5 <= float(x["value"]) < 1.0]
         far = [x for x in rows if float(x["value"]) < 0.5]
-        blocks.append(("三、梯队分布",
-                       f"- **已进入前 1%**（接近度 ≥ 100%）：{len(entered)} 个 —— "
-                       f"{'、'.join(x['discipline_cn'] for x in entered) or '无'}\n"
-                       f"- **接近但未进入**（50%–100%）：{len(near)} 个 —— "
-                       f"{'、'.join(x['discipline_cn'] for x in near) or '无'}\n"
-                       f"- **距离较远**（<50%）：{len(far)} 个\n\n"
-                       f"> 梯队边界为**规则阈值**（100% / 50%），仅用于分档排序，不构成学科评价。"))
+        extra = ""
+        if disc:
+            tier = "已进入前 1% 一档" if any(x["discipline"] == disc for x in entered) else (
+                "接近但未进入一档" if any(x["discipline"] == disc for x in near)
+                else "距离较远一档")
+            extra = f"\n- **{dcn}** 位于「{tier}」。"
+        _push(blocks, titles[i],
+              f"- **已进入前 1%**（接近度 ≥ 100%）：{len(entered)} 个 —— "
+              f"{'、'.join(x['discipline_cn'] for x in entered) or '无'}\n"
+              f"- **接近但未进入**（50%–100%）：{len(near)} 个 —— "
+              f"{'、'.join(x['discipline_cn'] for x in near) or '无'}\n"
+              f"- **距离较远**（<50%）：{len(far)} 个" + extra
+              + "\n\n> 梯队边界为**规则阈值**（100% / 50%），仅用于分档排序，不构成学科评价。",
+              on_section)
+        i += 1
 
+    # ── 待验证假设（锚定稿优先该学科）
     hyps = []
     an = q.anomaly(src, period)
     sources.append(an)
-    for x in an["items"][:3]:
+    pool = [x for x in an["items"] if x["discipline"] == disc] if disc else an["items"]
+    for x in (pool or an["items"])[:3]:
         hyps.append(op.hypothesis(
             f"{x['discipline_cn']}的{x['metric_cn']}本期为 {x['ratio']} 倍环比变动，"
             f"其动因可能与口径或录入有关。",
             f"回读台账《{x['source']['origin_sheet']}》{x['discipline_cn']} 行 "
             f"{x['prev']}/{x['period']} 两列并与上期报告对照。", op.SRC_RULE))
+    if disc and not [x for x in an["items"] if x["discipline"] == disc]:
+        hyps.insert(0, op.hypothesis(
+            f"{dcn}在本期未出现规则层可识别的显著异动，其接近度变化的主因未在规则层显现。",
+            f"可扩展核对 {win[0]}–{win[-1]} 的《总被引》《论文数》《TOP论文》三表联合走势。",
+            op.SRC_RULE))
     if not hyps:
         hyps.append(op.hypothesis(
             "本期各学科指标未见规则层可识别的显著异动。",
             f"可放宽异常阈值后复查 {period} 与前期的环比分布。", op.SRC_RULE))
-    blocks.append(("四、待验证假设（规则提出，非结论）",
-                   "\n".join(op.render_hypothesis(h) for h in hyps)
-                   + "\n\n> 上述均为**待验证假设**，不是结论。"))
-    blocks.append(("五、需人工判断（本产线不生成专业判断）",
-                   "\n".join(["- " + op.manual("重点建设学科建议"),
-                              "- " + op.manual("潜力学科培育优先级"),
-                              "- " + op.manual("向学院核实的口径问题")])
-                   + "\n\n> 专业判断不由本产线生成，留空位由馆员填写。"))
+    _push(blocks, titles[i], "\n".join(op.render_hypothesis(h) for h in hyps)
+          + "\n\n> 上述均为**待验证假设**，不是结论。", on_section)
+    i += 1
+    _push(blocks, titles[i], "\n".join(["- " + op.manual("重点建设学科建议"),
+                                        "- " + op.manual("潜力学科培育优先级"),
+                                        "- " + op.manual("向学院核实的口径问题")])
+          + "\n\n> 专业判断不由本产线生成，留空位由馆员填写。", on_section)
+
     return {"blocks": blocks, "sources": sources, "charts": charts, "hyps": hyps,
+            "write_log": log,
             "selected": {"metric": met, "metric_cn": cmp_r["metric_cn"],
                          "period": period, "prev": sc["prev"]}}
 
@@ -360,39 +519,86 @@ def self_check(report_md: str, src: DataSource, built: dict) -> dict:
     }
 
 
-def generate(out_dir, intent: str = "single_trend", *,
-             disc=None, metric=None, n_periods=None, polish=None) -> dict:
-    """产出灵活报告。返回产物路径与自检结果。
+# ------------------------------------------------------------------ 写作模式与汇总
+def _resolve_write_mode(polish, write: bool) -> str:
+    """`mode ∈ {"off","polish","write"}`。
 
-    🔴 `out_dir` 是**期次目录**（`out/202607`）。产物一律落在
-    `out/<期次>/flexible/<intent>/` 下，**不触碰**该期次的复刻报告产物。
-
-    `polish`：语言润色位（**可选**，见 `flexible/polish.py`，D6 收编为 AI 层内部模式）。
-      - `None`（默认）＝配了云且开着 `WENHENG_FLEX_POLISH` 才开；
-      - `True` / `False` ＝强制开 / 关。
-    关掉、模型不可用或校验不过时，产出的就是**纯规则稿**（演示站永远如此）。
+    - **写作位只显式触发**：`write=True`（界面「AI 润色」按钮 / CLI `--write`）或
+      `polish="write"`，且 `WENHENG_FLEX_WRITE` 开、配了云 → write。
+      （部署开关只决定「按钮可不可用」；普通生成仍走规则稿——快、确定性、
+       免得每次生成都自动改文风。）
+    - 旧润色位沿用环境开关：`WENHENG_FLEX_POLISH` 开且配云 → polish；`polish is False` → off。
     """
+    if polish is False:
+        return "off"
+    try:
+        from ai import _writer                                      # noqa: PLC0415
+        if (bool(write) or polish == "write") and _writer.enabled() and _writer.model_reachable():
+            return "write"
+    except Exception:                                                # noqa: BLE001
+        pass
+    try:
+        from . import polish as _p                                   # noqa: PLC0415
+        if (polish is True or polish is None) and _p.enabled() and _p.model_reachable():
+            return "polish"
+    except Exception:                                                # noqa: BLE001
+        pass
+    return "off"
+
+
+def _write_summary(log: list, mode: str) -> dict | None:
+    if mode != "write" or not log:
+        return None
+    fallbacks = [x for x in log if x.get("fallback")]
+    return {"segments": len(log),
+            "rewritten": sum(1 for x in log if x.get("changed")),
+            "fallbacks": len(fallbacks),
+            "reasons": sorted({str(x["fallback"]) for x in fallbacks})}
+
+
+# ------------------------------------------------------------------ 主流程
+def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
+              n_periods=None, polish=None, plan=None, write=False, on_event=None) -> dict:
+    """产出灵活报告（含逐节回调）。`on_event(kind, payload)` 用于流式包装。"""
+    t0 = time.time()
     src = DataSource(out_dir)
-    plan = planner.build(src, intent, disc=disc, metric=metric,
-                         n_periods=n_periods)
-    if polish is None:
-        try:
-            from . import polish as _p                          # noqa: PLC0415
-            # 只有「配了云 + 开关打开」才尝试润色；盾与回落都在 AI 层，失败原样返回
-            polish = _p.enabled() and _p.model_reachable()
-        except Exception:                                       # noqa: BLE001
-            polish = False
+    if plan is None:
+        plan = planner.build(src, intent, disc=disc, metric=metric, n_periods=n_periods)
+    mode = _resolve_write_mode(polish, write)
+    if on_event:
+        on_event("plan", {"intent": intent, "title": plan.get("title"),
+                          "backend": plan.get("backend"),
+                          "fallback_reason": plan.get("fallback_reason"),
+                          "disc": plan.get("disc") or "", "mode": mode,
+                          "outline": _numbered(_section_labels(src, plan))})
     d = _dir_for(out_dir, intent)
     chart_dir = d / "charts"
     chart_dir.mkdir(parents=True, exist_ok=True)
 
+    # 写作位重出：给当前这份规则稿留底（首次才有，之后不覆盖）
+    if mode == "write":
+        rp, rr = d / "report.md", d / "report.rule.md"
+        if rp.is_file() and not rr.is_file():
+            shutil.copyfile(rp, rr)
+
+    on_section = None
+    if on_event:
+        def _sec(title, body):
+            on_event("section", {"title": title, "body": body})
+        on_section = _sec
+
+    period_name = pathlib.Path(out_dir).name
     specs_out: list[dict] = []
-    built = (_build_single_trend(src, plan, chart_dir, specs_out, polish)
-             if intent == "single_trend" else
-             _build_cross_compare(src, plan, chart_dir, specs_out, polish))
+    if intent == "single_trend":
+        built = _build_single_trend(src, plan, chart_dir, specs_out, mode,
+                                    period_name, on_section)
+    else:
+        built = _build_cross_compare(src, plan, chart_dir, specs_out, mode,
+                                     period_name, on_section)
 
     meta = {"generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "intent": intent, "backend": plan["backend"]}
+            "intent": intent, "backend": plan["backend"], "mode": mode,
+            "write": _write_summary(built.get("write_log") or [], mode)}
     md = _render(plan, built, meta)
     check = self_check(md, src, built)
 
@@ -416,9 +622,66 @@ def generate(out_dir, intent: str = "single_trend", *,
                     "charts": [pathlib.Path(s["path"]).name for s in built["charts"]],
                     "banner": BANNER},
                    ensure_ascii=False, indent=1), encoding="utf-8")
-    return {"report": str(d / "report.md"), "dir": str(d), "plan": plan,
-            "check": check, "n_charts": len(built["charts"]),
-            "selected": built["selected"]}
+    result = {"report": str(d / "report.md"), "dir": str(d), "plan": plan,
+              "check": check, "n_charts": len(built["charts"]),
+              "selected": built["selected"], "mode": mode,
+              "elapsed": round(time.time() - t0, 1),
+              "write": meta["write"]}
+    if on_event:
+        on_event("done", {"elapsed": result["elapsed"], "n_charts": result["n_charts"],
+                          "backend": plan["backend"], "mode": mode,
+                          "title": plan.get("title"),
+                          "check_pass": bool(check.get("pass")),
+                          "write": meta["write"]})
+    return result
+
+
+def generate(out_dir, intent: str = "single_trend", *,
+             disc=None, metric=None, n_periods=None, polish=None,
+             plan=None, write=False) -> dict:
+    """产出灵活报告。返回产物路径与自检结果。
+
+    🔴 `out_dir` 是**期次目录**（`out/202607`）。产物一律落在
+    `out/<期次>/flexible/<intent>/` 下，**不触碰**该期次的复刻报告产物。
+
+    `polish`：语言润色位（**可选**，见 `flexible/polish.py`，D6 收编为 AI 层内部模式）。
+      - `None`（默认）＝按环境开关（`WENHENG_FLEX_WRITE` 优先，其次 `WENHENG_FLEX_POLISH`）；
+      - `True` / `False` ＝强制开（旧润色）/ 强制关。
+    `plan`：复用已有规划（「AI 润色」重出稿时用——同大纲、同数字，只重写叙述段）。
+    `write`：显式走写作位（界面「AI 润色」按钮；仍要求 `WENHENG_FLEX_WRITE` 开且配云）。
+    """
+    return _generate(out_dir, intent, disc=disc, metric=metric, n_periods=n_periods,
+                     polish=polish, plan=plan, write=write)
+
+
+def generate_stream(out_dir, intent: str = "single_trend", *, disc=None,
+                    plan=None, write=False):
+    """流式产出（NDJSON 事件）：`status → plan → section×N → done`（或 `error`）。
+
+    事件在**真实的节点**发出（规划完成 / 每节完成），不做假进度；
+    生成在后台线程跑，本生成器只负责把事件转出来（FastAPI 同步生成器逐块发）。
+    """
+    import queue
+    import threading
+
+    yield {"event": "status", "stage": "planning"}
+    q: queue.Queue = queue.Queue()
+
+    def ev(kind, payload):
+        q.put((kind, payload))
+
+    def worker():
+        try:
+            _generate(out_dir, intent, disc=disc, plan=plan, write=write, on_event=ev)
+        except Exception as e:                                       # noqa: BLE001
+            q.put(("error", {"message": f"{type(e).__name__}：{str(e)[:160]}"}))
+
+    threading.Thread(target=worker, daemon=True).start()
+    while True:
+        kind, payload = q.get()
+        yield {"event": kind, **payload}
+        if kind in ("done", "error"):
+            return
 
 
 def list_reports(out_dir) -> list[dict]:
@@ -435,21 +698,22 @@ def list_reports(out_dir) -> list[dict]:
         if mj.is_file():
             try:
                 m = json.loads(mj.read_text(encoding="utf-8"))
-            except Exception:                                    # noqa: BLE001
+            except Exception:                                        # noqa: BLE001
                 m = {}
         out.append({"intent": d.name, "path": str(md), "dir": str(d),
                     "meta": m, "title": planner.INTENTS.get(d.name, d.name),
+                    "has_rule": (d / "report.rule.md").is_file(),
                     "mtime": md.stat().st_mtime})
     return out
 
 
 # ------------------------------------------------------------------ 命令行
 def main(argv=None):
-    """CLI：`python src/flexible/report.py [期次目录] [意图] [学科]`。
+    """CLI：`python src/flexible/report.py [期次目录] [意图] [学科] [write]`。
 
     例：
         python src/flexible/report.py out/202607 single_trend
-        python src/flexible/report.py out/202607 cross_compare
+        python src/flexible/report.py out/202607 cross_compare 化学 write
     （规划后端不再是参数：默认规则；配了云 `WENHENG_AI_*` 时自动问模型、失败回退。）
     """
     import sys
@@ -457,10 +721,12 @@ def main(argv=None):
     out_dir = argv[0] if argv else "out/202607"
     intent = argv[1] if len(argv) > 1 else "single_trend"
     disc = argv[2] if len(argv) > 2 else None
-    r = generate(out_dir, intent, disc=disc)
+    write = len(argv) > 3 and argv[3] == "write"
+    r = generate(out_dir, intent, disc=disc, write=write)
     print(f"[灵活报告] {planner.INTENTS.get(intent, intent)} → {r['report']}")
     print(f"  规划后端：{r['plan']['backend']}"
-          + (f"（{r['plan']['fallback_reason']}）" if r["plan"].get("fallback_reason") else ""))
+          + (f"（{r['plan']['fallback_reason']}）" if r["plan"].get("fallback_reason") else "")
+          + f"　｜　写作模式：{r['mode']}")
     print(f"  产出图 {r['n_charts']} 张；自检 {'通过 ✅' if r['check']['pass'] else '未通过 ❌'}")
     t = r["check"]["trace"]
     print(f"  数字可回溯：{t['ok']}/{t['checked']}"

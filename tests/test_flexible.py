@@ -607,7 +607,7 @@ class TestHTML渲染:
 class TestCLI与清单:
     def test_cli入口可跑(self, src, capsys):
         import run_flexible
-        rc = run_flexible.main([str(src.dir), "cross_compare", "rule"])
+        rc = run_flexible.main([str(src.dir), "cross_compare"])
         assert rc == 0
         out = capsys.readouterr().out
         assert "自检 通过" in out and "数字可回溯" in out
@@ -618,3 +618,121 @@ class TestCLI与清单:
         for r in reps:
             assert pathlib.Path(r["path"]).is_file()
             assert r["meta"].get("backend")
+
+
+class Test指定学科全链路:
+    """rick 2026-09-29：「指定学科填了化学，报告和化学无关」——三层都不许再忽略。"""
+
+    def test_中文名可用且横版围着它写(self, src):
+        from conftest import REPO
+        r = report.generate(REPO / src.dir, "cross_compare", disc="化学")
+        assert r["check"]["pass"], r["check"]
+        md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
+        assert "化学 · 当期落点" in md and "化学 · 近 7 期走势" in md
+        assert "**化学**" in md, "全池对比表里指定学科要加粗"
+        assert "化学" in r["plan"]["title"] and "横向对比" in r["plan"]["title"]
+        assert r["n_charts"] == 4, r["plan"]["charts"]
+        assert [c["disc"] for c in r["plan"]["charts"][:2]] == ["Chemistry", "Chemistry"]
+
+    def test_未指定学科时横版保持全池口径(self, src):
+        from conftest import REPO
+        r = report.generate(REPO / src.dir, "cross_compare")
+        md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
+        assert "当期落点" not in md
+        assert not r["plan"].get("disc")
+
+    def test_未知学科给人话报错(self, src):
+        with pytest.raises(ValueError, match="不在监测名单"):
+            planner.build(src, "single_trend", disc="量子计算")
+
+    def test_模型在横版乱塞单科图被丢弃(self, src):
+        """旧行为：模型挑「工程学」加一堆图、标题还写「工程学学科分析报告」——无指定学科时不许。"""
+        from _ai_helpers import ScriptedBrain, Turn
+        import ai
+        brain = ScriptedBrain([Turn(text='{"title": "工程学 学科分析报告", "charts": '
+                                          '[{"kind": "cnci", "disc": "Engineering"}, '
+                                          '{"kind": "overview_1pct"}]}')])
+        with ai.using(brain=brain):
+            plan = planner.build(src, "cross_compare")
+        assert [c["kind"] for c in plan["charts"]] == ["overview_1pct"]
+        assert "学科横向对比" in plan["title"], plan["title"]
+
+    def test_指定学科时模型乱选也被扳回(self, src):
+        from _ai_helpers import ScriptedBrain, Turn
+        import ai
+        brain = ScriptedBrain([Turn(text='{"title": "工程学 学科分析报告", "charts": '
+                                          '[{"kind": "cnci", "disc": "Physics"}]}')])
+        with ai.using(brain=brain):
+            plan = planner.build(src, "cross_compare", disc="Chemistry")
+        assert "化学" in plan["title"], plan["title"]
+        assert all(c["disc"] in (None, "Chemistry") for c in plan["charts"])
+
+
+class Test流式生成:
+    def test_事件序列与大纲同源(self, src):
+        """status → plan(带大纲) → section×N（逐节标题==大纲）→ done；无假进度。"""
+        from conftest import REPO
+        events = list(report.generate_stream(REPO / src.dir, "cross_compare"))
+        assert [e["event"] for e in events[:2]] == ["status", "plan"]
+        assert events[-1]["event"] == "done"
+        sec = [e for e in events if e["event"] == "section"]
+        assert sec, "必须逐节发事件"
+        assert [e["title"] for e in sec] == events[1]["outline"], \
+            "逐节标题必须与 plan 事件的同源大纲一致"
+        assert events[-1]["n_charts"] >= 1
+        assert events[-1]["check_pass"] is True
+
+    def test_流式含指定学科(self, src):
+        from conftest import REPO
+        events = list(report.generate_stream(REPO / src.dir, "single_trend", disc="化学"))
+        plan_ev = events[1]
+        assert "化学" in plan_ev["title"]
+        sec = [e for e in events if e["event"] == "section"]
+        assert sec and any("化学" in e.get("body", "") for e in sec)
+
+
+class Test写作位接线:
+    def test_写作位开时叙述段走写作位并留痕(self, src, tmp_path, monkeypatch):
+        from _ai_helpers import ScriptedBrain, Turn
+        from conftest import REPO
+        import ai
+        monkeypatch.setenv("WENHENG_FLEX_WRITE", "1")
+
+        def rewrite(b):
+            rule = b.task.split("【规则稿】\n", 1)[1].split("\n\n【事实摘要】")[0]
+            facts = (b.task.split("【事实摘要】\n", 1)[1].replace("\n", "；")
+                     if "【事实摘要】" in b.task else "")
+            return Turn(text="改写：" + rule + ("；" + facts if facts else ""))
+
+        brain = ScriptedBrain([rewrite] * 8)
+        with ai.using(brain=brain, data_root=tmp_path):
+            r = report.generate(REPO / src.dir, "single_trend", write=True)
+        assert r["mode"] == "write"
+        polish_briefs = [b for b in brain.briefs if getattr(b, "ability", "") == "polish"]
+        assert len(polish_briefs) == 5, "概况 1 + 趋势 3 + 位次 1"
+        rec_file = tmp_path / "202607" / "ai_calls.jsonl"
+        rows = [json.loads(x) for x in
+                rec_file.read_text(encoding="utf-8").splitlines() if x.strip()]
+        assert len(rows) == 5 and all(x["capability"] == "polish" for x in rows)
+        assert all(x["mode"] == "model" for x in rows)
+        assert r["write"] and r["write"]["segments"] == 5
+        md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
+        assert "改写：" in md
+        assert r["check"]["pass"], r["check"]
+        assert not opinion.guard(md)
+
+    def test_默认关时mode是off(self, src):
+        from conftest import REPO
+        r = report.generate(REPO / src.dir, "single_trend")
+        assert r["mode"] == "off" and r["write"] is None
+
+    def test_开关开着也不自动改文风(self, src, tmp_path, monkeypatch):
+        """写作位只由按钮/显式参数触发——普通生成不许偷偷花模型调用。"""
+        from _ai_helpers import ScriptedBrain
+        from conftest import REPO
+        import ai
+        monkeypatch.setenv("WENHENG_FLEX_WRITE", "1")
+        with ai.using(brain=ScriptedBrain([]), data_root=tmp_path):
+            r = report.generate(REPO / src.dir, "single_trend")
+        assert r["mode"] == "off"
+        assert not (tmp_path / "202607" / "ai_calls.jsonl").exists(), "不该有写作记录"

@@ -102,3 +102,56 @@ class Test路由与权限:
             _Req(config.DEMO_USER, {"intent": "不存在的意图"}), "202609"))
         assert r.status_code == 400
         assert "未知意图" in json.loads(r.body)["error"]
+
+
+class Test流式与润色两口:
+    """契约 #21③/#21④（2026-09-29 流式对话框 + AI 润色按钮）。"""
+
+    def test_路由存在(self):
+        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
+        assert '@app.post("/api/periods/{period}/flexible/stream")' in src
+        assert '@app.post("/api/periods/{period}/flexible/polish")' in src
+
+    def test_新两口也要管理员(self):
+        for fn in (appmod.api_period_flexible_stream, appmod.api_period_flexible_polish):
+            assert asyncio.run(fn(_Req(config.GUEST_USER), "202609")).status_code == 403
+            assert asyncio.run(fn(_Req(None), "202609")).status_code == 401
+
+    def test_流式口一行一个事件(self, tmp_path, monkeypatch):
+        import flexible.report as flex_report
+        monkeypatch.setattr(appmod, "resolve_period_dir", lambda period: tmp_path)
+        monkeypatch.setattr(flex_report, "generate_stream",
+                            lambda d, intent, **k: iter([
+                                {"event": "status", "stage": "planning"},
+                                {"event": "plan", "title": "t", "outline": ["一、本期概览"]},
+                                {"event": "done", "elapsed": 1.0}]))
+        r = asyncio.run(appmod.api_period_flexible_stream(
+            _Req(config.DEMO_USER, {"intent": "single_trend"}), "202609"))
+        assert r.media_type.startswith("application/x-ndjson")
+
+        async def consume():
+            out = []
+            async for c in r.body_iterator:
+                out.append(c)
+            return out
+
+        raw = b"".join(x if isinstance(x, bytes) else x.encode("utf-8")
+                       for x in asyncio.run(consume())).decode("utf-8")
+        lines = [json.loads(x) for x in raw.splitlines() if x.strip()]
+        assert [l["event"] for l in lines] == ["status", "plan", "done"]
+
+    def test_润色没开写作位给409(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(appmod, "resolve_period_dir", lambda period: tmp_path)
+        p = tmp_path / "flexible" / "single_trend"
+        p.mkdir(parents=True)
+        (p / "flex_plan.json").write_text("{}", encoding="utf-8")
+        r = asyncio.run(appmod.api_period_flexible_polish(
+            _Req(config.DEMO_USER, {"intent": "single_trend"}), "202609"))
+        assert r.status_code == 409
+        assert "写作位" in json.loads(r.body)["error"]
+
+    def test_润色没有这稿给400(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(appmod, "resolve_period_dir", lambda period: tmp_path)
+        r = asyncio.run(appmod.api_period_flexible_polish(
+            _Req(config.DEMO_USER, {"intent": "single_trend"}), "202609"))
+        assert r.status_code == 400

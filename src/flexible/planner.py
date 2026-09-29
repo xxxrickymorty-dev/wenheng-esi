@@ -45,9 +45,28 @@ _PLAN_SYSTEM = (
 )
 
 
+def resolve_disc(src: DataSource, disc) -> str | None:
+    """把用户给的学科（英文规范名 / 中文名 / 空）解析成英文名。
+
+    未知学科 → `ValueError`（人话提示可选名单）——静默忽略正是 2026-09-29 的投诉源头。
+    """
+    if disc is None:
+        return None
+    s = str(disc).strip()
+    if not s:
+        return None
+    if s in src.disciplines:
+        return s
+    for d in src.disciplines:
+        if cn_name(d) == s:
+            return d
+    raise ValueError("学科「" + s + "」不在监测名单内；可选：" +
+                     "、".join(cn_name(d) for d in src.disciplines))
+
+
 def _rule_plan(src: DataSource, intent: str, *, disc=None, metric=None,
                periods=None, n_periods=None) -> dict:
-    """规则规划：确定性挑科/挑指/挑期。"""
+    """规则规划：确定性挑科/挑指/挑期。`disc` 已经 `resolve_disc` 过。"""
     period = src.current_period()
     # 🔴 窗口取**有数据**的期次（`filled_periods`），末期占位列（202609 未发布）不算进去，
     #    否则「7 期」与图上实际画出的期数对不上、差分图还会多算一格。
@@ -75,18 +94,30 @@ def _rule_plan(src: DataSource, intent: str, *, disc=None, metric=None,
 
     if intent == "cross_compare":
         met = metric or "proximity_1pct"
-        charts = [
+        charts = []
+        if disc:
+            # 指定了学科：锚定两张该学科的图（走势节），其余总览图做全池参照
+            charts += [
+                {"kind": "cites_threshold", "disc": disc,
+                 "why": "被引频次与 1% 阈值同图，看追赶态势"},
+                {"kind": "rank_pct", "disc": disc,
+                 "why": "国内外排名百分位看相对位次"},
+            ]
+        charts += [
             {"kind": "overview_1pct", "why": "22 学科与 1% 基线的距离一览"},
             {"kind": "overview_1permille", "why": "已进 1% 学科与 1‰ 的差距"},
         ]
-        return {"intent": intent, "metric": met, "periods": win, "charts": charts,
-                "title": f"学科横向对比（{period_label(period)}，{METRICS[met]['cn']}）"}
+        title = (f"{cn_name(disc)} · 学科横向对比（{period_label(period)}，"
+                 f"{METRICS[met]['cn']}）" if disc else
+                 f"学科横向对比（{period_label(period)}，{METRICS[met]['cn']}）")
+        return {"intent": intent, "disc": disc, "metric": met, "periods": win,
+                "charts": charts, "title": title}
 
     raise ValueError(f"未登记的意图 {intent!r}（允许：{sorted(INTENTS)}）")
 
 
 # ------------------------------------------------------------------ 模型后端
-def _model_prompt(src: DataSource, intent: str) -> str:
+def _model_prompt(src: DataSource, intent: str, target=None) -> str:
     """给模型的提示。**不含任何数值** —— 只有字段字典、图型目录与规划依据摘要。"""
     sc = q.scope(src, src.current_period())
     payload = {
@@ -104,22 +135,29 @@ def _model_prompt(src: DataSource, intent: str) -> str:
             "trust": sc["trust"],
         },
     }
+    if target:
+        payload["用户指定学科"] = {
+            "en": target, "cn": cn_name(target),
+            "硬约束": "单学科类图只能用这个学科；若给标题，标题必须含该学科中文名；不得另选学科",
+        }
     return (
         "你是学科分析报告的**章节规划器**。你只决定「写哪个学科、配哪些图」这几个选择，"
         "不要输出任何数字、不要计算、不要给纵轴范围。\n"
         "只输出一个 JSON 对象，键仅允许：" + "、".join(_PLAN_KEYS) + "。\n"
-        "其中 charts 是数组，元素形如 {\"kind\": \"图型名\", \"disc\": \"学科英文名\"}。\n\n"
-        "可用信息（其中『规划依据_摘要』仅供挑选方向，不是可引用数值）：\n"
+        "其中 charts 是数组，元素形如 {\"kind\": \"图型名\", \"disc\": \"学科英文名\"}。\n"
+        + ("🔴 用户已指定学科：单学科类图（disc_scope=single）的 disc 只许填它，"
+           "标题必须含它。\n" if target else "")
+        + "\n可用信息（其中『规划依据_摘要』仅供挑选方向，不是可引用数值）：\n"
         + json.dumps(payload, ensure_ascii=False, indent=1)
         + "\n\n直接输出 JSON："
     )
 
 
-def _brain_plan(src, intent):
+def _brain_plan(src, intent, target=None):
     """经 AI 层内部口问云端（盾保护 + 校验）。返回 `(规划 JSON | None, 原因, 后端名)`。"""
     from ai import _llm                                             # noqa: PLC0415
 
-    out, info = _llm.think(_model_prompt(src, intent), system=_PLAN_SYSTEM,
+    out, info = _llm.think(_model_prompt(src, intent, target), system=_PLAN_SYSTEM,
                            ability="flex-plan", anchored=False,
                            allow_substrings=tuple(sp.KINDS))
     if out is None:
@@ -147,11 +185,14 @@ def _parse_json(raw: str) -> dict | None:
     return got if isinstance(got, dict) else None
 
 
-def _validate_plan(src: DataSource, got: dict, intent: str, fallback: dict) -> dict:
+def _validate_plan(src: DataSource, got: dict, intent: str, fallback: dict,
+                   target=None) -> dict:
     """把模型输出**清洗成合法规划**：越权键剥掉、非法值回退。
 
     🔴 这里没有「纵轴范围」这条路可走：`_PLAN_KEYS` 里根本没有它，
     而 charts 元素只认 `kind` / `disc` 两个键，多给的一律丢弃。
+    用户指定学科（`target`）时：单学科图一律强制该学科、标题必须含它；
+    横版未指定学科时：丢弃单学科图、标题走规则（防「工程学学科分析报告」式错位）。
     """
     clean = {k: got[k] for k in _PLAN_KEYS if k in got}
     # 纵轴类键若出现，直接整份丢弃（宁可回退 rule，也不接受越权规划）
@@ -164,13 +205,19 @@ def _validate_plan(src: DataSource, got: dict, intent: str, fallback: dict) -> d
     for c in (clean.get("charts") or []):
         if not isinstance(c, dict) or c.get("kind") not in sp.KINDS:
             continue
-        disc = c.get("disc")
-        if sp.KINDS[c["kind"]]["disc_scope"] == "single":
+        kind = c["kind"]
+        if sp.KINDS[kind]["disc_scope"] == "single":
+            if intent == "cross_compare" and not target:
+                continue                     # 未指定学科 → 横版只留总览图
+            disc = target or c.get("disc")
             if disc not in src.disciplines:
-                continue
+                if target:
+                    disc = target
+                else:
+                    continue
         else:
             disc = None
-        charts.append({"kind": c["kind"], "disc": disc,
+        charts.append({"kind": kind, "disc": disc,
                        "why": str(c.get("why", ""))[:80]})
     if not charts:
         return fallback | {"fallback_reason": "模型未给出任何合法图型，已回退规则规划"}
@@ -179,24 +226,34 @@ def _validate_plan(src: DataSource, got: dict, intent: str, fallback: dict) -> d
     clean["charts"] = charts
 
     if intent == "single_trend":
-        d = clean.get("disc") or fallback.get("disc")
+        d = target or clean.get("disc") or fallback.get("disc")
         if d not in src.disciplines:
             d = fallback.get("disc")
         for c in charts:
             if sp.KINDS[c["kind"]]["disc_scope"] == "single" and not c["disc"]:
                 c["disc"] = d
         clean["disc"] = d
-        clean["metric"] = clean.get("metric") if clean.get("metric") in METRICS \
-            else fallback.get("metric")
     else:
-        clean["metric"] = clean.get("metric") if clean.get("metric") in METRICS \
-            else fallback.get("metric")
+        clean["disc"] = target or None
+
+    clean["metric"] = clean.get("metric") if clean.get("metric") in METRICS \
+        else fallback.get("metric")
 
     n = clean.get("n_periods")
     clean["n_periods"] = n if isinstance(n, int) and 2 <= n <= 30 else 7
     clean["periods"] = src.filled_periods[-clean["n_periods"]:]
-    clean["title"] = _clean_title(clean.get("title"), clean.get("disc"),
-                                  fallback.get("title"))
+
+    if intent == "cross_compare":
+        if target:
+            title = _clean_title(clean.get("title"), target, fallback.get("title"))
+            if cn_name(target) not in title:
+                title = fallback.get("title")
+        else:
+            title = fallback.get("title")    # 全池稿标题走规则，不让模型说成单科报告
+    else:
+        title = _clean_title(clean.get("title"), clean.get("disc"),
+                             fallback.get("title"))
+    clean["title"] = title
     return clean
 
 
@@ -219,19 +276,23 @@ def _clean_title(title, disc, fallback_title):
 # ------------------------------------------------------------------ 主入口
 def build(src: DataSource, intent: str = "single_trend", *,
           disc=None, metric=None, n_periods=None) -> dict:
-    """产出章节规划：默认规则；配了云才问模型（不合法/失败一律回退规则）。"""
+    """产出章节规划：默认规则；配了云才问模型（不合法/失败一律回退规则）。
+
+    `disc` 收英文规范名或中文名；未知学科直接 `ValueError`（不再静默忽略）。
+    """
     if intent not in INTENTS:
         raise ValueError(f"未登记的意图 {intent!r}（允许：{sorted(INTENTS)}）")
 
-    fallback = _rule_plan(src, intent, disc=disc, metric=metric, n_periods=n_periods)
+    target = resolve_disc(src, disc)
+    fallback = _rule_plan(src, intent, disc=target, metric=metric, n_periods=n_periods)
     fallback["backend"] = "rule"
     fallback["fallback_reason"] = None
 
-    got, reason, backend_name = _brain_plan(src, intent)
+    got, reason, backend_name = _brain_plan(src, intent, target)
     if got is None:
         if reason not in (None, "rule"):
             fallback["fallback_reason"] = "云端模型不可用或未通过校验，已回退规则规划"
         return fallback
-    plan = _validate_plan(src, got, intent, fallback)
+    plan = _validate_plan(src, got, intent, fallback, target)
     plan["backend"] = backend_name if plan.get("fallback_reason") is None else "rule"
     return plan

@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 灵活报告「指定学科」修订稿（静态提案 · 2026-09-29）</title>
+<style>
+:root{
+  --bg:#F4F3ED;--card:#FFFDF8;--panel:#F0F1EB;
+  --ink:#222B25;--ink-2:#3F4C42;--ink-3:#58655C;
+  --line:#DDE1D8;--line-2:#E6E9E2;
+  --zhu:#1A4B27;--zhu-soft:#E3EDE4;
+  --gold:#B19A65;--gold-soft:#F1EBDD;--gold-ink:#62501F;
+  --ok:#28643A;--ok-soft:#E6F0E7;
+  --warn:#75622D;--warn-soft:#F6EED8;
+  --bad:#8C3B2E;--bad-soft:#F6E4DF;
+  --serif:"Source Han Serif SC","Noto Serif SC",Songti SC,SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 var(--sans)}
+.review{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding:9px 22px;background:var(--panel);border-bottom:1px dashed var(--line);font-size:12.5px;color:var(--ink-2)}
+.review b{color:var(--gold-ink)}
+.wrap{max-width:1150px;margin:auto;padding:18px 22px 70px}
+h1{font:650 21px/1.5 var(--serif);margin:6px 0 2px}
+.lead{margin:6px 0 0;color:var(--ink-2);font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 22px;box-shadow:0 1px 2px rgba(34,43,37,.05)}
+.card+.card{margin-top:16px}
+h2{margin:0;font-family:var(--serif);font-size:19px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tag{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12.5px;color:var(--ink-2)}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2px 10px;border-radius:999px;font-size:12.5px;font-weight:650}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.stale{background:var(--panel);color:var(--ink-3)}
+.pill.gold{background:var(--gold-soft);color:var(--gold-ink)}
+.hint{color:var(--ink-3);font-size:13px}
+.mono{font-family:var(--mono)}
+.btn{padding:7px 13px;border:1px solid var(--line);border-radius:8px;background:var(--card);font:inherit;font-size:13.5px;cursor:pointer;color:var(--ink)}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-weight:650}
+.fx-form{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:14px}
+.fx-form label{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--ink-2)}
+.fx-form select,.fx-form input{font:inherit;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);min-width:200px}
+.fx-note{font-size:13.5px;color:var(--ink-3);margin:8px 0 0}
+.diff{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;font-size:13.5px}
+.diff div{border:1px dashed var(--line);border-radius:10px;padding:8px 12px;background:var(--panel);color:var(--ink-2);flex:1;min-width:260px}
+.diff b{color:var(--ink)}
+.ans{border:1px solid var(--line);border-radius:12px;background:var(--card);margin-top:16px;box-shadow:0 1px 2px rgba(34,43,37,.05)}
+.ans-h{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:11px 16px;border-bottom:1px dashed var(--line-2)}
+.ans-h b{font-size:15px}
+.ans-b{padding:4px 16px 12px}
+h3{font-size:16px;margin:18px 0 8px;padding-left:10px;border-left:3px solid var(--zhu)}
+h3:first-child{margin-top:8px}
+p{margin:8px 0;line-height:1.85}
+table{border-collapse:collapse;width:100%;font-size:14px;margin:10px 0}
+th,td{border-bottom:1px solid var(--line-2);padding:8px 12px;text-align:left}
+th{background:var(--panel);color:var(--ink-3);font-weight:600;font-size:13px}
+td.num{text-align:right;font-family:var(--mono)}
+tr.me td{background:var(--zhu-soft)}
+blockquote{margin:10px 0;padding:10px 15px;background:var(--gold-soft);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;color:var(--ink-2);font-size:14px}
+blockquote p{margin:3px 0}
+ul{margin:8px 0;padding-left:22px}
+li{margin:5px 0}
+figure{margin:12px 0;border:1px dashed var(--line);border-radius:10px;padding:18px;text-align:center;color:var(--ink-3);background:var(--panel);font-size:13.5px}
+footer{margin-top:18px;color:var(--ink-3);font-size:12.5px}
+.warn{border:1px dashed #E4D6AD;border-radius:10px;background:var(--warn-soft);color:var(--warn);padding:9px 13px;font-size:13.5px;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="review">
+  <b>静态提案 · 灵活报告「指定学科」修订稿（2026-09-29）</b>
+  <span>改两处：① 指定学科从自由输入改<b>可选下拉</b>（中文）；② 指定后整份稿<b>围绕该学科</b>展开（未指定＝全池总览，同现状）。示例用 202607 化学真实数据。待审通过再动 React / 后端。</span>
+</div>
+
+<main class="wrap">
+  <h1>灵活报告 · 第二条产线（分析台）</h1>
+  <p class="lead">这里回答「某个问题怎么看」——规划器挑学科、定章节、配图，产出内部参考件。</p>
+
+  <!-- ================= 表单 ================= -->
+  <section class="card">
+    <h2>控件（改后）<span class="tag">202607</span></h2>
+    <div class="fx-form">
+      <label>分析意图
+        <select>
+          <option>多学科横向对比</option>
+          <option>单学科趋势诊断</option>
+        </select>
+      </label>
+      <label>指定学科
+        <select>
+          <option>（不指定 —— 全池对比 / 由规划器挑）</option>
+          <option selected>化学</option>
+          <option>工程学</option>
+          <option>植物与动物学</option>
+          <option>分子生物学与遗传学</option>
+          <option>物理学</option>
+          <option>……（共 22 个 · 中文名）</option>
+        </select>
+      </label>
+      <button class="btn primary">生 成 分 析 稿</button>
+    </div>
+    <p class="fx-note">产出落在 <span class="mono">out/202607/flexible/</span>，与复刻报告产物互不重叠；按下后页面没动静是正常的（约几秒），别连点。</p>
+    <div class="diff">
+      <div><b>改前</b>：自由文本输入（示例「如 Engineering」）——输入中文名会报错或被忽略，且横向对比<u>完全不用</u>这个学科。</div>
+      <div><b>改后</b>：下拉选 22 个学科（中文名，来自数据）；<b>横向对比</b>=以它为中心的全池对比；<b>单学科</b>=就该学科写；不选=原来的全池总览。</div>
+    </div>
+  </section>
+
+  <!-- ================= 生成结果示例（化学） ================= -->
+  <section class="card">
+    <h2>生成结果（示例：指定「化学」+ 多学科横向对比）<span class="pill gold">内部参考件</span></h2>
+    <article class="ans">
+      <div class="ans-h">
+        <b>化学 · 学科横向对比（2026年7月，ESI前1%接近度）</b>
+        <span class="pill ok">规划后端：模型（失败自动回退规则）</span>
+        <span class="hint" style="margin-left:auto">生成时间 2026-09-29 …</span>
+      </div>
+      <div class="ans-b">
+        <h3>一、本期概览</h3>
+        <p>2026年7月，云南大学共 <b>14</b> 个学科进入 ESI 全球前 1%（占 22 个监测学科的 64%）；另有 <b>8</b> 个学科尚未进入、列为潜力学科。</p>
+
+        <h3>二、化学 · 当期落点</h3>
+        <p>2026年7月，化学的总被引已高出 1% 阈值 <b>41,691</b> 次；本期核心指标如下。</p>
+        <table>
+          <thead><tr><th>指标</th><th style="text-align:right">数值</th><th>来源（台账工作表：定位）</th></tr></thead>
+          <tbody>
+            <tr><td>ESI前1%接近度</td><td class="num">6.412</td><td><span class="mono">接近度</span>：化学 行 × 202607 列</td></tr>
+            <tr><td>国内排名</td><td class="num">153</td><td><span class="mono">新国内排名</span>：化学 行 × 202607 列</td></tr>
+            <tr><td>总被引频次</td><td class="num">49,394</td><td><span class="mono">总被引</span>：化学 行 × 202607 列</td></tr>
+            <tr><td>ESI前1%被引阈值</td><td class="num">7,703</td><td><span class="mono">ESI被引阈值</span>：化学 行 × 202607 列</td></tr>
+            <tr><td>顶尖论文数</td><td class="num">44</td><td><span class="mono">TOP论文</span>：化学 行 × 202607 列</td></tr>
+          </tbody>
+        </table>
+        <p>横过来看，化学的接近度在 22 个学科里排第 <b>3</b> 位（前 1/3），论文数排第 <b>1</b> 位。</p>
+
+        <h3>三、化学 · 近 7 期走势</h3>
+        <ul>
+          <li>2025年7月至2026年7月（7 期），化学的 ESI 前1%接近度从 5.079 一路走高到 6.412（累计 26.25%），7 期里没有一期回落，方向向好。</li>
+          <li>同区间看，化学的总被引频次在波动中上行：40,277 到 49,394（累计 22.64%），6 期涨、1 期跌，方向向好。</li>
+          <li>同一窗口内，化学的论文数从 2,243 抬到 2,534（累计 12.97%），3 期涨、1 期跌，方向向好。</li>
+        </ul>
+        <figure>［图·被引频次与 ESI 阈值 —— 化学］<br>［图·国内外排名百分位趋势 —— 化学］</figure>
+
+        <h3>四、横向对比</h3>
+        <p>本期 22 个学科的 ESI 前1%接近度排序如下（由高到低，好在前）。</p>
+        <table>
+          <thead><tr><th>位次</th><th>学科</th><th style="text-align:right">数值</th><th>来源</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>工程学</td><td class="num">7.062</td><td><span class="mono">接近度</span></td></tr>
+            <tr><td>2</td><td>植物与动物学</td><td class="num">6.514</td><td><span class="mono">接近度</span></td></tr>
+            <tr class="me"><td>3</td><td><b>化学</b>（本稿指定）</td><td class="num">6.412</td><td><span class="mono">接近度</span></td></tr>
+            <tr><td>4</td><td>环境生态学</td><td class="num">6.166</td><td><span class="mono">接近度</span></td></tr>
+            <tr><td>5</td><td>材料科学</td><td class="num">4.599</td><td><span class="mono">接近度</span></td></tr>
+            <tr><td>6</td><td>地球科学</td><td class="num">4.213</td><td><span class="mono">接近度</span></td></tr>
+            <tr><td>7</td><td>临床医学</td><td class="num">2.989</td><td><span class="mono">接近度</span></td></tr>
+            <tr><td>8</td><td>农业科学</td><td class="num">2.296</td><td><span class="mono">接近度</span></td></tr>
+          </tbody>
+        </table>
+        <p class="hint">（末 3 位：神经系统科学与行为学、经济与商业、多学科）</p>
+        <figure>［图·ESI 前1% 接近度总览］<br>［图·ESI 前1‰ 潜力总览］</figure>
+
+        <h3>五、梯队分布</h3>
+        <ul>
+          <li><b>已进入前 1%</b>（接近度 ≥ 100%）：14 个 —— 工程学、植物与动物学、<b>化学</b>、环境生态学、材料科学、地球科学、临床医学、农业科学、计算机科学、社会科学、药理学与毒理学、生物学与生物化学、微生物学、数学</li>
+          <li><b>接近但未进入</b>（50%–100%）：2 个 —— 分子生物学与遗传学、物理学</li>
+          <li><b>距离较远</b>（&lt;50%）：6 个</li>
+        </ul>
+        <blockquote><p>化学已进入前 1% 一档。梯队边界为规则阈值（100% / 50%），仅用于分档排序，不构成学科评价。</p></blockquote>
+
+        <h3>六、待验证假设（规则提出，非结论）</h3>
+        <ul>
+          <li><b>待验证假设</b>（来源：规则引擎）：化学接近度的上升与同期发文量增加同向（本期发文量净增 291 篇）。
+            <ul><li>可验证方式：核对台账《论文数》与《接近度》两表在 202507–202607 的各期值，看两者是否同向；再查《TOP论文》看高质量产出是否同步。</li></ul>
+          </li>
+        </ul>
+        <p class="hint">（化学本期无规则层异动；全池另有 2 条异动——农业科学、药理学与毒理学的顶尖论文数——如要看可另选「全部学科」。）</p>
+
+        <h3>七、需人工判断（本产线不生成专业判断）</h3>
+        <ul>
+          <li>【手工：化学发展力度评价】</li>
+          <li>【手工：化学资源投入建议】</li>
+          <li>【手工：是否需要向学院核实数据口径】</li>
+        </ul>
+
+        <blockquote><p>本件为内部参考，非报送件 —— 每个数字都从台账取出、逐点附来源链；模型只组织语言，不接触数字。（固定尾巴压缩为这一段；完整来源链附在文末。）</p></blockquote>
+      </div>
+    </article>
+  </section>
+
+  <!-- ================= 看什么 ================= -->
+  <section class="card">
+    <h2>这稿看什么<span class="tag">审过再进 React</span></h2>
+    <ul>
+      <li><b>控件</b>：下拉选学科（中文）；不选＝全池（和现在一致）。</li>
+      <li><b>内容</b>：二、三节就是「和化学有关」的正文（落点 + 走势，全是实数可回溯）；四、五节才是全池视角。</li>
+      <li><b>图</b>：锚学科 2 张（阈值追赶、排名位次）+ 全池 2 张；未指定时只有全池 2 张。</li>
+      <li><b>兜底</b>：模型不听话（乱选学科/乱改标题）在代码层被拦，回退规则；中文输入不再报错。</li>
+    </ul>
+    <div class="warn">待定（请拍板）：① 示例稿的 7 节结构是否过厚（可把二、三合并为「化学 · 落点与走势」）；② 「固定尾巴」（架构主张/来源链）压缩成一段是否可接受。</div>
+  </section>
+
+  <footer>示例数据：out/202607 · 台账实数（2026-09-29 复核）｜静态稿不入库功能，仅作版式与内容对照。</footer>
+</main>
+</body>
+</html>
