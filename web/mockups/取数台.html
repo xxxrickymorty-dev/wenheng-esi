@@ -1,453 +1,260 @@
 <!doctype html>
-<html lang="zh-CN" data-palette="ynu" data-state="ready">
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light">
-<title>文衡 · 自动取数台（静态稿）</title>
+<title>文衡 · 自动取数台（静态提案）</title>
 <style>
 :root{
-  --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB; --panel-2:#E8ECE5;
-  --ink:#222B25; --ink-2:#3F4C42; --muted:#58655C; --line:#DDE1D8; --line-soft:#E6E9E2;
-  --accent:#1A4B27; --accent-soft:#E5ECE3; --gold:#B19A65; --gold-soft:#F1EBDD;
-  --ok:#28643A; --ok-soft:#E6EFE6; --warn:#62501F; --warn-soft:#F2EDDF;
-  --bad:#B43B31; --bad-soft:#F4E6E2; --shadow:0 2px 5px rgba(34,43,37,.045),0 14px 34px rgba(34,43,37,.055);
-  --radius:16px; --radius-sm:11px;
-}
-html[data-palette="zhu"]{
-  --bg:#f3efe6; --card:#fbf8f1; --panel:#f6f1e7; --panel-2:#eee7d9;
-  --ink:#2f2a24; --ink-2:#51483f; --muted:#665c50; --line:#d9cfbc; --line-soft:#e7dfd0;
-  --accent:#a52f23; --accent-soft:#f0dcd5; --gold:#705017; --gold-soft:#efe3c9;
-  --ok:#356342; --ok-soft:#e2ece0; --warn:#70490f; --warn-soft:#f5ead2;
-  --bad:#9b2f1d; --bad-soft:#f4ddd7;
+  --bg:#F4F3ED;--card:#FFFDF8;--panel:#F0F1EB;
+  --ink:#222B25;--ink-2:#3F4C42;--ink-3:#58655C;
+  --line:#DDE1D8;--line-2:#E6E9E2;
+  --zhu:#1A4B27;--zhu-soft:#E3EDE4;
+  --gold:#B19A65;--gold-soft:#F1EBDD;--gold-ink:#62501F;
+  --ok:#28643A;--ok-soft:#E6F0E7;
+  --warn:#75622D;--warn-soft:#F6EED8;
+  --bad:#8C3B2E;--bad-soft:#F6E4DF;
+  --serif:"Source Han Serif SC","Noto Serif SC",Songti SC,SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,monospace;
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:var(--ink);font:16.5px/1.62 system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;-webkit-font-smoothing:antialiased}
-button,select{font:inherit;color:inherit}
-button{cursor:pointer}
-a{color:inherit}
-:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:7px}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 var(--sans)}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--zhu);outline-offset:2px;border-radius:6px}
 svg{display:block;flex:none}
-.icon{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.icon.sm{width:17px;height:17px}
+.icon{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.icon.big{width:20px;height:20px}
 
-/* 评审工具条只用于切换本静态稿中的示意状态 */
-.reviewbar{display:flex;align-items:center;gap:12px 22px;flex-wrap:wrap;padding:10px max(18px,calc((100vw - 1240px)/2));background:#e0ddd6;border-bottom:1px dashed #c8c2b7;color:#514c46;font-size:13.5px}
-.review-label{display:flex;align-items:center;gap:8px;color:#433e38;font-weight:700}
-.demo-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
-.review-group{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.review-group>span{margin-right:3px;color:#5b554d}
-.seg-btn{min-height:34px;padding:4px 11px;border:1px solid #c9c3b8;border-radius:999px;background:#f5f3ee;font-size:13px;transition:background .16s,border-color .16s,color .16s}
-.seg-btn:hover{background:white}
-.seg-btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:white}
-.seg-btn[aria-pressed="true"]:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+/* ---------- 评审条（只用于切本稿的演示状态） ---------- */
+.review{display:flex;gap:10px 16px;align-items:center;flex-wrap:wrap;padding:9px 22px;background:var(--panel);border-bottom:1px dashed var(--line);font-size:12.5px;color:var(--ink-2)}
+.review b{color:var(--gold-ink)}
+.rbtns{display:flex;gap:6px;flex-wrap:wrap}
+.rbtns button{padding:4px 11px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:12px;color:var(--ink-2)}
+.rbtns button:hover{border-color:var(--zhu);color:var(--zhu)}
+.rbtns button[aria-pressed="true"]{background:var(--zhu);border-color:var(--zhu);color:#fff;font-weight:650}
 
-.topbar{display:flex;align-items:center;gap:24px;padding:12px max(20px,calc((100vw - 1240px)/2));background:var(--card);border-bottom:1px solid var(--line)}
-.brand{display:flex;align-items:center;gap:11px;min-width:max-content;text-decoration:none}
-.brand-mark{display:grid;place-items:center;width:36px;height:36px;border:1px solid var(--accent);border-radius:10px;color:var(--accent);font:600 20px/1 "Songti SC","SimSun",serif}
-.brand-name{font:600 21px/1.1 "Source Han Serif SC","Songti SC","SimSun",serif;letter-spacing:.08em}
-.brand-sub{display:block;margin-top:3px;color:var(--muted);font-size:11px;letter-spacing:.13em}
-.nav{display:flex;align-items:center;gap:5px;margin-left:auto}
-.nav a{display:inline-flex;align-items:center;gap:7px;min-height:42px;padding:7px 13px;border-radius:9px;text-decoration:none;color:var(--ink-2);font-size:14.5px}
-.nav a:hover{background:var(--panel)}
-.nav a[aria-current="page"]{color:var(--accent);background:var(--accent-soft);font-weight:650}
-.user{display:flex;align-items:center;gap:9px;margin-left:5px;padding-left:17px;border-left:1px solid var(--line);font-size:13.5px;color:var(--ink-2);white-space:nowrap}
-.avatar{display:grid;place-items:center;width:31px;height:31px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:700}
+/* ---------- 顶栏（同现工作区） ---------- */
+.topbar{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:9px;font-family:var(--serif);white-space:nowrap}
+.brand strong{font-size:21px;letter-spacing:.04em}
+.brand span{font-size:12px;color:var(--ink-3);letter-spacing:.08em}
+.nav{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+.nav a{padding:7px 11px;color:var(--ink-2);text-decoration:none;border-radius:8px;font-size:14px;white-space:nowrap}
+.nav a.active{background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+.who{display:flex;align-items:center;gap:8px;border-left:1px solid var(--line);padding-left:14px;color:var(--ink-2);font-size:13px;white-space:nowrap}
+.avatar{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);font-weight:700}
 
-main{max-width:1240px;margin:0 auto;padding:25px 22px 64px}
-.crumbs{display:flex;align-items:center;gap:8px;margin:0 0 17px;color:var(--muted);font-size:13.5px}
-.crumbs a{text-decoration:none}
-.crumbs a:hover{text-decoration:underline;text-underline-offset:3px}
-.crumb-sep{color:#989188}
-.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:22px;padding:1px 3px 21px}
-.hero-copy{max-width:760px}
-.eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:7px;color:var(--accent);font-size:13.5px;font-weight:700;letter-spacing:.08em}
-h1,h2,h3,p{margin-top:0}
-h1,h2,h3{font-family:"Source Han Serif SC","Songti SC","SimSun",serif;font-weight:600}
-h1{margin:0;font-size:32px;line-height:1.3;letter-spacing:.015em}
-.hero-copy p{margin:9px 0 0;color:var(--ink-2);font-size:16px}
-.period-box{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);box-shadow:0 2px 6px rgba(49,46,42,.035);white-space:nowrap}
-.period-box .label{color:var(--muted);font-size:12.5px}
-.period-box select{border:0;background:transparent;font-weight:700;font-size:16px;cursor:pointer}
-.demo-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid #d6c9aa;border-radius:999px;background:#f4eddd;color:#634b1c;font-size:12.5px;font-weight:700;white-space:nowrap}
+.wrap{max-width:1150px;margin:auto;padding:18px 22px 70px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 22px;box-shadow:0 1px 2px rgba(34,43,37,.05)}
+h1,h2{margin:0;font-family:var(--serif)}
+h1{font-size:22px}
+.hint{color:var(--ink-3);font-size:13px}
+.mono{font-family:var(--mono)}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:650}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.plain{background:var(--panel);color:var(--ink-2)}
+.num{font-variant-numeric:tabular-nums}
 
-.flow{display:flex;align-items:stretch;margin-bottom:19px;padding:10px 14px;border:1px solid var(--line);border-radius:14px;background:var(--card);box-shadow:0 3px 12px rgba(49,46,42,.035)}
-.flow-step{display:flex;align-items:center;gap:11px;position:relative;flex:1;padding:7px 14px}
-.flow-step+.flow-step:before{content:"";width:30px;height:1px;position:absolute;left:-15px;background:var(--line)}
-.flow-n{display:grid;place-items:center;width:31px;height:31px;border:1px solid var(--line);border-radius:50%;color:var(--muted);font-size:14px;font-weight:700}
-.flow-step.current .flow-n{border-color:var(--accent);background:var(--accent);color:white}
-.flow-step.done .flow-n{border-color:var(--ok);background:var(--ok);color:white}
-.flow-title{font-size:15px;font-weight:650}
-.flow-sub{display:block;margin-top:1px;color:var(--muted);font-size:12.5px}
-.flow-step.current .flow-title{color:var(--accent)}
+/* ---------- 期次数据状态 ---------- */
+.head-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.period{font-size:15px;color:var(--ink-2);border:1px solid var(--line);border-radius:8px;padding:2px 9px;background:var(--panel)}
 
-.layout{display:grid;grid-template-columns:minmax(0,1fr) 288px;align-items:start;gap:18px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
-.main-card{overflow:hidden}
-.card-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:19px 23px 15px;border-bottom:1px solid var(--line-soft)}
-.card-heading{display:flex;align-items:flex-start;gap:12px}
-.head-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:var(--accent-soft);color:var(--accent)}
-.card-heading h2{margin:0;font-size:20px;line-height:1.35}
-.card-heading p{margin:3px 0 0;color:var(--muted);font-size:13.5px}
-.state-chip{display:inline-flex;align-items:center;gap:7px;min-height:32px;padding:5px 11px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink-2);font-size:13px;font-weight:650;white-space:nowrap}
-.state-chip.good{border-color:#c5d5c4;background:var(--ok-soft);color:var(--ok)}
-.state-chip.warn{border-color:#dfcfab;background:var(--warn-soft);color:var(--warn)}
-.state-chip.bad{border-color:#dfc3ba;background:var(--bad-soft);color:var(--bad)}
-.state-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
 
-.period-details{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 23px 3px}
-.date-card{display:flex;gap:11px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line-soft);border-radius:12px;background:var(--panel)}
-.date-icon{color:var(--gold);padding-top:2px}
-.date-label{display:block;color:var(--muted);font-size:12.5px}
-.date-value{display:block;margin-top:2px;font-size:14px;font-weight:650}
-.date-note{display:block;margin-top:1px;color:var(--muted);font-size:12px}
-.period-note{grid-column:1/-1;margin:-3px 1px 1px;color:var(--muted);font-size:12.5px}
+/* ---------- 主动作（每屏 1 个） ---------- */
+.focus{margin-top:14px;background:var(--card);border:1px solid var(--zhu);border-left:5px solid var(--zhu);border-radius:12px;padding:15px 20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.focus-txt{min-width:min(100%,380px)}
+.focus-txt b{font-size:17px;font-family:var(--serif);font-weight:600;display:block}
+.focus-txt .s{display:block;color:var(--ink-2);font-size:13.5px;margin-top:2px}
+.focus-go{margin-left:auto;display:flex;gap:10px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:13.5px;font-weight:600;color:var(--ink);text-decoration:none}
+.btn:hover{filter:brightness(.97)}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff}
+.btn.big{padding:11px 22px;font-size:15.5px}
+.btn[disabled]{opacity:.55;cursor:wait}
+.spin{animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 
-.state-banner{display:flex;align-items:flex-start;gap:11px;margin:14px 23px 0;padding:12px 14px;border:1px solid transparent;border-radius:12px;font-size:14px}
-.state-banner[hidden]{display:none}
-.state-banner .banner-icon{margin-top:1px}
-.state-banner strong{display:block;margin-bottom:1px;font-size:15px}
-.state-banner p{margin:0;color:inherit;opacity:.92}
-.state-banner.ready{background:var(--panel);border-color:var(--line-soft);color:var(--ink-2)}
-.state-banner.running{background:var(--warn-soft);border-color:#e6d6b7;color:var(--warn)}
-.state-banner.failed{background:var(--bad-soft);border-color:#e3c7bf;color:var(--bad)}
-.state-banner.done{background:var(--ok-soft);border-color:#cad9c7;color:var(--ok)}
-.banner-action{margin-left:auto;align-self:center;min-height:40px;padding:7px 12px;border:1px solid currentColor;border-radius:9px;background:transparent;color:inherit;font-size:13px;font-weight:650;white-space:nowrap}
-.banner-action:hover{background:rgba(255,255,255,.38)}
-.status-section{padding:18px 23px 13px}
-.section-title{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:11px}
-.section-title h3{margin:0;font-size:16px}
-.section-title p{margin:0;color:var(--muted);font-size:12.5px}
-.preflight{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
-.preflight-item{display:flex;align-items:center;gap:10px;min-height:62px;padding:10px 11px;border:1px solid var(--line-soft);border-radius:11px;background:var(--panel)}
-.preflight-icon{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:var(--ok-soft);color:var(--ok)}
-.preflight-name{display:block;font-size:13px;font-weight:650}
-.preflight-state{display:block;margin-top:1px;color:var(--ok);font-size:12px}
-.preflight-item.pending .preflight-icon{background:var(--warn-soft);color:var(--warn)}
-.preflight-item.pending .preflight-state{color:var(--warn)}
-.preflight-foot{display:flex;align-items:flex-start;gap:7px;margin:10px 1px 0;color:var(--muted);font-size:12.5px}
-.preflight-foot .icon{margin-top:1px;color:var(--gold)}
+/* ---------- 开始前检查 ---------- */
+.pf{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;padding:9px 14px;background:var(--panel);border:1px solid var(--line-2);border-radius:10px;font-size:13px;color:var(--ink-2)}
+.pf-title{font-weight:650;color:var(--ink)}
+.pf-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:12.5px;color:var(--ink-3)}
+.pf-chip.ok{color:var(--ok);border-color:#BFD7C2;background:var(--ok-soft)}
+.pf-chip.bad{color:var(--bad);border-color:#E4B8AC;background:var(--bad-soft)}
 
-.group-section{padding:5px 23px 21px}
-.group-section .section-title{margin-bottom:10px}
-.group-count{color:var(--muted);font-size:12.5px;font-weight:500}
-.group-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.group-card{min-width:0;border:1px solid var(--line-soft);border-radius:12px;background:#fbfaf7;transition:border-color .15s,box-shadow .15s}
-.group-card.active{border-color:#cdb26f;box-shadow:0 0 0 2px rgba(169,133,63,.12)}
-.group-card.problem{border-color:#d9b4a9;background:#fffaf8}
-.group-card.all-done{border-color:#c6d5c3}
-.group-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 13px 0}
-.source-label{color:var(--muted);font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
-.group-status{display:inline-flex;align-items:center;gap:5px;min-height:25px;padding:2px 8px;border-radius:999px;background:var(--panel-2);color:var(--muted);font-size:11.5px;font-weight:650;white-space:nowrap}
-.group-status.good{background:var(--ok-soft);color:var(--ok)}
-.group-status.live{background:var(--warn-soft);color:var(--warn)}
-.group-status.bad{background:var(--bad-soft);color:var(--bad)}
-.group-main{display:flex;align-items:flex-start;gap:10px;padding:8px 13px 9px}
-.group-icon{display:grid;place-items:center;flex:none;width:34px;height:34px;border:1px solid var(--line-soft);border-radius:10px;color:var(--accent);background:var(--card)}
-.group-copy{min-width:0;flex:1}
-.group-copy h4{margin:0;font-size:14.5px;line-height:1.38;font-weight:700}
-.group-copy p{margin:3px 0 0;color:var(--muted);font-size:12px;line-height:1.5}
-.group-progress{display:flex;align-items:center;gap:8px;padding:0 13px 10px}
-.track{height:6px;flex:1;overflow:hidden;border-radius:99px;background:var(--line-soft)}
-.track i{display:block;width:0;height:100%;border-radius:inherit;background:var(--ok);transition:width .28s ease}
-.group-card.active .track i{background:#a9853f}
-.group-card.problem .track i{background:var(--bad)}
-.progress-text{min-width:78px;text-align:right;color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}
-.file-detail{border-top:1px solid var(--line-soft)}
-.file-detail summary{display:flex;align-items:center;gap:6px;min-height:38px;padding:6px 13px;cursor:pointer;list-style:none;color:var(--ink-2);font-size:12px;font-weight:600}
-.file-detail summary::-webkit-details-marker{display:none}
-.file-detail summary .chev{margin-left:auto;color:var(--muted);transition:transform .16s}
-.file-detail[open] summary .chev{transform:rotate(90deg)}
-.file-list{max-height:212px;overflow:auto;margin:0;padding:0 12px 10px;list-style:none}
-.file-row{display:flex;align-items:flex-start;gap:7px;padding:5px 2px;border-top:1px dashed var(--line-soft);font-size:11.5px;line-height:1.45}
-.file-mark{color:var(--muted);padding-top:1px}
-.file-mark.good{color:var(--ok)}
-.file-mark.bad{color:var(--bad)}
-.file-name{min-width:0;overflow-wrap:anywhere;font-family:ui-monospace,"Cascadia Code",Consolas,monospace;font-size:11px;color:var(--ink-2)}
-.file-cn{display:block;color:var(--muted);font-family:system-ui,"Microsoft YaHei",sans-serif;font-size:10.8px}
-.file-result{margin-left:auto;color:var(--muted);font-size:10.8px;white-space:nowrap}
-.file-result.good{color:var(--ok)}
-.file-result.bad{color:var(--bad)}
-.group-retry{display:none;margin:0 13px 11px;padding:6px 10px;min-height:34px;border:1px solid var(--bad);border-radius:8px;background:transparent;color:var(--bad);font-size:12px;font-weight:650}
-.group-retry:hover{background:var(--bad-soft)}
-.group-card.problem .group-retry{display:inline-flex;align-items:center;gap:6px}
 
-.action-row{display:flex;align-items:center;gap:11px;flex-wrap:wrap;padding:1px 23px 20px}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:47px;padding:10px 19px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:15px;font-weight:650;text-decoration:none;transition:transform .12s,filter .12s,background .12s}
-.btn:hover{background:var(--panel)}
-.btn:active{transform:translateY(1px)}
-.btn:disabled{cursor:wait;opacity:.62;transform:none}
-.btn.primary{border-color:var(--accent);background:var(--accent);color:#fff;font-size:16px;padding:10px 21px}
-.btn.primary:hover{filter:brightness(1.06)}
-.btn.secondary{background:transparent;color:var(--ink-2)}
-.action-note{color:var(--muted);font-size:12.5px}
+/* ---------- 取数清单 ---------- */
+.list-note{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 2px;color:var(--ink-3);font-size:12.5px}
+.groups{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;align-items:start}
+.g{min-width:0;border:1px solid var(--line-2);border-radius:11px;background:var(--card);padding:11px 13px 9px}
+.g.done{border-color:#C6D5C3}
+.g.live{border-color:var(--gold)}
+.g.fail{border-color:#E4B8AC;background:#FFFBFA}
+.g-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.g-src{font-size:12.5px;color:var(--ink-3);font-weight:650;letter-spacing:.03em}
+.g-state{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:650;color:var(--ink-3)}
+.g-state.ok{color:var(--ok)}
+.g-state.live{color:var(--gold-ink)}
+.g-state.bad{color:var(--bad)}
+.g-state .sd{width:7px;height:7px;border-radius:50%;background:currentColor}
+.g-name{display:flex;align-items:center;gap:8px;margin:7px 0 0;font-weight:650;font-size:14.5px;font-family:var(--serif)}
+.g-name .ic{color:var(--zhu)}
+.g-bar{display:flex;align-items:center;gap:8px;margin-top:8px}
+.track{flex:1;height:6px;border-radius:99px;background:var(--line-2);overflow:hidden}
+.track i{display:block;width:0;height:100%;border-radius:99px;background:var(--ok);transition:width .25s}
+.g.live .track i{background:var(--gold)}
+.g.fail .track i{background:var(--bad)}
+.g-num{font-size:12.5px;color:var(--ink-3);min-width:70px;text-align:right;font-variant-numeric:tabular-nums}
+.g-files{margin-top:8px;border-top:1px dashed var(--line-2)}
+.g-files summary{display:flex;align-items:center;gap:6px;padding:6px 1px;cursor:pointer;list-style:none;color:var(--ink-2);font-size:12.5px;font-weight:600}
+.g-files summary::-webkit-details-marker{display:none}
+.g-files summary .chev{margin-left:auto;color:var(--ink-3);transition:transform .15s}
+.g-files[open] summary .chev{transform:rotate(90deg)}
+.file-list{max-height:230px;overflow:auto;margin:0;padding:0 1px 6px;list-style:none}
+.file-row{display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-top:1px dashed var(--line-2);font-size:12.5px}
+.f-mark{color:var(--ink-3);padding-top:1px}
+.f-mark.ok{color:var(--ok)}
+.f-mark.bad{color:var(--bad)}
+.f-name{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);word-break:break-all}
+.f-cn{display:block;color:var(--ink-3);font-family:var(--sans);font-size:12px}
+.f-res{margin-left:auto;white-space:nowrap;font-size:12px;color:var(--ink-3)}
+.f-res.ok{color:var(--ok)}
+.f-res.bad{color:var(--bad)}
+.g-note{margin:2px 0 4px;color:var(--ink-3);font-size:12px}
+.g-retry{display:none;margin-top:8px;padding:5px 11px;border:1px solid var(--bad);border-radius:8px;background:transparent;color:var(--bad);font-size:12.5px;font-weight:650}
+.g-retry:hover{background:var(--bad-soft)}
+.g.fail .g-retry{display:inline-flex;align-items:center;gap:6px}
 
-.side{display:grid;gap:14px}
-.side-card{padding:17px 17px 16px}
-.side-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
-.side-title h3{margin:0;font-size:16px}
-.demo-id{padding:3px 7px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--muted);font:11px ui-monospace,"Cascadia Code",Consolas,monospace}
-.summary-progress{display:flex;align-items:center;gap:13px;padding:2px 0 14px}
-.ring{display:grid;place-items:center;width:65px;height:65px;border-radius:50%;background:conic-gradient(var(--ok) 0deg,var(--line-soft) 0deg);position:relative;flex:none}
-.ring:before{content:"";position:absolute;inset:6px;border-radius:50%;background:var(--card)}
-.ring span{z-index:1;color:var(--ink);font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
-.summary-big{display:block;font-size:18px;font-weight:750;font-variant-numeric:tabular-nums}
-.summary-small{display:block;color:var(--muted);font-size:12px}
-.side-stat{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line-soft);font-size:13px}
-.side-stat span:first-child{color:var(--muted)}
-.side-stat strong{font-weight:650;text-align:right}
-.small-state{color:var(--ink-2)}
-.side-message{margin:11px 0 0;padding:10px 11px;border-radius:9px;background:var(--panel);color:var(--ink-2);font-size:12.5px}
-.side-message.good{background:var(--ok-soft);color:var(--ok)}
-.side-message.warn{background:var(--warn-soft);color:var(--warn)}
-.side-message.bad{background:var(--bad-soft);color:var(--bad)}
-.rule-list{display:grid;gap:11px;margin:0;padding:0;list-style:none}
-.rule{display:grid;grid-template-columns:21px 1fr;gap:8px;color:var(--ink-2);font-size:12.5px;line-height:1.48}
-.rule .icon{color:var(--gold);width:18px;height:18px}
-.rule strong{color:var(--ink);font-weight:650}
+/* ---------- 折叠说明 / 页脚 ---------- */
+.fold{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-top:16px}
+.fold > summary{padding:11px 18px;cursor:pointer;font-size:14.5px;display:flex;align-items:center;gap:10px;list-style:none}
+.fold > summary::-webkit-details-marker{display:none}
+.fold > summary::before{content:"▸";color:var(--zhu)}
+.fold[open] > summary::before{content:"▾"}
+.fold > summary .sm{color:var(--ink-3);font-size:13px;margin-left:auto}
+.fold-body{padding:2px 18px 14px;border-top:1px dashed var(--line-2)}
+.fold-body p{margin:8px 0 0;font-size:13.5px;color:var(--ink-2);line-height:1.85}
+.foot{margin:12px 0 0;color:var(--ink-3);font-size:12.5px}
 
-.handoff{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;margin-top:18px;padding:16px 19px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
-.handoff-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:11px;background:var(--gold-soft);color:var(--gold)}
-.handoff h2{margin:0;font-size:16px}
-.handoff p{margin:2px 0 0;color:var(--muted);font-size:13px}
-.handoff .btn{min-height:42px;padding:8px 13px;font-size:13px}
-.fineprint{margin:13px 3px 0;color:var(--muted);font-size:12px}
-.spin{animation:spin 1.05s linear infinite;transform-origin:center}
-@keyframes spin{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
-@media (max-width:980px){
-  .layout{grid-template-columns:minmax(0,1fr) 250px;gap:13px}
-  .topbar{gap:12px}.nav a{padding:7px 9px;font-size:13.5px}.user{padding-left:11px}
-  .preflight{grid-template-columns:1fr}
-}
+/* ---------- ⓘ 弹层 ---------- */
+.dot{width:20px;height:20px;min-width:20px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--card);color:var(--ink-3);font:12px/18px var(--serif);cursor:pointer}
+.dot:hover{border-color:var(--zhu);color:var(--zhu)}
+.pop{position:fixed;z-index:50;max-width:360px;display:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 13px;box-shadow:0 8px 26px rgba(34,43,37,.16);font-size:13px;color:var(--ink-2)}
+.pop b{color:var(--ink)}
+
+@media (max-width:900px){.groups{grid-template-columns:1fr}}
 @media (max-width:760px){
-  .reviewbar{padding:10px 14px;gap:9px 15px}.review-label{width:100%}
-  .topbar{padding:10px 15px;flex-wrap:wrap}.brand{margin-right:auto}.nav{order:3;width:100%;margin:0;overflow:auto}.nav a{min-width:max-content}
-  .user{border:0;padding:0;margin:0}.user .user-name{display:none}
-  main{padding:18px 13px 42px}.crumbs{font-size:12px;margin-bottom:12px}
-  .hero{align-items:flex-start;flex-direction:column;padding-bottom:14px;gap:11px}h1{font-size:27px}.hero-copy p{font-size:15px}
-  .flow{padding:8px 4px;overflow:auto}.flow-step{min-width:166px;padding:6px 9px;gap:8px}.flow-step+.flow-step:before{width:15px;left:-9px}
-  .layout{grid-template-columns:1fr}.side{grid-template-columns:1fr 1fr;order:2}
-  .card-head{padding:16px 15px 13px}.period-details{padding:13px 15px 2px;grid-template-columns:1fr}.period-note{grid-column:auto}
-  .state-banner{margin:12px 15px 0;flex-wrap:wrap}.banner-action{margin-left:30px}
-  .status-section{padding:15px 15px 11px}.group-section{padding:4px 15px 17px}.action-row{padding:1px 15px 16px}
-  .group-grid{grid-template-columns:1fr 1fr;gap:8px}.group-top{padding:10px 10px 0}.group-main{padding:7px 10px}.group-progress{padding:0 10px 9px}.file-detail summary{padding-left:10px;padding-right:10px}
-  .handoff{grid-template-columns:auto 1fr;gap:11px;padding:14px}.handoff .btn{grid-column:2;justify-self:start}
+  .topbar{flex-wrap:wrap;gap:8px 12px}
+  .nav{order:3;width:100%;margin-left:0;overflow-x:auto}
+  .wrap{padding:14px 14px 60px}
+  .focus-go{margin-left:0}
+  .focus-go .btn{width:100%;justify-content:center}
 }
-@media (max-width:520px){
-  .review-group{width:100%;flex-wrap:wrap}.review-group>span{width:54px;flex:0 0 54px}
-  .period-box{width:100%;justify-content:space-between}.flow-step{min-width:154px}.flow-title{font-size:13.5px}.flow-sub{font-size:11px}
-  .group-grid{grid-template-columns:1fr}.side{grid-template-columns:1fr}.group-copy h4{font-size:15px}.group-copy p{font-size:12.5px}
-  .card-heading h2{font-size:18px}.card-heading p{font-size:12.5px}.state-chip{font-size:11.5px;padding:4px 8px}
-  .action-row .btn{width:100%}.action-note{width:100%;text-align:center}
-  .handoff{grid-template-columns:1fr}.handoff-icon{display:none}.handoff .btn{grid-column:auto;width:100%}
-}
-html[data-palette="ynu"] .reviewbar{background:#E8ECE5;border-bottom-color:#CDD5CA;color:var(--ink-2)}
-html[data-palette="ynu"] .review-label{color:var(--ink)}
-html[data-palette="ynu"] .review-group>span{color:var(--ink-2)}
-html[data-palette="ynu"] .seg-btn{border-color:#C8D0C6;background:var(--card)}
-html[data-palette="ynu"] .seg-btn:hover{background:#EEF1EA}
-html[data-palette="ynu"] .seg-btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
-html[data-palette="ynu"] .demo-pill{border-color:var(--gold);background:var(--accent-soft);color:var(--accent)}
-html[data-palette="ynu"] .hero{align-items:center;margin:0 0 18px;padding:23px 24px;border-radius:16px;background:var(--accent);color:#F6F4EA}
-html[data-palette="ynu"] .hero .eyebrow{color:#DCCB9E}
-html[data-palette="ynu"] .hero h1{color:#FCFAF1}
-html[data-palette="ynu"] .hero-copy p{color:rgba(246,244,234,.86)}
-html[data-palette="ynu"] .hero .demo-pill{border-color:rgba(217,201,157,.64);background:rgba(177,154,101,.2);color:#F4ECD2}
-html[data-palette="ynu"] .hero .period-box{color:var(--ink)}
-html[data-palette="ynu"] .hero .period-box select{color:var(--ink)}
-html[data-palette="ynu"] .crumb-sep{color:#829086}
-html[data-palette="ynu"] .group-card{background:var(--card)}
-html[data-palette="ynu"] .group-card.active{border-color:var(--gold);box-shadow:0 0 0 2px rgba(177,154,101,.16)}
-html[data-palette="ynu"] .group-card.problem{border-color:#DDAEA7;background:#FCF7F5}
-html[data-palette="ynu"] .group-card.all-done{border-color:#BFD2C0}
-html[data-palette="ynu"] .period-box{box-shadow:0 2px 6px rgba(34,43,37,.035)}
-html[data-palette="ynu"] .flow{box-shadow:0 3px 12px rgba(34,43,37,.035)}
-/* 让评审工具条的当前选项在所有配色和悬停状态下都保持清晰 */
-.reviewbar .seg-btn[aria-pressed="true"],
-.reviewbar .seg-btn[aria-pressed="true"]:hover{background:var(--accent);border-color:var(--accent);color:#fff}
-@media (max-width:760px){html[data-palette="ynu"] .hero{align-items:flex-start;padding:20px 18px}}
-@media (max-width:760px){
-  html[data-palette="ynu"] .hero .eyebrow{flex-wrap:wrap;align-items:center}
-  html[data-palette="ynu"] .hero .eyebrow>span:nth-child(-n+3){flex:none;white-space:nowrap}
-  html[data-palette="ynu"] .hero .demo-pill{flex:0 0 auto}
-}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}*{transition:none!important}}
 </style>
 </head>
 <body>
 <svg aria-hidden="true" width="0" height="0" style="position:absolute;overflow:hidden">
-  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
-  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.8 19a1.5 1.5 0 0 0 1.3 2.2h15.8a1.5 1.5 0 0 0 1.3-2.2L12 3Z"/><path d="M12 9v4m0 3h.01"/></symbol>
-  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
-  <symbol id="i-browser" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 6.5h.01M10 6.5h.01"/></symbol>
-  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v3"/></symbol>
-  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></symbol>
-  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/></symbol>
-  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></symbol>
-  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 9a7 7 0 0 1 11.6-2L20 12M4 12l2.9 5a7 7 0 0 0 11.6-2"/></symbol>
-  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
-  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></symbol>
-  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
-  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5Zm0 0v16M8 7h8M8 11h8"/></symbol>
-  <symbol id="i-building" viewBox="0 0 24 24"><path d="M3 21h18M5 21V5l7-3 7 3v16M9 9h.01M15 9h.01M9 13h.01M15 13h.01M10 21v-4h4v4"/></symbol>
-  <symbol id="i-stack" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 2.8 20h18.4z"/><path d="M12 10v4.5M12 17.4v.1"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-browser" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M3 9h18M6.6 6.8h.01M9.4 6.8h.01"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="10.5" rx="2"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7zm0 0v4h4"/></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2"/><path d="M3.8 12h16.4M12 3.8c2.3 2.2 3.4 5 3.4 8.2s-1.1 6-3.4 8.2c-2.3-2.2-3.4-5-3.4-8.2s1.1-6 3.4-8.2Z"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><path d="M4 20h16M6 20V5l6-2 6 2v15M9.5 9h.01M14.5 9h.01M9.5 13h.01M14.5 13h.01"/></symbol>
+  <symbol id="i-stack" viewBox="0 0 24 24"><path d="m12 3.5 8.5 4.5L12 12.5 3.5 8Zm-8.5 8L12 16l8.5-4.5M3.5 16 12 20.5 20.5 16"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v10.5m-4.5-4L12 15l4.5-4.5M5 19.5h14"/></symbol>
 </svg>
 
-<div class="reviewbar" aria-label="静态稿评审工具">
-  <span class="review-label"><i class="demo-dot" aria-hidden="true"></i>静态稿 · 所有数据与状态均为演示</span>
-  <div class="review-group" role="group" aria-label="切换演示场景">
-    <span>场景</span>
-    <button class="seg-btn" type="button" data-state-choice="ready" aria-pressed="true">准备开始</button>
-    <button class="seg-btn" type="button" data-state-choice="running" aria-pressed="false">取数进行中</button>
-    <button class="seg-btn" type="button" data-state-choice="failed" aria-pressed="false">有一组未齐</button>
-    <button class="seg-btn" type="button" data-state-choice="done" aria-pressed="false">全部核验通过</button>
-  </div>
-  <div class="review-group" role="group" aria-label="切换配色">
-    <span>配色</span>
-    <button class="seg-btn" type="button" data-palette-choice="ynu" aria-pressed="true">云大绿</button>
-    <button class="seg-btn" type="button" data-palette-choice="zhu" aria-pressed="false">朱砂</button>
-  </div>
+<div class="review">
+  <b>静态提案稿 · 自动取数台（新风格）</b>
+  <span class="rbtns" role="group" aria-label="切换演示场景">
+    <button type="button" data-sc="ready" aria-pressed="true">准备开始</button>
+    <button type="button" data-sc="blocked" aria-pressed="false">检查未过</button>
+    <button type="button" data-sc="running" aria-pressed="false">取数中</button>
+    <button type="button" data-sc="partial" aria-pressed="false">有未通过</button>
+    <button type="button" data-sc="done" aria-pressed="false">待入库</button>
+    <button type="button" data-sc="accepted" aria-pressed="false">已入库</button>
+  </span>
+  <span>数据均为演示；页内按钮只演示下一步，不连接真实网站；清单可展开。</span>
 </div>
 
 <header class="topbar">
-  <a class="brand" href="#top" aria-label="文衡工作区首页">
-    <span class="brand-mark" aria-hidden="true">文</span>
-    <span><span class="brand-name">文衡</span><span class="brand-sub">学科信息参考</span></span>
-  </a>
-  <nav class="nav" aria-label="主导航">
-    <a href="#top"><svg class="icon sm" aria-hidden="true"><use href="#i-book"/></svg>本期任务</a>
-    <a href="#acquisition" aria-current="page"><svg class="icon sm" aria-hidden="true"><use href="#i-download"/></svg>自动取数</a>
-    <a href="#handoff"><svg class="icon sm" aria-hidden="true"><use href="#i-file"/></svg>报告与审核</a>
+  <div class="brand"><strong>文衡</strong><span>学科信息参考</span></div>
+  <nav class="nav" aria-label="工作区">
+    <a href="#">生成台</a><a class="active" href="#">取数</a><a href="#">报告</a><a href="#">审核台</a><a href="#">台账</a><a href="#">分析台</a><a href="#">预测台</a>
   </nav>
-  <div class="user"><span class="avatar" aria-hidden="true">馆</span><span class="user-name">馆员工作区</span></div>
+  <div class="who"><span class="avatar">卜</span>卜彤 · 管理员</div>
 </header>
 
-<main id="top">
-  <div class="crumbs"><a href="#top">本期任务</a><span class="crumb-sep">/</span><span>自动取数</span></div>
-  <section class="hero" aria-labelledby="page-title">
-    <div class="hero-copy">
-      <div class="eyebrow"><span>第 1 步</span><span aria-hidden="true">·</span><span>获取本期原始数据</span><span class="demo-pill">演示期次 202609</span></div>
-      <h1 id="page-title">先把本期数据取齐</h1>
-      <p>自动取得 ESI 与 InCites 文件。每个文件都核验通过后，再整理监测表、生成报告。</p>
+<main class="wrap">
+  <!-- ================= 期次数据状态 ================= -->
+  <section class="card">
+    <div class="head-row">
+      <h1>自动取数台</h1>
+      <span class="period mono">202609</span>
+      <span class="pill plain" id="state-pill">还没开始</span>
+      <span class="hint num" id="state-count">已核验 0 / 64</span>
+      <button class="dot" type="button" data-info="<b>这行状态怎么来的</b><br>进度按逐份核验结果统计：只有核验通过的文件才计入。<br>数据期取自网站页面显示值（ESI 2026 年 9 月、InCites 截至 2026-08-31），不以下载当天代替。">ⓘ</button>
     </div>
-    <label class="period-box"><span class="label">报告期次</span>
-      <select id="period-select" aria-label="报告期次">
-        <option selected>202609 · 2026 年 9 月（演示）</option>
-        <option>202607 · 2026 年 7 月</option>
-        <option>202605 · 2026 年 5 月</option>
-      </select>
-    </label>
   </section>
 
-  <ol class="flow" aria-label="报告处理步骤">
-    <li class="flow-step current"><span class="flow-n">1</span><span><span class="flow-title">获取原始数据</span><span class="flow-sub">当前步骤</span></span></li>
-    <li class="flow-step"><span class="flow-n">2</span><span><span class="flow-title">整理监测表</span><span class="flow-sub">馆员检查后放入</span></span></li>
-    <li class="flow-step"><span class="flow-n">3</span><span><span class="flow-title">生成并审核报告</span><span class="flow-sub">数字逐项核对</span></span></li>
-  </ol>
-
-  <div class="layout" id="acquisition">
-    <section class="card main-card" aria-labelledby="acq-title">
-      <div class="card-head">
-        <div class="card-heading">
-          <span class="head-icon"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg></span>
-          <span><h2 id="acq-title">本期取数任务</h2><p>ESI 6 组 · InCites 3 组 · 逐组查看进度与文件</p></span>
-        </div>
-        <span class="state-chip" id="overall-chip"><i class="state-dot" aria-hidden="true"></i><span id="overall-label">等待开始</span></span>
-      </div>
-
-      <div class="period-details" aria-label="数据期次说明">
-        <div class="date-card">
-          <span class="date-icon"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg></span>
-          <span><span class="date-label">ESI 数据更新期</span><span class="date-value" id="esi-period-value">开始后读取网站显示值</span><span class="date-note">用它确认本次取数对应的期次</span></span>
-        </div>
-        <div class="date-card">
-          <span class="date-icon"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg></span>
-          <span><span class="date-label">InCites 数据截止日</span><span class="date-value" id="incites-period-value">开始后单独读取并记录</span><span class="date-note">与 ESI 日期分开保存</span></span>
-        </div>
-        <p class="period-note"><svg class="icon sm" style="display:inline-block;vertical-align:-3px" aria-hidden="true"><use href="#i-info"/></svg> 网站日期以页面显示为准，不用下载当天日期代替。</p>
-      </div>
-
-      <div class="state-banner ready" data-banner="ready" role="status">
-        <svg class="icon banner-icon" aria-hidden="true"><use href="#i-info"/></svg>
-        <div><strong>准备就绪，可以开始</strong><p>示例显示：取数专用浏览器已连接，ESI 与 InCites 都已登录。</p></div>
-      </div>
-      <div class="state-banner running" data-banner="running" role="status" hidden>
-        <svg class="icon banner-icon" aria-hidden="true"><use href="#i-clock"/></svg>
-        <div><strong>取数正在进行</strong><p>示例进度：已取得的文件正在逐项检查；只有检查通过后才计入完成。</p></div>
-      </div>
-      <div class="state-banner failed" data-banner="failed" role="status" hidden>
-        <svg class="icon banner-icon" aria-hidden="true"><use href="#i-alert"/></svg>
-        <div><strong>有一组文件还没齐</strong><p>示例：云大论文清单应有 6 份，目前 5 份核验通过；重试这一组即可。</p></div>
-        <button class="banner-action" type="button" data-demo-retry>演示重试此组</button>
-      </div>
-      <div class="state-banner done" data-banner="done" role="status" hidden>
-        <svg class="icon banner-icon" aria-hidden="true"><use href="#i-check"/></svg>
-        <div><strong>全部取数完成，64 份文件逐项核验通过</strong><p>现在可以检查并整理监测表，再进入报告生成。</p></div>
-      </div>
-      <div class="state-banner done" data-banner="retried" role="status" hidden>
-        <svg class="icon banner-icon" aria-hidden="true"><use href="#i-check"/></svg>
-        <div><strong>这一组已补齐，仍有 5 组待取数</strong><p>此前通过的 3 组保持不变；示例重试只更新本页状态，其余文件仍需逐组取得并核验。</p></div>
-      </div>
-
-      <section class="status-section" aria-labelledby="preflight-title">
-        <div class="section-title"><h3 id="preflight-title">开始前检查</h3><p>示例状态 · 不含账号或登录信息</p></div>
-        <div class="preflight">
-          <div class="preflight-item" data-preflight="browser"><span class="preflight-icon"><svg class="icon sm" aria-hidden="true"><use href="#i-browser"/></svg></span><span><span class="preflight-name">取数浏览器</span><span class="preflight-state">已连接（示例）</span></span></div>
-          <div class="preflight-item" data-preflight="esi"><span class="preflight-icon"><svg class="icon sm" aria-hidden="true"><use href="#i-lock"/></svg></span><span><span class="preflight-name">ESI 网站</span><span class="preflight-state">已登录（示例）</span></span></div>
-          <div class="preflight-item" data-preflight="incites"><span class="preflight-icon"><svg class="icon sm" aria-hidden="true"><use href="#i-lock"/></svg></span><span><span class="preflight-name">InCites 网站</span><span class="preflight-state">已登录（示例）</span></span></div>
-        </div>
-        <p class="preflight-foot"><svg class="icon sm" aria-hidden="true"><use href="#i-info"/></svg><span>真实使用时，馆员先在专用浏览器登录；此页面只展示流程，不连接浏览器，也不会下载或保存文件。</span></p>
-      </section>
-
-      <section class="group-section" aria-labelledby="group-title">
-        <div class="section-title"><h3 id="group-title">取数清单 <span class="group-count">共 9 组 · 预期 64 份文件</span></h3><p>展开每组可查看文件核验结果</p></div>
-        <div class="group-grid" id="group-grid" aria-live="polite"></div>
-      </section>
-
-      <div class="action-row">
-        <button class="btn primary" id="main-action" type="button"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg><span>开始取数（演示）</span></button>
-        <span class="action-note" id="action-note">按钮只切换演示场景，不会开始实际下载。</span>
-      </div>
-    </section>
-
-    <aside class="side" aria-label="任务摘要与操作说明">
-      <section class="card side-card" aria-labelledby="summary-title">
-        <div class="side-title"><h3 id="summary-title">本次任务摘要</h3><span class="demo-id">示例记录</span></div>
-        <div class="summary-progress">
-          <div class="ring" id="progress-ring" aria-label="0 of 64 files verified"><span id="ring-text">0%</span></div>
-          <div><span class="summary-big" id="verified-summary">0 / 64</span><span class="summary-small">份文件逐项核验通过</span></div>
-        </div>
-        <div class="side-stat"><span>已取得文件</span><strong id="downloaded-summary">0 / 64 份</strong></div>
-        <div class="side-stat"><span>有问题</span><strong id="failed-summary" class="small-state">0 份</strong></div>
-        <div class="side-stat"><span>报告期次</span><strong>202609 · 演示</strong></div>
-        <div class="side-message" id="summary-message">开始后会逐组取数，并单独检查每个文件。</div>
-      </section>
-
-      <section class="card side-card" aria-labelledby="rules-title">
-        <div class="side-title"><h3 id="rules-title">完成后还要做</h3></div>
-        <ul class="rule-list">
-          <li class="rule"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span><strong>下载完成不等于台账已更新。</strong>馆员还需检查文件并整理监测表。</span></li>
-          <li class="rule"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg><span>ESI 更新期和 InCites 截止日分别记录，方便确认数据来源。</span></li>
-          <li class="rule"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span>登录由馆员完成；页面不显示或保存账号密码。</span></li>
-        </ul>
-      </section>
-    </aside>
+  <!-- ================= 主动作 ================= -->
+  <div class="focus">
+    <div class="focus-txt">
+      <b id="focus-title">开始前检查通过，可以开始取数。</b>
+      <span class="s" id="focus-sub">9 组文件，取到后逐份核验。</span>
+    </div>
+    <span class="focus-go"><button class="btn primary big" id="focus-btn" type="button">开始取数</button></span>
   </div>
 
-  <section class="handoff" id="handoff" aria-labelledby="handoff-title">
-    <span class="handoff-icon"><svg class="icon" aria-hidden="true"><use href="#i-stack"/></svg></span>
-    <span><h2 id="handoff-title">下一步：检查并整理监测表</h2><p>确认数据期次与文件齐全后，由馆员整理输入文件，再进入报告生成。</p></span>
-    <a class="btn secondary" href="#top">返回本期任务 <svg class="icon sm" aria-hidden="true"><use href="#i-arrow"/></svg></a>
-  </section>
-  <p class="fineprint">静态评审稿：所有期次、进度、文件结果均为示意；Pi SDK、真实取数、文件写入与任务记录尚未接入。</p>
+  <!-- ================= 开始前检查 ================= -->
+  <div class="pf" role="group" aria-label="开始前检查">
+    <span class="pf-title">开始前检查</span>
+    <span class="pf-chip ok" data-pf="browser"><svg class="icon" aria-hidden="true"><use href="#i-browser"/></svg><span>取数专用浏览器 · 已连接</span></span>
+    <span class="pf-chip ok" data-pf="esi"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span>ESI 网站 · 已登录</span></span>
+    <span class="pf-chip ok" data-pf="incites"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span>InCites 网站 · 已登录</span></span>
+    <button class="dot" type="button" data-info="<b>开始前检查什么</b><br>检查取数专用的浏览器是否开着、两家网站是否已登录。登录由馆员手动完成；本页不接触、不保存账号密码。检查通过后才能开始。">ⓘ</button>
+  </div>
+
+  <!-- ================= 取数清单（明细，默认收起） ================= -->
+  <details class="fold" id="list-fold">
+    <summary>取数清单<span class="sm">9 组 · 64 份</span></summary>
+    <div class="fold-body">
+      <p class="list-note">逐份核验，通过才计入；没通过的可在本组重试。<button class="dot" type="button" data-info="<b>核验与重试</b><br>每组文件收齐后逐份检查；没通过的只影响这一组——点「重试这一组」补齐，已通过的不重复下载。取数与核验明细记入运行档案。">ⓘ</button></p>
+      <div class="groups" id="groups" aria-live="polite"></div>
+    </div>
+  </details>
+
+  <!-- ================= 唯一一份说明 ================= -->
+  <details class="fold">
+    <summary>说明 · 口径、来源与只读声明<span class="sm">全站仅此一份</span></summary>
+    <div class="fold-body">
+      <p>
+        ① 文件取自 ESI 与 InCites 官网，数据期以网站页面显示为准；
+        ② 每份文件逐项核验、通过才计入——下载完成不等于入库，入库也不等于台账已更新，监测表仍由馆员整理；
+        ③ 登录由馆员在取数专用浏览器完成，本页不显示、不保存账号；
+        ④ 取数与核验明细记入运行档案。来源：本期取数记录。
+      </p>
+    </div>
+  </details>
+  <p class="foot">静态提案稿：期次、进度与文件结果均为演示；真实取数、文件写入与档案留痕尚未接入。</p>
 </main>
 
+<div class="pop" id="pop"></div>
+
 <script>
-/* 本地演示数据；交互只更新当前页面，不连接服务、不下载或写入文件。 */
+/* 本稿只演示界面与状态流转；不连接服务、不下载、不写入。 */
 (function(){
   "use strict";
-  const subjects = [
+
+  /* ---------- 清单数据（与取数脚本的分组一致：ESI 6 组 + InCites 3 组） ---------- */
+  var SUBJECTS = [
     ["Agricultural Sciences.xlsx","农业科学"], ["Biology & Biochemistry.xlsx","生物学与生物化学"],
     ["Chemistry.xlsx","化学"], ["Clinical Medicine.xlsx","临床医学"],
     ["Computer Science.xlsx","计算机科学"], ["Economics & Business.xlsx","经济与商业"],
@@ -460,133 +267,238 @@ html[data-palette="ynu"] .flow{box-shadow:0 3px 12px rgba(34,43,37,.035)}
     ["Plant & Animal Science.xlsx","植物与动物学"], ["Psychiatry Psychology.xlsx","精神病学与心理学"],
     ["Social Sciences, General.xlsx","社会科学"], ["Space Science.xlsx","空间科学"]
   ];
-  const incitesSubjects = subjects.map(function(file){
-    return [file[0].replace("Social Sciences, General.xlsx","Social Sciences, general.xlsx"), file[1]];
+  var INCITES_SUBJECTS = SUBJECTS.map(function(f){
+    return [f[0].replace("Social Sciences, General.xlsx","Social Sciences, general.xlsx"), f[1]];
   });
-  const groups = [
-    {id:"esi-institutions",source:"ESI · 1 / 6",title:"全球机构总表",desc:"全球机构排名与指标",icon:"globe",files:[["Institutions.xlsx","全球机构总表"]]},
-    {id:"esi-subjects",source:"ESI · 2 / 6",title:"22 学科机构表",desc:"每个学科一份，共 22 份",icon:"building",files:subjects},
-    {id:"esi-fields",source:"ESI · 3 / 6",title:"全球、中国、云大学科汇总",desc:"三种范围各一份，共 3 份",icon:"stack",files:[["全球学科.xlsx","全球学科汇总"],["中国学科.xlsx","中国学科汇总"],["云大学科.xlsx","云南大学学科汇总"]]},
-    {id:"esi-papers",source:"ESI · 4 / 6",title:"云大论文清单",desc:"Top、高被引、热点论文；各有 Excel 与 CSV，文件名前的数字随当期篇数变化",icon:"file",files:[["<篇数>top.xlsx","Top 论文 · Excel"],["<篇数>top.csv","Top 论文 · CSV"],["<篇数>highly cited.xlsx","高被引论文 · Excel"],["<篇数>highly cited.csv","高被引论文 · CSV"],["<篇数>hot papers.xlsx","热点论文 · Excel"],["<篇数>hot papers.csv","热点论文 · CSV"]]},
-    {id:"esi-thresholds",source:"ESI · 5 / 6",title:"三张阈值表",desc:"ESI、高被引、热点论文阈值",icon:"file",files:[["ThresholdESI.xlsx","ESI 阈值"],["ThresholdHighlyCited.xlsx","高被引论文阈值"],["ThresholdHot.xlsx","热点论文阈值"]]},
-    {id:"esi-baselines",source:"ESI · 6 / 6",title:"三张基线表",desc:"引用率、百分位、学科排名基线",icon:"file",files:[["BaselineCitationRates.xlsx","引用率基线"],["BaselinePercentiles.xlsx","百分位基线"],["BaselineFieldRankings.xlsx","学科排名基线"]]},
-    {id:"incites-subjects",source:"InCites · 1 / 3",title:"22 学科全球机构排名",desc:"每个学科一份，共 22 份",icon:"building",files:incitesSubjects},
-    {id:"incites-fields",source:"InCites · 2 / 3",title:"全球、中国、云大研究领域汇总",desc:"三种范围各一份，共 3 份",icon:"stack",files:[["全球 研究领域.xlsx","全球研究领域"],["中国研究领域.xlsx","中国研究领域"],["云南大学研究领域.xlsx","云南大学研究领域"]]},
-    {id:"incites-institutions",source:"InCites · 3 / 3",title:"全球机构排名表",desc:"全球机构排名合并表",icon:"globe",files:[["全球机构排名.xlsx","全球机构排名"]]}
+  var GROUPS = [
+    {id:"esi-institutions",src:"ESI 1/6",title:"全球机构总表",icon:"globe",
+     files:[["Institutions.xlsx","全球机构总表"]]},
+    {id:"esi-subjects",src:"ESI 2/6",title:"22 学科机构表",icon:"building",files:SUBJECTS},
+    {id:"esi-fields",src:"ESI 3/6",title:"全球、中国、云大学科汇总",icon:"stack",
+     files:[["全球学科.xlsx","全球学科汇总"],["中国学科.xlsx","中国学科汇总"],["云大学科.xlsx","云南大学学科汇总"]]},
+    {id:"esi-papers",src:"ESI 4/6",title:"云大论文清单",icon:"file",
+     note:"文件名前的数字随当期篇数变化。",
+     files:[["<篇数>top.xlsx","Top 论文 · Excel"],["<篇数>top.csv","Top 论文 · CSV"],
+            ["<篇数>highly cited.xlsx","高被引论文 · Excel"],["<篇数>highly cited.csv","高被引论文 · CSV"],
+            ["<篇数>hot papers.xlsx","热点论文 · Excel"],["<篇数>hot papers.csv","热点论文 · CSV"]]},
+    {id:"esi-thresholds",src:"ESI 5/6",title:"三张阈值表",icon:"file",
+     files:[["ThresholdESI.xlsx","ESI 阈值"],["ThresholdHighlyCited.xlsx","高被引论文阈值"],["ThresholdHot.xlsx","热点论文阈值"]]},
+    {id:"esi-baselines",src:"ESI 6/6",title:"三张基线表",icon:"file",
+     files:[["BaselineCitationRates.xlsx","引用率基线"],["BaselinePercentiles.xlsx","百分位基线"],["BaselineFieldRankings.xlsx","学科排名基线"]]},
+    {id:"incites-subjects",src:"InCites 1/3",title:"22 学科全球机构排名",icon:"building",files:INCITES_SUBJECTS},
+    {id:"incites-fields",src:"InCites 2/3",title:"全球、中国、云大研究领域汇总",icon:"stack",
+     files:[["全球 研究领域.xlsx","全球研究领域"],["中国研究领域.xlsx","中国研究领域"],["云南大学研究领域.xlsx","云南大学研究领域"]]},
+    {id:"incites-institutions",src:"InCites 3/3",title:"全球机构排名表",icon:"globe",
+     files:[["全球机构排名.xlsx","全球机构排名"]]}
   ];
-  const scenarios = {
+  var TOTAL = GROUPS.reduce(function(n,g){return n+g.files.length;},0);   /* 64 */
+
+  /* ---------- 六种演示状态 ---------- */
+  function done(g){return {state:"done",verified:g.files.length,downloaded:g.files.length};}
+  var ALL_DONE = {};                   /* 全部核验通过（64） */
+  var NEARLY = {};                     /* 仅论文清单差 1 份（63） */
+  var RUNNING = {                      /* 前 3 组已过，论文清单下载中（31 / 32） */
+    "esi-institutions":done(GROUPS[0]), "esi-subjects":done(GROUPS[1]), "esi-fields":done(GROUPS[2]),
+    "esi-papers":{state:"live",verified:5,downloaded:6}
+  };
+  GROUPS.forEach(function(g){
+    ALL_DONE[g.id] = done(g);
+    NEARLY[g.id] = g.id==="esi-papers" ? {state:"fail",verified:5,downloaded:6} : done(g);
+  });
+  var SCENARIOS = {
     ready:{
-      label:"等待开始",chip:"",banner:"ready",verified:0,downloaded:0,failed:0,
-      message:"开始后会逐组取数，并单独检查每个文件。",messageTone:"",
-      action:"开始取数（演示）",actionNote:"按钮只切换演示场景，不会开始实际下载。",
-      group:{},
+      pill:["还没开始","plain"],
+      title:"开始前检查通过，可以开始取数。", sub:"9 组文件，取到后逐份核验。",
+      btn:"开始取数", act:"start",
+      pf:{browser:["ok","取数专用浏览器 · 已连接"],esi:["ok","ESI 网站 · 已登录"],incites:["ok","InCites 网站 · 已登录"]},
+      groups:{}
+    },
+    blocked:{
+      pill:["还没开始","plain"],
+      title:"取数专用浏览器还没连接。", sub:"先双击它并登录两家网站，再点「重新检查」。",
+      btn:"重新检查", act:"recheck",
+      pf:{browser:["bad","取数专用浏览器 · 未连接"],esi:["", "等浏览器连接后检查"],incites:["","等浏览器连接后检查"]},
+      groups:{}
     },
     running:{
-      label:"正在取数",chip:"warn",banner:"running",verified:1,downloaded:9,failed:0,
-      message:"已核验 1 份；另有 8 份刚收到，仍在检查。",messageTone:"warn",
-      action:"模拟出现一项未齐",actionNote:"点击后切换到示例缺项状态；没有后台任务正在运行。",
-      group:{"esi-institutions":{state:"done",verified:1,downloaded:1},"esi-subjects":{state:"running",verified:0,downloaded:8}},
+      pill:["取数中","warn"],
+      title:"正在取数：云大论文清单（第 4 / 9 组）……", sub:"可以离开这一页，进度不会丢。",
+      btn:null, act:null,
+      pf:{browser:["ok","取数专用浏览器 · 已连接"],esi:["ok","ESI 网站 · 已登录"],incites:["ok","InCites 网站 · 已登录"]},
+      groups:RUNNING
     },
-    failed:{
-      label:"有文件未齐",chip:"bad",banner:"failed",verified:31,downloaded:32,failed:1,
-      message:"论文清单有 1 份未核验通过；其他已通过文件仍保留。",messageTone:"bad",
-      action:"重试未完成组（演示）",actionNote:"只演示重试后的页面反馈，不会重新下载文件。",
-      group:{"esi-institutions":{state:"done",verified:1,downloaded:1},"esi-subjects":{state:"done",verified:22,downloaded:22},"esi-fields":{state:"done",verified:3,downloaded:3},"esi-papers":{state:"failed",verified:5,downloaded:6}},
+    partial:{
+      pill:["有 1 份未通过","bad"],
+      title:"云大论文清单有 1 份没通过核验。", sub:"重试只补这一组，通过的不重复下载。",
+      btn:"重试这一组", act:"retry",
+      pf:{browser:["ok","取数专用浏览器 · 已连接"],esi:["ok","ESI 网站 · 已登录"],incites:["ok","InCites 网站 · 已登录"]},
+      groups:NEARLY
     },
     done:{
-      label:"全部核验通过",chip:"good",banner:"done",verified:64,downloaded:64,failed:0,
-      message:"64 份文件均已取得并逐项核验通过；请继续检查并整理监测表。",messageTone:"good",
-      action:"查看下一步",actionNote:"取数完成后仍需馆员检查并整理监测表。",
-      group:Object.fromEntries(groups.map(function(g){return [g.id,{state:"done",verified:g.files.length,downloaded:g.files.length}]})),
+      pill:["待入库","ok"],
+      title:"64 份文件已全部核验通过。", sub:"入库后这笔数据才进入本期流程。",
+      btn:"验收入库", act:"accept",
+      pf:{browser:["ok","取数专用浏览器 · 已连接"],esi:["ok","ESI 网站 · 已登录"],incites:["ok","InCites 网站 · 已登录"]},
+      groups:ALL_DONE
+    },
+    accepted:{
+      pill:["已入库","ok"],
+      title:"本期数据已入库（09-29 10:42）。", sub:"下载完成不等于台账已更新。",
+      btn:"去整理监测表", act:"goto",
+      pf:{browser:["ok","取数专用浏览器 · 已连接"],esi:["ok","ESI 网站 · 已登录"],incites:["ok","InCites 网站 · 已登录"]},
+      groups:ALL_DONE
     }
   };
-  const $ = function(s,root){return (root||document).querySelector(s)};
-  const $$ = function(s,root){return Array.from((root||document).querySelectorAll(s))};
-  const esc = function(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})};
-  const icon = function(name,extra){return '<svg class="icon '+(extra||"")+'" aria-hidden="true"><use href="#i-'+name+'"/></svg>'};
-  const iconFor = function(state){return state==="done"?"check":state==="running"?"clock":state==="failed"?"alert":"clock"};
-  const renderGroups = function(){
-    $("#group-grid").innerHTML=groups.map(function(g){
-      const files=g.files.map(function(f,i){return '<li class="file-row" data-file-index="'+i+'"><span class="file-mark">'+icon("clock","sm")+'</span><span><span class="file-name">'+esc(f[0])+'</span><span class="file-cn">'+esc(f[1])+'</span></span><span class="file-result">待取数</span></li>'}).join("");
-      return '<article class="group-card" data-group="'+g.id+'"><div class="group-top"><span class="source-label">'+esc(g.source)+'</span><span class="group-status"><i class="state-dot" aria-hidden="true"></i><span>未开始</span></span></div><div class="group-main"><span class="group-icon">'+icon(g.icon)+'</span><div class="group-copy"><h4>'+esc(g.title)+'</h4><p>'+esc(g.desc)+' · '+g.files.length+' 份文件</p></div></div><div class="group-progress"><span class="track" aria-hidden="true"><i></i></span><span class="progress-text">0 / '+g.files.length+' 已核验</span></div><details class="file-detail"><summary>'+icon("file","sm")+'逐个查看文件<span class="chev">›</span></summary><ul class="file-list">'+files+'</ul></details><button class="group-retry" type="button" data-demo-retry>'+icon("retry","sm")+'演示重试此组</button></article>';
+
+  /* ---------- 渲染 ---------- */
+  var $ = function(s,root){return (root||document).querySelector(s);};
+  var $$ = function(s,root){return Array.prototype.slice.call((root||document).querySelectorAll(s));};
+  var esc = function(s){return String(s).replace(/[&<>"']/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];});};
+  var icon = function(name,cls){return '<svg class="icon '+(cls||"")+'" aria-hidden="true"><use href="#i-'+name+'"/></svg>';};
+  var current = "ready";
+  var busyTimer = null;
+
+  function renderGroups(){
+    $("#groups").innerHTML = GROUPS.map(function(g){
+      var rows = g.files.map(function(f,i){
+        return '<li class="file-row" data-i="'+i+'"><span class="f-mark">'+icon("clock")+'</span>'+
+          '<span><span class="f-name">'+esc(f[0])+'</span><span class="f-cn">'+esc(f[1])+'</span></span>'+
+          '<span class="f-res">待取数</span></li>';
+      }).join("");
+      return '<article class="g" data-g="'+g.id+'">'+
+        '<div class="g-top"><span class="g-src">'+esc(g.src)+'</span>'+
+          '<span class="g-state"><i class="sd" aria-hidden="true"></i><span>未开始</span></span></div>'+
+        '<div class="g-name"><span class="ic">'+icon(g.icon,"big")+'</span>'+esc(g.title)+'</div>'+
+        '<div class="g-bar"><span class="track" aria-hidden="true"><i></i></span><span class="g-num">0 / '+g.files.length+'</span></div>'+
+        '<details class="g-files"><summary>'+icon("file")+'查看文件<span class="chev">›</span></summary>'+
+          '<ul class="file-list">'+rows+'</ul>'+(g.note?'<p class="g-note">'+esc(g.note)+'</p>':'')+'</details>'+
+        '<button class="g-retry" type="button" data-retry="'+g.id+'">'+icon("retry")+'重试这一组</button>'+
+        '</article>';
     }).join("");
+  }
+
+  var G_STATE = {
+    pending:["未开始",""], live:["下载中","live"], done:["核验通过","ok"],
+    fail:["有 1 份未通过","bad"], retrying:["重新核验中…","live"]
   };
-  let currentState="ready";
-  let retryTimer=null;
-  const updateBanner = function(bannerName){
-    $$("[data-banner]").forEach(function(el){el.hidden=el.dataset.banner!==bannerName});
-  };
-  const renderScenario = function(name,custom){
-    currentState=name;
-    const s=custom||scenarios[name];
-    document.documentElement.dataset.state=name;
-    $$("[data-state-choice]").forEach(function(b){b.setAttribute("aria-pressed",String(b.dataset.stateChoice===name))});
-    updateBanner(s.banner);
-    const chip=$("#overall-chip");chip.className="state-chip"+(s.chip?" "+s.chip:"");
-    $("#overall-label").textContent=s.label;
-    $("#verified-summary").textContent=s.verified+" / 64";
-    $("#downloaded-summary").textContent=s.downloaded+" / 64 份";
-    $("#failed-summary").textContent=s.failed+" 份";
-    $("#ring-text").textContent=Math.round(s.verified/64*100)+"%";
-    $("#progress-ring").style.background="conic-gradient(var(--ok) "+(s.verified/64*360)+"deg,var(--line-soft) 0deg)";
-    $("#progress-ring").setAttribute("aria-label",s.verified+" / 64 份文件逐项核验通过");
-    const message=$("#summary-message");message.className="side-message"+(s.messageTone?" "+s.messageTone:"");message.textContent=s.message;
-    $("#main-action").querySelector("span").textContent=s.action;
-    $("#main-action").disabled=Boolean(s.blocking);
-    $("#action-note").textContent=s.actionNote;
-    groups.forEach(function(g){
-      const card=$('[data-group="'+g.id+'"]');
-      const d=s.group[g.id]||{state:"pending",verified:0,downloaded:0};
-      const status=card.querySelector(".group-status");
-      const stateNames={pending:"未开始",running:"下载中",done:"核验通过",failed:"有文件未通过",retrying:"重新核验中"};
-      status.className="group-status"+(d.state==="done"?" good":d.state==="running"||d.state==="retrying"?" live":d.state==="failed"?" bad":"");
-      status.querySelector(".state-dot").className="state-dot"+(d.state==="running"||d.state==="retrying"?" spin":"");
-      status.querySelector("span").textContent=stateNames[d.state]||"未开始";
-      card.classList.toggle("active",d.state==="running"||d.state==="retrying");
-      card.classList.toggle("problem",d.state==="failed");
-      card.classList.toggle("all-done",d.state==="done");
-      const percent=d.state==="running"||d.state==="retrying"?d.downloaded/g.files.length*100:d.verified/g.files.length*100;
-      card.querySelector(".track i").style.width=Math.min(100,percent)+"%";
-      const progress=d.state==="running"?d.downloaded+" / "+g.files.length+" 已收到":d.state==="retrying"?"重新检查中…":d.state==="failed"?d.verified+" / "+g.files.length+" 已核验":d.verified+" / "+g.files.length+" 已核验";
-      card.querySelector(".progress-text").textContent=progress;
-      card.querySelectorAll(".file-row").forEach(function(row,index){
-        const mark=row.querySelector(".file-mark");const result=row.querySelector(".file-result");
-        let kind="pending",text="待取数";
-        if(index<d.verified){kind="good";text="核验通过"}
-        else if(d.state==="failed"&&index===g.files.length-1){kind="bad";text="本示例需重试"}
-        else if(index<d.downloaded){text="已收到 · 待核验"}
-        else if(d.state==="running"||d.state==="retrying"){text="等待中"}
-        mark.className="file-mark"+(kind==="pending"?"":" "+kind);
-        mark.innerHTML=icon(kind==="good"?"check":kind==="bad"?"alert":"clock","sm");
-        result.className="file-result"+(kind==="pending"?"":" "+kind);result.textContent=text;
-      });
+
+  function renderGroupCard(g, d){
+    var card = $('[data-g="'+g.id+'"]');
+    var st = G_STATE[d.state] || G_STATE.pending;
+    var stateEl = card.querySelector(".g-state");
+    stateEl.className = "g-state" + (st[1]?" "+st[1]:"");
+    stateEl.querySelector(".sd").className = "sd" + (d.state==="live"||d.state==="retrying"?" spin":"");
+    stateEl.querySelector("span").textContent = st[0];
+    card.classList.toggle("done", d.state==="done");
+    card.classList.toggle("live", d.state==="live"||d.state==="retrying");
+    card.classList.toggle("fail", d.state==="fail");
+    var pct = d.state==="live"||d.state==="retrying" ? d.downloaded/g.files.length*100 : d.verified/g.files.length*100;
+    card.querySelector(".track i").style.width = Math.min(100, pct)+"%";
+    card.querySelector(".g-num").textContent = d.verified+" / "+g.files.length;
+    $$(".file-row", card).forEach(function(row, i){
+      var mark = row.querySelector(".f-mark");
+      var res = row.querySelector(".f-res");
+      var kind = "", text = "待取数";
+      if (i < d.verified) { kind = "ok"; text = "核验通过"; }
+      else if (d.state==="fail" && i===g.files.length-1) { kind = "bad"; text = "未通过"; }
+      else if (d.state==="retrying" && i < d.downloaded) { text = "重新核验中…"; }
+      else if (i < d.downloaded) { text = "已收到 · 待核验"; }
+      else if (d.state==="live"||d.state==="retrying") { text = "等待中"; }
+      mark.className = "f-mark" + (kind?" "+kind:"");
+      mark.innerHTML = icon(kind==="ok"?"check":kind==="bad"?"alert":"clock");
+      res.className = "f-res" + (kind?" "+kind:"");
+      res.textContent = text;
     });
-  };
-  const retryDemo=function(){
-    if(retryTimer)window.clearTimeout(retryTimer);
-    const base=scenarios.failed;
-    const copy={...base,group:{...base.group,"esi-papers":{state:"retrying",verified:5,downloaded:6}},label:"正在重新检查",chip:"warn",banner:"running",message:"示例：论文清单正在重新检查；已通过的 3 组保持不变，其余 5 组尚未开始。",messageTone:"warn",action:"重新检查中…",actionNote:"本地动画，不会重试真实取数。",blocking:true};
-    renderScenario("running",copy);
-    retryTimer=window.setTimeout(function(){
-      const retried={...base,group:{...base.group,"esi-papers":{state:"done",verified:6,downloaded:6}},label:"这一组已补齐",chip:"good",banner:"retried",verified:32,downloaded:32,failed:0,message:"论文清单 6 份均已核验通过；其余 5 组还未开始。",messageTone:"good",action:"查看全部完成示例",actionNote:"点击后切换到全部 64 份文件核验通过的示例，不会执行其他取数。"};
-      renderScenario("retried",retried);
-    },850);
-  };
+  }
+
+  function apply(name){
+    if (busyTimer) { window.clearTimeout(busyTimer); busyTimer = null; }
+    current = name;
+    var s = SCENARIOS[name];
+    var v = 0;   /* 计数由各组进度实时相加，避免两处数字打架 */
+    GROUPS.forEach(function(g){
+      var gd = (s.groups&&s.groups[g.id]) || {state:"pending",verified:0,downloaded:0};
+      v += gd.verified;
+    });
+    $$("[data-sc]").forEach(function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-sc")===name)); });
+    var pill = $("#state-pill");
+    pill.className = "pill " + s.pill[1];
+    pill.textContent = s.pill[0];
+    $("#state-count").textContent = "已核验 " + v + " / " + TOTAL;
+    $("#focus-title").textContent = s.title;
+    $("#focus-sub").textContent = s.sub;
+    var btn = $("#focus-btn");
+    if (s.btn) { btn.hidden = false; btn.textContent = s.btn; btn.disabled = false; }
+    else { btn.hidden = true; }
+    ["browser","esi","incites"].forEach(function(k){
+      var chip = $('[data-pf="'+k+'"]');
+      var cfg = s.pf[k];
+      chip.className = "pf-chip" + (cfg[0]?" "+cfg[0]:"");
+      chip.querySelector("span").textContent = cfg[1];
+    });
+    GROUPS.forEach(function(g){
+      renderGroupCard(g, (s.groups&&s.groups[g.id]) || {state:"pending",verified:0,downloaded:0});
+    });
+  }
+
+  /* ---------- 演示过渡 ---------- */
+  function busy(ms, next){
+    var btn = $("#focus-btn");
+    btn.disabled = true;
+    busyTimer = window.setTimeout(function(){ busyTimer = null; apply(next); }, ms);
+  }
+
+  $("#focus-btn").addEventListener("click", function(){
+    var act = SCENARIOS[current].act;
+    if (act==="start") { busy(600, "running"); }
+    else if (act==="recheck") {
+      ["browser","esi","incites"].forEach(function(k){
+        var chip = $('[data-pf="'+k+'"]');
+        chip.className = "pf-chip";
+        chip.querySelector("span").textContent = "检查中…";
+      });
+      $("#focus-sub").textContent = "正在重新检查浏览器与登录状态……";
+      busy(850, "ready");
+    }
+    else if (act==="retry") {
+      var d = SCENARIOS.partial.groups["esi-papers"];
+      renderGroupCard(GROUPS[3], {state:"retrying",verified:d.verified,downloaded:d.downloaded});
+      $("#focus-title").textContent = "正在重新核验云大论文清单这一组……";
+      $("#focus-sub").textContent = "已通过的 63 份不动，只补没通过的那一份。";
+      busy(950, "done");
+    }
+    else if (act==="accept") { busy(700, "accepted"); }
+    else if (act==="goto") { /* 演示：真实版本回生成台 */ }
+  });
+
+  $$("[data-retry]").forEach(function(b){
+    b.addEventListener("click", function(){
+      if (current==="partial") { $("#focus-btn").click(); }
+    });
+  });
+
+  $$("[data-sc]").forEach(function(b){
+    b.addEventListener("click", function(){ apply(b.getAttribute("data-sc")); });
+  });
+
+  /* ---------- ⓘ 弹层 ---------- */
+  var pop = $("#pop");
+  $$(".dot").forEach(function(btn){
+    btn.addEventListener("click", function(e){
+      e.stopPropagation();
+      if (pop.style.display==="block" && pop.dataset.src===btn.dataset.info) { pop.style.display="none"; return; }
+      pop.innerHTML = btn.dataset.info; pop.dataset.src = btn.dataset.info;
+      pop.style.display = "block";
+      var r = btn.getBoundingClientRect();
+      pop.style.left = Math.max(10, Math.min(window.innerWidth-380, r.left-30))+"px";
+      pop.style.top = (r.bottom+8)+"px";
+    });
+  });
+  document.addEventListener("click", function(){ pop.style.display="none"; });
+
   renderGroups();
-  renderScenario("ready");
-  $$('[data-state-choice]').forEach(function(button){button.addEventListener("click",function(){if(retryTimer)window.clearTimeout(retryTimer);renderScenario(button.dataset.stateChoice)})});
-  $$('[data-palette-choice]').forEach(function(button){button.addEventListener("click",function(){document.documentElement.dataset.palette=button.dataset.paletteChoice;$$('[data-palette-choice]').forEach(function(b){b.setAttribute("aria-pressed",String(b===button))})})});
-  $("#main-action").addEventListener("click",function(){
-    if(currentState==="ready")renderScenario("running");
-    else if(currentState==="failed")retryDemo();
-    else if(currentState==="retried")renderScenario("done");
-    else if(currentState==="done")$("#handoff").scrollIntoView({behavior:"smooth",block:"center"});
-    else renderScenario("failed");
-  });
-  $$('[data-demo-retry]').forEach(function(button){button.addEventListener("click",retryDemo)});
-  $("#period-select").addEventListener("change",function(){
-    const note=$("#action-note");note.textContent="此处仅示意期次选择；实际可选期次以系统中已有数据为准。";
-  });
+  apply("ready");
 })();
 </script>
 </body>
