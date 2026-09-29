@@ -465,9 +465,6 @@ export function Review({
               {busyText && <p className="rv-busy" role="status">{busyText}</p>}
               {msg && <p className={msg.ok ? 'rv-msg ok' : 'rv-msg bad'} role="status">{msg.text}</p>}
               <p className="hint" style={{ marginTop: 8 }}>
-                签单会绑定这一版报告；重跑或重出后签名自动失效、需重签。
-              </p>
-              <p className="hint" style={{ marginTop: 8 }}>
                 签前想核改动：<a href={`/app/?view=reading&period=${encodeURIComponent(period)}`}>看本期全部改动（对勘本）→</a>
               </p>
             </section>
@@ -485,9 +482,9 @@ export function Review({
                 </button>
               )}
               <p className="hint" style={{ marginTop: 8 }}>
-                {signed ? '已签单，点击即可下载到本地。'
-                  : status === 'stale' ? '签名已失效：重新签单后可下载。'
-                    : '签单后可下载到本地。'}
+                {signed ? '已签单，可下载。'
+                  : status === 'stale' ? '签名已失效，重签后可下载。'
+                    : '签单后可下载。'}
               </p>
             </section>
 

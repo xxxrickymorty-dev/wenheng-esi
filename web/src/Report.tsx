@@ -268,12 +268,9 @@ function PeriodData({ period }: { period: string | null }) {
         <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
           <Icon name="chart" size={21} />图册
           <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>
-            （真数据：共 {charts.length} 张）
+            共 {charts.length} 张
           </span>
         </h2>
-        <p className="hint" style={{ marginTop: 8 }}>
-          本期报告写入的全部配图——按学科平铺、可按图名搜，点开看原图。
-        </p>
         {/* 图册全量入口（P0-4）：以前这里指老站 /p/<期次>/charts，现已改指新站自己的图册页 */}
         <a className="entry" style={{ marginTop: 12 }}
            href={`/app/?view=charts${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
@@ -339,7 +336,6 @@ function TrendCard({ trend, period }: { trend: Record<string, number>; period: s
           <text className="tr-tick" x={W - R} y={H - 8} textAnchor="end">{fmtP(pts[pts.length - 1][0])}</text>
         </svg>
       </div>
-      <p className="hint">每个点上的数字都是台账派生的历期值（隔期标注 · 本期必标），不掺预测值。</p>
     </div>
   )
 }
@@ -465,7 +461,7 @@ export function Report({
           <h1 className="display">
             {row?.label ?? '（选择期次）'}
             <small>
-              目录名 {current ?? '—'} · 读数与覆盖窗口见下方读数带
+              目录名 {current ?? '—'}
             </small>
           </h1>
           <div className="rule" />
@@ -490,9 +486,6 @@ export function Report({
       <section className="card" style={{ marginTop: 26, padding: '20px 22px' }}>
         <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
           <Icon name="doc" size={21} />本期产物
-          <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>
-            （真数据：来自所选期次的产物清单）
-          </span>
         </h2>
         <Artifacts period={current} guest={guest} approvalStatus={row?.status ?? 'unsigned'} refreshToken={refreshToken} />
       </section>

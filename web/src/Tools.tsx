@@ -194,9 +194,6 @@ export function Tools({
         <div>
           {/* 上传新台账（老站同一套口径：期次 6 位必填） */}
           <h3 style={{ fontSize: 15 }}>上传新台账</h3>
-          <p className="hint" style={{ marginTop: 4 }}>
-            传填好的《监测表.xlsx》就能跑；期次填 6 位（如 202609）。
-          </p>
           <div className="toolbar">
             <input type="file" accept=".xlsx"
                    onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
@@ -218,7 +215,7 @@ export function Tools({
           ) : !currentView || currentView.loading ? (
             <p className="hint" style={{ marginTop: 4 }}>正在读取这一期的产物……</p>
           ) : !currentView.artifacts || currentView.artifacts.length === 0 ? (
-            <p className="hint" style={{ marginTop: 4 }}>这一期暂时没有产物。先点上方「开始生成」出稿，产物会出现在这里。</p>
+            <p className="hint" style={{ marginTop: 4 }}>这一期还没有产物——点上方「开始生成」出稿。</p>
           ) : (
             <div className="chips" style={{ marginTop: 8 }}>
               {currentView.artifacts.map((a) => (
@@ -269,7 +266,7 @@ export function Tools({
       {period && (
         <p className="hint" style={{ marginTop: 10 }}>
           <a href={`/app/?view=archive&period=${encodeURIComponent(period)}`}>
-            看这一期的运行档案（状态回放 / 审计结论 / 下载日志包）→
+            看这一期运行档案 →
           </a>
         </p>
       )}
