@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 学科信息参考 自动化演示站 · 测试说明</title>
+<style>
+:root{
+  --bg:#F4F3ED;--card:#FFFDF8;--panel:#F0F1EB;
+  --ink:#222B25;--ink-2:#3F4C42;--ink-3:#58655C;
+  --line:#DDE1D8;--line-2:#E6E9E2;
+  --zhu:#1A4B27;--zhu-soft:#E3EDE4;
+  --gold:#B19A65;--gold-soft:#F1EBDD;--gold-ink:#62501F;
+  --serif:"Source Han Serif SC","Noto Serif SC",Songti SC,SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.75 var(--sans)}
+.page{max-width:860px;margin:0 auto;padding:34px 30px 60px}
+h1,h2,h3{font-family:var(--serif)}
+header{border-bottom:2px solid var(--zhu);padding-bottom:14px;margin-bottom:22px}
+h1{margin:0;font-size:27px;letter-spacing:.02em}
+header p{margin:6px 0 0;color:var(--ink-3);font-size:14px}
+.entry{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:20px 0 26px}
+@media (max-width:640px){.entry{grid-template-columns:1fr}}
+.box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;box-shadow:0 1px 2px rgba(34,43,37,.05)}
+.box h3{margin:0 0 6px;font-size:15px;color:var(--gold-ink)}
+.box .big{font-family:var(--mono);font-size:20px;font-weight:700;word-break:break-all}
+.box .sub{color:var(--ink-3);font-size:13px;margin-top:2px}
+h2{font-size:19px;margin:30px 0 10px;display:flex;align-items:center;gap:10px}
+h2::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--gold)}
+ol.steps{margin:0;padding-left:22px}
+ol.steps li{margin:10px 0}
+ol.steps b{font-size:15px}
+ol.steps .do{color:var(--zhu);font-weight:650}
+ol.steps .see{color:var(--ink-2)}
+.tip{background:var(--gold-soft);border:1px solid var(--gold);border-radius:10px;padding:10px 14px;font-size:13.5px;color:var(--gold-ink);margin:10px 0 0}
+table{width:100%;border-collapse:collapse;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{padding:9px 12px;border-bottom:1px solid var(--line-2);text-align:left;vertical-align:top}
+th{background:var(--panel);color:var(--ink-3);font-weight:600;font-size:13px}
+tr:last-child td{border-bottom:none}
+kbd{font-family:var(--mono);font-size:12.5px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.notes{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 20px}
+.notes li{margin:7px 0;color:var(--ink-2);font-size:14px}
+.notes li b{color:var(--ink)}
+footer{margin-top:34px;color:var(--ink-3);font-size:12.5px;border-top:1px dashed var(--line);padding-top:12px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+@media print{body{background:#fff}.box,table,.notes{box-shadow:none}.page{padding:0 6mm}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>文衡 · 学科信息参考 自动化演示站</h1>
+    <p>测试说明 · 2026-09-29 · 数据期次：第 35–39 期（双月刊，最新为 2026 年 9 月）</p>
+  </header>
+
+  <div class="entry">
+    <div class="box">
+      <h3>访问地址</h3>
+      <div class="big">http://116.62.37.161:8080</div>
+      <div class="sub">建议用电脑 Chrome / Edge 打开；手机可看，3D 陈列馆建议用电脑</div>
+    </div>
+    <div class="box">
+      <h3>测试账号</h3>
+      <div class="big">demo / WhyeNpDYiVw6@26</div>
+      <div class="sub">管理员视角（可看全部页面与工具）</div>
+    </div>
+  </div>
+
+  <p>这是一个「从台账到报告」的自动化系统演示：报表、图表、报告都由确定性流水线生成；<b>AI 只负责组织语言与问答，所有数字来自台账、逐个可溯源</b>。请按下面顺序过一遍，约 15 分钟。</p>
+
+  <h2>建议测试顺序</h2>
+  <ol class="steps">
+    <li><b>生成台（登录后的首屏）</b> —— 看本期三步条：<span class="see">①取数 ②核对并并入 ③一键生成</span>，以及「看详细过程」入口。<span class="do">点一下「看详细过程」</span>进入运行档案；想体验流水线可点「一键生成」（约 2 分钟，演示数据，可放心跑）。</li>
+    <li><b>运行档案</b> —— 一次运行的完整回放：状态链 + 任务瀑布（每步耗时，最慢的一步一眼可见）+ 审计结论 + 日志包下载。<span class="do">点「下载日志包」</span>验证产物完整性。</li>
+    <li><b>报告</b> —— 读数带、本期趋势、对勘与红色件、图册、本期产物。<span class="do">点「打开对勘本 · 正文级对照」</span>：左分组 / 中改动卡 / 右校记，可搜索、可只看待人工。</li>
+    <li><b>审核台</b> —— 整篇报告铺开、就地填空（8 处空位）、逐处可标「存疑」；填完可签单并下载 Word。<span class="see">签单会真实记一笔审批记录；想还原可点「撤回」。</span></li>
+    <li><b>AI 分析台（问文衡）</b> —— <span class="do">试试这两个问题</span>：「哪些学科离前 1% 最近？」「我校前 1% 学科有几门？」。回答里每个数字都能点开看来源格；若云端模型超时，页面会如实标注「规则回落」而不是编答案。</li>
+    <li><b>预测台</b> —— 五个模型的预测图（选前先看）、逐科选择并保存。保存会记入本期选择，只影响此后重出报告的预测章。</li>
+    <li><b>陈列馆</b> —— 3D 数字书架（展示用）。</li>
+  </ol>
+
+  <h2>期次怎么选</h2>
+  <table>
+    <tr><th style="width:130px">期次</th><th style="width:150px">期号</th><th>建议</th></tr>
+    <tr><td class="mono">202607</td><td>第 38 期 · 2026 年 7 月</td><td><b>推荐从这里开始</b>（演示主期次，内容最全）</td></tr>
+    <tr><td class="mono">202609</td><td>第 39 期 · 2026 年 9 月</td><td>最新一期，可看最新数据</td></tr>
+    <tr><td class="mono">202605 / 202603 / 202601</td><td>第 37 / 36 / 35 期</td><td>历史期次，可用于回看趋势与对照</td></tr>
+  </table>
+  <div class="tip">顶栏右侧「期次」下拉可随时切换；报表、对勘、审核、预测都跟着期次联动。</div>
+
+  <h2>注意事项</h2>
+  <div class="notes">
+    <ul>
+      <li><b>可放心操作</b>：站上数据都是演示数据；「一键生成」「并入台账」「签单」「预测台保存」会真实写入演示环境，属正常演示流程。</li>
+      <li><b>数字的纪律</b>：任何页面上的数字都来自台账单元格；AI 回答中的每个数字都带角标、可点开溯源；模型不可用时自动回退规则版并在页面上标注，不会静默编造。</li>
+      <li><b>速度</b>：服务跑在一台 2 核小机上，首次打开或跑流水线偶有几秒等待，属正常。</li>
+      <li><b>建议浏览器</b>：Chrome / Edge 最新版；用手机测试时，复杂表格建议横屏。</li>
+    </ul>
+  </div>
+
+  <h2>反馈方式</h2>
+  <p style="color:var(--ink-2)">遇到问题请记下四件事发回：<b>①期次 ②哪个页面 ③点了什么 ④截图</b>。例：「第 38 期 · 审核台 · 点了『保存并重出报告』 · 见图」。</p>
+
+  <footer>
+    <span>云南大学发展研究院图书馆 · 文衡项目组 · 演示环境</span>
+    <span>生成时间：2026-09-29 · 期次 35–39</span>
+  </footer>
+</div>
+</body>
+</html>
