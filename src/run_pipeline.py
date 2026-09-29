@@ -69,7 +69,8 @@ def _write_diagnosis(led, P, out_dir, report, n_fail, run_dir=None):
     except Exception:                                          # noqa: BLE001
         repair = None
     try:
-        lines, meta = narrator.compose(failure, repair)
+        lines, meta = narrator.compose(failure, repair,
+                                       data_root=pathlib.Path(out_dir).parent)
     except Exception:                                          # noqa: BLE001
         lines, meta = [], {"backend": "rule"}
 

@@ -1,0 +1,149 @@
+{
+ "alias": {
+  "failure": {
+   "code": "ASSERT_FAIL",
+   "message": "2 项断言未过",
+   "period": "202607",
+   "fails": [
+    "宽表 total_cites 学科数=22 (实际 21，缺 ['Chemistry'])"
+   ],
+   "diagnostics": {
+    "unmatched_names": {
+     "total_cites": [
+      "某某新学科"
+     ]
+    }
+   }
+  },
+  "repair": {
+   "rules": [
+    "discipline_alias_map"
+   ],
+   "overlay": {
+    "discipline_alias": {
+     "化学": "Chemistry",
+     "植物与动物学": "Plant & Animal Science",
+     "微生物学": "Microbiology",
+     "工程学": "Engineering",
+     "材料科学": "Materials Science",
+     "数学": "Mathematics",
+     "环境生态学": "Environment/Ecology",
+     "生物学与生物化学": "Biology & Biochemistry",
+     "药理学与毒理学": "Pharmacology & Toxicology",
+     "地球科学": "Geosciences",
+     "农业科学": "Agricultural Sciences",
+     "计算机科学": "Computer Science",
+     "临床医学": "Clinical Medicine",
+     "分子生物学与遗传学": "Molecular Biology & Genetics",
+     "物理学": "Physics",
+     "社会科学": "Social Sciences, general",
+     "多学科": "Multidisciplinary",
+     "神经系统科学与行为学": "Neuroscience & Behavior",
+     "空间科学": "Space Science",
+     "免疫学": "Immunology",
+     "精神病学与心理学": "Psychiatry/Psychology",
+     "经济与商业": "Economics & Business",
+     "Social Sciences": "Social Sciences, general",
+     "Environment / Ecology": "Environment/Ecology",
+     "Environment & Ecology": "Environment/Ecology",
+     "Plant and Animal Science": "Plant & Animal Science",
+     "Neuroscience and Behavior": "Neuroscience & Behavior",
+     "Biology and Biochemistry": "Biology & Biochemistry",
+     "Pharmacology and Toxicology": "Pharmacology & Toxicology",
+     "Molecular Biology and Genetics": "Molecular Biology & Genetics",
+     "Psychiatry / Psychology": "Psychiatry/Psychology",
+     "Business & Economics": "Economics & Business",
+     "Business and Economics": "Economics & Business"
+    }
+   },
+   "refused": [
+    {
+     "rule": "header_offset",
+     "name": "表头行偏移声明",
+     "doc": "WH-DOC-04 §6.5「多级/合并表头」——须馆员声明表头行号，机器不猜",
+     "executable": "declare",
+     "advice": "命中「表头错位」形态。机器不猜表头行号（猜错会整体错位且不报错）， 请馆员把 {工作表名: 表头行号} 填进本规则的 declared 后再重跑。",
+     "declared": {},
+     "why": "未确认规则类型（R-24）",
+     "error_code": "RULE_UNAPPROVED"
+    }
+   ],
+   "advice": [
+    {
+     "rule": "header_offset",
+     "why": "未确认规则类型（R-24）",
+     "doc": "WH-DOC-04 §6.5「多级/合并表头」——须馆员声明表头行号，机器不猜",
+     "advice": "命中「表头错位」形态。机器不猜表头行号（猜错会整体错位且不报错）， 请馆员把 {工作表名: 表头行号} 填进本规则的 declared 后再重跑。"
+    }
+   ],
+   "outcome": "repaired",
+   "repair_yaml": null
+  },
+  "text": "\n### 本次失败实况\n\n- 202607 期，「总被引」，期望 22、实际 21，缺 Chemistry，认不出来的名字：「某某新学科」。\n\n### 需人工：表头行偏移声明（header_offset）\n\n- 原因：未确认规则类型（R-24）\n- 依据：WH-DOC-04 §6.5「多级/合并表头」——须馆员声明表头行号，机器不猜\n- **怎么核对**：打开「总被引」，数清表头实际落在第几行（0 起数：Excel 第 1 行 = 0）。把 {工作表名: 行号} 填进本规则的 declared 后再重跑。本次期望 22、实际读到 21。\n\n> 规则库口径：命中「表头错位」形态。机器不猜表头行号（猜错会整体错位且不报错）， 请馆员把 {工作表名: 表头行号} 填进本规则的 declared 后再重跑。"
+ },
+ "header": {
+  "failure": {
+   "code": "ASSERT_FAIL",
+   "message": "1 项断言未过",
+   "period": "202607",
+   "fails": [
+    "新国际排名 期组数≥5"
+   ],
+   "diagnostics": {}
+  },
+  "repair": {
+   "rules": [],
+   "overlay": {},
+   "refused": [
+    {
+     "rule": "header_offset",
+     "name": "表头行偏移声明",
+     "doc": "WH-DOC-04 §6.5「多级/合并表头」——须馆员声明表头行号，机器不猜",
+     "executable": "declare",
+     "advice": "命中「表头错位」形态。机器不猜表头行号（猜错会整体错位且不报错）， 请馆员把 {工作表名: 表头行号} 填进本规则的 declared 后再重跑。",
+     "declared": {},
+     "why": "未确认规则类型（R-24）",
+     "error_code": "RULE_UNAPPROVED"
+    },
+    {
+     "rule": "split_column_group",
+     "name": "三列组切分声明",
+     "doc": "WH-DOC-04 §6.5「三列组表头偏移」——3 列一组切分并映射实体",
+     "executable": "declare",
+     "advice": "排名类表按「每期 3 列」切分。若馆员台账里的列组宽度变了（例如多了排名变化列）， 请把 {工作表名: 实际组宽} 填进本规则的 declared 后再重跑。",
+     "declared": {},
+     "why": "未确认规则类型（R-24）",
+     "error_code": "RULE_UNAPPROVED"
+    }
+   ],
+   "advice": [
+    {
+     "rule": "header_offset",
+     "why": "未确认规则类型（R-24）",
+     "doc": "WH-DOC-04 §6.5「多级/合并表头」——须馆员声明表头行号，机器不猜",
+     "advice": "命中「表头错位」形态。机器不猜表头行号（猜错会整体错位且不报错）， 请馆员把 {工作表名: 表头行号} 填进本规则的 declared 后再重跑。"
+    },
+    {
+     "rule": "split_column_group",
+     "why": "未确认规则类型（R-24）",
+     "doc": "WH-DOC-04 §6.5「三列组表头偏移」——3 列一组切分并映射实体",
+     "advice": "排名类表按「每期 3 列」切分。若馆员台账里的列组宽度变了（例如多了排名变化列）， 请把 {工作表名: 实际组宽} 填进本规则的 declared 后再重跑。"
+    }
+   ],
+   "outcome": "refused",
+   "repair_yaml": null
+  },
+  "text": "\n### 本次失败实况\n\n- 202607 期，「新国际排名」。\n\n### 需人工：表头行偏移声明（header_offset）\n\n- 原因：未确认规则类型（R-24）\n- 依据：WH-DOC-04 §6.5「多级/合并表头」——须馆员声明表头行号，机器不猜\n- **怎么核对**：打开「新国际排名」，数清表头实际落在第几行（0 起数：Excel 第 1 行 = 0）。把 {工作表名: 行号} 填进本规则的 declared 后再重跑。\n\n> 规则库口径：命中「表头错位」形态。机器不猜表头行号（猜错会整体错位且不报错）， 请馆员把 {工作表名: 表头行号} 填进本规则的 declared 后再重跑。\n\n### 需人工：三列组切分声明（split_column_group）\n\n- 原因：未确认规则类型（R-24）\n- 依据：WH-DOC-04 §6.5「三列组表头偏移」——3 列一组切分并映射实体\n- **怎么核对**：打开「新国际排名」，看**一期占了几列**（默认 3 列：前1%机构数 / 排名 / 排名百分位）。若本期多出「排名变化」之类的列，把 {工作表名: 实际组宽} 填进 declared。本次期次 202607。\n\n> 规则库口径：排名类表按「每期 3 列」切分。若馆员台账里的列组宽度变了（例如多了排名变化列）， 请把 {工作表名: 实际组宽} 填进本规则的 declared 后再重跑。"
+ },
+ "no_advice": {
+  "failure": {
+   "code": "FILE_INVALID",
+   "message": "台账在本次运行期间被改写 —— 原件只读红线（R-24）被破",
+   "period": "202607",
+   "before": "aaa",
+   "after": "bbb"
+  },
+  "repair": null,
+  "text": "\n### 本次失败实况\n\n- 202607 期。"
+ }
+}

@@ -117,15 +117,17 @@ class RunResult:
                 "elapsed": round(self.elapsed, 2)}
 
 
-def _advice_block(err, repair):
-    """「需人工」若干小节（B 档；2026-09-19）。
+def _advice_block(err, repair, out_root=None):
+    """「需人工」若干小节（B 档；2026-09-19；D1 起改调 AI 层 `diagnose`）。
 
     旧写法直接贴规则库的 `advice_unapproved`：同一条规则，哪一期、哪个学科
-    失败写出来一字不差，人工还得回去自己数 22 行。`narrator` 把它换成
-    「本次实况 + 怎么核对（按上下文拼装）」。
+    失败写出来一字不差，人工还得回去自己数 22 行。AI 层把它换成
+    「本次实况 + 怎么核对（按上下文拼装）」（构建器由 `agent/narrator` 迁入，
+    rule 输出逐字一致；金样 `tests/fixtures/ai/diagnose_rule_*.txt` 对拍守）。
 
     🔴 这里**兜底到旧写法**而不是让异常冒出去：《诊断报告》是升级态交给人工的
-    唯一交接物，写不出来比写得朴素严重得多。
+    唯一交接物，写不出来比写得朴素严重得多。回落语义已在 AI 层内部完成，
+    这层 try/except 只作「报告不能因任何事中断」的防御。
     """
     def legacy():
         out = []
@@ -133,21 +135,33 @@ def _advice_block(err, repair):
             out += ["", f"### 需人工：{a.get('rule') or '规则库'}", "",
                     f"- 原因：{a.get('why')}", f"- 依据：{a.get('doc') or '—'}", "",
                     f"> {a.get('advice') or '—'}"]
-        return out, {"backend": "rule", "mode": "rule", "metas": []}
+        return out, {"backend": "rule", "mode": "rule", "segments": [], "notice": ""}
 
     if not (repair or {}).get("advice"):
-        return [], {"backend": "rule", "mode": "rule", "metas": []}
+        return [], {"backend": "rule", "mode": "rule", "segments": [], "notice": ""}
     try:
-        from . import narrator                                 # noqa: PLC0415
-        seg, meta = narrator.compose(err, repair)
+        import ai                                              # noqa: PLC0415
+
+        scope = ai.using(data_root=out_root) if out_root else _nullcontext()
+        with scope:
+            ans = ai.run("diagnose", str((err or {}).get("period") or ""),
+                         payload={"failure": err, "repair": repair}, actor="system")
+        seg = ans.text.splitlines()
         if seg:
-            return seg, meta
+            return seg, {"backend": ans.backend, "mode": ans.mode,
+                         "segments": [s.as_dict() for s in ans.segments],
+                         "record_id": ans.record_id, "notice": ans.notice}
         return legacy()                     # 拼不出任何一句 → 退回静态文案
     except Exception:                                          # noqa: BLE001
         return legacy()
 
 
-def _write_diagnosis(run_dir, ledger, step, err, attempts, repair=None):
+def _nullcontext():
+    import contextlib                                          # noqa: PLC0415
+    return contextlib.nullcontext()
+
+
+def _write_diagnosis(run_dir, ledger, step, err, attempts, repair=None, out_root=None):
     """逾限升级时产出《诊断报告》（SRS R-26）。
 
     两种触发共用一个出口：步骤自愈逾限，以及运行期原件只读护栏。后者不是"自愈没成"，
@@ -179,7 +193,7 @@ def _write_diagnosis(run_dir, ledger, step, err, attempts, repair=None):
                  f"- 记录：`{repair.get('repair_yaml') or '（未落盘）'}`"]
         if repair.get("overlay"):
             body += [f"- 提交的读表口径：`{json.dumps(repair['overlay'], ensure_ascii=False)}`"]
-        advice_lines, narrative = _advice_block(err, repair)
+        advice_lines, narrative = _advice_block(err, repair, out_root=out_root)
         body += advice_lines
     if guard_fired:
         body += ["", "## 台账指纹", "",
@@ -211,14 +225,22 @@ def _write_diagnosis(run_dir, ledger, step, err, attempts, repair=None):
     if err.get("fails"):
         body += ["", "## 未通过的断言", ""] + [f"- {m}" for m in err["fails"]]
     # —— 有没有经过模型，必须写在报告上，不能靠猜 ——
+    # 尾注判定读 AI 层的逐段出处（`Answer.segments`，SPEC §1）：
+    #   任一模型段 → 润色交代；有回落说明 → 回退交代；否则「未经过模型加工」。
+    # rule 模式输出与迁移前逐字一致（D1 金样对拍守）。
     tail = "> 本报告由 `src/agent/flow.py` 自动生成"
-    be = (narrative or {}).get("backend")
-    modes = [m.get("mode") for m in (narrative or {}).get("metas") or []]
-    if be and be != "rule" and "polished" in modes:
+    narrative = narrative or {}
+    be = narrative.get("backend")
+    modes = [s.get("mode") for s in narrative.get("segments") or []]
+    notice = narrative.get("notice") or ""
+    record_id = narrative.get("record_id")
+    if "model" in modes:
         tail += (f"；「本次实况 / 怎么核对」两段经 **{be}** 后端润色，"
                  "数字已过防护盾校验（占位符完备、无新增数字）。")
-    elif be and be != "rule":
-        tail += f"；**{be}** 后端不可用或校验未过，已回退规则输出，内容与规则库一致。"
+        if record_id:
+            tail += f"（留痕 {record_id}）"
+    elif notice:
+        tail += f"；**{be}** 后端不可用或校验未过，已回退规则输出（{notice}）。"
     else:
         tail += "，未经过模型加工。"
     body += ["", "---", "", tail]
@@ -324,7 +346,7 @@ def run(ledger, out_root="out", run_dir=None, reference=None, backtest=False):
                                       trigger="heal_exhausted", attempt=attempt)
                 result.failure = {**tool_err, "step": step["id"]}
                 _write_diagnosis(run_dir, ledger, step, tool_err, MAX_HEAL_ATTEMPTS,
-                                 repair=repaired)
+                                 repair=repaired, out_root=out_root)
                 break
             tr.task_run(step["id"], attempt, started, time.time(), "done")
             result.steps.append({"step": step["id"], "status": "done", "attempt": attempt,
@@ -377,7 +399,7 @@ def run(ledger, out_root="out", run_dir=None, reference=None, backtest=False):
             _write_diagnosis(run_dir, ledger,
                              {"id": "guard", "label": "原件只读护栏",
                               "tool": "（运行期护栏，不属主干步骤）"},
-                             guard, 0)
+                             guard, 0, out_root=out_root)
 
     # ------------------------------------------------------------ 终态
     if result.failure is None:

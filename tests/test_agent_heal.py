@@ -568,13 +568,18 @@ def test_没自愈的脏台账算出来的读数确实是错的(dirty_alias_ledg
 #     一次失败运行 = out/<期次>/ 里「本次的新宽表/新大表」+「上一次的报告 docx」
 # 对勘本照旧渲染那份旧报告，页面没有任何警报 —— 典型静默产错报告。
 def test_断言失败时解析一个字节都不落盘(dirty_unknown_ledger, monkeypatch, tmp_path):
-    """规则库救不了的脏例：两轮都失败，产物目录必须干净得像没跑过。"""
+    """规则库救不了的脏例：两轮都失败，产物目录必须干净得像没跑过。
+
+    ⚠ D1 例外：AI 层诊断留痕 `ai_calls.jsonl` 是**审计记录**不是产物
+    （SPEC §2.2「每次调用尝试恰一条」），它就该跟着期次目录走。这里只拦产物。
+    """
     monkeypatch.setattr(flow, "STEPS", tuple(s for s in flow.STEPS if s["id"] == "parse"))
     out = tmp_path / "out"
     r = flow.run(str(dirty_unknown_ledger["path"]), out_root=out, run_dir=tmp_path / "run")
     assert r.status == states.ESCALATED
-    assert not out.exists() or not list(out.rglob("*")), \
-        f"失败运行不该在产物目录留东西，实际：{[str(p) for p in out.rglob('*')]}"
+    leftovers = [p for p in out.rglob("*")
+                 if p.name != "ai_calls.jsonl" and p.is_file()] if out.exists() else []
+    assert not leftovers, f"失败运行不该在产物目录留东西，实际：{[str(p) for p in leftovers]}"
 
 
 def test_解析成功时照常落盘(dirty_unknown_ledger, monkeypatch, tmp_path):
