@@ -439,7 +439,6 @@ export default function App() {
     { view: 'workbench', label: '生成台', icon: 'play', href: '/app/', admin: true },
     { view: 'report', label: '报告', icon: 'chart', href: '/app/?view=report' },
     { view: 'review', label: '审核台', icon: 'seal', href: '/app/?view=review', admin: true },
-    { view: 'ledger', label: '台账', icon: 'doc', href: '/app/?view=ledger' },
     { view: 'analysis', label: '分析台', icon: 'chart', href: '/app/?view=analysis', admin: true },
     { view: 'forecast', label: '预测台', icon: 'trend', href: '/app/?view=forecast', admin: true },
     { view: 'shelf', label: '陈列馆', icon: 'book', href: '/app/shelf/' },
@@ -487,15 +486,11 @@ export default function App() {
             </select>
           </label>
         )}
-        <div className="palette-switch" role="group" aria-label="切换配色">
-          <button type="button" aria-pressed={palette === 'ynu'} onClick={() => setPalette('ynu')}>云大绿</button>
-          <button type="button" aria-pressed={palette === 'zhu'} onClick={() => setPalette('zhu')}>朱砂</button>
-        </div>
         {me?.role ? (
-          /* 右上角身份芯片 = 退出入口：点它清会话回登录页（/logout 是旧站路由，纯链接、无 JS） */
-          <a className="who who-exit" href="/logout" title="退出登录，回到登录页">
+          /* 右上角身份芯片 = 退出入口（紧凑版：名字 + 退出；角色不重复展示——工作区只对馆员开） */
+          <a className="who who-exit" href="/logout" title={`${me.name} · 退出登录，回到登录页`}>
             <span className="avatar">{me.name?.slice(0, 1) ?? '？'}</span>
-            {me.name}{me.role === 'admin' ? ' · 管理员' : ' · 游客'}
+            {me.name}
             <span className="exit">退出</span>
           </a>
         ) : (
@@ -596,7 +591,10 @@ export default function App() {
                       />
             {!noAdminBits && (
               <details className="fold">
-                <summary>这一期的工具<span className="sm">上传 · 重跑 · 回滚 · 日志包</span></summary>
+                <summary>这一期的工具<span className="sm">上传 · 重跑 · 回滚 · 台账 · 日志包</span></summary>
+                <p className="hint" style={{ padding: '10px 18px 0', fontSize: 13.5 }}>
+                  看数据源：<a href={navHref('/app/?view=ledger')}>主台账（只读）→</a>
+                </p>
                 <Tools
                   period={selected}
                   jobId={runForSelected?.jobId ?? null}
@@ -672,6 +670,12 @@ export default function App() {
           {busy && '正在提交生成请求……'}
         </p>
       </main>
+
+      {/* 配色开关：固定左下角（rick 2026-09-29：给顶栏腾地方） */}
+      <div className="palette-switch palette-dock" role="group" aria-label="切换配色">
+        <button type="button" aria-pressed={palette === 'ynu'} onClick={() => setPalette('ynu')}>云大绿</button>
+        <button type="button" aria-pressed={palette === 'zhu'} onClick={() => setPalette('zhu')}>朱砂</button>
+      </div>
     </>
   )
 }

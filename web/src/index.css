@@ -52,19 +52,21 @@ a{color:inherit}
 .nav a:hover{background:var(--panel)}
 .who{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-2);white-space:nowrap;
   padding-left:12px;border-left:1px solid var(--line)}
-/* 身份芯片 = 退出入口：整块可点，hover 浮出「退出」胶囊 */
-.who-exit{text-decoration:none;border-radius:999px;padding:4px 6px 4px 8px;margin-left:4px;
-  transition:background .15s}
+/* 身份芯片 = 退出入口（2026-09-29 紧凑版：给顶栏腾地方）——整块可点，hover 浮出「退出」胶囊 */
+.who-exit{text-decoration:none;border-radius:999px;padding:2px 4px 2px 3px;margin-left:0;
+  font-size:12.5px;gap:6px;transition:background .15s}
 .who-exit:hover{background:var(--panel)}
-.who-exit .exit{font-size:12px;color:var(--ink-3);border:1px solid var(--line);border-radius:999px;
-  padding:1px 8px;margin-left:2px;transition:color .15s,border-color .15s}
+.who-exit .exit{font-size:11.5px;color:var(--ink-3);border:1px solid var(--line);border-radius:999px;
+  padding:0 7px;margin-left:1px;transition:color .15s,border-color .15s}
 .who-exit:hover .exit{color:var(--zhu);border-color:var(--zhu)}
-.avatar{width:29px;height:29px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);
-  display:grid;place-items:center;font-size:13px;font-weight:700}
+.avatar{width:24px;height:24px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);
+  display:grid;place-items:center;font-size:12px;font-weight:700}
 .palette-switch{display:flex;gap:4px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}
 .palette-switch button{border:0;border-radius:999px;padding:5px 9px;background:transparent;color:var(--ink-2);
   font:inherit;font-size:12.5px;cursor:pointer}
 .palette-switch button[aria-pressed="true"]{background:var(--zhu);color:#fff}
+/* 配色开关停左下角（rick 2026-09-29：顶栏只留工作流；这是全站唯一配色入口） */
+.palette-dock{position:fixed;left:20px;bottom:16px;z-index:30;box-shadow:0 2px 10px rgba(34,43,37,.10)}
 /* 顶栏期次章（票 03）：全站唯一的期次切入口；一改即写 URL，各屏跟随 */
 .period-chip{display:flex;align-items:center;gap:6px;color:var(--ink-3);font-size:13.5px;white-space:nowrap}
 .period-chip select{font:inherit;font-size:14px;font-variant-numeric:tabular-nums;padding:6px 10px;
@@ -210,7 +212,7 @@ a{color:inherit}
   .nav{order:3; width:100%; margin-left:0; overflow-x:auto; -webkit-overflow-scrolling:touch}
   .nav a{white-space:nowrap; padding:8px 11px; font-size:14.5px}
   .who{font-size:12.5px; padding-left:0; border-left:0}
-  .palette-switch{margin-left:auto}
+  .palette-dock{left:12px; bottom:12px}
   .report-head{grid-template-columns:minmax(0,1fr)}
   .wrap{padding:18px 14px 60px}
 }
