@@ -128,6 +128,15 @@ h1{font-size:22px}
 .g-retry:hover{background:var(--bad-soft)}
 .g.fail .g-retry{display:inline-flex;align-items:center;gap:6px}
 
+/* ---------- 本期新增列核对表 ---------- */
+.tablewrap{overflow:auto;max-height:320px;border:1px solid var(--line-2);border-radius:9px;margin-top:6px}
+.rv-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.rv-tbl th,.rv-tbl td{text-align:left;padding:6px 10px;border-bottom:1px solid var(--line-2);white-space:nowrap}
+.rv-tbl th{position:sticky;top:0;background:var(--panel);color:var(--ink-2);font-weight:650}
+.rv-tbl tr:last-child td{border-bottom:0}
+.rv-tbl td:nth-child(3){white-space:normal}
+.rv-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 0}
+
 /* ---------- 折叠说明 / 页脚 ---------- */
 .fold{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-top:16px}
 .fold > summary{padding:11px 18px;cursor:pointer;font-size:14.5px;display:flex;align-items:center;gap:10px;list-style:none}
@@ -178,10 +187,10 @@ h1{font-size:22px}
     <button type="button" data-sc="blocked" aria-pressed="false">检查未过</button>
     <button type="button" data-sc="running" aria-pressed="false">取数中</button>
     <button type="button" data-sc="partial" aria-pressed="false">有未通过</button>
-    <button type="button" data-sc="done" aria-pressed="false">待入库</button>
-    <button type="button" data-sc="accepted" aria-pressed="false">已入库</button>
+    <button type="button" data-sc="review" aria-pressed="false">待核对</button>
+    <button type="button" data-sc="merged" aria-pressed="false">已并入</button>
   </span>
-  <span>数据均为演示；页内按钮只演示下一步，不连接真实网站；清单可展开。</span>
+  <span>数据均为演示；页内按钮只演示下一步，不连接真实网站；「待核对」场景含新增列核对表。</span>
 </div>
 
 <header class="topbar">
@@ -197,10 +206,10 @@ h1{font-size:22px}
   <section class="card">
     <div class="head-row">
       <h1>自动取数台</h1>
-      <span class="period mono">202609</span>
+      <span class="period mono">202611</span>
       <span class="pill plain" id="state-pill">还没开始</span>
       <span class="hint num" id="state-count">已核验 0 / 64</span>
-      <button class="dot" type="button" data-info="<b>这行状态怎么来的</b><br>进度按逐份核验结果统计：只有核验通过的文件才计入。<br>数据期取自网站页面显示值（ESI 2026 年 9 月、InCites 截至 2026-08-31），不以下载当天代替。">ⓘ</button>
+      <button class="dot" type="button" data-info="<b>这行状态怎么来的</b><br>进度按逐份核验结果统计：只有核验通过的文件才计入。<br>数据期取自网站页面显示值（ESI 2026 年 11 月、InCites 截至 2026-10-31），不以下载当天代替。">ⓘ</button>
     </div>
   </section>
 
@@ -231,19 +240,49 @@ h1{font-size:22px}
     </div>
   </details>
 
+  <!-- ================= 本期新增列核对表（待核对/已并入时出现） ================= -->
+  <details class="fold" id="review-fold" hidden>
+    <summary>本期新增列核对表<span class="sm">12 张表 · 演示</span></summary>
+    <div class="fold-body">
+      <p class="list-note">将并入主台账的 202611 列；并入只动这些列，历史列一字不变。
+        <button class="dot" type="button" data-info="<b>核对什么</b><br>这里列出并入时将写入的每一张表与内容，来源是原始数据包。核对通过后才写主台账；写入前后有机械核对（列白名单、旧列逐格比对），任一项不过即停。">ⓘ</button>
+      </p>
+      <div class="tablewrap">
+        <table class="rv-tbl">
+          <thead><tr><th>工作表</th><th>新增</th><th>内容 / 示例值</th><th>来源</th></tr></thead>
+          <tbody>
+            <tr><td>云大ESI排名</td><td>202611 组</td><td>国际第 531 位 · 国内第 61 位</td><td>ESI</td></tr>
+            <tr><td>总被引</td><td>202611 列</td><td>22 个学科各一格</td><td>ESI</td></tr>
+            <tr><td>论文数</td><td>202611 列</td><td>22 个学科各一格</td><td>ESI</td></tr>
+            <tr><td>ESI被引阈值</td><td>202611 列</td><td>每学科 1% 阈值</td><td>ESI</td></tr>
+            <tr><td>千分之一被引阈值</td><td>202611 列</td><td>每学科 1‰ 阈值</td><td>ESI</td></tr>
+            <tr><td>篇均被引</td><td>202611 组</td><td>云大 / 中国大陆 / 国际</td><td>ESI＋InCites</td></tr>
+            <tr><td>新国际排名</td><td>202611 组</td><td>国际排名与百分位</td><td>InCites</td></tr>
+            <tr><td>新国内排名</td><td>202611 组</td><td>国内排名与百分位</td><td>InCites</td></tr>
+            <tr><td>Q1–Q4</td><td>202611 组</td><td>三实体 × 四分位</td><td>InCites</td></tr>
+            <tr><td>接近度</td><td>202611 列</td><td>总被引 ÷ ESI 阈值</td><td>本地派生</td></tr>
+            <tr><td>实际与预测差值</td><td>202611 组</td><td>预测校准三行</td><td>ESI＋InCites</td></tr>
+            <tr><td>InCites快照</td><td>202611 登记</td><td>本期快照清单</td><td>InCites</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="rv-actions"><a class="btn" href="#">打开监测表 ↗</a><span class="hint">核对无误后，回上方按「并入台账」。</span></p>
+    </div>
+  </details>
+
   <!-- ================= 唯一一份说明 ================= -->
   <details class="fold">
     <summary>说明 · 口径、来源与只读声明<span class="sm">全站仅此一份</span></summary>
     <div class="fold-body">
       <p>
         ① 文件取自 ESI 与 InCites 官网，数据期以网站页面显示为准；
-        ② 每份文件逐项核验、通过才计入——下载完成不等于入库，入库也不等于台账已更新，监测表仍由馆员整理；
+        ② 每份文件逐项核验、通过才计入；下载完成不等于台账已更新——先自动新建本期监测表，核对通过才把 202611 列并入主台账；并入只动本期列，历史一字不变；
         ③ 登录由馆员在取数专用浏览器完成，本页不显示、不保存账号；
-        ④ 取数与核验明细记入运行档案。来源：本期取数记录。
+        ④ 取数、核对与并入明细记入运行档案。来源：本期取数记录。
       </p>
     </div>
   </details>
-  <p class="foot">静态提案稿：期次、进度与文件结果均为演示；真实取数、文件写入与档案留痕尚未接入。</p>
+  <p class="foot">静态提案稿：期次、进度与文件结果均为演示；真实取数、监测表生成、并入台账与档案留痕尚未接入。</p>
 </main>
 
 <div class="pop" id="pop"></div>
@@ -334,17 +373,17 @@ h1{font-size:22px}
       pf:{browser:["ok","取数专用浏览器 · 已连接"],esi:["ok","ESI 网站 · 已登录"],incites:["ok","InCites 网站 · 已登录"]},
       groups:NEARLY
     },
-    done:{
-      pill:["待入库","ok"],
-      title:"64 份文件已全部核验通过。", sub:"入库后这笔数据才进入本期流程。",
-      btn:"验收入库", act:"accept",
+    review:{
+      pill:["待核对","warn"], rv:true,
+      title:"本期监测表已自动建好，请核对。", sub:"核对无误后并入台账（只动 202611 列）。",
+      btn:"核对无误 · 并入台账", act:"merge",
       pf:{browser:["ok","取数专用浏览器 · 已连接"],esi:["ok","ESI 网站 · 已登录"],incites:["ok","InCites 网站 · 已登录"]},
       groups:ALL_DONE
     },
-    accepted:{
-      pill:["已入库","ok"],
-      title:"本期数据已入库（09-29 10:42）。", sub:"下载完成不等于台账已更新。",
-      btn:"去整理监测表", act:"goto",
+    merged:{
+      pill:["已并入","ok"], rv:true,
+      title:"已并入主台账（202611 列）。", sub:"11-27 10:42 并入 · 只动本期列。",
+      btn:"去生成台生成", act:"goto",
       pf:{browser:["ok","取数专用浏览器 · 已连接"],esi:["ok","ESI 网站 · 已登录"],incites:["ok","InCites 网站 · 已登录"]},
       groups:ALL_DONE
     }
@@ -428,6 +467,7 @@ h1{font-size:22px}
     $("#state-count").textContent = "已核验 " + v + " / " + TOTAL;
     $("#focus-title").textContent = s.title;
     $("#focus-sub").textContent = s.sub;
+    $("#review-fold").hidden = !s.rv;
     var btn = $("#focus-btn");
     if (s.btn) { btn.hidden = false; btn.textContent = s.btn; btn.disabled = false; }
     else { btn.hidden = true; }
@@ -446,7 +486,11 @@ h1{font-size:22px}
   function busy(ms, next){
     var btn = $("#focus-btn");
     btn.disabled = true;
-    busyTimer = window.setTimeout(function(){ busyTimer = null; apply(next); }, ms);
+    busyTimer = window.setTimeout(function(){
+      busyTimer = null;
+      if (typeof next === "function") { next(); }
+      else { apply(next); }
+    }, ms);
   }
 
   $("#focus-btn").addEventListener("click", function(){
@@ -466,9 +510,21 @@ h1{font-size:22px}
       renderGroupCard(GROUPS[3], {state:"retrying",verified:d.verified,downloaded:d.downloaded});
       $("#focus-title").textContent = "正在重新核验云大论文清单这一组……";
       $("#focus-sub").textContent = "已通过的 63 份不动，只补没通过的那一份。";
-      busy(950, "done");
+      busy(950, function(){
+        /* 补完后自动建本期监测表（只动当期列），再进入待核对 */
+        renderGroupCard(GROUPS[3], {state:"done",verified:6,downloaded:6});
+        var pill = $("#state-pill");
+        pill.className = "pill warn"; pill.textContent = "正在建监测表";
+        $("#state-count").textContent = "已核验 " + TOTAL + " / " + TOTAL;
+        $("#focus-title").textContent = "正在新建本期监测表……";
+        $("#focus-sub").textContent = "只写 202611 列，历史列不动。";
+        busy(950, "review");
+      });
     }
-    else if (act==="accept") { busy(700, "accepted"); }
+    else if (act==="merge") {
+      $("#focus-sub").textContent = "正在并入（写前备份 · 旧列逐格比对）……";
+      busy(1100, "merged");
+    }
     else if (act==="goto") { /* 演示：真实版本回生成台 */ }
   });
 
