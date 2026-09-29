@@ -62,10 +62,10 @@ export function AiRecords({ period }: { period: string | null }) {
 
   return (
     <>
-      {/* ===== 问答记录 ===== */}
+      {/* ===== 问答记录（编号随档案页减负顺延：01 过程回放 → 02 问答记录 → 03 审计） ===== */}
       <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
         <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span className="fc-no">04</span>问文衡 · 问答记录
+          <span className="fc-no">02</span>问文衡 · 问答记录
           <span className="hint">每条展开＝问 →（工具）→ 模型 → 校验</span>
           <span className="hint" title="记录里有什么：问题、每次工具调用（读了什么、花了多久）、模型调用（用了哪个模型、成没成）、校验结果（盾）。不含回答正文与提示词。">?</span>
         </h2>
@@ -111,10 +111,10 @@ export function AiRecords({ period }: { period: string | null }) {
         )}
       </section>
 
-      {/* ===== 运行级 · 模型参与 ===== */}
+      {/* ===== 运行级 · 模型参与（附在问答记录后，不占编号） ===== */}
       <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
         <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span className="fc-no">05</span>运行级 · 模型参与
+          运行级 · 模型参与
           <span className="hint">主体流水线零模型；模型只出现在问答与决策环</span>
         </h2>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>

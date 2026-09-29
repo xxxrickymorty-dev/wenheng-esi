@@ -1,7 +1,11 @@
 /* 运行档案（契约 §2.2 #18）——一次运行的完整回放：
    状态怎么走的、每一步用了多久、审计怎么判的、日志包里都有什么。
    只读页，不在顶栏；从生成台「这一期的工具」进来。
-   数据全部来自 GET /api/periods/{p}/archive（后端已把服务器绝对路径剥掉）。 */
+   数据全部来自 GET /api/periods/{p}/archive（后端已把服务器绝对路径剥掉）。
+
+   减负版（2026-09-29，diji 票 12 对照稿过审）：同源数据一份只画一遍——
+   01 过程回放（链＋瀑布各一次，删旧「01 表」「02 瀑布」「03 调度」三块重复）·
+   页头凭据折进「任务凭据」· 审计失败优先（通过项折起）· 编号 01→04 连续。 */
 
 import { useEffect, useState } from 'react'
 import { getAcquisition, getArchive, humanSize, type AcquisitionState, type ArchiveData } from './api'
@@ -20,12 +24,6 @@ const AUDIT_CLS: Record<string, string> = { pass: 'signed', review: 'stale', fai
 
 function str(v: unknown): string {
   return v == null || v === '' ? '—' : String(v)
-}
-
-/** 步骤 → 能力中文名（票 12）：界面不出现工具名（禁用词表）。 */
-const STEP_ABILITY: Record<string, string> = {
-  parse: '解析台账', compute: '计算大表', forecast: '预测回测',
-  province: '省域表', matrix: '学科矩阵', charts: '图表渲染', docx: '母版替换',
 }
 
 const ACQ_GROUP_CN: Record<string, string> = {
@@ -67,6 +65,10 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
   const deps = (env.deps ?? {}) as Record<string, string>
   const stats = (d?.stats ?? {}) as Record<string, unknown>
 
+  const auditRows = d?.audit.exists ? d.audit.rows : []
+  const auditBad = auditRows.filter((r) => r.status !== 'pass')
+  const auditPass = auditRows.filter((r) => r.status === 'pass')
+
   return (
     <>
       <p className="hint" style={{ marginTop: 2 }}>
@@ -82,14 +84,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
           {/* ===== 页头 ===== */}
           <section className="card" style={{ padding: '22px 24px' }}>
             <h1 style={{ fontSize: 24 }}>运行档案 · {d.period}</h1>
-            <p className="fc-lead">
-              这次运行的完整回放：状态怎么走的、每一步用了多久、审计怎么判的、日志包里都有什么。只读页——不改任何东西。
-            </p>
-            <dl className="ar-kv" style={{ marginTop: 12 }}>
-              {d.job_id && <div><dt>任务号</dt><dd className="mono">{d.job_id}</dd></div>}
-              {!!job.input && <div><dt>台账输入</dt><dd className="mono">{str(job.input)}</dd></div>}
-              {!!job.actor && <div><dt>发起人</dt><dd>{str(job.actor)}</dd></div>}
-            </dl>
+            <p className="fc-lead">这次运行的完整回放：状态、用时、审计、产物。</p>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 14 }}>
               {!!job.status && (
                 <span className={`pill ${job.status === 'completed' ? 'signed' : job.status === 'warned' ? 'stale' : 'unsigned'}`}>
@@ -109,9 +104,23 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
             </div>
           </section>
 
+          {/* ===== 任务凭据（页头 kv 折进来；减负：首屏不再铺三条凭据） ===== */}
+          {(d.job_id || job.input || job.actor) && (
+            <details className="fold">
+              <summary>任务凭据<span className="sm">任务号 · 发起人 · 输入</span></summary>
+              <div className="fold-inner">
+                <p className="mono" style={{ fontSize: 13, margin: 0, lineHeight: 1.9 }}>
+                  {d.job_id && <>任务号 {d.job_id}<br /></>}
+                  {!!job.input && <>台账输入 {str(job.input)}<br /></>}
+                  {!!job.actor && <>发起人 {str(job.actor)}</>}
+                </p>
+              </div>
+            </details>
+          )}
+
           {/* ===== 00 取数记录（X3）：下载与并入的留痕；没有取数记录时整块不显示 ===== */}
           {acq?.started && (
-            <details className="fold" style={{ marginTop: 18 }}>
+            <details className="fold">
               <summary>
                 取数记录 · 下载与并入
                 <span className="sm">
@@ -142,35 +151,40 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
             </details>
           )}
 
-          {/* ===== 01 状态机回放 ===== */}
+          {/* ===== 01 过程回放（链 + 瀑布，同一份数据只此一处；diji 票 12 合并 01/02/03） ===== */}
           <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
             <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span className="fc-no">01</span>状态机回放
-              <span className="hint">{d.replay.n} 次迁移</span>
+              <span className="fc-no">01</span>过程回放
+              <span className="hint">
+                {d.replay.n} 次迁移 · {d.waterfall.length} 步
+                {d.waterfall_total ? ` · 全链路 ${d.waterfall_total} 秒` : ''}
+              </span>
+              <span className="hint"
+                    title="状态与每一步的耗时都来自运行档案；直跑线不产生状态流水，迁移链由任务记录合成——只含确定发生过的迁移，不臆造自愈/升级环节。">?</span>
             </h2>
             {d.replay.chain.length ? (
-              <div className="tablewrap" style={{ marginTop: 10 }}>
-                <table className="ar-tbl">
-                  <thead><tr><th style={{ width: '26%' }}>时刻</th><th style={{ width: '40%' }}>迁移</th><th>触发</th></tr></thead>
-                  <tbody>
-                    {d.replay.chain.map((r, i) => (
-                      <tr key={i}>
-                        <td className="mono">{r.ts || '—'}</td>
-                        <td>
-                          <span className="pill unsigned">{STATUS_CN[r.from] ?? r.from}</span>
-                          <span className="muted" style={{ margin: '0 6px' }}>→</span>
-                          <span className="pill signed">{STATUS_CN[r.to] ?? r.to}</span>
-                          {r.synthetic && <span className="pill stale" style={{ marginLeft: 6 }}>合成</span>}
-                        </td>
-                        <td>{r.trigger || '—'}{r.attempt && r.attempt > 1 ? ` · 第 ${r.attempt} 次尝试` : ''}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="ar-chain" style={{ marginTop: 10 }}>
+                {d.replay.chain.map((r, i) => (
+                  <span className="ar-chain-node" key={i}>
+                    <span>{STATUS_CN[r.from] ?? r.from}<i> → </i>{STATUS_CN[r.to] ?? r.to}</span>
+                    <small>{r.ts || '—'}{r.trigger ? ` · ${r.trigger}` : ''}{r.synthetic ? ' · 合成记录' : ''}</small>
+                  </span>
+                ))}
               </div>
             ) : (
-              <p className="hint" style={{ marginTop: 8 }}>无状态迁移记录。</p>
+              <p className="hint" style={{ marginTop: 6 }}>无状态迁移记录。</p>
             )}
+            <div style={{ marginTop: 12 }}>
+              {d.waterfall.length ? (
+                <WaterfallRows rows={d.waterfall} totalSec={d.waterfall_total} summary={d.waterfall_summary} />
+              ) : (
+                <p className="pending-box" style={{ marginTop: 8 }}>
+                  {d.progress_missing
+                    ? '进度记录读不到——文件可能随工作区迁移而改了位置，不是「这次运行没有记录」。'
+                    : '这次运行没有留下每步记录（多半不是由演示站发起的）。'}
+                </p>
+              )}
+            </div>
             {d.replay.synthetic && (
               <p className="hint" data-src="backend" style={{ marginTop: 10 }}>
                 ⚠ {d.replay.note}——合成链只含确定发生过的迁移，不臆造自愈/升级环节。
@@ -178,105 +192,107 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
             )}
           </section>
 
-          {/* ===== 02 任务瀑布 ===== */}
-          <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
-            <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span className="fc-no">02</span>任务瀑布（各步耗时）
-            </h2>
-            {d.waterfall.length ? (
-              <WaterfallRows rows={d.waterfall} totalSec={d.waterfall_total} summary={d.waterfall_summary} />
-            ) : (
-              <p className="pending-box" style={{ marginTop: 8 }}>
-                {d.progress_missing
-                  ? '进度记录读不到——文件可能随工作区迁移而改了位置，不是「这次运行没有记录」。'
-                  : '这次运行没有留下每步记录（多半不是由演示站发起的）。'}
-              </p>
-            )}
-          </section>
-
-          {/* ===== 03 智能体 · 规划与调度（票 12；静态稿 web/mockups/运行档案-智能体调度.html） ===== */}
-          <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
-            <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span className="fc-no">03</span>智能体 · 规划与调度
-              <span className="hint">{d.replay.n} 次状态迁移 · {d.waterfall.length} 步记录</span>
-            </h2>
-            <h3 style={{ fontSize: 15, marginTop: 12 }}>规划 · 状态机怎么走</h3>
-            {d.replay.chain.length ? (
-              <div className="ar-chain">
-                {d.replay.chain.map((r, i) => (
-                  <span className="ar-chain-node" key={i}>
-                    <span>{STATUS_CN[r.from] ?? r.from}<i> → </i>{STATUS_CN[r.to] ?? r.to}</span>
-                    <small>{r.ts || '—'}{r.trigger ? ` · ${r.trigger}` : ''}{r.synthetic ? ' · 合成' : ''}</small>
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="hint" style={{ marginTop: 6 }}>无状态迁移记录。</p>
-            )}
-            <h3 style={{ fontSize: 15, marginTop: 16 }}>调度 · 每一步用了哪个能力</h3>
-            {d.waterfall.length ? (
-              <div className="ar-steps">
-                {d.waterfall.map((r) => (
-                  <div className="ar-step" key={r.step}>
-                    <span className="ar-step-name">{r.name}</span>
-                    {STEP_ABILITY[r.step] && <span className="pill">{STEP_ABILITY[r.step]}</span>}
-                    <span className="ar-step-detail">{r.detail || '—'}</span>
-                    <span className="ar-step-sec">{r.sec} 秒</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="pending-box" style={{ marginTop: 6 }}>这次运行没有留下每步记录。</p>
-            )}
-            <p className="hint" style={{ marginTop: 10 }}>
-              能力按步骤对应（演示站直跑线不逐步记录工具调用）；状态与数字都来自运行档案，不改任何数据。
-            </p>
-          </section>
-
-          {/* ===== 04 问文衡 · 问答与模型调用（票 06 块；静态稿 web/mockups/运行档案-问答与模型调用.html） ===== */}
+          {/* ===== 02 问文衡 · 问答与模型调用（票 06 块；契约 #30） ===== */}
           <AiRecords period={period} />
 
-          {/* ===== 审计结论 ===== */}
+          {/* ===== 03 审计结论（失败优先：只露待确认/不通过，通过项折起） ===== */}
           <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
             <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span className="fc-no">03</span>审计结论
               <span className="hint">
-                {d.audit.exists ? `${d.audit.generated_at} · 耗时 ${d.audit.elapsed_s} 秒` : '未执行'}
+                {d.audit.exists
+                  ? `${auditRows.length} 项：${auditPass.length} 通过 · ${auditRows.filter((r) => r.status === 'review').length} 待确认 · ${auditRows.filter((r) => r.status === 'fail').length} 不通过`
+                  : '未执行'}
               </span>
             </h2>
             {d.audit.exists ? (
               <>
-                <div className="tablewrap" style={{ marginTop: 10 }}>
-                  <table className="ar-tbl">
-                    <thead>
-                      <tr><th style={{ width: '22%' }}>审计项</th><th style={{ width: '12%' }}>判定</th>
-                        <th style={{ width: '26%' }}>实测</th><th>说明</th></tr>
-                    </thead>
-                    <tbody>
-                      {d.audit.rows.map((it) => (
-                        <tr key={it.id}>
-                          <td><b>{it.title || it.id}</b></td>
-                          <td>
-                            <span className={`pill ${AUDIT_CLS[it.status] ?? 'unsigned'}`}>
-                              {AUDIT_LABEL[it.status] ?? it.status}
-                            </span>
-                          </td>
-                          <td className="mono">{it.metric || '—'}</td>
-                          <td className="hint">{it.reason || '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {!!d.audit.truth_chain && (
+                {auditBad.length ? (
+                  <div className="tablewrap" style={{ marginTop: 10 }}>
+                    <table className="ar-tbl">
+                      <thead>
+                        <tr><th style={{ width: '22%' }}>审计项</th><th style={{ width: '12%' }}>判定</th>
+                          <th style={{ width: '26%' }}>实测</th><th>说明</th></tr>
+                      </thead>
+                      <tbody>
+                        {auditBad.map((it) => (
+                          <tr key={it.id}>
+                            <td><b>{it.title || it.id}</b></td>
+                            <td>
+                              <span className={`pill ${AUDIT_CLS[it.status] ?? 'unsigned'}`}>
+                                {AUDIT_LABEL[it.status] ?? it.status}
+                              </span>
+                            </td>
+                            <td className="mono">{it.metric || '—'}</td>
+                            <td className="hint">{it.reason || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="hint" style={{ marginTop: 8 }}>全部通过，没有待人工确认的项。</p>
+                )}
+                {auditPass.length > 0 && (
+                  <details className="fold" style={{ marginTop: 10 }}>
+                    <summary>已通过的 {auditPass.length} 项<span className="sm">点开看逐项实测</span></summary>
+                    <div className="fold-inner">
+                      <table className="ar-tbl">
+                        <tbody>
+                          {auditPass.map((it) => (
+                            <tr key={it.id}>
+                              <td><b>{it.title || it.id}</b></td>
+                              <td className="mono">{it.metric || '—'}</td>
+                              <td className="hint">{it.reason || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+                )}
+                {!!d.audit.truth_chain && d.audit.truth_chain !== '—' && (
                   <p className="hint" style={{ marginTop: 10 }}>
                     真值链：{typeof d.audit.truth_chain === 'string' ? d.audit.truth_chain : '—'}
                   </p>
                 )}
+                <p className="hint" style={{ marginTop: 10 }}>
+                  {d.audit.generated_at} · 耗时 {d.audit.elapsed_s} 秒
+                </p>
               </>
             ) : (
               <p className="hint" style={{ marginTop: 8 }}>该期次没有审计记录——跑完流水线后由审计步骤生成。</p>
             )}
+          </section>
+
+          {/* ===== 04 产物与日志包 ===== */}
+          <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
+            <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span className="fc-no">04</span>产物与日志包
+              <span className="hint">日志包 {d.logpack.n_files} 个文件 · {humanSize(d.logpack.bytes)}</span>
+            </h2>
+            <div className="ar-arts">
+              {!!d.logpack_url && (
+                <a className="ar-art primary" href={d.logpack_url}>
+                  <b>运行日志包（ZIP）</b>
+                  <span className="m">回放最小集 · {d.logpack.n_files} 个文件 · {humanSize(d.logpack.bytes)}</span>
+                </a>
+              )}
+              {d.artifacts.map((a) => (
+                a.key === 'report' && approvalStatus !== 'signed'
+                  ? <div className={`ar-art${a.primary ? ' primary' : ''}`} key={a.key} aria-disabled="true">
+                      <b>{a.label}</b>
+                      <span className="m">{a.name}{a.size ? ` · ${humanSize(a.size)}` : ''} · 未签发，管理员暂不能下载</span>
+                    </div>
+                  : <a className={`ar-art${a.primary ? ' primary' : ''}`} key={a.key} href={a.url}>
+                      <b>{a.label}</b>
+                      <span className="m">{a.name}{a.size ? ` · ${humanSize(a.size)}` : ''}</span>
+                    </a>
+              ))}
+            </div>
+            <p className="hint" style={{ marginTop: 10 }}>
+              日志包只含回放所需文本件；完整产物快照（报告 docx、parquet、图表 PNG）在归档目录里。
+            </p>
           </section>
 
           {/* ===== 05 / 06 运行环境与指标（折叠，票 12） ===== */}
@@ -315,62 +331,28 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
           </div>
           </details>
 
-          {/* ===== 07 产物与日志包 ===== */}
-          <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
-            <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span className="fc-no">06</span>产物与日志包
-              <span className="hint">日志包 {d.logpack.n_files} 个文件 · {humanSize(d.logpack.bytes)}</span>
-            </h2>
-            <div className="ar-arts">
-              {!!d.logpack_url && (
-                <a className="ar-art primary" href={d.logpack_url}>
-                  <b>运行日志包（ZIP）</b>
-                  <span className="m">回放最小集 · {d.logpack.n_files} 个文件 · {humanSize(d.logpack.bytes)}</span>
-                </a>
-              )}
-              {d.artifacts.map((a) => (
-                a.key === 'report' && approvalStatus !== 'signed'
-                  ? <div className={`ar-art${a.primary ? ' primary' : ''}`} key={a.key} aria-disabled="true">
-                      <b>{a.label}</b>
-                      <span className="m">{a.name}{a.size ? ` · ${humanSize(a.size)}` : ''} · 未签发，管理员暂不能下载</span>
-                    </div>
-                  : <a className={`ar-art${a.primary ? ' primary' : ''}`} key={a.key} href={a.url}>
-                      <b>{a.label}</b>
-                      <span className="m">{a.name}{a.size ? ` · ${humanSize(a.size)}` : ''}</span>
-                    </a>
-              ))}
-            </div>
-            <p className="hint" style={{ marginTop: 10 }}>
-              日志包只含回放所需文本件；完整产物快照（报告 docx、parquet、图表 PNG）在归档目录里。
-            </p>
-          </section>
-
-          {/* ===== 08 智能体轨迹文件（折叠，票 12） ===== */}
+          {/* ===== 07 智能体轨迹文件（折叠收一句，票 12） ===== */}
           <details className="fold">
-            <summary>智能体轨迹文件<span className="sm">{d.trace_files.length} / 3</span></summary>
-          <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
-            <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span className="fc-no">07</span>智能体轨迹文件
-              <span className="hint">{d.trace_files.length} / 3</span>
-            </h2>
-            {d.trace_files.length ? (
-              <div className="tablewrap" style={{ marginTop: 10 }}>
-                <table className="ar-tbl">
-                  <tbody>
-                    {d.trace_files.map((n) => (
-                      <tr key={n}><td className="mono">{n}</td><td className="hint">已随日志包归档</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="hint" style={{ marginTop: 8 }}>
-                本次运行没有留下智能体轨迹文件——演示站主入口走流水线直跑，
-                轨迹要由智能体编排器才写。档案页因此退化为「进度事件 + 任务状态」，这是<b>真实的记录缺口</b>，
-                不是页面没渲染出来。
-              </p>
-            )}
-          </section>
+            <summary>智能体轨迹文件
+              <span className="sm">{d.trace_files.length ? `${d.trace_files.length} / 3` : '本次直跑线不产轨迹（真实记录缺口）'}</span>
+            </summary>
+            <div className="fold-inner">
+              {d.trace_files.length ? (
+                <div className="tablewrap">
+                  <table className="ar-tbl">
+                    <tbody>
+                      {d.trace_files.map((n) => (
+                        <tr key={n}><td className="mono">{n}</td><td className="hint">已随日志包归档</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="hint" style={{ margin: 0 }}>
+                  演示站主入口走流水线直跑，轨迹要由智能体编排器才写——这是真实的记录缺口，不是页面没渲染出来。
+                </p>
+              )}
+            </div>
           </details>
         </>
       )}
