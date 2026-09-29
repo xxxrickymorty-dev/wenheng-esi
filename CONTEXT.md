@@ -142,7 +142,7 @@
 
 ```bash
 .venv\Scripts\python.exe -m pytest -m ""          # 全量 936 例（默认 932 例，4 个 slow 被 marker 排除）
-uvicorn server.app:app --port 8080                 # 起服务后跑 server/e2e_check.py（只读 182 断言）
+.venv\Scripts\python.exe -m uvicorn server.app:app --port 8080   # 起服务：仓内 venv 直调，别用 uv 管理的裸 python（会缺包）；起后跑 server/e2e_check.py（只读 188 断言）
 .venv\Scripts\python.exe tools/verify_demo_run.py <期次>   # 写路径验收
 ```
 
