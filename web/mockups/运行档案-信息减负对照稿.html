@@ -1,0 +1,504 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 运行档案信息减负 · 改前 / 改后对照稿</title>
+<style>
+:root{
+  --bg:#F4F3ED;--card:#FFFDF8;--panel:#F0F1EB;
+  --ink:#222B25;--ink-2:#3F4C42;--ink-3:#58655C;
+  --line:#DDE1D8;--line-2:#E6E9E2;
+  --zhu:#1A4B27;--zhu-soft:#E3EDE4;
+  --gold:#B19A65;--gold-soft:#F1EBDD;--gold-ink:#62501F;
+  --ok:#28643A;--ok-soft:#E6F0E7;
+  --warn:#75622D;--warn-soft:#F6EED8;
+  --bad:#B43B31;--bad-soft:#F7E4E1;
+  --serif:"Source Han Serif SC","Noto Serif SC",Songti SC,SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 var(--sans)}
+h1,h2,h3{font-family:var(--serif)}
+.review{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding:9px 22px;background:var(--panel);border-bottom:1px dashed var(--line);font-size:12.5px;color:var(--ink-2)}
+.review b{color:var(--gold-ink)}
+.topbar{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:9px;font-family:var(--serif);white-space:nowrap}
+.brand strong{font-size:21px;letter-spacing:.04em}
+.brand span{font-size:12px;color:var(--ink-3);letter-spacing:.08em}
+.nav{display:flex;gap:4px;margin-left:auto}
+.nav a{padding:7px 11px;color:var(--ink-2);text-decoration:none;border-radius:8px;font-size:14px;white-space:nowrap}
+.nav a.active{background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+.period-chip{display:flex;align-items:center;gap:6px;color:var(--ink-3);font-size:13.5px;white-space:nowrap}
+.period-chip select{font:inherit;font-size:14px;font-family:var(--mono);padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.who{display:flex;align-items:center;gap:8px;border-left:1px solid var(--line);padding-left:14px;color:var(--ink-2);font-size:13px;white-space:nowrap}
+.avatar{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);font-weight:700}
+.wrap{max-width:1560px;margin:auto;padding:18px 22px 70px}
+.legend{display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;color:var(--ink-2);font-size:13px;margin:6px 0 12px}
+.legend b{color:var(--gold-ink)}
+.legend .k{padding:2px 9px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:12.5px}
+.cmp{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:1280px){.cmp{grid-template-columns:1fr}}
+.col{min-width:0}
+.col>h2{margin:0 0 8px;font-family:var(--serif);font-size:19px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2.5px 10px;border-radius:999px;font-size:12.5px}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.zhu{background:var(--zhu-soft);color:var(--zhu)}
+.pill.plain{background:var(--panel);color:var(--ink-2);border:1px solid var(--line)}
+.pill.signed{background:var(--zhu-soft);color:var(--zhu)}
+.pill.stale{background:var(--gold-soft);color:var(--gold-ink)}
+.pill.unsigned{background:var(--panel);color:var(--ink-3)}
+.frame{position:relative;height:860px;border:1px solid var(--line);border-radius:12px;background:var(--bg);box-shadow:0 1px 2px rgba(34,43,37,.05)}
+.frame.clip{overflow:hidden}
+.frame.scroll{overflow:auto}
+.frame.clip::after{content:"";position:absolute;left:0;right:0;bottom:0;height:70px;background:linear-gradient(transparent,rgba(244,243,237,.96));pointer-events:none}
+.frame-tag{position:absolute;top:8px;right:10px;z-index:5;font:11.5px var(--mono);color:var(--ink-3);background:rgba(255,253,248,.92);border:1px solid var(--line);border-radius:999px;padding:1px 9px}
+.frame-inner{padding:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:0 1px 2px rgba(34,43,37,.05)}
+.card+.card{margin-top:14px}
+.card h1{font-size:24px;margin:0}
+.card h2{font-size:19px;margin:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hint{color:var(--ink-3);font-size:13px}
+.mono{font-family:var(--mono)}
+.crumb{color:var(--ink-3);font-size:13.5px;margin:2px 2px 10px}
+.crumb a{color:var(--ink-2);text-decoration:none}
+.fc-lead{color:var(--ink-2);font-size:15.5px;margin:8px 0 0;max-width:74ch}
+.fc-no{font-family:var(--mono);font-size:12px;letter-spacing:.18em;color:var(--zhu);background:var(--zhu-soft);border-radius:6px;padding:2px 7px}
+.btn{padding:7px 13px;border:1px solid var(--line);border-radius:8px;background:var(--card);font:inherit;font-size:13.5px;cursor:pointer;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:7px}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-weight:650}
+.ar-kv{margin:8px 0 0}
+.ar-kv div{display:flex;gap:14px;padding:7px 0;border-bottom:1px solid var(--line-2);font-size:15px}
+.ar-kv div:last-child{border-bottom:none}
+.ar-kv dt{flex:0 0 120px;color:var(--ink-3);font-size:14px}
+.ar-kv dd{margin:0;word-break:break-all}
+.ar-tbl{width:100%;border-collapse:collapse;font-size:14.5px}
+.ar-tbl th,.ar-tbl td{padding:9px 11px;border-bottom:1px solid var(--line-2);text-align:left;vertical-align:top}
+.ar-tbl th{background:var(--panel);color:var(--ink-3);font-weight:600;font-size:13px}
+.ar-tbl td.mono{font-family:var(--mono)}
+.wf{margin-top:10px;display:flex;flex-direction:column}
+.wf-row{display:flex;align-items:center;gap:14px;padding:8px 0;border-bottom:1px solid var(--line-2)}
+.wf-row:last-child{border-bottom:none}
+.wf-name{flex:0 0 210px;min-width:0;line-height:1.45}
+.wf-name b{display:block;font-size:15px;font-weight:600}
+.wf-name small{display:block;color:var(--ink-3);font-size:12.5px}
+.wf-state{flex:0 0 76px;display:flex;align-items:center;gap:5px;font-size:13px;color:var(--ok)}
+.wf-track{flex:1;height:10px;border-radius:99px;background:var(--line-2);overflow:hidden}
+.wf-track i{display:block;height:100%;border-radius:99px;background:var(--zhu)}
+.wf-sec{flex:0 0 80px;text-align:right;font-family:var(--mono);font-size:14px;color:var(--ink-2)}
+.ar-chain{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;align-items:center}
+.ar-chain-node{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:13.5px}
+.ar-chain-node small{color:var(--ink-3);font-size:12px}
+.ar-steps{display:grid;gap:6px;margin-top:8px}
+.ar-step{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:7px 11px;border:1px solid var(--line-2);border-radius:9px;background:var(--card)}
+.ar-step-name{font-weight:650;font-size:13.5px}
+.ar-step-detail{flex:1;min-width:180px;color:var(--ink-2);font-size:13px}
+.ar-step-sec{color:var(--ink-3);font-size:12.5px}
+.ar-arts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px}
+.ar-art{display:block;padding:11px 13px;border:1px solid var(--line-2);border-radius:10px;background:var(--card);text-decoration:none;color:inherit}
+.ar-art.primary{border-color:var(--gold)}
+.ar-art b{font-size:14.5px}
+.ar-art .m{display:block;font-size:12.5px;color:var(--ink-3);margin-top:3px;word-break:break-all}
+.degraded{margin-top:12px;border:1px dashed var(--line);border-radius:10px;padding:11px 14px;color:var(--ink-2);font-size:13px;background:var(--panel)}
+.fold{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-top:14px}
+.fold>summary{padding:12px 16px;cursor:pointer;font-size:14.5px;display:flex;align-items:center;gap:10px;list-style:none}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::before{content:"▸";color:var(--zhu)}
+.fold[open]>summary::before{content:"▾"}
+.fold>summary .sm{color:var(--ink-3);font-size:13px;margin-left:auto}
+.fold-inner{padding:4px 16px 14px;border-top:1px dashed var(--line-2)}
+.fold-inner p{margin:8px 0;color:var(--ink-2);font-size:14px}
+.info{position:relative;display:inline-block;vertical-align:-3px}
+.info>summary{list-style:none;cursor:pointer;display:inline-grid;place-items:center;width:20px;height:20px;border:1px solid var(--line);border-radius:50%;background:var(--card);color:var(--ink-3);font:12px/1 var(--serif)}
+.info>summary::-webkit-details-marker{display:none}
+.info-body{position:absolute;z-index:40;left:0;top:26px;width:min(400px,78vw);background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(34,43,37,.18);padding:10px 13px;font-size:13px;color:var(--ink-2);line-height:1.75}
+.metrics{margin-top:10px;display:flex;gap:8px 14px;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+.metrics .v{font:650 15px var(--mono);color:var(--ink)}
+.metrics .v.good{color:var(--ok)}
+.metrics .v.bad{color:var(--warn)}
+.closeup{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 16px}
+.closeup h3{margin:0 0 8px;font-size:15px}
+.dup{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:760px){.dup{grid-template-columns:1fr}}
+.dup-box{border:1px solid var(--line-2);border-radius:9px;background:var(--panel);padding:9px 11px;font-size:12.5px}
+.dup-box b{display:block;font-size:13px;margin-bottom:4px}
+.dup-box .same{color:var(--gold-ink);font-weight:650}
+.changes{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px}
+.changes h3{margin:0 0 6px;font-size:15px}
+.changes ol{margin:6px 0 0;padding-left:22px;color:var(--ink-2);font-size:13.5px}
+.changes li{margin:5px 0}
+.check{margin-top:18px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px}
+.check h3{margin:0 0 6px;font-size:15px}
+.check ul,.check ol{margin:6px 0 0;padding-left:20px;color:var(--ink-2);font-size:13.5px}
+.check li{margin:4px 0}
+.foldnote{color:var(--ink-3);font-size:12.5px;margin:8px 2px 0}
+</style>
+</head>
+<body>
+<div class="review">
+  <b>静态对照稿 · 运行档案信息减负</b>
+  <span>左＝现状（真机复刻）｜右＝提案（同一份数据只画一遍 + 失败优先 + 折叠收口）。真机基线（2026-09-29 12:1x 实测，1440×860）：首屏 315 字 · 整页 1722 字 · 最高冗余＝「03 智能体」415 字，是「01 状态机」+「02 瀑布」的二次渲染；编号 01/02/03/03/06 断裂。</span>
+</div>
+
+<header class="topbar">
+  <div class="brand"><strong>文衡</strong><span>学科信息参考</span></div>
+  <nav class="nav" aria-label="工作区">
+    <a href="#">取数</a><a class="active" href="#">生成台</a><a href="#">报告</a><a href="#">审核台</a><a href="#">台账</a><a href="#">分析台</a><a href="#">预测台</a><a href="#">陈列馆</a>
+  </nav>
+  <label class="period-chip"><span>期次</span><select><option>202607</option></select></label>
+  <div class="who"><span class="avatar">卜</span>卜彤</div>
+</header>
+
+<main class="wrap">
+  <div class="legend">
+    <b>本轮数字上限：</b>
+    <span class="k">首屏说明文字 ≤180 字（数据行不计）</span>
+    <span class="k">一份数据只画一遍</span>
+    <span class="k">失败优先（异常默认展开）</span>
+    <span class="k">编号连续 01→03</span>
+    <span class="hint">（表格/瀑布的数值行属于页面内容、按对照稿惯例不计入「说明文字」；另给首屏全量与整页全量两个数，两栏同款量法）</span>
+  </div>
+
+  <div class="cmp">
+    <!-- ================= 改前 ================= -->
+    <section class="col">
+      <h2>改前 · 现在打开运行档案
+        <span class="pill warn">首屏 <b class="mono" id="nBefore">…</b> 字（说明 <b class="mono" id="nProseBefore">…</b>）</span>
+        <span class="pill plain">整页 <b class="mono" id="nFullBefore">…</b> 字</span>
+        <span class="pill plain">最大重复块 415 字</span>
+      </h2>
+      <div class="frame clip" id="frameBefore">
+        <span class="frame-tag">视口 860px</span>
+        <div class="frame-inner">
+          <p class="crumb"><a href="#">← 回生成台</a> · 期次 <b class="mono">202607</b></p>
+
+          <section class="card" style="padding:20px 22px">
+            <h1>运行档案 · 202607</h1>
+            <p class="fc-lead">这次运行的完整回放：状态怎么走的、每一步用了多久、审计怎么判的、日志包里都有什么。只读页——不改任何东西。</p>
+            <dl class="ar-kv">
+              <div><dt>任务号</dt><dd class="mono">20260928-083041-8e34</dd></div>
+              <div><dt>台账输入</dt><dd class="mono">input/202607/监测表.xlsx</dd></div>
+              <div><dt>发起人</dt><dd>demo</dd></div>
+            </dl>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px">
+              <span class="pill signed">已完成</span>
+              <span class="pill stale">审计：待人工确认</span>
+              <a class="btn primary" href="#" style="margin-left:auto">下载日志包（13 个文件 · 165 KB）</a>
+            </div>
+          </section>
+
+          <details class="fold"><summary>取数记录 · 下载与并入<span class="sm">核验 54 / 64 · 已并入台账</span></summary></details>
+
+          <section class="card" style="margin-top:18px;padding:20px 22px">
+            <h2><span class="fc-no">01</span>状态机回放 <span class="hint">2 次迁移</span></h2>
+            <div style="margin-top:10px">
+              <table class="ar-tbl">
+                <thead><tr><th style="width:26%">时刻</th><th style="width:40%">迁移</th><th>触发</th></tr></thead>
+                <tbody>
+                  <tr><td class="mono">2026-09-28 08:30:41</td><td><span class="pill unsigned">排队中</span> → <span class="pill signed">运行中</span> <span class="pill stale">合成</span></td><td>提交任务</td></tr>
+                  <tr><td class="mono">2026-09-28 08:32:24</td><td><span class="pill unsigned">运行中</span> → <span class="pill signed">已完成</span> <span class="pill stale">合成</span></td><td>流水线退出码 0</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="hint" data-src="backend" style="margin-top:10px">⚠ 演示站直跑路径不产生 state_history.jsonl，此链由 job.json 合成——合成链只含确定发生过的迁移，不臆造自愈/升级环节。</p>
+          </section>
+
+          <section class="card">
+            <h2><span class="fc-no">02</span>任务瀑布（各步耗时）</h2>
+            <div class="wf">
+              <div class="wf-row"><span class="wf-name"><b>解析台账</b><small>当期 202607 · 上期 202605 · 机器 · 断首 全球</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="width:1%"></i></span><span class="wf-sec">0.4 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>计算大表与概述</b><small>大表 22 学科 × 11 列 · 概述 11 项 · 数字事实</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="width:0"></i></span><span class="wf-sec">0 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>预测回测</b><small>整体 MAPE 1.26%（验收线 &lt;5%）</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="width:1%"></i></span><span class="wf-sec">0.3 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>省域表（ESI 机构总表）</b><small>11 所高校 · 学科榜 22 个</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="width:3%"></i></span><span class="wf-sec">2.9 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>学科×高校矩阵（InCites）</b><small>快照数据覆盖 2016-2026.04.30 · 240 格</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="width:71%"></i></span><span class="wf-sec">72.1 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>图表渲染</b><small>104 张图 · 16 学科 × 6 · 概览 · 预测 4 张</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="width:23%"></i></span><span class="wf-sec">23.5 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>母版替换</b><small>报告初稿 · 红色件清单：报告初稿_202607（试排）.docx</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="width:3%"></i></span><span class="wf-sec">2.7 秒</span></div>
+            </div>
+            <p class="hint" style="margin-top:10px">全链路 101.9 秒 · 断首 全球 · 大表 22×11 · 图 104 张 · MAPE 1.26%</p>
+          </section>
+
+          <section class="card">
+            <h2><span class="fc-no">03</span>智能体 · 规划与调度 <span class="hint">2 次状态迁移 · 7 步记录</span></h2>
+            <h3 style="font-size:15px;margin:12px 0 0">规划 · 状态机怎么走</h3>
+            <div class="ar-chain">
+              <span class="ar-chain-node"><span>排队中 → 运行中</span><small>2026-09-28 08:30:41 · 提交任务 · 合成</small></span>
+              <span class="ar-chain-node"><span>运行中 → 已完成</span><small>2026-09-28 08:32:24 · 流水线退出码 0 · 合成</small></span>
+            </div>
+            <h3 style="font-size:15px;margin:16px 0 0">调度 · 每一步用了哪个能力</h3>
+            <div class="ar-steps">
+              <div class="ar-step"><span class="ar-step-name">解析台账</span><span class="pill">解析台账</span><span class="ar-step-detail">当期 202607 · 上期 202605 · 机器 · 断首 全球</span><span class="ar-step-sec">0.4 秒</span></div>
+              <div class="ar-step"><span class="ar-step-name">计算大表与概述</span><span class="pill">计算大表</span><span class="ar-step-detail">大表 22 学科 × 11 列 · 概述 11 项 · 数字事实</span><span class="ar-step-sec">0 秒</span></div>
+              <div class="ar-step"><span class="ar-step-name">预测回测</span><span class="pill">预测回测</span><span class="ar-step-detail">整体 MAPE 1.26%（验收线 &lt;5%）</span><span class="ar-step-sec">0.3 秒</span></div>
+              <div class="ar-step"><span class="ar-step-name">省域表（ESI 机构总表）</span><span class="pill">省域表</span><span class="ar-step-detail">11 所高校 · 学科榜 22 个</span><span class="ar-step-sec">2.9 秒</span></div>
+              <div class="ar-step"><span class="ar-step-name">学科×高校矩阵（InCites）</span><span class="pill">学科矩阵</span><span class="ar-step-detail">快照数据覆盖 2016-2026.04.30 · 240 格</span><span class="ar-step-sec">72.1 秒</span></div>
+              <div class="ar-step"><span class="ar-step-name">图表渲染</span><span class="pill">图表渲染</span><span class="ar-step-detail">104 张图 · 16 学科 × 6 · 概览 · 预测 4 张</span><span class="ar-step-sec">23.5 秒</span></div>
+              <div class="ar-step"><span class="ar-step-name">母版替换</span><span class="pill">母版替换</span><span class="ar-step-detail">报告初稿 · 红色件清单：报告初稿_202607（试排）.docx</span><span class="ar-step-sec">2.7 秒</span></div>
+            </div>
+            <p class="hint" style="margin-top:10px">能力按步骤对应（演示站直跑线不逐步记录工具调用）；状态与数字都来自运行档案，不改任何数据。</p>
+          </section>
+
+          <section class="card">
+            <h2><span class="fc-no">03</span>审计结论 <span class="hint">2026-09-29T12:09:13 · 耗时 0.84 秒</span></h2>
+            <div style="margin-top:10px">
+              <table class="ar-tbl">
+                <thead><tr><th style="width:22%">审计项</th><th style="width:12%">判定</th><th style="width:26%">实测</th><th>说明</th></tr></thead>
+                <tbody>
+                  <tr><td><b>大表全量回查</b></td><td><span class="pill signed">通过</span></td><td class="mono">242/242 格，差异 0</td><td class="hint">—</td></tr>
+                  <tr><td><b>槽位抽样回查</b></td><td><span class="pill signed">通过</span></td><td class="mono">抽 71/712 处，差异 0</td><td class="hint">—</td></tr>
+                  <tr><td><b>陈旧次数残留扫描</b></td><td><span class="pill signed">通过</span></td><td class="mono">扫 18 个文件，高危 0 处</td><td class="hint">—</td></tr>
+                  <tr><td><b>金标回测</b></td><td><span class="pill stale">待确认</span></td><td class="mono">95.45%（行级（21/22 行））</td><td class="hint">只解析到"行级"口径；而 M0 基线 99.5% 是"格级"。行级 100% 不等于格级达标（一行留错一格，行级看不出来）——口径不同就不做自动判过，交人工确认。</td></tr>
+                  <tr><td><b>手工槽清点</b></td><td><span class="pill signed">通过</span></td><td class="mono">待签 0 处 / 共 712 槽</td><td class="hint">—</td></tr>
+                  <tr><td><b>图表抽查</b></td><td><span class="pill signed">通过</span></td><td class="mono">—</td><td class="hint">—</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="hint" style="margin-top:10px">真值链：—</p>
+          </section>
+
+          <details class="fold"><summary>运行环境与指标<span class="sm">供排查与复现</span></summary></details>
+          <section class="card">
+            <h2><span class="fc-no">06</span>产物与日志包 <span class="hint">日志包 13 个文件 · 165 KB</span></h2>
+            <div class="ar-arts">
+              <a class="ar-art primary" href="#"><b>运行日志包（ZIP）</b><span class="m">回放最小集 · 13 个文件 · 165 KB</span></a>
+              <a class="ar-art" href="#"><b>报告初稿（Word）</b><span class="m">报告初稿_202607（试排）.docx · 7.6 MB · 未签发，管理员暂不能下载</span></a>
+              <a class="ar-art" href="#"><b>对勘本（正文级对照）</b><span class="m">在线查看</span></a>
+              <a class="ar-art" href="#"><b>红色件清单（Markdown）</b><span class="m">红色件清单.md · 1 KB</span></a>
+              <a class="ar-art" href="#"><b>审批记录（签单后生成）</b><span class="m">审批记录.md · 17 KB</span></a>
+              <a class="ar-art" href="#"><b>红色件清单（深格在线查看）</b><span class="m">红色件清单</span></a>
+              <a class="ar-art" href="#"><b>对照差异报告（金标回测）</b><span class="m">对照差异报告_202607回测.md · 4 KB</span></a>
+              <a class="ar-art" href="#"><b>预测回测报告</b><span class="m">预测回测报告.md · 951 B</span></a>
+              <a class="ar-art" href="#"><b>大表数据（CSV）</b><span class="m">table2.csv · 2 KB</span></a>
+              <a class="ar-art" href="#"><b>红色件审计明细（JSON）</b><span class="m">red_slots.json · 114 KB</span></a>
+              <a class="ar-art" href="#"><b>运行日志（JSON）</b><span class="m">run_log.json · 851 B</span></a>
+            </div>
+            <p class="hint" style="margin-top:10px">日志包只含回放所需文本件；完整产物快照（报告 docx、parquet、图表 PNG）在归档目录里。</p>
+          </section>
+          <details class="fold"><summary>智能体轨迹文件<span class="sm">0 / 3</span></summary></details>
+          <details class="fold"><summary>说明 · 口径、来源与只读声明<span class="sm">全站仅此一份</span></summary></details>
+        </div>
+      </div>
+      <p class="foldnote">▲ 现况要点：01（表）、02（瀑布）、03（链+步骤）是三块同源内容；03 的「能力」pill 与步骤名几乎同名（如「图表渲染 · 图表渲染」）；审计块编号又是 03、产物编号是 06。整页可见 <b class="mono" id="nFullBefore2">…</b> 字、首屏 <b class="mono" id="nBefore2">…</b> 字。</p>
+
+      <div class="closeup">
+        <h3>病灶取证：同一份数据画了两遍</h3>
+        <div class="dup">
+          <div class="dup-box"><b>01 状态机回放（表）</b>
+            2026-09-28 08:30:41 · 排队中→运行中 · <span class="same">提交任务</span><br>
+            2026-09-28 08:32:24 · 运行中→已完成 · <span class="same">流水线退出码 0</span>
+          </div>
+          <div class="dup-box"><b>03 智能体 · 规划（链）</b>
+            <span class="same">排队中 → 运行中</span> · 08:30:41 · <span class="same">提交任务</span><br>
+            <span class="same">运行中 → 已完成</span> · 08:32:24 · <span class="same">流水线退出码 0</span>
+          </div>
+          <div class="dup-box"><b>02 任务瀑布（7 步）</b>解析台账 0.4 秒 · 计算大表 0 秒 · 预测回测 0.3 秒 · 矩阵 72.1 秒 ……</div>
+          <div class="dup-box"><b>03 调度 · 每步能力（7 步）</b><span class="same">解析台账 0.4 秒 · 计算大表 0 秒 · 预测回测 0.3 秒 · 矩阵 72.1 秒</span> ……（同值再排一遍，外加同名能力 pill）</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 改后 ================= -->
+    <section class="col">
+      <h2>改后 · 提案（一份数据只画一遍）
+        <span class="pill ok">首屏说明 <b class="mono" id="nProseAfter">…</b> 字</span>
+        <span class="pill ok">整页 <b class="mono" id="nFullAfter">…</b> 字</span>
+        <span class="pill plain">编号 01→03 连续</span>
+      </h2>
+      <div class="frame scroll" id="frameAfter">
+        <span class="frame-tag">视口 860px · 可滚动</span>
+        <div class="frame-inner">
+          <p class="crumb"><a href="#">← 回生成台</a> · 期次 <b class="mono">202607</b></p>
+
+          <section class="card" style="padding:20px 22px">
+            <h1>运行档案 · 202607</h1>
+            <p class="fc-lead" style="font-size:14.5px">这次运行的完整回放：状态、用时、审计、产物。</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px">
+              <span class="pill signed">已完成</span>
+              <span class="pill stale">审计：待人工确认</span>
+              <a class="btn primary" href="#" style="margin-left:auto">下载日志包（13 个文件 · 165 KB）</a>
+            </div>
+          </section>
+
+          <details class="fold"><summary>任务凭据<span class="sm">任务号 · 发起人 · 输入</span></summary>
+            <div class="fold-inner">
+              <p class="mono" style="font-size:13px">任务号 20260928-083041-8e34<br>台账输入 input/202607/监测表.xlsx<br>发起人 demo</p>
+            </div>
+          </details>
+          <details class="fold"><summary>取数记录 · 下载与并入<span class="sm">核验 54 / 64 · 已并入台账</span></summary>
+            <div class="fold-inner"><p class="hint">数据期：ESI 202607 · InCites 截至 2026-07；分组核验 54/64 通过，核对后已并入主台账（写前有备份、写后逐格核对）。</p></div>
+          </details>
+
+          <!-- 01 过程回放：链 + 瀑布，同一份数据只此一处 -->
+          <section class="card" style="margin-top:14px;padding:20px 22px">
+            <h2><span class="fc-no">01</span>过程回放
+              <span class="hint">2 次迁移 · 7 步 · 全链路 101.9 秒</span>
+              <details class="info"><summary title="这些数字从哪来" aria-label="这些数字从哪来">ⓘ</summary>
+                <div class="info-body">状态与每一步的耗时都来自运行档案；直跑线不产生状态流水，2 次迁移由任务记录合成——只含确定发生过的迁移，不臆造自愈/升级环节。</div>
+              </details>
+            </h2>
+            <div class="ar-chain">
+              <span class="ar-chain-node"><span>排队中 → 运行中 → 已完成</span><small>08:30:41 → 08:32:24 · 合成记录</small></span>
+            </div>
+            <div class="wf">
+              <div class="wf-row"><span class="wf-name"><b>解析台账</b><small>当期 202607 · 上期 202605 · 机器 · 断首 全球</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="width:1%"></i></span><span class="wf-sec">0.4 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>计算大表与概述</b><small>大表 22 学科 × 11 列 · 概述 11 项 · 数字事实</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="width:0"></i></span><span class="wf-sec">0 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>预测回测</b><small>整体 MAPE 1.26%（验收线 &lt;5%）</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="width:1%"></i></span><span class="wf-sec">0.3 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>省域表（ESI 机构总表）</b><small>11 所高校 · 学科榜 22 个</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="width:3%"></i></span><span class="wf-sec">2.9 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>学科×高校矩阵（InCites）</b><small>快照数据覆盖 2016-2026.04.30 · 240 格</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="width:71%"></i></span><span class="wf-sec">72.1 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>图表渲染</b><small>104 张图 · 16 学科 × 6 · 概览 · 预测 4 张</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="width:23%"></i></span><span class="wf-sec">23.5 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>母版替换</b><small>报告初稿 · 红色件清单：报告初稿_202607（试排）.docx</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="width:3%"></i></span><span class="wf-sec">2.7 秒</span></div>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2><span class="fc-no">02</span>审计结论
+              <span class="hint">6 项：5 通过 · 1 待确认 · 0 不通过</span>
+            </h2>
+            <div style="margin-top:10px">
+              <table class="ar-tbl">
+                <thead><tr><th style="width:22%">审计项</th><th style="width:12%">判定</th><th style="width:26%">实测</th><th>说明</th></tr></thead>
+                <tbody>
+                  <tr><td><b>金标回测</b></td><td><span class="pill stale">待确认</span></td><td class="mono">95.45%（行级（21/22 行））</td><td class="hint">只解析到"行级"口径；而 M0 基线 99.5% 是"格级"。行级 100% 不等于格级达标（一行留错一格，行级看不出来）——口径不同就不做自动判过，交人工确认。</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <details class="fold" style="margin-top:10px">
+              <summary>已通过的 5 项<span class="sm">点开看逐项实测</span></summary>
+              <div class="fold-inner" style="border-top:1px dashed var(--line-2)">
+                <table class="ar-tbl">
+                  <tbody>
+                    <tr><td><b>大表全量回查</b></td><td class="mono">242/242 格，差异 0</td></tr>
+                    <tr><td><b>槽位抽样回查</b></td><td class="mono">抽 71/712 处，差异 0</td></tr>
+                    <tr><td><b>陈旧次数残留扫描</b></td><td class="mono">扫 18 个文件，高危 0 处</td></tr>
+                    <tr><td><b>手工槽清点</b></td><td class="mono">待签 0 处 / 共 712 槽</td></tr>
+                    <tr><td><b>图表抽查</b></td><td class="mono">—</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </section>
+
+          <section class="card">
+            <h2><span class="fc-no">03</span>产物与日志包 <span class="hint">13 个文件 · 165 KB</span></h2>
+            <div class="ar-arts">
+              <a class="ar-art primary" href="#"><b>运行日志包（ZIP）</b><span class="m">回放最小集 · 13 个文件 · 165 KB</span></a>
+              <a class="ar-art" href="#"><b>报告初稿（Word）</b><span class="m">未签发，管理员暂不能下载</span></a>
+              <a class="ar-art" href="#"><b>对勘本（正文级对照）</b><span class="m">在线查看</span></a>
+              <a class="ar-art" href="#"><b>红色件清单</b><span class="m">Markdown · 在线查看</span></a>
+              <a class="ar-art" href="#"><b>审批记录（签单后生成）</b><span class="m">审批记录.md · 17 KB</span></a>
+              <a class="ar-art" href="#"><b>对照差异报告（金标回测）</b><span class="m">对照差异报告_202607回测.md · 4 KB</span></a>
+              <a class="ar-art" href="#"><b>预测回测报告</b><span class="m">预测回测报告.md · 951 B</span></a>
+              <a class="ar-art" href="#"><b>大表数据（CSV）</b><span class="m">table2.csv · 2 KB</span></a>
+              <a class="ar-art" href="#"><b>红色件审计明细（JSON）</b><span class="m">red_slots.json · 114 KB</span></a>
+              <a class="ar-art" href="#"><b>运行日志（JSON）</b><span class="m">run_log.json · 851 B</span></a>
+            </div>
+          </section>
+
+          <details class="fold"><summary>运行环境与指标<span class="sm">供排查与复现</span></summary></details>
+          <details class="fold"><summary>智能体轨迹文件<span class="sm">本次直跑线不产轨迹（真实记录缺口）</span></summary>
+            <div class="fold-inner"><p class="hint">演示站主入口走流水线直跑，轨迹要由智能体编排器才写——这是真实的记录缺口，不是页面没渲染出来。</p></div>
+          </details>
+          <details class="fold"><summary>说明 · 口径、来源与只读声明<span class="sm">全站仅此一份</span></summary></details>
+        </div>
+      </div>
+      <div class="metrics">
+        <span>首屏说明文字 <span class="v" id="nProseAfter2">…</span> 字（原 <span id="nProseBefore2">…</span>）</span>
+        <span>首屏全量（含数据行） <span class="v" id="nAfter2">…</span> 字（原 <span id="nBefore3">…</span>）</span>
+        <span>整页全量 <span class="v good" id="nFullAfter2">…</span> 字（原 <span id="nFullBefore3">…</span>）</span>
+        <span>同源内容出现次数：状态机 <span class="v good">1</span> · 瀑布 <span class="v good">1</span>（原 2 / 2）</span>
+        <span>编号：<span class="v good">01→03 连续</span></span>
+      </div>
+      <div class="changes">
+        <h3>变化清单</h3>
+        <ol>
+          <li><b>合并三块为一块</b>：删「01 状态机回放」表与「02 任务瀑布」卡，留「03 智能体」为 <b>01 过程回放</b>——一条链（三态一节点）+ 一条瀑布；<b>删「调度·每步能力」</b>（与瀑布同值，能力 pill 与步骤名还同名）。约 −480 字。</li>
+          <li><b>失败优先</b>：正常链收成一行「排队中 → 运行中 → 已完成 · 08:30:41 → 08:32:24 · 合成记录」，合成说明从两条小字收进 ⓘ；异常/重试才默认展开。</li>
+          <li><b>页头收口</b>：任务号/台账输入/发起人折进「任务凭据」；导语 53→24 字。约 −70 字。</li>
+          <li><b>审计只露异常的</b>：默认只显示「待确认」1 行（含口径说明），通过的 5 项折进「已通过的 5 项 ▸」；删空真值链行。约 −150 字。</li>
+          <li><b>编号顺延</b>：01 过程回放 / 02 审计 / 03 产物（原 01·02·03·又 03·06，断号）。</li>
+          <li><b>轨迹折叠收一句</b>：0/3 的三段解释 → 一行（内容不变，折叠里）。</li>
+          <li><b>接得上新块</b>：wayfinder 的「问答与模型调用」（票 06 稿）接在 01 之后，接口与键不变；那里同样按「卡面只留 时间+问句+两条 pill+耗时，链默认收起、失败展开」设计。</li>
+        </ol>
+      </div>
+    </section>
+  </div>
+
+  <section class="check">
+    <h3>验收清单（10 秒盲测用）</h3>
+    <ul>
+      <li><b>问题一</b>：「这次运行走了哪几步、哪步最慢？」——01 一条瀑布即可答（矩阵 72.1 秒）。</li>
+      <li><b>问题二</b>：「审计判了什么？」——02 默认露「待确认」那一条，通过项折叠可见。</li>
+      <li><b>问题三</b>：「状态怎么走的？」——链一行三态，不用在表和链之间对。</li>
+    </ul>
+    <h3 style="margin-top:12px">落 React 清单</h3>
+    <ol>
+      <li><code>Archive.tsx</code>：① 删 01 表卡与 02 瀑布卡的重复渲染，合并为「01 过程回放」（链 + <code>WaterfallRows</code> 一次）；② 删 <code>ar-steps</code> 与 <code>STEP_ABILITY</code>；③ 页头 kv 折进「任务凭据」；④ 审计默认只渲染非通过项 + 通过项折叠；⑤ 编号顺延；⑥ 轨迹折叠文案收一句。</li>
+      <li>浏览器端加一条检查：运行档案页 <code>.wf</code> 与 <code>.ar-chain</code> 各只 1 处、首屏说明文字 ≤180 字（只读）。</li>
+      <li>不动：<code>WaterfallRows</code> 渲染与接口（#18）；「取数记录」块；「产物与日志包」内容（只改编号与卡片文案长度）。</li>
+    </ol>
+    <p class="foldnote">审过即进 React（照惯例）。左栏数字为真机复刻计量；右栏由本页脚本实时量出（折叠内容不计入首屏，整页全量为两栏同款量法）。</p>
+  </section>
+</main>
+
+<script>
+/* ---------- 首屏可见字数（860px 视口，Range API；折叠内容不计） ---------- */
+function countNodes(frame, predicate){
+  const box = frame.getBoundingClientRect();
+  const top = box.top, bottom = box.top + frame.clientHeight;
+  const walker = document.createTreeWalker(frame, NodeFilter.SHOW_TEXT);
+  let n = 0, node;
+  while((node = walker.nextNode())){
+    const t = (node.nodeValue || "").replace(/\s+/g, "");
+    if(!t) continue;
+    if(node.parentElement && (node.parentElement.closest("details:not([open])") || node.parentElement.closest(".frame-tag"))) continue;
+    if(predicate && !predicate(node)) continue;
+    const r = document.createRange();
+    r.selectNodeContents(node);
+    const rect = r.getBoundingClientRect();
+    if(rect.width === 0 && rect.height === 0) continue;
+    if(rect.bottom > top && rect.top < bottom) n += t.length;
+  }
+  return n;
+}
+function visibleChars(frame){
+  return countNodes(frame, null);
+}
+/* 说明文字：剔掉数据行（表格 / 瀑布）里的值 */
+function proseChars(frame){
+  return countNodes(frame, (node) => !node.parentElement.closest(".wf, .ar-tbl"));
+}
+/* ---------- 整页全量字数（同一份遍历，不受裁切影响；折叠内容不计） ---------- */
+function fullChars(frame){
+  const walker = document.createTreeWalker(frame, NodeFilter.SHOW_TEXT);
+  let n = 0, node;
+  while((node = walker.nextNode())){
+    const t = (node.nodeValue || "").replace(/\s+/g, "");
+    if(!t) continue;
+    if(node.parentElement && (node.parentElement.closest("details:not([open])") || node.parentElement.closest(".frame-tag"))) continue;
+    n += t.length;
+  }
+  return n;
+}
+function put(id, v){ const el = document.getElementById(id); if(el) el.textContent = v; }
+function refresh(){
+  const fb = document.getElementById("frameBefore");
+  const fa = document.getElementById("frameAfter");
+  const b = visibleChars(fb), a = visibleChars(fa);
+  const pb = proseChars(fb), pa = proseChars(fa);
+  const flb = fullChars(fb), fla = fullChars(fa);
+  put("nBefore", b); put("nBefore2", b); put("nBefore3", b);
+  put("nProseBefore", pb); put("nProseBefore2", pb);
+  put("nAfter2", a);
+  put("nProseAfter", pa); put("nProseAfter2", pa);
+  put("nFullBefore", flb); put("nFullBefore2", flb); put("nFullBefore3", flb);
+  put("nFullAfter", fla); put("nFullAfter2", fla);
+  const be = document.getElementById("nBefore");
+  if(be) be.closest(".pill").className = "pill " + (pb <= 180 ? "ok" : "warn");
+  const ae = document.getElementById("nProseAfter");
+  if(ae) ae.closest(".pill").className = "pill " + (pa <= 180 ? "ok" : "warn");
+}
+window.addEventListener("load", refresh);
+document.querySelectorAll("details").forEach((d) => d.addEventListener("toggle", refresh));
+</script>
+</body>
+</html>
