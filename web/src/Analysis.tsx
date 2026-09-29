@@ -9,7 +9,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getAiCapabilities, postAiSwitch, req, type AiCapability } from './api'
 import { Icon } from './icons'
-import { BigTable } from './BigTable'
 import { Flexible } from './Flexible'
 
 type Source = {
@@ -142,9 +141,6 @@ export function Analysis({ period }: { period: string | null }) {
 
   return (
     <>
-      {/* 先看数、再问：学科数据总览（读数版） */}
-      <BigTable period={period} />
-
       <section className="card" style={{ marginTop: 18, padding: '22px 24px' }}>
         <h2 style={{ fontSize: 22, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <Icon name="chart" size={22} />问文衡
