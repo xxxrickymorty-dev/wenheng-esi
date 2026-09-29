@@ -20,6 +20,25 @@ def protect(text: str) -> tuple[str, dict]:
     return local_llm.protect(text)
 
 
+def protect_chunks(chunks) -> tuple[list[str], dict]:
+    """多段文本共用**一套连续编号**（qa：问句＋各段证据/规则文本）。
+
+    与逐段 protect 的区别：编号跨段连续、共用一张 mapping——「第 k 个数字 ↔
+    sources[k]」在多段场景下依然成立；分段只影响外发面拼装，不影响还原。
+    """
+    mapping: dict = {}
+    out = []
+
+    def repl(m):
+        k = str(len(mapping) + 1)
+        mapping[k] = m.group(0)
+        return f"[[{k}]]"
+
+    for chunk in chunks:
+        out.append(NUM.sub(repl, str(chunk)))
+    return out, mapping
+
+
 def restore(text: str, mapping: dict) -> str:
     return local_llm.restore(text, mapping)
 
@@ -46,3 +65,18 @@ def validate(out_text: str | None, mapping: dict) -> tuple[bool, dict]:
     stray = visible_digits(text)
     detail = {"missing": missing, "unknown": unknown, "stray": stray}
     return (not missing and not unknown and not stray), detail
+
+
+def validate_free(out_text: str | None, mapping: dict) -> tuple[bool, dict]:
+    """自由作答型（qa/review）校验：用到必有 ref、每个引用至多一次、无游离数字。
+
+    与锚定型 `validate` 的区别：**允许相关子集**（不要求 mapping 全部出现）。
+    未登记/自造标记、重复引用、照写照算的数字 —— 一律拒（SPEC §2.1 二分）。
+    """
+    text = out_text or ""
+    marks = MARK.findall(text)
+    unknown = sorted({k for k in marks if k not in mapping})
+    duplicate = sorted({k for k in set(marks) if marks.count(k) > 1})
+    stray = visible_digits(text)
+    detail = {"unknown": unknown, "duplicate": duplicate, "stray": stray}
+    return (not unknown and not duplicate and not stray), detail

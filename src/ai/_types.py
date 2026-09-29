@@ -112,7 +112,13 @@ class CapabilityInfo:
 
 @dataclass(frozen=True)
 class Answer:
-    """一次 `run` 的全部结果（四能力共用一张卡）。"""
+    """一次 `run` 的全部结果（四能力共用一张卡）。
+
+    ⚠ `sources` 与**已发布的 `text`** 按出现次序一一对应（第 k 个数字 ↔ sources[k]）。
+    锚定型能力（diagnose）`text` 与 `rule_text` 数字序列相同、一张表两用；
+    自由型能力（qa）模型版可能只用相关子集——「看规则版」切换时的来源表
+    由票 01/D5 的界面口径定（当前实现见 `_core._used_sources`）。
+    """
 
     mode: str
     backend: str

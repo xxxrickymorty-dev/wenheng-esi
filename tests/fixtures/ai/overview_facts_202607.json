@@ -1,0 +1,105 @@
+{
+ "rank_intl_now": 995,
+ "rank_intl_prev": 1008,
+ "rank_intl_delta": 13,
+ "rank_cn_inst_now": 155,
+ "rank_cn_uni_now": 130,
+ "rank_cn_inst_delta": 1,
+ "rank_cn_uni_delta": 1,
+ "n_disc_1pct": 14,
+ "top_papers_now": 274,
+ "top_papers_prev": 252,
+ "top_papers_delta": 22,
+ "top3_by_top_papers": [
+  [
+   "Chemistry",
+   44
+  ],
+  [
+   "Materials Science",
+   36
+  ],
+  [
+   "Plant & Animal Science",
+   29
+  ]
+ ],
+ "best_1permille": {
+  "discipline": "Plant & Animal Science",
+  "prox_pct": 55.13,
+  "prox_prev_pct": 53.62
+ },
+ "top2_prox_change": [
+  [
+   "Engineering",
+   33.86806259562674
+  ],
+  [
+   "Plant & Animal Science",
+   33.30087633885101
+  ]
+ ],
+ "rank_up": 8,
+ "rank_down": 5,
+ "rank_flat": 9,
+ "worst_cn_rank": {
+  "discipline": "Pharmacology & Toxicology",
+  "drop": 4,
+  "rank": 139
+ },
+ "top3_groups": [
+  [
+   44,
+   [
+    "Chemistry"
+   ]
+  ],
+  [
+   36,
+   [
+    "Materials Science"
+   ]
+  ],
+  [
+   29,
+   [
+    "Engineering",
+    "Plant & Animal Science"
+   ]
+  ]
+ ],
+ "top2_not_entered": [
+  {
+   "discipline": "Molecular Biology & Genetics",
+   "prox_pct": 84.5,
+   "chg": 3.57,
+   "prox_tail": [
+    0.6716,
+    0.7326,
+    0.745,
+    0.7718,
+    0.7809,
+    0.8093,
+    0.845
+   ]
+  },
+  {
+   "discipline": "Physics",
+   "prox_pct": 75.13,
+   "chg": 4.77,
+   "prox_tail": [
+    0.6208,
+    0.6506,
+    0.6411,
+    0.6696,
+    0.6972,
+    0.7036,
+    0.7513
+   ]
+  }
+ ],
+ "any_1permille": false,
+ "permille_years_est": 5.0,
+ "coverage_window": "2016.1.1-2026.4.30",
+ "prev_label": "2026年5月"
+}

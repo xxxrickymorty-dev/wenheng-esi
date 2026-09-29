@@ -204,12 +204,15 @@ def test_编程错误抛且不落记录(tmp_path):
 
 # ============================================================ 7. 每能力一条穿 run 的契约（C4）
 def test_四能力都穿过run_未上线能力给关闭态(tmp_path):
+    from _ai_helpers import seed_period
+    seed_period(tmp_path)                                   # qa 已就绪：需要期次产物
     with ai.using(data_root=tmp_path):
         qa = ai.run("qa", "202607", payload={"question": "本期怎么样"}, actor="admin")
         review = ai.run("review", "202607", actor="admin")
         brief = ai.run("brief", "202607", actor="admin")
         diag = ai.run("diagnose", "202607", payload={"failure": FAIL}, actor="admin")
-    for ans in (qa, review, brief):
+    assert qa.mode == "rule" and qa.text
+    for ans in (review, brief):
         assert ans.mode == "closed" and "未上线" in ans.notice
         assert ans.sources == () and ans.receipts == ()
     assert diag.mode == "rule" and diag.text
@@ -223,6 +226,7 @@ def test_capabilities_角色与开关(tmp_path):
         guest = {c.id: c for c in ai.capabilities(actor="guest")}
     assert set(admin) == {"qa", "review", "diagnose", "brief"}
     assert admin["diagnose"].stage == "ready" and admin["diagnose"].allowed
+    assert admin["qa"].stage == "ready"
     assert not guest["diagnose"].allowed, "guest 默认全拒（fail-closed）"
     assert admin["brief"].stage == "planned" and "未上线" in admin["brief"].notice
     with ai.using(data_root=tmp_path):

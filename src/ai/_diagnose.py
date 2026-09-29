@@ -252,8 +252,34 @@ def _advice_part(rec, ctx):
     return Part(name=f"需人工：{_rule_title(rule_id)}", lines=lines, kinds=kinds)
 
 
-def build(failure, repair=None):
-    """一次失败的**全部**建议段。返回 (ctx, parts)；parts 可空（无可说）。"""
+def build(root, period, payload):                              # noqa: ARG001
+    """诊断构建器入口：失败回执 → RuleDraft（规则版 + 逐数字来源 + 外发面）。
+
+    `root` / `period` 对诊断无意义（只吃 payload 里的失败回执），签名与其它构建器对齐。
+    """
+    from . import _shield                                          # noqa: PLC0415
+    from ._draft import RuleDraft                                  # noqa: PLC0415
+    from ._types import Source                                     # noqa: PLC0415
+
+    parts = _parts(payload.get("failure"), payload.get("repair"))
+    rule_text = "\n".join(ln for p in parts for ln in p.lines)
+    protected_text, mapping = _shield.protect(rule_text)
+    sources = []
+    for part in parts:
+        for line, kind in zip(part.lines, part.kinds):
+            for m in _shield.NUM.finditer(line):
+                k = str(len(sources) + 1)
+                skind, pointer, label, detail = attribute(kind, m.start(), m.group(0))
+                sources.append(Source(index=int(k), kind=skind, pointer=pointer,
+                                      label=label, detail=detail,
+                                      value=mapping.get(k, m.group(0))))
+    return RuleDraft(rule_text=rule_text, rule_protected=protected_text, mapping=mapping,
+                     sources=tuple(sources), parts=tuple(parts), task=protected_text,
+                     evidence=(), fact_keys=frozenset(range(1, len(mapping) + 1)))
+
+
+def _parts(failure, repair=None):
+    """一次失败的**全部**建议段。返回 parts；可空（无可说）。"""
     ctx = extract_context(failure)
     parts = []
     fact, spans = _fact_line_traced(ctx)
@@ -268,7 +294,7 @@ def build(failure, repair=None):
         part = _advice_part(rec, ctx)
         if part:
             parts.append(part)
-    return ctx, parts
+    return parts
 
 
 def attribute(kind, pos, value) -> tuple:
