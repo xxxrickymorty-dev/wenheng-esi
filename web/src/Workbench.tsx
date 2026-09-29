@@ -90,23 +90,25 @@ function LiveRun({ run, approvalStatus }: { run: Run; approvalStatus: string }) 
           <span className="name">签单状态</span>
           <span style={{ flex: 1, color: 'var(--ink-2)' }}>{approvalLabel}</span>
         </div>
-        <div className="prow">
-          <span className="name">最新进度</span>
-          <span style={{ flex: 1, color: 'var(--ink-2)' }}>{run.last ?? '（进度还未返回…）'}</span>
-        </div>
+        {/* 「最新进度」收进「看详细过程」面板（rick 2026-09-29：原始进度串馆员看不懂） */}
       </div>
       <div style={{ padding: '0 24px 16px' }}>
         <button className="btn" onClick={() => setOpen(!open)}>
           <Icon name="list" size={18} />{open ? '收起日志' : '看详细过程'}
         </button>
         {open && (
-          <pre style={{
-            marginTop: 10, maxHeight: 260, overflow: 'auto', background: 'var(--panel)',
-            border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px',
-            fontSize: 12.5, fontFamily: 'var(--mono)', color: 'var(--ink-2)',
-          }}>
-            {run.lines.length ? run.lines.join('\n') : '（暂无日志行）'}
-          </pre>
+          <>
+            <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>
+              最新进度：{run.last ?? '（进度还未返回…）'}
+            </p>
+            <pre style={{
+              marginTop: 10, maxHeight: 260, overflow: 'auto', background: 'var(--panel)',
+              border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px',
+              fontSize: 12.5, fontFamily: 'var(--mono)', color: 'var(--ink-2)',
+            }}>
+              {run.lines.length ? run.lines.join('\n') : '（暂无日志行）'}
+            </pre>
+          </>
         )}
       </div>
     </>

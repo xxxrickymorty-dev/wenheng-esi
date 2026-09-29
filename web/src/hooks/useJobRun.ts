@@ -42,6 +42,18 @@ function latestProgress(progress: JobProgress | null): string | null {
   return latest?.detail ?? latest?.name ?? null
 }
 
+/** SSE 的 progress 行是 JSON；取「哪一步做了什么」的人话，解析不出就原样（不丢信息）。 */
+function humanProgress(line: string): string {
+  try {
+    const d = JSON.parse(line) as { detail?: unknown; name?: unknown }
+    const name = typeof d.name === 'string' ? d.name.trim() : ''
+    const detail = typeof d.detail === 'string' ? d.detail.trim() : ''
+    if (name && detail) return `${name}：${detail}`
+    if (name || detail) return name || detail
+  } catch { /* 不是 JSON 就原样显示 */ }
+  return line
+}
+
 /** 管理当前任务的进度；连接中断时继续更新，直到任务结束。 */
 export function useJobRun({ enabled, restorePeriod = null, onActivePeriod, onTerminal }: UseJobRunOptions) {
   const [run, setRun] = useState<Run | null>(null)
@@ -206,7 +218,7 @@ export function useJobRun({ enabled, restorePeriod = null, onActivePeriod, onTer
       if (sourceRef.current !== source || !isCurrent(jobId, generation)) return
       snapshotRequestRef.current += 1
       const line = (event as MessageEvent<string>).data
-      update(jobId, generation, (current) => ({ ...current, last: line }))
+      update(jobId, generation, (current) => ({ ...current, last: humanProgress(line) }))
     })
     source.addEventListener('log', (event) => {
       if (sourceRef.current !== source || !isCurrent(jobId, generation)) return

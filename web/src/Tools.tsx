@@ -1,11 +1,11 @@
-/* 生成台工具卡（阶段 1 · P1 收尾）：上传新台账 / 扫码在手机上看 / 产物下载 / 重跑本期。
-   数据源都是现成的：POST /api/jobs（带 file 字段）· /qr.png · GET /api/jobs/{id}/artifacts ·
+/* 生成台工具卡（阶段 1 · P1 收尾）：上传新台账 / 产物下载 / 重跑本期。
+   数据源都是现成的：POST /api/jobs（带 file 字段）· GET /api/jobs/{id}/artifacts ·
    POST /api/jobs/{id}/rerun（老站 job.js 一直在用）。🔴 只透传，不编造。 */
 
 import { useEffect, useState } from 'react'
 import {
   choosePeriodJobId, getJob, getPeriodArtifacts, getPeriodDetail,
-  getRollbackPoints, postJobWithFile, rerunJob, rollbackPeriod,
+  getRollbackPoints, humanSize, postJobWithFile, rerunJob, rollbackPeriod,
   type Artifact, type Job, type RollbackPoint,
 } from './api'
 import { ConfirmButton } from './ConfirmButton'
@@ -186,19 +186,16 @@ export function Tools({
 
   return (
     <section className="card" id="tools" style={{ marginTop: 18, padding: '18px 22px' }}>
-      <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <Icon name="doc" size={21} />这一期的工具
-      </h2>
       {actionsLocked && actionLockReason && (
         <p className="hint" style={{ marginTop: 8 }}>{actionLockReason}</p>
       )}
 
-      <div style={{ display: 'grid', gap: 18, gridTemplateColumns: 'minmax(0,1fr) 190px', marginTop: 12 }}>
+      <div style={{ marginTop: 12 }}>
         <div>
           {/* 上传新台账（老站同一套口径：期次 6 位必填） */}
           <h3 style={{ fontSize: 15 }}>上传新台账</h3>
           <p className="hint" style={{ marginTop: 4 }}>
-            贴好表的《监测表.xlsx》直接传上来就能跑；期次填 6 位（如 202609）。
+            传填好的《监测表.xlsx》就能跑；期次填 6 位（如 202609）。
           </p>
           <div className="toolbar">
             <input type="file" accept=".xlsx"
@@ -227,11 +224,11 @@ export function Tools({
               {currentView.artifacts.map((a) => (
                 a.key === 'report' && approvalStatus !== 'signed'
                   ? <span className="pill" key={a.key} role="note" aria-disabled="true">
-                      {a.name}{a.size ? ` · ${a.size}` : ''} · 未签发，管理员暂不能下载
+                      {a.name}{a.size ? ` · ${humanSize(a.size)}` : ''} · 未签发，管理员暂不能下载
                     </span>
                   : <a className="pill" key={a.key} href={a.url}
                        {...(a.key && !['red_view', 'collation'].includes(a.key) ? { download: '' } : {})}>
-                      {a.key === 'diagnosis' ? '校验说明' : a.name}{a.size ? ` · ${a.size}` : ''}
+                      {a.key === 'diagnosis' ? '校验说明' : a.name}{a.size ? ` · ${humanSize(a.size)}` : ''}
                     </a>
               ))}
             </div>
@@ -263,14 +260,6 @@ export function Tools({
             </div>
           )}
           {message && !(period && effJobId) && <p className="hint" style={{ color: message.ok ? 'var(--ok)' : 'var(--bad)' }}>{message.text}</p>}
-        </div>
-
-        {/* 扫码在手机上看 */}
-        <div style={{ textAlign: 'center' }}>
-          <h3 style={{ fontSize: 15 }}>手机上接着看</h3>
-          <img src="/qr.png" alt="扫码打开本页" width={150} height={150}
-               style={{ marginTop: 8, border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', background: '#fff' }} />
-          <p className="hint" style={{ marginTop: 6, fontSize: 13 }}>扫一下，同一页在手机上打开</p>
         </div>
       </div>
 
