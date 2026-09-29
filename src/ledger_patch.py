@@ -45,7 +45,14 @@ def sheet_member(zf, sheetname):
     if sheetname not in pairs:
         raise KeyError(f"台账里没有 sheet「{sheetname}」，现有：{list(pairs)}")
     rels = zf.read("xl/_rels/workbook.xml.rels").decode("utf-8")
-    rmap = dict(re.findall(r'Id="([^"]+)"[^>]*Target="([^"]+)"', rels))
+    # 属性顺序不设前提：真台账是 Id 在前，合成文件（openpyxl）是 Type/Target/Id——
+    # 逐元素独立取属性，两种都认（2026-09-29：并入工具的自测文件踩过这个坑）。
+    rmap = {}
+    for rel in re.findall(r"<Relationship\b[^>]*/?>", rels):
+        mid = re.search(r'Id="([^"]+)"', rel)
+        mt = re.search(r'Target="([^"]+)"', rel)
+        if mid and mt:
+            rmap[mid.group(1)] = mt.group(1)
     t = rmap[pairs[sheetname]].lstrip("/")
     return t if t.startswith("xl/") else "xl/" + t
 
@@ -81,9 +88,12 @@ def diff_members(before, after, target_sheet=None):
 def read_grid(ledger, sheetname):
     """→ ({行号: {列字母: (attrs, inner)}}, shared_strings)"""
     with zipfile.ZipFile(ledger) as zf:
-        shared = ["".join(re.findall(r"<t[^>]*>(.*?)</t>", si, re.S))
-                  for si in re.findall(r"<si>(.*?)</si>",
-                                       zf.read("xl/sharedStrings.xml").decode("utf-8"), re.S)]
+        try:
+            shared = ["".join(re.findall(r"<t[^>]*>(.*?)</t>", si, re.S))
+                      for si in re.findall(r"<si>(.*?)</si>",
+                                           zf.read("xl/sharedStrings.xml").decode("utf-8"), re.S)]
+        except KeyError:                       # 合成/简化 xlsx 可能没有共享串表（真台账必有）
+            shared = []
         xml = zf.read(sheet_member(zf, sheetname)).decode("utf-8")
     grid = {}
     for mrow in ROW_RE.finditer(xml):

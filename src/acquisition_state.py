@@ -12,12 +12,15 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import os
 import pathlib
 import re
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-STATE_DIR = REPO / "out" / "_acquisition"
+#: 状态目录；环境变量可覆盖（集成测试/临时演练不碰真状态）
+STATE_DIR = pathlib.Path(os.environ["WENHENG_ACQ_STATE_DIR"]) \
+    if os.environ.get("WENHENG_ACQ_STATE_DIR") else REPO / "out" / "_acquisition"
 ESI_ROOT_DEFAULT = REPO.parent / "数据与复现" / "ESI数据"
 INCITES_ROOT_DEFAULT = REPO.parent / "数据与复现" / "incites"
 
@@ -306,6 +309,13 @@ def scan(period: str, *, esi_root: pathlib.Path | str | None = None,
         failed += bad
     old = load_state(period) if preserve else None
     state = dict(old or {})
+    # 历史期次（X3 之前手工并表的）：报告已出 = 数据确实已进台账，如实标注「视同已并入」
+    copy_state = state.get("copy") or {"state": "none", "path": f"input/{period}/监测表.xlsx"}
+    if (copy_state.get("state") in (None, "none")
+            and (REPO / "out" / period / "red_slots.json").exists()):
+        copy_state = {"state": "merged", "path": copy_state.get("path",
+                                                               f"input/{period}/监测表.xlsx"),
+                      "note": "历史期次：报告已出，视同已并入"}
     state.update({
         "data_period": {"esi": _period_esi_label(period), "incites": _snap_date(snap)},
         "snapshot": snap,
@@ -315,6 +325,6 @@ def scan(period: str, *, esi_root: pathlib.Path | str | None = None,
         "preflight": state.get("preflight") or {"browser": "waiting", "esi": "waiting",
                                                 "incites": "waiting"},
         "capabilities": state.get("capabilities") or {"start": True, "retry": True, "merge": True},
-        "copy": state.get("copy") or {"state": "none", "path": f"input/{period}/监测表.xlsx"},
+        "copy": copy_state,
     })
     return state
