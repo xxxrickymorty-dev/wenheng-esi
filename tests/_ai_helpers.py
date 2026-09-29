@@ -31,10 +31,25 @@ _MARK = re.compile(r"\[\[\d+\]\]")
 _NUM = re.compile(r"\d+(?:\.\d+)?")
 
 
-def seed_period(root, period="202607", *, facts=None, meta=None, red=True):
-    """给测试数据根落一份最小可用期次产物（overview_facts + meta [+ red_slots]）。
+#: 馆员已填手工槽样例（镜像 202607 审核台 1A 实填值；供 seed_period 用）。
+MANUAL_SAMPLE = {
+    "正文/p1::ESI发布日期": {"value": "2026年7月9日", "by": "demo", "at": "2026-09-29 07:41:27"},
+    "正文/p1::当期机构总数": {"value": "10428", "by": "demo", "at": "2026-09-29 07:41:27"},
+    "正文/p2::去年同期升幅%": {"value": "9.72%", "by": "demo", "at": "2026-09-29 07:41:27"},
+    "正文/p4::学科数": {"value": "19", "by": "demo", "at": "2026-09-29 07:41:27"},
+    "正文/top_section::学科数": {"value": "19", "by": "demo", "at": "2026-09-29 07:41:27"},
+    "正文/province_p::总数": {"value": "54", "by": "demo", "at": "2026-09-29 07:41:27"},
+    "正文/province_p::增减": {"value": "1", "by": "demo", "at": "2026-09-29 07:41:27"},
+    "正文/province_p::新晋学科描述": {"value": "云南中医药大学临床医学为新晋ESI前1%学科",
+                                     "by": "demo", "at": "2026-09-29 07:41:27"},
+}
+
+
+def seed_period(root, period="202607", *, facts=None, meta=None, red=True, manual=True):
+    """给测试数据根落一份最小可用期次产物（overview_facts + meta [+ red_slots/manual_inputs]）。
 
     事实金样＝`tests/fixtures/ai/overview_facts_202607.json`（真产物快照，不触网）。
+    `manual=False` 时不写馆员填值——用来测「未填槽位整句丢」。
     """
     d = pathlib.Path(root) / period
     d.mkdir(parents=True, exist_ok=True)
@@ -49,6 +64,9 @@ def seed_period(root, period="202607", *, facts=None, meta=None, red=True):
     if red:
         (d / "red_slots.json").write_text(json.dumps(RED_SAMPLE, ensure_ascii=False),
                                           encoding="utf-8")
+    if manual:
+        (d / "manual_inputs.json").write_text(json.dumps(MANUAL_SAMPLE, ensure_ascii=False),
+                                              encoding="utf-8")
     return d
 
 

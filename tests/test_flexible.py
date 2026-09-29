@@ -49,10 +49,17 @@ def src():
 
 @pytest.fixture(scope="session")
 def flex_report_out(src, tmp_path_factory):
-    """生成一次灵活报告（规则后端），供多条用例复用。"""
+    """生成一次灵活报告（规则后端），供多条用例复用。
+
+    ⚠ 显式注入 `RuleBrain`：session 级夹具的创建早于函数级 env 隔离，
+    不注入就会带着本机 .env 的真 key 出网（2026-09-29 踩——结果随网络成败漂移）。
+    """
     from conftest import REPO
+    import ai
+    from ai._brain import RuleBrain
     d = REPO / src.dir
-    r = report.generate(d, "single_trend")
+    with ai.using(brain=RuleBrain()):
+        r = report.generate(d, "single_trend")
     return r
 
 

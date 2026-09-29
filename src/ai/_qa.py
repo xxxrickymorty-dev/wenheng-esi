@@ -1,23 +1,39 @@
 # -*- coding: utf-8 -*-
 """qa 构建器（问文衡；SPEC §4 步骤 2 的构建器半边）。
 
-规则版：报告同款句骨架 `sentences.build()` 出段 → 按问句拆词打分排序（命中段排前；
-问句为空＝全部段；有问句但无命中＝前 3 段）→ 段文本即规则版正文。
+规则版：报告同款句骨架 `sentences.build()` 出段 → 问句检索排序（命中段排前；
+问句为空＝全部段；无命中＝前 3 段）→ 命中段文本即规则版正文。
+
+三处口径（2026-09-29 修，rick 实问暴露）：
+- **检索**：中文 2–4 字滑窗 + 报告别名（热点论文/高被引 → 顶尖论文），
+  不再要求问句里带空格（旧版整句无空格＝零命中）；
+- **手工槽**：`out/<期次>/manual_inputs.json` 里馆员已填的值回填 `【手工：X】`；
+  未填的槽位**整句丢掉**——不把裸占位符端给读者，也不让模型看见；
+- **证据**：模型轮看**全量段**（命中段排前），规则版仍只出命中段——
+  问「热点论文」这类报告里有、命中算法可能够不着的题，模型也能找到段落作答。
 
 来源登记：问句里的数字 → `question`；事实段里的数字 → 按值匹配 `overview_facts.json`
 的具体键（product 指针），匹配不到的（句骨架里算出来的期号等）降到段落级指针。
-
-D2 的接线半边（`/api/analyze` 薄适配、契约字段面、e2e）等 X2 会话停手后接；
-`sentences.build` 本体按 D6 收编搬入，届时删旧模块（replace, don't layer）。
 """
 from __future__ import annotations
 
 import json
 import pathlib
+import re
 
 from . import _shield
 from ._draft import RuleDraft
 from ._types import Source
+
+#: 检索词里没有信息量的常见词（切词后过滤）。
+_STOP = {"什么", "多少", "几门", "几个", "哪些", "这期", "本期", "请问", "怎么", "如何",
+         "情况", "数量", "是多少", "有没有", "云南大学", "我校"}
+
+#: 报告口径别名：题目里的近义说法 → 扩成报告用词（只扩检索词，不改原文）。
+_ALIAS = {
+    "热点论文": "顶尖论文", "高被引论文": "顶尖论文", "高被引": "顶尖论文", "顶刊": "顶尖论文",
+    "百分之一": "前 1%", "前1%": "前 1%", "千分之一": "1‰",
+}
 
 
 def _load_json(path, default=None):
@@ -26,20 +42,72 @@ def _load_json(path, default=None):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _terms(question: str) -> list:
+    """问句 → 检索词：空格词 + 中文 2–4 字滑窗（过滤停用词），并做别名扩展。"""
+    q = str(question)
+    for src, dst in _ALIAS.items():
+        if src in q:
+            q = q + " " + dst
+    terms = set()
+    for w in re.split(r"[，。？、！；：\s]+", q):
+        w = w.strip()
+        if len(w) < 2 or w in _STOP:
+            continue
+        terms.add(w)
+        for n in (2, 3, 4):
+            for i in range(len(w) - n + 1):
+                g = w[i:i + n]
+                if g not in _STOP:
+                    terms.add(g)
+    return sorted(terms)
+
+
 def _match(texts: dict, question: str) -> dict:
-    """问句拆词匹配（与 `/api/analyze` 现状同法）：命中按分数降序，无命中取前 3 段。"""
+    """命中按分数降序（长词权重高）；无命中取前 3 段（与旧版行为一致）。"""
     if not question:
         return dict(texts)
-    q_words = [w for w in question.replace("，", " ").replace("。", " ").replace("？", " ").split()
-               if len(w) >= 2]
+    terms = _terms(question)
     scored = {}
     for k, v in texts.items():
-        score = sum(1 for w in q_words if w in k or w in v)
+        hay = f"{k}\n{v}"
+        score = sum(len(t) for t in terms if t in hay)
         if score > 0:
-            scored[k] = (score, v)
+            scored[k] = score
     if scored:
-        return {k: v for k, (_, v) in sorted(scored.items(), key=lambda x: -x[1][0])}
+        return {k: texts[k] for k in sorted(scored, key=lambda x: -scored[x])}
     return dict(list(texts.items())[:3])
+
+
+def _manual_values(root, period) -> dict:
+    """馆员已填的手工槽：`{"<段key>": {字段: 值}}`（文件键形如 `正文/p4::学科数`）。"""
+    mi = _load_json(pathlib.Path(root) / str(period) / "manual_inputs.json",
+                    default={}) or {}
+    out: dict = {}
+    for key, item in mi.items():
+        if "::" not in str(key):
+            continue
+        sec, field = str(key).split("::", 1)
+        sec = sec.split("/")[-1]
+        val = item.get("value") if isinstance(item, dict) else item
+        if val not in (None, ""):
+            out.setdefault(sec, {})[field] = str(val)
+    return out
+
+
+def _apply_manual(text: str, values: dict) -> str:
+    """`【手工：X】` → 已填值；未填的槽位**整句丢掉**（不给读者/模型看裸占位符）。"""
+    if "【手工：" not in text:
+        return text
+    kept = []
+    for s in re.split(r"(?<=[。；])", text):
+        fields = re.findall(r"【手工：([^】]+)】", s)
+        if not fields:
+            kept.append(s)
+            continue
+        if any(f not in values for f in fields):
+            continue                                    # 有没填的槽 → 整句不要
+        kept.append(re.sub(r"【手工：([^】]+)】", lambda m: values[m.group(1)], s))
+    return "".join(kept)
 
 
 def _fact_index(facts: dict) -> dict:
@@ -102,20 +170,22 @@ def build(root, period, payload) -> RuleDraft:
 
     import sentences                                                # noqa: PLC0415
 
-    texts = sentences.build(facts, p_cur, p_prev)
-    question = str(payload.get("question") or "").strip()
-    texts = _match(texts, question)
+    values = _manual_values(root, period)
+    texts_all = {k: _apply_manual(v, values.get(k, {}))
+                 for k, v in sentences.build(facts, p_cur, p_prev).items()}
 
-    # 外发面与编号：问句切词在前，事实段在后；共用一套连续编号。
-    section_keys = list(texts.keys())
-    chunks = [question] + [texts[k] for k in section_keys]
+    question = str(payload.get("question") or "").strip()
+    matched = _match(texts_all, question)
+    # 证据＝命中段优先 + 其余段（模型可自找）；规则版＝命中段。
+    ordered = list(matched) + [k for k in texts_all if k not in matched]
+    chunks = [question] + [texts_all[k] for k in ordered]
     protected, mapping = _shield.protect_chunks(chunks)
 
-    frames_chars = len(question)          # 题面（含数字）也占位外发，SPEC §2.1
     task = protected[0]
     if not task:                          # 无问句：给模型一个明确的概述任务
         task = "（未提供具体问题）请依据参考数据概述本期要点。"
 
+    matched_set = set(matched)
     facts_idx = _fact_index(facts)
     sources = []
     fact_keys = set()
@@ -128,13 +198,14 @@ def build(root, period, payload) -> RuleDraft:
                                       label="来自提问", detail="提问中出现的数字",
                                       value=m.group(0)))
             else:
-                sources.append(_source_for(facts_idx, m.group(0), k, section_keys[ci - 1]))
+                sources.append(_source_for(facts_idx, m.group(0), k, ordered[ci - 1]))
                 fact_keys.add(k)
     assert k == len(mapping), "编号与保护映射必须对齐"
 
     return RuleDraft(
-        rule_text="\n\n".join(texts[k] for k in section_keys),
-        rule_protected="\n\n".join(protected[1:]),
+        rule_text="\n\n".join(texts_all[k] for k in matched),
+        rule_protected="\n\n".join(protected[1 + i]
+                                   for i, key in enumerate(ordered) if key in matched_set),
         mapping=mapping,
         sources=tuple(sources),
         parts=(),

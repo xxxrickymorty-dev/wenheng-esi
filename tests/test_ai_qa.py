@@ -155,3 +155,35 @@ def test_规则版确定性(tmp_path):
     a1 = qa(d1)
     a2 = qa(d2)
     assert a1.text == a2.text and a1.sources == a2.sources
+
+
+# ============================================================ 检索与手工槽（2026-09-29 修）
+def test_无空格整句问热点论文_命中顶尖论文段(tmp_path):
+    """rick 实问暴露：整句无空格旧版零命中；「热点论文」报告口径＝「顶尖论文」。"""
+    seed_period(tmp_path)
+    ans = qa(tmp_path, question="云南大学热点论文数量有多少")
+    assert "顶尖论文" in ans.text and "274" in ans.text, ans.text[:120]
+
+
+def test_手工槽已填回填_未填整句丢(tmp_path):
+    seed_period(tmp_path)                                   # 有馆员填值
+    ans = qa(tmp_path, question="ESI数据覆盖时间和机构总数")
+    assert "2026年7月9日" in ans.text and "10428" in ans.text
+    assert "【手工：" not in ans.text, "已填槽位不该再露裸占位符"
+    assert "【手工：" not in ans.rule_text
+
+    other = tmp_path / "nom"
+    seed_period(other, manual=False)                        # 没有填值文件
+    ans2 = qa(other, question="ESI数据覆盖时间和机构总数")
+    assert "【手工：" not in ans2.text, "未填槽位该整句丢掉，不端给读者"
+    assert "ESI最新数据" not in ans2.text, "含未填槽位的那句要整句丢"
+
+
+def test_模型证据含全量段_命中段排前(tmp_path):
+    seed_period(tmp_path)
+    brain = ScriptedBrain([lambda b: Turn(text=b.task + "\n\n" + "\n\n".join(b.evidence))])
+    ans = qa(tmp_path, question="云南大学热点论文数量有多少", brain=brain)
+    ev = brain.briefs[0].evidence
+    assert any("顶尖论文" in e for e in ev), "命中段必须在证据里"
+    assert len(ev) >= 10, "证据应为全量段（命中段排前），模型才找得到报告里的内容"
+    assert ans.mode == "model" and "274" in ans.text

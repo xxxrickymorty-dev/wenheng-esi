@@ -70,14 +70,25 @@ def repo():
     return REPO
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _isolate_ai_env_session():
+    """会话级收口：收集期各测试模块 import 会把 `server/.env` 灌进 os.environ（setdefault）。
+
+    ⚠ 但它挡不住「session 级夹具创建早于本夹具」的次序（2026-09-29 踩：flex_report_out
+    带着真 key 出网，结果随网络成败漂移）——那种夹具自己显式注入 `RuleBrain`；
+    函数级再有 `_isolate_ai_env` 逐测试兜底。
+    """
+    saved = {k: os.environ.pop(k) for k in [k for k in os.environ if k.startswith("WENHENG_AI_")]}
+    yield
+    os.environ.update(saved)
+
+
 @pytest.fixture(autouse=True)
 def _isolate_ai_env(monkeypatch):
-    """AI 层云配置对测试一律隐身：本机 server/.env 配了 key 也不许测试走模型/出网。
+    """AI 层云配置对每个测试隐身：本机 server/.env 配了 key 也不许测试走模型/出网。
 
     - 「默认 = 规则版」是金样对拍与 determinism 测试的前提；
-    - 云适配器测试自己用 `monkeypatch.setenv` 显式开（tests/test_ai_openai.py）；
-    - server/config.py 的 _load_dotenv 会把 .env 灌进 os.environ（setdefault），
-      所以这里按前缀清，保证任何测试顺序下都不泄漏。
+    - 云适配器测试自己用 `monkeypatch.setenv` 显式开（tests/test_ai_openai.py）。
     """
     for key in [k for k in os.environ if k.startswith("WENHENG_AI_")]:
         monkeypatch.delenv(key, raising=False)
