@@ -111,13 +111,28 @@ def test_只引用问句数字也判越题(tmp_path):
     assert records(tmp_path)[0]["fallback"] == "off_topic"
 
 
-@pytest.mark.parametrize("suffix", [" 另见 7 项。", " [[999]] 无此来源。", "（再念：[[1]]）"])
-def test_自由型盾_游离数字_未知标记_重复引用都拒(tmp_path, suffix):
+@pytest.mark.parametrize("suffix", [" 另见 7 项。", " [[999]] 无此来源。"])
+def test_自由型盾_游离数字_未知标记都拒(tmp_path, suffix):
     seed_period(tmp_path)
     brain = ScriptedBrain([lambda b: Turn(text=b.task + suffix)])
     ans = qa(tmp_path, question="995 是什么", brain=brain)
     assert ans.mode == "rule" and "数字校验" in ans.notice
     assert records(tmp_path)[0]["fallback"] == "shield_reject"
+
+
+def test_自由型盾_重复引用同一来源放行(tmp_path):
+    """真实模型写「前 [[1]]%…前 [[1]]%」很自然——重复引用不产生新事实，放行。"""
+    seed_period(tmp_path)
+
+    def dup(brief):
+        m = re.search(r"\[\[\d+\]\]", "\n".join(brief.evidence))
+        assert m, "证据里应有占位符"
+        marker = m.group(0)
+        return Turn(text=f"参考数据里，{marker} 与 {marker} 都是本期事实。")
+
+    ans = qa(tmp_path, question="顶尖论文", brain=ScriptedBrain([dup]))
+    assert ans.mode == "model" and ans.text.count("274") == 2
+    assert records(tmp_path)[0]["fallback"] is None
 
 
 def test_工具请求本轮不开放_回落(tmp_path):

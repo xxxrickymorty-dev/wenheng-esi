@@ -68,15 +68,16 @@ def validate(out_text: str | None, mapping: dict) -> tuple[bool, dict]:
 
 
 def validate_free(out_text: str | None, mapping: dict) -> tuple[bool, dict]:
-    """自由作答型（qa/review）校验：用到必有 ref、每个引用至多一次、无游离数字。
+    """自由作答型（qa/review）校验：用到必有 ref、无游离数字。
 
-    与锚定型 `validate` 的区别：**允许相关子集**（不要求 mapping 全部出现）。
-    未登记/自造标记、重复引用、照写照算的数字 —— 一律拒（SPEC §2.1 二分）。
+    与锚定型 `validate` 的区别：**允许相关子集**（不要求 mapping 全部出现）；
+    **允许重复引用同一来源**（2026-09-29 放宽——真实模型写「前 [[1]]%…前 [[1]]%」很自然，
+    重复引用不产生新事实；位置映射按出现次序重复登记即可）。
+    未登记/自造标记、照写照算的数字 —— 一律拒（SPEC §2.1 二分）。
     """
     text = out_text or ""
     marks = MARK.findall(text)
     unknown = sorted({k for k in marks if k not in mapping})
-    duplicate = sorted({k for k in set(marks) if marks.count(k) > 1})
     stray = visible_digits(text)
-    detail = {"unknown": unknown, "duplicate": duplicate, "stray": stray}
-    return (not unknown and not duplicate and not stray), detail
+    detail = {"unknown": unknown, "stray": stray}
+    return (not unknown and not stray), detail
