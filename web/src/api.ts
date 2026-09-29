@@ -343,3 +343,28 @@ export async function rollbackPeriod(period: string, point: string): Promise<{ o
     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ point }) },
   )
 }
+
+/** AI 能力开关表（契约 §2.2 #28）：分析台「问文衡」的开关读它；仅 admin */
+export type AiCapability = {
+  id: string
+  label: string
+  stage: string
+  min_role: string
+  enabled: boolean
+  allowed: boolean
+  notice: string
+}
+
+export async function getAiCapabilities(): Promise<AiCapability[]> {
+  const r = await req<{ capabilities: AiCapability[] }>('/api/ai/capabilities')
+  return r.capabilities ?? []
+}
+
+/** 能力开关唯一写口（契约 §2.2 #29，仅管理员）。关掉只是不答问，数字与报告不受影响。 */
+export async function postAiSwitch(capability: string, enabled: boolean): Promise<void> {
+  await req<{ ok: boolean }>('/api/ai/switch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ capability, enabled }),
+  })
+}

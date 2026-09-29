@@ -540,6 +540,13 @@ check("review-advice 来源指红件/校验记录",
           for s in _rj.get("sources") or []),
       str([s.get("pointer") for s in (_rj.get("sources") or [])][:3]))
 
+# GET /api/ai/capabilities + POST /api/ai/switch（D5 前端开关；契约 #28/#29）
+st, caps, _ = call("GET", "/api/ai/capabilities")
+check("GET ai/capabilities 200", st == 200, f"got {st}")
+check("capabilities 含四能力", all(f'"{k}"' in caps for k in ("qa", "review", "diagnose", "brief")))
+st, _sw, _ = call_json("POST", "/api/ai/switch", {"capability": "不存在", "enabled": False})
+check("ai/switch 未知能力 400（不动真开关）", st == 400, f"got {st}")
+
 # POST /api/periods/{period}/forecast-choice（JSON body，契约 #17 嵌套形状）
 # 先取检查前的选择：验完写回——e2e 不把测试选模留在 202607（重出报告会带上它）。
 # 学科名从接口现取：候选学科随数据期次滚动，写死会过期（曾写「化学」，2026-09-28 已不在候选里）。

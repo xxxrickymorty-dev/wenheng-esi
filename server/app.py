@@ -1429,6 +1429,34 @@ async def api_period_review_advice(request: Request, period: str):
     return _answer_response(ans)
 
 
+@app.get("/api/ai/capabilities")
+@admin_route
+async def api_ai_capabilities(request: Request):
+    """能力开关表（契约 #28）：分析台「问文衡」的开关读它；纯读配置，无副作用。"""
+    import ai                                                     # noqa: PLC0415
+    rows = [c.as_dict() for c in
+            ai.capabilities(config.role_of(current_user(request) or ""))]
+    return {"capabilities": rows}
+
+
+@app.post("/api/ai/switch")
+@admin_route
+async def api_ai_switch(request: Request):
+    """能力开关唯一写口（契约 #29）：管理员一键关闭「问文衡」；数字与报告不受影响。"""
+    body = await request.json()
+    capability = str(body.get("capability") or "").strip()
+    enabled = bool(body.get("enabled"))
+    import ai                                                     # noqa: PLC0415
+    try:
+        await run_in_threadpool(ai.set_switch, capability, enabled,
+                                actor=config.role_of(current_user(request) or ""))
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except PermissionError as e:
+        return JSONResponse({"error": str(e)}, status_code=403)
+    return {"ok": True, "capability": capability, "enabled": enabled}
+
+
 @app.get("/api/forecast/board")
 @admin_route
 async def api_forecast_board(request: Request, period: str = ""):

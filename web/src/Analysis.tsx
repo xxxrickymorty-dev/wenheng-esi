@@ -1,16 +1,13 @@
-/* 分析台（工作区 4）——问文衡（qa 能力；契约 §2.2 #9）。字段面＝接口的 Answer：
-   mode / backend / text / rule_text / notice / sources / shield（见 SPEC §1）。
+/* 分析台（工作区 4）——问文衡（qa 能力；契约 §2.2 #9）。
+   版式按 rick 过审的减负稿 `web/mockups/分析台-问答入口.html`（2026-09-29，首屏 166 字）。
 
-   过渡版式说明（2026-09-29 · D2 接线）：此面板原先展示「按节解读」（旧 analyze 字段面），
-   接口切到 qa 后先做**保活适配**；正式版式按 RICK 审过的
-   `web/mockups/分析台-问答入口.html`（票 01）在 D5 落位（数字角标、工具回执、开关等）。
+   字段面＝接口的 Answer：mode / backend / text / rule_text / notice / sources / shield。
+   🔴 硬边界（界面上说清）：
+     数字只来自台账；大模型只组织语言、看不见任何数字（占位符 + 防护盾）；
+     模型不可用自动回落规则版并如实标注；每个数字点开可看来源；开关关掉只剩一行说明。 */
 
-   🔴 硬边界（写进界面，不让馆员误以为数字是模型算的）：
-     数字只来自台账；模型只组织语言、看不到任何数字（占位符 + 防护盾）；
-     模型不可用自动回落规则版并在回答上如实标注；每个数字都能对回依据。 */
-
-import { useState } from 'react'
-import { req } from './api'
+import { useEffect, useMemo, useState } from 'react'
+import { getAiCapabilities, postAiSwitch, req, type AiCapability } from './api'
 import { Icon } from './icons'
 import { BigTable } from './BigTable'
 import { Flexible } from './Flexible'
@@ -30,8 +27,69 @@ type AnalyzeResp = {
   rule_text: string
   notice: string
   sources: Source[]
+  receipts: { label: string; summary: string; elapsed_ms: number }[]
   shield: { checked: number; passed: number }
   record_id: string | null
+}
+
+/** 数字角标：第 k 个数字 ↔ sources[k-1]（后端已按出现次序对齐），点开看来源。 */
+function NumberedText({ text, sources }: { text: string; sources: Source[] }) {
+  const [open, setOpen] = useState<number | null>(null)
+  const parts = useMemo(() => {
+    const nodes: React.ReactNode[] = []
+    const re = /\d+(?:\.\d+)?/g
+    let last = 0
+    let k = 0
+    let m: RegExpExecArray | null
+    while ((m = re.exec(text)) !== null) {
+      k += 1
+      const idx = k
+      if (m.index > last) nodes.push(text.slice(last, m.index))
+      const src = sources[idx - 1]
+      nodes.push(
+        <span key={`n${k}`} style={{ position: 'relative', display: 'inline-block' }}>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setOpen(open === idx ? null : idx) }}
+            title={src ? `${src.label}：${src.value}` : undefined}
+            style={{
+              border: 0, borderBottom: '1px dotted var(--zhu)', padding: '1px 7px',
+              margin: '0 1px', borderRadius: 7, background: 'var(--zhu-soft)',
+              color: 'var(--zhu)', font: 'inherit', fontWeight: 650, cursor: 'pointer',
+            }}
+          >
+            {m[0]}
+          </button>
+          {open === idx && src && (
+            <span
+              className="card"
+              style={{
+                position: 'absolute', zIndex: 30, left: 0, top: 'calc(100% + 6px)',
+                width: 300, padding: '10px 12px', fontSize: 13, lineHeight: 1.7,
+                fontFamily: 'var(--sans)', fontWeight: 400, color: 'var(--ink-2)',
+                display: 'block',
+              }}
+            >
+              <b style={{ color: 'var(--ink)' }}>{src.label}</b>
+              <br />
+              {src.detail}
+              <span className="hint"> · 数字来自台账，不是模型生成</span>
+            </span>
+          )}
+        </span>,
+      )
+      last = m.index + m[0].length
+    }
+    if (last < text.length) nodes.push(text.slice(last))
+    return nodes
+  }, [text, sources, open])
+
+  return (
+    <p style={{ margin: 0, fontFamily: 'var(--serif)', fontSize: 17.5, lineHeight: 1.9 }}
+       onClick={() => setOpen(null)}>
+      {parts}
+    </p>
+  )
 }
 
 export function Analysis({ period }: { period: string | null }) {
@@ -39,28 +97,48 @@ export function Analysis({ period }: { period: string | null }) {
   const [data, setData] = useState<AnalyzeResp | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [showRule, setShowRule] = useState(false)
+  const [qa, setQa] = useState<AiCapability | null>(null)
+  const [qaBusy, setQaBusy] = useState(false)
 
-  async function run() {
-    if (!period) return
-    setBusy(true); setErr(null); setData(null)
+  useEffect(() => {
+    let live = true
+    getAiCapabilities()
+      .then((cs) => { if (live) setQa(cs.find((c) => c.id === 'qa') ?? null) })
+      .catch(() => { /* 拿不到开关表就按「未关闭」显示——真门在后端 */ })
+    return () => { live = false }
+  }, [])
+
+  const closed = !!qa && qa.stage === 'ready' && !qa.enabled
+
+  async function run(q?: string) {
+    const text = (q ?? question).trim()
+    if (!period || busy) return
+    if (q !== undefined) setQuestion(text)
+    setBusy(true); setErr(null); setShowRule(false)
     try {
       const r = await req<AnalyzeResp>('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ period, question }),
+        body: JSON.stringify({ period, question: text }),
       })
       setData(r)
     } catch (e) {
       const h = e as { status?: number; body?: { error?: string }; message?: string }
       setErr(h.body?.error ?? (h.status === 403 ? '问答需要管理员权限。'
         : h.status === 404 ? '这一期还没有可用产物（可能尚未出稿）。'
-          : h.message ?? '作答失败'))
+          : h.status === 409 ? '问答已被管理员关闭。'
+            : h.message ?? '作答失败'))
     } finally { setBusy(false) }
   }
 
-  const modeText = !data ? '' :
-    data.mode === 'model' ? `本次由模型组织语言（AI 生成 · ${data.backend}）` :
-      data.mode === 'rule' ? '本次由规则版作答（数字与依据不受影响）' : data.mode
+  async function toggleQa(next: boolean) {
+    setQaBusy(true)
+    try {
+      await postAiSwitch('qa', next)
+      setQa((c) => (c ? { ...c, enabled: next, notice: next ? '' : '此功能已由管理员关闭；数据与报告不受影响。' } : c))
+    } finally { setQaBusy(false) }
+  }
 
   return (
     <>
@@ -68,80 +146,139 @@ export function Analysis({ period }: { period: string | null }) {
       <BigTable period={period} />
 
       <section className="card" style={{ marginTop: 18, padding: '22px 24px' }}>
-        <h2 style={{ fontSize: 22, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <h2 style={{ fontSize: 22, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <Icon name="chart" size={22} />问文衡
           <span className="tag" style={{ marginLeft: 6 }}>{period ?? '（选择期次）'}</span>
+          {qa && (
+            <button
+              className="btn"
+              style={{ marginLeft: 'auto', padding: '5px 12px', fontSize: 13 }}
+              disabled={qaBusy}
+              title="管理员可关闭问答；关闭后只留一行说明，分析台其余不受影响"
+              onClick={() => toggleQa(!qa.enabled)}
+            >
+              <Icon name={qa.enabled ? 'play' : 'chart'} size={15} />
+              {qa.enabled ? '已开启' : '已关闭'}
+            </button>
+          )}
         </h2>
 
-        <p className="hint" style={{ marginTop: 10 }}>
-          问这一期数据的问题（留空＝概述本期要点）。数字只来自台账；
-          模型只组织语言、看不到任何数字；模型不可用时自动回落规则版并在回答上标注。
-        </p>
+        {closed ? (
+          <div className="pending-box" style={{ marginTop: 14 }}>
+            {qa?.notice || '此功能已由管理员关闭；数据与报告不受影响。'}
+            <button className="btn" style={{ marginLeft: 12 }} disabled={qaBusy}
+                    onClick={() => toggleQa(true)}>开启问文衡</button>
+          </div>
+        ) : (
+          <>
+            <p className="hint" style={{ margin: '10px 0 0' }}>问这一期数据的问题。</p>
 
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 14, flexWrap: 'wrap' }}>
-          <input
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder="问一句，如：本期顶尖论文情况？"
-            style={{
-              font: 'inherit', padding: '9px 12px', color: 'inherit',
-              border: '1px solid var(--line)', borderRadius: 9, background: 'var(--card)',
-              width: 320,
-            }}
-          />
-          <button className="btn primary" onClick={run} disabled={!period || busy}>
-            <Icon name="play" size={20} />{busy ? '正在作答……' : '问一问'}
-          </button>
-          {data && (
-            <span className="hint">
-              {modeText} · 盾 {data.shield.passed} 个数字已登记
-            </span>
-          )}
-        </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+              <input
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') run() }}
+                placeholder="问一句，如：这期哪些学科离前 1% 最近？"
+                aria-label="输入问题"
+                style={{
+                  flex: 1, minWidth: 0, font: 'inherit', padding: '11px 14px',
+                  border: '1px solid var(--line)', borderRadius: 10,
+                  background: 'var(--card)', color: 'inherit',
+                }}
+              />
+              <button className="btn primary" onClick={() => run()} disabled={!period || busy}>
+                <Icon name="play" size={20} />{busy ? '正在作答……' : '问一问'}
+              </button>
+            </div>
 
-        {err && <div className="pending-box" style={{ marginTop: 14 }}>{err}</div>}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
+              <span className="hint">试试：</span>
+              {['哪些学科离前 1% 最近？', '前 1% 学科有几门？'].map((q) => (
+                <button
+                  key={q}
+                  className="btn"
+                  style={{ borderRadius: 999, padding: '6px 12px', fontSize: 13 }}
+                  disabled={!period || busy}
+                  onClick={() => run(q)}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+
+            {err && <div className="pending-box" style={{ marginTop: 14 }}>{err}</div>}
+          </>
+        )}
       </section>
 
       {data && (
-        <section className="card" style={{ marginTop: 18, padding: '22px 24px' }}>
-          {data.notice && (
-            <div className="pending-box" style={{ marginBottom: 12 }}>
-              {data.notice}
-              {data.record_id && <span className="hint"> · 留痕 {data.record_id}</span>}
-            </div>
-          )}
-          {data.text.split(/\n{2,}/).map((p, i) => (
-            <p key={i} style={{ margin: i ? '12px 0 0' : 0, fontFamily: 'var(--serif)', fontSize: 17.5, lineHeight: 1.85 }}>
-              {p}
-            </p>
-          ))}
+        <section className="card" style={{ marginTop: 16, padding: '18px 22px' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap',
+                        paddingBottom: 10, borderBottom: '1px dashed var(--line-2)' }}>
+            <span className="pill signed">问</span>
+            <b>{question || '（概述本期要点）'}</b>
+            <span style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span className={`pill ${data.mode === 'model' ? 'signed' : 'stale'}`}>
+                {data.mode === 'model' ? '大模型作答' : '规则版作答'}
+              </span>
+              <span className="hint" title="工具读出台账数字 → 登记进防护盾 → 大模型只组织语言；任一环节不过，整段回退规则版。">?</span>
+            </span>
+          </div>
 
-          {data.rule_text && data.rule_text !== data.text && (
-            <details style={{ marginTop: 14 }}>
-              <summary className="hint" style={{ cursor: 'pointer' }}>看规则版（同一条问题由规则库拼句）</summary>
-              <p className="hint" style={{ whiteSpace: 'pre-wrap', marginTop: 8, lineHeight: 1.8 }}>
-                {data.rule_text}
-              </p>
-            </details>
-          )}
-
-          {data.sources.length > 0 && (
-            <details style={{ marginTop: 10 }}>
+          {data.receipts.length > 0 && (
+            <details style={{ marginTop: 10, border: '1px solid var(--line-2)', borderRadius: 10, background: 'var(--panel)', padding: '6px 12px' }}>
               <summary className="hint" style={{ cursor: 'pointer' }}>
-                回答依据（{data.sources.length} 处；第 k 个数字对应第 k 条）
+                本次调度 {data.receipts.length} 个工具（只读）
               </summary>
-              <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
-                {data.sources.map((s) => (
-                  <li key={s.index} className="hint" style={{ lineHeight: 1.8 }}
-                      title={`${s.detail}（${s.pointer}）`}>
-                    {s.index}. {s.label}：{s.value}
-                  </li>
+              <ul className="hint" style={{ margin: '6px 0 6px', paddingLeft: 20 }}>
+                {data.receipts.map((r, i) => (
+                  <li key={i}>{r.label}：{r.summary}（{r.elapsed_ms} 毫秒）</li>
                 ))}
               </ul>
             </details>
           )}
+
+          {data.notice && (
+            <div className="pending-box" style={{ marginTop: 10, padding: '10px 14px' }}>
+              {data.notice}
+              {data.mode === 'rule' && (
+                <button className="btn" style={{ marginLeft: 12 }} disabled={busy}
+                        onClick={() => run()}>重试</button>
+              )}
+              {data.record_id && <span className="hint"> · 留痕 {data.record_id}</span>}
+            </div>
+          )}
+
+          <div style={{ padding: '12px 0 2px' }}>
+            {showRule
+              ? <p style={{ margin: 0, fontFamily: 'var(--serif)', fontSize: 17.5, lineHeight: 1.9 }}>{data.rule_text}</p>
+              : <NumberedText text={data.text} sources={data.sources} />}
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap',
+                        marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--line-2)' }}>
+            <span className="pill ok">盾 · {data.shield.passed} 个数字已登记</span>
+            <span className="hint">数字点开看来源</span>
+            <span style={{ flex: 1 }} />
+            {data.rule_text && data.rule_text !== data.text && (
+              <button className="btn" style={{ fontSize: 13 }} onClick={() => setShowRule(!showRule)}>
+                {showRule ? '看模型版' : '看规则版'}
+              </button>
+            )}
+          </div>
         </section>
       )}
+
+      <details className="card" style={{ marginTop: 16, padding: '14px 18px' }}>
+        <summary className="hint" style={{ cursor: 'pointer', listStyle: 'none' }}>
+          说明 · 口径与来源
+        </summary>
+        <ul className="hint" style={{ margin: '10px 0 0', paddingLeft: 20, lineHeight: 1.9 }}>
+          <li>数字只来自馆员维护的台账与派生产物；问答不改动任何数据。</li>
+          <li>大模型只组织语言、不计算数字；数字由工具读取并逐一登记（防护盾），校验不过整段回退规则版。</li>
+          <li>提问会带一小段数据摘要发送到云端大模型，仅用于生成回答；管理员可整体关闭；记录存运行档案，可回放。</li>
+        </ul>
+      </details>
 
       {/* 两块解读挨着：先「问文衡」，再「灵活报告」（灵活） */}
       <Flexible period={period} />
