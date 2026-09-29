@@ -11,6 +11,7 @@
 """
 import json
 import pathlib
+import re
 import sys
 
 import pytest
@@ -73,7 +74,7 @@ def test_旧名归一(old, new):
 def test_状态中文名新旧都能吃():
     assert jobs.status_label("done") == "已完成"
     assert jobs.status_label("interrupted") == "失败"
-    assert jobs.status_label("escalated") == "已升级（待人工）"
+    assert jobs.status_label("escalated") == "需人工接手"
 
 
 def test_认不出的状态名不静默吞掉():
@@ -166,6 +167,43 @@ def test_每个状态都有badge样式():
     css = (SERVER / "static" / "style.css").read_text(encoding="utf-8")
     for s in states.STATES:
         assert f".badge.{s}" in css, f"style.css 缺 .badge.{s} 的配色"
+
+
+# ============================================================ 前端话术同源（跨栈 parity）
+# 背景（2026-09-29）：老站任务页下线后，服务端渲染的 badge 不复存在；
+# 「状态话术与状态机同源」这条保证改由**跨栈 parity 测试**守：
+# 前端 `web/src/lib/status.ts`（CONTEXT「界面用语」定的唯一映射）必须与
+# `src/agent/states.py` 集合、终态、逐字话术一致。漂移在这里当场红。
+def _parse_ts_task_table():
+    src = (REPO / "web" / "src" / "lib" / "status.ts").read_text(encoding="utf-8")
+    states_block = re.search(r"export const TASK_STATES = \[(.*?)\] as const", src, re.S)
+    terminal_block = re.search(
+        r"export const TERMINAL_STATES: readonly TaskState\[\] = \[(.*?)\]", src, re.S)
+    label_block = re.search(
+        r"export const TASK_LABEL: Record<TaskState, string> = \{(.*?)\}", src, re.S)
+    assert states_block and terminal_block and label_block, "status.ts 形状变了，同步本测试"
+    task_states = re.findall(r"'([^']+)'", states_block.group(1))
+    terminal = re.findall(r"'([^']+)'", terminal_block.group(1))
+    labels = dict(re.findall(r"(\w+):\s*'([^']+)'", label_block.group(1)))
+    return task_states, set(terminal), labels
+
+
+def test_前端十态与后端状态机同源():
+    task_states, _terminal, _labels = _parse_ts_task_table()
+    assert tuple(task_states) == states.STATES, \
+        "前端状态集合/顺序必须与 src/agent/states.py 一致"
+
+
+def test_前端终态集合与后端同源():
+    _states, terminal, _labels = _parse_ts_task_table()
+    assert terminal == set(states.TERMINAL)
+
+
+def test_前端话术与后端中文名逐字一致():
+    _states, _terminal, labels = _parse_ts_task_table()
+    diff = {k: (labels.get(k), states.LABELS.get(k))
+            for k in states.LABELS if labels.get(k) != states.LABELS.get(k)}
+    assert not diff, f"状态话术漂移（前端, 后端）：{diff}"
 
 
 # ============================================================ 步骤级不受牵连

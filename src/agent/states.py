@@ -48,16 +48,18 @@ TRANSITIONS: dict[str, frozenset[str]] = {
     CANCELLED: frozenset(),
 }
 
-#: 中文名（看板与报告用）
+#: 中文名（看板与报告用）。⚠ 2026-09-29 起与前端 `web/src/lib/status.ts` 的
+#: TASK_LABEL 逐字一致（CONTEXT「界面用语」2026-09-28 定案，前端为唯一映射）；
+#: 漂移由 tests/test_demo_station_states.py 的跨栈 parity 测试当场抓红。
 LABELS: dict[str, str] = {
     PENDING: "待运行",
     RUNNING: "运行中",
-    RETRYING: "自愈重试中",
-    STALLED: "停滞",
+    RETRYING: "自动修复中",
+    STALLED: "已停住",
     WAITING_APPROVAL: "待签单",
     COMPLETED: "已完成",
-    WARNED: "完成（有告警）",
-    ESCALATED: "已升级（待人工）",
+    WARNED: "已完成（有提醒）",
+    ESCALATED: "需人工接手",
     FAILED: "失败",
     CANCELLED: "已取消",
 }

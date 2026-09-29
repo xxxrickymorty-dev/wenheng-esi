@@ -20,7 +20,6 @@ import http.cookiejar
 import json
 import os
 import pathlib
-import re
 import sys
 import time
 import urllib.error
@@ -119,26 +118,14 @@ check("终态是 completed 或 warned（不是旧名 done/warn）",
 check("终态被 is_terminal 认出（页面会停轮询、放重跑按钮）",
       bool(final) and states.is_terminal(final["status"]))
 
-print("=== 3. 任务页 badge 与状态机一致 ===")
-c, page = get(f"/jobs/{job_id}")
-check("GET /jobs/<id> → 200", c == 200, f"got {c}")
-m = re.search(r'id="status-badge" class="badge ([a-z_]+)">([^<]*)<', page)
-check("badge 标签存在", bool(m))
-if m and final:
-    want = states.normalize(final["status"])
-    check("badge 类名 = 终态名", m.group(1) == want, f"{m.group(1)} vs {want}")
-    check("badge 文案 = 状态机中文名", m.group(2).strip() == states.LABELS[want],
-          f"{m.group(2)} vs {states.LABELS[want]}")
-check("页面注入了状态字典", "__STATUS_LABELS__" in page)
-check("重跑按钮已放出（终态才显示）", 'id="rerun"' in page)
-
-print("=== 4. 首页列表用同一套状态名 ===")
-c, home = get("/run")
-rows = re.findall(r'<span class="badge ([a-z_]+)">([^<]*)</span>', home)
-check("首页徽章无旧名", not any(x in {"done", "warn", "interrupted"} for x, _ in rows),
-      str(sorted({x for x, _ in rows})))
-check("新任务出现在最近任务里", any(t == states.label(final["status"]) for _, t in rows),
-      str(rows[:3]))
+print("=== 3. 新工作区在线（老站任务页已随 ADR-0002 下线）===")
+# 旧站 /jobs/<id> 与 /run 已 302 到 React /app/，服务端渲染的 badge / 状态字典不复存在。
+# 「状态话术与状态机同源」这条保证改由**跨栈 parity 测试**守：
+#   tests/test_demo_station_states.py::test_前端话术与后端中文名逐字一致
+#   （还有 前端十态/终态集合两条）
+# 这里只验新工作区确实在线；任务数据链（发起→running→终态）由 1/2 段覆盖。
+c, page = get("/app/")
+check("GET /app/ → 200（新工作区在线）", c == 200, f"got {c}")
 
 print("=" * 56)
 print("结果：" + ("全部通过" if not fails else f"{len(fails)} 项未过 → {fails}"))
