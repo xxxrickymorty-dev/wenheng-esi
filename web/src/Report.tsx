@@ -123,7 +123,7 @@ function Artifacts({ period, guest, approvalStatus, refreshToken }: {
           <span className="go">
             {a.key === 'report' && approvalStatus !== 'signed'
               ? <span className="hint" role="note" style={{ display: 'inline-block', maxWidth: 150, whiteSpace: 'normal', textAlign: 'right' }}>
-                  未签发，管理员暂不能下载
+                  未签发，暂不能下载
                 </span>
               : <a href={a.url} target="_blank" rel="noreferrer">打开</a>}
           </span>
@@ -178,7 +178,7 @@ function PeriodData({ period }: { period: string | null }) {
           <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <Icon name="list" size={21} />对勘 · 红色件
             <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>
-              （母版原文 ↔ 本期生成，共 {col.length} 处 · 待人工 {manual.length} 处）
+              共 {col.length} 处 · 待人工 {manual.length} 处
             </span>
           </h2>
           {/* 两扇门摆在明面：对勘本（正文级对照）/ 红色件清单（签单依据） */}
@@ -257,7 +257,7 @@ function PeriodData({ period }: { period: string | null }) {
                 </div>
               ))}
               {manual.length > 8 && (
-                <p className="hint">还有 {manual.length - 8} 处待人工，完整清单见「红色件清单」。</p>
+                <p className="hint">另 {manual.length - 8} 处见图册「红色件清单」。</p>
               )}
             </div>
           )}

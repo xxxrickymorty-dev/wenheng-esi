@@ -209,13 +209,13 @@ export function Tools({
           {/* 产物下载 + 重跑 */}
           <h3 style={{ fontSize: 15, marginTop: 18 }}>产物与重跑</h3>
           {!period ? (
-            <p className="hint" style={{ marginTop: 4 }}>先选一期，再查看这一期的产物。</p>
+            <p className="hint" style={{ marginTop: 4 }}>先选一期。</p>
           ) : currentView?.note ? (
             <p className="hint" style={{ marginTop: 4 }}>{currentView.note}</p>
           ) : !currentView || currentView.loading ? (
-            <p className="hint" style={{ marginTop: 4 }}>正在读取这一期的产物……</p>
+            <p className="hint" style={{ marginTop: 4 }}>正在读取……</p>
           ) : !currentView.artifacts || currentView.artifacts.length === 0 ? (
-            <p className="hint" style={{ marginTop: 4 }}>这一期还没有产物——点上方「开始生成」出稿。</p>
+            <p className="hint" style={{ marginTop: 4 }}>还没有产物，先「开始生成」。</p>
           ) : (
             <div className="chips" style={{ marginTop: 8 }}>
               {currentView.artifacts.map((a) => (

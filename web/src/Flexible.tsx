@@ -120,13 +120,13 @@ export function Flexible({ period }: { period: string | null }) {
 
       {d && !busy && !d.body_html && (
         <p className="hint" style={{ marginTop: 12 }}>
-          这一期还没有灵活报告——选好意图点「生成分析稿」；生成后这里会显示正文（正文由后端渲染，图是产物里的真图）。
+          还没有灵活报告——选好意图后点「生成分析稿」。
         </p>
       )}
 
       {d?.body_html && (
         <>
-          {curTitle && <p className="hint" style={{ marginTop: 12 }}>正在看：<b>{curTitle}</b></p>}
+          {curTitle && <p className="hint" style={{ marginTop: 12 }}>当前：<b>{curTitle}</b></p>}
           <article className="fx-md" dangerouslySetInnerHTML={{ __html: d.body_html }} />
         </>
       )}

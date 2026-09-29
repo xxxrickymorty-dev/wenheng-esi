@@ -51,7 +51,6 @@ export function Ledger() {
             <button className="btn" style={{ padding: '4px 10px', fontSize: 13.5, margin: '0 4px' }}
                     onClick={() => location.reload()}>重新检查</button>
             后如果还读不到，把这一屏截图给开发。
-            <span className="hint" style={{ display: 'block', marginTop: 6 }}>（技术细节：{err}）</span>
           </div>
         )}
 

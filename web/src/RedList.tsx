@@ -54,9 +54,6 @@ export function RedList({ period }: { period: string | null }) {
              href={`/p/${encodeURIComponent(period)}/download/red_list`}>下载 Markdown</a>
         )}
       </h2>
-      <p className="hint" style={{ marginTop: 8 }}>
-        每条列出「改了什么、来自哪里」——全部数字可回溯到台账供数位置；发布前由馆员逐条签单确认。
-      </p>
 
       {note ? (
         <div className="pending-box" style={{ marginTop: 12 }}>

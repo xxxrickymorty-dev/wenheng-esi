@@ -297,10 +297,10 @@ export function Acquire({ period }: { period: string | null }) {
             <summary>取数清单<span className="sm">{totals.groups ?? groups.length ?? 9} 组 · {expected > 0 ? `${expected} 份` : '份数待定'}</span></summary>
             <div className="fold-inner">
               {groups.length === 0 ? (
-                <p className="hint" style={{ margin: 0 }}>还没有取数记录。开始取数后，这里按组列出每一份文件与核验结果。</p>
+                <p className="hint" style={{ margin: 0 }}>还没有取数记录。</p>
               ) : (
                 <>
-                  <p className="hint" style={{ margin: '0 0 10px' }}>每份文件核验通过才计入；没通过的可在本组重试。</p>
+                  <p className="hint" style={{ margin: '0 0 10px' }}>没通过的可在本组重试。</p>
                   <div className="aq-groups">
                     {groups.map((g, i) => <GroupCard key={g.id ?? i} g={g} />)}
                   </div>
@@ -315,7 +315,7 @@ export function Acquire({ period }: { period: string | null }) {
               <summary>本期新增列核对表<span className="sm">{reviewSheets.length} 张表</span></summary>
               <div className="fold-inner">
                 <p className="hint" style={{ margin: '0 0 8px' }}>
-                  将并入主台账的 {period} 列；并入只动这些列，历史列一字不变。
+                  将并入主台账 {period} 列；历史列不动。
                 </p>
                 <div className="tablewrap">
                   <table className="aq-rv">

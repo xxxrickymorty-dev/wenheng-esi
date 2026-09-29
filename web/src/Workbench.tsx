@@ -287,13 +287,13 @@ function ModelSummary({
             {dirty ? (
               <>
                 <span role="status" className="hint" style={{ color: 'var(--warn)', fontWeight: 650 }}>
-                  有未保存修改（在预测台改的）——保存后才可开始生成。
+                  有未保存修改——保存后才能开始生成。
                 </span>
                 <ConfirmButton className="btn" confirmText="确认放弃？会回到上次保存的版本" onConfirm={onReload}>放弃修改并重新读取</ConfirmButton>
               </>
             ) : (
               <span role="status" className="hint" style={{ color: 'var(--ok)' }}>
-                {state?.error || `已保存${state?.by ? ` · ${state.by}` : ''}${state?.at ? ` · ${state.at}` : ''} · 未改选的学科使用 V1 推荐`}
+                {state?.error || `已保存${state?.by ? ` · ${state.by}` : ''}${state?.at ? ` · ${state.at}` : ''}`}
               </span>
             )}
           </div>

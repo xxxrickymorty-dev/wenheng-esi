@@ -172,7 +172,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                 ))}
               </div>
             ) : (
-              <p className="hint" style={{ marginTop: 6 }}>无状态迁移记录。</p>
+              <p className="hint" style={{ marginTop: 6 }}>无迁移记录。</p>
             )}
             <div style={{ marginTop: 12 }}>
               {d.waterfall.length ? (
@@ -187,7 +187,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
             </div>
             {d.replay.synthetic && (
               <p className="hint" data-src="backend" style={{ marginTop: 10 }}>
-                ⚠ {d.replay.note}——合成链只含确定发生过的迁移，不臆造自愈/升级环节。
+                ⚠ {d.replay.note}
               </p>
             )}
           </section>
@@ -231,7 +231,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                     </table>
                   </div>
                 ) : (
-                  <p className="hint" style={{ marginTop: 8 }}>全部通过，没有待人工确认的项。</p>
+                  <p className="hint" style={{ marginTop: 8 }}>全部通过。</p>
                 )}
                 {auditPass.length > 0 && (
                   <details className="fold" style={{ marginTop: 10 }}>
@@ -261,7 +261,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                 </p>
               </>
             ) : (
-              <p className="hint" style={{ marginTop: 8 }}>该期次没有审计记录——跑完流水线后由审计步骤生成。</p>
+              <p className="hint" style={{ marginTop: 8 }}>没有审计记录。</p>
             )}
           </section>
 
@@ -290,9 +290,6 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                     </a>
               ))}
             </div>
-            <p className="hint" style={{ marginTop: 10 }}>
-              日志包只含回放所需文本件；完整产物快照（报告 docx、parquet、图表 PNG）在归档目录里。
-            </p>
           </section>
 
           {/* ===== 05 / 06 运行环境与指标（折叠，票 12） ===== */}
@@ -312,7 +309,6 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                 <div><dt>代码版本</dt><dd className="mono">{str(env.git_commit).slice(0, 12)}</dd></div>
                 <div><dt>快照时间</dt><dd>{str(env.generated_at)}</dd></div>
               </dl>
-              <p className="hint" style={{ marginTop: 8 }}>直跑路径不刷新快照——复现时以这份为准。</p>
             </section>
 
             <section className="card" style={{ padding: '20px 22px' }}>
@@ -326,7 +322,6 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                 <div><dt>生成图表</dt><dd className="mono">{stats.charts == null ? '—' : `${stats.charts} 张`}</dd></div>
                 <div><dt>全链路耗时</dt><dd className="mono">{stats.elapsed_sec == null ? '—' : `${stats.elapsed_sec} 秒`}</dd></div>
               </dl>
-              <p className="hint" style={{ marginTop: 8 }}>数字全部来自台账单元格；运行期大模型不进入数据路径。</p>
             </section>
           </div>
           </details>
@@ -342,14 +337,14 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                   <table className="ar-tbl">
                     <tbody>
                       {d.trace_files.map((n) => (
-                        <tr key={n}><td className="mono">{n}</td><td className="hint">已随日志包归档</td></tr>
+                        <tr key={n}><td className="mono">{n}</td><td className="hint">已归档</td></tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               ) : (
                 <p className="hint" style={{ margin: 0 }}>
-                  演示站主入口走流水线直跑，轨迹要由智能体编排器才写——这是真实的记录缺口，不是页面没渲染出来。
+                  直跑不写轨迹（要编排器才写）。
                 </p>
               )}
             </div>

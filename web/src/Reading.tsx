@@ -124,7 +124,7 @@ export function Reading({ period }: { period: string | null }) {
                     aria-pressed={onlyManual}>
               仅看待人工 <b className="mono">{nManual}</b>
             </button>
-            <span className="hint">把光标移到改动卡上看台账出处 · 按 <b className="mono">← →</b> 换分组</span>
+            <span className="hint">悬停看出处 · 按 <b className="mono">← →</b> 换分组</span>
           </div>
         )}
       </section>
@@ -178,11 +178,11 @@ export function Reading({ period }: { period: string | null }) {
               ))}
               {shown.length > CAP && (
                 <p className="hint">
-                  还有 {shown.length - CAP} 处没铺开（这一组太大）——用上面的搜索定位，或到
-                  <a href={`/app/?view=red${period ? `&period=${encodeURIComponent(period)}` : ''}`}> 红色件清单 </a>看全量。
+                  另 {shown.length - CAP} 处见
+                  <a href={`/app/?view=red${period ? `&period=${encodeURIComponent(period)}` : ''}`}> 红色件清单</a>。
                 </p>
               )}
-              {shown.length === 0 && <p className="hint">{onlyManual ? '这一组没有待人工的地方。' : '这一组没有匹配的改动。'}</p>}
+              {shown.length === 0 && <p className="hint">{onlyManual ? '本组无待人工。' : '本组无匹配改动。'}</p>}
             </div>
           </div>
 
@@ -200,7 +200,7 @@ export function Reading({ period }: { period: string | null }) {
                   {assertions.total - assertions.fail} / {assertions.total} {assertions.fail === 0 ? '· 全部通过' : ''}
                 </span></div>
             )}
-            <p className="hint" style={{ marginTop: 10 }}>把光标移到左侧任意一条改动上，这里显示它的出处。</p>
+            <p className="hint" style={{ marginTop: 10 }}>悬停看出处。</p>
             {hover ? (
               <div className="pop">
                 <div className="ph">出处</div>
@@ -219,7 +219,7 @@ export function Reading({ period }: { period: string | null }) {
               </div>
             )}
             <p className="hint" style={{ marginTop: 12 }}>
-              签单走<a href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}>审核台</a>——两道闸在那边，这一屏只读。
+              签单去<a href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}>审核台</a>。
             </p>
           </aside>
         </div>

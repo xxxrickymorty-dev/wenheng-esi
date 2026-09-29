@@ -54,10 +54,6 @@ export function Charts({ period }: { period: string | null }) {
         <Icon name="chart" size={21} />图表图册
         {rows && <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>共 {rows.length} 张</span>}
       </h2>
-      <p className="hint" style={{ marginTop: 8 }}>
-        本期报告写入的全部配图，按学科平铺，点开看原图。同一批图在对勘本的「学科图表槽位」里也就地铺在对应格子上；
-        想按图名找、或想脱离槽位单看图，就用这一页。
-      </p>
 
       {note ? (
         <div className="pending-box" style={{ marginTop: 12 }}>

@@ -303,7 +303,7 @@ function PickTable({
     <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
       <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <span className="fc-no">02</span>本期用哪个模型
-        <span className="hint" style={{ fontWeight: 400 }}>默认 V1 推荐；只改你要改的科</span>
+        <span className="hint" style={{ fontWeight: 400 }}>只改你要改的科，其余走 V1 推荐</span>
       </h2>
 
       {!choice?.loaded && (
@@ -351,7 +351,7 @@ function PickTable({
         </table>
       </div>
 
-      <p className="hint" style={{ marginTop: 9 }}>跑不出来的模型会自动退回 V1 推荐；保存后从下次重出报告起生效。</p>
+      <p className="hint" style={{ marginTop: 9 }}>保存后，从下次重出报告起生效。</p>
     </section>
   )
 }

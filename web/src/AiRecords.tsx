@@ -66,7 +66,7 @@ export function AiRecords({ period }: { period: string | null }) {
       <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
         <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span className="fc-no">02</span>问文衡 · 问答记录
-          <span className="hint">每条展开＝问 →（工具）→ 模型 → 校验</span>
+          <span className="hint">问 → 工具 → 模型 → 校验</span>
           <span className="hint" title="记录里有什么：问题、每次工具调用（读了什么、花了多久）、模型调用（用了哪个模型、成没成）、校验结果（盾）。不含回答正文与提示词。">?</span>
         </h2>
 
@@ -106,7 +106,6 @@ export function AiRecords({ period }: { period: string | null }) {
                                           onToggle={() => setOpen(open === c.record_id ? null : c.record_id)} />)}
               </div>
             )}
-            <p className="hint" style={{ marginTop: 10 }}>记录只读、可回放；点每条可展开/收起。</p>
           </>
         )}
       </section>
@@ -115,16 +114,13 @@ export function AiRecords({ period }: { period: string | null }) {
       <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
         <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           运行级 · 模型参与
-          <span className="hint">主体流水线零模型；模型只出现在问答与决策环</span>
+          <span className="hint">主流水线零大模型</span>
         </h2>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
           <span className="pill unsigned">主体步骤 · 零模型</span>
           <span className="pill signed">问答 · {d?.stats.n ?? 0} 次
             {d && d.stats.n > 0 ? `（模型 ${d.stats.model} · 回落 ${d.stats.fallback}）` : ''}</span>
         </div>
-        <p className="hint" style={{ marginTop: 10 }}>
-          出稿数字全部由确定性流水线生成；模型若被用到，只在本页上方的问答记录里，逐条可查。
-        </p>
       </section>
     </>
   )
@@ -173,7 +169,7 @@ function Row({ c, open, onToggle }: { c: AiCall; open: boolean; onToggle: () => 
           <span className="pill ok">校验 · 盾 {c.shield.passed}/{c.shield.checked} 个数字登记</span>
           {c.fallback && (
             <p className="hint" style={{ flexBasis: '100%', margin: '4px 0 0' }}>
-              回落原因:{' '}{fallbackText(c.fallback)}——回答照常给出，并在分析台如实标注「本次由规则作答」。
+              回落原因：{fallbackText(c.fallback)}
             </p>
           )}
         </div>

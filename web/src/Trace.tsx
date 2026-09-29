@@ -64,10 +64,6 @@ export function Trace({ period }: { period: string | null }) {
           <span className="pill" style={{ borderColor: 'var(--warn)', color: 'var(--warn)' }}>台账不在本机，重读不可用</span>
         )}
       </h2>
-      <p className="hint" style={{ marginTop: 8 }}>
-        每一行都是<b>报告里的值</b>与<b>台账现场重读的值</b>并排——对得上，就说明这个数字有出处；
-        来源表与「怎么来的」写清它是直接取的、还是算出来的。
-      </p>
 
       {note ? (
         <div className="pending-box" style={{ marginTop: 12 }}>

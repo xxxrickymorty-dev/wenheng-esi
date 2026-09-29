@@ -72,7 +72,7 @@ function NumberedText({ text, sources }: { text: string; sources: Source[] }) {
               <b style={{ color: 'var(--ink)' }}>{src.label}</b>
               <br />
               {src.detail}
-              <span className="hint"> · 数字来自台账，不是模型生成</span>
+              <span className="hint"> · 台账数字</span>
             </span>
           )}
         </span>,
@@ -167,7 +167,6 @@ export function Analysis({ period }: { period: string | null }) {
           </div>
         ) : (
           <>
-            <p className="hint" style={{ margin: '10px 0 0' }}>问这一期数据的问题。</p>
 
             <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
               <input
@@ -254,7 +253,7 @@ export function Analysis({ period }: { period: string | null }) {
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap',
                         marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--line-2)' }}>
             <span className="pill ok">盾 · {data.shield.passed} 个数字已登记</span>
-            <span className="hint">数字点开看来源</span>
+            <span className="hint">点数字看来源</span>
             <span style={{ flex: 1 }} />
             {data.rule_text && data.rule_text !== data.text && (
               <button className="btn" style={{ fontSize: 13 }} onClick={() => setShowRule(!showRule)}>

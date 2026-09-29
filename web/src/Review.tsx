@@ -452,9 +452,6 @@ export function Review({
                   <Icon name="refresh" size={18} />撤回
                 </ConfirmButton>
               </div>
-              {needAck && !known && !signed && isAdmin && (
-                <p className="rv-ackhint" role="note">先勾选上方「我已逐项看过」，签单才可用。</p>
-              )}
               {pendingN > 0 && (
                 <p className="rv-warn" role="note">
                   {signed
@@ -465,7 +462,7 @@ export function Review({
               {busyText && <p className="rv-busy" role="status">{busyText}</p>}
               {msg && <p className={msg.ok ? 'rv-msg ok' : 'rv-msg bad'} role="status">{msg.text}</p>}
               <p className="hint" style={{ marginTop: 8 }}>
-                签前想核改动：<a href={`/app/?view=reading&period=${encodeURIComponent(period)}`}>看本期全部改动（对勘本）→</a>
+                <a href={`/app/?view=reading&period=${encodeURIComponent(period)}`}>看对勘本 →</a>
               </p>
             </section>
 
@@ -515,12 +512,12 @@ export function Review({
               )}
               {nField === 0 ? (
                 <p className="hint" style={{ marginTop: 8 }}>
-                  这一期没有要人填的地方——可直接签单。
+                  没有要填的——可直接签单。
                   <button type="button" className="btn" style={{ marginLeft: 10, padding: '4px 12px', fontSize: 13 }}
                           onClick={jumpToSign}>去签单 ↓</button>
                 </p>
               ) : fieldsShown.length === 0 ? (
-                <p className="hint" style={{ marginTop: 8 }}>这一期还没有标存疑的处。</p>
+                <p className="hint" style={{ marginTop: 8 }}>没有标存疑的处。</p>
               ) : (
                 <ul className="rv-todo">
                   {fieldsShown.map(([id, meta]) => {
@@ -545,7 +542,7 @@ export function Review({
               )}
               {(wb?.todo_confirm ?? []).length > 0 && (
                 <>
-                  <p className="hint" style={{ marginTop: 10 }}>另需核一眼（不用填）：</p>
+                  <p className="hint" style={{ marginTop: 10 }}>另需核对：</p>
                   <ul className="rv-todo rv-confirm">
                     {wb!.todo_confirm.map((t) => (
                       <li key={t.id}><span className="rv-todo-t">{t.title}</span></li>
@@ -578,7 +575,7 @@ export function Review({
                 </ConfirmButton>
               </div>
               <p className="hint" style={{ marginTop: 8 }}>
-                填的值只进报告，台账一个字节不动{appliedN > 0 ? `；已写入 ${appliedN} 处` : ''}。
+                填的值只进报告、不动台账{appliedN > 0 ? `；已写入 ${appliedN} 处` : ''}。
               </p>
             </section>
           </aside>
