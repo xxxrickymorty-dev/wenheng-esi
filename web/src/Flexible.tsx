@@ -238,19 +238,13 @@ export function Flexible({ period }: { period: string | null }) {
         <span className="pill stale">内部参考件</span>
       </h2>
 
-      <p className="fc-lead" style={{ fontSize: 15.5 }}>
-        回答<b>某个问题怎么看</b>——挑学科、定章节、配图，产出<b>内部参考件</b>：不套母版、
-        不带盖章位、不作为对外报送材料（对外件走复刻报告那条线）。
-        按下「生成分析稿」，报告在下面一步步长出来。
-      </p>
-
       <div className="fx-form">
         <label>分析意图
           <select value={intent} onChange={(e) => setIntent(e.target.value)}>
             {(d?.intents ?? []).map((i) => <option key={i.id} value={i.id}>{i.cn}</option>)}
           </select>
         </label>
-        <label>指定学科（不选 = 全池 / 由规划器挑）
+        <label>指定学科
           <select value={disc} onChange={(e) => setDisc(e.target.value)}>
             <option value="">（不指定）</option>
             {(d?.disciplines ?? []).map((x) => (
@@ -262,11 +256,6 @@ export function Flexible({ period }: { period: string | null }) {
           <Icon name="play" size={19} />{busy ? '正在出稿……' : '生成分析稿'}
         </button>
       </div>
-      <p className="fx-note">
-        产出落在 <b className="mono">out/{period ?? '—'}/flexible/</b>，与复刻报告产物互不重叠；
-        生成按节推进，图跟着节走——想放大某张图，点它即可。
-      </p>
-
       {!!d?.reports.length && (
         <div className="fx-chips">
           <span>已出稿：</span>
@@ -285,9 +274,7 @@ export function Flexible({ period }: { period: string | null }) {
 
       {note && <div className="pending-box" style={{ marginTop: 12 }}>{note}</div>}
       {d && !busy && !d.body_html && !msgs.length && (
-        <p className="hint" style={{ marginTop: 12 }}>
-          还没有灵活报告——选好意图后点「生成分析稿」。
-        </p>
+        <p className="hint" style={{ marginTop: 12 }}>还没有出稿——点「生成分析稿」开始。</p>
       )}
 
       <div className="fx-log" ref={logRef} onClick={onLogClick}>
