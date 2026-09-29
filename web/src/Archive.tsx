@@ -4,7 +4,7 @@
    数据全部来自 GET /api/periods/{p}/archive（后端已把服务器绝对路径剥掉）。 */
 
 import { useEffect, useState } from 'react'
-import { getArchive, humanSize, type ArchiveData } from './api'
+import { getAcquisition, getArchive, humanSize, type AcquisitionState, type ArchiveData } from './api'
 import { Icon } from './icons'
 import { WaterfallRows } from './Waterfall'
 
@@ -27,9 +27,23 @@ const STEP_ABILITY: Record<string, string> = {
   province: '省域表', matrix: '学科矩阵', charts: '图表渲染', docx: '母版替换',
 }
 
+const ACQ_GROUP_CN: Record<string, string> = {
+  pending: '未开始', live: '进行中', done: '核验通过', fail: '有未通过', retrying: '重新核验中',
+}
+
 export function Archive({ period, approvalStatus }: { period: string | null; approvalStatus: string }) {
   const [d, setD] = useState<ArchiveData | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  const [acq, setAcq] = useState<AcquisitionState | null>(null)
+
+  useEffect(() => {
+    if (!period) { setAcq(null); return }
+    let alive = true
+    getAcquisition(period)
+      .then((a) => { if (alive) setAcq(a) })
+      .catch(() => { if (alive) setAcq(null) })     // 没有取数记录就整块不显示（不占屏）
+    return () => { alive = false }
+  }, [period])
 
   useEffect(() => {
     if (!period) return
@@ -93,6 +107,39 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
               )}
             </div>
           </section>
+
+          {/* ===== 00 取数记录（X3）：下载与并入的留痕；没有取数记录时整块不显示 ===== */}
+          {acq?.started && (
+            <details className="fold" style={{ marginTop: 18 }}>
+              <summary>
+                取数记录 · 下载与并入
+                <span className="sm">
+                  核验 {acq.totals?.verified ?? 0} / {acq.totals?.expected ?? '—'}
+                  {acq.copy?.state === 'merged' ? ' · 已并入台账' : acq.copy?.state === 'review' ? ' · 待核对' : ''}
+                </span>
+              </summary>
+              <div className="fold-inner">
+                <p className="hint" style={{ marginTop: 0 }}>
+                  数据期：ESI {acq.data_period?.esi || '—'} · InCites 截至 {acq.data_period?.incites || '—'}
+                  {'；'}状态最后更新 {acq.updated_at || '—'}。
+                </p>
+                <ul className="rv-todo" style={{ marginTop: 6 }}>
+                  {(acq.groups ?? []).map((g, i) => (
+                    <li key={g.id ?? i}>
+                      <span className="rv-todo-t">{g.title}</span>
+                      <span className="mono rv-todo-v">{g.verified ?? 0} / {g.files?.length ?? '—'}</span>
+                      <span className="rv-todo-v">{ACQ_GROUP_CN[g.state ?? ''] ?? g.state ?? '—'}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="hint">
+                  {acq.copy?.merged_at
+                    ? `并入时刻：${acq.copy.merged_at}（写前有备份；写后逐格核对过）`
+                    : '尚未并入主台账——核对通过后才会落笔。'}
+                </p>
+              </div>
+            </details>
+          )}
 
           {/* ===== 01 状态机回放 ===== */}
           <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>

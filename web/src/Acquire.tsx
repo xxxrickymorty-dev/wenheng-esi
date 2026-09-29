@@ -5,9 +5,15 @@
    静态稿对照：web/mockups/取数台.html；契约：§2.2 #26。 */
 
 import { useCallback, useEffect, useState } from 'react'
-import { getAcquisition, type AcquisitionState, type AcqGroup } from './api'
+import { getAcquisition, postAcquisition, type AcquisitionState, type AcqGroup } from './api'
+import { ConfirmButton } from './ConfirmButton'
 import { Info } from './Info'
 import { Icon } from './icons'
+
+/** 任务进行中的一句话（op.kind → 人话） */
+const OP_CN: Record<string, string> = {
+  fetch: '正在按组取数', copy: '正在新建本期监测表', merge: '正在并入主台账', preflight: '正在检查',
+}
 
 /** 组/文件状态 → 馆员话术（与静态稿一致；不认识的取值原样显示，不编） */
 const GROUP_STATE: Record<string, string> = {
@@ -90,10 +96,11 @@ export function Acquire({ period }: { period: string | null }) {
   const [state, setState] = useState<AcquisitionState | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [busy, setBusy] = useState(false)
 
-  const load = useCallback(() => {
+  const load = useCallback((silent = false) => {
     if (!period) { setState(null); setNote(null); return }
-    setLoading(true)
+    if (!silent) setLoading(true)
     getAcquisition(period)
       .then((s) => { setState(s); setNote(null) })
       .catch((e) => {
@@ -103,16 +110,52 @@ export function Acquire({ period }: { period: string | null }) {
           : h.status === 404 ? '这个期次还认不出来（期次用六位数字）。'
             : (h.body?.hint ?? h.body?.error ?? h.message ?? '读取数状态失败。'))
       })
-      .finally(() => setLoading(false))
+      .finally(() => { if (!silent) setLoading(false) })
   }, [period])
 
   useEffect(() => { load() }, [load])
+  /* 任务在跑时轮询进度（写回状态文件）；闲时就每 4 秒轻读一次，页面始终最新 */
+  useEffect(() => {
+    if (!period) return
+    const t = window.setInterval(() => load(true), 4000)
+    return () => window.clearInterval(t)
+  }, [period, load])
+
+  const act = useCallback(async (action: string, body?: Record<string, unknown>) => {
+    if (!period) return null
+    setBusy(true)
+    try {
+      const r = await postAcquisition(period, action, body)
+      window.setTimeout(() => load(true), 500)
+      return r
+    } catch (e) {
+      const h = e as { status?: number; body?: { error?: string; hint?: string } }
+      setNote(h.status === 409 ? (h.body?.error ?? '有一个取数任务还在跑，稍等它完成。')
+        : (h.body?.hint ?? h.body?.error ?? '这一步没有成功，稍后再试。'))
+      return null
+    } finally {
+      setBusy(false)
+    }
+  }, [period, load])
+
+  /* 开始取数前先看「开始前检查」：没过就不发车，页面会切到「检查未过」让人去连浏览器 */
+  const onStart = useCallback(async () => {
+    const r = await act('preflight')
+    const pf = r?.preflight
+    if (pf && (pf.browser !== 'ok' || pf.esi !== 'ok' || pf.incites !== 'ok')) {
+      load(true)
+      return
+    }
+    await act('start')
+  }, [act, load])
 
   if (!period) {
     return <div className="pending-box">先在顶栏选一个期次；取数台会显示这一期的取数进度与核对状态。</div>
   }
 
   const started = !!state?.started
+  const op = state?.op
+  const opRunning = op?.state === 'running'
   const view: PageView = state ? deriveView(state) : 'ready'
   const totals = state?.totals ?? {}
   const expected = totals.expected ?? 0
@@ -164,7 +207,7 @@ export function Acquire({ period }: { period: string | null }) {
         {' · '}自动取数 · 期次 <b className="mono">{period}</b>
       </p>
 
-      {note && <div className="pending-box">{note}<button type="button" className="btn" style={{ marginLeft: 10 }} onClick={load}>重新读取</button></div>}
+      {note && <div className="pending-box">{note}<button type="button" className="btn" style={{ marginLeft: 10 }} onClick={() => { setNote(null); load() }}>重新读取</button></div>}
       {!state && !note && <div className="pending-box">{loading ? '正在读取取数状态……' : '还没有读到取数状态。'}</div>}
 
       {state && (
@@ -187,32 +230,44 @@ export function Acquire({ period }: { period: string | null }) {
           {/* ===== 主动作（每屏 1 个） ===== */}
           <div className="focus">
             <div>
-              <div className="big">{title}</div>
-              <div className="sub">{sub}</div>
-              {needsTool && !canRun && (
+              <div className="big">{opRunning && op ? `${OP_CN[op.kind ?? ''] ?? '正在执行'}……` : title}</div>
+              <div className="sub">{opRunning && op ? (op.note || '进度会自动更新，可以留在这一页') : sub}</div>
+              {op?.state === 'failed' && (
+                <div className="hint" style={{ marginTop: 6, color: 'var(--bad)' }}>
+                  上一步没有完成：{op.note || '原因见取数状态'}。
+                </div>
+              )}
+              {needsTool && !canRun && !opRunning && (
                 <div className="hint" style={{ marginTop: 6, color: 'var(--warn)' }}>{toolMissing}</div>
               )}
             </div>
             <div className="cta">
-              {view === 'ready' && (
-                <button className="btn primary" disabled={!cap.start} title={cap.start ? undefined : toolMissing}>
+              {!opRunning && view === 'ready' && (
+                <button className="btn primary" disabled={!cap.start || busy || opRunning}
+                        title={cap.start ? undefined : toolMissing} onClick={onStart}>
                   <Icon name="download" size={20} />开始取数
                 </button>
               )}
-              {view === 'blocked' && (
-                <button className="btn" onClick={load}><Icon name="refresh" size={20} />重新检查</button>
+              {!opRunning && view === 'blocked' && (
+                <button className="btn" disabled={busy} onClick={() => act('preflight')}>
+                  <Icon name="refresh" size={20} />重新检查
+                </button>
               )}
-              {view === 'partial' && (
-                <button className="btn primary" disabled={!cap.retry} title={cap.retry ? undefined : toolMissing}>
+              {!opRunning && view === 'partial' && (
+                <button className="btn primary" disabled={!cap.retry || busy || opRunning}
+                        title={cap.retry ? undefined : toolMissing}
+                        onClick={() => act('retry', failGroup?.id ? { group: failGroup.id } : undefined)}>
                   <Icon name="refresh" size={20} />重试这一组
                 </button>
               )}
-              {view === 'review' && (
-                <button className="btn primary" disabled={!cap.merge} title={cap.merge ? undefined : toolMissing}>
+              {!opRunning && view === 'review' && (
+                <ConfirmButton className="btn primary" confirmText="再点一次 · 确认并入"
+                               disabled={!cap.merge || busy}
+                               onConfirm={() => { void act('merge') }}>
                   <Icon name="check" size={20} />核对无误 · 并入台账
-                </button>
+                </ConfirmButton>
               )}
-              {view === 'merged' && (
+              {!opRunning && view === 'merged' && (
                 <a className="btn primary" href={`/app/?period=${encodeURIComponent(period)}`}>
                   <Icon name="play" size={20} />去生成台生成
                 </a>

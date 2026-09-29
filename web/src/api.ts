@@ -239,10 +239,34 @@ export type AcquisitionState = {
   totals?: { groups?: number; expected?: number; verified?: number; downloaded?: number; failed?: number }
   copy?: { state?: string; path?: string; built_at?: string; merged_at?: string }
   review?: { sheets?: AcqReviewSheet[] }
+  /** 正在跑的任务（取数/建副本/并入）；闲时没有这个字段 */
+  op?: { kind?: string; state?: string; note?: string; at?: string }
 }
 
 export async function getAcquisition(period: string): Promise<AcquisitionState> {
   return req<AcquisitionState>(`/api/periods/${encodeURIComponent(period)}/acquisition`)
+}
+
+/** 取数写动作（人触发；服务端拉起任务、进度写回状态文件）。409 表示有任务在跑或前置不满足。 */
+export type AcquisitionActionResp = {
+  ok?: boolean
+  started?: boolean
+  preflight?: AcquisitionState['preflight']
+  error?: string
+  hint?: string
+}
+
+export async function postAcquisition(period: string, action: string,
+                                      body?: Record<string, unknown>): Promise<AcquisitionActionResp> {
+  return req<AcquisitionActionResp>(
+    `/api/periods/${encodeURIComponent(period)}/acquisition/${action}`,
+    {
+      method: 'POST',
+      ...(body
+        ? { headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify(body) }
+        : {}),
+    })
 }
 
 /** 最近一次有产出的任务（老接口，字段形状见 jobs.list_jobs） */

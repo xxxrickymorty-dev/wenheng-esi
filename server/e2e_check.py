@@ -160,6 +160,8 @@ st, _, _ = call("GET", "/api/periods/202607/redslots", opener=gop)
 check("guest 访问 admin 端点被挡（403）", st == 403, f"got {st}")
 st, _, _ = call("GET", "/api/periods/202607/acquisition", opener=gop)
 check("guest 访问取数状态被挡（403）", st == 403, f"got {st}")
+st, _, _ = call("POST", "/api/periods/202607/acquisition/preflight", opener=gop)
+check("guest 访问取数写动作被挡（403）", st == 403, f"got {st}")
 st, gdata, _ = call("GET", "/app/shelf/data.js", opener=gop)
 check("guest 陈列馆数据只有预览投影",
       st == 200 and '"preview":true' in gdata and '"rank_intl_now"' not in gdata,
@@ -469,6 +471,8 @@ check("GET acquisition 200", st == 200, f"got {st}")
 check("acquisition 有 period/started", '"period"' in aq and '"started"' in aq)
 st, _, _ = call("GET", "/api/periods/abc/acquisition")
 check("acquisition 非法期次 404", st == 404, f"got {st}")
+st, _, _ = call_json("POST", "/api/periods/abc/acquisition/merge", {})
+check("POST acquisition 非法期次 404", st == 404, f"got {st}")
 
 # GET /api/periods/{period}/redslots
 st, rs, _ = call("GET", "/api/periods/202607/redslots?limit=5&offset=0")

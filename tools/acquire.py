@@ -75,6 +75,7 @@ def cmd_copy(args) -> int:
     period = args.period
     out = pathlib.Path(args.out) if args.out else (REPO / "input" / period / "监测表.xlsx")
     if not LEDGER.exists():
+        _set_op(period, "copy", "failed", "主台账不存在")
         print(f"[拒绝] 主台账不存在：{LEDGER}")
         return 1
     sha0 = LM.sha256_file(LEDGER)
@@ -113,24 +114,26 @@ def cmd_copy(args) -> int:
 def cmd_merge(args) -> int:
     period = args.period
     st = A.load_state(period)
-    if not st:
-        print(f"[拒绝] 没有 {period} 的取数状态——先 scan/copy。")
+
+    def _refuse(msg: str) -> int:
+        _set_op(period, "merge", "failed", msg)
+        print(f"[拒绝] {msg}")
         return 1
+
+    if not st:
+        return _refuse(f"没有 {period} 的取数状态——先 scan/copy。")
     copy_path = pathlib.Path(args.copy) if args.copy else (REPO / (st.get("copy") or {}).get(
         "path", f"input/{period}/监测表.xlsx"))
     if not copy_path.is_absolute():
         copy_path = REPO / copy_path
     copy_state = (st.get("copy") or {}).get("state")
     if copy_state != "review":
-        print(f"[拒绝] 副本状态是「{copy_state}」，只有「待核对（review）」的副本能并入。")
-        return 1
+        return _refuse(f"副本状态是「{copy_state}」，只有「待核对（review）」的副本能并入。")
     if not copy_path.exists():
-        print(f"[拒绝] 找不到已核对的副本：{copy_path}（先 copy）")
-        return 1
+        return _refuse(f"找不到已核对的副本：{copy_path}（先 copy）")
     master_sha = LM.sha256_file(LEDGER)
     if (st.get("copy") or {}).get("master_sha") != master_sha:
-        print("[拒绝] 主台账在「建副本」之后被改动过——副本已不是同一底座，请重新 copy 后核对。")
-        return 1
+        return _refuse("主台账在「建副本」之后被改动过——副本已不是同一底座，请重新 copy 后核对。")
     if args.dry:
         print(f"[dry] 守卫通过：副本 {copy_path.name} 与主台账同底座（sha {master_sha[:12]}…）")
         print(f"[dry] 将执行：clean_ledger.py {period} --write（每工具自带冲突拒写 + 备份）")
@@ -246,6 +249,7 @@ def cmd_fetch(args) -> int:
     st = A.load_state(period) or A.scan(period)
     snapshot = st.get("snapshot") or A.resolve_snapshot(period, A.INCITES_ROOT_DEFAULT)
     if not snapshot:
+        _set_op(period, "fetch", "failed", "认不出 InCites 快照目录")
         print("[拒绝] 认不出 InCites 快照目录——先跑一次 incites 任一条命令或给 SNAP_MAP 登记。")
         return 1
     st["snapshot"] = snapshot

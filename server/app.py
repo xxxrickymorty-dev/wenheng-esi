@@ -11,6 +11,7 @@ import io
 import json
 import pathlib
 import re
+import subprocess
 import time
 import urllib.parse
 from contextlib import asynccontextmanager
@@ -746,6 +747,97 @@ async def api_period_acquisition(request: Request, period: str):
     if state is None:
         return {"period": period, "started": False}
     return {"period": period, "started": True, **state}
+
+# ------------------------------------------------------------------ 自动取数台 · 写动作（X3）
+# 全部由**人按键**触发（R-1）：这里是拉起 `tools/acquire.py` 的**非交互执行口**，
+# 进度由取数流程写回 `out/_acquisition/<期次>.json`，前端轮询读取。不做任何数据加工。
+def _acq_acquire_py():
+    return config.ROOT / "tools" / "acquire.py"
+
+
+def _acq_op_running(period: str):
+    """正在跑的取数任务；超过 1 小时没动静视作已死（放行新任务）。"""
+    st = acquisition.load(period) or {}
+    op = st.get("op") or {}
+    if op.get("state") != "running":
+        return None
+    try:
+        age = time.time() - acquisition.state_path(period).stat().st_mtime
+    except OSError:
+        age = 0
+    return None if age > 3600 else op
+
+
+def _acq_spawn(period: str, action: str, extra: list | None = None):
+    """拉起一个取数任务（detached）——先占位写「正在跑」，再起进程。"""
+    if not re.fullmatch(r"\d{6}", period or ""):
+        return _period_missing()
+    running = _acq_op_running(period)
+    if running:
+        return JSONResponse({"error": "有一项取数任务还在跑，等它完成再试。",
+                             "hint": running.get("note", "")}, status_code=409)
+    st = acquisition.load(period) or {}
+    st["op"] = {"kind": action if action != "fetch" else "fetch", "state": "running",
+                "note": "刚排上队，正在开始", "at": time.strftime("%Y-%m-%d %H:%M:%S")}
+    acquisition.write_state(period, st)
+    log = config.OUT_DIR / "_acquisition" / f"{period}-{action}.log"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with open(log, "a", encoding="utf-8") as fh:
+        env = {**__import__("os").environ, "PYTHONIOENCODING": "utf-8",
+               "PYTHONUNBUFFERED": "1"}
+        subprocess.Popen(  # noqa: S603 — 固定脚本路径 + 期次已校验，无注入面
+            [str(config.PYTHON), str(_acq_acquire_py()), action, period, *(extra or [])],
+            cwd=str(config.ROOT), stdout=fh, stderr=subprocess.STDOUT, env=env)
+    return {"ok": True, "started": True, "log": log.name}
+
+
+@app.post("/api/periods/{period}/acquisition/start")
+@admin_route
+async def api_acq_start(request: Request, period: str):
+    """开始取数（按 9 组下载；完成后自动建监测表）。"""
+    return _acq_spawn(period, "fetch")
+
+
+@app.post("/api/periods/{period}/acquisition/retry")
+@admin_route
+async def api_acq_retry(request: Request, period: str):
+    """断组重试：只重下指定的组（body: {"group": "esi-papers"}）。"""
+    try:
+        body = await request.json()
+    except Exception:                                                # noqa: BLE001
+        body = {}
+    group = str((body or {}).get("group", "")).strip()
+    return _acq_spawn(period, "fetch", ["--groups", group] if group else [])
+
+
+@app.post("/api/periods/{period}/acquisition/copy")
+@admin_route
+async def api_acq_copy(request: Request, period: str):
+    """重建本期监测表（核对用副本）；主台账不碰。"""
+    return _acq_spawn(period, "copy")
+
+
+@app.post("/api/periods/{period}/acquisition/merge")
+@admin_route
+async def api_acq_merge(request: Request, period: str):
+    """把已核对副本并入主台账（写前备份 + 写后五查）。"""
+    return _acq_spawn(period, "merge")
+
+
+@app.post("/api/periods/{period}/acquisition/preflight")
+@admin_route
+async def api_acq_preflight(request: Request, period: str):
+    """开始前检查：取数专用浏览器是否开着、两家网站是否已登录。同步跑（几秒）。"""
+    if not re.fullmatch(r"\d{6}", period or ""):
+        return _period_missing()
+    r = subprocess.run(  # noqa: S603 — 同上
+        [str(config.PYTHON), str(_acq_acquire_py()), "preflight", period],
+        cwd=str(config.ROOT), capture_output=True, text=True,
+        encoding="utf-8", errors="replace", timeout=180)
+    st = acquisition.load(period) or {}
+    pf = st.get("preflight") or {}
+    return {"ok": r.returncode == 0, "preflight": pf}
+
 
 
 @app.get("/api/periods/{period}/artifacts")

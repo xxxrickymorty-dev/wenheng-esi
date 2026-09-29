@@ -258,6 +258,10 @@ def _group_state(files: list[dict]) -> tuple[str, int, int, int]:
 
 
 # ------------------------------------------------------------------ 状态读写
+def state_path(period: str) -> pathlib.Path:
+    return STATE_DIR / f"{period}.json"
+
+
 def load_state(period: str) -> dict | None:
     """读一期取数状态；没有/读不动 → None（界面显示「还没开始」，不编数据）。"""
     if not PERIOD_RE.match(period or ""):
