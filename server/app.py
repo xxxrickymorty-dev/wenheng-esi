@@ -1377,6 +1377,18 @@ async def api_ledger_sheets(request: Request, period: str = ""):
     return {"file": lp.name, "sheets": sheets, "n_sheets": len(sheets)}
 
 
+def _answer_response(ans):
+    """Answer → HTTP（#9/#27 共用）：无数据 404、权限 403、关闭 409、其余原样 JSON。"""
+    if ans.mode == "unavailable":
+        return JSONResponse({"error": ans.notice,
+                             "hint": "请先跑一次生成流水线"}, status_code=404)
+    if ans.mode == "denied":
+        return JSONResponse({"error": ans.notice}, status_code=403)
+    if ans.mode == "closed":
+        return JSONResponse({"error": ans.notice}, status_code=409)
+    return ans.as_dict()
+
+
 @app.post("/api/analyze")
 @admin_route
 async def api_analyze(request: Request):
@@ -1397,14 +1409,24 @@ async def api_analyze(request: Request):
     ans = await run_in_threadpool(ai.run, "qa", period,
                                   payload={"question": question},
                                   actor=config.role_of(current_user(request) or ""))
-    if ans.mode == "unavailable":
-        return JSONResponse({"error": ans.notice,
-                             "hint": "请先跑一次生成流水线"}, status_code=404)
-    if ans.mode == "denied":
-        return JSONResponse({"error": ans.notice}, status_code=403)
-    if ans.mode == "closed":
-        return JSONResponse({"error": ans.notice}, status_code=409)
-    return ans.as_dict()
+    return _answer_response(ans)
+
+
+@app.post("/api/periods/{period}/review-advice")
+@admin_route
+async def api_period_review_advice(request: Request, period: str):
+    """复核参谋（review 能力；契约 #27）**薄适配**：调用方只认 Answer 字段面。
+
+    只读红件清单/校验结果给核对建议（来源＝红件条目或校验记录）；
+    **不代签、不改稿**——采纳/忽略只是界面指引，由前端自己存。
+    """
+    d = resolve_period_dir(period)
+    if d is None:
+        return _period_missing()
+    import ai                                                     # noqa: PLC0415
+    ans = await run_in_threadpool(ai.run, "review", period,
+                                  actor=config.role_of(current_user(request) or ""))
+    return _answer_response(ans)
 
 
 @app.get("/api/forecast/board")

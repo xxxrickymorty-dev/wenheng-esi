@@ -11,7 +11,8 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+
+from ._draft import Part, assemble_parts
 
 #: 模板里允许被填的占位符。**只认这些** —— 规则库里 `{工作表名: 行号}` 这类
 #: 字面示例必须原样保留，所以这里不能用 `str.format`。
@@ -43,15 +44,6 @@ NONE = {"src": "none"}
 
 def rule_kind(rule_id):
     return {"src": "rule", "rule": rule_id}
-
-
-@dataclass
-class Part:
-    """一个可独立成段的构建结果；`kinds[i]` 描述 `lines[i]` 的数字来源规则。"""
-
-    name: str
-    lines: list[str] = field(default_factory=list)
-    kinds: list[dict] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------- 上下文
@@ -257,24 +249,12 @@ def build(root, period, payload):                              # noqa: ARG001
 
     `root` / `period` 对诊断无意义（只吃 payload 里的失败回执），签名与其它构建器对齐。
     """
-    from . import _shield                                          # noqa: PLC0415
     from ._draft import RuleDraft                                  # noqa: PLC0415
-    from ._types import Source                                     # noqa: PLC0415
 
     parts = _parts(payload.get("failure"), payload.get("repair"))
-    rule_text = "\n".join(ln for p in parts for ln in p.lines)
-    protected_text, mapping = _shield.protect(rule_text)
-    sources = []
-    for part in parts:
-        for line, kind in zip(part.lines, part.kinds):
-            for m in _shield.NUM.finditer(line):
-                k = str(len(sources) + 1)
-                skind, pointer, label, detail = attribute(kind, m.start(), m.group(0))
-                sources.append(Source(index=int(k), kind=skind, pointer=pointer,
-                                      label=label, detail=detail,
-                                      value=mapping.get(k, m.group(0))))
+    rule_text, protected_text, mapping, sources = assemble_parts(parts, attribute)
     return RuleDraft(rule_text=rule_text, rule_protected=protected_text, mapping=mapping,
-                     sources=tuple(sources), parts=tuple(parts), task=protected_text,
+                     sources=sources, parts=tuple(parts), task=protected_text,
                      evidence=(), fact_keys=frozenset(range(1, len(mapping) + 1)))
 
 

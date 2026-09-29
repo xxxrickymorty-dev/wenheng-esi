@@ -27,7 +27,8 @@ class Capability:
 CAPABILITIES: tuple[Capability, ...] = (
     Capability("qa", "问文衡", "ready", "admin", True, ("question",),
                "该期数据暂不可用，无法作答。"),
-    Capability("review", "复核参谋", "planned", "admin", True, ()),
+    Capability("review", "复核参谋", "ready", "admin", True, (),
+               "该期数据暂不可用，无法给出复核建议。"),
     Capability("diagnose", "诊断参谋", "ready", "admin", True, ("failure",),
                "本次无法给出建议，请人工核对台账与规则库。"),
     Capability("brief", "期次导读", "planned", "admin", False, ()),

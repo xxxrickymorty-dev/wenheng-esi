@@ -13,12 +13,26 @@ __all__ = ["BrainError", "FailingBrain", "ScriptedBrain", "Turn", "brief_texts",
 
 FIXTURES = pathlib.Path(__file__).resolve().parent / "fixtures" / "ai"
 
+#: 复核构建器的红件样例（每个来源类别各一条；供 seed_period 用）。
+RED_SAMPLE = [
+    {"location": "T01/表头", "old": "接近度较7月", "new": "接近度较5月",
+     "source": "期次参数（上期月份）"},
+    {"location": "T20/行22", "old": "139", "new": "135", "source": "table2.csv"},
+    {"location": "T19/行03", "old": "84.5", "new": "85.2", "source": "宽表 parquet（台账派生）"},
+    {"location": "正文/p4", "old": "覆盖3个学科", "new": "覆盖【手工：学科数】个学科",
+     "source": "sentences.py（句骨架+数字槽）"},
+    {"location": "正文/p6", "old": "9", "new": "7",
+     "source": "extract_province（11 校名单来自人工原件）"},
+    {"location": "图/预测", "old": "SARIMA模型", "new": "SARIMA模型",
+     "source": "report_forecast（V1 推荐模型）"},
+]
+
 _MARK = re.compile(r"\[\[\d+\]\]")
 _NUM = re.compile(r"\d+(?:\.\d+)?")
 
 
-def seed_period(root, period="202607", *, facts=None, meta=None):
-    """给测试数据根落一份最小可用期次产物（overview_facts + meta）。
+def seed_period(root, period="202607", *, facts=None, meta=None, red=True):
+    """给测试数据根落一份最小可用期次产物（overview_facts + meta [+ red_slots]）。
 
     事实金样＝`tests/fixtures/ai/overview_facts_202607.json`（真产物快照，不触网）。
     """
@@ -29,8 +43,12 @@ def seed_period(root, period="202607", *, facts=None, meta=None):
     (d / "overview_facts.json").write_text(json.dumps(facts, ensure_ascii=False),
                                            encoding="utf-8")
     if meta is None:
-        meta = {"period_current": period, "period_prev": "202605"}
+        meta = {"period_current": period, "period_prev": "202605",
+                "assertions": [["PASS", "示例校验"]]}
     (d / "meta.json").write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+    if red:
+        (d / "red_slots.json").write_text(json.dumps(RED_SAMPLE, ensure_ascii=False),
+                                          encoding="utf-8")
     return d
 
 

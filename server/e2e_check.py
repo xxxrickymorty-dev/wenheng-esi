@@ -521,6 +521,25 @@ check("analyze 盾计数与来源数一致（第 k 个数字 ↔ sources[k]）",
       == (_aj.get("shield") or {}).get("passed") == len(_aj.get("sources") or []),
       f"shield={_aj.get('shield')} n_sources={len(_aj.get('sources') or [])}")
 
+# POST /api/periods/{period}/review-advice（复核参谋；契约 #27，2026-09-29 D4）
+st, rv, _ = call_json("POST", "/api/periods/202607/review-advice", {})
+check("POST review-advice 200", st == 200, f"got {st}")
+try:
+    _rj = json.loads(rv)
+except json.JSONDecodeError:
+    _rj = {}
+check("review-advice mode ∈ {rule, model} 且 text 非空",
+      _rj.get("mode") in ("rule", "model") and bool(str(_rj.get("text") or "").strip()),
+      f"mode={_rj.get('mode')!r}")
+check("review-advice 带边界句（不会代签、不会改稿）",
+      "不会代签" in str(_rj.get("text") or "") and "不会改稿" in str(_rj.get("text") or ""),
+      str(_rj.get("text"))[:60])
+check("review-advice 来源指红件/校验记录",
+      bool(_rj.get("sources")) and all(
+          str(s.get("pointer", "")).startswith(("red_slots.json", "meta.json"))
+          for s in _rj.get("sources") or []),
+      str([s.get("pointer") for s in (_rj.get("sources") or [])][:3]))
+
 # POST /api/periods/{period}/forecast-choice（JSON body，契约 #17 嵌套形状）
 # 先取检查前的选择：验完写回——e2e 不把测试选模留在 202607（重出报告会带上它）。
 # 学科名从接口现取：候选学科随数据期次滚动，写死会过期（曾写「化学」，2026-09-28 已不在候选里）。
