@@ -202,6 +202,29 @@ def main():
         except Exception as e:                                          # noqa: BLE001
             check("预测台减负回归（票 13）", False, str(e)[:100])
 
+        # ---- 1e) 审核台知悉闸（票 14）：未勾选 → 签单禁用；勾选 → 可用（只读，不点签单） ----
+        try:
+            page.goto(BASE + "/app/?view=review&period=202607", wait_until="domcontentloaded")
+            page.wait_for_selector(".rv-grid", timeout=30000)
+            page.wait_for_selector(".rv-ack input", timeout=15000)
+            if page.locator(".rv-lead .pill", has_text="已签单").count():
+                check("审核台知悉闸（本期已签单，按钮态不适用）", True, "已签单")
+            else:
+                sign = page.locator("#rv-sign button.btn.primary").first
+                page.wait_for_selector("#rv-sign button.btn.primary", timeout=15000)
+                disabled_before = sign.is_disabled()
+                page.locator(".rv-ack input").check()
+                page.wait_for_timeout(200)
+                enabled_after = not sign.is_disabled()
+                page.locator(".rv-ack input").uncheck()
+                page.wait_for_timeout(200)
+                disabled_again = sign.is_disabled()
+                check("审核台知悉闸：未勾禁用 / 勾选可用 / 取消再禁用",
+                      disabled_before and enabled_after and disabled_again,
+                      f"before={disabled_before} after={enabled_after} again={disabled_again}")
+        except Exception as e:                                          # noqa: BLE001
+            check("审核台知悉闸（票 14）", False, str(e)[:100])
+
         # ---- 2) 陈列馆（/app/shelf/；管理员与游客都看同一份访客投影） ----
         guest_ctx = browser.new_context(viewport={"width": 1280, "height": 900})
         guest_ctx.add_cookies(login_cookies(GUEST_USER, GUEST_PASS))

@@ -131,6 +131,8 @@ export function Review({
   const [msg, setMsg] = useState<Msg>(null)
   // 「跳到下一处」的游标：连点就按报告顺序依次落到每个空位（填完一处自动跳过）
   const [cursor, setCursor] = useState(0)
+  // 「只看存疑」筛选（票 14）：签字前一眼定位标过的处
+  const [onlyDoubt, setOnlyDoubt] = useState(false)
 
   const row = periods.find((p) => p.period === period) ?? null
   const status = row?.status ?? 'unsigned'
@@ -140,7 +142,7 @@ export function Review({
     if (!period) return
     let alive = true
     setPreview(null); setPreviewNote(null); setWb(null); setWbNote(null)
-    setVals({}); setMsg(null); setKnown(false); setAssertions(null); setNote('')
+    setVals({}); setMsg(null); setKnown(false); setAssertions(null); setNote(''); setOnlyDoubt(false)
 
     getReportPreview(period)
       .then((pv) => { if (alive) setPreview(pv) })
@@ -179,6 +181,7 @@ export function Review({
     if (!period) return
     const w = await getWorkbench(period)
     setWb(w)
+    setWbNote(null)
     const v: Record<string, string> = {}
     for (const t of w.todo_fill) if (t.filled?.trim()) v[t.id] = t.filled
     setVals(v)
@@ -193,10 +196,27 @@ export function Review({
   )
   const nLeft = emptyIds.length
 
+  /* 从报告页「去补 →」进来带 focus（=空位的 where，如「正文/p1」）：
+     滚到并聚焦对应输入框（票 14）。 */
+  useEffect(() => {
+    if (!preview || !period) return
+    const focus = new URLSearchParams(window.location.search).get('focus')
+    if (!focus) return
+    const idx = fields.findIndex(([, meta]) => meta.where === focus)
+    if (idx < 0) return
+    const t = window.setTimeout(() => jumpTo(fields[idx][0]), 350)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview, period, fields])
+
   const fills = wb?.fills_list ?? []
   const pendingN = fills.filter((f) => f.state === 'pending').length
   const appliedN = fills.filter((f) => f.state === 'applied').length
   const doubt = wb?.review ?? {}
+  const doubtN = wb?.n_doubt ?? Object.keys(doubt).length
+  /* 「知悉」要确认的对象：报告里的空 + 已标存疑（有其一，未勾选就不能签） */
+  const needAck = nField > 0 || doubtN > 0
+  const fieldsShown = onlyDoubt ? fields.filter(([, meta]) => !!doubt[meta.where]) : fields
 
   function collectItems(): Record<string, string> {
     const items: Record<string, string> = {}
@@ -318,6 +338,10 @@ export function Review({
     setCursor((c) => (c + 1) % emptyIds.length)
   }
 
+  function jumpToSign() {
+    document.getElementById('rv-sign')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }
+
   if (!period) {
     return (
       <section className="card" style={{ padding: '22px 24px' }}>
@@ -357,6 +381,7 @@ export function Review({
             报告里的空 {nField} 处{nLeft > 0 ? `（还剩 ${nLeft} 处待填）` : '（已填齐）'}
           </span>
         )}
+        {doubtN > 0 && <span className="hint" style={{ color: 'var(--gold-ink)', fontWeight: 650 }}>存疑 {doubtN} 处</span>}
       </div>
 
       {!isAdmin && (
@@ -397,15 +422,16 @@ export function Review({
 
           <aside className="rv-side">
             {/* ------- 签单 ------- */}
-            <section className="card rv-card">
+            <section className="card rv-card" id="rv-sign">
               <h3><Icon name="seal" size={19} />审核 · 签单</h3>
               <div className="rv-kv"><span>报告版本</span><b className="rv-docname">{preview.docx ?? '—'}</b></div>
               <div className="rv-kv"><span>生成时间</span><b>{preview.updated_at || '—'}</b></div>
               <div className="rv-kv"><span>报告里的空</span><b>{nField} 处（待填 {nLeft}）</b></div>
+              <div className="rv-kv"><span>存疑</span><b style={doubtN > 0 ? { color: 'var(--gold-ink)' } : undefined}>{doubtN} 处</b></div>
               <label className="rv-ack">
                 <input type="checkbox" checked={known} disabled={!isAdmin || busy !== null}
                        onChange={(e) => setKnown(e.target.checked)} />
-                <span>我已逐项看过<b>待人工</b>与<b>存疑</b>处，同意放行。</span>
+                <span>我已逐项看过<b>待人工 {nField} 处、存疑 {doubtN} 处</b>，同意放行。</span>
               </label>
               <textarea
                 className="rv-note"
@@ -417,7 +443,8 @@ export function Review({
               />
               <div className="rv-btns">
                 <button className="btn primary" onClick={doSign}
-                        disabled={!isAdmin || busy !== null || signed}>
+                        disabled={!isAdmin || busy !== null || signed || (needAck && !known)}
+                        title={needAck && !known ? '先勾选上方「我已逐项看过」' : undefined}>
                   <Icon name="seal" size={19} />{busy === 'sign' ? '正在处理…' : '签单'}
                 </button>
                 <ConfirmButton className="btn" disabled={!isAdmin || busy !== null || !signed}
@@ -425,6 +452,9 @@ export function Review({
                   <Icon name="refresh" size={18} />撤回
                 </ConfirmButton>
               </div>
+              {needAck && !known && !signed && isAdmin && (
+                <p className="rv-ackhint" role="note">先勾选上方「我已逐项看过」，签单才可用。</p>
+              )}
               {pendingN > 0 && (
                 <p className="rv-warn" role="note">
                   {signed
@@ -436,6 +466,9 @@ export function Review({
               {msg && <p className={msg.ok ? 'rv-msg ok' : 'rv-msg bad'} role="status">{msg.text}</p>}
               <p className="hint" style={{ marginTop: 8 }}>
                 签单会绑定这一版报告；重跑或重出后签名自动失效、需重签。
+              </p>
+              <p className="hint" style={{ marginTop: 8 }}>
+                签前想核改动：<a href={`/app/?view=reading&period=${encodeURIComponent(period)}`}>看本期全部改动（对勘本）→</a>
               </p>
             </section>
 
@@ -462,7 +495,7 @@ export function Review({
             <section className="card rv-card">
               <h3><Icon name="list" size={19} />报告里的空
                 <span className="hint" style={{ fontWeight: 400, marginLeft: 'auto' }}>
-                  {nLeft > 0 ? `还剩 ${nLeft} 处` : '已填齐'}
+                  {nLeft > 0 ? `还剩 ${nLeft} 处` : '已填齐'}{doubtN > 0 ? ` · 存疑 ${doubtN} 处` : ''}
                 </span>
               </h3>
               {nField > 0 && (
@@ -472,11 +505,28 @@ export function Review({
                   {emptyIds.length > 0 ? `跳到下一处未填（还剩 ${emptyIds.length} 处）` : '都已填齐'}
                 </button>
               )}
+              {nField > 0 && (
+                <div className="rv-chips" role="group" aria-label="按存疑筛选">
+                  <button type="button" className={`rv-chip${!onlyDoubt ? ' on' : ''}`}
+                          onClick={() => setOnlyDoubt(false)}>全部 {nField}</button>
+                  <button type="button" className={`rv-chip${onlyDoubt ? ' on' : ''}`}
+                          onClick={() => setOnlyDoubt(true)} disabled={doubtN === 0}
+                          title={doubtN === 0 ? '还没有标存疑的处' : '只看已标存疑的处'}>
+                    只看存疑 {doubtN}
+                  </button>
+                </div>
+              )}
               {nField === 0 ? (
-                <p className="hint" style={{ marginTop: 8 }}>这一期没有要人填的地方。</p>
+                <p className="hint" style={{ marginTop: 8 }}>
+                  这一期没有要人填的地方——可直接签单。
+                  <button type="button" className="btn" style={{ marginLeft: 10, padding: '4px 12px', fontSize: 13 }}
+                          onClick={jumpToSign}>去签单 ↓</button>
+                </p>
+              ) : fieldsShown.length === 0 ? (
+                <p className="hint" style={{ marginTop: 8 }}>这一期还没有标存疑的处。</p>
               ) : (
                 <ul className="rv-todo">
-                  {fields.map(([id, meta]) => {
+                  {fieldsShown.map(([id, meta]) => {
                     const v = vals[id] ?? ''
                     const isDoubt = !!doubt[meta.where]
                     return (
@@ -506,7 +556,17 @@ export function Review({
                   </ul>
                 </>
               )}
-              {wbNote && <p className="hint" style={{ color: 'var(--bad)' }}>{wbNote}</p>}
+              {wbNote && (
+                <p className="hint" style={{ color: 'var(--bad)' }}>
+                  {wbNote}
+                  {!wbNote.includes('权限') && (
+                    <button type="button" className="btn" style={{ marginLeft: 10, padding: '3px 10px', fontSize: 13 }}
+                            onClick={() => { void refreshWb().catch(() => setWbNote('填写记录还是读不到——稍后再试。')) }}>
+                      重新读取
+                    </button>
+                  )}
+                </p>
+              )}
               <div className="rv-btns" style={{ marginTop: 12 }}>
                 <button className="btn" onClick={doSave}
                         disabled={!isAdmin || busy !== null || nField === 0}>
