@@ -13,7 +13,7 @@ import pathlib
 import re
 import time
 
-from . import _brain, _diagnose, _record, _runtime, _settings, _shield, _specs
+from . import _brain, _config, _diagnose, _record, _runtime, _settings, _shield, _specs
 from ._types import Answer, CapabilityInfo, Segment, Shield, Source
 
 log = logging.getLogger("wenheng.ai")
@@ -53,9 +53,8 @@ def _brain_for():
     ov = _runtime.overrides()
     if ov.get("brain") is not None:
         return ov["brain"]                                   # 测试注入 / 脚本
-    # D1：只有规则适配器。D3 在此按 settings/env 解析云适配器；
-    # 「无 key 不构造云适配器」＝演示站物理上无法外发（SPEC §2.5）。
-    return _brain.RuleBrain()
+    # 生产装配：按部署 env 解析（演示站/无 key → RuleBrain，物理上无法外发；SPEC §2.5）
+    return _config.build_brain()
 
 
 def _backend_name() -> str:
@@ -201,7 +200,7 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
     try:
         turn = brain.think(brief)
     except _brain.BrainError as e:
-        turn, fallback = None, f"brain_error:{type(e).__name__}"
+        turn, fallback = None, f"brain_error:{getattr(e, 'code', type(e).__name__)}"
         notice = f"模型调用失败（{_reason_text(e)}）。已回退规则版，内容与规则库一致。"
     except Exception as e:                                     # noqa: BLE001
         turn, fallback = None, f"brain_error:{type(e).__name__}"

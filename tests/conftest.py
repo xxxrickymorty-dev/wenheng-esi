@@ -19,6 +19,7 @@
 每次跳过都登记了复核探针（见 `_guard_registry.py`），**只要探针说那个资源还在，
 会话就判失败**。防的是"路径写错 → 整组守卫静默 skip → pytest 全绿"。
 """
+import os
 import pathlib
 import sys
 
@@ -67,6 +68,19 @@ def _reports():
 @pytest.fixture(scope="session")
 def repo():
     return REPO
+
+
+@pytest.fixture(autouse=True)
+def _isolate_ai_env(monkeypatch):
+    """AI 层云配置对测试一律隐身：本机 server/.env 配了 key 也不许测试走模型/出网。
+
+    - 「默认 = 规则版」是金样对拍与 determinism 测试的前提；
+    - 云适配器测试自己用 `monkeypatch.setenv` 显式开（tests/test_ai_openai.py）；
+    - server/config.py 的 _load_dotenv 会把 .env 灌进 os.environ（setdefault），
+      所以这里按前缀清，保证任何测试顺序下都不泄漏。
+    """
+    for key in [k for k in os.environ if k.startswith("WENHENG_AI_")]:
+        monkeypatch.delenv(key, raising=False)
 
 
 @pytest.fixture(scope="session")
