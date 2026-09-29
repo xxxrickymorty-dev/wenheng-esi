@@ -158,6 +158,8 @@ check("guest 角色是 guest", '"role":"guest"' in gme or '"role": "guest"' in g
       f"body={gme[:100]}")
 st, _, _ = call("GET", "/api/periods/202607/redslots", opener=gop)
 check("guest 访问 admin 端点被挡（403）", st == 403, f"got {st}")
+st, _, _ = call("GET", "/api/periods/202607/acquisition", opener=gop)
+check("guest 访问取数状态被挡（403）", st == 403, f"got {st}")
 st, gdata, _ = call("GET", "/app/shelf/data.js", opener=gop)
 check("guest 陈列馆数据只有预览投影",
       st == 200 and '"preview":true' in gdata and '"rank_intl_now"' not in gdata,
@@ -411,9 +413,19 @@ check("/api/me role=admin（已登录 demo）", '"admin"' in me)
 st, pd, _ = call("GET", "/api/periods/202607")
 check("GET /api/periods/202607 200", st == 200, f"got {st}")
 check("period_detail 有 palette 三色", '"primary"' in pd and '"deep"' in pd and '"lift"' in pd)
-check("period_detail 有 steps 三步", '"ledger"' in pd and '"input"' in pd and '"generated"' in pd)
+check("period_detail 有 steps 三步（取数/核对并并入/生成）",
+      '"fetch"' in pd and '"merge"' in pd and '"generate"' in pd)
+check("period_detail 有 acquisition 摘要",
+      '"acquisition"' in pd and '"started"' in pd and '"expected"' in pd)
 check("period_detail 有 window", '"window"' in pd)
 check("period_detail 有 no/total", '"no"' in pd and '"total"' in pd)
+
+# GET /api/periods/{period}/acquisition（自动取数台；X2·只读）
+st, aq, _ = call("GET", "/api/periods/202607/acquisition")
+check("GET acquisition 200", st == 200, f"got {st}")
+check("acquisition 有 period/started", '"period"' in aq and '"started"' in aq)
+st, _, _ = call("GET", "/api/periods/abc/acquisition")
+check("acquisition 非法期次 404", st == 404, f"got {st}")
 
 # GET /api/periods/{period}/redslots
 st, rs, _ = call("GET", "/api/periods/202607/redslots?limit=5&offset=0")

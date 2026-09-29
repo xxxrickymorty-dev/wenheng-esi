@@ -20,14 +20,17 @@ export const MODEL_DESC: Record<string, string> = {
   '经验贝叶斯状态空间模型': '把趋势与季节当「状态」逐期更新。对噪声大的序列更稳健。',
 }
 
-function Steps({ wb }: { wb: WB }) {
+function Steps({ wb, period }: { wb: WB; period: string | null }) {
+  const acquireHref = `/app/?view=acquire${period ? `&period=${encodeURIComponent(period)}` : ''}`
   return (
     <ol className="steplist">
       {wb.steps.map((s, i) => (
         <li key={s.key} className={`step ${s.on ? 'on' : ''} ${s.now ? 'now' : ''}`}>
           <span className="dot">{s.on ? <Icon name="check" size={13} /> : i + 1}</span>
           <span>
-            {s.title}
+            {s.key === 'fetch' && period
+              ? <a className="steplink" href={acquireHref} title="去取数台">{s.title}</a>
+              : s.title}
             <small>{s.detail}</small>
           </span>
         </li>
@@ -385,7 +388,7 @@ export function Workbench({
         <div className="steps">
           <h1>{period ?? '（选择期次）'}</h1>
           <span className="tag">{STATE_LABEL[wb.state]}</span>
-          <Steps wb={wb} />
+          <Steps wb={wb} period={period} />
         </div>
 
         <div className="focus" style={{ margin: '0 24px 22px' }}>
@@ -413,6 +416,11 @@ export function Workbench({
             )}
             {wb.focusAction === 'open' && (
               <a className="btn" href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="doc" size={20} />打开报告</a>
+            )}
+            {wb.focusAction === 'acquire' && (
+              <a className="btn primary" href={`/app/?view=acquire${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+                <Icon name="download" size={20} />去取数
+              </a>
             )}
           </div>
         </div>

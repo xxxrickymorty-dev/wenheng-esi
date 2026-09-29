@@ -15,6 +15,7 @@ import { applyPeriod } from './lib/period'
 import { pickRunForPeriod } from './lib/run'
 import { useJobRun, type Run } from './hooks/useJobRun'
 import { Icon, Sprite } from './icons'
+import { Acquire } from './Acquire'
 import { Workbench } from './Workbench'
 import { Report } from './Report'
 import { Review } from './Review'
@@ -143,18 +144,19 @@ export default function App() {
   /* ?period= 深链：从老站迁移过来的等价地址（老站 /p/<期次> → 新站 ?view=report&period=<期次>） */
   const wantPeriod = new URLSearchParams(location.search).get('period')
   const _v = new URLSearchParams(location.search).get('view')
-  const view: 'workbench' | 'report' | 'review' | 'ledger' | 'analysis' | 'red' | 'charts' | 'reading' | 'trace' | 'forecast' | 'archive' =
-    _v === 'report' ? 'report'
-      : _v === 'review' ? 'review'
-        : _v === 'ledger' ? 'ledger'
-          : _v === 'analysis' ? 'analysis'
-            : _v === 'red' ? 'red'
-              : _v === 'charts' ? 'charts'
-                : _v === 'reading' ? 'reading'
-                  : _v === 'trace' ? 'trace'
-                    : _v === 'forecast' ? 'forecast'
-                      : _v === 'archive' ? 'archive'
-                        : 'workbench'
+  const view: 'workbench' | 'acquire' | 'report' | 'review' | 'ledger' | 'analysis' | 'red' | 'charts' | 'reading' | 'trace' | 'forecast' | 'archive' =
+    _v === 'acquire' ? 'acquire'
+      : _v === 'report' ? 'report'
+        : _v === 'review' ? 'review'
+          : _v === 'ledger' ? 'ledger'
+            : _v === 'analysis' ? 'analysis'
+              : _v === 'red' ? 'red'
+                : _v === 'charts' ? 'charts'
+                  : _v === 'reading' ? 'reading'
+                    : _v === 'trace' ? 'trace'
+                      : _v === 'forecast' ? 'forecast'
+                        : _v === 'archive' ? 'archive'
+                          : 'workbench'
 
   const demo = useMemo(() => {
     const v = new URLSearchParams(location.search).get('demo') as WBState | null
@@ -433,6 +435,7 @@ export default function App() {
   /* 工作区导航（契约 §4：前端按 /api/me 的 role 决定显示什么；**真门在后端**，这里只是不打扰）。
      游客在首屏已被送回陈列馆，这里只剩未登录要挡。 */
   const NAV: { view: string; label: string; icon: string; href: string; admin?: boolean }[] = [
+    { view: 'acquire', label: '取数', icon: 'download', href: '/app/?view=acquire', admin: true },
     { view: 'workbench', label: '生成台', icon: 'play', href: '/app/', admin: true },
     { view: 'report', label: '报告', icon: 'chart', href: '/app/?view=report' },
     { view: 'review', label: '审核台', icon: 'seal', href: '/app/?view=review', admin: true },
@@ -448,7 +451,7 @@ export default function App() {
   /* 角色还没确认时，先不渲染只给管理员的块（避免游客先发出被拒的请求） */
   const noAdminBits = !roleKnown || gated
   /* charts（图册）后端允许 guest 读（契约 §7.1），所以不进这张表 */
-  const ADMIN_VIEWS = new Set(['workbench', 'review', 'analysis', 'forecast', 'archive', 'trace', 'red'])
+  const ADMIN_VIEWS = new Set(['workbench', 'acquire', 'review', 'analysis', 'forecast', 'archive', 'trace', 'red'])
   const denied = gated && ADMIN_VIEWS.has(view)
   const navHref = (h: string) =>
     (selected
@@ -530,6 +533,8 @@ export default function App() {
           </div>
         ) : view === 'archive' ? (
           <Archive period={selected} approvalStatus={approvalStatus} />
+        ) : view === 'acquire' ? (
+          <Acquire period={selected} />
         ) : view === 'forecast' ? (
           <Forecast
             period={selected}

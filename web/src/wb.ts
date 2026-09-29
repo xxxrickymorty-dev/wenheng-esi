@@ -9,7 +9,7 @@ export type WBState =
   | 'fail-ledger' | 'fail-other' | 'stalled' | 'signed'
 
 export const STATE_LABEL: Record<WBState, string> = {
-  empty: '还没有放入监测表',
+  empty: '数据还没取齐',
   ready: '待生成',
   running: '生成中',
   done: '已生成',
@@ -21,8 +21,8 @@ export const STATE_LABEL: Record<WBState, string> = {
   signed: '已签发',
 }
 
-/** 三步条上每格显示什么 */
-export type StepView = { key: 'ledger' | 'input' | 'generate'; title: string; detail: string; on: boolean; now: boolean }
+/** 三步条上每格显示什么（ADR-0004：取数 → 核对并并入 → 生成） */
+export type StepView = { key: 'fetch' | 'merge' | 'generate'; title: string; detail: string; on: boolean; now: boolean }
 
 export type Workbench = {
   state: WBState
@@ -31,23 +31,31 @@ export type Workbench = {
   steps: StepView[]
   focusTitle: string
   focusSub: string
-  focusAction: 'generate' | 'rerun' | 'open' | 'sign' | 'none'
+  focusAction: 'generate' | 'rerun' | 'open' | 'sign' | 'acquire' | 'none'
   note?: string
 }
 
-/** 三步条：能算的算，算不出的写「未就绪」——不编数据 */
+/** 三步条：能算的算，算不出的写「未就绪」——不编数据。
+    数字（已核验 x / y）只来自后端 acquisition 摘要，前端不做任何换算。 */
 function buildSteps(detail: PeriodDetail | null, generated: boolean, period: string): StepView[] {
   const s = detail?.steps
+  const acq = detail?.acquisition
   const known = !!s
-  const txt = (v: boolean | undefined, yes: string, no: string) =>
-    !known ? '未就绪' : v ? yes : no
+  const fetchDetail = !known ? '未就绪'
+    : s?.fetch
+      ? (acq?.started ? `取数完成（${acq.verified ?? '—'} / ${acq.expected ?? '—'}）` : '数据已就位')
+      : acq?.started
+        ? `取数中（${acq.verified ?? '—'} / ${acq.expected ?? '—'}）`
+        : '还没开始取数'
+  const mergeDetail = !known ? '未就绪'
+    : s?.merge ? '已并入台账'
+      : acq?.copy === 'review' ? '待核对（监测表已建）' : '监测表还没建'
   return [
-    { key: 'ledger', title: '取数贴表', detail: txt(s?.ledger, '台账已齐', '台账还没齐'),
-      on: !!s?.ledger, now: known && !s?.ledger },
-    { key: 'input', title: '放入监测表', detail: txt(s?.input, '已就位', '还没放入监测表'),
-      on: !!s?.input, now: known && !!s?.ledger && !s?.input },
+    { key: 'fetch', title: '取数', detail: fetchDetail, on: !!s?.fetch, now: known && !s?.fetch },
+    { key: 'merge', title: '核对并并入', detail: mergeDetail,
+      on: !!s?.merge, now: known && !!s?.fetch && !s?.merge },
     { key: 'generate', title: '一键生成', detail: generated ? '已出稿' : (known ? '约 20 秒出报告' : `${period} 尚未出稿`),
-      on: generated, now: known ? (!!s?.ledger && !!s?.input && !generated) : !generated },
+      on: generated, now: known ? (!!s?.fetch && !!s?.merge && !generated) : !generated },
   ]
 }
 
@@ -90,7 +98,9 @@ export function deriveWorkbench(
   demo?: WBState | null,
 ): Workbench {
   const row = list.find((p) => p.period === period) ?? null
-  const generated = !!row
+  /* 「已出稿」以列表的 generated 标志为准（取数在途的期次也在列表里，但还没出稿）；
+     老形状没有该字段时退回「在列表里＝出过稿」——不编数据。 */
+  const generated = row ? (row.generated ?? true) : false
   const signed = row?.status === 'signed' || row?.signed === true
 
   let state: WBState
@@ -103,8 +113,8 @@ export function deriveWorkbench(
     state = 'signed'
   } else if (generated) {
     state = 'done'
-  } else if (detail?.steps && !detail.steps.input) {
-    state = 'empty'
+  } else if (detail?.steps && (!detail.steps.fetch || !detail.steps.merge)) {
+    state = 'empty'         /* 取数没齐，或取完了还没核对并入——都先去取数台 */
   } else {
     state = 'ready'
   }
@@ -121,7 +131,7 @@ export function deriveWorkbench(
   const steps = buildSteps(detail, generated, period ?? '本期')
 
   const FOCUS: Record<WBState, Pick<Workbench, 'focusTitle' | 'focusSub' | 'focusAction'>> = {
-    empty: { focusTitle: '先放入本期监测表', focusSub: '把填好的台账另存为 input/<期次>/监测表.xlsx', focusAction: 'none' },
+    empty: { focusTitle: '先去取数，再回来生成', focusSub: '在取数台：下载 → 逐份核验 → 核对并并入台账', focusAction: 'acquire' },
     ready: { focusTitle: '这一期还差最后一步：生成报告', focusSub: '前两步已就绪 · 约 20 秒出报告', focusAction: 'generate' },
     running: { focusTitle: '正在生成……', focusSub: '可以切到别的页面，进度不会丢', focusAction: 'none' },
     done: { focusTitle: '本期报告已就绪', focusSub: '复核后签单，这一版才会被标记为「可交付」', focusAction: 'sign' },

@@ -10,11 +10,14 @@ const period = (over: Partial<Period> = {}): Period => ({
   label: '2026年第4期',
   signed: false,
   status: 'completed',
+  generated: true,
   url: '/p/202607',
   ...over,
 })
 
-const detail = (steps?: PeriodDetail['steps']): PeriodDetail => ({ period: '202607', steps })
+const detail = (steps?: PeriodDetail['steps'],
+                acquisition?: PeriodDetail['acquisition']): PeriodDetail =>
+  ({ period: '202607', steps, acquisition })
 
 describe('isTerminal / statusToWB（后端十态 → 工作台状态）', () => {
   it('十个终态判定', () => {
@@ -49,20 +52,36 @@ describe('deriveWorkbench（真实数据推导，不编状态）', () => {
     expect(wb.note).toContain('不是实时状态')
   })
 
-  it('未放监测表（detail 说没 input）→ empty', () => {
-    const wb = deriveWorkbench('202607', [], detail({ ledger: true, input: false }), true)
+  it('取数还没完成（detail 说 fetch 没齐）→ empty，主动作去取数台（ADR-0004）', () => {
+    const wb = deriveWorkbench('202607', [], detail({ fetch: false, merge: false }), true)
     expect(wb.state).toBe('empty')
-    expect(wb.focusAction).toBe('none')
+    expect(wb.focusAction).toBe('acquire')
   })
 
-  it('台账齐、无 input 记录 → ready（可生成）', () => {
-    const wb = deriveWorkbench('202607', [], detail({ ledger: true, input: true }), true)
+  it('取数与并入都齐、无产出 → ready（可生成）', () => {
+    const wb = deriveWorkbench('202607', [], detail({ fetch: true, merge: true }), true)
     expect(wb.state).toBe('ready')
     expect(wb.focusAction).toBe('generate')
   })
 
+  it('取数完成但还没核对并入 → 也去取数台（不给生成按钮）', () => {
+    const wb = deriveWorkbench('202611', [], detail({ fetch: true, merge: false }), true)
+    expect(wb.state).toBe('empty')
+    expect(wb.focusAction).toBe('acquire')
+  })
+
+  it('列表里有但还没出稿的期次（generated:false）不算已生成', () => {
+    const row = period({ period: '202611', generated: false, status: 'unsigned', signed: false })
+    const ready = deriveWorkbench('202611', [row], detail({ fetch: true, merge: true }), true)
+    expect(ready.state).toBe('ready')      /* 已并入、未出稿 → 可以生成 */
+    expect(ready.focusAction).toBe('generate')
+    const empty = deriveWorkbench('202611', [row], detail({ fetch: false, merge: false }), true)
+    expect(empty.state).toBe('empty')
+    expect(empty.focusAction).toBe('acquire')
+  })
+
   it('已出稿（期次在列表）→ done，主动作是签单', () => {
-    const wb = deriveWorkbench('202607', [period()], detail({ ledger: true, input: true, generated: true }), true)
+    const wb = deriveWorkbench('202607', [period()], detail({ fetch: true, merge: true, generate: true }), true)
     expect(wb.state).toBe('done')
     expect(wb.focusAction).toBe('sign')
   })
@@ -84,6 +103,33 @@ describe('deriveWorkbench（真实数据推导，不编状态）', () => {
     expect(wb.steps[0].detail).toBe('未就绪')
     expect(wb.steps[1].detail).toBe('未就绪')
     expect(wb.steps[2].detail).toBe('202607 尚未出稿')
+  })
+
+  it('步骤条：取数中的数字来自后端摘要，前两步话术随状态（ADR-0004）', () => {
+    const wb = deriveWorkbench('202607', [], detail(
+      { fetch: false, merge: false },
+      { started: true, verified: 31, expected: 64, copy: 'none' }), true)
+    expect(wb.steps[0].detail).toBe('取数中（31 / 64）')
+    expect(wb.steps[1].detail).toBe('监测表还没建')
+    expect(wb.steps[0].now).toBe(true)
+  })
+
+  it('步骤条：待核对 / 已并入 / 历史期次（无取数记录）', () => {
+    const reviewing = deriveWorkbench('202608', [], detail(
+      { fetch: true, merge: false },
+      { started: true, verified: 64, expected: 64, copy: 'review' }), true)
+    expect(reviewing.steps[1].detail).toBe('待核对（监测表已建）')
+    expect(reviewing.steps[1].now).toBe(true)
+
+    const merged = deriveWorkbench('202608', [], detail(
+      { fetch: true, merge: true },
+      { started: true, verified: 64, expected: 64, copy: 'merged' }), true)
+    expect(merged.steps[0].detail).toBe('取数完成（64 / 64）')
+    expect(merged.steps[1].detail).toBe('已并入台账')
+
+    const legacy = deriveWorkbench('202607', [], detail(
+      { fetch: true, merge: true }, { started: false }), true)
+    expect(legacy.steps[0].detail).toBe('数据已就位')
   })
 })
 

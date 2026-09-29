@@ -44,6 +44,9 @@ function Sprite() {
         <circle cx="11" cy="11" r="6.5" {...S} />
         <path d="m16 16 4.5 4.5" {...S} />
       </symbol>
+      <symbol id="i-download" viewBox="0 0 24 24">
+        <path d="M12 4v10.5m-4.5-4L12 15l4.5-4.5M5 19.5h14" {...S} />
+      </symbol>
     </svg>
   )
 }

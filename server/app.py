@@ -22,7 +22,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import approval, archive, collation, config, jobs, report_preview, shelf_data, shelf_preview
+from . import acquisition, approval, archive, collation, config, jobs, report_preview, shelf_data, shelf_preview
 from . import forecasting
 from .guards import admin_file_route, admin_route
 from src import parse_ledger  # 成品隔离/回滚的唯一口径（FINAL_PRODUCTS / SUPERSEDED_DIR）
@@ -612,24 +612,63 @@ async def api_status(request: Request):
     }
 
 
+def _period_label(period: str) -> str:
+    """期次文案走 src/period.py（口径唯一来源）；算不出总期号时退回期次名，不编假期号。"""
+    try:
+        _idx, total = period_mod.issue_of(period)
+        return f"第 {total} 期 · {period_mod.label(period)}"
+    except (period_mod.PeriodUndetectable, period_mod.PeriodBeforeAnchor):
+        return period
+
+
+def _period_has_data(period: str) -> bool:
+    """「期次认得出」的宽松口径：取数状态或投喂副本已存在（还没出稿也算）。
+
+    与 /api/periods 的补录、单期详情的宽松判定同一口径——取数台接手的期次，
+    它的空产物 / 空回滚列表要回 200 空数组，而不是 404（404 会在页面控制台报错）。
+    """
+    m = re.match(r"^(\d{6})", period or "")
+    if not m:
+        return False
+    pid = m.group(1)
+    return (acquisition.load(pid) is not None
+            or (config.INPUT_DIR / pid / "监测表.xlsx").exists())
+
+
+def _acquisition_only_periods(known: set[str]) -> list[dict]:
+    """还没出稿、但取数已经有动静的期次：有取数状态，或投喂副本已就位。
+
+    取数台接手「未出稿的当期」——这些期次不在 period_cards（那要 red_slots.json），
+    列表里单独补进来（状态按「未签发」显示，出稿后由 period_cards 接管）。
+    """
+    extra = set(acquisition.periods())
+    if config.INPUT_DIR.exists():
+        for d in config.INPUT_DIR.iterdir():
+            if d.is_dir() and re.fullmatch(r"\d{6}", d.name) and (d / "监测表.xlsx").exists():
+                extra.add(d.name)
+    return [{"period": p, "label": _period_label(p), "signed": False,
+             "status": "unsigned", "generated": False,
+             "url": "/p/" + urllib.parse.quote(p)}
+            for p in sorted(extra - known, reverse=True)]
+
+
 @app.get("/api/periods")
 @admin_route
 async def api_periods(request: Request):
     """期次列表（新工作区系统 /app 的数据源）——与首屏印记链同源（period_cards）。
 
     期次文案走 src/period.py（口径唯一来源）；带后缀目录（如 202605_复现）算不出
-    总期号时退回目录名，不编假期号。
+    总期号时退回目录名，不编假期号。另补「未出稿但取数在途」的期次（见上）。
     """
     out = []
+    seen = set()
     for c in period_cards():
-        try:
-            _idx, total = period_mod.issue_of(c["period"])
-            label = f"第 {total} 期 · {period_mod.label(c['period'])}"
-        except (period_mod.PeriodUndetectable, period_mod.PeriodBeforeAnchor):
-            label = c["period"]
-        out.append({"period": c["period"], "label": label,
+        out.append({"period": c["period"], "label": _period_label(c["period"]),
                     "signed": c["status"] == "signed", "status": c["status"],
-                    "url": c["url"]})
+                    "generated": True, "url": c["url"]})
+        seen.add(c["period"])
+    out.extend(_acquisition_only_periods(seen))
+    out.sort(key=lambda item: item["period"], reverse=True)
     return {"periods": out}
 
 
@@ -644,33 +683,69 @@ async def api_me(request: Request):
 @app.get("/api/periods/{period}")
 @admin_route
 async def api_period_detail(request: Request, period: str):
+    """单期详情：三步条＝①取数 ②核对并并入 ③生成（ADR-0004）。
+
+    未出稿但取数已有动静的期次（有取数状态、或投喂副本已就位）也返回详情——
+    「先取数、后生成」的工作流需要它们在台面上；三步的判定不出数字。
+    """
+    m = re.match(r"^(\d{6})", period or "")
+    pid = m.group(1) if m else period
     d = resolve_period_dir(period)
-    if d is None:
+    acq = acquisition.load(pid)
+    has_input = (config.INPUT_DIR / pid / "监测表.xlsx").exists()
+    if d is None and acq is None and not has_input:
         return _period_missing()
     try:
         no, total = period_mod.issue_of(period)
         label = f"第 {total} 期 \u00b7 {period_mod.label(period)}"
     except (period_mod.PeriodUndetectable, period_mod.PeriodBeforeAnchor):
         no, total, label = None, None, period
-    m = re.match(r"^(\d{6})", d.name)
-    pid = m.group(1) if m else period
     window = ""
-    facts = d / "overview_facts.json"
-    if facts.exists():
-        try:
-            window = json.loads(facts.read_text(encoding="utf-8")).get("coverage_window", "")
-        except (OSError, json.JSONDecodeError):
-            pass
-    ledger_ok = (config.INPUT_DIR / pid / "监测表.xlsx").exists()
-    generated_ok = (d / "red_slots.json").exists()
-    steps = {"ledger": ledger_ok, "input": ledger_ok, "generated": generated_ok}
+    if d is not None:
+        facts = d / "overview_facts.json"
+        if facts.exists():
+            try:
+                window = json.loads(facts.read_text(encoding="utf-8")).get("coverage_window", "")
+            except (OSError, json.JSONDecodeError):
+                pass
+    totals = (acq or {}).get("totals") or {}
+    verified = totals.get("verified") if isinstance(totals.get("verified"), int) else None
+    expected = totals.get("expected") if isinstance(totals.get("expected"), int) else None
+    copy_state = ((acq or {}).get("copy") or {}).get("state") or "none"
+    if acq is not None:
+        fetch_ok = (isinstance(verified, int) and isinstance(expected, int)
+                    and expected > 0 and verified >= expected)
+        merge_ok = copy_state == "merged"
+    elif has_input:
+        fetch_ok = merge_ok = True          # 历史期次按老路：数据已在（没有取数记录可考）
+    else:
+        fetch_ok = merge_ok = False
+    generated_ok = bool(d is not None and (d / "red_slots.json").exists())
+    steps = {"fetch": fetch_ok, "merge": merge_ok, "generate": generated_ok}
     last = next(iter(jobs.list_jobs(limit=30, period=pid)), None)
     return {
         "period": pid, "label": label, "no": no, "total": total,
         "window": window, "palette": config.PALETTE, "steps": steps,
+        "acquisition": {"started": acq is not None, "verified": verified,
+                        "expected": expected, "copy": copy_state},
         "lastJob": {"id": last["id"], "status": last["status"],
                     "created_at": last.get("created_at")} if last else None,
     }
+
+
+@app.get("/api/periods/{period}/acquisition")
+@admin_route
+async def api_period_acquisition(request: Request, period: str):
+    """自动取数台状态（只读）。没有取数记录时 started=false——界面显示「还没开始」，不编数据。
+
+    状态由取数流程写入 `out/_acquisition/<期次>.json`（人触发；见 ADR-0004）。
+    """
+    if not re.fullmatch(r"\d{6}", period or ""):
+        return _period_missing()
+    state = acquisition.load(period)
+    if state is None:
+        return {"period": period, "started": False}
+    return {"period": period, "started": True, **state}
 
 
 @app.get("/api/periods/{period}/artifacts")
@@ -679,7 +754,9 @@ async def api_period_artifacts(request: Request, period: str):
     """按期次列运行产物，仅管理员可读。"""
     d = resolve_period_dir(period)
     if d is None:
-        return _period_missing()
+        if not _period_has_data(period):
+            return _period_missing()
+        return {"period": period, "artifacts": []}      # 还没出稿：产物为空，如实说
     return {"period": d.name, "artifacts": jobs.collect_period_artifacts(d.name)}
 
 
@@ -1475,7 +1552,9 @@ def _rollback_points(out_dir: pathlib.Path):
 async def api_rollback_points(request: Request, period: str):
     out_dir = _rollback_dir(period)
     if not out_dir:
-        return JSONResponse({"error": "这一期没有可回滚的留档"}, status_code=404)
+        if not _period_has_data(period):
+            return JSONResponse({"error": "这一期没有可回滚的留档"}, status_code=404)
+        return {"period": period, "points": []}         # 还没出稿：没有留档可回滚
     return {"period": period, "points": _rollback_points(out_dir)}
 
 

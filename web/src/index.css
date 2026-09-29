@@ -41,15 +41,16 @@ a{color:inherit}
 /* ---------- 顶栏 ---------- */
 .topbar{display:flex;align-items:center;gap:18px;padding:13px 22px;background:var(--card);
   border-bottom:1px solid var(--line)}
-.brand{display:flex;align-items:baseline;gap:10px;font-family:var(--serif)}
+.brand{display:flex;align-items:baseline;gap:10px;font-family:var(--serif);white-space:nowrap}
 .brand strong{font-size:22px;letter-spacing:.05em}
 .brand span{font-size:13px;color:var(--ink-3);letter-spacing:.16em}
-.nav{display:flex;gap:4px;margin-left:auto}
+/* 站多了之后：导航项不许折行；位置不够时导航自己横滑（别把「生成台」拆成两行） */
+.nav{display:flex;gap:4px;margin-left:auto;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .nav a{display:flex;align-items:center;gap:7px;padding:9px 13px;border-radius:var(--r-sm);
-  color:var(--ink-2);text-decoration:none;font-size:15px}
+  color:var(--ink-2);text-decoration:none;font-size:15px;white-space:nowrap;flex:0 0 auto}
 .nav a[aria-current="page"]{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
 .nav a:hover{background:var(--panel)}
-.who{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-2);
+.who{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-2);white-space:nowrap;
   padding-left:12px;border-left:1px solid var(--line)}
 /* 身份芯片 = 退出入口：整块可点，hover 浮出「退出」胶囊 */
 .who-exit{text-decoration:none;border-radius:999px;padding:4px 6px 4px 8px;margin-left:4px;
@@ -659,6 +660,66 @@ a{color:inherit}
 .rv-ackhint{margin:10px 0 0;font-size:13px;color:var(--warn);font-weight:650}
 .rv-confirm li{color:var(--ink-2)}
 
+/* ===== 取数台（X2·票 12）：三步条步名链接 / 开始前检查 / 组卡 / 核对表 ===== */
+.steplink{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+.steplink:hover{color:var(--zhu);border-color:var(--zhu)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+
+.aq-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.aq-num{font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.aq-pf{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding:10px 14px;
+  background:var(--panel);border:1px solid var(--line-2);border-radius:10px;font-size:13.5px;color:var(--ink-2)}
+.aq-pf-title{font-weight:650;color:var(--ink)}
+.aq-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 11px;border-radius:999px;
+  background:var(--card);border:1px solid var(--line);font-size:13px;color:var(--ink-3)}
+.aq-chip.ok{color:var(--ok);border-color:var(--ok);background:var(--ok-soft)}
+.aq-chip.bad{color:var(--bad);border-color:var(--bad);background:var(--bad-soft)}
+
+.aq-groups{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+.aq-g{min-width:0;border:1px solid var(--line-2);border-radius:11px;background:var(--card);padding:11px 13px 10px}
+.aq-g.ok{border-color:var(--ok)}
+.aq-g.live{border-color:var(--gold)}
+.aq-g.bad{border-color:var(--bad);background:var(--bad-soft)}
+.aq-gtop{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.aq-src{font-size:12.5px;color:var(--ink-3);font-weight:650;letter-spacing:.03em}
+.aq-gstat{font-size:12.5px;font-weight:650;color:var(--ink-3)}
+.aq-gstat.ok{color:var(--ok)}
+.aq-gstat.live{color:var(--gold-ink)}
+.aq-gstat.bad{color:var(--bad)}
+.aq-gname{display:flex;align-items:center;gap:8px;margin-top:7px;font-weight:650;font-size:15.5px;color:var(--ink)}
+.aq-gname svg{color:var(--zhu)}
+.aq-bar{display:flex;align-items:center;gap:8px;margin-top:8px}
+.aq-track{flex:1;height:6px;border-radius:99px;background:var(--line-2);overflow:hidden}
+.aq-track i{display:block;height:100%;border-radius:99px;background:var(--ok)}
+.aq-g.live .aq-track i{background:var(--gold)}
+.aq-g.bad .aq-track i{background:var(--bad)}
+.aq-files{margin-top:8px;border-top:1px dashed var(--line-2)}
+.aq-files>summary{list-style:none;cursor:pointer;padding:6px 1px;font-size:13px;color:var(--ink-2);
+  font-weight:600;display:flex;align-items:center;gap:6px}
+.aq-files>summary::-webkit-details-marker{display:none}
+.aq-files>summary::before{content:"▸";color:var(--zhu)}
+.aq-files[open]>summary::before{content:"▾"}
+.aq-files ul{list-style:none;margin:0;padding:0 1px 4px;max-height:230px;overflow:auto}
+.aq-files li{display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-top:1px dashed var(--line-2);font-size:13px}
+.aq-fmark{color:var(--ink-3);padding-top:1px}
+.aq-fmark.ok{color:var(--ok)}
+.aq-fmark.bad{color:var(--bad)}
+.aq-fname{min-width:0;color:var(--ink-2);font-family:var(--mono);font-size:12px;word-break:break-all}
+.aq-fname small{display:block;color:var(--ink-3);font-family:var(--sans);font-size:12.5px}
+.aq-fres{margin-left:auto;white-space:nowrap;font-size:12.5px;color:var(--ink-3)}
+.aq-fres.ok{color:var(--ok)}
+.aq-fres.bad{color:var(--bad)}
+.aq-gnote{margin:8px 0 0;font-size:12.5px;color:var(--bad)}
+.aq-rv{min-width:520px}
+.aq-rv th,.aq-rv td{border:1px solid var(--line);padding:6px 10px;text-align:left;font-size:13.5px}
+.aq-rv th{background:var(--panel);font-weight:600}
+.aq-rv td:nth-child(3){white-space:normal}
+
+@media (max-width:900px){
+  .aq-groups{grid-template-columns:1fr}
+}
 @media (max-width:760px){
   .fc-pick,.fc-tbl{min-width:640px}
 }

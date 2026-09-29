@@ -7,10 +7,14 @@ export type Period = {
   label: string
   signed: boolean
   status: string
+  /** 是否已出过稿（有 out/<期次>/red_slots.json）；取数在途的期次为 false（2026-09-29 补） */
+  generated?: boolean
   url: string
 }
 
-/** 单期详情（契约 §2.2 #2，后端 Batch 1 已交付）——形状按实测的响应写，别按猜的 */
+/** 单期详情（契约 §2.2 #2）——形状按实测的响应写，别按猜的。
+    2026-09-29 契约变更：steps 改为 {fetch,merge,generate}（取数 → 核对并并入 → 生成，ADR-0004），
+    另加 acquisition 摘要（取数台口径；见契约 §2.2 #26）。 */
 export type PeriodDetail = {
   period: string
   label?: string
@@ -18,7 +22,8 @@ export type PeriodDetail = {
   total?: number
   window?: string
   palette?: { primary: string; deep: string; lift: string }
-  steps?: { ledger?: boolean; input?: boolean; generated?: boolean }
+  steps?: { fetch?: boolean; merge?: boolean; generate?: boolean }
+  acquisition?: { started?: boolean; verified?: number | null; expected?: number | null; copy?: string }
   lastJob?: { id?: string; status?: string; created_at?: string }
 }
 
@@ -207,6 +212,37 @@ export type ArchiveData = {
 /** 这次运行的完整档案（状态机回放 / 瀑布 / 审计 / 环境 / 日志包）——只读 */
 export async function getArchive(period: string): Promise<ArchiveData> {
   return req<ArchiveData>(`/api/periods/${encodeURIComponent(period)}/archive`)
+}
+
+/** 取数台状态（契约 §2.2 #26）：没有取数记录时只有 {period, started:false}。
+    形状与 server/acquisition.py 的文档串一致；缺字段按「未就绪」显示，不编数据。 */
+export type AcqFile = { name?: string; label?: string; state?: string }
+export type AcqGroup = {
+  id?: string
+  source?: string
+  index?: number
+  title?: string
+  state?: string
+  verified?: number
+  downloaded?: number
+  files?: AcqFile[]
+}
+export type AcqReviewSheet = { name?: string; added?: string; content?: string; source?: string }
+export type AcquisitionState = {
+  period: string
+  started: boolean
+  updated_at?: string
+  data_period?: { esi?: string; incites?: string }
+  preflight?: { browser?: string; esi?: string; incites?: string }
+  capabilities?: { start?: boolean; retry?: boolean; merge?: boolean }
+  groups?: AcqGroup[]
+  totals?: { groups?: number; expected?: number; verified?: number; downloaded?: number; failed?: number }
+  copy?: { state?: string; path?: string; built_at?: string; merged_at?: string }
+  review?: { sheets?: AcqReviewSheet[] }
+}
+
+export async function getAcquisition(period: string): Promise<AcquisitionState> {
+  return req<AcquisitionState>(`/api/periods/${encodeURIComponent(period)}/acquisition`)
 }
 
 /** 最近一次有产出的任务（老接口，字段形状见 jobs.list_jobs） */

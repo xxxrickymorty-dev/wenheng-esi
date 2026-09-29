@@ -24,6 +24,7 @@ r"""端到端：`/app`（React 工作区）在真实浏览器里跑通「登录 
 退出码 0 = 通过；1 = 有断言失败（失败项打印在前）。
 """
 import http.cookiejar
+import json
 import os
 import pathlib
 import re
@@ -150,7 +151,7 @@ def main():
         extract = ("els => els.filter(e => !e.closest('[data-src=backend]'))"
                    ".map(e => e.innerText).join('\\n')")
         hits = {}
-        for v in ("workbench", "report", "review", "ledger", "analysis", "forecast",
+        for v in ("workbench", "acquire", "report", "review", "ledger", "analysis", "forecast",
                   "charts", "reading", "trace", "red", "archive"):
             url = BASE + ("/app/?period=202607" if v == "workbench"
                           else f"/app/?view={v}&period=202607")
@@ -224,6 +225,64 @@ def main():
                       f"before={disabled_before} after={enabled_after} again={disabled_again}")
         except Exception as e:                                          # noqa: BLE001
             check("审核台知悉闸（票 14）", False, str(e)[:100])
+
+        # ---- 1f) 取数台（X2·票 12）：站序在生成台左侧；三块可渲染；三步条第一步可点入 ----
+        try:
+            page.goto(BASE + "/app/?view=acquire&period=202607", wait_until="domcontentloaded")
+            page.wait_for_selector(".aq-head", timeout=20000)
+            navs = page.eval_on_selector_all("nav[aria-label] a", "els => els.map(e => e.innerText.trim())")
+            check("取数台：站序「取数」在「生成台」左侧",
+                  bool(navs) and navs[0] == "取数" and "生成台" in navs
+                  and navs.index("取数") < navs.index("生成台"), str(navs[:3]))
+            txt = page.inner_text("main")
+            check("取数台：期次数据状态与开始前检查都在",
+                  "自动取数台" in txt and "开始前检查" in txt, "")
+            page.locator("details.fold summary", has_text="取数清单").first.click()
+            page.wait_for_timeout(300)
+            n_groups = page.locator(".aq-g").count()
+            has_empty = "还没有取数记录" in page.inner_text("main")
+            check("取数台：清单展开（有组卡，或如实说没有记录）", n_groups > 0 or has_empty,
+                  f"groups={n_groups}")
+            page.goto(BASE + "/app/?period=202607", wait_until="domcontentloaded")
+            page.wait_for_selector(".steplist .steplink", timeout=15000)
+            href = page.get_attribute(".steplist .steplink", "href")
+            check("生成台三步条第一步可点入取数台", bool(href) and "view=acquire" in href, str(href))
+        except Exception as e:                                          # noqa: BLE001
+            check("取数台回归（X2）", False, str(e)[:100])
+
+        # ---- 1g) 未出稿的取数期次（ADR-0004）：临时状态文件，验证列表补录 / 详情 / 零 404 ----
+        fx = None
+        try:
+            st_dir = pathlib.Path(__file__).resolve().parent.parent / "out" / "_acquisition"
+            st_dir.mkdir(parents=True, exist_ok=True)
+            fx = st_dir / "209911.json"
+            fx.write_text(json.dumps({
+                "period": "209911", "updated_at": "临时核对用",
+                "data_period": {"esi": "临时", "incites": "临时"},
+                "preflight": {"browser": "ok", "esi": "ok", "incites": "ok"},
+                "capabilities": {"start": False, "retry": False, "merge": False},
+                "groups": [{"id": "g1", "source": "esi", "index": 1, "title": "临时组",
+                            "state": "done", "verified": 1, "downloaded": 1,
+                            "files": [{"name": "a.xlsx", "label": "临时", "state": "ok"}]}],
+                "totals": {"groups": 1, "expected": 1, "verified": 1, "downloaded": 1, "failed": 0},
+                "copy": {"state": "review", "path": "input/209911/监测表.xlsx"},
+                "review": {"sheets": [{"name": "临时表", "added": "临时列", "content": "临时", "source": "临时"}]},
+            }, ensure_ascii=False), encoding="utf-8")
+            page.goto(BASE + "/app/?view=acquire&period=209911", wait_until="domcontentloaded")
+            page.wait_for_selector(".aq-head", timeout=15000)
+            txt = page.inner_text("main")
+            check("取数台：未出稿期次也能看（待核对态）",
+                  "待核对" in txt and "本期监测表已自动建好" in txt, "")
+            page.goto(BASE + "/app/?period=209911", wait_until="domcontentloaded")
+            page.wait_for_timeout(900)
+            txt = page.inner_text("main")
+            check("生成台：未出稿期次引导去取数（不假装已生成）",
+                  "先去取数" in txt and "数据还没取齐" in txt, txt[:30].replace("\n", " "))
+        except Exception as e:                                          # noqa: BLE001
+            check("未出稿取数期次回归（X2）", False, str(e)[:100])
+        finally:
+            if fx is not None:
+                fx.unlink(missing_ok=True)
 
         # ---- 2) 陈列馆（/app/shelf/；管理员与游客都看同一份访客投影） ----
         guest_ctx = browser.new_context(viewport={"width": 1280, "height": 900})

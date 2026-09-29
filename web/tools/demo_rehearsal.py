@@ -73,7 +73,7 @@ def main() -> int:
         t = time.time()
         pg.goto(B + "/app/", wait_until="networkidle"); pg.wait_for_timeout(1200)
         txt = pg.inner_text("main")
-        check("② 生成台首屏有焦点块与三步条", "生成" in txt and ("取数贴表" in txt), "", t)
+        check("② 生成台首屏有焦点块与三步条", "生成" in txt and ("取数" in txt) and ("核对并并入" in txt), "", t)
 
         if args.generate:
             t = time.time()
