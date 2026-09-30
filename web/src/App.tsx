@@ -503,6 +503,8 @@ export default function App() {
       </header>
 
       <main className="wrap">
+        {/* 合规声明：放进工作区界面本身（rick 2026-09-29：从视口左侧竖排移入各工作台） */}
+        <p className="ws-claim">分析报告属于内部资料，仅用于参赛，禁止外传。</p>
         {healthy === false && (
           <div className="banner bad" style={{ marginTop: 0 }}>
             <span className="ico"><Icon name="alert" size={22} /></span>

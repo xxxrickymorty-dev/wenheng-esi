@@ -355,8 +355,6 @@ export function Review({
 
   return (
     <>
-      {/* 左侧竖排合规声明（rick 2026-09-29；窄屏隐藏） */}
-      <div className="rv-claim" aria-hidden="true">分析报告属于内部资料，仅用于参赛，禁止外传。</div>
       <div className="rv-lead">
         <a className="hint" href={back} style={{ textDecoration: 'none' }}>← 回报告</a>
         <span style={{ color: 'var(--line)' }}>·</span>

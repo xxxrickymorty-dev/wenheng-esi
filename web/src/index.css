@@ -152,6 +152,9 @@ a{color:inherit}
 
 .wrap{max-width:1180px;margin:0 auto;padding:26px 22px 70px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+/* 合规声明：每个工作台的界面顶部一行（rick 2026-09-29；原为视口左侧竖排） */
+.ws-claim{margin:0 2px 2px;text-align:right;font-size:12.5px;letter-spacing:.06em;
+  color:var(--ink-3);opacity:.85;user-select:none}
 
 /* ---------- 三步条 ---------- */
 .steps{display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:20px 24px}
@@ -653,12 +656,6 @@ a{color:inherit}
    审核台 · 试排报告（2026-09-28 rick 定：整篇报告 + 就地填空 + 签单/下载同屏）
    ⚠ rv- 前缀：报告区内部与右栏自成一体，不碰既有类。
    ========================================================================== */
-/* 左侧竖排合规声明（rick 2026-09-29）：贴在视口左缘，随滚动常在；窄屏隐藏 */
-.rv-claim{position:fixed;left:10px;top:30%;writing-mode:vertical-rl;
-  font-size:13px;letter-spacing:.22em;color:var(--ink-3);opacity:.75;
-  user-select:none;pointer-events:none;z-index:5}
-@media (max-width:1080px){.rv-claim{display:none}}
-
 .rv-lead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 2px 0}
 .rv-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start;margin-top:14px}
 @media (max-width:1080px){
