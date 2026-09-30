@@ -659,6 +659,8 @@ export default function App() {
         </details>
         )}
 
+        {/* 说明折叠只留一处（rick 2026-09-30：原来每个页面都挂一份）——留在首页「生成台」 */}
+        {view === 'workbench' && (
         <details className="fold">
           <summary>说明 · 口径、来源与只读声明<span className="sm">全站仅此一份</span></summary>
           <p className="hint" style={{ padding: '2px 18px 16px', fontSize: 13.5, lineHeight: 1.9 }}>
@@ -667,6 +669,7 @@ export default function App() {
             ④ 期次与状态以任务记录为准，未签发报告不可下载。来源：期内产物目录 · 运行档案 · 预测选模配置。
           </p>
         </details>
+        )}
 
         <p className="hint" style={{ marginTop: 14 }}>
           {busy && '正在提交生成请求……'}
