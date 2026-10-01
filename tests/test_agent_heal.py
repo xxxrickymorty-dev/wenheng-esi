@@ -674,10 +674,12 @@ def test_成品撤下与解析落盘的顺序被钉住():
       · `run_pipeline` 必须在 `write_outputs` 之前撤成品。
     """
     repo = pathlib.Path(__file__).resolve().parents[1]
-    tools_src = (repo / "src" / "agent" / "tools.py").read_text(encoding="utf-8")
-    body = tools_src[tools_src.index("def run_parse"):]
-    assert body.index("if not ok:") < body.index("write_outputs("), \
-        "run_parse 又开始先落盘后判断言了 —— 失败运行会在产物目录留半成品"
+    steps_src = (repo / "src" / "steps.py").read_text(encoding="utf-8")
+    body = steps_src[steps_src.index("def parse("):]
+    assert body.index("if ctx.probe:") < body.index("write_outputs("), \
+        "probe 又开始落盘了 —— 编排预判会留下垃圾目录"
+    assert body.index("if not ok and ctx.strict_assertions:") < body.index("write_outputs("), \
+        "parse 又开始先落盘后判断言了 —— 失败运行会在产物目录留半成品"
 
     pipe_src = (repo / "src" / "run_pipeline.py").read_text(encoding="utf-8")
     assert "quarantine_final_products" in pipe_src, \

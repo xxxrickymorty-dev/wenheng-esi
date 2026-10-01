@@ -425,20 +425,23 @@ def _invoke(step, ctx, result):
     的**读表口径**，台账文件不被改动。
     """
     overlay = ctx.get("overlay") or None
+    out_root = pathlib.Path(ctx["out_root"])
     if step["id"] == "parse":
-        # 先探一次期次，好把产物落到期次目录（与 run_pipeline 行为一致）
-        out_dir = result.artifacts.get("out_dir") or str(
-            pathlib.Path(ctx["out_root"]) / "_pending")
+        out_dir = result.artifacts.get("out_dir") or str(out_root / "_pending")
+        if pathlib.Path(out_dir).name == "_pending":
+            # 先探期次（probe 不落盘），再把产物落到 out/<期次>（与 run_pipeline 一致）。
+            # 旧写法先整跑一次到 _pending 再重跑，会在磁盘留下没人清的垃圾目录。
+            probe = tools.call("run_parse", ledger=ctx["ledger"], out_dir=out_dir,
+                               overlay=overlay, probe=True)
+            period = probe.get("period")
+            if period:
+                out_dir = str(out_root / period)
         payload = tools.call("run_parse", ledger=ctx["ledger"], out_dir=out_dir,
                              overlay=overlay)
-        period = payload.get("period")
-        if period and out_dir.endswith("_pending"):
-            real = pathlib.Path(ctx["out_root"]) / period
-            payload = tools.call("run_parse", ledger=ctx["ledger"], out_dir=str(real),
-                                 overlay=overlay)
+        result.artifacts["out_dir"] = payload.get("out_dir") or out_dir
         return payload
     out_dir = result.artifacts.get("out_dir") or str(
-        pathlib.Path(ctx["out_root"]) / (result.period or "_pending"))
+        out_root / (result.period or "_pending"))
     if step["id"] == "docx":
         return tools.call("run_docx", out_dir=out_dir)
     return tools.call(step["tool"], out_dir=out_dir)

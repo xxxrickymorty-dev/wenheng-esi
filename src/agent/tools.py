@@ -135,114 +135,74 @@ def inspect_ledger(xlsx):
 
 @tool("run_parse",
       {"ledger": (str, True, "台账路径"), "out_dir": (str, True, "产物目录"),
-       "overlay": (dict, False, "自愈注入的读表口径（默认 None＝既有口径，原件只读）")},
+       "overlay": (dict, False, "自愈注入的读表口径（默认 None＝既有口径，原件只读）"),
+       "probe": (bool, False, "只探期次不落盘（编排预判用）")},
       "out_dir / meta.json / 断言清单 / diagnostics",
       ["FILE_INVALID", "ASSERT_FAIL"])
-def run_parse(ledger, out_dir, overlay=None):
-    """解析 22 工作表并跑机器断言。断言 FAIL → 抛 ASSERT_FAIL（由编排器决定自愈/升级）。
+def run_parse(ledger, out_dir, overlay=None, probe=False):
+    """解析 22 工作表并跑机器断言（实现在 `steps.parse`）。
 
-    `overlay` 来自 `heal.attempt()`（M3 自愈闭环），只改变**怎么读**台账，
-    不改变台账文件本身。失败时把 `diagnostics` 一并带出，供规则匹配与《诊断报告》引用。
+    断言 FAIL → 抛 ASSERT_FAIL（由编排器决定自愈/升级）；落盘永远在断言闸之后。
+    `overlay` 来自 `heal.attempt()`（M3），只改变**怎么读**台账，不改台账文件本身。
+    `probe=True` 只回期次与断言结论，一个字节不写——编排先探期次再决定产物目录。
     """
-    import parse_ledger
-    p = pathlib.Path(ledger)
-    if not p.exists():
-        raise ToolError("FILE_INVALID", f"台账不存在：{p}")
-    led = parse_ledger.load_ledger(p, overlay=overlay)
-    ok, report, _missing = parse_ledger.run_assertions(led)
-    P, Q = parse_ledger._latest_periods(led)
-    diag = dict(led.get("diagnostics", {}))
-    fails = [m for s, m in report if s == "FAIL"]
-    if not ok:
-        # ⚠ 静默跳过 = 静默产错报告。某张宽表少了学科时，把那张表首列里
-        #    **认不出来的名字**一并送出去——否则规则库只知道"少了一个"，
-        #    不知道台账里现在写的是什么，人工只能回去数 22 行。
-        diag["unmatched_names"] = parse_ledger.unmatched_name_hints(led)
-        raise ToolError("ASSERT_FAIL", f"{len(fails)} 项断言未过",
-                        period=P, fails=fails[:10], diagnostics=diag)
-
-    # ⚠ 落盘必须在断言闸**之后**。顺序反过来（先写后判）会让一次失败运行在
-    #    `out/<期次>/` 留下"本次的宽表 + 上一次的报告"：看板照旧展示旧 docx，
-    #    对勘本拿旧槽位配新格子，页面上没有任何警报——正是本项目最怕的
-    #    "静默产错报告"。这里让失败路径一个字节都不写。
-    out = pathlib.Path(out_dir)
-    parse_ledger.write_outputs(led, p, out)
-    return {"ok": True, "out_dir": str(out), "period": P, "prev": Q,
-            "assertions_ok": True, "n_checks": len(report),
-            "overlay_applied": sorted(overlay) if overlay else []}
+    import steps
+    try:
+        res = steps.parse(steps.StepCtx(ledger=ledger, out_dir=out_dir,
+                                        overlay=overlay, probe=probe))
+    except steps.StepError as e:
+        raise ToolError(e.code, e.message, **e.detail) from e
+    return {"ok": True, **res.data}
 
 
 @tool("run_compute",
       {"out_dir": (str, True, "解析产物目录")},
       "table2.csv / overview_facts.json", ["MISSING_PERIOD"])
 def run_compute(out_dir):
-    import json
-
-    import compute
-    out = pathlib.Path(out_dir)
+    import steps
     try:
-        wide, ni, nc, thr = compute.load_wide(str(out))
-    except Exception as e:                                    # noqa: BLE001
-        raise ToolError("MISSING_PERIOD", f"宽表加载失败：{e}") from e
-    P, Q = compute.detect_periods(wide)
-    t2 = compute.build_table2(wide, ni, nc, thr, P, Q)
-    t2.to_csv(out / "table2.csv", index=False, encoding="utf-8-sig")
-    import pandas as pd
-    ynd = pd.read_parquet(out / "wide" / "ynd_rank.parquet").set_index("period")
-    top_total = (pd.read_parquet(out / "wide" / "top_total.parquet")
-                 .set_index("period")["total"].to_dict())
-    facts = compute.build_overview(wide, ni, nc, thr, ynd, top_total, P, Q)
-    (out / "overview_facts.json").write_text(
-        json.dumps(facts, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
-    return {"ok": True, "period": P, "rows": len(t2), "table2": str(out / "table2.csv")}
+        res = steps.compute(steps.StepCtx(out_dir=out_dir))
+    except steps.StepError as e:
+        raise ToolError(e.code, e.message, **e.detail) from e
+    return {"ok": True, **res.data}
 
 
 @tool("run_forecast",
       {"out_dir": (str, True, "产物目录")},
       "MAPE / 超线清单", ["SAMPLE_TOO_FEW"])
 def run_forecast(out_dir):
-    import forecast
+    import steps
     try:
-        mape = forecast.main(ledger_dir=str(out_dir), out_dir=str(out_dir))
-    except Exception as e:                                    # noqa: BLE001
-        raise ToolError("SAMPLE_TOO_FEW", f"预测回测失败：{e}") from e
-    return {"ok": True, "mape_overall": round(float(mape), 3)}
+        res = steps.forecast(steps.StepCtx(out_dir=out_dir))
+    except steps.StepError as e:
+        raise ToolError(e.code, e.message, **e.detail) from e
+    return {"ok": True, **res.data}
 
 
 @tool("run_charts",
       {"out_dir": (str, True, "产物目录")},
       "图数", ["FONT_MISSING"])
 def run_charts(out_dir):
-    import charts
+    # 预测图失败不拦停（母版原生图表保留 + 红色件预警），由步骤内部降级。
+    import steps
     try:
-        n = charts.render_all(ledger_dir=str(out_dir))
-    except Exception as e:                                    # noqa: BLE001
-        raise ToolError("FONT_MISSING", f"图表渲染失败：{e}") from e
-    # 预测章配图（默认 V1 推荐；预测台选模见 report_forecast.load_choice）：
-    # 缺数据/模型失败**不拦停**——母版原生图表会保留，红色件清单照常预警；
-    # 拦停反而让整期报告出不来。
-    n_fc = 0
-    fc_warn = []
-    try:
-        import report_forecast
-        n_fc = report_forecast.generate(out_dir)
-        fc_warn = report_forecast.load_warnings(out_dir)
-    except Exception:                                         # noqa: BLE001
-        pass
-    return {"ok": True, "n_charts": n, "n_forecast_charts": n_fc,
-            "forecast_warnings": fc_warn}
+        res = steps.charts(steps.StepCtx(out_dir=out_dir,
+                                         period=steps.period_from_dir(out_dir)))
+    except steps.StepError as e:
+        raise ToolError(e.code, e.message, **e.detail) from e
+    return {"ok": True, **res.data}
 
 
 @tool("run_docx",
       {"out_dir": (str, True, "产物目录")},
       "docx / red_slots", ["SLOT_MISS"])
 def run_docx(out_dir):
-    import fill_docx
+    import steps
     try:
-        path = fill_docx.main(ledger_dir=str(out_dir))
-    except Exception as e:                                    # noqa: BLE001
-        raise ToolError("SLOT_MISS", f"母版替换失败：{e}") from e
-    return {"ok": True, "docx": str(path)}
+        res = steps.docx(steps.StepCtx(out_dir=out_dir))
+    except steps.StepError as e:
+        raise ToolError(e.code, e.message, **e.detail) from e
+    return {"ok": True, **res.data}
 
 
 @tool("read_cell",
