@@ -23,7 +23,8 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import acquisition, approval, archive, collation, config, jobs, report_preview, shelf_data, shelf_preview
+from . import (acquisition, approval, archive, artifacts, collation, config, jobs,
+               report_preview, shelf_data, shelf_preview)
 from . import forecasting
 from .guards import admin_file_route, admin_route
 from src import parse_ledger  # 成品隔离/回滚的唯一口径（FINAL_PRODUCTS / SUPERSEDED_DIR）
@@ -753,12 +754,7 @@ async def api_period_detail(request: Request, period: str):
         no, total, label = None, None, period
     window = ""
     if d is not None:
-        facts = d / "overview_facts.json"
-        if facts.exists():
-            try:
-                window = json.loads(facts.read_text(encoding="utf-8")).get("coverage_window", "")
-            except (OSError, json.JSONDecodeError):
-                pass
+        window = artifacts.read_facts(d).get("coverage_window", "")
     totals = (acq or {}).get("totals") or {}
     verified = totals.get("verified") if isinstance(totals.get("verified"), int) else None
     expected = totals.get("expected") if isinstance(totals.get("expected"), int) else None
@@ -1134,18 +1130,11 @@ async def api_period_facts(request: Request, period: str):
     d = resolve_period_dir(period)
     if d is None:
         return _period_missing()
-    facts_file = d / "overview_facts.json"
-    meta_file = d / "meta.json"
-    if not facts_file.exists():
+    if not (d / "overview_facts.json").exists():
         return JSONResponse({"error": "该期次尚无 overview_facts.json", "hint": "请先跑一次生成流水线"}, status_code=404)
-    try:
-        facts = json.loads(facts_file.read_text(encoding="utf-8"))
-        meta = json.loads(meta_file.read_text(encoding="utf-8")) if meta_file.exists() else {}
-    except (OSError, json.JSONDecodeError) as exc:
-        return JSONResponse({"error": f"数据读取失败：{exc}"}, status_code=500)
+    facts = artifacts.read_facts(d)
+    meta = artifacts.read_meta(d)
     facts = _localize_facts(facts)
-    assertions = meta.get("assertions") or []
-    n_fail = sum(1 for a in assertions if isinstance(a, (list, tuple)) and a and a[0] != "PASS")
     # 顶尖论文历期序列（纯序列化 meta；空值＝未来期空列，滤掉）——契约 #19
     trend = {k: v for k, v in (meta.get("top_total_by_period") or {}).items()
              if isinstance(v, (int, float))}
@@ -1154,7 +1143,7 @@ async def api_period_facts(request: Request, period: str):
         "period_prev": meta.get("period_prev", ""),
         "facts": facts,
         "trend": trend,
-        "assertions": {"total": len(assertions), "fail": n_fail},
+        "assertions": artifacts.assertion_counts(meta),
         "missing": meta.get("missing", []),
     }
 
@@ -1317,31 +1306,19 @@ async def api_period_redslots(request: Request, period: str,
     d = resolve_period_dir(period)
     if d is None:
         return _period_missing()
-    raw = []
-    rp = d / "red_slots.json"
-    if rp.exists():
-        try:
-            raw = json.loads(rp.read_text(encoding="utf-8")) or []
-        except (OSError, json.JSONDecodeError):
-            raw = []
     rows = []
-    for s in raw:
-        if not isinstance(s, dict):
-            continue
+    for s in artifacts.read_slots(d):
         loc = str(s.get("location", ""))
-        new_p = str(s.get("new", ""))
         src = str(s.get("source", ""))
         group = loc.split("/")[0] if "/" in loc else loc
         if loc.startswith("T01/r"):
             group = "大表数值"
         elif loc.startswith("T0") or loc.startswith("T1"):
             group = loc.split("/")[0]
-        kind = "chart" if (new_p.startswith("[图]") or ("图" in loc and loc.startswith("综述/"))) else (
-            "cell" if loc.startswith("T") and "/" in loc else "text")
         rows.append({"group": group, "label": loc,
-                     "old": str(s.get("old_full") or s.get("old", "")),
-                     "new": str(s.get("new_full") or new_p),
-                     "src": src, "kind": kind})
+                     "old": artifacts.slot_text(s, "old"),
+                     "new": artifacts.slot_text(s, "new"),
+                     "src": src, "kind": artifacts.slot_kind(s)})
     page = _paginate(rows, limit, offset)
     page["count"] = page["total"]
     return page

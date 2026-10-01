@@ -19,6 +19,8 @@ import json
 import pathlib
 import re
 
+from . import artifacts
+
 #: 台账外的三张大表：**规格写死，状态不写死**。
 #:
 #: 🔴 别把它们当成固定的「待补三条」——2026-09-20 rick 拿人工原件问「这里明明有
@@ -113,7 +115,7 @@ def _bigtable_trace(rows, led, period, prev):
         if not m:
             continue
         ci = int(m.group(2))
-        report = (r.get("new") or "").strip()
+        report = artifacts.slot_text(r, "new", full=False).strip()
         if ci == 0:                                       # 学科名列
             disc_en = next((k for k, v in cn.items() if v == report), None)
             out.append({"loc": loc, "col": "学科", "report": report,
@@ -123,7 +125,7 @@ def _bigtable_trace(rows, led, period, prev):
             continue
         # 行号 → 学科：table2 行序 = 报告大表行序，但 LEDGER 的行序按学科名查，不依赖行号
         # 先用本行 c0 的中文名反查英文名（同一 red_slots 列表里 r{n}c0 一定在前面）
-        cn_name = next((x.get("new") or "" for x in rows
+        cn_name = next((artifacts.slot_text(x, "new", full=False) for x in rows
                         if x.get("location") == f"T01/r{m.group(1)}c0"), "")
         disc_en = next((k for k, v in cn.items() if v == cn_name), cn_name)
 
@@ -211,12 +213,14 @@ def trace(out_dir, ledger_path, period=None, prev=None):
                 "sheet": str(pathlib.Path(ledger_path).name),
                 "src_ref": "—", "ledger": f"{type(e).__name__}: {e}", "how": "—"}]
 
-    charts = [{"loc": r.get("location"), "report": (r.get("new") or "").strip(),
+    charts = [{"loc": r.get("location"),
+               "report": artifacts.slot_text(r, "new", full=False).strip(),
                "src": r.get("source") or ""}
               for r in rows if (r.get("source") or "").startswith("charts")]
     # 省域表 T19：**数据源不是台账**（是 ESI 原始包），单独一类，
     # 否则这 110 格在溯源页上看不到 —— 与"全部可溯源"自相矛盾。
-    province = [{"loc": r.get("location"), "report": (r.get("new") or "").strip(),
+    province = [{"loc": r.get("location"),
+                 "report": artifacts.slot_text(r, "new", full=False).strip(),
                  "src": r.get("source") or ""}
                 for r in rows if (r.get("location") or "").startswith("T19/")]
     # 省域表同样把位置码换成可读标签：`T19/r5c3` → `云南农业大学 · ESI前1%学科数`
@@ -225,15 +229,17 @@ def trace(out_dir, ledger_path, period=None, prev=None):
         if not m:
             continue
         ri, ci = int(m.group(1)), int(m.group(2))
-        uname = next((x.get("new") or "" for x in rows
+        uname = next((artifacts.slot_text(x, "new", full=False) for x in rows
                       if x.get("location") == f"T19/r{ri}c0"), "")
         rec["label"] = uname if ci == 0 else (
             f"{uname} · {PROVINCE_COLS[ci - 1]}" if ci <= len(PROVINCE_COLS) else uname)
-    texts = [{"loc": r.get("location"), "report": (r.get("new") or "").strip()[:60],
+    texts = [{"loc": r.get("location"),
+              "report": artifacts.slot_text(r, "new", full=False).strip()[:60],
               "src": r.get("source") or ""}
              for r in rows if (r.get("source") or "").startswith(("sentences", "期次参数", "母版"))]
     # 学科×高校矩阵 T20：数据源也不是台账（是 InCites 历史快照），单独一类
-    matrix = [{"loc": r.get("location"), "report": (r.get("new") or "").strip(),
+    matrix = [{"loc": r.get("location"),
+               "report": artifacts.slot_text(r, "new", full=False).strip(),
                "src": r.get("source") or ""}
               for r in rows if (r.get("location") or "").startswith("T20/")]
     # 筛选下拉的选项：按数据里真实出现的列/学科生成，不写死
@@ -243,14 +249,14 @@ def trace(out_dir, ledger_path, period=None, prev=None):
         if k and k not in seen_c and k != "学科":
             seen_c.add(k)
             cols.append({"key": k, "label": _COL_CN.get(k, k)})
-    discs = sorted({(x.get("new") or "") for x in rows
+    discs = sorted({artifacts.slot_text(x, "new", full=False) for x in rows
                     if (x.get("location") or "").endswith("c0")
                     and (x.get("location") or "").startswith("T01/r")})
     for rec in matrix:
         m = re.match(r"T20/r(\d+)c(.+)", rec["loc"] or "")
         if not m:
             continue
-        disc = next((x.get("new") or "" for x in rows
+        disc = next((artifacts.slot_text(x, "new", full=False) for x in rows
                      if x.get("location") == f"T20/r{m.group(1)}c0"), "")
         rec["label"] = f"{disc} · {m.group(2)}" if disc else m.group(2)
     return {"bigtable": big, "charts": charts, "province": province,
@@ -260,14 +266,8 @@ def trace(out_dir, ledger_path, period=None, prev=None):
 
 
 def _slots(out_dir):
-    p = pathlib.Path(out_dir) / "red_slots.json"
-    if not p.exists():
-        return []
-    try:
-        rows = json.loads(p.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return []
-    return rows if isinstance(rows, list) else []
+    """red_slots 合法行（读取/守卫唯一在 `artifacts`）。"""
+    return artifacts.read_slots(out_dir)
 
 
 def _todo_from_slot(row, idx):
@@ -278,7 +278,7 @@ def _todo_from_slot(row, idx):
     这个 id 同时是 `fill_docx` 回填时的查找键，两边必须一致。
     """
     # ⚠ 必须在**全文**上探测：red_slots 的 new 被截断到 50 字，只扫 new 会漏判
-    text = row.get("new_full") or row.get("new") or ""
+    text = artifacts.slot_text(row, "new")
     where = row.get("location") or "?"
     out = []
     for i, m in enumerate(_HAND.finditer(text), 1):
@@ -298,13 +298,7 @@ def _todo_from_slot(row, idx):
 # 破坏了这条，"354 个数字可溯源"就变成一句空话 —— 修改必须发生在报告侧。
 
 def _load_json(path):
-    p = pathlib.Path(path)
-    if not p.exists():
-        return {}
-    try:
-        return json.loads(p.read_text(encoding="utf-8")) or {}
-    except (OSError, json.JSONDecodeError):
-        return {}
+    return artifacts.read_json(path) or {}
 
 
 def load_fills(out_dir):

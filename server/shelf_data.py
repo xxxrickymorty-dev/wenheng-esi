@@ -5,28 +5,19 @@
 ``web/public`` 或 ``web/dist``，避免构建产物成为数据副本。缺失或损坏的期次
 会被跳过，因此只打包 202607 的演示环境只展示该期。
 """
-import csv
 import json
 import math
 from pathlib import Path
 
 from starlette.responses import Response
 
-from . import config
+from . import artifacts, config
 from src import period as period_mod
 from src.parse_ledger import DISCIPLINES_CN, norm_disc_cn
 
 
 EN2CN_SAFE = {en: norm_disc_cn(cn) for en, cn in DISCIPLINES_CN.items()}
 EMPTY_FORECAST = {"rows": [], "rows2": [], "impl": "", "window": ""}
-
-
-def _read_json(path):
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-        return None
-    return value if isinstance(value, dict) else None
 
 
 def _number(value, cast=float):
@@ -39,12 +30,9 @@ def _number(value, cast=float):
     return cast(number)
 
 
-def _read_table(path):
-    try:
-        with path.open(encoding="utf-8-sig", newline="") as source:
-            rows = list(csv.DictReader(source))
-    except (OSError, UnicodeDecodeError, csv.Error):
-        return None
+def _read_table(period_dir):
+    """table2 的前端投影（读取唯一在 `artifacts.read_table2`）。"""
+    rows = artifacts.read_table2(period_dir)
     required = {"discipline", "papers", "total_cites", "cnci", "top_papers", "thr_1pct",
                 "thr_1pct_gap", "prox_change", "rank_cn_change"}
     if not rows or not all(required <= set(row) for row in rows):
@@ -116,10 +104,10 @@ def _read_forecast(period_dir):
 
 def _book(card, out_dir):
     period_dir = Path(out_dir) / str(card.get("period", ""))
-    facts = _read_json(period_dir / "overview_facts.json")
-    meta = _read_json(period_dir / "meta.json")
-    table = _read_table(period_dir / "table2.csv")
-    if facts is None or meta is None or table is None:
+    facts = artifacts.read_facts(period_dir)
+    meta = artifacts.read_meta(period_dir)
+    table = _read_table(period_dir)
+    if not facts or not meta or table is None:
         return None
     period = period_mod.from_dir(period_dir.name)
     if not period:
@@ -128,10 +116,8 @@ def _book(card, out_dir):
         _, issue = period_mod.issue_of(period)
     except ValueError:
         return None
-    assertions = meta.get("assertions", [])
-    passed = sum(isinstance(item, (list, tuple)) and item and item[0] == "PASS"
-                 for item in assertions) if isinstance(assertions, list) else 0
-    total = len(assertions) if isinstance(assertions, list) else 0
+    counts = artifacts.assertion_counts(meta)          # 严格口径唯一在 artifacts
+    passed, total = counts["total"] - counts["fail"], counts["total"]
     return {
         "period": period, "no": issue, "label": period_mod.label(period),
         "coverage": facts.get("coverage_window", ""), "prev_label": facts.get("prev_label", ""),

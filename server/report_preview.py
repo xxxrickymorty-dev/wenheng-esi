@@ -14,7 +14,6 @@
 """
 from __future__ import annotations
 
-import json
 import pathlib
 import re
 import time
@@ -22,6 +21,8 @@ import time
 from docx import Document
 from docx.oxml.ns import qn
 from docx.text.paragraph import Paragraph
+
+from . import artifacts
 
 _HAND = re.compile(r"【手工：([^】]*)】")
 _ALIGN = {0: "left", 1: "center", 2: "right", 3: "justify", 4: "distribute"}
@@ -38,20 +39,11 @@ def _find_docx(out_dir: pathlib.Path):
 
 def _red_slot_maps(out_dir: pathlib.Path):
     """red_slots.json → （完整正文 → 位置、标记文字 → [字段 id]）两张查找表。"""
-    p = out_dir / "red_slots.json"
     by_text: dict[str, str] = {}
     by_hint: dict[str, list[str]] = {}
-    if not p.exists():
-        return by_text, by_hint
-    try:
-        rows = json.loads(p.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return by_text, by_hint
-    for r in rows or []:
-        if not isinstance(r, dict):
-            continue
+    for r in artifacts.read_slots(out_dir):
         loc = str(r.get("location") or "")
-        full = str(r.get("new_full") or r.get("new") or "").strip()
+        full = artifacts.slot_text(r, "new").strip()
         if not loc or not full:
             continue
         by_text.setdefault(full, loc)

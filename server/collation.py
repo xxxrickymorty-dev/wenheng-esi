@@ -16,10 +16,10 @@ old 全是空串，对勘视图会退化成「只列本期值」。这里按学�
 真正想看的「哪个学科指标变了」。所以每个槽位自带 `oldLabel`：
 正文槽位是「母版原文」，大表格子是「上期 202605」，不混为一谈。
 """
-import csv
-import json
 import pathlib
 import re
+
+from . import artifacts
 
 # 「正文/p1」这类槽位在 red_slots.json 里 old/new 被截断到 50 字（清单表用）。
 # 若 fill_docx 写入了 old_full/new_full，则优先使用全文。
@@ -84,18 +84,6 @@ def _fmt_cell(col, v):
     return f"{f:.2f}" if abs(f) < 1000 else f"{f:.3f}"
 
 
-def _read_table2(path):
-    """table2.csv → (行序列表, {discipline: 行dict})。"""
-    rows = []
-    try:
-        with path.open(encoding="utf-8-sig", newline="") as f:
-            for r in csv.DictReader(f):
-                rows.append(r)
-    except (OSError, csv.Error):
-        return [], {}
-    return rows, {r.get("discipline", ""): r for r in rows}
-
-
 def _find_prev_dir(out_dir, prev_period):
     """上期目录：可能是 `202605`，也可能是 `202605_复现`（复现跑的）。"""
     if not prev_period:
@@ -118,14 +106,11 @@ def _enrich_bigtable(prepared, out_dir, prev_period):
     """
     if not prev_period:
         return 0, None
-    cur_path = out_dir / "table2.csv"
-    if not cur_path.exists():
-        return 0, None
     prev_dir = _find_prev_dir(out_dir, prev_period)
     if prev_dir is None:
         return 0, None
-    cur_rows, _ = _read_table2(cur_path)
-    _, prev_map = _read_table2(prev_dir / "table2.csv")
+    cur_rows = artifacts.read_table2(out_dir)
+    prev_map = {r.get("discipline", ""): r for r in artifacts.read_table2(prev_dir)}
     if not cur_rows or not prev_map:
         return 0, None
 
@@ -154,32 +139,17 @@ def _enrich_bigtable(prepared, out_dir, prev_period):
 def build(path):
     """path → out/<期次> 目录。返回可直接 tojson 的 dict。"""
     out_dir = pathlib.Path(path)
-    slots = []
-    p = out_dir / "red_slots.json"
-    if p.exists():
-        try:
-            slots = json.loads(p.read_text(encoding="utf-8")) or []
-        except (OSError, json.JSONDecodeError):
-            slots = []
-
-    meta = {}
-    mp = out_dir / "meta.json"
-    if mp.exists():
-        try:
-            meta = json.loads(mp.read_text(encoding="utf-8")) or {}
-        except (OSError, json.JSONDecodeError):
-            meta = {}
+    slots = artifacts.read_slots(out_dir)          # 读取/守卫唯一在 artifacts
+    meta = artifacts.read_meta(out_dir)
 
     prepared = []
     for s in slots:
-        if not isinstance(s, dict):
-            continue
         loc = str(s.get("location", ""))
-        old_p = str(s.get("old", ""))
-        new_p = str(s.get("new", ""))
-        old_f = str(s.get("old_full") or old_p)
-        new_f = str(s.get("new_full") or new_p)
-        kind = _kind(loc, new_p)
+        old_p = artifacts.slot_text(s, "old", full=False)
+        new_p = artifacts.slot_text(s, "new", full=False)
+        old_f = artifacts.slot_text(s, "old")
+        new_f = artifacts.slot_text(s, "new")
+        kind = artifacts.slot_kind(s)
         prepared.append({
             "loc": loc,
             "old": old_f,
@@ -216,8 +186,6 @@ def build(path):
                              "cell": c["cell"], "chart": c["chart"],
                              "manual": m, "slots": items})
 
-    assertions = meta.get("assertions") or []
-    fail = sum(1 for a in assertions if not (isinstance(a, (list, tuple)) and a and a[0] == "PASS"))
     counts = {"total": len(prepared), "text": 0, "cell": 0, "chart": 0, "manual": 0}
     for it in prepared:
         counts[it["kind"]] += 1
@@ -228,7 +196,7 @@ def build(path):
         "period": str(meta.get("period_current") or out_dir.name),
         "periodPrev": prev_period,
         "outDir": out_dir.name,
-        "assertions": {"total": len(assertions), "fail": fail},
+        "assertions": artifacts.assertion_counts(meta),
         # totals 供题首大数使用；线上与 counts 恒等，静态快照可只内联抽样槽位
         "counts": dict(counts),
         "totals": dict(counts),
