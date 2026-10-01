@@ -17,6 +17,8 @@
 |---|---|
 | `src/` | 确定性流水线（解析台账 → 算大表 → 预测回测 → 渲染图 → 替换母版） |
 | `src/agent/` | Agent 层：`states.py`(状态机) / `tools.py`(工具契约) / `flow.py`(编排) / `heal.py`(自愈) / `trace.py` / `rules/repair_rules.yaml`(自愈规则库) |
+| `src/ai/` | AI 层（SPEC）：对外仅 `run`/`capabilities`/`set_switch`；**模型调用唯一进出一处**＝`_attempt.py`（盾→端口→校验→回落），`ai_calls` 留痕唯一写口＝`_record.Recorder` |
+| `src/flexible/` | 灵活报告（第二条产线）：查询 / 规划 / 图表规格 / 正文组装；模型口经 `src/ai/` 边界 |
 | `server/` | FastAPI + Jinja2 看板（服务端渲染） |
 | `web/` | 新工作区前端：React + TypeScript + Vite；经 FastAPI `/api/*` 取数，本机构建 `dist/` 并入库，由 FastAPI 挂载于 `/app/` |
 | `master/` | **结构金母版** `学科信息参考母版_2026第5期.docx`，必须入库 |
@@ -54,6 +56,7 @@
 ## 红线（越了就出事）
 
 1. **运行期 LLM 不进数据路径**（见上）。
+   模型调用（能力口四能力 / 写作位 / 规划器）唯一进出 `src/ai/_attempt.py`；`ai_calls` 留痕唯一写口 `src/ai/_record.py` 的 `Recorder`。新能力别绕过这两处。
 2. 《云大全学科排名、阈值动态检测表.xlsx》是**唯一事实源**。
    **禁止用 openpyxl 存盘改它**（会丢 6 张图表、条件格式、打印设置）——只能 zip 级 XML 替换，改前备份。
    新期次列**贴在已有列后面**，按列追加，绝不覆盖历史。

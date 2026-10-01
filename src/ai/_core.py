@@ -12,7 +12,7 @@ import logging
 import re
 import time
 
-from . import _brain, _config, _diagnose, _qa, _record, _review, _runtime, _settings, _shield, _specs
+from . import _attempt, _config, _diagnose, _qa, _record, _review, _runtime, _settings, _shield, _specs
 from ._types import Answer, CapabilityInfo, Segment, Shield, Source
 
 log = logging.getLogger("wenheng.ai")
@@ -157,20 +157,8 @@ def _publish(cap, period, role, *, mode, backend, notice, text, rule_text, sourc
                   shield=shield_res, record_id=rid, segments=segments)
 
 
-def _reason_text(e) -> str:
-    msg = str(e).strip().splitlines()[0] if str(e).strip() else type(e).__name__
-    return msg[:80]
-
-
 def _system_for(cap_id: str) -> str:
     return _SYSTEM_PROMPTS.get(cap_id, SYSTEM_PROMPT)
-
-
-def _validate_cap(cap, candidate, draft):
-    """锚定型严格（占位符一个不少一个不多）；自由作答型允许相关子集。"""
-    if cap.id in ("qa", "review"):
-        return _shield.validate_free(candidate, draft.mapping)
-    return _shield.validate(candidate, draft.mapping)
 
 
 def _cited_facts(candidate: str, draft) -> set:
@@ -229,64 +217,43 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
                          notice=cap.no_data_notice or _specs.UNAVAILABLE_NOTICE,
                          t0=t0, backend=_backend_name())
 
-    # ---- 模型轮（可选；回落＝同一端口的 rule 适配器）----
-    brief = _brain.Brief(ability=cap.id, system=_system_for(cap.id), task=draft.task,
-                         evidence=draft.evidence, tools=(),
-                         rule_protected=draft.rule_protected)
-    brain = _brain_for()
-    attempted = not getattr(brain, "is_rule", False)
-    mode, backend, text, notice, fallback, fallback_detail = \
-        "rule", "rule", draft.rule_text, "", None, None
-    try:
-        turn = brain.think(brief)
-    except _brain.BrainError as e:
-        turn, fallback = None, f"brain_error:{getattr(e, 'code', type(e).__name__)}"
-        notice = f"模型调用失败（{_reason_text(e)}）。已回退规则版，内容与规则库一致。"
-    except Exception as e:                                     # noqa: BLE001
-        turn, fallback = None, f"brain_error:{type(e).__name__}"
-        notice = f"模型调用失败（{_reason_text(e)}）。已回退规则版，内容与规则库一致。"
+    # ---- 模型轮（可选；回落＝同一端口的 rule 适配器，语义全在 _attempt）----
+    outcome = _attempt.attempt(
+        draft.task, system=_system_for(cap.id), ability=cap.id,
+        anchored=cap.id not in ("qa", "review"),
+        evidence=draft.evidence, tools=(),
+        rule_protected=draft.rule_protected, mapping=draft.mapping)
 
-    calls = tuple(getattr(turn, "calls", ()) or ()) if turn is not None else ()
-    candidate = turn.text if (turn is not None and not calls) else None
-    if turn is not None and turn.note and not notice:
-        notice = turn.note
-    if attempted and calls:
-        # 本轮不开放工具调用（只读白名单与工具循环随票 02/D4 落位）——请求了也不执行。
-        fallback = fallback or "calls_unsupported"
-        notice = notice or "模型请求了工具，但本轮未开放工具调用。已回退规则版，内容与规则库一致。"
-
-    if attempted:
-        if calls:
-            pass                                               # 已回落
-        elif candidate is None or not candidate.strip():
-            fallback = fallback or "empty_reply"
-            notice = notice or "模型未返回正文。已回退规则版，内容与规则库一致。"
+    mode, backend, text = "rule", "rule", draft.rule_text
+    notice, fallback, fallback_detail = "", None, None
+    if outcome.attempted:
+        if outcome.text is None:
+            # 传输/校验回落：码与文案由边界给，正文回规则版。
+            fallback = outcome.reason
+            fallback_detail = ({k: len(v) for k, v in (outcome.detail or {}).items()}
+                               if outcome.detail else None)
+            notice = outcome.notice
+        elif cap.id in ("qa", "review") and not _cited_facts(outcome.candidate_protected, draft):
+            # 越题：自由作答型未引用本期事实，按政策回落（政策留在能力口）。
+            fallback = _attempt.FallbackReason.OFF_TOPIC
+            notice = "模型作答未引用本期事实，已回退规则版。"
         else:
-            ok, detail = _validate_cap(cap, candidate, draft)
-            if ok and cap.id in ("qa", "review") and not _cited_facts(candidate, draft):
-                fallback = fallback or "off_topic"
-                notice = "模型作答未引用本期事实，已回退规则版。"
-            elif ok:
-                mode, backend = "model", getattr(brain, "name", "model")
-                text = _shield.restore(candidate, draft.mapping)
-            else:
-                fallback = fallback or "shield_reject"
-                fallback_detail = {k: len(v) for k, v in detail.items()} if detail else None
-                notice = "模型输出未通过数字校验，已回退规则版，内容与规则库一致。"
-    else:
-        ok, _detail = _validate_cap(cap, turn.text if turn is not None else None, draft)
-        if not ok:
-            # 规则文本自身过不了盾：构造上不该发生；落到无数字地板，仍如实标注。
-            fallback, notice, text = "shield_reject", "盾未过，已换无数字说明。", FLOOR_TEXT
+            mode, backend, text = "model", outcome.backend, outcome.text
+            notice = outcome.notice
+    elif outcome.text is None:
+        # 规则文本自身过不了盾：构造上不该发生；落到无数字地板，仍如实标注。
+        fallback, notice, text = (_attempt.FallbackReason.SHIELD_REJECT,
+                                  "盾未过，已换无数字说明。", FLOOR_TEXT)
 
-    published_protected = candidate if mode == "model" else draft.rule_protected
+    published_protected = (outcome.candidate_protected if mode == "model"
+                           else draft.rule_protected)
     used = _used_sources(published_protected, draft)
     shield_res = Shield(checked=len(used), passed=len(used))
     return _publish(cap, period, role, mode=mode, backend=backend, notice=notice,
                     text=text, rule_text=draft.rule_text, sources=used, parts=draft.parts,
                     shield_res=shield_res, fallback=fallback,
                     question_face=_question_face(payload),
-                    egress={"items": len(brief.evidence) + 1, "bytes": brief.egress_bytes()},
+                    egress=outcome.egress, elapsed_ms=outcome.elapsed_ms,
                     t0=t0, fallback_detail=fallback_detail)
 
 
