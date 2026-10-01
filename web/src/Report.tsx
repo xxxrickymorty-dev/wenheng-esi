@@ -58,9 +58,9 @@ function Chain({
         })}
       </div>
       <div className="legend">
-        <span><i style={{ background: 'var(--zhu)' }} />已签发</span>
-        <span><i style={{ boxShadow: 'inset 0 0 0 2px var(--gold)' }} />签名失效</span>
-        <span><i style={{ boxShadow: 'inset 0 0 0 2px var(--line)' }} />未签发</span>
+        <span><i className="bg-zhu" />已签发</span>
+        <span><i className="sw-gold" />签名失效</span>
+        <span><i className="sw-line" />未签发</span>
       </div>
     </aside>
   )
@@ -122,7 +122,7 @@ function Artifacts({ period, guest, approvalStatus, refreshToken }: {
           </span>
           <span className="go">
             {a.key === 'report' && approvalStatus !== 'signed'
-              ? <span className="hint" role="note" style={{ display: 'inline-block', maxWidth: 150, whiteSpace: 'normal', textAlign: 'right' }}>
+              ? <span className="hint rp-inline" role="note">
                   未签发，暂不能下载
                 </span>
               : <a href={a.url} target="_blank" rel="noreferrer">打开</a>}
@@ -173,7 +173,7 @@ function PeriodData({ period }: { period: string | null }) {
 
   return (
     <>
-      <div style={{ paddingTop: 22 }}>
+      <div className="pt-22">
         <div>
           <h2 className="h-sec">
             <Icon name="list" size={21} />对勘 · 红色件
@@ -228,7 +228,7 @@ function PeriodData({ period }: { period: string | null }) {
           <h2 className="h-sec">
             <Icon name="alert" size={20} />待你补 / 拍板
             {manual.length > 0 && (
-              <a className="hint" style={{ marginLeft: 'auto', color: 'var(--zhu)', fontWeight: 650, textDecoration: 'none' }}
+              <a className="hint ml-auto ink-zhu fw-650 no-underline" 
                  href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
                 去审核台逐项处理（{manual.length} 处）→
               </a>
@@ -264,7 +264,7 @@ function PeriodData({ period }: { period: string | null }) {
         </div>
       </div>
 
-      <section className="card" style={{ marginTop: 22, padding: '20px 22px' }}>
+      <section className="card mt-22 pad-card">
         <h2 className="h-sec">
           <Icon name="chart" size={21} />图册
           <span className="hint hint-num">
@@ -471,7 +471,7 @@ export function Report({
       {/* 对勘分区 / 页边朱批 / 图册 —— Batch 2 的真数据 */}
       <PeriodData period={current} />
 
-      <section className="card" style={{ marginTop: 26, padding: '20px 22px' }}>
+      <section className="card mt-26 pad-card">
         <h2 className="h-sec">
           <Icon name="doc" size={21} />本期产物
         </h2>

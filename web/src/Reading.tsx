@@ -92,8 +92,8 @@ export function Reading({ period }: { period: string | null }) {
         {' · '}期次 <b className="mono">{period ?? '—'}</b>
       </p>
 
-      <section className="card" style={{ padding: '18px 20px 6px' }}>
-        <h2 style={{ fontSize: 20, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <section className="card pad-18-20-6">
+        <h2 className="h-sec fs-20">
           <Icon name="doc" size={21} />对勘本 · 正文级对照
           <span className="hint hint-num">
             本期改动 <b className="mono">{rows?.length ?? 0}</b> 处
@@ -116,7 +116,7 @@ export function Reading({ period }: { period: string | null }) {
         ) : !rows ? (
           <div className="pending-box block-12-16">正在读对勘数据……</div>
         ) : (
-          <div className="toolbar" style={{ paddingBottom: 12 }}>
+          <div className="toolbar pb-12">
             <input className="search" value={q} onChange={(e) => setQ(e.target.value)}
                    placeholder="搜索位置 / 改动文字 / 来源…" />
             <button className={`switch${onlyManual ? ' on' : ''}`} type="button"
@@ -130,24 +130,24 @@ export function Reading({ period }: { period: string | null }) {
       </section>
 
       {rows && sections.length > 0 && (
-        <div className="card reading-grid" style={{ marginTop: 16 }}>
+        <div className="card reading-grid mt-16">
           {/* 左：槽位分组 */}
           <nav className="col-l">
-            <div className="hint mono" style={{ padding: '0 18px 8px', letterSpacing: '.2em' }}>槽 位 分 组</div>
+            <div className="hint mono rd-head">槽 位 分 组</div>
             {sections.map(([k, list]) => (
               <a key={k} className="nav-i" href="#" aria-current={k === sec}
                  onClick={(e) => { e.preventDefault(); setSec(k) }}>
                 <span>{k}</span><span className="n">{list.length}</span>
               </a>
             ))}
-            <div className="kv" style={{ margin: '12px 18px 0', borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+            <div className="kv rd-sep">
               <span className="k">命中</span><span className="v">{shown.length}</span>
             </div>
           </nav>
 
           {/* 中：改动卡 */}
           <div className="col-m">
-            <h3 style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+            <h3 className="baseline-row">
               {sec}
               <span className="hint mono ml-auto">{shown.length} 处</span>
             </h3>
@@ -157,10 +157,10 @@ export function Reading({ period }: { period: string | null }) {
                          onMouseEnter={() => setHover(r)} onFocus={() => setHover(r)} tabIndex={0}>
                   <div className="chg-h">
                     <span className="loc">{r.loc}</span>
-                    <span className={`pill${r.manual ? ' manual' : ''}`} style={{ padding: '1px 9px' }}>
+                    <span className={`pill${r.manual ? ' manual' : ''} pad-1-9`}>
                       {r.manual ? '待人工' : '已替换'}
                     </span>
-                    {r.source && <span className="hint" style={{ marginLeft: 'auto', fontSize: 13 }}>来源：{r.source}</span>}
+                    {r.source && <span className="hint ml-auto fs-13">来源：{r.source}</span>}
                   </div>
                   <div className="chg-b">
                     <div className="row">
@@ -188,7 +188,7 @@ export function Reading({ period }: { period: string | null }) {
 
           {/* 右：校记 */}
           <aside className="col-r">
-            <h3 style={{ display: 'flex', alignItems: 'baseline' }}>
+            <h3 className="baseline">
               校 记 <span className="hint ml-auto">{period}</span>
             </h3>
             <div className="kv mt-10"><span className="k">本期改动</span><span className="v">{rows.length} 处</span></div>
@@ -208,12 +208,12 @@ export function Reading({ period }: { period: string | null }) {
                 <div className="ph mt-6">位置</div>
                 <div className="pc">{hover.loc}</div>
                 <div className="ph mt-6">改动</div>
-                <div className="pc" style={{ fontWeight: 400 }}>
+                <div className="pc fw-400">
                   {(hover.oldPreview ?? hover.old ?? '（空）')} → {(hover.manual ? '待人工补录' : (hover.newPreview ?? hover.new ?? '（空）'))}
                 </div>
               </div>
             ) : (
-              <div className="pop" style={{ opacity: .55 }}>
+              <div className="pop op-55">
                 <div className="ph">出处</div>
                 <div className="pc">（把光标移到左侧改动卡上）</div>
               </div>

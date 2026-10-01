@@ -5,7 +5,7 @@ const S = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLineca
 
 function Sprite() {
   return (
-    <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
+    <svg width="0" height="0" className="abs" aria-hidden="true">
       <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" {...S} /></symbol>
       <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5 19 12 7 19.5z" {...S} /></symbol>
       <symbol id="i-alert" viewBox="0 0 24 24">

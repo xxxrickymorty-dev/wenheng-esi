@@ -61,7 +61,7 @@ export function Trace({ period }: { period: string | null }) {
         <Icon name="list" size={21} />逐格溯源
         {data?.n != null && <span className="hint hint-num">可溯源 {data.n} 处</span>}
         {data?.ledger_ok === false && (
-          <span className="pill" style={{ borderColor: 'var(--warn)', color: 'var(--warn)' }}>台账不在本机，重读不可用</span>
+          <span className="pill warn-border">台账不在本机，重读不可用</span>
         )}
       </h2>
 
@@ -94,28 +94,28 @@ export function Trace({ period }: { period: string | null }) {
                   <th className="w-150">位置</th>
                   <th className="w-170">报告里</th>
                   <th className="w-190">台账里（现场重读）</th>
-                  <th style={{ width: 210 }}>来源</th>
+                  <th className="w-210">来源</th>
                   <th>怎么来的</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={`${r.loc}-${i}`}>
-                    <td className="mono" style={{ fontSize: 13.5, color: 'var(--ink-3)' }}>
+                    <td className="mono fs-135 ink-3">
                       {r.loc}
-                      {r.label && <><br /><span style={{ fontSize: 12.5 }}>{r.label}</span></>}
+                      {r.label && <><br /><span className="fs-125">{r.label}</span></>}
                     </td>
                     <td className="ink-zhu">{r.report}</td>
                     <td className="mono fs-135">{r.ledger ?? '（台账读不到）'}</td>
                     <td className="fs-135">{r.sheet}{r.src_ref ? <> · <span className="mono">{r.src_ref}</span></> : null}</td>
-                    <td style={{ fontSize: 13.5, color: 'var(--ink-2)' }}>{r.how}</td>
+                    <td className="fs-135 ink-2">{r.how}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
+          <div className="rowc12 mt-12">
             <span className="hint">
               已铺 {rows.length} / {data.total ?? '—'} 行
             </span>

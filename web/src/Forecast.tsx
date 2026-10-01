@@ -311,8 +311,8 @@ function PickTable({
           <thead>
             <tr>
               <th className="w-170">潜力学科</th>
-              <th style={{ width: 200 }}>V1 推荐</th>
-              <th style={{ width: 230 }}>我的选择</th>
+              <th className="w-200">V1 推荐</th>
+              <th className="w-230">我的选择</th>
               <th>模型说明（跟着选择变）</th>
             </tr>
           </thead>
@@ -399,8 +399,8 @@ export function Forecast({
 
   return (
     <>
-      <section className="card" style={{ padding: '20px 22px 18px' }}>
-        <h1 style={{ fontSize: 25 }}>潜力学科预测</h1>
+      <section className="card pad-20-22-18">
+        <h1 className="fs-25">潜力学科预测</h1>
         <p className="fc-lead mt-6">先看图，再定稿。</p>
       </section>
 

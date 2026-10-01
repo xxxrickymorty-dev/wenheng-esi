@@ -188,20 +188,20 @@ function ModelSummary({
 
   return (
     <section className="card mt-18 pad-card">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <div className="rowc">
         <span className="fc-no">01</span>
-        <h2 style={{ fontSize: 21 }}>预测模型 · 本期已选</h2>
-        <span style={{ padding: '3px 9px', borderRadius: 999, background: 'var(--gold-soft)', color: 'var(--gold-ink)', fontSize: 12, fontWeight: 650 }}>
+        <h2 className="fs-21">预测模型 · 本期已选</h2>
+        <span className="chip-gold">
           只读 · 改选去预测台
         </span>
       </div>
-      <p style={{ margin: '9px 0 14px', color: 'var(--ink-2)', fontSize: 15.5 }}>
+      <p className="lead-155">
         模型选择只有一份，按期次保存；这里只显示本期配置，改选集中在预测台——那边能对着五个模型的预测图挑。
         改完保存后回到这里会同步显示；本期报告只应用实际进入预测章的学科。
       </p>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 14px', background: 'var(--panel)', border: '1px solid var(--line-2)', borderRadius: 10 }}>
-        <label htmlFor="workbench-task-period" style={{ display: 'grid', gap: 4, color: 'var(--ink-3)', fontSize: 13 }}>
+      <div className="panel-row">
+        <label htmlFor="workbench-task-period" className="grid-dim">
           期次
           <select id="workbench-task-period" value={period ?? ''} onChange={(e) => onPickPeriod(e.target.value)}
                   style={{ minWidth: 170, padding: '5px 9px', border: '1px solid var(--line)', borderRadius: 7, background: 'var(--card)', color: 'var(--ink)', font: 'inherit', fontSize: 16 }}>
@@ -210,15 +210,15 @@ function ModelSummary({
             {period && !periods.some((item) => item.period === period) && <option value={period}>{period}</option>}
           </select>
         </label>
-        <div style={{ minWidth: 160 }}>
+        <div className="minw-160">
           <small className="dim-block">预测数据</small>
-          <strong style={{ fontFamily: 'var(--mono)', fontSize: 16 }}>{meta?.source_period || '未就绪'}</strong>
+          <strong className="mono-16">{meta?.source_period || '未就绪'}</strong>
         </div>
-        <div style={{ minWidth: 190 }}>
+        <div className="minw-190">
           <small className="dim-block">实际输出</small>
-          <strong style={{ color: 'var(--gold-ink)', fontSize: 15 }}>{actualOutputPeriod || '任务完成后显示'}</strong>
+          <strong className="gold-15">{actualOutputPeriod || '任务完成后显示'}</strong>
         </div>
-        <div style={{ minWidth: 260, flex: 1 }}>
+        <div className="minw-260 flex-1">
           <small className="dim-block">台账文件</small>
           <strong className="fs-14">{source?.name ?? '云大全学科排名、阈值动态检测表.xlsx'}</strong>
           <span className="dim-block">
@@ -233,7 +233,7 @@ function ModelSummary({
       </div>
 
       {routes.length > 0 && (
-        <div role="group" aria-label="模型路线" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '14px 0 10px' }}>
+        <div role="group" aria-label="模型路线" className="roww my-14-10">
           {routes.map((item) => (
             <button key={item.value} type="button" className="btn" aria-pressed={item.value === currentRoute}
                     onClick={() => setRoute(item.value)} style={item.value === currentRoute ? { borderColor: 'var(--zhu)', background: 'var(--zhu-soft)', color: 'var(--zhu)' } : undefined}>
@@ -281,19 +281,19 @@ function ModelSummary({
             </table>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 14, paddingTop: 13, borderTop: '1px solid var(--line-2)' }}>
+          <div className="wb-toolbar">
             <a className="btn primary" href={`/app/?view=forecast${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
               去预测台看图改选 →
             </a>
             {dirty ? (
               <>
-                <span role="status" className="hint" style={{ color: 'var(--warn)', fontWeight: 650 }}>
+                <span role="status" className="hint warn-650">
                   有未保存修改——保存后才能开始生成。
                 </span>
                 <ConfirmButton className="btn" confirmText="确认放弃？会回到上次保存的版本" onConfirm={onReload}>放弃修改并重新读取</ConfirmButton>
               </>
             ) : (
-              <span role="status" className="hint" style={{ color: 'var(--ok)' }}>
+              <span role="status" className="hint ok-text">
                 {state?.error || `已保存${state?.by ? ` · ${state.by}` : ''}${state?.at ? ` · ${state.at}` : ''}`}
               </span>
             )}
@@ -356,7 +356,7 @@ export function Workbench({
           <Steps wb={wb} period={period} />
         </div>
 
-        <div className="focus" style={{ margin: '0 24px 22px' }}>
+        <div className="focus mx-card-22">
           <div>
             <div className="big">{wb.focusTitle}</div>
             <div className="sub">{wb.focusSub}</div>
@@ -418,7 +418,7 @@ export function Workbench({
         )}
 
         {wb.note && (
-          <div style={{ padding: '0 24px 20px' }}>
+          <div className="pad-card-foot2">
             <div className="degraded">{wb.note}</div>
           </div>
         )}
@@ -435,7 +435,7 @@ export function Workbench({
       {showTools && (
         <details className="fold">
           <summary>这一期的工具<span className="sm">上传 · 重跑 · 回滚 · 台账 · 日志包</span></summary>
-          <p className="hint" style={{ padding: '10px 18px 0', fontSize: 13.5 }}>
+          <p className="hint fold-lead">
             看数据源：<a href={`/app/?view=ledger${period ? `&period=${encodeURIComponent(period)}` : ''}`}>主台账（只读）→</a>
           </p>
           <Tools
@@ -470,7 +470,7 @@ export function PeriodsPanel({ periods, selected, healthy, onPick }: {
         <table className="periods">
           <thead>
             <tr>
-              <th>期次</th><th>目录名</th><th>状态</th><th style={{ width: 90 }}>操作</th>
+              <th>期次</th><th>目录名</th><th>状态</th><th className="w-90">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -478,7 +478,7 @@ export function PeriodsPanel({ periods, selected, healthy, onPick }: {
               <tr><td colSpan={4} className="ink-3">
                 {healthy === false ? (
                   <>服务未启动，读不到期次。起好服务后
-                    <button className="btn" style={{ padding: '4px 10px', fontSize: 13.5, margin: '0 6px' }}
+                    <button className="btn btn-xs mx-6" 
                             onClick={() => location.reload()}>重新检查</button>
                     一次。</>
                 ) : (

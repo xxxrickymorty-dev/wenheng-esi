@@ -40,7 +40,7 @@ export function Ledger() {
       <section className="card pad-card-lg">
         <h2 className="h-sec h-lg">
           <Icon name="doc" size={22} />台账 · 表清单
-          <span className="hint" style={{ fontWeight: 400, fontSize: 14, marginLeft: 'auto' }}>
+          <span className="hint hint-num ml-auto">
             只读
           </span>
         </h2>
@@ -48,7 +48,7 @@ export function Ledger() {
         {err && (
           <div className="pending-box mt-14">
             <b>暂时读不到台账。</b>文件可能正被占用（比如 Excel 开着），或服务刚重启——
-            <button className="btn" style={{ padding: '4px 10px', fontSize: 13.5, margin: '0 4px' }}
+            <button className="btn btn-xs mx-4" 
                     onClick={() => location.reload()}>重新检查</button>
             后如果还读不到，把这一屏截图给开发。
           </div>

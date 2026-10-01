@@ -81,7 +81,7 @@ export function AiRecords({ period }: { period: string | null }) {
               {' · '}平均 {d.stats.avg_sec} 秒{d.stats.last_ts ? ` · 最近一次 ${d.stats.last_ts.replace('T', ' ').slice(0, 16)}` : ''}
             </p>
 
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+            <div className="roww mt-10">
               {([['all', '全部'], ['model', '模型作答'], ['rule', '规则回落']] as const).map(([k, label]) => (
                 <button key={k} className="btn"
                         style={{
@@ -117,7 +117,7 @@ export function AiRecords({ period }: { period: string | null }) {
           运行级 · 模型参与
           <span className="hint">主流水线零大模型</span>
         </h2>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+        <div className="roww mt-12">
           <span className="pill unsigned">主体步骤 · 零模型</span>
           <span className="pill signed">问答 · {d?.stats.n ?? 0} 次
             {d && d.stats.n > 0 ? `（模型 ${d.stats.model} · 回落 ${d.stats.fallback}）` : ''}</span>
@@ -131,12 +131,10 @@ function Row({ c, open, onToggle }: { c: AiCall; open: boolean; onToggle: () => 
   const isModel = c.mode === 'model'
   const shortId = c.record_id ? `#${c.record_id.slice(-4)}` : '—'
   return (
-    <div style={{
-      borderTop: '1px solid var(--line-2)', padding: '9px 0', cursor: 'pointer',
-    }} onClick={onToggle}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+    <div className="ai-row" onClick={onToggle}>
+      <div className="rowc">
         <span className="mono hint">{hhmm(c.ts)}</span>
-        <span style={{ fontWeight: 650 }}>{c.question || c.label || '（概述本期要点）'}</span>
+        <span className="fw-650">{c.question || c.label || '（概述本期要点）'}</span>
         {c.capability && c.capability !== 'qa' && (
           <span className="pill unsigned">{CAP_CN[c.capability] ?? c.capability}</span>
         )}
@@ -148,7 +146,7 @@ function Row({ c, open, onToggle }: { c: AiCall; open: boolean; onToggle: () => 
       </div>
 
       {open && (
-        <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="rowc8 mt-8">
           <span className="pill unsigned">问 · {CAP_CN[c.capability] ?? c.capability ?? '—'}</span>
           <span className="hint">→</span>
           {c.n_tools > 0 && (
@@ -169,7 +167,7 @@ function Row({ c, open, onToggle }: { c: AiCall; open: boolean; onToggle: () => 
           <span className="hint">→</span>
           <span className="pill ok">校验 · 盾 {c.shield.passed}/{c.shield.checked} 个数字登记</span>
           {c.fallback && (
-            <p className="hint" style={{ flexBasis: '100%', margin: '4px 0 0' }}>
+            <p className="hint basis-full">
               回落原因：{fallbackText(c.fallback)}
             </p>
           )}

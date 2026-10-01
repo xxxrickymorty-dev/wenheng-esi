@@ -356,12 +356,12 @@ export function Review({
   return (
     <>
       <div className="rv-lead">
-        <a className="hint" href={back} style={{ textDecoration: 'none' }}>← 回报告</a>
-        <span style={{ color: 'var(--line)' }}>·</span>
+        <a className="hint no-underline" href={back} >← 回报告</a>
+        <span className="ink-line">·</span>
         <h2 className="h-sec h-lg ml-4">
           <Icon name="seal" size={22} />审核 · 试排报告
         </h2>
-        {doubtN > 0 && <span className="hint" style={{ color: 'var(--gold-ink)', fontWeight: 650 }}>存疑 {doubtN} 处</span>}
+        {doubtN > 0 && <span className="hint gold-650">存疑 {doubtN} 处</span>}
       </div>
 
       {!isAdmin && (
@@ -469,7 +469,7 @@ export function Review({
             {/* ------- 报告里的空 ------- */}
             <section className="card rv-card">
               <h3><Icon name="list" size={19} />报告里的空
-                <span className="hint" style={{ fontWeight: 400, marginLeft: 'auto' }}>
+                <span className="hint fw-400 ml-auto">
                   {nLeft > 0 ? `还剩 ${nLeft} 处` : '已填齐'}{doubtN > 0 ? ` · 存疑 ${doubtN} 处` : ''}
                 </span>
               </h3>
@@ -494,7 +494,7 @@ export function Review({
               {nField === 0 ? (
                 <p className="hint mt-8">
                   没有要填的——可直接签单。
-                  <button type="button" className="btn" style={{ marginLeft: 10, padding: '4px 12px', fontSize: 13 }}
+                  <button type="button" className="btn ml-10 pad-4-12 fs-13" 
                           onClick={jumpToSign}>去签单 ↓</button>
                 </p>
               ) : fieldsShown.length === 0 ? (
@@ -532,10 +532,10 @@ export function Review({
                 </>
               )}
               {wbNote && (
-                <p className="hint" style={{ color: 'var(--bad)' }}>
+                <p className="hint ink-bad">
                   {wbNote}
                   {!wbNote.includes('权限') && (
-                    <button type="button" className="btn" style={{ marginLeft: 10, padding: '3px 10px', fontSize: 13 }}
+                    <button type="button" className="btn ml-10 pad-3-10 fs-13" 
                             onClick={() => { void refreshWb().catch(() => setWbNote('填写记录还是读不到——稍后再试。')) }}>
                       重新读取
                     </button>

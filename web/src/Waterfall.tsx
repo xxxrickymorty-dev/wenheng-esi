@@ -52,7 +52,7 @@ export function WaterfallRows({ rows, totalSec, running, summary }: {
         <p className="hint mt-10" data-src="backend">{summary.detail}</p>
       )}
       {closedOrphan && (
-        <p className="hint" style={{ marginTop: 8, fontSize: 13.5 }}>
+        <p className="hint mt-8 fs-135">
           * 这一步记录不齐，耗时仅供参考。
         </p>
       )}
@@ -96,7 +96,7 @@ export function Waterfall({ jobId }: { jobId: string }) {
   if (gone) return null
 
   return (
-    <div style={{ marginTop: 18, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
+    <div className="mt-18 divider-top">
       <h3 className="fs-15">任务瀑布（各步耗时）</h3>
 
       {loading ? (

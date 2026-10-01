@@ -813,6 +813,65 @@ a{color:inherit}
 .btn-xs{padding:4px 10px;font-size:13.5px}
 .row-end{display:flex;gap:8px;align-items:center;margin-left:auto}
 .serif-prose{margin:0;font-family:var(--serif);font-size:17.5px;line-height:1.9}
+/* 第三批（2026-10-01）：值族工具类 + 组件类，收掉最后一批静态内联。
+   规则见 web/AGENTS.md 第 4 条：新增静态样式先翻这里，没有再添。 */
+.m-b-8{margin:0 0 8px}.m-b-10{margin:0 0 10px}
+.mx-4{margin:0 4px}.mx-6{margin:0 6px}
+.mt-16{margin-top:16px}.mt-22{margin-top:22px}.mt-26{margin-top:26px}
+.my-14-10{margin:14px 0 10px}
+.mx-card-22{margin:0 24px 22px}
+.pt-22{padding-top:22px}.pb-12{padding-bottom:12px}
+.pad-1-9{padding:1px 9px}.pad-3-10{padding:3px 10px}.pad-4-12{padding:4px 12px}
+.pad-10-14{padding:10px 14px}.pad-14-18{padding:14px 18px}.pad-18-22{padding:18px 22px}
+.pad-20-22-18{padding:20px 22px 18px}.pad-18-20-6{padding:18px 20px 6px}.pad-12-0-2{padding:12px 0 2px}
+.pad-card-foot2{padding:0 24px 20px}
+.fold-lead{padding:10px 18px 0;font-size:13.5px}
+.fs-125{font-size:12.5px}.fs-155{font-size:15.5px}.fs-20{font-size:20px}.fs-21{font-size:21px}.fs-25{font-size:25px}
+.w-52{width:52px}.w-90{width:90px}.w-200{width:200px}.w-210{width:210px}.w-230{width:230px}
+.w-12p{width:12%}.w-22p{width:22%}.w-26p{width:26%}
+.minw-160{min-width:160px}.minw-190{min-width:190px}.minw-260{min-width:260px}
+.op-55{opacity:.55}
+.fw-400{font-weight:400}.fw-650{font-weight:650}
+.flex-1{flex:1}
+.basis-full{flex-basis:100%;margin:4px 0 0}
+.rowc{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rowc8{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.roww{display:flex;gap:8px;flex-wrap:wrap}
+.rowc12{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.flex-g10{display:flex;gap:10px}
+.baseline{display:flex;align-items:baseline}
+.baseline-row{display:flex;align-items:baseline;gap:10px}
+.ink{color:var(--ink)}.ink-2{color:var(--ink-2)}.ink-line{color:var(--line)}.ink-bad{color:var(--bad)}
+.ok-text{color:var(--ok)}
+.gold-650{color:var(--gold-ink);font-weight:650}.gold-15{color:var(--gold-ink);font-size:15px}
+.warn-650{color:var(--warn);font-weight:650}.warn-border{border-color:var(--warn);color:var(--warn)}
+.note-warn{margin-top:6px;color:var(--warn)}.note-bad{margin-top:6px;color:var(--bad)}
+.bg-zhu{background:var(--zhu)}
+.sw-gold{box-shadow:inset 0 0 0 2px var(--gold)}.sw-line{box-shadow:inset 0 0 0 2px var(--line)}
+.chip-round{padding:6px 12px;border-radius:999px;font-size:13px}
+.chip-gold{padding:3px 9px;border-radius:999px;background:var(--gold-soft);color:var(--gold-ink);font-size:12px;font-weight:650}
+.panel-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;background:var(--panel);border:1px solid var(--line-2);border-radius:10px}
+.wb-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:13px;border-top:1px solid var(--line-2)}
+.grid-dim{display:grid;gap:4px;color:var(--ink-3);font-size:13px}
+.mono-16{font-family:var(--mono);font-size:16px}
+.lead-155{margin:9px 0 14px;color:var(--ink-2);font-size:15.5px}
+.nowrap{white-space:nowrap}.no-underline{text-decoration:none}
+.cursor-p{cursor:pointer}.list-none{list-style:none}
+.abs{position:absolute}.rel-ib{position:relative;display:inline-block}
+.divider-top{border-top:1px solid var(--line);padding-top:14px}
+.lh-19{line-height:1.9}
+.btn-lite{padding:5px 12px;font-size:13px}.btn-md{padding:7px 14px;font-size:14px}
+.an-pop{position:absolute;z-index:30;left:0;top:calc(100% + 6px);width:300px;padding:10px 12px;font-size:13px;line-height:1.7;font-family:var(--sans);font-weight:400;color:var(--ink-2);display:block}
+.an-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px dashed var(--line-2)}
+.an-snippet{margin-top:10px;border:1px solid var(--line-2);border-radius:10px;background:var(--panel);padding:6px 12px}
+.an-list{margin:6px 0;padding-left:20px}
+.an-list2{margin:10px 0 0;padding-left:20px;line-height:1.9}
+.an-footer{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line-2)}
+.ai-row{border-top:1px solid var(--line-2);padding:9px 0;cursor:pointer}
+.rd-head{padding:0 18px 8px;letter-spacing:.2em}
+.rd-sep{margin:12px 18px 0;border-top:1px solid var(--line);padding-top:10px}
+.gal-img{width:100%;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel)}
+.rp-inline{display:inline-block;max-width:150px;white-space:normal;text-align:right}
 
 /* 减动效（2026-10-01）：主工作区此前没有适配；库房各自已有。
    循环脉冲、进度条过渡、平滑滚动、悬停位移在系统「减少动态效果」下一并停。 */

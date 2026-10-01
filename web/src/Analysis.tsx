@@ -46,7 +46,7 @@ function NumberedText({ text, sources }: { text: string; sources: Source[] }) {
       if (m.index > last) nodes.push(text.slice(last, m.index))
       const src = sources[idx - 1]
       nodes.push(
-        <span key={`n${k}`} style={{ position: 'relative', display: 'inline-block' }}>
+        <span key={`n${k}`} className="rel-ib">
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setOpen(open === idx ? null : idx) }}
@@ -61,15 +61,10 @@ function NumberedText({ text, sources }: { text: string; sources: Source[] }) {
           </button>
           {open === idx && src && (
             <span
-              className="card"
-              style={{
-                position: 'absolute', zIndex: 30, left: 0, top: 'calc(100% + 6px)',
-                width: 300, padding: '10px 12px', fontSize: 13, lineHeight: 1.7,
-                fontFamily: 'var(--sans)', fontWeight: 400, color: 'var(--ink-2)',
-                display: 'block',
-              }}
+              className="card an-pop"
+              
             >
-              <b style={{ color: 'var(--ink)' }}>{src.label}</b>
+              <b className="ink">{src.label}</b>
               <br />
               {src.detail}
               <span className="hint"> · 台账数字</span>
@@ -147,8 +142,8 @@ export function Analysis({ period }: { period: string | null }) {
           <span className="tag ml-6">{period ?? '（选择期次）'}</span>
           {qa && (
             <button
-              className="btn"
-              style={{ marginLeft: 'auto', padding: '5px 12px', fontSize: 13 }}
+              className="btn ml-auto btn-lite"
+              
               disabled={qaBusy}
               title="管理员可关闭问答；关闭后只留一行说明，分析台其余不受影响"
               onClick={() => toggleQa(!qa.enabled)}
@@ -168,7 +163,7 @@ export function Analysis({ period }: { period: string | null }) {
         ) : (
           <>
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+            <div className="flex-g10 mt-14">
               <input
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
@@ -186,13 +181,13 @@ export function Analysis({ period }: { period: string | null }) {
               </button>
             </div>
 
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
+            <div className="rowc8 mt-10">
               <span className="hint">试试：</span>
               {['哪些学科离前 1% 最近？', '前 1% 学科有几门？'].map((q) => (
                 <button
                   key={q}
-                  className="btn"
-                  style={{ borderRadius: 999, padding: '6px 12px', fontSize: 13 }}
+                  className="btn chip-round"
+                  
                   disabled={!period || busy}
                   onClick={() => run(q)}
                 >
@@ -207,9 +202,8 @@ export function Analysis({ period }: { period: string | null }) {
       </section>
 
       {data && (
-        <section className="card" style={{ marginTop: 16, padding: '18px 22px' }}>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap',
-                        paddingBottom: 10, borderBottom: '1px dashed var(--line-2)' }}>
+        <section className="card mt-16 pad-18-22">
+          <div className="an-toolbar">
             <span className="pill signed">问</span>
             <b>{question || '（概述本期要点）'}</b>
             <span className="row-end">
@@ -221,11 +215,11 @@ export function Analysis({ period }: { period: string | null }) {
           </div>
 
           {data.receipts.length > 0 && (
-            <details style={{ marginTop: 10, border: '1px solid var(--line-2)', borderRadius: 10, background: 'var(--panel)', padding: '6px 12px' }}>
-              <summary className="hint" style={{ cursor: 'pointer' }}>
+            <details className="an-snippet">
+              <summary className="hint cursor-p">
                 本次调度 {data.receipts.length} 个工具（只读）
               </summary>
-              <ul className="hint" style={{ margin: '6px 0 6px', paddingLeft: 20 }}>
+              <ul className="hint an-list">
                 {data.receipts.map((r, i) => (
                   <li key={i}>{r.label}：{r.summary}（{r.elapsed_ms} 毫秒）</li>
                 ))}
@@ -234,7 +228,7 @@ export function Analysis({ period }: { period: string | null }) {
           )}
 
           {data.notice && (
-            <div className="pending-box" style={{ marginTop: 10, padding: '10px 14px' }}>
+            <div className="pending-box mt-10 pad-10-14">
               {data.notice}
               {data.mode === 'rule' && (
                 <button className="btn ml-12" disabled={busy}
@@ -244,17 +238,16 @@ export function Analysis({ period }: { period: string | null }) {
             </div>
           )}
 
-          <div style={{ padding: '12px 0 2px' }}>
+          <div className="pad-12-0-2">
             {showRule
               ? <p className="serif-prose">{data.rule_text}</p>
               : <NumberedText text={data.text} sources={data.sources} />}
           </div>
 
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap',
-                        marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--line-2)' }}>
+          <div className="an-footer">
             <span className="pill ok">盾 · {data.shield.passed} 个数字已登记</span>
             <span className="hint">点数字看来源</span>
-            <span style={{ flex: 1 }} />
+            <span className="flex-1" />
             {data.rule_text && data.rule_text !== data.text && (
               <button className="btn fs-13" onClick={() => setShowRule(!showRule)}>
                 {showRule ? '看模型版' : '看规则版'}
@@ -264,11 +257,11 @@ export function Analysis({ period }: { period: string | null }) {
         </section>
       )}
 
-      <details className="card" style={{ marginTop: 16, padding: '14px 18px' }}>
-        <summary className="hint" style={{ cursor: 'pointer', listStyle: 'none' }}>
+      <details className="card mt-16 pad-14-18">
+        <summary className="hint cursor-p list-none">
           说明 · 口径与来源
         </summary>
-        <ul className="hint" style={{ margin: '10px 0 0', paddingLeft: 20, lineHeight: 1.9 }}>
+        <ul className="hint an-list2">
           <li>数字只来自馆员维护的台账与派生产物；问答不改动任何数据。</li>
           <li>大模型只组织语言、不计算数字；数字由工具读取并逐一登记（防护盾），校验不过整段回退规则版。</li>
           <li>提问会带一小段数据摘要发送到云端大模型，仅用于生成回答；管理员可整体关闭；记录存运行档案，可回放。</li>

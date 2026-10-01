@@ -248,12 +248,12 @@ export function Acquire({ period }: { period: string | null }) {
               <div className="big">{opRunning && op ? `${OP_CN[op.kind ?? ''] ?? '正在执行'}……` : title}</div>
               <div className="sub">{opRunning && op ? (op.note || '进度会自动更新，可以留在这一页') : sub}</div>
               {op?.state === 'failed' && (
-                <div className="hint" style={{ marginTop: 6, color: 'var(--bad)' }}>
+                <div className="hint note-bad">
                   上一步没有完成：{op.note || '原因见取数状态'}。
                 </div>
               )}
               {needsTool && !canRun && !opRunning && (
-                <div className="hint" style={{ marginTop: 6, color: 'var(--warn)' }}>{toolMissing}</div>
+                <div className="hint note-warn">{toolMissing}</div>
               )}
             </div>
             <div className="cta">
@@ -315,7 +315,7 @@ export function Acquire({ period }: { period: string | null }) {
                 <p className="hint m-0">还没有取数记录。</p>
               ) : (
                 <>
-                  <p className="hint" style={{ margin: '0 0 10px' }}>没通过的可在本组重试。</p>
+                  <p className="hint m-b-10">没通过的可在本组重试。</p>
                   <div className="aq-groups">
                     {groups.map((g, i) => <GroupCard key={g.id ?? i} g={g} />)}
                   </div>
@@ -329,7 +329,7 @@ export function Acquire({ period }: { period: string | null }) {
             <details className="fold">
               <summary>本期新增列核对表<span className="sm">{reviewSheets.length} 张表</span></summary>
               <div className="fold-inner">
-                <p className="hint" style={{ margin: '0 0 8px' }}>
+                <p className="hint m-b-8">
                   将并入主台账 {period} 列；历史列不动。
                 </p>
                 <div className="tablewrap">

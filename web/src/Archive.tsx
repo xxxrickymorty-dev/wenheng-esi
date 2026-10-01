@@ -85,7 +85,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
           <section className="card pad-card-lg">
             <h1 className="fs-24">运行档案 · {d.period}</h1>
             <p className="fc-lead">这次运行的完整回放：状态、用时、审计、产物。</p>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 14 }}>
+            <div className="rowc mt-14">
               {!!job.status && (
                 <span className={`pill ${job.status === 'completed' ? 'signed' : job.status === 'warned' ? 'stale' : 'unsigned'}`}>
                   {STATUS_CN[String(job.status)] ?? String(job.status)}
@@ -109,7 +109,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
             <details className="fold">
               <summary>任务凭据<span className="sm">任务号 · 发起人 · 输入</span></summary>
               <div className="fold-inner">
-                <p className="mono" style={{ fontSize: 13, margin: 0, lineHeight: 1.9 }}>
+                <p className="mono fs-13 m-0 lh-19">
                   {d.job_id && <>任务号 {d.job_id}<br /></>}
                   {!!job.input && <>台账输入 {str(job.input)}<br /></>}
                   {!!job.actor && <>发起人 {str(job.actor)}</>}
@@ -211,8 +211,8 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                   <div className="tablewrap mt-10">
                     <table className="ar-tbl">
                       <thead>
-                        <tr><th style={{ width: '22%' }}>审计项</th><th style={{ width: '12%' }}>判定</th>
-                          <th style={{ width: '26%' }}>实测</th><th>说明</th></tr>
+                        <tr><th className="w-22p">审计项</th><th className="w-12p">判定</th>
+                          <th className="w-26p">实测</th><th>说明</th></tr>
                       </thead>
                       <tbody>
                         {auditBad.map((it) => (

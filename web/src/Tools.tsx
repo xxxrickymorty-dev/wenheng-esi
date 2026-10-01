@@ -185,7 +185,7 @@ export function Tools({
   }
 
   return (
-    <section className="card" id="tools" style={{ marginTop: 18, padding: '18px 22px' }}>
+    <section className="card mt-18 pad-18-22" id="tools">
       {actionsLocked && actionLockReason && (
         <p className="hint mt-8">{actionLockReason}</p>
       )}
@@ -207,7 +207,7 @@ export function Tools({
           </div>
 
           {/* 产物下载 + 重跑 */}
-          <h3 style={{ fontSize: 15, marginTop: 18 }}>产物与重跑</h3>
+          <h3 className="fs-15 mt-18">产物与重跑</h3>
           {!period ? (
             <p className="hint mt-4">先选一期。</p>
           ) : currentView?.note ? (

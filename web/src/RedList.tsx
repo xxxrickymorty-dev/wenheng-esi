@@ -50,7 +50,7 @@ export function RedList({ period }: { period: string | null }) {
         <Icon name="list" size={21} />红色件清单
         {rows && <span className="hint hint-num">共 {rows.length} 条</span>}
         {period && (
-          <a className="btn line" style={{ marginLeft: 'auto', padding: '7px 14px', fontSize: 14 }}
+          <a className="btn line ml-auto btn-md" 
              href={`/p/${encodeURIComponent(period)}/download/red_list`}>下载 Markdown</a>
         )}
       </h2>
@@ -78,7 +78,7 @@ export function RedList({ period }: { period: string | null }) {
             <table>
               <thead>
                 <tr>
-                  <th style={{ width: 52 }}>#</th>
+                  <th className="w-52">#</th>
                   <th className="w-170">位置</th>
                   <th>修改前</th>
                   <th>修改后</th>
@@ -89,7 +89,7 @@ export function RedList({ period }: { period: string | null }) {
                 {shown.map((r, i) => (
                   <tr key={`${r.group}-${r.label}-${i}`}>
                     <td className="mono ink-3">{i + 1}</td>
-                    <td className="mono" style={{ fontSize: 13.5, color: 'var(--ink-3)', whiteSpace: 'nowrap' }}>
+                    <td className="mono fs-135 ink-3 nowrap">
                       {r.label || r.group}
                     </td>
                     <td className="ink-3">{r.old}</td>

@@ -81,8 +81,7 @@ export function Charts({ period }: { period: string | null }) {
                 {list.map((c) => (
                   <a key={c.url} href={c.url} target="_blank" rel="noreferrer" title={`${g} / ${c.name}`}>
                     <img src={c.url} alt={c.name} loading="lazy" decoding="async"
-                         style={{ width: '100%', border: '1px solid var(--line)',
-                                  borderRadius: 'var(--r-sm)', background: 'var(--panel)' }} />
+                         className="gal-img" />
                     <span className="hint fs-13">{c.name}</span>
                   </a>
                 ))}
