@@ -186,8 +186,7 @@ def run_charts(out_dir):
     # 预测图失败不拦停（母版原生图表保留 + 红色件预警），由步骤内部降级。
     import steps
     try:
-        res = steps.charts(steps.StepCtx(out_dir=out_dir,
-                                         period=steps.period_from_dir(out_dir)))
+        res = steps.charts(steps.StepCtx(out_dir=out_dir))
     except steps.StepError as e:
         raise ToolError(e.code, e.message, **e.detail) from e
     return {"ok": True, **res.data}

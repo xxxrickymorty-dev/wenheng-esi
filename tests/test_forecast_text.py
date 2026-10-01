@@ -13,6 +13,9 @@ for p in (str(REPO), str(REPO / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
+import pytest                                                   # noqa: E402
+
+import period                                                   # noqa: E402
 import sentences                                                # noqa: E402
 
 #: 与 out/202609 同型的最小 facts（只保留 build() 会读的键）
@@ -107,3 +110,14 @@ class Test段落组装:
         ]}
         texts = sentences.build(facts, "202609", "202607", forecast=FORECAST)
         assert "【手工：趋势描述】" in texts["forecast_p1"]
+
+    def test_封面期号走period唯一口径(self):
+        """期号数学只允许在 `period.issue_of` 一处；句层不许再写第二套。"""
+        assert sentences.build(FACTS, "202607", "202605")["cover_issue"] \
+            == "2026年第4期（总第38期）"
+        assert sentences.build(FACTS, "202601", "202511")["cover_issue"] \
+            == "2026年第1期（总第35期）"
+
+    def test_早于锚点不给假期号(self):
+        with pytest.raises(period.PeriodBeforeAnchor):
+            sentences.build(FACTS, "201903", "201901")

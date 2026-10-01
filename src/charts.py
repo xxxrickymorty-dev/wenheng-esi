@@ -32,6 +32,8 @@ from matplotlib.patches import Rectangle
 from matplotlib.transforms import Bbox
 from PIL import Image, ImageChops
 
+import period as period_mod
+
 try:
     from parse_ledger import DISCIPLINES_CN
 except ImportError:  # 直接运行时的兜底
@@ -1165,9 +1167,11 @@ def chart_overview_1pct_v0(cites, threshold, out_png, period):
 
 
 def _infer_end_period(ledger_dir):
-    """未显式指定当期时从产物目录名推断（out/202607、out/202605_复现 → 202607 / 202605）。"""
-    m = re.search(r"(\d{6})", pathlib.Path(ledger_dir).name)
-    return m.group(1) if m else None
+    """未显式指定当期时从产物目录名推断（out/202607、out/202605_复现 → 202607 / 202605）。
+
+    口径唯一在 `period.from_dir`（前缀锚定，带后缀只在这里归一）。
+    """
+    return period_mod.from_dir(ledger_dir)
 
 
 def render_all(ledger_dir="out/202607", out_dir=None, n_periods=7, end_period=None):
@@ -1185,8 +1189,7 @@ def render_all(ledger_dir="out/202607", out_dir=None, n_periods=7, end_period=No
     longdf = pd.read_parquet(ledger_dir / "ledger_long.parquet")
     q1q4 = pd.read_parquet(ledger_dir / "wide" / "q1q4.parquet")
 
-    all_p = [str(c) for c in w["total_cites"].columns if str(c).isdigit()]
-    filled = [c for c in all_p if w["total_cites"][c].notna().any()]
+    filled = period_mod.filled({"total_cites": w["total_cites"]})
     end_period = end_period or _infer_end_period(ledger_dir)
     if end_period:
         filled = [c for c in filled if c <= str(end_period)]

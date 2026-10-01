@@ -7,6 +7,8 @@
   trend 学校发展趋势段    situation 学科发展态势段（22 学科升降统计）
   cover_issue 封面期数     cover_month 封面年月
 """
+import period as period_mod
+
 from parse_ledger import DISCIPLINES_CN
 
 MANUAL = "【手工：{}】"
@@ -178,8 +180,8 @@ def build(facts, period, prev, college=None, forecast=None):
                  f"分别上升{c1:.2f}%和{c2:.2f}%；{cn_name(d3['discipline'])}继续呈现排名下降现象，"
                  f"本期较{prev_m}月下降了{d3['drop']}位，国内排名为{d3['rank']}。")
 
-    idx = (int(period[:4]) - 2026) * 6 + (int(period[4:]) + 1) // 2
-    total = 38 + idx - 4
+    # 期号口径唯一在 `period.issue_of`：早于锚点直接报错，不给封面算假期号。
+    idx, total = period_mod.issue_of(period)
 
     ne1, ne2 = p1["top2_not_entered"][0], p1["top2_not_entered"][1]
     top3_paren = "、".join(f"{cn_name(d)}（{c}篇）"

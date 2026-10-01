@@ -27,6 +27,7 @@ from docx.table import Table  # noqa: E402
 import charts  # noqa: E402
 import college_stats  # noqa: E402
 import compute  # noqa: E402
+import period as period_mod  # noqa: E402
 import sentences  # noqa: E402
 from parse_ledger import DISCIPLINES_CN, norm_disc_cn  # noqa: E402
 
@@ -985,22 +986,13 @@ def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026�
     ledger_dir = pathlib.Path(ledger_dir)
 
     wide, ni, nc, thr = compute.load_wide(str(ledger_dir))
-    filled = [c for c in wide["total_cites"].columns if wide["total_cites"][c].notna().any()]
 
-    # 期次三级优先：显式 override > **目录名**（out/202605_复现 → 202605）> 台账最新有效期的自动推断。
-    # 目录名这一级不可省：复现历史期次时若不认目录名，大表/概述会被填成**台账当期**数据，
-    # 产出「文件名是第 3 期、内容是第 4 期」的错稿（2026-09-18 回测发现）。
-    # `period_override` 只在 rerun_history 传；`run_pipeline` / `agent/tools.run_docx` 都不传，
-    # 那两处以前对复现目录会静默产错稿。charts._infer_end_period 早就有这级兜底，此处对齐。
-    m = re.search(r"(\d{6})", ledger_dir.name)
-    dir_period = m.group(1) if m else None
-    if period_override:
-        period = period_override
-    elif dir_period and dir_period in filled:
-        period = dir_period
-    else:
-        period, _ = compute.detect_periods(wide)
-    prev = [c for c in filled if c < period][-1]
+    # 期次三级优先（override > 目录名[须是有效期次] > 台账最新）与上期口径都在
+    # `period.resolve` 一处。目录名这一级不可省：复现历史期次时若不认目录名，
+    # 大表/概述会被填成**台账当期**数据，产出「文件名是第 3 期、内容是第 4 期」的
+    # 错稿（2026-09-18 回测发现）——修好后别再各写一套。
+    issue = period_mod.resolve(wide, out_dir=ledger_dir, period_override=period_override)
+    period, prev = issue.period, issue.prev
 
     out_path = pathlib.Path(out_path or ledger_dir / f"报告初稿_{period}（试排）.docx")
     prev_month = str(int(prev[4:]))

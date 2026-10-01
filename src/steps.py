@@ -22,8 +22,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import re
 from dataclasses import dataclass, field
+
+import period as period_mod
 
 
 class StepError(RuntimeError):
@@ -70,14 +71,11 @@ def choice_snapshot_from_env() -> str | None:
     return os.environ.get("WENHENG_FORECAST_CHOICE_SNAPSHOT") or None
 
 
-def period_from_dir(out_dir) -> str:
-    """从产物目录名拿期次（`out/202605` / `out/202605_复现` 都认）。"""
-    m = re.search(r"(\d{6})", pathlib.Path(out_dir).name)
-    return m.group(1) if m else ""
-
-
 def _period_of(ctx: StepCtx) -> str:
-    return ctx.period_override or ctx.period or period_from_dir(ctx.out_dir)
+    """期次取 override > 显式 > 目录名（口径在 `period`，这里只是取值顺序）。"""
+    if ctx.period_override or ctx.period:
+        return ctx.period_override or ctx.period
+    return period_mod.from_dir(ctx.out_dir) or ""
 
 
 # ================================================================== parse

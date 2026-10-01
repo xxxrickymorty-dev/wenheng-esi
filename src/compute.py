@@ -35,12 +35,10 @@ def load_wide(out_dir="out/202607"):
 
 
 def detect_periods(wide):
-    """当前期 = 总被引表最后一个有数据的期次；上期 = 其前一个（自动跟随台账更新）。"""
-    tc = wide["total_cites"]
-    filled = [c for c in tc.columns if tc[c].notna().any()]
-    if len(filled) < 2:
-        raise ValueError("台账被引表有效期次不足 2 期，无法定位当期")
-    return filled[-1], filled[-2]
+    """当前期/上期。口径唯一在 `period.detect`（本函数保名兼容调用方）。"""
+    import period                                              # noqa: PLC0415
+
+    return period.detect(wide)
 
 
 def fmt_rank_change(rank_now, rank_prev):
