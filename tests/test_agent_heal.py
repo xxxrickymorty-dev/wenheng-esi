@@ -670,8 +670,8 @@ def test_解析没过时不撤上版成品(monkeypatch, tmp_path):
 def test_成品撤下与解析落盘的顺序被钉住():
     """结构性防回归。这两处的顺序是这次修的 bug 本体，翻回去不抛异常、只静默产错报告：
 
-      · `run_parse` 必须先过断言闸再 `write_outputs`；
-      · `run_pipeline` 必须在 `write_outputs` 之前撤成品。
+      · `steps.parse` 必须先过断言闸再 `write_outputs`（probe 也必须在落盘前返回）；
+      · `run_pipeline` 必须按「先探期次（不落盘）→ 撤成品 → 再正式解析」的顺序。
     """
     repo = pathlib.Path(__file__).resolve().parents[1]
     steps_src = (repo / "src" / "steps.py").read_text(encoding="utf-8")
@@ -682,10 +682,15 @@ def test_成品撤下与解析落盘的顺序被钉住():
         "parse 又开始先落盘后判断言了 —— 失败运行会在产物目录留半成品"
 
     pipe_src = (repo / "src" / "run_pipeline.py").read_text(encoding="utf-8")
-    assert "quarantine_final_products" in pipe_src, \
+    quar_call = "parse_ledger.quarantine_final_products("
+    assert quar_call in pipe_src, \
         "直跑路径（演示站主路径）漏了撤成品这一步"
-    assert pipe_src.index("quarantine_final_products") < pipe_src.index("write_outputs("), \
-        "直跑路径必须先撤成品再写盘"
+    # 顺序：先探期次（probe 不落盘）→ 撤成品 → 正式解析（这一步才写盘）。
+    probe_at = pipe_src.index("probe=True")
+    quar_at = pipe_src.index(quar_call)
+    parse_at = pipe_src.index("strict_assertions=False")
+    assert probe_at < quar_at < parse_at, \
+        "直跑路径必须先探期次、再撤成品、最后才正式解析写盘"
 
 
 def test_成品定义只有一处_两路径不各写一套():

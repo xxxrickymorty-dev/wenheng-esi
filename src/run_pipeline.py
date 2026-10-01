@@ -19,14 +19,9 @@ import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
-import pandas as pd  # noqa: E402
-
-import charts  # noqa: E402
-import compute  # noqa: E402
-import fill_docx  # noqa: E402
-import forecast  # noqa: E402
 import forecast_choice  # noqa: E402
 import parse_ledger  # noqa: E402
+import steps  # noqa: E402
 
 
 def _emit(step, name, status, detail=""):
@@ -60,9 +55,14 @@ def _write_diagnosis(led, P, out_dir, report, n_fail, run_dir=None):
     except Exception:                                          # noqa: BLE001
         return None                       # 没接 agent 层就不附，不影响出稿
     fails = [m for s, m in report if s == "FAIL"]
+    diag = dict(led.get("diagnostics") or {})
+    # 步骤已带回 unmatched_names 就直接用；老调用方（合成 led）走兼容计算。
+    unmatched = diag.get("unmatched_names")
+    if unmatched is None:
+        unmatched = parse_ledger.unmatched_name_hints(led)
     failure = {"code": "ASSERT_FAIL", "message": f"{n_fail} 项断言未过",
                "period": P, "fails": fails,
-               "diagnostics": {"unmatched_names": parse_ledger.unmatched_name_hints(led)}}
+               "diagnostics": {"unmatched_names": unmatched}}
     try:
         # run_dir 为 None 时 heal 不落 repair.yaml（传空串会写进 cwd，别传）
         repair = heal.attempt(failure, {"run_dir": str(run_dir) if run_dir else None})
@@ -103,16 +103,11 @@ def _apply_forecast_choice_snapshot(snapshot_path, out_dir, output_period):
 
 
 def _cleanup_failed_forecast(out_dir, report_forecast=None):
-    """预测模块可用时隔离残留；模块导入失败时直接清除，防止带旧图出稿。"""
-    if report_forecast is not None:
-        report_forecast.quarantine_forecast_artifacts(out_dir)
-        return
-    out_dir = pathlib.Path(out_dir)
-    (out_dir / "forecast_charts.json").unlink(missing_ok=True)
-    overview = out_dir / "charts" / "_overview"
-    if overview.is_dir():
-        for png in overview.glob("forecast_*.png"):
-            png.unlink(missing_ok=True)
+    """预测模块可用时隔离残留；模块导入失败时直接清除，防止带旧图出稿。
+
+    实现已收进 `steps.cleanup_failed_forecast`（编排/直跑同口径）；这里留名兼容旧调用。
+    """
+    return steps.cleanup_failed_forecast(out_dir, report_forecast)
 
 
 def _ledger_guard(before, after):
@@ -135,27 +130,26 @@ def main(ledger_path, out_root="out", run_backtest=False):
 
     _emit("parse", "解析台账", "start", f"输入：{p.name}")
     print(f"[1/5] 解析台账: {p}")
-    ledger = parse_ledger.load_ledger(p)
-    ok, report, missing = parse_ledger.run_assertions(ledger)
-    P, Q = parse_ledger._latest_periods(ledger)
-    out_dir = pathlib.Path(out_root) / P
 
-    # 当期算出来了 = 本次确定要改写 out/<当期>/ —— 先把上版成品撤下来。
+    # 先探期次（probe 不落盘）：探出来 = 本次确定要改写 out/<当期>/ —— 先把上版成品撤下来。
     # 不撤的话，一次在 charts / docx 步失败的运行会留下「本次的新表格 + 上一次的旧报告」：
     # 看板照旧展示那份旧报告，对勘本拿旧槽位配新格子，页面上没有任何警报。
     # （实现与 agent/flow.py 共用 parse_ledger.quarantine_final_products，别各写一套。）
+    probe = steps.parse(steps.StepCtx(ledger=str(p), probe=True))
+    P, Q = probe.data["period"], probe.data["prev"]
+    out_dir = pathlib.Path(out_root) / P
     _run_dir = (pathlib.Path(os.environ["WENHENG_PROGRESS_FILE"]).parent
                 if os.environ.get("WENHENG_PROGRESS_FILE") else None)
     moved = parse_ledger.quarantine_final_products(out_dir, _run_dir)
     if moved:
         _emit("parse", "解析台账", "warn", f"已撤下上版成品：{'、'.join(moved)}")
 
-    parse_ledger.write_outputs(ledger, p, out_dir)
-    snapshot_path = os.environ.get("WENHENG_FORECAST_CHOICE_SNAPSHOT")
-    applied_choice_path = None
-    if snapshot_path:
-        applied_choice_path = _apply_forecast_choice_snapshot(snapshot_path, out_dir, P)
-    n_fail = sum(1 for s, _ in report if s == "FAIL")
+    # 正式解析：直跑路径 strict=False（带病出稿），断言结论/失败清单由步骤带回。
+    parse_res = steps.parse(steps.StepCtx(ledger=str(p), out_dir=str(out_dir),
+                                          strict_assertions=False))
+    ok = bool(parse_res.data["assertions_ok"])
+    missing = parse_res.data.get("missing") or []
+    n_fail = len(parse_res.data.get("fails") or [])
     print(f"      当期={P} 上期={Q} 断言={'全绿' if ok else f'{n_fail} 项 FAIL'} → {out_dir}")
     _emit("parse", "解析台账", "done" if ok else "warn",
           f"当期 {P} · 上期 {Q} · 机器断言 {'全绿' if ok else f'{n_fail} 项未过（已附诊断报告）'}")
@@ -164,26 +158,32 @@ def main(ledger_path, out_root="out", run_backtest=False):
     # 人工至少还能拿到这份"哪里脏"的清单，而不是只剩一句 exit code。
     diag_path = None
     if not ok:
-        diag_path = _write_diagnosis(ledger, P, out_dir, report, n_fail, _run_dir)
+        led_face = {"wide": {}, "diagnostics": dict(parse_res.data.get("diagnostics") or {})}
+        diag_path = _write_diagnosis(led_face, P, out_dir,
+                                     [("FAIL", m) for m in parse_res.data.get("fails") or []],
+                                     n_fail, _run_dir)
         if diag_path:
             print(f"      诊断报告 → {diag_path}")
 
     _emit("compute", "计算大表与概述", "start")
     print("[2/5] 计算大表 + 概述事实")
-    wide, ni, nc, thr = compute.load_wide(str(out_dir))
-    t2 = compute.build_table2(wide, ni, nc, thr, P, Q)
-    t2.to_csv(out_dir / "table2.csv", index=False, encoding="utf-8-sig")
-    ynd = pd.read_parquet(f"{out_dir}/wide/ynd_rank.parquet").set_index("period")
-    top_total = pd.read_parquet(f"{out_dir}/wide/top_total.parquet").set_index("period")["total"].to_dict()
-    facts = compute.build_overview(wide, ni, nc, thr, ynd, top_total, P, Q)
-    (out_dir / "overview_facts.json").write_text(
-        json.dumps(facts, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
+    try:
+        steps.compute(steps.StepCtx(out_dir=str(out_dir), period=P))
+    except steps.StepError as e:
+        print(f"      失败（{e.code}）：{e.message}")
+        _emit("compute", "计算大表与概述", "failed", f"{e.code}：{e.message}")
+        return 1
     print(f"      大表 22×11 → {out_dir}/table2.csv；概述事实 → overview_facts.json")
     _emit("compute", "计算大表与概述", "done", "大表 22 学科 × 11 列 · 概述 11 项数字事实")
 
     _emit("forecast", "预测回测", "start")
     print("[3/5] 预测回测（InCites+差值校准）")
-    mape = forecast.main(ledger_dir=str(out_dir), out_dir=str(out_dir))
+    try:
+        mape = float(steps.forecast(steps.StepCtx(out_dir=str(out_dir))).data["mape_overall"])
+    except steps.StepError as e:
+        print(f"      失败（{e.code}）：{e.message}")
+        _emit("forecast", "预测回测", "failed", f"{e.code}：{e.message}")
+        return 1
     print(f"      整体 MAPE = {mape:.2f}%（验收线 <5%）")
     _emit("forecast", "预测回测", "done", f"整体 MAPE {mape:.2f}%（验收线 <5%）")
 
@@ -220,24 +220,25 @@ def main(ledger_path, out_root="out", run_backtest=False):
 
     _emit("charts", "图表渲染", "start")
     print("[4/5] 图表渲染（16 学科 × 6 + 概览 3）")
-    # n_periods=7 + end_period=当期：与人工原件口径一致（近一年 7 期）。
-    # 只靠 render_all 内部推断也能工作，这里显式传是为了让主入口一眼可见窗口。
-    n_charts = charts.render_all(ledger_dir=str(out_dir), n_periods=7, end_period=P)
-    n_fc = 0
-    fc_warnings = []
-    forecast_module = None
+    # n_periods=7 + end_period=当期：与人工原件口径一致（近一年 7 期）；
+    # 预测选模快照（job 冻结）由 steps.charts 一处应用——直跑与编排不再两说。
     try:
-        import report_forecast as forecast_module               # noqa: PLC0415
-        n_fc = forecast_module.generate(out_dir, choice_path=applied_choice_path)
-        fc_warnings = forecast_module.load_warnings(out_dir)
+        chres = steps.charts(steps.StepCtx(
+            out_dir=str(out_dir), period=P,
+            choice_path=steps.choice_snapshot_from_env()))
+    except steps.StepError as e:
+        print(f"      失败（{e.code}）：{e.message}")
+        _emit("charts", "图表渲染", "failed", f"{e.code}：{e.message}")
+        return 1
+    n_charts = chres.data["n_charts"]
+    n_fc = chres.data["n_forecast_charts"]
+    fc_warnings = chres.data["forecast_warnings"]
+    if n_fc:
+        import report_forecast                                   # noqa: PLC0415
         print(f"      预测图：{n_fc} 张（按预测台选模，未选＝V1 推荐；"
-              f"递推 {forecast_module.HORIZON} 期）")
-        for w in fc_warnings:
-            print(f"      ⚠ {w}")
-    except Exception as e:                                       # noqa: BLE001
-        # 即使预测模块的清理遇到瞬时文件错误，也不要让 fill_docx 读到旧图/元数据。
-        _cleanup_failed_forecast(out_dir, forecast_module)
-        print(f"      预测图：跳过（{type(e).__name__}: {e}）")
+              f"递推 {report_forecast.HORIZON} 期）")
+    for w in (*chres.warnings, *fc_warnings):
+        print(f"      ⚠ {w}")
     if fc_warnings:
         _emit("charts", "预测选模", "warn", "；".join(fc_warnings))
     _emit("charts", "图表渲染", "done",
@@ -245,7 +246,12 @@ def main(ledger_path, out_root="out", run_backtest=False):
 
     _emit("docx", "母版替换", "start")
     print("[5/5] 母版替换 → 报告初稿")
-    docx_path = fill_docx.main(ledger_dir=str(out_dir))
+    try:
+        docx_path = steps.docx(steps.StepCtx(out_dir=str(out_dir))).data["docx"]
+    except steps.StepError as e:
+        print(f"      失败（{e.code}）：{e.message}")
+        _emit("docx", "母版替换", "failed", f"{e.code}：{e.message}")
+        return 1
     _emit("docx", "母版替换", "done", f"报告初稿 + 红色件清单：{pathlib.Path(docx_path).name}")
 
     # 原件只读护栏：直跑路径过去只有测试级守卫，这里补运行期检查。

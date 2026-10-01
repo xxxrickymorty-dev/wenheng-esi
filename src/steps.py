@@ -115,7 +115,7 @@ def parse(ctx: StepCtx) -> StepResult:
     out = pathlib.Path(ctx.out_dir)
     parse_ledger.write_outputs(led, p, out)
     data = {"out_dir": str(out), "period": P, "prev": Q, "assertions_ok": ok,
-            "n_checks": len(report),
+            "n_checks": len(report), "missing": list(_missing or []),
             "overlay_applied": sorted(ctx.overlay) if ctx.overlay else []}
     if not ok:
         data.update({"fails": fails, "diagnostics": diag})
