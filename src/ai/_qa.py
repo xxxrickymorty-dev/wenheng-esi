@@ -23,7 +23,7 @@ import re
 
 from . import _shield
 from ._draft import RuleDraft
-from ._types import Source
+from ._numbered import NumberedText
 
 #: 检索词里没有信息量的常见词（切词后过滤）。
 _STOP = {"什么", "多少", "几门", "几个", "哪些", "这期", "本期", "请问", "怎么", "如何",
@@ -141,19 +141,17 @@ def _fact_index(facts: dict) -> dict:
     return idx
 
 
-def _source_for(facts_idx: dict, num: str, index: int, section_key: str) -> Source:
+def _source_fields(facts_idx: dict, num: str, section_key: str) -> dict:
+    """证据段数字的来源字段（编号/value 由 `NumberedText` 统一写入）。"""
     paths = facts_idx.get(num) or []
     if len(paths) == 1 and len(num) >= 2:
         path = paths[0]
-        return Source(index=index, kind="product",
-                      pointer=f"overview_facts.json#{path}",
-                      label=f"本期事实 · {path}",
-                      detail="overview_facts.json（本期派生事实）", value=num)
-    return Source(index=index, kind="product",
-                  pointer=f"overview_facts.json#{section_key}",
-                  label=f"本期事实 · 段落 {section_key}",
-                  detail="数字属于该段正文；未唯一对应到 facts 字段（或由句骨架推导）",
-                  value=num)
+        return {"kind": "product", "pointer": f"overview_facts.json#{path}",
+                "label": f"本期事实 · {path}",
+                "detail": "overview_facts.json（本期派生事实）"}
+    return {"kind": "product", "pointer": f"overview_facts.json#{section_key}",
+            "label": f"本期事实 · 段落 {section_key}",
+            "detail": "数字属于该段正文；未唯一对应到 facts 字段（或由句骨架推导）"}
 
 
 def build(root, period, payload) -> RuleDraft:
@@ -179,37 +177,31 @@ def build(root, period, payload) -> RuleDraft:
     # 证据＝命中段优先 + 其余段（模型可自找）；规则版＝命中段。
     ordered = list(matched) + [k for k in texts_all if k not in matched]
     chunks = [question] + [texts_all[k] for k in ordered]
-    protected, mapping = _shield.protect_chunks(chunks)
+    matched_set = set(matched)
+    facts_idx = _fact_index(facts)
 
-    task = protected[0]
+    def register(ti, _pos, value):
+        """问句数字不是「本期事实」；证据段数字是（越题判定据此）。"""
+        if ti == 0:
+            return {"kind": "fact", "pointer": "question", "label": "来自提问",
+                    "detail": "提问中出现的数字", "fact": False}
+        fields = _source_fields(facts_idx, value, ordered[ti - 1])
+        fields["fact"] = True
+        return fields
+
+    # 编号与来源注册同一遍：手写 k 计数器与运行期 assert 就此删除。
+    number = NumberedText.of(chunks, register)
+
+    task = number.texts[0]
     if not task:                          # 无问句：给模型一个明确的概述任务
         task = "（未提供具体问题）请依据参考数据概述本期要点。"
 
-    matched_set = set(matched)
-    facts_idx = _fact_index(facts)
-    sources = []
-    fact_keys = set()
-    k = 0
-    for ci, chunk in enumerate(chunks):
-        for m in _shield.NUM.finditer(chunk):
-            k += 1
-            if ci == 0:
-                sources.append(Source(index=k, kind="fact", pointer="question",
-                                      label="来自提问", detail="提问中出现的数字",
-                                      value=m.group(0)))
-            else:
-                sources.append(_source_for(facts_idx, m.group(0), k, ordered[ci - 1]))
-                fact_keys.add(k)
-    assert k == len(mapping), "编号与保护映射必须对齐"
-
     return RuleDraft(
         rule_text="\n\n".join(texts_all[k] for k in matched),
-        rule_protected="\n\n".join(protected[1 + i]
+        number=number,
+        rule_protected="\n\n".join(number.texts[1 + i]
                                    for i, key in enumerate(ordered) if key in matched_set),
-        mapping=mapping,
-        sources=tuple(sources),
         parts=(),
         task=task,
-        evidence=tuple(protected[1:]),
-        fact_keys=frozenset(fact_keys),
+        evidence=tuple(number.texts[1:]),
     )

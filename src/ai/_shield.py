@@ -15,9 +15,33 @@ NUM = local_llm.NUM
 MARK = local_llm.MARK
 
 
+def numberize(texts) -> tuple[list[str], dict, list]:
+    """编号的**唯一实现**：多段文本共用一套连续编号。
+
+    返回 `(受保护各段, mapping, hits)`；`hits = [(段号, 段内位置, k, 原值), ...]`
+    按扫描序——调用方在同一遍里同时拿到「哪一段哪一个数」与「它是第几号」，
+    来源注册不再需要第二次扫描、也不再靠顺序约定对齐。
+    `protect` / `protect_chunks` 都是它的薄委托。
+    """
+    mapping: dict = {}
+    pieces: list[str] = []
+    hits: list = []
+
+    def repl(m, ti):
+        k = str(len(mapping) + 1)
+        mapping[k] = m.group(0)
+        hits.append((ti, m.start(), k, m.group(0)))
+        return f"[[{k}]]"
+
+    for ti, text in enumerate(texts):
+        pieces.append(NUM.sub(lambda m, ti=ti: repl(m, ti), str(text)))
+    return pieces, mapping, hits
+
+
 def protect(text: str) -> tuple[str, dict]:
     """数字 → [[n]]；返回 (受保护文本, 映射 {k: 原值})。"""
-    return local_llm.protect(text)
+    pieces, mapping, _hits = numberize([text])
+    return pieces[0], mapping
 
 
 def protect_chunks(chunks) -> tuple[list[str], dict]:
@@ -26,17 +50,8 @@ def protect_chunks(chunks) -> tuple[list[str], dict]:
     与逐段 protect 的区别：编号跨段连续、共用一张 mapping——「第 k 个数字 ↔
     sources[k]」在多段场景下依然成立；分段只影响外发面拼装，不影响还原。
     """
-    mapping: dict = {}
-    out = []
-
-    def repl(m):
-        k = str(len(mapping) + 1)
-        mapping[k] = m.group(0)
-        return f"[[{k}]]"
-
-    for chunk in chunks:
-        out.append(NUM.sub(repl, str(chunk)))
-    return out, mapping
+    pieces, mapping, _hits = numberize(chunks)
+    return pieces, mapping
 
 
 def restore(text: str, mapping: dict) -> str:

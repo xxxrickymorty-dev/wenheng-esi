@@ -193,8 +193,6 @@ def build(root, period, payload) -> RuleDraft:                # noqa: ARG001
         _remind_part(red, ordered_classes, missing),
         _boundary_part(),
     ]
-    rule_text, protected, mapping, sources = assemble_parts(parts)
-    return RuleDraft(rule_text=rule_text, rule_protected=protected, mapping=mapping,
-                     sources=sources, parts=tuple(parts), task=TASK,
-                     evidence=(protected,),
-                     fact_keys=frozenset(range(1, len(mapping) + 1)))
+    rule_text, number = assemble_parts(parts)
+    return RuleDraft(rule_text=rule_text, number=number, rule_protected=number.protected,
+                     parts=tuple(parts), task=TASK, evidence=(number.protected,))

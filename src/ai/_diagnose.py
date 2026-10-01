@@ -252,10 +252,9 @@ def build(root, period, payload):                              # noqa: ARG001
     from ._draft import RuleDraft                                  # noqa: PLC0415
 
     parts = _parts(payload.get("failure"), payload.get("repair"))
-    rule_text, protected_text, mapping, sources = assemble_parts(parts, attribute)
-    return RuleDraft(rule_text=rule_text, rule_protected=protected_text, mapping=mapping,
-                     sources=sources, parts=tuple(parts), task=protected_text,
-                     evidence=(), fact_keys=frozenset(range(1, len(mapping) + 1)))
+    rule_text, number = assemble_parts(parts, attribute)
+    return RuleDraft(rule_text=rule_text, number=number, rule_protected=number.protected,
+                     parts=tuple(parts), task=number.protected, evidence=())
 
 
 def _parts(failure, repair=None):

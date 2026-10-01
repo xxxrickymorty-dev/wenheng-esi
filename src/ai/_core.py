@@ -13,7 +13,7 @@ import re
 import time
 
 from . import _attempt, _config, _diagnose, _qa, _record, _review, _runtime, _settings, _shield, _specs
-from ._types import Answer, CapabilityInfo, Segment, Shield, Source
+from ._types import Answer, CapabilityInfo, Segment, Shield
 
 log = logging.getLogger("wenheng.ai")
 
@@ -161,24 +161,6 @@ def _system_for(cap_id: str) -> str:
     return _SYSTEM_PROMPTS.get(cap_id, SYSTEM_PROMPT)
 
 
-def _cited_facts(candidate: str, draft) -> set:
-    """候选里用到的、属于「本期事实」的占位编号（qa/review 越题判定）。"""
-    return {int(k) for k in _shield.MARK.findall(candidate or "")} & set(draft.fact_keys)
-
-
-def _used_sources(protected_text, draft) -> tuple:
-    """按**出现次序**把受保护文本里的标记映射回来源（第 k 个数字 ↔ sources[k]）。"""
-    by_index = {s.index: s for s in draft.sources}
-    out = []
-    for i, m in enumerate(_shield.MARK.finditer(protected_text or ""), start=1):
-        s = by_index.get(int(m.group(1)))
-        if s is None:
-            continue
-        out.append(Source(index=i, kind=s.kind, pointer=s.pointer, label=s.label,
-                          detail=s.detail, value=s.value))
-    return tuple(out)
-
-
 # ---------------------------------------------------------------- 对外（由 __init__ 再导出）
 def run(capability, period, *, payload=None, actor=None) -> Answer:
     """执行一次能力调用。同步阻塞；运行期故障不抛（以 Answer 表达）。"""
@@ -233,7 +215,8 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
             fallback_detail = ({k: len(v) for k, v in (outcome.detail or {}).items()}
                                if outcome.detail else None)
             notice = outcome.notice
-        elif cap.id in ("qa", "review") and not _cited_facts(outcome.candidate_protected, draft):
+        elif (cap.id in ("qa", "review")
+              and not draft.number.cited_facts(outcome.candidate_protected)):
             # 越题：自由作答型未引用本期事实，按政策回落（政策留在能力口）。
             fallback = _attempt.FallbackReason.OFF_TOPIC
             notice = "模型作答未引用本期事实，已回退规则版。"
@@ -245,9 +228,11 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
         fallback, notice, text = (_attempt.FallbackReason.SHIELD_REJECT,
                                   "盾未过，已换无数字说明。", FLOOR_TEXT)
 
+    # 发布面→来源（不变量唯一实现在 draft.number）。⚠ 地板文案无任何占位符：
+    # 不能拿未发布的规则稿顶账，否则「第 k 个数字 ↔ sources[k]」当场破。
     published_protected = (outcome.candidate_protected if mode == "model"
-                           else draft.rule_protected)
-    used = _used_sources(published_protected, draft)
+                           else ("" if text is FLOOR_TEXT else draft.rule_protected))
+    used = draft.number.used_by(published_protected)
     shield_res = Shield(checked=len(used), passed=len(used))
     return _publish(cap, period, role, mode=mode, backend=backend, notice=notice,
                     text=text, rule_text=draft.rule_text, sources=used, parts=draft.parts,

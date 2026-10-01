@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ._types import Source
+from ._numbered import NumberedText
 
 
 @dataclass
@@ -32,43 +32,53 @@ def fixed(kind: str, pointer: str, label: str = "", detail: str = "") -> dict:
 
 
 def assemble_parts(parts, attr=None):
-    """parts → (rule_text, rule_protected, mapping, sources)。
+    """parts → `(rule_text, NumberedText)`。
 
-    数字编号按整文顺序（与 `_shield.protect` 一致）；每个数字登记一条 Source。
+    编号与来源注册在同一遍扫描里完成（不变量唯一实现见 `_numbered`）：
+    `attr(kind, pos, value)` 解析非 fixed 行的来源，返回 `(kind, pointer, label, detail)`。
     """
-    from . import _shield                                          # noqa: PLC0415
+    lines = [ln for p in parts for ln in p.lines]
+    kinds = [k for p in parts for k in p.kinds]
 
-    rule_text = "\n".join(ln for p in parts for ln in p.lines)
-    protected, mapping = _shield.protect(rule_text)
-    sources = []
-    for part in parts:
-        for line, kind in zip(part.lines, part.kinds):
-            for m in _shield.NUM.finditer(line):
-                k = str(len(sources) + 1)
-                if kind.get("src") == "fixed":
-                    skind, pointer = kind["kind"], kind["pointer"]
-                    label, detail = kind.get("label", ""), kind.get("detail", "")
-                else:
-                    skind, pointer, label, detail = attr(kind, m.start(), m.group(0))
-                sources.append(Source(index=int(k), kind=skind, pointer=pointer,
-                                      label=label, detail=detail,
-                                      value=mapping.get(k, m.group(0))))
-    return rule_text, protected, mapping, tuple(sources)
+    def register(ti, pos, value):
+        kind = kinds[ti] if ti < len(kinds) else {}
+        if kind.get("src") == "fixed":
+            return {"kind": kind["kind"], "pointer": kind["pointer"],
+                    "label": kind.get("label", ""), "detail": kind.get("detail", ""),
+                    "fact": True}
+        if attr is None:
+            raise ValueError("非 fixed 行缺少来源解析器（attr）")
+        skind, pointer, label, detail = attr(kind, pos, value)
+        return {"kind": skind, "pointer": pointer, "label": label,
+                "detail": detail, "fact": True}
+
+    number = NumberedText.of(lines, register)
+    return "\n".join(lines), number
 
 
 @dataclass(frozen=True)
 class RuleDraft:
-    """- `rule_protected` 与 `mapping` 编号对齐；模型版用同一张 mapping 还原。
-    - `task` / `evidence` 是**外发面**（已占位化）；`rule_protected` 只给 RuleBrain
-      （回落终点）用，外发适配器不发它。
-    - `fact_keys`：属于「本期事实」的编号（qa/review 越题判定：模型版至少引用 1 条）。
+    """- `number` 是不变量所有者：`mapping / sources / fact_keys` 都由它出。
+    - `rule_protected` 是规则的**发布面**：diagnose/review 为整篇保护面；
+      qa 只含命中段（模型版用同一张 mapping 还原、RuleBrain 也吃它）。
+    - `task` / `evidence` 是**外发面**（已占位化）。
     """
 
     rule_text: str
+    number: NumberedText
     rule_protected: str
-    mapping: dict
-    sources: tuple[Source, ...]
     parts: tuple = ()
     task: str = ""
     evidence: tuple[str, ...] = ()
-    fact_keys: frozenset = field(default_factory=frozenset)
+
+    @property
+    def mapping(self) -> dict:
+        return self.number.mapping
+
+    @property
+    def sources(self) -> tuple:
+        return self.number.sources
+
+    @property
+    def fact_keys(self) -> frozenset:
+        return self.number.fact_keys
