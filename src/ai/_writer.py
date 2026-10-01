@@ -107,7 +107,7 @@ def _record_call(res, *, period: str, label: str, fallback: str | None,
     rid = _record.Recorder.for_period(period).call(
         capability="polish", mode=mode, backend=backend,
         fallback=fallback, shield=res.shield, text_protected=res.protected,
-        question=label,
+        label=label,                    # 块名走 label；question 只留给真问句
         egress_items=int(res.egress.get("items") or 0),
         egress_bytes=int(res.egress.get("bytes") or 0),
         elapsed_ms=res.elapsed_ms)

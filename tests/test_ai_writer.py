@@ -60,7 +60,7 @@ class Test写作位:
         assert r["fallback"] is None and r["backend"] == "scripted"
         assert r["egress"]["bytes"] > 0
         assert r["shield"]["checked"] > 0 and r["shield"]["checked"] == r["shield"]["passed"]
-        assert r["question"] == "flexible/single_trend/概况"
+        assert r["label"] == "flexible/single_trend/概况" and r["question"] == ""
 
     def test_事实进盾_外发零数字原值(self, tmp_path, monkeypatch):
         monkeypatch.setenv(_writer.ENV_ON, "1")

@@ -1524,6 +1524,7 @@ async def api_period_ai_calls(request: Request, period: str, limit: int = 100):
                 "shield": r.get("shield") or {"checked": 0, "passed": 0},
                 "n_tools": len(r.get("tools") or []),
                 "question": r.get("question") or "",
+                "label": r.get("label") or "",
                 "elapsed_ms": int(r.get("elapsed_ms") or 0),
             })
     limit = max(1, min(int(limit or 100), 500))

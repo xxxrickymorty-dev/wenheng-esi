@@ -136,7 +136,7 @@ function Row({ c, open, onToggle }: { c: AiCall; open: boolean; onToggle: () => 
     }} onClick={onToggle}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <span className="mono hint">{hhmm(c.ts)}</span>
-        <span style={{ fontWeight: 650 }}>{c.question || '（概述本期要点）'}</span>
+        <span style={{ fontWeight: 650 }}>{c.question || c.label || '（概述本期要点）'}</span>
         {c.capability && c.capability !== 'qa' && (
           <span className="pill unsigned">{CAP_CN[c.capability] ?? c.capability}</span>
         )}

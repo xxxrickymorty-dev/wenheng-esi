@@ -381,6 +381,7 @@ export type AiCall = {
   shield: { checked: number; passed: number }
   n_tools: number
   question: string
+  label: string
   elapsed_ms: number
 }
 export type AiCalls = {
