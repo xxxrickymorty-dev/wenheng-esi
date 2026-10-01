@@ -38,12 +38,15 @@ def rewrite(text: str, *, keep=("【手工：", "待验证假设")) -> str:
         return text
     if not enabled():
         return text
-    from . import _llm                                             # noqa: PLC0415
+    from . import _attempt                                         # noqa: PLC0415
 
-    out, info = _llm.think(text, system=SYSTEM, ability="polish", anchored=True)
-    if out is None:
-        LOG.warning("润色未生效（%s），原样返回", info.get("reason"))
+    res = _attempt.attempt(text, system=SYSTEM, ability="polish", anchored=True)
+    if not res.attempted:
+        return text                                                # 规则部署：原文照发
+    if res.text is None:
+        LOG.warning("润色未生效（%s），原样返回", res.reason)
         return text
+    out = res.text
     for tag in keep:
         if tag in text and tag not in out:
             return text

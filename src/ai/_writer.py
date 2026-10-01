@@ -16,9 +16,8 @@ from __future__ import annotations
 
 import logging
 import os
-import time
 
-from . import _llm, _record, _shield
+from . import _attempt, _record
 
 LOG = logging.getLogger(__name__)
 
@@ -77,47 +76,40 @@ def write(text: str, *, facts=(), keep=DEFAULT_KEEP, period: str = "", label: st
     if fl:
         task += "\n\n【事实摘要】\n" + "\n".join(f"- {x}" for x in fl)
 
-    t0 = time.time()
-    out, info = _llm.think(task, system=SYSTEM, ability="polish", anchored=True)
-    reason = info.get("reason")
+    res = _attempt.attempt(task, system=SYSTEM, ability="polish", anchored=True)
     fallback: str | None = None
     result = text
-    if out is None:
-        if reason != "rule":                                  # rule 不是失败，是部署事实
-            fallback = str(reason or "brain_error:unknown")
+    if not res.attempted:
+        pass                                                  # 规则部署：原文照发，不跑 keep/veto
+    elif res.text is None:
+        fallback = str(res.reason or _attempt.brain_error("unknown"))
     else:
-        result = out
+        result = res.text
         for tag in keep:
             if tag in text and tag not in result:             # 该保留的标记被弄坏
                 fallback, result = "keep_broken", text
                 break
         if fallback is None and veto is not None and veto(result):
             fallback, result = "guard_reject", text
-    _record_call(info, task, period=period, label=label, fallback=fallback, t0=t0)
+    # mode 单义：只有模型文本真的被采用才算 model（失败/保底一律 rule）。
+    mode = "model" if (res.attempted and res.text is not None and fallback is None) else "rule"
+    backend = res.backend if res.attempted else "rule"
+    _record_call(res, period=period, label=label, fallback=fallback,
+                 mode=mode, backend=backend)
     if status is not None:
-        status.update({"mode": "rule" if info.get("reason") == "rule" else "model",
-                       "backend": str(info.get("backend") or ""),
-                       "fallback": fallback})
+        status.update({"mode": mode, "backend": backend, "fallback": fallback})
     return result
 
 
-def _record_call(info: dict, task: str, *, period: str, label: str,
-                 fallback: str | None, t0: float) -> None:
+def _record_call(res, *, period: str, label: str, fallback: str | None,
+                 mode: str, backend: str) -> None:
     """记一条写作位调用（票 03 口径）。记不上只写进程日志，不影响产出。"""
-    mode = "rule" if info.get("reason") == "rule" else "model"
-    protected = info.get("protected")
-    if protected is None:
-        protected = _shield.protect(task)[0]
-    shielded = dict(info.get("shield") or {})
     rid = _record.Recorder.for_period(period).call(
-        capability="polish", mode=mode,
-        backend=str(info.get("backend") or ("rule" if mode == "rule" else "")),
-        fallback=fallback,
-        shield={"checked": int(shielded.get("checked") or 0),
-                "passed": int(shielded.get("passed") or 0)},
-        text_protected=protected, question=label,
-        egress_items=int(info.get("egress_items") or 0),
-        egress_bytes=int(info.get("egress_bytes") or 0),
-        elapsed_ms=int((time.time() - t0) * 1000))
+        capability="polish", mode=mode, backend=backend,
+        fallback=fallback, shield=res.shield, text_protected=res.protected,
+        question=label,
+        egress_items=int(res.egress.get("items") or 0),
+        egress_bytes=int(res.egress.get("bytes") or 0),
+        elapsed_ms=res.elapsed_ms)
     if rid is None:
         LOG.warning("写作位留痕失败：label=%s period=%s（产出不受影响）", label, period or "-")

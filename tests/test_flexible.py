@@ -519,7 +519,7 @@ class Test语言不死板:
 class Test润色位是可选的:
     """润色只改措辞、不改数字；不可用/失败一律原样返回（演示站永远走这条）。
 
-    D6（2026-09-29）后经 `ai._llm` 内部口出网：测试用 `ai.using(brain=…)` 注入替身。
+    D6（2026-09-29）后经 `ai._attempt` 模型边界出网：测试用 `ai.using(brain=…)` 注入替身。
     """
 
     def test_默认关闭(self, monkeypatch):

@@ -154,15 +154,17 @@ def _model_prompt(src: DataSource, intent: str, target=None) -> str:
 
 
 def _brain_plan(src, intent, target=None):
-    """经 AI 层内部口问云端（盾保护 + 校验）。返回 `(规划 JSON | None, 原因, 后端名)`。"""
-    from ai import _llm                                             # noqa: PLC0415
+    """经 AI 层模型边界问云端（盾保护 + 校验）。返回 `(规划 JSON | None, 原因, 后端名)`。"""
+    from ai import _attempt                                         # noqa: PLC0415
 
-    out, info = _llm.think(_model_prompt(src, intent, target), system=_PLAN_SYSTEM,
+    res = _attempt.attempt(_model_prompt(src, intent, target), system=_PLAN_SYSTEM,
                            ability="flex-plan", anchored=False,
                            allow_substrings=tuple(sp.KINDS))
-    if out is None:
-        return None, info.get("reason"), ""
-    return _parse_json(out), None, str(info.get("backend") or "model")
+    if not res.attempted:
+        return None, None, ""                                       # 规则部署：用规则规划
+    if res.text is None:
+        return None, res.reason, ""
+    return _parse_json(res.text), None, res.backend
 
 
 def _parse_json(raw: str) -> dict | None:
@@ -290,7 +292,7 @@ def build(src: DataSource, intent: str = "single_trend", *,
 
     got, reason, backend_name = _brain_plan(src, intent, target)
     if got is None:
-        if reason not in (None, "rule"):
+        if reason is not None:                        # 规则部署 reason=None（不是失败）
             fallback["fallback_reason"] = "云端模型不可用或未通过校验，已回退规则规划"
         return fallback
     plan = _validate_plan(src, got, intent, fallback, target)
