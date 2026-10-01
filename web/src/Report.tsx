@@ -175,9 +175,9 @@ function PeriodData({ period }: { period: string | null }) {
     <>
       <div style={{ paddingTop: 22 }}>
         <div>
-          <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <h2 className="h-sec">
             <Icon name="list" size={21} />对勘 · 红色件
-            <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>
+            <span className="hint hint-num">
               共 {col.length} 处 · 待人工 {manual.length} 处
             </span>
           </h2>
@@ -213,7 +213,7 @@ function PeriodData({ period }: { period: string | null }) {
             </div>
           </details>
           {/* 逐格溯源入口（P1）：报告里的值 ↔ 台账现场重读 */}
-          <a className="entry" style={{ marginTop: 12 }}
+          <a className="entry mt-12" 
              href={`/app/?view=trace${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
             <span>
               <span className="t">逐格溯源</span>
@@ -225,7 +225,7 @@ function PeriodData({ period }: { period: string | null }) {
 
         {/* 页边朱批：待人工的那几处——每条带「去补」，直落审核台对应空位（票 14） */}
         <div>
-          <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <h2 className="h-sec">
             <Icon name="alert" size={20} />待你补 / 拍板
             {manual.length > 0 && (
               <a className="hint" style={{ marginLeft: 'auto', color: 'var(--zhu)', fontWeight: 650, textDecoration: 'none' }}
@@ -235,11 +235,11 @@ function PeriodData({ period }: { period: string | null }) {
             )}
           </h2>
           {manual.length === 0 ? (
-            <div className="pending-box" style={{ marginTop: 12 }}>
+            <div className="pending-box mt-12">
               这一期没有标「待人工」的地方。
             </div>
           ) : (
-            <div style={{ marginTop: 12 }}>
+            <div className="mt-12">
               {manual.slice(0, 8).map((r) => (
                 <div className="margin-note" key={r.section + r.loc}>
                   <div className="tag">朱批 · {r.loc}</div>
@@ -265,14 +265,14 @@ function PeriodData({ period }: { period: string | null }) {
       </div>
 
       <section className="card" style={{ marginTop: 22, padding: '20px 22px' }}>
-        <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <h2 className="h-sec">
           <Icon name="chart" size={21} />图册
-          <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>
+          <span className="hint hint-num">
             共 {charts.length} 张
           </span>
         </h2>
         {/* 图册全量入口（P0-4）：以前这里指老站 /p/<期次>/charts，现已改指新站自己的图册页 */}
-        <a className="entry" style={{ marginTop: 12 }}
+        <a className="entry mt-12" 
            href={`/app/?view=charts${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
           <span>
             <span className="t">打开图册</span>
@@ -472,7 +472,7 @@ export function Report({
       <PeriodData period={current} />
 
       <section className="card" style={{ marginTop: 26, padding: '20px 22px' }}>
-        <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <h2 className="h-sec">
           <Icon name="doc" size={21} />本期产物
         </h2>
         <Artifacts period={current} guest={guest} approvalStatus={row?.status ?? 'unsigned'} refreshToken={refreshToken} />

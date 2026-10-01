@@ -252,9 +252,9 @@ export function Flexible({ period }: { period: string | null }) {
 
   return (
     <section className="card" style={{ marginTop: 18, padding: '22px 24px' }}>
-      <h2 style={{ fontSize: 22, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <h2 className="h-sec h-lg">
         <Icon name="doc" size={22} />灵活报告 · 第二条产线
-        <span className="tag" style={{ marginLeft: 6 }}>{period ?? '（选择期次）'}</span>
+        <span className="tag ml-6">{period ?? '（选择期次）'}</span>
         <span className="pill stale">内部参考件</span>
       </h2>
 
@@ -292,9 +292,9 @@ export function Flexible({ period }: { period: string | null }) {
         </div>
       )}
 
-      {note && <div className="pending-box" style={{ marginTop: 12 }}>{note}</div>}
+      {note && <div className="pending-box mt-12">{note}</div>}
       {d && !busy && !d.body_html && !msgs.length && (
-        <p className="hint" style={{ marginTop: 12 }}>还没有出稿——点「生成分析稿」开始。</p>
+        <p className="hint mt-12">还没有出稿——点「生成分析稿」开始。</p>
       )}
 
       <div className="fx-log" ref={logRef} onClick={onLogClick} onKeyDown={onLogKeyDown}>

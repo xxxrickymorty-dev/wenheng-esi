@@ -187,10 +187,10 @@ export function Tools({
   return (
     <section className="card" id="tools" style={{ marginTop: 18, padding: '18px 22px' }}>
       {actionsLocked && actionLockReason && (
-        <p className="hint" style={{ marginTop: 8 }}>{actionLockReason}</p>
+        <p className="hint mt-8">{actionLockReason}</p>
       )}
 
-      <div style={{ marginTop: 12 }}>
+      <div className="mt-12">
         <div>
           {/* 上传新台账（老站同一套口径：期次 6 位必填） */}
           <h3 style={{ fontSize: 15 }}>上传新台账</h3>
@@ -209,15 +209,15 @@ export function Tools({
           {/* 产物下载 + 重跑 */}
           <h3 style={{ fontSize: 15, marginTop: 18 }}>产物与重跑</h3>
           {!period ? (
-            <p className="hint" style={{ marginTop: 4 }}>先选一期。</p>
+            <p className="hint mt-4">先选一期。</p>
           ) : currentView?.note ? (
-            <p className="hint" style={{ marginTop: 4 }}>{currentView.note}</p>
+            <p className="hint mt-4">{currentView.note}</p>
           ) : !currentView || currentView.loading ? (
-            <p className="hint" style={{ marginTop: 4 }}>正在读取……</p>
+            <p className="hint mt-4">正在读取……</p>
           ) : !currentView.artifacts || currentView.artifacts.length === 0 ? (
-            <p className="hint" style={{ marginTop: 4 }}>还没有产物，先「开始生成」。</p>
+            <p className="hint mt-4">还没有产物，先「开始生成」。</p>
           ) : (
-            <div className="chips" style={{ marginTop: 8 }}>
+            <div className="chips mt-8">
               {currentView.artifacts.map((a) => (
                 a.key === 'report' && approvalStatus !== 'signed'
                   ? <span className="pill" key={a.key} role="note" aria-disabled="true">
@@ -242,7 +242,7 @@ export function Tools({
             </div>
           )}
           {period && points.length > 0 && (
-            <div className="toolbar" style={{ marginTop: 10 }}>
+            <div className="toolbar mt-10">
               <span className="hint">旧版留档</span>
               <select value={point} onChange={(e) => setPoint(e.target.value)} aria-label="选择要回滚到的版本"
                       style={{ maxWidth: 220, padding: '7px 10px', border: '1px solid var(--line)',
@@ -264,7 +264,7 @@ export function Tools({
       {period && effJobId && <Waterfall jobId={effJobId} />}
 
       {period && (
-        <p className="hint" style={{ marginTop: 10 }}>
+        <p className="hint mt-10">
           <a href={`/app/?view=archive&period=${encodeURIComponent(period)}`}>
             看这一期运行档案 →
           </a>

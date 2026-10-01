@@ -64,7 +64,7 @@ function LiveRun({ run, approvalStatus }: { run: Run; approvalStatus: string }) 
       </div>
       {open && (
         <div className="runlog">
-          <p className="hint" style={{ marginBottom: 8 }}>
+          <p className="hint mb-8">
             最新进度：{run.last ?? '（进度还未返回…）'}
           </p>
           <pre>{run.lines.length ? run.lines.join('\n') : '（暂无日志行）'}</pre>
@@ -243,17 +243,17 @@ function ModelSummary({
       )}
 
       {!meta ? (
-        <div className="pending-box" style={{ marginTop: 12 }}>{metaError || '正在读取模型清单……'}</div>
+        <div className="pending-box mt-12">{metaError || '正在读取模型清单……'}</div>
       ) : !state?.loaded ? (
-        <div className="pending-box" style={{ marginTop: 12 }}>
+        <div className="pending-box mt-12">
           {state?.error || (state?.loading ? '正在读取本期已保存的选择……' : '尚未读取本期已保存的选择。')}
-          {state?.error && <button type="button" className="btn" onClick={onReload} style={{ marginLeft: 10 }}>重新读取</button>}
+          {state?.error && <button type="button" className="btn ml-10" onClick={onReload} >重新读取</button>}
         </div>
       ) : !meta?.available ? (
-        <div className="pending-box" style={{ marginTop: 12 }}>预测数据随报告一起产出——先完成一次生成，这里就会出现候选学科。</div>
+        <div className="pending-box mt-12">预测数据随报告一起产出——先完成一次生成，这里就会出现候选学科。</div>
       ) : (
         <>
-          <div className="tablewrap" style={{ marginTop: 12 }}>
+          <div className="tablewrap mt-12">
             <table>
               <thead><tr><th>潜力学科</th><th>V1 推荐</th><th>本期已选</th><th>模型说明</th></tr></thead>
               <tbody>
@@ -437,7 +437,7 @@ export function PeriodsPanel({ periods, selected, healthy, onPick }: {
   return (
     <details className="fold">
       <summary>全部期次<span className="sm">共 {periods.length} 期</span></summary>
-      <section className="card tablewrap" style={{ marginTop: 18 }}>
+      <section className="card tablewrap mt-18">
         <table className="periods">
           <thead>
             <tr>

@@ -49,7 +49,7 @@ export function WaterfallRows({ rows, totalSec, running, summary }: {
         })}
       </div>
       {summary?.detail && (
-        <p className="hint" data-src="backend" style={{ marginTop: 10 }}>{summary.detail}</p>
+        <p className="hint mt-10" data-src="backend">{summary.detail}</p>
       )}
       {closedOrphan && (
         <p className="hint" style={{ marginTop: 8, fontSize: 13.5 }}>
@@ -100,13 +100,13 @@ export function Waterfall({ jobId }: { jobId: string }) {
       <h3 style={{ fontSize: 15 }}>任务瀑布（各步耗时）</h3>
 
       {loading ? (
-        <p className="hint" style={{ marginTop: 6 }}>正在读取……</p>
+        <p className="hint mt-6">正在读取……</p>
       ) : missing ? (
         running
-          ? <p className="hint" style={{ marginTop: 6 }}>刚起步，记录还没写下来。</p>
-          : <div className="pending-box" style={{ marginTop: 8 }}>{missing.note || '这次运行没有留下每步记录。'}</div>
+          ? <p className="hint mt-6">刚起步，记录还没写下来。</p>
+          : <div className="pending-box mt-8">{missing.note || '这次运行没有留下每步记录。'}</div>
       ) : rows.length === 0 ? (
-        <p className="hint" style={{ marginTop: 6 }}>
+        <p className="hint mt-6">
           {running ? '运行开始后显示每一步耗时。' : '这次运行没有记录到每步耗时。'}
         </p>
       ) : (

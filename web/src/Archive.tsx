@@ -71,7 +71,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
 
   return (
     <>
-      <p className="hint" style={{ marginTop: 2 }}>
+      <p className="hint mt-2">
         <a href={`/app/?period=${period ? encodeURIComponent(period) : ''}`}>← 回生成台</a>
         {' · '}期次 <b className="mono">{period ?? '—'}</b>
       </p>
@@ -97,7 +97,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                 </span>
               )}
               {!!d.logpack_url && (
-                <a className="btn primary" href={d.logpack_url} style={{ marginLeft: 'auto' }}>
+                <a className="btn primary ml-auto" href={d.logpack_url} >
                   <Icon name="doc" size={19} />下载日志包（{d.logpack.n_files} 个文件 · {humanSize(d.logpack.bytes)}）
                 </a>
               )}
@@ -129,11 +129,11 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                 </span>
               </summary>
               <div className="fold-inner">
-                <p className="hint" style={{ marginTop: 0 }}>
+                <p className="hint mt-0">
                   数据期：ESI {acq.data_period?.esi || '—'} · InCites 截至 {acq.data_period?.incites || '—'}
                   {'；'}状态最后更新 {acq.updated_at || '—'}。
                 </p>
-                <ul className="rv-todo" style={{ marginTop: 6 }}>
+                <ul className="rv-todo mt-6">
                   {(acq.groups ?? []).map((g, i) => (
                     <li key={g.id ?? i}>
                       <span className="rv-todo-t">{g.title}</span>
@@ -153,7 +153,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
 
           {/* ===== 01 过程回放（链 + 瀑布，同一份数据只此一处；diji 票 12 合并 01/02/03） ===== */}
           <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
-            <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <h2 className="h-sec">
               <span className="fc-no">01</span>过程回放
               <span className="hint">
                 {d.replay.n} 次迁移 · {d.waterfall.length} 步
@@ -163,7 +163,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                     title="状态与每一步的耗时都来自运行档案；直跑线不产生状态流水，迁移链由任务记录合成——只含确定发生过的迁移，不臆造自愈/升级环节。">?</span>
             </h2>
             {d.replay.chain.length ? (
-              <div className="ar-chain" style={{ marginTop: 10 }}>
+              <div className="ar-chain mt-10">
                 {d.replay.chain.map((r, i) => (
                   <span className="ar-chain-node" key={i}>
                     <span>{STATUS_CN[r.from] ?? r.from}<i> → </i>{STATUS_CN[r.to] ?? r.to}</span>
@@ -172,13 +172,13 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                 ))}
               </div>
             ) : (
-              <p className="hint" style={{ marginTop: 6 }}>无迁移记录。</p>
+              <p className="hint mt-6">无迁移记录。</p>
             )}
-            <div style={{ marginTop: 12 }}>
+            <div className="mt-12">
               {d.waterfall.length ? (
                 <WaterfallRows rows={d.waterfall} totalSec={d.waterfall_total} summary={d.waterfall_summary} />
               ) : (
-                <p className="pending-box" style={{ marginTop: 8 }}>
+                <p className="pending-box mt-8">
                   {d.progress_missing
                     ? '进度记录读不到——文件可能随工作区迁移而改了位置，不是「这次运行没有记录」。'
                     : '这次运行没有留下每步记录（多半不是由演示站发起的）。'}
@@ -186,7 +186,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
               )}
             </div>
             {d.replay.synthetic && (
-              <p className="hint" data-src="backend" style={{ marginTop: 10 }}>
+              <p className="hint mt-10" data-src="backend">
                 ⚠ {d.replay.note}
               </p>
             )}
@@ -197,7 +197,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
 
           {/* ===== 03 审计结论（失败优先：只露待确认/不通过，通过项折起） ===== */}
           <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
-            <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <h2 className="h-sec">
               <span className="fc-no">03</span>审计结论
               <span className="hint">
                 {d.audit.exists
@@ -208,7 +208,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
             {d.audit.exists ? (
               <>
                 {auditBad.length ? (
-                  <div className="tablewrap" style={{ marginTop: 10 }}>
+                  <div className="tablewrap mt-10">
                     <table className="ar-tbl">
                       <thead>
                         <tr><th style={{ width: '22%' }}>审计项</th><th style={{ width: '12%' }}>判定</th>
@@ -231,10 +231,10 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                     </table>
                   </div>
                 ) : (
-                  <p className="hint" style={{ marginTop: 8 }}>全部通过。</p>
+                  <p className="hint mt-8">全部通过。</p>
                 )}
                 {auditPass.length > 0 && (
-                  <details className="fold" style={{ marginTop: 10 }}>
+                  <details className="fold mt-10">
                     <summary>已通过的 {auditPass.length} 项<span className="sm">点开看逐项实测</span></summary>
                     <div className="fold-inner">
                       <table className="ar-tbl">
@@ -252,22 +252,22 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                   </details>
                 )}
                 {!!d.audit.truth_chain && d.audit.truth_chain !== '—' && (
-                  <p className="hint" style={{ marginTop: 10 }}>
+                  <p className="hint mt-10">
                     真值链：{typeof d.audit.truth_chain === 'string' ? d.audit.truth_chain : '—'}
                   </p>
                 )}
-                <p className="hint" style={{ marginTop: 10 }}>
+                <p className="hint mt-10">
                   {d.audit.generated_at} · 耗时 {d.audit.elapsed_s} 秒
                 </p>
               </>
             ) : (
-              <p className="hint" style={{ marginTop: 8 }}>没有审计记录。</p>
+              <p className="hint mt-8">没有审计记录。</p>
             )}
           </section>
 
           {/* ===== 04 产物与日志包 ===== */}
           <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
-            <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <h2 className="h-sec">
               <span className="fc-no">04</span>产物与日志包
               <span className="hint">日志包 {d.logpack.n_files} 个文件 · {humanSize(d.logpack.bytes)}</span>
             </h2>
@@ -295,9 +295,9 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
           {/* ===== 05 / 06 运行环境与指标（折叠，票 12） ===== */}
           <details className="fold">
             <summary>运行环境与指标<span className="sm">供排查与复现</span></summary>
-            <div className="grid2" style={{ marginTop: 0 }}>
+            <div className="grid2 mt-0">
             <section className="card" style={{ padding: '20px 22px' }}>
-              <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <h2 className="h-sec">
                 <span className="fc-no">05</span>运行环境快照
               </h2>
               <dl className="ar-kv">
@@ -312,7 +312,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
             </section>
 
             <section className="card" style={{ padding: '20px 22px' }}>
-              <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <h2 className="h-sec">
                 <span className="fc-no">06</span>运行指标
               </h2>
               <dl className="ar-kv">

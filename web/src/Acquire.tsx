@@ -217,12 +217,12 @@ export function Acquire({ period }: { period: string | null }) {
 
   return (
     <>
-      <p className="hint" style={{ marginTop: 2 }}>
+      <p className="hint mt-2">
         <a href={`/app/?period=${encodeURIComponent(period)}`}>← 回生成台</a>
         {' · '}自动取数 · 期次 <b className="mono">{period}</b>
       </p>
 
-      {note && <div className="pending-box">{note}<button type="button" className="btn" style={{ marginLeft: 10 }} onClick={() => { setNote(null); load() }}>重新读取</button></div>}
+      {note && <div className="pending-box">{note}<button type="button" className="btn ml-10" onClick={() => { setNote(null); load() }}>重新读取</button></div>}
       {!state && !note && <div className="pending-box">{loading ? '正在读取取数状态……' : '还没有读到取数状态。'}</div>}
 
       {state && (
@@ -347,7 +347,7 @@ export function Acquire({ period }: { period: string | null }) {
           )}
 
           {state.updated_at && (
-            <p className="hint" style={{ marginTop: 12 }}>取数状态最后更新：{state.updated_at}</p>
+            <p className="hint mt-12">取数状态最后更新：{state.updated_at}</p>
           )}
         </>
       )}

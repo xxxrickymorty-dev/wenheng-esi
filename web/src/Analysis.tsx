@@ -142,9 +142,9 @@ export function Analysis({ period }: { period: string | null }) {
   return (
     <>
       <section className="card" style={{ marginTop: 18, padding: '22px 24px' }}>
-        <h2 style={{ fontSize: 22, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <h2 className="h-sec h-lg">
           <Icon name="chart" size={22} />问文衡
-          <span className="tag" style={{ marginLeft: 6 }}>{period ?? '（选择期次）'}</span>
+          <span className="tag ml-6">{period ?? '（选择期次）'}</span>
           {qa && (
             <button
               className="btn"
@@ -160,9 +160,9 @@ export function Analysis({ period }: { period: string | null }) {
         </h2>
 
         {closed ? (
-          <div className="pending-box" style={{ marginTop: 14 }}>
+          <div className="pending-box mt-14">
             {qa?.notice || '此功能已由管理员关闭；数据与报告不受影响。'}
-            <button className="btn" style={{ marginLeft: 12 }} disabled={qaBusy}
+            <button className="btn ml-12" disabled={qaBusy}
                     onClick={() => toggleQa(true)}>开启问文衡</button>
           </div>
         ) : (
@@ -201,7 +201,7 @@ export function Analysis({ period }: { period: string | null }) {
               ))}
             </div>
 
-            {err && <div className="pending-box" style={{ marginTop: 14 }}>{err}</div>}
+            {err && <div className="pending-box mt-14">{err}</div>}
           </>
         )}
       </section>
@@ -237,7 +237,7 @@ export function Analysis({ period }: { period: string | null }) {
             <div className="pending-box" style={{ marginTop: 10, padding: '10px 14px' }}>
               {data.notice}
               {data.mode === 'rule' && (
-                <button className="btn" style={{ marginLeft: 12 }} disabled={busy}
+                <button className="btn ml-12" disabled={busy}
                         onClick={() => run()}>重试</button>
               )}
               {data.record_id && <span className="hint"> · 留痕 {data.record_id}</span>}

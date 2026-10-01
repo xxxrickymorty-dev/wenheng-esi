@@ -42,13 +42,13 @@ export function RedList({ period }: { period: string | null }) {
 
   return (
     <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
-      <p className="hint" style={{ marginBottom: 10 }}>
+      <p className="hint mb-10">
         <a href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}>← 回报告</a>
         {' · '}期次 <b className="mono">{period ?? '—'}</b>
       </p>
-      <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <h2 className="h-sec">
         <Icon name="list" size={21} />红色件清单
-        {rows && <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>共 {rows.length} 条</span>}
+        {rows && <span className="hint hint-num">共 {rows.length} 条</span>}
         {period && (
           <a className="btn line" style={{ marginLeft: 'auto', padding: '7px 14px', fontSize: 14 }}
              href={`/p/${encodeURIComponent(period)}/download/red_list`}>下载 Markdown</a>
@@ -56,20 +56,20 @@ export function RedList({ period }: { period: string | null }) {
       </h2>
 
       {note ? (
-        <div className="pending-box" style={{ marginTop: 12 }}>
+        <div className="pending-box mt-12">
           {note}
           {note.includes('可能尚未出稿') && period && (
             <> <a href={`/app/?period=${encodeURIComponent(period)}`}>去生成这一期 →</a></>
           )}
         </div>
       ) : !rows ? (
-        <div className="pending-box" style={{ marginTop: 12 }}>正在读红色件清单……</div>
+        <div className="pending-box mt-12">正在读红色件清单……</div>
       ) : (
         <>
-          <div className="chips" style={{ marginTop: 12 }}>
+          <div className="chips mt-12">
             {byGroup.map(([g, n]) => <span className="pill" key={g}>{g} {n}</span>)}
           </div>
-          <div className="toolbar" style={{ marginTop: 12 }}>
+          <div className="toolbar mt-12">
             <input className="search" value={q} onChange={(e) => setQ(e.target.value)}
                    placeholder="搜索位置 / 修改前 / 修改后 / 来源…" />
             <span className="hint">匹配 <b className="mono">{shown.length} / {rows.length}</b> 条</span>
@@ -101,7 +101,7 @@ export function RedList({ period }: { period: string | null }) {
             </table>
           </div>
           {shown.length === 0 && (
-            <p className="hint" style={{ marginTop: 10 }}>{q.trim() ? `没有匹配「${q}」的条目。` : '这一期还没有红色件条目。'}</p>
+            <p className="hint mt-10">{q.trim() ? `没有匹配「${q}」的条目。` : '这一期还没有红色件条目。'}</p>
           )}
         </>
       )}

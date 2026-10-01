@@ -340,10 +340,10 @@ export function Review({
   if (!period) {
     return (
       <section className="card" style={{ padding: '22px 24px' }}>
-        <h2 style={{ fontSize: 22, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <h2 className="h-sec h-lg">
           <Icon name="seal" size={22} />审核台
         </h2>
-        <div className="pending-box" style={{ marginTop: 12 }}>先在顶栏选中一个期次。</div>
+        <div className="pending-box mt-12">先在顶栏选中一个期次。</div>
       </section>
     )
   }
@@ -358,20 +358,20 @@ export function Review({
       <div className="rv-lead">
         <a className="hint" href={back} style={{ textDecoration: 'none' }}>← 回报告</a>
         <span style={{ color: 'var(--line)' }}>·</span>
-        <h2 style={{ fontSize: 22, display: 'flex', alignItems: 'center', gap: 10, marginLeft: 4 }}>
+        <h2 className="h-sec h-lg ml-4">
           <Icon name="seal" size={22} />审核 · 试排报告
         </h2>
         {doubtN > 0 && <span className="hint" style={{ color: 'var(--gold-ink)', fontWeight: 650 }}>存疑 {doubtN} 处</span>}
       </div>
 
       {!isAdmin && (
-        <div className="pending-box" style={{ marginTop: 12 }}>
+        <div className="pending-box mt-12">
           当前角色{me ? `（${me.role}）` : '未知'}是只读——签单与填写需要管理员权限。这是服务端的权限设置挡的。
         </div>
       )}
 
       {previewNote ? (
-        <div className="pending-box" style={{ marginTop: 14 }}>
+        <div className="pending-box mt-14">
           {previewNote}
           {previewNote.includes('还没有出稿') && (
             <> <a href={`/app/?period=${encodeURIComponent(period)}`}>去生成这一期 →</a></>
@@ -382,7 +382,7 @@ export function Review({
           )}
         </div>
       ) : !preview ? (
-        <div className="pending-box" style={{ marginTop: 14 }}>正在读试排报告……</div>
+        <div className="pending-box mt-14">正在读试排报告……</div>
       ) : (
         <div className="rv-grid">
           <section className="card rv-report" aria-label="试排报告全文">
@@ -442,7 +442,7 @@ export function Review({
               )}
               {busyText && <p className="rv-busy" role="status">{busyText}</p>}
               {msg && <p className={msg.ok ? 'rv-msg ok' : 'rv-msg bad'} role="status">{msg.text}</p>}
-              <p className="hint" style={{ marginTop: 8 }}>
+              <p className="hint mt-8">
                 <a href={`/app/?view=reading&period=${encodeURIComponent(period)}`}>看对勘本 →</a>
               </p>
             </section>
@@ -459,7 +459,7 @@ export function Review({
                   <Icon name="doc" size={19} />下载报告（Word）
                 </button>
               )}
-              <p className="hint" style={{ marginTop: 8 }}>
+              <p className="hint mt-8">
                 {signed ? '已签单，可下载。'
                   : status === 'stale' ? '签名已失效，重签后可下载。'
                     : '签单后可下载。'}
@@ -492,13 +492,13 @@ export function Review({
                 </div>
               )}
               {nField === 0 ? (
-                <p className="hint" style={{ marginTop: 8 }}>
+                <p className="hint mt-8">
                   没有要填的——可直接签单。
                   <button type="button" className="btn" style={{ marginLeft: 10, padding: '4px 12px', fontSize: 13 }}
                           onClick={jumpToSign}>去签单 ↓</button>
                 </p>
               ) : fieldsShown.length === 0 ? (
-                <p className="hint" style={{ marginTop: 8 }}>没有标存疑的处。</p>
+                <p className="hint mt-8">没有标存疑的处。</p>
               ) : (
                 <ul className="rv-todo">
                   {fieldsShown.map(([id, meta]) => {
@@ -523,7 +523,7 @@ export function Review({
               )}
               {(wb?.todo_confirm ?? []).length > 0 && (
                 <>
-                  <p className="hint" style={{ marginTop: 10 }}>另需核对：</p>
+                  <p className="hint mt-10">另需核对：</p>
                   <ul className="rv-todo rv-confirm">
                     {wb!.todo_confirm.map((t) => (
                       <li key={t.id}><span className="rv-todo-t">{t.title}</span></li>
@@ -542,7 +542,7 @@ export function Review({
                   )}
                 </p>
               )}
-              <div className="rv-btns" style={{ marginTop: 12 }}>
+              <div className="rv-btns mt-12">
                 <button className="btn" onClick={doSave}
                         disabled={!isAdmin || busy !== null || nField === 0}>
                   <Icon name="doc" size={18} />保存填写
@@ -555,7 +555,7 @@ export function Review({
                   <Icon name="refresh" size={18} />{busy === 'rebuild' ? '正在重出……' : '保存并重出报告'}
                 </ConfirmButton>
               </div>
-              <p className="hint" style={{ marginTop: 8 }}>
+              <p className="hint mt-8">
                 填的值只进报告、不动台账{appliedN > 0 ? `；已写入 ${appliedN} 处` : ''}。
               </p>
             </section>

@@ -38,7 +38,7 @@ export function Ledger() {
   return (
     <>
       <section className="card" style={{ padding: '22px 24px' }}>
-        <h2 style={{ fontSize: 22, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <h2 className="h-sec h-lg">
           <Icon name="doc" size={22} />台账 · 表清单
           <span className="hint" style={{ fontWeight: 400, fontSize: 14, marginLeft: 'auto' }}>
             只读
@@ -46,7 +46,7 @@ export function Ledger() {
         </h2>
 
         {err && (
-          <div className="pending-box" style={{ marginTop: 14 }}>
+          <div className="pending-box mt-14">
             <b>暂时读不到台账。</b>文件可能正被占用（比如 Excel 开着），或服务刚重启——
             <button className="btn" style={{ padding: '4px 10px', fontSize: 13.5, margin: '0 4px' }}
                     onClick={() => location.reload()}>重新检查</button>
@@ -54,15 +54,15 @@ export function Ledger() {
           </div>
         )}
 
-        {!err && rows == null && <div className="pending-box" style={{ marginTop: 14 }}>正在读台账……</div>}
+        {!err && rows == null && <div className="pending-box mt-14">正在读台账……</div>}
 
         {!err && rows && rows.length === 0 && (
-          <div className="pending-box" style={{ marginTop: 14 }}>后端返回了空表清单。</div>
+          <div className="pending-box mt-14">后端返回了空表清单。</div>
         )}
 
         {!err && rows && rows.length > 0 && (
           <div className="tablewrap">
-          <table className="periods" style={{ marginTop: 14 }}>
+          <table className="periods mt-14">
             <thead>
               <tr>
                 <th>工作表</th><th className="num">列数</th><th>列名</th><th>期次覆盖</th>
@@ -90,10 +90,10 @@ export function Ledger() {
       </section>
 
       <section className="card" style={{ marginTop: 18, padding: '22px 24px' }}>
-        <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <h2 className="h-sec">
           <Icon name="alert" size={20} />口径与边界（这几条是硬的）
         </h2>
-        <div className="margin-note" style={{ marginTop: 14 }}>
+        <div className="margin-note mt-14">
           <div className="tag">唯一事实源</div>
           <p>
             报告里的每个数字都来自台账；台账由馆员手工维护、按列追加（不改历史列）。

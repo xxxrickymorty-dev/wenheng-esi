@@ -114,7 +114,7 @@ function ModelCard({
         {isBest && <span className="pill stale">本次误差最低</span>}
         {mine && <span className="pill manual">当前选用</span>}
         {!mine && active && <span className="pill">正在使用</span>}
-        <span className="hint" style={{ marginLeft: 'auto' }}>数据截至 {fmtMonth(run.source_period)}</span>
+        <span className="hint ml-auto">数据截至 {fmtMonth(run.source_period)}</span>
       </div>
 
       <div className="fc-metrics">
@@ -213,7 +213,7 @@ function Trial({
 
   return (
     <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
-      <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <h2 className="h-sec">
         <span className="fc-no">01</span>预测图
       </h2>
 
@@ -238,7 +238,7 @@ function Trial({
         </label>
       </div>
 
-      <p className="hint" style={{ marginTop: 9 }} role="status">
+      <p className="hint mt-9" role="status">
         当前选用：<b>{effective || '未定'}</b>
         {mine ? `（已从 V1 推荐「${rec}」改选）` : ''}
         {mine && (
@@ -248,14 +248,14 @@ function Trial({
       </p>
 
       {err && (
-        <div className="pending-box" style={{ marginTop: 12 }}>
+        <div className="pending-box mt-12">
           {err}
-          <button type="button" className="btn" style={{ marginLeft: 10 }}
+          <button type="button" className="btn ml-10" 
                   onClick={() => void run(selectedSubject, route, model, horizon, runKey)}>重新运行</button>
         </div>
       )}
       {busy && (
-        <div className="pending-box" style={{ marginTop: 12 }} role="status">
+        <div className="pending-box mt-12" role="status">
           正在跑{model === 'all' ? '五模型滚动回测与预测' : '模型'}……大约十几秒。
         </div>
       )}
@@ -263,7 +263,7 @@ function Trial({
       {data && (
         <>
           {data.errors.length > 0 && (
-            <div className="pending-box" style={{ marginTop: 12 }}>
+            <div className="pending-box mt-12">
               有 {data.errors.length} 个模型没跑成：{data.errors.map((x) => `${x.model}（${x.error}）`).join('；')}
             </div>
           )}
@@ -296,17 +296,17 @@ function PickTable({
 
   return (
     <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
-      <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <h2 className="h-sec">
         <span className="fc-no">02</span>本期用哪个模型
       </h2>
 
       {!choice?.loaded && (
-        <div className="pending-box" style={{ marginTop: 12 }}>
+        <div className="pending-box mt-12">
           {choice?.error || '正在读取本期已保存的选择……'}
         </div>
       )}
 
-      <div className="tablewrap" style={{ marginTop: 12 }}>
+      <div className="tablewrap mt-12">
         <table className="fc-pick">
           <thead>
             <tr>
@@ -345,7 +345,7 @@ function PickTable({
         </table>
       </div>
 
-      <p className="hint" style={{ marginTop: 9 }}>保存后，从下次重出报告起生效。</p>
+      <p className="hint mt-9">保存后，从下次重出报告起生效。</p>
     </section>
   )
 }
@@ -401,7 +401,7 @@ export function Forecast({
     <>
       <section className="card" style={{ padding: '20px 22px 18px' }}>
         <h1 style={{ fontSize: 25 }}>潜力学科预测</h1>
-        <p className="fc-lead" style={{ marginTop: 6 }}>先看图，再定稿。</p>
+        <p className="fc-lead mt-6">先看图，再定稿。</p>
       </section>
 
       {/* 页头一条带：期次 / 数据截至 / 路线（唯一一套控件）/ 保存（唯一一处） */}
@@ -446,11 +446,11 @@ export function Forecast({
         </button>
       </div>
 
-      {metaError && <div className="pending-box" style={{ marginTop: 14 }}>{metaError}</div>}
-      {!meta && !metaError && <div className="pending-box" style={{ marginTop: 14 }}>正在读取预测模型清单……</div>}
+      {metaError && <div className="pending-box mt-14">{metaError}</div>}
+      {!meta && !metaError && <div className="pending-box mt-14">正在读取预测模型清单……</div>}
 
       {meta && !meta.available && (
-        <div className="pending-box" style={{ marginTop: 14 }}>
+        <div className="pending-box mt-14">
           最新完整预测数据尚未就绪，暂时跑不了预测：{meta.load_error}
         </div>
       )}
@@ -464,11 +464,11 @@ export function Forecast({
           <details className="fold">
             <summary>03 学科板 · 现状（本路线 {boardRows.length || 8} 科）<span className="sm">{boardSm}</span></summary>
             <div className="fold-inner">
-              <p className="hint" style={{ marginTop: 4 }}>
+              <p className="hint mt-4">
                 接近度＝离门槛的百分数点值；过线是滚动监测信号，不等同于正式入榜时间。
                 这一板是预测阶段的选模记录，<b>不是</b>报告最终采用的模型——报告用哪套看上面 02。
               </p>
-              {boardNote && <div className="pending-box" style={{ marginTop: 10 }}>{boardNote}</div>}
+              {boardNote && <div className="pending-box mt-10">{boardNote}</div>}
               {!!boardRows.length && (
                 <div className="bd-grid">
                   {boardRows.map((r) => (
@@ -491,7 +491,7 @@ export function Forecast({
                   ))}
                 </div>
               )}
-              <p className="hint" style={{ marginTop: 10 }}>
+              <p className="hint mt-10">
                 源：预测选模与过线.md · 数据截至 {fmtMonth(board?.period ?? meta.source_period)}
                 {board?.window ? ` · 窗口 ${board.window}` : ''}；t1/t2/t3 空＝该窗口内未过线。
               </p>
@@ -508,10 +508,10 @@ export function Forecast({
                 <li><b>多期外推</b>：正式验证范围是一步预测；页面逐期追加预测值并重新拟合，用于形成监测趋势。</li>
                 <li><b>结果边界</b>：预测过线是滚动监测信号，不等同于正式入榜时间或入榜概率。</li>
               </ul>
-              <p className="hint" style={{ marginTop: 10 }}>
+              <p className="hint mt-10">
                 <b>与报告的关系</b>：这里保存的选择进报告预测章——下次重出报告时，选中的学科按你的选择出图，未改的用 V1 推荐；所选模型若跑不出来，会自动退回推荐。
               </p>
-              <p className="hint" style={{ marginTop: 6 }}>
+              <p className="hint mt-6">
                 <b>期次与数据说明</b>：{freshnessText} 推荐基线为 {meta.recommendation_baseline ?? '—'}，不是预测数据期次。
                 最近一次完整运行记录写入时间（北京时间）：{formatProvenanceTime(meta.run_record_at)}；上次处理使用的文件：{meta.processed_input.name ?? '无法核实'}
                 {meta.processed_input.last_modified_at ? `（文件最后修改：${formatProvenanceTime(meta.processed_input.last_modified_at)}）` : ''}。

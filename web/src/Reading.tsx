@@ -87,7 +87,7 @@ export function Reading({ period }: { period: string | null }) {
 
   return (
     <>
-      <p className="hint" style={{ marginBottom: 10 }}>
+      <p className="hint mb-10">
         <a href={back}>← 回报告</a>
         {' · '}期次 <b className="mono">{period ?? '—'}</b>
       </p>
@@ -95,12 +95,12 @@ export function Reading({ period }: { period: string | null }) {
       <section className="card" style={{ padding: '18px 20px 6px' }}>
         <h2 style={{ fontSize: 20, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <Icon name="doc" size={21} />对勘本 · 正文级对照
-          <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>
+          <span className="hint hint-num">
             本期改动 <b className="mono">{rows?.length ?? 0}</b> 处
             {nManual > 0 && <> · 待人工 <b className="mono" style={{ color: 'var(--zhu)' }}>{nManual}</b> 处</>}
           </span>
           {assertions && (
-            <span className="pill" style={{ marginLeft: 'auto' }}>
+            <span className="pill ml-auto">
               数据校验 {assertions.total}/{assertions.total} {assertions.fail === 0 ? '全部通过' : `${assertions.fail} 处对不上`}
             </span>
           )}
@@ -149,9 +149,9 @@ export function Reading({ period }: { period: string | null }) {
           <div className="col-m">
             <h3 style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
               {sec}
-              <span className="hint mono" style={{ marginLeft: 'auto' }}>{shown.length} 处</span>
+              <span className="hint mono ml-auto">{shown.length} 处</span>
             </h3>
-            <div style={{ marginTop: 12 }}>
+            <div className="mt-12">
               {shown.slice(0, CAP).map((r, i) => (
                 <article key={`${r.loc}-${i}`} className="chg"
                          onMouseEnter={() => setHover(r)} onFocus={() => setHover(r)} tabIndex={0}>
@@ -189,9 +189,9 @@ export function Reading({ period }: { period: string | null }) {
           {/* 右：校记 */}
           <aside className="col-r">
             <h3 style={{ display: 'flex', alignItems: 'baseline' }}>
-              校 记 <span className="hint" style={{ marginLeft: 'auto' }}>{period}</span>
+              校 记 <span className="hint ml-auto">{period}</span>
             </h3>
-            <div className="kv" style={{ marginTop: 10 }}><span className="k">本期改动</span><span className="v">{rows.length} 处</span></div>
+            <div className="kv mt-10"><span className="k">本期改动</span><span className="v">{rows.length} 处</span></div>
             <div className="kv"><span className="k">槽位分组</span><span className="v">{sections.length} 组</span></div>
             <div className="kv"><span className="k">待人工</span><span className="v" style={{ color: 'var(--zhu)' }}>{nManual} 处</span></div>
             {assertions && (
@@ -200,14 +200,14 @@ export function Reading({ period }: { period: string | null }) {
                   {assertions.total - assertions.fail} / {assertions.total} {assertions.fail === 0 ? '· 全部通过' : ''}
                 </span></div>
             )}
-            <p className="hint" style={{ marginTop: 10 }}>悬停看出处。</p>
+            <p className="hint mt-10">悬停看出处。</p>
             {hover ? (
               <div className="pop">
                 <div className="ph">出处</div>
                 <div className="pc">{hover.source || '（后端未给来源）'}</div>
-                <div className="ph" style={{ marginTop: 6 }}>位置</div>
+                <div className="ph mt-6">位置</div>
                 <div className="pc">{hover.loc}</div>
-                <div className="ph" style={{ marginTop: 6 }}>改动</div>
+                <div className="ph mt-6">改动</div>
                 <div className="pc" style={{ fontWeight: 400 }}>
                   {(hover.oldPreview ?? hover.old ?? '（空）')} → {(hover.manual ? '待人工补录' : (hover.newPreview ?? hover.new ?? '（空）'))}
                 </div>
@@ -218,7 +218,7 @@ export function Reading({ period }: { period: string | null }) {
                 <div className="pc">（把光标移到左侧改动卡上）</div>
               </div>
             )}
-            <p className="hint" style={{ marginTop: 12 }}>
+            <p className="hint mt-12">
               签单去<a href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}>审核台</a>。
             </p>
           </aside>

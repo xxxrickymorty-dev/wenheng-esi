@@ -46,27 +46,27 @@ export function Charts({ period }: { period: string | null }) {
 
   return (
     <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
-      <p className="hint" style={{ marginBottom: 10 }}>
+      <p className="hint mb-10">
         <a href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}>← 回报告</a>
         {' · '}期次 <b className="mono">{period ?? '—'}</b>
       </p>
-      <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10 }}>
+      <h2 className="h-sec">
         <Icon name="chart" size={21} />图表图册
-        {rows && <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>共 {rows.length} 张</span>}
+        {rows && <span className="hint hint-num">共 {rows.length} 张</span>}
       </h2>
 
       {note ? (
-        <div className="pending-box" style={{ marginTop: 12 }}>
+        <div className="pending-box mt-12">
           {note}
           {note.includes('可能尚未出稿') && period && (
             <> <a href={`/app/?period=${encodeURIComponent(period)}`}>去生成这一期 →</a></>
           )}
         </div>
       ) : !rows ? (
-        <div className="pending-box" style={{ marginTop: 12 }}>正在读图册……</div>
+        <div className="pending-box mt-12">正在读图册……</div>
       ) : (
         <>
-          <div className="toolbar" style={{ marginTop: 12 }}>
+          <div className="toolbar mt-12">
             <input className="search" value={q} onChange={(e) => setQ(e.target.value)}
                    aria-label="搜索图名或学科" placeholder="搜索图名 / 学科…" />
             <span className="hint">匹配 <b className="mono">{shown.length} / {rows.length}</b> 张</span>
@@ -90,7 +90,7 @@ export function Charts({ period }: { period: string | null }) {
             </div>
           ))}
           {shown.length === 0 && (
-            <p className="hint" style={{ marginTop: 10 }}>{q.trim() ? `没有匹配「${q}」的图。` : '这一期还没有图表。'}</p>
+            <p className="hint mt-10">{q.trim() ? `没有匹配「${q}」的图。` : '这一期还没有图表。'}</p>
           )}
         </>
       )}

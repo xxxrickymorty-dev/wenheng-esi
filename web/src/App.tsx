@@ -506,7 +506,7 @@ export default function App() {
         {/* 合规声明：放进工作区界面本身（rick 2026-09-29：从视口左侧竖排移入各工作台） */}
         <p className="ws-claim">分析报告属于内部资料，仅用于参赛，禁止外传。</p>
         {healthy === false && (
-          <div className="banner bad" style={{ marginTop: 0 }}>
+          <div className="banner bad mt-0">
             <span className="ico"><Icon name="alert" size={22} /></span>
             <span>
               <b className="title">连不上本机服务</b>
@@ -519,7 +519,7 @@ export default function App() {
         )}
 
         {denied ? (
-          <div className="pending-box" style={{ marginTop: 0 }}>
+          <div className="pending-box mt-0">
             {notLoggedIn ? (
               <><b>请先登录</b> —— 生成台 / 审核台 / AI 分析台 / 预测台要馆员账号，
                 <a href="/login">去登录</a>后再来。
@@ -620,7 +620,7 @@ export default function App() {
         {/* 说明折叠只留一处（rick 2026-09-30：原来每个页面都挂一份）——留在首页「生成台」 */}
         {view === 'workbench' && <SiteNote />}
 
-        <p className="hint" style={{ marginTop: 14 }}>
+        <p className="hint mt-14">
           {busy && '正在提交生成请求……'}
         </p>
       </main>

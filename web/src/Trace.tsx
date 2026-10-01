@@ -53,30 +53,30 @@ export function Trace({ period }: { period: string | null }) {
 
   return (
     <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
-      <p className="hint" style={{ marginBottom: 10 }}>
+      <p className="hint mb-10">
         <a href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}>← 回报告</a>
         {' · '}期次 <b className="mono">{period ?? '—'}</b>
       </p>
-      <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <h2 className="h-sec">
         <Icon name="list" size={21} />逐格溯源
-        {data?.n != null && <span className="hint" style={{ fontWeight: 400, fontSize: 14 }}>可溯源 {data.n} 处</span>}
+        {data?.n != null && <span className="hint hint-num">可溯源 {data.n} 处</span>}
         {data?.ledger_ok === false && (
           <span className="pill" style={{ borderColor: 'var(--warn)', color: 'var(--warn)' }}>台账不在本机，重读不可用</span>
         )}
       </h2>
 
       {note ? (
-        <div className="pending-box" style={{ marginTop: 12 }}>
+        <div className="pending-box mt-12">
           {note}
           {note.includes('可能尚未出稿') && period && (
             <> <a href={`/app/?period=${encodeURIComponent(period)}`}>去生成这一期 →</a></>
           )}
         </div>
       ) : !data ? (
-        <div className="pending-box" style={{ marginTop: 12 }}>正在回台账重读……</div>
+        <div className="pending-box mt-12">正在回台账重读……</div>
       ) : (
         <>
-          <div className="chips" style={{ marginTop: 12 }}>
+          <div className="chips mt-12">
             <button className={`switch${cat === '' ? ' on' : ''}`} type="button" onClick={() => pick('')}>
               全部 <b className="mono">{data.n ?? ''}</b>
             </button>
@@ -87,7 +87,7 @@ export function Trace({ period }: { period: string | null }) {
             ))}
           </div>
 
-          <div className="tablewrap" style={{ marginTop: 12 }}>
+          <div className="tablewrap mt-12">
             <table>
               <thead>
                 <tr>
