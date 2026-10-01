@@ -49,22 +49,24 @@ try:
 except ImportError:                                            # 直接以脚本方式运行时的兜底
     DISCIPLINES_CN, DISCIPLINES_EN = {}, []
 
+import period as period_mod                                    # noqa: E402  期次口径唯一来源
+
 
 def cn_name(en: str) -> str:
     return DISCIPLINES_CN.get(en, en)
 
 
 def period_label(p) -> str:
-    """`202607` → `2026年7月`。"""
-    p = str(p)
-    return f"{p[:4]}年{int(p[4:])}月"
+    """`202607` → `2026年7月`（口径在 `period.label`）。"""
+    return period_mod.label(p)
 
 
 def prev_period(periods, p):
-    """列表里 p 的前一期（没有则 None）。"""
-    ps = [str(x) for x in periods]
-    p = str(p)
-    return ps[ps.index(p) - 1] if p in ps and ps.index(p) > 0 else None
+    """列表里严格早于 p 的最近一期（没有则 None）——口径在 `period.prev_before`。"""
+    try:
+        return period_mod.prev_before([str(x) for x in periods], p)
+    except period_mod.PeriodUndetectable:
+        return None
 
 
 def shift_period(p, n_newer_targets):
@@ -136,14 +138,11 @@ class DataSource:
         图上不会画（`charts._avail` 会滤掉），但「窗口 7 期」的表述会与实际画出的
         期数对不上，且差分图会多算一格。口径同 `compute.detect_periods`。
         """
-        tc = self.wide("total_cites")
-        return [str(c) for c in tc.columns if tc[c].notna().any()]
+        return period_mod.filled({"total_cites": self.wide("total_cites")})
 
     def current_period(self) -> str:
-        """当期＝总被引表最后一个有数据的期次（与 `compute.detect_periods` 同口径）。"""
-        tc = self.wide("total_cites")
-        filled = [c for c in tc.columns if tc[c].notna().any()]
-        return str(filled[-1])
+        """当期＝总被引表最后一个有数据的期次（口径唯一在 `period`）。"""
+        return period_mod.filled({"total_cites": self.wide("total_cites")})[-1]
 
     # ---------------------------------------------------------------- 取值
     def series(self, metric: str, disc: str) -> pd.Series:

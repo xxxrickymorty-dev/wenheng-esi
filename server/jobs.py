@@ -19,7 +19,6 @@ import datetime as dt
 import json
 import os
 import pathlib
-import re
 import secrets
 import time
 import urllib.parse
@@ -30,11 +29,14 @@ from . import config
 from agent import states as agent_states
 from src import forecast_choice
 
+#: 期次口径唯一来源（re-export，不另抄一份正则）
+from src import period as _period
+
 #: 任务终态集合（5 个）。判终态请用 `is_terminal()`，它兼容旧名。
 TERMINAL = agent_states.TERMINAL
 
-PERIOD_RE = re.compile(r"^\d{6}$")
-PERIOD_DIR_RE = re.compile(r"^\d{6}")      # out/ 下的期次目录（可能是 202605_复现）
+PERIOD_RE = _period.PERIOD_RE
+PERIOD_DIR_RE = _period.PERIOD_DIR_RE    # out/ 下的期次目录（可能是 202605_复现）
 _running: set = set()
 
 
