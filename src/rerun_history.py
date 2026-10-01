@@ -15,8 +15,8 @@
 
 ⚠ 三个「台账之外」的部分必须按被补跑期算，否则会拿台账当期顶替：
   省域表读 `ESI数据/<该期>/`；矩阵表读 `SNAP_MAP[该期]` 登记的 InCites 快照；
-  预测窗口截到该期（`report_forecast` 按目录名/override 自动处理，2026-09-29 修——
-  此前本脚本压根不跑预测，补跑稿没有「三、趋势预测」的图与文）。
+  预测窗口截到该期（`period_override`，2026-09-29 修——此前本脚本压根不跑预测）。
+  步骤体与直跑/受控编排共用 `src/steps.py`；本脚本只留「按被补跑期」的政策与附加件。
 
 说明：顶尖论文清单为台账外人工贴入，补跑稿沿用母版清单（不随期重出）；
       与人工原件的机器 diff 由 backtest / compare_reports 执行。
@@ -32,13 +32,8 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
-import charts  # noqa: E402
-import compute  # noqa: E402
-import fill_docx  # noqa: E402
-import forecast  # noqa: E402
 import parse_ledger  # noqa: E402
-import report_forecast  # noqa: E402
-import sentences  # noqa: E402
+import steps  # noqa: E402
 
 DEFAULT_LEDGER = r"..\数据与复现\云大全学科排名、阈值动态检测表.xlsx"
 
@@ -51,16 +46,20 @@ def main(period, ledger_path=DEFAULT_LEDGER, out_root="out"):
     moved = parse_ledger.quarantine_final_products(out_dir)
     if moved:
         print(f"      已撤下上版成品：{'、'.join(moved)}")
-    ok = parse_ledger.main(ledger_path, out_dir)
-    if not ok:
+    res = steps.parse(steps.StepCtx(ledger=ledger_path, out_dir=str(out_dir),
+                                    strict_assertions=False))
+    if not res.data["assertions_ok"]:
         print("警告：断言非全绿，继续（补跑目的为对样）")
 
-    wide, ni, nc, thr = compute.load_wide(str(out_dir))
-    filled = [c for c in wide["total_cites"].columns if wide["total_cites"][c].notna().any()]
-    if period not in filled:
-        raise SystemExit(f"台账无 {period} 期数据（有效期次：{filled[0]}..{filled[-1]}）")
-    prev = [c for c in filled if c < period][-1]
-    print(f"[2/6] 补跑当期={period} 上期={prev}")
+    # `period` 是补跑期而不是台账当期：大表/概述按它定位（prev 在 filled 里取）
+    print(f"[2/6] 补跑当期={period}")
+    try:
+        cres = steps.compute(steps.StepCtx(out_dir=str(out_dir), period=period,
+                                           write_texts=True))
+    except steps.StepError as e:
+        raise SystemExit(e.message) from e
+    prev = cres.data["prev"]
+    print(f"      补跑当期={period} 上期={prev}")
 
     # meta.json 的「当期/上期」按被补跑期写回：facts 接口与报告屏「本期」标注读它
     meta_path = out_dir / "meta.json"
@@ -69,26 +68,18 @@ def main(period, ledger_path=DEFAULT_LEDGER, out_root="out"):
     meta["period_prev"] = prev
     meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=1, default=str),
                          encoding="utf-8")
-
-    t2 = compute.build_table2(wide, ni, nc, thr, period, prev)
-    t2.to_csv(out_dir / "table2.csv", index=False, encoding="utf-8-sig")
-    ynd = __import__("pandas").read_parquet(f"{out_dir}/wide/ynd_rank.parquet").set_index("period")
-    top_total = __import__("pandas").read_parquet(f"{out_dir}/wide/top_total.parquet").set_index("period")["total"].to_dict()
-    facts = compute.build_overview(wide, ni, nc, thr, ynd, top_total, period, prev)
-    (out_dir / "overview_facts.json").write_text(
-        json.dumps(facts, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
-    texts = sentences.build(facts, period, prev)
-    (out_dir / "texts_preview.json").write_text(
-        json.dumps(texts, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"      大表/概述/句骨架 → {out_dir}")
 
     print("[3/6] 预测回测（InCites + 差值校准）")
-    mape = forecast.main(ledger_dir=str(out_dir), out_dir=str(out_dir))
+    mape = float(steps.forecast(steps.StepCtx(out_dir=str(out_dir))).data["mape_overall"])
     print(f"      整体 MAPE = {mape:.2f}%（验收线 <5%）")
 
-    print("[4/6] 图表渲染（截至该期）")
-    n = charts.render_all(ledger_dir=str(out_dir), end_period=period)
-    print(f"      {n} 张期次图")
+    print("[4/6] 图表渲染（截至该期 + 预测图）")
+    chres = steps.charts(steps.StepCtx(out_dir=str(out_dir), period_override=period))
+    print(f"      {chres.data['n_charts']} 张期次图，预测图 "
+          f"{chres.data['n_forecast_charts']} 张")
+    for w in (*chres.warnings, *chres.data["forecast_warnings"]):
+        print(f"      ⚠ {w}")
 
     # ---- 省域表 T19 / 矩阵表 T20：都不在台账里，且都**按被补跑期**算 ----
     # 这两步与 run_pipeline 共用 write_json，口径不会分叉。
@@ -109,14 +100,10 @@ def main(period, ledger_path=DEFAULT_LEDGER, out_root="out"):
     except Exception as e:                                       # noqa: BLE001
         print(f"      矩阵表：跳过（{type(e).__name__}: {e}）")
 
-    print("[6/6] 预测图（窗口截到该期）+ 母版替换")
-    n_fc = report_forecast.generate(out_dir, period_override=period)
-    print(f"      预测图：{n_fc} 张 → forecast_charts.json")
-    docx = fill_docx.main(
-        ledger_dir=str(out_dir),
-        out_path=out_dir / f"报告初稿_{period}（试排）.docx",
-        period_override=period,
-    )
+    print("[6/6] 母版替换（试排稿）")
+    docx = steps.docx(steps.StepCtx(
+        out_dir=str(out_dir), period_override=period,
+        docx_out_path=str(out_dir / f"报告初稿_{period}（试排）.docx"))).data["docx"]
     print(f"完成：{docx}")
     return docx
 
