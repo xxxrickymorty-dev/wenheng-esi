@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import type { GlossaryEntry, ShelfBookPreview } from './types'
 import type { ReaderSection } from './Reader'
 import './home.css'
-import './home-overrides.css'
 
 type LibraryHomeProps = {
   books: ShelfBookPreview[]

@@ -1,7 +1,6 @@
 import type { ShelfBookPreview } from './types'
 import { LibraryScene } from './scene/LibraryScene'
 import './experience.css'
-import './experience-overrides.css'
 
 export type ExperienceStage = 'exterior' | 'entering' | 'room' | 'returning'
 type BuildingView = 'front' | 'aerial'

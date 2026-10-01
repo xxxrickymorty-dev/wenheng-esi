@@ -1,3 +1,8 @@
+/* 库房焦点环令牌（2026-10-01 审计批，统一粗细 3px）：
+   浅底（米金首页）用 --lib-focus（#8a7038，实测 4.21:1 ≥ 3:1）；
+   深底（墨绿体验区/阅览器）用 --lib-focus-on-dark（#eddbac，实测 ≥9.6:1）；
+   书架壳（本文件下方规则）沿用主区 --zhu。三种底色各自取用，不再散落字面色值。 */
+:root{--lib-focus:#8a7038;--lib-focus-on-dark:#eddbac}
 .library-page {
   min-height: 100%;
   box-sizing: border-box;
