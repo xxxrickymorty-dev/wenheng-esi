@@ -3,7 +3,7 @@
    设计取自静态稿 mockups/v2-工作台与报告.html；状态与文案规格见 web/UX-生成台.md。 */
 
 import type { ApiError, Me, Period, PeriodDetail } from './api'
-import { formatProvenanceTime, type ForecastChoiceEntry, type ForecastMeta } from './api5'
+import { formatProvenanceTime, type ForecastChoiceEntry, type ForecastMeta } from './api-forecast'
 import { useState } from 'react'
 import { ConfirmButton } from './ConfirmButton'
 import { taskLabel as runStatusText } from './lib/status'

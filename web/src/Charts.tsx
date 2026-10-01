@@ -3,7 +3,7 @@
    与对勘本的分工：这里是「按图名找 / 脱离槽位单看图」的入口；槽位视图在报告屏的对勘里。 */
 
 import { useEffect, useMemo, useState } from 'react'
-import { getCharts, type ChartRow } from './api2'
+import { getCharts, type ChartRow } from './api-collation'
 import { Icon } from './icons'
 
 export function Charts({ period }: { period: string | null }) {

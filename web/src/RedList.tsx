@@ -3,7 +3,7 @@
    🔴 只透传后端给的行，前端不聚合、不换算；分类计数是**行数统计**（不是报告口径数字）。 */
 
 import { useEffect, useMemo, useState } from 'react'
-import { getRedSlots, type RedRow } from './api2'
+import { getRedSlots, type RedRow } from './api-collation'
 import { Icon } from './icons'
 
 export function RedList({ period }: { period: string | null }) {

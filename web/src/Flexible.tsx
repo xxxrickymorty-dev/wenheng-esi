@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   getFlexible, polishFlexible, runFlexibleStream,
   type FlexStreamEvent, type FlexibleData, type FlexWriteSummary,
-} from './api5'
+} from './api-flexible'
 import { HttpError } from './api'
 import { Icon } from './icons'
 

@@ -3,8 +3,8 @@
    🔴 只透传后端给的行；「待人工」按后端 manual 标记筛，不自己判断。 */
 
 import { useEffect, useMemo, useState } from 'react'
-import { getCollation, type CollationRow } from './api2'
-import { getFacts } from './api4'
+import { getCollation, type CollationRow } from './api-collation'
+import { getFacts } from './api-workbench'
 import { Icon } from './icons'
 
 const CAP = 120   // 单个分组最多渲染这么多条（大表组可能几百条）；其余提示走搜索

@@ -10,12 +10,12 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { Me, Period } from './api'
-import { flagLoc, revokePeriod, signPeriod } from './api3'
-import { getWorkbench, postFill, type WorkbenchData } from './api4'
+import { flagLoc, revokePeriod, signPeriod } from './api-sign'
+import { getWorkbench, postFill, type WorkbenchData } from './api-workbench'
 import {
   getReportPreview, rebuildPeriod, reportImageUrl,
   type PreviewBlock, type PreviewSeg, type ReportPreview,
-} from './api6'
+} from './api-report'
 import { ConfirmButton } from './ConfirmButton'
 import { Icon } from './icons'
 

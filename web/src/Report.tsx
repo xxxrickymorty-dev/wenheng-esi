@@ -11,8 +11,8 @@ import {
   getPeriodArtifacts, humanSize,
   type Artifact, type Period,
 } from './api'
-import { getCharts, getCollation, type ChartRow, type CollationRow } from './api2'
-import { getFacts, type Facts } from './api4'
+import { getCharts, getCollation, type ChartRow, type CollationRow } from './api-collation'
+import { getFacts, type Facts } from './api-workbench'
 import { Icon } from './icons'
 
 /** 人工空位的来源说人话（票 14）：内部脚本名不直出面客 */
