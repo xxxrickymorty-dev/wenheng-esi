@@ -16,7 +16,7 @@ import { pickRunForPeriod } from './lib/run'
 import { useJobRun, type Run } from './hooks/useJobRun'
 import { Icon, Sprite } from './icons'
 import { Acquire } from './Acquire'
-import { Workbench } from './Workbench'
+import { Workbench, PeriodsPanel, SiteNote } from './Workbench'
 import { Report } from './Report'
 import { Review } from './Review'
 import { Ledger } from './Ledger'
@@ -614,62 +614,11 @@ export default function App() {
         )}
 
         {view === 'workbench' && (
-        <details className="fold">
-          <summary>全部期次<span className="sm">共 {periods.length} 期</span></summary>
-        <section className="card tablewrap" style={{ marginTop: 18 }}>
-          <table className="periods">
-            <thead>
-              <tr>
-                <th>期次</th><th>目录名</th><th>状态</th><th style={{ width: 90 }}>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {periods.length === 0 && (
-                <tr><td colSpan={4} style={{ color: 'var(--ink-3)' }}>
-                  {healthy === false ? (
-                    <>服务未启动，读不到期次。起好服务后
-                      <button className="btn" style={{ padding: '4px 10px', fontSize: 13.5, margin: '0 6px' }}
-                              onClick={() => location.reload()}>重新检查</button>
-                      一次。</>
-                  ) : (
-                    <>还没有任何期次。先在下方「这一期的工具」上传监测表，生成第一期。<a href="#tools">去上传 →</a></>
-                  )}
-                </td></tr>
-              )}
-              {periods.map((p) => (
-                <tr key={p.period} className="period-row"
-                    onClick={() => pickPeriod(p.period)}
-                    style={{ background: p.period === selected ? 'var(--panel)' : undefined }}>
-                  <td><button type="button" className="rowbtn">{p.label}</button></td>
-                  <td className="mono">{p.period}</td>
-                  <td>
-                    <span className={`pill ${p.status === 'signed' ? 'signed' : p.status === 'stale' ? 'stale' : 'unsigned'}`}>
-                      {p.status === 'signed' ? '已签发' : p.status === 'stale' ? '签名已失效' : '未签发'}
-                    </span>
-                  </td>
-                  <td>
-                    <a href={`/app/?view=report&period=${encodeURIComponent(p.period)}`}
-                       onClick={(e) => e.stopPropagation()}>打开</a>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-        </details>
+          <PeriodsPanel periods={periods} selected={selected} healthy={healthy} onPick={pickPeriod} />
         )}
 
         {/* 说明折叠只留一处（rick 2026-09-30：原来每个页面都挂一份）——留在首页「生成台」 */}
-        {view === 'workbench' && (
-        <details className="fold">
-          <summary>说明 · 口径、来源与只读声明<span className="sm">全站仅此一份</span></summary>
-          <p className="hint" style={{ padding: '2px 18px 16px', fontSize: 13.5, lineHeight: 1.9 }}>
-            ① 数字只来自馆员维护的台账与派生产物，运行期大模型不进入数据路径；
-            ② 本页是只读视图，不修改台账与报告；③ 预测章按「本期已选」的已保存选择执行，未列学科用 V1 推荐；
-            ④ 期次与状态以任务记录为准，未签发报告不可下载。来源：期内产物目录 · 运行档案 · 预测选模配置。
-          </p>
-        </details>
-        )}
+        {view === 'workbench' && <SiteNote />}
 
         <p className="hint" style={{ marginTop: 14 }}>
           {busy && '正在提交生成请求……'}
