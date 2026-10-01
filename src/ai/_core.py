@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 import logging
-import pathlib
 import re
 import time
 
@@ -18,8 +17,6 @@ from ._types import Answer, CapabilityInfo, Segment, Shield, Source
 
 log = logging.getLogger("wenheng.ai")
 
-REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
-DEFAULT_DATA_ROOT = REPO_ROOT / "out"
 _PERIOD_RE = re.compile(r"^20\d{4}$")
 
 #: 静态纪律提示（外发面）：注入防线声明 + 占位符纪律。**本串不含数字**。
@@ -62,9 +59,9 @@ _BUILDERS = {"diagnose": _diagnose.build, "qa": _qa.build, "review": _review.bui
 
 
 # ---------------------------------------------------------------- 装配
-def _root() -> pathlib.Path:
-    ov = _runtime.overrides()
-    return pathlib.Path(ov.get("data_root") or DEFAULT_DATA_ROOT)
+def _root():
+    """数据根（唯一实现在 `_record.data_root`，本函数只作本模块装配别名）。"""
+    return _record.data_root()
 
 
 def _store():
@@ -130,35 +127,30 @@ def _terminal(cap, period, role, *, mode, notice, t0, backend=None):
     """终态也照记一条（SPEC §2.2：每次调用尝试恰一条；closed/denied 零外发零工具）。"""
     return _publish(cap, period, role, mode=mode, backend=backend or "rule",
                     notice=notice, text="", rule_text="", sources=(), parts=(),
-                    shield_res=Shield(0, 0), fallback=None, question_face="",
-                    brief=None, t0=t0)
+                    shield_res=Shield(0, 0), fallback=None, question_face="", t0=t0)
 
 
 # ---------------------------------------------------------------- 留痕与发布
 def _publish(cap, period, role, *, mode, backend, notice, text, rule_text, sources,
-             parts, shield_res, fallback, question_face, brief, t0,
-             fallback_detail=None):
+             parts, shield_res, fallback, question_face, t0,
+             fallback_detail=None, egress=None, elapsed_ms=None):
     """先写留痕、后发布；模型版发布以记录成功为前提（SPEC §2.2 / C1）。"""
-    rid = _record.make_record_id(cap.id)
-    protected = _shield.protect(text)[0] if text else ""
-    rec = _record.build_call(
-        record_id=rid, ts=time.strftime("%Y-%m-%dT%H:%M:%S"), period=period,
-        capability=cap.id, actor=role, mode=mode, backend=backend,
-        fallback=fallback, shield=shield_res.as_dict(), receipts=(),
-        question=question_face, text_protected=protected,
-        egress_items=(len(brief.evidence) + 1) if brief else 0,
-        egress_bytes=brief.egress_bytes() if brief else 0,
-        elapsed_ms=int((time.time() - t0) * 1000),
-        extra={"fallback_detail": fallback_detail} if fallback_detail else None)
-    wrote = _record.append(_record.call_path(_root(), period), rec)
-    if not wrote:
+    rid = _record.Recorder.for_period(period, role).call(
+        capability=cap.id, mode=mode, backend=backend, fallback=fallback,
+        shield=shield_res.as_dict(),
+        text_protected=(_shield.protect(text)[0] if text else ""),
+        question=question_face,
+        egress_items=int((egress or {}).get("items") or 0),
+        egress_bytes=int((egress or {}).get("bytes") or 0),
+        elapsed_ms=(int((time.time() - t0) * 1000) if elapsed_ms is None else elapsed_ms),
+        fallback_detail=fallback_detail)
+    if rid is None:
         _record.process_log_line(log, cap.id, period, role, "append_failed")
         if mode == "model":
             # 记录写失败：模型版不发布，降规则版＋诚实话术（不写「模型超时」）。
             mode, backend, text = "rule", "rule", rule_text
             notice = "记录落盘失败，为保证可审计已改用规则版。"
             fallback = fallback or "record_failed"
-        rid = None
     segments = tuple(Segment(p.name, mode, "") for p in parts)
     return Answer(mode=mode, backend=backend, text=text, rule_text=rule_text,
                   notice=notice, sources=tuple(sources), receipts=(),
@@ -293,8 +285,9 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
     return _publish(cap, period, role, mode=mode, backend=backend, notice=notice,
                     text=text, rule_text=draft.rule_text, sources=used, parts=draft.parts,
                     shield_res=shield_res, fallback=fallback,
-                    question_face=_question_face(payload), brief=brief, t0=t0,
-                    fallback_detail=fallback_detail)
+                    question_face=_question_face(payload),
+                    egress={"items": len(brief.evidence) + 1, "bytes": brief.egress_bytes()},
+                    t0=t0, fallback_detail=fallback_detail)
 
 
 def capabilities(actor=None) -> tuple[CapabilityInfo, ...]:

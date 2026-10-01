@@ -13,8 +13,20 @@ import pathlib
 import secrets
 import time
 
+from . import _runtime
+
 #: 记录 schema 版本；追加字段向后兼容，不原地改旧行。
 SCHEMA = 1
+
+#: 数据根缺省值：仓库内 `out/`。解析只在本模块（`data_root`）一处做。
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+DEFAULT_DATA_ROOT = REPO_ROOT / "out"
+
+
+def data_root() -> pathlib.Path:
+    """当前数据根：`using(data_root=…)` 覆盖优先，否则仓库 `out/`。"""
+    ov = _runtime.overrides()
+    return pathlib.Path(ov.get("data_root") or DEFAULT_DATA_ROOT)
 
 #: 记录里 `text` 面的截断长度（占位面，已无数字原值）。
 TEXT_PREVIEW = 600
@@ -97,6 +109,50 @@ def process_log_line(logger, capability: str, period: str, actor: str, reason: s
     """规则版照发但留痕失败时，进程日志一行（C1 可测句：含 capability/period/actor/时间）。"""
     logger.warning("ai 留痕写失败（%s）：capability=%s period=%s actor=%s ts=%s",
                    reason, capability, period or "-", actor, time.strftime("%Y-%m-%dT%H:%M:%S"))
+
+
+class Recorder:
+    """`ai_calls.jsonl` 的唯一写口：调用记录与开关审计；路径解析也只在这里。
+
+    - 调用记录落 `out/<期次>/ai_calls.jsonl`；期次不可判落 `out/_ai/`；
+    - 开关审计恒落 `out/_ai/`（kind=switch）；
+    - 写失败不抛：`call()` 返回 None、`switch()` 返回 False，由调用方定政策
+      （能力口：模型版降级规则版；写作位：产出不受影响）。
+    """
+
+    def __init__(self, root, *, period: str = "", actor=None):
+        self.root = pathlib.Path(root)
+        self.period = period or ""
+        self.actor = _runtime.resolve_actor(actor)
+
+    @classmethod
+    def for_period(cls, period, actor=None) -> "Recorder":
+        """按当前数据根（`using(data_root=…)` 覆盖感知）建写口。"""
+        return cls(data_root(), period=period, actor=actor)
+
+    def call(self, *, capability: str, mode: str, backend: str, fallback: str | None,
+             shield: dict, text_protected: str, question: str = "", label=None,
+             egress_items: int = 0, egress_bytes: int = 0, receipts=(),
+             elapsed_ms: int = 0, fallback_detail=None) -> str | None:
+        """记一条调用；成功返回 record_id，写失败返回 None。"""
+        rid = make_record_id(capability)
+        rec = build_call(
+            record_id=rid, ts=time.strftime("%Y-%m-%dT%H:%M:%S"), period=self.period,
+            capability=capability, actor=self.actor, mode=mode, backend=backend,
+            fallback=fallback, shield=dict(shield or {}), receipts=receipts,
+            question=question, text_protected=text_protected,
+            egress_items=int(egress_items or 0), egress_bytes=int(egress_bytes or 0),
+            elapsed_ms=int(elapsed_ms or 0),
+            extra={"fallback_detail": fallback_detail} if fallback_detail else None)
+        if label is not None:
+            rec["label"] = str(label)
+        return rid if append(call_path(self.root, self.period), rec) else None
+
+    def switch(self, *, capability: str, from_, to) -> bool:
+        """记一条开关审计；写失败返回 False（开关本身已生效）。"""
+        audit = build_switch(ts=time.strftime("%Y-%m-%dT%H:%M:%S"), actor=self.actor,
+                             capability=capability, from_=from_, to=to)
+        return append(switch_path(self.root), audit)
 
 
 def tmp_path(path) -> pathlib.Path:

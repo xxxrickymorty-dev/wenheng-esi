@@ -81,9 +81,9 @@ class SwitchStore:
                                   json.dumps(payload, ensure_ascii=False, indent=1) + "\n")
         self._mtime = self.path.stat().st_mtime_ns
         self._data = {"schema": SCHEMA, "caps": caps, "updated": payload["updated"]}
-        audit = _record.build_switch(ts=payload["updated"]["ts"], actor=actor,
-                                     capability=capability, from_=old, to=enabled)
-        if not _record.append(_record.switch_path(self.path.parent.parent), audit):
+        wrote = _record.Recorder(self.path.parent.parent, actor=actor).switch(
+            capability=capability, from_=old, to=enabled)
+        if not wrote:
             log.warning("ai 开关审计写失败（开关本身已生效）：%s", capability)
 
 

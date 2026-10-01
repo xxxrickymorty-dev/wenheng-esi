@@ -18,7 +18,7 @@ import logging
 import os
 import time
 
-from . import _llm, _record, _runtime, _shield
+from . import _llm, _record, _shield
 
 LOG = logging.getLogger(__name__)
 
@@ -109,24 +109,15 @@ def _record_call(info: dict, task: str, *, period: str, label: str,
     if protected is None:
         protected = _shield.protect(task)[0]
     shielded = dict(info.get("shield") or {})
-    rec = _record.build_call(
-        record_id=_record.make_record_id("polish"),
-        ts=time.strftime("%Y-%m-%dT%H:%M:%S"),
-        period=period,
-        capability="polish",
-        actor=_runtime.resolve_actor(None),
-        mode=mode,
+    rid = _record.Recorder.for_period(period).call(
+        capability="polish", mode=mode,
         backend=str(info.get("backend") or ("rule" if mode == "rule" else "")),
         fallback=fallback,
         shield={"checked": int(shielded.get("checked") or 0),
                 "passed": int(shielded.get("passed") or 0)},
-        receipts=(),
-        question=label,
-        text_protected=protected,
+        text_protected=protected, question=label,
         egress_items=int(info.get("egress_items") or 0),
         egress_bytes=int(info.get("egress_bytes") or 0),
-        elapsed_ms=int((time.time() - t0) * 1000),
-    )
-    from ._core import _root
-    if not _record.append(_record.call_path(_root(), period), rec):
+        elapsed_ms=int((time.time() - t0) * 1000))
+    if rid is None:
         LOG.warning("写作位留痕失败：label=%s period=%s（产出不受影响）", label, period or "-")
