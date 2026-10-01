@@ -260,6 +260,12 @@ class Test出图接线:
 
 class Testrun_log留痕:
     def test_run_pipeline收走预测警告(self):
-        """run_log 的 forecast_warnings 由 load_warnings 读产物而来（不重算）。"""
-        src = (REPO / "src" / "run_pipeline.py").read_text(encoding="utf-8")
-        assert "forecast_warnings" in src and "load_warnings" in src
+        """run_log 的 forecast_warnings 由 load_warnings 读产物而来（不重算）。
+
+        读取实现已收进 `steps.charts`（五步注册表）；run_pipeline 只把步骤带回的值
+        写进 run_log —— 两个家各钉一处，防止有人回去"重算"。
+        """
+        steps_src = (REPO / "src" / "steps.py").read_text(encoding="utf-8")
+        assert "load_warnings(" in steps_src, "预测警告不再由产物读回"
+        pipe_src = (REPO / "src" / "run_pipeline.py").read_text(encoding="utf-8")
+        assert "forecast_warnings" in pipe_src, "run_log 不再收走预测警告"
