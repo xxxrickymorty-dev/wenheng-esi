@@ -12,7 +12,7 @@
   overflow: hidden;
   background: #10291f;
   color: var(--cream);
-  font-family: Georgia, 'Noto Serif CJK SC', 'Songti SC', SimSun, serif;
+  font-family: 'Noto Serif SC Variable', Georgia, 'Noto Serif CJK SC', 'Songti SC', SimSun, serif;
 }
 
 .scene-wrap,
@@ -65,7 +65,7 @@
   background: #12362a;
   color: #f0ead8;
   border-bottom: 1px solid #bcad8550;
-  font-family: Georgia, 'Noto Serif CJK SC', serif;
+  font-family: 'Noto Serif SC Variable', Georgia, 'Noto Serif CJK SC', serif;
 }
 
 .brand {
@@ -138,7 +138,7 @@
 
 .eyebrow {
   color: var(--gold);
-  font-family: Georgia, 'Noto Serif CJK SC', serif;
+  font-family: 'Noto Serif SC Variable', Georgia, 'Noto Serif CJK SC', serif;
   font-size: 12px;
   letter-spacing: .26em;
 }

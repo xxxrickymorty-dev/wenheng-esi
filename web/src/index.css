@@ -19,7 +19,7 @@
   --ok:#28643A; --ok-soft:#E2EEE4;
   --warn:#75622D; --warn-soft:#F6EED8;
   --bad:#B43B31; --bad-soft:#F4E6E2;
-  --serif:"Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+  --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
   --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
   --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
   --r:14px; --r-sm:10px;

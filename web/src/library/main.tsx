@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import '@fontsource-variable/noto-serif-sc'
 import '../index.css'
 import ShelfPage from './ShelfPage'
 

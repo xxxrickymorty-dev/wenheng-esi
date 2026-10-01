@@ -54,7 +54,7 @@
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  font-family: Georgia, 'Noto Serif CJK SC', 'Songti SC', SimSun, serif;
+  font-family: 'Noto Serif SC Variable', Georgia, 'Noto Serif CJK SC', 'Songti SC', SimSun, serif;
 }
 
 .flip-reader .reader-toolbar {
@@ -316,7 +316,7 @@
 .flip-reader .kicker {
   margin: 0;
   color: #927a4c;
-  font-family: Georgia, 'Noto Serif CJK SC', serif;
+  font-family: 'Noto Serif SC Variable', Georgia, 'Noto Serif CJK SC', serif;
   font-size: 10px;
   letter-spacing: .26em;
 }
