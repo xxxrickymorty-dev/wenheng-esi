@@ -163,6 +163,47 @@ class TestIssueOf:
             period.issue_of("202605_复现")
 
 
+class TestIssue:
+    def test_两期与派生(self):
+        it = period.Issue(period="202607", prev="202605")
+        assert (it.year, it.month, it.prev_month) == ("2026", 7, 5)
+        assert it.label == "2026年7月" and it.prev_label == "2026年5月"
+        assert it.numbers == (4, 38)
+        assert it.cover_issue == "2026年第4期（总第38期）"
+
+    def test_早于锚点要封面期号就报错(self):
+        it = period.Issue(period="201903", prev="201901")
+        assert it.label == "2019年3月"                      # 标签仍可用
+        with pytest.raises(period.PeriodBeforeAnchor):
+            _ = it.cover_issue
+
+
+class TestResolve:
+    def test_三级优先_override_目录_台账(self):
+        w = _wide(["202601", "202603", "202605"])
+        assert period.resolve(w).period == "202605"
+        assert period.resolve(w, out_dir="out/202603").period == "202603"
+        assert period.resolve(w, out_dir="out/202603_复现").period == "202603"
+        assert period.resolve(w, out_dir="out/202603_复现",
+                              period_override="202605").period == "202605"
+        assert period.resolve(w, out_dir="out/202603_复现").prev == "202601"
+
+    def test_目录不是有效期次则回退台账最新(self):
+        w = _wide(["202601", "202603", "202605"])
+        assert period.resolve(w, out_dir="out/202607").period == "202605"       # 不在 filled
+        assert period.resolve(w, out_dir="out/对样包_202607").period == "202605"  # 前缀锚定不认
+
+    def test_override不在台账里直接报错(self):
+        w = _wide(["202601", "202603"])
+        with pytest.raises(period.PeriodUndetectable, match="202607"):
+            period.resolve(w, period_override="202607")
+
+    def test_上期按严格早于取_允许缺口(self):
+        w = _wide(["202601", "202507", "202603"])
+        it = period.resolve(w, period_override="202603")
+        assert it.prev == "202507"
+
+
 class TestServerFacing:
     def test_目录正则只认前缀不认后缀(self):
         """server/jobs.py re-export 这两个常量，语义必须是它原来那两条。"""

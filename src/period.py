@@ -22,6 +22,9 @@
    `out/<期次>/` 的目录名前缀，但**目录名可以带后缀**（`202605_复现`）。
    两者之间的转换只走 `from_dir`，**禁止把目录名直接当列标签用**
    （`server/workbench.trace` 曾因此在逐格溯源页静默显示 `—`）。
+4. **两个事实、一个值**：`Issue(period, prev)` 是一次报告对「这一期」的完整指代；
+   `resolve()` 是定位它的唯一入口（override > 目录名 > 台账最新两期）。
+   封面期号、中文年月都是派生 property——别再自己拼。
 
 本模块**零第三方依赖**（不 import pandas）：`filled` 只读 `.columns` / `.notna()`，
 所以 `server/` 侧可以放心地 import 它来取正则与校验，不会把 pandas 拖进启动路径。
@@ -30,6 +33,7 @@ from __future__ import annotations
 
 import pathlib
 import re
+from dataclasses import dataclass
 
 #: 规范形态：恰好六位数字。
 PERIOD_RE = re.compile(r"^\d{6}$")
@@ -146,3 +150,67 @@ def issue_of(period):
             f"{p} 早于期号锚点 {ISSUE_ANCHOR}（＝总第 {ISSUE_ANCHOR_TOTAL} 期），"
             f"总期号不可推 —— 请先让馆员确认锚点（CONTEXT.md 待办）。")
     return _issue_index(p), ISSUE_ANCHOR_TOTAL + _issue_index(p) - _issue_index(ISSUE_ANCHOR)
+
+
+# ------------------------------------------------------------------ 一期 = 两个事实
+@dataclass(frozen=True)
+class Issue:
+    """一次报告对「这一期」的完整指代：当期 + 上期。
+
+    上期口径＝`prev_before`（严格早于的最近一期，台账允许缺口），不是 `filled[-2]`。
+    其余全部派生：中文年月、期号、封面串。早于锚点的期号**报错不给假期号**。
+    """
+
+    period: str
+    prev: str
+
+    @property
+    def year(self) -> str:
+        return str(self.period)[:4]
+
+    @property
+    def month(self) -> int:
+        return month(self.period)
+
+    @property
+    def prev_month(self) -> int:
+        return month(self.prev)
+
+    @property
+    def label(self) -> str:
+        return label(self.period)
+
+    @property
+    def prev_label(self) -> str:
+        return label(self.prev)
+
+    @property
+    def numbers(self) -> tuple[int, int]:
+        """`(年内序号, 总期号)`；早于锚点抛 `PeriodBeforeAnchor`。"""
+        return issue_of(self.period)
+
+    @property
+    def cover_issue(self) -> str:
+        """封面期号串（`2026年第4期（总第38期）`）——`fill_docx` 按这个形态匹配。"""
+        idx, total = self.numbers
+        return f"{self.year}年第{idx}期（总第{total}期）"
+
+
+def resolve(wide, out_dir=None, period_override=None) -> Issue:
+    """定位一期：`period_override` > 目录名（且须是有效期次）> 台账最新两期。
+
+    目录名带后缀（`202605_复现`）只在这里归一。override 不在台账有效期内
+    直接报错——总不能拿别期数据填当期封面。
+    """
+    periods = filled(wide)
+    if period_override:
+        p = str(period_override)
+        if p not in periods:
+            span = f"{periods[0]}..{periods[-1]}" if periods else "（无）"
+            raise PeriodUndetectable(f"台账无 {p} 期数据（有效期次：{span}）")
+        return Issue(period=p, prev=prev_before(periods, p))
+    d = from_dir(out_dir) if out_dir is not None else None
+    if d and d in periods:
+        return Issue(period=d, prev=prev_before(periods, d))
+    p, _ = detect(wide)
+    return Issue(period=p, prev=prev_before(periods, p))
