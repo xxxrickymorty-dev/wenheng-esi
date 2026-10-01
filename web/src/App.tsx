@@ -25,7 +25,6 @@ import { RedList } from './RedList'
 import { Charts } from './Charts'
 import { Reading } from './Reading'
 import { Trace } from './Trace'
-import { Tools } from './Tools'
 import { Forecast } from './Forecast'
 import { Archive } from './Archive'
 import { deriveWorkbench, statusToWB, type WBState } from './wb'
@@ -590,26 +589,13 @@ export default function App() {
                         forecastChoiceDirty={selectedForecastChoiceDirty}
                         onPickPeriod={pickPeriod}
                         onReloadForecastChoice={reloadForecastChoice}
+                        showTools={!noAdminBits}
+                        toolJobId={runForSelected?.jobId ?? null}
+                        toolArtifactsToken={selected ? artifactRefreshByPeriod[selected] ?? 0 : 0}
+                        onToolActionStart={beginToolAction}
+                        onToolActionEnd={endToolAction}
+                        onToolUploaded={(jobId, period) => { pickPeriod(period); attach(jobId, period) }}
                       />
-            {!noAdminBits && (
-              <details className="fold">
-                <summary>这一期的工具<span className="sm">上传 · 重跑 · 回滚 · 台账 · 日志包</span></summary>
-                <p className="hint" style={{ padding: '10px 18px 0', fontSize: 13.5 }}>
-                  看数据源：<a href={navHref('/app/?view=ledger')}>主台账（只读）→</a>
-                </p>
-                <Tools
-                  period={selected}
-                  jobId={runForSelected?.jobId ?? null}
-                  approvalStatus={approvalStatus}
-                  actionsLocked={jobActionsLocked}
-                  actionLockReason={actionLockReason}
-                  onActionStart={beginToolAction}
-                  onActionEnd={endToolAction}
-                  onUploaded={(jobId, period) => { pickPeriod(period); attach(jobId, period) }}
-                  refreshToken={selected ? artifactRefreshByPeriod[selected] ?? 0 : 0}
-                />
-              </details>
-            )}
           </>
         )}
 

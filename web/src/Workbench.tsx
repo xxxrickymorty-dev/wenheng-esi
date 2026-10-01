@@ -6,6 +6,7 @@ import type { ApiError, Me, Period, PeriodDetail } from './api'
 import { formatProvenanceTime, type ForecastChoiceEntry, type ForecastMeta } from './api-forecast'
 import { useState } from 'react'
 import { ConfirmButton } from './ConfirmButton'
+import { Tools } from './Tools'
 import { taskLabel as runStatusText } from './lib/status'
 import { Icon } from './icons'
 import { failureCopy, isTerminal, STATE_LABEL, type Workbench as WB, type WBState } from './wb'
@@ -310,6 +311,7 @@ export function Workbench({
   actionLockReason, activeRun, actionsLocked, submitting, onGenerate,
   periods, forecastMeta, forecastMetaError, actualOutputPeriod, forecastChoice, forecastChoiceDirty,
   onPickPeriod, onReloadForecastChoice,
+  showTools, toolJobId, toolArtifactsToken, onToolActionStart, onToolActionEnd, onToolUploaded,
 }: {
   period: string | null
   me: Me | null
@@ -333,6 +335,13 @@ export function Workbench({
   forecastChoiceDirty: boolean
   onPickPeriod: (period: string) => void
   onReloadForecastChoice: () => void
+  /** 「这一期的工具」折叠（2026-10-01 从 App 抽出）：角色未确认/游客时不渲染 */
+  showTools: boolean
+  toolJobId: string | null
+  toolArtifactsToken: number
+  onToolActionStart: (action: 'upload' | 'rerun' | 'rollback') => boolean
+  onToolActionEnd: (action: 'upload' | 'rerun' | 'rollback') => void
+  onToolUploaded: (jobId: string, period: string) => void
 }) {
   const canGenerate = me?.role === 'admin' && period != null && /^\d{6}$/.test(period) && !actionsLocked && !activeRun && !submitting
     && (!run || isTerminal(run.status ?? undefined))
@@ -422,6 +431,26 @@ export function Workbench({
                       dirty={forecastChoiceDirty} onPickPeriod={onPickPeriod}
                       onReload={onReloadForecastChoice} />
       </details>
+
+      {showTools && (
+        <details className="fold">
+          <summary>这一期的工具<span className="sm">上传 · 重跑 · 回滚 · 台账 · 日志包</span></summary>
+          <p className="hint" style={{ padding: '10px 18px 0', fontSize: 13.5 }}>
+            看数据源：<a href={`/app/?view=ledger${period ? `&period=${encodeURIComponent(period)}` : ''}`}>主台账（只读）→</a>
+          </p>
+          <Tools
+            period={period}
+            jobId={toolJobId}
+            approvalStatus={approvalStatus}
+            actionsLocked={actionsLocked}
+            actionLockReason={actionLockReason}
+            onActionStart={onToolActionStart}
+            onActionEnd={onToolActionEnd}
+            onUploaded={onToolUploaded}
+            refreshToken={toolArtifactsToken}
+          />
+        </details>
+      )}
     </>
   )
 }
