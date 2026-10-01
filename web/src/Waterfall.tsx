@@ -41,7 +41,7 @@ export function WaterfallRows({ rows, totalSec, running, summary }: {
                 {inProgress ? '运行中' : (STEP_LABEL[r.status] ?? r.status)}
               </span>
               <span className="wf-track" aria-hidden="true">
-                <i style={{ width: `${pct}%`, background: color }} />
+                <i style={{ transform: `scaleX(${pct / 100})`, background: color }} />
               </span>
               <span className="wf-sec">{inProgress ? '计时中…' : `${r.sec} 秒${r.orphan ? '*' : ''}`}</span>
             </div>

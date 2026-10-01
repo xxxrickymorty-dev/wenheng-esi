@@ -201,17 +201,6 @@ a{color:inherit}
 .banner ul{margin:6px 0 0;padding-left:20px}
 .banner li{margin:2px 0}
 
-/* ---------- 五步进度 ---------- */
-.progress{padding:4px 24px 8px}
-.prow{display:flex;align-items:center;gap:12px;padding:11px 0;
-  border-bottom:1px solid var(--line-2);font-size:16px}
-.prow:last-child{border-bottom:none}
-.prow .name{flex:0 0 132px;color:var(--ink-2)}
-.prow .bar{flex:1;height:10px;border-radius:99px;background:var(--line-2);overflow:hidden}
-.prow .bar i{display:block;height:100%;background:var(--ok);border-radius:99px;transition:width .3s}
-.prow.now .bar i{background:var(--gold)}
-.prow .pct{flex:0 0 80px;text-align:right;color:var(--ink-3);
-  font-family:var(--mono);font-size:14px}
 .elapsed{display:flex;align-items:center;gap:8px;color:var(--ink-3);font-size:15px;padding:2px 24px 14px}
 
 /* 表格列约定：数字右对齐；长文本限宽省略（悬浮 title 看全） */
@@ -437,7 +426,7 @@ a{color:inherit}
 .wf-name small{display:block;color:var(--ink-3);font-size:13.5px}
 .wf-state{flex:0 0 88px;display:flex;align-items:center;gap:6px;font-size:13.5px}
 .wf-track{flex:1;height:10px;border-radius:99px;background:var(--line-2);overflow:hidden}
-.wf-track i{display:block;height:100%;border-radius:99px;transition:width .3s}
+.wf-track i{display:block;height:100%;border-radius:99px;transform-origin:left;transition:transform .3s}
 .wf-sec{flex:0 0 92px;text-align:right;font-family:var(--mono);font-size:14.5px;color:var(--ink-2)}
 @media (max-width:760px){
   .wf-row{flex-wrap:wrap;gap:6px 12px}
@@ -536,7 +525,7 @@ a{color:inherit}
 .bd-top b{font-size:15.5px}
 .bd-prox{font-family:var(--serif);font-size:19px;color:var(--zhu)}
 .bd-bar{display:block;height:8px;border-radius:99px;background:var(--line-2);overflow:hidden;margin:8px 0 9px}
-.bd-bar i{display:block;height:100%;border-radius:99px;background:var(--gold)}
+.bd-bar i{display:block;height:100%;border-radius:99px;background:var(--gold);transform-origin:left;transition:transform .3s}
 .bd-meta{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--ink-3);flex-wrap:wrap}
 .bd-cross{margin-top:7px;font-size:13.5px;color:var(--ink-3)}
 .bd-cross.on{color:var(--ok);font-weight:600}
@@ -693,7 +682,7 @@ a{color:inherit}
   background:var(--bad-soft);text-align:center;font-family:var(--sans)}
 .rv-in::placeholder{color:var(--bad);opacity:.75}
 .rv-in.filled{border-style:solid;background:#fff;color:var(--ink);font-weight:600}
-.rv-in:focus{outline:3px solid var(--zhu-soft);outline-offset:1px}
+.rv-in:focus{outline:3px solid var(--zhu);outline-offset:1px}
 
 /* 右栏 */
 /* 右栏吸顶 + 限高内滚：报告很长时，签单/下载/空位清单永远够得着，不用把整页拖到底 */
@@ -777,7 +766,7 @@ a{color:inherit}
 .aq-gname svg{color:var(--zhu)}
 .aq-bar{display:flex;align-items:center;gap:8px;margin-top:8px}
 .aq-track{flex:1;height:6px;border-radius:99px;background:var(--line-2);overflow:hidden}
-.aq-track i{display:block;height:100%;border-radius:99px;background:var(--ok)}
+.aq-track i{display:block;height:100%;border-radius:99px;background:var(--ok);transform-origin:left;transition:transform .3s}
 .aq-g.live .aq-track i{background:var(--gold)}
 .aq-g.bad .aq-track i{background:var(--bad)}
 .aq-files{margin-top:8px;border-top:1px dashed var(--line-2)}
@@ -828,4 +817,33 @@ a{color:inherit}
 *::-webkit-scrollbar-thumb:hover{background:var(--scroll-hover)}
 @supports not selector(::-webkit-scrollbar){
   *{scrollbar-width:thin;scrollbar-color:var(--scroll) transparent}
+}
+
+/* ============================================================================
+   布局小工具（2026-10-01）：只收「高频、静态」的样式，用来替掉散落的内联；
+   动态值（来自数据的宽度/颜色等）继续留在内联。新增样式优先落组件类，
+   确属高频复用的才进这里。
+   ========================================================================== */
+.mt-0{margin-top:0}.mt-2{margin-top:2px}.mt-4{margin-top:4px}.mt-6{margin-top:6px}
+.mt-8{margin-top:8px}.mt-9{margin-top:9px}.mt-10{margin-top:10px}.mt-12{margin-top:12px}
+.mt-14{margin-top:14px}.mt-18{margin-top:18px}
+.mb-8{margin-bottom:8px}.mb-10{margin-bottom:10px}
+.ml-4{margin-left:4px}.ml-6{margin-left:6px}.ml-10{margin-left:10px}.ml-12{margin-left:12px}
+.ml-auto{margin-left:auto}
+/* 列表行「选择」按钮：行点击是鼠标便利，这个按钮是它的键盘等价物 */
+.period-row{cursor:pointer}
+.rowbtn{border:0;background:none;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+/* 区段标题（原内联 flex 布局）：默认 19px，大标题加 .h-lg */
+.h-sec{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:19px}
+.h-sec.h-lg{font-size:22px}
+.hint-num{font-weight:400;font-size:14px}
+
+/* 减动效（2026-10-01）：主工作区此前没有适配；库房各自已有。
+   循环脉冲、进度条过渡、平滑滚动、悬停位移在系统「减少动态效果」下一并停。 */
+@media (prefers-reduced-motion: reduce){
+  .fx-log{scroll-behavior:auto}
+  .dot.run{animation:none}
+  .wf-track i,.aq-track i,.bd-bar i{transition:none}
+  .seal,.who-exit,.who-exit .exit,.entry{transition:none}
+  .sealbox:hover .seal{translate:0 0}
 }

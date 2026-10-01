@@ -53,7 +53,7 @@ function LiveRun({ run, approvalStatus }: { run: Run; approvalStatus: string }) 
   return (
     <>
       <div className="runbar">
-        <span className="elapsed">
+        <span className="elapsed" aria-live="polite">
           <Icon name="refresh" size={19} />
           {`任务：${run.status ? runStatusText(run.status) : '正在读取状态'} · 期次 ${run.requestedPeriod}${run.outputPeriod && run.outputPeriod !== run.requestedPeriod ? `（实际输出 ${run.outputPeriod}）` : ''} · ${connectionLabel}`}
         </span>

@@ -478,7 +478,7 @@ export function Forecast({
                         <span className="bd-prox">{r.prox == null ? '—' : `${r.prox}%`}</span>
                       </div>
                       <span className="bd-bar" aria-hidden="true">
-                        <i style={{ width: `${Math.min(100, Math.max(0, r.prox ?? 0))}%` }} />
+                        <i style={{ transform: `scaleX(${Math.min(100, Math.max(0, r.prox ?? 0)) / 100})` }} />
                       </span>
                       <div className="bd-meta">
                         <span>模型 {r.model}</span>

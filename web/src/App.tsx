@@ -637,10 +637,10 @@ export default function App() {
                 </td></tr>
               )}
               {periods.map((p) => (
-                <tr key={p.period}
+                <tr key={p.period} className="period-row"
                     onClick={() => pickPeriod(p.period)}
-                    style={{ cursor: 'pointer', background: p.period === selected ? 'var(--panel)' : undefined }}>
-                  <td>{p.label}</td>
+                    style={{ background: p.period === selected ? 'var(--panel)' : undefined }}>
+                  <td><button type="button" className="rowbtn">{p.label}</button></td>
                   <td className="mono">{p.period}</td>
                   <td>
                     <span className={`pill ${p.status === 'signed' ? 'signed' : p.status === 'stale' ? 'stale' : 'unsigned'}`}>

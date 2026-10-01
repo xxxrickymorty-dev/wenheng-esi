@@ -195,9 +195,9 @@ export function Tools({
           {/* 上传新台账（老站同一套口径：期次 6 位必填） */}
           <h3 style={{ fontSize: 15 }}>上传新台账</h3>
           <div className="toolbar">
-            <input type="file" accept=".xlsx"
+            <input type="file" accept=".xlsx" aria-label="选择要上传的监测表（xlsx）"
                    onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-            <input className="search" style={{ maxWidth: 150 }} value={newPeriod}
+            <input className="search" style={{ maxWidth: 150 }} value={newPeriod} aria-label="新期次（六位数字）"
                    onChange={(e) => setNewPeriod(e.target.value)} placeholder="期次 202609" />
             <ConfirmButton className="btn" disabled={actionsLocked || busy || rerunning}
                            confirmText="确认上传？会覆盖本期的监测表"

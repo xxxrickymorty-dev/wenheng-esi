@@ -173,7 +173,7 @@ function PeriodData({ period }: { period: string | null }) {
 
   return (
     <>
-      <div className="body-grid" style={{ paddingTop: 22 }}>
+      <div style={{ paddingTop: 22 }}>
         <div>
           <h2 style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <Icon name="list" size={21} />对勘 · 红色件

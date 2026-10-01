@@ -68,7 +68,7 @@ export function Charts({ period }: { period: string | null }) {
         <>
           <div className="toolbar" style={{ marginTop: 12 }}>
             <input className="search" value={q} onChange={(e) => setQ(e.target.value)}
-                   placeholder="搜索图名 / 学科…" />
+                   aria-label="搜索图名或学科" placeholder="搜索图名 / 学科…" />
             <span className="hint">匹配 <b className="mono">{shown.length} / {rows.length}</b> 张</span>
           </div>
           {byGroup.map(([g, list]) => (

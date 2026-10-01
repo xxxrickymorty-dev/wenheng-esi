@@ -100,6 +100,17 @@ export function Flexible({ period }: { period: string | null }) {
     if (el) el.scrollTop = el.scrollHeight
   }, [msgs])
 
+  /* 报告里的图：鼠标点开看大图；img 默认不可聚焦，这里补键盘入口 */
+  useEffect(() => {
+    const el = logRef.current
+    if (!el) return
+    for (const img of Array.from(el.querySelectorAll<HTMLImageElement>('.fx-md img'))) {
+      img.tabIndex = 0
+      img.setAttribute('role', 'link')
+      img.setAttribute('aria-label', '查看大图')
+    }
+  }, [msgs])
+
   function patch(id: number, f: (m: Bot) => Bot) {
     setMsgs((ms) => ms.map((m) => (m.kind === 'bot' && m.id === id ? f(m) : m)))
   }
@@ -208,6 +219,15 @@ export function Flexible({ period }: { period: string | null }) {
     }
   }
 
+  function onLogKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    const t = e.target as HTMLElement
+    if (t.tagName !== 'IMG') return
+    e.preventDefault()
+    const src = (t as HTMLImageElement).src
+    if (src) window.open(src, '_blank', 'noopener')
+  }
+
   function runState(m: Bot): string {
     if (m.status === 'planning') return `正在规划大纲 · ${elapsedLive()} 秒`
     if (m.status === 'streaming') return `正在生成 · ${m.backend || '模型'} · ${elapsedLive()} 秒`
@@ -277,13 +297,13 @@ export function Flexible({ period }: { period: string | null }) {
         <p className="hint" style={{ marginTop: 12 }}>还没有出稿——点「生成分析稿」开始。</p>
       )}
 
-      <div className="fx-log" ref={logRef} onClick={onLogClick}>
+      <div className="fx-log" ref={logRef} onClick={onLogClick} onKeyDown={onLogKeyDown}>
         {msgs.map((m) => m.kind === 'user' ? (
           <div key={m.id} className="fx-msg user">{m.text}</div>
         ) : (
           <div key={m.id} className="fx-msg bot">
             {(m.status !== 'done' || m.fromHistory === false) && (
-              <div className="fx-status">
+              <div className="fx-status" aria-live="polite">
                 <span className={`dot ${m.status === 'done' ? 'done'
                   : m.status === 'error' ? 'bad' : 'run'}`} />
                 <span>{m.status === 'done' ? doneText(m) : runState(m)}</span>

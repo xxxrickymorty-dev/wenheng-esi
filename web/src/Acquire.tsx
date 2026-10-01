@@ -4,7 +4,7 @@
    capabilities——工具还没接入时按钮禁用并说明，不假装能点。
    静态稿对照：web/mockups/取数台.html；契约：§2.2 #26。 */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getAcquisition, postAcquisition, type AcquisitionState, type AcqGroup } from './api'
 import { ConfirmButton } from './ConfirmButton'
 import { Info } from './Info'
@@ -65,7 +65,7 @@ function GroupCard({ g }: { g: AcqGroup }) {
       </div>
       <div className="aq-gname"><Icon name="doc" size={18} />{g.title ?? '未命名组'}</div>
       <div className="aq-bar">
-        <span className="aq-track"><i style={{ width: `${pct}%` }} /></span>
+        <span className="aq-track"><i style={{ transform: `scaleX(${pct / 100})` }} /></span>
         <span className="aq-num">{g.verified ?? 0} / {files.length || '—'}</span>
       </div>
       {files.length > 0 && (
@@ -97,12 +97,15 @@ export function Acquire({ period }: { period: string | null }) {
   const [note, setNote] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
+  const stateRef = useRef<AcquisitionState | null>(null)
+  const reloadTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => { if (reloadTimer.current !== undefined) window.clearTimeout(reloadTimer.current) }, [])
 
   const load = useCallback((silent = false) => {
     if (!period) { setState(null); setNote(null); return }
     if (!silent) setLoading(true)
     getAcquisition(period)
-      .then((s) => { setState(s); setNote(null) })
+      .then((s) => { stateRef.current = s; setState(s); setNote(null) })
       .catch((e) => {
         const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
         setState(null)
@@ -114,11 +117,23 @@ export function Acquire({ period }: { period: string | null }) {
   }, [period])
 
   useEffect(() => { load() }, [load])
-  /* 任务在跑时轮询进度（写回状态文件）；闲时就每 4 秒轻读一次，页面始终最新 */
+  /* 进度轮询：4 秒一次轻读；后台标签页不拉；已并入的期次降到 32 秒一次，切回页面立即刷新 */
   useEffect(() => {
     if (!period) return
-    const t = window.setInterval(() => load(true), 4000)
-    return () => window.clearInterval(t)
+    let tick = 0
+    const t = window.setInterval(() => {
+      if (document.hidden) return
+      tick += 1
+      const s = stateRef.current
+      if (s && deriveView(s) === 'merged' && tick % 8 !== 0) return
+      load(true)
+    }, 4000)
+    const onVisible = () => { if (!document.hidden) load(true) }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.clearInterval(t)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [period, load])
 
   const act = useCallback(async (action: string, body?: Record<string, unknown>) => {
@@ -126,7 +141,7 @@ export function Acquire({ period }: { period: string | null }) {
     setBusy(true)
     try {
       const r = await postAcquisition(period, action, body)
-      window.setTimeout(() => load(true), 500)
+      reloadTimer.current = window.setTimeout(() => load(true), 500)
       return r
     } catch (e) {
       const h = e as { status?: number; body?: { error?: string; hint?: string } }
@@ -229,7 +244,7 @@ export function Acquire({ period }: { period: string | null }) {
 
           {/* ===== 主动作（每屏 1 个） ===== */}
           <div className="focus">
-            <div>
+            <div aria-live="polite">
               <div className="big">{opRunning && op ? `${OP_CN[op.kind ?? ''] ?? '正在执行'}……` : title}</div>
               <div className="sub">{opRunning && op ? (op.note || '进度会自动更新，可以留在这一页') : sub}</div>
               {op?.state === 'failed' && (

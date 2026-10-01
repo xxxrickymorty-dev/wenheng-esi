@@ -415,6 +415,7 @@ export function Review({
               </label>
               <textarea
                 className="rv-note"
+                aria-label="签单批注（可选）"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="批注（可选）：这一版为什么可以签单、还有哪些已知问题"
