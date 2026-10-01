@@ -187,7 +187,7 @@ function ModelSummary({
   const currentRoute = routes.some((item) => item.value === route) ? route : (routes[0]?.value ?? '')
 
   return (
-    <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
+    <section className="card mt-18 pad-card">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <span className="fc-no">01</span>
         <h2 style={{ fontSize: 21 }}>预测模型 · 本期已选</h2>
@@ -211,17 +211,17 @@ function ModelSummary({
           </select>
         </label>
         <div style={{ minWidth: 160 }}>
-          <small style={{ display: 'block', color: 'var(--ink-3)', fontSize: 13 }}>预测数据</small>
+          <small className="dim-block">预测数据</small>
           <strong style={{ fontFamily: 'var(--mono)', fontSize: 16 }}>{meta?.source_period || '未就绪'}</strong>
         </div>
         <div style={{ minWidth: 190 }}>
-          <small style={{ display: 'block', color: 'var(--ink-3)', fontSize: 13 }}>实际输出</small>
+          <small className="dim-block">实际输出</small>
           <strong style={{ color: 'var(--gold-ink)', fontSize: 15 }}>{actualOutputPeriod || '任务完成后显示'}</strong>
         </div>
         <div style={{ minWidth: 260, flex: 1 }}>
-          <small style={{ display: 'block', color: 'var(--ink-3)', fontSize: 13 }}>台账文件</small>
-          <strong style={{ fontSize: 14 }}>{source?.name ?? '云大全学科排名、阈值动态检测表.xlsx'}</strong>
-          <span style={{ display: 'block', color: 'var(--ink-3)', fontSize: 13 }}>
+          <small className="dim-block">台账文件</small>
+          <strong className="fs-14">{source?.name ?? '云大全学科排名、阈值动态检测表.xlsx'}</strong>
+          <span className="dim-block">
             最后修改（北京时间）：{sourceTime ? formatProvenanceTime(sourceTime) : '本机未找到'}
           </span>
         </div>
@@ -276,7 +276,7 @@ function ModelSummary({
                     </tr>
                   )
                 })}
-                {subjects.length === 0 && <tr><td colSpan={4} style={{ color: 'var(--ink-3)' }}>接口暂未返回候选学科。</td></tr>}
+                {subjects.length === 0 && <tr><td colSpan={4} className="ink-3">接口暂未返回候选学科。</td></tr>}
               </tbody>
             </table>
           </div>
@@ -391,7 +391,7 @@ export function Workbench({
         </div>
 
         {!canGenerate && hasGenerateAction && (
-          <p className="hint" style={{ padding: '0 24px 18px' }}>
+          <p className="hint card-foot">
             {actionLockReason ?? (me == null
               ? <>系统暂时无法确认你的身份，为保护数据，生成按钮暂时不能使用。</>
               : me.role === 'admin'
@@ -414,7 +414,7 @@ export function Workbench({
           approvalStatus={approvalStatus} />
 
         {activityState === 'unknown' && !hasGenerateAction && (
-          <p className="hint" style={{ padding: '0 24px 18px' }}>{actionLockReason}</p>
+          <p className="hint card-foot">{actionLockReason}</p>
         )}
 
         {wb.note && (
@@ -475,7 +475,7 @@ export function PeriodsPanel({ periods, selected, healthy, onPick }: {
           </thead>
           <tbody>
             {periods.length === 0 && (
-              <tr><td colSpan={4} style={{ color: 'var(--ink-3)' }}>
+              <tr><td colSpan={4} className="ink-3">
                 {healthy === false ? (
                   <>服务未启动，读不到期次。起好服务后
                     <button className="btn" style={{ padding: '4px 10px', fontSize: 13.5, margin: '0 6px' }}

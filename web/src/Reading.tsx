@@ -97,7 +97,7 @@ export function Reading({ period }: { period: string | null }) {
           <Icon name="doc" size={21} />对勘本 · 正文级对照
           <span className="hint hint-num">
             本期改动 <b className="mono">{rows?.length ?? 0}</b> 处
-            {nManual > 0 && <> · 待人工 <b className="mono" style={{ color: 'var(--zhu)' }}>{nManual}</b> 处</>}
+            {nManual > 0 && <> · 待人工 <b className="mono ink-zhu">{nManual}</b> 处</>}
           </span>
           {assertions && (
             <span className="pill ml-auto">
@@ -107,14 +107,14 @@ export function Reading({ period }: { period: string | null }) {
         </h2>
 
       {note ? (
-        <div className="pending-box" style={{ margin: '12px 0 16px' }}>
+        <div className="pending-box block-12-16">
           {note}
           {note.includes('可能尚未出稿') && period && (
             <> <a href={`/app/?period=${encodeURIComponent(period)}`}>去生成这一期 →</a></>
           )}
         </div>
         ) : !rows ? (
-          <div className="pending-box" style={{ margin: '12px 0 16px' }}>正在读对勘数据……</div>
+          <div className="pending-box block-12-16">正在读对勘数据……</div>
         ) : (
           <div className="toolbar" style={{ paddingBottom: 12 }}>
             <input className="search" value={q} onChange={(e) => setQ(e.target.value)}
@@ -193,7 +193,7 @@ export function Reading({ period }: { period: string | null }) {
             </h3>
             <div className="kv mt-10"><span className="k">本期改动</span><span className="v">{rows.length} 处</span></div>
             <div className="kv"><span className="k">槽位分组</span><span className="v">{sections.length} 组</span></div>
-            <div className="kv"><span className="k">待人工</span><span className="v" style={{ color: 'var(--zhu)' }}>{nManual} 处</span></div>
+            <div className="kv"><span className="k">待人工</span><span className="v ink-zhu">{nManual} 处</span></div>
             {assertions && (
               <div className="kv"><span className="k">数据校验</span>
                 <span className="v" style={{ color: assertions.fail === 0 ? 'var(--ok)' : 'var(--bad)' }}>

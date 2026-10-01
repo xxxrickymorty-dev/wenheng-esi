@@ -84,7 +84,7 @@ function NumberedText({ text, sources }: { text: string; sources: Source[] }) {
   }, [text, sources, open])
 
   return (
-    <p style={{ margin: 0, fontFamily: 'var(--serif)', fontSize: 17.5, lineHeight: 1.9 }}
+    <p className="serif-prose" 
        onClick={() => setOpen(null)}>
       {parts}
     </p>
@@ -141,7 +141,7 @@ export function Analysis({ period }: { period: string | null }) {
 
   return (
     <>
-      <section className="card" style={{ marginTop: 18, padding: '22px 24px' }}>
+      <section className="card mt-18 pad-card-lg">
         <h2 className="h-sec h-lg">
           <Icon name="chart" size={22} />问文衡
           <span className="tag ml-6">{period ?? '（选择期次）'}</span>
@@ -212,7 +212,7 @@ export function Analysis({ period }: { period: string | null }) {
                         paddingBottom: 10, borderBottom: '1px dashed var(--line-2)' }}>
             <span className="pill signed">问</span>
             <b>{question || '（概述本期要点）'}</b>
-            <span style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span className="row-end">
               <span className={`pill ${data.mode === 'model' ? 'signed' : 'stale'}`}>
                 {data.mode === 'model' ? '大模型作答' : '规则版作答'}
               </span>
@@ -246,7 +246,7 @@ export function Analysis({ period }: { period: string | null }) {
 
           <div style={{ padding: '12px 0 2px' }}>
             {showRule
-              ? <p style={{ margin: 0, fontFamily: 'var(--serif)', fontSize: 17.5, lineHeight: 1.9 }}>{data.rule_text}</p>
+              ? <p className="serif-prose">{data.rule_text}</p>
               : <NumberedText text={data.text} sources={data.sources} />}
           </div>
 
@@ -256,7 +256,7 @@ export function Analysis({ period }: { period: string | null }) {
             <span className="hint">点数字看来源</span>
             <span style={{ flex: 1 }} />
             {data.rule_text && data.rule_text !== data.text && (
-              <button className="btn" style={{ fontSize: 13 }} onClick={() => setShowRule(!showRule)}>
+              <button className="btn fs-13" onClick={() => setShowRule(!showRule)}>
                 {showRule ? '看模型版' : '看规则版'}
               </button>
             )}

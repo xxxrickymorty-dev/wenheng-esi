@@ -228,9 +228,9 @@ export function Acquire({ period }: { period: string | null }) {
       {state && (
         <>
           {/* ===== 期次数据状态 ===== */}
-          <section className="card" style={{ padding: '20px 24px' }}>
+          <section className="card pad-card-x">
             <div className="aq-head">
-              <h1 style={{ fontSize: 24 }}>自动取数台</h1>
+              <h1 className="fs-24">自动取数台</h1>
               <span className="pill unsigned mono">{period}</span>
               <span className={`pill ${pill[view][1]}`}>{pill[view][0]}</span>
               <span className="hint aq-num">{expected > 0 ? `已核验 ${verified} / ${expected}` : '已核验 —'}</span>
@@ -312,7 +312,7 @@ export function Acquire({ period }: { period: string | null }) {
             <summary>取数清单<span className="sm">{totals.groups ?? groups.length ?? 9} 组 · {expected > 0 ? `${expected} 份` : '份数待定'}</span></summary>
             <div className="fold-inner">
               {groups.length === 0 ? (
-                <p className="hint" style={{ margin: 0 }}>还没有取数记录。</p>
+                <p className="hint m-0">还没有取数记录。</p>
               ) : (
                 <>
                   <p className="hint" style={{ margin: '0 0 10px' }}>没通过的可在本组重试。</p>

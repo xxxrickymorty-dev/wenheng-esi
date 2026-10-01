@@ -64,7 +64,7 @@ export function AiRecords({ period }: { period: string | null }) {
   return (
     <>
       {/* ===== 问答记录（编号随档案页减负顺延：01 过程回放 → 02 问答记录 → 03 审计） ===== */}
-      <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
+      <section className="card mt-18 pad-card">
         <h2 className="h-sec">
           <span className="fc-no">02</span>问文衡 · 问答记录
           <span className="hint">问 → 工具 → 模型 → 校验</span>
@@ -112,7 +112,7 @@ export function AiRecords({ period }: { period: string | null }) {
       </section>
 
       {/* ===== 运行级 · 模型参与（附在问答记录后，不占编号） ===== */}
-      <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
+      <section className="card mt-18 pad-card">
         <h2 className="h-sec">
           运行级 · 模型参与
           <span className="hint">主流水线零大模型</span>
@@ -140,7 +140,7 @@ function Row({ c, open, onToggle }: { c: AiCall; open: boolean; onToggle: () => 
         {c.capability && c.capability !== 'qa' && (
           <span className="pill unsigned">{CAP_CN[c.capability] ?? c.capability}</span>
         )}
-        <span style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+        <span className="row-end">
           <span className={`pill ${isModel ? 'signed' : 'stale'}`}>{isModel ? '模型作答' : '规则回落'}</span>
           <span className="pill ok">校验 {c.shield.passed}/{c.shield.checked}</span>
           <span className="hint mono">{shortId} · {(c.elapsed_ms / 1000).toFixed(1)} 秒</span>

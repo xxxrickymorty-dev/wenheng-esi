@@ -376,7 +376,7 @@ function FactsStrip({ period, onFacts }: {
           <> <a href={`/app/?period=${encodeURIComponent(period)}`}>去生成这一期 →</a></>
         )}
         {!note.includes('管理员权限') && (
-          <> <button className="btn" style={{ padding: '4px 10px', fontSize: 13.5 }}
+          <> <button className="btn btn-xs" 
                      onClick={() => location.reload()}>重新读取</button></>
         )}
       </div>

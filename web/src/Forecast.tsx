@@ -71,9 +71,9 @@ function ForecastTable({ run, r }: { run: ForecastRun; r: ForecastModelResult })
         <thead>
           <tr>
             <th>期次</th>
-            <th style={{ textAlign: 'right' }}>{run.metric_names[0]}</th>
-            <th style={{ textAlign: 'right' }}>{run.metric_names[1]}</th>
-            <th style={{ textAlign: 'right' }}>接近度</th>
+            <th className="ta-r">{run.metric_names[0]}</th>
+            <th className="ta-r">{run.metric_names[1]}</th>
+            <th className="ta-r">接近度</th>
           </tr>
         </thead>
         <tbody>
@@ -124,7 +124,7 @@ function ModelCard({
         <div><b>{r.status === 'PASS' ? '通过' : '需复核'}</b><span>运行状态</span></div>
       </div>
 
-      <img className="fc-chart" src={r.chart} alt={`${run.subject} · ${r.model} 预测趋势图`} />
+      <img className="fc-chart" src={r.chart} alt={`${run.subject} · ${r.model} 预测趋势图`} loading="lazy" decoding="async" />
 
       <div className="fc-actions">
         {active
@@ -212,7 +212,7 @@ function Trial({
   const pickable = !!choice?.loaded && !choice?.saving
 
   return (
-    <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
+    <section className="card mt-18 pad-card">
       <h2 className="h-sec">
         <span className="fc-no">01</span>预测图
       </h2>
@@ -295,7 +295,7 @@ function PickTable({
   const recOf = (s: string) => meta.recommendations?.[route]?.[s] ?? ''
 
   return (
-    <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
+    <section className="card mt-18 pad-card">
       <h2 className="h-sec">
         <span className="fc-no">02</span>本期用哪个模型
       </h2>
@@ -310,7 +310,7 @@ function PickTable({
         <table className="fc-pick">
           <thead>
             <tr>
-              <th style={{ width: 170 }}>潜力学科</th>
+              <th className="w-170">潜力学科</th>
               <th style={{ width: 200 }}>V1 推荐</th>
               <th style={{ width: 230 }}>我的选择</th>
               <th>模型说明（跟着选择变）</th>

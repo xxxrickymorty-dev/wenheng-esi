@@ -41,7 +41,7 @@ export function RedList({ period }: { period: string | null }) {
   }, [rows])
 
   return (
-    <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
+    <section className="card mt-18 pad-card">
       <p className="hint mb-10">
         <a href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}>← 回报告</a>
         {' · '}期次 <b className="mono">{period ?? '—'}</b>
@@ -79,22 +79,22 @@ export function RedList({ period }: { period: string | null }) {
               <thead>
                 <tr>
                   <th style={{ width: 52 }}>#</th>
-                  <th style={{ width: 170 }}>位置</th>
+                  <th className="w-170">位置</th>
                   <th>修改前</th>
                   <th>修改后</th>
-                  <th style={{ width: 190 }}>来源</th>
+                  <th className="w-190">来源</th>
                 </tr>
               </thead>
               <tbody>
                 {shown.map((r, i) => (
                   <tr key={`${r.group}-${r.label}-${i}`}>
-                    <td className="mono" style={{ color: 'var(--ink-3)' }}>{i + 1}</td>
+                    <td className="mono ink-3">{i + 1}</td>
                     <td className="mono" style={{ fontSize: 13.5, color: 'var(--ink-3)', whiteSpace: 'nowrap' }}>
                       {r.label || r.group}
                     </td>
-                    <td style={{ color: 'var(--ink-3)' }}>{r.old}</td>
-                    <td style={{ color: 'var(--zhu)' }}>{r.new}</td>
-                    <td style={{ fontSize: 14 }}>{r.src}</td>
+                    <td className="ink-3">{r.old}</td>
+                    <td className="ink-zhu">{r.new}</td>
+                    <td className="fs-14">{r.src}</td>
                   </tr>
                 ))}
               </tbody>

@@ -251,7 +251,7 @@ export function Flexible({ period }: { period: string | null }) {
   }
 
   return (
-    <section className="card" style={{ marginTop: 18, padding: '22px 24px' }}>
+    <section className="card mt-18 pad-card-lg">
       <h2 className="h-sec h-lg">
         <Icon name="doc" size={22} />灵活报告 · 第二条产线
         <span className="tag ml-6">{period ?? '（选择期次）'}</span>

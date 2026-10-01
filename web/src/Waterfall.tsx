@@ -97,7 +97,7 @@ export function Waterfall({ jobId }: { jobId: string }) {
 
   return (
     <div style={{ marginTop: 18, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
-      <h3 style={{ fontSize: 15 }}>任务瀑布（各步耗时）</h3>
+      <h3 className="fs-15">任务瀑布（各步耗时）</h3>
 
       {loading ? (
         <p className="hint mt-6">正在读取……</p>

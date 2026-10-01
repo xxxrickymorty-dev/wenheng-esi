@@ -82,8 +82,8 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
       {d && (
         <>
           {/* ===== 页头 ===== */}
-          <section className="card" style={{ padding: '22px 24px' }}>
-            <h1 style={{ fontSize: 24 }}>运行档案 · {d.period}</h1>
+          <section className="card pad-card-lg">
+            <h1 className="fs-24">运行档案 · {d.period}</h1>
             <p className="fc-lead">这次运行的完整回放：状态、用时、审计、产物。</p>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 14 }}>
               {!!job.status && (
@@ -152,7 +152,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
           )}
 
           {/* ===== 01 过程回放（链 + 瀑布，同一份数据只此一处；diji 票 12 合并 01/02/03） ===== */}
-          <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
+          <section className="card mt-18 pad-card">
             <h2 className="h-sec">
               <span className="fc-no">01</span>过程回放
               <span className="hint">
@@ -196,7 +196,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
           <AiRecords period={period} />
 
           {/* ===== 03 审计结论（失败优先：只露待确认/不通过，通过项折起） ===== */}
-          <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
+          <section className="card mt-18 pad-card">
             <h2 className="h-sec">
               <span className="fc-no">03</span>审计结论
               <span className="hint">
@@ -266,7 +266,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
           </section>
 
           {/* ===== 04 产物与日志包 ===== */}
-          <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
+          <section className="card mt-18 pad-card">
             <h2 className="h-sec">
               <span className="fc-no">04</span>产物与日志包
               <span className="hint">日志包 {d.logpack.n_files} 个文件 · {humanSize(d.logpack.bytes)}</span>
@@ -296,7 +296,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
           <details className="fold">
             <summary>运行环境与指标<span className="sm">供排查与复现</span></summary>
             <div className="grid2 mt-0">
-            <section className="card" style={{ padding: '20px 22px' }}>
+            <section className="card pad-card">
               <h2 className="h-sec">
                 <span className="fc-no">05</span>运行环境快照
               </h2>
@@ -311,7 +311,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
               </dl>
             </section>
 
-            <section className="card" style={{ padding: '20px 22px' }}>
+            <section className="card pad-card">
               <h2 className="h-sec">
                 <span className="fc-no">06</span>运行指标
               </h2>
@@ -343,7 +343,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                   </table>
                 </div>
               ) : (
-                <p className="hint" style={{ margin: 0 }}>
+                <p className="hint m-0">
                   直跑不写轨迹（要编排器才写）。
                 </p>
               )}

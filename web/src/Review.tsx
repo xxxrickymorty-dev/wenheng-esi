@@ -83,7 +83,7 @@ function BlockView({
   if (block.t === 'img') {
     return (
       <p className="rv-img">
-        <img src={reportImageUrl(period, block.rid)} alt="报告插图" loading="lazy"
+        <img src={reportImageUrl(period, block.rid)} alt="报告插图" loading="lazy" decoding="async"
              style={block.w_cm ? { width: `${Math.round(block.w_cm * 37.8)}px` } : undefined} />
       </p>
     )
@@ -98,7 +98,7 @@ function BlockView({
                 <td key={ci} colSpan={cell.span || undefined}>
                   {cell.text}
                   {(cell.imgs ?? []).map((rid) => (
-                    <img key={rid} src={reportImageUrl(period, rid)} alt="图表" loading="lazy" />
+                    <img key={rid} src={reportImageUrl(period, rid)} alt="图表" loading="lazy" decoding="async" />
                   ))}
                 </td>
               ))}
@@ -339,7 +339,7 @@ export function Review({
 
   if (!period) {
     return (
-      <section className="card" style={{ padding: '22px 24px' }}>
+      <section className="card pad-card-lg">
         <h2 className="h-sec h-lg">
           <Icon name="seal" size={22} />审核台
         </h2>
@@ -377,7 +377,7 @@ export function Review({
             <> <a href={`/app/?period=${encodeURIComponent(period)}`}>去生成这一期 →</a></>
           )}
           {!previewNote.includes('权限') && (
-            <> <button className="btn" style={{ padding: '4px 10px', fontSize: 13.5 }}
+            <> <button className="btn btn-xs" 
                      onClick={() => location.reload()}>重新读取</button></>
           )}
         </div>

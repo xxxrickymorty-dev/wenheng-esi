@@ -800,6 +800,19 @@ a{color:inherit}
 .h-sec{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:19px}
 .h-sec.h-lg{font-size:22px}
 .hint-num{font-weight:400;font-size:14px}
+/* 第二批（2026-10-01）：卡片内边距 / 文本色 / 字号 / 宽度等高频静态样式 */
+.pad-card{padding:20px 22px}.pad-card-lg{padding:22px 24px}.pad-card-x{padding:20px 24px}
+.card-foot{padding:0 24px 18px}
+.ink-3{color:var(--ink-3)}.ink-zhu{color:var(--zhu)}
+.dim-block{display:block;color:var(--ink-3);font-size:13px}
+.fs-13{font-size:13px}.fs-135{font-size:13.5px}.fs-14{font-size:14px}.fs-15{font-size:15px}.fs-24{font-size:24px}
+.w-150{width:150px}.w-170{width:170px}.w-190{width:190px}.maxw-150{max-width:150px}
+.ta-r{text-align:right}
+.m-0{margin:0}
+.block-12-16{margin:12px 0 16px}
+.btn-xs{padding:4px 10px;font-size:13.5px}
+.row-end{display:flex;gap:8px;align-items:center;margin-left:auto}
+.serif-prose{margin:0;font-family:var(--serif);font-size:17.5px;line-height:1.9}
 
 /* 减动效（2026-10-01）：主工作区此前没有适配；库房各自已有。
    循环脉冲、进度条过渡、平滑滚动、悬停位移在系统「减少动态效果」下一并停。 */

@@ -52,7 +52,7 @@ export function Trace({ period }: { period: string | null }) {
   function pick(c: string) { setCat(c); setRows([]); load(c, 0, false) }
 
   return (
-    <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
+    <section className="card mt-18 pad-card">
       <p className="hint mb-10">
         <a href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}>← 回报告</a>
         {' · '}期次 <b className="mono">{period ?? '—'}</b>
@@ -91,9 +91,9 @@ export function Trace({ period }: { period: string | null }) {
             <table>
               <thead>
                 <tr>
-                  <th style={{ width: 150 }}>位置</th>
-                  <th style={{ width: 170 }}>报告里</th>
-                  <th style={{ width: 190 }}>台账里（现场重读）</th>
+                  <th className="w-150">位置</th>
+                  <th className="w-170">报告里</th>
+                  <th className="w-190">台账里（现场重读）</th>
                   <th style={{ width: 210 }}>来源</th>
                   <th>怎么来的</th>
                 </tr>
@@ -105,9 +105,9 @@ export function Trace({ period }: { period: string | null }) {
                       {r.loc}
                       {r.label && <><br /><span style={{ fontSize: 12.5 }}>{r.label}</span></>}
                     </td>
-                    <td style={{ color: 'var(--zhu)' }}>{r.report}</td>
-                    <td className="mono" style={{ fontSize: 13.5 }}>{r.ledger ?? '（台账读不到）'}</td>
-                    <td style={{ fontSize: 13.5 }}>{r.sheet}{r.src_ref ? <> · <span className="mono">{r.src_ref}</span></> : null}</td>
+                    <td className="ink-zhu">{r.report}</td>
+                    <td className="mono fs-135">{r.ledger ?? '（台账读不到）'}</td>
+                    <td className="fs-135">{r.sheet}{r.src_ref ? <> · <span className="mono">{r.src_ref}</span></> : null}</td>
                     <td style={{ fontSize: 13.5, color: 'var(--ink-2)' }}>{r.how}</td>
                   </tr>
                 ))}

@@ -37,7 +37,7 @@ export function Ledger() {
 
   return (
     <>
-      <section className="card" style={{ padding: '22px 24px' }}>
+      <section className="card pad-card-lg">
         <h2 className="h-sec h-lg">
           <Icon name="doc" size={22} />台账 · 表清单
           <span className="hint" style={{ fontWeight: 400, fontSize: 14, marginLeft: 'auto' }}>
@@ -89,7 +89,7 @@ export function Ledger() {
         )}
       </section>
 
-      <section className="card" style={{ marginTop: 18, padding: '22px 24px' }}>
+      <section className="card mt-18 pad-card-lg">
         <h2 className="h-sec">
           <Icon name="alert" size={20} />口径与边界（这几条是硬的）
         </h2>

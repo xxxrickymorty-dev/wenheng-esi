@@ -45,7 +45,7 @@ export function Charts({ period }: { period: string | null }) {
   }, [shown])
 
   return (
-    <section className="card" style={{ marginTop: 18, padding: '20px 22px' }}>
+    <section className="card mt-18 pad-card">
       <p className="hint mb-10">
         <a href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}>← 回报告</a>
         {' · '}期次 <b className="mono">{period ?? '—'}</b>
@@ -80,10 +80,10 @@ export function Charts({ period }: { period: string | null }) {
               <div className="gal">
                 {list.map((c) => (
                   <a key={c.url} href={c.url} target="_blank" rel="noreferrer" title={`${g} / ${c.name}`}>
-                    <img src={c.url} alt={c.name} loading="lazy"
+                    <img src={c.url} alt={c.name} loading="lazy" decoding="async"
                          style={{ width: '100%', border: '1px solid var(--line)',
                                   borderRadius: 'var(--r-sm)', background: 'var(--panel)' }} />
-                    <span className="hint" style={{ fontSize: 13 }}>{c.name}</span>
+                    <span className="hint fs-13">{c.name}</span>
                   </a>
                 ))}
               </div>
