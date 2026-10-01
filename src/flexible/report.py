@@ -531,15 +531,16 @@ def _resolve_write_mode(polish, write: bool) -> str:
     """
     if polish is False:
         return "off"
+    # 两个位的可用性判据统一在 `ai._writing`（开关 × 模型可达，一处判一次）。
     try:
-        from ai import _writer                                      # noqa: PLC0415
-        if (bool(write) or polish == "write") and _writer.enabled() and _writer.model_reachable():
+        from ai import _writing                                     # noqa: PLC0415
+        if (bool(write) or polish == "write") and _writing.writing_state("write").available:
             return "write"
     except Exception:                                                # noqa: BLE001
         pass
     try:
-        from . import polish as _p                                   # noqa: PLC0415
-        if (polish is True or polish is None) and _p.enabled() and _p.model_reachable():
+        from ai import _writing                                     # noqa: PLC0415
+        if (polish is True or polish is None) and _writing.writing_state("polish").available:
             return "polish"
     except Exception:                                                # noqa: BLE001
         pass

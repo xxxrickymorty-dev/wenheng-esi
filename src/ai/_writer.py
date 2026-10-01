@@ -15,13 +15,12 @@
 from __future__ import annotations
 
 import logging
-import os
 
-from . import _attempt, _record
+from . import _attempt, _record, _writing
 
 LOG = logging.getLogger(__name__)
 
-ENV_ON = "WENHENG_FLEX_WRITE"
+ENV_ON = _writing.ENV["write"]
 
 DEFAULT_KEEP = ("【手工：", "待验证假设")
 
@@ -38,19 +37,8 @@ SYSTEM = (
 
 
 def enabled(default: bool = False) -> bool:
-    """写作位是否开启（`WENHENG_FLEX_WRITE`，默认**关**）。"""
-    v = os.environ.get(ENV_ON, "").strip().lower()
-    if v in ("1", "on", "true", "yes"):
-        return True
-    if v in ("0", "off", "false", "no"):
-        return False
-    return default
-
-
-def model_reachable() -> bool:
-    """模型位是否可用：配了云（非规则版）即视为可用；不探活、不出网。"""
-    from . import _config                                          # noqa: PLC0415
-    return not getattr(_config.build_brain(), "is_rule", True)
+    """写作位是否开启（`WENHENG_FLEX_WRITE`，默认**关**）。判据在 `_writing`。"""
+    return _writing.enabled("write", default)
 
 
 def write(text: str, *, facts=(), keep=DEFAULT_KEEP, period: str = "", label: str = "",

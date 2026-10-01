@@ -9,11 +9,12 @@
 from __future__ import annotations
 
 import logging
-import os
+
+from . import _writing
 
 LOG = logging.getLogger(__name__)
 
-ENV_ON = "WENHENG_FLEX_POLISH"
+ENV_ON = _writing.ENV["polish"]
 
 SYSTEM = (
     "你是中文公文写作助手。任务：在不改变事实含义的前提下，把给定段落润色得更通顺、"
@@ -23,13 +24,8 @@ SYSTEM = (
 
 
 def enabled(default: bool = False) -> bool:
-    """润色是否开启。默认**关**（演示站必须不依赖模型）。"""
-    v = os.environ.get(ENV_ON, "").strip().lower()
-    if v in ("1", "on", "true", "yes"):
-        return True
-    if v in ("0", "off", "false", "no"):
-        return False
-    return default
+    """润色是否开启。默认**关**（演示站必须不依赖模型）。判据在 `_writing`。"""
+    return _writing.enabled("polish", default)
 
 
 def rewrite(text: str, *, keep=("【手工：", "待验证假设")) -> str:

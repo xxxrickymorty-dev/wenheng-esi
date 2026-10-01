@@ -434,11 +434,10 @@ def _flex_disciplines(d) -> list[dict]:
 
 
 def _flex_write_state() -> dict:
-    """写作位（AI 润色）的部署状态：开关开了且配了云才算可用。"""
+    """写作位（AI 润色）的部署状态：开关开了且配了云才算可用（判据在 `ai._writing`）。"""
     try:
-        from ai import _writer                                       # noqa: PLC0415
-        en = bool(_writer.enabled())
-        return {"enabled": en, "available": bool(en and _writer.model_reachable())}
+        from ai import _writing                                      # noqa: PLC0415
+        return _writing.writing_state("write").as_dict()
     except Exception:                                                # noqa: BLE001
         return {"enabled": False, "available": False}
 
@@ -1697,8 +1696,8 @@ async def api_period_flexible_polish(request: Request, period: str):
     if not plan_path.is_file():
         return JSONResponse({"error": "还没有这份稿，先「生成分析稿」再来润色。"},
                             status_code=400)
-    from ai import _writer                                          # noqa: PLC0415
-    if not (_writer.enabled() and _writer.model_reachable()):
+    from ai import _writing                                         # noqa: PLC0415
+    if not _writing.writing_state("write").available:
         return JSONResponse({"error": "写作位未开启（部署开关未设或未配云端模型）。"},
                             status_code=409)
     import flexible.report as flex_report                           # noqa: PLC0415

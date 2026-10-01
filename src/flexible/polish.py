@@ -14,15 +14,9 @@ _KEEP = ("【手工：", "待验证假设")
 
 
 def enabled(default: bool = False) -> bool:
-    """润色开关（`WENHENG_FLEX_POLISH`，默认关）。"""
+    """润色开关（`WENHENG_FLEX_POLISH`，默认关）。判据在 `ai._writing`。"""
     from ai._polish import enabled as _e                            # noqa: PLC0415
     return _e(default)
-
-
-def model_reachable() -> bool:
-    """模型位是否可用：配了云（非规则版）即视为可用；不探活、不出网。"""
-    from ai import _config                                          # noqa: PLC0415
-    return not getattr(_config.build_brain(), "is_rule", True)
 
 
 def rewrite(text: str, *, model=None) -> str:                       # noqa: ARG001
