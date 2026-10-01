@@ -510,18 +510,4 @@ export function PeriodsPanel({ periods, selected, healthy, onPick }: {
   )
 }
 
-/** 说明 · 口径、来源与只读声明（全站仅此一份；rick 2026-09-30 定，2026-10-01 从 App 抽出） */
-export function SiteNote() {
-  return (
-    <details className="fold">
-      <summary>说明 · 口径、来源与只读声明<span className="sm">全站仅此一份</span></summary>
-      <p className="hint" style={{ padding: '2px 18px 16px', fontSize: 13.5, lineHeight: 1.9 }}>
-        ① 数字只来自馆员维护的台账与派生产物，运行期大模型不进入数据路径；
-        ② 本页是只读视图，不修改台账与报告；③ 预测章按「本期已选」的已保存选择执行，未列学科用 V1 推荐；
-        ④ 期次与状态以任务记录为准，未签发报告不可下载。来源：期内产物目录 · 运行档案 · 预测选模配置。
-      </p>
-    </details>
-  )
-}
-
 export type { WBState, Period, PeriodDetail }

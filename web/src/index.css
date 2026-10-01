@@ -1,9 +1,19 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-
-/* dark: 变体只认 .dark 容器（项目无暗色模式 → dark: 永不生效）。
-   别删：不加这句，Tailwind v4 的 dark: 会跟随系统暗色，系统暗色下组件会变色。 */
-@custom-variant dark (&:is(.dark *));
+/* 基础 reset（2026-10-01 移除 Tailwind 时内置）：原样保留 Tailwind preflight 的关键行为，
+   避免整站边距/列表/表单/图片默认样式发生变化。改动这里必须跑全站截图核对。 */
+*,::after,::before,::backdrop,::file-selector-button{box-sizing:border-box;margin:0;padding:0;border:0 solid}
+html{-webkit-text-size-adjust:100%;line-height:1.5}
+img,svg,video,canvas,audio,iframe,embed,object{display:block;vertical-align:middle}
+img,video{max-width:100%;height:auto}
+ol,ul,menu{list-style:none}
+table{text-indent:0;border-color:inherit;border-collapse:collapse}
+button,input,select,optgroup,textarea,::file-selector-button{font:inherit;color:inherit;background-color:transparent}
+h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}
+a{color:inherit;text-decoration:inherit}
+b,strong{font-weight:bolder}
+small{font-size:80%}
+hr{height:0;color:inherit;border-top-width:1px}
+code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-size:1em}
+::placeholder{opacity:1;color:color-mix(in oklab, currentColor 50%, transparent)}
 
 /* ============================================================================
    文衡 · 工作台令牌（云大绿 / 朱砂）
@@ -36,60 +46,13 @@ html[data-palette="zhu"]{
   --bad:#A8321F; --bad-soft:#F4DDD7;
   --shadow:0 1px 2px rgba(47,42,36,.06), 0 8px 24px rgba(47,42,36,.06);
 }
+/* 全局页脚令牌（形态参考陈列馆；2026-10-01）——云大绿用馆藏绿，朱砂配深栗。
+   对比度实测：正文/暗底 ≥11:1、次要 ≥7:1（两主题均过 AA）。 */
+:root{--footer-bg:#12362A;--footer-ink:#F0EAD8;--footer-dim:#BCBFA9;--footer-gold:#D9CA9F;
+  --footer-line:rgba(188,173,133,.35)}
+html[data-palette="zhu"]{--footer-bg:#3A1D17;--footer-ink:#F6EBDD;--footer-dim:#C9B4A2;
+  --footer-gold:#EAD2B8;--footer-line:rgba(201,160,138,.35)}
 
-/* ============================================================================
-   shadcn/ui 桥接（2026-09-29 安装时手配）
-   —— 把 shadcn 的标准变量指到文衡令牌：组件自动跟随「云大绿 / 朱砂」双主题，
-   不引入第二套配色。⚠ --card 不复写：与项目 --card 语义一致（卡片底色），直接复用。
-   @theme inline：让 bg-background / bg-card 等工具类内联引用上面这些变量，
-   不会在 :root 另注册一份，避免与项目变量撞名。
-   ========================================================================== */
-:root{
-  --radius:var(--r);
-  --background:var(--bg);
-  --foreground:var(--ink);
-  --card-foreground:var(--ink);
-  --popover:var(--card);
-  --popover-foreground:var(--ink);
-  --primary:var(--zhu);
-  --primary-foreground:#FFFFFF;
-  --secondary:var(--panel);
-  --secondary-foreground:var(--ink);
-  --muted:var(--panel);
-  --muted-foreground:var(--ink-3);
-  --accent:var(--zhu-soft);
-  --accent-foreground:var(--zhu);
-  --destructive:var(--bad);
-  --destructive-foreground:#FFFFFF;
-  --border:var(--line);
-  --input:var(--line);
-  --ring:var(--zhu);
-}
-@theme inline{
-  --color-background:var(--background);
-  --color-foreground:var(--foreground);
-  --color-card:var(--card);
-  --color-card-foreground:var(--card-foreground);
-  --color-popover:var(--popover);
-  --color-popover-foreground:var(--popover-foreground);
-  --color-primary:var(--primary);
-  --color-primary-foreground:var(--primary-foreground);
-  --color-secondary:var(--secondary);
-  --color-secondary-foreground:var(--secondary-foreground);
-  --color-muted:var(--muted);
-  --color-muted-foreground:var(--muted-foreground);
-  --color-accent:var(--accent);
-  --color-accent-foreground:var(--accent-foreground);
-  --color-destructive:var(--destructive);
-  --color-destructive-foreground:var(--destructive-foreground);
-  --color-border:var(--border);
-  --color-input:var(--input);
-  --color-ring:var(--ring);
-  --radius-sm:calc(var(--radius) - 4px);
-  --radius-md:calc(var(--radius) - 2px);
-  --radius-lg:var(--radius);
-  --radius-xl:calc(var(--radius) + 4px);
-}
 html,body,#root{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);
   font:17px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
@@ -846,4 +809,33 @@ a{color:inherit}
   .wf-track i,.aq-track i,.bd-bar i{transition:none}
   .seal,.who-exit,.who-exit .exit,.entry{transition:none}
   .sealbox:hover .seal{translate:0 0}
+}
+
+/* ============================================================================
+   全局页脚（2026-10-01，形态参考陈列馆）：口径 · 来源 · 只读声明全站唯一一份。
+   全宽深底、内容三栏（品牌 / 说明 / 入口）＋底行；不吸底、不占首屏。
+   ========================================================================== */
+.app-footer{background:var(--footer-bg);color:var(--footer-ink)}
+.app-footer .inner{max-width:1180px;margin:0 auto;padding:42px 22px 58px}
+.app-footer .cols{display:flex;gap:36px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.app-footer .f-brand{flex:0 0 auto}
+.app-footer .f-brand strong{display:block;font-family:var(--serif);font-size:27px;font-weight:600;letter-spacing:.14em}
+.app-footer .f-brand span{display:block;margin-top:9px;font-size:11px;letter-spacing:.2em;color:var(--footer-dim)}
+.app-footer .f-note{flex:1 1 400px;max-width:620px}
+.app-footer .f-note b{display:block;font-size:15px;font-weight:600;color:var(--footer-gold);letter-spacing:.05em}
+.app-footer .f-note p{margin:10px 0 0;font-size:13.5px;line-height:1.95}
+.app-footer .f-nav{display:flex;gap:24px;font-size:14px;white-space:nowrap;padding-top:4px}
+.app-footer .f-nav a{color:var(--footer-ink);text-decoration:none;padding-bottom:2px;
+  border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+.app-footer .f-nav a:hover{color:var(--footer-gold);border-color:var(--footer-gold)}
+.app-footer .f-bottom{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  margin-top:32px;padding-top:14px;border-top:1px solid var(--footer-line);
+  font-size:12.5px;color:var(--footer-dim)}
+@media (max-width:760px){
+  .app-footer .inner{padding:30px 14px 48px}
+  .app-footer .cols{gap:22px}
+  .app-footer .f-nav{gap:18px}
+}
+@media (prefers-reduced-motion: reduce){
+  .app-footer .f-nav a{transition:none}
 }

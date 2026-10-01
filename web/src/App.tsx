@@ -16,7 +16,7 @@ import { pickRunForPeriod } from './lib/run'
 import { useJobRun, type Run } from './hooks/useJobRun'
 import { Icon, Sprite } from './icons'
 import { Acquire } from './Acquire'
-import { Workbench, PeriodsPanel, SiteNote } from './Workbench'
+import { Workbench, PeriodsPanel } from './Workbench'
 import { Report } from './Report'
 import { Review } from './Review'
 import { Ledger } from './Ledger'
@@ -603,13 +603,39 @@ export default function App() {
           <PeriodsPanel periods={periods} selected={selected} healthy={healthy} onPick={pickPeriod} />
         )}
 
-        {/* 说明折叠只留一处（rick 2026-09-30：原来每个页面都挂一份）——留在首页「生成台」 */}
-        {view === 'workbench' && <SiteNote />}
-
         <p className="hint mt-14">
           {busy && '正在提交生成请求……'}
         </p>
       </main>
+
+      {/* 全局页脚（2026-10-01，rick：形态参考陈列馆）：口径 · 来源 · 只读声明全站唯一一份 */}
+      <footer className="app-footer" role="contentinfo">
+        <div className="inner">
+          <div className="cols">
+            <div className="f-brand">
+              <strong>文衡</strong>
+              <span>WENHENG · 学科信息参考</span>
+            </div>
+            <div className="f-note">
+              <b>说明 · 口径、来源与只读声明</b>
+              <p>
+                ① 数字只来自馆员维护的台账与派生产物，运行期大模型不进入数据路径；
+                ② 本系统是只读视图，不修改台账与报告；③ 预测章按「本期已选」的已保存选择执行，未列学科用 V1 推荐；
+                ④ 期次与状态以任务记录为准，未签发报告不可下载。来源：期内产物目录 · 运行档案 · 预测选模配置。
+              </p>
+            </div>
+            <nav className="f-nav" aria-label="页脚导航">
+              <a href="/app/shelf/">陈列馆</a>
+              <a href={navHref('/app/?view=ledger')}>主台账</a>
+              <a href={navHref('/app/?view=archive')}>运行档案</a>
+            </nav>
+          </div>
+          <div className="f-bottom">
+            <span>云南大学图书馆 · 学科信息参考</span>
+            <span>会泽百家　至公天下</span>
+          </div>
+        </div>
+      </footer>
 
       {/* 配色开关：固定左下角（rick 2026-09-29：给顶栏腾地方） */}
       <div className="palette-switch palette-dock" role="group" aria-label="切换配色">

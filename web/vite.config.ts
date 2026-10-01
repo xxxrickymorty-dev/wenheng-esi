@@ -1,4 +1,3 @@
-import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -11,11 +10,7 @@ const WEB_ROOT = fileURLToPath(new URL('.', import.meta.url))
 // https://vite.dev/config/
 export default defineConfig({
   base: '/app/',
-  plugins: [react(), tailwindcss()],
-  // shadcn/ui 的组件按 `@/` 别名引用（components.json 同一套）
-  resolve: {
-    alias: { '@': resolve(WEB_ROOT, 'src') },
-  },
+  plugins: [react()],
   server: {
     proxy: {
       // 契约见 docs/前后端分工与接口契约（2026-09-23）.md §5

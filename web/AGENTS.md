@@ -6,7 +6,9 @@
 
 ## 技术栈（已定，别换）
 
-React + TypeScript + Vite + Tailwind CSS + GSAP；组件层用 shadcn/ui（组件按需复制进仓库）。
+React + TypeScript + Vite + **自研 CSS 令牌系统**（`src/index.css`：云大绿/朱砂双主题、版式与组件类）。
+Tailwind / shadcn / GSAP 已于 2026-10-01 清除（装了不用＝第二套视觉语言 + 认知负担）；
+将来遇到真正复杂的交互原语（如非做不可的对话框），只复制**单个** Radix 组件进仓库、用项目类名样式化，不再整包装。
 后端是 `../server/`（FastAPI）——本工程**只做视图**：不预测、不换算、不聚合，
 任何数字都必须能回溯到后端产物（与旧站同一条红线）。
 
@@ -25,7 +27,7 @@ React + TypeScript + Vite + Tailwind CSS + GSAP；组件层用 shadcn/ui（组�
 3. **UI 改动先翻现成件，别重复造轮子**（rick 2026-09-29）——动手前先看 `src/index.css`
    的主题变量与全局样式（如全局滚动条，一处定义全站生效）和既有组件
    （`icons.tsx` / `ConfirmButton` / 各处 `rv-*` 等）；能在既有件上改就不新造。
-   需要新组件按技术栈段从 shadcn/ui 复制进仓库；不引 CDN、不另起一套样式。
+   新组件在这套自研类体系里造；不引 CDN、不引第二套样式框架。
 4. **静态样式落类，只有动态值才内联**（rick 2026-10-01）——`style={{…}}` 只准放
    来自数据的值（进度、颜色、宽度等）；其余静态样式写进组件类，或复用 `src/index.css`
    末尾「布局小工具」段已有的 `.mt-* / .ml-* / .h-sec / .hint-num`——先翻再添，别重复造。
