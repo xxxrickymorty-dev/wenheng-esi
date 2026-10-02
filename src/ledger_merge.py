@@ -18,7 +18,6 @@ XML 自检）——而不是把副本字节搬进母版。原因：探针（2026
 """
 from __future__ import annotations
 
-import hashlib
 import pathlib
 import re
 import sys
@@ -51,11 +50,10 @@ def _norm(txt) -> str:
 
 
 def sha256_file(p: pathlib.Path) -> str:
-    h = hashlib.sha256()
-    with open(p, "rb") as f:
-        for chunk in iter(lambda: f.read(1 << 20), b""):
-            h.update(chunk)
-    return h.hexdigest()
+    """文件指纹（实现唯一在 `xlsx_io.sha256_file`；缺文件抛）。"""
+    import xlsx_io                                               # noqa: PLC0415
+
+    return xlsx_io.sha256_file(p)
 
 
 # ------------------------------------------------------------------ 格快照

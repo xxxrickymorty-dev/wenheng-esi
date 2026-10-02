@@ -35,7 +35,6 @@
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import math
 import os
@@ -70,11 +69,9 @@ AUDIT_ITEMS = (
 
 # ------------------------------------------------------------------ 小工具
 def _sha256(path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(1 << 20), b""):
-            h.update(chunk)
-    return h.hexdigest()
+    import xlsx_io                                               # noqa: PLC0415
+
+    return xlsx_io.sha256_file(path)
 
 
 def _blank(v) -> bool:

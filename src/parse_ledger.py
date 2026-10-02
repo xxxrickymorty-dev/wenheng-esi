@@ -7,7 +7,6 @@
 原则：只读单元格原值，不做任何“合理修正”；脏数据（%%、备注行）靠
 白名单与清洗规则处理，处理痕迹记录进 meta.json 的 clean_log。
 """
-import hashlib
 import json
 import re
 import sys
@@ -18,16 +17,17 @@ import openpyxl
 import pandas as pd
 
 
-def file_sha256(path, chunk=1 << 20):
-    """文件指纹（台账只读护栏共用）。文件不在返回 None（测试常用假路径）。"""
+def file_sha256(path, chunk=1 << 20):  # noqa: ARG001  chunk 保留兼容旧调用
+    """文件指纹（台账只读护栏共用）。文件不在返回 None（测试常用假路径）。
+
+    实现唯一在 `xlsx_io.sha256_file`；这里只是 None 语义薄壳。
+    """
     p = Path(path)
     if not p.is_file():
         return None
-    h = hashlib.sha256()
-    with p.open("rb") as f:
-        for blk in iter(lambda: f.read(chunk), b""):
-            h.update(blk)
-    return h.hexdigest()
+    import xlsx_io                                               # noqa: PLC0415
+
+    return xlsx_io.sha256_file(p)
 
 DISCIPLINES_EN = [
     "Chemistry", "Plant & Animal Science", "Microbiology", "Engineering",
