@@ -73,9 +73,13 @@ def get(path):
         return e.code, e.read().decode("utf-8", "replace")
 
 
+ADMIN_PASS = env.get("WENHENG_PASS") or os.environ.get("WENHENG_PASS", "")
+if not ADMIN_PASS:
+    print("未找到管理员口令：请在 server/.env 设置 WENHENG_PASS，或设环境变量后重跑。")
+    raise SystemExit(2)
 post("/login", {
-    "username": env.get("WENHENG_USER", os.environ.get("WENHENG_USER", "demo")),
-    "password": env.get("WENHENG_PASS", os.environ.get("WENHENG_PASS", "wenheng@2026")),
+    "username": env.get("WENHENG_USER") or os.environ.get("WENHENG_USER", "demo"),
+    "password": ADMIN_PASS,
 })
 
 print(f"=== 1. 发起任务（{PERIOD}）===")

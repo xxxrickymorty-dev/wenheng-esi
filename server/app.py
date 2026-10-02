@@ -235,9 +235,14 @@ def check_credentials(username: str, password: str) -> bool:
 
     ⚠ 2026-09-24 修：此前只放行 demo，`config.GUEST_USER/GUEST_PASS` 定义了却登不进来
     （游客角色只能靠打桩验，演示时也没法真登）。`role_of` 早就认 guest，缺的就是这道口。
+    ⚠ 2026-10-02：口令不再有内置默认值——没配口令（空）一律拒绝，空口令登不进来。
     """
-    return ((username == config.DEMO_USER and password == config.DEMO_PASS)
-            or (username == config.GUEST_USER and password == config.GUEST_PASS))
+    if not username or not password:
+        return False
+    return bool(
+        (config.DEMO_PASS and username == config.DEMO_USER and password == config.DEMO_PASS)
+        or (config.GUEST_PASS and username == config.GUEST_USER and password == config.GUEST_PASS)
+    )
 
 
 @app.get("/logout")

@@ -33,8 +33,28 @@ import urllib.parse
 import urllib.request
 
 BASE = os.environ.get("WENHENG_BASE", "http://127.0.0.1:8080").rstrip("/")
-USER, PASS = "demo", "wenheng@2026"
+WENHENG = pathlib.Path(__file__).resolve().parent.parent
+
+
+def _env_file_value(key, default=""):
+    """口令只从环境变量或 server/.env 来（2026-10-02：删掉内置默认口令）。"""
+    if os.environ.get(key):
+        return os.environ[key]
+    env_file = WENHENG / "server" / ".env"
+    if env_file.exists():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line.startswith(key + "="):
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
+    return default
+
+
+USER = os.environ.get("WENHENG_E2E_USER") or _env_file_value("WENHENG_USER", "demo")
+PASS = os.environ.get("WENHENG_E2E_PASS") or _env_file_value("WENHENG_PASS")
 GUEST_USER, GUEST_PASS = "guest", "guest@2026"
+if not PASS:
+    print("未找到管理员口令：请在 server/.env 设置 WENHENG_PASS，或设 WENHENG_E2E_PASS 后重跑。")
+    raise SystemExit(2)
 SHOT = pathlib.Path(r"C:\Users\damn\AppData\Local\Temp\opencode\wh_app.png")
 SHOT_SHELF = pathlib.Path(r"C:\Users\damn\AppData\Local\Temp\opencode\wh_shelf.png")
 

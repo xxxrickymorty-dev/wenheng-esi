@@ -32,7 +32,9 @@ MASTER = ROOT / "master" / "学科信息参考母版_2026第5期.docx"
 PYTHON = os.environ.get("WENHENG_PYTHON") or sys.executable
 
 DEMO_USER = os.environ.get("WENHENG_USER", "demo")
-DEMO_PASS = os.environ.get("WENHENG_PASS", "wenheng@2026")
+# 口令没有内置默认值（rick 2026-10-02）：只从 .env / 环境变量来；
+# 空口令无法登录（app.check_credentials 拒绝空值），首次使用请在 server/.env 设置。
+DEMO_PASS = os.environ.get("WENHENG_PASS", "")
 SECRET = os.environ.get("WENHENG_SECRET", "wenheng-demo-secret-change-me")
 PUBLIC_URL = os.environ.get("WENHENG_PUBLIC_URL", "")
 REFERENCE_DOCX = os.environ.get("WENHENG_REFERENCE_DOCX", "")
