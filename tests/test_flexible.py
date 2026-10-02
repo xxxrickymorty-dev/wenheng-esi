@@ -690,6 +690,28 @@ class Test流式生成:
         sec = [e for e in events if e["event"] == "section"]
         assert sec and any("化学" in e.get("body", "") for e in sec)
 
+    @pytest.mark.parametrize("intent,kw", [
+        ("single_trend", {}),
+        ("cross_compare", {}),
+        ("cross_compare", {"disc": "化学"}),
+        ("cross_compare", {"metric": "papers"}),
+    ])
+    def test_大纲与正文标题一一对应(self, src, intent, kw):
+        """防漂移（C8）：正文 `## 一、…` 的标题序列必须与大纲（同一份节表）逐字相同。
+
+        节表在 `report._single_sections/_cross_sections`；动态节（指定学科、梯队分布）
+        也在这份表里长出来——大纲与正文不可能再各排各的。
+        """
+        from conftest import REPO
+        events = list(report.generate_stream(REPO / src.dir, intent, **kw))
+        outline = events[1]["outline"]
+        md = (REPO / src.dir / "flexible" / intent / "report.md").read_text(encoding="utf-8")
+        heads = [ln[3:].strip() for ln in md.splitlines() if ln.startswith("## ")]
+        # 正文内容节在前；「本稿如何产生」「数据来源链」是固定附录，不在大纲里。
+        assert heads[:len(outline)] == outline, \
+            f"大纲与正文标题漂移：{heads[:len(outline)]} != {outline}"
+        assert heads[len(outline):] == ["本稿如何产生（可验证的架构主张）", "附：数据来源链"]
+
 
 class Test写作位接线:
     def test_写作位开时叙述段走写作位并留痕(self, src, tmp_path, monkeypatch):
