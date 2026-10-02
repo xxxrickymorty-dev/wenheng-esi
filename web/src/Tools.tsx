@@ -4,12 +4,13 @@
 
 import { useEffect, useState } from 'react'
 import {
-  choosePeriodJobId, getJob, getPeriodArtifacts, getPeriodDetail,
+  getJob, getPeriodArtifacts, getPeriodDetail,
   getRollbackPoints, humanSize, postJobWithFile, rerunJob, rollbackPeriod,
   type Artifact, type Job, type RollbackPoint,
 } from './api'
 import { ConfirmButton } from './ConfirmButton'
 import { Icon } from './icons'
+import { choosePeriodJobId } from './lib/run'
 import { appHref } from './lib/status'
 import { Waterfall } from './Waterfall'
 
