@@ -30,6 +30,26 @@ def _members(path):
         return {i.filename: zf.read(i.filename) for i in zf.infolist()}
 
 
+def _synth_ledger(path):
+    """手写最小台账：rels 是 Type/Target/Id 序、sheet 元素 r:id 在 name 前——
+    正是旧 `_sheet_member` 顺序敏感正则必失配的形态（openpyxl 不再产 sharedStrings）。"""
+    with zipfile.ZipFile(path, "w") as zf:
+        zf.writestr("xl/workbook.xml",
+                    '<workbook><sheets><sheet r:id="rId1" name="千分之一被引阈值"/>'
+                    "</sheets></workbook>")
+        zf.writestr("xl/_rels/workbook.xml.rels",
+                    '<Relationships><Relationship Type="t" '
+                    'Target="worksheets/sheet1.xml" Id="rId1"/></Relationships>')
+        zf.writestr("xl/sharedStrings.xml",
+                    "<sst><si><t>学科</t></si><si><t>化学</t></si></sst>")
+        zf.writestr("xl/worksheets/sheet1.xml",
+                    "<worksheet><sheetData>"
+                    '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1"><v>202601</v></c></row>'
+                    '<row r="2"><c r="A2" t="s"><v>1</v></c><c r="B2"><v>42</v></c></row>'
+                    "</sheetData></worksheet>")
+    return pathlib.Path(path)
+
+
 class TestMemberOf:
     def test_openpyxl属性序也能认(self, tmp_path):
         p = _make_xlsx(tmp_path / "t.xlsx")
@@ -85,6 +105,25 @@ class TestRewrite:
             target = xlsx_io.member_of(zf, "数据")
         xlsx_io.rewrite(p, {target: "<worksheet/>"}, dry=True)
         assert p.read_bytes() == before
+
+
+class Test写手回归:
+    def test_read_sheet_table吃属性乱序的文件(self, tmp_path):
+        """旧 `_sheet_member` 的 `Id→Target` 顺序敏感正则在这份文件上必失配；
+        改走 xlsx_io 后两种属性序都能读。"""
+        import extract_1permille as e1
+        p = _synth_ledger(tmp_path / "ledger.xlsx")
+        periods, table = e1.read_sheet_table(p)
+        assert periods == ["202601"]
+        assert table["化学"]["202601"] == "42"
+
+    def test_update_ledger在乱序文件上可写且值落位(self, tmp_path):
+        import extract_1permille as e1
+        p = _synth_ledger(tmp_path / "ledger.xlsx")
+        periods, is_new = e1.update_ledger(p, "202601", {"化学": 42})   # 同值不冲突
+        assert is_new is False
+        _, table = e1.read_sheet_table(p)
+        assert table["化学"]["202601"] == "42"
 
 
 class TestSha256:

@@ -392,15 +392,6 @@ def crosscheck_t1pct(data_root, period, res):
 
 
 # ---------------------------------------------------------------- 写回台账
-def _sheet_member(zf, sheetname):
-    wbxml = zf.read("xl/workbook.xml").decode("utf-8")
-    pairs = dict(re.findall(r'<sheet[^>]*name="([^"]+)"[^>]*r:id="([^"]+)"', wbxml))
-    rels = zf.read("xl/_rels/workbook.xml.rels").decode("utf-8")
-    rmap = dict(re.findall(r'Id="([^"]+)"[^>]*Target="([^"]+)"', rels))
-    t = rmap[pairs[sheetname]].lstrip("/")
-    return t if t.startswith("xl/") else "xl/" + t
-
-
 CELL_RE = re.compile(r'<c r="([A-Z]+)(\d+)"([^>]*?)(?:/>|>(.*?)</c>)', re.S)
 ROW_RE = re.compile(r'<row r="(\d+)"([^>]*?)>(.*?)</row>', re.S)
 
@@ -428,12 +419,12 @@ def read_sheet_table(ledger, sheetname=SHEET):
 
     periods = 表头行中**所有 6 位数字期次**，按列序排列（不再写死 B–F 五列）。
     """
+    import xlsx_io                                                # noqa: PLC0415
+
     zf = zipfile.ZipFile(ledger)
     try:
-        shared = ["".join(re.findall(r"<t[^>]*>(.*?)</t>", si, re.S))
-                  for si in re.findall(r"<si>(.*?)</si>",
-                                       zf.read("xl/sharedStrings.xml").decode("utf-8"), re.S)]
-        member = _sheet_member(zf, sheetname)
+        shared = xlsx_io.read_shared_strings(zf)
+        member = xlsx_io.member_of(zf, sheetname)
         xml = zf.read(member).decode("utf-8")
     finally:
         zf.close()
@@ -471,14 +462,11 @@ def rewrite_sheet(ledger, periods, order, table, sheetname=SHEET):
     order = [学科名...]（保持原行序）；table = {学科: {期次: 值}}
     值单元格沿用该行原 B 列样式，斑马纹与边框不变。
     """
-    zf = zipfile.ZipFile(ledger)
-    try:
-        member = _sheet_member(zf, sheetname)
+    import xlsx_io                                                # noqa: PLC0415
+
+    with zipfile.ZipFile(ledger) as zf:
+        member = xlsx_io.member_of(zf, sheetname)
         xml = zf.read(member).decode("utf-8")
-        members = {i.filename: zf.read(i.filename) for i in zf.infolist()}
-        infos = zf.infolist()
-    finally:
-        zf.close()
 
     cols = [col_letter(2 + i) for i in range(len(periods))]
 
@@ -512,18 +500,10 @@ def rewrite_sheet(ledger, periods, order, table, sheetname=SHEET):
                      f'<dimension ref="A1:{last_col}{last_row}"/>', new_xml)
     if new_xml == xml:
         return False
-    # 🔴 写盘前 XML 良构自检（2026-09-18 事故后加）
-    import xml.etree.ElementTree as ET
-    try:
-        ET.fromstring(new_xml)
-    except ET.ParseError as e:
-        raise SystemExit(f"[拒绝] {sheetname} 改写后 XML 非法（{e}），未写盘。")
-    tmp = ledger.with_suffix(".patching.xlsx")
-    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zo:
-        for info in infos:
-            data = new_xml.encode("utf-8") if info.filename == member else members[info.filename]
-            zo.writestr(info, data)
-    shutil.move(str(tmp), str(ledger))
+    # 🔴 写盘前良构自检 + 其余成员逐字节，都在 `xlsx_io.rewrite`（2026-09-18 事故后加）。
+    import xlsx_io                                                # noqa: PLC0415
+
+    xlsx_io.rewrite(ledger, {member: new_xml})
     return True
 
 

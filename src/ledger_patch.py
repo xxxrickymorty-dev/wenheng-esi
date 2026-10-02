@@ -39,22 +39,10 @@ ROW_RE = re.compile(r'<row r="(\d+)"([^>]*?)>(.*?)</row>', re.S)
 
 # ------------------------------------------------------------------ zip 基础
 def sheet_member(zf, sheetname):
-    """sheet 名 → zip 内成员路径（如 xl/worksheets/sheet8.xml）。"""
-    wbxml = zf.read("xl/workbook.xml").decode("utf-8")
-    pairs = dict(re.findall(r'<sheet[^>]*name="([^"]+)"[^>]*r:id="([^"]+)"', wbxml))
-    if sheetname not in pairs:
-        raise KeyError(f"台账里没有 sheet「{sheetname}」，现有：{list(pairs)}")
-    rels = zf.read("xl/_rels/workbook.xml.rels").decode("utf-8")
-    # 属性顺序不设前提：真台账是 Id 在前，合成文件（openpyxl）是 Type/Target/Id——
-    # 逐元素独立取属性，两种都认（2026-09-29：并入工具的自测文件踩过这个坑）。
-    rmap = {}
-    for rel in re.findall(r"<Relationship\b[^>]*/?>", rels):
-        mid = re.search(r'Id="([^"]+)"', rel)
-        mt = re.search(r'Target="([^"]+)"', rel)
-        if mid and mt:
-            rmap[mid.group(1)] = mt.group(1)
-    t = rmap[pairs[sheetname]].lstrip("/")
-    return t if t.startswith("xl/") else "xl/" + t
+    """sheet 名 → zip 内成员路径。实现唯一在 `xlsx_io.member_of`（属性顺序无关）。"""
+    import xlsx_io                                               # noqa: PLC0415
+
+    return xlsx_io.member_of(zf, sheetname)
 
 
 def sheet_names(ledger):
@@ -196,21 +184,11 @@ def write_cells(ledger, sheetname, updates, dry=False):
     new_xml = ROW_RE.sub(fix, xml)
     if not applied:
         return []
-    # 🔴 自检闸门：改写后的 XML 必须合法，否则拒绝落盘。
+    # 🔴 自检闸门 + 落盘都在 `xlsx_io.rewrite`：良构不过拒绝落盘，其余成员逐字节原样。
     #    2026-09-18 的教训——正则拼串少个空格，整份台账变砖（唯一事实源）。
-    import xml.etree.ElementTree as ET
-    try:
-        ET.fromstring(new_xml)
-    except ET.ParseError as e:
-        raise SystemExit(f"[拒绝] {sheetname} 改写后 XML 非法（{e}），未写盘。")
-    if dry:
-        return applied
-    tmp = ledger.with_suffix(".patching.xlsx")
-    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zo:
-        for info in infos:
-            data = new_xml.encode("utf-8") if info.filename == member else members[info.filename]
-            zo.writestr(info, data)
-    shutil.move(str(tmp), str(ledger))
+    import xlsx_io                                               # noqa: PLC0415
+
+    xlsx_io.rewrite(ledger, {member: new_xml}, dry=dry)
     return applied
 
 
