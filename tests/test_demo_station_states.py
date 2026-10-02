@@ -172,7 +172,7 @@ def test_每个状态都有badge样式():
 # ============================================================ 前端话术同源（跨栈 parity）
 # 背景（2026-09-29）：老站任务页下线后，服务端渲染的 badge 不复存在；
 # 「状态话术与状态机同源」这条保证改由**跨栈 parity 测试**守：
-# 前端 `web/src/lib/status.ts`（CONTEXT「界面用语」定的唯一映射）必须与
+# 前端 `web/src/lib/status.ts`（GLOSSARY.md 定的唯一映射）必须与
 # `src/agent/states.py` 集合、终态、逐字话术一致。漂移在这里当场红。
 def _parse_ts_task_table():
     src = (REPO / "web" / "src" / "lib" / "status.ts").read_text(encoding="utf-8")

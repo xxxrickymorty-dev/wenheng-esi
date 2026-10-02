@@ -2,7 +2,7 @@
 
 > 独立 Git 仓库（remote: `xxxrickymorty-dev/wenheng-esi`）。
 > 项目背景、跨仓协作与提交纪律见上一级工作区根目录 `AGENTS.md`；本文件自足，单独 clone 也能用。
-> 状态板与红线全文在 `CONTEXT.md`。
+> 状态板与红线全文在 `CONTEXT.md`；术语（通用语言）在 `GLOSSARY.md`。
 > **前后端分工**：`docs/前后端分工与接口契约（2026-09-23）.md` —— 前端只碰 `web/**`，后端只碰 `server/`|`src/`|`tools/`|`tests/`，两边只通过 `/api/*` 说话；改接口要同时改那份文档。
 
 ## 常用命令（Windows，一律用仓内 venv 直调）

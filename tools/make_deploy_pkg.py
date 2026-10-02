@@ -11,7 +11,7 @@
 即解出 `/opt/wenheng`（与部署清单 §3 一致）。
 
 进包 / 不进包（口径写死在这里，部署清单 §0 引用本文件）：
-    进：pyproject.toml、CONTEXT.md、AGENTS.md、docs/、src/、server/、tools/、tests/、
+    进：pyproject.toml、CONTEXT.md、GLOSSARY.md、AGENTS.md、docs/、src/、server/、tools/、tests/、
         master/、web/dist/；演示包另加 input/、out/202607/（剔除 _superseded）、out/_jobs/
     不进：server/.env（密钥）、web/node_modules/、__pycache__/、.pytest_cache/、
         .ruff_cache/、tmp/、.git/、_superseded/、out/ 其它期次
@@ -36,7 +36,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent      # wenheng/
 DATA_PERIOD = "202607"                                     # 演示数据期次（首屏依赖）
 
 INCLUDE_DIRS = ("docs", "src", "server", "tools", "tests", "master")
-INCLUDE_FILES = ("pyproject.toml", "CONTEXT.md", "AGENTS.md")
+INCLUDE_FILES = ("pyproject.toml", "CONTEXT.md", "GLOSSARY.md", "AGENTS.md")
 
 #: 任何一层目录名命中即排除（不看大小写）。
 EXCLUDE_PARTS = frozenset({

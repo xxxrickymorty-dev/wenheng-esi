@@ -1,5 +1,5 @@
 /* 馆员话术的**唯一来源**：任务十态 / 签单三态 / 取数与核验 / 审计 × 错误提示。
-   词表出处：CONTEXT.md「界面用语」；UX.md 第十节。
+   词表出处：GLOSSARY.md；UX.md 第十节。
    页面一律从这里取词：状态用 `taskLabel`/`approvalLabel`/`acqGroupLabel`/…，
    HTTP 失败用 `errorNote`，站内视图链接用 `appHref`——不许再各写一份 Record 或三目。 */
 

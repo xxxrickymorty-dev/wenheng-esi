@@ -49,7 +49,7 @@ TRANSITIONS: dict[str, frozenset[str]] = {
 }
 
 #: 中文名（看板与报告用）。⚠ 2026-09-29 起与前端 `web/src/lib/status.ts` 的
-#: TASK_LABEL 逐字一致（CONTEXT「界面用语」2026-09-28 定案，前端为唯一映射）；
+#: TASK_LABEL 逐字一致（词表见 GLOSSARY.md「任务状态话术」，前端为唯一映射）；
 #: 漂移由 tests/test_demo_station_states.py 的跨栈 parity 测试当场抓红。
 LABELS: dict[str, str] = {
     PENDING: "待运行",

@@ -24,7 +24,7 @@ def _mkfile(p: pathlib.Path):
 
 def _fake_repo(tmp_path):
     root = tmp_path / "wenheng"
-    for rel in ("pyproject.toml", "CONTEXT.md", "AGENTS.md",
+    for rel in ("pyproject.toml", "CONTEXT.md", "GLOSSARY.md", "AGENTS.md",
                 "src/run_pipeline.py", "server/app.py", "server/.env",
                 "server/.env.example", "tools/x.py", "tests/test_x.py",
                 "master/母版.docx", "docs/部署手册.md",
@@ -48,7 +48,7 @@ def _rels(root, include_data):
 class Test进包口径:
     def test_代码与构建产物进包(self, tmp_path):
         rels = _rels(_fake_repo(tmp_path), include_data=True)
-        for rel in ("pyproject.toml", "src/run_pipeline.py", "server/app.py",
+        for rel in ("pyproject.toml", "GLOSSARY.md", "src/run_pipeline.py", "server/app.py",
                     "server/.env.example", "web/dist/index.html", "web/dist/assets/app.js",
                     "master/母版.docx", "docs/部署手册.md"):
             assert rel in rels, rel
