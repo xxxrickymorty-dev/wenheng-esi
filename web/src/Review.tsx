@@ -18,6 +18,7 @@ import {
 } from './api-report'
 import { ConfirmButton } from './ConfirmButton'
 import { Icon } from './icons'
+import { appHref, errorNote } from './lib/status'
 
 type Msg = { ok: boolean; text: string } | null
 
@@ -144,13 +145,9 @@ export function Review({
 
     getReportPreview(period)
       .then((pv) => { if (alive) setPreview(pv) })
-      .catch((e: { status?: number }) => {
+      .catch((e) => {
         if (!alive) return
-        setPreviewNote(
-          e.status === 403 ? '审核台需要管理员权限（后端按角色拦的）。'
-            : e.status === 404 ? '这一期还没有出稿。'
-              : '读试排报告失败（服务没有回应）。',
-        )
+        setPreviewNote(errorNote(e, '审核台', { n404: '这一期还没有出稿。' }))
       })
     getWorkbench(period)
       .then((w) => {
@@ -160,9 +157,9 @@ export function Review({
         for (const t of w.todo_fill) if (t.filled?.trim()) v[t.id] = t.filled
         setVals(v)
       })
-      .catch((e: { status?: number }) => {
+      .catch((e) => {
         if (!alive) return
-        setWbNote(e.status === 403 ? '填写数据需要管理员权限。' : '读填写数据失败。')
+        setWbNote(errorNote(e, '填写数据'))
       })
     return () => { alive = false }
   }, [period])
@@ -286,10 +283,10 @@ export function Review({
       setMsg({ ok: true, text: `已签单（状态 ${r.status}）。右侧即可下载这一版报告。` })
       onChanged()
     } catch (e) {
-      const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
+      const h = e as { body?: { hint?: string } }
       setMsg({
         ok: false,
-        text: (h.status === 409 ? (h.body?.error ?? '服务端拒绝了这次签单') : (h.body?.error ?? h.message ?? '签单失败'))
+        text: errorNote(e, '签单', { n409: '服务端拒绝了这次签单' })
           + (h.body?.hint ? `（${h.body.hint}）` : ''),
       })
     } finally { setBusy(null) }
@@ -348,7 +345,7 @@ export function Review({
     )
   }
 
-  const back = `/app/?view=report&period=${encodeURIComponent(period)}`
+  const back = appHref('report', period)
   const signed = status === 'signed'
   const busyText = busy === 'sign' ? '正在处理…' : busy === 'rebuild' ? '正在重出……' :
     busy === 'save' ? '正在保存……' : busy === 'revoke' ? '正在撤回……' : ''
@@ -443,7 +440,7 @@ export function Review({
               {busyText && <p className="rv-busy" role="status">{busyText}</p>}
               {msg && <p className={msg.ok ? 'rv-msg ok' : 'rv-msg bad'} role="status">{msg.text}</p>}
               <p className="hint mt-8">
-                <a href={`/app/?view=reading&period=${encodeURIComponent(period)}`}>看对勘本 →</a>
+                <a href={appHref('reading', period)}>看对勘本 →</a>
               </p>
             </section>
 

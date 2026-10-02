@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { getCollation, type CollationRow } from './api-collation'
 import { getFacts } from './api-workbench'
 import { Icon } from './icons'
+import { appHref, errorNote } from './lib/status'
 
 const CAP = 120   // 单个分组最多渲染这么多条（大表组可能几百条）；其余提示走搜索
 
@@ -26,13 +27,9 @@ export function Reading({ period }: { period: string | null }) {
        后端默认分页 50 行，拿它当全量会只剩前几组。 */
     getCollation(period, true)
       .then((r) => { if (alive) setRows(r) })
-      .catch((e: { status?: number }) => {
+      .catch((e) => {
         if (!alive) return
-        setNote(
-          e.status === 403 ? '对勘本需要管理员权限（后端按角色拦的）。'
-            : e.status === 404 ? '这一期还没有对勘数据（可能尚未出稿）。'
-              : '读对勘数据失败。',
-        )
+        setNote(errorNote(e, '对勘本', { n404: '这一期还没有对勘数据（可能尚未出稿）。' }))
       })
     getFacts(period).then((f) => { if (alive) setAssertions(f.assertions) }).catch(() => { /* 断言读数取不到就不显示，不编 */ })
     return () => { alive = false }
@@ -83,7 +80,7 @@ export function Reading({ period }: { period: string | null }) {
     })
   }, [rows, sec, q, onlyManual])
 
-  const back = `/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`
+  const back = period ? appHref('report', period) : '/app/?view=report'
 
   return (
     <>

@@ -11,23 +11,13 @@ import { useEffect, useState } from 'react'
 import { getAcquisition, getArchive, humanSize, type AcquisitionState, type ArchiveData } from './api'
 import { AiRecords } from './AiRecords'
 import { Icon } from './icons'
+import { AUDIT_LABEL, acqGroupLabel, errorNote, taskLabel } from './lib/status'
 import { WaterfallRows } from './Waterfall'
 
-/** 后端任务状态 → 馆员看得懂的话（src/agent/states.py 的十态） */
-const STATUS_CN: Record<string, string> = {
-  pending: '排队中', running: '运行中', retrying: '正在重试', stalled: '看起来卡住了',
-  waiting_approval: '等待签单', completed: '已完成', warned: '完成（有告警）',
-  escalated: '需要人接手', failed: '失败', cancelled: '已取消',
-}
-const AUDIT_LABEL: Record<string, string> = { pass: '通过', review: '待确认', fail: '不通过' }
 const AUDIT_CLS: Record<string, string> = { pass: 'signed', review: 'stale', fail: '' }
 
 function str(v: unknown): string {
   return v == null || v === '' ? '—' : String(v)
-}
-
-const ACQ_GROUP_CN: Record<string, string> = {
-  pending: '未开始', live: '进行中', done: '核验通过', fail: '有未通过', retrying: '重新核验中',
 }
 
 export function Archive({ period, approvalStatus }: { period: string | null; approvalStatus: string }) {
@@ -51,11 +41,8 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
     getArchive(period)
       .then((a) => { if (alive) setD(a) })
       .catch((e) => {
-        const h = e as { status?: number; body?: { hint?: string; error?: string } }
         if (!alive) return
-        setNote(h.status === 403 ? '运行档案要管理员权限（用馆员账号登录后再来）。'
-          : h.status === 404 ? (h.body?.hint ?? '这一期还没有运行档案（可能尚未出稿）。')
-            : (h.body?.error ?? '读运行档案失败。'))
+        setNote(errorNote(e, '运行档案'))
       })
     return () => { alive = false }
   }, [period])
@@ -88,7 +75,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
             <div className="rowc mt-14">
               {!!job.status && (
                 <span className={`pill ${job.status === 'completed' ? 'signed' : job.status === 'warned' ? 'stale' : 'unsigned'}`}>
-                  {STATUS_CN[String(job.status)] ?? String(job.status)}
+                  {taskLabel(String(job.status))}
                 </span>
               )}
               {d.audit.exists && (
@@ -138,7 +125,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                     <li key={g.id ?? i}>
                       <span className="rv-todo-t">{g.title}</span>
                       <span className="mono rv-todo-v">{g.verified ?? 0} / {g.files?.length ?? '—'}</span>
-                      <span className="rv-todo-v">{ACQ_GROUP_CN[g.state ?? ''] ?? g.state ?? '—'}</span>
+                      <span className="rv-todo-v">{acqGroupLabel(g.state)}</span>
                     </li>
                   ))}
                 </ul>
@@ -166,7 +153,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
               <div className="ar-chain mt-10">
                 {d.replay.chain.map((r, i) => (
                   <span className="ar-chain-node" key={i}>
-                    <span>{STATUS_CN[r.from] ?? r.from}<i> → </i>{STATUS_CN[r.to] ?? r.to}</span>
+                    <span>{taskLabel(r.from)}<i> → </i>{taskLabel(r.to)}</span>
                     <small>{r.ts || '—'}{r.trigger ? ` · ${r.trigger}` : ''}{r.synthetic ? ' · 合成记录' : ''}</small>
                   </span>
                 ))}

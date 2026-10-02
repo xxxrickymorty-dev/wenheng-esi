@@ -3,6 +3,7 @@
    🔴 这一层只做**推导**与**文案**，不产生任何数字——数字一律来自 api.ts。 */
 
 import type { ApiError, Period, PeriodDetail } from './api'
+import { TERMINAL_STATES } from './lib/status'
 
 export type WBState =
   | 'empty' | 'ready' | 'running' | 'done' | 'warned' | 'waiting-approval'
@@ -147,7 +148,7 @@ export function deriveWorkbench(
 }
 
 /** 后端任务状态（src/agent/states.py 的 10 态，权威）→ 工作台八态 */
-const TERMINAL = new Set(['completed', 'warned', 'escalated', 'failed', 'cancelled'])
+const TERMINAL = new Set<string>(TERMINAL_STATES)
 
 export function isTerminal(status?: string): boolean {
   return !!status && TERMINAL.has(status)

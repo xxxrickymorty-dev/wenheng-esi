@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react'
 import { getAiCalls, type AiCall, type AiCalls } from './api'
+import { errorNote } from './lib/status'
 
 const CAP_CN: Record<string, string> = {
   qa: '问文衡', review: '复核参谋', diagnose: '诊断参谋', brief: '期次导读',
@@ -50,10 +51,8 @@ export function AiRecords({ period }: { period: string | null }) {
     getAiCalls(period)
       .then((a) => { if (alive) { setD(a); setOpen(a.calls[0]?.record_id ?? null) } })
       .catch((e) => {
-        const h = e as { status?: number; body?: { hint?: string; error?: string } }
         if (!alive) return
-        setErr(h.status === 404 ? '这一期还没有产物，暂时没有问答记录。'
-          : h.body?.error ?? '读问答记录失败。')
+        setErr(errorNote(e, '问答记录', { n404: '这一期还没有产物，暂时没有问答记录。' }))
       })
     return () => { alive = false }
   }, [period])

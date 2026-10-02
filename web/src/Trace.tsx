@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { req } from './api'
 import { Icon } from './icons'
+import { errorNote } from './lib/status'
 
 type TraceRow = {
   loc: string; col?: string; report?: string; label?: string
@@ -38,12 +39,7 @@ export function Trace({ period }: { period: string | null }) {
       setRows((old) => (append ? [...old, ...(j.rows ?? [])] : (j.rows ?? [])))
       setNote(null)
     } catch (e) {
-      const h = e as { status?: number }
-      setNote(
-        h.status === 403 ? '逐格溯源需要管理员权限（后端按角色拦的）。'
-          : h.status === 404 ? '这一期还没有溯源数据（可能尚未出稿）。'
-            : '读溯源数据失败。',
-      )
+      setNote(errorNote(e, '溯源数据'))
     } finally { setBusy(false) }
   }, [period])
 

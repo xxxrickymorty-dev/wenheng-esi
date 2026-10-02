@@ -14,6 +14,7 @@ import {
 import { getCharts, getCollation, type ChartRow, type CollationRow } from './api-collation'
 import { getFacts, type Facts } from './api-workbench'
 import { Icon } from './icons'
+import { APPROVAL_LABEL, appHref, errorNote } from './lib/status'
 
 /** 人工空位的来源说人话（票 14）：内部脚本名不直出面客 */
 function humanSource(source?: string): string {
@@ -58,9 +59,9 @@ function Chain({
         })}
       </div>
       <div className="legend">
-        <span><i className="bg-zhu" />已签发</span>
-        <span><i className="sw-gold" />签名失效</span>
-        <span><i className="sw-line" />未签发</span>
+        <span><i className="bg-zhu" />{APPROVAL_LABEL.signed}</span>
+        <span><i className="sw-gold" />{APPROVAL_LABEL.stale}</span>
+        <span><i className="sw-line" />{APPROVAL_LABEL.unsigned}</span>
       </div>
     </aside>
   )
@@ -89,14 +90,9 @@ function Artifacts({ period, guest, approvalStatus, refreshToken }: {
     getPeriodArtifacts(period).then((items) => {
       if (alive) setResult({ period, guest: isGuest, refreshToken, items, note: null })
     }).catch((e: unknown) => {
-      const h = e as { status?: number }
       if (!alive) return
-      const note = h.status === 403
-        ? '产物清单需要管理员权限。'
-        : h.status === 401
-          ? '需要登录才能看产物清单。'
-          : '读取这一期的产物清单失败。'
-      setResult({ period, guest: isGuest, refreshToken, items: null, note })
+      setResult({ period, guest: isGuest, refreshToken, items: null,
+                  note: errorNote(e, '产物清单') })
     })
     return () => { alive = false }
   }, [period, isGuest, refreshToken])
@@ -151,10 +147,7 @@ function PeriodData({ period }: { period: string | null }) {
         if (!alive) return
         setCol(c); setCharts(ch)
       } catch (e) {
-        const h = e as { status?: number }
-        if (alive) setNote(h.status === 403 ? '这些数据需要管理员权限。'
-          : h.status === 404 ? '这一期还没有对勘数据（可能尚未出稿）。'
-            : '读对勘/图册失败。')
+        if (alive) setNote(errorNote(e, '对勘数据'))
       }
     })()
     return () => { alive = false }
@@ -183,14 +176,14 @@ function PeriodData({ period }: { period: string | null }) {
           </h2>
           {/* 两扇门摆在明面：对勘本（正文级对照）/ 红色件清单（签单依据） */}
           <div className="rc-doors">
-            <a className="entry" href={`/app/?view=reading${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+            <a className="entry" href={period ? appHref('reading', period) : '/app/?view=reading'}>
               <span>
                 <span className="t">打开对勘本 · 正文级对照</span>
                 <span className="d">左分组 / 中改动卡 / 右校记 · 可搜、可只看待人工、← → 换分组</span>
               </span>
               <span className="go">→</span>
             </a>
-            <a className="entry" href={`/app/?view=red${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+            <a className="entry" href={period ? appHref('red', period) : '/app/?view=red'}>
               <span>
                 <span className="t">红色件清单 · 签单依据</span>
                 <span className="d">逐格列出「改了什么、来自哪里」，可搜索、可下载 Markdown</span>
@@ -214,7 +207,7 @@ function PeriodData({ period }: { period: string | null }) {
           </details>
           {/* 逐格溯源入口（P1）：报告里的值 ↔ 台账现场重读 */}
           <a className="entry mt-12" 
-             href={`/app/?view=trace${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+             href={period ? appHref('trace', period) : '/app/?view=trace'}>
             <span>
               <span className="t">逐格溯源</span>
               <span className="d">报告里每个数字 ↔ 台账现场重读的值并排对照，写清来源表与「怎么来的」</span>
@@ -229,7 +222,7 @@ function PeriodData({ period }: { period: string | null }) {
             <Icon name="alert" size={20} />待你补 / 拍板
             {manual.length > 0 && (
               <a className="hint ml-auto ink-zhu fw-650 no-underline" 
-                 href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+                 href={period ? appHref('review', period) : '/app/?view=review'}>
                 去审核台逐项处理（{manual.length} 处）→
               </a>
             )}
@@ -273,7 +266,7 @@ function PeriodData({ period }: { period: string | null }) {
         </h2>
         {/* 图册全量入口（P0-4）：以前这里指老站 /p/<期次>/charts，现已改指新站自己的图册页 */}
         <a className="entry mt-12" 
-           href={`/app/?view=charts${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+           href={period ? appHref('charts', period) : '/app/?view=charts'}>
           <span>
             <span className="t">打开图册</span>
             <span className="d">{charts.length} 张 · 按学科分组 · 可搜索</span>
@@ -357,13 +350,9 @@ function FactsStrip({ period, onFacts }: {
     onFacts?.(null)
     getFacts(period)
       .then((x) => { if (alive) { setF(x); onFacts?.(x) } })
-      .catch((e: { status?: number }) => {
+      .catch((e) => {
         if (!alive) return
-        setNote(
-          e.status === 403 ? '读数需要管理员权限（后端按角色拦的）。'
-            : e.status === 404 ? '这一期还没有概览数字（可能尚未出稿）。'
-              : '读读数失败。',
-        )
+        setNote(errorNote(e, '概览数字'))
       })
     return () => { alive = false }
   }, [period, onFacts])

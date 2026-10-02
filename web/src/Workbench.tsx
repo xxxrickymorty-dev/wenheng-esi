@@ -7,7 +7,7 @@ import { formatProvenanceTime, type ForecastChoiceEntry, type ForecastMeta } fro
 import { useState } from 'react'
 import { ConfirmButton } from './ConfirmButton'
 import { Tools } from './Tools'
-import { taskLabel as runStatusText } from './lib/status'
+import { appHref, approvalLabel, taskLabel as runStatusText } from './lib/status'
 import { Icon } from './icons'
 import { failureCopy, isTerminal, STATE_LABEL, type Workbench as WB, type WBState } from './wb'
 import type { ActivityState, Run } from './hooks/useJobRun'
@@ -44,8 +44,6 @@ function Steps({ wb, period }: { wb: WB; period: string | null }) {
     （原先的「五步假进度」演示组件已删——固定百分比属于编造，违反只透传红线，2026-09-29） */
 function LiveRun({ run, approvalStatus }: { run: Run; approvalStatus: string }) {
   const [open, setOpen] = useState(false)
-  const approvalLabel = approvalStatus === 'signed' ? '已签发'
-    : approvalStatus === 'stale' ? '签名已失效' : '未签发'
   const connectionLabel = run.connection === 'live' ? '页面正在更新进度'
     : run.connection === 'snapshot' ? '正在读取任务进度'
       : run.connection === 'reconnecting' ? '连接中断，正在恢复进度'
@@ -58,7 +56,7 @@ function LiveRun({ run, approvalStatus }: { run: Run; approvalStatus: string }) 
           <Icon name="refresh" size={19} />
           {`任务：${run.status ? runStatusText(run.status) : '正在读取状态'} · 期次 ${run.requestedPeriod}${run.outputPeriod && run.outputPeriod !== run.requestedPeriod ? `（实际输出 ${run.outputPeriod}）` : ''} · ${connectionLabel}`}
         </span>
-        <span className="runbar-state">签单状态<b>{approvalLabel}</b></span>
+        <span className="runbar-state">签单状态<b>{approvalLabel(approvalStatus)}</b></span>
         <button className="btn runbar-log" onClick={() => setOpen(!open)}>
           <Icon name="list" size={17} />{open ? '收起日志' : '看详细过程'}
         </button>
@@ -84,8 +82,6 @@ function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }
   period: string | null
   approvalStatus: string
 }) {
-  const approvalLabel = approvalStatus === 'signed' ? '已签发'
-    : approvalStatus === 'stale' ? '签名已失效' : '未签发'
   if (wb.state === 'warned') {
     return (
       <div className="banner warn">
@@ -96,7 +92,7 @@ function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }
             <li>本次校验有未通过项，但系统仍生成了提醒初稿。</li>
             <li>任务完成与报告是否合格、是否签发是两回事。</li>
             <li>具体未通过项与核对说明，请在报告页本期产物中打开“校验说明”。</li>
-            <li>本期签单状态：{approvalLabel}。</li>
+            <li>本期签单状态：{approvalLabel(approvalStatus)}。</li>
             {approvalStatus !== 'signed' && <li>管理员当前不能下载未签发初稿。</li>}
           </ul>
           <span className="acts">
@@ -121,7 +117,7 @@ function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }
         <span className="ico"><Icon name="check" size={22} /></span>
         <span>
           <b className="title">{wb.state === 'signed' ? '本期已签发' : '本期报告已生成'}</b>
-          <span>本期签单状态：{approvalLabel}。{approvalStatus === 'signed'
+          <span>本期签单状态：{approvalLabel(approvalStatus)}。{approvalStatus === 'signed'
             ? ''
             : '任务结束不代表报告合格或已签发；管理员当前不能下载未签发初稿。'}</span>
           <span className="acts">
@@ -494,11 +490,11 @@ export function PeriodsPanel({ periods, selected, healthy, onPick }: {
                 <td className="mono">{p.period}</td>
                 <td>
                   <span className={`pill ${p.status === 'signed' ? 'signed' : p.status === 'stale' ? 'stale' : 'unsigned'}`}>
-                    {p.status === 'signed' ? '已签发' : p.status === 'stale' ? '签名已失效' : '未签发'}
+                    {approvalLabel(p.status)}
                   </span>
                 </td>
                 <td>
-                  <a href={`/app/?view=report&period=${encodeURIComponent(p.period)}`}
+                  <a href={appHref('report', p.period)}
                      onClick={(e) => e.stopPropagation()}>打开</a>
                 </td>
               </tr>

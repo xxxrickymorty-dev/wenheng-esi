@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getCharts, type ChartRow } from './api-collation'
 import { Icon } from './icons'
+import { appHref, errorNote } from './lib/status'
 
 export function Charts({ period }: { period: string | null }) {
   const [rows, setRows] = useState<ChartRow[] | null>(null)
@@ -17,13 +18,9 @@ export function Charts({ period }: { period: string | null }) {
     setRows(null); setNote(null); setQ('')
     getCharts(period)
       .then((r) => { if (alive) setRows(r) })
-      .catch((e: { status?: number }) => {
+      .catch((e) => {
         if (!alive) return
-        setNote(
-          e.status === 403 ? '图册需要管理员权限（后端按角色拦的）。'
-            : e.status === 404 ? '这一期还没有图册（可能尚未出稿）。'
-              : '读图册失败。',
-        )
+        setNote(errorNote(e, '图册'))
       })
     return () => { alive = false }
   }, [period])
@@ -47,7 +44,7 @@ export function Charts({ period }: { period: string | null }) {
   return (
     <section className="card mt-18 pad-card">
       <p className="hint mb-10">
-        <a href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}>← 回报告</a>
+        <a href={period ? appHref('report', period) : '/app/?view=report'}>← 回报告</a>
         {' · '}期次 <b className="mono">{period ?? '—'}</b>
       </p>
       <h2 className="h-sec">

@@ -13,6 +13,7 @@ import {
 } from './api-flexible'
 import { HttpError } from './api'
 import { Icon } from './icons'
+import { errorNote } from './lib/status'
 
 type Section = { title: string; html: string }
 
@@ -85,11 +86,7 @@ export function Flexible({ period }: { period: string | null }) {
           }])
         }
       } catch (e) {
-        const h = e as HttpError
-        if (alive) {
-          setNote(h.status === 403 ? '灵活报告要管理员权限（用馆员账号登录后再来）。'
-            : (h.body?.error ?? '读灵活报告失败。'))
-        }
+        if (alive) setNote(errorNote(e, '灵活报告'))
       }
     })()
     return () => { alive = false }

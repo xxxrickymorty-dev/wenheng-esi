@@ -11,7 +11,8 @@ import {
   getForecastChoice, getForecastMeta, saveForecastChoice,
   type ForecastChoiceEntry, type ForecastMeta,
 } from './api-forecast'
-import { applyPeriod } from './lib/period'
+import { applyPeriod, buildPeriodUrl } from './lib/period'
+import { errorNote } from './lib/status'
 import { pickRunForPeriod } from './lib/run'
 import { useJobRun, type Run } from './hooks/useJobRun'
 import { Icon, Sprite } from './icons'
@@ -114,10 +115,7 @@ export default function App() {
       setForecastMetaError('')
       return next
     } catch (e) {
-      const h = e as { status?: number; body?: { error?: string }; message?: string }
-      setForecastMetaError(h.status === 403
-        ? '预测模型设置需要管理员权限。'
-        : h.body?.error ?? h.message ?? '暂时读不到模型清单。')
+      setForecastMetaError(errorNote(e, '预测模型设置'))
       return null
     }
   }, [])
@@ -260,13 +258,11 @@ export default function App() {
       }))
     }).catch((e) => {
       if (forecastChoiceRequestRef.current[selected] !== request) return
-      const h = e as { status?: number; body?: { error?: string }; message?: string }
       setForecastChoiceByPeriod((current) => ({
         ...current,
         [selected]: {
           loaded: false, loading: false, saving: false,
-          error: h.status === 403 ? '本期模型设置需要管理员权限。'
-            : h.body?.error ?? h.message ?? '暂时读不到本期模型设置。',
+          error: errorNote(e, '本期模型设置'),
           choice: {}, saved: {}, by: '', at: '',
         },
       }))
@@ -453,8 +449,8 @@ export default function App() {
   const denied = gated && ADMIN_VIEWS.has(view)
   const navHref = (h: string) =>
     (selected
-      ? h === '/app/' ? `/app/?period=${encodeURIComponent(selected)}`
-        : h.startsWith('/app/?') ? `${h}&period=${encodeURIComponent(selected)}` : h
+      ? h === '/app/' ? buildPeriodUrl(h, selected)
+        : h.startsWith('/app/?') ? buildPeriodUrl(h, selected) : h
       : h)
 
   /* 游客（非管理员）已被 effect 送回陈列馆；这里先不渲染工作区，避免跳转前闪一帧。 */

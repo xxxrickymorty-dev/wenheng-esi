@@ -9,19 +9,13 @@ import { getAcquisition, postAcquisition, type AcquisitionState, type AcqGroup }
 import { ConfirmButton } from './ConfirmButton'
 import { Info } from './Info'
 import { Icon } from './icons'
+import { acqFileLabel, acqGroupLabel, errorNote } from './lib/status'
 
 /** 任务进行中的一句话（op.kind → 人话） */
 const OP_CN: Record<string, string> = {
   fetch: '正在按组取数', copy: '正在新建本期监测表', merge: '正在并入主台账', preflight: '正在检查',
 }
 
-/** 组/文件状态 → 馆员话术（与静态稿一致；不认识的取值原样显示，不编） */
-const GROUP_STATE: Record<string, string> = {
-  pending: '未开始', live: '下载中', done: '核验通过', fail: '有未通过', retrying: '重新核验中',
-}
-const FILE_STATE: Record<string, string> = {
-  pending: '待取数', received: '已收到 · 待核验', ok: '核验通过', bad: '未通过',
-}
 const SOURCE_NAME: Record<string, string> = { esi: 'ESI', incites: 'InCites' }
 
 function groupStateClass(v?: string) {
@@ -54,7 +48,7 @@ function deriveView(s: AcquisitionState): PageView {
 
 function GroupCard({ g }: { g: AcqGroup }) {
   const files = g.files ?? []
-  const stateText = g.state ? (GROUP_STATE[g.state] ?? g.state) : '未开始'
+  const stateText = g.state ? acqGroupLabel(g.state) : '未开始'
   const pct = files.length > 0 ? Math.min(100, Math.round((g.verified ?? 0) / files.length * 100)) : 0
   const srcName = g.source ? (SOURCE_NAME[g.source] ?? g.source) : ''
   return (
@@ -80,7 +74,7 @@ function GroupCard({ g }: { g: AcqGroup }) {
                     <Icon name={f.state === 'ok' ? 'check' : f.state === 'bad' ? 'alert' : 'clock'} size={15} />
                   </span>
                   <span className="aq-fname">{f.name ?? '（未命名文件）'}<small>{f.label}</small></span>
-                  <span className={`aq-fres ${cls}`}>{f.state ? (FILE_STATE[f.state] ?? f.state) : '待取数'}</span>
+                  <span className={`aq-fres ${cls}`}>{f.state ? acqFileLabel(f.state) : '待取数'}</span>
                 </li>
               )
             })}
@@ -107,11 +101,10 @@ export function Acquire({ period }: { period: string | null }) {
     getAcquisition(period)
       .then((s) => { stateRef.current = s; setState(s); setNote(null) })
       .catch((e) => {
-        const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
         setState(null)
-        setNote(h.status === 403 ? '取数台要管理员权限（用馆员账号登录后再来）。'
-          : h.status === 404 ? '没读到这一期的取数状态——确认期次是六位数，或稍等片刻重试。'
-            : (h.body?.hint ?? h.body?.error ?? h.message ?? '读取数状态失败。'))
+        setNote(errorNote(e, '取数台', {
+          n404: '没读到这一期的取数状态——确认期次是六位数，或稍等片刻重试。',
+        }))
       })
       .finally(() => { if (!silent) setLoading(false) })
   }, [period])
@@ -144,9 +137,7 @@ export function Acquire({ period }: { period: string | null }) {
       reloadTimer.current = window.setTimeout(() => load(true), 500)
       return r
     } catch (e) {
-      const h = e as { status?: number; body?: { error?: string; hint?: string } }
-      setNote(h.status === 409 ? (h.body?.error ?? '有一个取数任务还在跑，稍等它完成。')
-        : (h.body?.hint ?? h.body?.error ?? '这一步没有成功，稍后再试。'))
+      setNote(errorNote(e, '这一步', { n409: '有一个取数任务还在跑，稍等它完成。' }))
       return null
     } finally {
       setBusy(false)

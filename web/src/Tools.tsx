@@ -10,6 +10,7 @@ import {
 } from './api'
 import { ConfirmButton } from './ConfirmButton'
 import { Icon } from './icons'
+import { appHref } from './lib/status'
 import { Waterfall } from './Waterfall'
 
 /** 留档目录名 20260928T083041 → 09-28 08:30 */
@@ -265,7 +266,7 @@ export function Tools({
 
       {period && (
         <p className="hint mt-10">
-          <a href={`/app/?view=archive&period=${encodeURIComponent(period)}`}>
+          <a href={appHref('archive', period)}>
             看这一期运行档案 →
           </a>
         </p>

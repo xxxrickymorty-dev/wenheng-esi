@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getAiCapabilities, postAiSwitch, req, type AiCapability } from './api'
 import { Icon } from './icons'
+import { errorNote } from './lib/status'
 import { Flexible } from './Flexible'
 
 type Source = {
@@ -118,11 +119,11 @@ export function Analysis({ period }: { period: string | null }) {
       })
       setData(r)
     } catch (e) {
-      const h = e as { status?: number; body?: { error?: string }; message?: string }
-      setErr(h.body?.error ?? (h.status === 403 ? '问答需要管理员权限。'
-        : h.status === 404 ? '这一期还没有可用产物（可能尚未出稿）。'
-          : h.status === 409 ? '问答已被管理员关闭。'
-            : h.message ?? '作答失败'))
+      const h = e as { body?: { error?: string } }
+      setErr(h.body?.error ?? errorNote(e, '问答', {
+        n404: '这一期还没有可用产物（可能尚未出稿）。',
+        n409: '问答已被管理员关闭。',
+      }))
     } finally { setBusy(false) }
   }
 

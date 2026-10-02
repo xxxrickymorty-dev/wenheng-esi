@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getRedSlots, type RedRow } from './api-collation'
 import { Icon } from './icons'
+import { errorNote } from './lib/status'
 
 export function RedList({ period }: { period: string | null }) {
   const [rows, setRows] = useState<RedRow[] | null>(null)
@@ -17,13 +18,9 @@ export function RedList({ period }: { period: string | null }) {
     setRows(null); setNote(null); setQ('')
     getRedSlots(period)
       .then((r) => { if (alive) setRows(r) })
-      .catch((e: { status?: number }) => {
+      .catch((e) => {
         if (!alive) return
-        setNote(
-          e.status === 403 ? '红色件清单需要管理员权限（后端按角色拦的）。'
-            : e.status === 404 ? '这一期还没有红色件清单（可能尚未出稿）。'
-              : '读红色件清单失败。',
-        )
+        setNote(errorNote(e, '红色件清单'))
       })
     return () => { alive = false }
   }, [period])
