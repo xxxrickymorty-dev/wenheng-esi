@@ -74,6 +74,13 @@ main{max-width:940px;margin:0 auto;padding:22px 22px 60px}
 ul.reasons{margin:6px 0 0;padding-left:20px;font-size:15px;color:var(--ink-2)}
 ul.reasons li{margin:2px 0}
 ul.reasons b{color:var(--ink)}
+ol.rank{margin:6px 0 0;padding-left:24px;font-size:15px;color:var(--ink-2)}
+ol.rank li{margin:2px 0}
+ol.rank li b{color:var(--ink)}
+ol.rank .pick{color:var(--zhu);font-weight:600;margin-left:6px}
+.weigh{margin-top:8px;font-size:15px;color:var(--ink-2);border-left:3px solid var(--gold);
+  background:var(--gold-soft);border-radius:0 8px 8px 0;padding:7px 12px}
+.weigh b{color:var(--ink)}
 .checks{margin:6px 0 0;padding:0;list-style:none;font-size:15px}
 .checks li{display:flex;gap:9px;align-items:flex-start;padding:3px 0;opacity:.35;
   transition:opacity .35s ease}
@@ -134,17 +141,24 @@ const SCEN = {
   pass: {
     subtitle: "单学科趋势诊断",
     steps: [
-      { n:"①", t:"挑学科", ms:900, cls:"done",
-        d:'挑「离 1% 线最近的潜力学科」——决策上最有用，且完全确定性。',
-        html:'<div class="chips"><span class="chip">候选 22 个学科</span>' +
-             '<span class="chip">选中：分子生物学与遗传学</span>' +
-             '<span class="chip">接近度 0.845（全池最高）</span></div>' },
-      { n:"②", t:"配图", ms:900, cls:"done",
+      { n:"①", t:"挑学科", ms:1100, cls:"done",
+        d:'挑「离 1% 线最近的潜力学科」——决策上最有用，且完全确定性。先看池子：',
+        html:'<div class="chips"><span class="chip">22 个学科里，14 个已进 1%</span>' +
+             '<span class="chip">只剩 8 个潜力学科可比</span></div>' +
+             '<ol class="rank">' +
+             '<li><b>分子生物学与遗传学</b> 0.845<span class="pick">← 选它</span></li>' +
+             '<li>物理学 0.751</li>' +
+             '<li>空间科学 0.294</li></ol>' +
+             '<div class="weigh">为什么不是第二名：<b>0.845 与 0.751 不是差一点</b>；' +
+             '而且 0.845 是全池离 1% 线最近的那个——<b>它是"下一期最可能翻线"的学科</b>，写它最有信息量。</div>' },
+      { n:"②", t:"配图", ms:1100, cls:"done",
         d:"三张，各有理由——不是凑数：",
         html:'<ul class="reasons">' +
-             '<li><b>被引 vs 1% 阈值</b> · 直接看追赶态势</li>' +
-             '<li><b>新增发文量</b> · 看投入力度</li>' +
-             '<li><b>排名百分位</b> · 看相对位次</li></ul>' },
+             '<li><b>被引 vs 1% 阈值</b> · 直接看追赶态势：离那条线还有多远、趋势是向上还是掉头</li>' +
+             '<li><b>新增发文量</b> · 看投入力度：是在加码，还是原地踏步</li>' +
+             '<li><b>排名百分位</b> · 看相对位次：国内外的位置变没变</li></ul>' +
+             '<div class="weigh">为什么只三张：模板按意图固定——这三张正好回答' +
+             '<b>"追得上吗 / 在不在加码 / 位置变没变"</b>，再多就稀释重点了。</div>' },
       { n:"③", t:"取数", ms:900, cls:"done",
         d:"每个数据点都带出处（数据集 / 指标 / 学科 / 期次），可逐格回读台账。",
         html:'<div class="chips"><span class="chip">13 条查询</span>' +
@@ -165,16 +179,20 @@ const SCEN = {
   fail: {
     subtitle: "多学科横向对比",
     steps: [
-      { n:"①", t:"挑学科", ms:900, cls:"done",
+      { n:"①", t:"挑学科", ms:1100, cls:"done",
         d:"这次是全池对比——不挑单个学科，22 个一起看。",
         html:'<div class="chips"><span class="chip">全池 22 学科</span>' +
-             '<span class="chip">指标：ESI前1%接近度</span></div>' },
-      { n:"②", t:"配图", ms:900, cls:"done",
+             '<span class="chip">指标：ESI前1%接近度</span></div>' +
+             '<div class="weigh">为什么这次不挑单科：<b>单科看的是"追得上吗"，全池看的是"整盘棋差在哪"</b>——' +
+             '两种问题不一样，不能拿一张图回答。</div>' },
+      { n:"②", t:"配图", ms:1100, cls:"done",
         d:"四张：两张总览 + 两张锚定学科：",
         html:'<ul class="reasons">' +
-             '<li><b>22 学科与 1% 基线的距离一览</b></li>' +
-             '<li><b>已进 1% 学科与 1‰ 的差距</b></li>' +
-             '<li><b>被引 vs 阈值</b> / <b>排名百分位</b> · 锚定学科</li></ul>' },
+             '<li><b>22 学科与 1% 基线的距离一览</b> · 先看全盘谁近谁远</li>' +
+             '<li><b>已进 1% 学科与 1‰ 的差距</b> · 已经进线的，下一个台阶还差多少</li>' +
+             '<li><b>被引 vs 阈值</b> / <b>排名百分位</b> · 锚定学科，各看一面</li></ul>' +
+             '<div class="weigh">为什么比单科多一张：全盘要两张（<b>未进的看距离、已进的看下一台阶</b>），' +
+             '少一张就有一半学科没覆盖到。</div>' },
       { n:"③", t:"取数", ms:900, cls:"done",
         d:"每个数据点都带出处。",
         html:'<div class="chips"><span class="chip">11 条查询</span>' +
