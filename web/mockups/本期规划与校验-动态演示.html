@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="zh-CN" data-palette="ynu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 决策轨迹（动态演示 · 票 04/05 · 待审核）</title>
+<style>
+/* ============================================================
+   给 rick 审核的静态稿（带自动演示）：单文件、双击即开、零依赖。
+   演示 = 把「本期规划与校验」的决策轨迹按真实时序逐段放出。
+   时序是确定性的（固定毫秒），方便录屏/录 GIF 可复现。
+   URL 参数：?s=pass（默认）| ?s=fail ；?auto=0 关闭自动播放。
+   ============================================================ */
+:root{
+  --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB;
+  --ink:#222B25; --ink-2:#3F4C42; --ink-3:#58655C;
+  --line:#DDE1D8; --line-2:#E6E9E2;
+  --zhu:#1A4B27; --zhu-soft:#E3EDE4;
+  --gold:#B19A65; --gold-soft:#F1EBDD; --gold-ink:#62501F;
+  --ok:#28643A; --ok-soft:#E2EEE4;
+  --warn:#75622D; --warn-soft:#F6EED8;
+  --bad:#B43B31; --bad-soft:#F7E1DE;
+  --serif:"Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  --shadow:0 1px 2px rgba(34,43,37,.05),0 8px 24px rgba(34,43,37,.06);
+  --r:14px; --r-sm:10px;
+}
+html[data-palette="zhu"]{ --bg:#F3EFE6; --card:#FBF8F1; --panel:#F6F1E7;
+  --ink:#2F2A24; --ink-2:#5B5248; --ink-3:#6F6558; --line:#D9CFBC; --line-2:#E7DFD0;
+  --zhu:#B43B31; --zhu-soft:#F0DCD5; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:17px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0}
+:focus-visible{outline:3px solid var(--zhu);outline-offset:3px;border-radius:6px}
+.mono{font-family:var(--mono)}
+.muted{color:var(--ink-3)}
+main{max-width:940px;margin:0 auto;padding:22px 22px 60px}
+
+.review{position:sticky;top:0;z-index:9;display:flex;flex-wrap:wrap;gap:10px 20px;
+  align-items:center;padding:11px 22px;background:var(--panel);
+  border-bottom:1px dashed var(--line);font-size:14px;color:var(--ink-2)}
+.review b{color:var(--ink)}
+.seg{display:flex;gap:6px}
+.seg button{padding:5px 13px;border:1px solid var(--line);background:var(--card);
+  border-radius:999px;cursor:pointer;font:inherit;font-size:14px;color:inherit}
+.seg button[aria-pressed="true"]{background:var(--zhu);border-color:var(--zhu);color:#fff}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);padding:22px 26px;margin-top:16px}
+.card h2{font-size:20px;display:flex;align-items:center;gap:10px}
+.hint{font:400 13px/1.5 var(--sans);color:var(--ink-3);margin-left:auto}
+.lead{color:var(--ink-2);margin:8px 0 0;font-size:16px}
+
+/* ---------- 轨迹 ---------- */
+.trail{margin-top:16px;border-left:2px solid var(--line);padding-left:0}
+.step{display:flex;gap:14px;padding:0 0 18px 0;position:relative;opacity:0;transform:translateY(6px);
+  transition:opacity .45s ease, transform .45s ease}
+.step.on{opacity:1;transform:none}
+.step .dot{flex:0 0 30px;height:30px;border-radius:999px;background:var(--panel);
+  border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
+  font:600 13px/1 var(--mono);color:var(--ink-3);margin-left:-16px;z-index:1}
+.step.done .dot{background:var(--ok-soft);border-color:var(--ok-soft);color:var(--ok)}
+.step.bad .dot{background:var(--bad-soft);border-color:var(--bad-soft);color:var(--bad)}
+.step.warn .dot{background:var(--warn-soft);border-color:var(--warn-soft);color:var(--warn)}
+.step .body{flex:1;min-width:0;padding-top:1px}
+.step .t{font-family:var(--serif);font-weight:600;font-size:17px}
+.step .d{color:var(--ink-2);font-size:15px;margin-top:2px}
+.step .d .k{color:var(--ink);font-weight:600}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;
+  padding:2px 12px;font-size:14px}
+ul.reasons{margin:6px 0 0;padding-left:20px;font-size:15px;color:var(--ink-2)}
+ul.reasons li{margin:2px 0}
+ul.reasons b{color:var(--ink)}
+.checks{margin:6px 0 0;padding:0;list-style:none;font-size:15px}
+.checks li{display:flex;gap:9px;align-items:flex-start;padding:3px 0;opacity:.35;
+  transition:opacity .35s ease}
+.checks li.on{opacity:1}
+.checks .m{flex:0 0 auto;font-family:var(--mono);font-size:14px}
+.checks .m.ok{color:var(--ok)} .checks .m.no{color:var(--bad)}
+.verdict{margin-top:10px;font-size:16px;opacity:0;transition:opacity .5s ease}
+.verdict.on{opacity:1}
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;
+  padding:2px 11px;font-size:13px;border:1px solid transparent}
+.badge.ok{background:var(--ok-soft);color:var(--ok)}
+.badge.warn{background:var(--warn-soft);color:var(--warn)}
+.badge.bad{background:var(--bad-soft);color:var(--bad)}
+.badge.plain{background:var(--panel);color:var(--ink-2);border-color:var(--line)}
+.foot{font-size:13px;color:var(--ink-3);margin:14px 0 0;padding-top:10px;
+  border-top:1px dashed var(--line-2)}
+.rec{font-size:13px;color:var(--ink-3);margin-left:auto}
+</style>
+</head>
+<body>
+
+<div class="review">
+  <span><b>动态演示 · 票 04/05</b>（决策轨迹）</span>
+  <span class="seg" role="group" aria-label="场景">
+    <button id="t-pass" aria-pressed="true" onclick="pick('pass')">一次通过</button>
+    <button id="t-fail" aria-pressed="false" onclick="pick('fail')">没过 → 修复 → 交人</button>
+  </span>
+  <span class="seg" role="group" aria-label="播放">
+    <button onclick="replay()">↺ 重播</button>
+    <button onclick="skip()">直接看结果</button>
+  </span>
+  <span class="seg" role="group" aria-label="配色">
+    <button aria-pressed="true" onclick="palette('ynu',this)">云大绿</button>
+    <button aria-pressed="false" onclick="palette('zhu',this)">朱砂</button>
+  </span>
+  <span class="rec" id="rec"></span>
+</div>
+
+<main>
+  <section class="card">
+    <h2>本期规划与校验<span class="hint">灵活报告 · <span id="subtitle">单学科趋势诊断</span></span></h2>
+    <p class="lead">这一份稿是<strong>怎么来的</strong>——挑了什么、为什么、取了什么数、核了哪几件、出没出问题。
+      每一步都能指回真实产物里的一个字段。</p>
+    <div class="trail" id="trail"></div>
+  </section>
+
+  <p class="foot">
+    口径：界面只出现「本期规划 / 数据校验 / 自动修复 / 需人工接手」——内部词（规划 Agent、校验 Agent、L0–L5）不上屏（`GLOSSARY.md`）。
+    演示时序固定，可复现；轨迹内容取自 202607 真实产物（`flex_plan.json` / `flex_sources.json` / `flex_meta.json`）。
+  </p>
+</main>
+
+<script>
+/* ===================================================================
+   演示脚本（纯数据，确定性时序）。每步：{n, t, d, cls, ms, html}
+   =================================================================== */
+const SCEN = {
+  pass: {
+    subtitle: "单学科趋势诊断",
+    steps: [
+      { n:"①", t:"挑学科", ms:900, cls:"done",
+        d:'挑「离 1% 线最近的潜力学科」——决策上最有用，且完全确定性。',
+        html:'<div class="chips"><span class="chip">候选 22 个学科</span>' +
+             '<span class="chip">选中：分子生物学与遗传学</span>' +
+             '<span class="chip">接近度 0.845（全池最高）</span></div>' },
+      { n:"②", t:"配图", ms:900, cls:"done",
+        d:"三张，各有理由——不是凑数：",
+        html:'<ul class="reasons">' +
+             '<li><b>被引 vs 1% 阈值</b> · 直接看追赶态势</li>' +
+             '<li><b>新增发文量</b> · 看投入力度</li>' +
+             '<li><b>排名百分位</b> · 看相对位次</li></ul>' },
+      { n:"③", t:"取数", ms:900, cls:"done",
+        d:"每个数据点都带出处（数据集 / 指标 / 学科 / 期次），可逐格回读台账。",
+        html:'<div class="chips"><span class="chip">13 条查询</span>' +
+             '<span class="chip">74 个数据点</span>' +
+             '<span class="chip">全部可回溯</span></div>' },
+      { n:"④", t:"数据校验", ms:700, cls:"done",
+        d:"三项，逐条核：",
+        html:'<ul class="checks">' +
+             '<li data-i="0"><span class="m ok">✓</span><span>每个数字能指回台账的格子（74 / 74）</span></li>' +
+             '<li data-i="1"><span class="m ok">✓</span><span>声明的图 = 实际出的图（3 / 3）</span></li>' +
+             '<li data-i="2"><span class="m ok">✓</span><span>声明的章节 = 实际写出来的（5 / 5）</span></li>' +
+             '</ul><div class="verdict" id="v"><span class="badge ok">3 项全部通过</span></div>' },
+      { n:"⑤", t:"收尾", ms:900, cls:"done",
+        d:"一次通过：<b>没有重跑，也没有需要人工接手的地方</b>。稿子放行，等馆员复核签单。",
+        html:"" }
+    ]
+  },
+  fail: {
+    subtitle: "多学科横向对比",
+    steps: [
+      { n:"①", t:"挑学科", ms:900, cls:"done",
+        d:"这次是全池对比——不挑单个学科，22 个一起看。",
+        html:'<div class="chips"><span class="chip">全池 22 学科</span>' +
+             '<span class="chip">指标：ESI前1%接近度</span></div>' },
+      { n:"②", t:"配图", ms:900, cls:"done",
+        d:"四张：两张总览 + 两张锚定学科：",
+        html:'<ul class="reasons">' +
+             '<li><b>22 学科与 1% 基线的距离一览</b></li>' +
+             '<li><b>已进 1% 学科与 1‰ 的差距</b></li>' +
+             '<li><b>被引 vs 阈值</b> / <b>排名百分位</b> · 锚定学科</li></ul>' },
+      { n:"③", t:"取数", ms:900, cls:"done",
+        d:"每个数据点都带出处。",
+        html:'<div class="chips"><span class="chip">11 条查询</span>' +
+             '<span class="chip">62 个数据点</span></div>' },
+      { n:"④", t:"数据校验", ms:700, cls:"bad",
+        d:"三项，逐条核——<b>有一条没过</b>：",
+        html:'<ul class="checks">' +
+             '<li data-i="0"><span class="m ok">✓</span><span>每个数字能指回台账的格子（62 / 62）</span></li>' +
+             '<li data-i="1"><span class="m ok">✓</span><span>声明的图 = 实际出的图（4 / 4）</span></li>' +
+             '<li data-i="2"><span class="m no">✗</span><span>有一条来源（rank）<b>没被任何图用上</b> —— 图上有、账上无的反面</span></li>' +
+             '</ul><div class="verdict" id="v"><span class="badge warn">1 项没过</span></div>' },
+      { n:"⑤", t:"自动修复", ms:900, cls:"warn",
+        d:"带着这条原因<b>重规划一次</b>，再重出稿——给它一次机会，但不无限试。",
+        html:'<div class="chips"><span class="chip">重跑 1 次（上限就是 1）</span></div>' },
+      { n:"⑥", t:"再校验", ms:800, cls:"bad",
+        d:"同一项<b>仍然没过</b>。",
+        html:'<div class="verdict on"><span class="badge warn">仍没过</span></div>' },
+      { n:"⑦", t:"交人", ms:900, cls:"bad",
+        d:"<b>停下，不带着问题出稿</b>——写明「需人工接手」，馆员一眼知道该自己上了。",
+        html:'<div class="chips"><span class="chip">状态：需人工接手</span>' +
+             '<span class="chip">原因已写进明细</span></div>' }
+    ]
+  }
+};
+
+let timers = [], running = false;
+
+function clearAll(){ timers.forEach(clearTimeout); timers = []; }
+
+function build(kind){
+  clearAll();
+  const s = SCEN[kind];
+  document.getElementById("subtitle").textContent = s.subtitle;
+  const trail = document.getElementById("trail");
+  trail.innerHTML = s.steps.map((st,i) =>
+    '<div class="step" id="st' + i + '">' +
+      '<div class="dot">' + st.n + '</div>' +
+      '<div class="body"><div class="t">' + st.t + '</div>' +
+      '<div class="d">' + st.d + '</div>' + (st.html || "") + '</div>' +
+    '</div>').join("");
+  document.getElementById("rec").textContent = "场景：" + (kind === "pass" ? "一次通过" : "没过 → 修复 → 交人");
+  return s;
+}
+
+function play(kind){
+  const s = build(kind);
+  let t = 300;
+  s.steps.forEach((st, i) => {
+    timers.push(setTimeout(() => {
+      const el = document.getElementById("st" + i);
+      el.classList.add("on", st.cls);
+    }, t));
+    // 校验步：三条逐条亮
+    if (st.html && st.html.indexOf("checks") >= 0) {
+      st.html.split('data-i="').length; // noop，保持简单
+      [0,1,2].forEach((ci) => {
+        timers.push(setTimeout(() => {
+          const li = document.querySelector("#st" + i + " .checks li[data-i='" + ci + "']");
+          if (li) li.classList.add("on");
+        }, t + 260 + ci * 300));
+      });
+      timers.push(setTimeout(() => {
+        const v = document.querySelector("#st" + i + " .verdict");
+        if (v) v.classList.add("on");
+      }, t + 260 + 3 * 300));
+      t += 260 + 3 * 300 + 500;
+    } else {
+      t += st.ms + 240;
+    }
+  });
+  return t;
+}
+
+function pick(kind){
+  document.getElementById("t-pass").setAttribute("aria-pressed", String(kind === "pass"));
+  document.getElementById("t-fail").setAttribute("aria-pressed", String(kind === "fail"));
+  play(kind);
+}
+function replay(){ pick(document.getElementById("t-fail").getAttribute("aria-pressed") === "true" ? "fail" : "pass"); }
+function skip(){
+  clearAll();
+  document.querySelectorAll(".step").forEach(el => el.classList.add("on"));
+  document.querySelectorAll(".checks li").forEach(el => el.classList.add("on"));
+  document.querySelectorAll(".verdict").forEach(el => el.classList.add("on"));
+}
+function palette(v, btn){
+  document.documentElement.dataset.palette = v;
+  btn.parentNode.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+}
+
+const q = new URLSearchParams(location.search);
+const start = q.get("s") === "fail" ? "fail" : "pass";
+document.getElementById("t-pass").setAttribute("aria-pressed", String(start === "pass"));
+document.getElementById("t-fail").setAttribute("aria-pressed", String(start === "fail"));
+play(start);
+if (q.get("auto") === "0") skip();
+</script>
+</body>
+</html>

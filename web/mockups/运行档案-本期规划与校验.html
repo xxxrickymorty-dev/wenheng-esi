@@ -7,9 +7,10 @@
 <style>
 /* ============================================================
    给 rick 审核的静态稿：单文件、双击即开、零依赖。
-   只画**改动的地方**：① 生成台多一行入口 ② 运行档案多一张卡。
-   朱砂描边 = 本次新增（沿用馆内「标红=本期改动」的惯例）。
-   数据取自 202607 真实产物（flex_plan.json / flex_meta.json 的 check）。
+   改动两处：① 生成台多一行入口 ② 运行档案多一张「决策轨迹」卡。
+   朱砂描边 = 本次新增（沿用馆内「标红=本期改动」惯例）。
+   数据取自 202607 真实产物（flex_plan / flex_sources / flex_meta 的 check）。
+   动态版见同目录「本期规划与校验-动态演示.html」。
    ============================================================ */
 :root{
   --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB;
@@ -26,12 +27,9 @@
   --shadow:0 1px 2px rgba(34,43,37,.05),0 8px 24px rgba(34,43,37,.06);
   --r:14px; --r-sm:10px;
 }
-html[data-palette="zhu"]{
-  --bg:#F3EFE6; --card:#FBF8F1; --panel:#F6F1E7;
-  --ink:#2F2A24; --ink-2:#5B5248; --ink-3:#6F6558;
-  --line:#D9CFBC; --line-2:#E7DFD0;
-  --zhu:#B43B31; --zhu-soft:#F0DCD5;
-}
+html[data-palette="zhu"]{ --bg:#F3EFE6; --card:#FBF8F1; --panel:#F6F1E7;
+  --ink:#2F2A24; --ink-2:#5B5248; --ink-3:#6F6558; --line:#D9CFBC; --line-2:#E7DFD0;
+  --zhu:#B43B31; --zhu-soft:#F0DCD5; }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
   font:17px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
@@ -42,17 +40,15 @@ a{color:inherit}
 .muted{color:var(--ink-3)}
 main{max-width:1000px;margin:0 auto;padding:24px 22px 80px}
 
-/* ---------- 审核工具条（正式上线时去掉） ---------- */
 .review{position:sticky;top:0;z-index:9;display:flex;flex-wrap:wrap;gap:10px 22px;
   align-items:center;padding:11px 22px;background:var(--panel);
   border-bottom:1px dashed var(--line);font-size:14px;color:var(--ink-2)}
 .review b{color:var(--ink)}
 .seg{display:flex;gap:6px}
 .seg button{padding:5px 13px;border:1px solid var(--line);background:var(--card);
-  border-radius:999px;cursor:pointer;font-size:14px;font:inherit;color:inherit}
+  border-radius:999px;cursor:pointer;font:inherit;font-size:14px;color:inherit}
 .seg button[aria-pressed="true"]{background:var(--zhu);border-color:var(--zhu);color:#fff}
 
-/* ---------- 通用件 ---------- */
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
   box-shadow:var(--shadow);padding:20px 24px;margin-top:16px}
 .card h2{font-size:19px;display:flex;align-items:center;gap:10px}
@@ -62,8 +58,9 @@ main{max-width:1000px;margin:0 auto;padding:24px 22px 80px}
 .lead{color:var(--ink-2);margin:8px 0 0;font-size:16px}
 .badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;
   padding:2px 11px;font-size:13px;border:1px solid transparent}
-.badge.ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok-soft)}
+.badge.ok{background:var(--ok-soft);color:var(--ok)}
 .badge.warn{background:var(--warn-soft);color:var(--warn)}
+.badge.bad{background:var(--bad-soft);color:var(--bad)}
 .badge.plain{background:var(--panel);color:var(--ink-2);border-color:var(--line)}
 .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px 26px}
 .kv dt{font-size:13px;color:var(--ink-3)}
@@ -71,7 +68,6 @@ main{max-width:1000px;margin:0 auto;padding:24px 22px 80px}
 .foot{font-size:13px;color:var(--ink-3);margin:12px 0 0;padding-top:10px;
   border-top:1px dashed var(--line-2)}
 
-/* ---------- 新增件（本稿主角） ---------- */
 .new{position:relative;border:1.5px solid var(--bad);border-radius:var(--r-sm);
   padding:16px 18px;background:#FFFBF9}
 html[data-mark="off"] .new{border-color:var(--line);background:transparent;padding:0;border:0}
@@ -81,18 +77,30 @@ html[data-mark="off"] .tag{display:none}
 .newline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:16px}
 .link{color:var(--zhu);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 
-/* 卡片三行 */
-.plan-row{display:flex;gap:14px;padding:11px 0;border-bottom:1px dashed var(--line-2)}
-.plan-row:last-child{border-bottom:0;padding-bottom:0}
-.plan-row .lbl{flex:0 0 104px;color:var(--ink-3);font-size:14px;padding-top:2px}
-.plan-row .val{flex:1;min-width:0}
-.chips{display:flex;gap:8px;flex-wrap:wrap}
+/* ---------- 决策轨迹 ---------- */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;
   padding:2px 12px;font-size:14px}
-.checks{margin:6px 0 0;padding-left:20px;font-size:14px;color:var(--ink-2)}
-.checks li{margin:2px 0}
+.trail{margin-top:14px;border-left:2px solid var(--line)}
+.step{display:flex;gap:14px;padding:0 0 18px 0}
+.step .dot{flex:0 0 30px;height:30px;border-radius:999px;background:var(--panel);
+  border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
+  font:600 13px/1 var(--mono);color:var(--ink-3);margin-left:-16px;z-index:1}
+.step.done .dot{background:var(--ok-soft);border-color:var(--ok-soft);color:var(--ok)}
+.step.bad .dot{background:var(--bad-soft);border-color:var(--bad-soft);color:var(--bad)}
+.step.warn .dot{background:var(--warn-soft);border-color:var(--warn-soft);color:var(--warn)}
+.step .body{flex:1;min-width:0;padding-top:1px}
+.step .t{font-family:var(--serif);font-weight:600;font-size:17px}
+.step .d{color:var(--ink-2);font-size:15px;margin-top:2px}
+.step .d b{color:var(--ink)}
+ul.reasons{margin:6px 0 0;padding-left:20px;font-size:15px;color:var(--ink-2)}
+ul.reasons li{margin:2px 0}
+ul.reasons b{color:var(--ink)}
+ul.checks{margin:6px 0 0;padding:0;list-style:none;font-size:15px}
+ul.checks li{display:flex;gap:9px;align-items:flex-start;padding:3px 0}
+ul.checks .m{flex:0 0 auto;font-family:var(--mono);font-size:14px}
+ul.checks .m.ok{color:var(--ok)} ul.checks .m.no{color:var(--bad)}
 
-/* ---------- 上下文示意（灰掉的既有内容） ---------- */
 .ctx{opacity:.55;pointer-events:none;filter:saturate(.7)}
 .ctx-note{font-size:13px;color:var(--ink-3);margin:0 0 8px}
 .section-title{font-family:var(--serif);font-size:22px;margin:34px 0 0;
@@ -112,7 +120,7 @@ html[data-mark="off"] .tag{display:none}
     <button aria-pressed="true" onclick="palette('ynu',this)">云大绿</button>
     <button aria-pressed="false" onclick="palette('zhu',this)">朱砂</button>
   </span>
-  <span class="muted">只画改动处；数据取 202607 真实产物。界面词一律馆员话术（无「Agent/校验器」等内部词）。</span>
+  <span class="muted">只画改动处；数据取 202607 真实产物。动态版见「本期规划与校验-动态演示.html」。</span>
 </div>
 
 <main>
@@ -145,7 +153,7 @@ html[data-mark="off"] .tag{display:none}
           <b>本期规划：</b>
           <span>分子生物学与遗传学 · 3 张图 · 3 项数据校验</span>
           <span class="link">点看 ▸</span>
-          <span class="muted" style="font-size:14px">（跳到运行档案）</span>
+          <span class="muted" style="font-size:14px">（跳到运行档案的决策轨迹）</span>
         </div>
       </div>
     </div>
@@ -154,9 +162,9 @@ html[data-mark="off"] .tag{display:none}
   </section>
 
   <!-- ================================================================
-       ② 运行档案：多一张卡
+       ② 运行档案：决策轨迹卡
        ================================================================ -->
-  <h2 class="section-title">② 运行档案 <small>改动：新增「本期规划与校验」卡（三行）</small></h2>
+  <h2 class="section-title">② 运行档案 <small>改动：新增「本期规划与校验」卡——不是摘要，是**决策轨迹**</small></h2>
 
   <section class="card ctx">
     <p class="ctx-note" style="margin:0 0 6px">（既有卡片，仅示意它插在哪）</p>
@@ -165,83 +173,122 @@ html[data-mark="off"] .tag{display:none}
 
   <section class="card">
     <div class="new">
-      <span class="tag">新增</span>
+      <span class="tag">新增 · 状态一：一次通过</span>
       <h2 style="font-size:19px">本期规划与校验<span class="hint">灵活报告 · 单学科趋势诊断</span></h2>
 
-      <div style="margin-top:12px">
-        <div class="plan-row">
-          <span class="lbl">本期规划</span>
-          <span class="val">
-            <span class="chips">
-              <span class="chip">学科：分子生物学与遗传学</span>
-              <span class="chip">指标：ESI前1%接近度</span>
-              <span class="chip">窗口：近 7 期</span>
-              <span class="chip">出图 3 张</span>
-            </span>
-            <ol class="checks">
-              <li>每个数字都能指回台账的格子（双向核对）</li>
-              <li>声明的图与实际出的图对得上</li>
-              <li>声明的章节与实际写出来的对得上</li>
-            </ol>
-          </span>
-        </div>
+      <div class="chips">
+        <span class="chip">学科：分子生物学与遗传学</span>
+        <span class="chip">指标：ESI前1%接近度</span>
+        <span class="chip">窗口：近 7 期</span>
+        <span class="chip">出图 3 张</span>
+        <span class="badge ok" style="margin-left:auto">3 项校验全过</span>
+      </div>
 
-        <div class="plan-row">
-          <span class="lbl">数据校验</span>
-          <span class="val">
-            <span class="badge ok">3 项全部通过</span>
-            <span class="muted" style="font-size:14px;margin-left:8px">核了 74 个数据点，全部能指回来源</span>
-          </span>
-        </div>
+      <div class="trail" style="margin-top:16px">
+        <div class="step done"><div class="dot">①</div><div class="body">
+          <div class="t">挑学科</div>
+          <div class="d">挑「离 1% 线最近的潜力学科」——决策上最有用，且完全确定性。</div>
+          <div class="chips"><span class="chip">候选 22 个学科</span><span class="chip">选中：分子生物学与遗传学</span><span class="chip">接近度 0.845（全池最高）</span></div>
+        </div></div>
 
-        <div class="plan-row">
-          <span class="lbl">自动修复</span>
-          <span class="val">
-            <span class="badge plain">未发生</span>
-            <span class="muted" style="font-size:14px;margin-left:8px">校验一次通过，没有重跑；也没有需要人工接手的地方</span>
-          </span>
-        </div>
+        <div class="step done"><div class="dot">②</div><div class="body">
+          <div class="t">配图</div>
+          <div class="d">三张，各有理由——不是凑数：</div>
+          <ul class="reasons">
+            <li><b>被引 vs 1% 阈值</b> · 直接看追赶态势</li>
+            <li><b>新增发文量</b> · 看投入力度</li>
+            <li><b>排名百分位</b> · 看相对位次</li>
+          </ul>
+        </div></div>
+
+        <div class="step done"><div class="dot">③</div><div class="body">
+          <div class="t">取数</div>
+          <div class="d">每个数据点都带出处（数据集 / 指标 / 学科 / 期次），可逐格回读台账。</div>
+          <div class="chips"><span class="chip">13 条查询</span><span class="chip">74 个数据点</span><span class="chip">全部可回溯</span></div>
+        </div></div>
+
+        <div class="step done"><div class="dot">④</div><div class="body">
+          <div class="t">数据校验</div>
+          <div class="d">三项，逐条核：</div>
+          <ul class="checks">
+            <li><span class="m ok">✓</span><span>每个数字能指回台账的格子（74 / 74）</span></li>
+            <li><span class="m ok">✓</span><span>声明的图 = 实际出的图（3 / 3）</span></li>
+            <li><span class="m ok">✓</span><span>声明的章节 = 实际写出来的（5 / 5）</span></li>
+          </ul>
+        </div></div>
+
+        <div class="step done"><div class="dot">⑤</div><div class="body">
+          <div class="t">收尾</div>
+          <div class="d">一次通过：<b>没有重跑，也没有需要人工接手的地方</b>。稿子放行，等馆员复核签单。</div>
+        </div></div>
       </div>
 
       <p class="foot">这张卡只展示，不改任何东西；没有灵活报告产物的期次，整卡不出现。</p>
     </div>
   </section>
 
-  <!-- 另一种可能：校验没过 -->
   <section class="card">
-    <p class="ctx-note" style="margin:0 0 10px">（同一张卡的**另一种状态**，供对比：校验没过、自动修复一次仍不过）</p>
+    <p class="ctx-note" style="margin:0 0 10px">（同一张卡的**另一种状态**，供对比：校验没过 → 修复一次 → 仍不过 → 交人）</p>
     <div class="new">
-      <span class="tag">新增 · 状态二</span>
+      <span class="tag">新增 · 状态二：没过 → 修复 → 交人</span>
       <h2 style="font-size:19px">本期规划与校验<span class="hint">灵活报告 · 多学科横向对比</span></h2>
-      <div style="margin-top:12px">
-        <div class="plan-row">
-          <span class="lbl">本期规划</span>
-          <span class="val"><span class="chips">
-            <span class="chip">全池 22 学科横向对比</span>
-            <span class="chip">指标：ESI前1%接近度</span>
-            <span class="chip">出图 4 张</span>
-          </span></span>
-        </div>
-        <div class="plan-row">
-          <span class="lbl">数据校验</span>
-          <span class="val">
-            <span class="badge warn">1 项没过</span>
-            <span class="muted" style="font-size:14px;margin-left:8px">有一条来源没被任何图用上（已写进明细）</span>
-          </span>
-        </div>
-        <div class="plan-row">
-          <span class="lbl">自动修复</span>
-          <span class="val">
-            <span class="badge warn">重跑 1 次 · 仍未过</span>
-            <span class="muted" style="font-size:14px;margin-left:8px">已停下，需人工接手——不会带着问题出稿</span>
-          </span>
-        </div>
+
+      <div class="chips">
+        <span class="chip">全池 22 学科</span>
+        <span class="chip">指标：ESI前1%接近度</span>
+        <span class="chip">出图 4 张</span>
+        <span class="badge warn" style="margin-left:auto">需人工接手</span>
+      </div>
+
+      <div class="trail" style="margin-top:16px">
+        <div class="step done"><div class="dot">①</div><div class="body">
+          <div class="t">挑学科</div>
+          <div class="d">这次是全池对比——不挑单个学科，22 个一起看。</div>
+        </div></div>
+
+        <div class="step done"><div class="dot">②</div><div class="body">
+          <div class="t">配图</div>
+          <div class="d">四张：两张总览 + 两张锚定学科。</div>
+        </div></div>
+
+        <div class="step done"><div class="dot">③</div><div class="body">
+          <div class="t">取数</div>
+          <div class="chips"><span class="chip">11 条查询</span><span class="chip">62 个数据点</span></div>
+        </div></div>
+
+        <div class="step bad"><div class="dot">④</div><div class="body">
+          <div class="t">数据校验</div>
+          <div class="d">三项，逐条核——<b>有一条没过</b>：</div>
+          <ul class="checks">
+            <li><span class="m ok">✓</span><span>每个数字能指回台账的格子（62 / 62）</span></li>
+            <li><span class="m ok">✓</span><span>声明的图 = 实际出的图（4 / 4）</span></li>
+            <li><span class="m no">✗</span><span>有一条来源（rank）<b>没被任何图用上</b></span></li>
+          </ul>
+        </div></div>
+
+        <div class="step warn"><div class="dot">⑤</div><div class="body">
+          <div class="t">自动修复</div>
+          <div class="d">带着这条原因<b>重规划一次</b>，再重出稿——给它一次机会，但不无限试。</div>
+          <div class="chips"><span class="chip">重跑 1 次（上限就是 1）</span></div>
+        </div></div>
+
+        <div class="step bad"><div class="dot">⑥</div><div class="body">
+          <div class="t">再校验</div>
+          <div class="d">同一项<b>仍然没过</b>。</div>
+        </div></div>
+
+        <div class="step bad"><div class="dot">⑦</div><div class="body">
+          <div class="t">交人</div>
+          <div class="d"><b>停下，不带着问题出稿</b>——写明「需人工接手」，馆员一眼知道该自己上了。</div>
+          <div class="chips"><span class="chip">状态：需人工接手</span><span class="chip">原因已写进明细</span></div>
+        </div></div>
       </div>
     </div>
   </section>
 
   <p class="foot" style="margin-top:26px">
     口径核对：界面只出现「本期规划 / 数据校验 / 自动修复 / 需人工接手」——内部词（规划 Agent、校验 Agent、L0–L5）一律不上屏（`GLOSSARY.md`）。
+    轨迹的每一段都能指回真实产物字段（`flex_plan.json` 的 `charts[].why` / `flex_sources.json` 来源链 / `flex_meta.json` 的 `check` / `fallback_reason`）——**这是"真在想"，不是"像在想"**。
   </p>
 
 </main>
