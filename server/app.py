@@ -1544,13 +1544,16 @@ async def api_ai_switch(request: Request):
 @app.post("/api/dialog/turn")
 @admin_route
 async def api_dialog_turn(request: Request):
-    """对话前门一轮（契约 #33，票 01/02）：一句话 → 应答 + 槽位（期次 / 意图）+ 盘点。
+    """对话前门一轮（契约 #33，票 01–07）：一句话 → 路由（两意图）+ 应答 + 槽位 + 盘点。
 
     请求 `{text, slots:{period,intent}}`（slots 可省；期次形状非法按未设处理，不猜）。
-    应答＝Answer 字段面 + `slots`（本轮解析到的才覆盖，其余不变）
-    + 盘点三件：`verdict`（unpublished/missing/ready/空）、`inventory`（四件清单）、
-    `actions`（改做/去取数台/去核对/先等等）。
-    解析与盘点走 `src/ai` 的 dialog 能力口（唯一模型出口；规则版离线可跑）；
+    应答＝Answer 字段面 + `kind`（`report/query/proceed/unclear`/空：票 07 路由）
+    + `slots`（本轮解析到的才覆盖，其余不变）+ 盘点三件：`verdict`（unpublished/missing/ready/空）、
+    `inventory`（四件清单）、`actions`（改做/去取数台/去核对/覆盖重出/先等等）
+    + `run`（出稿意图）+ `answer`（查数据：qa 能力的 Answer；其余为 null）。
+    **两意图**：写报告与现有链路不变；查数据由**本路由**按意图调 `ai.run("qa", …)`
+    ——对话能力只做路由，模型出口仍只有 `src/ai` 一处。
+    解析与盘点走 `src/ai` 的 dialog 能力口（规则版离线可跑）；
     每轮对话的留痕复用 `ai_calls`（不新开账本）。空话 400；非 admin 401/403。
     """
     body = await request.json()
@@ -1563,21 +1566,34 @@ async def api_dialog_turn(request: Request):
         period = ""                                   # 形状不合法就丢弃，不猜
     intent = str(slots.get("intent") or "").strip()[:20]
     import ai                                                     # noqa: PLC0415
+    actor = config.role_of(current_user(request) or "")
     ans = await run_in_threadpool(ai.run, "dialog", period,
-                                  payload={"text": text},
-                                  actor=config.role_of(current_user(request) or ""))
+                                  payload={"text": text}, actor=actor)
     if ans.mode in ("closed", "denied", "unavailable"):
         return _answer_response(ans)
     turn = ans.data or {}
     resp = ans.as_dict()
+    resp["kind"] = str(turn.get("kind") or "")
     resp["slots"] = {"period": str(turn.get("period") or period),
                      "intent": str(turn.get("intent") or intent)}
     resp["verdict"] = str(turn.get("verdict") or "")
     resp["inventory"] = turn.get("inventory") if isinstance(turn.get("inventory"), dict) else None
     resp["actions"] = turn.get("actions") if isinstance(turn.get("actions"), list) else []
     # 出稿意图（票 03）：{period, auto}——auto=False 表示产物已在、先问一次；
-    # 真正的开跑由前端拿它调既有 POST /api/jobs（对话只做指挥，不替人按按钮）。
+    # 真正的开跑由前端拿它调既有开跑口（对话只做指挥，不替人按按钮）。
     resp["run"] = turn.get("run") if isinstance(turn.get("run"), dict) else None
+    # 查数据（票 07）：dialog 只判意图；回答由**服务器**按意图调 qa 能力。
+    # 没产物先提示出稿；qa 关闭照旧说「已关闭」——都在聊天里说清楚，不 404/409 摔出去。
+    resp["answer"] = None
+    if resp["kind"] == "query":
+        target = resp["slots"]["period"]
+        if target:
+            if resolve_period_dir(target) is None:
+                resp["text"] = "这一期还没有可用产物——先出稿，才有得查。"
+            else:
+                qa_ans = await run_in_threadpool(
+                    ai.run, "qa", target, payload={"question": text}, actor=actor)
+                resp["answer"] = qa_ans.as_dict()
     return resp
 
 

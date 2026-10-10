@@ -1,17 +1,19 @@
-/* 对话前门（票 01–04：期次识别 → 盘点 → 核对门 → 出稿流式）。
+/* 对话前门（票 01–07：期次识别 → 盘点 → 核对门 → 出稿流式 → 两意图路由）。
    版面照 `mockups/对话前门.html`（五稿）：左＝对话历史 / 中＝对话流 / 底＝输入框。
    口径照 ADR-0006：对话只做指挥——数字全部来自后端；
-   解析走 `/api/dialog/turn`（后端 src/ai 能力口，规则版离线可跑）；
-   出稿走**既有**流式口 `/api/periods/{p}/flexible/stream`（NDJSON，真实节点），
+   解析与路由走 `/api/dialog/turn`（后端 src/ai 能力口，规则版离线可跑）；
+   **查数据**（kind="query"）的回答由服务器按意图调 qa 能力，本页只渲染（带角标可点来源）；
+   **写报告**的出稿走**既有**流式口 `/api/periods/{p}/flexible/stream`（NDJSON，真实节点），
    流式中发送键原地变停止键（契约 #21⑤ 喊停，终态 `stopped`）。 */
 
 import { useEffect, useRef, useState } from 'react'
-import { getMe, type Me } from '../api'
-import { postDialogTurn, type DialogAction, type DialogRun } from '../api-dialog'
+import { getAiCapabilities, getMe, postAiSwitch, type AiCapability, type Me } from '../api'
+import { postDialogTurn, type DialogAction, type DialogAnswer, type DialogRun } from '../api-dialog'
 import { runFlexibleStream, stopFlexible, type FlexStreamEvent } from '../api-flexible'
 import { clearSlot, conversationTitle, emptySlots, hasSlots, type DialogSlots } from '../lib/dialog'
 import { buildPeriodUrl } from '../lib/period'
 import { errorNote } from '../lib/status'
+import { NumberedText } from '../NumberedText'
 
 /** 出稿轨迹（票 04）：逐段出（挑学科 / 配图 / 取数 / 数据校验 / 收尾）。
     全部文字由事件字段组装（视图层只读，不现算数字）。 */
@@ -22,7 +24,7 @@ type Trace = {
   note?: string
 }
 type Turn = { who: 'me' | 'wh' | 'sys'; text: string; notice?: string; actions?: DialogAction[]
-              dismissed?: boolean; run?: DialogRun; trace?: Trace }
+              dismissed?: boolean; run?: DialogRun; trace?: Trace; answer?: DialogAnswer }
 type Conversation = { id: number; title: string; turns: Turn[]; slots: DialogSlots }
 
 const PALETTE_STORAGE_KEY = 'wenheng-palette'
@@ -57,6 +59,9 @@ export default function DialogPage() {
   const [activeId, setActiveId] = useState(1)
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  /* 「查数据」能力开关（票 07）：问文衡并入前门——开关跟着能力放这儿（管理员可关）。 */
+  const [qa, setQa] = useState<AiCapability | null>(null)
+  const [qaBusy, setQaBusy] = useState(false)
   /* 正在出稿的那条回复（停止键要用：期次 + 消息下标 + run 令牌） */
   const [running, setRunning] = useState<{ period: string; index: number } | null>(null)
   const runTokenRef = useRef<string>('')
@@ -88,6 +93,23 @@ export default function DialogPage() {
     })()
     return () => { alive = false }
   }, [])
+
+  useEffect(() => {
+    let alive = true
+    getAiCapabilities()
+      .then((cs) => { if (alive) setQa(cs.find((c) => c.id === 'qa') ?? null) })
+      .catch(() => { /* 拿不到开关表就不显示开关——真门在后端 */ })
+    return () => { alive = false }
+  }, [])
+
+  /** 开关「查数据」（qa 能力）：关闭后对话里照旧说「已关闭」，报告不受影响。 */
+  async function toggleQa(next: boolean) {
+    setQaBusy(true)
+    try {
+      await postAiSwitch('qa', next)
+      setQa((c) => (c ? { ...c, enabled: next } : c))
+    } finally { setQaBusy(false) }
+  }
 
   useEffect(() => {
     const el = threadRef.current
@@ -122,7 +144,8 @@ export default function DialogPage() {
         ...c,
         slots: r.slots,
         turns: [...c.turns, { who: 'wh', text: r.text, notice: r.notice,
-                              actions: r.actions, run: r.run ?? undefined }],
+                              actions: r.actions, run: r.run ?? undefined,
+                              answer: r.answer ?? undefined }],
       }))
       /* 出稿意图（票 03/04）：auto=true 直接开跑；产物已在时 auto=false，等人在按钮上点 */
       if (r.run?.auto && r.run.period) void startRun(r.run.period, replyIndex, r.run.intent)
@@ -300,6 +323,13 @@ export default function DialogPage() {
               <button type="button" aria-pressed={palette === 'zhu'}
                       onClick={() => setPalette('zhu')}>朱砂</button>
             </span>
+            {qa && (
+              <button type="button" className="dlg-qa" aria-pressed={qa.enabled} disabled={qaBusy}
+                      title="管理员可关闭「查数据」；关闭后对话里照旧说「已关闭」，报告不受影响"
+                      onClick={() => void toggleQa(!qa.enabled)}>
+                查数据 · {qa.enabled ? '已开启' : '已关闭'}
+              </button>
+            )}
             <SlotChip label="期次" value={active.slots.period}
                       onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'period') }))} />
             <SlotChip label="意图" value={active.slots.intent}
@@ -332,6 +362,7 @@ export default function DialogPage() {
                 <div className="dlg-bub">
                   {t.who === 'wh' && <div className="dlg-nm">文衡</div>}
                   {t.text}
+                  {t.answer && <AnswerBlock answer={t.answer} />}
                   {t.notice && <p className="dlg-notice">{t.notice}</p>}
                   {t.trace && (
                     <div className="dlg-trk" aria-live="polite">
@@ -438,5 +469,33 @@ function SlotChip({ label, value, onClear }: {
       <button className="dlg-slot-x" type="button" aria-label={`清掉${label}`}
               onClick={onClear}>✕</button>
     </span>
+  )
+}
+
+/** 查数据的回答（票 07）：正文带角标（点数字看来源）＋模式与盾小字＋规则版对照。 */
+function AnswerBlock({ answer }: { answer: DialogAnswer }) {
+  const answered = answer.mode === 'model' || answer.mode === 'rule'
+  return (
+    <div className="dlg-ans">
+      {!!answer.text && <NumberedText text={answer.text} sources={answer.sources} />}
+      {!!answer.rule_text && answer.rule_text !== answer.text && (
+        <details className="dlg-rule">
+          <summary>看规则版</summary>
+          <NumberedText text={answer.rule_text} sources={answer.sources} />
+        </details>
+      )}
+      {answered && (
+        <div className="an-footer">
+          <span className={`pill ${answer.mode === 'model' ? 'signed' : 'stale'}`}>
+            {answer.mode === 'model' ? '大模型作答' : '规则版作答'}
+          </span>
+          {answer.shield.checked > 0 && (
+            <span className="pill ok">盾 · {answer.shield.passed} 个数字已登记</span>
+          )}
+          <span className="hint">点数字看来源</span>
+        </div>
+      )}
+      {!!answer.notice && <p className="dlg-notice">{answer.notice}</p>}
+    </div>
   )
 }

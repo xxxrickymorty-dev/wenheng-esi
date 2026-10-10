@@ -63,6 +63,22 @@
   padding:0 12px;min-height:32px;cursor:pointer;color:var(--ink-2)}
 .dlg-skin button:hover{background:var(--card)}
 .dlg-skin button[aria-pressed="true"]{background:var(--zhu);color:#fff}
+/* 「查数据」能力开关（票 07）：问文衡并入前门，开关跟着能力走 */
+.dlg-qa{border:1px solid var(--line);background:var(--panel);border-radius:999px;
+  font:inherit;font-size:13.5px;padding:0 12px;min-height:32px;cursor:pointer;
+  color:var(--ink-2);white-space:nowrap}
+.dlg-qa:hover{background:var(--card)}
+.dlg-qa[aria-pressed="false"]{color:var(--ink-3);border-style:dashed}
+.dlg-qa:disabled{opacity:.6;cursor:default}
+/* 查数据的回答（票 07）：正文恢复正常折行（气泡是 pre-wrap） */
+.dlg-ans{margin-top:8px;white-space:normal}
+.nt-num{border:0;border-bottom:1px dotted var(--zhu);padding:1px 7px;margin:0 1px;
+  border-radius:7px;background:var(--zhu-soft);color:var(--zhu);font:inherit;
+  font-weight:650;cursor:pointer}
+.dlg-rule{margin-top:10px;font-size:14px}
+.dlg-rule summary{cursor:pointer;color:var(--ink-3);min-height:32px;display:inline-flex;
+  align-items:center}
+.dlg-rule .serif-prose{margin-top:6px}
 
 /* ---------- 中：对话流 ---------- */
 .dlg-thread{flex:1;overflow-y:auto;padding:26px 30px 12px}

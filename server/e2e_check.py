@@ -542,6 +542,25 @@ check("analyze 盾计数与来源数一致（第 k 个数字 ↔ sources[k]）",
       == (_aj.get("shield") or {}).get("passed") == len(_aj.get("sources") or []),
       f"shield={_aj.get('shield')} n_sources={len(_aj.get('sources') or [])}")
 
+# POST /api/dialog/turn · 查数据（契约 #33，票 07：两意图；服务器按意图调 qa）
+st, dlg, _ = call_json("POST", "/api/dialog/turn",
+                       {"text": "查一下顶尖论文", "slots": {"period": "202607"}})
+check("POST dialog/turn（查数据）200", st == 200, f"got {st}")
+try:
+    _dj = json.loads(dlg)
+except json.JSONDecodeError:
+    _dj = {}
+check("对话前门 · 查数据路由 kind=query", _dj.get("kind") == "query", str(_dj.get("kind")))
+_ans = _dj.get("answer") or {}
+check("对话前门 · 查数据带回答（Answer 字段面 + 留痕）",
+      _ans.get("mode") in ("rule", "model") and bool(str(_ans.get("text") or "").strip())
+      and bool(_ans.get("record_id")),
+      f"mode={_ans.get('mode')!r}")
+check("对话前门 · 查数据盾计数与来源数一致",
+      (_ans.get("shield") or {}).get("checked")
+      == (_ans.get("shield") or {}).get("passed") == len(_ans.get("sources") or []),
+      f"shield={_ans.get('shield')} n_sources={len(_ans.get('sources') or [])}")
+
 # POST /api/periods/{period}/review-advice（复核参谋；契约 #27，2026-09-29 D4）
 st, rv, _ = call_json("POST", "/api/periods/202607/review-advice", {})
 check("POST review-advice 200", st == 200, f"got {st}")

@@ -184,6 +184,106 @@ def test_产物已在_先问一次(tmp_path):
     assert {"kind": "run", "period": "202607", "text": "覆盖重出"} in r["actions"]
 
 
+# ============================================================ 2c. 票 07：两意图（写报告 / 查数据）
+def test_查数据_服务器按意图调qa(monkeypatch, tmp_path):
+    from ai import _types
+    calls = []
+    qa_answer = _types.Answer(
+        mode="rule", backend="rule", text="化学的接近度约 89.5[[1]]。",
+        rule_text="化学的接近度约 89.5。",
+        sources=(_types.Source(index=1, kind="product",
+                               pointer="overview_facts.json#matrix.chem",
+                               label="本期事实", detail="d", value="89.5"),),
+        shield=_types.Shield(1, 1), record_id="r-qa")
+
+    def fake_run(cap, period, *, payload=None, actor=None):
+        calls.append((cap, period, payload))
+        if cap == "dialog":
+            return _types.Answer(mode="rule", backend="rule", text="",
+                                 data={"case": "period", "period": "202607", "intent": "",
+                                       "kind": "query"})
+        return qa_answer
+
+    monkeypatch.setattr("ai.run", fake_run)
+    monkeypatch.setattr(app_module, "resolve_period_dir", lambda p: tmp_path / p)
+    r = call(config.DEMO_USER, {"text": "查一下化学的接近度", "slots": {"period": "202607"}})
+    assert r["kind"] == "query" and r["answer"] is not None
+    assert r["answer"]["text"].startswith("化学的接近度") and r["answer"]["record_id"] == "r-qa"
+    assert r["slots"] == {"period": "202607", "intent": ""}, "期次解析与槽位共享"
+    assert r["run"] is None, "查数据不出稿"
+    assert calls == [("dialog", "202607", {"text": "查一下化学的接近度"}),
+                     ("qa", "202607", {"question": "查一下化学的接近度"})], \
+        "两意图经同一端点：服务器按意图调 ai.run(\"qa\", …)，问句原样"
+
+
+def test_查数据_没期次_先要期次不调qa(monkeypatch):
+    from ai import _types
+    called = []
+
+    def fake_run(cap, period, *, payload=None, actor=None):
+        called.append(cap)
+        return _types.Answer(mode="rule", backend="rule", text="查哪一期？……",
+                             data={"case": "no_period", "period": "", "intent": "",
+                                   "kind": "query"})
+
+    monkeypatch.setattr("ai.run", fake_run)
+    r = call(config.DEMO_USER, {"text": "查一下化学的接近度"})
+    assert r["kind"] == "query" and r["answer"] is None
+    assert called == ["dialog"], "没期次不猜：先反问"
+    assert "查哪一期" in r["text"]
+
+
+def test_查数据_没产物_先提示出稿(monkeypatch, tmp_path):
+    from ai import _types
+
+    def fake_run(cap, period, *, payload=None, actor=None):
+        assert cap == "dialog", "没产物就不该调 qa"
+        return _types.Answer(mode="rule", backend="rule", text="",
+                             data={"case": "period", "period": "202607", "intent": "",
+                                   "kind": "query"})
+
+    monkeypatch.setattr("ai.run", fake_run)
+    monkeypatch.setattr(app_module, "resolve_period_dir", lambda p: None)
+    r = call(config.DEMO_USER, {"text": "查一下化学的接近度", "slots": {"period": "202607"}})
+    assert r["kind"] == "query" and r["answer"] is None
+    assert "出稿" in r["text"], "没产物给出稿提示（不 404，聊天里说清楚）"
+
+
+def test_查数据_qas开关关闭_照旧说已关闭(monkeypatch, tmp_path):
+    from ai import _types
+
+    def fake_run(cap, period, *, payload=None, actor=None):
+        if cap == "dialog":
+            return _types.Answer(mode="rule", backend="rule", text="",
+                                 data={"case": "period", "period": "202607", "intent": "",
+                                       "kind": "query"})
+        return _types.Answer(mode="closed", backend="rule",
+                             notice="此功能已由管理员关闭；数据与报告不受影响。")
+
+    monkeypatch.setattr("ai.run", fake_run)
+    monkeypatch.setattr(app_module, "resolve_period_dir", lambda p: tmp_path / p)
+    r = call(config.DEMO_USER, {"text": "查一下化学的接近度", "slots": {"period": "202607"}})
+    assert r["kind"] == "query" and r["answer"]["mode"] == "closed"
+    assert "管理员关闭" in r["answer"]["notice"], "关了照旧说「已关闭」（不 409，聊天里说清楚）"
+
+
+def test_含糊_两选项与槽位从API出(tmp_path):
+    with ai.using(data_root=tmp_path, inventory=lambda p: None):
+        r = call(config.DEMO_USER, {"text": "看看 9 月"})
+    assert r["kind"] == "unclear"
+    assert r["slots"]["period"] == "202609"
+    texts = [a["text"] for a in r["actions"]]
+    assert "做 202609 的报告" in texts and "查 202609 的数据" in texts
+    assert r["run"] is None and r["answer"] is None
+
+
+def test_写报告轮_kind为report(tmp_path):
+    inv = fake_inventory("202607", released=True)
+    with ai.using(data_root=tmp_path, inventory=lambda p: inv):
+        r = call(config.DEMO_USER, {"text": "做 7 月的报告"})
+    assert r["kind"] == "report" and r["answer"] is None
+
+
 # ============================================================ 3. 参数与权限
 def test_空话400(monkeypatch):
     monkeypatch.setattr("ai.run", lambda *a, **k: None)

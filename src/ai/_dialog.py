@@ -1,10 +1,18 @@
 # -*- coding: utf-8 -*-
-"""dialog 构建器（对话前门 v1：骨架 + 期次识别 [票 01] + 盘点 [票 02]）。
+"""dialog 构建器（对话前门：期次识别 [票 01] + 盘点 [票 02] + 核对门 [票 03] + 两意图路由 [票 07]）。
 
 对话只做指挥（ADR-0006）：把馆员的一句话解析成「期次 / 意图」槽位，**先说出理解**，
 再按「必需件清单」逐件盘点（监测表 / ESI 原始包 / 顶尖论文清单 / InCites 快照）：
 缺就停 + 两条路（等发布 / 先做最新一期）、齐就给「去核对」。应答里出现的数字只有
 解析与盘点的回显，逐条登记为 `fact` 来源——对话不产生任何台账数字。
+
+**两意图（票 07，本能力只做路由）**：`kind ∈ {report, query, proceed, unclear}`——
+- `report`：写报告（认期次 → 盘点 → 核对 → 出稿），现有链路不动；
+- `query`：查数据——本能力**只判意图**，回答由服务器按意图调 `ai.run("qa", …)`
+  （模型出口仍只有 `src/ai` 一处；这里不触网）；
+- `proceed`：没带期次的「核完了，继续/出稿」——推进动作；
+- `unclear`：认出了期次但没表态（「看看 9 月」「202607 怎么样」）——**不猜**，
+  给两个明确出路（票 08 升级成单选卡）；都没中＝空（照旧反问期次）。
 
 **不做模型轮**（`_specs` 里 `modeled=False`）：期次猜错就是整期返工，解析因此
 是确定性的；模型在结构上不参与，也不新增第二个模型出口（不触网可跑）。
@@ -36,8 +44,18 @@ from ._numbered import NumberedText
 #: 三种解析结局：period（认出来了）/ publication_month（出稿月说法，拒收）/ no_period（没听出）。
 CASES = ("period", "publication_month", "no_period")
 
+#: 两意图路由（票 07）：一句话只归一类；认不准＝unclear（不猜，交给反问）。
+KINDS = ("report", "query", "proceed", "unclear")
+
 #: 一句里出现这些词 → 「继续/出稿」动作（核对回来后的推进；只在没带期次的句子上生效）。
 _PROCEED = re.compile(r"继续|核完|核过|核对完了|出稿|开跑|开生成|开始生成|开始出稿|跑一遍")
+
+#: 显式查数据（票 07）：「查 / 问」字样按查数据路由。
+_ASK = re.compile(r"查|问")
+
+#: 弱查数据信号（没有「查/问」字样也能认出是问数据）。
+_QUERY_HINT = re.compile(
+    r"多少|几门|几篇|几个|几条|哪些|接近度|排名|阈值|进\s*1|前\s*1|1‰|高被引|热点|论文|数据|发文|被引")
 
 #: 盘点三种裁决：unpublished（未发布，停）/ missing（已发布但缺件，停）/ ready（齐，去核对）。
 VERDICTS = ("", "unpublished", "missing", "ready")
@@ -87,6 +105,7 @@ class Parse:
     month: int = 0
     intent: str = ""              # 「出报告」或空（意图槽）
     act: str = ""                 # 「proceed」或空（票 03：核完了/出稿——推进到出稿）
+    kind: str = ""                # 票 07 路由：report/query/proceed/unclear/空
 
     @property
     def label(self) -> str:
@@ -94,7 +113,29 @@ class Parse:
 
     def as_data(self) -> dict:
         return {"case": self.case, "period": self.period,
-                "intent": self.intent, "act": self.act}
+                "intent": self.intent, "act": self.act, "kind": self.kind}
+
+
+def _kind_for(case: str, *, ask: bool, intent: str, hint: bool, act: str) -> str:
+    """路由（票 07，纯规则、确定性）：始终只有一个类别。
+
+    顺序即优先级：出稿月纠正（问句除外）→ 显式查（查/问）→ 推进 → 写报告 →
+    弱查（多少/接近度/进了没…）→ 认出了期次但没表态＝含糊（不猜、给反问）；
+    都没中＝空（照旧反问期次，不硬塞进四类）。
+    """
+    if case == "publication_month":
+        return "query" if ask else "report"
+    if ask:
+        return "query"
+    if act == "proceed":
+        return "proceed"
+    if intent:
+        return "report"
+    if hint:
+        return "query"
+    if case == "period":
+        return "unclear"
+    return ""
 
 
 def parse(text, *, today: datetime.date | None = None) -> Parse:
@@ -102,12 +143,15 @@ def parse(text, *, today: datetime.date | None = None) -> Parse:
     norm = unicodedata.normalize("NFKC", str(text or ""))
     today = today or datetime.date.today()
     intent = "出报告" if _REPORT_INTENT.search(norm) else ""
+    ask = bool(_ASK.search(norm))
+    hint = bool(_QUERY_HINT.search(norm))
 
     m_period = _PERIOD.search(norm)
     if m_period:
         year, month = int(m_period.group(1)), int(m_period.group(2))
         return Parse("period", period=f"{year:04d}{month:02d}",
-                     year=year, month=month, intent=intent)
+                     year=year, month=month, intent=intent,
+                     kind=_kind_for("period", ask=ask, intent=intent, hint=hint, act=""))
 
     m_ym = _YEAR_MONTH.search(norm)
     m_cn = _MONTH_CN.search(norm)
@@ -121,13 +165,17 @@ def parse(text, *, today: datetime.date | None = None) -> Parse:
 
     if month and _PUBLICATION.search(norm):
         # 「9 月出稿 / 出稿月」＝把出稿月当期次——不支持，停下纠正（不换算）。
-        return Parse("publication_month", year=year, month=month, intent=intent)
+        return Parse("publication_month", year=year, month=month, intent=intent,
+                     kind=_kind_for("publication_month", ask=ask, intent=intent,
+                                    hint=hint, act=""))
     if month:
         return Parse("period", period=f"{year:04d}{month:02d}",
-                     year=year, month=month, intent=intent)
+                     year=year, month=month, intent=intent,
+                     kind=_kind_for("period", ask=ask, intent=intent, hint=hint, act=""))
     # 没带期次的「继续 / 出稿」＝推进动作（目标期次用槽位里的）；带期次的句子不算。
     act = "proceed" if _PROCEED.search(norm) else ""
-    return Parse("no_period", intent=intent, act=act)
+    return Parse("no_period", intent=intent, act=act,
+                 kind=_kind_for("no_period", ask=ask, intent=intent, hint=hint, act=act))
 
 
 def reply_for(p: Parse) -> str:
@@ -280,6 +328,28 @@ def _proceed(root, slot_period: str, p: Parse):
     return f"先别出稿——这一期还没核对并并入。{tail}", verdict, actions, None, inv
 
 
+# ---------------------------------------------------------------- 两意图（票 07）
+def _query_reply(p: Parse, slot_period: str) -> str:
+    """查数据路由话术：有期次就放行（正文由服务器调 qa 能力给）；没有就先要期次。"""
+    target = p.period or slot_period
+    if not target:
+        return ("查哪一期？说一句带期次的，比如「查 202609 的化学接近度」"
+                "——期次＝数据截止月份。")
+    return ""
+
+
+def _unclear_reply(target: str) -> tuple[str, list]:
+    """含糊不猜（票 07；票 08 升级成单选卡）：给两个明确出路。
+
+    选项文本＝**要发回去的那句话**（点选即当下一句话发回，走正常一轮）。
+    """
+    text = f"这句我拿不准——是想做 {target} 的报告，还是查 {target} 的数据？"
+    actions = [{"kind": "send", "text": f"做 {target} 的报告"},
+               {"kind": "send", "text": f"查 {target} 的数据"},
+               {"kind": "dismiss", "text": "先等等"}]
+    return text, actions
+
+
 # ---------------------------------------------------------------- 来源登记
 def _register(p: Parse, inv: dict | None):
     """应答里每个数字的来源（解析与盘点的回显；全是 fact）。"""
@@ -336,8 +406,16 @@ def build(root, period, payload):                                  # noqa: ARG00
     """
     text = str(payload.get("text") or "")
     p = parse(text, today=parse_today(payload.get("today")))
+    kind = p.kind
     run = None
-    if p.act == "proceed":
+    if kind == "query":
+        # 查数据（票 07）：不盘点、不出稿；正文本地只在「没期次」时出声，
+        # 有期次时的回答由服务器调 qa 能力给出（本能力只做路由）。
+        reply, verdict, actions, inv = _query_reply(p, period), "", [], None
+    elif kind == "unclear":
+        reply, actions = _unclear_reply(p.period or period)
+        verdict, inv = "", None
+    elif kind == "proceed":
         reply, verdict, actions, run, inv = _proceed(root, period, p)
     else:
         inv = _scan_inventory(p.period) if (p.case == "period" and p.period) else None
@@ -348,6 +426,8 @@ def build(root, period, payload):                                  # noqa: ARG00
     number = NumberedText.of([reply], _register(p, inv))
     data = {**p.as_data(), "verdict": verdict, "actions": actions,
             "inventory": inv, "run": run}
+    if kind in ("query", "unclear"):
+        data["intent"] = ""            # 查数据/含糊轮不动意图槽
     return RuleDraft(
         rule_text=reply,
         number=number,

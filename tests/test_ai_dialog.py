@@ -210,6 +210,86 @@ def test_没期次就出稿_先要期次(tmp_path):
     assert ans.data["act"] == "proceed" and ans.data["run"] is None
 
 
+# ============================================================ 3c. 两意图路由（票 07）
+def test_路由_写报告(tmp_path):
+    ans = run_dialog("帮我做9月份的报告", root=tmp_path)
+    assert ans.data["kind"] == "report"
+
+
+def test_路由_查数据_句中期次(tmp_path):
+    ans = run_dialog("202607 数学进 1% 了吗", root=tmp_path)
+    assert ans.data["kind"] == "query"
+    assert ans.data["period"] == "202607"
+
+
+def test_路由_查数据_期次从槽位来(tmp_path):
+    ans = run_dialog("查一下化学的接近度", root=tmp_path, period="202607")
+    assert ans.data["kind"] == "query"
+    assert ans.data["verdict"] == "" and ans.data["inventory"] is None
+    assert ans.data["run"] is None and ans.data["actions"] == []
+
+
+def test_查数据不盘点_盘点只属于写报告链路(tmp_path):
+    seen = []
+
+    def pick(period):
+        seen.append(period)
+        return fake_inventory(period)
+
+    with ai.using(data_root=tmp_path, inventory=pick):
+        ans = ai.run("dialog", "202607",
+                     payload={"text": "查一下化学的接近度", "today": TODAY}, actor="admin")
+    assert ans.data["kind"] == "query"
+    assert seen == [], "查数据不该触发盘点（件在不在是写报告链路的事）"
+
+
+def test_路由_推进(tmp_path):
+    inv = fake_inventory("202607", released=True)
+    ans = run_dialog("核完了，继续", root=tmp_path, period="202607", inventory=inv)
+    assert ans.data["kind"] == "proceed"
+
+
+def test_路由_含糊_停下给两个选项(tmp_path):
+    ans = run_dialog("看看 9 月", root=tmp_path)
+    assert ans.data["kind"] == "unclear"
+    assert ans.data["period"] == "202609"
+    assert "拿不准" in ans.text and "202609" in ans.text
+    texts = [a["text"] for a in ans.data["actions"]]
+    assert "做 202609 的报告" in texts
+    assert "查 202609 的数据" in texts
+    assert {a["kind"] for a in ans.data["actions"]} == {"send", "dismiss"}
+
+
+def test_路由_含糊_怎么样_不猜(tmp_path):
+    ans = run_dialog("202607 怎么样", root=tmp_path)
+    assert ans.data["kind"] == "unclear"
+    assert ans.data["period"] == "202607"
+    texts = [a["text"] for a in ans.data["actions"]]
+    assert "做 202607 的报告" in texts and "查 202607 的数据" in texts
+
+
+def test_路由_含糊不触发盘点与出稿(tmp_path):
+    ans = run_dialog("看看 9 月", root=tmp_path, inventory=FULL_202607)
+    assert ans.data["kind"] == "unclear"
+    assert ans.data["verdict"] == "" and ans.data["inventory"] is None
+    assert ans.data["run"] is None
+
+
+def test_查数据_弱信号也算(tmp_path):
+    ans = run_dialog("高被引论文有几篇", root=tmp_path, period="202607")
+    assert ans.data["kind"] == "query"
+
+
+def test_含糊_选项发回自己能再路由(tmp_path):
+    """选项文本＝要点回去的那句话：点‘做…报告’回写报告、点‘查…数据’回查数据。"""
+    q = run_dialog("看看 9 月", root=tmp_path)
+    opt = {a["text"] for a in q.data["actions"]}
+    report = run_dialog("做 202609 的报告", root=tmp_path)
+    query = run_dialog("查 202609 的数据", root=tmp_path)
+    assert "做 202609 的报告" in opt and report.data["kind"] == "report"
+    assert "查 202609 的数据" in opt and query.data["kind"] == "query"
+
+
 # ============================================================ 4. 留痕（复用 Recorder）
 def test_每轮进ai_calls_记录落解析出的期次(tmp_path):
     ans = run_dialog("帮我做9月份的报告", root=tmp_path)
