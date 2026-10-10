@@ -22,6 +22,8 @@
 
 ## 当前生效
 
-- spec：`docs/specs/2026-10-10-agent自主性-灵活产线.md`（`ready-for-agent`）
-- 票集：`.scratch/agent-zizhu/issues/`（01–06 已发布；01 无前置，02/04 可并行）
-- 上一轮（已完结）：spec `docs/specs/2026-09-28-地基与信息减负.md`／票集 `.scratch/diji-jianfu/issues/`（15 票全部 `done`）
+- **对话前门**（2026-10-10 发布）：spec `docs/specs/2026-10-10-对话前门.md`（`ready-for-agent`）／
+  票集 `.scratch/duihua-qianmen/issues/`（01–06；**01 无前置**，02 与 06 可并行）
+- **Agent 自主性 · 灵活产线**：spec `docs/specs/2026-10-10-agent自主性-灵活产线.md`／
+  票集 `.scratch/agent-zizhu/issues/`（01 已 `done`，02–06 `open`；Critic 原型在 `prototype/critic-anchors` 分支）
+- 已完结：spec `docs/specs/2026-09-28-地基与信息减负.md`／票集 `.scratch/diji-jianfu/issues/`（15 票全部 `done`）
