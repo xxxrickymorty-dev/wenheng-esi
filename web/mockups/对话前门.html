@@ -82,6 +82,12 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0}
 .wk .menu a{display:block;padding:8px 12px;border-radius:8px;text-decoration:none;
   color:var(--ink-2);font-size:14.5px}
 .wk .menu a:hover{background:var(--panel)}
+/* 配色（真实功能，收在顶栏） */
+.skin{display:flex;gap:0;border:1px solid var(--line);border-radius:999px;
+  background:var(--panel);overflow:hidden}
+.skin button{border:0;background:transparent;font:inherit;font-size:13.5px;
+  padding:3px 12px;cursor:pointer;color:var(--ink-2)}
+.skin button[aria-pressed="true"]{background:var(--zhu);color:#fff}
 
 .thread{flex:1;overflow-y:auto;padding:26px 30px 12px}
 .thread-in{max-width:var(--col);margin:0 auto}
@@ -158,12 +164,13 @@ ul.items .f{margin-left:auto;font-family:var(--mono);font-size:12.5px;color:var(
 .under{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:12.5px;color:var(--ink-3)}
 .under .l{margin-left:auto}
 
-/* ---------- 审核用小开关（上线删除） ---------- */
-.dev{position:fixed;right:14px;bottom:14px;z-index:50;display:flex;gap:6px;
-  background:var(--card);border:1px dashed var(--line);border-radius:999px;padding:5px 9px;
-  box-shadow:var(--shadow);font-size:13px;color:var(--ink-3)}
-.dev button{border:1px solid var(--line);background:var(--bg);border-radius:999px;
-  padding:3px 10px;font:inherit;font-size:13px;cursor:pointer;color:inherit}
+/* ---------- 审核用小开关（上线整块删除；放左栏底部，不占真实布局） ---------- */
+.dev{margin:0 10px 10px;border:1px dashed var(--line);border-radius:10px;
+  padding:8px 10px;font-size:12.5px;color:var(--ink-3)}
+.dev .t{display:block;margin-bottom:6px}
+.dev .row{display:flex;gap:6px;flex-wrap:wrap}
+.dev button{border:1px solid var(--line);background:var(--card);border-radius:999px;
+  padding:3px 10px;font:inherit;font-size:12.5px;cursor:pointer;color:inherit}
 .dev button[aria-pressed="true"]{background:var(--zhu);border-color:var(--zhu);color:#fff}
 
 [data-scene]{display:none}
@@ -191,6 +198,14 @@ html[data-s="sep"] .turn[data-scene~="sep"], html[data-s="jul"] .turn[data-scene
     <a href="#">红件清单里那三条是什么</a>
   </nav>
 
+  <div class="dev">
+    <span class="t">审核用（上线整块删除）· 看哪个场景：</span>
+    <div class="row">
+      <button aria-pressed="true" onclick="scene('sep',this)">① 9 月的（未发布）</button>
+      <button aria-pressed="false" onclick="scene('jul',this)">② 7 月的（齐 → 出稿）</button>
+    </div>
+  </div>
+
   <div class="me"><span class="av">卜</span>卜彤 · 管理员</div>
 </aside>
 
@@ -210,6 +225,10 @@ html[data-s="sep"] .turn[data-scene~="sep"], html[data-s="jul"] .turn[data-scene
           <a href="#">陈列馆</a>
         </div>
       </details>
+      <span class="skin" role="group" aria-label="配色">
+        <button aria-pressed="true" onclick="palette('ynu',this)">云大绿</button>
+        <button aria-pressed="false" onclick="palette('zhu',this)">朱砂</button>
+      </span>
       <span class="slot" data-scene="sep"><span class="k">期次</span><span class="v">202609</span><span class="x">✕</span></span>
       <span class="slot" data-scene="jul"><span class="k">期次</span><span class="v">202607</span><span class="x">✕</span></span>
       <span class="slot"><span class="k">意图</span><span class="v">出报告</span><span class="x">✕</span></span>
@@ -359,37 +378,20 @@ html[data-s="sep"] .turn[data-scene~="sep"], html[data-s="jul"] .turn[data-scene
         <textarea rows="1" placeholder="说一句话，比如「帮我做 9 月的报告」…"></textarea>
         <button class="send" title="发送">↑</button>
       </div>
-      <div class="under">
-        <span>期次＝数据截止月；要改口径请直说</span>
-        <span class="l">Enter 发送 · Shift+Enter 换行</span>
-      </div>
     </div>
   </div>
 </section>
 
-<!-- 审核用小开关（上线删除） -->
-<div class="dev">
-  <span>审核用：</span>
-  <button aria-pressed="true" onclick="scene('sep',this)">① 9 月的</button>
-  <button aria-pressed="false" onclick="scene('jul',this)">② 7 月的</button>
-  <button aria-pressed="true" onclick="palette('ynu',this)">云大绿</button>
-  <button aria-pressed="false" onclick="palette('zhu',this)">朱砂</button>
-</div>
-
 <script>
 function scene(v, btn){
   document.documentElement.dataset.s = v;
-  document.querySelectorAll(".dev button").forEach(b => {
-    if (b.textContent.indexOf("9 月") >= 0 || b.textContent.indexOf("7 月") >= 0)
-      b.setAttribute("aria-pressed", String(b === btn));
-  });
+  document.querySelectorAll(".dev button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b === btn)));
 }
 function palette(v, btn){
   document.documentElement.dataset.palette = v;
-  document.querySelectorAll(".dev button").forEach(b => {
-    if (b.textContent.indexOf("绿") >= 0 || b.textContent.indexOf("砂") >= 0)
-      b.setAttribute("aria-pressed", String(b === btn));
-  });
+  document.querySelectorAll(".skin button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b === btn)));
 }
 const q = new URLSearchParams(location.search);
 if (q.get("s") === "jul") document.documentElement.dataset.s = "jul";
