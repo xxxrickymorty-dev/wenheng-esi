@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="zh-CN" data-palette="ynu" data-mark="on">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 本期规划与校验（静态稿 · 票 04/05 · 待审核）</title>
+<style>
+/* ============================================================
+   给 rick 审核的静态稿：单文件、双击即开、零依赖。
+   只画**改动的地方**：① 生成台多一行入口 ② 运行档案多一张卡。
+   朱砂描边 = 本次新增（沿用馆内「标红=本期改动」的惯例）。
+   数据取自 202607 真实产物（flex_plan.json / flex_meta.json 的 check）。
+   ============================================================ */
+:root{
+  --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB;
+  --ink:#222B25; --ink-2:#3F4C42; --ink-3:#58655C;
+  --line:#DDE1D8; --line-2:#E6E9E2;
+  --zhu:#1A4B27; --zhu-soft:#E3EDE4;
+  --gold:#B19A65; --gold-soft:#F1EBDD; --gold-ink:#62501F;
+  --ok:#28643A; --ok-soft:#E2EEE4;
+  --warn:#75622D; --warn-soft:#F6EED8;
+  --bad:#B43B31; --bad-soft:#F7E1DE;
+  --serif:"Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  --shadow:0 1px 2px rgba(34,43,37,.05),0 8px 24px rgba(34,43,37,.06);
+  --r:14px; --r-sm:10px;
+}
+html[data-palette="zhu"]{
+  --bg:#F3EFE6; --card:#FBF8F1; --panel:#F6F1E7;
+  --ink:#2F2A24; --ink-2:#5B5248; --ink-3:#6F6558;
+  --line:#D9CFBC; --line-2:#E7DFD0;
+  --zhu:#B43B31; --zhu-soft:#F0DCD5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:17px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--zhu);outline-offset:3px;border-radius:6px}
+.mono{font-family:var(--mono)}
+.muted{color:var(--ink-3)}
+main{max-width:1000px;margin:0 auto;padding:24px 22px 80px}
+
+/* ---------- 审核工具条（正式上线时去掉） ---------- */
+.review{position:sticky;top:0;z-index:9;display:flex;flex-wrap:wrap;gap:10px 22px;
+  align-items:center;padding:11px 22px;background:var(--panel);
+  border-bottom:1px dashed var(--line);font-size:14px;color:var(--ink-2)}
+.review b{color:var(--ink)}
+.seg{display:flex;gap:6px}
+.seg button{padding:5px 13px;border:1px solid var(--line);background:var(--card);
+  border-radius:999px;cursor:pointer;font-size:14px;font:inherit;color:inherit}
+.seg button[aria-pressed="true"]{background:var(--zhu);border-color:var(--zhu);color:#fff}
+
+/* ---------- 通用件 ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);padding:20px 24px;margin-top:16px}
+.card h2{font-size:19px;display:flex;align-items:center;gap:10px}
+.card h2 .no{font:600 13px/1 var(--mono);background:var(--zhu-soft);color:var(--zhu);
+  border-radius:6px;padding:5px 7px}
+.hint{font:400 13px/1.5 var(--sans);color:var(--ink-3);margin-left:auto}
+.lead{color:var(--ink-2);margin:8px 0 0;font-size:16px}
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;
+  padding:2px 11px;font-size:13px;border:1px solid transparent}
+.badge.ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok-soft)}
+.badge.warn{background:var(--warn-soft);color:var(--warn)}
+.badge.plain{background:var(--panel);color:var(--ink-2);border-color:var(--line)}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px 26px}
+.kv dt{font-size:13px;color:var(--ink-3)}
+.kv dd{margin:2px 0 0}
+.foot{font-size:13px;color:var(--ink-3);margin:12px 0 0;padding-top:10px;
+  border-top:1px dashed var(--line-2)}
+
+/* ---------- 新增件（本稿主角） ---------- */
+.new{position:relative;border:1.5px solid var(--bad);border-radius:var(--r-sm);
+  padding:16px 18px;background:#FFFBF9}
+html[data-mark="off"] .new{border-color:var(--line);background:transparent;padding:0;border:0}
+html[data-mark="off"] .tag{display:none}
+.tag{position:absolute;top:-11px;left:14px;background:var(--bad);color:#fff;
+  font-size:12px;border-radius:999px;padding:1px 10px}
+.newline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:16px}
+.link{color:var(--zhu);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+/* 卡片三行 */
+.plan-row{display:flex;gap:14px;padding:11px 0;border-bottom:1px dashed var(--line-2)}
+.plan-row:last-child{border-bottom:0;padding-bottom:0}
+.plan-row .lbl{flex:0 0 104px;color:var(--ink-3);font-size:14px;padding-top:2px}
+.plan-row .val{flex:1;min-width:0}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;
+  padding:2px 12px;font-size:14px}
+.checks{margin:6px 0 0;padding-left:20px;font-size:14px;color:var(--ink-2)}
+.checks li{margin:2px 0}
+
+/* ---------- 上下文示意（灰掉的既有内容） ---------- */
+.ctx{opacity:.55;pointer-events:none;filter:saturate(.7)}
+.ctx-note{font-size:13px;color:var(--ink-3);margin:0 0 8px}
+.section-title{font-family:var(--serif);font-size:22px;margin:34px 0 0;
+  padding-bottom:8px;border-bottom:2px solid var(--ink)}
+.section-title small{font:400 13px/1.5 var(--sans);color:var(--ink-3);margin-left:10px}
+</style>
+</head>
+<body>
+
+<div class="review">
+  <span><b>静态稿 · 票 04/05</b>（本期规划与校验）</span>
+  <span class="seg" role="group" aria-label="改动高亮">
+    <button aria-pressed="true" onclick="mark('on',this)">改动高亮</button>
+    <button aria-pressed="false" onclick="mark('off',this)">看正常态</button>
+  </span>
+  <span class="seg" role="group" aria-label="配色">
+    <button aria-pressed="true" onclick="palette('ynu',this)">云大绿</button>
+    <button aria-pressed="false" onclick="palette('zhu',this)">朱砂</button>
+  </span>
+  <span class="muted">只画改动处；数据取 202607 真实产物。界面词一律馆员话术（无「Agent/校验器」等内部词）。</span>
+</div>
+
+<main>
+
+  <!-- ================================================================
+       ① 生成台：多一行入口
+       ================================================================ -->
+  <h2 class="section-title">① 生成台 <small>改动：任务卡里多一行「本期规划」入口</small></h2>
+
+  <section class="card">
+    <h2><span class="no">本期</span>202607 期 · 生成任务<span class="hint">三步：取数 → 核对并并入 → 一键生成</span></h2>
+
+    <div class="ctx">
+      <p class="ctx-note">（以下为既有内容，仅示意位置）</p>
+      <div class="kv" style="margin-top:8px">
+        <div><dt>台账输入</dt><dd class="mono">input\202607\监测表.xlsx</dd></div>
+        <div><dt>本期新增列</dt><dd>已核对 · 已并入</dd></div>
+        <div><dt>上次运行</dt><dd>2026-09-24 07:09 · 已完成</dd></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+        <span class="badge ok">已完成</span>
+        <span class="badge plain">灵活报告 1 份</span>
+      </div>
+    </div>
+
+    <div style="margin-top:16px">
+      <div class="new">
+        <span class="tag">新增</span>
+        <div class="newline">
+          <b>本期规划：</b>
+          <span>分子生物学与遗传学 · 3 张图 · 3 项数据校验</span>
+          <span class="link">点看 ▸</span>
+          <span class="muted" style="font-size:14px">（跳到运行档案）</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="foot">口径：这一行只在**本期出过灵活报告**时出现；没有产物就整行不显示，不留空壳。</p>
+  </section>
+
+  <!-- ================================================================
+       ② 运行档案：多一张卡
+       ================================================================ -->
+  <h2 class="section-title">② 运行档案 <small>改动：新增「本期规划与校验」卡（三行）</small></h2>
+
+  <section class="card ctx">
+    <p class="ctx-note" style="margin:0 0 6px">（既有卡片，仅示意它插在哪）</p>
+    <h2><span class="no">01</span>状态机回放<span class="hint">2 次迁移</span></h2>
+  </section>
+
+  <section class="card">
+    <div class="new">
+      <span class="tag">新增</span>
+      <h2 style="font-size:19px">本期规划与校验<span class="hint">灵活报告 · 单学科趋势诊断</span></h2>
+
+      <div style="margin-top:12px">
+        <div class="plan-row">
+          <span class="lbl">本期规划</span>
+          <span class="val">
+            <span class="chips">
+              <span class="chip">学科：分子生物学与遗传学</span>
+              <span class="chip">指标：ESI前1%接近度</span>
+              <span class="chip">窗口：近 7 期</span>
+              <span class="chip">出图 3 张</span>
+            </span>
+            <ol class="checks">
+              <li>每个数字都能指回台账的格子（双向核对）</li>
+              <li>声明的图与实际出的图对得上</li>
+              <li>声明的章节与实际写出来的对得上</li>
+            </ol>
+          </span>
+        </div>
+
+        <div class="plan-row">
+          <span class="lbl">数据校验</span>
+          <span class="val">
+            <span class="badge ok">3 项全部通过</span>
+            <span class="muted" style="font-size:14px;margin-left:8px">核了 74 个数据点，全部能指回来源</span>
+          </span>
+        </div>
+
+        <div class="plan-row">
+          <span class="lbl">自动修复</span>
+          <span class="val">
+            <span class="badge plain">未发生</span>
+            <span class="muted" style="font-size:14px;margin-left:8px">校验一次通过，没有重跑；也没有需要人工接手的地方</span>
+          </span>
+        </div>
+      </div>
+
+      <p class="foot">这张卡只展示，不改任何东西；没有灵活报告产物的期次，整卡不出现。</p>
+    </div>
+  </section>
+
+  <!-- 另一种可能：校验没过 -->
+  <section class="card">
+    <p class="ctx-note" style="margin:0 0 10px">（同一张卡的**另一种状态**，供对比：校验没过、自动修复一次仍不过）</p>
+    <div class="new">
+      <span class="tag">新增 · 状态二</span>
+      <h2 style="font-size:19px">本期规划与校验<span class="hint">灵活报告 · 多学科横向对比</span></h2>
+      <div style="margin-top:12px">
+        <div class="plan-row">
+          <span class="lbl">本期规划</span>
+          <span class="val"><span class="chips">
+            <span class="chip">全池 22 学科横向对比</span>
+            <span class="chip">指标：ESI前1%接近度</span>
+            <span class="chip">出图 4 张</span>
+          </span></span>
+        </div>
+        <div class="plan-row">
+          <span class="lbl">数据校验</span>
+          <span class="val">
+            <span class="badge warn">1 项没过</span>
+            <span class="muted" style="font-size:14px;margin-left:8px">有一条来源没被任何图用上（已写进明细）</span>
+          </span>
+        </div>
+        <div class="plan-row">
+          <span class="lbl">自动修复</span>
+          <span class="val">
+            <span class="badge warn">重跑 1 次 · 仍未过</span>
+            <span class="muted" style="font-size:14px;margin-left:8px">已停下，需人工接手——不会带着问题出稿</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot" style="margin-top:26px">
+    口径核对：界面只出现「本期规划 / 数据校验 / 自动修复 / 需人工接手」——内部词（规划 Agent、校验 Agent、L0–L5）一律不上屏（`GLOSSARY.md`）。
+  </p>
+
+</main>
+
+<script>
+function mark(v, btn){
+  document.documentElement.dataset.mark = v;
+  btn.parentNode.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+}
+function palette(v, btn){
+  document.documentElement.dataset.palette = v;
+  btn.parentNode.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+}
+</script>
+</body>
+</html>
