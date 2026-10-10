@@ -14,9 +14,9 @@
 
 用法（在 wenheng/ 下，用 .venv）：
 
-    .venv/Scripts/python.exe tools/export_v1_input.py                     # 8 个潜力学科
-    .venv/Scripts/python.exe tools/export_v1_input.py --all               # 全部 22 学科
-    .venv/Scripts/python.exe tools/export_v1_input.py --period 202607 \
+    uv run python tools/export_v1_input.py                     # 8 个潜力学科
+    uv run python tools/export_v1_input.py --all               # 全部 22 学科
+    uv run python tools/export_v1_input.py --period 202607 \
         --out tmp/v1_std_input.csv
 
 只读台账派生数据，不碰台账原件。学科名用 src/parse_ledger.DISCIPLINES_CN。

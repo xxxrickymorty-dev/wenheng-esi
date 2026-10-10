@@ -4,7 +4,7 @@
 与 `src/forecast_select.py` 的分工：后者按**我们自己的选模结果**选模型；
 本脚本按**报告行内已写明的模型**算，保证同一行「最优模型」与「预计过线时间」自洽。
 
-用法：.venv/Scripts/python.exe tools/crossing_by_report.py [out/202607]
+用法：uv run python tools/crossing_by_report.py [out/202607]
 
 回填口径（2026-09-16 定）：
   过线  →  `{最可能}（{最早}～{最晚}）`；最晚未在窗内出现时写 `2030-07+`

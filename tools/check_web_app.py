@@ -15,7 +15,7 @@ r"""端到端：`/app`（React 工作区）在真实浏览器里跑通「登录 
 
 跑法（playwright 在**系统 Python** 里，不在 `.venv`）：
 
-    .venv\Scripts\python.exe -m uvicorn server.app:app --host 127.0.0.1 --port 8080
+    uv run python -m uvicorn server.app:app --host 127.0.0.1 --port 8080
     & "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe" tools\check_web_app.py
 
 服务不在默认地址时用 `WENHENG_BASE` 覆盖（与 e2e_check.py 同一套约定）：

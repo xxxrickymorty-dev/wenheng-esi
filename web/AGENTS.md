@@ -35,7 +35,7 @@ Tailwind / shadcn / GSAP 已于 2026-10-01 清除（装了不用＝第二套视�
 ## 命令（在 `web/` 下）
 
 ```powershell
-npm run dev      # 开发；需同时起 FastAPI（../.venv/Scripts/python.exe -m uvicorn server.app:app --port 8080）
+npm run dev      # 开发；需同时起 FastAPI（uv run python -m uvicorn server.app:app --port 8080）
 npm run build    # 构建 → dist/（dist 入库；服务器不装 Node）
 npm run lint
 ```
@@ -59,7 +59,7 @@ npm run lint
 ## 验证
 
 ```powershell
-../.venv/Scripts/python.exe -m pytest tests/test_stack_contract.py   # 契约（快）
+uv run python -m pytest tests/test_stack_contract.py   # 契约（快）
 & "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe" ../tools/check_web_app.py
 # ↑ 真实浏览器端到端（登录 → /app 取数 → 渲染 → 零报错），需先起服务；playwright 在系统 Python 里
 ```
