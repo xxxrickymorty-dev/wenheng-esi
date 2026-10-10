@@ -5,22 +5,22 @@
 > 状态板与红线全文在 `CONTEXT.md`；术语（通用语言）在 `GLOSSARY.md`。
 > **前后端分工**：`docs/前后端分工与接口契约（2026-09-23）.md` —— 前端只碰 `web/**`，后端只碰 `server/`|`src/`|`tools/`|`tests/`，两边只通过 `/api/*` 说话；改接口要同时改那份文档。
 
-## 常用命令（Windows，一律用仓内 venv 直调）
+## 常用命令（Windows，一律 `uv run`；⚠ 控制台脚本直呼会撞中文路径 trampoline，Python 工具走 `python -m`）
 
 ```powershell
-.venv\Scripts\python.exe -m pytest            # 默认套件（跳过 slow）
-.venv\Scripts\python.exe -m pytest -m ""      # 全量（含端到端；PowerShell 里空串会丢，用 -m "slow or not slow"）
-.venv\Scripts\ruff.exe check .                # lint（致命级，见 pyproject [tool.ruff.lint]）
-.venv\Scripts\python.exe tools\doc_counts.py  # 用例数/断言数 ↔ 文档 对齐检查（--write 回写）
+uv run python -m pytest            # 默认套件（跳过 slow）
+uv run python -m pytest -m ""      # 全量（含端到端；PowerShell 里空串会丢，用 -m "slow or not slow"）
+uv run ruff check .                # lint（致命级，见 pyproject [tool.ruff.lint]）
+uv run python tools\doc_counts.py  # 用例数/断言数 ↔ 文档 对齐检查（--write 回写）
 ```
 
 演示站与验收（先起服务再跑）：
 
 ```powershell
-.venv\Scripts\python.exe -m uvicorn server.app:app --host 127.0.0.1 --port 8080
-.venv\Scripts\python.exe server\e2e_check.py            # 只读断言
-.venv\Scripts\python.exe tools\verify_demo_run.py 202607  # 写路径（会重跑当期流水线）
-.venv\Scripts\python.exe tools\verify_report_cells.py 202607   # 逐格回读原始源
+uv run python -m uvicorn server.app:app --host 127.0.0.1 --port 8080
+uv run python server\e2e_check.py            # 只读断言
+uv run python tools\verify_demo_run.py 202607  # 写路径（会重跑当期流水线）
+uv run python tools\verify_report_cells.py 202607   # 逐格回读原始源
 ```
 
 ## 提交纪律
