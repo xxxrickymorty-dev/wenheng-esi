@@ -1539,6 +1539,38 @@ async def api_ai_switch(request: Request):
     return {"ok": True, "capability": capability, "enabled": enabled}
 
 
+@app.post("/api/dialog/turn")
+@admin_route
+async def api_dialog_turn(request: Request):
+    """对话前门一轮（契约 #33，票 01）：一句话 → 应答 + 槽位（期次 / 意图）。
+
+    请求 `{text, slots:{period,intent}}`（slots 可省；期次形状非法按未设处理，不猜）。
+    应答＝Answer 字段面 + `slots`（本轮解析到的才覆盖，其余不变）。
+    解析走 `src/ai` 的 dialog 能力口（唯一模型出口；规则版离线可跑）；
+    每轮对话的留痕复用 `ai_calls`（不新开账本）。空话 400；非 admin 401/403。
+    """
+    body = await request.json()
+    text = str(body.get("text") or "").strip()
+    if not text:
+        return JSONResponse({"error": "请先说一句话"}, status_code=400)
+    slots = body.get("slots") if isinstance(body.get("slots"), dict) else {}
+    period = str(slots.get("period") or "").strip()
+    if period and not re.fullmatch(r"\d{6}", period):
+        period = ""                                   # 形状不合法就丢弃，不猜
+    intent = str(slots.get("intent") or "").strip()[:20]
+    import ai                                                     # noqa: PLC0415
+    ans = await run_in_threadpool(ai.run, "dialog", period,
+                                  payload={"text": text},
+                                  actor=config.role_of(current_user(request) or ""))
+    if ans.mode in ("closed", "denied", "unavailable"):
+        return _answer_response(ans)
+    turn = ans.data or {}
+    resp = ans.as_dict()
+    resp["slots"] = {"period": str(turn.get("period") or period),
+                     "intent": str(turn.get("intent") or intent)}
+    return resp
+
+
 @app.get("/api/forecast/board")
 @admin_route
 async def api_forecast_board(request: Request, period: str = ""):

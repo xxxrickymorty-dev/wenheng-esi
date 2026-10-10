@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-ABILITY_IDS = ("qa", "review", "diagnose", "brief")
+ABILITY_IDS = ("qa", "review", "diagnose", "brief", "dialog")
 
 
 @dataclass(frozen=True)
@@ -22,6 +22,9 @@ class Capability:
     default_enabled: bool
     payload_fields: tuple  # 必填字段名（None = 不要求 payload）
     no_data_notice: str = ""
+    #: 是否做模型轮。dialog=False：应答由规则拼装（期次猜错＝整期返工，
+    #: 解析必须确定性；模型在结构上不参与，也不新增第二个模型出口）。
+    modeled: bool = True
 
 
 CAPABILITIES: tuple[Capability, ...] = (
@@ -32,6 +35,8 @@ CAPABILITIES: tuple[Capability, ...] = (
     Capability("diagnose", "诊断参谋", "ready", "admin", True, ("failure",),
                "本次无法给出建议，请人工核对台账与规则库。"),
     Capability("brief", "期次导读", "planned", "admin", False, ()),
+    Capability("dialog", "对话前门", "ready", "admin", True, ("text",),
+               "这句话暂时理解不了，请换一句再试。", modeled=False),
 )
 
 _BY_ID = {c.id: c for c in CAPABILITIES}

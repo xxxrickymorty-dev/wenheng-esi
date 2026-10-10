@@ -12,7 +12,8 @@ import logging
 import re
 import time
 
-from . import _attempt, _config, _diagnose, _qa, _record, _review, _runtime, _settings, _shield, _specs
+from . import (_attempt, _config, _diagnose, _dialog, _qa, _record, _review,
+               _runtime, _settings, _shield, _specs)
 from ._types import Answer, CapabilityInfo, Segment, Shield
 
 log = logging.getLogger("wenheng.ai")
@@ -55,7 +56,8 @@ _SYSTEM_PROMPTS = {"diagnose": SYSTEM_PROMPT, "qa": QA_SYSTEM_PROMPT,
 #: 无数字地板文案（构造上不可能违反盾；规则版自身也过不了盾时的最后一格）。
 FLOOR_TEXT = "本次建议未通过数字校验，请直接打开台账与规则库核对。"
 
-_BUILDERS = {"diagnose": _diagnose.build, "qa": _qa.build, "review": _review.build}
+_BUILDERS = {"diagnose": _diagnose.build, "qa": _qa.build, "review": _review.build,
+             "dialog": _dialog.build}
 
 
 # ---------------------------------------------------------------- 装配
@@ -111,12 +113,20 @@ def _norm_payload(cap, payload, period) -> dict:
             raise ValueError("diagnose 的 payload.repair 必须是 dict 或 None")
     if cap.id == "qa" and not isinstance(payload.get("question"), str):
         raise ValueError("qa 的 payload.question 必须是字符串")
+    if cap.id == "dialog":
+        if not isinstance(payload.get("text"), str):
+            raise ValueError("dialog 的 payload.text 必须是字符串")
+        if payload.get("today") is not None:
+            _dialog.parse_today(payload["today"])   # 非法即抛（编程错误，不静默回退）
     return payload
 
 
 def _question_face(payload: dict) -> str:
-    """问句的**占位面**（记录/外发用；问句里的数字也已占位，SPEC §2.1）。"""
-    q = payload.get("question")
+    """问句的**占位面**（记录/外发用；问句里的数字也已占位，SPEC §2.1）。
+
+    dialog 的「问句」是馆员那句话（`payload.text`）——留痕同样要能回看是哪句。
+    """
+    q = payload.get("question") or payload.get("text")
     if not isinstance(q, str) or not q.strip():
         return ""
     return _shield.protect(q.strip())[0]
@@ -133,8 +143,12 @@ def _terminal(cap, period, role, *, mode, notice, t0, backend=None):
 # ---------------------------------------------------------------- 留痕与发布
 def _publish(cap, period, role, *, mode, backend, notice, text, rule_text, sources,
              parts, shield_res, fallback, question_face, t0,
-             fallback_detail=None, egress=None, elapsed_ms=None):
-    """先写留痕、后发布；模型版发布以记录成功为前提（SPEC §2.2 / C1）。"""
+             fallback_detail=None, egress=None, elapsed_ms=None, data=None):
+    """先写留痕、后发布；模型版发布以记录成功为前提（SPEC §2.2 / C1）。
+
+    `period` 是**记账期次**（dialog 用解析出的那一期，其余能力＝调用期次）；
+    `data` 是能力专属结构化结果（dialog 的槽位），只挂在 `Answer.data` 上。
+    """
     rid = _record.Recorder.for_period(period, role).call(
         capability=cap.id, mode=mode, backend=backend, fallback=fallback,
         shield=shield_res.as_dict(),
@@ -154,7 +168,7 @@ def _publish(cap, period, role, *, mode, backend, notice, text, rule_text, sourc
     segments = tuple(Segment(p.name, mode, "") for p in parts)
     return Answer(mode=mode, backend=backend, text=text, rule_text=rule_text,
                   notice=notice, sources=tuple(sources), receipts=(),
-                  shield=shield_res, record_id=rid, segments=segments)
+                  shield=shield_res, record_id=rid, segments=segments, data=data)
 
 
 def _system_for(cap_id: str) -> str:
@@ -200,46 +214,52 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
                          t0=t0, backend=_backend_name())
 
     # ---- 模型轮（可选；回落＝同一端口的 rule 适配器，语义全在 _attempt）----
-    outcome = _attempt.attempt(
-        draft.task, system=_system_for(cap.id), ability=cap.id,
-        anchored=cap.id not in ("qa", "review"),
-        evidence=draft.evidence, tools=(),
-        rule_protected=draft.rule_protected, mapping=draft.mapping)
-
+    # `modeled=False` 的能力（dialog）不做模型轮：应答由规则拼装，模型在结构上不参与。
+    outcome = None
     mode, backend, text = "rule", "rule", draft.rule_text
     notice, fallback, fallback_detail = "", None, None
-    if outcome.attempted:
-        if outcome.text is None:
-            # 传输/校验回落：码与文案由边界给，正文回规则版。
-            fallback = outcome.reason
-            fallback_detail = ({k: len(v) for k, v in (outcome.detail or {}).items()}
-                               if outcome.detail else None)
-            notice = outcome.notice
-        elif (cap.id in ("qa", "review")
-              and not draft.number.cited_facts(outcome.candidate_protected)):
-            # 越题：自由作答型未引用本期事实，按政策回落（政策留在能力口）。
-            fallback = _attempt.FallbackReason.OFF_TOPIC
-            notice = "模型作答未引用本期事实，已回退规则版。"
-        else:
-            mode, backend, text = "model", outcome.backend, outcome.text
-            notice = outcome.notice
-    elif outcome.text is None:
-        # 规则文本自身过不了盾：构造上不该发生；落到无数字地板，仍如实标注。
-        fallback, notice, text = (_attempt.FallbackReason.SHIELD_REJECT,
-                                  "盾未过，已换无数字说明。", FLOOR_TEXT)
+    if cap.modeled:
+        outcome = _attempt.attempt(
+            draft.task, system=_system_for(cap.id), ability=cap.id,
+            anchored=cap.id not in ("qa", "review"),
+            evidence=draft.evidence, tools=(),
+            rule_protected=draft.rule_protected, mapping=draft.mapping)
+        if outcome.attempted:
+            if outcome.text is None:
+                # 传输/校验回落：码与文案由边界给，正文回规则版。
+                fallback = outcome.reason
+                fallback_detail = ({k: len(v) for k, v in (outcome.detail or {}).items()}
+                                   if outcome.detail else None)
+                notice = outcome.notice
+            elif (cap.id in ("qa", "review")
+                  and not draft.number.cited_facts(outcome.candidate_protected)):
+                # 越题：自由作答型未引用本期事实，按政策回落（政策留在能力口）。
+                fallback = _attempt.FallbackReason.OFF_TOPIC
+                notice = "模型作答未引用本期事实，已回退规则版。"
+            else:
+                mode, backend, text = "model", outcome.backend, outcome.text
+                notice = outcome.notice
+        elif outcome.text is None:
+            # 规则文本自身过不了盾：构造上不该发生；落到无数字地板，仍如实标注。
+            fallback, notice, text = (_attempt.FallbackReason.SHIELD_REJECT,
+                                      "盾未过，已换无数字说明。", FLOOR_TEXT)
 
     # 发布面→来源（不变量唯一实现在 draft.number）。⚠ 地板文案无任何占位符：
     # 不能拿未发布的规则稿顶账，否则「第 k 个数字 ↔ sources[k]」当场破。
-    published_protected = (outcome.candidate_protected if mode == "model"
+    published_protected = (outcome.candidate_protected
+                           if (outcome is not None and mode == "model")
                            else ("" if text is FLOOR_TEXT else draft.rule_protected))
     used = draft.number.used_by(published_protected)
     shield_res = Shield(checked=len(used), passed=len(used))
-    return _publish(cap, period, role, mode=mode, backend=backend, notice=notice,
+    # 记账期次：dialog 用解析出的那一期（这轮对话谈的就是它），其余能力＝调用期次。
+    record_period = draft.record_period or period
+    return _publish(cap, record_period, role, mode=mode, backend=backend, notice=notice,
                     text=text, rule_text=draft.rule_text, sources=used, parts=draft.parts,
                     shield_res=shield_res, fallback=fallback,
                     question_face=_question_face(payload),
-                    egress=outcome.egress, elapsed_ms=outcome.elapsed_ms,
-                    t0=t0, fallback_detail=fallback_detail)
+                    egress=(outcome.egress if outcome is not None else None),
+                    elapsed_ms=(outcome.elapsed_ms if outcome is not None else None),
+                    t0=t0, fallback_detail=fallback_detail, data=draft.data)
 
 
 def capabilities(actor=None) -> tuple[CapabilityInfo, ...]:

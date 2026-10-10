@@ -1,0 +1,168 @@
+# -*- coding: utf-8 -*-
+"""dialog 构建器（对话前门 v1：骨架 + 期次识别；票 01）。
+
+对话只做指挥（ADR-0006）：本模块把馆员的一句话解析成「期次 / 意图」槽位，
+并拼出**先说出理解**的应答（「我按「数据截至 2026-09」理解 → 期次 202609。」）。
+应答里出现的数字只有解析结果的回显（期次年份 / 月份 / 期次），逐条登记为
+`fact` 来源——对话不产生任何台账数字。
+
+**不做模型轮**（`_specs` 里 `modeled=False`）：期次猜错就是整期返工，解析因此
+是确定性的；模型在结构上不参与，也不新增第二个模型出口（不触网可跑）。
+
+解析口径（GLOSSARY「期次」）：
+- 期次只有一个含义＝**数据截止月**；「出稿月 / 发布月」不是期次说法——
+  带这种说法就**停下纠正**，绝不换算、绝不猜；
+- 显式六位期次（「再出 202605 的」）优先；其次「2026年9月」；再其次
+  「9月 / 九月份」（年份取今天所在年）；都没有 → 反问，不静默。
+- `payload["today"]` 可注入 ISO 日期（测试/脚本用）；HTTP 路由不传，
+  生产走真实时钟（服务器时间即事实）。
+"""
+from __future__ import annotations
+
+import datetime
+import re
+import unicodedata
+from dataclasses import dataclass
+
+from ._draft import RuleDraft
+from ._numbered import NumberedText
+
+#: 三种解析结局：period（认出来了）/ publication_month（出稿月说法，拒收）/ no_period（没听出）。
+CASES = ("period", "publication_month", "no_period")
+
+#: 日期形态（payload.today 注入用；HTTP 路由不放行）。
+DATE_FORMAT = "%Y-%m-%d"
+
+_PERIOD = re.compile(r"(?<!\d)(20\d{2})(0[1-9]|1[0-2])(?!\d)")
+_YEAR_MONTH = re.compile(r"(20\d{2})\s*年\s*(0?[1-9]|1[0-2])\s*月")
+_MONTH_CN = re.compile(r"([一二三四五六七八九十]{1,3})\s*月")
+_MONTH_AR = re.compile(r"(?<!\d)(0?[1-9]|1[0-2])\s*月")
+_PUBLICATION = re.compile(r"出稿|发布")
+_REPORT_INTENT = re.compile(r"报告|出稿|生成|重出|再出|改做|做")
+
+_CN_DIGITS = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
+              "六": 6, "七": 7, "八": 8, "九": 9}
+
+
+def parse_today(raw) -> datetime.date:
+    """`payload.today` → date；缺省取真实今天；给了但不合法＝编程错误（抛）。"""
+    if raw is None or raw == "":
+        return datetime.date.today()
+    try:
+        return datetime.datetime.strptime(str(raw).strip(), DATE_FORMAT).date()
+    except ValueError as e:
+        raise ValueError(f"today 不是 ISO 日期（YYYY-MM-DD）：{raw!r}") from e
+
+
+def _cn_month(text: str) -> int:
+    """中文月份数字 → 1..12；不认识（如「二十」）返回 0。"""
+    if text == "十":
+        return 10
+    if text == "十一":
+        return 11
+    if text == "十二":
+        return 12
+    return _CN_DIGITS.get(text, 0) if len(text) == 1 else 0
+
+
+@dataclass(frozen=True)
+class Parse:
+    """一轮对话的解析结果（进 `Answer.data`，服务端照它合并槽位）。"""
+
+    case: str                     # CASES 之一
+    period: str = ""              # 数据截止月（case=period 时非空）
+    year: int = 0
+    month: int = 0
+    intent: str = ""              # 「出报告」或空（意图槽）
+
+    @property
+    def label(self) -> str:
+        return f"{self.year:04d}-{self.month:02d}"
+
+    def as_data(self) -> dict:
+        return {"case": self.case, "period": self.period, "intent": self.intent}
+
+
+def parse(text, *, today: datetime.date | None = None) -> Parse:
+    """一句话 → 期次/意图（纯逻辑、确定性、零网络）。"""
+    norm = unicodedata.normalize("NFKC", str(text or ""))
+    today = today or datetime.date.today()
+    intent = "出报告" if _REPORT_INTENT.search(norm) else ""
+
+    m_period = _PERIOD.search(norm)
+    if m_period:
+        year, month = int(m_period.group(1)), int(m_period.group(2))
+        return Parse("period", period=f"{year:04d}{month:02d}",
+                     year=year, month=month, intent=intent)
+
+    m_ym = _YEAR_MONTH.search(norm)
+    m_cn = _MONTH_CN.search(norm)
+    m_ar = _MONTH_AR.search(norm)
+    year = int(m_ym.group(1)) if m_ym else today.year
+    month = int(m_ym.group(2)) if m_ym else 0
+    if not month and m_cn:
+        month = _cn_month(m_cn.group(1))
+    if not month and m_ar:
+        month = int(m_ar.group(1))
+
+    if month and _PUBLICATION.search(norm):
+        # 「9 月出稿 / 出稿月」＝把出稿月当期次——不支持，停下纠正（不换算）。
+        return Parse("publication_month", year=year, month=month, intent=intent)
+    if month:
+        return Parse("period", period=f"{year:04d}{month:02d}",
+                     year=year, month=month, intent=intent)
+    return Parse("no_period", intent=intent)
+
+
+def reply_for(p: Parse) -> str:
+    """解析结果 → 应答（先说出理解；数字只有回显）。"""
+    if p.case == "period":
+        return f"我按「数据截至 {p.label}」理解 → 期次 {p.period}。"
+    if p.case == "publication_month":
+        period = f"{p.year:04d}{p.month:02d}"
+        return (f"期次只按「数据截止月」理解——「出稿月 / 发布月」不是期次说法。"
+                f"要说数据截至 {p.label} 那期（期次 {period}），"
+                f"请说「做 {p.month} 月的报告」。")
+    return ("我还没听出是哪一期。说一句话，比如「帮我做 9 月的报告」"
+            "——期次＝数据截止月份。")
+
+
+def _register(p: Parse):
+    """应答里每个数字的来源（全是回显：期次年份 / 月份 / 期次 / 示例）。"""
+
+    def register(ti, pos, value):                                  # noqa: ARG001
+        if p.period and value == p.period:
+            return {"kind": "fact", "pointer": "dialog/period", "label": "期次",
+                    "detail": "期次只有一个含义：数据截止月", "fact": True}
+        if p.year and value == str(p.year):
+            return {"kind": "fact", "pointer": "dialog/period.year", "label": "期次年份",
+                    "detail": "由这句话里的月份与年份解析", "fact": True}
+        if p.month and value in (f"{p.month:02d}", str(p.month)):
+            return {"kind": "fact", "pointer": "dialog/period.month", "label": "期次月份",
+                    "detail": "从这句话里读出的月份（数据截止月）", "fact": True}
+        return {"kind": "fact", "pointer": "dialog/example", "label": "示例",
+                "detail": "应答里的举例（不是本期数据）", "fact": True}
+
+    return register
+
+
+def build(root, period, payload):                                  # noqa: ARG001
+    """构建器入口：一句话 → RuleDraft（应答 + 来源 + 槽位数据 + 记账期次）。
+
+    `root` 对期次识别无意义；`period`（槽位里已有的期次）只作记账兜底——
+    解析出的期次优先（这轮对话谈的就是那一期）。
+    """
+    text = str(payload.get("text") or "")
+    p = parse(text, today=parse_today(payload.get("today")))
+    reply = reply_for(p)
+    number = NumberedText.of([reply], _register(p))
+    return RuleDraft(
+        rule_text=reply,
+        number=number,
+        rule_protected=number.texts[0],
+        parts=(),
+        task="",                       # modeled=False：task 不参与模型轮
+        evidence=(),
+        data=p.as_data(),
+        record_period=p.period,
+    )

@@ -5,8 +5,9 @@
     capabilities(actor=None) -> tuple[CapabilityInfo, ...]
     set_switch(capability, enabled, *, actor=None) -> None   # 唯一写口；仅 admin
 
-- capability ∈ {qa, review, diagnose, brief}（brief / polish 留位）；period 形如 `202607`，
-  诊断允许空串（期次未判定）。
+- capability ∈ {qa, review, diagnose, brief, dialog}（brief / polish 留位）；period 形如 `202607`，
+  诊断与对话前门允许空串（期次未判定）。dialog 不做模型轮（规则拼装、离线可跑），
+  结构化结果（期次/意图槽位）在 `Answer.data`，不进 `as_dict()` 的冻结字段面。
 - 同步阻塞（FastAPI 侧 `to_thread`）；运行期故障不抛，只对编程错误（未知能力/坏载荷）抛。
 - **禁旋钮**：没有 `backend=` / `mode=` / `model=` —— 后端与开关是部署/配置事实。
 - 注入边缘（测试/脚本，C4）：`using(**overrides)` 与 `actor(role)`；

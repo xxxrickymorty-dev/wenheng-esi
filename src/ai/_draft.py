@@ -62,6 +62,8 @@ class RuleDraft:
     - `rule_protected` 是规则的**发布面**：diagnose/review 为整篇保护面；
       qa 只含命中段（模型版用同一张 mapping 还原、RuleBrain 也吃它）。
     - `task` / `evidence` 是**外发面**（已占位化）。
+    - `data`：能力专属的**结构化结果**（dialog 的期次/意图槽位；核心不解释它，
+      只交给 `Answer.data`）；`record_period`：本次调用改记到哪一期（空＝用调用期次）。
     """
 
     rule_text: str
@@ -70,6 +72,8 @@ class RuleDraft:
     parts: tuple = ()
     task: str = ""
     evidence: tuple[str, ...] = ()
+    data: dict | None = None
+    record_period: str = ""
 
     @property
     def mapping(self) -> dict:

@@ -130,6 +130,9 @@ class Answer:
     shield: Shield = Shield()
     record_id: str | None = None
     segments: tuple[Segment, ...] = ()
+    #: 能力专属的结构化结果（dialog 的期次/意图槽位）。**不进 `as_dict()`**——
+    #: Answer 字段面保持冻结；用它的新端点（`/api/dialog/*`）自己定义响应形状。
+    data: dict | None = None
 
     def as_dict(self) -> dict:
         return {

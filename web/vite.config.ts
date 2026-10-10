@@ -27,6 +27,7 @@ export default defineConfig({
       input: {
         workspace: resolve(WEB_ROOT, 'index.html'),
         shelf: resolve(WEB_ROOT, 'shelf/index.html'),
+        dialog: resolve(WEB_ROOT, 'dialog/index.html'),
       },
     },
   },
