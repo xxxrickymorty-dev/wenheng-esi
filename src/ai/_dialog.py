@@ -24,6 +24,7 @@
 from __future__ import annotations
 
 import datetime
+import pathlib
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -34,6 +35,9 @@ from ._numbered import NumberedText
 
 #: 三种解析结局：period（认出来了）/ publication_month（出稿月说法，拒收）/ no_period（没听出）。
 CASES = ("period", "publication_month", "no_period")
+
+#: 一句里出现这些词 → 「继续/出稿」动作（核对回来后的推进；只在没带期次的句子上生效）。
+_PROCEED = re.compile(r"继续|核完|核过|核对完了|出稿|开跑|开生成|开始生成|开始出稿|跑一遍")
 
 #: 盘点三种裁决：unpublished（未发布，停）/ missing（已发布但缺件，停）/ ready（齐，去核对）。
 VERDICTS = ("", "unpublished", "missing", "ready")
@@ -82,13 +86,15 @@ class Parse:
     year: int = 0
     month: int = 0
     intent: str = ""              # 「出报告」或空（意图槽）
+    act: str = ""                 # 「proceed」或空（票 03：核完了/出稿——推进到出稿）
 
     @property
     def label(self) -> str:
         return f"{self.year:04d}-{self.month:02d}"
 
     def as_data(self) -> dict:
-        return {"case": self.case, "period": self.period, "intent": self.intent}
+        return {"case": self.case, "period": self.period,
+                "intent": self.intent, "act": self.act}
 
 
 def parse(text, *, today: datetime.date | None = None) -> Parse:
@@ -119,7 +125,9 @@ def parse(text, *, today: datetime.date | None = None) -> Parse:
     if month:
         return Parse("period", period=f"{year:04d}{month:02d}",
                      year=year, month=month, intent=intent)
-    return Parse("no_period", intent=intent)
+    # 没带期次的「继续 / 出稿」＝推进动作（目标期次用槽位里的）；带期次的句子不算。
+    act = "proceed" if _PROCEED.search(norm) else ""
+    return Parse("no_period", intent=intent, act=act)
 
 
 def reply_for(p: Parse) -> str:
@@ -228,6 +236,49 @@ def _compose(p: Parse, inv: dict) -> tuple[str, str, list]:
     return text, verdict, actions
 
 
+# ---------------------------------------------------------------- 核对门（票 03）
+def _products_exist(root, period: str) -> bool:
+    """该期已有产物？（红件清单是「出过稿」的标记；有它就要先问一次，绝不自动覆盖）"""
+    return bool(period) and (pathlib.Path(root) / period / "red_slots.json").exists()
+
+
+def _proceed(root, slot_period: str, p: Parse):
+    """「核完了，继续 / 出稿」→ 核对门：通过＝开始出稿；没过＝拦住指回核对。
+
+    返回 (应答, verdict, actions, run, inventory)。run＝「可以让前端开跑」的意图
+    （auto=False 表示先问一次——产物已在，覆盖要人点）。
+    """
+    target = slot_period or ""
+    if not target:
+        return "还差一个期次——先说做哪期，比如「做 9 月的报告」。", "", [], None, None
+    inv = _scan_inventory(target)
+    if inv is None:
+        actions = [{"kind": "goto", "view": "acquire", "period": target, "text": "去核对 ▸"}]
+        return ("先停一下——这一期数据状态我一时看不到，先不出稿；"
+                "去核对表格页确认一下。", "", actions, None, None)
+    if inv["released"] and not inv["n_missing"]:
+        if _products_exist(root, target):
+            actions = [{"kind": "run", "period": target, "text": "覆盖重出"},
+                       {"kind": "dismiss", "text": "保留，我先看看旧的"}]
+            return ("核对通过、已并入台账。不过这一期已经有产物（上次出过）——"
+                    "直接重出会覆盖旧的。要覆盖重出吗？",
+                    "ready", actions, {"period": target, "auto": False}, inv)
+        return ("核对通过、已并入台账。开始出稿——",
+                "ready", [], {"period": target, "auto": True}, inv)
+    fb = inv["fallback"]
+    if inv["released"]:
+        tail = (f"还差 {inv['n_missing']} 件——去取数台补上缺的件"
+                + (f"，或先做最新完整一期 {_fallback_phrase(fb)}。" if fb else "。"))
+        first = {"kind": "goto", "view": "acquire", "period": target, "text": "去取数台 ▸"}
+    else:
+        tail = ("两条路：①去核对表格页（逐件核、签过才并入）"
+                + (f"；②先做最新完整一期 {_fallback_phrase(fb)}。" if fb else "。"))
+        first = {"kind": "goto", "view": "acquire", "period": target, "text": "去核对 ▸"}
+    actions = [first] + ([{"kind": "send", "text": f"改做 {fb} 的"}] if fb else [])
+    verdict = "missing" if inv["released"] else "unpublished"
+    return f"先别出稿——这一期还没核对并并入。{tail}", verdict, actions, None, inv
+
+
 # ---------------------------------------------------------------- 来源登记
 def _register(p: Parse, inv: dict | None):
     """应答里每个数字的来源（解析与盘点的回显；全是 fact）。"""
@@ -284,13 +335,18 @@ def build(root, period, payload):                                  # noqa: ARG00
     """
     text = str(payload.get("text") or "")
     p = parse(text, today=parse_today(payload.get("today")))
-    inv = _scan_inventory(p.period) if (p.case == "period" and p.period) else None
-    if inv is None:
-        reply, verdict, actions = reply_for(p), "", []
+    run = None
+    if p.act == "proceed":
+        reply, verdict, actions, run, inv = _proceed(root, period, p)
     else:
-        reply, verdict, actions = _compose(p, inv)
+        inv = _scan_inventory(p.period) if (p.case == "period" and p.period) else None
+        if inv is None:
+            reply, verdict, actions = reply_for(p), "", []
+        else:
+            reply, verdict, actions = _compose(p, inv)
     number = NumberedText.of([reply], _register(p, inv))
-    data = {**p.as_data(), "verdict": verdict, "actions": actions, "inventory": inv}
+    data = {**p.as_data(), "verdict": verdict, "actions": actions,
+            "inventory": inv, "run": run}
     return RuleDraft(
         rule_text=reply,
         number=number,

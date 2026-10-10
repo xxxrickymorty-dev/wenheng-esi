@@ -150,6 +150,40 @@ def test_没注入盘点_退回票01行为(tmp_path):
     assert r["verdict"] == "" and r["inventory"] is None and r["actions"] == []
 
 
+# ============================================================ 2b. 票 03：核对门
+def test_核完了继续_进入出稿(tmp_path):
+    inv = fake_inventory("202607", released=True)
+    with ai.using(data_root=tmp_path, inventory=lambda p: inv):
+        r = call(config.DEMO_USER, {"text": "核完了，继续",
+                                    "slots": {"period": "202607", "intent": "出报告"}})
+    assert "核对通过" in r["text"] and "开始出稿" in r["text"]
+    assert r["run"] == {"period": "202607", "auto": True}
+    assert r["slots"] == {"period": "202607", "intent": "出报告"}, "槽位不动"
+
+
+def test_未核对就出稿_拦住并指回核对(tmp_path):
+    inv = fake_inventory("202611", released=False,
+                         missing=("papers", "incites"), fallback="202607")
+    with ai.using(data_root=tmp_path, inventory=lambda p: inv):
+        r = call(config.DEMO_USER, {"text": "出稿",
+                                    "slots": {"period": "202611", "intent": "出报告"}})
+    assert "先别出稿" in r["text"]
+    assert r["run"] is None
+    assert {"kind": "goto", "view": "acquire", "period": "202611",
+            "text": "去核对 ▸"} in r["actions"]
+
+
+def test_产物已在_先问一次(tmp_path):
+    (tmp_path / "202607").mkdir()
+    (tmp_path / "202607" / "red_slots.json").write_text("[]", encoding="utf-8")
+    inv = fake_inventory("202607", released=True)
+    with ai.using(data_root=tmp_path, inventory=lambda p: inv):
+        r = call(config.DEMO_USER, {"text": "核完了，继续", "slots": {"period": "202607"}})
+    assert "已经有产物" in r["text"]
+    assert r["run"] == {"period": "202607", "auto": False}
+    assert {"kind": "run", "period": "202607", "text": "覆盖重出"} in r["actions"]
+
+
 # ============================================================ 3. 参数与权限
 def test_空话400(monkeypatch):
     monkeypatch.setattr("ai.run", lambda *a, **k: None)

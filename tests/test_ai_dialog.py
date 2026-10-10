@@ -165,6 +165,51 @@ def test_改做那期_按新的期次盘点(tmp_path):
     assert "202607" in ans.text
 
 
+# ============================================================ 3b. 核对门（票 03）
+def test_核完了_核对通过_进入出稿(tmp_path):
+    inv = fake_inventory("202607", released=True)
+    ans = run_dialog("核完了，继续", root=tmp_path, period="202607", inventory=inv)
+    assert "核对通过" in ans.text and "开始出稿" in ans.text
+    assert ans.data["act"] == "proceed" and ans.data["verdict"] == "ready"
+    assert ans.data["run"] == {"period": "202607", "auto": True}
+    assert ans.data["actions"] == []
+
+
+def test_未核对就出稿_拦住并指回核对(tmp_path):
+    inv = fake_inventory("202611", released=False,
+                         missing=("papers", "incites"), fallback="202607")
+    ans = run_dialog("出稿", root=tmp_path, period="202611", inventory=inv)
+    assert "先别出稿" in ans.text and "还没核对并并入" in ans.text
+    assert ans.data["act"] == "proceed" and ans.data["run"] is None
+    assert {"kind": "goto", "view": "acquire", "period": "202611",
+            "text": "去核对 ▸"} in ans.data["actions"]
+    assert {"kind": "send", "text": "改做 202607 的"} in ans.data["actions"]
+
+
+def test_出稿缺件_也拦住(tmp_path):
+    inv = fake_inventory("202609", released=True, missing=("papers",), fallback="202607")
+    ans = run_dialog("出稿", root=tmp_path, period="202609", inventory=inv)
+    assert "先别出稿" in ans.text and ans.data["run"] is None
+
+
+def test_出稿_产物已在_先问一次不自动跑(tmp_path):
+    (tmp_path / "202607").mkdir()
+    (tmp_path / "202607" / "red_slots.json").write_text("[]", encoding="utf-8")
+    inv = fake_inventory("202607", released=True)
+    ans = run_dialog("核完了，继续", root=tmp_path, period="202607", inventory=inv)
+    assert "已经有产物" in ans.text and "覆盖" in ans.text
+    assert ans.data["run"] == {"period": "202607", "auto": False}, \
+        "产物已在：先问一次，绝不自动覆盖"
+    assert {"kind": "run", "period": "202607", "text": "覆盖重出"} in ans.data["actions"]
+    assert {"kind": "dismiss", "text": "保留，我先看看旧的"} in ans.data["actions"]
+
+
+def test_没期次就出稿_先要期次(tmp_path):
+    ans = run_dialog("出稿", root=tmp_path, period="", inventory=None)
+    assert "还差一个期次" in ans.text
+    assert ans.data["act"] == "proceed" and ans.data["run"] is None
+
+
 # ============================================================ 4. 留痕（复用 Recorder）
 def test_每轮进ai_calls_记录落解析出的期次(tmp_path):
     ans = run_dialog("帮我做9月份的报告", root=tmp_path)

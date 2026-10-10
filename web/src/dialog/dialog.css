@@ -89,6 +89,8 @@
 .dlg-act.primary:hover{filter:brightness(1.12);background:var(--zhu)}
 .dlg-act.ghost{color:var(--ink-2);border-style:dashed;background:transparent}
 .dlg-act:disabled{opacity:.5;cursor:default;filter:none}
+/* 系统小字（开跑回执 / 开跑失败）——不是对话，是操作结果 */
+.dlg-sys{margin:0 0 14px 52px;font-size:13.5px;color:var(--ink-3)}
 .dlg-wait{color:var(--ink-3);font-size:14.5px;padding-top:6px}
 .dlg-gate{max-width:760px;margin:80px auto;padding:22px 26px;background:var(--card);
   border:1px solid var(--line);border-radius:var(--r);font-size:15.5px}

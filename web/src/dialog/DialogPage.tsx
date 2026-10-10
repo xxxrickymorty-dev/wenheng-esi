@@ -5,12 +5,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { getMe, type Me } from '../api'
-import { postDialogTurn, type DialogAction } from '../api-dialog'
+import { postDialogTurn, postJobStart, type DialogAction } from '../api-dialog'
 import { clearSlot, conversationTitle, emptySlots, hasSlots, type DialogSlots } from '../lib/dialog'
 import { buildPeriodUrl } from '../lib/period'
 import { errorNote } from '../lib/status'
 
-type Turn = { who: 'me' | 'wh'; text: string; notice?: string; actions?: DialogAction[]; dismissed?: boolean }
+type Turn = { who: 'me' | 'wh' | 'sys'; text: string; notice?: string; actions?: DialogAction[]; dismissed?: boolean }
 type Conversation = { id: number; title: string; turns: Turn[]; slots: DialogSlots }
 
 const PALETTE_STORAGE_KEY = 'wenheng-palette'
@@ -44,6 +44,7 @@ export default function DialogPage() {
   const [activeId, setActiveId] = useState(1)
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  const [jobStarting, setJobStarting] = useState(false)
   const nextIdRef = useRef(2)
   const threadRef = useRef<HTMLDivElement>(null)
 
@@ -105,6 +106,8 @@ export default function DialogPage() {
         slots: r.slots,
         turns: [...c.turns, { who: 'wh', text: r.text, notice: r.notice, actions: r.actions }],
       }))
+      /* 出稿意图：直接开跑的自动开（产物已在时 auto=false，等人在按钮上点） */
+      if (r.run?.auto && r.run.period) void startJob(r.run.period)
     } catch (e) {
       updateActive((c) => ({
         ...c,
@@ -121,6 +124,27 @@ export default function DialogPage() {
       ...c,
       turns: c.turns.map((t, i) => (i === index ? { ...t, dismissed: true } : t)),
     }))
+  }
+
+  /** 开跑出稿：走既有 POST /api/jobs；结果作为系统小字落进对话（不编话术）。 */
+  async function startJob(period: string) {
+    if (!period || jobStarting) return
+    setJobStarting(true)
+    try {
+      const { job_id } = await postJobStart(period)
+      updateActive((c) => ({
+        ...c,
+        turns: [...c.turns, { who: 'sys',
+          text: `已开跑（任务 ${job_id}）——出好了喊你；全过程记在运行档案（顶栏「工作台 ▾」）。` }],
+      }))
+    } catch (e) {
+      updateActive((c) => ({
+        ...c,
+        turns: [...c.turns, { who: 'sys', text: `没开起来：${errorNote(e, '出稿任务')}` }],
+      }))
+    } finally {
+      setJobStarting(false)
+    }
   }
 
   if (roleKnown && me && me.role !== 'admin') return null
@@ -206,7 +230,9 @@ export default function DialogPage() {
                 </div>
               </div>
             )}
-            {active.turns.map((t, i) => (
+            {active.turns.map((t, i) => t.who === 'sys' ? (
+              <p key={i} className="dlg-sys">{t.text}</p>
+            ) : (
               <div key={i} className={`dlg-turn ${t.who}`}>
                 <div className="dlg-who">{t.who === 'me' ? '你' : '文'}</div>
                 <div className="dlg-bub">
@@ -220,9 +246,13 @@ export default function DialogPage() {
                            href={buildPeriodUrl(`/app/?view=${a.view ?? 'acquire'}`,
                                                 a.period || active.slots.period || '')}>{a.text}</a>
                       ) : (
-                        <button key={j} type="button" disabled={busy}
-                                className={`dlg-act ${a.kind === 'send' ? 'primary' : 'ghost'}`}
-                                onClick={() => a.kind === 'send' ? void sendText(a.text) : dismissActions(i)}>
+                        <button key={j} type="button" disabled={busy || jobStarting}
+                                className={`dlg-act ${a.kind === 'dismiss' ? 'ghost' : 'primary'}`}
+                                onClick={() => {
+                                  if (a.kind === 'send') void sendText(a.text)
+                                  else if (a.kind === 'run') void startJob(a.period || '')
+                                  else dismissActions(i)
+                                }}>
                           {a.text}
                         </button>
                       ))}

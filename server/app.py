@@ -1573,6 +1573,9 @@ async def api_dialog_turn(request: Request):
     resp["verdict"] = str(turn.get("verdict") or "")
     resp["inventory"] = turn.get("inventory") if isinstance(turn.get("inventory"), dict) else None
     resp["actions"] = turn.get("actions") if isinstance(turn.get("actions"), list) else []
+    # 出稿意图（票 03）：{period, auto}——auto=False 表示产物已在、先问一次；
+    # 真正的开跑由前端拿它调既有 POST /api/jobs（对话只做指挥，不替人按按钮）。
+    resp["run"] = turn.get("run") if isinstance(turn.get("run"), dict) else None
     return resp
 
 

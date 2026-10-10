@@ -24,13 +24,17 @@ export type DialogInventory = {
 }
 
 /** 一轮对话给出的动作：
-    send＝把 text 当作下一句话发出去；goto＝跳站内视图；dismiss＝先等等（仅界面）。 */
+    send＝把 text 当作下一句话发出去；goto＝跳站内视图；dismiss＝先等等（仅界面）；
+    run＝开跑出稿（调既有 POST /api/jobs；产物已在时先问一次，人点了才跑）。 */
 export type DialogAction = {
-  kind: 'send' | 'goto' | 'dismiss'
+  kind: 'send' | 'goto' | 'dismiss' | 'run'
   text: string
   view?: string
   period?: string
 }
+
+/** 出稿意图（票 03）：auto=true 直接开跑；false＝产物已在、等人在按钮上确认。 */
+export type DialogRun = { period: string; auto: boolean }
 
 export type DialogReply = {
   mode: string
@@ -47,6 +51,8 @@ export type DialogReply = {
   verdict: 'unpublished' | 'missing' | 'ready' | ''
   inventory: DialogInventory | null
   actions: DialogAction[]
+  /** 出稿意图（票 03）：null＝本轮不涉及开跑 */
+  run: DialogRun | null
 }
 
 export async function postDialogTurn(text: string, slots: DialogSlots): Promise<DialogReply> {
@@ -55,4 +61,11 @@ export async function postDialogTurn(text: string, slots: DialogSlots): Promise<
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, slots }),
   })
+}
+
+/** 开跑出稿：调**既有**的 POST /api/jobs（与生成台同一个口，不新造）。 */
+export async function postJobStart(period: string): Promise<{ job_id: string; url: string }> {
+  const fd = new FormData()
+  fd.append('period', period)
+  return req<{ job_id: string; url: string }>('/api/jobs', { method: 'POST', body: fd })
 }
