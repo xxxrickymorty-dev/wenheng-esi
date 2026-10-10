@@ -578,6 +578,21 @@ except json.JSONDecodeError:
     _active = None
 check("对话前门 · 问一次没有启动任何任务", st2 == 200 and not _active, f"active={_active!r}")
 
+# GET /api/dialog/home（契约 #35，票 06：本期任务——三步状态从既有产物判，只读）
+st, hm, _ = call("GET", "/api/dialog/home")
+check("GET dialog/home 200", st == 200, f"got {st}")
+try:
+    _hm = json.loads(hm)
+except json.JSONDecodeError:
+    _hm = {}
+check("对话前门 · 首页带本期与三步",
+      len(str(_hm.get("period") or "")) == 6 and len(_hm.get("steps") or []) == 3,
+      f"period={_hm.get('period')!r} n_steps={len(_hm.get('steps') or [])}")
+check("对话前门 · 首页有卡点与上一期线索",
+      bool(_hm.get("stuck"))
+      and (_hm.get("prev") is None or len(str((_hm.get("prev") or {}).get("period") or "")) == 6),
+      f"stuck={_hm.get('stuck')!r} prev={_hm.get('prev')!r}")
+
 # POST /api/periods/{period}/review-advice（复核参谋；契约 #27，2026-09-29 D4）
 st, rv, _ = call_json("POST", "/api/periods/202607/review-advice", {})
 check("POST review-advice 200", st == 200, f"got {st}")

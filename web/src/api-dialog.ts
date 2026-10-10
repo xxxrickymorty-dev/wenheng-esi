@@ -5,6 +5,9 @@
 
 import { req } from './api'
 import type { DialogSlots } from './lib/dialog'
+import type { DialogHome } from './lib/taskview'
+
+export type { DialogHome }
 
 /** 必需件一行（key/label/state）。state: ok | missing */
 export type DialogPiece = {
@@ -81,4 +84,10 @@ export async function postDialogTurn(text: string, slots: DialogSlots): Promise<
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, slots }),
   })
+}
+
+/** 空态第一屏「本期任务」（票 06，契约 #35）：三步状态由后端从既有产物判（只读、不新算）。
+    形状与展示文案的映射在 `lib/taskview.ts`（纯函数、vitest 直测）。 */
+export async function getDialogHome(): Promise<DialogHome> {
+  return req<DialogHome>('/api/dialog/home')
 }

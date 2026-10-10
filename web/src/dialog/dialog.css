@@ -72,7 +72,22 @@
 .dlg-qa:disabled{opacity:.6;cursor:default}
 /* 查数据的回答（票 07）：正文恢复正常折行（气泡是 pre-wrap） */
 .dlg-ans{margin-top:8px;white-space:normal}
-.nt-num{border:0;border-bottom:1px dotted var(--zhu);padding:1px 7px;margin:0 1px;
+/* 空态第一屏「本期任务」（票 06，照五稿 ⓪） */
+.dlg-home{margin-top:12px;border:1px solid var(--line);border-radius:var(--r-sm);
+  background:var(--card);padding:12px 16px 14px;max-width:640px;white-space:normal}
+.dlg-home-h{font-family:var(--serif);font-size:15px;display:flex;align-items:baseline;gap:9px}
+.dlg-home-h span{margin-left:auto;font:400 13px/1 var(--sans);color:var(--ink-3)}
+.dlg-home-list{list-style:none;margin:6px 0 0;padding:0}
+.dlg-home-list li{display:flex;gap:10px;align-items:baseline;padding:6px 0;font-size:14.5px;
+  border-bottom:1px dashed var(--line-2)}
+.dlg-home-list li:last-child{border-bottom:0}
+.dlg-home-m{flex:0 0 16px;font-size:14px;color:var(--ink-3)}
+.dlg-home-list li.ok .dlg-home-m{color:var(--ok)}
+.dlg-home-list li.cur .dlg-home-m{color:var(--warn)}
+.dlg-home-list li.cur .dlg-home-t{color:var(--warn)}
+.dlg-home-n{margin-left:auto;font-size:13.5px;color:var(--ink-3)}
+.dlg-home .dlg-acts{margin-top:11px}
+.dlg-home-prev{margin-top:9px;font-size:13.5px;color:var(--ink-3)}.nt-num{border:0;border-bottom:1px dotted var(--zhu);padding:1px 7px;margin:0 1px;
   border-radius:7px;background:var(--zhu-soft);color:var(--zhu);font:inherit;
   font-weight:650;cursor:pointer}
 .dlg-rule{margin-top:10px;font-size:14px}

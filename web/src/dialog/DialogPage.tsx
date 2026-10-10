@@ -12,7 +12,8 @@ import { useEffect, useRef, useState } from 'react'
 import { getAiCapabilities, getArtifacts, getJobProgress, getMe, getPeriods,
          getRollbackPoints, postAiSwitch, postJob, rollbackPeriod,
          type AiCapability, type Me, type RollbackPoint } from '../api'
-import { postDialogTurn, type DialogAction, type DialogAnswer, type DialogRun } from '../api-dialog'
+import { postDialogTurn, getDialogHome,
+         type DialogAction, type DialogAnswer, type DialogHome, type DialogRun } from '../api-dialog'
 import { runFlexibleStream, stopFlexible, type FlexCheck, type FlexStreamEvent } from '../api-flexible'
 import { ConfirmButton } from '../ConfirmButton'
 import { clearSlot, conversationTitle, emptySlots, hasSlots, type DialogSlots } from '../lib/dialog'
@@ -20,6 +21,7 @@ import { buildPeriodUrl } from '../lib/period'
 import { trioLinks, type TrioLink } from '../lib/repro'
 import { latestProgress } from '../lib/runMachine'
 import { appHref, errorNote, isTerminalState, taskLabel } from '../lib/status'
+import { taskView } from '../lib/taskview'
 import { NumberedText } from '../NumberedText'
 
 /** 出稿轨迹（票 04）：逐段出（挑学科 / 配图 / 取数 / 数据校验 / 收尾 / 复刻）。
@@ -104,6 +106,8 @@ export default function DialogPage() {
   const [activeId, setActiveId] = useState(1)
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  /* 空态第一屏「本期任务」（票 06）：从既有产物判的三步状态；拿不到就退回普通问候。 */
+  const [home, setHome] = useState<DialogHome | null>(null)
   /* 「查数据」能力开关（票 07）：问文衡并入前门——开关跟着能力放这儿（管理员可关）。 */
   const [qa, setQa] = useState<AiCapability | null>(null)
   const [qaBusy, setQaBusy] = useState(false)
@@ -116,6 +120,8 @@ export default function DialogPage() {
 
   const active = convs.find((c) => c.id === activeId) ?? convs[0]
   const others = convs.filter((c) => c.turns.length > 0)
+  /* 空态第一屏＝本期任务视图（票 06）；拿不到状态就退回普通问候 */
+  const tv = active.turns.length === 0 ? taskView(home) : null
 
   useEffect(() => {
     document.documentElement.dataset.palette = palette
@@ -147,6 +153,15 @@ export default function DialogPage() {
     return () => { alive = false }
   }, [])
 
+  /* 本期任务（票 06）：每次切到（或新开）一个空对话时重取——出稿后状态就变了。 */
+  useEffect(() => {
+    let alive = true
+    getDialogHome()
+      .then((h) => { if (alive) setHome(h) })
+      .catch(() => { if (alive) setHome(null) })
+    return () => { alive = false }
+  }, [activeId])
+
   /** 开关「查数据」（qa 能力）：关闭后对话里照旧说「已关闭」，报告不受影响。 */
   async function toggleQa(next: boolean) {
     setQaBusy(true)
@@ -172,11 +187,12 @@ export default function DialogPage() {
     setInput('')
   }
 
-  async function sendText(raw: string) {
+  async function sendText(raw: string, slotsOverride?: DialogSlots) {
     const text = raw.trim()
     if (!text || busy || running) return
     setInput('')
     setBusy(true)
+    const slots = slotsOverride ?? active.slots
     const replyIndex = active.turns.length + 1          // 先发用户话，回复接在它后面
     updateActive((c) => ({
       ...c,
@@ -184,7 +200,7 @@ export default function DialogPage() {
       turns: [...c.turns, { who: 'me', text }],
     }))
     try {
-      const r = await postDialogTurn(text, active.slots)
+      const r = await postDialogTurn(text, slots)
       updateActive((c) => ({
         ...c,
         slots: r.slots,
@@ -192,8 +208,10 @@ export default function DialogPage() {
                               actions: r.actions, run: r.run ?? undefined,
                               answer: r.answer ?? undefined }],
       }))
-      /* 出稿意图（票 03/04）：auto=true 直接开跑；产物已在时 auto=false，等人在按钮上点 */
-      if (r.run?.auto && r.run.period) void startRun(r.run.period, replyIndex, r.run.intent)
+      /* 出稿意图（票 03/05）：auto=true 直接开跑，且此时**没有产物**＝首出期次
+         （两段式要复刻先行——灵活报告只消费流水线产物）；auto=false 产物已在，
+         等人在按钮上点了才跑（行内二次确认）。 */
+      if (r.run?.auto && r.run.period) void startRun(r.run.period, replyIndex, r.run.intent, true)
     } catch (e) {
       updateActive((c) => ({
         ...c,
@@ -212,6 +230,12 @@ export default function DialogPage() {
     }))
   }
 
+  /** 空态「一键生成」（票 06）：把本期槽位摆好，再走正常一轮「出稿」——
+      核对门、留痕与两段式开跑全在后端既有链路里，前端不抄近路。 */
+  function generateFromHome(period: string) {
+    void sendText('出稿', { period, intent: '出报告' })
+  }
+
   /** 轨迹更新器：只动某一条回复的 trace（不碰别的轮次）。 */
   function traceUpdater(index: number) {
     return (fn: (t: Trace) => Trace) => {
@@ -223,19 +247,25 @@ export default function DialogPage() {
     }
   }
 
-  /** 出稿第一段（票 04/05）：走**既有**灵活报告流式口（NDJSON，真实节点）——
-      轨迹逐段落在回复里；发送键原地变停止键；流完且校验通过 → 自动接复刻产线（第二段）。
-      校验没过：**不带着问题出稿**——停下明说哪条没过，给「自动修复 / 需人工接手」。 */
-  async function startRun(period: string, index: number, intent: string) {
-    if (!period || running) return
+  /** 灵活报告段（票 04）：既有流式口 + 轨迹 + 停止键。
+      `base`＝本段从第几号步骤起排（复刻先行时是 2，否则 1）；`afterRepro`＝复刻已先出好。
+      返回 done 事件；null＝没走到收尾（停/错/异常，轨迹里已明说）。 */
+  async function runFlexStage(period: string, index: number, intent: string,
+                              base: number, afterRepro: boolean) {
     runTokenRef.current = ''
     setRunning({ period, index })
     const upd = traceUpdater(index)
-    const trace0: Trace = { status: 'streaming', steps: [
-      { n: 1, title: '挑学科', detail: '正在规划…', state: 'doing' }] }
+    const step = (k: number, title: string, detail: string,
+                  state: TraceStep['state'] = 'doing'): TraceStep =>
+      ({ n: base + k, title, detail, state })
+    const keepLead = (t: Trace): TraceStep[] => t.steps.filter((s) => s.n < base)
     updateActive((c) => ({
       ...c,
-      turns: c.turns.map((t, i) => (i === index ? { ...t, trace: trace0 } : t)),
+      turns: c.turns.map((t, i) => (i === index
+        ? { ...t, trace: { status: 'streaming',
+                           steps: [...(t.trace ? keepLead(t.trace) : []),
+                                   step(0, '挑学科', '正在规划…')] } }
+        : t)),
     }))
     let sections = 0
     const doneRef: { ev: (FlexStreamEvent & { event: 'done' }) | null } = { ev: null }
@@ -250,17 +280,18 @@ export default function DialogPage() {
             : `本期挑 ${ev.disc || '（按规划）'}`
           const charts = ev.charts ?? []
           upd((t) => ({ ...t, steps: [
-            { n: 1, title: '挑学科', detail: pick, state: 'done' },
-            { n: 2, title: '配图',
-              detail: charts.length ? `${charts.length} 张：${charts.map((c) => c.why || c.kind).join('；')}`
-                                    : '按规划出图',
-              state: 'done' },
-            { n: 3, title: '取数', detail: '逐节取数与写稿…', state: 'doing' },
+            ...keepLead(t),
+            step(0, '挑学科', pick, 'done'),
+            step(1, '配图',
+              charts.length ? `${charts.length} 张：${charts.map((c) => c.why || c.kind).join('；')}`
+                            : '按规划出图',
+              'done'),
+            step(2, '取数', '逐节取数与写稿…'),
           ] }))
         } else if (ev.event === 'section') {
           sections += 1
           upd((t) => ({ ...t, steps: t.steps.map((s) =>
-            s.n === 3 ? { ...s, detail: `逐节取数与写稿：已完成 ${sections} 节…` } : s) }))
+            s.n === base + 2 ? { ...s, detail: `逐节取数与写稿：已完成 ${sections} 节…` } : s) }))
         } else if (ev.event === 'done') {
           doneRef.ev = ev
           if (ev.check_pass) {
@@ -268,11 +299,10 @@ export default function DialogPage() {
               ...t,
               steps: [
                 ...t.steps.map((s) => ({ ...s, state: 'done' as const })),
-                { n: 4, title: '数据校验',
-                  detail: `一次通过（${checkSummary(ev, sections)}）`, state: 'done' },
-                { n: 5, title: '收尾', detail: `分析稿已出（用时 ${ev.elapsed} 秒）`, state: 'done' },
+                step(3, '数据校验', `一次通过（${checkSummary(ev, sections)}）`, 'done'),
+                step(4, '收尾', `分析稿已出（用时 ${ev.elapsed} 秒）`, 'done'),
               ],
-              note: '数据校验一次通过——接着生成报告初稿（复刻产线）…',
+              note: afterRepro ? '分析稿也出好了——' : '数据校验一次通过——接着生成报告初稿（复刻产线）…',
             }))
           } else {
             upd((t) => ({
@@ -280,11 +310,14 @@ export default function DialogPage() {
               status: 'error',
               steps: [
                 ...t.steps.map((s) => ({ ...s, state: 'halt' as const })),
-                { n: 4, title: '数据校验',
-                  detail: `没过：${checkFailures(ev.check).join('；')}`, state: 'halt' },
+                step(3, '数据校验', `没过：${checkFailures(ev.check).join('；')}`, 'halt'),
               ],
-              note: '没出好——数据校验没过，先不出报告初稿。',
-              result: { period, archiveHref: appHref('archive', period), fixable: 'flex' },
+              /* 复刻已先出好时不设「不带着问题出稿」的拦截——三件套已实产，
+                 由收尾如实带出「分析稿没过校验」（orchestrator 的 finalize 覆写 note）。 */
+              note: afterRepro ? 'AI 分析稿没过校验——三件套已出好（见下）。'
+                               : '没出好——数据校验没过，先不出报告初稿。',
+              ...(afterRepro ? {} : { result: { period, archiveHref: appHref('archive', period),
+                                                fixable: 'flex' as const } }),
             }))
           }
         } else if (ev.event === 'stopped') {
@@ -310,19 +343,22 @@ export default function DialogPage() {
     } finally {
       setRunning(null)
     }
-    /* 口径 A（票 05）：流完校验通过 → 自动接复刻产线（报告初稿 / 对勘本 / 红件清单） */
-    if (doneRef.ev?.check_pass) void startRepro(period, index, doneRef.ev)
+    return doneRef.ev
   }
 
-  /** 出稿第二段（票 05 口径 A）：接**复刻产线**（既有开跑口）——
-      进度从任务瀑布读；跑完给实产三件 + 运行档案 + 覆盖后的回滚出路。 */
-  async function startRepro(period: string, index: number,
-                            doneEv?: FlexStreamEvent & { event: 'done' }) {
+  /** 复刻产线段（票 05 口径 A）：起既有开跑口 → 轮询到终态（进度写进第 `base` 号步骤）。
+      成功返回 {jobId,status}；失败把轨迹停在出错那步并返回 null。 */
+  async function runReproStage(period: string, index: number, base: number) {
     const upd = traceUpdater(index)
-    upd((t) => ({
-      ...t, status: 'streaming',
-      steps: [...t.steps.filter((s) => s.n !== 6),
-              { n: 6, title: '生成报告初稿', detail: '正在排复刻产线…', state: 'doing' }],
+    const stepAt = (detail: string, state: TraceStep['state'] = 'doing'): TraceStep =>
+      ({ n: base, title: '生成报告初稿', detail, state })
+    updateActive((c) => ({
+      ...c,
+      turns: c.turns.map((t, i) => (i === index
+        ? { ...t, trace: { status: 'streaming',
+                           steps: [...(t.trace ? t.trace.steps.filter((s) => s.n !== base) : []),
+                                   stepAt('正在排复刻产线…')] } }
+        : t)),
     }))
     try {
       const { job_id } = await postJob(period)
@@ -334,38 +370,69 @@ export default function DialogPage() {
         const p = await getJobProgress(job_id)
         status = p.status || status
         const latest = latestProgress(p)
-        upd((t) => ({ ...t, steps: t.steps.map((s) => s.n === 6
+        upd((t) => ({ ...t, steps: t.steps.map((s) => s.n === base
           ? { ...s, detail: latest ? `正在跑：${latest}` : '正在跑…' } : s) }))
         if (isTerminalState(status)) break
       }
       if (status !== 'completed' && status !== 'warned') {
         throw new Error(`复刻产线${taskLabel(status)}。`)
       }
-      const arts = trioLinks(await getArtifacts(job_id))
-      /* 报告初稿（docx）走平台既有的签发闸：未签发时只能看、不能下载（与生成台同款）。
-         签名本就在这次重出后失效（stale）——如实显示，不假称可下载。 */
-      const signed = await getPeriods()
-        .then((ps) => ps.find((p) => p.period === period)?.signed === true)
-        .catch(() => false)
-      const points = await getRollbackPoints(period).catch(() => [] as RollbackPoint[])
-      upd((t) => ({
-        ...t,
-        status: 'done',
-        steps: t.steps.map((s) => s.n === 6
-          ? { ...s, detail: '报告初稿 + 对勘本 + 红件清单', state: 'done' as const } : s),
-        note: okNote(doneEv, status === 'warned'),
-        result: { period, artifacts: arts, signed, archiveHref: appHref('archive', period),
-                  rollback: points.length ? { points } : undefined },
-      }))
+      upd((t) => ({ ...t, steps: t.steps.map((s) => s.n === base
+        ? { ...s, detail: '报告初稿 + 对勘本 + 红件清单', state: 'done' as const } : s) }))
+      return { jobId: job_id, status }
     } catch (e) {
       upd((t) => ({
         ...t,
         status: 'error',
-        steps: t.steps.map((s) => (s.n === 6 ? { ...s, state: 'halt' as const } : s)),
+        steps: t.steps.map((s) => (s.n === base ? { ...s, state: 'halt' as const } : s)),
         note: `报告初稿没出成：${errorNote(e, '报告初稿')}`,
         result: { period, archiveHref: appHref('archive', period), fixable: 'repro' },
       }))
+      return null
     }
+  }
+
+  /** 出好了的收尾：实产三件 + 运行档案 + 回滚出路（note 由调用方按两段结果给）。 */
+  async function finalizeDone(period: string, index: number,
+                              repro: { jobId: string; status: string }, note: string) {
+    const upd = traceUpdater(index)
+    const arts = trioLinks(await getArtifacts(repro.jobId))
+    /* 报告初稿（docx）走平台既有的签发闸：未签发时只能看、不能下载（与生成台同款）。
+       签名本就随这次重出失效（stale）——如实显示，不假称可下载。 */
+    const signed = await getPeriods()
+      .then((ps) => ps.find((p) => p.period === period)?.signed === true)
+      .catch(() => false)
+    const points = await getRollbackPoints(period).catch(() => [] as RollbackPoint[])
+    upd((t) => ({
+      ...t,
+      status: 'done',
+      note,
+      result: { period, artifacts: arts, signed, archiveHref: appHref('archive', period),
+                rollback: points.length ? { points } : undefined },
+    }))
+  }
+
+  /** 出稿（票 04/05，口径 A 两段式：灵活流 + 复刻三件套）。
+      **已有产物** → 灵活流先行，流完校验通过自动接复刻（票 04 的既定画面）；
+      **首出期次（无产物）** → 复刻先行（灵活报告只消费流水线产物），再走灵活流。 */
+  async function startRun(period: string, index: number, intent: string, fresh = false) {
+    if (!period || running) return
+    if (fresh) {
+      const repro = await runReproStage(period, index, 1)
+      if (!repro) return
+      const doneEv = await runFlexStage(period, index, intent, 2, true)
+      await finalizeDone(period, index, repro,
+        doneEv?.check_pass
+          ? okNote(doneEv, repro.status === 'warned')
+          : doneEv
+            ? '报告初稿 / 对勘本 / 红件清单已出好；AI 分析稿没过校验（先不放心用它）。三件套：'
+            : '报告初稿 / 对勘本 / 红件清单已出好；AI 分析稿没出成（去运行档案看）。三件套：')
+      return
+    }
+    const doneEv = await runFlexStage(period, index, intent, 1, false)
+    if (!doneEv?.check_pass) return          // 没过/停/错：轨迹里已明说，不出复刻
+    const repro = await runReproStage(period, index, 6)
+    if (repro) await finalizeDone(period, index, repro, okNote(doneEv, repro.status === 'warned'))
   }
 
   /** 回滚到上一版（票 05）：走既有回滚口（旧稿在 `_superseded/`；回滚本身还能再回滚）。 */
@@ -484,8 +551,46 @@ export default function DialogPage() {
                 <div className="dlg-who">文</div>
                 <div className="dlg-bub">
                   <div className="dlg-nm">文衡</div>
-                  你好。说一句话就开始，比如「帮我做 9 月的报告」——期次我来认（按数据截止月），
-                  认出来会先说给你看。
+                  {tv ? (
+                    <>
+                      你好。先说本期到哪一步了：
+                      <div className="dlg-home">
+                        <div className="dlg-home-h">{tv.title}<span>三步</span></div>
+                        <ul className="dlg-home-list">
+                          {tv.rows.map((r, j) => (
+                            <li key={r.label}
+                                className={r.mark === '✓' ? 'ok' : r.mark === '●' ? 'cur' : ''}>
+                              <span className="dlg-home-m" aria-hidden="true">{r.mark}</span>
+                              <span className="dlg-home-t">
+                                {['①', '②', '③'][j]} {r.label}
+                              </span>
+                              <span className="dlg-home-n">{r.note}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {tv.cta && (
+                          <div className="dlg-acts">
+                            {tv.cta.kind === 'gen' ? (
+                              <button type="button" className="dlg-act primary"
+                                      disabled={busy || !!running}
+                                      onClick={() => generateFromHome(home?.period ?? '')}>
+                                {tv.cta.label}
+                              </button>
+                            ) : (
+                              <a className="dlg-act primary"
+                                 href={buildPeriodUrl(`/app/?view=${tv.cta.view}`,
+                                                      home?.period ?? '')}>{tv.cta.label}</a>
+                            )}
+                          </div>
+                        )}
+                        {tv.prevNote && <p className="dlg-home-prev">{tv.prevNote}</p>}
+                      </div>
+                      也可以直接说一句，比如「帮我做 9 月的报告」。
+                    </>
+                  ) : (
+                    <>你好。说一句话就开始，比如「帮我做 9 月的报告」——期次我来认（按数据截止月），
+                    认出来会先说给你看。</>
+                  )}
                 </div>
               </div>
             )}
@@ -524,7 +629,7 @@ export default function DialogPage() {
                       {t.trace.status === 'streaming' && (
                         <p className="dlg-stream">
                           <span className="dlg-dots" aria-hidden="true"><i /><i /><i /></span>
-                          正在出稿…（要停就点输入框那个键）
+                          {running ? '正在出稿…（要停就点输入框那个键）' : '正在出稿…'}
                         </p>
                       )}
                       {t.trace.note && <p className="dlg-trk-note">{t.trace.note}</p>}
@@ -532,8 +637,10 @@ export default function DialogPage() {
                         <ResultBlock result={t.trace.result} index={i}
                                      disabled={busy || !!running}
                                      onFix={(r, idx) => {
+                                       /* 自动修复：flex＝重出灵活稿（产物已在）；
+                                          repro＝重跑两段式且复刻先行（首出失败后最稳的再试）*/
                                        if (r.fixable === 'flex') void startRun(r.period, idx, 'single_trend')
-                                       else void startRepro(r.period, idx)
+                                       else void startRun(r.period, idx, 'single_trend', true)
                                      }}
                                      onRollback={(idx, period, point) => void doRollback(idx, period, point)} />
                       )}

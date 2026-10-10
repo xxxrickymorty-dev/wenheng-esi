@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """对话前门（票 01/02）· S2 契约：`POST /api/dialog/turn`。
 
 外部行为：一轮对话 = 答复字段面（Answer）+ 合并后的槽位 + 盘点
@@ -303,6 +303,31 @@ def test_覆盖确认_回合本身不执行任何东西(tmp_path):
     assert set(after) <= set(before) | {"ai_calls.jsonl"}, "回合不该产生任何产物"
     for name, mtime in before.items():
         assert after[name] == mtime, f"{name} 被动过了——「问一次」本身不该动产物"
+
+
+# ============================================================ 2e. 票 06：本期任务（空态第一屏）
+def test_本期任务_形状与门(monkeypatch):
+    """空态第一屏：三步状态从既有产物判（服务器注入 taskview.scan 与签发核实）。"""
+    fake = {"period": "202611", "released": False, "n_missing": 4,
+            "steps": [{"key": k, "done": False} for k in ("acquire", "merge", "generate")],
+            "stuck": "acquire", "prev": {"period": "202609", "status": "signed"}}
+    import taskview
+    monkeypatch.setattr(taskview, "scan", lambda **kw: fake)
+    r = asyncio.run(app_module.api_dialog_home(_ReqJson(config.DEMO_USER)))
+    assert r["period"] == "202611" and r["stuck"] == "acquire"
+    assert [s["key"] for s in r["steps"]] == ["acquire", "merge", "generate"]
+    assert r["released"] is False and r["n_missing"] == 4
+    assert r["prev"] == {"period": "202609", "status": "signed"}
+    assert asyncio.run(app_module.api_dialog_home(_ReqJson(config.GUEST_USER))).status_code == 403
+    assert asyncio.run(app_module.api_dialog_home(_ReqJson(None))).status_code == 401
+
+
+def test_本期任务_扫描拿不到_给空形状(monkeypatch):
+    import taskview
+    monkeypatch.setattr(taskview, "scan", lambda **kw: None)
+    r = asyncio.run(app_module.api_dialog_home(_ReqJson(config.DEMO_USER)))
+    assert r == {"period": "", "released": False, "n_missing": 0,
+                 "steps": [], "stuck": "", "prev": None}
 
 
 # ============================================================ 3. 参数与权限
