@@ -36,6 +36,29 @@ INTENTS = {
 #: 规划的合法键（模型多给的键一律丢弃；纵轴类键在这里也进不来）
 _PLAN_KEYS = ("intent", "disc", "metric", "periods", "n_periods", "charts", "title")
 
+#: 校验点（`checks`）**不在** `_PLAN_KEYS` 里：它是规则产出的，模型给的会在
+#: `_validate_plan` 被一并剥掉——否则模型会专挑容易过的校验点。
+
+
+def checks_for(intent: str) -> list[dict]:
+    """本意图的校验点清单（确定性、可复现；键仅 `kind` / `target` / `expect`）。
+
+    三条锚点（spec §实现决策）：
+    - `source_trace`：数据点与来源**双向**对得上；
+    - `spec_query_match`：图（spec）声明与实际执行一致；
+    - `outline_match`：声明清单（章节 / 图表）与实际产出一致。
+    """
+    checks = [
+        {"kind": "source_trace", "target": "all_points", "expect": "bidirectional"},
+        {"kind": "spec_query_match", "target": "charts", "expect": "declared==executed"},
+        {"kind": "outline_match", "target": "sections", "expect": "declared==emitted"},
+    ]
+    if intent == "cross_compare":
+        # 横版图多（4–5 张），图表清单单独核一遍
+        checks.append({"kind": "outline_match", "target": "charts",
+                       "expect": "declared==emitted"})
+    return checks
+
 _PLAN_SYSTEM = (
     "你是学科分析报告的**章节规划器**。你只决定「写哪个学科、配哪些图」这几个选择，"
     "不要输出任何数字、不要计算、不要给纵轴范围。"
@@ -294,7 +317,9 @@ def build(src: DataSource, intent: str = "single_trend", *,
     if got is None:
         if reason is not None:                        # 规则部署 reason=None（不是失败）
             fallback["fallback_reason"] = "云端模型不可用或未通过校验，已回退规则规划"
+        fallback["checks"] = checks_for(intent)       # 两条路径都要带校验点
         return fallback
     plan = _validate_plan(src, got, intent, fallback, target)
     plan["backend"] = backend_name if plan.get("fallback_reason") is None else "rule"
+    plan["checks"] = checks_for(intent)               # 规则产出，模型给的在上面已被剥
     return plan

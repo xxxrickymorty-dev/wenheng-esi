@@ -2,7 +2,7 @@
 
 > 一页纸，给「接手的人 / 未来的自己 / AI」看。详细规格看 `../评审文档/`，本文件不重复。
 > 术语（通用语言）见 `GLOSSARY.md`；本文件只管状态、红线与运行方式。
-> 最后核对：2026-10-02。
+> 最后核对：2026-10-10。
 
 ## 这是什么
 
@@ -124,7 +124,7 @@
 ## 验收三件套（改状态相关代码后按序跑）
 
 ```bash
-uv run python -m pytest -m ""          # 全量 1013 例（默认 1008 例，5 个 slow 被 marker 排除）
+uv run python -m pytest -m ""          # 全量 1018 例（默认 1013 例，5 个 slow 被 marker 排除）
 uv run python -m uvicorn server.app:app --port 8080   # 起服务：一律 uv run；⚠ 控制台脚本直呼（uv run pytest/uvicorn）会撞中文路径 trampoline，走 python -m；起后跑 server/e2e_check.py（只读 177 断言）
 uv run python tools/verify_demo_run.py <期次>   # 写路径验收
 ```

@@ -255,6 +255,48 @@ class TestPlanner无模型也能跑:
         assert plan["backend"] == "rule"
 
 
+class Test计划含校验点:
+    """票 01：规划带 `checks`（规则生成、白名单键）；**模型塞不进来**。"""
+
+    def test_规则计划含校验点且键为白名单(self, src):
+        plan = planner.build(src, "single_trend")
+        checks = plan.get("checks")
+        assert isinstance(checks, list) and 3 <= len(checks) <= 5
+        for c in checks:
+            assert set(c) == {"kind", "target", "expect"}
+            assert c["kind"] in ("source_trace", "spec_query_match", "outline_match")
+
+    def test_横版计划也含校验点(self, src):
+        plan = planner.build(src, "cross_compare")
+        assert isinstance(plan.get("checks"), list)
+        assert 3 <= len(plan["checks"]) <= 5
+
+    def test_校验点确定性(self, src):
+        """同一意图两次规划 → 同一套校验点（可复现）。"""
+        assert planner.build(src, "single_trend")["checks"] == \
+            planner.build(src, "single_trend")["checks"]
+
+    def test_模型给的校验点被剥离(self, src):
+        """模型自己塞 checks → 落盘的是**规则**那套，不是它的。"""
+        from _ai_helpers import ScriptedBrain, Turn
+        import ai
+        text = ('{"disc": "Chemistry", '
+                '"charts": [{"kind": "cnci", "disc": "Chemistry"}], '
+                '"checks": [{"kind": "hack", "target": "x", "expect": "y"}]}')
+        with ai.using(brain=ScriptedBrain([Turn(text=text)])):
+            plan = planner.build(src, "single_trend")
+        assert plan["backend"] == "scripted", "本用例要走模型轮，不然断言是空的"
+        assert plan["checks"], "模型轮也必须带规则校验点"
+        assert all(c["kind"] != "hack" for c in plan["checks"])
+
+    def test_产物flex_plan落盘含校验点(self, flex_report_out):
+        """缝 S1：跑完一条灵活报告，flex_plan.json 里就有 checks。"""
+        d = pathlib.Path(flex_report_out["dir"])
+        plan = json.loads((d / "flex_plan.json").read_text(encoding="utf-8"))
+        checks = plan.get("checks")
+        assert isinstance(checks, list) and 3 <= len(checks) <= 5
+
+
 # ================================================================ 2. 不可分叉
 class Test数字可回溯:
     """验收第 6 条：每个数字能指到查询记录与台账来源。"""
