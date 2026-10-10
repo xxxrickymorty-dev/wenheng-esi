@@ -1,0 +1,82 @@
+{
+  "meta": {
+    "name": "云南大学数字学科阅览室·本地评审稿",
+    "description": "以用户提供的夕光校园主图和中庭参照为基础的桌面端游客陈列馆静态设计 DNA；仅预示后续空间叙事，不代表已完成三维实现或素材发布授权。",
+    "source_references": [
+      "用户提供：codex-clipboard-deabf3f8-0de3-4ffb-97a5-9ba260dbdb0b.png（外景，1672×941）",
+      "用户提供：codex-clipboard-87ba2788-1be9-4df0-9c50-0ad035ce5aa2.jpg（中庭仰视，1280×1701）",
+      "用户提供：codex-clipboard-57395394-e7bf-481a-ad95-753d83cd22cf.jpg（环廊俯视，1280×1701）",
+      "用户提供：codex-clipboard-066c4e49-64ca-49a7-88e9-28e7cf969023.jpg（穹顶仰视，1280×1920）"
+    ],
+    "created_at": "2026-09-25"
+  },
+  "design_system": {
+    "color": {
+      "palette_type": "split-complementary",
+      "primary": { "hex": "#1D291F", "role": "深绿文字、导航与静态阅览入口底色" },
+      "secondary": { "hex": "#F2E2D2", "role": "白石与纸页感的暖色表面" },
+      "accent": { "hex": "#3D8ACD", "role": "夕光外景中的天际光轨与键盘焦点" },
+      "neutral": {
+        "scale": ["#FFFDF8", "#F2E2D2", "#D6C6B4", "#8A786B", "#3B2320", "#1D291F"],
+        "usage": "浅色用于纸面和大段正文，最深两档用于正文与深色区域；深底文字仅使用白石色，保持可读性。"
+      },
+      "semantic": { "success": "#2E6B4B", "warning": "#9D641B", "error": "#9A3429", "info": "#3D8ACD" },
+      "surface": { "background": "#F2E2D2", "card": "#FFFDF8", "elevated": "#FFFFFF" },
+      "contrast_strategy": "深绿或深木红在浅石材上主导；图片上的标题使用白石色、细描边和短阴影，而非整体压暗主图。",
+      "measurement": { "k": 8, "sampling": { "method": "deterministic_stratified", "max_pixels": 160000, "sampled_pixels": 160000 } },
+      "measured_palette": [
+        { "hex": "#CDB4AD", "coverage": 0.1573, "role": "外景背景" },
+        { "hex": "#1D291F", "coverage": 0.1478, "role": "外景深色文字/树影" },
+        { "hex": "#F2E2D2", "coverage": 0.1337, "role": "石材表面" },
+        { "hex": "#3D8ACD", "coverage": 0.128, "role": "外景光轨强调" },
+        { "hex": "#D6C6B4", "coverage": 0.1828, "role": "室内石材背景" },
+        { "hex": "#813626", "coverage": 0.0658, "role": "室内木红栏杆" },
+        { "hex": "#D2E5EA", "coverage": 0.1205, "role": "穹顶天光" }
+      ]
+    },
+    "typography": {
+      "type_scale": {
+        "display": { "size": "clamp(60px, 6.3vw, 112px)", "weight": "700", "line_height": "0.9", "tracking": "0.02em" },
+        "heading_1": { "size": "clamp(38px, 4vw, 68px)", "weight": "700", "line_height": "1.05", "tracking": "0.03em" },
+        "heading_2": { "size": "34px", "weight": "700", "line_height": "1.18", "tracking": "0.02em" },
+        "heading_3": { "size": "22px", "weight": "700", "line_height": "1.3", "tracking": "0.02em" },
+        "body": { "size": "17px", "weight": "400", "line_height": "1.8", "tracking": "0.03em" },
+        "body_small": { "size": "14px", "weight": "400", "line_height": "1.7", "tracking": "0.04em" },
+        "caption": { "size": "13.5px", "weight": "500", "line_height": "1.5", "tracking": "0.08em" },
+        "overline": { "size": "12px", "weight": "700", "line_height": "1.4", "tracking": "0.18em" }
+      },
+      "font_families": { "heading": "STKaiti, KaiTi, FangSong, serif", "body": "Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif", "mono": "Consolas, monospace" },
+      "font_style_notes": "以系统可用的楷体作标题，搭配清晰的中文无衬线正文；不加载网络字体。"
+    },
+    "spacing": { "base_unit": "8px", "scale": ["8px", "16px", "24px", "32px", "48px", "72px", "112px", "160px"], "content_density": "spacious", "section_rhythm": "以112–160px为章节间距；图像段落以紧凑标注连接。" },
+    "layout": { "grid_system": "12栏桌面网格", "max_content_width": "1440px", "columns": "12", "gutter": "24px", "breakpoints": "本审稿仅覆盖1180px及以上桌面视口", "alignment_tendency": "中轴构图为主，文字区刻意避开建筑和穹顶焦点。" },
+    "shape": { "border_radius": { "small": "2px", "medium": "4px", "large": "8px", "pill": "999px" }, "border_usage": "细金色或深绿色1px线条仅用于信息边界", "divider_style": "1px solid rgba(29,41,31,.22)" },
+    "elevation": { "shadow_style": "柔和、低对比层影", "levels": { "low": "0 8px 24px rgba(44,31,21,.08)", "medium": "0 18px 46px rgba(44,31,21,.15)", "high": "0 30px 76px rgba(44,31,21,.22)" }, "depth_cues": "照片裁切、纸页层叠和细线，不模拟三维组件。" },
+    "iconography": { "style": "内联线性 SVG", "stroke_weight": "1.7px", "size_scale": ["16px", "20px", "24px"], "preferred_set": "自绘几何图标" },
+    "motion": { "easing": "cubic-bezier(.22,.61,.36,1)", "duration_scale": { "micro": "160ms", "normal": "400ms", "macro": "900ms" }, "entrance_pattern": "首屏细微上移显现，图片不做闪烁", "exit_pattern": "透明度淡出", "philosophy": "克制、电影式；尊重减少动态效果。" },
+    "components": { "button_style": "白石底细线按钮，悬停时仅改变底色与箭头位置", "input_style": "本稿无输入控件", "card_style": "浅石纸页、硬朗细线、无大圆角", "navigation_pattern": "固定透明顶栏，页内锚点", "modal_style": "深绿半透明遮罩上的白石说明卡", "list_style": "小型编号和细线分隔", "component_notes": "所有交互控件可用Tab访问且有清晰焦点框。" }
+  },
+  "design_style": {
+    "aesthetic": { "mood": ["庄重", "温暖", "开阔", "可探索"], "visual_metaphor": "从夕光门廊步入由穹顶天光串联的知识环廊", "era_influence": "校园古典秩序与当代展陈叙事", "genre": "文化机构的沉浸式编辑设计", "personality_traits": ["克制", "笃定", "有层次", "不炫技"], "adjectives": ["中轴", "白石", "木红", "天光", "环廊"] },
+    "visual_language": { "complexity": "rich", "ornamentation": "subtle accents", "whitespace_usage": "图片和文字之间留出明确呼吸区", "visual_weight_distribution": "首屏照片占重，内景序列逐步收束", "focal_strategy": "外景门廊→穹顶→环廊→阅览入口的单线焦点", "contrast_level": "中高", "texture_usage": "只使用原图中的石材、木材与天光纹理" },
+    "composition": { "hierarchy_method": "尺度对比与空间隔离", "balance_type": "symmetric", "flow_direction": "自上而下的入馆动线", "grouping_strategy": "每个空间镜头对应一段可读的建筑叙事", "negative_space_role": "保护建筑主体和穹顶，不让文字遮挡关键构图。" },
+    "imagery": { "photo_treatment": "保持原图饱和度和夕光，局部裁切突出轴线；不覆以重色蒙版", "illustration_style": "无插画替代建筑", "graphic_elements": "极细的中轴线、编号、视线引导线", "pattern_usage": "轻微径向线条呼应穹顶", "image_shape": "横幅全出血与竖幅裁切并置" },
+    "interaction_feel": { "feedback_style": "细线、焦点框、文字更新", "hover_behavior": "按钮箭头平移，图片轻微放大", "transition_personality": "smooth glide", "loading_style": "无加载伪装；离线内容立即可见", "microinteraction_density": "low" },
+    "brand_voice_in_ui": { "tone": "克制而有邀请感", "formality": "正式", "cta_style": "友好邀请", "empty_state_approach": "明确说明本地评审与后续接入边界", "error_tone": "说明下一步，不展示技术细节" }
+  },
+  "visual_effects": {
+    "overview": { "effect_intensity": "subtle-accent", "performance_tier": "lightweight", "fallback_strategy": "减少动态效果时停用所有过渡与视差，保留完整静态画面", "primary_technology": "CSS only" },
+    "background_effects": { "type": "none", "description": "不使用覆盖主图的背景特效", "technology": "CSS", "params": { "color_palette": ["#F2E2D2", "#1D291F"], "speed": "0", "density": "0", "opacity": "0", "blend_mode": "normal" } },
+    "particle_systems": { "enabled": false, "type": "none", "description": "不添加粒子", "technology": "none", "params": { "count": "0", "shape": "none", "size_range": "0", "movement_pattern": "none", "color_behavior": "none", "interaction": "none", "spawn_area": "none" } },
+    "3d_elements": { "enabled": false, "type": "none", "description": "本静态稿仅用镜头序列预示未来空间体验，不声称已实现三维模型。", "technology": "none", "params": { "renderer": "none", "lighting": "none", "camera": "none", "materials": "none", "geometry": "none", "post_processing": [], "interaction_model": "none" } },
+    "shader_effects": { "enabled": false, "type": "none", "description": "不使用着色器", "technology": "none", "params": { "uniforms": [], "vertex_manipulation": "none", "fragment_output": "none", "noise_type": "none", "distortion": "none" } },
+    "scroll_effects": { "parallax": { "enabled": false, "layers": "0", "depth_range": "0", "speed_curve": "none" }, "scroll_triggered_animations": { "enabled": true, "trigger_points": "图片段落进入视口", "animation_type": "fade-up", "scrub_behavior": "triggered once" }, "scroll_morphing": { "enabled": false, "description": "不做形变" } },
+    "text_effects": { "type": "none", "description": "标题以静态排印为主", "technology": "CSS", "params": { "split_strategy": "none", "animation_per_unit": "none", "stagger": "0", "effect_style": "none" } },
+    "cursor_effects": { "enabled": false, "type": "none", "description": "保留系统光标", "params": { "shape": "none", "size": "0", "blend_mode": "normal", "trail": "none", "interaction_zone": "none" } },
+    "image_effects": { "type": "reveal-clip", "description": "图片入视口时以轻微裁切显现，减少动态效果时关闭。", "technology": "CSS + IntersectionObserver", "params": { "filter_pipeline": "none", "hover_transform": "scale(1.015)", "reveal_animation": "clip-path reveal", "distortion_type": "none" } },
+    "glassmorphism_neumorphism": { "enabled": false, "style": "none", "params": { "blur_radius": "0", "transparency": "0", "border_treatment": "none", "shadow_type": "none", "light_source_angle": "none" } },
+    "canvas_drawings": { "enabled": false, "type": "none", "description": "不使用Canvas", "technology": "none", "params": { "draw_method": "none", "animation_loop": "none", "color_scheme": "none", "responsiveness": "none", "interaction": "none" } },
+    "svg_animations": { "enabled": false, "type": "none", "description": "无SVG动画", "params": { "animation_method": "none", "path_morphing": "none", "stroke_animation": "none", "filter_effects": "none" } },
+    "composite_notes": "主图保留原有蓝色光轨和晚霞；页面自身不覆盖假3D、粒子或深色滤镜。"
+  }
+}
