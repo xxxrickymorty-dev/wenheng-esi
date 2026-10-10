@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>原型 · 校验三条锚点拦得住吗</title>
+<style>
+  :root { --ink:#1D291F; --zhu:#9E2B25; --paper:#F7F4EC; --line:#DDD6C6; --mut:#6E6A5E; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink);
+         font:15px/1.7 "Noto Serif SC","Songti SC",Georgia,serif; }
+  main { max-width:900px; margin:0 auto; padding:40px 22px 80px; }
+  h1 { font-size:23px; margin:0 0 6px; }
+  h2 { font-size:16px; margin:34px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+  .q { background:#fff; border:1px solid var(--line); border-left:4px solid var(--zhu);
+       padding:12px 16px; margin:14px 0 0; }
+  .q b { color:var(--zhu); }
+  .muted { color:var(--mut); font-size:13px; }
+  .panel { background:#fff; border:1px solid var(--line); padding:14px 18px; margin-top:10px; }
+  .row { display:flex; gap:10px; padding:5px 0; border-bottom:1px dashed var(--line); font-size:14px; }
+  .row:last-child { border-bottom:0; }
+  .row .k { flex:0 0 130px; color:var(--mut); }
+  .verdict { display:flex; gap:12px; align-items:flex-start; padding:9px 0; border-bottom:1px dashed var(--line); }
+  .verdict:last-child { border-bottom:0; }
+  .pill { flex:0 0 auto; border-radius:2px; padding:1px 9px; font-size:13px; font-family:ui-monospace,monospace; }
+  .pass { background:#E7EFE7; color:#1D291F; }
+  .fail { background:#F6E3E2; color:var(--zhu); }
+  .vac  { background:#F1EADB; color:#8a6d1f; }
+  .why { font-size:13px; color:var(--mut); }
+  button { font:inherit; font-size:14px; background:#fff; border:1px solid var(--ink);
+           color:var(--ink); padding:6px 13px; margin:4px 6px 4px 0; cursor:pointer; border-radius:2px; }
+  button:hover { background:var(--ink); color:#fff; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .tabs button { border-color:var(--line); }
+  .tabs button[aria-selected="true"] { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .walk { background:#fff; border:1px solid var(--line); padding:14px 18px; margin-top:10px; }
+  .walk p { margin:0 0 8px; font-size:14px; }
+  .step { font-size:13px; color:var(--mut); margin-top:10px; }
+  code { font-family:ui-monospace,Consolas,monospace; font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>原型 · 校验的三条锚点拦得住吗</h1>
+  <p class="muted">抛弃式原型（票 02 之前）。数据是 202607 灵活报告真实产物的片段；逻辑在页内一个纯模块里，验证完可整块搬进 <code>src/flexible/</code>。</p>
+
+  <div class="q">
+    <b>要回答的问题</b>：三条锚点——①来源链双向 ②图声明↔执行一致 ③章节声明↔产出一致——<br>
+    在真实产物上，能不能<strong>坏例必红、好例全绿</strong>？有没有哪条其实<strong>无从比对（空转）</strong>？
+  </div>
+
+  <h2>现在的状态</h2>
+  <div class="panel" id="state"></div>
+
+  <h2>三条锚点的判定</h2>
+  <div class="panel" id="verdicts"></div>
+
+  <h2>自由试（随便点）</h2>
+  <div class="panel">
+    <div id="free"></div>
+    <p class="muted" style="margin:8px 0 0">每次点击后，上面的「状态」与「判定」都会重画。</p>
+  </div>
+
+  <h2>跟着走（四个场景）</h2>
+  <div class="tabs" id="tabs"></div>
+  <div class="walk" id="walk"></div>
+
+  <script>
+  /* ===================================================================
+     纯模块：候选的锚点实现 + 破坏注入。无 DOM 依赖，可整块提取。
+     =================================================================== */
+  const CLEAN = {
+    plan: {
+      title: "分子生物学与遗传学发展态势诊断",
+      charts: [
+        { kind: "cites_threshold", disc: "Molecular Biology & Genetics" },
+        { kind: "papers_delta",    disc: "Molecular Biology & Genetics" },
+        { kind: "rank_pct",        disc: "Molecular Biology & Genetics" }
+      ],
+      checks: [
+        { kind: "source_trace",     target: "all_points", expect: "bidirectional" },
+        { kind: "spec_query_match", target: "charts",     expect: "declared==executed" },
+        { kind: "outline_match",    target: "sections",   expect: "declared==emitted" }
+      ]
+      /* ← 注意：没有 sections 键。这是真的（实核 flex_plan.json） */
+    },
+    specs: [
+      { kind: "cites_threshold", disc: "Molecular Biology & Genetics" },
+      { kind: "papers_delta",    disc: "Molecular Biology & Genetics" },
+      { kind: "rank_pct",        disc: "Molecular Biology & Genetics" }
+    ],
+    sources: [
+      { kind: "series", disc: "Molecular Biology & Genetics", metric: "proximity_1pct",
+        points: [ { period: "202605", value: 0.8021, source: { dataset: "ledger_long.parquet", metric: "proximity_1pct", discipline: "Molecular Biology & Genetics", period: "202605" } },
+                  { period: "202607", value: 0.8450, source: { dataset: "ledger_long.parquet", metric: "proximity_1pct", discipline: "Molecular Biology & Genetics", period: "202607" } } ] },
+      { kind: "series", disc: "Molecular Biology & Genetics", metric: "rank",
+        points: [ { period: "202607", value: 143, source: { dataset: "ledger_long.parquet", metric: "rank", discipline: "Molecular Biology & Genetics", period: "202607" } } ] },
+      { kind: "series", disc: "Molecular Biology & Genetics", metric: "total_cites",
+        points: [ { period: "202607", value: 11558, source: { dataset: "ledger_long.parquet", metric: "total_cites", discipline: "Molecular Biology & Genetics", period: "202607" } } ] }
+    ],
+    sections: ["一、当期概况", "二、关键指标走势", "三、相对位次",
+               "四、待验证假设（规则提出，非结论）", "五、需人工判断（本产线不生成专业判断）"]
+  };
+
+  const MUTATIONS = {
+    del_source:      { label: "删掉一条来源条目",     apply: a => { a.sources.pop(); } },
+    blank_chain:     { label: "挖空一条点的出处",     apply: a => { a.sources[0].points[0].source = {}; } },
+    add_spec:        { label: "图上多一张没声明的图", apply: a => { a.specs.push({ kind: "cnci", disc: "Molecular Biology & Genetics" }); } },
+    drop_spec:       { label: "声明了的图没执行",     apply: a => { a.specs.pop(); } },
+    drop_section:    { label: "声明的章节没产出",     apply: a => { a.sections.pop(); } }
+  };
+
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function key(x) { return x.kind + "|" + (x.disc || ""); }
+
+  /* ① source_trace / all_points / bidirectional */
+  function anchor1(art) {
+    const fwd = [];                                     // 每个点要有出处
+    for (const s of art.sources)
+      for (const p of s.points) {
+        const src = p.source || {};
+        if (!src.dataset || !src.metric || !src.discipline || !src.period)
+          fwd.push(s.metric + "·" + p.period);
+      }
+    const bwd = [];                                     // 每条来源要有落点（被画）
+    const drawn = new Set(art.specs.map(key));
+    for (const s of art.sources) if (!drawn.has(key(s))) bwd.push(key(s));
+    return { name: "① 来源链双向", pass: !fwd.length && !bwd.length,
+             why: [...fwd.map(x => "点无出处：" + x), ...bwd.map(x => "来源未被画：" + x)] };
+  }
+
+  /* ② spec_query_match / charts / declared==executed */
+  function anchor2(art) {
+    const d = art.plan.charts.map(key), e = art.specs.map(key);
+    const miss  = d.filter(x => !e.includes(x));        // 声明了没执行
+    const extra = e.filter(x => !d.includes(x));        // 执行了没声明
+    return { name: "② 图声明↔执行", pass: !miss.length && !extra.length,
+             why: [...miss.map(x => "声明未执行：" + x), ...extra.map(x => "执行未声明：" + x)] };
+  }
+
+  /* ③ outline_match / sections / declared==emitted */
+  function anchor3(art) {
+    if (!art.plan.sections)
+      return { name: "③ 章节声明↔产出", pass: true, vacuous: true,
+               why: ["计划里没有 sections 声明 —— 无从比对，恒绿（空转）"] };
+    const miss = art.plan.sections.filter(x => !art.sections.includes(x));
+    return { name: "③ 章节声明↔产出", pass: !miss.length,
+             why: miss.map(x => "声明未产出：" + x) };
+  }
+
+  function runChecks(art) { return [anchor1(art), anchor2(art), anchor3(art)]; }
+
+  /* ===================================================================
+     薄壳：只负责画和按钮。逻辑全在上面。
+     =================================================================== */
+  let art = clone(CLEAN);
+
+  function render() {
+    document.getElementById("state").innerHTML = [
+      row("计划·声明图", art.plan.charts.map(c => c.kind).join("、")),
+      row("计划·章节声明", art.plan.sections ? art.plan.sections.join("、") : "<b style='color:#9E2B25'>（没有这个键）</b>"),
+      row("实际执行图", art.specs.map(c => c.kind).join("、")),
+      row("来源条目", art.sources.map(s => s.metric + "(" + s.points.length + "点)").join("、")),
+      row("产出章节", art.sections.join("、"))
+    ].join("");
+
+    document.getElementById("verdicts").innerHTML = runChecks(art).map(v => {
+      const cls = v.vacuous ? "vac" : (v.pass ? "pass" : "fail");
+      const txt = v.vacuous ? "空转" : (v.pass ? "通过" : "拦下");
+      return '<div class="verdict"><span class="pill ' + cls + '">' + txt + '</span><div>' +
+             '<b>' + v.name + '</b><div class="why">' +
+             (v.why.length ? v.why.join("<br>") : "无异常") + "</div></div></div>";
+    }).join("");
+  }
+  function row(k, v) { return '<div class="row"><span class="k">' + k + '</span><span>' + v + "</span></div>"; }
+
+  document.getElementById("free").innerHTML =
+    Object.entries(MUTATIONS).map(([k, m]) => '<button data-mut="' + k + '">' + m.label + "</button>").join("") +
+    '<button data-reset="1">↺ 恢复干净</button>';
+  document.getElementById("free").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.reset) art = clone(CLEAN); else MUTATIONS[b.dataset.mut].apply(art);
+    render();
+  });
+
+  const SCENARIOS = [
+    { id: "clean", title: "干净对照", desc: "什么都不破坏。三条锚点应当全绿——否则就是误报。",
+      steps: ["reset"] },
+    { id: "src", title: "来源被动过", desc: "先删一条来源条目，再挖空一条点的出处。看 ① 是否分别从两个方向拦下。",
+      steps: ["reset", "del_source", "blank_chain"] },
+    { id: "chart", title: "图对不上", desc: "图上多一张没声明的图，再让声明的一张图没执行。看 ② 是否双向都拦。",
+      steps: ["reset", "add_spec", "drop_spec"] },
+    { id: "sect", title: "章节没产出", desc: "把产出的章节删掉一节。看 ③ —— 它有没有东西可比。",
+      steps: ["reset", "drop_section"] }
+  ];
+  let cur = 0, stepIdx = 0;
+  const STEP_LABEL = { reset: "↺ 恢复干净" };
+  Object.entries(MUTATIONS).forEach(([k, m]) => STEP_LABEL[k] = m.label);
+
+  function renderTabs() {
+    document.getElementById("tabs").innerHTML = SCENARIOS.map((s, i) =>
+      '<button data-tab="' + i + '" aria-selected="' + (i === cur) + '">' + s.title + "</button>").join("");
+    const s = SCENARIOS[cur];
+    document.getElementById("walk").innerHTML =
+      "<p>" + s.desc + "</p><div>" +
+      s.steps.map((st, i) => '<button data-step="' + i + '">' + (i + 1) + ". " + STEP_LABEL[st] + "</button>").join("") +
+      '</div><div class="step" id="stepinfo">点第 1 步开始（会先重置到干净状态）。</div>';
+  }
+  document.getElementById("tabs").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    cur = +b.dataset.tab; stepIdx = 0; art = clone(CLEAN); renderTabs(); render();
+  });
+  document.getElementById("walk").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const st = SCENARIOS[cur].steps[+b.dataset.step];
+    if (st === "reset") { art = clone(CLEAN); stepIdx = 0; }
+    else { MUTATIONS[st].apply(art); stepIdx = +b.dataset.step + 1; }
+    const next = SCENARIOS[cur].steps[stepIdx];
+    document.getElementById("stepinfo").textContent =
+      next ? "下一步：" + STEP_LABEL[next] : "走完了 —— 看上面的判定。";
+    render();
+  });
+
+  renderTabs(); render();
+  </script>
+</main>
+</body>
+</html>
