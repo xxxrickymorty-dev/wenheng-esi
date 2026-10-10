@@ -144,8 +144,6 @@ ul.items .f{margin-left:auto;font-family:var(--mono);font-size:12.5px;color:var(
 @keyframes blink{50%{opacity:0}}
 .stream{display:flex;align-items:center;gap:9px;margin-top:10px;
   font-size:14px;color:var(--ink-3)}
-.stream .stop{border:1px solid var(--line);background:var(--card);border-radius:999px;
-  padding:3px 13px;font:inherit;font-size:13.5px;cursor:pointer;color:var(--ink-2)}
 .dots i{display:inline-block;width:5px;height:5px;border-radius:999px;background:var(--ink-3);
   margin-right:3px;animation:up .9s infinite}
 .dots i:nth-child(2){animation-delay:.15s} .dots i:nth-child(3){animation-delay:.3s}
@@ -159,8 +157,13 @@ ul.items .f{margin-left:auto;font-family:var(--mono);font-size:12.5px;color:var(
   border-radius:16px;background:var(--bg);padding:11px 13px}
 .box textarea{flex:1;border:0;background:transparent;resize:none;font:inherit;
   color:var(--ink);height:26px;outline:none}
-.box .send{flex:0 0 auto;width:38px;height:38px;border-radius:999px;border:0;
-  background:var(--zhu);color:#fff;font-size:17px;cursor:pointer}
+.box .send,.box .stop{flex:0 0 auto;width:38px;height:38px;border-radius:999px;border:0;
+  background:var(--zhu);color:#fff;font-size:17px;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center}
+/* 流式进行中：发送键**原地**变停止键（点它就停） */
+.box .stop{display:none;background:var(--ink);font-size:13px}
+html[data-s="jul"] .box .send{display:none}
+html[data-s="jul"] .box .stop{display:inline-flex}
 .under{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:12.5px;color:var(--ink-3)}
 .under .l{margin-left:auto}
 
@@ -174,8 +177,12 @@ ul.items .f{margin-left:auto;font-family:var(--mono);font-size:12.5px;color:var(
 .dev button[aria-pressed="true"]{background:var(--zhu);border-color:var(--zhu);color:#fff}
 
 [data-scene]{display:none}
-html[data-s="sep"] [data-scene~="sep"], html[data-s="jul"] [data-scene~="jul"]{display:block}
-html[data-s="sep"] .turn[data-scene~="sep"], html[data-s="jul"] .turn[data-scene~="jul"]{display:flex}
+html[data-s="sep"] [data-scene~="sep"],
+html[data-s="jul"] [data-scene~="jul"],
+html[data-s="done"] [data-scene~="done"]{display:block}
+html[data-s="sep"] .turn[data-scene~="sep"],
+html[data-s="jul"] .turn[data-scene~="jul"],
+html[data-s="done"] .turn[data-scene~="done"]{display:flex}
 </style>
 </head>
 <body>
@@ -202,7 +209,8 @@ html[data-s="sep"] .turn[data-scene~="sep"], html[data-s="jul"] .turn[data-scene
     <span class="t">审核用（上线整块删除）· 看哪个场景：</span>
     <div class="row">
       <button aria-pressed="true" onclick="scene('sep',this)">① 9 月的（未发布）</button>
-      <button aria-pressed="false" onclick="scene('jul',this)">② 7 月的（齐 → 出稿）</button>
+      <button aria-pressed="false" onclick="scene('jul',this)">② 7 月的（流式中）</button>
+      <button aria-pressed="false" onclick="scene('done',this)">③ 7 月的（出好了）</button>
     </div>
   </div>
 
@@ -213,7 +221,7 @@ html[data-s="sep"] .turn[data-scene~="sep"], html[data-s="jul"] .turn[data-scene
 <section class="main">
   <div class="topbar">
     <span class="ttl" data-scene="sep">做 202609 的报告</span>
-    <span class="ttl" data-scene="jul">做 202607 的报告</span>
+    <span class="ttl" data-scene="jul done">做 202607 的报告</span>
     <div class="right">
       <details class="wk">
         <summary>工作台 ▾</summary>
@@ -230,7 +238,7 @@ html[data-s="sep"] .turn[data-scene~="sep"], html[data-s="jul"] .turn[data-scene
         <button aria-pressed="false" onclick="palette('zhu',this)">朱砂</button>
       </span>
       <span class="slot" data-scene="sep"><span class="k">期次</span><span class="v">202609</span><span class="x">✕</span></span>
-      <span class="slot" data-scene="jul"><span class="k">期次</span><span class="v">202607</span><span class="x">✕</span></span>
+      <span class="slot" data-scene="jul done"><span class="k">期次</span><span class="v">202607</span><span class="x">✕</span></span>
       <span class="slot"><span class="k">意图</span><span class="v">出报告</span><span class="x">✕</span></span>
     </div>
   </div>
@@ -280,12 +288,12 @@ html[data-s="sep"] .turn[data-scene~="sep"], html[data-s="jul"] .turn[data-scene
       </div>
 
       <!-- ===== 场景②：7 月 ===== -->
-      <div class="turn me" data-scene="jul">
+      <div class="turn me" data-scene="jul done">
         <div class="who">你</div>
         <div class="bub">帮我做7月份的报告</div>
       </div>
 
-      <div class="turn wh" data-scene="jul">
+      <div class="turn wh" data-scene="jul done">
         <div class="who">文</div>
         <div class="bub">
           <div class="nm">文衡</div>
@@ -310,7 +318,7 @@ html[data-s="sep"] .turn[data-scene~="sep"], html[data-s="jul"] .turn[data-scene
         </div>
       </div>
 
-      <div class="turn me" data-scene="jul">
+      <div class="turn me" data-scene="jul done">
         <div class="who">你</div>
         <div class="bub">核完了，继续</div>
       </div>
@@ -335,15 +343,14 @@ html[data-s="sep"] .turn[data-scene~="sep"], html[data-s="jul"] .turn[data-scene
 
           <div class="stream">
             <span class="dots"><i></i><i></i><i></i></span>
-            <span>正在出稿…（逐段出，可以随时打断）</span>
-            <button class="stop">停止</button>
+            <span>正在出稿…（逐段出；要停就点输入框那个键）</span>
           </div>
 
           <p class="foot-note">本次对话与全部工具调用已记入运行档案（可回放）。</p>
         </div>
       </div>
 
-      <div class="turn wh" data-scene="jul">
+      <div class="turn wh" data-scene="done">
         <div class="who">文</div>
         <div class="bub">
           <div class="nm">文衡</div>
@@ -377,6 +384,7 @@ html[data-s="sep"] .turn[data-scene~="sep"], html[data-s="jul"] .turn[data-scene
       <div class="box">
         <textarea rows="1" placeholder="说一句话，比如「帮我做 9 月的报告」…"></textarea>
         <button class="send" title="发送">↑</button>
+        <button class="stop" title="停止">■</button>
       </div>
     </div>
   </div>
@@ -394,7 +402,12 @@ function palette(v, btn){
     b.setAttribute("aria-pressed", String(b === btn)));
 }
 const q = new URLSearchParams(location.search);
-if (q.get("s") === "jul") document.documentElement.dataset.s = "jul";
+const s = q.get("s");
+if (s === "jul" || s === "done") {
+  document.documentElement.dataset.s = s;
+  document.querySelectorAll(".dev button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.getAttribute("onclick").indexOf("'" + s + "'") >= 0)));
+}
 </script>
 </body>
 </html>
