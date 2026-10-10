@@ -610,7 +610,12 @@ def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
                               "backend": plan.get("backend"),
                               "fallback_reason": plan.get("fallback_reason"),
                               "disc": plan.get("disc") or "", "mode": mode,
-                              "outline": titles})
+                              "outline": titles,
+                              # 轨迹独白的数据（展示层只读，不现算）：
+                              # 挑学科＝候选前三（规划那刻记）；配图＝图型与理由
+                              "considered": plan.get("considered") or [],
+                              "charts": [{"kind": c.get("kind"), "why": c.get("why")}
+                                         for c in plan.get("charts") or []]})
 
     period_name = pathlib.Path(out_dir).name
     specs_out: list[dict] = []
@@ -654,6 +659,8 @@ def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
                           "backend": plan["backend"], "mode": mode,
                           "title": plan.get("title"),
                           "check_pass": bool(check.get("pass")),
+                          "n_sources": len(built["sources"]),
+                          "n_sections": len(built["blocks"]),
                           "write": meta["write"]})
     return result
 
@@ -676,12 +683,19 @@ def generate(out_dir, intent: str = "single_trend", *,
                      polish=polish, plan=plan, write=write)
 
 
+class _StopGeneration(Exception):
+    """内部信号：should_stop 为真时从事件回调里抛出，让生成就地收手。"""
+
+
 def generate_stream(out_dir, intent: str = "single_trend", *, disc=None,
-                    metric=None, plan=None, write=False):
-    """流式产出（NDJSON 事件）：`status → plan → section×N → done`（或 `error`）。
+                    metric=None, plan=None, write=False, should_stop=None):
+    """流式产出（NDJSON 事件）：`status → plan → section×N → done`（或 `error`/`stopped`）。
 
     事件在**真实的节点**发出（规划完成 / 每节完成），不做假进度；
     生成在后台线程跑，本生成器只负责把事件转出来（FastAPI 同步生成器逐块发）。
+
+    `should_stop`：可选回调（停止键喊停）——每次事件前询问，为真即收手，
+    终态事件 `stopped`；**产物在收尾才写盘**，停在中途就什么都没落（图的半成品除外）。
     """
     import queue
     import threading
@@ -690,12 +704,16 @@ def generate_stream(out_dir, intent: str = "single_trend", *, disc=None,
     q: queue.Queue = queue.Queue()
 
     def ev(kind, payload):
+        if should_stop is not None and should_stop():
+            raise _StopGeneration()
         q.put((kind, payload))
 
     def worker():
         try:
             _generate(out_dir, intent, disc=disc, metric=metric, plan=plan,
                       write=write, on_event=ev)
+        except _StopGeneration:
+            q.put(("stopped", {}))
         except Exception as e:                                       # noqa: BLE001
             q.put(("error", {"message": f"{type(e).__name__}：{str(e)[:160]}"}))
 
@@ -703,7 +721,7 @@ def generate_stream(out_dir, intent: str = "single_trend", *, disc=None,
     while True:
         kind, payload = q.get()
         yield {"event": kind, **payload}
-        if kind in ("done", "error"):
+        if kind in ("done", "error", "stopped"):
             return
 
 

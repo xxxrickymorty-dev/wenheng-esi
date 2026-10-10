@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """对话前门（票 01/02）：期次识别 + 盘点（缝 S1，穿过 `src/ai` 能力口）。
 
 外部行为：说一句话 → 应答里**先说出理解**（数据截至 2026-09 → 期次 202609）；
@@ -171,7 +171,7 @@ def test_核完了_核对通过_进入出稿(tmp_path):
     ans = run_dialog("核完了，继续", root=tmp_path, period="202607", inventory=inv)
     assert "核对通过" in ans.text and "开始出稿" in ans.text
     assert ans.data["act"] == "proceed" and ans.data["verdict"] == "ready"
-    assert ans.data["run"] == {"period": "202607", "auto": True}
+    assert ans.data["run"] == {"period": "202607", "auto": True, "intent": "single_trend"}
     assert ans.data["actions"] == []
 
 
@@ -198,7 +198,7 @@ def test_出稿_产物已在_先问一次不自动跑(tmp_path):
     inv = fake_inventory("202607", released=True)
     ans = run_dialog("核完了，继续", root=tmp_path, period="202607", inventory=inv)
     assert "已经有产物" in ans.text and "覆盖" in ans.text
-    assert ans.data["run"] == {"period": "202607", "auto": False}, \
+    assert ans.data["run"] == {"period": "202607", "auto": False, "intent": "single_trend"}, \
         "产物已在：先问一次，绝不自动覆盖"
     assert {"kind": "run", "period": "202607", "text": "覆盖重出"} in ans.data["actions"]
     assert {"kind": "dismiss", "text": "保留，我先看看旧的"} in ans.data["actions"]

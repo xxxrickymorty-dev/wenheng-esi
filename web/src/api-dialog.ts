@@ -33,8 +33,9 @@ export type DialogAction = {
   period?: string
 }
 
-/** 出稿意图（票 03）：auto=true 直接开跑；false＝产物已在、等人在按钮上确认。 */
-export type DialogRun = { period: string; auto: boolean }
+/** 出稿意图（票 03/04）：auto=true 直接开跑；false＝产物已在、等人在按钮上确认；
+    intent＝出什么稿（票 04 起 = 灵活报告·单学科趋势诊断，走既有流式口）。 */
+export type DialogRun = { period: string; auto: boolean; intent: string }
 
 export type DialogReply = {
   mode: string
@@ -61,11 +62,4 @@ export async function postDialogTurn(text: string, slots: DialogSlots): Promise<
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, slots }),
   })
-}
-
-/** 开跑出稿：调**既有**的 POST /api/jobs（与生成台同一个口，不新造）。 */
-export async function postJobStart(period: string): Promise<{ job_id: string; url: string }> {
-  const fd = new FormData()
-  fd.append('period', period)
-  return req<{ job_id: string; url: string }>('/api/jobs', { method: 'POST', body: fd })
 }

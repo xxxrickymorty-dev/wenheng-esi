@@ -262,9 +262,10 @@ def _proceed(root, slot_period: str, p: Parse):
                        {"kind": "dismiss", "text": "保留，我先看看旧的"}]
             return ("核对通过、已并入台账。不过这一期已经有产物（上次出过）——"
                     "直接重出会覆盖旧的。要覆盖重出吗？",
-                    "ready", actions, {"period": target, "auto": False}, inv)
+                    "ready", actions,
+                    {"period": target, "auto": False, "intent": "single_trend"}, inv)
         return ("核对通过、已并入台账。开始出稿——",
-                "ready", [], {"period": target, "auto": True}, inv)
+                "ready", [], {"period": target, "auto": True, "intent": "single_trend"}, inv)
     fb = inv["fallback"]
     if inv["released"]:
         tail = (f"还差 {inv['n_missing']} 件——去取数台补上缺的件"

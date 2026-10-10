@@ -710,6 +710,43 @@ class Test指定学科全链路:
         assert all(c["disc"] in (None, "Chemistry") for c in plan["charts"])
 
 
+class Test计划带候选排序:
+    """considered：挑选时**本来就算过**的候选前三（规划那刻记，展示层只读）。
+
+    语出 agent-zizhu 票 01 追加（rick 要「独白」）：`[{disc, disc_cn, proximity}]`，
+    按接近度降序，首项＝最终选中的学科；规则与模型两条路径都带，模型给的一律剥。
+    """
+
+    def test_规则挑科带候选前三(self, src):
+        from ai._brain import RuleBrain
+        import ai
+        with ai.using(brain=RuleBrain()):
+            plan = planner.build(src, "single_trend")
+        cons = plan["considered"]
+        assert len(cons) == 3, "前 3 名候选"
+        assert cons[0]["disc"] == plan["disc"], "首项＝最终选中"
+        prox = [c["proximity"] for c in cons]
+        assert prox == sorted(prox, reverse=True), "按接近度降序"
+        assert all(c["disc_cn"] and c["disc"] for c in cons)
+
+    def test_模型给的considered一律剥(self, src):
+        from _ai_helpers import ScriptedBrain, Turn
+        import ai
+        brain = ScriptedBrain([Turn(text='{"disc": "Physics", "title": "物理学发展态势诊断", '
+                                          '"considered": [{"disc": "Bogus", "proximity": 9}]}')])
+        with ai.using(brain=brain):
+            plan = planner.build(src, "single_trend")
+        assert all(c["disc"] != "Bogus" for c in plan["considered"]), "白名单外的新栏一律剥"
+        assert plan["considered"] and plan["considered"][0]["disc"] == plan["disc"]
+
+    def test_considered随计划落盘(self, flex_report_out, src):
+        from conftest import REPO
+        p = REPO / src.dir / "flexible" / "single_trend" / "flex_plan.json"
+        plan = json.loads(p.read_text(encoding="utf-8"))
+        assert len(plan["considered"]) == 3
+        assert plan["considered"][0]["disc"] == plan["disc"]
+
+
 class Test流式生成:
     def test_事件序列与大纲同源(self, src):
         """status → plan(带大纲) → section×N（逐节标题==大纲）→ done；无假进度。"""
@@ -731,6 +768,42 @@ class Test流式生成:
         assert "化学" in plan_ev["title"]
         sec = [e for e in events if e["event"] == "section"]
         assert sec and any("化学" in e.get("body", "") for e in sec)
+
+    def test_plan事件带候选与配图_done带数据点数(self, src):
+        """轨迹独白的数据都在事件里：挑学科（considered）、配图（charts）、点数（done）。"""
+        from conftest import REPO
+        events = list(report.generate_stream(REPO / src.dir, "single_trend"))
+        plan_ev = events[1]
+        assert plan_ev["considered"] and plan_ev["considered"][0]["disc"] == plan_ev["disc"]
+        assert plan_ev["charts"], "配图步的数据"
+        assert all(c.get("kind") and c.get("why") is not None for c in plan_ev["charts"])
+        done = events[-1]
+        assert done["event"] == "done"
+        assert done["n_sources"] > 0, "数字能指回台账的条数"
+        assert done["n_sections"] >= 1
+
+    def test_停止_终态stopped_不落产物(self, tmp_path):
+        """点停 → 下一次事件点收手 → 终态 stopped；产物在收尾才写，停在中途不留稿。"""
+        import shutil
+        d = _period_dir()
+        if d is None:
+            skip_unless("out/ 下无含 ledger_long.parquet 的期次产物",
+                        lambda: bool(_period_dir()))
+        tmp = tmp_path / "202607"
+        tmp.mkdir()
+        shutil.copyfile(d / "ledger_long.parquet", tmp / "ledger_long.parquet")
+        shutil.copytree(d / "wide", tmp / "wide")
+        state = {"sections": 0}
+        events = []
+        for ev in report.generate_stream(tmp, "single_trend",
+                                         should_stop=lambda: state["sections"] >= 1):
+            events.append(ev)
+            if ev["event"] == "section":
+                state["sections"] += 1
+        assert [e["event"] for e in events[:2]] == ["status", "plan"]
+        assert events[-1]["event"] == "stopped", f"终态必须是 stopped：{events[-1]}"
+        assert not (tmp / "flexible" / "single_trend" / "report.md").exists(), \
+            "停在中途不落产物（生成在收尾才写盘）"
 
     @pytest.mark.parametrize("intent,kw", [
         ("single_trend", {}),

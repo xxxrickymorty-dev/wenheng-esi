@@ -125,7 +125,7 @@ class DataSource:
 
     @property
     def periods(self) -> list[str]:
-        """台账里出现过的**全部**期次（含末期占位列，如未发布的 202609）。"""
+        """台账里出现过的**全部**期次（含先建好的空表头列——数据没到的期次）。"""
         ps = [str(p) for p in self.long.period.dropna().unique()]
         return sorted(ps)
 
@@ -133,8 +133,8 @@ class DataSource:
     def filled_periods(self) -> list[str]:
         """**有数据**的期次（总被引表该列非全空）。
 
-        🔴 出图窗口与报告窗口一律用这个，不用 `periods` —— 末期的占位列
-        （`202609` 未发布，台账里先建好了表头）会让窗口多出一期空档：
+        🔴 出图窗口与报告窗口一律用这个，不用 `periods` —— 空表头列
+        （台账里先建好了表头但数据没到）会让窗口多出一期空档：
         图上不会画（`charts._avail` 会滤掉），但「窗口 7 期」的表述会与实际画出的
         期数对不上，且差分图会多算一格。口径同 `compute.detect_periods`。
         """

@@ -91,7 +91,7 @@ def _rule_plan(src: DataSource, intent: str, *, disc=None, metric=None,
                periods=None, n_periods=None) -> dict:
     """规则规划：确定性挑科/挑指/挑期。`disc` 已经 `resolve_disc` 过。"""
     period = src.current_period()
-    # 🔴 窗口取**有数据**的期次（`filled_periods`），末期占位列（202609 未发布）不算进去，
+    # 🔴 窗口取**有数据**的期次（`filled_periods`），台账里先建好的空表头列不算进去，
     #    否则「7 期」与图上实际画出的期数对不上、差分图还会多算一格。
     filled = src.filled_periods
     prev = filled[filled.index(period) - 1]
@@ -99,21 +99,31 @@ def _rule_plan(src: DataSource, intent: str, *, disc=None, metric=None,
     win = filled[-n:]
 
     if intent == "single_trend":
+        considered: list[dict] = []
         if not disc:
-            # 挑「离过线最近的潜力学科」——决策上最有用，且完全确定性
-            pot = [d for d in src.disciplines
-                   if (src.at("proximity_1pct", d, period) or 0) < 1.0]
-            disc = max(pot, key=lambda d: src.at("proximity_1pct", d, period) or 0) \
-                if pot else src.disciplines[0]
+            # 挑「离过线最近的潜力学科」——决策上最有用，且完全确定性。
+            # `considered`：挑选时**本来就算过**的候选前三（按接近度降序，首项＝选中）。
+            # 🔴 在规划这一刻记下来；展示层只读，绝不许为展示现算（agent-zizhu 票 01）。
+            ranked = sorted((d for d in src.disciplines
+                             if (src.at("proximity_1pct", d, period) or 0) < 1.0),
+                            key=lambda d: src.at("proximity_1pct", d, period) or 0,
+                            reverse=True)
+            disc = ranked[0] if ranked else src.disciplines[0]
+            considered = [{"disc": d, "disc_cn": cn_name(d),
+                           "proximity": round(float(src.at("proximity_1pct", d, period) or 0), 3)}
+                          for d in ranked[:3]]
         charts = [
             {"kind": "cites_threshold", "disc": disc,
              "why": "被引频次与 1% 阈值同图，直接看追赶态势"},
             {"kind": "papers_delta", "disc": disc, "why": "新增发文量看投入力度"},
             {"kind": "rank_pct", "disc": disc, "why": "国内外排名百分位看相对位次"},
         ]
-        return {"intent": intent, "disc": disc, "metric": "proximity_1pct",
+        plan = {"intent": intent, "disc": disc, "metric": "proximity_1pct",
                 "periods": win, "charts": charts,
                 "title": f"{cn_name(disc)}发展态势诊断"}
+        if considered:
+            plan["considered"] = considered
+        return plan
 
     if intent == "cross_compare":
         met = metric or "proximity_1pct"
@@ -243,7 +253,8 @@ def _validate_plan(src: DataSource, got: dict, intent: str, fallback: dict,
         else:
             disc = None
         charts.append({"kind": kind, "disc": disc,
-                       "why": str(c.get("why", ""))[:80]})
+                       # 模型没写理由时补图型的馆员话术（轨迹里不出英文键名）
+                       "why": str(c.get("why") or sp.KINDS[kind]["cn"])[:80]})
     if not charts:
         return fallback | {"fallback_reason": "模型未给出任何合法图型，已回退规则规划"}
     # 🔴 必须写回！否则返回的是模型原始 charts（非法学科/未知图型全漏出去）——
@@ -251,12 +262,14 @@ def _validate_plan(src: DataSource, got: dict, intent: str, fallback: dict,
     clean["charts"] = charts
 
     if intent == "single_trend":
-        d = target or clean.get("disc") or fallback.get("disc")
+        # 🔴 未指定学科时挑科一律走规则（「离过线最近的潜力学科」，确定性口径）——
+        #    模型只规划图与标题，不能换掉分析对象（换掉＝叙事与候选独白对不上）。
+        d = target or fallback.get("disc") or clean.get("disc")
         if d not in src.disciplines:
             d = fallback.get("disc")
         for c in charts:
-            if sp.KINDS[c["kind"]]["disc_scope"] == "single" and not c["disc"]:
-                c["disc"] = d
+            if sp.KINDS[c["kind"]]["disc_scope"] == "single":
+                c["disc"] = d            # 单学科稿的图一律锚定选中的学科
         clean["disc"] = d
     else:
         clean["disc"] = target or None
@@ -313,7 +326,10 @@ def build(src: DataSource, intent: str = "single_trend", *,
     fallback["backend"] = "rule"
     fallback["fallback_reason"] = None
 
-    got, reason, backend_name = _brain_plan(src, intent, target)
+    # 单学科稿未指定学科：挑科已在规则里定了（潜力学科口径）——把结果作为
+    # 模型的**既定目标**告诉它（它只规划图与标题，不换分析对象）。
+    model_target = target or (fallback.get("disc") if intent == "single_trend" else None)
+    got, reason, backend_name = _brain_plan(src, intent, model_target)
     if got is None:
         if reason is not None:                        # 规则部署 reason=None（不是失败）
             fallback["fallback_reason"] = "云端模型不可用或未通过校验，已回退规则规划"
@@ -322,4 +338,7 @@ def build(src: DataSource, intent: str = "single_trend", *,
     plan = _validate_plan(src, got, intent, fallback, target)
     plan["backend"] = backend_name if plan.get("fallback_reason") is None else "rule"
     plan["checks"] = checks_for(intent)               # 规则产出，模型给的在上面已被剥
+    # considered 同 checks：两条路径都带规则算出的候选（模型给的一律剥）。
+    # 单学科稿的 disc 已被规则钉住 → 「首项＝最终选中」恒定成立。
+    plan["considered"] = fallback.get("considered") or []
     return plan

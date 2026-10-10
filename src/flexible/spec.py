@@ -138,8 +138,8 @@ def validate(spec: dict) -> dict:
 def _window(src: DataSource, spec: dict, ledger_dir) -> tuple[list[str], list[str]]:
     """算出出图窗口。返回 (periods, extra_period)。
 
-    🔴 用 `filled_periods`（有数据的期次），不是 `periods` —— 末期占位列
-    （202609 未发布）会让差分图多算一格、并让「7 期」与实际期数对不上。
+    🔴 用 `filled_periods`（有数据的期次），不是 `periods` —— 空表头列
+    （台账里先建好表头、数据没到）会让差分图多算一格、并让「7 期」与实际期数对不上。
     `papers_delta` 需要窗口外多一期（差分），由 `extra` 带回。
     """
     allp = src.periods

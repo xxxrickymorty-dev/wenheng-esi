@@ -12,8 +12,10 @@ import json
 import pathlib
 import re
 import subprocess
+import threading
 import time
 import urllib.parse
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -1669,13 +1671,19 @@ def _flex_stream_line(ev: dict, d, intent: str) -> str:
                       ensure_ascii=False, default=str) + "\n"
 
 
+#: 正在跑的流式出稿（run 令牌 → 停止事件）。停止键（契约 #21⑤）用；
+#: 跑完/出错/停掉即从表里摘除——不在的令牌＝没有可停的。
+_flex_stops: dict[str, threading.Event] = {}
+
+
 @app.post("/api/periods/{period}/flexible/stream")
 @admin_route
 async def api_period_flexible_stream(request: Request, period: str):
-    """流式生成（契约 #21③）：一行一个事件 `status → plan → section×N → done/error`。
+    """流式生成（契约 #21③）：一行一个事件 `status → plan → section×N → done/error/stopped`。
 
     事件发生在**真实节点**（规划完成、每节完成），不做假进度；
     前端用 `fetch` 逐行读取（后端不引 SSE 库，NDJSON 更省）。
+    首行（status）带 `run` 令牌——停止键（#21⑤）拿它喊停。
     """
     d = resolve_period_dir(period)
     if d is None:
@@ -1689,13 +1697,45 @@ async def api_period_flexible_stream(request: Request, period: str):
                              "hint": "可选：" + "、".join(flex_planner.INTENTS)}, status_code=400)
     import flexible.report as flex_report                           # noqa: PLC0415
 
+    token = uuid.uuid4().hex[:12]
+    stop = threading.Event()
+    _flex_stops[token] = stop
+
     def gen():
-        for ev in flex_report.generate_stream(d, intent, disc=disc):
-            yield _flex_stream_line(ev, d, intent)
+        try:
+            first = True
+            for ev in flex_report.generate_stream(d, intent, disc=disc,
+                                                  should_stop=stop.is_set):
+                line = _flex_stream_line(ev, d, intent)
+                if first:                                # 首行带令牌（停止键要用）
+                    rec = json.loads(line)
+                    rec["run"] = token
+                    line = json.dumps(rec, ensure_ascii=False) + "\n"
+                    first = False
+                yield line
+        finally:
+            _flex_stops.pop(token, None)
 
     return StreamingResponse(gen(), media_type="application/x-ndjson; charset=utf-8",
                              headers={"Cache-Control": "no-cache",
                                       "X-Accel-Buffering": "no"})
+
+
+@app.post("/api/periods/{period}/flexible/stop")
+@admin_route
+async def api_period_flexible_stop(request: Request, period: str):   # noqa: ARG001
+    """停止出稿（契约 #21⑤）：对正在流式生成的那一次喊停。
+
+    下一次事件点收手，终态事件 `stopped` 从**原流**里送出（不落产物）；
+    流已结束/令牌不在 → `{ok: false}` + 人话（不是错误）。
+    """
+    body = await request.json()
+    token = str(body.get("run") or "")
+    ev = _flex_stops.get(token)
+    if ev is None:
+        return {"ok": False, "error": "这次出稿已经结束（或找不到），没有可停的。"}
+    ev.set()
+    return {"ok": True}
 
 
 @app.post("/api/periods/{period}/flexible/polish")

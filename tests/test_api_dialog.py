@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """对话前门（票 01/02）· S2 契约：`POST /api/dialog/turn`。
 
 外部行为：一轮对话 = 答复字段面（Answer）+ 合并后的槽位 + 盘点
@@ -157,7 +157,7 @@ def test_核完了继续_进入出稿(tmp_path):
         r = call(config.DEMO_USER, {"text": "核完了，继续",
                                     "slots": {"period": "202607", "intent": "出报告"}})
     assert "核对通过" in r["text"] and "开始出稿" in r["text"]
-    assert r["run"] == {"period": "202607", "auto": True}
+    assert r["run"] == {"period": "202607", "auto": True, "intent": "single_trend"}
     assert r["slots"] == {"period": "202607", "intent": "出报告"}, "槽位不动"
 
 
@@ -180,7 +180,7 @@ def test_产物已在_先问一次(tmp_path):
     with ai.using(data_root=tmp_path, inventory=lambda p: inv):
         r = call(config.DEMO_USER, {"text": "核完了，继续", "slots": {"period": "202607"}})
     assert "已经有产物" in r["text"]
-    assert r["run"] == {"period": "202607", "auto": False}
+    assert r["run"] == {"period": "202607", "auto": False, "intent": "single_trend"}
     assert {"kind": "run", "period": "202607", "text": "覆盖重出"} in r["actions"]
 
 

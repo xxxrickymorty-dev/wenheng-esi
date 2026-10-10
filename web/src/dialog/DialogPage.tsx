@@ -1,16 +1,28 @@
-/* 对话前门（票 01：骨架 + 期次识别）。
+/* 对话前门（票 01–04：期次识别 → 盘点 → 核对门 → 出稿流式）。
    版面照 `mockups/对话前门.html`（五稿）：左＝对话历史 / 中＝对话流 / 底＝输入框。
-   口径照 ADR-0006：对话只做指挥——本页只认期次与意图槽位，数字全部来自后端；
-   解析走 `/api/dialog/turn`（后端 src/ai 能力口，规则版离线可跑）。 */
+   口径照 ADR-0006：对话只做指挥——数字全部来自后端；
+   解析走 `/api/dialog/turn`（后端 src/ai 能力口，规则版离线可跑）；
+   出稿走**既有**流式口 `/api/periods/{p}/flexible/stream`（NDJSON，真实节点），
+   流式中发送键原地变停止键（契约 #21⑤ 喊停，终态 `stopped`）。 */
 
 import { useEffect, useRef, useState } from 'react'
 import { getMe, type Me } from '../api'
-import { postDialogTurn, postJobStart, type DialogAction } from '../api-dialog'
+import { postDialogTurn, type DialogAction, type DialogRun } from '../api-dialog'
+import { runFlexibleStream, stopFlexible, type FlexStreamEvent } from '../api-flexible'
 import { clearSlot, conversationTitle, emptySlots, hasSlots, type DialogSlots } from '../lib/dialog'
 import { buildPeriodUrl } from '../lib/period'
 import { errorNote } from '../lib/status'
 
-type Turn = { who: 'me' | 'wh' | 'sys'; text: string; notice?: string; actions?: DialogAction[]; dismissed?: boolean }
+/** 出稿轨迹（票 04）：逐段出（挑学科 / 配图 / 取数 / 数据校验 / 收尾）。
+    全部文字由事件字段组装（视图层只读，不现算数字）。 */
+type TraceStep = { n: number; title: string; detail: string; state: 'doing' | 'done' | 'halt' }
+type Trace = {
+  status: 'streaming' | 'done' | 'stopped' | 'error'
+  steps: TraceStep[]
+  note?: string
+}
+type Turn = { who: 'me' | 'wh' | 'sys'; text: string; notice?: string; actions?: DialogAction[]
+              dismissed?: boolean; run?: DialogRun; trace?: Trace }
 type Conversation = { id: number; title: string; turns: Turn[]; slots: DialogSlots }
 
 const PALETTE_STORAGE_KEY = 'wenheng-palette'
@@ -18,6 +30,7 @@ const PALETTE_STORAGE_KEY = 'wenheng-palette'
 /** 工作台入口（按需打开；深链保留）——与 mockup 顶栏「工作台 ▾」一致。 */
 const WORKBENCH: [string, string][] = [
   ['生成台', '/app/'],
+  ['AI 分析台 · 灵活报告', '/app/?view=analysis'],
   ['取数台', '/app/?view=acquire'],
   ['审核台 · 对勘本', '/app/?view=review'],
   ['运行档案', '/app/?view=archive'],
@@ -44,7 +57,10 @@ export default function DialogPage() {
   const [activeId, setActiveId] = useState(1)
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
-  const [jobStarting, setJobStarting] = useState(false)
+  /* 正在出稿的那条回复（停止键要用：期次 + 消息下标 + run 令牌） */
+  const [running, setRunning] = useState<{ period: string; index: number } | null>(null)
+  const runTokenRef = useRef<string>('')
+  const [tick, setTick] = useState(0)
   const nextIdRef = useRef(2)
   const threadRef = useRef<HTMLDivElement>(null)
 
@@ -76,7 +92,7 @@ export default function DialogPage() {
   useEffect(() => {
     const el = threadRef.current
     if (el) el.scrollTop = el.scrollHeight
-  }, [activeId, active.turns.length, busy])
+  }, [activeId, active.turns.length, busy, running, tick])
 
   function updateActive(fn: (c: Conversation) => Conversation) {
     setConvs((list) => list.map((c) => (c.id === activeId ? fn(c) : c)))
@@ -91,9 +107,10 @@ export default function DialogPage() {
 
   async function sendText(raw: string) {
     const text = raw.trim()
-    if (!text || busy) return
+    if (!text || busy || running) return
     setInput('')
     setBusy(true)
+    const replyIndex = active.turns.length + 1          // 先发用户话，回复接在它后面
     updateActive((c) => ({
       ...c,
       title: c.title || conversationTitle(text),
@@ -104,10 +121,11 @@ export default function DialogPage() {
       updateActive((c) => ({
         ...c,
         slots: r.slots,
-        turns: [...c.turns, { who: 'wh', text: r.text, notice: r.notice, actions: r.actions }],
+        turns: [...c.turns, { who: 'wh', text: r.text, notice: r.notice,
+                              actions: r.actions, run: r.run ?? undefined }],
       }))
-      /* 出稿意图：直接开跑的自动开（产物已在时 auto=false，等人在按钮上点） */
-      if (r.run?.auto && r.run.period) void startJob(r.run.period)
+      /* 出稿意图（票 03/04）：auto=true 直接开跑；产物已在时 auto=false，等人在按钮上点 */
+      if (r.run?.auto && r.run.period) void startRun(r.run.period, replyIndex, r.run.intent)
     } catch (e) {
       updateActive((c) => ({
         ...c,
@@ -126,24 +144,100 @@ export default function DialogPage() {
     }))
   }
 
-  /** 开跑出稿：走既有 POST /api/jobs；结果作为系统小字落进对话（不编话术）。 */
-  async function startJob(period: string) {
-    if (!period || jobStarting) return
-    setJobStarting(true)
-    try {
-      const { job_id } = await postJobStart(period)
+  /** 出稿（票 04）：走**既有**流式口（NDJSON，真实节点）——轨迹逐段落在回复里；
+      发送键原地变停止键；「停止」走 #21⑤ 喊停，终态 `stopped` 从原流回来。 */
+  async function startRun(period: string, index: number, intent: string) {
+    if (!period || running) return
+    runTokenRef.current = ''
+    setRunning({ period, index })
+    const upd = (fn: (t: Trace) => Trace) => {
       updateActive((c) => ({
         ...c,
-        turns: [...c.turns, { who: 'sys',
-          text: `已开跑（任务 ${job_id}）——出好了喊你；全过程记在运行档案（顶栏「工作台 ▾」）。` }],
+        turns: c.turns.map((t, i) => (i === index && t.trace ? { ...t, trace: fn(t.trace) } : t)),
       }))
+      setTick((x) => x + 1)
+    }
+    const trace0: Trace = { status: 'streaming', steps: [
+      { n: 1, title: '挑学科', detail: '正在规划…', state: 'doing' }] }
+    updateActive((c) => ({
+      ...c,
+      turns: c.turns.map((t, i) => (i === index ? { ...t, trace: trace0 } : t)),
+    }))
+    let sections = 0
+    try {
+      await runFlexibleStream(period, { intent }, (ev: FlexStreamEvent) => {
+        if (ev.event === 'status') {
+          runTokenRef.current = ev.run ?? ''
+        } else if (ev.event === 'plan') {
+          const cons = ev.considered ?? []
+          const pick = cons.length
+            ? `还没进 1% 的里离过线最近：${cons.map((c) => `${c.disc_cn}（${c.proximity}）`).join(' ＞ ')}；本期挑 ${cons[0].disc_cn}`
+            : `本期挑 ${ev.disc || '（按规划）'}`
+          const charts = ev.charts ?? []
+          upd((t) => ({ ...t, steps: [
+            { n: 1, title: '挑学科', detail: pick, state: 'done' },
+            { n: 2, title: '配图',
+              detail: charts.length ? `${charts.length} 张：${charts.map((c) => c.why || c.kind).join('；')}`
+                                    : '按规划出图',
+              state: 'done' },
+            { n: 3, title: '取数', detail: '逐节取数与写稿…', state: 'doing' },
+          ] }))
+        } else if (ev.event === 'section') {
+          sections += 1
+          upd((t) => ({ ...t, steps: t.steps.map((s) =>
+            s.n === 3 ? { ...s, detail: `逐节取数与写稿：已完成 ${sections} 节…` } : s) }))
+        } else if (ev.event === 'done') {
+          const ok = ev.check_pass
+          upd((t) => ({
+            ...t,
+            status: 'done',
+            steps: [
+              ...t.steps.map((s) => ({ ...s, state: 'done' as const })),
+              { n: 4, title: '数据校验',
+                detail: ok
+                  ? `一次通过（${ev.n_sources ?? 0} 个数据点能指回台账 · 图 ${ev.n_charts} 张 · 章节 ${ev.n_sections ?? sections} 节）`
+                  : '没过——去运行档案看是哪一条',
+                state: ok ? 'done' : 'halt' },
+              { n: 5, title: '收尾', detail: `报告已出（用时 ${ev.elapsed} 秒）`, state: 'done' },
+            ],
+            note: ok
+              ? `出好了——「${ev.title || '报告'}」在「AI 分析台 · 灵活报告」里（顶栏「工作台 ▾」）。`
+              : '没出好——数据校验没过，稿子没放出来。',
+          }))
+        } else if (ev.event === 'stopped') {
+          upd((t) => ({
+            ...t, status: 'stopped',
+            steps: t.steps.map((s) => (s.state === 'doing' ? { ...s, state: 'halt' } : s)),
+            note: '停了——这次没出稿。',
+          }))
+        } else if (ev.event === 'error') {
+          upd((t) => ({
+            ...t, status: 'error',
+            steps: t.steps.map((s) => (s.state === 'doing' ? { ...s, state: 'halt' } : s)),
+            note: `没出成：${ev.message}`,
+          }))
+        }
+      })
     } catch (e) {
-      updateActive((c) => ({
-        ...c,
-        turns: [...c.turns, { who: 'sys', text: `没开起来：${errorNote(e, '出稿任务')}` }],
+      upd((t) => ({
+        ...t, status: 'error',
+        steps: t.steps.map((s) => (s.state === 'doing' ? { ...s, state: 'halt' } : s)),
+        note: `没出成：${errorNote(e, '出稿')}`,
       }))
     } finally {
-      setJobStarting(false)
+      setRunning(null)
+    }
+  }
+
+  /** 停止出稿：拿 run 令牌喊停（终态 `stopped` 从原流回来，这里不掐连接）。 */
+  async function stopRun() {
+    if (!running) return
+    const run = runTokenRef.current
+    if (!run) return
+    try {
+      await stopFlexible(running.period, run)
+    } catch {
+      /* 喊停失败不打扰：流自己会走到终态 */
     }
   }
 
@@ -239,6 +333,37 @@ export default function DialogPage() {
                   {t.who === 'wh' && <div className="dlg-nm">文衡</div>}
                   {t.text}
                   {t.notice && <p className="dlg-notice">{t.notice}</p>}
+                  {t.trace && (
+                    <div className="dlg-trk" aria-live="polite">
+                      <div className="dlg-trk-h">
+                        本期规划与数据校验
+                        <span>{t.trace.status === 'streaming' ? '出稿中'
+                              : t.trace.status === 'done' ? '完成'
+                              : t.trace.status === 'stopped' ? '已停' : '出错'}</span>
+                      </div>
+                      {t.trace.steps.map((s) => (
+                        <div key={s.n} className={`dlg-trk-row ${s.state}`}>
+                          <span className="dlg-dot" aria-hidden="true">
+                            {s.state === 'done' ? '✓' : s.state === 'halt' ? '·' : s.n}
+                          </span>
+                          <div>
+                            <div className="dlg-trk-t">{s.title}</div>
+                            <div className="dlg-trk-d">
+                              {s.detail}
+                              {s.state === 'doing' && <span className="dlg-caret" aria-hidden="true" />}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {t.trace.status === 'streaming' && (
+                        <p className="dlg-stream">
+                          <span className="dlg-dots" aria-hidden="true"><i /><i /><i /></span>
+                          正在出稿…（要停就点输入框那个键）
+                        </p>
+                      )}
+                      {t.trace.note && <p className="dlg-trk-note">{t.trace.note}</p>}
+                    </div>
+                  )}
                   {t.who === 'wh' && !!t.actions?.length && !t.dismissed && (
                     <div className="dlg-acts">
                       {t.actions.map((a, j) => a.kind === 'goto' ? (
@@ -246,12 +371,13 @@ export default function DialogPage() {
                            href={buildPeriodUrl(`/app/?view=${a.view ?? 'acquire'}`,
                                                 a.period || active.slots.period || '')}>{a.text}</a>
                       ) : (
-                        <button key={j} type="button" disabled={busy || jobStarting}
+                        <button key={j} type="button" disabled={busy || !!running}
                                 className={`dlg-act ${a.kind === 'dismiss' ? 'ghost' : 'primary'}`}
                                 onClick={() => {
                                   if (a.kind === 'send') void sendText(a.text)
-                                  else if (a.kind === 'run') void startJob(a.period || '')
-                                  else dismissActions(i)
+                                  else if (a.kind === 'run') {
+                                    void startRun(a.period || '', i, t.run?.intent || 'single_trend')
+                                  } else dismissActions(i)
                                 }}>
                           {a.text}
                         </button>
@@ -274,7 +400,9 @@ export default function DialogPage() {
           <form className="dlg-composer-in" onSubmit={(e) => { e.preventDefault(); void sendText(input) }}>
             <div className="dlg-box">
               <textarea rows={1} aria-label="对文衡说话" value={input}
-                        placeholder="说一句话，比如「帮我做 9 月的报告」…"
+                        placeholder={running ? '正在出稿…（点右边的 ■ 可以停）'
+                                             : '说一句话，比如「帮我做 9 月的报告」…'}
+                        disabled={!!running}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -282,8 +410,13 @@ export default function DialogPage() {
                             void sendText(input)
                           }
                         }} />
-              <button className="dlg-send" type="submit" aria-label="发送"
-                      disabled={busy || !input.trim()}>↑</button>
+              {running ? (
+                <button className="dlg-send" type="button" aria-label="停止出稿"
+                        onClick={() => void stopRun()}>■</button>
+              ) : (
+                <button className="dlg-send" type="submit" aria-label="发送"
+                        disabled={busy || !input.trim()}>↑</button>
+              )}
             </div>
           </form>
         </div>

@@ -48,17 +48,24 @@ export async function runFlexible(
   )
 }
 
-/** 流式生成事件（契约 #21③，一行一个）：真实节点——规划完成、每节完成、收尾。 */
+/** 流式生成事件（契约 #21③/#21⑤，一行一个）：真实节点——规划完成、每节完成、收尾。
+    `stopped`＝停止键喊停后的终态（原流里送出）；首行 status 带 `run` 令牌。 */
 export type FlexWriteSummary = {
   segments: number; rewritten: number; fallbacks: number; reasons: string[]
 }
+/** 挑选时本来就算过的候选前三（规划那刻记的；展示层只读） */
+export type FlexConsidered = { disc: string; disc_cn: string; proximity: number }
 export type FlexStreamEvent =
-  | { event: 'status'; stage: string }
+  | { event: 'status'; stage: string; run?: string }
   | { event: 'plan'; intent: string; title: string; backend: string; mode: string
-      disc: string; outline: string[]; fallback_reason?: string | null }
+      disc: string; outline: string[]; fallback_reason?: string | null
+      considered?: FlexConsidered[]
+      charts?: { kind: string; why: string | null }[] }
   | { event: 'section'; title: string; html: string }
   | { event: 'done'; elapsed: number; n_charts: number; backend: string; mode: string
-      title: string; check_pass: boolean; write: FlexWriteSummary | null }
+      title: string; check_pass: boolean; write: FlexWriteSummary | null
+      n_sources?: number; n_sections?: number }
+  | { event: 'stopped' }
   | { event: 'error'; message: string }
 
 /** 逐行读取 NDJSON 流（fetch + ReadableStream；不引依赖、不用 EventSource）。 */
@@ -66,12 +73,14 @@ export async function runFlexibleStream(
   period: string,
   body: { intent: string; disc?: string },
   onEvent: (ev: FlexStreamEvent) => void,
+  opts?: { signal?: AbortSignal },
 ): Promise<void> {
   const res = await fetch(
     `/api/periods/${encodeURIComponent(period)}/flexible/stream`,
     {
       method: 'POST',
       credentials: 'same-origin',
+      signal: opts?.signal,
       headers: { 'Content-Type': 'application/json', Accept: 'application/x-ndjson' },
       body: JSON.stringify(body),
     })
@@ -99,6 +108,17 @@ export async function runFlexibleStream(
   }
   const tail = buf.trim()
   if (tail) onEvent(JSON.parse(tail) as FlexStreamEvent)
+}
+
+/** 停止键（契约 #21⑤）：对正在跑的那次喊停——终态 `stopped` 从原流里回来。 */
+export async function stopFlexible(
+  period: string, run: string,
+): Promise<{ ok: boolean; error?: string }> {
+  return req<{ ok: boolean; error?: string }>(
+    `/api/periods/${encodeURIComponent(period)}/flexible/stop`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ run }) },
+  )
 }
 
 /** AI 润色（写作位，契约 #21④）：只重写叙述段；数字、图表、来源链不变。 */

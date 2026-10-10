@@ -116,6 +116,54 @@ class Test流式与润色两口:
         for fn in (appmod.api_period_flexible_stream, appmod.api_period_flexible_polish):
             assert asyncio.run(fn(_Req(config.GUEST_USER), "202609")).status_code == 403
             assert asyncio.run(fn(_Req(None), "202609")).status_code == 401
+        assert asyncio.run(appmod.api_period_flexible_stop(
+            _Req(config.GUEST_USER, {"run": "x"}), "202609")).status_code == 403
+
+    def test_停止键_首行带run令牌_喊停后终态stopped(self, tmp_path, monkeypatch):
+        """停止键（契约 #21⑤）：流首行带 run 令牌；「停止」端点喊停 →
+        下一次事件点收手，终态事件是 `stopped`（原流里送出）。"""
+        import flexible.report as flex_report
+        monkeypatch.setattr(appmod, "resolve_period_dir", lambda period: tmp_path)
+
+        def fake(d, intent, *, should_stop=None, **k):               # noqa: ARG001
+            yield {"event": "status", "stage": "planning"}
+            for i in range(100):
+                if should_stop is not None and should_stop():
+                    yield {"event": "stopped"}
+                    return
+                yield {"event": "section", "title": f"节{i}", "body": ""}
+            yield {"event": "done"}
+
+        monkeypatch.setattr(flex_report, "generate_stream", fake)
+        r = asyncio.run(appmod.api_period_flexible_stream(
+            _Req(config.DEMO_USER, {"intent": "single_trend"}), "202609"))
+        assert r.media_type.startswith("application/x-ndjson")
+
+        async def consume():
+            it = r.body_iterator
+            first = await it.__anext__()
+            rec = json.loads(first if isinstance(first, str) else first.decode("utf-8"))
+            assert rec["event"] == "status" and rec["run"], "首行必须带 run 令牌（停止键要用）"
+            resp = await appmod.api_period_flexible_stop(
+                _Req(config.DEMO_USER, {"run": rec["run"]}), "202609")
+            assert resp["ok"] is True
+            last = None
+            n = 0
+            async for chunk in it:
+                last = json.loads(chunk if isinstance(chunk, str) else chunk.decode("utf-8"))
+                n += 1
+                if last["event"] in ("stopped", "done") or n > 60:
+                    break
+            return last
+
+        last = asyncio.run(consume())
+        assert last is not None and last["event"] == "stopped", "停止后的终态"
+
+    def test_停一个不存在的run给人话(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(appmod, "resolve_period_dir", lambda period: tmp_path)
+        r = asyncio.run(appmod.api_period_flexible_stop(
+            _Req(config.DEMO_USER, {"run": "不存在的令牌"}), "202609"))
+        assert r["ok"] is False and "没有可停的" in r["error"]
 
     def test_流式口一行一个事件(self, tmp_path, monkeypatch):
         import flexible.report as flex_report
