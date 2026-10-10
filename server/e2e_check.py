@@ -561,6 +561,23 @@ check("对话前门 · 查数据盾计数与来源数一致",
       == (_ans.get("shield") or {}).get("passed") == len(_ans.get("sources") or []),
       f"shield={_ans.get('shield')} n_sources={len(_ans.get('sources') or [])}")
 
+# POST /api/dialog/turn · 覆盖确认（契约 #33，票 05 口径 A：回合不执行——产物已在先问一次）
+st, dlg2, _ = call_json("POST", "/api/dialog/turn",
+                        {"text": "核完了，继续", "slots": {"period": "202607"}})
+check("POST dialog/turn（覆盖确认）200", st == 200, f"got {st}")
+try:
+    _dj2 = json.loads(dlg2)
+except json.JSONDecodeError:
+    _dj2 = {}
+check("对话前门 · 产物已在→先问一次（不自动开跑）",
+      (_dj2.get("run") or {}).get("auto") is False, f"run={_dj2.get('run')}")
+st2, sj, _ = call("GET", "/api/status")
+try:
+    _active = (json.loads(sj) or {}).get("active")
+except json.JSONDecodeError:
+    _active = None
+check("对话前门 · 问一次没有启动任何任务", st2 == 200 and not _active, f"active={_active!r}")
+
 # POST /api/periods/{period}/review-advice（复核参谋；契约 #27，2026-09-29 D4）
 st, rv, _ = call_json("POST", "/api/periods/202607/review-advice", {})
 check("POST review-advice 200", st == 200, f"got {st}")

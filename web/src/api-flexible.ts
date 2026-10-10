@@ -55,6 +55,15 @@ export type FlexWriteSummary = {
 }
 /** 挑选时本来就算过的候选前三（规划那刻记的；展示层只读） */
 export type FlexConsidered = { disc: string; disc_cn: string; proximity: number }
+/** 收尾自检的明细（票 05：没过要「明说哪条」；四项布尔 + 回溯问题数）。 */
+export type FlexCheck = {
+  no_professional_judgement: boolean
+  trace_ok: boolean
+  trace_bad: number
+  hypotheses_complete: boolean
+  has_charts: boolean
+}
+
 export type FlexStreamEvent =
   | { event: 'status'; stage: string; run?: string }
   | { event: 'plan'; intent: string; title: string; backend: string; mode: string
@@ -64,6 +73,7 @@ export type FlexStreamEvent =
   | { event: 'section'; title: string; html: string }
   | { event: 'done'; elapsed: number; n_charts: number; backend: string; mode: string
       title: string; check_pass: boolean; write: FlexWriteSummary | null
+      check?: FlexCheck
       n_sources?: number; n_sections?: number }
   | { event: 'stopped' }
   | { event: 'error'; message: string }

@@ -105,6 +105,8 @@
 .dlg-act.primary:hover{filter:brightness(1.12);background:var(--zhu)}
 .dlg-act.ghost{color:var(--ink-2);border-style:dashed;background:transparent}
 .dlg-act:disabled{opacity:.5;cursor:default;filter:none}
+/* 未签发的报告初稿：只能看不能下载（对齐生成台「未签发，管理员暂不能下载」） */
+.dlg-act[aria-disabled="true"]{opacity:.6;cursor:default;border-style:dashed;color:var(--ink-3)}
 /* 系统小字（开跑回执 / 开跑失败）——不是对话，是操作结果 */
 .dlg-sys{margin:0 0 14px 52px;font-size:13.5px;color:var(--ink-3)}
 
@@ -136,6 +138,12 @@
 .dlg-dots i:nth-child(3){animation-delay:.3s}
 @keyframes dlg-pulse{0%,100%{opacity:.25}50%{opacity:1}}
 .dlg-trk-note{margin-top:9px;font-size:14px;color:var(--ink)}
+/* 出好了的出路（票 05）：三件套下载 / 运行档案 / 自动修复 / 回滚 */
+.dlg-res .dlg-acts{margin-top:10px}
+.dlg-res .dlg-trk-note{margin-top:6px}
+/* 覆盖确认（行内二次确认；ConfirmButton 的 .confirming 态） */
+.dlg-act.confirming{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+.dlg-act.primary.confirming{background:var(--warn);border-color:var(--warn);color:#fff}
 @media (prefers-reduced-motion: reduce){
   .dlg-caret{animation:none}
   .dlg-dots i{animation:none;opacity:.7}

@@ -659,6 +659,15 @@ def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
                           "backend": plan["backend"], "mode": mode,
                           "title": plan.get("title"),
                           "check_pass": bool(check.get("pass")),
+                          # 票 05：校验没过要「明说哪条没过」——四项自检的明细随 done 走
+                          # （展示层据此出人话；不把整份 check（含 misses 明细）塞进事件）。
+                          "check": {
+                              "no_professional_judgement": bool(check.get("no_professional_judgement")),
+                              "trace_ok": bool(check.get("trace_ok")),
+                              "trace_bad": int((check.get("trace") or {}).get("bad") or 0),
+                              "hypotheses_complete": bool(check.get("hypotheses_complete")),
+                              "has_charts": bool(check.get("has_charts")),
+                          },
                           "n_sources": len(built["sources"]),
                           "n_sections": len(built["blocks"]),
                           "write": meta["write"]})

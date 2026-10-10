@@ -284,6 +284,27 @@ def test_写报告轮_kind为report(tmp_path):
     assert r["kind"] == "report" and r["answer"] is None
 
 
+# ============================================================ 2d. 票 05：覆盖确认（口径 A）
+def test_覆盖确认_回合本身不执行任何东西(tmp_path):
+    """第一次点不执行：回合只是「问一次」——产物原封不动、不开任务（执行只在人确认后）。
+
+    唯一允许的新增是这一轮的**留痕**（`ai_calls.jsonl`，每轮对话都记）；产物一个字节不动。
+    """
+    pdir = tmp_path / "202607"
+    pdir.mkdir()
+    (pdir / "red_slots.json").write_text("[]", encoding="utf-8")
+    before = {p.name: p.stat().st_mtime_ns for p in pdir.iterdir()}
+    inv = fake_inventory("202607", released=True)
+    with ai.using(data_root=tmp_path, inventory=lambda p: inv):
+        r = call(config.DEMO_USER, {"text": "核完了，继续", "slots": {"period": "202607"}})
+    assert r["run"] == {"period": "202607", "auto": False, "intent": "single_trend"}
+    assert not any(k.startswith("job") for k in r), "回合不替人开跑：开跑是确认后的显式动作"
+    after = {p.name: p.stat().st_mtime_ns for p in pdir.iterdir()}
+    assert set(after) <= set(before) | {"ai_calls.jsonl"}, "回合不该产生任何产物"
+    for name, mtime in before.items():
+        assert after[name] == mtime, f"{name} 被动过了——「问一次」本身不该动产物"
+
+
 # ============================================================ 3. 参数与权限
 def test_空话400(monkeypatch):
     monkeypatch.setattr("ai.run", lambda *a, **k: None)

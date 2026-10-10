@@ -782,6 +782,19 @@ class Test流式生成:
         assert done["n_sources"] > 0, "数字能指回台账的条数"
         assert done["n_sections"] >= 1
 
+    def test_done事件带自检明细_没过时说得清哪条(self, src):
+        """票 05：校验没过要**明说哪条没过**——done 事件带四项自检的明细，不只一个布尔。"""
+        from conftest import REPO
+        events = list(report.generate_stream(REPO / src.dir, "single_trend"))
+        done = events[-1]
+        c = done.get("check")
+        assert isinstance(c, dict), f"done 应带 check 明细：{sorted(done)}"
+        for key in ("trace_ok", "trace_bad", "has_charts", "hypotheses_complete",
+                    "no_professional_judgement"):
+            assert key in c, f"缺自检项 {key}"
+        assert c["trace_ok"] is True and c["has_charts"] is True
+        assert c["trace_bad"] == 0
+
     def test_停止_终态stopped_不落产物(self, tmp_path):
         """点停 → 下一次事件点收手 → 终态 stopped；产物在收尾才写，停在中途不留稿。"""
         import shutil
