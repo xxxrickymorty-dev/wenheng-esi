@@ -5,12 +5,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { getMe, type Me } from '../api'
-import { postDialogTurn } from '../api-dialog'
+import { postDialogTurn, type DialogAction } from '../api-dialog'
 import { clearSlot, conversationTitle, emptySlots, hasSlots, type DialogSlots } from '../lib/dialog'
 import { buildPeriodUrl } from '../lib/period'
 import { errorNote } from '../lib/status'
 
-type Turn = { who: 'me' | 'wh'; text: string; notice?: string }
+type Turn = { who: 'me' | 'wh'; text: string; notice?: string; actions?: DialogAction[]; dismissed?: boolean }
 type Conversation = { id: number; title: string; turns: Turn[]; slots: DialogSlots }
 
 const PALETTE_STORAGE_KEY = 'wenheng-palette'
@@ -88,8 +88,8 @@ export default function DialogPage() {
     setInput('')
   }
 
-  async function send() {
-    const text = input.trim()
+  async function sendText(raw: string) {
+    const text = raw.trim()
     if (!text || busy) return
     setInput('')
     setBusy(true)
@@ -103,7 +103,7 @@ export default function DialogPage() {
       updateActive((c) => ({
         ...c,
         slots: r.slots,
-        turns: [...c.turns, { who: 'wh', text: r.text, notice: r.notice }],
+        turns: [...c.turns, { who: 'wh', text: r.text, notice: r.notice, actions: r.actions }],
       }))
     } catch (e) {
       updateActive((c) => ({
@@ -113,6 +113,14 @@ export default function DialogPage() {
     } finally {
       setBusy(false)
     }
+  }
+
+  /** 「先等等」：只是界面收起这一行动作，不发请求、不落账。 */
+  function dismissActions(index: number) {
+    updateActive((c) => ({
+      ...c,
+      turns: c.turns.map((t, i) => (i === index ? { ...t, dismissed: true } : t)),
+    }))
   }
 
   if (roleKnown && me && me.role !== 'admin') return null
@@ -205,6 +213,21 @@ export default function DialogPage() {
                   {t.who === 'wh' && <div className="dlg-nm">文衡</div>}
                   {t.text}
                   {t.notice && <p className="dlg-notice">{t.notice}</p>}
+                  {t.who === 'wh' && !!t.actions?.length && !t.dismissed && (
+                    <div className="dlg-acts">
+                      {t.actions.map((a, j) => a.kind === 'goto' ? (
+                        <a key={j} className="dlg-act primary"
+                           href={buildPeriodUrl(`/app/?view=${a.view ?? 'acquire'}`,
+                                                a.period || active.slots.period || '')}>{a.text}</a>
+                      ) : (
+                        <button key={j} type="button" disabled={busy}
+                                className={`dlg-act ${a.kind === 'send' ? 'primary' : 'ghost'}`}
+                                onClick={() => a.kind === 'send' ? void sendText(a.text) : dismissActions(i)}>
+                          {a.text}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -218,7 +241,7 @@ export default function DialogPage() {
         </div>
 
         <div className="dlg-composer">
-          <form className="dlg-composer-in" onSubmit={(e) => { e.preventDefault(); void send() }}>
+          <form className="dlg-composer-in" onSubmit={(e) => { e.preventDefault(); void sendText(input) }}>
             <div className="dlg-box">
               <textarea rows={1} aria-label="对文衡说话" value={input}
                         placeholder="说一句话，比如「帮我做 9 月的报告」…"
@@ -226,7 +249,7 @@ export default function DialogPage() {
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                             e.preventDefault()
-                            void send()
+                            void sendText(input)
                           }
                         }} />
               <button className="dlg-send" type="submit" aria-label="发送"

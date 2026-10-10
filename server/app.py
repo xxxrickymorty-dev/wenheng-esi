@@ -1542,11 +1542,13 @@ async def api_ai_switch(request: Request):
 @app.post("/api/dialog/turn")
 @admin_route
 async def api_dialog_turn(request: Request):
-    """对话前门一轮（契约 #33，票 01）：一句话 → 应答 + 槽位（期次 / 意图）。
+    """对话前门一轮（契约 #33，票 01/02）：一句话 → 应答 + 槽位（期次 / 意图）+ 盘点。
 
     请求 `{text, slots:{period,intent}}`（slots 可省；期次形状非法按未设处理，不猜）。
-    应答＝Answer 字段面 + `slots`（本轮解析到的才覆盖，其余不变）。
-    解析走 `src/ai` 的 dialog 能力口（唯一模型出口；规则版离线可跑）；
+    应答＝Answer 字段面 + `slots`（本轮解析到的才覆盖，其余不变）
+    + 盘点三件：`verdict`（unpublished/missing/ready/空）、`inventory`（四件清单）、
+    `actions`（改做/去取数台/去核对/先等等）。
+    解析与盘点走 `src/ai` 的 dialog 能力口（唯一模型出口；规则版离线可跑）；
     每轮对话的留痕复用 `ai_calls`（不新开账本）。空话 400；非 admin 401/403。
     """
     body = await request.json()
@@ -1568,6 +1570,9 @@ async def api_dialog_turn(request: Request):
     resp = ans.as_dict()
     resp["slots"] = {"period": str(turn.get("period") or period),
                      "intent": str(turn.get("intent") or intent)}
+    resp["verdict"] = str(turn.get("verdict") or "")
+    resp["inventory"] = turn.get("inventory") if isinstance(turn.get("inventory"), dict) else None
+    resp["actions"] = turn.get("actions") if isinstance(turn.get("actions"), list) else []
     return resp
 
 

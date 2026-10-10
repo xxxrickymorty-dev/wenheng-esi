@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
-"""dialog 构建器（对话前门 v1：骨架 + 期次识别；票 01）。
+"""dialog 构建器（对话前门 v1：骨架 + 期次识别 [票 01] + 盘点 [票 02]）。
 
-对话只做指挥（ADR-0006）：本模块把馆员的一句话解析成「期次 / 意图」槽位，
-并拼出**先说出理解**的应答（「我按「数据截至 2026-09」理解 → 期次 202609。」）。
-应答里出现的数字只有解析结果的回显（期次年份 / 月份 / 期次），逐条登记为
-`fact` 来源——对话不产生任何台账数字。
+对话只做指挥（ADR-0006）：把馆员的一句话解析成「期次 / 意图」槽位，**先说出理解**，
+再按「必需件清单」逐件盘点（监测表 / ESI 原始包 / 顶尖论文清单 / InCites 快照）：
+缺就停 + 两条路（等发布 / 先做最新一期）、齐就给「去核对」。应答里出现的数字只有
+解析与盘点的回显，逐条登记为 `fact` 来源——对话不产生任何台账数字。
 
 **不做模型轮**（`_specs` 里 `modeled=False`）：期次猜错就是整期返工，解析因此
 是确定性的；模型在结构上不参与，也不新增第二个模型出口（不触网可跑）。
+
+盘点经**注入边缘**取：`ai.using(inventory=…)` 可替身注入（测试/脚本）；
+生产走 `src/inventory.scan`（延迟导入——台账/pandas 不进 AI 层启动路径）。
+盘点失败一律当「没有盘点」：回复退回只说理解，不猜发布状态、不拦住对话。
 
 解析口径（GLOSSARY「期次」）：
 - 期次只有一个含义＝**数据截止月**；「出稿月 / 发布月」不是期次说法——
@@ -24,11 +28,15 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
+from . import _runtime
 from ._draft import RuleDraft
 from ._numbered import NumberedText
 
 #: 三种解析结局：period（认出来了）/ publication_month（出稿月说法，拒收）/ no_period（没听出）。
 CASES = ("period", "publication_month", "no_period")
+
+#: 盘点三种裁决：unpublished（未发布，停）/ missing（已发布但缺件，停）/ ready（齐，去核对）。
+VERDICTS = ("", "unpublished", "missing", "ready")
 
 #: 日期形态（payload.today 注入用；HTTP 路由不放行）。
 DATE_FORMAT = "%Y-%m-%d"
@@ -115,7 +123,7 @@ def parse(text, *, today: datetime.date | None = None) -> Parse:
 
 
 def reply_for(p: Parse) -> str:
-    """解析结果 → 应答（先说出理解；数字只有回显）。"""
+    """解析结果 → 应答（票 01 面：只说理解与纠正；盘点在 `_compose`）。"""
     if p.case == "period":
         return f"我按「数据截至 {p.label}」理解 → 期次 {p.period}。"
     if p.case == "publication_month":
@@ -127,35 +135,162 @@ def reply_for(p: Parse) -> str:
             "——期次＝数据截止月份。")
 
 
-def _register(p: Parse):
-    """应答里每个数字的来源（全是回显：期次年份 / 月份 / 期次 / 示例）。"""
+# ---------------------------------------------------------------- 盘点（票 02）
+def _real_scan(period: str):
+    from inventory import scan                                    # noqa: PLC0415
+
+    return scan(period)
+
+
+def _normalize_inventory(raw) -> dict | None:
+    """替身/真实盘点 → 规范形状（服务端原样透出；形状只此一份）。"""
+    data = raw.as_data() if hasattr(raw, "as_data") else dict(raw or {})
+    pieces = []
+    for piece in data.get("pieces") or []:
+        if not isinstance(piece, dict):
+            continue
+        pieces.append({"key": str(piece.get("key") or ""),
+                       "label": str(piece.get("label") or ""),
+                       "state": "ok" if piece.get("state") == "ok" else "missing",
+                       "note": str(piece.get("note") or "")})
+    if not pieces:
+        return None
+    return {"period": str(data.get("period") or ""),
+            "released": bool(data.get("released")),
+            "pieces": pieces,
+            "n_pieces": len(pieces),
+            "n_missing": sum(1 for x in pieces if x["state"] != "ok"),
+            "fallback": str(data.get("fallback") or "")}
+
+
+def _scan_inventory(period: str) -> dict | None:
+    """盘点（可替身注入）；任何失败 → None（回复退回只说理解，不拦住对话）。"""
+    ov = _runtime.overrides().get("inventory")
+    try:
+        raw = ov(period) if ov is not None else _real_scan(period)
+    except Exception:                                              # noqa: BLE001
+        return None
+    if raw is None:
+        return None
+    return _normalize_inventory(raw)
+
+
+def _pieces_block(inv: dict) -> str:
+    lines = [f"盘点 · {inv['period']}（必需件 {inv['n_pieces']} 件）"]
+    for piece in inv["pieces"]:
+        mark = "✓" if piece["state"] == "ok" else "✗"
+        tail = "已有" if piece["state"] == "ok" else "缺"
+        lines.append(f"{mark} {piece['label']} · {tail}")
+    return "\n".join(lines)
+
+
+def _fallback_phrase(fb: str) -> str:
+    return f"{fb}（数据截至 {fb[:4]}-{fb[4:6]}）"
+
+
+def _compose(p: Parse, inv: dict) -> tuple[str, str, list]:
+    """理解 + 盘点 + 裁决 → (应答, verdict, 动作)。"""
+    if inv["released"]:
+        verdict = "missing" if inv["n_missing"] else "ready"
+    else:
+        verdict = "unpublished"
+    fb = inv["fallback"]
+
+    if verdict == "unpublished":
+        head = f"做不了——这一期数据还没到（{inv['n_missing']} 件没到）。"
+        if fb:
+            tail = (f"两条路：\n① 先等发布：ESI 发布后这两件才拿得到（双月节奏）。\n"
+                    f"② 先做最新一期：现在能做的完整一期是 {_fallback_phrase(fb)}。")
+            actions = [{"kind": "send", "text": f"改做 {fb} 的"},
+                       {"kind": "dismiss", "text": "先等等"}]
+        else:
+            tail = ("先等发布：ESI 发布后这两件才拿得到（双月节奏）。")
+            actions = [{"kind": "dismiss", "text": "先等等"}]
+    elif verdict == "missing":
+        head = f"做不了——还差 {inv['n_missing']} 件。"
+        if fb:
+            tail = (f"两条路：\n① 去取数台补上缺的件（本机可以驱动下载）。\n"
+                    f"② 先做最新完整的一期：{_fallback_phrase(fb)}。")
+            actions = [{"kind": "goto", "view": "acquire", "period": p.period,
+                        "text": "去取数台 ▸"},
+                       {"kind": "send", "text": f"改做 {fb} 的"}]
+        else:
+            tail = "先去取数台补上缺的件（本机可以驱动下载）。"
+            actions = [{"kind": "goto", "view": "acquire", "period": p.period,
+                        "text": "去取数台 ▸"}]
+    else:                                     # ready
+        head = "数据齐，走生成台三步条：①取数 ✓ → ②核对并并入 → ③一键生成。"
+        tail = "去核对：跳到核对表格页逐件核，签过才并入。"
+        actions = [{"kind": "goto", "view": "acquire", "period": p.period,
+                    "text": "去核对 ▸"}]
+
+    text = "\n".join([reply_for(p), "", _pieces_block(inv), "", head + (f"\n{tail}" if tail else "")])
+    return text, verdict, actions
+
+
+# ---------------------------------------------------------------- 来源登记
+def _register(p: Parse, inv: dict | None):
+    """应答里每个数字的来源（解析与盘点的回显；全是 fact）。"""
+    known: dict = {}
+    if p.period:
+        known[p.period] = {"kind": "fact", "pointer": "dialog/period", "label": "期次",
+                           "detail": "期次只有一个含义：数据截止月", "fact": True}
+    if p.year:
+        known[str(p.year)] = {"kind": "fact", "pointer": "dialog/period.year",
+                              "label": "期次年份", "detail": "由这句话里的月份与年份解析",
+                              "fact": True}
+    if p.month:
+        known[f"{p.month:02d}"] = {"kind": "fact", "pointer": "dialog/period.month",
+                                   "label": "期次月份", "detail": "从这句话里读出的月份（数据截止月）",
+                                   "fact": True}
+    if inv:
+        known.setdefault(str(inv["n_pieces"]),
+                         {"kind": "fact", "pointer": "dialog/inventory",
+                          "label": "必需件件数", "detail": "盘点按必需件清单逐件判",
+                          "fact": True})
+        if inv["n_missing"]:
+            known.setdefault(str(inv["n_missing"]),
+                             {"kind": "fact", "pointer": "dialog/inventory.missing",
+                              "label": "没到的件数", "detail": "盘点结果：缺哪件说哪件",
+                              "fact": True})
+        fb = inv["fallback"]
+        if fb:
+            known.setdefault(fb, {"kind": "fact", "pointer": "dialog/fallback",
+                                  "label": "现在能做的完整一期",
+                                  "detail": "四件齐的最近一个有效期次", "fact": True})
+            known.setdefault(fb[:4], {"kind": "fact", "pointer": "dialog/fallback.year",
+                                      "label": "可做期次年份", "detail": "盘点选出的替代期次",
+                                      "fact": True})
+            known.setdefault(fb[4:6], {"kind": "fact", "pointer": "dialog/fallback.month",
+                                       "label": "可做期次月份", "detail": "盘点选出的替代期次",
+                                       "fact": True})
 
     def register(ti, pos, value):                                  # noqa: ARG001
-        if p.period and value == p.period:
-            return {"kind": "fact", "pointer": "dialog/period", "label": "期次",
-                    "detail": "期次只有一个含义：数据截止月", "fact": True}
-        if p.year and value == str(p.year):
-            return {"kind": "fact", "pointer": "dialog/period.year", "label": "期次年份",
-                    "detail": "由这句话里的月份与年份解析", "fact": True}
-        if p.month and value in (f"{p.month:02d}", str(p.month)):
-            return {"kind": "fact", "pointer": "dialog/period.month", "label": "期次月份",
-                    "detail": "从这句话里读出的月份（数据截止月）", "fact": True}
+        hit = known.get(value)
+        if hit is not None:
+            return dict(hit)
         return {"kind": "fact", "pointer": "dialog/example", "label": "示例",
                 "detail": "应答里的举例（不是本期数据）", "fact": True}
 
     return register
 
 
+# ---------------------------------------------------------------- 构建器
 def build(root, period, payload):                                  # noqa: ARG001
-    """构建器入口：一句话 → RuleDraft（应答 + 来源 + 槽位数据 + 记账期次）。
+    """构建器入口：一句话 → RuleDraft（应答 + 来源 + 槽位/盘点数据 + 记账期次）。
 
-    `root` 对期次识别无意义；`period`（槽位里已有的期次）只作记账兜底——
+    `root` 对解析与盘点无意义；`period`（槽位里已有的期次）只作记账兜底——
     解析出的期次优先（这轮对话谈的就是那一期）。
     """
     text = str(payload.get("text") or "")
     p = parse(text, today=parse_today(payload.get("today")))
-    reply = reply_for(p)
-    number = NumberedText.of([reply], _register(p))
+    inv = _scan_inventory(p.period) if (p.case == "period" and p.period) else None
+    if inv is None:
+        reply, verdict, actions = reply_for(p), "", []
+    else:
+        reply, verdict, actions = _compose(p, inv)
+    number = NumberedText.of([reply], _register(p, inv))
+    data = {**p.as_data(), "verdict": verdict, "actions": actions, "inventory": inv}
     return RuleDraft(
         rule_text=reply,
         number=number,
@@ -163,6 +298,6 @@ def build(root, period, payload):                                  # noqa: ARG00
         parts=(),
         task="",                       # modeled=False：task 不参与模型轮
         evidence=(),
-        data=p.as_data(),
+        data=data,
         record_period=p.period,
     )

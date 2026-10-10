@@ -46,7 +46,11 @@ def actor(role):
 
 @contextlib.contextmanager
 def using(**overrides):
-    """测试/脚本注入口：brain / data_root / records / settings 覆盖（可嵌套，内层优先）。"""
+    """测试/脚本注入口：brain / data_root / records / settings / inventory 覆盖
+    （可嵌套，内层优先）。
+
+    `inventory` 是 dialog 的盘点替身（callable：期次 → Inventory/dict/None；
+    不注入则走 `src/inventory.scan` 真实现）。"""
     merged = dict(_overrides_var.get() or {})
     merged.update(overrides)
     token = _overrides_var.set(merged)

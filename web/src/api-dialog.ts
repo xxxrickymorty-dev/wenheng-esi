@@ -1,9 +1,36 @@
-/* 对话前门（票 01）与后端的唯一通道：POST /api/dialog/turn（契约 #33）。
-   一轮对话 = 一句话 + 当前槽位 → 答复字段面（Answer）+ 合并后的槽位。
-   解析与合并都在后端（数字只来自后端，前端不猜期次）。 */
+/* 对话前门（票 01/02）与后端的唯一通道：POST /api/dialog/turn（契约 #33）。
+   一轮对话 = 一句话 + 当前槽位 → 答复字段面（Answer）+ 合并后的槽位 + 盘点。
+   解析、盘点与合并都在后端（数字只来自后端，前端不猜期次、不判件齐没齐）。 */
 
 import { req } from './api'
 import type { DialogSlots } from './lib/dialog'
+
+/** 必需件一行（key/label/state）。state: ok | missing */
+export type DialogPiece = {
+  key: string
+  label: string
+  state: 'ok' | 'missing'
+  note?: string
+}
+
+/** 盘点结果（四件）。n_missing>0 即缺件；released=false 即该期数据未发布。 */
+export type DialogInventory = {
+  period: string
+  released: boolean
+  pieces: DialogPiece[]
+  n_pieces: number
+  n_missing: number
+  fallback: string
+}
+
+/** 一轮对话给出的动作：
+    send＝把 text 当作下一句话发出去；goto＝跳站内视图；dismiss＝先等等（仅界面）。 */
+export type DialogAction = {
+  kind: 'send' | 'goto' | 'dismiss'
+  text: string
+  view?: string
+  period?: string
+}
 
 export type DialogReply = {
   mode: string
@@ -16,6 +43,10 @@ export type DialogReply = {
   record_id: string | null
   /** 合并后的槽位：本轮解析到的才覆盖，其余不变 */
   slots: DialogSlots
+  /** 盘点裁决：unpublished（未发布）/ missing（缺件）/ ready（齐）/ 空（本轮没判） */
+  verdict: 'unpublished' | 'missing' | 'ready' | ''
+  inventory: DialogInventory | null
+  actions: DialogAction[]
 }
 
 export async function postDialogTurn(text: string, slots: DialogSlots): Promise<DialogReply> {

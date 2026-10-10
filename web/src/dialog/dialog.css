@@ -78,6 +78,17 @@
 .dlg-turn.wh .dlg-bub{padding-top:4px}
 .dlg-nm{font-size:13.5px;color:var(--ink-3);margin-bottom:2px}
 .dlg-notice{margin-top:6px;font-size:13.5px;color:var(--ink-3)}
+/* 应答带的动作（改做那期 / 去取数台 / 去核对 / 先等等）——照五稿的胶囊按钮 */
+.dlg-acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:11px}
+.dlg-act{display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid var(--line);background:var(--card);border-radius:999px;
+  padding:6px 16px;min-height:var(--dlg-hit);font:inherit;font-size:14.5px;
+  cursor:pointer;text-decoration:none;color:var(--ink)}
+.dlg-act:hover{background:var(--panel)}
+.dlg-act.primary{background:var(--zhu);border-color:var(--zhu);color:#fff}
+.dlg-act.primary:hover{filter:brightness(1.12);background:var(--zhu)}
+.dlg-act.ghost{color:var(--ink-2);border-style:dashed;background:transparent}
+.dlg-act:disabled{opacity:.5;cursor:default;filter:none}
 .dlg-wait{color:var(--ink-3);font-size:14.5px;padding-top:6px}
 .dlg-gate{max-width:760px;margin:80px auto;padding:22px 26px;background:var(--card);
   border:1px solid var(--line);border-radius:var(--r);font-size:15.5px}
