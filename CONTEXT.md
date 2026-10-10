@@ -148,6 +148,7 @@ uv run python tools/verify_demo_run.py <期次>   # 写路径验收
 | — | M4b 学院统计（`src/college_stats.py`，即 F34） | 已顺延 v2.0（赛后） |
 | — | M6 公网部署 | 🟡 **脚本与手册已就绪，待上机执行**：`server/deploy/deploy_linux.sh`（09-16 16:36）+ `docs/部署手册（Linux 服务器）.md`（目标 116.62.37.161:8080，服务名 `wenheng-demo`）。**尚无证据表明已在服务器执行过**；本机两条路径都探不通（沙箱出网走白名单代理，非白名单 IP 一律挡），**须由 rick 用手机流量或非沙箱网络确认** |
 | — | `out/_archive/`（M4 期次归档） | ✅ 已实现（`audit.archive_period()`，只复制不动源目录；首次归档 202607＝135 文件 / 13.7MB） |
+| — | **Agent 自主性改造（31 号方案）** | 🟡 **设计已定案（2026-10-10 访谈）**：边界见 `docs/adr/0005-报告类Agent的自主性边界.md`；本批 = 灵活产线 L3（Planner 计划落盘 → Critic 成环 → 运行档案可见），固定产线 L2 与记忆放第二批，L4 排除。内部词已进 `GLOSSARY.md`（界面禁用）。待 `/to-spec` → `/to-tickets` |
 
 ## 两个仓库
 
