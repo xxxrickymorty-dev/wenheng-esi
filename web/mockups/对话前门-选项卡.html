@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="zh-CN" data-palette="ynu" data-s="q1">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 对话前门（静态稿 · 含糊选项卡）</title>
+<style>
+/* ============================================================
+   给 rick 审核的静态稿：单文件、双击即开、零依赖（与《对话前门》五稿同规格）。
+   场景：认不准「写报告」还是「查数据」时——不猜，回一张**单选卡**反问。
+   三态：① 未选（提交禁用）② 已选（提交可用）③ 必要时第三项（灵活分析稿）
+   交互口径（票 08）：点一项选中 → 按「提交」把该项原样当**下一句话**发回；
+      「忽略」收起这张卡（不发请求、不落账）；不做模式开关。
+   卡结构：role="group" + 原生单选（键盘可选可提交）；动效尊重减弱偏好。
+   左栏虚线块是审核用（上线整块删除）；URL 参数 ?s=q1|q2|q3
+   ============================================================ */
+:root{
+  --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB; --side:#EFEEE7;
+  --ink:#222B25; --ink-2:#3F4C42; --ink-3:#58655C;
+  --line:#DDE1D8; --line-2:#E6E9E2;
+  --zhu:#1A4B27; --zhu-soft:#E3EDE4;
+  --gold:#B19A65; --gold-soft:#F1EBDD; --gold-ink:#62501F;
+  --ok:#28643A; --ok-soft:#E2EEE4;
+  --bad:#B43B31; --bad-soft:#F7E1DE;
+  --serif:"Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  --shadow:0 1px 2px rgba(34,43,37,.05),0 8px 24px rgba(34,43,37,.06);
+  --r:14px; --r-sm:10px;
+  --col:1060px;
+  --hit:44px;
+}
+html[data-palette="zhu"]{ --bg:#F3EFE6; --card:#FBF8F1; --panel:#F6F1E7; --side:#EFE8DB;
+  --ink:#2F2A24; --ink-2:#5B5248; --ink-3:#6F6558; --line:#D9CFBC; --line-2:#E7DFD0;
+  --zhu:#B43B31; --zhu-soft:#F0DCD5; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:17px/1.7 var(--sans);-webkit-font-smoothing:antialiased;
+  display:flex;height:100vh;overflow:hidden}
+h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0}
+:focus-visible{outline:3px solid var(--zhu);outline-offset:3px;border-radius:6px}
+.mono{font-family:var(--mono)}
+.muted{color:var(--ink-3)}
+.skip{position:absolute;left:-9999px;top:8px;z-index:99;background:var(--card);
+  border:1px solid var(--line);border-radius:8px;padding:8px 14px}
+.skip:focus{left:12px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+
+/* ---------- 左：对话历史 ---------- */
+.side{flex:0 0 264px;display:flex;flex-direction:column;min-height:0;
+  background:var(--side);border-right:1px solid var(--line)}
+.side .brand{display:flex;align-items:baseline;gap:8px;padding:16px 16px 10px}
+.side .brand strong{font-family:var(--serif);font-size:18px}
+.side .brand span{font-size:13.5px;color:var(--ink-3)}
+.newchat{margin:0 12px 10px;min-height:var(--hit);padding:9px 14px;border:1px solid var(--line);
+  background:var(--card);border-radius:10px;font:inherit;font-size:15px;cursor:pointer;text-align:left}
+.newchat:hover{background:var(--panel)}
+.hist{flex:1;overflow-y:auto;padding:0 8px 10px}
+.hist .grp{font-size:13.5px;color:var(--ink-3);padding:12px 10px 4px}
+.hist a{display:block;padding:9px 10px;border-radius:9px;text-decoration:none;
+  color:var(--ink-2);font-size:15px;line-height:1.35}
+.hist a:hover{background:var(--card)}
+.hist a[aria-current="true"]{background:var(--card);color:var(--ink);
+  box-shadow:inset 2px 0 0 var(--zhu)}
+.side .me{display:flex;align-items:center;gap:9px;padding:11px 14px;
+  border-top:1px solid var(--line);font-size:14px;color:var(--ink-2)}
+.side .me .av{width:26px;height:26px;border-radius:999px;background:var(--zhu);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:13.5px}
+
+/* ---------- 右：主列 ---------- */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+.topbar{flex:0 0 auto;display:flex;gap:8px;align-items:center;padding:10px 30px;
+  border-bottom:1px solid var(--line);background:var(--card);font-size:14px}
+.topbar .ttl{font-family:var(--serif);font-size:16px;font-weight:600}
+.topbar .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+.slot{display:inline-flex;align-items:center;gap:6px;background:var(--panel);
+  border:1px solid var(--line);border-radius:999px;padding:0 6px 0 12px;min-height:32px}
+.slot .k{color:var(--ink-3);font-size:13.5px}
+.slot .v{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums}
+.slot .x{border:0;background:transparent;cursor:pointer;color:var(--ink-3);
+  font:inherit;font-size:13.5px;width:32px;height:32px;border-radius:999px}
+.slot .x:hover{background:var(--card);color:var(--ink)}
+.wk{position:relative}
+.wk summary{list-style:none;cursor:pointer;border:1px solid var(--line);background:var(--panel);
+  border-radius:999px;padding:5px 13px;font-size:14px;color:var(--ink-2);min-height:32px;
+  display:inline-flex;align-items:center}
+.wk summary:hover{background:var(--card)}
+.wk summary::-webkit-details-marker{display:none}
+.wk[open] summary{background:var(--zhu);border-color:var(--zhu);color:#fff}
+.wk .menu{position:absolute;right:0;top:calc(100% + 8px);z-index:30;min-width:190px;
+  background:var(--card);border:1px solid var(--line);border-radius:12px;
+  box-shadow:var(--shadow);padding:6px}
+.wk .menu a{display:block;padding:10px 12px;border-radius:8px;text-decoration:none;
+  color:var(--ink-2);font-size:14.5px;min-height:var(--hit);display:flex;align-items:center}
+.wk .menu a:hover{background:var(--panel)}
+.skin{display:flex;border:1px solid var(--line);border-radius:999px;
+  background:var(--panel);overflow:hidden}
+.skin button{border:0;background:transparent;font:inherit;font-size:13.5px;
+  padding:0 12px;min-height:32px;cursor:pointer;color:var(--ink-2)}
+.skin button:hover{background:var(--card)}
+.skin button[aria-pressed="true"]{background:var(--zhu);color:#fff}
+
+.thread{flex:1;overflow-y:auto;padding:26px 30px 12px}
+.thread-in{max-width:var(--col);margin:0 auto}
+.turn{display:flex;gap:12px;margin-bottom:20px}
+.turn .who{flex:0 0 40px;height:40px;border-radius:999px;display:flex;align-items:center;
+  justify-content:center;font:600 14px/1 var(--sans)}
+.turn.me .who{background:var(--panel);color:var(--ink-3);border:1px solid var(--line)}
+.turn.wh .who{background:var(--zhu);color:#fff}
+.turn .bub{flex:1;min-width:0}
+.turn.me .bub{background:var(--zhu-soft);border-radius:var(--r) var(--r) 4px var(--r);
+  padding:11px 16px;margin-left:56px}
+.turn.wh .bub{padding-top:4px}
+.turn .nm{font-size:13.5px;color:var(--ink-3);margin-bottom:2px}
+
+/* ---------- 单选卡（票 08 的主角） ---------- */
+.pick{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--zhu);
+  border-radius:0 var(--r-sm) var(--r-sm) 0;box-shadow:var(--shadow);
+  padding:14px 18px 12px;margin-top:12px;max-width:640px}
+.pick-q{font-family:var(--serif);font-weight:600;font-size:16px;margin-bottom:4px}
+.pick-note{font-size:13.5px;color:var(--ink-3);margin:2px 0 8px}
+.pick-row{display:flex;align-items:center;gap:11px;min-height:var(--hit);
+  padding:4px 10px;border:1px solid var(--line);border-radius:10px;
+  background:var(--card);cursor:pointer;margin-top:8px;max-width:520px}
+.pick-row:hover{background:var(--panel)}
+.pick-row input{width:18px;height:18px;accent-color:var(--zhu);cursor:pointer}
+.pick-row .t{font-size:15.5px}
+.pick-row .v{margin-left:auto;font-size:13.5px;color:var(--ink-3);
+  font-family:var(--mono);white-space:nowrap}
+.pick-row[data-on="true"]{border-color:var(--zhu);background:var(--zhu-soft)}
+.pick-acts{display:flex;gap:10px;margin-top:13px;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  border:1px solid var(--line);background:var(--card);border-radius:999px;
+  padding:6px 16px;min-height:var(--hit);font:inherit;font-size:14.5px;cursor:pointer}
+.btn:hover{background:var(--panel)}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff}
+.btn.primary:hover{filter:brightness(1.12)}
+.btn.ghost{color:var(--ink-2);border-style:dashed}
+.btn[aria-disabled="true"]{opacity:.45;cursor:default;filter:none}
+.pick-foot{font-size:13.5px;color:var(--ink-3);margin-top:9px}
+
+/* ---------- 底部输入框 ---------- */
+.composer{flex:0 0 auto;border-top:1px solid var(--line);background:var(--card);
+  padding:12px 30px 16px}
+.composer-in{max-width:var(--col);margin:0 auto}
+.box{display:flex;gap:10px;align-items:flex-end;border:1.5px solid var(--line);
+  border-radius:16px;background:var(--bg);padding:9px 11px}
+.box:focus-within{border-color:var(--zhu);box-shadow:0 0 0 3px var(--zhu-soft)}
+.box textarea{flex:1;border:0;background:transparent;resize:none;font:inherit;
+  color:var(--ink);height:28px;outline:none}
+.box .send{flex:0 0 auto;width:var(--hit);height:var(--hit);border-radius:999px;
+  border:0;background:var(--zhu);color:#fff;font-size:17px;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center}
+.box .send:hover{filter:brightness(1.12)}
+
+/* ---------- 场景切换（审核用；上线整块删除） ---------- */
+.dev{margin:0 10px 10px;border:1px dashed var(--line);border-radius:10px;
+  padding:8px 10px;font-size:13.5px;color:var(--ink-3)}
+.dev .t{display:block;margin-bottom:6px}
+.dev .row{display:flex;gap:6px;flex-wrap:wrap}
+.dev button{border:1px solid var(--line);background:var(--card);border-radius:999px;
+  padding:4px 10px;font:inherit;font-size:13.5px;cursor:pointer;color:inherit}
+.dev button[aria-pressed="true"]{background:var(--zhu);border-color:var(--zhu);color:#fff}
+[data-scene]{display:none}
+html[data-s="q1"] [data-scene~="q1"],
+html[data-s="q2"] [data-scene~="q2"],
+html[data-s="q3"] [data-scene~="q3"]{display:block}
+html[data-s="q1"] .turn[data-scene~="q1"],
+html[data-s="q2"] .turn[data-scene~="q2"],
+html[data-s="q3"] .turn[data-scene~="q3"]{display:flex}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
+</style>
+</head>
+<body>
+
+<a class="skip" href="#main">跳到对话内容</a>
+<h1 class="vh">文衡 · 对话前门（含糊选项卡静态稿）</h1>
+
+<!-- ================= 左：对话历史 ================= -->
+<aside class="side">
+  <div class="brand"><strong>文衡</strong><span>云南大学图书馆</span></div>
+  <button class="newchat">＋ 新对话</button>
+
+  <nav class="hist" aria-label="对话历史">
+    <div class="grp">今天</div>
+    <a href="#" aria-current="true">看看 9 月</a>
+    <a href="#">202607 数学进 1% 了吗</a>
+    <a href="#">做 202607 的报告</a>
+    <div class="grp">昨天</div>
+    <a href="#">帮我做 202605 的报告</a>
+    <a href="#">红件清单里那三条是什么</a>
+  </nav>
+
+  <div class="dev">
+    <span class="t">审核用（上线整块删除）· 看哪个状态：</span>
+    <div class="row">
+      <button aria-pressed="true" onclick="scene('q1',this)">① 未选（提交禁用）</button>
+      <button aria-pressed="false" onclick="scene('q2',this)">② 已选（提交可用）</button>
+      <button aria-pressed="false" onclick="scene('q3',this)">③ 必要时第三项</button>
+    </div>
+  </div>
+
+  <div class="me"><span class="av">卜</span>卜彤 · 管理员</div>
+</aside>
+
+<!-- ================= 中：对话 + 底：输入 ================= -->
+<section class="main" id="main">
+  <div class="topbar">
+    <span class="ttl">看看 9 月</span>
+    <div class="right">
+      <details class="wk">
+        <summary>工作台 ▾</summary>
+        <div class="menu">
+          <a href="#">生成台</a>
+          <a href="#">AI 分析台 · 灵活报告</a>
+          <a href="#">取数台</a>
+          <a href="#">审核台 · 对勘本</a>
+          <a href="#">运行档案</a>
+          <a href="#">陈列馆</a>
+        </div>
+      </details>
+      <span class="skin" role="group" aria-label="配色">
+        <button aria-pressed="true" onclick="palette('ynu',this)">云大绿</button>
+        <button aria-pressed="false" onclick="palette('zhu',this)">朱砂</button>
+      </span>
+      <span class="slot">
+        <span class="k">期次</span><span class="v">202609</span>
+        <button class="x" aria-label="清掉期次">✕</button></span>
+    </div>
+  </div>
+
+  <div class="thread">
+    <div class="thread-in">
+
+      <div class="turn me">
+        <div class="who">你</div>
+        <div class="bub">看看 9 月</div>
+      </div>
+
+      <div class="turn wh">
+        <div class="who">文</div>
+        <div class="bub">
+          <div class="nm">文衡</div>
+          这句我拿不准——是想做 202609 的报告，还是查 202609 的数据？选一个，我接着办：
+
+          <!-- ===== ① 未选：提交禁用 ===== -->
+          <div class="pick" data-scene="q1" role="group" aria-labelledby="q1">
+            <div class="pick-q" id="q1">选一个，我接着办</div>
+            <div class="pick-note">也可以直接说一句话，比如「查 202609 的数据」。</div>
+            <label class="pick-row">
+              <input type="radio" name="q1-how" value="做 202609 的报告">
+              <span class="t">出这一期的报告</span>
+            </label>
+            <label class="pick-row">
+              <input type="radio" name="q1-how" value="查 202609 的数据">
+              <span class="t">查这一期的数据</span>
+            </label>
+            <div class="pick-acts">
+              <button class="btn primary" aria-disabled="true" disabled>提交</button>
+              <button class="btn ghost">忽略</button>
+              <span class="muted" style="font-size:13.5px">先点一项，提交才可用</span>
+            </div>
+            <div class="pick-foot">提交＝把选中的话原样发回（走正常一轮，进运行档案）；「忽略」只收起这张卡，不发请求。</div>
+          </div>
+
+          <!-- ===== ② 已选：提交可用 ===== -->
+          <div class="pick" data-scene="q2" role="group" aria-labelledby="q2">
+            <div class="pick-q" id="q2">选一个，我接着办</div>
+            <div class="pick-note">也可以直接说一句话，比如「查 202609 的数据」。</div>
+            <label class="pick-row" data-on="true">
+              <input type="radio" name="q2-how" value="查 202609 的数据" checked>
+              <span class="t">查这一期的数据</span>
+              <span class="v">→ 查 202609 的数据</span>
+            </label>
+            <label class="pick-row">
+              <input type="radio" name="q2-how" value="做 202609 的报告">
+              <span class="t">出这一期的报告</span>
+              <span class="v">→ 做 202609 的报告</span>
+            </label>
+            <div class="pick-acts">
+              <button class="btn primary">提交</button>
+              <button class="btn ghost">忽略</button>
+            </div>
+            <div class="pick-foot">提交＝把选中的话原样发回（走正常一轮，进运行档案）；「忽略」只收起这张卡，不发请求。</div>
+          </div>
+
+          <!-- ===== ③ 必要时第三项（哪条产线也认不准时） ===== -->
+          <div class="pick" data-scene="q3" role="group" aria-labelledby="q3">
+            <div class="pick-q" id="q3">选一个，我接着办</div>
+            <div class="pick-note">按需 2–3 项：默认两项；认不准产线时才给第三项。</div>
+            <label class="pick-row">
+              <input type="radio" name="q3-how" value="做 202609 的报告">
+              <span class="t">出这一期的报告</span>
+              <span class="v">→ 做 202609 的报告</span>
+            </label>
+            <label class="pick-row">
+              <input type="radio" name="q3-how" value="查 202609 的数据">
+              <span class="t">查这一期的数据</span>
+              <span class="v">→ 查 202609 的数据</span>
+            </label>
+            <label class="pick-row">
+              <input type="radio" name="q3-how" value="出一版灵活分析稿">
+              <span class="t">出一版灵活分析稿（内部参考）</span>
+              <span class="v">→ 出一版灵活分析稿</span>
+            </label>
+            <div class="pick-acts">
+              <button class="btn primary" aria-disabled="true" disabled>提交</button>
+              <button class="btn ghost">忽略</button>
+            </div>
+            <div class="pick-foot">三项时同样：点一项选中 → 提交；选项文本＝要发回的那句话。</div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="composer">
+    <div class="composer-in">
+      <div class="box">
+        <textarea rows="1" aria-label="对文衡说话" placeholder="也可以直接说一句，比如「查 202609 的数据」…"></textarea>
+        <button class="send" aria-label="发送">↑</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+function scene(v, btn){
+  document.documentElement.dataset.s = v;
+  document.querySelectorAll(".dev button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b === btn)));
+}
+function palette(v, btn){
+  document.documentElement.dataset.palette = v;
+  document.querySelectorAll(".skin button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b === btn)));
+}
+const q = new URLSearchParams(location.search);
+const s = q.get("s");
+if (["q1","q2","q3"].indexOf(s) >= 0) {
+  document.documentElement.dataset.s = s;
+  document.querySelectorAll(".dev button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.getAttribute("onclick").indexOf("'" + s + "'") >= 0)));
+}
+</script>
+</body>
+</html>
