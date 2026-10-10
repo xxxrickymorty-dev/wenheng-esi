@@ -22,5 +22,6 @@
 
 ## 当前生效
 
-- spec：`docs/specs/2026-09-28-地基与信息减负.md`
-- 票集：`.scratch/diji-jianfu/issues/`
+- spec：`docs/specs/2026-10-10-agent自主性-灵活产线.md`（`ready-for-agent`）
+- 票集：`.scratch/agent-zizhu/issues/`（待 `/to-tickets` 产出）
+- 上一轮（已完结）：spec `docs/specs/2026-09-28-地基与信息减负.md`／票集 `.scratch/diji-jianfu/issues/`（15 票全部 `done`）
