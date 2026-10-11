@@ -84,9 +84,10 @@ class TestBoard路由与权限:
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
         assert '@app.get("/api/forecast/board")' in src
 
-    def test_用require_admin(self):
-        assert asyncio.run(app_module.api_forecast_board(
-            _Req(config.GUEST_USER))).status_code == 403
+    def test_放行操作员_匿名401(self):
+        # 2026-10-11：预测看板是只读，操作员放行（拿到看板形状即证明门已放行）。
+        b = asyncio.run(app_module.api_forecast_board(_Req(config.OPERATOR_USER)))
+        assert "routes" in b
         assert asyncio.run(app_module.api_forecast_board(_Req(None))).status_code == 401
 
 
@@ -112,5 +113,5 @@ class TestFactsTrend:
             "top_total_by_period": {"202607": 274.0, "bad": "x"}},
             ensure_ascii=False), encoding="utf-8")
         monkeypatch.setattr(app_module, "resolve_period_dir", lambda period: d)
-        r = asyncio.run(app_module.api_period_facts(_Req(config.DEMO_USER), "202609"))
+        r = asyncio.run(app_module.api_period_facts(_Req(config.ADMIN_USER), "202609"))
         assert r["trend"] == {"202607": 274.0}, "trend 只保留数值（非数值滤掉）"

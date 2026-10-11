@@ -28,7 +28,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from . import (acquisition, approval, archive, artifacts, collation, config, jobs,
                report_preview, shelf_data, shelf_preview)
 from . import forecasting
-from .guards import admin_file_route, admin_route
+from .guards import admin_file_route, admin_route, user_file_route, user_route
 from src import parse_ledger  # 成品隔离/回滚的唯一口径（FINAL_PRODUCTS / SUPERSEDED_DIR）
 from .protected_static import AdminStaticFiles
 from src import period as period_mod  # 期次口径唯一来源（ADR-0001：新工作区 API 也用它）
@@ -49,22 +49,25 @@ app.mount("/static", AdminStaticFiles(directory=str(config.SERVER_DIR / "static"
                                        protected_paths=("collation-demo.html",)), name="static")
 # 新工作区系统（React SPA，构建产物 web/dist 入库）——见 docs/adr/0001。
 # check_dir=False：干净 clone 里 dist 缺失时不要拖垮整个服务启动，让它 404 就行。
-async def _shelf_guest_data():
+async def _shelf_preview_data():
+    """封面/目录/名词解释基础投影（两种角色同份；不涉指标数字）。"""
     return await run_in_threadpool(shelf_preview.javascript_response, period_cards())
 
 
-async def _shelf_admin_data():
-    """每次请求均从已部署期次构建，避免把指标留在静态构建产物。"""
+async def _shelf_full_data():
+    """每次请求均从已部署期次构建，避免把指标留在静态构建产物。
+
+    2026-10-11 起两种角色（管理员/操作员）同拿全数据——guest 预览边界已取消。
+    """
     return await run_in_threadpool(shelf_data.javascript_response, period_cards())
 
 
 app.mount("/app", AdminStaticFiles(directory=str(config.ROOT / "web" / "dist"), html=True,
                                    check_dir=False, require_login=True,
                                    protected_paths=("shelf/data.js", "shelf/preview.js"),
-                                   guest_responses={"shelf/data.js": _shelf_guest_data,
-                                                    "shelf/preview.js": _shelf_guest_data},
-                                   admin_responses={"shelf/data.js": _shelf_admin_data,
-                                                    "shelf/preview.js": _shelf_guest_data}), name="web")
+                                   user_responses={"shelf/data.js": _shelf_full_data,
+                                                   "shelf/preview.js": _shelf_preview_data}),
+          name="web")
 templates = Jinja2Templates(directory=str(config.SERVER_DIR / "templates"))
 
 
@@ -129,18 +132,60 @@ def require_admin(request: Request):
     if not user:
         return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
     if config.role_of(user) != "admin":
-        return JSONResponse({"error": "需要管理员权限", "hint": "游客不能执行此操作"}, status_code=403)
+        return JSONResponse({"error": "需要管理员权限",
+                             "hint": "操作员只读，此操作仅管理员可用"}, status_code=403)
+    return user
+
+
+def require_user(request: Request):
+    """已登录即可（管理员与操作员都放行）——只读端点用。"""
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
     return user
 
 
 def require_admin_file(request: Request):
-    """附件与图沿用旧的未登录跳转，guest 明确拒绝。"""
+    """附件与图沿用旧的未登录跳转；操作员按只读放行的口不用它。"""
     user = current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
     if config.role_of(user) != "admin":
-        return JSONResponse({"error": "需要管理员权限", "hint": "游客不能查看报告内容"}, status_code=403)
+        return JSONResponse({"error": "需要管理员权限",
+                             "hint": "操作员只读，此文件仅管理员可下载"}, status_code=403)
     return user
+
+
+def require_user_file(request: Request):
+    """文件口：已登录即可（管理员与操作员都放行）；未登录照旧 303 去登录页。"""
+    user = current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    return user
+
+
+#: 操作员不可见的产物键（红件三件 + 运行日志 + 日志包）——2026-10-11 角色分级。
+#: 产物清单过滤与下载口拦截共用这一份；键的定义在 `jobs._artifact_table` / `archive`。
+OPERATOR_HIDDEN_KEYS = frozenset({"red_list", "red_view", "red_json", "runlog", "logpack"})
+
+
+def _role_of_request(request):
+    return config.role_of(current_user(request) or "")
+
+
+def _visible_artifacts(items, role):
+    """产物清单按角色过滤：操作员看不到红件三件与运行日志；管理员原样。"""
+    if role == "admin":
+        return items
+    return [a for a in items if a.get("key") not in OPERATOR_HIDDEN_KEYS]
+
+
+def _operator_download_guard(role, key):
+    """操作员下载口拦截：红件/日志包类键仅管理员可下载。"""
+    if role != "admin" and key in OPERATOR_HIDDEN_KEYS:
+        return JSONResponse({"error": "需要管理员权限",
+                             "hint": "操作员只读，此文件仅管理员可下载"}, status_code=403)
+    return None
 
 
 def _signed_report_download_guard(out_dir, key: str):
@@ -180,23 +225,25 @@ def _serve_artifact(*, out_dir, key, pack_job, resolve):
     return FileResponse(path, filename=path.name, media_type="application/octet-stream")
 
 
-def _legacy_admin_gate(request):
-    """旧页面先按身份分流，游客请求不探测期次或任务是否存在。"""
+def _legacy_login_gate(request):
+    """旧页面只关未登录这一道门；已登录（管理员/操作员）放行到新工作区。
+
+    隐藏屏（红件/溯源/运行档案）的可见性由新工作区的路由守卫表达，
+    这里不再按角色分流（2026-10-11 角色改两级后）。
+    """
     user = current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
-    if config.role_of(user) != "admin":
-        return RedirectResponse("/app/shelf/", status_code=303)
     return None
 
 
 def _legacy_redirect(request, key, **fmt):
-    """老路由 302 的统一出口：仅管理员可进入对应的新工作台。
+    """老路由 302 的统一出口：已登录用户可进入对应的新工作台。
 
     未登录的访问与旧页面一样落到 /login（303）——新站只认 /api/me 的 401，
     老 URL 的闸得在老站这一侧关住。
     """
-    gate = _legacy_admin_gate(request)
+    gate = _legacy_login_gate(request)
     if gate:
         return gate
     target = config.LEGACY_REDIRECTS[key]
@@ -212,7 +259,7 @@ async def login_page(request: Request, err: str = ""):
     return templates.TemplateResponse(
         request, "login.html",
         {"request": request, "err": err, "hint": config.SHOW_HINT,
-         "show_hint_user": config.DEMO_USER if config.SHOW_HINT else ""})
+         "show_hint_user": config.ADMIN_USER if config.SHOW_HINT else ""})
 
 
 @app.post("/login")
@@ -224,8 +271,8 @@ async def do_login(request: Request, username: str = Form(""), password: str = F
     if check_credentials(username, password):
         request.session["user"] = username
         _login_fails.pop(ip, None)
-        target = "/app/shelf/" if config.role_of(username) == "guest" else "/"
-        return RedirectResponse(target, status_code=303)
+        # 两种角色（管理员/操作员）都进工作区；操作员可见范围由工作区按角色裁剪。
+        return RedirectResponse("/", status_code=303)
     rec["n"] += 1
     if rec["n"] >= 5:
         rec.update({"n": 0, "until": time.time() + 60})
@@ -233,17 +280,17 @@ async def do_login(request: Request, username: str = Form(""), password: str = F
 
 
 def check_credentials(username: str, password: str) -> bool:
-    """登录口令校验：admin（demo）与只读游客（guest）各一套。
+    """登录口令校验：管理员与操作员（评委）各一套。
 
-    ⚠ 2026-09-24 修：此前只放行 demo，`config.GUEST_USER/GUEST_PASS` 定义了却登不进来
-    （游客角色只能靠打桩验，演示时也没法真登）。`role_of` 早就认 guest，缺的就是这道口。
     ⚠ 2026-10-02：口令不再有内置默认值——没配口令（空）一律拒绝，空口令登不进来。
+    ⚠ 2026-10-11：guest 角色取消，改为「操作员」；两套口令见 config。
     """
     if not username or not password:
         return False
     return bool(
-        (config.DEMO_PASS and username == config.DEMO_USER and password == config.DEMO_PASS)
-        or (config.GUEST_PASS and username == config.GUEST_USER and password == config.GUEST_PASS)
+        (config.ADMIN_PASS and username == config.ADMIN_USER and password == config.ADMIN_PASS)
+        or (config.OPERATOR_PASS and username == config.OPERATOR_USER
+            and password == config.OPERATOR_PASS)
     )
 
 
@@ -332,7 +379,7 @@ async def period_collation(request: Request, period: str,
 
     非法/不存在的期次落回新站首页（保留旧「回落首页」语义）。
     """
-    gate = _legacy_admin_gate(request)
+    gate = _legacy_login_gate(request)
     if gate:
         return gate
     d = resolve_period_dir(period)
@@ -344,7 +391,7 @@ async def period_collation(request: Request, period: str,
 @app.get("/p/{period}/redslots", response_class=HTMLResponse)
 async def period_redslots(request: Request, period: str):
     """老红件清单页已下线（ADR-0002 阶段 2）—— 302 到新工作区。"""
-    gate = _legacy_admin_gate(request)
+    gate = _legacy_login_gate(request)
     if gate:
         return gate
     d = resolve_period_dir(period)
@@ -360,7 +407,7 @@ async def period_trace(request: Request, period: str):
     数据等价物走 `GET /api/periods/{period}/trace`（现场真读台账，同一套
     `workbench.trace` 装配）。
     """
-    gate = _legacy_admin_gate(request)
+    gate = _legacy_login_gate(request)
     if gate:
         return gate
     d = resolve_period_dir(period)
@@ -384,7 +431,7 @@ def _find_ledger(period_dir):
 @app.get("/p/{period}/charts", response_class=HTMLResponse)
 async def period_charts(request: Request, period: str):
     """老图册页已下线（ADR-0002 阶段 2）—— 302 到新工作区。"""
-    gate = _legacy_admin_gate(request)
+    gate = _legacy_login_gate(request)
     if gate:
         return gate
     d = resolve_period_dir(period)
@@ -460,7 +507,7 @@ async def period_flexible(request: Request, period: str, intent: str = "",
     🔴 **图表路由 `/p/{period}/flexible/chart/*` 与 JSON API 不动**——
        新站分析台的 body_html 直接引用那些图地址（契约 #21）。
     """
-    gate = _legacy_admin_gate(request)
+    gate = _legacy_login_gate(request)
     if gate:
         return gate
     d = resolve_period_dir(period)
@@ -470,7 +517,7 @@ async def period_flexible(request: Request, period: str, intent: str = "",
 
 
 @app.get("/p/{period}/flexible/chart/{intent}/{name}")
-@admin_file_route
+@user_file_route
 async def period_flexible_chart(request: Request, period: str,
                                 intent: str, name: str):
     """灵活报告的图。**与复刻图分开解析** —— 归到 `flexible/<intent>/charts/` 下。"""
@@ -484,7 +531,7 @@ async def period_flexible_chart(request: Request, period: str,
 
 
 @app.get("/p/{period}/flexible/{intent}/report.html")
-@admin_file_route
+@user_file_route
 async def period_flexible_report(request: Request, period: str, intent: str):
     """灵活报告整篇下载（rick 2026-09-29：出稿后「下载报告」）。
 
@@ -516,7 +563,7 @@ async def period_archive(request: Request, period: str):
     数据等价物走 `GET /api/periods/{period}/archive`（契约 #18）；
     下载端点 `/p/{period}/download/logpack` 保留（§六 保留项）。
     """
-    gate = _legacy_admin_gate(request)
+    gate = _legacy_login_gate(request)
     if gate:
         return gate
     d = resolve_period_dir(period)
@@ -526,7 +573,7 @@ async def period_archive(request: Request, period: str):
 
 
 @app.get("/p/{period}/chart/{rel:path}")
-@admin_file_route
+@user_file_route
 async def period_chart(request: Request, period: str, rel: str):
     """图表原图（只读）。`rel` 是 `red_slots.json` 里 `source` 去掉 `charts/` 的部分。
 
@@ -544,8 +591,11 @@ async def period_chart(request: Request, period: str, rel: str):
 
 
 @app.get("/p/{period}/download/{key}")
-@admin_file_route
+@user_file_route
 async def period_download(request: Request, period: str, key: str):
+    guard = _operator_download_guard(_role_of_request(request), key)
+    if guard:
+        return guard
     d = resolve_period_dir(period)
     if d is None:
         return RedirectResponse("/", status_code=303)
@@ -563,7 +613,7 @@ async def job_page(request: Request, job_id: str):
 
 async def redslots_page(request: Request, job_id: str):
     """旧任务红件清单已下线—— 302 到新工作区（动态填任务的期次）。"""
-    gate = _legacy_admin_gate(request)
+    gate = _legacy_login_gate(request)
     if gate:
         return gate
     job = jobs.read_job(job_id)
@@ -576,7 +626,7 @@ async def redslots_page(request: Request, job_id: str):
 
 async def charts_page(request: Request, job_id: str):
     """旧任务图册已下线—— 302 到新工作区（动态填任务的期次）。"""
-    gate = _legacy_admin_gate(request)
+    gate = _legacy_login_gate(request)
     if gate:
         return gate
     job = jobs.read_job(job_id)
@@ -589,7 +639,7 @@ async def charts_page(request: Request, job_id: str):
 
 async def job_archive(request: Request, job_id: str):
     """老任务档案页已下线（ADR-0002 第二轮）—— 302 到新档案视图（动态填任务的期次）。"""
-    gate = _legacy_admin_gate(request)
+    gate = _legacy_login_gate(request)
     if gate:
         return gate
     job = jobs.read_job(job_id)
@@ -604,7 +654,7 @@ async def job_archive(request: Request, job_id: str):
 async def collation_page(request: Request, job_id: str,
                          err: str = "", signed: str = "", revoked: str = ""):
     """旧任务对勘本已下线—— 302 到新工作区（动态填任务的期次）。"""
-    gate = _legacy_admin_gate(request)
+    gate = _legacy_login_gate(request)
     if gate:
         return gate
     job = jobs.read_job(job_id)
@@ -614,7 +664,7 @@ async def collation_page(request: Request, job_id: str,
     return _legacy_redirect(request, "/jobs/{job_id}/collation", period=period)
 
 @app.get("/api/jobs/{job_id}/approval")
-@admin_route
+@user_route
 async def api_approval(request: Request, job_id: str):
     job = jobs.read_job(job_id)
     if not job:
@@ -626,7 +676,7 @@ async def api_approval(request: Request, job_id: str):
 
 
 @app.get("/api/jobs/{job_id}/progress")
-@admin_route
+@user_route
 async def api_job_progress(request: Request, job_id: str):
     """任务潜布：parse progress.jsonl -> events + 每步耗时。
 
@@ -664,7 +714,7 @@ async def healthz():
 
 
 @app.get("/api/status")
-@admin_route
+@user_route
 async def api_status(request: Request):
     """工作区任务入口：只提供前端跳转所需的任务标识，不暴露落盘记录。"""
     active = jobs.active_job()
@@ -717,7 +767,7 @@ def _acquisition_only_periods(known: set[str]) -> list[dict]:
 
 
 @app.get("/api/periods")
-@admin_route
+@user_route
 async def api_periods(request: Request):
     """期次列表（新工作区系统 /app 的数据源）——与首屏印记链同源（period_cards）。
 
@@ -745,7 +795,7 @@ async def api_me(request: Request):
 
 
 @app.get("/api/periods/{period}")
-@admin_route
+@user_route
 async def api_period_detail(request: Request, period: str):
     """单期详情：三步条＝①取数 ②核对并并入 ③生成（ADR-0004）。
 
@@ -899,21 +949,26 @@ async def api_acq_preflight(request: Request, period: str):
 
 
 @app.get("/api/periods/{period}/artifacts")
-@admin_route
+@user_route
 async def api_period_artifacts(request: Request, period: str):
-    """按期次列运行产物，仅管理员可读。"""
+    """按期次列运行产物；操作员看不到红件三件与运行日志（2026-10-11 角色分级）。"""
     d = resolve_period_dir(period)
     if d is None:
         if not _period_has_data(period):
             return _period_missing()
         return {"period": period, "artifacts": []}      # 还没出稿：产物为空，如实说
-    return {"period": d.name, "artifacts": jobs.collect_period_artifacts(d.name)}
+    return {"period": d.name,
+            "artifacts": _visible_artifacts(jobs.collect_period_artifacts(d.name),
+                                            _role_of_request(request))}
 
 
 @app.get("/api/periods/{period}/download/{key}")
-@admin_route
+@user_route
 async def api_period_download(request: Request, period: str, key: str):
-    """期次产物下载仅管理员可读。"""
+    """期次产物下载；操作员只读，红件/日志包类键仅管理员可下载。"""
+    guard = _operator_download_guard(_role_of_request(request), key)
+    if guard:
+        return guard
     d = resolve_period_dir(period)
     if d is None:
         return _period_missing()
@@ -956,7 +1011,7 @@ async def api_period_sign_json(request: Request, period: str):
 
 
 @app.get("/api/periods/{period}/forecast-choice")
-@admin_route
+@user_route
 async def api_forecast_choice_get(request: Request, period: str):
     """读回请求期次的预测模型选择，仅管理员可读。
 
@@ -1136,7 +1191,7 @@ def _localize_facts(facts: dict) -> dict:
 
 
 @app.get("/api/periods/{period}/facts")
-@admin_route
+@user_route
 async def api_period_facts(request: Request, period: str):
     """读数带数据：overview_facts.json + meta.json 摘要，仅管理员可读。"""
     d = resolve_period_dir(period)
@@ -1161,7 +1216,7 @@ async def api_period_facts(request: Request, period: str):
 
 
 @app.get("/api/periods/{period}/workbench")
-@admin_route
+@user_route
 async def api_period_workbench(request: Request, period: str):
     """工作台全量数据：todo/fills/pending/approval。admin 可读。"""
     d = resolve_period_dir(period)
@@ -1175,7 +1230,7 @@ async def api_period_workbench(request: Request, period: str):
 
 
 @app.get("/api/periods/{period}/report-preview")
-@admin_route
+@user_route
 async def api_period_report_preview(request: Request, period: str):
     """审核台用：把这一期的试排报告（docx）拆成可渲染的块 + 在线填空字段。
 
@@ -1193,7 +1248,7 @@ async def api_period_report_preview(request: Request, period: str):
 
 
 @app.get("/api/periods/{period}/report-image/{rid}")
-@admin_route
+@user_route
 async def api_period_report_image(request: Request, period: str, rid: str):
     """报告预览里的插图（按 docx 内部 rId 取，只读、不落盘）。"""
     d = resolve_period_dir(period)
@@ -1337,7 +1392,7 @@ async def api_period_redslots(request: Request, period: str,
 
 
 @app.get("/api/periods/{period}/collation")
-@admin_route
+@user_route
 async def api_period_collation(request: Request, period: str,
                                limit: int = 50, offset: int = 0,
                                full: bool = False):
@@ -1367,7 +1422,7 @@ async def api_period_collation(request: Request, period: str,
 
 
 @app.get("/api/periods/{period}/charts")
-@admin_route
+@user_route
 async def api_period_charts_json(request: Request, period: str,
                                  limit: int = 50, offset: int = 0):
     d = resolve_period_dir(period)
@@ -1429,7 +1484,7 @@ def _answer_response(ans):
 
 
 @app.post("/api/analyze")
-@admin_route
+@user_route
 async def api_analyze(request: Request):
     """问文衡（qa 能力）**薄适配**（SPEC §4 步骤 2）：调用方只认 Answer 字段面，
     不知道盾、回落、工具、留痕、开关任何一件。
@@ -1469,7 +1524,7 @@ async def api_period_review_advice(request: Request, period: str):
 
 
 @app.get("/api/ai/capabilities")
-@admin_route
+@user_route
 async def api_ai_capabilities(request: Request):
     """能力开关表（契约 #28）：分析台「问文衡」的开关读它；纯读配置，无副作用。"""
     import ai                                                     # noqa: PLC0415
@@ -1547,7 +1602,7 @@ async def api_ai_switch(request: Request):
 
 
 @app.post("/api/dialog/turn")
-@admin_route
+@user_route
 async def api_dialog_turn(request: Request):
     """对话前门一轮（契约 #33，票 01–07）：一句话 → 路由（两意图）+ 应答 + 槽位 + 盘点。
 
@@ -1603,7 +1658,7 @@ async def api_dialog_turn(request: Request):
 
 
 @app.get("/api/dialog/home")
-@admin_route
+@user_route
 async def api_dialog_home(request: Request):                      # noqa: ARG001
     """对话前门·空态「本期任务」（契约 #35，票 06）：三步状态从既有产物判，只读不新算。
 
@@ -1624,7 +1679,7 @@ async def api_dialog_home(request: Request):                      # noqa: ARG001
 
 
 @app.get("/api/forecast/board")
-@admin_route
+@user_route
 async def api_forecast_board(request: Request, period: str = ""):
     """预测台「学科板」（契约 #20）—— 解析预测选模与过线.md 的两张表。
 
@@ -1637,7 +1692,7 @@ async def api_forecast_board(request: Request, period: str = ""):
 
 
 @app.get("/api/periods/{period}/flexible")
-@admin_route
+@user_route
 async def api_period_flexible(request: Request, period: str, intent: str = "",
                               variant: str = ""):
     """灵活报告 JSON（契约 #21①）：列已生成 + 当前稿的 body_html + 下拉清单。
@@ -1821,7 +1876,7 @@ async def api_period_flexible_polish(request: Request, period: str):
 
 
 @app.get("/api/forecast/meta")
-@admin_route
+@user_route
 async def api_forecast_meta(request: Request):
     return forecasting.page_context()
 
@@ -1885,7 +1940,7 @@ async def api_create_job(request: Request,
 
 
 @app.get("/api/jobs/{job_id}")
-@admin_route
+@user_route
 async def api_job(request: Request, job_id: str):
     job = jobs.read_job(job_id)
     if not job:
@@ -1897,12 +1952,14 @@ async def api_job(request: Request, job_id: str):
 
 
 @app.get("/api/jobs/{job_id}/artifacts")
-@admin_route
+@user_route
 async def api_artifacts(request: Request, job_id: str):
     job = jobs.read_job(job_id)
     if not job:
         return _job_missing()
-    return {"job": job, "artifacts": jobs.collect_artifacts(job)}
+    return {"job": job,
+            "artifacts": _visible_artifacts(jobs.collect_artifacts(job),
+                                            _role_of_request(request))}
 
 
 @app.get("/api/jobs/{job_id}/download/{key}")
@@ -2047,7 +2104,7 @@ def _tail(path: pathlib.Path, state: dict):
 
 
 @app.get("/api/jobs/{job_id}/events")
-@admin_route
+@user_route
 async def api_events(request: Request, job_id: str):
     job = jobs.read_job(job_id)
     if not job:

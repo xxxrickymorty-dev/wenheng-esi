@@ -16,7 +16,7 @@ for p in (str(REPO), str(REPO / "src")):
 from fastapi.responses import JSONResponse                  # noqa: E402
 from server import config                                    # noqa: E402
 from server import app as app_module                         # noqa: E402
-from server.app import require_admin                         # noqa: E402
+from server.app import require_admin, require_user           # noqa: E402
 
 
 class _Req:
@@ -25,17 +25,19 @@ class _Req:
 
 
 class TestRoleOf:
-    def test_demo是admin(self):
-        assert config.role_of(config.DEMO_USER) == "admin"
+    """2026-10-11 角色改两级：admin / operator（guest 取消，未知一律按操作员兜底）。"""
 
-    def test_guest是guest(self):
-        assert config.role_of(config.GUEST_USER) == "guest"
+    def test_admin是admin(self):
+        assert config.role_of(config.ADMIN_USER) == "admin"
 
-    def test_未知用户默认guest(self):
-        assert config.role_of("random") == "guest"
+    def test_操作员是operator(self):
+        assert config.role_of(config.OPERATOR_USER) == "operator"
 
-    def test_空用户名是guest(self):
-        assert config.role_of("") == "guest"
+    def test_未知用户默认operator(self):
+        assert config.role_of("random") == "operator"
+
+    def test_空用户名是operator(self):
+        assert config.role_of("") == "operator"
 
 
 class TestRequireAdmin:
@@ -44,35 +46,50 @@ class TestRequireAdmin:
         assert isinstance(r, JSONResponse)
         assert r.status_code == 401
 
-    def test_guest_403(self):
-        r = require_admin(_Req(config.GUEST_USER))
+    def test_操作员_403(self):
+        r = require_admin(_Req(config.OPERATOR_USER))
         assert isinstance(r, JSONResponse)
         assert r.status_code == 403
 
     def test_admin_通过(self):
-        r = require_admin(_Req(config.DEMO_USER))
-        assert r == config.DEMO_USER
+        r = require_admin(_Req(config.ADMIN_USER))
+        assert r == config.ADMIN_USER
+
+
+class TestRequireUser:
+    """只读端点门：已登录即可（管理员与操作员都放行）。"""
+
+    def test_未登录_401(self):
+        r = require_user(_Req(None))
+        assert isinstance(r, JSONResponse)
+        assert r.status_code == 401
+
+    def test_操作员通过(self):
+        assert require_user(_Req(config.OPERATOR_USER)) == config.OPERATOR_USER
+
+    def test_admin通过(self):
+        assert require_user(_Req(config.ADMIN_USER)) == config.ADMIN_USER
 
 
 class TestLogin口令:
-    """2026-09-24 修：/login 只认 demo，guest 定义了却登不进来（前端实报）。"""
+    """2026-10-11 角色改两级后：管理员与操作员各一套口令，登录都落工作区。"""
 
-    def test_demo可登(self):
+    def test_admin可登(self):
         from server.app import check_credentials
-        assert check_credentials(config.DEMO_USER, config.DEMO_PASS)
+        assert check_credentials(config.ADMIN_USER, config.ADMIN_PASS)
 
-    def test_guest可登(self):
+    def test_操作员可登(self):
         from server.app import check_credentials
-        assert check_credentials(config.GUEST_USER, config.GUEST_PASS)
+        assert check_credentials(config.OPERATOR_USER, config.OPERATOR_PASS)
 
     def test_错口令与陌生账号不可登(self):
         from server.app import check_credentials
-        assert not check_credentials(config.DEMO_USER, "wrong")
-        assert not check_credentials(config.GUEST_USER, "wrong")
+        assert not check_credentials(config.ADMIN_USER, "wrong")
+        assert not check_credentials(config.OPERATOR_USER, "wrong")
         assert not check_credentials("random", "random")
         assert not check_credentials("", "")
 
-    def test_guest登录直达陈列馆_admin保持原落点(self, monkeypatch):
+    def test_两角色登录都落工作区(self, monkeypatch):
         class LoginRequest:
             client = type("Client", (), {"host": "test"})()
 
@@ -80,64 +97,67 @@ class TestLogin口令:
                 self.session = {}
 
         monkeypatch.setattr(app_module, "_login_fails", {})
-        guest_request = LoginRequest()
+        operator_request = LoginRequest()
         admin_request = LoginRequest()
-        guest = asyncio.run(app_module.do_login(guest_request, config.GUEST_USER, config.GUEST_PASS))
-        admin = asyncio.run(app_module.do_login(admin_request, config.DEMO_USER, config.DEMO_PASS))
-        assert guest.headers["location"] == "/app/shelf/"
+        operator = asyncio.run(app_module.do_login(
+            operator_request, config.OPERATOR_USER, config.OPERATOR_PASS))
+        admin = asyncio.run(app_module.do_login(
+            admin_request, config.ADMIN_USER, config.ADMIN_PASS))
+        assert operator.headers["location"] == "/"
         assert admin.headers["location"] == "/"
 
 
-class TestAdmin端点上锁:
-    """守卫行为：guest 403 / 匿名 401（判别统一由 @admin_route 承担）。"""
-
-    def test_forecast_meta用require_admin(self):
-        assert asyncio.run(app_module.api_forecast_meta(
-            _Req(config.GUEST_USER))).status_code == 403
-        assert asyncio.run(app_module.api_forecast_meta(_Req(None))).status_code == 401
+class TestAdmin写端点上锁:
+    """写动作：操作员 403 / 匿名 401（判别统一由 @admin_route 承担）。"""
 
     def test_forecast_run用require_admin(self):
         assert asyncio.run(app_module.api_forecast_run(
-            _Req(config.GUEST_USER))).status_code == 403
+            _Req(config.OPERATOR_USER))).status_code == 403
         assert asyncio.run(app_module.api_forecast_run(_Req(None))).status_code == 401
 
     def test_create_job用require_admin(self):
         assert asyncio.run(app_module.api_create_job(
-            _Req(config.GUEST_USER))).status_code == 403
+            _Req(config.OPERATOR_USER))).status_code == 403
         assert asyncio.run(app_module.api_create_job(_Req(None))).status_code == 401
 
-    def test_api_job用require_admin(self):
-        assert asyncio.run(app_module.api_job(
-            _Req(config.GUEST_USER), "jid")).status_code == 403
-        assert asyncio.run(app_module.api_job(_Req(None), "jid")).status_code == 401
+    def test_sign用require_admin(self):
+        assert asyncio.run(app_module.api_period_sign_json(
+            _Req(config.OPERATOR_USER), "202609")).status_code == 403
 
-    def test_api_events用require_admin(self):
-        assert asyncio.run(app_module.api_events(
-            _Req(config.GUEST_USER), "jid")).status_code == 403
-        assert asyncio.run(app_module.api_events(_Req(None), "jid")).status_code == 401
-
-    def test_api_approval用require_admin(self):
-        assert asyncio.run(app_module.api_approval(
-            _Req(config.GUEST_USER), "jid")).status_code == 403
-        assert asyncio.run(app_module.api_approval(_Req(None), "jid")).status_code == 401
+    def test_rollback用require_admin(self):
+        assert asyncio.run(app_module.api_rollback(
+            _Req(config.OPERATOR_USER), "202609")).status_code == 403
 
 
-class TestGuest可读端点:
-    def test_api_periods已锁admin(self):
-        assert asyncio.run(app_module.api_periods(
-            _Req(config.GUEST_USER))).status_code == 403
+class Test只读端点放行操作员:
+    """只读端点：操作员放行（拿不到管理员门，404/正常体即证明门放行）。"""
+
+    def test_api_periods放行(self):
+        body = asyncio.run(app_module.api_periods(_Req(config.OPERATOR_USER)))
+        assert isinstance(body, dict) and "periods" in body
         assert asyncio.run(app_module.api_periods(_Req(None))).status_code == 401
 
-    def test_api_me不锁admin(self):
-        me = asyncio.run(app_module.api_me(_Req(config.GUEST_USER)))
-        assert me["name"] == config.GUEST_USER and me["role"] == "guest"
+    def test_api_me角色如实(self):
+        me = asyncio.run(app_module.api_me(_Req(config.OPERATOR_USER)))
+        assert me["name"] == config.OPERATOR_USER and me["role"] == "operator"
         assert asyncio.run(app_module.api_me(_Req(None))).status_code == 401
 
-    def test_api_period_detail已锁admin(self):
+    def test_api_period_detail放行(self):
+        # 不存在的期次应回「期次不存在」404——若门没放行会是 403。
         assert asyncio.run(app_module.api_period_detail(
-            _Req(config.GUEST_USER), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER), "199901")).status_code == 404
         assert asyncio.run(app_module.api_period_detail(
-            _Req(None), "202609")).status_code == 401
+            _Req(None), "199901")).status_code == 401
+
+    def test_api_job与events放行(self):
+        assert asyncio.run(app_module.api_job(
+            _Req(config.OPERATOR_USER), "nonexistent")).status_code == 404
+        assert asyncio.run(app_module.api_events(
+            _Req(config.OPERATOR_USER), "nonexistent")).status_code == 404
+
+    def test_api_approval放行(self):
+        assert asyncio.run(app_module.api_approval(
+            _Req(config.OPERATOR_USER), "nonexistent")).status_code == 404
 
 
 class TestPalette:

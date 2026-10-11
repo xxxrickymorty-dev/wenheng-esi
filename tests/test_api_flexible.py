@@ -71,10 +71,14 @@ class Test路由与权限:
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
         assert '@app.post("/api/periods/{period}/flexible")' in src
 
-    def test_两口都用require_admin(self):
-        for fn in (appmod.api_period_flexible, appmod.api_period_flexible_generate):
-            assert asyncio.run(fn(_Req(config.GUEST_USER), "202609")).status_code == 403
-            assert asyncio.run(fn(_Req(None), "202609")).status_code == 401
+    def test_读口放行操作员_写口仍admin(self):
+        """2026-10-11：GET 读口对操作员放行（404＝门放行后未找到期次）；POST 生成口仍只管理员。"""
+        assert asyncio.run(appmod.api_period_flexible(
+            _Req(config.OPERATOR_USER), "199901")).status_code == 404
+        assert asyncio.run(appmod.api_period_flexible(_Req(None), "199901")).status_code == 401
+        assert asyncio.run(appmod.api_period_flexible_generate(
+            _Req(config.OPERATOR_USER), "202609")).status_code == 403
+        assert asyncio.run(appmod.api_period_flexible_generate(_Req(None), "202609")).status_code == 401
 
     def test_POST只写flexible目录(self, tmp_path, monkeypatch):
         """生成只动 out/<期次>/flexible/；config.INPUT_DIR 被触碰即失败。"""
@@ -92,14 +96,14 @@ class Test路由与权限:
             lambda d, intent, **k: seen.update(dir=d, intent=intent)
             or {"n_charts": 1, "plan": {"backend": "rule"}})
         r = asyncio.run(appmod.api_period_flexible_generate(
-            _Req(config.DEMO_USER, {"intent": "single_trend"}), "202609"))
+            _Req(config.ADMIN_USER, {"intent": "single_trend"}), "202609"))
         assert r["ok"] is True
         assert seen == {"dir": tmp_path, "intent": "single_trend"}
 
     def test_未知意图400(self, tmp_path, monkeypatch):
         monkeypatch.setattr(appmod, "resolve_period_dir", lambda period: tmp_path)
         r = asyncio.run(appmod.api_period_flexible_generate(
-            _Req(config.DEMO_USER, {"intent": "不存在的意图"}), "202609"))
+            _Req(config.ADMIN_USER, {"intent": "不存在的意图"}), "202609"))
         assert r.status_code == 400
         assert "未知意图" in json.loads(r.body)["error"]
 
@@ -114,10 +118,10 @@ class Test流式与润色两口:
 
     def test_新两口也要管理员(self):
         for fn in (appmod.api_period_flexible_stream, appmod.api_period_flexible_polish):
-            assert asyncio.run(fn(_Req(config.GUEST_USER), "202609")).status_code == 403
+            assert asyncio.run(fn(_Req(config.OPERATOR_USER), "202609")).status_code == 403
             assert asyncio.run(fn(_Req(None), "202609")).status_code == 401
         assert asyncio.run(appmod.api_period_flexible_stop(
-            _Req(config.GUEST_USER, {"run": "x"}), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER, {"run": "x"}), "202609")).status_code == 403
 
     def test_停止键_首行带run令牌_喊停后终态stopped(self, tmp_path, monkeypatch):
         """停止键（契约 #21⑤）：流首行带 run 令牌；「停止」端点喊停 →
@@ -136,7 +140,7 @@ class Test流式与润色两口:
 
         monkeypatch.setattr(flex_report, "generate_stream", fake)
         r = asyncio.run(appmod.api_period_flexible_stream(
-            _Req(config.DEMO_USER, {"intent": "single_trend"}), "202609"))
+            _Req(config.ADMIN_USER, {"intent": "single_trend"}), "202609"))
         assert r.media_type.startswith("application/x-ndjson")
 
         async def consume():
@@ -145,7 +149,7 @@ class Test流式与润色两口:
             rec = json.loads(first if isinstance(first, str) else first.decode("utf-8"))
             assert rec["event"] == "status" and rec["run"], "首行必须带 run 令牌（停止键要用）"
             resp = await appmod.api_period_flexible_stop(
-                _Req(config.DEMO_USER, {"run": rec["run"]}), "202609")
+                _Req(config.ADMIN_USER, {"run": rec["run"]}), "202609")
             assert resp["ok"] is True
             last = None
             n = 0
@@ -162,7 +166,7 @@ class Test流式与润色两口:
     def test_停一个不存在的run给人话(self, tmp_path, monkeypatch):
         monkeypatch.setattr(appmod, "resolve_period_dir", lambda period: tmp_path)
         r = asyncio.run(appmod.api_period_flexible_stop(
-            _Req(config.DEMO_USER, {"run": "不存在的令牌"}), "202609"))
+            _Req(config.ADMIN_USER, {"run": "不存在的令牌"}), "202609"))
         assert r["ok"] is False and "没有可停的" in r["error"]
 
     def test_流式口一行一个事件(self, tmp_path, monkeypatch):
@@ -174,7 +178,7 @@ class Test流式与润色两口:
                                 {"event": "plan", "title": "t", "outline": ["一、本期概览"]},
                                 {"event": "done", "elapsed": 1.0}]))
         r = asyncio.run(appmod.api_period_flexible_stream(
-            _Req(config.DEMO_USER, {"intent": "single_trend"}), "202609"))
+            _Req(config.ADMIN_USER, {"intent": "single_trend"}), "202609"))
         assert r.media_type.startswith("application/x-ndjson")
 
         async def consume():
@@ -194,12 +198,12 @@ class Test流式与润色两口:
         p.mkdir(parents=True)
         (p / "flex_plan.json").write_text("{}", encoding="utf-8")
         r = asyncio.run(appmod.api_period_flexible_polish(
-            _Req(config.DEMO_USER, {"intent": "single_trend"}), "202609"))
+            _Req(config.ADMIN_USER, {"intent": "single_trend"}), "202609"))
         assert r.status_code == 409
         assert "写作位" in json.loads(r.body)["error"]
 
     def test_润色没有这稿给400(self, tmp_path, monkeypatch):
         monkeypatch.setattr(appmod, "resolve_period_dir", lambda period: tmp_path)
         r = asyncio.run(appmod.api_period_flexible_polish(
-            _Req(config.DEMO_USER, {"intent": "single_trend"}), "202609"))
+            _Req(config.ADMIN_USER, {"intent": "single_trend"}), "202609"))
         assert r.status_code == 400

@@ -108,7 +108,7 @@ class TestQa薄适配:
         monkeypatch.setattr(app_module, "resolve_period_dir",
                             lambda p: tmp_path / p if p == "202607" else None)
         r = asyncio.run(app_module.api_analyze(
-            self._ReqJson(config.DEMO_USER, {"period": "202607", "question": "顶尖论文"})))
+            self._ReqJson(config.ADMIN_USER, {"period": "202607", "question": "顶尖论文"})))
         assert r["mode"] == "rule" and r["text"] == "本期…"
         assert r["sources"][0]["index"] == 1 and r["shield"]["checked"] == 1
         assert seen == {"cap": "qa", "period": "202607",
@@ -122,7 +122,7 @@ class TestQa薄适配:
         monkeypatch.setattr("ai.run", lambda *a, **k: fake)
         monkeypatch.setattr(app_module, "resolve_period_dir", lambda p: tmp_path / p)
         r = asyncio.run(app_module.api_analyze(
-            self._ReqJson(config.DEMO_USER, {"period": "202607", "question": "x"})))
+            self._ReqJson(config.ADMIN_USER, {"period": "202607", "question": "x"})))
         assert r.status_code == 404
 
     def test_关闭映射409(self, monkeypatch, tmp_path):
@@ -131,19 +131,27 @@ class TestQa薄适配:
         monkeypatch.setattr("ai.run", lambda *a, **k: fake)
         monkeypatch.setattr(app_module, "resolve_period_dir", lambda p: tmp_path / p)
         r = asyncio.run(app_module.api_analyze(
-            self._ReqJson(config.DEMO_USER, {"period": "202607", "question": "x"})))
+            self._ReqJson(config.ADMIN_USER, {"period": "202607", "question": "x"})))
         assert r.status_code == 409
 
 
 class Test权限门:
-    def test_analyze用require_admin(self):
-        assert asyncio.run(app_module.api_analyze(
-            _Req(config.GUEST_USER))).status_code == 403
-        assert asyncio.run(app_module.api_analyze(_Req(None))).status_code == 401
+    def test_analyze放行操作员_匿名401(self):
+        """2026-10-11：问文衡是只读查询，操作员放行（404＝门放行后未找到期次）。"""
+        class _ReqJson:
+            def __init__(self, user):
+                self.session = {"user": user} if user else {}
 
-    def test_ledger_sheets用require_admin且拒绝guest(self):
+            async def json(self):
+                return {"period": "199901", "question": "x"}
+
+        assert asyncio.run(app_module.api_analyze(
+            _ReqJson(config.OPERATOR_USER))).status_code == 404
+        assert asyncio.run(app_module.api_analyze(_ReqJson(None))).status_code == 401
+
+    def test_ledger_sheets用require_admin且拒绝操作员(self):
         assert asyncio.run(app_module.api_ledger_sheets(
-            _Req(config.GUEST_USER))).status_code == 403
+            _Req(config.OPERATOR_USER))).status_code == 403
         assert asyncio.run(app_module.api_ledger_sheets(_Req(None))).status_code == 401
 
     def test_analyze路由存在(self):

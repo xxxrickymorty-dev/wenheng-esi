@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-"""路由守卫装饰器：`require_admin` / `require_admin_file` 的判别只写一次。
+"""路由守卫装饰器：`require_admin` / `require_admin_file` / `require_user` /
+`require_user_file` 的判别只写一次（后两者 2026-10-11 角色改两级后新增：
+已登录即可，管理员与操作员都放行）。
 
 用法（**必须夹在 `@app.xxx(...)` 与 `async def handler(...)` 之间**——
 FastAPI 注册的是装饰后的包装函数；放在 `@app.xxx` 上面会把原函数注册进去、
@@ -62,3 +64,6 @@ def _decorator(guard_name):
 
 admin_route = _decorator("require_admin")
 admin_file_route = _decorator("require_admin_file")
+#: 只读端点/文件口：已登录即可（管理员与操作员都放行）——2026-10-11 角色改两级后新增。
+user_route = _decorator("require_user")
+user_file_route = _decorator("require_user_file")

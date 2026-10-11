@@ -101,15 +101,18 @@ class Test路由:
         assert '@app.get("/api/periods/{period}/report-preview")' in src
         assert '@app.get("/api/periods/{period}/report-image/{rid}")' in src
 
-    def test_预览用require_admin(self):
+    def test_预览放行操作员_匿名401(self):
+        # 2026-10-11：报告正文预览是只读，操作员放行（404＝门放行后未找到期次）。
         assert asyncio.run(app_module.api_period_report_preview(
-            _Req(config.GUEST_USER), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER), "199901")).status_code == 404
         assert asyncio.run(app_module.api_period_report_preview(
-            _Req(None), "202609")).status_code == 401
+            _Req(None), "199901")).status_code == 401
 
-    def test_图片用require_admin(self):
+    def test_图片放行操作员_匿名401(self):
         assert asyncio.run(app_module.api_period_report_image(
-            _Req(config.GUEST_USER), "202609", "rId1")).status_code == 403
+            _Req(config.OPERATOR_USER), "199901", "rId1")).status_code == 404
+        assert asyncio.run(app_module.api_period_report_image(
+            _Req(None), "199901", "rId1")).status_code == 401
 
 
 class Test签单拦截已填未写入:
@@ -133,7 +136,7 @@ class Test签单拦截已填未写入:
         }, ensure_ascii=False), encoding="utf-8")
         monkeypatch.setattr(config, "OUT_DIR", out)
         resp = asyncio.run(app_module.api_period_sign_json(
-            _Req(config.DEMO_USER, "POST", {"known": True, "note": "试签"}), "202609"))
+            _Req(config.ADMIN_USER, "POST", {"known": True, "note": "试签"}), "202609"))
         assert resp.status_code == 409
         body = json.loads(resp.body)
         assert "没有写进报告" in body["error"]
@@ -154,7 +157,7 @@ class Test签单拦截已填未写入:
         }, ensure_ascii=False), encoding="utf-8")
         monkeypatch.setattr(config, "OUT_DIR", out)
         resp = asyncio.run(app_module.api_period_sign_json(
-            _Req(config.DEMO_USER, "POST", {"known": True, "note": "试签"}), "202609"))
+            _Req(config.ADMIN_USER, "POST", {"known": True, "note": "试签"}), "202609"))
         assert isinstance(resp, dict), f"放行时应返回签单结果：{resp!r}"
         assert resp["status"] == "signed"
         assert (d / "approval.json").exists()

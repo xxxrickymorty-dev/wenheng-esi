@@ -10,9 +10,10 @@ from __future__ import annotations
 import contextlib
 import contextvars
 
-#: 角色等级：admin ⊇ guest；`system` 供流水线内部调用（flow 诊断）。
-#: 未知角色一律按 `guest` 处理（fail-closed）。
-ROLE_RANK = {"guest": 0, "admin": 1, "system": 2}
+#: 角色等级：admin ⊇ operator ⊇ guest；`system` 供流水线内部调用（flow 诊断）。
+#: `operator`＝操作员（评委，2026-10-11 角色改两级后接入：可查数据、不可用写作类能力）。
+#: `guest` 不再是站点角色，只作**未知角色的 fail-closed 哨兵**（最低权限）。
+ROLE_RANK = {"guest": 0, "operator": 1, "admin": 2, "system": 3}
 FAIL_CLOSED_ROLE = "guest"
 
 _actor_var: contextvars.ContextVar = contextvars.ContextVar("wenheng_ai_actor", default=None)

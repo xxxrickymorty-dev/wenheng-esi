@@ -31,17 +31,18 @@ MASTER = ROOT / "master" / "学科信息参考母版_2026第5期.docx"
 
 PYTHON = os.environ.get("WENHENG_PYTHON") or sys.executable
 
-DEMO_USER = os.environ.get("WENHENG_USER", "demo")
+#: 两个角色（rick 2026-10-11 定）：admin＝管理员（全可见、可写）；
+#: 操作员（评委用，账号名 demo）＝只读，取数/台账/运行档案/红件/溯源不可见。
+ADMIN_USER = os.environ.get("WENHENG_USER", "admin")
 # 口令没有内置默认值（rick 2026-10-02）：只从 .env / 环境变量来；
 # 空口令无法登录（app.check_credentials 拒绝空值），首次使用请在 server/.env 设置。
-DEMO_PASS = os.environ.get("WENHENG_PASS", "")
+ADMIN_PASS = os.environ.get("WENHENG_PASS", "")
+OPERATOR_USER = os.environ.get("WENHENG_OPERATOR_USER", "demo")
+OPERATOR_PASS = os.environ.get("WENHENG_OPERATOR_PASS", "")
 SECRET = os.environ.get("WENHENG_SECRET", "wenheng-demo-secret-change-me")
 PUBLIC_URL = os.environ.get("WENHENG_PUBLIC_URL", "")
 REFERENCE_DOCX = os.environ.get("WENHENG_REFERENCE_DOCX", "")
 SHOW_HINT = os.environ.get("WENHENG_SHOW_HINT", "") == "1"
-
-GUEST_USER = os.environ.get("WENHENG_GUEST_USER", "guest")
-GUEST_PASS = os.environ.get("WENHENG_GUEST_PASS", "guest@2026")
 
 PALETTE = {"primary": "#B8422C", "deep": "#8A2A18", "lift": "#D65A38"}
 
@@ -96,10 +97,14 @@ LEGACY_KEEP_PAGES = ()
 
 
 def role_of(username):
-    """用户名 -> 角色。admin 管工作台；guest 只看陈列馆的封面、目录和名词解释。"""
-    if username == DEMO_USER:
+    """用户名 -> 角色（只有两值：admin / operator）。
+
+    admin＝管理员（全可见、可写）；其余已登录者＝操作员（评委，只读）。
+    登录口只放行两个账号（`app.check_credentials`），所以「其余」实际只有操作员一个。
+    """
+    if username and username == ADMIN_USER:
         return "admin"
-    return "guest"
+    return "operator"
 
 
 # ---- Agent 层接入（2026-09-15）--------------------------------------------

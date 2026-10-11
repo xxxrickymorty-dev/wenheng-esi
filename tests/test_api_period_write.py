@@ -65,7 +65,7 @@ class TestForecastChoice落盘:
 
         choice = {"citation": {"物理学": "SARIMA模型"}}
         saved = asyncio.run(app_module.api_forecast_choice(
-            _Req(config.DEMO_USER, "POST", {"choice": choice}), "202609"))
+            _Req(config.ADMIN_USER, "POST", {"choice": choice}), "202609"))
         assert isinstance(saved, dict)
         assert saved["ok"] is True
         assert saved["saved"] == 1
@@ -74,11 +74,11 @@ class TestForecastChoice落盘:
         assert not (out_dir / "202609").exists()
 
         loaded = asyncio.run(app_module.api_forecast_choice_get(
-            _Req(config.DEMO_USER), "202609"))
+            _Req(config.ADMIN_USER), "202609"))
         assert isinstance(loaded, dict)
         assert loaded["period"] == "202609"
         assert loaded["choice"] == choice
-        assert loaded["by"] == config.DEMO_USER
+        assert loaded["by"] == config.ADMIN_USER
         assert loaded["at"]
 
     def test_POST保存后缀期次时保留原名(self, tmp_path, monkeypatch):
@@ -89,7 +89,7 @@ class TestForecastChoice落盘:
         period = "202605_复现"
 
         saved = asyncio.run(app_module.api_forecast_choice(
-            _Req(config.DEMO_USER, "POST", {"choice": {}}), period))
+            _Req(config.ADMIN_USER, "POST", {"choice": {}}), period))
         assert saved["path"] == f"_forecast_choices/{period}.json"
         assert (choices_dir / f"{period}.json").is_file()
         assert not (out_dir / "202605").exists()
@@ -99,7 +99,7 @@ class TestForecastChoice落盘:
         monkeypatch.setattr(app_module.forecasting, "page_context",
                             lambda: {"subjects": ["运行期候选学科"]})
         result = asyncio.run(app_module.api_forecast_choice(
-            _Req(config.DEMO_USER, "POST", {
+            _Req(config.ADMIN_USER, "POST", {
                 "choice": {"citation": {"运行期候选学科": "SARIMA模型"}},
             }), "202609"))
         assert result["ok"] is True
@@ -110,7 +110,7 @@ class TestForecastChoice落盘:
         monkeypatch.setattr(app_module.forecasting, "page_context",
                             lambda: {"subjects": ["物理学"]})
         response = asyncio.run(app_module.api_forecast_choice(
-            _Req(config.DEMO_USER, "POST", {
+            _Req(config.ADMIN_USER, "POST", {
                 "choice": {"citation": {"候选缺失": "SARIMA模型"}},
             }), "202609"))
         assert response.status_code == 400
@@ -130,7 +130,7 @@ class TestForecastChoice落盘:
         monkeypatch.setattr(config, "FORECAST_CHOICES_DIR", choices_dir)
 
         old = asyncio.run(app_module.api_forecast_choice_get(
-            _Req(config.DEMO_USER), period))
+            _Req(config.ADMIN_USER), period))
         assert old == {
             "period": period, "choice": old_choice,
             "by": "old-admin", "at": "old-time",
@@ -144,7 +144,7 @@ class TestForecastChoice落盘:
             "choice": new_choice, "by": "new-admin", "at": "new-time",
         }, ensure_ascii=False), encoding="utf-8")
         preferred = asyncio.run(app_module.api_forecast_choice_get(
-            _Req(config.DEMO_USER), period))
+            _Req(config.ADMIN_USER), period))
         assert preferred["choice"] == new_choice
         assert preferred["by"] == "new-admin"
 
@@ -154,7 +154,7 @@ class TestForecastChoice落盘:
         monkeypatch.setattr(app_module.forecasting, "page_context",
                             lambda: {"subjects": []})
         result = asyncio.run(app_module.api_forecast_choice(
-            _Req(config.DEMO_USER, "POST", {"choice": {}}), "202609"))
+            _Req(config.ADMIN_USER, "POST", {"choice": {}}), "202609"))
         assert result["ok"] is True
         assert result["saved"] == 0
         assert json.loads((choices_dir / "202609.json").read_text(encoding="utf-8"))["choice"] == {}
@@ -176,18 +176,18 @@ class TestForecastChoice落盘:
         ]
         for body in invalid_bodies:
             response = asyncio.run(app_module.api_forecast_choice(
-                _Req(config.DEMO_USER, "POST", body), "202609"))
+                _Req(config.ADMIN_USER, "POST", body), "202609"))
             assert response.status_code == 400
 
         response = asyncio.run(app_module.api_forecast_choice(
-            _Req(config.DEMO_USER, "POST", {"choice": {}}), "202609/../../outside"))
+            _Req(config.ADMIN_USER, "POST", {"choice": {}}), "202609/../../outside"))
         assert response.status_code == 400
         assert not (tmp_path / "outside.json").exists()
 
     def test_POST只允许管理员(self, tmp_path, monkeypatch):
         monkeypatch.setattr(config, "FORECAST_CHOICES_DIR", tmp_path / "choices")
         response = asyncio.run(app_module.api_forecast_choice(
-            _Req(config.GUEST_USER, "POST", {"choice": {}}), "202609"))
+            _Req(config.OPERATOR_USER, "POST", {"choice": {}}), "202609"))
         assert response.status_code == 403
         response = asyncio.run(app_module.api_forecast_choice(
             _Req(None, "POST", {"choice": {}}), "202609"))
@@ -197,19 +197,21 @@ class TestForecastChoice落盘:
 class Test权限门:
     def test_sign用require_admin(self):
         assert asyncio.run(app_module.api_period_sign_json(
-            _Req(config.GUEST_USER, "POST", {}), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER, "POST", {}), "202609")).status_code == 403
         assert asyncio.run(app_module.api_period_sign_json(
             _Req(None, "POST", {}), "202609")).status_code == 401
 
     def test_forecast_choice用require_admin(self):
         assert asyncio.run(app_module.api_forecast_choice(
-            _Req(config.GUEST_USER, "POST", {"choice": {}}), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER, "POST", {"choice": {}}), "202609")).status_code == 403
         assert asyncio.run(app_module.api_forecast_choice(
             _Req(None, "POST", {"choice": {}}), "202609")).status_code == 401
 
-    def test_forecast_choice_GET用require_admin且拒绝guest(self):
-        assert asyncio.run(app_module.api_forecast_choice_get(
-            _Req(config.GUEST_USER), "202609")).status_code == 403
+    def test_forecast_choice_GET放行操作员_匿名401(self):
+        # 2026-10-11：读回选择是只读，操作员放行（拿到条目形状即证明门已放行）。
+        r = asyncio.run(app_module.api_forecast_choice_get(
+            _Req(config.OPERATOR_USER), "202609"))
+        assert r["period"] == "202609"
         assert asyncio.run(app_module.api_forecast_choice_get(
             _Req(None), "202609")).status_code == 401
 
@@ -262,19 +264,19 @@ class TestP2写操作:
 
     def test_revoke用require_admin(self):
         assert asyncio.run(app_module.api_period_revoke_json(
-            _Req(config.GUEST_USER, "POST", {}), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER, "POST", {}), "202609")).status_code == 403
         assert asyncio.run(app_module.api_period_revoke_json(
             _Req(None, "POST", {}), "202609")).status_code == 401
 
     def test_fill用require_admin(self):
         assert asyncio.run(app_module.api_period_fill_json(
-            _Req(config.GUEST_USER, "POST", {}), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER, "POST", {}), "202609")).status_code == 403
         assert asyncio.run(app_module.api_period_fill_json(
             _Req(None, "POST", {}), "202609")).status_code == 401
 
     def test_flag用require_admin(self):
         assert asyncio.run(app_module.api_period_flag_json(
-            _Req(config.GUEST_USER, "POST", {}), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER, "POST", {}), "202609")).status_code == 403
         assert asyncio.run(app_module.api_period_flag_json(
             _Req(None, "POST", {}), "202609")).status_code == 401
 

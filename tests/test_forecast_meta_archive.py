@@ -219,14 +219,14 @@ class TestArchive自动挂任务:
             return []
         monkeypatch.setattr(app_module.jobs, "list_jobs", _list_jobs)
 
-        asyncio.run(app_module.api_period_archive(_Req(config.DEMO_USER), "202609"))
+        asyncio.run(app_module.api_period_archive(_Req(config.ADMIN_USER), "202609"))
         assert seen["limit"] == 50, "应自动挂该期最近一次任务（list_jobs(50)）"
         assert seen["job"] is None
 
         target = {"id": "j1"}
         monkeypatch.setattr(app_module.jobs, "read_job", lambda jid: target)
         asyncio.run(app_module.api_period_archive(
-            _Req(config.DEMO_USER), "202609", "j1"))
+            _Req(config.ADMIN_USER), "202609", "j1"))
         assert seen["job"] is target, "?job= 指定的任务要传给 archive.build"
 
     def test_挂任务后replay不是空链(self):

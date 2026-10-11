@@ -8,7 +8,7 @@ from server import app as app_module
 
 class _Req:
     def __init__(self):
-        self.session = {"user": config.DEMO_USER}
+        self.session = {"user": config.ADMIN_USER}
 
 
 class _Upload:
@@ -79,4 +79,4 @@ def test_空闲时仍写入并创建任务(monkeypatch, tmp_path):
     assert response == {"job_id": "job-new", "url": "/jobs/job-new"}
     assert target.read_bytes() == b"new"
     assert called == {"period": "202610", "input_path": target,
-                      "actor": config.DEMO_USER, "backtest": True}
+                      "actor": config.ADMIN_USER, "backtest": True}

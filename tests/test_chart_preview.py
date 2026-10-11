@@ -133,9 +133,10 @@ def test_图片路由是GET且接受多级路径():
         "图表路由丢了 `:path` 转换器——带斜杠的路径会被截成 404"
 
 
-def test_图片路由有管理员文件门且拒绝guest():
+def test_图片路由放行操作员_匿名跳登录():
+    # 2026-10-11：图册/报告里的图是只读内容，操作员放行（不存在的图回 404）。
     response = asyncio.run(app_module.period_chart(
-        _Req(config.GUEST_USER), "202609", "chart.png"))
-    assert response.status_code == 403, "图表是期次产物，游客不应可见"
+        _Req(config.OPERATOR_USER), "199901", "chart.png"))
+    assert response.status_code == 404, "门放行后按「期次/图表不存在」如实回落"
     anon = asyncio.run(app_module.period_chart(_Req(None), "202609", "chart.png"))
     assert anon.status_code == 303 and anon.headers["location"] == "/login"

@@ -96,7 +96,8 @@ def test_period_detail_finds_latest_old_job_outside_global_limit(
     tmp_path, monkeypatch
 ):
     _prepare_old_period_job(tmp_path, monkeypatch)
-    monkeypatch.setattr(app_module, "require_admin", lambda _request: "rick")
+    # 2026-10-11：单期详情是只读屏，守卫改 require_user（管理员与操作员都放行）。
+    monkeypatch.setattr(app_module, "require_user", lambda _request: "rick")
 
     response = asyncio.run(
         app_module.api_period_detail(object(), "202607")

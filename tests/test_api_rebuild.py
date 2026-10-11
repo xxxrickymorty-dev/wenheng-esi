@@ -31,7 +31,7 @@ class _Req:
 
 
 def _admin(body=None):
-    return _Req(config.DEMO_USER, body)
+    return _Req(config.ADMIN_USER, body)
 
 
 def _rebuild_dir(tmp_path, monkeypatch):
@@ -48,7 +48,7 @@ class Test路由与权限:
 
     def test_rebuild用require_admin(self):
         assert asyncio.run(app_module.api_period_rebuild_json(
-            _Req(config.GUEST_USER), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER), "202609")).status_code == 403
         assert asyncio.run(app_module.api_period_rebuild_json(
             _Req(None), "202609")).status_code == 401
 

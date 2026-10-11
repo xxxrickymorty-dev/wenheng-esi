@@ -36,7 +36,7 @@ def test_review_advice透出Answer且参数正确(monkeypatch, tmp_path):
     monkeypatch.setattr("ai.run", fake_run)
     monkeypatch.setattr(app_module, "resolve_period_dir",
                         lambda p: tmp_path / p if p == "202607" else None)
-    r = asyncio.run(app_module.api_period_review_advice(_ReqJson(config.DEMO_USER), "202607"))
+    r = asyncio.run(app_module.api_period_review_advice(_ReqJson(config.ADMIN_USER), "202607"))
     assert r["mode"] == "rule" and r["text"] == "复核清单…"
     assert r["sources"][0]["pointer"] == "red_slots.json#0"
     assert seen == {"cap": "review", "period": "202607", "payload": None, "actor": "admin"}
@@ -48,12 +48,12 @@ def test_review_advice无产物404(monkeypatch, tmp_path):
                          notice="该期数据暂不可用，无法给出复核建议。")
     monkeypatch.setattr("ai.run", lambda *a, **k: fake)
     monkeypatch.setattr(app_module, "resolve_period_dir", lambda p: tmp_path / p)
-    r = asyncio.run(app_module.api_period_review_advice(_ReqJson(config.DEMO_USER), "202607"))
+    r = asyncio.run(app_module.api_period_review_advice(_ReqJson(config.ADMIN_USER), "202607"))
     assert r.status_code == 404
 
 
 def test_review_advice权限门():
     assert asyncio.run(app_module.api_period_review_advice(
-        _ReqJson(config.GUEST_USER), "202607")).status_code == 403
+        _ReqJson(config.OPERATOR_USER), "202607")).status_code == 403
     assert asyncio.run(app_module.api_period_review_advice(
         _ReqJson(None), "202607")).status_code == 401

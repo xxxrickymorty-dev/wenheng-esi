@@ -103,9 +103,10 @@ class Test路由与权限:
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
         assert '@app.get("/api/jobs/{job_id}/progress")' in src
 
-    def test_用require_admin(self):
+    def test_放行操作员_匿名401(self):
+        # 2026-10-11：进度是只读，操作员放行（404＝门放行后未找到任务）。
         assert asyncio.run(app_module.api_job_progress(
-            _Req(config.GUEST_USER), "jid")).status_code == 403
+            _Req(config.OPERATOR_USER), "jid")).status_code == 404
         assert asyncio.run(app_module.api_job_progress(_Req(None), "jid")).status_code == 401
 
     def test_复用archive_waterfall不重造轮子(self, monkeypatch):
@@ -115,7 +116,7 @@ class Test路由与权限:
         monkeypatch.setattr(app_module.jobs, "read_progress", lambda job: [])
         monkeypatch.setattr(app_module.archive, "waterfall", lambda events: sentinel)
         monkeypatch.setattr(app_module.archive, "waterfall_summary", lambda events: {})
-        r = asyncio.run(app_module.api_job_progress(_Req(config.DEMO_USER), "jid"))
+        r = asyncio.run(app_module.api_job_progress(_Req(config.ADMIN_USER), "jid"))
         assert r["waterfall"] is sentinel, "必须委托 archive.waterfall，不要各自实现"
 
     def test_missing降级不500(self, tmp_path, monkeypatch):
@@ -125,5 +126,5 @@ class Test路由与权限:
         monkeypatch.setattr(app_module.jobs, "read_progress", lambda job: [])
         monkeypatch.setattr(app_module.archive, "waterfall", lambda events: [])
         monkeypatch.setattr(app_module.archive, "waterfall_summary", lambda events: {})
-        r = asyncio.run(app_module.api_job_progress(_Req(config.DEMO_USER), "jid"))
+        r = asyncio.run(app_module.api_job_progress(_Req(config.ADMIN_USER), "jid"))
         assert r["missing"] is True and r["note"]

@@ -100,20 +100,21 @@ class TestCharts:
 
 
 class Test权限门:
-    def test_redslots用require_admin(self):
+    def test_redslots仍只管理员(self):
         assert asyncio.run(app_module.api_period_redslots(
-            _Req(config.GUEST_USER), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER), "202609")).status_code == 403
         assert asyncio.run(app_module.api_period_redslots(
             _Req(None), "202609")).status_code == 401
 
-    def test_collation用require_admin且拒绝guest(self):
+    def test_collation放行操作员_匿名401(self):
+        # 2026-10-11：对勘本是对外可见的只读屏，操作员放行（404＝门放行后未找到期次）。
         assert asyncio.run(app_module.api_period_collation(
-            _Req(config.GUEST_USER), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER), "199901")).status_code == 404
         assert asyncio.run(app_module.api_period_collation(
-            _Req(None), "202609")).status_code == 401
+            _Req(None), "199901")).status_code == 401
 
-    def test_charts用require_admin且拒绝guest(self):
+    def test_charts放行操作员_匿名401(self):
         assert asyncio.run(app_module.api_period_charts_json(
-            _Req(config.GUEST_USER), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER), "199901")).status_code == 404
         assert asyncio.run(app_module.api_period_charts_json(
-            _Req(None), "202609")).status_code == 401
+            _Req(None), "199901")).status_code == 401

@@ -31,7 +31,7 @@ class _Req:
 
 
 def _admin(body=None):
-    return _Req(config.DEMO_USER, body)
+    return _Req(config.ADMIN_USER, body)
 
 
 def _mk_period(tmp_path, monkeypatch, with_points=True, with_current=True):

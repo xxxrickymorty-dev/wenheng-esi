@@ -30,19 +30,21 @@ def _login_gate_response():
 class AdminStaticFiles(StaticFiles):
     """挂载级门 + 单文件角色门。
 
-    - `require_login=True`：**整个挂载只许已登录**（游客或管理员），未登录一律 303 回
+    - `require_login=True`：**整个挂载只许已登录**（管理员或操作员），未登录一律 303 回
       `/login`——`/app` 用它挡住「直接输网址进工作区」；找不到的文件也先回登录页，
       不泄漏路径存在性。
     - `protected_paths`：挂载内个别文件的角色门（照旧；组合使用时先过登录门）。
+      2026-10-11 起 `user_responses` 对**两种角色**同份响应（guest 已取消）；
+      `admin_responses` 只给管理员（当前没有这种文件，留作机制）。
     """
 
-    def __init__(self, *args, protected_paths=(), guest_responses=None,
+    def __init__(self, *args, protected_paths=(), user_responses=None,
                  admin_responses=None, require_login=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.require_login = require_login
         self.protected_paths = {self._normal_path(p) for p in protected_paths}
-        self.guest_responses = {
-            self._normal_path(path): callback for path, callback in (guest_responses or {}).items()
+        self.user_responses = {
+            self._normal_path(path): callback for path, callback in (user_responses or {}).items()
         }
         self.admin_responses = {
             self._normal_path(path): callback for path, callback in (admin_responses or {}).items()
@@ -82,8 +84,9 @@ class AdminStaticFiles(StaticFiles):
                 return RedirectResponse("/login", status_code=303,
                                         headers={"Cache-Control": "no-store"})
             normalized_path = self._normal_path(path)
-            callback = (self.admin_responses if config.role_of(user) == "admin"
-                        else self.guest_responses).get(normalized_path)
+            is_admin = config.role_of(user) == "admin"
+            callback = ((self.admin_responses if is_admin else {}).get(normalized_path)
+                        or self.user_responses.get(normalized_path))
             if callback:
                 response = callback()
                 if inspect.isawaitable(response):
@@ -91,9 +94,9 @@ class AdminStaticFiles(StaticFiles):
                 response.headers["Cache-Control"] = "private, no-store"
                 response.headers["Vary"] = "Cookie"
                 return response
-            if config.role_of(user) != "admin":
+            if not is_admin:
                 return JSONResponse(
-                    {"error": "需要管理员权限", "hint": "游客不能查看报告内容"},
+                    {"error": "需要管理员权限", "hint": "操作员只读，此文件仅管理员可用"},
                     status_code=403, headers={"Cache-Control": "no-store"})
         response = await super().get_response(path, scope)
         if protected:

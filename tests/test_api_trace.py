@@ -87,7 +87,7 @@ class Test分页适配:
 class Test权限与安全:
     def test_trace用require_admin(self):
         assert asyncio.run(app_module.api_period_trace(
-            _Req(config.GUEST_USER), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER), "202609")).status_code == 403
         assert asyncio.run(app_module.api_period_trace(
             _Req(None), "202609")).status_code == 401
 
@@ -106,14 +106,14 @@ class Test权限与安全:
                                 "matrix": [], "texts": [], "n": 0,
                                 "cols": [], "discs": []})
         monkeypatch.setattr(workbench, "load_review", lambda d: {})
-        r = asyncio.run(app_module.api_period_trace(_Req(config.DEMO_USER), "202609"))
+        r = asyncio.run(app_module.api_period_trace(_Req(config.ADMIN_USER), "202609"))
         assert r["ledger"] == "监测表.xlsx"
         assert "\\" not in r["ledger"] and "/" not in r["ledger"]
 
     def test_台账缺失时降级不500(self, tmp_path, monkeypatch):
         monkeypatch.setattr(app_module, "resolve_period_dir", lambda period: tmp_path)
         monkeypatch.setattr(app_module, "_find_ledger", lambda d: None)
-        r = asyncio.run(app_module.api_period_trace(_Req(config.DEMO_USER), "202609"))
+        r = asyncio.run(app_module.api_period_trace(_Req(config.ADMIN_USER), "202609"))
         assert isinstance(r, dict)
         assert r["ledger_ok"] is False and r["ledger_error"]
 
@@ -121,6 +121,6 @@ class Test权限与安全:
         monkeypatch.setattr(app_module, "resolve_period_dir", lambda period: tmp_path)
         monkeypatch.setattr(app_module, "_find_ledger", lambda d: None)
         r = asyncio.run(app_module.api_period_trace(
-            _Req(config.DEMO_USER), "202609", "不是类别"))
+            _Req(config.ADMIN_USER), "202609", "不是类别"))
         assert r["cat"] == "bigtable"
         assert set(r["counts"]) == set(app_module._TRACE_CATS)

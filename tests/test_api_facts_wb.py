@@ -35,11 +35,12 @@ class TestFacts:
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
         assert '@app.get("/api/periods/{period}/facts")' in src
 
-    def test_facts用require_admin且拒绝guest(self):
+    def test_facts放行操作员_匿名401(self):
+        # 不存在的期次回 404——若门没放行会是 403（2026-10-11 起只读端点对操作员放行）。
         assert asyncio.run(app_module.api_period_facts(
-            _Req(config.GUEST_USER), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER), "199901")).status_code == 404
         assert asyncio.run(app_module.api_period_facts(
-            _Req(None), "202609")).status_code == 401
+            _Req(None), "199901")).status_code == 401
 
 
 class TestWorkbench:
@@ -59,8 +60,8 @@ class TestWorkbench:
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
         assert '@app.get("/api/periods/{period}/workbench")' in src
 
-    def test_workbench用require_admin(self):
+    def test_workbench放行操作员_匿名401(self):
         assert asyncio.run(app_module.api_period_workbench(
-            _Req(config.GUEST_USER), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER), "199901")).status_code == 404
         assert asyncio.run(app_module.api_period_workbench(
-            _Req(None), "202609")).status_code == 401
+            _Req(None), "199901")).status_code == 401

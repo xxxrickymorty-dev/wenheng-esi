@@ -60,7 +60,7 @@ class TestArchive组装:
                "job": {"input": "C:/abs/input/监测表.xlsx"}, "stats": {}, "run_log": {},
                "logpack": {"key": "logpack"}}
         monkeypatch.setattr(app_module.archive, "build", lambda *a, **k: dict(raw))
-        view = asyncio.run(app_module.api_period_archive(_Req(config.DEMO_USER), "202609"))
+        view = asyncio.run(app_module.api_period_archive(_Req(config.ADMIN_USER), "202609"))
         assert "out_dir" not in view and "progress_path" not in view
         assert view["job"]["input"] == "监测表.xlsx", "绝对路径必须转仓库相对/文件名"
         assert view["download_base"] == "/p/202609"
@@ -70,7 +70,7 @@ class TestArchive组装:
 class Test权限:
     def test_用require_admin(self):
         assert asyncio.run(app_module.api_period_archive(
-            _Req(config.GUEST_USER), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER), "202609")).status_code == 403
         assert asyncio.run(app_module.api_period_archive(
             _Req(None), "202609")).status_code == 401
 
