@@ -165,6 +165,10 @@ def _seed_table2(tmp_path):
                     "papers": "900", "cnci": "1.10", "total_cites": "9000", "thr_1pct": "7000",
                     "thr_1pct_gap": "-2000", "thr_1permille": "90000",
                     "permille_rank": "10.0", "top_papers": "9", "prox_change": "↑1.00%"})
+        w.writerow({"discipline": "Mathematics", "rank_cn_change": "90/↓1", "papers": "902",
+                    "cnci": "1.08", "total_cites": "5568", "thr_1pct": "5185",
+                    "thr_1pct_gap": "-383", "thr_1permille": "21080",
+                    "permille_rank": "26.4", "top_papers": "9", "prox_change": "↑3.54%"})
 
 
 def test_学科问题直答_数字来源到格(tmp_path):
@@ -210,6 +214,78 @@ def test_无学科问句_行为与旧版一致(tmp_path):
     _seed_table2(tmp_path)
     ans = qa(tmp_path, question="顶尖论文")
     assert "顶尖论文" in ans.text and "化学（Chemistry）" not in ans.text
+
+
+# ============================================================ 台账问答（2026-10-11 rick 定）
+def _seed_ledger(tmp_path, monkeypatch):
+    """给测试仓落一份「台账投喂副本」占位文件 + 假 load_ledger（真解析在台账测试外覆盖）。"""
+    import pandas as pd
+    import parse_ledger
+    root = tmp_path / "repo" / "out"
+    seed_period(root)
+    _seed_table2(root)
+    led_dir = tmp_path / "repo" / "input" / "202607"
+    led_dir.mkdir(parents=True, exist_ok=True)
+    (led_dir / "监测表.xlsx").write_bytes(b"placeholder")
+    fake = {
+        "wide": {
+            "proximity_1pct": pd.DataFrame(
+                {"202605": [6.1842], "202607": [6.760561]}, index=["Chemistry"]),
+            "papers": pd.DataFrame({"202607": [2590.0]}, index=["Chemistry"]),
+        },
+        "rank_cn": pd.DataFrame([{"discipline": "Chemistry", "period": "202607",
+                                  "rank": 154.0}]),
+        "entry_events": [("202409", "Mathematics", "in"), ("202605", "Mathematics", "out"),
+                         ("202607", "Mathematics", "in")],
+        "entered_1pct": pd.DataFrame({"202607": [1.0]}, index=["Chemistry"]),
+        "ynd_rank": pd.DataFrame({"rank_intl": [995.0], "rank_cn": [155.0],
+                                  "rank_cn_uni": [130.0]}, index=["202607"]),
+    }
+    monkeypatch.setattr(parse_ledger, "load_ledger", lambda path: fake)
+    return root
+
+
+def test_台账问答_学科指标历史到格(tmp_path, monkeypatch):
+    root = _seed_ledger(tmp_path, monkeypatch)
+    ans = qa(root, question="化学的接近度最近几期怎么变的")
+    assert "台账《接近度》表" in ans.text and "676.06%" in ans.text
+    led = {s.pointer: s for s in ans.sources if s.kind == "ledger_cell"}
+    assert "台账#接近度/化学/202607" in led, led.keys()
+    assert led["台账#接近度/化学/202607"].value == "676.06"
+    assert any(s.pointer == "台账#接近度/化学/202605" for s in ans.sources)
+
+
+def test_台账问答_论文数与国内排名(tmp_path, monkeypatch):
+    root = _seed_ledger(tmp_path, monkeypatch)
+    ans = qa(root, question="化学的论文数")
+    assert "台账《论文数》表" in ans.text and "2590" in ans.text
+    ans2 = qa(root, question="化学的国内排名")
+    assert "台账《国内排名》表" in ans2.text and "154" in ans2.text
+    assert any(s.pointer == "台账#国内排名/化学/202607" for s in ans2.sources)
+
+
+def test_台账问答_云大排名走势(tmp_path, monkeypatch):
+    root = _seed_ledger(tmp_path, monkeypatch)
+    ans = qa(root, question="云南大学国际排名走势")
+    assert "台账《云大ESI排名》表" in ans.text and "995" in ans.text
+    assert any(s.pointer == "台账#云大ESI排名/云南大学/202607" for s in ans.sources)
+
+
+def test_台账问答_进出前百分之一事件(tmp_path, monkeypatch):
+    root = _seed_ledger(tmp_path, monkeypatch)
+    ans = qa(root, question="数学什么时候进入前1%")
+    assert "台账《学科进入时间》表" in ans.text
+    assert "202607 进入" in ans.text and "202605 退出" in ans.text
+    assert any(s.pointer == "台账#学科进入时间/数学/202607" for s in ans.sources)
+
+
+def test_台账缺件时_静默回落报告产物(tmp_path, monkeypatch):
+    """没有投喂副本 → 不报错、不编数——照旧用报告产物作答。"""
+    seed_period(tmp_path)
+    _seed_table2(tmp_path)
+    ans = qa(tmp_path, question="化学的接近度")
+    assert "台账《" not in ans.text
+    assert all(s.kind != "ledger_cell" for s in ans.sources)
 
 
 # ============================================================ 边界与门

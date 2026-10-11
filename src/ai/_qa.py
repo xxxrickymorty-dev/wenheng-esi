@@ -53,6 +53,235 @@ _FIELD_CN = {
     "prox_change": "接近度较上期", "rank_cn_change": "国内排名",
 }
 
+#: 台账指标关键词（按具体到宽泛排序）→ (宽表键, 中文名, 格式)。
+#: 格式：pct＝比值×100 两位小数（报告口径）；int＝整数；f2＝两位小数。
+_LEDGER_METRICS = (
+    ("千分之一", "threshold_1permille", "前 1‰ 阈值", "int"),
+    ("1‰", "threshold_1permille", "前 1‰ 阈值", "int"),
+    ("接近度", "proximity_1pct", "接近度", "pct"),
+    ("论文数", "papers", "论文数", "int"),
+    ("论文量", "papers", "论文数", "int"),
+    ("发文量", "papers", "论文数", "int"),
+    ("发文", "papers", "论文数", "int"),
+    ("被引", "total_cites", "总被引频次", "int"),
+    ("CNCI", "cnci", "CNCI", "f2"),
+    ("cnci", "cnci", "CNCI", "f2"),
+    ("阈值", "threshold_1pct", "前 1% 阈值", "int"),
+    ("顶尖", "top_papers", "顶尖论文", "int"),
+)
+_LEDGER_RANK = (("国内排名", "rank_cn", "国内排名"), ("国际排名", "rank_intl", "国际排名"))
+
+#: 宽表键 → 台账工作表名（来源标签用；与 parse_ledger 的口径一致）。
+_LEDGER_SHEET_CN = {
+    "proximity_1pct": "接近度", "papers": "论文数", "total_cites": "总被引",
+    "cnci": "CNCI", "threshold_1pct": "ESI被引阈值", "threshold_1permille": "千分之一被引阈值",
+    "top_papers": "TOP论文", "rank_cn": "国内排名", "rank_intl": "国际排名",
+    "ynd_rank": "云大ESI排名", "entered_1pct": "学科进入时间",
+}
+
+_LEDGER_CACHE: dict = {}
+_CN_NUM = {1: "一", 2: "二", 3: "三", 4: "四", 5: "五", 6: "六", 7: "七", 8: "八"}
+
+
+def _ledger_for(root, period):
+    """期次投喂副本 `input/<期次>/监测表.xlsx` 的解析结果（**只读**；缺/坏 → None）。
+
+    与逐格溯源同一套 `parse_ledger.load_ledger` 现场真读；带 (路径, mtime, 体积) 缓存，
+    台账一改自动失效（运行期台账另有 sha256 护栏，本函数不写任何文件）。
+    """
+    path = pathlib.Path(root).parent / "input" / str(period) / "监测表.xlsx"
+    if not path.exists():
+        return None
+    try:
+        st = path.stat()
+    except OSError:
+        return None
+    key = (str(path), st.st_mtime_ns, st.st_size)
+    if key in _LEDGER_CACHE:
+        return _LEDGER_CACHE[key]
+    try:
+        import parse_ledger                                       # noqa: PLC0415
+        led = parse_ledger.load_ledger(path)
+    except Exception:                                             # noqa: BLE001
+        return None
+    _LEDGER_CACHE.clear()
+    _LEDGER_CACHE[key] = led
+    return led
+
+
+def _fmt_ledger(value, fmt):
+    """台账值 → 数字串（NaN/空 → None，不猜）。pct 只乘 100，百分号由展示层加——
+    `cells` 与盾捕获的数字串（`\\d+(\\.\\d+)?`）必须同形。"""
+    try:
+        f = float(value)
+    except (TypeError, ValueError):
+        return None
+    if f != f:                                                    # NaN
+        return None
+    if fmt == "pct":
+        return f"{f * 100:.2f}"
+    if fmt == "int":
+        return f"{int(round(f))}"
+    return f"{f:.2f}"
+
+
+def _ledger_metric_hit(question):
+    """问句里的指标关键词 → (宽表键, 中文名, 格式)；没有 → None。"""
+    q = str(question or "")
+    for kw, key, cn, fmt in _LEDGER_METRICS:
+        if kw in q:
+            return key, cn, fmt
+    for kw, key, cn in _LEDGER_RANK:
+        if kw in q:
+            return key, cn, "rank"
+    return None
+
+
+def _ledger_series_segment(led, disc, metric, cn_metric, fmt, cn, *, periods=6):
+    """学科 × 指标 的最近 n 期序列段 → (text, cells)；缺表/缺科 → None。
+
+    `cells` = [(值串, 工作表名, 学科中文名, 期次)]——register 据此回指台账的格。
+    """
+    table = (led.get("wide") or {}).get(metric)
+    if table is None or disc not in getattr(table, "index", []):
+        return None
+    sheet = _LEDGER_SHEET_CN.get(metric, metric)
+    parts, cells = [], []
+    for c in list(table.columns)[-periods:]:
+        v = _fmt_ledger(table.loc[disc, c], fmt)
+        if v is None:
+            continue
+        parts.append(f"{c} {v}%" if fmt == "pct" else f"{c} {v}")
+        cells.append((v, sheet, cn, str(c)))
+        cells.append((str(c), sheet, cn, str(c)))      # 期次标签也指到该格
+    if not parts:
+        return None
+    text = (f"{cn} · {cn_metric}（台账《{sheet}》表，最近{_CN_NUM.get(len(parts), len(parts))}期）："
+            + "、".join(parts) + "。")
+    return text, cells
+
+
+def _ledger_rank_segment(led, disc, key, cn_metric, cn, *, periods=6):
+    """学科 × 排名（rank_cn / rank_intl 长表）的最近 n 期段 → (text, cells)。"""
+    df = led.get(key)
+    if df is None or "discipline" not in getattr(df, "columns", []):
+        return None
+    sub = df[df["discipline"] == disc].sort_values("period").tail(periods)
+    if sub.empty:
+        return None
+    sheet = _LEDGER_SHEET_CN.get(key, key)
+    parts, cells = [], []
+    for _, r in sub.iterrows():
+        v = _fmt_ledger(r.get("rank"), "int")
+        if v is None:
+            continue
+        parts.append(f"{r['period']} 第 {v} 位")
+        cells.append((v, sheet, cn, str(r["period"])))
+        cells.append((str(r["period"]), sheet, cn, str(r["period"])))
+    if not parts:
+        return None
+    return (f"{cn} · {cn_metric}（台账《{sheet}》表，最近{_CN_NUM.get(len(parts), len(parts))}期）："
+            + "、".join(parts) + "。"), cells
+
+
+def _ledger_entry_segment(led, disc, cn):
+    """学科进出 ESI 前 1% 的事件段（台账《学科进入时间》）→ (text, cells)；无事件 → None。"""
+    events = [(str(p), str(kind)) for p, d, kind in (led.get("entry_events") or [])
+              if d == disc]
+    entered = led.get("entered_1pct")
+    in_from_start = False
+    first = ""
+    if entered is not None and disc in getattr(entered, "index", []):
+        row = entered.loc[disc]
+        first = str(row.index[0]) if len(row.index) else ""
+        try:
+            in_from_start = float(row.iloc[0]) == 1.0
+        except (TypeError, ValueError):
+            in_from_start = False
+        if in_from_start:
+            events = []
+    if not events and not in_from_start:
+        return None
+    sheet = _LEDGER_SHEET_CN["entered_1pct"]
+    if in_from_start:
+        text = (f"{cn} · 进入 ESI 前 1%（台账《{sheet}》表）：自台账最早一期"
+                f"（{first}）起一直在前 1% 内。")
+        return text, [(first, sheet, cn, first)]
+    recent = sorted(events)[-4:]                    # 按时间先后（台账里是新到旧）
+    latest = recent[-1]
+    earlier = "、".join(f"{p} {'进入' if kind == 'in' else '退出'}"
+                       for p, kind in recent[:-1])
+    cells = [(p, sheet, cn, p) for p, _ in recent]
+    tail = f"；此前：{earlier}" if earlier else ""
+    return (f"{cn} · ESI 前 1% 名单的进出事件（台账《{sheet}》表）："
+            f"最近一次 {latest[0]} {'进入' if latest[1] == 'in' else '退出'}{tail}。"), cells
+
+
+def _ledger_ynd_segment(led, *, periods=6):
+    """云南大学整体排名的最近 n 期段（台账《云大ESI排名》）→ (text, cells)；缺表 → None。"""
+    df = led.get("ynd_rank")
+    if df is None or getattr(df, "empty", True):
+        return None
+    sheet = _LEDGER_SHEET_CN["ynd_rank"]
+    parts, cells = [], []
+    for period, r in df.tail(periods).iterrows():
+        intl = _fmt_ledger(r.get("rank_intl"), "int")
+        cn_ = _fmt_ledger(r.get("rank_cn"), "int")
+        uni = _fmt_ledger(r.get("rank_cn_uni"), "int")
+        if intl is None:
+            continue
+        seg = f"{period}：国际排名 {intl} 位"
+        cells.append((str(period), sheet, "云南大学", str(period)))
+        for v, name in ((cn_, "国内排名"), (uni, "国内高校排名")):
+            if v is not None:
+                seg += f"、{name} {v} 位"
+                cells.append((v, sheet, "云南大学", str(period)))
+        parts.append(seg)
+        cells.append((intl, sheet, "云南大学", str(period)))
+    if not parts:
+        return None
+    return (f"云南大学 · 整体排名（台账《{sheet}》表，按时间先后，共{_CN_NUM.get(len(parts), len(parts))}期）："
+            + "；".join(parts) + "。"), cells
+
+
+def _ledger_segments(root, period, question, disc_hits):
+    """问句 → 台账证据段列表 `[(key, text, cells)]`（台账缺/坏时返回 []，静默回落报告产物）。
+
+    规则（2026-10-11 rick：「能不能根据台账问答」）：
+    - 点到学科 + 点到指标（接近度/论文数/被引/CNCI/阈值/顶尖/排名）→ 该科该指标的近 6 期序列；
+    - 点到学科 + 点到「进入/退出」→ 进出前 1% 的事件；
+    - 没点学科但问到云大/我校排名 → 云大整体排名近 6 期。
+    """
+    led = _ledger_for(root, period)
+    if led is None:
+        return []
+    q = str(question or "")
+    out = []
+    metric = _ledger_metric_hit(question)
+    if disc_hits:
+        for item in disc_hits:
+            if metric is None:
+                continue
+            key, cn_metric, fmt = metric
+            if fmt == "rank":
+                seg = _ledger_rank_segment(led, item["en"], key, cn_metric, item["cn"])
+            else:
+                seg = _ledger_series_segment(led, item["en"], key, cn_metric, fmt, item["cn"])
+            if seg:
+                out.append((f"台账数据·{item['cn']}·{cn_metric}", seg[0], seg[1]))
+        if any(kw in q for kw in ("进入", "退出", "入榜", "进榜")):
+            for item in disc_hits:
+                seg = _ledger_entry_segment(led, item["en"], item["cn"])
+                if seg:
+                    out.append((f"台账数据·{item['cn']}·进出", seg[0], seg[1]))
+        return out
+    if metric is not None and metric[0] in ("rank_cn", "rank_intl") \
+            and any(kw in q for kw in ("云大", "我校", "学校", "云南大学", "全校")):
+        seg = _ledger_ynd_segment(led)
+        if seg:
+            out.append(("台账数据·云大排名", seg[0], seg[1]))
+    return out
+
 
 def _load_json(path, default=None):
     if not path.exists():
@@ -313,24 +542,53 @@ def build(root, period, payload) -> RuleDraft:
     disc_texts = {f"学科数据·{it['cn']}": _disc_segment(it) for it in disc_items}
     disc_idx = _disc_index(disc_items)
 
-    texts_all = {**base_texts, **disc_texts}
-    # 证据＝学科段 + 命中段优先 + 其余段（模型可自找）；规则版＝学科段（有则）或命中段。
-    ordered = list(disc_texts) + list(matched) + \
-        [k for k in texts_all if k not in matched and k not in disc_texts]
-    rule_keys = list(disc_texts) if disc_texts else list(matched)
+    # ---- 台账段（2026-10-11 rick：「能不能根据台账问答」）：指标历史 / 进出前 1% / 云大排名 ----
+    ledger_segs = _ledger_segments(root, period, question, disc_items)
+    ledger_texts = {k: text for k, text, _cells in ledger_segs}
+    ledger_cells = {k: cells for k, _text, cells in ledger_segs}
+    n_led = len(ledger_texts)
+
+    texts_all = {**base_texts, **disc_texts, **ledger_texts}
+    # 证据＝台账段 + 学科段 + 命中段优先 + 其余段（模型可自找）；
+    # 规则版＝台账段（有则）+ 学科段（有则），否则命中段。
+    ordered = list(ledger_texts) + list(disc_texts) + list(matched) + \
+        [k for k in texts_all if k not in matched and k not in disc_texts
+         and k not in ledger_texts]
+    rule_keys = (list(ledger_texts) + list(disc_texts)) if (ledger_texts or disc_texts) \
+        else list(matched)
     rule_set = set(rule_keys)
     chunks = [question] + [texts_all[k] for k in ordered]
     facts_idx = _fact_index(facts)
 
     def register(ti, _pos, value):
         """问句数字不是「本期事实」；证据段数字是（越题判定据此）。
-        学科段（前 len(disc_texts) 段）先查 table2 行索引——数字指回格。"""
+        台账段（前 n_led 段）→ 指回台账的格；学科段 → table2 的格；其余 → facts 字段。"""
         if ti == 0:
             return {"kind": "fact", "pointer": "question", "label": "来自提问",
                     "detail": "提问中出现的数字", "fact": False}
         seg = ti - 1
-        if seg < len(disc_items):
-            item = disc_items[seg]
+        if seg < n_led:
+            key = ordered[seg]
+            cells = ledger_cells.get(key) or []
+            hits = [(sheet, subj, period) for (v, sheet, subj, period) in cells if v == value]
+            if len(hits) == 1:
+                sheet, subj, period = hits[0]
+                return {"kind": "ledger_cell",
+                        "pointer": f"台账#{sheet}/{subj}/{period}",
+                        "label": f"台账 · {sheet} · {subj} · {period}",
+                        "detail": "云大监测表（台账，运行期只读；与逐格溯源同一读取面）",
+                        "fact": True}
+            if hits:
+                sheet, subj, _p = hits[0]
+                return {"kind": "ledger_cell", "pointer": f"台账#{sheet}/{subj}",
+                        "label": f"台账 · {sheet} · {subj}",
+                        "detail": "多期同值，未唯一到格", "fact": True}
+            return {"kind": "ledger_cell", "pointer": f"台账#{key}",
+                    "label": f"台账 · {key}",
+                    "detail": "数字属于该台账序列", "fact": True}
+        disc_seg = seg - n_led
+        if disc_seg < len(disc_items):
+            item = disc_items[disc_seg]
             keys = disc_idx.get(item["en"], {}).get(value) or []
             if len(keys) == 1 and len(value) >= 2:      # 单字数字（如「前 1%」的 1）不指格
                 key = keys[0]
