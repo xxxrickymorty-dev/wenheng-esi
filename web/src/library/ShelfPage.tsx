@@ -32,7 +32,7 @@ export default function ShelfPage() {
   }, [])
 
   useEffect(() => {
-    if (state.kind !== 'guest') return
+    if (state.kind !== 'preview' && state.kind !== 'full') return
 
     const onVisibility = () => libraryAudio.handleVisibility(document.hidden)
     const armAudio = () => libraryAudio.arm()
@@ -106,7 +106,7 @@ export default function ShelfPage() {
   }
 
   function openReader(bookIndex: number, section: ReaderSection, returnTo: ReaderReturnTo, trigger?: HTMLButtonElement) {
-    if ((state.kind !== 'guest' && state.kind !== 'full') || !state.books[bookIndex]) return
+    if ((state.kind !== 'preview' && state.kind !== 'full') || !state.books[bookIndex]) return
     returnFocusRef.current = trigger
       ?? document.querySelector<HTMLElement>('.room-catalog-list summary')
       ?? document.querySelector<HTMLElement>('.room-heading h1')

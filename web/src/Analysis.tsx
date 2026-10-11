@@ -5,6 +5,6 @@
 
 import { Flexible } from './Flexible'
 
-export function Analysis({ period }: { period: string | null }) {
-  return <Flexible period={period} />
+export function Analysis({ period, canEdit }: { period: string | null; canEdit: boolean }) {
+  return <Flexible period={period} canEdit={canEdit} />
 }

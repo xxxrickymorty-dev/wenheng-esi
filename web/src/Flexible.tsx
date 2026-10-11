@@ -41,7 +41,7 @@ type Bot = {
 type User = { kind: 'user'; id: number; text: string }
 type Msg = User | Bot
 
-export function Flexible({ period }: { period: string | null }) {
+export function Flexible({ period, canEdit }: { period: string | null; canEdit: boolean }) {
   const [d, setD] = useState<FlexibleData | null>(null)
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [note, setNote] = useState<string | null>(null)
@@ -255,24 +255,26 @@ export function Flexible({ period }: { period: string | null }) {
         <span className="pill stale">内部参考件</span>
       </h2>
 
-      <div className="fx-form">
-        <label>分析意图
-          <select value={intent} onChange={(e) => setIntent(e.target.value)}>
-            {(d?.intents ?? []).map((i) => <option key={i.id} value={i.id}>{i.cn}</option>)}
-          </select>
-        </label>
-        <label>指定学科
-          <select value={disc} onChange={(e) => setDisc(e.target.value)}>
-            <option value="">（不指定）</option>
-            {(d?.disciplines ?? []).map((x) => (
-              <option key={x.en} value={x.en}>{x.cn}</option>
-            ))}
-          </select>
-        </label>
-        <button className="btn primary" onClick={onGen} disabled={!period || !intent || busy}>
-          <Icon name="play" size={19} />{busy ? '正在出稿……' : '生成分析稿'}
-        </button>
-      </div>
+      {canEdit && (
+        <div className="fx-form">
+          <label>分析意图
+            <select value={intent} onChange={(e) => setIntent(e.target.value)}>
+              {(d?.intents ?? []).map((i) => <option key={i.id} value={i.id}>{i.cn}</option>)}
+            </select>
+          </label>
+          <label>指定学科
+            <select value={disc} onChange={(e) => setDisc(e.target.value)}>
+              <option value="">（不指定）</option>
+              {(d?.disciplines ?? []).map((x) => (
+                <option key={x.en} value={x.en}>{x.cn}</option>
+              ))}
+            </select>
+          </label>
+          <button className="btn primary" onClick={onGen} disabled={!period || !intent || busy}>
+            <Icon name="play" size={19} />{busy ? '正在出稿……' : '生成分析稿'}
+          </button>
+        </div>
+      )}
       {!!d?.reports.length && (
         <div className="fx-chips">
           <span>已出稿：</span>
@@ -291,7 +293,10 @@ export function Flexible({ period }: { period: string | null }) {
 
       {note && <div className="pending-box mt-12">{note}</div>}
       {d && !busy && !d.body_html && !msgs.length && (
-        <p className="hint mt-12">还没有出稿——点「生成分析稿」开始。</p>
+        <p className="hint mt-12">
+          {canEdit ? '还没有出稿——点「生成分析稿」开始。'
+            : '这一期还没有灵活报告；操作员只读，生成仅管理员可用。'}
+        </p>
       )}
 
       <div className="fx-log" ref={logRef} onClick={onLogClick} onKeyDown={onLogKeyDown}>
@@ -330,7 +335,7 @@ export function Flexible({ period }: { period: string | null }) {
                     {m.variant === 'rule' ? '看润色稿' : '看规则稿'}
                   </button>
                 )}
-                {m.status === 'done' && (
+                {m.status === 'done' && canEdit && (
                   <button className="btn small" disabled={busy || !d?.write.available}
                           title={d?.write.available ? '按写作位重写叙述段（数字与图表不动）'
                             : '写作位未开启（部署开关未设或未配云端模型）'}

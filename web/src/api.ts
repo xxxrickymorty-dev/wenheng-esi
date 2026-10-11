@@ -27,7 +27,8 @@ export type PeriodDetail = {
   lastJob?: { id?: string; status?: string; created_at?: string }
 }
 
-export type Me = { name: string; role: 'admin' | 'guest' }
+/** 两个角色（2026-10-11）：admin＝管理员（全可见可写）；operator＝操作员（评委，只读）。 */
+export type Me = { name: string; role: 'admin' | 'operator' }
 
 /** 统一错误体（契约 §3.4）：{error, hint?, missing?} */
 export type ApiError = { error: string; hint?: string; missing?: { sheet: string; column: string; note?: string }[] }

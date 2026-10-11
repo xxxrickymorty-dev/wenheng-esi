@@ -13,6 +13,11 @@ r"""端到端：`/app`（React 工作区）在真实浏览器里跑通「登录 
 （断言无 `/app/shelf/` 链接、无「陈列馆」字样）；游客访问 /app/?view=... 必须被
 前端送回 `/app/shelf/`。
 
+2026-10-11 改：guest 角色取消，改「操作员」（账号 demo，只读）——操作员**不再**被
+送回陈列馆，而是进工作区（取数/台账/运行档案/红件/溯源不可见，写按钮不出现）；
+陈列馆两种角色同看全内容。断言改：操作员导航无「取数」、生成台无「开始生成」、
+报告页无红件产物、陈列馆翻页 ≥ 3 页。
+
 跑法（playwright 在**系统 Python** 里，不在 `.venv`）：
 
     uv run python -m uvicorn server.app:app --host 127.0.0.1 --port 8080
@@ -49,11 +54,18 @@ def _env_file_value(key, default=""):
     return default
 
 
-USER = os.environ.get("WENHENG_E2E_USER") or _env_file_value("WENHENG_USER", "demo")
+USER = os.environ.get("WENHENG_E2E_USER") or _env_file_value("WENHENG_USER", "admin")
 PASS = os.environ.get("WENHENG_E2E_PASS") or _env_file_value("WENHENG_PASS")
-GUEST_USER, GUEST_PASS = "guest", "guest@2026"
+#: 操作员（评委，只读；2026-10-11 起取代 guest）——账号/口令从 .env 或环境变量来。
+OPERATOR_USER = (os.environ.get("WENHENG_E2E_OPERATOR_USER")
+                 or _env_file_value("WENHENG_OPERATOR_USER", "demo"))
+OPERATOR_PASS = (os.environ.get("WENHENG_E2E_OPERATOR_PASS")
+                 or _env_file_value("WENHENG_OPERATOR_PASS"))
 if not PASS:
     print("未找到管理员口令：请在 server/.env 设置 WENHENG_PASS，或设 WENHENG_E2E_PASS 后重跑。")
+    raise SystemExit(2)
+if not OPERATOR_PASS:
+    print("未找到操作员口令：请在 server/.env 设置 WENHENG_OPERATOR_PASS，或设 WENHENG_E2E_OPERATOR_PASS 后重跑。")
     raise SystemExit(2)
 SHOT = pathlib.Path(r"C:\Users\damn\AppData\Local\Temp\opencode\wh_app.png")
 SHOT_SHELF = pathlib.Path(r"C:\Users\damn\AppData\Local\Temp\opencode\wh_shelf.png")
@@ -263,8 +275,8 @@ def main():
             page.wait_for_selector(".aq-head", timeout=20000)
             navs = page.eval_on_selector_all("nav[aria-label] a", "els => els.map(e => e.innerText.trim())")
             check("取数台：站序「取数」在「生成台」左侧",
-                  bool(navs) and navs[0] == "取数" and "生成台" in navs
-                  and navs.index("取数") < navs.index("生成台"), str(navs[:3]))
+                  bool(navs) and "取数" in navs and "生成台" in navs
+                  and navs.index("取数") < navs.index("生成台"), str(navs[:4]))
             txt = page.inner_text("main")
             check("取数台：期次数据状态与开始前检查都在",
                   "自动取数台" in txt and "开始前检查" in txt, "")
@@ -315,45 +327,65 @@ def main():
             if fx is not None:
                 fx.unlink(missing_ok=True)
 
-        # ---- 2) 陈列馆（/app/shelf/；管理员与游客都看同一份访客投影） ----
-        guest_ctx = browser.new_context(viewport={"width": 1280, "height": 900})
-        guest_ctx.add_cookies(login_cookies(GUEST_USER, GUEST_PASS))
-        guest = guest_ctx.new_page()
-        guest_problems = []
-        guest.on("pageerror", lambda e: guest_problems.append("pageerror: " + str(e)))
-        guest.on("console", lambda m: guest_problems.append("console.error: " + m.text)
-                 if m.type == "error" else None)
+        # ---- 2) 操作员（只读）：进工作区不被送走；写按钮不出现；陈列馆同看全内容 ----
+        op_ctx = browser.new_context(viewport={"width": 1280, "height": 900})
+        op_ctx.add_cookies(login_cookies(OPERATOR_USER, OPERATOR_PASS))
+        operator = op_ctx.new_page()
+        op_problems = []
+        operator.on("pageerror", lambda e: op_problems.append("pageerror: " + str(e)))
+        operator.on("console", lambda m: op_problems.append("console.error: " + m.text)
+                    if m.type == "error" else None)
 
-        guest.goto(BASE + "/app/?view=report", wait_until="domcontentloaded")
+        operator.goto(BASE + "/app/?view=report", wait_until="networkidle")
+        check("操作员进工作区不被送回陈列馆",
+              "/app/shelf" not in operator.url, f"url={operator.url}")
         try:
-            guest.wait_for_url("**/app/shelf/**", timeout=10000)
-            check("游客访问工作区被送回陈列馆", True)
-        except Exception:                                            # noqa: BLE001
-            check("游客访问工作区被送回陈列馆", False, f"url={guest.url}")
+            operator.wait_for_selector(".nav", timeout=10000)
+            nav_text = operator.inner_text(".nav")
+            check("操作员导航无「取数」", "取数" not in nav_text, nav_text.replace("\n", " "))
+        except Exception as e:                                       # noqa: BLE001
+            check("操作员导航无「取数」", False, str(e)[:80])
 
-        resp2 = guest.goto(BASE + "/app/shelf/", wait_until="networkidle")
+        # 隐藏屏直开 → 「操作员不可见」空态（前端守卫）
+        operator.goto(BASE + "/app/?view=ledger", wait_until="domcontentloaded")
+        operator.wait_for_timeout(600)
+        check("操作员直开台账 → 不可见空态",
+              "操作员不可见" in operator.inner_text("main"), "")
+        # 报告页产物：无红件三件与运行日志（服务端已过滤）
+        operator.goto(BASE + "/app/?view=report", wait_until="networkidle")
+        operator.wait_for_timeout(600)
+        rep_text = operator.inner_text("main")
+        check("操作员报告页无红件产物",
+              "红色件清单" not in rep_text and "运行日志" not in rep_text, "")
+        # 生成台：无「开始生成」按钮
+        operator.goto(BASE + "/app/", wait_until="networkidle")
+        operator.wait_for_timeout(600)
+        wb_text = operator.inner_text("main")
+        check("操作员生成台无「开始生成」", "开始生成" not in wb_text, "")
+
+        resp2 = operator.goto(BASE + "/app/shelf/", wait_until="networkidle")
         check("GET /app/shelf/ → 200", bool(resp2) and resp2.status == 200,
               f"got {resp2.status if resp2 else '?'}")
         try:
-            guest.wait_for_selector(".home-hero", timeout=10000)
+            operator.wait_for_selector(".home-hero", timeout=10000)
             check("陈列馆首页渲染（.home-hero）", True)
         except Exception as e:                                       # noqa: BLE001
             check("陈列馆首页渲染（.home-hero）", False, str(e)[:80])
         try:
-            guest.click(".home-book-item")
-            guest.wait_for_selector("#flipbook", timeout=10000)
-            n_pages = guest.eval_on_selector_all(".flip-page", "els => els.length")
+            operator.click(".home-book-item")
+            operator.wait_for_selector("#flipbook", timeout=10000)
+            n_pages = operator.eval_on_selector_all(".flip-page", "els => els.length")
             check("翻页阅读器打开（#flipbook 带页）", n_pages >= 3, f"{n_pages} 页")
         except Exception as e:                                       # noqa: BLE001
             check("翻页阅读器打开（#flipbook 带页）", False, str(e)[:80])
-        guest.screenshot(path=str(SHOT_SHELF))
+        operator.screenshot(path=str(SHOT_SHELF))
 
         # ---- 3) 零报错（覆盖上面几次导航） ----
         check("工作台零 pageerror / console.error", not problems, "; ".join(problems[:3]))
         check("陈列馆（管理员）零 pageerror / console.error", not admin_shelf_problems,
               "; ".join(admin_shelf_problems[:3]))
-        check("陈列馆零 pageerror / console.error", not guest_problems,
-              "; ".join(guest_problems[:3]))
+        check("操作员零 pageerror / console.error", not op_problems,
+              "; ".join(op_problems[:3]))
 
         browser.close()
 

@@ -62,6 +62,9 @@ const WORKBENCH: [string, string][] = [
   ['陈列馆', '/app/shelf/'],
 ]
 
+/** 操作员不可见的入口（取数台 / 运行档案）——菜单与动作按此过滤。 */
+const OPERATOR_HIDDEN_HREFS = new Set(['/app/?view=acquire', '/app/?view=archive'])
+
 function initialPalette(): 'ynu' | 'zhu' {
   try {
     return localStorage.getItem(PALETTE_STORAGE_KEY) === 'zhu' ? 'zhu' : 'ynu'
@@ -122,6 +125,8 @@ export default function DialogPage() {
   const others = convs.filter((c) => c.turns.length > 0)
   /* 空态第一屏＝本期任务视图（票 06）；拿不到状态就退回普通问候 */
   const tv = active.turns.length === 0 ? taskView(home) : null
+  /* 2026-10-11：操作员只读——出稿/一键生成/回滚/AI 开关等写动作仅管理员可用（真门在后端）。 */
+  const canEdit = me?.role === 'admin'
 
   useEffect(() => {
     document.documentElement.dataset.palette = palette
@@ -139,8 +144,7 @@ export default function DialogPage() {
       if (!alive) return
       setMe(m)
       setRoleKnown(true)
-      /* 工作区只对馆员开放：游客送回陈列馆（与工作台同一待遇） */
-      if (m && m.role !== 'admin') window.location.replace('/app/shelf/')
+      /* 两种角色都进前门（2026-10-11）：操作员可查数据；出稿等写动作在下面按角色裁剪。 */
     })()
     return () => { alive = false }
   }, [])
@@ -210,8 +214,9 @@ export default function DialogPage() {
       }))
       /* 出稿意图（票 03/05）：auto=true 直接开跑，且此时**没有产物**＝首出期次
          （两段式要复刻先行——灵活报告只消费流水线产物）；auto=false 产物已在，
-         等人在按钮上点了才跑（行内二次确认）。 */
-      if (r.run?.auto && r.run.period) void startRun(r.run.period, replyIndex, r.run.intent, true)
+         等人在按钮上点了才跑（行内二次确认）。
+         ⚠ 操作员只读：不自动开跑（真门也在后端——POST /api/jobs 仅管理员）。 */
+      if (canEdit && r.run?.auto && r.run.period) void startRun(r.run.period, replyIndex, r.run.intent, true)
     } catch (e) {
       updateActive((c) => ({
         ...c,
@@ -466,7 +471,6 @@ export default function DialogPage() {
     }
   }
 
-  if (roleKnown && me && me.role !== 'admin') return null
   if (roleKnown && !me) {
     return (
       <main className="dlg-gate">
@@ -503,7 +507,7 @@ export default function DialogPage() {
         </nav>
         <div className="dlg-me">
           <span className="dlg-av" aria-hidden="true">{me?.name?.slice(0, 1) ?? '·'}</span>
-          {me ? `${me.name} · 管理员` : '角色确认中…'}
+          {me ? `${me.name} · ${me.role === 'admin' ? '管理员' : '操作员'}` : '角色确认中…'}
         </div>
       </aside>
 
@@ -514,7 +518,8 @@ export default function DialogPage() {
             <details className="dlg-wk">
               <summary>工作台 ▾</summary>
               <div className="dlg-wk-menu">
-                {WORKBENCH.map(([label, href]) => (
+                {WORKBENCH.filter(([, href]) => canEdit || !OPERATOR_HIDDEN_HREFS.has(href))
+                  .map(([label, href]) => (
                   <a key={href} href={withPeriod(href)}>{label}</a>
                 ))}
               </div>
@@ -525,7 +530,7 @@ export default function DialogPage() {
               <button type="button" aria-pressed={palette === 'zhu'}
                       onClick={() => setPalette('zhu')}>朱砂</button>
             </span>
-            {qa && (
+            {canEdit && qa && (
               <button type="button" className="dlg-qa" aria-pressed={qa.enabled} disabled={qaBusy}
                       title="管理员可关闭「查数据」；关闭后对话里照旧说「已关闭」，报告不受影响"
                       onClick={() => void toggleQa(!qa.enabled)}>
@@ -568,7 +573,7 @@ export default function DialogPage() {
                             </li>
                           ))}
                         </ul>
-                        {tv.cta && (
+                        {tv.cta && (canEdit || tv.cta.view === 'review') ? (
                           <div className="dlg-acts">
                             {tv.cta.kind === 'gen' ? (
                               <button type="button" className="dlg-act primary"
@@ -582,10 +587,15 @@ export default function DialogPage() {
                                                       home?.period ?? '')}>{tv.cta.label}</a>
                             )}
                           </div>
-                        )}
+                        ) : tv.cta ? (
+                          <p className="dlg-home-prev">
+                            操作员只读：取数 / 出稿仅管理员可用；可以在这里查数据（比如「查一下化学的接近度」）。
+                          </p>
+                        ) : null}
                         {tv.prevNote && <p className="dlg-home-prev">{tv.prevNote}</p>}
                       </div>
-                      也可以直接说一句，比如「帮我做 9 月的报告」。
+                      {canEdit ? '也可以直接说一句，比如「帮我做 9 月的报告」。'
+                        : '也可以直接查数据，比如「查一下化学的接近度」。'}
                     </>
                   ) : (
                     <>你好。说一句话就开始，比如「帮我做 9 月的报告」——期次我来认（按数据截止月），
@@ -635,7 +645,7 @@ export default function DialogPage() {
                       {t.trace.note && <p className="dlg-trk-note">{t.trace.note}</p>}
                       {t.trace.result && (
                         <ResultBlock result={t.trace.result} index={i}
-                                     disabled={busy || !!running}
+                                     disabled={busy || !!running} canEdit={canEdit}
                                      onFix={(r, idx) => {
                                        /* 自动修复：flex＝重出灵活稿（产物已在）；
                                           repro＝重跑两段式且复刻先行（首出失败后最稳的再试）*/
@@ -648,7 +658,12 @@ export default function DialogPage() {
                   )}
                   {t.who === 'wh' && !!t.actions?.length && !t.dismissed && (
                     <div className="dlg-acts">
-                      {t.actions.map((a, j) => a.kind === 'goto' ? (
+                      {/* 2026-10-11：操作员只读——「出稿」与隐藏屏入口不出现（写动作真门在后端） */}
+                      {t.actions.filter((a) => canEdit
+                        || (a.kind !== 'run'
+                            && !(a.kind === 'goto'
+                                 && OPERATOR_HIDDEN_HREFS.has(`/app/?view=${a.view ?? 'acquire'}`))))
+                        .map((a, j) => a.kind === 'goto' ? (
                         <a key={j} className="dlg-act primary"
                            href={buildPeriodUrl(`/app/?view=${a.view ?? 'acquire'}`,
                                                 a.period || active.slots.period || '')}>{a.text}</a>
@@ -671,6 +686,9 @@ export default function DialogPage() {
                           {a.text}
                         </button>
                       ))}
+                      {!canEdit && t.actions.some((a) => a.kind === 'run') && (
+                        <span className="dlg-act" aria-disabled="true">出稿仅管理员可用</span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -690,7 +708,8 @@ export default function DialogPage() {
             <div className="dlg-box">
               <textarea rows={1} aria-label="对文衡说话" value={input}
                         placeholder={running ? '正在出稿…（点右边的 ■ 可以停）'
-                                             : '说一句话，比如「帮我做 9 月的报告」…'}
+                                             : canEdit ? '说一句话，比如「帮我做 9 月的报告」…'
+                                                       : '查数据，比如「查一下化学的接近度」…'}
                         disabled={!!running}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => {
@@ -714,11 +733,13 @@ export default function DialogPage() {
   )
 }
 
-/** 出好了的出路（票 05）：三件套下载 / 去运行档案 / 自动修复 / 回滚到上一版。 */
-function ResultBlock({ result, index, disabled, onFix, onRollback }: {
+/** 出好了的出路（票 05）：三件套下载 / 去运行档案 / 自动修复 / 回滚到上一版。
+    操作员只读（2026-10-11）：只留三件套下载；修复/回滚/运行档案入口不出现。 */
+function ResultBlock({ result, index, disabled, canEdit, onFix, onRollback }: {
   result: TraceResult
   index: number
   disabled: boolean
+  canEdit: boolean
   onFix: (result: TraceResult, index: number) => void
   onRollback: (index: number, period: string, point: RollbackPoint) => void
 }) {
@@ -735,17 +756,17 @@ function ResultBlock({ result, index, disabled, onFix, onRollback }: {
                 </span>
               : <a key={a.key} className="dlg-act" href={a.href} title={a.from}>{a.label}</a>
           ))}
-          <a className="dlg-act ghost" href={result.archiveHref}>去运行档案看全程 ▸</a>
+          {canEdit && <a className="dlg-act ghost" href={result.archiveHref}>去运行档案看全程 ▸</a>}
         </div>
       )}
-      {result.fixable && (
+      {canEdit && result.fixable && (
         <div className="dlg-acts">
           <button type="button" className="dlg-act primary" disabled={disabled}
                   onClick={() => onFix(result, index)}>自动修复</button>
           <a className="dlg-act ghost" href={result.archiveHref}>需人工接手 ▸</a>
         </div>
       )}
-      {point && !result.rollback?.out && (
+      {canEdit && point && !result.rollback?.out && (
         <div className="dlg-acts">
           <button type="button" className="dlg-act" disabled={disabled}
                   onClick={() => onRollback(index, result.period, point)}>回滚到上一版 ▸</button>

@@ -10,7 +10,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isRoleResponse(value: unknown): value is Pick<Me, 'role'> {
-  return isRecord(value) && (value.role === 'admin' || value.role === 'guest')
+  return isRecord(value) && (value.role === 'admin' || value.role === 'operator')
 }
 
 function readStrings(value: unknown): string[] | null {
@@ -139,37 +139,33 @@ export async function loadShelfPreviews(signal: AbortSignal): Promise<ShelfLoadR
   const books = readPreviewScript(script)
   if (!books) return { kind: 'invalid-data' }
 
-  // 管理员：再取服务器组装的完整数据，按期次挂到同一本书上（陈列馆全内容）。
-  // 没有游客模式之后，登录用户看到的就是报告全内容；完整数据取不到时退回预览三件套。
-  if (me.role === 'admin') {
-    try {
-      const fullResponse = await fetch('/app/shelf/data.js', {
-        credentials: 'same-origin',
-        headers: { Accept: 'application/javascript' },
-        cache: 'no-store',
-        signal,
-      })
-      if (fullResponse.ok && !fullResponse.redirected) {
-        const fullBooks = readFullScript(await fullResponse.text())
-        if (fullBooks) {
-          const byPeriod = new Map<string, ShelfBookFull>()
-          for (const full of fullBooks) {
-            if (typeof full.period === 'string' && full.period) byPeriod.set(full.period, full)
-          }
-          return {
-            kind: 'full',
-            books: books.map((book) => {
-              const full = book.period ? byPeriod.get(book.period) : undefined
-              return full ? { ...book, full } : book
-            }),
-          }
+  // 两种角色（管理员/操作员）都再取服务器组装的完整数据——陈列馆全内容；
+  // 完整数据取不到时退回预览三件套（如实回落，不假装有内容）。
+  try {
+    const fullResponse = await fetch('/app/shelf/data.js', {
+      credentials: 'same-origin',
+      headers: { Accept: 'application/javascript' },
+      cache: 'no-store',
+      signal,
+    })
+    if (fullResponse.ok && !fullResponse.redirected) {
+      const fullBooks = readFullScript(await fullResponse.text())
+      if (fullBooks) {
+        const byPeriod = new Map<string, ShelfBookFull>()
+        for (const full of fullBooks) {
+          if (typeof full.period === 'string' && full.period) byPeriod.set(full.period, full)
+        }
+        return {
+          kind: 'full',
+          books: books.map((book) => {
+            const full = book.period ? byPeriod.get(book.period) : undefined
+            return full ? { ...book, full } : book
+          }),
         }
       }
-    } catch (error) {
-      if (signal.aborted) throw error
     }
-    return { kind: 'guest', books }
+  } catch (error) {
+    if (signal.aborted) throw error
   }
-
-  return { kind: 'guest', books }
+  return { kind: 'preview', books }
 }

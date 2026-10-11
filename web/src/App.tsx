@@ -1,6 +1,7 @@
 /* 文衡 · 工作台（外壳）
-   只对馆员开放的工作区；游客（含其它非管理员身份）一律送回独立的陈列馆（/app/shelf/），
-   工作区不提供陈列馆入口。数据全部来自后端 API；接口没就绪的地方**如实标注"未就绪"**，不编数据。 */
+   两种角色（2026-10-11）：admin＝管理员（全可见可写）；operator＝操作员（评委，只读）——
+   取数/台账/运行档案/红件/溯源对操作员不可见，写动作一律拦住（真门在后端）。
+   数据全部来自后端 API；接口没就绪的地方**如实标注"未就绪"**，不编数据。 */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -135,8 +136,9 @@ export default function App() {
   useEffect(() => () => { periodsRequestRef.current += 1 }, [])
 
   useEffect(() => {
-    if (roleKnown && me?.role === 'admin') void refreshForecastMeta()
-  }, [me?.role, refreshForecastMeta, roleKnown])
+    /* 预测模型设置两种角色都读（操作员看已保存的选择；保存按钮只给管理员）。 */
+    if (roleKnown && me) void refreshForecastMeta()
+  }, [me, refreshForecastMeta, roleKnown])
 
   /* ?period= 深链：从老站迁移过来的等价地址（老站 /p/<期次> → 新站 ?view=report&period=<期次>） */
   const wantPeriod = new URLSearchParams(location.search).get('period')
@@ -206,12 +208,8 @@ export default function App() {
       if (!alive) return
       setMe(m)
       setRoleKnown(true)
-      /* 工作区只对馆员开放：游客身份直接送回陈列馆（/app/shelf/ 是独立入口）。
+      /* 两种角色（管理员/操作员）都进工作区；操作员的可见范围与只读由下方按角色裁剪。
          未登录留在本页（不跳转），由下方 gated 块给「去登录」。 */
-      if (m && m.role !== 'admin') {
-        window.location.replace('/app/shelf/')
-        return
-      }
       try {
         const list = await refreshPeriods()
         if (!alive || !list) return
@@ -235,7 +233,8 @@ export default function App() {
   }, [selected, refreshDetail])
 
   useEffect(() => {
-    if (!roleKnown || me?.role !== 'admin' || !selected) return
+    /* 本期已保存的模型选择两种角色都读（操作员只读展示；保存按钮在预测台按角色裁剪）。 */
+    if (!roleKnown || !me || !selected) return
     const existing = forecastChoiceByPeriod[selected]
     if (existing?.loaded || existing?.loading || existing?.error) return
     const request = (forecastChoiceRequestRef.current[selected] ?? 0) + 1
@@ -428,34 +427,32 @@ export default function App() {
   }
 
   /* 工作区导航（契约 §4：前端按 /api/me 的 role 决定显示什么；**真门在后端**，这里只是不打扰）。
-     游客在首屏已被送回陈列馆，这里只剩未登录要挡。 */
+     角色（2026-10-11 改两级）：admin＝管理员（全可见）；operator＝操作员（评委，只读）——
+     取数台、台账、运行档案、红件清单、逐格溯源对操作员不可见；其余屏可见但无写按钮。 */
   const NAV: { view: string; label: string; icon: string; href: string; admin?: boolean }[] = [
-    { view: 'dialog', label: '对话前门', icon: 'chat', href: '/app/dialog/', admin: true },
+    { view: 'dialog', label: '对话前门', icon: 'chat', href: '/app/dialog/' },
     { view: 'acquire', label: '取数', icon: 'download', href: '/app/?view=acquire', admin: true },
-    { view: 'workbench', label: '生成台', icon: 'play', href: '/app/', admin: true },
+    { view: 'workbench', label: '生成台', icon: 'play', href: '/app/' },
     { view: 'report', label: '报告', icon: 'chart', href: '/app/?view=report' },
-    { view: 'review', label: '审核台', icon: 'seal', href: '/app/?view=review', admin: true },
-    { view: 'analysis', label: 'AI 分析台', icon: 'chart', href: '/app/?view=analysis', admin: true },
-    { view: 'forecast', label: '预测台', icon: 'trend', href: '/app/?view=forecast', admin: true },
+    { view: 'review', label: '审核台', icon: 'seal', href: '/app/?view=review' },
+    { view: 'analysis', label: 'AI 分析台', icon: 'chart', href: '/app/?view=analysis' },
+    { view: 'forecast', label: '预测台', icon: 'trend', href: '/app/?view=forecast' },
     { view: 'shelf', label: '陈列馆', icon: 'book', href: '/app/shelf/' },
   ]
-  const isGuest = me?.role === 'guest'
+  const isOperator = me?.role === 'operator'
   const notLoggedIn = roleKnown && !me
-  /* 未登录按游客待遇：管理入口不渲染（此前 fail-open——401 被当成「角色未知」，管理页照常开） */
-  const gated = notLoggedIn || isGuest
-  /* 角色还没确认时，先不渲染只给管理员的块（避免游客先发出被拒的请求） */
+  /* 未登录按最低待遇：管理入口不渲染（此前 fail-open——401 被当成「角色未知」，管理页照常开） */
+  const gated = notLoggedIn
+  /* 角色还没确认时，先不渲染只给管理员的块（避免未登录先发出被拒的请求） */
   const noAdminBits = !roleKnown || gated
-  /* charts（图册）后端允许 guest 读（契约 §7.1），所以不进这张表 */
-  const ADMIN_VIEWS = new Set(['workbench', 'acquire', 'review', 'analysis', 'forecast', 'archive', 'trace', 'red'])
-  const denied = gated && ADMIN_VIEWS.has(view)
+  /* 操作员不可见的「里子」屏（rick 2026-10-11 定）：直开 URL 给空态，真门在后端。 */
+  const OPERATOR_DENIED = new Set(['acquire', 'ledger', 'archive', 'red', 'trace'])
+  const operatorDenied = !!isOperator && OPERATOR_DENIED.has(view)
   const navHref = (h: string) =>
     (selected
       ? h === '/app/' ? buildPeriodUrl(h, selected)
         : h.startsWith('/app/?') ? buildPeriodUrl(h, selected) : h
       : h)
-
-  /* 游客（非管理员）已被 effect 送回陈列馆；这里先不渲染工作区，避免跳转前闪一帧。 */
-  if (roleKnown && me && me.role !== 'admin') return null
 
   return (
     <>
@@ -466,7 +463,7 @@ export default function App() {
           <span>学科信息参考</span>
         </div>
         <nav className="nav" aria-label="工作区">
-          {NAV.filter((n) => !n.admin || !gated).map((n) => (
+          {NAV.filter((n) => !n.admin || me?.role === 'admin').map((n) => (
             <a key={n.view} href={navHref(n.href)}
                aria-current={view === n.view ? 'page' : undefined}>
               <Icon name={n.icon} size={19} />{n.label}
@@ -514,15 +511,18 @@ export default function App() {
           </div>
         )}
 
-        {denied ? (
+        {/* 身份未确认：先不渲染任何视图（避免发出注定被拒的请求）；未登录给「去登录」；
+            操作员直开隐藏屏给「不可见」空态（真门在后端）。 */}
+        {!roleKnown ? (
+          <div className="pending-box mt-0">正在确认身份……</div>
+        ) : notLoggedIn ? (
           <div className="pending-box mt-0">
-            {notLoggedIn ? (
-              <><b>请先登录</b> —— 生成台 / 审核台 / AI 分析台 / 预测台要馆员账号，
-                <a href="/login">去登录</a>后再来。
-              </>
-            ) : (
-              <><b>这一屏要馆员账号</b> —— 工作区只对馆员开放。</>
-            )}
+            <b>请先登录</b> —— 工作区要登录账号，<a href="/login">去登录</a>后再来。
+          </div>
+        ) : operatorDenied ? (
+          <div className="pending-box mt-0">
+            <b>操作员不可见</b> —— 这一屏是管理员的「里子」（取数 / 台账 / 运行档案 / 红件 / 溯源），
+            操作员账号看不到。看报告请回 <a href={navHref('/app/?view=report')}>报告</a>。
           </div>
         ) : view === 'archive' ? (
           <Archive period={selected} approvalStatus={approvalStatus} />
@@ -538,6 +538,7 @@ export default function App() {
             onChoiceChange={changeForecastChoice}
             onSaveChoice={saveSelectedForecastChoice}
             onReloadChoice={reloadForecastChoice}
+            canEdit={me?.role === 'admin'}
           />
         ) : view === 'trace' ? (
           <Trace period={selected} />
@@ -548,7 +549,7 @@ export default function App() {
         ) : view === 'red' ? (
           <RedList period={selected} />
         ) : view === 'analysis' ? (
-          <Analysis period={selected} />
+          <Analysis period={selected} canEdit={me?.role === 'admin'} />
         ) : view === 'ledger' ? (
           <Ledger />
         ) : view === 'review' ? (
@@ -560,6 +561,7 @@ export default function App() {
           />
         ) : view === 'report' ? (
           <Report periods={periods} current={selected} onPick={pickPeriod} guest={noAdminBits}
+            canSeeAdminBits={me?.role === 'admin'}
             refreshToken={selected ? artifactRefreshByPeriod[selected] ?? 0 : 0} />
         ) : (
           <>
@@ -586,7 +588,7 @@ export default function App() {
                         forecastChoiceDirty={selectedForecastChoiceDirty}
                         onPickPeriod={pickPeriod}
                         onReloadForecastChoice={reloadForecastChoice}
-                        showTools={!noAdminBits}
+                        showTools={!noAdminBits && me?.role === 'admin'}
                         toolJobId={runForSelected?.jobId ?? null}
                         toolArtifactsToken={selected ? artifactRefreshByPeriod[selected] ?? 0 : 0}
                         onToolActionStart={beginToolAction}
@@ -623,8 +625,12 @@ export default function App() {
             </div>
             <nav className="f-nav" aria-label="页脚导航">
               <a href="/app/shelf/">陈列馆</a>
-              <a href={navHref('/app/?view=ledger')}>主台账</a>
-              <a href={navHref('/app/?view=archive')}>运行档案</a>
+              {me?.role === 'admin' && (
+                <>
+                  <a href={navHref('/app/?view=ledger')}>主台账</a>
+                  <a href={navHref('/app/?view=archive')}>运行档案</a>
+                </>
+              )}
             </nav>
           </div>
           <div className="f-bottom">

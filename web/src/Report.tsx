@@ -130,7 +130,7 @@ function Artifacts({ period, guest, approvalStatus, refreshToken }: {
 }
 
 /** 页边朱批 + 对勘分区 + 图册：都用 Batch 2 的真数据（后端 7223ba5 交付） */
-function PeriodData({ period }: { period: string | null }) {
+function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSeeAdminBits: boolean }) {
   const [col, setCol] = useState<CollationRow[] | null>(null)
   const [charts, setCharts] = useState<ChartRow[] | null>(null)
   const [note, setNote] = useState<string | null>(null)
@@ -174,7 +174,8 @@ function PeriodData({ period }: { period: string | null }) {
               共 {col.length} 处 · 待人工 {manual.length} 处
             </span>
           </h2>
-          {/* 两扇门摆在明面：对勘本（正文级对照）/ 红色件清单（签单依据） */}
+          {/* 两扇门摆在明面：对勘本（正文级对照）/ 红色件清单（签单依据）。
+              2026-10-11：红件清单是操作员不可见的「里子」——只给管理员留这扇门。 */}
           <div className="rc-doors">
             <a className="entry" href={period ? appHref('reading', period) : '/app/?view=reading'}>
               <span>
@@ -183,13 +184,15 @@ function PeriodData({ period }: { period: string | null }) {
               </span>
               <span className="go">→</span>
             </a>
-            <a className="entry" href={period ? appHref('red', period) : '/app/?view=red'}>
-              <span>
-                <span className="t">红色件清单 · 签单依据</span>
-                <span className="d">逐格列出「改了什么、来自哪里」，可搜索、可下载 Markdown</span>
-              </span>
-              <span className="go">→</span>
-            </a>
+            {canSeeAdminBits && (
+              <a className="entry" href={period ? appHref('red', period) : '/app/?view=red'}>
+                <span>
+                  <span className="t">红色件清单 · 签单依据</span>
+                  <span className="d">逐格列出「改了什么、来自哪里」，可搜索、可下载 Markdown</span>
+                </span>
+                <span className="go">→</span>
+              </a>
+            )}
           </div>
           {/* 章节直达收进折叠：对勘本自己就能换分组，11 张卡不再占屏（票 14） */}
           <details className="fold">
@@ -205,15 +208,18 @@ function PeriodData({ period }: { period: string | null }) {
               </div>
             </div>
           </details>
-          {/* 逐格溯源入口（P1）：报告里的值 ↔ 台账现场重读 */}
-          <a className="entry mt-12" 
-             href={period ? appHref('trace', period) : '/app/?view=trace'}>
-            <span>
-              <span className="t">逐格溯源</span>
-              <span className="d">报告里每个数字 ↔ 台账现场重读的值并排对照，写清来源表与「怎么来的」</span>
-            </span>
-            <span className="go">→</span>
-          </a>
+          {/* 逐格溯源入口（P1）：报告里的值 ↔ 台账现场重读。
+              2026-10-11：溯源是操作员不可见的「里子」，只给管理员留。 */}
+          {canSeeAdminBits && (
+            <a className="entry mt-12" 
+               href={period ? appHref('trace', period) : '/app/?view=trace'}>
+              <span>
+                <span className="t">逐格溯源</span>
+                <span className="d">报告里每个数字 ↔ 台账现场重读的值并排对照，写清来源表与「怎么来的」</span>
+              </span>
+              <span className="go">→</span>
+            </a>
+          )}
         </div>
 
         {/* 页边朱批：待人工的那几处——每条带「去补」，直落审核台对应空位（票 14） */}
@@ -250,7 +256,10 @@ function PeriodData({ period }: { period: string | null }) {
                 </div>
               ))}
               {manual.length > 8 && (
-                <p className="hint">另 {manual.length - 8} 处见图册「红色件清单」。</p>
+                <p className="hint">
+                  另 {manual.length - 8} 处
+                  {canSeeAdminBits ? '见图册「红色件清单」。' : '去审核台逐项处理。'}
+                </p>
               )}
             </div>
           )}
@@ -418,13 +427,15 @@ function FactsStrip({ period, onFacts }: {
 }
 
 export function Report({
-  periods, current, onPick, guest, refreshToken = 0,
+  periods, current, onPick, guest, refreshToken = 0, canSeeAdminBits = true,
 }: {
   periods: Period[]
   current: string | null
   onPick: (p: string) => void
   guest?: boolean
   refreshToken?: number
+  /** 2026-10-11：操作员看不到红件清单/逐格溯源入口（真门在后端）。 */
+  canSeeAdminBits?: boolean
 }) {
   const row = periods.find((p) => p.period === current) ?? null
   /* 趋势图要占满整页宽：facts 由 FactsStrip 取回后交上来（读数带仍在左列） */
@@ -458,7 +469,7 @@ export function Report({
       )}
 
       {/* 对勘分区 / 页边朱批 / 图册 —— Batch 2 的真数据 */}
-      <PeriodData period={current} />
+      <PeriodData period={current} canSeeAdminBits={canSeeAdminBits} />
 
       <section className="card mt-26 pad-card">
         <h2 className="h-sec">

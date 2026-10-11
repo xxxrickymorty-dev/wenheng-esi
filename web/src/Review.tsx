@@ -363,7 +363,7 @@ export function Review({
 
       {!isAdmin && (
         <div className="pending-box mt-12">
-          当前角色{me ? `（${me.role}）` : '未知'}是只读——签单与填写需要管理员权限。这是服务端的权限设置挡的。
+          操作员只读——签单与填写仅管理员可用（服务端的权限设置挡着；下面的正文照常可看）。
         </div>
       )}
 

@@ -331,7 +331,7 @@ export function Workbench({
   forecastChoiceDirty: boolean
   onPickPeriod: (period: string) => void
   onReloadForecastChoice: () => void
-  /** 「这一期的工具」折叠（2026-10-01 从 App 抽出）：角色未确认/游客时不渲染 */
+  /** 「这一期的工具」折叠（2026-10-01 从 App 抽出）：角色未确认/操作员（只读）时不渲染 */
   showTools: boolean
   toolJobId: string | null
   toolArtifactsToken: number
@@ -339,7 +339,8 @@ export function Workbench({
   onToolActionEnd: (action: 'upload' | 'rerun' | 'rollback') => void
   onToolUploaded: (jobId: string, period: string) => void
 }) {
-  const canGenerate = me?.role === 'admin' && period != null && /^\d{6}$/.test(period) && !actionsLocked && !activeRun && !submitting
+  const isAdmin = me?.role === 'admin'
+  const canGenerate = isAdmin && period != null && /^\d{6}$/.test(period) && !actionsLocked && !activeRun && !submitting
     && (!run || isTerminal(run.status ?? undefined))
   const hasGenerateAction = wb.focusAction === 'generate' || wb.focusAction === 'rerun'
 
@@ -358,7 +359,7 @@ export function Workbench({
             <div className="sub">{wb.focusSub}</div>
           </div>
           <div className="cta">
-            {wb.focusAction === 'generate' && (
+            {wb.focusAction === 'generate' && isAdmin && (
               <>
                 <span className="hint">约 20 秒</span>
                 <button className="btn primary" onClick={onGenerate} disabled={!canGenerate}>
@@ -366,7 +367,7 @@ export function Workbench({
                 </button>
               </>
             )}
-            {wb.focusAction === 'rerun' && (
+            {wb.focusAction === 'rerun' && isAdmin && (
               <ConfirmButton className="btn" disabled={!canGenerate}
                              confirmText="确认重跑？会撤下当前成品" onConfirm={onGenerate}>
                 <Icon name="refresh" size={20} />重新生成
@@ -378,7 +379,7 @@ export function Workbench({
             {wb.focusAction === 'open' && (
               <a className="btn" href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="doc" size={20} />打开报告</a>
             )}
-            {wb.focusAction === 'acquire' && (
+            {wb.focusAction === 'acquire' && isAdmin && (
               <a className="btn primary" href={`/app/?view=acquire${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
                 <Icon name="download" size={20} />去取数
               </a>
@@ -388,11 +389,11 @@ export function Workbench({
 
         {!canGenerate && hasGenerateAction && (
           <p className="hint card-foot">
-            {actionLockReason ?? (me == null
-              ? <>系统暂时无法确认你的身份，为保护数据，生成按钮暂时不能使用。</>
-              : me.role === 'admin'
-                ? <>先选择一期，再开始生成。</>
-                : <>当前账号是<b>游客</b>：只能看报告目录与成品，不能生成或编辑。</>)}
+            {me?.role === 'operator'
+              ? <>操作员只读：可以看进度与产物，生成/重跑仅管理员可用。</>
+              : actionLockReason ?? (me == null
+                ? <>系统暂时无法确认你的身份，为保护数据，生成按钮暂时不能使用。</>
+                : <>先选择一期，再开始生成。</>)}
         </p>
         )}
 

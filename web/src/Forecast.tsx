@@ -284,12 +284,13 @@ function Trial({
 /* ---------------------------------------------------------------- 02 逐科选择 */
 
 function PickTable({
-  meta, route, choice, onChange,
+  meta, route, choice, onChange, canEdit,
 }: {
   meta: ForecastMeta
   route: string
   choice: ForecastChoiceEntry | null
   onChange: (route: string, subject: string, model: string) => void
+  canEdit: boolean
 }) {
   const models = meta.models.filter((m) => m.value !== 'recommended' && m.value !== 'all')
   const recOf = (s: string) => meta.recommendations?.[route]?.[s] ?? ''
@@ -326,7 +327,7 @@ function PickTable({
                   <td className="fc-rec">{rec || 'V1 推荐'}</td>
                   <td>
                     <select value={mine} aria-label={`${s}的预测模型`}
-                            disabled={!choice?.loaded || choice.saving}
+                            disabled={!canEdit || !choice?.loaded || choice.saving}
                             onChange={(e) => onChange(route, s, e.target.value)}>
                       <option value="">用 V1 推荐</option>
                       {models.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
@@ -345,7 +346,9 @@ function PickTable({
         </table>
       </div>
 
-      <p className="hint mt-9">保存后，从下次重出报告起生效。</p>
+      <p className="hint mt-9">
+        {canEdit ? '保存后，从下次重出报告起生效。' : '操作员只读：改选与保存仅管理员可用。'}
+      </p>
     </section>
   )
 }
@@ -354,7 +357,7 @@ function PickTable({
 
 export function Forecast({
   period, meta, metaError, choice, choiceDirty,
-  onChoiceChange, onSaveChoice, onReloadChoice,
+  onChoiceChange, onSaveChoice, onReloadChoice, canEdit,
 }: {
   period: string | null
   meta: ForecastMeta | null
@@ -364,6 +367,8 @@ export function Forecast({
   onChoiceChange: (route: string, subject: string, model: string) => void
   onSaveChoice: () => void
   onReloadChoice: () => void
+  /** 2026-10-11：操作员只读——试跑/改选/保存仅管理员可用（真门在后端）。 */
+  canEdit: boolean
 }) {
   const routes = meta?.routes ?? []
   const [route, setRoute] = useState('')
@@ -437,13 +442,16 @@ export function Forecast({
               title={choice?.loaded && !choiceDirty && !choice.error ? `已保存${choice.by ? ` · ${choice.by}` : ''}${choice.at ? ` · ${choice.at}` : ''}` : undefined}>
           {saveState}
         </span>
+        {!canEdit && <span className="hint">操作员只读</span>}
         {choice?.error && (
           <button type="button" className="btn" onClick={onReloadChoice}>重新读取</button>
         )}
-        <button className="btn primary" onClick={onSaveChoice}
-                disabled={!choice?.loaded || !choiceDirty || choice.saving || !period}>
-          {choice?.saving ? '正在保存……' : '保存选择'}
-        </button>
+        {canEdit && (
+          <button className="btn primary" onClick={onSaveChoice}
+                  disabled={!choice?.loaded || !choiceDirty || choice.saving || !period}>
+            {choice?.saving ? '正在保存……' : '保存选择'}
+          </button>
+        )}
       </div>
 
       {metaError && <div className="pending-box mt-14">{metaError}</div>}
@@ -457,9 +465,19 @@ export function Forecast({
 
       {meta?.available && (
         <>
-          <Trial meta={meta} choice={choice} route={currentRoute} onChoiceChange={onChoiceChange} />
+          {canEdit ? (
+            <Trial meta={meta} choice={choice} route={currentRoute} onChoiceChange={onChoiceChange} />
+          ) : (
+            <section className="card mt-18 pad-card">
+              <h2 className="h-sec"><span className="fc-no">01</span>预测图</h2>
+              <div className="pending-box mt-12">
+                操作员只读：预测试跑会自动运行模型，仅管理员可用。已保存的模型选择见 02。
+              </div>
+            </section>
+          )}
 
-          <PickTable meta={meta} route={currentRoute} choice={choice} onChange={onChoiceChange} />
+          <PickTable meta={meta} route={currentRoute} choice={choice}
+                     onChange={onChoiceChange} canEdit={canEdit} />
 
           <details className="fold">
             <summary>03 学科板 · 现状（本路线 {boardRows.length || 8} 科）<span className="sm">{boardSm}</span></summary>
