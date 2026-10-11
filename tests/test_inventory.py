@@ -74,6 +74,27 @@ def test_ESI包zip也算已有(roots):
     assert states(inv)["esi"][0] == "ok"
 
 
+def test_清单认取数落地的_数据与复现期次论文清单xlsx(roots):
+    """2026-10-11 修：202609 的清单来自 Clarivate 取数落地的
+    `数据与复现/<期次>论文清单.xlsx`（college_stats source 可证）——
+    此前只认 input 下的 csv，把已完成的期次误报「缺 1 件」。"""
+    repo, data = roots
+    seed(repo, data, "202609", papers=False)
+    data.mkdir(parents=True, exist_ok=True)
+    (data / "202609论文清单.xlsx").write_bytes(b"x")
+    inv = inventory.scan("202609", repo_root=repo, filled=["202609"])
+    assert states(inv)["papers"][0] == "ok"
+    assert inv.ok, "四件齐"
+
+
+def test_清单认input下的xlsx(roots):
+    repo, data = roots
+    seed(repo, data, "202607", papers=False)
+    (repo / "input" / "202607" / "202607论文清单.xlsx").write_bytes(b"x")
+    inv = inventory.scan("202607", repo_root=repo, filled=["202607"])
+    assert states(inv)["papers"][0] == "ok"
+
+
 # ------------------------------------------------------------------ 未发布
 def test_未发布_随发布的两件报未到_不论本机文件(roots):
     repo, data = roots

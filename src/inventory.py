@@ -114,6 +114,21 @@ def _has_esi(period: str, data_root: pathlib.Path) -> bool:
     return (root / period).is_dir() or (root / f"{period}.zip").is_file()
 
 
+def _has_papers(period: str, *, repo_root: pathlib.Path, data_root: pathlib.Path) -> bool:
+    """顶尖论文清单（③）：按**流水线实际取数口**判，不只认馆员另存的 csv。
+
+    2026-10-11 修：202609 的清单来自 Clarivate 取数落地的
+    `数据与复现/<期次>论文清单.xlsx`（college_stats 的 source 可证），
+    此前只查 `input/<期次>/顶尖论文清单.csv` → 把已完成的期次误报「缺 1 件」。
+    现在的判据：`input/<期次>/` 下有 csv 或 xlsx 清单，或 `数据与复现/<期次>论文清单.xlsx`。
+    """
+    indir = repo_root / "input" / period
+    if indir.is_dir() and (any(indir.glob("*论文清单*.xlsx"))
+                           or any(indir.glob("*论文清单*.csv"))):
+        return True
+    return any(data_root.glob(f"{period}*论文清单*.xlsx"))
+
+
 def _has_incites(period: str, data_root: pathlib.Path) -> bool:
     from extract_matrix import SNAP_MAP                            # noqa: PLC0415
 
@@ -132,7 +147,8 @@ def _pieces(period: str, *, repo_root: pathlib.Path, data_root: pathlib.Path,
         piece("esi", _has_esi(period, data_root)),
     ]
     if released:
-        out.append(piece("papers", (repo_root / "input" / period / "顶尖论文清单.csv").is_file()))
+        out.append(piece("papers", _has_papers(period, repo_root=repo_root,
+                                               data_root=data_root)))
         out.append(piece("incites", _has_incites(period, data_root)))
     else:
         # 未发布：随发布才到的两件一律「未到」——不去翻本机试排预览件。

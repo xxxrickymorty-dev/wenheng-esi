@@ -46,10 +46,13 @@ def fake_inventory(period, *, released=True, missing=(), fallback=""):
 FULL_202607 = fake_inventory("202607")
 
 
-def run_dialog(text, *, root, period="", actor="admin", today=TODAY, inventory=None, **ov):
-    """`inventory=None` → 注入「没有盘点」的替身（票 01 行为；绝不读真台账）。"""
+def run_dialog(text, *, root, period="", actor="admin", today=TODAY, inventory=None,
+               readonly=False, **ov):
+    """`inventory=None` → 注入「没有盘点」的替身（票 01 行为；绝不读真台账）。
+    `readonly`＝服务端按角色注入的只读标记（操作员）。"""
     with ai.using(data_root=root, inventory=(lambda _p: inventory), **ov):
-        return ai.run("dialog", period, payload={"text": text, "today": today},
+        return ai.run("dialog", period,
+                      payload={"text": text, "today": today, "readonly": readonly},
                       actor=actor)
 
 
@@ -62,14 +65,51 @@ def records(root, period):
 
 # ============================================================ 1. 先说出理解 + 槽位
 def test_九月报告_先说出理解_期次槽亮起(tmp_path):
-    ans = run_dialog("帮我做9月份的报告", root=tmp_path)
+    ans = run_dialog("帮我做 9 月的报告", root=tmp_path)
     assert ans.mode == "rule" and ans.backend == "rule" and ans.notice == ""
     assert "数据截至 2026-09" in ans.text, "应答必须先说出理解（期次只有一个含义：数据截止月）"
     assert "202609" in ans.text
     assert ans.data["case"] == "period" and ans.data["period"] == "202609"
     assert ans.data["intent"] == "出报告"
     assert ans.data["verdict"] == "" and ans.data["inventory"] is None
+    # 盘点不到（替身 None）→ 如实说 + 指路生成台（2026-10-11：不再只回一句理解）
+    assert "看不到" in ans.text and ans.data["actions"][0]["view"] == "workbench"
+
+
+def test_带期次槽位_怎么不做_不再反问期次(tmp_path):
+    """2026-10-11 rick 实问：说过「9 月的报告」，再问「怎么不做」被反问「没听出是哪一期」。"""
+    ans = run_dialog("怎么不做", root=tmp_path, period="202609")
+    assert "我还没听出是哪一期" not in ans.text, "槽位期次带过轮：不反问"
+    assert "接着 202609" in ans.text and ans.data["period"] == "202609"
+
+
+def test_带期次槽位_短应诺_按推进走(tmp_path):
+    """「对啊」这类短应诺 → 沿用槽位期次走推进，不再反问期次。"""
+    ans = run_dialog("对啊", root=tmp_path, period="202609")
+    assert "我还没听出是哪一期" not in ans.text
+    assert ans.data["kind"] == "proceed"
+
+
+def test_操作员只读_报告意图直接说明白(tmp_path):
+    """操作员（readonly）说要出报告：不演流程、不盘点，直接说只读 + 指去查数据。"""
+    ans = run_dialog("帮我做 9 月的报告", root=tmp_path, readonly=True)
+    assert "操作员只读" in ans.text and "查一下化学的接近度" in ans.text
+    assert ans.data["run"] is None and ans.data["inventory"] is None
     assert ans.data["actions"] == []
+    # 查数据不受只读影响（照旧路由）
+    q = run_dialog("查一下化学的接近度", root=tmp_path, period="202609", readonly=True)
+    assert q.data["kind"] == "query"
+
+
+def test_已出过稿_先问覆盖不报缺件(tmp_path):
+    """2026-10-11 rick 实问：9 月已出过稿——不报「还差几件」，先问一次覆盖。"""
+    d = tmp_path / "202609"
+    d.mkdir()
+    (d / "red_slots.json").write_text("[]", encoding="utf-8")
+    ans = run_dialog("帮我做 9 月的报告", root=tmp_path)
+    assert "已经出过稿" in ans.text and "覆盖重出" in ans.text
+    assert ans.data["run"] == {"period": "202609", "auto": False, "intent": "single_trend"}
+    assert [a["text"] for a in ans.data["actions"]] == ["覆盖重出", "保留，我先看看旧的"]
 
 
 def test_显式期次优先_再出那期(tmp_path):

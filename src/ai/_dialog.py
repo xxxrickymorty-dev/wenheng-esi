@@ -17,6 +17,11 @@
 **不做模型轮**（`_specs` 里 `modeled=False`）：期次猜错就是整期返工，解析因此
 是确定性的；模型在结构上不参与，也不新增第二个模型出口（不触网可跑）。
 
+**槽位带过轮（2026-10-11，rick 实问暴露）**：句子里没带期次时，报告/推进意图与短应诺
+（「对啊」）**沿用会话槽位里已确认的期次**——说过「9 月的报告」再问「怎么不做」不该被
+反问期次。这不是猜期次，是接着聊（解析出的期次仍优先）。`payload.readonly`（服务端按
+角色注入）为真时，出稿/核对的路直接说「操作员只读」，不演流程、不盘点。
+
 盘点经**注入边缘**取：`ai.using(inventory=…)` 可替身注入（测试/脚本）；
 生产走 `src/inventory.scan`（延迟导入——台账/pandas 不进 AI 层启动路径）。
 盘点失败一律当「没有盘点」：回复退回只说理解，不猜发布状态、不拦住对话。
@@ -35,7 +40,7 @@ import datetime
 import pathlib
 import re
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from . import _runtime
 from ._draft import RuleDraft
@@ -49,6 +54,11 @@ KINDS = ("report", "query", "proceed", "unclear")
 
 #: 一句里出现这些词 → 「继续/出稿」动作（核对回来后的推进；只在没带期次的句子上生效）。
 _PROCEED = re.compile(r"继续|核完|核过|核对完了|出稿|开跑|开生成|开始生成|开始出稿|跑一遍")
+
+#: 短应诺（对上一轮的确认）——带会话槽位期次时按「推进」走，不再反问期次。
+#: 2026-10-11（rick 实问「对啊」被反问期次）：只认整句就是一句应诺的短句，不碰长句。
+_AFFIRM = re.compile(r"^(对|嗯|是|好|行|可以|继续|对的|是的|对啊|对呀|好的|好嘞|ok|OK)"
+                     r"[啊呀吧了呢。！!～~]*$")
 
 #: 显式查数据（票 07）：「查 / 问」字样按查数据路由。
 _ASK = re.compile(r"查|问")
@@ -401,28 +411,69 @@ def _register(p: Parse, inv: dict | None):
 def build(root, period, payload):                                  # noqa: ARG001
     """构建器入口：一句话 → RuleDraft（应答 + 来源 + 槽位/盘点数据 + 记账期次）。
 
-    `root` 对解析与盘点无意义；`period`（槽位里已有的期次）只作记账兜底——
-    解析出的期次优先（这轮对话谈的就是那一期）。
+    `root` 对解析与盘点无意义；`period`＝会话槽位里已有的期次（这轮对话谈的就是它）：
+    - 句子里带期次 → 用句子里的（解析优先）；
+    - **报告/推进意图没带期次 → 沿用槽位期次**（2026-10-11 rick 实问：说过「9 月的报告」
+      再问「怎么不做」被反问期次——这不是猜，是接着聊）；短应诺（「对啊」）同此。
+    - `payload.readonly`（服务端按角色注入）：操作员只读出稿/核对直接说明白，不演流程。
     """
     text = str(payload.get("text") or "")
+    readonly = bool(payload.get("readonly"))
     p = parse(text, today=parse_today(payload.get("today")))
+    slot = str(period or "")
     kind = p.kind
+    carried = False
+
+    if kind in ("report", "proceed") and not p.period and slot:
+        p = replace(p, case="period", period=slot,
+                    year=int(slot[:4]), month=int(slot[4:6]))
+        carried = True
+    elif not kind and slot and _AFFIRM.fullmatch(text.strip()):
+        p = replace(p, act="proceed", kind="proceed")
+        kind = "proceed"
+        carried = True
+
     run = None
     if kind == "query":
         # 查数据（票 07）：不盘点、不出稿；正文本地只在「没期次」时出声，
         # 有期次时的回答由服务器调 qa 能力给出（本能力只做路由）。
         reply, verdict, actions, inv = _query_reply(p, period), "", [], None
+    elif kind in ("report", "proceed") and readonly:
+        # 操作员只读（2026-10-11 rick）：出稿/核对的路直接说明白，不演流程、不盘点。
+        target = p.period or slot
+        lead = f"接着 {target} 那期——" if carried and target else ""
+        reply = (f"{lead}操作员只读：出稿与核对仅管理员账号可用；"
+                 "数据我可以直接帮你查（比如「查一下化学的接近度」）。")
+        verdict, inv, actions = "", None, []
     elif kind == "unclear":
         reply, actions = _unclear_reply(p.period or period)
         verdict, inv = "", None
     elif kind == "proceed":
         reply, verdict, actions, run, inv = _proceed(root, period, p)
     else:
-        inv = _scan_inventory(p.period) if (p.case == "period" and p.period) else None
-        if inv is None:
-            reply, verdict, actions = reply_for(p), "", []
+        if p.case == "period" and p.period and _products_exist(root, p.period):
+            # 这期已出过稿（2026-10-11 rick 实问「帮我做 9 月的报告」）——
+            # 先问一次覆盖，不静默重出、也不再报「还差几件」。
+            reply = "这一期已经出过稿了（成品还在）——直接重出会覆盖旧的。要覆盖重出吗？"
+            actions = [{"kind": "run", "period": p.period, "text": "覆盖重出"},
+                       {"kind": "dismiss", "text": "保留，我先看看旧的"}]
+            run = {"period": p.period, "auto": False, "intent": "single_trend"}
+            verdict, inv = "ready", None
         else:
-            reply, verdict, actions = _compose(p, inv)
+            inv = _scan_inventory(p.period) if (p.case == "period" and p.period) else None
+            if inv is None:
+                if p.case == "period" and p.period:
+                    # 有期次但盘点不到（如演示站没有台账/数据与复现）——如实说，别演。
+                    lead = f"接着 {p.period} 那期——" if carried else reply_for(p) + "\n\n"
+                    reply = (lead + "这一期的数据状态我在这里看不到（要本机带台账才盘得了）；"
+                             "出稿去生成台看三步条，查数据可以直接问我（比如「查一下化学的接近度」）。")
+                    actions = [{"kind": "goto", "view": "workbench", "period": p.period,
+                                "text": "去生成台 ▸"}]
+                    verdict = ""
+                else:
+                    reply, verdict, actions = reply_for(p), "", []
+            else:
+                reply, verdict, actions = _compose(p, inv)
     number = NumberedText.of([reply], _register(p, inv))
     data = {**p.as_data(), "verdict": verdict, "actions": actions,
             "inventory": inv, "run": run}

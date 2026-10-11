@@ -1627,8 +1627,10 @@ async def api_dialog_turn(request: Request):
     intent = str(slots.get("intent") or "").strip()[:20]
     import ai                                                     # noqa: PLC0415
     actor = config.role_of(current_user(request) or "")
+    # `readonly`（2026-10-11）：操作员只读——对话里出稿/核对的路直接说明白，不演流程。
     ans = await run_in_threadpool(ai.run, "dialog", period,
-                                  payload={"text": text}, actor=actor)
+                                  payload={"text": text, "readonly": actor != "admin"},
+                                  actor=actor)
     if ans.mode in ("closed", "denied", "unavailable"):
         return _answer_response(ans)
     turn = ans.data or {}
