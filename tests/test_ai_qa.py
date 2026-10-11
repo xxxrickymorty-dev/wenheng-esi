@@ -143,6 +143,75 @@ def test_工具请求本轮不开放_回落(tmp_path):
     assert records(tmp_path)[0]["fallback"] == "calls_unsupported"
 
 
+# ============================================================ 学科问题直答（2026-10-11 rick 定）
+_TABLE_FIELDS = ["discipline", "rank_cn_change", "papers", "cnci", "total_cites",
+                 "thr_1pct", "thr_1pct_gap", "thr_1permille", "permille_rank",
+                 "top_papers", "prox_change"]
+
+
+def _seed_table2(tmp_path):
+    """给测试期次落一份 table2.csv（两行：化学 / 生物学与生物化学）。"""
+    import csv
+    d = tmp_path / "202607"
+    d.mkdir(exist_ok=True)
+    with (d / "table2.csv").open("w", encoding="utf-8-sig", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=_TABLE_FIELDS)
+        w.writeheader()
+        w.writerow({"discipline": "Chemistry", "rank_cn_change": "154/↓1", "papers": "2590",
+                    "cnci": "1.454", "total_cites": "51529", "thr_1pct": "7622",
+                    "thr_1pct_gap": "43907", "thr_1permille": "99622",
+                    "permille_rank": "2.384", "top_papers": "44", "prox_change": "↑34.83%"})
+        w.writerow({"discipline": "Biology & Biochemistry", "rank_cn_change": "301/↑1",
+                    "papers": "900", "cnci": "1.10", "total_cites": "9000", "thr_1pct": "7000",
+                    "thr_1pct_gap": "-2000", "thr_1permille": "90000",
+                    "permille_rank": "10.0", "top_papers": "9", "prox_change": "↑1.00%"})
+
+
+def test_学科问题直答_数字来源到格(tmp_path):
+    """问「化学的接近度」→ 直答该学科数据行（规则版也直答），数字回指 table2 的格。"""
+    seed_period(tmp_path)
+    _seed_table2(tmp_path)
+    ans = qa(tmp_path, question="查一下化学的接近度")
+    assert ans.mode == "rule"
+    assert "化学（Chemistry）" in ans.text and "676.06" in ans.text, ans.text[:160]
+    by_val = {s.value: s for s in ans.sources}
+    assert by_val["51529"].pointer == "table2.csv#Chemistry.total_cites"
+    assert by_val["2590"].pointer == "table2.csv#Chemistry.papers"
+    assert by_val["676.06"].pointer.startswith("table2.csv#Chemistry（总被引÷阈值）")
+    assert by_val["676.06"].label.endswith("前 1% 接近度（系统换算）")
+    assert "国际排名" not in ans.text, "学科直答不把整本报告倒出来"
+
+
+def test_学科长名优先_不被子串截胡(tmp_path):
+    """「生物学与生物化学」先被长名吃掉，不让「化学」子串误命中 Chemistry。"""
+    seed_period(tmp_path)
+    _seed_table2(tmp_path)
+    ans = qa(tmp_path, question="生物学与生物化学怎么样")
+    assert "生物学与生物化学（Biology & Biochemistry）" in ans.text
+    assert "化学（Chemistry）" not in ans.text
+
+
+def test_学科问题_模型轮证据带学科段(tmp_path):
+    """模型轮：学科段排在证据最前，外发面仍是占位（零数字原值）。"""
+    seed_period(tmp_path)
+    _seed_table2(tmp_path)
+    brain = ScriptedBrain([lambda b: Turn(text=b.task + "\n\n" + "\n\n".join(b.evidence))])
+    ans = qa(tmp_path, question="化学的接近度是多少", brain=brain)
+    ev = brain.briefs[0].evidence
+    assert ev and ev[0].startswith("化学（Chemistry）"), "学科段必须在证据最前"
+    for t in brain.briefs[0].egress_texts():
+        assert not raw_digits(t), f"外发含数字原值：{t!r}"
+    assert ans.mode == "model" and "676.06" in ans.text
+
+
+def test_无学科问句_行为与旧版一致(tmp_path):
+    """没点学科时没有学科段——命中段作答（不回归）。"""
+    seed_period(tmp_path)
+    _seed_table2(tmp_path)
+    ans = qa(tmp_path, question="顶尖论文")
+    assert "顶尖论文" in ans.text and "化学（Chemistry）" not in ans.text
+
+
 # ============================================================ 边界与门
 def test_期次无数据_unavailable(tmp_path):
     ans = qa(tmp_path, question="本期怎么样")
@@ -180,7 +249,7 @@ def test_无空格整句问热点论文_命中顶尖论文段(tmp_path):
     assert "顶尖论文" in ans.text and "274" in ans.text, ans.text[:120]
 
 
-def test_手工槽已填回填_未填整句丢(tmp_path):
+def test_手工槽已填回填_未填分句丢_同句数据保留(tmp_path):
     seed_period(tmp_path)                                   # 有馆员填值
     ans = qa(tmp_path, question="ESI数据覆盖时间和机构总数")
     assert "2026年7月9日" in ans.text and "10428" in ans.text
@@ -190,8 +259,19 @@ def test_手工槽已填回填_未填整句丢(tmp_path):
     other = tmp_path / "nom"
     seed_period(other, manual=False)                        # 没有填值文件
     ans2 = qa(other, question="ESI数据覆盖时间和机构总数")
-    assert "【手工：" not in ans2.text, "未填槽位该整句丢掉，不端给读者"
-    assert "ESI最新数据" not in ans2.text, "含未填槽位的那句要整句丢"
+    assert "【手工：" not in ans2.text, "未填槽位该丢，不端给读者"
+    assert "ESI最新数据" not in ans2.text, "含未填槽位的分句要丢"
+    # 2026-10-11：同句里没槽位的分句保留（否则「顶尖论文 274 篇」这类总数会被连坐丢掉）
+    ans3 = qa(other, question="顶尖论文")
+    assert "274" in ans3.text, "同句无槽位的分句必须保留"
+
+
+def test_未填学科数时_顶尖论文总数仍在(tmp_path):
+    """202609 实况（金样总数 291；测试夹具 274）：manual_inputs 缺「学科数」——
+    分句级丢弃后总数必须答得出来，且不露「覆盖…个学科」残句。"""
+    seed_period(tmp_path, manual=False)
+    ans = qa(tmp_path, question="本期顶尖论文有多少篇")
+    assert "274" in ans.text and "覆盖" not in ans.text, ans.text[:120]
 
 
 def test_模型证据含全量段_命中段排前(tmp_path):

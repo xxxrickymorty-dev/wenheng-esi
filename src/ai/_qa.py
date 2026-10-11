@@ -8,15 +8,25 @@
 - **检索**：中文 2–4 字滑窗 + 报告别名（热点论文/高被引 → 顶尖论文），
   不再要求问句里带空格（旧版整句无空格＝零命中）；
 - **手工槽**：`out/<期次>/manual_inputs.json` 里馆员已填的值回填 `【手工：X】`；
-  未填的槽位**整句丢掉**——不把裸占位符端给读者，也不让模型看见；
+  未填的槽位**所在分句丢掉**（2026-10-11 由「整句丢」放宽）——不把裸占位符端给读者，
+  也不让模型看见，同时保住同句里没槽位的数据（如顶尖论文总数）；
 - **证据**：模型轮看**全量段**（命中段排前），规则版仍只出命中段——
   问「热点论文」这类报告里有、命中算法可能够不着的题，模型也能找到段落作答。
+
+2026-10-11 修（rick：「回答太死板，可溯源即可」）：
+- **学科问题直答**：问句点到某个学科（如「化学的接近度」）时，从 `table2.csv` 拼一条
+  **该学科的学科数据段**（论文/被引/CNCI/顶尖/阈值/**接近度（总被引÷阈值，系统换算）**/
+  位次变化），规则版与模型轮都优先用它——不再只能倒报告段落或答「无法回答」；
+- **来源到格**：学科段里的数字按值回指 `table2.csv#<学科>.<列>`（唯一命中）或
+  `table2.csv#<学科>`（行级）；换算出的接近度指回「总被引÷阈值」；
+- 系统提示同步放开：先直接答所问、语言简洁自然，数字仍一律走占位标记（可溯源）。
 
 来源登记：问句里的数字 → `question`；事实段里的数字 → 按值匹配 `overview_facts.json`
 的具体键（product 指针），匹配不到的（句骨架里算出来的期号等）降到段落级指针。
 """
 from __future__ import annotations
 
+import csv
 import json
 import pathlib
 import re
@@ -33,6 +43,14 @@ _STOP = {"什么", "多少", "几门", "几个", "哪些", "这期", "本期", "
 _ALIAS = {
     "热点论文": "顶尖论文", "高被引论文": "顶尖论文", "高被引": "顶尖论文", "顶刊": "顶尖论文",
     "百分之一": "前 1%", "前1%": "前 1%", "千分之一": "1‰",
+}
+
+#: 学科行字段 → 中文名（学科数据段与来源标签共用）。
+_FIELD_CN = {
+    "papers": "论文数", "total_cites": "总被引频次", "cnci": "CNCI",
+    "top_papers": "顶尖论文", "thr_1pct": "前 1% 阈值", "thr_1pct_gap": "前 1% 阈值差",
+    "thr_1permille": "前 1‰ 阈值", "permille_rank": "千分位",
+    "prox_change": "接近度较上期", "rank_cn_change": "国内排名",
 }
 
 
@@ -78,6 +96,109 @@ def _match(texts: dict, question: str) -> dict:
     return dict(list(texts.items())[:3])
 
 
+def _disc_rows(d):
+    """`table2.csv` → `[{en, cn, row}]`（缺件/坏件 → []；不猜）。"""
+    try:
+        with (pathlib.Path(d) / "table2.csv").open(encoding="utf-8-sig", newline="") as f:
+            raw = [dict(r) for r in csv.DictReader(f)]
+    except (OSError, UnicodeDecodeError, csv.Error):
+        return []
+    try:
+        from parse_ledger import DISCIPLINES_CN                     # noqa: PLC0415
+    except ImportError:                                             # pragma: no cover
+        DISCIPLINES_CN = {}
+    out = []
+    for row in raw:
+        en = str(row.get("discipline") or "").strip()
+        if not en:
+            continue
+        out.append({"en": en, "cn": DISCIPLINES_CN.get(en, en), "row": row})
+    return out
+
+
+def _disc_hits(question, rows):
+    """问句点到的学科（中文名整词命中优先长名；英文名同样认）。可多科。"""
+    q = str(question or "")
+    low = q.lower()
+    masked = q
+    hits = []
+    for item in sorted(rows, key=lambda x: -len(x["cn"])):
+        if item["cn"] in masked or (item["en"] and item["en"].lower() in low):
+            hits.append(item)
+            masked = masked.replace(item["cn"], "＃")               # 长名先吃，防「化学」截胡「生物与生物化学」
+    return hits
+
+
+def _row_num(row, key, cast=float):
+    """行里的数值字段 → cast(值)；空/坏 → None（不猜）。默认 float（CNCI 等小数）。"""
+    try:
+        return cast(float(str(row.get(key, "")).strip()))
+    except (TypeError, ValueError):
+        return None
+
+
+def _disc_segment(item):
+    """一个学科的直答段（确定性；换算值由本系统算，模型只引用不计算）。"""
+    row = item["row"]
+    parts = [f"{item['cn']}（{item['en']}）本期数据："]
+    papers = _row_num(row, "papers", int)
+    cites = _row_num(row, "total_cites", int)
+    cnci = _row_num(row, "cnci", float)
+    top = _row_num(row, "top_papers", int)
+    thr = _row_num(row, "thr_1pct", int)
+    thr_m = _row_num(row, "thr_1permille", int)
+    if papers is not None:
+        parts.append(f"论文数 {papers} 篇；")
+    if cites is not None:
+        parts.append(f"总被引频次 {cites}；")
+    if cnci is not None:
+        parts.append(f"CNCI {cnci:.2f}；")
+    if top is not None:
+        parts.append(f"顶尖论文 {top} 篇；")
+    if cites is not None and thr:
+        parts.append(f"前 1% 阈值 {thr}，前 1% 接近度 {cites / thr * 100:.2f}%"
+                     "（＝总被引÷阈值；超过 100% 即已进入前 1%）；")
+    if cites is not None and thr_m:
+        parts.append(f"前 1‰ 阈值 {thr_m}，前 1‰ 接近度 {cites / thr_m * 100:.2f}%；")
+    if str(row.get("prox_change") or "").strip():
+        parts.append(f"接近度较上期 {str(row['prox_change']).strip()}；")
+    if str(row.get("rank_cn_change") or "").strip():
+        parts.append(f"国内排名 {str(row['rank_cn_change']).strip()}。")
+    return "".join(parts).rstrip("；。") + "。"
+
+
+def _disc_index(items):
+    """(学科 en) → {值串: [字段, …]}：学科段里的数字按值回指 table2 的格。"""
+    idx = {}
+    for item in items:
+        row = item["row"]
+        per: dict = {}
+
+        def add(value_str, key):
+            per.setdefault(value_str, []).append(key)
+
+        for key in _FIELD_CN:
+            raw = str(row.get(key) or "").strip()
+            if not raw:
+                continue
+            try:
+                val = float(raw)
+            except ValueError:
+                for m in _shield.NUM.finditer(raw):                 # "154/↓1" 这类串里的数字
+                    add(m.group(0), key)
+                continue
+            for v in {f"{val:g}", f"{val:.2f}", f"{val:.1f}"}:
+                add(v, key)
+        cites, thr = _row_num(row, "total_cites"), _row_num(row, "thr_1pct")
+        thr_m = _row_num(row, "thr_1permille")
+        if cites and thr:
+            add(f"{cites / thr * 100:.2f}", "derived_1pct")
+        if cites and thr_m:
+            add(f"{cites / thr_m * 100:.2f}", "derived_1permille")
+        idx[item["en"]] = per
+    return idx
+
+
 def _manual_values(root, period) -> dict:
     """馆员已填的手工槽：`{"<段key>": {字段: 值}}`（文件键形如 `正文/p4::学科数`）。"""
     mi = _load_json(pathlib.Path(root) / str(period) / "manual_inputs.json",
@@ -95,19 +216,31 @@ def _manual_values(root, period) -> dict:
 
 
 def _apply_manual(text: str, values: dict) -> str:
-    """`【手工：X】` → 已填值；未填的槽位**整句丢掉**（不给读者/模型看裸占位符）。"""
+    """`【手工：X】` → 已填值；未填的槽位**所在分句丢掉**（不端裸占位符）。
+
+    2026-10-11 修（rick：回答太死板）：由「整句丢」改「分句丢」——
+    同一句里没槽位的分句照常保留。此前「本期我校共有 291 篇顶尖论文…覆盖【手工：学科数】个学科」
+    整句被丢，问「多少篇」就答不出来了；现在只丢带槽的那一小句。
+    """
     if "【手工：" not in text:
         return text
-    kept = []
-    for s in re.split(r"(?<=[。；])", text):
-        fields = re.findall(r"【手工：([^】]+)】", s)
-        if not fields:
-            kept.append(s)
+    out = []
+    for sentence in re.split(r"(?<=[。；])", text):
+        kept, dropped = [], False
+        for piece in re.split(r"(?<=[，])", sentence):
+            fields = re.findall(r"【手工：([^】]+)】", piece)
+            if fields and any(f not in values for f in fields):
+                dropped = True
+                continue                                    # 未填槽位所在分句丢掉
+            kept.append(re.sub(r"【手工：([^】]+)】",
+                               lambda m: values.get(m.group(1), m.group(0)), piece))
+        if not kept:
             continue
-        if any(f not in values for f in fields):
-            continue                                    # 有没填的槽 → 整句不要
-        kept.append(re.sub(r"【手工：([^】]+)】", lambda m: values[m.group(1)], s))
-    return "".join(kept)
+        piece_text = "".join(kept)
+        if dropped and piece_text.rstrip().endswith(("，", "、", "；")):
+            piece_text = piece_text.rstrip()[:-1] + "。"
+        out.append(piece_text)
+    return "".join(out)
 
 
 def _fact_index(facts: dict) -> dict:
@@ -169,23 +302,52 @@ def build(root, period, payload) -> RuleDraft:
     import sentences                                                # noqa: PLC0415
 
     values = _manual_values(root, period)
-    texts_all = {k: _apply_manual(v, values.get(k, {}))
-                 for k, v in sentences.build(facts, p_cur, p_prev).items()}
+    base_texts = {k: _apply_manual(v, values.get(k, {}))
+                  for k, v in sentences.build(facts, p_cur, p_prev).items()}
 
     question = str(payload.get("question") or "").strip()
-    matched = _match(texts_all, question)
-    # 证据＝命中段优先 + 其余段（模型可自找）；规则版＝命中段。
-    ordered = list(matched) + [k for k in texts_all if k not in matched]
+    matched = _match(base_texts, question)
+
+    # ---- 学科问题直答段（2026-10-11）：问句点到哪个学科，就先给哪个学科的数据行 ----
+    disc_items = _disc_hits(question, _disc_rows(d))
+    disc_texts = {f"学科数据·{it['cn']}": _disc_segment(it) for it in disc_items}
+    disc_idx = _disc_index(disc_items)
+
+    texts_all = {**base_texts, **disc_texts}
+    # 证据＝学科段 + 命中段优先 + 其余段（模型可自找）；规则版＝学科段（有则）或命中段。
+    ordered = list(disc_texts) + list(matched) + \
+        [k for k in texts_all if k not in matched and k not in disc_texts]
+    rule_keys = list(disc_texts) if disc_texts else list(matched)
+    rule_set = set(rule_keys)
     chunks = [question] + [texts_all[k] for k in ordered]
-    matched_set = set(matched)
     facts_idx = _fact_index(facts)
 
     def register(ti, _pos, value):
-        """问句数字不是「本期事实」；证据段数字是（越题判定据此）。"""
+        """问句数字不是「本期事实」；证据段数字是（越题判定据此）。
+        学科段（前 len(disc_texts) 段）先查 table2 行索引——数字指回格。"""
         if ti == 0:
             return {"kind": "fact", "pointer": "question", "label": "来自提问",
                     "detail": "提问中出现的数字", "fact": False}
-        fields = _source_fields(facts_idx, value, ordered[ti - 1])
+        seg = ti - 1
+        if seg < len(disc_items):
+            item = disc_items[seg]
+            keys = disc_idx.get(item["en"], {}).get(value) or []
+            if len(keys) == 1 and len(value) >= 2:      # 单字数字（如「前 1%」的 1）不指格
+                key = keys[0]
+                if key.startswith("derived"):
+                    label = "前 1% 接近度" if key.endswith("1pct") else "前 1‰ 接近度"
+                    return {"kind": "product",
+                            "pointer": f"table2.csv#{item['en']}（总被引÷阈值）",
+                            "label": f"学科表 · {item['cn']} · {label}（系统换算）",
+                            "detail": "table2.csv（总被引 ÷ 阈值；超过 100% 即已进入前 1%）",
+                            "fact": True}
+                return {"kind": "product", "pointer": f"table2.csv#{item['en']}.{key}",
+                        "label": f"学科表 · {item['cn']} · {_FIELD_CN.get(key, key)}",
+                        "detail": "table2.csv（学科大表）", "fact": True}
+            return {"kind": "product", "pointer": f"table2.csv#{item['en']}",
+                    "label": f"学科表 · {item['cn']}",
+                    "detail": "数字属于该学科行（未唯一对应到列）", "fact": True}
+        fields = _source_fields(facts_idx, value, ordered[seg])
         fields["fact"] = True
         return fields
 
@@ -197,10 +359,10 @@ def build(root, period, payload) -> RuleDraft:
         task = "（未提供具体问题）请依据参考数据概述本期要点。"
 
     return RuleDraft(
-        rule_text="\n\n".join(texts_all[k] for k in matched),
+        rule_text="\n\n".join(texts_all[k] for k in rule_keys),
         number=number,
         rule_protected="\n\n".join(number.texts[1 + i]
-                                   for i, key in enumerate(ordered) if key in matched_set),
+                                   for i, key in enumerate(ordered) if key in rule_set),
         parts=(),
         task=task,
         evidence=tuple(number.texts[1:]),
