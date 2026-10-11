@@ -403,6 +403,74 @@
   line-height: 1.8;
 }
 
+/* ---------- 报告正文（票 05，2026-10-11）：标题 / 段落 / 插图 / 表格 ---------- */
+
+.flip-reader .rp-h1 {
+  margin: 12px 0 10px;
+  color: #183d30;
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: .08em;
+  line-height: 1.45;
+}
+
+.flip-reader .rp-h1:first-of-type { margin-top: 2px; }
+
+.flip-reader .rp-h2 {
+  margin: 10px 0 6px;
+  color: #1d4a38;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: .05em;
+}
+
+.flip-reader .rp-p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.9;
+  text-align: justify;
+}
+
+.flip-reader .rp-fig {
+  margin: 6px 0 10px;
+  text-align: center;
+}
+
+.flip-reader .rp-fig img {
+  max-width: 100%;
+  max-height: 230px;
+  object-fit: contain;
+}
+
+.flip-reader .rp-tbl {
+  width: 100%;
+  margin: 4px 0 10px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.flip-reader .rp-tbl td {
+  padding: 2px 3px;
+  border: 1px solid #c9c4ae;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.flip-reader .rp-tbl tr:first-child td {
+  background: rgba(24, 61, 48, .06);
+  font-weight: 600;
+}
+
+.flip-reader .rp-tbl img {
+  display: block;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.flip-reader .rp-td { display: block; }
+
 .flip-reader .end-page {
   display: flex;
   height: 100%;

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { libraryAudio } from './library-audio'
-import type { ForecastRow, GlossaryEntry, ShelfBook, ShelfTableRow } from './types'
+import type { ForecastRow, GlossaryEntry, ReportBlock, ReportCell,
+              ShelfBook, ShelfTableRow } from './types'
 import './experience.css'
 import './flip-reader.css'
 
@@ -80,6 +81,7 @@ type FlipLeafModel =
   | { kind: 'record' }
   | { kind: 'toc' }
   | { kind: 'glossary'; entries: GlossaryEntry[]; part: number; parts: number }
+  | { kind: 'report'; blocks: ReportBlock[] }
   | { kind: 'checkup' }
   | { kind: 'kpi' }
   | { kind: 'table'; rows: ShelfTableRow[]; offset: number; total: number; part: number; parts: number }
@@ -87,8 +89,59 @@ type FlipLeafModel =
   | { kind: 'forecast'; route: 1 | 2; rows: ForecastRow[] }
   | { kind: 'end' }
 
-/** 册页：封面 → 馆藏登记 → 目录 → 名词解释 →（有完整数据时）数字体检 / 本期指标 /
-    学科大表 / 顶尖论文·近线 / 双路线预测 → 阅毕归架。 */
+/** 报告正文分页（票 05，2026-10-11）：章标题起新页；图按高度占位（小图可同页）；
+    表按行分页（表头每页重排）。估行单位≈1 行正文；每页容量 ≈ 27 行（rick：全书画到约 30 页）。 */
+function paginateReport(blocks: ReportBlock[]): ReportBlock[][] {
+  const CAP = 29
+  const pages: ReportBlock[][] = []
+  let cur: ReportBlock[] = []
+  let used = 0
+  const flush = () => { if (cur.length) { pages.push(cur); cur = []; used = 0 } }
+  const weight = (b: ReportBlock): number => {
+    if (b.t === 'h1') return 3
+    if (b.t === 'h2') return 2
+    if (b.t === 'img') return 9           /* 显示高 ≈ 230px（CSS 夹住），两图可同页 */
+    if (b.t === 'p') return Math.ceil(b.text.length / 24) + 0.6
+    return 1
+  }
+  for (const b of blocks) {
+    if (b.t === 'tbl') {
+      flush()
+      const rows = b.rows
+      if (!rows.length) continue
+      const header = rows[0]
+      let chunk: ReportCell[][] = []
+      let cu = 0
+      const emit = () => {
+        if (!chunk.length) return
+        pages.push([{ t: 'tbl', rows: [header, ...chunk] }])
+        chunk = []
+        cu = 0
+      }
+      for (const row of rows.slice(1)) {
+        const w = row.some((c) => (c.imgs?.length ?? 0) > 0) ? 3 : 1
+        if (cu + w > 14) emit()
+        chunk.push(row)
+        cu += w
+      }
+      emit()
+      if (rows.length === 1) pages.push([{ t: 'tbl', rows }])
+      continue
+    }
+    const w = weight(b)
+    /* 带图的页留白更大：图占的视觉高度比估行更实，装不下就翻页（防页底被裁） */
+    const cap = cur.some((x) => x.t === 'img') ? 21 : CAP
+    if (b.t === 'h1' && cur.length) flush()
+    if (used + w > cap) flush()
+    cur.push(b)
+    used += w
+  }
+  flush()
+  return pages
+}
+
+/** 册页：封面 → 馆藏登记 → 目录 → 名词解释 →（有完整数据时）报告正文（多页）/
+    数字体检 / 本期指标 / 学科大表 / 顶尖论文·近线 / 双路线预测 → 阅毕归架。 */
 function buildLeaves(book: ShelfBook): FlipLeafModel[] {
   const groups: GlossaryEntry[][] = []
   for (let index = 0; index < book.glossary.length; index += 4) {
@@ -104,6 +157,9 @@ function buildLeaves(book: ShelfBook): FlipLeafModel[] {
 
   const full = book.full
   if (full) {
+    for (const blocks of paginateReport(full.report_text ?? [])) {
+      leaves.push({ kind: 'report', blocks })
+    }
     leaves.push({ kind: 'checkup' })
     leaves.push({ kind: 'kpi' })
     const rows = full.table ?? []
@@ -176,6 +232,32 @@ function ReferenceCover({ book }: { book: ShelfBook }) {
   </div>
 }
 
+/** 报告正文块渲染（票 05）：标题/段落按纸面版式；插图与表格走只读图片口
+    `/api/periods/{期次}/report-image/{rid}`（服务端从 docx 现取，不落盘）。 */
+function renderReportBlock(book: ShelfBook, b: ReportBlock, key: number) {
+  const imgSrc = (rid: string) =>
+    `/api/periods/${encodeURIComponent(book.period ?? '')}/report-image/${encodeURIComponent(rid)}`
+  if (b.t === 'h1') return <h3 className="rp-h1" key={key}>{b.text}</h3>
+  if (b.t === 'h2') return <h4 className="rp-h2" key={key}>{b.text}</h4>
+  if (b.t === 'p') return <p className="rp-p" key={key}>{b.text}</p>
+  if (b.t === 'img') return <figure className="rp-fig" key={key}>
+    <img src={imgSrc(b.rid)} alt="报告插图" loading="lazy" decoding="async" />
+  </figure>
+  if (b.t === 'tbl') return <table className="rp-tbl" key={key}><tbody>
+    {b.rows.map((row, ri) => <tr key={ri}>
+      {row.map((cell, ci) => (
+        <td key={ci} colSpan={cell.span && cell.span > 1 ? cell.span : undefined}>
+          {cell.text && <span className="rp-td">{cell.text}</span>}
+          {(cell.imgs ?? []).map((rid) => (
+            <img key={rid} src={imgSrc(rid)} alt="" loading="lazy" decoding="async" />
+          ))}
+        </td>
+      ))}
+    </tr>)}
+  </tbody></table>
+  return null
+}
+
 function subjectCn(book: ShelfBook): Map<string, string> {
   const map = new Map<string, string>()
   for (const row of book.full?.table ?? []) {
@@ -228,6 +310,10 @@ function leafContent(book: ShelfBook, leaf: FlipLeafModel, n: number) {
         <dd>{entry.definition}</dd>
       </div>)}
     </dl>
+  </Leaf>
+  if (leaf.kind === 'report') return <Leaf book={book} n={n}>
+    <p className="kicker">REPORT · 正文</p>
+    {leaf.blocks.map((b, i) => renderReportBlock(book, b, i))}
   </Leaf>
   if (leaf.kind === 'checkup') {
     const full = book.full
@@ -400,6 +486,18 @@ function ReadableSections({ book }: { book: ShelfBook }) {
       <h3>名词解释</h3>
       <dl>{book.glossary.map((entry, index) => <div key={`${index}-${entry.term}`}><dt>{entry.term}</dt><dd>{entry.definition}</dd></div>)}</dl>
     </section>
+    {!!full?.report_text?.length && (
+      <section>
+        <h3>报告正文</h3>
+        {full.report_text.map((b, i) => b.t === 'h1' ? <h4 key={i}>{b.text}</h4>
+          : b.t === 'h2' ? <h5 key={i}>{b.text}</h5>
+          : b.t === 'p' ? <p key={i}>{b.text}</p>
+          : b.t === 'tbl' ? <table key={i}><tbody>
+            {b.rows.map((row, ri) => <tr key={ri}>{row.map((cell, ci) => <td key={ci}>{cell.text || '（图）'}</td>)}</tr>)}
+          </tbody></table>
+          : <p key={i}>（图）</p>)}
+      </section>
+    )}
     {full && <>
       <section>
         <h3>数字体检</h3>

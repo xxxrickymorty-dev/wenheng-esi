@@ -107,3 +107,47 @@ def test_报告正文提取_从一概述起_章标题与子标题分型(tmp_path
 
 def test_报告正文缺docx给空表(tmp_path):
     assert shelf_data.report_text(tmp_path) == []
+
+
+def test_报告正文含插图与表格_按口径删减(tmp_path):
+    """2026-10-11（rick 定）：插图与表格进正文；顶尖论文清单/目录/大表不要；
+    「近期XX发展参考指标变化情况」16 模块只留化学。"""
+    import base64
+    from docx import Document
+    png = tmp_path / "dot.png"
+    png.write_bytes(base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="))
+
+    def img_table(rows=3, cols=2):
+        t = doc.add_table(rows=rows, cols=cols)
+        for r in range(rows):
+            for c in range(cols):
+                t.cell(r, c).paragraphs[0].add_run().add_picture(str(png))
+        return t
+
+    doc = Document()
+    doc.add_paragraph("一 概述")
+    doc.add_paragraph("本期全球共有10674个机构。")
+    doc.add_picture(str(png))                      # 插图段（无文本）
+    tbl_toc = doc.add_table(rows=2, cols=2)
+    tbl_toc.cell(0, 0).text = "名词解释"            # 目录表 → 不要
+    doc.add_paragraph("——近期化学发展参考指标变化情况")
+    img_table()                                    # 化学指标变化模块 → 保留
+    doc.add_paragraph("——近期物理发展参考指标变化情况")
+    img_table()                                    # 非化学模块 → 不要
+    tbl_big = doc.add_table(rows=61, cols=2)        # 顶尖论文清单（>60 行）→ 不要
+    tbl_big.cell(0, 0).text = "序号"
+    tbl_big2 = doc.add_table(rows=2, cols=2)        # 大表（首格 ESI学科）→ 不要
+    tbl_big2.cell(0, 0).text = "ESI学科"
+    tbl_prov = doc.add_table(rows=2, cols=3)        # 省表类 → 保留
+    tbl_prov.cell(0, 0).text = "机构名称"
+    doc.save(tmp_path / "报告初稿_202609（试排）.docx")
+
+    blocks = shelf_data.report_text(tmp_path)
+    kinds = [b["t"] for b in blocks]
+    assert kinds == ["h1", "p", "img", "p", "tbl", "tbl"]
+    assert blocks[2]["rid"]                          # 插图带 rid（供 report-image 路由）
+    assert blocks[3]["text"].startswith("——近期化学")  # 化学图题保留
+    # 留下的第一个表＝化学指标变化（单元格带图），第二个＝省表类
+    assert sum(len(c.get("imgs") or []) for r in blocks[4]["rows"] for c in r) == 6
+    assert blocks[5]["rows"][0][0]["text"] == "机构名称"

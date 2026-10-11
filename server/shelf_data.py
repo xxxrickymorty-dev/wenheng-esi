@@ -106,20 +106,98 @@ def _read_forecast(period_dir):
             "window": grab("**序列窗口").split("。", 1)[0]}
 
 
-#: 报告正文提取（陈列馆册页「报告正文」）：章标题 / 子标题 / 段落。
+#: 报告正文提取（陈列馆册页「报告正文」）：章标题 / 子标题 / 段落 / 插图 / 表格。
 _REPORT_CHAPTER = re.compile(r"^[一二三四五六七八九十]+\s")
 _REPORT_SUBHEAD = re.compile(r"^\d+[.、]")
 _REPORT_TEXT_CACHE: dict = {}
 _REPORT_TEXT_CACHE_MAX = 8
 
 
-def report_text(period_dir):
-    """报告初稿 docx → 正文块序列 `[{"t": "h1"|"h2"|"p", "text": …}]`。
+def _blip_rids(el):
+    """元素内的插图 `[(rid, cx, cy)]`（EMU；cx/cy 可空）——与 report_preview 同口径。"""
+    from docx.oxml.ns import qn                                # noqa: PLC0415
+    out = []
+    for blip in el.findall('.//' + qn('a:blip')):
+        rid = blip.get(qn('r:embed'))
+        if not rid:
+            continue
+        cx = cy = None
+        parent = blip.getparent()
+        while parent is not None and parent.tag != qn('w:p'):
+            if parent.tag in (qn('wp:inline'), qn('wp:anchor')):
+                ext = parent.find(qn('wp:extent'))
+                if ext is not None:
+                    cx, cy = int(ext.get('cx') or 0), int(ext.get('cy') or 0)
+                break
+            parent = parent.getparent()
+        out.append((rid, cx, cy))
+    return out
 
-    - 起点＝第一个章标题（「一 概述」类）——封面四行与名词解释不重复（前面已有专页）；
-    - h1＝章标题（`^[一二三四五六七八九十]+\\s`）；h2＝`List Paragraph` 样式或 `^\\d+.` 子标题；
-    - 缺 docx / 坏 docx → `[]`（册页只是不出现正文分页，不阻止该期展示）。
-    - 带 (路径, mtime, 体积) 缓存：docx 一改自动失效。
+
+def _img_block(rid, cx, cy):
+    block: dict = {"t": "img", "rid": rid}
+    if cx:
+        block["w_cm"] = round(cx / 360000, 2)
+    if cy:
+        block["h_cm"] = round(cy / 360000, 2)
+    return block
+
+
+def _table_block(tbl_el):
+    """表格 → `{"t": "tbl", "rows": [[{text, imgs?, span?}]]}`（图与合并列都保留）。"""
+    from docx.oxml.ns import qn                                # noqa: PLC0415
+    rows = []
+    for tr in tbl_el.findall(qn('w:tr')):
+        row = []
+        for tc in tr.findall(qn('w:tc')):
+            texts = []
+            for p in tc.findall(qn('w:p')):
+                texts.append("".join(n.text or "" for n in p.findall('.//' + qn('w:t'))))
+            cell: dict = {"text": "\n".join(texts).strip()}
+            imgs = [rid for rid, _cx, _cy in _blip_rids(tc)]
+            if imgs:
+                cell["imgs"] = imgs
+            span = 1
+            tc_pr = tc.find(qn('w:tcPr'))
+            if tc_pr is not None:
+                gs = tc_pr.find(qn('w:gridSpan'))
+                if gs is not None:
+                    try:
+                        span = int(gs.get(qn('w:val')) or 1)
+                    except ValueError:
+                        span = 1
+            if span > 1:
+                cell["span"] = span
+            row.append(cell)
+        rows.append(row)
+    return {"t": "tbl", "rows": rows}
+
+
+def _keep_table(rows, last_text):
+    """适当删减（rick 2026-10-11 定）：顶尖论文清单/目录/大表不进正文；指标变化模块只留化学。"""
+    n_rows = len(rows)
+    n_img = sum(len(c.get("imgs") or []) for r in rows for c in r)
+    if n_rows > 60:                       # 顶尖论文清单（292 行）——rick：不需要
+        return False
+    if n_rows <= 4 and n_img >= 4:        # 「近期XX发展参考指标变化情况」16 模块：只留化学
+        return "近期化学发展" in (last_text or "")
+    first = (rows[0][0].get("text") or "") if rows and rows[0] else ""
+    if "名词解释" in first:               # 目录表（已有专页）
+        return False
+    if first.startswith("ESI学科"):       # 大表（册页已有「学科大表」专页，避免重复）
+        return False
+    return True
+
+
+def report_text(period_dir):
+    """报告初稿 docx → 正文块序列（陈列馆册页「报告正文」用）。
+
+    块类型：`h1` 章标题（`^[一二三四五六七八九十]+\\s`）／`h2` 子标题（`List Paragraph`
+    或 `^\\d+.`）／`p` 段落／`img` 插图（`rid` 供 `/api/periods/{期次}/report-image/{rid}`）／
+    `tbl` 表格（含单元格图）。起点＝第一个章标题（「一 概述」类）——封面与名词解释不重复。
+
+    删减口径见 `_keep_table`（2026-10-11 rick 定）。缺 docx / 坏 docx → `[]`。
+    带 (路径, mtime, 体积) 缓存：docx 一改自动失效。
     """
     period_dir = Path(period_dir)
     docxs = sorted(period_dir.glob("报告初稿_*.docx"))
@@ -135,28 +213,48 @@ def report_text(period_dir):
     if hit is not None:
         return hit
     try:
-        from docx import Document                                # noqa: PLC0415
+        from docx import Document                              # noqa: PLC0415
+        from docx.oxml.ns import qn                            # noqa: PLC0415
+        from docx.text.paragraph import Paragraph              # noqa: PLC0415
         doc = Document(str(docx))
-    except Exception:                                            # noqa: BLE001
+    except Exception:                                          # noqa: BLE001
         return []
     blocks: list[dict] = []
     started = False
-    for p in doc.paragraphs:
-        text = p.text.strip()
-        if not text:
-            continue
-        if not started:
-            if _REPORT_CHAPTER.match(text) and text.startswith("一"):
-                started = True
-            else:
+    last_text = ""
+    for child in doc.element.body.iterchildren():
+        if child.tag == qn('w:p'):
+            p = Paragraph(child, doc)
+            text = p.text.strip()
+            rids = _blip_rids(child)
+            if text:
+                if not started:
+                    if _REPORT_CHAPTER.match(text) and text.startswith("一"):
+                        started = True
+                    else:
+                        continue
+                if _REPORT_CHAPTER.match(text):
+                    blocks.append({"t": "h1", "text": text})
+                elif ((p.style is not None and p.style.name == "List Paragraph")
+                        or _REPORT_SUBHEAD.match(text)):
+                    blocks.append({"t": "h2", "text": text})
+                else:
+                    blocks.append({"t": "p", "text": text})
+                last_text = text
+            if started:
+                for rid, cx, cy in rids:
+                    blocks.append(_img_block(rid, cx, cy))
+        elif child.tag == qn('w:tbl'):
+            if not started:
                 continue
-        if _REPORT_CHAPTER.match(text):
-            blocks.append({"t": "h1", "text": text})
-        elif ((p.style is not None and p.style.name == "List Paragraph")
-                or _REPORT_SUBHEAD.match(text)):
-            blocks.append({"t": "h2", "text": text})
-        else:
-            blocks.append({"t": "p", "text": text})
+            block = _table_block(child)
+            if not _keep_table(block["rows"], last_text):
+                # 连图题一起去掉（表没了，题不悬着）——指标变化模块的题以「——」开头。
+                if blocks and blocks[-1].get("t") == "p" \
+                        and str(blocks[-1].get("text", "")).startswith("——"):
+                    blocks.pop()
+                continue
+            blocks.append(block)
     _REPORT_TEXT_CACHE[key] = blocks
     while len(_REPORT_TEXT_CACHE) > _REPORT_TEXT_CACHE_MAX:
         _REPORT_TEXT_CACHE.pop(next(iter(_REPORT_TEXT_CACHE)))

@@ -51,6 +51,15 @@ export type ShelfTableRow = {
   rank?: string
 }
 
+/** 报告正文块（2026-10-11 票 05：陈列馆册页「报告正文」用；服务端从 docx 提取）。 */
+export type ReportCell = { text: string; imgs?: string[]; span?: number }
+export type ReportBlock =
+  | { t: 'h1'; text: string }
+  | { t: 'h2'; text: string }
+  | { t: 'p'; text: string }
+  | { t: 'img'; rid: string; w_cm?: number; h_cm?: number }
+  | { t: 'tbl'; rows: ReportCell[][] }
+
 /** 服务器组装的完整书（管理员阅读「全内容」用；形状按需读，不做深校验）。 */
 export type ShelfBookFull = {
   period?: string
@@ -71,6 +80,8 @@ export type ShelfBookFull = {
   not_entered?: { discipline: string; prox_pct?: number | null; chg?: number | null }[]
   table?: ShelfTableRow[]
   forecast?: { rows?: ForecastRow[]; rows2?: ForecastRow[]; impl?: string; window?: string }
+  /** 报告正文（h1/h2/p/img/tbl 块序列；缺件期次为空数组） */
+  report_text?: ReportBlock[]
 }
 
 /** 一本书：预览三件套 +（管理员）完整数据。 */
