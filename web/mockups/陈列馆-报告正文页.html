@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>陈列馆 · 报告正文册页（静态稿）· 文衡</title>
+<!--
+  陈列馆「报告正文」册页 · 静态稿（票 04，2026-10-11）
+  - 单文件零依赖，双击即开；视觉照现册页（flip-reader.css 的 page-head/page-body/page-foot）。
+  - 样例文字取自 out/202609/报告初稿_202609（试排）.docx 真实段落（不编）。
+  - 待 rick 审的点写在顶部说明条里（分页口径 / 图与表格 v1 不进正文 / 正文起点）。
+-->
+<style>
+  :root { --paper: #f1eadc; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 18px 60px;
+    background: #173d31;
+    color: #e8e2cd;
+    font: 14px/1.7 'Noto Serif SC Variable', Georgia, 'Noto Serif CJK SC', 'Songti SC', SimSun, serif;
+  }
+  .wrap { width: min(1180px, 100%); margin: 0 auto; }
+  .note {
+    border: 1px solid rgba(203,185,141,.42);
+    background: rgba(20,49,39,.94);
+    padding: 18px 22px;
+  }
+  .note h1 { margin: 0 0 8px; font-size: 17px; font-weight: 400; letter-spacing: .12em; color: #ead9a8; }
+  .note ul { margin: 8px 0 0; padding-left: 20px; color: #e6e0cd; font-size: 13px; }
+  .note li { margin: 4px 0; }
+  .note b { color: #f2e9cf; font-weight: 600; }
+  .flow {
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    margin-top: 14px; color: #cfe0d5; font-size: 12.5px;
+  }
+  .flow span { padding: 3px 10px; border: 1px solid rgba(203,185,141,.35); border-radius: 999px; }
+  .flow .new { border-color: #ead9a8; color: #f4e8c0; }
+  .flow i { font-style: normal; opacity: .55; }
+  .pages { display: flex; flex-wrap: wrap; gap: 26px; margin-top: 30px; align-items: flex-start; }
+  .page {
+    width: 460px; height: 640px; flex: none;
+    overflow: hidden;
+    border: 1px solid rgba(108,92,65,.28);
+    background: var(--paper);
+    color: #26382d;
+    box-shadow: inset 0 0 42px rgba(136,112,77,.16), 0 18px 44px rgba(0,0,0,.35);
+    display: flex; flex-direction: column;
+  }
+  .page-head, .page-foot {
+    display: flex; flex: none; height: 52px; align-items: center; justify-content: space-between;
+    margin: 0 42px; border-bottom: 1px solid #bdc0aa;
+    color: #758273; font: 10px Georgia, 'Noto Serif CJK SC', serif; letter-spacing: .13em;
+  }
+  .page-foot { height: 38px; margin-top: auto; border-top: 1px solid #bdc0aa; border-bottom: 0; }
+  .page-body { flex: 1; min-height: 0; padding: 26px 42px 20px; overflow: hidden; }
+  .page-body .kicker { margin: 0 0 4px; color: #927a4c; font-size: 10px; letter-spacing: .26em; }
+  .page-body h2 {
+    margin: 6px 0 18px; color: #183d30; font-size: 26px; font-weight: 400;
+    letter-spacing: .08em; line-height: 1.35;
+  }
+  .page-body h3 {
+    margin: 16px 0 8px; color: #1d4a38; font-size: 15px; font-weight: 600; letter-spacing: .06em;
+  }
+  .page-body p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.95; text-align: justify; }
+  .page-body p.indent { text-indent: 2em; }
+  .pageno { font-variant-numeric: tabular-nums; }
+  .caption { margin-top: 8px; color: #8c9287; font-size: 11.5px; }
+  .legend { margin-top: 34px; color: #cfe0d5; font-size: 12.5px; }
+  .legend b { color: #f2e9cf; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <section class="note">
+    <h1>陈列馆 · 报告正文册页（静态稿）——待 rick 审</h1>
+    <p style="margin:0;color:#e6e0cd;font-size:13px;">
+      现状：册页只有「封面 / 馆藏登记 / 目录 / 名词解释」＋（全数据后）「数字体检 / 本期指标 / 学科大表 / 顶尖论文 / 双路线预测」，
+      <b>没有报告正文</b>。本稿在名词解释之后插入「报告正文」分页——文字取自 202609 报告初稿 docx（真实段落）。
+    </p>
+    <ul>
+      <li><b>分页口径</b>：按估行权重分页（长段整段不拆；每页≈14 行、约 6–8 段）；章标题（一/二/三…）起新页。</li>
+      <li><b>图与表格 v1 不进正文</b>：报告里的图走「图册」，大表/省表等走「学科大表」等既有页；正文只放文字（图的位置保留图题一行）。</li>
+      <li><b>正文起点</b>：从「一 概述」起；封面四行与名词解释不再重复（前面已有专页）。</li>
+      <li>两种角色（管理员 / 操作员）同看；不动数据、不加外链。</li>
+    </ul>
+    <div class="flow">
+      <span>封面</span><i>→</i><span>馆藏登记</span><i>→</i><span>目录</span><i>→</i><span>名词解释</span><i>→</i>
+      <span class="new">报告正文（新 · 多页）</span><i>→</i>
+      <span>数字体检</span><i>→</i><span>本期指标</span><i>→</i><span>学科大表</span><i>→</i><span>顶尖论文</span><i>→</i><span>双路线预测</span><i>→</i><span>阅毕归架</span>
+    </div>
+  </section>
+
+  <div class="pages">
+
+    <!-- 页 1：一 概述（起新页） -->
+    <article class="page" aria-label="报告正文 第 1 页样例">
+      <div class="page-head"><span>云南大学图书馆 / 学科信息参考</span><span class="pageno">06</span></div>
+      <div class="page-body">
+        <p class="kicker">REPORT · 正文</p>
+        <h2>一 概述</h2>
+        <p>据2026年9月23日ESI最新数据显示（ESI数据覆盖时间范围为2016.1.1-2026.6.30），本期全球共有10674个机构登上ESI前1%榜单，我校位于第973位，较上期上升22位。</p>
+        <p>本期我校仍保持有ESI前1%学科14个，位列云南省高校首位，但暂时还没有前1‰的学科。我校目前与ESI前1‰接近度较高的学科为植物与动物学，接近度为56.74%，此数值较7月上升1.61%，较一年前上升40%，按此增长率，植物与动物学进入ESI前1‰的时间预计还需要5.0年左右。</p>
+        <p>本期我校植物与动物学和工程学在ESI前1%接近度方面较7月表现较好，分别上升48.39%和40.40%；值得关注的是材料科学国内排名继续呈现较大降幅，该学科本期较7月下降了2位，国内排名为181。</p>
+        <p>本期我校共有291篇顶尖论文，较上期总数增加17篇，分别有19个学科来自23个学院。论文量排名前三位的学科分别是化学44篇、材料科学33篇、植物与动物学32篇。本期顶尖论文量及其被引频次学院贡献度排名前三位的是：生命科学学院、生态与环境学院、材料与能源学院。</p>
+      </div>
+      <div class="page-foot"><span>YNU · DIR · 2026年第5期（总第39期）</span><span class="pageno">06</span></div>
+    </article>
+
+    <!-- 页 2：二 我校学科发展情况（章标题起新页） -->
+    <article class="page" aria-label="报告正文 第 2 页样例">
+      <div class="page-head"><span>云南大学图书馆 / 学科信息参考</span><span class="pageno">07</span></div>
+      <div class="page-body">
+        <p class="kicker">REPORT · 正文</p>
+        <h2>二 我校学科发展情况</h2>
+        <h3>学校发展趋势</h3>
+        <p>与上期数据相比，我校国内机构排名较2026年7月上升1位，排在154名；国内高校排名较2026年7月上升1位，排在129名；本期云南大学国际排名973位，较上期上升22位。</p>
+        <h3>学科发展态势</h3>
+        <p>本期云南大学ESI前1%学科继续保持14个。下图红线为ESI前1%基线。各数值为论文被引频次与该学科进入ESI阈值的比值百分数，通过该图展示出我校各学科与ESI全球前1%学科的接近度，数值大于100%则为ESI前1%学科。</p>
+        <p class="caption">〔图：我校 ESI 学科与全球前 1% 接近度 —— 见「图册」〕</p>
+        <p>下图显示的是近期我校主要学科的1‰潜力发展趋势及ESI学科进入前1‰的差距：</p>
+        <p class="caption">〔图：1‰ 潜力发展趋势 —— 见「图册」〕</p>
+      </div>
+      <div class="page-foot"><span>YNU · DIR · 2026年第5期（总第39期）</span><span class="pageno">07</span></div>
+    </article>
+
+    <!-- 页 3：三 预测章（起新页） -->
+    <article class="page" aria-label="报告正文 第 3 页样例">
+      <div class="page-head"><span>云南大学图书馆 / 学科信息参考</span><span class="pageno">12</span></div>
+      <div class="page-body">
+        <p class="kicker">REPORT · 正文</p>
+        <h2>三 我校潜力学科趋势预测</h2>
+        <p>本期针对我校的分子生物与遗传学和物理学2个学科，我们利用指数平滑模型，从被引频次和国内排名两个指标对其进行预测分析，提供以下参考信息：</p>
+        <p>我校分子生物学与遗传学学科的发展一直呈稳步上升趋势，本期该学科的ESI前1%接近度达到88.01%，较上期上升3.51%；从预测情况看，采用指数平滑模型的趋势外推，该学科被引频次持续增长……</p>
+        <p class="caption">〔图：分子生物与遗传学学科被引频次与 ESI 阈值的模型预测图 —— 见「图册」〕</p>
+        <p>我校物理学学科本期ESI前1%接近度为81.21%，较上期上升6.08%。从预测情况看，我校物理学进入ESI前1%的发展力度持续增强，采用拟合模型的预测显示……</p>
+        <p class="caption">〔图：物理学学科国内排名与学科国内 ESI 前 1% 机构数的模型预测图 —— 见「图册」〕</p>
+      </div>
+      <div class="page-foot"><span>YNU · DIR · 2026年第5期（总第39期）</span><span class="pageno">12</span></div>
+    </article>
+
+  </div>
+
+  <p class="legend">
+    审点速览：<b>①</b> 正文放名词解释之后、数据页之前（见图示）；<b>②</b> 图与表格 v1 只留图题、本体走图册/数据页（还是要把图也排进正文？）；
+    <b>③</b> 每页容量与分页口径（估行、章标题起新页）；<b>④</b> 页码从封面起算（本样例 06/07/12 为示意）。
+  </p>
+
+</div>
+</body>
+</html>
