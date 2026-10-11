@@ -89,7 +89,8 @@ systemctl status wenheng-demo --no-pager
 ```
 
 浏览器打开 `http://116.62.37.161:8080/login`。
-测试账号在 `/opt/wenheng/server/.env`（`WENHENG_USER` / `WENHENG_PASS`）。
+测试账号在 `/opt/wenheng/server/.env`：`WENHENG_USER` / `WENHENG_PASS`（管理员）；
+`WENHENG_OPERATOR_USER` / `WENHENG_OPERATOR_PASS`（操作员·评委，只读；2026-10-11 起取代 guest）。
 
 推荐自检顺序：登录 → 首屏对勘本（应显示最新一期）→ 控制台选某期次→ 一键生成 →
 看五步进度跑完 → 下载报告初稿。跑通这一串才算部署成功。

@@ -43,10 +43,16 @@ def _env_file_value(key: str, default: str = "") -> str:
     return default
 
 
-ADMIN_U = os.environ.get("WENHENG_E2E_USER") or _env_file_value("WENHENG_USER", "demo")
+ADMIN_U = os.environ.get("WENHENG_E2E_USER") or _env_file_value("WENHENG_USER", "admin")
 ADMIN_P = os.environ.get("WENHENG_E2E_PASS") or _env_file_value("WENHENG_PASS")
 if not ADMIN_P:
     print("未找到管理员口令：请在 server/.env 设置 WENHENG_PASS，或设 WENHENG_E2E_PASS 后重跑。")
+    raise SystemExit(2)
+#: 操作员（评委，只读；2026-10-11 起取代 guest）——账号/口令从 .env 或环境变量来。
+OPERATOR_U = os.environ.get("WENHENG_E2E_OPERATOR_USER") or _env_file_value("WENHENG_OPERATOR_USER", "demo")
+OPERATOR_P = os.environ.get("WENHENG_E2E_OPERATOR_PASS") or _env_file_value("WENHENG_OPERATOR_PASS")
+if not OPERATOR_P:
+    print("未找到操作员口令：请在 server/.env 设置 WENHENG_OPERATOR_PASS，或设 WENHENG_E2E_OPERATOR_PASS 后重跑。")
     raise SystemExit(2)
 
 cj = http.cookiejar.CookieJar()
@@ -157,39 +163,47 @@ check("欢迎页背景图 + 校徽走 asset 版本号",
       f"got {st}")
 check("登录表单完好（账号/密码/action）",
       'name="username"' in lp and 'name="password"' in lp and 'action="/login"' in lp)
-check("登录页只有登录表单（游客入口已移入工作区导航）",
+check("登录页只有登录表单（入口已移入工作区导航）",
       lp.count('action="/login"') == 1 and "陈列馆" not in lp)
 st, body, final = call("POST", "/login", {"username": ADMIN_U, "password": ADMIN_P})
 # ⚠ 别写死 8080：用 `WENHENG_BASE` 换端口跑时，写死会让这条**假失败**
 #    （2026-09-19 用 8099 实测：final 明明是首页，断言却判未过）。
 check("POST /login 进入新工作区 /app/", final.rstrip("/") == BASE + "/app", f"final={final}")
 
-out("=== 3.1 游客账号（guest）真登 + 角色门（契约 §4） ===")
-# 2026-09-24 修：/login 此前只放行 demo，guest 定义了却登不进来（游客角色只能打桩验）。
-# 用独立 cookie 罐登录，不打扰上面的 demo 会话。
-GUEST_U = os.environ.get("WENHENG_GUEST_USER", "guest")
-GUEST_P = os.environ.get("WENHENG_GUEST_PASS", "guest@2026")
+out("=== 3.1 操作员账号（demo）真登 + 只读角色门（契约 §4，2026-10-11） ===")
+# 2026-10-11：guest 取消，改「操作员」（评委，只读）——进工作区但不被送回陈列馆；
+# 取数/台账/运行档案/红件/溯源不可见，写动作一律 403；陈列馆两种角色同拿全数据。
 gop = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
-st, _, gfinal = call("POST", "/login", {"username": GUEST_U, "password": GUEST_P}, opener=gop)
-check("POST /login（guest）进入陈列馆 /app/shelf/",
-      gfinal.rstrip("/") == BASE + "/app/shelf", f"final={gfinal}")
+st, _, gfinal = call("POST", "/login", {"username": OPERATOR_U, "password": OPERATOR_P}, opener=gop)
+check("POST /login（操作员）进入工作区 /app/",
+      gfinal.rstrip("/") == BASE + "/app", f"final={gfinal}")
 st, gme, _ = call("GET", "/api/me", opener=gop)
-check("GET /api/me（guest）→ 200", st == 200, f"got {st}")
-check("guest 角色是 guest", '"role":"guest"' in gme or '"role": "guest"' in gme,
+check("GET /api/me（操作员）→ 200", st == 200, f"got {st}")
+check("操作员角色是 operator", '"role":"operator"' in gme or '"role": "operator"' in gme,
       f"body={gme[:100]}")
-st, _, _ = call("GET", "/api/periods/202607/redslots", opener=gop)
-check("guest 访问 admin 端点被挡（403）", st == 403, f"got {st}")
-st, _, _ = call("GET", "/api/periods/202607/acquisition", opener=gop)
-check("guest 访问取数状态被挡（403）", st == 403, f"got {st}")
+for _path in ("/api/periods/202607/redslots", "/api/periods/202607/acquisition",
+              "/api/periods/202607/trace", "/api/periods/202607/archive",
+              "/api/ledger/sheets"):
+    st, _, _ = call("GET", _path, opener=gop)
+    check(f"操作员访问隐藏屏端点被挡（403）：{_path}", st == 403, f"got {st}")
 st, _, _ = call("POST", "/api/periods/202607/acquisition/preflight", opener=gop)
-check("guest 访问取数写动作被挡（403）", st == 403, f"got {st}")
+check("操作员访问取数写动作被挡（403）", st == 403, f"got {st}")
+st, _, _ = call("POST", "/api/periods/202607/sign", {"known": "true", "note": "e2e-操作员"}, opener=gop)
+check("操作员签单被挡（403）", st == 403, f"got {st}")
+for _path in ("/api/periods/202607/facts", "/api/periods/202607/collation?limit=1",
+              "/api/periods/202607/charts", "/api/periods/202607/artifacts"):
+    st, _, _ = call("GET", _path, opener=gop)
+    check(f"操作员可读只读端点（200）：{_path}", st == 200, f"got {st}")
+st, garts, _ = call("GET", "/api/periods/202607/artifacts", opener=gop)
+check("操作员产物清单无红件与运行日志",
+      st == 200 and "red_list" not in garts and "red_json" not in garts and "runlog" not in garts,
+      f"got {st}")
 st, gdata, _ = call("GET", "/app/shelf/data.js", opener=gop)
-check("guest 陈列馆数据只有预览投影",
-      st == 200 and '"preview":true' in gdata and '"rank_intl_now"' not in gdata,
-      f"got {st}, bytes={len(gdata)}")
+check("操作员陈列馆数据=全数据（与管理员同份）",
+      st == 200 and '"rank_intl_now"' in gdata, f"got {st}, bytes={len(gdata)}")
 st, _, glegacy = call("GET", "/p/202607", opener=gop)
-check("guest 旧报告路由回陈列馆",
-      glegacy.rstrip("/") == BASE + "/app/shelf", f"final={glegacy}")
+check("操作员旧报告路由进新工作区阅读视图",
+      "/app/?view=reading" in glegacy, f"final={glegacy}")
 
 out("=== 3.5 老站 302 落点（ADR-0002 阶段 2） ===")
 # 期望落点的单一事实源在 server/config.py 的 LEGACY_REDIRECTS；

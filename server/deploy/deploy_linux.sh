@@ -155,7 +155,8 @@ if weak:
 if public_url:
     kv["WENHENG_PUBLIC_URL"] = public_url
 
-defaults = ["WENHENG_USER", "WENHENG_PASS", "WENHENG_SECRET",
+defaults = ["WENHENG_USER", "WENHENG_PASS", "WENHENG_OPERATOR_USER",
+            "WENHENG_OPERATOR_PASS", "WENHENG_SECRET",
             "WENHENG_PUBLIC_URL", "WENHENG_REFERENCE_DOCX",
             "WENHENG_PYTHON", "WENHENG_SHOW_HINT"]
 for k in defaults:
@@ -213,5 +214,6 @@ cat <<EOF
   外网访问： ${PUBLIC_URL:-http://<公网IP>:$PORT/login}
 
   若外网打不开但本机 200 —— 九成是**阿里云安全组**没放行 $PORT/tcp（云控制台 → 安全组 → 入方向）。
-  测试账号见 $APP_DIR/server/.env 的 WENHENG_USER / WENHENG_PASS。
+  测试账号见 $APP_DIR/server/.env：WENHENG_USER / WENHENG_PASS（管理员）；
+  WENHENG_OPERATOR_USER / WENHENG_OPERATOR_PASS（操作员·评委，只读）。
 EOF
