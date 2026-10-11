@@ -417,6 +417,14 @@ class Test规则后端产出完整分析稿:
                   "flex_specs.json", "flex_sources.json", "flex_meta.json"):
             assert (d / f).is_file(), f"缺产物 {f}"
 
+    def test_落盘html单文件带图(self, flex_report_out):
+        """🔴 「下载报告」给的是单文件：落盘的 report.html 图必须已内联——
+        下载后离开 `charts/` 目录也要能看到图（别把图留在原地）。"""
+        d = pathlib.Path(flex_report_out["dir"])
+        html_text = (d / "report.html").read_text(encoding="utf-8")
+        assert 'src="charts/' not in html_text, "还有相对路径图——单文件下载会全断"
+        assert "data:image/png;base64," in html_text
+
     def test_规划后端是rule且有图(self, flex_report_out):
         p = flex_report_out["plan"]
         assert p["backend"] == "rule"
@@ -644,6 +652,24 @@ class TestHTML渲染:
         h = mdview.standalone("# 标题", "t")
         assert h.startswith("<!doctype html>") and "<style>" in h
         assert "http://" not in h and "https://" not in h
+
+    def test_单文件_相对图内联成data_uri_缺的不编(self, tmp_path):
+        """「下载报告」拿到的是单文件：相对路径的图内联成 data URI；缺文件/网络图原样留着。"""
+        (tmp_path / "charts").mkdir()
+        (tmp_path / "charts" / "a.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 16)
+        h = mdview.standalone("![图](charts/a.png)\n\n![没的](charts/none.png)", "t",
+                              base_dir=tmp_path)
+        assert "data:image/png;base64," in h
+        assert 'src="charts/a.png"' not in h
+        assert 'src="charts/none.png"' in h, "缺文件不编：原样留着"
+        assert "data:" not in mdview.inline_images('<img src="https://x/a.png">', tmp_path)
+
+    def test_内联不越界(self, tmp_path):
+        (tmp_path / "out.png").write_bytes(b"x")
+        sub = tmp_path / "d"
+        sub.mkdir()
+        h = mdview.inline_images('<img src="../out.png">', sub)
+        assert "data:" not in h and 'src="../out.png"' in h
 
 
 class TestCLI与清单:

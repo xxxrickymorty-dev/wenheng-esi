@@ -488,7 +488,9 @@ async def period_flexible_chart(request: Request, period: str,
 async def period_flexible_report(request: Request, period: str, intent: str):
     """灵活报告整篇下载（rick 2026-09-29：出稿后「下载报告」）。
 
-    report.html 原样返回；页内图走相对路径 `charts/*.png`，连同目录产物可看图。
+    返回的是**单文件**版：下载时把页内相对路径的图**即时内联**成 `data:` URI
+    （`mdview.inline_images`）——离开 `charts/` 目录也带图；磁盘原件一个字节不动
+    （旧稿也立刻生效，不必重出）。页内图在生成期已内联的新稿走同一函数，幂等。
     """
     if not re.fullmatch(r"[a-z0-9_]+", intent or ""):
         raise HTTPException(status_code=404)
@@ -498,9 +500,12 @@ async def period_flexible_report(request: Request, period: str, intent: str):
     p = d / "flexible" / intent / "report.html"
     if not p.exists():
         raise HTTPException(status_code=404)
-    return FileResponse(p, media_type="text/html",
-                        filename=f"灵活报告_{period}_{intent}.html",
-                        headers={"Cache-Control": "no-cache"})
+    import flexible.mdview as flex_mdview                            # noqa: PLC0415
+    text = flex_mdview.inline_images(p.read_text(encoding="utf-8"), base_dir=p.parent)
+    fn = urllib.parse.quote(f"灵活报告_{period}_{intent}.html")
+    return Response(text, media_type="text/html; charset=utf-8",
+                    headers={"Cache-Control": "no-cache",
+                             "Content-Disposition": f"attachment; filename*=utf-8''{fn}"})
 
 
 @app.get("/p/{period}/archive", response_class=HTMLResponse)

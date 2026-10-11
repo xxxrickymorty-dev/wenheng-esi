@@ -633,7 +633,8 @@ def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
     # 独立可打开的 HTML（可导出、可离线看；不依赖任何 CDN）
     from . import mdview
     (d / "report.html").write_text(
-        mdview.standalone(md, plan.get("title") or "灵活分析稿"), encoding="utf-8")
+        mdview.standalone(md, plan.get("title") or "灵活分析稿", base_dir=d),
+        encoding="utf-8")
     (d / "flex_plan.json").write_text(
         json.dumps(plan, ensure_ascii=False, indent=1), encoding="utf-8")
     (d / "flex_specs.json").write_text(

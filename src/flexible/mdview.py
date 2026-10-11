@@ -10,7 +10,10 @@
 """
 from __future__ import annotations
 
+import base64
 import html
+import mimetypes
+import pathlib
 import re
 
 _IMG = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
@@ -213,6 +216,39 @@ a{{color:var(--zhu)}}
 """
 
 
-def standalone(md: str, title: str) -> str:
-    """渲染成可离线打开的**独立** HTML 件。"""
-    return SHELL.format(title=html.escape(title), body=render(md))
+def inline_images(html_text: str, base_dir) -> str:
+    """把页内**相对路径的本地图**换成一枚枚 `data:` URI（单文件带走图）。
+
+    用途：① 生成期（`standalone`）——落盘的 report.html 双击即开、不依赖旁边的 `charts/`；
+    ② 下载口**即时**替换——旧稿也立刻能带图下（磁盘原件一个字节不动）。
+    只内联 `<img src="…">` 里**相对**且真实存在的文件；绝对/网络/data URI、越界路径、缺文件
+    一律原样保留（宁可少内联，不编、不越权）。
+    """
+    base = pathlib.Path(base_dir).resolve()
+
+    def _repl(m):
+        prefix, src, suffix = m.group(1), m.group(2), m.group(3)
+        if src.startswith(("http://", "https://", "data:", "//", "/")):
+            return m.group(0)
+        p = (base / src).resolve()
+        if p != base and not p.is_relative_to(base):
+            return m.group(0)                                   # 越界（.. 之类）原样留着
+        if not p.is_file():
+            return m.group(0)
+        mime = mimetypes.guess_type(p.name)[0] or "image/png"
+        b64 = base64.b64encode(p.read_bytes()).decode("ascii")
+        return f"{prefix}data:{mime};base64,{b64}{suffix}"
+
+    return re.sub(r'(<img\b[^>]*?\bsrc=")([^"]+)(")', _repl, html_text)
+
+
+def standalone(md: str, title: str, *, base_dir=None) -> str:
+    """渲染成可离线打开的**独立** HTML 件。
+
+    `base_dir`（＝报告所在目录）：给了就把 `charts/*.png` 内联成 data URI——
+    「下载报告」拿到的是**单文件**，离开 `charts/` 目录也带图。
+    """
+    body = render(md)
+    if base_dir is not None:
+        body = inline_images(body, base_dir)
+    return SHELL.format(title=html.escape(title), body=body)

@@ -430,6 +430,7 @@ export default function App() {
   /* 工作区导航（契约 §4：前端按 /api/me 的 role 决定显示什么；**真门在后端**，这里只是不打扰）。
      游客在首屏已被送回陈列馆，这里只剩未登录要挡。 */
   const NAV: { view: string; label: string; icon: string; href: string; admin?: boolean }[] = [
+    { view: 'dialog', label: '对话前门', icon: 'chat', href: '/app/dialog/', admin: true },
     { view: 'acquire', label: '取数', icon: 'download', href: '/app/?view=acquire', admin: true },
     { view: 'workbench', label: '生成台', icon: 'play', href: '/app/', admin: true },
     { view: 'report', label: '报告', icon: 'chart', href: '/app/?view=report' },

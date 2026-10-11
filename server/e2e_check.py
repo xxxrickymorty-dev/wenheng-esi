@@ -757,6 +757,13 @@ if _m_chart:
 else:
     check("body_html 里有可直接打开的图地址", False, fx[:120])
 
+# 灵活报告下载＝单文件（页内图下载时即时内联为 data URI；契约 #26）
+st_dl, dl_html, _ = call("GET", "/p/202607/flexible/single_trend/report.html")
+check("灵活报告下载 200", st_dl == 200, f"got {st_dl}")
+check("灵活报告下载已带图（单文件 data URI）",
+      "data:image/" in (dl_html or "") and 'src="charts/' not in (dl_html or ""),
+      f"len={len(dl_html or '')} has_data={'data:image/' in (dl_html or '')}")
+
 out("=" * 56)
 if FAILS:
     out(f"结果：{len(FAILS)} 项未过")
