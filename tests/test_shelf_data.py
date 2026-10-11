@@ -74,3 +74,36 @@ def test_预测摘要同时带两条路线(tmp_path):
     assert payload["rows"][0]["t1"] == "2027-05" and payload["rows"][0]["t3"] == "2030-03"
     assert payload["rows2"][0]["model"] == "阻尼Holt" and payload["rows2"][0]["prox"] == "79.14%"
     assert payload["window"] == "201909～202607 共 42 期"
+
+
+def test_报告正文提取_从一概述起_章标题与子标题分型(tmp_path):
+    """2026-10-11（票 05）：正文块＝h1 章标题 / h2 子标题 / p 段落；封面与名词解释跳过。"""
+    from docx import Document
+    doc = Document()
+    doc.add_paragraph("学科信息参考")
+    doc.add_paragraph("2026年第5期（总第39期）")
+    doc.add_paragraph("云南大学发展规划处  图书馆编      2026年9月")
+    doc.add_paragraph("名词解释：")
+    doc.add_paragraph("阈值")
+    doc.add_paragraph("学科进入ESI前1%的最低被引频次。")
+    doc.add_paragraph("一 概述")
+    doc.add_paragraph("本期全球共有10674个机构登上ESI前1%榜单。")
+    doc.add_paragraph("学校发展趋势").style = doc.styles["List Paragraph"]
+    doc.add_paragraph("与上期数据相比，我校国内机构排名上升1位。")
+    doc.add_paragraph("二 我校学科发展情况")
+    doc.add_paragraph("3.顶尖论文情况")
+    doc.save(tmp_path / "报告初稿_202609（试排）.docx")
+
+    blocks = shelf_data.report_text(tmp_path)
+    assert [b["t"] for b in blocks] == ["h1", "p", "h2", "p", "h1", "h2"]
+    assert blocks[0]["text"] == "一 概述"
+    assert blocks[1]["text"].startswith("本期全球共有")
+    assert blocks[2]["text"] == "学校发展趋势"
+    assert blocks[4]["text"] == "二 我校学科发展情况"
+    assert blocks[5]["text"] == "3.顶尖论文情况"
+    # 缓存命中：同文件再取一致（docx 未变）
+    assert shelf_data.report_text(tmp_path) == blocks
+
+
+def test_报告正文缺docx给空表(tmp_path):
+    assert shelf_data.report_text(tmp_path) == []

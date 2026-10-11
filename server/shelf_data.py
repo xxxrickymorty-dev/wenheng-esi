@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
-"""管理员书架的数据组装。
+"""书架（陈列馆）的数据组装。
 
 完整指标只在服务端按请求从已部署的 ``out/<期次>`` 读取；这里刻意不读取
 ``web/public`` 或 ``web/dist``，避免构建产物成为数据副本。缺失或损坏的期次
-会被跳过，因此只打包 202607 的演示环境只展示该期。
+会被跳过。
+
+2026-10-11：角色改两级后两种角色（管理员/操作员）同拿全数据；
+新增 ``report_text``——报告正文块（从报告初稿 docx 提取，给册页「报告正文」分页）。
 """
 import json
 import math
+import re
 from pathlib import Path
 
 from starlette.responses import Response
@@ -102,6 +106,63 @@ def _read_forecast(period_dir):
             "window": grab("**序列窗口").split("。", 1)[0]}
 
 
+#: 报告正文提取（陈列馆册页「报告正文」）：章标题 / 子标题 / 段落。
+_REPORT_CHAPTER = re.compile(r"^[一二三四五六七八九十]+\s")
+_REPORT_SUBHEAD = re.compile(r"^\d+[.、]")
+_REPORT_TEXT_CACHE: dict = {}
+_REPORT_TEXT_CACHE_MAX = 8
+
+
+def report_text(period_dir):
+    """报告初稿 docx → 正文块序列 `[{"t": "h1"|"h2"|"p", "text": …}]`。
+
+    - 起点＝第一个章标题（「一 概述」类）——封面四行与名词解释不重复（前面已有专页）；
+    - h1＝章标题（`^[一二三四五六七八九十]+\\s`）；h2＝`List Paragraph` 样式或 `^\\d+.` 子标题；
+    - 缺 docx / 坏 docx → `[]`（册页只是不出现正文分页，不阻止该期展示）。
+    - 带 (路径, mtime, 体积) 缓存：docx 一改自动失效。
+    """
+    period_dir = Path(period_dir)
+    docxs = sorted(period_dir.glob("报告初稿_*.docx"))
+    if not docxs:
+        return []
+    docx = docxs[-1]
+    try:
+        st = docx.stat()
+    except OSError:
+        return []
+    key = (str(docx), st.st_mtime_ns, st.st_size)
+    hit = _REPORT_TEXT_CACHE.get(key)
+    if hit is not None:
+        return hit
+    try:
+        from docx import Document                                # noqa: PLC0415
+        doc = Document(str(docx))
+    except Exception:                                            # noqa: BLE001
+        return []
+    blocks: list[dict] = []
+    started = False
+    for p in doc.paragraphs:
+        text = p.text.strip()
+        if not text:
+            continue
+        if not started:
+            if _REPORT_CHAPTER.match(text) and text.startswith("一"):
+                started = True
+            else:
+                continue
+        if _REPORT_CHAPTER.match(text):
+            blocks.append({"t": "h1", "text": text})
+        elif ((p.style is not None and p.style.name == "List Paragraph")
+                or _REPORT_SUBHEAD.match(text)):
+            blocks.append({"t": "h2", "text": text})
+        else:
+            blocks.append({"t": "p", "text": text})
+    _REPORT_TEXT_CACHE[key] = blocks
+    while len(_REPORT_TEXT_CACHE) > _REPORT_TEXT_CACHE_MAX:
+        _REPORT_TEXT_CACHE.pop(next(iter(_REPORT_TEXT_CACHE)))
+    return blocks
+
+
 def _book(card, out_dir):
     period_dir = Path(out_dir) / str(card.get("period", ""))
     facts = artifacts.read_facts(period_dir)
@@ -127,7 +188,9 @@ def _book(card, out_dir):
         "top3": facts.get("top3_by_top_papers", []), "best_permille": facts.get("best_1permille", []),
         "not_entered": facts.get("top2_not_entered", []), "n_disc_1pct": facts.get("n_disc_1pct"),
         "n_assert_pass": passed, "n_assert_total": total, "table": table,
-        "forecast": _read_forecast(period_dir), "_trend": meta.get("trend", meta.get("top_total_by_period", {})),
+        "forecast": _read_forecast(period_dir),
+        "report_text": report_text(period_dir),
+        "_trend": meta.get("trend", meta.get("top_total_by_period", {})),
     }
 
 
