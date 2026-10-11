@@ -686,7 +686,7 @@ def _period_label(period: str) -> str:
 
 
 def _period_has_data(period: str) -> bool:
-    """「期次认得出」的宽松口径：取数状态或投喂副本已存在（还没出稿也算）。
+    """「期次认得出」的宽松口径：取数状态或本期监测表已存在（还没出稿也算）。
 
     与 /api/periods 的补录、单期详情的宽松判定同一口径——取数台接手的期次，
     它的空产物 / 空回滚列表要回 200 空数组，而不是 404（404 会在页面控制台报错）。
@@ -700,7 +700,7 @@ def _period_has_data(period: str) -> bool:
 
 
 def _acquisition_only_periods(known: set[str]) -> list[dict]:
-    """还没出稿、但取数已经有动静的期次：有取数状态，或投喂副本已就位。
+    """还没出稿、但取数已经有动静的期次：有取数状态，或本期监测表已就位。
 
     取数台接手「未出稿的当期」——这些期次不在 period_cards（那要 red_slots.json），
     列表里单独补进来（状态按「未签发」显示，出稿后由 period_cards 接管）。
@@ -749,7 +749,7 @@ async def api_me(request: Request):
 async def api_period_detail(request: Request, period: str):
     """单期详情：三步条＝①取数 ②核对并并入 ③生成（ADR-0004）。
 
-    未出稿但取数已有动静的期次（有取数状态、或投喂副本已就位）也返回详情——
+    未出稿但取数已有动静的期次（有取数状态、或本期监测表已就位）也返回详情——
     「先取数、后生成」的工作流需要它们在台面上；三步的判定不出数字。
     """
     m = re.match(r"^(\d{6})", period or "")
@@ -1285,7 +1285,7 @@ async def api_period_trace(request: Request, period: str, cat: str = "bigtable",
     if ledger is None:
         empty = {k: 0 for k in _TRACE_CATS}
         return {"period": d.name, "ledger": "", "ledger_ok": False,
-                "ledger_error": "本地未找到台账 input/<期次>/监测表.xlsx",
+                "ledger_error": "本地未找到本期监测表 input/<期次>/监测表.xlsx",
                 "n": 0, "cat": cat, "counts": empty,
                 "rows": [], "total": 0, "limit": limit, "offset": offset,
                 "has_more": False, "cols": [], "discs": [], "review": {}}
@@ -1394,7 +1394,7 @@ async def api_ledger_sheets(request: Request, period: str = ""):
             lp = d
             break
     if lp is None or not lp.exists():
-        return JSONResponse({"error": "台账文件不存在", "hint": "请先在控制台上传监测表.xlsx"}, status_code=404)
+        return JSONResponse({"error": "监测表不存在", "hint": "请先在控制台上传监测表.xlsx"}, status_code=404)
     try:
         wb = openpyxl.load_workbook(str(lp), read_only=True, data_only=True)
     except Exception as exc:                               # noqa: BLE001

@@ -41,7 +41,7 @@ uv run python src\run_pipeline.py input\<期次>\监测表.xlsx
 分模块运行（调试用）：
 
 ```powershell
-uv run python src\parse_ledger.py   # 输入台账 → out/<期次>/ 规整数据 + meta
+uv run python src\parse_ledger.py   # 监测表 → out/<期次>/ 规整数据 + meta
 uv run python src\compute.py        # 大表+概述（自动定位最新 out/<期次>）
 uv run python src\backtest.py       # 金样回测（固定第 4 期）→ 对照差异报告
 uv run python src\forecast.py       # 预测回测报告

@@ -1,4 +1,4 @@
-/* 生成台工具卡（阶段 1 · P1 收尾）：上传新台账 / 产物下载 / 重跑本期。
+/* 生成台工具卡（阶段 1 · P1 收尾）：上传监测表 / 产物下载 / 重跑本期。
    数据源都是现成的：POST /api/jobs（带 file 字段）· GET /api/jobs/{id}/artifacts ·
    POST /api/jobs/{id}/rerun（老站 job.js 一直在用）。🔴 只透传，不编造。 */
 
@@ -194,8 +194,8 @@ export function Tools({
 
       <div className="mt-12">
         <div>
-          {/* 上传新台账（老站同一套口径：期次 6 位必填） */}
-          <h3 className="fs-15">上传新台账</h3>
+          {/* 上传监测表（老站同一套口径：期次 6 位必填） */}
+          <h3 className="fs-15">上传监测表</h3>
           <div className="toolbar">
             <input type="file" accept=".xlsx" aria-label="选择要上传的监测表（xlsx）"
                    onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
