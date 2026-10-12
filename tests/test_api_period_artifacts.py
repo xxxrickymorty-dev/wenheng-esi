@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-"""期次产物与下载权限（2026-10-11 角色改两级后）：
+"""期次产物与下载权限（2026-10-11 角色改两级后；2026-10-12 出报告对操作员开放后）：
 
 - 管理员：完整产物与全部下载口；
 - 操作员：只读放行普通产物与下载，**红件三件 + 运行日志 + 日志包不可见、不可下载**；
+  四条下载路由（期次/任务 × 旧/新）对操作员口径一致（2026-10-12 补齐旧任务口）；
 - 匿名：401 / 303 先于任何读取。
 """
 import asyncio
@@ -64,7 +65,8 @@ _DOWNLOAD_ROUTES = (
     "api_job_download",
 )
 
-#: 只管理员可用的任务下载口（文件与 API 两条）。
+#: 任务下载两条（旧文件路由 `download` / 新 API `api_job_download`）——用于选路由参数；
+#: 2026-10-12 起旧口对操作员放行（拦红件/日志包），API 口仍仅管理员。
 _JOB_DOWNLOAD_ROUTES = ("download", "api_job_download")
 
 
@@ -212,10 +214,11 @@ class TestDirectDownloads:
 
     def test_操作员下载红件与日志包在读文件前被拒(self, monkeypatch, tmp_path):
         _prepare_download_context(monkeypatch, tmp_path)
-        unexpected = lambda *_args: (_ for _ in ()).throw(AssertionError("拦截前不应读期次"))
+        unexpected = lambda *_args: (_ for _ in ()).throw(AssertionError("拦截前不应读期次/任务"))
         monkeypatch.setattr(app_module, "resolve_period_dir", unexpected)
+        monkeypatch.setattr(app_module.jobs, "read_job", unexpected)
         for key in ("red_list", "red_json", "runlog", app_module.archive.LOGPACK_KEY):
-            for route_name in ("period_download", "api_period_download"):
+            for route_name in ("period_download", "api_period_download", "download"):
                 response = _call_download(route_name, config.OPERATOR_USER, key)
                 assert response.status_code == 403, (route_name, key)
 
@@ -223,13 +226,13 @@ class TestDirectDownloads:
         _period, out_dir, report, _runlog = _prepare_download_context(monkeypatch, tmp_path)
         _write_signed_report(out_dir)
 
-        for route_name in ("period_download", "api_period_download"):
+        for route_name in ("period_download", "api_period_download", "download"):
             response = _call_download(route_name, config.OPERATOR_USER, "report")
             assert response.path == report, route_name
 
     def test_操作员可下载大表csv(self, monkeypatch, tmp_path):
         _period, out_dir, _report, _runlog = _prepare_download_context(monkeypatch, tmp_path)
-        for route_name in ("period_download", "api_period_download"):
+        for route_name in ("period_download", "api_period_download", "download"):
             response = _call_download(route_name, config.OPERATOR_USER, "table2")
             assert response.path == out_dir / "table2.csv", route_name
 
@@ -259,14 +262,30 @@ class TestDirectDownloads:
         assert response.status_code == 403
         assert _body(response) == {"error": "报告未签发或签发已失效，不能下载"}
 
-    def test_操作员不能走任务下载口(self, monkeypatch):
-        """任务下载口（旧/新两条）仍只管理员——操作员 403，不读任务。"""
+    def test_操作员不能走任务下载API口_旧口按红件过滤(self, monkeypatch):
+        """任务下载 API 口（新）仍只管理员；旧口（对话前门三件套用）2026-10-12 起
+        与期次口同款：操作员拦红件/日志包、放行其余。"""
+        response = asyncio.run(app_module.api_job_download(
+            _Req(config.OPERATOR_USER), "job-1", "report"))
+        assert response.status_code == 403
         monkeypatch.setattr(app_module.jobs, "read_job",
                             lambda *_args: (_ for _ in ()).throw(AssertionError("不应读任务")))
-        response = asyncio.run(app_module.api_job_download(_Req(config.OPERATOR_USER), "job-1", "report"))
-        assert response.status_code == 403
-        legacy = asyncio.run(app_module.download(_Req(config.OPERATOR_USER), "job-1", "report"))
-        assert legacy.status_code == 403
+        for key in ("red_list", "red_json", "runlog", app_module.archive.LOGPACK_KEY):
+            legacy = asyncio.run(app_module.download(_Req(config.OPERATOR_USER), "job-1", key))
+            assert legacy.status_code == 403, key
+        # 非红件放行：不存在的任务落到旧口既有的 303（证明守卫已通过、没有拦操作员）
+        monkeypatch.setattr(app_module.jobs, "read_job", lambda _job_id: None)
+        legacy = asyncio.run(app_module.download(
+            _Req(config.OPERATOR_USER), "missing-job", "report"))
+        assert isinstance(legacy, RedirectResponse) and legacy.status_code == 303
+
+    def test_操作员可走旧任务下载口_非红件(self, monkeypatch, tmp_path):
+        _period, out_dir, report, _runlog = _prepare_download_context(monkeypatch, tmp_path)
+        _write_signed_report(out_dir)
+
+        response = asyncio.run(app_module.download(_Req(config.OPERATOR_USER), "job-1", "report"))
+
+        assert response.path == report
 
     def test_匿名旧下载路由仍跳登录(self, monkeypatch):
         monkeypatch.setattr(app_module.jobs, "read_job",

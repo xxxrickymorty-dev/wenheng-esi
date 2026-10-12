@@ -78,7 +78,7 @@ def call(method, path, data=None, opener=None, headers=None):
         return -1, f"{type(e).__name__}: {e}", url
 
 
-def call_json(method, path, payload=None):
+def call_json(method, path, payload=None, opener=None):
     """JSON 版 call()：POST 带 application/json。"""
     url = BASE + path
     body = json.dumps(payload or {}).encode("utf-8") if payload is not None else None
@@ -86,7 +86,7 @@ def call_json(method, path, payload=None):
     if body:
         req.add_header("Content-Type", "application/json")
     try:
-        r = op.open(req)
+        r = (opener or op).open(req)
         return r.status, r.read().decode("utf-8", "replace"), r.geturl()
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode("utf-8", "replace"), url
@@ -193,6 +193,9 @@ st, _, _ = call("POST", "/api/periods/199901/sign", {"known": "true", "note": "e
 check("操作员可走签单口（审批已开放；199901→404，不是 403）", st == 404, f"got {st}")
 st, _, _ = call("POST", "/api/jobs", {"period": ""}, opener=gop)
 check("操作员可走出稿口（出报告已开放；空表单→400，不是 403）", st == 400, f"got {st}")
+st, _, _ = call_json("POST", "/api/periods/199901/flexible/stream",
+                     {"intent": "single_trend"}, opener=gop)
+check("操作员可走灵活出稿口（出报告已开放；199901→404，不是 403）", st == 404, f"got {st}")
 for _path in ("/api/periods/202607/facts", "/api/periods/202607/collation?limit=1",
               "/api/periods/202607/charts", "/api/periods/202607/artifacts"):
     st, _, _ = call("GET", _path, opener=gop)
@@ -411,6 +414,11 @@ if jobid:
     check("任务日志包带 job 上下文三件套",
           all(n in _jn for n in ("job/job.json", "job/progress.jsonl", "job/console.log")),
           str([n for n in _jn if n.startswith("job/")]))
+    # 2026-10-12：出报告对操作员开放——任务下载口与期次口同款（拦红件/日志包、放行其余）
+    st, _, _ = call("GET", f"/jobs/{jobid}/download/red_list", opener=gop)
+    check("操作员任务下载口拦红件（403）", st == 403, f"got {st}")
+    st, _, _ = call("GET", f"/jobs/{jobid}/download/table2", opener=gop)
+    check("操作员任务下载口放行非红件（200）", st == 200, f"got {st}")
 
 out("=== 13. 图表路由的越界防护（老清单页已 302，路由按 §六 保留） ===")
 # /p/{期次}/chart/ 直接服务磁盘文件，越界 = 任意文件读取（能读到 server/.env）

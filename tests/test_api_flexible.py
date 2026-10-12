@@ -116,12 +116,22 @@ class Test流式与润色两口:
         assert '@app.post("/api/periods/{period}/flexible/stream")' in src
         assert '@app.post("/api/periods/{period}/flexible/polish")' in src
 
-    def test_新两口也要管理员(self):
-        for fn in (appmod.api_period_flexible_stream, appmod.api_period_flexible_polish):
-            assert asyncio.run(fn(_Req(config.OPERATOR_USER), "202609")).status_code == 403
-            assert asyncio.run(fn(_Req(None), "202609")).status_code == 401
+    def test_流式与停止放行操作员_润色仍管理员(self):
+        """2026-10-12（rick 定案）：出报告对操作员开放——stream/stop 放行
+        （不存在期次回 404、停止口回人话，不是 403）；润色仍是管理员写作位。"""
+        assert asyncio.run(appmod.api_period_flexible_stream(
+            _Req(config.OPERATOR_USER, {"intent": "single_trend"}),
+            "199901")).status_code == 404
+        assert asyncio.run(appmod.api_period_flexible_stream(
+            _Req(None, {"intent": "single_trend"}), "199901")).status_code == 401
+        stop = asyncio.run(appmod.api_period_flexible_stop(
+            _Req(config.OPERATOR_USER, {"run": ""}), "199901"))
+        assert stop == {"ok": False, "error": "这次出稿已经结束（或找不到），没有可停的。"}
         assert asyncio.run(appmod.api_period_flexible_stop(
-            _Req(config.OPERATOR_USER, {"run": "x"}), "202609")).status_code == 403
+            _Req(None, {"run": ""}), "199901")).status_code == 401
+        assert asyncio.run(appmod.api_period_flexible_polish(
+            _Req(config.OPERATOR_USER, {"intent": "single_trend"}),
+            "202609")).status_code == 403
 
     def test_停止键_首行带run令牌_喊停后终态stopped(self, tmp_path, monkeypatch):
         """停止键（契约 #21⑤）：流首行带 run 令牌；「停止」端点喊停 →

@@ -28,7 +28,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from . import (acquisition, approval, archive, artifacts, collation, config, jobs,
                report_preview, shelf_data, shelf_preview)
 from . import forecasting
-from .guards import admin_file_route, admin_route, user_file_route, user_route
+from .guards import admin_route, user_file_route, user_route
 from src import parse_ledger  # 成品隔离/回滚的唯一口径（FINAL_PRODUCTS / SUPERSEDED_DIR）
 from .protected_static import AdminStaticFiles
 from src import period as period_mod  # 期次口径唯一来源（ADR-0001：新工作区 API 也用它）
@@ -1787,13 +1787,16 @@ _flex_stops: dict[str, threading.Event] = {}
 
 
 @app.post("/api/periods/{period}/flexible/stream")
-@admin_route
+@user_route
 async def api_period_flexible_stream(request: Request, period: str):
     """流式生成（契约 #21③）：一行一个事件 `status → plan → section×N → done/error/stopped`。
 
     事件发生在**真实节点**（规划完成、每节完成），不做假进度；
     前端用 `fetch` 逐行读取（后端不引 SSE 库，NDJSON 更省）。
     首行（status）带 `run` 令牌——停止键（#21⑤）拿它喊停。
+
+    2026-10-12（rick 定案）：出报告对操作员开放——本口与 `/stop` 从 admin 放开
+    （对话前门两段式的第一段；取数/回滚/润色等仍 admin）。
     """
     d = resolve_period_dir(period)
     if d is None:
@@ -1832,12 +1835,13 @@ async def api_period_flexible_stream(request: Request, period: str):
 
 
 @app.post("/api/periods/{period}/flexible/stop")
-@admin_route
+@user_route
 async def api_period_flexible_stop(request: Request, period: str):   # noqa: ARG001
     """停止出稿（契约 #21⑤）：对正在流式生成的那一次喊停。
 
     下一次事件点收手，终态事件 `stopped` 从**原流**里送出（不落产物）；
     流已结束/令牌不在 → `{ok: false}` + 人话（不是错误）。
+    2026-10-12：与 `/stream` 同档——操作员出报告要能停（rick 定案）。
     """
     body = await request.json()
     token = str(body.get("run") or "")
@@ -2164,8 +2168,16 @@ async def api_events(request: Request, job_id: str):
 # ---------------- 下载 / 二维码 ----------------
 
 @app.get("/jobs/{job_id}/download/{key}")
-@admin_file_route
+@user_file_route
 async def download(request: Request, job_id: str, key: str):
+    """任务产物下载（旧路由；对话前门的三件套链接走这里）。
+
+    2026-10-12：出报告对操作员开放——与期次口（`/p/{p}/download`）同款：
+    操作员只读放行，但红件/日志包类键仅管理员可下载。
+    """
+    guard = _operator_download_guard(_role_of_request(request), key)
+    if guard:
+        return guard
     job = jobs.read_job(job_id)
     if not job:
         return RedirectResponse("/", status_code=303)
