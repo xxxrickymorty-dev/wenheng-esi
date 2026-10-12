@@ -15,6 +15,7 @@
 | `compare` | 某期某指标跨学科横截面（可只取前 k） | ② 多学科横向对比 |
 | `delta` | 某学科某指标两期的差与变化率 | 环比/两期对比 |
 | `events` | 学科进出 ESI 前 1% 的事件 | 进出榜排查 |
+| `overall_rank` | 云大整体排名的期次序列 | 学校排名走势 |
 | `anomaly` | 异常/突变清单（规则判定） | ④ 异常/突变排查 |
 | `scope` | 统计摘要（供规划） | 规划依据（**非可引用数值**） |
 
@@ -35,7 +36,8 @@ INTENTS = ("single_trend", "cross_compare", "anomaly_scan", "potential_forecast"
 
 #: 发给模型的工具说明。**不含任何数值**，只有字段字典与可查询范围。
 SCHEMA = {
-    "kind": ["series", "at", "compare", "delta", "events", "anomaly", "scope"],
+    "kind": ["series", "at", "compare", "delta", "events", "overall_rank",
+             "anomaly", "scope"],
     "metrics": {k: {"cn": v["cn"], "better": v["better"]} for k, v in METRICS.items()},
     "args": {
         "series": {"metric": "指标名", "disc": "学科英文名", "periods": "期次列表（可省=全部）"},
@@ -45,6 +47,7 @@ SCHEMA = {
         "delta": {"metric": "指标名", "disc": "学科英文名", "period": "本期次",
                   "prev": "对比期（可省=严格上一期）"},
         "events": {"disc": "学科英文名（可省=全部）"},
+        "overall_rank": {"periods": "期次列表（可省=全部）"},
         "anomaly": {"period": "期次（可省=当期）", "threshold": "突变倍数阈值（默认 1.5）"},
         "scope": {"period": "期次（可省=当期）"},
     },
@@ -204,43 +207,87 @@ def delta(src: LedgerView, metric: str, disc: str, period: str, prev=None) -> di
 
 # ------------------------------------------------------------ ⑤ 进出前 1%
 def events(src: LedgerView, disc=None) -> dict:
-    """学科进出 ESI 前 1% 的事件（《学科进入时间》0/1 矩阵的跳变；规则判定）。
+    """学科进出 ESI 前 1% 的事件（《学科进入时间》流水；无流水时按 0/1 矩阵跳变推导）。
 
     `disc` 省 → 全部学科。`in_since`：自台账最早一期就在前 1% 内的学科 → 首期。
     """
-    try:
-        ent = src.entered_1pct()
-    except KeyError as e:
-        raise QueryError(f"数据缺少《学科进入时间》表：{e}") from e
-    if ent is None or getattr(ent, "empty", True):
-        raise QueryError("《学科进入时间》表为空")
     if disc is not None and disc not in src.disciplines:
         raise QueryError(f"学科 {disc!r} 不在名单内：{src.disciplines}")
-    ent = ent.astype(float)
-    cols = [str(c) for c in ent.columns]
-    if disc is not None and disc not in ent.index:
-        raise QueryError(f"学科 {disc!r} 不在《学科进入时间》表内")
-    discs = [disc] if disc else [str(d) for d in ent.index]
-    items, in_since = [], {}
-    for d in discs:
-        row = ent.loc[d]
-        if len(cols) and float(row.iloc[0]) == 1.0:
-            in_since[d] = cols[0]
-        for i in range(1, len(cols)):
-            a, b = float(row.iloc[i - 1]), float(row.iloc[i])
-            if a == b:
-                continue
-            items.append({
-                "period": cols[i], "type": "in" if b == 1.0 else "out",
-                "discipline": d, "discipline_cn": cn_name(d),
-                "source": {"kind": "ledger_cell", "origin_sheet": "学科进入时间",
-                           "discipline": d, "discipline_cn": cn_name(d), "period": cols[i],
-                           "locator": f"学科进入时间：{cn_name(d)} {cols[i]}（流水账）"},
-            })
+    try:
+        ent = src.entered_1pct()
+    except KeyError:
+        ent = None
+    in_since, derived = {}, []
+    if ent is not None and not getattr(ent, "empty", True):
+        ent = ent.astype(float)
+        cols = [str(c) for c in ent.columns]
+        for d in ent.index:
+            row = ent.loc[d]
+            if len(cols) and float(row.iloc[0]) == 1.0:
+                in_since[str(d)] = cols[0]
+            for i in range(1, len(cols)):
+                a, b = float(row.iloc[i - 1]), float(row.iloc[i])
+                if a != b:
+                    derived.append((cols[i], str(d), "in" if b == 1.0 else "out"))
+    try:
+        raw = list(src.entry_events() or [])
+    except KeyError:
+        raw = []
+    items = []
+    for p, d, kind in (raw or derived):
+        d, p, kind = str(d), str(p), str(kind)
+        if disc is not None and d != disc:
+            continue
+        items.append({
+            "period": p, "type": kind, "discipline": d, "discipline_cn": cn_name(d),
+            "source": {"kind": "ledger_cell", "origin_sheet": "学科进入时间",
+                       "discipline": d, "discipline_cn": cn_name(d), "period": p,
+                       "locator": f"学科进入时间：{cn_name(d)} {p}（流水账）"},
+        })
     items.sort(key=lambda x: (x["period"], x["discipline"]))
+    if disc is not None:
+        in_since = {k: v for k, v in in_since.items() if k == disc}
     return {"kind": "events", "disc": disc, "disc_cn": cn_name(disc) if disc else "",
             "n": len(items), "events": items, "in_since": in_since,
-            "note": "规则判定（0/1 矩阵跳变）；『自最早一期起在线』记在 in_since。"}
+            "note": "规则判定；『自最早一期起在线』记在 in_since。"}
+
+
+# ------------------------------------------------------------ ⑥ 云大整体排名
+def overall_rank(src: LedgerView, periods=None) -> dict:
+    """云大整体排名的期次序列（《云大ESI排名》表；rank_intl / rank_cn / rank_cn_uni）。"""
+    try:
+        df = src.ynd_rank()
+    except KeyError as e:
+        raise QueryError(f"数据缺少《云大ESI排名》表：{e}") from e
+    if df is None or getattr(df, "empty", True):
+        raise QueryError("《云大ESI排名》表为空")
+    ps = _clean_periods(src, periods)
+    by_period = {str(p): row for p, row in df.iterrows()}
+    pts = []
+    for p in ps:
+        row = by_period.get(p)
+        if row is None:
+            continue
+        pts.append({
+            "period": p,
+            "rank_intl": _val(row.get("rank_intl")),
+            "rank_cn": _val(row.get("rank_cn")),
+            "rank_cn_uni": _val(row.get("rank_cn_uni")),
+            "source": {"kind": "ledger_cell", "origin_sheet": "云大ESI排名",
+                       "discipline": "云南大学", "discipline_cn": "云南大学", "period": p,
+                       "locator": f"云大ESI排名：云南大学 行 × {p} 列"},
+        })
+    return {"kind": "overall_rank", "n": len(pts), "points": pts,
+            "note": "云大整体排名（《云大ESI排名》表）。"}
+
+
+def _val(x):
+    """数值或 None（NaN/坏 → None）。"""
+    try:
+        f = float(x)
+    except (TypeError, ValueError):
+        return None
+    return None if f != f else f
 
 
 # -------------------------------------------------------------- ⑥ 异常
@@ -304,7 +351,8 @@ def execute(src: LedgerView, kind: str, **kwargs) -> dict:
     if unknown:
         raise QueryError(f"{kind} 收到未声明参数：{sorted(unknown)}（允许：{sorted(allowed)}）")
     return {"series": series, "at": at, "compare": compare, "delta": delta,
-            "events": events, "anomaly": anomaly, "scope": scope}[kind](src, **kwargs)
+            "events": events, "overall_rank": overall_rank,
+            "anomaly": anomaly, "scope": scope}[kind](src, **kwargs)
 
 
 # ------------------------------------------------------------------ 溯源抽查

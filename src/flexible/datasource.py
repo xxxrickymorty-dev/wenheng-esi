@@ -134,8 +134,9 @@ class LedgerView(Protocol):
     def at(self, metric: str, disc: str, period: str) -> float | None: ...
     def cross(self, metric: str, period: str) -> pd.Series: ...
     def chain(self, metric: str, disc: str, period: str) -> dict: ...
-    def rank_intl_series(self) -> pd.Series: ...
     def entered_1pct(self) -> pd.DataFrame: ...
+    def entry_events(self) -> list: ...
+    def ynd_rank(self) -> pd.DataFrame: ...
 
 
 class DataSource:
@@ -239,11 +240,24 @@ class DataSource:
         s = sub.set_index("discipline")["value"].dropna()
         return s.astype(float).sort_values()
 
-    def rank_intl_series(self) -> pd.Series:
-        """云大国际排名序列（来自 `云大ESI排名` 表）。"""
-        df = self.wide("ynd_rank").set_index("period")["rank_intl"]
+    def ynd_rank(self) -> pd.DataFrame:
+        """云大整体排名（index=period；列 rank_intl / rank_cn / rank_cn_uni）。"""
+        df = self.wide("ynd_rank").set_index("period")
         df.index = [str(p) for p in df.index]
-        return df.dropna().sort_index()
+        return df.sort_index()
+
+    def entry_events(self) -> list:
+        """进出事件 `[(期次, 学科, "in"/"out")]`（由 0/1 矩阵跳变推导——parquet 面无流水表）。"""
+        ent = self.entered_1pct().astype(float)
+        cols = [str(c) for c in ent.columns]
+        out = []
+        for d in ent.index:
+            row = ent.loc[d]
+            for i in range(1, len(cols)):
+                a, b = float(row.iloc[i - 1]), float(row.iloc[i])
+                if a != b:
+                    out.append((cols[i], str(d), "in" if b == 1.0 else "out"))
+        return out
 
     def entered_1pct(self) -> pd.DataFrame:
         return self.wide("entered_1pct")

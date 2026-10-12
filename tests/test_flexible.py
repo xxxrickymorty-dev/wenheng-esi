@@ -372,6 +372,9 @@ class Test引擎扩op:
         pd.DataFrame({"202601": [90.0, 95.0], "202603": [91.0, 96.0], "202605": [92.0, 97.0]},
                      index=["Physics", "Chemistry"]).to_parquet(
                          d / "wide" / "threshold_1permille.parquet")
+        pd.DataFrame({"period": ["202601", "202605"], "rank_intl": [560.0, 552.0],
+                      "rank_cn": [153.0, 154.0], "rank_cn_uni": [130.0, 131.0]}).to_parquet(
+                          d / "wide" / "ynd_rank.parquet")
         return DataSource(d)
 
     def test_at_取到格(self, view):
@@ -434,6 +437,12 @@ class Test引擎扩op:
     def test_千分位阈值走宽表(self, view):
         r = queries.at(view, "threshold_1permille", "Physics", "202603")
         assert r["value"] == 91.0 and r["source"]["origin_sheet"] == "千分之一被引阈值"
+
+    def test_overall_rank_云大序列(self, view):
+        r = queries.execute(view, "overall_rank")
+        assert [p["period"] for p in r["points"]] == ["202601", "202605"]
+        assert r["points"][-1]["rank_intl"] == 552.0
+        assert r["points"][-1]["source"]["origin_sheet"] == "云大ESI排名"
 
     def test_execute_新op可派发(self, view):
         r = queries.execute(view, "delta", metric="papers", disc="Physics", period="202605")

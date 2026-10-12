@@ -54,20 +54,24 @@ class WorkbookView:
 
     @property
     def periods(self) -> list:
-        fr = self._total
-        return sorted(str(c) for c in fr.columns) if fr is not None else []
+        cols = set()
+        for fr in self._wide.values():
+            cols.update(str(c) for c in fr.columns)
+        return sorted(cols)
 
     @property
     def filled_periods(self) -> list:
         fr = self._total
-        if fr is None:
-            return []
+        if fr is None:                                   # 最小夹具可能缺总被引表
+            return self.periods
         return period_mod.filled({"total_cites": fr})
 
     @property
     def disciplines(self) -> list:
-        fr = self._total
-        return sorted(str(d) for d in fr.index) if fr is not None else []
+        idx = set()
+        for fr in self._wide.values():
+            idx.update(str(d) for d in fr.index)
+        return sorted(idx)
 
     def current_period(self) -> str:
         return self.filled_periods[-1]
@@ -121,14 +125,16 @@ class WorkbookView:
         }
 
     # ------------------------------------------------------------------ 专表
-    def rank_intl_series(self) -> pd.Series:
-        """云大国际排名序列（《云大ESI排名》表）。"""
+    def ynd_rank(self) -> pd.DataFrame:
+        """云大整体排名（index=period；列 rank_intl / rank_cn / rank_cn_uni）。"""
         df = self._led.get("ynd_rank")
-        if df is None or getattr(df, "empty", True) or "rank_intl" not in df.columns:
-            return pd.Series(dtype=float)
-        s = df["rank_intl"]
-        s.index = [str(p) for p in s.index]
-        return s.dropna().sort_index().astype(float)
+        if df is None:
+            raise KeyError("监测表缺少《云大ESI排名》表")
+        return df
+
+    def entry_events(self) -> list:
+        """进出事件 `[(期次, 学科, "in"/"out")]`（《学科进入时间》流水，parse_ledger 已解析）。"""
+        return [tuple(e) for e in (self._led.get("entry_events") or [])]
 
     def entered_1pct(self):
         """学科 × 期次的 0/1 矩阵（1＝该期已在前 1% 内）。"""

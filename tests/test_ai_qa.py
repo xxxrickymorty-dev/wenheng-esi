@@ -252,7 +252,9 @@ def _seed_ledger(tmp_path, monkeypatch):
             "papers": pd.DataFrame({"202607": [2590.0]}, index=["Chemistry"]),
         },
         "rank_cn": pd.DataFrame([{"discipline": "Chemistry", "period": "202607",
-                                  "rank": 154.0}]),
+                                  "rank": 154.0},
+                                 {"discipline": "Mathematics", "period": "202607",
+                                  "rank": 90.0}]),
         "entry_events": [("202409", "Mathematics", "in"), ("202605", "Mathematics", "out"),
                          ("202607", "Mathematics", "in")],
         "entered_1pct": pd.DataFrame({"202607": [1.0]}, index=["Chemistry"]),
@@ -376,3 +378,93 @@ def test_模型证据含全量段_命中段排前(tmp_path):
     assert any("顶尖论文" in e for e in ev), "命中段必须在证据里"
     assert len(ev) >= 10, "证据应为全量段（命中段排前），模型才找得到报告里的内容"
     assert ans.mode == "model" and "274" in ans.text
+
+
+# ============================================================ 票 02：规划器 / 证据装配（接口级）
+class Test规则规划器:
+    """问句 → QueryPlan：只出名字（指标/学科/形状），零数值、零期次。"""
+
+    def test_学科指标编译成序列spec(self):
+        from ai import _plan
+        p = _plan.plan("化学的接近度最近几期怎么变的", discs=["Chemistry"])
+        assert p["origin"] == "rule"
+        assert p["specs"] == [{"op": "series", "metric": "proximity_1pct",
+                               "disc": "Chemistry", "span": "recent"}]
+
+    def test_进出关键词编译成事件spec(self):
+        from ai import _plan
+        p = _plan.plan("数学什么时候进入前1%", discs=["Mathematics"])
+        assert {"op": "events", "disc": "Mathematics"} in p["specs"]
+
+    def test_云大排名编译成整体排名spec(self):
+        from ai import _plan
+        p = _plan.plan("云南大学国际排名走势", discs=[])
+        assert p["specs"] == [{"op": "overall_rank", "span": "recent"}]
+
+    def test_无学科无指标为空(self):
+        from ai import _plan
+        assert _plan.plan("本期怎么样", discs=[])["specs"] == []
+
+    def test_千分位优先于阈值(self):
+        from ai import _plan
+        assert _plan.metric_hit("化学的1‰阈值") == "threshold_1permille"
+        assert _plan.metric_hit("化学的前1%阈值") == "threshold_1pct"
+
+    def test_spec的键值都在白名单(self):
+        """规划输出只含白名单名字（op / metric）；零数字外发是票 03 模型面的事。"""
+        from ai import _plan
+        from flexible import queries
+        p = _plan.plan("化学的接近度", discs=["Chemistry"])
+        for spec in p["specs"]:
+            assert spec["op"] in queries.SCHEMA["kind"]
+            assert spec["metric"] in queries.METRICS
+
+
+class Test证据装配:
+    """Result → 证据段：文本数字全部来自值，cells 由来源链直出（v1 文本逐字保持）。"""
+
+    def _series_res(self):
+        return {"kind": "series", "metric": "proximity_1pct", "metric_cn": "ESI前1%接近度",
+                "disc": "Chemistry", "disc_cn": "化学", "better": "up", "n": 2,
+                "points": [
+                    {"period": "202605", "value": 6.1842,
+                     "source": {"origin_sheet": "接近度", "discipline": "Chemistry",
+                                "discipline_cn": "化学", "period": "202605"}},
+                    {"period": "202607", "value": 6.760561,
+                     "source": {"origin_sheet": "接近度", "discipline": "Chemistry",
+                                "discipline_cn": "化学", "period": "202607"}}]}
+
+    def test_序列渲染_与v1同款文本_到格(self):
+        from ai import _evidence
+        ev = _evidence.assemble([self._series_res()])
+        key, text = ev["chunks"][0]
+        assert key == "台账数据·化学·接近度"
+        assert text == ("化学 · 接近度（台账《接近度》表，最近二期）："
+                        "202605 618.42%、202607 676.06%。")
+        assert ("676.06", "接近度", "化学", "202607") in ev["cells"][key]
+        assert ("202605", "接近度", "化学", "202605") in ev["cells"][key]
+
+    def test_事件_一直在内(self):
+        from ai import _evidence
+        res = {"kind": "events", "disc": "Chemistry", "disc_cn": "化学", "n": 0,
+               "events": [], "in_since": {"Chemistry": "202607"}}
+        ev = _evidence.assemble([res])
+        _, text = ev["chunks"][0]
+        assert "自台账最早一期（202607）起一直在前 1% 内" in text
+
+    def test_事件_最近一次与此前(self):
+        from ai import _evidence
+        res = {"kind": "events", "disc": "Mathematics", "disc_cn": "数学", "n": 3,
+               "events": [{"period": "202409", "type": "in"},
+                          {"period": "202605", "type": "out"},
+                          {"period": "202607", "type": "in"}],
+               "in_since": {}}
+        ev = _evidence.assemble([res])
+        _, text = ev["chunks"][0]
+        assert "最近一次 202607 进入；此前：202409 进入、202605 退出" in text
+
+    def test_空结果跳过(self):
+        from ai import _evidence
+        assert _evidence.assemble([])["chunks"] == []
+        assert _evidence.assemble([{"kind": "series", "points": []}])["chunks"] == []
+        assert _evidence.assemble([{"kind": "未知"}])["chunks"] == []
