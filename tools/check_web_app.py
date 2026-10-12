@@ -366,11 +366,19 @@ def main():
         rep_text = operator.inner_text("main")
         check("操作员报告页无红件产物",
               "红色件清单" not in rep_text and "运行日志" not in rep_text, "")
-        # 生成台：无「开始生成」按钮
+        # 生成台：2026-10-12 起操作员也有出报告权限——不再出现「操作员只读」提示
         operator.goto(BASE + "/app/", wait_until="networkidle")
         operator.wait_for_timeout(600)
         wb_text = operator.inner_text("main")
-        check("操作员生成台无「开始生成」", "开始生成" not in wb_text, "")
+        check("操作员生成台不再提示「操作员只读」", "操作员只读" not in wb_text, "")
+
+        # 审核台：操作员可签单（提示文案 + 签单按钮都在；在线填/重出仍只管理员）
+        operator.goto(BASE + "/app/?view=review&period=202607", wait_until="networkidle")
+        operator.wait_for_timeout(800)
+        rv_text = operator.inner_text("body")
+        check("操作员审核台可签单（提示与按钮都在）",
+              "操作员可以签单与撤回" in rv_text and "签单" in rv_text
+              and "操作员只读" not in rv_text, "")
 
         resp2 = operator.goto(BASE + "/app/shelf/", wait_until="networkidle")
         check("GET /app/shelf/ → 200", bool(resp2) and resp2.status == 200,
@@ -412,6 +420,15 @@ def main():
             check("?ask= 自动发送（用户话已入对话）", "化学的接近度" in turn_text, turn_text[:40])
         except Exception as e:                                       # noqa: BLE001
             check("?ask= 自动发送（用户话已入对话）", False, str(e)[:80])
+        # 2026-10-12：操作员有出报告权限——说「做 9 月的报告」→ 给「覆盖重出」（run 动作）
+        operator.goto(BASE + "/app/dialog/", wait_until="networkidle")
+        operator.wait_for_timeout(700)
+        operator.fill(".dlg-box textarea", "帮我做 9 月的报告")
+        operator.click(".dlg-send")
+        operator.wait_for_timeout(2500)
+        dlg3 = operator.inner_text("body")
+        check("操作员可出报告（对话里给「覆盖重出」）",
+              "覆盖重出" in dlg3 and "出稿仅管理员可用" not in dlg3, "")
 
         # ---- 3) 零报错（覆盖上面几次导航） ----
         check("工作台零 pageerror / console.error", not problems, "; ".join(problems[:3]))

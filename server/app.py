@@ -988,7 +988,7 @@ def _paginate(items, limit, offset):
 
 
 @app.post("/api/periods/{period}/sign")
-@admin_route
+@user_route
 async def api_period_sign_json(request: Request, period: str):
     d = resolve_period_dir(period)
     if d is None:
@@ -1070,7 +1070,7 @@ async def api_forecast_choice(request: Request, period: str):
 
 
 @app.post("/api/periods/{period}/revoke")
-@admin_route
+@user_route
 async def api_period_revoke_json(request: Request, period: str):
     d = resolve_period_dir(period)
     if d is None:
@@ -1628,10 +1628,9 @@ async def api_dialog_turn(request: Request):
     intent = str(slots.get("intent") or "").strip()[:20]
     import ai                                                     # noqa: PLC0415
     actor = config.role_of(current_user(request) or "")
-    # `readonly`（2026-10-11）：操作员只读——对话里出稿/核对的路直接说明白，不演流程。
+    # 2026-10-12：操作员也有出报告/审批——报告流程两种角色一致（readonly 注入已取消）。
     ans = await run_in_threadpool(ai.run, "dialog", period,
-                                  payload={"text": text, "readonly": actor != "admin"},
-                                  actor=actor)
+                                  payload={"text": text}, actor=actor)
     if ans.mode in ("closed", "denied", "unavailable"):
         return _answer_response(ans)
     turn = ans.data or {}
@@ -1899,7 +1898,7 @@ async def api_forecast_run(request: Request):
 
 
 @app.post("/api/jobs")
-@admin_route
+@user_route
 async def api_create_job(request: Request,
                          period: str = Form(""),
                          file: UploadFile = File(None),

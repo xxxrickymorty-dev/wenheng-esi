@@ -19,8 +19,9 @@
 
 **槽位带过轮（2026-10-11，rick 实问暴露）**：句子里没带期次时，报告/推进意图与短应诺
 （「对啊」）**沿用会话槽位里已确认的期次**——说过「9 月的报告」再问「怎么不做」不该被
-反问期次。这不是猜期次，是接着聊（解析出的期次仍优先）。`payload.readonly`（服务端按
-角色注入）为真时，出稿/核对的路直接说「操作员只读」，不演流程、不盘点。
+反问期次。这不是猜期次，是接着聊（解析出的期次仍优先）。
+**权限（2026-10-12 rick 定）**：操作员（评委）也有「出报告 + 审批」——报告/推进的路
+两种角色都照常走（原先的「操作员只读」分支已删）；取数台等仍由工作区按角色裁剪。
 
 盘点经**注入边缘**取：`ai.using(inventory=…)` 可替身注入（测试/脚本）；
 生产走 `src/inventory.scan`（延迟导入——台账/pandas 不进 AI 层启动路径）。
@@ -418,7 +419,6 @@ def build(root, period, payload):                                  # noqa: ARG00
     - `payload.readonly`（服务端按角色注入）：操作员只读出稿/核对直接说明白，不演流程。
     """
     text = str(payload.get("text") or "")
-    readonly = bool(payload.get("readonly"))
     p = parse(text, today=parse_today(payload.get("today")))
     slot = str(period or "")
     kind = p.kind
@@ -438,13 +438,6 @@ def build(root, period, payload):                                  # noqa: ARG00
         # 查数据（票 07）：不盘点、不出稿；正文本地只在「没期次」时出声，
         # 有期次时的回答由服务器调 qa 能力给出（本能力只做路由）。
         reply, verdict, actions, inv = _query_reply(p, period), "", [], None
-    elif kind in ("report", "proceed") and readonly:
-        # 操作员只读（2026-10-11 rick）：出稿/核对的路直接说明白，不演流程、不盘点。
-        target = p.period or slot
-        lead = f"接着 {target} 那期——" if carried and target else ""
-        reply = (f"{lead}操作员只读：出稿与核对仅管理员账号可用；"
-                 "数据我可以直接帮你查（比如「查一下化学的接近度」）。")
-        verdict, inv, actions = "", None, []
     elif kind == "unclear":
         reply, actions = _unclear_reply(p.period or period)
         verdict, inv = "", None

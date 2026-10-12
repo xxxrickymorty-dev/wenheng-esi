@@ -189,8 +189,10 @@ for _path in ("/api/periods/202607/redslots", "/api/periods/202607/acquisition",
     check(f"操作员访问隐藏屏端点被挡（403）：{_path}", st == 403, f"got {st}")
 st, _, _ = call("POST", "/api/periods/202607/acquisition/preflight", opener=gop)
 check("操作员访问取数写动作被挡（403）", st == 403, f"got {st}")
-st, _, _ = call("POST", "/api/periods/202607/sign", {"known": "true", "note": "e2e-操作员"}, opener=gop)
-check("操作员签单被挡（403）", st == 403, f"got {st}")
+st, _, _ = call("POST", "/api/periods/199901/sign", {"known": "true", "note": "e2e-操作员权限探针"}, opener=gop)
+check("操作员可走签单口（审批已开放；199901→404，不是 403）", st == 404, f"got {st}")
+st, _, _ = call("POST", "/api/jobs", {"period": ""}, opener=gop)
+check("操作员可走出稿口（出报告已开放；空表单→400，不是 403）", st == 400, f"got {st}")
 for _path in ("/api/periods/202607/facts", "/api/periods/202607/collation?limit=1",
               "/api/periods/202607/charts", "/api/periods/202607/artifacts"):
     st, _, _ = call("GET", _path, opener=gop)

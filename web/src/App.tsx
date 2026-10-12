@@ -15,6 +15,7 @@ import {
 import { applyPeriod, buildPeriodUrl } from './lib/period'
 import { errorNote } from './lib/status'
 import { pickRunForPeriod } from './lib/run'
+import { UserChip } from './lib/UserChip'
 import { useJobRun, type Run } from './hooks/useJobRun'
 import { Icon, Sprite } from './icons'
 import { Acquire } from './Acquire'
@@ -183,7 +184,8 @@ export default function App() {
     })
   }, [refreshDetail, refreshForecastMeta, refreshPeriods])
 
-  const runEnabled = healthy === true && roleKnown && me?.role === 'admin'
+  /* 2026-10-12：出报告对操作员也开放——runEnabled 只看「服务健康 + 已登录」。 */
+  const runEnabled = healthy === true && roleKnown && !!me
   const { run, attach, activity } = useJobRun({
     enabled: runEnabled,
     restorePeriod: urlRestorePeriod,
@@ -437,7 +439,6 @@ export default function App() {
     { view: 'review', label: '审核台', icon: 'seal', href: '/app/?view=review' },
     { view: 'analysis', label: 'AI 分析台', icon: 'chart', href: '/app/?view=analysis' },
     { view: 'forecast', label: '预测台', icon: 'trend', href: '/app/?view=forecast' },
-    { view: 'shelf', label: '陈列馆', icon: 'book', href: '/app/shelf/' },
   ]
   const isOperator = me?.role === 'operator'
   const notLoggedIn = roleKnown && !me
@@ -470,29 +471,11 @@ export default function App() {
             </a>
           ))}
         </nav>
-        {periods.length > 0 && (
-          <label className="period-chip">
-            <span>期次</span>
-            <select value={selected ?? ''} onChange={(e) => pickPeriod(e.target.value)}
-                    aria-label="切换期次" title="切换后地址栏与各屏一起跟随">
-              {periods.map((p) => <option key={p.period} value={p.period}>{p.period}</option>)}
-            </select>
-          </label>
-        )}
-        {me?.role ? (
-          /* 右上角身份芯片 = 退出入口（紧凑版：名字 + 退出；角色不重复展示——工作区只对馆员开） */
-          <a className="who who-exit" href="/logout" title={`${me.name} · 退出登录，回到登录页`}>
-            <span className="avatar">{me.name?.slice(0, 1) ?? '？'}</span>
-            {me.name}
-            <span className="exit">退出</span>
-          </a>
-        ) : (
-          <div className="who">
-            <span className="avatar">？</span>
-            {roleKnown ? '未登录' : '角色未知'}
-            {notLoggedIn ? <> · <a href="/login">去登录</a></> : '（身份服务没有回应）'}
-          </div>
-        )}
+        {/* 皮肤开关：与对话页同款（2026-10-12 从左下角搬到右上角）；默认云大绿 */}
+        <span className="skin-switch ml-auto" role="group" aria-label="切换配色">
+          <button type="button" aria-pressed={palette === 'ynu'} onClick={() => setPalette('ynu')}>云大绿</button>
+          <button type="button" aria-pressed={palette === 'zhu'} onClick={() => setPalette('zhu')}>朱砂</button>
+        </span>
       </header>
 
       <main className="wrap">
@@ -640,11 +623,14 @@ export default function App() {
         </div>
       </footer>
 
-      {/* 配色开关：固定左下角（rick 2026-09-29：给顶栏腾地方） */}
-      <div className="palette-switch palette-dock" role="group" aria-label="切换配色">
-        <button type="button" aria-pressed={palette === 'ynu'} onClick={() => setPalette('ynu')}>云大绿</button>
-        <button type="button" aria-pressed={palette === 'zhu'} onClick={() => setPalette('zhu')}>朱砂</button>
-      </div>
+      {/* 身份控件：固定左下角（2026-10-12：与对话页左下角同款；点击才出「退出登录」） */}
+      {me ? <UserChip me={me} dock /> : (
+        <span className="user-chip user-chip-dock" aria-live="polite">
+          <span className="user-chip-btn" aria-disabled="true">
+            <span className="av">？</span>{roleKnown ? '未登录' : '角色确认中…'}
+          </span>
+        </span>
+      )}
     </>
   )
 }

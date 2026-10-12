@@ -72,23 +72,8 @@ a{color:inherit}
   color:var(--ink-2);text-decoration:none;font-size:15px;white-space:nowrap;flex:0 0 auto}
 .nav a[aria-current="page"]{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
 .nav a:hover{background:var(--panel)}
-.who{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-2);white-space:nowrap;
-  padding-left:12px;border-left:1px solid var(--line)}
 /* 身份芯片 = 退出入口（2026-09-29 紧凑版：给顶栏腾地方）——整块可点，hover 浮出「退出」胶囊 */
-.who-exit{text-decoration:none;border-radius:999px;padding:2px 4px 2px 3px;margin-left:0;
-  font-size:12.5px;gap:6px;transition:background .15s}
-.who-exit:hover{background:var(--panel)}
-.who-exit .exit{font-size:11.5px;color:var(--ink-3);border:1px solid var(--line);border-radius:999px;
-  padding:0 7px;margin-left:1px;transition:color .15s,border-color .15s}
-.who-exit:hover .exit{color:var(--zhu);border-color:var(--zhu)}
-.avatar{width:24px;height:24px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);
-  display:grid;place-items:center;font-size:12px;font-weight:700}
-.palette-switch{display:flex;gap:4px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}
-.palette-switch button{border:0;border-radius:999px;padding:5px 9px;background:transparent;color:var(--ink-2);
-  font:inherit;font-size:12.5px;cursor:pointer}
-.palette-switch button[aria-pressed="true"]{background:var(--zhu);color:#fff}
 /* 配色开关停左下角（rick 2026-09-29：顶栏只留工作流；这是全站唯一配色入口） */
-.palette-dock{position:fixed;left:20px;bottom:16px;z-index:30;box-shadow:0 2px 10px rgba(34,43,37,.10)}
 /* 顶栏期次章（票 03）：全站唯一的期次切入口；一改即写 URL，各屏跟随 */
 .period-chip{display:flex;align-items:center;gap:6px;color:var(--ink-3);font-size:13.5px;white-space:nowrap}
 .period-chip select{font:inherit;font-size:14px;font-variant-numeric:tabular-nums;padding:6px 10px;
@@ -913,3 +898,19 @@ a{color:inherit}
 @media (prefers-reduced-motion: reduce){
   .app-footer .f-nav a{transition:none}
 }
+
+/* ---------- 统一身份控件（2026-10-12）：工作区左下角 / 对话页左下角，同一组件、同一交互 ---------- */
+.user-chip{position:relative;display:inline-flex;font-size:13.5px;color:var(--ink-2)}
+.user-chip-dock{position:fixed;left:20px;bottom:16px;z-index:40;background:var(--card);border:1px solid var(--line);border-radius:999px;box-shadow:0 2px 10px rgba(34,43,37,.10)}
+.user-chip-btn{display:inline-flex;align-items:center;gap:9px;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer;padding:6px 14px 6px 6px;border-radius:999px;transition:background .15s}
+.user-chip-btn:hover{background:var(--panel)}
+.user-chip .av{width:26px;height:26px;border-radius:50%;background:var(--zhu);color:#f1ead8;display:grid;place-items:center;font-family:var(--serif);font-size:13px}
+.user-chip-pop{position:absolute;left:0;bottom:calc(100% + 8px);min-width:140px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 24px rgba(34,43,37,.12);padding:6px;z-index:50}
+.user-chip-pop a{display:block;padding:9px 12px;border-radius:8px;color:var(--ink-2);text-decoration:none;font-size:14px;transition:background .15s,color .15s}
+.user-chip-pop a:hover{background:var(--panel);color:var(--zhu)}
+
+/* ---------- 统一皮肤开关（2026-10-12）：与对话页同款分段胶囊；工作区放顶栏右上 ---------- */
+.skin-switch{display:flex;border:1px solid var(--line);border-radius:999px;background:var(--panel);overflow:hidden}
+.skin-switch button{border:0;background:transparent;font:inherit;font-size:13.5px;padding:0 12px;min-height:32px;cursor:pointer;color:var(--ink-3);transition:background .15s,color .15s}
+.skin-switch button[aria-pressed="true"]{background:var(--zhu);color:#fff}
+

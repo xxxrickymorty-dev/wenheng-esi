@@ -116,17 +116,34 @@ class TestAdmin写端点上锁:
             _Req(config.OPERATOR_USER))).status_code == 403
         assert asyncio.run(app_module.api_forecast_run(_Req(None))).status_code == 401
 
-    def test_create_job用require_admin(self):
+    def test_create_job放行操作员_匿名401(self):
+        """2026-10-12：出报告对操作员开放——空表单落到「请选择或填写期次」400（不是 403）。"""
+        operator = asyncio.run(app_module.api_create_job(
+            _Req(config.OPERATOR_USER), period="", file=None, backtest="0"))
+        assert operator.status_code == 400
         assert asyncio.run(app_module.api_create_job(
-            _Req(config.OPERATOR_USER))).status_code == 403
-        assert asyncio.run(app_module.api_create_job(_Req(None))).status_code == 401
+            _Req(None), period="", file=None, backtest="0")).status_code == 401
 
-    def test_sign用require_admin(self):
+    def test_sign放行操作员_匿名401(self):
+        """2026-10-12：审批（签单）对操作员开放——不存在的期次回 404（不是 403）。"""
+        class _ReqJson:
+            def __init__(self, user):
+                self.session = {"user": user} if user else {}
+
+            async def json(self):
+                return {"known": True, "note": "权限矩阵测试"}
+
         assert asyncio.run(app_module.api_period_sign_json(
-            _Req(config.OPERATOR_USER), "202609")).status_code == 403
+            _ReqJson(config.OPERATOR_USER), "199901")).status_code == 404
+        assert asyncio.run(app_module.api_period_sign_json(
+            _ReqJson(None), "199901")).status_code == 401
 
-    def test_rollback用require_admin(self):
+    def test_回滚与取数仍只管理员(self):
         assert asyncio.run(app_module.api_rollback(
+            _Req(config.OPERATOR_USER), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_rebuild_json(
+            _Req(config.OPERATOR_USER), "202609")).status_code == 403
+        assert asyncio.run(app_module.api_period_flexible_generate(
             _Req(config.OPERATOR_USER), "202609")).status_code == 403
 
 

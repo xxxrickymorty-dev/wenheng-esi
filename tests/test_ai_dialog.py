@@ -90,14 +90,19 @@ def test_带期次槽位_短应诺_按推进走(tmp_path):
     assert ans.data["kind"] == "proceed"
 
 
-def test_操作员只读_报告意图直接说明白(tmp_path):
-    """操作员（readonly）说要出报告：不演流程、不盘点，直接说只读 + 指去查数据。"""
-    ans = run_dialog("帮我做 9 月的报告", root=tmp_path, readonly=True)
-    assert "操作员只读" in ans.text and "查一下化学的接近度" in ans.text
-    assert ans.data["run"] is None and ans.data["inventory"] is None
-    assert ans.data["actions"] == []
-    # 查数据不受只读影响（照旧路由）
-    q = run_dialog("查一下化学的接近度", root=tmp_path, period="202609", readonly=True)
+def test_操作员报告意图_照常走盘点(tmp_path):
+    """2026-10-12：出报告对操作员开放——报告意图与管理员同路（盘点照常，不再说「只读」）。"""
+    inv = {"period": "202607", "released": True,
+           "pieces": [{"key": k, "label": lb, "state": "ok", "note": ""} for k, lb in
+                      (("monitor", "监测表"), ("esi", "ESI 原始包"),
+                       ("papers", "顶尖论文清单"), ("incites", "InCites 快照"))],
+           "n_pieces": 4, "n_missing": 0, "fallback": ""}
+    ans = run_dialog("帮我做 7 月的报告", root=tmp_path, inventory=inv)
+    assert "操作员只读" not in ans.text
+    assert "盘点 · 202607" in ans.text and "数据齐" in ans.text
+    assert ans.data["verdict"] == "ready"
+    # 查数据不受影响（照旧路由）
+    q = run_dialog("查一下化学的接近度", root=tmp_path, period="202607")
     assert q.data["kind"] == "query"
 
 

@@ -136,6 +136,8 @@ export function Review({
   const row = periods.find((p) => p.period === period) ?? null
   const status = row?.status ?? 'unsigned'
   const isAdmin = me?.role === 'admin'
+  /* 2026-10-12：审批（签单/撤回）对操作员也开放；在线填、标存疑、重出仍只管理员。 */
+  const canSign = !!me
 
   useEffect(() => {
     if (!period) return
@@ -363,7 +365,7 @@ export function Review({
 
       {!isAdmin && (
         <div className="pending-box mt-12">
-          操作员只读——签单与填写仅管理员可用（服务端的权限设置挡着；下面的正文照常可看）。
+          操作员可以签单与撤回（审批）；在线填写、标存疑与重出报告仍仅管理员可用（服务端权限设置挡着）。
         </div>
       )}
 
@@ -406,7 +408,7 @@ export function Review({
               <div className="rv-kv"><span>报告里的空</span><b>{nField} 处（待填 {nLeft}）</b></div>
               <div className="rv-kv"><span>存疑</span><b style={doubtN > 0 ? { color: 'var(--gold-ink)' } : undefined}>{doubtN} 处</b></div>
               <label className="rv-ack">
-                <input type="checkbox" checked={known} disabled={!isAdmin || busy !== null}
+                <input type="checkbox" checked={known} disabled={!canSign || busy !== null}
                        onChange={(e) => setKnown(e.target.checked)} />
                 <span>我已逐项看过<b>待人工 {nField} 处、存疑 {doubtN} 处</b>，同意放行。</span>
               </label>
@@ -417,15 +419,15 @@ export function Review({
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="批注（可选）：这一版为什么可以签单、还有哪些已知问题"
                 rows={2}
-                disabled={!isAdmin}
+                disabled={!canSign}
               />
               <div className="rv-btns">
                 <button className="btn primary" onClick={doSign}
-                        disabled={!isAdmin || busy !== null || signed || (needAck && !known)}
+                        disabled={!canSign || busy !== null || signed || (needAck && !known)}
                         title={needAck && !known ? '先勾选上方「我已逐项看过」' : undefined}>
                   <Icon name="seal" size={19} />{busy === 'sign' ? '正在处理…' : '签单'}
                 </button>
-                <ConfirmButton className="btn" disabled={!isAdmin || busy !== null || !signed}
+                <ConfirmButton className="btn" disabled={!canSign || busy !== null || !signed}
                                confirmText="确认撤回？签名会失效" onConfirm={doRevoke}>
                   <Icon name="refresh" size={18} />撤回
                 </ConfirmButton>

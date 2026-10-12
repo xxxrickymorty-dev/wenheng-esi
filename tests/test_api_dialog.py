@@ -74,7 +74,7 @@ def test_参数与角色原样交给能力口(monkeypatch):
                                 "slots": {"period": "202609", "intent": "出报告"}})
     assert r["slots"] == {"period": "202605", "intent": "出报告"}, "只改期次，意图不变"
     assert seen == {"cap": "dialog", "period": "202609",
-                    "payload": {"text": "再出 202605 的", "readonly": False}, "actor": "admin"}
+                    "payload": {"text": "再出 202605 的"}, "actor": "admin"}
     assert r["verdict"] == "" and r["inventory"] is None and r["actions"] == []
 
 
@@ -213,7 +213,7 @@ def test_查数据_服务器按意图调qa(monkeypatch, tmp_path):
     assert r["answer"]["text"].startswith("化学的接近度") and r["answer"]["record_id"] == "r-qa"
     assert r["slots"] == {"period": "202607", "intent": ""}, "期次解析与槽位共享"
     assert r["run"] is None, "查数据不出稿"
-    assert calls == [("dialog", "202607", {"text": "查一下化学的接近度", "readonly": False}),
+    assert calls == [("dialog", "202607", {"text": "查一下化学的接近度"}),
                      ("qa", "202607", {"question": "查一下化学的接近度"})], \
         "两意图经同一端点：服务器按意图调 ai.run(\"qa\", …)，问句原样"
 
@@ -342,11 +342,11 @@ def test_空话400(monkeypatch):
 
 
 def test_操作员可用_匿名不可用(tmp_path):
-    """2026-10-11：对话前门对操作员放行——报告意图直接说明白「操作员只读」；匿名 401。"""
+    """2026-10-12：出报告对操作员开放——报告意图照常盘点（不再说「操作员只读」）；匿名 401。"""
     inv = fake_inventory("202607", released=True)
     with ai.using(data_root=tmp_path, inventory=lambda p: inv):
         r = call(config.OPERATOR_USER, {"text": "做 7 月的报告"})
-    assert "操作员只读" in r["text"] and r["run"] is None
+    assert "操作员只读" not in r["text"] and "盘点 · 202607" in r["text"]
     assert r["slots"]["period"] == "202607", "期次槽位照常亮起"
     assert call(None, {"text": "做 7 月的报告"}).status_code == 401
 

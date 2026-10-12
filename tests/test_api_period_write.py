@@ -195,11 +195,12 @@ class TestForecastChoice落盘:
 
 
 class Test权限门:
-    def test_sign用require_admin(self):
+    def test_sign放行操作员_匿名401(self):
+        """2026-10-12：审批对操作员开放——不存在的期次回 404（不是 403）。"""
         assert asyncio.run(app_module.api_period_sign_json(
-            _Req(config.OPERATOR_USER, "POST", {}), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER, "POST", {}), "199901")).status_code == 404
         assert asyncio.run(app_module.api_period_sign_json(
-            _Req(None, "POST", {}), "202609")).status_code == 401
+            _Req(None, "POST", {}), "199901")).status_code == 401
 
     def test_forecast_choice用require_admin(self):
         assert asyncio.run(app_module.api_forecast_choice(
@@ -262,11 +263,12 @@ class TestP2写操作:
         src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
         assert '@app.post("/api/periods/{period}/flag")' in src
 
-    def test_revoke用require_admin(self):
+    def test_revoke放行操作员_匿名401(self):
+        """2026-10-12：撤回随审批一并对操作员开放——不存在的期次回 404（不是 403）。"""
         assert asyncio.run(app_module.api_period_revoke_json(
-            _Req(config.OPERATOR_USER, "POST", {}), "202609")).status_code == 403
+            _Req(config.OPERATOR_USER, "POST", {}), "199901")).status_code == 404
         assert asyncio.run(app_module.api_period_revoke_json(
-            _Req(None, "POST", {}), "202609")).status_code == 401
+            _Req(None, "POST", {}), "199901")).status_code == 401
 
     def test_fill用require_admin(self):
         assert asyncio.run(app_module.api_period_fill_json(

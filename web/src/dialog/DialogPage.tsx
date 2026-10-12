@@ -22,6 +22,7 @@ import { trioLinks, type TrioLink } from '../lib/repro'
 import { latestProgress } from '../lib/runMachine'
 import { appHref, errorNote, isTerminalState, taskLabel } from '../lib/status'
 import { taskView } from '../lib/taskview'
+import { UserChip } from '../lib/UserChip'
 import { NumberedText } from '../NumberedText'
 
 /** 出稿轨迹（票 04）：逐段出（挑学科 / 配图 / 取数 / 数据校验 / 收尾 / 复刻）。
@@ -126,8 +127,10 @@ export default function DialogPage() {
   const others = convs.filter((c) => c.turns.length > 0)
   /* 空态第一屏＝本期任务视图（票 06）；拿不到状态就退回普通问候 */
   const tv = active.turns.length === 0 ? taskView(home) : null
-  /* 2026-10-11：操作员只读——出稿/一键生成/回滚/AI 开关等写动作仅管理员可用（真门在后端）。 */
+  /* 2026-10-11：管理员专属位（AI 开关、回滚、自动修复）；2026-10-12：出报告/审批对
+     操作员也开放——「开跑/覆盖重出」用 canRun（两种角色都行），真门仍在后端。 */
   const canEdit = me?.role === 'admin'
+  const canRun = !!me
 
   useEffect(() => {
     document.documentElement.dataset.palette = palette
@@ -232,8 +235,8 @@ export default function DialogPage() {
       /* 出稿意图（票 03/05）：auto=true 直接开跑，且此时**没有产物**＝首出期次
          （两段式要复刻先行——灵活报告只消费流水线产物）；auto=false 产物已在，
          等人在按钮上点了才跑（行内二次确认）。
-         ⚠ 操作员只读：不自动开跑（真门也在后端——POST /api/jobs 仅管理员）。 */
-      if (canEdit && r.run?.auto && r.run.period) void startRun(r.run.period, replyIndex, r.run.intent, true)
+         2026-10-12：操作员也有出报告权限（后端 POST /api/jobs 已对两角色开放）。 */
+      if (canRun && r.run?.auto && r.run.period) void startRun(r.run.period, replyIndex, r.run.intent, true)
     } catch (e) {
       updateActive((c) => ({
         ...c,
@@ -516,9 +519,8 @@ export default function DialogPage() {
             ))
           )}
         </nav>
-        <div className="dlg-me">
-          <span className="dlg-av" aria-hidden="true">{me?.name?.slice(0, 1) ?? '·'}</span>
-          {me ? `${me.name} · ${me.role === 'admin' ? '管理员' : '操作员'}` : '角色确认中…'}
+        <div className="dlg-me-wrap">
+          <UserChip me={me} />
         </div>
       </aside>
 
@@ -528,7 +530,8 @@ export default function DialogPage() {
           <div className="dlg-right">
             {/* 2026-10-12（rick）：工作台下拉取消——只留一个「去生成台」入口（各台之间在工作区导航里走）。 */}
             <a className="dlg-wk-link" href={withPeriod('/app/')}>去生成台 ▸</a>
-            <span className="dlg-skin" role="group" aria-label="配色">
+            {/* 皮肤开关：与工作区同款（共享 .skin-switch）；默认云大绿 */}
+            <span className="skin-switch" role="group" aria-label="切换配色">
               <button type="button" aria-pressed={palette === 'ynu'}
                       onClick={() => setPalette('ynu')}>云大绿</button>
               <button type="button" aria-pressed={palette === 'zhu'}
@@ -645,11 +648,11 @@ export default function DialogPage() {
                   )}
                   {t.who === 'wh' && !!t.actions?.length && !t.dismissed && (
                     <div className="dlg-acts">
-                      {/* 2026-10-11：操作员只读——「出稿」与隐藏屏入口不出现（写动作真门在后端） */}
-                      {t.actions.filter((a) => canEdit
-                        || (a.kind !== 'run'
-                            && !(a.kind === 'goto'
-                                 && OPERATOR_HIDDEN_HREFS.has(`/app/?view=${a.view ?? 'acquire'}`))))
+                      {/* 2026-10-12：出稿（run）两种角色都有（操作员也可出报告）；
+                          隐藏屏入口（取数台/运行档案）对操作员不出现——真门都在后端。 */}
+                      {t.actions.filter((a) => canRun
+                        || (a.kind === 'goto'
+                            && !OPERATOR_HIDDEN_HREFS.has(`/app/?view=${a.view ?? 'acquire'}`)))
                         .map((a, j) => a.kind === 'goto' ? (
                         <a key={j} className="dlg-act primary"
                            href={buildPeriodUrl(`/app/?view=${a.view ?? 'acquire'}`,
@@ -673,9 +676,6 @@ export default function DialogPage() {
                           {a.text}
                         </button>
                       ))}
-                      {!canEdit && t.actions.some((a) => a.kind === 'run') && (
-                        <span className="dlg-act" aria-disabled="true">出稿仅管理员可用</span>
-                      )}
                     </div>
                   )}
                 </div>
@@ -695,8 +695,7 @@ export default function DialogPage() {
             <div className="dlg-box">
               <textarea rows={1} aria-label="对文衡说话" value={input}
                         placeholder={running ? '正在出稿…（点右边的 ■ 可以停）'
-                                             : canEdit ? '说一句话，比如「帮我做 9 月的报告」…'
-                                                       : '查数据，比如「查一下化学的接近度」…'}
+                                             : '说一句话，比如「帮我做 9 月的报告」…'}
                         disabled={!!running}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => {

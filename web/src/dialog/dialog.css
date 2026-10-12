@@ -8,6 +8,7 @@
 /* ---------- 左：对话历史 ---------- */
 .dlg-side{flex:0 0 264px;display:flex;flex-direction:column;min-height:0;
   background:var(--side, var(--panel));border-right:1px solid var(--line)}
+.dlg-me-wrap{padding:10px 12px 12px}
 .dlg-brand{display:flex;align-items:baseline;gap:8px;padding:16px 16px 10px}
 .dlg-brand strong{font-family:var(--serif);font-size:18px}
 .dlg-brand span{font-size:13.5px;color:var(--ink-3)}
@@ -21,10 +22,6 @@
 .dlg-hist a[aria-current="true"]{background:var(--card);color:var(--ink);
   box-shadow:inset 2px 0 0 var(--zhu)}
 .dlg-hist-note{padding:9px 10px;font-size:13.5px;color:var(--ink-3)}
-.dlg-me{display:flex;align-items:center;gap:9px;padding:11px 14px;
-  border-top:1px solid var(--line);font-size:14px;color:var(--ink-2)}
-.dlg-av{width:26px;height:26px;border-radius:999px;background:var(--zhu);color:#fff;
-  display:flex;align-items:center;justify-content:center;font-size:13.5px}
 .dlg-skip{position:absolute;left:-9999px;top:8px;z-index:99;background:var(--card);
   border:1px solid var(--line);border-radius:8px;padding:8px 14px}
 .dlg-skip:focus{left:12px}
@@ -44,12 +41,6 @@
 .dlg-slot-x{transition:background .15s,color .15s;border:0;background:transparent;cursor:pointer;color:var(--ink-3);
   font:inherit;font-size:13.5px;width:32px;height:32px;border-radius:999px}
 .dlg-slot-x:hover{background:var(--card);color:var(--ink)}
-.dlg-skin{display:flex;border:1px solid var(--line);border-radius:999px;
-  background:var(--panel);overflow:hidden}
-.dlg-skin button{transition:background .15s,color .15s;border:0;background:transparent;font:inherit;font-size:13.5px;
-  padding:0 12px;min-height:32px;cursor:pointer;color:var(--ink-2)}
-.dlg-skin button:hover{background:var(--card)}
-.dlg-skin button[aria-pressed="true"]{background:var(--zhu);color:#fff}
 /* 「查数据」能力开关（票 07）：问文衡并入前门，开关跟着能力走 */
 .dlg-qa{transition:background .15s,color .15s;border:1px solid var(--line);background:var(--panel);border-radius:999px;
   font:inherit;font-size:13.5px;padding:0 12px;min-height:32px;cursor:pointer;

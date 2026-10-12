@@ -340,7 +340,9 @@ export function Workbench({
   onToolUploaded: (jobId: string, period: string) => void
 }) {
   const isAdmin = me?.role === 'admin'
-  const canGenerate = isAdmin && period != null && /^\d{6}$/.test(period) && !actionsLocked && !activeRun && !submitting
+  /* 2026-10-12：出报告对操作员也开放（后端 POST /api/jobs 已开）；取数/工具折仍只管理员。 */
+  const canRun = !!me
+  const canGenerate = canRun && period != null && /^\d{6}$/.test(period) && !actionsLocked && !activeRun && !submitting
     && (!run || isTerminal(run.status ?? undefined))
   const hasGenerateAction = wb.focusAction === 'generate' || wb.focusAction === 'rerun'
 
@@ -359,7 +361,7 @@ export function Workbench({
             <div className="sub">{wb.focusSub}</div>
           </div>
           <div className="cta">
-            {wb.focusAction === 'generate' && isAdmin && (
+            {wb.focusAction === 'generate' && canRun && (
               <>
                 <span className="hint">约 20 秒</span>
                 <button className="btn primary" onClick={onGenerate} disabled={!canGenerate}>
@@ -367,7 +369,7 @@ export function Workbench({
                 </button>
               </>
             )}
-            {wb.focusAction === 'rerun' && isAdmin && (
+            {wb.focusAction === 'rerun' && canRun && (
               <ConfirmButton className="btn" disabled={!canGenerate}
                              confirmText="确认重跑？会撤下当前成品" onConfirm={onGenerate}>
                 <Icon name="refresh" size={20} />重新生成
@@ -389,11 +391,9 @@ export function Workbench({
 
         {!canGenerate && hasGenerateAction && (
           <p className="hint card-foot">
-            {me?.role === 'operator'
-              ? <>操作员只读：可以看进度与产物，生成/重跑仅管理员可用。</>
-              : actionLockReason ?? (me == null
-                ? <>系统暂时无法确认你的身份，为保护数据，生成按钮暂时不能使用。</>
-                : <>先选择一期，再开始生成。</>)}
+            {actionLockReason ?? (me == null
+              ? <>系统暂时无法确认你的身份，为保护数据，生成按钮暂时不能使用。</>
+              : <>先选择一期，再开始生成。</>)}
         </p>
         )}
 
