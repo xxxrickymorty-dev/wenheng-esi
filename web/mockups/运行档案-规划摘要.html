@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 运行档案「规划摘要」（静态提案）</title>
+<style>
+:root{
+  --bg:#F4F3ED;--card:#FFFDF8;--panel:#F0F1EB;
+  --ink:#222B25;--ink-2:#3F4C42;--ink-3:#58655C;
+  --line:#DDE1D8;--line-2:#E6E9E2;
+  --zhu:#1A4B27;--zhu-soft:#E3EDE4;
+  --gold:#B19A65;--gold-soft:#F1EBDD;--gold-ink:#62501F;
+  --ok:#28643A;--ok-soft:#E6F0E7;
+  --warn:#75622D;--warn-soft:#F6EED8;
+  --bad:#8C3B2E;--bad-soft:#F6E4DF;
+  --serif:"Source Han Serif SC","Noto Serif SC",Songti SC,SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 var(--sans)}
+.review{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding:9px 22px;background:var(--panel);border-bottom:1px dashed var(--line);font-size:12.5px;color:var(--ink-2)}
+.review b{color:var(--gold-ink)}
+.topbar{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:9px;font-family:var(--serif);white-space:nowrap}
+.brand strong{font-size:21px;letter-spacing:.04em}
+.brand span{font-size:12px;color:var(--ink-3);letter-spacing:.08em}
+.nav{display:flex;gap:4px;margin-left:auto}
+.nav a{padding:7px 11px;color:var(--ink-2);text-decoration:none;border-radius:8px;font-size:14px;white-space:nowrap}
+.nav a.active{background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+.who{display:flex;align-items:center;gap:8px;border-left:1px solid var(--line);padding-left:14px;color:var(--ink-2);font-size:13px;white-space:nowrap}
+.avatar{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--zhu-soft);color:var(--zhu);font-weight:700}
+.wrap{max-width:1150px;margin:auto;padding:18px 22px 70px}
+.crumb{color:var(--ink-3);font-size:13.5px;margin:0 0 12px}
+.crumb a{color:var(--zhu)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 22px;box-shadow:0 1px 2px rgba(34,43,37,.05)}
+.card+.card,.card+.fold,.fold+.card{margin-top:16px}
+h2{margin:0;font-family:var(--serif);font-size:19px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fc-no{font-family:var(--mono);font-size:12px;letter-spacing:.18em;color:var(--zhu);background:var(--zhu-soft);border-radius:6px;padding:2px 7px}
+.hint{color:var(--ink-3);font-size:13px}
+.mono{font-family:var(--mono)}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 11px;border-radius:999px;font-size:12.5px;font-weight:650}
+.pill.signed{background:var(--zhu-soft);color:var(--zhu)}
+.pill.stale{background:var(--gold-soft);color:var(--gold-ink)}
+.pill.unsigned{background:var(--panel);color:var(--ink-3)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.plan-rule{background:var(--panel);color:var(--ink-3);border:1px solid var(--line)}
+.pill.plan-model{background:var(--gold-soft);color:var(--gold-ink)}
+.pill.plan-fb{background:var(--warn-soft);color:var(--warn)}
+.sum{display:flex;gap:10px 18px;flex-wrap:wrap;align-items:center;background:var(--panel);border:1px solid var(--line-2);border-radius:10px;padding:9px 14px;margin-top:14px;color:var(--ink-2);font-size:13.5px}
+.sum b{color:var(--ink)}
+.fchips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.fchips button{padding:5px 13px;border:1px solid var(--line);border-radius:999px;background:var(--card);font:inherit;font-size:13px;color:var(--ink-2);cursor:pointer}
+.fchips button[aria-pressed="true"]{border-color:var(--zhu);background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+.qlist{margin-top:12px;display:grid;gap:0}
+.ai-row{border-top:1px solid var(--line-2);padding:9px 0}
+.ai-row:first-child{border-top:0}
+.ai-row-btn{width:100%;border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;padding:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ai-row-btn:hover .q{color:var(--zhu)}
+.q{font-weight:650}
+.row-end{display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap}
+.body{display:none;padding:2px 0 6px}
+.ai-row.open .body{display:block}
+.chainline{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.arrow{color:var(--ink-3);font-size:14px}
+/* 规划摘要块 */
+.plan{margin-top:10px;border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;background:var(--panel);padding:10px 14px}
+.plan-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.plan-h b{font-family:var(--serif);font-size:14.5px}
+.pcards{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.pc{display:grid;gap:1px;padding:7px 12px;border:1px solid var(--line);border-radius:9px;background:var(--card);min-width:158px}
+.pc-k{font-size:11.5px;letter-spacing:.08em;color:var(--gold-ink)}
+.pc-v{font-size:14px;font-weight:650}
+.pc-w{font-size:12px;color:var(--ink-3)}
+.pc-s{font-size:11.5px;color:var(--ink-3)}
+.plan-note{margin:8px 0 0;font-size:12.5px;color:var(--ink-2)}
+.plan-empty{margin:0;font-size:12.5px;color:var(--ink-3)}
+.foot{margin:12px 0 0;color:var(--ink-3);font-size:12.5px}
+.fold{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-top:16px}
+.fold summary{padding:11px 18px;cursor:pointer;font-size:14.5px;display:flex;align-items:center;gap:10px;list-style:none}
+.fold summary::-webkit-details-marker{display:none}
+.fold summary::before{content:"▸";color:var(--zhu)}
+.fold[open] summary::before{content:"▾"}
+.fold summary .sm{color:var(--ink-3);font-size:13px;margin-left:auto}
+.fold-body{padding:2px 18px 14px;border-top:1px dashed var(--line-2)}
+.fold-body p{margin:8px 0 0;font-size:13.5px;color:var(--ink-2);line-height:1.85}
+.check ul{margin:8px 0 0;padding-left:20px;color:var(--ink-2);font-size:13.5px}
+.check li{margin:5px 0}
+.dot{width:20px;height:20px;min-width:20px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--card);color:var(--ink-3);font:12px/18px var(--serif);cursor:pointer}
+.dot:hover{border-color:var(--zhu);color:var(--zhu)}
+.pop{position:fixed;z-index:50;max-width:380px;display:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 13px;box-shadow:0 8px 26px rgba(34,43,37,.16);font-size:13px;color:var(--ink-2)}
+.pop b{color:var(--ink)}
+.quote{margin:8px 0 0;padding:7px 12px;border-left:3px solid var(--line);background:var(--card);border-radius:0 8px 8px 0;font-size:12.5px;color:var(--ink-3)}
+</style>
+</head>
+<body>
+<div class="review">
+  <b>静态提案稿 · 运行档案「规划摘要」块</b>
+  <span>让每次问答的台账查询可见：查了什么、由谁规划（规则 / 模型）。数据来自新内核的规划留痕；问法取真实，条数与耗时为示意。待审——审过再动 React。</span>
+</div>
+
+<header class="topbar">
+  <div class="brand"><strong>文衡</strong><span>学科信息参考</span></div>
+  <nav class="nav" aria-label="工作区">
+    <a href="#">生成台</a><a href="#">报告</a><a href="#">审核台</a><a href="#">台账</a><a href="#">分析台</a><a href="#">预测台</a>
+  </nav>
+  <div class="who"><span class="avatar">卜</span>卜彤 · 管理员</div>
+</header>
+
+<main class="wrap">
+  <p class="crumb"><a href="#">← 回生成台</a> · 运行档案 · 期次 <b class="mono">202609</b> · <span class="hint">本稿＝问答条目内新增「规划摘要」（接在现有「问 → 模型 → 校验」链上）</span></p>
+
+  <!-- ============ 问答记录 ============ -->
+  <section class="card">
+    <h2><span class="fc-no">02</span>问文衡 · 问答记录
+      <span class="hint">问 → 规划 → 模型 → 校验</span>
+      <button class="dot" type="button" data-info="<b>记录里有什么</b><br>问题、这次让台账查了什么（规划摘要：查询项与规划来源）、模型调用（用了哪个模型、成没成）、校验结果（盾）。不含回答正文与提示词。">ⓘ</button>
+    </h2>
+    <div class="sum">
+      <span>本期 <b>5</b> 次</span><span>模型作答 <b>3</b></span><span>回落 <b>2</b></span><span>平均 <b>4.6 秒</b></span><span>最近一次 <b class="mono">09-23 16:02</b></span>
+    </div>
+    <div class="fchips" id="fchips" role="group" aria-label="筛选问答记录">
+      <button type="button" aria-pressed="true" data-kind="all">全部</button>
+      <button type="button" aria-pressed="false" data-kind="model">模型作答</button>
+      <button type="button" aria-pressed="false" data-kind="rule">规则回落</button>
+    </div>
+
+    <div class="qlist" id="qlist">
+      <!-- #0142 规则规划（开） -->
+      <div class="ai-row open" data-kind="model">
+        <button class="ai-row-btn" type="button" aria-expanded="true">
+          <span class="mono hint">16:02</span>
+          <span class="q">化学的接近度最近几期怎么变的</span>
+          <span class="row-end">
+            <span class="pill signed">模型作答</span>
+            <span class="pill plan-rule">规划 · 规则</span>
+            <span class="pill ok">校验 13/13</span>
+            <span class="hint mono">#0142 · 4.3 秒</span>
+          </span>
+        </button>
+        <div class="body">
+          <div class="chainline">
+            <span class="pill unsigned">问 · 问文衡</span>
+            <span class="arrow">→</span>
+            <span class="pill plan-rule">规划 · 规则 · 1 项查询</span>
+            <span class="arrow">→</span>
+            <span class="pill signed">云模型作答 · deepseek-flash</span>
+            <span class="arrow">→</span>
+            <span class="pill ok">校验 · 盾 13/13 个数字登记</span>
+          </div>
+          <div class="plan">
+            <div class="plan-h"><b>规划摘要</b><span class="hint">这次让台账查了什么、由谁规划</span></div>
+            <div class="pcards">
+              <div class="pc"><span class="pc-k">指标序列</span><span class="pc-v">化学 · 接近度</span><span class="pc-w">近六期</span><span class="pc-s">台账《接近度》表</span></div>
+            </div>
+            <p class="plan-note">窗口＝台账期次轴最近六期（202511–202609）。规划只出「查什么」，不产生任何数字。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- #0141 模型规划（开，解上文指代） -->
+      <div class="ai-row open" data-kind="model">
+        <button class="ai-row-btn" type="button" aria-expanded="true">
+          <span class="mono hint">15:47</span>
+          <span class="q">它最近怎么样</span>
+          <span class="row-end">
+            <span class="pill signed">模型作答</span>
+            <span class="pill plan-model">规划 · 模型</span>
+            <span class="pill ok">校验 8/8</span>
+            <span class="hint mono">#0141 · 5.1 秒</span>
+          </span>
+        </button>
+        <div class="body">
+          <div class="chainline">
+            <span class="pill unsigned">问 · 问文衡</span>
+            <span class="arrow">→</span>
+            <span class="pill plan-model">规划 · 模型 · 1 项查询</span>
+            <span class="arrow">→</span>
+            <span class="pill signed">云模型作答 · deepseek-flash</span>
+            <span class="arrow">→</span>
+            <span class="pill ok">校验 · 盾 8/8 个数字登记</span>
+          </div>
+          <div class="plan">
+            <div class="plan-h"><b>规划摘要</b><span class="hint">这次让台账查了什么、由谁规划</span></div>
+            <div class="pcards">
+              <div class="pc"><span class="pc-k">指标序列</span><span class="pc-v">物理学 · 论文数</span><span class="pc-w">近六期</span><span class="pc-s">台账《论文数》表</span></div>
+            </div>
+            <p class="plan-note">问句没点名学科——「物理学」由模型从对话上文解出；其余照常。</p>
+            <p class="quote">上文：用户：物理学的论文数是多少</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- #0140 规划回退（模型规划被拒 → 规则兜底） -->
+      <div class="ai-row" data-kind="model">
+        <button class="ai-row-btn" type="button" aria-expanded="false">
+          <span class="mono hint">11:07</span>
+          <span class="q">数学什么时候进入前1%</span>
+          <span class="row-end">
+            <span class="pill signed">模型作答</span>
+            <span class="pill plan-fb">规划 · 回退</span>
+            <span class="pill ok">校验 7/7</span>
+            <span class="hint mono">#0140 · 4.8 秒</span>
+          </span>
+        </button>
+        <div class="body">
+          <div class="chainline">
+            <span class="pill unsigned">问 · 问文衡</span>
+            <span class="arrow">→</span>
+            <span class="pill plan-fb">规划 · 回退（模型未过校验）</span>
+            <span class="arrow">→</span>
+            <span class="pill signed">云模型作答 · deepseek-flash</span>
+            <span class="arrow">→</span>
+            <span class="pill ok">校验 · 盾 7/7 个数字登记</span>
+          </div>
+          <div class="plan">
+            <div class="plan-h"><b>规划摘要</b><span class="hint">这次让台账查了什么、由谁规划</span></div>
+            <div class="pcards">
+              <div class="pc"><span class="pc-k">进出前 1% 事件</span><span class="pc-v">数学</span><span class="pc-w">全部期次</span><span class="pc-s">台账《学科进入时间》表</span></div>
+            </div>
+            <p class="plan-note">模型规划带了数字、未通过校验；已按规则兜底——本次查询由规则规划。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- #0139 规则规划 + 模型超时回落 -->
+      <div class="ai-row" data-kind="rule">
+        <button class="ai-row-btn" type="button" aria-expanded="false">
+          <span class="mono hint">09:12</span>
+          <span class="q">云南大学国际排名走势</span>
+          <span class="row-end">
+            <span class="pill stale">规则回落</span>
+            <span class="pill plan-rule">规划 · 规则</span>
+            <span class="pill ok">校验 6/6</span>
+            <span class="hint mono">#0139 · 16.2 秒</span>
+          </span>
+        </button>
+        <div class="body">
+          <div class="chainline">
+            <span class="pill unsigned">问 · 问文衡</span>
+            <span class="arrow">→</span>
+            <span class="pill plan-rule">规划 · 规则 · 1 项查询</span>
+            <span class="arrow">→</span>
+            <span class="pill stale">模型调用 · 模型超时未返回</span>
+            <span class="arrow">→</span>
+            <span class="pill unsigned">规则作答</span>
+            <span class="arrow">→</span>
+            <span class="pill ok">校验 · 盾 6/6 个数字登记</span>
+          </div>
+          <div class="plan">
+            <div class="plan-h"><b>规划摘要</b><span class="hint">这次让台账查了什么、由谁规划</span></div>
+            <div class="pcards">
+              <div class="pc"><span class="pc-k">云大整体排名</span><span class="pc-v">云南大学</span><span class="pc-w">近六期</span><span class="pc-s">台账《云大ESI排名》表</span></div>
+            </div>
+            <p class="plan-note">回落原因：模型超时未返回；回答照常给出，查询不受影响。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- #0138 零查询（不需要台账） -->
+      <div class="ai-row" data-kind="rule">
+        <button class="ai-row-btn" type="button" aria-expanded="false">
+          <span class="mono hint">09:05</span>
+          <span class="q">本期怎么样</span>
+          <span class="row-end">
+            <span class="pill stale">规则回落</span>
+            <span class="pill ok">校验 2/2</span>
+            <span class="hint mono">#0138 · 0.4 秒</span>
+          </span>
+        </button>
+        <div class="body">
+          <div class="chainline">
+            <span class="pill unsigned">问 · 问文衡</span>
+            <span class="arrow">→</span>
+            <span class="pill unsigned">规则作答</span>
+            <span class="arrow">→</span>
+            <span class="pill ok">校验 · 盾 2/2 个数字登记</span>
+          </div>
+          <div class="plan">
+            <div class="plan-h"><b>规划摘要</b></div>
+            <p class="plan-empty">本次不需要台账查询——按报告产物作答。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="foot">记录只读、可回放；点击每条可展开/收起。历史调用（启用前）没有规划留痕——如实显示「无」，不猜、不补造。</p>
+  </section>
+
+  <!-- ============ 说明 ============ -->
+  <details class="fold">
+    <summary>说明 · 口径、来源与接线点<span class="sm">本页仅此一份</span></summary>
+    <div class="fold-body">
+      <p>① <b>数据来源</b>：<span class="mono">out/&lt;期次&gt;/ai_calls.jsonl</span> 里的规划留痕（新内核起记录）。此前历史调用没有这段记录，界面不显示规划块，不猜、不补造。</p>
+      <p>② <b>规划摘要只有「名字」</b>：查询类型 / 学科 / 指标 / 窗口——没有任何数值；数值仍在回答的「逐数字来源」里，点数字可看台账的格。</p>
+      <p>③ <b>规划来源</b>：「规划 · 模型」＝台账查询由模型规划（如解对话上文里的指代）；「规划 · 规则」＝由规则规划（演示站默认）；模型规划未过校验时显示「规划 · 回退」并写明原因，再按规则兜底。</p>
+      <p>④ <b>接线点</b>（审过再动 React，三处小改）：服务端问答记录接口补 <span class="mono">plan</span> 字段透传 → 前端记录类型加 <span class="mono">plan</span> → 本页渲染（版式即本稿）。</p>
+      <p>⑤ 本稿示例：问法取真实；条数、耗时与校验数为示意；「规划 · 模型」一例为形态示意（演示站为规则部署，不会出现）。</p>
+    </div>
+  </details>
+
+  <!-- ============ 审稿看点 ============ -->
+  <section class="card check" style="margin-top:16px">
+    <h2>这稿看什么 <span class="hint">（审过再进 React）</span></h2>
+    <ul>
+      <li><b>一眼分得清</b>：条目头上就有「规划 · 模型 / 规则 / 回退」小徽章——不用展开就知道这次查询是谁规划的。</li>
+      <li><b>讲人话</b>：查询卡片写「化学 · 接近度 · 近六期」，不出现内部字段名。</li>
+      <li><b>如实</b>：模型规划被拒时写明原因并说明已按规则兜底；不需要查台账时明说「不需要查」；历史调用如实显示「无」。</li>
+      <li><b>零数字</b>：规划摘要里只有「查什么」，没有任何数值——数字仍走回答的逐数字来源。</li>
+    </ul>
+    <p class="foot">盲测三问：① 某次问答让台账查了哪几项，在哪儿看？② 哪次是模型规划的、哪次是规则兜底的？③ 模型规划失败过吗，界面怎么如实说？</p>
+  </section>
+</main>
+
+<div class="pop" id="pop"></div>
+
+<script>
+/* ---------- ⓘ 弹层 ---------- */
+const pop = document.getElementById("pop");
+document.querySelectorAll("[data-info]").forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (pop.style.display === "block" && pop.dataset.src === btn.dataset.info) { pop.style.display = "none"; return; }
+    pop.innerHTML = btn.dataset.info; pop.dataset.src = btn.dataset.info;
+    pop.style.display = "block";
+    const r = btn.getBoundingClientRect();
+    pop.style.left = Math.max(10, Math.min(window.innerWidth - 400, r.left - 40)) + "px";
+    pop.style.top = Math.min(window.innerHeight - 200, r.bottom + 8) + "px";
+  });
+});
+document.addEventListener("click", () => { pop.style.display = "none"; });
+
+/* ---------- 条目展开 / 收起 ---------- */
+document.querySelectorAll(".ai-row").forEach((el) => {
+  const btn = el.querySelector(".ai-row-btn");
+  btn.addEventListener("click", () => {
+    const open = el.classList.toggle("open");
+    btn.setAttribute("aria-expanded", String(open));
+  });
+});
+
+/* ---------- 筛选 ---------- */
+const chips = document.querySelectorAll("#fchips button");
+chips.forEach((b) => {
+  b.addEventListener("click", () => {
+    chips.forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    const kind = b.dataset.kind;
+    document.querySelectorAll("#qlist .ai-row").forEach((row) => {
+      row.hidden = !(kind === "all" || row.dataset.kind === kind);
+    });
+  });
+});
+</script>
+</body>
+</html>
