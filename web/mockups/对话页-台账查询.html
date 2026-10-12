@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="zh-CN" data-palette="zhu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 对话页（台账查询）</title>
+<style>
+/* ============ 令牌（与 src/index.css 同值；两套主题） ============ */
+:root{
+  --bg:#F4F3ED;--card:#FFFDF8;--panel:#F0F1EB;
+  --ink:#222B25;--ink-2:#3F4C42;--ink-3:#58655C;
+  --line:#DDE1D8;--line-2:#E6E9E2;
+  --zhu:#1A4B27;--zhu-soft:#E3EDE4;
+  --gold:#B19A65;--gold-soft:#F1EBDD;--gold-ink:#62501F;
+  --ok:#28643A;--ok-soft:#E2EEE4;
+  --warn:#75622D;--warn-soft:#F6EED8;
+  --bad:#B43B31;--bad-soft:#F4E6E2;
+  --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  --r:14px;--r-sm:10px;
+  --shadow:0 1px 2px rgba(34,43,37,.06),0 8px 24px rgba(34,43,37,.06);
+}
+html[data-palette="zhu"]{
+  --bg:#F3EFE6;--card:#FBF8F1;--panel:#F6F1E7;
+  --ink:#2F2A24;--ink-2:#5B5248;--ink-3:#6F6558;
+  --line:#D9CFBC;--line-2:#E7DFD0;
+  --zhu:#B43B31;--zhu-soft:#F0DCD5;
+  --gold:#A9853F;--gold-soft:#EFE3C9;--gold-ink:#7D6122;
+  --ok:#3F6B4A;--ok-soft:#E2ECE0;
+  --warn:#7D5518;--warn-soft:#F5EAD2;
+  --bad:#A8321F;--bad-soft:#F4DDD7;
+  --shadow:0 1px 2px rgba(47,42,36,.06),0 8px 24px rgba(47,42,36,.06);
+}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:17px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
+:focus-visible{outline:3px solid var(--zhu);outline-offset:3px;border-radius:6px}
+
+/* ============ 通用小件 ============ */
+.hint{color:var(--ink-3);font-size:14px}
+.mono{font-family:var(--mono)}
+.pill{border-radius:999px;padding:3px 11px;font-size:13.5px;display:inline-block}
+.pill.signed{background:var(--zhu-soft);color:var(--zhu)}
+.pill.stale{background:var(--gold-soft);color:var(--gold-ink)}
+.pill.unsigned{background:var(--panel);color:var(--ink-3)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.skin-switch{display:flex;border:1px solid var(--line);border-radius:999px;background:var(--panel);overflow:hidden}
+.skin-switch button{border:0;background:transparent;font:inherit;font-size:13.5px;padding:0 12px;min-height:32px;cursor:pointer;color:var(--ink-3);transition:background .15s,color .15s}
+.skin-switch button[aria-pressed="true"]{background:var(--zhu);color:#fff}
+.user-chip{position:relative;display:inline-flex;font-size:13.5px;color:var(--ink-2)}
+.user-chip-btn{display:inline-flex;align-items:center;gap:9px;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer;padding:6px 14px 6px 6px;border-radius:999px;transition:background .15s}
+.user-chip-btn:hover{background:var(--panel)}
+.user-chip .av{width:26px;height:26px;border-radius:50%;background:var(--zhu);color:#f1ead8;display:grid;place-items:center;font-family:var(--serif);font-size:13px}
+/* 带角标的数字（点开看来源） */
+.nt-num{border:0;border-bottom:1px dotted var(--zhu);padding:1px 7px;margin:0 1px;
+  border-radius:7px;background:var(--zhu-soft);color:var(--zhu);font:inherit;
+  font-weight:650;cursor:pointer}
+.serif-prose{margin:0;font-family:var(--serif);font-size:17.5px;line-height:1.9}
+.an-footer{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line-2)}
+
+/* ============ 对话页（与 src/dialog/dialog.css 同值） ============ */
+.dlg-shell{--dlg-col:1060px;--dlg-hit:44px;display:flex;height:100vh;overflow:hidden;
+  background:var(--bg);color:var(--ink)}
+.dlg-side{flex:0 0 264px;display:flex;flex-direction:column;min-height:0;
+  background:var(--panel);border-right:1px solid var(--line)}
+.dlg-me-wrap{padding:10px 12px 12px}
+.dlg-brand{display:flex;align-items:baseline;gap:8px;padding:16px 16px 10px}
+.dlg-brand strong{font-family:var(--serif);font-size:18px}
+.dlg-brand span{font-size:13.5px;color:var(--ink-3)}
+.dlg-newchat{transition:background .15s,color .15s;margin:0 12px 10px;min-height:var(--dlg-hit);padding:9px 14px;border:1px solid var(--line);
+  background:var(--card);border-radius:10px;font:inherit;font-size:15px;cursor:pointer;text-align:left}
+.dlg-newchat:hover{background:var(--panel)}
+.dlg-hist{flex:1;overflow-y:auto;padding:0 8px 10px}
+.dlg-hist a{transition:background .15s,color .15s;display:block;padding:9px 10px;border-radius:9px;text-decoration:none;
+  color:var(--ink-2);font-size:15px;line-height:1.35}
+.dlg-hist a:hover{background:var(--card)}
+.dlg-hist a[aria-current="true"]{background:var(--card);color:var(--ink);
+  box-shadow:inset 2px 0 0 var(--zhu)}
+.dlg-main{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+.dlg-topbar{flex:0 0 auto;display:flex;gap:8px;align-items:center;padding:10px 30px;
+  border-bottom:1px solid var(--line);background:var(--card);font-size:14px}
+.dlg-ttl{font-family:var(--serif);font-size:16px;font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlg-right{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.dlg-slot{display:inline-flex;align-items:center;gap:6px;background:var(--panel);
+  border:1px solid var(--line);border-radius:999px;padding:0 6px 0 12px;min-height:32px}
+.dlg-slot-k{color:var(--ink-3);font-size:13.5px}
+.dlg-slot-v{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums}
+.dlg-slot-x{transition:background .15s,color .15s;border:0;background:transparent;cursor:pointer;color:var(--ink-3);
+  font:inherit;font-size:13.5px;width:32px;height:32px;border-radius:999px}
+.dlg-slot-x:hover{background:var(--card);color:var(--ink)}
+.dlg-wk-link{display:inline-flex;align-items:center;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 13px;font-size:13px;color:var(--ink-2);text-decoration:none;transition:border-color .15s,color .15s}
+.dlg-wk-link:hover{border-color:var(--zhu);color:var(--zhu)}
+.dlg-thread{flex:1;overflow-y:auto;padding:26px 30px 12px}
+.dlg-thread-in{max-width:var(--dlg-col);margin:0 auto}
+.dlg-turn{display:flex;gap:12px;margin-bottom:20px}
+.dlg-who{flex:0 0 40px;height:40px;border-radius:999px;display:flex;align-items:center;
+  justify-content:center;font:600 14px/1 var(--sans)}
+.dlg-turn.me .dlg-who{background:var(--panel);color:var(--ink-3);border:1px solid var(--line)}
+.dlg-turn.wh .dlg-who{background:var(--zhu);color:#fff}
+.dlg-bub{flex:1;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.dlg-turn.me .dlg-bub{background:var(--zhu-soft);border-radius:var(--r) var(--r) 4px var(--r);
+  padding:11px 16px;margin-left:56px}
+.dlg-turn.wh .dlg-bub{padding-top:4px}
+.dlg-nm{font-size:13.5px;color:var(--ink-3);margin-bottom:2px}
+.dlg-notice{margin-top:6px;font-size:13.5px;color:var(--ink-3)}
+.dlg-ans{margin-top:8px;white-space:normal}
+.dlg-rule{margin-top:10px;font-size:14px}
+.dlg-rule summary{cursor:pointer;color:var(--ink-3);min-height:32px;display:inline-flex;
+  align-items:center}
+.dlg-rule .serif-prose{margin-top:6px}
+.dlg-composer{flex:0 0 auto;border-top:1px solid var(--line);background:var(--card);
+  padding:12px 30px 16px}
+.dlg-composer-in{max-width:var(--dlg-col);margin:0 auto}
+.dlg-box{display:flex;gap:10px;align-items:flex-end;border:1.5px solid var(--line);
+  border-radius:16px;background:var(--bg);padding:9px 11px}
+.dlg-box:focus-within{border-color:var(--zhu);box-shadow:0 0 0 3px var(--zhu-soft)}
+.dlg-box textarea{flex:1;border:0;background:transparent;resize:none;font:inherit;
+  color:var(--ink);height:28px;outline:none}
+.dlg-send{transition:filter .15s;flex:0 0 auto;width:var(--dlg-hit);height:var(--dlg-hit);border-radius:999px;
+  border:0;background:var(--zhu);color:#fff;font-size:17px;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center}
+.dlg-send:hover{filter:brightness(1.12)}
+
+/* ============ 本稿新增：台账查询行（查数据回答的脚注下） ============ */
+.an-plan{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:9px}
+.an-plan-k{font-size:13px;color:var(--ink-3)}
+.an-q{display:inline-flex;align-items:center;border:1px solid var(--line);background:var(--card);
+  border-radius:999px;padding:3px 12px;font-size:12.5px;color:var(--ink-2)}
+.an-plan-n{font-size:12.5px;color:var(--ink-3)}
+</style>
+</head>
+<body>
+<div class="review" style="display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding:9px 22px;background:var(--panel);border-bottom:1px dashed var(--line);font-size:12.5px;color:var(--ink-2)">
+  <b style="color:var(--gold-ink)">静态稿 · 对话页「台账查询」</b>
+  <span>待审。示例问答取 202609 真实值。</span>
+</div>
+
+<div class="dlg-shell">
+  <aside class="dlg-side">
+    <div class="dlg-brand"><strong>文衡</strong><span>云南大学图书馆</span></div>
+    <button class="dlg-newchat" type="button">＋ 新对话</button>
+    <nav class="dlg-hist" aria-label="对话历史">
+      <a href="#对话" aria-current="true">化学的接近度最近几期怎么变的</a>
+      <a href="#对话">物理学的 1% 阈值是多少</a>
+    </nav>
+    <div class="dlg-me-wrap">
+      <span class="user-chip">
+        <button type="button" class="user-chip-btn" title="demo · 操作员——点这里可退出登录">
+          <span class="av">d</span>demo · 操作员
+        </button>
+      </span>
+    </div>
+  </aside>
+
+  <section class="dlg-main">
+    <header class="dlg-topbar">
+      <span class="dlg-ttl">化学的接近度最近几期怎么变的</span>
+      <div class="dlg-right">
+        <a class="dlg-wk-link" href="#">去生成台 ▸</a>
+        <span class="skin-switch" role="group" aria-label="切换配色">
+          <button type="button" id="skin-ynu" aria-pressed="false">云大绿</button>
+          <button type="button" id="skin-zhu" aria-pressed="true">朱砂</button>
+        </span>
+        <span class="dlg-slot">
+          <span class="dlg-slot-k">期次</span>
+          <span class="dlg-slot-v">202609</span>
+          <button class="dlg-slot-x" type="button" aria-label="清掉期次">✕</button>
+        </span>
+      </div>
+    </header>
+
+    <div class="dlg-thread">
+      <div class="dlg-thread-in">
+
+        <!-- ① 你 -->
+        <div class="dlg-turn me">
+          <div class="dlg-who">你</div>
+          <div class="dlg-bub">化学的接近度最近几期怎么变的</div>
+        </div>
+        <!-- ① 文衡：规则规划 -->
+        <div class="dlg-turn wh">
+          <div class="dlg-who">文</div>
+          <div class="dlg-bub">
+            <div class="dlg-nm">文衡</div>
+            <div class="dlg-ans">
+              <p class="serif-prose">化学的接近度最近六期持续上升：<button class="nt-num" type="button">202511</button> 为 <button class="nt-num" type="button">554.91</button>%，<button class="nt-num" type="button">202601</button> 为 <button class="nt-num" type="button">581.75</button>%，<button class="nt-num" type="button">202603</button> 为 <button class="nt-num" type="button">614.75</button>%，<button class="nt-num" type="button">202605</button> 为 <button class="nt-num" type="button">618.42</button>%，<button class="nt-num" type="button">202607</button> 为 <button class="nt-num" type="button">641.23</button>%，<button class="nt-num" type="button">202609</button> 为 <button class="nt-num" type="button">676.06</button>%。</p>
+              <details class="dlg-rule"><summary>看规则版</summary></details>
+              <div class="an-footer">
+                <span class="pill signed">大模型作答</span>
+                <span class="pill ok">盾 · 12 个数字已登记</span>
+                <span class="hint">点数字看来源</span>
+              </div>
+              <div class="an-plan">
+                <span class="an-plan-k">台账查询</span>
+                <span class="pill unsigned">规则规划</span>
+                <span class="an-q">化学 · 接近度 · 近六期</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ② 你 -->
+        <div class="dlg-turn me">
+          <div class="dlg-who">你</div>
+          <div class="dlg-bub">它最近怎么样</div>
+        </div>
+        <!-- ② 文衡：模型规划（解上文指代） -->
+        <div class="dlg-turn wh">
+          <div class="dlg-who">文</div>
+          <div class="dlg-bub">
+            <div class="dlg-nm">文衡</div>
+            <div class="dlg-ans">
+              <p class="serif-prose">物理学最近六期的论文数：<button class="nt-num" type="button">202511</button> 为 <button class="nt-num" type="button">1260</button> 篇，<button class="nt-num" type="button">202601</button> 为 <button class="nt-num" type="button">1287</button> 篇，<button class="nt-num" type="button">202603</button> 为 <button class="nt-num" type="button">1319</button> 篇，<button class="nt-num" type="button">202605</button> 为 <button class="nt-num" type="button">1302</button> 篇，<button class="nt-num" type="button">202607</button> 为 <button class="nt-num" type="button">1355</button> 篇，<button class="nt-num" type="button">202609</button> 为 <button class="nt-num" type="button">1410</button> 篇；最近一期较上期增加 <button class="nt-num" type="button">55</button> 篇。</p>
+              <details class="dlg-rule"><summary>看规则版</summary></details>
+              <div class="an-footer">
+                <span class="pill signed">大模型作答</span>
+                <span class="pill ok">盾 · 13 个数字已登记</span>
+                <span class="hint">点数字看来源</span>
+              </div>
+              <div class="an-plan">
+                <span class="an-plan-k">台账查询</span>
+                <span class="pill signed">模型规划</span>
+                <span class="an-q">物理学 · 论文数 · 近六期</span>
+                <span class="an-plan-n">问句没说学科，从上文认出「物理学」</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ③ 你 -->
+        <div class="dlg-turn me">
+          <div class="dlg-who">你</div>
+          <div class="dlg-bub">数学什么时候进入前 1%</div>
+        </div>
+        <!-- ③ 文衡：规则兜底（模型规划未通过校验） -->
+        <div class="dlg-turn wh">
+          <div class="dlg-who">文</div>
+          <div class="dlg-bub">
+            <div class="dlg-nm">文衡</div>
+            <div class="dlg-ans">
+              <p class="serif-prose">数学最近一次进入 ESI 前 1% 是 <button class="nt-num" type="button">202603</button>；此前 <button class="nt-num" type="button">202409</button> 首次进入、<button class="nt-num" type="button">202505</button> 退出。</p>
+              <details class="dlg-rule"><summary>看规则版</summary></details>
+              <div class="an-footer">
+                <span class="pill signed">大模型作答</span>
+                <span class="pill ok">盾 · 3 个数字已登记</span>
+                <span class="hint">点数字看来源</span>
+              </div>
+              <div class="an-plan">
+                <span class="an-plan-k">台账查询</span>
+                <span class="pill stale">规则兜底</span>
+                <span class="an-q">数学 · 进出前 1% 事件</span>
+                <span class="an-plan-n">模型规划未通过校验</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="dlg-composer">
+      <form class="dlg-composer-in" onsubmit="return false">
+        <div class="dlg-box">
+          <textarea rows="1" aria-label="对文衡说话" placeholder="说一句话，比如「帮我做 9 月的报告」…"></textarea>
+          <button class="dlg-send" type="submit" aria-label="发送">↑</button>
+        </div>
+      </form>
+    </div>
+  </section>
+</div>
+
+<script>
+/* 皮肤开关（与产品同款：只切 data-palette） */
+const ynu = document.getElementById("skin-ynu");
+const zhu = document.getElementById("skin-zhu");
+function setPalette(p) {
+  document.documentElement.dataset.palette = p;
+  ynu.setAttribute("aria-pressed", String(p === "ynu"));
+  zhu.setAttribute("aria-pressed", String(p === "zhu"));
+}
+ynu.addEventListener("click", () => setPalette("ynu"));
+zhu.addEventListener("click", () => setPalette("zhu"));
+</script>
+</body>
+</html>
