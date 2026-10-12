@@ -98,22 +98,24 @@ def _view_for(root, period):
     return view
 
 
-def _ledger_evidence(root, period, question, disc_items):
-    """台账证据（票 02 内核）：规则规划 → 引擎取数 → 证据装配。
+def _ledger_evidence(root, period, question, disc_items, history=()):
+    """台账证据（票 02/03 内核）：规划（规则→模型）→ 引擎取数 → 证据装配。
 
-    返回 `(texts, cells)`：`{段key: 文本}` 与 `{段key: [(数字串, 表, 学科, 期次)]}`。
-    台账缺/坏、单条 spec 失败 → 静默跳过（回落报告产物，与 v1 行为一致）。
+    返回 `(texts, cells, plan)`：`{段key: 文本}`、`{段key: [(数字串, 表, 学科, 期次)]}`
+    与规划摘要（票 04 进留痕）。台账缺/坏 → `({}, {}, None)`；单条 spec 失败静默跳过
+    （回落报告产物，与 v1 行为一致）。
     """
     from . import _evidence, _plan                               # noqa: PLC0415
 
     view = _view_for(root, period)
     if view is None:
-        return {}, {}
+        return {}, {}, None
     try:
         from flexible import queries                             # noqa: PLC0415
     except Exception:                                            # noqa: BLE001
-        return {}, {}
-    plan = _plan.plan(question, discs=[it["en"] for it in disc_items])
+        return {}, {}, None
+    plan = _plan.plan(question, discs=[it["en"] for it in disc_items],
+                      history=list(history or []), disciplines=list(view.disciplines))
     results = []
     for spec in plan["specs"]:
         op = spec.get("op")
@@ -128,7 +130,7 @@ def _ledger_evidence(root, period, question, disc_items):
             continue
     ev = _evidence.assemble(results, question)
     texts = {key: text for key, text in ev["chunks"]}
-    return texts, ev["cells"]
+    return texts, ev["cells"], plan
 
 
 def _load_json(path, default=None):
@@ -401,8 +403,9 @@ def build(root, period, payload) -> RuleDraft:
     disc_texts = {f"学科数据·{it['cn']}": _disc_segment(it) for it in disc_items}
     disc_idx = _disc_index(disc_items)
 
-    # ---- 台账段（票 02 内核）：规则规划 → 引擎取数 → 证据装配 ----
-    ledger_texts, ledger_cells = _ledger_evidence(root, period, question, disc_items)
+    # ---- 台账段（票 02/03 内核）：规划（规则→模型）→ 引擎取数 → 证据装配 ----
+    ledger_texts, ledger_cells, ledger_plan = _ledger_evidence(
+        root, period, question, disc_items, history=history)
     n_led = len(ledger_texts)
 
     texts_all = {**base_texts, **disc_texts, **ledger_texts}
@@ -486,4 +489,5 @@ def build(root, period, payload) -> RuleDraft:
         parts=(),
         task=task,
         evidence=tuple(number.texts[1:]),
+        plan=ledger_plan,
     )

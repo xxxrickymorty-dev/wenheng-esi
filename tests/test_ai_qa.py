@@ -468,3 +468,138 @@ class Test证据装配:
         assert _evidence.assemble([])["chunks"] == []
         assert _evidence.assemble([{"kind": "series", "points": []}])["chunks"] == []
         assert _evidence.assemble([{"kind": "未知"}])["chunks"] == []
+
+
+# ============================================================ 票 03：模型规划器
+class Test模型规划器:
+    """规则先算；规则为空才问模型；合法 JSON 才用；越权/带数字/坏 JSON → 整份回退。"""
+
+    DISC = ["Chemistry", "Physics", "Mathematics"]
+
+    def _plan_with(self, text, *, question="最近有什么变化", discs=(), history=None):
+        from ai import _plan
+        brain = ScriptedBrain([Turn(text=text)])
+        with ai.using(brain=brain):
+            got = _plan.plan(question, discs=discs, history=history or [],
+                             disciplines=self.DISC)
+        return got, brain
+
+    def test_合法JSON_别名映射_被采用(self):
+        p, brain = self._plan_with(
+            '{"specs": [{"op": "series", "metric": "proximity",'
+            ' "disc": "Physics", "span": "recent"}]}')
+        assert p["origin"] == "model" and p["note"] == ""
+        assert p["specs"] == [{"op": "series", "metric": "proximity_1pct",
+                               "disc": "Physics", "span": "recent"}]
+        # 外发面零台账值（提示面只有名字；出网前统一过盾）
+        for t in brain.briefs[0].egress_texts():
+            assert not raw_digits(t), f"外发含数字原值：{t[:80]!r}"
+
+    def test_上文解指代(self):
+        p, _ = self._plan_with(
+            '{"specs": [{"op": "series", "metric": "papers",'
+            ' "disc": "Physics", "span": "recent"}]}',
+            question="它最近怎么样", discs=(),
+            history=[{"who": "me", "text": "物理学的论文数是多少"}])
+        assert p["origin"] == "model" and p["specs"][0]["disc"] == "Physics"
+
+    def test_坏JSON_回退规则(self):
+        p, _ = self._plan_with("我觉得应该查一下物理。")
+        assert p["origin"] == "rule" and p["specs"] == [] and p["note"] == "bad_json"
+
+    def test_越权键_整份回退(self):
+        p, _ = self._plan_with(
+            '{"specs": [{"op": "series", "metric": "proximity",'
+            ' "disc": "Physics", "ylim": "auto"}]}')
+        assert p["origin"] == "rule" and p["specs"] == []
+
+    def test_未知op_整份回退(self):
+        p, _ = self._plan_with('{"specs": [{"op": "drop_table"}]}')
+        assert p["origin"] == "rule" and p["specs"] == []
+
+    def test_带数字_整份回退(self):
+        p, _ = self._plan_with(
+            '{"specs": [{"op": "series", "metric": "proximity",'
+            ' "disc": "Physics", "span": "202609"}]}')
+        assert p["origin"] == "rule" and p["note"] == "shield_reject"
+
+    def test_空计划_回退规则(self):
+        p, _ = self._plan_with('{"specs": []}')
+        assert p["origin"] == "rule" and p["specs"] == []
+
+    def test_非法学科项被丢弃(self):
+        p, _ = self._plan_with(
+            '{"specs": [{"op": "series", "metric": "proximity", "disc": "NoSuchDisc"},'
+            ' {"op": "series", "metric": "papers", "disc": "Physics"}]}')
+        assert p["origin"] == "model"
+        assert [s["disc"] for s in p["specs"]] == ["Physics"]
+
+    def test_规则有规格时模型不参与(self):
+        from ai import _plan
+        brain = ScriptedBrain([Turn(text='{"specs": [{"op": "events", "disc": "Physics"}]}')])
+        with ai.using(brain=brain):
+            p = _plan.plan("化学的接近度", discs=["Chemistry"], disciplines=self.DISC)
+        assert p["origin"] == "rule" and brain.briefs == [], "规则已覆盖时不该外发"
+
+    def test_规则部署不触发模型(self):
+        from ai import _plan
+        p = _plan.plan("最近有什么变化", disciplines=self.DISC)
+        assert p["origin"] == "rule" and p["note"] == ""
+
+    def test_经qa全链_规划轮接写作轮(self, tmp_path, monkeypatch):
+        """有台账视图时：规则为空 → 规划轮问模型（解指代）→ 台账段进证据 → 写作轮照常。"""
+        root = _seed_ledger(tmp_path, monkeypatch)
+        brain = ScriptedBrain([
+            Turn(text='{"specs": [{"op": "series", "metric": "proximity",'
+                      ' "disc": "Chemistry", "span": "recent"}]}'),
+            lambda b: Turn(text=b.task + "\n\n" + "\n\n".join(b.evidence))])
+        ans = qa(root, question="它最近怎么样", brain=brain,
+                 history=[{"who": "me", "text": "化学的接近度是多少"}])
+        assert ans.mode == "model"
+        assert "台账《接近度》表" in ans.text, "模型规划的台账段应进证据"
+        rec = records(root)[0]
+        assert rec["plan"]["origin"] == "model"
+        assert rec["plan"]["specs"][0]["metric"] == "proximity_1pct"
+
+
+# ============================================================ 票 04：例子库 / 金标 / 留痕
+class Test例子库与金标:
+    def test_例子库零数字且白名单(self):
+        from ai import _plan
+        lib = _plan.load_examples()
+        assert len(lib) >= 3
+        for e in lib:
+            assert not raw_digits(json.dumps(e["specs"], ensure_ascii=False)), e["q"]
+            for s in e["specs"]:
+                assert s["op"] in ("series", "events", "overall_rank")
+                if "metric" in s:
+                    assert s["metric"] in _plan._ALIAS, s
+
+    def test_检索_相关问句在前(self):
+        from ai import _plan
+        got = _plan.retrieve_examples("化学的接近度最近怎么变", k=2)
+        assert any("接近度" in e["q"] for e in got)
+
+    def test_金标全过(self):
+        """规则规划 × qa_gold.json 逐例对照（同源工具：tools/verify_qa_plan.py）。"""
+        from conftest import REPO
+        from ai import _plan
+        cases = json.loads((REPO / "tools" / "qa_gold.json").read_text(encoding="utf-8"))
+        bad = [(c["q"], got) for c in cases
+               for got in [_plan.rule_specs(c["q"], c.get("discs") or ())]
+               if got != c["expect"]]
+        assert not bad, bad
+
+
+class Test规划留痕:
+    def test_记录带规划摘要(self, tmp_path, monkeypatch):
+        root = _seed_ledger(tmp_path, monkeypatch)
+        qa(root, question="化学的接近度最近几期怎么变的")
+        rec = records(root)[0]
+        assert rec["plan"]["origin"] == "rule"
+        assert rec["plan"]["specs"][0]["metric"] == "proximity_1pct"
+
+    def test_无台账_记录不带plan字段(self, tmp_path):
+        seed_period(tmp_path)
+        qa(tmp_path, question="顶尖论文")
+        assert "plan" not in records(tmp_path)[0]

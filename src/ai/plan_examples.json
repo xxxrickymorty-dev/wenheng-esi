@@ -1,0 +1,23 @@
+[
+  {
+    "q": "化学的接近度最近几期怎么变的",
+    "specs": [{"op": "series", "metric": "proximity", "disc": "Chemistry", "span": "recent"}]
+  },
+  {
+    "q": "化学的论文数是多少",
+    "specs": [{"op": "series", "metric": "papers", "disc": "Chemistry", "span": "recent"}]
+  },
+  {
+    "q": "数学什么时候进入前1%",
+    "specs": [{"op": "events", "disc": "Mathematics"}]
+  },
+  {
+    "q": "云南大学国际排名走势",
+    "specs": [{"op": "overall_rank", "span": "recent"}]
+  },
+  {
+    "q": "那物理学呢",
+    "history": ["用户：查工程学的接近度，最新一期的", "文衡：工程学最新一期的接近度为 746.57%"],
+    "specs": [{"op": "series", "metric": "proximity", "disc": "Physics", "span": "recent"}]
+  }
+]

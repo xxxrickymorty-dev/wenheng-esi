@@ -133,9 +133,17 @@ class Recorder:
     def call(self, *, capability: str, mode: str, backend: str, fallback: str | None,
              shield: dict, text_protected: str, question: str = "", label=None,
              egress_items: int = 0, egress_bytes: int = 0, receipts=(),
-             elapsed_ms: int = 0, fallback_detail=None) -> str | None:
-        """记一条调用；成功返回 record_id，写失败返回 None。"""
+             elapsed_ms: int = 0, fallback_detail=None, plan=None) -> str | None:
+        """记一条调用；成功返回 record_id，写失败返回 None。
+
+        `plan`（票 04）：规划摘要（origin/specs/note）——追加字段，旧读者忽略。
+        """
         rid = make_record_id(capability)
+        extra: dict = {}
+        if fallback_detail:
+            extra["fallback_detail"] = fallback_detail
+        if plan:
+            extra["plan"] = plan
         rec = build_call(
             record_id=rid, ts=time.strftime("%Y-%m-%dT%H:%M:%S"), period=self.period,
             capability=capability, actor=self.actor, mode=mode, backend=backend,
@@ -143,7 +151,7 @@ class Recorder:
             question=question, text_protected=text_protected,
             egress_items=int(egress_items or 0), egress_bytes=int(egress_bytes or 0),
             elapsed_ms=int(elapsed_ms or 0),
-            extra={"fallback_detail": fallback_detail} if fallback_detail else None)
+            extra=extra or None)
         if label is not None:
             rec["label"] = str(label)
         return rid if append(call_path(self.root, self.period), rec) else None

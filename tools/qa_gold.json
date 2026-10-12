@@ -1,0 +1,23 @@
+[
+  {"q": "化学的接近度最近几期怎么变的", "discs": ["Chemistry"],
+   "expect": [{"op": "series", "metric": "proximity_1pct", "disc": "Chemistry", "span": "recent"}]},
+  {"q": "化学的论文数", "discs": ["Chemistry"],
+   "expect": [{"op": "series", "metric": "papers", "disc": "Chemistry", "span": "recent"}]},
+  {"q": "化学的前1‰阈值", "discs": ["Chemistry"],
+   "expect": [{"op": "series", "metric": "threshold_1permille", "disc": "Chemistry", "span": "recent"}]},
+  {"q": "化学的前1%阈值", "discs": ["Chemistry"],
+   "expect": [{"op": "series", "metric": "threshold_1pct", "disc": "Chemistry", "span": "recent"}]},
+  {"q": "化学的国内排名", "discs": ["Chemistry"],
+   "expect": [{"op": "series", "metric": "rank_cn", "disc": "Chemistry", "span": "recent"}]},
+  {"q": "化学和材料科学的论文数", "discs": ["Chemistry", "Materials Science"],
+   "expect": [{"op": "series", "metric": "papers", "disc": "Chemistry", "span": "recent"},
+              {"op": "series", "metric": "papers", "disc": "Materials Science", "span": "recent"}]},
+  {"q": "数学什么时候进入前1%", "discs": ["Mathematics"],
+   "expect": [{"op": "events", "disc": "Mathematics"}]},
+  {"q": "化学的接近度，还有进出情况", "discs": ["Chemistry"],
+   "expect": [{"op": "series", "metric": "proximity_1pct", "disc": "Chemistry", "span": "recent"}]},
+  {"q": "云南大学国际排名走势", "discs": [],
+   "expect": [{"op": "overall_rank", "span": "recent"}]},
+  {"q": "本期怎么样", "discs": [], "expect": []},
+  {"q": "顶尖论文", "discs": [], "expect": []}
+]

@@ -74,6 +74,8 @@ class RuleDraft:
     evidence: tuple[str, ...] = ()
     data: dict | None = None
     record_period: str = ""
+    #: 规划摘要（票 04：进留痕——"模型选了哪些查询、规划来自模型还是规则"）。
+    plan: dict | None = None
 
     @property
     def mapping(self) -> dict:

@@ -148,11 +148,13 @@ def _terminal(cap, period, role, *, mode, notice, t0, backend=None):
 # ---------------------------------------------------------------- 留痕与发布
 def _publish(cap, period, role, *, mode, backend, notice, text, rule_text, sources,
              parts, shield_res, fallback, question_face, t0,
-             fallback_detail=None, egress=None, elapsed_ms=None, data=None):
+             fallback_detail=None, egress=None, elapsed_ms=None, data=None,
+             plan=None):
     """先写留痕、后发布；模型版发布以记录成功为前提（SPEC §2.2 / C1）。
 
     `period` 是**记账期次**（dialog 用解析出的那一期，其余能力＝调用期次）；
-    `data` 是能力专属结构化结果（dialog 的槽位），只挂在 `Answer.data` 上。
+    `data` 是能力专属结构化结果（dialog 的槽位），只挂在 `Answer.data` 上；
+    `plan` 是规划摘要（票 04：origin/specs/note），进记录追加位。
     """
     rid = _record.Recorder.for_period(period, role).call(
         capability=cap.id, mode=mode, backend=backend, fallback=fallback,
@@ -162,7 +164,7 @@ def _publish(cap, period, role, *, mode, backend, notice, text, rule_text, sourc
         egress_items=int((egress or {}).get("items") or 0),
         egress_bytes=int((egress or {}).get("bytes") or 0),
         elapsed_ms=(int((time.time() - t0) * 1000) if elapsed_ms is None else elapsed_ms),
-        fallback_detail=fallback_detail)
+        fallback_detail=fallback_detail, plan=plan)
     if rid is None:
         _record.process_log_line(log, cap.id, period, role, "append_failed")
         if mode == "model":
@@ -264,7 +266,8 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
                     question_face=_question_face(payload),
                     egress=(outcome.egress if outcome is not None else None),
                     elapsed_ms=(outcome.elapsed_ms if outcome is not None else None),
-                    t0=t0, fallback_detail=fallback_detail, data=draft.data)
+                    t0=t0, fallback_detail=fallback_detail, data=draft.data,
+                    plan=draft.plan)
 
 
 def capabilities(actor=None) -> tuple[CapabilityInfo, ...]:
