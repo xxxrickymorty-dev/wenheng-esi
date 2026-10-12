@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>文衡 · 对话页空态（静态稿）· 文衡</title>
+<!--
+  文衡对话页 · 空态改版静态稿（2026-10-12，P0-③）
+  - 单文件零依赖，双击即开；配色/字体栈照站点令牌（--bg #F4F3ED / --zhu #1A4B27 / 衬线）。
+  - 审点写在顶部说明条：文案 / 布局 / 点击行为 / 两种角色同屏。
+  - 视觉参照 WorkBuddy 主页（大标题＋模式 chips＋示例胶囊＋大输入框），落文衡自己的语言。
+-->
+<style>
+  :root{
+    --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB;
+    --ink:#222B25; --ink-2:#3F4C42; --ink-3:#58655C;
+    --line:#DDE1D8; --line-2:#E6E9E2;
+    --zhu:#1A4B27; --zhu-soft:#E3EDE4;
+    --gold:#B19A65; --gold-soft:#F1EBDD; --gold-ink:#62501F;
+    --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+    --r:14px; --r-sm:10px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.7 var(--sans)}
+  .note{margin:0;background:#14382c;color:#e8e2cd;padding:14px 22px;font-size:12.5px;line-height:1.9}
+  .note b{color:#f2e9cf}
+  .note ol{margin:6px 0 0;padding-left:20px}
+  .wrap{display:flex;height:calc(100vh - 92px);min-height:640px}
+
+  /* ---------- 侧栏（照现版） ---------- */
+  .side{flex:0 0 264px;display:flex;flex-direction:column;border-right:1px solid var(--line);background:var(--panel)}
+  .side-top{padding:16px 18px 6px}
+  .brand{font-family:var(--serif);font-size:19px;letter-spacing:.08em}
+  .brand small{font:10px var(--sans);color:var(--ink-3);letter-spacing:.12em;margin-left:8px}
+  .newchat{margin:12px 12px 10px;padding:9px 14px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);font-size:14px;cursor:pointer}
+  .hist-note{padding:9px 14px;font-size:13.5px;color:var(--ink-3)}
+  .me{margin-top:auto;display:flex;align-items:center;gap:9px;padding:12px 14px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-2)}
+  .av{width:26px;height:26px;border-radius:50%;background:var(--zhu);color:#f1ead8;display:grid;place-items:center;font-family:var(--serif);font-size:13px}
+
+  /* ---------- 主区 ---------- */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .topbar{display:flex;align-items:center;gap:8px;padding:10px 30px;border-bottom:1px solid var(--line);background:var(--card)}
+  .topbar .title{font-size:14.5px;color:var(--ink-2)}
+  .topbar .right{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .pill{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 13px;font-size:13px;color:var(--ink-2);cursor:pointer}
+  .skin{display:inline-flex;border-radius:999px;overflow:hidden;border:1px solid var(--line)}
+  .skin b{font-weight:400;font-size:12.5px;padding:5px 12px;background:var(--zhu);color:#f1ead8}
+  .skin i{font-style:normal;font-size:12.5px;padding:5px 12px;color:var(--ink-3)}
+
+  /* ---------- 空态（本稿核心） ---------- */
+  .home{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 30px 10px;overflow:auto}
+  .kicker{font:11px Georgia,serif;letter-spacing:.2em;color:var(--gold);margin:0 0 18px}
+  .kicker::before{content:"";display:inline-block;width:34px;height:1px;background:var(--gold);vertical-align:middle;margin-right:12px}
+  h1{font-family:var(--serif);font-weight:400;font-size:clamp(28px,3.2vw,40px);letter-spacing:.06em;margin:0 0 14px;color:var(--ink)}
+  .sub{margin:0;color:var(--ink-3);font-size:14.5px;letter-spacing:.02em}
+  .modes{display:flex;gap:10px;margin:30px 0 6px}
+  .mode{border:1px solid var(--zhu);color:var(--zhu);background:var(--zhu-soft);border-radius:999px;padding:8px 20px;font-size:14px;cursor:pointer;font-family:var(--serif)}
+  .mode.plain{border-color:var(--line);color:var(--ink-2);background:var(--card)}
+  .pills{display:flex;flex-wrap:wrap;justify-content:center;gap:9px;max-width:760px;margin:16px 0 8px}
+  .ex{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 15px;font-size:13.5px;color:var(--ink-2);cursor:pointer}
+  .ex:hover{border-color:var(--zhu);color:var(--zhu)}
+  .dyn{margin-top:26px;display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 16px;font-size:13px;color:var(--ink-3)}
+  .dyn b{font-weight:600;color:var(--ink-2)}
+  .dyn .ok{color:#28643A}
+  .dyn a{color:var(--zhu);text-decoration:none;border-bottom:1px solid #9fb8a2}
+
+  /* ---------- 输入区 ---------- */
+  .composer{flex:0 0 auto;border-top:1px solid var(--line);background:var(--card);padding:14px 30px 18px}
+  .composer-in{max-width:860px;margin:0 auto;display:flex;align-items:flex-end;gap:12px;border:1px solid var(--line);border-radius:18px;background:var(--bg);padding:12px 14px}
+  .composer textarea{border:0;background:transparent;resize:none;outline:none;font:14.5px/1.6 var(--sans);color:var(--ink);flex:1;height:44px}
+  .send{width:40px;height:40px;border-radius:50%;border:1px solid var(--zhu);background:var(--zhu);color:#f1ead8;cursor:pointer;font-size:16px}
+
+  .tip{position:relative}
+  .tip::after{content:attr(data-tip);position:absolute;left:50%;transform:translateX(-50%);top:-34px;white-space:nowrap;background:#14382c;color:#f1ead8;font-size:12px;padding:4px 10px;border-radius:6px;opacity:0;transition:opacity .15s;pointer-events:none}
+  .tip:hover::after{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="note">
+  <b>静态稿：文衡对话页 · 空态改版（P0-③）——待 rick 审</b>
+  <ol>
+    <li><b>文案</b>：大标题＝「文衡，帮你做报告、查数据」（你选的）；副行＝「出报告 · 查数据 · 核台账——期次我来认（按数据截止月），认出来先说给你看。」</li>
+    <li><b>布局</b>：大标题居中 → 模式 chips（出报告/查数据/看进展）→ 示例胶囊 6 句 → 本期动态一条（原「本期任务」卡降级，不抢戏）→ 底部大输入框。</li>
+    <li><b>点击行为</b>：chips 与胶囊＝把示例句<b>填进输入框</b>（不直接发送，留给你改）；本期动态的「去生成台 ▸」去工作台。</li>
+    <li><b>两种角色同屏</b>：操作员（评委）看到的完全一样；点「出报告」类胶囊发送后，由对话回「操作员只读」话术（权限分级在回答里体现）。</li>
+  </ol>
+</div>
+
+<div class="wrap">
+  <aside class="side">
+    <div class="side-top"><span class="brand">文衡<small>云南大学图书馆</small></span></div>
+    <button class="newchat" type="button">＋ 新对话</button>
+    <p class="hist-note">这次打开里的对话会列在这里。</p>
+    <div class="me"><span class="av">d</span>demo · 操作员</div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <span class="title">新对话</span>
+      <div class="right">
+        <button class="pill" type="button">工作台 ▾</button>
+        <span class="skin"><b>云大绿</b><i>朱砂</i></span>
+        <span class="pill">期次 202609 ✕</span>
+      </div>
+    </div>
+
+    <section class="home">
+      <p class="kicker">WENHENG · 学科信息参考</p>
+      <h1>文衡，帮你做报告、查数据</h1>
+      <p class="sub">出报告 · 查数据 · 核台账——期次我来认（按数据截止月），认出来先说给你看。</p>
+
+      <div class="modes">
+        <button class="mode" type="button" data-tip="填一句示例进输入框">出报告</button>
+        <button class="mode plain" type="button">查数据</button>
+        <button class="mode plain" type="button">看进展</button>
+      </div>
+
+      <div class="pills">
+        <button class="ex" type="button">帮我做 9 月的报告</button>
+        <button class="ex" type="button">查一下化学的接近度</button>
+        <button class="ex" type="button">云南大学国际排名走势</button>
+        <button class="ex" type="button">物理学的 1% 阈值是多少</button>
+        <button class="ex" type="button">数学什么时候进入前 1%</button>
+        <button class="ex" type="button">202609 到哪一步了</button>
+      </div>
+
+      <div class="dyn">
+        <b>本期动态 · 202609</b>
+        <span>数据截至 2026-09</span>
+        <span>① 取数 <span class="ok">✓</span>　② 核对并并入 <span class="ok">✓</span>　③ 一键生成 <span class="ok">✓</span></span>
+        <a href="#">去生成台 ▸</a>
+      </div>
+    </section>
+
+    <div class="composer">
+      <div class="composer-in">
+        <textarea aria-label="对文衡说话" placeholder="今天想做什么？说一句话就行——比如「帮我做 9 月的报告」"></textarea>
+        <button class="send" type="button" aria-label="发送">↑</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>
