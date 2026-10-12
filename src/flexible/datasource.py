@@ -5,6 +5,10 @@
 不 import `openpyxl`、不出现任何写调用。台账 xlsx 一个字节都不碰
 （它由 `parse_ledger` 在流水线里读一次，落成 parquet 后此处只消费产物）。
 
+`LedgerView` 是取数引擎（`queries.py`）认的**数据面协议**；本模块的 `DataSource`
+是主适配器（parquet 产物），`flexible/workbook.py` 的 `WorkbookView` 是回落适配器
+（`input/<期次>/监测表.xlsx` 直读，parquet 缺席时用）——两者同协议、同值。
+
 「来源链」是灵活报告可信度的落点：每个数字都带
 `{dataset, metric, discipline, period, origin_sheet}`，
 与复刻报告的红件清单同构，可指回台账的工作表与期次列。
@@ -12,12 +16,15 @@
 from __future__ import annotations
 
 import pathlib
+from typing import Protocol
 
 import pandas as pd
 
 #: 允许查询的指标白名单 —— 同时也是「LLM 能看到的字段字典」。
 #: 键＝对外指标名；值＝(中文名, 台账工作表, 方向说明)
 #: 方向说明用于让规划器知道「哪个方向算好」（如 rank 越小越好）。
+#: 排名类有两套来源：`rank/rank_pct`＝新国内排名（grouped 表）；`rank_cn/rank_intl`
+#: ＝国内/国际排名（转置表，q 问文衡的排名序列用它）；`rank_intl_pct/n_inst_1pct`＝新国际排名。
 METRICS: dict[str, dict] = {
     "total_cites": {"cn": "总被引频次", "sheet": "总被引", "better": "up"},
     "papers": {"cn": "论文数", "sheet": "论文数", "better": "up"},
@@ -29,10 +36,26 @@ METRICS: dict[str, dict] = {
     # 以下三项来自 grouped 表（新国内/新国际排名），source 列区分口径
     "rank": {"cn": "国内排名", "sheet": "新国内排名", "better": "down"},
     "rank_pct": {"cn": "国内排名百分位", "sheet": "新国内排名", "better": "down"},
-    "rank_intl": {"cn": "国际排名", "sheet": "云大ESI排名", "better": "down"},
+    "rank_cn": {"cn": "国内排名（转置表）", "sheet": "国内排名", "better": "down"},
+    "rank_intl": {"cn": "国际排名", "sheet": "国际排名", "better": "down"},
     "rank_intl_pct": {"cn": "国际排名百分位", "sheet": "新国际排名", "better": "down"},
     "n_inst_1pct": {"cn": "国内ESI前1%机构数", "sheet": "新国内排名", "better": "none"},
 }
+
+#: 规范名 → ledger_long 里的（metric, source）规格。缺省＝同名指标、不滤 source。
+#: 排名类在长表里只有 metric ∈ {rank, rank_pct, n_inst_1pct}，靠 source 区分四张来源表：
+#: new_cn/new_intl＝新国内/新国际排名；rank_cn/rank_intl＝国内/国际排名（转置）。
+_LONG_SPEC = {
+    "rank": ("rank", "new_cn"),
+    "rank_pct": ("rank_pct", "new_cn"),
+    "rank_intl_pct": ("rank_pct", "new_intl"),
+    "n_inst_1pct": ("n_inst_1pct", "new_intl"),
+    "rank_cn": ("rank", "rank_cn"),
+    "rank_intl": ("rank", "rank_intl"),
+}
+
+#: 宽表直读（不在 ledger_long 里的指标）：千分之一阈值。
+_WIDE_ONLY = ("threshold_1permille",)
 
 #: 宽表名 → 台账工作表（`wide/<name>.parquet` 的溯源）
 WIDE_SHEET = {
@@ -88,6 +111,31 @@ def shift_period(p, n_newer_targets):
                 m += 12
                 y -= 1
     return f"{y}{m:02d}"
+
+
+class LedgerView(Protocol):
+    """取数引擎（`queries.py`）认的**只读数据面协议**。
+
+    两适配器同协议、同值：
+    - `DataSource`（本模块）＝ `out/<期次>/` parquet 产物，主；
+    - `WorkbookView`（`flexible/workbook.py`）＝ `input/<期次>/监测表.xlsx` 直读，回落。
+    引擎只调这组读方法——不碰文件系统、不 import openpyxl。
+    """
+
+    @property
+    def periods(self) -> list: ...
+    @property
+    def filled_periods(self) -> list: ...
+    @property
+    def disciplines(self) -> list: ...
+
+    def current_period(self) -> str: ...
+    def series(self, metric: str, disc: str) -> pd.Series: ...
+    def at(self, metric: str, disc: str, period: str) -> float | None: ...
+    def cross(self, metric: str, period: str) -> pd.Series: ...
+    def chain(self, metric: str, disc: str, period: str) -> dict: ...
+    def rank_intl_series(self) -> pd.Series: ...
+    def entered_1pct(self) -> pd.DataFrame: ...
 
 
 class DataSource:
@@ -149,12 +197,17 @@ class DataSource:
         """某学科某指标的全期次序列（index=period, 升序）。"""
         if metric not in METRICS:
             raise KeyError(f"指标 {metric} 不在白名单内：{sorted(METRICS)}")
-        df = self.long
-        sub = df[(df.metric == metric) & (df.discipline == disc)]
-        if metric in ("rank", "rank_pct"):
-            sub = sub[sub.source == "new_cn"]
-        elif metric in ("rank_intl_pct", "n_inst_1pct"):
-            sub = sub[sub.source == "new_intl"]
+        if metric in _WIDE_ONLY:
+            fr = self.wide(metric)
+            if disc not in getattr(fr, "index", []):
+                return pd.Series(dtype=float)
+            s = fr.loc[disc]
+            s.index = [str(p) for p in s.index]
+            return s.sort_index().dropna().astype(float)
+        lm, src_filter = _LONG_SPEC.get(metric, (metric, None))
+        sub = self.long[(self.long.metric == lm) & (self.long.discipline == disc)]
+        if src_filter:
+            sub = sub[sub.source == src_filter]
         s = sub.set_index("period")["value"]
         s.index = [str(p) for p in s.index]
         return s.sort_index().dropna()
@@ -172,12 +225,17 @@ class DataSource:
         """某一期、某指标、全学科横截面（index=discipline）。"""
         if metric not in METRICS:
             raise KeyError(f"指标 {metric} 不在白名单内：{sorted(METRICS)}")
-        df = self.long
-        sub = df[(df.metric == metric) & (df.period.astype(str) == str(period))]
-        if metric in ("rank", "rank_pct"):
-            sub = sub[sub.source == "new_cn"]
-        elif metric in ("rank_intl_pct", "n_inst_1pct"):
-            sub = sub[sub.source == "new_intl"]
+        if metric in _WIDE_ONLY:
+            fr = self.wide(metric)
+            cols = {str(c): c for c in fr.columns}
+            if str(period) not in cols:
+                return pd.Series(dtype=float)
+            return fr[cols[str(period)]].dropna().astype(float).sort_values()
+        lm, src_filter = _LONG_SPEC.get(metric, (metric, None))
+        sub = self.long[(self.long.metric == lm)
+                        & (self.long.period.astype(str) == str(period))]
+        if src_filter:
+            sub = sub[sub.source == src_filter]
         s = sub.set_index("discipline")["value"].dropna()
         return s.astype(float).sort_values()
 

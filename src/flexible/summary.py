@@ -13,7 +13,7 @@ from __future__ import annotations
 import pandas as pd
 
 from . import datasource as ds
-from .datasource import METRICS, DataSource, cn_name, period_label
+from .datasource import METRICS, LedgerView, cn_name, period_label
 
 #: 摘要里各字段的可信等级。`planning_input` = 只许 LLM 用来规划，不许直接写进正文。
 TRUST = "planning_input"
@@ -23,7 +23,7 @@ def _f(v):
     return None if v is None or pd.isna(v) else float(v)
 
 
-def summarize(src: DataSource, period: str) -> dict:
+def summarize(src: LedgerView, period: str) -> dict:
     """本期摘要：可供规划器挑选「写哪些学科、盯哪些异常」。"""
     period = str(period)
     prev = ds.prev_period(src.periods, period)
@@ -89,7 +89,7 @@ def summarize(src: DataSource, period: str) -> dict:
     }
 
 
-def anomalies(src: DataSource, period: str, threshold: float = 1.5) -> dict:
+def anomalies(src: LedgerView, period: str, threshold: float = 1.5) -> dict:
     """异常检测（规则）：环比倍数越界 + 排名连续同向 + 接近度跨越 1 的边界。"""
     from . import queries as q
     jumps = q.anomaly(src, period=period, threshold=threshold)

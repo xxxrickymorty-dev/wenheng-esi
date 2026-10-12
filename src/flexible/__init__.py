@@ -18,8 +18,9 @@
 
 | 文件 | 职责 |
 |---|---|
-| `datasource.py` | 只读数据访问 + **来源链**（每个数字指回台账工作表与期次列） |
-| `queries.py` | 4 个数据查询工具（LLM 拿数的唯一入口，白名单 schema） |
+| `datasource.py` | 只读数据访问 + **来源链** + `LedgerView` 协议（parquet 主适配器） |
+| `workbook.py` | `LedgerView` 回落适配器：监测表直读（parquet 缺席时；与 parquet 面同值） |
+| `queries.py` | 数据查询工具（series/at/compare/delta/events/anomaly/scope；LLM 拿数的唯一入口，白名单 schema） |
 | `summary.py` | 统计摘要 + 异常检测（**规则实现**，标记为「规划依据」而非「可引用数值」） |
 | `spec.py` | 图表声明语言 → 复用 `charts.py` 排版设施渲染 |
 | `opinion.py` | 三级判断分级（描述性/解释性/专业判断） |
@@ -27,4 +28,5 @@
 | `report.py` | 编排：规划 → 查询 → 数字回填骨架 → spec 出图 → 产出 md |
 """
 
-__all__ = ["datasource", "queries", "summary", "spec", "opinion", "planner", "report"]
+__all__ = ["datasource", "workbook", "queries", "summary", "spec", "opinion",
+           "planner", "report"]

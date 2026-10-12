@@ -347,6 +347,139 @@ class Test排序方向:
         assert "不是可引用数值" in sc["note"]
 
 
+# ================================================================ 3. 引擎扩 op（票 01）
+class Test引擎扩op:
+    """票 01：at / delta / events / compare.top —— tmp parquet 视图上确定性验证。"""
+
+    @pytest.fixture()
+    def view(self, tmp_path):
+        """合成 parquet 视图：2 学科 × 3 期（Chemistry 中间期缺论文数）。"""
+        import pandas as pd
+        d = tmp_path / "202601"
+        (d / "wide").mkdir(parents=True)
+        rows = []
+        papers = {"Physics": {"202601": 10.0, "202603": 12.0, "202605": 15.0},
+                  "Chemistry": {"202601": 20.0, "202603": None, "202605": 25.0}}
+        for disc, vals in papers.items():
+            for p, v in vals.items():
+                rows.append({"discipline": disc, "period": p, "value": v,
+                             "metric": "papers", "source": None})
+        pd.DataFrame(rows).to_parquet(d / "ledger_long.parquet")
+        pd.DataFrame({"202601": [1.0, 1.0], "202603": [1.0, 1.0], "202605": [1.0, 1.0]},
+                     index=["Physics", "Chemistry"]).to_parquet(d / "wide" / "total_cites.parquet")
+        pd.DataFrame({"202601": [1.0, 0.0], "202603": [0.0, 1.0], "202605": [1.0, 0.0]},
+                     index=["Physics", "Chemistry"]).to_parquet(d / "wide" / "entered_1pct.parquet")
+        pd.DataFrame({"202601": [90.0, 95.0], "202603": [91.0, 96.0], "202605": [92.0, 97.0]},
+                     index=["Physics", "Chemistry"]).to_parquet(
+                         d / "wide" / "threshold_1permille.parquet")
+        return DataSource(d)
+
+    def test_at_取到格(self, view):
+        r = queries.at(view, "papers", "Physics", "202603")
+        assert r["value"] == 12.0
+        assert r["source"]["origin_sheet"] == "论文数"
+        assert r["source"]["period"] == "202603" and r["source"]["discipline"] == "Physics"
+
+    def test_at_缺数如实说(self, view):
+        r = queries.at(view, "papers", "Chemistry", "202603")
+        assert r["value"] is None and r["source"] is None and r["note"]
+
+    def test_at_期次越界拒(self, view):
+        with pytest.raises(queries.QueryError, match="不在数据范围内"):
+            queries.at(view, "papers", "Physics", "202607")
+
+    def test_delta_差与比(self, view):
+        r = queries.delta(view, "papers", "Physics", "202605")
+        assert r["prev"] == "202603" and r["value"] == 15.0 and r["prev_value"] == 12.0
+        assert r["diff"] == 3.0 and r["ratio_pct"] == 25.0
+        assert r["source"]["period"] == "202605" and r["source_prev"]["period"] == "202603"
+
+    def test_delta_指定对比期(self, view):
+        r = queries.delta(view, "papers", "Physics", "202605", prev="202601")
+        assert r["diff"] == 5.0 and r["ratio_pct"] == 50.0
+
+    def test_delta_缺数如实说(self, view):
+        r = queries.delta(view, "papers", "Chemistry", "202605")
+        assert r["value"] == 25.0 and r["prev_value"] is None
+        assert r["diff"] is None and r["ratio_pct"] is None and "202603" in r["note"]
+
+    def test_delta_首期无上期拒(self, view):
+        with pytest.raises(queries.QueryError, match="没有可比期次"):
+            queries.delta(view, "papers", "Physics", "202601")
+
+    def test_events_单科进出(self, view):
+        r = queries.events(view, "Physics")
+        assert [(e["period"], e["type"]) for e in r["events"]] == [("202603", "out"), ("202605", "in")]
+        assert r["in_since"] == {"Physics": "202601"}
+        assert all(e["source"]["origin_sheet"] == "学科进入时间" for e in r["events"])
+
+    def test_events_全部按时间排(self, view):
+        r = queries.events(view)
+        assert r["n"] == 4
+        assert [(e["period"], e["discipline"], e["type"]) for e in r["events"]] == [
+            ("202603", "Chemistry", "in"), ("202603", "Physics", "out"),
+            ("202605", "Chemistry", "out"), ("202605", "Physics", "in")]
+        assert r["in_since"] == {"Physics": "202601"}
+
+    def test_events_未知学科拒(self, view):
+        with pytest.raises(queries.QueryError, match="不在名单内"):
+            queries.events(view, "NoSuchDisc")
+
+    def test_compare_top_取前k(self, view):
+        r = queries.compare(view, "papers", None, "202605", top=1)
+        assert r["n"] == 1 and r["rows"][0]["discipline"] == "Chemistry"
+        with pytest.raises(queries.QueryError, match="top"):
+            queries.compare(view, "papers", None, "202605", top=0)
+
+    def test_千分位阈值走宽表(self, view):
+        r = queries.at(view, "threshold_1permille", "Physics", "202603")
+        assert r["value"] == 91.0 and r["source"]["origin_sheet"] == "千分之一被引阈值"
+
+    def test_execute_新op可派发(self, view):
+        r = queries.execute(view, "delta", metric="papers", disc="Physics", period="202605")
+        assert r["kind"] == "delta"
+
+
+class Test引擎真实产物:
+    """真产物上的数据面补齐：转置排名序列、千分位阈值、两适配器同值。"""
+
+    def test_转置排名序列可查(self, src):
+        hits = [d for d in src.disciplines if queries.series(src, "rank_cn", d)["points"]]
+        assert hits, "至少一个学科应有国内排名（转置表）序列"
+        r = queries.series(src, "rank_cn", hits[0])
+        ps = [p["period"] for p in r["points"]]
+        assert ps == sorted(ps)
+        assert all(p["source"]["origin_sheet"] == "国内排名" for p in r["points"])
+
+    def test_千分位阈值可查(self, src):
+        hits = [d for d in src.disciplines
+                if queries.series(src, "threshold_1permille", d)["points"]]
+        assert hits, "至少一个学科应有千分位阈值序列"
+
+    def test_两适配器同值(self):
+        """WorkbookView（监测表直读）与 DataSource（parquet）对引擎同协议同值。"""
+        from conftest import REPO
+        xlsx = REPO / "input" / "202609" / "监测表.xlsx"
+        pq = REPO / "out" / "202609" / "ledger_long.parquet"
+        if not (xlsx.is_file() and pq.is_file()):
+            skip_unless("input/202609/监测表.xlsx 或 out/202609 产物缺失",
+                        lambda: xlsx.is_file() and pq.is_file())
+        from flexible.workbook import WorkbookView
+        wb, ds = WorkbookView(xlsx), DataSource(pq.parent)
+        for metric in ("total_cites", "papers", "proximity_1pct", "threshold_1pct",
+                       "threshold_1permille", "rank_cn", "rank_intl"):
+            for d in ("Chemistry", "Physics"):
+                a, b = wb.series(metric, d), ds.series(metric, d)
+                common = a.index.intersection(b.index)
+                assert len(common) >= 3, f"{metric}/{d} 无重叠期次"
+                assert (a[common] - b[common]).abs().max() < 1e-9, metric
+        assert wb.entered_1pct().equals(ds.entered_1pct())
+        ra = queries.at(wb, "papers", "Chemistry", "202609")
+        rb = queries.at(ds, "papers", "Chemistry", "202609")
+        assert ra["value"] == rb["value"]
+        assert ra["source"]["origin_sheet"] == rb["source"]["origin_sheet"]
+
+
 class Test不污染复刻产物:
     """灵活报告只写 out/<期次>/flexible/，复刻报告的三件产物一个字节都不许动。"""
 
