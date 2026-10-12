@@ -97,14 +97,24 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
     if (el) el.scrollTop = el.scrollHeight
   }, [msgs])
 
-  /* 报告里的图：鼠标点开看大图；img 默认不可聚焦，这里补键盘入口 */
+  /* 报告里的图：点开看大图——img 默认不可聚焦，这里补键盘入口；
+     事件直接挂在图上（容器不装点击，2026-10-12 样式卫生：可点元素不再用裸 div 代收）。 */
   useEffect(() => {
     const el = logRef.current
     if (!el) return
+    const openImage = (img: HTMLImageElement) => {
+      if (img.src) window.open(img.src, '_blank', 'noopener')
+    }
     for (const img of Array.from(el.querySelectorAll<HTMLImageElement>('.fx-md img'))) {
       img.tabIndex = 0
       img.setAttribute('role', 'link')
       img.setAttribute('aria-label', '查看大图')
+      img.addEventListener('click', () => openImage(img))
+      img.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        openImage(img)
+      })
     }
   }, [msgs])
 
@@ -208,23 +218,6 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
     } catch { setNote('读取这份稿失败了。') }
   }
 
-  function onLogClick(e: React.MouseEvent<HTMLDivElement>) {
-    const t = e.target as HTMLElement
-    if (t.tagName === 'IMG') {
-      const src = (t as HTMLImageElement).src
-      if (src) window.open(src, '_blank', 'noopener')
-    }
-  }
-
-  function onLogKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    if (e.key !== 'Enter' && e.key !== ' ') return
-    const t = e.target as HTMLElement
-    if (t.tagName !== 'IMG') return
-    e.preventDefault()
-    const src = (t as HTMLImageElement).src
-    if (src) window.open(src, '_blank', 'noopener')
-  }
-
   function runState(m: Bot): string {
     if (m.status === 'planning') return `正在规划大纲 · ${elapsedLive()} 秒`
     if (m.status === 'streaming') return `正在生成 · ${m.backend || '模型'} · ${elapsedLive()} 秒`
@@ -299,7 +292,7 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
         </p>
       )}
 
-      <div className="fx-log" ref={logRef} onClick={onLogClick} onKeyDown={onLogKeyDown}>
+      <div className="fx-log" ref={logRef}>
         {msgs.map((m) => m.kind === 'user' ? (
           <div key={m.id} className="fx-msg user">{m.text}</div>
         ) : (

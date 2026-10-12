@@ -68,7 +68,7 @@ a{color:inherit}
 .brand span{font-size:13px;color:var(--ink-3);letter-spacing:.16em}
 /* 站多了之后：导航项不许折行；位置不够时导航自己横滑（别把「生成台」拆成两行） */
 .nav{display:flex;gap:4px;margin-left:auto;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.nav a{display:flex;align-items:center;gap:7px;padding:9px 13px;border-radius:var(--r-sm);
+.nav a{transition:background .15s,color .15s;display:flex;align-items:center;gap:7px;padding:9px 13px;border-radius:var(--r-sm);
   color:var(--ink-2);text-decoration:none;font-size:15px;white-space:nowrap;flex:0 0 auto}
 .nav a[aria-current="page"]{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
 .nav a:hover{background:var(--panel)}
@@ -139,7 +139,7 @@ a{color:inherit}
 .focus .big{font-size:19px;font-weight:600}
 .focus .sub{color:var(--ink-2);font-size:15px;margin-top:4px}
 .focus .cta{margin-left:auto;display:flex;gap:12px;align-items:center}
-.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:9px;
+.btn{transition:filter .15s,background .15s,border-color .15s,color .15s;display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:9px;
   border:1px solid var(--line);background:var(--card);cursor:pointer;font:inherit;
   font-size:16px;font-weight:600;color:inherit;text-decoration:none}
 .btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-size:17px;padding:13px 28px}
@@ -208,6 +208,7 @@ a{color:inherit}
 .periods{width:100%;border-collapse:collapse;font-size:16px}
 .periods th,.periods td{padding:13px 16px;border-bottom:1px solid var(--line-2);text-align:left}
 .periods th{background:var(--panel);color:var(--ink-2);font-weight:600;font-size:14px}
+.periods tbody tr{transition:background .15s}
 .periods tbody tr:hover{background:var(--panel)}
 .periods .mono{font-family:var(--mono);color:var(--ink-3);font-size:14px}
 .pill{border-radius:999px;padding:3px 11px;font-size:13.5px;display:inline-block}
@@ -325,7 +326,7 @@ a{color:inherit}
 .rc-doors .entry{margin-top:0}
 @media (max-width:1020px){.rc-doors{grid-template-columns:1fr}}
 .rc-chips{display:flex;flex-wrap:wrap;gap:6px}
-.rc-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border:1px solid var(--line);
+.rc-chip{transition:background .15s,color .15s,border-color .15s;display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border:1px solid var(--line);
   border-radius:999px;background:var(--card);color:var(--ink-2);text-decoration:none;font-size:13px}
 .rc-chip:hover{border-color:var(--zhu);color:var(--zhu)}
 .rc-chip b{color:var(--ink-3);font-weight:600}
@@ -420,7 +421,7 @@ a{color:inherit}
 .fc-band-state.dirty{color:var(--warn);font-weight:650}
 /* ⓘ 口径弹层（票 13）：点开就地看这一段指什么 */
 .info{position:relative;display:inline-block;vertical-align:-3px}
-.info>summary{list-style:none;cursor:pointer;display:inline-grid;place-items:center;
+.info>summary{transition:border-color .15s,color .15s;list-style:none;cursor:pointer;display:inline-grid;place-items:center;
   width:20px;height:20px;border:1px solid var(--line);border-radius:50%;background:var(--card);
   color:var(--ink-3);font:12px/1 var(--serif)}
 .info>summary::-webkit-details-marker{display:none}
@@ -623,7 +624,7 @@ a{color:inherit}
   border-bottom:1px dashed var(--line);padding-bottom:10px}
 .rv-docmeta span{flex:1;min-width:260px}
 /* 行内「跳到下一处」小胶囊（报告顶部一个；右栏清单里一个全宽按钮） */
-.rv-next{margin-left:auto;border:1px solid var(--zhu);background:var(--card);color:var(--zhu);
+.rv-next{transition:background .15s,color .15s;margin-left:auto;border:1px solid var(--zhu);background:var(--card);color:var(--zhu);
   border-radius:999px;font:inherit;font-size:12.5px;font-weight:600;padding:4px 13px;
   cursor:pointer;white-space:nowrap}
 .rv-next:hover{background:var(--zhu-soft)}
@@ -678,12 +679,12 @@ a{color:inherit}
 .rv-todo li:last-child{border-bottom:none}
 .rv-todo-t{flex:1;font-size:14px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rv-todo-v{font-size:12px;color:var(--ink-3);flex:0 0 auto}
-.rv-jump{display:flex;align-items:center;gap:8px;flex:1;min-width:0;border:0;background:transparent;
+.rv-jump{transition:background .15s,color .15s;display:flex;align-items:center;gap:8px;flex:1;min-width:0;border:0;background:transparent;
   font:inherit;color:inherit;cursor:pointer;padding:3px 4px;border-radius:7px;text-align:left}
 .rv-jump:hover{background:var(--panel)}
 .rv-dot{width:9px;height:9px;border-radius:50%;background:var(--bad);flex:0 0 auto}
 .rv-dot.done{background:var(--ok)}
-.rv-flag{border:1px solid var(--line);background:var(--card);border-radius:999px;
+.rv-flag{transition:border-color .15s,color .15s;border:1px solid var(--line);background:var(--card);border-radius:999px;
   font-size:12px;color:var(--ink-3);padding:2px 9px;cursor:pointer;flex:0 0 auto}
 .rv-flag:hover{border-color:var(--gold);color:var(--gold-ink)}
 .rv-flag.on{background:var(--gold-soft);border-color:var(--gold);color:var(--gold-ink);font-weight:600}
@@ -698,7 +699,7 @@ a{color:inherit}
 .rv-confirm li{color:var(--ink-2)}
 
 /* ===== 取数台（X2·票 12）：三步条步名链接 / 开始前检查 / 组卡 / 核对表 ===== */
-.steplink{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+.steplink{transition:color .15s,border-color .15s;color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
 .steplink:hover{color:var(--zhu);border-color:var(--zhu)}
 .pill.ok{background:var(--ok-soft);color:var(--ok)}
 .pill.bad{background:var(--bad-soft);color:var(--bad)}
@@ -868,6 +869,7 @@ a{color:inherit}
 .an-list2{margin:10px 0 0;padding-left:20px;line-height:1.9}
 .an-footer{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line-2)}
 .ai-row{border-top:1px solid var(--line-2);padding:9px 0;cursor:pointer}
+.ai-row-btn{width:100%;border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;padding:0}
 .rd-head{padding:0 18px 8px;letter-spacing:.2em}
 .rd-sep{margin:12px 18px 0;border-top:1px solid var(--line);padding-top:10px}
 .gal-img{width:100%;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel)}

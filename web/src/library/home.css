@@ -83,7 +83,7 @@ html{scroll-behavior:smooth;scroll-padding-top:104px}
 .home-ask-copy h2 { font-size: 31px; letter-spacing: .09em; font-weight: 400; margin: 0 0 10px; }
 .home-ask-copy p:not(.home-kicker) { font: 14px/1.9 var(--body-font); color: #687464; margin: 0; }
 .home-ask-form { display: flex; align-items: center; gap: 11px; border: 1px solid #b9c4ad; background: #eef0e6; padding: 11px 12px; color: #6a7e61; }
-.home-ask-form input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font: 14px var(--body-font); color: #244632; }
+.home-ask-form input { flex: 1; min-width: 0; border: 0; background: transparent; font: 14px var(--body-font); color: #244632; }
 .home-ask-form input::placeholder { color: #8a9a85; }
 .home-ask-form button { flex: none; height: 38px; padding: 0 18px; border: 0; background: #183e2f; color: #eee9d8; font-size: 13.5px; letter-spacing: .06em; cursor: pointer; transition: background .2s; }
 .home-ask-form button:hover { background: #315841; }

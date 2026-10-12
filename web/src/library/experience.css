@@ -552,7 +552,7 @@
   list-style: none;
 }
 
-.room-catalog-list button {
+.room-catalog-list button {transition:background .2s,color .2s,border-color .2s;
   width: 100%;
   padding: 9px 10px;
   border: 1px solid #d9d1b744;

@@ -119,7 +119,7 @@
 }
 
 /* 归架＝关闭（合并成一个浮层按钮）；提示条同样浮层、不吃高度 */
-.flip-reader .reader-exit {
+.flip-reader .reader-exit {transition:background .2s,color .2s;
   position: absolute;
   top: 14px;
   left: clamp(20px, 4vw, 80px);

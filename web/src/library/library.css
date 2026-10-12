@@ -80,7 +80,7 @@
   list-style: none;
 }
 
-.library-period-button {
+.library-period-button {transition:background .2s,color .2s,border-color .2s;
   display: grid;
   width: 100%;
   gap: 5px;
@@ -205,7 +205,7 @@
   color: var(--ink-2);
 }
 
-.library-action {
+.library-action {transition:background .2s,color .2s,border-color .2s;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -451,7 +451,7 @@
 
 .library-reader-header .library-eyebrow { margin-bottom: 3px; }
 .library-reader-header h2 { margin: 0; font-size: 22px; }
-.library-reader-header h2:focus { outline: none; }
+.library-reader-header h2:focus:not(:focus-visible) { outline: none; }
 .library-reader-header h2:focus-visible { outline: 3px solid var(--zhu); outline-offset: 4px; }
 .library-reader-header p:last-child { margin: 5px 0 0; color: var(--ink-2); }
 .library-reader-return { flex: 0 0 auto; text-align: center; }
@@ -464,7 +464,7 @@
   border-bottom: 1px solid var(--line);
 }
 
-.library-reader-tab {
+.library-reader-tab {transition:background .2s,color .2s;
   min-height: 47px;
   padding: 8px 15px;
   border: 0;

@@ -130,8 +130,9 @@ function Row({ c, open, onToggle }: { c: AiCall; open: boolean; onToggle: () => 
   const isModel = c.mode === 'model'
   const shortId = c.record_id ? `#${c.record_id.slice(-4)}` : '—'
   return (
-    <div className="ai-row" onClick={onToggle}>
-      <div className="rowc">
+    <div className="ai-row">
+      {/* 折叠头是真按钮（键盘可达；2026-10-12 样式卫生：可点元素不再用裸 div） */}
+      <button type="button" className="rowc ai-row-btn" onClick={onToggle} aria-expanded={open}>
         <span className="mono hint">{hhmm(c.ts)}</span>
         <span className="fw-650">{c.question || c.label || '（概述本期要点）'}</span>
         {c.capability && c.capability !== 'qa' && (
@@ -142,7 +143,7 @@ function Row({ c, open, onToggle }: { c: AiCall; open: boolean; onToggle: () => 
           <span className="pill ok">校验 {c.shield.passed}/{c.shield.checked}</span>
           <span className="hint mono">{shortId} · {(c.elapsed_ms / 1000).toFixed(1)} 秒</span>
         </span>
-      </div>
+      </button>
 
       {open && (
         <div className="rowc8 mt-8">

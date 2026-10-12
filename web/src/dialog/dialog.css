@@ -11,11 +11,11 @@
 .dlg-brand{display:flex;align-items:baseline;gap:8px;padding:16px 16px 10px}
 .dlg-brand strong{font-family:var(--serif);font-size:18px}
 .dlg-brand span{font-size:13.5px;color:var(--ink-3)}
-.dlg-newchat{margin:0 12px 10px;min-height:var(--dlg-hit);padding:9px 14px;border:1px solid var(--line);
+.dlg-newchat{transition:background .15s,color .15s;margin:0 12px 10px;min-height:var(--dlg-hit);padding:9px 14px;border:1px solid var(--line);
   background:var(--card);border-radius:10px;font:inherit;font-size:15px;cursor:pointer;text-align:left}
 .dlg-newchat:hover{background:var(--panel)}
 .dlg-hist{flex:1;overflow-y:auto;padding:0 8px 10px}
-.dlg-hist a{display:block;padding:9px 10px;border-radius:9px;text-decoration:none;
+.dlg-hist a{transition:background .15s,color .15s;display:block;padding:9px 10px;border-radius:9px;text-decoration:none;
   color:var(--ink-2);font-size:15px;line-height:1.35}
 .dlg-hist a:hover{background:var(--card)}
 .dlg-hist a[aria-current="true"]{background:var(--card);color:var(--ink);
@@ -41,30 +41,17 @@
   border:1px solid var(--line);border-radius:999px;padding:0 6px 0 12px;min-height:32px}
 .dlg-slot-k{color:var(--ink-3);font-size:13.5px}
 .dlg-slot-v{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums}
-.dlg-slot-x{border:0;background:transparent;cursor:pointer;color:var(--ink-3);
+.dlg-slot-x{transition:background .15s,color .15s;border:0;background:transparent;cursor:pointer;color:var(--ink-3);
   font:inherit;font-size:13.5px;width:32px;height:32px;border-radius:999px}
 .dlg-slot-x:hover{background:var(--card);color:var(--ink)}
-.dlg-wk{position:relative}
-.dlg-wk summary{list-style:none;cursor:pointer;border:1px solid var(--line);background:var(--panel);
-  border-radius:999px;padding:5px 13px;font-size:14px;color:var(--ink-2);min-height:32px;
-  display:inline-flex;align-items:center}
-.dlg-wk summary:hover{background:var(--card)}
-.dlg-wk summary::-webkit-details-marker{display:none}
-.dlg-wk[open] summary{background:var(--zhu);border-color:var(--zhu);color:#fff}
-.dlg-wk-menu{position:absolute;right:0;top:calc(100% + 8px);z-index:30;min-width:190px;
-  background:var(--card);border:1px solid var(--line);border-radius:12px;
-  box-shadow:var(--shadow);padding:6px}
-.dlg-wk-menu a{display:block;padding:10px 12px;border-radius:8px;text-decoration:none;
-  color:var(--ink-2);font-size:14.5px;min-height:var(--dlg-hit);display:flex;align-items:center}
-.dlg-wk-menu a:hover{background:var(--panel)}
 .dlg-skin{display:flex;border:1px solid var(--line);border-radius:999px;
   background:var(--panel);overflow:hidden}
-.dlg-skin button{border:0;background:transparent;font:inherit;font-size:13.5px;
+.dlg-skin button{transition:background .15s,color .15s;border:0;background:transparent;font:inherit;font-size:13.5px;
   padding:0 12px;min-height:32px;cursor:pointer;color:var(--ink-2)}
 .dlg-skin button:hover{background:var(--card)}
 .dlg-skin button[aria-pressed="true"]{background:var(--zhu);color:#fff}
 /* 「查数据」能力开关（票 07）：问文衡并入前门，开关跟着能力走 */
-.dlg-qa{border:1px solid var(--line);background:var(--panel);border-radius:999px;
+.dlg-qa{transition:background .15s,color .15s;border:1px solid var(--line);background:var(--panel);border-radius:999px;
   font:inherit;font-size:13.5px;padding:0 12px;min-height:32px;cursor:pointer;
   color:var(--ink-2);white-space:nowrap}
 .dlg-qa:hover{background:var(--card)}
@@ -111,7 +98,7 @@
 .dlg-notice{margin-top:6px;font-size:13.5px;color:var(--ink-3)}
 /* 应答带的动作（改做那期 / 去取数台 / 去核对 / 先等等）——照五稿的胶囊按钮 */
 .dlg-acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:11px}
-.dlg-act{display:inline-flex;align-items:center;justify-content:center;
+.dlg-act{transition:background .15s,color .15s,filter .15s,border-color .15s;display:inline-flex;align-items:center;justify-content:center;
   border:1px solid var(--line);background:var(--card);border-radius:999px;
   padding:6px 16px;min-height:var(--dlg-hit);font:inherit;font-size:14.5px;
   cursor:pointer;text-decoration:none;color:var(--ink)}
@@ -178,7 +165,7 @@
 .dlg-box:focus-within{border-color:var(--zhu);box-shadow:0 0 0 3px var(--zhu-soft)}
 .dlg-box textarea{flex:1;border:0;background:transparent;resize:none;font:inherit;
   color:var(--ink);height:28px;outline:none}
-.dlg-send{flex:0 0 auto;width:var(--dlg-hit);height:var(--dlg-hit);border-radius:999px;
+.dlg-send{transition:filter .15s;flex:0 0 auto;width:var(--dlg-hit);height:var(--dlg-hit);border-radius:999px;
   border:0;background:var(--zhu);color:#fff;font-size:17px;cursor:pointer;
   display:inline-flex;align-items:center;justify-content:center}
 .dlg-send:hover{filter:brightness(1.12)}
