@@ -271,8 +271,9 @@ async def do_login(request: Request, username: str = Form(""), password: str = F
     if check_credentials(username, password):
         request.session["user"] = username
         _login_fails.pop(ip, None)
-        # 两种角色（管理员/操作员）都进工作区；操作员可见范围由工作区按角色裁剪。
-        return RedirectResponse("/", status_code=303)
+        # 2026-10-12（rick）：两种角色都先落到**陈列馆首页**（看 → 问 → 做 三面模型），
+        # 从陈列馆的「问文衡 →」进对话页，再从对话页「去生成台」进工作台。
+        return RedirectResponse("/app/shelf/", status_code=303)
     rec["n"] += 1
     if rec["n"] >= 5:
         rec.update({"n": 0, "until": time.time() + 60})

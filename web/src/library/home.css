@@ -76,3 +76,23 @@ html{scroll-behavior:smooth;scroll-padding-top:104px}
   .home-heading-link { margin-top: 4px; }
   .home-preview-summary { min-height: auto; }
 }
+
+/* ---------- 问文衡条带（2026-10-12 新增，P0-②）：hero 之下、馆藏之上 ---------- */
+.home-ask { background: #fffdf8; border-bottom: 1px solid #d6d3c7; padding: 40px 0; }
+.home-ask-grid { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(380px, 1.15fr); gap: 48px; align-items: center; }
+.home-ask-copy h2 { font-size: 31px; letter-spacing: .09em; font-weight: 400; margin: 0 0 10px; }
+.home-ask-copy p:not(.home-kicker) { font: 14px/1.9 var(--body-font); color: #687464; margin: 0; }
+.home-ask-form { display: flex; align-items: center; gap: 11px; border: 1px solid #b9c4ad; background: #eef0e6; padding: 11px 12px; color: #6a7e61; }
+.home-ask-form input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font: 14px var(--body-font); color: #244632; }
+.home-ask-form input::placeholder { color: #8a9a85; }
+.home-ask-form button { flex: none; height: 38px; padding: 0 18px; border: 0; background: #183e2f; color: #eee9d8; font-size: 13.5px; letter-spacing: .06em; cursor: pointer; transition: background .2s; }
+.home-ask-form button:hover { background: #315841; }
+.home-ask-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; align-items: center; }
+.home-ask-chips span { font-size: 12.5px; color: #8a9a85; }
+.home-ask-chips button { border: 1px solid #c9d2c0; background: #fffdf8; border-radius: 999px; padding: 6px 14px; font-size: 13px; color: #3f5443; cursor: pointer; transition: border-color .2s, color .2s; }
+.home-ask-chips button:hover { border-color: #688568; color: #284936; }
+@media (max-width: 760px) {
+  .home-ask { padding: 30px 0; }
+  .home-ask-grid { grid-template-columns: 1fr; gap: 24px; }
+}
+

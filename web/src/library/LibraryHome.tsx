@@ -54,7 +54,7 @@ function Header({ onEnterExterior, backToWorkspace }: { onEnterExterior: () => v
       <span className="home-brand-library">图书馆<small>YUNNAN UNIVERSITY LIBRARY</small></span>
     </a>
     <nav className="home-nav" aria-label="主导航">
-      {backToWorkspace && <a className="home-nav-back" href="/app/" title="回到馆员工作区">← 回工作区</a>}
+      {backToWorkspace && <a className="home-nav-back" href="/app/dialog/" title="去文衡对话页（做报告 / 查数据）">问文衡 →</a>}
       {links.map(([label, href]) => <a key={href} href={href}>{label}</a>)}
     </nav>
     <button type="button" className="home-button header-entrance" onClick={onEnterExterior}>
@@ -91,6 +91,41 @@ function HeroSection({ onEnterExterior }: { onEnterExterior: () => void }) {
     </div>
     <div className="home-hero-caption"><span>呈贡校区 · 图书馆</span><small>会泽百家　至公天下</small></div>
     <a className="home-scroll" href="#collection" aria-label="向下浏览馆藏介绍"><ArrowDown /><span>向下阅览</span></a>
+  </section>
+}
+
+/** 「问文衡」条带（2026-10-12 新增，P0-②）：hero 之下、馆藏之上。
+    输入或点示例 → 跳对话页并把问题带过去（?ask=…，对话页自动发送）。
+    不带问题时也能进对话页（去问文衡 → 直接打开）。 */
+function AskSection() {
+  const [question, setQuestion] = useState('')
+  const examples = ['查一下化学的接近度', '云南大学国际排名走势', '数学什么时候进入前 1%']
+  function go(ask: string) {
+    const q = ask.trim()
+    window.location.href = q ? `/app/dialog/?ask=${encodeURIComponent(q)}` : '/app/dialog/'
+  }
+  return <section id="ask" className="home-ask">
+    <div className="home-container home-ask-grid home-reveal">
+      <div className="home-ask-copy">
+        <p className="home-kicker">ASK WENHENG</p>
+        <h2>问文衡</h2>
+        <p>基于台账与报告作答，数字可溯源。<br />做报告、查数据，一句话就行——期次它来认。</p>
+      </div>
+      <div>
+        <form className="home-ask-form" onSubmit={(event) => { event.preventDefault(); go(question) }}>
+          <SearchIcon />
+          <input aria-label="问文衡" placeholder="问一句：化学的接近度是多少？"
+                 value={question} onChange={(event) => setQuestion(event.target.value)} />
+          <button type="submit">去问文衡 →</button>
+        </form>
+        <div className="home-ask-chips">
+          <span>试试：</span>
+          {examples.map((example) => (
+            <button key={example} type="button" onClick={() => setQuestion(example)}>{example}</button>
+          ))}
+        </div>
+      </div>
+    </div>
   </section>
 }
 
@@ -186,6 +221,7 @@ export default function LibraryHome({ books, onEnterExterior, onOpenBook, backTo
     <main>
       <HeroSection onEnterExterior={onEnterExterior} />
       <div className="home-record-strip"><div className="home-container"><span>学科情报阅览室<small>DISCIPLINE INTELLIGENCE READING ROOM</small></span><div><span>可阅览</span><strong>全内容册页</strong></div></div></div>
+      <AskSection />
       <CollectionSection />
       <BookshelfSection books={books} onOpenBook={onOpenBook} onEnterExterior={onEnterExterior} />
       <ArchiveSection />

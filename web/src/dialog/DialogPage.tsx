@@ -52,18 +52,19 @@ type Conversation = { id: number; title: string; turns: Turn[]; slots: DialogSlo
 
 const PALETTE_STORAGE_KEY = 'wenheng-palette'
 
-/** 工作台入口（按需打开；深链保留）——与 mockup 顶栏「工作台 ▾」一致。 */
-const WORKBENCH: [string, string][] = [
-  ['生成台', '/app/'],
-  ['AI 分析台 · 灵活报告', '/app/?view=analysis'],
-  ['取数台', '/app/?view=acquire'],
-  ['审核台 · 对勘本', '/app/?view=review'],
-  ['运行档案', '/app/?view=archive'],
-  ['陈列馆', '/app/shelf/'],
-]
-
-/** 操作员不可见的入口（取数台 / 运行档案）——菜单与动作按此过滤。 */
+/** 操作员不可见的入口（取数台 / 运行档案）——对话动作按此过滤。 */
 const OPERATOR_HIDDEN_HREFS = new Set(['/app/?view=acquire', '/app/?view=archive'])
+
+/** 空态首页（2026-10-12，P0-③）：模式 chips 与示例胶囊——点击＝把示例句填进输入框。 */
+const LANDING_MODES: { label: string; example: string }[] = [
+  { label: '出报告', example: '帮我做 9 月的报告' },
+  { label: '查数据', example: '查一下化学的接近度' },
+  { label: '看进展', example: '202609 到哪一步了' },
+]
+const LANDING_EXAMPLES = [
+  '帮我做 9 月的报告', '查一下化学的接近度', '云南大学国际排名走势',
+  '物理学的 1% 阈值是多少', '数学什么时候进入前 1%', '202609 到哪一步了',
+]
 
 function initialPalette(): 'ynu' | 'zhu' {
   try {
@@ -149,6 +150,22 @@ export default function DialogPage() {
     return () => { alive = false }
   }, [])
 
+  /* 陈列馆「问文衡」入口带问题来（`/app/dialog/?ask=…`，2026-10-12）：
+     身份确认后自动发送一次，随即清掉参数（刷新不重发）。 */
+  const askedRef = useRef(false)
+  useEffect(() => {
+    if (!roleKnown || !me || askedRef.current) return
+    askedRef.current = true
+    const params = new URLSearchParams(window.location.search)
+    const ask = (params.get('ask') || '').trim()
+    if (!ask) return
+    params.delete('ask')
+    const rest = params.toString()
+    window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : ''))
+    void sendText(ask)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 只在身份确认后跑一次
+  }, [roleKnown, me])
+
   useEffect(() => {
     let alive = true
     getAiCapabilities()
@@ -233,12 +250,6 @@ export default function DialogPage() {
       ...c,
       turns: c.turns.map((t, i) => (i === index ? { ...t, dismissed: true } : t)),
     }))
-  }
-
-  /** 空态「一键生成」（票 06）：把本期槽位摆好，再走正常一轮「出稿」——
-      核对门、留痕与两段式开跑全在后端既有链路里，前端不抄近路。 */
-  function generateFromHome(period: string) {
-    void sendText('出稿', { period, intent: '出报告' })
   }
 
   /** 轨迹更新器：只动某一条回复的 trace（不碰别的轮次）。 */
@@ -515,15 +526,8 @@ export default function DialogPage() {
         <header className="dlg-topbar">
           <span className="dlg-ttl">{active.title || '新对话'}</span>
           <div className="dlg-right">
-            <details className="dlg-wk">
-              <summary>工作台 ▾</summary>
-              <div className="dlg-wk-menu">
-                {WORKBENCH.filter(([, href]) => canEdit || !OPERATOR_HIDDEN_HREFS.has(href))
-                  .map(([label, href]) => (
-                  <a key={href} href={withPeriod(href)}>{label}</a>
-                ))}
-              </div>
-            </details>
+            {/* 2026-10-12（rick）：工作台下拉取消——只留一个「去生成台」入口（各台之间在工作区导航里走）。 */}
+            <a className="dlg-wk-link" href={withPeriod('/app/')}>去生成台 ▸</a>
             <span className="dlg-skin" role="group" aria-label="配色">
               <button type="button" aria-pressed={palette === 'ynu'}
                       onClick={() => setPalette('ynu')}>云大绿</button>
@@ -552,57 +556,40 @@ export default function DialogPage() {
         <div className="dlg-thread" ref={threadRef} id="dlg-thread" aria-live="polite">
           <div className="dlg-thread-in">
             {active.turns.length === 0 && (
-              <div className="dlg-turn wh">
-                <div className="dlg-who">文</div>
-                <div className="dlg-bub">
-                  <div className="dlg-nm">文衡</div>
-                  {tv ? (
-                    <>
-                      你好。先说本期到哪一步了：
-                      <div className="dlg-home">
-                        <div className="dlg-home-h">{tv.title}<span>三步</span></div>
-                        <ul className="dlg-home-list">
-                          {tv.rows.map((r, j) => (
-                            <li key={r.label}
-                                className={r.mark === '✓' ? 'ok' : r.mark === '●' ? 'cur' : ''}>
-                              <span className="dlg-home-m" aria-hidden="true">{r.mark}</span>
-                              <span className="dlg-home-t">
-                                {['①', '②', '③'][j]} {r.label}
-                              </span>
-                              <span className="dlg-home-n">{r.note}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        {tv.cta && (canEdit || tv.cta.view === 'review') ? (
-                          <div className="dlg-acts">
-                            {tv.cta.kind === 'gen' ? (
-                              <button type="button" className="dlg-act primary"
-                                      disabled={busy || !!running}
-                                      onClick={() => generateFromHome(home?.period ?? '')}>
-                                {tv.cta.label}
-                              </button>
-                            ) : (
-                              <a className="dlg-act primary"
-                                 href={buildPeriodUrl(`/app/?view=${tv.cta.view}`,
-                                                      home?.period ?? '')}>{tv.cta.label}</a>
-                            )}
-                          </div>
-                        ) : tv.cta ? (
-                          <p className="dlg-home-prev">
-                            操作员只读：取数 / 出稿仅管理员可用；可以在这里查数据（比如「查一下化学的接近度」）。
-                          </p>
-                        ) : null}
-                        {tv.prevNote && <p className="dlg-home-prev">{tv.prevNote}</p>}
-                      </div>
-                      {canEdit ? '也可以直接说一句，比如「帮我做 9 月的报告」。'
-                        : '也可以直接查数据，比如「查一下化学的接近度」。'}
-                    </>
-                  ) : (
-                    <>你好。说一句话就开始，比如「帮我做 9 月的报告」——期次我来认（按数据截止月），
-                    认出来会先说给你看。</>
-                  )}
+              <section className="dlg-land" aria-label="文衡首页">
+                <p className="dlg-land-kicker">WENHENG · 学科信息参考</p>
+                <h1 className="dlg-land-title">文衡，帮你做报告、查数据</h1>
+                <p className="dlg-land-sub">出报告 · 查数据 · 核台账——期次我来认（按数据截止月），认出来先说给你看。</p>
+                <div className="dlg-land-modes">
+                  {LANDING_MODES.map((mode, index) => (
+                    <button key={mode.label} type="button"
+                            className={`dlg-land-mode${index === 0 ? ' on' : ''}`}
+                            title={`把示例句填进输入框：${mode.example}`}
+                            onClick={() => setInput(mode.example)}>
+                      {mode.label}
+                    </button>
+                  ))}
                 </div>
-              </div>
+                <div className="dlg-land-pills">
+                  {LANDING_EXAMPLES.map((example) => (
+                    <button key={example} type="button" className="dlg-land-pill"
+                            onClick={() => setInput(example)}>{example}</button>
+                  ))}
+                </div>
+                {tv && (
+                  <div className="dlg-land-dyn">
+                    <b>本期动态 · {home?.period}</b>
+                    {tv.rows.map((row, index) => (
+                      <span key={row.label}
+                            className={row.mark === '✓' ? 'ok' : row.mark === '●' ? 'cur' : ''}>
+                        {['①', '②', '③'][index]} {row.label} {row.mark}
+                      </span>
+                    ))}
+                    <a href={withPeriod('/app/')}>去生成台 ▸</a>
+                  </div>
+                )}
+                {tv?.prevNote && <p className="dlg-land-prev">{tv.prevNote}</p>}
+              </section>
             )}
             {active.turns.map((t, i) => t.who === 'sys' ? (
               <p key={i} className="dlg-sys">{t.text}</p>

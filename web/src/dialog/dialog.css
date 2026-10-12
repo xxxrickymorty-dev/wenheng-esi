@@ -187,3 +187,26 @@
 @media (prefers-reduced-motion: reduce){
   .dlg-shell *{transition:none!important;animation:none!important}
 }
+
+/* ---------- 空态首页（2026-10-12，P0-③）与「去生成台」入口 ---------- */
+.dlg-wk-link{display:inline-flex;align-items:center;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 13px;font-size:13px;color:var(--ink-2);text-decoration:none;transition:border-color .15s,color .15s}
+.dlg-wk-link:hover{border-color:var(--zhu);color:var(--zhu)}
+.dlg-land{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:34px 12px 10px}
+.dlg-land-kicker{margin:0 0 16px;font:11px Georgia,serif;letter-spacing:.2em;color:var(--gold)}
+.dlg-land-kicker::before{content:"";display:inline-block;width:34px;height:1px;background:var(--gold);vertical-align:middle;margin-right:12px}
+.dlg-land-title{font-family:var(--serif);font-weight:400;font-size:clamp(26px,3vw,38px);letter-spacing:.06em;margin:0 0 13px;color:var(--ink)}
+.dlg-land-sub{margin:0;color:var(--ink-3);font-size:14.5px}
+.dlg-land-modes{display:flex;gap:10px;margin:28px 0 6px}
+.dlg-land-mode{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 20px;font-size:14px;font-family:var(--serif);color:var(--ink-2);cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+.dlg-land-mode.on{border-color:var(--zhu);color:var(--zhu);background:var(--zhu-soft)}
+.dlg-land-mode:hover{border-color:var(--zhu);color:var(--zhu)}
+.dlg-land-pills{display:flex;flex-wrap:wrap;justify-content:center;gap:9px;max-width:760px;margin:14px 0 6px}
+.dlg-land-pill{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 15px;font-size:13.5px;color:var(--ink-2);cursor:pointer;transition:border-color .15s,color .15s}
+.dlg-land-pill:hover{border-color:var(--zhu);color:var(--zhu)}
+.dlg-land-dyn{margin-top:24px;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:12px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 16px;font-size:13px;color:var(--ink-3)}
+.dlg-land-dyn b{font-weight:600;color:var(--ink-2)}
+.dlg-land-dyn .ok{color:var(--ok)}
+.dlg-land-dyn .cur{color:var(--warn)}
+.dlg-land-dyn a{color:var(--zhu);text-decoration:none;border-bottom:1px solid #9fb8a2}
+.dlg-land-prev{margin-top:10px;font-size:13px;color:var(--ink-3)}
+

@@ -89,7 +89,8 @@ class TestLogin口令:
         assert not check_credentials("random", "random")
         assert not check_credentials("", "")
 
-    def test_两角色登录都落工作区(self, monkeypatch):
+    def test_两角色登录都落陈列馆(self, monkeypatch):
+        """2026-10-12：登录先落陈列馆首页（看 → 问 → 做）；工作区从对话页「去生成台」进。"""
         class LoginRequest:
             client = type("Client", (), {"host": "test"})()
 
@@ -103,8 +104,8 @@ class TestLogin口令:
             operator_request, config.OPERATOR_USER, config.OPERATOR_PASS))
         admin = asyncio.run(app_module.do_login(
             admin_request, config.ADMIN_USER, config.ADMIN_PASS))
-        assert operator.headers["location"] == "/"
-        assert admin.headers["location"] == "/"
+        assert operator.headers["location"] == "/app/shelf/"
+        assert admin.headers["location"] == "/app/shelf/"
 
 
 class TestAdmin写端点上锁:

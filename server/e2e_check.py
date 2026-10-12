@@ -168,15 +168,16 @@ check("登录页只有登录表单（入口已移入工作区导航）",
 st, body, final = call("POST", "/login", {"username": ADMIN_U, "password": ADMIN_P})
 # ⚠ 别写死 8080：用 `WENHENG_BASE` 换端口跑时，写死会让这条**假失败**
 #    （2026-09-19 用 8099 实测：final 明明是首页，断言却判未过）。
-check("POST /login 进入新工作区 /app/", final.rstrip("/") == BASE + "/app", f"final={final}")
+check("POST /login（管理员）先落陈列馆 /app/shelf/",
+      final.rstrip("/") == BASE + "/app/shelf", f"final={final}")
 
 out("=== 3.1 操作员账号（demo）真登 + 只读角色门（契约 §4，2026-10-11） ===")
 # 2026-10-11：guest 取消，改「操作员」（评委，只读）——进工作区但不被送回陈列馆；
 # 取数/台账/运行档案/红件/溯源不可见，写动作一律 403；陈列馆两种角色同拿全数据。
 gop = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
 st, _, gfinal = call("POST", "/login", {"username": OPERATOR_U, "password": OPERATOR_P}, opener=gop)
-check("POST /login（操作员）进入工作区 /app/",
-      gfinal.rstrip("/") == BASE + "/app", f"final={gfinal}")
+check("POST /login（操作员）也先落陈列馆 /app/shelf/",
+      gfinal.rstrip("/") == BASE + "/app/shelf", f"final={gfinal}")
 st, gme, _ = call("GET", "/api/me", opener=gop)
 check("GET /api/me（操作员）→ 200", st == 200, f"got {st}")
 check("操作员角色是 operator", '"role":"operator"' in gme or '"role": "operator"' in gme,

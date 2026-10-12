@@ -80,21 +80,26 @@ def check(name, ok, detail=""):
 
 
 def login_cookies(user=USER, password=PASS):
-    """走真实表单登录，拿到 session cookie（Starlette SessionMiddleware 签名 cookie）。"""
+    """走真实表单登录，拿 session cookie；同时返回落点 URL
+    （2026-10-12：两种角色都应落陈列馆 /app/shelf/——看 → 问 → 做）。"""
     cj = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
     opener.open(BASE + "/login").read()
     data = urllib.parse.urlencode({"username": user, "password": password}).encode()
-    opener.open(urllib.request.Request(BASE + "/login", data=data)).read()
-    return [{"name": c.name, "value": c.value, "domain": "127.0.0.1", "path": "/"}
-            for c in cj]
+    resp = opener.open(urllib.request.Request(BASE + "/login", data=data))
+    final = resp.geturl()
+    cookies = [{"name": c.name, "value": c.value, "domain": "127.0.0.1", "path": "/"}
+               for c in cj]
+    return cookies, final
 
 
 def main():
     from playwright.sync_api import sync_playwright
 
-    cookies = login_cookies()
+    cookies, login_final = login_cookies()
     check("登录拿到 session cookie", any(c["name"] == "session" for c in cookies))
+    check("管理员登录先落陈列馆（/app/shelf/）",
+          login_final.rstrip("/").endswith("/app/shelf"), f"final={login_final}")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(channel="chrome", headless=True)
@@ -138,7 +143,8 @@ def main():
 
         # ---- 1b) 管理员进陈列馆（2026-09-28：入口移入工作区导航；看同一份访客投影，不再弹回） ----
         admin_ctx = browser.new_context(viewport={"width": 1280, "height": 900})
-        admin_ctx.add_cookies(login_cookies())
+        admin_cookies, _admin_final = login_cookies()
+        admin_ctx.add_cookies(admin_cookies)
         admin_shelf = admin_ctx.new_page()
         admin_shelf_problems = []
         admin_shelf.on("pageerror", lambda e: admin_shelf_problems.append("pageerror: " + str(e)))
@@ -329,7 +335,10 @@ def main():
 
         # ---- 2) 操作员（只读）：进工作区不被送走；写按钮不出现；陈列馆同看全内容 ----
         op_ctx = browser.new_context(viewport={"width": 1280, "height": 900})
-        op_ctx.add_cookies(login_cookies(OPERATOR_USER, OPERATOR_PASS))
+        op_cookies, op_final = login_cookies(OPERATOR_USER, OPERATOR_PASS)
+        check("操作员登录也先落陈列馆（/app/shelf/）",
+              op_final.rstrip("/").endswith("/app/shelf"), f"final={op_final}")
+        op_ctx.add_cookies(op_cookies)
         operator = op_ctx.new_page()
         op_problems = []
         operator.on("pageerror", lambda e: op_problems.append("pageerror: " + str(e)))
@@ -372,6 +381,12 @@ def main():
         except Exception as e:                                       # noqa: BLE001
             check("陈列馆首页渲染（.home-hero）", False, str(e)[:80])
         try:
+            has_band = bool(operator.query_selector("#ask .home-ask-form"))
+            has_nav = bool(operator.query_selector('.home-nav-back[href="/app/dialog/"]'))
+            check("陈列馆有「问文衡」条带与导航入口", has_band and has_nav, "")
+        except Exception as e:                                       # noqa: BLE001
+            check("陈列馆有「问文衡」条带与导航入口", False, str(e)[:80])
+        try:
             operator.click(".home-book-item")
             operator.wait_for_selector("#flipbook", timeout=10000)
             n_pages = operator.eval_on_selector_all(".flip-page", "els => els.length")
@@ -379,6 +394,24 @@ def main():
         except Exception as e:                                       # noqa: BLE001
             check("翻页阅读器打开（#flipbook 带页）", False, str(e)[:80])
         operator.screenshot(path=str(SHOT_SHELF))
+
+        # ---- 2b) 对话页（2026-10-12）：空态＝文衡首页；顶栏＝去生成台；?ask= 自动发送 ----
+        operator.goto(BASE + "/app/dialog/", wait_until="networkidle")
+        operator.wait_for_timeout(900)
+        dlg_text = operator.inner_text("body")
+        check("对话页空态有大标题", "文衡，帮你做报告、查数据" in dlg_text, "")
+        n_pills = operator.eval_on_selector_all(".dlg-land-pill", "els => els.length")
+        check("对话页空态有示例胶囊（≥6）", n_pills >= 6, f"{n_pills} 个")
+        check("对话页顶栏是「去生成台」（无工作台下拉）",
+              "去生成台" in dlg_text and "工作台 ▾" not in dlg_text, "")
+        operator.goto(BASE + "/app/dialog/?ask=" + urllib.parse.quote("查一下化学的接近度"),
+                      wait_until="networkidle")
+        try:
+            operator.wait_for_selector(".dlg-turn.me", timeout=8000)
+            turn_text = operator.inner_text(".dlg-turn.me")
+            check("?ask= 自动发送（用户话已入对话）", "化学的接近度" in turn_text, turn_text[:40])
+        except Exception as e:                                       # noqa: BLE001
+            check("?ask= 自动发送（用户话已入对话）", False, str(e)[:80])
 
         # ---- 3) 零报错（覆盖上面几次导航） ----
         check("工作台零 pageerror / console.error", not problems, "; ".join(problems[:3]))
