@@ -17,12 +17,15 @@ from _ai_helpers import ScriptedBrain, Turn, raw_digits, seed_period
 NUM = re.compile(r"\d+(?:\.\d+)?")
 
 
-def qa(tmp_path, question="顶尖论文 情况", *, brain=None, actor="admin", root=None):
+def qa(tmp_path, question="顶尖论文 情况", *, brain=None, actor="admin", root=None,
+       history=None):
     kw = {"data_root": root if root is not None else tmp_path}
     if brain is not None:
         kw["brain"] = brain
     with ai.using(**kw):
-        return ai.run("qa", "202607", payload={"question": question}, actor=actor)
+        return ai.run("qa", "202607",
+                      payload={"question": question, "history": history or []},
+                      actor=actor)
 
 
 def records(tmp_path):
@@ -214,6 +217,21 @@ def test_无学科问句_行为与旧版一致(tmp_path):
     _seed_table2(tmp_path)
     ans = qa(tmp_path, question="顶尖论文")
     assert "顶尖论文" in ans.text and "化学（Chemistry）" not in ans.text
+
+
+def test_追问_上文进任务_只用于解指代(tmp_path):
+    """对话上文进模型任务（「这是几月的」靠它解指代）；上文数字不算本期事实。"""
+    seed_period(tmp_path)
+    _seed_table2(tmp_path)
+    brain = ScriptedBrain([lambda b: Turn(text=b.task + "\n\n" + "\n\n".join(b.evidence))])
+    ans = qa(tmp_path, question="这是几月的", brain=brain,
+             history=[{"who": "me", "text": "查工程学的接近度，最新一期的"},
+                      {"who": "wh", "text": "工程学最新一期（2026 年第 5 期）的接近度为 746.57%"}])
+    task = brain.briefs[0].task
+    assert "对话上文" in task and "工程学最新一期" in task
+    assert "本次问题：这是几月的" in task
+    assert "746.57" not in task and "2026" not in task, "上文的数字必须过盾（变标记），不外发原值"
+    assert ans.mode == "model"
 
 
 # ============================================================ 台账问答（2026-10-11 rick 定）

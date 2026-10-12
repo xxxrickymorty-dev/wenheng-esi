@@ -423,6 +423,7 @@ def build(root, period, payload):                                  # noqa: ARG00
     slot = str(period or "")
     kind = p.kind
     carried = False
+    history = payload.get("history") if isinstance(payload.get("history"), list) else []
 
     if kind in ("report", "proceed") and not p.period and slot:
         p = replace(p, case="period", period=slot,
@@ -432,6 +433,11 @@ def build(root, period, payload):                                  # noqa: ARG00
         p = replace(p, act="proceed", kind="proceed")
         kind = "proceed"
         carried = True
+    elif not kind and history:
+        # 追问（2026-10-12 rick 实问「这是几月的」）：解析不出意图但**有对话上文**时，
+        # 当追问走 qa——上文随请求带过去解指代，不再回「我还没听出是哪一期」。
+        p = replace(p, kind="query")
+        kind = "query"
 
     run = None
     if kind == "query":

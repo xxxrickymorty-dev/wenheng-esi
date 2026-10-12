@@ -535,6 +535,17 @@ def build(root, period, payload) -> RuleDraft:
                   for k, v in sentences.build(facts, p_cur, p_prev).items()}
 
     question = str(payload.get("question") or "").strip()
+    # 对话上文（2026-10-12 rick 实问「这是几月的」）：追问要靠它解指代——
+    # 只用来理解（「那物理学呢」「这是几月的」），不引用其中数字
+    # （上文的数字在盾里走「来自提问」的来源，不算本期事实）。
+    history = payload.get("history") if isinstance(payload.get("history"), list) else []
+    context_lines = []
+    for item in history[-6:]:
+        if not isinstance(item, dict):
+            continue
+        snippet = str(item.get("text") or "").strip()[:180]
+        if snippet:
+            context_lines.append(("用户" if item.get("who") == "me" else "文衡") + "：" + snippet)
     matched = _match(base_texts, question)
 
     # ---- 学科问题直答段（2026-10-11）：问句点到哪个学科，就先给哪个学科的数据行 ----
@@ -557,7 +568,12 @@ def build(root, period, payload) -> RuleDraft:
     rule_keys = (list(ledger_texts) + list(disc_texts)) if (ledger_texts or disc_texts) \
         else list(matched)
     rule_set = set(rule_keys)
-    chunks = [question] + [texts_all[k] for k in ordered]
+    # 上文进**编号之前**的首个区块：它的数字必须过盾（否则模型一复述就被判「游离数字」）。
+    first_chunk = question
+    if context_lines:
+        first_chunk = ("对话上文（只用来理解指代，不要引用其中数字）：\n"
+                       + "\n".join(context_lines) + "\n\n本次问题：" + question)
+    chunks = [first_chunk] + [texts_all[k] for k in ordered]
     facts_idx = _fact_index(facts)
 
     def register(ti, _pos, value):

@@ -72,9 +72,9 @@ def test_参数与角色原样交给能力口(monkeypatch):
     monkeypatch.setattr("ai.run", fake_run)
     r = call(config.ADMIN_USER, {"text": "再出 202605 的",
                                 "slots": {"period": "202609", "intent": "出报告"}})
-    assert r["slots"] == {"period": "202605", "intent": "出报告"}, "只改期次，意图不变"
+    assert r["slots"] == {"period": "202605", "intent": "出报告"}, "只改期次，意图不动"
     assert seen == {"cap": "dialog", "period": "202609",
-                    "payload": {"text": "再出 202605 的"}, "actor": "admin"}
+                    "payload": {"text": "再出 202605 的", "history": []}, "actor": "admin"}
     assert r["verdict"] == "" and r["inventory"] is None and r["actions"] == []
 
 
@@ -213,8 +213,8 @@ def test_查数据_服务器按意图调qa(monkeypatch, tmp_path):
     assert r["answer"]["text"].startswith("化学的接近度") and r["answer"]["record_id"] == "r-qa"
     assert r["slots"] == {"period": "202607", "intent": ""}, "期次解析与槽位共享"
     assert r["run"] is None, "查数据不出稿"
-    assert calls == [("dialog", "202607", {"text": "查一下化学的接近度"}),
-                     ("qa", "202607", {"question": "查一下化学的接近度"})], \
+    assert calls == [("dialog", "202607", {"text": "查一下化学的接近度", "history": []}),
+                     ("qa", "202607", {"question": "查一下化学的接近度", "history": []})], \
         "两意图经同一端点：服务器按意图调 ai.run(\"qa\", …)，问句原样"
 
 

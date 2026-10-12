@@ -78,11 +78,12 @@ export type DialogReply = {
   answer: DialogAnswer | null
 }
 
-export async function postDialogTurn(text: string, slots: DialogSlots): Promise<DialogReply> {
+export async function postDialogTurn(text: string, slots: DialogSlots,
+                                     history?: { who: string; text: string }[]): Promise<DialogReply> {
   return req<DialogReply>('/api/dialog/turn', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, slots }),
+    body: JSON.stringify({ text, slots, history }),
   })
 }
 

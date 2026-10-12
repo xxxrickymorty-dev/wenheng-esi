@@ -1626,11 +1626,21 @@ async def api_dialog_turn(request: Request):
     if period and not re.fullmatch(r"\d{6}", period):
         period = ""                                   # 形状不合法就丢弃，不猜
     intent = str(slots.get("intent") or "").strip()[:20]
+    # 对话上文（2026-10-12 rick 实问「这是几月的」）：追问要靠上文解指代——
+    # 只收 me/wh 的文本，条数与长度都截断（外发面另有 6000 字符上限兜底）。
+    history = []
+    for item in (body.get("history") if isinstance(body.get("history"), list) else [])[-8:]:
+        if not isinstance(item, dict):
+            continue
+        who = "me" if item.get("who") == "me" else "wh"
+        snippet = str(item.get("text") or "").strip()[:200]
+        if snippet:
+            history.append({"who": who, "text": snippet})
     import ai                                                     # noqa: PLC0415
     actor = config.role_of(current_user(request) or "")
     # 2026-10-12：操作员也有出报告/审批——报告流程两种角色一致（readonly 注入已取消）。
     ans = await run_in_threadpool(ai.run, "dialog", period,
-                                  payload={"text": text}, actor=actor)
+                                  payload={"text": text, "history": history}, actor=actor)
     if ans.mode in ("closed", "denied", "unavailable"):
         return _answer_response(ans)
     turn = ans.data or {}
@@ -1654,7 +1664,8 @@ async def api_dialog_turn(request: Request):
                 resp["text"] = "这一期还没有可用产物——先出稿，才有得查。"
             else:
                 qa_ans = await run_in_threadpool(
-                    ai.run, "qa", target, payload={"question": text}, actor=actor)
+                    ai.run, "qa", target,
+                    payload={"question": text, "history": history}, actor=actor)
                 resp["answer"] = qa_ans.as_dict()
     return resp
 

@@ -224,7 +224,13 @@ export default function DialogPage() {
       turns: [...c.turns, { who: 'me', text }],
     }))
     try {
-      const r = await postDialogTurn(text, slots)
+      /* 对话上文（2026-10-12）：追问（「这是几月的」「那物理学呢」）要靠它解指代——
+         只带上最近 6 轮、每轮截 200 字；服务端还会再截一次。 */
+      const history = active.turns
+        .filter((t) => t.who !== 'sys')
+        .slice(-6)
+        .map((t) => ({ who: t.who, text: t.text.slice(0, 200) }))
+      const r = await postDialogTurn(text, slots, history)
       updateActive((c) => ({
         ...c,
         slots: r.slots,

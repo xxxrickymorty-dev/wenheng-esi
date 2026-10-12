@@ -47,12 +47,12 @@ FULL_202607 = fake_inventory("202607")
 
 
 def run_dialog(text, *, root, period="", actor="admin", today=TODAY, inventory=None,
-               readonly=False, **ov):
+               history=None, **ov):
     """`inventory=None` → 注入「没有盘点」的替身（票 01 行为；绝不读真台账）。
-    `readonly`＝服务端按角色注入的只读标记（操作员）。"""
+    `history`＝对话上文（追问解指代用，2026-10-12）。"""
     with ai.using(data_root=root, inventory=(lambda _p: inventory), **ov):
         return ai.run("dialog", period,
-                      payload={"text": text, "today": today, "readonly": readonly},
+                      payload={"text": text, "today": today, "history": history or []},
                       actor=actor)
 
 
@@ -88,6 +88,19 @@ def test_带期次槽位_短应诺_按推进走(tmp_path):
     ans = run_dialog("对啊", root=tmp_path, period="202609")
     assert "我还没听出是哪一期" not in ans.text
     assert ans.data["kind"] == "proceed"
+
+
+def test_追问_有对话上文_当查数据走(tmp_path):
+    """2026-10-12 rick 实问「这是几月的」：解析不出意图但有上文 → 当追问走 qa，
+    不再回「我还没听出是哪一期」。"""
+    history = [{"who": "me", "text": "查工程学的接近度，最新一期的"},
+               {"who": "wh", "text": "工程学最新一期（2026 年第 5 期）的 ESI 前 1% 接近度为 746.57%…"}]
+    ans = run_dialog("这是几月的", root=tmp_path, period="202609", history=history)
+    assert ans.data["kind"] == "query"
+    assert "我还没听出是哪一期" not in ans.text
+    # 没有上文的同句仍按老规矩反问（首问不猜）
+    first = run_dialog("这是几月的", root=tmp_path, period="202609")
+    assert "我还没听出是哪一期" in first.text
 
 
 def test_操作员报告意图_照常走盘点(tmp_path):
