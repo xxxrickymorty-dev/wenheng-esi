@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>工作区顶栏 · 统一控件（静态稿）· 文衡</title>
+<!--
+  工作区顶栏与控件统一 静态稿（2026-10-12，rick 测试反馈）
+  改动五条：① 删「陈列馆」导航项；② 删「期次」选择器；③ 用户控件＝与对话页一致（点击才出退出）；
+  ④ 皮肤切换从左下角移到右上角（与对话页一致）；⑤ 默认云大绿。
+  另附权限说明：操作员加「出报告」「审批」；取数台/台账等仍管理员专属。
+-->
+<style>
+  :root{
+    --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB;
+    --ink:#222B25; --ink-2:#3F4C42; --ink-3:#58655C;
+    --line:#DDE1D8; --line-2:#E6E9E2;
+    --zhu:#1A4B27; --zhu-soft:#E3EDE4;
+    --gold:#B19A65;
+    --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.7 var(--sans)}
+  .note{background:#14382c;color:#e8e2cd;padding:14px 22px;font-size:12.5px;line-height:1.9}
+  .note b{color:#f2e9cf}
+  .note ol{margin:6px 0 0;padding-left:20px}
+  .wrap{max-width:1440px;margin:0 auto;padding:26px 30px 60px}
+
+  /* ---------- 顶栏（新） ---------- */
+  .topbar{display:flex;align-items:center;gap:22px;padding:10px 22px;background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .brand{font-family:var(--serif);font-size:22px;letter-spacing:.06em;white-space:nowrap}
+  .brand small{font:11px var(--sans);color:var(--ink-3);letter-spacing:.1em;margin-left:9px}
+  nav.main{display:flex;gap:6px;margin-left:8px}
+  nav.main a{display:flex;align-items:center;gap:7px;padding:9px 13px;border-radius:10px;color:var(--ink-2);text-decoration:none;font-size:15px;white-space:nowrap}
+  nav.main a.on{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
+  nav.main svg{opacity:.75}
+  .right{margin-left:auto;display:flex;align-items:center;gap:12px}
+
+  /* 皮肤切换（与对话页同款：分段胶囊） */
+  .skin{display:flex;border:1px solid var(--line);border-radius:999px;background:var(--panel);overflow:hidden}
+  .skin b{font-weight:400;font-size:13.5px;padding:7px 14px;background:var(--zhu);color:#f1ead8}
+  .skin i{font-style:normal;font-size:13.5px;padding:7px 14px;color:var(--ink-3)}
+
+  /* 用户控件（与对话页左下角同款） */
+  .who{display:flex;align-items:center;gap:9px;padding:6px 12px 6px 6px;border-radius:999px;cursor:pointer;user-select:none;position:relative}
+  .who:hover{background:var(--panel)}
+  .av{width:28px;height:28px;border-radius:50%;background:var(--zhu);color:#f1ead8;display:grid;place-items:center;font-family:var(--serif);font-size:14px}
+  .who span{font-size:13.5px;color:var(--ink-2)}
+  .pop{position:absolute;top:calc(100% + 8px);right:0;min-width:150px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 24px rgba(34,43,37,.12);padding:6px;display:none}
+  .who.open .pop{display:block}
+  .pop a{display:block;padding:9px 12px;border-radius:8px;color:var(--ink-2);text-decoration:none;font-size:14px}
+  .pop a:hover{background:var(--panel);color:var(--zhu)}
+  .tag{position:absolute;top:-34px;left:50%;transform:translateX(-50%);background:#14382c;color:#f1ead8;font-size:12px;padding:4px 10px;border-radius:6px;white-space:nowrap}
+
+  /* 对照区 */
+  .compare{margin-top:34px;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .card h3{margin:0 0 12px;font-family:var(--serif);font-weight:400;font-size:17px}
+  .mini-dialog{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:999px;padding:8px 14px;width:max-content;background:var(--panel)}
+  .hint{color:var(--ink-3);font-size:13px}
+  .perm{margin-top:26px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:18px 20px;font-size:14px;line-height:2}
+  .perm b{color:var(--zhu)}
+  .perm .no{color:#B43B31}
+  .strike{text-decoration:line-through;color:#9aa494}
+</style>
+</head>
+<body>
+
+<div class="note">
+  <b>静态稿：工作区顶栏与控件统一（2026-10-12 rick 测试反馈）——待 rick 审</b>
+  <ol>
+    <li><b>删「陈列馆」导航项</b>（陈列馆回到登录首屏与「问文衡」入口，不再挂在工作区导航）。</li>
+    <li><b>删「期次」选择器</b>（换期走报告页的期次印记链／生成台的「全部期次」）。</li>
+    <li><b>用户控件</b>＝与对话页左下角一致：头像 + 「demo · 操作员」，<b>不摆退出按钮</b>；点击弹出「退出登录」。</li>
+    <li><b>皮肤切换</b>从工作区左下角浮动移到<b>右上角</b>（与对话页同款分段胶囊）；<b>默认云大绿</b>（进站即绿，选朱砂才变）。</li>
+    <li>顶部「云大绿」按钮 = 当前选中态（下面把两种状态都画出来给你看）。</li>
+  </ol>
+</div>
+
+<div class="wrap">
+
+  <!-- 常态 -->
+  <div class="topbar">
+    <span class="brand">文衡<small>学科信息参考</small></span>
+    <nav class="main">
+      <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M21 12a8 8 0 0 1-8 8H6l-3 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/></svg>对话前门</a>
+      <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 4l12 8-12 8Z"/></svg>生成台</a>
+      <a class="on" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 20V10m6 10V4m6 16v-7m4 7H2"/></svg>报告</a>
+      <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>审核台</a>
+      <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 19V9m5 10V5m5 14v-8m5 8V7"/></svg>AI 分析台</a>
+      <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 17l6-6 4 4 6-8"/></svg>预测台</a>
+    </nav>
+    <div class="right">
+      <span class="skin"><b>云大绿</b><i>朱砂</i></span>
+      <span class="who"><span class="av">d</span><span>demo · 操作员</span></span>
+    </div>
+  </div>
+
+  <!-- 点击后（同一控件，弹出退出） -->
+  <div class="topbar" style="margin-top:16px">
+    <span class="brand">文衡<small>学科信息参考</small></span>
+    <nav class="main">
+      <a href="#">对话前门</a><a href="#">生成台</a><a class="on" href="#">报告</a><a href="#">审核台</a><a href="#">AI 分析台</a><a href="#">预测台</a>
+    </nav>
+    <div class="right">
+      <span class="skin"><b>云大绿</b><i>朱砂</i></span>
+      <span class="who open" style="position:relative">
+        <span class="tag">点击后（唯一出现「退出」的地方）</span>
+        <span class="av">d</span><span>demo · 操作员</span>
+        <span class="pop"><a href="#">退出登录</a></span>
+      </span>
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="card">
+      <h3>对照 · 对话页左下角（现款，不改）</h3>
+      <div class="mini-dialog"><span class="av">d</span><span>demo · 操作员</span></div>
+      <p class="hint" style="margin-top:12px">全站同一控件、同一交互：默认只显示身份；点击才出「退出登录」。</p>
+    </div>
+    <div class="card">
+      <h3>对照 · 皮肤切换（对话页右上角现款）</h3>
+      <span class="skin"><b>云大绿</b><i>朱砂</i></span>
+      <p class="hint" style="margin-top:12px">工作区照此搬到右上角；两页共用同一偏好（换一处、全站生效）。默认＝云大绿。</p>
+    </div>
+  </div>
+
+  <div class="perm">
+    <b>权限调整（本期一并做）</b>：操作员（评委）在只读基础上<b>增加「出报告」与「审批」</b>——
+    生成台可以「开始生成／重新生成」，审核台可以「签单」（对话页对应出稿流程）；
+    <span class="no">取数台、台账、运行档案、红件清单、逐格溯源仍是管理员专属</span>，
+    上传监测表 / 回滚 / 切 AI 开关 / 保存预测选择等仍仅管理员。
+    <br><span class="hint">说明：这样评委能完整演示「出报告 → 看对勘 → 签单 → 打开报告」，又碰不到数据源与内部账。</span>
+  </div>
+
+</div>
+
+</body>
+</html>
