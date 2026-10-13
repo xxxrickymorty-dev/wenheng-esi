@@ -46,7 +46,7 @@ def main() -> int:
     args = ap.parse_args()
     B = args.base.rstrip("/")
 
-    env_text = ENV.read_text(encoding="utf-8")
+    env_text = ENV.read_text(encoding="utf-8-sig")   # .env 可能带 BOM；utf-8 会让首行（WENHENG_USER）匹配失败
     m = re.search(r"^WENHENG_USER=(.*)$", env_text, re.M)
     p = re.search(r"^WENHENG_PASS=(.*)$", env_text, re.M)
     if not m or not p:
