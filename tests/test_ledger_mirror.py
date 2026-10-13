@@ -102,3 +102,115 @@ def test_真母本_建库校验并与ledger_long逐行一致(tmp_path):
     got = {(d, p, m, _s(s), _r6(v)) for d, p, m, s, v in ledger_mirror.rows(db)
            if p <= ll_max}
     assert got == want, "镜像行 ≡ ledger_long 行（按期次子集，同口径不复制）"
+
+
+# ============================================================ 3. 白名单视图（票 02）
+VIEW_ROWS = [
+    ("Chemistry", "201903", "total_cites", "", 100.0),
+    ("Chemistry", "201905", "total_cites", "", 200.0),
+    ("Chemistry", "201905", "rank", "rank_cn", 5.0),
+    ("Chemistry", "201905", "rank", "rank_intl", 50.0),
+    ("Chemistry", "201907", "rank", "rank_cn", 4.0),
+    ("Chemistry", "201907", "cnci", "", None),
+    ("Physics", "201903", "total_cites", "", 7.0),
+    ("Physics", "201905", "total_cites", "", None),
+]
+
+
+def _view_db(tmp_path, name="views.sqlite"):
+    db = tmp_path / name
+    ledger_mirror.write_facts(db, VIEW_ROWS)
+    return db
+
+
+def test_视图注册表_四视图齐全且口径写清():
+    assert set(ledger_mirror.VIEWS) == {"periods", "series", "at", "latest"}
+    for name, spec in ledger_mirror.VIEWS.items():
+        assert callable(spec["fn"]) and spec["fn"].__name__ == name
+        assert spec["doc"].strip(), name
+        for p in spec["params"]:
+            assert p["name"] and p["doc"].strip(), (name, p)
+            assert p["required"] or "default" in p, (name, p["name"])
+    series_params = {p["name"]: p for p in ledger_mirror.VIEWS["series"]["params"]}
+    assert "period_max" in series_params
+    assert "period <= period_max" in series_params["period_max"]["doc"], "切窗语义要写清"
+    listed = ledger_mirror.describe_views()
+    assert [v["name"] for v in listed] == list(ledger_mirror.VIEWS)
+    assert all("fn" not in v and v["doc"] for v in listed)
+
+
+def test_视图periods_降序与空(tmp_path):
+    db = _view_db(tmp_path)
+    assert ledger_mirror.periods(db) == ["201907", "201905", "201903"]
+    empty = tmp_path / "empty.sqlite"
+    ledger_mirror.write_facts(empty, [])
+    assert ledger_mirror.periods(empty) == []
+
+
+def test_视图at_全指标与来源键(tmp_path):
+    db = _view_db(tmp_path)
+    assert ledger_mirror.at(db, "Chemistry", "201905") == {
+        "total_cites": 200.0, "rank@rank_cn": 5.0, "rank@rank_intl": 50.0}
+    assert ledger_mirror.at(db, "Chemistry", "201907") == {
+        "rank@rank_cn": 4.0, "cnci": None}, "空值不填充也不丢行"
+    assert ledger_mirror.at(db, "Physics", "201905") == {"total_cites": None}
+    assert ledger_mirror.at(db, "Nope", "201905") == {}
+
+
+def test_视图latest_口径与空(tmp_path):
+    db = _view_db(tmp_path)
+    assert ledger_mirror.latest(db) == "201907"
+    assert ledger_mirror.latest(db, "total_cites") == "201905", "201907 没有该指标"
+    assert ledger_mirror.latest(db, "rank", source="rank_cn") == "201907"
+    assert ledger_mirror.latest(db, "rank", source="rank_intl") == "201905"
+    assert ledger_mirror.latest(db, "cnci") is None, "有期次但值全空 → 不算"
+    assert ledger_mirror.latest(db, "nope") is None
+    assert ledger_mirror.latest(db, source="rank_cn") == "201907"
+    empty = tmp_path / "empty.sqlite"
+    ledger_mirror.write_facts(empty, [])
+    assert ledger_mirror.latest(empty) is None
+
+
+def test_真数据_视图与ledger_long同题同值(tmp_path):
+    lp = ledger_mod.runtime_path(REPO)
+    if not lp.is_file():
+        skip_unless("缺母本（馆员数据不入库，属正常）", lambda: lp.is_file())
+
+    def _longs():
+        return sorted(p for p in (REPO / "out").glob("*/ledger_long.parquet")
+                      if p.parent.name[:4].isdigit())
+
+    longs = _longs()
+    if not longs:
+        skip_unless("缺 out/<期次>/ledger_long.parquet（产物不入库）", lambda: bool(_longs()))
+    import pandas as pd                                           # noqa: PLC0415
+
+    db = tmp_path / "real_views.sqlite"
+    ledger_mirror.build(db, ledger_path=lp)
+
+    ll = pd.read_parquet(longs[-1])[
+        ["discipline", "period", "metric", "source", "value"]]
+    ll_max = max(str(p) for p in ll["period"])
+
+    # periods：按产物期次切窗后 ≡ 产物期次集合（降序）
+    want_periods = sorted({str(p) for p in ll["period"]}, reverse=True)
+    assert [p for p in ledger_mirror.periods(db) if p <= ll_max] == want_periods
+
+    # series：产物里每个 (学科, 指标, 来源) 组合逐列同题同值（period <= 切窗）
+    want_series = {}
+    for d, p, m, s, v in ll.itertuples(index=False, name=None):
+        want_series.setdefault((str(d), str(m), _s(s)), {})[str(p)] = _r6(v)
+    for (d, m, s), vals in want_series.items():
+        got = ledger_mirror.series(db, d, m, source=s, period_max=ll_max)
+        assert [(p, _r6(v)) for p, v in got] == sorted(vals.items()), (d, m, s)
+
+    # at：取产物首末期次，全学科整期 ≡ parquet 同题同值
+    for period in (want_periods[-1], ll_max):
+        want_at = {}
+        for d, p, m, s, v in ll.itertuples(index=False, name=None):
+            if str(p) == period:
+                key = f"{m}@{_s(s)}" if _s(s) else str(m)
+                want_at.setdefault(str(d), {})[key] = _r6(v)
+        for d, expected in want_at.items():
+            got = {k: _r6(v) for k, v in ledger_mirror.at(db, d, period).items()}
+            assert got == expected, (period, d)

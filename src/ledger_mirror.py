@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
-"""台账镜像（SQLite）——从母本**确定性重建**的只读查询层（2026-10-13 票 01）。
+"""台账镜像（SQLite）——从母本**确定性重建**的只读查询层（2026-10-13 票 01 / 02）。
 
 - 口径：`parse_ledger.long_table()`（与 `ledger_long.parquet` 同源同函数，不复制口径）；
 - 边界（spec 三条写死）：单向 ETL——db 永不回写母本；同母本（sha）→ 同 `content_sha256`；
   数字仍只出自台账口径，换算值不由 SQL 自由计算；模型不自由 SQL（只选白名单视图，票 02）；
-- 路径唯一口径：`src/ledger.mirror_path()` → `out/_mirror/ledger.sqlite`。
+- 路径唯一口径：`src/ledger.mirror_path()` → `out/_mirror/ledger.sqlite`；
+- 白名单视图（票 02）：`VIEWS` 注册表（periods / series / at / latest）——内核只按
+  「视图名 + 参数」取数；切窗是消费侧语义（`period_max`，ADR-0007）。
 """
 from __future__ import annotations
 
@@ -183,3 +185,113 @@ def series(db_path, discipline, metric, *, source=None, period_max=None):
         return con.execute(q, args).fetchall()
     finally:
         con.close()
+
+
+# ============================================================ 白名单视图（票 02）
+# 供 pi 内核等消费方按「视图名 + 参数」取数（spec 边界 2：模型不自由 SQL）。
+# 共同口径：只读连接（mode=ro）；排序确定；空结果给空（[] / {} / None），形状非法照常抛错。
+# `db` 由调用方绑定，不进 VIEWS 的 params。
+
+
+def periods(db):
+    """全部期次（字符串降序，YYYYMM 字典序即时间序）；空库给 []。"""
+    con = _connect_ro(db)
+    try:
+        return [r[0] for r in con.execute(
+            "SELECT DISTINCT period FROM facts ORDER BY period DESC")]
+    finally:
+        con.close()
+
+
+def at(db, discipline, period):
+    """某学科某期全部指标 → {metric: value}。
+
+    - source 为空的指标：键＝`metric`（如 total_cites）；
+    - source 非空的指标：键＝`metric@source`（如 rank@rank_cn），同指标多来源不互相覆盖；
+    - 值可能是 None（台账空单元格，不填充、不丢行）；该学科该期无任何行 → {}。
+    """
+    con = _connect_ro(db)
+    try:
+        cur = con.execute(
+            "SELECT metric, source, value FROM facts WHERE discipline=? AND period=? "
+            "ORDER BY metric, source",
+            (str(discipline), str(period)))
+        return {(f"{m}@{s}" if s else m): v for m, s, v in cur}
+    finally:
+        con.close()
+
+
+def latest(db, metric=None, *, source=None):
+    """最近期次（YYYYMM 字符串）；空库或查无 → None。
+
+    - 不给 metric：facts 里（该来源下）的最大期次——期次在台账出现即算，值可为空；
+    - 给 metric：该指标（source 给定时再限定来源）**有非空值**的最大期次；
+    - source=None 不过滤来源；source="" 只查无来源指标；给定值只查该来源。
+    """
+    where, args = [], []
+    if metric is not None:
+        where.append("metric=?")
+        args.append(str(metric))
+        where.append("value IS NOT NULL")
+    if source is not None:
+        where.append("source=?")
+        args.append(str(source))
+    q = "SELECT MAX(period) FROM facts"
+    if where:
+        q += " WHERE " + " AND ".join(where)
+    con = _connect_ro(db)
+    try:
+        return con.execute(q, args).fetchone()[0]
+    finally:
+        con.close()
+
+
+VIEWS = {
+    "periods": {
+        "doc": "全部期次（字符串降序）；空库给 []。",
+        "params": [],
+        "fn": periods,
+    },
+    "series": {
+        "doc": ("某学科某指标一列 (period, value)，期次升序；source 给定时只取该来源，"
+                "period_max 切窗。"),
+        "params": [
+            {"name": "discipline", "required": True,
+             "doc": "学科名（与 ledger_long.discipline 同口径）"},
+            {"name": "metric", "required": True,
+             "doc": "指标名（与 ledger_long.metric 同口径）"},
+            {"name": "source", "required": False, "default": None,
+             "doc": "来源（'', new_cn/new_intl/rank_cn/rank_intl）；None＝不过滤，"
+                    "同指标多来源会并入一列"},
+            {"name": "period_max", "required": False, "default": None,
+             "doc": "切窗：只保留 period <= period_max（YYYYMM 字符串）；None＝全量"},
+        ],
+        "fn": series,
+    },
+    "at": {
+        "doc": ("某学科某期全部指标 → {metric: value}；source 非空的键写作 "
+                "\"metric@source\"（如 rank@rank_cn），值可为 None。"),
+        "params": [
+            {"name": "discipline", "required": True, "doc": "学科名"},
+            {"name": "period", "required": True, "doc": "期次（YYYYMM）"},
+        ],
+        "fn": at,
+    },
+    "latest": {
+        "doc": ("最近期次：不给 metric ＝ 库中（该来源下）最大期次；给 metric ＝ 该指标"
+                "有非空值的最大期次；空库/查无 → None。"),
+        "params": [
+            {"name": "metric", "required": False, "default": None,
+             "doc": "指标名；None＝不限定指标（期次出现即算）"},
+            {"name": "source", "required": False, "default": None,
+             "doc": "来源限定（'' / new_cn / …）；None＝不过滤"},
+        ],
+        "fn": latest,
+    },
+}
+
+
+def describe_views():
+    """白名单视图清单（name/doc/params，不含 fn）——供 CLI / 内核工具列示。"""
+    return [{"name": name, "doc": spec["doc"], "params": spec["params"]}
+            for name, spec in VIEWS.items()]
