@@ -34,6 +34,7 @@ from .protected_static import AdminStaticFiles
 from src import period as period_mod  # 期次口径唯一来源（ADR-0001：新工作区 API 也用它）
 from src import ledger as ledger_mod  # 动态监测表（母本）路径唯一口径（2026-10-13：input/ 只放母本）
 from src import forecast_choice  # 预测选模的唯一 implementation（读写/快照/留痕）
+from src import session_store  # 会话库（票 11）——对话前门会话的服务端持久化
 from esi_v1.data import display_name  # 学科名中文化（契约 #22）
 
 
@@ -41,6 +42,10 @@ from esi_v1.data import display_name  # 学科名中文化（契约 #22）
 async def lifespan(_app: FastAPI):
     config.JOBS_DIR.mkdir(parents=True, exist_ok=True)
     jobs.recover_stale()
+    # 会话库（票 11）：生产装配路径（`out/_sessions/sessions.sqlite`）。
+    # 直调处理函数的测试不跑 lifespan → SESSION_DB_PATH 保持 None → 不落库、绝不碰真数据。
+    global SESSION_DB_PATH
+    SESSION_DB_PATH = session_store.store_path(config.ROOT)
     yield
 
 
@@ -1606,16 +1611,25 @@ async def api_ai_switch(request: Request):
     return {"ok": True, "capability": capability, "enabled": enabled}
 
 
+#: 会话库路径（票 11）：生产由 lifespan 装配（`out/_sessions/sessions.sqlite`）；
+#: None＝未装配——直调处理函数的测试不落库、绝不碰真数据；测试 monkeypatch 注入 tmp。
+SESSION_DB_PATH = None
+
+
 @app.post("/api/dialog/turn")
 @user_route
 async def api_dialog_turn(request: Request):
     """对话前门一轮（契约 #33，票 01–07）：一句话 → 路由（两意图）+ 应答 + 槽位 + 盘点。
 
-    请求 `{text, slots:{period,intent}}`（slots 可省；期次形状非法按未设处理，不猜）。
+    请求 `{text, slots:{period,intent}, history, session}`（slots/history/session 可省；
+    期次形状非法按未设处理，不猜）。
     应答＝Answer 字段面 + `kind`（`report/query/proceed/unclear`/空：票 07 路由）
     + `slots`（本轮解析到的才覆盖，其余不变）+ 盘点三件：`verdict`（unpublished/missing/ready/空）、
     `inventory`（四件清单）、`actions`（改做/去取数台/去核对/覆盖重出/先等等）
-    + `run`（出稿意图）+ `answer`（查数据：qa 能力的 Answer；其余为 null）。
+    + `run`（出稿意图）+ `answer`（查数据：qa 能力的 Answer；其余为 null）
+    + `session_id`（票 11：本回合的会话 id——续聊把它回传）。
+    **会话（票 11）**：带 `session` → 校验归属、历史从会话库读（截断口径与现状一致）、
+    回合追加进库；无 → 建新会话；他人会话 403、不存在 404。
     **两意图**：写报告与现有链路不变；查数据由**本路由**按意图调 `ai.run("qa", …)`
     ——对话能力只做路由，模型出口仍只有 `src/ai` 一处。
     解析与盘点走 `src/ai` 的 dialog 能力口（规则版离线可跑）；
@@ -1630,22 +1644,44 @@ async def api_dialog_turn(request: Request):
     if period and not re.fullmatch(r"\d{6}", period):
         period = ""                                   # 形状不合法就丢弃，不猜
     intent = str(slots.get("intent") or "").strip()[:20]
+    user = current_user(request) or ""
+    # 会话（票 11）：有 session → 归属校验 + 历史从库读；无 → 本回合结束时建新会话。
+    session_id = str(body.get("session") or "").strip()
+    stored_turns = None
+    if session_id:
+        if SESSION_DB_PATH is None:
+            return JSONResponse({"error": "会话不存在"}, status_code=404)
+        try:
+            stored = await run_in_threadpool(session_store.load,
+                                             SESSION_DB_PATH, session_id, user)
+        except (ValueError, KeyError):
+            return JSONResponse({"error": "会话不存在"}, status_code=404)
+        except PermissionError:
+            return JSONResponse({"error": "会话不属于当前用户"}, status_code=403)
+        stored_turns = stored["turns"]
     # 对话上文（2026-10-12 rick 实问「这是几月的」）：追问要靠上文解指代——
     # 只收 me/wh 的文本，条数与长度都截断（外发面另有 6000 字符上限兜底）。
+    # 带会话时改从库读（票 11），口径同上：最近 8 条、每条 200 字。
     history = []
-    for item in (body.get("history") if isinstance(body.get("history"), list) else [])[-8:]:
-        if not isinstance(item, dict):
-            continue
-        who = "me" if item.get("who") == "me" else "wh"
-        snippet = str(item.get("text") or "").strip()[:200]
-        if snippet:
-            history.append({"who": who, "text": snippet})
+    if stored_turns is not None:
+        for t in stored_turns[-8:]:
+            snippet = str(t.get("text") or "").strip()[:200]
+            if snippet:
+                history.append({"who": t["who"], "text": snippet})
+    else:
+        for item in (body.get("history") if isinstance(body.get("history"), list) else [])[-8:]:
+            if not isinstance(item, dict):
+                continue
+            who = "me" if item.get("who") == "me" else "wh"
+            snippet = str(item.get("text") or "").strip()[:200]
+            if snippet:
+                history.append({"who": who, "text": snippet})
     # 「最新的」解析（2026-10-13，票 10）：注入已知期次（降序）——「最近有效期次」
     # 与「本期」同源口径（taskview.known_periods：母本有效期次 ∪ out ∪ 取数在途）。
     import taskview                                               # noqa: PLC0415
     periods = await run_in_threadpool(taskview.known_periods)
     import ai                                                     # noqa: PLC0415
-    actor = config.role_of(current_user(request) or "")
+    actor = config.role_of(user)
     # 2026-10-12：操作员也有出报告/审批——报告流程两种角色一致（readonly 注入已取消）。
     ans = await run_in_threadpool(ai.run, "dialog", period,
                                   payload={"text": text, "history": history,
@@ -1676,7 +1712,46 @@ async def api_dialog_turn(request: Request):
                     ai.run, "qa", target,
                     payload={"question": text, "history": history}, actor=actor)
                 resp["answer"] = qa_ans.as_dict()
+    # 会话落库（票 11）：回合完成后追加「用户话＋文衡回复文本」，槽位整存；
+    # 无 session 时此刻建新会话。落库失败不挡这一轮（聊天照常，只是这轮不持久化）。
+    if SESSION_DB_PATH is not None:
+        try:
+            if not session_id:
+                session_id = await run_in_threadpool(
+                    session_store.create, SESSION_DB_PATH, user)
+            await run_in_threadpool(session_store.append, SESSION_DB_PATH,
+                                    session_id, "me", text, user=user)
+            reply = str(resp.get("text") or "").strip()
+            if not reply and isinstance(resp.get("answer"), dict):
+                reply = str(resp["answer"].get("text") or "").strip()
+            if reply:
+                await run_in_threadpool(session_store.append, SESSION_DB_PATH,
+                                        session_id, "wh", reply, user=user)
+            await run_in_threadpool(session_store.save_slots, SESSION_DB_PATH,
+                                    session_id, resp["slots"], user=user)
+        except Exception:                                     # noqa: BLE001
+            session_id = ""
+    resp["session_id"] = session_id
     return resp
+
+
+@app.get("/api/dialog/session/{session_id}")
+@user_route
+async def api_dialog_session(request: Request, session_id: str):
+    """会话回读（契约 #36，票 11）：刷新/换设备带 URL `?s=<id>` 即恢复。
+
+    仅 owner：不存在 404、他人会话 403（与既有口径一致）；形状非法按不存在处理。
+    """
+    if SESSION_DB_PATH is None:
+        return JSONResponse({"error": "会话不存在"}, status_code=404)
+    user = current_user(request) or ""
+    try:
+        data = await run_in_threadpool(session_store.load, SESSION_DB_PATH, session_id, user)
+    except (ValueError, KeyError):
+        return JSONResponse({"error": "会话不存在"}, status_code=404)
+    except PermissionError:
+        return JSONResponse({"error": "会话不属于当前用户"}, status_code=403)
+    return {"id": data["id"], "slots": data["slots"], "turns": data["turns"]}
 
 
 @app.get("/api/dialog/home")

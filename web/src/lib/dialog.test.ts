@@ -1,7 +1,8 @@
 /* 票 01 单测：对话前门槽位的纯函数（ADR-0003：不引 jsdom）。 */
 
 import { describe, expect, it } from 'vitest'
-import { clearSlot, conversationTitle, emptySlots, hasSlots } from './dialog'
+import { clearSlot, conversationTitle, emptySlots, hasSlots,
+         sessionIdFromSearch, withSessionId } from './dialog'
 
 describe('槽位（可显示、可清、回未设）', () => {
   it('空态：两格都没设', () => {
@@ -37,5 +38,21 @@ describe('对话标题（取第一句话，不编）', () => {
     const t = conversationTitle(long)
     expect(t.length).toBe(40)
     expect(t.endsWith('…')).toBe(true)
+  })
+})
+
+describe('会话 id（URL `s`，票 11）', () => {
+  it('合法形状读出；缺省/不合法当没带', () => {
+    expect(sessionIdFromSearch('?s=s-20261013-0a1b2c3d')).toBe('s-20261013-0a1b2c3d')
+    expect(sessionIdFromSearch('?ask=x&s=s-20261013-0a1b2c3d')).toBe('s-20261013-0a1b2c3d')
+    expect(sessionIdFromSearch('?s=乱七八糟')).toBe('')
+    expect(sessionIdFromSearch('?s=s-20261013-0A1B2C3D')).toBe('')
+    expect(sessionIdFromSearch('')).toBe('')
+  })
+
+  it('回写保留其他参数；空 id 清掉', () => {
+    expect(withSessionId('?ask=x', 's-20261013-0a1b2c3d')).toBe('ask=x&s=s-20261013-0a1b2c3d')
+    expect(withSessionId('?s=s-20261013-0a1b2c3d&ask=x', '')).toBe('ask=x')
+    expect(withSessionId('', 's-20261013-0a1b2c3d')).toBe('s=s-20261013-0a1b2c3d')
   })
 })

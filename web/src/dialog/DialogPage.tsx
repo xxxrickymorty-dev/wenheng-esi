@@ -9,14 +9,16 @@
    回滚走既有 `rollback-points` / `rollback`（旧稿在 `_superseded/`）。 */
 
 import { useEffect, useRef, useState } from 'react'
-import { getAiCapabilities, getArtifacts, getJobProgress, getMe, getPeriods,
+import { req, getAiCapabilities, getArtifacts, getJobProgress, getMe, getPeriods,
          getRollbackPoints, postAiSwitch, postJob, rollbackPeriod,
          type AiCapability, type Me, type RollbackPoint } from '../api'
-import { postDialogTurn, getDialogHome,
-         type DialogAction, type DialogAnswer, type DialogHome, type DialogRun } from '../api-dialog'
+import { getDialogHome,
+         type DialogAction, type DialogAnswer, type DialogHome, type DialogReply,
+         type DialogRun } from '../api-dialog'
 import { runFlexibleStream, stopFlexible, type FlexCheck, type FlexStreamEvent } from '../api-flexible'
 import { ConfirmButton } from '../ConfirmButton'
-import { clearSlot, conversationTitle, emptySlots, hasSlots, type DialogSlots } from '../lib/dialog'
+import { clearSlot, conversationTitle, emptySlots, hasSlots,
+         sessionIdFromSearch, withSessionId, type DialogSlots } from '../lib/dialog'
 import { buildPeriodUrl } from '../lib/period'
 import { trioLinks, type TrioLink } from '../lib/repro'
 import { latestProgress } from '../lib/runMachine'
@@ -49,7 +51,9 @@ type TraceResult = {
 }
 type Turn = { who: 'me' | 'wh' | 'sys'; text: string; notice?: string; actions?: DialogAction[]
               dismissed?: boolean; run?: DialogRun; trace?: Trace; answer?: DialogAnswer }
-type Conversation = { id: number; title: string; turns: Turn[]; slots: DialogSlots }
+type Conversation = { id: number; title: string; turns: Turn[]; slots: DialogSlots
+                      /** 服务端会话 id（票 11）：这页打开里的每段对话各归一个服务端会话 */
+                      sessionId?: string }
 
 const PALETTE_STORAGE_KEY = 'wenheng-palette'
 
@@ -103,6 +107,37 @@ function freshConversation(id: number): Conversation {
   return { id, title: '', turns: [], slots: emptySlots() }
 }
 
+/** 服务端会话回读（票 11，契约 #36）：刷新/换设备带 `?s=<id>` 即恢复。 */
+type RestoredSession = {
+  id: string
+  slots: DialogSlots
+  turns: { who: 'me' | 'wh'; text: string; ts: string }[]
+}
+
+async function getDialogSession(id: string): Promise<RestoredSession> {
+  return req<RestoredSession>(`/api/dialog/session/${encodeURIComponent(id)}`)
+}
+
+/** 一轮对话（票 11 增补 session 收发；本页是唯一调用方，就地接线）。
+    `session_id` 是票 11 新增字段（api-dialog.ts 的类型面外挂在这一层）。 */
+type TurnReply = DialogReply & { session_id?: string }
+
+async function postTurn(text: string, slots: DialogSlots,
+                        history: { who: string; text: string }[],
+                        session?: string): Promise<TurnReply> {
+  return req<TurnReply>('/api/dialog/turn', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, slots, history, session }),
+  })
+}
+
+/** 会话 id 回写 URL（history.replaceState；`ask` 等其他参数原样保留）。 */
+function writeSessionUrl(id: string) {
+  const rest = withSessionId(window.location.search, id)
+  window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : ''))
+}
+
 export default function DialogPage() {
   const [palette, setPalette] = useState(initialPalette)
   const [me, setMe] = useState<Me | null>(null)
@@ -152,6 +187,34 @@ export default function DialogPage() {
     })()
     return () => { alive = false }
   }, [])
+
+  /* 会话恢复（票 11）：URL `?s=<id>` → 拉服务端会话恢复渲染（恢复回合无 actions/trace 就空着）。
+     只在对话还空着时落位；拿不到（不存在/不属于我）就清掉参数、照常新开。 */
+  const restoredRef = useRef(false)
+  const activeIdRef = useRef(activeId)
+  useEffect(() => { activeIdRef.current = activeId }, [activeId])
+  useEffect(() => {
+    if (!roleKnown || !me || restoredRef.current) return
+    restoredRef.current = true
+    const sid = sessionIdFromSearch(window.location.search)
+    if (!sid) return
+    void (async () => {
+      try {
+        const data = await getDialogSession(sid)
+        setConvs((list) => list.map((c) => (c.id === 1 && c.turns.length === 0 ? {
+          ...c,
+          title: c.title || conversationTitle(data.turns.find((t) => t.who === 'me')?.text || ''),
+          slots: data.slots,
+          sessionId: data.id,
+          turns: data.turns.map((t) => ({ who: t.who, text: t.text })),
+        } : c)))
+        if (activeIdRef.current === 1) writeSessionUrl(data.id)
+      } catch {
+        writeSessionUrl('')          // 拿不到就当没带：清参数，不挡新对话
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 只在身份确认后跑一次
+  }, [roleKnown, me])
 
   /* 陈列馆「问文衡」入口带问题来（`/app/dialog/?ask=…`，2026-10-12）：
      身份确认后自动发送一次，随即清掉参数（刷新不重发）。 */
@@ -209,6 +272,7 @@ export default function DialogPage() {
     setConvs((list) => [conv, ...list])
     setActiveId(conv.id)
     setInput('')
+    writeSessionUrl('')              // 票 11：「新对话」清掉 URL 里的 s（本地状态随新对话走）
   }
 
   async function sendText(raw: string, slotsOverride?: DialogSlots) {
@@ -216,6 +280,7 @@ export default function DialogPage() {
     if (!text || busy || running) return
     setInput('')
     setBusy(true)
+    const convId = active.id
     const slots = slotsOverride ?? active.slots
     const replyIndex = active.turns.length + 1          // 先发用户话，回复接在它后面
     updateActive((c) => ({
@@ -225,19 +290,24 @@ export default function DialogPage() {
     }))
     try {
       /* 对话上文（2026-10-12）：追问（「这是几月的」「那物理学呢」）要靠它解指代——
-         只带上最近 6 轮、每轮截 200 字；服务端还会再截一次。 */
+         只带上最近 6 轮、每轮截 200 字；服务端还会再截一次。
+         带会话时服务端改从会话库读（票 11），body 历史只是没有会话时的兜底。 */
       const history = active.turns
         .filter((t) => t.who !== 'sys')
         .slice(-6)
         .map((t) => ({ who: t.who, text: t.text.slice(0, 200) }))
-      const r = await postDialogTurn(text, slots, history)
+      const r = await postTurn(text, slots, history, active.sessionId)
       updateActive((c) => ({
         ...c,
+        sessionId: r.session_id || c.sessionId,
         slots: r.slots,
         turns: [...c.turns, { who: 'wh', text: r.text, notice: r.notice,
                               actions: r.actions, run: r.run ?? undefined,
                               answer: r.answer ?? undefined }],
       }))
+      /* 票 11：把本回合的会话 id 回写 URL——刷新/换设备带它即恢复；
+         还在这一段对话上才写（中途切走别把 URL 指到别处）。 */
+      if (r.session_id && activeIdRef.current === convId) writeSessionUrl(r.session_id)
       /* 出稿意图（票 03/05）：auto=true 直接开跑，且此时**没有产物**＝首出期次
          （两段式要复刻先行——灵活报告只消费流水线产物）；auto=false 产物已在，
          等人在按钮上点了才跑（行内二次确认）。
@@ -519,7 +589,11 @@ export default function DialogPage() {
           ) : (
             others.map((c) => (
               <a key={c.id} href="#对话" aria-current={c.id === activeId ? 'true' : undefined}
-                 onClick={(e) => { e.preventDefault(); setActiveId(c.id) }}>
+                 onClick={(e) => {
+                   e.preventDefault()
+                   setActiveId(c.id)
+                   writeSessionUrl(c.sessionId || '')   // 票 11：URL 跟着当前对话的会话走
+                 }}>
                 {c.title || '新对话'}
               </a>
             ))

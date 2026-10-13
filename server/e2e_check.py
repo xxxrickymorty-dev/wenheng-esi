@@ -631,6 +631,35 @@ check("对话前门 · 首页有卡点与上一期线索",
       and (_hm.get("prev") is None or len(str((_hm.get("prev") or {}).get("period") or "")) == 6),
       f"stuck={_hm.get('stuck')!r} prev={_hm.get('prev')!r}")
 
+# POST /api/dialog/turn · session 往返（契约 #36，票 11：无 session 建新 → GET 回读 → 带 session 续写）
+st, ds1, _ = call_json("POST", "/api/dialog/turn",
+                       {"text": "查一下顶尖论文", "slots": {"period": "202607"}})
+try:
+    _ds1 = json.loads(ds1)
+except json.JSONDecodeError:
+    _ds1 = {}
+_sid = str(_ds1.get("session_id") or "")
+check("对话前门 · 无 session → 建新会话并回 session_id",
+      st == 200 and _sid.startswith("s-"), f"got {st} session_id={_sid!r}")
+st, ss, _ = call("GET", f"/api/dialog/session/{_sid}")
+try:
+    _ss = json.loads(ss)
+except json.JSONDecodeError:
+    _ss = {}
+check("GET dialog/session 200（回读本会话）", st == 200 and _ss.get("id") == _sid, f"got {st}")
+_turns = _ss.get("turns") or []
+check("对话前门 · 会话回读含问与答两回合",
+      [t.get("who") for t in _turns] == ["me", "wh"]
+      and _turns[0].get("text") == "查一下顶尖论文",
+      f"turns={[t.get('who') for t in _turns]}")
+st, ds2, _ = call_json("POST", "/api/dialog/turn", {"text": "最新的", "session": _sid})
+try:
+    _ds2 = json.loads(ds2)
+except json.JSONDecodeError:
+    _ds2 = {}
+check("对话前门 · 带 session 续写同一会话",
+      st == 200 and _ds2.get("session_id") == _sid, f"session_id={_ds2.get('session_id')!r}")
+
 # POST /api/periods/{period}/review-advice（复核参谋；契约 #27，2026-09-29 D4）
 st, rv, _ = call_json("POST", "/api/periods/202607/review-advice", {})
 check("POST review-advice 200", st == 200, f"got {st}")
