@@ -792,14 +792,12 @@ def quarantine_final_products(out_dir, run_dir=None):
         return []          # 搬迁/留痕失败不阻断生产（与 agent/trace.py 同口径）
 
 
-def write_outputs(ledger, path, out_dir):
-    """把已解析台账落盘为规整数据 + meta，返回 (ok, meta)。"""
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    ok, report, missing = run_assertions(ledger)
-    P, Q = _latest_periods(ledger)
-    next_cols = [c for c in ledger["wide"]["total_cites"].columns if c > P]
+def long_table(ledger):
+    """宽表/分组表 → 长表（discipline, period, metric, source, value）——**唯一口径**。
 
+    `ledger_long.parquet`（`write_outputs`）与台账镜像（`src/ledger_mirror.py`）都用它；
+    口径只此一份，不复制。
+    """
     long_frames = []
     for m, df in ledger["wide"].items():
         long_frames.append(df.reset_index().melt(id_vars="discipline", var_name="period", value_name="value").assign(metric=m))
@@ -811,7 +809,18 @@ def write_outputs(ledger, path, out_dir):
                       ("rank_cn", ["n_inst_1pct", "rank", "rank_pct"])]:
         long_frames.append(ledger[key].melt(id_vars=["discipline", "period"], value_vars=cols,
                                             var_name="metric", value_name="value").assign(source=key))
-    long_df = pd.concat(long_frames, ignore_index=True)
+    return pd.concat(long_frames, ignore_index=True)
+
+
+def write_outputs(ledger, path, out_dir):
+    """把已解析台账落盘为规整数据 + meta，返回 (ok, meta)。"""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    ok, report, missing = run_assertions(ledger)
+    P, Q = _latest_periods(ledger)
+    next_cols = [c for c in ledger["wide"]["total_cites"].columns if c > P]
+
+    long_df = long_table(ledger)
     long_df.to_parquet(out_dir / "ledger_long.parquet", index=False)
 
     wide_dir = out_dir / "wide"
