@@ -479,7 +479,7 @@ export function PeriodsPanel({ periods, selected, healthy, onPick }: {
                             onClick={() => location.reload()}>重新检查</button>
                     一次。</>
                 ) : (
-                  <>还没有任何期次。先在下方「这一期的工具」上传监测表，生成第一期。<a href="#tools">去上传 →</a></>
+                  <>还没有任何期次。先在下方「这一期的工具」上传当期数据表，生成第一期。<a href="#tools">去上传 →</a></>
                 )}
               </td></tr>
             )}

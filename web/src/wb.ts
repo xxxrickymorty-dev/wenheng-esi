@@ -50,7 +50,7 @@ function buildSteps(detail: PeriodDetail | null, generated: boolean, period: str
         : '还没开始取数'
   const mergeDetail = !known ? '未就绪'
     : s?.merge ? '已并入台账'
-      : acq?.copy === 'review' ? '待核对（监测表已建）' : '监测表还没建'
+      : acq?.copy === 'review' ? '待核对（核对副本已建）' : '核对副本还没建'
   return [
     { key: 'fetch', title: '取数', detail: fetchDetail, on: !!s?.fetch, now: known && !s?.fetch },
     { key: 'merge', title: '核对并并入', detail: mergeDetail,

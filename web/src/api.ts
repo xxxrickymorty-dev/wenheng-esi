@@ -297,7 +297,7 @@ export function humanSize(n: number | null): string {
 }
 
 
-/** 上传监测表并开跑（与老站 index.js 同一套：同一个 /api/jobs，带 file 字段） */
+/** 上传当期数据表并开跑（与老站 index.js 同一套：同一个 /api/jobs，带 file 字段） */
 export async function postJobWithFile(period: string, file: File): Promise<{ job_id: string; url: string }> {
   const fd = new FormData()
   fd.append('period', period)

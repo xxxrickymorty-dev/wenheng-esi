@@ -110,7 +110,7 @@ describe('deriveWorkbench（真实数据推导，不编状态）', () => {
       { fetch: false, merge: false },
       { started: true, verified: 31, expected: 64, copy: 'none' }), true)
     expect(wb.steps[0].detail).toBe('取数中（31 / 64）')
-    expect(wb.steps[1].detail).toBe('监测表还没建')
+    expect(wb.steps[1].detail).toBe('核对副本还没建')
     expect(wb.steps[0].now).toBe(true)
   })
 
@@ -118,7 +118,7 @@ describe('deriveWorkbench（真实数据推导，不编状态）', () => {
     const reviewing = deriveWorkbench('202608', [], detail(
       { fetch: true, merge: false },
       { started: true, verified: 64, expected: 64, copy: 'review' }), true)
-    expect(reviewing.steps[1].detail).toBe('待核对（监测表已建）')
+    expect(reviewing.steps[1].detail).toBe('待核对（核对副本已建）')
     expect(reviewing.steps[1].now).toBe(true)
 
     const merged = deriveWorkbench('202608', [], detail(

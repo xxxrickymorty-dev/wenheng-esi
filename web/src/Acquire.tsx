@@ -13,7 +13,7 @@ import { acqFileLabel, acqGroupLabel, errorNote } from './lib/status'
 
 /** 任务进行中的一句话（op.kind → 人话） */
 const OP_CN: Record<string, string> = {
-  fetch: '正在按组取数', copy: '正在新建本期监测表', merge: '正在并入主台账', preflight: '正在检查',
+  fetch: '正在按组取数', copy: '正在新建当期核对副本', merge: '正在并入主台账', preflight: '正在检查',
 }
 
 const SOURCE_NAME: Record<string, string> = { esi: 'ESI', incites: 'InCites' }
@@ -228,7 +228,7 @@ export function Acquire({ period }: { period: string | null }) {
               <Info label="取数状态与口径">
                 <p>进度按逐份核验结果统计：只有核验通过的文件才计入。</p>
                 <p>数据期取自网站页面显示值{dataPeriodText}，不以下载当天代替。</p>
-                <p>「下载完成」不等于「台账已更新」：先核对本期监测表，核对通过才并入主台账；并入只动本期列，历史一字不变。</p>
+                <p>「下载完成」不等于「台账已更新」：先核对本期数据（核对副本），核对通过才并入主台账；并入只动本期列，历史一字不变。</p>
               </Info>
             </div>
           </section>

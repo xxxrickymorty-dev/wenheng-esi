@@ -1,4 +1,4 @@
-/* 生成台工具卡（阶段 1 · P1 收尾）：上传监测表 / 产物下载 / 重跑本期。
+/* 生成台工具卡（阶段 1 · P1 收尾）：上传当期数据表 / 产物下载 / 重跑本期。
    数据源都是现成的：POST /api/jobs（带 file 字段）· GET /api/jobs/{id}/artifacts ·
    POST /api/jobs/{id}/rerun（老站 job.js 一直在用）。🔴 只透传，不编造。 */
 
@@ -194,15 +194,15 @@ export function Tools({
 
       <div className="mt-12">
         <div>
-          {/* 上传监测表（老站同一套口径：期次 6 位必填） */}
-          <h3 className="fs-15">上传监测表</h3>
+          {/* 上传当期数据表（老站同一套口径：期次 6 位必填） */}
+          <h3 className="fs-15">上传当期数据表</h3>
           <div className="toolbar">
-            <input type="file" accept=".xlsx" aria-label="选择要上传的监测表（xlsx）"
+            <input type="file" accept=".xlsx" aria-label="选择要上传的当期数据表（xlsx）"
                    onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             <input className="search maxw-150" value={newPeriod} aria-label="新期次（六位数字）"
                    onChange={(e) => setNewPeriod(e.target.value)} placeholder="期次 202609" />
             <ConfirmButton className="btn" disabled={actionsLocked || busy || rerunning}
-                           confirmText="确认上传？会覆盖本期的监测表"
+                           confirmText="确认上传？会覆盖本期的核对副本"
                            onConfirm={upload}>
               <Icon name="refresh" size={19} />{busy ? '正在上传……' : '上传并生成'}
             </ConfirmButton>
