@@ -93,8 +93,13 @@ button{font-family:inherit;cursor:pointer}
 .hero-facts{margin-top:12px!important;font-size:12.5px!important;letter-spacing:.1em;color:#d5cba6!important}
 .scroll-hint i{display:block;width:1px;height:34px;background:linear-gradient(#e6e4d0,transparent);animation:hint 2.2s var(--ease) infinite}
 @keyframes hint{0%{transform:scaleY(.2);transform-origin:top;opacity:.2}45%{transform:scaleY(1);opacity:1}100%{transform:scaleY(.2);transform-origin:top;opacity:.2}}
-.skip-link{pointer-events:auto;border:1px solid #cfc19a88;padding:11px 20px;font-size:13.5px;letter-spacing:.1em;color:#f0ead8;text-decoration:none;background:none;transition:background .2s var(--ease),color .2s var(--ease)}
-.skip-link:hover{background:var(--header-gold);color:#12362a}
+.hero-actions{display:flex;align-items:center;gap:14px;margin-top:38px;flex-wrap:wrap}
+.btn-hero-primary{pointer-events:auto;display:inline-flex;align-items:center;gap:14px;height:52px;padding:0 26px;background:#eee7d1;color:#153b2d;border:1px solid transparent;font-size:14.5px;letter-spacing:.06em;transition:background .2s var(--ease),transform .2s var(--ease)}
+.btn-hero-primary:hover{background:#fff6d8;transform:translateY(-2px)}
+.btn-hero-ghost{pointer-events:auto;display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 24px;background:rgba(25,62,44,.35);border:1px solid #f1ebd296;color:#fff6e7;font-size:14.5px;letter-spacing:.06em;text-decoration:none;transition:background .2s var(--ease)}
+.btn-hero-ghost:hover{background:#14382cd9}
+.btn-hero-skip{pointer-events:auto;margin-left:10px;background:none;border:0;border-bottom:1px solid #cfc19a88;color:#f0ead8;font-size:13.5px;letter-spacing:.1em;padding:6px 0;align-self:center}
+.btn-hero-skip:hover{color:var(--gold-light)}
 .period-chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px;max-width:720px}
 .period-chips button{pointer-events:auto;background:rgba(16,52,37,.72);border:1px solid #d9ca9f66;color:#f0ead8;font-size:13.5px;letter-spacing:.1em;padding:9px 16px;transition:background .2s var(--ease),color .2s var(--ease),transform .2s var(--ease)}
 .period-chips button:hover{background:var(--header-gold);color:#12362a;transform:translateY(-2px)}
@@ -124,25 +129,17 @@ button{font-family:inherit;cursor:pointer}
 .wb{background:#173b2c;color:#ece8d7}
 .wb .sec-head h2{color:#f2ecd9}
 .wb .sec-head>.side{color:#bac5b3}
-.steps{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-top:1px solid #81977c55;margin-top:8px}
-.step{padding:26px 30px 30px;border-left:1px solid #81977c44}
-.step:first-child{border-left:0;padding-left:0}
-.step em{display:block;font:15px Georgia,serif;font-style:normal;color:#cbb97f;letter-spacing:.12em;margin-bottom:14px}
-.step strong{display:block;font-family:var(--serif);font-weight:400;font-size:21px;letter-spacing:.08em;margin-bottom:10px}
-.step p{font-size:13.5px;line-height:1.9;color:#b4c0ab;margin:0}
-.step-line{grid-column:1/-1;height:1px;background:#81977c55;transform:scaleX(0);transform-origin:left;transition:transform .9s var(--ease)}
-.is-visible .step-line{transform:scaleX(1)}
-.steps-note{margin:18px 0 0;font-size:12.5px;color:#9fb096;letter-spacing:.06em}
-.wb-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:26px;margin:54px 0 0;padding:38px 0 6px;border-top:1px solid #81977c55}
-.stat{display:grid;gap:9px}
-.stat strong{font:40px Georgia,"SimSun",serif;color:#e7d6a6;line-height:1.2}
-.stat span{font-size:12.5px;color:#b4c0ab;letter-spacing:.06em}
-.wb-card{margin-top:48px;border:1px solid #bac2a355;background:#ffffff05;padding:30px 36px}
-.wb-card dl{margin:0}
-.wb-card dl>div{display:flex;gap:26px;padding:14px 0;border-top:1px solid #73886c3b;font-size:14px;line-height:1.85}
-.wb-card dl>div:first-child{border-top:0}
-.wb-card dt{flex:0 0 120px;color:#a6b69c;font-size:13px;letter-spacing:.06em}
-.wb-card dd{margin:0;color:#e0e4d5}
+.wb-chapter{display:grid;grid-template-columns:7fr 5fr;gap:60px;align-items:center;padding:76px 0;border-top:1px solid #81977c33}
+.wb-chapter:first-of-type{border-top:0;padding-top:12px}
+.wb-chapter.flip{grid-template-columns:5fr 7fr}
+.wb-chapter.flip .shot{order:2}
+.wb-chapter.flip .wb-text{order:1}
+.shot{margin:0;border:1px solid #bac2a355;background:#0d2418;box-shadow:0 36px 70px rgba(3,10,7,.5);overflow:hidden}
+.shot img{display:block;width:100%;height:auto}
+.wb-text .badge{display:inline-grid;place-items:center;width:46px;height:46px;border:1px solid #cbbc90;color:#e9ddb5;font:15px Georgia,serif;letter-spacing:.06em;margin-bottom:24px}
+.wb-text h3{font-size:28px;font-weight:400;letter-spacing:.06em;line-height:1.55;color:#f2ecd9;margin:0;text-wrap:balance}
+.wb-text p{font-size:14.5px;line-height:2;color:#b4c0ab;margin:16px 0 0}
+.wb-text .metric{margin-top:22px;font-family:var(--serif);font-size:16.5px;color:#e7d6a6;letter-spacing:.05em}
 .wb-cta{display:flex;align-items:center;gap:26px;margin-top:42px}
 .btn-gold{display:inline-flex;align-items:center;gap:14px;background:#e9dfc0;color:#153b2d;border:0;padding:15px 26px;font-size:14px;letter-spacing:.08em;transition:background .22s var(--ease),transform .22s var(--ease)}
 .btn-gold:hover{background:#f6edd2;transform:translateY(-2px)}
@@ -244,7 +241,9 @@ html.no-anim .hero-foot{position:relative;inset:auto;padding:0 8% 34px;backgroun
 html.no-anim .hero-foot span{color:#58655C}
 html.no-anim .hero-caption{color:#58655C;text-shadow:none}
 html.no-anim .scroll-hint{display:none}
-html.no-anim .skip-link{display:none}
+html.no-anim .btn-hero-primary{background:#183e2f;color:#eee9d8}
+html.no-anim .btn-hero-ghost{background:none;border-color:#b9b29a;color:#3F4C42}
+html.no-anim .btn-hero-skip{color:#58655C;border-color:#b9b29a}
 html.no-anim .rail{display:none}
 html.no-anim .period-chips button{background:#12362a;color:#f0ead8}
 html.no-anim .reveal{opacity:1;transform:none}
@@ -261,9 +260,9 @@ html.no-anim .steps .step-line{transform:scaleX(1)}
   .beat[data-act="0"] .beat-copy,.beat[data-act="1"] .beat-copy,.beat[data-act="4"] .beat-copy{padding-left:6%!important;padding-right:6%!important}
   .beat-copy h1{font-size:40px}
   .hero-foot{left:6%;right:6%}
-  .steps{grid-template-columns:1fr}
-  .step{border-left:0;padding:22px 0}
-  .wb-stats{grid-template-columns:1fr 1fr}
+  .wb-chapter{grid-template-columns:1fr;gap:28px;padding:48px 0}
+  .wb-chapter.flip{grid-template-columns:1fr}
+  .wb-chapter .shot,.wb-chapter .wb-text{order:0}
   .four{grid-template-columns:1fr 1fr;gap:30px 0}
   .four article{padding:0 20px}
   .four article:nth-child(3){border-left:0;padding-left:0}
@@ -296,20 +295,22 @@ html.no-anim .steps .step-line{transform:scaleX(1)}
 <div class="stage-wrap" id="top">
   <div class="stage" id="stage">
     <div class="beat" data-act="0">
-      <img class="frame" src="陈列馆原型-帧/f0-exterior-front.jpg" alt="云南大学图书馆建筑模型，外景正面" />
+      <img class="frame" src="陈列馆原型-帧/f-hero.jpg" alt="云南大学图书馆实景：呈贡校区图书馆与馆前广场" />
       <div class="veil"></div>
       <div class="beat-copy">
         <p class="lead-kicker"><span class="rule"></span>YUNNAN UNIVERSITY LIBRARY</p>
         <h1>云南大学<br /><em>图书馆</em></h1>
         <p>学科信息参考 · 数字馆藏 · 数据阅览</p>
         <p class="hero-facts">最新一期 · 2026 年第 5 期（总第 39 期）已归档 ｜ 每期覆盖 ESI 22 个学科</p>
-        <div class="hero-foot" style="position:static;padding:0;margin-top:44px">
-          <a class="skip-link" href="#beat4" data-jump="beat4">直接翻一本 →</a>
+        <div class="hero-actions">
+          <button class="btn-hero-primary" type="button" data-jump="beat1">进入3D图书馆 <span aria-hidden="true">↗</span></button>
+          <a class="btn-hero-ghost" href="#index">学科检索</a>
+          <button class="btn-hero-skip" type="button" data-jump="beat4">直接翻一本 →</button>
         </div>
       </div>
       <div class="hero-foot">
         <span class="scroll-hint">向下 · 走进图书馆<i></i></span>
-        <span class="hero-caption">呈贡校区 · 建筑外观</span>
+        <span class="hero-caption">呈贡校区 · 图书馆</span>
       </div>
     </div>
 
@@ -379,26 +380,45 @@ html.no-anim .steps .step-line{transform:scaleX(1)}
         </div>
         <p class="side">一条确定性流水线，加一个人的判断权——<br />机器保数字，取舍你来定。</p>
       </div>
-      <div class="steps" data-steps>
-        <div class="step-line" aria-hidden="true"></div>
-        <div class="step" style="--i:0"><em>01</em><strong>取数</strong><p>取数台一键导出，逐份核验；形成本期监测表，只动当期列。</p></div>
-        <div class="step" style="--i:1"><em>02</em><strong>核对并并入</strong><p>监测表并入台账；台账只读，系统从不在上面写回。</p></div>
-        <div class="step" style="--i:2"><em>03</em><strong>一键生成</strong><p>全绿即出稿；缺哪张表哪一列，逐条写明，补上重跑。</p></div>
-      </div>
-      <p class="steps-note">人工约 5 分钟 · 机器 17 秒 · 现场一次真实生成约 20 秒</p>
-      <div class="wb-stats">
-        <div class="stat"><strong data-count="19">0</strong><span>张台账表，报告数字的源头</span></div>
-        <div class="stat"><strong data-count="20" data-suffix=" 秒">0</strong><span>一次真实生成（原始数据 → 可签发稿）</span></div>
-        <div class="stat"><strong data-count="54" data-suffix=" 项">0</strong><span>出稿前逐项核对，全部通过</span></div>
-        <div class="stat"><strong data-count="704" data-suffix=" 个">0</strong><span>数字全部标了出处，可回溯到台账</span></div>
-      </div>
-      <div class="wb-card">
-        <dl>
-          <div><dt>签单绑指纹</dt><dd>报告一变，签名自动失效并提示重签；撤回会留档。</dd></div>
-          <div><dt>待人工不隐藏</dt><dd>签发时仍有几处待人工，会记进档案（当期 7 处）。</dd></div>
-          <div><dt>两级角色</dt><dd>管理员（全功能）／操作员（只读）；离线运行，数据不外传。</dd></div>
-        </dl>
-      </div>
+      <article class="wb-chapter reveal" style="--i:0">
+        <figure class="shot"><img src="陈列馆原型-帧/wb-acquire.jpg" alt="取数台界面：自动取数、逐份核验、已并入主台账" loading="lazy" /></figure>
+        <div class="wb-text">
+          <span class="badge">01</span>
+          <h3>一期数据，一次取齐。</h3>
+          <p>取数台一键导出 ESI 与 InCites 的 9 组 64 份数据，逐份核验；自动生成本期监测表——只动当期列，历史列原样不动。</p>
+          <p class="metric">9 组 64 份 · 逐份核验</p>
+        </div>
+      </article>
+
+      <article class="wb-chapter flip reveal" style="--i:0">
+        <figure class="shot"><img src="陈列馆原型-帧/wb-ledger.jpg" alt="台账表清单：19 张表、期次覆盖与只读标识" loading="lazy" /></figure>
+        <div class="wb-text">
+          <span class="badge">02</span>
+          <h3>数字只有一个源头。</h3>
+          <p>19 张台账表，是报告全部数字的源头。台账只读——系统从不在上面写回；报告里 704 个数字，704 个标了出处。</p>
+          <p class="metric">19 张表 ｜ 最长 46 期连续记录</p>
+        </div>
+      </article>
+
+      <article class="wb-chapter reveal" style="--i:0">
+        <figure class="shot"><img src="陈列馆原型-帧/wb-workbench.jpg" alt="生成台：三步进度、签发状态与打开报告" loading="lazy" /></figure>
+        <div class="wb-text">
+          <span class="badge">03</span>
+          <h3>从数据到可签发的稿子，约 20 秒。</h3>
+          <p>双击一键出报告：三步全绿即出稿；缺哪张表、哪一列，逐条写明，补上重跑。出稿前机器逐项自检——54 项核对，全部通过才交到你手上。</p>
+          <p class="metric">约 5 分钟人工 · 约 20 秒机器 · 54 项核对</p>
+        </div>
+      </article>
+
+      <article class="wb-chapter flip reveal" style="--i:0">
+        <figure class="shot"><img src="陈列馆原型-帧/wb-review.jpg" alt="审核台：整篇试排报告、在线填空与签单区" loading="lazy" /></figure>
+        <div class="wb-text">
+          <span class="badge">04</span>
+          <h3>机器保数字，取舍你来定。</h3>
+          <p>在线逐格复核，每个数字都能回溯到台账；签单绑在这一版的指纹上——报告一变，签名自动失效并提示重签；撤回会留档；签发时仍有待人工，也如实记进档案。</p>
+          <p class="metric">报告一变，签名自动失效并提示重签</p>
+        </div>
+      </article>
       <div class="wb-cta">
         <a class="btn-gold" href="/app/">去工作台看看 →</a>
         <small>操作员账号为只读；写动作由服务端拦住。</small>
@@ -535,11 +555,11 @@ html.no-anim .steps .step-line{transform:scaleX(1)}
   <div class="proto-panel" id="protoPanel">
     <h4>原型注记（审稿用）</h4>
     <ul>
-      <li>画面为真实系统截图假 3D；真实版为滚动驱动的 three.js 镜头（同一模型）。</li>
+      <li>首屏为原首页实景照片；下滚进入 3D（截图假 3D，真实版为滚动驱动的 three.js 镜头）。</li>
+      <li>工作区四章：界面截图为当前真实工作台（取数台 / 台账 / 生成台 / 审核台）。</li>
       <li>翻书为各期真实截图的封面/内页两帧；真实版保留现有翻书器。</li>
       <li>数字全部为已核对真值；声音开关未含。</li>
       <li>「动效：开/关」或系统「减少动态效果」→ 静态文档版（降级路径）。</li>
-      <li>期次按钮打开对应期次的封面与内页（均为真实截图）。</li>
       <li>「去工作台 / 问文衡」指向真实页面路径；离线双击打开时不可跳转，演示站里可用。</li>
       <li>滚动区间约 1000vh，为草案值；节奏与文案按你意见调。</li>
     </ul>
@@ -563,7 +583,7 @@ html.no-anim .steps .step-line{transform:scaleX(1)}
   /* 画面窗口（宽·允许相邻交叉淡入）与文字窗口（窄·先退后进，不叠字不空屏） */
   var FRAME_W={0:[[0,0],[0.14,0.17]],1:[[0.12,0.15],[0.345,0.375]],2:[[0.34,0.37],[0.51,0.54]],3:[[0.50,0.53],[0.74,0.77]],4:[[0.73,0.76],[2,3]]};
   var COPY_W={0:[[0,0],[0.115,0.135]],1:[[0.145,0.165],[0.315,0.335]],2:[[0.375,0.395],[0.475,0.495]],3:[[0.545,0.565],[0.70,0.72]],4:[[0.775,0.795],[2,3]]};
-  var SCALE={0:[1,1.17],1:[1.02,1.16],2:[1.04,1.10],3:[1.05,1.01],4:[1.01,1.06]};
+  var SCALE={0:[1,1.10],1:[1.02,1.16],2:[1.04,1.10],3:[1.05,1.01],4:[1.01,1.06]};
   function clamp(v,a,b){return v<a?a:(v>b?b:v);}
   function ss(e0,e1,x){var t=clamp((x-e0)/(e1-e0||1e-6),0,1);return t*t*(3-2*t);}
   function lerp(a,b,t){return a+(b-a)*t;}
@@ -630,14 +650,16 @@ html.no-anim .steps .step-line{transform:scaleX(1)}
   function jumpTo(key){
     var y=null;
     if(key==='beat0'){y=0;}
+    else if(key==='beat1'){y=stageWrap.offsetTop+travel()*0.20;}
     else if(key==='beat4'){y=beatTarget(4);}
     else{var el=document.getElementById(key);if(el){y=el.getBoundingClientRect().top+window.scrollY-78;}}
     if(y===null){return;}
     if(html.classList.contains('no-anim')){
-      var el2=key==='beat4'?document.querySelector('.beat[data-act="4"]'):null;
       if(key==='beat0'){window.scrollTo(0,0);return;}
-      if(el2){el2.scrollIntoView();return;}
-      document.getElementById(key).scrollIntoView();
+      var beatEl=/^beat[14]$/.test(key)?document.querySelector('.beat[data-act="'+key.slice(4)+'"]'):null;
+      if(beatEl){beatEl.scrollIntoView();return;}
+      var target=document.getElementById(key);
+      if(target){target.scrollIntoView();}
       return;
     }
     window.scrollTo({top:y,behavior:'smooth'});
@@ -694,7 +716,7 @@ html.no-anim .steps .step-line{transform:scaleX(1)}
     });
   },{threshold:0.16}):null;
   if(io){
-    [].slice.call(document.querySelectorAll('.reveal,.wb-stats,.steps,.bounds .card,.ask-grid')).forEach(function(el){io.observe(el);});
+    [].slice.call(document.querySelectorAll('.reveal,.wb-cta,.bounds .card,.ask-grid')).forEach(function(el){io.observe(el);});
   }else{
     document.querySelectorAll('.reveal').forEach(function(el){el.classList.add('is-visible');});
   }
