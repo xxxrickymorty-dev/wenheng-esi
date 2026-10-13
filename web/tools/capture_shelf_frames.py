@@ -13,8 +13,8 @@
     f9-exterior-aerial 备用：鸟瞰
     f3-room-wide       幕3 入室（室内全景）
     f4-platform-near   幕4 展台近景（室内推近）
-    f5-reader-cover    幕4 翻书：封面
-    f6-reader-spread   幕4 翻书：内页对开
+    f5-cover-<期次>    幕4 翻书：各期封面（202601…202609 各一张）
+    f6-spread-<期次>   幕4 翻书：各期内页对开
 
 只读：登录、点击、截图；不触发任何写操作（不生成/不签单）。
 口令只从 server/.env 读，不打印。
@@ -38,7 +38,8 @@ body.cap-hide .room-ui,
 body.cap-hide .room-catalog-list,
 body.cap-hide .site-footer,
 body.cap-hide .returning-note,
-body.cap-hide .reader-hint { visibility: hidden !important; }
+body.cap-hide .reader-hint,
+body.cap-hide .reader-exit { visibility: hidden !important; }
 """
 
 
@@ -119,21 +120,26 @@ def main() -> int:
             pg.wait_for_timeout(700)
         shot(pg, "f4-platform-near")
 
-        # —— 翻书：幕 4 ——
+        # —— 翻书：幕 4（五个期次各取封面 + 内页对开）——
         hide(False)
-        pg.click(".room-catalog-list summary")
-        pg.wait_for_timeout(400)
-        pg.locator(".room-catalog-list button").last.click()   # 打开最新一期
-        pg.wait_for_selector("#flipbook", timeout=15000)
-        pg.wait_for_timeout(2200)
-        hide(True)
-        shot(pg, "f5-reader-cover")
-
-        pg.keyboard.press("ArrowRight")
-        pg.wait_for_timeout(1000)
-        pg.keyboard.press("ArrowRight")
-        pg.wait_for_timeout(1000)
-        shot(pg, "f6-reader-spread")
+        for i, issue in enumerate(["202601", "202603", "202605", "202607", "202609"]):
+            pg.evaluate("() => { const d = document.querySelector('.room-catalog-list'); if (d) d.open = true; }")
+            pg.wait_for_timeout(350)
+            pg.locator(".room-catalog-list button").nth(i).click()
+            pg.wait_for_selector("#flipbook", timeout=15000)
+            pg.wait_for_timeout(2000)
+            hide(True)
+            shot(pg, f"f5-cover-{issue}")
+            hide(False)
+            pg.keyboard.press("ArrowRight")
+            pg.wait_for_timeout(900)
+            pg.keyboard.press("ArrowRight")
+            pg.wait_for_timeout(900)
+            hide(True)
+            shot(pg, f"f6-spread-{issue}")
+            pg.keyboard.press("Escape")
+            pg.wait_for_timeout(2200)
+            hide(False)
 
         if errors:
             print("⚠ 页面报错：" + "; ".join(errors[:3]))

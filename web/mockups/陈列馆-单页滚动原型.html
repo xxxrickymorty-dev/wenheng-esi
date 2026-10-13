@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>陈列馆 · 单页滚动原型（文衡）</title>
+<style>
+/* ============================================================
+   陈列馆单页滚动原型 · 审稿用（单文件、零依赖）
+   画面为真实系统截图（web/mockups/陈列馆原型-帧/），假 3D；
+   视觉令牌与排版沿用 web/src/index.css 与 library/home.css 的语言。
+   ============================================================ */
+:root{
+  --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB;
+  --ink:#222B25; --ink-2:#3F4C42; --ink-3:#58655C;
+  --line:#DDE1D8; --zhu:#1A4B27; --gold:#B19A65; --gold-ink:#62501F;
+  --header-bg:#12362a; --header-ink:#f0ead8; --header-dim:#bcbfa9; --header-gold:#d9ca9f;
+  --footer-bg:#103425; --footer-ink:#F0EAD8; --footer-dim:#BCBFA9;
+  --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --ivory:#fcf5e3; --ivory-2:#e7e6d4; --gold-light:#f1dfb0;
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --travel:1000vh;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:78px}
+html.no-anim{scroll-behavior:auto}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0;letter-spacing:.06em}
+a{color:inherit}
+button{font-family:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--zhu);outline-offset:3px;border-radius:4px}
+.wrap{width:min(1240px,calc(100% - 112px));margin:auto}
+.kicker{font:11px Georgia,"Times New Roman",serif;letter-spacing:.2em;color:#62501F;text-transform:uppercase}
+.kicker.on-dark{color:#dfd1a7}
+
+/* ---------- 顶栏（常驻） ---------- */
+.topbar{position:fixed;left:0;right:0;top:0;height:62px;z-index:60;display:flex;align-items:center;gap:26px;
+  padding:0 4%;background:var(--header-bg);color:var(--header-ink);border-bottom:1px solid #bcad8550}
+.brand{display:flex;align-items:center;gap:14px;text-decoration:none;flex-shrink:0}
+.brand-seal{width:32px;height:32px;border:1px solid #cbbc90;display:grid;place-items:center;font-family:var(--serif);font-size:16px;color:#e9ddb5}
+.brand-name{display:flex;flex-direction:column;line-height:1.25}
+.brand-name b{font-weight:400;font-size:15px;letter-spacing:.2em}
+.brand-name small{font:8px Georgia,serif;letter-spacing:.14em;color:var(--header-dim)}
+.topnav{display:flex;gap:24px;margin-left:auto;font-size:13px;letter-spacing:.08em}
+.topnav a{color:#d8d3bd;text-decoration:none;padding:6px 0;position:relative}
+.topnav a:after{content:"";position:absolute;left:0;right:0;bottom:2px;height:1px;background:#c4b581;transform:scaleX(0);transition:transform .22s var(--ease)}
+.topnav a:hover:after{transform:scaleX(1)}
+.topbar-side{display:flex;align-items:center;gap:14px;flex-shrink:0}
+.ask-link{border:1px solid #adad8877;padding:9px 16px;font-size:13px;letter-spacing:.08em;color:#eee6ca;text-decoration:none;transition:background .22s var(--ease),color .22s var(--ease)}
+.ask-link:hover{background:var(--header-gold);color:#163c2c}
+.motion-toggle{background:none;border:0;color:#c9c4ac;font-size:12.5px;letter-spacing:.08em;padding:8px 2px}
+.motion-toggle:hover{color:#f0ead8}
+
+/* ---------- 吸顶 3D 舞台 ---------- */
+.stage-wrap{height:var(--travel);position:relative}
+.stage{position:sticky;top:0;height:100vh;overflow:hidden;background:#0d1d16}
+.beat{position:absolute;inset:0;opacity:0;pointer-events:none;will-change:opacity}
+.beat .frame{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 52%;
+  transform-origin:50% 58%;will-change:transform}
+.beat .veil{position:absolute;inset:0;pointer-events:none}
+.beat[data-act="0"] .veil{background:
+  linear-gradient(90deg,rgba(5,35,26,.84) 0%,rgba(7,35,29,.58) 30%,rgba(9,30,23,.06) 64%),
+  linear-gradient(0deg,rgba(7,32,22,.52),transparent 46%)}
+.beat[data-act="1"] .veil{background:
+  linear-gradient(90deg,rgba(6,30,22,.82) 0%,rgba(8,33,25,.42) 40%,rgba(8,33,25,0) 68%),
+  linear-gradient(0deg,rgba(7,32,22,.48),transparent 42%)}
+.beat[data-act="2"] .veil{background:rgba(6,12,9,.94)}
+.beat[data-act="3"] .veil{background:
+  linear-gradient(0deg,rgba(10,24,18,.5),transparent 46%),
+  linear-gradient(180deg,rgba(8,22,16,.62),transparent 42%)}
+.beat[data-act="4"] .veil{background:
+  linear-gradient(0deg,rgba(8,20,15,.92),rgba(8,20,15,.56) 36%,transparent 62%)}
+.beat-copy{position:absolute;inset:0;display:flex;flex-direction:column;color:var(--ivory)}
+.beat-copy .rule{display:inline-block;width:36px;height:1px;background:#d6c699;vertical-align:middle;margin-right:12px}
+.beat-copy h1{font-size:clamp(46px,4.8vw,74px);font-weight:400;line-height:1.3;letter-spacing:.11em;margin:26px 0 20px}
+.beat-copy h1 em{font-style:normal;color:var(--gold-light)}
+.beat-copy h2{font-size:clamp(30px,2.9vw,46px);font-weight:400;line-height:1.42;letter-spacing:.1em}
+.beat-copy p{margin:16px 0 0;font-size:16.5px;letter-spacing:.06em;color:var(--ivory-2);max-width:640px;text-shadow:0 1px 6px rgba(8,22,16,.55)}
+.beat-copy .en-note{font:10px Georgia,serif;letter-spacing:.16em;color:#bcbfa9;margin-top:14px}
+.beat-copy .lead-kicker{display:flex;align-items:center;font-size:11px;letter-spacing:.18em;color:#dfd1a7}
+/* 每幕的版位 */
+.beat[data-act="0"] .beat-copy,.beat[data-act="1"] .beat-copy{justify-content:center;padding:0 6% 4vh 8.1%}
+.beat[data-act="2"] .beat-copy{justify-content:center;align-items:center;text-align:center;padding:0 10%}
+.beat[data-act="2"] h2{font-size:clamp(34px,3.4vw,54px);letter-spacing:.16em}
+.beat[data-act="2"] .door-note{margin-top:20px;font-size:13px;letter-spacing:.24em;color:#cfc19a}
+.beat[data-act="3"] .beat-copy{justify-content:flex-start;align-items:center;text-align:center;padding:13vh 10% 0}
+.beat[data-act="4"] .beat-copy{justify-content:flex-end;padding:0 6% 7vh 8.1%}
+.beat[data-act="4"] h2{font-size:clamp(28px,2.4vw,38px)}
+.hero-foot{position:absolute;left:8.1%;right:8.1%;bottom:34px;display:flex;align-items:center;justify-content:space-between;gap:20px;pointer-events:none}
+.scroll-hint{display:flex;align-items:center;gap:10px;font-size:12px;letter-spacing:.12em;color:#e6e4d0}
+.hero-caption{font-size:11px;letter-spacing:.14em;color:#e6e4d0;text-shadow:0 1px 4px #1a302b}
+.hero-facts{margin-top:12px!important;font-size:12.5px!important;letter-spacing:.1em;color:#d5cba6!important}
+.scroll-hint i{display:block;width:1px;height:34px;background:linear-gradient(#e6e4d0,transparent);animation:hint 2.2s var(--ease) infinite}
+@keyframes hint{0%{transform:scaleY(.2);transform-origin:top;opacity:.2}45%{transform:scaleY(1);opacity:1}100%{transform:scaleY(.2);transform-origin:top;opacity:.2}}
+.skip-link{pointer-events:auto;border:1px solid #cfc19a88;padding:11px 20px;font-size:13.5px;letter-spacing:.1em;color:#f0ead8;text-decoration:none;background:none;transition:background .2s var(--ease),color .2s var(--ease)}
+.skip-link:hover{background:var(--header-gold);color:#12362a}
+.period-chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px;max-width:720px}
+.period-chips button{pointer-events:auto;background:rgba(16,52,37,.72);border:1px solid #d9ca9f66;color:#f0ead8;font-size:13.5px;letter-spacing:.1em;padding:9px 16px;transition:background .2s var(--ease),color .2s var(--ease),transform .2s var(--ease)}
+.period-chips button:hover{background:var(--header-gold);color:#12362a;transform:translateY(-2px)}
+.shelf-note{margin-top:20px;font-size:12.5px;letter-spacing:.08em;color:#cfd8c4}
+
+/* ---------- 章节导轨 ---------- */
+.rail{position:fixed;right:24px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:55;
+  opacity:0;pointer-events:none;transition:opacity .5s var(--ease)}
+.rail.is-on{opacity:1;pointer-events:auto}
+.rail button{background:rgba(18,54,42,.86);border:1px solid #d9ca9f44;color:#e9e4cf;font-size:12.5px;letter-spacing:.1em;
+  padding:10px 14px;text-align:left;transition:background .22s var(--ease),color .22s var(--ease),border-color .22s var(--ease)}
+.rail button:hover{border-color:#d9ca9f;color:#fff}
+.rail button[aria-current="true"]{background:var(--header-gold);color:#12362a;border-color:var(--header-gold);font-weight:600}
+@media (min-width:1101px){.doc .wrap,footer.site .wrap{padding-right:118px}}
+@media (max-width:1100px){.rail{display:none}}
+
+/* ---------- 文档流区块（幕 5–9） ---------- */
+.doc{position:relative;z-index:2;background:var(--bg)}
+.doc section{padding:92px 0}
+.sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:30px;margin-bottom:44px}
+.sec-head h2{font-size:32px;font-weight:400;line-height:1.45;margin-top:14px}
+.sec-head>.side{font-size:13.5px;line-height:1.9;color:#58655C;max-width:330px}
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .7s var(--ease),transform .7s var(--ease);transition-delay:calc(var(--i,0)*70ms)}
+.is-visible .reveal,.reveal.is-visible{opacity:1;transform:none}
+
+/* 幕 5 · 报告从哪来（深绿章节） */
+.wb{background:#173b2c;color:#ece8d7}
+.wb .sec-head h2{color:#f2ecd9}
+.wb .sec-head>.side{color:#bac5b3}
+.steps{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-top:1px solid #81977c55;margin-top:8px}
+.step{padding:26px 30px 30px;border-left:1px solid #81977c44}
+.step:first-child{border-left:0;padding-left:0}
+.step em{display:block;font:15px Georgia,serif;font-style:normal;color:#cbb97f;letter-spacing:.12em;margin-bottom:14px}
+.step strong{display:block;font-family:var(--serif);font-weight:400;font-size:21px;letter-spacing:.08em;margin-bottom:10px}
+.step p{font-size:13.5px;line-height:1.9;color:#b4c0ab;margin:0}
+.step-line{grid-column:1/-1;height:1px;background:#81977c55;transform:scaleX(0);transform-origin:left;transition:transform .9s var(--ease)}
+.is-visible .step-line{transform:scaleX(1)}
+.steps-note{margin:18px 0 0;font-size:12.5px;color:#9fb096;letter-spacing:.06em}
+.wb-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:26px;margin:54px 0 0;padding:38px 0 6px;border-top:1px solid #81977c55}
+.stat{display:grid;gap:9px}
+.stat strong{font:40px Georgia,"SimSun",serif;color:#e7d6a6;line-height:1.2}
+.stat span{font-size:12.5px;color:#b4c0ab;letter-spacing:.06em}
+.wb-card{margin-top:48px;border:1px solid #bac2a355;background:#ffffff05;padding:30px 36px}
+.wb-card dl{margin:0}
+.wb-card dl>div{display:flex;gap:26px;padding:14px 0;border-top:1px solid #73886c3b;font-size:14px;line-height:1.85}
+.wb-card dl>div:first-child{border-top:0}
+.wb-card dt{flex:0 0 120px;color:#a6b69c;font-size:13px;letter-spacing:.06em}
+.wb-card dd{margin:0;color:#e0e4d5}
+.wb-cta{display:flex;align-items:center;gap:26px;margin-top:42px}
+.btn-gold{display:inline-flex;align-items:center;gap:14px;background:#e9dfc0;color:#153b2d;border:0;padding:15px 26px;font-size:14px;letter-spacing:.08em;transition:background .22s var(--ease),transform .22s var(--ease)}
+.btn-gold:hover{background:#f6edd2;transform:translateY(-2px)}
+.wb-cta small{font-size:12.5px;color:#9fb096}
+
+/* 幕 6 · 一册一档 */
+.four{display:grid;grid-template-columns:repeat(4,1fr)}
+.four article{padding:8px 28px 0;border-left:1px solid var(--line)}
+.four article:first-child{border-left:0;padding-left:0}
+.four em{display:block;font:16px Georgia,serif;font-style:normal;color:#7d6a42;margin-bottom:26px}
+.four h3{font-size:20px;font-weight:400;margin-bottom:8px}
+.four small{display:block;font:9px Georgia,serif;letter-spacing:.13em;color:#636a5c}
+.four p{font-size:13.5px;line-height:1.9;color:#58655C;margin:20px 0 0}
+
+/* 幕 7 · 检索 */
+.index{background:#eaeee0;border-top:1px solid #d5dac7;border-bottom:1px solid #d5dac7}
+.index-layout{display:grid;grid-template-columns:1.04fr 1fr;gap:52px}
+.search{display:flex;align-items:center;gap:12px;padding:12px 15px;border:1px solid #b9c4ad;background:#f3f5ea}
+.search svg{flex:none;color:#6a7e61}
+.search input{border:0;outline:0;background:none;font-family:var(--sans);font-size:14px;color:#244632;width:100%;padding:6px 0}
+.search span{font-size:12px;color:#5e6b60;white-space:nowrap}
+.index-head{display:flex;justify-content:space-between;font-size:11px;color:#5e6b60;margin-top:22px;padding:0 11px 10px;border-bottom:1px solid #c8d0be}
+.index-row{display:flex;justify-content:space-between;align-items:center;gap:15px;width:100%;border:0;border-bottom:1px solid #d3d8c8;background:none;text-align:left;padding:14px 11px;color:#2b4c35;transition:background .18s var(--ease)}
+.index-row small{font:11px Georgia,serif;display:block;color:#57645a;margin-top:4px}
+.index-row .go{font:16px Georgia,serif;color:#5d7a58}
+.index-row:hover,.index-row[aria-pressed="true"]{background:#e2e9d5}
+.index-row[aria-pressed="true"]{box-shadow:inset 2px 0 0 #688568}
+.index-empty{padding:34px 10px;font-size:14px;color:#65735c}
+.detail{align-self:start;position:sticky;top:96px;background:#f4f7ec;border:1px solid #d3dac6;padding:30px 34px 26px}
+.detail .dd-en{font:11px Georgia,serif;color:#66755b;margin:10px 0 22px;letter-spacing:.1em}
+.detail h3{font-size:26px;font-weight:400;margin:0}
+.detail p{font-size:13.5px;line-height:2;color:#4c5c4a;margin:0 0 8px}
+.detail .open{display:flex;justify-content:space-between;align-items:center;width:100%;border:0;border-top:1px solid #cad3ba;background:none;padding:18px 0 4px;margin-top:20px;font-size:13.5px;color:#496e43}
+.detail .open:hover{color:#2b4c35}
+
+/* 幕 8 · 问文衡 */
+.ask{background:#e9e6da;border-top:1px solid #d4d2c2}
+.ask-grid{display:grid;grid-template-columns:1fr 1.15fr;gap:64px;align-items:center}
+.ask h2{font-size:34px;font-weight:400;margin:12px 0 14px}
+.ask p{font-size:14.5px;line-height:2;color:#4f5d54;margin:0}
+.ask-form{display:flex;align-items:center;gap:0;border:1px solid #b9c4ad;background:var(--card)}
+.ask-form input{flex:1;border:0;outline:0;background:none;padding:18px 20px;font-size:15px;font-family:var(--sans);color:#244632}
+.ask-form button{border:0;background:#183e2f;color:#eee9d8;padding:18px 24px;font-size:14px;letter-spacing:.06em;transition:background .2s var(--ease)}
+.ask-form button:hover{background:#315841}
+.ask-chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.ask-chips button{border:1px solid #b9c4ad;background:none;color:#525f56;font-size:12.5px;padding:7px 13px;transition:background .18s var(--ease),color .18s var(--ease)}
+.ask-chips button:hover{background:#dde3cf;color:#2b4c35}
+
+/* 幕 9 · 边界与说明 + 页脚 */
+.bounds .card{background:var(--card);border:1px solid var(--line);padding:8px 38px}
+.bounds dl{margin:0}
+.bounds dl>div{display:flex;gap:30px;padding:20px 0;border-top:1px solid var(--line-2);font-size:14.5px;line-height:1.9}
+.bounds dl>div:first-child{border-top:0}
+.bounds dt{flex:0 0 130px;color:var(--ink-3);font-size:13.5px;letter-spacing:.06em}
+.bounds dd{margin:0;color:var(--ink-2)}
+footer.site{background:var(--footer-bg);color:#dae0cb;padding:46px 0 24px;margin-top:0}
+.foot-main{display:flex;justify-content:space-between;gap:36px;padding-bottom:34px}
+.foot-brand{font-family:var(--serif);font-size:21px;letter-spacing:.17em;color:#f0ead8}
+.foot-brand small{display:block;font:9px Georgia,serif;color:var(--footer-dim);letter-spacing:.15em;margin-top:10px}
+.foot-col strong{font-weight:400;letter-spacing:.09em;color:#d5ddc7;font-size:14px}
+.foot-col p{font-size:12.5px;margin:12px 0 0;color:#adbc9e}
+.foot-nav{display:flex;gap:25px;font-size:13px;color:#b6c1a9}
+.foot-nav a{text-decoration:none}
+.foot-nav a:hover{color:#e9dfc0}
+.foot-bottom{border-top:1px solid #78926b38;padding-top:20px;display:flex;justify-content:space-between;gap:20px;font-size:10.5px;color:#879d77;letter-spacing:.08em}
+
+/* ---------- 翻书弹层（示意：两帧） ---------- */
+.reader{position:fixed;inset:0;z-index:80;background:#0e2a1e;display:none;align-items:center;justify-content:center}
+.reader.is-open{display:flex}
+.reader-close{position:absolute;left:26px;top:22px;background:none;border:1px solid #d9ca9f66;color:#ede7d2;font-size:13px;padding:10px 16px;letter-spacing:.08em}
+.reader-close:hover{background:#d9ca9f;color:#12362a}
+.reader-book{max-width:min(1120px,88vw);max-height:82vh;object-fit:contain;cursor:pointer;box-shadow:0 30px 80px #00000066}
+.reader-hint{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);font-size:12.5px;color:#cfd8c4;letter-spacing:.1em}
+
+/* ---------- 原型注记 ---------- */
+.proto{position:fixed;right:22px;bottom:20px;z-index:70}
+.proto-btn{background:#12362a;color:#e9e4cf;border:1px solid #d9ca9f55;font-size:12px;letter-spacing:.1em;padding:10px 14px}
+.proto-btn:hover{background:#d9ca9f;color:#12362a}
+.proto-panel{display:none;position:absolute;right:0;left:auto;bottom:48px;width:420px;max-width:82vw;background:#fffdf8;border:1px solid #d9ca9f88;box-shadow:0 24px 60px #12362a33;padding:20px 24px}
+.proto-panel.is-open{display:block}
+.proto-panel h4{font-family:var(--serif);font-size:15px;margin:0 0 10px;color:#12362a}
+.proto-panel ul{margin:0;padding-left:18px;font-size:12.5px;line-height:1.95;color:#4b584e}
+
+/* ---------- 静态/降级模式 ---------- */
+html.no-anim .stage-wrap{height:auto}
+html.no-anim .stage{position:static;height:auto;overflow:visible}
+html.no-anim .beat{position:relative;inset:auto;opacity:1!important;pointer-events:auto;background:#0d1d16}
+html.no-anim .beat .frame{position:relative;height:62vh;transform:none!important}
+html.no-anim .beat[data-act="2"] .frame{height:44vh}
+html.no-anim .beat-copy{position:relative;inset:auto;padding:40px 8% 48px!important;align-items:flex-start!important;text-align:left!important;justify-content:flex-start!important;background:var(--bg);color:var(--ink)}
+html.no-anim .beat-copy h1,html.no-anim .beat-copy h2{color:var(--ink)}
+html.no-anim .beat-copy h1 em{color:var(--zhu)}
+html.no-anim .beat-copy p{color:var(--ink-2);text-shadow:none}
+html.no-anim .beat-copy .lead-kicker,html.no-anim .beat-copy .en-note{color:#62501F}
+html.no-anim .beat .veil{display:none}
+html.no-anim .beat-copy{transform:none!important}
+html.no-anim .beat[data-act="2"] .door-note{color:#62501F}
+html.no-anim .hero-foot{position:relative;inset:auto;padding:0 8% 34px;background:var(--bg)}
+html.no-anim .hero-foot span{color:#58655C}
+html.no-anim .hero-caption{color:#58655C;text-shadow:none}
+html.no-anim .scroll-hint{display:none}
+html.no-anim .skip-link{display:none}
+html.no-anim .rail{display:none}
+html.no-anim .period-chips button{background:#12362a;color:#f0ead8}
+html.no-anim .reveal{opacity:1;transform:none}
+html.no-anim .steps .step-line{transform:scaleX(1)}
+@media (prefers-reduced-motion:reduce){
+  .scroll-hint i{animation:none}
+  .reveal{transition:none}
+}
+
+/* ---------- 窄屏 ---------- */
+@media (max-width:900px){
+  .wrap{width:calc(100% - 44px)}
+  .topnav{display:none}
+  .beat[data-act="0"] .beat-copy,.beat[data-act="1"] .beat-copy,.beat[data-act="4"] .beat-copy{padding-left:6%!important;padding-right:6%!important}
+  .beat-copy h1{font-size:40px}
+  .hero-foot{left:6%;right:6%}
+  .steps{grid-template-columns:1fr}
+  .step{border-left:0;padding:22px 0}
+  .wb-stats{grid-template-columns:1fr 1fr}
+  .four{grid-template-columns:1fr 1fr;gap:30px 0}
+  .four article{padding:0 20px}
+  .four article:nth-child(3){border-left:0;padding-left:0}
+  .index-layout,.ask-grid{grid-template-columns:1fr}
+  .detail{position:static}
+  .foot-main{flex-wrap:wrap}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="#top" aria-label="回到顶部">
+    <span class="brand-seal">雲</span>
+    <span class="brand-name"><b>云南大学图书馆</b><small>YUNNAN UNIVERSITY LIBRARY</small></span>
+  </a>
+  <nav class="topnav" aria-label="主导航">
+    <a href="#beat4" data-jump="beat4">馆藏</a>
+    <a href="#index">学科索引</a>
+    <a href="#bounds">数据档案</a>
+    <a href="#pagefoot">关于本馆</a>
+  </nav>
+  <div class="topbar-side">
+    <a class="ask-link" href="#ask">问文衡 →</a>
+    <button class="motion-toggle" type="button" id="motionToggle" aria-pressed="false">动效：开</button>
+  </div>
+</header>
+
+<!-- ============ 吸顶 3D 舞台：幕 0–4 ============ -->
+<div class="stage-wrap" id="top">
+  <div class="stage" id="stage">
+    <div class="beat" data-act="0">
+      <img class="frame" src="陈列馆原型-帧/f0-exterior-front.jpg" alt="云南大学图书馆建筑模型，外景正面" />
+      <div class="veil"></div>
+      <div class="beat-copy">
+        <p class="lead-kicker"><span class="rule"></span>YUNNAN UNIVERSITY LIBRARY</p>
+        <h1>云南大学<br /><em>图书馆</em></h1>
+        <p>学科信息参考 · 数字馆藏 · 数据阅览</p>
+        <p class="hero-facts">最新一期 · 2026 年第 5 期（总第 39 期）已归档 ｜ 每期覆盖 ESI 22 个学科</p>
+        <div class="hero-foot" style="position:static;padding:0;margin-top:44px">
+          <a class="skip-link" href="#beat4" data-jump="beat4">直接翻一本 →</a>
+        </div>
+      </div>
+      <div class="hero-foot">
+        <span class="scroll-hint">向下 · 走进图书馆<i></i></span>
+        <span class="hero-caption">呈贡校区 · 建筑外观</span>
+      </div>
+    </div>
+
+    <div class="beat" data-act="1">
+      <img class="frame" src="陈列馆原型-帧/f1-exterior-near.jpg" alt="建筑外景，镜头缓推近" />
+      <div class="veil"></div>
+      <div class="beat-copy">
+        <p class="lead-kicker"><span class="rule"></span>学科情报阅览室 · DISCIPLINE INTELLIGENCE READING ROOM</p>
+        <h2>每期一册，按期入藏。</h2>
+        <p>最新一期：2026 年第 5 期（总第 39 期），已在中央展台。</p>
+      </div>
+    </div>
+
+    <div class="beat" data-act="2">
+      <img class="frame" src="陈列馆原型-帧/f2-exterior-door.jpg" alt="建筑入口近景，暗场过渡" />
+      <div class="veil"></div>
+      <div class="beat-copy">
+        <h2>一年六期，一期一册。</h2>
+        <p class="door-note">总第 39 期 · 2026 年第 5 期</p>
+      </div>
+    </div>
+
+    <div class="beat" data-act="3">
+      <img class="frame" src="陈列馆原型-帧/f3-room-wide.jpg" alt="学科情报特藏阅览室，中央八角展台" />
+      <div class="veil"></div>
+      <div class="beat-copy">
+        <h2>学科情报特藏</h2>
+        <p>中央八角展台 · 历期报告</p>
+      </div>
+    </div>
+
+    <div class="beat" data-act="4">
+      <img class="frame" src="陈列馆原型-帧/f4-platform-near.jpg" alt="展台近景，最新一期《学科信息参考》" />
+      <div class="veil"></div>
+      <div class="beat-copy">
+        <h2>历期馆藏 · 点一本，翻开看看</h2>
+        <div class="period-chips" role="group" aria-label="选择期次">
+          <button type="button" data-issue="202601">2026 第 1 期</button>
+          <button type="button" data-issue="202603">2026 第 2 期</button>
+          <button type="button" data-issue="202605">2026 第 3 期</button>
+          <button type="button" data-issue="202607">2026 第 4 期</button>
+          <button type="button" data-issue="202609">2026 第 5 期 · 最新</button>
+        </div>
+        <p class="shelf-note">馆藏位置：学科情报特藏 A—01 · 点击期次，翻开阅览</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 章节导轨 ============ -->
+<nav class="rail" id="rail" aria-label="章节">
+  <button type="button" data-to="beat0">走进图书馆</button>
+  <button type="button" data-to="beat4">翻一本</button>
+  <button type="button" data-to="workbench">报告从哪来</button>
+  <button type="button" data-to="intro">一册一档</button>
+  <button type="button" data-to="ask">问文衡</button>
+</nav>
+
+<main class="doc">
+  <!-- 幕 5 · 报告从哪来 -->
+  <section class="wb" id="workbench">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <p class="kicker on-dark">BEHIND THE REPORT · 工作区介绍</p>
+          <h2>这些报告，是怎么来的？</h2>
+        </div>
+        <p class="side">一条确定性流水线，加一个人的判断权——<br />机器保数字，取舍你来定。</p>
+      </div>
+      <div class="steps" data-steps>
+        <div class="step-line" aria-hidden="true"></div>
+        <div class="step" style="--i:0"><em>01</em><strong>取数</strong><p>取数台一键导出，逐份核验；形成本期监测表，只动当期列。</p></div>
+        <div class="step" style="--i:1"><em>02</em><strong>核对并并入</strong><p>监测表并入台账；台账只读，系统从不在上面写回。</p></div>
+        <div class="step" style="--i:2"><em>03</em><strong>一键生成</strong><p>全绿即出稿；缺哪张表哪一列，逐条写明，补上重跑。</p></div>
+      </div>
+      <p class="steps-note">人工约 5 分钟 · 机器 17 秒 · 现场一次真实生成约 20 秒</p>
+      <div class="wb-stats">
+        <div class="stat"><strong data-count="19">0</strong><span>张台账表，报告数字的源头</span></div>
+        <div class="stat"><strong data-count="20" data-suffix=" 秒">0</strong><span>一次真实生成（原始数据 → 可签发稿）</span></div>
+        <div class="stat"><strong data-count="54" data-suffix=" 项">0</strong><span>出稿前逐项核对，全部通过</span></div>
+        <div class="stat"><strong data-count="704" data-suffix=" 个">0</strong><span>数字全部标了出处，可回溯到台账</span></div>
+      </div>
+      <div class="wb-card">
+        <dl>
+          <div><dt>签单绑指纹</dt><dd>报告一变，签名自动失效并提示重签；撤回会留档。</dd></div>
+          <div><dt>待人工不隐藏</dt><dd>签发时仍有几处待人工，会记进档案（当期 7 处）。</dd></div>
+          <div><dt>两级角色</dt><dd>管理员（全功能）／操作员（只读）；离线运行，数据不外传。</dd></div>
+        </dl>
+      </div>
+      <div class="wb-cta">
+        <a class="btn-gold" href="/app/">去工作台看看 →</a>
+        <small>操作员账号为只读；写动作由服务端拦住。</small>
+      </div>
+    </div>
+  </section>
+
+  <!-- 幕 6 · 一册一档 -->
+  <section id="intro">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <p class="kicker">THE READING ROOM</p>
+          <h2>一册一档，循数而读。</h2>
+        </div>
+        <p class="side">从一本刊物出发，<br />看见云南大学学科信息的连续记录。</p>
+      </div>
+      <div class="four">
+        <article class="reveal" style="--i:0"><em>01</em><h3>学科信息参考</h3><small>DISCIPLINARY REFERENCE</small><p>以双月刊物记录学科发展，将每一期整理为可持续翻阅的馆藏。</p></article>
+        <article class="reveal" style="--i:1"><em>02</em><h3>历期馆藏</h3><small>PERIODICAL COLLECTION</small><p>按期取阅；封面、目录、名词解释与报告全文，都在册页里。</p></article>
+        <article class="reveal" style="--i:2"><em>03</em><h3>目录导览</h3><small>TABLE OF CONTENTS</small><p>从章节标题进入对应期次，先了解刊物的内容结构。</p></article>
+        <article class="reveal" style="--i:3"><em>04</em><h3>名词解释</h3><small>GLOSSARY</small><p>阅读常见专业术语说明，了解刊物中的基础概念。</p></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 幕 7 · 检索 -->
+  <section class="index" id="index">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <p class="kicker">CONTENT INDEX</p>
+          <h2>从目录，查到名词。</h2>
+        </div>
+        <p class="side">检索目录标题与名词解释；<br />完整内容在册页中翻阅。</p>
+      </div>
+      <div class="index-layout">
+        <div>
+          <label class="search">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg>
+            <input id="indexQuery" type="search" placeholder="检索目录标题或名词解释" aria-label="检索目录标题或名词解释" />
+            <span>本期 · 2026 第 5 期</span>
+          </label>
+          <div class="index-head"><span>目录与名词解释</span><span id="indexCount"></span></div>
+          <div id="indexRows"></div>
+        </div>
+        <aside class="detail" aria-live="polite">
+          <p class="kicker" id="detailKind">GLOSSARY</p>
+          <h3 id="detailTitle">名词解释</h3>
+          <p class="dd-en" id="detailEn">GLOSSARY</p>
+          <p id="detailText">从左侧选择一项，查看它的说明。</p>
+          <button class="open" type="button" id="detailOpen">在阅览器中查看 <span>↗</span></button>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- 幕 8 · 问文衡 -->
+  <section class="ask" id="ask">
+    <div class="wrap ask-grid">
+      <div>
+        <p class="kicker">ASK WENHENG</p>
+        <h2>问文衡</h2>
+        <p>基于台账与报告作答，数字可溯源。<br />做报告、查数据，一句话就行——期次它来认。</p>
+      </div>
+      <div>
+        <form class="ask-form" id="askForm">
+          <input id="askInput" type="text" placeholder="问一句：你想查哪个学科？" aria-label="问文衡" />
+          <button type="submit">去问文衡 →</button>
+        </form>
+        <div class="ask-chips" role="group" aria-label="示例问题">
+          <button type="button" data-q="查一下化学的接近度">查一下化学的接近度</button>
+          <button type="button" data-q="云南大学国际排名走势">云南大学国际排名走势</button>
+          <button type="button" data-q="数学什么时候进入前 1%">数学什么时候进入前 1%</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 幕 9 · 边界与说明 -->
+  <section class="bounds" id="bounds">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <p class="kicker">ABOUT THE COLLECTION</p>
+          <h2>开卷之前，边界与说明。</h2>
+        </div>
+        <p class="side">口径与边界全站只有一份；<br />数字一律可回溯到台账。</p>
+      </div>
+      <div class="card">
+        <dl>
+          <div><dt>谁能看</dt><dd>登录用户（管理员 / 操作员）可阅览全内容；未登录不可进。</dd></div>
+          <div><dt>数字从哪来</dt><dd>只来自本机台账与产物；运行期大模型不进数据路径。</dd></div>
+          <div><dt>怎么核对</dt><dd>每期出稿前 54 项核对；报告中 704 个数字带出处。</dd></div>
+          <div><dt>怎么用</dt><dd>数据只读；报告可签发，签发绑定这一版的指纹。</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site" id="pagefoot">
+  <div class="wrap">
+    <div class="foot-main">
+      <div>
+        <div class="foot-brand">云南大学图书馆<small>YUNNAN UNIVERSITY LIBRARY</small></div>
+      </div>
+      <div class="foot-col">
+        <strong>学科情报服务</strong>
+        <p>馆藏：封面 · 目录 · 名词解释 · 报告全内容</p>
+      </div>
+      <nav class="foot-nav" aria-label="页脚导航">
+        <a href="#beat4" data-jump="beat4">馆藏</a>
+        <a href="#index">学科索引</a>
+        <a href="#bounds">数据档案</a>
+      </nav>
+    </div>
+    <div class="foot-bottom">
+      <span>云南大学图书馆 · 学科信息参考</span>
+      <span>会泽百家　至公天下</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ============ 翻书弹层（示意） ============ -->
+<div class="reader" id="reader" role="dialog" aria-modal="true" aria-label="翻书阅览（原型示意）">
+  <button class="reader-close" type="button" id="readerClose">← 归架</button>
+  <img class="reader-book" id="readerBook" src="陈列馆原型-帧/f5-cover-202609.jpg" alt="《学科信息参考》2026 年第 5 期封面" />
+  <p class="reader-hint">点击书页翻一页 · Esc 退出（真实版为完整翻书器）</p>
+</div>
+
+<!-- ============ 原型注记 ============ -->
+<div class="proto">
+  <div class="proto-panel" id="protoPanel">
+    <h4>原型注记（审稿用）</h4>
+    <ul>
+      <li>画面为真实系统截图假 3D；真实版为滚动驱动的 three.js 镜头（同一模型）。</li>
+      <li>翻书为各期真实截图的封面/内页两帧；真实版保留现有翻书器。</li>
+      <li>数字全部为已核对真值；声音开关未含。</li>
+      <li>「动效：开/关」或系统「减少动态效果」→ 静态文档版（降级路径）。</li>
+      <li>期次按钮打开对应期次的封面与内页（均为真实截图）。</li>
+      <li>「去工作台 / 问文衡」指向真实页面路径；离线双击打开时不可跳转，演示站里可用。</li>
+      <li>滚动区间约 1000vh，为草案值；节奏与文案按你意见调。</li>
+    </ul>
+  </div>
+  <button class="proto-btn" type="button" id="protoBtn" aria-expanded="false">原型注记</button>
+</div>
+
+<script>
+(function(){
+  var html=document.documentElement;
+  var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){html.classList.add('no-anim');}
+
+  var stageWrap=document.querySelector('.stage-wrap');
+  var beats=[].slice.call(document.querySelectorAll('.beat'));
+  var frames=beats.map(function(b){return b.querySelector('.frame');});
+  var motionBtn=document.getElementById('motionToggle');
+  var rail=document.getElementById('rail');
+  var railBtns=[].slice.call(rail.querySelectorAll('button'));
+
+  /* 画面窗口（宽·允许相邻交叉淡入）与文字窗口（窄·先退后进，不叠字不空屏） */
+  var FRAME_W={0:[[0,0],[0.14,0.17]],1:[[0.12,0.15],[0.345,0.375]],2:[[0.34,0.37],[0.51,0.54]],3:[[0.50,0.53],[0.74,0.77]],4:[[0.73,0.76],[2,3]]};
+  var COPY_W={0:[[0,0],[0.115,0.135]],1:[[0.145,0.165],[0.315,0.335]],2:[[0.375,0.395],[0.475,0.495]],3:[[0.545,0.565],[0.70,0.72]],4:[[0.775,0.795],[2,3]]};
+  var SCALE={0:[1,1.17],1:[1.02,1.16],2:[1.04,1.10],3:[1.05,1.01],4:[1.01,1.06]};
+  function clamp(v,a,b){return v<a?a:(v>b?b:v);}
+  function ss(e0,e1,x){var t=clamp((x-e0)/(e1-e0||1e-6),0,1);return t*t*(3-2*t);}
+  function lerp(a,b,t){return a+(b-a)*t;}
+
+  function rawProgress(){
+    var r=stageWrap.getBoundingClientRect();
+    var travel=r.height-window.innerHeight;
+    return clamp((-r.top)/(travel||1),0,1);
+  }
+
+  var current=rawProgress(),target=current,raf=null;
+  function apply(p){
+    beats.forEach(function(beat,i){
+      var fw=FRAME_W[i],finF=(fw[0][1]>fw[0][0])?ss(fw[0][0],fw[0][1],p):1,outF=ss(fw[1][0],fw[1][1],p),opF=finF*(1-outF);
+      beat.style.opacity=opF.toFixed(3);
+      beat.style.visibility=opF>0.02?'visible':'hidden';
+      var s=lerp(SCALE[i][0],SCALE[i][1],clamp(p,0,1));
+      frames[i].style.transform='scale('+s.toFixed(4)+')';
+      var cw=COPY_W[i],finC=(cw[0][1]>cw[0][0])?ss(cw[0][0],cw[0][1],p):1,outC=ss(cw[1][0],cw[1][1],p),opC=finC*(1-outC);
+      var copy=beat.querySelector('.beat-copy');
+      copy.style.opacity=opC.toFixed(3);
+      copy.style.visibility=opC>0.05?'visible':'hidden';
+      copy.style.transform='translateY('+((1-finC)*72-outC*72).toFixed(1)+'px)';
+    });
+    updateRail();
+  }
+
+  function updateRail(){
+    var inStage=window.scrollY<stageWrap.offsetTop+travel()-8;
+    var key=null;
+    if(inStage){key=(rawProgress()<0.70)?railBtns[0]:railBtns[1];}
+    else{
+      var y=window.scrollY+window.innerHeight*0.38;
+      [['workbench',2],['intro',3],['ask',4]].forEach(function(pair){
+        var el=document.getElementById(pair[0]);
+        if(!el){return;}
+        var top=el.getBoundingClientRect().top+window.scrollY;
+        if(y>=top&&y<top+el.offsetHeight){key=railBtns[pair[1]];}
+      });
+    }
+    railBtns.forEach(function(b){if(b===key){b.setAttribute('aria-current','true');}else{b.removeAttribute('aria-current');}});
+    rail.classList.toggle('is-on',!html.classList.contains('no-anim')&&window.scrollY>window.innerHeight*0.35);
+  }
+  function tick(){
+    raf=null;
+    var d=target-current;
+    if(Math.abs(d)<0.0004){current=target;apply(current);return;}
+    current+=d*0.14;
+    apply(current);
+    raf=requestAnimationFrame(tick);
+  }
+  function onScroll(){
+    if(html.classList.contains('no-anim')){return;}
+    target=rawProgress();
+    if(!raf){raf=requestAnimationFrame(tick);}
+  }
+  window.addEventListener('scroll',onScroll,{passive:true});
+  window.addEventListener('resize',onScroll);
+  apply(current);
+
+  /* 章节跳转（导轨 / 顶栏 / 页脚 / 跳过） */
+  function travel(){return stageWrap.offsetHeight-window.innerHeight;}
+  function beatTarget(act){return stageWrap.offsetTop+travel()*(act===4?0.80:0.02);}
+  function jumpTo(key){
+    var y=null;
+    if(key==='beat0'){y=0;}
+    else if(key==='beat4'){y=beatTarget(4);}
+    else{var el=document.getElementById(key);if(el){y=el.getBoundingClientRect().top+window.scrollY-78;}}
+    if(y===null){return;}
+    if(html.classList.contains('no-anim')){
+      var el2=key==='beat4'?document.querySelector('.beat[data-act="4"]'):null;
+      if(key==='beat0'){window.scrollTo(0,0);return;}
+      if(el2){el2.scrollIntoView();return;}
+      document.getElementById(key).scrollIntoView();
+      return;
+    }
+    window.scrollTo({top:y,behavior:'smooth'});
+  }
+  document.querySelectorAll('[data-jump]').forEach(function(el){
+    el.addEventListener('click',function(e){e.preventDefault();jumpTo(el.getAttribute('data-jump'));});
+  });
+  railBtns.forEach(function(b){b.addEventListener('click',function(){jumpTo(b.getAttribute('data-to'));});});
+
+  /* 锚点（普通 href="#..."）在原型里也做成无刷新滚动 */
+  document.querySelectorAll('a[href^="#"]:not([data-jump])').forEach(function(a){
+    a.addEventListener('click',function(e){
+      var id=a.getAttribute('href').slice(1);var el=document.getElementById(id);
+      if(!el){return;}
+      e.preventDefault();
+      var y=el.getBoundingClientRect().top+window.scrollY-70;
+      window.scrollTo({top:y,behavior:html.classList.contains('no-anim')?'auto':'smooth'});
+    });
+  });
+
+  /* 动效开关（= 静态降级版） */
+  motionBtn.addEventListener('click',function(){
+    var off=html.classList.toggle('no-anim');
+    motionBtn.textContent=off?'动效：关':'动效：开';
+    motionBtn.setAttribute('aria-pressed',String(off));
+    if(off){beats.forEach(function(b){b.style.opacity='';b.style.visibility='';var c=b.querySelector('.beat-copy');if(c){c.style.transform='';c.style.opacity='';c.style.visibility='';}});frames.forEach(function(f){f.style.transform='';});}
+    else{current=target=rawProgress();apply(current);}
+  });
+
+  /* 文档流揭示 + 数字上涨 */
+  var shown=new WeakSet();
+  var io=('IntersectionObserver' in window)?new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(!en.isIntersecting){return;}
+      var el=en.target;
+      el.classList.add('is-visible');
+      [].slice.call(el.querySelectorAll('[data-count]')).forEach(function(num){
+        if(shown.has(num)){return;}
+        shown.add(num);
+        var end=parseInt(num.getAttribute('data-count'),10);
+        var suffix=num.getAttribute('data-suffix')||'';
+        var t0=null;
+        function step(ts){
+          if(html.classList.contains('no-anim')){num.textContent=end+suffix;return;}
+          if(t0===null){t0=ts;}
+          var k=clamp((ts-t0)/900,0,1);
+          k=1-Math.pow(1-k,3);
+          num.textContent=Math.round(end*k)+suffix;
+          if(k<1){requestAnimationFrame(step);}
+        }
+        requestAnimationFrame(step);
+      });
+      io.unobserve(el);
+    });
+  },{threshold:0.16}):null;
+  if(io){
+    [].slice.call(document.querySelectorAll('.reveal,.wb-stats,.steps,.bounds .card,.ask-grid')).forEach(function(el){io.observe(el);});
+  }else{
+    document.querySelectorAll('.reveal').forEach(function(el){el.classList.add('is-visible');});
+  }
+
+  /* 检索（内置样例：目录 + 名词解释） */
+  var DATA=[
+    {kind:'toc',title:'数字体检',en:'DIGITAL CHECKUP',detail:'出稿前机器逐项自检：断言通过、覆盖窗口、上期对照；有一条未过，报告会带《诊断报告》并可回查。'},
+    {kind:'toc',title:'本期指标',en:'THIS ISSUE',detail:'国际排名、国内高校排名、前 1% 学科、顶尖论文等核心读数；数字取自本机部署产物。'},
+    {kind:'toc',title:'学科大表',en:'DISCIPLINE TABLE',detail:'各学科论文、被引、CNCI、顶尖论文、阈值、差距、接近度与位次，可逐格回溯。'},
+    {kind:'toc',title:'顶尖论文',en:'TOP PAPERS',detail:'高被引论文与热点论文的当期清单与说明。'},
+    {kind:'toc',title:'双路线预测',en:'FORECAST',detail:'被引路线与排名路线两套预测：方法、模型与解读；两维结论不互相替代。'},
+    {kind:'gloss',title:'高被引论文',en:'HIGHLY CITED PAPER',detail:'指在同一学科、同一年出版年，文章的被引频次进入全球前 1% 的论文。高被引论文可以展现某学科中最为被关注的论文。'},
+    {kind:'gloss',title:'热点论文',en:'HOT PAPER',detail:'指最近两年发表，在最近两个月内被引次数进入本学科的全球前 0.1% 的论文。热点论文可以揭示学科发展前沿和热点。'},
+    {kind:'gloss',title:'顶尖论文',en:'TOP PAPER',detail:'高被引论文与热点论文的合称。'},
+    {kind:'gloss',title:'阈值',en:'THRESHOLD',detail:'学科进入 ESI 前 1%、1‰ 的最低被引频次。'},
+    {kind:'gloss',title:'潜力学科',en:'POTENTIAL DISCIPLINE',detail:'指有可能进入 ESI 全球前 1% 的学科；潜力值＝（学科总被引频次/阈值）×100%，潜力值越高，进入全球前 1% 的可能性越大。'},
+    {kind:'gloss',title:'学科规范化引文影响力（CNCI）',en:'CNCI',detail:'通过实际被引次数除以同文献类型、同出版年、同学科领域文献的期望被引次数得到；CNCI>1 表示论文表现超过全球平均水平。'},
+    {kind:'gloss',title:'排名百分位',en:'RANK PERCENTILE',detail:'学科排名与学科机构总数的比值，比值越小，排名越靠前。'},
+    {kind:'gloss',title:'引文影响力',en:'CITATION IMPACT',detail:'论文篇均被引频次（均值）。'}
+  ];
+  var rowsEl=document.getElementById('indexRows');
+  var countEl=document.getElementById('indexCount');
+  var detailKind=document.getElementById('detailKind');
+  var detailTitle=document.getElementById('detailTitle');
+  var detailEn=document.getElementById('detailEn');
+  var detailText=document.getElementById('detailText');
+  var queryEl=document.getElementById('indexQuery');
+  var currentEntry=DATA[0];
+  function renderDetail(entry){
+    currentEntry=entry||currentEntry;
+    detailKind.textContent=currentEntry.kind==='toc'?'TABLE OF CONTENTS':'GLOSSARY';
+    detailTitle.textContent=currentEntry.title;
+    detailEn.textContent=currentEntry.en;
+    detailText.textContent=currentEntry.detail;
+  }
+  function renderRows(){
+    var q=queryEl.value.trim().toLowerCase();
+    var list=DATA.filter(function(d){return (d.title+' '+d.en+' '+d.detail).toLowerCase().indexOf(q)>=0;});
+    rowsEl.innerHTML='';
+    countEl.textContent=list.length?('共 '+list.length+' 条'):'';
+    if(!list.length){
+      var p=document.createElement('p');p.className='index-empty';p.textContent='没有找到可阅内容，换个关键词试试。';rowsEl.appendChild(p);return;
+    }
+    list.slice(0,9).forEach(function(d){
+      var b=document.createElement('button');b.type='button';b.className='index-row';
+      b.innerHTML='<span>'+d.title+'<small>'+(d.kind==='toc'?'目录':'名词解释')+'</small></span><span class="go">↗</span>';
+      b.setAttribute('aria-pressed',String(d===currentEntry));
+      b.addEventListener('click',function(){
+        rowsEl.querySelectorAll('.index-row').forEach(function(r){r.setAttribute('aria-pressed','false');});
+        b.setAttribute('aria-pressed','true');
+        renderDetail(d);
+      });
+      rowsEl.appendChild(b);
+    });
+  }
+  queryEl.addEventListener('input',renderRows);
+  renderRows();renderDetail(DATA[0]);
+
+  /* 翻书弹层（示意：各期真实截图，封面/内页两帧） */
+  var reader=document.getElementById('reader');
+  var readerBook=document.getElementById('readerBook');
+  var spread=false,currentIssue='202609';
+  var ISSUE_LABEL={'202601':'2026 年第 1 期','202603':'2026 年第 2 期','202605':'2026 年第 3 期','202607':'2026 年第 4 期','202609':'2026 年第 5 期'};
+  function openReader(issue){
+    currentIssue=issue||'202609';
+    spread=false;
+    readerBook.src='陈列馆原型-帧/f5-cover-'+currentIssue+'.jpg';
+    readerBook.alt='《学科信息参考》'+ISSUE_LABEL[currentIssue]+'封面';
+    reader.classList.add('is-open');
+    document.body.style.overflow='hidden';
+  }
+  function closeReader(){
+    reader.classList.remove('is-open');
+    document.body.style.overflow='';
+  }
+  readerBook.addEventListener('click',function(){
+    var label=ISSUE_LABEL[currentIssue];
+    if(!spread){spread=true;readerBook.src='陈列馆原型-帧/f6-spread-'+currentIssue+'.jpg';readerBook.alt='《学科信息参考》'+label+'内页对开';}
+    else{spread=false;readerBook.src='陈列馆原型-帧/f5-cover-'+currentIssue+'.jpg';readerBook.alt='《学科信息参考》'+label+'封面';}
+  });
+  document.getElementById('readerClose').addEventListener('click',closeReader);
+  document.getElementById('detailOpen').addEventListener('click',function(){openReader('202609');});
+  document.querySelectorAll('.period-chips button').forEach(function(b){
+    b.addEventListener('click',function(){openReader(b.getAttribute('data-issue'));});
+  });
+  window.addEventListener('keydown',function(e){
+    if(e.key==='Escape'&&reader.classList.contains('is-open')){closeReader();}
+    if(reader.classList.contains('is-open')&&(e.key==='ArrowRight'||e.key==='ArrowLeft')){e.preventDefault();readerBook.click();}
+  });
+
+  /* 问文衡：原型里填入示例；真实版跳转对话页并自动发送 */
+  document.getElementById('askForm').addEventListener('submit',function(e){
+    e.preventDefault();
+    var q=document.getElementById('askInput').value.trim();
+    if(!q){document.getElementById('askInput').focus();return;}
+    window.location.href='/app/dialog/?ask='+encodeURIComponent(q);
+  });
+  document.querySelectorAll('.ask-chips button').forEach(function(b){
+    b.addEventListener('click',function(){document.getElementById('askInput').value=b.getAttribute('data-q');document.getElementById('askInput').focus();});
+  });
+
+  /* 原型注记面板 */
+  var protoBtn=document.getElementById('protoBtn');
+  var protoPanel=document.getElementById('protoPanel');
+  protoBtn.addEventListener('click',function(){
+    var open=protoPanel.classList.toggle('is-open');
+    protoBtn.setAttribute('aria-expanded',String(open));
+  });
+})();
+</script>
+</body>
+</html>
