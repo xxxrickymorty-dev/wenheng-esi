@@ -17,11 +17,20 @@ for p in (str(REPO), str(REPO / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
+import pytest                                                    # noqa: E402
+
 import ai                                                       # noqa: E402
 from server import app as app_module, config                    # noqa: E402
 
 _LABELS = (("monitor", "动态监测表"), ("esi", "ESI 原始包"),
            ("papers", "顶尖论文清单"), ("incites", "InCites 快照"))
+
+
+@pytest.fixture(autouse=True)
+def _no_real_ledger(monkeypatch):
+    """`known_periods` 默认给空列表：测试不读真台账（需要期次的用例自己 monkeypatch 覆盖）。"""
+    import taskview
+    monkeypatch.setattr(taskview, "known_periods", lambda: [])
 
 
 class _ReqJson:
@@ -61,6 +70,8 @@ def test_一轮对话_答复槽位与盘点都透出(tmp_path):
 
 def test_参数与角色原样交给能力口(monkeypatch):
     from ai import _types
+    import taskview
+    monkeypatch.setattr(taskview, "known_periods", lambda: ["202605"])
     fake = _types.Answer(mode="rule", backend="rule", text="…",
                          data={"case": "period", "period": "202605", "intent": ""})
     seen = {}
@@ -74,7 +85,8 @@ def test_参数与角色原样交给能力口(monkeypatch):
                                 "slots": {"period": "202609", "intent": "出报告"}})
     assert r["slots"] == {"period": "202605", "intent": "出报告"}, "只改期次，意图不动"
     assert seen == {"cap": "dialog", "period": "202609",
-                    "payload": {"text": "再出 202605 的", "history": []}, "actor": "admin"}
+                    "payload": {"text": "再出 202605 的", "history": [],
+                                "periods": ["202605"]}, "actor": "admin"}
     assert r["verdict"] == "" and r["inventory"] is None and r["actions"] == []
 
 
@@ -213,7 +225,8 @@ def test_查数据_服务器按意图调qa(monkeypatch, tmp_path):
     assert r["answer"]["text"].startswith("化学的接近度") and r["answer"]["record_id"] == "r-qa"
     assert r["slots"] == {"period": "202607", "intent": ""}, "期次解析与槽位共享"
     assert r["run"] is None, "查数据不出稿"
-    assert calls == [("dialog", "202607", {"text": "查一下化学的接近度", "history": []}),
+    assert calls == [("dialog", "202607", {"text": "查一下化学的接近度", "history": [],
+                                           "periods": []}),
                      ("qa", "202607", {"question": "查一下化学的接近度", "history": []})], \
         "两意图经同一端点：服务器按意图调 ai.run(\"qa\", …)，问句原样"
 
@@ -233,6 +246,18 @@ def test_查数据_没期次_先要期次不调qa(monkeypatch):
     assert r["kind"] == "query" and r["answer"] is None
     assert called == ["dialog"], "没期次不猜：先反问"
     assert "查哪一期" in r["text"]
+
+
+def test_最新的_经API落最近期次(monkeypatch, tmp_path):
+    """票 10：服务器注入已知期次（降序）→「最新的」落最近有效期次；没产物照旧给提示。"""
+    import taskview
+    monkeypatch.setattr(taskview, "known_periods", lambda: ["202609", "202607"])
+    monkeypatch.setattr(app_module, "resolve_period_dir", lambda p: None)
+    with ai.using(data_root=tmp_path):
+        r = call(config.ADMIN_USER, {"text": "最新的",
+                                     "history": [{"who": "me", "text": "查一下化学的接近度"}]})
+    assert r["kind"] == "query" and r["slots"]["period"] == "202609"
+    assert "出稿" in r["text"], "没产物不调 qa，给提示"
 
 
 def test_查数据_没产物_先提示出稿(monkeypatch, tmp_path):

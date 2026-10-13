@@ -47,13 +47,15 @@ FULL_202607 = fake_inventory("202607")
 
 
 def run_dialog(text, *, root, period="", actor="admin", today=TODAY, inventory=None,
-               history=None, **ov):
+               history=None, periods=None, **ov):
     """`inventory=None` → 注入「没有盘点」的替身（票 01 行为；绝不读真台账）。
-    `history`＝对话上文（追问解指代用，2026-10-12）。"""
+    `history`＝对话上文（追问解指代用，2026-10-12）。
+    `periods`＝服务端注入的已知期次（降序；「最新的」解析用，2026-10-13 票 10）。"""
+    payload = {"text": text, "today": today, "history": history or []}
+    if periods is not None:
+        payload["periods"] = periods
     with ai.using(data_root=root, inventory=(lambda _p: inventory), **ov):
-        return ai.run("dialog", period,
-                      payload={"text": text, "today": today, "history": history or []},
-                      actor=actor)
+        return ai.run("dialog", period, payload=payload, actor=actor)
 
 
 def records(root, period):
@@ -161,6 +163,58 @@ def test_没听出月份_反问不含期次(tmp_path):
     ans = run_dialog("你好", root=tmp_path)
     assert ans.data["case"] == "no_period" and ans.data["period"] == ""
     assert "没听出" in ans.text and "202609" not in ans.text
+
+
+# ============================================================ 2b. 最新期次（票 10，2026-10-13）
+PERIODS = ["202609", "202607", "202605"]
+
+
+def test_最新的_带上文_落最近期次不再复读(tmp_path):
+    """rick 截图实问：「查一下化学的接近度」→反问→「最新的」→复读同一句（死循环）。"""
+    ans = run_dialog("最新的", root=tmp_path, periods=PERIODS,
+                     history=[{"who": "me", "text": "查一下化学的接近度"}])
+    assert ans.data["case"] == "period" and ans.data["period"] == "202609"
+    assert ans.data["kind"] == "query"
+    assert "查哪一期" not in ans.text, "不再复读反问"
+
+
+def test_查最新一期_直接带期次(tmp_path):
+    ans = run_dialog("查最新一期的化学接近度", root=tmp_path, periods=PERIODS)
+    assert ans.data["kind"] == "query" and ans.data["period"] == "202609"
+
+
+def test_做最新的报告_走报告路(tmp_path):
+    inv = fake_inventory("202609", released=True)
+    ans = run_dialog("做最新的报告", root=tmp_path, periods=PERIODS, inventory=inv)
+    assert ans.data["period"] == "202609" and ans.data["verdict"] == "ready"
+    assert "盘点 · 202609" in ans.text
+
+
+def test_最新的_没表态_给两个出路(tmp_path):
+    ans = run_dialog("最新的", root=tmp_path, periods=PERIODS)
+    assert ans.data["kind"] == "unclear" and ans.data["period"] == "202609"
+    texts = [a["text"] for a in ans.data["actions"]]
+    assert "做 202609 的报告" in texts and "查 202609 的数据" in texts
+
+
+def test_最新的_没期次列表_如实说不猜(tmp_path):
+    ans = run_dialog("最新的", root=tmp_path)
+    assert ans.data["case"] == "latest" and ans.data["period"] == ""
+    assert "看不到" in ans.text and "查哪一期" not in ans.text
+
+
+def test_最近六期_不进最新(tmp_path):
+    """序列问法（最近六期 / 最近几期 / 最新的几期）不是「最新一期」——不触发 latest。"""
+    for text in ("化学的接近度最近六期怎么变的", "最近几期化学的接近度", "最新的几期呢"):
+        ans = run_dialog(text, root=tmp_path, periods=PERIODS,
+                         history=[{"who": "me", "text": "查一下化学的接近度"}])
+        assert ans.data["case"] == "no_period", text
+        assert ans.data["period"] == "", text
+    # 反问写明最近期次 + 候选（不再裸复读）
+    ans = run_dialog("化学的接近度最近六期怎么变的", root=tmp_path, periods=PERIODS,
+                     history=[{"who": "me", "text": "查一下化学的接近度"}])
+    assert "最近有效期次是 202609" in ans.text
+    assert {"kind": "send", "text": "查最新的"} in ans.data["actions"]
 
 
 # ============================================================ 3. 盘点（票 02）

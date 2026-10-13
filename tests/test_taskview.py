@@ -144,3 +144,28 @@ def test_扫描不改任何文件(tmp_path):
     after = sorted((p.name, p.stat().st_mtime_ns)
                    for p in (root / "out" / "202609").iterdir())
     assert after == before
+
+
+# ============================================================ 4. 已知期次（票 10）
+def test_已知期次_降序并集(tmp_path):
+    root, _ = _roots(tmp_path)
+    (root / "out" / "202607").mkdir()
+    (root / "out" / "202607" / "red_slots.json").write_text("[]", encoding="utf-8")
+    (root / "out" / "_acquisition" / "202611").mkdir(parents=True)
+    got = taskview.known_periods(repo_root=root, filled=["202601", "202609"])
+    assert got == ["202609", "202607", "202601"], "降序：母本有效期次 ∪ 出过稿产物目录"
+
+
+def test_已知期次_没产物的目录不算(tmp_path):
+    """取数在途、只记过对话的目录都没有数据——不算一期（202611 实况：只有 ai_calls）。"""
+    root, _ = _roots(tmp_path)
+    d = root / "out" / "202611"
+    d.mkdir()
+    (d / "ai_calls.jsonl").write_text("", encoding="utf-8")
+    (root / "out" / "_acquisition" / "202611").mkdir(parents=True)
+    assert taskview.known_periods(repo_root=root, filled=["202609"]) == ["202609"]
+
+
+def test_已知期次_啥都没有_空列表(tmp_path):
+    root, _ = _roots(tmp_path)
+    assert taskview.known_periods(repo_root=root, filled=[]) == []

@@ -1633,11 +1633,16 @@ async def api_dialog_turn(request: Request):
         snippet = str(item.get("text") or "").strip()[:200]
         if snippet:
             history.append({"who": who, "text": snippet})
+    # 「最新的」解析（2026-10-13，票 10）：注入已知期次（降序）——「最近有效期次」
+    # 与「本期」同源口径（taskview.known_periods：母本有效期次 ∪ out ∪ 取数在途）。
+    import taskview                                               # noqa: PLC0415
+    periods = await run_in_threadpool(taskview.known_periods)
     import ai                                                     # noqa: PLC0415
     actor = config.role_of(current_user(request) or "")
     # 2026-10-12：操作员也有出报告/审批——报告流程两种角色一致（readonly 注入已取消）。
     ans = await run_in_threadpool(ai.run, "dialog", period,
-                                  payload={"text": text, "history": history}, actor=actor)
+                                  payload={"text": text, "history": history,
+                                           "periods": periods}, actor=actor)
     if ans.mode in ("closed", "denied", "unavailable"):
         return _answer_response(ans)
     turn = ans.data or {}

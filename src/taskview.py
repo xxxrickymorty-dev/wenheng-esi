@@ -71,6 +71,39 @@ def _acq_periods(root: pathlib.Path) -> set:
     return names
 
 
+def _product_dirs(root: pathlib.Path) -> set:
+    """出过稿的产物目录（凭证＝`red_slots.json`，与服务器 `resolve_period_dir` 同一判据）。"""
+    d = root / "out"
+    if not d.is_dir():
+        return set()
+    return {p.name for p in d.iterdir()
+            if p.is_dir() and _PERIOD_DIR.fullmatch(p.name)
+            and (p / "red_slots.json").is_file()}
+
+
+def known_periods(*, repo_root=None, filled=None) -> list[str]:
+    """**有数据/产物的期次**（**降序**）：母本有效期次 ∪ 出过稿的产物目录。
+
+    「最新的」解析用它（服务端注入 `payload.periods`，2026-10-13 票 10）——期次＝数据截止月：
+    **取数在途、只记过对话的目录都不算**（没数据，不算一期）。与「本期任务」（`scan`，含在途）
+    的差别仅此一处：那边回答「任务走到哪」，这边回答「哪一期有数可查」。台账读不到 → `[]`（不编、不猜）。
+    """
+    root = pathlib.Path(repo_root) if repo_root else REPO_ROOT
+    if filled is None:
+        import inventory                                        # noqa: PLC0415
+        import ledger as ledger_mod                             # noqa: PLC0415
+
+        runtime = ledger_mod.runtime_path(root)
+        ledger = runtime if runtime.exists() else \
+            root.parent / "数据与复现" / inventory.LEDGER_NAME
+        try:
+            filled = inventory._filled_for(ledger)
+        except Exception:                                       # noqa: BLE001
+            return []
+    known = set(filled) | _product_dirs(root)
+    return sorted(known, reverse=True)
+
+
 def _acquire_state(period: str, root: pathlib.Path) -> tuple:
     """四件**按文件**判 → (齐没齐, 缺几件)。复用 inventory（released 显式给，不读台账）。"""
     import inventory                                            # noqa: PLC0415

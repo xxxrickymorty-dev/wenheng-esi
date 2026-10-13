@@ -32,6 +32,9 @@
   带这种说法就**停下纠正**，绝不换算、绝不猜；
 - 显式六位期次（「再出 202605 的」）优先；其次「2026年9月」；再其次
   「9月 / 九月份」（年份取今天所在年）；都没有 → 反问，不静默。
+- 「最新的 / 最近一期」（2026-10-13 rick 截图实问：复读死循环）——不猜数字：落
+  `payload["periods"]`（服务端注入的有数据/产物期次，降序）里的**最近有效期次**；
+  查数据反问不再裸复读（写明最近期次 + 给「查最新的」候选）。
 - `payload["today"]` 可注入 ISO 日期（测试/脚本用）；HTTP 路由不传，
   生产走真实时钟（服务器时间即事实）。
 """
@@ -47,8 +50,9 @@ from . import _runtime
 from ._draft import RuleDraft
 from ._numbered import NumberedText
 
-#: 三种解析结局：period（认出来了）/ publication_month（出稿月说法，拒收）/ no_period（没听出）。
-CASES = ("period", "publication_month", "no_period")
+#: 四种解析结局：period（认出来了）/ publication_month（出稿月说法，拒收）/
+#: latest（「最新的」——落期次由 build 用 payload.periods 完成）/ no_period（没听出）。
+CASES = ("period", "publication_month", "latest", "no_period")
 
 #: 两意图路由（票 07）：一句话只归一类；认不准＝unclear（不猜，交给反问）。
 KINDS = ("report", "query", "proceed", "unclear")
@@ -79,6 +83,11 @@ _YEAR_MONTH = re.compile(r"(20\d{2})\s*年\s*(0?[1-9]|1[0-2])\s*月")
 _MONTH_CN = re.compile(r"([一二三四五六七八九十]{1,3})\s*月")
 _MONTH_AR = re.compile(r"(?<!\d)(0?[1-9]|1[0-2])\s*月")
 _PUBLICATION = re.compile(r"出稿|发布")
+
+#: 「最新的 / 最近一期」（2026-10-13）：只认「最新/最近 + 的/一期/那期」的形态——
+#: **不碰**「最近六期 / 最近几期 / 最新的几期」（序列问法，走 qa 的多期口径）。
+_LATEST = re.compile(r"(?:最新|最近)(?:的(?![几哪])|[一那]?期|的那?一?期)|最新(?![几哪的])")
+
 _REPORT_INTENT = re.compile(r"报告|出稿|生成|重出|再出|改做|做")
 
 _CN_DIGITS = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
@@ -183,6 +192,11 @@ def parse(text, *, today: datetime.date | None = None) -> Parse:
         return Parse("period", period=f"{year:04d}{month:02d}",
                      year=year, month=month, intent=intent,
                      kind=_kind_for("period", ask=ask, intent=intent, hint=hint, act=""))
+    if _LATEST.search(norm):
+        # 「最新的 / 最近一期」（2026-10-13 rick 截图实问）：不猜数字；落期次在
+        # build()——用 payload.periods（服务端注入，降序）的最近有效期次。
+        return Parse("latest", intent=intent,
+                     kind=_kind_for("latest", ask=ask, intent=intent, hint=hint, act=""))
     # 没带期次的「继续 / 出稿」＝推进动作（目标期次用槽位里的）；带期次的句子不算。
     act = "proceed" if _PROCEED.search(norm) else ""
     return Parse("no_period", intent=intent, act=act,
@@ -198,6 +212,9 @@ def reply_for(p: Parse) -> str:
         return (f"期次只按「数据截止月」理解——「出稿月 / 发布月」不是期次说法。"
                 f"要说数据截至 {p.label} 那期（期次 {period}），"
                 f"请说「做 {p.month} 月的报告」。")
+    if p.case == "latest":
+        return ("「最新的」是哪一期，我这边一时看不到可用的期次列表——不猜。"
+                "说一句带期次的吧，比如「查 202609 的化学接近度」。")
     return ("我还没听出是哪一期。说一句话，比如「帮我做 9 月的报告」"
             "——期次＝数据截止月份。")
 
@@ -340,10 +357,17 @@ def _proceed(root, slot_period: str, p: Parse):
 
 
 # ---------------------------------------------------------------- 两意图（票 07）
-def _query_reply(p: Parse, slot_period: str) -> str:
-    """查数据路由话术：有期次就放行（正文由服务器调 qa 能力给）；没有就先要期次。"""
+def _query_reply(p: Parse, slot_period: str, *, latest: str = "") -> str:
+    """查数据路由话术：有期次就放行（正文由服务器调 qa 能力给）；没有就先要期次。
+
+    2026-10-13（rick 截图实问）：反问不再裸复读——知道最近有效期次就写明，
+    并给「查最新的」候选（点一下＝发回一句话，走正常一轮；复用既有 `send` 动作）。
+    """
     target = p.period or slot_period
     if not target:
+        if latest:
+            return (f"查哪一期？最近有效期次是 {latest}（数据截至 {latest[:4]}-{latest[4:6]}）。"
+                    f"点下面「查最新的」，或说「查 {latest} 的化学接近度」——期次＝数据截止月份。")
         return ("查哪一期？说一句带期次的，比如「查 202609 的化学接近度」"
                 "——期次＝数据截止月份。")
     return ""
@@ -362,7 +386,7 @@ def _unclear_reply(target: str) -> tuple[str, list]:
 
 
 # ---------------------------------------------------------------- 来源登记
-def _register(p: Parse, inv: dict | None):
+def _register(p: Parse, inv: dict | None, *, latest: str = ""):
     """应答里每个数字的来源（解析与盘点的回显；全是 fact）。"""
     known: dict = {}
     if p.period:
@@ -376,6 +400,18 @@ def _register(p: Parse, inv: dict | None):
         known[f"{p.month:02d}"] = {"kind": "fact", "pointer": "dialog/period.month",
                                    "label": "期次月份", "detail": "从这句话里读出的月份（数据截止月）",
                                    "fact": True}
+    if latest:
+        # 「最新的」反问里写明的最近有效期次（服务端注入的 payload.periods[0]）。
+        known.setdefault(latest, {"kind": "fact", "pointer": "dialog/latest",
+                                  "label": "最近有效期次",
+                                  "detail": "有数据/产物的期次（母本有效期次 ∪ 出过稿的产物目录）里的最新一期",
+                                  "fact": True})
+        known.setdefault(latest[:4], {"kind": "fact", "pointer": "dialog/latest.year",
+                                      "label": "期次年份", "detail": "最近有效期次的年份",
+                                      "fact": True})
+        known.setdefault(latest[4:6], {"kind": "fact", "pointer": "dialog/latest.month",
+                                       "label": "期次月份", "detail": "最近有效期次的月份",
+                                       "fact": True})
     if inv:
         known.setdefault(str(inv["n_pieces"]),
                          {"kind": "fact", "pointer": "dialog/inventory",
@@ -408,6 +444,16 @@ def _register(p: Parse, inv: dict | None):
     return register
 
 
+def _latest_from(payload) -> str:
+    """`payload["periods"]`（服务端注入的已知期次，降序）→ 最近有效期次；没有/形状不合法 → ""。"""
+    raw = payload.get("periods") if isinstance(payload.get("periods"), list) else []
+    for item in raw:
+        s = str(item or "").strip()
+        if re.fullmatch(r"\d{6}", s):
+            return s
+    return ""
+
+
 # ---------------------------------------------------------------- 构建器
 def build(root, period, payload):                                  # noqa: ARG001
     """构建器入口：一句话 → RuleDraft（应答 + 来源 + 槽位/盘点数据 + 记账期次）。
@@ -416,6 +462,7 @@ def build(root, period, payload):                                  # noqa: ARG00
     - 句子里带期次 → 用句子里的（解析优先）；
     - **报告/推进意图没带期次 → 沿用槽位期次**（2026-10-11 rick 实问：说过「9 月的报告」
       再问「怎么不做」被反问期次——这不是猜，是接着聊）；短应诺（「对啊」）同此。
+    - **「最新的」→ `payload.periods[0]`**（最近有效期次；2026-10-13 票 10，不猜数字）。
     - `payload.readonly`（服务端按角色注入）：操作员只读出稿/核对直接说明白，不演流程。
     """
     text = str(payload.get("text") or "")
@@ -424,8 +471,16 @@ def build(root, period, payload):                                  # noqa: ARG00
     kind = p.kind
     carried = False
     history = payload.get("history") if isinstance(payload.get("history"), list) else []
+    latest = _latest_from(payload)
+    was_latest = p.case == "latest"
 
-    if kind in ("report", "proceed") and not p.period and slot:
+    if was_latest and latest:
+        # 「最新的」→ 最近有效期次（服务端注入 payload.periods，降序）——不猜数字；
+        # 落成显式期次后走既有两条意图路（2026-10-13 rick 截图实问：不再复读）。
+        p = replace(p, case="period", period=latest,
+                    year=int(latest[:4]), month=int(latest[4:6]))
+
+    if kind in ("report", "proceed") and not p.period and slot and not was_latest:
         p = replace(p, case="period", period=slot,
                     year=int(slot[:4]), month=int(slot[4:6]))
         carried = True
@@ -438,12 +493,20 @@ def build(root, period, payload):                                  # noqa: ARG00
         # 当追问走 qa——上文随请求带过去解指代，不再回「我还没听出是哪一期」。
         p = replace(p, kind="query")
         kind = "query"
+    if was_latest and not kind and p.period:
+        # 认到「最新」但没表态（没上文）——与显式期次同款：含糊不猜，给两个出路。
+        p = replace(p, kind="unclear")
+        kind = "unclear"
 
     run = None
     if kind == "query":
         # 查数据（票 07）：不盘点、不出稿；正文本地只在「没期次」时出声，
         # 有期次时的回答由服务器调 qa 能力给出（本能力只做路由）。
-        reply, verdict, actions, inv = _query_reply(p, period), "", [], None
+        reply = _query_reply(p, slot, latest=latest)
+        actions = ([{"kind": "send", "text": "查最新的"},
+                    {"kind": "dismiss", "text": "先等等"}]
+                   if (not p.period and not slot and latest) else [])
+        verdict, inv = "", None
     elif kind == "unclear":
         reply, actions = _unclear_reply(p.period or period)
         verdict, inv = "", None
@@ -473,7 +536,7 @@ def build(root, period, payload):                                  # noqa: ARG00
                     reply, verdict, actions = reply_for(p), "", []
             else:
                 reply, verdict, actions = _compose(p, inv)
-    number = NumberedText.of([reply], _register(p, inv))
+    number = NumberedText.of([reply], _register(p, inv, latest=latest))
     data = {**p.as_data(), "verdict": verdict, "actions": actions,
             "inventory": inv, "run": run}
     if kind in ("query", "unclear"):
