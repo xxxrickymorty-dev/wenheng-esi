@@ -1270,12 +1270,19 @@ _TRACE_CATS = ("bigtable", "charts", "province", "matrix", "texts")
 def _rel_path(p):
     """绝对路径 -> 仓库相对（跨机器可读；API 不回服务器目录结构）。
 
-    转不了（不在仓库内）就只回文件名。
+    转不了（不在仓库内 / 跨平台遗留的 Windows 路径）就只回文件名。
+    2026-10-13 实踩：Linux 上读到历史任务记录里的 `C:\\...` 时，`Path.resolve()`
+    把它当**相对名**解析，`relative_to(ROOT)` 反而"成功"，绝对路径就漏进了 archive
+    响应（e2e「archive 不回绝对路径」在服务器上 FAIL）——带盘符且不在本仓下的一律
+    只回文件名。
     """
+    s = str(p)
+    if pathlib.PureWindowsPath(s).drive and not s.startswith(str(config.ROOT)):
+        return s.replace("\\", "/").rsplit("/", 1)[-1]
     try:
-        return str(pathlib.Path(p).resolve().relative_to(config.ROOT)).replace("\\", "/")
+        return str(pathlib.Path(s).resolve().relative_to(config.ROOT)).replace("\\", "/")
     except (ValueError, OSError, TypeError):
-        return pathlib.Path(str(p)).name
+        return s.replace("\\", "/").rsplit("/", 1)[-1]
 
 
 def _sanitize_paths(obj, keys):

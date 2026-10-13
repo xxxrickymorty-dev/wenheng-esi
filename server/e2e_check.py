@@ -96,11 +96,14 @@ def call_json(method, path, payload=None, opener=None):
 
 # 二进制要单独取：call() 会把响应 decode 成文本，zip 会被读坏。
 def call_raw(path):
+    # 头名统一小写再查：本地直连 uvicorn 是小写头，经 nginx 反代会被规范成
+    # 「Content-Type」等首字母大写——大小写敏感的 dict 查找在服务器上必挂
+    # （2026-10-13 实踩：logpack/report-image 两项在公网全 FAIL，本机全过）。
     try:
         r = op.open(BASE + path)
-        return r.status, r.read(), dict(r.headers)
+        return r.status, r.read(), {k.lower(): v for k, v in r.headers.items()}
     except urllib.error.HTTPError as e:
-        return e.code, e.read(), dict(e.headers)
+        return e.code, e.read(), {k.lower(): v for k, v in e.headers.items()}
 
 
 
@@ -594,8 +597,14 @@ try:
     _dj2 = json.loads(dlg2)
 except json.JSONDecodeError:
     _dj2 = {}
-check("对话前门 · 产物已在→先问一次（不自动开跑）",
-      (_dj2.get("run") or {}).get("auto") is False, f"run={_dj2.get('run')}")
+if (ROOT.parent.parent / "数据与复现").is_dir():
+    check("对话前门 · 产物已在→先问一次（不自动开跑）",
+          (_dj2.get("run") or {}).get("auto") is False, f"run={_dj2.get('run')}")
+else:
+    # 部署环境没有 数据与复现/：盘点四件必报缺件（ESI/InCites 原始件不在服务器），
+    # 前门如实停在「补件」属预期行为——本项仅在本机全件环境验。
+    # （服务器上要演示「产物已在先问一次」，得先定盘点对「已并入期次」的口径——见日报。）
+    out("  SKIP 部署环境无 数据与复现 → 前门停在补件属预期；本项仅本机全件环境验")
 st2, sj, _ = call("GET", "/api/status")
 try:
     _active = (json.loads(sj) or {}).get("active")
