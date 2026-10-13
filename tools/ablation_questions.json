@@ -1,0 +1,886 @@
+{
+ "note": "对话问答消融实验题库。金标由 flexible 引擎取自 out/202609（只读），pointer 为台账格指针（locator）。题序为 类轮转（--limit 天然覆盖六类）。",
+ "period": "202609",
+ "questions": [
+  {
+   "id": "C1-1",
+   "q": "化学的接近度最新一期是多少？",
+   "period": "202609",
+   "category": 1,
+   "source": "实问",
+   "expect": "作答",
+   "gold": {
+    "kind": "at",
+    "metric": "proximity_1pct",
+    "disc": "Chemistry",
+    "points": [
+     {
+      "period": "202609",
+      "value": 6.76056153,
+      "pointer": "接近度：化学 行 × 202609 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C2-1",
+   "q": "化学的接近度最近几期怎么变的？",
+   "period": "202609",
+   "category": 2,
+   "source": "实问",
+   "expect": "作答",
+   "gold": {
+    "kind": "series",
+    "metric": "proximity_1pct",
+    "disc": "Chemistry",
+    "points": [
+     {
+      "period": "202511",
+      "value": 5.54910658,
+      "pointer": "接近度：化学 行 × 202511 列"
+     },
+     {
+      "period": "202601",
+      "value": 5.81754963,
+      "pointer": "接近度：化学 行 × 202601 列"
+     },
+     {
+      "period": "202603",
+      "value": 6.14745039,
+      "pointer": "接近度：化学 行 × 202603 列"
+     },
+     {
+      "period": "202605",
+      "value": 6.18420029,
+      "pointer": "接近度：化学 行 × 202605 列"
+     },
+     {
+      "period": "202607",
+      "value": 6.41230689,
+      "pointer": "接近度：化学 行 × 202607 列"
+     },
+     {
+      "period": "202609",
+      "value": 6.76056153,
+      "pointer": "接近度：化学 行 × 202609 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C3-1",
+   "q": "202603 那一期化学的接近度是多少？",
+   "period": "202609",
+   "category": 3,
+   "source": "构造",
+   "expect": "作答",
+   "gold": {
+    "kind": "at",
+    "metric": "proximity_1pct",
+    "disc": "Chemistry",
+    "points": [
+     {
+      "period": "202603",
+      "value": 6.14745039,
+      "pointer": "接近度：化学 行 × 202603 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C4-1",
+   "q": "它最近几期怎么变的？",
+   "period": "202609",
+   "category": 4,
+   "source": "实问",
+   "expect": "作答",
+   "history": [
+    {
+     "who": "me",
+     "text": "化学的接近度是多少？"
+    },
+    {
+     "who": "ai",
+     "text": "化学 202609 的接近度是 676.06%（接近度＝总被引÷阈值；超过 100% 即已进入前 1%）。"
+    }
+   ],
+   "gold": {
+    "kind": "series",
+    "metric": "proximity_1pct",
+    "disc": "Chemistry",
+    "points": [
+     {
+      "period": "202511",
+      "value": 5.54910658,
+      "pointer": "接近度：化学 行 × 202511 列"
+     },
+     {
+      "period": "202601",
+      "value": 5.81754963,
+      "pointer": "接近度：化学 行 × 202601 列"
+     },
+     {
+      "period": "202603",
+      "value": 6.14745039,
+      "pointer": "接近度：化学 行 × 202603 列"
+     },
+     {
+      "period": "202605",
+      "value": 6.18420029,
+      "pointer": "接近度：化学 行 × 202605 列"
+     },
+     {
+      "period": "202607",
+      "value": 6.41230689,
+      "pointer": "接近度：化学 行 × 202607 列"
+     },
+     {
+      "period": "202609",
+      "value": 6.76056153,
+      "pointer": "接近度：化学 行 × 202609 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C5-1",
+   "q": "医学院的排名是多少？",
+   "period": "202609",
+   "category": 5,
+   "source": "构造",
+   "expect": "如实说无",
+   "gold": {
+    "kind": "none",
+    "points": [],
+    "note": "不在台账/22 学科范围内；正确行为＝如实说明查不到，不编数字"
+   }
+  },
+  {
+   "id": "C6-1",
+   "q": "9 月这一期化学的接近度是多少？",
+   "period": "202609",
+   "category": 6,
+   "source": "构造",
+   "expect": "作答",
+   "gold": {
+    "kind": "at",
+    "metric": "proximity_1pct",
+    "disc": "Chemistry",
+    "points": [
+     {
+      "period": "202609",
+      "value": 6.76056153,
+      "pointer": "接近度：化学 行 × 202609 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C1-2",
+   "q": "材料科学的论文数是多少？",
+   "period": "202609",
+   "category": 1,
+   "source": "实问",
+   "expect": "作答",
+   "gold": {
+    "kind": "at",
+    "metric": "papers",
+    "disc": "Materials Science",
+    "points": [
+     {
+      "period": "202609",
+      "value": 1760.0,
+      "pointer": "论文数：材料科学 行 × 202609 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C2-2",
+   "q": "材料科学的论文数最近几期怎么变的？",
+   "period": "202609",
+   "category": 2,
+   "source": "实问",
+   "expect": "作答",
+   "gold": {
+    "kind": "series",
+    "metric": "papers",
+    "disc": "Materials Science",
+    "points": [
+     {
+      "period": "202511",
+      "value": 1531.0,
+      "pointer": "论文数：材料科学 行 × 202511 列"
+     },
+     {
+      "period": "202601",
+      "value": 1589.0,
+      "pointer": "论文数：材料科学 行 × 202601 列"
+     },
+     {
+      "period": "202603",
+      "value": 1657.0,
+      "pointer": "论文数：材料科学 行 × 202603 列"
+     },
+     {
+      "period": "202605",
+      "value": 1666.0,
+      "pointer": "论文数：材料科学 行 × 202605 列"
+     },
+     {
+      "period": "202607",
+      "value": 1705.0,
+      "pointer": "论文数：材料科学 行 × 202607 列"
+     },
+     {
+      "period": "202609",
+      "value": 1760.0,
+      "pointer": "论文数：材料科学 行 × 202609 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C3-2",
+   "q": "202511 那一期材料科学的论文数是多少？",
+   "period": "202609",
+   "category": 3,
+   "source": "构造",
+   "expect": "作答",
+   "gold": {
+    "kind": "at",
+    "metric": "papers",
+    "disc": "Materials Science",
+    "points": [
+     {
+      "period": "202511",
+      "value": 1531.0,
+      "pointer": "论文数：材料科学 行 × 202511 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C4-2",
+   "q": "那物理学呢？最近几期怎么样？",
+   "period": "202609",
+   "category": 4,
+   "source": "实问",
+   "expect": "作答",
+   "history": [
+    {
+     "who": "me",
+     "text": "材料科学的论文数是多少？"
+    },
+    {
+     "who": "ai",
+     "text": "材料科学 202609 的论文数是 1760 篇。"
+    }
+   ],
+   "gold": {
+    "kind": "series",
+    "metric": "papers",
+    "disc": "Physics",
+    "points": [
+     {
+      "period": "202511",
+      "value": 1260.0,
+      "pointer": "论文数：物理学 行 × 202511 列"
+     },
+     {
+      "period": "202601",
+      "value": 1287.0,
+      "pointer": "论文数：物理学 行 × 202601 列"
+     },
+     {
+      "period": "202603",
+      "value": 1319.0,
+      "pointer": "论文数：物理学 行 × 202603 列"
+     },
+     {
+      "period": "202605",
+      "value": 1302.0,
+      "pointer": "论文数：物理学 行 × 202605 列"
+     },
+     {
+      "period": "202607",
+      "value": 1355.0,
+      "pointer": "论文数：物理学 行 × 202607 列"
+     },
+     {
+      "period": "202609",
+      "value": 1410.0,
+      "pointer": "论文数：物理学 行 × 202609 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C5-2",
+   "q": "人工智能学科进入前1%了吗？",
+   "period": "202609",
+   "category": 5,
+   "source": "构造",
+   "expect": "如实说无",
+   "gold": {
+    "kind": "none",
+    "points": [],
+    "note": "不在台账/22 学科范围内；正确行为＝如实说明查不到，不编数字"
+   }
+  },
+  {
+   "id": "C6-2",
+   "q": "7 月那一期化学的接近度是多少？",
+   "period": "202609",
+   "category": 6,
+   "source": "构造",
+   "expect": "作答",
+   "gold": {
+    "kind": "at",
+    "metric": "proximity_1pct",
+    "disc": "Chemistry",
+    "points": [
+     {
+      "period": "202607",
+      "value": 6.41230689,
+      "pointer": "接近度：化学 行 × 202607 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C1-3",
+   "q": "工程学的总被引频次是多少？",
+   "period": "202609",
+   "category": 1,
+   "source": "构造",
+   "expect": "作答",
+   "gold": {
+    "kind": "at",
+    "metric": "total_cites",
+    "disc": "Engineering",
+    "points": [
+     {
+      "period": "202609",
+      "value": 28907.0,
+      "pointer": "总被引：工程学 行 × 202609 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C2-3",
+   "q": "工程学的总被引频次最近几期怎么变的？",
+   "period": "202609",
+   "category": 2,
+   "source": "实问",
+   "expect": "作答",
+   "gold": {
+    "kind": "series",
+    "metric": "total_cites",
+    "disc": "Engineering",
+    "points": [
+     {
+      "period": "202511",
+      "value": 20884.0,
+      "pointer": "总被引：工程学 行 × 202511 列"
+     },
+     {
+      "period": "202601",
+      "value": 22535.0,
+      "pointer": "总被引：工程学 行 × 202601 列"
+     },
+     {
+      "period": "202603",
+      "value": 24813.0,
+      "pointer": "总被引：工程学 行 × 202603 列"
+     },
+     {
+      "period": "202605",
+      "value": 26011.0,
+      "pointer": "总被引：工程学 行 × 202605 列"
+     },
+     {
+      "period": "202607",
+      "value": 27166.0,
+      "pointer": "总被引：工程学 行 × 202607 列"
+     },
+     {
+      "period": "202609",
+      "value": 28907.0,
+      "pointer": "总被引：工程学 行 × 202609 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C3-3",
+   "q": "202605 那一期工程学的总被引频次是多少？",
+   "period": "202609",
+   "category": 3,
+   "source": "构造",
+   "expect": "作答",
+   "gold": {
+    "kind": "at",
+    "metric": "total_cites",
+    "disc": "Engineering",
+    "points": [
+     {
+      "period": "202605",
+      "value": 26011.0,
+      "pointer": "总被引：工程学 行 × 202605 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C4-3",
+   "q": "它的前1‰阈值是多少？",
+   "period": "202609",
+   "category": 4,
+   "source": "实问",
+   "expect": "作答",
+   "history": [
+    {
+     "who": "me",
+     "text": "植物与动物学的接近度是多少？"
+    },
+    {
+     "who": "ai",
+     "text": "植物与动物学 202609 的接近度是 699.84%（接近度＝总被引÷阈值）。"
+    }
+   ],
+   "gold": {
+    "kind": "at",
+    "metric": "threshold_1permille",
+    "disc": "Plant & Animal Science",
+    "points": [
+     {
+      "period": "202609",
+      "value": 37535.0,
+      "pointer": "千分之一被引阈值：植物与动物学 行 × 202609 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C5-3",
+   "q": "云南大学在软科中国大学排名里排多少位？",
+   "period": "202609",
+   "category": 5,
+   "source": "构造",
+   "expect": "如实说无",
+   "gold": {
+    "kind": "none",
+    "points": [],
+    "note": "不在台账/22 学科范围内；正确行为＝如实说明查不到，不编数字"
+   }
+  },
+  {
+   "id": "C6-3",
+   "q": "5 月那一期材料科学的论文数是多少？",
+   "period": "202609",
+   "category": 6,
+   "source": "构造",
+   "expect": "作答",
+   "gold": {
+    "kind": "at",
+    "metric": "papers",
+    "disc": "Materials Science",
+    "points": [
+     {
+      "period": "202605",
+      "value": 1666.0,
+      "pointer": "论文数：材料科学 行 × 202605 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C1-4",
+   "q": "植物与动物学的国内排名目前是多少？",
+   "period": "202609",
+   "category": 1,
+   "source": "实问",
+   "expect": "作答",
+   "gold": {
+    "kind": "at",
+    "metric": "rank_cn",
+    "disc": "Plant & Animal Science",
+    "points": [
+     {
+      "period": "202609",
+      "value": 69.0,
+      "pointer": "国内排名：植物与动物学 行 × 202609 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C2-4",
+   "q": "物理学的前1%阈值最近几期怎么变的？",
+   "period": "202609",
+   "category": 2,
+   "source": "构造",
+   "expect": "作答",
+   "gold": {
+    "kind": "series",
+    "metric": "threshold_1pct",
+    "disc": "Physics",
+    "points": [
+     {
+      "period": "202511",
+      "value": 19376.0,
+      "pointer": "ESI被引阈值：物理学 行 × 202511 列"
+     },
+     {
+      "period": "202601",
+      "value": 19400.0,
+      "pointer": "ESI被引阈值：物理学 行 × 202601 列"
+     },
+     {
+      "period": "202603",
+      "value": 19277.0,
+      "pointer": "ESI被引阈值：物理学 行 × 202603 列"
+     },
+     {
+      "period": "202605",
+      "value": 18756.0,
+      "pointer": "ESI被引阈值：物理学 行 × 202605 列"
+     },
+     {
+      "period": "202607",
+      "value": 18604.0,
+      "pointer": "ESI被引阈值：物理学 行 × 202607 列"
+     },
+     {
+      "period": "202609",
+      "value": 18181.0,
+      "pointer": "ESI被引阈值：物理学 行 × 202609 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C3-4",
+   "q": "202601 那一期物理学的国内排名是多少？",
+   "period": "202609",
+   "category": 3,
+   "source": "构造",
+   "expect": "作答",
+   "gold": {
+    "kind": "at",
+    "metric": "rank_cn",
+    "disc": "Physics",
+    "points": [
+     {
+      "period": "202601",
+      "value": 167.0,
+      "pointer": "国内排名：物理学 行 × 202601 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C4-4",
+   "q": "它最近几期怎么变的？",
+   "period": "202609",
+   "category": 4,
+   "source": "构造",
+   "expect": "作答",
+   "history": [
+    {
+     "who": "me",
+     "text": "工程学的总被引频次是多少？"
+    },
+    {
+     "who": "ai",
+     "text": "工程学 202609 的总被引频次是 28907。"
+    }
+   ],
+   "gold": {
+    "kind": "series",
+    "metric": "total_cites",
+    "disc": "Chemistry",
+    "points": [
+     {
+      "period": "202511",
+      "value": 43788.0,
+      "pointer": "总被引：化学 行 × 202511 列"
+     },
+     {
+      "period": "202601",
+      "value": 46011.0,
+      "pointer": "总被引：化学 行 × 202601 列"
+     },
+     {
+      "period": "202603",
+      "value": 48946.0,
+      "pointer": "总被引：化学 行 × 202603 列"
+     },
+     {
+      "period": "202605",
+      "value": 47674.0,
+      "pointer": "总被引：化学 行 × 202605 列"
+     },
+     {
+      "period": "202607",
+      "value": 49394.0,
+      "pointer": "总被引：化学 行 × 202607 列"
+     },
+     {
+      "period": "202609",
+      "value": 51529.0,
+      "pointer": "总被引：化学 行 × 202609 列"
+     }
+    ]
+   }
+  },
+  {
+   "id": "C5-4",
+   "q": "体育学的论文数是多少？",
+   "period": "202609",
+   "category": 5,
+   "source": "构造",
+   "expect": "如实说无",
+   "gold": {
+    "kind": "none",
+    "points": [],
+    "note": "不在台账/22 学科范围内；正确行为＝如实说明查不到，不编数字"
+   }
+  },
+  {
+   "id": "C6-4",
+   "q": "2026 年 3 月那一期工程学的总被引频次是多少？",
+   "period": "202609",
+   "category": 6,
+   "source": "构造",
+   "expect": "作答",
+   "gold": {
+    "kind": "at",
+    "metric": "total_cites",
+    "disc": "Engineering",
+    "points": [
+     {
+      "period": "202603",
+      "value": 24813.0,
+      "pointer": "总被引：工程学 行 × 202603 列"
+     }
+    ]
+   }
+  }
+ ],
+ "multiturns": [
+  {
+   "id": "M1",
+   "note": "学科指代 + 期次指代（实问句式）",
+   "turns": [
+    {
+     "q": "化学的接近度是多少？",
+     "expect": "作答",
+     "gold": {
+      "kind": "at",
+      "metric": "proximity_1pct",
+      "disc": "Chemistry",
+      "points": [
+       {
+        "period": "202609",
+        "value": 6.76056153,
+        "pointer": "接近度：化学 行 × 202609 列"
+       }
+      ]
+     }
+    },
+    {
+     "q": "它最近几期怎么样？",
+     "expect": "作答",
+     "history": [
+      {
+       "who": "me",
+       "text": "化学的接近度是多少？"
+      }
+     ],
+     "gold": {
+      "kind": "series",
+      "metric": "proximity_1pct",
+      "disc": "Chemistry",
+      "points": [
+       {
+        "period": "202511",
+        "value": 5.54910658,
+        "pointer": "接近度：化学 行 × 202511 列"
+       },
+       {
+        "period": "202601",
+        "value": 5.81754963,
+        "pointer": "接近度：化学 行 × 202601 列"
+       },
+       {
+        "period": "202603",
+        "value": 6.14745039,
+        "pointer": "接近度：化学 行 × 202603 列"
+       },
+       {
+        "period": "202605",
+        "value": 6.18420029,
+        "pointer": "接近度：化学 行 × 202605 列"
+       },
+       {
+        "period": "202607",
+        "value": 6.41230689,
+        "pointer": "接近度：化学 行 × 202607 列"
+       },
+       {
+        "period": "202609",
+        "value": 6.76056153,
+        "pointer": "接近度：化学 行 × 202609 列"
+       }
+      ]
+     }
+    },
+    {
+     "q": "这是几月的？",
+     "expect": "作答（期次）",
+     "history": [
+      {
+       "who": "me",
+       "text": "化学的接近度是多少？"
+      },
+      {
+       "who": "ai",
+       "text": "化学 202609 的接近度是 676.06%（接近度＝总被引÷阈值；超过 100% 即已进入前 1%）。"
+      },
+      {
+       "who": "me",
+       "text": "它最近几期怎么样？"
+      },
+      {
+       "who": "ai",
+       "text": "最近六期呈上升趋势，从 202511 的 554.91% 升到 202609 的 676.06%。"
+      }
+     ],
+     "gold": {
+      "kind": "period",
+      "value": "202609",
+      "points": [],
+      "note": "正确＝指向 2026 年 9 月（202609）这一期"
+     }
+    }
+   ]
+  },
+  {
+   "id": "M2",
+   "note": "学科指代（换学科追问）",
+   "turns": [
+    {
+     "q": "材料科学的论文数是多少？",
+     "expect": "作答",
+     "gold": {
+      "kind": "at",
+      "metric": "papers",
+      "disc": "Materials Science",
+      "points": [
+       {
+        "period": "202609",
+        "value": 1760.0,
+        "pointer": "论文数：材料科学 行 × 202609 列"
+       }
+      ]
+     }
+    },
+    {
+     "q": "那化学的呢？",
+     "expect": "作答",
+     "history": [
+      {
+       "who": "me",
+       "text": "材料科学的论文数是多少？"
+      },
+      {
+       "who": "ai",
+       "text": "材料科学 202609 的论文数是 1760 篇。"
+      }
+     ],
+     "gold": {
+      "kind": "at",
+      "metric": "papers",
+      "disc": "Chemistry",
+      "points": [
+       {
+        "period": "202609",
+        "value": 2590.0,
+        "pointer": "论文数：化学 行 × 202609 列"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "M3",
+   "note": "整体排名 + 上期对比",
+   "turns": [
+    {
+     "q": "云南大学这期整体排名怎么样？",
+     "expect": "作答",
+     "gold": {
+      "kind": "rank",
+      "metric": "overall_rank",
+      "points": [
+       {
+        "period": "202609",
+        "value": 973.0,
+        "pointer": "云大ESI排名：云南大学 行 × 202609 列"
+       },
+       {
+        "period": "202609",
+        "value": 154.0,
+        "pointer": "云大ESI排名：云南大学 行 × 202609 列"
+       },
+       {
+        "period": "202609",
+        "value": 129.0,
+        "pointer": "云大ESI排名：云南大学 行 × 202609 列"
+       }
+      ]
+     }
+    },
+    {
+     "q": "比上期呢？",
+     "expect": "作答",
+     "history": [
+      {
+       "who": "me",
+       "text": "云南大学这期整体排名怎么样？"
+      },
+      {
+       "who": "ai",
+       "text": "2026 年 9 月这一期（202609）：国际排名 973 位，国内排名（内地机构榜）154 位、国内高校 129 位。"
+      }
+     ],
+     "gold": {
+      "kind": "rank",
+      "metric": "overall_rank",
+      "points": [
+       {
+        "period": "202607",
+        "value": 995.0,
+        "pointer": "云大ESI排名：云南大学 行 × 202607 列"
+       },
+       {
+        "period": "202607",
+        "value": 155.0,
+        "pointer": "云大ESI排名：云南大学 行 × 202607 列"
+       },
+       {
+        "period": "202607",
+        "value": 130.0,
+        "pointer": "云大ESI排名：云南大学 行 × 202607 列"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}
