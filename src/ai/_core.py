@@ -149,21 +149,30 @@ def _terminal(cap, period, role, *, mode, notice, t0, backend=None):
 def _publish(cap, period, role, *, mode, backend, notice, text, rule_text, sources,
              parts, shield_res, fallback, question_face, t0,
              fallback_detail=None, egress=None, elapsed_ms=None, data=None,
-             plan=None):
+             plan=None, record=None):
     """先写留痕、后发布；模型版发布以记录成功为前提（SPEC §2.2 / C1）。
 
     `period` 是**记账期次**（dialog 用解析出的那一期，其余能力＝调用期次）；
     `data` 是能力专属结构化结果（dialog 的槽位），只挂在 `Answer.data` 上；
-    `plan` 是规划摘要（票 04：origin/specs/note），进记录追加位。
+    `plan` 是规划摘要（票 04：origin/specs/note），进记录追加位；
+    `record`（票 03）是**记录面覆盖**（dialog 内核轮）：键 ∈ {mode, backend, fallback,
+    egress, elapsed_ms}——只改 `ai_calls` 那行，`Answer.mode/backend` 不动
+    （对话正文仍是规则拼装，模型只补槽）。
     """
+    rec = record or {}
+    rec_mode = str(rec.get("mode") or mode)
+    rec_backend = str(rec.get("backend") or backend)
+    rec_fallback = rec["fallback"] if "fallback" in rec else fallback
+    rec_egress = rec.get("egress") or egress
+    rec_elapsed = rec.get("elapsed_ms") if rec.get("elapsed_ms") is not None else elapsed_ms
     rid = _record.Recorder.for_period(period, role).call(
-        capability=cap.id, mode=mode, backend=backend, fallback=fallback,
+        capability=cap.id, mode=rec_mode, backend=rec_backend, fallback=rec_fallback,
         shield=shield_res.as_dict(),
         text_protected=(_shield.protect(text)[0] if text else ""),
         question=question_face,
-        egress_items=int((egress or {}).get("items") or 0),
-        egress_bytes=int((egress or {}).get("bytes") or 0),
-        elapsed_ms=(int((time.time() - t0) * 1000) if elapsed_ms is None else elapsed_ms),
+        egress_items=int((rec_egress or {}).get("items") or 0),
+        egress_bytes=int((rec_egress or {}).get("bytes") or 0),
+        elapsed_ms=(int((time.time() - t0) * 1000) if rec_elapsed is None else rec_elapsed),
         fallback_detail=fallback_detail, plan=plan)
     if rid is None:
         _record.process_log_line(log, cap.id, period, role, "append_failed")
@@ -260,6 +269,13 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
     shield_res = Shield(checked=len(used), passed=len(used))
     # 记账期次：dialog 用解析出的那一期（这轮对话谈的就是它），其余能力＝调用期次。
     record_period = draft.record_period or period
+    # 记录面覆盖（票 03）：dialog 内核轮把 mode/backend/fallback/egress/elapsed 记成
+    # model|fallback 如实；Answer.mode/backend 不变（正文仍是规则拼装）。
+    record = None
+    if cap.id == "dialog" and isinstance(draft.data, dict):
+        kernel = draft.data.get("kernel")
+        if isinstance(kernel, dict) and kernel.get("mode") in ("model", "fallback"):
+            record = kernel
     return _publish(cap, record_period, role, mode=mode, backend=backend, notice=notice,
                     text=text, rule_text=draft.rule_text, sources=used, parts=draft.parts,
                     shield_res=shield_res, fallback=fallback,
@@ -267,7 +283,7 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
                     egress=(outcome.egress if outcome is not None else None),
                     elapsed_ms=(outcome.elapsed_ms if outcome is not None else None),
                     t0=t0, fallback_detail=fallback_detail, data=draft.data,
-                    plan=draft.plan)
+                    plan=draft.plan, record=record)
 
 
 def capabilities(actor=None) -> tuple[CapabilityInfo, ...]:

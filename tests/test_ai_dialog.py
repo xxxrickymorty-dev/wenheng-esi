@@ -479,3 +479,33 @@ def test_坏today是编程错误_直接抛(tmp_path):
         with pytest.raises(ValueError):
             ai.run("dialog", "", payload={"text": "做9月的报告", "today": "不是日期"},
                    actor="admin")
+
+
+# ============================================================ 8. 内核缺席（票 03）：行为逐字不变
+def test_内核缺席_指代句_照旧反问与候选(tmp_path):
+    """无 key（内核不启）：「上上期呢」仍走原规则——反问写明最近期次 + 「查最新的」候选。"""
+    ans = run_dialog("上上期呢", root=tmp_path, periods=PERIODS,
+                     history=[{"who": "me", "text": "查最新的化学接近度"}])
+    assert ans.data["case"] == "no_period" and ans.data["period"] == ""
+    assert ans.data["kind"] == "query"
+    assert "最近有效期次是 202609" in ans.text
+    assert {"kind": "send", "text": "查最新的"} in ans.data["actions"]
+    assert "kernel" not in ans.data, "未启用＝不留内核记录面"
+    recs = records(tmp_path, "_ai")
+    assert recs[0]["mode"] == "rule" and recs[0]["fallback"] is None
+
+
+def test_内核缺席_报告指代句_照旧反问(tmp_path):
+    ans = run_dialog("做上上期的报告", root=tmp_path, periods=PERIODS,
+                     history=[{"who": "me", "text": "做 202609 的报告"}])
+    assert "我还没听出是哪一期" in ans.text and ans.data["period"] == ""
+
+
+def test_内核缺席_注入的brain一次都不问(tmp_path):
+    """对话能力 modeled=False：即使注入非规则 brain，内核不启时也零外发（briefs 空）。"""
+    brain = ScriptedBrain([])
+    ans = run_dialog("上上期呢", root=tmp_path, brain=brain, periods=PERIODS,
+                     history=[{"who": "me", "text": "查最新的化学接近度"}])
+    assert brain.briefs == [], "内核不启＝零外发"
+    assert ans.mode == "rule" and ans.backend == "rule"
+    assert "kernel" not in ans.data

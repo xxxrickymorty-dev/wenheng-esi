@@ -14,8 +14,10 @@
 - `unclear`：认出了期次但没表态（「看看 9 月」「202607 怎么样」）——**不猜**，
   给两个明确出路（票 08 升级成单选卡）；都没中＝空（照旧反问期次）。
 
-**不做模型轮**（`_specs` 里 `modeled=False`）：期次猜错就是整期返工，解析因此
-是确定性的；模型在结构上不参与，也不新增第二个模型出口（不触网可跑）。
+**模型只在兜底位**（2026-10-13 票 03，ADR-0008）：规则 parse 与全部既有分支原样优先；
+仅在「句内没有期次、有对话上文、规则未命中」的兜底点，若内核可用（qa 开关开 +
+部署配好云模型），由 `_dialog_kernel`（pi 循环）补槽——只出 {period,intent} 槽位、
+零数字、坏输出即拒；离线（无 key / `PROFILE=demo`）内核不启，纯规则可跑。
 
 **槽位带过轮（2026-10-11，rick 实问暴露）**：句子里没带期次时，报告/推进意图与短应诺
 （「对啊」）**沿用会话槽位里已确认的期次**——说过「9 月的报告」再问「怎么不做」不该被
@@ -46,6 +48,7 @@ import re
 import unicodedata
 from dataclasses import dataclass, replace
 
+from . import _dialog_kernel
 from . import _runtime
 from ._draft import RuleDraft
 from ._numbered import NumberedText
@@ -440,14 +443,21 @@ def _register(p: Parse, inv: dict | None, *, latest: str = ""):
     return register
 
 
-def _latest_from(payload) -> str:
-    """`payload["periods"]`（服务端注入的已知期次，降序）→ 最近有效期次；没有/形状不合法 → ""。"""
+def _periods_from(payload) -> list:
+    """`payload["periods"]`（服务端注入的已知期次，降序）→ 六位期次列表；坏形状丢弃。"""
     raw = payload.get("periods") if isinstance(payload.get("periods"), list) else []
+    out = []
     for item in raw:
         s = str(item or "").strip()
-        if re.fullmatch(r"\d{6}", s):
-            return s
-    return ""
+        if re.fullmatch(r"\d{6}", s) and s not in out:
+            out.append(s)
+    return out
+
+
+def _latest_from(payload) -> str:
+    """「最近有效期次」＝`payload["periods"]` 的第一个六位期次；没有/形状不合法 → ""。"""
+    periods = _periods_from(payload)
+    return periods[0] if periods else ""
 
 
 # ---------------------------------------------------------------- 构建器
@@ -459,6 +469,9 @@ def build(root, period, payload):                                  # noqa: ARG00
     - **报告/推进意图没带期次 → 沿用槽位期次**（2026-10-11 rick 实问：说过「9 月的报告」
       再问「怎么不做」被反问期次——这不是猜，是接着聊）；短应诺（「对啊」）同此。
     - **「最新的」→ `payload.periods[0]`**（最近有效期次；2026-10-13 票 10，不猜数字）。
+    - **指代兜底（票 03）**：句内没有期次、有对话上文、规则未命中 → 内核可用时问
+      `_dialog_kernel`（只补 {period,intent} 槽位，零数字）；内核失败/坏输出/离线 →
+      一切按原规则（含「查最新的」候选）。规则命中路径与内核缺席时逐字不变。
     - `payload.readonly`（服务端按角色注入）：操作员只读出稿/核对直接说明白，不演流程。
     """
     text = str(payload.get("text") or "")
@@ -475,6 +488,28 @@ def build(root, period, payload):                                  # noqa: ARG00
         # 落成显式期次后走既有两条意图路（2026-10-13 rick 截图实问：不再复读）。
         p = replace(p, case="period", period=latest,
                     year=int(latest[:4]), month=int(latest[4:6]))
+
+    # ---- 内核兜底（票 03，ADR-0008）：句内没有期次、有上文、规则未命中 → 模型补槽 ----
+    # 规则 parse/既有分支全部原样优先；只有这个兜底点会问内核，且它只出 {period,intent}
+    # 槽位（零数字、坏输出即拒）。内核不可用（无 key / demo / qa 关）＝零外发、不触发；
+    # 内核失败/超时/坏输出 → 不改任何东西，一切按原规则（含「查最新的」候选）。
+    # 短应诺（「对啊」）是规则确定性命中（槽位带过轮），不问内核。
+    kernel_record = None
+    kernel_filled = False
+    if p.case == "no_period" and history and not _AFFIRM.fullmatch(text.strip()):
+        kr = _dialog_kernel.assist(
+            text, history=history, periods=_periods_from(payload), slot=slot,
+            tools={"scan_inventory": _scan_inventory,
+                   "product_status": lambda per: _products_exist(root, per)})
+        if kr.status != "off":
+            kernel_record = kr.record()
+        if kr.status == "ok":
+            if kr.period:
+                p = replace(p, case="period", period=kr.period,
+                            year=int(kr.period[:4]), month=int(kr.period[4:6]))
+                kernel_filled = True
+            if kr.intent and not p.intent:
+                p = replace(p, intent=kr.intent)
 
     if kind in ("report", "proceed") and not p.period and slot and not was_latest:
         p = replace(p, case="period", period=slot,
@@ -507,7 +542,9 @@ def build(root, period, payload):                                  # noqa: ARG00
         reply, actions = _unclear_reply(p.period or period)
         verdict, inv = "", None
     elif kind == "proceed":
-        reply, verdict, actions, run, inv = _proceed(root, period, p)
+        # 内核补槽轮：目标期次用补出来的（规则轮原样用槽位，逐字不变）。
+        reply, verdict, actions, run, inv = _proceed(
+            root, p.period if kernel_filled else period, p)
     else:
         if p.case == "period" and p.period and _products_exist(root, p.period):
             # 这期已出过稿（2026-10-11 rick 实问「帮我做 9 月的报告」）——
@@ -537,6 +574,10 @@ def build(root, period, payload):                                  # noqa: ARG00
             "inventory": inv, "run": run}
     if kind in ("query", "unclear"):
         data["intent"] = ""            # 查数据/含糊轮不动意图槽
+    if kernel_record is not None:
+        # 内核轮记录面（票 03）：核心据此把该轮 ai_calls 的 mode/backend/fallback/
+        # egress/elapsed 记成 model|fallback 如实；不进 as_dict()（Answer 字段面冻结）。
+        data["kernel"] = kernel_record
     return RuleDraft(
         rule_text=reply,
         number=number,
