@@ -93,7 +93,9 @@ def main(period, ledger_path=DEFAULT_LEDGER, out_root="out"):
         import extract_province
         pdata = extract_province.write_json(period, out_dir)
         print(f"      省域表：{pdata['n_universities']} 校 × 9 列（ESI 机构总表）")
-    except Exception as e:                                       # noqa: BLE001
+    except (Exception, SystemExit) as e:                         # noqa: BLE001
+        # SystemExit 也要接住：extract_* 缺源件时 raise SystemExit（2026-10-13 实踩，
+        # run_pipeline 同款修复——否则整进程退出、后续步全没跑）。
         print(f"      省域表：跳过（{type(e).__name__}: {e}）")
     try:
         import extract_matrix
@@ -101,7 +103,7 @@ def main(period, ledger_path=DEFAULT_LEDGER, out_root="out"):
         n_cell = sum(1 for r in mdata["matrix"].values() for x in r.values() if x.get("v"))
         print(f"      矩阵表：{len(mdata['matrix'])} 学科 × 11 校 → {n_cell} 格"
               f"（InCites 快照 {mdata['snapshot']}）")
-    except Exception as e:                                       # noqa: BLE001
+    except (Exception, SystemExit) as e:                         # noqa: BLE001
         print(f"      矩阵表：跳过（{type(e).__name__}: {e}）")
 
     print("[6/6] 母版替换（试排稿）")

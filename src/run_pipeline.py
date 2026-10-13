@@ -220,7 +220,11 @@ def main(ledger_path, out_root="out", run_backtest=False, period=None):
         print(f"      省域表 T19：{pdata['n_universities']} 校 × 9 列 → province.json")
         _emit("province", "省域表（ESI 机构总表）", "done",
               f"{pdata['n_universities']} 所高校 · 学科榜 {pdata['n_disciplines']} 个")
-    except Exception as e:                                       # noqa: BLE001
+    except (Exception, SystemExit) as e:                         # noqa: BLE001
+        # ⚠ 必须连 SystemExit 一起接住：extract_* 缺源件时 raise SystemExit("[拒绝] …")，
+        #   而 SystemExit 不是 Exception——2026-10-13 实踩：服务器（无 数据与复现/）上任务
+        #   在省域步整进程退出，charts/docx/run_log 全没跑，退出码 1 又被 jobs 映射成
+        #   「warned（有提醒）」掩盖了半途死。
         print(f"      省域表 T19：跳过（{type(e).__name__}: {e}）")
         _emit("province", "省域表（ESI 机构总表）", "warn",
               f"跳过：{type(e).__name__}（缺 ESI 原始包时属预期）")
@@ -236,7 +240,8 @@ def main(ledger_path, out_root="out", run_backtest=False, period=None):
               f"（快照 {mdata['snapshot']}）")
         _emit("matrix", "学科×高校矩阵（InCites）", "done",
               f"快照 {mdata['snapshot']} · {n_cell} 格")
-    except Exception as e:                                       # noqa: BLE001
+    except (Exception, SystemExit) as e:                         # noqa: BLE001
+        # 同省域步：extract_matrix 缺快照时 raise SystemExit，必须一起接住。
         print(f"      矩阵表 T20：跳过（{type(e).__name__}: {e}）")
         _emit("matrix", "学科×高校矩阵（InCites）", "warn",
               f"跳过：{type(e).__name__}（该期未登记快照映射时属预期，见 extract_matrix.SNAP_MAP）")
