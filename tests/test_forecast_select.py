@@ -70,7 +70,9 @@ def test_五模型名单与报告一致():
 def test_潜力学科恰为尚未进入前1个百分点的八个(out_dir):
     series = F.load_series(out_dir)
     ref = F.current_period(series["Chemistry"], F.DIMS["被引维度"])
-    assert ref == "202607"
+    # 2026-10-13 重定基线后 out/202607 带全母本视野（序列止于 202609）；潜力集合在
+    # 202607 与 202609 两个参考期下都稳定为 EXPECTED_8。
+    assert ref == "202609"
     assert F.potential_disciplines(series, ref) == EXPECTED_8
 
 
@@ -205,23 +207,23 @@ def test_V1窗口下同一学科四列期次完全一致(out_dir):
     d = "Molecular Biology & Genetics"
     lens = {k: len(v) for k, v in common[d].items()}
     assert len(set(lens.values())) == 1, f"公共窗口下四列应等长，实际 {lens}"
-    assert lens["total_cites"] == 42
+    assert lens["total_cites"] == 43
 
 
 def test_公共窗口长度恒等于排名序列长度(out_dir):
     """把「代价」钉住：公共窗口 = 四列期次的交集，而**卡住它的是「云大国内排名」**。
 
-    实测 22 个学科一致：总被引/前1%阈值恒 45 期，前1%机构数 44 或 45 期，
-    排名 42 或 45 期 —— 公共窗口长度**恒等于排名那一列的长度**。
-    所以公共窗口把被引 45→42、机构数 44→42 都压短了；排名本来就短，不动。
+    实测 22 个学科一致（2026-10-13 重定基线后、202609 视野）：总被引/前1%阈值恒 46 期，
+    前1%机构数 45 或 46 期，排名 43 或 46 期 —— 公共窗口长度**恒等于排名那一列的长度**。
+    所以公共窗口把被引 46→43、机构数 45→43 都压短了（Physics 等 7 科 46 期、不被压）；排名不动。
     """
     common = F.load_series(out_dir, "V1")
     full = F.load_series(out_dir, "full")
     compressed = 0
     for d in EXPECTED_8:
-        assert len(full[d]["total_cites"]) == 45, d
-        assert len(full[d]["threshold_1pct"]) == 45, d
-        assert len(full[d]["rank"]) in (42, 45), d
+        assert len(full[d]["total_cites"]) == 46, d
+        assert len(full[d]["threshold_1pct"]) == 46, d
+        assert len(full[d]["rank"]) in (43, 46), d
         assert len(common[d]["total_cites"]) == len(full[d]["rank"]), \
             f"{d}：公共窗口应等于排名列长度"
         assert len(common[d]["rank"]) == len(full[d]["rank"]), f"{d}：排名列不该被压"
@@ -232,16 +234,17 @@ def test_公共窗口长度恒等于排名序列长度(out_dir):
 
 
 def test_物理学被引维度_V1口径指纹(out_dir):
-    """WH-DOC-12 记的 V1 实测：物理学被引维度·经验贝叶斯滚动 MAPE = 3.326%（报告 3.33%）。
+    """V1 实测指纹：物理学被引维度·经验贝叶斯滚动 MAPE = 3.263%。
 
-    这是「口径真对齐了 V1」的最小可核验指纹 —— 比断言代码长什么样结实，
-    因为它是**数值**，实现被换掉就立刻现形。
+    （2026-10-13 重定基线：out/202607 序列视野延至 202609、多一个回测点，
+    WH-DOC-12 记录的 202607 视野值 3.326% 随之更新；「口径真对齐 V1」的硬证据
+    仍是 test_与交接包在同一输入上逐模型一致——那条与视野无关。）
     """
     series = F.load_series(out_dir)
     ev = F.evaluate_discipline(series["Physics"], "Physics", "被引维度",
                                F.DIMS["被引维度"], "V1")
     got = float(ev.set_index("model").loc["经验贝叶斯状态空间", "rolling_mape"])
-    assert abs(got - 3.326) < 0.01, f"V1 口径指纹漂了：{got:.3f}（应为 3.326）"
+    assert abs(got - 3.263) < 0.01, f"V1 口径指纹漂了：{got:.3f}（应为 3.263）"
 
 
 @pytest.mark.slow
@@ -253,7 +256,11 @@ def test_V1口径选模对报告命中15格(out_dir):
     若这条挂了，先怀疑输入窗口/口径开关被改动，而不是"报告变了"。
     """
     series = F.load_series(out_dir)
-    ref = F.current_period(series["Chemistry"], F.DIMS["被引维度"])
+    # 对样口径是 202607 报告：序列切片到该期为止——2026-10-13 重定基线后 out/202607
+    # 带全母本视野（止于 202609），不切窗就变成「拿 09 的实测评 07 的选模」。
+    series = {d: {k: v.loc[v.index <= "202607"] for k, v in s.items()}
+              for d, s in series.items()}
+    ref = "202607"
     discs = F.potential_disciplines(series, ref)
     rows = [F.evaluate_discipline(series[d], d, dim_name, dim, "V1")
             for d in discs for dim_name, dim in F.DIMS.items()]

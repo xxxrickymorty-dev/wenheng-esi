@@ -233,14 +233,16 @@ def test_盘点未发布_停下给两条路(tmp_path):
     assert got["released"] is False and got["n_missing"] == 2 and got["fallback"] == "202607"
 
 
-def test_盘点已发布缺件_停下并给补件入口(tmp_path):
+def test_盘点已发布缺件_直接放行给去核对(tmp_path):
+    """2026-10-13 rick 定：已并入期次直接放行——原始件缺不缺不卡「补件」
+    （部署演示环境没有 数据与复现/，评委流程不能被堵）。缺件照旧在盘点块里如实显示。"""
     inv = fake_inventory("202609", released=True, missing=("papers",), fallback="202607")
     ans = run_dialog("帮我做9月份的报告", root=tmp_path, inventory=inv)
-    assert "还差 1 件" in ans.text
-    assert ans.data["verdict"] == "missing"
+    assert ans.data["verdict"] == "ready"
+    assert "可以出稿" in ans.text and "✗ 顶尖论文清单 · 缺" in ans.text
     assert {"kind": "goto", "view": "acquire", "period": "202609",
-            "text": "去取数台 ▸"} in ans.data["actions"]
-    assert {"kind": "send", "text": "改做 202607 的"} in ans.data["actions"]
+            "text": "去核对 ▸"} in ans.data["actions"]
+    assert {"kind": "send", "text": "核完了，继续"} in ans.data["actions"]
 
 
 def test_盘点四件齐_给去核对(tmp_path):
@@ -298,10 +300,12 @@ def test_未核对就出稿_拦住并指回核对(tmp_path):
     assert {"kind": "send", "text": "改做 202607 的"} in ans.data["actions"]
 
 
-def test_出稿缺件_也拦住(tmp_path):
+def test_出稿缺件_已并入直接放行(tmp_path):
+    """已并入期次缺原始件也放行（rick 2026-10-13 定）；「先别出稿」只留给未发布期次。"""
     inv = fake_inventory("202609", released=True, missing=("papers",), fallback="202607")
     ans = run_dialog("出稿", root=tmp_path, period="202609", inventory=inv)
-    assert "先别出稿" in ans.text and ans.data["run"] is None
+    assert "核对通过" in ans.text and "开始出稿" in ans.text
+    assert ans.data["run"] == {"period": "202609", "auto": True, "intent": "single_trend"}
 
 
 def test_出稿_产物已在_先问一次不自动跑(tmp_path):

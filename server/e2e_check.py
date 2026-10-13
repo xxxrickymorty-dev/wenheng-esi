@@ -597,14 +597,18 @@ try:
     _dj2 = json.loads(dlg2)
 except json.JSONDecodeError:
     _dj2 = {}
-if (ROOT.parent.parent / "数据与复现").is_dir():
-    check("对话前门 · 产物已在→先问一次（不自动开跑）",
-          (_dj2.get("run") or {}).get("auto") is False, f"run={_dj2.get('run')}")
-else:
-    # 部署环境没有 数据与复现/：盘点四件必报缺件（ESI/InCites 原始件不在服务器），
-    # 前门如实停在「补件」属预期行为——本项仅在本机全件环境验。
-    # （服务器上要演示「产物已在先问一次」，得先定盘点对「已并入期次」的口径——见日报。）
-    out("  SKIP 部署环境无 数据与复现 → 前门停在补件属预期；本项仅本机全件环境验")
+check("对话前门 · 产物已在→先问一次（不自动开跑）",
+      (_dj2.get("run") or {}).get("auto") is False, f"run={_dj2.get('run')}")
+# 2026-10-13 rick 定：已并入期次直接放行——原始件缺不缺不卡「补件」
+# （部署环境没有 数据与复现/、盘点必报缺件，评委流程不能被堵）。
+st3, dlg3, _ = call_json("POST", "/api/dialog/turn",
+                         {"text": "帮我做 202607 的报告", "slots": {"period": "202607"}})
+try:
+    _dj3 = json.loads(dlg3)
+except json.JSONDecodeError:
+    _dj3 = {}
+check("对话前门 · 已并入缺件直接放行（verdict=ready）",
+      st3 == 200 and _dj3.get("verdict") == "ready", f"verdict={_dj3.get('verdict')}")
 st2, sj, _ = call("GET", "/api/status")
 try:
     _active = (json.loads(sj) or {}).get("active")

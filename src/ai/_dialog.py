@@ -273,14 +273,16 @@ def _fallback_phrase(fb: str) -> str:
 
 
 def _compose(p: Parse, inv: dict) -> tuple[str, str, list]:
-    """理解 + 盘点 + 裁决 → (应答, verdict, 动作)。"""
-    if inv["released"]:
-        verdict = "missing" if inv["n_missing"] else "ready"
-    else:
-        verdict = "unpublished"
+    """理解 + 盘点 + 裁决 → (应答, verdict, 动作)。
+
+    2026-10-13 rick 定：**已并入期次直接放行**——原始件（ESI/InCites）缺不缺都不再卡
+    「补件」（部署演示环境没有 数据与复现/，评委流程不能被堵住）；缺件照旧在盘点块里
+    如实显示，出稿时省域/矩阵步降级跳过、沿用旧件。「缺件停」只对**未发布**期次保留。
+    """
     fb = inv["fallback"]
 
-    if verdict == "unpublished":
+    if not inv["released"]:
+        verdict = "unpublished"
         head = f"做不了——这一期数据还没到（{inv['n_missing']} 件没到）。"
         if fb:
             tail = (f"两条路：\n① 先等发布：ESI 发布后这两件才拿得到（双月节奏）。\n"
@@ -290,23 +292,20 @@ def _compose(p: Parse, inv: dict) -> tuple[str, str, list]:
         else:
             tail = ("先等发布：ESI 发布后这两件才拿得到（双月节奏）。")
             actions = [{"kind": "dismiss", "text": "先等等"}]
-    elif verdict == "missing":
-        head = f"做不了——还差 {inv['n_missing']} 件。"
-        if fb:
-            tail = (f"两条路：\n① 去取数台补上缺的件（本机可以驱动下载）。\n"
-                    f"② 先做最新完整的一期：{_fallback_phrase(fb)}。")
+    else:
+        verdict = "ready"
+        if inv["n_missing"]:
+            head = (f"已并入台账——可以出稿（原始件缺 {inv['n_missing']} 件："
+                    f"省域/矩阵表沿用旧件，出稿不受阻）。")
+            tail = "去核对 ▸，或直接说「核完了，继续」。"
             actions = [{"kind": "goto", "view": "acquire", "period": p.period,
-                        "text": "去取数台 ▸"},
-                       {"kind": "send", "text": f"改做 {fb} 的"}]
+                        "text": "去核对 ▸"},
+                       {"kind": "send", "text": "核完了，继续"}]
         else:
-            tail = "先去取数台补上缺的件（本机可以驱动下载）。"
+            head = "数据齐，走生成台三步条：①取数 ✓ → ②核对并并入 → ③一键生成。"
+            tail = "去核对：跳到核对表格页逐件核，签过才并入。"
             actions = [{"kind": "goto", "view": "acquire", "period": p.period,
-                        "text": "去取数台 ▸"}]
-    else:                                     # ready
-        head = "数据齐，走生成台三步条：①取数 ✓ → ②核对并并入 → ③一键生成。"
-        tail = "去核对：跳到核对表格页逐件核，签过才并入。"
-        actions = [{"kind": "goto", "view": "acquire", "period": p.period,
-                    "text": "去核对 ▸"}]
+                        "text": "去核对 ▸"}]
 
     text = "\n".join([reply_for(p), "", _pieces_block(inv), "", head + (f"\n{tail}" if tail else "")])
     return text, verdict, actions
@@ -323,6 +322,9 @@ def _proceed(root, slot_period: str, p: Parse):
 
     返回 (应答, verdict, actions, run, inventory)。run＝「可以让前端开跑」的意图
     （auto=False 表示先问一次——产物已在，覆盖要人点）。
+
+    2026-10-13 rick 定：**已并入期次直接放行**——原始件缺不缺不再拦（部署演示环境
+    没有 数据与复现/，评委流程不能被堵）；「先别出稿」只留给未发布期次。
     """
     target = slot_period or ""
     if not target:
@@ -332,7 +334,7 @@ def _proceed(root, slot_period: str, p: Parse):
         actions = [{"kind": "goto", "view": "acquire", "period": target, "text": "去核对 ▸"}]
         return ("先停一下——这一期数据状态我一时看不到，先不出稿；"
                 "去核对表格页确认一下。", "", actions, None, None)
-    if inv["released"] and not inv["n_missing"]:
+    if inv["released"]:
         if _products_exist(root, target):
             actions = [{"kind": "run", "period": target, "text": "覆盖重出"},
                        {"kind": "dismiss", "text": "保留，我先看看旧的"}]
@@ -343,17 +345,11 @@ def _proceed(root, slot_period: str, p: Parse):
         return ("核对通过、已并入台账。开始出稿——",
                 "ready", [], {"period": target, "auto": True, "intent": "single_trend"}, inv)
     fb = inv["fallback"]
-    if inv["released"]:
-        tail = (f"还差 {inv['n_missing']} 件——去取数台补上缺的件"
-                + (f"，或先做最新完整一期 {_fallback_phrase(fb)}。" if fb else "。"))
-        first = {"kind": "goto", "view": "acquire", "period": target, "text": "去取数台 ▸"}
-    else:
-        tail = ("两条路：①去核对表格页（逐件核、签过才并入）"
-                + (f"；②先做最新完整一期 {_fallback_phrase(fb)}。" if fb else "。"))
-        first = {"kind": "goto", "view": "acquire", "period": target, "text": "去核对 ▸"}
-    actions = [first] + ([{"kind": "send", "text": f"改做 {fb} 的"}] if fb else [])
-    verdict = "missing" if inv["released"] else "unpublished"
-    return f"先别出稿——这一期还没核对并并入。{tail}", verdict, actions, None, inv
+    tail = ("两条路：①去核对表格页（逐件核、签过才并入）"
+            + (f"；②先做最新完整一期 {_fallback_phrase(fb)}。" if fb else "。"))
+    actions = [{"kind": "goto", "view": "acquire", "period": target, "text": "去核对 ▸"}] \
+        + ([{"kind": "send", "text": f"改做 {fb} 的"}] if fb else [])
+    return f"先别出稿——这一期还没核对并并入。{tail}", "unpublished", actions, None, inv
 
 
 # ---------------------------------------------------------------- 两意图（票 07）

@@ -136,13 +136,14 @@ def test_改做202607的_槽位改期次其余不变(tmp_path):
     assert r["verdict"] == "ready"
 
 
-def test_九月已发布缺件_给补件入口(tmp_path):
+def test_九月已发布缺件_直接放行(tmp_path):
+    """2026-10-13 rick 定：已并入期次直接放行——缺原始件不卡「补件」（演示不能被堵）。"""
     inv = fake_inventory("202609", released=True, missing=("papers",), fallback="202607")
     with ai.using(data_root=tmp_path, inventory=lambda p: inv):
         r = call(config.ADMIN_USER, {"text": "帮我做9月份的报告"})
-    assert r["verdict"] == "missing"
+    assert r["verdict"] == "ready"
     assert {"kind": "goto", "view": "acquire", "period": "202609",
-            "text": "去取数台 ▸"} in r["actions"]
+            "text": "去核对 ▸"} in r["actions"]
 
 
 def test_响应不露文件路径(tmp_path):
