@@ -314,14 +314,14 @@ def main():
                             "state": "done", "verified": 1, "downloaded": 1,
                             "files": [{"name": "a.xlsx", "label": "临时", "state": "ok"}]}],
                 "totals": {"groups": 1, "expected": 1, "verified": 1, "downloaded": 1, "failed": 0},
-                "copy": {"state": "review", "path": "input/209911/监测表.xlsx"},
+                "copy": {"state": "review", "path": "out/_acquisition/209911/监测表.xlsx"},
                 "review": {"sheets": [{"name": "临时表", "added": "临时列", "content": "临时", "source": "临时"}]},
             }, ensure_ascii=False), encoding="utf-8")
             page.goto(BASE + "/app/?view=acquire&period=209911", wait_until="domcontentloaded")
             page.wait_for_selector(".aq-head", timeout=15000)
             txt = page.inner_text("main")
             check("取数台：未出稿期次也能看（待核对态）",
-                  "待核对" in txt and "本期监测表已自动建好" in txt, "")
+                  "待核对" in txt and "当期核对副本已自动建好" in txt, "")
             page.goto(BASE + "/app/?period=209911", wait_until="domcontentloaded")
             page.wait_for_timeout(900)
             txt = page.inner_text("main")

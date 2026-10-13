@@ -4,7 +4,7 @@
 对外只暴露编排入口与状态机定义：
 
     from agent import flow, states
-    result = flow.run("input/202609/监测表.xlsx")
+    result = flow.run("input/云大全学科排名、阈值动态检测表.xlsx", period="202609")
 
 本包把 `src/` 加入 sys.path，使编排器可以直接 import 引擎模块
 （parse_ledger / compute / forecast / charts / fill_docx）。

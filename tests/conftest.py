@@ -50,8 +50,9 @@ _ensure_path()
 
 
 def _ledgers():
-    """仓库内所有台账，按期次升序。"""
-    return sorted((REPO / "input").glob("*/监测表.xlsx"))
+    """仓库里的动态监测表（母本；2026-10-13 起 input/ 只放它）——数据驱动用例的探针。"""
+    p = REPO / "input" / "云大全学科排名、阈值动态检测表.xlsx"
+    return [p] if p.is_file() else []
 
 
 def _out_dirs():

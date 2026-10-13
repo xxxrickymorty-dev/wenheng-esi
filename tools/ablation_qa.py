@@ -92,7 +92,7 @@ def load_env():
     env_file = REPO / "server" / ".env"
     if not env_file.exists():
         return
-    for line in env_file.read_text(encoding="utf-8").splitlines():
+    for line in env_file.read_text(encoding="utf-8-sig").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue

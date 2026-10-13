@@ -3,12 +3,14 @@
 
 三步（UX.md §七：取数 → 核对并并入 → 一键生成）**全部从既有产物判**，不新算：
 
-- ① 取数：四件**按文件**判（监测表 / ESI 原始包 / 顶尖论文清单 / InCites 快照）——
+- ① 取数：四件**按文件**判（动态监测表 / ESI 原始包 / 顶尖论文清单 / InCites 快照）——
   取数先于人工作出，「在不在台账」不影响这一步（复用 `inventory` 的件判据）；
 - ② 核对并并入：该期在主台账**有效期次**里（并入的凭证）；
 - ③ 一键生成：`out/<期次>/red_slots.json` 在（出过稿的凭证）。
 
-本期＝**最新一期**（台账有效期次 ∪ input 目录 ∪ out 目录里最新的六位数字目录）。
+本期＝**最新一期**（台账有效期次 ∪ 取数在途 ∪ out 目录里最新的六位数字目录）。
+取数在途＝`out/_acquisition/<期次>/`（核对副本已建）或 `out/_acquisition/<期次>.json`
+（状态已写）——2026-10-13 起 input/ 只放母本，旧的「input 六位目录」信号退役。
 它三步全成**且已签发** → 顺延到下一期（双月序列，+2 个月）——把「等发布」摆上来；
 三步全成但没签发 → 停在本期、卡在「签单」（下一步是复核并签，不是开新期）。
 
@@ -56,6 +58,19 @@ def _dirs(parent: pathlib.Path) -> set:
     return {p.name for p in parent.iterdir() if p.is_dir() and _PERIOD_DIR.fullmatch(p.name)}
 
 
+def _acq_periods(root: pathlib.Path) -> set:
+    """取数在途的期次：`out/_acquisition` 下的六位目录（核对副本）或状态文件。"""
+    d = root / "out" / "_acquisition"
+    names = set()
+    if d.is_dir():
+        for p in d.iterdir():
+            if p.is_dir() and _PERIOD_DIR.fullmatch(p.name):
+                names.add(p.name)
+            elif p.is_file() and p.suffix == ".json" and _PERIOD_DIR.fullmatch(p.stem):
+                names.add(p.stem)
+    return names
+
+
 def _acquire_state(period: str, root: pathlib.Path) -> tuple:
     """四件**按文件**判 → (齐没齐, 缺几件)。复用 inventory（released 显式给，不读台账）。"""
     import inventory                                            # noqa: PLC0415
@@ -76,9 +91,13 @@ def scan(*, repo_root=None, filled=None, status=None) -> dict | None:
     root = pathlib.Path(repo_root) if repo_root else REPO_ROOT
     if filled is None:
         import inventory                                        # noqa: PLC0415
+        import ledger as ledger_mod                             # noqa: PLC0415
 
+        runtime = ledger_mod.runtime_path(root)
+        ledger = runtime if runtime.exists() else \
+            root.parent / "数据与复现" / inventory.LEDGER_NAME
         try:
-            filled = inventory._filled_for(root.parent / "数据与复现" / inventory.LEDGER_NAME)
+            filled = inventory._filled_for(ledger)
         except Exception:                                       # noqa: BLE001
             return None
     filled_set = set(filled)
@@ -86,7 +105,7 @@ def scan(*, repo_root=None, filled=None, status=None) -> dict | None:
     def is_signed(period: str) -> bool:
         return bool(status and status(period) == "signed")
 
-    known = filled_set | _dirs(root / "input") | _dirs(root / "out")
+    known = filled_set | _dirs(root / "out") | _acq_periods(root)
     if not known:
         return None
     period = max(known)

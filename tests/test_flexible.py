@@ -466,12 +466,12 @@ class Test引擎真实产物:
         assert hits, "至少一个学科应有千分位阈值序列"
 
     def test_两适配器同值(self):
-        """WorkbookView（监测表直读）与 DataSource（parquet）对引擎同协议同值。"""
+        """WorkbookView（当期核对副本直读）与 DataSource（parquet）对引擎同协议同值。"""
         from conftest import REPO
-        xlsx = REPO / "input" / "202609" / "监测表.xlsx"
+        xlsx = REPO / "out" / "_acquisition" / "202609" / "监测表.xlsx"
         pq = REPO / "out" / "202609" / "ledger_long.parquet"
         if not (xlsx.is_file() and pq.is_file()):
-            skip_unless("input/202609/监测表.xlsx 或 out/202609 产物缺失",
+            skip_unless("out/_acquisition/202609/监测表.xlsx 或 out/202609 产物缺失",
                         lambda: xlsx.is_file() and pq.is_file())
         from flexible.workbook import WorkbookView
         wb, ds = WorkbookView(xlsx), DataSource(pq.parent)

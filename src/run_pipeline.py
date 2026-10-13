@@ -1,12 +1,17 @@
 ﻿# -*- coding: utf-8 -*-
-"""每期一条命令：台账 xlsx → 规整数据 + 断言 + 大表 + 概述 + 预测 + 图表 + 报告初稿。
+"""每期一条命令：动态监测表（母本）xlsx → 规整数据 + 断言 + 大表 + 概述 + 预测 + 图表 + 报告初稿。
 
-用法（新一期数据贴进台账后）：
-    .venv\\Scripts\\python.exe src\\run_pipeline.py input\\202609\\监测表.xlsx
+用法（母本在 `input/`，2026-10-13 起 input/ 只放母本）：
+    .venv\\Scripts\\python.exe src\\run_pipeline.py                     # 跑台账最新一期
+    .venv\\Scripts\\python.exe src\\run_pipeline.py --period 202607     # 历史期补跑（母本+目标期）
+    .venv\\Scripts\\python.exe src\\run_pipeline.py <路径> --period <期次>
+
+`--period` 给定时期次是「被补跑期」而不是台账最新：大表/概述/图表/预测/省域/矩阵/报告
+全部按它切窗（"07 的报告不读 09 的数据"在消费层强制；口径与 `src/rerun_history.py` 一致）。
 
 流程：
   1. parse_ledger  解析 22 sheet → out/<当期>/（含 meta.json 断言清单）
-  2. compute       自动定位当期/上期 → 大表 22×11 + 概述全部数字事实
+  2. compute       定位当期/上期（--period 时按被补跑期）→ 大表 22×11 + 概述全部数字事实
   3. forecast      预测回测（InCites+差值校准，验收 MAPE<5%）
   4. charts        98 张期次图（16 学科 × 6 + 2 概览）
   5. fill_docx     母版原地替换 → 报告初稿 + 红色件清单
@@ -20,8 +25,11 @@ import time
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 import forecast_choice  # noqa: E402
+import ledger  # noqa: E402
 import parse_ledger  # noqa: E402
 import steps  # noqa: E402
+
+REPO = pathlib.Path(__file__).resolve().parents[1]
 
 
 def _emit(step, name, status, detail=""):
@@ -123,7 +131,7 @@ def _ledger_guard(before, after):
     return None
 
 
-def main(ledger_path, out_root="out", run_backtest=False):
+def main(ledger_path, out_root="out", run_backtest=False, period=None):
     t0 = _T0
     p = pathlib.Path(ledger_path)
     led_sha0 = parse_ledger.file_sha256(p)
@@ -137,6 +145,10 @@ def main(ledger_path, out_root="out", run_backtest=False):
     # （实现与 agent/flow.py 共用 parse_ledger.quarantine_final_products，别各写一套。）
     probe = steps.parse(steps.StepCtx(ledger=str(p), probe=True))
     P, Q = probe.data["period"], probe.data["prev"]
+    if period:
+        # 历史期补跑：期次显式给定（母本里含该期）；上期由 compute 按 filled 取
+        # （prev_before，台账允许缺口），随后回填 meta 与 run_log——与 rerun_history 同口径。
+        P, Q = str(period), ""
     out_dir = pathlib.Path(out_root) / P
     _run_dir = (pathlib.Path(os.environ["WENHENG_PROGRESS_FILE"]).parent
                 if os.environ.get("WENHENG_PROGRESS_FILE") else None)
@@ -150,7 +162,7 @@ def main(ledger_path, out_root="out", run_backtest=False):
     ok = bool(parse_res.data["assertions_ok"])
     missing = parse_res.data.get("missing") or []
     n_fail = len(parse_res.data.get("fails") or [])
-    print(f"      当期={P} 上期={Q} 断言={'全绿' if ok else f'{n_fail} 项 FAIL'} → {out_dir}")
+    print(f"      当期={P} 上期={Q or '（补跑，随后定）'} 断言={'全绿' if ok else f'{n_fail} 项 FAIL'} → {out_dir}")
     _emit("parse", "解析台账", "done" if ok else "warn",
           f"当期 {P} · 上期 {Q} · 机器断言 {'全绿' if ok else f'{n_fail} 项未过（已附诊断报告）'}")
 
@@ -168,11 +180,22 @@ def main(ledger_path, out_root="out", run_backtest=False):
     _emit("compute", "计算大表与概述", "start")
     print("[2/5] 计算大表 + 概述事实")
     try:
-        steps.compute(steps.StepCtx(out_dir=str(out_dir), period=P))
+        cres = steps.compute(steps.StepCtx(out_dir=str(out_dir), period=P))
     except steps.StepError as e:
         print(f"      失败（{e.code}）：{e.message}")
         _emit("compute", "计算大表与概述", "failed", f"{e.code}：{e.message}")
         return 1
+    if period:
+        # 补跑：上期按 filled 取（prev_before），并把 meta 的「当期/上期」按被补跑期写回——
+        # facts 接口与报告屏的「本期」标注都读它（与 rerun_history 同一处理）。
+        Q = str(cres.data.get("prev") or "")
+        meta_path = out_dir / "meta.json"
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        meta["period_current"] = P
+        meta["period_prev"] = Q
+        meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=1, default=str),
+                             encoding="utf-8")
+        print(f"      补跑：当期={P} 上期={Q}（meta 已按被补跑期写回）")
     print(f"      大表 22×11 → {out_dir}/table2.csv；概述事实 → overview_facts.json")
     _emit("compute", "计算大表与概述", "done", "大表 22 学科 × 11 列 · 概述 11 项数字事实")
 
@@ -301,6 +324,12 @@ def main(ledger_path, out_root="out", run_backtest=False):
 
 
 if __name__ == "__main__":
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    src = args[0] if args else r"input\202607\监测表.xlsx"
-    sys.exit(main(src, run_backtest="--backtest" in sys.argv))
+    argv = sys.argv[1:]
+    period = None
+    if "--period" in argv:
+        i = argv.index("--period")
+        period = argv[i + 1] if i + 1 < len(argv) else None
+        del argv[i:i + 2]
+    positional = [a for a in argv if not a.startswith("--")]
+    src = positional[0] if positional else str(ledger.runtime_path(REPO))
+    sys.exit(main(src, run_backtest="--backtest" in argv, period=period))

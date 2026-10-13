@@ -12,7 +12,8 @@
 
 进包 / 不进包（口径写死在这里，部署清单 §0 引用本文件）：
     进：pyproject.toml、CONTEXT.md、GLOSSARY.md、AGENTS.md、docs/、src/、server/、tools/、tests/、
-        master/、web/dist/；演示包另加 input/、out/202607/（剔除 _superseded）、out/_jobs/
+        master/、web/dist/；演示包另加 input/（只放母本）、out/202607/（剔除 _superseded）、
+        out/_acquisition/（取数状态 + 当期核对副本）、out/_jobs/
     不进：server/.env（密钥）、web/node_modules/、__pycache__/、.pytest_cache/、
         .ruff_cache/、tmp/、.git/、_superseded/、out/ 其它期次
 
@@ -20,7 +21,7 @@
     · `web/dist/index.html` + `web/dist/assets/`（/app 首屏，ADR-0001 要求随包带）
     · `master/` 母版 docx（fill_docx 依赖）
     · 演示包另查 `out/202607/` 首屏四件（red_slots / overview_facts / 报告初稿）与
-      `input/202607/监测表.xlsx`
+      `input/云大全学科排名、阈值动态检测表.xlsx`（母本；并与馆员原件核对 sha）
 """
 from __future__ import annotations
 
@@ -33,6 +34,10 @@ import tarfile
 import time
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent      # wenheng/
+sys.path.insert(0, str(ROOT / "src"))
+
+import ledger as ledger_mod  # noqa: E402
+
 DATA_PERIOD = "202607"                                     # 演示数据期次（首屏依赖）
 
 INCLUDE_DIRS = ("docs", "src", "server", "tools", "tests", "master")
@@ -73,6 +78,7 @@ def collect(root: pathlib.Path, include_data: bool = True) -> list[pathlib.Path]
     if include_data:
         files += _tree_files(root / "input", root)
         files += _tree_files(root / "out" / DATA_PERIOD, root)
+        files += _tree_files(root / "out" / "_acquisition", root)
         files += _tree_files(root / "out" / "_jobs", root)
     return sorted(set(files), key=lambda p: str(p.relative_to(root)))
 
@@ -90,11 +96,18 @@ def preflight(root: pathlib.Path, include_data: bool = True) -> list[str]:
     if include_data:
         for rel in (f"out/{DATA_PERIOD}/red_slots.json",
                     f"out/{DATA_PERIOD}/overview_facts.json",
-                    f"input/{DATA_PERIOD}/监测表.xlsx"):
+                    f"input/{ledger_mod.LEDGER_NAME}"):
             if not (root / rel).is_file():
                 problems.append(f"{rel} 缺失 —— 演示包首屏依赖它（或改走 --no-data）")
         if not list((root / "out" / DATA_PERIOD).glob("报告初稿*.docx")):
             problems.append(f"out/{DATA_PERIOD}/报告初稿*.docx 缺失 —— 对勘本要有成品可读")
+        # 运行时母本必须与馆员原件一致（否则包里的输入是旧的；并入后记得 sync）。
+        rt = ledger_mod.runtime_path(root)
+        src = ledger_mod.source_path(root)
+        if rt.is_file() and src.is_file() and \
+                ledger_mod.sha256(rt) != ledger_mod.sha256(src):
+            problems.append("input/ 母本与 数据与复现 馆员原件不一致 —— "
+                            "先跑 uv run python tools\\sync_input_ledger.py（或 acquire merge 自动同步）")
     return problems
 
 

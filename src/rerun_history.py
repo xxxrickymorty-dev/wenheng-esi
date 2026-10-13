@@ -4,6 +4,10 @@
 用法：
     .venv\\Scripts\\python.exe src\\rerun_history.py 202605
     .venv\\Scripts\\python.exe src\\rerun_history.py 202605 "..\\数据与复现\\云大全学科排名、阈值动态检测表.xlsx"
+    .venv\\Scripts\\python.exe src\\rerun_history.py 202605 --out-root tmp\\_rerun_202605
+
+⚠ 默认写 `out/`（正式补跑用）；**验证/演练务必 `--out-root` 到临时目录**——
+写进 out/<期次>/ 会撤换该期成品（2026-10-13 事故教训）。
 
 产出（out/<期次>/）：
     table2.csv / overview_facts.json / texts_preview.json
@@ -109,6 +113,13 @@ def main(period, ledger_path=DEFAULT_LEDGER, out_root="out"):
 
 
 if __name__ == "__main__":
-    p = sys.argv[1] if len(sys.argv) > 1 else "202605"
-    led = sys.argv[2] if len(sys.argv) > 2 else DEFAULT_LEDGER
-    main(p, led)
+    argv = sys.argv[1:]
+    out_root = "out"
+    if "--out-root" in argv:
+        i = argv.index("--out-root")
+        out_root = argv[i + 1] if i + 1 < len(argv) else out_root
+        del argv[i:i + 2]
+    positional = [a for a in argv if not a.startswith("--")]
+    p = positional[0] if positional else "202605"
+    led = positional[1] if len(positional) > 1 else DEFAULT_LEDGER
+    main(p, led, out_root=out_root)

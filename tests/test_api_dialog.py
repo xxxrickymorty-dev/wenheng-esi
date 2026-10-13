@@ -20,7 +20,7 @@ for p in (str(REPO), str(REPO / "src")):
 import ai                                                       # noqa: E402
 from server import app as app_module, config                    # noqa: E402
 
-_LABELS = (("monitor", "监测表"), ("esi", "ESI 原始包"),
+_LABELS = (("monitor", "动态监测表"), ("esi", "ESI 原始包"),
            ("papers", "顶尖论文清单"), ("incites", "InCites 快照"))
 
 

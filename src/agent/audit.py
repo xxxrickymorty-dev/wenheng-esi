@@ -112,11 +112,15 @@ def _find_docx(out: pathlib.Path):
 
 
 # ------------------------------------------------------------------ 真值
-def load_truth(ledger_xlsx):
+def load_truth(ledger_xlsx, period=None):
     """从**台账原件**重新推导真值表（table2）。
 
     这是第 1/2 项唯一的真值来源。走的是「parse → 落临时目录 → compute」整条链，
-    与生产的差别只在落盘位置，所以装配 / 写盘 / 读回环节都被覆盖。
+    与生产的差别只在落盘位置，所以装帧 / 写盘 / 读回环节都被覆盖。
+
+    `period`：被审期次（审核哪一期就按哪期推）。2026-10-13 起台账是母本（含全部期次），
+    审核历史期产物必须显式给被审期——否则会拿最新一期当真值
+    （"07 的报告不能拿 09 的数据当真相"）。缺省＝台账最新两期（旧行为）。
     """
     import compute
     import parse_ledger
@@ -126,17 +130,28 @@ def load_truth(ledger_xlsx):
     with tempfile.TemporaryDirectory(prefix="wh_truth_") as td:
         parse_ledger.write_outputs(led, src, pathlib.Path(td))
         wide, new_intl, new_cn, thr = compute.load_wide(td)
-        period, prev = compute.detect_periods(wide)
-        t2 = compute.build_table2(wide, new_intl, new_cn, thr, period, prev)
-    return {"table2": t2, "period": period, "prev": prev}
+        if period:
+            filled = [c for c in wide["total_cites"].columns
+                      if wide["total_cites"][c].notna().any()]
+            if str(period) not in filled:
+                raise ValueError(f"台账无 {period} 期数据")
+            P = str(period)
+            Q = [c for c in filled if c < P][-1]
+        else:
+            P, Q = compute.detect_periods(wide)
+        t2 = compute.build_table2(wide, new_intl, new_cn, thr, P, Q)
+    return {"table2": t2, "period": P, "prev": Q}
 
 
 def _truth_table2(out_dir, ledger):
     """优先用台账原件重推；没有台账就返回 None（调用方须标 skipped，不得降级自证）。"""
     if not ledger:
         return None, "未提供台账原件路径"
+    import period as period_mod                                  # noqa: PLC0415
+
+    target = period_mod.from_dir(out_dir)          # 被审期＝产物目录名（out/202607 → 202607）
     try:
-        return load_truth(ledger), None
+        return load_truth(ledger, period=target), None
     except Exception as e:                                    # noqa: BLE001
         return None, f"台账重推失败：{type(e).__name__}: {e}"
 

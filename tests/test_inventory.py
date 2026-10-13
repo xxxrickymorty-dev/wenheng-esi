@@ -28,11 +28,14 @@ def roots(tmp_path):
 
 def seed(repo, data, period, *, monitor=True, papers=True, esi=True, esi_zip=False, incites=True):
     if monitor:
-        (repo / "input" / period).mkdir(parents=True, exist_ok=True)
-        (repo / "input" / period / "监测表.xlsx").write_bytes(b"x")
+        # 当期核对副本：out/_acquisition/<期次>/监测表.xlsx（2026-10-13 起 input/ 只放母本）
+        d = repo / "out" / "_acquisition" / period
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "监测表.xlsx").write_bytes(b"x")
     if papers:
-        (repo / "input" / period).mkdir(parents=True, exist_ok=True)
-        (repo / "input" / period / "顶尖论文清单.csv").write_text("a,b\n", encoding="utf-8")
+        d = repo / "out" / "_acquisition" / period
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "顶尖论文清单.csv").write_text("a,b\n", encoding="utf-8")
     if esi:
         (data / "ESI数据" / period).mkdir(parents=True, exist_ok=True)
     if esi_zip:
@@ -53,7 +56,7 @@ def test_已发布四件齐(roots):
     seed(repo, data, "202607")
     inv = inventory.scan("202607", repo_root=repo, filled=["202605", "202607"])
     assert inv is not None and inv.released and inv.ok and inv.n_missing == 0
-    assert [p.label for p in inv.pieces] == ["监测表", "ESI 原始包", "顶尖论文清单", "InCites 快照"]
+    assert [p.label for p in inv.pieces] == ["动态监测表", "ESI 原始包", "顶尖论文清单", "InCites 快照"]
     assert inv.fallback == "", "齐了不需要替代期次"
 
 
@@ -87,10 +90,10 @@ def test_清单认取数落地的_数据与复现期次论文清单xlsx(roots):
     assert inv.ok, "四件齐"
 
 
-def test_清单认input下的xlsx(roots):
+def test_清单认核对区下的xlsx(roots):
     repo, data = roots
     seed(repo, data, "202607", papers=False)
-    (repo / "input" / "202607" / "202607论文清单.xlsx").write_bytes(b"x")
+    (repo / "out" / "_acquisition" / "202607" / "202607论文清单.xlsx").write_bytes(b"x")
     inv = inventory.scan("202607", repo_root=repo, filled=["202607"])
     assert states(inv)["papers"][0] == "ok"
 

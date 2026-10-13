@@ -46,7 +46,11 @@ def _load():
 
 
 def _resolve_processed_input(raw_input: str) -> tuple[pathlib.Path, str] | None:
-    """解析运行记录里的输入路径，并仅接受项目 input/ 内可核验的文件。"""
+    """解析运行记录里的输入路径，并仅接受项目内可核验的文件。
+
+    2026-10-13 起允许两处（都是「动态监测表」的运行时形态）：
+    `input/`（母本，开跑默认输入）与 `out/_acquisition/`（当期核对副本，上传开跑）。
+    """
     value = raw_input.strip()
     if not value:
         return None
@@ -79,22 +83,32 @@ def _resolve_processed_input(raw_input: str) -> tuple[pathlib.Path, str] | None:
 
     try:
         root = pathlib.Path(config.ROOT).resolve(strict=True)
-        input_root = (root / "input").resolve(strict=True)
         resolved = candidate.resolve(strict=True)
-        input_root.relative_to(root)
-        resolved.relative_to(input_root)
-    except (OSError, RuntimeError, ValueError):
+    except (OSError, RuntimeError):
         return None
 
     if not resolved.is_file():
+        return None
+    allowed = False
+    for sub in ("input", "out/_acquisition"):
+        try:
+            resolved.relative_to((root / sub).resolve(strict=True))
+            allowed = True
+            break
+        except (OSError, RuntimeError, ValueError):
+            continue
+    if not allowed:
         return None
     return resolved, basename
 
 
 def _data_provenance(period_dir: pathlib.Path) -> dict:
     """只回报能从本机文件和完整运行记录核实的来源时间。"""
-    workbook = (pathlib.Path(config.ROOT).parent / "数据与复现"
-                / "云大全学科排名、阈值动态检测表.xlsx")
+    # 运行时母本（input/，部署机也有）；开发机没有时回落馆员原件。
+    import ledger as ledger_mod                                    # noqa: PLC0415
+    workbook = ledger_mod.runtime_path(config.ROOT)
+    if not workbook.exists():
+        workbook = ledger_mod.source_path(config.ROOT)
     run_log = period_dir / "run_log.json"
 
     def modified_at(path: pathlib.Path) -> tuple[float | None, str | None]:

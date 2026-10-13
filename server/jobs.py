@@ -193,7 +193,9 @@ async def _run(job):
     env["WENHENG_FORECAST_CHOICE_SNAPSHOT"] = str(d / "forecast_choice.json")
     if config.REFERENCE_DOCX:
         env["WENHENG_REFERENCE_DOCX"] = config.REFERENCE_DOCX
-    cmd = [config.PYTHON, str(config.PIPELINE), job["input"]]
+    # 期次显式传给流水线（2026-10-13 起输入是母本，台账最新期 ≠ 被跑期；
+    # `--period` 让大表/图表/预测/报告全部按被跑期切窗——历史期补跑同一口径）。
+    cmd = [config.PYTHON, str(config.PIPELINE), job["input"], "--period", job["period"]]
     if job.get("backtest"):
         cmd.append("--backtest")
 

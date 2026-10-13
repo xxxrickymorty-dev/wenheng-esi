@@ -204,9 +204,17 @@ def trace(out_dir, ledger_path, period=None, prev=None):
     period = period or pathlib.Path(out_dir).name
     try:
         led = parse_ledger.load_ledger(pathlib.Path(ledger_path))
-        # 上期不由调用方猜 —— 用解析器自己的口径（脏期次归一、占位列剔除都在它里面）
+        # 上期不由调用方猜——按**被溯源期**在台账有效期次里取「严格早于的最近一期」。
+        # 2026-10-13：台账是母本（含全部期次），不能拿最新两期顶历史期
+        # （07 的溯源要 202605 做上期，不是母本最新对的 202607）。
         if not prev:
-            _, prev = parse_ledger._latest_periods(led)
+            import period as period_mod                        # noqa: PLC0415
+            tc = led["wide"]["total_cites"]
+            filled = [str(c) for c in tc.columns if tc[c].notna().any()]
+            try:
+                prev = period_mod.prev_before(filled, period)
+            except period_mod.PeriodUndetectable:
+                _, prev = parse_ledger._latest_periods(led)
         big = _bigtable_trace(rows, led, period, prev)
     except Exception as e:                                # noqa: BLE001
         big = [{"loc": "—", "col": "台账读取失败", "report": "—",

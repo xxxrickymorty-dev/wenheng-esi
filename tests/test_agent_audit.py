@@ -28,7 +28,7 @@ from agent import audit
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / "out" / "202607"
-LEDGER = ROOT / "input" / "202607" / "监测表.xlsx"
+LEDGER = ROOT / "input" / "云大全学科排名、阈值动态检测表.xlsx"
 
 _PERIOD = "202607"
 

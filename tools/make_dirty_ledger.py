@@ -27,7 +27,7 @@ import shutil
 import sys
 import zipfile
 
-DEFAULT_SRC = pathlib.Path("input/202607/监测表.xlsx")
+DEFAULT_SRC = pathlib.Path("out/_acquisition/202607/监测表.xlsx")   # 202607 当期核对副本
 DEFAULT_DST = pathlib.Path("tmp/脏台账_演示.xlsx")
 DEFAULT_SHEET = "总被引"
 DEFAULT_CELL = "A2"          # 202607 台账里这里原本是 Chemistry

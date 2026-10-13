@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-"""创建任务时，运行中的任务必须先于任何输入写入被拒绝。"""
+"""并发保护：任务运行时，上传的数据表与任何写入都被拒绝。"""
 import asyncio
 
 from server import config
 from server import app as app_module
+from src import acquisition_state as acq_state
 
 
 class _Req:
@@ -28,9 +29,14 @@ def _busy(period="202607"):
     return {"id": "running", "period": period}
 
 
-def test_读取后出现运行任务也不覆盖原输入(monkeypatch, tmp_path):
-    monkeypatch.setattr(config, "INPUT_DIR", tmp_path / "input")
-    original = config.INPUT_DIR / "202609" / "监测表.xlsx"
+def _patch_state_dir(monkeypatch, tmp_path):
+    """上传/开跑的当期核对副本落 out/_acquisition/<期次>/监测表.xlsx（STATE_DIR 可注入）。"""
+    monkeypatch.setattr(acq_state, "STATE_DIR", tmp_path / "out" / "_acquisition")
+
+
+def test_读取文件后才忙起来也不动原件(monkeypatch, tmp_path):
+    _patch_state_dir(monkeypatch, tmp_path)
+    original = acq_state.copy_path("202609")
     original.parent.mkdir(parents=True)
     original.write_bytes(b"original")
     state = {"busy": None}
@@ -44,28 +50,28 @@ def test_读取后出现运行任务也不覆盖原输入(monkeypatch, tmp_path)
     assert original.read_bytes() == b"original"
 
 
-def test_忙碌时不上传也不创建任务(monkeypatch, tmp_path):
-    monkeypatch.setattr(config, "INPUT_DIR", tmp_path / "input")
+def test_忙时无上传也不建任何目录(monkeypatch, tmp_path):
+    _patch_state_dir(monkeypatch, tmp_path)
     monkeypatch.setattr(app_module.jobs, "active_job", lambda: _busy())
     monkeypatch.setattr(app_module.jobs, "create_job",
                         lambda *_args: (_ for _ in ()).throw(AssertionError("不应创建任务")))
 
     response = asyncio.run(app_module.api_create_job(_Req(), "202610", None))
     assert response.status_code == 409
-    assert not (config.INPUT_DIR / "202610").exists()
+    assert not (acq_state.STATE_DIR / "202610").exists()
 
 
-def test_忙碌时不创建新输入目录(monkeypatch, tmp_path):
-    monkeypatch.setattr(config, "INPUT_DIR", tmp_path / "input")
+def test_忙时上传不落任何目录(monkeypatch, tmp_path):
+    _patch_state_dir(monkeypatch, tmp_path)
     monkeypatch.setattr(app_module.jobs, "active_job", lambda: _busy())
 
     response = asyncio.run(app_module.api_create_job(_Req(), "202610", _Upload(b"new")))
     assert response.status_code == 409
-    assert not (config.INPUT_DIR / "202610").exists()
+    assert not (acq_state.STATE_DIR / "202610").exists()
 
 
-def test_空闲时仍写入并创建任务(monkeypatch, tmp_path):
-    monkeypatch.setattr(config, "INPUT_DIR", tmp_path / "input")
+def test_空闲时写入并正常创建任务(monkeypatch, tmp_path):
+    _patch_state_dir(monkeypatch, tmp_path)
     monkeypatch.setattr(app_module.jobs, "active_job", lambda: None)
     called = {}
 
@@ -75,7 +81,7 @@ def test_空闲时仍写入并创建任务(monkeypatch, tmp_path):
 
     monkeypatch.setattr(app_module.jobs, "create_job", create)
     response = asyncio.run(app_module.api_create_job(_Req(), "202610", _Upload(b"new"), "1"))
-    target = config.INPUT_DIR / "202610" / "监测表.xlsx"
+    target = acq_state.copy_path("202610")
     assert response == {"job_id": "job-new", "url": "/jobs/job-new"}
     assert target.read_bytes() == b"new"
     assert called == {"period": "202610", "input_path": target,

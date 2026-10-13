@@ -36,7 +36,7 @@ PERIOD = sys.argv[1] if len(sys.argv) > 1 else "202607"
 env = {}
 p = WENHENG / "server" / ".env"
 if p.exists():
-    for line in p.read_text(encoding="utf-8").splitlines():
+    for line in p.read_text(encoding="utf-8-sig").splitlines():
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)

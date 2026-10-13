@@ -64,10 +64,11 @@ _VIEW_CACHE: dict = {}
 
 
 def _view_for(root, period):
-    """数据面视图装配（票 02 已定）：本期 parquet 优先 → 本期监测表回落 → None。
+    """数据面视图装配（票 02 已定；2026-10-13 起回落改母本）：本期 parquet 优先 → 母本回落 → None。
 
     - 本期 `out/<期次>/ledger_long.parquet` 在 → `DataSource`（该快照覆盖本期）；
-    - 否则 `input/<期次>/监测表.xlsx` 在 → `WorkbookView`（现场只读解析，带 mtime 缓存）；
+    - 否则 `input/<母本>` 在 → `WorkbookView`（现场只读解析，带 mtime 缓存；
+      消费侧按 `<= period` 切窗，母本里更晚的期次读不到——"07 不读 09"）；
     - 都没有 → None（调用方静默回落报告产物——不报错、不编数）。
     """
     out_root = pathlib.Path(root)
@@ -78,7 +79,8 @@ def _view_for(root, period):
             return DataSource(d)
         except Exception:                                          # noqa: BLE001
             return None
-    path = out_root.parent / "input" / str(period) / "监测表.xlsx"
+    import ledger as ledger_mod                                    # noqa: PLC0415
+    path = ledger_mod.runtime_path(out_root.parent)
     if not path.exists():
         return None
     try:
@@ -122,8 +124,10 @@ def _ledger_evidence(root, period, question, disc_items, history=()):
         args = {k: v for k, v in spec.items() if k != "op"}
         span = args.pop("span", None)
         if span == "recent":
-            # 「最近六期」= 期次轴的最后六列（与 v1 台账段同口径；空列由引擎按缺数跳过）
-            args["periods"] = [str(p) for p in view.periods[-6:]]
+            # 「最近六期」= **截至当期**的期次轴最后六列（与 v1 台账段同口径；空列由引擎按缺数跳过）。
+            # 2026-10-13：数据面可能是全史母本（含更晚期次），必须按 <= 当期切窗——
+            # "07 的报告不能读 09 的数据"在消费层强制。
+            args["periods"] = [str(p) for p in view.periods if str(p) <= str(period)][-6:]
         try:
             results.append(queries.execute(view, op, **args))
         except Exception:                                        # noqa: BLE001

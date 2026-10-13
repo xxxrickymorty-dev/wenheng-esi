@@ -30,9 +30,11 @@ def _fake_repo(tmp_path):
                 "master/母版.docx", "docs/部署手册.md",
                 "web/dist/index.html", "web/dist/assets/app.js",
                 "web/node_modules/pkg/index.js", "web/src/App.tsx",
-                "input/202607/监测表.xlsx", "out/202607/red_slots.json",
+                f"input/{pkg.ledger_mod.LEDGER_NAME}",
+                "out/202607/red_slots.json",
                 "out/202607/overview_facts.json", "out/202607/报告初稿_202607.docx",
                 "out/202607/_superseded/old.docx", "out/202609/x.json",
+                "out/_acquisition/202609/监测表.xlsx",
                 "out/_jobs/20260901/job.json", "tmp/junk.txt",
                 ".venv/pyvenv.cfg", "src/__pycache__/m.pyc",
                 "server/e2e_report.txt"):
@@ -63,7 +65,8 @@ class Test进包口径:
 
     def test_演示数据与任务史进包(self, tmp_path):
         rels = _rels(_fake_repo(tmp_path), include_data=True)
-        for rel in ("input/202607/监测表.xlsx", "out/202607/red_slots.json",
+        for rel in (f"input/{pkg.ledger_mod.LEDGER_NAME}", "out/202607/red_slots.json",
+                    "out/_acquisition/202609/监测表.xlsx",
                     "out/_jobs/20260901/job.json"):
             assert rel in rels, rel
 

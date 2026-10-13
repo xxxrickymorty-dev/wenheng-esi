@@ -68,9 +68,8 @@ def corrupt_cell_text(src, dst, sheet, old, new):
             zout.writestr(item, data)
     return coord
 
-LEDS = sorted((REPO / "input").glob("*/监测表.xlsx"))
-assert LEDS, "无台账"
-LED = LEDS[-1]
+LED = REPO / "out" / "_acquisition" / "202607" / "监测表.xlsx"   # 202607 当期核对副本
+assert LED.exists(), "缺 202607 当期核对副本（out/_acquisition/202607/监测表.xlsx）"
 print("台账:", LED)
 
 #  (用例名, 原值, 脏值, 预期: heal=应自愈成功 / escalate=应升级)

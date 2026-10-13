@@ -242,9 +242,10 @@ def _seed_ledger(tmp_path, monkeypatch):
     root = tmp_path / "repo" / "out"
     seed_period(root)
     _seed_table2(root)
-    led_dir = tmp_path / "repo" / "input" / "202607"
+    led_dir = tmp_path / "repo" / "input"
     led_dir.mkdir(parents=True, exist_ok=True)
-    (led_dir / "监测表.xlsx").write_bytes(b"placeholder")
+    # 回落视图＝运行时母本（input/ 只放它；2026-10-13 起不再有 input/<期次>/监测表.xlsx）
+    (led_dir / "云大全学科排名、阈值动态检测表.xlsx").write_bytes(b"placeholder")
     fake = {
         "wide": {
             "proximity_1pct": pd.DataFrame(

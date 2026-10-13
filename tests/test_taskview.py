@@ -34,10 +34,11 @@ def _roots(tmp_path):
 
 
 def _give_all_pieces(root, data_root, period, *, snap="数据覆盖2016-2026.06.30"):
-    """四件按文件到位（不受 released 影响）。"""
-    (root / "input" / period).mkdir(parents=True, exist_ok=True)
-    (root / "input" / period / "监测表.xlsx").write_text("x", encoding="utf-8")
-    (root / "input" / period / "顶尖论文清单.csv").write_text("x", encoding="utf-8")
+    """四件按文件齐位（不受 released 影响）；2026-10-13 起核对副本落 out/_acquisition/。"""
+    d = root / "out" / "_acquisition" / period
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "监测表.xlsx").write_text("x", encoding="utf-8")
+    (d / "顶尖论文清单.csv").write_text("x", encoding="utf-8")
     (data_root / "ESI数据" / period).mkdir(parents=True, exist_ok=True)
     (data_root / "incites" / snap).mkdir(parents=True, exist_ok=True)
 
@@ -92,7 +93,7 @@ def test_全成未签发_卡在签单_不顺延(tmp_path):
 # ============================================================ 2. 卡在哪一步
 def test_新期未取数_卡在取数_数据未到(tmp_path):
     root, data_root = _roots(tmp_path)
-    (root / "input" / "202611").mkdir(parents=True)          # 只有空目录：还没取数
+    (root / "out" / "_acquisition" / "202611").mkdir(parents=True)   # 取数在途：还没取到
     out = taskview.scan(repo_root=root,
                         filled=["202609"], status=lambda p: "signed")
     assert out["period"] == "202611"
@@ -124,7 +125,7 @@ def test_已并入未出稿_卡在一键生成(tmp_path):
 def test_取数缺件_卡在取数_给出缺件数(tmp_path):
     root, data_root = _roots(tmp_path)
     _give_all_pieces(root, data_root, "202609")
-    (root / "input" / "202609" / "顶尖论文清单.csv").unlink()
+    (root / "out" / "_acquisition" / "202609" / "顶尖论文清单.csv").unlink()
     out = taskview.scan(repo_root=root,
                         filled=["202609"], status=lambda p: "unsigned")
     assert out["stuck"] == "acquire"

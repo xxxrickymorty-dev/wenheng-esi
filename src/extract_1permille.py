@@ -80,7 +80,7 @@ OVERALL_FILE = "Institutions.xlsx"          # 全校整体（台账不存，仅�
 DEFAULT_DATA_ROOT = REPO.parent / "数据与复现" / "ESI数据"
 DEFAULT_LEDGERS = [
     REPO.parent / "数据与复现" / "云大全学科排名、阈值动态检测表.xlsx",
-    REPO / "input" / "202607" / "监测表.xlsx",
+    REPO / "out" / "_acquisition" / "202607" / "监测表.xlsx",   # 202607 当期核对副本
 ]
 BACKUP_DIR = REPO.parent / "归档" / "台账备份"
 

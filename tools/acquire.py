@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """取数模块编排器（X3）：scan / copy / merge / preflight / fetch。
 
-流程（ADR-0004）：
+流程（ADR-0004；2026-10-13 起 input/ 只放母本）：
     fetch/scan  取数 + 逐文件核验 → 写状态
-    copy        清洗链 --out 新建 input/<期次>/监测表.xlsx（主台账不碰）→ 核对表 → 状态「待核对」
-    merge       守卫（母版 sha 对得上）→ clean_ledger --write 并入 → 写后五查 → 状态「已并入」
+    copy        清洗链 --out 新建 out/_acquisition/<期次>/监测表.xlsx（当期核对副本；主台账不碰）→ 核对表 → 状态「待核对」
+    merge       守卫（母版 sha 对得上）→ clean_ledger --write 并入 → 写后五查 → 同步母本到 input/ → 状态「已并入」
 
 用法（wenheng/ 下，.venv 的 python）：
     python tools\\acquire.py scan 202611
@@ -73,7 +73,7 @@ def cmd_scan(args) -> int:
 # ------------------------------------------------------------------ copy
 def cmd_copy(args) -> int:
     period = args.period
-    out = pathlib.Path(args.out) if args.out else (REPO / "input" / period / "监测表.xlsx")
+    out = pathlib.Path(args.out) if args.out else A.copy_path(period)
     if not LEDGER.exists():
         _set_op(period, "copy", "failed", "主台账不存在")
         print(f"[拒绝] 主台账不存在：{LEDGER}")
@@ -121,9 +121,10 @@ def cmd_merge(args) -> int:
         return 1
 
     if not st:
-        return _refuse(f"没有 {period} 的取数状态——先 scan/copy。")
-    copy_path = pathlib.Path(args.copy) if args.copy else (REPO / (st.get("copy") or {}).get(
-        "path", f"input/{period}/监测表.xlsx"))
+        return _refuse(f"没有 {period} 的取数状态（先 scan/copy）")
+    rel = (st.get("copy") or {}).get("path") or ""
+    copy_path = (pathlib.Path(args.copy) if args.copy
+                 else (REPO / rel if rel else A.copy_path(period)))
     if not copy_path.is_absolute():
         copy_path = REPO / copy_path
     copy_state = (st.get("copy") or {}).get("state")
@@ -167,7 +168,14 @@ def cmd_merge(args) -> int:
     st["op"] = {"kind": "merge", "state": "done",
                 "note": f"已并入（新增 {checks.get('added_cells', 0)} 格 · 五查全过）", "at": _now()}
     A.write_state(period, st)
-    print(f"[merge] 已并入主台账：新增/改动 {checks.get('added_cells', 0)} 格，五查全过。")
+    # 并入成功后把馆员原件同步到运行时输入（input/ 只放母本；2026-10-13 rick 定）。
+    import ledger as ledger_mod                                     # noqa: PLC0415
+    try:
+        dst = ledger_mod.sync(REPO)
+        print(f"[sync] 母本已同步到运行时输入：{dst.relative_to(REPO).as_posix()}")
+    except OSError as e:
+        print(f"[warn] 母本同步失败（不影响并入结果）：{e}")
+    print(f"[merge] 已并入主台账：新增/改动 {checks.get('added_cells', 0)} 格，五查全过")
     return 0
 
 
@@ -296,9 +304,9 @@ def main() -> int:
     p1.add_argument("--esi-root", default=None)
     p1.set_defaults(fn=cmd_scan)
 
-    p2 = sub.add_parser("copy", help="清洗链 --out 新建监测表副本 + 生成核对表")
+    p2 = sub.add_parser("copy", help="清洗链 --out 新建当期核对副本 + 生成核对表")
     p2.add_argument("period")
-    p2.add_argument("--out", default=None, help="默认 input/<期次>/监测表.xlsx")
+    p2.add_argument("--out", default=None, help="默认 out/_acquisition/<期次>/监测表.xlsx")
     p2.add_argument("--snapshot", default=None)
     p2.add_argument("--esi-root", default=None)
     p2.set_defaults(fn=cmd_copy)

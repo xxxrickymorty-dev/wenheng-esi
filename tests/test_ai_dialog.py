@@ -2,7 +2,7 @@
 """对话前门（票 01/02）：期次识别 + 盘点（缝 S1，穿过 `src/ai` 能力口）。
 
 外部行为：说一句话 → 应答里**先说出理解**（数据截至 2026-09 → 期次 202609）；
-盘点四件（监测表 / ESI 原始包 / 顶尖论文清单 / InCites 快照）→ 缺就停 + 两条路、
+盘点四件（动态监测表 / ESI 原始包 / 顶尖论文清单 / InCites 快照）→ 缺就停 + 两条路、
 齐就给「去核对」；每轮进 `ai_calls`（Recorder）；非 admin 不可用；**不触网**
 （对话能力不做模型轮——注入的替身一次都不该被调用）。
 
@@ -20,7 +20,7 @@ from _ai_helpers import ScriptedBrain
 
 TODAY = "2026-10-10"
 
-_LABELS = (("monitor", "监测表"), ("esi", "ESI 原始包"),
+_LABELS = (("monitor", "动态监测表"), ("esi", "ESI 原始包"),
            ("papers", "顶尖论文清单"), ("incites", "InCites 快照"))
 
 
@@ -107,7 +107,7 @@ def test_操作员报告意图_照常走盘点(tmp_path):
     """2026-10-12：出报告对操作员开放——报告意图与管理员同路（盘点照常，不再说「只读」）。"""
     inv = {"period": "202607", "released": True,
            "pieces": [{"key": k, "label": lb, "state": "ok", "note": ""} for k, lb in
-                      (("monitor", "监测表"), ("esi", "ESI 原始包"),
+                      (("monitor", "动态监测表"), ("esi", "ESI 原始包"),
                        ("papers", "顶尖论文清单"), ("incites", "InCites 快照"))],
            "n_pieces": 4, "n_missing": 0, "fallback": ""}
     ans = run_dialog("帮我做 7 月的报告", root=tmp_path, inventory=inv)
@@ -191,7 +191,7 @@ def test_盘点已发布缺件_停下并给补件入口(tmp_path):
 
 def test_盘点四件齐_给去核对(tmp_path):
     ans = run_dialog("做 7 月的报告", root=tmp_path, inventory=FULL_202607)
-    assert "✓ 监测表 · 已有" in ans.text and "✓ InCites 快照 · 已有" in ans.text
+    assert "✓ 动态监测表 · 已有" in ans.text and "✓ InCites 快照 · 已有" in ans.text
     assert "数据齐" in ans.text and "去核对" in ans.text
     assert ans.data["verdict"] == "ready"
     assert ans.data["actions"] == [{"kind": "goto", "view": "acquire", "period": "202607",

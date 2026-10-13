@@ -36,7 +36,7 @@ def _env_file_value(key: str, default: str = "") -> str:
         return os.environ[key]
     env_file = WENHENG / "server" / ".env"
     if env_file.exists():
-        for line in env_file.read_text(encoding="utf-8").splitlines():
+        for line in env_file.read_text(encoding="utf-8-sig").splitlines():
             line = line.strip()
             if line.startswith(key + "="):
                 return line.split("=", 1)[1].strip().strip('"').strip("'")
@@ -468,13 +468,13 @@ check("派生格给了算式", bool(_derived) and any(
     "−" in r["how"] or "×" in r["how"] for r in _derived),
     f"n_derived={len(_derived)}")
 # 存疑走 JSON API（老表单已随页面下线）：可切换、台账一个字节不碰
-# 台账路径两处都找：开发机是 <工作区>/数据与复现/（原始事实源）；部署包/服务器上
-# 只有 input/<期次>/监测表.xlsx（服务端实际读的那份）。两处都没有就跳过比对——
-# 2026-09-24 实踩：写死工作区布局，在解包目录里 `_led.stat()` 直接 FileNotFoundError，
-# 整个 e2e 崩在中途（服务器上必然复现）。
+# 动态监测表路径两处都找：开发机是 <工作区>/数据与复现/（馆员原件）；部署包/服务器上
+# 是 input/<母本>（服务端实际读的那份；2026-10-13 起 input/ 只放母本）。两处都没有就
+# 跳过比对——2026-09-24 实踩：写死工作区布局，在解包目录里 `_led.stat()` 直接
+# FileNotFoundError，整个 e2e 崩在中途（服务器上必然复现）。
 _led_cands = (
     ROOT.parent.parent / "数据与复现" / "云大全学科排名、阈值动态检测表.xlsx",
-    ROOT.parent / "input" / "202607" / "监测表.xlsx",
+    ROOT.parent / "input" / "云大全学科排名、阈值动态检测表.xlsx",
 )
 _led = next((p for p in _led_cands if p.exists()), None)
 _sha0 = _led.stat().st_size if _led else -1

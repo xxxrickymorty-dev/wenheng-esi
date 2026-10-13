@@ -26,7 +26,7 @@ def _trace_of(period):
     d = resolve_period_dir(period)
     if d is None:
         return None, None
-    ledger = _find_ledger(d)
+    ledger = _find_ledger()
     if ledger is None:
         return d, None
     return d, workbench.trace(d, ledger, prev=None)
@@ -99,7 +99,7 @@ class Test权限与安全:
         """接口层只回文件名，别把服务器目录结构发给前端。"""
         monkeypatch.setattr(app_module, "resolve_period_dir", lambda period: tmp_path)
         monkeypatch.setattr(app_module, "_find_ledger",
-                            lambda d: pathlib.Path("C:/secret/input/202609/监测表.xlsx"))
+                            lambda: pathlib.Path("C:/secret/input/云大全学科排名、阈值动态检测表.xlsx"))
         monkeypatch.setattr(workbench, "trace",
                             lambda d, ledger, prev=None: {
                                 "bigtable": [], "charts": [], "province": [],
@@ -107,20 +107,20 @@ class Test权限与安全:
                                 "cols": [], "discs": []})
         monkeypatch.setattr(workbench, "load_review", lambda d: {})
         r = asyncio.run(app_module.api_period_trace(_Req(config.ADMIN_USER), "202609"))
-        assert r["ledger"] == "监测表.xlsx"
+        assert r["ledger"] == "云大全学科排名、阈值动态检测表.xlsx"
         assert "\\" not in r["ledger"] and "/" not in r["ledger"]
 
-    def test_台账缺失时降级不500(self, tmp_path, monkeypatch):
+    def test_台账缺失时报500(self, tmp_path, monkeypatch):
         monkeypatch.setattr(app_module, "resolve_period_dir", lambda period: tmp_path)
-        monkeypatch.setattr(app_module, "_find_ledger", lambda d: None)
+        monkeypatch.setattr(app_module, "_find_ledger", lambda: None)
         r = asyncio.run(app_module.api_period_trace(_Req(config.ADMIN_USER), "202609"))
         assert isinstance(r, dict)
         assert r["ledger_ok"] is False and r["ledger_error"]
 
     def test_cat白名单(self, tmp_path, monkeypatch):
         monkeypatch.setattr(app_module, "resolve_period_dir", lambda period: tmp_path)
-        monkeypatch.setattr(app_module, "_find_ledger", lambda d: None)
+        monkeypatch.setattr(app_module, "_find_ledger", lambda: None)
         r = asyncio.run(app_module.api_period_trace(
-            _Req(config.ADMIN_USER), "202609", "不是类别"))
+            _Req(config.ADMIN_USER), "202609", "不认识的类"))
         assert r["cat"] == "bigtable"
         assert set(r["counts"]) == set(app_module._TRACE_CATS)

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""监测表 → 规整数据（长表 + 宽表 + 元数据 + 断言）
+"""动态监测表（母本）→ 规整数据（长表 + 宽表 + 元数据 + 断言）
 
-唯一输入：input/<期次>/监测表.xlsx（馆员手工维护的 22 工作簿台账）
+唯一输入：input/云大全学科排名、阈值动态检测表.xlsx（动态监测表母本；馆员每期按列追加，2026-10-13 起 input/ 只放它）
 唯一产出：out/<期次>/ 下的 ledger_long.parquet / wide/*.parquet / meta.json
 
 原则：只读单元格原值，不做任何“合理修正”；脏数据（%%、备注行）靠
@@ -859,7 +859,8 @@ def main(path, out_dir=None):
 
 
 if __name__ == "__main__":
-    src = Path(sys.argv[1] if len(sys.argv) > 1 else r"input\202607\监测表.xlsx")
+    src = Path(sys.argv[1] if len(sys.argv) > 1
+               else r"input\云大全学科排名、阈值动态检测表.xlsx")
     dst = sys.argv[2] if len(sys.argv) > 2 else None
     ok = main(src, dst)
     sys.exit(0 if ok else 1)

@@ -17,8 +17,8 @@
     "全绿才放行"（本实现允许一次自愈后再判定）。
 
 用法：
-    python -m agent.flow input/202609/监测表.xlsx
-    python -m agent.flow input/202609/监测表.xlsx --run-dir out/_jobs/manual
+    python -m agent.flow input/云大全学科排名、阈值动态检测表.xlsx --period 202609
+    python -m agent.flow input/云大全学科排名、阈值动态检测表.xlsx --period 202609 --run-dir out/_jobs/manual
 """
 from __future__ import annotations
 

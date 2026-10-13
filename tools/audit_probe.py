@@ -12,7 +12,7 @@ for sub in ("src", "tools"):
 from agent import audit
 
 OUT = REPO / "out" / "202607"
-LED = REPO / "input" / "202607" / "监测表.xlsx"
+LED = REPO / "out" / "_acquisition" / "202607" / "监测表.xlsx"   # 202607 当期核对副本
 led = LED if LED.exists() else None
 print("台账:", led)
 

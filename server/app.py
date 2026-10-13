@@ -32,6 +32,7 @@ from .guards import admin_route, user_file_route, user_route
 from src import parse_ledger  # 成品隔离/回滚的唯一口径（FINAL_PRODUCTS / SUPERSEDED_DIR）
 from .protected_static import AdminStaticFiles
 from src import period as period_mod  # 期次口径唯一来源（ADR-0001：新工作区 API 也用它）
+from src import ledger as ledger_mod  # 动态监测表（母本）路径唯一口径（2026-10-13：input/ 只放母本）
 from src import forecast_choice  # 预测选模的唯一 implementation（读写/快照/留痕）
 from esi_v1.data import display_name  # 学科名中文化（契约 #22）
 
@@ -417,15 +418,13 @@ async def period_trace(request: Request, period: str):
                             period=urllib.parse.quote(d.name) if d is not None else "")
 
 
-def _find_ledger(period_dir):
-    """按期次找台账：input/<六位期次>/监测表.xlsx。找不到返回 None（页面降级说明）。"""
-    # ⚠ period_dir 常是完整路径（C:\...\out\202607），从**目录名**取期次，
-    #   从头匹配整条路径永远 None —— 这个 bug 刚刚让 trace 页空跑了一回。
-    name = pathlib.Path(period_dir).name
-    m = re.match(r"^(\d{6})", name)
-    if not m:
-        return None
-    p = config.INPUT_DIR / m.group(1) / "监测表.xlsx"
+def _find_ledger():
+    """运行时动态监测表（母本）：`input/云大全学科排名、阈值动态检测表.xlsx`。
+
+    2026-10-13 起 input/ 只放母本（不再有 `input/<期次>/监测表.xlsx`）；
+    母本含全部期次，逐格溯源/表页按页面期次消费。找不到返回 None（页面降级说明）。
+    """
+    p = ledger_mod.runtime_path(config.ROOT)
     return p if p.exists() else None
 
 
@@ -737,7 +736,7 @@ def _period_label(period: str) -> str:
 
 
 def _period_has_data(period: str) -> bool:
-    """「期次认得出」的宽松口径：取数状态或本期监测表已存在（还没出稿也算）。
+    """「期次认得出」的宽松口径：取数状态或当期核对副本已存在（还没出稿也算）。
 
     与 /api/periods 的补录、单期详情的宽松判定同一口径——取数台接手的期次，
     它的空产物 / 空回滚列表要回 200 空数组，而不是 404（404 会在页面控制台报错）。
@@ -747,19 +746,21 @@ def _period_has_data(period: str) -> bool:
         return False
     pid = m.group(1)
     return (acquisition.load(pid) is not None
-            or (config.INPUT_DIR / pid / "监测表.xlsx").exists())
+            or acquisition.copy_path(pid).exists())
 
 
 def _acquisition_only_periods(known: set[str]) -> list[dict]:
-    """还没出稿、但取数已经有动静的期次：有取数状态，或本期监测表已就位。
+    """还没出稿、但取数已经有动静的期次：有取数状态，或当期核对副本已就位。
 
     取数台接手「未出稿的当期」——这些期次不在 period_cards（那要 red_slots.json），
     列表里单独补进来（状态按「未签发」显示，出稿后由 period_cards 接管）。
     """
     extra = set(acquisition.periods())
-    if config.INPUT_DIR.exists():
-        for d in config.INPUT_DIR.iterdir():
-            if d.is_dir() and re.fullmatch(r"\d{6}", d.name) and (d / "监测表.xlsx").exists():
+    acq_root = config.OUT_DIR / "_acquisition"
+    if acq_root.is_dir():
+        for d in acq_root.iterdir():
+            if d.is_dir() and re.fullmatch(r"\d{6}", d.name) \
+                    and acquisition.copy_path(d.name).exists():
                 extra.add(d.name)
     return [{"period": p, "label": _period_label(p), "signed": False,
              "status": "unsigned", "generated": False,
@@ -800,14 +801,14 @@ async def api_me(request: Request):
 async def api_period_detail(request: Request, period: str):
     """单期详情：三步条＝①取数 ②核对并并入 ③生成（ADR-0004）。
 
-    未出稿但取数已有动静的期次（有取数状态、或本期监测表已就位）也返回详情——
+    未出稿但取数已有动静的期次（有取数状态、或当期核对副本已就位）也返回详情——
     「先取数、后生成」的工作流需要它们在台面上；三步的判定不出数字。
     """
     m = re.match(r"^(\d{6})", period or "")
     pid = m.group(1) if m else period
     d = resolve_period_dir(period)
     acq = acquisition.load(pid)
-    has_input = (config.INPUT_DIR / pid / "监测表.xlsx").exists()
+    has_input = acquisition.copy_path(pid).exists()
     if d is None and acq is None and not has_input:
         return _period_missing()
     try:
@@ -904,7 +905,7 @@ def _acq_spawn(period: str, action: str, extra: list | None = None):
 @app.post("/api/periods/{period}/acquisition/start")
 @admin_route
 async def api_acq_start(request: Request, period: str):
-    """开始取数（按 9 组下载；完成后自动建监测表）。"""
+    """开始取数（按 9 组下载；完成后自动建当期核对副本）。"""
     return _acq_spawn(period, "fetch")
 
 
@@ -923,7 +924,7 @@ async def api_acq_retry(request: Request, period: str):
 @app.post("/api/periods/{period}/acquisition/copy")
 @admin_route
 async def api_acq_copy(request: Request, period: str):
-    """重建本期监测表（核对用副本）；主台账不碰。"""
+    """重建当期核对副本（`out/_acquisition/<期次>/监测表.xlsx`）；主台账不碰。"""
     return _acq_spawn(period, "copy")
 
 
@@ -1337,11 +1338,11 @@ async def api_period_trace(request: Request, period: str, cat: str = "bigtable",
         return _period_missing()
     if cat not in _TRACE_CATS:
         cat = "bigtable"
-    ledger = _find_ledger(d)
+    ledger = _find_ledger()
     if ledger is None:
         empty = {k: 0 for k in _TRACE_CATS}
         return {"period": d.name, "ledger": "", "ledger_ok": False,
-                "ledger_error": "本地未找到本期监测表 input/<期次>/监测表.xlsx",
+                "ledger_error": f"本地未找到动态监测表 input/{ledger_mod.LEDGER_NAME}",
                 "n": 0, "cat": cat, "counts": empty,
                 "rows": [], "total": 0, "limit": limit, "offset": offset,
                 "has_more": False, "cols": [], "discs": [], "review": {}}
@@ -1441,16 +1442,12 @@ async def api_period_charts_json(request: Request, period: str,
 @admin_route
 async def api_ledger_sheets(request: Request, period: str = ""):
     import openpyxl                                        # noqa: PLC0415
-    m = jobs.PERIOD_RE.match(period or "")
-    if m:
-        lp = config.INPUT_DIR / m.group(0) / "监测表.xlsx"
-    else:
-        lp = None
-        for d in sorted(config.INPUT_DIR.glob("*/监测表.xlsx"), reverse=True):
-            lp = d
-            break
-    if lp is None or not lp.exists():
-        return JSONResponse({"error": "监测表不存在", "hint": "请先在控制台上传监测表.xlsx"}, status_code=404)
+    # 2026-10-13 起只有一份动态监测表（母本，含全部期次）；period 参数保留仅为 API 兼容。
+    lp = ledger_mod.runtime_path(config.ROOT)
+    if not lp.exists():
+        return JSONResponse({"error": "动态监测表不在",
+                             "hint": f"请把母本放到 input/{ledger_mod.LEDGER_NAME}"},
+                            status_code=404)
     try:
         wb = openpyxl.load_workbook(str(lp), read_only=True, data_only=True)
     except Exception as exc:                               # noqa: BLE001
@@ -1925,25 +1922,28 @@ async def api_create_job(request: Request,
     dest = None
     if file is not None and file.filename:
         if not file.filename.lower().endswith(".xlsx"):
-            return JSONResponse({"error": "仅支持 .xlsx 台账文件"}, status_code=400)
+            return JSONResponse({"error": "只支持 .xlsx 数据表文件"}, status_code=400)
         if not jobs.PERIOD_RE.match(period):
-            return JSONResponse({"error": "请填写 6 位期次（如 202609），文件名统一存为监测表.xlsx"}, status_code=400)
+            return JSONResponse({"error": "请填写 6 位期次（如 202609），文件统一存为当期核对副本"}, status_code=400)
         data = await file.read()
         if len(data) > 50 * 1024 * 1024:
             return JSONResponse({"error": "文件超过 50MB"}, status_code=400)
-        dest = config.INPUT_DIR / period / "监测表.xlsx"
-        # file.read() 会让出事件循环；恢复后必须再次确认，才能碰已有输入文件。
+        # 上传的表＝该期的数据表：落当期核对副本位（out/_acquisition/<期次>/监测表.xlsx），
+        # 不再进 input/（2026-10-13 起 input/ 只放母本）。
+        dest = acquisition.copy_path(period)
+        # file.read() 会让出事件循环；恢复后重新检查，避免两个并发上传写同一文件。
         busy = jobs.active_job()
         if busy:
-            return JSONResponse({"error": f"已有任务运行中（{busy['period']}），请稍候"}, status_code=409)
+            return JSONResponse({"error": f"已有任务正在运行（{busy['period']}），请稍候"}, status_code=409)
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(data)
     else:
         if not jobs.PERIOD_RE.match(period):
-            return JSONResponse({"error": "请选择或填写期次"}, status_code=400)
-        dest = config.INPUT_DIR / period / "监测表.xlsx"
+            return JSONResponse({"error": "请先填写期次"}, status_code=400)
+        dest = ledger_mod.runtime_path(config.ROOT)
         if not dest.exists():
-            return JSONResponse({"error": f"input/{period}/监测表.xlsx 不存在，请先上传"}, status_code=404)
+            return JSONResponse({"error": f"input/{ledger_mod.LEDGER_NAME} 不存在（请把母本放入 input/）"},
+                                status_code=404)
     busy = jobs.active_job()
     if busy:
         return JSONResponse({"error": f"已有任务运行中（{busy['period']}），请稍候"}, status_code=409)

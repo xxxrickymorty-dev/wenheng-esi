@@ -262,6 +262,17 @@ def state_path(period: str) -> pathlib.Path:
     return STATE_DIR / f"{period}.json"
 
 
+#: 当期取数核对副本的文件名（ADR-0004 的「审的＝写的」载体；2026-10-13 起落
+#: `out/_acquisition/<期次>/监测表.xlsx`，不再进 `input/`——input/ 只放母本）。
+COPY_NAME = "监测表.xlsx"
+
+
+def copy_path(period: str) -> pathlib.Path:
+    """本期核对副本路径：`out/_acquisition/<期次>/监测表.xlsx`。"""
+    return STATE_DIR / period / COPY_NAME
+
+
+
 def load_state(period: str) -> dict | None:
     """读一期取数状态；没有/读不动 → None（界面显示「还没开始」，不编数据）。"""
     if not PERIOD_RE.match(period or ""):
