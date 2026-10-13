@@ -469,6 +469,20 @@ def is_disclaimer(answer):
 
 
 # ================================================================ 执行
+def load_bank_maps():
+    """题库 → `{qid: 问句}` 与 `{qid: gold}`（含多轮各轮）。"""
+    bank = json.loads(QFILE.read_text(encoding="utf-8"))
+    qtext, gold = {}, {}
+    for q in bank["questions"]:
+        qtext[q["id"]] = q["q"]
+        gold[q["id"]] = q["gold"]
+    for seg in bank["multiturns"]:
+        for i, t in enumerate(seg["turns"], start=1):
+            qtext[f"{seg['id']}.t{i}"] = t["q"]
+            gold[f"{seg['id']}.t{i}"] = t["gold"]
+    return qtext, gold
+
+
 def load_tasks(args):
     bank = json.loads(QFILE.read_text(encoding="utf-8"))
     items = []
@@ -494,10 +508,15 @@ def main():
     ap.add_argument("--max-tokens", type=int, default=0, help="默认＝env WENHENG_AI_MAX_TOKENS")
     ap.add_argument("--out", default=str(REPO / "out" / "_ablation"))
     ap.add_argument("--report-only", action="store_true", help="由最新 results.jsonl 重出 report.md")
+    ap.add_argument("--rescore", action="store_true",
+                    help="不改答案、用当前题库/评分口径重评最新 results.jsonl 并重出报告")
+    ap.add_argument("--dir", default="", help="配合 --rescore/--report-only 指定结果目录")
     args = ap.parse_args()
 
     if args.report_only:
         return report_only(args)
+    if args.rescore:
+        return rescore(args)
 
     groups = [g.strip() for g in args.groups.split(",") if g.strip()]
     bad = [g for g in groups if g not in GROUPS]
@@ -593,17 +612,57 @@ def main():
     return 0
 
 
-def report_only(args):
+def _pick_dir(args):
+    if args.dir:
+        d = pathlib.Path(args.dir)
+        if not (d / "results.jsonl").exists():
+            raise SystemExit(f"目录里没有 results.jsonl：{d}")
+        return d
     base = pathlib.Path(args.out)
     dirs = sorted([d for d in base.glob("*") if (d / "results.jsonl").exists()])
     if not dirs:
         raise SystemExit(f"没有找到 results.jsonl（{base}）")
-    out_dir = dirs[-1]
+    return dirs[-1]
+
+
+def report_only(args):
+    out_dir = _pick_dir(args)
     config = json.loads((out_dir / "config.json").read_text(encoding="utf-8"))
     lines = [json.loads(s) for s in
              (out_dir / "results.jsonl").read_text(encoding="utf-8").splitlines() if s.strip()]
     build_report(out_dir, config, lines)
     print(f"报告（重出）：{out_dir / 'report.md'}")
+    return 0
+
+
+def rescore(args):
+    """用当前题库/评分口径重评已有 results.jsonl（不调 API；答案原文不变）。"""
+    out_dir = _pick_dir(args)
+    universe = build_universe()
+    qtext, gold_by_qid = load_bank_maps()
+    config = json.loads((out_dir / "config.json").read_text(encoding="utf-8"))
+    lines = [json.loads(s) for s in
+             (out_dir / "results.jsonl").read_text(encoding="utf-8").splitlines() if s.strip()]
+    for ln in lines:
+        gold = gold_by_qid.get(ln["qid"], {"kind": "none", "points": []})
+        ln["score"] = score_answer(qtext.get(ln["qid"], ""), [], ln["answer"],
+                                   gold, universe)
+        ln["gold_recall"] = gold_recall(ln["answer"], gold)
+        ln["disclaimer"] = is_disclaimer(ln["answer"])
+        n = ln["score"]["n_numbers"]
+        if ln["group"] in ("A4", "A5"):
+            src = (ln.get("pipeline") or {}).get("sources") or 0
+            ln["score"]["source_rate"] = (min(1.0, src / n) if n else None)
+        else:
+            ln["score"]["source_rate"] = (0.0 if n else None)
+    with (out_dir / "results.jsonl").open("w", encoding="utf-8") as f:
+        for ln in lines:
+            f.write(json.dumps(ln, ensure_ascii=False) + "\n")
+    config["rescored_at"] = time.strftime("%Y-%m-%d %H:%M")
+    (out_dir / "config.json").write_text(
+        json.dumps(config, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    build_report(out_dir, config, lines)
+    print(f"重评完成（{len(lines)} 行）：{out_dir / 'report.md'}")
     return 0
 
 
@@ -616,13 +675,7 @@ def build_report(out_dir, config, lines):
     groups = config["groups"]
     categories = {1: "1 台账直查", 2: "2 多期趋势", 3: "3 报告外·台账内", 4: "4 多轮指代",
                   5: "5 台账也没有", 6: "6 期次口径", 7: "7 多轮段"}
-    bank = json.loads(QFILE.read_text(encoding="utf-8"))
-    qtext_by_qid = {}
-    for q in bank["questions"]:
-        qtext_by_qid[q["id"]] = q["q"]
-    for seg in bank["multiturns"]:
-        for i, t in enumerate(seg["turns"], start=1):
-            qtext_by_qid[f"{seg['id']}.t{i}"] = t["q"]
+    qtext_by_qid, _gold_by_qid = load_bank_maps()
 
     by_group = {g: [ln for ln in lines if ln["group"] == g] for g in groups}
 
@@ -700,6 +753,9 @@ def build_report(out_dir, config, lines):
                     f"ai_calls.jsonl 落 tmp）")
     lines_md.append(f"- 评分：自动（数字命中金标/游离/编造分类；金标＝flexible 引擎 + 台账格指针）；"
                     f"争议条目留待人工抽检")
+    if config.get("rescored_at"):
+        lines_md.append(f"- 重评：{config['rescored_at']}（金标勘误后不改答案重评——"
+                        f"C4-4 指代勘误：上文为工程学，「它」＝工程学，金标由化学改工程学）")
     lines_md.append("")
     lines_md.append("## 指标 × 组别")
     lines_md.append("")

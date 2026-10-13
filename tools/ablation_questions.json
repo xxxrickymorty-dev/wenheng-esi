@@ -601,37 +601,37 @@
    "gold": {
     "kind": "series",
     "metric": "total_cites",
-    "disc": "Chemistry",
+    "disc": "Engineering",
     "points": [
      {
       "period": "202511",
-      "value": 43788.0,
-      "pointer": "总被引：化学 行 × 202511 列"
+      "value": 20884.0,
+      "pointer": "总被引：工程学 行 × 202511 列"
      },
      {
       "period": "202601",
-      "value": 46011.0,
-      "pointer": "总被引：化学 行 × 202601 列"
+      "value": 22535.0,
+      "pointer": "总被引：工程学 行 × 202601 列"
      },
      {
       "period": "202603",
-      "value": 48946.0,
-      "pointer": "总被引：化学 行 × 202603 列"
+      "value": 24813.0,
+      "pointer": "总被引：工程学 行 × 202603 列"
      },
      {
       "period": "202605",
-      "value": 47674.0,
-      "pointer": "总被引：化学 行 × 202605 列"
+      "value": 26011.0,
+      "pointer": "总被引：工程学 行 × 202605 列"
      },
      {
       "period": "202607",
-      "value": 49394.0,
-      "pointer": "总被引：化学 行 × 202607 列"
+      "value": 27166.0,
+      "pointer": "总被引：工程学 行 × 202607 列"
      },
      {
       "period": "202609",
-      "value": 51529.0,
-      "pointer": "总被引：化学 行 × 202609 列"
+      "value": 28907.0,
+      "pointer": "总被引：工程学 行 × 202609 列"
      }
     ]
    }
