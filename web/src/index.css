@@ -503,19 +503,25 @@ a{color:inherit}
 .tr-val{font:11px var(--mono);fill:var(--ink-2)}
 
 /* ============================================================================
-   灵活报告（分析台第二块，紧挨「按节解读」）——表单 / 已出稿 chips / 后端渲染的正文
+   灵活报告（分析台第二块）——双栏定稿（rick 2026-10-14）：两份报告并排、各自独立滚动
    ⚠ fx- 前缀：正文样式只作用于 .fx-md，别外溢（md 渲染器出来的骨架见 mdview）
    ========================================================================== */
 .fx-form{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:14px}
 .fx-form label{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--ink-2)}
 .fx-form select,.fx-form input{font:inherit;padding:8px 11px;border:1px solid var(--line);
   border-radius:8px;background:var(--card);color:var(--ink);min-width:150px}
-.fx-note{font-size:13.5px;color:var(--ink-3);margin:8px 0 0}
-.fx-chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:16px;
-  font-size:14px;color:var(--ink-3)}
-.fx-chips button{padding:7px 14px;border:1px solid var(--line);background:var(--panel);
-  border-radius:999px;cursor:pointer;font:inherit;font-size:14.5px;color:var(--ink-2)}
-.fx-chips button.on{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:600}
+.fx-panes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;align-items:start}
+@media (max-width:1100px){.fx-panes{grid-template-columns:1fr}}
+.fx-pane{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  overflow:hidden;min-width:0}
+.fx-pane-h{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+  padding:14px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
+.fx-pane-h h3{font-size:18px;letter-spacing:.04em}
+.fx-pane-meta{font-size:12.5px;color:var(--ink-3);margin:4px 0 0}
+.fx-pane-acts{display:flex;gap:8px;flex:0 0 auto;padding-top:2px;flex-wrap:wrap}
+.fx-pane-b{height:clamp(320px, calc(100vh - 400px), 820px);overflow:auto;padding:2px 18px 18px}
+.fx-pane-b .fx-md{margin-top:12px;border-top:0;padding-top:0}
+.fx-empty{padding:34px 4px;font-size:14px;color:var(--ink-3);line-height:2;margin:0}
 .fx-md{margin-top:16px;border-top:1px solid var(--line);padding-top:16px;font-size:16.5px}
 .fx-md h2{font-size:21px;margin-top:6px}
 .fx-md h3{font-size:18px;margin:22px 0 8px;padding-left:10px;border-left:3px solid var(--zhu)}
@@ -550,17 +556,10 @@ a{color:inherit}
 .fx-md .fx-about .fx-about-in{padding:2px 15px 14px;border-top:1px solid var(--line-2)}
 .fx-md .fx-about h2{font-size:16px;margin:16px 0 6px}
 
-/* ---- 对话框（流式输出；rick 2026-09-29 过审的形态） ---- */
-.fx-log{margin-top:14px;display:flex;flex-direction:column;gap:12px;
-  max-height:72vh;overflow:auto;padding-right:6px;scroll-behavior:smooth}
-.fx-msg{border-radius:12px;padding:10px 15px;font-size:15px}
-.fx-msg.user{align-self:flex-end;max-width:88%;background:var(--zhu-soft);
-  border:1px solid #CFE0D2;color:var(--zhu);font-weight:600;font-size:14.5px}
-.fx-msg.bot{align-self:flex-start;width:100%;background:var(--card);
-  border:1px solid var(--line);padding:12px 16px}
+/* ---- 出稿进度（双栏共用；dot 三态） ---- */
 .fx-status{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-3);
-  min-height:20px}
-.fx-status .dot,.fx-foot .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  min-height:20px;padding-top:12px}
+.fx-status .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
 .dot.run{background:var(--gold);animation:fxpulse 1.1s infinite ease-in-out}
 .dot.done{background:var(--ok)}
 .dot.bad{background:var(--bad)}
@@ -569,12 +568,6 @@ a{color:inherit}
 .fx-plan .chip{background:var(--panel);border:1px solid var(--line);border-radius:7px;
   padding:2px 9px;font-size:12.5px;color:var(--ink-2)}
 .fx-sec-h{font-size:16.5px;margin:16px 0 6px;padding-left:10px;border-left:3px solid var(--zhu)}
-.fx-msg .fx-md{margin-top:0;border-top:0;padding-top:0;font-size:15.5px}
-.fx-msg .fx-md h3{font-size:16px;margin:14px 0 6px}
-.fx-msg .fx-md p{line-height:1.8}
-.fx-foot{border-top:1px dashed var(--line-2);margin-top:12px;padding-top:9px;
-  display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13.5px;color:var(--ink-3)}
-.fx-foot .spacer{flex:1}
 .btn.small{padding:5px 11px;font-size:13px;color:var(--ink-2)}
 .btn:disabled{opacity:.55;cursor:not-allowed}
 
