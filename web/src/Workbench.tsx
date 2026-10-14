@@ -6,6 +6,7 @@ import type { ApiError, Me, Period, PeriodDetail } from './api'
 import { formatProvenanceTime, type ForecastChoiceEntry, type ForecastMeta } from './api-forecast'
 import { useState } from 'react'
 import { ConfirmButton } from './ConfirmButton'
+import { Info } from './Info'
 import { Tools } from './Tools'
 import { appHref, approvalLabel, taskLabel as runStatusText } from './lib/status'
 import { Icon } from './icons'
@@ -178,8 +179,8 @@ function ModelSummary({
   const source = meta?.upstream_workbook
   const sourceTime = source?.last_modified_at ?? null
   const freshnessText = meta?.data_freshness === 'needs_check'
-    ? '检测到台账或处理输入文件的修改时间晚于最近一次完整运行记录；无法确认这次更新是否已进入预测数据，请重新处理确认。'
-    : '现有记录无法确认上游台账是否已进入预测所用数据。预测预览仍读取下方所示的预测数据。'
+    ? '检测到台账或输入文件比最近一次完整运行更新，请重新处理确认——下方预览读取的仍是预测数据。'
+    : '无法确认上游台账的最新更新是否已进入预测数据；下方预览读取的是预测数据。'
   const currentRoute = routes.some((item) => item.value === route) ? route : (routes[0]?.value ?? '')
 
   return (
@@ -190,10 +191,13 @@ function ModelSummary({
         <span className="chip-gold">
           只读 · 改选去预测台
         </span>
+        <Info label="选模口径" end>
+          <p>模型选择按期次保存，全站只有一份——这里显示的就是本期配置。</p>
+          <p>本期报告只应用实际进入预测章的学科；其余选择不影响本期正文。</p>
+        </Info>
       </div>
       <p className="lead-155">
-        模型选择只有一份，按期次保存；这里只显示本期配置，改选集中在预测台——那边能对着五个模型的预测图挑。
-        改完保存后回到这里会同步显示；本期报告只应用实际进入预测章的学科。
+        模型选择按期次保存；改选去预测台——那边能对着五个模型的预测图挑，改完回来自动同步。
       </p>
 
       <div className="panel-row">
@@ -224,8 +228,13 @@ function ModelSummary({
       </div>
 
       <div className="degraded" style={{ borderLeft: meta?.data_freshness === 'needs_check' ? '3px solid var(--gold)' : undefined }}>
-        <b>期次与数据说明</b>：{freshnessText} 现有记录无法确认主台账是否被预测流程读取。V1 推荐的基线是 {meta?.recommendation_baseline ?? '—'}，它不是预测数据期次。
-        <br />最近一次完整运行记录写入时间（北京时间）：{formatProvenanceTime(meta?.run_record_at)}；上次处理使用的文件：{meta?.processed_input?.name ?? '无法核实'}{meta?.processed_input?.last_modified_at ? `（文件最后修改：${formatProvenanceTime(meta.processed_input.last_modified_at)}）` : ''}。
+        <b>期次与数据说明</b>：{freshnessText}
+        <Info label="来源与时间" end>
+          <p><b>V1 推荐基线</b>：{meta?.recommendation_baseline ?? '—'}（不是预测数据期次）。</p>
+          <p><b>最近一次完整运行记录写入时间（北京时间）</b>：{formatProvenanceTime(meta?.run_record_at)}</p>
+          <p><b>上次处理使用的文件</b>：{meta?.processed_input?.name ?? '无法核实'}
+            {meta?.processed_input?.last_modified_at ? `（文件最后修改：${formatProvenanceTime(meta.processed_input.last_modified_at)}）` : ''}。</p>
+        </Info>
       </div>
 
       {routes.length > 0 && (

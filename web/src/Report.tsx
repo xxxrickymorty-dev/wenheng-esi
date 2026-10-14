@@ -193,6 +193,17 @@ function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSee
                 <span className="go">→</span>
               </a>
             )}
+            {/* 逐格溯源入口（P1）：报告里的值 ↔ 台账现场重读，和上面两扇门同一排（三卡整齐）。
+                2026-10-11：溯源是操作员不可见的「里子」，只给管理员留。 */}
+            {canSeeAdminBits && (
+              <a className="entry" href={period ? appHref('trace', period) : '/app/?view=trace'}>
+                <span>
+                  <span className="t">逐格溯源</span>
+                  <span className="d">报告里每个数字 ↔ 台账现场重读的值并排对照，写清来源表与「怎么来的」</span>
+                </span>
+                <span className="go">→</span>
+              </a>
+            )}
           </div>
           {/* 章节直达收进折叠：对勘本自己就能换分组，11 张卡不再占屏（票 14） */}
           <details className="fold">
@@ -208,18 +219,6 @@ function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSee
               </div>
             </div>
           </details>
-          {/* 逐格溯源入口（P1）：报告里的值 ↔ 台账现场重读。
-              2026-10-11：溯源是操作员不可见的「里子」，只给管理员留。 */}
-          {canSeeAdminBits && (
-            <a className="entry mt-12" 
-               href={period ? appHref('trace', period) : '/app/?view=trace'}>
-              <span>
-                <span className="t">逐格溯源</span>
-                <span className="d">报告里每个数字 ↔ 台账现场重读的值并排对照，写清来源表与「怎么来的」</span>
-              </span>
-              <span className="go">→</span>
-            </a>
-          )}
         </div>
 
         {/* 页边朱批：待人工的那几处——每条带「去补」，直落审核台对应空位（票 14） */}
@@ -242,11 +241,8 @@ function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSee
               {manual.slice(0, 8).map((r) => (
                 <div className="margin-note" key={r.section + r.loc}>
                   <div className="tag">朱批 · {r.loc}</div>
-                  <p>
-                    {(r.oldPreview || r.old) ? `原：${r.oldPreview ?? r.old}` : ''}
-                    {(r.oldPreview || r.old) ? ' ' : ''}
-                    {`→ 待你补${r.source ? `（${humanSource(r.source)}）` : ''}`}
-                  </p>
+                  {(r.oldPreview || r.old) && <p>原：{r.oldPreview ?? r.old}</p>}
+                  <p className="mn-src">{r.source ? `待你补：${humanSource(r.source)}` : '待你补'}</p>
                   <div className="mn-acts">
                     <a className="btn"
                        href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}${r.loc ? `&focus=${encodeURIComponent(r.loc)}` : ''}`}>

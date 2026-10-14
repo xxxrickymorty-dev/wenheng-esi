@@ -304,7 +304,7 @@ a{color:inherit}
 @media (max-width:700px){.art-grid{grid-template-columns:1fr}}
 
 /* 对勘入口（票 14）：两扇门并排 + 章节直达折叠 + 朱批「去补」动作 */
-.rc-doors{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.rc-doors{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:12px}
 .rc-doors .entry{margin-top:0}
 @media (max-width:1020px){.rc-doors{grid-template-columns:1fr}}
 .rc-chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -312,6 +312,11 @@ a{color:inherit}
   border-radius:999px;background:var(--card);color:var(--ink-2);text-decoration:none;font-size:13px}
 .rc-chip:hover{border-color:var(--zhu);color:var(--zhu)}
 .rc-chip b{color:var(--ink-3);font-weight:600}
+.margin-note{display:grid;grid-template-columns:1fr auto;column-gap:16px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:var(--r-sm);padding:13px 16px;margin-top:10px}
+.margin-note .tag{grid-column:1;font-size:13px;color:var(--gold-ink)}
+.margin-note>p{grid-column:1;margin:5px 0 0;font-size:14px;line-height:1.75;color:var(--ink-2)}
+.margin-note>p.mn-src{margin-top:4px;font-size:12.5px;color:var(--ink-3)}
+.margin-note .mn-acts{grid-column:2;grid-row:1/span 3;margin:0;align-self:center}
 .mn-acts{margin-top:8px}
 .mn-acts .btn{padding:4px 12px;font-size:13px;text-decoration:none}
 
