@@ -39,7 +39,7 @@ button{font-family:inherit;cursor:pointer}
 .pane-h h2{font-size:18.5px;letter-spacing:.04em}
 .pane-h .meta{font-size:12.5px;color:var(--ink-3);margin:4px 0 0}
 .pane-h .acts{display:flex;gap:8px;flex:0 0 auto;padding-top:2px}
-.pane-b{max-height:74vh;overflow:auto;padding:2px 20px 20px}
+.pane-b{height:calc(100vh - 384px);min-height:320px;overflow:auto;padding:2px 20px 20px}
 /* —— 正文（与 web/src/index.css 的 .fx-md 规则同源） —— */
 .fx-md{margin-top:14px;font-size:16.5px}
 .fx-md h2{font-size:21px;margin-top:6px}
@@ -62,12 +62,21 @@ button{font-family:inherit;cursor:pointer}
 .fx-md .figrow figure{margin:0}
 .fx-md .figrow img{width:100%;height:auto}
 @media (max-width:900px){.fx-md .figrow{grid-template-columns:1fr}}
-/* —— 原型注记 —— */
-.proto{position:fixed;right:22px;bottom:20px;z-index:70}
-.proto-btn{background:#12362a;color:#e9e4cf;border:1px solid #d9ca9f55;font-size:12px;letter-spacing:.1em;padding:10px 14px}
+/* —— 静态稿注记（放进页头右侧，不再固定悬浮遮挡内容） —— */
+.head-row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.proto{position:relative;flex:0 0 auto}
+.proto-btn{background:#12362a;color:#e9e4cf;border:1px solid #d9ca9f55;font-size:12px;letter-spacing:.1em;padding:8px 12px}
 .proto-btn:hover{background:#d9ca9f;color:#12362a}
-.proto-panel{display:none;position:absolute;right:0;bottom:48px;width:430px;max-width:84vw;background:#fffdf8;border:1px solid #d9ca9f88;box-shadow:0 24px 60px #12362a33;padding:18px 22px}
+.proto-panel{display:none;position:absolute;right:0;top:42px;width:430px;max-width:84vw;background:#fffdf8;border:1px solid #d9ca9f88;box-shadow:0 24px 60px #12362a33;padding:18px 22px;z-index:80;text-align:left}
 .proto-panel.is-open{display:block}
+/* 「关于本稿」尾巴块（与 web/src/index.css 同源） */
+.fx-md .fx-about{margin-top:18px;border:1px dashed var(--line);border-radius:var(--r-sm);background:var(--panel)}
+.fx-md .fx-about>summary{cursor:pointer;padding:11px 15px;font-size:14px;color:var(--ink-2);list-style:none}
+.fx-md .fx-about>summary::-webkit-details-marker{display:none}
+.fx-md .fx-about>summary::before{content:"▸";color:var(--zhu);margin-right:8px}
+.fx-md .fx-about[open]>summary::before{content:"▾"}
+.fx-md .fx-about .fx-about-in{padding:2px 15px 14px;border-top:1px solid var(--line-2)}
+.fx-md .fx-about h2{font-size:16px;margin:16px 0 6px}
 .proto-panel h4{font-family:var(--serif);font-size:15px;margin:0 0 10px;color:#12362a}
 .proto-panel ul{margin:0;padding-left:18px;font-size:12.5px;line-height:1.95;color:#4b584e}
 </style>
@@ -75,7 +84,25 @@ button{font-family:inherit;cursor:pointer}
 <body>
 <div class="page">
   <header class="card head">
-    <h1>灵活报告 · 第二条产线 <span class="tag">202609</span> <span class="pill">内部参考件</span></h1>
+    <div class="head-row">
+      <h1>灵活报告 · 第二条产线 <span class="tag">202609</span> <span class="pill">内部参考件</span></h1>
+      <div class="proto">
+        <button class="proto-btn" type="button" id="protoBtn" aria-expanded="false">静态稿注记</button>
+        <div class="proto-panel" id="protoPanel">
+          <h4>静态稿注记（审稿用）</h4>
+          <ul>
+            <li>本稿只改「呈现」：左右两栏 = 两份报告并排——左·横看（22 学科 × 1 距离），右·纵看（1 学科 × 多指标）。</li>
+            <li>报告正文为 202609 真实产物（与产线同一渲染器逐字一致）；图全部内嵌，离线可开。</li>
+            <li>两栏各自独立滚动；出稿信息与「看规则稿 / 下载报告」收进窗格头。</li>
+            <li>chips 长尾巴（· 2 图 · 时间 · 可对照规则稿）已去掉，标题只留「多学科横向对比 / 单学科趋势诊断」。</li>
+            <li>尾部固定附录（本稿如何产生 + 数据来源链）已合成一个「关于本稿」折叠块，不再与正文混排；重复页脚已去（渲染层改动，线上即刻生效）。</li>
+            <li>本轮是「结构稿」：正文仍为 10-02 / 10-13 的产物；写作升级（高推理、实写判断段、审校处只留下划线）在下一轮换稿时体现。</li>
+            <li>表单为示意；生成中的流式长出、以及「某一份还没出稿」的空态，在实现稿里给（空栏提示去上方生成）。</li>
+            <li>表格首列原样式固定 64px——中文指标名会逐字换行；本稿放开首列宽度，实现稿随行。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
     <div class="form">
       <label>分析意图
         <select><option>多学科横向对比</option><option>单学科趋势诊断</option></select>
@@ -157,7 +184,7 @@ button{font-family:inherit;cursor:pointer}
 <p>专业判断不由本产线生成，留空位由馆员填写。</p>
 </blockquote>
 <hr>
-<h3>本稿如何产生（可验证的架构主张）</h3>
+<details class="fx-about"><summary>关于本稿 · 本稿如何产生与数据来源链</summary><div class="fx-about-in"><h3>本稿如何产生（可验证的架构主张）</h3>
 <p>本件里的<strong>每一个数字</strong>都只经过这一条路径：</p>
 <ol>
 <li>规划器只决定「写哪个学科、配哪些图」——它的输出里<strong>没有数字这个物种</strong>；</li>
@@ -174,8 +201,7 @@ button{font-family:inherit;cursor:pointer}
 <tr><td>3</td><td>anomaly</td><td>顶尖论文数</td><td>微生物学</td><td>202609</td><td>TOP论文</td></tr>
 </tbody></table>
 <p>共 3 条查询；每条查询的<strong>每个数据点</strong>都带独立来源链（见 <code>flex_sources.json</code>，逐点 <code>{dataset, metric, discipline, period, origin_sheet}</code>）。</p>
-<hr>
-<p>*内部参考 · 非报送件｜灵活报告产线｜不带盖章位*</p></div>
+<hr></div></details></div>
     </section>
 
     <section class="pane" aria-label="单学科趋势诊断">
@@ -239,7 +265,7 @@ button{font-family:inherit;cursor:pointer}
 <p>专业判断（要不要加投入、值不值得重点建设）<strong>不由本产线生成</strong> —— 与复刻报告同一机制，留空位由馆员填写。</p>
 </blockquote>
 <hr>
-<h3>本稿如何产生（可验证的架构主张）</h3>
+<details class="fx-about"><summary>关于本稿 · 本稿如何产生与数据来源链</summary><div class="fx-about-in"><h3>本稿如何产生（可验证的架构主张）</h3>
 <p>本件里的<strong>每一个数字</strong>都只经过这一条路径：</p>
 <ol>
 <li>规划器只决定「写哪个学科、配哪些图」——它的输出里<strong>没有数字这个物种</strong>；</li>
@@ -266,27 +292,11 @@ button{font-family:inherit;cursor:pointer}
 <tr><td>13</td><td>anomaly</td><td>顶尖论文数</td><td>微生物学</td><td>202609</td><td>TOP论文</td></tr>
 </tbody></table>
 <p>共 13 条查询；每条查询的<strong>每个数据点</strong>都带独立来源链（见 <code>flex_sources.json</code>，逐点 <code>{dataset, metric, discipline, period, origin_sheet}</code>）。</p>
-<hr>
-<p>*内部参考 · 非报送件｜灵活报告产线｜不带盖章位*</p></div>
+<hr></div></details></div>
     </section>
   </main>
 </div>
 
-<div class="proto">
-  <div class="proto-panel" id="protoPanel">
-    <h4>静态稿注记（审稿用）</h4>
-    <ul>
-      <li>本稿只改「呈现」：左右两栏 = 两份报告并排——左·横看（22 学科 × 1 距离），右·纵看（1 学科 × 多指标）。</li>
-      <li>报告正文为 202609 真实产物（与产线同一渲染器逐字一致）；图全部内嵌，离线可开。</li>
-      <li>两栏各自独立滚动；出稿信息与「看规则稿 / 下载报告」收进窗格头。</li>
-      <li>chips 长尾巴（· 2 图 · 时间 · 可对照规则稿）已去掉，标题只留「多学科横向对比 / 单学科趋势诊断」。</li>
-      <li>表单为示意；生成中的流式长出、以及「某一份还没出稿」的空态，在实现稿里给（空栏提示去上方生成）。</li>
-      <li>表格首列原样式固定 64px——中文指标名会逐字换行；本稿放开首列宽度，实现稿随行。</li>
-      <li>图加载失败时的重试/占位小护栏列为实现稿可选项。</li>
-    </ul>
-  </div>
-  <button class="proto-btn" type="button" id="protoBtn" aria-expanded="false">静态稿注记</button>
-</div>
 <script>
 (function(){
   var btn=document.getElementById('protoBtn'),pnl=document.getElementById('protoPanel');

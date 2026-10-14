@@ -31,14 +31,29 @@ def _inline(s: str) -> str:
     return s
 
 
-def render(md: str, *, img_prefix: str = "", img_map=None) -> str:
+def render(md: str, *, img_prefix: str = "", img_map=None, _wrap_tail: bool = True) -> str:
     """Markdown → HTML 片段（不含 <html>/<body>）。
 
     Args:
         img_prefix: 在所有图片路径前加的前缀（演示站用来换成服务端路由）
         img_map:    {原文件名: 新URL}，优先于 img_prefix；用于把
                     `../charts/x.png` 映射到 `/p/<期次>/flexible/chart/<intent>/x.png`
+
+    尾部约定（rick 2026-10-14）：「## 本稿如何产生」起的固定附录（架构主张 + 数据来源链）
+    收进一枚「关于本稿」折叠块，不与正文混排；重复的「内部参考…」页脚行不再渲染
+    （线已提示过的，禁止再提示第二遍）。
     """
+    if _wrap_tail:
+        m = re.search(r"(?m)^##\s*本稿如何产生", md)
+        if m:
+            head = render(md[:m.start()], img_prefix=img_prefix, img_map=img_map,
+                          _wrap_tail=False)
+            tail_md = re.sub(r"(?m)^\*内部参考[^\n]*\*[ \t]*\n?", "", md[m.start():])
+            tail = render(tail_md, img_prefix=img_prefix, img_map=img_map,
+                          _wrap_tail=False)
+            return (head + '\n<details class="fx-about">'
+                           '<summary>关于本稿 · 本稿如何产生与数据来源链</summary>'
+                           f'<div class="fx-about-in">{tail}</div></details>')
     out, i = [], 0
     lines = md.split("\n")
     in_ul = in_ol = in_q = in_tbl = False
@@ -207,6 +222,10 @@ figure img{{max-width:100%;border:1px solid var(--line);border-radius:3px;backgr
 .figrow figure{{margin:0}}
 .figrow figcaption{{font-size:12.5px;color:var(--ink-3);margin-top:5px}}
 @media (max-width:640px){{.figrow{{grid-template-columns:1fr}}}}
+details.fx-about{{margin-top:22px;border:1px dashed var(--line);border-radius:3px;background:#F5F0E7}}
+details.fx-about>summary{{cursor:pointer;padding:10px 14px;font-size:14px;color:var(--ink-2)}}
+details.fx-about .fx-about-in{{padding:2px 14px 12px;border-top:1px solid var(--line)}}
+details.fx-about h2{{font-size:16px;border-bottom:0;padding-bottom:0;margin:16px 0 6px}}
 hr{{border:0;border-top:1px solid var(--line);margin:26px 0}}
 ul,ol{{padding-left:22px}} li{{margin:5px 0}}
 a{{color:var(--zhu)}}
