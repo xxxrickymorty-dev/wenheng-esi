@@ -263,7 +263,7 @@ def cmd_fetch(args) -> int:
     st["snapshot"] = snapshot
     A.write_state(period, st)
     want = set(args.groups.split(",")) if args.groups else None
-    _set_op(period, "fetch", "running", "正在按组下载（登录由馆员在专用浏览器完成）")
+    _set_op(period, "fetch", "running", "正在按组下载（会话过期自动重登；遇验证码才需人工）")
     failed = 0
     for gid, cmd in _fetch_steps(period, snapshot):
         if want is not None and gid not in want:

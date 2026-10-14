@@ -12,6 +12,7 @@
     python tools\\clarivate_incites_fetch.py institutions --out ..\\数据与复现\\incites\\<快照目录>
     python tools\\clarivate_incites_fetch.py fields       --out ..\\数据与复现\\incites\\<快照目录>
     python tools\\clarivate_incites_fetch.py subjects     --out ..\\数据与复现\\incites\\<快照目录>
+    python tools\\clarivate_incites_fetch.py login        （检查/自动重登会话，不下载）
     （默认跳过已存在文件；`--force` 覆盖。）
 
 5 类对应命令：
@@ -34,6 +35,9 @@ from pathlib import Path
 from urllib.parse import quote
 
 from playwright.sync_api import Page, sync_playwright
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from clarivate_login import ensure_login                    # noqa: E402  会话过期自动重登（同目录）
 
 CDP = "http://127.0.0.1:9222"
 
@@ -370,7 +374,7 @@ COMMANDS = {
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("command", choices=sorted(COMMANDS))
+    ap.add_argument("command", choices=sorted([*COMMANDS, "login"]))
     ap.add_argument("--out", default=None,
                     help="产物目录（默认 ..\\数据与复现\\incites\\数据覆盖<起>-<止>.<WoS截止 MM.DD>）")
     ap.add_argument("--force", action="store_true", help="覆盖已存在文件（默认跳过）")
@@ -379,6 +383,10 @@ def main() -> int:
     with sync_playwright() as p:
         browser = p.chromium.connect_over_cdp(resolve_cdp())
         page = _get_incites_page(browser)
+        ensure_login(page, "incites")        # 会话过期自动重登（Chrome 自动填表 + 点 登录）
+        if args.command == "login":
+            print("[OK] InCites 登录就绪")
+            return 0
         sid, dates = _session(page)
         period = _window(dates)
         #: 快照目录名 = 数据覆盖<period起>-<period止>.<WoS 内容截止 MM.DD>（照历史归档）

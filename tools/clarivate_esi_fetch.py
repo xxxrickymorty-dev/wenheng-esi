@@ -16,6 +16,7 @@
     python tools/clarivate_esi_fetch.py toppapers        # Step 4 云大论文明细 ×3（文件名「数字在前」）
     python tools/clarivate_esi_fetch.py thresholds       # Step 5a 阈值 ×3
     python tools/clarivate_esi_fetch.py baselines        # Step 5b 基线 ×3
+    python tools/clarivate_esi_fetch.py login            # 检查/自动重登会话（不下载）
 """
 from __future__ import annotations
 
@@ -26,6 +27,9 @@ from urllib.parse import quote
 
 import openpyxl
 from playwright.sync_api import Page, sync_playwright
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from clarivate_login import ensure_login                    # noqa: E402  会话过期自动重登（同目录）
 
 CDP = "http://127.0.0.1:9222"
 
@@ -340,7 +344,7 @@ def write_fetch_meta(out: Path, command: str) -> Path:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("command", choices=sorted(COMMANDS))
+    ap.add_argument("command", choices=sorted([*COMMANDS, "login"]))
     ap.add_argument("--out", default=str(DEFAULT_OUT))
     ap.add_argument("--format", default="XLS", choices=["XLS", "CSV", "PDF"])
     ap.add_argument("--force", action="store_true", help="覆盖已存在文件（subjects 用）")
@@ -349,6 +353,10 @@ def main() -> int:
     with sync_playwright() as p:
         browser = p.chromium.connect_over_cdp(resolve_cdp())
         page = get_esi_page(browser)
+        ensure_login(page, "esi")            # 会话过期自动重登（Chrome 自动填表 + 点 Sign in）
+        if args.command == "login":
+            print("[OK] ESI 登录就绪")
+            return 0
         fn = COMMANDS[args.command]
         if args.command in ("subjects", "subjects-9col", "subjects-7col"):
             fn(page, Path(args.out), args.format, args.force)
