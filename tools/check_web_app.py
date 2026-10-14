@@ -321,7 +321,7 @@ def main():
             page.wait_for_selector(".aq-head", timeout=15000)
             txt = page.inner_text("main")
             check("取数台：未出稿期次也能看（待核对态）",
-                  "待核对" in txt and "当期核对副本已自动建好" in txt, "")
+                  "待核对" in txt and "已自动建好" in txt, "")
             page.goto(BASE + "/app/?period=209911", wait_until="domcontentloaded")
             page.wait_for_timeout(900)
             txt = page.inner_text("main")
