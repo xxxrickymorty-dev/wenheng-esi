@@ -25,7 +25,7 @@ export function UserChip({ me, dock = false }: { me: Me | null; dock?: boolean }
     return (
       <span className={`user-chip${dock ? ' user-chip-dock' : ''}`} aria-live="polite">
         <span className="user-chip-btn" aria-disabled="true">
-          <span className="av">？</span>角色确认中…
+          <span className="av">？</span><span className="user-chip-name">角色确认中…</span>
         </span>
       </span>
     )
@@ -38,7 +38,7 @@ export function UserChip({ me, dock = false }: { me: Me | null; dock?: boolean }
               title={`${me.name} · ${role}——点这里可退出登录`}
               onClick={() => setOpen((v) => !v)}>
         <span className="av">{me.name.slice(0, 1)}</span>
-        {me.name} · {role}
+        <span className="user-chip-name">{me.name} · {role}</span>
       </button>
       {open && (
         <span className="user-chip-pop" role="menu">

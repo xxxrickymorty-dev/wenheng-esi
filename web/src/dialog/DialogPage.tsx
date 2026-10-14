@@ -9,9 +9,9 @@
    回滚走既有 `rollback-points` / `rollback`（旧稿在 `_superseded/`）。 */
 
 import { useEffect, useRef, useState } from 'react'
-import { req, getAiCapabilities, getArtifacts, getJobProgress, getMe, getPeriods,
-         getRollbackPoints, postAiSwitch, postJob, rollbackPeriod,
-         type AiCapability, type Me, type RollbackPoint } from '../api'
+import { req, getArtifacts, getJobProgress, getMe, getPeriods,
+         getRollbackPoints, postJob, rollbackPeriod,
+         type Me, type RollbackPoint } from '../api'
 import { getDialogHome, postDialogTurnStream,
          type DialogAction, type DialogAnswer, type DialogHome, type DialogReply,
          type DialogRun } from '../api-dialog'
@@ -150,9 +150,6 @@ export default function DialogPage() {
   const [stage, setStage] = useState('')
   /* 空态第一屏「本期任务」（票 06）：从既有产物判的三步状态；拿不到就退回普通问候。 */
   const [home, setHome] = useState<DialogHome | null>(null)
-  /* 「查数据」能力开关（票 07）：问文衡并入前门——开关跟着能力放这儿（管理员可关）。 */
-  const [qa, setQa] = useState<AiCapability | null>(null)
-  const [qaBusy, setQaBusy] = useState(false)
   /* 正在出稿的那条回复（停止键要用：期次 + 消息下标 + run 令牌） */
   const [running, setRunning] = useState<{ period: string; index: number } | null>(null)
   const runTokenRef = useRef<string>('')
@@ -234,14 +231,6 @@ export default function DialogPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 只在身份确认后跑一次
   }, [roleKnown, me])
 
-  useEffect(() => {
-    let alive = true
-    getAiCapabilities()
-      .then((cs) => { if (alive) setQa(cs.find((c) => c.id === 'qa') ?? null) })
-      .catch(() => { /* 拿不到开关表就不显示开关——真门在后端 */ })
-    return () => { alive = false }
-  }, [])
-
   /* 本期任务（票 06）：每次切到（或新开）一个空对话时重取——出稿后状态就变了。 */
   useEffect(() => {
     let alive = true
@@ -250,15 +239,6 @@ export default function DialogPage() {
       .catch(() => { if (alive) setHome(null) })
     return () => { alive = false }
   }, [activeId])
-
-  /** 开关「查数据」（qa 能力）：关闭后对话里照旧说「已关闭」，报告不受影响。 */
-  async function toggleQa(next: boolean) {
-    setQaBusy(true)
-    try {
-      await postAiSwitch('qa', next)
-      setQa((c) => (c ? { ...c, enabled: next } : c))
-    } finally { setQaBusy(false) }
-  }
 
   useEffect(() => {
     const el = threadRef.current
@@ -629,13 +609,6 @@ export default function DialogPage() {
               <button type="button" aria-pressed={palette === 'zhu'}
                       onClick={() => setPalette('zhu')}>朱砂</button>
             </span>
-            {canEdit && qa && (
-              <button type="button" className="dlg-qa" aria-pressed={qa.enabled} disabled={qaBusy}
-                      title="管理员可关闭「查数据」；关闭后对话里照旧说「已关闭」，报告不受影响"
-                      onClick={() => void toggleQa(!qa.enabled)}>
-                查数据 · {qa.enabled ? '已开启' : '已关闭'}
-              </button>
-            )}
             <SlotChip label="期次" value={active.slots.period}
                       onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'period') }))} />
             <SlotChip label="意图" value={active.slots.intent}
