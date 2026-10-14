@@ -100,9 +100,6 @@ a{color:inherit}
 
 .wrap{max-width:1180px;margin:0 auto;padding:26px 22px 70px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
-/* 合规声明：每个工作台的界面顶部一行（rick 2026-09-29；原为视口左侧竖排） */
-.ws-claim{margin:0 2px 2px;text-align:right;font-size:12.5px;letter-spacing:.06em;
-  color:var(--ink-3);opacity:.85;user-select:none}
 
 /* ---------- 三步条 ---------- */
 .steps{display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:20px 24px}
@@ -890,6 +887,8 @@ a{color:inherit}
 .app-footer .f-bottom{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
   margin-top:32px;padding-top:14px;border-top:1px solid var(--footer-line);
   font-size:12.5px;color:var(--footer-dim)}
+/* 合规声明（请勿外传）：底部行中位（2026-10-14 rick；原为工作台顶部右对齐一行） */
+.app-footer .f-claim{letter-spacing:.06em;user-select:none}
 @media (max-width:760px){
   .app-footer .inner{padding:30px 14px 48px}
   .app-footer .cols{gap:22px}

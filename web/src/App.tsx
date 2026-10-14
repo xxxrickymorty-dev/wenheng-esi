@@ -479,8 +479,6 @@ export default function App() {
       </header>
 
       <main className="wrap">
-        {/* 合规声明：放进工作区界面本身（rick 2026-09-29：从视口左侧竖排移入各工作台） */}
-        <p className="ws-claim">分析报告属于内部资料，仅用于参赛，禁止外传。</p>
         {healthy === false && (
           <div className="banner bad mt-0">
             <span className="ico"><Icon name="alert" size={22} /></span>
@@ -590,7 +588,8 @@ export default function App() {
         </p>
       </main>
 
-      {/* 全局页脚（2026-10-01，rick：形态参考陈列馆）：口径 · 来源 · 只读声明全站唯一一份 */}
+      {/* 全局页脚（2026-10-01，rick：形态参考陈列馆）：口径 · 来源 · 只读声明全站唯一一份；
+          合规声明（请勿外传）2026-10-14 起放底部行中位（rick：自工作台顶部移入） */}
       <footer className="app-footer" role="contentinfo">
         <div className="inner">
           <div className="cols">
@@ -618,6 +617,7 @@ export default function App() {
           </div>
           <div className="f-bottom">
             <span>云南大学图书馆 · 学科信息参考</span>
+            <span className="f-claim">分析报告属于内部资料，仅用于参赛，禁止外传。</span>
             <span>会泽百家　至公天下</span>
           </div>
         </div>
