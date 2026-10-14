@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'react'
 import { req, getAiCapabilities, getArtifacts, getJobProgress, getMe, getPeriods,
          getRollbackPoints, postAiSwitch, postJob, rollbackPeriod,
          type AiCapability, type Me, type RollbackPoint } from '../api'
-import { getDialogHome,
+import { getDialogHome, postDialogTurnStream,
          type DialogAction, type DialogAnswer, type DialogHome, type DialogReply,
          type DialogRun } from '../api-dialog'
 import { runFlexibleStream, stopFlexible, type FlexCheck, type FlexStreamEvent } from '../api-flexible'
@@ -146,6 +146,8 @@ export default function DialogPage() {
   const [activeId, setActiveId] = useState(1)
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  /* 阶段进度流（票 12）：等待时显示「正在做什么」（后端真实节点给，不演） */
+  const [stage, setStage] = useState('')
   /* 空态第一屏「本期任务」（票 06）：从既有产物判的三步状态；拿不到就退回普通问候。 */
   const [home, setHome] = useState<DialogHome | null>(null)
   /* 「查数据」能力开关（票 07）：问文衡并入前门——开关跟着能力放这儿（管理员可关）。 */
@@ -280,6 +282,7 @@ export default function DialogPage() {
     if (!text || busy || running) return
     setInput('')
     setBusy(true)
+    setStage('')
     const convId = active.id
     const slots = slotsOverride ?? active.slots
     const replyIndex = active.turns.length + 1          // 先发用户话，回复接在它后面
@@ -296,7 +299,15 @@ export default function DialogPage() {
         .filter((t) => t.who !== 'sys')
         .slice(-6)
         .map((t) => ({ who: t.who, text: t.text.slice(0, 200) }))
-      const r = await postTurn(text, slots, history, active.sessionId)
+      let r: DialogReply
+      try {
+        /* 阶段进度流（票 12）：等待时看得到「正在做什么」；答案仍整段到 */
+        r = await postDialogTurnStream(text, slots, history, active.sessionId,
+                                       (t) => setStage(t))
+      } catch {
+        /* 进度流不可用（网络/部署差异）→ 回退同步口：界面照常，只是没有阶段提示 */
+        r = await postTurn(text, slots, history, active.sessionId)
+      }
       updateActive((c) => ({
         ...c,
         sessionId: r.session_id || c.sessionId,
@@ -320,6 +331,7 @@ export default function DialogPage() {
       }))
     } finally {
       setBusy(false)
+      setStage('')
     }
   }
 
@@ -764,7 +776,10 @@ export default function DialogPage() {
             {busy && (
               <div className="dlg-turn wh">
                 <div className="dlg-who">文</div>
-                <div className="dlg-bub dlg-wait">正在理解这句话…</div>
+                <div className="dlg-bub dlg-wait">
+                  <span className="dlg-dot" aria-hidden="true" />
+                  {stage || '正在理解这句话…'}
+                </div>
               </div>
             )}
           </div>

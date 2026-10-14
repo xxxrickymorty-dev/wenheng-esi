@@ -45,3 +45,29 @@ export function withSessionId(search: string, id: string): string {
   else params.delete(SESSION_PARAM)
   return params.toString()
 }
+
+/* 阶段进度流（票 12，契约 #37）：一行一个事件（NDJSON）。
+   只做**纯解析**——网络与界面在 api-dialog / DialogPage；这里可 vitest 直测。 */
+export type StreamEvent =
+  | { event: 'stage'; stage: string; text: string }
+  | { event: 'done'; payload: unknown }
+  | { event: 'error'; error: string; status?: number }
+
+/** 缓冲 + 新块 → 完整事件；不完整的行留在缓冲里（下一块再拼）。坏行丢弃，不炸。 */
+export function parseNdjsonChunks(buffer: string, chunk: string):
+    { events: StreamEvent[]; buffer: string } {
+  const lines = (buffer + chunk).split('\n')
+  const rest = lines.pop() ?? ''
+  const events: StreamEvent[] = []
+  for (const line of lines) {
+    const s = line.trim()
+    if (!s) continue
+    try {
+      const ev = JSON.parse(s) as StreamEvent
+      if (ev && typeof ev === 'object' && 'event' in ev) events.push(ev)
+    } catch {
+      /* 半行/坏行丢弃——进度只是旁路，不挡这一轮对话 */
+    }
+  }
+  return { events, buffer: rest }
+}

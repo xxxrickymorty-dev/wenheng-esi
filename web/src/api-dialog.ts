@@ -3,7 +3,8 @@
    查数据（kind="query"）时 answer ＝ qa 能力的 Answer（服务器按意图调）；
    解析、盘点、问答都在后端（数字只来自后端，前端不猜期次、不判件齐没齐）。 */
 
-import { req } from './api'
+import { HttpError, req } from './api'
+import { parseNdjsonChunks } from './lib/dialog'
 import type { DialogSlots } from './lib/dialog'
 import type { DialogHome } from './lib/taskview'
 
@@ -76,6 +77,8 @@ export type DialogReply = {
   run: DialogRun | null
   /** 查数据的回答（票 07）；其余轮次为 null */
   answer: DialogAnswer | null
+  /** 本回合的会话 id（票 11）：续聊把它回传（刷新/换设备恢复用） */
+  session_id?: string
 }
 
 export async function postDialogTurn(text: string, slots: DialogSlots,
@@ -91,4 +94,36 @@ export async function postDialogTurn(text: string, slots: DialogSlots,
     形状与展示文案的映射在 `lib/taskview.ts`（纯函数、vitest 直测）。 */
 export async function getDialogHome(): Promise<DialogHome> {
   return req<DialogHome>('/api/dialog/home')
+}
+
+/** 阶段进度流（票 12，契约 #37）：同一轮对话，但把「正在做什么」实时回给界面（onStage）。
+    最终仍返回完整的 DialogReply；**不流正文**——答案整段到（数字要先过后端核对）。
+    出错时调用方回退同步口（postDialogTurn）——界面照常，只是没有阶段提示。 */
+export async function postDialogTurnStream(
+  text: string, slots: DialogSlots, history: { who: string; text: string }[],
+  session: string | undefined, onStage: (text: string) => void,
+): Promise<DialogReply> {
+  const res = await fetch('/api/dialog/turn/stream', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, slots, history, session }),
+  })
+  if (!res.ok || !res.body) throw new HttpError(res.status, null)
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
+  let reply: DialogReply | null = null
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    const parsed = parseNdjsonChunks(buf, decoder.decode(value, { stream: true }))
+    buf = parsed.buffer
+    for (const ev of parsed.events) {
+      if (ev.event === 'stage') onStage(ev.text)
+      else if (ev.event === 'done') reply = ev.payload as DialogReply
+      else throw new HttpError(ev.status ?? 500, { error: ev.error })
+    }
+  }
+  if (!reply) throw new Error('进度流提前结束')
+  return reply
 }

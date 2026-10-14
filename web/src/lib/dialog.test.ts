@@ -2,7 +2,24 @@
 
 import { describe, expect, it } from 'vitest'
 import { clearSlot, conversationTitle, emptySlots, hasSlots,
-         sessionIdFromSearch, withSessionId } from './dialog'
+         parseNdjsonChunks, sessionIdFromSearch, withSessionId } from './dialog'
+
+describe('进度流的行解析（票 12）：半行留缓冲、坏行丢弃', () => {
+  it('整行解析 + 半行跨块拼回', () => {
+    const a = parseNdjsonChunks(
+      '', '{"event":"stage","stage":"理解","text":"正在理解这句话…"}\n{"event":"do')
+    expect(a.events).toEqual([{ event: 'stage', stage: '理解', text: '正在理解这句话…' }])
+    expect(a.buffer).toBe('{"event":"do')
+    const b = parseNdjsonChunks(a.buffer, 'ne","payload":{"kind":"query"}}\n')
+    expect(b.events).toEqual([{ event: 'done', payload: { kind: 'query' } }])
+    expect(b.buffer).toBe('')
+  })
+
+  it('坏行与空行丢弃，不炸', () => {
+    const r = parseNdjsonChunks('', 'not json\n\n{"event":"error","error":"x"}\n')
+    expect(r.events).toEqual([{ event: 'error', error: 'x' }])
+  })
+})
 
 describe('槽位（可显示、可清、回未设）', () => {
   it('空态：两格都没设', () => {
