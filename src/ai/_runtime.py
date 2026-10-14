@@ -63,3 +63,16 @@ def using(**overrides):
 
 def overrides() -> dict:
     return dict(_overrides_var.get() or {})
+
+
+def progress(code) -> None:
+    """进度回调（票 12，阶段进度流）：`using(progress=callable)` 注入；无回调＝静默。
+
+    进度只是旁路——回调异常不挡主流程。"""
+    cb = (_overrides_var.get() or {}).get("progress")
+    if cb is None:
+        return
+    try:
+        cb(str(code))
+    except Exception:                                             # noqa: BLE001
+        pass

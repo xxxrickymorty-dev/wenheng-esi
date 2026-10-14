@@ -19,7 +19,7 @@ import time
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from . import _brain, _config, _shield
+from . import _brain, _config, _runtime, _shield
 
 
 class FallbackReason(StrEnum):
@@ -74,6 +74,8 @@ def attempt(task, *, system: str, ability: str, anchored: bool = True, evidence=
     """执行一次调用尝试。运行期故障不抛（以 Outcome 表达）。"""
     brain = _config.build_brain()
     attempted = not getattr(brain, "is_rule", False)
+    if attempted:
+        _runtime.progress(f"model:{ability}")   # 票 12：模型真被调用才发（规则轮不发）
     t0 = time.time()
 
     if mapping is None:

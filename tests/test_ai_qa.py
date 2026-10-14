@@ -653,3 +653,25 @@ def test_任务首行明示指向期次(tmp_path, monkeypatch):
     assert ans.mode == "model"
     assert "本次问题指向期次" in brain.briefs[0].task
     assert "已解析" in brain.briefs[0].task
+
+
+# ============================================================ 票 12：阶段进度流（进度回调）
+def test_进度回调_模型轮有规则轮无(tmp_path, monkeypatch):
+    """`ai.using(progress=…)`：模型真被调用才发 `model:*`；规则轮不发（不演）。"""
+    root = _seed_ledger(tmp_path, monkeypatch)
+    seen = []
+    brain = ScriptedBrain([
+        Turn(text='{"specs": [{"op": "series", "metric": "proximity",'
+                  ' "disc": "Chemistry", "span": "recent"}]}'),
+        lambda b: Turn(text=b.task + "\n\n" + "\n\n".join(b.evidence))])
+    with ai.using(data_root=root, brain=brain, progress=seen.append):
+        ai.run("qa", "202607",
+               payload={"question": "它最近怎么样", "history": []},
+               actor="admin")
+    assert "model:qa-plan" in seen and "model:qa" in seen, seen
+
+    seen.clear()
+    with ai.using(data_root=root, progress=seen.append):
+        ai.run("qa", "202607", payload={"question": "化学的接近度", "history": []},
+               actor="admin")
+    assert not any(str(s).startswith("model:") for s in seen), seen

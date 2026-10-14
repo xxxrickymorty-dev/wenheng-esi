@@ -1636,28 +1636,46 @@ async def api_dialog_turn(request: Request):
     每轮对话的留痕复用 `ai_calls`（不新开账本）。空话 400；非 admin 401/403。
     """
     body = await request.json()
+    payload, status = await _dialog_turn_impl(body, current_user(request) or "")
+    if status == 200:
+        return payload
+    return JSONResponse(payload, status_code=status)
+
+
+async def _dialog_turn_impl(body: dict, user: str, progress=None) -> tuple:
+    """对话前门一轮的**共享内核**（同步口 #33 / 流口 #37 共用；2026-10-14 票 12）。
+
+    返回 `(payload, status)`；`progress`（可选）在真实编排点收阶段码：
+    「理解」（进对话能力前）/「查数」（进问答能力前）——规则模式如实少事件，不演。
+    """
+    def _prog(code):
+        if progress is not None:
+            try:
+                progress(code)
+            except Exception:                                     # noqa: BLE001
+                pass
+
     text = str(body.get("text") or "").strip()
     if not text:
-        return JSONResponse({"error": "请先说一句话"}, status_code=400)
+        return {"error": "请先说一句话"}, 400
     slots = body.get("slots") if isinstance(body.get("slots"), dict) else {}
     period = str(slots.get("period") or "").strip()
     if period and not re.fullmatch(r"\d{6}", period):
         period = ""                                   # 形状不合法就丢弃，不猜
     intent = str(slots.get("intent") or "").strip()[:20]
-    user = current_user(request) or ""
     # 会话（票 11）：有 session → 归属校验 + 历史从库读；无 → 本回合结束时建新会话。
     session_id = str(body.get("session") or "").strip()
     stored_turns = None
     if session_id:
         if SESSION_DB_PATH is None:
-            return JSONResponse({"error": "会话不存在"}, status_code=404)
+            return {"error": "会话不存在"}, 404
         try:
             stored = await run_in_threadpool(session_store.load,
                                              SESSION_DB_PATH, session_id, user)
         except (ValueError, KeyError):
-            return JSONResponse({"error": "会话不存在"}, status_code=404)
+            return {"error": "会话不存在"}, 404
         except PermissionError:
-            return JSONResponse({"error": "会话不属于当前用户"}, status_code=403)
+            return {"error": "会话不属于当前用户"}, 403
         stored_turns = stored["turns"]
     # 对话上文（2026-10-12 rick 实问「这是几月的」）：追问要靠上文解指代——
     # 只收 me/wh 的文本，条数与长度都截断（外发面另有 6000 字符上限兜底）。
@@ -1683,11 +1701,13 @@ async def api_dialog_turn(request: Request):
     import ai                                                     # noqa: PLC0415
     actor = config.role_of(user)
     # 2026-10-12：操作员也有出报告/审批——报告流程两种角色一致（readonly 注入已取消）。
+    _prog("理解")                                                 # 票 12：进对话能力前
     ans = await run_in_threadpool(ai.run, "dialog", period,
                                   payload={"text": text, "history": history,
                                            "periods": periods}, actor=actor)
     if ans.mode in ("closed", "denied", "unavailable"):
-        return _answer_response(ans)
+        r = _answer_response(ans)
+        return json.loads(r.body), r.status_code
     turn = ans.data or {}
     resp = ans.as_dict()
     resp["kind"] = str(turn.get("kind") or "")
@@ -1708,6 +1728,7 @@ async def api_dialog_turn(request: Request):
             if resolve_period_dir(target) is None:
                 resp["text"] = "这一期还没有可用产物——先出稿，才有得查。"
             else:
+                _prog("查数")                                     # 票 12：进问答能力前
                 qa_ans = await run_in_threadpool(
                     ai.run, "qa", target,
                     payload={"question": text, "history": history}, actor=actor)
@@ -1732,7 +1753,76 @@ async def api_dialog_turn(request: Request):
         except Exception:                                     # noqa: BLE001
             session_id = ""
     resp["session_id"] = session_id
-    return resp
+    return resp, 200
+
+
+#: 阶段文案（票 12）：阶段码 → 人话。规则模式如实少事件（不演）。
+_STAGE_TEXT = {
+    "理解": "正在理解这句话…",
+    "查数": "正在查台账…",
+    "model:dialog": "正在理解这句话…（模型兜底）",
+    "model:qa-plan": "正在规划查哪些数…",
+    "model:qa": "正在写答案…",
+    "model:polish": "正在润色…",
+    "model:qa-polish": "正在润色…",
+}
+
+
+@app.post("/api/dialog/turn/stream")
+@user_route
+async def api_dialog_turn_stream(request: Request):
+    """对话前门一轮·**阶段进度流**（契约 #37，2026-10-14 票 12）：NDJSON 一行一事件。
+
+    `stage×N → done(payload)`（payload 与 #33 响应同形状）；失败 → `error`（不断流）。
+    **不流正文**——数字必须先过「数字盾」；阶段发生在真实节点（不造假进度）。
+    请求体与 #33 完全一致。"""
+    body = await request.json()
+    user = current_user(request) or ""
+
+    async def gen():
+        q: asyncio.Queue = asyncio.Queue()
+        result: dict = {}
+        loop = asyncio.get_running_loop()
+
+        def _put(code):
+            # 进度可能来自线程池线程（_attempt 在 run_in_threadpool 里跑）——必须跨线程投递
+            loop.call_soon_threadsafe(q.put_nowait, ("stage", code))
+
+        async def _worker():
+            try:
+                import ai                                         # noqa: PLC0415
+                with ai.using(progress=_put):
+                    result["payload"], result["status"] = await _dialog_turn_impl(
+                        body, user, progress=_put)
+            except Exception as e:                                # noqa: BLE001
+                result["error"] = f"{type(e).__name__}: {e}"
+            finally:
+                q.put_nowait(("end", None))
+
+        task = asyncio.create_task(_worker())
+        try:
+            while True:
+                kind, item = await q.get()
+                if kind == "end":
+                    break
+                yield json.dumps({"event": "stage", "stage": item,
+                                  "text": _STAGE_TEXT.get(item, "处理中…")},
+                                 ensure_ascii=False) + "\n"
+        finally:
+            await task
+        if result.get("status", 200) != 200 or "payload" not in result:
+            payload = result.get("payload") if isinstance(result.get("payload"), dict) else {}
+            yield json.dumps({"event": "error",
+                              "error": payload.get("error") or result.get("error") or "未知错误",
+                              "status": int(result.get("status") or 500)},
+                             ensure_ascii=False) + "\n"
+        else:
+            yield json.dumps({"event": "done", "payload": result["payload"]},
+                             ensure_ascii=False) + "\n"
+
+    return StreamingResponse(gen(), media_type="application/x-ndjson; charset=utf-8",
+                             headers={"Cache-Control": "no-cache",
+                                      "X-Accel-Buffering": "no"})
 
 
 @app.get("/api/dialog/session/{session_id}")
