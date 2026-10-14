@@ -165,6 +165,7 @@ def _publish(cap, period, role, *, mode, backend, notice, text, rule_text, sourc
     rec_fallback = rec["fallback"] if "fallback" in rec else fallback
     rec_egress = rec.get("egress") or egress
     rec_elapsed = rec.get("elapsed_ms") if rec.get("elapsed_ms") is not None else elapsed_ms
+    rec_detail = rec.get("detail") or fallback_detail
     rid = _record.Recorder.for_period(period, role).call(
         capability=cap.id, mode=rec_mode, backend=rec_backend, fallback=rec_fallback,
         shield=shield_res.as_dict(),
@@ -173,7 +174,7 @@ def _publish(cap, period, role, *, mode, backend, notice, text, rule_text, sourc
         egress_items=int((rec_egress or {}).get("items") or 0),
         egress_bytes=int((rec_egress or {}).get("bytes") or 0),
         elapsed_ms=(int((time.time() - t0) * 1000) if rec_elapsed is None else rec_elapsed),
-        fallback_detail=fallback_detail, plan=plan)
+        fallback_detail=rec_detail, plan=plan)
     if rid is None:
         _record.process_log_line(log, cap.id, period, role, "append_failed")
         if mode == "model":

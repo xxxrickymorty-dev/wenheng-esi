@@ -32,7 +32,7 @@ import socket
 import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from . import _brain, _config, _runtime
 
@@ -72,6 +72,7 @@ class KernelResult:
     mode: str = "rule"            # 记录面：model | fallback | rule
     backend: str = "rule"
     reason: str = ""              # fallback 原因码（brain_error:* / empty_reply）
+    detail: str = ""              # 诊断片段（≤120 字符；只进记录面，不参与任何决策）
     egress: dict = field(default_factory=dict)
     elapsed_ms: int = 0
     tools_used: tuple = ()
@@ -82,6 +83,8 @@ class KernelResult:
                "egress": dict(self.egress), "elapsed_ms": self.elapsed_ms}
         if self.reason:
             rec["fallback"] = self.reason
+        if self.detail:
+            rec["detail"] = self.detail
         if self.tools_used:
             rec["tools"] = list(self.tools_used)
         return rec
@@ -348,10 +351,10 @@ def _make_openai_stream(pi, cfg, egress):
 
 
 # ---------------------------------------------------------------- 输出校验（零数字）
-def parse_slots(raw, periods) -> tuple[str, str] | None:
-    """模型输出 → (period, intent)；不合规一律 None（含「出现数字」）。"""
-    text = str(raw or "").strip()
-    if text.startswith("```"):                                     # 容忍一层围栏
+def _extract_json(text: str):
+    """从模型输出里取第一个可解析的 JSON 对象（容忍一层围栏与前后白话）。"""
+    text = str(text or "").strip()
+    if text.startswith("```"):
         lines = text.splitlines()
         if lines and lines[0].startswith("```"):
             lines = lines[1:]
@@ -361,18 +364,53 @@ def parse_slots(raw, periods) -> tuple[str, str] | None:
     if not text:
         return None
     try:
-        obj = json.loads(text)
+        return json.loads(text)
     except (json.JSONDecodeError, ValueError):
+        pass
+    dec = json.JSONDecoder()
+    idx = text.find("{")
+    while idx >= 0:
+        try:
+            obj, _end = dec.raw_decode(text, idx)
+            return obj
+        except (json.JSONDecodeError, ValueError):
+            idx = text.find("{", idx + 1)
+    return None
+
+
+def _norm_intent(raw: str) -> str | None:
+    """intent 白名单归一：报告类 → 「出报告」；查询类 → 空串；其余 None（拒）。"""
+    s = str(raw or "").strip()
+    if s in INTENTS:
+        return s
+    if any(k in s for k in ("报告", "出稿", "生成", "重出", "再出")):
+        return "出报告"
+    if s in ("查数据", "查询", "问数", "查", "数据", "qa", "query", "search"):
+        return ""
+    return None
+
+
+def parse_slots(raw, periods) -> tuple[str, str] | None:
+    """模型输出 → (period, intent)；不合规一律 None。
+
+    只**取** `{period, intent}`：其余键的值里出现数字就拒（防数字夹带；纯文字忽略）；
+    JSON 对象之外的白话不采信（可能带数字，一律丢弃）。`period` 必须 ∈ 已知期次列表
+    或空串；`intent` 按白名单归一（报告类 / 查询类），归一不了即拒。
+    """
+    obj = _extract_json(raw)
+    if not isinstance(obj, dict):
         return None
-    if not isinstance(obj, dict) or set(obj) - {"period", "intent"}:
+    for key, value in obj.items():
+        if key not in ("period", "intent") and re.search(r"\d", str(value)):
+            return None
+    period, intent_raw = obj.get("period", ""), obj.get("intent", "")
+    if not isinstance(period, str) or not isinstance(intent_raw, str):
         return None
-    period, intent = obj.get("period", ""), obj.get("intent", "")
-    if not isinstance(period, str) or not isinstance(intent, str):
-        return None
-    period, intent = period.strip(), intent.strip()
+    period = period.strip()
     if period and (not _PERIOD_RE.fullmatch(period) or period not in tuple(periods)):
         return None
-    if intent not in INTENTS:
+    intent = _norm_intent(intent_raw)
+    if intent is None:
         return None
     return period, intent
 
@@ -450,7 +488,9 @@ def assist(text, *, history=(), periods=(), slot="", tools=None, timeout=None) -
         return _fallback("brain_error:aborted", backend, egress, used)
     slots = parse_slots(_blocks_text(last.content), clean)
     if slots is None:
-        return _fallback("brain_error:bad_response", backend, egress, used)
+        res = _fallback("brain_error:bad_response", backend, egress, used)
+        snippet = " ".join(_blocks_text(last.content).split())[:120]
+        return replace(res, detail=snippet)
     period, intent = slots
     return KernelResult(status="ok", period=period, intent=intent, mode="model",
                         backend=backend, egress=dict(egress), tools_used=used,

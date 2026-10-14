@@ -264,8 +264,7 @@ def test_数字泄漏与越界期次_全拒(tmp_path):
         '{"period": "202607", "intent": "有 139 篇"}',      # 数字泄漏
         '{"period": "202001", "intent": ""}',               # 不在 payload.periods
         '{"period": 202607, "intent": ""}',                 # 非字符串期次
-        '{"period": "202607", "note": "139"}',              # 白名单外键
-        '{"period": "202607", "intent": "查数据"}',          # intent 白名单外
+        '{"period": "202607", "note": "139"}',              # 白名单外键且值带数字
         "[]",                                               # 非对象
     )
     for bad in bads:
@@ -284,6 +283,13 @@ def test_parse_slots_白名单直测():
     assert _dialog_kernel.parse_slots(
         '```json\n{"period": "202607", "intent": ""}\n```', periods) == ("202607", "")
     assert _dialog_kernel.parse_slots("{}", periods) == ("", "")
+    # 2026-10-14 加固：围栏/前后白话容忍；intent 归一（查询类→空串）；纯文字多余键忽略
+    assert _dialog_kernel.parse_slots(
+        '上上期是 202607。\n{"period": "202607", "intent": "查数据"}',
+        periods) == ("202607", "")
+    assert _dialog_kernel.parse_slots(
+        '{"period": "202607", "intent": "报告", "reason": "结合上文"}',
+        periods) == ("202607", "出报告")
     for bad in ("", "嗯", "[]", '{"period": "202001"}', '{"period": "202607", "x": 1}'):
         assert _dialog_kernel.parse_slots(bad, periods) is None, bad
 
