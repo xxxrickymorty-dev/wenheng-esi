@@ -295,7 +295,7 @@ def _make_openai_stream(pi, cfg, egress):
                     code="egress_budget")
             payload = {"model": cfg["model"], "messages": messages,
                        "temperature": 0.0,
-                       "max_tokens": min(int(cfg["max_tokens"] or 512), 512)}
+                       "max_tokens": min(int(cfg["max_tokens"] or 2048), 2048)}
             if tools:
                 payload["tools"] = tools
             body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -322,6 +322,15 @@ def _make_openai_stream(pi, cfg, egress):
             except (KeyError, IndexError, TypeError) as e:
                 raise _brain.BrainError("响应缺 choices/message", code="bad_response") from e
             tool_calls = msg.get("tool_calls") or []
+            finish = ""
+            try:
+                finish = str(data["choices"][0].get("finish_reason") or "")
+            except (KeyError, IndexError, TypeError):
+                finish = ""
+            if not tool_calls and finish == "length" \
+                    and not str(msg.get("content") or "").strip():
+                # 推理型模型（deepseek-flash）思考占满输出预算 → 终答为空（2026-10-14 实测）
+                raise _brain.BrainError("输出被 max_tokens 截断", code="truncated")
             if tool_calls:
                 blocks = []
                 for tc in tool_calls:
