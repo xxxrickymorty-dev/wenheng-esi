@@ -393,8 +393,8 @@ export function Forecast({
       : crossings.length ? `${crossings.length} 科预计过线 · 最早 ${crossings[0]}` : '本路线暂无预计过线'
 
   const freshnessText = meta?.data_freshness === 'needs_check'
-    ? '检测到台账或处理输入文件的修改时间晚于最近一次完整运行记录；无法确认这次更新是否已进入预测数据，请重新处理确认。'
-    : '现有记录无法确认上游台账是否已进入预测所用数据，请以「数据截至」为准。'
+    ? '检测到台账或输入文件比最近一次完整运行更新，请重新处理确认——图上读到的仍是预测数据。'
+    : '无法确认上游台账的最新更新是否已进入预测数据；请以「数据截至」为准。'
 
   const saveState = choice?.saving ? '正在保存……'
     : choice?.error ? choice.error
@@ -416,7 +416,8 @@ export function Forecast({
         <Info label="期次与数据说明">
           <p><b>期次 {period ?? '—'}</b>：本期配置与报告的归档期——保存写进这一期。</p>
           <p><b>数据截至 {fmtMonth(meta?.source_period)}</b>：预测图与试跑读的那批完整数据；模型版本 {meta?.model_version ?? '—'}。</p>
-          <p>最近一次完整运行记录：{formatProvenanceTime(meta?.run_record_at)}；上次处理使用的文件：{meta?.processed_input?.name ?? '无法核实'}。</p>
+          <p>最近一次完整运行记录：{formatProvenanceTime(meta?.run_record_at)}；上次处理使用的文件：{meta?.processed_input?.name ?? '无法核实'}
+            {meta?.processed_input?.last_modified_at ? `（文件最后修改：${formatProvenanceTime(meta.processed_input.last_modified_at)}）` : ''}。</p>
         </Info>
 
         {routes.length > 1 && (
@@ -530,9 +531,7 @@ export function Forecast({
                 <b>与报告的关系</b>：这里保存的选择进报告预测章——下次重出报告时，选中的学科按你的选择出图，未改的用 V1 推荐；所选模型若跑不出来，会自动退回推荐。
               </p>
               <p className="hint mt-6">
-                <b>期次与数据说明</b>：{freshnessText} 推荐基线为 {meta.recommendation_baseline ?? '—'}，不是预测数据期次。
-                最近一次完整运行记录写入时间（北京时间）：{formatProvenanceTime(meta.run_record_at)}；上次处理使用的文件：{meta.processed_input.name ?? '无法核实'}
-                {meta.processed_input.last_modified_at ? `（文件最后修改：${formatProvenanceTime(meta.processed_input.last_modified_at)}）` : ''}。
+                <b>期次与数据说明</b>：{freshnessText} V1 推荐基线为 {meta.recommendation_baseline ?? '—'}（不是预测数据期次）。
               </p>
             </div>
           </details>
