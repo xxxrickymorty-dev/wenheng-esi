@@ -67,11 +67,18 @@ def metric_hit(question):
     return None
 
 
-def rule_specs(question, discs=()) -> list:
-    """规则规划：问句 + 问到的学科（en 名单）→ spec 列表（与 v1 台账段一一对应）。"""
+def rule_specs(question, discs=(), period="") -> list:
+    """规则规划：问句 + 问到的学科（en 名单）→ spec 列表（与 v1 台账段一一对应）。
+
+    `period`＝问句点名的那一期（P0-1，2026-10-14）：点名了就出**单值 `at`**（该期），
+    不铺整条序列——「202603 那一期」要的是那一期，不是让模型在全表里自己找。
+    """
     q = str(question or "")
     specs = []
     metric = metric_hit(q)
+    if discs and metric and period:
+        return [{"op": "at", "metric": metric, "disc": d, "period": str(period)}
+                for d in discs]
     if discs and metric:
         specs += [{"op": "series", "metric": metric, "disc": d, "span": "recent"}
                   for d in discs]
@@ -110,7 +117,8 @@ _PLAN_SYSTEM = (
     "你只把问题翻译成对台账的查询规格：不回答、不解释、不计算。"
     "所有数字都已替换为 [[n]] 占位标记：不要新增、删除或改写任何数字与标记。"
     "只输出一个 JSON 对象，形如 {\"specs\": [...]}；每个规格只允许键 "
-    "op / metric / disc / span。op 仅允许 series / events / overall_rank；"
+    "op / metric / disc / span。op 仅允许 series / at / events / overall_rank"
+    "（at＝「某一期的单值」——期次由系统补，**不要写期次**；问走势/多期变化才用 series）；"
     "metric 只能从「可选指标」里选；disc 只能从「可选学科」里选；span 为 recent 或 all。"
     "只有问题或对话上文明确指向某学科时才给该学科的规格；拿不准就不给。"
 )
@@ -162,6 +170,11 @@ def _clean_specs(got, discs_ok):
             disc = str(item.get("disc") or "")
             if disc in discs_ok:
                 out.append({"op": "events", "disc": disc})
+        elif op == "at":
+            metric = _ALIAS.get(str(item.get("metric") or ""))
+            disc = str(item.get("disc") or "")
+            if metric and disc in discs_ok:
+                out.append({"op": "at", "metric": metric, "disc": disc})
         elif op == "overall_rank":
             out.append({"op": "overall_rank", "span": "recent"})
         else:
@@ -211,9 +224,13 @@ def _model_plan(question, *, discs, disciplines, history):
     return got, ""
 
 
-def plan(question, *, discs=(), history=(), disciplines=()) -> dict:
-    """问句 → QueryPlan（规则先算；规则为空才问模型——v1 策略）。"""
-    rule = {"specs": rule_specs(question, discs), "origin": "rule", "note": ""}
+def plan(question, *, discs=(), history=(), disciplines=(), period="") -> dict:
+    """问句 → QueryPlan（规则先算；规则为空才问模型——v1 策略）。
+
+    `period`＝问句点名的那一期（P0-1）：传给规则面出 `at` 单值规格；模型面不传期次
+    （零数字面，期次由执行器补）。
+    """
+    rule = {"specs": rule_specs(question, discs, period), "origin": "rule", "note": ""}
     if rule["specs"] or not str(question or "").strip():
         return rule
     got, reason = _model_plan(question, discs=discs, disciplines=disciplines,

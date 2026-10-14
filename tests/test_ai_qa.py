@@ -604,3 +604,52 @@ class Test规划留痕:
         seed_period(tmp_path)
         qa(tmp_path, question="顶尖论文")
         assert "plan" not in records(tmp_path)[0]
+
+
+# ============================================================ 票 05：P0-1 期次目标查询
+def test_点名期次_规划出单值at():
+    """问句点名某一期 → 规则面出 at 单值（不铺整条序列）。"""
+    from ai import _plan
+    p = _plan.plan("202605 那一期的化学接近度是多少", discs=["Chemistry"], period="202605")
+    assert p["specs"] == [{"op": "at", "metric": "proximity_1pct",
+                           "disc": "Chemistry", "period": "202605"}]
+
+
+def test_没点名期次_序列规格逐字不变():
+    from ai import _plan
+    p = _plan.plan("化学的接近度", discs=["Chemistry"])
+    assert p["specs"] == [{"op": "series", "metric": "proximity_1pct",
+                           "disc": "Chemistry", "span": "recent"}]
+
+
+def test_模型面_at_不带期次_系统补(tmp_path, monkeypatch):
+    """模型面 op 白名单含 at；期次由系统补（模型不写期次——零数字面）。"""
+    root = _seed_ledger(tmp_path, monkeypatch)
+    brain = ScriptedBrain([
+        Turn(text='{"specs": [{"op": "at", "metric": "proximity", "disc": "Chemistry"}]}'),
+        lambda b: Turn(text=b.task + "\n\n" + "\n\n".join(b.evidence))])
+    ans = qa(root, question="它那一期呢", brain=brain,
+             history=[{"who": "me", "text": "化学的接近度是多少"}])
+    assert ans.mode == "model"
+    assert "单期值" in ans.text and "202607" in ans.text, "at 段应进证据（期次由系统补成本轮）"
+    rec = records(root)[0]
+    assert rec["plan"]["specs"][0]["op"] == "at"
+
+
+def test_台账问答_点名往期_单值答对(tmp_path, monkeypatch):
+    """P0-1（rick 实机 T4 根子）：点名往期 → 单值 at 证据，值到格。"""
+    root = _seed_ledger(tmp_path, monkeypatch)
+    ans = qa(root, question="202605 那一期的化学接近度是多少")
+    assert "618.42%" in ans.text and "单期值" in ans.text
+    assert any(s.pointer == "台账#接近度/化学/202605" for s in ans.sources)
+
+
+def test_任务首行明示指向期次(tmp_path, monkeypatch):
+    """问句点名期次 → 任务里明示（写手不再自己解「5月」；数字以掩码形态进任务）。"""
+    root = _seed_ledger(tmp_path, monkeypatch)
+    brain = ScriptedBrain([
+        lambda b: Turn(text=b.task + "\n\n" + "\n\n".join(b.evidence))])
+    ans = qa(root, question="202605 那一期的化学接近度", brain=brain)
+    assert ans.mode == "model"
+    assert "本次问题指向期次" in brain.briefs[0].task
+    assert "已解析" in brain.briefs[0].task

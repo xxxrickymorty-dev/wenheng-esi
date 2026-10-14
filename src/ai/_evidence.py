@@ -135,8 +135,32 @@ def _overall(res):
     return "台账数据·云大排名", text, cells
 
 
+def _at(res):
+    """`at` Result → (key, text, cells)；无值/无期次 → None（P0-1，2026-10-14）。
+
+    单值段：点名的那一期只给这一行——不让写手在全序列里自己找。
+    """
+    metric, disc = str(res.get("metric") or ""), str(res.get("disc") or "")
+    cn, fmt = str(res.get("disc_cn") or disc), _FMT.get(metric, "int")
+    cn_metric = _CN.get(metric, str(res.get("metric_cn") or metric))
+    p = str(res.get("period") or "")
+    v = _fmt(res.get("value"), fmt)
+    if not p or v is None:
+        return None
+    sheet = _sheet_of(res)
+    if fmt == "rank":
+        seg = f"{p} 第 {v} 位"
+    elif fmt == "pct":
+        seg = f"{p} {v}%"
+    else:
+        seg = f"{p} {v}"
+    text = f"{cn} · {cn_metric} · 单期值（台账《{sheet}》表）：{seg}。"
+    cells = [(v, sheet, cn, p), (p, sheet, cn, p)]
+    return f"台账数据·{cn}·{cn_metric}·{p}", text, cells
+
+
 #: kind → 渲染器（引擎白名单里的 kind 子集；其余 kind 不进证据）。
-_RENDERERS = {"series": _series, "events": _events, "overall_rank": _overall}
+_RENDERERS = {"series": _series, "at": _at, "events": _events, "overall_rank": _overall}
 
 
 def assemble(results, question="") -> dict:

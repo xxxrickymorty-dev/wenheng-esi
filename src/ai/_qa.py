@@ -100,8 +100,10 @@ def _view_for(root, period):
     return view
 
 
-def _ledger_evidence(root, period, question, disc_items, history=()):
+def _ledger_evidence(root, period, question, disc_items, history=(), focus_period=""):
     """台账证据（票 02/03 内核）：规划（规则→模型）→ 引擎取数 → 证据装配。
+
+    `focus_period`＝问句点名的那一期（P0-1，2026-10-14）：规则面据此出 `at` 单值规格。
 
     返回 `(texts, cells, plan)`：`{段key: 文本}`、`{段key: [(数字串, 表, 学科, 期次)]}`
     与规划摘要（票 04 进留痕）。台账缺/坏 → `({}, {}, None)`；单条 spec 失败静默跳过
@@ -117,7 +119,8 @@ def _ledger_evidence(root, period, question, disc_items, history=()):
     except Exception:                                            # noqa: BLE001
         return {}, {}, None
     plan = _plan.plan(question, discs=[it["en"] for it in disc_items],
-                      history=list(history or []), disciplines=list(view.disciplines))
+                      history=list(history or []), disciplines=list(view.disciplines),
+                      period=str(focus_period or ""))
     results = []
     for spec in plan["specs"]:
         op = spec.get("op")
@@ -128,6 +131,9 @@ def _ledger_evidence(root, period, question, disc_items, history=()):
             # 2026-10-13：数据面可能是全史母本（含更晚期次），必须按 <= 当期切窗——
             # "07 的报告不能读 09 的数据"在消费层强制。
             args["periods"] = [str(p) for p in view.periods if str(p) <= str(period)][-6:]
+        if op == "at" and not args.get("period"):
+            # 模型面 at 不带期次（零数字面）：系统补——本轮期次（2026-10-14 P0-1）。
+            args["period"] = str(period)
         try:
             results.append(queries.execute(view, op, **args))
         except Exception:                                        # noqa: BLE001
@@ -389,6 +395,12 @@ def build(root, period, payload) -> RuleDraft:
                   for k, v in sentences.build(facts, p_cur, p_prev).items()}
 
     question = str(payload.get("question") or "").strip()
+    # 问句点名的那一期（P0-1，2026-10-14）：解析口径**复用对话前门**（唯一口径），
+    # 只在证据与任务里明示；本轮产物基期仍由服务器路由决定（不换基）。
+    from . import _dialog                                          # noqa: PLC0415
+    _parsed = _dialog.parse(question,
+                            today=_dialog.parse_today(payload.get("today")))
+    focus_period = _parsed.period if _parsed.case == "period" else ""
     # 对话上文（2026-10-12 rick 实问「这是几月的」）：追问要靠它解指代——
     # 只用来理解（「那物理学呢」「这是几月的」），不引用其中数字
     # （上文的数字在盾里走「来自提问」的来源，不算本期事实）。
@@ -409,7 +421,8 @@ def build(root, period, payload) -> RuleDraft:
 
     # ---- 台账段（票 02/03 内核）：规划（规则→模型）→ 引擎取数 → 证据装配 ----
     ledger_texts, ledger_cells, ledger_plan = _ledger_evidence(
-        root, period, question, disc_items, history=history)
+        root, period, question, disc_items, history=history,
+        focus_period=focus_period)
     n_led = len(ledger_texts)
 
     texts_all = {**base_texts, **disc_texts, **ledger_texts}
@@ -422,10 +435,14 @@ def build(root, period, payload) -> RuleDraft:
         else list(matched)
     rule_set = set(rule_keys)
     # 上文进**编号之前**的首个区块：它的数字必须过盾（否则模型一复述就被判「游离数字」）。
-    first_chunk = question
+    # P0-1（2026-10-14）：问句点名了期次 → 任务首行**明示**（写手不必自己再解「5月」）。
+    task_head = question
+    if focus_period:
+        task_head = f"本次问题指向期次 {focus_period}（已解析）。\n{question}"
+    first_chunk = task_head
     if context_lines:
         first_chunk = ("对话上文（只用来理解指代，不要引用其中数字）：\n"
-                       + "\n".join(context_lines) + "\n\n本次问题：" + question)
+                       + "\n".join(context_lines) + "\n\n本次问题：" + task_head)
     chunks = [first_chunk] + [texts_all[k] for k in ordered]
     facts_idx = _fact_index(facts)
 
