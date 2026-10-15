@@ -40,6 +40,10 @@ _MANUAL_RE = re.compile(re.escape(MANUAL.split("：")[0]) + r"：[^】\n]*】")
 _SENT_END = "。；！？\n"
 _LIST_HEAD = re.compile(r"[ \t]*(?:[-*+>]+\s+|\d+[.)]\s+)?[，、]*")
 
+#: 节标题豁免：标题是版式结构、不是判断句（拟定节名「建议事项（判断草稿）」自带词表词）；
+#: 且给标题包 `==…==` 会破坏标题解析。扫描与补标都跳过整行标题。
+_HEADING_RE = re.compile(r"(?m)^#{1,6}[ \t].*$")
+
 
 def manual(what: str) -> str:
     """专业判断的空位（与复刻报告同构）。"""
@@ -266,9 +270,10 @@ def mark_words() -> tuple[str, ...]:
 
 
 def _exempt_spans(text: str) -> list[tuple[int, int]]:
-    """豁免区间：成对 `==…==`（待审线）＋ `【手工：…】`空位。"""
+    """豁免区间：成对 `==…==`（待审线）＋ `【手工：…】`空位 ＋ 整行标题。"""
     spans = [(m.start(), m.end()) for m in MARK_RE.finditer(text)]
     spans += [(m.start(), m.end()) for m in _MANUAL_RE.finditer(text)]
+    spans += [(m.start(), m.end()) for m in _HEADING_RE.finditer(text)]
     return sorted(spans)
 
 

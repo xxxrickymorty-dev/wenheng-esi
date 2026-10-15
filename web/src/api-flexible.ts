@@ -50,8 +50,10 @@ export async function runFlexible(
 
 /** 流式生成事件（契约 #21③/#21⑤，一行一个）：真实节点——规划完成、每节完成、收尾。
     `stopped`＝停止键喊停后的终态（原流里送出）；首行 status 带 `run` 令牌。 */
+/** 写作位摘要（票 04：`backstop`＝兜底补标句数，透明计数）。 */
 export type FlexWriteSummary = {
   segments: number; rewritten: number; fallbacks: number; reasons: string[]
+  backstop: number
 }
 /** 挑选时本来就算过的候选前三（规划那刻记的；展示层只读） */
 export type FlexConsidered = { disc: string; disc_cn: string; proximity: number }

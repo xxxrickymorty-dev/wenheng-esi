@@ -579,7 +579,7 @@ class Test规则后端产出完整分析稿:
     def test_五个章节齐全(self, flex_report_out):
         md = pathlib.Path(flex_report_out["report"]).read_text(encoding="utf-8")
         for sec in ("当期概况", "关键指标走势", "相对位次",
-                    "待验证假设", "需人工判断", "本稿如何产生", "数据来源链"):
+                    "成因研判（判断草稿）", "建议事项（判断草稿）", "本稿如何产生", "数据来源链"):
             assert sec in md, f"缺章节：{sec}"
 
     def test_自检通过(self, flex_report_out):
@@ -649,7 +649,7 @@ class Test规则后端产出完整分析稿:
         r = report.generate(REPO / src.dir, "cross_compare")
         assert r["check"]["pass"]
         md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
-        for sec in ("本期概览", "横向对比", "待验证假设", "需人工判断"):
+        for sec in ("本期概览", "横向对比", "成因研判（判断草稿）", "建议事项（判断草稿）"):
             assert sec in md
 
 
@@ -1016,33 +1016,59 @@ class Test流式生成:
         assert heads[len(outline):] == ["本稿如何产生（可验证的架构主张）", "附：数据来源链"]
 
 
+def _copy_period(tmp_path):
+    """把金标期次的关键数据复制到 tmp —— 写模式的用例不许污染 out/202607 的演示产物。"""
+    import shutil
+    d = _period_dir()
+    if d is None:
+        skip_unless("out/ 下无含 ledger_long.parquet 的期次产物",
+                    lambda: bool(_period_dir()))
+    tmp = tmp_path / "202607"
+    tmp.mkdir()
+    shutil.copyfile(d / "ledger_long.parquet", tmp / "ledger_long.parquet")
+    shutil.copytree(d / "wide", tmp / "wide")
+    return tmp
+
+
+def _wr_reply(b):
+    """替身：描述节改写（规则稿＋事实照抄换头）；判断节创写（自标待审线，合法候选）。"""
+    from _ai_helpers import Turn
+    task = b.task
+    if "【节主题】" in task:
+        topic = task.split("【节主题】\n", 1)[1].split("\n\n【事实摘要】")[0]
+        facts = task.split("【事实摘要】\n", 1)[1] if "【事实摘要】" in task else ""
+        body = topic + "。" + facts.replace("\n- ", "；")
+        return Turn(text=f"=={body}==。以上为待审判断草稿。")
+    rule = task.split("【规则稿】\n", 1)[1].split("\n\n【事实摘要】")[0]
+    facts = (task.split("【事实摘要】\n", 1)[1].replace("\n", "；")
+             if "【事实摘要】" in task else "")
+    return Turn(text="改写：" + rule + ("；" + facts if facts else ""))
+
+
 class Test写作位接线:
-    def test_写作位开时叙述段走写作位并留痕(self, src, tmp_path, monkeypatch):
-        from _ai_helpers import ScriptedBrain, Turn
-        from conftest import REPO
+    def test_写作位开时全篇走写作位并留痕(self, src, tmp_path, monkeypatch):
+        """票 04：描述节改写 + 判断节创写，共 7 段调用；每段独立留痕。"""
+        from _ai_helpers import ScriptedBrain
         import ai
         monkeypatch.setenv("WENHENG_FLEX_WRITE", "1")
-
-        def rewrite(b):
-            rule = b.task.split("【规则稿】\n", 1)[1].split("\n\n【事实摘要】")[0]
-            facts = (b.task.split("【事实摘要】\n", 1)[1].replace("\n", "；")
-                     if "【事实摘要】" in b.task else "")
-            return Turn(text="改写：" + rule + ("；" + facts if facts else ""))
-
-        brain = ScriptedBrain([rewrite] * 8)
+        tmp = _copy_period(tmp_path)
+        brain = ScriptedBrain([_wr_reply] * 10)
         with ai.using(brain=brain, data_root=tmp_path):
-            r = report.generate(REPO / src.dir, "single_trend", write=True)
+            r = report.generate(tmp, "single_trend")
         assert r["mode"] == "write"
         polish_briefs = [b for b in brain.briefs if getattr(b, "ability", "") == "polish"]
-        assert len(polish_briefs) == 5, "概况 1 + 趋势 3 + 位次 1"
+        assert len(polish_briefs) == 7, "概况 1 + 趋势 3 + 位次 1 + 判断节 2"
         rec_file = tmp_path / "202607" / "ai_calls.jsonl"
         rows = [json.loads(x) for x in
                 rec_file.read_text(encoding="utf-8").splitlines() if x.strip()]
-        assert len(rows) == 5 and all(x["capability"] == "polish" for x in rows)
+        assert len(rows) == 7 and all(x["capability"] == "polish" for x in rows)
         assert all(x["mode"] == "model" for x in rows)
-        assert r["write"] and r["write"]["segments"] == 5
+        assert r["write"] and r["write"]["segments"] == 7
         md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
         assert "改写：" in md
+        cause = md.split("成因研判（判断草稿）")[1].split("建议事项（判断草稿）")[0]
+        assert "==" in cause, "判断节应带待审线（自标保留）"
+        assert "【手工：" not in cause, "模型成功时判断节不该是空位"
         assert r["check"]["pass"], r["check"]
         assert not opinion.guard(md)
 
@@ -1051,16 +1077,145 @@ class Test写作位接线:
         r = report.generate(REPO / src.dir, "single_trend")
         assert r["mode"] == "off" and r["write"] is None
 
-    def test_开关开着也不自动改文风(self, src, tmp_path, monkeypatch):
-        """写作位只由按钮/显式参数触发——普通生成不许偷偷花模型调用。"""
+    def test_配好即默认启用_不再要按钮(self, src, tmp_path, monkeypatch):
+        """票 04：开关开＋模型可达 → 不给 write 参数也默认走创写。"""
         from _ai_helpers import ScriptedBrain
-        from conftest import REPO
         import ai
         monkeypatch.setenv("WENHENG_FLEX_WRITE", "1")
-        with ai.using(brain=ScriptedBrain([]), data_root=tmp_path):
-            r = report.generate(REPO / src.dir, "single_trend")
-        assert r["mode"] == "off"
-        assert not (tmp_path / "202607" / "ai_calls.jsonl").exists(), "不该有写作记录"
+        tmp = _copy_period(tmp_path)
+        brain = ScriptedBrain([_wr_reply] * 10)
+        with ai.using(brain=brain, data_root=tmp_path):
+            r = report.generate(tmp, "single_trend")
+        assert r["mode"] == "write", "配好写作位后生成默认走创写（按钮不再是门槛）"
+        assert r["write"] and r["write"]["segments"] == 7
+
+
+class Test产线贯通:
+    """票 04：末两节创写（成因研判/建议事项）＋回退安全值＋声明一处＋默认启用。
+
+    一律经产线口 `report.generate()` 以替身注入（缝 A），在 tmp 期次副本上跑。
+    """
+
+    def test_判断节创写_兜底补标计数(self, tmp_path, monkeypatch):
+        """模型漏标 → 兜底补标并计数（透明、不判失败）；成稿无未标记判断句。"""
+        from _ai_helpers import ScriptedBrain, Turn
+        import ai
+        monkeypatch.setenv("WENHENG_FLEX_WRITE", "1")
+        tmp = _copy_period(tmp_path)
+
+        def reply(b):
+            if "【节主题】" in b.task:
+                topic = b.task.split("【节主题】\n", 1)[1].split("\n\n【事实摘要】")[0]
+                facts = (b.task.split("【事实摘要】\n", 1)[1].replace("\n- ", "；")
+                         if "【事实摘要】" in b.task else "")
+                # 题面+事实自带标记（含「建议事项」题面），只留尾句有意漏标
+                return Turn(text=f"=={topic}。{facts}==。此外，建议优先关注长期积累。")
+            return _wr_reply(b)
+
+        brain = ScriptedBrain([reply] * 10)
+        with ai.using(brain=brain, data_root=tmp_path):
+            r = report.generate(tmp, "single_trend")
+        assert r["mode"] == "write" and r["check"]["pass"], r["check"]
+        assert r["write"]["backstop"] == 2, "两节各补标 1 句"
+        assert r["check"]["backstop_n"] == 2
+        md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
+        assert "建议优先关注长期积累" in md
+        assert not opinion.guard(md)
+
+    def test_写作位失败_判断节回退空位_明说原因(self, tmp_path, monkeypatch):
+        from _ai_helpers import BrainError, ScriptedBrain
+        import ai
+        monkeypatch.setenv("WENHENG_FLEX_WRITE", "1")
+        tmp = _copy_period(tmp_path)
+
+        def reply(b):
+            if "【节主题】" in b.task:
+                raise BrainError("超时", code="timeout")
+            return _wr_reply(b)
+
+        brain = ScriptedBrain([reply] * 10)
+        with ai.using(brain=brain, data_root=tmp_path):
+            r = report.generate(tmp, "single_trend")
+        assert r["mode"] == "write"
+        md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
+        cause = md.split("成因研判（判断草稿）")[1].split("建议事项（判断草稿）")[0]
+        assert "【手工：" in cause, "写作位失败 → 判断节回退空位"
+        assert r["write"]["fallbacks"] == 2
+        assert "brain_error:timeout" in r["write"]["reasons"], "明说哪条没过"
+        assert r["check"]["pass"], r["check"]
+
+    def test_标记语法损坏_该节回退空位(self, tmp_path, monkeypatch):
+        """补标后仍无法闭环（标记语法损坏）→ 该节判不过 → 回退安全值。"""
+        from _ai_helpers import ScriptedBrain, Turn
+        import ai
+        monkeypatch.setenv("WENHENG_FLEX_WRITE", "1")
+        tmp = _copy_period(tmp_path)
+
+        def reply(b):
+            if "【节主题】" in b.task:
+                topic = b.task.split("【节主题】\n", 1)[1].split("\n\n【事实摘要】")[0]
+                facts = (b.task.split("【事实摘要】\n", 1)[1].replace("\n- ", "；")
+                         if "【事实摘要】" in b.task else "")
+                return Turn(text=f"{topic}。{facts}。==建议加大投入= 与应当优先补齐。")
+            return _wr_reply(b)
+
+        brain = ScriptedBrain([reply] * 10)
+        with ai.using(brain=brain, data_root=tmp_path):
+            r = report.generate(tmp, "single_trend")
+        md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
+        cause = md.split("成因研判（判断草稿）")[1].split("建议事项（判断草稿）")[0]
+        assert "【手工：" in cause, "标记语法损坏 → 该节回退空位"
+        assert "guard_reject" in r["write"]["reasons"], r["write"]
+        assert r["check"]["pass"], r["check"]
+
+    def test_头部唯一声明含图例_正文无重复声明(self, tmp_path, monkeypatch):
+        from _ai_helpers import ScriptedBrain
+        import ai
+        monkeypatch.setenv("WENHENG_FLEX_WRITE", "1")
+        tmp = _copy_period(tmp_path)
+        brain = ScriptedBrain([_wr_reply] * 10)
+        with ai.using(brain=brain, data_root=tmp_path):
+            r = report.generate(tmp, "single_trend")
+        md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
+        assert "细下划线的句子" in md and "待审句" in md, "头部应有待审线图例"
+        assert md.count("细下划线的句子") == 1, "图例只在头部说明一次"
+        for gone in ("不由本产线生成", "不是结论", "非结论", "待验证假设"):
+            assert gone not in md, f"重复声明未清除：{gone}"
+
+    def test_规则后端_空位版_确定性(self, tmp_path):
+        """demo 档（规则后端）行为与升级前一致：全篇规则稿＋空位；同输入同输出。"""
+        from ai._brain import RuleBrain
+        import ai
+        tmp = _copy_period(tmp_path)
+        with ai.using(brain=RuleBrain()):
+            r1 = report.generate(tmp, "single_trend")
+            md1 = pathlib.Path(r1["report"]).read_text(encoding="utf-8")
+            r2 = report.generate(tmp, "single_trend")
+            md2 = pathlib.Path(r2["report"]).read_text(encoding="utf-8")
+        assert r1["mode"] == "off" and r1["write"] is None
+        assert r1["check"]["pass"], r1["check"]
+        norm = lambda s: re.sub(r"> 生成时间：.*", "> 生成时间：X", s)   # noqa: E731
+        assert norm(md1) == norm(md2), "规则版必须确定性可复现"
+        assert "==" not in md1, "规则版没有待审线"
+        cause = md1.split("成因研判（判断草稿）")[1].split("建议事项（判断草稿）")[0]
+        assert "【手工：" in cause, "规则版判断节＝空位"
+        assert "细下划线的句子" not in md1, "规则版不摆空图例"
+
+    def test_两种意图_末两节同为判断草稿(self, tmp_path, monkeypatch):
+        from _ai_helpers import ScriptedBrain
+        import ai
+        monkeypatch.setenv("WENHENG_FLEX_WRITE", "1")
+        tmp = _copy_period(tmp_path)
+        brain = ScriptedBrain([_wr_reply] * 12)
+        with ai.using(brain=brain, data_root=tmp_path):
+            r = report.generate(tmp, "cross_compare", disc="化学")
+        assert r["mode"] == "write" and r["check"]["pass"], r["check"]
+        md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
+        for sec in ("成因研判（判断草稿）", "建议事项（判断草稿）"):
+            assert sec in md
+        cause = md.split("成因研判（判断草稿）")[1].split("建议事项（判断草稿）")[0]
+        assert "==" in cause
+        assert not opinion.guard(md)
 
 
 class Test自检翻转与兜底补标:
@@ -1087,6 +1242,12 @@ class Test自检翻转与兜底补标:
 
     def test_手工空位内不误报(self):
         assert not opinion.guard(f"- {opinion.manual('资源投入建议')}")
+
+    def test_节标题不误报不补标(self):
+        """节名「建议事项（判断草稿）」自带词表词——标题是版式结构，不是判断句。"""
+        txt = "## 五、建议事项（判断草稿）\n\n正文没有判断句。"
+        assert not opinion.guard(txt)
+        assert opinion.backfill_marks(txt) == (txt, 0)
 
     def test_兜底补标确定性与计数(self):
         txt = "建议加大该学科投入。应当优先补齐短板。\n\n- 需要复核阈值口径。"
