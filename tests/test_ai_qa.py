@@ -189,6 +189,38 @@ def test_学科问题直答_数字来源到格(tmp_path):
     assert "国际排名" not in ans.text, "学科直答不把整本报告倒出来"
 
 
+def test_学科直答_阈值差与权威进入状态(tmp_path):
+    """2026-10-15（rick 实问暴露）：直答段给「阈值差」与权威「进入状态」——
+    原句尾「超过 100% 即已进入前 1%」的条件被模型拼成断言（"88.01%，已超过 100%"），
+    且没有阈值差，模型答「无法算出」。现在两者都是确定值，条件句不再出现。"""
+    seed_period(tmp_path)
+    _seed_table2(tmp_path)
+    import pandas as pd
+    wide = tmp_path / "202607" / "wide"
+    wide.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame({"202607": [1.0, 0.0, 0.0]},
+                 index=["Chemistry", "Biology & Biochemistry", "Mathematics"]).to_parquet(
+        wide / "entered_1pct.parquet")
+    ans = qa(tmp_path, question="化学和生物学与生物化学的接近度")
+    assert "高出前 1% 阈值 43907 次被引" in ans.text
+    assert "距前 1% 阈值还差 2000 次被引" in ans.text
+    assert "（ESI 口径：本期已进入前 1%）" in ans.text
+    assert "（ESI 口径：本期未进入前 1%）" in ans.text
+    assert "超过 100%" not in ans.text, "条件句不得再出现（模型会拼成断言）"
+    by_val = {s.value: s for s in ans.sources}
+    assert by_val["43907"].pointer == "table2.csv#Chemistry.thr_1pct_gap"
+    assert by_val["2000"].pointer == "table2.csv#Biology & Biochemistry.thr_1pct_gap"
+
+
+def test_学科直答_无进入状态表时不猜(tmp_path):
+    """`entered_1pct.parquet` 缺 → 不写进入状态（不回落接近度推断；compute 同口径）。"""
+    seed_period(tmp_path)
+    _seed_table2(tmp_path)
+    ans = qa(tmp_path, question="化学的接近度")
+    assert "ESI 口径" not in ans.text
+    assert "高出前 1% 阈值 43907 次被引" in ans.text
+
+
 def test_学科长名优先_不被子串截胡(tmp_path):
     """「生物学与生物化学」先被长名吃掉，不让「化学」子串误命中 Chemistry。"""
     seed_period(tmp_path)

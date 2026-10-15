@@ -226,8 +226,15 @@ def _row_num(row, key, cast=float):
         return None
 
 
-def _disc_segment(item):
-    """一个学科的直答段（确定性；换算值由本系统算，模型只引用不计算）。"""
+def _disc_segment(item, entered=None):
+    """一个学科的直答段（确定性；换算值由本系统算，模型只引用不计算）。
+
+    `entered`：本期是否已进入前 1%（权威来源 `wide/entered_1pct.parquet`；None＝缺表不猜）。
+    2026-10-15 修（rick 实问暴露）：原句尾带「（＝总被引÷阈值；超过 100% 即已进入前 1%）」，
+    模型把**条件**拼成了断言（"88.01%，已超过 100%，即已进入前 1%"）。改为给确定值——
+    「阈值差」（table2 的 `thr_1pct_gap`：还差/高出 N 次被引）＋权威进入状态；
+    不再出现「超过 100%」字样（模型再写就成游离数字，盾会拒）。
+    """
     row = item["row"]
     parts = [f"{item['cn']}（{item['en']}）本期数据："]
     papers = _row_num(row, "papers", int)
@@ -245,8 +252,21 @@ def _disc_segment(item):
     if top is not None:
         parts.append(f"顶尖论文 {top} 篇；")
     if cites is not None and thr:
-        parts.append(f"前 1% 阈值 {thr}，前 1% 接近度 {cites / thr * 100:.2f}%"
-                     "（＝总被引÷阈值；超过 100% 即已进入前 1%）；")
+        parts.append(f"前 1% 阈值 {thr}，前 1% 接近度 {cites / thr * 100:.2f}%（＝总被引÷阈值）；")
+        gap = _row_num(row, "thr_1pct_gap", int)
+        tail = ""
+        if gap is not None:
+            if gap < 0:
+                tail = f"距前 1% 阈值还差 {abs(gap)} 次被引"
+            elif gap > 0:
+                tail = f"高出前 1% 阈值 {gap} 次被引"
+            else:
+                tail = "正好达到前 1% 阈值"
+        if entered is not None:
+            tail += ("（ESI 口径：本期已进入前 1%）" if entered
+                     else "（ESI 口径：本期未进入前 1%）")
+        if tail:
+            parts.append(tail + "；")
     if cites is not None and thr_m:
         parts.append(f"前 1‰ 阈值 {thr_m}，前 1‰ 接近度 {cites / thr_m * 100:.2f}%；")
     if str(row.get("prox_change") or "").strip():
@@ -254,6 +274,22 @@ def _disc_segment(item):
     if str(row.get("rank_cn_change") or "").strip():
         parts.append(f"国内排名 {str(row['rank_cn_change']).strip()}。")
     return "".join(parts).rstrip("；。") + "。"
+
+
+def _entered_for(d, discs):
+    """本期进入状态（权威 `wide/entered_1pct.parquet`；缺表/缺列 → {}，不猜、不回落接近度）。"""
+    p = pathlib.Path(d) / "wide" / "entered_1pct.parquet"
+    if not p.is_file():
+        return {}
+    try:
+        import pandas as pd                                        # noqa: PLC0415
+        df = pd.read_parquet(p)
+        col = str(pathlib.Path(d).name)
+        if col not in df.columns:
+            return {}
+        return {en: (float(df.loc[en, col]) > 0) for en in discs if en in df.index}
+    except Exception:                                              # noqa: BLE001
+        return {}
 
 
 def _disc_index(items):
@@ -264,7 +300,9 @@ def _disc_index(items):
         per: dict = {}
 
         def add(value_str, key):
-            per.setdefault(value_str, []).append(key)
+            bucket = per.setdefault(value_str, [])
+            if key not in bucket:                                   # 同键同值去重（如阈值差的正负变体）
+                bucket.append(key)
 
         for key in _FIELD_CN:
             raw = str(row.get(key) or "").strip()
@@ -278,6 +316,9 @@ def _disc_index(items):
                 continue
             for v in {f"{val:g}", f"{val:.2f}", f"{val:.1f}"}:
                 add(v, key)
+            if key == "thr_1pct_gap":                               # 直答段写「还差/高出 N」（无符号）
+                for v in {f"{abs(val):g}", f"{abs(val):.2f}", f"{abs(val):.1f}"}:
+                    add(v, key)
         cites, thr = _row_num(row, "total_cites"), _row_num(row, "thr_1pct")
         thr_m = _row_num(row, "thr_1permille")
         if cites and thr:
@@ -416,7 +457,9 @@ def build(root, period, payload) -> RuleDraft:
 
     # ---- 学科问题直答段（2026-10-11）：问句点到哪个学科，就先给哪个学科的数据行 ----
     disc_items = _disc_hits(question, _disc_rows(d))
-    disc_texts = {f"学科数据·{it['cn']}": _disc_segment(it) for it in disc_items}
+    entered_map = _entered_for(d, [it["en"] for it in disc_items])
+    disc_texts = {f"学科数据·{it['cn']}": _disc_segment(it, entered=entered_map.get(it["en"]))
+                  for it in disc_items}
     disc_idx = _disc_index(disc_items)
 
     # ---- 台账段（票 02/03 内核）：规划（规则→模型）→ 引擎取数 → 证据装配 ----
@@ -483,7 +526,7 @@ def build(root, period, payload) -> RuleDraft:
                     return {"kind": "product",
                             "pointer": f"table2.csv#{item['en']}（总被引÷阈值）",
                             "label": f"学科表 · {item['cn']} · {label}（系统换算）",
-                            "detail": "table2.csv（总被引 ÷ 阈值；超过 100% 即已进入前 1%）",
+                            "detail": "table2.csv（接近度＝总被引 ÷ 阈值，系统换算）",
                             "fact": True}
                 return {"kind": "product", "pointer": f"table2.csv#{item['en']}.{key}",
                         "label": f"学科表 · {item['cn']} · {_FIELD_CN.get(key, key)}",
