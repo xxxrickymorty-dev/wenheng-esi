@@ -4,6 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>AI 分析台 · 双栏（静态稿）</title>
+<script>
+/* taste 提案 · 动效预置：JS 在时才预置隐藏态；2.5s 兜底一律显示（脚本失败不藏内容） */
+document.documentElement.classList.add('tk-js');
+window.setTimeout(function(){document.documentElement.classList.add('tk-done');},2500);
+</script>
 <style>
 /* 基础 reset（2026-10-01 移除 Tailwind 时内置）：原样保留 Tailwind preflight 的关键行为，
    避免整站边距/列表/表单/图片默认样式发生变化。改动这里必须跑全站截图核对。 */
@@ -87,6 +92,10 @@ a{color:inherit}
 .ws-menu{display:none;width:40px;height:40px;border:1px solid var(--line);border-radius:8px;background:var(--card);
   align-items:center;justify-content:center;cursor:pointer;color:var(--ink)}
 .ws-title{font-family:var(--serif);font-size:20px;font-weight:600;color:var(--ink)}
+/* 顶栏「去陈列馆」：离开工作区的入口（展示面不在工作区里） */
+.ws-jump{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink-2);text-decoration:none;font-size:13.5px;transition:border-color .15s,color .15s}
+.ws-jump:hover{border-color:var(--zhu);color:var(--zhu)}
+.ws-jump svg{color:var(--gold)}
 .ws-overlay{display:none;position:fixed;inset:0;background:rgba(28,48,38,.22);z-index:45}
 .ws-overlay.open{display:block}
 .skip-link{position:absolute;left:-999px;top:8px;z-index:100;background:var(--card);padding:10px 14px;border-radius:8px}
@@ -814,6 +823,9 @@ a{color:inherit}
 .aq-fres.ok{color:var(--ok)}
 .aq-fres.bad{color:var(--bad)}
 .aq-gnote{margin:8px 0 0;font-size:12.5px;color:var(--bad)}
+/* 缺份的组就地补下（票：只补没下到的文件；已并入台账也能补） */
+.aq-gacts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line-2)}
+.aq-gacts .hint{margin:0}
 .aq-rv{min-width:520px}
 .aq-rv th,.aq-rv td{border:1px solid var(--line);padding:6px 10px;text-align:left;font-size:13.5px}
 .aq-rv th{background:var(--panel);font-weight:600}
@@ -1086,6 +1098,33 @@ a{color:inherit}
 .fx-pane-ctl .btn.small{color:#fff;background:var(--zhu);border-color:var(--zhu);font-weight:600;padding:7px 14px;font-size:13.5px}
 .fx-pane-ctl .btn.small[disabled]{opacity:.55;cursor:not-allowed}
 
+
+/* ① 焦点：报告题升为 display 级（衬线，最大号即焦点；两行内） */
+.fx-md>h2:first-of-type{font-size:27px;letter-spacing:.015em;line-height:1.25}
+/* ② 数据标签去等宽：改文本体＋等宽数字（等宽只留给真代码） */
+.fx-md table.dense td:first-child{font-family:var(--sans);font-variant-numeric:tabular-nums}
+.fx-md table.dense td{font-variant-numeric:tabular-nums}
+/* ③ 「关于本稿」虚线框改色阶（细线/虚线只留给真表格与表单） */
+.fx-md .fx-about{border:0;background:var(--panel)}
+/* ④ 反馈：按钮按下回弹（只动 transform） */
+.btn:active{transform:translateY(1px)}
+/* ⑤ 动效层：入场（左横右纵各自从本侧进；栏内小节随滚动逐段升起）。
+   预置隐藏只在 JS 在场时生效；tk-done 兜底——任何情况内容都出得来。reduced-motion 全降级。 */
+.tk-js .tk-enter{opacity:0;transform:translateY(14px);
+  transition:opacity .55s cubic-bezier(.2,.7,.2,1),transform .55s cubic-bezier(.2,.7,.2,1)}
+.tk-js .tk-enter.tk-left{transform:translateX(-16px)}
+.tk-js .tk-enter.tk-right{transform:translateX(16px)}
+.tk-js .tk-enter.tk-in{opacity:1;transform:none}
+.tk-js .fx-pane-b .fx-md>h2,.tk-js .fx-pane-b .fx-md>h3,.tk-js .fx-pane-b .fx-md>p,
+.tk-js .fx-pane-b .fx-md>figure,.tk-js .fx-pane-b .fx-md>.figrow,.tk-js .fx-pane-b .fx-md>table.dense,
+.tk-js .fx-pane-b .fx-md>blockquote,.tk-js .fx-pane-b .fx-md>.fx-about{opacity:0;transform:translateY(12px);
+  transition:opacity .45s ease,transform .45s cubic-bezier(.2,.7,.2,1)}
+.tk-js .fx-pane-b .fx-md>.tk-on{opacity:1;transform:none}
+.tk-done .tk-enter,.tk-done .fx-pane-b .fx-md>*{opacity:1!important;transform:none!important}
+@media (prefers-reduced-motion: reduce){
+  .tk-js .tk-enter,.tk-js .fx-pane-b .fx-md>*{opacity:1!important;transform:none!important;transition:none!important}
+}
+
 </style>
 </head>
 <body>
@@ -1150,6 +1189,7 @@ a{color:inherit}
             <li><strong>本轮提案</strong>：① 页头只留标题＋导语（不再有总表单/总按钮）；② 左右两栏<strong>各自出稿</strong>——每栏一条控制条（指定学科 ＋ 生成/重新生成），两栏互不阻塞、可同时流式（右栏演示出稿中的流式形态）；③ 「下载报告」改 <strong>docx</strong>（方便直接改，页脚带标注）；④ 报告内声明去重——正文只留待审线图例，「内部参考 · 非报送」在页面导语与下载件页脚出现。</li>
             <li>左右两栏 = 两份报告并排（横看 / 纵看），各栏独立滚动；正文为 202609 真实产物（与产线同一渲染器逐字一致）；图全部内嵌，离线可开。</li>
             <li>判断草稿：末两节由写作位创写（成因研判 / 建议事项）；需馆员拍板的句子带待审线（细下划线）；写作位不可用或判不过时，节内回退「手工」空位。</li>
+            <li><strong>叠加 taste 审计提案</strong>（design-taste-frontend，2026-10-15）：① 报告题升 display 级（27px 衬线，页面最大号即焦点）；② 数据表标签去等宽（改文本体＋等宽数字，等宽只留给真代码）；③「关于本稿」虚线框改色阶；④ 动效层——头卡/两栏入场（左横右纵各自从本侧进）＋栏内小节随滚动逐段升起＋按钮按下回弹，reduced-motion 全降级、脚本失败不藏内容；⑤ 细线/阴影/纸色/衬线体系保留为既有品牌例外（详见对话报告）。</li>
             <li>表单与按钮为示意——静态稿不真跑生成。</li>
           </ul>
         </div>
@@ -1158,13 +1198,13 @@ a{color:inherit}
 
     <div class="ws-scroll">
       <main class="wrap" id="main">
-        <section class="card pad-card-lg">
+        <section class="card pad-card-lg tk-enter">
           <h2 class="h-sec h-lg"><svg width="22" height="22" aria-hidden="true"><use href="#i-doc"/></svg>灵活报告<span class="tag ml-6">202609</span><span class="pill stale">内部参考件 · 非报送</span></h2>
           <p class="fx-lead"><strong>灵活报告</strong>是第二条产线：<strong>内部参考件 · 非报送</strong>——按题选学科产出参考件，不取数、不签单；「出报告」才是复刻产线。</p>
         </section>
 
         <div class="fx-panes">
-        <section class="fx-pane" aria-label="多学科横向对比">
+        <section class="fx-pane tk-enter tk-left" aria-label="多学科横向对比">
           <header class="fx-pane-h">
             <div>
               <h3>多学科横向对比</h3>
@@ -1266,7 +1306,7 @@ a{color:inherit}
 <hr></div></details></div>
           </div>
         </section>
-        <section class="fx-pane" aria-label="单学科趋势诊断">
+        <section class="fx-pane tk-enter tk-right" aria-label="单学科趋势诊断">
           <header class="fx-pane-h">
             <div>
               <h3>单学科趋势诊断</h3>
@@ -1303,6 +1343,30 @@ a{color:inherit}
     btn.setAttribute('aria-expanded',String(open));
   });
 })();
+</script>
+<script>
+
+(function(){
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // 首屏入场：头卡 → 左栏 → 右栏（左横右纵，各自从本侧进；错峰 90ms）
+  var seq=[document.querySelector('.wrap>section.card'),
+           document.querySelectorAll('.fx-pane')[0],
+           document.querySelectorAll('.fx-pane')[1]];
+  seq.forEach(function(el,i){ if(el&&!reduce){ setTimeout(function(){el.classList.add('tk-in');},60+i*90); }
+                              else if(el){ el.classList.add('tk-in'); } });
+  // 栏内小节：随各栏自己的滚动逐段升起（IO root＝本栏滚动体）
+  document.querySelectorAll('.fx-pane-b').forEach(function(box){
+    var items=box.querySelectorAll('.fx-md>h2,.fx-md>h3,.fx-md>p,.fx-md>figure,.fx-md>.figrow,.fx-md>table.dense,.fx-md>blockquote,.fx-md>.fx-about');
+    if(reduce||!('IntersectionObserver' in window)){
+      items.forEach(function(el){ el.classList.add('tk-on'); }); return;
+    }
+    var io=new IntersectionObserver(function(es){
+      es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('tk-on'); io.unobserve(e.target); } });
+    },{root:box,rootMargin:'0px 0px -4% 0px',threshold:.04});
+    items.forEach(function(el){ io.observe(el); });
+  });
+})();
+
 </script>
 </body>
 </html>

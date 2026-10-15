@@ -44,3 +44,6 @@ server/e2e_report.txt
 
 # 截图/抓取的临时页（若有人在 static/ 下做过脚手架）
 server/static/_shots/
+
+# taste-skill 审计工作目录（截图/报告，不入库）
+.taste-skill/
