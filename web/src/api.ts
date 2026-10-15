@@ -256,6 +256,13 @@ export async function postAcquisition(period: string, action: string,
     })
 }
 
+/** 拉起「取数专用浏览器」（独立 profile + CDP 9222）；已经在跑则 already=true。
+    只负责开窗——登录仍由人（或 Chrome 记住的凭据）完成。 */
+export async function postAcqBrowser(): Promise<{ ok: boolean; started: boolean; already: boolean; note?: string }> {
+  return req<{ ok: boolean; started: boolean; already: boolean; note?: string }>(
+    '/api/acquisition/browser', { method: 'POST' })
+}
+
 /** 最近一次有产出的任务（老接口，字段形状见 jobs.list_jobs） */
 export type JobStatus = { active?: string | null; last?: { id?: string; period?: string } | null }
 

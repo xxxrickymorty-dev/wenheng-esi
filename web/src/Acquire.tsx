@@ -5,7 +5,7 @@
    静态稿对照：web/mockups/取数台.html；契约：§2.2 #26。 */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getAcquisition, postAcquisition, type AcquisitionState, type AcqGroup } from './api'
+import { getAcquisition, postAcquisition, postAcqBrowser, type AcquisitionState, type AcqGroup } from './api'
 import { ConfirmButton } from './ConfirmButton'
 import { Info } from './Info'
 import { Icon } from './icons'
@@ -158,28 +158,41 @@ export function Acquire({ period }: { period: string | null }) {
     }
   }, [period, load])
 
+  /* 「开始前检查」先确保取数专用浏览器在跑：没连上就请服务端把窗口打开（独立 profile + CDP 9222），
+     等它起来再查一次。**只开窗、不代登录**——首次仍要人在那个窗口登录 ESI / InCites
+     （凭证靠 Chrome 自己记住，系统不碰账号密码）。 */
+  const preflightWithBrowser = useCallback(async () => {
+    let r = await act('preflight')
+    if (r?.preflight?.browser !== 'ok') {
+      await postAcqBrowser().catch(() => null)
+      await new Promise((res) => setTimeout(res, 4500))   // 给窗口起来的时间
+      r = await act('preflight')
+    }
+    return r
+  }, [act])
+
   /* 开始取数前先看「开始前检查」：没过就不发车，页面会切到「检查未过」让人去连浏览器 */
   const onStart = useCallback(async () => {
-    const r = await act('preflight')
+    const r = await preflightWithBrowser()
     const pf = r?.preflight
     if (pf && (pf.browser !== 'ok' || pf.esi !== 'ok' || pf.incites !== 'ok')) {
       load(true)
       return
     }
     await act('start')
-  }, [act, load])
+  }, [act, load, preflightWithBrowser])
 
   /* 补下一组：与「开始取数」同规矩——先看「开始前检查」，浏览器/登录没就绪就不发车
      （2026-10-15：先前直接发车，取数脚本会因连不上浏览器而拒绝，白记一次失败） */
   const onRetryGroup = useCallback(async (gid: string) => {
-    const r = await act('preflight')
+    const r = await preflightWithBrowser()
     const pf = r?.preflight
     if (pf && (pf.browser !== 'ok' || pf.esi !== 'ok' || pf.incites !== 'ok')) {
       load(true)
       return
     }
     await act('retry', { group: gid })
-  }, [act, load])
+  }, [act, load, preflightWithBrowser])
 
   if (!period) {
     return <div className="pending-box">先在顶栏选一个期次；取数台会显示这一期的取数进度与核对状态。</div>
@@ -225,8 +238,8 @@ export function Acquire({ period }: { period: string | null }) {
           : view === 'review' ? '本期监测表已自动建好，请核对。'
             : `已并入主台账（${period} 列）。`
   const sub = view === 'ready'
-    ? (started ? '9 组文件，取到后逐份核验。' : '在取数专用浏览器里登录两家网站，检查通过即可开始。')
-    : view === 'blocked' ? '先双击它并登录两家网站，再点「重新检查」。'
+    ? (started ? '9 组文件，取到后逐份核验。' : '点「开始取数」会自动打开取数专用浏览器（首次需在里面登录 ESI / InCites）。')
+    : view === 'blocked' ? '系统会自动打开取数专用浏览器；在里面登录 ESI / InCites 后，点「重新检查」。'
       : view === 'running' ? '可以离开这一页，进度不会丢。'
         : view === 'partial' ? '重试只补这一组，通过的不重复下载。'
           : view === 'review' ? `核对无误后并入台账（只动 ${period} 列）。`
@@ -285,7 +298,8 @@ export function Acquire({ period }: { period: string | null }) {
                 </button>
               )}
               {!opRunning && view === 'blocked' && (
-                <button className="btn" disabled={busy} onClick={() => act('preflight')}>
+                <button className="btn" disabled={busy}
+                        onClick={() => { void preflightWithBrowser().then(() => load(true)) }}>
                   <Icon name="refresh" size={20} />重新检查
                 </button>
               )}

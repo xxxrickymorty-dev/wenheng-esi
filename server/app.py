@@ -938,6 +938,91 @@ def _acq_spawn(period: str, action: str, extra: list | None = None):
     return {"ok": True, "started": True, "log": log.name}
 
 
+#: 「取数专用浏览器」＝独立 profile + CDP 9222 的 Chrome；取数脚本靠附着它工作。
+#: **凭证靠 Chrome 自己记住，系统从不碰账号密码**（`src`/`tools` 侧红线；首次需人工登录一次）。
+def _acq_chrome_exe():
+    """找本机 Chrome（装在哪都行）；找不到返回 None。"""
+    import os
+    cands = [r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+             r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"]
+    local = os.environ.get("LOCALAPPDATA")
+    if local:
+        cands.append(str(pathlib.Path(local) / "Google" / "Chrome" / "Application" / "chrome.exe"))
+    for p in cands:
+        if pathlib.Path(p).exists():
+            return p
+    return None
+
+
+def _acq_cdp_alive() -> bool:
+    """9222 上是不是已经有一个**能应答 CDP 版本 JSON**的浏览器（端口被别的程序占不算）。"""
+    import json as _json
+    import urllib.request as _urlreq
+    for url in ("http://127.0.0.1:9222", "http://localhost:9222"):
+        try:
+            with _urlreq.urlopen(url + "/json/version", timeout=2) as r:
+                if r.status == 200 and _json.loads(r.read()).get("Browser"):
+                    return True
+        except Exception:  # noqa: BLE001
+            continue
+    return False
+
+
+def _acq_kill_profile_chrome(profile: pathlib.Path) -> int:
+    """关掉占着这个 profile 的 Chrome 进程。
+
+    同一个 profile 只能有一个浏览器实例：**先跑起来的那个没带调试端口时，后起的进程会
+    把 URL 转交给它、自己不开端口**——那样 9222 永远起不来（2026-10-15 实测）。
+    只关"命令行里带这个 profile"的进程，不碰用户其它 Chrome 窗口；登录态存在 profile 里，重开还在。
+    """
+    ps = ("$p = Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\"; "
+          "$hit = $p | Where-Object { $_.CommandLine -like '*" + str(profile) + "*' }; "
+          "$n = @($hit).Count; "
+          "$hit | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; "
+          "$n")
+    try:
+        r = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
+                           capture_output=True, text=True, timeout=40)
+        return int((r.stdout or "0").strip() or 0)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return 0
+
+
+@app.post("/api/acquisition/browser")
+@admin_route
+async def api_acq_browser(request: Request):
+    """把「取数专用浏览器」拉起来（独立 profile `~/.chrome-clarivate` + CDP 9222）。
+
+    已经在跑就不重复起。**只负责开窗**——登录仍由人（或 Chrome 记住的凭据）完成。
+    """
+    if _acq_cdp_alive():
+        return {"ok": True, "started": False, "already": True,
+                "note": "取数专用浏览器已经在跑。"}
+    exe = _acq_chrome_exe()
+    if not exe:
+        return {"ok": False, "started": False, "already": False,
+                "note": "没找到 Chrome（装一个，或把 chrome.exe 的路径告诉我）。"}
+    profile = pathlib.Path.home() / ".chrome-clarivate"
+    try:
+        profile.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        return {"ok": False, "started": False, "already": False, "note": f"准备 profile 目录失败：{e}"}
+    # 同一 profile 只能一个实例：先把"没带调试端口"的那个收掉，否则新进程只转交 URL、不开 9222
+    closed = _acq_kill_profile_chrome(profile)
+    if closed:
+        time.sleep(1.5)
+    try:
+        subprocess.Popen(  # noqa: S603 —— 固定路径 + 固定参数，无外部输入
+            [exe, "--remote-debugging-port=9222", f"--user-data-dir={profile}",
+             "--no-first-run", "--no-default-browser-check",
+             "https://esi.clarivate.com/", "https://incites.clarivate.com/"],
+            cwd=str(config.ROOT), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError as e:
+        return {"ok": False, "started": False, "already": False, "note": f"浏览器没起来：{e}"}
+    return {"ok": True, "started": True, "already": False, "closed": closed,
+            "note": "已打开取数专用浏览器；首次使用需要在这个窗口里登录 ESI / InCites 一次。"}
+
+
 @app.post("/api/periods/{period}/acquisition/start")
 @admin_route
 async def api_acq_start(request: Request, period: str):
