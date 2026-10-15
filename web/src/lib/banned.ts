@@ -16,6 +16,8 @@ export const BANNED_UI_TERMS: readonly string[] = [
   '数字图书馆',
   // 内部词汇
   '断言', '机器断言',
+  // 内部黑话与模型串（2026-10-15 UX 评估：一律翻译成人话）
+  '盾', '规划后端', 'openai:', 'deepseek',
   // 裸 Markdown 记号（前端未渲染 Markdown 时不许露星号）
   '**',
 ]

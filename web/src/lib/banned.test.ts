@@ -32,6 +32,10 @@ describe('禁用词表 BANNED_UI_TERMS / findBanned', () => {
     expect(findBanned('本次断言全过')).toContain('断言')
     expect(findBanned('旧稿在 _superseded/ 里')).toContain('_superseded')
     expect(findBanned('打开 /app/?demo=running')).toContain('?demo=')
+    // 2026-10-15 UX 评估：内部黑话与模型串
+    expect(findBanned('盾 · 2 个数字已登记')).toContain('盾')
+    expect(findBanned('规划后端：openai:deepseek-v4.1-flash')).toEqual(
+      expect.arrayContaining(['规划后端', 'openai:', 'deepseek']))
   })
 
   it('干净文案零命中，且结果去重', () => {

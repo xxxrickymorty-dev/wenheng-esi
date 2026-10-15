@@ -67,7 +67,7 @@ export function AiRecords({ period }: { period: string | null }) {
         <h2 className="h-sec">
           <span className="fc-no">02</span>问文衡 · 问答记录
           <span className="hint">问 → 工具 → 模型 → 校验</span>
-          <span className="hint" title="记录里有什么：问题、每次工具调用（读了什么、花了多久）、模型调用（用了哪个模型、成没成）、校验结果（盾）。不含回答正文与提示词。">?</span>
+          <span className="hint" title="记录里有什么：问题、每次工具调用（读了什么、花了多久）、模型调用（用了哪个模型、成没成）、数字核对结果。不含回答正文与提示词。">?</span>
         </h2>
 
         {err && <p className="pending-box mt-10">{err}</p>}
@@ -165,7 +165,7 @@ function Row({ c, open, onToggle }: { c: AiCall; open: boolean; onToggle: () => 
             </>
           )}
           <span className="hint">→</span>
-          <span className="pill ok">校验 · 盾 {c.shield.passed}/{c.shield.checked} 个数字登记</span>
+          <span className="pill ok">数字已核对 {c.shield.passed}/{c.shield.checked} 个</span>
           {c.fallback && (
             <p className="hint basis-full">
               回落原因：{fallbackText(c.fallback)}
