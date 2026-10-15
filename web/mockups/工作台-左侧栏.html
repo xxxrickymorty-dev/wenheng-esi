@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="zh-CN" data-palette="ynu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>文衡 · 工作台左侧栏（静态审核稿）</title>
+<!--
+  静态审核稿（web/AGENTS.md 交付纪律 1）：只为评审「工作台加常驻左侧栏」这一改动。
+  内容照真实生成台（Workbench.tsx + App.tsx 顶栏/页脚）与 202609 已生成态；数字为演示。
+  令牌取自 src/index.css（云大绿/朱砂），正文 17px。单文件、零依赖、双击即开。
+-->
+<style>
+:root{
+  --bg:#F4F3ED;--card:#FFFDF8;--panel:#F0F1EB;
+  --ink:#222B25;--ink-2:#3F4C42;--ink-3:#58655C;
+  --line:#DDE1D8;--line-2:#E6E9E2;
+  --zhu:#1A4B27;--zhu-soft:#E3EDE4;
+  --gold:#B19A65;--gold-soft:#F1EBDD;--gold-ink:#62501F;
+  --ok:#28643A;--ok-soft:#E2EEE4;
+  --warn:#75622D;--warn-soft:#F6EED8;
+  --bad:#B43B31;--bad-soft:#F4E6E2;
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --r:14px;--r-sm:10px;
+  --shadow:0 1px 2px rgba(34,43,37,.06),0 8px 24px rgba(34,43,37,.06);
+}
+html[data-palette="zhu"]{
+  --bg:#F3EFE6;--card:#FBF8F1;--panel:#F6F1E7;
+  --ink:#2F2A24;--ink-2:#5B5248;--ink-3:#6F6558;
+  --line:#D9CFBC;--line-2:#E7DFD0;
+  --zhu:#B43B31;--zhu-soft:#F0DCD5;
+  --gold:#A9853F;--gold-soft:#EFE3C9;--gold-ink:#7D6122;
+  --ok:#3F6B4A;--ok-soft:#E2ECE0;--warn:#7D5518;--warn-soft:#F5EAD2;
+  --bad:#A8321F;--bad-soft:#F4DDD7;
+}
+*{box-sizing:border-box;margin:0;padding:0;border:0 solid}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:17px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit;background:transparent}
+button{cursor:pointer}
+a{color:inherit;text-decoration:none}
+h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.35}
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+.small{font-size:13.5px}.muted{color:var(--ink-3)}.mono{font-family:"Cascadia Mono",Consolas,monospace}
+:focus-visible{outline:3px solid var(--zhu);outline-offset:3px;border-radius:6px}
+.skip{position:absolute;left:-999px;top:8px;background:var(--card);padding:10px 14px;z-index:100}
+.skip:focus{left:8px}
+
+/* ── 壳：常驻左栏 + 主区 ───────────────────────────── */
+.shell{display:grid;grid-template-columns:264px minmax(0,1fr);height:100dvh;min-height:600px}
+.side{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;z-index:20}
+.brand{padding:22px 22px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)}
+.brand strong{font-family:var(--serif);font-size:25px;letter-spacing:3px;color:var(--ink)}
+.brand span{font-size:12px;line-height:1.6;color:var(--ink-3);border-left:1px solid var(--line);padding-left:12px}
+.side-scroll{flex:1;overflow:auto;padding:14px 14px 8px}
+.side-cap{font-size:12px;letter-spacing:1px;color:var(--ink-3);padding:16px 10px 8px}
+.nav-item{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:11px 12px;border-radius:var(--r-sm);font-size:16px;color:var(--ink-2);min-height:44px}
+.nav-item:hover{background:color-mix(in oklab,var(--zhu) 7%,transparent)}
+.nav-item[aria-current="page"]{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
+.nav-item .lock{margin-left:auto;font-size:11px;color:var(--gold-ink);background:var(--gold-soft);padding:2px 7px;border-radius:5px}
+.side-user{border-top:1px solid var(--line);padding:14px 18px;display:flex;align-items:center;gap:11px;font-size:15px}
+.av{width:34px;height:34px;border-radius:50%;background:var(--zhu);color:#f1ead8;display:grid;place-items:center;font-family:var(--serif);font-size:15px}
+.side-user .role{display:block;font-size:12px;color:var(--ink-3)}
+
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.topbar{display:flex;align-items:center;gap:18px;padding:13px 22px;background:var(--card);border-bottom:1px solid var(--line)}
+.topbar h1{font-size:20px;color:var(--ink)}
+.topbar .spacer{flex:1}
+.top-actions{display:flex;align-items:center;gap:14px}
+.preview-label{font-size:11px;letter-spacing:.5px;padding:3px 8px;border:1px dashed var(--line);border-radius:5px;color:var(--ink-3)}
+.picker{display:flex;align-items:center;gap:7px;font-size:14px;color:var(--ink-2)}
+.picker select{border:1px solid var(--line);background:var(--card);border-radius:7px;padding:6px 9px;color:var(--ink);font-weight:600}
+.skin{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.skin button{padding:6px 12px;font-size:14px;color:var(--ink-2)}
+.skin button[aria-pressed="true"]{background:var(--zhu);color:#fff;font-weight:600}
+.menu-btn{display:none;width:40px;height:40px;border-radius:8px;place-items:center}
+
+.scroll{flex:1;overflow:auto;min-height:0}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 30px 70px}
+
+/* ── 生成台内容 ──────────────────────────────────── */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:24px 26px;margin:0 0 16px}
+.steps{display:flex;align-items:center;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:20px}
+.steps h1{font-size:34px;letter-spacing:1px}
+.tag{font-size:13.5px;padding:3px 10px;border-radius:6px;background:var(--ok-soft);color:var(--ok);font-weight:600}
+.steplist{list-style:none;display:flex;gap:26px;margin-left:auto;flex-wrap:wrap}
+.step{display:flex;gap:9px;align-items:flex-start;font-size:15px;color:var(--ink-2)}
+.step .dot{width:23px;height:23px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);font-size:12px;color:var(--ink-3);flex:0 0 auto}
+.step.on .dot{background:var(--ok);color:#fff;border-color:var(--ok)}
+.step .dot .ico{width:14px;height:14px}
+.step small{display:block;font-size:12.5px;color:var(--ink-3)}
+
+.focus{display:flex;align-items:center;gap:22px;justify-content:space-between;border:1.5px solid var(--zhu);border-radius:var(--r);padding:20px 22px;background:color-mix(in oklab,var(--zhu) 4%,var(--card))}
+.focus .big{font-family:var(--serif);font-size:23px;color:var(--ink)}
+.focus .sub{font-size:15px;color:var(--ink-2);margin-top:5px}
+.cta{display:flex;align-items:center;gap:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:var(--r-sm);padding:11px 16px;font-size:15.5px;min-height:44px;white-space:nowrap}
+.btn:hover{border-color:var(--zhu)}
+.btn.primary{background:var(--zhu);color:#fff;border-color:var(--zhu);font-weight:600}
+.btn.primary:hover{filter:brightness(1.06)}
+.hint{font-size:13.5px;color:var(--ink-3)}
+.runbar{display:flex;align-items:center;gap:16px;padding:16px 4px 4px;flex-wrap:wrap;font-size:15px;color:var(--ink-2)}
+.runbar .elapsed{display:flex;align-items:center;gap:9px;flex:1 1 340px;min-width:0}
+.runbar-state{color:var(--ink-3);font-size:14px}
+.runbar-state b{color:var(--bad);margin-left:6px}
+.banner{margin-top:16px;border-radius:var(--r);padding:18px 20px;display:flex;gap:14px}
+.banner.ok{background:var(--ok-soft);border:1px solid color-mix(in oklab,var(--ok) 30%,transparent)}
+.banner .b-title{font-family:var(--serif);font-size:19px;color:var(--ink);display:block;margin-bottom:6px}
+.banner p{color:var(--ink-2);font-size:15.5px}
+.banner .acts{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}
+.fold{border:1px solid var(--line);border-radius:var(--r);background:var(--card);margin:0 0 16px}
+.fold summary{cursor:pointer;list-style:none;padding:17px 22px;display:flex;align-items:center;gap:10px;font-size:16px;color:var(--ink)}
+.fold summary::-webkit-details-marker{display:none}
+.fold summary .sm{margin-left:auto;font-size:13.5px;color:var(--ink-3)}
+.fold .fold-body{padding:0 22px 18px;color:var(--ink-3);font-size:14px}
+.foot-note{font-size:13px;color:var(--ink-3);text-align:right;margin:2px 0 14px}
+
+.overlay{display:none;position:fixed;inset:0;background:rgba(28,48,38,.22);z-index:19}
+.overlay.open{display:block}
+
+@media(max-width:900px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .side{position:fixed;inset:0 auto 0 0;width:280px;transform:translateX(-100%);transition:transform .18s;box-shadow:14px 0 40px rgba(0,0,0,.12)}
+  .side.open{transform:translateX(0)}
+  .menu-btn{display:grid}
+  .topbar{padding:11px 14px}
+  .wrap{padding:18px 16px 60px}
+  .steplist{margin-left:0}
+  .focus{flex-direction:column;align-items:flex-start}
+  .cta{width:100%}
+  .cta .btn{flex:1}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<svg aria-hidden="true" style="display:none">
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2V11.5A8.5 8.5 0 0 1 10.5 3h2a8.5 8.5 0 0 1 8.5 8.5Z"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v11m-4-4 4 4 4-4M5 20h14"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5-12-7.5Z"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10m5 10V4m5 16v-7m5 7V7"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H5v18h14V8l-5-5Zm0 0v5h5"/></symbol>
+  <symbol id="i-seal" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-10m-6 0h6v6"/></symbol>
+  <symbol id="i-ledger" viewBox="0 0 24 24"><path d="M6 3h12v18H6zM6 8h12M6 13h12M6 18h12"/></symbol>
+  <symbol id="i-archive" viewBox="0 0 24 24"><path d="M4 7h16v14H4zM2 3h20v4H2zM10 12h4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+</svg>
+<a class="skip" href="#content">跳到主要内容</a>
+
+<div class="shell">
+  <aside class="side" id="side" aria-label="工作区导航">
+    <div class="brand"><strong>文衡</strong><span>云南大学图书馆<br>学科信息参考</span></div>
+    <div class="side-scroll">
+      <p class="side-cap">工作区</p>
+      <a class="nav-item" href="#"><svg class="ico"><use href="#i-chat"/></svg>对话前门</a>
+      <a class="nav-item" href="#"><svg class="ico"><use href="#i-download"/></svg>取数<span class="lock">管理员</span></a>
+      <a class="nav-item" href="#" aria-current="page"><svg class="ico"><use href="#i-play"/></svg>生成台</a>
+      <a class="nav-item" href="#"><svg class="ico"><use href="#i-doc"/></svg>报告</a>
+      <a class="nav-item" href="#"><svg class="ico"><use href="#i-seal"/></svg>审核台</a>
+      <a class="nav-item" href="#"><svg class="ico"><use href="#i-chart"/></svg>AI 分析台</a>
+      <a class="nav-item" href="#"><svg class="ico"><use href="#i-trend"/></svg>预测台</a>
+      <p class="side-cap">里子 · 仅管理员</p>
+      <a class="nav-item" href="#"><svg class="ico"><use href="#i-ledger"/></svg>主台账</a>
+      <a class="nav-item" href="#"><svg class="ico"><use href="#i-archive"/></svg>运行档案</a>
+    </div>
+    <div class="side-user"><span class="av">d</span><span>demo<span class="role">操作员</span></span></div>
+  </aside>
+  <div class="overlay" id="overlay"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="打开导航" aria-expanded="false" aria-controls="side"><svg class="ico"><use href="#i-menu"/></svg></button>
+      <h1>生成台</h1>
+      <span class="spacer"></span>
+      <div class="top-actions">
+        <span class="preview-label">静态审核稿</span>
+        <label class="picker"><span class="muted small">期次</span>
+          <select aria-label="数据期次"><option>202609</option><option>202607</option></select>
+        </label>
+        <span class="skin" role="group" aria-label="切换配色">
+          <button type="button" aria-pressed="true" data-pal="ynu">云大绿</button>
+          <button type="button" aria-pressed="false" data-pal="zhu">朱砂</button>
+        </span>
+      </div>
+    </header>
+
+    <div class="scroll" id="content">
+      <div class="wrap">
+        <p class="foot-note">分析报告属于内部资料，仅用于参赛，禁止外传。</p>
+
+        <section class="card">
+          <div class="steps">
+            <h1>202609</h1>
+            <span class="tag">已生成</span>
+            <ol class="steplist">
+              <li class="step on"><span class="dot"><svg class="ico"><use href="#i-check"/></svg></span><span>取数<small>取数完成（64 / 64）</small></span></li>
+              <li class="step on"><span class="dot"><svg class="ico"><use href="#i-check"/></svg></span><span>核对并并入<small>已并入台账</small></span></li>
+              <li class="step on"><span class="dot"><svg class="ico"><use href="#i-check"/></svg></span><span>一键生成<small>已出稿</small></span></li>
+            </ol>
+          </div>
+
+          <div class="focus">
+            <div>
+              <div class="big">本期报告已就绪</div>
+              <div class="sub">复核后签单，这一版才会被标记为「可交付」</div>
+            </div>
+            <div class="cta">
+              <a class="btn primary" href="#"><svg class="ico"><use href="#i-seal"/></svg>复核并签单</a>
+            </div>
+          </div>
+
+          <div class="runbar">
+            <span class="elapsed"><svg class="ico"><use href="#i-refresh"/></svg>任务：已完成 · 期次 202609 · 页面正在更新进度</span>
+            <span class="runbar-state">签单状态<b>签名已失效</b></span>
+            <button class="btn"><svg class="ico"><use href="#i-list"/></svg>看详细过程</button>
+          </div>
+
+          <div class="banner ok">
+            <span class="ico"><svg class="ico" style="width:22px;height:22px"><use href="#i-check"/></svg></span>
+            <div>
+              <b class="b-title">本期报告已生成</b>
+              <p>本期签单状态：签名已失效。任务结束不代表报告合格或已签发；管理员当前不能下载未签发初稿。</p>
+              <span class="acts">
+                <a class="btn" href="#"><svg class="ico"><use href="#i-doc"/></svg>打开报告</a>
+                <a class="btn" href="#"><svg class="ico"><use href="#i-seal"/></svg>去审核台</a>
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <details class="fold">
+          <summary>本期模型 · 预测选模（只读）<span class="sm">改选去预测台</span></summary>
+          <div class="fold-body">模型选择按期次保存，全站只有一份——这里显示的就是本期配置；改选去预测台。</div>
+        </details>
+
+        <details class="fold">
+          <summary>全部期次<span class="sm">共 5 期</span></summary>
+          <div class="fold-body">202609 · 已生成 ｜ 202607 · 已签发 ｜ 202605 · 已签发 ｜ 202603 · 已签发 ｜ 202601 · 已签发</div>
+        </details>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(()=>{
+  'use strict';
+  const side=document.getElementById('side'),ov=document.getElementById('overlay'),mb=document.getElementById('menuBtn');
+  const close=()=>{side.classList.remove('open');ov.classList.remove('open');mb.setAttribute('aria-expanded','false')};
+  mb.addEventListener('click',()=>{const o=side.classList.toggle('open');ov.classList.toggle('open',o);mb.setAttribute('aria-expanded',String(o))});
+  ov.addEventListener('click',close);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+  document.querySelectorAll('[data-pal]').forEach(b=>b.addEventListener('click',()=>{
+    document.documentElement.dataset.palette=b.dataset.pal;
+    document.querySelectorAll('[data-pal]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  }));
+})();
+</script>
+</body>
+</html>

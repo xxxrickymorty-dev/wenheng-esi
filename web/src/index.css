@@ -60,6 +60,40 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0}
 :focus-visible{outline:3px solid var(--zhu);outline-offset:3px;border-radius:6px}
 a{color:inherit}
 
+/* ---------- 工作台外壳：常驻左栏 + 主区（2026-10-15 rick） ----------
+   顶栏导航竖排进左栏；主区内单独滚动；窄屏左栏变抽屉。与对话前门 .dlg-shell 同一形态。 */
+.ws-shell{display:grid;grid-template-columns:264px minmax(0,1fr);height:100dvh;min-height:600px}
+.ws-side{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;z-index:50}
+.ws-brand{padding:22px 22px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)}
+.ws-brand strong{font-family:var(--serif);font-size:25px;letter-spacing:.05em;color:var(--ink)}
+.ws-brand span{font-size:12px;line-height:1.6;color:var(--ink-3);border-left:1px solid var(--line);padding-left:12px}
+.ws-nav{flex:1;overflow:auto;padding:14px 14px 8px}
+.ws-cap{margin:0;font-size:12px;letter-spacing:1px;color:var(--ink-3);padding:16px 10px 8px}
+.ws-nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:var(--r-sm);
+  font-size:16px;color:var(--ink-2);text-decoration:none;min-height:44px;transition:background .15s,color .15s}
+.ws-nav a[aria-current="page"]{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
+.ws-nav a:hover{background:color-mix(in oklab,var(--zhu) 7%,transparent)}
+.ws-nav .lock{margin-left:auto;font-size:11px;color:var(--gold-ink);background:var(--gold-soft);padding:2px 7px;border-radius:5px}
+.ws-user{border-top:1px solid var(--line);padding:14px 18px}
+.ws-main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.ws-scroll{flex:1;overflow:auto;min-height:0}
+.ws-menu{display:none;width:40px;height:40px;border:1px solid var(--line);border-radius:8px;background:var(--card);
+  align-items:center;justify-content:center;cursor:pointer;color:var(--ink)}
+.ws-title{font-family:var(--serif);font-size:20px;font-weight:600;color:var(--ink)}
+.ws-overlay{display:none;position:fixed;inset:0;background:rgba(28,48,38,.22);z-index:45}
+.ws-overlay.open{display:block}
+.skip-link{position:absolute;left:-999px;top:8px;z-index:100;background:var(--card);padding:10px 14px;border-radius:8px}
+.skip-link:focus{left:8px}
+@media (max-width:900px){
+  .ws-shell{grid-template-columns:minmax(0,1fr)}
+  .ws-side{position:fixed;inset:0 auto 0 0;width:280px;transform:translateX(-100%);transition:transform .18s;
+    box-shadow:12px 0 40px rgba(0,0,0,.12)}
+  .ws-side.open{transform:translateX(0)}
+  .ws-menu{display:flex}
+  .wrap{padding:18px 16px 60px}
+}
+@media (prefers-reduced-motion: reduce){.ws-side{transition:none}}
+
 /* ---------- 顶栏 ---------- */
 .topbar{display:flex;align-items:center;gap:18px;padding:13px 22px;background:var(--card);
   border-bottom:1px solid var(--line)}

@@ -71,6 +71,8 @@ function savedForecastChoice(
 
 export default function App() {
   const [palette, setPalette] = useState<Palette>(initialPalette)
+  /* 窄屏左栏抽屉（2026-10-15）：宽屏无关；<=900px 时用顶栏按钮开合。 */
+  const [menuOpen, setMenuOpen] = useState(false)
   const [healthy, setHealthy] = useState<boolean | null>(null)
   const [me, setMe] = useState<Me | null>(null)
   /* 角色是否已有结论：false = 还没问过（探活失败 / 首屏）；true = 问过了（me 为 null 即未登录） */
@@ -101,6 +103,15 @@ export default function App() {
       // 浏览器不允许保存时，当前页面仍可正常切换。
     }
   }, [palette])
+
+  /* 窄屏抽屉：点链接后收起；Esc 关闭（与遮罩点击一致）。 */
+  const closeMenu = useCallback(() => setMenuOpen(false), [])
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setMenuOpen(false) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [menuOpen])
 
   const refreshPeriods = useCallback(async () => {
     const request = ++periodsRequestRef.current
@@ -454,31 +465,71 @@ export default function App() {
       ? h === '/app/' ? buildPeriodUrl(h, selected)
         : h.startsWith('/app/?') ? buildPeriodUrl(h, selected) : h
       : h)
+  /* 顶栏标题＝当前屏名（与左栏高亮同源，改一处两边一致） */
+  const navLabel = NAV.find((n) => n.view === view)?.label ?? '文衡'
 
   return (
-    <>
+    <div className="ws-shell">
       <Sprite />
-      <header className="topbar">
-        <div className="brand">
+      <a className="skip-link" href="#main">跳到主要内容</a>
+
+      {/* 常驻左栏（2026-10-15）：品牌 / 工作区导航 / 里子入口 / 身份。窄屏变抽屉。 */}
+      <aside className={`ws-side${menuOpen ? ' open' : ''}`} id="ws-side" aria-label="工作区导航">
+        <div className="ws-brand">
           <strong>文衡</strong>
-          <span>学科信息参考</span>
+          <span>云南大学图书馆<br />学科信息参考</span>
         </div>
-        <nav className="nav" aria-label="工作区">
+        <nav className="ws-nav" aria-label="工作区">
+          <p className="ws-cap">工作区</p>
           {NAV.filter((n) => !n.admin || me?.role === 'admin').map((n) => (
-            <a key={n.view} href={navHref(n.href)}
+            <a key={n.view} href={navHref(n.href)} onClick={closeMenu}
                aria-current={view === n.view ? 'page' : undefined}>
               <Icon name={n.icon} size={19} />{n.label}
             </a>
           ))}
+          {me?.role === 'admin' && (
+            <>
+              <p className="ws-cap">里子 · 仅管理员</p>
+              <a href={navHref('/app/?view=ledger')} onClick={closeMenu}
+                 aria-current={view === 'ledger' ? 'page' : undefined}>
+                <Icon name="ledger" size={19} />主台账
+              </a>
+              <a href={navHref('/app/?view=archive')} onClick={closeMenu}
+                 aria-current={view === 'archive' ? 'page' : undefined}>
+                <Icon name="archive" size={19} />运行档案
+              </a>
+            </>
+          )}
         </nav>
-        {/* 皮肤开关：与对话页同款（2026-10-12 从左下角搬到右上角）；默认云大绿 */}
-        <span className="skin-switch ml-auto" role="group" aria-label="切换配色">
-          <button type="button" aria-pressed={palette === 'ynu'} onClick={() => setPalette('ynu')}>云大绿</button>
-          <button type="button" aria-pressed={palette === 'zhu'} onClick={() => setPalette('zhu')}>朱砂</button>
-        </span>
-      </header>
+        <div className="ws-user">
+          {me ? <UserChip me={me} /> : (
+            <span className="user-chip" aria-live="polite">
+              <span className="user-chip-btn" aria-disabled="true">
+                <span className="av">？</span>
+                <span className="user-chip-name">{roleKnown ? '未登录' : '角色确认中…'}</span>
+              </span>
+            </span>
+          )}
+        </div>
+      </aside>
+      <div className={`ws-overlay${menuOpen ? ' open' : ''}`} onClick={closeMenu} aria-hidden="true" />
 
-      <main className="wrap">
+      <div className="ws-main">
+        <header className="topbar">
+          <button type="button" className="ws-menu" onClick={() => setMenuOpen((v) => !v)}
+                  aria-label="打开导航" aria-expanded={menuOpen} aria-controls="ws-side">
+            <Icon name="menu" size={20} />
+          </button>
+          <span className="ws-title">{navLabel}</span>
+          {/* 皮肤开关：与对话页同款（2026-10-12）；默认云大绿 */}
+          <span className="skin-switch ml-auto" role="group" aria-label="切换配色">
+            <button type="button" aria-pressed={palette === 'ynu'} onClick={() => setPalette('ynu')}>云大绿</button>
+            <button type="button" aria-pressed={palette === 'zhu'} onClick={() => setPalette('zhu')}>朱砂</button>
+          </span>
+        </header>
+
+        <div className="ws-scroll">
+          <main className="wrap" id="main">
         {healthy === false && (
           <div className="banner bad mt-0">
             <span className="ico"><Icon name="alert" size={22} /></span>
@@ -622,15 +673,8 @@ export default function App() {
           </div>
         </div>
       </footer>
-
-      {/* 身份控件：固定左下角（2026-10-12：与对话页左下角同款；点击才出「退出登录」） */}
-      {me ? <UserChip me={me} dock /> : (
-        <span className="user-chip user-chip-dock" aria-live="polite">
-          <span className="user-chip-btn" aria-disabled="true">
-            <span className="av">？</span>{roleKnown ? '未登录' : '角色确认中…'}
-          </span>
-        </span>
-      )}
-    </>
+        </div>
+      </div>
+    </div>
   )
 }
