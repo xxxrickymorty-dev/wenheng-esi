@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>文衡 · 新信息架构提案（3 主区 + 1 管理）</title>
+<title>文衡 · 新信息架构提案 v2（4 主区 + 1 管理）</title>
 <style>
   :root{
     --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB; --soft:#E3EDE4;
@@ -32,6 +32,7 @@
   .meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
   .meta span{font-size:13.5px;color:var(--ink-3);background:var(--panel);border:1px solid var(--line-2);border-radius:999px;padding:3px 12px}
   .meta .hot{color:var(--warn);background:var(--warn-soft);border-color:var(--warn)}
+  .meta .new{color:var(--ok);background:var(--ok-soft);border-color:var(--ok-soft)}
 
   section{margin-top:34px}
   section > h2{font-size:23px;margin-bottom:6px}
@@ -41,7 +42,6 @@
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 2px rgba(34,43,37,.06),0 8px 24px rgba(34,43,37,.05)}
   .pad{padding:20px 22px}
 
-  /* 现在 vs 建议 */
   .compare{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   @media (max-width:900px){.compare{grid-template-columns:1fr}}
   .col-h{display:flex;align-items:center;gap:9px;padding:13px 18px;border-bottom:1px solid var(--line);font-weight:650}
@@ -53,12 +53,12 @@
   .navlist li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;color:var(--ink-2)}
   .navlist li .ic{width:20px;text-align:center;color:var(--ink-3)}
   .navlist li.on{background:var(--soft);color:var(--zhu);font-weight:600}
+  .navlist li.flag{box-shadow:inset 2px 0 0 var(--gold)}
   .navlist .cap{font-size:12px;letter-spacing:1px;color:var(--ink-3);padding:12px 10px 5px}
-  .navlist .sub{padding-left:40px;font-size:14.5px;color:var(--ink-3)}
+  .navlist .sub{padding-left:40px;font-size:14.5px;color:var(--ink-3);display:block}
   .navlist .sub b{color:var(--ink-2);font-weight:600}
   .dimnote{padding:0 18px 16px;font-size:13.5px;color:var(--ink-3)}
 
-  /* 壳示意 */
   .shell{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:430px;overflow:hidden}
   @media (max-width:820px){.shell{grid-template-columns:1fr}}
   .shell-side{background:var(--panel);border-right:1px solid var(--line);padding:16px 12px}
@@ -105,13 +105,14 @@
 <div class="page">
 
   <header class="doc-head">
-    <div class="kicker">静态稿 · 待 rick 与馆员审核</div>
+    <div class="kicker">静态稿 v2 · 待 rick 与馆员审核</div>
     <h1>文衡 · 新信息架构提案</h1>
-    <p>回应馆员反馈「有必要分为这么多功能区吗」：把 <b>7 个平级工作区 + 2 个管理项</b> 收敛成 <b>3 个主区 + 1 个管理</b>，让左栏从「菜单」回到「任务」。</p>
+    <p>回应馆员反馈「有必要分为这么多功能区吗」：把 <b>7 个平级工作区 + 2 个管理项</b> 收敛成 <b>4 个主区 + 1 个管理</b>，让左栏从「菜单」回到「任务」。</p>
     <div class="meta">
       <span>2026-10-15</span>
       <span>单文件静态稿 · 零依赖</span>
-      <span>出报告 / 报告 / 问文衡 / 管理</span>
+      <span>出报告 / 报告 / 灵活报告 / 问文衡 / 管理</span>
+      <span class="new">v2：补回「灵活产线」独立主区</span>
       <span class="hot">动主壳 · 建议先定稿再动码</span>
     </div>
   </header>
@@ -119,7 +120,10 @@
   <section>
     <h2><span class="n">01</span>结论</h2>
     <p class="lead">不必要。这与项目自己的判据一致 —— <code>web/UX.md §七</code>：<b>「不做工作区菜单墙；工作区切换是次要导航，admin 的主角是「本期任务」」</b>。现在左栏 7 个平级区，是按「后端能力 / 评审抓手」长出来的，不是按馆员的活儿长出来的。</p>
-    <div class="note"><b>一句话</b>：馆员每期只做一件事 ——「出一期报告」。所以主区应当只有 <b>一条流水</b>（出报告），加两个辅助（看报告、问文衡），其余全退到步骤或「管理」里。</div>
+    <div class="note"><b>一句话</b>：馆员每期只做一件事 ——「出一期报告」。主区应只保留<b>两类产线</b>（复刻报告 / 灵活报告）加两个辅助（看报告、问文衡），其余全退到步骤或「管理」里。</div>
+    <div class="note" style="margin-top:12px;border-style:solid;border-color:var(--ok-soft)">
+      <b>v2 修订（重要）</b>：v1 误把「AI 分析台」当成"选材工具"并进了「出报告」。实际上 —— <b>分析台就是「灵活报告（第二条产线）」本身</b>（产物是那两份分析稿）。本版把它还原为<b>独立主区「灵活报告」</b>；馆员提的"从某期报告里勾选章节加进初稿"是<b>另一件待建能力</b>，单列在 §04 底部。
+    </div>
   </section>
 
   <section>
@@ -144,11 +148,13 @@
       </div>
 
       <div class="card">
-        <div class="col-h"><span class="dot new"></span>建议<span class="cnt">3 主区 + 1 管理</span></div>
+        <div class="col-h"><span class="dot new"></span>建议<span class="cnt">4 主区 + 1 管理</span></div>
         <ul class="navlist">
           <li class="cap">工作区</li>
           <li class="on"><span class="ic">▷</span>出报告</li>
           <li class="sub"><b>① 取数并核验</b> · <b>② 选材</b> · <b>③ 生成初稿</b> · <b>④ 核验与定稿</b></li>
+          <li><span class="ic">◫</span>灵活报告</li>
+          <li class="sub">第二条产线 · 选学科/意图 → 出分析稿（内部参考 · 非报送）</li>
           <li><span class="ic">≣</span>报告</li>
           <li class="sub">成品展示台 · 只读全文 · 按需展开</li>
           <li><span class="ic">◌</span>问文衡</li>
@@ -156,20 +162,21 @@
           <li><span class="ic">⊞</span>管理</li>
           <li class="sub">主台账 · 运行档案</li>
         </ul>
-        <div class="dimnote">好处：一个入口一条流水；「分析台/预测」变成流水里的步骤，不再要馆员先理解它们是什么。</div>
+        <div class="dimnote">一个入口一条流水；「分析台/预测」变成步骤；灵活产线独立成区（评审招牌，流程与复刻不同：不取数、不签单）。</div>
       </div>
     </div>
   </section>
 
   <section>
     <h2><span class="n">03</span>建议的壳（示意）</h2>
-    <p class="lead">左栏三主区；主区把「取数→选材→生成→定稿」摆成步骤条，馆员一眼知道现在到哪一步、下一步点什么。</p>
+    <p class="lead">左栏四主区；「出报告」把「取数→选材→生成→定稿」摆成步骤条，馆员一眼知道到哪一步、下一步点什么。</p>
     <div class="card shell">
       <aside class="shell-side">
         <div class="shell-brand"><strong>文衡</strong><span>云南大学图书馆<br>学科信息参考</span></div>
         <ul class="navlist">
           <li class="cap">工作区</li>
           <li class="on"><span class="ic">▷</span>出报告</li>
+          <li class="min"><span class="ic">◫</span>灵活报告</li>
           <li class="min"><span class="ic">≣</span>报告</li>
           <li class="min"><span class="ic">◌</span>问文衡</li>
           <li class="cap">管理 · 仅管理员</li>
@@ -187,16 +194,16 @@
         <div class="focus">
           <div>
             <div class="big">初稿已就绪</div>
-            <div class="s">② 选材挑的 9 个部分已进稿；核验后定稿，这一版才会被标记为「可交付」。</div>
+            <div class="s">核验后定稿，这一版才会被标记为「可交付」。（复刻报告按双月周期，要走取数与签单。）</div>
           </div>
           <div class="cta">
             <a class="btn ghost" href="#">看完整初稿</a>
             <a class="btn" href="#">核验并定稿</a>
           </div>
         </div>
-        <div class="secttl">② 选材（原「AI 分析台」并到这里）</div>
+        <div class="secttl">对照：灵活报告（第二条产线）——另一个入口，另一条流程</div>
         <div class="card pad" style="box-shadow:none">
-          勾选要进报告的内容 —— 例：第 202605 期 · 一、概论 ☑ ；三、1 云南省高校情况 ☑ …… 勾了才进初稿，不再另开一个「分析台」。
+          选<b>学科 / 分析意图</b> → 生成分析稿 → 看 / 导出。<b>不取数、不签单</b>；产物是「内部参考件 · 非报送」，落在 <code>/app/?view=analysis</code> 的双栏。
         </div>
       </main>
     </div>
@@ -206,16 +213,17 @@
   <section>
     <h2><span class="n">04</span>旧 → 新 · 映射</h2>
     <table>
-      <thead><tr><th style="width:26%">旧</th><th style="width:30%">新</th><th>怎么落</th></tr></thead>
+      <thead><tr><th style="width:24%">旧</th><th style="width:30%">新</th><th>怎么落</th></tr></thead>
       <tbody>
         <tr><td>取数</td><td>出报告 · ① 取数并核验</td><td>并入流水第一步；<b>写清它能干什么</b>，并给「下载本期数据包」动作</td></tr>
         <tr><td>生成台</td><td>出报告 · ③ 生成初稿</td><td>四步流水，不再逐屏跳</td></tr>
         <tr><td>审核台</td><td>出报告 · ④ 核验与定稿</td><td>改动只在这一步发生</td></tr>
-        <tr><td>AI 分析台</td><td>出报告 · ② 选材</td><td>不再平级：勾选章节 → 加进初稿</td></tr>
         <tr><td>预测台</td><td>出报告 · 步骤「选模」</td><td>信息量不动（馆员评价：明确）</td></tr>
+        <tr style="background:var(--ok-soft)"><td><b>AI 分析台</b></td><td><b>灵活报告（独立主区）</b></td><td><b>还原为第二条产线</b>：不取数、不签单，选学科/意图出分析稿</td></tr>
         <tr><td>报告</td><td>报告（成品展示台）</td><td>只读、全文、按期次动态展开，<b>不再修改</b></td></tr>
-        <tr><td>对话前门</td><td>问文衡（入口）</td><td>保留为自然语言入口，但不再与「出报告」平级</td></tr>
+        <tr><td>对话前门</td><td>问文衡（入口）</td><td>保留为自然语言入口（问答也在这条线上）</td></tr>
         <tr><td>主台账 / 运行档案</td><td>管理 · 仅管理员</td><td>收进「管理」一个入口，不占主菜单</td></tr>
+        <tr><td colspan="3" style="background:var(--warn-soft)"><b>待建（馆员新提，非现有功能）</b>：在复刻报告里"从某期报告勾选章节 → 加进初稿"（例：分析第 202605 期 · 一、概论 ☑ → 加进生成台）。落在 <b>出报告 · ② 选材</b>，与「灵活报告」不是一回事。</td></tr>
       </tbody>
     </table>
   </section>
@@ -227,9 +235,9 @@
       <tbody>
         <tr><td>对话前门「回复无法满足问题」</td><td><span class="tag warn">非 IA 问题</span></td><td>是对话意图覆盖不够；单列一条待办（补「下载 / 取数 / 流程到哪一步」等意图），与并区无关</td></tr>
         <tr><td>取数「以为能下载原始数据包」</td><td><span class="tag ok">采纳</span></td><td>并进 ①；明写职责 + 给「下载本期数据包」动作（后端无包则删掉误导文案）</td></tr>
-        <tr><td>生成台「跳转太多」</td><td><span class="tag ok">采纳</span></td><td>即上面的四步流水（馆员给的 1–4 步几乎一比一）</td></tr>
+        <tr><td>生成台「跳转太多」</td><td><span class="tag ok">采纳</span></td><td>即四步流水（馆员给的 1–4 步几乎一比一）</td></tr>
         <tr><td>报告「最好是成品展示台」</td><td><span class="tag ok">采纳</span></td><td>报告区只读全文；修改只在 ④</td></tr>
-        <tr><td>AI 分析「无从下手 / 想勾选加进生成台 / 或合并」</td><td><span class="tag ok">采纳</span></td><td>并入 ②「选材」，勾选章节加进初稿</td></tr>
+        <tr><td>AI 分析「无从下手 / 想勾选加进生成台 / 或合并」</td><td><span class="tag ok">拆成两件</span></td><td><b>① 分析台 = 灵活报告</b> → 独立主区、说清用途；<b>② 勾选章节进稿</b> → 新能力，落在「出报告·②选材」，不与灵活报告混</td></tr>
         <tr><td>预测台「信息明确」</td><td><span class="tag">不动</span></td><td>降为「出报告」的选模步骤，信息保留</td></tr>
       </tbody>
     </table>
@@ -252,12 +260,12 @@
       <b>时机</b>：10 月底就演示，这会动主壳。请定 —— <b>现在就改</b>（有回归风险，但演示即用新 IA），还是 <b>演示后再改</b>（演示沿用现壳，稳）。
     </div>
     <div class="note" style="margin-top:14px">
-      你点头后我按此出 React 票（同样先静态稿、后实现、每步跑 <code>check_web_app</code> 与契约用例）。<b>管理</b>入口与 <b>问文衡</b> 是否也要现在并入，一并告诉我。
+      已定：<b>4 主区（出报告 / 报告 / 灵活报告 / 问文衡）+ 1 管理</b>。你点头后我按此出 React 票（同样先静态稿、后实现、每步跑 <code>check_web_app</code> 与契约用例）。
     </div>
   </section>
 
   <footer>
-    文衡 · 新信息架构提案（静态稿）· 2026-10-15 · 单文件零依赖，双击即开 · 待 rick / 馆员审核
+    文衡 · 新信息架构提案（静态稿 v2）· 2026-10-15 · 单文件零依赖，双击即开 · 待 rick / 馆员审核
   </footer>
 
 </div>
