@@ -19,6 +19,7 @@ import re
 _IMG = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
 _CODE = re.compile(r"`([^`]+)`")
 _BOLD = re.compile(r"\*\*([^*]+)\*\*")
+_MARK = re.compile(r"==([^=\n]+)==")     # 待审线（票 01）：==句子== → 细下划线
 
 
 def _inline(s: str) -> str:
@@ -28,6 +29,8 @@ def _inline(s: str) -> str:
     s = _IMG.sub(r'<img src="\2" alt="\1">', s)
     s = _CODE.sub(r"<code>\1</code>", s)
     s = _BOLD.sub(r"<strong>\1</strong>", s)
+    # 只认成对 ==…==（单行内，逐行调用天然满足）；单侧 == 不入链、原样保留
+    s = _MARK.sub(r'<span class="fx-mark">\1</span>', s)
     return s
 
 
@@ -215,6 +218,9 @@ border-left:3px solid var(--zhu);border-radius:0 3px 3px 0;color:var(--ink-2)}}
 blockquote p{{margin:4px 0}}
 code{{font-family:var(--mono);font-size:12.5px;background:#F0EAE0;
 padding:1px 5px;border-radius:3px}}
+/* 待审线（票 01）：==句子== → 细下划线；与网页 .fx-md .fx-mark 同款（同 class、同参数） */
+.fx-mark{{text-decoration:underline;text-decoration-thickness:1px;
+text-underline-offset:2px;text-decoration-color:var(--ink-2)}}
 figure{{margin:16px 0;text-align:center}}
 figure img{{max-width:100%;border:1px solid var(--line);border-radius:3px;background:#fff}}
 /* 连续图两列一组（一篇里图不占满宽，观感更紧凑） */

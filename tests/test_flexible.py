@@ -1054,3 +1054,42 @@ class Test写作位接线:
             r = report.generate(REPO / src.dir, "single_trend")
         assert r["mode"] == "off"
         assert not (tmp_path / "202607" / "ai_calls.jsonl").exists(), "不该有写作记录"
+
+
+class Test待审线渲染:
+    """票 01：`==句子==` → 细下划线 span（待审线）；网页与下载件同一渲染器、同一 class。
+
+    只认成对 `==…==`（单行内）；单侧 `==` 原样保留、不吞正文；标记内容走既有转义链。
+    """
+
+    def test_成对标记渲染为细下划线span(self):
+        h = mdview.render("总被引升至 ==11,558== 次。")
+        assert '<span class="fx-mark">11,558</span>' in h
+        assert "==" not in h, "字面等号不该残留"
+
+    def test_同一行多组标记各自成span(self):
+        h = mdview.render("==第一句==与==第二句==都需馆员过目")
+        assert '<span class="fx-mark">第一句</span>' in h
+        assert '<span class="fx-mark">第二句</span>' in h
+
+    def test_单侧等号原样保留不吞正文(self):
+        h = mdview.render("写作位降级 == 时回退空位。")
+        assert "fx-mark" not in h
+        assert "==" in h and "时回退空位" in h
+
+    def test_标记不跨行配对(self):
+        h = mdview.render("==跨行开始\n此处才结束==")
+        assert "fx-mark" not in h
+
+    def test_标记内容走既有转义链(self):
+        h = mdview.render("==A & B <b>粗</b>==")
+        assert '<span class="fx-mark">A &amp; B &lt;b&gt;粗&lt;/b&gt;</span>' in h
+        assert "<b>粗</b>" not in h, "HTML 特殊字符不得逃逸"
+
+    def test_下载件同一class与细下划线样式(self):
+        h = mdview.standalone("==待审句==的说明", "t")
+        assert '<span class="fx-mark">待审句</span>' in h
+        assert ".fx-mark{" in h
+        assert "text-decoration:underline" in h
+        assert "text-decoration-thickness:1px" in h
+        assert "text-underline-offset:2px" in h

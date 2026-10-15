@@ -533,6 +533,9 @@ a{color:inherit}
 .fx-md hr{border:0;border-top:1px dashed var(--line);margin:18px 0}
 .fx-md code{font-family:var(--mono);font-size:13.5px;background:var(--panel);
   border:1px solid var(--line-2);border-radius:6px;padding:1px 6px}
+/* 待审线（票 01）：==句子== → 细下划线；与下载件 SHELL 的 .fx-mark 同款（同 class、同参数） */
+.fx-md .fx-mark{text-decoration:underline;text-decoration-thickness:1px;
+  text-underline-offset:2px;text-decoration-color:var(--ink-2)}
 .fx-md table{width:100%;border-collapse:collapse;font-size:15px;margin:10px 0}
 .fx-md th,.fx-md td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line-2)}
 .fx-md th{background:var(--panel);color:var(--ink-3);font-size:13.5px}
