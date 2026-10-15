@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-palette="green">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 新信息架构提案（3 主区 + 1 管理）</title>
+<style>
+  :root{
+    --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB; --soft:#E3EDE4;
+    --ink:#222B25; --ink-2:#3F4C42; --ink-3:#58655C;
+    --line:#DDE1D8; --line-2:#E6E9E2;
+    --zhu:#1A4B27; --gold:#B19A65; --gold-ink:#62501F;
+    --ok:#28643A; --ok-soft:#E2EEE4;
+    --warn:#75622D; --warn-soft:#F6EED8;
+    --bad:#B43B31; --bad-soft:#F4E6E2;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font:16px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0;line-height:1.3}
+  a{color:var(--zhu)}
+  code{font-family:var(--mono);font-size:.9em;background:var(--panel);border:1px solid var(--line-2);border-radius:6px;padding:1px 6px}
+  .page{max-width:1180px;margin:0 auto;padding:34px 22px 80px}
+
+  .doc-head{border-bottom:1px solid var(--line);padding-bottom:20px}
+  .kicker{font-size:12.5px;letter-spacing:.18em;color:var(--gold-ink);text-transform:uppercase}
+  .doc-head h1{font-size:34px;margin:10px 0 8px}
+  .doc-head p{margin:0;color:var(--ink-2);max-width:78ch}
+  .meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .meta span{font-size:13.5px;color:var(--ink-3);background:var(--panel);border:1px solid var(--line-2);border-radius:999px;padding:3px 12px}
+  .meta .hot{color:var(--warn);background:var(--warn-soft);border-color:var(--warn)}
+
+  section{margin-top:34px}
+  section > h2{font-size:23px;margin-bottom:6px}
+  section > h2 .n{color:var(--gold);font-family:var(--mono);font-size:16px;margin-right:8px}
+  section > p.lead{color:var(--ink-2);margin:0 0 14px;max-width:82ch}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 2px rgba(34,43,37,.06),0 8px 24px rgba(34,43,37,.05)}
+  .pad{padding:20px 22px}
+
+  /* 现在 vs 建议 */
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:900px){.compare{grid-template-columns:1fr}}
+  .col-h{display:flex;align-items:center;gap:9px;padding:13px 18px;border-bottom:1px solid var(--line);font-weight:650}
+  .col-h .dot{width:9px;height:9px;border-radius:50%}
+  .col-h .dot.now{background:var(--bad)}
+  .col-h .dot.new{background:var(--ok)}
+  .col-h .cnt{margin-left:auto;font-size:13px;color:var(--ink-3);font-weight:400}
+  .navlist{list-style:none;margin:0;padding:10px 12px 14px}
+  .navlist li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;color:var(--ink-2)}
+  .navlist li .ic{width:20px;text-align:center;color:var(--ink-3)}
+  .navlist li.on{background:var(--soft);color:var(--zhu);font-weight:600}
+  .navlist .cap{font-size:12px;letter-spacing:1px;color:var(--ink-3);padding:12px 10px 5px}
+  .navlist .sub{padding-left:40px;font-size:14.5px;color:var(--ink-3)}
+  .navlist .sub b{color:var(--ink-2);font-weight:600}
+  .dimnote{padding:0 18px 16px;font-size:13.5px;color:var(--ink-3)}
+
+  /* 壳示意 */
+  .shell{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:430px;overflow:hidden}
+  @media (max-width:820px){.shell{grid-template-columns:1fr}}
+  .shell-side{background:var(--panel);border-right:1px solid var(--line);padding:16px 12px}
+  .shell-brand{display:flex;align-items:center;gap:10px;padding:6px 8px 16px;border-bottom:1px solid var(--line)}
+  .shell-brand strong{font-family:var(--serif);font-size:22px;letter-spacing:.04em}
+  .shell-brand span{font-size:12px;color:var(--ink-3);border-left:1px solid var(--line);padding-left:10px;line-height:1.5}
+  .shell-side .navlist{padding:10px 4px}
+  .shell-side .navlist li.min{padding:6px 10px}
+  .shell-main{padding:22px 26px}
+  .shell-main h3{font-size:21px}
+  .steps{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 20px}
+  .step{display:flex;align-items:center;gap:9px;padding:9px 14px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:14.5px;color:var(--ink-2)}
+  .step .d{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:1.5px solid var(--line);font-size:12.5px;font-weight:700;color:var(--ink-3)}
+  .step.done .d{background:var(--ok);border-color:var(--ok);color:#fff}
+  .step.now{border-color:var(--zhu);color:var(--zhu);font-weight:600}
+  .step.now .d{border-color:var(--zhu);color:var(--zhu)}
+  .focus{border:1px solid var(--zhu);border-left:5px solid var(--zhu);border-radius:12px;background:var(--card);padding:18px 20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .focus .big{font-size:18px;font-weight:650}
+  .focus .s{color:var(--ink-2);font-size:14.5px;margin-top:3px}
+  .btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:11px 22px;border-radius:9px;background:var(--zhu);color:#fff;font-weight:600;border:1px solid var(--zhu);font-size:16px}
+  .btn.ghost{background:var(--card);color:var(--ink-2);border-color:var(--line)}
+  .focus .cta{margin-left:auto;display:flex;gap:10px}
+  .secttl{font-size:14px;color:var(--ink-3);margin:20px 0 8px;letter-spacing:.06em}
+
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line-2);vertical-align:top}
+  th{background:var(--panel);color:var(--ink-2);font-weight:600;font-size:13.5px}
+  tbody tr:hover{background:var(--panel)}
+  td .tag{display:inline-block;font-size:12.5px;border-radius:999px;padding:2px 10px;background:var(--soft);color:var(--zhu);border:1px solid var(--line)}
+  td .tag.ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok-soft)}
+  td .tag.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn-soft)}
+  td .tag.bad{background:var(--bad-soft);color:var(--bad);border-color:var(--bad-soft)}
+
+  .note{border:1px dashed var(--line);border-radius:12px;padding:15px 18px;background:var(--panel);color:var(--ink-2);font-size:15px}
+  .note b{color:var(--ink)}
+  .note ul{margin:8px 0 0;padding-left:22px}
+  .note li{margin:4px 0}
+  .gate{background:var(--warn-soft);border:1px solid var(--warn);border-radius:12px;padding:16px 20px;color:var(--warn)}
+  .gate b{color:var(--ink)}
+  footer{margin-top:44px;border-top:1px solid var(--line);padding-top:16px;color:var(--ink-3);font-size:13.5px}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="doc-head">
+    <div class="kicker">静态稿 · 待 rick 与馆员审核</div>
+    <h1>文衡 · 新信息架构提案</h1>
+    <p>回应馆员反馈「有必要分为这么多功能区吗」：把 <b>7 个平级工作区 + 2 个管理项</b> 收敛成 <b>3 个主区 + 1 个管理</b>，让左栏从「菜单」回到「任务」。</p>
+    <div class="meta">
+      <span>2026-10-15</span>
+      <span>单文件静态稿 · 零依赖</span>
+      <span>出报告 / 报告 / 问文衡 / 管理</span>
+      <span class="hot">动主壳 · 建议先定稿再动码</span>
+    </div>
+  </header>
+
+  <section>
+    <h2><span class="n">01</span>结论</h2>
+    <p class="lead">不必要。这与项目自己的判据一致 —— <code>web/UX.md §七</code>：<b>「不做工作区菜单墙；工作区切换是次要导航，admin 的主角是「本期任务」」</b>。现在左栏 7 个平级区，是按「后端能力 / 评审抓手」长出来的，不是按馆员的活儿长出来的。</p>
+    <div class="note"><b>一句话</b>：馆员每期只做一件事 ——「出一期报告」。所以主区应当只有 <b>一条流水</b>（出报告），加两个辅助（看报告、问文衡），其余全退到步骤或「管理」里。</div>
+  </section>
+
+  <section>
+    <h2><span class="n">02</span>现在 → 建议</h2>
+    <div class="compare">
+      <div class="card">
+        <div class="col-h"><span class="dot now"></span>现在<span class="cnt">7 工作区 + 2 管理</span></div>
+        <ul class="navlist">
+          <li class="cap">工作区</li>
+          <li><span class="ic">◌</span>对话前门</li>
+          <li><span class="ic">↓</span>取数</li>
+          <li><span class="ic">▷</span>生成台</li>
+          <li><span class="ic">≣</span>报告</li>
+          <li><span class="ic">✓</span>审核台</li>
+          <li><span class="ic">◫</span>AI 分析台</li>
+          <li><span class="ic">↗</span>预测台</li>
+          <li class="cap">里子 · 仅管理员</li>
+          <li><span class="ic">⊞</span>主台账</li>
+          <li><span class="ic">□</span>运行档案</li>
+        </ul>
+        <div class="dimnote">问题：平级太多、彼此跳转、说不清该从哪进；「取数」「分析台」尤其让人无从下手。</div>
+      </div>
+
+      <div class="card">
+        <div class="col-h"><span class="dot new"></span>建议<span class="cnt">3 主区 + 1 管理</span></div>
+        <ul class="navlist">
+          <li class="cap">工作区</li>
+          <li class="on"><span class="ic">▷</span>出报告</li>
+          <li class="sub"><b>① 取数并核验</b> · <b>② 选材</b> · <b>③ 生成初稿</b> · <b>④ 核验与定稿</b></li>
+          <li><span class="ic">≣</span>报告</li>
+          <li class="sub">成品展示台 · 只读全文 · 按需展开</li>
+          <li><span class="ic">◌</span>问文衡</li>
+          <li class="cap">管理 · 仅管理员</li>
+          <li><span class="ic">⊞</span>管理</li>
+          <li class="sub">主台账 · 运行档案</li>
+        </ul>
+        <div class="dimnote">好处：一个入口一条流水；「分析台/预测」变成流水里的步骤，不再要馆员先理解它们是什么。</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">03</span>建议的壳（示意）</h2>
+    <p class="lead">左栏三主区；主区把「取数→选材→生成→定稿」摆成步骤条，馆员一眼知道现在到哪一步、下一步点什么。</p>
+    <div class="card shell">
+      <aside class="shell-side">
+        <div class="shell-brand"><strong>文衡</strong><span>云南大学图书馆<br>学科信息参考</span></div>
+        <ul class="navlist">
+          <li class="cap">工作区</li>
+          <li class="on"><span class="ic">▷</span>出报告</li>
+          <li class="min"><span class="ic">≣</span>报告</li>
+          <li class="min"><span class="ic">◌</span>问文衡</li>
+          <li class="cap">管理 · 仅管理员</li>
+          <li class="min"><span class="ic">⊞</span>管理</li>
+        </ul>
+      </aside>
+      <main class="shell-main">
+        <h3>出报告 · 202609</h3>
+        <div class="steps">
+          <div class="step done"><span class="d">✓</span>① 取数并核验</div>
+          <div class="step done"><span class="d">✓</span>② 选材</div>
+          <div class="step now"><span class="d">③</span>③ 生成初稿</div>
+          <div class="step"><span class="d">④</span>④ 核验与定稿</div>
+        </div>
+        <div class="focus">
+          <div>
+            <div class="big">初稿已就绪</div>
+            <div class="s">② 选材挑的 9 个部分已进稿；核验后定稿，这一版才会被标记为「可交付」。</div>
+          </div>
+          <div class="cta">
+            <a class="btn ghost" href="#">看完整初稿</a>
+            <a class="btn" href="#">核验并定稿</a>
+          </div>
+        </div>
+        <div class="secttl">② 选材（原「AI 分析台」并到这里）</div>
+        <div class="card pad" style="box-shadow:none">
+          勾选要进报告的内容 —— 例：第 202605 期 · 一、概论 ☑ ；三、1 云南省高校情况 ☑ …… 勾了才进初稿，不再另开一个「分析台」。
+        </div>
+      </main>
+    </div>
+    <p class="dimnote" style="margin-top:10px">注：本图为 IA 示意，非最终视觉；配色沿用线上令牌（云大绿）。</p>
+  </section>
+
+  <section>
+    <h2><span class="n">04</span>旧 → 新 · 映射</h2>
+    <table>
+      <thead><tr><th style="width:26%">旧</th><th style="width:30%">新</th><th>怎么落</th></tr></thead>
+      <tbody>
+        <tr><td>取数</td><td>出报告 · ① 取数并核验</td><td>并入流水第一步；<b>写清它能干什么</b>，并给「下载本期数据包」动作</td></tr>
+        <tr><td>生成台</td><td>出报告 · ③ 生成初稿</td><td>四步流水，不再逐屏跳</td></tr>
+        <tr><td>审核台</td><td>出报告 · ④ 核验与定稿</td><td>改动只在这一步发生</td></tr>
+        <tr><td>AI 分析台</td><td>出报告 · ② 选材</td><td>不再平级：勾选章节 → 加进初稿</td></tr>
+        <tr><td>预测台</td><td>出报告 · 步骤「选模」</td><td>信息量不动（馆员评价：明确）</td></tr>
+        <tr><td>报告</td><td>报告（成品展示台）</td><td>只读、全文、按期次动态展开，<b>不再修改</b></td></tr>
+        <tr><td>对话前门</td><td>问文衡（入口）</td><td>保留为自然语言入口，但不再与「出报告」平级</td></tr>
+        <tr><td>主台账 / 运行档案</td><td>管理 · 仅管理员</td><td>收进「管理」一个入口，不占主菜单</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2><span class="n">05</span>馆员六条反馈 → 落点</h2>
+    <table>
+      <thead><tr><th style="width:20%">反馈</th><th style="width:14%">判断</th><th>落点</th></tr></thead>
+      <tbody>
+        <tr><td>对话前门「回复无法满足问题」</td><td><span class="tag warn">非 IA 问题</span></td><td>是对话意图覆盖不够；单列一条待办（补「下载 / 取数 / 流程到哪一步」等意图），与并区无关</td></tr>
+        <tr><td>取数「以为能下载原始数据包」</td><td><span class="tag ok">采纳</span></td><td>并进 ①；明写职责 + 给「下载本期数据包」动作（后端无包则删掉误导文案）</td></tr>
+        <tr><td>生成台「跳转太多」</td><td><span class="tag ok">采纳</span></td><td>即上面的四步流水（馆员给的 1–4 步几乎一比一）</td></tr>
+        <tr><td>报告「最好是成品展示台」</td><td><span class="tag ok">采纳</span></td><td>报告区只读全文；修改只在 ④</td></tr>
+        <tr><td>AI 分析「无从下手 / 想勾选加进生成台 / 或合并」</td><td><span class="tag ok">采纳</span></td><td>并入 ②「选材」，勾选章节加进初稿</td></tr>
+        <tr><td>预测台「信息明确」</td><td><span class="tag">不动</span></td><td>降为「出报告」的选模步骤，信息保留</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2><span class="n">06</span>别踩的三条</h2>
+    <div class="note">
+      <ul>
+        <li><b>权限分级是评分抓手</b>：操作员看不到 取数 / 主台账 / 运行档案 / 红件清单 / 逐格溯源，所有写动作服务端拦。合并成"步骤"之后，这些仍要按角色隐藏，不能因为同屏就露出来。</li>
+        <li><b>里子不能消失</b>：主台账 / 运行档案是「数据安全 + 可追溯」的评审证据 —— 收进「管理」即可，别删。</li>
+        <li><b>先静态稿再动码</b>：按 <code>web/AGENTS.md</code> 纪律①，本图你先审；通过后再开 React 票。左栏壳是并行会话刚建的（<code>59487d7</code>），动它前需先与那条线对齐，避免撞车。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">07</span>待你拍板</h2>
+    <div class="gate">
+      <b>时机</b>：10 月底就演示，这会动主壳。请定 —— <b>现在就改</b>（有回归风险，但演示即用新 IA），还是 <b>演示后再改</b>（演示沿用现壳，稳）。
+    </div>
+    <div class="note" style="margin-top:14px">
+      你点头后我按此出 React 票（同样先静态稿、后实现、每步跑 <code>check_web_app</code> 与契约用例）。<b>管理</b>入口与 <b>问文衡</b> 是否也要现在并入，一并告诉我。
+    </div>
+  </section>
+
+  <footer>
+    文衡 · 新信息架构提案（静态稿）· 2026-10-15 · 单文件零依赖，双击即开 · 待 rick / 馆员审核
+  </footer>
+
+</div>
+</body>
+</html>
