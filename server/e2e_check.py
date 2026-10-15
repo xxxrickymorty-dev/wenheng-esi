@@ -420,8 +420,11 @@ if jobid:
     # 2026-10-12：出报告对操作员开放——任务下载口与期次口同款（拦红件/日志包、放行其余）
     st, _, _ = call("GET", f"/jobs/{jobid}/download/red_list", opener=gop)
     check("操作员任务下载口拦红件（403）", st == 403, f"got {st}")
-    st, _, _ = call("GET", f"/jobs/{jobid}/download/table2", opener=gop)
-    check("操作员任务下载口放行非红件（200）", st == 200, f"got {st}")
+    # 2026-10-15：任务产物可能被「补跑 + 审批回滚」恢复成更早版本（任务级新鲜度过滤后为空，
+    # 任务口 404 是数据状态、不是权限问题）。「放行非红件」钉在**期次口**——同一 guard、
+    # 不看任务新鲜度（任务口的 red_list 403 已覆盖其 guard 接线）。
+    st, _, _ = call("GET", "/p/202607/download/table2", opener=gop)
+    check("操作员下载口放行非红件（200）", st == 200, f"got {st}")
 
 out("=== 13. 图表路由的越界防护（老清单页已 302，路由按 §六 保留） ===")
 # /p/{期次}/chart/ 直接服务磁盘文件，越界 = 任意文件读取（能读到 server/.env）
@@ -830,6 +833,11 @@ check("灵活报告下载 200", st_dl == 200, f"got {st_dl}")
 check("灵活报告下载已带图（单文件 data URI）",
       "data:image/" in (dl_html or "") and 'src="charts/' not in (dl_html or ""),
       f"len={len(dl_html or '')} has_data={'data:image/' in (dl_html or '')}")
+
+# 灵活报告 DOCX 下载（2026-10-15：给 docx 方便馆员改；旧稿现场转换）
+st_dx, dx_body, _ = call("GET", "/p/202607/flexible/single_trend/report.docx")
+check("灵活报告 docx 下载 200", st_dx == 200, f"got {st_dx}")
+check("docx 是有效包（PK 头）", (dx_body or "")[:2] == "PK", (dx_body or "")[:8])
 
 out("=" * 56)
 if FAILS:

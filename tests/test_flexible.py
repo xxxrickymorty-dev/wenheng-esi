@@ -582,6 +582,18 @@ class Test规则后端产出完整分析稿:
                     "成因研判（判断草稿）", "建议事项（判断草稿）", "本稿如何产生", "数据来源链"):
             assert sec in md, f"缺章节：{sec}"
 
+    def test_报告同时产出docx_可直接改(self, flex_report_out):
+        """2026-10-15（rick）：下载报告＝docx（方便馆员修改）——出稿即产 `report.docx`。"""
+        dx = pathlib.Path(flex_report_out["report"]).parent / "report.docx"
+        assert dx.is_file(), "出稿应同时产 docx"
+        from docx import Document
+        doc = Document(str(dx))
+        texts = [p.text for p in doc.paragraphs]
+        assert any("当期概况" in t for t in texts), "正文应在"
+        assert texts[-1].startswith("内部参考 · 非报送件"), "页脚标注一次"
+        assert len(doc.tables) >= 2, "概况表＋来源链表"
+        assert len(doc.inline_shapes) >= 1, "图内嵌（离开 charts/ 也带图）"
+
     def test_自检通过(self, flex_report_out):
         c = flex_report_out["check"]
         assert c["pass"], c
@@ -1071,6 +1083,10 @@ class Test写作位接线:
         assert "【手工：" not in cause, "模型成功时判断节不该是空位"
         assert r["check"]["pass"], r["check"]
         assert not opinion.guard(md)
+        from docx import Document
+        doc = Document(str(pathlib.Path(r["report"]).parent / "report.docx"))
+        assert any(run.underline for p in doc.paragraphs for run in p.runs), \
+            "待审线在 docx 里应是下划线（方便馆员直接改）"
 
     def test_默认关时mode是off(self, src):
         from conftest import REPO
@@ -1181,6 +1197,9 @@ class Test产线贯通:
         assert md.count("细下划线的句子") == 1, "图例只在头部说明一次"
         for gone in ("不由本产线生成", "不是结论", "非结论", "待验证假设"):
             assert gone not in md, f"重复声明未清除：{gone}"
+        assert "本件为内部参考" not in md, "报告里不再重复声明（页面导语承担）"
+        html = mdview.standalone(md, "t")
+        assert "export-mark" in html and "内部参考 · 非报送件" in html, "下载件页脚标注一次"
 
     def test_规则后端_空位版_确定性(self, tmp_path):
         """demo 档（规则后端）行为与升级前一致：全篇规则稿＋空位；同输入同输出。"""
@@ -1324,3 +1343,22 @@ class Test待审线渲染:
         assert "text-decoration:underline" in h
         assert "text-decoration-thickness:1px" in h
         assert "text-underline-offset:2px" in h
+
+    def test_旧稿声明渲染时剥离_图例保留(self):
+        """2026-10-15（rick：报告里不再重复声明）：历史稿顶部的「本件为内部参考…」渲染时去掉，
+        同行的待审线图例保留；整行只剩声明时直接丢弃；下载件页脚标注一次。"""
+        old = ("> **本件为内部参考，非报送件** —— 由灵活报告产线（第二条产线）生成，"
+               "路径由 AI 自主规划；**不带盖章位、不作为对外报送材料**。"
+               "正式对外件请用复刻报告产线（母版 704 槽位、三道闸、可签发）。"
+               "　细下划线的句子＝**待审句**，需馆员拍板；拍板线下完成。\n\n正文。")
+        h = mdview.render(old)
+        assert "本件为内部参考" not in h and "复刻报告产线" not in h
+        assert "细下划线的句子" in h, "图例要留下（旧稿里与声明同一行）"
+        h2 = mdview.render(old.split("　")[0] + "\n\n正文。")
+        assert "本件为内部参考" not in h2, "整行只剩声明 → 整行丢弃"
+
+    def test_下载件页脚标注一次(self):
+        h = mdview.standalone("正文。", "t")
+        assert "export-mark" in h
+        assert "内部参考 · 非报送件" in h
+        assert h.count("内部参考 · 非报送件") == 1, "声明在下载件只出现一次（页脚）"

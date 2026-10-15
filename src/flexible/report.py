@@ -43,12 +43,9 @@ from .datasource import DataSource, cn_name, period_label
 BANNER = "内部参考 · 非报送件"
 """导出件页脚/页眉标注。从源头杜绝「分析稿被误当正式报告发出去」。"""
 
-BANNER_NOTE = ("> **本件为内部参考，非报送件** —— 由灵活报告产线（第二条产线）生成，"
-               "路径由 AI 自主规划；**不带盖章位、不作为对外报送材料**。"
-               "正式对外件请用复刻报告产线（母版 704 槽位、三道闸、可签发）。")
-
 MARK_LEGEND = ("细下划线的句子＝**待审句**，需馆员拍板；拍板线下完成。")
-"""待审线图例。声明只留一处：只在头部（`BANNER_NOTE` 后）说明一次；
+"""待审线图例。2026-10-15（rick）：报告内不再重复「内部参考·非报送」声明——
+页面导语已承担该声明，下载件（html/docx）由各自页脚标注；正文只留这一行图例，
 仅当本稿走写作位（`mode == "write"`）时附上——规则版没有待审线，不摆空图例。"""
 
 #: 章节序号（灵活报告节数有限，够用即可）
@@ -502,10 +499,14 @@ def _build(c: _ReportCtx, on_section=None, on_outline=None) -> dict:
 
 # ------------------------------------------------------------------ 渲染
 def _render(plan: dict, built: dict, meta: dict) -> str:
-    # 待审线图例只在头部说明一次（且只在本稿真走写作位时附上）
-    banner = BANNER_NOTE + (f"　{MARK_LEGEND}" if meta.get("mode") == "write" else "")
-    L = [f"# {plan.get('title') or '灵活分析稿'}", "",
-         banner, "",
+    # 2026-10-15（rick）：报告内不再重复「内部参考·非报送」声明（页面导语已有；
+    # 下载件由 SHELL / docx 页脚标注）——正文只留待审线图例，且只在本稿走写作位时附上。
+    L = [f"# {plan.get('title') or '灵活分析稿'}", ""]
+    if meta.get("mode") == "write":
+        L += [f"> {MARK_LEGEND}", ""]
+    if plan.get("fallback_reason"):
+        L += [f"> ⚠ 规划回退：{plan['fallback_reason']}", ""]
+    L += [
          f"> 期次：**{period_label(built['selected']['period'])}**"
          + (f"（上期 {period_label(built['selected']['prev'])}）"
             if built['selected'].get('prev') else ""),
@@ -513,8 +514,6 @@ def _render(plan: dict, built: dict, meta: dict) -> str:
          f"　｜　规划后端：**{plan['backend']}**"
          + (f"（{plan['fallback_reason']}）" if plan.get("fallback_reason") else ""),
          f"> 生成时间：{meta['generated_at']}", ""]
-    if plan.get("fallback_reason"):
-        L.insert(4, f"> ⚠ 规划回退：{plan['fallback_reason']}")
     L += ["---", ""]
     for title, body in built["blocks"]:
         L += [f"## {title}", "", body, ""]
@@ -679,6 +678,12 @@ def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
     (d / "report.html").write_text(
         mdview.standalone(md, plan.get("title") or "灵活分析稿", base_dir=d),
         encoding="utf-8")
+    # DOCX（2026-10-15 rick：下载报告给 docx、方便馆员修改；页脚标注一次）
+    try:
+        from . import docxview
+        (d / "report.docx").write_bytes(docxview.build(md, base_dir=d))
+    except Exception:                                              # noqa: BLE001
+        pass                    # docx 失败不挡出稿；下载口有现场转换兜底（旧稿同理）
     (d / "flex_plan.json").write_text(
         json.dumps(plan, ensure_ascii=False, indent=1), encoding="utf-8")
     (d / "flex_specs.json").write_text(

@@ -34,6 +34,20 @@ def _inline(s: str) -> str:
     return s
 
 
+def _strip_legacy_banner(md: str) -> str:
+    """旧稿兜底（2026-10-15 rick：报告里不再重复「内部参考·非报送」声明）。
+
+    历史 `report.md` 顶部含一整行「本件为内部参考…（母版 704 槽位、三道闸、可签发）。」；
+    该声明已由页面导语承担（下载件走各自页脚），渲染一律剥离——**同行的待审线图例保留**；
+    整行只剩声明时直接丢弃。新稿不再写这一行（`report._render`），此函数幂等。
+    """
+    def _repl(m):
+        rest = m.group(1).strip("　 ")
+        return f"> {rest}" if rest else ""
+    return re.sub(r"(?m)^> \*\*本件为内部参考[^\n]*?（母版 704 槽位、三道闸、可签发）。[　\s]*(.*)$",
+                  _repl, md)
+
+
 def render(md: str, *, img_prefix: str = "", img_map=None, _wrap_tail: bool = True) -> str:
     """Markdown → HTML 片段（不含 <html>/<body>）。
 
@@ -46,6 +60,7 @@ def render(md: str, *, img_prefix: str = "", img_map=None, _wrap_tail: bool = Tr
     收进一枚「关于本稿」折叠块，不与正文混排；重复的「内部参考…」页脚行不再渲染
     （线已提示过的，禁止再提示第二遍）。
     """
+    md = _strip_legacy_banner(md)
     if _wrap_tail:
         m = re.search(r"(?m)^##\s*本稿如何产生", md)
         if m:
@@ -235,8 +250,12 @@ details.fx-about h2{{font-size:16px;border-bottom:0;padding-bottom:0;margin:16px
 hr{{border:0;border-top:1px solid var(--line);margin:26px 0}}
 ul,ol{{padding-left:22px}} li{{margin:5px 0}}
 a{{color:var(--zhu)}}
+/* 导出件页脚标注（2026-10-15）：报告内不再重复声明，声明在下载件页脚出现一次 */
+.export-mark{{margin-top:34px;padding-top:10px;border-top:1px solid var(--line);
+font-size:12.5px;color:var(--ink-3);text-align:center}}
 </style></head><body><div class="wrap">
 {body}
+<p class="export-mark">内部参考 · 非报送件　｜　灵活报告（第二条产线）　｜　不带盖章位</p>
 </div></body></html>
 """
 

@@ -560,6 +560,37 @@ async def period_flexible_report(request: Request, period: str, intent: str):
                              "Content-Disposition": f"attachment; filename*=utf-8''{fn}"})
 
 
+@app.get("/p/{period}/flexible/{intent}/report.docx")
+@user_file_route
+async def period_flexible_report_docx(request: Request, period: str, intent: str):
+    """灵活报告 DOCX 下载（2026-10-15，rick：给 docx 方便馆员修改）。
+
+    磁盘上有且不比 `report.md` 旧 → 直接发；否则**现场转换**（不落盘）——
+    旧稿即刻可用，不必重出。页脚标注「内部参考 · 非报送件」（doc19 导出规格）。
+    """
+    if not re.fullmatch(r"[a-z0-9_]+", intent or ""):
+        raise HTTPException(status_code=404)
+    d = resolve_period_dir(period)
+    if d is None:
+        return RedirectResponse("/", status_code=303)
+    md_p = d / "flexible" / intent / "report.md"
+    dx_p = d / "flexible" / intent / "report.docx"
+    if not md_p.exists():
+        raise HTTPException(status_code=404)
+    if dx_p.exists() and dx_p.stat().st_mtime >= md_p.stat().st_mtime:
+        data = dx_p.read_bytes()
+    else:
+        def _convert():
+            import flexible.docxview as flex_docx                    # noqa: PLC0415
+            return flex_docx.build(md_p.read_text(encoding="utf-8"), base_dir=md_p.parent)
+        data = await run_in_threadpool(_convert)
+    fn = urllib.parse.quote(f"灵活报告_{period}_{intent}.docx")
+    return Response(data, media_type=(
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+        headers={"Cache-Control": "no-cache",
+                 "Content-Disposition": f"attachment; filename*=utf-8''{fn}"})
+
+
 @app.get("/p/{period}/archive", response_class=HTMLResponse)
 
 async def period_archive(request: Request, period: str):
@@ -1403,6 +1434,76 @@ async def api_period_redslots(request: Request, period: str,
     page = _paginate(rows, limit, offset)
     page["count"] = page["total"]
     return page
+
+
+@app.get("/api/periods/{period}/outline")
+@admin_route
+async def api_period_outline(request: Request, period: str):
+    """②选材 · 报告大纲（**只读**，最省版）。
+
+    只由产物推导：章节 + 每节的就绪态 / 数据来源 / 槽位数（按 `red_slots.json` 的 location 分组）。
+    **不写任何文件、不改出稿**——这一屏只记"本轮办哪些节"，出稿一律全出、母版不动。
+    """
+    d = resolve_period_dir(period)
+    if d is None:
+        return _period_missing()
+    locs = [str(s.get("location", "")) for s in artifacts.read_slots(d)]
+
+    def has(name: str) -> bool:
+        return (d / name).exists()
+
+    def n_tables(*tids: str) -> int:
+        pfx = tuple(f"{t}/" for t in tids)
+        return sum(1 for x in locs if x.startswith(pfx))
+
+    def n_body(*keys: str) -> int:
+        want = {"正文/" + k for k in keys}
+        return sum(1 for x in locs if x in want)
+
+    pred = [f"T{i:02d}" for i in range(3, 19)]          # T03–T18：预测章 16 张学科表
+    # 正文槽位按章归位（图/表也算，唯「图片行距」是版式、不归章）
+    s1 = n_body("p1", "p2", "p3", "p4", "1%接近度图（新）", "1‰潜力图", "排名情况图（第4期格式·带数据表）")
+    s2 = n_tables("T01", "T20") + n_body(
+        "trend", "situation_head", "situation", "table2_title", "发展趋势图（第4期格式·带数据表）")
+    s3 = n_tables(*pred, "T17") + n_body("forecast_p1", "forecast_p2")
+    s4 = n_tables("T19") + n_body("province_p")
+    s5 = n_body("top_section", "顶尖论文·学科分布", "顶尖论文·年代分布",
+                "学院贡献度饼图（被引频次）", "学院贡献度饼图（发文量）",
+                "学院顶尖论文发文量与被引频次统计表")
+    # 附录《我校顶尖论文清单》：由馆员清单另填（不进红件槽位）——看清单在不在
+    inv = []
+    for base in (d.parent / "_acquisition" / d.name, config.ROOT / "数据与复现"):
+        try:
+            inv += [p.name for p in base.glob(f"*{d.name}*清单*")]
+        except OSError:
+            pass
+    return {
+        "period": d.name,
+        "sections": [
+            {"id": "s0", "label": "封面 · 名词解释", "ready": True,
+             "source": "母版固定（名词解释不填）", "slots": 0},
+            {"id": "s1", "label": "一 概述", "ready": has("overview_facts.json"),
+             "source": "overview_facts.json · sentences.py 句骨架", "slots": s1},
+            {"id": "s2", "label": "二 我校学科发展情况", "ready": has("table2.csv"),
+             "source": "table2.csv · matrix.json", "slots": s2,
+             "subs": [{"id": "s2.t1", "label": "大表数值", "ready": has("table2.csv"),
+                       "slots": n_tables("T01")},
+                      {"id": "s2.t20", "label": "学科×高校矩阵", "ready": has("matrix.json"),
+                       "slots": n_tables("T20")},
+                      {"id": "s2.trend", "label": "发展趋势 · 态势统计", "ready": has("matrix.json"),
+                       "slots": n_body("trend", "situation_head", "situation")}]},
+            {"id": "s3", "label": "三 我校潜力学科趋势预测", "ready": has("forecast_charts.json"),
+             "source": "forecast_charts.json · 预测选模", "slots": s3,
+             "subs": [{"id": "s3.tabs", "label": "学科表 ×16", "ready": has("forecast_charts.json"),
+                       "slots": n_tables(*pred, "T17")},
+                      {"id": "s3.charts", "label": "模型预测图 ×4 · 说明句", "ready": has("forecast_charts.json"),
+                       "slots": n_body("forecast_p1", "forecast_p2")}]},
+            {"id": "s4", "label": "四 云南省主要高校学科发展基本情况", "ready": has("province.json"),
+             "source": "college_stats.json · province.json", "slots": s4},
+            {"id": "s5", "label": "五 我校顶尖论文清单（附录）", "ready": bool(inv),
+             "source": "馆员清单（本科目另填）", "slots": s5},
+        ],
+    }
 
 
 @app.get("/api/periods/{period}/collation")
