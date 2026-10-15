@@ -209,8 +209,11 @@ export function Acquire({ period }: { period: string | null }) {
   return (
     <>
       <p className="hint mt-2">
-        <a href={`/app/?period=${encodeURIComponent(period)}`}>← 回生成台</a>
-        {' · '}自动取数 · 期次 <b className="mono">{period}</b>
+        <a href={`/app/?period=${encodeURIComponent(period)}`}>← 回出报告</a>
+        {' · '}出报告 ① 取数并核验 · 期次 <b className="mono">{period}</b>
+      </p>
+      <p className="aq-duty">
+        取数台把本期 ESI、InCites 原始数据与监测表取回、逐份核对，再并入主台账；这里不提供资料下载。
       </p>
 
       {note && <div className="pending-box">{note}<button type="button" className="btn ml-10" onClick={() => { setNote(null); load() }}>重新读取</button></div>}
@@ -228,6 +231,7 @@ export function Acquire({ period }: { period: string | null }) {
               <Info label="取数状态与口径">
                 <p>进度按逐份核验结果统计：只有核验通过的文件才计入。</p>
                 <p>数据期取自网站页面显示值{dataPeriodText}，不以下载当天代替。</p>
+                <p>原始数据包由取数专用浏览器从 ESI、InCites 官网取出；本页只显示取数与核对进度，不提供资料下载。</p>
                 <p>「下载完成」不等于「台账已更新」：先核对本期数据（核对副本），核对通过才并入主台账；并入只动本期列，历史一字不变。</p>
               </Info>
             </div>

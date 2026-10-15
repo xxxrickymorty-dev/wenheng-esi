@@ -1,5 +1,9 @@
-/* 报告 · 数据视图（取自静态稿 mockups/v2-工作台与报告.html 的报告屏）
-   与 G 的翻书**分工**：翻书＝读正文（人的阅读）；这里＝看数据与改动（大表 / 朱批 / 溯源 / 印记链）。
+/* 报告 · 成品展示台（只读）（取自静态稿 mockups/v2-工作台与报告.html 的报告屏；票 03 定为只读）
+   定位：**只看不改的成品展示台**——按期次看全文 / 读数 / 图 / 期次印记链，四个下钻入口
+   （红件清单、图册、对勘本、逐格溯源）。
+   与 G 的翻书**分工**：翻书＝读正文（人的阅读）；这里＝看数据与出处（大表 / 朱批 / 溯源 / 印记链）。
+   🔴 本屏无任何写动作（生成 / 签单 / 覆盖 / 重跑）：要改请到「出报告 · ④ 核验与定稿」，
+      未签发的期在这里只给一句下一步引导，不给写入口。
 
    🔴 诚实边界（项目红线：缺数据不填假数）：
      读数带 / 印记链 / 产物 / 对勘 / 朱批 / 图册 都已接真数据；
@@ -14,7 +18,7 @@ import {
 import { getCharts, getCollation, type ChartRow, type CollationRow } from './api-collation'
 import { getFacts, type Facts } from './api-workbench'
 import { Icon } from './icons'
-import { APPROVAL_LABEL, appHref, errorNote } from './lib/status'
+import { APPROVAL_LABEL, approvalLabel, appHref, errorNote } from './lib/status'
 
 /** 人工空位的来源说人话（票 14）：内部脚本名不直出面客 */
 function humanSource(source?: string): string {
@@ -174,7 +178,7 @@ function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSee
               共 {col.length} 处 · 待人工 {manual.length} 处
             </span>
           </h2>
-          {/* 两扇门摆在明面：对勘本（正文级对照）/ 红色件清单（签单依据）。
+          {/* 两扇门摆在明面：对勘本（正文级对照）/ 红色件清单（定稿依据）——都是**只读下钻**。
               2026-10-11：红件清单是操作员不可见的「里子」——只给管理员留这扇门。 */}
           <div className="rc-doors">
             <a className="entry" href={period ? appHref('reading', period) : '/app/?view=reading'}>
@@ -187,7 +191,7 @@ function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSee
             {canSeeAdminBits && (
               <a className="entry" href={period ? appHref('red', period) : '/app/?view=red'}>
                 <span>
-                  <span className="t">红色件清单 · 签单依据</span>
+                  <span className="t">红色件清单 · 定稿依据</span>
                   <span className="d">逐格列出「改了什么、来自哪里」，可搜索、可下载 Markdown</span>
                 </span>
                 <span className="go">→</span>
@@ -221,14 +225,15 @@ function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSee
           </details>
         </div>
 
-        {/* 页边朱批：待人工的那几处——每条带「去补」，直落审核台对应空位（票 14） */}
+        {/* 页边朱批：待人工的那几处——本屏只读，逐条只做**下钻**（落到④对应空位），
+            不在报告屏里改；真正的写动作在「出报告 · ④ 核验与定稿」。 */}
         <div>
           <h2 className="h-sec">
-            <Icon name="alert" size={20} />待你补 / 拍板
+            <Icon name="alert" size={20} />待人工的地方
             {manual.length > 0 && (
-              <a className="hint ml-auto ink-zhu fw-650 no-underline" 
+              <a className="hint ml-auto ink-zhu fw-650 no-underline"
                  href={period ? appHref('review', period) : '/app/?view=review'}>
-                去审核台逐项处理（{manual.length} 处）→
+                去「出报告 · ④ 核验与定稿」逐项处理（{manual.length} 处）→
               </a>
             )}
           </h2>
@@ -242,11 +247,11 @@ function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSee
                 <div className="margin-note" key={r.section + r.loc}>
                   <div className="tag">朱批 · {r.loc}</div>
                   {(r.oldPreview || r.old) && <p>原：{r.oldPreview ?? r.old}</p>}
-                  <p className="mn-src">{r.source ? `待你补：${humanSource(r.source)}` : '待你补'}</p>
+                  <p className="mn-src">{r.source ? `待人工：${humanSource(r.source)}` : '待人工'}</p>
                   <div className="mn-acts">
                     <a className="btn"
                        href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}${r.loc ? `&focus=${encodeURIComponent(r.loc)}` : ''}`}>
-                      去补 →
+                      去④核验定稿 →
                     </a>
                   </div>
                 </div>
@@ -254,7 +259,7 @@ function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSee
               {manual.length > 8 && (
                 <p className="hint">
                   另 {manual.length - 8} 处
-                  {canSeeAdminBits ? '见图册「红色件清单」。' : '去审核台逐项处理。'}
+                  {canSeeAdminBits ? '见图册「红色件清单」。' : '去「出报告 · ④ 核验与定稿」处理。'}
                 </p>
               )}
             </div>
@@ -367,7 +372,8 @@ function FactsStrip({ period, onFacts }: {
       <div className="pending-box">
         {note}
         {note.includes('可能尚未出稿') && period && (
-          <> <a href={`/app/?period=${encodeURIComponent(period)}`}>去生成这一期 →</a></>
+          <> 本屏只展示成品；这一期还没出稿，去{' '}
+             <a href={`/app/?period=${encodeURIComponent(period)}`}>「出报告」</a>看走到哪一步。</>
         )}
         {!note.includes('管理员权限') && (
           <> <button className="btn btn-xs" 
@@ -422,6 +428,29 @@ function FactsStrip({ period, onFacts }: {
   )
 }
 
+/** 签发态 · 只读声明（票 03）：报告屏只展示成品，不给生成 / 签单 / 覆盖 / 重跑任何入口；
+    未签发的期在这里给一句「去④核验与定稿」引导，写动作只在「出报告 · ④ 核验与定稿」发生。 */
+function ReportStatus({ status, period }: { status: string; period: string | null }) {
+  const signed = status === 'signed'
+  const stale = status === 'stale'
+  const href = period ? appHref('review', period) : '/app/?view=review'
+  return (
+    <div className={`rep-status${signed ? ' ok' : stale ? ' warn' : ''}`} role="note">
+      <span className="rep-flag">
+        <Icon name={signed ? 'check' : 'alert'} size={15} />{approvalLabel(status)}
+      </span>
+      <span className="rep-note">
+        {signed
+          ? '这一版已签发：报告屏只读展示，内容不再改动。'
+          : stale
+            ? '这一版内容变过、签名已失效——要改请到「出报告 · ④ 核验与定稿」。'
+            : '这一版还没签发——要改请到「出报告 · ④ 核验与定稿」。'}
+      </span>
+      {!signed && <a className="rep-go" href={href}>去④核验与定稿 →</a>}
+    </div>
+  )
+}
+
 export function Report({
   periods, current, onPick, guest, refreshToken = 0, canSeeAdminBits = true,
 }: {
@@ -445,10 +474,13 @@ export function Report({
           <h1 className="display">
             {row?.label ?? '（选择期次）'}
             <small>
-              目录名 {current ?? '—'}
+              目录名 {current ?? '—'} · 成品展示台（只读）
             </small>
           </h1>
           <div className="rule" />
+
+          {/* 签发态 + 只读声明：本屏只看不改；未签发只给「去④核验与定稿」一句引导 */}
+          <ReportStatus status={row?.status ?? 'unsigned'} period={current} />
 
           {/* 读数带：真数据（后端 facts 接口已交付） */}
           <FactsStrip period={current} onFacts={setFacts} />

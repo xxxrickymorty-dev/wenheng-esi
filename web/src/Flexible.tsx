@@ -260,10 +260,14 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
     <>
       <section className="card pad-card-lg">
         <h2 className="h-sec h-lg">
-          <Icon name="doc" size={22} />灵活报告 · 第二条产线
+          <Icon name="doc" size={22} />灵活报告
           <span className="tag ml-6">{period ?? '（选择期次）'}</span>
-          <span className="pill stale">内部参考件</span>
+          <span className="pill stale">内部参考件 · 非报送</span>
         </h2>
+        <p className="fx-lead">
+          <strong>灵活报告</strong>是第二条产线：<strong>内部参考件 · 非报送</strong>——
+          按题选学科产出参考件，不取数、不签单；「出报告」才是复刻产线。
+        </p>
         {canEdit && (
           <div className="fx-form">
             <label>分析意图
@@ -369,8 +373,8 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
                 {!pane.stream && !pane.loading && !pane.has && !pane.error && (
                   <p className="fx-empty">
                     {canEdit
-                      ? '这一份还没出稿——到上方「生成分析稿」把它跑出来。'
-                      : '这一期还没有灵活报告；操作员只读，生成仅管理员可用。'}
+                      ? '这一份还没出稿。下一步：在上方选好分析意图与学科，点「生成分析稿」，成稿就会在这里长出来。'
+                      : '这一期还没有灵活报告。生成仅管理员可用，操作员可只读查看已有稿。'}
                   </p>
                 )}
               </div>
