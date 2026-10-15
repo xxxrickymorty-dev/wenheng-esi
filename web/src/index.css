@@ -1006,3 +1006,17 @@ a{color:inherit}
 /* 审核台页题分隔点：原用 --line 当文字色（≈1.2:1，等于看不见）——改可读灰 */
 .rv-lead .ink-line{color:var(--ink-3)}
 
+/* ============================================================================
+   新信息架构（2026-10-15，rick 定 A 方案：4 主区 + 1 管理）
+   「出报告」四步流水步骤条：把 取数 → 生成 → 核验 串成一条线，只在流水屏出现。
+   ========================================================================== */
+.ia-steps{margin:18px 0 2px}
+.ia-steps-list{display:flex;gap:10px;flex-wrap:wrap;list-style:none;margin:0;padding:0}
+.ia-step{display:inline-flex;align-items:center;border:1px solid var(--line);background:var(--card);border-radius:999px;min-height:32px}
+.ia-step a,.ia-step span{display:inline-flex;align-items:center;min-height:32px;padding:0 14px;font-size:13.5px;color:var(--ink-2);text-decoration:none;border-radius:999px}
+.ia-step a:hover{border-color:var(--zhu);color:var(--zhu)}
+.ia-step.on{border-color:var(--zhu);background:var(--zhu-soft)}
+.ia-step.on a{color:var(--zhu);font-weight:650}
+.ia-step.soon{opacity:.6}
+.ia-step.soon span{cursor:not-allowed}
+

@@ -440,16 +440,35 @@ export default function App() {
 
   /* 工作区导航（契约 §4：前端按 /api/me 的 role 决定显示什么；**真门在后端**，这里只是不打扰）。
      角色（2026-10-11 改两级）：admin＝管理员（全可见）；operator＝操作员（评委，只读）——
-     取数台、台账、运行档案、红件清单、逐格溯源对操作员不可见；其余屏可见但无写按钮。 */
-  const NAV: { view: string; label: string; icon: string; href: string; admin?: boolean }[] = [
-    { view: 'dialog', label: '对话前门', icon: 'chat', href: '/app/dialog/' },
-    { view: 'acquire', label: '取数', icon: 'download', href: '/app/?view=acquire', admin: true },
-    { view: 'workbench', label: '生成台', icon: 'play', href: '/app/' },
-    { view: 'report', label: '报告', icon: 'chart', href: '/app/?view=report' },
-    { view: 'review', label: '审核台', icon: 'seal', href: '/app/?view=review' },
-    { view: 'analysis', label: 'AI 分析台', icon: 'chart', href: '/app/?view=analysis' },
-    { view: 'forecast', label: '预测台', icon: 'trend', href: '/app/?view=forecast' },
+     取数台、台账、运行档案、红件清单、逐格溯源对操作员不可见；其余屏可见但无写按钮。
+     2026-10-15 新信息架构（rick 定 A 方案）：**4 主区 + 1 管理** —— 取数/审核/预测/红件/图册/对勘/溯源
+     不再是平级入口，降为「出报告」四步流水里的步骤或报告的下钻；深链 ?view=… 一律保留。 */
+  const NAV: { key: string; label: string; icon: string; href: string }[] = [
+    { key: 'flow', label: '出报告', icon: 'play', href: '/app/' },
+    { key: 'flexible', label: '灵活报告', icon: 'chart', href: '/app/?view=analysis' },
+    { key: 'report', label: '报告', icon: 'doc', href: '/app/?view=report' },
+    { key: 'ask', label: '问文衡', icon: 'chat', href: '/app/dialog/' },
   ]
+  /* 子屏归到哪个主区（决定左栏高亮）；TITLE 决定页题 */
+  const GROUP: Record<string, string> = {
+    workbench: 'flow', acquire: 'flow', review: 'flow', forecast: 'flow',
+    report: 'report', red: 'report', charts: 'report', reading: 'report', trace: 'report',
+    analysis: 'flexible', dialog: 'ask', ledger: 'admin', archive: 'admin',
+  }
+  const TITLE: Record<string, string> = {
+    workbench: '出报告', acquire: '出报告 · 取数并核验', forecast: '出报告 · 预测选模',
+    review: '出报告 · 核验与定稿', report: '报告', red: '报告 · 红色件清单',
+    charts: '报告 · 图册', reading: '报告 · 对勘本', trace: '报告 · 逐格溯源',
+    analysis: '灵活报告', dialog: '问文衡', ledger: '主台账', archive: '运行档案',
+  }
+  /* 「出报告」四步流水（新 IA）：步骤条只在流水屏出现；②选材为待建（.scratch/ia-rework/06） */
+  const FLOW_STEPS: { key: string; label: string; href?: string }[] = [
+    { key: 'acquire', label: '① 取数并核验', href: '/app/?view=acquire' },
+    { key: 'pick', label: '② 选材' },
+    { key: 'gen', label: '③ 生成初稿', href: '/app/' },
+    { key: 'review', label: '④ 核验与定稿', href: '/app/?view=review' },
+  ]
+  const FLOW_ACTIVE: Record<string, string> = { acquire: 'acquire', workbench: 'gen', review: 'review', forecast: 'gen' }
   const isOperator = me?.role === 'operator'
   const notLoggedIn = roleKnown && !me
   /* 未登录按最低待遇：管理入口不渲染（此前 fail-open——401 被当成「角色未知」，管理页照常开） */
@@ -465,7 +484,10 @@ export default function App() {
         : h.startsWith('/app/?') ? buildPeriodUrl(h, selected) : h
       : h)
   /* 顶栏标题＝当前屏名（与左栏高亮同源，改一处两边一致） */
-  const navLabel = NAV.find((n) => n.view === view)?.label ?? '文衡'
+  const navLabel = TITLE[view] ?? '文衡'
+  const activeNav = GROUP[view] ?? 'flow'
+  const inFlow = activeNav === 'flow'
+  const flowActive = FLOW_ACTIVE[view] ?? ''
 
   return (
     <div className="ws-shell">
@@ -480,15 +502,15 @@ export default function App() {
         </div>
         <nav className="ws-nav" aria-label="工作区">
           <p className="ws-cap">工作区</p>
-          {NAV.filter((n) => !n.admin || me?.role === 'admin').map((n) => (
-            <a key={n.view} href={navHref(n.href)} onClick={closeMenu}
-               aria-current={view === n.view ? 'page' : undefined}>
+          {NAV.map((n) => (
+            <a key={n.key} href={navHref(n.href)} onClick={closeMenu}
+               aria-current={activeNav === n.key ? 'page' : undefined}>
               <Icon name={n.icon} size={19} />{n.label}
             </a>
           ))}
           {me?.role === 'admin' && (
             <>
-              <p className="ws-cap">里子 · 仅管理员</p>
+              <p className="ws-cap">管理 · 仅管理员</p>
               <a href={navHref('/app/?view=ledger')} onClick={closeMenu}
                  aria-current={view === 'ledger' ? 'page' : undefined}>
                 <Icon name="ledger" size={19} />主台账
@@ -542,6 +564,28 @@ export default function App() {
           </div>
         )}
 
+        {/* 「出报告」四步流水步骤条（新 IA）：只在流水屏出现，把取数→生成→核验串成一条线 */}
+        {inFlow && roleKnown && !notLoggedIn && !operatorDenied && (
+          <nav className="ia-steps" aria-label="出报告步骤">
+            <ol className="ia-steps-list">
+              {FLOW_STEPS.filter((s) => !(s.key === 'acquire' && isOperator)).map((s) => {
+                const on = s.key === flowActive
+                return s.href ? (
+                  <li key={s.key} className={`ia-step${on ? ' on' : ''}`}>
+                    <a href={navHref(s.href)} aria-current={on ? 'step' : undefined}>{s.label}</a>
+                  </li>
+                ) : (
+                  <li key={s.key} className="ia-step soon">
+                    <span title="还没做：从某期报告里勾选章节加进初稿（.scratch/ia-rework 票 06，待设计）">
+                      {s.label} · 即将
+                    </span>
+                  </li>
+                )
+              })}
+            </ol>
+          </nav>
+        )}
+
         {/* 身份未确认：先不渲染任何视图（避免发出注定被拒的请求）；未登录给「去登录」；
             操作员直开隐藏屏给「不可见」空态（真门在后端）。 */}
         {!roleKnown ? (
@@ -552,7 +596,7 @@ export default function App() {
           </div>
         ) : operatorDenied ? (
           <div className="pending-box mt-0">
-            <b>操作员不可见</b> —— 这一屏是管理员的「里子」（取数 / 台账 / 运行档案 / 红件 / 溯源），
+            <b>操作员不可见</b> —— 这一屏在「管理」里（取数 / 台账 / 运行档案 / 红件 / 溯源），
             操作员账号看不到。看报告请回 <a href={navHref('/app/?view=report')}>报告</a>。
           </div>
         ) : view === 'archive' ? (

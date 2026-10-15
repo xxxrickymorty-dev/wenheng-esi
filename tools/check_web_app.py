@@ -275,14 +275,20 @@ def main():
         except Exception as e:                                          # noqa: BLE001
             check("审核台知悉闸（票 14）", False, str(e)[:100])
 
-        # ---- 1f) 取数台（X2·票 12）：站序在生成台左侧；三块可渲染；三步条第一步可点入 ----
+        # ---- 1f) 取数台（X2·票 12｜2026-10-15 新 IA）：左栏＝4 主区；出报告步骤条 ① 在 ③ 前 ----
         try:
             page.goto(BASE + "/app/?view=acquire&period=202607", wait_until="domcontentloaded")
             page.wait_for_selector(".aq-head", timeout=20000)
-            navs = page.eval_on_selector_all("nav[aria-label] a", "els => els.map(e => e.innerText.trim())")
-            check("取数台：站序「取数」在「生成台」左侧",
-                  bool(navs) and "取数" in navs and "生成台" in navs
-                  and navs.index("取数") < navs.index("生成台"), str(navs[:4]))
+            navs = page.eval_on_selector_all("nav[aria-label='工作区'] a", "els => els.map(e => e.innerText.trim())")
+            check("左栏＝4 主区（出报告 / 灵活报告 / 报告 / 问文衡）",
+                  navs[:4] == ["出报告", "灵活报告", "报告", "问文衡"], str(navs))
+            steps = page.eval_on_selector_all(
+                "nav[aria-label='出报告步骤'] a, nav[aria-label='出报告步骤'] span",
+                "els => els.map(e => e.innerText.trim())")
+            i_take = next((i for i, s in enumerate(steps) if "取数" in s), -1)
+            i_gen = next((i for i, s in enumerate(steps) if "生成" in s), -1)
+            check("出报告步骤条：① 取数并核验 在 ③ 生成初稿 之前",
+                  i_take >= 0 and i_gen >= 0 and i_take < i_gen, str(steps[:4]))
             txt = page.inner_text("main")
             check("取数台：期次数据状态与开始前检查都在",
                   "自动取数台" in txt and "开始前检查" in txt, "")
