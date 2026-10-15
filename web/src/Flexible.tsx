@@ -1,6 +1,8 @@
-/* 分析台 · 灵活报告（第二条产线）——**双栏定稿**（rick 2026-10-14，grilling 两轮）：
+/* 分析台 · 灵活报告（第二条产线）——**双栏定稿**（rick 2026-10-14，grilling 两轮；
+   2026-10-15 二稿：页头只留标题＋导语，每栏一条控制条「指定学科＋生成/重新生成」，
+   两栏各自出稿、可同时流式互不阻塞；下载改 docx）。
    左右两栏 = 两份报告并排（横看 / 纵看），各栏独立滚动；生成中对应栏逐节长出；
-   窗格头 = 短名 + 一行视角 + 出稿信息 + 看规则稿 / 下载报告 / 重新生成。
+   窗格头 = 短名 + 一行视角 + 出稿信息 + 看规则稿 / 下载报告。
    全文写作升级（高推理、判断草稿、待审线）在引擎侧第二段做（ADR-0009）。
 
    正文来自后端（后端自己的 mdview.render，图指向 /p/<期次>/flexible/chart/<intent>/<name>）——
@@ -89,12 +91,14 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
   const [disciplines, setDisciplines] = useState<FlexibleDiscipline[]>([])
   const [pan, setPan] = useState<Record<string, Pane>>({})
   const [note, setNote] = useState<string | null>(null)
-  const [intent, setIntent] = useState('')
-  const [disc, setDisc] = useState('')
-  const [busy, setBusy] = useState<string | null>(null)   // 正在生成的意图
+  /** 每栏自己的「指定学科」（生成时用；两栏互不影响） */
+  const [discs, setDiscs] = useState<Record<string, string>>({})
+  /** 每栏各自在出稿——两栏可同时流式、互不阻塞（2026-10-15 定稿） */
+  const [busy, setBusy] = useState<Record<string, boolean>>({})
   const [, setTick] = useState(0)
 
-  const t0Ref = useRef(0)
+  const t0Ref = useRef<Record<string, number>>({})
+  const liveRef = useRef(0)      // 正在跑的栏数：计时器只在有人跑时开着
   const timerRef = useRef<number | null>(null)
   const boxRef = useRef<HTMLDivElement | null>(null)
 
@@ -107,11 +111,11 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
   }
   useEffect(() => stopTimer, [])
 
-  /** 一次性把两栏的稿取齐（清单 + 各栏正文；有稿的才有正文） */
+  /** 一次性把两栏的稿取齐：**先把两栏画出来**（读取态，首屏不留白），再逐栏取正文。 */
   useEffect(() => {
     if (!period) return
     let alive = true
-    setNote(null); setBusy(null); setIntent(''); setDisc('')
+    setNote(null); setBusy({}); setDiscs({}); setIntents([])
     setPan({})
     ;(async () => {
       try {
@@ -123,24 +127,29 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
         })
         setIntents(list)
         setDisciplines(j.disciplines)
-        if (list.length) setIntent(list[0].id)
         const init: Record<string, Pane> = {}
         for (const it of list) init[it.id] = emptyPane()
+        setPan(init)
         for (const it of list) {
           const r = j.reports.find((x) => x.intent === it.id)
-          if (!r) continue
+          if (!r) {
+            setPan((p) => ({ ...p, [it.id]: { ...(p[it.id] ?? emptyPane()), loading: false } }))
+            continue
+          }
           try {
             const jj = await getFlexible(period, it.id)
             if (!alive) return
-            init[it.id] = { ...emptyPane(), loading: false, has: true,
-                            hasRule: !!jj.has_rule, meta: r.meta ?? null,
-                            bodies: { normal: jj.body_html } }
+            setPan((p) => ({ ...p, [it.id]: {
+              ...(p[it.id] ?? emptyPane()),
+              loading: false, has: true, hasRule: !!jj.has_rule, meta: r.meta ?? null,
+              bodies: { normal: jj.body_html } } }))
           } catch (e) {
-            init[it.id] = { ...emptyPane(), loading: false, error: errorNote(e, '灵活报告') }
+            if (!alive) return
+            setPan((p) => ({ ...p, [it.id]: {
+              ...(p[it.id] ?? emptyPane()),
+              loading: false, error: errorNote(e, '灵活报告') } }))
           }
         }
-        for (const it of list) init[it.id].loading = false
-        setPan(init)
       } catch (e) {
         if (alive) setNote(errorNote(e, '灵活报告'))
       }
@@ -170,17 +179,19 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
     }
   }, [pan])
 
-  /** 生成（流式）：表单用来选意图+学科；窗格头「重新生成」按该栏意图直接跑 */
+  /** 生成（流式）：目标意图由按下的那一栏定，学科用该栏控制条的选择；两栏可同时跑 */
   async function onGen(targetIntent: string, targetDisc?: string) {
-    if (!period || !targetIntent || busy) return
-    setBusy(targetIntent)
+    if (!period || !targetIntent || busy[targetIntent]) return
+    setBusy((b) => ({ ...b, [targetIntent]: true }))
     setNote(null)
     setPan((p) => ({ ...p, [targetIntent]: {
       ...(p[targetIntent] ?? emptyPane()), error: '',
       stream: { status: 'planning', title: '', outline: [], sections: [],
                 backend: '', error: '' },
     } }))
-    t0Ref.current = Date.now(); startTimer()
+    t0Ref.current[targetIntent] = Date.now()
+    liveRef.current += 1
+    if (liveRef.current === 1) startTimer()
     try {
       await runFlexibleStream(period, { intent: targetIntent, disc: targetDisc || undefined },
         (ev: FlexStreamEvent) => {
@@ -224,12 +235,16 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
                                            sections: [], backend: '', error: '' }
         return { ...p, [targetIntent]: { ...pane, stream: { ...stream, status: 'error', error: msg } } }
       })
-    } finally { setBusy(null); stopTimer() }
+    } finally {
+      setBusy((b) => ({ ...b, [targetIntent]: false }))
+      liveRef.current = Math.max(0, liveRef.current - 1)
+      if (liveRef.current === 0) stopTimer()
+    }
   }
 
   /** 看规则稿 ⇄ 看标准稿（同一份留底，一次取到就缓存） */
   async function onVariant(targetIntent: string) {
-    if (!period || busy) return
+    if (!period || busy[targetIntent]) return
     const pane = pan[targetIntent]
     if (!pane || !pane.has) return
     const next: '' | 'rule' = pane.variant === 'rule' ? '' : 'rule'
@@ -248,9 +263,9 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
     }
   }
 
-  function streamText(st: NonNullable<Pane['stream']>): string {
+  function streamText(st: NonNullable<Pane['stream']>, targetIntent: string): string {
     const sec = st.outline[st.sections.length]
-    const elapsed = Math.round((Date.now() - t0Ref.current) / 100) / 10
+    const elapsed = Math.round((Date.now() - (t0Ref.current[targetIntent] ?? Date.now())) / 100) / 10
     if (st.status === 'planning') return `正在规划这个题怎么拆 · 已 ${elapsed} 秒`
     if (st.status === 'error') return '没写成'
     return `${sec ? `正在写「${sec}」` : '正在写'} · ${humanBackend(st.backend)} · 已 ${elapsed} 秒`
@@ -268,27 +283,6 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
           <strong>灵活报告</strong>是第二条产线：<strong>内部参考件 · 非报送</strong>——
           按题选学科产出参考件，不取数、不签单；「出报告」才是复刻产线。
         </p>
-        {canEdit && (
-          <div className="fx-form">
-            <label>分析意图
-              <select value={intent} onChange={(e) => setIntent(e.target.value)}>
-                {intents.map((i) => <option key={i.id} value={i.id}>{i.cn}</option>)}
-              </select>
-            </label>
-            <label>指定学科
-              <select value={disc} onChange={(e) => setDisc(e.target.value)}>
-                <option value="">（不指定）</option>
-                {disciplines.map((x) => (
-                  <option key={x.en} value={x.en}>{x.cn}</option>
-                ))}
-              </select>
-            </label>
-            <button className="btn primary" onClick={() => void onGen(intent, disc)}
-                    disabled={!period || !intent || busy !== null}>
-              <Icon name="play" size={19} />{busy ? '正在出稿……' : '生成分析稿'}
-            </button>
-          </div>
-        )}
         {note && <div className="pending-box mt-12">{note}</div>}
         {period && !note && !intents.length && (
           <p className="hint mt-12">正在读取灵活报告……</p>
@@ -299,6 +293,7 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
         {intents.map((it) => {
           const pane = pan[it.id]
           if (!pane) return null
+          const isBusy = !!busy[it.id]
           const body = pane.variant === 'rule'
             ? (pane.bodies.rule ?? '')
             : (pane.bodies.normal ?? '')
@@ -320,27 +315,48 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
                 </div>
                 <div className="fx-pane-acts">
                   {pane.hasRule && (
-                    <button className="btn small" disabled={busy !== null}
+                    <button className="btn small" disabled={isBusy}
                             onClick={() => void onVariant(it.id)}>
                       {pane.variant === 'rule' ? '看标准稿' : '看规则稿'}
                     </button>
                   )}
                   {pane.has && (
                     <a className="btn small" download
-                       href={`/p/${encodeURIComponent(period ?? '')}/flexible/${encodeURIComponent(it.id)}/report.html`}>
+                       href={`/p/${encodeURIComponent(period ?? '')}/flexible/${encodeURIComponent(it.id)}/report.docx`}>
                       <Icon name="doc" size={15} />下载报告
                     </a>
                   )}
-                  {pane.has && canEdit && (
-                    <ConfirmButton className="btn small" confirmText="确认重出？"
-                            disabled={busy !== null}
-                            title="按这一栏的意图重新出一份（覆盖当前稿）"
-                            onConfirm={() => void onGen(it.id)}>
-                      <Icon name="play" size={15} />重新生成
-                    </ConfirmButton>
-                  )}
                 </div>
               </header>
+
+              {/* 本栏出稿控制条（2026-10-15 定稿）：指定学科 ＋ 生成/重新生成，各栏自出、可同时 */}
+              {canEdit && (
+                <div className="fx-pane-ctl">
+                  <label>指定学科
+                    <select value={discs[it.id] ?? ''}
+                            aria-label={`为「${it.cn}」指定学科（可不指定）`}
+                            onChange={(e) => setDiscs((d) => ({ ...d, [it.id]: e.target.value }))}>
+                      <option value="">（不指定）</option>
+                      {disciplines.map((x) => (
+                        <option key={x.en} value={x.en}>{x.cn}</option>
+                      ))}
+                    </select>
+                  </label>
+                  {pane.has ? (
+                    <ConfirmButton className="btn small" confirmText="确认重出？"
+                            disabled={isBusy}
+                            title="按这一栏的意图重新出一份（覆盖当前稿）"
+                            onConfirm={() => void onGen(it.id, discs[it.id])}>
+                      <Icon name="play" size={15} />{isBusy ? '正在出稿……' : '重新生成'}
+                    </ConfirmButton>
+                  ) : (
+                    <button className="btn small" disabled={isBusy || !period}
+                            onClick={() => void onGen(it.id, discs[it.id])}>
+                      <Icon name="play" size={15} />{isBusy ? '正在出稿……' : '生成'}
+                    </button>
+                  )}
+                </div>
+              )}
 
               <div className="fx-pane-b">
                 {pane.error && <div className="pending-box">{pane.error}</div>}
@@ -348,7 +364,7 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
                   <>
                     <div className="fx-status" aria-live="polite">
                       <span className={`dot ${pane.stream.status === 'error' ? 'bad' : 'run'}`} />
-                      <span>{streamText(pane.stream)}</span>
+                      <span>{streamText(pane.stream, it.id)}</span>
                     </div>
                     {!!pane.stream.outline.length && (
                       <div className="fx-plan">
@@ -371,11 +387,14 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
                   <div className="fx-md" dangerouslySetInnerHTML={{ __html: humanBody(body) }} />
                 )}
                 {!pane.stream && !pane.loading && !pane.has && !pane.error && (
-                  <p className="fx-empty">
-                    {canEdit
-                      ? '这一份还没出稿。下一步：在上方选好分析意图与学科，点「生成分析稿」，成稿就会在这里长出来。'
-                      : '这一期还没有灵活报告。生成仅管理员可用，操作员可只读查看已有稿。'}
-                  </p>
+                  <div className="fx-empty">
+                    <b>这一份还没有出稿</b>
+                    <p>
+                      {canEdit
+                        ? '想出一份：在上面的控制条里选好「指定学科」（可不指定），点「生成」——成稿会在这里逐段长出来。'
+                        : '生成仅管理员可用；操作员可只读查看已有稿。'}
+                    </p>
+                  </div>
                 )}
               </div>
             </section>

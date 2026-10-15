@@ -557,10 +557,16 @@ a{color:inherit}
    灵活报告（分析台第二块）——双栏定稿（rick 2026-10-14）：两份报告并排、各自独立滚动
    ⚠ fx- 前缀：正文样式只作用于 .fx-md，别外溢（md 渲染器出来的骨架见 mdview）
    ========================================================================== */
-.fx-form{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:14px}
-.fx-form label{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--ink-2)}
-.fx-form select,.fx-form input{font:inherit;padding:8px 11px;border:1px solid var(--line);
-  border-radius:8px;background:var(--card);color:var(--ink);min-width:150px}
+/* 本栏出稿控制条（2026-10-15 定稿）：左右两栏各自出稿、可同时——指定学科＋生成/重新生成 */
+.fx-pane-ctl{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:10px 18px;
+  border-bottom:1px solid var(--line-2);background:var(--card)}
+.fx-pane-ctl label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--ink-3);
+  flex:1 1 160px;max-width:260px}
+.fx-pane-ctl select{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);
+  border-radius:8px;background:var(--card);color:var(--ink);width:100%}
+/* 出稿动作＝本栏唯一的实色钮（约定：栏内动作只有生成/重新生成） */
+.fx-pane-ctl .btn.small{color:#fff;background:var(--zhu);border-color:var(--zhu);font-weight:600;padding:7px 14px;font-size:13.5px}
+.fx-pane-ctl .btn.small[disabled]{opacity:.55;cursor:not-allowed}
 /* 用途说明（票 04）：一句讲清「第二条产线 · 内部参考件 · 非报送」，≤60 字 */
 .fx-lead{margin:10px 0 0;max-width:66ch;font-size:14.5px;line-height:1.7;color:var(--ink-2)}
 .fx-lead strong{color:var(--ink);font-weight:600}
@@ -582,7 +588,11 @@ a{color:inherit}
 .fx-backend p{margin:4px 0 0;font-family:var(--mono);word-break:break-all}
 .fx-pane-b{height:clamp(320px, calc(100vh - 400px), 820px);overflow:auto;padding:2px 18px 18px}
 .fx-pane-b .fx-md{margin-top:12px;border-top:0;padding-top:0}
-.fx-empty{padding:34px 4px;font-size:14px;color:var(--ink-3);line-height:2;margin:0}
+/* 空态卡（2026-10-15）：无产物时首屏也要有内容——色阶块，不用虚线框 */
+.fx-empty{margin:18px 0 0;background:var(--panel);border-radius:var(--r-sm);padding:22px 20px;
+  color:var(--ink-3)}
+.fx-empty b{display:block;font-size:15.5px;font-weight:600;color:var(--ink-2);margin-bottom:6px}
+.fx-empty p{margin:0;font-size:14px;line-height:1.9}
 .fx-md{margin-top:16px;border-top:1px solid var(--line);padding-top:16px;font-size:16.5px}
 .fx-md h2{font-size:21px;margin-top:6px}
 .fx-md h3{font-size:18px;margin:22px 0 8px;padding-left:10px;border-left:3px solid var(--zhu)}
