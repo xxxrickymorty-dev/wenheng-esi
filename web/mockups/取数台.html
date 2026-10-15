@@ -412,7 +412,7 @@ h1{font-size:22px}
         '<div class="g-bar"><span class="track" aria-hidden="true"><i></i></span><span class="g-num">0 / '+g.files.length+'</span></div>'+
         '<details class="g-files"><summary>'+icon("file")+'查看文件<span class="chev">›</span></summary>'+
           '<ul class="file-list">'+rows+'</ul>'+(g.note?'<p class="g-note">'+esc(g.note)+'</p>':'')+'</details>'+
-        '<button class="g-retry" type="button" data-retry="'+g.id+'">'+icon("retry")+'重试这一组</button>'+
+        '<button class="g-retry" type="button" data-retry="'+g.id+'">'+icon("retry")+'补下这一组（只补没下到的）</button>'+
         '</article>';
     }).join("");
   }

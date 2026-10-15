@@ -547,8 +547,12 @@ export default function App() {
             <Icon name="menu" size={20} />
           </button>
           <span className="ws-title">{navLabel}</span>
+          {/* 陈列馆＝给人看的「展示面」，不在工作区里——顶栏给一个离开工作区的入口（2026-10-15） */}
+          <a className="ws-jump ml-auto" href="/app/shelf/" title="去陈列馆（成品展示面）">
+            陈列馆 <Icon name="arrow" size={15} />
+          </a>
           {/* 皮肤开关：与对话页同款（2026-10-12）；默认云大绿 */}
-          <span className="skin-switch ml-auto" role="group" aria-label="切换配色">
+          <span className="skin-switch" role="group" aria-label="切换配色">
             <button type="button" aria-pressed={palette === 'ynu'} onClick={() => setPalette('ynu')}>云大绿</button>
             <button type="button" aria-pressed={palette === 'zhu'} onClick={() => setPalette('zhu')}>朱砂</button>
           </span>

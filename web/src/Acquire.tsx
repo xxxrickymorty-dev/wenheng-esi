@@ -46,11 +46,16 @@ function deriveView(s: AcquisitionState): PageView {
   return verified > 0 ? 'review' : 'ready'
 }
 
-function GroupCard({ g }: { g: AcqGroup }) {
+function GroupCard({ g, onRetry, busy }: {
+  g: AcqGroup; onRetry?: (gid: string) => void; busy?: boolean
+}) {
   const files = g.files ?? []
   const stateText = g.state ? acqGroupLabel(g.state) : '未开始'
-  const pct = files.length > 0 ? Math.min(100, Math.round((g.verified ?? 0) / files.length * 100)) : 0
+  const got = g.verified ?? 0
+  const pct = files.length > 0 ? Math.min(100, Math.round(got / files.length * 100)) : 0
   const srcName = g.source ? (SOURCE_NAME[g.source] ?? g.source) : ''
+  /* 缺份 = 这一组里还有没下到的（含中断残留 live / 待下 pending）——「已并入」之后也允许补下 */
+  const missing = files.length > 0 ? files.length - got : 0
   return (
     <article className={`aq-g ${groupStateClass(g.state)}`}>
       <div className="aq-gtop">
@@ -60,7 +65,7 @@ function GroupCard({ g }: { g: AcqGroup }) {
       <div className="aq-gname"><Icon name="doc" size={18} />{g.title ?? '未命名组'}</div>
       <div className="aq-bar">
         <span className="aq-track"><i style={{ transform: `scaleX(${pct / 100})` }} /></span>
-        <span className="aq-num">{g.verified ?? 0} / {files.length || '—'}</span>
+        <span className="aq-num">{got} / {files.length || '—'}</span>
       </div>
       {files.length > 0 && (
         <details className="aq-files">
@@ -81,7 +86,16 @@ function GroupCard({ g }: { g: AcqGroup }) {
           </ul>
         </details>
       )}
-      {g.state === 'fail' && <p className="aq-gnote">没通过的可在本组重试，已通过的不重复下载。</p>}
+      {missing > 0 && onRetry && g.id && (
+        <div className="aq-gacts">
+          <button className="btn small" disabled={busy}
+                  title="只补这一组里还没下到的文件；已下过的不重复下载"
+                  onClick={() => onRetry(g.id as string)}>
+            <Icon name="refresh" size={16} />补下这一组（还缺 {missing} 份）
+          </button>
+          <span className="hint">已下过的不重复下载；已并入台账不影响补下。</span>
+        </div>
+      )}
     </article>
   )
 }
@@ -310,9 +324,12 @@ export function Acquire({ period }: { period: string | null }) {
                 <p className="hint m-0">还没有取数记录。</p>
               ) : (
                 <>
-                  <p className="hint m-b-10">没通过的可在本组重试。</p>
+                  <p className="hint m-b-10">缺份的组可就地补下——只补没下到的文件，已下过的不重复下载（已并入台账也能补）。</p>
                   <div className="aq-groups">
-                    {groups.map((g, i) => <GroupCard key={g.id ?? i} g={g} />)}
+                    {groups.map((g, i) => (
+                      <GroupCard key={g.id ?? i} g={g} busy={busy}
+                                 onRetry={(gid) => { void act('retry', { group: gid }) }} />
+                    ))}
                   </div>
                 </>
               )}

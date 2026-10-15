@@ -80,6 +80,10 @@ a{color:inherit}
 .ws-menu{display:none;width:40px;height:40px;border:1px solid var(--line);border-radius:8px;background:var(--card);
   align-items:center;justify-content:center;cursor:pointer;color:var(--ink)}
 .ws-title{font-family:var(--serif);font-size:20px;font-weight:600;color:var(--ink)}
+/* 顶栏「去陈列馆」：离开工作区的入口（展示面不在工作区里） */
+.ws-jump{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink-2);text-decoration:none;font-size:13.5px;transition:border-color .15s,color .15s}
+.ws-jump:hover{border-color:var(--zhu);color:var(--zhu)}
+.ws-jump svg{color:var(--gold)}
 .ws-overlay{display:none;position:fixed;inset:0;background:rgba(28,48,38,.22);z-index:45}
 .ws-overlay.open{display:block}
 .skip-link{position:absolute;left:-999px;top:8px;z-index:100;background:var(--card);padding:10px 14px;border-radius:8px}
@@ -807,6 +811,9 @@ a{color:inherit}
 .aq-fres.ok{color:var(--ok)}
 .aq-fres.bad{color:var(--bad)}
 .aq-gnote{margin:8px 0 0;font-size:12.5px;color:var(--bad)}
+/* 缺份的组就地补下（票：只补没下到的文件；已并入台账也能补） */
+.aq-gacts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line-2)}
+.aq-gacts .hint{margin:0}
 .aq-rv{min-width:520px}
 .aq-rv th,.aq-rv td{border:1px solid var(--line);padding:6px 10px;text-align:left;font-size:13.5px}
 .aq-rv th{background:var(--panel);font-weight:600}
