@@ -169,6 +169,18 @@ export function Acquire({ period }: { period: string | null }) {
     await act('start')
   }, [act, load])
 
+  /* 补下一组：与「开始取数」同规矩——先看「开始前检查」，浏览器/登录没就绪就不发车
+     （2026-10-15：先前直接发车，取数脚本会因连不上浏览器而拒绝，白记一次失败） */
+  const onRetryGroup = useCallback(async (gid: string) => {
+    const r = await act('preflight')
+    const pf = r?.preflight
+    if (pf && (pf.browser !== 'ok' || pf.esi !== 'ok' || pf.incites !== 'ok')) {
+      load(true)
+      return
+    }
+    await act('retry', { group: gid })
+  }, [act, load])
+
   if (!period) {
     return <div className="pending-box">先在顶栏选一个期次；取数台会显示这一期的取数进度与核对状态。</div>
   }
@@ -328,7 +340,7 @@ export function Acquire({ period }: { period: string | null }) {
                   <div className="aq-groups">
                     {groups.map((g, i) => (
                       <GroupCard key={g.id ?? i} g={g} busy={busy}
-                                 onRetry={(gid) => { void act('retry', { group: gid }) }} />
+                                 onRetry={(gid) => { void onRetryGroup(gid) }} />
                     ))}
                   </div>
                 </>
