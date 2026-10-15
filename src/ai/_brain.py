@@ -10,10 +10,16 @@
 from __future__ import annotations
 
 import json
+import secrets
 import socket
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+
+#: OpenCode Go（`opencode.ai` 网关）的客户端身份：自报 UA + 每进程一个稳定会话 id。
+#: 网关要求带 `x-opencode-session` 才路由（否则 400 MissingSessionID）；其它 provider 不发这两个头。
+_UA = "wenheng-esi/1.0"
+_SESSION = "wenheng-" + secrets.token_hex(8)
 
 
 class BrainError(RuntimeError):
@@ -111,6 +117,11 @@ class OpenAIBrain:
         self.max_tokens = int(max_tokens)
         self.max_egress_chars = int(max_egress_chars)
         self.temperature = float(temperature)
+        # OpenCode Go 网关要求带 `x-opencode-session`（路由/提示缓存）与自报 UA；
+        # 其它 provider（如 api.deepseek.com）不加这两个头，行为与从前逐字一致。
+        self.extra_headers = (
+            {"User-Agent": _UA, "x-opencode-session": _SESSION}
+            if "opencode.ai" in self.base_url else {})
 
     def think(self, brief: Brief) -> Turn:
         egress_chars = sum(len(t) for t in brief.egress_texts())
@@ -131,7 +142,8 @@ class OpenAIBrain:
             f"{self.base_url}/chat/completions",
             data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
             headers={"Authorization": f"Bearer {self._key}",
-                     "Content-Type": "application/json"})
+                     "Content-Type": "application/json",
+                     **self.extra_headers})
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as r:   # noqa: S310
                 data = json.loads(r.read().decode("utf-8"))
