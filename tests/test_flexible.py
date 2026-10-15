@@ -893,6 +893,24 @@ class Test指定学科全链路:
         assert "化学" in plan["title"], plan["title"]
         assert all(c["disc"] in (None, "Chemistry") for c in plan["charts"])
 
+    def test_标题括号位统一英文名(self, src):
+        """2026-10-15 rick：模型实测写「经济与商业（经济与商业）学科趋势诊断」——
+        括号位统一成英文名（学科名「中文名（英文名）」口径）；散写英文名仍换中文。"""
+        from _ai_helpers import ScriptedBrain, Turn
+        import ai
+        brain = ScriptedBrain([
+            Turn(text='{"title": "农业科学（农业科学）学科趋势诊断", "charts": '
+                      '[{"kind": "cnci", "disc": "Agricultural Sciences"}]}'),
+            Turn(text='{"title": "Agricultural Sciences学科趋势分析", "charts": '
+                      '[{"kind": "cnci", "disc": "Agricultural Sciences"}]}'),
+        ])
+        with ai.using(brain=brain):
+            p1 = planner.build(src, "single_trend", disc="Agricultural Sciences")
+            p2 = planner.build(src, "single_trend", disc="Agricultural Sciences")
+        assert "（Agricultural Sciences）" in p1["title"], p1["title"]
+        assert "（农业科学）" not in p1["title"], p1["title"]
+        assert p2["title"] == "农业科学学科趋势分析", p2["title"]
+
 
 class Test计划带候选排序:
     """considered：挑选时**本来就算过**的候选前三（规划那刻记，展示层只读）。

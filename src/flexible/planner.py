@@ -296,9 +296,12 @@ def _validate_plan(src: DataSource, got: dict, intent: str, fallback: dict,
 
 
 def _clean_title(title, disc, fallback_title):
-    """标题归一：模型爱把学科写成英文（实测给出 "Agricultural Sciences学科趋势分析"）。
+    """标题归一（2026-10-15 rick：学科名统一「中文名（英文名）」口径）。
 
-    ① 把标题里出现的学科英文名换成中文规范名；② 一个中文都没有 → 直接用规则标题。
+    - **括号位统一英文名**——模型实测给出「经济与商业（经济与商业）学科趋势诊断」
+      这种中文重复（disc 本身一直是英文，问题在模型自拟标题）；
+    - 括号外的散写英文名 → 中文规范名（既有口径，实测 "Agricultural Sciences学科趋势分析"）；
+    - 一个中文都没有 → 直接用规则标题（防 "Trend of Engineering" 式整句英文）。
     """
     if not title:
         return fallback_title
@@ -306,8 +309,16 @@ def _clean_title(title, disc, fallback_title):
     #    替换成 `Trend of 工程学` 就含中文了，反而躲过这条判据。
     if not re.search(r"[一-鿿]", title):
         return fallback_title
-    if disc and disc in title:
-        title = title.replace(disc, cn_name(disc))
+    if disc:
+        cnm = cn_name(disc)
+        parts = re.split(r"(（[^（）]*）)", title)
+        for i, seg in enumerate(parts):
+            if seg.startswith("（") and seg.endswith("）"):
+                if seg[1:-1] in (cnm, disc):                    # 括号位：中/英名一律归一为英文名
+                    parts[i] = f"（{disc}）"
+            else:
+                parts[i] = seg.replace(disc, cnm)               # 散写英文名 → 中文
+        title = "".join(parts)
     return title[:60]
 
 
