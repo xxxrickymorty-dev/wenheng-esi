@@ -82,9 +82,9 @@ export function AiRecords({ period }: { period: string | null }) {
 
             <div className="roww mt-10">
               {([['all', '全部'], ['model', '模型作答'], ['rule', '规则回落']] as const).map(([k, label]) => (
-                <button key={k} className="btn"
+                <button key={k} className="btn small"
                         style={{
-                          borderRadius: 999, padding: '5px 13px', fontSize: 13,
+                          borderRadius: 999, padding: '5px 13px',
                           ...(kind === k ? { borderColor: 'var(--zhu)', background: 'var(--zhu-soft)', color: 'var(--zhu)', fontWeight: 650 } : {}),
                         }}
                         onClick={() => setKind(k)}>

@@ -961,3 +961,32 @@ a{color:inherit}
 .skin-switch button{border:0;background:transparent;font:inherit;font-size:13.5px;padding:0 12px;min-height:32px;cursor:pointer;color:var(--ink-3);transition:background .15s,color .15s}
 .skin-switch button[aria-pressed="true"]{background:var(--zhu);color:#fff}
 
+/* ============================================================================
+   UX 基线（票 01 · W0，2026-10-15）：功能性文本 ≥13.5px、可点区 ≥44/32px。
+   只覆盖**功能性**文本；装饰性英文眉标 / 图表刻度 / 印面字样 / 法务小字登记豁免
+   （清单见 docs/UX评估（启发式与认知走查）-20261015.md §三）。
+   追加式覆盖——不改既有规则，便于评审与回退。
+   ========================================================================== */
+:root{--fs-min:13.5px;--hit-min:32px}
+
+/* 功能性小字 → 13.5px（工作区壳 / 报告 / 审核台 / 分析台 / 预测台 / 取数台 / 档案 / 页脚法务行） */
+.ws-brand span,.ws-cap,.ws-nav .lock,.brand span,.eyebrow,.step small,.fold>summary .sm,
+.chain .cap,.sealbox .lbl,.sealbox .now-tag,.legend,.rc-chip,.margin-note .tag,
+.margin-note>p.mn-src,.mn-acts .btn,.chg-b .row .t,.bd-meta,.tr-now span,.ar-chain-node small,
+.ar-step-sec,.ar-art .m,.rv-docmeta,.rv-docname,.rv-next,.rv-todo-v,.rv-flag,.rv-chip,
+.fx-pane-meta,.fx-plan .chip,.btn.small,.btn-lite,.fc-no,.fc-stat,.fc-more summary,.fc-gal-reset,
+.aq-src,.aq-gstat,.aq-chip,.aq-fname,.aq-fname small,.aq-fres,.aq-gnote,.aq-files>summary,
+.app-footer .f-bottom,.chip-gold,.dim-block,.fs-13,.info-body,.fc-metrics span,.an-pop,.grid-dim
+{font-size:var(--fs-min)}
+
+/* 可点区下限：独立控件/按钮/芯片 ≥32px（主按钮 .btn.primary 已 44px+）；
+   行内与表格内的链接按 WCAG 2.5.8 下限 24px（整行本身是鼠标命中区）。 */
+.rv-next,.rv-flag,.rv-chip,.btn.small,.btn-lite{min-height:var(--hit-min)}
+.steplink{display:inline-flex;align-items:center;min-height:var(--hit-min)}
+.rv-jump{min-height:var(--hit-min)}
+.rowbtn,.pill,.hint a,.period-row a,.art a,.ar-art a{min-height:24px}
+.hint a,.period-row a,.art a,.ar-art a{display:inline-flex;align-items:center}
+.rv-lead a,.rv-side a,.app-footer .f-nav a{display:inline-flex;align-items:center;min-height:var(--hit-min)}
+/* 审核台页题分隔点：原用 --line 当文字色（≈1.2:1，等于看不见）——改可读灰 */
+.rv-lead .ink-line{color:var(--ink-3)}
+
