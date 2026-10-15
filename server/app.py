@@ -1015,7 +1015,11 @@ async def api_acq_browser(request: Request):
         subprocess.Popen(  # noqa: S603 —— 固定路径 + 固定参数，无外部输入
             [exe, "--remote-debugging-port=9222", f"--user-data-dir={profile}",
              "--no-first-run", "--no-default-browser-check",
-             "https://esi.clarivate.com/", "https://incites.clarivate.com/"],
+             # 入口与取数脚本一致（不是站点根）：ESI 走 legacy Indicators；InCites 走
+             # `/#/analysis/0/organization`（NG InCites SPA）——站点根会落到别的产品入口，
+             # 实测会显示 No Subscription Found（2026-10-16）
+             "https://esi.clarivate.com/IndicatorsAction.action?app=esi&Init=Yes",
+             "https://incites.clarivate.com/#/analysis/0/organization"],
             cwd=str(config.ROOT), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except OSError as e:
         return {"ok": False, "started": False, "already": False, "note": f"浏览器没起来：{e}"}
