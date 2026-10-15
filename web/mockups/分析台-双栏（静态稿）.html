@@ -1044,6 +1044,30 @@ a{color:inherit}
 .ia-step.soon{opacity:.6}
 .ia-step.soon span{cursor:not-allowed}
 
+/* ============================================================================
+   ②选材（票 07 · 最省版）：报告大纲（只读）+「本轮办哪些节」
+   ========================================================================== */
+.pick-title{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.pick-tbl{width:100%;border-collapse:collapse;margin-top:8px}
+.pick-tbl td{padding:9px 10px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+.pick-tbl tr.sub td{padding-left:34px;color:var(--ink-2);font-size:15px}
+.pick-nm{font-weight:600}
+.pick-tbl tr.sub .pick-nm{font-weight:400}
+.pick-box-wrap{position:relative;display:inline-flex;align-items:center;gap:9px;min-height:32px;cursor:pointer}
+.pick-box-wrap input{position:absolute;opacity:0;width:1px;height:1px}
+.pick-box{width:18px;height:18px;border:1.5px solid var(--line);border-radius:5px;display:grid;place-items:center;font-size:13px;color:#fff;background:var(--card)}
+.pick-box-wrap input:checked+.pick-box{background:var(--zhu);border-color:var(--zhu)}
+.pick-box-wrap input:focus-visible+.pick-box{outline:2px solid var(--zhu);outline-offset:2px}
+.pick-tbl tr.skipped .pick-nm{color:var(--ink-3)}
+.pick-src{font-family:var(--mono);font-size:13px;color:var(--ink-3)}
+.pick-slots{text-align:right;font-family:var(--mono);font-size:13.5px;color:var(--ink-3);white-space:nowrap}
+.pick-mono{font-family:var(--mono)}
+.pick-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px dashed var(--line-2)}
+.pick-foot .roww{margin-left:auto}
+.pick-note{border:1px dashed var(--line);border-radius:12px;padding:15px 18px;background:var(--panel);color:var(--ink-2);font-size:15px}
+.pick-note b{color:var(--ink)}
+.pick-note ul{margin:8px 0 0;padding-left:22px}
+
 
 
 /* —— 静态稿注记（审稿用；mockup 专属，不属于线上样式） —— */
@@ -1095,7 +1119,7 @@ a{color:inherit}
         </div>
         <nav class="ws-nav" aria-label="工作区">
           <p class="ws-cap">工作区</p>
-          <a href="#" onclick="return false"><svg width="19" height="19" aria-hidden="true"><use href="#i-chat"/></svg>对话前门</a><a href="#" onclick="return false"><svg width="19" height="19" aria-hidden="true"><use href="#i-download"/></svg>取数</a><a href="#" onclick="return false"><svg width="19" height="19" aria-hidden="true"><use href="#i-play"/></svg>生成台</a><a href="#" onclick="return false"><svg width="19" height="19" aria-hidden="true"><use href="#i-chart"/></svg>报告</a><a href="#" onclick="return false"><svg width="19" height="19" aria-hidden="true"><use href="#i-seal"/></svg>审核台</a><a href="#" onclick="return false" aria-current="page"><svg width="19" height="19" aria-hidden="true"><use href="#i-chart"/></svg>AI 分析台</a><a href="#" onclick="return false"><svg width="19" height="19" aria-hidden="true"><use href="#i-trend"/></svg>预测台</a>
+          <a href="#" onclick="return false"><svg width="19" height="19" aria-hidden="true"><use href="#i-play"/></svg>出报告</a><a href="#" onclick="return false" aria-current="page"><svg width="19" height="19" aria-hidden="true"><use href="#i-chart"/></svg>灵活报告</a><a href="#" onclick="return false"><svg width="19" height="19" aria-hidden="true"><use href="#i-doc"/></svg>报告</a><a href="#" onclick="return false"><svg width="19" height="19" aria-hidden="true"><use href="#i-chat"/></svg>问文衡</a>
           <p class="ws-cap">里子 · 仅管理员</p>
           <a href="#" onclick="return false"><svg width="19" height="19" aria-hidden="true"><use href="#i-ledger"/></svg>主台账</a><a href="#" onclick="return false"><svg width="19" height="19" aria-hidden="true"><use href="#i-archive"/></svg>运行档案</a>
         </nav>
@@ -1112,7 +1136,7 @@ a{color:inherit}
   <div class="ws-main">
     <header class="topbar">
       <button type="button" class="ws-menu" aria-label="打开导航"><svg width="20" height="20" aria-hidden="true"><use href="#i-menu"/></svg></button>
-      <span class="ws-title">AI 分析台</span>
+      <span class="ws-title">灵活报告</span>
       <span class="skin-switch ml-auto" role="group" aria-label="切换配色">
         <button type="button" aria-pressed="true">云大绿</button>
         <button type="button" aria-pressed="false">朱砂</button>
@@ -1123,7 +1147,7 @@ a{color:inherit}
           <h4>静态稿注记（审稿用）</h4>
           <ul>
             <li>壳与线上工作台一致：常驻左栏 264px（品牌 / 工作区导航 / 里子入口 / 身份），顶栏只留屏名与配色（2026-10-15 定稿；窄屏抽屉是线上行为，静态稿不演）。</li>
-            <li><strong>本轮提案（三条）</strong>：① 页头导语与报告内声明<strong>去重</strong>——报告里只留待审线图例（细下划线图例），「内部参考 · 非报送」只在页面导语与下载件页脚出现；② 「下载报告」改 <strong>docx</strong>（方便直接改，页脚带标注）；③ 左右两栏<strong>各自出稿、可同时</strong>——每栏一条控制条（指定学科 ＋ 生成/重新生成），页头一键「两稿同时出」；右栏即演示「同时出稿」时的流式形态。</li>
+            <li><strong>本轮提案</strong>：① 页头只留标题＋导语（不再有总表单/总按钮）；② 左右两栏<strong>各自出稿</strong>——每栏一条控制条（指定学科 ＋ 生成/重新生成），两栏互不阻塞、可同时流式（右栏演示出稿中的流式形态）；③ 「下载报告」改 <strong>docx</strong>（方便直接改，页脚带标注）；④ 报告内声明去重——正文只留待审线图例，「内部参考 · 非报送」在页面导语与下载件页脚出现。</li>
             <li>左右两栏 = 两份报告并排（横看 / 纵看），各栏独立滚动；正文为 202609 真实产物（与产线同一渲染器逐字一致）；图全部内嵌，离线可开。</li>
             <li>判断草稿：末两节由写作位创写（成因研判 / 建议事项）；需馆员拍板的句子带待审线（细下划线）；写作位不可用或判不过时，节内回退「手工」空位。</li>
             <li>表单与按钮为示意——静态稿不真跑生成。</li>
@@ -1135,11 +1159,8 @@ a{color:inherit}
     <div class="ws-scroll">
       <main class="wrap" id="main">
         <section class="card pad-card-lg">
-          <h2 class="h-sec h-lg"><svg width="22" height="22" aria-hidden="true"><use href="#i-doc"/></svg>灵活报告 · 第二条产线<span class="tag ml-6">202609</span><span class="pill stale">内部参考件</span></h2>
-          <div class="fx-form">
-          <button class="btn primary" type="button"><svg width="19" height="19" aria-hidden="true"><use href="#i-play"/></svg>两稿同时出</button>
-          <span class="hint">左·多学科横向对比 / 右·单学科趋势诊断——各栏可单独出稿，也可一键两稿同时出。</span>
-        </div>
+          <h2 class="h-sec h-lg"><svg width="22" height="22" aria-hidden="true"><use href="#i-doc"/></svg>灵活报告<span class="tag ml-6">202609</span><span class="pill stale">内部参考件 · 非报送</span></h2>
+          <p class="fx-lead"><strong>灵活报告</strong>是第二条产线：<strong>内部参考件 · 非报送</strong>——按题选学科产出参考件，不取数、不签单；「出报告」才是复刻产线。</p>
         </section>
 
         <div class="fx-panes">
@@ -1265,7 +1286,7 @@ a{color:inherit}
           <div class="fx-pane-b">
             <div class="fx-md"><div class="fx-status" aria-live="polite"><span class="dot run"></span><span>正在写「二、关键指标走势」· 模型 · 已 30.8 秒</span></div>
 <div class="fx-plan"><span class="chip">一、当期概况</span><span class="chip">二、关键指标走势</span><span class="chip">三、相对位次</span><span class="chip">四、成因研判（判断草稿）</span><span class="chip">五、建议事项（判断草稿）</span></div>
-<div class="fx-md"><h3>一、当期概况</h3><p><em>（出稿中的正文随小节逐段长出——此栏为「同时出稿」的形态演示；数字与成稿一律一致。）</em></p></div></div>
+<div class="fx-md"><h3>一、当期概况</h3><p><em>（出稿中的正文随小节逐段长出——此栏为流式形态演示；两栏可同时出稿。）</em></p></div></div>
           </div>
         </section>
         </div>
