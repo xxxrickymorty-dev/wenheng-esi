@@ -48,3 +48,15 @@ class Test_码与驱动:
         assert row["capability"] == "polish"
         assert row["mode"] == "rule", "回退原文时不得记成模型版"
         assert row["fallback"] == reason
+
+    def test_创写形态_失败_记rule_带码(self, tmp_path, monkeypatch, code, reason):
+        """compose 与 write 同一张码表：失败回退安全值，码/ mode 一致。"""
+        monkeypatch.setenv(_writer.ENV_ON, "1")
+        with ai.using(data_root=tmp_path, brain=FailingBrain(BrainError("超时", code=code))):
+            out = _writer.compose("成因研判（判断草稿）", facts=["接近度近 7 期上行"],
+                                  safe="【手工：成因】", period="202607")
+        assert out == "【手工：成因】"
+        row = _rows(tmp_path)[0]
+        assert row["capability"] == "polish"
+        assert row["mode"] == "rule", "回退安全值时不得记成模型版"
+        assert row["fallback"] == reason

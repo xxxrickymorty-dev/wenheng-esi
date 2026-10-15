@@ -10,6 +10,8 @@
   不传 → 边界自行对 `task` 过盾（写作位 / 规划器）。
 - `rule_protected` 缺省 → 用保护后的 task：规则适配器原样交回，仍走「回落＝
   同一端口的另一个适配器」（SPEC §3）。
+- `brain` 缺省走部署装配（`_config.build_brain()`）；写作位创写传专用适配器
+  （专用模型与预算在调用方装配，边界只负责用它——向后兼容，其余调用不动）。
 - `attempted=False`（规则部署）不算失败：`reason=None`、`text`＝规则物；
   只有真实模型的失败才带回落码。
 """
@@ -70,9 +72,13 @@ def _reason_text(e) -> str:
 
 def attempt(task, *, system: str, ability: str, anchored: bool = True, evidence=(),
             tools=(), rule_protected: str | None = None, mapping: dict | None = None,
-            allow_substrings=()) -> Outcome:
-    """执行一次调用尝试。运行期故障不抛（以 Outcome 表达）。"""
-    brain = _config.build_brain()
+            allow_substrings=(), brain=None) -> Outcome:
+    """执行一次调用尝试。运行期故障不抛（以 Outcome 表达）。
+
+    `brain`：可选适配器覆盖（None＝部署装配）；写作位创写的专用模型/预算由此进入，
+    本边界不读写作位配置。
+    """
+    brain = _config.build_brain() if brain is None else brain
     attempted = not getattr(brain, "is_rule", False)
     if attempted:
         _runtime.progress(f"model:{ability}")   # 票 12：模型真被调用才发（规则轮不发）
