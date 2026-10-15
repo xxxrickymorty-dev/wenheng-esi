@@ -45,7 +45,7 @@ function issueLabel(book: ShelfBookPreview): string {
   return no ? `总第 ${no} 期` : book.cover[2]
 }
 
-function Header({ onEnterExterior, backToWorkspace }: { onEnterExterior: () => void; backToWorkspace?: boolean }) {
+function Header({ backToWorkspace }: { backToWorkspace?: boolean }) {
   const links = [['首页', '#home'], ['收藏', '#bookshelf'], ['学科索引', '#disciplines'], ['数据档案', '#archive'], ['关于本馆', '#about']]
   return <header className="home-header">
     <a href="#home" className="home-brand" aria-label="云南大学图书馆首页">
@@ -57,9 +57,6 @@ function Header({ onEnterExterior, backToWorkspace }: { onEnterExterior: () => v
       {backToWorkspace && <a className="home-nav-back" href="/app/dialog/" title="去文衡对话页（做报告 / 查数据）">问文衡 →</a>}
       {links.map(([label, href]) => <a key={href} href={href}>{label}</a>)}
     </nav>
-    <button type="button" className="home-button header-entrance" onClick={onEnterExterior}>
-      进入3D图书馆 <ArrowUpRight />
-    </button>
   </header>
 }
 
@@ -81,9 +78,10 @@ function HeroSection({ onEnterExterior }: { onEnterExterior: () => void }) {
     <img className="home-hero-image" src={`${import.meta.env.BASE_URL}assets/ynu-library-real.png`} alt="云南大学呈贡校区图书馆，中央玻璃穹顶、红砖翼楼、双塔及入口广场" width={1280} height={720} fetchPriority="high" />
     <div className="home-hero-shade" />
     <div className="home-hero-content">
-      <p className="home-kicker light"><span /> YUNNAN UNIVERSITY LIBRARY</p>
+      <p className="home-hero-owner"><span /> 云南大学图书馆 · 学科情报平台「文衡」</p>
       <h1 id="hero-title">云南大学<br /><em>图书馆</em></h1>
       <p className="home-hero-subtitle">学科信息参考 <b>·</b> 数字馆藏 <b>·</b> 数据阅览</p>
+      <p className="home-hero-facts">22 个学科在监测 · 14 个已进入 ESI 全球前 1% ｜ 自 2019 年起 39 期连续记录 · 291 篇顶尖论文在册</p>
       <div className="home-hero-actions">
         <button type="button" className="home-button ivory" onClick={onEnterExterior}>进入3D图书馆 <ArrowUpRight size={18} /></button>
         <a className="home-button translucent" href="#disciplines"><SearchIcon /> 学科检索</a>
@@ -199,7 +197,7 @@ function PreviewIndexSection({ books, onOpenBook }: Pick<LibraryHomeProps, 'book
 }
 
 function Footer({ onEnterExterior }: { onEnterExterior: () => void }) {
-  return <><section id="about" className="home-about"><div className="home-container home-about-inner home-reveal"><span className="home-about-mark">阅</span><div><p className="home-kicker">ABOUT THE COLLECTION</p><h2>云南大学图书馆中的<br className="home-mobile-break" />数字学科阅览空间</h2><p>汇集《学科信息参考》馆藏，以安全预览连接封面、目录与名词解释。</p></div><button type="button" className="home-button dark" onClick={onEnterExterior}>进入3D图书馆 <ArrowUpRight size={17} /></button></div></section><footer className="home-footer"><div className="home-container"><div className="home-footer-main"><a href="#home" className="home-footer-brand">云南大学图书馆<small>YUNNAN UNIVERSITY LIBRARY</small></a><div><strong>学科情报服务</strong><p>馆藏预览：封面、目录与名词解释</p></div><nav aria-label="页脚导航"><a href="#bookshelf">数字馆藏</a><a href="#disciplines">学科索引</a><a href="#archive">数据档案</a></nav></div><div className="home-footer-bottom"><span>云南大学图书馆　<i>·</i>　学科信息参考</span><span>会泽百家　至公天下</span></div></div></footer></>
+  return <><section id="about" className="home-about"><div className="home-container home-about-inner home-reveal"><span className="home-about-mark">阅</span><div><p className="home-kicker">ABOUT THE COLLECTION</p><h2>云南大学图书馆中的<br className="home-mobile-break" />数字学科阅览空间</h2><p>汇集《学科信息参考》馆藏，以安全预览连接封面、目录与名词解释。</p></div><button type="button" className="home-footer-enter" onClick={onEnterExterior}>走进 3D 展厅 <ArrowUpRight size={16} /></button></div></section><footer className="home-footer"><div className="home-container"><div className="home-footer-main"><a href="#home" className="home-footer-brand">云南大学图书馆<small>YUNNAN UNIVERSITY LIBRARY</small></a><div><strong>学科情报服务</strong><p>馆藏预览：封面、目录与名词解释</p></div><nav aria-label="页脚导航"><a href="#bookshelf">数字馆藏</a><a href="#disciplines">学科索引</a><a href="#archive">数据档案</a></nav></div><div className="home-footer-bottom"><span>云南大学图书馆　<i>·</i>　学科信息参考</span><span>会泽百家　至公天下</span></div></div></footer></>
 }
 
 export default function LibraryHome({ books, onEnterExterior, onOpenBook, backToWorkspace }: LibraryHomeProps & { backToWorkspace?: boolean }) {
@@ -211,13 +209,13 @@ export default function LibraryHome({ books, onEnterExterior, onOpenBook, backTo
       entry.target.classList.add('is-visible')
       observer.unobserve(entry.target)
     }), { threshold: 0.08 })
-    sections.forEach((section) => { section.classList.add('reveal-enabled'); observer.observe(section) })
+    sections.forEach((section) => { observer.observe(section) })
     return () => observer.disconnect()
   }, [])
 
   return <div className="library-home" id="home">
     <a className="home-skip" href="#bookshelf">跳转到数字馆藏</a>
-    <Header onEnterExterior={onEnterExterior} backToWorkspace={backToWorkspace} />
+    <Header backToWorkspace={backToWorkspace} />
     <main>
       <HeroSection onEnterExterior={onEnterExterior} />
       <div className="home-record-strip"><div className="home-container"><span>学科情报阅览室<small>DISCIPLINE INTELLIGENCE READING ROOM</small></span><div><span>可阅览</span><strong>全内容册页</strong></div></div></div>

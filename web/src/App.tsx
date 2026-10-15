@@ -368,7 +368,6 @@ export default function App() {
   }
   const runForSelected: Run | null = pickRunForPeriod(run, selected)
   const approvalStatus = periods.find((p) => p.period === selected)?.status ?? 'unsigned'
-  const runApprovalStatus = periods.find((p) => p.period === run?.requestedPeriod)?.status ?? 'unsigned'
   /* 票 05：执行条只画同期次的运行；别期在跑由工作台的一行提示说明（A3） */
   const runForWorkbench: Run | null = runForSelected
   const wb0 = deriveWorkbench(selected, periods, detail, healthy === true, demo)
@@ -605,7 +604,6 @@ export default function App() {
                         healthy={healthy === true}
                         run={runForWorkbench}
                         approvalStatus={approvalStatus}
-                        runApprovalStatus={runApprovalStatus}
                         activityState={activity}
                         actionLockReason={actionLockReason}
                         activeRun={activity === 'active'}

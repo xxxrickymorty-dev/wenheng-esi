@@ -553,6 +553,13 @@ a{color:inherit}
 .fx-pane-h h3{font-size:18px;letter-spacing:.04em}
 .fx-pane-meta{font-size:12.5px;color:var(--ink-3);margin:4px 0 0}
 .fx-pane-acts{display:flex;gap:8px;flex:0 0 auto;padding-top:2px;flex-wrap:wrap}
+/* 生成详情折叠（票 05）：模型名等技术串收在这里，默认不占屏；正文里的「规划后端」已换人话 */
+.fx-backend{margin-top:6px;font-size:12.5px;color:var(--ink-3)}
+.fx-backend>summary{cursor:pointer;list-style:none;color:var(--ink-3)}
+.fx-backend>summary::-webkit-details-marker{display:none}
+.fx-backend>summary::before{content:"▸ ";color:var(--zhu)}
+.fx-backend[open]>summary::before{content:"▾ "}
+.fx-backend p{margin:4px 0 0;font-family:var(--mono);word-break:break-all}
 .fx-pane-b{height:clamp(320px, calc(100vh - 400px), 820px);overflow:auto;padding:2px 18px 18px}
 .fx-pane-b .fx-md{margin-top:12px;border-top:0;padding-top:0}
 .fx-empty{padding:34px 4px;font-size:14px;color:var(--ink-3);line-height:2;margin:0}
@@ -722,6 +729,14 @@ a{color:inherit}
 .rv-chip[disabled]{opacity:.45;cursor:not-allowed}
 .rv-ackhint{margin:10px 0 0;font-size:13px;color:var(--warn);font-weight:650}
 .rv-confirm li{color:var(--ink-2)}
+
+/* ===== 票 03-C（P2）：审核台可点元素命中区——独立控件 ≥32px（与票 01 同口径） =====
+   票 01 已在通用段兜底 .rv-lead a / .rv-side a / .rv-chip / .rv-jump / .rv-flag；
+   这里补组件内的小号按钮（重新读取 / 去签单，此前约 25–27px）、就地填空框与空错态里的链接。 */
+.rv-card .btn,.rv-card .btn-xs,.rv-card .btn.small,.rv-card .btn-lite,
+.rv-side .btn,.rv-side .btn-xs,.rv-side .btn.small,.rv-side .btn-lite,
+.rv-pending a,.rv-pending .btn,.rv-pending .btn-xs{display:inline-flex;align-items:center;min-height:var(--hit-min)}
+.rv-in{min-height:var(--hit-min)}
 
 /* ===== 取数台（X2·票 12）：三步条步名链接 / 开始前检查 / 组卡 / 核对表 ===== */
 .steplink{transition:color .15s,border-color .15s;color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
@@ -976,7 +991,8 @@ a{color:inherit}
 .ar-step-sec,.ar-art .m,.rv-docmeta,.rv-docname,.rv-next,.rv-todo-v,.rv-flag,.rv-chip,
 .fx-pane-meta,.fx-plan .chip,.btn.small,.btn-lite,.fc-no,.fc-stat,.fc-more summary,.fc-gal-reset,
 .aq-src,.aq-gstat,.aq-chip,.aq-fname,.aq-fname small,.aq-fres,.aq-gnote,.aq-files>summary,
-.app-footer .f-bottom,.chip-gold,.dim-block,.fs-13,.info-body,.fc-metrics span,.an-pop,.grid-dim
+.app-footer .f-bottom,.chip-gold,.dim-block,.fs-13,.info-body,.fc-metrics span,.an-pop,.grid-dim,
+.dlg-land-prev,.dlg-wk-link,.dlg-land-dyn
 {font-size:var(--fs-min)}
 
 /* 可点区下限：独立控件/按钮/芯片 ≥32px（主按钮 .btn.primary 已 44px+）；

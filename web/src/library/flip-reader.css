@@ -799,8 +799,7 @@
   .reference-motto { font-size: 9px; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .flip-wrap { animation: none; }
+@media (prefers-reduced-motion: reduce) {  .flip-wrap { animation: none; }
 }
 
 /* ---------- 全内容页（数字体检 / 本期指标 / 学科大表 / 顶尖论文 / 双路线预测） ---------- */
@@ -823,3 +822,9 @@
 .flip-page .note-box p { margin: 2px 0 0; }
 .flip-page .note-box .muted-small { color: #7a826f; font-size: 10px; }
 .flip-page .table-note { margin-top: 6px; font-size: 10px; color: #7a826f; }
+
+/* ===== 票 02（W1）D：阅览器控制条（功能控件）度量（附录于末尾以覆盖窄屏回退） ===== */
+.flip-reader .reader-toolbar { font-size: 13.5px; }
+.flip-reader .reader-exit { font-size: 13.5px; }
+.flip-reader .reader-controls { font-size: 13.5px; }
+.flip-hint { font-size: 13.5px; }

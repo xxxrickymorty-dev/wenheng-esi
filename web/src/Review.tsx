@@ -208,6 +208,16 @@ export function Review({
   const appliedN = fills.filter((f) => f.state === 'applied').length
   const doubt = wb?.review ?? {}
   const doubtN = wb?.n_doubt ?? Object.keys(doubt).length
+  /* 本地还没保存的改动数——签单前那句统一文案要说清「点签单会先写进报告多少处」 */
+  const changedN = useMemo(() => {
+    const saved: Record<string, string> = {}
+    if (wb) for (const t of wb.todo_fill) saved[t.id] = (t.filled ?? '').trim()
+    let n = 0
+    for (const [k, v] of Object.entries(vals)) if (v.trim() !== (saved[k] ?? '')) n++
+    return n
+  }, [wb, vals])
+  /* 点「签单」会先写进报告的数量：服务端待应用 + 本地还没保存的改动 */
+  const writeN = pendingN + changedN
   /* 「知悉」要确认的对象：报告里的空 + 已标存疑（有其一，未勾选就不能签） */
   const needAck = nField > 0 || doubtN > 0
   const fieldsShown = onlyDoubt ? fields.filter(([, meta]) => !!doubt[meta.where]) : fields
@@ -370,7 +380,7 @@ export function Review({
       )}
 
       {previewNote ? (
-        <div className="pending-box mt-14">
+        <div className="pending-box mt-14 rv-pending">
           {previewNote}
           {previewNote.includes('还没有出稿') && (
             <> <a href={`/app/?period=${encodeURIComponent(period)}`}>去生成这一期 →</a></>
@@ -405,8 +415,22 @@ export function Review({
               <h3><Icon name="seal" size={19} />审核 · 签单</h3>
               <div className="rv-kv"><span>报告版本</span><b className="rv-docname">{preview.docx ?? '—'}</b></div>
               <div className="rv-kv"><span>生成时间</span><b>{preview.updated_at || '—'}</b></div>
-              <div className="rv-kv"><span>报告里的空</span><b>{nField} 处（待填 {nLeft}）</b></div>
               <div className="rv-kv"><span>存疑</span><b style={doubtN > 0 ? { color: 'var(--gold-ink)' } : undefined}>{doubtN} 处</b></div>
+              {/* A（P1）：一句说清已填 / 待填 / 点签单会先写进报告——数字随真实值联动，不再与旧提示并置矛盾 */}
+              {nField > 0 && (
+                <p className="rv-warn" role="note">
+                  待人工项 {nField} 处：已填 {nField - nLeft} · 待填 {nLeft}。
+                  {signed
+                    ? writeN > 0
+                      ? `有 ${writeN} 处填写还没写进报告——点下方「保存并重出报告」写入；重出后签名失效，需重新签单。`
+                      : '已签单，这一版已定稿。'
+                    : writeN > 0
+                      ? `点「签单」会先把已填的 ${writeN} 处写进报告，再签发。`
+                      : nLeft > 0
+                        ? `还有 ${nLeft} 处待填，补齐后可点「签单」签发。`
+                        : '点「签单」即可签发。'}
+                </p>
+              )}
               <label className="rv-ack">
                 <input type="checkbox" checked={known} disabled={!canSign || busy !== null}
                        onChange={(e) => setKnown(e.target.checked)} />
@@ -432,13 +456,6 @@ export function Review({
                   <Icon name="refresh" size={18} />撤回
                 </ConfirmButton>
               </div>
-              {pendingN > 0 && (
-                <p className="rv-warn" role="note">
-                  {signed
-                    ? `有 ${pendingN} 处填写还没写进报告——点下方「保存并重出报告」写入；重出后签名失效，需重新签单。`
-                    : `有 ${pendingN} 处填写还没写进报告——点「签单」会先自动写进报告再签。`}
-                </p>
-              )}
               {busyText && <p className="rv-busy" role="status">{busyText}</p>}
               {msg && <p className={msg.ok ? 'rv-msg ok' : 'rv-msg bad'} role="status">{msg.text}</p>}
               <p className="hint mt-8">

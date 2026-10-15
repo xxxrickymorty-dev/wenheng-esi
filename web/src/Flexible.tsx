@@ -4,7 +4,8 @@
    全文写作升级（高推理、判断草稿、待审线）在引擎侧第二段做（ADR-0009）。
 
    正文来自后端（后端自己的 mdview.render，图指向 /p/<期次>/flexible/chart/<intent>/<name>）——
-   前端只摆进去：不引 md 渲染器、不改一个字、不换算。
+   前端只摆进去：不引 md 渲染器、不换算。唯一一处改写＝`humanBody` 把正文抬头里的
+   「规划后端：模型串」换成人话（技术串收进窗格头「生成详情」折叠块），不改任何数字。
    ⚠ innerHTML 用在这里的前提：正文来自本仓产线产物、无任何用户输入（与老站同一渲染器）；
    将来若允许人工往里写正文，这里必须先过白名单清洗。 */
 
@@ -14,6 +15,7 @@ import {
   type FlexStreamEvent, type FlexibleDiscipline,
 } from './api-flexible'
 import { Icon } from './icons'
+import { ConfirmButton } from './ConfirmButton'
 import { errorNote } from './lib/status'
 
 type Section = { title: string; html: string }
@@ -61,8 +63,25 @@ function metaLine(meta: Record<string, unknown> | null): string {
     parts.push(`生成于 ${String(m.generated_at).slice(5, 16)}`)
   }
   const backend = String(m.backend ?? '')
-  if (backend) parts.push(backend === 'rule' ? '规则规划' : '模型规划')
+  if (backend) parts.push(backend === 'rule' ? '规则规划' : 'AI 自主规划')
   return parts.join(' · ')
+}
+
+/** 出稿方式的人话（技术串不露脸；原始模型名收进窗格头「生成详情」折叠块）。 */
+function humanBackend(raw: string): string {
+  return !raw || raw === 'rule' ? '规则规划' : 'AI 自主规划'
+}
+
+/** 需要藏进折叠块的原始模型名（规则规划无需可追溯的模型串，回空）。 */
+function modelName(meta: Record<string, unknown> | null): string {
+  const b = String((meta ?? {}).backend ?? '')
+  return b && b !== 'rule' ? b : ''
+}
+
+/** 后端正文里的「规划后端：模型串」换成人话（UX.md §十 / 纪律②）；两栏同一处代码，天然一致。 */
+function humanBody(html: string): string {
+  return html.replace(/规划后端：\s*(?:<strong>)?([^<）\s]+)(?:<\/strong>)?/g,
+    (_m, raw: string) => `规划方式：${humanBackend(raw)}`)
 }
 
 export function Flexible({ period, canEdit }: { period: string | null; canEdit: boolean }) {
@@ -234,7 +253,7 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
     const elapsed = Math.round((Date.now() - t0Ref.current) / 100) / 10
     if (st.status === 'planning') return `正在规划这个题怎么拆 · 已 ${elapsed} 秒`
     if (st.status === 'error') return '没写成'
-    return `${sec ? `正在写「${sec}」` : '正在写'} · ${st.backend || '模型'} · 已 ${elapsed} 秒`
+    return `${sec ? `正在写「${sec}」` : '正在写'} · ${humanBackend(st.backend)} · 已 ${elapsed} 秒`
   }
 
   return (
@@ -288,6 +307,12 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
                     {PANE_LEAD[it.id] ? `${PANE_LEAD[it.id]} ｜ ` : ''}
                     {pane.stream ? '正在出稿' : (pane.has ? metaLine(pane.meta) : '还没有出稿')}
                   </p>
+                  {pane.has && !pane.stream && modelName(pane.meta) && (
+                    <details className="fx-backend" data-src="backend">
+                      <summary>生成详情</summary>
+                      <p>规划后端：{modelName(pane.meta)}</p>
+                    </details>
+                  )}
                 </div>
                 <div className="fx-pane-acts">
                   {pane.hasRule && (
@@ -303,11 +328,12 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
                     </a>
                   )}
                   {pane.has && canEdit && (
-                    <button className="btn small" disabled={busy !== null}
-                            onClick={() => void onGen(it.id)}
-                            title="按这一栏的意图重新出一份（覆盖当前稿）">
+                    <ConfirmButton className="btn small" confirmText="确认重出？"
+                            disabled={busy !== null}
+                            title="按这一栏的意图重新出一份（覆盖当前稿）"
+                            onConfirm={() => void onGen(it.id)}>
                       <Icon name="play" size={15} />重新生成
-                    </button>
+                    </ConfirmButton>
                   )}
                 </div>
               </header>
@@ -328,7 +354,7 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
                     {pane.stream.sections.map((s, i) => (
                       <div key={i}>
                         {s.title && <h3 className="fx-sec-h">{s.title}</h3>}
-                        <div className="fx-md" dangerouslySetInnerHTML={{ __html: s.html }} />
+                        <div className="fx-md" dangerouslySetInnerHTML={{ __html: humanBody(s.html) }} />
                       </div>
                     ))}
                     {pane.stream.status === 'error' && (
@@ -338,7 +364,7 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
                 )}
                 {!pane.stream && pane.loading && <p className="hint mt-12">正在读取……</p>}
                 {!pane.stream && !pane.loading && pane.has && (
-                  <div className="fx-md" dangerouslySetInnerHTML={{ __html: body }} />
+                  <div className="fx-md" dangerouslySetInnerHTML={{ __html: humanBody(body) }} />
                 )}
                 {!pane.stream && !pane.loading && !pane.has && !pane.error && (
                   <p className="fx-empty">

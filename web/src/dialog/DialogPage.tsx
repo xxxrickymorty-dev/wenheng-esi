@@ -50,7 +50,8 @@ type TraceResult = {
   fixable?: 'flex' | 'repro'
 }
 type Turn = { who: 'me' | 'wh' | 'sys'; text: string; notice?: string; actions?: DialogAction[]
-              dismissed?: boolean; run?: DialogRun; trace?: Trace; answer?: DialogAnswer }
+              /** 追问卡选了第几颗（已选态）；undefined＝还没选 */
+              picked?: number; run?: DialogRun; trace?: Trace; answer?: DialogAnswer }
 type Conversation = { id: number; title: string; turns: Turn[]; slots: DialogSlots
                       /** 服务端会话 id（票 11）：这页打开里的每段对话各归一个服务端会话 */
                       sessionId?: string }
@@ -315,11 +316,12 @@ export default function DialogPage() {
     }
   }
 
-  /** 「先等等」：只是界面收起这一行动作，不发请求、不落账。 */
-  function dismissActions(index: number) {
+  /** 追问卡「已选」态（票 04）：记下选了哪一颗，留在时间线——回看时知道走的是哪条路。
+      「先等等」仍只是界面动作：不发请求、不落账。 */
+  function pickAction(index: number, picked: number) {
     updateActive((c) => ({
       ...c,
-      turns: c.turns.map((t, i) => (i === index ? { ...t, dismissed: true } : t)),
+      turns: c.turns.map((t, i) => (i === index ? { ...t, picked } : t)),
     }))
   }
 
@@ -628,16 +630,17 @@ export default function DialogPage() {
                 <p className="dlg-land-kicker">WENHENG · 学科信息参考</p>
                 <h1 className="dlg-land-title">文衡，帮你做报告、查数据</h1>
                 <p className="dlg-land-sub">出报告 · 查数据 · 核台账——期次我来认（按数据截止月），认出来先说给你看。</p>
+                <p className="dlg-land-label">想做什么？点一下，把示例句填进输入框</p>
                 <div className="dlg-land-modes">
-                  {LANDING_MODES.map((mode, index) => (
-                    <button key={mode.label} type="button"
-                            className={`dlg-land-mode${index === 0 ? ' on' : ''}`}
+                  {LANDING_MODES.map((mode) => (
+                    <button key={mode.label} type="button" className="dlg-land-mode"
                             title={`把示例句填进输入框：${mode.example}`}
                             onClick={() => setInput(mode.example)}>
                       {mode.label}
                     </button>
                   ))}
                 </div>
+                <p className="dlg-land-label">或者，照着下面的例子说一句</p>
                 <div className="dlg-land-pills">
                   {LANDING_EXAMPLES.map((example) => (
                     <button key={example} type="button" className="dlg-land-pill"
@@ -645,16 +648,24 @@ export default function DialogPage() {
                   ))}
                 </div>
                 {tv && (
-                  <div className="dlg-land-dyn">
-                    <b>本期动态 · {home?.period}</b>
-                    {tv.rows.map((row, index) => (
-                      <span key={row.label}
-                            className={row.mark === '✓' ? 'ok' : row.mark === '●' ? 'cur' : ''}>
-                        {['①', '②', '③'][index]} {row.label} {row.mark}
-                      </span>
-                    ))}
-                    <a href={withPeriod('/app/')}>去生成台 ▸</a>
-                  </div>
+                  <>
+                    <div className="dlg-land-dyn">
+                      <b>本期动态 · {home?.period}</b>
+                      {tv.rows.map((row, index) => (
+                        <span key={row.label}
+                              className={`dlg-dyn-step ${row.mark === '✓' ? 'ok'
+                                : row.mark === '●' ? 'cur' : ''}`}>
+                          {['①', '②', '③'][index]} {row.label}
+                          <span className="dlg-dyn-mark">
+                            <i aria-hidden="true">{row.mark}</i>
+                            {row.mark === '✓' ? '已完成' : row.mark === '●' ? '进行中' : '未开始'}
+                          </span>
+                        </span>
+                      ))}
+                      <a href={withPeriod('/app/')}>去生成台 ▸</a>
+                    </div>
+                    <p className="dlg-land-hint">图例：✓ 已完成 · ● 进行中 · ○ 未开始</p>
+                  </>
                 )}
                 {tv?.prevNote && <p className="dlg-land-prev">{tv.prevNote}</p>}
               </section>
@@ -711,36 +722,58 @@ export default function DialogPage() {
                       )}
                     </div>
                   )}
-                  {t.who === 'wh' && !!t.actions?.length && !t.dismissed && (
+                  {t.who === 'wh' && !!t.actions?.length && (
                     <div className="dlg-acts">
                       {/* 2026-10-12：出稿（run）两种角色都有（操作员也可出报告）；
                           隐藏屏入口（取数台/运行档案）对操作员不出现——真门都在后端。 */}
                       {t.actions.filter((a) => canRun
                         || (a.kind === 'goto'
                             && !OPERATOR_HIDDEN_HREFS.has(`/app/?view=${a.view ?? 'acquire'}`)))
-                        .map((a, j) => a.kind === 'goto' ? (
-                        <a key={j} className="dlg-act primary"
-                           href={buildPeriodUrl(`/app/?view=${a.view ?? 'acquire'}`,
-                                                a.period || active.slots.period || '')}>{a.text}</a>
-                      ) : a.kind === 'run' ? (
-                        /* 覆盖确认（票 05）：唯一会问一次的地方——行内二次确认，不做弹窗 */
-                        <ConfirmButton key={j} className="dlg-act primary" confirmText="确认覆盖？"
-                                       disabled={busy || !!running}
-                                       onConfirm={() => void startRun(
-                                         a.period || active.slots.period || '', i,
-                                         t.run?.intent || 'single_trend')}>
-                          {a.text}
-                        </ConfirmButton>
-                      ) : (
-                        <button key={j} type="button" disabled={busy || !!running}
-                                className={`dlg-act ${a.kind === 'dismiss' ? 'ghost' : 'primary'}`}
-                                onClick={() => {
-                                  if (a.kind === 'send') void sendText(a.text)
-                                  else dismissActions(i)
-                                }}>
-                          {a.text}
-                        </button>
-                      ))}
+                        .map((a, j) => {
+                          const isPicked = t.picked === j
+                          const locked = busy || !!running || t.picked !== undefined
+                          const pickedTag = isPicked
+                            ? <span className="dlg-picked">✓ 已选</span> : null
+                          if (a.kind === 'goto') {
+                            return (
+                              <a key={j} className={`dlg-act primary${isPicked ? ' picked' : ''}`}
+                                 aria-disabled={locked || undefined}
+                                 href={buildPeriodUrl(`/app/?view=${a.view ?? 'acquire'}`,
+                                                      a.period || active.slots.period || '')}
+                                 onClick={(e) => {
+                                   if (t.picked !== undefined) { e.preventDefault(); return }
+                                   pickAction(i, j)
+                                 }}>{a.text}{pickedTag}</a>
+                            )
+                          }
+                          if (a.kind === 'run') {
+                            /* 覆盖确认（票 05）：唯一会问一次的地方——行内二次确认，不做弹窗 */
+                            return (
+                              <ConfirmButton key={j}
+                                             className={`dlg-act primary${isPicked ? ' picked' : ''}`}
+                                             confirmText="确认覆盖？" disabled={locked}
+                                             onConfirm={() => {
+                                               pickAction(i, j)
+                                               void startRun(
+                                                 a.period || active.slots.period || '', i,
+                                                 t.run?.intent || 'single_trend')
+                                             }}>
+                                {a.text}{pickedTag}
+                              </ConfirmButton>
+                            )
+                          }
+                          return (
+                            <button key={j} type="button" disabled={locked}
+                                    className={`dlg-act ${a.kind === 'dismiss' ? 'ghost' : 'primary'}${isPicked ? ' picked' : ''}`}
+                                    aria-pressed={isPicked || undefined}
+                                    onClick={() => {
+                                      pickAction(i, j)
+                                      if (a.kind === 'send') void sendText(a.text)
+                                    }}>
+                              {a.text}{pickedTag}
+                            </button>
+                          )
+                        })}
                     </div>
                   )}
                 </div>
@@ -847,9 +880,20 @@ function SlotChip({ label, value, onClear }: {
   )
 }
 
-/** 查数据的回答（票 07）：正文带角标（点数字看来源）＋模式与盾小字＋规则版对照。 */
+/** 回退附注（票 04）：机制语 →「我该做什么」。命中回退时给一句人话，
+    模型名/原因码收进可折叠「详情」；不是回退的 notice 原样显示。 */
+function fallbackNote(notice: string): { human: string; detail: string } | null {
+  if (!notice.includes('已回退规则版')) return null
+  const human = notice.includes('数字校验')
+    ? '这题按台账原文作答（AI 表述未通过数字核对，已改用原文）。'
+    : '这题按台账原文作答（AI 这一轮没答上，已改用原文）。'
+  return { human, detail: notice }
+}
+
+/** 查数据的回答（票 07）：正文带角标（点数字看来源）＋作答方式小字＋规则版对照。 */
 function AnswerBlock({ answer }: { answer: DialogAnswer }) {
   const answered = answer.mode === 'model' || answer.mode === 'rule'
+  const fb = fallbackNote(answer.notice)
   return (
     <div className="dlg-ans">
       {!!answer.text && <NumberedText text={answer.text} sources={answer.sources} />}
@@ -865,12 +909,22 @@ function AnswerBlock({ answer }: { answer: DialogAnswer }) {
             {answer.mode === 'model' ? '大模型作答' : '规则版作答'}
           </span>
           {answer.shield.checked > 0 && (
-            <span className="pill ok">盾 · {answer.shield.passed} 个数字已登记</span>
+            <span className="pill ok">数字已核对：{answer.shield.passed} 个</span>
           )}
           <span className="hint">点数字看来源</span>
         </div>
       )}
-      {!!answer.notice && <p className="dlg-notice">{answer.notice}</p>}
+      {fb ? (
+        <>
+          <p className="dlg-notice">{fb.human}</p>
+          <details className="dlg-detail">
+            <summary>详情</summary>
+            <p className="dlg-notice">{fb.detail}</p>
+          </details>
+        </>
+      ) : (
+        !!answer.notice && <p className="dlg-notice">{answer.notice}</p>
+      )}
     </div>
   )
 }

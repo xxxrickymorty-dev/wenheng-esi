@@ -43,13 +43,14 @@ function Steps({ wb, period }: { wb: WB; period: string | null }) {
 
 /** 真实生成过程：任务状态与本期审批状态分开显示。
     （原先的「五步假进度」演示组件已删——固定百分比属于编造，违反只透传红线，2026-09-29） */
-function LiveRun({ run, approvalStatus }: { run: Run; approvalStatus: string }) {
+function LiveRun({ run }: { run: Run }) {
   const [open, setOpen] = useState(false)
   const connectionLabel = run.connection === 'live' ? '页面正在更新进度'
     : run.connection === 'snapshot' ? '正在读取任务进度'
       : run.connection === 'reconnecting' ? '连接中断，正在恢复进度'
         : '暂时连不上服务，页面会继续更新进度'
-  /* 一条工具栏：任务 / 签单状态 / 看详细过程（rick 2026-09-29：原来三行各占一行、右侧全空） */
+  /* 一条工具栏：任务 / 看详细过程（rick 2026-09-29：原来三行各占一行、右侧全空）。
+     签单状态改在下方结果卡里**只说一处**（票 03-B：同一句只留一处）。 */
   return (
     <>
       <div className="runbar">
@@ -57,7 +58,6 @@ function LiveRun({ run, approvalStatus }: { run: Run; approvalStatus: string }) 
           <Icon name="refresh" size={19} />
           {`任务：${run.status ? runStatusText(run.status) : '正在读取状态'} · 期次 ${run.requestedPeriod}${run.outputPeriod && run.outputPeriod !== run.requestedPeriod ? `（实际输出 ${run.outputPeriod}）` : ''} · ${connectionLabel}`}
         </span>
-        <span className="runbar-state">签单状态<b>{approvalLabel(approvalStatus)}</b></span>
         <button className="btn runbar-log" onClick={() => setOpen(!open)}>
           <Icon name="list" size={17} />{open ? '收起日志' : '看详细过程'}
         </button>
@@ -118,9 +118,9 @@ function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }
         <span className="ico"><Icon name="check" size={22} /></span>
         <span>
           <b className="title">{wb.state === 'signed' ? '本期已签发' : '本期报告已生成'}</b>
-          <span>本期签单状态：{approvalLabel(approvalStatus)}。{approvalStatus === 'signed'
+          <span>{approvalStatus === 'signed'
             ? ''
-            : '任务结束不代表报告合格或已签发；管理员当前不能下载未签发初稿。'}</span>
+            : '任务结束不代表报告合格或已签发，管理员当前不能下载未签发初稿。'}</span>
           <span className="acts">
             <a className="btn" href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="doc" size={19} />打开报告</a>
             <a className="btn" href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="seal" size={19} />去审核台</a>
@@ -312,7 +312,7 @@ function ModelSummary({
 }
 
 export function Workbench({
-  period, me, wb, err, healthy, run, approvalStatus, runApprovalStatus, activityState,
+  period, me, wb, err, healthy, run, approvalStatus, activityState,
   actionLockReason, activeRun, actionsLocked, submitting, onGenerate,
   periods, forecastMeta, forecastMetaError, actualOutputPeriod, forecastChoice, forecastChoiceDirty,
   onPickPeriod, onReloadForecastChoice,
@@ -325,7 +325,6 @@ export function Workbench({
   healthy: boolean
   run?: Run | null
   approvalStatus: string
-  runApprovalStatus: string
   activityState: ActivityState
   actionLockReason: string | null
   activeRun: boolean
@@ -406,7 +405,7 @@ export function Workbench({
         </p>
         )}
 
-        {run ? <LiveRun run={run} approvalStatus={runApprovalStatus} />
+        {run ? <LiveRun run={run} />
           : activeRun ? (
             <div className="elapsed"><Icon name="refresh" size={20} />有任务正在进行——完成后才能开始新的生成；想跟进进度，切到任务所属期次。</div>
           ) : wb.state === 'running' ? (

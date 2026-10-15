@@ -96,3 +96,60 @@ html{scroll-behavior:smooth;scroll-padding-top:104px}
   .home-ask-grid { grid-template-columns: 1fr; gap: 24px; }
 }
 
+/* ===== 票 02（W1）：陈列馆首屏产品名/规模事实 + CTA 收敛 + 揭示兜底 + 度量 ===== */
+
+/* A. 首屏产品名与一行规模事实 */
+.home-hero-owner { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; font-size: 13.5px; letter-spacing: .1em; line-height: 1.5; color: #f3e8c6; }
+.home-hero-owner > span { height: 1px; width: 35px; background: #d6c699; }
+.home-hero-facts { margin: 14px 0 0; font-size: 14px; line-height: 1.75; letter-spacing: .02em; color: #ece5cf; max-width: 660px; }
+
+/* B. 页尾次级入口（「进入 3D 图书馆」全站仅首屏 1 处） */
+.home-footer-enter { display: inline-flex; align-items: center; gap: 10px; margin-top: 14px; padding: 9px 0; border: 0; border-bottom: 1px solid #9aa88555; background: transparent; color: #1f4a37; font: inherit; font-size: 13.5px; letter-spacing: .04em; cursor: pointer; }
+.home-footer-enter:hover { color: #123525; }
+.home-footer-enter:focus-visible { outline: 3px solid var(--lib-focus); outline-offset: 4px; }
+
+/* C. 揭示兜底：内容默认可见；JS 就绪后再叠加进场动效 */
+.home-reveal.reveal-enabled { opacity: 1; transform: none; transition: none; }
+.home-reveal.is-visible { animation: home-reveal-in .6s ease both; }
+@keyframes home-reveal-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .home-reveal.is-visible { animation: none; } }
+
+/* D. 陈列馆度量（票 01 同口径：功能文本 ≥13.5px、对比度 ≥4.5:1、控件命中区） */
+.home-hero-caption { font-size: 13.5px; }
+.home-scroll { font-size: 13.5px; padding: 6px 0; }
+.home-record-strip > .home-container > div { font-size: 13.5px; }
+.home-record-strip b { font-size: 13.5px; }
+@media (min-width: 761px) { .home-nav { font-size: 13.5px; } .home-nav a { font-size: 13.5px; } }
+.home-button { font-size: 14px !important; }
+.home-feature-top > span { color: #5f6653; }
+.home-section-heading > p { font-size: 13.5px; color: #5f6c58; }
+.home-feature p { font-size: 14px; color: #5f6c58; }
+.home-heading-aside { font-size: 13.5px; color: #5f6c58; }
+.home-preview-summary { color: #5f6b52; }
+.home-empty-collection { color: #5f6c58; }
+.home-search-empty { color: #5f6c58; }
+.home-heading-link { font-size: 13.5px; min-height: 24px; }
+.home-new-label { font-size: 13.5px; padding: 3px 7px; }
+.home-book-info > span { font-size: 13.5px; color: #5c6a55; }
+.home-shelf-foot { font-size: 13.5px; color: #5c6a55; }
+.home-archive-note { font: 13.5px/1.7 var(--body-font); }
+.home-archive-card dl > div { font: 13.5px/1.7 var(--body-font); }
+.home-data-heading p { font-size: 13.5px; color: #6b5c38; }
+.home-data-heading > span { font-size: 13.5px; color: #55624a; }
+.home-data-en { font: 13.5px Georgia; color: #5f6b52; }
+.home-about p:not(.home-kicker) { font: 13.5px/1.8 var(--body-font); color: #5f6653; }
+.home-ask-chips span { font-size: 13.5px; color: #5f6a58; }
+.home-ask-chips button { font-size: 13.5px; display: inline-flex; align-items: center; min-height: 32px; }
+.home-search { color: #55624a; }
+.home-search > span { font: 13.5px var(--body-font); color: #55624a; }
+.home-search input { font-size: 13.5px !important; }
+.home-index-head { font: 13.5px var(--body-font); color: #5f6a58; }
+.home-index-row small { font: 13.5px Georgia; color: #5f6a58; }
+.home-index-panel .home-show-all { color: #5f6c58; }
+.home-text-link { min-height: 24px; }
+.home-footer-main > div { font-size: 13.5px; }
+.home-footer-main p { font: 13.5px var(--body-font); }
+.home-footer-main nav { font-size: 13.5px; }
+.home-footer-main nav a { display: inline-block; padding: 8px 0; }
+.home-footer-bottom { font: 13.5px/1.8 var(--body-font); }
+

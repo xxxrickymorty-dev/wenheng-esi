@@ -593,3 +593,16 @@
 .topbar-right button {
   min-height: 44px;
 }
+
+/* ===== 票 02（W1）D：3D 建筑/阅览室屏度量（功能文本 ≥13.5px，附录于末尾以覆盖窄屏回退） ===== */
+.brand strong { font-size: 17px; }
+.topbar-right { font-size: 13.5px; }
+.topbar-right button { font-size: 13.5px; }
+.eyebrow { font-size: 13.5px; }
+.entry-number span { font-size: 13.5px; }
+.site-footer { font-size: 13.5px; }
+.shelf-label span { font-size: 13.5px; }
+.shelf-label em { font-size: 13.5px; }
+.back-outside { font-size: 13.5px; }
+.model-controls button { font-size: 13.5px; }
+.model-controls span { font-size: 13.5px; }
