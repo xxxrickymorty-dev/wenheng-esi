@@ -288,6 +288,19 @@ export async function getArtifacts(jobId: string): Promise<Artifact[]> {
   return r.artifacts ?? []
 }
 
+/* ---- ②选材（出报告流水第二步）：报告大纲（只读，最省版——只记本轮范围） ---- */
+export interface OutlineSub { id: string; label: string; ready: boolean; slots: number }
+export interface OutlineSection {
+  id: string; label: string; ready: boolean; source: string; slots: number; subs?: OutlineSub[]
+}
+export interface Outline {
+  period: string; slotsTotal: number; slotsUnassigned: number; sections: OutlineSection[]
+}
+
+export async function getOutline(period: string): Promise<Outline> {
+  return req<Outline>(`/api/periods/${encodeURIComponent(period)}/outline`)
+}
+
 /** 字节数转人类可读——这是**格式**不是口径，允许在前端做 */
 export function humanSize(n: number | null): string {
   if (n == null) return ''

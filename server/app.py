@@ -1479,6 +1479,9 @@ async def api_period_outline(request: Request, period: str):
             pass
     return {
         "period": d.name,
+        # 版式类槽位（如「图片行距」）不归章——单列出来，别让各节相加对不上总数
+        "slotsTotal": len(locs),
+        "slotsUnassigned": len(locs) - (s1 + s2 + s3 + s4 + s5),
         "sections": [
             {"id": "s0", "label": "封面 · 名词解释", "ready": True,
              "source": "母版固定（名词解释不填）", "slots": 0},

@@ -19,6 +19,7 @@ import { UserChip } from './lib/UserChip'
 import { useJobRun, type Run } from './hooks/useJobRun'
 import { Icon, Sprite } from './icons'
 import { Acquire } from './Acquire'
+import { Pick } from './Pick'
 import { Workbench, PeriodsPanel } from './Workbench'
 import { Report } from './Report'
 import { Review } from './Review'
@@ -155,8 +156,9 @@ export default function App() {
   /* ?period= 深链：从老站迁移过来的等价地址（老站 /p/<期次> → 新站 ?view=report&period=<期次>） */
   const wantPeriod = new URLSearchParams(location.search).get('period')
   const _v = new URLSearchParams(location.search).get('view')
-  const view: 'workbench' | 'acquire' | 'report' | 'review' | 'ledger' | 'analysis' | 'red' | 'charts' | 'reading' | 'trace' | 'forecast' | 'archive' =
+  const view: 'workbench' | 'acquire' | 'pick' | 'report' | 'review' | 'ledger' | 'analysis' | 'red' | 'charts' | 'reading' | 'trace' | 'forecast' | 'archive' =
     _v === 'acquire' ? 'acquire'
+      : _v === 'pick' ? 'pick'
       : _v === 'report' ? 'report'
         : _v === 'review' ? 'review'
           : _v === 'ledger' ? 'ledger'
@@ -451,24 +453,27 @@ export default function App() {
   ]
   /* 子屏归到哪个主区（决定左栏高亮）；TITLE 决定页题 */
   const GROUP: Record<string, string> = {
-    workbench: 'flow', acquire: 'flow', review: 'flow', forecast: 'flow',
+    workbench: 'flow', acquire: 'flow', pick: 'flow', review: 'flow', forecast: 'flow',
     report: 'report', red: 'report', charts: 'report', reading: 'report', trace: 'report',
     analysis: 'flexible', dialog: 'ask', ledger: 'admin', archive: 'admin',
   }
   const TITLE: Record<string, string> = {
-    workbench: '出报告', acquire: '出报告 · 取数并核验', forecast: '出报告 · 预测选模',
-    review: '出报告 · 核验与定稿', report: '报告', red: '报告 · 红色件清单',
-    charts: '报告 · 图册', reading: '报告 · 对勘本', trace: '报告 · 逐格溯源',
-    analysis: '灵活报告', dialog: '问文衡', ledger: '主台账', archive: '运行档案',
+    workbench: '出报告', acquire: '出报告 · 取数并核验', pick: '出报告 · 选材',
+    forecast: '出报告 · 预测选模', review: '出报告 · 核验与定稿', report: '报告',
+    red: '报告 · 红色件清单', charts: '报告 · 图册', reading: '报告 · 对勘本',
+    trace: '报告 · 逐格溯源', analysis: '灵活报告', dialog: '问文衡',
+    ledger: '主台账', archive: '运行档案',
   }
-  /* 「出报告」四步流水（新 IA）：步骤条只在流水屏出现；②选材为待建（.scratch/ia-rework/06） */
+  /* 「出报告」四步流水（新 IA）：步骤条只在流水屏出现；②选材＝最省版（只记本轮范围） */
   const FLOW_STEPS: { key: string; label: string; href?: string }[] = [
     { key: 'acquire', label: '① 取数并核验', href: '/app/?view=acquire' },
-    { key: 'pick', label: '② 选材' },
+    { key: 'pick', label: '② 选材', href: '/app/?view=pick' },
     { key: 'gen', label: '③ 生成初稿', href: '/app/' },
     { key: 'review', label: '④ 核验与定稿', href: '/app/?view=review' },
   ]
-  const FLOW_ACTIVE: Record<string, string> = { acquire: 'acquire', workbench: 'gen', review: 'review', forecast: 'gen' }
+  const FLOW_ACTIVE: Record<string, string> = {
+    acquire: 'acquire', pick: 'pick', workbench: 'gen', review: 'review', forecast: 'gen',
+  }
   const isOperator = me?.role === 'operator'
   const notLoggedIn = roleKnown && !me
   /* 未登录按最低待遇：管理入口不渲染（此前 fail-open——401 被当成「角色未知」，管理页照常开） */
@@ -476,7 +481,7 @@ export default function App() {
   /* 角色还没确认时，先不渲染只给管理员的块（避免未登录先发出被拒的请求） */
   const noAdminBits = !roleKnown || gated
   /* 操作员不可见的「里子」屏（rick 2026-10-11 定）：直开 URL 给空态，真门在后端。 */
-  const OPERATOR_DENIED = new Set(['acquire', 'ledger', 'archive', 'red', 'trace'])
+  const OPERATOR_DENIED = new Set(['acquire', 'pick', 'ledger', 'archive', 'red', 'trace'])
   const operatorDenied = !!isOperator && OPERATOR_DENIED.has(view)
   const navHref = (h: string) =>
     (selected
@@ -568,7 +573,7 @@ export default function App() {
         {inFlow && roleKnown && !notLoggedIn && !operatorDenied && (
           <nav className="ia-steps" aria-label="出报告步骤">
             <ol className="ia-steps-list">
-              {FLOW_STEPS.filter((s) => !(s.key === 'acquire' && isOperator)).map((s) => {
+              {FLOW_STEPS.filter((s) => !(isOperator && (s.key === 'acquire' || s.key === 'pick'))).map((s) => {
                 const on = s.key === flowActive
                 return s.href ? (
                   <li key={s.key} className={`ia-step${on ? ' on' : ''}`}>
@@ -601,6 +606,8 @@ export default function App() {
           </div>
         ) : view === 'archive' ? (
           <Archive period={selected} approvalStatus={approvalStatus} />
+        ) : view === 'pick' ? (
+          <Pick period={selected} />
         ) : view === 'acquire' ? (
           <Acquire period={selected} />
         ) : view === 'forecast' ? (

@@ -1037,3 +1037,27 @@ a{color:inherit}
 .ia-step.soon{opacity:.6}
 .ia-step.soon span{cursor:not-allowed}
 
+/* ============================================================================
+   ②选材（票 07 · 最省版）：报告大纲（只读）+「本轮办哪些节」
+   ========================================================================== */
+.pick-title{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.pick-tbl{width:100%;border-collapse:collapse;margin-top:8px}
+.pick-tbl td{padding:9px 10px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+.pick-tbl tr.sub td{padding-left:34px;color:var(--ink-2);font-size:15px}
+.pick-nm{font-weight:600}
+.pick-tbl tr.sub .pick-nm{font-weight:400}
+.pick-box-wrap{position:relative;display:inline-flex;align-items:center;gap:9px;min-height:32px;cursor:pointer}
+.pick-box-wrap input{position:absolute;opacity:0;width:1px;height:1px}
+.pick-box{width:18px;height:18px;border:1.5px solid var(--line);border-radius:5px;display:grid;place-items:center;font-size:13px;color:#fff;background:var(--card)}
+.pick-box-wrap input:checked+.pick-box{background:var(--zhu);border-color:var(--zhu)}
+.pick-box-wrap input:focus-visible+.pick-box{outline:2px solid var(--zhu);outline-offset:2px}
+.pick-tbl tr.skipped .pick-nm{color:var(--ink-3)}
+.pick-src{font-family:var(--mono);font-size:13px;color:var(--ink-3)}
+.pick-slots{text-align:right;font-family:var(--mono);font-size:13.5px;color:var(--ink-3);white-space:nowrap}
+.pick-mono{font-family:var(--mono)}
+.pick-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px dashed var(--line-2)}
+.pick-foot .roww{margin-left:auto}
+.pick-note{border:1px dashed var(--line);border-radius:12px;padding:15px 18px;background:var(--panel);color:var(--ink-2);font-size:15px}
+.pick-note b{color:var(--ink)}
+.pick-note ul{margin:8px 0 0;padding-left:22px}
+
