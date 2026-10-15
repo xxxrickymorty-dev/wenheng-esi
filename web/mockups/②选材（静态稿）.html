@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 出报告 ②选材（静态稿 · 待审核）</title>
+<style>
+  :root{
+    --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB; --soft:#E3EDE4;
+    --ink:#222B25; --ink-2:#3F4C42; --ink-3:#58655C;
+    --line:#DDE1D8; --line-2:#E6E9E2;
+    --zhu:#1A4B27; --gold:#B19A65; --gold-ink:#62501F;
+    --ok:#28643A; --ok-soft:#E2EEE4;
+    --warn:#75622D; --warn-soft:#F6EED8;
+    --bad:#B43B31; --bad-soft:#F4E6E2;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 var(--sans)}
+  h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0;line-height:1.3}
+  code{font-family:var(--mono);font-size:.88em;background:var(--panel);border:1px solid var(--line-2);border-radius:6px;padding:1px 6px}
+  .shell{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh}
+  @media (max-width:820px){.shell{grid-template-columns:1fr}}
+  .side{background:var(--panel);border-right:1px solid var(--line);padding:16px 12px}
+  .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 16px;border-bottom:1px solid var(--line)}
+  .brand strong{font-family:var(--serif);font-size:22px;letter-spacing:.04em}
+  .brand span{font-size:12px;color:var(--ink-3);border-left:1px solid var(--line);padding-left:10px;line-height:1.5}
+  .nav{list-style:none;margin:0;padding:10px 4px}
+  .nav li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;color:var(--ink-2);font-size:16px}
+  .nav li .ic{width:20px;text-align:center;color:var(--ink-3)}
+  .nav li.on{background:var(--soft);color:var(--zhu);font-weight:600}
+  .nav .cap{font-size:12px;letter-spacing:1px;color:var(--ink-3);padding:12px 10px 5px}
+
+  .main{padding:22px 28px 70px;max-width:1100px}
+  .top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .top h1{font-size:22px}
+  .sw{margin-left:auto;display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--panel)}
+  .sw button{border:0;background:transparent;font:inherit;font-size:13.5px;padding:0 12px;min-height:32px;color:var(--ink-3)}
+  .sw button.on{background:var(--zhu);color:#fff}
+
+  .steps{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 2px;list-style:none;padding:0}
+  .steps li{display:inline-flex;align-items:center;border:1px solid var(--line);background:var(--card);border-radius:999px;min-height:32px}
+  .steps li span{padding:0 14px;font-size:13.5px;color:var(--ink-2)}
+  .steps li.done{border-color:var(--ok)}
+  .steps li.done span{color:var(--ok)}
+  .steps li.on{border-color:var(--zhu);background:var(--zhu-soft)}
+  .steps li.on span{color:var(--zhu);font-weight:650}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 2px rgba(34,43,37,.06),0 8px 24px rgba(34,43,37,.05);margin-top:16px}
+  .card-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid var(--line)}
+  .card-h h2{font-size:18px}
+  .card-h .pick{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-3)}
+  .card-h select{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+  .card-b{padding:8px 20px 18px}
+
+  .lead{margin:14px 0 0;color:var(--ink-2);font-size:15px;max-width:80ch}
+  .lead b{color:var(--ink)}
+
+  table.tree{width:100%;border-collapse:collapse;margin-top:8px}
+  .tree td{padding:9px 10px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+  .tree tr.sub td:first-child{padding-left:40px;color:var(--ink-2);font-size:15px}
+  .tree .nm{font-weight:600;display:flex;align-items:center;gap:10px}
+  .tree tr.sub .nm{font-weight:400}
+  .box{width:18px;height:18px;border:1.5px solid var(--line);border-radius:5px;flex:0 0 auto;display:grid;place-items:center;color:#fff;font-size:13px}
+  .box.on{background:var(--zhu);border-color:var(--zhu)}
+  .src{font-family:var(--mono);font-size:12.5px;color:var(--ink-3)}
+  .slots{text-align:right;font-family:var(--mono);font-size:13px;color:var(--ink-3);white-space:nowrap}
+  .tag{display:inline-block;font-size:12.5px;border-radius:999px;padding:1px 9px;border:1px solid var(--line)}
+  .tag.ok{color:var(--ok);background:var(--ok-soft);border-color:var(--ok-soft)}
+  .tag.no{color:var(--warn);background:var(--warn-soft);border-color:var(--warn-soft)}
+  .foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px dashed var(--line-2)}
+  .foot .cnt{color:var(--ink-2);font-size:15px}
+  .foot .acts{margin-left:auto;display:flex;gap:10px;align-items:center}
+  .btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:11px 22px;border-radius:9px;background:var(--zhu);color:#fff;font-weight:600;border:1px solid var(--zhu);font-size:16px}
+  .btn.ghost{background:var(--card);color:var(--ink-2);border-color:var(--line);font-weight:500;min-height:32px;padding:6px 14px;font-size:13.5px}
+
+  .note{margin-top:18px;border:1px dashed var(--line);border-radius:12px;padding:14px 18px;background:var(--panel);color:var(--ink-2);font-size:14.5px}
+  .note b{color:var(--ink)}
+  .note ul{margin:8px 0 0;padding-left:22px}
+  .note li{margin:4px 0}
+  .ask{margin-top:16px;border:1px solid var(--warn);background:var(--warn-soft);border-radius:12px;padding:14px 18px;color:var(--warn);font-size:14.5px}
+  .ask b{color:var(--ink)}
+  .ask ol{margin:8px 0 0;padding-left:22px}
+  .kicker{font-size:12.5px;letter-spacing:.18em;color:var(--gold-ink);text-transform:uppercase}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div class="brand"><strong>文衡</strong><span>云南大学图书馆<br>学科信息参考</span></div>
+    <ul class="nav">
+      <li class="cap">工作区</li>
+      <li class="on"><span class="ic">▷</span>出报告</li>
+      <li><span class="ic">◫</span>灵活报告</li>
+      <li><span class="ic">≣</span>报告</li>
+      <li><span class="ic">◌</span>问文衡</li>
+      <li class="cap">管理 · 仅管理员</li>
+      <li><span class="ic">⊞</span>主台账</li>
+      <li><span class="ic">□</span>运行档案</li>
+    </ul>
+  </aside>
+
+  <main class="main">
+    <div class="top">
+      <span class="kicker">静态稿 · 待 rick / 馆员审核</span>
+    </div>
+    <div class="top" style="margin-top:8px">
+      <h1>出报告 · ② 选材</h1>
+      <span class="sw"><button class="on">云大绿</button><button>朱砂</button></span>
+    </div>
+
+    <ul class="steps">
+      <li class="done"><span>① 取数并核验</span></li>
+      <li class="on"><span>② 选材</span></li>
+      <li><span>③ 生成初稿</span></li>
+      <li><span>④ 核验与定稿</span></li>
+    </ul>
+    <p class="lead"><b>这一期报告要出哪些部分，你在这里勾。</b>勾了才进初稿；不勾的留空标「未选」。默认<b>全选</b>——不动就是和现在一样。</p>
+
+    <div class="card">
+      <div class="card-h">
+        <h2>报告大纲 · 202609</h2>
+        <label class="pick">参照往期目录 <select><option>202609（本期）</option><option>202607</option><option>202605</option><option>202603</option></select></label>
+      </div>
+      <div class="card-b">
+        <table class="tree">
+          <tr>
+            <td style="width:34%"><span class="nm"><span class="box on">✓</span>封面 · 名词解释</span></td>
+            <td><span class="src">母版固定（名词解释不填）</span></td>
+            <td class="slots">—</td>
+          </tr>
+          <tr>
+            <td><span class="nm"><span class="box on">✓</span>一 概述</span></td>
+            <td><span class="src">table2.csv · 覆盖率窗口</span></td>
+            <td class="slots">12 槽位</td>
+          </tr>
+          <tr>
+            <td><span class="nm"><span class="box on">✓</span>二 我校学科发展情况</span></td>
+            <td><span class="src">table2.csv · matrix.json</span></td>
+            <td class="slots">640 槽位</td>
+          </tr>
+          <tr class="sub">
+            <td><span class="nm"><span class="box on">✓</span>· 大表数值</span></td>
+            <td><span class="src">table2.csv</span></td>
+            <td class="slots">620</td>
+          </tr>
+          <tr class="sub">
+            <td><span class="nm"><span class="box on">✓</span>· 发展趋势</span></td>
+            <td><span class="src">matrix.json</span></td>
+            <td class="slots">16</td>
+          </tr>
+          <tr class="sub">
+            <td><span class="nm"><span class="box on">✓</span>· 态势统计</span></td>
+            <td><span class="src">matrix.json</span></td>
+            <td class="slots">4</td>
+          </tr>
+          <tr>
+            <td><span class="nm"><span class="box on">✓</span>三 我校潜力学科趋势预测</span></td>
+            <td><span class="src">forecast_charts.json · forecast 选模</span></td>
+            <td class="slots">图表 4 · 说明句 3</td>
+          </tr>
+          <tr class="sub">
+            <td><span class="nm"><span class="box on">✓</span>· 目标学科与预测图</span></td>
+            <td><span class="src">预测章 → 去预测台选模</span></td>
+            <td class="slots">—</td>
+          </tr>
+          <tr>
+            <td><span class="nm"><span class="box on">✓</span>四 云南省主要高校学科发展基本情况</span></td>
+            <td><span class="src">college_stats.json · province.json</span></td>
+            <td class="slots">51 槽位</td>
+          </tr>
+          <tr>
+            <td><span class="nm"><span class="box">　</span>五 我校顶尖论文清单（附录）</span></td>
+            <td><span class="src">out/_acquisition/202609/*清单*</span> &nbsp;<span class="tag no">未就绪</span></td>
+            <td class="slots">—</td>
+          </tr>
+        </table>
+
+        <div class="foot">
+          <span class="cnt">已选 <b>8</b> / 9 节</span>
+          <span class="acts">
+            <button class="btn ghost">全选</button>
+            <button class="btn ghost">全不选</button>
+            <button class="btn">▷ 加进初稿并生成</button>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>这一版只做「选范围」</b>（最小第一步）：勾选决定本期初稿出哪些部分，<b>不搬别期的内容</b>——
+      复刻报告的数字必须全部来自台账当期，跨期搬字会串期。
+      <ul>
+        <li>数据来源：章节与槽位由后端从产物推导（<code>red_slots.json</code> + 各章数据源），不新造数据源。</li>
+        <li>“参照往期目录”只是<b>当菜单看</b>，不复制内容。</li>
+      </ul>
+    </div>
+
+    <div class="ask">
+      <b>要你拍四个板</b>
+      <ol>
+        <li>勾选粒度到「节」够不够？（还是要到单张表 / 单张图）</li>
+        <li>没勾的部分，初稿里<b>留空</b>还是<b>整节不出</b>？（关系母版页数与签单口径）</li>
+        <li>馆员说“第 202605 期选项”——是只想照着往期目录当菜单，还是真要<b>跨期复用内容</b>？</li>
+        <li>勾选状态要不要<b>存起来</b>（本期草稿态），还是每次重选？</li>
+      </ol>
+    </div>
+  </main>
+</div>
+</body>
+</html>
