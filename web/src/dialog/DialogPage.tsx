@@ -87,8 +87,8 @@ function checkFailures(c?: FlexCheck): string[] {
   const out: string[] = []
   if (!c.trace_ok) out.push(`有 ${c.trace_bad} 处数字没指回台账`)
   if (!c.has_charts) out.push('一张图都没出')
-  if (!c.hypotheses_complete) out.push('待验证假设不完整')
-  if (!c.no_professional_judgement) out.push('正文里出现了专业判断')
+  if (!c.judgement_marked) out.push('还有判断句没带标记')
+  if (c.judgement_leaks.length) out.push(`漏标 ${c.judgement_leaks.length} 处`)
   return out
 }
 

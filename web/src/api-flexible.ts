@@ -55,12 +55,15 @@ export type FlexWriteSummary = {
 }
 /** 挑选时本来就算过的候选前三（规划那刻记的；展示层只读） */
 export type FlexConsidered = { disc: string; disc_cn: string; proximity: number }
-/** 收尾自检的明细（票 05：没过要「明说哪条」；四项布尔 + 回溯问题数）。 */
+/** 收尾自检的明细（票 05：没过要「明说哪条」；2026-10-14 判断草稿口径翻转——
+    `judgement_marked`＝判断句都带了待审线，`judgement_leaks`＝残余漏标（≤3 条），
+    `backstop_n`＝兜底补标句数（透明计数，不判失败）。 */
 export type FlexCheck = {
-  no_professional_judgement: boolean
+  judgement_marked: boolean
+  judgement_leaks: string[]
+  backstop_n: number
   trace_ok: boolean
   trace_bad: number
-  hypotheses_complete: boolean
   has_charts: boolean
 }
 

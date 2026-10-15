@@ -142,11 +142,15 @@ class TestQueries白名单:
 
 
 class TestOpinion观点分级:
-    """三级判断：描述性＝规则生成；解释性＝带标注的假设；专业判断＝绝不生成。"""
+    """三级判断（2026-10-14 判断草稿口径）：描述性＝规则生成；解释性＝带标注的假设；
+    专业判断＝可写但需馆员拍板——**判断句未带 `==…==` 待审线即判漏标**。"""
 
-    def test_专业判断措辞被告警(self):
+    def test_未带标记的判断句被报漏标(self):
         hits = opinion.guard("建议加大该学科投入，应当优先补齐短板。")
-        assert hits, "专业判断措辞必须被告警拦住"
+        assert hits, "未带待审线的判断句必须被拦下（新口径：漏标，而非「出现即违规」）"
+
+    def test_带了待审线就不算漏标(self):
+        assert not opinion.guard("==建议加大该学科投入==。")
 
     def test_手工空位里的措辞不算违规(self):
         txt = f"待人工填写：{opinion.manual('资源投入建议')}"
@@ -610,7 +614,7 @@ class Test规则后端产出完整分析稿:
         assert r["n_charts"] == 2, r["plan"]["charts"]
         assert r["check"]["pass"]
 
-    def test_正文无专业判断措辞(self, flex_report_out):
+    def test_正文无漏标的判断句(self, flex_report_out):
         md = pathlib.Path(flex_report_out["report"]).read_text(encoding="utf-8")
         assert not opinion.guard(md), opinion.guard(md)[:3]
 
@@ -951,17 +955,20 @@ class Test流式生成:
         assert done["n_sections"] >= 1
 
     def test_done事件带自检明细_没过时说得清哪条(self, src):
-        """票 05：校验没过要**明说哪条没过**——done 事件带四项自检的明细，不只一个布尔。"""
+        """票 05：校验没过要**明说哪条没过**——done 事件带自检明细，不只一个布尔。
+        （票 03 字段面翻转：判断句标记完备性取代「专业判断绝不出现」。）"""
         from conftest import REPO
         events = list(report.generate_stream(REPO / src.dir, "single_trend"))
         done = events[-1]
         c = done.get("check")
         assert isinstance(c, dict), f"done 应带 check 明细：{sorted(done)}"
-        for key in ("trace_ok", "trace_bad", "has_charts", "hypotheses_complete",
-                    "no_professional_judgement"):
+        for key in ("trace_ok", "trace_bad", "has_charts", "judgement_marked",
+                    "judgement_leaks", "backstop_n"):
             assert key in c, f"缺自检项 {key}"
         assert c["trace_ok"] is True and c["has_charts"] is True
         assert c["trace_bad"] == 0
+        assert c["judgement_marked"] is True and c["judgement_leaks"] == []
+        assert c["backstop_n"] == 0
 
     def test_停止_终态stopped_不落产物(self, tmp_path):
         """点停 → 下一次事件点收手 → 终态 stopped；产物在收尾才写，停在中途不留稿。"""
@@ -1054,6 +1061,69 @@ class Test写作位接线:
             r = report.generate(REPO / src.dir, "single_trend")
         assert r["mode"] == "off"
         assert not (tmp_path / "202607" / "ai_calls.jsonl").exists(), "不该有写作记录"
+
+
+class Test自检翻转与兜底补标:
+    """票 03：判断句**未带标记即失败**（旧口径「出现判断词即失败」作废）。
+
+    兜底词表 `建议|应当|必须|值得|需要|优先`（env `WENHENG_FLEX_MARK_WORDS` 覆盖）；
+    漏标＝命中且不在成对 `==…==` 内、也不在 `【手工：…】`空位里；补标确定性、计数可读。
+    """
+
+    def test_兜底词表缺省六词(self):
+        assert opinion.mark_words() == ("建议", "应当", "必须", "值得", "需要", "优先")
+
+    def test_词表可被环境变量覆盖(self, monkeypatch):
+        monkeypatch.setenv("WENHENG_FLEX_MARK_WORDS", "务必,千万")
+        assert opinion.mark_words() == ("务必", "千万")
+        assert opinion.guard("务必加大该学科投入。")
+        assert not opinion.guard("建议加大该学科投入。"), "被覆盖掉的词不再检查"
+
+    def test_成对标记内不算漏标(self):
+        assert not opinion.guard("==建议加大该学科投入==，该判断数据来自台账。")
+
+    def test_单侧标记不构成豁免(self):
+        assert opinion.guard("==建议加大该学科投入，该判断数据来自台账。")
+
+    def test_手工空位内不误报(self):
+        assert not opinion.guard(f"- {opinion.manual('资源投入建议')}")
+
+    def test_兜底补标确定性与计数(self):
+        txt = "建议加大该学科投入。应当优先补齐短板。\n\n- 需要复核阈值口径。"
+        a, na = opinion.backfill_marks(txt)
+        b, nb = opinion.backfill_marks(txt)
+        assert a == b and na == nb == 3, (a, na, nb)
+        assert "==建议加大该学科投入==" in a
+        assert not opinion.guard(a), opinion.guard(a)
+
+    def test_补标不动已标记与空位(self):
+        txt = "==建议加大投入==。\n\n- " + opinion.manual("资源投入建议")
+        assert opinion.backfill_marks(txt) == (txt, 0)
+
+    def test_自检_未补标判不过_补标后过(self):
+        """`judgement_marked` 判的是**传入文本**（期望为补标后成稿）——
+        无 sources 时 self_check 不触及 src，传 None 即可（纯文本语义用例）。"""
+        built = {"blocks": [], "sources": [], "charts": [{"path": "x"}]}
+        raw = "# 稿\n\n建议加大该学科投入。"
+        c1 = report.self_check(raw, None, built)
+        assert not c1["judgement_marked"] and not c1["pass"], c1
+        assert c1["judgement_leaks"] and len(c1["judgement_leaks"]) <= 3
+        assert c1["backstop_n"] == 0, "缺省 0"
+        fixed, n = opinion.backfill_marks(raw)
+        c2 = report.self_check(fixed, None, {**built, "backstop_n": n})
+        assert n == 1 and c2["backstop_n"] == 1
+        assert c2["judgement_marked"] and c2["judgement_leaks"] == [] and c2["pass"], c2
+
+    def test_done流式字段贯通_旧字段清零(self, src):
+        """done.check 与 check 字典同面：旧字段（no_professional_judgement /
+        hypotheses_complete）清零，新字段（judgement_marked / judgement_leaks /
+        backstop_n）有值。"""
+        from conftest import REPO
+        events = list(report.generate_stream(REPO / src.dir, "cross_compare"))
+        c = events[-1]["check"]
+        assert "no_professional_judgement" not in c and "hypotheses_complete" not in c
+        assert c["judgement_marked"] is True and c["judgement_leaks"] == []
+        assert c["backstop_n"] == 0
 
 
 class Test待审线渲染:

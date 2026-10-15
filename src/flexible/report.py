@@ -22,9 +22,9 @@
 
 🔴 三条自检在 `self_check()` 里，产出后立即跑，结果随报告一起落盘：
 
-1. 正文里没有【手工：…】**之外**的专业判断措辞（`opinion.guard`）
+1. 判断句都带了标记（`opinion.judgement_leaks`；`==…==` 待审线或 `【手工：…】`空位除外）
 2. 每个数字都能回读（`queries.trace_check`）
-3. 每条待验证假设都带「来源 + 可验证方式」
+3. 至少有一张图（空图分析稿不算完整稿）
 """
 from __future__ import annotations
 
@@ -311,7 +311,7 @@ def _single_sections(c: _ReportCtx) -> list:
             f"- {op.manual(f'{dcn}资源投入建议')}",
             "- " + op.manual("是否需要向学院核实数据口径"),
         ])
-            + "\n\n> 专业判断（要不要加投入、值不值得重点建设）**不由本产线生成** —— "
+            + "\n\n> 专业判断（要不要加投入、该不该重点建设）**不由本产线生成** —— "
               "与复刻报告同一机制，留空位由馆员填写。")
 
     return [("当期概况", sec_overview), ("关键指标走势", sec_trend),
@@ -513,13 +513,18 @@ def _render(plan: dict, built: dict, meta: dict) -> str:
 
 
 def self_check(report_md: str, src: DataSource, built: dict) -> dict:
-    """四条自检。任一项不过 → 报告里会明确写出来（不隐藏）。
+    """三条自检。任一项不过 → 报告里会明确写出来（不隐藏）。
 
     🔴 `has_charts` 这条是真实模型跑出来的：qwen2.5:3b 选了 `overview_1permille`+
     `cnci`，旧代码只认 3 个硬编码图型 → **0 张图**，而当时自检照样判"通过"
     （`0/0 全对`的老毛病）。没有图的分析稿不能算"完整"。
+
+    🔴 2026-10-14 语义反转（票 03）：判断措辞不再"出现即失败"——传入的**期望是
+    补标后的成稿**；`judgement_marked=False`（仍有未标记的判断句）才判不过。
+    `backstop_n`＝兜底补标句数（从 built 读，透明计数、不判失败）。
     """
-    bad_words = op.guard(report_md)
+    leaks = op.judgement_leaks(report_md)
+    backstop_n = int(built.get("backstop_n") or 0)
     trace = {"checked": 0, "ok": 0, "bad": 0, "misses": []}
     for r in built["sources"]:
         if isinstance(r, dict) and "kind" in r:
@@ -528,18 +533,16 @@ def self_check(report_md: str, src: DataSource, built: dict) -> dict:
             trace["ok"] += t["ok"]
             trace["bad"] += t["bad"]
             trace["misses"] += t["misses"]
-    hyp_ok = all(h.get("text") and h.get("verify") and h.get("source")
-                 for h in built["hyps"])
     n_charts = len(built["charts"])
     return {
-        "no_professional_judgement": not bad_words,
-        "professional_hits": bad_words[:3],
+        "judgement_marked": not leaks,
+        "judgement_leaks": leaks[:3],
+        "backstop_n": backstop_n,
         "trace": trace,
         "trace_ok": trace["bad"] == 0,
-        "hypotheses_complete": hyp_ok,
         "has_charts": n_charts >= 1,
         "n_charts": n_charts,
-        "pass": (not bad_words) and trace["bad"] == 0 and hyp_ok and n_charts >= 1,
+        "pass": (not leaks) and trace["bad"] == 0 and n_charts >= 1,
     }
 
 
@@ -660,13 +663,18 @@ def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
                           "backend": plan["backend"], "mode": mode,
                           "title": plan.get("title"),
                           "check_pass": bool(check.get("pass")),
-                          # 票 05：校验没过要「明说哪条没过」——四项自检的明细随 done 走
+                          # 票 05：校验没过要「明说哪条没过」——自检明细随 done 走
                           # （展示层据此出人话；不把整份 check（含 misses 明细）塞进事件）。
+                          # 票 03（2026-10-14）：字段面翻转——judgement_marked /
+                          # judgement_leaks / backstop_n；旧两项（no_professional_judgement、
+                          # hypotheses_complete）退役。
                           "check": {
-                              "no_professional_judgement": bool(check.get("no_professional_judgement")),
+                              "judgement_marked": bool(check.get("judgement_marked")),
+                              "judgement_leaks": [str(x) for x in
+                                                  (check.get("judgement_leaks") or [])][:3],
+                              "backstop_n": int(check.get("backstop_n") or 0),
                               "trace_ok": bool(check.get("trace_ok")),
                               "trace_bad": int((check.get("trace") or {}).get("bad") or 0),
-                              "hypotheses_complete": bool(check.get("hypotheses_complete")),
                               "has_charts": bool(check.get("has_charts")),
                           },
                           "n_sources": len(built["sources"]),

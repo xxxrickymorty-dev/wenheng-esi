@@ -5,17 +5,21 @@
 |---|---|---|
 | 描述性判断 | 「接近度从 62% 升至 78%，近 6 期持续上升」 | **规则 + 骨架自动生成，不经 LLM** |
 | 解释性归因 | 「上升主要因为发文量增长」 | 可提出，但**必须**① 标「待验证假设」② 注明来源（规则引擎 / AI 推荐）③ 附可验证方式 |
-| 专业判断 | 「建议加大该学科投入」 | 🔴 **绝不生成**，只留 `【手工：…】` |
+| 专业判断 | 「建议加大该学科投入」 | **判断草稿**：机器可写；需馆员拍板的句子必须带「待审线」`==…==`，漏标由兜底词表报出并可确定性补标 |
 
 为什么「注明来源」重要：不只标置信度，而是标**作者身份**。馆员引用时天然知道
 「这是我的判断还是机器/AI 的建议」，责任归属不被模糊。
 
-支撑事实：复刻报告**连定性判断都是人工填的**（`sentences.py` 的 `MANUAL` 机制）。
-文衡从来没有让机器生成过「观点」，这是它「可签发」的根基之一。
-灵活报告**不改变这条根基** —— 它把机器能说的严格限制在「描述」与「带标注的假设」，
-专业判断依旧留空位。
+**2026-10-14 口径反转（ADR-0009）**：灵活报告是内部参考件、非报送件——专业判断由
+写作位起草、馆员线下拍板。`guard` / `judgement_leaks` 不再「出现判断词即违规」，
+改为**标记完备性检查**：兜底词表命中，凡不在成对 `==…==`（待审线）内、也不在
+`【手工：…】`空位里的，即为**漏标**；`backfill_marks` 给漏标句确定性补标并计数。
+复刻报告不动：它的专业判断仍由人工填写（`sentences.py` 的 `MANUAL` 机制）。
 """
 from __future__ import annotations
+
+import os
+import re
 
 from .datasource import cn_name, period_label
 
@@ -24,6 +28,17 @@ MANUAL = "【手工：{}】"
 #: 假设的来源标记 —— 报告里必须原样出现，不许省略。
 SRC_RULE = "规则引擎"
 SRC_AI = "AI 推荐"
+
+#: 待审线：成对 `==…==`（渲染成细下划线；用法只在报告头部说明一次）。
+MARK_RE = re.compile(r"==([^=\n]+?)==")
+
+#: 兜底词表 —— 判断句标记完备性检查用；env `WENHENG_FLEX_MARK_WORDS`（逗号分隔）可覆盖。
+DEFAULT_MARK_WORDS = ("建议", "应当", "必须", "值得", "需要", "优先")
+
+#: 空位与句子边界（补标以句为单位、不跨行，避免破坏列表/段落结构）。
+_MANUAL_RE = re.compile(re.escape(MANUAL.split("：")[0]) + r"：[^】\n]*】")
+_SENT_END = "。；！？\n"
+_LIST_HEAD = re.compile(r"[ \t]*(?:[-*+>]+\s+|\d+[.)]\s+)?[，、]*")
 
 
 def manual(what: str) -> str:
@@ -243,19 +258,123 @@ def render_hypothesis(h: dict) -> str:
             f"  - 可验证方式：{h['verify']}")
 
 
-def guard(text: str) -> list[str]:
-    """自检：报告文本里凡出现「建议 / 应当 / 必须」这类**专业判断措辞**即报警。
+def mark_words() -> tuple[str, ...]:
+    """兜底词表：env `WENHENG_FLEX_MARK_WORDS`（逗号分隔）非空即覆盖内置六词。"""
+    raw = os.environ.get("WENHENG_FLEX_MARK_WORDS", "")
+    words = tuple(w.strip() for w in raw.split(",") if w.strip())
+    return words or DEFAULT_MARK_WORDS
 
-    这是"专业判断一律不生成"的守门人 —— 规则后端和模型后端都过这道检查。
-    """
-    import re
-    hits = []
-    for m in re.finditer(r"[^。；\n]{0,24}(建议|应当|必须|亟需|应加大|宜加强)[^。；\n]{0,24}", text):
-        s = m.group(0).strip()
-        if MANUAL.split("：")[0] in s:            # 【手工：…】空位里允许出现
+
+def _exempt_spans(text: str) -> list[tuple[int, int]]:
+    """豁免区间：成对 `==…==`（待审线）＋ `【手工：…】`空位。"""
+    spans = [(m.start(), m.end()) for m in MARK_RE.finditer(text)]
+    spans += [(m.start(), m.end()) for m in _MANUAL_RE.finditer(text)]
+    return sorted(spans)
+
+
+def _inside(pos: int, spans: list[tuple[int, int]]) -> bool:
+    return any(s <= pos < e for s, e in spans)
+
+
+def _sentence_bounds(text: str, pos: int) -> tuple[int, int]:
+    """命中处所属句子 [起, 止)：按 `。；！？` 与换行切，不跨行。"""
+    a = max(text.rfind(b, 0, pos) for b in _SENT_END) + 1
+    z = min((i for i in (text.find(b, pos) for b in _SENT_END) if i >= 0),
+            default=len(text))
+    return a, z
+
+
+def _segments(a: int, z: int, spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """[a, z) 去掉豁免段后的连续段（供补标只包非豁免部分）。"""
+    segs, cur = [], a
+    for s, e in spans:
+        if e <= cur:
             continue
-        hits.append(s)
-    return hits
+        if s >= z:
+            break
+        if s > cur:
+            segs.append((cur, s))
+        cur = max(cur, e)
+    if cur < z:
+        segs.append((cur, z))
+    return segs
+
+
+def judgement_leaks(text: str) -> list[str]:
+    """标记完备性检查（旧 `guard` 的语义反转）：判断句**未带标记即失败**。
+
+    扫描兜底词表（`mark_words()`）命中，凡不在成对 `==…==`（待审线）内、
+    也不在 `【手工：…】`空位里的，即为**漏标**——返回漏标片段（按句去重，原文顺序）。
+    """
+    words = mark_words()
+    if not text or not words:
+        return []
+    spans = _exempt_spans(text)
+    pat = re.compile("|".join(re.escape(w) for w in words))
+    out: list[str] = []
+    seen: set[tuple[int, int]] = set()
+    for m in pat.finditer(text):
+        if _inside(m.start(), spans):
+            continue
+        bounds = _sentence_bounds(text, m.start())
+        if bounds in seen:
+            continue
+        seen.add(bounds)
+        snippet = text[bounds[0]:bounds[1]].strip()
+        if snippet:
+            out.append(snippet)
+    return out
+
+
+def backfill_marks(text: str) -> tuple[str, int]:
+    """兜底补标：给漏标句包上 `==…==`（确定性、可复现）→ 返回（新文本, 补标句数）。
+
+    只包非豁免部分（与既有标记/空位贴边时宁可不包——留给自检报漏标、由调用侧回退）；
+    计数＝实际补到标的**句子数**（同句多处漏标只算一句）。同输入同输出。
+    """
+    words = mark_words()
+    if not text or not words:
+        return text, 0
+    spans = _exempt_spans(text)
+    pat = re.compile("|".join(re.escape(w) for w in words))
+    leak_pos = [m.start() for m in pat.finditer(text) if not _inside(m.start(), spans)]
+    if not leak_pos:
+        return text, 0
+
+    pairs: list[tuple[tuple[int, int], list[tuple[int, int]]]] = []
+    seen: set[tuple[int, int]] = set()
+    for pos in leak_pos:
+        sent = _sentence_bounds(text, pos)
+        if sent in seen:
+            continue
+        seen.add(sent)
+        a, z = sent
+        segs = [se for se in _segments(a, z, spans)
+                if any(se[0] <= p < se[1] for p in leak_pos)]
+        if segs:
+            pairs.append((sent, segs))
+
+    out, n = text, 0
+    for _sent, segs in reversed(pairs):          # 右到左插入，坐标不漂
+        applied = False
+        for s, e in reversed(segs):
+            head = _LIST_HEAD.match(out[s:e])
+            lead = head.group(0) if head else ""
+            core = out[s:e][len(lead):].rstrip()
+            if not core or "==" in core:
+                continue                          # 标记语法已损坏：不硬包，留给自检
+            if out[max(0, s - 2):s] == "==" or out[e:e + 2] == "==":
+                continue                          # 与既有标记贴边会撞出 `====`：同上
+            out = (out[:s] + lead + "==" + core + "==" + out[s + len(lead) + len(core):])
+            applied = True
+        if applied:
+            n += 1
+    return out, n
+
+
+def guard(text: str) -> list[str]:
+    """旧名保留（写作位 veto / 既有调用方仍用）：语义＝`judgement_leaks`。"""
+    return judgement_leaks(text)
 
 
 def sections_of_discipline(disc: str, name_cn: str) -> dict:
