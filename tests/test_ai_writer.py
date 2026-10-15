@@ -316,3 +316,40 @@ class Test写作位模型与预算:
         brain = ScriptedBrain([])
         with ai.using(brain=brain):
             assert _writing.flex_brain() is brain
+
+    def test_改写与创写都走写作位专用模型(self, tmp_path, monkeypatch):
+        """两种形态同一条装配口：描述节改写也用 `WENHENG_FLEX_MODEL` 与 180s 预算。"""
+        import json
+        import urllib.request
+
+        monkeypatch.setenv("WENHENG_AI_BACKEND", "openai")
+        monkeypatch.setenv("WENHENG_AI_BASE_URL", "https://api.example.com/v1")
+        monkeypatch.setenv("WENHENG_AI_KEY", "sk-test")
+        monkeypatch.setenv("WENHENG_AI_MODEL", "fast-model")
+        monkeypatch.setenv(_writing.ENV_MODEL, "reasoner-model")
+        monkeypatch.setenv(_writer.ENV_ON, "1")
+        seen: list = []
+
+        class _Resp:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):                                # noqa: ARG002
+                return False
+
+            def read(self):
+                return json.dumps(
+                    {"choices": [{"message": {"content": "候选"}}]}).encode("utf-8")
+
+        def fake_urlopen(req, timeout=None):
+            payload = json.loads(req.data.decode("utf-8"))
+            seen.append((payload["model"], timeout))
+            return _Resp()
+
+        monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+        with ai.using(data_root=tmp_path):
+            _writer.write("规则稿 123。", facts=["事实 45"], period="202607")
+            _writer.compose(TOPIC, facts=["事实 45"], safe=SAFE, period="202607")
+        assert [m for m, _ in seen] == ["reasoner-model", "reasoner-model"], \
+            "改写与创写都必须走写作位专用模型"
+        assert all(t == 180.0 for _, t in seen)

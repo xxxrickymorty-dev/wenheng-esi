@@ -85,7 +85,8 @@ def write(text: str, *, facts=(), keep=DEFAULT_KEEP, period: str = "", label: st
     if fl:
         task += "\n\n【事实摘要】\n" + "\n".join(f"- {x}" for x in fl)
 
-    res = _attempt.attempt(task, system=SYSTEM, ability="polish", anchored=True)
+    res = _attempt.attempt(task, system=SYSTEM, ability="polish", anchored=True,
+                           brain=_writing.flex_brain())
     fallback: str | None = None
     result = text
     if not res.attempted:
