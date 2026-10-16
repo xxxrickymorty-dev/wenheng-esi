@@ -898,10 +898,14 @@ def _acq_reconcile(period: str, state: dict) -> dict:
 
     ESI/InCites 的导出接口没有期次参数——抓的是**当前发布**；所以对账是唯一能发现
     「拿当期数据冒充往期」的地方。状态里的 data_period/snapshot 是取数当时从网站页面读到的。
+    还没取到任何文件时 `ok=true`（无可对账），免得开新一期就先弹「数据期对不上」。
     """
     exp = _acq_expected_data(period)
     act = state.get("data_period") or {}
     actual = {"esi": str(act.get("esi") or ""), "incites": str(state.get("snapshot") or "")}
+    # 还没取到任何文件（开新一期/刚检查过）：无可对账，别报「对不上」吓人
+    if not actual["esi"] and not actual["incites"]:
+        return {"expected": exp, "actual": actual, "ok": True}
     ok = bool(actual["esi"]) and actual["esi"] == exp["esi"] \
         and (not exp["incites"] or actual["incites"] == exp["incites"])
     return {"expected": exp, "actual": actual, "ok": ok}

@@ -254,7 +254,9 @@ export function Acquire({ period, onOpenPeriod }: {
   const liveGroup = groups.find((g) => g.state === 'live')
   const reviewSheets = state?.review?.sheets ?? []
   const showReview = !!state && (state.copy?.state === 'review' || state.copy?.state === 'merged')
-  const cap = state?.capabilities ?? {}
+  /* 能力缺省＝可执行：`scan()` 会落这份默认；开新一期的空壳/只检查过的期次没有它，
+     不该因此显示「取数工具还没接入」。真接不上的场景由状态显式给 false。 */
+  const cap = state?.capabilities ?? { start: true, retry: true, merge: true }
   const toolMissing = '取数工具还没接入；接入后这里就能一键执行。'
   const capKey: 'start' | 'retry' | 'merge' = view === 'partial' ? 'retry' : view === 'review' ? 'merge' : 'start'
   const needsTool = view === 'ready' || view === 'partial' || view === 'review'
@@ -291,7 +293,7 @@ export function Acquire({ period, onOpenPeriod }: {
           : view === 'review' ? '本期监测表已自动建好，请核对。'
             : `已并入主台账（${period} 列）`
   const sub = view === 'ready'
-    ? (pfPassed ? '9 组文件，取到后逐份核验。' : '点「开始取数」会自动打开取数专用浏览器（首次需在里面登录 ESI / InCites）。')
+    ? (pfPassed ? '9 组文件，取到后逐份核验。' : '点「开始取数」会先检查网站的数据更新了没有；需要时自动打开取数专用浏览器（首次在里面登录 ESI / InCites）。')
     : view === 'blocked' ? '系统会自动打开取数专用浏览器；在里面登录 ESI / InCites 后，点「重新检查」。'
       : view === 'running' ? '可以离开这一页，进度不会丢。'
         : view === 'partial' ? '重试只补这一组，通过的不重复下载。'

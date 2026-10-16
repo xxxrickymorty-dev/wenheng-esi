@@ -234,7 +234,10 @@ export default function App() {
         const hit = wantPeriod && list.some((p) => p.period === wantPeriod)
         if (hit) setUrlRestorePeriod(wantPeriod)
         if (!manualSelectionRef.current) {
-          const chosen = restoredActivePeriodRef.current ?? (hit ? wantPeriod : (list[0]?.period ?? null))
+          /* 缺省落在「最近一期已出稿的期次」——开新一期登记的期次虽在列表里（票 05），
+             但还没有内容，不该抢走默认落点（否则报告/工作台会去拉不存在的产物）。 */
+          const firstWithContent = list.find((p) => p.generated) ?? list[0]
+          const chosen = restoredActivePeriodRef.current ?? (hit ? wantPeriod : (firstWithContent?.period ?? null))
           setSelected(chosen)
           /* 票 03：URL 是期次的唯一真相——缺省期次也写进地址栏，复制链接/刷新不丢期 */
           if (!hit && chosen) applyPeriod(chosen)
