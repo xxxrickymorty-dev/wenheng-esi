@@ -410,8 +410,8 @@ def main():
         check("操作员进工作区不被送回陈列馆",
               "/app/shelf" not in operator.url, f"url={operator.url}")
         try:
-            operator.wait_for_selector(".ws-nav", timeout=10000)     # 2026-10-15 新壳：导航进常驻左栏
-            nav_text = operator.inner_text(".ws-nav")
+            operator.wait_for_selector(".app-nav", timeout=10000)    # 2026-10-17 庚壳：导航进顶栏
+            nav_text = operator.inner_text(".app-nav")
             check("操作员导航无「下载数据」", "下载数据" not in nav_text, nav_text.replace("\n", " "))
         except Exception as e:                                       # noqa: BLE001
             check("操作员导航无「下载数据」", False, str(e)[:80])

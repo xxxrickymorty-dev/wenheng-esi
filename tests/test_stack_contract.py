@@ -34,7 +34,9 @@ REQUIRED_SERVER_DEPS = ("fastapi", "uvicorn", "jinja2", "python-multipart", "its
 #: （2026-09-21 全量回归被 `tmp/three-build/` 的 node_modules 绊红，故显式排除。）
 #: （2026-09-28 `数字图书馆阅览室/` 是 rick 拷进来的原型素材目录（未跟踪、非交付物），
 #: 它自带 npm 工程不属旧站约束范围——显式排除，别拿它绊红回归。）
-SKIP_PARTS = {".venv", "tmp", ".pytest_cache", "out", ".git", "数字图书馆阅览室"}
+#: （2026-10-17 `recon/` 是三维陈列馆素材勘察目录（并行会话线、非交付物），
+#: 内含 TS 源码与 Vite 缓存——同样显式排除。）
+SKIP_PARTS = {".venv", "tmp", ".pytest_cache", "out", ".git", "数字图书馆阅览室", "recon"}
 
 #: 2026-09-22 ADR-0001：`web/` 是新工作区系统（React + Vite），不受「零 JS 依赖」约束；
 #: 旧站（server/ + 仓库根）继续受约束。scope 判定按目录名，别用「有没有 package.json」反推。
