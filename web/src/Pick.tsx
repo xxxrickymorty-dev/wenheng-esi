@@ -127,14 +127,6 @@ export function Pick({ period }: { period: string | null }) {
           </p>
         )}
       </section>
-
-      <div className="pick-note mt-16">
-        <b>最省版</b>：这一屏<b>只记范围</b>——出稿一律全出、母版一个字不动（不删节、不清槽、不搬别期内容）。
-        <ul>
-          <li>数据只读：章节由后端从产物推导，<b>不写任何文件</b>。</li>
-          <li>「本轮不办」只在本屏表达，供你抄进批注；<b>不影响出稿</b>。</li>
-        </ul>
-      </div>
     </>
   )
 }
