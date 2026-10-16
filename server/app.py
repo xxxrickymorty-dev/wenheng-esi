@@ -991,7 +991,7 @@ def _acq_spawn(period: str, action: str, extra: list | None = None):
         return _period_missing()
     running = _acq_op_running(period)
     if running:
-        return JSONResponse({"error": "有一项取数任务还在跑，等它完成再试。",
+        return JSONResponse({"error": "有一项下载数据任务还在跑，等它完成再试。",
                              "hint": running.get("note", "")}, status_code=409)
     st = acquisition.load(period) or {}
     st["op"] = {"kind": action if action != "fetch" else "fetch", "state": "running",
@@ -1067,7 +1067,7 @@ async def api_acq_browser(request: Request):
     """
     if _acq_cdp_alive():
         return {"ok": True, "started": False, "already": True,
-                "note": "取数专用浏览器已经在跑。"}
+                "note": "下载数据专用浏览器已经在跑。"}
     exe = _acq_chrome_exe()
     if not exe:
         return {"ok": False, "started": False, "already": False,
@@ -1094,7 +1094,7 @@ async def api_acq_browser(request: Request):
     except OSError as e:
         return {"ok": False, "started": False, "already": False, "note": f"浏览器没起来：{e}"}
     return {"ok": True, "started": True, "already": False, "closed": closed,
-            "note": "已打开取数专用浏览器；首次使用需要在这个窗口里登录 ESI / InCites 一次。"}
+            "note": "已打开下载数据专用浏览器；首次使用需要在这个窗口里登录 ESI / InCites 一次。"}
 
 
 def _acq_data_block(period: str):
@@ -1182,7 +1182,7 @@ async def api_acq_merge(request: Request, period: str):
             merged_at = (st.get("copy") or {}).get("merged_at") or "时间未记"
             msg = f"本期已并入台账（{merged_at}），无需再并。"
         else:
-            msg = "还没有本期核对副本——先在取数台取数并核对，再并入。"
+            msg = "还没有本期核对副本——先在下载数据台下载并核对，再并入。"
         return JSONResponse({"error": msg, "state": copy_state}, status_code=409)
     return _acq_spawn(period, "merge", ["--by", current_user(request) or ""])
 

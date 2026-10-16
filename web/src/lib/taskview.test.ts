@@ -24,11 +24,11 @@ describe('本期任务视图（票 06）', () => {
     expect(taskView(home({ period: '' }))).toBeNull()
   })
 
-  it('卡在取数（没并入）：数据未到 / 缺 N 件两种说法', () => {
+  it('卡在下载数据（没并入）：数据未到 / 缺 N 件两种说法', () => {
     const notYet = taskView(home({ released: false, n_missing: 4 }))
     expect(notYet?.rows.map((r) => r.mark)).toEqual(['●', '○', '○'])
     expect(notYet?.rows[0].note).toBe('数据未到（随发布）')
-    expect(notYet?.cta).toEqual({ label: '去取数台 ▸', kind: 'goto', view: 'acquire' })
+    expect(notYet?.cta).toEqual({ label: '去下载数据台 ▸', kind: 'goto', view: 'acquire' })
 
     const missing = taskView(home({ released: true, n_missing: 2 }))
     expect(missing?.rows[0].note).toBe('还缺 2 件')

@@ -1,6 +1,6 @@
 /* 文衡 · 工作台（外壳）
    两种角色（2026-10-11）：admin＝管理员（全可见可写）；operator＝操作员（评委，只读）——
-   取数/台账/运行档案/红件/溯源对操作员不可见，写动作一律拦住（真门在后端）。
+   下载数据/台账/运行档案/红件/溯源对操作员不可见，写动作一律拦住（真门在后端）。
    数据全部来自后端 API；接口没就绪的地方**如实标注"未就绪"**，不编数据。 */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -477,8 +477,8 @@ export default function App() {
 
   /* 工作区导航（契约 §4：前端按 /api/me 的 role 决定显示什么；**真门在后端**，这里只是不打扰）。
      角色（2026-10-11 改两级）：admin＝管理员（全可见）；operator＝操作员（评委，只读）——
-     取数台、台账、运行档案、红件清单、逐格溯源对操作员不可见；其余屏可见但无写按钮。
-     2026-10-15 新信息架构（rick 定 A 方案）：**4 主区 + 1 管理** —— 取数/审核/预测/红件/图册/对勘/溯源
+     下载数据台、台账、运行档案、红件清单、逐格溯源对操作员不可见；其余屏可见但无写按钮。
+     2026-10-15 新信息架构（rick 定 A 方案）：**4 主区 + 1 管理** —— 下载数据/审核/预测/红件/图册/对勘/溯源
      不再是平级入口，降为「出报告」四步流水里的步骤或报告的下钻；深链 ?view=… 一律保留。 */
   const NAV: { key: string; label: string; icon: string; href: string }[] = [
     { key: 'flow', label: '出报告', icon: 'play', href: '/app/' },
@@ -493,17 +493,17 @@ export default function App() {
     analysis: 'flexible', dialog: 'ask', ledger: 'admin', archive: 'admin',
   }
   const TITLE: Record<string, string> = {
-    workbench: '出报告', acquire: '出报告 · 取数并核验', pick: '出报告 · 选材',
+    workbench: '出报告', acquire: '出报告 · 下载数据核验', pick: '出报告 · 选择章节',
     forecast: '出报告 · 预测选模', review: '出报告 · 核验与定稿', report: '报告',
     red: '报告 · 红色件清单', charts: '报告 · 图册', reading: '报告 · 对勘本',
     trace: '报告 · 逐格溯源', analysis: '灵活报告', dialog: '问文衡',
     ledger: '主台账', archive: '运行档案',
   }
-  /* 「出报告」四步流水（新 IA）：步骤条只在流水屏出现；②选材＝最省版（只记本轮范围）。
+  /* 「出报告」四步流水（新 IA）：步骤条只在流水屏出现；②选择章节＝最省版（只记本轮范围）。
      2026-10-16 二版（rick 拍板）：不画序号——顺序由位置与细线方向表达（仍是真顺序的 ol）。 */
   const FLOW_STEPS: { key: string; label: string; href?: string }[] = [
-    { key: 'acquire', label: '取数并核验', href: '/app/?view=acquire' },
-    { key: 'pick', label: '选材', href: '/app/?view=pick' },
+    { key: 'acquire', label: '下载数据核验', href: '/app/?view=acquire' },
+    { key: 'pick', label: '选择章节', href: '/app/?view=pick' },
     { key: 'gen', label: '生成初稿', href: '/app/' },
     { key: 'review', label: '核验与定稿', href: '/app/?view=review' },
   ]
@@ -623,7 +623,7 @@ export default function App() {
             <ol className="ia-steps-list">
               {FLOW_STEPS.map((s, i) => {
                 const on = s.key === flowActive
-                /* 操作员不可见的两屏（取数/选材）不再从列表里消失——整条流水保持四条等大，
+                /* 操作员不可见的两屏（下载数据/选材）不再从列表里消失——整条流水保持四条等大，
                    那两张卡置灰标注「仅管理员」；功能门仍在后端（直开 URL 一样进不去）。 */
                 const na = !!isOperator && (s.key === 'acquire' || s.key === 'pick')
                 const cls = `ia-card${i < flowActiveIdx ? ' done' : ''}${on ? ' now' : ''}${na ? ' na' : ''}`
@@ -655,7 +655,7 @@ export default function App() {
           </div>
         ) : operatorDenied ? (
           <div className="pending-box mt-0">
-            <b>操作员不可见</b> —— 这一屏在「管理」里（取数 / 台账 / 运行档案 / 红件 / 溯源），
+            <b>操作员不可见</b> —— 这一屏在「管理」里（下载数据 / 台账 / 运行档案 / 红件 / 溯源），
             操作员账号看不到。看报告请回 <a href={navHref('/app/?view=report')}>报告</a>。
           </div>
         ) : view === 'archive' ? (

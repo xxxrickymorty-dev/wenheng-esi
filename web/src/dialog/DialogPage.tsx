@@ -27,7 +27,7 @@ import { taskView } from '../lib/taskview'
 import { UserChip } from '../lib/UserChip'
 import { NumberedText } from '../NumberedText'
 
-/** 出稿轨迹（票 04）：逐段出（挑学科 / 配图 / 取数 / 数据校验 / 收尾 / 复刻）。
+/** 出稿轨迹（票 04）：逐段出（挑学科 / 配图 / 下载数据 / 数据校验 / 收尾 / 复刻）。
     全部文字由事件与接口字段组装（视图层只读，不现算数字）。 */
 type TraceStep = { n: number; title: string; detail: string; state: 'doing' | 'done' | 'halt' }
 type Trace = {
@@ -58,7 +58,7 @@ type Conversation = { id: number; title: string; turns: Turn[]; slots: DialogSlo
 
 const PALETTE_STORAGE_KEY = 'wenheng-palette'
 
-/** 操作员不可见的入口（取数台 / 运行档案）——对话动作按此过滤。 */
+/** 操作员不可见的入口（下载数据台 / 运行档案）——对话动作按此过滤。 */
 const OPERATOR_HIDDEN_HREFS = new Set(['/app/?view=acquire', '/app/?view=archive'])
 
 /** 空态首页（2026-10-12，P0-③）：模式 chips 与示例胶囊——点击＝把示例句填进输入框。 */
@@ -375,12 +375,12 @@ export default function DialogPage() {
               charts.length ? `${charts.length} 张：${charts.map((c) => c.why || c.kind).join('；')}`
                             : '按规划出图',
               'done'),
-            step(2, '取数', '逐节取数与写稿…'),
+            step(2, '下载数据', '逐节下载数据与写稿…'),
           ] }))
         } else if (ev.event === 'section') {
           sections += 1
           upd((t) => ({ ...t, steps: t.steps.map((s) =>
-            s.n === base + 2 ? { ...s, detail: `逐节取数与写稿：已完成 ${sections} 节…` } : s) }))
+            s.n === base + 2 ? { ...s, detail: `逐节下载数据与写稿：已完成 ${sections} 节…` } : s) }))
         } else if (ev.event === 'done') {
           doneRef.ev = ev
           if (ev.check_pass) {
@@ -724,7 +724,7 @@ export default function DialogPage() {
                   {t.who === 'wh' && !!t.actions?.length && (
                     <div className="dlg-acts">
                       {/* 2026-10-12：出稿（run）两种角色都有（操作员也可出报告）；
-                          隐藏屏入口（取数台/运行档案）对操作员不出现——真门都在后端。 */}
+                          隐藏屏入口（下载数据台/运行档案）对操作员不出现——真门都在后端。 */}
                       {t.actions.filter((a) => canRun
                         || (a.kind === 'goto'
                             && !OPERATOR_HIDDEN_HREFS.has(`/app/?view=${a.view ?? 'acquire'}`)))

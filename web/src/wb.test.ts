@@ -52,19 +52,19 @@ describe('deriveWorkbench（真实数据推导，不编状态）', () => {
     expect(wb.note).toContain('不是实时状态')
   })
 
-  it('取数还没完成（detail 说 fetch 没齐）→ empty，主动作去取数台（ADR-0004）', () => {
+  it('下载数据还没完成（detail 说 fetch 没齐）→ empty，主动作去下载数据台（ADR-0004）', () => {
     const wb = deriveWorkbench('202607', [], detail({ fetch: false, merge: false }), true)
     expect(wb.state).toBe('empty')
     expect(wb.focusAction).toBe('acquire')
   })
 
-  it('取数与并入都齐、无产出 → ready（可生成）', () => {
+  it('下载数据与并入都齐、无产出 → ready（可生成）', () => {
     const wb = deriveWorkbench('202607', [], detail({ fetch: true, merge: true }), true)
     expect(wb.state).toBe('ready')
     expect(wb.focusAction).toBe('generate')
   })
 
-  it('取数完成但还没核对并入 → 也去取数台（不给生成按钮）', () => {
+  it('下载数据完成但还没核对并入 → 也去下载数据台（不给生成按钮）', () => {
     const wb = deriveWorkbench('202611', [], detail({ fetch: true, merge: false }), true)
     expect(wb.state).toBe('empty')
     expect(wb.focusAction).toBe('acquire')
@@ -105,16 +105,16 @@ describe('deriveWorkbench（真实数据推导，不编状态）', () => {
     expect(wb.steps[2].detail).toBe('202607 尚未出稿')
   })
 
-  it('步骤条：取数中的数字来自后端摘要，前两步话术随状态（ADR-0004）', () => {
+  it('步骤条：下载数据中的数字来自后端摘要，前两步话术随状态（ADR-0004）', () => {
     const wb = deriveWorkbench('202607', [], detail(
       { fetch: false, merge: false },
       { started: true, verified: 31, expected: 64, copy: 'none' }), true)
-    expect(wb.steps[0].detail).toBe('取数中（31 / 64）')
+    expect(wb.steps[0].detail).toBe('下载中（31 / 64）')
     expect(wb.steps[1].detail).toBe('核对副本还没建')
     expect(wb.steps[0].now).toBe(true)
   })
 
-  it('步骤条：待核对 / 已并入 / 历史期次（无取数记录）', () => {
+  it('步骤条：待核对 / 已并入 / 历史期次（无下载数据记录）', () => {
     const reviewing = deriveWorkbench('202608', [], detail(
       { fetch: true, merge: false },
       { started: true, verified: 64, expected: 64, copy: 'review' }), true)
@@ -124,7 +124,7 @@ describe('deriveWorkbench（真实数据推导，不编状态）', () => {
     const merged = deriveWorkbench('202608', [], detail(
       { fetch: true, merge: true },
       { started: true, verified: 64, expected: 64, copy: 'merged' }), true)
-    expect(merged.steps[0].detail).toBe('取数完成（64 / 64）')
+    expect(merged.steps[0].detail).toBe('下载数据完成（64 / 64）')
     expect(merged.steps[1].detail).toBe('已并入台账')
 
     const legacy = deriveWorkbench('202607', [], detail(

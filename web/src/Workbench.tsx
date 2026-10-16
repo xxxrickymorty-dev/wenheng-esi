@@ -31,7 +31,7 @@ function Steps({ wb, period }: { wb: WB; period: string | null }) {
           <span className="dot">{s.on ? <Icon name="check" size={13} /> : i + 1}</span>
           <span>
             {s.key === 'fetch' && period
-              ? <a className="steplink" href={acquireHref} title="去取数台">{s.title}</a>
+              ? <a className="steplink" href={acquireHref} title="去下载数据台">{s.title}</a>
               : s.title}
             <small>{s.detail}</small>
           </span>
@@ -338,7 +338,7 @@ export function Workbench({
   forecastChoiceDirty: boolean
   onPickPeriod: (period: string) => void
   onReloadForecastChoice: () => void
-  /** 「这一期的工具」折叠（2026-10-01 从 App 抽出）：角色未确认/操作员（只读）时不渲染 */
+  /** 「工具调用记录」折叠（2026-10-01 从 App 抽出）：角色未确认/操作员（只读）时不渲染 */
   showTools: boolean
   toolJobId: string | null
   toolArtifactsToken: number
@@ -347,7 +347,7 @@ export function Workbench({
   onToolUploaded: (jobId: string, period: string) => void
 }) {
   const isAdmin = me?.role === 'admin'
-  /* 2026-10-12：出报告对操作员也开放（后端 POST /api/jobs 已开）；取数/工具折仍只管理员。 */
+  /* 2026-10-12：出报告对操作员也开放（后端 POST /api/jobs 已开）；下载数据/工具折仍只管理员。 */
   const canRun = !!me
   const canGenerate = canRun && period != null && /^\d{6}$/.test(period) && !actionsLocked && !activeRun && !submitting
     && (!run || isTerminal(run.status ?? undefined))
@@ -390,7 +390,7 @@ export function Workbench({
             )}
             {wb.focusAction === 'acquire' && isAdmin && (
               <a className="btn primary" href={`/app/?view=acquire${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
-                <Icon name="download" size={20} />去取数
+                <Icon name="download" size={20} />去下载数据
               </a>
             )}
           </div>
@@ -429,7 +429,7 @@ export function Workbench({
       </section>
 
       <details className="fold">
-        <summary>本期模型 · 预测选模（只读）<span className="sm">改选去预测台</span></summary>
+        <summary>预测模型选择<span className="sm">改选去预测台</span></summary>
         <ModelSummary period={period} periods={periods} meta={forecastMeta} metaError={forecastMetaError}
                       actualOutputPeriod={actualOutputPeriod} state={forecastChoice}
                       dirty={forecastChoiceDirty} onPickPeriod={onPickPeriod}
@@ -438,7 +438,7 @@ export function Workbench({
 
       {showTools && (
         <details className="fold">
-          <summary>这一期的工具<span className="sm">上传 · 重跑 · 回滚 · 台账 · 日志包</span></summary>
+          <summary>工具调用记录<span className="sm">上传 · 重跑 · 回滚 · 台账 · 日志包</span></summary>
           <p className="hint fold-lead">
             看数据源：<a href={`/app/?view=ledger${period ? `&period=${encodeURIComponent(period)}` : ''}`}>主台账（只读）→</a>
           </p>
@@ -486,7 +486,7 @@ export function PeriodsPanel({ periods, selected, healthy, onPick }: {
                             onClick={() => location.reload()}>重新检查</button>
                     一次。</>
                 ) : (
-                  <>还没有任何期次。先在下方「这一期的工具」上传当期数据表，生成第一期。<a href="#tools">去上传 →</a></>
+                  <>还没有任何期次。先在下方「工具调用记录」上传当期数据表，生成第一期。<a href="#tools">去上传 →</a></>
                 )}
               </td></tr>
             )}

@@ -1,8 +1,8 @@
-/* 自动取数台（X2·票 12）：工作流第一站——取数 → 核对并并入 → 生成。
+/* 自动下载数据台（X2·票 12）：工作流第一站——下载数据 → 核对并并入 → 生成。
    只读视图：状态全部来自 GET /api/periods/{period}/acquisition（服务端只读）。
    重试/并入等写动作由人按（写路径与机械保证见 docs/adr/0004）；按钮可用性读状态里的
    capabilities——工具还没接入时按钮禁用并说明，不假装能点。
-   静态稿对照：web/mockups/取数台.html；契约：§2.2 #26。 */
+   静态稿对照：web/mockups/下载数据台.html；契约：§2.2 #26。 */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getAcquisition, openPeriod, postAcquisition, postAcqBrowser, type AcquisitionState, type AcqGroup } from './api'
@@ -13,7 +13,7 @@ import { acqFileLabel, acqGroupLabel, errorNote } from './lib/status'
 
 /** 任务进行中的一句话（op.kind → 人话） */
 const OP_CN: Record<string, string> = {
-  fetch: '正在按组取数', copy: '正在新建当期核对副本', merge: '正在并入主台账', preflight: '正在检查',
+  fetch: '正在按组下载数据', copy: '正在新建当期核对副本', merge: '正在并入主台账', preflight: '正在检查',
 }
 
 const SOURCE_NAME: Record<string, string> = { esi: 'ESI', incites: 'InCites' }
@@ -88,7 +88,7 @@ function GroupCard({ g, onRetry, busy, readonly }: {
                     <Icon name={f.state === 'ok' ? 'check' : f.state === 'bad' ? 'alert' : 'clock'} size={15} />
                   </span>
                   <span className="aq-fname">{f.name ?? '（未命名文件）'}<small>{f.label}</small></span>
-                  <span className={`aq-fres ${cls}`}>{f.state ? acqFileLabel(f.state) : '待取数'}</span>
+                  <span className={`aq-fres ${cls}`}>{f.state ? acqFileLabel(f.state) : '待下载'}</span>
                 </li>
               )
             })}
@@ -116,7 +116,7 @@ export function Acquire({ period, onOpenPeriod }: {
   const [note, setNote] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
-  /* 开新一期：页头行内表单（票 05）——只登记期次、落空状态，不取数 */
+  /* 开新一期：页头行内表单（票 05）——只登记期次、落空状态，不下载数据 */
   const [openForm, setOpenForm] = useState(false)
   const [newPeriod, setNewPeriod] = useState('')
   const [openErr, setOpenErr] = useState('')
@@ -131,8 +131,8 @@ export function Acquire({ period, onOpenPeriod }: {
       .then((s) => { stateRef.current = s; setState(s); setNote(null) })
       .catch((e) => {
         setState(null)
-        setNote(errorNote(e, '取数台', {
-          n404: '没读到这一期的取数状态——确认期次是六位数，或稍等片刻重试。',
+        setNote(errorNote(e, '下载数据台', {
+          n404: '没读到这一期的下载数据状态——确认期次是六位数，或稍等片刻重试。',
         }))
       })
       .finally(() => { if (!silent) setLoading(false) })
@@ -166,14 +166,14 @@ export function Acquire({ period, onOpenPeriod }: {
       reloadTimer.current = window.setTimeout(() => load(true), 500)
       return r
     } catch (e) {
-      setNote(errorNote(e, '这一步', { n409: '有一个取数任务还在跑，稍等它完成。' }))
+      setNote(errorNote(e, '这一步', { n409: '有一个下载数据任务还在跑，稍等它完成。' }))
       return null
     } finally {
       setBusy(false)
     }
   }, [period, load])
 
-  /* 「开始前检查」先确保取数专用浏览器在跑：没连上就请服务端把窗口打开（独立 profile + CDP 9222），
+  /* 「开始前检查」先确保下载数据专用浏览器在跑：没连上就请服务端把窗口打开（独立 profile + CDP 9222），
      等它起来再查一次。**只开窗、不代登录**——首次仍要人在那个窗口登录 ESI / InCites
      （凭证靠 Chrome 自己记住，系统不碰账号密码）。 */
   const preflightWithBrowser = useCallback(async () => {
@@ -186,7 +186,7 @@ export function Acquire({ period, onOpenPeriod }: {
     return r
   }, [act])
 
-  /* 开始取数前先看「开始前检查」：没过就不发车，页面会切到「检查未过」让人去连浏览器 */
+  /* 开始下载数据前先看「开始前检查」：没过就不发车，页面会切到「检查未过」让人去连浏览器 */
   const onStart = useCallback(async () => {
     const r = await preflightWithBrowser()
     const pf = r?.preflight
@@ -203,8 +203,8 @@ export function Acquire({ period, onOpenPeriod }: {
     await act('start')
   }, [act, load, preflightWithBrowser])
 
-  /* 补下一组：与「开始取数」同规矩——先看「开始前检查」，浏览器/登录没就绪就不发车
-     （2026-10-15：先前直接发车，取数脚本会因连不上浏览器而拒绝，白记一次失败） */
+  /* 补下一组：与「开始下载数据」同规矩——先看「开始前检查」，浏览器/登录没就绪就不发车
+     （2026-10-15：先前直接发车，下载数据脚本会因连不上浏览器而拒绝，白记一次失败） */
   const onRetryGroup = useCallback(async (gid: string) => {
     const r = await preflightWithBrowser()
     const pf = r?.preflight
@@ -220,8 +220,8 @@ export function Acquire({ period, onOpenPeriod }: {
     await act('retry', { group: gid })
   }, [act, load, preflightWithBrowser])
 
-  /* 开新一期（票 05）：登记一个新期次 → 落空状态 → 进这一期的取数台。
-     只登记、不取数——数据期校验（票 04）留到点「开始取数」时把关。 */
+  /* 开新一期（票 05）：登记一个新期次 → 落空状态 → 进这一期的下载数据台。
+     只登记、不下载数据——数据期校验（票 04）留到点「开始下载数据」时把关。 */
   const onOpen = useCallback(async () => {
     const v = newPeriod.trim()
     const problem = newPeriodProblem(v)
@@ -239,7 +239,7 @@ export function Acquire({ period, onOpenPeriod }: {
   }, [newPeriod, onOpenPeriod])
 
   if (!period) {
-    return <div className="pending-box">先在顶栏选一个期次；取数台会显示这一期的取数进度与核对状态。</div>
+    return <div className="pending-box">先在顶栏选一个期次；下载数据台会显示这一期的下载数据进度与核对状态。</div>
   }
 
   const op = state?.op
@@ -255,17 +255,17 @@ export function Acquire({ period, onOpenPeriod }: {
   const reviewSheets = state?.review?.sheets ?? []
   const showReview = !!state && (state.copy?.state === 'review' || state.copy?.state === 'merged')
   /* 能力缺省＝可执行：`scan()` 会落这份默认；开新一期的空壳/只检查过的期次没有它，
-     不该因此显示「取数工具还没接入」。真接不上的场景由状态显式给 false。 */
+     不该因此显示「下载数据工具还没接入」。真接不上的场景由状态显式给 false。 */
   const cap = state?.capabilities ?? { start: true, retry: true, merge: true }
-  const toolMissing = '取数工具还没接入；接入后这里就能一键执行。'
+  const toolMissing = '下载数据工具还没接入；接入后这里就能一键执行。'
   const capKey: 'start' | 'retry' | 'merge' = view === 'partial' ? 'retry' : view === 'review' ? 'merge' : 'start'
   const needsTool = view === 'ready' || view === 'partial' || view === 'review'
   const canRun = !!cap[capKey]
   /* 采集与并入台账是两条独立的线（2026-10-16 解耦）：采集＝本机取到多少份；并入＝台账并没并。
-     重新取数只会补没下到的文件，台账那一列一字不动。
+     重新下载数据只会补没下到的文件，台账那一列一字不动。
      2026-10-16 中午拍板：头条只留**采集**进度行——「已并入（期次 列）」的结论由焦点卡承担，
      两处同写一句「已并入（202609 列）」是重复，删去头条那行（去重守卫见 e2e）。 */
-  /* 最近一次「取数」的时间（只在最近一步确实是取数时才显示，免得把别的动作当成重取） */
+  /* 最近一次「下载数据」的时间（只在最近一步确实是下载数据时才显示，免得把别的动作当成重取） */
   const lastFetchAt = op?.kind === 'fetch' ? (op.at ?? '') : ''
   /* 往期档案只读（票 03）：期次早于「本机已取过的最新期次」就不能再取——ESI/InCites 没有历史数据 */
   const ro = state?.mode === 'readonly'
@@ -274,27 +274,27 @@ export function Acquire({ period, onOpenPeriod }: {
   const pill: Record<PageView, [string, string]> = {
     ready: ['还没开始', 'unsigned'],
     blocked: ['还没开始', 'unsigned'],
-    running: ['取数中', 'stale'],
+    running: ['下载中', 'stale'],
     partial: [`有 ${failed} 份未通过`, 'bad'],
     review: ['待核对', 'stale'],
     merged: ['已并入', 'signed'],
   }
 
-  /* 如实：只有「开始前检查」这轮真通过才说「可以开始取数」——状态文件在不在不算
+  /* 如实：只有「开始前检查」这轮真通过才说「可以开始下载数据」——状态文件在不在不算
      （开新一期落的只是空壳，票 05）。 */
   const pf = state?.preflight
   const pfPassed = !!pf && pf.browser === 'ok' && pf.esi === 'ok'
     && pf.incites === 'ok' && pf.data?.ok !== false
   const title = view === 'ready'
-    ? (pfPassed ? '开始前检查通过，可以开始取数。' : '还没开始取数。')
-    : view === 'blocked' ? '取数专用浏览器还没准备好。'
-      : view === 'running' ? `正在取数${liveGroup?.title ? `：${liveGroup.title}` : ''}……`
+    ? (pfPassed ? '开始前检查通过，可以开始下载数据。' : '还没开始下载数据。')
+    : view === 'blocked' ? '下载数据专用浏览器还没准备好。'
+      : view === 'running' ? `正在下载数据${liveGroup?.title ? `：${liveGroup.title}` : ''}……`
         : view === 'partial' ? `${failGroup?.title ?? '有一组'}有 ${failed} 份没通过核验。`
           : view === 'review' ? '本期监测表已自动建好，请核对。'
             : `已并入主台账（${period} 列）`
   const sub = view === 'ready'
-    ? (pfPassed ? '9 组文件，取到后逐份核验。' : '点「开始取数」会先检查网站的数据更新了没有；需要时自动打开取数专用浏览器（首次在里面登录 ESI / InCites）。')
-    : view === 'blocked' ? '系统会自动打开取数专用浏览器；在里面登录 ESI / InCites 后，点「重新检查」。'
+    ? (pfPassed ? '9 组文件，取到后逐份核验。' : '点「开始下载数据」会先检查网站的数据更新了没有；需要时自动打开下载数据专用浏览器（首次在里面登录 ESI / InCites）。')
+    : view === 'blocked' ? '系统会自动打开下载数据专用浏览器；在里面登录 ESI / InCites 后，点「重新检查」。'
       : view === 'running' ? '可以离开这一页，进度不会丢。'
         : view === 'partial' ? '重试只补这一组，通过的不重复下载。'
           : view === 'review' ? `核对无误后并入台账（只动 ${period} 列）。`
@@ -303,17 +303,17 @@ export function Acquire({ period, onOpenPeriod }: {
   return (
     <>
       {note && <div className="pending-box">{note}<button type="button" className="btn ml-10" onClick={() => { setNote(null); load() }}>重新读取</button></div>}
-      {!state && !note && <div className="pending-box">{loading ? '正在读取取数状态……' : '还没有读到取数状态。'}</div>}
+      {!state && !note && <div className="pending-box">{loading ? '正在读取下载数据状态……' : '还没有读到下载数据状态。'}</div>}
 
       {state && (
         <>
           {/* ===== 期次数据状态 ===== */}
           <section className="card pad-card-x">
             <div className="aq-head">
-              <h1 className="fs-24">自动取数台</h1>
+              <h1 className="fs-24">自动下载数据台</h1>
               <span className="pill unsigned mono">{period}</span>
               <span className={`pill ${pill[view][1]}`}>{pill[view][0]}</span>
-              <span className="hint aq-num">采集 · {expected > 0 ? `已取到 ${verified} / ${expected}` : '未开始'}{lastFetchAt ? ` · 最近取数 ${lastFetchAt}` : ''}</span>
+              <span className="hint aq-num">采集 · {expected > 0 ? `已取到 ${verified} / ${expected}` : '未开始'}{lastFetchAt ? ` · 最近下载 ${lastFetchAt}` : ''}</span>
               <button type="button" className="btn small ml-auto" aria-expanded={openForm}
                       onClick={() => { setOpenForm((v) => !v); setOpenErr('') }}>
                 <Icon name="plus" size={16} />开新一期
@@ -344,7 +344,7 @@ export function Acquire({ period, onOpenPeriod }: {
               )}
               {op?.state === 'failed' && (
                 <div className="hint note-bad">
-                  上一步没有完成：{op.note || '原因见取数状态'}。
+                  上一步没有完成：{op.note || '原因见下载数据状态'}。
                 </div>
               )}
               {needsTool && !canRun && !opRunning && (
@@ -366,16 +366,16 @@ export function Acquire({ period, onOpenPeriod }: {
               {!opRunning && !ro && view === 'ready' && (
                 <button className="btn primary" disabled={!cap.start || busy || opRunning}
                         title={cap.start ? undefined : toolMissing} onClick={onStart}>
-                  <Icon name="download" size={20} />开始取数
+                  <Icon name="download" size={20} />开始下载数据
                 </button>
               )}
-              {/* 已取过之后（待核对 / 已并入）仍可重新取这一期——采集与并入台账是两条线，
+              {/* 已取过之后（待核对 / 已并入）仍可重新下载这一期——采集与并入台账是两条线，
                   「并入过台账」不该把采集锁死（2026-10-16 票 01）；但**往期只读**（票 03） */}
               {!opRunning && !ro && (view === 'review' || view === 'merged') && (
                 <button className="btn" disabled={!cap.start || busy}
                         title={cap.start ? '重取只补没下到的文件；已并入台账不受影响' : toolMissing}
                         onClick={onStart}>
-                  <Icon name="download" size={20} />重新取这一期
+                  <Icon name="download" size={20} />重新下载这一期
                 </button>
               )}
               {!opRunning && view === 'blocked' && (
@@ -410,7 +410,7 @@ export function Acquire({ period, onOpenPeriod }: {
           <div className="aq-pf" role="group" aria-label="开始前检查">
             <span className="aq-pf-title">开始前检查</span>
             <span className={`aq-chip ${state.preflight?.browser === 'ok' ? 'ok' : state.preflight?.browser === 'bad' ? 'bad' : ''}`}>
-              <Icon name="play" size={15} />取数专用浏览器 · {pfText('browser', state.preflight?.browser)}
+              <Icon name="play" size={15} />下载数据专用浏览器 · {pfText('browser', state.preflight?.browser)}
             </span>
             <span className={`aq-chip ${state.preflight?.esi === 'ok' ? 'ok' : state.preflight?.esi === 'bad' ? 'bad' : ''}`}>
               <Icon name="seal" size={15} />ESI 网站 · {pfText('site', state.preflight?.esi)}
@@ -424,17 +424,17 @@ export function Acquire({ period, onOpenPeriod }: {
                 : state.preflight?.data?.ok === false ? `还没更新（当前 ${state.preflight?.data?.release || '—'}）` : '没读到'}
             </span>
             <Info label="开始前检查什么" end>
-              <p>检查取数专用的浏览器是否开着、两家网站是否已登录、这一期的数据更新了没有。登录由馆员手动完成；本页不接触、不保存账号密码。检查通过后才能开始。</p>
+              <p>检查下载数据专用的浏览器是否开着、两家网站是否已登录、这一期的数据更新了没有。登录由馆员手动完成；本页不接触、不保存账号密码。检查通过后才能开始。</p>
               <p>「数据期」怎么判：拿网站当前的数据集更新日{state.preflight?.data?.deploy_date ? `（${state.preflight.data.deploy_date}）` : ''}按双月节拍归到期次，和你要取的这一期比；对不上就不发车。</p>
             </Info>
           </div>
 
-          {/* ===== 取数清单（明细，默认收起） ===== */}
+          {/* ===== 下载数据清单（明细，默认收起） ===== */}
           <details className="fold">
-            <summary>取数清单<span className="sm">{totals.groups ?? groups.length ?? 9} 组 · {expected > 0 ? `${expected} 份` : '份数待定'}</span></summary>
+            <summary>下载数据清单<span className="sm">{totals.groups ?? groups.length ?? 9} 组 · {expected > 0 ? `${expected} 份` : '份数待定'}</span></summary>
             <div className="fold-inner">
               {groups.length === 0 ? (
-                <p className="hint m-0">还没有取数记录。</p>
+                <p className="hint m-0">还没有下载数据记录。</p>
               ) : (
                 <>
                   <div className="aq-groups">
@@ -471,7 +471,7 @@ export function Acquire({ period, onOpenPeriod }: {
           )}
 
           {state.updated_at && (
-            <p className="hint mt-12">取数状态最后更新：{state.updated_at}</p>
+            <p className="hint mt-12 aq-stamp">下载数据状态最后更新：{state.updated_at}</p>
           )}
         </>
       )}

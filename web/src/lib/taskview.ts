@@ -10,7 +10,7 @@ export type DialogHome = {
   period: string
   /** 该期已在主台账里（并入的凭证；没并入＝「未到（随发布）」口径） */
   released: boolean
-  /** 取数还缺几件（released 时用于「还缺 N 件」） */
+  /** 下载数据还缺几件（released 时用于「还缺 N 件」） */
   n_missing: number
   steps: HomeStep[]
   stuck: HomeStepKey | 'sign' | ''
@@ -28,7 +28,7 @@ export type TaskView = {
 }
 
 const LABELS: Record<HomeStepKey, string> = {
-  acquire: '取数', merge: '核对并并入', generate: '一键生成',
+  acquire: '下载数据', merge: '核对并并入', generate: '一键生成',
 }
 
 /** 上一期签发状态 → 馆员话术（后端 approval 三态 + 兜底原样）。 */
@@ -55,7 +55,7 @@ export function taskView(h: DialogHome | null): TaskView | null {
   ]
 
   const cta: TaskViewCta | null =
-    h.stuck === 'acquire' ? { label: '去取数台 ▸', kind: 'goto', view: 'acquire' }
+    h.stuck === 'acquire' ? { label: '去下载数据台 ▸', kind: 'goto', view: 'acquire' }
     : h.stuck === 'merge' ? { label: '去核对 ▸', kind: 'goto', view: 'acquire' }
     : h.stuck === 'generate' ? { label: '一键生成 ▸', kind: 'gen' }
     : h.stuck === 'sign' ? { label: '去审核台签单 ▸', kind: 'goto', view: 'review' }

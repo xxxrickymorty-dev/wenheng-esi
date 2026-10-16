@@ -53,7 +53,7 @@ describe('签单三态映射', () => {
   })
 })
 
-describe('取数与审计话术', () => {
+describe('下载数据与审计话术', () => {
   it('组状态五态唯一、未知原样', () => {
     expect(Object.keys(ACQ_GROUP_LABEL)).toEqual(
       ['pending', 'live', 'done', 'fail', 'retrying'],
@@ -66,7 +66,7 @@ describe('取数与审计话术', () => {
 
   it('文件状态与审计结果', () => {
     expect(Object.values(ACQ_FILE_LABEL)).toEqual(
-      ['待取数', '已收到 · 待核验', '核验通过', '未通过'],
+      ['待下载', '已收到 · 待核验', '核验通过', '未通过'],
     )
     expect(acqFileLabel('received')).toBe('已收到 · 待核验')
     expect(Object.values(AUDIT_LABEL)).toEqual(['通过', '待确认', '不通过'])
@@ -84,7 +84,7 @@ describe('errorNote（HTTP 失败 → 馆员话术）', () => {
 
   it('404：body.hint 优先，其次 opts，最后默认', () => {
     expect(errorNote(e(404, { hint: '自定义提示' }), '图册')).toBe('自定义提示')
-    expect(errorNote(e(404), '图册', { n404: '还没取数' })).toBe('还没取数')
+    expect(errorNote(e(404), '图册', { n404: '还没下载数据' })).toBe('还没下载数据')
     expect(errorNote(e(404), '图册')).toBe('这一期还没有图册（可能尚未出稿）。')
   })
 

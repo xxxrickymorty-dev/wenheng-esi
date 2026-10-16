@@ -7,14 +7,14 @@ export type Period = {
   label: string
   signed: boolean
   status: string
-  /** 是否已出过稿（有 out/<期次>/red_slots.json）；取数在途的期次为 false（2026-09-29 补） */
+  /** 是否已出过稿（有 out/<期次>/red_slots.json）；下载数据在途的期次为 false（2026-09-29 补） */
   generated?: boolean
   url: string
 }
 
 /** 单期详情（契约 §2.2 #2）——形状按实测的响应写，别按猜的。
-    2026-09-29 契约变更：steps 改为 {fetch,merge,generate}（取数 → 核对并并入 → 生成，ADR-0004），
-    另加 acquisition 摘要（取数台口径；见契约 §2.2 #26）。 */
+    2026-09-29 契约变更：steps 改为 {fetch,merge,generate}（下载数据 → 核对并并入 → 生成，ADR-0004），
+    另加 acquisition 摘要（下载数据台口径；见契约 §2.2 #26）。 */
 export type PeriodDetail = {
   period: string
   label?: string
@@ -201,7 +201,7 @@ export async function getArchive(period: string): Promise<ArchiveData> {
   return req<ArchiveData>(`/api/periods/${encodeURIComponent(period)}/archive`)
 }
 
-/** 取数台状态（契约 §2.2 #26）：没有取数记录时只有 {period, started:false}。
+/** 下载数据台状态（契约 §2.2 #26）：没有下载数据记录时只有 {period, started:false}。
     形状与 server/acquisition.py 的文档串一致；缺字段按「未就绪」显示，不编数据。 */
 export type AcqFile = { name?: string; label?: string; state?: string }
 export type AcqGroup = {
@@ -240,7 +240,7 @@ export type AcquisitionState = {
   totals?: { groups?: number; expected?: number; verified?: number; downloaded?: number; failed?: number }
   copy?: { state?: string; path?: string; built_at?: string; merged_at?: string; merged_by?: string }
   review?: { sheets?: AcqReviewSheet[] }
-  /** 正在跑的任务（取数/建副本/并入）；闲时没有这个字段 */
+  /** 正在跑的任务（下载数据/建副本/并入）；闲时没有这个字段 */
   op?: { kind?: string; state?: string; note?: string; at?: string }
 }
 
@@ -248,7 +248,7 @@ export async function getAcquisition(period: string): Promise<AcquisitionState> 
   return req<AcquisitionState>(`/api/periods/${encodeURIComponent(period)}/acquisition`)
 }
 
-/** 取数写动作（人触发；服务端拉起任务、进度写回状态文件）。409 表示有任务在跑或前置不满足。 */
+/** 下载数据写动作（人触发；服务端拉起任务、进度写回状态文件）。409 表示有任务在跑或前置不满足。 */
 export type AcquisitionActionResp = {
   ok?: boolean
   started?: boolean
@@ -270,14 +270,14 @@ export async function postAcquisition(period: string, action: string,
     })
 }
 
-/** 开新一期（票 05）：登记期次、落一个只含 preflight 的空状态（**不 scan、不取数**）。
+/** 开新一期（票 05）：登记期次、落一个只含 preflight 的空状态（**不 scan、不下载数据**）。
     期次须是六位 YYYYMM 且月份是双月；不合法时服务端 400。 */
 export async function openPeriod(period: string): Promise<{ ok: boolean; period: string }> {
   return req<{ ok: boolean; period: string }>(
     `/api/periods/${encodeURIComponent(period)}/acquisition/open`, { method: 'POST' })
 }
 
-/** 拉起「取数专用浏览器」（独立 profile + CDP 9222）；已经在跑则 already=true。
+/** 拉起「下载数据专用浏览器」（独立 profile + CDP 9222）；已经在跑则 already=true。
     只负责开窗——登录仍由人（或 Chrome 记住的凭据）完成。 */
 export async function postAcqBrowser(): Promise<{ ok: boolean; started: boolean; already: boolean; note?: string }> {
   return req<{ ok: boolean; started: boolean; already: boolean; note?: string }>(

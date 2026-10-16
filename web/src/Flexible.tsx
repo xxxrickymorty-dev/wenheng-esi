@@ -287,7 +287,7 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
         </h2>
         <p className="fx-lead">
           <strong>灵活报告</strong>是第二条产线：<strong>内部参考件 · 非报送</strong>——
-          按题选学科产出参考件，不取数、不签单；「出报告」才是复刻产线。
+          按题选学科产出参考件，不下载数据、不签单；「出报告」才是复刻产线。
         </p>
         {note && <div className="pending-box mt-12">{note}</div>}
         {period && !note && !intents.length && (

@@ -22,7 +22,7 @@ export const STATE_LABEL: Record<WBState, string> = {
   signed: '已签发',
 }
 
-/** 三步条上每格显示什么（ADR-0004：取数 → 核对并并入 → 生成） */
+/** 三步条上每格显示什么（ADR-0004：下载数据 → 核对并并入 → 生成） */
 export type StepView = { key: 'fetch' | 'merge' | 'generate'; title: string; detail: string; on: boolean; now: boolean }
 
 export type Workbench = {
@@ -44,15 +44,15 @@ function buildSteps(detail: PeriodDetail | null, generated: boolean, period: str
   const known = !!s
   const fetchDetail = !known ? '未就绪'
     : s?.fetch
-      ? (acq?.started ? `取数完成（${acq.verified ?? '—'} / ${acq.expected ?? '—'}）` : '数据已就位')
+      ? (acq?.started ? `下载数据完成（${acq.verified ?? '—'} / ${acq.expected ?? '—'}）` : '数据已就位')
       : acq?.started
-        ? `取数中（${acq.verified ?? '—'} / ${acq.expected ?? '—'}）`
-        : '还没开始取数'
+        ? `下载中（${acq.verified ?? '—'} / ${acq.expected ?? '—'}）`
+        : '还没开始下载数据'
   const mergeDetail = !known ? '未就绪'
     : s?.merge ? '已并入台账'
       : acq?.copy === 'review' ? '待核对（核对副本已建）' : '核对副本还没建'
   return [
-    { key: 'fetch', title: '取数', detail: fetchDetail, on: !!s?.fetch, now: known && !s?.fetch },
+    { key: 'fetch', title: '下载数据', detail: fetchDetail, on: !!s?.fetch, now: known && !s?.fetch },
     { key: 'merge', title: '核对并并入', detail: mergeDetail,
       on: !!s?.merge, now: known && !!s?.fetch && !s?.merge },
     { key: 'generate', title: '一键生成', detail: generated ? '已出稿' : (known ? '约 20 秒出报告' : `${period} 尚未出稿`),
@@ -99,7 +99,7 @@ export function deriveWorkbench(
   demo?: WBState | null,
 ): Workbench {
   const row = list.find((p) => p.period === period) ?? null
-  /* 「已出稿」以列表的 generated 标志为准（取数在途的期次也在列表里，但还没出稿）；
+  /* 「已出稿」以列表的 generated 标志为准（下载数据在途的期次也在列表里，但还没出稿）；
      老形状没有该字段时退回「在列表里＝出过稿」——不编数据。 */
   const generated = row ? (row.generated ?? true) : false
   const signed = row?.status === 'signed' || row?.signed === true
@@ -115,7 +115,7 @@ export function deriveWorkbench(
   } else if (generated) {
     state = 'done'
   } else if (detail?.steps && (!detail.steps.fetch || !detail.steps.merge)) {
-    state = 'empty'         /* 取数没齐，或取完了还没核对并入——都先去取数台 */
+    state = 'empty'         /* 下载数据没齐，或取完了还没核对并入——都先去下载数据台 */
   } else {
     state = 'ready'
   }
@@ -132,7 +132,7 @@ export function deriveWorkbench(
   const steps = buildSteps(detail, generated, period ?? '本期')
 
   const FOCUS: Record<WBState, Pick<Workbench, 'focusTitle' | 'focusSub' | 'focusAction'>> = {
-    empty: { focusTitle: '先去取数，再回来生成', focusSub: '在取数台：下载 → 逐份核验 → 核对并并入台账', focusAction: 'acquire' },
+    empty: { focusTitle: '先去下载数据，再回来生成', focusSub: '在下载数据台：下载 → 逐份核验 → 核对并并入台账', focusAction: 'acquire' },
     ready: { focusTitle: '这一期还差最后一步：生成报告', focusSub: '前两步已就绪 · 约 20 秒出报告', focusAction: 'generate' },
     running: { focusTitle: '正在生成……', focusSub: '可以切到别的页面，进度不会丢', focusAction: 'none' },
     done: { focusTitle: '本期报告已就绪', focusSub: '复核后签单，这一版才会被标记为「可交付」', focusAction: 'sign' },
@@ -141,7 +141,7 @@ export function deriveWorkbench(
     'fail-ledger': { focusTitle: '数据还没齐，这次没有出报告', focusSub: '补上缺的列再重跑', focusAction: 'rerun' },
     'fail-other': { focusTitle: '这次没有出稿', focusSub: '上一版报告仍然有效', focusAction: 'rerun' },
     stalled: { focusTitle: '已停住', focusSub: '已有一段时间没有进展，可以重跑试试', focusAction: 'rerun' },
-    signed: { focusTitle: '本期已签发', focusSub: '重新生成会使签名失效（页面会提示重签）', focusAction: 'open' },
+    signed: { focusTitle: '本期已签发', focusSub: '重新生成会使签名失效', focusAction: 'open' },
   }
 
   return { state, stepsKnown: !!detail, steps, note: notes, ...FOCUS[state] }

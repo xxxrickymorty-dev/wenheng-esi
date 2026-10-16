@@ -285,20 +285,20 @@ def main():
             steps = page.eval_on_selector_all(
                 "nav[aria-label='出报告步骤'] a, nav[aria-label='出报告步骤'] span",
                 "els => els.map(e => e.innerText.trim())")
-            i_take = next((i for i, s in enumerate(steps) if "取数" in s), -1)
+            i_take = next((i for i, s in enumerate(steps) if "下载数据" in s), -1)
             i_gen = next((i for i, s in enumerate(steps) if "生成" in s), -1)
-            check("出报告步骤条：① 取数并核验 在 ③ 生成初稿 之前",
+            check("出报告步骤条：① 下载数据核验 在 ③ 生成初稿 之前",
                   i_take >= 0 and i_gen >= 0 and i_take < i_gen, str(steps[:4]))
             # 采集/并入台账解耦：**当期**（已并入）仍要有整期重取入口（2026-10-16 票 01）
             has_refetch = page.eval_on_selector_all(
-                "button", "els => els.some(e => /重新取这一期/.test(e.innerText))")
+                "button", "els => els.some(e => /重新下载这一期/.test(e.innerText))")
             check("当期（已并入）仍有整期重取入口（采集与并入台账解耦）",
                   has_refetch, f"found={has_refetch}")
             # 往期档案只读（票 03）：不再有取数入口，且写明缘由
             page.goto(BASE + "/app/?view=acquire&period=202605", wait_until="domcontentloaded")
             page.wait_for_selector(".aq-head", timeout=20000)
             ro_refetch = page.eval_on_selector_all(
-                "button", "els => els.some(e => /重新取这一期|开始取数/.test(e.innerText))")
+                "button", "els => els.some(e => /重新下载这一期|开始下载数据/.test(e.innerText))")
             ro_text = page.eval_on_selector_all("body", "els => els.map(e => e.textContent).join('')")
             check("往期档案只读：没有取数入口，且写明缘由",
                   (not ro_refetch) and "往期档案只读" in ro_text,
@@ -315,13 +315,13 @@ def main():
                   f"head={head_txt[:70]!r} focus={focus_txt[:40]!r}")
             txt = page.inner_text("main")
             check("取数台：期次数据状态与开始前检查都在",
-                  "自动取数台" in txt and "开始前检查" in txt, "")
+                  "自动下载数据台" in txt and "开始前检查" in txt, "")
             check("开始前检查四灯齐全（浏览器 / ESI / InCites / 数据期）",
-                  all(s in txt for s in ("取数专用浏览器", "ESI 网站", "InCites 网站", "数据期")), "")
-            page.locator("details.fold summary", has_text="取数清单").first.click()
+                  all(s in txt for s in ("下载数据专用浏览器", "ESI 网站", "InCites 网站", "数据期")), "")
+            page.locator("details.fold summary", has_text="下载数据清单").first.click()
             page.wait_for_timeout(300)
             n_groups = page.locator(".aq-g").count()
-            has_empty = "还没有取数记录" in page.inner_text("main")
+            has_empty = "还没有下载数据记录" in page.inner_text("main")
             check("取数台：清单展开（有组卡，或如实说没有记录）", n_groups > 0 or has_empty,
                   f"groups={n_groups}")
             page.goto(BASE + "/app/?period=202607", wait_until="domcontentloaded")
@@ -387,7 +387,7 @@ def main():
             page.wait_for_timeout(900)
             txt = page.inner_text("main")
             check("生成台：未出稿期次引导去取数（不假装已生成）",
-                  "先去取数" in txt and "数据还没取齐" in txt, txt[:30].replace("\n", " "))
+                  "先去下载数据" in txt and "数据还没取齐" in txt, txt[:30].replace("\n", " "))
         except Exception as e:                                          # noqa: BLE001
             check("未出稿取数期次回归（X2）", False, str(e)[:100])
         finally:
@@ -412,9 +412,9 @@ def main():
         try:
             operator.wait_for_selector(".ws-nav", timeout=10000)     # 2026-10-15 新壳：导航进常驻左栏
             nav_text = operator.inner_text(".ws-nav")
-            check("操作员导航无「取数」", "取数" not in nav_text, nav_text.replace("\n", " "))
+            check("操作员导航无「下载数据」", "下载数据" not in nav_text, nav_text.replace("\n", " "))
         except Exception as e:                                       # noqa: BLE001
-            check("操作员导航无「取数」", False, str(e)[:80])
+            check("操作员导航无「下载数据」", False, str(e)[:80])
 
         # 隐藏屏直开 → 「操作员不可见」空态（前端守卫）
         operator.goto(BASE + "/app/?view=ledger", wait_until="domcontentloaded")

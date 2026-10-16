@@ -30,7 +30,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
     let alive = true
     getAcquisition(period)
       .then((a) => { if (alive) setAcq(a) })
-      .catch(() => { if (alive) setAcq(null) })     // 没有取数记录就整块不显示（不占屏）
+      .catch(() => { if (alive) setAcq(null) })     // 没有下载数据记录就整块不显示（不占屏）
     return () => { alive = false }
   }, [period])
 
@@ -105,11 +105,11 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
             </details>
           )}
 
-          {/* ===== 00 取数记录（X3）：下载与并入的留痕；没有取数记录时整块不显示 ===== */}
+          {/* ===== 00 下载数据记录（X3）：下载与并入的留痕；没有下载数据记录时整块不显示 ===== */}
           {acq?.started && (
             <details className="fold">
               <summary>
-                取数记录 · 下载与并入
+                下载数据记录 · 下载与并入
                 <span className="sm">
                   核验 {acq.totals?.verified ?? 0} / {acq.totals?.expected ?? '—'}
                   {acq.copy?.state === 'merged' ? ' · 已并入台账' : acq.copy?.state === 'review' ? ' · 待核对' : ''}
@@ -134,10 +134,10 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                     ? `已并入主台账${acq.copy.merged_at ? `：${acq.copy.merged_at}` : ''}`
                       + `${acq.copy.merged_by ? ` · 操作人：${acq.copy.merged_by}` : ''}`
                       + (acq.copy.merged_at ? '（写前有备份；写后逐格核对过）'
-                        : '（本期并入早于取数留痕，未记时刻与操作人）')
+                        : '（本期并入早于下载数据留痕，未记时刻与操作人）')
                     : acq.copy?.state === 'review'
                       ? '已建好当期核对副本，还没并入主台账——核对通过后才落笔。'
-                      : '还没取数，也没有并入记录。'}
+                      : '还没下载数据，也没有并入记录。'}
                 </p>
               </div>
             </details>

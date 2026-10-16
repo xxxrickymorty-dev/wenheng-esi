@@ -20,7 +20,7 @@ function play(events: RunEvent[], from: RunState = IDLE_STATE) {
 }
 
 const attach: RunEvent = { type: 'attach', jobId: 'j1', requestedPeriod: '202607' }
-const okSnapshot: RunEvent = { type: 'snapshot', status: 'running', outPeriod: null, last: '取数：第 3 组' }
+const okSnapshot: RunEvent = { type: 'snapshot', status: 'running', outPeriod: null, last: '下载数据：第 3 组' }
 
 describe('进度行解析', () => {
   it('name+detail 拼人话；单字段原样；非 JSON 不丢信息', () => {

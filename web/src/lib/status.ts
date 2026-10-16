@@ -1,4 +1,4 @@
-/* 馆员话术的**唯一来源**：任务十态 / 签单三态 / 取数与核验 / 审计 × 错误提示。
+/* 馆员话术的**唯一来源**：任务十态 / 签单三态 / 下载数据与核验 / 审计 × 错误提示。
    词表出处：GLOSSARY.md；UX.md 第十节。
    页面一律从这里取词：状态用 `taskLabel`/`approvalLabel`/`acqGroupLabel`/…，
    HTTP 失败用 `errorNote`，站内视图链接用 `appHref`——不许再各写一份 Record 或三目。 */
@@ -64,9 +64,9 @@ export function approvalLabel(status?: string | null): string {
   return isApprovalState(status) ? APPROVAL_LABEL[status] : status
 }
 
-/* ---------------------------------------------------------------- 取数与核验 */
+/* ---------------------------------------------------------------- 下载数据与核验 */
 
-/** 取数组的状态（server/acquisition_state.py 的组级状态）。 */
+/** 下载数据组的状态（server/acquisition_state.py 的组级状态）。 */
 export const ACQ_GROUP_LABEL: Record<string, string> = {
   pending: '未开始',
   live: '进行中',
@@ -75,9 +75,9 @@ export const ACQ_GROUP_LABEL: Record<string, string> = {
   retrying: '重新核验中',
 }
 
-/** 取数单文件的状态。 */
+/** 下载数据单文件的状态。 */
 export const ACQ_FILE_LABEL: Record<string, string> = {
-  pending: '待取数',
+  pending: '待下载',
   received: '已收到 · 待核验',
   ok: '核验通过',
   bad: '未通过',
