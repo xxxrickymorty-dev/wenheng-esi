@@ -1056,8 +1056,23 @@ async def api_acq_copy(request: Request, period: str):
 @app.post("/api/periods/{period}/acquisition/merge")
 @admin_route
 async def api_acq_merge(request: Request, period: str):
-    """把已核对副本并入主台账（写前备份 + 写后五查）。"""
-    return _acq_spawn(period, "merge")
+    """把已核对副本并入主台账（写前备份 + 写后五查）。
+
+    并入是**全系统唯一会改台账的动作**，守卫用**数据条件**、不靠界面在哪个视图（2026-10-16 票 02）：
+    副本状态不是「待核对」就直接 409 说清原因（已并入 → "无需再并"），不再起一个注定被拒的任务。
+    """
+    if not re.fullmatch(r"\d{6}", period or ""):
+        return _period_missing()
+    st = acquisition.load(period) or {}
+    copy_state = (st.get("copy") or {}).get("state")
+    if copy_state != "review":
+        if copy_state == "merged":
+            merged_at = (st.get("copy") or {}).get("merged_at") or "时间未记"
+            msg = f"本期已并入台账（{merged_at}），无需再并。"
+        else:
+            msg = "还没有本期核对副本——先在取数台取数并核对，再并入。"
+        return JSONResponse({"error": msg, "state": copy_state}, status_code=409)
+    return _acq_spawn(period, "merge", ["--by", current_user(request) or ""])
 
 
 @app.post("/api/periods/{period}/acquisition/preflight")

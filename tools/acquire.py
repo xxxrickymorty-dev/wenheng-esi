@@ -128,6 +128,9 @@ def cmd_merge(args) -> int:
     if not copy_path.is_absolute():
         copy_path = REPO / copy_path
     copy_state = (st.get("copy") or {}).get("state")
+    if copy_state == "merged":
+        merged_at = (st.get("copy") or {}).get("merged_at") or "时间未记"
+        return _refuse(f"本期已并入台账（{merged_at}），无需再并；要重并，请先重新取数并核对。")
     if copy_state != "review":
         return _refuse(f"副本状态是「{copy_state}」，只有「待核对（review）」的副本能并入。")
     if not copy_path.exists():
@@ -164,7 +167,8 @@ def cmd_merge(args) -> int:
         print(f"  （备份可回退：{bak}）")
         return 1
     st = A.load_state(period) or st
-    st["copy"] = {**(st.get("copy") or {}), "state": "merged", "merged_at": _now(), "verify": checks}
+    st["copy"] = {**(st.get("copy") or {}), "state": "merged", "merged_at": _now(),
+                  "merged_by": (args.by or ""), "verify": checks}
     st["op"] = {"kind": "merge", "state": "done",
                 "note": f"已并入（新增 {checks.get('added_cells', 0)} 格 · 五查全过）", "at": _now()}
     A.write_state(period, st)
@@ -317,6 +321,7 @@ def main() -> int:
     p3.add_argument("--snapshot", default=None)
     p3.add_argument("--esi-root", default=None)
     p3.add_argument("--dry", action="store_true", help="只查守卫与计划，不落笔")
+    p3.add_argument("--by", default="", help="触发人（登录用户名；服务端传，用于留痕）")
     p3.set_defaults(fn=cmd_merge)
 
     p4 = sub.add_parser("preflight", help="开始前检查（浏览器连接 / 两家网站登录）")
