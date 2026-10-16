@@ -156,7 +156,8 @@ a{color:inherit}
 .focus{margin-top:18px;background:var(--card);border:1px solid var(--zhu);
   border-left:5px solid var(--zhu);border-radius:12px;padding:22px 26px;
   display:flex;align-items:center;gap:24px;flex-wrap:wrap}
-.focus .big{font-size:19px;font-weight:600}
+/* 结论句＝本屏主角（taste P1，2026-10-16）：工作台/取数台共用——升 display 级（28–32 取 30） */
+.focus .big{font-size:30px;font-family:var(--serif);font-weight:600;letter-spacing:.01em;line-height:1.35}
 .focus .sub{color:var(--ink-2);font-size:15px;margin-top:4px}
 .focus .cta{margin-left:auto;display:flex;gap:12px;align-items:center}
 .btn{transition:filter .15s,background .15s,border-color .15s,color .15s;display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:9px;
@@ -595,6 +596,8 @@ a{color:inherit}
 .fx-empty p{margin:0;font-size:14px;line-height:1.9}
 .fx-md{margin-top:16px;border-top:1px solid var(--line);padding-top:16px;font-size:16.5px}
 .fx-md h2{font-size:21px;margin-top:6px}
+/* 报告题＝本屏主角（taste P1）：升 display 级、两行内（静态稿 .fx-md>h2:first-of-type 已示范） */
+.fx-md>h2:first-of-type{font-size:27px;letter-spacing:.015em;line-height:1.25}
 .fx-md h3{font-size:18px;margin:22px 0 8px;padding-left:10px;border-left:3px solid var(--zhu)}
 .fx-md p{margin:8px 0;line-height:1.85}
 .fx-md blockquote{margin:10px 0;padding:10px 15px;background:var(--gold-soft);
@@ -610,7 +613,9 @@ a{color:inherit}
 .fx-md table{width:100%;border-collapse:collapse;font-size:15px;margin:10px 0}
 .fx-md th,.fx-md td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line-2)}
 .fx-md th{background:var(--panel);color:var(--ink-3);font-size:13.5px}
-.fx-md table.dense td:first-child{width:64px;color:var(--ink-3);font-family:var(--mono)}
+/* 数据表标签去等宽（taste：等宽只留给真代码/真键名；数字对齐用等宽数字） */
+.fx-md table.dense td:first-child{width:64px;color:var(--ink-3);font-family:var(--sans);font-variant-numeric:tabular-nums}
+.fx-md table.dense td{font-variant-numeric:tabular-nums}
 .fx-md figure{margin:16px 0;text-align:center}
 .fx-md img{max-width:100%;border:1px solid var(--line);border-radius:var(--r-sm);cursor:zoom-in}
 .fx-md figcaption{font-size:13.5px;color:var(--ink-3);margin-top:6px}
@@ -621,8 +626,9 @@ a{color:inherit}
 .fx-md .figrow figure{margin:0}
 .fx-md .figrow img{width:100%;height:auto}
 @media (max-width:900px){.fx-md .figrow{grid-template-columns:1fr}}
-/* 「关于本稿」尾巴块（2026-10-14 rick）：本稿如何产生 + 数据来源链合成一块，不与正文混排 */
-.fx-md .fx-about{margin-top:18px;border:1px dashed var(--line);border-radius:var(--r-sm);background:var(--panel)}
+/* 「关于本稿」尾巴块（2026-10-14 rick）：本稿如何产生 + 数据来源链合成一块，不与正文混排
+   （taste P1：虚线框→色阶块，细线/虚线只留给真表格与表单——静态稿已示范） */
+.fx-md .fx-about{margin-top:18px;border-radius:var(--r-sm);background:var(--panel)}
 .fx-md .fx-about>summary{cursor:pointer;padding:11px 15px;font-size:14px;color:var(--ink-2);list-style:none}
 .fx-md .fx-about>summary::-webkit-details-marker{display:none}
 .fx-md .fx-about>summary::before{content:"▸";color:var(--zhu);margin-right:8px}
@@ -871,9 +877,9 @@ a{color:inherit}
 /* 列表行「选择」按钮：行点击是鼠标便利，这个按钮是它的键盘等价物 */
 .period-row{cursor:pointer}
 .rowbtn{border:0;background:none;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
-/* 区段标题（原内联 flex 布局）：默认 19px，大标题加 .h-lg */
+/* 区段标题（原内联 flex 布局）：默认 19px，大标题加 .h-lg（页题；taste P1 22→24 微升） */
 .h-sec{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:19px}
-.h-sec.h-lg{font-size:22px}
+.h-sec.h-lg{font-size:24px}
 .hint-num{font-weight:400;font-size:14px}
 /* 第二批（2026-10-01）：卡片内边距 / 文本色 / 字号 / 宽度等高频静态样式 */
 .pad-card{padding:20px 22px}.pad-card-lg{padding:22px 24px}.pad-card-x{padding:20px 24px}
