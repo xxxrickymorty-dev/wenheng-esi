@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>陈列馆 · 优化稿（绿主调）— 静态稿</title>
+<style>
+  /* ============================================================
+     陈列馆 · 优化稿 —— 在老陈列馆（LibraryHome）上优化，不是新页
+     沿用老站七段骨架：首页 / 记录条 / 问文衡 / 阅览室 / 馆藏 /
+     安全预览 / 科目目录 / 关于本册。实拍照片主视觉保留。
+     三处改动（rick 2026-10-17）：
+       ① 主调转绿：绿为主场，纸为文场，墨为字
+       ② 文案按《全站-冗余收敛对照稿》定词表，机制语清零
+       ③ 删「走进 3D 图书馆」入口；封面改刊物式（不借用工作台
+          的翻牌/水位/橡皮戳/钤印四件——那四件属工作台语言）
+     定词表（全站只用表内词）：
+       取数（机器）／取数核验（人的步骤）
+       一键生成（机器）／生成初稿（人的步骤）
+       5 站 5 屏：取数核验 · 选章节 · 预测选模 · 生成初稿 · 核验定稿
+       状态词只两套：任务（进行中/已完成/未开始）
+                    ＋ 签发（未签发/已签发/签发已失效）
+       动作叫「签单」、状态叫「签发」；「签名」只指数字签名
+     判据：首屏≤180 字 · 主动作≤1 · hint≤24 字进 ⓘ · 无技术术语
+     游客投影红线：只出封面／目录／名词解释，不出正文数值。
+     目录与名词解释为版式样例，上线逐字接 data.js 白名单。
+     零渐变、零投影、零玻璃、零圆角面板。
+     ============================================================ */
+  :root{
+    /* 绿 · 主场 */
+    --g-deep:#14342A;  --g:#1F5540;  --g-mid:#2F7A58;
+    --g-pale:#D6E6DB;  --g-mist:#EAF2EC;
+    /* 纸 · 文场 */
+    --paper:#F4F1E8;   --paper-2:#E8E3D4;  --paper-3:#D3CDBA;
+    /* 墨 · 字 */
+    --ink:#12201A;     --ink-2:#3F5248;    --ink-3:#74857B;
+    --red:#B23A2B;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font:15px/1.8 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--g-mid);color:#fff}
+
+  /* ───────── 顶栏 ───────── */
+  .bar{position:sticky;top:0;z-index:60;background:var(--g-deep);height:62px;
+    display:flex;align-items:center;gap:26px;padding:0 36px}
+  .bar .brand{display:flex;align-items:center;gap:12px}
+  .bar .brand .wm{font-family:var(--serif);font-size:22px;letter-spacing:.18em;color:#EAF2EC}
+  .bar .brand .dv{width:1px;height:22px;background:rgba(234,242,236,.34)}
+  .bar .brand .lb{font-family:var(--kai);font-size:13px;letter-spacing:.22em;color:#EAF2EC}
+  .bar .brand .lb small{display:block;font-family:var(--sans);font-size:8.5px;
+    letter-spacing:.22em;color:rgba(234,242,236,.5);margin-top:1px}
+  .bar nav{display:flex;gap:22px;font-family:var(--kai);font-size:13px;letter-spacing:.16em;
+    color:rgba(234,242,236,.72);margin-left:12px}
+  .bar nav a.on{color:#EAF2EC;box-shadow:inset 0 -2px 0 var(--g-mid)}
+  .bar .r{margin-left:auto;display:flex;align-items:center;gap:16px;
+    font-family:var(--kai);font-size:11.5px;letter-spacing:.22em;color:rgba(234,242,236,.55)}
+
+  /* ───────── ① 首页：实拍照片＋绿幕 ───────── */
+  .hero{position:relative;min-height:76vh;display:flex;align-items:flex-end;
+    overflow:hidden;background:var(--g-deep)}
+  .hero .photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  /* 绿幕：把照片压进绿色主调（照片置字需压暗，属品牌例外） */
+  .hero .scrim{position:absolute;inset:0;background:
+    linear-gradient(100deg,rgba(20,52,42,.94) 0%,rgba(20,52,42,.72) 38%,rgba(20,52,42,.28) 72%,rgba(20,52,42,.5) 100%),
+    linear-gradient(0deg,rgba(20,52,42,.88) 0%,rgba(20,52,42,0) 52%)}
+  .hero .in{position:relative;z-index:2;width:100%;max-width:1220px;
+    margin:0 auto;padding:112px 36px 92px}
+  .hero .kicker{font-family:var(--kai);font-size:11px;letter-spacing:.46em;color:rgba(234,242,236,.62)}
+  .hero h1{font-family:var(--serif);font-size:clamp(46px,7vw,102px);line-height:1.02;
+    letter-spacing:.02em;color:#EAF2EC;margin-top:18px}
+  .hero h1 em{font-style:normal;color:var(--g-pale)}
+  .hero .sub{font-family:var(--kai);font-size:clamp(15px,1.7vw,19px);line-height:1.95;
+    color:rgba(234,242,236,.86);margin-top:22px;max-width:40ch}
+  .hero .facts{font-family:var(--kai);font-size:13px;line-height:2.1;letter-spacing:.12em;
+    color:rgba(234,242,236,.66);margin-top:18px;max-width:52ch}
+  .hero .facts b{font-family:var(--serif);color:var(--g-pale);font-size:16px;
+    letter-spacing:.04em;font-variant-numeric:tabular-nums}
+  /* 主动作只 1 个 */
+  .hero .acts{margin-top:36px;display:flex;align-items:center;gap:26px;flex-wrap:wrap}
+  .btn{background:var(--g-mid);color:#08201A;border:0;padding:16px 38px;font-size:16px;
+    letter-spacing:.16em;font-weight:700}
+  .btn:hover{background:#3A9069}
+  .hero .ghost{font-family:var(--kai);font-size:13.5px;letter-spacing:.2em;
+    color:rgba(234,242,236,.82);box-shadow:inset 0 -1px 0 rgba(234,242,236,.42);padding-bottom:4px}
+  .hero .cap{position:absolute;right:36px;bottom:30px;z-index:2;text-align:right;
+    font-family:var(--kai);font-size:11px;letter-spacing:.28em;color:rgba(234,242,236,.55)}
+  .hero .cap b{display:block;font-family:var(--serif);font-size:12px;letter-spacing:.2em;
+    color:rgba(234,242,236,.78);margin-bottom:3px}
+
+  /* ───────── 记录条 ───────── */
+  .strip{background:var(--g);color:var(--g-pale);padding:15px 36px;
+    display:flex;justify-content:space-between;gap:22px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11.5px;letter-spacing:.32em}
+  .strip b{font-family:var(--serif);letter-spacing:.18em;color:#EAF2EC}
+
+  /* ───────── ② 问文衡 ───────── */
+  .ask{background:var(--g-mist);padding:88px 36px}
+  .ct{max-width:1220px;margin:0 auto}
+  .ask .grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:56px;align-items:center}
+  .kik{font-family:var(--kai);font-size:11px;letter-spacing:.46em;color:var(--ink-3)}
+  .ask h2{font-family:var(--serif);font-size:clamp(30px,4.2vw,52px);line-height:1.14;
+    letter-spacing:.03em;margin-top:13px}
+  .ask .deck{font-family:var(--kai);font-size:15px;line-height:2.05;color:var(--ink-2);
+    margin-top:16px;max-width:34ch}
+  .askform{display:flex;align-items:stretch;background:var(--paper);
+    border:1px solid var(--paper-3)}
+  .askform input{flex:1;min-width:0;border:0;background:transparent;padding:18px 22px;
+    font-family:var(--kai);font-size:15px;letter-spacing:.08em;color:var(--ink);outline:none}
+  .askform input::placeholder{color:var(--ink-3)}
+  .askform button{background:var(--g);color:var(--g-pale);border:0;padding:0 28px;
+    font-family:var(--kai);font-size:14px;letter-spacing:.16em;white-space:nowrap}
+  .askform button:hover{background:var(--g-deep)}
+  .chips{margin-top:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .chips .lb{font-family:var(--kai);font-size:11px;letter-spacing:.32em;color:var(--ink-3)}
+  .chips a{font-family:var(--kai);font-size:12.5px;letter-spacing:.12em;color:var(--ink-2);
+    padding:7px 15px;border:1px solid var(--paper-3);background:var(--paper)}
+  .chips a:hover{border-color:var(--g-mid);color:var(--g)}
+
+  /* ───────── ③ 阅览室 ───────── */
+  .room{background:var(--paper);padding:92px 36px}
+  .sec-h{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap}
+  .sec-h h2{font-family:var(--serif);font-size:clamp(30px,4.2vw,52px);line-height:1.12;
+    letter-spacing:.03em;margin-top:13px}
+  .sec-h .note{font-family:var(--kai);font-size:13px;line-height:2;color:var(--ink-3);max-width:32ch}
+  .feats{margin-top:52px;display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+  .ft{padding:0 26px 0 0}
+  .ft:not(:first-child){padding-left:26px;border-left:1px solid var(--paper-3)}
+  .ft .ic{width:34px;height:34px;color:var(--g-mid)}
+  .ft .ic svg{width:100%;height:100%;display:block}
+  .ft .t{font-family:var(--serif);font-size:19px;letter-spacing:.05em;margin-top:16px}
+  .ft .d{font-family:var(--kai);font-size:12.5px;line-height:1.95;color:var(--ink-2);margin-top:8px}
+
+  /* ───────── ④ 馆藏（刊物式封面） ───────── */
+  .shelf{background:var(--g-deep);color:#EAF2EC;padding:96px 36px 100px}
+  .shelf .sec-h h2{color:#EAF2EC}
+  .shelf .sec-h .note{color:rgba(234,242,236,.66)}
+  .shelf .kik{color:rgba(234,242,236,.55)}
+  .books{margin-top:56px;display:grid;grid-template-columns:repeat(4,1fr);gap:28px;align-items:end}
+  .bw{position:relative}
+  .bw::before{content:"";position:absolute;left:9px;right:-9px;top:11px;bottom:-11px;
+    background:var(--g);opacity:.5;z-index:0}
+  .bw::after{content:"";position:absolute;left:4px;right:-4px;top:5px;bottom:-5px;
+    background:var(--g);opacity:.82;z-index:0}
+  /* 刊物式封面：平色场＋结构线＋期号做锚；不用工作台四件 */
+  .cover{position:relative;z-index:2;aspect-ratio:3/4;padding:22px 22px 20px;
+    display:flex;flex-direction:column;border:1px solid rgba(234,242,236,.18)}
+  .cover.v1{background:var(--g)}
+  .cover.v2{background:var(--g-mid)}
+  .cover.v3{background:#1A4634}
+  .cover.v4{background:var(--g-deep)}
+  .cover .c-top{display:flex;justify-content:space-between;align-items:baseline;
+    font-family:var(--kai);font-size:9px;letter-spacing:.36em;color:rgba(234,242,236,.66)}
+  .cover .rule{height:1px;background:rgba(234,242,236,.36);margin:12px 0 0}
+  .cover .rule.thick{height:3px;background:rgba(234,242,236,.82);margin-top:4px}
+  .cover .ser{font-family:var(--kai);font-size:10px;letter-spacing:.28em;
+    color:rgba(234,242,236,.72);margin-top:16px;line-height:1.85}
+  .cover .num{font-family:var(--serif);font-size:clamp(30px,3.4vw,42px);line-height:.98;
+    letter-spacing:.01em;color:#EAF2EC;margin-top:10px;font-variant-numeric:tabular-nums}
+  .cover .iss{font-family:var(--kai);font-size:11px;letter-spacing:.22em;
+    color:rgba(234,242,236,.72);margin-top:8px}
+  .cover .bot{margin-top:auto;padding-top:14px;border-top:1px solid rgba(234,242,236,.3);
+    display:flex;justify-content:space-between;font-family:var(--kai);font-size:8.5px;
+    letter-spacing:.32em;color:rgba(234,242,236,.6)}
+
+  .bmeta{position:relative;z-index:2;margin-top:18px}
+  .bmeta .no{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;
+    color:rgba(234,242,236,.55)}
+  .bmeta .nm{font-family:var(--serif);font-size:15px;letter-spacing:.05em;margin-top:5px;color:#EAF2EC}
+  .bmeta .go{display:inline-block;margin-top:9px;font-family:var(--kai);font-size:11.5px;
+    letter-spacing:.22em;color:var(--g-pale);box-shadow:inset 0 -1px 0 rgba(214,230,219,.5);padding-bottom:3px}
+  .shelffoot{margin-top:46px;display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11px;letter-spacing:.32em;color:rgba(234,242,236,.55)}
+  .shelffoot b{color:var(--g-pale);font-family:var(--serif);letter-spacing:.18em}
+
+  /* ───────── ⑤ 安全预览 ───────── */
+  .safe{background:var(--g);color:#EAF2EC;padding:88px 36px}
+  .safe .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.85fr);gap:56px;align-items:center}
+  .safe h2{font-family:var(--serif);font-size:clamp(28px,3.8vw,46px);line-height:1.18;
+    letter-spacing:.03em;margin-top:13px;color:#EAF2EC}
+  .safe .kik{color:rgba(234,242,236,.55)}
+  .safe .deck{font-family:var(--kai);font-size:14.5px;line-height:2.05;
+    color:rgba(234,242,236,.82);margin-top:16px;max-width:34ch}
+  .safebox{background:var(--g-deep);border:1px solid rgba(234,242,236,.2);padding:26px 28px}
+  .safebox .h{font-family:var(--kai);font-size:10.5px;letter-spacing:.36em;
+    color:rgba(234,242,236,.55);border-bottom:1px solid rgba(234,242,236,.2);padding-bottom:11px}
+  .safebox ul{list-style:none;margin-top:16px}
+  .safebox li{display:flex;gap:12px;align-items:baseline;padding:9px 0;
+    font-family:var(--kai);font-size:13px;letter-spacing:.1em;color:rgba(234,242,236,.86)}
+  .safebox li .m{width:6px;height:6px;background:var(--g-pale);flex:none}
+  .safebox li.no{color:rgba(234,242,236,.5)}
+  .safebox li.no .m{background:rgba(234,242,236,.32)}
+
+  /* ───────── ⑥ 科目目录＋名词解释（用定词表） ───────── */
+  .index{background:var(--paper);padding:92px 36px}
+  .idx-grid{margin-top:52px;display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:0;
+    border:1px solid var(--paper-3)}
+  .toc{padding:34px 34px 32px;border-right:1px solid var(--paper-3)}
+  .gl{padding:34px 38px 32px;background:var(--g-mist)}
+  .panel-h{display:flex;justify-content:space-between;align-items:baseline;gap:14px;
+    border-bottom:1px solid var(--paper-3);padding-bottom:12px}
+  .panel-h b{font-family:var(--serif);font-size:17px;letter-spacing:.12em}
+  .panel-h span{font-family:var(--kai);font-size:10.5px;letter-spacing:.32em;color:var(--ink-3)}
+  .toc ol{list-style:none;margin-top:8px}
+  .toc li{display:flex;align-items:baseline;gap:13px;padding:10px 0;
+    border-bottom:1px solid var(--paper-2);font-family:var(--serif);font-size:15px}
+  .toc li:last-child{border-bottom:0}
+  .toc li .n{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;color:var(--ink-3);width:24px;flex:none}
+  .toc li .t{flex:1;letter-spacing:.03em}
+  .toc li .p{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;color:var(--ink-3)}
+  .gl .panel-h{border-bottom-color:var(--paper-3)}
+  .gl .ent{padding:15px 0;border-bottom:1px solid var(--paper-3)}
+  .gl .ent:last-child{border-bottom:0}
+  .gl .term{font-family:var(--serif);font-size:16.5px;font-weight:700;letter-spacing:.06em;
+    display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .gl .term .tag{font-family:var(--sans);font-size:9.5px;letter-spacing:.22em;
+    padding:2px 9px;background:var(--g-pale);color:var(--g);font-weight:600}
+  .gl .term .tag.mac{background:var(--g);color:var(--g-pale)}
+  .gl .def{font-family:var(--kai);font-size:13.5px;line-height:2.05;color:var(--ink-2);margin-top:7px}
+  .gl .use{font-family:var(--kai);font-size:11.5px;letter-spacing:.14em;color:var(--ink-3);
+    margin-top:6px;display:flex;align-items:center;gap:8px}
+  .gl .use .i{display:inline-grid;place-items:center;width:15px;height:15px;
+    border:1px solid var(--paper-3);border-radius:50%;font-family:var(--serif);font-size:9px;
+    color:var(--ink-3);flex:none}
+
+  /* ───────── ⑦ 关于本册 ───────── */
+  .about{background:var(--g-deep);color:#EAF2EC;padding:76px 36px 60px}
+  .about .in{max-width:1220px;margin:0 auto;display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px}
+  .about h2{font-family:var(--serif);font-size:clamp(26px,3.4vw,42px);line-height:1.2;
+    letter-spacing:.03em;margin-top:13px;color:#EAF2EC}
+  .about .kik{color:rgba(234,242,236,.55)}
+  .about .deck{font-family:var(--kai);font-size:14px;line-height:2.05;
+    color:rgba(234,242,236,.8);margin-top:16px;max-width:36ch}
+  .facts2{display:grid;grid-template-columns:1fr 1fr;gap:22px 32px}
+  .facts2 .f{border-top:1px solid rgba(234,242,236,.24);padding-top:13px}
+  .facts2 .k{font-family:var(--kai);font-size:10.5px;letter-spacing:.36em;color:rgba(234,242,236,.55)}
+  .facts2 .v{font-family:var(--serif);font-size:21px;letter-spacing:.04em;margin-top:7px;
+    color:var(--g-pale);font-variant-numeric:tabular-nums}
+  .facts2 .v.sm{font-size:15px;letter-spacing:.12em;font-family:var(--kai)}
+
+  /* ───────── 页脚 ───────── */
+  .foot{background:var(--ink);color:rgba(234,242,236,.58);padding:26px 36px;
+    display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11.5px;letter-spacing:.32em}
+  .foot b{font-family:var(--serif);font-size:13px;letter-spacing:.22em;color:#EAF2EC;display:block}
+  .foot .warn{color:rgba(234,242,236,.5)}
+
+  /* ───────── 动效：层次（纯 CSS，无 3D） ───────── */
+  @keyframes rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+  .hero .kicker{animation:rise .8s cubic-bezier(.2,.8,.2,1) both}
+  .hero h1{animation:rise .9s cubic-bezier(.2,.8,.2,1) .08s both}
+  .hero .sub{animation:rise .9s cubic-bezier(.2,.8,.2,1) .2s both}
+  .hero .facts{animation:rise .9s cubic-bezier(.2,.8,.2,1) .3s both}
+  .hero .acts{animation:rise .9s cubic-bezier(.2,.8,.2,1) .4s both}
+
+  @supports (animation-timeline: view()){
+    .bw,.ft,.safebox,.toc,.gl{animation:rise linear both;
+      animation-timeline:view();animation-range:entry 0% cover 62%}
+    .bw:nth-child(2){animation-range:entry 4% cover 64%}
+    .bw:nth-child(3){animation-range:entry 8% cover 66%}
+    .bw:nth-child(4){animation-range:entry 12% cover 68%}
+    .sec-h h2,.ask h2,.safe h2,.about h2{animation:rise linear both;
+      animation-timeline:view();animation-range:entry 0% cover 58%}
+  }
+  @supports not (animation-timeline: view()){
+    .bw,.ft,.safebox,.toc,.gl,.sec-h h2,.ask h2,.safe h2,.about h2{
+      animation:rise .8s cubic-bezier(.2,.8,.2,1) both}
+  }
+
+  .cover{transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+  .bw:hover .cover{transform:translateY(-7px)}
+  .bw:hover::before{opacity:.28}
+  .btn:hover{transform:translateY(2px)}
+
+  @media (prefers-reduced-motion: reduce){
+    *,::before,::after{animation:none!important;transition:none!important}
+    html{scroll-behavior:auto}
+    .bw:hover .cover{transform:none}
+    .btn:hover{transform:none}
+  }
+
+  /* ───────── 响应式 ───────── */
+  @media (max-width:1040px){
+    .hero .in{padding:88px 22px 72px}
+    .ask .grid,.safe .grid,.about .in{grid-template-columns:1fr;gap:34px}
+    .feats{grid-template-columns:1fr 1fr;gap:30px 0}
+    .ft{padding:0 18px 0 0}
+    .ft:nth-child(2n){padding-left:18px;border-left:1px solid var(--paper-3)}
+    .ft:nth-child(n+3){border-top:1px solid var(--paper-3);padding-top:26px}
+    .ft:nth-child(3){border-left:0;padding-left:0}
+    .books{grid-template-columns:1fr 1fr;gap:38px 22px}
+    .idx-grid{grid-template-columns:1fr}
+    .toc{border-right:0;border-bottom:1px solid var(--paper-3)}
+    .strip,.ask,.room,.shelf,.safe,.index,.about,.foot{padding-left:22px;padding-right:22px}
+  }
+  @media (max-width:640px){
+    .bar{padding:0 18px;gap:14px}
+    .bar nav{display:none}
+    .hero h1{font-size:clamp(38px,11vw,58px)}
+    .hero .cap{position:static;text-align:left;margin-top:26px}
+    .books{grid-template-columns:1fr;gap:34px}
+    .bw::before,.bw::after{display:none}
+    .feats{grid-template-columns:1fr}
+    .ft{border-left:0!important;padding-left:0!important;padding-right:0}
+    .ft:nth-child(n+2){border-top:1px solid var(--paper-3);padding-top:24px}
+    .facts2{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════ 顶栏 ═══════ -->
+<header class="bar">
+  <a class="brand" href="#home">
+    <span class="wm">云大 W</span>
+    <span class="dv"></span>
+    <span class="lb">图书馆<small>YUNNAN UNIVERSITY LIBRARY</small></span>
+  </a>
+  <nav aria-label="章节目录">
+    <a class="on" href="#home">首页</a><a href="#bookshelf">馆藏</a>
+    <a href="#disciplines">学科概览</a><a href="#archive">内容导读</a><a href="#about">关于本册</a>
+  </nav>
+  <span class="r"><a href="/app/dialog/">回 对 话 页 ↖</a></span>
+</header>
+
+<!-- ═══════ ① 首页 ═══════ -->
+<section class="hero" id="home">
+  <img class="photo" src="assets/ynu-library-real.png"
+       alt="云南大学呈贡校区图书馆，入馆台阶与双翼楼体、门前广场" width="1280" height="720" fetchpriority="high">
+  <div class="scrim" aria-hidden="true"></div>
+
+  <div class="in">
+    <div class="kicker">雲 南 大 學 圖 書 館 · 學 科 情 報 平 台 的 門 面</div>
+    <h1>云南大学<br><em>图书馆</em></h1>
+    <p class="sub">学科信息参考 · 呈贡馆藏 · 逐册装帧。这里陈列的是每一期成刊，一册一册，循流而上。</p>
+    <p class="facts"><b>22</b> 个学科在监测 · <b>14</b> 个已进 ESI 全球前 1% · <b>2019</b> 年起 <b>39</b> 期连续记录 · <b>291</b> 篇热点／高被引上榜</p>
+    <div class="acts">
+      <button class="btn">走 进 馆 藏 →</button>
+      <a class="ghost" href="#disciplines">学科速览</a>
+    </div>
+  </div>
+
+  <div class="cap"><b>呈贡校区 · 图书馆</b>云大馆侧、呈贡新馆中庭</div>
+</section>
+
+<!-- 记录条 -->
+<div class="strip">
+  <span><b>学科情报记录</b>　DISCIPLINE INTELLIGENCE</span>
+  <span>逐 期 裝 幀　·　只 出 封 面 / 目 錄 / 名 詞 解 釋</span>
+</div>
+
+<!-- ═══════ ② 问文衡 ═══════ -->
+<section class="ask" id="ask">
+  <div class="ct grid">
+    <div>
+      <div class="kik">ASK WENHENG</div>
+      <h2>问文衡</h2>
+      <p class="deck">工作台里能查的，这里都能问。<br>先问一句，点进去接着聊。</p>
+    </div>
+    <div>
+      <form class="askform" onsubmit="return false">
+        <input aria-label="问文衡" placeholder="问一句：某学科的接近度是多少">
+        <button type="button">去 问 文 衡 ↖</button>
+      </form>
+      <div class="chips">
+        <span class="lb">试 问</span>
+        <a href="/app/dialog/">某一学科的接近度是多少</a>
+        <a href="/app/dialog/">云南大学什么时候能进前 1%</a>
+        <a href="/app/dialog/">这期做了没有</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ ③ 阅览室 ═══════ -->
+<section class="room" id="collection">
+  <div class="ct">
+    <div class="sec-h">
+      <div>
+        <div class="kik">THE READING ROOM</div>
+        <h2>一册一册，循流而上。</h2>
+      </div>
+      <p class="note">每期成刊，只在读者看得见的边界里陈列。看正文，进工作区。</p>
+    </div>
+
+    <div class="feats">
+      <article class="ft">
+        <div class="ic" aria-hidden="true"><svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="4" y="5" width="26" height="24"/><line x1="4" y1="11" x2="30" y2="11"/>
+          <line x1="10" y1="17" x2="24" y2="17"/><line x1="10" y1="22" x2="20" y2="22"/></svg></div>
+        <div class="t">逐期成刊</div>
+        <div class="d">一期一册，装帧统一。册子排在架上，一眼认得出是哪一期。</div>
+      </article>
+      <article class="ft">
+        <div class="ic" aria-hidden="true"><svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M17 4 30 10v14L17 30 4 24V10z"/><path d="M4 10l13 6 13-6M17 16v14"/></svg></div>
+        <div class="t">只出三样</div>
+        <div class="d">封面、目录、名词解释。正文数值不出馆，看得见的是边界。</div>
+      </article>
+      <article class="ft">
+        <div class="ic" aria-hidden="true"><svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="5" y="4" width="18" height="26"/><path d="M23 10h6v20H11"/><line x1="10" y1="11" x2="18" y2="11"/>
+          <line x1="10" y1="16" x2="18" y2="16"/></svg></div>
+        <div class="t">问文衡</div>
+        <div class="d">工作台里能查的，这里都能问。一句话进对话页，接着聊。</div>
+      </article>
+      <article class="ft">
+        <div class="ic" aria-hidden="true"><svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="1.5">
+          <line x1="4" y1="8" x2="30" y2="8"/><line x1="4" y1="17" x2="30" y2="17"/>
+          <line x1="4" y1="26" x2="30" y2="26"/><circle cx="10" cy="8" r="1.6"/><circle cx="10" cy="17" r="1.6"/><circle cx="10" cy="26" r="1.6"/></svg></div>
+        <div class="t">口径一份</div>
+        <div class="d">名词解释与工作台同词同义，全站一套说法，不各说各话。</div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ ④ 馆藏 ═══════ -->
+<section class="shelf" id="bookshelf">
+  <div class="ct">
+    <div class="sec-h">
+      <div>
+        <div class="kik">COLLECTION / A 区 01</div>
+        <h2>学科情报馆藏</h2>
+      </div>
+      <p class="note">封面只用平色与结构线，期号是锚。刊物式装帧，不做渐变金饰。</p>
+    </div>
+
+    <div class="books">
+      <div class="bw">
+        <div class="cover v1">
+          <div class="c-top"><span>雲 南 大 學</span><span>Y N U</span></div>
+          <div class="rule thick"></div><div class="rule"></div>
+          <div class="ser">学科信息参考<br>DISCIPLINARY INFORMATION REFERENCE</div>
+          <div class="num">202609</div>
+          <div class="iss">2026 年第 5 期 · 总第 39 期</div>
+          <div class="bot"><span>學 科 情 報 館 藏</span><span>A 区 01</span></div>
+        </div>
+        <div class="bmeta">
+          <div class="no">N O . 3 9</div>
+          <div class="nm">202609 · 总第 39 期</div>
+          <a class="go" href="#disciplines">翻 开 →</a>
+        </div>
+      </div>
+
+      <div class="bw">
+        <div class="cover v2">
+          <div class="c-top"><span>雲 南 大 學</span><span>Y N U</span></div>
+          <div class="rule thick"></div><div class="rule"></div>
+          <div class="ser">学科信息参考<br>DISCIPLINARY INFORMATION REFERENCE</div>
+          <div class="num">202607</div>
+          <div class="iss">2026 年第 4 期 · 总第 38 期</div>
+          <div class="bot"><span>學 科 情 報 館 藏</span><span>A 区 01</span></div>
+        </div>
+        <div class="bmeta">
+          <div class="no">N O . 3 8</div>
+          <div class="nm">202607 · 总第 38 期</div>
+          <a class="go" href="#disciplines">翻 开 →</a>
+        </div>
+      </div>
+
+      <div class="bw">
+        <div class="cover v3">
+          <div class="c-top"><span>雲 南 大 學</span><span>Y N U</span></div>
+          <div class="rule thick"></div><div class="rule"></div>
+          <div class="ser">学科信息参考<br>DISCIPLINARY INFORMATION REFERENCE</div>
+          <div class="num">202605</div>
+          <div class="iss">2026 年第 3 期 · 总第 37 期</div>
+          <div class="bot"><span>學 科 情 報 館 藏</span><span>A 区 01</span></div>
+        </div>
+        <div class="bmeta">
+          <div class="no">N O . 3 7</div>
+          <div class="nm">202605 · 总第 37 期</div>
+          <a class="go" href="#disciplines">翻 开 →</a>
+        </div>
+      </div>
+
+      <div class="bw">
+        <div class="cover v4">
+          <div class="c-top"><span>雲 南 大 學</span><span>Y N U</span></div>
+          <div class="rule thick"></div><div class="rule"></div>
+          <div class="ser">学科信息参考<br>DISCIPLINARY INFORMATION REFERENCE</div>
+          <div class="num">202603</div>
+          <div class="iss">2026 年第 2 期 · 总第 36 期</div>
+          <div class="bot"><span>學 科 情 報 館 藏</span><span>A 区 01</span></div>
+        </div>
+        <div class="bmeta">
+          <div class="no">N O . 3 6</div>
+          <div class="nm">202603 · 总第 36 期</div>
+          <a class="go" href="#disciplines">翻 开 →</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="shelffoot">
+      <span>館 藏 位 置　<b>学科情报馆藏 A 区 01</b></span>
+      <span>逐 期 裝 幀　·　只 出 封 面 / 目 錄 / 名 詞 解 釋</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ ⑤ 安全预览 ═══════ -->
+<section class="safe" id="archive">
+  <div class="ct grid">
+    <div>
+      <div class="kik">SAFE PREVIEW</div>
+      <h2>每一册馆藏，<br>都在读者看得见的边界里。</h2>
+      <p class="deck">陈列馆只开放三样内容。要看正文与数值，进工作区——那里每一步都留痕。</p>
+    </div>
+    <div class="safebox">
+      <div class="h">館 藏 閱 讀 範 圍</div>
+      <ul>
+        <li><span class="m"></span>封 面</li>
+        <li><span class="m"></span>目 錄</li>
+        <li><span class="m"></span>名 詞 解 釋</li>
+        <li class="no"><span class="m"></span>正 文 數 值　不出館</li>
+        <li class="no"><span class="m"></span>運 行 檔 案　不出館</li>
+        <li class="no"><span class="m"></span>台 賬 原 件　不出館</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ ⑥ 科目目录＋名词解释（定词表） ═══════ -->
+<section class="index" id="disciplines">
+  <div class="ct">
+    <div class="sec-h">
+      <div>
+        <div class="kik">SAFE CONTENT INDEX</div>
+        <h2>科目目录，只出馆藏。</h2>
+      </div>
+      <p class="note">名词解释与工作台同词同义。下面几条是流程用词，全站一套说法。</p>
+    </div>
+
+    <div class="idx-grid">
+      <!-- 目录 -->
+      <div class="toc">
+        <div class="panel-h"><b>目 錄</b><span>第 39 期 · 2 0 2 6 0 9</span></div>
+        <ol>
+          <li><span class="n">01</span><span class="t">一　概述</span><span class="p">P. 1</span></li>
+          <li><span class="n">02</span><span class="t">二　发展情况</span><span class="p">P. 3</span></li>
+          <li><span class="n">03</span><span class="t">　　表 1　学科排名</span><span class="p">P. 4</span></li>
+          <li><span class="n">04</span><span class="t">　　表 2　高被引滚动</span><span class="p">P. 7</span></li>
+          <li><span class="n">05</span><span class="t">　　CNCI 与月度发文</span><span class="p">P. 9</span></li>
+          <li><span class="n">06</span><span class="t">三　进入预测</span><span class="p">P. 12</span></li>
+          <li><span class="n">07</span><span class="t">　　表 3　进入预测</span><span class="p">P. 13</span></li>
+          <li><span class="n">08</span><span class="t">四　专题</span><span class="p">P. 16</span></li>
+          <li><span class="n">09</span><span class="t">　　贡献度与热力图</span><span class="p">P. 17</span></li>
+          <li><span class="n">10</span><span class="t">附录 A　每期操作清单</span><span class="p">P. 21</span></li>
+          <li><span class="n">11</span><span class="t">附录 B　图表模板清单</span><span class="p">P. 23</span></li>
+        </ol>
+      </div>
+
+      <!-- 名词解释：定词表 -->
+      <div class="gl">
+        <div class="panel-h"><b>名 詞 解 釋</b><span>全 站 同 詞 同 義</span></div>
+
+        <div class="ent">
+          <div class="term">取数<span class="tag mac">机 器 进 度</span></div>
+          <div class="def">把当期的原始数据取回来。机器跑的那一步叫「取数」，人核对的那一步叫「取数核验」。</div>
+          <div class="use"><span class="i">i</span>两步合成一屏，屏题就是步骤名</div>
+        </div>
+
+        <div class="ent">
+          <div class="term">一键生成<span class="tag mac">机 器 进 度</span></div>
+          <div class="def">机器把稿子排出来。人的那一步叫「生成初稿」——先看一遍，再交给复核。</div>
+          <div class="use"><span class="i">i</span>状态词不参与命名，只管叫这一个名</div>
+        </div>
+
+        <div class="ent">
+          <div class="term">五 站 五 屏<span class="tag">流 程</span></div>
+          <div class="def">一期从头到尾走五步：取数核验、选章节、预测选模、生成初稿、核验定稿。一步一屏，不多不少。</div>
+          <div class="use"><span class="i">i</span>屏幕标题就是站名，不另起新名</div>
+        </div>
+
+        <div class="ent">
+          <div class="term">签单<span class="tag">动 作</span></div>
+          <div class="def">复核无异议后，签下这一版的动作。签了，才轮到下面那个词。</div>
+          <div class="use"><span class="i">i</span>动作叫签单，状态叫签发，别混用</div>
+        </div>
+
+        <div class="ent">
+          <div class="term">签发<span class="tag">状 态</span></div>
+          <div class="def">这一版的处境，只有三种：未签发、已签发、签发已失效。签发前不能下载初稿。</div>
+          <div class="use"><span class="i">i</span>「签名」只指数字段名时才出现</div>
+        </div>
+
+        <div class="ent">
+          <div class="term">任务<span class="tag">状 态</span></div>
+          <div class="def">这期做没做完，只有三种：进行中、已完成、未开始。</div>
+          <div class="use"><span class="i">i</span>任务与签发，全站就这两套状态词</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ ⑦ 关于本册 ═══════ -->
+<section class="about" id="about">
+  <div class="in">
+    <div>
+      <div class="kik">ABOUT</div>
+      <h2>关于本册</h2>
+      <p class="deck">《学科信息参考》是云南大学图书馆的双月刊。每期取数、核对、出稿、签发，一步一步留痕，再装帧成册，陈列于此。</p>
+    </div>
+    <div class="facts2">
+      <div class="f"><div class="k">學 科 監 測</div><div class="v">22</div></div>
+      <div class="f"><div class="k">已 進 前 1 %</div><div class="v">14</div></div>
+      <div class="f"><div class="k">連 續 記 錄</div><div class="v sm">2019 年起 · 39 期</div></div>
+      <div class="f"><div class="k">上 榜 論 文</div><div class="v">291</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ 页脚 ═══════ -->
+<footer class="foot">
+  <div><b>文衡 · 陈列馆</b>雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+  <div>逐 期 裝 幀　·　A 区 01</div>
+  <div class="warn">陳 列 館 只 出 封 面 / 目 錄 / 名 詞 解 釋</div>
+</footer>
+</body>
+</html>
