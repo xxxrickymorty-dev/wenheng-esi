@@ -5,7 +5,7 @@
    静态稿对照：web/mockups/取数台.html；契约：§2.2 #26。 */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getAcquisition, postAcquisition, postAcqBrowser, type AcquisitionState, type AcqGroup } from './api'
+import { getAcquisition, openPeriod, postAcquisition, postAcqBrowser, type AcquisitionState, type AcqGroup } from './api'
 import { ConfirmButton } from './ConfirmButton'
 import { Info } from './Info'
 import { Icon } from './icons'
@@ -27,6 +27,15 @@ function pfText(kind: 'browser' | 'site', v?: string) {
   if (v === 'bad') return kind === 'browser' ? '未连接' : '未登录'
   if (v === 'waiting') return kind === 'browser' ? '待检查' : '等浏览器'
   return '待检查'
+}
+
+/** 开新一期的期次校验（与后端同口径）：六位 YYYYMM 且月份是双月（1/3/5/7/9/11）。 */
+function newPeriodProblem(v: string): string {
+  if (!/^\d{6}$/.test(v)) return '期次要六位数字，如 202611。'
+  if (![1, 3, 5, 7, 9, 11].includes(Number(v.slice(4, 6)))) {
+    return '期次是每年的 1 / 3 / 5 / 7 / 9 / 11 月。'
+  }
+  return ''
 }
 
 type PageView = 'ready' | 'blocked' | 'running' | 'partial' | 'review' | 'merged'
@@ -100,11 +109,17 @@ function GroupCard({ g, onRetry, busy, readonly }: {
   )
 }
 
-export function Acquire({ period }: { period: string | null }) {
+export function Acquire({ period, onOpenPeriod }: {
+  period: string | null; onOpenPeriod?: (period: string) => void
+}) {
   const [state, setState] = useState<AcquisitionState | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
+  /* 开新一期：页头行内表单（票 05）——只登记期次、落空状态，不取数 */
+  const [openForm, setOpenForm] = useState(false)
+  const [newPeriod, setNewPeriod] = useState('')
+  const [openErr, setOpenErr] = useState('')
   const stateRef = useRef<AcquisitionState | null>(null)
   const reloadTimer = useRef<number | undefined>(undefined)
   useEffect(() => () => { if (reloadTimer.current !== undefined) window.clearTimeout(reloadTimer.current) }, [])
@@ -205,11 +220,28 @@ export function Acquire({ period }: { period: string | null }) {
     await act('retry', { group: gid })
   }, [act, load, preflightWithBrowser])
 
+  /* 开新一期（票 05）：登记一个新期次 → 落空状态 → 进这一期的取数台。
+     只登记、不取数——数据期校验（票 04）留到点「开始取数」时把关。 */
+  const onOpen = useCallback(async () => {
+    const v = newPeriod.trim()
+    const problem = newPeriodProblem(v)
+    if (problem) { setOpenErr(problem); return }
+    setBusy(true); setOpenErr('')
+    try {
+      await openPeriod(v)
+      setOpenForm(false); setNewPeriod('')
+      onOpenPeriod?.(v)
+    } catch (e) {
+      setOpenErr(errorNote(e, '开新一期'))
+    } finally {
+      setBusy(false)
+    }
+  }, [newPeriod, onOpenPeriod])
+
   if (!period) {
     return <div className="pending-box">先在顶栏选一个期次；取数台会显示这一期的取数进度与核对状态。</div>
   }
 
-  const started = !!state?.started
   const op = state?.op
   const opRunning = op?.state === 'running'
   const view: PageView = state ? deriveView(state) : 'ready'
@@ -246,15 +278,20 @@ export function Acquire({ period }: { period: string | null }) {
     merged: ['已并入', 'signed'],
   }
 
+  /* 如实：只有「开始前检查」这轮真通过才说「可以开始取数」——状态文件在不在不算
+     （开新一期落的只是空壳，票 05）。 */
+  const pf = state?.preflight
+  const pfPassed = !!pf && pf.browser === 'ok' && pf.esi === 'ok'
+    && pf.incites === 'ok' && pf.data?.ok !== false
   const title = view === 'ready'
-    ? (started ? '开始前检查通过，可以开始取数。' : '还没开始取数。')
+    ? (pfPassed ? '开始前检查通过，可以开始取数。' : '还没开始取数。')
     : view === 'blocked' ? '取数专用浏览器还没准备好。'
       : view === 'running' ? `正在取数${liveGroup?.title ? `：${liveGroup.title}` : ''}……`
         : view === 'partial' ? `${failGroup?.title ?? '有一组'}有 ${failed} 份没通过核验。`
           : view === 'review' ? '本期监测表已自动建好，请核对。'
             : `已并入主台账（${period} 列）`
   const sub = view === 'ready'
-    ? (started ? '9 组文件，取到后逐份核验。' : '点「开始取数」会自动打开取数专用浏览器（首次需在里面登录 ESI / InCites）。')
+    ? (pfPassed ? '9 组文件，取到后逐份核验。' : '点「开始取数」会自动打开取数专用浏览器（首次需在里面登录 ESI / InCites）。')
     : view === 'blocked' ? '系统会自动打开取数专用浏览器；在里面登录 ESI / InCites 后，点「重新检查」。'
       : view === 'running' ? '可以离开这一页，进度不会丢。'
         : view === 'partial' ? '重试只补这一组，通过的不重复下载。'
@@ -275,7 +312,25 @@ export function Acquire({ period }: { period: string | null }) {
               <span className="pill unsigned mono">{period}</span>
               <span className={`pill ${pill[view][1]}`}>{pill[view][0]}</span>
               <span className="hint aq-num">采集 · {expected > 0 ? `已取到 ${verified} / ${expected}` : '未开始'}{lastFetchAt ? ` · 最近取数 ${lastFetchAt}` : ''}</span>
+              <button type="button" className="btn small ml-auto" aria-expanded={openForm}
+                      onClick={() => { setOpenForm((v) => !v); setOpenErr('') }}>
+                <Icon name="plus" size={16} />开新一期
+              </button>
             </div>
+            {openForm && (
+              <div className="aq-open">
+                <label className="hint" htmlFor="aq-new-period">开一期新的</label>
+                <input id="aq-new-period" className="aq-open-in mono" inputMode="numeric"
+                       maxLength={6} placeholder="YYYYMM，如 202611" value={newPeriod}
+                       onChange={(e) => { setNewPeriod(e.target.value.replace(/\D/g, '')); setOpenErr('') }}
+                       onKeyDown={(e) => { if (e.key === 'Enter') void onOpen() }} />
+                <button type="button" className="btn small primary" disabled={busy}
+                        onClick={() => void onOpen()}>开这一期</button>
+                <button type="button" className="btn small" disabled={busy}
+                        onClick={() => { setOpenForm(false); setOpenErr('') }}>取消</button>
+                {openErr && <span className="hint note-bad">{openErr}</span>}
+              </div>
+            )}
           </section>
 
           {/* ===== 主动作（每屏 1 个） ===== */}

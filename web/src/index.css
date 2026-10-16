@@ -786,6 +786,10 @@ a{color:inherit}
 
 .aq-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .aq-num{font-variant-numeric:tabular-nums;white-space:nowrap}
+/* 开新一期（票 05）：页头行内表单 */
+.aq-open{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.aq-open-in{width:16ch;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.aq-open-in:focus{outline:2px solid var(--zhu);outline-offset:1px}
 .aq-duty{margin:10px 0 0;color:var(--ink-2);font-size:13.5px;line-height:1.7}
 
 .aq-pf{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding:10px 14px;

@@ -793,7 +793,7 @@ def _acquisition_only_periods(known: set[str]) -> list[dict]:
     ⚠️ 「只是点过一次重新检查」的期次不算（那种状态里连文件都没有）：只在 `started`
     （确实取到过文件）或有核对副本时才进列表——否则列表会多出一个点进去就 404 的空期次。
     """
-    extra = {p for p in acquisition.periods() if _acq_touched(p)}
+    extra = {p for p in acquisition.periods() if _acq_touched(p) or _acq_opened(p)}
     acq_root = config.OUT_DIR / "_acquisition"
     if acq_root.is_dir():
         for d in acq_root.iterdir():
@@ -915,6 +915,17 @@ def _acq_touched(period: str) -> bool:
     """
     st = acquisition.load(period) or {}
     return bool(st.get("groups") or st.get("totals") or st.get("copy"))
+
+
+def _acq_opened(period: str) -> bool:
+    """这一期是不是**开新一期**登记出来的空壳（票 05）。
+
+    空壳只落了 preflight、没有取数动静，按 `_acq_touched` 本不算；但既已登记就该出现在
+    期次列表里（否则 `?period=` 深链会被前端「列表没有就退回首期」冲掉）。用独立标记
+    `opened` 区分于「只点过一次重新检查」的临时状态，且**不**计入 `_acq_touched`——
+    否则「开一期新」会把当前期误判成「往期只读」。
+    """
+    return bool((acquisition.load(period) or {}).get("opened"))
 
 
 def _acq_mode(period: str) -> str:
@@ -1104,6 +1115,28 @@ async def api_acq_start(request: Request, period: str):
     if blocked:
         return blocked
     return _acq_spawn(period, "fetch")
+
+
+@app.post("/api/periods/{period}/acquisition/open")
+@admin_route
+async def api_acq_open(request: Request, period: str):
+    """开新一期（票 05）：登记期次、落一个只含 preflight 的空状态——**不 scan、不取数**。
+
+    期次须是六位 `YYYYMM` 且月份是双月（1/3/5/7/9/11，见 `forecast_select.next_periods`）。
+    空壳只占位（`preflight` 全 waiting + `opened` 痕迹），进期次列表；真正的取数仍要点
+    「开始取数」走开始前检查（票 04 的数据期校验在那时把关）。**不碰** `out/<期次>/`、台账。
+    """
+    if not re.fullmatch(r"\d{6}", period or ""):
+        return JSONResponse({"error": "期次要六位数字（如 202611）。",
+                             "hint": "格式 YYYYMM。"}, status_code=400)
+    if int(period[4:6]) not in (1, 3, 5, 7, 9, 11):
+        return JSONResponse({"error": f"{period} 不是双月期次。",
+                             "hint": "期次是每年的 1 / 3 / 5 / 7 / 9 / 11 月。"}, status_code=400)
+    st = acquisition.load(period) or {}
+    st.setdefault("preflight", {"browser": "waiting", "esi": "waiting", "incites": "waiting"})
+    st["opened"] = {"at": time.strftime("%Y-%m-%d %H:%M:%S"), "by": current_user(request) or ""}
+    acquisition.write_state(period, st)
+    return {"ok": True, "period": period, "opened": st["opened"]}
 
 
 @app.post("/api/periods/{period}/acquisition/retry")

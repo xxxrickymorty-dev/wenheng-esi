@@ -59,6 +59,7 @@ function Sprite() {
       <symbol id="i-archive" viewBox="0 0 24 24">
         <path d="M4 8h16v12H4zM3 3h18v5H3zM10 12h4" {...S} />
       </symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" {...S} /></symbol>
     </svg>
   )
 }

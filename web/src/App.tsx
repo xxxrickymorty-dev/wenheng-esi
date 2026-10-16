@@ -660,7 +660,7 @@ export default function App() {
         ) : view === 'pick' ? (
           <Pick period={selected} />
         ) : view === 'acquire' ? (
-          <Acquire period={selected} />
+          <Acquire period={selected} onOpenPeriod={pickPeriod} />
         ) : view === 'forecast' ? (
           <Forecast
             period={selected}

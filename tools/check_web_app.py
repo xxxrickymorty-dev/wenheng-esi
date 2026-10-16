@@ -331,6 +331,23 @@ def main():
         except Exception as e:                                          # noqa: BLE001
             check("取数台回归（X2）", False, str(e)[:100])
 
+        # ---- 1f1) 开新一期（票 05）：入口在，非法期次当场挡下（不落状态） ----
+        try:
+            page.goto(BASE + "/app/?view=acquire&period=202609", wait_until="domcontentloaded")
+            page.wait_for_selector(".aq-head", timeout=15000)
+            has_open = page.locator("button", has_text="开新一期").count() > 0
+            check("取数台：有「开新一期」入口", has_open, "")
+            if has_open:
+                page.locator("button", has_text="开新一期").first.click()
+                page.fill("#aq-new-period", "202612")
+                page.locator("button", has_text="开这一期").first.click()
+                page.wait_for_timeout(300)
+                err = page.inner_text(".aq-open")
+                check("开新一期：非双月当场挡下", "1 / 3 / 5 / 7 / 9 / 11" in err,
+                      err.replace("\n", " ")[:50])
+        except Exception as e:                                          # noqa: BLE001
+            check("开新一期入口回归（票 05）", False, str(e)[:100])
+
         # ---- 1f2) 运行档案能看到「并入台账」的留痕（票 02：谁/何时并的） ----
         try:
             page.goto(BASE + "/app/?view=archive&period=202607", wait_until="domcontentloaded")

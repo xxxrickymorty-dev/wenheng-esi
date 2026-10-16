@@ -270,6 +270,13 @@ export async function postAcquisition(period: string, action: string,
     })
 }
 
+/** 开新一期（票 05）：登记期次、落一个只含 preflight 的空状态（**不 scan、不取数**）。
+    期次须是六位 YYYYMM 且月份是双月；不合法时服务端 400。 */
+export async function openPeriod(period: string): Promise<{ ok: boolean; period: string }> {
+  return req<{ ok: boolean; period: string }>(
+    `/api/periods/${encodeURIComponent(period)}/acquisition/open`, { method: 'POST' })
+}
+
 /** 拉起「取数专用浏览器」（独立 profile + CDP 9222）；已经在跑则 already=true。
     只负责开窗——登录仍由人（或 Chrome 记住的凭据）完成。 */
 export async function postAcqBrowser(): Promise<{ ok: boolean; started: boolean; already: boolean; note?: string }> {
