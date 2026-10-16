@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>陈列馆 · 一页版（绿蓝）— 静态稿</title>
+<style>
+  /* ============================================================
+     陈列馆 · 一页版 —— 三页并一页，去 3D，动效做层次
+     ① 首页（门面）② 馆藏陈列 ③ 一册翻开（目录＋名词解释）
+       → 一条纵向长卷；阅读器降为浮层（本稿只表现长卷）
+     ② 不要 3D 模型：层次用「平铺纸层错位＋滚动视差」做，
+       纯 CSS，prefers-reduced-motion 兜底。
+     ③ 书籍封面重设计：平色场＋每册一个真器件＋期号做锚；
+       撤掉旧封面的渐变／金饰／装饰边框（三样皆 AI 味）。
+     配色沿用合成稿「汇·绿蓝」，并给两色分工：
+       蓝 ＝ 场（门面／目录面／数据语气）
+       绿 ＝ 器（馆藏／器件／名词解释）
+     红色只作警戒，全页一处。
+     游客投影红线：只出封面／目录／名词解释，不出正文数值。
+     本稿中的目录与名词解释条目为版式样例，上线须逐字接
+     data.js 的游客白名单真实内容。
+     零渐变、零投影、零玻璃、零圆角面板。
+     ============================================================ */
+  :root{
+    --blue:#17456E;  --blue-2:#0F2E4C;  --blue-3:#2F6B8E;
+    --blue-4:#8FB6CE; --blue-5:#DCE8F0;
+    --green:#26483B; --green-2:#163228; --green-3:#2F7A58;
+    --green-4:#7FB79B; --green-5:#DFEDE6;
+    --paper:#F2EFE6; --paper-2:#E4DFD0; --paper-3:#D2CCBA;
+    --ink:#15222B;   --ink-2:#43525C;   --ink-3:#7B8892;
+    --red:#B23A2B;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font:15px/1.8 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--green-3);color:#fff}
+
+  /* ───────── 顶栏 ───────── */
+  .bar{position:sticky;top:0;z-index:60;background:var(--blue-2);height:62px;
+    display:flex;align-items:center;gap:26px;padding:0 38px;
+    border-bottom:1px solid rgba(220,232,240,.14)}
+  .bar .wm{font-family:var(--serif);font-size:22px;letter-spacing:.2em;color:var(--blue-5)}
+  .bar .sub{font-family:var(--kai);font-size:11px;letter-spacing:.22em;
+    color:rgba(220,232,240,.5);line-height:1.55}
+  .bar nav{display:flex;gap:24px;font-family:var(--kai);font-size:13px;letter-spacing:.18em;
+    color:rgba(220,232,240,.72);margin-left:14px}
+  .bar nav a.on{color:var(--blue-5);box-shadow:inset 0 -2px 0 var(--green-4)}
+  .bar .r{margin-left:auto;display:flex;align-items:center;gap:18px;
+    font-family:var(--kai);font-size:11.5px;letter-spacing:.22em;color:rgba(220,232,240,.5)}
+  .pal{display:inline-flex;gap:7px}
+  .pal i{width:24px;height:13px;display:inline-block;border:1px solid rgba(220,232,240,.24)}
+  .pal i.g{background:var(--green-3)}.pal i.b{background:var(--blue-3)}
+  .pal i.on{outline:2px solid var(--blue-5);outline-offset:2px}
+
+  /* ═════════ ① 门面（蓝·场） ═════════ */
+  .hero{position:relative;background:var(--blue);color:var(--blue-5);
+    padding:104px 38px 96px;overflow:hidden}
+  /* 器件底纹：四件母题放大成暗纹，暗示产品机制 */
+  .hero .motifs{position:absolute;inset:0;pointer-events:none;opacity:.16}
+  .hero .motifs .m{position:absolute;border:1.5px solid var(--blue-5)}
+  .hero .motifs .m1{left:52%;top:8%;width:340px;height:210px}
+  .hero .motifs .m2{left:60%;top:32%;width:300px;height:300px;border-radius:50%}
+  .hero .motifs .m3{left:70%;top:64%;width:260px;height:150px}
+  .hero .motifs .m4{left:44%;top:70%;width:180px;height:180px;transform:rotate(-9deg)}
+
+  .hero .in{position:relative;max-width:1180px;margin:0 auto;z-index:2}
+  .hero .ov{font-family:var(--kai);font-size:11.5px;letter-spacing:.46em;color:rgba(220,232,240,.62)}
+  .hero h1{font-family:var(--serif);font-size:clamp(46px,7vw,104px);line-height:1.02;
+    letter-spacing:.01em;margin-top:22px;max-width:15ch}
+  .hero .deck{font-family:var(--kai);font-size:clamp(15px,1.7vw,19px);line-height:2.05;
+    color:rgba(220,232,240,.82);margin-top:26px;max-width:40ch}
+  .hero .acts{margin-top:38px;display:flex;align-items:center;gap:26px;flex-wrap:wrap}
+  .btn{background:var(--green-3);color:#08201A;border:0;padding:16px 36px;font-size:16px;
+    letter-spacing:.16em;font-weight:700}
+  .btn:hover{background:#3A9069}
+  .hero .ghost{font-family:var(--kai);font-size:14px;letter-spacing:.2em;
+    color:rgba(220,232,240,.8);box-shadow:inset 0 -1px 0 rgba(220,232,240,.4);padding-bottom:4px}
+
+  /* 四件母题：产品语汇条 */
+  .vocab{position:relative;z-index:2;max-width:1180px;margin:66px auto 0;
+    display:grid;grid-template-columns:repeat(4,1fr);gap:0;
+    border-top:1px solid rgba(220,232,240,.24)}
+  .vc{padding:26px 26px 22px 0}
+  .vc:not(:first-child){padding-left:26px;border-left:1px solid rgba(220,232,240,.18)}
+  .vc .k{font-family:var(--kai);font-size:10.5px;letter-spacing:.42em;color:rgba(220,232,240,.55)}
+  .vc .t{font-family:var(--serif);font-size:21px;letter-spacing:.06em;margin-top:9px}
+  .vc .d{font-family:var(--kai);font-size:12.5px;line-height:1.95;
+    color:rgba(220,232,240,.68);margin-top:8px}
+  .vc .glyph{width:46px;height:46px;margin-top:16px;color:var(--green-4)}
+  .vc .glyph svg{width:100%;height:100%;display:block}
+
+  /* ═════════ ② 馆藏陈列（绿·器） ═════════ */
+  .shelf{position:relative;background:var(--green);color:var(--green-5);padding:96px 38px 104px}
+  .sh{max-width:1180px;margin:0 auto}
+  .shelf .hd{display:flex;align-items:flex-end;justify-content:space-between;
+    gap:32px;flex-wrap:wrap}
+  .shelf .hd .ov{font-family:var(--kai);font-size:11px;letter-spacing:.46em;
+    color:rgba(223,237,230,.55)}
+  .shelf h2{font-family:var(--serif);font-size:clamp(32px,4.4vw,58px);line-height:1.1;
+    letter-spacing:.03em;margin-top:14px}
+  .shelf .hd .note{font-family:var(--kai);font-size:13px;line-height:2;
+    color:rgba(223,237,230,.7);max-width:32ch}
+
+  /* 书排：平铺纸层错位＋滚动视差 = 层次（不用 3D） */
+  .books{margin-top:64px;display:grid;grid-template-columns:repeat(4,1fr);gap:30px;
+    align-items:end}
+  .bookwrap{position:relative;--i:0}
+  /* 深度：后面的册子压低、偏移、降对比，模拟纵深 */
+  .bookwrap::before{content:"";position:absolute;left:10px;right:-10px;top:12px;bottom:-12px;
+    background:var(--green-2);opacity:.55;z-index:0}
+  .bookwrap::after{content:"";position:absolute;left:5px;right:-5px;top:6px;bottom:-6px;
+    background:var(--green-2);opacity:.8;z-index:0}
+  .cover{position:relative;z-index:2;aspect-ratio:3/4;padding:22px 20px 20px;
+    display:flex;flex-direction:column;border:1px solid rgba(223,237,230,.18)}
+  /* 平色场（无渐变） */
+  .cover.c-blue{background:var(--blue)}
+  .cover.c-deep{background:var(--blue-2)}
+  .cover.c-green{background:var(--green-2)}
+  .cover.c-pine{background:#1E4A3A}
+  .cover .frame{position:absolute;inset:11px;border:1px solid rgba(223,237,230,.24);pointer-events:none}
+  .cover .kick{font-family:var(--kai);font-size:9.5px;letter-spacing:.42em;
+    color:rgba(223,237,230,.62);position:relative}
+  .cover .num{font-family:var(--serif);font-size:clamp(30px,3.6vw,44px);line-height:.98;
+    letter-spacing:.01em;color:var(--green-5);margin-top:12px;position:relative;
+    font-variant-numeric:tabular-nums}
+  .cover .ttl{font-family:var(--kai);font-size:11px;line-height:1.85;letter-spacing:.14em;
+    color:rgba(223,237,230,.82);margin-top:12px;position:relative}
+  .cover .dev{margin-top:auto;position:relative;width:100%;height:78px}
+  .cover .dev svg{width:100%;height:100%;display:block;overflow:visible}
+  .cover .foot{position:relative;font-family:var(--kai);font-size:9.5px;
+    letter-spacing:.32em;color:rgba(223,237,230,.55);margin-top:12px}
+
+  .bookmeta{position:relative;z-index:2;margin-top:20px}
+  .bookmeta .no{font-family:var(--mono);font-size:11px;letter-spacing:.22em;
+    color:rgba(223,237,230,.55)}
+  .bookmeta .nm{font-family:var(--serif);font-size:16px;letter-spacing:.05em;margin-top:5px}
+  .bookmeta .go{display:inline-block;margin-top:10px;font-family:var(--kai);font-size:12px;
+    letter-spacing:.22em;color:var(--green-4);box-shadow:inset 0 -1px 0 rgba(127,183,155,.5);
+    padding-bottom:3px}
+
+  /* ═════════ ③ 一册翻开（目录＋名词解释） ═════════ */
+  .spread{position:relative;background:var(--paper);padding:104px 38px 96px}
+  .sp{max-width:1180px;margin:0 auto}
+  .spread .hd{max-width:52ch}
+  .spread .ov{font-family:var(--kai);font-size:11px;letter-spacing:.46em;color:var(--ink-3)}
+  .spread h2{font-family:var(--serif);font-size:clamp(30px,4.2vw,54px);line-height:1.14;
+    letter-spacing:.03em;margin-top:14px}
+  .spread .deck{font-family:var(--kai);font-size:15px;line-height:2.05;color:var(--ink-2);
+    margin-top:18px;max-width:44ch}
+
+  /* 跨页：左右两页微微错开＝纸层深度 */
+  .open{margin-top:56px;display:grid;grid-template-columns:1fr 1fr;gap:0;position:relative}
+  .pg{background:#FBF9F2;padding:44px 46px 46px;border:1px solid var(--paper-3);position:relative}
+  .pg.left{transform:translateY(10px)}
+  .pg.right{transform:translateY(-10px)}
+  .pg .pghead{display:flex;justify-content:space-between;align-items:baseline;
+    font-family:var(--kai);font-size:10.5px;letter-spacing:.36em;color:var(--ink-3);
+    border-bottom:1px solid var(--paper-3);padding-bottom:12px}
+  .pg .pghead b{font-family:var(--serif);font-size:12px;letter-spacing:.18em;color:var(--ink)}
+  /* 书脊缝 */
+  .open .spine{width:14px;background:var(--paper-2);border-top:1px solid var(--paper-3);
+    border-bottom:1px solid var(--paper-3)}
+
+  /* 目录 */
+  .toc{margin-top:22px;list-style:none}
+  .toc li{display:flex;align-items:baseline;gap:14px;padding:11px 0;
+    border-bottom:1px solid var(--paper-2);font-family:var(--serif);font-size:15.5px}
+  .toc li .n{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--ink-3);
+    width:26px;flex:none}
+  .toc li .t{flex:1;letter-spacing:.03em}
+  .toc li .p{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--ink-3)}
+
+  /* 名词解释 */
+  .gloss{margin-top:22px}
+  .gl{padding:15px 0;border-bottom:1px solid var(--paper-2)}
+  .gl:last-child{border-bottom:0}
+  .gl .term{font-family:var(--serif);font-size:16px;font-weight:700;letter-spacing:.06em;
+    display:flex;align-items:baseline;gap:12px}
+  .gl .term .en{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;
+    color:var(--green);font-weight:400}
+  .gl .def{font-family:var(--kai);font-size:13.5px;line-height:2;color:var(--ink-2);margin-top:7px}
+
+  /* ═════════ 器件语言（绿·器） ═════════ */
+  .mech{background:var(--green-2);color:var(--green-5);padding:88px 38px}
+  .mc{max-width:1180px;margin:0 auto;display:grid;
+    grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:56px;align-items:center}
+  .mech .ov{font-family:var(--kai);font-size:11px;letter-spacing:.46em;color:rgba(223,237,230,.55)}
+  .mech h2{font-family:var(--serif);font-size:clamp(28px,3.6vw,46px);line-height:1.18;
+    letter-spacing:.03em;margin-top:13px}
+  .mech .deck{font-family:var(--kai);font-size:14px;line-height:2.05;
+    color:rgba(223,237,230,.8);margin-top:15px;max-width:32ch}
+  .mechgrid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:rgba(223,237,230,.16)}
+  .mcell{background:var(--green-2);padding:24px 24px 22px;position:relative;overflow:hidden}
+  .mcell .g{width:52px;height:52px;color:var(--green-4);position:relative;z-index:2}
+  .mcell .g svg{width:100%;height:100%;display:block;overflow:visible}
+  .mcell .t{font-family:var(--serif);font-size:18px;letter-spacing:.08em;
+    margin-top:14px;position:relative;z-index:2}
+  .mcell .d{font-family:var(--kai);font-size:12px;line-height:1.9;
+    color:rgba(223,237,230,.68);margin-top:7px;position:relative;z-index:2}
+
+  /* ═════════ 页脚 ═════════ */
+  .foot{background:var(--ink);color:rgba(220,232,240,.6);padding:32px 38px;
+    display:flex;justify-content:space-between;gap:22px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11.5px;letter-spacing:.32em}
+  .foot b{font-family:var(--serif);font-size:13px;letter-spacing:.22em;
+    color:var(--blue-5);display:block}
+  .foot .dual{display:flex;gap:12px;align-items:center}
+  .foot .dual i{width:26px;height:13px;display:inline-block}
+  .foot .dual i.g{background:var(--green-3)}
+  .foot .dual i.b{background:var(--blue-3)}
+
+  /* ═════════ 动效：层次与结构感（纯 CSS，无 3D） ═════════ */
+  @keyframes rise{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+  @keyframes drift{from{transform:translateY(var(--from,40px));opacity:0}to{transform:none;opacity:1}}
+  @keyframes press{to{transform:translateY(3px) scale(.985)}}
+
+  /* 入场：门面内容错峰升起 */
+  .hero .ov{animation:rise .8s cubic-bezier(.2,.8,.2,1) both}
+  .hero h1{animation:rise .9s cubic-bezier(.2,.8,.2,1) .1s both}
+  .hero .deck{animation:rise .9s cubic-bezier(.2,.8,.2,1) .22s both}
+  .hero .acts{animation:rise .9s cubic-bezier(.2,.8,.2,1) .34s both}
+  .vc{animation:rise .8s cubic-bezier(.2,.8,.2,1) both}
+  .vc:nth-child(1){animation-delay:.42s}
+  .vc:nth-child(2){animation-delay:.52s}
+  .vc:nth-child(3){animation-delay:.62s}
+  .vc:nth-child(4){animation-delay:.72s}
+
+  /* 滚动视差：书排各册走不同速度 = 纵深层次 */
+  @supports (animation-timeline: view()){
+    .bookwrap{animation:drift linear both;
+      animation-timeline:view();animation-range:entry 0% cover 62%}
+    .bookwrap:nth-child(1){--from:78px}
+    .bookwrap:nth-child(2){--from:52px}
+    .bookwrap:nth-child(3){--from:30px}
+    .bookwrap:nth-child(4){--from:12px}
+    .open .pg.left{animation:drift linear both;
+      animation-timeline:view();animation-range:entry 0% cover 55%;--from:34px}
+    .open .pg.right{animation:drift linear both;
+      animation-timeline:view();animation-range:entry 0% cover 55%;--from:-24px}
+    .mcell{animation:drift linear both;
+      animation-timeline:view();animation-range:entry 0% cover 70%;--from:24px}
+    .shelf h2,.spread h2,.mech h2{animation:drift linear both;
+      animation-timeline:view();animation-range:entry 0% cover 60%;--from:30px}
+  }
+  /* 降级：不支持滚动时间线时，至少入场一次 */
+  @supports not (animation-timeline: view()){
+    .bookwrap,.open .pg,.mcell,.shelf h2,.spread h2,.mech h2{animation:rise .8s cubic-bezier(.2,.8,.2,1) both}
+  }
+
+  /* 悬停：器件有反应（翻牌翻起／钤印压下） */
+  .cover{transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+  .bookwrap:hover .cover{transform:translateY(-8px)}
+  .bookwrap:hover::before{opacity:.3}
+  .mcell{transition:background .35s}
+  .mcell:hover{background:#1D4034}
+  .btn:hover{animation:press .18s ease-out}
+
+  /* 尊重系统减动效 */
+  @media (prefers-reduced-motion: reduce){
+    *,::before,::after{animation:none!important;transition:none!important}
+    html{scroll-behavior:auto}
+    .bookwrap:hover .cover{transform:none}
+    .pg.left,.pg.right{transform:none}
+  }
+
+  /* ───────── 响应式 ───────── */
+  @media (max-width:1040px){
+    .hero{padding:72px 22px 68px}
+    .vocab{grid-template-columns:1fr 1fr;gap:0}
+    .vc{padding:22px 18px 20px 0}
+    .vc:nth-child(2n){padding-left:18px;border-left:1px solid rgba(220,232,240,.18)}
+    .vc:nth-child(n+3){border-top:1px solid rgba(220,232,240,.18)}
+    .vc:nth-child(3){border-left:0}
+    .shelf,.spread,.mech,.foot{padding-left:22px;padding-right:22px}
+    .books{grid-template-columns:1fr 1fr;gap:40px 24px}
+    .open{grid-template-columns:1fr}
+    .open .spine{display:none}
+    .pg.left,.pg.right{transform:none}
+    .mc{grid-template-columns:1fr;gap:32px}
+  }
+  @media (max-width:640px){
+    .bar{padding:0 18px;gap:14px}
+    .bar nav{display:none}
+    .hero h1{font-size:clamp(38px,11vw,58px)}
+    .books{grid-template-columns:1fr;gap:36px}
+    .bookwrap::before,.bookwrap::after{display:none}
+    .vocab{grid-template-columns:1fr}
+    .vc{border-left:0!important;padding-left:0!important}
+    .vc:nth-child(n+2){border-top:1px solid rgba(220,232,240,.18)}
+    .mechgrid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════ 顶栏 ═══════ -->
+<header class="bar">
+  <span class="wm">文衡</span>
+  <span class="sub">雲 南 大 學 圖 書 館<br>學 科 信 息 參 考</span>
+  <nav aria-label="陈列馆">
+    <a class="on" href="#top">陈列馆</a><a href="#shelf">馆藏</a>
+    <a href="#open">一册</a><a href="#mech">机制</a>
+  </nav>
+  <span class="r">
+    <span>工 作 卺 ↗</span>
+    <span class="pal"><i class="g on" title="绿·器"></i><i class="b" title="蓝·场"></i></span>
+  </span>
+</header>
+
+<!-- ═══════ ① 门面 ═══════ -->
+<section class="hero" id="top">
+  <div class="motifs" aria-hidden="true">
+    <span class="m m1"></span><span class="m m2"></span>
+    <span class="m m3"></span><span class="m m4"></span>
+  </div>
+
+  <div class="in">
+    <div class="ov">雲 南 大 學 圖 書 館 · 學 科 信 息 參 考 · 陳 列 館</div>
+    <h1>把双月的手工报告，装进一座可翻阅的馆。</h1>
+    <p class="deck">取数、核对、出稿、签发——每一步都留痕。这里陈列的每一册，都是云南大学图书馆《学科信息参考》的一期成刊。</p>
+    <div class="acts">
+      <button class="btn">走 进 陈 列 馆 →</button>
+      <a class="ghost" href="#open">先看一册</a>
+    </div>
+  </div>
+
+  <!-- 四件母题＝产品语汇 -->
+  <div class="vocab">
+    <div class="vc">
+      <div class="glyph" aria-hidden="true">
+        <svg viewBox="0 0 46 46"><g fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="12" width="11" height="22"/><rect x="18" y="12" width="11" height="22"/>
+          <rect x="33" y="12" width="11" height="22"/><line x1="3" y1="23" x2="44" y2="23"/>
+        </g></svg>
+      </div>
+      <div class="k">其 一</div>
+      <div class="t">翻牌</div>
+      <div class="d">期次与时刻。<br>把时序做成能看的牌面。</div>
+    </div>
+    <div class="vc">
+      <div class="glyph" aria-hidden="true">
+        <svg viewBox="0 0 46 46"><g fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="5" y="6" width="36" height="34"/>
+          <line x1="5" y1="28" x2="41" y2="28"/>
+          <line x1="5" y1="16" x2="41" y2="16" stroke-dasharray="3 3" stroke="#B23A2B"/>
+        </g></svg>
+      </div>
+      <div class="k">其 二</div>
+      <div class="t">水位</div>
+      <div class="d">阈值与接近度。<br>离前 1% 还有多远，一尺子读出。</div>
+    </div>
+    <div class="vc">
+      <div class="glyph" aria-hidden="true">
+        <svg viewBox="0 0 46 46"><g fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="14" cy="16" r="9"/><rect x="24" y="7" width="18" height="18"/>
+        </g></svg>
+      </div>
+      <div class="k">其 三</div>
+      <div class="t">橡皮戳</div>
+      <div class="d">取数、并入、出稿。<br>每做完一步，留下一枚。</div>
+    </div>
+    <div class="vc">
+      <div class="glyph" aria-hidden="true">
+        <svg viewBox="0 0 46 46"><g fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="8" y="8" width="30" height="30" transform="rotate(-8 23 23)"/>
+          <line x1="23" y1="8" x2="23" y2="38" transform="rotate(-8 23 23)"/>
+          <line x1="8" y1="23" x2="38" y2="23" transform="rotate(-8 23 23)"/>
+        </g></svg>
+      </div>
+      <div class="k">其 四</div>
+      <div class="t">钤印</div>
+      <div class="d">复核并签单。<br>盖下去，这一版才算交付。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ ② 馆藏陈列 ═══════ -->
+<section class="shelf" id="shelf">
+  <div class="sh">
+    <div class="hd">
+      <div>
+        <div class="ov">館 藏 · 逐 期 成 刊</div>
+        <h2>每一期，<br>都是一册可翻的书。</h2>
+      </div>
+      <p class="note">封面只用平色与一件器件，不做渐变与金饰。期号是锚——册子排在架上，一眼认得出是哪一期。</p>
+    </div>
+
+    <div class="books">
+      <!-- 第 1 册：翻牌 -->
+      <div class="bookwrap">
+        <div class="cover c-blue">
+          <span class="frame" aria-hidden="true"></span>
+          <div class="kick">學 科 信 息 參 考</div>
+          <div class="num">202609</div>
+          <div class="ttl">云南大学 ESI<br>潜力学科分析</div>
+          <div class="dev" aria-hidden="true">
+            <svg viewBox="0 0 160 78">
+              <g fill="none" stroke="#7FB79B" stroke-width="1.6">
+                <rect x="4" y="18" width="22" height="42"/><rect x="32" y="18" width="22" height="42"/>
+                <rect x="60" y="18" width="22" height="42"/><rect x="88" y="18" width="22" height="42"/>
+                <rect x="116" y="18" width="22" height="42"/><rect x="144" y="18" width="12" height="42"/>
+                <line x1="4" y1="39" x2="156" y2="39"/>
+              </g>
+              <g fill="#DFEDE6" font-family="Cascadia Mono,monospace" font-size="15"
+                 text-anchor="middle" letter-spacing="1">
+                <text x="15" y="46">2</text><text x="43" y="46">0</text><text x="71" y="46">2</text>
+                <text x="99" y="46">6</text><text x="127" y="46">0</text><text x="150" y="46">9</text>
+              </g>
+            </svg>
+          </div>
+          <div class="foot">第 三 十 九 期</div>
+        </div>
+        <div class="bookmeta">
+          <div class="no">N O . 3 9</div>
+          <div class="nm">202609 · 第 39 期</div>
+          <a class="go" href="#open">翻 开 →</a>
+        </div>
+      </div>
+
+      <!-- 第 2 册：水位 -->
+      <div class="bookwrap">
+        <div class="cover c-deep">
+          <span class="frame" aria-hidden="true"></span>
+          <div class="kick">學 科 信 息 參 考</div>
+          <div class="num">202607</div>
+          <div class="ttl">云南大学 ESI<br>潜力学科分析</div>
+          <div class="dev" aria-hidden="true">
+            <svg viewBox="0 0 160 78">
+              <g stroke="#7FB79B" stroke-width="1.4">
+                <line x1="4" y1="12" x2="4" y2="22"/><line x1="24" y1="12" x2="24" y2="18"/>
+                <line x1="44" y1="12" x2="44" y2="18"/><line x1="64" y1="12" x2="64" y2="22"/>
+                <line x1="84" y1="12" x2="84" y2="18"/><line x1="104" y1="12" x2="104" y2="18"/>
+                <line x1="124" y1="12" x2="124" y2="22"/><line x1="144" y1="12" x2="144" y2="18"/>
+              </g>
+              <rect x="4" y="46" width="152" height="24" fill="#2F7A58"/>
+              <line x1="4" y1="46" x2="156" y2="46" stroke="#DFEDE6" stroke-width="1.6"/>
+              <line x1="4" y1="30" x2="156" y2="30" stroke="#B23A2B" stroke-width="1.6" stroke-dasharray="4 3"/>
+            </svg>
+          </div>
+          <div class="foot">第 三 十 八 期</div>
+        </div>
+        <div class="bookmeta">
+          <div class="no">N O . 3 8</div>
+          <div class="nm">202607 · 第 38 期</div>
+          <a class="go" href="#open">翻 开 →</a>
+        </div>
+      </div>
+
+      <!-- 第 3 册：橡皮戳 -->
+      <div class="bookwrap">
+        <div class="cover c-green">
+          <span class="frame" aria-hidden="true"></span>
+          <div class="kick">學 科 信 息 參 考</div>
+          <div class="num">202605</div>
+          <div class="ttl">云南大学 ESI<br>潜力学科分析</div>
+          <div class="dev" aria-hidden="true">
+            <svg viewBox="0 0 160 78">
+              <g fill="none" stroke="#7FB79B" stroke-width="1.8">
+                <circle cx="30" cy="40" r="22"/><circle cx="30" cy="40" r="17" stroke-width="1"/>
+                <rect x="62" y="18" width="44" height="44"/><rect x="68" y="24" width="32" height="32" stroke-width="1"/>
+                <polygon points="138,18 158,34 151,62 125,62 118,34"/>
+              </g>
+            </svg>
+          </div>
+          <div class="foot">第 三 十 七 期</div>
+        </div>
+        <div class="bookmeta">
+          <div class="no">N O . 3 7</div>
+          <div class="nm">202605 · 第 37 期</div>
+          <a class="go" href="#open">翻 开 →</a>
+        </div>
+      </div>
+
+      <!-- 第 4 册：钤印 -->
+      <div class="bookwrap">
+        <div class="cover c-pine">
+          <span class="frame" aria-hidden="true"></span>
+          <div class="kick">學 科 信 息 參 考</div>
+          <div class="num">202603</div>
+          <div class="ttl">云南大学 ESI<br>潜力学科分析</div>
+          <div class="dev" aria-hidden="true">
+            <svg viewBox="0 0 160 78">
+              <g transform="rotate(-8 80 40)">
+                <rect x="42" y="8" width="64" height="64" fill="none" stroke="#B23A2B" stroke-width="2.2"/>
+                <rect x="50" y="16" width="48" height="48" fill="none" stroke="#B23A2B" stroke-width="1"/>
+                <line x1="74" y1="8" x2="74" y2="72" stroke="#B23A2B" stroke-width="1" opacity=".55"/>
+                <line x1="42" y1="40" x2="106" y2="40" stroke="#B23A2B" stroke-width="1" opacity=".55"/>
+              </g>
+            </svg>
+          </div>
+          <div class="foot">第 三 十 六 期</div>
+        </div>
+        <div class="bookmeta">
+          <div class="no">N O . 3 6</div>
+          <div class="nm">202603 · 第 36 期</div>
+          <a class="go" href="#open">翻 开 →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ ③ 一册翻开 ═══════ -->
+<section class="spread" id="open">
+  <div class="sp">
+    <div class="hd">
+      <div class="ov">一 冊 翻 開 · 目 錄 與 名 詞 解 釋</div>
+      <h2>翻开一册，先看它讲了什么。</h2>
+      <p class="deck">陈列馆只开放三样：封面、目录、名词解释。正文数值不出馆——要看，进工作区。</p>
+    </div>
+
+    <div class="open">
+      <!-- 左页：目录 -->
+      <div class="pg left">
+        <div class="pghead"><b>目 錄</b><span>第 39 期 · 2 0 2 6 0 9</span></div>
+        <ol class="toc">
+          <li><span class="n">01</span><span class="t">一　概述</span><span class="p">P. 1</span></li>
+          <li><span class="n">02</span><span class="t">二　发展情况</span><span class="p">P. 3</span></li>
+          <li><span class="n">03</span><span class="t">　　表 1　学科排名</span><span class="p">P. 4</span></li>
+          <li><span class="n">04</span><span class="t">　　表 2　高被引滚动</span><span class="p">P. 7</span></li>
+          <li><span class="n">05</span><span class="t">　　CNCI 与月度发文</span><span class="p">P. 9</span></li>
+          <li><span class="n">06</span><span class="t">三　进入预测</span><span class="p">P. 12</span></li>
+          <li><span class="n">07</span><span class="t">　　表 3　进入预测</span><span class="p">P. 13</span></li>
+          <li><span class="n">08</span><span class="t">四　专题</span><span class="p">P. 16</span></li>
+          <li><span class="n">09</span><span class="t">　　贡献度与热力图</span><span class="p">P. 17</span></li>
+          <li><span class="n">10</span><span class="t">附录 A　每期操作清单</span><span class="p">P. 21</span></li>
+          <li><span class="n">11</span><span class="t">附录 B　图表模板清单</span><span class="p">P. 23</span></li>
+        </ol>
+      </div>
+      <div class="spine" aria-hidden="true"></div>
+
+      <!-- 右页：名词解释 -->
+      <div class="pg right">
+        <div class="pghead"><b>名 詞 解 釋</b><span>共 三 條 · 節 選</span></div>
+        <div class="gloss">
+          <div class="gl">
+            <div class="term">总被引<span class="en">TOTAL CITATIONS</span></div>
+            <div class="def">一所机构某学科的论文被引用的总次数。是 ESI 排名最看重的一项。</div>
+          </div>
+          <div class="gl">
+            <div class="term">ESI 前 1% 被引阈值<span class="en">TOP 1% THRESHOLD</span></div>
+            <div class="def">进入全球前 1% 所需要的最低被引次数。每个学科一条线，每期都在动。</div>
+          </div>
+          <div class="gl">
+            <div class="term">接近度<span class="en">PROXIMITY</span></div>
+            <div class="def">本校被引数离这条线还有多远。报告里「进入预测」看的就是它。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ 器件语言 ═══════ -->
+<section class="mech" id="mech">
+  <div class="mc">
+    <div>
+      <div class="ov">產 品 語 匯 · 四 件</div>
+      <h2>四件东西，<br>讲完整条流水线。</h2>
+      <p class="deck">从取数到签发，每一步都有一个能看见的物件。陈列馆把它们放大成册子的封面与页脚。</p>
+    </div>
+
+    <div class="mechgrid">
+      <div class="mcell">
+        <div class="g" aria-hidden="true">
+          <svg viewBox="0 0 52 52"><g fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="4" y="14" width="13" height="25"/><rect x="21" y="14" width="13" height="25"/>
+            <rect x="38" y="14" width="10" height="25"/><line x1="4" y1="26" x2="48" y2="26"/>
+          </g></svg>
+        </div>
+        <div class="t">翻牌</div>
+        <div class="d">期次与时刻。发车、到站、目录号——都写在牌面上。</div>
+      </div>
+      <div class="mcell">
+        <div class="g" aria-hidden="true">
+          <svg viewBox="0 0 52 52"><g fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="6" y="7" width="40" height="38"/><line x1="6" y1="32" x2="46" y2="32"/>
+            <line x1="6" y1="18" x2="46" y2="18" stroke-dasharray="3 3" stroke="#B23A2B"/>
+          </g></svg>
+        </div>
+        <div class="t">水位</div>
+        <div class="d">阈值是警戒水位线，接近度是读数。离前 1% 还有多远，一看就知道。</div>
+      </div>
+      <div class="mcell">
+        <div class="g" aria-hidden="true">
+          <svg viewBox="0 0 52 52"><g fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="16" cy="18" r="11"/><rect x="30" y="8" width="18" height="20"/>
+            <polygon points="26,36 34,32 40,42 32,48 22,42"/>
+          </g></svg>
+        </div>
+        <div class="t">橡皮戳</div>
+        <div class="d">取数、并入、出稿，各留一枚。做过的步骤看得见。</div>
+      </div>
+      <div class="mcell">
+        <div class="g" aria-hidden="true">
+          <svg viewBox="0 0 52 52"><g fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="10" y="10" width="32" height="32" transform="rotate(-8 26 26)"/>
+            <line x1="26" y1="10" x2="26" y2="42" transform="rotate(-8 26 26)"/>
+            <line x1="10" y1="26" x2="42" y2="26" transform="rotate(-8 26 26)"/>
+          </g></svg>
+        </div>
+        <div class="t">钤印</div>
+        <div class="d">复核并签单。盖下去，这一版才被标记为「可交付」。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ 页脚 ═══════ -->
+<footer class="foot">
+  <div><b>文衡 · 陈列馆</b>雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+  <div class="dual"><i class="b"></i><i class="g"></i>　藍 為 場　·　綠 為 器</div>
+  <div>陳 列 館 只 出 封 面 / 目 錄 / 名 詞 解 釋</div>
+</footer>
+</body>
+</html>
