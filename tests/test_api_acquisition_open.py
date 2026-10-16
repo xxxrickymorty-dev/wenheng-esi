@@ -63,3 +63,16 @@ def test_开新一期需要管理员(tmp_path, monkeypatch):
     assert r.status_code == 403
     r, _ = _call(monkeypatch, tmp_path, "202611", user=None)
     assert r.status_code == 401
+
+
+class Test路由:
+    def test_open路由是POST_api(self):
+        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
+        assert '@app.post("/api/periods/{period}/acquisition/open")' in src
+
+    def test_open由本处理器接住(self):
+        from server.app import app
+        hit = next((r.endpoint.__name__ for r in app.routes
+                    if getattr(r, "path", "") == "/api/periods/{period}/acquisition/open"
+                    and "POST" in (getattr(r, "methods", None) or set())), None)
+        assert hit == "api_acq_open"
