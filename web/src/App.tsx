@@ -13,6 +13,7 @@ import {
   type ForecastChoiceEntry, type ForecastMeta,
 } from './api-forecast'
 import { applyPeriod, buildPeriodUrl } from './lib/period'
+import { forecastAppliedDiffs, forecastAppliedStale, sameForecastChoice, savedForecastChoice } from './lib/forecast'
 import { errorNote } from './lib/status'
 import { wireEnter } from './lib/motion'
 import { pickRunForPeriod } from './lib/run'
@@ -44,31 +45,6 @@ function initialPalette(): Palette {
   } catch {
     return 'ynu'
   }
-}
-
-function sameForecastChoice(
-  left: Record<string, Record<string, string>>,
-  right: Record<string, Record<string, string>>,
-  meta: ForecastMeta,
-): boolean {
-  return meta.routes.every((route) => meta.subjects.every((subject) =>
-    (left[route.value]?.[subject] ?? '') === (right[route.value]?.[subject] ?? '')))
-}
-
-function savedForecastChoice(
-  choice: Record<string, Record<string, string>>,
-  meta: ForecastMeta,
-): Record<string, Record<string, string>> {
-  const result: Record<string, Record<string, string>> = {}
-  for (const route of meta.routes) {
-    const bySubject: Record<string, string> = {}
-    for (const subject of meta.subjects) {
-      const model = choice[route.value]?.[subject]
-      if (model) bySubject[subject] = model
-    }
-    result[route.value] = bySubject
-  }
-  return result
 }
 
 export default function App() {
@@ -149,6 +125,19 @@ export default function App() {
     })
   }, [])
 
+  /* 按周期请求一份新的选模记录（loading 占位 → 由下方 effect 拉取）。
+     重出完成后用它刷新「上次出稿实际用的选择」，让「报告还是旧的」提示及时消失。 */
+  const requestForecastChoice = useCallback((period: string) => {
+    forecastChoiceRequestRef.current[period] = (forecastChoiceRequestRef.current[period] ?? 0) + 1
+    setForecastChoiceByPeriod((current) => ({
+      ...current,
+      [period]: {
+        loaded: false, loading: false, saving: false, error: '',
+        choice: {}, saved: {}, by: '', at: '', applied: null,
+      },
+    }))
+  }, [])
+
   useEffect(() => () => { periodsRequestRef.current += 1 }, [])
 
   useEffect(() => {
@@ -179,6 +168,16 @@ export default function App() {
     return v && DEMO_STATES.includes(v) ? v : null
   }, [])   // eslint-disable-line react-hooks/exhaustive-deps -- wantPeriod 只在首屏读一次
 
+  /* 从预测台「回出报告并重新生成」来的一次性提示（?rerun=1）：生成台把重跑确认态直接打开；
+     读完就摘掉参数（刷新不该再弹，确认与否仍由人点）。 */
+  const [autoConfirmRerun] = useState(() => new URLSearchParams(location.search).get('rerun') === '1')
+  useEffect(() => {
+    if (!autoConfirmRerun) return
+    const url = new URL(window.location.href)
+    url.searchParams.delete('rerun')
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash)
+  }, [autoConfirmRerun])
+
   const onActivePeriod = useCallback((period: string) => {
     restoredActivePeriodRef.current = period
     if (!manualSelectionRef.current) setSelected(period)
@@ -192,13 +191,17 @@ export default function App() {
     const affectedPeriods = [...new Set([finished.requestedPeriod, finished.outputPeriod].filter(
       (period): period is string => !!period,
     ))]
-    for (const period of affectedPeriods) refreshDetail(period)
+    for (const period of affectedPeriods) {
+      refreshDetail(period)
+      /* 重出完成：重新读「上次出稿实际用的选择」——新选择已进报告，提示条随之消失 */
+      requestForecastChoice(period)
+    }
     setArtifactRefreshByPeriod((current) => {
       const next = { ...current }
       for (const period of affectedPeriods) next[period] = (next[period] ?? 0) + 1
       return next
     })
-  }, [refreshDetail, refreshForecastMeta, refreshPeriods])
+  }, [refreshDetail, refreshForecastMeta, refreshPeriods, requestForecastChoice])
 
   /* 2026-10-12：出报告对操作员也开放——runEnabled 只看「服务健康 + 已登录」。 */
   const runEnabled = healthy === true && roleKnown && !!me
@@ -264,7 +267,7 @@ export default function App() {
       ...current,
       [selected]: {
         loaded: false, loading: true, saving: false, error: '',
-        choice: {}, saved: {}, by: '', at: '',
+        choice: {}, saved: {}, by: '', at: '', applied: null,
       },
     }))
     void getForecastChoice(selected).then((record) => {
@@ -274,6 +277,7 @@ export default function App() {
         [selected]: {
           loaded: true, loading: false, saving: false, error: '',
           choice: record.choice ?? {}, saved: record.choice ?? {}, by: record.by ?? '', at: record.at ?? '',
+          applied: record.applied ?? null,
         },
       }))
     }).catch((e) => {
@@ -283,7 +287,7 @@ export default function App() {
         [selected]: {
           loaded: false, loading: false, saving: false,
           error: errorNote(e, '本期模型设置'),
-          choice: {}, saved: {}, by: '', at: '',
+          choice: {}, saved: {}, by: '', at: '', applied: null,
         },
       }))
     })
@@ -293,6 +297,11 @@ export default function App() {
   const selectedForecastChoice = selected ? forecastChoiceByPeriod[selected] ?? null : null
   const selectedForecastChoiceDirty = !!(forecastMeta && selectedForecastChoice?.loaded
     && !sameForecastChoice(selectedForecastChoice.choice, selectedForecastChoice.saved, forecastMeta))
+  /* 「报告还是旧的」：已保存的选择 ≠ 上次出稿实际用的选择（见 lib/forecast.ts；无快照不猜） */
+  const selectedForecastStale = forecastAppliedStale(selectedForecastChoice, forecastMeta)
+  const selectedForecastStaleDiffs = selectedForecastStale && selectedForecastChoice && forecastMeta
+    ? forecastAppliedDiffs(selectedForecastChoice, forecastMeta)
+    : []
   const anyForecastChoiceDirty = !!forecastMeta && Object.values(forecastChoiceByPeriod).some((entry) =>
     entry.loaded && !sameForecastChoice(entry.choice, entry.saved, forecastMeta))
   const choiceLoadLockReason = selected && !forecastMeta
@@ -342,16 +351,10 @@ export default function App() {
     return () => window.cancelAnimationFrame(id)
   }, [])
 
+  /* 按周期请求一份新的选模记录（loading 占位 → 由上方 effect 拉取）。
+     重出完成后用它刷新「上次出稿实际用的选择」，让「报告还是旧的」提示及时消失。 */
   function reloadForecastChoice() {
-    if (!selected) return
-    forecastChoiceRequestRef.current[selected] = (forecastChoiceRequestRef.current[selected] ?? 0) + 1
-    setForecastChoiceByPeriod((current) => ({
-      ...current,
-      [selected]: {
-        loaded: false, loading: false, saving: false, error: '',
-        choice: {}, saved: {}, by: '', at: '',
-      },
-    }))
+    if (selected) requestForecastChoice(selected)
   }
 
   function changeForecastChoice(route: string, subject: string, model: string) {
@@ -390,6 +393,7 @@ export default function App() {
           loaded: true, loading: false, saving: false, error: '',
           choice: readback.choice ?? {}, saved: readback.choice ?? {},
           by: readback.by ?? '', at: readback.at ?? '',
+          applied: readback.applied ?? null,
         },
       }))
     } catch (e) {
@@ -721,6 +725,9 @@ export default function App() {
                         actualOutputPeriod={busy || toolAction ? null : runForSelected?.outputPeriod ?? null}
                         forecastChoice={selectedForecastChoice}
                         forecastChoiceDirty={selectedForecastChoiceDirty}
+                        forecastAppliedStale={selectedForecastStale}
+                        forecastAppliedDiffs={selectedForecastStaleDiffs}
+                        autoConfirmRerun={autoConfirmRerun}
                         onPickPeriod={pickPeriod}
                         onReloadForecastChoice={reloadForecastChoice}
                         showTools={!noAdminBits && me?.role === 'admin'}

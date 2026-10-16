@@ -19,7 +19,13 @@ async function reqAll<T>(url: string): Promise<T[]> {
   return out
 }
 
-export type ChartRow = { name: string; group: string; url: string }
+export type ChartRow = {
+  name: string
+  group: string
+  url: string
+  /** 读得懂的名字（如预测图的「免疫学 · 被引频次与阈值（预测图）」）；空串＝回落文件名 */
+  label?: string
+}
 
 /** 图册：期次图，按分组（109 张量级，全量） */
 export async function getCharts(period: string): Promise<ChartRow[]> {

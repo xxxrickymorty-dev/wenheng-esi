@@ -100,6 +100,16 @@ export type ForecastChoice = {
   choice: Record<string, Record<string, string>>
   by: string
   at: string
+  /** 上次出稿**实际用的**选择（当期产物的出稿快照；没出过稿/老期次 = null）。
+      与已保存的 choice 比值：不一致＝改选还没重出（见 lib/forecast.ts）。 */
+  applied?: ForecastChoiceApplied | null
+}
+
+export type ForecastChoiceApplied = {
+  choice: Record<string, Record<string, string>>
+  by: string
+  at: string
+  snapshot_at: string
 }
 
 export type ForecastChoiceEntry = {
@@ -111,6 +121,7 @@ export type ForecastChoiceEntry = {
   saved: ForecastChoice['choice']
   by: string
   at: string
+  applied: ForecastChoiceApplied | null
 }
 
 export async function getForecastChoice(period: string): Promise<ForecastChoice> {

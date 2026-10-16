@@ -192,7 +192,7 @@ function ModelSummary({
         </span>
         <Info label="选模口径" end>
           <p>模型选择按期次保存，全站只有一份——这里显示的就是本期配置。</p>
-          <p>本期报告只应用实际进入预测章的学科；其余选择不影响本期正文。</p>
+          <p>重出报告后：未进 1% 的学科都会按选择出图（进本期图册）；报告正文只用接近度前二。</p>
         </Info>
       </div>
       <p className="lead-155">
@@ -271,10 +271,14 @@ function ModelSummary({
                       <td>{subject}</td>
                       <td>{rec || 'V1 推荐'}</td>
                       <td>
-                        <b>{actual || '—'}</b>
-                        <span className="mdesc" style={{ color: mine ? 'var(--zhu)' : 'var(--ink-3)' }}>
-                          {mine ? '已改选' : '跟随 V1 推荐'}
-                        </span>
+                        {mine ? (
+                          <>
+                            <b>{mine}</b>
+                            <span className="ml-6 ink-zhu">已改选</span>
+                          </>
+                        ) : (
+                          <span className="ink-3">默认</span>
+                        )}
                       </td>
                       <td><span className="mdesc">{MODEL_DESC[actual] ?? '由 V1 推荐按学科指定。'}</span></td>
                     </tr>
@@ -305,7 +309,7 @@ function ModelSummary({
         </>
       )}
 
-      <div className="degraded"><b>与报告的关系</b>：任务启动时固定读取本期已保存选择。选择在本期报告进入预测章的学科上生效；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</div>
+      <div className="degraded"><b>与报告的关系</b>：任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</div>
     </section>
   )
 }
@@ -314,6 +318,7 @@ export function Workbench({
   period, me, wb, err, healthy, run, approvalStatus, activityState,
   actionLockReason, activeRun, actionsLocked, submitting, onGenerate,
   periods, forecastMeta, forecastMetaError, actualOutputPeriod, forecastChoice, forecastChoiceDirty,
+  forecastAppliedStale, forecastAppliedDiffs, autoConfirmRerun,
   onPickPeriod, onReloadForecastChoice,
   showTools, toolJobId, toolArtifactsToken, onToolActionStart, onToolActionEnd, onToolUploaded,
 }: {
@@ -336,6 +341,12 @@ export function Workbench({
   actualOutputPeriod: string | null
   forecastChoice: ForecastChoiceEntry | null
   forecastChoiceDirty: boolean
+  /** 已保存的模型选择 ≠ 上次出稿实际用的选择（报告还是旧的）；无出稿快照时恒 false */
+  forecastAppliedStale: boolean
+  /** 提示条里列的改动（「总被引：免疫学 → SARIMA模型」这类人话） */
+  forecastAppliedDiffs: string[]
+  /** 从预测台「回出报告并重新生成」来（?rerun=1）：重跑确认态直接打开一次 */
+  autoConfirmRerun: boolean
   onPickPeriod: (period: string) => void
   onReloadForecastChoice: () => void
   /** 「工具调用记录」折叠（2026-10-01 从 App 抽出）：角色未确认/操作员（只读）时不渲染 */
@@ -395,6 +406,35 @@ export function Workbench({
             )}
           </div>
         </div>
+
+        {forecastAppliedStale && (!run || isTerminal(run.status ?? undefined)) && (
+          /* 改选还没进报告（2026-10-16，rick）：说清哪几处改了、报告是旧的、重出才生效。
+             重出进行中或刚落定（run 非终态）时先不显示——那一刻提示只会误导。 */
+          <div className="banner warn mx-card-22" role="status">
+            <span className="ico"><Icon name="alert" size={22} /></span>
+            <span>
+              <b className="title">模型选择改过，报告还是旧的</b>
+              <span>
+                {forecastAppliedDiffs.join('；')}
+                {forecastChoice?.at
+                  ? `（${forecastChoice.by ? `${forecastChoice.by} · ` : ''}${forecastChoice.at} 保存）`
+                  : ''}
+                。当前报告仍按改选前的选择生成——重新生成后生效：未进 1% 的学科都会按你的选择出图，
+                报告正文用接近度前二。
+              </span>
+              <span className="acts">
+                <ConfirmButton className="btn" disabled={!canGenerate}
+                               confirmText="确认重跑？会撤下当前成品" onConfirm={onGenerate}
+                               autoConfirm={autoConfirmRerun}>
+                  <Icon name="refresh" size={19} />重新生成
+                </ConfirmButton>
+                <a className="btn" href={`/app/?view=forecast${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+                  去预测台看选择 →
+                </a>
+              </span>
+            </span>
+          </div>
+        )}
 
         {!canGenerate && hasGenerateAction && (
           <p className="hint card-foot">

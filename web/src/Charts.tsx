@@ -77,10 +77,10 @@ export function Charts({ period }: { period: string | null }) {
               </div>
               <div className="gal">
                 {list.map((c) => (
-                  <a key={c.url} href={c.url} target="_blank" rel="noreferrer" title={`${chartGroupLabel(g)} / ${c.name}`}>
-                    <img src={c.url} alt={c.name} loading="lazy" decoding="async"
+                  <a key={c.url} href={c.url} target="_blank" rel="noreferrer" title={`${chartGroupLabel(g)} / ${c.label || c.name}`}>
+                    <img src={c.url} alt={c.label || c.name} loading="lazy" decoding="async"
                          className="gal-img" />
-                    <span className="hint fs-13">{c.name}</span>
+                    <span className="hint fs-13">{c.label || c.name}</span>
                   </a>
                 ))}
               </div>

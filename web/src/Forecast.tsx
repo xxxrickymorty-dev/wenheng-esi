@@ -10,6 +10,8 @@ import {
   type ForecastModelResult, type ForecastRun,
 } from './api-forecast'
 import { Info } from './Info'
+import { Icon } from './icons'
+import { forecastAppliedDiffs, forecastAppliedStale, shortRouteLabel } from './lib/forecast'
 import { MODEL_DESC } from './Workbench'
 
 /** 显示格式（千分位 + 固定小数位）——只影响「怎么显示」，不参与任何计算；
@@ -28,13 +30,6 @@ function fmtPeriod(v: number | null | undefined): string {
 function fmtMonth(v: string | null | undefined): string {
   if (!v) return '—'
   return v.length >= 6 ? `${v.slice(0, 4)}-${v.slice(4, 6)}` : v
-}
-
-/** 路线短名：'路线1 · 总被引 / ESI前1%被引阈值' → '总被引'（全名放悬停与 ⓘ） */
-function shortRoute(label: string): string {
-  const head = label.split('/')[0] ?? label
-  const parts = head.split('·')
-  return (parts[parts.length - 1] ?? head).trim() || label
 }
 
 /** 期数档位：默认 18 与报告一致；24 是模型包的硬上限（要更远得升模型版本） */
@@ -403,11 +398,26 @@ export function Forecast({
         : choiceDirty ? '有未保存改动'
           : '已保存'
 
+  /* 改选已保存、但报告还没重出（2026-10-16，rick）：比「保存的选择 vs 出稿快照」；
+     「留在本页」只收本条提示（本次会话内），不隐藏事实。 */
+  const appliedStale = forecastAppliedStale(choice, meta)
+  const appliedDiffs = appliedStale && choice && meta ? forecastAppliedDiffs(choice, meta) : []
+  const [staleHidden, setStaleHidden] = useState(false)
+  const rerunHref = period ? `/app/?period=${encodeURIComponent(period)}&rerun=1` : '/app/'
+
   return (
     <>
       <section className="card pad-20-22-18">
-        <h1 className="fs-25">潜力学科预测</h1>
-        <p className="fc-lead mt-6">先看图，再定稿。</p>
+        <div className="rowc12">
+          <div>
+            <h1 className="fs-25">潜力学科预测</h1>
+            <p className="fc-lead mt-6">先看图，再定稿。</p>
+          </div>
+          {/* 回程（2026-10-16，rick）：改完要不要重出、改没改，下方提示条说清；这里只负责回得去 */}
+          <a className="btn ml-auto" href={period ? `/app/?period=${encodeURIComponent(period)}` : '/app/'}>
+            ← 回出报告
+          </a>
+        </div>
       </section>
 
       {/* 页头一条带：期次 / 数据截至 / 路线（唯一一套控件）/ 保存（唯一一处） */}
@@ -428,7 +438,7 @@ export function Forecast({
                       aria-pressed={r.value === currentRoute}
                       className={r.value === currentRoute ? 'on' : ''}
                       onClick={() => setRoute(r.value)}>
-                {shortRoute(r.label)}
+                {shortRouteLabel(r.label)}
               </button>
             ))}
           </div>
@@ -455,6 +465,23 @@ export function Forecast({
           </button>
         )}
       </div>
+
+      {appliedStale && !staleHidden && (
+        <div className="banner warn mt-14" role="status">
+          <span className="ico"><Icon name="alert" size={22} /></span>
+          <span>
+            <b className="title">改选已保存，报告还没重出</b>
+            <span>
+              {appliedDiffs.join('；')}。当前成品仍按改选前的选择出的；
+              重新生成后按你的选择出图——未进 1% 的学科都会重画，报告正文用接近度前二。
+            </span>
+            <span className="acts">
+              <a className="btn" href={rerunHref}>回出报告并重新生成 →</a>
+              <button type="button" className="btn" onClick={() => setStaleHidden(true)}>留在本页继续看图</button>
+            </span>
+          </span>
+        </div>
+      )}
 
       {metaError && <div className="pending-box mt-14">{metaError}</div>}
       {!meta && !metaError && <div className="pending-box mt-14">正在读取预测模型清单……</div>}
@@ -529,7 +556,8 @@ export function Forecast({
                 <li><b>结果边界</b>：预测过线是滚动监测信号，不等同于正式入榜时间或入榜概率。</li>
               </ul>
               <p className="hint mt-10">
-                <b>与报告的关系</b>：这里保存的选择进报告预测章——下次重出报告时，选中的学科按你的选择出图，未改的用 V1 推荐；所选模型若跑不出来，会自动退回推荐。
+                <b>与报告的关系</b>：这里保存的选择进报告——重出后，未进 1% 的学科都会按你的选择出图
+                （进本期图册），报告正文用接近度前二；未改的学科用 V1 推荐；所选模型若跑不出来，会自动退回推荐。
               </p>
               <p className="hint mt-6">
                 <b>期次与数据说明</b>：{freshnessText} V1 推荐基线为 {meta.recommendation_baseline ?? '—'}（不是预测数据期次）。
