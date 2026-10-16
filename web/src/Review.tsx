@@ -82,10 +82,18 @@ function BlockView({
     )
   }
   if (block.t === 'img') {
+    /* 图占位（2026-10-16）：按 docx 原尺寸同时锁定宽与比例——懒加载图落位不再撑版面，
+       否则「报告里的空」深跳转会被中途加载的图顶走（rick 实测落在上一节）。 */
+    const style: CSSProperties | undefined = block.w_cm
+      ? {
+        width: `${Math.round(block.w_cm * 37.8)}px`,
+        ...(block.h_cm ? { aspectRatio: `${block.w_cm} / ${block.h_cm}` } : {}),
+      }
+      : undefined
     return (
       <p className="rv-img">
         <img src={reportImageUrl(period, block.rid)} alt="报告插图" loading="lazy" decoding="async"
-             style={block.w_cm ? { width: `${Math.round(block.w_cm * 37.8)}px` } : undefined} />
+             style={style} />
       </p>
     )
   }
@@ -98,8 +106,15 @@ function BlockView({
               {row.map((cell, ci) => (
                 <td key={ci} colSpan={cell.span || undefined}>
                   {cell.text}
-                  {(cell.imgs ?? []).map((rid) => (
-                    <img key={rid} src={reportImageUrl(period, rid)} alt="图表" loading="lazy" decoding="async" />
+                  {(cell.imgs ?? []).map((im) => (
+                    <img key={im.rid} src={reportImageUrl(period, im.rid)} alt="图表"
+                         loading="lazy" decoding="async"
+                         style={im.w_cm
+                           ? {
+                             width: `${Math.round(im.w_cm * 37.8)}px`,
+                             ...(im.h_cm ? { aspectRatio: `${im.w_cm} / ${im.h_cm}` } : {}),
+                           }
+                           : undefined} />
                   ))}
                 </td>
               ))}
@@ -330,10 +345,19 @@ export function Review({
 
   function jumpTo(id: string) {
     const el = document.getElementById(`rv-ph-${id}`)
-    if (el) {
-      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
-      ;(el as HTMLInputElement).focus({ preventScroll: true })
+    if (!el) return
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    ;(el as HTMLInputElement).focus({ preventScroll: true })
+    /* 懒加载图在滚动途中落位曾把目标顶走（2026-10-16 rick 实测「点击落在上一节」）：
+       图已按原尺寸预留占位，这里再补两次校正兜底——只有目标完全不在视口里才补跳。 */
+    const settle = () => {
+      const r = el.getBoundingClientRect()
+      if (r.bottom < 0 || r.top > window.innerHeight) {
+        el.scrollIntoView({ block: 'center', behavior: 'auto' })
+      }
     }
+    window.setTimeout(settle, 700)
+    window.setTimeout(settle, 1600)
   }
 
   function jumpNext() {

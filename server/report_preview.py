@@ -172,7 +172,16 @@ def _table_block(tbl_el):
             for p in tc.findall(qn('w:p')):
                 texts.append("".join(n.text or "" for n in p.findall('.//' + qn('w:t'))))
             cell: dict = {"text": "\n".join(texts).strip()}
-            imgs = [rid for rid, _cx, _cy in _drawings(tc)]
+            # 图带原始尺寸（cm）——前端据此预留占位；懒加载图不预留会把版面撑爆，
+            # 深跳转（审核台「报告里的空」点击）就会落错地方（2026-10-16 rick 实测）。
+            imgs = []
+            for rid, cx, cy in _drawings(tc):
+                item: dict = {"rid": rid}
+                if cx:
+                    item["w_cm"] = round(cx / 360000, 2)
+                if cy:
+                    item["h_cm"] = round(cy / 360000, 2)
+                imgs.append(item)
             if imgs:
                 cell["imgs"] = imgs
             span = 1
@@ -218,7 +227,7 @@ def _parse(out_dir: pathlib.Path, docx: pathlib.Path):
         elif b.get("t") == "tbl":
             for cells in b["rows"]:
                 for cell in cells:
-                    rids.extend(cell.get("imgs") or [])
+                    rids.extend(im["rid"] for im in (cell.get("imgs") or []) if isinstance(im, dict))
 
     images: dict[str, tuple] = {}
     for rid in dict.fromkeys(rids):
