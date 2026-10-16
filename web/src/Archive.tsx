@@ -130,9 +130,14 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                   ))}
                 </ul>
                 <p className="hint">
-                  {acq.copy?.merged_at
-                    ? `并入时刻：${acq.copy.merged_at}（写前有备份；写后逐格核对过）`
-                    : '尚未并入主台账——核对通过后才会落笔。'}
+                  {acq.copy?.state === 'merged'
+                    ? `已并入主台账${acq.copy.merged_at ? `：${acq.copy.merged_at}` : ''}`
+                      + `${acq.copy.merged_by ? ` · 操作人：${acq.copy.merged_by}` : ''}`
+                      + (acq.copy.merged_at ? '（写前有备份；写后逐格核对过）'
+                        : '（本期并入早于取数留痕，未记时刻与操作人）')
+                    : acq.copy?.state === 'review'
+                      ? '已建好当期核对副本，还没并入主台账——核对通过后才落笔。'
+                      : '还没取数，也没有并入记录。'}
                 </p>
               </div>
             </details>

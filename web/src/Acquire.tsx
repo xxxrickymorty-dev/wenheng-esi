@@ -216,7 +216,6 @@ export function Acquire({ period }: { period: string | null }) {
   const capKey: 'start' | 'retry' | 'merge' = view === 'partial' ? 'retry' : view === 'review' ? 'merge' : 'start'
   const needsTool = view === 'ready' || view === 'partial' || view === 'review'
   const canRun = !!cap[capKey]
-  const dp = state?.data_period
   /* 采集与并入台账是两条独立的线（2026-10-16 解耦）：采集＝本机取到多少份；并入＝台账并没并。
      重新取数只会补没下到的文件，台账那一列一字不动。 */
   const copyState = state?.copy?.state ?? 'none'
@@ -224,9 +223,6 @@ export function Acquire({ period }: { period: string | null }) {
     : copyState === 'review' ? '待核对 · 还没并入' : '还没并入'
   /* 最近一次「取数」的时间（只在最近一步确实是取数时才显示，免得把别的动作当成重取） */
   const lastFetchAt = op?.kind === 'fetch' ? (op.at ?? '') : ''
-  const dataPeriodText = dp && (dp.esi || dp.incites)
-    ? `（${[dp.esi ? `ESI ${dp.esi}` : '', dp.incites ? `InCites 截至 ${dp.incites}` : ''].filter(Boolean).join(' · ')}）`
-    : ''
 
   const pill: Record<PageView, [string, string]> = {
     ready: ['还没开始', 'unsigned'],
@@ -249,19 +245,11 @@ export function Acquire({ period }: { period: string | null }) {
     : view === 'blocked' ? '系统会自动打开取数专用浏览器；在里面登录 ESI / InCites 后，点「重新检查」。'
       : view === 'running' ? '可以离开这一页，进度不会丢。'
         : view === 'partial' ? '重试只补这一组，通过的不重复下载。'
-          : view === 'review' ? `核对无误后并入台账（只动 ${period} 列）；要重新取，点「重新取这一期」。`
-            : '下一步：去生成台一键生成；要重新取，点「重新取这一期」。'
+          : view === 'review' ? `核对无误后并入台账（只动 ${period} 列）。`
+            : ''
 
   return (
     <>
-      <p className="hint mt-2">
-        <a href={`/app/?period=${encodeURIComponent(period)}`}>← 回出报告</a>
-        {' · '}出报告 ① 取数并核验 · 期次 <b className="mono">{period}</b>
-      </p>
-      <p className="aq-duty">
-        取数台把本期 ESI、InCites 原始数据与监测表取回、逐份核对，再并入主台账；这里不提供资料下载。
-      </p>
-
       {note && <div className="pending-box">{note}<button type="button" className="btn ml-10" onClick={() => { setNote(null); load() }}>重新读取</button></div>}
       {!state && !note && <div className="pending-box">{loading ? '正在读取取数状态……' : '还没有读到取数状态。'}</div>}
 
@@ -275,12 +263,6 @@ export function Acquire({ period }: { period: string | null }) {
               <span className={`pill ${pill[view][1]}`}>{pill[view][0]}</span>
               <span className="hint aq-num">采集 · {expected > 0 ? `已取到 ${verified} / ${expected}` : '未开始'}{lastFetchAt ? ` · 最近取数 ${lastFetchAt}` : ''}</span>
               <span className="hint aq-num">并入台账 · {copyLabel}</span>
-              <Info label="取数状态与口径">
-                <p>进度按逐份核验结果统计：只有核验通过的文件才计入。</p>
-                <p>数据期取自网站页面显示值{dataPeriodText}，不以下载当天代替。</p>
-                <p>原始数据包由取数专用浏览器从 ESI、InCites 官网取出；本页只显示取数与核对进度，不提供资料下载。</p>
-                <p>「下载完成」不等于「台账已更新」：先核对本期数据（核对副本），核对通过才并入主台账；并入只动本期列，历史一字不变。</p>
-              </Info>
             </div>
           </section>
 
@@ -288,7 +270,9 @@ export function Acquire({ period }: { period: string | null }) {
           <div className="focus">
             <div aria-live="polite">
               <div className="big">{opRunning && op ? `${OP_CN[op.kind ?? ''] ?? '正在执行'}……` : title}</div>
-              <div className="sub">{opRunning && op ? (op.note || '进度会自动更新，可以留在这一页') : sub}</div>
+              {((opRunning && op) || sub) && (
+                <div className="sub">{opRunning && op ? (op.note || '进度会自动更新，可以留在这一页') : sub}</div>
+              )}
               {op?.state === 'failed' && (
                 <div className="hint note-bad">
                   上一步没有完成：{op.note || '原因见取数状态'}。
@@ -367,7 +351,6 @@ export function Acquire({ period }: { period: string | null }) {
                 <p className="hint m-0">还没有取数记录。</p>
               ) : (
                 <>
-                  <p className="hint m-b-10">缺份的组可就地补下——只补没下到的文件，已下过的不重复下载（已并入台账也能补）。</p>
                   <div className="aq-groups">
                     {groups.map((g, i) => (
                       <GroupCard key={g.id ?? i} g={g} busy={busy}

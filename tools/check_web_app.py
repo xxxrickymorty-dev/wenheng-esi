@@ -313,6 +313,18 @@ def main():
         except Exception as e:                                          # noqa: BLE001
             check("取数台回归（X2）", False, str(e)[:100])
 
+        # ---- 1f2) 运行档案能看到「并入台账」的留痕（票 02：谁/何时并的） ----
+        try:
+            page.goto(BASE + "/app/?view=archive&period=202607", wait_until="domcontentloaded")
+            page.wait_for_timeout(1200)
+            # 留痕在默认收起的折叠里，innerText 读不到——用 textContent（含隐藏）
+            txt = page.eval_on_selector_all("body", "els => els.map(e => e.textContent).join('')")
+            trace = re.search(r"已并入主台账[^\n]{0,60}", txt)
+            check("运行档案显示并入台账的留痕", trace is not None,
+                  (trace.group(0)[:60] if trace else "没看到「已并入主台账…」"))
+        except Exception as e:                                          # noqa: BLE001
+            check("运行档案并入留痕", False, str(e)[:100])
+
         # ---- 1g) 未出稿的取数期次（ADR-0004）：临时状态文件，验证列表补录 / 详情 / 零 404 ----
         fx = None
         try:

@@ -224,7 +224,7 @@ export type AcquisitionState = {
   capabilities?: { start?: boolean; retry?: boolean; merge?: boolean }
   groups?: AcqGroup[]
   totals?: { groups?: number; expected?: number; verified?: number; downloaded?: number; failed?: number }
-  copy?: { state?: string; path?: string; built_at?: string; merged_at?: string }
+  copy?: { state?: string; path?: string; built_at?: string; merged_at?: string; merged_by?: string }
   review?: { sheets?: AcqReviewSheet[] }
   /** 正在跑的任务（取数/建副本/并入）；闲时没有这个字段 */
   op?: { kind?: string; state?: string; note?: string; at?: string }
