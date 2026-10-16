@@ -23,6 +23,7 @@ def main(argv: list[str]) -> int:
     out_sub = argv[0] if argv else "blockout"
     views = [a for a in argv[1:] if not a.startswith("--")]
     light = "reference"
+    stripped = "--stripped" in argv
     for a in argv:
         if a.startswith("--light="):
             light = a.split("=", 1)[1]
@@ -44,7 +45,14 @@ def main(argv: list[str]) -> int:
             else None,
         )
         for view in views:
-            url = f"{BASE}?view={view}&light={light}"
+            if view.startswith("az:"):
+                url = f"{BASE}?az={view.split(':', 1)[1]}&light={light}" + ("&stripped=1" if stripped else "")
+                suffix = (f"-az{view.split(':', 1)[1]}") + ("-stripped" if stripped else "")
+                shot_name = f"orbit{suffix}.png"
+            else:
+                url = f"{BASE}?view={view}&light={light}" + ("&stripped=1" if stripped else "")
+                suffix = "-stripped" if stripped else ""
+                shot_name = f"{view}{suffix}.png"
             page.goto(url, wait_until="load", timeout=30000)
             try:
                 page.wait_for_function("() => window.__SCULPT_READY__ === true", timeout=30000)
@@ -56,7 +64,7 @@ def main(argv: list[str]) -> int:
             except Exception:  # noqa: BLE001
                 pass
             page.wait_for_timeout(600)
-            shot = out_dir / f"{view}.png"
+            shot = out_dir / shot_name
             page.screenshot(path=str(shot))
             stats = page.evaluate("() => window.__SCULPT_STATS__ ? window.__SCULPT_STATS__() : null")
             results[view] = stats

@@ -40,6 +40,30 @@ THREE.DefaultLoadingManager.onError = (url) => {
 const root = createYNULibraryModel({ castShadow: true, receiveShadow: true });
 scene.add(root);
 
+// ?stripped=1 — map-stripped evidence render for Tier-1 diagnostics: keep shape and
+// light response, drop every albedo/roughness/normal map and fall back to flat albedo.
+if (params.get('stripped') === '1') {
+  const seen = new Set();
+  root.traverse((obj) => {
+    if (!obj.isMesh && !obj.isInstancedMesh) return;
+    const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+    for (const material of materials) {
+      if (!material || seen.has(material)) continue;
+      seen.add(material);
+      const spec = material.userData && material.userData.sculptMaterial;
+      const baseColor = spec && typeof spec.baseColor === 'string' ? spec.baseColor : '#8a8a8a';
+      material.map = null;
+      material.roughnessMap = null;
+      material.normalMap = null;
+      material.aoMap = null;
+      material.bumpMap = null;
+      material.color = new THREE.Color(baseColor);
+      material.roughness = Math.max(0.6, material.roughness);
+      material.needsUpdate = true;
+    }
+  });
+}
+
 const lights = createYNULibraryLookDevLights(lightMode);
 for (const light of lights.children) {
   if (light.isDirectionalLight) {

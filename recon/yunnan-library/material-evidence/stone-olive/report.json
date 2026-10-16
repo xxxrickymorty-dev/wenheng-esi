@@ -1,18 +1,18 @@
 {
   "ok": true,
   "verdict": "pass",
-  "confidence": 0.86,
-  "estimatedFidelity": 0.86,
+  "confidence": 0.716,
+  "estimatedFidelity": 0.716,
   "targetThreshold": 0.7,
   "materialId": "stone-olive",
   "sourceImage": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\stone-olive.png",
   "outDir": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\stone-olive",
   "palette": [
-    "#06181C",
-    "#02090B",
-    "#202F30",
-    "#706152",
-    "#D0AC96"
+    "#82787C",
+    "#867B80",
+    "#928686",
+    "#7B7779",
+    "#817474"
   ],
   "maps": {
     "albedo": {
@@ -47,39 +47,43 @@
     }
   },
   "diagnostics": {
-    "sourceWidth": 22,
-    "sourceHeight": 58,
+    "sourceWidth": 200,
+    "sourceHeight": 10,
     "mapSize": 1024,
     "cropBBoxPixels": {
       "x": 0,
       "y": 0,
-      "width": 22,
-      "height": 58
+      "width": 200,
+      "height": 10
     },
     "mask": {
-      "backgroundColor": "#4C483E",
-      "backgroundNoise": 197.254,
+      "backgroundColor": "#817879",
+      "backgroundNoise": 18.33,
       "transparentPixelFraction": 0.0,
-      "foregroundCoverage": 0.7876
+      "foregroundCoverage": 1.0
     },
     "mapStats": {
-      "valueRange": 0.6901,
-      "heightP90Gradient": 0.01858,
-      "roughnessBase": 0.686,
-      "roughnessVariation": 0.05,
-      "normalStrength": 0.178,
+      "valueRange": 0.0807,
+      "heightP90Gradient": 0.03843,
+      "roughnessBase": 0.713,
+      "roughnessVariation": 0.073,
+      "normalStrength": 0.201,
       "blurRadius": 21
     },
     "palette": [
-      "#06181C",
-      "#02090B",
-      "#202F30",
-      "#706152",
-      "#D0AC96"
+      "#82787C",
+      "#867B80",
+      "#928686",
+      "#7B7779",
+      "#817474"
     ]
   },
   "warnings": [
-    "single-image inverse rendering cannot prove true physical PBR; confidence is capped"
+    "foreground mask is tiny; material extraction is likely unreliable",
+    "image is not clearly isolated from background; using most pixels as material evidence",
+    "object/background separation is weak",
+    "single-image inverse rendering cannot prove true physical PBR; confidence is capped",
+    "low value range weakens height/roughness inference"
   ],
   "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
 }

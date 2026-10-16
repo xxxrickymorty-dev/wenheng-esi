@@ -1,0 +1,17 @@
+{
+ "nodes": 94,
+ "meshes": 94,
+ "sockets": 0,
+ "colliders": 94,
+ "destructionGroups": 94,
+ "namedMeshes": 148,
+ "sampleNodes": [
+  "root",
+  "terrace-podium",
+  "podium-slab",
+  "grand-steps",
+  "terrace-balustrade-west",
+  "terrace-balustrade-east"
+ ],
+ "contract": "root.userData.sculptRuntime exposes nodes(Record<string,Object3D>) with named pivots, meshes, sockets, colliders and destructionGroups; every component is explode/click addressable."
+}

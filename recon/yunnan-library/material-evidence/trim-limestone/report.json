@@ -1,18 +1,18 @@
 {
   "ok": true,
   "verdict": "pass",
-  "confidence": 0.769,
-  "estimatedFidelity": 0.769,
+  "confidence": 0.751,
+  "estimatedFidelity": 0.751,
   "targetThreshold": 0.7,
   "materialId": "trim-limestone",
   "sourceImage": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\trim-limestone.png",
   "outDir": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\trim-limestone",
   "palette": [
-    "#886635",
-    "#2B4E53",
-    "#A06F35",
-    "#514B30",
-    "#807763"
+    "#F6B288",
+    "#F4AE81",
+    "#F6B691",
+    "#C38765",
+    "#6E4125"
   ],
   "maps": {
     "albedo": {
@@ -47,35 +47,35 @@
     }
   },
   "diagnostics": {
-    "sourceWidth": 340,
-    "sourceHeight": 12,
+    "sourceWidth": 150,
+    "sourceHeight": 14,
     "mapSize": 1024,
     "cropBBoxPixels": {
       "x": 0,
       "y": 0,
-      "width": 340,
-      "height": 12
+      "width": 150,
+      "height": 14
     },
     "mask": {
-      "backgroundColor": "#9FA7AF",
-      "backgroundNoise": 141.124,
+      "backgroundColor": "#F5AD7D",
+      "backgroundNoise": 138.687,
       "transparentPixelFraction": 0.0,
-      "foregroundCoverage": 0.9642
+      "foregroundCoverage": 1.0
     },
     "mapStats": {
-      "valueRange": 0.2373,
-      "heightP90Gradient": 0.09051,
-      "roughnessBase": 0.737,
-      "roughnessVariation": 0.17,
-      "normalStrength": 0.262,
+      "valueRange": 0.1636,
+      "heightP90Gradient": 0.02608,
+      "roughnessBase": 0.701,
+      "roughnessVariation": 0.05,
+      "normalStrength": 0.187,
       "blurRadius": 21
     },
     "palette": [
-      "#886635",
-      "#2B4E53",
-      "#A06F35",
-      "#514B30",
-      "#807763"
+      "#F6B288",
+      "#F4AE81",
+      "#F6B691",
+      "#C38765",
+      "#6E4125"
     ]
   },
   "warnings": [

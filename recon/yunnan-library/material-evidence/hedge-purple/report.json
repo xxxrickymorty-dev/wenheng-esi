@@ -8,11 +8,11 @@
   "sourceImage": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\hedge-purple.png",
   "outDir": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\hedge-purple",
   "palette": [
-    "#C39508",
-    "#A8830E",
-    "#44382C",
-    "#7F6818",
-    "#DCB999"
+    "#5E4545",
+    "#B68C0E",
+    "#0E0E06",
+    "#90700A",
+    "#43361E"
   ],
   "maps": {
     "albedo": {
@@ -47,35 +47,35 @@
     }
   },
   "diagnostics": {
-    "sourceWidth": 175,
-    "sourceHeight": 30,
+    "sourceWidth": 34,
+    "sourceHeight": 12,
     "mapSize": 1024,
     "cropBBoxPixels": {
       "x": 0,
       "y": 0,
-      "width": 175,
-      "height": 30
+      "width": 34,
+      "height": 12
     },
     "mask": {
-      "backgroundColor": "#BE935C",
-      "backgroundNoise": 111.18,
+      "backgroundColor": "#6A4B2D",
+      "backgroundNoise": 99.905,
       "transparentPixelFraction": 0.0,
-      "foregroundCoverage": 0.9053
+      "foregroundCoverage": 0.9608
     },
     "mapStats": {
-      "valueRange": 0.6323,
-      "heightP90Gradient": 0.05722,
-      "roughnessBase": 0.708,
-      "roughnessVariation": 0.101,
-      "normalStrength": 0.223,
+      "valueRange": 0.5407,
+      "heightP90Gradient": 0.02599,
+      "roughnessBase": 0.687,
+      "roughnessVariation": 0.05,
+      "normalStrength": 0.187,
       "blurRadius": 21
     },
     "palette": [
-      "#C39508",
-      "#A8830E",
-      "#44382C",
-      "#7F6818",
-      "#DCB999"
+      "#5E4545",
+      "#B68C0E",
+      "#0E0E06",
+      "#90700A",
+      "#43361E"
     ]
   },
   "warnings": [

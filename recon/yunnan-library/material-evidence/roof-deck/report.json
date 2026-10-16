@@ -1,18 +1,18 @@
 {
   "ok": true,
   "verdict": "pass",
-  "confidence": 0.82,
-  "estimatedFidelity": 0.82,
+  "confidence": 0.802,
+  "estimatedFidelity": 0.802,
   "targetThreshold": 0.7,
   "materialId": "roof-deck",
   "sourceImage": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\roof-deck.png",
   "outDir": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-deck",
   "palette": [
-    "#EED7B0",
-    "#866C43",
-    "#A8865D",
-    "#E3C6A8",
-    "#CCAF99"
+    "#EDD7B4",
+    "#E7CEAE",
+    "#DABEA4",
+    "#B19C80",
+    "#49655C"
   ],
   "maps": {
     "albedo": {
@@ -47,35 +47,35 @@
     }
   },
   "diagnostics": {
-    "sourceWidth": 150,
-    "sourceHeight": 55,
+    "sourceWidth": 70,
+    "sourceHeight": 30,
     "mapSize": 1024,
     "cropBBoxPixels": {
       "x": 0,
       "y": 0,
-      "width": 150,
-      "height": 55
+      "width": 70,
+      "height": 30
     },
     "mask": {
-      "backgroundColor": "#987451",
-      "backgroundNoise": 131.867,
+      "backgroundColor": "#E8BE9E",
+      "backgroundNoise": 54.854,
       "transparentPixelFraction": 0.0,
-      "foregroundCoverage": 0.9453
+      "foregroundCoverage": 0.9086
     },
     "mapStats": {
-      "valueRange": 0.4433,
-      "heightP90Gradient": 0.02056,
-      "roughnessBase": 0.69,
+      "valueRange": 0.3696,
+      "heightP90Gradient": 0.028,
+      "roughnessBase": 0.688,
       "roughnessVariation": 0.05,
-      "normalStrength": 0.18,
+      "normalStrength": 0.189,
       "blurRadius": 21
     },
     "palette": [
-      "#EED7B0",
-      "#866C43",
-      "#A8865D",
-      "#E3C6A8",
-      "#CCAF99"
+      "#EDD7B4",
+      "#E7CEAE",
+      "#DABEA4",
+      "#B19C80",
+      "#49655C"
     ]
   },
   "warnings": [

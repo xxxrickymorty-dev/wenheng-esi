@@ -561,17 +561,16 @@ def build_components() -> list[dict]:
 
     # ---- dome assembly
     add(comp(
-        "dome-assembly", "Dome assembly", "macro", "root", (0, 36.0, -17), (11.2, 10.6, 11.2),
-        "glass-dome",
+        "dome-assembly", "Dome assembly (container)", "macro", "root", (0, 0, 0), (1, 1, 1),
+        "invisible-root",
         importance=1.0, evidence=["view:front-elevation", "zones-ref04/zone-r0c1.png"],
-        notes="Cream drum with a window ribbon and the glass dome above; the building's strongest landmark.",
+        notes="Hidden container: drum, shell, rings, meridians and finial are the real geometry (children).",
     ))
     add(comp(
-        "dome-drum", "Dome drum", "meso", "dome-assembly", (0, 34.7, -17), (11.2, 2.4, 11.2),
-        "trim-limestone", primitive="cylinder",
+        "dome-drum", "Dome drum", "macro", "dome-assembly", (0, 34.7, -17), (11.2, 2.4, 11.2),
+        "trim-limestone", primitive="lathe",
         topology="assembled-solid",
-        topo_reason="Cylindrical drum: rotationally symmetric solid, genuinely a cylinder.",
-        att=attachment("central-block/deck", [0, 33.4, -17], [0, 35.9, -17], "butt", 0.5, 0.05),
+        topo_reason="Cylindrical drum: rotationally symmetric revolved profile (lathe, straight profile).",
         importance=0.85,
         features=[
             feature("window-ribbon", "Continuous ribbon of dark windows around the drum with slim pale mullions."),
@@ -580,17 +579,18 @@ def build_components() -> list[dict]:
         evidence=["zones-ref04/zone-r0c1.png"],
         notes="Cream drum under the dome; window ribbon and mullions ring the upper part.",
         confidence=0.85,
+        descriptor={"latheProfile": {"points": [[0.5, -0.5], [0.5, 0.5]], "segments": 40}},
     ))
     add(comp(
         "drum-window-ring", "Drum window ring", "micro", "dome-drum", (0, 35.15, -17), (11.0, 1.1, 11.0),
-        "glass-dark", primitive="cylinder",
-        topo_reason="Thin cylindrical glazing band.",
-        att=attachment("dome-drum/ring", [0, 34.6, -17], [0, 35.7, -17], "overlap", 0.2, 0.05),
+        "glass-dark", primitive="lathe",
+        topo_reason="Thin cylindrical glazing band (lathe with straight profile).",
         importance=0.6, evidence=["zones-ref04/zone-r0c1.png"],
         notes="Dark glazing ring of the drum; mullions come from the drum-mullions repetition system.",
+        descriptor={"latheProfile": {"points": [[0.5, -0.5], [0.5, 0.5]], "segments": 40}},
     ))
     add(comp(
-        "dome-shell", "Dome shell", "meso", "dome-assembly", (0, 35.9, -17), (9.6, 9.6, 9.6),
+        "dome-shell", "Dome shell", "macro", "dome-assembly", (0, 35.9, -17), (9.6, 9.6, 9.6),
         "glass-dome", primitive="sphere",
         topology="continuous-sculpt",
         topo_reason="Rotational half-dome: a smooth revolved shell, sphere primitive scaled.",
@@ -613,16 +613,22 @@ def build_components() -> list[dict]:
         add(comp(
             f"dome-meridian-{chr(97 + i)}", f"Dome meridian {ang}deg", "micro", "dome-shell",
             (0, 35.9, -17), (9.6, 9.6, 9.6),
-            "dome-frame", primitive="tube", rot=(0, rad(ang), 0),
+            "dome-frame", primitive="tapered-sweep", rot=(0, rad(ang), 0),
             topology="fiber-strand",
-            topo_reason="Thin structural arc following the dome surface: a swept strand, tube primitive.",
-            att=attachment("dome-shell/surface", [0, 4.8, 0], [4.8, 0, 0], "embed", 0.05, 0.02),
+            topo_reason="Thin structural arc following the dome surface: a swept strand with stations along the arc.",
             importance=0.45, evidence=["zones-ref04/zone-r0c1.png"],
-            notes="One of eight meridian ribs on the dome; quarter-arc path in the descriptor.",
-            descriptor={"tubePath": {
-                "points": [[0.0, 0.5, 0.0], [0.17, 0.47, 0.0], [0.33, 0.38, 0.0],
-                           [0.45, 0.23, 0.0], [0.5, 0.0, 0.0]],
-                "radius": 0.012, "closed": False}},
+            notes="One of eight meridian ribs on the dome; quarter-arc stations in the descriptor.",
+            descriptor={"taperedSweep": {
+                "stations": [
+                    {"position": [0.5, 0.0, 0.0], "rx": 0.016, "rz": 0.013, "twist": 0},
+                    {"position": [0.475, 0.155, 0.0], "rx": 0.015, "rz": 0.012, "twist": 0},
+                    {"position": [0.4, 0.3, 0.0], "rx": 0.014, "rz": 0.011, "twist": 0},
+                    {"position": [0.28, 0.415, 0.0], "rx": 0.013, "rz": 0.010, "twist": 0},
+                    {"position": [0.13, 0.48, 0.0], "rx": 0.011, "rz": 0.008, "twist": 0},
+                    {"position": [0.0, 0.5, 0.0], "rx": 0.008, "rz": 0.006, "twist": 0},
+                ],
+                "closed": False,
+            }},
         ))
     add(comp(
         "dome-finial", "Dome finial", "micro", "dome-shell", (0, 41.0, -17), (0.9, 1.2, 0.9),
@@ -713,7 +719,7 @@ def build_components() -> list[dict]:
             notes="Eave cornice band running the full hall front and sides.",
         ))
         add(comp(
-            f"{side}-roof", f"{side.title()} hall roof", "meso", f"{side}-hall", (sx * 40, 24.4, -10), (39.4, 4.4, 21.2),
+            f"{side}-roof", f"{side.title()} hall roof", "macro", f"{side}-hall", (sx * 40, 24.4, -10), (39.4, 4.4, 21.2),
             "roof-tile", importance=0.85,
             features=[feature("ridge-caps", "Lighter tan capping runs along every hip and ridge.")],
             evidence=["zones-ref04/zone-r1c1.png"],
@@ -755,7 +761,7 @@ def build_components() -> list[dict]:
             notes="Cream band at each tower stage line; three bands looped in code.",
         ))
         add(comp(
-            f"tower-belfry-{side}", f"Tower belfry ({side})", "meso", f"tower-{side}", (tx, 31.6, -0.5), (6.4, 5.8, 6.6),
+            f"tower-belfry-{side}", f"Tower belfry ({side})", "macro", f"tower-{side}", (tx, 31.6, -0.5), (6.4, 5.8, 6.6),
             "trim-limestone", importance=0.7,
             features=[feature("arch-openings", "Two arched openings with cream surrounds at the belfry stage; dark shadow inside.")],
             evidence=["zones-ref03/zone-r1c2.png"],
@@ -769,13 +775,13 @@ def build_components() -> list[dict]:
             notes="Fine baluster cadence looped in code under the pyramid roof.",
         ))
         add(comp(
-            f"tower-roof-{side}", f"Tower cap ({side})", "meso", f"tower-{side}", (tx, 37.3, -0.5), (10.47, 4.2, 10.47),
-            "roof-tile", primitive="cone", rot=(0, math.pi / 4, 0),
-            topo_reason="Four-sided pyramid: a 4-segment cone with a square base.",
-            att=attachment("tower/belfry-head", [tx, 35.2, -0.5], [tx, 39.4, -0.5], "butt", 0.3, 0.05),
+            f"tower-roof-{side}", f"Tower cap ({side})", "macro", f"tower-{side}", (tx, 37.3, -0.5), (10.47, 4.2, 10.47),
+            "roof-tile", primitive="lathe", rot=(0, math.pi / 4, 0),
+            topo_reason="Four-sided pyramid: a 4-segment lathe with a square base.",
             importance=0.8,
             evidence=["view:front-elevation"],
-            notes="Shallow pyramid cap; emitted as a 4-segment cone.",
+            notes="Shallow pyramid cap; emitted as a 4-segment lathe.",
+            descriptor={"latheProfile": {"points": [[0.5, -0.5], [0.0, 0.5]], "segments": 4}},
         ))
         add(comp(
             f"tower-finial-{side}", f"Tower finial ({side})", "micro", f"tower-{side}", (tx, 39.6, -0.5), (0.6, 1.2, 0.6),
@@ -800,7 +806,7 @@ def build_components() -> list[dict]:
             notes="Single authored window; a 2-row bay grid is looped in code.",
         ))
         add(comp(
-            f"pavilion-roof-{side}", f"Pavilion roof ({side})", "meso", f"pavilion-{side}", (px, 16.6, 4.0), (14.2, 3.6, 14.2),
+            f"pavilion-roof-{side}", f"Pavilion roof ({side})", "macro", f"pavilion-{side}", (px, 16.6, 4.0), (14.2, 3.6, 14.2),
             "roof-tile", importance=0.65,
             features=[feature("ridge-caps", "Pale ridge capping along hips and apex.")],
             evidence=["view:front-aerial-3q"],
@@ -824,7 +830,7 @@ def build_components() -> list[dict]:
             rot=(0, rad(90), 0),
         ))
         add(comp(
-            f"rear-roof-{side}", f"Rear block roof ({side})", "meso", f"rear-block-{side}", (rx, 24.4, -45), (18, 4.4, 23),
+            f"rear-roof-{side}", f"Rear block roof ({side})", "macro", f"rear-block-{side}", (rx, 24.4, -45), (18, 4.4, 23),
             "roof-tile", importance=0.55, confidence=0.6,
             features=[feature("ridge-caps", "Pale ridge capping along hips and ridge.")],
             evidence=["view:close-aerial"],
@@ -835,12 +841,12 @@ def build_components() -> list[dict]:
         add(comp(
             f"courtyard-conifers-{side}", f"Courtyard conifers ({side})", "micro", "root",
             (sx * 33, 6.0, -25), (2.4, 12, 2.4),
-            "foliage-green", primitive="cone",
-            topo_reason="Conical trees: stacked cones.",
-            att=attachment("courtyard/ground", [sx * 33, 0.0, -25], [sx * 33, 12.0, -25], "embed", 0.2, 0.05),
+            "foliage-green", primitive="lathe",
+            topo_reason="Conical trees: revolved cone profile (lathe).",
             importance=0.35, confidence=0.6,
             evidence=["zones-ref04/zone-r1c1.png"],
             notes="Row of dark conifers along the courtyard wall; looped in code with slight scale variance.",
+            descriptor={"latheProfile": {"points": [[0.5, -0.5], [0.0, 0.5]], "segments": 10}},
         ))
 
     # ---- courtyard glazing (not mirrored)
@@ -862,13 +868,13 @@ def build_components() -> list[dict]:
     ))
     add(comp(
         "vault-shell", "Courtyard vault shell", "meso", "root", (29.5, 6.4, -36), (17, 6.0, 6.4),
-        "glass-sky", primitive="cylinder", rot=(0, 0, math.pi / 2),
-        topo_reason="Barrel vault: a half-cylinder swept along the courtyard gap.",
-        att=attachment("vault-base/wall", [0, 2.4, -36], [0, 8.4, -36], "butt", 0.4, 0.05),
+        "glass-sky", primitive="box",
+        topology="conforming-shell",
+        topo_reason="Barrel vault placeholder mass; the curved half-pipe shell is authored in the factory refine step.",
         importance=0.55, confidence=0.6,
         features=[feature("rib-row", "Repeated parallel steel ribs over the curved glass.")],
         evidence=["zones-ref04/zone-r0c2.png"],
-        notes="Glazed barrel vault bridging the central block and the east rear block; rendered as a half-pipe.",
+        notes="Glazed barrel vault bridging the central block and the east rear block; box placeholder, half-pipe + ribs in refine-code.",
     ))
     add(comp(
         "vault-base", "Vault base wall", "meso", "root", (29.5, 4.0, -36), (17, 3.2, 6.8),
@@ -961,10 +967,10 @@ def build_components() -> list[dict]:
 
     # ---- trees
     add(comp(
-        "tree-rows", "Plaza tree rows", "macro", "root", (0, 7.0, 35), (30, 14, 46),
-        "foliage-green",
+        "tree-rows", "Plaza tree rows (container)", "macro", "root", (0, 0, 0), (1, 1, 1),
+        "invisible-root",
         importance=0.65, evidence=["view:front-aerial-3q", "zones-ref03/zone-r2c1.png"],
-        notes="Two rows of plane trees flanking the parterre and pool; looped in code with scale variance.",
+        notes="Hidden container for the two tree rows (real trees are the meso children, looped in code).",
     ))
     for side, sx in (("west", -1), ("east", 1)):
         add(comp(
@@ -1331,6 +1337,18 @@ def main() -> int:
 
     spec["preSpecAssessment"]["detailInventory"] = build_detail_inventory()
     spec["componentTree"] = build_components()
+    # Localize transforms: authored positions are WORLD coordinates, but the factory
+    # parents each pivot under its parent pivot and applies transform.position as a
+    # LOCAL offset. Without this pass every non-root child is displaced by its parent's
+    # position (roofs floated into the sky — cost one debug cycle). All parent pivots
+    # have zero rotation, so subtracting the parent's authored position is exact.
+    authored = {c["id"]: list(c["transform"]["position"]) for c in spec["componentTree"]}
+    for c in spec["componentTree"]:
+        parent = c.get("parent")
+        if parent and parent in authored:
+            px, py, pz = authored[parent]
+            cx, cy, cz = c["transform"]["position"]
+            c["transform"]["position"] = [round(cx - px, 3), round(cy - py, 3), round(cz - pz, 3)]
     for c in spec["componentTree"]:
         add_color_material_recipe(c)
     spec["materials"] = build_materials()

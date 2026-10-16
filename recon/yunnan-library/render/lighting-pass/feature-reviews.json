@@ -1,0 +1,12 @@
+[
+  {
+    "id": "facade-sun-readability",
+    "score": 0.75,
+    "notes": "Low warm key from the front-west with sky fill and environment; facades read, contact shadows under eaves and trees; exposure ACES."
+  },
+  {
+    "id": "water-sky-sheen",
+    "score": 0.68,
+    "notes": "Pool keeps turquoise tone with sheen; foam ring not modeled."
+  }
+]

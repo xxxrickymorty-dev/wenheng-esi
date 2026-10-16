@@ -1,24 +1,24 @@
 {
   "brick-terracotta": [
     "zones-ref04/zone-r1c1.png",
-    18,
-    58,
-    45,
-    50
+    25,
+    168,
+    60,
+    45
   ],
   "trim-limestone": [
-    "zones-ref03/zone-r1c1.png",
-    30,
-    49,
-    340,
-    12
+    "zones-ref04/zone-r1c1.png",
+    60,
+    106,
+    150,
+    14
   ],
   "stone-olive": [
     "zones-ref03/zone-r1c1.png",
-    145,
-    136,
-    22,
-    58
+    100,
+    124,
+    200,
+    10
   ],
   "glass-dark": [
     "zones-ref03/zone-r1c1.png",
@@ -42,11 +42,11 @@
     85
   ],
   "roof-tile": [
-    "zones-ref04/zone-r1c1.png",
-    40,
-    150,
-    220,
-    100
+    "zones-ref04/zone-r0c0.png",
+    60,
+    200,
+    180,
+    50
   ],
   "roof-ridge": [
     "zones-ref04/zone-r0c0.png",
@@ -92,10 +92,10 @@
   ],
   "hedge-purple": [
     "zones-ref03/zone-r2c1.png",
-    145,
-    8,
-    175,
-    30
+    88,
+    15,
+    34,
+    12
   ],
   "foliage-green": [
     "refs/ref-01-front-aerial.png",
@@ -134,10 +134,10 @@
   ],
   "roof-deck": [
     "zones-ref04/zone-r0c1.png",
-    30,
-    175,
+    40,
     150,
-    55
+    70,
+    30
   ],
   "banner-red": [
     "zones-ref03/zone-r1c1.png",

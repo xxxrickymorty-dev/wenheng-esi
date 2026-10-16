@@ -1,0 +1,7 @@
+[
+  {
+    "id": "material-palette-fidelity",
+    "score": 0.75,
+    "notes": "Surface pass keeps the reference-derived channels; independent roughness/normal/AO maps ride each material; grazing highlights break naturally on the tile ribs and brick."
+  }
+]

@@ -1,0 +1,27 @@
+[
+  {
+    "id": "macro-silhouette-composition",
+    "score": 0.84,
+    "notes": "Skyline holds: dome+drums above the parapet, hip roofs with ridge caps, tower pyramids, pavilions. Camera framing and photo textures remain the main deltas."
+  },
+  {
+    "id": "dome-loggia-stack",
+    "score": 0.8,
+    "notes": "Drum with window ring, pane-grid dome shell, glazed loggia band all present and stacked correctly; loggia pier rhythm currently only in the material texture (refine can add piers later)."
+  },
+  {
+    "id": "wing-facade-rhythm",
+    "score": 0.82,
+    "notes": "Window grid built with constant pitch, five continuous floors, reveals+sills, pilaster strips, string courses and eave cornice. The double-printed photo texture is a material-pass delta, not structure."
+  },
+  {
+    "id": "twin-tower-ends",
+    "score": 0.84,
+    "notes": "Cream front panels with paired slot windows, stage bands, corner quoins, belfry arches on two faces, baluster rows and pyramid caps all present; towers read open at the belfry."
+  },
+  {
+    "id": "roofscape-courtyard-glazing",
+    "score": 0.78,
+    "notes": "Hip roofs with pale ridge caps read from the aerial; deck has solar row, equipment, skylights; courtyard shows the ribbed half-pipe vault and the sloped canopy."
+  }
+]

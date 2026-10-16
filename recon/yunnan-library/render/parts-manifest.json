@@ -1,0 +1,1214 @@
+{
+ "parts": [
+  {
+   "name": "YNU Library__pivot",
+   "mesh": false,
+   "componentId": "root"
+  },
+  {
+   "name": "YNU Library",
+   "mesh": true,
+   "componentId": "root"
+  },
+  {
+   "name": "Terrace podium__pivot",
+   "mesh": false,
+   "componentId": "terrace-podium"
+  },
+  {
+   "name": "Terrace podium",
+   "mesh": true,
+   "componentId": "terrace-podium"
+  },
+  {
+   "name": "Podium slab__pivot",
+   "mesh": false,
+   "componentId": "podium-slab"
+  },
+  {
+   "name": "Podium slab",
+   "mesh": true,
+   "componentId": "podium-slab"
+  },
+  {
+   "name": "Grand steps__pivot",
+   "mesh": false,
+   "componentId": "grand-steps"
+  },
+  {
+   "name": "Grand steps",
+   "mesh": true,
+   "componentId": "grand-steps"
+  },
+  {
+   "name": "Terrace balustrade (west)__pivot",
+   "mesh": false,
+   "componentId": "terrace-balustrade-west"
+  },
+  {
+   "name": "Terrace balustrade (west)",
+   "mesh": true,
+   "componentId": "terrace-balustrade-west"
+  },
+  {
+   "name": "Terrace balustrade (east)__pivot",
+   "mesh": false,
+   "componentId": "terrace-balustrade-east"
+  },
+  {
+   "name": "Terrace balustrade (east)",
+   "mesh": true,
+   "componentId": "terrace-balustrade-east"
+  },
+  {
+   "name": "Central block__pivot",
+   "mesh": false,
+   "componentId": "central-block"
+  },
+  {
+   "name": "Central block",
+   "mesh": true,
+   "componentId": "central-block"
+  },
+  {
+   "name": "Central body__pivot",
+   "mesh": false,
+   "componentId": "central-body"
+  },
+  {
+   "name": "Central body",
+   "mesh": true,
+   "componentId": "central-body"
+  },
+  {
+   "name": "Glazed loggia__pivot",
+   "mesh": false,
+   "componentId": "glazed-loggia"
+  },
+  {
+   "name": "Glazed loggia",
+   "mesh": true,
+   "componentId": "glazed-loggia"
+  },
+  {
+   "name": "Attic dentil band__pivot",
+   "mesh": false,
+   "componentId": "attic-band"
+  },
+  {
+   "name": "Attic dentil band",
+   "mesh": true,
+   "componentId": "attic-band"
+  },
+  {
+   "name": "Central parapet__pivot",
+   "mesh": false,
+   "componentId": "central-parapet"
+  },
+  {
+   "name": "Central parapet",
+   "mesh": true,
+   "componentId": "central-parapet"
+  },
+  {
+   "name": "Central roof deck__pivot",
+   "mesh": false,
+   "componentId": "roof-deck"
+  },
+  {
+   "name": "Central roof deck",
+   "mesh": true,
+   "componentId": "roof-deck"
+  },
+  {
+   "name": "Dome assembly (container)__pivot",
+   "mesh": false,
+   "componentId": "dome-assembly"
+  },
+  {
+   "name": "Dome assembly (container)",
+   "mesh": true,
+   "componentId": "dome-assembly"
+  },
+  {
+   "name": "Dome drum__pivot",
+   "mesh": false,
+   "componentId": "dome-drum"
+  },
+  {
+   "name": "Dome drum",
+   "mesh": true,
+   "componentId": "dome-drum"
+  },
+  {
+   "name": "Drum window ring__pivot",
+   "mesh": false,
+   "componentId": "drum-window-ring"
+  },
+  {
+   "name": "Drum window ring",
+   "mesh": true,
+   "componentId": "drum-window-ring"
+  },
+  {
+   "name": "drum-mullions",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "Dome shell__pivot",
+   "mesh": false,
+   "componentId": "dome-shell"
+  },
+  {
+   "name": "Dome shell",
+   "mesh": true,
+   "componentId": "dome-shell"
+  },
+  {
+   "name": "Dome ring (low)__pivot",
+   "mesh": false,
+   "componentId": "dome-ring-low"
+  },
+  {
+   "name": "Dome ring (low)",
+   "mesh": true,
+   "componentId": "dome-ring-low"
+  },
+  {
+   "name": "Dome ring (high)__pivot",
+   "mesh": false,
+   "componentId": "dome-ring-high"
+  },
+  {
+   "name": "Dome ring (high)",
+   "mesh": true,
+   "componentId": "dome-ring-high"
+  },
+  {
+   "name": "Dome meridian 0deg__pivot",
+   "mesh": false,
+   "componentId": "dome-meridian-a"
+  },
+  {
+   "name": "Dome meridian 0deg",
+   "mesh": true,
+   "componentId": "dome-meridian-a"
+  },
+  {
+   "name": "Dome meridian 45deg__pivot",
+   "mesh": false,
+   "componentId": "dome-meridian-b"
+  },
+  {
+   "name": "Dome meridian 45deg",
+   "mesh": true,
+   "componentId": "dome-meridian-b"
+  },
+  {
+   "name": "Dome meridian 90deg__pivot",
+   "mesh": false,
+   "componentId": "dome-meridian-c"
+  },
+  {
+   "name": "Dome meridian 90deg",
+   "mesh": true,
+   "componentId": "dome-meridian-c"
+  },
+  {
+   "name": "Dome meridian 135deg__pivot",
+   "mesh": false,
+   "componentId": "dome-meridian-d"
+  },
+  {
+   "name": "Dome meridian 135deg",
+   "mesh": true,
+   "componentId": "dome-meridian-d"
+  },
+  {
+   "name": "Dome meridian 180deg__pivot",
+   "mesh": false,
+   "componentId": "dome-meridian-e"
+  },
+  {
+   "name": "Dome meridian 180deg",
+   "mesh": true,
+   "componentId": "dome-meridian-e"
+  },
+  {
+   "name": "Dome meridian 225deg__pivot",
+   "mesh": false,
+   "componentId": "dome-meridian-f"
+  },
+  {
+   "name": "Dome meridian 225deg",
+   "mesh": true,
+   "componentId": "dome-meridian-f"
+  },
+  {
+   "name": "Dome meridian 270deg__pivot",
+   "mesh": false,
+   "componentId": "dome-meridian-g"
+  },
+  {
+   "name": "Dome meridian 270deg",
+   "mesh": true,
+   "componentId": "dome-meridian-g"
+  },
+  {
+   "name": "Dome meridian 315deg__pivot",
+   "mesh": false,
+   "componentId": "dome-meridian-h"
+  },
+  {
+   "name": "Dome meridian 315deg",
+   "mesh": true,
+   "componentId": "dome-meridian-h"
+  },
+  {
+   "name": "Dome finial__pivot",
+   "mesh": false,
+   "componentId": "dome-finial"
+  },
+  {
+   "name": "Dome finial",
+   "mesh": true,
+   "componentId": "dome-finial"
+  },
+  {
+   "name": "Entrance portico__pivot",
+   "mesh": false,
+   "componentId": "entrance-portico"
+  },
+  {
+   "name": "Entrance portico",
+   "mesh": true,
+   "componentId": "entrance-portico"
+  },
+  {
+   "name": "Portico podium__pivot",
+   "mesh": false,
+   "componentId": "portico-podium"
+  },
+  {
+   "name": "Portico podium",
+   "mesh": true,
+   "componentId": "portico-podium"
+  },
+  {
+   "name": "Portico columns__pivot",
+   "mesh": false,
+   "componentId": "portico-columns"
+  },
+  {
+   "name": "Portico columns",
+   "mesh": true,
+   "componentId": "portico-columns"
+  },
+  {
+   "name": "Portico entablature__pivot",
+   "mesh": false,
+   "componentId": "portico-entablature"
+  },
+  {
+   "name": "Portico entablature",
+   "mesh": true,
+   "componentId": "portico-entablature"
+  },
+  {
+   "name": "Portico curtain wall__pivot",
+   "mesh": false,
+   "componentId": "portico-curtainwall"
+  },
+  {
+   "name": "Portico curtain wall",
+   "mesh": true,
+   "componentId": "portico-curtainwall"
+  },
+  {
+   "name": "Entrance banners__pivot",
+   "mesh": false,
+   "componentId": "entrance-banners"
+  },
+  {
+   "name": "Entrance banners",
+   "mesh": true,
+   "componentId": "entrance-banners"
+  },
+  {
+   "name": "Entrance doors__pivot",
+   "mesh": false,
+   "componentId": "entrance-doors"
+  },
+  {
+   "name": "Entrance doors",
+   "mesh": true,
+   "componentId": "entrance-doors"
+  },
+  {
+   "name": "West hall__pivot",
+   "mesh": false,
+   "componentId": "west-hall"
+  },
+  {
+   "name": "West hall",
+   "mesh": true,
+   "componentId": "west-hall"
+  },
+  {
+   "name": "West hall body__pivot",
+   "mesh": false,
+   "componentId": "west-body"
+  },
+  {
+   "name": "West hall body",
+   "mesh": true,
+   "componentId": "west-body"
+  },
+  {
+   "name": "West hall windows__pivot",
+   "mesh": false,
+   "componentId": "wing-windows-west"
+  },
+  {
+   "name": "West hall windows",
+   "mesh": true,
+   "componentId": "wing-windows-west"
+  },
+  {
+   "name": "West hall eave cornice__pivot",
+   "mesh": false,
+   "componentId": "west-cornice"
+  },
+  {
+   "name": "West hall eave cornice",
+   "mesh": true,
+   "componentId": "west-cornice"
+  },
+  {
+   "name": "West hall roof__pivot",
+   "mesh": false,
+   "componentId": "west-roof"
+  },
+  {
+   "name": "West hall roof",
+   "mesh": true,
+   "componentId": "west-roof"
+  },
+  {
+   "name": "Tower (west)__pivot",
+   "mesh": false,
+   "componentId": "tower-west"
+  },
+  {
+   "name": "Tower (west)",
+   "mesh": true,
+   "componentId": "tower-west"
+  },
+  {
+   "name": "Tower shaft (west)__pivot",
+   "mesh": false,
+   "componentId": "tower-shaft-west"
+  },
+  {
+   "name": "Tower shaft (west)",
+   "mesh": true,
+   "componentId": "tower-shaft-west"
+  },
+  {
+   "name": "Tower front panel (west)__pivot",
+   "mesh": false,
+   "componentId": "tower-frontpanel-west"
+  },
+  {
+   "name": "Tower front panel (west)",
+   "mesh": true,
+   "componentId": "tower-frontpanel-west"
+  },
+  {
+   "name": "Tower slot windows (west)__pivot",
+   "mesh": false,
+   "componentId": "tower-windows-west"
+  },
+  {
+   "name": "Tower slot windows (west)",
+   "mesh": true,
+   "componentId": "tower-windows-west"
+  },
+  {
+   "name": "Tower bands (west)__pivot",
+   "mesh": false,
+   "componentId": "tower-bands-west"
+  },
+  {
+   "name": "Tower bands (west)",
+   "mesh": true,
+   "componentId": "tower-bands-west"
+  },
+  {
+   "name": "Tower belfry (west)__pivot",
+   "mesh": false,
+   "componentId": "tower-belfry-west"
+  },
+  {
+   "name": "Tower belfry (west)",
+   "mesh": true,
+   "componentId": "tower-belfry-west"
+  },
+  {
+   "name": "Tower balustrade (west)__pivot",
+   "mesh": false,
+   "componentId": "tower-balustrade-west"
+  },
+  {
+   "name": "Tower balustrade (west)",
+   "mesh": true,
+   "componentId": "tower-balustrade-west"
+  },
+  {
+   "name": "Tower cap (west)__pivot",
+   "mesh": false,
+   "componentId": "tower-roof-west"
+  },
+  {
+   "name": "Tower cap (west)",
+   "mesh": true,
+   "componentId": "tower-roof-west"
+  },
+  {
+   "name": "Tower finial (west)__pivot",
+   "mesh": false,
+   "componentId": "tower-finial-west"
+  },
+  {
+   "name": "Tower finial (west)",
+   "mesh": true,
+   "componentId": "tower-finial-west"
+  },
+  {
+   "name": "Front pavilion (west)__pivot",
+   "mesh": false,
+   "componentId": "pavilion-west"
+  },
+  {
+   "name": "Front pavilion (west)",
+   "mesh": true,
+   "componentId": "pavilion-west"
+  },
+  {
+   "name": "Pavilion windows (west)__pivot",
+   "mesh": false,
+   "componentId": "pavilion-windows-west"
+  },
+  {
+   "name": "Pavilion windows (west)",
+   "mesh": true,
+   "componentId": "pavilion-windows-west"
+  },
+  {
+   "name": "Pavilion roof (west)__pivot",
+   "mesh": false,
+   "componentId": "pavilion-roof-west"
+  },
+  {
+   "name": "Pavilion roof (west)",
+   "mesh": true,
+   "componentId": "pavilion-roof-west"
+  },
+  {
+   "name": "Rear block (west)__pivot",
+   "mesh": false,
+   "componentId": "rear-block-west"
+  },
+  {
+   "name": "Rear block (west)",
+   "mesh": true,
+   "componentId": "rear-block-west"
+  },
+  {
+   "name": "Rear block windows (west)__pivot",
+   "mesh": false,
+   "componentId": "rear-windows-west"
+  },
+  {
+   "name": "Rear block windows (west)",
+   "mesh": true,
+   "componentId": "rear-windows-west"
+  },
+  {
+   "name": "Rear block roof (west)__pivot",
+   "mesh": false,
+   "componentId": "rear-roof-west"
+  },
+  {
+   "name": "Rear block roof (west)",
+   "mesh": true,
+   "componentId": "rear-roof-west"
+  },
+  {
+   "name": "Courtyard conifers (west)__pivot",
+   "mesh": false,
+   "componentId": "courtyard-conifers-west"
+  },
+  {
+   "name": "Courtyard conifers (west)",
+   "mesh": true,
+   "componentId": "courtyard-conifers-west"
+  },
+  {
+   "name": "East hall__pivot",
+   "mesh": false,
+   "componentId": "east-hall"
+  },
+  {
+   "name": "East hall",
+   "mesh": true,
+   "componentId": "east-hall"
+  },
+  {
+   "name": "East hall body__pivot",
+   "mesh": false,
+   "componentId": "east-body"
+  },
+  {
+   "name": "East hall body",
+   "mesh": true,
+   "componentId": "east-body"
+  },
+  {
+   "name": "East hall windows__pivot",
+   "mesh": false,
+   "componentId": "wing-windows-east"
+  },
+  {
+   "name": "East hall windows",
+   "mesh": true,
+   "componentId": "wing-windows-east"
+  },
+  {
+   "name": "East hall eave cornice__pivot",
+   "mesh": false,
+   "componentId": "east-cornice"
+  },
+  {
+   "name": "East hall eave cornice",
+   "mesh": true,
+   "componentId": "east-cornice"
+  },
+  {
+   "name": "East hall roof__pivot",
+   "mesh": false,
+   "componentId": "east-roof"
+  },
+  {
+   "name": "East hall roof",
+   "mesh": true,
+   "componentId": "east-roof"
+  },
+  {
+   "name": "Tower (east)__pivot",
+   "mesh": false,
+   "componentId": "tower-east"
+  },
+  {
+   "name": "Tower (east)",
+   "mesh": true,
+   "componentId": "tower-east"
+  },
+  {
+   "name": "Tower shaft (east)__pivot",
+   "mesh": false,
+   "componentId": "tower-shaft-east"
+  },
+  {
+   "name": "Tower shaft (east)",
+   "mesh": true,
+   "componentId": "tower-shaft-east"
+  },
+  {
+   "name": "Tower front panel (east)__pivot",
+   "mesh": false,
+   "componentId": "tower-frontpanel-east"
+  },
+  {
+   "name": "Tower front panel (east)",
+   "mesh": true,
+   "componentId": "tower-frontpanel-east"
+  },
+  {
+   "name": "Tower slot windows (east)__pivot",
+   "mesh": false,
+   "componentId": "tower-windows-east"
+  },
+  {
+   "name": "Tower slot windows (east)",
+   "mesh": true,
+   "componentId": "tower-windows-east"
+  },
+  {
+   "name": "Tower bands (east)__pivot",
+   "mesh": false,
+   "componentId": "tower-bands-east"
+  },
+  {
+   "name": "Tower bands (east)",
+   "mesh": true,
+   "componentId": "tower-bands-east"
+  },
+  {
+   "name": "Tower belfry (east)__pivot",
+   "mesh": false,
+   "componentId": "tower-belfry-east"
+  },
+  {
+   "name": "Tower belfry (east)",
+   "mesh": true,
+   "componentId": "tower-belfry-east"
+  },
+  {
+   "name": "Tower balustrade (east)__pivot",
+   "mesh": false,
+   "componentId": "tower-balustrade-east"
+  },
+  {
+   "name": "Tower balustrade (east)",
+   "mesh": true,
+   "componentId": "tower-balustrade-east"
+  },
+  {
+   "name": "Tower cap (east)__pivot",
+   "mesh": false,
+   "componentId": "tower-roof-east"
+  },
+  {
+   "name": "Tower cap (east)",
+   "mesh": true,
+   "componentId": "tower-roof-east"
+  },
+  {
+   "name": "Tower finial (east)__pivot",
+   "mesh": false,
+   "componentId": "tower-finial-east"
+  },
+  {
+   "name": "Tower finial (east)",
+   "mesh": true,
+   "componentId": "tower-finial-east"
+  },
+  {
+   "name": "Front pavilion (east)__pivot",
+   "mesh": false,
+   "componentId": "pavilion-east"
+  },
+  {
+   "name": "Front pavilion (east)",
+   "mesh": true,
+   "componentId": "pavilion-east"
+  },
+  {
+   "name": "Pavilion windows (east)__pivot",
+   "mesh": false,
+   "componentId": "pavilion-windows-east"
+  },
+  {
+   "name": "Pavilion windows (east)",
+   "mesh": true,
+   "componentId": "pavilion-windows-east"
+  },
+  {
+   "name": "Pavilion roof (east)__pivot",
+   "mesh": false,
+   "componentId": "pavilion-roof-east"
+  },
+  {
+   "name": "Pavilion roof (east)",
+   "mesh": true,
+   "componentId": "pavilion-roof-east"
+  },
+  {
+   "name": "Rear block (east)__pivot",
+   "mesh": false,
+   "componentId": "rear-block-east"
+  },
+  {
+   "name": "Rear block (east)",
+   "mesh": true,
+   "componentId": "rear-block-east"
+  },
+  {
+   "name": "Rear block windows (east)__pivot",
+   "mesh": false,
+   "componentId": "rear-windows-east"
+  },
+  {
+   "name": "Rear block windows (east)",
+   "mesh": true,
+   "componentId": "rear-windows-east"
+  },
+  {
+   "name": "Rear block roof (east)__pivot",
+   "mesh": false,
+   "componentId": "rear-roof-east"
+  },
+  {
+   "name": "Rear block roof (east)",
+   "mesh": true,
+   "componentId": "rear-roof-east"
+  },
+  {
+   "name": "Courtyard conifers (east)__pivot",
+   "mesh": false,
+   "componentId": "courtyard-conifers-east"
+  },
+  {
+   "name": "Courtyard conifers (east)",
+   "mesh": true,
+   "componentId": "courtyard-conifers-east"
+  },
+  {
+   "name": "Courtyard glass hall__pivot",
+   "mesh": false,
+   "componentId": "courtyard-hall"
+  },
+  {
+   "name": "Courtyard glass hall",
+   "mesh": true,
+   "componentId": "courtyard-hall"
+  },
+  {
+   "name": "Courtyard sloped canopy__pivot",
+   "mesh": false,
+   "componentId": "courtyard-canopy"
+  },
+  {
+   "name": "Courtyard sloped canopy",
+   "mesh": true,
+   "componentId": "courtyard-canopy"
+  },
+  {
+   "name": "Courtyard vault shell__pivot",
+   "mesh": false,
+   "componentId": "vault-shell"
+  },
+  {
+   "name": "Courtyard vault shell",
+   "mesh": true,
+   "componentId": "vault-shell"
+  },
+  {
+   "name": "Vault base wall__pivot",
+   "mesh": false,
+   "componentId": "vault-base"
+  },
+  {
+   "name": "Vault base wall",
+   "mesh": true,
+   "componentId": "vault-base"
+  },
+  {
+   "name": "Plaza grounds__pivot",
+   "mesh": false,
+   "componentId": "plaza-grounds"
+  },
+  {
+   "name": "Plaza grounds",
+   "mesh": true,
+   "componentId": "plaza-grounds"
+  },
+  {
+   "name": "Plaza paving field__pivot",
+   "mesh": false,
+   "componentId": "plaza-paving"
+  },
+  {
+   "name": "Plaza paving field",
+   "mesh": true,
+   "componentId": "plaza-paving"
+  },
+  {
+   "name": "Lawn fields__pivot",
+   "mesh": false,
+   "componentId": "plaza-lawn-field"
+  },
+  {
+   "name": "Lawn fields",
+   "mesh": true,
+   "componentId": "plaza-lawn-field"
+  },
+  {
+   "name": "Parterre turf strips__pivot",
+   "mesh": false,
+   "componentId": "parterre-turf"
+  },
+  {
+   "name": "Parterre turf strips",
+   "mesh": true,
+   "componentId": "parterre-turf"
+  },
+  {
+   "name": "Parterre hedge blocks__pivot",
+   "mesh": false,
+   "componentId": "parterre-blocks"
+  },
+  {
+   "name": "Parterre hedge blocks",
+   "mesh": true,
+   "componentId": "parterre-blocks"
+  },
+  {
+   "name": "Topiary balls__pivot",
+   "mesh": false,
+   "componentId": "topiary-balls"
+  },
+  {
+   "name": "Topiary balls",
+   "mesh": true,
+   "componentId": "topiary-balls"
+  },
+  {
+   "name": "Plaza pool__pivot",
+   "mesh": false,
+   "componentId": "plaza-pool"
+  },
+  {
+   "name": "Plaza pool",
+   "mesh": true,
+   "componentId": "plaza-pool"
+  },
+  {
+   "name": "Pool basin__pivot",
+   "mesh": false,
+   "componentId": "pool-basin"
+  },
+  {
+   "name": "Pool basin",
+   "mesh": true,
+   "componentId": "pool-basin"
+  },
+  {
+   "name": "Pool water sheet__pivot",
+   "mesh": false,
+   "componentId": "pool-water"
+  },
+  {
+   "name": "Pool water sheet",
+   "mesh": true,
+   "componentId": "pool-water"
+  },
+  {
+   "name": "Fountain (a)__pivot",
+   "mesh": false,
+   "componentId": "fountain-a"
+  },
+  {
+   "name": "Fountain (a)",
+   "mesh": true,
+   "componentId": "fountain-a"
+  },
+  {
+   "name": "Fountain (b)__pivot",
+   "mesh": false,
+   "componentId": "fountain-b"
+  },
+  {
+   "name": "Fountain (b)",
+   "mesh": true,
+   "componentId": "fountain-b"
+  },
+  {
+   "name": "Plaza tree rows (container)__pivot",
+   "mesh": false,
+   "componentId": "tree-rows"
+  },
+  {
+   "name": "Plaza tree rows (container)",
+   "mesh": true,
+   "componentId": "tree-rows"
+  },
+  {
+   "name": "Tree row (west)__pivot",
+   "mesh": false,
+   "componentId": "tree-row-west"
+  },
+  {
+   "name": "Tree row (west)",
+   "mesh": true,
+   "componentId": "tree-row-west"
+  },
+  {
+   "name": "Tree row (east)__pivot",
+   "mesh": false,
+   "componentId": "tree-row-east"
+  },
+  {
+   "name": "Tree row (east)",
+   "mesh": true,
+   "componentId": "tree-row-east"
+  },
+  {
+   "name": "wing-windows-west__frames",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "wing-windows-west__glass",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "wing-windows-east__frames",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "wing-windows-east__glass",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "west-body__pilasters",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "east-body__pilasters",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "west-body__string-courses",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "east-body__string-courses",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "west-roof__hip",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "east-roof__hip",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "rear-roof-west__hip",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "rear-roof-east__hip",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "pavilion-roof-west__hip",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "pavilion-roof-east__hip",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "roof-ridge-caps-x",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "roof-ridge-caps-z",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "tower-slot-frames-west",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "tower-slot-frames-east",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "tower-slot-glass-west",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "tower-slot-glass-east",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "tower-bands",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "tower-quoins",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "tower-belfry-arches",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "tower-balusters",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "tower-rails-x",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "tower-rails-z",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "portico-columns__array",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "entrance-banners__pair",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "grand-steps__stairs",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "terrace-balusters",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "pavilion-frames-west",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "pavilion-frames-east",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "pavilion-glass-west",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "pavilion-glass-east",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "rear-frames-west",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "rear-frames-east",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "rear-glass-west",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "rear-glass-east",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "vault-shell__halfpipe",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "vault-shell__ribs",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "parterre-blocks__rows",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "topiary-balls__group",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "tree-trunks-west",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "tree-trunks-east",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "tree-crowns-west",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "tree-crowns-east",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "courtyard-conifers__row",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "pool-basin__lobes",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "roof-deck__solar-row",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "roof-deck__equipment",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "roof-deck__skylights",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "central-windows__frames",
+   "mesh": true,
+   "componentId": null
+  },
+  {
+   "name": "central-windows__glass",
+   "mesh": true,
+   "componentId": null
+  }
+ ]
+}

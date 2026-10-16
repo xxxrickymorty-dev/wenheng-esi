@@ -1,18 +1,18 @@
 {
   "ok": true,
   "verdict": "pass",
-  "confidence": 0.815,
-  "estimatedFidelity": 0.815,
+  "confidence": 0.789,
+  "estimatedFidelity": 0.789,
   "targetThreshold": 0.7,
   "materialId": "brick-terracotta",
   "sourceImage": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\brick-terracotta.png",
   "outDir": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\brick-terracotta",
   "palette": [
-    "#78471F",
-    "#8D6824",
-    "#182912",
-    "#5D5530",
-    "#AE7A4B"
+    "#824E26",
+    "#937C57",
+    "#5C4716",
+    "#274011",
+    "#566648"
   ],
   "maps": {
     "albedo": {
@@ -47,35 +47,35 @@
     }
   },
   "diagnostics": {
-    "sourceWidth": 45,
-    "sourceHeight": 50,
+    "sourceWidth": 60,
+    "sourceHeight": 45,
     "mapSize": 1024,
     "cropBBoxPixels": {
       "x": 0,
       "y": 0,
-      "width": 45,
-      "height": 50
+      "width": 60,
+      "height": 45
     },
     "mask": {
-      "backgroundColor": "#855C3C",
-      "backgroundNoise": 96.773,
+      "backgroundColor": "#7F6C4A",
+      "backgroundNoise": 60.647,
       "transparentPixelFraction": 0.0,
-      "foregroundCoverage": 0.9996
+      "foregroundCoverage": 0.9422
     },
     "mapStats": {
-      "valueRange": 0.4222,
-      "heightP90Gradient": 0.03093,
-      "roughnessBase": 0.701,
-      "roughnessVariation": 0.062,
-      "normalStrength": 0.192,
+      "valueRange": 0.3197,
+      "heightP90Gradient": 0.04256,
+      "roughnessBase": 0.705,
+      "roughnessVariation": 0.084,
+      "normalStrength": 0.206,
       "blurRadius": 21
     },
     "palette": [
-      "#78471F",
-      "#8D6824",
-      "#182912",
-      "#5D5530",
-      "#AE7A4B"
+      "#824E26",
+      "#937C57",
+      "#5C4716",
+      "#274011",
+      "#566648"
     ]
   },
   "warnings": [

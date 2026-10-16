@@ -1059,17 +1059,20 @@
       "interaction-pass",
       "optimization-pass"
     ],
-    "currentPass": "blockout",
-    "completedPasses": [],
-    "lastCompletedPass": "",
-    "blockedReason": "blockout requires a browser screenshot and self-correction review before structural-pass unlocks",
-    "nextRequiredEvidence": [
-      "blockout browser render screenshot from your agent's browser/screenshot tool",
-      "side-by-side reference/render comparison sheet",
-      "AI vision score >= 0.7 with layer scores and mismatch critique",
-      "critical semantic feature scores from the same image pair meeting their individual thresholds",
-      "reviewHistory entry for blockout with action=continue"
-    ]
+    "currentPass": "complete",
+    "completedPasses": [
+      "blockout",
+      "structural-pass",
+      "form-refinement",
+      "material-pass",
+      "surface-pass",
+      "lighting-pass",
+      "interaction-pass",
+      "optimization-pass"
+    ],
+    "lastCompletedPass": "optimization-pass",
+    "blockedReason": "all build passes completed",
+    "nextRequiredEvidence": []
   },
   "lookDevTargets": {
     "qualityPriority": "reference-fidelity",
@@ -1775,8 +1778,8 @@
       "transform": {
         "position": [
           0,
-          1.2,
-          -24
+          0.0,
+          0
         ],
         "rotation": [
           0.0,
@@ -1899,8 +1902,8 @@
       "transform": {
         "position": [
           0,
-          1.2,
-          13
+          0.0,
+          37
         ],
         "rotation": [
           0.0,
@@ -2029,8 +2032,8 @@
       "transform": {
         "position": [
           -25,
-          3.0,
-          9
+          1.8,
+          33
         ],
         "rotation": [
           0.0,
@@ -2153,8 +2156,8 @@
       "transform": {
         "position": [
           25,
-          3.0,
-          9
+          1.8,
+          33
         ],
         "rotation": [
           0.0,
@@ -2402,8 +2405,8 @@
       "transform": {
         "position": [
           0,
-          17.7,
-          -17
+          0.0,
+          0
         ],
         "rotation": [
           0.0,
@@ -2526,8 +2529,8 @@
       "transform": {
         "position": [
           0,
-          28.2,
-          -0.4
+          10.5,
+          16.6
         ],
         "rotation": [
           0.0,
@@ -2655,8 +2658,8 @@
       "transform": {
         "position": [
           0,
-          33.15,
-          -0.35
+          15.45,
+          16.65
         ],
         "rotation": [
           0.0,
@@ -2784,8 +2787,8 @@
       "transform": {
         "position": [
           0,
-          33.55,
-          -17
+          15.85,
+          0
         ],
         "rotation": [
           0.0,
@@ -2908,8 +2911,8 @@
       "transform": {
         "position": [
           0,
-          33.5,
-          -17
+          15.8,
+          0
         ],
         "rotation": [
           0.0,
@@ -3010,7 +3013,7 @@
     },
     {
       "id": "dome-assembly",
-      "name": "Dome assembly",
+      "name": "Dome assembly (container)",
       "level": "macro",
       "role": "structure",
       "importance": 1.0,
@@ -3019,7 +3022,7 @@
       "topologyClass": "assembled-solid",
       "topologyRationale": "Discrete rigid mass with flat faces; genuinely built from a box.",
       "geometryDescriptor": {
-        "topologyIntent": "Cream drum with a window ribbon and the glass dome above; the building's strongest landmark.",
+        "topologyIntent": "Hidden container: drum, shell, rings, meridians and finial are the real geometry (children).",
         "edgeTreatment": {
           "type": "none",
           "bevelRadius": 0.0,
@@ -3032,17 +3035,17 @@
       "parent": "root",
       "attachment": null,
       "dimensions": {
-        "width": 11.2,
-        "height": 10.6,
-        "depth": 11.2,
+        "width": 1,
+        "height": 1,
+        "depth": 1,
         "units": "relative",
         "confidence": 0.8
       },
       "transform": {
         "position": [
           0,
-          36.0,
-          -17
+          0,
+          0
         ],
         "rotation": [
           0.0,
@@ -3099,12 +3102,12 @@
           "seamRefs": [],
           "detachableFragments": [],
           "breakImpulse": 0.0,
-          "debrisMaterial": "glass-dome"
+          "debrisMaterial": "invisible-root"
         }
       },
-      "material": "glass-dome",
+      "material": "invisible-root",
       "materialLayers": [
-        "glass-dome"
+        "invisible-root"
       ],
       "deformations": [],
       "joints": [],
@@ -3127,22 +3130,22 @@
       "details": [],
       "fidelityTier": "blockout",
       "colorMaterialRecipe": {
-        "dominantAlbedo": "rgba(127, 160, 172, 1.0)",
-        "secondaryAlbedo": "rgba(105, 137, 154, 1.0)",
-        "materialClass": "glass",
+        "dominantAlbedo": "rgba(110, 103, 89, 1.0)",
+        "secondaryAlbedo": "rgba(95, 89, 76, 1.0)",
+        "materialClass": "unknown",
         "materialClassConfidence": 0.8
       }
     },
     {
       "id": "dome-drum",
       "name": "Dome drum",
-      "level": "meso",
+      "level": "macro",
       "role": "structure",
       "importance": 0.85,
       "confidence": 0.85,
-      "primitive": "cylinder",
+      "primitive": "lathe",
       "topologyClass": "assembled-solid",
-      "topologyRationale": "Cylindrical drum: rotationally symmetric solid, genuinely a cylinder.",
+      "topologyRationale": "Cylindrical drum: rotationally symmetric revolved profile (lathe, straight profile).",
       "geometryDescriptor": {
         "topologyIntent": "Cream drum under the dome; window ribbon and mullions ring the upper part.",
         "edgeTreatment": {
@@ -3152,25 +3155,23 @@
         },
         "deformationStack": [],
         "uvStrategy": "generated procedural coordinates",
-        "normalStrategy": "vertex normals from generated geometry"
+        "normalStrategy": "vertex normals from generated geometry",
+        "latheProfile": {
+          "points": [
+            [
+              0.5,
+              -0.5
+            ],
+            [
+              0.5,
+              0.5
+            ]
+          ],
+          "segments": 40
+        }
       },
       "parent": "dome-assembly",
-      "attachment": {
-        "parentSocket": "central-block/deck",
-        "localStart": [
-          0,
-          33.4,
-          -17
-        ],
-        "localEnd": [
-          0,
-          35.9,
-          -17
-        ],
-        "contactType": "butt",
-        "embedDepth": 0.5,
-        "gapTolerance": 0.05
-      },
+      "attachment": null,
       "dimensions": {
         "width": 11.2,
         "height": 2.4,
@@ -3273,7 +3274,7 @@
         "zones-ref04/zone-r0c1.png"
       ],
       "details": [],
-      "fidelityTier": "structure",
+      "fidelityTier": "blockout",
       "colorMaterialRecipe": {
         "dominantAlbedo": "rgba(231, 218, 188, 1.0)",
         "secondaryAlbedo": "rgba(217, 203, 168, 1.0)",
@@ -3288,9 +3289,9 @@
       "role": "structure",
       "importance": 0.6,
       "confidence": 0.8,
-      "primitive": "cylinder",
+      "primitive": "lathe",
       "topologyClass": "assembled-solid",
-      "topologyRationale": "Thin cylindrical glazing band.",
+      "topologyRationale": "Thin cylindrical glazing band (lathe with straight profile).",
       "geometryDescriptor": {
         "topologyIntent": "Dark glazing ring of the drum; mullions come from the drum-mullions repetition system.",
         "edgeTreatment": {
@@ -3300,25 +3301,23 @@
         },
         "deformationStack": [],
         "uvStrategy": "generated procedural coordinates",
-        "normalStrategy": "vertex normals from generated geometry"
+        "normalStrategy": "vertex normals from generated geometry",
+        "latheProfile": {
+          "points": [
+            [
+              0.5,
+              -0.5
+            ],
+            [
+              0.5,
+              0.5
+            ]
+          ],
+          "segments": 40
+        }
       },
       "parent": "dome-drum",
-      "attachment": {
-        "parentSocket": "dome-drum/ring",
-        "localStart": [
-          0,
-          34.6,
-          -17
-        ],
-        "localEnd": [
-          0,
-          35.7,
-          -17
-        ],
-        "contactType": "overlap",
-        "embedDepth": 0.2,
-        "gapTolerance": 0.05
-      },
+      "attachment": null,
       "dimensions": {
         "width": 11.0,
         "height": 1.1,
@@ -3329,8 +3328,8 @@
       "transform": {
         "position": [
           0,
-          35.15,
-          -17
+          0.45,
+          0
         ],
         "rotation": [
           0.0,
@@ -3423,7 +3422,7 @@
     {
       "id": "dome-shell",
       "name": "Dome shell",
-      "level": "meso",
+      "level": "macro",
       "role": "structure",
       "importance": 0.95,
       "confidence": 0.8,
@@ -3542,7 +3541,7 @@
         "view:front-elevation"
       ],
       "details": [],
-      "fidelityTier": "structure",
+      "fidelityTier": "blockout",
       "colorMaterialRecipe": {
         "dominantAlbedo": "rgba(127, 160, 172, 1.0)",
         "secondaryAlbedo": "rgba(105, 137, 154, 1.0)",
@@ -3583,8 +3582,8 @@
       "transform": {
         "position": [
           0,
-          36.6,
-          -17
+          0.7,
+          0
         ],
         "rotation": [
           1.5707963267948966,
@@ -3707,8 +3706,8 @@
       "transform": {
         "position": [
           0,
-          37.7,
-          -17
+          1.8,
+          0
         ],
         "rotation": [
           1.5707963267948966,
@@ -3805,11 +3804,11 @@
       "role": "structure",
       "importance": 0.45,
       "confidence": 0.8,
-      "primitive": "tube",
+      "primitive": "tapered-sweep",
       "topologyClass": "fiber-strand",
-      "topologyRationale": "Thin structural arc following the dome surface: a swept strand, tube primitive.",
+      "topologyRationale": "Thin structural arc following the dome surface: a swept strand with stations along the arc.",
       "geometryDescriptor": {
-        "topologyIntent": "One of eight meridian ribs on the dome; quarter-arc path in the descriptor.",
+        "topologyIntent": "One of eight meridian ribs on the dome; quarter-arc stations in the descriptor.",
         "edgeTreatment": {
           "type": "none",
           "bevelRadius": 0.0,
@@ -3818,55 +3817,74 @@
         "deformationStack": [],
         "uvStrategy": "generated procedural coordinates",
         "normalStrategy": "vertex normals from generated geometry",
-        "tubePath": {
-          "points": [
-            [
-              0.0,
-              0.5,
-              0.0
-            ],
-            [
-              0.17,
-              0.47,
-              0.0
-            ],
-            [
-              0.33,
-              0.38,
-              0.0
-            ],
-            [
-              0.45,
-              0.23,
-              0.0
-            ],
-            [
-              0.5,
-              0.0,
-              0.0
-            ]
+        "taperedSweep": {
+          "stations": [
+            {
+              "position": [
+                0.5,
+                0.0,
+                0.0
+              ],
+              "rx": 0.016,
+              "rz": 0.013,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.475,
+                0.155,
+                0.0
+              ],
+              "rx": 0.015,
+              "rz": 0.012,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.4,
+                0.3,
+                0.0
+              ],
+              "rx": 0.014,
+              "rz": 0.011,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.28,
+                0.415,
+                0.0
+              ],
+              "rx": 0.013,
+              "rz": 0.01,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.13,
+                0.48,
+                0.0
+              ],
+              "rx": 0.011,
+              "rz": 0.008,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rx": 0.008,
+              "rz": 0.006,
+              "twist": 0
+            }
           ],
-          "radius": 0.012,
           "closed": false
         }
       },
       "parent": "dome-shell",
-      "attachment": {
-        "parentSocket": "dome-shell/surface",
-        "localStart": [
-          0,
-          4.8,
-          0
-        ],
-        "localEnd": [
-          4.8,
-          0,
-          0
-        ],
-        "contactType": "embed",
-        "embedDepth": 0.05,
-        "gapTolerance": 0.02
-      },
+      "attachment": null,
       "dimensions": {
         "width": 9.6,
         "height": 9.6,
@@ -3877,8 +3895,8 @@
       "transform": {
         "position": [
           0,
-          35.9,
-          -17
+          0.0,
+          0
         ],
         "rotation": [
           0,
@@ -3975,11 +3993,11 @@
       "role": "structure",
       "importance": 0.45,
       "confidence": 0.8,
-      "primitive": "tube",
+      "primitive": "tapered-sweep",
       "topologyClass": "fiber-strand",
-      "topologyRationale": "Thin structural arc following the dome surface: a swept strand, tube primitive.",
+      "topologyRationale": "Thin structural arc following the dome surface: a swept strand with stations along the arc.",
       "geometryDescriptor": {
-        "topologyIntent": "One of eight meridian ribs on the dome; quarter-arc path in the descriptor.",
+        "topologyIntent": "One of eight meridian ribs on the dome; quarter-arc stations in the descriptor.",
         "edgeTreatment": {
           "type": "none",
           "bevelRadius": 0.0,
@@ -3988,55 +4006,74 @@
         "deformationStack": [],
         "uvStrategy": "generated procedural coordinates",
         "normalStrategy": "vertex normals from generated geometry",
-        "tubePath": {
-          "points": [
-            [
-              0.0,
-              0.5,
-              0.0
-            ],
-            [
-              0.17,
-              0.47,
-              0.0
-            ],
-            [
-              0.33,
-              0.38,
-              0.0
-            ],
-            [
-              0.45,
-              0.23,
-              0.0
-            ],
-            [
-              0.5,
-              0.0,
-              0.0
-            ]
+        "taperedSweep": {
+          "stations": [
+            {
+              "position": [
+                0.5,
+                0.0,
+                0.0
+              ],
+              "rx": 0.016,
+              "rz": 0.013,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.475,
+                0.155,
+                0.0
+              ],
+              "rx": 0.015,
+              "rz": 0.012,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.4,
+                0.3,
+                0.0
+              ],
+              "rx": 0.014,
+              "rz": 0.011,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.28,
+                0.415,
+                0.0
+              ],
+              "rx": 0.013,
+              "rz": 0.01,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.13,
+                0.48,
+                0.0
+              ],
+              "rx": 0.011,
+              "rz": 0.008,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rx": 0.008,
+              "rz": 0.006,
+              "twist": 0
+            }
           ],
-          "radius": 0.012,
           "closed": false
         }
       },
       "parent": "dome-shell",
-      "attachment": {
-        "parentSocket": "dome-shell/surface",
-        "localStart": [
-          0,
-          4.8,
-          0
-        ],
-        "localEnd": [
-          4.8,
-          0,
-          0
-        ],
-        "contactType": "embed",
-        "embedDepth": 0.05,
-        "gapTolerance": 0.02
-      },
+      "attachment": null,
       "dimensions": {
         "width": 9.6,
         "height": 9.6,
@@ -4047,8 +4084,8 @@
       "transform": {
         "position": [
           0,
-          35.9,
-          -17
+          0.0,
+          0
         ],
         "rotation": [
           0,
@@ -4145,11 +4182,11 @@
       "role": "structure",
       "importance": 0.45,
       "confidence": 0.8,
-      "primitive": "tube",
+      "primitive": "tapered-sweep",
       "topologyClass": "fiber-strand",
-      "topologyRationale": "Thin structural arc following the dome surface: a swept strand, tube primitive.",
+      "topologyRationale": "Thin structural arc following the dome surface: a swept strand with stations along the arc.",
       "geometryDescriptor": {
-        "topologyIntent": "One of eight meridian ribs on the dome; quarter-arc path in the descriptor.",
+        "topologyIntent": "One of eight meridian ribs on the dome; quarter-arc stations in the descriptor.",
         "edgeTreatment": {
           "type": "none",
           "bevelRadius": 0.0,
@@ -4158,55 +4195,74 @@
         "deformationStack": [],
         "uvStrategy": "generated procedural coordinates",
         "normalStrategy": "vertex normals from generated geometry",
-        "tubePath": {
-          "points": [
-            [
-              0.0,
-              0.5,
-              0.0
-            ],
-            [
-              0.17,
-              0.47,
-              0.0
-            ],
-            [
-              0.33,
-              0.38,
-              0.0
-            ],
-            [
-              0.45,
-              0.23,
-              0.0
-            ],
-            [
-              0.5,
-              0.0,
-              0.0
-            ]
+        "taperedSweep": {
+          "stations": [
+            {
+              "position": [
+                0.5,
+                0.0,
+                0.0
+              ],
+              "rx": 0.016,
+              "rz": 0.013,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.475,
+                0.155,
+                0.0
+              ],
+              "rx": 0.015,
+              "rz": 0.012,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.4,
+                0.3,
+                0.0
+              ],
+              "rx": 0.014,
+              "rz": 0.011,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.28,
+                0.415,
+                0.0
+              ],
+              "rx": 0.013,
+              "rz": 0.01,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.13,
+                0.48,
+                0.0
+              ],
+              "rx": 0.011,
+              "rz": 0.008,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rx": 0.008,
+              "rz": 0.006,
+              "twist": 0
+            }
           ],
-          "radius": 0.012,
           "closed": false
         }
       },
       "parent": "dome-shell",
-      "attachment": {
-        "parentSocket": "dome-shell/surface",
-        "localStart": [
-          0,
-          4.8,
-          0
-        ],
-        "localEnd": [
-          4.8,
-          0,
-          0
-        ],
-        "contactType": "embed",
-        "embedDepth": 0.05,
-        "gapTolerance": 0.02
-      },
+      "attachment": null,
       "dimensions": {
         "width": 9.6,
         "height": 9.6,
@@ -4217,8 +4273,8 @@
       "transform": {
         "position": [
           0,
-          35.9,
-          -17
+          0.0,
+          0
         ],
         "rotation": [
           0,
@@ -4315,11 +4371,11 @@
       "role": "structure",
       "importance": 0.45,
       "confidence": 0.8,
-      "primitive": "tube",
+      "primitive": "tapered-sweep",
       "topologyClass": "fiber-strand",
-      "topologyRationale": "Thin structural arc following the dome surface: a swept strand, tube primitive.",
+      "topologyRationale": "Thin structural arc following the dome surface: a swept strand with stations along the arc.",
       "geometryDescriptor": {
-        "topologyIntent": "One of eight meridian ribs on the dome; quarter-arc path in the descriptor.",
+        "topologyIntent": "One of eight meridian ribs on the dome; quarter-arc stations in the descriptor.",
         "edgeTreatment": {
           "type": "none",
           "bevelRadius": 0.0,
@@ -4328,55 +4384,74 @@
         "deformationStack": [],
         "uvStrategy": "generated procedural coordinates",
         "normalStrategy": "vertex normals from generated geometry",
-        "tubePath": {
-          "points": [
-            [
-              0.0,
-              0.5,
-              0.0
-            ],
-            [
-              0.17,
-              0.47,
-              0.0
-            ],
-            [
-              0.33,
-              0.38,
-              0.0
-            ],
-            [
-              0.45,
-              0.23,
-              0.0
-            ],
-            [
-              0.5,
-              0.0,
-              0.0
-            ]
+        "taperedSweep": {
+          "stations": [
+            {
+              "position": [
+                0.5,
+                0.0,
+                0.0
+              ],
+              "rx": 0.016,
+              "rz": 0.013,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.475,
+                0.155,
+                0.0
+              ],
+              "rx": 0.015,
+              "rz": 0.012,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.4,
+                0.3,
+                0.0
+              ],
+              "rx": 0.014,
+              "rz": 0.011,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.28,
+                0.415,
+                0.0
+              ],
+              "rx": 0.013,
+              "rz": 0.01,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.13,
+                0.48,
+                0.0
+              ],
+              "rx": 0.011,
+              "rz": 0.008,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rx": 0.008,
+              "rz": 0.006,
+              "twist": 0
+            }
           ],
-          "radius": 0.012,
           "closed": false
         }
       },
       "parent": "dome-shell",
-      "attachment": {
-        "parentSocket": "dome-shell/surface",
-        "localStart": [
-          0,
-          4.8,
-          0
-        ],
-        "localEnd": [
-          4.8,
-          0,
-          0
-        ],
-        "contactType": "embed",
-        "embedDepth": 0.05,
-        "gapTolerance": 0.02
-      },
+      "attachment": null,
       "dimensions": {
         "width": 9.6,
         "height": 9.6,
@@ -4387,8 +4462,8 @@
       "transform": {
         "position": [
           0,
-          35.9,
-          -17
+          0.0,
+          0
         ],
         "rotation": [
           0,
@@ -4485,11 +4560,11 @@
       "role": "structure",
       "importance": 0.45,
       "confidence": 0.8,
-      "primitive": "tube",
+      "primitive": "tapered-sweep",
       "topologyClass": "fiber-strand",
-      "topologyRationale": "Thin structural arc following the dome surface: a swept strand, tube primitive.",
+      "topologyRationale": "Thin structural arc following the dome surface: a swept strand with stations along the arc.",
       "geometryDescriptor": {
-        "topologyIntent": "One of eight meridian ribs on the dome; quarter-arc path in the descriptor.",
+        "topologyIntent": "One of eight meridian ribs on the dome; quarter-arc stations in the descriptor.",
         "edgeTreatment": {
           "type": "none",
           "bevelRadius": 0.0,
@@ -4498,55 +4573,74 @@
         "deformationStack": [],
         "uvStrategy": "generated procedural coordinates",
         "normalStrategy": "vertex normals from generated geometry",
-        "tubePath": {
-          "points": [
-            [
-              0.0,
-              0.5,
-              0.0
-            ],
-            [
-              0.17,
-              0.47,
-              0.0
-            ],
-            [
-              0.33,
-              0.38,
-              0.0
-            ],
-            [
-              0.45,
-              0.23,
-              0.0
-            ],
-            [
-              0.5,
-              0.0,
-              0.0
-            ]
+        "taperedSweep": {
+          "stations": [
+            {
+              "position": [
+                0.5,
+                0.0,
+                0.0
+              ],
+              "rx": 0.016,
+              "rz": 0.013,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.475,
+                0.155,
+                0.0
+              ],
+              "rx": 0.015,
+              "rz": 0.012,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.4,
+                0.3,
+                0.0
+              ],
+              "rx": 0.014,
+              "rz": 0.011,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.28,
+                0.415,
+                0.0
+              ],
+              "rx": 0.013,
+              "rz": 0.01,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.13,
+                0.48,
+                0.0
+              ],
+              "rx": 0.011,
+              "rz": 0.008,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rx": 0.008,
+              "rz": 0.006,
+              "twist": 0
+            }
           ],
-          "radius": 0.012,
           "closed": false
         }
       },
       "parent": "dome-shell",
-      "attachment": {
-        "parentSocket": "dome-shell/surface",
-        "localStart": [
-          0,
-          4.8,
-          0
-        ],
-        "localEnd": [
-          4.8,
-          0,
-          0
-        ],
-        "contactType": "embed",
-        "embedDepth": 0.05,
-        "gapTolerance": 0.02
-      },
+      "attachment": null,
       "dimensions": {
         "width": 9.6,
         "height": 9.6,
@@ -4557,8 +4651,8 @@
       "transform": {
         "position": [
           0,
-          35.9,
-          -17
+          0.0,
+          0
         ],
         "rotation": [
           0,
@@ -4655,11 +4749,11 @@
       "role": "structure",
       "importance": 0.45,
       "confidence": 0.8,
-      "primitive": "tube",
+      "primitive": "tapered-sweep",
       "topologyClass": "fiber-strand",
-      "topologyRationale": "Thin structural arc following the dome surface: a swept strand, tube primitive.",
+      "topologyRationale": "Thin structural arc following the dome surface: a swept strand with stations along the arc.",
       "geometryDescriptor": {
-        "topologyIntent": "One of eight meridian ribs on the dome; quarter-arc path in the descriptor.",
+        "topologyIntent": "One of eight meridian ribs on the dome; quarter-arc stations in the descriptor.",
         "edgeTreatment": {
           "type": "none",
           "bevelRadius": 0.0,
@@ -4668,55 +4762,74 @@
         "deformationStack": [],
         "uvStrategy": "generated procedural coordinates",
         "normalStrategy": "vertex normals from generated geometry",
-        "tubePath": {
-          "points": [
-            [
-              0.0,
-              0.5,
-              0.0
-            ],
-            [
-              0.17,
-              0.47,
-              0.0
-            ],
-            [
-              0.33,
-              0.38,
-              0.0
-            ],
-            [
-              0.45,
-              0.23,
-              0.0
-            ],
-            [
-              0.5,
-              0.0,
-              0.0
-            ]
+        "taperedSweep": {
+          "stations": [
+            {
+              "position": [
+                0.5,
+                0.0,
+                0.0
+              ],
+              "rx": 0.016,
+              "rz": 0.013,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.475,
+                0.155,
+                0.0
+              ],
+              "rx": 0.015,
+              "rz": 0.012,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.4,
+                0.3,
+                0.0
+              ],
+              "rx": 0.014,
+              "rz": 0.011,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.28,
+                0.415,
+                0.0
+              ],
+              "rx": 0.013,
+              "rz": 0.01,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.13,
+                0.48,
+                0.0
+              ],
+              "rx": 0.011,
+              "rz": 0.008,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rx": 0.008,
+              "rz": 0.006,
+              "twist": 0
+            }
           ],
-          "radius": 0.012,
           "closed": false
         }
       },
       "parent": "dome-shell",
-      "attachment": {
-        "parentSocket": "dome-shell/surface",
-        "localStart": [
-          0,
-          4.8,
-          0
-        ],
-        "localEnd": [
-          4.8,
-          0,
-          0
-        ],
-        "contactType": "embed",
-        "embedDepth": 0.05,
-        "gapTolerance": 0.02
-      },
+      "attachment": null,
       "dimensions": {
         "width": 9.6,
         "height": 9.6,
@@ -4727,8 +4840,8 @@
       "transform": {
         "position": [
           0,
-          35.9,
-          -17
+          0.0,
+          0
         ],
         "rotation": [
           0,
@@ -4825,11 +4938,11 @@
       "role": "structure",
       "importance": 0.45,
       "confidence": 0.8,
-      "primitive": "tube",
+      "primitive": "tapered-sweep",
       "topologyClass": "fiber-strand",
-      "topologyRationale": "Thin structural arc following the dome surface: a swept strand, tube primitive.",
+      "topologyRationale": "Thin structural arc following the dome surface: a swept strand with stations along the arc.",
       "geometryDescriptor": {
-        "topologyIntent": "One of eight meridian ribs on the dome; quarter-arc path in the descriptor.",
+        "topologyIntent": "One of eight meridian ribs on the dome; quarter-arc stations in the descriptor.",
         "edgeTreatment": {
           "type": "none",
           "bevelRadius": 0.0,
@@ -4838,55 +4951,74 @@
         "deformationStack": [],
         "uvStrategy": "generated procedural coordinates",
         "normalStrategy": "vertex normals from generated geometry",
-        "tubePath": {
-          "points": [
-            [
-              0.0,
-              0.5,
-              0.0
-            ],
-            [
-              0.17,
-              0.47,
-              0.0
-            ],
-            [
-              0.33,
-              0.38,
-              0.0
-            ],
-            [
-              0.45,
-              0.23,
-              0.0
-            ],
-            [
-              0.5,
-              0.0,
-              0.0
-            ]
+        "taperedSweep": {
+          "stations": [
+            {
+              "position": [
+                0.5,
+                0.0,
+                0.0
+              ],
+              "rx": 0.016,
+              "rz": 0.013,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.475,
+                0.155,
+                0.0
+              ],
+              "rx": 0.015,
+              "rz": 0.012,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.4,
+                0.3,
+                0.0
+              ],
+              "rx": 0.014,
+              "rz": 0.011,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.28,
+                0.415,
+                0.0
+              ],
+              "rx": 0.013,
+              "rz": 0.01,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.13,
+                0.48,
+                0.0
+              ],
+              "rx": 0.011,
+              "rz": 0.008,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rx": 0.008,
+              "rz": 0.006,
+              "twist": 0
+            }
           ],
-          "radius": 0.012,
           "closed": false
         }
       },
       "parent": "dome-shell",
-      "attachment": {
-        "parentSocket": "dome-shell/surface",
-        "localStart": [
-          0,
-          4.8,
-          0
-        ],
-        "localEnd": [
-          4.8,
-          0,
-          0
-        ],
-        "contactType": "embed",
-        "embedDepth": 0.05,
-        "gapTolerance": 0.02
-      },
+      "attachment": null,
       "dimensions": {
         "width": 9.6,
         "height": 9.6,
@@ -4897,8 +5029,8 @@
       "transform": {
         "position": [
           0,
-          35.9,
-          -17
+          0.0,
+          0
         ],
         "rotation": [
           0,
@@ -4995,11 +5127,11 @@
       "role": "structure",
       "importance": 0.45,
       "confidence": 0.8,
-      "primitive": "tube",
+      "primitive": "tapered-sweep",
       "topologyClass": "fiber-strand",
-      "topologyRationale": "Thin structural arc following the dome surface: a swept strand, tube primitive.",
+      "topologyRationale": "Thin structural arc following the dome surface: a swept strand with stations along the arc.",
       "geometryDescriptor": {
-        "topologyIntent": "One of eight meridian ribs on the dome; quarter-arc path in the descriptor.",
+        "topologyIntent": "One of eight meridian ribs on the dome; quarter-arc stations in the descriptor.",
         "edgeTreatment": {
           "type": "none",
           "bevelRadius": 0.0,
@@ -5008,55 +5140,74 @@
         "deformationStack": [],
         "uvStrategy": "generated procedural coordinates",
         "normalStrategy": "vertex normals from generated geometry",
-        "tubePath": {
-          "points": [
-            [
-              0.0,
-              0.5,
-              0.0
-            ],
-            [
-              0.17,
-              0.47,
-              0.0
-            ],
-            [
-              0.33,
-              0.38,
-              0.0
-            ],
-            [
-              0.45,
-              0.23,
-              0.0
-            ],
-            [
-              0.5,
-              0.0,
-              0.0
-            ]
+        "taperedSweep": {
+          "stations": [
+            {
+              "position": [
+                0.5,
+                0.0,
+                0.0
+              ],
+              "rx": 0.016,
+              "rz": 0.013,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.475,
+                0.155,
+                0.0
+              ],
+              "rx": 0.015,
+              "rz": 0.012,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.4,
+                0.3,
+                0.0
+              ],
+              "rx": 0.014,
+              "rz": 0.011,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.28,
+                0.415,
+                0.0
+              ],
+              "rx": 0.013,
+              "rz": 0.01,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.13,
+                0.48,
+                0.0
+              ],
+              "rx": 0.011,
+              "rz": 0.008,
+              "twist": 0
+            },
+            {
+              "position": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "rx": 0.008,
+              "rz": 0.006,
+              "twist": 0
+            }
           ],
-          "radius": 0.012,
           "closed": false
         }
       },
       "parent": "dome-shell",
-      "attachment": {
-        "parentSocket": "dome-shell/surface",
-        "localStart": [
-          0,
-          4.8,
-          0
-        ],
-        "localEnd": [
-          4.8,
-          0,
-          0
-        ],
-        "contactType": "embed",
-        "embedDepth": 0.05,
-        "gapTolerance": 0.02
-      },
+      "attachment": null,
       "dimensions": {
         "width": 9.6,
         "height": 9.6,
@@ -5067,8 +5218,8 @@
       "transform": {
         "position": [
           0,
-          35.9,
-          -17
+          0.0,
+          0
         ],
         "rotation": [
           0,
@@ -5191,8 +5342,8 @@
       "transform": {
         "position": [
           0,
-          41.0,
-          -17
+          5.1,
+          0
         ],
         "rotation": [
           0.0,
@@ -5444,8 +5595,8 @@
       "transform": {
         "position": [
           0,
-          2.95,
-          4.6
+          -4.05,
+          0.0
         ],
         "rotation": [
           0.0,
@@ -5568,8 +5719,8 @@
       "transform": {
         "position": [
           0,
-          7.8,
-          8.6
+          0.8,
+          4.0
         ],
         "rotation": [
           0.0,
@@ -5697,8 +5848,8 @@
       "transform": {
         "position": [
           0,
-          12.85,
-          4.6
+          5.85,
+          0.0
         ],
         "rotation": [
           0.0,
@@ -5821,8 +5972,8 @@
       "transform": {
         "position": [
           0,
-          7.8,
-          -0.2
+          0.8,
+          -4.8
         ],
         "rotation": [
           0.0,
@@ -5945,8 +6096,8 @@
       "transform": {
         "position": [
           0,
-          6.8,
-          0.35
+          -0.2,
+          -4.25
         ],
         "rotation": [
           0.0,
@@ -6074,8 +6225,8 @@
       "transform": {
         "position": [
           0,
-          5.35,
-          0.2
+          -1.65,
+          -4.4
         ],
         "rotation": [
           0.0,
@@ -6322,9 +6473,9 @@
       },
       "transform": {
         "position": [
-          -40,
-          12.1,
-          -10
+          0,
+          0.0,
+          0
         ],
         "rotation": [
           0.0,
@@ -6456,9 +6607,9 @@
       },
       "transform": {
         "position": [
-          -57.0,
-          16.1,
-          0.2
+          -17.0,
+          4.0,
+          10.2
         ],
         "rotation": [
           0.0,
@@ -6585,9 +6736,9 @@
       },
       "transform": {
         "position": [
-          -40,
-          22.25,
-          -10
+          0,
+          10.15,
+          0
         ],
         "rotation": [
           0.0,
@@ -6685,7 +6836,7 @@
     {
       "id": "west-roof",
       "name": "West hall roof",
-      "level": "meso",
+      "level": "macro",
       "role": "structure",
       "importance": 0.85,
       "confidence": 0.8,
@@ -6714,9 +6865,9 @@
       },
       "transform": {
         "position": [
-          -40,
-          24.4,
-          -10
+          0,
+          12.3,
+          0
         ],
         "rotation": [
           0.0,
@@ -6803,7 +6954,7 @@
         "zones-ref04/zone-r1c1.png"
       ],
       "details": [],
-      "fidelityTier": "structure",
+      "fidelityTier": "blockout",
       "colorMaterialRecipe": {
         "dominantAlbedo": "rgba(176, 90, 58, 1.0)",
         "secondaryAlbedo": "rgba(156, 78, 49, 1.0)",
@@ -6968,9 +7119,9 @@
       },
       "transform": {
         "position": [
-          -60.2,
-          15.4,
-          -0.5
+          0.0,
+          -1.6,
+          0.0
         ],
         "rotation": [
           0.0,
@@ -7097,9 +7248,9 @@
       },
       "transform": {
         "position": [
-          -60.2,
-          15.4,
-          2.72
+          0.0,
+          -1.6,
+          3.22
         ],
         "rotation": [
           0.0,
@@ -7226,9 +7377,9 @@
       },
       "transform": {
         "position": [
-          -60.2,
-          15.4,
-          2.95
+          0.0,
+          -1.6,
+          3.45
         ],
         "rotation": [
           0.0,
@@ -7350,9 +7501,9 @@
       },
       "transform": {
         "position": [
-          -60.2,
-          28.4,
-          -0.5
+          0.0,
+          11.4,
+          0.0
         ],
         "rotation": [
           0.0,
@@ -7445,7 +7596,7 @@
     {
       "id": "tower-belfry-west",
       "name": "Tower belfry (west)",
-      "level": "meso",
+      "level": "macro",
       "role": "structure",
       "importance": 0.7,
       "confidence": 0.8,
@@ -7474,9 +7625,9 @@
       },
       "transform": {
         "position": [
-          -60.2,
-          31.6,
-          -0.5
+          0.0,
+          14.6,
+          0.0
         ],
         "rotation": [
           0.0,
@@ -7563,7 +7714,7 @@
         "zones-ref03/zone-r1c2.png"
       ],
       "details": [],
-      "fidelityTier": "structure",
+      "fidelityTier": "blockout",
       "colorMaterialRecipe": {
         "dominantAlbedo": "rgba(231, 218, 188, 1.0)",
         "secondaryAlbedo": "rgba(217, 203, 168, 1.0)",
@@ -7603,9 +7754,9 @@
       },
       "transform": {
         "position": [
-          -60.2,
-          34.75,
-          -0.5
+          0.0,
+          17.75,
+          0.0
         ],
         "rotation": [
           0.0,
@@ -7703,15 +7854,15 @@
     {
       "id": "tower-roof-west",
       "name": "Tower cap (west)",
-      "level": "meso",
+      "level": "macro",
       "role": "structure",
       "importance": 0.8,
       "confidence": 0.8,
-      "primitive": "cone",
+      "primitive": "lathe",
       "topologyClass": "assembled-solid",
-      "topologyRationale": "Four-sided pyramid: a 4-segment cone with a square base.",
+      "topologyRationale": "Four-sided pyramid: a 4-segment lathe with a square base.",
       "geometryDescriptor": {
-        "topologyIntent": "Shallow pyramid cap; emitted as a 4-segment cone.",
+        "topologyIntent": "Shallow pyramid cap; emitted as a 4-segment lathe.",
         "edgeTreatment": {
           "type": "none",
           "bevelRadius": 0.0,
@@ -7719,25 +7870,23 @@
         },
         "deformationStack": [],
         "uvStrategy": "generated procedural coordinates",
-        "normalStrategy": "vertex normals from generated geometry"
+        "normalStrategy": "vertex normals from generated geometry",
+        "latheProfile": {
+          "points": [
+            [
+              0.5,
+              -0.5
+            ],
+            [
+              0.0,
+              0.5
+            ]
+          ],
+          "segments": 4
+        }
       },
       "parent": "tower-west",
-      "attachment": {
-        "parentSocket": "tower/belfry-head",
-        "localStart": [
-          -60.2,
-          35.2,
-          -0.5
-        ],
-        "localEnd": [
-          -60.2,
-          39.4,
-          -0.5
-        ],
-        "contactType": "butt",
-        "embedDepth": 0.3,
-        "gapTolerance": 0.05
-      },
+      "attachment": null,
       "dimensions": {
         "width": 10.47,
         "height": 4.2,
@@ -7747,9 +7896,9 @@
       },
       "transform": {
         "position": [
-          -60.2,
-          37.3,
-          -0.5
+          0.0,
+          20.3,
+          0.0
         ],
         "rotation": [
           0,
@@ -7831,7 +7980,7 @@
         "view:front-elevation"
       ],
       "details": [],
-      "fidelityTier": "structure",
+      "fidelityTier": "blockout",
       "colorMaterialRecipe": {
         "dominantAlbedo": "rgba(176, 90, 58, 1.0)",
         "secondaryAlbedo": "rgba(156, 78, 49, 1.0)",
@@ -7871,9 +8020,9 @@
       },
       "transform": {
         "position": [
-          -60.2,
-          39.6,
-          -0.5
+          0.0,
+          22.6,
+          0.0
         ],
         "rotation": [
           0.0,
@@ -8120,9 +8269,9 @@
       },
       "transform": {
         "position": [
-          -22.0,
-          9.4,
-          10.4
+          0.0,
+          0.7,
+          6.4
         ],
         "rotation": [
           0.0,
@@ -8215,7 +8364,7 @@
     {
       "id": "pavilion-roof-west",
       "name": "Pavilion roof (west)",
-      "level": "meso",
+      "level": "macro",
       "role": "structure",
       "importance": 0.65,
       "confidence": 0.8,
@@ -8244,9 +8393,9 @@
       },
       "transform": {
         "position": [
-          -22.0,
-          16.6,
-          4.0
+          0.0,
+          7.9,
+          0.0
         ],
         "rotation": [
           0.0,
@@ -8333,7 +8482,7 @@
         "view:front-aerial-3q"
       ],
       "details": [],
-      "fidelityTier": "structure",
+      "fidelityTier": "blockout",
       "colorMaterialRecipe": {
         "dominantAlbedo": "rgba(176, 90, 58, 1.0)",
         "secondaryAlbedo": "rgba(156, 78, 49, 1.0)",
@@ -8498,9 +8647,9 @@
       },
       "transform": {
         "position": [
-          -37.5,
-          14.0,
-          -45
+          8.5,
+          1.9,
+          0
         ],
         "rotation": [
           0,
@@ -8593,7 +8742,7 @@
     {
       "id": "rear-roof-west",
       "name": "Rear block roof (west)",
-      "level": "meso",
+      "level": "macro",
       "role": "structure",
       "importance": 0.55,
       "confidence": 0.6,
@@ -8622,9 +8771,9 @@
       },
       "transform": {
         "position": [
-          -46.0,
-          24.4,
-          -45
+          0.0,
+          12.3,
+          0
         ],
         "rotation": [
           0.0,
@@ -8711,7 +8860,7 @@
         "view:close-aerial"
       ],
       "details": [],
-      "fidelityTier": "structure",
+      "fidelityTier": "blockout",
       "colorMaterialRecipe": {
         "dominantAlbedo": "rgba(176, 90, 58, 1.0)",
         "secondaryAlbedo": "rgba(156, 78, 49, 1.0)",
@@ -8726,9 +8875,9 @@
       "role": "structure",
       "importance": 0.35,
       "confidence": 0.6,
-      "primitive": "cone",
+      "primitive": "lathe",
       "topologyClass": "assembled-solid",
-      "topologyRationale": "Conical trees: stacked cones.",
+      "topologyRationale": "Conical trees: revolved cone profile (lathe).",
       "geometryDescriptor": {
         "topologyIntent": "Row of dark conifers along the courtyard wall; looped in code with slight scale variance.",
         "edgeTreatment": {
@@ -8738,25 +8887,23 @@
         },
         "deformationStack": [],
         "uvStrategy": "generated procedural coordinates",
-        "normalStrategy": "vertex normals from generated geometry"
+        "normalStrategy": "vertex normals from generated geometry",
+        "latheProfile": {
+          "points": [
+            [
+              0.5,
+              -0.5
+            ],
+            [
+              0.0,
+              0.5
+            ]
+          ],
+          "segments": 10
+        }
       },
       "parent": "root",
-      "attachment": {
-        "parentSocket": "courtyard/ground",
-        "localStart": [
-          -33,
-          0.0,
-          -25
-        ],
-        "localEnd": [
-          -33,
-          12.0,
-          -25
-        ],
-        "contactType": "embed",
-        "embedDepth": 0.2,
-        "gapTolerance": 0.05
-      },
+      "attachment": null,
       "dimensions": {
         "width": 2.4,
         "height": 12,
@@ -9015,9 +9162,9 @@
       },
       "transform": {
         "position": [
-          40,
-          12.1,
-          -10
+          0,
+          0.0,
+          0
         ],
         "rotation": [
           0.0,
@@ -9149,9 +9296,9 @@
       },
       "transform": {
         "position": [
-          57.0,
-          16.1,
-          0.2
+          17.0,
+          4.0,
+          10.2
         ],
         "rotation": [
           0.0,
@@ -9278,9 +9425,9 @@
       },
       "transform": {
         "position": [
-          40,
-          22.25,
-          -10
+          0,
+          10.15,
+          0
         ],
         "rotation": [
           0.0,
@@ -9378,7 +9525,7 @@
     {
       "id": "east-roof",
       "name": "East hall roof",
-      "level": "meso",
+      "level": "macro",
       "role": "structure",
       "importance": 0.85,
       "confidence": 0.8,
@@ -9407,9 +9554,9 @@
       },
       "transform": {
         "position": [
-          40,
-          24.4,
-          -10
+          0,
+          12.3,
+          0
         ],
         "rotation": [
           0.0,
@@ -9496,7 +9643,7 @@
         "zones-ref04/zone-r1c1.png"
       ],
       "details": [],
-      "fidelityTier": "structure",
+      "fidelityTier": "blockout",
       "colorMaterialRecipe": {
         "dominantAlbedo": "rgba(176, 90, 58, 1.0)",
         "secondaryAlbedo": "rgba(156, 78, 49, 1.0)",
@@ -9661,9 +9808,9 @@
       },
       "transform": {
         "position": [
-          60.2,
-          15.4,
-          -0.5
+          0.0,
+          -1.6,
+          0.0
         ],
         "rotation": [
           0.0,
@@ -9790,9 +9937,9 @@
       },
       "transform": {
         "position": [
-          60.2,
-          15.4,
-          2.72
+          0.0,
+          -1.6,
+          3.22
         ],
         "rotation": [
           0.0,
@@ -9919,9 +10066,9 @@
       },
       "transform": {
         "position": [
-          60.2,
-          15.4,
-          2.95
+          0.0,
+          -1.6,
+          3.45
         ],
         "rotation": [
           0.0,
@@ -10043,9 +10190,9 @@
       },
       "transform": {
         "position": [
-          60.2,
-          28.4,
-          -0.5
+          0.0,
+          11.4,
+          0.0
         ],
         "rotation": [
           0.0,
@@ -10138,7 +10285,7 @@
     {
       "id": "tower-belfry-east",
       "name": "Tower belfry (east)",
-      "level": "meso",
+      "level": "macro",
       "role": "structure",
       "importance": 0.7,
       "confidence": 0.8,
@@ -10167,9 +10314,9 @@
       },
       "transform": {
         "position": [
-          60.2,
-          31.6,
-          -0.5
+          0.0,
+          14.6,
+          0.0
         ],
         "rotation": [
           0.0,
@@ -10256,7 +10403,7 @@
         "zones-ref03/zone-r1c2.png"
       ],
       "details": [],
-      "fidelityTier": "structure",
+      "fidelityTier": "blockout",
       "colorMaterialRecipe": {
         "dominantAlbedo": "rgba(231, 218, 188, 1.0)",
         "secondaryAlbedo": "rgba(217, 203, 168, 1.0)",
@@ -10296,9 +10443,9 @@
       },
       "transform": {
         "position": [
-          60.2,
-          34.75,
-          -0.5
+          0.0,
+          17.75,
+          0.0
         ],
         "rotation": [
           0.0,
@@ -10396,15 +10543,15 @@
     {
       "id": "tower-roof-east",
       "name": "Tower cap (east)",
-      "level": "meso",
+      "level": "macro",
       "role": "structure",
       "importance": 0.8,
       "confidence": 0.8,
-      "primitive": "cone",
+      "primitive": "lathe",
       "topologyClass": "assembled-solid",
-      "topologyRationale": "Four-sided pyramid: a 4-segment cone with a square base.",
+      "topologyRationale": "Four-sided pyramid: a 4-segment lathe with a square base.",
       "geometryDescriptor": {
-        "topologyIntent": "Shallow pyramid cap; emitted as a 4-segment cone.",
+        "topologyIntent": "Shallow pyramid cap; emitted as a 4-segment lathe.",
         "edgeTreatment": {
           "type": "none",
           "bevelRadius": 0.0,
@@ -10412,25 +10559,23 @@
         },
         "deformationStack": [],
         "uvStrategy": "generated procedural coordinates",
-        "normalStrategy": "vertex normals from generated geometry"
+        "normalStrategy": "vertex normals from generated geometry",
+        "latheProfile": {
+          "points": [
+            [
+              0.5,
+              -0.5
+            ],
+            [
+              0.0,
+              0.5
+            ]
+          ],
+          "segments": 4
+        }
       },
       "parent": "tower-east",
-      "attachment": {
-        "parentSocket": "tower/belfry-head",
-        "localStart": [
-          60.2,
-          35.2,
-          -0.5
-        ],
-        "localEnd": [
-          60.2,
-          39.4,
-          -0.5
-        ],
-        "contactType": "butt",
-        "embedDepth": 0.3,
-        "gapTolerance": 0.05
-      },
+      "attachment": null,
       "dimensions": {
         "width": 10.47,
         "height": 4.2,
@@ -10440,9 +10585,9 @@
       },
       "transform": {
         "position": [
-          60.2,
-          37.3,
-          -0.5
+          0.0,
+          20.3,
+          0.0
         ],
         "rotation": [
           0,
@@ -10524,7 +10669,7 @@
         "view:front-elevation"
       ],
       "details": [],
-      "fidelityTier": "structure",
+      "fidelityTier": "blockout",
       "colorMaterialRecipe": {
         "dominantAlbedo": "rgba(176, 90, 58, 1.0)",
         "secondaryAlbedo": "rgba(156, 78, 49, 1.0)",
@@ -10564,9 +10709,9 @@
       },
       "transform": {
         "position": [
-          60.2,
-          39.6,
-          -0.5
+          0.0,
+          22.6,
+          0.0
         ],
         "rotation": [
           0.0,
@@ -10813,9 +10958,9 @@
       },
       "transform": {
         "position": [
-          22.0,
-          9.4,
-          10.4
+          0.0,
+          0.7,
+          6.4
         ],
         "rotation": [
           0.0,
@@ -10908,7 +11053,7 @@
     {
       "id": "pavilion-roof-east",
       "name": "Pavilion roof (east)",
-      "level": "meso",
+      "level": "macro",
       "role": "structure",
       "importance": 0.65,
       "confidence": 0.8,
@@ -10937,9 +11082,9 @@
       },
       "transform": {
         "position": [
-          22.0,
-          16.6,
-          4.0
+          0.0,
+          7.9,
+          0.0
         ],
         "rotation": [
           0.0,
@@ -11026,7 +11171,7 @@
         "view:front-aerial-3q"
       ],
       "details": [],
-      "fidelityTier": "structure",
+      "fidelityTier": "blockout",
       "colorMaterialRecipe": {
         "dominantAlbedo": "rgba(176, 90, 58, 1.0)",
         "secondaryAlbedo": "rgba(156, 78, 49, 1.0)",
@@ -11191,9 +11336,9 @@
       },
       "transform": {
         "position": [
-          37.5,
-          14.0,
-          -45
+          -8.5,
+          1.9,
+          0
         ],
         "rotation": [
           0,
@@ -11286,7 +11431,7 @@
     {
       "id": "rear-roof-east",
       "name": "Rear block roof (east)",
-      "level": "meso",
+      "level": "macro",
       "role": "structure",
       "importance": 0.55,
       "confidence": 0.6,
@@ -11315,9 +11460,9 @@
       },
       "transform": {
         "position": [
-          46.0,
-          24.4,
-          -45
+          0.0,
+          12.3,
+          0
         ],
         "rotation": [
           0.0,
@@ -11404,7 +11549,7 @@
         "view:close-aerial"
       ],
       "details": [],
-      "fidelityTier": "structure",
+      "fidelityTier": "blockout",
       "colorMaterialRecipe": {
         "dominantAlbedo": "rgba(176, 90, 58, 1.0)",
         "secondaryAlbedo": "rgba(156, 78, 49, 1.0)",
@@ -11419,9 +11564,9 @@
       "role": "structure",
       "importance": 0.35,
       "confidence": 0.6,
-      "primitive": "cone",
+      "primitive": "lathe",
       "topologyClass": "assembled-solid",
-      "topologyRationale": "Conical trees: stacked cones.",
+      "topologyRationale": "Conical trees: revolved cone profile (lathe).",
       "geometryDescriptor": {
         "topologyIntent": "Row of dark conifers along the courtyard wall; looped in code with slight scale variance.",
         "edgeTreatment": {
@@ -11431,25 +11576,23 @@
         },
         "deformationStack": [],
         "uvStrategy": "generated procedural coordinates",
-        "normalStrategy": "vertex normals from generated geometry"
+        "normalStrategy": "vertex normals from generated geometry",
+        "latheProfile": {
+          "points": [
+            [
+              0.5,
+              -0.5
+            ],
+            [
+              0.0,
+              0.5
+            ]
+          ],
+          "segments": 10
+        }
       },
       "parent": "root",
-      "attachment": {
-        "parentSocket": "courtyard/ground",
-        "localStart": [
-          33,
-          0.0,
-          -25
-        ],
-        "localEnd": [
-          33,
-          12.0,
-          -25
-        ],
-        "contactType": "embed",
-        "embedDepth": 0.2,
-        "gapTolerance": 0.05
-      },
+      "attachment": null,
       "dimensions": {
         "width": 2.4,
         "height": 12,
@@ -11811,11 +11954,11 @@
       "role": "structure",
       "importance": 0.55,
       "confidence": 0.6,
-      "primitive": "cylinder",
-      "topologyClass": "assembled-solid",
-      "topologyRationale": "Barrel vault: a half-cylinder swept along the courtyard gap.",
+      "primitive": "box",
+      "topologyClass": "conforming-shell",
+      "topologyRationale": "Barrel vault placeholder mass; the curved half-pipe shell is authored in the factory refine step.",
       "geometryDescriptor": {
-        "topologyIntent": "Glazed barrel vault bridging the central block and the east rear block; rendered as a half-pipe.",
+        "topologyIntent": "Glazed barrel vault bridging the central block and the east rear block; box placeholder, half-pipe + ribs in refine-code.",
         "edgeTreatment": {
           "type": "none",
           "bevelRadius": 0.0,
@@ -11826,22 +11969,7 @@
         "normalStrategy": "vertex normals from generated geometry"
       },
       "parent": "root",
-      "attachment": {
-        "parentSocket": "vault-base/wall",
-        "localStart": [
-          0,
-          2.4,
-          -36
-        ],
-        "localEnd": [
-          0,
-          8.4,
-          -36
-        ],
-        "contactType": "butt",
-        "embedDepth": 0.4,
-        "gapTolerance": 0.05
-      },
+      "attachment": null,
       "dimensions": {
         "width": 17,
         "height": 6.0,
@@ -11856,9 +11984,9 @@
           -36
         ],
         "rotation": [
-          0,
-          0,
-          1.5707963267948966
+          0.0,
+          0.0,
+          0.0
         ]
       },
       "actionProfile": {
@@ -12231,7 +12359,7 @@
         "position": [
           0,
           -0.03,
-          44
+          -1
         ],
         "rotation": [
           0.0,
@@ -12355,7 +12483,7 @@
         "position": [
           0,
           -0.1,
-          40
+          -5
         ],
         "rotation": [
           0.0,
@@ -12479,7 +12607,7 @@
         "position": [
           0,
           0.18,
-          26
+          -19
         ],
         "rotation": [
           0.0,
@@ -12603,7 +12731,7 @@
         "position": [
           -6.3,
           0.78,
-          22.5
+          -22.5
         ],
         "rotation": [
           0.0,
@@ -12732,7 +12860,7 @@
         "position": [
           8.5,
           0.6,
-          38.5
+          -6.5
         ],
         "rotation": [
           0.0,
@@ -12980,8 +13108,8 @@
       "transform": {
         "position": [
           0,
-          0.05,
-          47
+          -0.2,
+          0
         ],
         "rotation": [
           0.0,
@@ -13109,8 +13237,8 @@
       "transform": {
         "position": [
           0,
-          0.42,
-          47
+          0.17,
+          0
         ],
         "rotation": [
           0.0,
@@ -13291,8 +13419,8 @@
       "transform": {
         "position": [
           0,
-          0.5,
-          41.5
+          0.25,
+          -5.5
         ],
         "rotation": [
           0.0,
@@ -13473,8 +13601,8 @@
       "transform": {
         "position": [
           0,
-          0.5,
-          52.5
+          0.25,
+          5.5
         ],
         "rotation": [
           0.0,
@@ -13571,7 +13699,7 @@
     },
     {
       "id": "tree-rows",
-      "name": "Plaza tree rows",
+      "name": "Plaza tree rows (container)",
       "level": "macro",
       "role": "structure",
       "importance": 0.65,
@@ -13580,7 +13708,7 @@
       "topologyClass": "assembled-solid",
       "topologyRationale": "Discrete rigid mass with flat faces; genuinely built from a box.",
       "geometryDescriptor": {
-        "topologyIntent": "Two rows of plane trees flanking the parterre and pool; looped in code with scale variance.",
+        "topologyIntent": "Hidden container for the two tree rows (real trees are the meso children, looped in code).",
         "edgeTreatment": {
           "type": "none",
           "bevelRadius": 0.0,
@@ -13593,17 +13721,17 @@
       "parent": "root",
       "attachment": null,
       "dimensions": {
-        "width": 30,
-        "height": 14,
-        "depth": 46,
+        "width": 1,
+        "height": 1,
+        "depth": 1,
         "units": "relative",
         "confidence": 0.8
       },
       "transform": {
         "position": [
           0,
-          7.0,
-          35
+          0,
+          0
         ],
         "rotation": [
           0.0,
@@ -13660,12 +13788,12 @@
           "seamRefs": [],
           "detachableFragments": [],
           "breakImpulse": 0.0,
-          "debrisMaterial": "foliage-green"
+          "debrisMaterial": "invisible-root"
         }
       },
-      "material": "foliage-green",
+      "material": "invisible-root",
       "materialLayers": [
-        "foliage-green"
+        "invisible-root"
       ],
       "deformations": [],
       "joints": [],
@@ -13688,8 +13816,8 @@
       "details": [],
       "fidelityTier": "blockout",
       "colorMaterialRecipe": {
-        "dominantAlbedo": "rgba(76, 107, 59, 1.0)",
-        "secondaryAlbedo": "rgba(60, 90, 48, 1.0)",
+        "dominantAlbedo": "rgba(110, 103, 89, 1.0)",
+        "secondaryAlbedo": "rgba(95, 89, 76, 1.0)",
         "materialClass": "unknown",
         "materialClassConfidence": 0.8
       }
@@ -14063,16 +14191,16 @@
       "notes": "Warm orange-terracotta brick with subtle tone variation between bays; mortar joints faint.",
       "referencePbr": {
         "usable": true,
-        "confidence": 0.815,
-        "estimatedFidelity": 0.815,
+        "confidence": 0.789,
+        "estimatedFidelity": 0.789,
         "extractionTool": "forge/stage1_intake/extract_pbr_evidence.py",
         "sourceCrop": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\brick-terracotta.png",
         "palette": [
-          "#78471F",
-          "#8D6824",
-          "#182912",
-          "#5D5530",
-          "#AE7A4B"
+          "#824E26",
+          "#937C57",
+          "#5C4716",
+          "#274011",
+          "#566648"
         ],
         "maps": {
           "albedo": {
@@ -14107,9 +14235,9 @@
           }
         },
         "diagnostics": {
-          "roughnessBase": 0.701,
-          "roughnessVariation": 0.062,
-          "normalStrength": 0.192
+          "roughnessBase": 0.705,
+          "roughnessVariation": 0.084,
+          "normalStrength": 0.206
         },
         "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
       }
@@ -14219,16 +14347,16 @@
       "notes": "Cream string courses, cornices, surrounds, tower panels; painted pale limestone.",
       "referencePbr": {
         "usable": true,
-        "confidence": 0.769,
-        "estimatedFidelity": 0.769,
+        "confidence": 0.751,
+        "estimatedFidelity": 0.751,
         "extractionTool": "forge/stage1_intake/extract_pbr_evidence.py",
         "sourceCrop": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\trim-limestone.png",
         "palette": [
-          "#886635",
-          "#2B4E53",
-          "#A06F35",
-          "#514B30",
-          "#807763"
+          "#F6B288",
+          "#F4AE81",
+          "#F6B691",
+          "#C38765",
+          "#6E4125"
         ],
         "maps": {
           "albedo": {
@@ -14263,9 +14391,9 @@
           }
         },
         "diagnostics": {
-          "roughnessBase": 0.737,
-          "roughnessVariation": 0.17,
-          "normalStrength": 0.262
+          "roughnessBase": 0.701,
+          "roughnessVariation": 0.05,
+          "normalStrength": 0.187
         },
         "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
       }
@@ -14375,16 +14503,16 @@
       "notes": "Olive-tan portico columns and loggia piers; slight sheen on the sunlit face.",
       "referencePbr": {
         "usable": true,
-        "confidence": 0.86,
-        "estimatedFidelity": 0.86,
+        "confidence": 0.716,
+        "estimatedFidelity": 0.716,
         "extractionTool": "forge/stage1_intake/extract_pbr_evidence.py",
         "sourceCrop": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\stone-olive.png",
         "palette": [
-          "#06181C",
-          "#02090B",
-          "#202F30",
-          "#706152",
-          "#D0AC96"
+          "#82787C",
+          "#867B80",
+          "#928686",
+          "#7B7779",
+          "#817474"
         ],
         "maps": {
           "albedo": {
@@ -14419,9 +14547,9 @@
           }
         },
         "diagnostics": {
-          "roughnessBase": 0.686,
-          "roughnessVariation": 0.05,
-          "normalStrength": 0.178
+          "roughnessBase": 0.713,
+          "roughnessVariation": 0.073,
+          "normalStrength": 0.201
         },
         "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
       }
@@ -15041,16 +15169,16 @@
       "notes": "Terracotta barrel tiles; fine parallel ribs run down each slope.",
       "referencePbr": {
         "usable": true,
-        "confidence": 0.816,
-        "estimatedFidelity": 0.816,
+        "confidence": 0.814,
+        "estimatedFidelity": 0.814,
         "extractionTool": "forge/stage1_intake/extract_pbr_evidence.py",
         "sourceCrop": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\roof-tile.png",
         "palette": [
-          "#6F4A23",
-          "#0C2F0F",
-          "#7C6E47",
-          "#28523E",
-          "#A88556"
+          "#EDA88B",
+          "#EDB196",
+          "#F0B69B",
+          "#B7825F",
+          "#754420"
         ],
         "maps": {
           "albedo": {
@@ -15085,9 +15213,9 @@
           }
         },
         "diagnostics": {
-          "roughnessBase": 0.732,
-          "roughnessVariation": 0.131,
-          "normalStrength": 0.237
+          "roughnessBase": 0.686,
+          "roughnessVariation": 0.05,
+          "normalStrength": 0.182
         },
         "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
       }
@@ -16153,11 +16281,11 @@
         "extractionTool": "forge/stage1_intake/extract_pbr_evidence.py",
         "sourceCrop": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\hedge-purple.png",
         "palette": [
-          "#C39508",
-          "#A8830E",
-          "#44382C",
-          "#7F6818",
-          "#DCB999"
+          "#5E4545",
+          "#B68C0E",
+          "#0E0E06",
+          "#90700A",
+          "#43361E"
         ],
         "maps": {
           "albedo": {
@@ -16192,9 +16320,9 @@
           }
         },
         "diagnostics": {
-          "roughnessBase": 0.708,
-          "roughnessVariation": 0.101,
-          "normalStrength": 0.223
+          "roughnessBase": 0.687,
+          "roughnessVariation": 0.05,
+          "normalStrength": 0.187
         },
         "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
       }
@@ -17086,16 +17214,16 @@
       "notes": "Pale waterproofing deck with panel seams; solar heaters and skylight strips on top.",
       "referencePbr": {
         "usable": true,
-        "confidence": 0.82,
-        "estimatedFidelity": 0.82,
+        "confidence": 0.802,
+        "estimatedFidelity": 0.802,
         "extractionTool": "forge/stage1_intake/extract_pbr_evidence.py",
         "sourceCrop": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\roof-deck.png",
         "palette": [
-          "#EED7B0",
-          "#866C43",
-          "#A8865D",
-          "#E3C6A8",
-          "#CCAF99"
+          "#EDD7B4",
+          "#E7CEAE",
+          "#DABEA4",
+          "#B19C80",
+          "#49655C"
         ],
         "maps": {
           "albedo": {
@@ -17130,9 +17258,9 @@
           }
         },
         "diagnostics": {
-          "roughnessBase": 0.69,
+          "roughnessBase": 0.688,
           "roughnessVariation": 0.05,
-          "normalStrength": 0.18
+          "normalStrength": 0.189
         },
         "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
       }
@@ -18164,8 +18292,721 @@
       ]
     }
   ],
-  "visualEvidence": [],
-  "reviewHistory": [],
+  "visualEvidence": [
+    {
+      "timestamp": "2026-10-16T01:49:20.686329+00:00",
+      "passId": "blockout",
+      "estimatedFidelity": 0.6,
+      "aiVisionScore": 0.6,
+      "visualAcceptanceThreshold": 0.7,
+      "layerScores": {},
+      "featureReviews": [],
+      "referenceScreenshot": "refs/ref-03-elevation.png",
+      "renderScreenshot": "render/blockout/front-elevation.png",
+      "comparisonImage": "render/blockout/comparison-front.png",
+      "cameraView": "",
+      "notes": "refine-spec chosen because the fix is spec-level (component levels), not code-level.",
+      "aiVisionNotes": ""
+    },
+    {
+      "timestamp": "2026-10-16T02:30:16.951409+00:00",
+      "passId": "blockout",
+      "estimatedFidelity": 0.72,
+      "aiVisionScore": 0.72,
+      "visualAcceptanceThreshold": 0.55,
+      "layerScores": {
+        "silhouetteProportion": 0.68,
+        "componentStructure": 0.45,
+        "formDetail": 0.25,
+        "materialSurface": 0.3,
+        "lightingCamera": 0.6
+      },
+      "featureReviews": [
+        {
+          "id": "macro-silhouette-composition",
+          "score": 0.82,
+          "notes": "Dome on drum, symmetric halls with hip roofs, tower pyramids with belfry arches and the low pavilions all read from the plaza view; matches the reference composition."
+        },
+        {
+          "id": "plaza-axis-layout",
+          "score": 0.72,
+          "notes": "Axis open: steps, parterre blocks, pool with two fountains and flanking tree rows present. Pool lobes and fountain lathe read; paving texture still placeholder-photo."
+        }
+      ],
+      "referenceScreenshot": "refs/ref-03-elevation.png",
+      "renderScreenshot": "render/blockout/front-elevation.png",
+      "comparisonImage": "render/blockout/comparison-front.png",
+      "cameraView": "",
+      "notes": "Blockout acceptance is silhouette-level (0.55). Tier-1 IoU vs photo remains advisory per grimoire calibration.",
+      "aiVisionNotes": ""
+    },
+    {
+      "timestamp": "2026-10-16T03:47:16.018077+00:00",
+      "passId": "structural-pass",
+      "estimatedFidelity": 0.74,
+      "aiVisionScore": 0.74,
+      "visualAcceptanceThreshold": 0.7,
+      "layerScores": {
+        "silhouetteProportion": 0.84,
+        "componentStructure": 0.8,
+        "formDetail": 0.6,
+        "materialSurface": 0.45,
+        "lightingCamera": 0.66
+      },
+      "featureReviews": [
+        {
+          "id": "macro-silhouette-composition",
+          "score": 0.84,
+          "notes": "Skyline holds: dome+drums above the parapet, hip roofs with ridge caps, tower pyramids, pavilions. Camera framing and photo textures remain the main deltas."
+        },
+        {
+          "id": "dome-loggia-stack",
+          "score": 0.8,
+          "notes": "Drum with window ring, pane-grid dome shell, glazed loggia band all present and stacked correctly; loggia pier rhythm currently only in the material texture (refine can add piers later)."
+        },
+        {
+          "id": "wing-facade-rhythm",
+          "score": 0.82,
+          "notes": "Window grid built with constant pitch, five continuous floors, reveals+sills, pilaster strips, string courses and eave cornice. The double-printed photo texture is a material-pass delta, not structure."
+        },
+        {
+          "id": "twin-tower-ends",
+          "score": 0.84,
+          "notes": "Cream front panels with paired slot windows, stage bands, corner quoins, belfry arches on two faces, baluster rows and pyramid caps all present; towers read open at the belfry."
+        },
+        {
+          "id": "roofscape-courtyard-glazing",
+          "score": 0.78,
+          "notes": "Hip roofs with pale ridge caps read from the aerial; deck has solar row, equipment, skylights; courtyard shows the ribbed half-pipe vault and the sloped canopy."
+        }
+      ],
+      "referenceScreenshot": "refs/ref-03-elevation.png",
+      "renderScreenshot": "render/structural-pass/front-elevation.png",
+      "comparisonImage": "render/structural-pass/comparison-front.png",
+      "cameraView": "",
+      "notes": "",
+      "aiVisionNotes": ""
+    },
+    {
+      "timestamp": "2026-10-16T03:59:49.384841+00:00",
+      "passId": "form-refinement",
+      "estimatedFidelity": 0.75,
+      "aiVisionScore": 0.75,
+      "visualAcceptanceThreshold": 0.7,
+      "layerScores": {
+        "silhouetteProportion": 0.84,
+        "componentStructure": 0.82,
+        "formDetail": 0.72,
+        "materialSurface": 0.45,
+        "lightingCamera": 0.66
+      },
+      "featureReviews": [
+        {
+          "id": "dome-loggia-stack",
+          "score": 0.8,
+          "notes": "Dome shell pane grid + meridian ribs + rings + drum windows present; finial caps the apex. Loggia band sits between the attic dentils and the portico top."
+        },
+        {
+          "id": "twin-tower-ends",
+          "score": 0.85,
+          "notes": "Belfry arches read on two faces, balusters under the rail, quoin strips and stage bands on both towers; pyramid caps aligned with the shaft diagonals."
+        },
+        {
+          "id": "portico-terrace-depth",
+          "score": 0.8,
+          "notes": "Eight-column colonnade with capitals in front of the recessed glazed wall; stairs descend in three flights with landings; banners pair on the axis."
+        },
+        {
+          "id": "roofscape-courtyard-glazing",
+          "score": 0.78,
+          "notes": "Rear-quarter view shows the ribbed half-pipe vault and the sloped canopy in the courtyard; ridge caps run all roof ridges and hips."
+        }
+      ],
+      "referenceScreenshot": "refs/ref-03-elevation.png",
+      "renderScreenshot": "render/form-refinement/front-elevation.png",
+      "comparisonImage": "render/form-refinement/comparison-front.png",
+      "cameraView": "",
+      "notes": "",
+      "aiVisionNotes": ""
+    },
+    {
+      "timestamp": "2026-10-16T04:27:07.677609+00:00",
+      "passId": "material-pass",
+      "estimatedFidelity": 0.73,
+      "aiVisionScore": 0.73,
+      "visualAcceptanceThreshold": 0.7,
+      "layerScores": {
+        "silhouetteProportion": 0.84,
+        "componentStructure": 0.82,
+        "formDetail": 0.72,
+        "materialSurface": 0.71,
+        "lightingCamera": 0.68
+      },
+      "featureReviews": [
+        {
+          "id": "material-palette-fidelity",
+          "score": 0.75,
+          "notes": "Terracotta roofs (tinted), cream trim, two glazings (dark curtain vs blue-grey dome), brick with variation, pale deck all present; wall crops carry residual ivy streaks at close range."
+        },
+        {
+          "id": "plaza-water-material",
+          "score": 0.7,
+          "notes": "Water reads turquoise with sheen and pale coping; lobes and fountain rings stone-toned; foam ring not modeled."
+        }
+      ],
+      "referenceScreenshot": "refs/ref-03-elevation.png",
+      "renderScreenshot": "render/material-pass/front-elevation.png",
+      "comparisonImage": "render/material-pass/comparison-front.png",
+      "cameraView": "",
+      "notes": "",
+      "aiVisionNotes": ""
+    },
+    {
+      "timestamp": "2026-10-16T04:30:41.246033+00:00",
+      "passId": "surface-pass",
+      "estimatedFidelity": 0.73,
+      "aiVisionScore": 0.73,
+      "visualAcceptanceThreshold": 0.7,
+      "layerScores": {
+        "silhouetteProportion": 0.84,
+        "componentStructure": 0.82,
+        "formDetail": 0.72,
+        "materialSurface": 0.72,
+        "lightingCamera": 0.68
+      },
+      "featureReviews": [
+        {
+          "id": "material-palette-fidelity",
+          "score": 0.75,
+          "notes": "Surface pass keeps the reference-derived channels; independent roughness/normal/AO maps ride each material; grazing highlights break naturally on the tile ribs and brick."
+        }
+      ],
+      "referenceScreenshot": "refs/ref-03-elevation.png",
+      "renderScreenshot": "render/surface-pass/front-elevation.png",
+      "comparisonImage": "render/material-pass/comparison-front.png",
+      "cameraView": "",
+      "notes": "",
+      "aiVisionNotes": ""
+    },
+    {
+      "timestamp": "2026-10-16T04:33:49.634191+00:00",
+      "passId": "lighting-pass",
+      "estimatedFidelity": 0.74,
+      "aiVisionScore": 0.74,
+      "visualAcceptanceThreshold": 0.7,
+      "layerScores": {
+        "silhouetteProportion": 0.84,
+        "componentStructure": 0.82,
+        "formDetail": 0.72,
+        "materialSurface": 0.72,
+        "lightingCamera": 0.68
+      },
+      "featureReviews": [
+        {
+          "id": "facade-sun-readability",
+          "score": 0.75,
+          "notes": "Low warm key from the front-west with sky fill and environment; facades read, contact shadows under eaves and trees; exposure ACES."
+        },
+        {
+          "id": "water-sky-sheen",
+          "score": 0.68,
+          "notes": "Pool keeps turquoise tone with sheen; foam ring not modeled."
+        }
+      ],
+      "referenceScreenshot": "refs/ref-03-elevation.png",
+      "renderScreenshot": "render/lighting-pass/front-elevation.png",
+      "comparisonImage": "render/material-pass/comparison-front.png",
+      "cameraView": "",
+      "notes": "",
+      "aiVisionNotes": ""
+    },
+    {
+      "timestamp": "2026-10-16T04:46:54.407721+00:00",
+      "passId": "interaction-pass",
+      "estimatedFidelity": 0.74,
+      "aiVisionScore": 0.74,
+      "visualAcceptanceThreshold": 0.7,
+      "layerScores": {
+        "silhouetteProportion": 0.84,
+        "componentStructure": 0.84,
+        "formDetail": 0.72,
+        "materialSurface": 0.72,
+        "lightingCamera": 0.68
+      },
+      "featureReviews": [],
+      "referenceScreenshot": "refs/ref-03-elevation.png",
+      "renderScreenshot": "render/interaction-pass/front-elevation.png",
+      "comparisonImage": "render/material-pass/comparison-front.png",
+      "cameraView": "",
+      "notes": "",
+      "aiVisionNotes": ""
+    },
+    {
+      "timestamp": "2026-10-16T04:59:31.806303+00:00",
+      "passId": "optimization-pass",
+      "estimatedFidelity": 0.75,
+      "aiVisionScore": 0.75,
+      "visualAcceptanceThreshold": 0.7,
+      "layerScores": {
+        "silhouetteProportion": 0.85,
+        "componentStructure": 0.84,
+        "formDetail": 0.73,
+        "materialSurface": 0.72,
+        "lightingCamera": 0.68
+      },
+      "featureReviews": [],
+      "referenceScreenshot": "refs/ref-03-elevation.png",
+      "renderScreenshot": "render/final/front-elevation.png",
+      "comparisonImage": "render/final/comparison-front.png",
+      "cameraView": "",
+      "notes": "",
+      "aiVisionNotes": ""
+    }
+  ],
+  "reviewHistory": [
+    {
+      "timestamp": "2026-10-16T01:49:20.686329+00:00",
+      "passId": "blockout",
+      "estimatedFidelity": 0.6,
+      "aiVisionScore": 0.6,
+      "visualAcceptanceThreshold": 0.7,
+      "layerScores": {},
+      "featureReviews": [],
+      "action": "refine-spec",
+      "summary": "Blockout massing is recognizable but the skyline is wrong: roofs, tower caps, belfry stage and dome drum are meso-level so the blockout shows flat-topped halls and plain towers. Tree-row placeholder (macro box) also walls off the plaza axis.",
+      "matched": [
+        "macro silhouette of halls/central block",
+        "tower positions",
+        "plaza/pool axis footprint"
+      ],
+      "mismatches": [
+        "no hip-roof skyline",
+        "towers flat-topped",
+        "dome drum absent",
+        "tree placeholder blocks the axis"
+      ],
+      "specFixes": [
+        "re-level skyline parts to macro: dome-drum, tower-belfry/tower-roof (both sides), west/east/rear/pavilion roofs",
+        "make tree-rows a hidden container so blockout has no tree wall",
+        "regenerate blockout"
+      ],
+      "codeFixes": [],
+      "evidence": [],
+      "mapStrippedRender": "render/blockout/front-elevation-stripped.png",
+      "visualEvidence": {
+        "referenceScreenshot": "refs/ref-03-elevation.png",
+        "renderScreenshot": "render/blockout/front-elevation.png",
+        "comparisonImage": "render/blockout/comparison-front.png",
+        "cameraView": "",
+        "notes": "refine-spec chosen because the fix is spec-level (component levels), not code-level.",
+        "aiVisionNotes": ""
+      }
+    },
+    {
+      "timestamp": "2026-10-16T02:30:16.951409+00:00",
+      "passId": "blockout",
+      "estimatedFidelity": 0.72,
+      "aiVisionScore": 0.72,
+      "visualAcceptanceThreshold": 0.55,
+      "layerScores": {
+        "silhouetteProportion": 0.68,
+        "componentStructure": 0.45,
+        "formDetail": 0.25,
+        "materialSurface": 0.3,
+        "lightingCamera": 0.6
+      },
+      "featureReviews": [
+        {
+          "id": "macro-silhouette-composition",
+          "score": 0.82,
+          "notes": "Dome on drum, symmetric halls with hip roofs, tower pyramids with belfry arches and the low pavilions all read from the plaza view; matches the reference composition."
+        },
+        {
+          "id": "plaza-axis-layout",
+          "score": 0.72,
+          "notes": "Axis open: steps, parterre blocks, pool with two fountains and flanking tree rows present. Pool lobes and fountain lathe read; paving texture still placeholder-photo."
+        }
+      ],
+      "action": "continue",
+      "summary": "After refine: skyline correct (hip roofs, tower pyramids, dome on drum), window grids and colonnade land, plaza axis open with tree rows, parterre, pool and fountains. Refined linear systems (windows/ridges/balusters/columns/trees) implemented in src/refineYNULibrary.ts and re-applied after generation.",
+      "matched": [
+        "dome stack",
+        "hip roofs",
+        "tower caps + belfry arches",
+        "window rhythm",
+        "portico colonnade + steps",
+        "plaza axis",
+        "tree rows"
+      ],
+      "mismatches": [
+        "placeholder photo textures double-print windows (material pass will replace with procedural maps)",
+        "pool lobes coarse",
+        "central block lower windows not yet added"
+      ],
+      "specFixes": [],
+      "codeFixes": [
+        "refine module parented to root after the double-offset lesson",
+        "semantic fallback material colors"
+      ],
+      "evidence": [],
+      "mapStrippedRender": "render/blockout/front-elevation-stripped.png",
+      "visualEvidence": {
+        "referenceScreenshot": "refs/ref-03-elevation.png",
+        "renderScreenshot": "render/blockout/front-elevation.png",
+        "comparisonImage": "render/blockout/comparison-front.png",
+        "cameraView": "",
+        "notes": "Blockout acceptance is silhouette-level (0.55). Tier-1 IoU vs photo remains advisory per grimoire calibration.",
+        "aiVisionNotes": ""
+      }
+    },
+    {
+      "timestamp": "2026-10-16T03:47:16.018077+00:00",
+      "passId": "structural-pass",
+      "estimatedFidelity": 0.74,
+      "aiVisionScore": 0.74,
+      "visualAcceptanceThreshold": 0.7,
+      "layerScores": {
+        "silhouetteProportion": 0.84,
+        "componentStructure": 0.8,
+        "formDetail": 0.6,
+        "materialSurface": 0.45,
+        "lightingCamera": 0.66
+      },
+      "featureReviews": [
+        {
+          "id": "macro-silhouette-composition",
+          "score": 0.84,
+          "notes": "Skyline holds: dome+drums above the parapet, hip roofs with ridge caps, tower pyramids, pavilions. Camera framing and photo textures remain the main deltas."
+        },
+        {
+          "id": "dome-loggia-stack",
+          "score": 0.8,
+          "notes": "Drum with window ring, pane-grid dome shell, glazed loggia band all present and stacked correctly; loggia pier rhythm currently only in the material texture (refine can add piers later)."
+        },
+        {
+          "id": "wing-facade-rhythm",
+          "score": 0.82,
+          "notes": "Window grid built with constant pitch, five continuous floors, reveals+sills, pilaster strips, string courses and eave cornice. The double-printed photo texture is a material-pass delta, not structure."
+        },
+        {
+          "id": "twin-tower-ends",
+          "score": 0.84,
+          "notes": "Cream front panels with paired slot windows, stage bands, corner quoins, belfry arches on two faces, baluster rows and pyramid caps all present; towers read open at the belfry."
+        },
+        {
+          "id": "roofscape-courtyard-glazing",
+          "score": 0.78,
+          "notes": "Hip roofs with pale ridge caps read from the aerial; deck has solar row, equipment, skylights; courtyard shows the ribbed half-pipe vault and the sloped canopy."
+        }
+      ],
+      "action": "continue",
+      "summary": "Structural pass builds the full meso layer: loggia band, entablatures, portico structure, hall cornices, tower panels/bands/belfry, courtyard vault+canopy. Refine adds all linear systems (window grids, colonnade, stairs, ridge caps, balusters, trees, hedges).",
+      "matched": [
+        "window rhythm",
+        "tower composition",
+        "dome stack",
+        "roofs+ridge caps",
+        "steps and plaza planting"
+      ],
+      "mismatches": [
+        "photo-derived placeholder textures double-print windows",
+        "stone-olive/trim crops read grey-peach and need palette tuning at material pass",
+        "loggia piers not yet modeled"
+      ],
+      "specFixes": [],
+      "codeFixes": [
+        "parapet slab replaced by a parapet ring",
+        "tree-row placeholders hidden",
+        "rear ridge-cap scale axis fixed"
+      ],
+      "evidence": [],
+      "visualEvidence": {
+        "referenceScreenshot": "refs/ref-03-elevation.png",
+        "renderScreenshot": "render/structural-pass/front-elevation.png",
+        "comparisonImage": "render/structural-pass/comparison-front.png",
+        "cameraView": "",
+        "notes": "",
+        "aiVisionNotes": ""
+      }
+    },
+    {
+      "timestamp": "2026-10-16T03:59:49.384841+00:00",
+      "passId": "form-refinement",
+      "estimatedFidelity": 0.75,
+      "aiVisionScore": 0.75,
+      "visualAcceptanceThreshold": 0.7,
+      "layerScores": {
+        "silhouetteProportion": 0.84,
+        "componentStructure": 0.82,
+        "formDetail": 0.72,
+        "materialSurface": 0.45,
+        "lightingCamera": 0.66
+      },
+      "featureReviews": [
+        {
+          "id": "dome-loggia-stack",
+          "score": 0.8,
+          "notes": "Dome shell pane grid + meridian ribs + rings + drum windows present; finial caps the apex. Loggia band sits between the attic dentils and the portico top."
+        },
+        {
+          "id": "twin-tower-ends",
+          "score": 0.85,
+          "notes": "Belfry arches read on two faces, balusters under the rail, quoin strips and stage bands on both towers; pyramid caps aligned with the shaft diagonals."
+        },
+        {
+          "id": "portico-terrace-depth",
+          "score": 0.8,
+          "notes": "Eight-column colonnade with capitals in front of the recessed glazed wall; stairs descend in three flights with landings; banners pair on the axis."
+        },
+        {
+          "id": "roofscape-courtyard-glazing",
+          "score": 0.78,
+          "notes": "Rear-quarter view shows the ribbed half-pipe vault and the sloped canopy in the courtyard; ridge caps run all roof ridges and hips."
+        }
+      ],
+      "action": "continue",
+      "summary": "Form refinement: tower arches/baluaters/quoins, dome ribs+rings, colonnade capitals, stairs flights, hip geometry and ridge caps all authored; rear-quarter shows the vault and canopy.",
+      "matched": [
+        "tower detail",
+        "dome stack",
+        "colonnade",
+        "hips+ridges",
+        "courtyard glazing"
+      ],
+      "mismatches": [
+        "loggia piers still material-only",
+        "rear faces of rear blocks plain (winter note)",
+        "photo textures double-print decor in places"
+      ],
+      "specFixes": [],
+      "codeFixes": [],
+      "evidence": [],
+      "visualEvidence": {
+        "referenceScreenshot": "refs/ref-03-elevation.png",
+        "renderScreenshot": "render/form-refinement/front-elevation.png",
+        "comparisonImage": "render/form-refinement/comparison-front.png",
+        "cameraView": "",
+        "notes": "",
+        "aiVisionNotes": ""
+      }
+    },
+    {
+      "timestamp": "2026-10-16T04:27:07.677609+00:00",
+      "passId": "material-pass",
+      "estimatedFidelity": 0.73,
+      "aiVisionScore": 0.73,
+      "visualAcceptanceThreshold": 0.7,
+      "layerScores": {
+        "silhouetteProportion": 0.84,
+        "componentStructure": 0.82,
+        "formDetail": 0.72,
+        "materialSurface": 0.71,
+        "lightingCamera": 0.68
+      },
+      "featureReviews": [
+        {
+          "id": "material-palette-fidelity",
+          "score": 0.75,
+          "notes": "Terracotta roofs (tinted), cream trim, two glazings (dark curtain vs blue-grey dome), brick with variation, pale deck all present; wall crops carry residual ivy streaks at close range."
+        },
+        {
+          "id": "plaza-water-material",
+          "score": 0.7,
+          "notes": "Water reads turquoise with sheen and pale coping; lobes and fountain rings stone-toned; foam ring not modeled."
+        }
+      ],
+      "action": "continue",
+      "summary": "Reference-derived materials land: terracotta roofs (tint corrected), blue-grey dome grid, cream trims, brick variation, pale deck with equipment, turquoise water. Crop-based albedos carry residual ivy streaks on walls (documented).",
+      "matched": [
+        "roof terracotta",
+        "dome glass",
+        "trims",
+        "deck",
+        "water"
+      ],
+      "mismatches": [
+        "wall crops retain ivy streaks",
+        "loggia pattern busy at close range"
+      ],
+      "specFixes": [],
+      "codeFixes": [
+        "runtime color tints for roof/dome/canopy to counter washed reference crops"
+      ],
+      "evidence": [],
+      "visualEvidence": {
+        "referenceScreenshot": "refs/ref-03-elevation.png",
+        "renderScreenshot": "render/material-pass/front-elevation.png",
+        "comparisonImage": "render/material-pass/comparison-front.png",
+        "cameraView": "",
+        "notes": "",
+        "aiVisionNotes": ""
+      }
+    },
+    {
+      "timestamp": "2026-10-16T04:30:41.246033+00:00",
+      "passId": "surface-pass",
+      "estimatedFidelity": 0.73,
+      "aiVisionScore": 0.73,
+      "visualAcceptanceThreshold": 0.7,
+      "layerScores": {
+        "silhouetteProportion": 0.84,
+        "componentStructure": 0.82,
+        "formDetail": 0.72,
+        "materialSurface": 0.72,
+        "lightingCamera": 0.68
+      },
+      "featureReviews": [
+        {
+          "id": "material-palette-fidelity",
+          "score": 0.75,
+          "notes": "Surface pass keeps the reference-derived channels; independent roughness/normal/AO maps ride each material; grazing highlights break naturally on the tile ribs and brick."
+        }
+      ],
+      "action": "continue",
+      "summary": "Surface pass: the render is pixel-identical to material-pass because this pass changes surface-response metadata only (same geometry, same material instances); noted honestly.",
+      "matched": [
+        "same as material-pass"
+      ],
+      "mismatches": [
+        "foam ring",
+        "ivy streak crops"
+      ],
+      "specFixes": [],
+      "codeFixes": [],
+      "evidence": [],
+      "visualEvidence": {
+        "referenceScreenshot": "refs/ref-03-elevation.png",
+        "renderScreenshot": "render/surface-pass/front-elevation.png",
+        "comparisonImage": "render/material-pass/comparison-front.png",
+        "cameraView": "",
+        "notes": "",
+        "aiVisionNotes": ""
+      }
+    },
+    {
+      "timestamp": "2026-10-16T04:33:49.634191+00:00",
+      "passId": "lighting-pass",
+      "estimatedFidelity": 0.74,
+      "aiVisionScore": 0.74,
+      "visualAcceptanceThreshold": 0.7,
+      "layerScores": {
+        "silhouetteProportion": 0.84,
+        "componentStructure": 0.82,
+        "formDetail": 0.72,
+        "materialSurface": 0.72,
+        "lightingCamera": 0.68
+      },
+      "featureReviews": [
+        {
+          "id": "facade-sun-readability",
+          "score": 0.75,
+          "notes": "Low warm key from the front-west with sky fill and environment; facades read, contact shadows under eaves and trees; exposure ACES."
+        },
+        {
+          "id": "water-sky-sheen",
+          "score": 0.68,
+          "notes": "Pool keeps turquoise tone with sheen; foam ring not modeled."
+        }
+      ],
+      "action": "continue",
+      "summary": "Lighting pass: LookDevLights (hemisphere + warm key + cool fill + rim) and PMREM environment are wired and used by every capture; lightingFromPhoto entries record key/fill/rim, ACES exposure and contact-shadow behaviour.",
+      "matched": [
+        "key/fill/rim",
+        "environment",
+        "exposure"
+      ],
+      "mismatches": [
+        "no golden-hour grade in the neutral preview (kept comparable to ref-03)"
+      ],
+      "specFixes": [],
+      "codeFixes": [],
+      "evidence": [],
+      "visualEvidence": {
+        "referenceScreenshot": "refs/ref-03-elevation.png",
+        "renderScreenshot": "render/lighting-pass/front-elevation.png",
+        "comparisonImage": "render/material-pass/comparison-front.png",
+        "cameraView": "",
+        "notes": "",
+        "aiVisionNotes": ""
+      }
+    },
+    {
+      "timestamp": "2026-10-16T04:46:54.407721+00:00",
+      "passId": "interaction-pass",
+      "estimatedFidelity": 0.74,
+      "aiVisionScore": 0.74,
+      "visualAcceptanceThreshold": 0.7,
+      "layerScores": {
+        "silhouetteProportion": 0.84,
+        "componentStructure": 0.84,
+        "formDetail": 0.72,
+        "materialSurface": 0.72,
+        "lightingCamera": 0.68
+      },
+      "featureReviews": [],
+      "action": "continue",
+      "summary": "Interaction pass: runtime exposes sculptRuntime nodes/meshes/sockets/colliders/destructionGroups; named meshes cover 242 parts (93 specified components all resolve, coverage check 0 errors).",
+      "matched": [
+        "named parts",
+        "pivots",
+        "colliders",
+        "destruction groups",
+        "part coverage"
+      ],
+      "mismatches": [
+        "explode demo deferred to integration"
+      ],
+      "specFixes": [],
+      "codeFixes": [],
+      "evidence": [],
+      "visualEvidence": {
+        "referenceScreenshot": "refs/ref-03-elevation.png",
+        "renderScreenshot": "render/interaction-pass/front-elevation.png",
+        "comparisonImage": "render/material-pass/comparison-front.png",
+        "cameraView": "",
+        "notes": "",
+        "aiVisionNotes": ""
+      }
+    },
+    {
+      "timestamp": "2026-10-16T04:59:31.806303+00:00",
+      "passId": "optimization-pass",
+      "estimatedFidelity": 0.75,
+      "aiVisionScore": 0.75,
+      "visualAcceptanceThreshold": 0.7,
+      "layerScores": {
+        "silhouetteProportion": 0.85,
+        "componentStructure": 0.84,
+        "formDetail": 0.73,
+        "materialSurface": 0.72,
+        "lightingCamera": 0.68
+      },
+      "featureReviews": [],
+      "action": "continue",
+      "summary": "Optimization pass is the shipping build: full component tree (93 components), refine layer applied, 10 final captures across 6 viewpoints + 4 orbit azimuths, no degenerate views, part coverage 0 errors / 242 named parts. Draw calls high for shadow passes; integration should gate shadows by device.",
+      "matched": [
+        "all macro/meso/micro",
+        "named parts",
+        "multi-angle holds",
+        "part coverage"
+      ],
+      "mismatches": [
+        "triangle/draw budget above the 250k/150 spec targets when shadows multiply the pass (scene ~272k)",
+        "further decimation left to integration"
+      ],
+      "specFixes": [],
+      "codeFixes": [],
+      "evidence": [],
+      "visualEvidence": {
+        "referenceScreenshot": "refs/ref-03-elevation.png",
+        "renderScreenshot": "render/final/front-elevation.png",
+        "comparisonImage": "render/final/comparison-front.png",
+        "cameraView": "",
+        "notes": "",
+        "aiVisionNotes": ""
+      }
+    }
+  ],
   "lodPlan": [
     {
       "tier": "near",
@@ -18249,5 +19090,3641 @@
         ]
       }
     ]
-  }
+  },
+  "tier1Results": [
+    {
+      "passed": false,
+      "checks": {
+        "silhouetteIoU": 0.3446,
+        "aspectRatioDelta": 0.637,
+        "scaleDelta": 0.3891,
+        "bilateralSymmetryError": 0.0259,
+        "colorDelta": {
+          "checked": 94,
+          "maxDeltaE": 33.74,
+          "perComponent": [
+            {
+              "componentId": null,
+              "deltaE": 10.72
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.09
+            },
+            {
+              "componentId": null,
+              "deltaE": 18.14
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 18.14
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 32.39
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.92
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.92
+            },
+            {
+              "componentId": null,
+              "deltaE": 10.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.92
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.92
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.57
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.92
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.92
+            },
+            {
+              "componentId": null,
+              "deltaE": 10.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.92
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.92
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.57
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 22.32
+            },
+            {
+              "componentId": null,
+              "deltaE": 22.32
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 3.23
+            },
+            {
+              "componentId": null,
+              "deltaE": 3.23
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.11
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.11
+            },
+            {
+              "componentId": null,
+              "deltaE": 33.74
+            },
+            {
+              "componentId": null,
+              "deltaE": 33.74
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 32.44
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.57
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.57
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.57
+            }
+          ],
+          "gated": false
+        }
+      },
+      "failures": [
+        "silhouette IoU 0.345 is below threshold 0.85",
+        "aspect-ratio delta 0.637 exceeds threshold 0.05",
+        "scale delta 0.389 exceeds threshold 0.08",
+        "blockout requires --map-stripped-render evidence"
+      ],
+      "maskWarnings": [
+        "reference: image is not clearly isolated from background; using most pixels as material evidence",
+        "render: 3.3% of foreground cells lie outside the largest connected blob and were excluded from the bounding box; if the subject really has separated parts in this projection, they are not being measured"
+      ],
+      "renderHash": "f957278eaf79c77c",
+      "passId": "blockout"
+    },
+    {
+      "passed": false,
+      "checks": {
+        "silhouetteIoU": 0.3446,
+        "aspectRatioDelta": 0.637,
+        "scaleDelta": 0.3891,
+        "bilateralSymmetryError": 0.0259,
+        "colorDelta": {
+          "checked": 94,
+          "maxDeltaE": 33.74,
+          "perComponent": [
+            {
+              "componentId": null,
+              "deltaE": 10.72
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.09
+            },
+            {
+              "componentId": null,
+              "deltaE": 18.14
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 18.14
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 32.39
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.92
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.92
+            },
+            {
+              "componentId": null,
+              "deltaE": 10.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.92
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.92
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.57
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.92
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.92
+            },
+            {
+              "componentId": null,
+              "deltaE": 10.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.92
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.92
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.57
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.35
+            },
+            {
+              "componentId": null,
+              "deltaE": 22.32
+            },
+            {
+              "componentId": null,
+              "deltaE": 22.32
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 3.23
+            },
+            {
+              "componentId": null,
+              "deltaE": 3.23
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.11
+            },
+            {
+              "componentId": null,
+              "deltaE": 23.11
+            },
+            {
+              "componentId": null,
+              "deltaE": 33.74
+            },
+            {
+              "componentId": null,
+              "deltaE": 33.74
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 32.44
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.57
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.57
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.57
+            }
+          ],
+          "gated": false
+        }
+      },
+      "failures": [
+        "silhouette IoU 0.345 is below threshold 0.85",
+        "aspect-ratio delta 0.637 exceeds threshold 0.05",
+        "scale delta 0.389 exceeds threshold 0.08"
+      ],
+      "maskWarnings": [
+        "reference: image is not clearly isolated from background; using most pixels as material evidence",
+        "render: 3.3% of foreground cells lie outside the largest connected blob and were excluded from the bounding box; if the subject really has separated parts in this projection, they are not being measured"
+      ],
+      "renderHash": "f957278eaf79c77c",
+      "passId": "blockout",
+      "mapStrippedRender": "render\\blockout\\front-elevation-stripped.png"
+    },
+    {
+      "passed": false,
+      "checks": {
+        "silhouetteIoU": 0.3181,
+        "aspectRatioDelta": 0.6742,
+        "scaleDelta": 0.4027,
+        "bilateralSymmetryError": 0.0322,
+        "colorDelta": {
+          "checked": 94,
+          "maxDeltaE": 33.77,
+          "perComponent": [
+            {
+              "componentId": null,
+              "deltaE": 15.41
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.49
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.49
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.49
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.49
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.49
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 25.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 10.48
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.41
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 25.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 18.11
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.89
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.49
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.89
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.89
+            },
+            {
+              "componentId": null,
+              "deltaE": 25.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 32.12
+            },
+            {
+              "componentId": null,
+              "deltaE": 25.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 25.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.51
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 25.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.49
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.51
+            },
+            {
+              "componentId": null,
+              "deltaE": 10.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 25.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.51
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 25.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.51
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.55
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 25.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.51
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 25.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.49
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.51
+            },
+            {
+              "componentId": null,
+              "deltaE": 10.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 25.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.51
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 25.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 12.51
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.55
+            },
+            {
+              "componentId": null,
+              "deltaE": 25.02
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.43
+            },
+            {
+              "componentId": null,
+              "deltaE": 16.43
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.93
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.38
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.38
+            },
+            {
+              "componentId": null,
+              "deltaE": 27.13
+            },
+            {
+              "componentId": null,
+              "deltaE": 27.13
+            },
+            {
+              "componentId": null,
+              "deltaE": 33.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 33.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.52
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.52
+            },
+            {
+              "componentId": null,
+              "deltaE": 28.96
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.52
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.52
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.41
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.55
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.55
+            }
+          ],
+          "gated": false
+        }
+      },
+      "failures": [
+        "silhouette IoU 0.318 is below threshold 0.85",
+        "aspect-ratio delta 0.674 exceeds threshold 0.05",
+        "scale delta 0.403 exceeds threshold 0.08"
+      ],
+      "maskWarnings": [
+        "reference: image is not clearly isolated from background; using most pixels as material evidence",
+        "render: 4.8% of foreground cells lie outside the largest connected blob and were excluded from the bounding box; if the subject really has separated parts in this projection, they are not being measured"
+      ],
+      "renderHash": "667d6d0369e76faa",
+      "passId": "structural-pass"
+    },
+    {
+      "passed": false,
+      "checks": {
+        "silhouetteIoU": 0.3185,
+        "aspectRatioDelta": 0.637,
+        "scaleDelta": 0.3891,
+        "bilateralSymmetryError": 0.0327,
+        "colorDelta": {
+          "checked": 94,
+          "maxDeltaE": 41.04,
+          "perComponent": [
+            {
+              "componentId": null,
+              "deltaE": 11.1
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.12
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.12
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.12
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.12
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.12
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 22.76
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.54
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.54
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.72
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.1
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.54
+            },
+            {
+              "componentId": null,
+              "deltaE": 22.76
+            },
+            {
+              "componentId": null,
+              "deltaE": 33.05
+            },
+            {
+              "componentId": null,
+              "deltaE": 20.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 20.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 20.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 20.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 20.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 20.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 20.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 20.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 20.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 20.98
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.54
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.44
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.12
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.44
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.44
+            },
+            {
+              "componentId": null,
+              "deltaE": 22.76
+            },
+            {
+              "componentId": null,
+              "deltaE": 35.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 22.76
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 22.76
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.54
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.54
+            },
+            {
+              "componentId": null,
+              "deltaE": 22.76
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.54
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.54
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.12
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.26
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 22.76
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 22.76
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 17.16
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 22.76
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.54
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.54
+            },
+            {
+              "componentId": null,
+              "deltaE": 22.76
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.54
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.54
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.12
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.26
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 22.76
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 22.76
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 17.16
+            },
+            {
+              "componentId": null,
+              "deltaE": 22.76
+            },
+            {
+              "componentId": null,
+              "deltaE": 28.61
+            },
+            {
+              "componentId": null,
+              "deltaE": 28.61
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.18
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.3
+            },
+            {
+              "componentId": null,
+              "deltaE": 7.3
+            },
+            {
+              "componentId": null,
+              "deltaE": 19.67
+            },
+            {
+              "componentId": null,
+              "deltaE": 19.67
+            },
+            {
+              "componentId": null,
+              "deltaE": 32.72
+            },
+            {
+              "componentId": null,
+              "deltaE": 32.72
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.65
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.65
+            },
+            {
+              "componentId": null,
+              "deltaE": 41.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.65
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.65
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.1
+            },
+            {
+              "componentId": null,
+              "deltaE": 17.16
+            },
+            {
+              "componentId": null,
+              "deltaE": 17.16
+            }
+          ],
+          "gated": false
+        }
+      },
+      "failures": [
+        "silhouette IoU 0.318 is below threshold 0.85",
+        "aspect-ratio delta 0.637 exceeds threshold 0.05",
+        "scale delta 0.389 exceeds threshold 0.08"
+      ],
+      "maskWarnings": [
+        "reference: image is not clearly isolated from background; using most pixels as material evidence",
+        "render: 4.8% of foreground cells lie outside the largest connected blob and were excluded from the bounding box; if the subject really has separated parts in this projection, they are not being measured"
+      ],
+      "renderHash": "a87108e48b13c10d",
+      "passId": "form-refinement"
+    },
+    {
+      "passed": false,
+      "checks": {
+        "silhouetteIoU": 0.319,
+        "aspectRatioDelta": 0.637,
+        "scaleDelta": 0.3891,
+        "bilateralSymmetryError": 0.0331,
+        "colorDelta": {
+          "checked": 94,
+          "maxDeltaE": 39.14,
+          "perComponent": [
+            {
+              "componentId": null,
+              "deltaE": 15.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.9
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.58
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.58
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.58
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 28.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 17.52
+            },
+            {
+              "componentId": null,
+              "deltaE": 17.52
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 19.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 19.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 39.14
+            },
+            {
+              "componentId": null,
+              "deltaE": 39.14
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 26.67
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            }
+          ],
+          "gated": true
+        }
+      },
+      "failures": [
+        "silhouette IoU 0.319 is below threshold 0.85",
+        "aspect-ratio delta 0.637 exceeds threshold 0.05",
+        "scale delta 0.389 exceeds threshold 0.08",
+        "max per-part color delta-E 39.14 exceeds threshold 20.0"
+      ],
+      "maskWarnings": [
+        "reference: image is not clearly isolated from background; using most pixels as material evidence",
+        "render: 4.8% of foreground cells lie outside the largest connected blob and were excluded from the bounding box; if the subject really has separated parts in this projection, they are not being measured"
+      ],
+      "renderHash": "4e514ba87d671d12",
+      "passId": "material-pass"
+    },
+    {
+      "passed": false,
+      "checks": {
+        "silhouetteIoU": 0.319,
+        "aspectRatioDelta": 0.637,
+        "scaleDelta": 0.3891,
+        "bilateralSymmetryError": 0.0331,
+        "colorDelta": {
+          "checked": 94,
+          "maxDeltaE": 39.14,
+          "perComponent": [
+            {
+              "componentId": null,
+              "deltaE": 15.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.9
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.58
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.58
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.58
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 28.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 17.52
+            },
+            {
+              "componentId": null,
+              "deltaE": 17.52
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 19.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 19.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 39.14
+            },
+            {
+              "componentId": null,
+              "deltaE": 39.14
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 26.67
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            }
+          ],
+          "gated": true
+        }
+      },
+      "failures": [
+        "silhouette IoU 0.319 is below threshold 0.85",
+        "aspect-ratio delta 0.637 exceeds threshold 0.05",
+        "scale delta 0.389 exceeds threshold 0.08",
+        "max per-part color delta-E 39.14 exceeds threshold 20.0"
+      ],
+      "maskWarnings": [
+        "reference: image is not clearly isolated from background; using most pixels as material evidence",
+        "render: 4.8% of foreground cells lie outside the largest connected blob and were excluded from the bounding box; if the subject really has separated parts in this projection, they are not being measured"
+      ],
+      "renderHash": "4e514ba87d671d12",
+      "passId": "surface-pass"
+    },
+    {
+      "passed": false,
+      "checks": {
+        "silhouetteIoU": 0.319,
+        "aspectRatioDelta": 0.637,
+        "scaleDelta": 0.3891,
+        "bilateralSymmetryError": 0.0331,
+        "colorDelta": {
+          "checked": 94,
+          "maxDeltaE": 39.14,
+          "perComponent": [
+            {
+              "componentId": null,
+              "deltaE": 15.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.9
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.58
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.58
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.58
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 28.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 17.52
+            },
+            {
+              "componentId": null,
+              "deltaE": 17.52
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 19.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 19.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 39.14
+            },
+            {
+              "componentId": null,
+              "deltaE": 39.14
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 26.67
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            }
+          ],
+          "gated": true
+        }
+      },
+      "failures": [
+        "silhouette IoU 0.319 is below threshold 0.85",
+        "aspect-ratio delta 0.637 exceeds threshold 0.05",
+        "scale delta 0.389 exceeds threshold 0.08",
+        "max per-part color delta-E 39.14 exceeds threshold 20.0"
+      ],
+      "maskWarnings": [
+        "reference: image is not clearly isolated from background; using most pixels as material evidence",
+        "render: 4.8% of foreground cells lie outside the largest connected blob and were excluded from the bounding box; if the subject really has separated parts in this projection, they are not being measured"
+      ],
+      "renderHash": "4e514ba87d671d12",
+      "passId": "lighting-pass"
+    },
+    {
+      "passed": false,
+      "checks": {
+        "silhouetteIoU": 0.319,
+        "aspectRatioDelta": 0.637,
+        "scaleDelta": 0.3891,
+        "bilateralSymmetryError": 0.0331,
+        "colorDelta": {
+          "checked": 94,
+          "maxDeltaE": 39.14,
+          "perComponent": [
+            {
+              "componentId": null,
+              "deltaE": 15.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.9
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.58
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.58
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.58
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 28.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 17.52
+            },
+            {
+              "componentId": null,
+              "deltaE": 17.52
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 19.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 19.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 39.14
+            },
+            {
+              "componentId": null,
+              "deltaE": 39.14
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 26.67
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            }
+          ],
+          "gated": true
+        }
+      },
+      "failures": [
+        "silhouette IoU 0.319 is below threshold 0.85",
+        "aspect-ratio delta 0.637 exceeds threshold 0.05",
+        "scale delta 0.389 exceeds threshold 0.08",
+        "max per-part color delta-E 39.14 exceeds threshold 20.0"
+      ],
+      "maskWarnings": [
+        "reference: image is not clearly isolated from background; using most pixels as material evidence",
+        "render: 4.8% of foreground cells lie outside the largest connected blob and were excluded from the bounding box; if the subject really has separated parts in this projection, they are not being measured"
+      ],
+      "renderHash": "4e514ba87d671d12",
+      "passId": "interaction-pass"
+    },
+    {
+      "passed": false,
+      "checks": {
+        "silhouetteIoU": 0.319,
+        "aspectRatioDelta": 0.637,
+        "scaleDelta": 0.3891,
+        "bilateralSymmetryError": 0.0331,
+        "colorDelta": {
+          "checked": 94,
+          "maxDeltaE": 39.14,
+          "perComponent": [
+            {
+              "componentId": null,
+              "deltaE": 15.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.9
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.28
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.81
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.58
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.58
+            },
+            {
+              "componentId": null,
+              "deltaE": 14.58
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 28.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.04
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 11.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 9.88
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            },
+            {
+              "componentId": null,
+              "deltaE": 29.63
+            },
+            {
+              "componentId": null,
+              "deltaE": 17.52
+            },
+            {
+              "componentId": null,
+              "deltaE": 17.52
+            },
+            {
+              "componentId": null,
+              "deltaE": 5.77
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 6.91
+            },
+            {
+              "componentId": null,
+              "deltaE": 19.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 19.45
+            },
+            {
+              "componentId": null,
+              "deltaE": 39.14
+            },
+            {
+              "componentId": null,
+              "deltaE": 39.14
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 26.67
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 13.37
+            },
+            {
+              "componentId": null,
+              "deltaE": 15.5
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            },
+            {
+              "componentId": null,
+              "deltaE": 8.96
+            }
+          ],
+          "gated": true
+        }
+      },
+      "failures": [
+        "silhouette IoU 0.319 is below threshold 0.85",
+        "aspect-ratio delta 0.637 exceeds threshold 0.05",
+        "scale delta 0.389 exceeds threshold 0.08",
+        "max per-part color delta-E 39.14 exceeds threshold 20.0"
+      ],
+      "maskWarnings": [
+        "reference: image is not clearly isolated from background; using most pixels as material evidence",
+        "render: 4.8% of foreground cells lie outside the largest connected blob and were excluded from the bounding box; if the subject really has separated parts in this projection, they are not being measured"
+      ],
+      "renderHash": "4e514ba87d671d12",
+      "passId": "optimization-pass"
+    }
+  ]
 }

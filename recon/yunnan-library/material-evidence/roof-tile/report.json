@@ -1,18 +1,18 @@
 {
   "ok": true,
   "verdict": "pass",
-  "confidence": 0.816,
-  "estimatedFidelity": 0.816,
+  "confidence": 0.814,
+  "estimatedFidelity": 0.814,
   "targetThreshold": 0.7,
   "materialId": "roof-tile",
   "sourceImage": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\roof-tile.png",
   "outDir": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-tile",
   "palette": [
-    "#6F4A23",
-    "#0C2F0F",
-    "#7C6E47",
-    "#28523E",
-    "#A88556"
+    "#EDA88B",
+    "#EDB196",
+    "#F0B69B",
+    "#B7825F",
+    "#754420"
   ],
   "maps": {
     "albedo": {
@@ -47,35 +47,35 @@
     }
   },
   "diagnostics": {
-    "sourceWidth": 220,
-    "sourceHeight": 100,
+    "sourceWidth": 180,
+    "sourceHeight": 50,
     "mapSize": 1024,
     "cropBBoxPixels": {
       "x": 0,
       "y": 0,
-      "width": 220,
-      "height": 100
+      "width": 180,
+      "height": 50
     },
     "mask": {
-      "backgroundColor": "#666B51",
-      "backgroundNoise": 102.24,
+      "backgroundColor": "#ECAB90",
+      "backgroundNoise": 109.677,
       "transparentPixelFraction": 0.0,
-      "foregroundCoverage": 0.9853
+      "foregroundCoverage": 0.9884
     },
     "mapStats": {
-      "valueRange": 0.4283,
-      "heightP90Gradient": 0.06863,
-      "roughnessBase": 0.732,
-      "roughnessVariation": 0.131,
-      "normalStrength": 0.237,
+      "valueRange": 0.4203,
+      "heightP90Gradient": 0.022,
+      "roughnessBase": 0.686,
+      "roughnessVariation": 0.05,
+      "normalStrength": 0.182,
       "blurRadius": 21
     },
     "palette": [
-      "#6F4A23",
-      "#0C2F0F",
-      "#7C6E47",
-      "#28523E",
-      "#A88556"
+      "#EDA88B",
+      "#EDB196",
+      "#F0B69B",
+      "#B7825F",
+      "#754420"
     ]
   },
   "warnings": [
