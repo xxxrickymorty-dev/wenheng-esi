@@ -90,6 +90,8 @@ export default function App() {
   const [err, setErr] = useState<ApiError | null>(null)
   const [busy, setBusy] = useState(false)
   const [toolAction, setToolAction] = useState<'upload' | 'rerun' | 'rollback' | null>(null)
+  /** 步骤条细线的「画入」一帧：挂载后下一帧点亮 → 细线从零画到当前步（reduced-motion 直接终态） */
+  const [railDrawn, setRailDrawn] = useState(false)
   const actionOwnerRef = useRef<'generate' | 'upload' | 'rerun' | 'rollback' | null>(null)
   const manualSelectionRef = useRef(false)
   const restoredActivePeriodRef = useRef<string | null>(null)
@@ -331,6 +333,12 @@ export default function App() {
     return () => mo.disconnect()
   }, [view, selected])
 
+  /* 步骤条细线画入：挂载后下一帧点亮（一次；reduced-motion 时 CSS 停过渡＝直接终态） */
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => setRailDrawn(true))
+    return () => window.cancelAnimationFrame(id)
+  }, [])
+
   function reloadForecastChoice() {
     if (!selected) return
     forecastChoiceRequestRef.current[selected] = (forecastChoiceRequestRef.current[selected] ?? 0) + 1
@@ -488,12 +496,13 @@ export default function App() {
     trace: '报告 · 逐格溯源', analysis: '灵活报告', dialog: '问文衡',
     ledger: '主台账', archive: '运行档案',
   }
-  /* 「出报告」四步流水（新 IA）：步骤条只在流水屏出现；②选材＝最省版（只记本轮范围） */
+  /* 「出报告」四步流水（新 IA）：步骤条只在流水屏出现；②选材＝最省版（只记本轮范围）。
+     2026-10-16 二版（rick 拍板）：不画序号——顺序由位置与细线方向表达（仍是真顺序的 ol）。 */
   const FLOW_STEPS: { key: string; label: string; href?: string }[] = [
-    { key: 'acquire', label: '① 取数并核验', href: '/app/?view=acquire' },
-    { key: 'pick', label: '② 选材', href: '/app/?view=pick' },
-    { key: 'gen', label: '③ 生成初稿', href: '/app/' },
-    { key: 'review', label: '④ 核验与定稿', href: '/app/?view=review' },
+    { key: 'acquire', label: '取数并核验', href: '/app/?view=acquire' },
+    { key: 'pick', label: '选材', href: '/app/?view=pick' },
+    { key: 'gen', label: '生成初稿', href: '/app/' },
+    { key: 'review', label: '核验与定稿', href: '/app/?view=review' },
   ]
   const FLOW_ACTIVE: Record<string, string> = {
     acquire: 'acquire', pick: 'pick', workbench: 'gen', review: 'review', forecast: 'gen',
@@ -517,6 +526,7 @@ export default function App() {
   const activeNav = GROUP[view] ?? 'flow'
   const inFlow = activeNav === 'flow'
   const flowActive = FLOW_ACTIVE[view] ?? ''
+  const flowActiveIdx = Math.max(0, FLOW_STEPS.findIndex((s) => s.key === flowActive))
 
   return (
     <div className="ws-shell">
@@ -597,21 +607,34 @@ export default function App() {
           </div>
         )}
 
-        {/* 「出报告」四步流水步骤条（新 IA）：只在流水屏出现，把取数→生成→核验串成一条线 */}
+        {/* 「出报告」四步流水步骤条（新 IA 二版 2026-10-16，rick 拍板）：一条 2px 细线（含当前步）
+            ＋ 四张等大方角卡片；不画序号——顺序由位置与细线方向表达（仍是真顺序的 ol）。只在流水屏出现。 */}
         {inFlow && roleKnown && !notLoggedIn && !operatorDenied && (
           <nav className="ia-steps" aria-label="出报告步骤">
+            <div className="ia-rail" aria-hidden="true">
+              {FLOW_STEPS.map((s, i) => (
+                <i key={s.key}
+                   className={`ia-rail-seg${railDrawn && i <= flowActiveIdx ? ' on' : ''}`} />
+              ))}
+            </div>
             <ol className="ia-steps-list">
-              {FLOW_STEPS.filter((s) => !(isOperator && (s.key === 'acquire' || s.key === 'pick'))).map((s) => {
+              {FLOW_STEPS.map((s, i) => {
                 const on = s.key === flowActive
-                return s.href ? (
-                  <li key={s.key} className={`ia-step${on ? ' on' : ''}`}>
-                    <a href={navHref(s.href)} aria-current={on ? 'step' : undefined}>{s.label}</a>
-                  </li>
-                ) : (
-                  <li key={s.key} className="ia-step soon">
-                    <span title="还没做：从某期报告里勾选章节加进初稿（.scratch/ia-rework 票 06，待设计）">
-                      {s.label} · 即将
-                    </span>
+                /* 操作员不可见的两屏（取数/选材）不再从列表里消失——整条流水保持四条等大，
+                   那两张卡置灰标注「仅管理员」；功能门仍在后端（直开 URL 一样进不去）。 */
+                const na = !!isOperator && (s.key === 'acquire' || s.key === 'pick')
+                const cls = `ia-card${i < flowActiveIdx ? ' done' : ''}${on ? ' now' : ''}${na ? ' na' : ''}`
+                return (
+                  <li key={s.key} className={cls}>
+                    {na ? (
+                      <span title="这一屏仅管理员可用">{s.label}</span>
+                    ) : s.href ? (
+                      <a href={navHref(s.href)} aria-current={on ? 'step' : undefined}>{s.label}</a>
+                    ) : (
+                      <span title="还没做：从某期报告里勾选章节加进初稿（.scratch/ia-rework 票 06，待设计）">
+                        {s.label} · 即将
+                      </span>
+                    )}
                   </li>
                 )
               })}

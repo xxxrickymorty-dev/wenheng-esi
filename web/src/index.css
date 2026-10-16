@@ -964,6 +964,7 @@ a{color:inherit}
 @media (prefers-reduced-motion: reduce){
   .fx-log{scroll-behavior:auto}
   .dot.run,.fc-run-dot{animation:none}
+  .ia-rail-seg{transition:none}
   .wf-track i,.aq-track i,.bd-bar i{transition:none}
   .seal,.who-exit,.who-exit .exit,.entry{transition:none}
   .sealbox:hover .seal{translate:0 0}
@@ -1052,17 +1053,33 @@ a{color:inherit}
 
 /* ============================================================================
    新信息架构（2026-10-15，rick 定 A 方案：4 主区 + 1 管理）
-   「出报告」四步流水步骤条：把 取数 → 生成 → 核验 串成一条线，只在流水屏出现。
+   「出报告」四步流水步骤条＝一条 2px 细线 ＋ 四张等大方角卡片
+   （2026-10-16 二版，rick 拍板：去序号 / 做成卡片 / 细线进度 / 方角只限此处）。
+   细线含当前步（①25% → ④100%）；当前卡浅绿底加粗；入场从零画到当前步；
+   reduced-motion 直接终态（见下方降级块）。只动 transform / 背景色。
    ========================================================================== */
-.ia-steps{margin:18px 0 2px}
-.ia-steps-list{display:flex;gap:10px;flex-wrap:wrap;list-style:none;margin:0;padding:0}
-.ia-step{display:inline-flex;align-items:center;border:1px solid var(--line);background:var(--card);border-radius:999px;min-height:32px}
-.ia-step a,.ia-step span{display:inline-flex;align-items:center;min-height:32px;padding:0 14px;font-size:13.5px;color:var(--ink-2);text-decoration:none;border-radius:999px}
-.ia-step a:hover{border-color:var(--zhu);color:var(--zhu)}
-.ia-step.on{border-color:var(--zhu);background:var(--zhu-soft)}
-.ia-step.on a{color:var(--zhu);font-weight:650}
-.ia-step.soon{opacity:.6}
-.ia-step.soon span{cursor:not-allowed}
+.ia-steps{margin:16px 0 2px}
+.ia-rail{display:flex;height:2px;background:var(--line-2)}
+.ia-rail-seg{flex:1 1 0;background:var(--zhu);transform:scaleX(0);transform-origin:left center;
+  transition:transform .56s cubic-bezier(.2,0,0,1)}
+.ia-rail-seg.on{transform:scaleX(1)}
+.ia-rail-seg:nth-child(2){transition-delay:70ms}
+.ia-rail-seg:nth-child(3){transition-delay:140ms}
+.ia-rail-seg:nth-child(4){transition-delay:210ms}
+.ia-steps-list{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 0;padding:0;list-style:none}
+.ia-card{display:flex}
+.ia-card a,.ia-card>span{flex:1 1 auto;display:flex;align-items:center;justify-content:center;
+  min-height:56px;background:var(--card);border:1px solid var(--line);
+  font-family:var(--serif);font-size:15.5px;letter-spacing:.02em;color:var(--ink-3);
+  text-decoration:none;transition:background .25s,color .25s,border-color .25s}
+.ia-card a:hover{background:var(--panel);color:var(--ink-2)}
+.ia-card.done a,.ia-card.done>span{color:var(--ink-2)}
+.ia-card.now a,.ia-card.now>span{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:650}
+.ia-card.na>span{opacity:.4;cursor:not-allowed}
+@media (max-width:640px){
+  .ia-steps-list{gap:6px}
+  .ia-card a,.ia-card>span{min-height:46px;font-size:13px;letter-spacing:0}
+}
 
 /* ============================================================================
    ②选材（票 07 · 最省版）：报告大纲（只读）+「本轮办哪些节」
