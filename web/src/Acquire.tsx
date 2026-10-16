@@ -217,11 +217,13 @@ export function Acquire({ period }: { period: string | null }) {
   const needsTool = view === 'ready' || view === 'partial' || view === 'review'
   const canRun = !!cap[capKey]
   const dp = state?.data_period
-  /* 采集与入库是两条独立的线（2026-10-16 解耦）：采集=本机取到多少份；入库=台账并没并。
-     后端 A.scan() 重建状态时保留 copy，所以重取不会把「已并入」冲掉。 */
+  /* 采集与并入台账是两条独立的线（2026-10-16 解耦）：采集＝本机取到多少份；并入＝台账并没并。
+     重新取数只会补没下到的文件，台账那一列一字不动。 */
   const copyState = state?.copy?.state ?? 'none'
-  const copyLabel = copyState === 'merged' ? '已并入台账'
-    : copyState === 'review' ? '待核对 · 未并入' : '未并入'
+  const copyLabel = copyState === 'merged' ? `已并入（${period ?? ''} 列）`
+    : copyState === 'review' ? '待核对 · 还没并入' : '还没并入'
+  /* 最近一次「取数」的时间（只在最近一步确实是取数时才显示，免得把别的动作当成重取） */
+  const lastFetchAt = op?.kind === 'fetch' ? (op.at ?? '') : ''
   const dataPeriodText = dp && (dp.esi || dp.incites)
     ? `（${[dp.esi ? `ESI ${dp.esi}` : '', dp.incites ? `InCites 截至 ${dp.incites}` : ''].filter(Boolean).join(' · ')}）`
     : ''
@@ -271,8 +273,8 @@ export function Acquire({ period }: { period: string | null }) {
               <h1 className="fs-24">自动取数台</h1>
               <span className="pill unsigned mono">{period}</span>
               <span className={`pill ${pill[view][1]}`}>{pill[view][0]}</span>
-              <span className="hint aq-num">采集 · {expected > 0 ? `已取到 ${verified} / ${expected}` : '未开始'}</span>
-              <span className="hint aq-num">入库 · {copyLabel}</span>
+              <span className="hint aq-num">采集 · {expected > 0 ? `已取到 ${verified} / ${expected}` : '未开始'}{lastFetchAt ? ` · 最近取数 ${lastFetchAt}` : ''}</span>
+              <span className="hint aq-num">并入台账 · {copyLabel}</span>
               <Info label="取数状态与口径">
                 <p>进度按逐份核验结果统计：只有核验通过的文件才计入。</p>
                 <p>数据期取自网站页面显示值{dataPeriodText}，不以下载当天代替。</p>
