@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -13,8 +13,9 @@
      ============================================================ */
   :root{
     --paper:#F4F2EA; --ink:#20211C; --ink-2:#4C4E45; --ink-3:#82847A;
-    --line:#DCD9CC; --line-2:#E8E6DB;
-    --green:#1A4B27; --red:#B4392E;
+    --line:#D8DCC9; --line-2:#E7E9DA;              /* 细线带绿调 */
+    --green:#1A4B27; --gline:#2A6642;              /* gline＝重线用的云大绿（抬一档，2px 也读得出绿） */
+    --red:#B4392E;
     --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
     --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
     --mono:"Cascadia Mono",Consolas,monospace;
@@ -26,12 +27,12 @@
   button{font:inherit;cursor:pointer}
 
   /* ---- 顶栏 ---- */
-  .top{height:56px;display:flex;align-items:center;gap:28px;padding:0 40px;border-bottom:1px solid var(--ink)}
+  .top{height:56px;display:flex;align-items:center;gap:28px;padding:0 40px;border-bottom:1px solid var(--gline)}
   .top .bm{display:flex;align-items:baseline;gap:9px}
   .top .bm b{font-family:var(--serif);font-size:21px;letter-spacing:.12em}
   .top .bm span{font-size:10.5px;letter-spacing:.16em;color:var(--ink-3)}
   .top nav{display:flex;gap:24px;font-size:13px;color:var(--ink-2);margin-left:auto}
-  .top nav a.on{border-bottom:2px solid var(--ink);padding-bottom:2px;font-weight:600}
+  .top nav a.on{border-bottom:2px solid var(--gline);padding-bottom:2px;font-weight:600}
   .top .pal{display:inline-flex;gap:7px;margin-left:26px}
   .top .pal i{width:24px;height:13px;border:1px solid var(--line);display:inline-block}
   .top .pal i.g{background:#1A4B27}.top .pal i.z{background:#B43B31}
@@ -57,7 +58,7 @@
   .reddot{display:inline-block;width:9px;height:9px;background:var(--red);margin-left:12px;vertical-align:middle}
 
   /* ---- 读数带：四格对齐网格 ---- */
-  .reads{display:grid;grid-template-columns:repeat(4,1fr);border-top:2px solid var(--ink);border-bottom:1px solid var(--ink);margin-top:48px}
+  .reads{display:grid;grid-template-columns:repeat(4,1fr);border-top:2px solid var(--gline);border-bottom:1px solid var(--gline);margin-top:48px}
   .reads div{padding:18px 20px 16px 0;border-right:1px solid var(--line);position:relative;padding-left:20px}
   .reads div:first-child{padding-left:0}
   .reads div:last-child{border-right:0}
@@ -98,13 +99,13 @@
 
   /* ---- 选模 ---- */
   .pick{padding:40px 0 70px}
-  .pick .hd{display:flex;align-items:baseline;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:12px}
+  .pick .hd{display:flex;align-items:baseline;gap:16px;border-bottom:2px solid var(--gline);padding-bottom:12px}
   .pick h2{font-size:22px}
   .pick .lnk{margin-left:auto;font-size:13.5px;color:var(--green);border-bottom:1px solid var(--green);padding-bottom:2px}
   .routes{display:flex;gap:26px;margin:14px 0 2px;font-size:13.5px;color:var(--ink-3)}
   .routes .on{color:var(--ink);font-weight:600;border-bottom:2px solid var(--green);padding-bottom:5px}
   table{width:100%;border-collapse:collapse}
-  th{font-size:11px;letter-spacing:.22em;color:var(--ink-3);text-align:left;font-weight:400;padding:12px 0 9px;border-bottom:1px solid var(--ink)}
+  th{font-size:11px;letter-spacing:.22em;color:var(--ink-3);text-align:left;font-weight:400;padding:12px 0 9px;border-bottom:1px solid var(--gline)}
   td{padding:10px 0;border-bottom:1px solid var(--line-2);font-size:14.5px}
   td.mdl{color:var(--ink-2)}
   td.pk b{font-family:var(--serif)}

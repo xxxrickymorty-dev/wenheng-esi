@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出报告 · 方向辛「双栏」（甲×己融合）— 静态稿</title>
+<style>
+  /* ============================================================
+     方向辛 · 双栏（甲 × 己 融合二）
+     非对称骨架：左＝陈述区（甲的字），右＝2×2 读数格＋meta（己的尺度）；
+     下方左宽右窄：左＝本期选模表，右＝生成回执＋数据。重线云大绿。
+     ============================================================ */
+  :root{
+    --paper:#F4F2EA; --ink:#20211C; --ink-2:#4C4E45; --ink-3:#82847A;
+    --line:#D8DCC9; --line-2:#E7E9DA;
+    --green:#1A4B27; --gline:#2A6642; --red:#B4392E;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer}
+
+  .top{height:56px;display:flex;align-items:center;gap:28px;padding:0 40px;border-bottom:1px solid var(--gline)}
+  .top .bm{display:flex;align-items:baseline;gap:9px}
+  .top .bm b{font-family:var(--serif);font-size:21px;letter-spacing:.12em}
+  .top .bm span{font-size:10.5px;letter-spacing:.16em;color:var(--ink-3)}
+  .top nav{display:flex;gap:24px;font-size:13px;color:var(--ink-2);margin-left:auto}
+  .top nav a.on{border-bottom:2px solid var(--gline);padding-bottom:2px;font-weight:600}
+  .top .pal{display:inline-flex;gap:7px;margin-left:26px}
+  .top .pal i{width:24px;height:13px;border:1px solid var(--line);display:inline-block}
+  .top .pal i.g{background:#1A4B27}.top .pal i.z{background:#B43B31}
+  .top .pal i.on{outline:2px solid var(--gline);outline-offset:2px}
+
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  /* ---- 首屏：左陈述 / 右读数格 ---- */
+  .hero{display:grid;grid-template-columns:46% 54%;gap:0;border-bottom:1px solid var(--line)}
+  .hero .l{padding:56px 48px 46px 0}
+  .ov{font-size:11.5px;letter-spacing:.32em;color:var(--ink-3)}
+  .l .ttl{margin-top:14px;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+  .l .ttl h1{font-size:clamp(46px,4.4vw,62px);line-height:1.08;letter-spacing:.03em}
+  .l .ttl .yr{font-size:18px;color:var(--ink-2);letter-spacing:.22em}
+  .l .rule{width:64px;height:2px;background:var(--gline);margin:20px 0 18px}
+  .l .stm{font-family:var(--serif);font-size:clamp(28px,2.6vw,36px)}
+  .l .stm .dot{display:inline-block;width:8px;height:8px;background:var(--red);margin-left:10px;vertical-align:middle}
+  .l .sub{color:var(--ink-2);font-size:14px;margin-top:9px}
+  .l .acts{margin-top:22px;display:flex;align-items:center;gap:20px}
+  .btn-ink{background:var(--ink);color:var(--paper);border:0;padding:12px 24px;font-size:14.5px;letter-spacing:.06em}
+  .btn-ink:hover{background:#3A3B33}
+  .l .ghost{font-size:13.5px;color:var(--ink-2);border-bottom:1px solid var(--line);padding-bottom:3px}
+
+  .hero .r{border-left:1px solid var(--line);padding:56px 0 46px 40px;display:flex;flex-direction:column;gap:26px}
+  .reads{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--gline)}
+  .reads div{padding:16px 18px 14px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .reads div:nth-child(2n){border-right:0}
+  .reads div:nth-child(n+3){border-bottom:0}
+  .reads .k{font-size:10.5px;letter-spacing:.22em;color:var(--ink-3)}
+  .reads .v{margin-top:7px;display:flex;align-items:baseline;gap:8px}
+  .reads .n{font-family:var(--serif);font-size:27px;line-height:1}
+  .reads .n.sm{font-size:19px}
+  .reads .s{font-size:12px;color:var(--ink-3)}
+  .meta dt{font-size:10.5px;letter-spacing:.24em;color:var(--ink-3);padding-top:8px}
+  .meta dd{margin:3px 0 8px;font-size:13.5px;color:var(--ink-2);border-bottom:1px solid var(--line-2);padding-bottom:8px}
+  .meta dd.mono{font-family:var(--mono);font-size:12.5px}
+  .meta div:last-child dd{border-bottom:0}
+
+  /* ---- 工序 ---- */
+  .steps{position:relative;display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
+  .steps .pt{position:absolute;top:0;left:0;right:0;height:2px;background:var(--line-2)}
+  .steps .pr{position:absolute;top:0;left:0;height:2px;width:75%;background:var(--green)}
+  .st{padding:15px 18px 15px 0;border-right:1px solid var(--line);font-size:13.5px;color:var(--ink-3)}
+  .st:not(:first-child){padding-left:18px}
+  .st:last-child{border-right:0}
+  .st .ms{font-size:12px;margin-top:3px}
+  .st.done{color:var(--ink-2)}
+  .st.done .ms::before{content:"✓ ";color:var(--green)}
+  .st.now{color:var(--ink);font-weight:650}
+  .st.now::before{content:"■";font-size:9px;color:var(--green);margin-right:7px;vertical-align:middle}
+
+  /* ---- 下方：左宽选模 / 右窄回执 ---- */
+  .low{display:grid;grid-template-columns:1.5fr .5fr;gap:0;padding:38px 0 64px}
+  .pick{padding-right:44px}
+  .pick .hd{display:flex;align-items:baseline;gap:14px;border-bottom:2px solid var(--gline);padding-bottom:11px}
+  .pick h2{font-size:21px}
+  .pick .lnk{margin-left:auto;font-size:13.5px;color:var(--green);border-bottom:1px solid var(--green);padding-bottom:2px}
+  .routes{display:flex;gap:24px;margin:13px 0 2px;font-size:13px;color:var(--ink-3)}
+  .routes .on{color:var(--ink);font-weight:600;border-bottom:2px solid var(--green);padding-bottom:5px}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:11px;letter-spacing:.2em;color:var(--ink-3);text-align:left;font-weight:400;padding:11px 0 8px;border-bottom:1px solid var(--gline)}
+  td{padding:9.5px 0;border-bottom:1px solid var(--line-2);font-size:14px}
+  td.mdl{color:var(--ink-2)}
+  td.pk b{font-family:var(--serif)}
+  .chg{color:var(--red);font-size:12px;margin-left:8px}
+  .chg::before{content:"";display:inline-block;width:7px;height:7px;background:var(--red);margin-right:5px}
+  .dflt{color:var(--ink-3);font-size:12.5px}
+  .save{margin-top:13px;font-size:12.5px;color:var(--ink-3)}
+
+  .aside-col{border-left:1px solid var(--line);padding-left:32px}
+  .receipt h3{font-size:18px}
+  .receipt h3::before{content:"✓ ";font-family:var(--sans);font-size:12px;color:var(--green)}
+  .receipt p{color:var(--ink-2);font-size:13px;margin-top:10px}
+  .receipt .lnx{display:flex;flex-direction:column;gap:9px;margin-top:14px;font-size:13.5px}
+  .receipt .lnx a{border-bottom:1px solid var(--line);padding-bottom:2px;align-self:flex-start}
+  .receipt .lnx a:hover{border-color:var(--gline);color:var(--green)}
+  .aside-col .rel{margin-top:24px;padding-top:14px;border-top:1px solid var(--line-2);font-size:12.5px;color:var(--ink-3)}
+  .aside-col .rel b{color:var(--ink-2)}
+</style>
+</head>
+<body>
+  <header class="top">
+    <span class="bm"><b>文衡</b><span>云南大学图书馆 · 学科信息参考</span></span>
+    <nav aria-label="工作区">
+      <a class="on" href="#">出报告</a><a href="#">灵活报告</a><a href="#">报告</a><a href="#">问文衡</a>
+    </nav>
+    <span class="pal"><i class="g on" title="云大绿"></i><i class="z" title="朱砂"></i></span>
+  </header>
+
+  <div class="wrap">
+    <!-- 首屏 -->
+    <section class="hero">
+      <div class="l">
+        <div class="ov">学 科 信 息 参 考 · 出 报 告 · 目 录 2 0 2 6 0 9</div>
+        <div class="ttl"><h1>第 39 期</h1><span class="yr">2026 年 9 月</span></div>
+        <div class="rule"></div>
+        <div class="stm">本期报告已就绪<span class="dot" title="待签单"></span></div>
+        <p class="sub">复核后签单，这一版才会被标记为「可交付」。</p>
+        <div class="acts">
+          <button class="btn-ink">复核并签单 →</button>
+          <a class="ghost" href="#">看详细过程</a>
+        </div>
+      </div>
+      <div class="r">
+        <div class="reads" aria-hidden="true">
+          <div><div class="k">下 载 数 据</div><div class="v"><span class="n">64 / 64</span><span class="s">完成</span></div></div>
+          <div><div class="k">核 对 并 并 入</div><div class="v"><span class="n sm">已并入台账</span></div></div>
+          <div><div class="k">一 键 生 成</div><div class="v"><span class="n sm">已出稿</span></div></div>
+          <div><div class="k">任 务</div><div class="v"><span class="n sm">已完成</span><span class="s">202609</span></div></div>
+        </div>
+        <dl class="meta">
+          <dt>台 账 文 件</dt><dd>云大全学科排名、阈值动态检测表.xlsx</dd>
+          <dt>最 后 修 改</dt><dd>2026 年 9 月 28 日 07:55</dd>
+          <dt>预 测 数 据 / 实 际 输 出</dt><dd class="mono">202609 / 202609</dd>
+        </dl>
+      </div>
+    </section>
+
+    <!-- 工序 -->
+    <section class="steps" aria-label="出报告步骤">
+      <span class="pt" aria-hidden="true"></span><span class="pr" aria-hidden="true"></span>
+      <div class="st done">下载数据核验<div class="ms">完成 · 64 / 64</div></div>
+      <div class="st done">选择章节<div class="ms">完成 · 按大纲全选</div></div>
+      <div class="st now">生成初稿<div class="ms">已出稿 · 2026-10-13 15:03</div></div>
+      <div class="st">核验与定稿<div class="ms">待办 · 复核后签单</div></div>
+    </section>
+
+    <!-- 下方：左宽选模 / 右窄回执 -->
+    <section class="low">
+      <div class="pick">
+        <div class="hd"><h2>本期选模</h2><a class="lnk" href="#">去预测台看图改选 →</a></div>
+        <div class="routes"><span class="on">路线1 · 总被引 / ESI 前 1% 被引阈值</span><span>路线2 · 国内排名 / 国内前 1% 机构数</span></div>
+        <table>
+          <thead><tr><th style="width:32%">潜力学科</th><th style="width:36%">V1 推荐</th><th>本期已选</th></tr></thead>
+          <tbody>
+            <tr><td>免疫学</td><td class="mdl">季节性 ETS 模型</td><td class="pk"><b>SARIMA 模型</b><span class="chg">已改选</span></td></tr>
+            <tr><td>分子生物学与遗传学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默认</td></tr>
+            <tr><td>多学科</td><td class="mdl">Holt 趋势模型</td><td class="dflt">默认</td></tr>
+            <tr><td>物理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默认</td></tr>
+            <tr><td>神经科学与行为科学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默认</td></tr>
+            <tr><td>空间科学</td><td class="mdl">SARIMA 模型</td><td class="dflt">默认</td></tr>
+            <tr><td>精神病学与心理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默认</td></tr>
+            <tr><td>经济与商业</td><td class="mdl">SARIMA 模型</td><td class="dflt">默认</td></tr>
+          </tbody>
+        </table>
+        <div class="save">已保存 · admin · 2026-10-16 12:12</div>
+      </div>
+      <div class="aside-col">
+        <div class="receipt">
+          <h3>本期报告已生成</h3>
+          <p>任务结束不代表报告合格或已签发——管理员当前不能下载未签发的初稿。复核无异议后签单，这一版即可交付。</p>
+          <div class="lnx"><a href="#">打开报告 →</a><a href="#">去审核台 →</a></div>
+        </div>
+        <p class="rel"><b>与报告的关系</b>　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
