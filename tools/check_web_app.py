@@ -289,6 +289,14 @@ def main():
             i_gen = next((i for i, s in enumerate(steps) if "生成" in s), -1)
             check("出报告步骤条：① 取数并核验 在 ③ 生成初稿 之前",
                   i_take >= 0 and i_gen >= 0 and i_take < i_gen, str(steps[:4]))
+            # 采集/入库解耦：已并入的期次上仍要有整期重取入口（2026-10-16）
+            has_refetch = page.eval_on_selector_all(
+                "button", "els => els.some(e => /重新取这一期/.test(e.innerText))")
+            check("已并入的期次仍有整期重取入口（采集与入库解耦）",
+                  has_refetch, f"found={has_refetch}")
+            both_lines = page.eval_on_selector_all(
+                "body", "els => els.some(e => /采集 ·/.test(e.innerText) && /入库 ·/.test(e.innerText))")
+            check("采集与入库两条状态分开显示", both_lines, f"found={both_lines}")
             txt = page.inner_text("main")
             check("取数台：期次数据状态与开始前检查都在",
                   "自动取数台" in txt and "开始前检查" in txt, "")

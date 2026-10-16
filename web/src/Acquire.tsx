@@ -217,6 +217,11 @@ export function Acquire({ period }: { period: string | null }) {
   const needsTool = view === 'ready' || view === 'partial' || view === 'review'
   const canRun = !!cap[capKey]
   const dp = state?.data_period
+  /* 采集与入库是两条独立的线（2026-10-16 解耦）：采集=本机取到多少份；入库=台账并没并。
+     后端 A.scan() 重建状态时保留 copy，所以重取不会把「已并入」冲掉。 */
+  const copyState = state?.copy?.state ?? 'none'
+  const copyLabel = copyState === 'merged' ? '已并入台账'
+    : copyState === 'review' ? '待核对 · 未并入' : '未并入'
   const dataPeriodText = dp && (dp.esi || dp.incites)
     ? `（${[dp.esi ? `ESI ${dp.esi}` : '', dp.incites ? `InCites 截至 ${dp.incites}` : ''].filter(Boolean).join(' · ')}）`
     : ''
@@ -242,8 +247,8 @@ export function Acquire({ period }: { period: string | null }) {
     : view === 'blocked' ? '系统会自动打开取数专用浏览器；在里面登录 ESI / InCites 后，点「重新检查」。'
       : view === 'running' ? '可以离开这一页，进度不会丢。'
         : view === 'partial' ? '重试只补这一组，通过的不重复下载。'
-          : view === 'review' ? `核对无误后并入台账（只动 ${period} 列）。`
-            : '下一步：去生成台一键生成。'
+          : view === 'review' ? `核对无误后并入台账（只动 ${period} 列）；要重新取，点「重新取这一期」。`
+            : '下一步：去生成台一键生成；要重新取，点「重新取这一期」。'
 
   return (
     <>
@@ -266,7 +271,8 @@ export function Acquire({ period }: { period: string | null }) {
               <h1 className="fs-24">自动取数台</h1>
               <span className="pill unsigned mono">{period}</span>
               <span className={`pill ${pill[view][1]}`}>{pill[view][0]}</span>
-              <span className="hint aq-num">{expected > 0 ? `已核验 ${verified} / ${expected}` : '已核验 —'}</span>
+              <span className="hint aq-num">采集 · {expected > 0 ? `已取到 ${verified} / ${expected}` : '未开始'}</span>
+              <span className="hint aq-num">入库 · {copyLabel}</span>
               <Info label="取数状态与口径">
                 <p>进度按逐份核验结果统计：只有核验通过的文件才计入。</p>
                 <p>数据期取自网站页面显示值{dataPeriodText}，不以下载当天代替。</p>
@@ -295,6 +301,15 @@ export function Acquire({ period }: { period: string | null }) {
                 <button className="btn primary" disabled={!cap.start || busy || opRunning}
                         title={cap.start ? undefined : toolMissing} onClick={onStart}>
                   <Icon name="download" size={20} />开始取数
+                </button>
+              )}
+              {/* 已取过之后（待核对 / 已并入）仍可重新取这一期——采集与入库是两条线，
+                  「并入过台账」不该把采集锁死（2026-10-16 解耦） */}
+              {!opRunning && (view === 'review' || view === 'merged') && (
+                <button className="btn" disabled={!cap.start || busy}
+                        title={cap.start ? '重取只补没下到的文件；已并入台账不受影响' : toolMissing}
+                        onClick={onStart}>
+                  <Icon name="download" size={20} />重新取这一期
                 </button>
               )}
               {!opRunning && view === 'blocked' && (
