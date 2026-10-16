@@ -192,7 +192,7 @@ function ModelSummary({
         </span>
         <Info label="选模口径" end>
           <p>模型选择按期次保存，全站只有一份——这里显示的就是本期配置。</p>
-          <p>重出报告后：未进 1% 的学科都会按选择出图（进本期图册）；报告正文只用接近度前二。</p>
+          <p>重出报告后：未进 1% 的学科都会按选择出图（进本期图册）；报告正文优先出改过模型的学科（不足两个按接近度补齐）。</p>
         </Info>
       </div>
       <div className="panel-row">
@@ -307,7 +307,7 @@ function ModelSummary({
         </>
       )}
 
-      <div className="degraded"><b>与报告的关系</b>：任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</div>
+      <div className="degraded"><b>与报告的关系</b>：任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册）；报告正文优先出改过模型的学科（不足两个按接近度补齐）；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</div>
     </section>
   )
 }
@@ -417,8 +417,8 @@ export function Workbench({
                 {forecastChoice?.at
                   ? `（${forecastChoice.by ? `${forecastChoice.by} · ` : ''}${forecastChoice.at} 保存）`
                   : ''}
-                。当前报告仍按改选前的选择生成——重新生成后生效：未进 1% 的学科都会按你的选择出图，
-                报告正文用接近度前二。
+                。当前报告仍按改选前的选择生成——重新生成后生效：未进 1% 的学科都会按你的选择出图；
+                报告正文优先出改过模型的学科（不足两个按接近度补齐）。
               </span>
               <span className="acts">
                 <ConfirmButton className="btn" disabled={!canGenerate}

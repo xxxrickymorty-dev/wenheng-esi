@@ -154,22 +154,24 @@ def build_overview(wide, new_intl, new_cn, thr, ynd_rank, top_total, period=None
     for d, v in tops:
         gmap.setdefault(v, []).append(d)
     facts["top3_groups"] = [(c, gmap[c]) for c in sorted(gmap, reverse=True)[:3]]
-    # 未进入 1% 学科中接近度前二（预测章目标学科）
+    # 未进入 1% 学科的接近度明细（2026-10-16：全量入 facts——报告目标学科改选优先后，
+    # 预测章文字可能讲到任一未进学科，数字必须同源，不能等只有前二才有明细）。
+    # 每条的「近 7 期（含当期，≈1 年）接近度尾迹」是预测章「趋势描述 / 发展力度评价」
+    # 的措辞依据（sentences._prox_phrases 按「是否连涨 + 净变化」分档，不给数字）。
     ne = pr[period][pr[period] < 1].sort_values(ascending=False)
-    top2 = []
-    for d in ne.index[:2]:
-        # 近 7 期（含当期，≈1 年）接近度尾迹：预测章「趋势描述 / 发展力度评价」的措辞依据
-        # （sentences._prox_phrases 按「是否连涨 + 净变化」分档，不给数字）。
+    entries = []
+    for d in ne.index:
         hist_cols = [c for c in pr.columns
                      if isinstance(c, str) and c.isdigit() and c <= str(period)
                      and pd.notna(pr.at[d, c])]
-        top2.append({
+        entries.append({
             "discipline": d,
             "prox_pct": round(ne[d] * 100, 2),
             "chg": round((pr.loc[d, period] - pr.loc[d, prev]) * 100, 2),
             "prox_tail": [round(float(pr.at[d, c]), 4) for c in hist_cols[-7:]],
         })
-    facts["top2_not_entered"] = top2
+    facts["not_entered"] = entries
+    facts["top2_not_entered"] = entries[:2]
     # 1‰ 状态与年化进入时间估算（按上期增速外推；上期 1‰阈值缺失则不强算）
     ratio_1pm = (c / tp).dropna()
     facts["any_1permille"] = bool((ratio_1pm >= 1).any())

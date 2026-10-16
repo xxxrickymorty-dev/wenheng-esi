@@ -431,9 +431,15 @@ def build(root, period, payload) -> RuleDraft:
 
     import sentences                                                # noqa: PLC0415
 
+    # 预测章文字与报告同源：目标学科（report_subjects，改选优先）+ 模型说明句都读产物
+    # （2026-10-16；缺文件回落「接近度前二 + 手工槽」，与老行为一致）
+    fm = _load_json(d / "forecast_charts.json", default={}) or {}
     values = _manual_values(root, period)
     base_texts = {k: _apply_manual(v, values.get(k, {}))
-                  for k, v in sentences.build(facts, p_cur, p_prev).items()}
+                  for k, v in sentences.build(
+                      facts, p_cur, p_prev,
+                      forecast=fm.get("charts"),
+                      targets=fm.get("report_subjects")).items()}
 
     question = str(payload.get("question") or "").strip()
     # 问句点名的那一期（P0-1，2026-10-14）：解析口径**复用对话前门**（唯一口径），

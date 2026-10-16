@@ -793,6 +793,12 @@ def fill_forecast_charts(doc, ledger_dir, slots, warns):
             meta = {c["png"]: c for c in json.loads(mp.read_text(encoding="utf-8"))["charts"]}
         except Exception:                                      # noqa: BLE001
             meta = {}
+    # 图题学科名随**实际出图学科**改写（2026-10-16，改选学科优先后母版旧名不再可靠）：
+    by_index = {}
+    for info in meta.values():
+        idx, subject = info.get("index"), info.get("subject")
+        if isinstance(idx, int) and isinstance(subject, str) and idx not in by_index:
+            by_index[idx] = subject
     plan = [(1, "cites"), (1, "rank"), (2, "cites"), (2, "rank")]
     for cap_idx, (subj_i, kind) in zip(caps, plan):
         png = ov / f"forecast_{subj_i}_{kind}.png"
@@ -802,6 +808,17 @@ def fill_forecast_charts(doc, ledger_dir, slots, warns):
             slots.append({"location": label, "old": "（缺生成图）", "new": str(png),
                           "source": "report_forecast"})
             continue
+        subject = by_index.get(subj_i)
+        if subject:
+            new_cap = (f"{subject}学科被引频次与ESI阈值的模型预测图" if kind == "cites"
+                       else f"{subject}学科国内排名与学科国内ESI前1%机构数的模型预测图")
+            cap_p = doc.paragraphs[cap_idx]
+            old_cap = cap_p.text.strip()
+            if old_cap != new_cap:
+                _replace_para(cap_p, new_cap)
+                slots.append(_text_slot(
+                    label + "题", old_cap, new_cap,
+                    "report_forecast（改选学科优先，图题随实际学科）"))
         paras = doc.paragraphs
         tgt = paras[cap_idx]
         for q in paras[cap_idx + 1:cap_idx + 3]:
@@ -898,24 +915,28 @@ _HAND_RE = re.compile(r"【手工：([^】]*)】")
 
 
 def _forecast_meta(ledger_dir):
-    """预测图元数据（`report_forecast` 落的 forecast_charts.json）→ 预测章模型说明句。
+    """预测元数据（`report_forecast` 落的 forecast_charts.json）→ 预测章模型说明句 + 目标学科。
 
-    缺文件/坏了都返回 None：段落退回 `【手工：…】` 槽（可复现性优先，不让填稿挂掉）。
+    返回**整份 meta**（`charts` 列表 + `report_subjects` 名单）；缺文件/坏了都返回 None：
+    段落退回 `【手工：…】` 槽、目标学科退回接近度前二（可复现性优先，不让填稿挂掉）。
     """
     p = pathlib.Path(ledger_dir) / "forecast_charts.json"
     if not p.exists():
         return None
     try:
-        return json.loads(p.read_text(encoding="utf-8")).get("charts")
-    except (OSError, json.JSONDecodeError, AttributeError):
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
         return None
+    return data if isinstance(data, dict) else None
 
 
 def fill_texts(doc, ledger_dir, slots, period, prev, facts, fills=None):
     """概述 4 段 + 发展趋势段 + 态势段 + 封面期数（句骨架 + 数字槽）。"""
     college = college_stats.load(pathlib.Path(ledger_dir), period, save=True)
+    fm = _forecast_meta(ledger_dir) or {}
     texts = sentences.build(facts, period, prev, college=college,
-                            forecast=_forecast_meta(ledger_dir))
+                            forecast=fm.get("charts"),
+                            targets=fm.get("report_subjects"))
     texts, n_filled = apply_manual_inputs(texts, fills)
     anchors = [
         ("p1", lambda t: "ESI最新数据显示" in t),

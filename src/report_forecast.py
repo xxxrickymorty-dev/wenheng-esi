@@ -2,9 +2,12 @@
 """预测章配图：全部未进入 1% 的潜力学科 × 2 图（被引频次/阈值、国内机构数/云大排名）。
 
 - 2026-10-16（rick）起：未进 1% 的**每个**学科都出预测图（进本期图册；改选对全部学科可见）。
-  报告正文仍只用接近度**前二**（母版 4 图槽：学科1 被引 → 学科1 排名 → 学科2 被引 → 学科2 排名），
-  即 `forecast_{1|2}_{cites|rank}.png` 位置对号入座；其余学科从 `forecast_3_…` 起编号，
-  只进图册、不进报告。数据校验未过的历史期次只出报告前二（不带病扩图）。
+  报告正文只用**两个**学科（母版 4 图槽：学科1 被引 → 学科1 排名 → 学科2 被引 → 学科2 排名）：
+  **改过模型的学科优先**，其余按接近度补齐（见 `pick_report_subjects`）；即
+  `forecast_{1|2}_{cites|rank}.png` 位置对号入座，其余学科从 `forecast_3_…` 起编号，
+  只进图册、不进报告。目标学科名单记进 `forecast_charts.json` 的 `report_subjects`，
+  填字与问文衡同源读取（报告文字与图必须同一套学科）。数据校验未过的历史期次只出报告目标
+  学科（不带病扩图）。
 - 数据：`out/<期次>/` 的只读派生产物（经 `esi_v1.data` 组装四列标准输入）
 - 口径：V1 交接包调用副本 —— 模型默认 `"recommended"`（202607 基线推荐模型）；
   选模记录（契约 #17 嵌套形状）的读写统一走 `forecast_choice`：运行时 applied 快照
@@ -69,8 +72,9 @@ def pick_subjects(period_dir, upto=None):
     """未进入 1%（接近度<1）的学科，按接近度降序 —— 与概述 facts 同一规则。
 
     2026-10-16（rick）：全部未进学科都出预测图（进本期图册，改选对全部学科可见）；
-    报告正文仍只用**前二**（母版 4 图槽按位置入位），即本列表的前两个。
-    数据校验未过的历史期次只出前二（见 `_generate`，避免带病扩图）。
+    报告正文只用**两个**学科（母版 4 图槽按位置入位）——目标名单由 `pick_report_subjects`
+    从本列表里挑（改选学科优先，接近度补齐），不再机械取前二。
+    数据校验未过的历史期次只出报告目标学科（见 `_generate`，避免带病扩图）。
 
     `upto`（如 "202605"）：只认该期（含）之前的接近度列，补跑历史期时必传。
     """
@@ -83,6 +87,21 @@ def pick_subjects(period_dir, upto=None):
     col = prox[cols[-1]].dropna()
     subjects = [display_name(en) for en in col[col < 1].sort_values(ascending=False).index]
     return subjects, cols[-1]
+
+
+def pick_report_subjects(subjects_cn, choices):
+    """报告预测章的目标学科（最多两个）——2026-10-16（rick）：**改过模型的学科优先**，
+    其余按接近度（即 `subjects_cn` 的原有顺序）补足。
+
+    背景：报告母版只有 2 个学科 × 2 图的位置。馆员在预测台改某个学科的模型，
+    就是想让这个学科进报告正文；所以名单里被改选过的学科先入围，再按接近度补齐。
+    改选记录只存改过的学科（`forecast_choice` 的嵌套形状），所以「在 choices 里」≡「改过」。
+    图册不受影响：全部未进学科照画（`_generate` 里 `to_chart`）。
+    """
+    changed = [s for s in subjects_cn
+               if any((route, s) in choices for route in ROUTES)]
+    rest = [s for s in subjects_cn if s not in changed]
+    return (changed + rest)[:2]
 
 
 def load_choice(period_dir, choice_path=None):
@@ -172,18 +191,19 @@ def _generate(period_dir, choice_path=None, period_override=None) -> int:
     subjects_cn, period = pick_subjects(period_dir, upto=upto)
     if len(subjects_cn) < 2:
         raise ValueError("未进入 1% 的潜力学科不足 2 个，预测图无从生成。")
-    report_subjects = subjects_cn[:2]                 # 报告正文只画前二（母版 4 槽）
+    choices, warnings = load_choice(period_dir, choice_path)
+    report = pick_report_subjects(subjects_cn, choices)   # 改选学科优先，接近度补齐
 
     validation_failed = False
     try:
         data, _meta = load_standard_input(period_dir, upto=upto)
     except ValueError as exc:
         # 历史期次快照可能早于台账修正（如 经济与商业 202003：旧 364 → 现行 31）。
-        # 报告只画当期潜力学科前二：只要这两个学科不含闸门学科，即放行出图；
+        # 报告只画报告目标学科：只要这两个学科不含闸门学科，即放行出图；
         # 一旦命中，宁可不出图也不带病出图（重新抛出）。
         if "V1输入校验失败" not in str(exc):
             raise
-        if "经济与商业" in report_subjects:
+        if "经济与商业" in report:
             raise ValueError(f"本期目标学科命中 V1 数据修正闸门，禁止降级出图：{exc}") from exc
         validation_failed = True
         data, _meta = load_standard_input(period_dir, validate=False, upto=upto)
@@ -193,8 +213,10 @@ def _generate(period_dir, choice_path=None, period_override=None) -> int:
         raise ValueError(f"潜力学科不在 V1 标准输入里：{'、'.join(missing)}")
 
     ov = period_dir / "charts" / "_overview"
-    choices, warnings = load_choice(period_dir, choice_path)
-    to_chart = report_subjects if validation_failed else subjects_cn
+    # 出图顺序＝报告目标学科坐 1/2 号位（图号与报告 4 图槽按位置对号），其余学科顺位往后。
+    # 校验未过时只出报告目标学科（不带病扩图）。
+    ordered = report + [s for s in subjects_cn if s not in report]
+    to_chart = report if validation_failed else ordered
     if validation_failed and len(subjects_cn) > len(to_chart):
         warnings.append("预测图：本期数据校验未过，只出报告前二；其余学科待数据修正后重出。")
     made, chart_meta = [], []
@@ -240,6 +262,9 @@ def _generate(period_dir, choice_path=None, period_override=None) -> int:
 
     meta = {"period": period, **_choice_provenance(period_dir, period, choice_path),
             "horizon": HORIZON, "generated": len(made),
+            # 报告预测章的目标学科（1/2 号图的学科；改选学科优先，2026-10-16）。
+            # 填字（fill_docx）与问文衡（ai/_qa）都读它——报告文字与图必须同一套学科。
+            "report_subjects": report,
             "warnings": warnings, "charts": chart_meta}
     (period_dir / "forecast_charts.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")

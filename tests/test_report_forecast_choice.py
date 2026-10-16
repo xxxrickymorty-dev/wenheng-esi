@@ -155,11 +155,12 @@ class Test出图接线:
         # 每条留 requested 痕：未选＝recommended
         assert by_key[("物理学", "citation")]["requested"] == "SARIMA模型"
         assert by_key[("分子生物学与遗传学", "rank")]["requested"] == "recommended"
-        # 逐路线逐学科各跑一次：所选学科只跑所选模型，不再跑推荐
-        assert calls == [("citation", "分子生物学与遗传学", "recommended"),
-                         ("rank", "分子生物学与遗传学", "recommended"),
-                         ("citation", "物理学", "SARIMA模型"),
-                         ("rank", "物理学", "recommended")]
+        # 逐路线逐学科各跑一次：所选学科只跑所选模型，不再跑推荐；
+        # 2026-10-16 起改选学科优先进报告（坐 1 号位），故先跑物理学
+        assert calls == [("citation", "物理学", "SARIMA模型"),
+                         ("rank", "物理学", "recommended"),
+                         ("citation", "分子生物学与遗传学", "recommended"),
+                         ("rank", "分子生物学与遗传学", "recommended")]
 
     def test_所选模型失败_出图仍成且警告进产物(self, tmp_path, monkeypatch):
         def fake(subject, periods, series, task, model, horizon):
@@ -194,9 +195,9 @@ class Test出图接线:
         assert all(c["model"] == "季节性ETS模型" for c in meta["charts"])
         assert meta["warnings"] == []
 
-    def test_全部未进学科都出图_报告前二定位不变(self, tmp_path, monkeypatch):
-        """2026-10-16（rick）：未进 1% 的全部学科都出图（进图册，改选对全部学科可见）；
-        报告母版 4 槽只用前二——前二仍是 1/2 号图，新增学科从 3 号起编号。"""
+    def test_改选学科优先进报告_全画其余作陪(self, tmp_path, monkeypatch):
+        """2026-10-16（rick）：报告 4 槽的目标学科＝改过模型的学科优先（接近度补齐）；
+        未进 1% 的全部学科都出图（其余从 3 号起，只进图册）。"""
         three = [*SUBJECTS, "免疫学"]
 
         def fake(subject, periods, series, task, model, horizon):
@@ -215,15 +216,35 @@ class Test出图接线:
 
         meta = json.loads((tmp_path / "forecast_charts.json").read_text(encoding="utf-8"))
         assert meta["generated"] == 6
+        assert meta["report_subjects"] == ["免疫学", "分子生物学与遗传学"]
         by_key = {(c["subject"], c["task"]): c for c in meta["charts"]}
-        assert by_key[("分子生物学与遗传学", "citation")]["index"] == 1
-        assert by_key[("物理学", "citation")]["index"] == 2
-        assert by_key[("免疫学", "citation")]["index"] == 3
-        assert by_key[("免疫学", "citation")]["png"] == "forecast_3_cites.png"
-        # 改选对非报告学科同样生效；未选的仍走推荐
+        # 改选的免疫学坐 1 号位（报告正文第一组图），接近度最高的补到 2 号位
+        assert by_key[("免疫学", "citation")]["index"] == 1
+        assert by_key[("免疫学", "citation")]["png"] == "forecast_1_cites.png"
+        assert by_key[("分子生物学与遗传学", "citation")]["index"] == 2
+        assert by_key[("物理学", "citation")]["index"] == 3
+        # 改选的用所选模型；未选的仍走推荐
         assert by_key[("免疫学", "citation")]["model"] == "SARIMA模型"
         assert by_key[("免疫学", "rank")]["requested"] == "recommended"
         assert meta["warnings"] == []
+
+    def test_无改选_报告仍是接近度前二(self, tmp_path, monkeypatch):
+        """没改过任何学科＝老行为：报告 1/2 号位＝接近度前二；其余学科照画进图册。"""
+        three = [*SUBJECTS, "免疫学"]
+
+        def fake(subject, periods, series, task, model, horizon):
+            return {"results": [{"model": "季节性ETS模型", "rolling_mape": 1.0,
+                                 "first_crossing": None,
+                                 "forecast": [{"period": 202609}]}]}
+
+        _stub_generate(monkeypatch, fake)
+        monkeypatch.setattr(report_forecast, "pick_subjects",
+                            lambda d, upto=None: (list(three), "202609"))
+        monkeypatch.setattr(report_forecast, "load_standard_input",
+                            lambda d, validate=True, upto=None: (pd.DataFrame({"学科": three}), {}))
+        assert report_forecast.generate(tmp_path) == 6
+        meta = json.loads((tmp_path / "forecast_charts.json").read_text(encoding="utf-8"))
+        assert meta["report_subjects"] == ["分子生物学与遗传学", "物理学"]
 
     def test_数据校验未过_只出报告前二并警告(self, tmp_path, monkeypatch):
         """历史修正闸门（如 经济与商业旧值）只拦报告前二；校验未过时其余学科不出图。"""

@@ -1431,9 +1431,10 @@ def _localize_facts(facts: dict) -> dict:
         item = facts.get(key)
         if isinstance(item, dict) and "discipline" in item:
             item["discipline"] = _discipline_cn(item["discipline"])
-    for item in facts.get("top2_not_entered") or []:
-        if isinstance(item, dict) and "discipline" in item:
-            item["discipline"] = _discipline_cn(item["discipline"])
+    for key in ("top2_not_entered", "not_entered"):
+        for item in facts.get(key) or []:
+            if isinstance(item, dict) and "discipline" in item:
+                item["discipline"] = _discipline_cn(item["discipline"])
     for key in ("top3_by_top_papers", "top2_prox_change"):
         rows = facts.get(key)
         if isinstance(rows, list):

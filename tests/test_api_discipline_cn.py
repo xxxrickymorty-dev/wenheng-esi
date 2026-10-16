@@ -32,6 +32,11 @@ FACTS = {
         {"discipline": "Molecular Biology & Genetics", "prox_pct": 84.5, "chg": 3.57},
         {"discipline": "Physics", "prox_pct": 75.13, "chg": 4.77},
     ],
+    "not_entered": [
+        {"discipline": "Molecular Biology & Genetics", "prox_pct": 84.5, "chg": 3.57},
+        {"discipline": "Physics", "prox_pct": 75.13, "chg": 4.77},
+        {"discipline": "Immunology", "prox_pct": 21.03, "chg": 1.4},
+    ],
     "coverage_window": "2016.1.1-2026.4.30",
     "prev_label": "2026年5月",
 }
@@ -44,6 +49,9 @@ class TestFacts中文化:
         assert out["worst_cn_rank"]["discipline"] == "药理学与毒理学"
         assert [d["discipline"] for d in out["top2_not_entered"]] == \
             ["分子生物学与遗传学", "物理学"]
+        # 2026-10-16 加的全量明细（报告目标学科改选优先后，文字段可能讲到任一未进学科）
+        assert [d["discipline"] for d in out["not_entered"]] == \
+            ["分子生物学与遗传学", "物理学", "免疫学"]
         assert out["top3_by_top_papers"][0] == ["化学", 44]
         assert out["top3_groups"][2] == [29, ["工程学", "植物与动物学"]]
         assert out["top2_prox_change"][0] == ["工程学", 33.87]

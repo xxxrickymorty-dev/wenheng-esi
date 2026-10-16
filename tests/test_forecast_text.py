@@ -97,6 +97,30 @@ class Test段落组装:
         assert "经验贝叶斯状态空间模型" in fc2 and "2028年1月" in fc2
         assert "2027年底至2028年初" in fc2
 
+    def test_目标学科优先_文字与图同源(self):
+        """2026-10-16（rick）：report_subjects（改选优先）里的学科进 1/2 号位——文字段跟它走。"""
+        facts = {**FACTS, "not_entered": [
+            *FACTS["top2_not_entered"],
+            {"discipline": "Immunology", "prox_pct": 21.03, "chg": 1.4,
+             "prox_tail": [0.19, 0.19, 0.2, 0.2, 0.2, 0.21, 0.2103]},
+        ]}
+        forecast = [
+            {"index": 1, "subject": "免疫学", "task": "citation",
+             "model": "SARIMA模型", "first_crossing": 202805},
+            {"index": 1, "subject": "免疫学", "task": "rank",
+             "model": "SARIMA模型", "first_crossing": 202803},
+            {"index": 2, "subject": "分子生物学与遗传学", "task": "citation",
+             "model": "季节性ETS模型", "first_crossing": 202709},
+            {"index": 2, "subject": "分子生物学与遗传学", "task": "rank",
+             "model": "阻尼Holt模型", "first_crossing": 202705},
+        ]
+        texts = sentences.build(facts, "202609", "202607", forecast=forecast,
+                                targets=["免疫学", "分子生物学与遗传学"])
+        fc1, fc2 = texts["forecast_p1"], texts["forecast_p2"]
+        assert "免疫学" in fc1 and "21.03%" in fc1 and "SARIMA模型" in fc1
+        assert "分子生物学与遗传学" in fc2 and "88.01%" in fc2
+        assert "物理学" not in fc1 and "物理学" not in fc2
+
     def test_缺预测元数据时保留手工槽(self):
         texts = sentences.build(FACTS, "202609", "202607")
         assert "【手工：趋势描述】" in texts["forecast_p1"]

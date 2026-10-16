@@ -122,7 +122,14 @@ def _eta_expect(cross1, cross2):
     return f"有望在{last // 100}年前后进入ESI前1%"
 
 
-def build(facts, period, prev, college=None, forecast=None):
+def build(facts, period, prev, college=None, forecast=None, targets=None):
+    """句骨架 → 各段落文本。
+
+    `targets`（2026-10-16，可选）：报告预测章的目标学科（**中文名**，顺序即 1/2 号位）——
+    来自 `forecast_charts.json` 的 `report_subjects`（改选学科优先的产物）。
+    文字段与预测图必须同一套学科；不传＝按接近度前二（老行为）。
+    明细取自 `facts["not_entered"]`（全量）；缺该键的老 facts 回落 `top2_not_entered`。
+    """
     y, m = period[:4], str(int(period[4:]))
     prev_m = str(int(prev[4:]))
     p1 = facts
@@ -183,7 +190,19 @@ def build(facts, period, prev, college=None, forecast=None):
     # 期号口径唯一在 `period.issue_of`：早于锚点直接报错，不给封面算假期号。
     idx, total = period_mod.issue_of(period)
 
-    ne1, ne2 = p1["top2_not_entered"][0], p1["top2_not_entered"][1]
+    # 预测章两个目标学科：targets（report_subjects）优先，缺位按接近度补齐；
+    # 不传 targets ＝ entries 前二（与老行为一致）。明细来自全量 not_entered。
+    entries = p1.get("not_entered") or p1["top2_not_entered"]
+    picked = []
+    if targets:
+        by_cn = {cn_name(e["discipline"]): e for e in entries}
+        picked = [by_cn[t] for t in targets if t in by_cn and by_cn[t] not in picked]
+    for e in entries:
+        if len(picked) >= 2:
+            break
+        if e not in picked:
+            picked.append(e)
+    ne1, ne2 = picked[0], picked[1]
     top3_paren = "、".join(f"{cn_name(d)}（{c}篇）"
                           for c, discs in p1["top3_groups"] for d in discs)
     sit_head = (f"本期云南大学ESI前1%学科继续保持{p1['n_disc_1pct']}个。下图红线为ESI前1%基线。"

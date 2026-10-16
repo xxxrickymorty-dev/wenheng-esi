@@ -473,7 +473,8 @@ export function Forecast({
             <b className="title">改选已保存，报告还没重出</b>
             <span>
               {appliedDiffs.join('；')}。当前成品仍按改选前的选择出的；
-              重新生成后按你的选择出图——未进 1% 的学科都会重画，报告正文用接近度前二。
+              重新生成后按你的选择出图——未进 1% 的学科都会重画；
+              报告正文优先出改过模型的学科（不足两个按接近度补齐）。
             </span>
             <span className="acts">
               <a className="btn" href={rerunHref}>回出报告并重新生成 →</a>
@@ -557,7 +558,8 @@ export function Forecast({
               </ul>
               <p className="hint mt-10">
                 <b>与报告的关系</b>：这里保存的选择进报告——重出后，未进 1% 的学科都会按你的选择出图
-                （进本期图册），报告正文用接近度前二；未改的学科用 V1 推荐；所选模型若跑不出来，会自动退回推荐。
+                （进本期图册）；报告正文<b>优先出改过模型的学科</b>，不足两个按接近度补齐；未改的学科用 V1 推荐；
+                所选模型若跑不出来，会自动退回推荐。
               </p>
               <p className="hint mt-6">
                 <b>期次与数据说明</b>：{freshnessText} V1 推荐基线为 {meta.recommendation_baseline ?? '—'}（不是预测数据期次）。
