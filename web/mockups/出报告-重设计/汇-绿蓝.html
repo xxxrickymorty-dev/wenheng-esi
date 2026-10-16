@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出报告 · 合成「汇」（绿蓝）— 静态稿</title>
+<style>
+  /* ============================================================
+     合成稿「汇」· 绿蓝 —— 把 rick 红框点的四件合成一页
+     ① 翻牌数字（轨·站台）② 水位标尺（水位·阈值）
+     ③ 三枚橡皮戳（子·电报）④ 至公天下钤印（双联·会泽至公）
+     配色由红金转绿蓝，且给两色分工，免得成为色块堆：
+       蓝 ＝ 场（数据／时序／读数）
+       绿 ＝ 器（工序／戳印／签发）
+     四件按功能成对——翻牌与水位皆「读数」，橡皮戳与钤印皆
+     「戳印」，故读数在蓝场、戳印在绿器。
+     红色只作警戒（阈值虚线／复核 PENDING），全页仅两处。
+     零渐变、零投影、零玻璃、零圆角面板。刻度／戳框／牌缝
+     皆是该器物本身的结构。
+     ============================================================ */
+  :root{
+    /* 蓝 · 场 */
+    --blue:#17456E;   --blue-2:#0F2E4C;   --blue-3:#2F6B8E;
+    --blue-4:#8FB6CE; --blue-5:#DCE8F0;
+    /* 绿 · 器 */
+    --green:#26483B;  --green-2:#163228;  --green-3:#2F7A58;
+    --green-4:#7FB79B; --green-5:#DFEDE6;
+    /* 纸与墨 */
+    --paper:#F2EFE6;  --paper-2:#E4DFD0;
+    --ink:#15222B;    --ink-2:#43525C;    --ink-3:#7B8892;
+    --red:#B23A2B;    /* 警戒：全页仅两处 */
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--green-3);color:#fff}
+
+  /* ─────────── 顶栏 ─────────── */
+  .bar{background:var(--blue-2);height:60px;display:flex;align-items:center;gap:24px;padding:0 34px}
+  .bar .wm{font-family:var(--serif);font-size:21px;letter-spacing:.18em;color:var(--blue-5)}
+  .bar .sub{font-family:var(--kai);font-size:11px;letter-spacing:.22em;color:rgba(220,232,240,.5);line-height:1.55}
+  .bar nav{display:flex;gap:21px;font-family:var(--kai);font-size:13px;letter-spacing:.16em;
+    color:rgba(220,232,240,.76);margin-left:12px}
+  .bar nav a.on{color:var(--blue-5);box-shadow:inset 0 -2px 0 var(--green-4)}
+  .bar .r{margin-left:auto;display:flex;align-items:center;gap:18px;font-family:var(--kai);
+    font-size:11.5px;letter-spacing:.22em;color:rgba(220,232,240,.5)}
+  .pal{display:inline-flex;gap:7px}
+  .pal i{width:24px;height:13px;display:inline-block;border:1px solid rgba(220,232,240,.26)}
+  .pal i.g{background:var(--green-3)}.pal i.b{background:var(--blue-3)}
+  .pal i.on{outline:2px solid var(--blue-5);outline-offset:2px}
+
+  /* ─────────── 题头：蓝场 ＋ 翻牌数字（读数之一） ─────────── */
+  .hero{background:var(--blue);color:var(--blue-5);padding:52px 34px 46px}
+  .hi{max-width:1240px;margin:0 auto;display:grid;
+    grid-template-columns:minmax(0,1fr) auto;gap:56px;align-items:end}
+  .hi .ov{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:rgba(220,232,240,.55)}
+  .hi h1{font-family:var(--serif);font-size:clamp(40px,5.4vw,72px);line-height:1.06;
+    letter-spacing:.04em;margin-top:12px}
+  .hi .deck{font-family:var(--kai);font-size:15px;line-height:2.05;
+    color:rgba(220,232,240,.8);margin-top:15px;max-width:32ch}
+  .hi .acts{margin-top:26px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+  .btn{background:var(--green-3);color:#08201A;border:0;padding:14px 30px;font-size:15px;
+    letter-spacing:.14em;font-weight:700}
+  .btn:hover{background:#3A9069}
+  .hi .ghost{font-family:var(--kai);font-size:13px;letter-spacing:.18em;color:rgba(220,232,240,.78);
+    box-shadow:inset 0 -1px 0 rgba(220,232,240,.38);padding-bottom:3px}
+
+  /* 翻牌数字 */
+  .flaps{display:flex;flex-direction:column;gap:18px;align-items:flex-end}
+  .flaps .grp{text-align:right}
+  .flaps .gl{font-family:var(--kai);font-size:10.5px;letter-spacing:.36em;
+    color:rgba(220,232,240,.55);margin-bottom:8px}
+  .flap-row{display:flex;gap:5px}
+  .flap{position:relative;width:38px;height:54px;background:var(--blue-2);
+    display:grid;place-items:center;font-family:var(--mono);font-size:27px;font-weight:700;
+    color:var(--blue-5);font-variant-numeric:tabular-nums}
+  /* 牌缝：翻牌本身的结构 */
+  .flap::after{content:"";position:absolute;left:0;right:0;top:50%;height:2px;background:var(--blue)}
+  .flap.sm{width:28px;height:40px;font-size:19px}
+  .flap.sm::after{height:1.5px}
+  .flap.colon{width:15px;background:transparent;font-size:22px;color:rgba(220,232,240,.4)}
+  .flap.colon::after{display:none}
+  .flap.gap{width:18px;background:transparent}
+  .flap.gap::after{display:none}
+  .flap.gr{color:var(--green-4)}
+  .flap.rd{color:#E8917C}
+
+  /* ─────────── 水位标尺（读数之二）＋ 四道工序 ─────────── */
+  .gaugeband{background:var(--green);color:var(--green-5);padding:42px 34px 0}
+  .gb{max-width:1240px;margin:0 auto;display:grid;
+    grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:52px;align-items:center}
+  .gb .tl .ov{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:rgba(223,237,230,.55)}
+  .gb .tl h2{font-family:var(--serif);font-size:clamp(26px,3.2vw,40px);line-height:1.24;
+    letter-spacing:.03em;margin-top:11px}
+  .gb .tl .deck{font-family:var(--kai);font-size:14px;line-height:2;color:rgba(223,237,230,.78);
+    margin-top:13px;max-width:30ch}
+
+  .gauge{position:relative;background:var(--green-2);border:1px solid rgba(223,237,230,.2);padding:18px 22px 20px}
+  .gauge .gh{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:10.5px;letter-spacing:.36em;color:rgba(223,237,230,.55)}
+  .gauge .gh b{font-family:var(--serif);font-size:12px;letter-spacing:.18em;color:var(--green-5)}
+  .gauge .scale{position:relative;height:230px;margin-top:14px;background:var(--green-2);
+    border:1px solid rgba(223,237,230,.16);overflow:hidden}
+  /* 刻度 */
+  .gauge .ticks{position:absolute;inset:0;display:flex;justify-content:space-between;padding:0 3px;z-index:3}
+  .gauge .tk{width:1.5px;height:11px;background:rgba(223,237,230,.28);align-self:flex-start}
+  .gauge .tk.maj{height:21px;background:rgba(223,237,230,.55)}
+  /* 水体 */
+  .gauge .water{position:absolute;left:0;right:0;bottom:0;height:58%;
+    background:var(--green-3);border-top:2px solid var(--green-4)}
+  .gauge .water::before{content:"";position:absolute;left:0;right:0;top:7px;height:1px;
+    background:rgba(223,237,230,.32)}
+  .gauge .water::after{content:"";position:absolute;left:0;right:0;top:15px;height:1px;
+    background:rgba(223,237,230,.2)}
+  /* 阈值虚线（警戒一） */
+  .gauge .thr{position:absolute;left:0;right:0;height:0;border-top:2px dashed var(--red);z-index:4}
+  .gauge .thr .lb{position:absolute;right:8px;top:-24px;font-family:var(--kai);
+    font-size:10.5px;letter-spacing:.26em;color:#F0B5A6;background:var(--green-2);padding:2px 9px}
+  /* 读数 */
+  .gauge .read{position:absolute;left:16px;bottom:14px;z-index:5;font-family:var(--mono);
+    font-size:30px;letter-spacing:.1em;color:var(--green-5)}
+  .gauge .read small{display:block;font-family:var(--kai);font-size:10.5px;
+    letter-spacing:.32em;color:rgba(223,237,230,.6);margin-top:2px}
+
+  /* 四道工序 */
+  .steps{max-width:1240px;margin:0 auto;padding:36px 0 40px;display:grid;
+    grid-template-columns:repeat(4,1fr);gap:0}
+  .st{padding:0 22px 0 0}
+  .st:not(:first-child){padding-left:22px;border-left:1px solid rgba(223,237,230,.18)}
+  .st .bar{height:6px;background:rgba(223,237,230,.18);margin-bottom:15px}
+  .st .bar i{display:block;height:100%;background:var(--green-4)}
+  .st.now .bar i{background:#F0B5A6}
+  .st.todo .bar i{width:0}
+  .st .k{font-family:var(--kai);font-size:10.5px;letter-spacing:.36em;color:rgba(223,237,230,.5)}
+  .st .v{font-family:var(--serif);font-size:clamp(18px,2.1vw,25px);line-height:1.28;
+    margin-top:8px;letter-spacing:.03em}
+  .st .m{font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+    color:rgba(223,237,230,.55);margin-top:7px}
+  .st.now .v{color:#F3C2B2}
+  .st.todo .v{color:rgba(223,237,230,.42)}
+
+  /* ─────────── 戳记区（戳印之一）＋ 数据 ─────────── */
+  .stamps{max-width:1240px;margin:0 auto;padding:48px 34px 0;
+    display:grid;grid-template-columns:auto minmax(0,1fr);gap:56px;align-items:center}
+  .stampcol{display:flex;gap:26px;align-items:center;flex-wrap:wrap}
+  .stp{width:132px;height:132px;position:relative;flex:none}
+  .stp svg{width:100%;height:100%;display:block;overflow:visible}
+  .stp .sx{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;padding:12px}
+  .stp .sx .t{font-family:var(--serif);font-size:13.5px;font-weight:700;line-height:1.35;letter-spacing:.08em}
+  .stp .sx .d{font-family:var(--mono);font-size:12px;letter-spacing:.12em;margin-top:6px}
+  .stp.g1{color:var(--green-3);transform:rotate(-6deg)}
+  .stp.g2{color:var(--green);transform:rotate(3deg)}
+  .stp.r1{color:var(--red);transform:rotate(-3deg)}
+  .stp.g1 .sx{color:var(--green-2)}
+  .stp.g2 .sx{color:var(--green-2)}
+  .stp.r1 .sx{color:#8B2A1E}
+  .stampcap{font-family:var(--kai);font-size:11px;letter-spacing:.32em;color:var(--ink-3);
+    text-align:center;width:100%;margin-top:2px}
+
+  .data{border-top:2px solid var(--ink);padding-top:18px}
+  .data .dt{font-family:var(--kai);font-size:11px;letter-spacing:.36em;color:var(--ink-3);margin-bottom:15px}
+  .data dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 32px;
+    font-family:var(--kai);font-size:13px}
+  .data .pair{display:flex;justify-content:space-between;gap:14px;
+    border-bottom:1px solid var(--paper-2);padding-bottom:9px}
+  .data dt{color:var(--ink-3);letter-spacing:.16em;white-space:nowrap}
+  .data dd{color:var(--ink);text-align:right;overflow-wrap:anywhere}
+  .data dd b{font-family:var(--serif);font-size:18px;letter-spacing:.04em}
+
+  /* ─────────── 签单区（戳印之二）：钤印落在签单动作上 ─────────── */
+  .sign{background:var(--green-2);color:var(--green-5);margin-top:48px;padding:52px 34px 48px;position:relative;overflow:hidden}
+  .si{max-width:1240px;margin:0 auto;display:grid;
+    grid-template-columns:minmax(0,1fr) 260px;gap:52px;align-items:center}
+  .si .ov{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:rgba(223,237,230,.55)}
+  .si h2{font-family:var(--serif);font-size:clamp(30px,3.9vw,52px);line-height:1.14;
+    letter-spacing:.04em;margin-top:12px}
+  .si .deck{font-family:var(--kai);font-size:14.5px;line-height:2.05;
+    color:rgba(223,237,230,.8);margin-top:14px;max-width:34ch}
+  .si .warn{margin-top:16px;display:inline-block;font-family:var(--kai);font-size:12.5px;
+    letter-spacing:.14em;padding:7px 14px;border:1px solid rgba(240,181,166,.5);color:#F3C2B2}
+  .si .acts{margin-top:24px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+  .btn-paper{background:var(--green-5);color:var(--green-2);border:0;padding:14px 32px;
+    font-size:15px;letter-spacing:.14em;font-weight:700}
+  .btn-paper:hover{background:#fff}
+  .si .ghost{font-family:var(--kai);font-size:13px;letter-spacing:.18em;color:rgba(223,237,230,.76);
+    box-shadow:inset 0 -1px 0 rgba(223,237,230,.36);padding-bottom:3px}
+
+  /* 钤印 */
+  .sealwrap{display:flex;flex-direction:column;align-items:center;gap:16px}
+  .seal{width:212px;height:212px;transform:rotate(-8deg)}
+  .seal svg{width:100%;height:100%;display:block;overflow:visible}
+  .sealcap{font-family:var(--kai);font-size:11px;letter-spacing:.36em;color:rgba(223,237,230,.55);text-align:center}
+
+  /* ─────────── 选模表 ─────────── */
+  .pick{max-width:1240px;margin:0 auto;padding:52px 34px 0}
+  .pick .hd{display:flex;align-items:baseline;gap:20px;flex-wrap:wrap;
+    border-bottom:2px solid var(--ink);padding-bottom:13px}
+  .pick h2{font-family:var(--serif);font-size:clamp(24px,2.8vw,34px);letter-spacing:.1em}
+  .pick h2 .n{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:var(--ink-3);
+    display:block;margin-bottom:3px;font-weight:400}
+  .pick .lnk{margin-left:auto;font-family:var(--kai);font-size:13px;letter-spacing:.18em;
+    color:var(--green);box-shadow:inset 0 -1px 0 var(--green);padding-bottom:2px}
+  .tabs{display:flex;gap:26px;margin:16px 0 4px;font-family:var(--kai);font-size:13px;
+    letter-spacing:.14em;color:var(--ink-3)}
+  .tabs span{padding:7px 0;border-bottom:2px solid transparent}
+  .tabs span.on{color:var(--ink);font-weight:700;border-bottom-color:var(--green)}
+  table{width:100%;border-collapse:collapse}
+  thead th{font-family:var(--kai);font-size:11px;letter-spacing:.36em;color:var(--ink-3);
+    text-align:left;font-weight:400;padding:13px 14px 10px 0;border-bottom:1px solid var(--ink)}
+  thead th:last-child{padding-right:0}
+  tbody td{padding:12px 14px 12px 0;border-bottom:1px solid var(--paper-2);
+    font-family:var(--serif);font-size:15.5px;vertical-align:baseline;letter-spacing:.03em}
+  tbody td:last-child{padding-right:0}
+  tbody tr:last-child td{border-bottom:0}
+  tbody td.subj{font-weight:700}
+  tbody td.mdl{font-family:var(--kai);font-size:13.5px;color:var(--ink-2);letter-spacing:.12em}
+  tbody td.pk{font-weight:700;color:var(--green)}
+  .chg{display:inline-flex;align-items:center;gap:6px;color:var(--blue);font-family:var(--kai);
+    font-size:11.5px;letter-spacing:.18em;margin-left:10px;white-space:nowrap}
+  .chg::before{content:"";width:7px;height:7px;background:var(--blue);flex:none}
+  .dflt{color:var(--ink-3);font-family:var(--kai);font-size:13px;letter-spacing:.18em}
+  .pick .foot{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:14px 0 4px;font-family:var(--kai);font-size:12px;letter-spacing:.22em;color:var(--ink-3)}
+  .pick .foot b{color:var(--ink);font-family:var(--serif);letter-spacing:.14em}
+  .rel{margin-top:16px;padding-top:15px;border-top:1px solid var(--paper-2);
+    font-family:var(--kai);font-size:12.5px;line-height:2;letter-spacing:.12em;color:var(--ink-3);max-width:92ch}
+  .rel b{color:var(--ink-2);font-family:var(--serif);font-weight:700;letter-spacing:.16em}
+
+  /* ─────────── 页脚 ─────────── */
+  .foot{background:var(--ink);color:rgba(220,232,240,.62);margin-top:52px;padding:24px 34px;
+    display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11.5px;letter-spacing:.32em}
+  .foot b{font-family:var(--serif);font-size:13px;letter-spacing:.22em;color:var(--blue-5);display:block}
+  .foot .dual{display:flex;gap:12px;align-items:center}
+  .foot .dual i{width:26px;height:13px;display:inline-block}
+  .foot .dual i.g{background:var(--green-3)}
+  .foot .dual i.b{background:var(--blue-3)}
+
+  @media (max-width:980px){
+    .hi{grid-template-columns:1fr;gap:34px}
+    .flaps{align-items:flex-start}
+    .flaps .grp{text-align:left}
+    .gb{grid-template-columns:1fr;gap:32px}
+    .steps{grid-template-columns:1fr 1fr;gap:24px 0;padding-left:34px;padding-right:34px}
+    .st{border-left:0!important;padding-left:0!important;padding-right:12px}
+    .stamps{grid-template-columns:1fr;gap:32px}
+    .stampcol{justify-content:flex-start}
+    .si{grid-template-columns:1fr;gap:34px}
+    .sealwrap{align-items:flex-start}
+    .seal{width:180px;height:180px}
+    .data dl{grid-template-columns:1fr}
+    .hero,.gaugeband,.stamps,.sign,.pick,.foot{padding-left:20px;padding-right:20px}
+    .steps{padding-left:20px;padding-right:20px}
+    table,thead,tbody,tr,td,th{display:block}
+    thead{display:none}
+    tbody tr{padding:12px 0;border-bottom:1px solid var(--paper-2)}
+    tbody td{border:0;padding:2px 0}
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════ 顶栏 ══════════ -->
+<header class="bar">
+  <span class="wm">文衡</span>
+  <span class="sub">雲 南 大 學 圖 書 館<br>學 科 信 息 參 考</span>
+  <nav aria-label="工作区">
+    <a class="on" href="#">出报告</a><a href="#">灵活报告</a><a href="#">报告</a><a href="#">问文衡</a>
+    <a href="#" style="opacity:.55">主台账</a><a href="#" style="opacity:.55">运行档案</a>
+  </nav>
+  <span class="r">
+    <span>陈 列 馆 ↗</span>
+    <span class="pal"><i class="g on" title="绿·器"></i><i class="b" title="蓝·场"></i></span>
+  </span>
+</header>
+
+<!-- ══════════ 题头：蓝场 ＋ 翻牌数字 ══════════ -->
+<section class="hero">
+  <div class="hi">
+    <div>
+      <div class="ov">雲 南 大 學 圖 書 館 · 學 科 信 息 參 考 · 出 報 告</div>
+      <h1>本期报告已就绪</h1>
+      <p class="deck">阈值即水位线。复核后签单，这一版才会被标记为「可交付」。任务结束不代表报告合格或已签发。</p>
+      <div class="acts">
+        <button class="btn">复核并签单 →</button>
+        <a class="ghost" href="#">看详细过程</a>
+      </div>
+    </div>
+
+    <!-- ① 翻牌数字 -->
+    <div class="flaps" aria-label="班次与时刻">
+      <div class="grp">
+        <div class="gl">班 次 · 車 次</div>
+        <div class="flap-row">
+          <span class="flap">2</span><span class="flap">0</span><span class="flap">2</span>
+          <span class="flap gr">6</span><span class="flap rd">0</span><span class="flap rd">9</span>
+        </div>
+      </div>
+      <div class="grp">
+        <div class="gl">發 車 · 到 站</div>
+        <div class="flap-row">
+          <span class="flap sm gr">0</span><span class="flap sm gr">7</span>
+          <span class="flap sm colon">:</span>
+          <span class="flap sm gr">5</span><span class="flap sm gr">5</span>
+          <span class="flap sm gap"></span>
+          <span class="flap sm">1</span><span class="flap sm">5</span>
+          <span class="flap sm colon">:</span>
+          <span class="flap sm">0</span><span class="flap sm">3</span>
+        </div>
+      </div>
+      <div class="grp">
+        <div class="gl">第 期 · 目 錄 號</div>
+        <div class="flap-row">
+          <span class="flap sm">3</span><span class="flap sm">9</span>
+          <span class="flap sm gap"></span>
+          <span class="flap sm">2</span><span class="flap sm">0</span><span class="flap sm">2</span>
+          <span class="flap sm">6</span><span class="flap sm">0</span><span class="flap sm">9</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 水位标尺（绿·器）＋ 四道工序 ══════════ -->
+<section class="gaugeband">
+  <div class="gb">
+    <div class="tl">
+      <div class="ov">水 位 標 尺 · 接 近 度</div>
+      <h2>阈值即水位线，<br>本期读数 0.78。</h2>
+      <p class="deck">翠湖之畔，滇池淼淼。ESI 前 1% 被引阈值是警戒水位，八家潜力学科各是一根水尺。</p>
+    </div>
+
+    <!-- ② 水位标尺 -->
+    <div class="gauge">
+      <div class="gh"><b>本 期 水 位</b><span>第 3 9 期 · 2 0 2 6 0 9</span></div>
+      <div class="scale">
+        <div class="ticks" aria-hidden="true">
+          <span class="tk maj"></span><span class="tk"></span><span class="tk"></span><span class="tk"></span>
+          <span class="tk maj"></span><span class="tk"></span><span class="tk"></span><span class="tk"></span>
+          <span class="tk maj"></span><span class="tk"></span><span class="tk"></span><span class="tk"></span>
+          <span class="tk maj"></span>
+        </div>
+        <div class="water"></div>
+        <div class="thr" style="bottom:80%"><span class="lb">ESI 前 1% 閾 值</span></div>
+        <div class="read">0.78<small>本 期 讀 數</small></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 四道工序 -->
+  <div class="steps">
+    <div class="st"><div class="bar"><i style="width:100%"></i></div>
+      <div class="k">一 段 · 立</div><div class="v">下载数据核验</div><div class="m">64 / 64 完成</div></div>
+    <div class="st"><div class="bar"><i style="width:100%"></i></div>
+      <div class="k">二 段 · 擇</div><div class="v">选择章节</div><div class="m">按大纲全选</div></div>
+    <div class="st now"><div class="bar"><i style="width:72%"></i></div>
+      <div class="k">三 段 · 成</div><div class="v">生成初稿</div><div class="m">10-13 15:03 已出稿</div></div>
+    <div class="st todo"><div class="bar"><i></i></div>
+      <div class="k">四 段 · 合</div><div class="v">核验与定稿</div><div class="m">待复核签单</div></div>
+  </div>
+</section>
+
+<!-- ══════════ 三枚橡皮戳（戳印之一）＋ 数据 ══════════ -->
+<section class="stamps">
+  <div>
+    <div class="stampcol">
+      <!-- 绿圆 -->
+      <div class="stp g1">
+        <svg viewBox="0 0 132 132" aria-hidden="true">
+          <defs><filter id="ink1" x="-8%" y="-8%" width="116%" height="116%">
+            <feTurbulence type="fractalNoise" baseFrequency="1.3" numOctaves="2" seed="4"/>
+            <feDisplacementMap in="SourceGraphic" scale="2.4"/></filter></defs>
+          <g filter="url(#ink1)">
+            <circle cx="66" cy="66" r="58" fill="none" stroke="currentColor" stroke-width="4.5"/>
+            <circle cx="66" cy="66" r="49" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          </g>
+        </svg>
+        <div class="sx"><span class="t">已 并 入<br>台 賬</span><span class="d">09.13</span></div>
+      </div>
+      <!-- 绿方 -->
+      <div class="stp g2">
+        <svg viewBox="0 0 132 132" aria-hidden="true">
+          <defs><filter id="ink2" x="-8%" y="-8%" width="116%" height="116%">
+            <feTurbulence type="fractalNoise" baseFrequency="1.3" numOctaves="2" seed="9"/>
+            <feDisplacementMap in="SourceGraphic" scale="2.4"/></filter></defs>
+          <g filter="url(#ink2)">
+            <rect x="8" y="8" width="116" height="116" fill="none" stroke="currentColor" stroke-width="4.5"/>
+            <rect x="17" y="17" width="98" height="98" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          </g>
+        </svg>
+        <div class="sx"><span class="t">已 出 稿</span><span class="d">10.13 15:03</span></div>
+      </div>
+      <!-- 红五边（警戒二） -->
+      <div class="stp r1">
+        <svg viewBox="0 0 132 132" aria-hidden="true">
+          <defs><filter id="ink3" x="-8%" y="-8%" width="116%" height="116%">
+            <feTurbulence type="fractalNoise" baseFrequency="1.3" numOctaves="2" seed="14"/>
+            <feDisplacementMap in="SourceGraphic" scale="2.4"/></filter></defs>
+          <g filter="url(#ink3)">
+            <polygon points="66,8 122,42 108,108 24,108 10,42" fill="none" stroke="currentColor" stroke-width="4.5"/>
+            <polygon points="66,20 112,47 101,98 31,98 20,47" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          </g>
+        </svg>
+        <div class="sx"><span class="t">復 核 通 過</span><span class="d">PENDING</span></div>
+      </div>
+    </div>
+    <div class="stampcap">三 枚 橡 皮 戳 · 本 期 已 鈐 二</div>
+  </div>
+
+  <!-- 数据 -->
+  <div class="data">
+    <div class="dt">本 期 數 據</div>
+    <dl>
+      <div class="pair"><dt>期 次</dt><dd><b>202609</b>　第 39 期</dd></div>
+      <div class="pair"><dt>預 測 / 實 際</dt><dd>202609 / 202609</dd></div>
+      <div class="pair"><dt>下 載 數 據</dt><dd><b>64 / 64</b></dd></div>
+      <div class="pair"><dt>核 對 並 並 入</dt><dd>已并入台账</dd></div>
+      <div class="pair"><dt>台 賬 文 件</dt><dd>云大全学科排名、阈值动态检测表.xlsx</dd></div>
+      <div class="pair"><dt>最 後 修 改</dt><dd>2026 年 9 月 28 日 07:55</dd></div>
+      <div class="pair"><dt>生 成 初 稿</dt><dd>2026-10-13 15:03</dd></div>
+      <div class="pair"><dt>任 務</dt><dd>已完成</dd></div>
+    </dl>
+  </div>
+</section>
+
+<!-- ══════════ 签单区：钤印落在签单动作上（戳印之二） ══════════ -->
+<section class="sign">
+  <div class="si">
+    <div>
+      <div class="ov">復 核 並 簽 單</div>
+      <h2>复核后签单，<br>这一版即可交付。</h2>
+      <p class="deck">任务结束不代表报告合格或已签发。复核无异议后签单，这一版才会被标记为「可交付」。八家潜力学科按你的选择出图，报告正文用接近度前二。</p>
+      <div class="warn">管 理 員 當 前 不 能 下 載 未 簽 發 的 初 稿</div>
+      <div class="acts">
+        <button class="btn-paper">盖 印 签 单 →</button>
+        <a class="ghost" href="#">看详细过程</a>
+      </div>
+    </div>
+
+    <!-- ④ 至公天下 钤印 -->
+    <div class="sealwrap">
+      <div class="seal">
+        <svg viewBox="0 0 212 212" aria-label="至公天下 钤印">
+          <defs><filter id="ink4" x="-6%" y="-6%" width="112%" height="112%">
+            <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="21"/>
+            <feDisplacementMap in="SourceGraphic" scale="3"/></filter></defs>
+          <g filter="url(#ink4)">
+            <rect x="7" y="7" width="198" height="198" fill="#B23A2B"/>
+            <rect x="21" y="21" width="170" height="170" fill="none" stroke="#DFEDE6" stroke-width="3.2"/>
+          </g>
+          <g font-family="'Noto Serif SC','Songti SC',serif" font-weight="700"
+             font-size="58" text-anchor="middle" fill="#DFEDE6" letter-spacing="4">
+            <text x="72" y="90">至</text><text x="152" y="90">公</text>
+            <text x="72" y="164">天</text><text x="152" y="164">下</text>
+          </g>
+          <!-- 中缝界格 -->
+          <line x1="106" y1="26" x2="106" y2="186" stroke="#DFEDE6" stroke-width="1.6" opacity=".5"/>
+          <line x1="26" y1="106" x2="186" y2="106" stroke="#DFEDE6" stroke-width="1.6" opacity=".5"/>
+        </svg>
+      </div>
+      <div class="sealcap">鈐 印 後 即 為 可 交 付</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 选模表 ══════════ -->
+<section class="pick">
+  <div class="hd">
+    <h2><span class="n">八 家 · 選 模 表</span>本期选模</h2>
+    <a class="lnk" href="#">去预测台看图改选 →</a>
+  </div>
+  <div class="tabs"><span class="on">路线1 · 总被引 / ESI 前 1% 被引阈值</span><span>路线2 · 国内排名 / 国内前 1% 机构数</span></div>
+  <table>
+    <thead><tr>
+      <th style="width:28%">潛 力 學 科</th>
+      <th style="width:32%">V 1 推 薦</th>
+      <th>本 期 已 選</th>
+    </tr></thead>
+    <tbody>
+      <tr><td class="subj">免疫学</td><td class="mdl">季节性 ETS 模型</td><td class="pk">SARIMA 模型<span class="chg">已改选</span></td></tr>
+      <tr><td class="subj">分子生物学与遗传学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">多学科</td><td class="mdl">Holt 趋势模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">物理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">神经科学与行为科学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">空间科学</td><td class="mdl">SARIMA 模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">精神病学与心理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">经济与商业</td><td class="mdl">SARIMA 模型</td><td class="dflt">默 认</td></tr>
+    </tbody>
+  </table>
+  <div class="foot">
+    <span>已 保 存 · admin · 2026-10-16 12:12</span>
+    <span>改 選 請 至　<b>預 測 台</b></span>
+  </div>
+  <p class="rel"><b>與 報 告 的 關 係</b>　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+</section>
+
+<!-- ══════════ 页脚 ══════════ -->
+<footer class="foot">
+  <div><b>文衡 · 汇</b>雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+  <div class="dual"><i class="b"></i><i class="g"></i>　藍 為 場　·　綠 為 器</div>
+  <div>第 39 期　·　2 0 2 6 0 9　·　簽 發 後 歸 檔</div>
+</footer>
+</body>
+</html>
