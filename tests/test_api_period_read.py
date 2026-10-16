@@ -98,6 +98,29 @@ class TestCharts:
             assert "group" in it
             assert "rel" in it
 
+    def test_预测图带读得懂的名字(self, tmp_path):
+        """2026-10-16：未进 1% 全画后，图册给 forecast_*.png 配「学科 · 图别」。"""
+        ov = tmp_path / "charts" / "_overview"
+        ov.mkdir(parents=True)
+        (ov / "forecast_3_cites.png").write_bytes(b"png")
+        (tmp_path / "forecast_charts.json").write_text(json.dumps({
+            "charts": [
+                {"index": 3, "subject": "免疫学", "task": "citation", "kind": "cites",
+                 "png": "forecast_3_cites.png"},
+                {"index": 3, "subject": "免疫学", "task": "rank", "kind": "rank",
+                 "png": "forecast_3_rank.png"},
+                {"subject": 7, "png": None},
+            ],
+        }, ensure_ascii=False), encoding="utf-8")
+        labels = app_module._forecast_chart_labels(tmp_path)
+        assert labels == {
+            "forecast_3_cites.png": "免疫学 · 被引频次与阈值（预测图）",
+            "forecast_3_rank.png": "免疫学 · 国内排名与机构数（预测图）",
+        }
+
+    def test_无预测元数据_标签留空不猜(self, tmp_path):
+        assert app_module._forecast_chart_labels(tmp_path) == {}
+
 
 class Test权限门:
     def test_redslots仍只管理员(self):

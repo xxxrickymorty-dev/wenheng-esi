@@ -112,6 +112,32 @@ def write_entry(period, choice, *, by, at, choices_dir):
     return target
 
 
+def read_applied(period, *, out_dir):
+    """读「上次出稿实际用的选择」——`out/<期次>/_forecast_choice_applied.json`。
+
+    前端用它和已保存的选择**比值**（不比时间）：两边一致＝当前成品是最新的；
+    不一致＝改选还没进报告。没有该文件（该期没出过稿、或老期次没留痕）→ None，
+    调用方不显示任何「未重出」提示（无法核实就不猜）。
+
+    字段名向 GET 的 choice/by/at 看齐（快照里原叫 operator / config_updated_at）。
+    """
+    path = pathlib.Path(out_dir) / period / APPLIED_FILE
+    record, _error = _read_file(path)
+    if not isinstance(record, dict):
+        return None
+
+    def text(key):
+        value = record.get(key, "")
+        return value if isinstance(value, str) else ""
+
+    return {
+        "choice": record.get("choice") if isinstance(record.get("choice"), dict) else {},
+        "by": text("operator"),
+        "at": text("config_updated_at"),
+        "snapshot_at": text("snapshot_at"),
+    }
+
+
 def snapshot(period, *, choices_dir, out_dir, snapshot_at):
     """创建任务时冻结请求期次的配置（不改写 legacy 文件）。"""
     entry = read_entry(period, choices_dir=choices_dir, out_dir=out_dir)

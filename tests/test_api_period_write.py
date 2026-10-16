@@ -80,6 +80,32 @@ class TestForecastChoice落盘:
         assert loaded["choice"] == choice
         assert loaded["by"] == config.ADMIN_USER
         assert loaded["at"]
+        assert loaded["applied"] is None      # 没出过稿：没有可比的出稿快照，不猜
+
+    def test_GET带出稿快照_未重出时两边可比(self, tmp_path, monkeypatch):
+        """2026-10-16：GET 附「上次出稿实际用的选择」——前端拿它和已保存选择比值。"""
+        out_dir = tmp_path / "out"
+        choices_dir = out_dir / "_forecast_choices"
+        period = "202609"
+        monkeypatch.setattr(config, "OUT_DIR", out_dir)
+        monkeypatch.setattr(config, "FORECAST_CHOICES_DIR", choices_dir)
+        choices_dir.mkdir(parents=True)
+        (choices_dir / f"{period}.json").write_text(json.dumps({
+            "choice": {"citation": {"免疫学": "SARIMA模型"}},
+            "by": "admin", "at": "2026-10-16 12:12:42",
+        }, ensure_ascii=False), encoding="utf-8")
+        applied_file = out_dir / period / "_forecast_choice_applied.json"
+        applied_file.parent.mkdir(parents=True)
+        applied_file.write_text(json.dumps({
+            "choice": {}, "operator": "", "config_updated_at": "",
+            "snapshot_at": "2026-10-13 14:59:44", "request_period": period,
+        }, ensure_ascii=False), encoding="utf-8")
+
+        got = asyncio.run(app_module.api_forecast_choice_get(
+            _Req(config.ADMIN_USER), period))
+        assert got["choice"] == {"citation": {"免疫学": "SARIMA模型"}}
+        assert got["applied"] == {"choice": {}, "by": "", "at": "",
+                                  "snapshot_at": "2026-10-13 14:59:44"}
 
     def test_POST保存后缀期次时保留原名(self, tmp_path, monkeypatch):
         out_dir = tmp_path / "out"
@@ -133,7 +159,7 @@ class TestForecastChoice落盘:
             _Req(config.ADMIN_USER), period))
         assert old == {
             "period": period, "choice": old_choice,
-            "by": "old-admin", "at": "old-time",
+            "by": "old-admin", "at": "old-time", "applied": None,
         }
         assert not choices_dir.exists()
         assert json.loads(old_file.read_text(encoding="utf-8"))["choice"] == old_choice

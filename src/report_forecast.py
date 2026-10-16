@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
-"""预测章配图：2 个潜力学科 × 2 图（被引频次/阈值、国内机构数/云大排名）。
+"""预测章配图：全部未进入 1% 的潜力学科 × 2 图（被引频次/阈值、国内机构数/云大排名）。
 
+- 2026-10-16（rick）起：未进 1% 的**每个**学科都出预测图（进本期图册；改选对全部学科可见）。
+  报告正文仍只用接近度**前二**（母版 4 图槽：学科1 被引 → 学科1 排名 → 学科2 被引 → 学科2 排名），
+  即 `forecast_{1|2}_{cites|rank}.png` 位置对号入座；其余学科从 `forecast_3_…` 起编号，
+  只进图册、不进报告。数据校验未过的历史期次只出报告前二（不带病扩图）。
 - 数据：`out/<期次>/` 的只读派生产物（经 `esi_v1.data` 组装四列标准输入）
 - 口径：V1 交接包调用副本 —— 模型默认 `"recommended"`（202607 基线推荐模型）；
   选模记录（契约 #17 嵌套形状）的读写统一走 `forecast_choice`：运行时 applied 快照
@@ -8,11 +12,11 @@
   （`out/<期次>/forecast_choice.json`）读回；记录里列出的 (路线, 学科) 按所选模型出图，
   未列出＝推荐；所选模型失败降级推荐并在 `warnings` 留痕（`run_pipeline` 收进 run_log）。
   多期结果按 V1 的逐期递推外推 `HORIZON` 期（与网页预测工作台同一口径）
-- 产物：`out/<期次>/charts/_overview/forecast_{1|2}_{cites|rank}.png`
+- 产物：`out/<期次>/charts/_overview/forecast_{1..N}_{cites|rank}.png`
   + `out/<期次>/forecast_charts.json`（学科/模型/过线期/选模警告，红色件清单与 run_log 引用）
 
-⚠ 图号（1/2）按「未进入 1% 学科中接近度前二」的顺序，与报告预测章 4 条图题的
-出现顺序一一对应；报告侧 `fill_docx.fill_forecast_charts` 按位置对号入座
+⚠ 图号按「未进入 1% 学科接近度降序」编号，与报告预测章 4 条图题的出现顺序一一对应
+（前两个学科）；报告侧 `fill_docx.fill_forecast_charts` 按位置对号入座
 （母版图题里的学科名与台账名存在历史写法差异，不能按名字匹配）。
 """
 from __future__ import annotations
@@ -62,7 +66,11 @@ def _forecast_upto(period_dir, period_override=None):
 
 
 def pick_subjects(period_dir, upto=None):
-    """未进入 1%（接近度<1）的学科中接近度前二 —— 与概述 facts 同一规则。
+    """未进入 1%（接近度<1）的学科，按接近度降序 —— 与概述 facts 同一规则。
+
+    2026-10-16（rick）：全部未进学科都出预测图（进本期图册，改选对全部学科可见）；
+    报告正文仍只用**前二**（母版 4 图槽按位置入位），即本列表的前两个。
+    数据校验未过的历史期次只出前二（见 `_generate`，避免带病扩图）。
 
     `upto`（如 "202605"）：只认该期（含）之前的接近度列，补跑历史期时必传。
     """
@@ -74,7 +82,7 @@ def pick_subjects(period_dir, upto=None):
         raise ValueError("proximity_1pct 没有有效期次。")
     col = prox[cols[-1]].dropna()
     subjects = [display_name(en) for en in col[col < 1].sort_values(ascending=False).index]
-    return subjects[:2], cols[-1]
+    return subjects, cols[-1]
 
 
 def load_choice(period_dir, choice_path=None):
@@ -154,13 +162,19 @@ def generate(period_dir, choice_path=None, period_override=None) -> int:
 
 
 def _generate(period_dir, choice_path=None, period_override=None) -> int:
-    """渲染 4 张预测图；返回张数（异常向上抛，由调用方决定降级策略）。"""
+    """渲染预测图；返回张数（异常向上抛，由调用方决定降级策略）。
+
+    2026-10-16（rick）：未进 1% 的全部学科 × 两路线都出图（进本期图册）；
+    报告母版 4 图槽只用前二，按 `forecast_{1|2}_{cites|rank}.png` 位置对号入座。
+    """
     period_dir = pathlib.Path(period_dir)
     upto = _forecast_upto(period_dir, period_override)
     subjects_cn, period = pick_subjects(period_dir, upto=upto)
     if len(subjects_cn) < 2:
         raise ValueError("未进入 1% 的潜力学科不足 2 个，预测图无从生成。")
+    report_subjects = subjects_cn[:2]                 # 报告正文只画前二（母版 4 槽）
 
+    validation_failed = False
     try:
         data, _meta = load_standard_input(period_dir, upto=upto)
     except ValueError as exc:
@@ -169,8 +183,9 @@ def _generate(period_dir, choice_path=None, period_override=None) -> int:
         # 一旦命中，宁可不出图也不带病出图（重新抛出）。
         if "V1输入校验失败" not in str(exc):
             raise
-        if "经济与商业" in subjects_cn:
+        if "经济与商业" in report_subjects:
             raise ValueError(f"本期目标学科命中 V1 数据修正闸门，禁止降级出图：{exc}") from exc
+        validation_failed = True
         data, _meta = load_standard_input(period_dir, validate=False, upto=upto)
     known = set(data["学科"])
     missing = [s for s in subjects_cn if s not in known]
@@ -179,8 +194,11 @@ def _generate(period_dir, choice_path=None, period_override=None) -> int:
 
     ov = period_dir / "charts" / "_overview"
     choices, warnings = load_choice(period_dir, choice_path)
+    to_chart = report_subjects if validation_failed else subjects_cn
+    if validation_failed and len(subjects_cn) > len(to_chart):
+        warnings.append("预测图：本期数据校验未过，只出报告前二；其余学科待数据修正后重出。")
     made, chart_meta = [], []
-    for i, cn in enumerate(subjects_cn, 1):
+    for i, cn in enumerate(to_chart, 1):
         for task, kind, labels, colors in (
                 ("citation", "cites", CITES_LABELS, CITES_COLORS),
                 ("rank", "rank", RANK_LABELS, RANK_COLORS)):

@@ -240,6 +240,31 @@ class Test留痕:
         assert prov["output_period"] == "202609"
         assert prov["operator"] == "" and prov["snapshot_source"] == ""
 
+    def test_read_applied_存在与缺失(self, tmp_path):
+        """「上次出稿实际用的选择」：有快照回三件套（字段名向 GET 看齐），没有回 None。"""
+        out = tmp_path / "out"
+        assert forecast_choice.read_applied("202609", out_dir=out) is None
+        _write(out / "202609" / forecast_choice.APPLIED_FILE, {
+            "choice": {"citation": {"免疫学": "SARIMA模型"}},
+            "operator": "admin", "config_updated_at": "2026-10-13 14:59:44",
+            "snapshot_at": "2026-10-13 14:59:44", "request_period": "202609",
+        })
+        assert forecast_choice.read_applied("202609", out_dir=out) == {
+            "choice": {"citation": {"免疫学": "SARIMA模型"}},
+            "by": "admin", "at": "2026-10-13 14:59:44",
+            "snapshot_at": "2026-10-13 14:59:44",
+        }
+
+    def test_read_applied_坏文件不猜(self, tmp_path):
+        """读不出来就回 None（前端不显示提示）——不解析半份、不瞎补字段。"""
+        out = tmp_path / "out"
+        bad = out / "202609" / forecast_choice.APPLIED_FILE
+        bad.parent.mkdir(parents=True)
+        bad.write_text("{坏", encoding="utf-8")
+        assert forecast_choice.read_applied("202609", out_dir=out) is None
+        _write(bad, ["不是对象"])
+        assert forecast_choice.read_applied("202609", out_dir=out) is None
+
 
 class Test严格校验与常量:
     def test_validate_合法(self):

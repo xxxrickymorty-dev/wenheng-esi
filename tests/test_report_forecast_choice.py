@@ -194,6 +194,80 @@ class Test出图接线:
         assert all(c["model"] == "季节性ETS模型" for c in meta["charts"])
         assert meta["warnings"] == []
 
+    def test_全部未进学科都出图_报告前二定位不变(self, tmp_path, monkeypatch):
+        """2026-10-16（rick）：未进 1% 的全部学科都出图（进图册，改选对全部学科可见）；
+        报告母版 4 槽只用前二——前二仍是 1/2 号图，新增学科从 3 号起编号。"""
+        three = [*SUBJECTS, "免疫学"]
+
+        def fake(subject, periods, series, task, model, horizon):
+            used = "季节性ETS模型" if model == "recommended" else model
+            return {"results": [{"model": used, "rolling_mape": 1.0,
+                                 "first_crossing": None,
+                                 "forecast": [{"period": 202609}]}]}
+
+        _stub_generate(monkeypatch, fake)
+        monkeypatch.setattr(report_forecast, "pick_subjects",
+                            lambda d, upto=None: (list(three), "202609"))
+        monkeypatch.setattr(report_forecast, "load_standard_input",
+                            lambda d, validate=True, upto=None: (pd.DataFrame({"学科": three}), {}))
+        _write_choice(tmp_path, {"citation": {"免疫学": "SARIMA模型"}})
+        assert report_forecast.generate(tmp_path) == 6
+
+        meta = json.loads((tmp_path / "forecast_charts.json").read_text(encoding="utf-8"))
+        assert meta["generated"] == 6
+        by_key = {(c["subject"], c["task"]): c for c in meta["charts"]}
+        assert by_key[("分子生物学与遗传学", "citation")]["index"] == 1
+        assert by_key[("物理学", "citation")]["index"] == 2
+        assert by_key[("免疫学", "citation")]["index"] == 3
+        assert by_key[("免疫学", "citation")]["png"] == "forecast_3_cites.png"
+        # 改选对非报告学科同样生效；未选的仍走推荐
+        assert by_key[("免疫学", "citation")]["model"] == "SARIMA模型"
+        assert by_key[("免疫学", "rank")]["requested"] == "recommended"
+        assert meta["warnings"] == []
+
+    def test_数据校验未过_只出报告前二并警告(self, tmp_path, monkeypatch):
+        """历史修正闸门（如 经济与商业旧值）只拦报告前二；校验未过时其余学科不出图。"""
+        three = [*SUBJECTS, "经济与商业"]
+
+        def fake(subject, periods, series, task, model, horizon):
+            return {"results": [{"model": "季节性ETS模型", "rolling_mape": 1.0,
+                                 "first_crossing": None,
+                                 "forecast": [{"period": 202605}]}]}
+
+        _stub_generate(monkeypatch, fake)
+        monkeypatch.setattr(report_forecast, "pick_subjects",
+                            lambda d, upto=None: (list(three), "202605"))
+
+        def loader(d, validate=True, upto=None):
+            if validate:
+                raise ValueError("V1输入校验失败：经济与商业 202003 旧 364 → 现行 31")
+            return pd.DataFrame({"学科": three}), {}
+
+        monkeypatch.setattr(report_forecast, "load_standard_input", loader)
+        assert report_forecast.generate(tmp_path) == 4
+        meta = json.loads((tmp_path / "forecast_charts.json").read_text(encoding="utf-8"))
+        assert {c["subject"] for c in meta["charts"]} == set(SUBJECTS)
+        assert any("校验未过" in w for w in meta["warnings"])
+
+    def test_闸门学科在报告前二_仍硬拦(self, tmp_path, monkeypatch):
+        def fake(subject, periods, series, task, model, horizon):
+            return {"results": [{"model": "季节性ETS模型", "rolling_mape": 1.0,
+                                 "first_crossing": None,
+                                 "forecast": [{"period": 202605}]}]}
+
+        _stub_generate(monkeypatch, fake)
+        monkeypatch.setattr(report_forecast, "pick_subjects",
+                            lambda d, upto=None: (["经济与商业", *SUBJECTS], "202605"))
+
+        def loader(d, validate=True, upto=None):
+            if validate:
+                raise ValueError("V1输入校验失败：经济与商业 202003 旧 364 → 现行 31")
+            return pd.DataFrame({"学科": ["经济与商业", *SUBJECTS]}), {}
+
+        monkeypatch.setattr(report_forecast, "load_standard_input", loader)
+        with pytest.raises(ValueError, match="修正闸门"):
+            report_forecast.generate(tmp_path)
+
     def test_预测元数据留存请求与输出期次来源(self, tmp_path, monkeypatch):
         def fake(subject, periods, series, task, model, horizon):
             return {"results": [{"model": "季节性ETS模型", "rolling_mape": 1.0,

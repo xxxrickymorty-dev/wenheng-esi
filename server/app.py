@@ -1269,6 +1269,10 @@ async def api_period_sign_json(request: Request, period: str):
 async def api_forecast_choice_get(request: Request, period: str):
     """读回请求期次的预测模型选择，仅管理员可读。
 
+    `applied`＝**上次出稿实际用的选择**（当期产物的出稿快照，只读）——前端拿它和已保存的
+    `choice` 比值：不一致＝改选还没进报告（2026-10-16 加，rick 要求说清「报告还是旧的」）；
+    没有该文件（没出过稿的老期次）→ null，前端不显示提示。
+
     ⚠️ 这条是 **GET**（2026-09-24 修）：此前被误挂成 `@app.post`，又注册在下面的
     `api_route(methods=["GET","POST"])` 之前——FastAPI 按注册顺序匹配，POST 会被这条
     抢先接走，导致「保存选择」永远只读回、不落盘。改装饰器前先想一遍注册顺序。"""
@@ -1277,7 +1281,8 @@ async def api_forecast_choice_get(request: Request, period: str):
     entry = forecast_choice.read_entry(
         period, choices_dir=config.FORECAST_CHOICES_DIR, out_dir=config.OUT_DIR)
     return {"period": period, "choice": entry["choice"],
-            "by": entry["by"], "at": entry["at"]}
+            "by": entry["by"], "at": entry["at"],
+            "applied": forecast_choice.read_applied(period, out_dir=config.OUT_DIR)}
 
 
 def _forecast_choice_period_is_safe(period):
@@ -1763,11 +1768,35 @@ async def api_period_charts_json(request: Request, period: str,
     if d is None:
         return _period_missing()
     q = urllib.parse.quote(d.name)
+    labels = _forecast_chart_labels(d)
     items = []
     for it in jobs.list_charts(d):
         items.append({"name": it["name"], "group": it["group"],
+                      "label": labels.get(it["name"], ""),
                       "url": f"/p/{q}/chart/" + urllib.parse.quote(it["rel"])})
     return _paginate(items, limit, offset)
+
+
+def _forecast_chart_labels(period_dir):
+    """预测图的读得懂的名字：`forecast_3_cites.png` → 「免疫学 · 被引频次与阈值（预测图）」。
+
+    源＝本期 `forecast_charts.json`（出图时写定）；缺文件/字段就留空，不猜（前端回落文件名）。
+    2026-10-16 加：未进 1% 的全部学科都出图后，图册里再显示裸文件名就太难认了。
+    """
+    mp = pathlib.Path(period_dir) / "forecast_charts.json"
+    try:
+        charts = json.loads(mp.read_text(encoding="utf-8")).get("charts", [])
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return {}
+    labels = {}
+    for c in charts:
+        if not isinstance(c, dict):
+            continue
+        png, subject, kind = c.get("png"), c.get("subject"), c.get("kind")
+        if isinstance(png, str) and isinstance(subject, str) and kind in ("cites", "rank"):
+            metric = "被引频次与阈值" if kind == "cites" else "国内排名与机构数"
+            labels[png] = f"{subject} · {metric}（预测图）"
+    return labels
 
 
 @app.get("/api/ledger/sheets")
