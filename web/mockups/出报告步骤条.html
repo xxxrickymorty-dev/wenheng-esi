@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文衡 · 出报告步骤条（进度条形态）— 静态稿（待审）</title>
+<style>
+  /* ============ 令牌：逐字取自 web/src/index.css（云大绿主题）============ */
+  :root{
+    --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB;
+    --ink:#222B25; --ink-2:#3F4C42; --ink-3:#58655C;
+    --line:#DDE1D8; --line-2:#E6E9E2;
+    --zhu:#1A4B27; --zhu-soft:#E3EDE4;
+    --gold:#B19A65; --gold-soft:#F1EBDD; --gold-ink:#62501F;
+    --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --r:14px; --r-sm:10px;
+    --shadow:0 1px 2px rgba(34,43,37,.06),0 8px 24px rgba(34,43,37,.06);
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font:16px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  .page{max-width:1180px;margin:0 auto;padding:26px 22px 70px}
+  .card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:20px 22px}
+  .crumb{font-size:13px;color:var(--ink-3);margin-bottom:6px}
+  h1{font-size:26px;margin:0 0 8px}
+  .lead{color:var(--ink-2);font-size:14.5px;max-width:74ch;margin-bottom:18px}
+  .lead b{color:var(--ink)}
+
+  /* ============ 工具行（全局演示控制）============ */
+  .tools{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+  .tools .grp{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-3)}
+  .tbtn{font:inherit;font-size:13.5px;padding:5px 13px;border-radius:999px;border:1px solid var(--line);
+    background:var(--card);color:var(--ink-2);cursor:pointer}
+  .tbtn:hover{border-color:var(--zhu);color:var(--zhu)}
+  .tbtn.on{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:650}
+  .readout{font-size:13.5px;color:var(--ink-2);margin-left:auto}
+  .readout b{color:var(--zhu)}
+
+  /* ============ 演示卡 ============ */
+  .demo{margin-bottom:16px}
+  .demo-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+  .demo-h h2{font-size:17px}
+  .demo-h .who{font-size:12px;color:var(--zhu);background:var(--zhu-soft);border-radius:6px;padding:2px 8px;font-weight:650}
+  .demo-h .who.alt{color:var(--gold-ink);background:var(--gold-soft)}
+  .demo-note{font-size:13px;color:var(--ink-3);margin-bottom:14px}
+
+  /* 仿真的页面头（只给语境，不是要改的部分） */
+  .fauxbar{border-bottom:1px solid var(--line-2);padding-bottom:10px;margin-bottom:14px;font-size:14px;color:var(--ink-2)}
+  .fauxbar b{font-family:var(--serif);font-size:16px;color:var(--ink);font-weight:600}
+
+  /* ============ 步骤条本体 ============ */
+  .flow{margin:2px 0 0}
+  .flow-bar{display:flex;gap:3px;height:12px;border-radius:999px}
+  .seg{flex:1 1 0;background:var(--line-2);border-radius:999px;overflow:hidden;position:relative}
+  .seg-fill{display:block;height:100%;width:100%;background:var(--zhu);border-radius:999px;
+    transform:scaleX(0);transform-origin:left center;
+    transition:transform .56s cubic-bezier(.2,0,0,1) calc(var(--i) * 70ms)}
+  .seg-fill.on{transform:scaleX(1)}
+  /* 乙版：当前分区＝浅绿在途态（不填实） */
+  .seg.current{background:var(--zhu-soft)}
+  .seg.current::after{content:"";position:absolute;inset:0;border-radius:999px;
+    background:var(--zhu);opacity:.14;animation:transit 2s ease-in-out infinite}
+  @keyframes transit{0%,100%{opacity:.08}50%{opacity:.22}}
+
+  .flow-labels{display:grid;grid-template-columns:repeat(4,1fr);margin-top:9px}
+  .flow-label{justify-self:center;display:inline-flex;align-items:center;gap:6px;
+    font-size:13.5px;color:var(--ink-3);padding:3px 12px;border-radius:999px;cursor:pointer;
+    transition:color .25s,background .25s}
+  .flow-label.done{color:var(--ink-2)}
+  .flow-label.now{color:var(--zhu);background:var(--zhu-soft);font-weight:650}
+  .flow-label.na{opacity:.4;cursor:not-allowed}
+  .flow-label.na em{font-style:normal;font-size:11.5px;margin-left:4px}
+
+  /* ============ 降级：模拟 prefers-reduced-motion ============ */
+  html.rm .seg-fill{transition:none !important}
+  html.rm .seg.current::after{animation:none;opacity:.14}
+  html.rm .flow-label{transition:none}
+
+  /* ============ 说明区 ============ */
+  .notes{margin-top:8px}
+  .notes h2{font-size:17px;margin-bottom:10px}
+  .notes ul{padding-left:20px;margin:6px 0 12px}
+  .notes li{font-size:14px;color:var(--ink-2);margin:5px 0}
+  .notes b{color:var(--ink)}
+  .notes .kbd{font-family:Consolas,monospace;font-size:12.5px;background:var(--panel);border-radius:6px;padding:1px 6px}
+  .tag{display:inline-block;font-size:12px;color:var(--zhu);background:var(--zhu-soft);border-radius:6px;padding:2px 8px;font-weight:650}
+  .tag.q{color:var(--gold-ink);background:var(--gold-soft)}
+  .split{height:1px;background:var(--line-2);margin:14px 0}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="crumb">出报告 · 静态稿（待审）· 未动 React 代码</p>
+  <h1>出报告步骤条 → 进度条形态</h1>
+  <p class="lead">
+    按 rick 画的样子：<b>一条全宽进度条往前，四个分区等大</b>；每一步的标签对齐在自己的分区下面
+    （不换行、不挤压）。切屏时进度往前扫；首次进页从零画到当前步。
+    下面两版只差一处：<b>当前分区要不要跟着点亮</b>，你挑一个。
+  </p>
+
+  <!-- ============ 全局演示控制 ============ -->
+  <div class="card tools">
+    <span class="grp">切到第几步：</span>
+    <span class="grp" id="stepbtns">
+      <button class="tbtn stepbtn" data-step="1">① 取数并核验</button>
+      <button class="tbtn stepbtn" data-step="2">② 选材</button>
+      <button class="tbtn stepbtn" data-step="3">③ 生成初稿</button>
+      <button class="tbtn stepbtn" data-step="4">④ 核验与定稿</button>
+    </span>
+    <span class="grp">
+      <button class="tbtn" id="play">自动演示一遍</button>
+    </span>
+    <span class="grp">角色：</span>
+    <span class="grp">
+      <button class="tbtn on" id="roleAdmin">管理员</button>
+      <button class="tbtn" id="roleOperator">操作员</button>
+    </span>
+    <span class="grp">
+      <button class="tbtn" id="rm">模拟「减少动态效果」</button>
+    </span>
+    <span class="readout">当前：<b id="readout">① 取数并核验</b></span>
+  </div>
+
+  <!-- ============ 甲版 ============ -->
+  <section class="card demo" data-variant="jia">
+    <div class="demo-h">
+      <h2>甲 · 走到哪亮到哪</h2>
+      <span class="who alt">备选</span>
+    </div>
+    <p class="demo-note">当前分区也整格点亮：①屏 1/4、②屏 2/4、③屏 3/4、④屏拉满 4/4。进度感最强，但「到 ④ 才刚要开始核验，条已满」。</p>
+    <div class="fauxbar"><b>出报告 · 取数并核验</b>　（仿真语境）</div>
+    <div class="flow">
+      <div class="flow-bar" role="presentation">
+        <span class="seg"><i class="seg-fill" style="--i:0"></i></span>
+        <span class="seg"><i class="seg-fill" style="--i:1"></i></span>
+        <span class="seg"><i class="seg-fill" style="--i:2"></i></span>
+        <span class="seg"><i class="seg-fill" style="--i:3"></i></span>
+      </div>
+      <div class="flow-labels">
+        <a class="flow-label" href="#" data-step="1">① 取数并核验</a>
+        <a class="flow-label" href="#" data-step="2">② 选材</a>
+        <a class="flow-label" href="#" data-step="3">③ 生成初稿</a>
+        <a class="flow-label" href="#" data-step="4">④ 核验与定稿</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 乙版 ============ -->
+  <section class="card demo" data-variant="yi">
+    <div class="demo-h">
+      <h2>乙 · 只亮走过的，当前在途</h2>
+      <span class="who">建议</span>
+    </div>
+    <p class="demo-note">走过的分区实绿；当前分区＝浅绿在途（很轻的呼吸，只动透明度）；未来分区留空。语义最诚实：在途 ≠ 完成；④屏时条走到 3/4，最后一段留给核验这件事本身。</p>
+    <div class="fauxbar"><b>出报告 · 取数并核验</b>　（仿真语境）</div>
+    <div class="flow">
+      <div class="flow-bar" role="presentation">
+        <span class="seg"><i class="seg-fill" style="--i:0"></i></span>
+        <span class="seg"><i class="seg-fill" style="--i:1"></i></span>
+        <span class="seg"><i class="seg-fill" style="--i:2"></i></span>
+        <span class="seg"><i class="seg-fill" style="--i:3"></i></span>
+      </div>
+      <div class="flow-labels">
+        <a class="flow-label" href="#" data-step="1">① 取数并核验</a>
+        <a class="flow-label" href="#" data-step="2">② 选材</a>
+        <a class="flow-label" href="#" data-step="3">③ 生成初稿</a>
+        <a class="flow-label" href="#" data-step="4">④ 核验与定稿</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 说明 ============ -->
+  <section class="card notes">
+    <h2>给评审的说明（请重点看这五条）</h2>
+    <ul>
+      <li><b>动效</b>：入场从 0 画到当前步（一次性 560ms，缓动 <span class="kbd">cubic-bezier(.2,0,0,1)</span>，四个分区错峰 70ms，像扫过一格）；切屏时往前扫。只动 <span class="kbd">transform / opacity</span>，零布局位移。</li>
+      <li><b>降级</b>：系统「减少动态效果」下直接显示终态（右上开关可模拟）。脚本没接上时也不藏内容——与全站动效层同一套兜底。</li>
+      <li><b>语义/无障碍</b>：保持 <span class="kbd">nav &gt; ol</span> 结构和每个标签的 <span class="kbd">aria-current="step"</span>；这是导航不是加载进度，不标 progressbar 角色。标签文字保留原文（「① 取数并核验」等），站内验收断言依赖「取数」「生成」的字样与前后顺序。</li>
+      <li><b>操作员视角</b>（点右上「操作员」看）：建议<b>仍保持四分</b>，①②置灰标注不可用；备选是压缩成 ③④ 两分（同现有过滤）。</li>
+      <li><b>落点与边界</b>：改 <span class="kbd">App.tsx</span>（步骤条）+ <span class="kbd">index.css</span>（新类名 <span class="kbd">.flow-*</span>）；不碰取数台的 <span class="kbd">Acquire.tsx</span>。落地后跑：全屏截图对照 + 站内端到端 + 重新构建 dist。</li>
+    </ul>
+    <div class="split"></div>
+    <h2>待拍板</h2>
+    <ul>
+      <li><span class="tag q">挑一个</span> 甲（当前分区也点亮）还是 乙（只亮走过的、当前在途）？</li>
+      <li><span class="tag q">确认</span> 操作员仍四分、①②置灰（还是压成两分）？</li>
+      <li><span class="tag q">微调</span> 条高 12px、圆角全圆、分区缝 3px、标签居中于分区下——都可以再调。</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(function(){
+  var D = { step: 1, operator: false, timer: null };
+
+  function $(s, r){ return (r || document).querySelector(s); }
+  function $$(s, r){ return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+
+  function render(step){
+    D.step = step;
+    var names = ['① 取数并核验','② 选材','③ 生成初稿','④ 核验与定稿'];
+    $('#readout').textContent = names[step - 1] || '—';
+
+    $$('.demo').forEach(function(demo){
+      var variant = demo.getAttribute('data-variant');
+      $$('.seg', demo).forEach(function(seg, i){
+        var idx = i + 1;
+        seg.classList.toggle('current', variant === 'yi' && idx === step);
+        var fill = $('.seg-fill', seg);
+        var on = (variant === 'jia') ? (idx <= step) : (idx < step);
+        fill.classList.toggle('on', on);
+      });
+      $$('.flow-label', demo).forEach(function(lab, i){
+        var idx = i + 1;
+        lab.classList.toggle('done', idx < step);
+        lab.classList.toggle('now', idx === step);
+        lab.classList.toggle('na', D.operator && idx <= 2);
+      });
+    });
+    $$('.stepbtn').forEach(function(b){
+      b.classList.toggle('on', Number(b.getAttribute('data-step')) === step);
+    });
+  }
+
+  /* 切换按钮 */
+  $$('.stepbtn').forEach(function(b){
+    b.addEventListener('click', function(){ render(Number(b.getAttribute('data-step'))); });
+  });
+  $$('.flow-label').forEach(function(lab){
+    lab.addEventListener('click', function(e){
+      e.preventDefault();
+      var idx = Number(lab.getAttribute('data-step'));
+      if (D.operator && idx <= 2) return;
+      render(idx);
+    });
+  });
+
+  /* 自动演示：① → ④，一遍 */
+  $('#play').addEventListener('click', function(){
+    if (D.timer) { clearTimeout(D.timer); D.timer = null; }
+    var s = 1;
+    function tick(){
+      render(s);
+      s += 1;
+      if (s <= 4) D.timer = setTimeout(tick, 1150);
+      else D.timer = null;
+    }
+    tick();
+  });
+
+  /* 角色切换 */
+  function role(operator){
+    D.operator = operator;
+    $('#roleAdmin').classList.toggle('on', !operator);
+    $('#roleOperator').classList.toggle('on', operator);
+    if (operator && D.step < 3) render(3); else render(D.step);
+  }
+  $('#roleAdmin').addEventListener('click', function(){ role(false); });
+  $('#roleOperator').addEventListener('click', function(){ role(true); });
+
+  /* 降级模拟 */
+  $('#rm').addEventListener('click', function(){
+    var on = document.documentElement.classList.toggle('rm');
+    $('#rm').classList.toggle('on', on);
+  });
+
+  /* 首次入场：从零画到第①步（演示“画入”） */
+  render(0);
+  setTimeout(function(){ render(1); }, 420);
+})();
+</script>
+</body>
+</html>
