@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文衡 · 预测选模「回程与生效提示」— 静态稿（待审）</title>
+<style>
+  /* ============ 令牌：逐字取自 web/src/index.css（云大绿主题）============ */
+  :root{
+    --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB;
+    --ink:#222B25; --ink-2:#3F4C42; --ink-3:#58655C;
+    --line:#DDE1D8; --line-2:#E6E9E2;
+    --zhu:#1A4B27; --zhu-soft:#E3EDE4;
+    --gold:#B19A65; --gold-soft:#F1EBDD; --gold-ink:#62501F;
+    --ok:#28643A; --ok-soft:#E2EEE4;
+    --warn:#75622D; --warn-soft:#F6EED8;
+    --bad:#B43B31; --bad-soft:#F4E6E2;
+    --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+    --r:14px; --r-sm:10px;
+    --shadow:0 1px 2px rgba(34,43,37,.06),0 8px 24px rgba(34,43,37,.06);
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0;border:0 solid}
+  body{background:var(--bg);color:var(--ink);font:17px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;background:transparent}
+  b,strong{font-weight:bolder}
+  .page{max-width:1180px;margin:0 auto;padding:26px 22px 90px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+  .pad-card{padding:20px 22px}
+  .crumb{font-size:13px;color:var(--ink-3);margin-bottom:6px}
+  h1.title{font-size:26px;margin:0 0 8px}
+  .lead{color:var(--ink-2);font-size:14.5px;max-width:82ch;margin-bottom:16px}
+  .lead b{color:var(--ink)}
+  .hint{color:var(--ink-3);font-size:14px}
+  .mono{font-family:var(--mono);font-size:14px}
+
+  /* ---------- 按钮（现状） ---------- */
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:9px;
+    border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:16px;line-height:1.2}
+  .btn:hover{filter:brightness(.97)}
+  .btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-size:17px;padding:13px 28px}
+  .btn.quiet{background:transparent;color:var(--ink-2);border-color:var(--line)}
+  .btn.sm{padding:9px 16px;font-size:15px}
+  .btn.confirming{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+  .btn.primary.confirming{background:var(--warn);border-color:var(--warn);color:#fff}
+
+  /* ---------- banner（与 index.css 同款） ---------- */
+  .banner{display:flex;gap:12px;align-items:flex-start;padding:16px 18px;border-radius:var(--r-sm);
+    border:1px solid transparent;margin-top:14px}
+  .banner.ok{background:var(--ok-soft);color:var(--ok)}
+  .banner.bad{background:var(--bad-soft);color:var(--bad)}
+  .banner.warn{background:var(--warn-soft);color:var(--warn)}
+  .banner .ico{flex:0 0 22px;margin-top:2px;font-family:var(--serif);font-weight:700}
+  .banner b.title{display:block;font-size:17px;margin-bottom:2px}
+  .banner .acts{margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+  /* ---------- 仿真工作区外壳（简化：只有主区） ---------- */
+  .faux-top{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line-2);
+    padding:0 0 10px;margin-bottom:16px;font-size:14px;color:var(--ink-2)}
+  .faux-top .t{font-family:var(--serif);font-size:16px;color:var(--ink);font-weight:600}
+  .faux-top .sp{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:13px;color:var(--ink-3)}
+  .pill{font-size:12.5px;padding:2px 9px;border-radius:999px;background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+  .pill.gold{background:var(--gold-soft);color:var(--gold-ink)}
+
+  /* ---------- 步骤条（已落地版：方角卡＋2px 细线） ---------- */
+  .rail{height:2px;background:var(--line-2);position:relative;margin-top:14px}
+  .rail i{position:absolute;top:0;bottom:0;width:25%;background:var(--zhu)}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+  .step{display:flex;align-items:center;justify-content:center;min-height:52px;background:var(--card);
+    border:1px solid var(--line);font-family:var(--serif);font-size:15px;color:var(--ink-3)}
+  .step.done{color:var(--ink-2)}
+  .step.now{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:650}
+
+  /* ---------- 预测台 fc 部件 ---------- */
+  .fc-band{position:sticky;top:0;z-index:9;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 16px;margin-top:16px;box-shadow:var(--shadow)}
+  .fc-band .kv{color:var(--ink-3);font-size:13.5px}
+  .fc-band .kv b{color:var(--ink);font-size:14px}
+  .fc-seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--panel)}
+  .fc-seg button{border:0;font-size:14px;color:var(--ink-2);padding:8px 16px}
+  .fc-seg button.on{background:var(--zhu);color:#fff;font-weight:600}
+  .fc-band-state{margin-left:auto;color:var(--ok);font-size:13.5px}
+  .fc-form{display:flex;gap:26px;flex-wrap:wrap;margin-top:14px}
+  .fc-form label{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--ink-3)}
+  .fc-form select{min-width:170px;padding:9px 12px;border:1px solid var(--line);border-radius:9px;
+    background:var(--card);color:var(--ink);font:inherit;font-size:15px}
+  .fc-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+  .fc-model{border:1px solid var(--line);border-radius:var(--r-sm);background:var(--card);overflow:hidden}
+  .fc-model-h{display:flex;align-items:center;gap:9px;padding:11px 15px;border-bottom:1px solid var(--line-2);font-size:15px}
+  .fc-model-h h3{font-size:15.5px}
+  .fc-model-h .hint{margin-left:auto}
+  .fc-metrics{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line-2)}
+  .fc-metrics div{padding:10px 15px;border-right:1px solid var(--line-2);border-top:1px solid var(--line-2)}
+  .fc-metrics b{display:block;font-family:var(--serif);font-size:19px}
+  .fc-metrics span{font-size:12.5px;color:var(--ink-3)}
+  .chartph{height:110px;background:linear-gradient(180deg,var(--panel),var(--card));
+    display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:13px}
+
+  /* ---------- 工作台部件 ---------- */
+  .wb-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 20px 0}
+  .wb-head h2{font-family:var(--serif);font-size:26px}
+  .tag{font-size:12.5px;padding:3px 10px;border-radius:999px;background:var(--gold-soft);color:var(--gold-ink);font-weight:650}
+  .wb-checks{display:flex;gap:22px;flex-wrap:wrap;margin-left:auto;font-size:13.5px;color:var(--ink-3)}
+  .wb-checks span::before{content:"✓　";color:var(--ok);font-weight:700}
+  .focus{margin:14px 20px 0;border:1px solid var(--zhu);border-radius:var(--r-sm);
+    display:flex;align-items:center;gap:18px;padding:18px 20px}
+  .focus .big{font-family:var(--serif);font-size:24px;font-weight:600}
+  .focus .sub{color:var(--ink-2);font-size:14.5px}
+  .focus .cta{margin-left:auto}
+  .wb-note{margin:12px 20px 18px;font-size:13.5px;color:var(--ink-3)}
+  .copyline{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+
+  /* ---------- 表格（现状 vs 简化） ---------- */
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+  .duo .cell{border:1px solid var(--line);border-radius:var(--r-sm);background:var(--card);overflow:hidden}
+  .duo .cell h3{font-size:14.5px;padding:11px 14px;border-bottom:1px solid var(--line-2);color:var(--ink-2);display:flex;gap:8px;align-items:center}
+  .duo table{width:100%;border-collapse:collapse;font-size:14px}
+  .duo th{font-size:13px;color:var(--ink-3);text-align:left;padding:8px 14px;border-bottom:1px solid var(--line-2);font-weight:600;background:var(--panel)}
+  .duo td{padding:8px 14px;border-bottom:1px solid var(--line-2);vertical-align:top}
+  .duo tr:last-child td{border-bottom:0}
+  .mdesc{display:block;color:var(--ink-3);font-size:13px;margin-top:2px}
+  .mine{color:var(--zhu);font-weight:650;font-size:13px}
+  .def{color:var(--ink-3)}
+  .redbox{outline:2px solid var(--bad);outline-offset:-2px;background:var(--bad-soft)}
+
+  /* ---------- 演示控制 ---------- */
+  .tools{display:flex;gap:14px;flex-wrap:wrap;align-items:center;padding:14px 18px;margin-bottom:16px}
+  .tbtn{font-size:13.5px;padding:6px 14px;border:1px solid var(--line);background:var(--card);color:var(--ink-2);border-radius:9px}
+  .tbtn.on{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:650}
+  .readout{margin-left:auto;font-size:13.5px;color:var(--ink-2)}
+  .readout b{color:var(--zhu)}
+
+  /* ---------- 说明区 ---------- */
+  .notes{margin-top:8px}
+  .notes h2{font-size:17px;margin-bottom:10px}
+  .notes ul{padding-left:20px;margin:6px 0 12px}
+  .notes li{font-size:14px;color:var(--ink-2);margin:6px 0}
+  .notes b{color:var(--ink)}
+  .kbd{font-family:var(--mono);font-size:12.5px;background:var(--panel);padding:1px 6px;border-radius:4px}
+  .qtag{display:inline-block;font-size:12px;color:var(--gold-ink);background:var(--gold-soft);padding:2px 8px;border-radius:5px;font-weight:650;margin-right:6px}
+  .split{height:1px;background:var(--line-2);margin:14px 0}
+
+  /* 状态切换：未重出 ↔ 已生效 */
+  body.clean .only-stale{display:none !important}
+  body.stale .only-clean{display:none !important}
+  .toast{display:none;margin-top:12px;padding:12px 16px;border-radius:var(--r-sm);background:var(--ok-soft);
+    color:var(--ok);font-size:14px}
+  body.clean .toast{display:block}
+</style>
+</head>
+<body class="stale">
+<div class="page">
+  <p class="crumb">出报告 · 预测选模 · 静态稿（按 rick 2026-10-16 反馈）· 未动 React 代码</p>
+  <h1 class="title">改选之后：回得去、说得清、看得懂</h1>
+  <p class="lead">
+    三件事的落法：<b>① 预测台给一条明确的回程</b>（「回出报告」＋保存后的「下一步」条）；<b>② 换了模型就提示重出，
+    并如实标出"当前报告还是旧的"</b>（按真数据判：保存的选择 vs 上次出稿实际用的选择）；<b>③ 工作台「本期已选」列去噪</b>——
+    改过的学科显示模型名，其余只显示「默认」。
+  </p>
+
+  <!-- ============ 演示控制 ============ -->
+  <div class="card tools">
+    <span style="font-size:13.5px;color:var(--ink-3)">演示状态：</span>
+    <button class="tbtn on" id="stStale">改选已保存 · 报告还没重出（现在）</button>
+    <button class="tbtn" id="stClean">重出之后 · 已生效</button>
+    <span class="readout">场景：<b id="readout">202609 · 免疫学 改为 SARIMA模型（10-16 12:12 保存）</b></span>
+  </div>
+
+  <!-- ================================================================
+       一、预测台（出报告 · 预测选模）
+  ================================================================ -->
+  <section class="card pad-card" style="margin-bottom:18px">
+    <div class="faux-top">
+      <span class="t">出报告 · 预测选模</span>
+      <span class="sp"><span>期次 202609</span><span>数据截至 2026-09</span></span>
+    </div>
+
+    <div class="rail" aria-hidden="true">
+      <i style="left:0"></i><i style="left:25%"></i><i style="left:50%"></i>
+    </div>
+    <div class="steps">
+      <span class="step done">取数并核验</span>
+      <span class="step done">选材</span>
+      <span class="step now">生成初稿</span>
+      <span class="step">核验与定稿</span>
+    </div>
+
+    <!-- 页头标题卡 ＋ 新增「回出报告」 -->
+    <div style="display:flex;align-items:flex-start;gap:16px;margin-top:16px">
+      <div>
+        <h2 style="font-size:22px">潜力学科预测</h2>
+        <p style="color:var(--ink-2);font-size:15px;margin-top:4px">先看图，再定稿。</p>
+      </div>
+      <a class="btn quiet" href="#" style="margin-left:auto" onclick="return false">
+        <span aria-hidden="true">←</span> 回出报告
+      </a>
+    </div>
+    <p class="hint" style="margin-top:6px">（这个按钮只是回程；改没改、要不要重出，由下方提示条说清。）</p>
+
+    <!-- 页头一条带 -->
+    <div class="fc-band">
+      <span class="kv">期次 <b class="mono">202609</b></span>
+      <span class="kv">数据截至 <b class="mono">2026-09</b></span>
+      <div class="fc-seg" role="group" aria-label="预测路线">
+        <button class="on">总被引</button>
+        <button>国内排名</button>
+      </div>
+      <span class="fc-band-state">已保存 · admin · 2026-10-16 12:12:42</span>
+      <button class="btn primary">保存选择</button>
+    </div>
+
+    <!-- 新增：保存后的「下一步」条（未重出时一直在，刷新也在） -->
+    <div class="banner warn only-stale">
+      <span class="ico" aria-hidden="true">●</span>
+      <span>
+        <b class="title">改选已保存，报告还没重出</b>
+        <span>免疫学 → SARIMA模型（路线1 · 总被引）。当前成品仍按改选前的选择出的；<b>重新生成后，新选择才会进报告正文</b>（只作用于实际进入预测章的学科）。</span>
+        <span class="acts">
+          <button class="btn primary sm" id="goRerun">回出报告并重新生成 →</button>
+          <button class="btn quiet sm">留在本页继续看图</button>
+        </span>
+      </span>
+    </div>
+    <div class="banner ok only-clean" style="margin-top:14px">
+      <span class="ico" aria-hidden="true">✓</span>
+      <span>
+        <b class="title">改选已生效</b>
+        <span>最近一次重出（10-16 12:40）用的就是当前选择：免疫学 → SARIMA模型。</span>
+      </span>
+    </div>
+
+    <!-- 预测图（示意，保持原样） -->
+    <h2 style="font-size:19px;margin-top:18px">预测图</h2>
+    <div class="fc-form">
+      <label>学科
+        <select><option>免疫学</option></select>
+      </label>
+      <label>模型
+        <select><option>五模型全部运行比较</option></select>
+      </label>
+      <label>期数
+        <select><option>18 期（与报告一致）</option></select>
+      </label>
+    </div>
+    <p class="hint" style="margin-top:10px">
+      当前选用：<b>SARIMA模型</b>（已从 V1 推荐「季节性ETS模型」改选）　
+      <button class="btn quiet sm">恢复推荐</button>
+    </p>
+    <div class="fc-cards">
+      <article class="fc-model">
+        <div class="fc-model-h"><h3>Holt趋势模型</h3><span class="hint">数据截至 2026-09</span></div>
+        <div class="fc-metrics">
+          <div><b>3.47%</b><span>滚动 MAPE</span></div>
+          <div><b>3.05%</b><span>拟合 MAPE</span></div>
+          <div><b>预测期内未过线</b><span>首次过线</span></div>
+          <div><b>通过</b><span>运行状态</span></div>
+        </div>
+        <div class="chartph">（预测趋势图）</div>
+      </article>
+      <article class="fc-model">
+        <div class="fc-model-h"><h3>SARIMA模型</h3><span class="pill">当前选用</span><span class="hint">数据截至 2026-09</span></div>
+        <div class="fc-metrics">
+          <div><b>3.34%</b><span>滚动 MAPE</span></div>
+          <div><b>3.00%</b><span>拟合 MAPE</span></div>
+          <div><b>预测期内未过线</b><span>首次过线</span></div>
+          <div><b>通过</b><span>运行状态</span></div>
+        </div>
+        <div class="chartph">（预测趋势图）</div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ================================================================
+       二、出报告（工作台）
+  ================================================================ -->
+  <section class="card" style="margin-bottom:18px">
+    <div class="faux-top" style="padding:16px 20px 10px;margin-bottom:0;border-bottom:0">
+      <span class="t">出报告</span>
+      <span class="sp"><span>期次 202609</span></span>
+    </div>
+    <div class="wb-head">
+      <h2>202609</h2><span class="tag">已生成</span>
+      <div class="wb-checks">
+        <span>取数　取数完成（64 / 64）</span>
+        <span>核对并并入　已并入台账</span>
+        <span>一键生成　已出稿</span>
+      </div>
+    </div>
+    <div class="focus">
+      <div>
+        <div class="big">本期报告已就绪</div>
+        <div class="sub">复核后签单，这一版才会被标记为「可交付」</div>
+      </div>
+      <div class="cta"><button class="btn primary">复核并签单</button></div>
+    </div>
+
+    <!-- 新增：改选未重出 → 工作台就说清 + 给重出入口（只在此状态出现） -->
+    <div class="banner warn only-stale" style="margin:14px 20px 0">
+      <span class="ico" aria-hidden="true">●</span>
+      <span>
+        <b class="title">模型选择改过，报告还是旧的</b>
+        <span>免疫学 → SARIMA模型（路线1 · 总被引，10-16 12:12 由 admin 保存）。
+        当前报告仍按改选前的选择生成——<b>重新生成后生效</b>（只作用于实际进入预测章的学科）；重出会撤下当前成品（已签发的会提示重签）。</span>
+        <span class="acts">
+          <button class="btn primary sm" id="wbRerun">重新生成</button>
+          <button class="btn quiet sm" onclick="return false">去预测台看选择 →</button>
+        </span>
+        <span class="copyline" id="confirmRow" style="display:none">
+          <span class="hint">确认重跑？会撤下当前成品</span>
+          <button class="btn confirm sm" id="wbConfirm">确认重跑</button>
+          <button class="btn quiet sm" id="wbCancel">取消</button>
+        </span>
+      </span>
+    </div>
+
+    <!-- 新增：模拟一次重出完成后的绿条 -->
+    <div class="banner ok toast" style="margin:14px 20px 0">
+      <span class="ico" aria-hidden="true">✓</span>
+      <span><b class="title">已重出</b>免疫学按 SARIMA模型 出图；本期报告与当前选择一致。</span>
+    </div>
+
+    <div class="wb-note">任务：已完成 · 期次 202609　
+      <button class="btn quiet sm" style="padding:5px 11px;font-size:13px">看详细过程</button>
+    </div>
+
+    <!-- 折叠：本期模型 · 预测选模（只读） -->
+    <div style="border-top:1px solid var(--line-2);padding:14px 20px 18px">
+      <p style="font-family:var(--serif);font-size:16px;margin-bottom:2px">
+        本期模型 · 预测选模（只读）<span class="hint" style="font-family:var(--sans);font-size:13px;margin-left:8px">改选去预测台</span>
+      </p>
+
+      <div class="duo">
+        <!-- 现状 -->
+        <div class="cell">
+          <h3>现状 · 本期已选列（太杂乱）</h3>
+          <table>
+            <thead><tr><th>潜力学科</th><th>V1 推荐</th><th class="redbox">本期已选</th></tr></thead>
+            <tbody>
+              <tr><td>免疫学</td><td>季节性ETS模型</td>
+                <td><b>SARIMA模型</b><span class="mine" style="display:block">已改选</span></td></tr>
+              <tr><td>分子生物学与遗传学</td><td>季节性ETS模型</td>
+                <td><b>季节性ETS模型</b><span class="mdesc">跟随 V1 推荐</span></td></tr>
+              <tr><td>多学科</td><td>Holt趋势模型</td>
+                <td><b>Holt趋势模型</b><span class="mdesc">跟随 V1 推荐</span></td></tr>
+              <tr><td>物理学</td><td>经验贝叶斯状态空间模型</td>
+                <td><b>经验贝叶斯状态空间模型</b><span class="mdesc">跟随 V1 推荐</span></td></tr>
+              <tr><td>空间科学</td><td>SARIMA模型</td>
+                <td><b>SARIMA模型</b><span class="mdesc">跟随 V1 推荐</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- 简化后 -->
+        <div class="cell">
+          <h3>简化后 ·「除非改过，否则显示默认」<span class="pill">推荐</span></h3>
+          <table>
+            <thead><tr><th>潜力学科</th><th>V1 推荐</th><th>本期已选</th></tr></thead>
+            <tbody>
+              <tr><td>免疫学</td><td>季节性ETS模型</td>
+                <td><b>SARIMA模型</b><span class="mine" style="display:block">已改选</span></td></tr>
+              <tr><td>分子生物学与遗传学</td><td>季节性ETS模型</td>
+                <td><span class="def">默认</span></td></tr>
+              <tr><td>多学科</td><td>Holt趋势模型</td>
+                <td><span class="def">默认</span></td></tr>
+              <tr><td>物理学</td><td>经验贝叶斯状态空间模型</td>
+                <td><span class="def">默认</span></td></tr>
+              <tr><td>空间科学</td><td>SARIMA模型</td>
+                <td><span class="def">默认</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="hint" style="margin-top:10px">
+        邻列「V1 推荐」仍在，默认行不丢信息；「模型说明」列照旧跟随实际生效的模型。
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ 说明与待拍板 ============ -->
+  <section class="card notes pad-card" style="margin-top:16px">
+    <h2>实现口径（不编数据）</h2>
+    <ul>
+      <li><b>「报告还是旧的」怎么判的？</b>不猜、不比时间——把两边的选择<b>比值</b>：
+      「本期已保存的选择」vs「上次出稿时实际用的选择」（出稿时冻结的快照，就写在当期产物里）。
+      两值不同＝改选还没进报告；相同＝已生效。老期次没有这份快照＝无法核实，就<b>不显示</b>提示。</li>
+      <li><b>后端只加一个只读字段</b>（读选择接口里附上「上次出稿实际用的选择」），其余零改动；契约文档同步补一行。</li>
+      <li><b>提示条不是一闪而过的通知</b>：只要没重出，它一直在（刷新、换页回来都在）——因为它读的是真实状态。</li>
+      <li><b>「回出报告并重新生成」不会偷偷跑</b>：重出会撤下当前成品（已签发还会提示重签），必须你亲口确认，所以最后一步永远是一次明示点击。</li>
+      <li><b>改选的作用范围（原有口径，未变）</b>：预测章只画「未进 1% 的学科里接近度前二」的两个学科——
+      改选只在这两个学科上生效，其余选择留档、不影响正文。提示条里写清了这一点。</li>
+      <li><b>本期真实对照</b>：202609 目前的成品用的是「空选择」（10-13 出稿时还没有任何改选），
+      今天的改选（免疫学 → SARIMA模型）确实还没进报告——上面两块提示条就是按这个真实情况显示的。</li>
+    </ul>
+    <div class="split"></div>
+    <h2>待拍板</h2>
+    <ul>
+      <li><span class="qtag">请选</span>「回出报告并重新生成 →」点下去之后：
+        <b>A. 先回到出报告</b>，提示条＋「重新生成」按钮在那儿等你（推荐，多一次确认位）；
+        <b>B. 回到出报告并直接弹出「确认重跑」对话框</b>（少一步，但少了看一眼当前状态的机会）。</li>
+      <li><span class="qtag">请定</span>改选行的标记：保留「已改选」（推荐，解释为什么这行有名字），还是只留模型名？</li>
+      <li><span class="qtag">请定</span>提示条上方那句标题：现用「模型选择改过，报告还是旧的」；备选「改选还没进报告」。</li>
+    </ul>
+    <div class="split"></div>
+    <h2>审过之后的落地清单</h2>
+    <ul>
+      <li>预测台：加「回出报告」按钮＋保存后「下一步」条；工作台：加改选未重出提示条＋「重新生成」入口。</li>
+      <li>工作台「本期已选」列按本稿简化（唯一改动点：<span class="kbd">Workbench.tsx</span> 一处表格）。</li>
+      <li>后端：读选择接口附「上次出稿实际用的选择」（附加字段，不动旧字段）；契约文档＋一条用例。</li>
+      <li>验证：<span class="kbd">npm run build</span> 重建 dist → 起服务跑 <span class="kbd">check_web_app</span> 端到端 → e2e 全绿后提交。</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(function(){
+  var body = document.body;
+  function setState(stale){
+    body.classList.toggle('stale', stale);
+    body.classList.toggle('clean', !stale);
+    document.getElementById('stStale').classList.toggle('on', stale);
+    document.getElementById('stClean').classList.toggle('on', !stale);
+    document.getElementById('readout').textContent = stale
+      ? '202609 · 免疫学 改为 SARIMA模型（10-16 12:12 保存）'
+      : '202609 · 重出完成（10-16 12:40）';
+  }
+  document.getElementById('stStale').addEventListener('click', function(){ setState(true); });
+  document.getElementById('stClean').addEventListener('click', function(){ setState(false); });
+
+  var row = document.getElementById('confirmRow');
+  function showConfirm(show){ row.style.display = show ? 'flex' : 'none'; }
+  function wireRerun(id){
+    var b = document.getElementById(id);
+    if (b) b.addEventListener('click', function(){ showConfirm(true); });
+  }
+  wireRerun('wbRerun'); wireRerun('goRerun');
+  document.getElementById('wbCancel').addEventListener('click', function(){ showConfirm(false); });
+  document.getElementById('wbConfirm').addEventListener('click', function(){
+    showConfirm(false);
+    setState(false);   /* 模拟重出完成 */
+  });
+})();
+</script>
+</body>
+</html>
