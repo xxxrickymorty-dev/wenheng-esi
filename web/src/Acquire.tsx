@@ -228,10 +228,9 @@ export function Acquire({ period }: { period: string | null }) {
   const needsTool = view === 'ready' || view === 'partial' || view === 'review'
   const canRun = !!cap[capKey]
   /* 采集与并入台账是两条独立的线（2026-10-16 解耦）：采集＝本机取到多少份；并入＝台账并没并。
-     重新取数只会补没下到的文件，台账那一列一字不动。 */
-  const copyState = state?.copy?.state ?? 'none'
-  const copyLabel = copyState === 'merged' ? `已并入（${period ?? ''} 列）`
-    : copyState === 'review' ? '待核对 · 还没并入' : '还没并入'
+     重新取数只会补没下到的文件，台账那一列一字不动。
+     2026-10-16 中午拍板：头条只留**采集**进度行——「已并入（期次 列）」的结论由焦点卡承担，
+     两处同写一句「已并入（202609 列）」是重复，删去头条那行（去重守卫见 e2e）。 */
   /* 最近一次「取数」的时间（只在最近一步确实是取数时才显示，免得把别的动作当成重取） */
   const lastFetchAt = op?.kind === 'fetch' ? (op.at ?? '') : ''
   /* 往期档案只读（票 03）：期次早于「本机已取过的最新期次」就不能再取——ESI/InCites 没有历史数据 */
@@ -276,7 +275,6 @@ export function Acquire({ period }: { period: string | null }) {
               <span className="pill unsigned mono">{period}</span>
               <span className={`pill ${pill[view][1]}`}>{pill[view][0]}</span>
               <span className="hint aq-num">采集 · {expected > 0 ? `已取到 ${verified} / ${expected}` : '未开始'}{lastFetchAt ? ` · 最近取数 ${lastFetchAt}` : ''}</span>
-              <span className="hint aq-num">并入台账 · {copyLabel}</span>
             </div>
           </section>
 

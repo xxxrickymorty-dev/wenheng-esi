@@ -305,9 +305,14 @@ def main():
                   f"fetchBtn={ro_refetch} note={'往期档案只读' in ro_text}")
             page.goto(BASE + "/app/?view=acquire&period=202609", wait_until="domcontentloaded")
             page.wait_for_selector(".aq-head", timeout=20000)
-            both_lines = page.eval_on_selector_all(
-                "body", "els => els.map(e => e.innerText).join('\\n').match(/采集 ·[\\s\\S]{0,90}并入台账 ·/) !== null")
-            check("采集与并入台账两条状态分开显示（且并入那行说已并入）", both_lines, f"found={both_lines}")
+            # 拍板 2026-10-16 中午：头条去重——只留**采集**进度行；「已并入（期次 列）」的结论归焦点卡。
+            # （此前头条与焦点卡各写一句「已并入（202609 列）」，是重复。）
+            head_txt = page.inner_text(".aq-head")
+            focus_txt = page.inner_text(".focus .big")
+            check("取数台头条去重：只留采集行（无「并入台账 ·」），并入结论归焦点卡",
+                  ("采集 ·" in head_txt) and ("并入台账" not in head_txt)
+                  and ("已并入" in focus_txt),
+                  f"head={head_txt[:70]!r} focus={focus_txt[:40]!r}")
             txt = page.inner_text("main")
             check("取数台：期次数据状态与开始前检查都在",
                   "自动取数台" in txt and "开始前检查" in txt, "")
