@@ -63,7 +63,6 @@ export function Pick({ period }: { period: string | null }) {
     <>
       <div className="h-sec pick-title">
         <b>出报告 · ② 选材</b>
-        <span className="hint">这一期要办哪些节，你在这里勾。<b>只记范围</b>——出稿仍全出、母版一个字不动；没勾的标「本轮不办」。</span>
       </div>
 
       <section className="card mt-16 pad-card">

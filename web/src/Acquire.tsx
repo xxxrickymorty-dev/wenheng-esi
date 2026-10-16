@@ -252,7 +252,7 @@ export function Acquire({ period }: { period: string | null }) {
       : view === 'running' ? `正在取数${liveGroup?.title ? `：${liveGroup.title}` : ''}……`
         : view === 'partial' ? `${failGroup?.title ?? '有一组'}有 ${failed} 份没通过核验。`
           : view === 'review' ? '本期监测表已自动建好，请核对。'
-            : `已并入主台账（${period} 列）。`
+            : `已并入主台账（${period} 列）`
   const sub = view === 'ready'
     ? (started ? '9 组文件，取到后逐份核验。' : '点「开始取数」会自动打开取数专用浏览器（首次需在里面登录 ESI / InCites）。')
     : view === 'blocked' ? '系统会自动打开取数专用浏览器；在里面登录 ESI / InCites 后，点「重新检查」。'
