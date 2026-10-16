@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>文衡 · 出报告步骤条（进度条形态）— 静态稿（待审）</title>
+<title>文衡 · 出报告步骤条（细线 + 方角卡片）— 静态稿 v2（待审）</title>
 <style>
   /* ============ 令牌：逐字取自 web/src/index.css（云大绿主题）============ */
   :root{
@@ -14,69 +14,81 @@
     --gold:#B19A65; --gold-soft:#F1EBDD; --gold-ink:#62501F;
     --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
     --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
-    --r:14px; --r-sm:10px;
     --shadow:0 1px 2px rgba(34,43,37,.06),0 8px 24px rgba(34,43,37,.06);
   }
   *,::after,::before{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--ink);font:16px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
   h1,h2,h3{font-family:var(--serif);font-weight:600}
   a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer}
   .page{max-width:1180px;margin:0 auto;padding:26px 22px 70px}
-  .card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:20px 22px}
+  .card{background:var(--card);border:1px solid var(--line);padding:20px 22px}   /* 方角：无 radius、无投影 */
   .crumb{font-size:13px;color:var(--ink-3);margin-bottom:6px}
   h1{font-size:26px;margin:0 0 8px}
-  .lead{color:var(--ink-2);font-size:14.5px;max-width:74ch;margin-bottom:18px}
+  .lead{color:var(--ink-2);font-size:14.5px;max-width:76ch;margin-bottom:18px}
   .lead b{color:var(--ink)}
 
-  /* ============ 工具行（全局演示控制）============ */
+  /* ============ 工具行（全局演示控制）——方角 ============ */
   .tools{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
   .tools .grp{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-3)}
-  .tbtn{font:inherit;font-size:13.5px;padding:5px 13px;border-radius:999px;border:1px solid var(--line);
-    background:var(--card);color:var(--ink-2);cursor:pointer}
+  .tbtn{font-size:13.5px;padding:5px 13px;border:1px solid var(--line);background:var(--card);
+    color:var(--ink-2);border-radius:0}
   .tbtn:hover{border-color:var(--zhu);color:var(--zhu)}
   .tbtn.on{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:650}
   .readout{font-size:13.5px;color:var(--ink-2);margin-left:auto}
   .readout b{color:var(--zhu)}
 
-  /* ============ 演示卡 ============ */
+  /* ============ 主演示 ============ */
   .demo{margin-bottom:16px}
   .demo-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px}
   .demo-h h2{font-size:17px}
-  .demo-h .who{font-size:12px;color:var(--zhu);background:var(--zhu-soft);border-radius:6px;padding:2px 8px;font-weight:650}
-  .demo-h .who.alt{color:var(--gold-ink);background:var(--gold-soft)}
-  .demo-note{font-size:13px;color:var(--ink-3);margin-bottom:14px}
-
-  /* 仿真的页面头（只给语境，不是要改的部分） */
-  .fauxbar{border-bottom:1px solid var(--line-2);padding-bottom:10px;margin-bottom:14px;font-size:14px;color:var(--ink-2)}
+  .demo-h .who{font-size:12px;color:var(--zhu);background:var(--zhu-soft);padding:2px 8px;font-weight:650}
+  .demo-note{font-size:13px;color:var(--ink-3);margin-bottom:16px}
+  .fauxbar{border-bottom:1px solid var(--line-2);padding-bottom:10px;margin-bottom:18px;font-size:14px;color:var(--ink-2)}
   .fauxbar b{font-family:var(--serif);font-size:16px;color:var(--ink);font-weight:600}
 
-  /* ============ 步骤条本体 ============ */
-  .flow{margin:2px 0 0}
-  .flow-bar{display:flex;gap:3px;height:12px;border-radius:999px}
-  .seg{flex:1 1 0;background:var(--line-2);border-radius:999px;overflow:hidden;position:relative}
-  .seg-fill{display:block;height:100%;width:100%;background:var(--zhu);border-radius:999px;
+  /* ---- 细线（2px，全宽一条，无圆角、无缝隙）---- */
+  .flowline{position:relative;height:2px;background:var(--line-2)}
+  .flowline .lf{position:absolute;top:0;bottom:0;width:25%;background:var(--zhu);
     transform:scaleX(0);transform-origin:left center;
     transition:transform .56s cubic-bezier(.2,0,0,1) calc(var(--i) * 70ms)}
-  .seg-fill.on{transform:scaleX(1)}
-  /* 乙版：当前分区＝浅绿在途态（不填实） */
-  .seg.current{background:var(--zhu-soft)}
-  .seg.current::after{content:"";position:absolute;inset:0;border-radius:999px;
-    background:var(--zhu);opacity:.14;animation:transit 2s ease-in-out infinite}
-  @keyframes transit{0%,100%{opacity:.08}50%{opacity:.22}}
+  .flowline .lf.on{transform:scaleX(1)}
 
-  .flow-labels{display:grid;grid-template-columns:repeat(4,1fr);margin-top:9px}
-  .flow-label{justify-self:center;display:inline-flex;align-items:center;gap:6px;
-    font-size:13.5px;color:var(--ink-3);padding:3px 12px;border-radius:999px;cursor:pointer;
-    transition:color .25s,background .25s}
-  .flow-label.done{color:var(--ink-2)}
-  .flow-label.now{color:var(--zhu);background:var(--zhu-soft);font-weight:650}
-  .flow-label.na{opacity:.4;cursor:not-allowed}
-  .flow-label.na em{font-style:normal;font-size:11.5px;margin-left:4px}
+  /* ---- 四张等大卡片（方角细边，无名次数字）---- */
+  .flowcards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+  .flowcard{display:flex;align-items:center;justify-content:center;min-height:56px;
+    background:var(--card);border:1px solid var(--line);
+    font-family:var(--serif);font-size:15.5px;letter-spacing:.02em;color:var(--ink-3);
+    transition:background .25s,color .25s,border-color .25s}
+  .flowcard:hover{background:var(--panel);color:var(--ink-2)}
+  .flowcard.done{color:var(--ink-2)}
+  .flowcard.now{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:650}
+  .flowcard.na{opacity:.4;cursor:not-allowed}
+  .flowcard:focus-visible{outline:2px solid var(--zhu);outline-offset:2px}
 
-  /* ============ 降级：模拟 prefers-reduced-motion ============ */
-  html.rm .seg-fill{transition:none !important}
-  html.rm .seg.current::after{animation:none;opacity:.14}
-  html.rm .flow-label{transition:none}
+  /* 备选形态小样：一张卡、四等分列、顶边细线 */
+  .alt-card{border:1px solid var(--line);background:var(--card);margin-top:12px}
+  .alt-rail{height:2px;background:var(--line-2);position:relative}
+  .alt-rail .lf{position:absolute;top:0;bottom:0;width:25%;background:var(--zhu);transform:scaleX(0);transform-origin:left center;transition:transform .56s cubic-bezier(.2,0,0,1) calc(var(--i) * 70ms)}
+  .alt-rail .lf.on{transform:scaleX(1)}
+  .alt-cols{display:grid;grid-template-columns:repeat(4,1fr)}
+  .alt-col{padding:16px 10px;text-align:center;font-family:var(--serif);font-size:14.5px;color:var(--ink-3);border-left:1px solid var(--line-2)}
+  .alt-col:first-child{border-left:0}
+  .alt-col.done{color:var(--ink-2)}
+  .alt-col.now{background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+
+  /* ---- 降级模拟 ---- */
+  html.rm .lf{transition:none !important}
+
+  /* ============ 全站方角对照带 ============ */
+  .cmp{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px}
+  .cmp .cell{border:1px solid var(--line);padding:18px;display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+  .cmp h3{font-size:14px;color:var(--ink-2);margin-bottom:2px}
+  .btn-solid{background:var(--zhu);color:#fff;border:1px solid var(--zhu);padding:8px 18px;font-size:14px}
+  .tag-demo{font-size:12.5px;background:var(--zhu-soft);color:var(--zhu);padding:3px 10px;font-weight:650}
+  .mini-card{background:var(--panel);padding:12px 14px;font-size:13.5px;color:var(--ink-2);width:100%}
+  .rounded .btn-solid{border-radius:8px}.rounded .tag-demo{border-radius:999px}.rounded .mini-card{border-radius:14px}
+  .squared .btn-solid{border-radius:0}.squared .tag-demo{border-radius:0}.squared .mini-card{border-radius:0}
 
   /* ============ 说明区 ============ */
   .notes{margin-top:8px}
@@ -84,160 +96,170 @@
   .notes ul{padding-left:20px;margin:6px 0 12px}
   .notes li{font-size:14px;color:var(--ink-2);margin:5px 0}
   .notes b{color:var(--ink)}
-  .notes .kbd{font-family:Consolas,monospace;font-size:12.5px;background:var(--panel);border-radius:6px;padding:1px 6px}
-  .tag{display:inline-block;font-size:12px;color:var(--zhu);background:var(--zhu-soft);border-radius:6px;padding:2px 8px;font-weight:650}
+  .notes .kbd{font-family:Consolas,monospace;font-size:12.5px;background:var(--panel);padding:1px 6px}
+  .tag{display:inline-block;font-size:12px;color:var(--zhu);background:var(--zhu-soft);padding:2px 8px;font-weight:650}
   .tag.q{color:var(--gold-ink);background:var(--gold-soft)}
   .split{height:1px;background:var(--line-2);margin:14px 0}
 </style>
 </head>
 <body>
 <div class="page">
-  <p class="crumb">出报告 · 静态稿（待审）· 未动 React 代码</p>
-  <h1>出报告步骤条 → 进度条形态</h1>
+  <p class="crumb">出报告 · 静态稿 v2（按反馈修订）· 未动 React 代码</p>
+  <h1>出报告步骤条 → 细线 + 方角卡片</h1>
   <p class="lead">
-    按 rick 画的样子：<b>一条全宽进度条往前，四个分区等大</b>；每一步的标签对齐在自己的分区下面
-    （不换行、不挤压）。切屏时进度往前扫；首次进页从零画到当前步。
-    下面两版只差一处：<b>当前分区要不要跟着点亮</b>，你挑一个。
+    四条反馈全落实：<b>去掉序号</b>（顺序由位置和细线方向表达）、<b>做成卡片</b>（四张等大）、
+    <b>进度＝一条 2px 细线</b>（拉通、无缺口、无圆角）、<b>整体方角</b>（稿内所有元素 0 圆角）。
+    卡片本身不做装饰——名字用衬线，当前步用一层浅绿底＋加粗，其余靠字重和明度分级。
   </p>
 
   <!-- ============ 全局演示控制 ============ -->
   <div class="card tools">
     <span class="grp">切到第几步：</span>
-    <span class="grp" id="stepbtns">
-      <button class="tbtn stepbtn" data-step="1">① 取数并核验</button>
-      <button class="tbtn stepbtn" data-step="2">② 选材</button>
-      <button class="tbtn stepbtn" data-step="3">③ 生成初稿</button>
-      <button class="tbtn stepbtn" data-step="4">④ 核验与定稿</button>
-    </span>
     <span class="grp">
-      <button class="tbtn" id="play">自动演示一遍</button>
+      <button class="tbtn stepbtn" data-step="1">取数并核验</button>
+      <button class="tbtn stepbtn" data-step="2">选材</button>
+      <button class="tbtn stepbtn" data-step="3">生成初稿</button>
+      <button class="tbtn stepbtn" data-step="4">核验与定稿</button>
+    </span>
+    <span class="grp"><button class="tbtn" id="play">自动演示一遍</button></span>
+    <span class="grp">细线：</span>
+    <span class="grp">
+      <button class="tbtn on" id="lineA">含当前步</button>
+      <button class="tbtn" id="lineB">只含已走过</button>
     </span>
     <span class="grp">角色：</span>
     <span class="grp">
       <button class="tbtn on" id="roleAdmin">管理员</button>
       <button class="tbtn" id="roleOperator">操作员</button>
     </span>
-    <span class="grp">
-      <button class="tbtn" id="rm">模拟「减少动态效果」</button>
-    </span>
-    <span class="readout">当前：<b id="readout">① 取数并核验</b></span>
+    <span class="grp"><button class="tbtn" id="rm">模拟「减少动态效果」</button></span>
+    <span class="readout">当前：<b id="readout">取数并核验</b></span>
   </div>
 
-  <!-- ============ 甲版 ============ -->
-  <section class="card demo" data-variant="jia">
-    <div class="demo-h">
-      <h2>甲 · 走到哪亮到哪</h2>
-      <span class="who alt">备选</span>
-    </div>
-    <p class="demo-note">当前分区也整格点亮：①屏 1/4、②屏 2/4、③屏 3/4、④屏拉满 4/4。进度感最强，但「到 ④ 才刚要开始核验，条已满」。</p>
+  <!-- ============ 主演示 ============ -->
+  <section class="card demo">
+    <div class="demo-h"><h2>主形态 · 四张等大卡片 ＋ 一条细线</h2><span class="who">推荐</span></div>
+    <p class="demo-note">细线拉通在卡片上方（无缝隙、无圆角）；切屏时绿色往前扫过一格（560ms，错峰 70ms）。当前卡＝浅绿底＋加粗；已走过＝中灰；未来＝浅灰。</p>
     <div class="fauxbar"><b>出报告 · 取数并核验</b>　（仿真语境）</div>
-    <div class="flow">
-      <div class="flow-bar" role="presentation">
-        <span class="seg"><i class="seg-fill" style="--i:0"></i></span>
-        <span class="seg"><i class="seg-fill" style="--i:1"></i></span>
-        <span class="seg"><i class="seg-fill" style="--i:2"></i></span>
-        <span class="seg"><i class="seg-fill" style="--i:3"></i></span>
+
+    <div class="flowline" role="presentation">
+      <span class="lf" style="--i:0;left:0"></span>
+      <span class="lf" style="--i:1;left:25%"></span>
+      <span class="lf" style="--i:2;left:50%"></span>
+      <span class="lf" style="--i:3;left:75%"></span>
+    </div>
+    <div class="flowcards">
+      <a class="flowcard" href="#" data-step="1">取数并核验</a>
+      <a class="flowcard" href="#" data-step="2">选材</a>
+      <a class="flowcard" href="#" data-step="3">生成初稿</a>
+      <a class="flowcard" href="#" data-step="4">核验与定稿</a>
+    </div>
+
+    <p class="demo-note" style="margin:14px 0 6px">备选形态（静态小样）：一张整卡、四等分列、细线贴在卡顶边——分隔靠 1px 竖细线。</p>
+    <div class="alt-card" data-alt="1">
+      <div class="alt-rail">
+        <span class="lf" style="--i:0;left:0"></span>
+        <span class="lf" style="--i:1;left:25%"></span>
+        <span class="lf" style="--i:2;left:50%"></span>
+        <span class="lf" style="--i:3;left:75%"></span>
       </div>
-      <div class="flow-labels">
-        <a class="flow-label" href="#" data-step="1">① 取数并核验</a>
-        <a class="flow-label" href="#" data-step="2">② 选材</a>
-        <a class="flow-label" href="#" data-step="3">③ 生成初稿</a>
-        <a class="flow-label" href="#" data-step="4">④ 核验与定稿</a>
+      <div class="alt-cols">
+        <span class="alt-col" data-step="1">取数并核验</span>
+        <span class="alt-col" data-step="2">选材</span>
+        <span class="alt-col" data-step="3">生成初稿</span>
+        <span class="alt-col" data-step="4">核验与定稿</span>
       </div>
     </div>
   </section>
 
-  <!-- ============ 乙版 ============ -->
-  <section class="card demo" data-variant="yi">
-    <div class="demo-h">
-      <h2>乙 · 只亮走过的，当前在途</h2>
-      <span class="who">建议</span>
-    </div>
-    <p class="demo-note">走过的分区实绿；当前分区＝浅绿在途（很轻的呼吸，只动透明度）；未来分区留空。语义最诚实：在途 ≠ 完成；④屏时条走到 3/4，最后一段留给核验这件事本身。</p>
-    <div class="fauxbar"><b>出报告 · 取数并核验</b>　（仿真语境）</div>
-    <div class="flow">
-      <div class="flow-bar" role="presentation">
-        <span class="seg"><i class="seg-fill" style="--i:0"></i></span>
-        <span class="seg"><i class="seg-fill" style="--i:1"></i></span>
-        <span class="seg"><i class="seg-fill" style="--i:2"></i></span>
-        <span class="seg"><i class="seg-fill" style="--i:3"></i></span>
+  <!-- ============ 全站方角对照 ============ -->
+  <section class="card">
+    <div class="demo-h"><h2>「全是圆角」的问题 · 方角对照</h2></div>
+    <p class="demo-note">同三个组件，两种圆角策略并排。你说“全站都圆角太丑”——若点头，我另出一张「全站方角」试妆稿（在真实一屏上改卡圆角/按钮/标签），审过再全站推，不含进这次步骤条改动。</p>
+    <div class="cmp">
+      <div class="cell rounded">
+        <h3>现状（圆角）</h3>
+        <button class="btn-solid">去生成台生成</button>
+        <span class="tag-demo">已并入</span>
+        <div class="mini-card">卡片 · 14px 圆角</div>
       </div>
-      <div class="flow-labels">
-        <a class="flow-label" href="#" data-step="1">① 取数并核验</a>
-        <a class="flow-label" href="#" data-step="2">② 选材</a>
-        <a class="flow-label" href="#" data-step="3">③ 生成初稿</a>
-        <a class="flow-label" href="#" data-step="4">④ 核验与定稿</a>
+      <div class="cell squared">
+        <h3>方角候选</h3>
+        <button class="btn-solid">去生成台生成</button>
+        <span class="tag-demo">已并入</span>
+        <div class="mini-card">卡片 · 0 圆角</div>
       </div>
     </div>
   </section>
 
   <!-- ============ 说明 ============ -->
-  <section class="card notes">
-    <h2>给评审的说明（请重点看这五条）</h2>
+  <section class="card notes" style="margin-top:16px">
+    <h2>说明与待拍板</h2>
     <ul>
-      <li><b>动效</b>：入场从 0 画到当前步（一次性 560ms，缓动 <span class="kbd">cubic-bezier(.2,0,0,1)</span>，四个分区错峰 70ms，像扫过一格）；切屏时往前扫。只动 <span class="kbd">transform / opacity</span>，零布局位移。</li>
-      <li><b>降级</b>：系统「减少动态效果」下直接显示终态（右上开关可模拟）。脚本没接上时也不藏内容——与全站动效层同一套兜底。</li>
-      <li><b>语义/无障碍</b>：保持 <span class="kbd">nav &gt; ol</span> 结构和每个标签的 <span class="kbd">aria-current="step"</span>；这是导航不是加载进度，不标 progressbar 角色。标签文字保留原文（「① 取数并核验」等），站内验收断言依赖「取数」「生成」的字样与前后顺序。</li>
-      <li><b>操作员视角</b>（点右上「操作员」看）：建议<b>仍保持四分</b>，①②置灰标注不可用；备选是压缩成 ③④ 两分（同现有过滤）。</li>
-      <li><b>落点与边界</b>：改 <span class="kbd">App.tsx</span>（步骤条）+ <span class="kbd">index.css</span>（新类名 <span class="kbd">.flow-*</span>）；不碰取数台的 <span class="kbd">Acquire.tsx</span>。落地后跑：全屏截图对照 + 站内端到端 + 重新构建 dist。</li>
+      <li><b>文字保留原文</b>（「取数并核验 / 选材 / 生成初稿 / 核验与定稿」）：站内验收断言依赖「取数」「生成」的字样与前后顺序，序号去掉不影响。</li>
+      <li><b>动效</b>：细线扫动 560ms，<span class="kbd">cubic-bezier(.2,0,0,1)</span>，四段错峰 70ms；入场从零画到当前步；只动 transform。降级：减少动态效果＝直接终态（右上开关可试）。</li>
+      <li><b>语义</b>：仍是真顺序导航（<span class="kbd">nav &gt; ol</span>、<span class="kbd">aria-current="step"</span>），只是不再把序号画出来。</li>
+      <li><b>操作员视角</b>（点「操作员」试）：建议仍四张卡，「取数并核验 / 选材」置灰不可点；备选是只留两张。</li>
     </ul>
     <div class="split"></div>
-    <h2>待拍板</h2>
     <ul>
-      <li><span class="tag q">挑一个</span> 甲（当前分区也点亮）还是 乙（只亮走过的、当前在途）？</li>
-      <li><span class="tag q">确认</span> 操作员仍四分、①②置灰（还是压成两分）？</li>
-      <li><span class="tag q">微调</span> 条高 12px、圆角全圆、分区缝 3px、标签居中于分区下——都可以再调。</li>
+      <li><span class="tag q">请挑</span> 细线语义：<b>含当前步</b>（①屏 25% → ④屏拉满）还是 <b>只含已走过</b>（①屏 0% → ③屏 75%）？稿内可实时切换对比。</li>
+      <li><span class="tag q">请挑</span> 形态：四张独立卡（推荐）还是“一张整卡四等分”（小样在上）？</li>
+      <li><span class="tag q">请定</span> 方角是否全站推？是则我另出「全站方角」试妆稿再动全站样式，不和本次混在一起。</li>
     </ul>
   </section>
 </div>
 
 <script>
 (function(){
-  var D = { step: 1, operator: false, timer: null };
+  var D = { step: 1, operator: false, lineCurrent: true, timer: null };
+  var NAMES = ['取数并核验','选材','生成初稿','核验与定稿'];
 
   function $(s, r){ return (r || document).querySelector(s); }
   function $$(s, r){ return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
 
+  function fillOn(idx, step){
+    return D.lineCurrent ? (idx <= step) : (idx < step);
+  }
+
   function render(step){
     D.step = step;
-    var names = ['① 取数并核验','② 选材','③ 生成初稿','④ 核验与定稿'];
-    $('#readout').textContent = names[step - 1] || '—';
+    $('#readout').textContent = NAMES[step - 1] || '—';
 
-    $$('.demo').forEach(function(demo){
-      var variant = demo.getAttribute('data-variant');
-      $$('.seg', demo).forEach(function(seg, i){
-        var idx = i + 1;
-        seg.classList.toggle('current', variant === 'yi' && idx === step);
-        var fill = $('.seg-fill', seg);
-        var on = (variant === 'jia') ? (idx <= step) : (idx < step);
-        fill.classList.toggle('on', on);
-      });
-      $$('.flow-label', demo).forEach(function(lab, i){
-        var idx = i + 1;
-        lab.classList.toggle('done', idx < step);
-        lab.classList.toggle('now', idx === step);
-        lab.classList.toggle('na', D.operator && idx <= 2);
-      });
+    /* 主形态 */
+    $$('.flowline .lf').forEach(function(lf, i){ lf.classList.toggle('on', fillOn(i + 1, step)); });
+    $$('.flowcards .flowcard').forEach(function(cd, i){
+      var idx = i + 1;
+      cd.classList.toggle('done', idx < step);
+      cd.classList.toggle('now', idx === step);
+      cd.classList.toggle('na', D.operator && idx <= 2);
     });
+
+    /* 备选形态小样 */
+    $$('.alt-card .lf').forEach(function(lf, i){ lf.classList.toggle('on', fillOn(i + 1, step)); });
+    $$('.alt-col').forEach(function(col, i){
+      var idx = i + 1;
+      col.classList.toggle('done', idx < step);
+      col.classList.toggle('now', idx === step);
+    });
+
     $$('.stepbtn').forEach(function(b){
       b.classList.toggle('on', Number(b.getAttribute('data-step')) === step);
     });
   }
 
-  /* 切换按钮 */
   $$('.stepbtn').forEach(function(b){
     b.addEventListener('click', function(){ render(Number(b.getAttribute('data-step'))); });
   });
-  $$('.flow-label').forEach(function(lab){
-    lab.addEventListener('click', function(e){
+  $$('.flowcard').forEach(function(cd){
+    cd.addEventListener('click', function(e){
       e.preventDefault();
-      var idx = Number(lab.getAttribute('data-step'));
+      var idx = Number(cd.getAttribute('data-step'));
       if (D.operator && idx <= 2) return;
       render(idx);
     });
   });
 
-  /* 自动演示：① → ④，一遍 */
   $('#play').addEventListener('click', function(){
     if (D.timer) { clearTimeout(D.timer); D.timer = null; }
     var s = 1;
@@ -250,7 +272,15 @@
     tick();
   });
 
-  /* 角色切换 */
+  function lineMode(cur){
+    D.lineCurrent = cur;
+    $('#lineA').classList.toggle('on', cur);
+    $('#lineB').classList.toggle('on', !cur);
+    render(D.step);
+  }
+  $('#lineA').addEventListener('click', function(){ lineMode(true); });
+  $('#lineB').addEventListener('click', function(){ lineMode(false); });
+
   function role(operator){
     D.operator = operator;
     $('#roleAdmin').classList.toggle('on', !operator);
@@ -260,14 +290,14 @@
   $('#roleAdmin').addEventListener('click', function(){ role(false); });
   $('#roleOperator').addEventListener('click', function(){ role(true); });
 
-  /* 降级模拟 */
   $('#rm').addEventListener('click', function(){
     var on = document.documentElement.classList.toggle('rm');
     $('#rm').classList.toggle('on', on);
   });
 
-  /* 首次入场：从零画到第①步（演示“画入”） */
+  /* 首次入场：从零画到第①步 */
   render(0);
+  $('#readout').textContent = '取数并核验';
   setTimeout(function(){ render(1); }, 420);
 })();
 </script>
