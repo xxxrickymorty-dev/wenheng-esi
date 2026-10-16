@@ -799,6 +799,21 @@ def fill_forecast_charts(doc, ledger_dir, slots, warns):
         idx, subject = info.get("index"), info.get("subject")
         if isinstance(idx, int) and isinstance(subject, str) and idx not in by_index:
             by_index[idx] = subject
+    # 章首导语的学科名（母版静态句）：随报告目标学科改写（2026-10-16，改选学科优先后）。
+    # 原文：本期针对我校的{学科1}和{学科2}2个学科，我们利用指数平滑模型，…
+    subs = [by_index.get(1), by_index.get(2)]
+    if all(isinstance(s, str) and s for s in subs):
+        lead_new = (f"本期针对我校的{subs[0]}和{subs[1]}2个学科，我们利用指数平滑模型，"
+                    "从被引频次和国内排名两个指标对其进行预测分析，提供以下参考信息：")
+        for p in doc.paragraphs:
+            t = p.text.strip()
+            if "本期针对我校的" in t and "2个学科" in t:
+                if t != lead_new:
+                    _replace_para(p, lead_new)
+                    slots.append(_text_slot(
+                        "预测章/导语（目标学科）", t, lead_new,
+                        "report_forecast（改选学科优先，导语随实际学科）"))
+                break
     plan = [(1, "cites"), (1, "rank"), (2, "cites"), (2, "rank")]
     for cap_idx, (subj_i, kind) in zip(caps, plan):
         png = ov / f"forecast_{subj_i}_{kind}.png"
