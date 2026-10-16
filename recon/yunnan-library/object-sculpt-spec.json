@@ -1501,7 +1501,7 @@
       "topologyClass": "assembled-solid",
       "topologyRationale": "Discrete rigid mass with flat faces; genuinely built from a box.",
       "geometryDescriptor": {
-        "topologyIntent": "Container root. Identity: symmetric domed library on an axial plaza. Forward is +Z (plaza side).",
+        "topologyIntent": "Container root (geometry hidden by the invisible-root material). Identity: symmetric domed library on an axial plaza. Forward is +Z (plaza side).",
         "edgeTreatment": {
           "type": "none",
           "bevelRadius": 0.0,
@@ -1514,9 +1514,9 @@
       "parent": null,
       "attachment": null,
       "dimensions": {
-        "width": 240,
-        "height": 42,
-        "depth": 130,
+        "width": 1,
+        "height": 1,
+        "depth": 1,
         "units": "relative",
         "confidence": 0.9
       },
@@ -1530,11 +1530,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -1586,12 +1581,12 @@
           "seamRefs": [],
           "detachableFragments": [],
           "breakImpulse": 0.0,
-          "debrisMaterial": "paving-plaza"
+          "debrisMaterial": "invisible-root"
         }
       },
-      "material": "paving-plaza",
+      "material": "invisible-root",
       "materialLayers": [
-        "paving-plaza"
+        "invisible-root"
       ],
       "deformations": [],
       "joints": [],
@@ -1616,9 +1611,9 @@
       "details": [],
       "fidelityTier": "blockout",
       "colorMaterialRecipe": {
-        "dominantAlbedo": "rgba(205, 197, 176, 1.0)",
-        "secondaryAlbedo": "rgba(190, 181, 160, 1.0)",
-        "materialClass": "stone",
+        "dominantAlbedo": "rgba(110, 103, 89, 1.0)",
+        "secondaryAlbedo": "rgba(95, 89, 76, 1.0)",
+        "materialClass": "unknown",
         "materialClassConfidence": 0.8
       }
     },
@@ -1662,11 +1657,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -1792,11 +1782,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -1921,11 +1906,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -2056,11 +2036,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -2185,11 +2160,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -2314,11 +2284,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -2444,11 +2409,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -2573,11 +2533,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -2707,11 +2662,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -2841,11 +2791,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -2970,11 +2915,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -3108,11 +3048,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -3253,11 +3188,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -3406,11 +3336,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -3535,11 +3460,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -3670,11 +3590,6 @@
           1.5707963267948966,
           0,
           0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -3799,11 +3714,6 @@
           1.5707963267948966,
           0,
           0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -3974,11 +3884,6 @@
           0,
           0.0,
           0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -4149,11 +4054,6 @@
           0,
           0.785398,
           0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -4324,11 +4224,6 @@
           0,
           1.570796,
           0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -4499,11 +4394,6 @@
           0,
           2.356194,
           0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -4674,11 +4564,6 @@
           0,
           3.141593,
           0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -4849,11 +4734,6 @@
           0,
           3.926991,
           0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -5024,11 +4904,6 @@
           0,
           4.712389,
           0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -5199,11 +5074,6 @@
           0,
           5.497787,
           0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -5328,11 +5198,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -5462,11 +5327,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -5591,11 +5451,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -5720,11 +5575,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -5854,11 +5704,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -5983,11 +5828,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -6112,11 +5952,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -6246,11 +6081,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -6375,11 +6205,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -6505,11 +6330,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -6644,11 +6464,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -6778,11 +6593,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -6912,11 +6722,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -7046,11 +6851,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -7176,11 +6976,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -7310,11 +7105,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -7444,11 +7234,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -7573,11 +7358,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -7702,11 +7482,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -7836,11 +7611,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -7985,11 +7755,6 @@
           0,
           0.7853981633974483,
           0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -8114,11 +7879,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -8243,11 +8003,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -8373,11 +8128,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -8502,11 +8252,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -8636,11 +8381,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -8766,11 +8506,6 @@
           0,
           1.570796,
           0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -8895,11 +8630,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -9044,11 +8774,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -9173,11 +8898,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -9303,11 +9023,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -9442,11 +9157,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -9576,11 +9286,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -9710,11 +9415,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -9844,11 +9544,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -9974,11 +9669,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -10108,11 +9798,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -10242,11 +9927,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -10371,11 +10051,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -10500,11 +10175,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -10634,11 +10304,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -10783,11 +10448,6 @@
           0,
           0.7853981633974483,
           0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -10912,11 +10572,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -11041,11 +10696,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -11171,11 +10821,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -11300,11 +10945,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -11434,11 +11074,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -11564,11 +11199,6 @@
           0,
           1.570796,
           0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -11693,11 +11323,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -11842,11 +11467,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -11971,11 +11591,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -12100,11 +11715,6 @@
           -0.191986,
           0,
           0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -12249,11 +11859,6 @@
           0,
           0,
           1.5707963267948966
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -12383,11 +11988,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -12512,11 +12112,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -12642,11 +12237,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -12771,11 +12361,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -12900,11 +12485,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -13029,11 +12609,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -13163,11 +12738,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -13292,11 +12862,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -13422,11 +12987,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -13556,11 +13116,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -13743,11 +13298,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -13930,11 +13480,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -14064,11 +13609,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -14194,11 +13734,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -14323,11 +13858,6 @@
           0.0,
           0.0,
           0.0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
       },
       "actionProfile": {
@@ -14547,31 +14077,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\brick-terracotta\\brick-terracotta_albedo.png",
-            "url": "brick-terracotta_albedo.png",
+            "url": "/material-evidence/brick-terracotta/brick-terracotta_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\brick-terracotta\\brick-terracotta_roughness.png",
-            "url": "brick-terracotta_roughness.png",
+            "url": "/material-evidence/brick-terracotta/brick-terracotta_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\brick-terracotta\\brick-terracotta_height.png",
-            "url": "brick-terracotta_height.png",
+            "url": "/material-evidence/brick-terracotta/brick-terracotta_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\brick-terracotta\\brick-terracotta_normal.png",
-            "url": "brick-terracotta_normal.png",
+            "url": "/material-evidence/brick-terracotta/brick-terracotta_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\brick-terracotta\\brick-terracotta_ao.png",
-            "url": "brick-terracotta_ao.png",
+            "url": "/material-evidence/brick-terracotta/brick-terracotta_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -14703,31 +14233,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\trim-limestone\\trim-limestone_albedo.png",
-            "url": "trim-limestone_albedo.png",
+            "url": "/material-evidence/trim-limestone/trim-limestone_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\trim-limestone\\trim-limestone_roughness.png",
-            "url": "trim-limestone_roughness.png",
+            "url": "/material-evidence/trim-limestone/trim-limestone_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\trim-limestone\\trim-limestone_height.png",
-            "url": "trim-limestone_height.png",
+            "url": "/material-evidence/trim-limestone/trim-limestone_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\trim-limestone\\trim-limestone_normal.png",
-            "url": "trim-limestone_normal.png",
+            "url": "/material-evidence/trim-limestone/trim-limestone_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\trim-limestone\\trim-limestone_ao.png",
-            "url": "trim-limestone_ao.png",
+            "url": "/material-evidence/trim-limestone/trim-limestone_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -14859,31 +14389,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\stone-olive\\stone-olive_albedo.png",
-            "url": "stone-olive_albedo.png",
+            "url": "/material-evidence/stone-olive/stone-olive_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\stone-olive\\stone-olive_roughness.png",
-            "url": "stone-olive_roughness.png",
+            "url": "/material-evidence/stone-olive/stone-olive_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\stone-olive\\stone-olive_height.png",
-            "url": "stone-olive_height.png",
+            "url": "/material-evidence/stone-olive/stone-olive_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\stone-olive\\stone-olive_normal.png",
-            "url": "stone-olive_normal.png",
+            "url": "/material-evidence/stone-olive/stone-olive_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\stone-olive\\stone-olive_ao.png",
-            "url": "stone-olive_ao.png",
+            "url": "/material-evidence/stone-olive/stone-olive_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -15026,31 +14556,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-dark\\glass-dark_albedo.png",
-            "url": "glass-dark_albedo.png",
+            "url": "/material-evidence/glass-dark/glass-dark_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-dark\\glass-dark_roughness.png",
-            "url": "glass-dark_roughness.png",
+            "url": "/material-evidence/glass-dark/glass-dark_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-dark\\glass-dark_height.png",
-            "url": "glass-dark_height.png",
+            "url": "/material-evidence/glass-dark/glass-dark_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-dark\\glass-dark_normal.png",
-            "url": "glass-dark_normal.png",
+            "url": "/material-evidence/glass-dark/glass-dark_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-dark\\glass-dark_ao.png",
-            "url": "glass-dark_ao.png",
+            "url": "/material-evidence/glass-dark/glass-dark_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -15197,31 +14727,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-dome\\glass-dome_albedo.png",
-            "url": "glass-dome_albedo.png",
+            "url": "/material-evidence/glass-dome/glass-dome_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-dome\\glass-dome_roughness.png",
-            "url": "glass-dome_roughness.png",
+            "url": "/material-evidence/glass-dome/glass-dome_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-dome\\glass-dome_height.png",
-            "url": "glass-dome_height.png",
+            "url": "/material-evidence/glass-dome/glass-dome_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-dome\\glass-dome_normal.png",
-            "url": "glass-dome_normal.png",
+            "url": "/material-evidence/glass-dome/glass-dome_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-dome\\glass-dome_ao.png",
-            "url": "glass-dome_ao.png",
+            "url": "/material-evidence/glass-dome/glass-dome_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -15357,31 +14887,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-sky\\glass-sky_albedo.png",
-            "url": "glass-sky_albedo.png",
+            "url": "/material-evidence/glass-sky/glass-sky_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-sky\\glass-sky_roughness.png",
-            "url": "glass-sky_roughness.png",
+            "url": "/material-evidence/glass-sky/glass-sky_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-sky\\glass-sky_height.png",
-            "url": "glass-sky_height.png",
+            "url": "/material-evidence/glass-sky/glass-sky_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-sky\\glass-sky_normal.png",
-            "url": "glass-sky_normal.png",
+            "url": "/material-evidence/glass-sky/glass-sky_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-sky\\glass-sky_ao.png",
-            "url": "glass-sky_ao.png",
+            "url": "/material-evidence/glass-sky/glass-sky_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -15525,31 +15055,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-tile\\roof-tile_albedo.png",
-            "url": "roof-tile_albedo.png",
+            "url": "/material-evidence/roof-tile/roof-tile_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-tile\\roof-tile_roughness.png",
-            "url": "roof-tile_roughness.png",
+            "url": "/material-evidence/roof-tile/roof-tile_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-tile\\roof-tile_height.png",
-            "url": "roof-tile_height.png",
+            "url": "/material-evidence/roof-tile/roof-tile_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-tile\\roof-tile_normal.png",
-            "url": "roof-tile_normal.png",
+            "url": "/material-evidence/roof-tile/roof-tile_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-tile\\roof-tile_ao.png",
-            "url": "roof-tile_ao.png",
+            "url": "/material-evidence/roof-tile/roof-tile_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -15681,31 +15211,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-ridge\\roof-ridge_albedo.png",
-            "url": "roof-ridge_albedo.png",
+            "url": "/material-evidence/roof-ridge/roof-ridge_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-ridge\\roof-ridge_roughness.png",
-            "url": "roof-ridge_roughness.png",
+            "url": "/material-evidence/roof-ridge/roof-ridge_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-ridge\\roof-ridge_height.png",
-            "url": "roof-ridge_height.png",
+            "url": "/material-evidence/roof-ridge/roof-ridge_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-ridge\\roof-ridge_normal.png",
-            "url": "roof-ridge_normal.png",
+            "url": "/material-evidence/roof-ridge/roof-ridge_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-ridge\\roof-ridge_ao.png",
-            "url": "roof-ridge_ao.png",
+            "url": "/material-evidence/roof-ridge/roof-ridge_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -15837,31 +15367,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\paving-plaza\\paving-plaza_albedo.png",
-            "url": "paving-plaza_albedo.png",
+            "url": "/material-evidence/paving-plaza/paving-plaza_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\paving-plaza\\paving-plaza_roughness.png",
-            "url": "paving-plaza_roughness.png",
+            "url": "/material-evidence/paving-plaza/paving-plaza_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\paving-plaza\\paving-plaza_height.png",
-            "url": "paving-plaza_height.png",
+            "url": "/material-evidence/paving-plaza/paving-plaza_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\paving-plaza\\paving-plaza_normal.png",
-            "url": "paving-plaza_normal.png",
+            "url": "/material-evidence/paving-plaza/paving-plaza_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\paving-plaza\\paving-plaza_ao.png",
-            "url": "paving-plaza_ao.png",
+            "url": "/material-evidence/paving-plaza/paving-plaza_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -15993,31 +15523,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\terrace-stone\\terrace-stone_albedo.png",
-            "url": "terrace-stone_albedo.png",
+            "url": "/material-evidence/terrace-stone/terrace-stone_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\terrace-stone\\terrace-stone_roughness.png",
-            "url": "terrace-stone_roughness.png",
+            "url": "/material-evidence/terrace-stone/terrace-stone_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\terrace-stone\\terrace-stone_height.png",
-            "url": "terrace-stone_height.png",
+            "url": "/material-evidence/terrace-stone/terrace-stone_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\terrace-stone\\terrace-stone_normal.png",
-            "url": "terrace-stone_normal.png",
+            "url": "/material-evidence/terrace-stone/terrace-stone_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\terrace-stone\\terrace-stone_ao.png",
-            "url": "terrace-stone_ao.png",
+            "url": "/material-evidence/terrace-stone/terrace-stone_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -16164,31 +15694,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\pool-water\\pool-water_albedo.png",
-            "url": "pool-water_albedo.png",
+            "url": "/material-evidence/pool-water/pool-water_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\pool-water\\pool-water_roughness.png",
-            "url": "pool-water_roughness.png",
+            "url": "/material-evidence/pool-water/pool-water_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\pool-water\\pool-water_height.png",
-            "url": "pool-water_height.png",
+            "url": "/material-evidence/pool-water/pool-water_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\pool-water\\pool-water_normal.png",
-            "url": "pool-water_normal.png",
+            "url": "/material-evidence/pool-water/pool-water_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\pool-water\\pool-water_ao.png",
-            "url": "pool-water_ao.png",
+            "url": "/material-evidence/pool-water/pool-water_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -16320,31 +15850,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\pool-stone\\pool-stone_albedo.png",
-            "url": "pool-stone_albedo.png",
+            "url": "/material-evidence/pool-stone/pool-stone_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\pool-stone\\pool-stone_roughness.png",
-            "url": "pool-stone_roughness.png",
+            "url": "/material-evidence/pool-stone/pool-stone_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\pool-stone\\pool-stone_height.png",
-            "url": "pool-stone_height.png",
+            "url": "/material-evidence/pool-stone/pool-stone_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\pool-stone\\pool-stone_normal.png",
-            "url": "pool-stone_normal.png",
+            "url": "/material-evidence/pool-stone/pool-stone_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\pool-stone\\pool-stone_ao.png",
-            "url": "pool-stone_ao.png",
+            "url": "/material-evidence/pool-stone/pool-stone_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -16476,31 +16006,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\lawn-turf\\lawn-turf_albedo.png",
-            "url": "lawn-turf_albedo.png",
+            "url": "/material-evidence/lawn-turf/lawn-turf_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\lawn-turf\\lawn-turf_roughness.png",
-            "url": "lawn-turf_roughness.png",
+            "url": "/material-evidence/lawn-turf/lawn-turf_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\lawn-turf\\lawn-turf_height.png",
-            "url": "lawn-turf_height.png",
+            "url": "/material-evidence/lawn-turf/lawn-turf_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\lawn-turf\\lawn-turf_normal.png",
-            "url": "lawn-turf_normal.png",
+            "url": "/material-evidence/lawn-turf/lawn-turf_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\lawn-turf\\lawn-turf_ao.png",
-            "url": "lawn-turf_ao.png",
+            "url": "/material-evidence/lawn-turf/lawn-turf_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -16632,31 +16162,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\hedge-purple\\hedge-purple_albedo.png",
-            "url": "hedge-purple_albedo.png",
+            "url": "/material-evidence/hedge-purple/hedge-purple_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\hedge-purple\\hedge-purple_roughness.png",
-            "url": "hedge-purple_roughness.png",
+            "url": "/material-evidence/hedge-purple/hedge-purple_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\hedge-purple\\hedge-purple_height.png",
-            "url": "hedge-purple_height.png",
+            "url": "/material-evidence/hedge-purple/hedge-purple_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\hedge-purple\\hedge-purple_normal.png",
-            "url": "hedge-purple_normal.png",
+            "url": "/material-evidence/hedge-purple/hedge-purple_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\hedge-purple\\hedge-purple_ao.png",
-            "url": "hedge-purple_ao.png",
+            "url": "/material-evidence/hedge-purple/hedge-purple_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -16790,31 +16320,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\foliage-green\\foliage-green_albedo.png",
-            "url": "foliage-green_albedo.png",
+            "url": "/material-evidence/foliage-green/foliage-green_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\foliage-green\\foliage-green_roughness.png",
-            "url": "foliage-green_roughness.png",
+            "url": "/material-evidence/foliage-green/foliage-green_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\foliage-green\\foliage-green_height.png",
-            "url": "foliage-green_height.png",
+            "url": "/material-evidence/foliage-green/foliage-green_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\foliage-green\\foliage-green_normal.png",
-            "url": "foliage-green_normal.png",
+            "url": "/material-evidence/foliage-green/foliage-green_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\foliage-green\\foliage-green_ao.png",
-            "url": "foliage-green_ao.png",
+            "url": "/material-evidence/foliage-green/foliage-green_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -16946,31 +16476,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\bark-brown\\bark-brown_albedo.png",
-            "url": "bark-brown_albedo.png",
+            "url": "/material-evidence/bark-brown/bark-brown_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\bark-brown\\bark-brown_roughness.png",
-            "url": "bark-brown_roughness.png",
+            "url": "/material-evidence/bark-brown/bark-brown_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\bark-brown\\bark-brown_height.png",
-            "url": "bark-brown_height.png",
+            "url": "/material-evidence/bark-brown/bark-brown_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\bark-brown\\bark-brown_normal.png",
-            "url": "bark-brown_normal.png",
+            "url": "/material-evidence/bark-brown/bark-brown_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\bark-brown\\bark-brown_ao.png",
-            "url": "bark-brown_ao.png",
+            "url": "/material-evidence/bark-brown/bark-brown_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -17102,31 +16632,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\steel-dark\\steel-dark_albedo.png",
-            "url": "steel-dark_albedo.png",
+            "url": "/material-evidence/steel-dark/steel-dark_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\steel-dark\\steel-dark_roughness.png",
-            "url": "steel-dark_roughness.png",
+            "url": "/material-evidence/steel-dark/steel-dark_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\steel-dark\\steel-dark_height.png",
-            "url": "steel-dark_height.png",
+            "url": "/material-evidence/steel-dark/steel-dark_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\steel-dark\\steel-dark_normal.png",
-            "url": "steel-dark_normal.png",
+            "url": "/material-evidence/steel-dark/steel-dark_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\steel-dark\\steel-dark_ao.png",
-            "url": "steel-dark_ao.png",
+            "url": "/material-evidence/steel-dark/steel-dark_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -17258,31 +16788,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\dome-frame\\dome-frame_albedo.png",
-            "url": "dome-frame_albedo.png",
+            "url": "/material-evidence/dome-frame/dome-frame_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\dome-frame\\dome-frame_roughness.png",
-            "url": "dome-frame_roughness.png",
+            "url": "/material-evidence/dome-frame/dome-frame_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\dome-frame\\dome-frame_height.png",
-            "url": "dome-frame_height.png",
+            "url": "/material-evidence/dome-frame/dome-frame_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\dome-frame\\dome-frame_normal.png",
-            "url": "dome-frame_normal.png",
+            "url": "/material-evidence/dome-frame/dome-frame_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\dome-frame\\dome-frame_ao.png",
-            "url": "dome-frame_ao.png",
+            "url": "/material-evidence/dome-frame/dome-frame_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -17414,31 +16944,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\equipment-white\\equipment-white_albedo.png",
-            "url": "equipment-white_albedo.png",
+            "url": "/material-evidence/equipment-white/equipment-white_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\equipment-white\\equipment-white_roughness.png",
-            "url": "equipment-white_roughness.png",
+            "url": "/material-evidence/equipment-white/equipment-white_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\equipment-white\\equipment-white_height.png",
-            "url": "equipment-white_height.png",
+            "url": "/material-evidence/equipment-white/equipment-white_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\equipment-white\\equipment-white_normal.png",
-            "url": "equipment-white_normal.png",
+            "url": "/material-evidence/equipment-white/equipment-white_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\equipment-white\\equipment-white_ao.png",
-            "url": "equipment-white_ao.png",
+            "url": "/material-evidence/equipment-white/equipment-white_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -17570,31 +17100,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-deck\\roof-deck_albedo.png",
-            "url": "roof-deck_albedo.png",
+            "url": "/material-evidence/roof-deck/roof-deck_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-deck\\roof-deck_roughness.png",
-            "url": "roof-deck_roughness.png",
+            "url": "/material-evidence/roof-deck/roof-deck_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-deck\\roof-deck_height.png",
-            "url": "roof-deck_height.png",
+            "url": "/material-evidence/roof-deck/roof-deck_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-deck\\roof-deck_normal.png",
-            "url": "roof-deck_normal.png",
+            "url": "/material-evidence/roof-deck/roof-deck_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-deck\\roof-deck_ao.png",
-            "url": "roof-deck_ao.png",
+            "url": "/material-evidence/roof-deck/roof-deck_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -17726,31 +17256,31 @@
         "maps": {
           "albedo": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\banner-red\\banner-red_albedo.png",
-            "url": "banner-red_albedo.png",
+            "url": "/material-evidence/banner-red/banner-red_albedo.png",
             "channel": "albedo",
             "source": "reference-pixel-extraction"
           },
           "roughness": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\banner-red\\banner-red_roughness.png",
-            "url": "banner-red_roughness.png",
+            "url": "/material-evidence/banner-red/banner-red_roughness.png",
             "channel": "roughness",
             "source": "reference-pixel-extraction"
           },
           "height": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\banner-red\\banner-red_height.png",
-            "url": "banner-red_height.png",
+            "url": "/material-evidence/banner-red/banner-red_height.png",
             "channel": "height",
             "source": "reference-pixel-extraction"
           },
           "normal": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\banner-red\\banner-red_normal.png",
-            "url": "banner-red_normal.png",
+            "url": "/material-evidence/banner-red/banner-red_normal.png",
             "channel": "normal",
             "source": "reference-pixel-extraction"
           },
           "ao": {
             "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\banner-red\\banner-red_ao.png",
-            "url": "banner-red_ao.png",
+            "url": "/material-evidence/banner-red/banner-red_ao.png",
             "channel": "ao",
             "source": "reference-pixel-extraction"
           }
@@ -17762,6 +17292,114 @@
         },
         "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
       }
+    },
+    {
+      "id": "invisible-root",
+      "name": "Container (hidden)",
+      "type": "standard",
+      "shaderModel": "MeshPhysicalMaterial / PBR approximation",
+      "baseColor": "#6E6759",
+      "color": "#6E6759",
+      "albedo": {
+        "dominant": "#6E6759",
+        "secondary": [
+          "#5F594C",
+          "#7D7666"
+        ],
+        "samplingNotes": "Container material for the root group: complete PBR so it passes the gate, but opacity 0 so the container box itself never renders (geometry_patterns.md rule)."
+      },
+      "colorVariation": {
+        "palette": [
+          "#6E6759",
+          "#5F594C",
+          "#7D7666"
+        ],
+        "pattern": "even",
+        "amplitude": 0.05,
+        "heightCorrelation": 0.2
+      },
+      "textureResolution": 1024,
+      "textureProjection": {
+        "mode": "uv",
+        "repeat": [
+          3.0,
+          3.0
+        ],
+        "anisotropy": 8,
+        "texelDensityIntent": "stable world-scale detail; no stretching with component scale"
+      },
+      "surfaceFrequencyBands": [
+        {
+          "id": "macro",
+          "frequency": 2.0,
+          "amplitude": 0.3,
+          "role": "broad tone breakup"
+        },
+        {
+          "id": "meso",
+          "frequency": 12.0,
+          "amplitude": 0.16,
+          "role": "visible relief: courses, grain, ribs"
+        },
+        {
+          "id": "micro",
+          "frequency": 56.0,
+          "amplitude": 0.06,
+          "role": "highlight breakup at grazing light"
+        }
+      ],
+      "roughness": {
+        "base": 0.9,
+        "variation": 0.1,
+        "map": "independent-procedural-field",
+        "localResponse": "slightly higher roughness in cavities; lower on worn/polished edges"
+      },
+      "metalness": {
+        "base": 0.0,
+        "variation": 0.0
+      },
+      "normal": {
+        "pattern": "derived-from-independent-height-field",
+        "strength": 0.3,
+        "scale": 20.0,
+        "space": "tangent"
+      },
+      "bump": {
+        "pattern": "procedural-noise",
+        "amplitude": 0.04,
+        "scale": 1.0
+      },
+      "displacement": {
+        "pattern": "none",
+        "amplitude": 0.0,
+        "scale": 1.0,
+        "silhouetteAffects": false
+      },
+      "ambientOcclusion": {
+        "cavityStrength": 0.28,
+        "contactShadowBias": 0.4,
+        "notes": "darken seams and recesses"
+      },
+      "wear": {
+        "edgeWear": 0.05,
+        "scratches": [],
+        "chips": []
+      },
+      "dirt": {
+        "amount": 0.05,
+        "cavityBias": 0.6,
+        "color": "#3A322A"
+      },
+      "localOverrides": [],
+      "shaderNotes": [
+        "Generate albedo, roughness, height/normal, and AO independently; never alias albedo into roughness.",
+        "Reference-derived scalars carried from the four supplied views; runtime maps are procedural canvases."
+      ],
+      "notes": "Container material for the root group: complete PBR so it passes the gate, but opacity 0 so the container box itself never renders (geometry_patterns.md rule).",
+      "opacity": {
+        "base": 0.0
+      },
+      "qualityTier": "utility"
     }
   ],
   "repetitionSystems": [

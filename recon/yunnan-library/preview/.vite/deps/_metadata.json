@@ -1,0 +1,64 @@
+{
+  "hash": "80cc6cbe",
+  "configHash": "96889654",
+  "lockfileHash": "e3b0c442",
+  "browserHash": "30cda6f5",
+  "optimized": {
+    "three": {
+      "src": "../../../../../web/node_modules/three/build/three.module.js",
+      "file": "three.js",
+      "fileHash": "2a2dd30a",
+      "needsInterop": false
+    },
+    "three/examples/jsm/controls/OrbitControls.js": {
+      "src": "../../../../../web/node_modules/three/examples/jsm/controls/OrbitControls.js",
+      "file": "three_examples_jsm_controls_OrbitControls__js.js",
+      "fileHash": "1ed257f5",
+      "needsInterop": false
+    },
+    "three/examples/jsm/environments/RoomEnvironment.js": {
+      "src": "../../../../../web/node_modules/three/examples/jsm/environments/RoomEnvironment.js",
+      "file": "three_examples_jsm_environments_RoomEnvironment__js.js",
+      "fileHash": "19dc4fb6",
+      "needsInterop": false
+    },
+    "three/examples/jsm/postprocessing/BokehPass.js": {
+      "src": "../../../../../web/node_modules/three/examples/jsm/postprocessing/BokehPass.js",
+      "file": "three_examples_jsm_postprocessing_BokehPass__js.js",
+      "fileHash": "90cae454",
+      "needsInterop": false
+    },
+    "three/examples/jsm/postprocessing/EffectComposer.js": {
+      "src": "../../../../../web/node_modules/three/examples/jsm/postprocessing/EffectComposer.js",
+      "file": "three_examples_jsm_postprocessing_EffectComposer__js.js",
+      "fileHash": "f8a7a591",
+      "needsInterop": false
+    },
+    "three/examples/jsm/postprocessing/RenderPass.js": {
+      "src": "../../../../../web/node_modules/three/examples/jsm/postprocessing/RenderPass.js",
+      "file": "three_examples_jsm_postprocessing_RenderPass__js.js",
+      "fileHash": "2a49d30d",
+      "needsInterop": false
+    },
+    "three/examples/jsm/postprocessing/UnrealBloomPass.js": {
+      "src": "../../../../../web/node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js",
+      "file": "three_examples_jsm_postprocessing_UnrealBloomPass__js.js",
+      "fileHash": "bccbf260",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "CopyShader-CJolzhAj": {
+      "file": "CopyShader-CJolzhAj.js",
+      "isDynamicEntry": false
+    },
+    "Pass-D8H4Ve3u": {
+      "file": "Pass-D8H4Ve3u.js",
+      "isDynamicEntry": false
+    },
+    "three.module-CiWBNnOd": {
+      "file": "three.module-CiWBNnOd.js",
+      "isDynamicEntry": false
+    }
+  }
+}

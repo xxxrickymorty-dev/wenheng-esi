@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>YNU Library — review preview</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #0d0f12; }
+      #app { position: fixed; inset: 0; }
+      canvas { display: block; }
+      #hud {
+        position: fixed; left: 10px; bottom: 8px; z-index: 5;
+        font: 12px/1.5 ui-monospace, monospace; color: #cfd6dd;
+        background: rgba(10, 12, 15, 0.55); padding: 4px 8px; border-radius: 4px;
+        pointer-events: none; white-space: pre;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="hud">booting…</div>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

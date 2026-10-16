@@ -27,7 +27,10 @@ def edge_treatment(kind: str = "none", radius: float = 0.0, segments: int = 1) -
 
 
 def transform(pos, rot=(0.0, 0.0, 0.0)):
-    return {"position": [round(v, 3) for v in pos], "rotation": list(rot), "scale": [1, 1, 1]}
+    # NOTE: do NOT emit transform.scale here. The factory's scale_vector() treats an
+    # explicit transform.scale as authoritative and then ignores component.dimensions,
+    # which silently renders every component as a unit cube (cost a full debug cycle).
+    return {"position": [round(v, 3) for v in pos], "rotation": list(rot)}
 
 
 def attachment(socket: str, start, end, contact: str = "butt", embed: float = 0.3, tol: float = 0.05):
@@ -49,6 +52,7 @@ MATERIAL_CLASS = {
     "lawn-turf": "unknown", "hedge-purple": "unknown", "foliage-green": "unknown",
     "bark-brown": "wood", "steel-dark": "metal", "dome-frame": "metal",
     "equipment-white": "plastic", "roof-deck": "stone", "banner-red": "fabric",
+    "invisible-root": "unknown",
 }
 
 MATERIAL_HEX = {
@@ -73,6 +77,7 @@ MATERIAL_HEX = {
     "equipment-white": ("E8E6E0", ["DAD8D2", "F2F0EA"]),
     "roof-deck": ("D8D2C2", ["C9C3B3", "E4DFCF"]),
     "banner-red": ("B23326", ["9E2B1F", "C63D2E"]),
+    "invisible-root": ("6E6759", ["5F594C", "7D7666"]),
 }
 
 
@@ -452,6 +457,13 @@ def build_materials() -> list[dict]:
             variation=0.06, pattern="even",
             note="Two saturated red vertical banners flanking the entrance doors.",
         ),
+        mat(
+            "invisible-root", "Container (hidden)", "#6E6759",
+            ["#5F594C", "#7D7666"], 0.9, 0.0,
+            variation=0.05, pattern="even",
+            extra={"opacity": {"base": 0.0}, "qualityTier": "utility"},
+            note="Container material for the root group: complete PBR so it passes the gate, but opacity 0 so the container box itself never renders (geometry_patterns.md rule).",
+        ),
     ]
 
 
@@ -466,11 +478,11 @@ def build_components() -> list[dict]:
 
     # ---- root
     add(comp(
-        "root", "YNU Library", "macro", None, (0, 0, 0), (240, 42, 130),
-        "paving-plaza",
+        "root", "YNU Library", "macro", None, (0, 0, 0), (1, 1, 1),
+        "invisible-root",
         role="body", anim_role="root", importance=1.0, confidence=0.9,
         evidence=["view:front-elevation", "view:front-aerial-3q", "view:close-aerial", "view:rear-quarter"],
-        notes="Container root. Identity: symmetric domed library on an axial plaza. Forward is +Z (plaza side).",
+        notes="Container root (geometry hidden by the invisible-root material). Identity: symmetric domed library on an axial plaza. Forward is +Z (plaza side).",
     ))
 
     # ---- terrace podium

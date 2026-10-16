@@ -25,9 +25,12 @@ def main() -> int:
         for channel in ("albedo", "roughness", "height", "normal", "ao"):
             entry = (report.get("maps") or {}).get(channel)
             if isinstance(entry, dict) and entry.get("path"):
+                filename = entry.get("url") or Path(entry["path"]).name
                 maps[channel] = {
                     "path": entry["path"],
-                    "url": entry.get("url") or Path(entry["path"]).name,
+                    # Served route: the preview (and any local harness) maps /material-evidence/*
+                    # to the on-disk folder; the generated factory loads this URL directly.
+                    "url": f"/material-evidence/{mid}/{filename}",
                     "channel": channel,
                     "source": "reference-pixel-extraction",
                 }
