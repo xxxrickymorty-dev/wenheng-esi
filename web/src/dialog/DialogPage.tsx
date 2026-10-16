@@ -663,7 +663,6 @@ export default function DialogPage() {
                       ))}
                       <a href={withPeriod('/app/')}>去生成台 ▸</a>
                     </div>
-                    <p className="dlg-land-hint">图例：✓ 已完成 · ● 进行中 · ○ 未开始</p>
                   </>
                 )}
                 {tv?.prevNote && <p className="dlg-land-prev">{tv.prevNote}</p>}

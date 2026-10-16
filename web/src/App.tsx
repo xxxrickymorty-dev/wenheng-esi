@@ -547,7 +547,7 @@ export default function App() {
         </nav>
         <div className="app-side">
           {/* 陈列馆＝给人看的「展示面」，不在工作区里——顶栏给一个离开工作区的入口（2026-10-15） */}
-          <a className="app-jump" href="/app/shelf/" title="去陈列馆（成品展示面）">
+          <a className="app-jump" href="/app/shelf/" title="陈列馆（成品）">
             陈列馆 <Icon name="arrow" size={14} />
           </a>
           {/* 皮肤开关：与对话页同款（2026-10-12）；默认云大绿 */}

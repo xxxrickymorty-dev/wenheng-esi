@@ -89,7 +89,7 @@ export function Trace({ period }: { period: string | null }) {
                 <tr>
                   <th className="w-150">位置</th>
                   <th className="w-170">报告里</th>
-                  <th className="w-190">台账里（现场重读）</th>
+                  <th className="w-190">台账现值</th>
                   <th className="w-210">来源</th>
                   <th>怎么来的</th>
                 </tr>

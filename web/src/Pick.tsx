@@ -108,16 +108,16 @@ export function Pick({ period }: { period: string | null }) {
         <div className="pick-foot">
           <span className="hint">
             已选 <b>{selected.length}</b> / {allIds.length} 节
-            {skipped.length ? <>　·　本轮不办：<b>{skipped.join('；')}</b></> : null}
+            {skipped.length ? <>　·　这轮不做：<b>{skipped.join('；')}</b></> : null}
           </span>
           <span className="ml-auto roww">
             <button className="btn small" onClick={() => setOff(new Set())}>全选</button>
             <button className="btn small" onClick={() => setOff(new Set(allIds))}>全不选</button>
             <button className="btn small" disabled={saved} onClick={() => void copySkip()}>
-              {saved ? '已复制' : '复制「本轮不办清单」'}
+              {saved ? '已复制' : '复制「这轮不做」'}
             </button>
             <button className="btn small" disabled={saved} onClick={() => setSaved(true)}>
-              <Icon name="check" size={18} />记住本轮范围
+              <Icon name="check" size={18} />记住这轮选择
             </button>
           </span>
         </div>

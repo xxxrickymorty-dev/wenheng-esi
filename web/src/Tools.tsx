@@ -175,7 +175,7 @@ export function Tools({
     try {
       const r = await rollbackPeriod(actionPeriod, point)
       setMsg({ period: actionPeriod, ok: true,
-               text: `已回滚到 ${fmtPoint(point)}（${r.restored.length} 个文件）；回滚前的成品已另存留档，报告变了以后签名需重签。` })
+               text: `已回滚到 ${fmtPoint(point)}（${r.restored.length} 个文件）；回滚前的成品已另存留档，报告变了以后签发会失效，需重新签单。` })
       setLocalRefresh((n) => n + 1)
     } catch (e) {
       const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }

@@ -39,7 +39,7 @@ function Chain({
     <aside className="chain">
       <h3>期次印记链</h3>
       <p className="cap">
-        按时间从左到右。签过是朱印，签名失效是金印，未签发是墨线框。
+        按时间从左到右。已签发是朱印，签发已失效是金印，未签发是墨线框。
         <br />
         （期号与月份来自后端；点一枚换一期。）
       </p>
@@ -444,7 +444,7 @@ function ReportStatus({ status, period }: { status: string; period: string | nul
         {signed
           ? '这一版已签发：报告屏只读展示，内容不再改动。'
           : stale
-            ? '这一版内容变过、签名已失效——要改请到「出报告 · 核验与定稿」。'
+            ? '这一版内容变过、签发已失效——要改请到「出报告 · 核验与定稿」。'
             : '这一版还没签发——要改请到「出报告 · 核验与定稿」。'}
       </span>
       {!signed && <a className="rep-go" href={href}>去核验与定稿 →</a>}
@@ -474,7 +474,7 @@ export function Report({
           <h1 className="display">
             {row?.label ?? '（选择期次）'}
             <small>
-              学科信息参考 · ESI 双月报告 ｜ 目录名 {current ?? '—'} · 成品展示台（只读）
+              学科信息参考 · ESI 双月报告 ｜ 成品展示台（只读）
             </small>
           </h1>
           <div className="rule" />

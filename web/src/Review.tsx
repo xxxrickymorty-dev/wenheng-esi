@@ -446,7 +446,7 @@ export function Review({
                   待人工项 {nField} 处：已填 {nField - nLeft} · 待填 {nLeft}。
                   {signed
                     ? writeN > 0
-                      ? `有 ${writeN} 处填写还没写进报告——点下方「保存并重出报告」写入；重出后签名失效，需重新签单。`
+                      ? `有 ${writeN} 处填写还没写进报告——点下方「保存并重出报告」写入；重出后签发失效，需重新签单。`
                       : '已签单，这一版已定稿。'
                     : writeN > 0
                       ? `点「签单」会先把已填的 ${writeN} 处写进报告，再签发。`
@@ -476,7 +476,7 @@ export function Review({
                   <Icon name="seal" size={19} />{busy === 'sign' ? '正在处理…' : '签单'}
                 </button>
                 <ConfirmButton className="btn" disabled={!canSign || busy !== null || !signed}
-                               confirmText="确认撤回？签名会失效" onConfirm={doRevoke}>
+                               confirmText="确认撤回？签发会失效" onConfirm={doRevoke}>
                   <Icon name="refresh" size={18} />撤回
                 </ConfirmButton>
               </div>
@@ -501,7 +501,7 @@ export function Review({
               )}
               <p className="hint mt-8">
                 {signed ? '已签单，可下载。'
-                  : status === 'stale' ? '签名已失效，重签后可下载。'
+                  : status === 'stale' ? '签发已失效，重签后可下载。'
                     : '签单后可下载。'}
               </p>
             </section>

@@ -45,7 +45,7 @@ function Steps({ wb, period }: { wb: WB; period: string | null }) {
     （原先的「五步假进度」演示组件已删——固定百分比属于编造，违反只透传红线，2026-09-29） */
 function LiveRun({ run }: { run: Run }) {
   const [open, setOpen] = useState(false)
-  const connectionLabel = run.connection === 'live' ? '页面正在更新进度'
+  const connectionLabel = run.connection === 'live' ? '进度自动刷新'
     : run.connection === 'snapshot' ? '正在读取任务进度'
       : run.connection === 'reconnecting' ? '连接中断，正在恢复进度'
         : '暂时连不上服务，页面会继续更新进度'
@@ -512,12 +512,12 @@ export function PeriodsPanel({ periods, selected, healthy, onPick }: {
         <table className="periods">
           <thead>
             <tr>
-              <th>期次</th><th>目录名</th><th>状态</th><th className="w-90">操作</th>
+              <th>期次</th><th>状态</th><th className="w-90">操作</th>
             </tr>
           </thead>
           <tbody>
             {periods.length === 0 && (
-              <tr><td colSpan={4} className="ink-3">
+              <tr><td colSpan={3} className="ink-3">
                 {healthy === false ? (
                   <>服务未启动，读不到期次。起好服务后
                     <button className="btn btn-xs mx-6" 
@@ -533,7 +533,6 @@ export function PeriodsPanel({ periods, selected, healthy, onPick }: {
                   onClick={() => onPick(p.period)}
                   style={{ background: p.period === selected ? 'var(--panel)' : undefined }}>
                 <td><button type="button" className="rowbtn">{p.label}</button></td>
-                <td className="mono">{p.period}</td>
                 <td>
                   <span className={`pill ${p.status === 'signed' ? 'signed' : p.status === 'stale' ? 'stale' : 'unsigned'}`}>
                     {approvalLabel(p.status)}

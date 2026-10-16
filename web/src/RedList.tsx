@@ -6,6 +6,20 @@ import { useEffect, useMemo, useState } from 'react'
 import { getRedSlots, type RedRow } from './api-collation'
 import { Icon } from './icons'
 import { errorNote } from './lib/status'
+import { Info } from './Info'
+
+/* 分组名＝内容名（T 编号退后台，2026-10-17 冗余收敛稿⑤）：名册照抄大纲口径
+   server/app.py api_period_outline——T20＝学科×高校矩阵、T01/大表数值＝大表、
+   T19＝省域表、T03–T18＝预测章学科表。只改分组显示，行照旧透传、计数仍是行数。 */
+function contentGroup(g: string): string {
+  if (g === 'T20') return '学科×高校矩阵'
+  if (g === 'T01' || g === '大表数值') return '大表'
+  if (g === 'T19') return '省域表'
+  const m = /^T(\d{2})$/.exec(g)
+  if (m && Number(m[1]) >= 3 && Number(m[1]) <= 18) return '预测学科表'
+  if (g === '正文') return '正文'
+  return '其他'
+}
 
 export function RedList({ period }: { period: string | null }) {
   const [rows, setRows] = useState<RedRow[] | null>(null)
@@ -32,9 +46,16 @@ export function RedList({ period }: { period: string | null }) {
   }, [rows, q])
 
   const byGroup = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const r of rows ?? []) m.set(r.group || '其他', (m.get(r.group || '其他') ?? 0) + 1)
-    return [...m.entries()].sort((a, b) => b[1] - a[1])
+    const m = new Map<string, { n: number; raw: Set<string> }>()
+    for (const r of rows ?? []) {
+      const raw = r.group || '其他'
+      const key = contentGroup(raw)
+      const e = m.get(key) ?? { n: 0, raw: new Set<string>() }
+      e.n += 1
+      e.raw.add(raw)
+      m.set(key, e)
+    }
+    return [...m.entries()].sort((a, b) => b[1].n - a[1].n)
   }, [rows])
 
   return (
@@ -64,7 +85,9 @@ export function RedList({ period }: { period: string | null }) {
       ) : (
         <>
           <div className="chips mt-12">
-            {byGroup.map(([g, n]) => <span className="pill" key={g}>{g} {n}</span>)}
+            {byGroup.map(([g, e]) => (
+              <span className="pill" key={g} title={`含 ${[...e.raw].sort().join(' / ')}`}>{g} {e.n}</span>
+            ))}
           </div>
           <div className="toolbar mt-12">
             <input className="search" value={q} onChange={(e) => setQ(e.target.value)}
@@ -73,7 +96,10 @@ export function RedList({ period }: { period: string | null }) {
           </div>
           {shown.some((r) => !r.old) && (
             <p className="hint mt-8">
-              「修改前」显示「—」＝母版此处原本就是空白（大表在母版里是空表、本期逐格填入），不是漏记。
+              「修改前」显示「—」＝母版原处空白
+              <Info label="「修改前」显示「—」是怎么回事">
+                「修改前」显示「—」＝母版此处原本就是空白（大表在母版里是空表、本期逐格填入），不是漏记。
+              </Info>
             </p>
           )}
           <div className="tablewrap">

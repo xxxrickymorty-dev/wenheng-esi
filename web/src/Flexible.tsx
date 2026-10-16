@@ -66,13 +66,13 @@ function metaLine(meta: Record<string, unknown> | null): string {
     parts.push(`生成于 ${String(m.generated_at).slice(5, 16)}`)
   }
   const backend = String(m.backend ?? '')
-  if (backend) parts.push(backend === 'rule' ? '规则规划' : 'AI 自主规划')
+  if (backend) parts.push(backend === 'rule' ? '按规则出稿' : '自由出稿')
   return parts.join(' · ')
 }
 
 /** 出稿方式的人话（技术串不露脸；原始模型名收进窗格头「生成详情」折叠块）。 */
 function humanBackend(raw: string): string {
-  return !raw || raw === 'rule' ? '规则规划' : 'AI 自主规划'
+  return !raw || raw === 'rule' ? '按规则出稿' : '自由出稿'
 }
 
 /** 需要藏进折叠块的原始模型名（规则规划无需可追溯的模型串，回空）。 */
@@ -286,7 +286,7 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
           <span className="pill stale">内部参考件 · 非报送</span>
         </h2>
         <p className="fx-lead">
-          <strong>灵活报告</strong>是第二条产线：<strong>内部参考件 · 非报送</strong>——
+          <strong>灵活报告</strong>是<strong>内部参考件 · 非报送</strong>——
           按题选学科产出参考件，不下载数据、不签单；「出报告」才是复刻产线。
         </p>
         {note && <div className="pending-box mt-12">{note}</div>}

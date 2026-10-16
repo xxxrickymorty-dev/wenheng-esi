@@ -149,7 +149,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
               过程回放
               <span className="hint">
                 {d.replay.n} 次迁移 · {d.waterfall.length} 步
-                {d.waterfall_total ? ` · 全链路 ${d.waterfall_total} 秒` : ''}
+                {d.waterfall_total ? ` · 全程 ${d.waterfall_total} 秒` : ''}
               </span>
               <span className="hint"
                     title="状态与每一步的耗时都来自运行档案；直跑线不产生状态流水，迁移链由任务记录合成——只含确定发生过的迁移，不臆造自愈/升级环节。">?</span>
@@ -159,7 +159,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                 {d.replay.chain.map((r, i) => (
                   <span className="ar-chain-node" key={i}>
                     <span>{taskLabel(r.from)}<i> → </i>{taskLabel(r.to)}</span>
-                    <small>{r.ts || '—'}{r.trigger ? ` · ${r.trigger}` : ''}{r.synthetic ? ' · 合成记录' : ''}</small>
+                    <small>{r.ts || '—'}{r.trigger ? ` · ${r.trigger}` : ''}{r.synthetic ? ' · 补记' : ''}</small>
                   </span>
                 ))}
               </div>
@@ -312,7 +312,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                 <div><dt>数据校验</dt><dd>{stats.assertions_ok ? '全部通过' : `${str(stats.assertions_fail)} 处对不上`}</dd></div>
                 <div><dt>预测 MAPE</dt><dd className="mono">{stats.predict_mape_overall == null ? '—' : `${stats.predict_mape_overall}%`}</dd></div>
                 <div><dt>生成图表</dt><dd className="mono">{stats.charts == null ? '—' : `${stats.charts} 张`}</dd></div>
-                <div><dt>全链路耗时</dt><dd className="mono">{stats.elapsed_sec == null ? '—' : `${stats.elapsed_sec} 秒`}</dd></div>
+                <div><dt>全程耗时</dt><dd className="mono">{stats.elapsed_sec == null ? '—' : `${stats.elapsed_sec} 秒`}</dd></div>
               </dl>
             </section>
           </div>
