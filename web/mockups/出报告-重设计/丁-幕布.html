@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出报告 · 方向丁「幕布」— 静态稿</title>
+<style>
+  /* ============================================================
+     方向丁 · 幕布（Cinematic）
+     一句话：把本馆照片当幕布——满幅真实建筑图压在首屏，象牙白衬线大字
+     「本期报告已就绪」坐在光里；下方纸面承接操作内容。
+     结构也换：不设左栏，改横向顶栏（与陈列馆同一族）。
+     零圆角、零玻璃、零渐变按钮（照片上置字用中性压暗，属品牌例外）。
+     ============================================================ */
+  :root{
+    --paper:#F5F3EC; --ink:#1E2A23; --ink-2:#4A564D; --ink-3:#7C857B;
+    --line:#E0DCCD; --line-2:#EAE7DB;
+    --deep:#12362A; --green:#1A4B27; --ivory:#F6F1DE; --gold:#C8B584;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer}
+
+  /* ---- 顶栏（本方向不设左栏） ---- */
+  .top{background:var(--deep);color:var(--ivory);height:64px;display:flex;align-items:center;gap:30px;padding:0 44px}
+  .top .bm{display:flex;align-items:baseline;gap:10px}
+  .top .bm b{font-family:var(--serif);font-size:22px;letter-spacing:.14em}
+  .top .bm span{font-size:10.5px;letter-spacing:.18em;color:rgba(246,241,222,.6)}
+  .top nav{display:flex;gap:26px;font-size:13.5px;color:rgba(246,241,222,.78)}
+  .top nav a.on{color:var(--ivory);border-bottom:1px solid var(--gold);padding-bottom:3px}
+  .top .r{margin-left:auto;display:flex;gap:22px;align-items:center;font-size:13px;color:rgba(246,241,222,.7)}
+  .pal{display:inline-flex;gap:7px}
+  .pal i{width:24px;height:13px;border:1px solid rgba(246,241,222,.35);display:inline-block}
+  .pal i.g{background:#1E5A33}
+  .pal i.z{background:#B43B31}
+  .pal i.on{outline:1px solid var(--ivory);outline-offset:2px}
+
+  /* ---- 幕布 ---- */
+  .hero{position:relative;height:520px;background:#0B2018}
+  .hero .ph{position:absolute;inset:0;background:url("assets/ynu-library-real.jpg") center 62%/cover no-repeat;
+    filter:saturate(.72) contrast(.98)}
+  .hero .scrim{position:absolute;inset:0;background:
+    linear-gradient(92deg, rgba(6,25,19,.92) 0%, rgba(6,25,19,.62) 40%, rgba(6,25,19,.18) 72%, rgba(6,25,19,.34) 100%),
+    linear-gradient(0deg, rgba(6,25,19,.68) 0%, rgba(6,25,19,0) 46%)}
+  .hero .inner{position:relative;max-width:1160px;margin:0 auto;height:100%;padding:0 44px;display:flex;flex-direction:column;justify-content:center;color:var(--ivory)}
+  .hero .ov{font-size:12px;letter-spacing:.32em;color:rgba(246,241,222,.72)}
+  .hero h1{font-size:clamp(42px,4.6vw,62px);line-height:1.22;letter-spacing:.02em;margin:18px 0 0;max-width:70%}
+  .hero .sub{color:rgba(246,241,222,.78);margin-top:16px;font-size:15px}
+  .hero .acts{margin-top:34px;display:flex;align-items:center;gap:22px}
+  .btn-ivory{background:var(--ivory);color:#15271E;border:0;padding:13px 28px;font-size:15px;letter-spacing:.08em;font-weight:600}
+  .btn-ivory:hover{background:#FFF9E6}
+  .hero .ghost{color:rgba(246,241,222,.8);font-size:13.5px;border-bottom:1px solid rgba(246,241,222,.35);padding-bottom:3px}
+  /* 幕布右下：一条实物般的读数带（实色墨绿压深，不是玻璃） */
+  .reads{position:absolute;right:0;bottom:0;display:flex;background:rgba(9,28,21,.86);border-top:1px solid rgba(246,241,222,.16)}
+  .reads div{padding:16px 26px;border-left:1px solid rgba(246,241,222,.12);text-align:left}
+  .reads .k{font-size:10.5px;letter-spacing:.22em;color:rgba(246,241,222,.55)}
+  .reads .v{font-family:var(--serif);font-size:19px;color:var(--ivory);margin-top:5px}
+  .reads .v small{font-size:12.5px;color:rgba(246,241,222,.7);font-family:var(--sans);margin-left:7px}
+
+  /* ---- 纸面 ---- */
+  .wrap{max-width:1160px;margin:0 auto;padding:44px 44px 90px}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line);position:relative}
+  .steps .pr{position:absolute;top:0;left:0;height:2px;width:75%;background:var(--green)}
+  .steps .pr-t{position:absolute;top:0;left:0;right:0;height:2px;background:var(--line-2)}
+  .st{padding:18px 16px 16px 0;border-right:1px solid var(--line-2)}
+  .st:last-child{border-right:0}
+  .st .lb{font-size:13.5px;color:var(--ink-3)}
+  .st .ms{font-size:12.5px;color:var(--ink-3);margin-top:3px}
+  .st.done .lb{color:var(--ink-2)}
+  .st.done .ms::before{content:"✓ ";color:var(--green)}
+  .st.now .lb{color:var(--ink);font-weight:650}
+  .st.now .lb::before{content:"■ ";font-size:9px;color:var(--green);vertical-align:middle}
+  .grid{display:grid;grid-template-columns:1.3fr .7fr;gap:40px;margin-top:38px;padding-bottom:38px;border-bottom:1px solid var(--line)}
+  .receipt h3{font-size:20px;display:flex;align-items:center;gap:9px}
+  .receipt h3::before{content:"✓";font-family:var(--sans);font-size:12px;color:var(--green);border:1px solid var(--green);width:20px;height:20px;display:grid;place-items:center}
+  .receipt p{color:var(--ink-2);font-size:13.5px;max-width:54ch;margin-top:12px}
+  .receipt .lnx{display:flex;gap:22px;margin-top:18px;font-size:13.5px}
+  .receipt .lnx a{border-bottom:1px solid var(--line);padding-bottom:2px}
+  .receipt .lnx a:hover{border-color:var(--green);color:var(--green)}
+  .kv{list-style:none;border-top:2px solid var(--ink)}
+  .kv li{display:flex;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px solid var(--line-2);font-size:13px}
+  .kv dt{color:var(--ink-3);flex-shrink:0}
+  .kv dd{color:var(--ink-2);text-align:right}
+
+  .pick{margin-top:44px}
+  .pick .hd{display:flex;align-items:baseline;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:12px}
+  .pick h2{font-size:22px}
+  .pick .lnk{margin-left:auto;font-size:13.5px;color:var(--green);border-bottom:1px solid var(--green);padding-bottom:2px}
+  .routes{display:flex;gap:26px;margin:14px 0 2px;font-size:13.5px;color:var(--ink-3)}
+  .routes .on{color:var(--ink);font-weight:600;border-bottom:2px solid var(--green);padding-bottom:5px}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:11.5px;letter-spacing:.2em;color:var(--ink-3);text-align:left;font-weight:400;padding:12px 0 9px;border-bottom:1px solid var(--line)}
+  td{padding:9.5px 0;border-bottom:1px solid var(--line-2);font-size:14.5px}
+  td.mdl{color:var(--ink-2)}
+  td.pk b{font-family:var(--serif)}
+  .chg{color:#9C4A3C;font-size:12.5px;margin-left:8px}
+  .chg::before{content:"◆ ";font-size:9px;vertical-align:1px}
+  .dflt{color:var(--ink-3);font-size:13px}
+  .save{margin-top:14px;font-size:13px;color:var(--ink-3)}
+  .rel{margin-top:26px;padding-top:14px;border-top:1px solid var(--line-2);font-size:12.5px;color:var(--ink-3);max-width:90ch}
+  .rel b{color:var(--ink-2)}
+</style>
+</head>
+<body>
+  <!-- 顶栏 -->
+  <header class="top">
+    <span class="bm"><b>文衡</b><span>云南大学图书馆 · 学科信息参考</span></span>
+    <nav aria-label="工作区">
+      <a class="on" href="#">出报告</a><a href="#">灵活报告</a><a href="#">报告</a><a href="#">问文衡</a>
+      <a href="#" style="color:rgba(246,241,222,.5)">主台账</a><a href="#" style="color:rgba(246,241,222,.5)">运行档案</a>
+    </nav>
+    <span class="r">
+      <span>陈列馆 ↗</span>
+      <span class="pal"><i class="g on" title="云大绿"></i><i class="z" title="朱砂"></i></span>
+    </span>
+  </header>
+
+  <!-- 幕布 -->
+  <section class="hero">
+    <div class="ph" role="img" aria-label="云南大学呈贡校区图书馆"></div>
+    <div class="scrim"></div>
+    <div class="inner">
+      <div class="ov">学 科 信 息 参 考 · 出 报 告 · 目 录 2 0 2 6 0 9</div>
+      <h1>本期报告已就绪</h1>
+      <p class="sub">第 39 期 · 2026 年 9 月　｜　复核后签单，这一版才会被标记为「可交付」。</p>
+      <div class="acts">
+        <button class="btn-ivory">复核并签单 →</button>
+        <a class="ghost" href="#">看详细过程</a>
+      </div>
+    </div>
+    <div class="reads">
+      <div><div class="k">下 载 数 据</div><div class="v">64 / 64<small>完成</small></div></div>
+      <div><div class="k">核 对 并 并 入</div><div class="v">已并入台账</div></div>
+      <div><div class="k">一 键 生 成</div><div class="v">已出稿<small>10-13 15:03</small></div></div>
+    </div>
+  </section>
+
+  <!-- 纸面 -->
+  <main class="wrap">
+    <section class="steps" aria-label="出报告步骤">
+      <span class="pr-t" aria-hidden="true"></span><span class="pr" aria-hidden="true"></span>
+      <div class="st done"><div class="lb">下载数据核验</div><div class="ms">完成 · 64 / 64</div></div>
+      <div class="st done"><div class="lb">选择章节</div><div class="ms">完成 · 按大纲全选</div></div>
+      <div class="st now"><div class="lb">生成初稿</div><div class="ms">已出稿 · 2026-10-13 15:03</div></div>
+      <div class="st"><div class="lb">核验与定稿</div><div class="ms">待办 · 复核后签单</div></div>
+    </section>
+
+    <section class="grid">
+      <div class="receipt">
+        <h3>本期报告已生成</h3>
+        <p>任务结束不代表报告合格或已签发——管理员当前不能下载未签发的初稿。复核无异议后签单，这一版即可交付。</p>
+        <div class="lnx"><a href="#">打开报告 →</a><a href="#">去审核台 →</a></div>
+      </div>
+      <div>
+        <ul class="kv">
+          <li><dt>期次</dt><dd>202609（第 39 期）</dd></li>
+          <li><dt>预测数据 / 实际输出</dt><dd>202609 / 202609</dd></li>
+          <li><dt>台账文件</dt><dd>云大全学科排名、阈值动态检测表.xlsx</dd></li>
+          <li><dt>最后修改</dt><dd>2026 年 9 月 28 日 07:55</dd></li>
+          <li><dt>任务</dt><dd>已完成</dd></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="pick">
+      <div class="hd"><h2>本期选模</h2><a class="lnk" href="#">去预测台看图改选 →</a></div>
+      <div class="routes"><span class="on">路线1 · 总被引 / ESI 前 1% 被引阈值</span><span>路线2 · 国内排名 / 国内前 1% 机构数</span></div>
+      <table>
+        <thead><tr><th style="width:30%">潜力学科</th><th style="width:34%">V1 推荐</th><th>本期已选</th></tr></thead>
+        <tbody>
+          <tr><td>免疫学</td><td class="mdl">季节性 ETS 模型</td><td class="pk"><b>SARIMA 模型</b><span class="chg">已改选</span></td></tr>
+          <tr><td>分子生物学与遗传学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默认</td></tr>
+          <tr><td>多学科</td><td class="mdl">Holt 趋势模型</td><td class="dflt">默认</td></tr>
+          <tr><td>物理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默认</td></tr>
+          <tr><td>神经科学与行为科学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默认</td></tr>
+          <tr><td>空间科学</td><td class="mdl">SARIMA 模型</td><td class="dflt">默认</td></tr>
+          <tr><td>精神病学与心理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默认</td></tr>
+          <tr><td>经济与商业</td><td class="mdl">SARIMA 模型</td><td class="dflt">默认</td></tr>
+        </tbody>
+      </table>
+      <div class="save">已保存 · admin · 2026-10-16 12:12</div>
+      <p class="rel"><b>与报告的关系</b>　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+    </section>
+  </main>
+</body>
+</html>
