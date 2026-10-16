@@ -46,8 +46,8 @@ function deriveView(s: AcquisitionState): PageView {
   return verified > 0 ? 'review' : 'ready'
 }
 
-function GroupCard({ g, onRetry, busy }: {
-  g: AcqGroup; onRetry?: (gid: string) => void; busy?: boolean
+function GroupCard({ g, onRetry, busy, readonly }: {
+  g: AcqGroup; onRetry?: (gid: string) => void; busy?: boolean; readonly?: boolean
 }) {
   const files = g.files ?? []
   const stateText = g.state ? acqGroupLabel(g.state) : '未开始'
@@ -86,7 +86,7 @@ function GroupCard({ g, onRetry, busy }: {
           </ul>
         </details>
       )}
-      {missing > 0 && onRetry && g.id && (
+      {missing > 0 && onRetry && !readonly && g.id && (
         <div className="aq-gacts">
           <button className="btn small" disabled={busy}
                   title="只补这一组里还没下到的文件；已下过的不重复下载"
@@ -223,6 +223,9 @@ export function Acquire({ period }: { period: string | null }) {
     : copyState === 'review' ? '待核对 · 还没并入' : '还没并入'
   /* 最近一次「取数」的时间（只在最近一步确实是取数时才显示，免得把别的动作当成重取） */
   const lastFetchAt = op?.kind === 'fetch' ? (op.at ?? '') : ''
+  /* 往期档案只读（票 03）：期次早于「本机已取过的最新期次」就不能再取——ESI/InCites 没有历史数据 */
+  const ro = state?.mode === 'readonly'
+  const rec = state?.reconcile
 
   const pill: Record<PageView, [string, string]> = {
     ready: ['还没开始', 'unsigned'],
@@ -281,17 +284,28 @@ export function Acquire({ period }: { period: string | null }) {
               {needsTool && !canRun && !opRunning && (
                 <div className="hint note-warn">{toolMissing}</div>
               )}
+              {ro && (
+                <div className="hint">
+                  往期档案只读：ESI / InCites 不提供历史数据，这一期不能再取（要补档只能在当期取）。
+                </div>
+              )}
+              {rec && rec.ok === false && (
+                <div className="hint note-bad">
+                  数据期对不上：这一期应是 {rec.expected?.esi || '—'} / {rec.expected?.incites || '—'}，
+                  实际取到 {rec.actual?.esi || '—'} / {rec.actual?.incites || '—'}——别把它当这一期的数据用。
+                </div>
+              )}
             </div>
             <div className="cta">
-              {!opRunning && view === 'ready' && (
+              {!opRunning && !ro && view === 'ready' && (
                 <button className="btn primary" disabled={!cap.start || busy || opRunning}
                         title={cap.start ? undefined : toolMissing} onClick={onStart}>
                   <Icon name="download" size={20} />开始取数
                 </button>
               )}
-              {/* 已取过之后（待核对 / 已并入）仍可重新取这一期——采集与入库是两条线，
-                  「并入过台账」不该把采集锁死（2026-10-16 解耦） */}
-              {!opRunning && (view === 'review' || view === 'merged') && (
+              {/* 已取过之后（待核对 / 已并入）仍可重新取这一期——采集与并入台账是两条线，
+                  「并入过台账」不该把采集锁死（2026-10-16 票 01）；但**往期只读**（票 03） */}
+              {!opRunning && !ro && (view === 'review' || view === 'merged') && (
                 <button className="btn" disabled={!cap.start || busy}
                         title={cap.start ? '重取只补没下到的文件；已并入台账不受影响' : toolMissing}
                         onClick={onStart}>
@@ -353,7 +367,7 @@ export function Acquire({ period }: { period: string | null }) {
                 <>
                   <div className="aq-groups">
                     {groups.map((g, i) => (
-                      <GroupCard key={g.id ?? i} g={g} busy={busy}
+                      <GroupCard key={g.id ?? i} g={g} busy={busy} readonly={ro}
                                  onRetry={(gid) => { void onRetryGroup(gid) }} />
                     ))}
                   </div>

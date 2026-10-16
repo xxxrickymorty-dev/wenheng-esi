@@ -277,7 +277,7 @@ def main():
 
         # ---- 1f) 取数台（X2·票 12｜2026-10-15 新 IA）：左栏＝4 主区；出报告步骤条 ① 在 ③ 前 ----
         try:
-            page.goto(BASE + "/app/?view=acquire&period=202607", wait_until="domcontentloaded")
+            page.goto(BASE + "/app/?view=acquire&period=202609", wait_until="domcontentloaded")
             page.wait_for_selector(".aq-head", timeout=20000)
             navs = page.eval_on_selector_all("nav[aria-label='工作区'] a", "els => els.map(e => e.innerText.trim())")
             check("左栏＝4 主区（出报告 / 灵活报告 / 报告 / 问文衡）",
@@ -289,11 +289,22 @@ def main():
             i_gen = next((i for i, s in enumerate(steps) if "生成" in s), -1)
             check("出报告步骤条：① 取数并核验 在 ③ 生成初稿 之前",
                   i_take >= 0 and i_gen >= 0 and i_take < i_gen, str(steps[:4]))
-            # 采集/入库解耦：已并入的期次上仍要有整期重取入口（2026-10-16）
+            # 采集/并入台账解耦：**当期**（已并入）仍要有整期重取入口（2026-10-16 票 01）
             has_refetch = page.eval_on_selector_all(
                 "button", "els => els.some(e => /重新取这一期/.test(e.innerText))")
-            check("已并入的期次仍有整期重取入口（采集与入库解耦）",
+            check("当期（已并入）仍有整期重取入口（采集与并入台账解耦）",
                   has_refetch, f"found={has_refetch}")
+            # 往期档案只读（票 03）：不再有取数入口，且写明缘由
+            page.goto(BASE + "/app/?view=acquire&period=202605", wait_until="domcontentloaded")
+            page.wait_for_selector(".aq-head", timeout=20000)
+            ro_refetch = page.eval_on_selector_all(
+                "button", "els => els.some(e => /重新取这一期|开始取数/.test(e.innerText))")
+            ro_text = page.eval_on_selector_all("body", "els => els.map(e => e.textContent).join('')")
+            check("往期档案只读：没有取数入口，且写明缘由",
+                  (not ro_refetch) and "往期档案只读" in ro_text,
+                  f"fetchBtn={ro_refetch} note={'往期档案只读' in ro_text}")
+            page.goto(BASE + "/app/?view=acquire&period=202609", wait_until="domcontentloaded")
+            page.wait_for_selector(".aq-head", timeout=20000)
             both_lines = page.eval_on_selector_all(
                 "body", "els => els.map(e => e.innerText).join('\\n').match(/采集 ·[\\s\\S]{0,90}并入台账 ·/) !== null")
             check("采集与并入台账两条状态分开显示（且并入那行说已并入）", both_lines, f"found={both_lines}")

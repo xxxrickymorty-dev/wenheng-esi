@@ -880,19 +880,60 @@ async def api_period_detail(request: Request, period: str):
     }
 
 
+def _acq_expected_data(period: str) -> dict:
+    """这一期**本该**对应哪一档数据：ESI 发布月＝期次当月；InCites 快照按 SNAP_MAP 解析。"""
+    from src import acquisition_state as _st                          # noqa: PLC0415
+    y, m = period[:4], int(period[4:6])
+    try:
+        snap = _st.resolve_snapshot(period, _st.INCITES_ROOT_DEFAULT) or ""
+    except Exception:                                                # noqa: BLE001
+        snap = ""
+    return {"esi": f"{y} 年 {m} 月", "incites": str(snap)}
+
+
+def _acq_reconcile(period: str, state: dict) -> dict:
+    """要求期次 vs **实际下到哪一期**（票 03）。
+
+    ESI/InCites 的导出接口没有期次参数——抓的是**当前发布**；所以对账是唯一能发现
+    「拿当期数据冒充往期」的地方。状态里的 data_period/snapshot 是取数当时从网站页面读到的。
+    """
+    exp = _acq_expected_data(period)
+    act = state.get("data_period") or {}
+    actual = {"esi": str(act.get("esi") or ""), "incites": str(state.get("snapshot") or "")}
+    ok = bool(actual["esi"]) and actual["esi"] == exp["esi"] \
+        and (not exp["incites"] or actual["incites"] == exp["incites"])
+    return {"expected": exp, "actual": actual, "ok": ok}
+
+
+def _acq_mode(period: str) -> str:
+    """`collect`＝当期可取；`readonly`＝往期档案只读（票 03）。
+
+    判据是**数据条件**：本机已经取过比它更新的期次 → 它就是往期（ESI/InCites 不提供历史数据，
+    对往期重取只会把当期数据写进往期目录）。
+    """
+    try:
+        newer = any(p > period for p in acquisition.periods())
+    except Exception:                                                # noqa: BLE001
+        newer = False
+    return "readonly" if newer else "collect"
+
+
 @app.get("/api/periods/{period}/acquisition")
 @admin_route
 async def api_period_acquisition(request: Request, period: str):
     """自动取数台状态（只读）。没有取数记录时 started=false——界面显示「还没开始」，不编数据。
 
     状态由取数流程写入 `out/_acquisition/<期次>.json`（人触发；见 ADR-0004）。
+    另附 `mode`（当期可取 / 往期只读）与 `reconcile`（要求期次 vs 实际数据期，票 03）。
     """
     if not re.fullmatch(r"\d{6}", period or ""):
         return _period_missing()
+    mode = _acq_mode(period)
     state = acquisition.load(period)
     if state is None:
-        return {"period": period, "started": False}
-    return {"period": period, "started": True, **state}
+        return {"period": period, "started": False, "mode": mode}
+    return {"period": period, "started": True, "mode": mode,
+            "reconcile": _acq_reconcile(period, state), **state}
 
 
 # ------------------------------------------------------------------ 自动取数台 · 写动作（X3）

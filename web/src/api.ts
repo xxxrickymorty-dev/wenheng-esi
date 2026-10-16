@@ -218,6 +218,14 @@ export type AcqReviewSheet = { name?: string; added?: string; content?: string; 
 export type AcquisitionState = {
   period: string
   started: boolean
+  /** `collect`＝当期可取；`readonly`＝往期档案只读（ESI/InCites 不提供历史数据，票 03） */
+  mode?: string
+  /** 要求期次 vs **实际下到哪一期**；对不上＝拿当期数据冒充往期（票 03） */
+  reconcile?: {
+    expected?: { esi?: string; incites?: string }
+    actual?: { esi?: string; incites?: string }
+    ok?: boolean
+  }
   updated_at?: string
   data_period?: { esi?: string; incites?: string }
   preflight?: { browser?: string; esi?: string; incites?: string }
