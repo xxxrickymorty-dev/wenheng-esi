@@ -55,7 +55,7 @@ function buildSteps(detail: PeriodDetail | null, generated: boolean, period: str
     { key: 'fetch', title: '下载数据', detail: fetchDetail, on: !!s?.fetch, now: known && !s?.fetch },
     { key: 'merge', title: '核对并并入', detail: mergeDetail,
       on: !!s?.merge, now: known && !!s?.fetch && !s?.merge },
-    { key: 'generate', title: '一键生成', detail: generated ? '已出稿' : (known ? '约 20 秒出报告' : `${period} 尚未出稿`),
+    { key: 'generate', title: '一键生成', detail: generated ? '已出稿' : (known ? '约 3 分钟出报告' : `${period} 尚未出稿`),
       on: generated, now: known ? (!!s?.fetch && !!s?.merge && !generated) : !generated },
   ]
 }
@@ -133,7 +133,7 @@ export function deriveWorkbench(
 
   const FOCUS: Record<WBState, Pick<Workbench, 'focusTitle' | 'focusSub' | 'focusAction'>> = {
     empty: { focusTitle: '先去下载数据，再回来生成', focusSub: '在下载数据台：下载 → 逐份核验 → 核对并并入台账', focusAction: 'acquire' },
-    ready: { focusTitle: '这一期还差最后一步：生成报告', focusSub: '前两步已就绪 · 约 20 秒出报告', focusAction: 'generate' },
+    ready: { focusTitle: '这一期还差最后一步：生成报告', focusSub: '前两步已就绪 · 约 3 分钟出报告', focusAction: 'generate' },
     running: { focusTitle: '正在生成……', focusSub: '可以切到别的页面，进度不会丢', focusAction: 'none' },
     done: { focusTitle: '本期报告已就绪', focusSub: '复核后签单，这一版才会被标记为「可交付」', focusAction: 'sign' },
     warned: { focusTitle: '已生成，有校验提醒', focusSub: '任务结束不代表报告合格或已签发', focusAction: 'open' },

@@ -381,7 +381,7 @@ export function Workbench({
           <div className="cta">
             {wb.focusAction === 'generate' && canRun && (
               <>
-                <span className="hint">约 20 秒</span>
+                <span className="hint">约 3 分钟</span>
                 <button className="btn primary" onClick={onGenerate} disabled={!canGenerate}>
                   <Icon name="play" size={20} />开始生成
                 </button>
