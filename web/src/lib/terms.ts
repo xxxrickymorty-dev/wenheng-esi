@@ -8,7 +8,7 @@ export const TERMS = {
   /** 状态（由 lib/status.ts 的 APPROVAL_LABEL 承载，此处仅作词表登记） */
   signed: '已签发',
   unsigned: '未签发',
-  signStale: '签名已失效',
+  signStale: '签发已失效',
   /** 红件 */
   redList: '红色件清单',
   marginNote: '页边朱批',

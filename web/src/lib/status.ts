@@ -52,7 +52,7 @@ export type ApprovalState = (typeof APPROVAL_STATES)[number]
 export const APPROVAL_LABEL: Record<ApprovalState, string> = {
   unsigned: '未签发',
   signed: '已签发',
-  stale: '签名已失效',
+  stale: '签发已失效',
 }
 
 export function isApprovalState(value: unknown): value is ApprovalState {

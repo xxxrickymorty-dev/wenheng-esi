@@ -33,7 +33,7 @@ const LABELS: Record<HomeStepKey, string> = {
 
 /** 上一期签发状态 → 馆员话术（后端 approval 三态 + 兜底原样）。 */
 const PREV_LABEL: Record<string, string> = {
-  signed: '已签单', stale: '签名已失效', unsigned: '待签单',
+  signed: '已签单', stale: '签发已失效', unsigned: '待签单',
 }
 
 export function taskView(h: DialogHome | null): TaskView | null {

@@ -141,7 +141,7 @@ export function deriveWorkbench(
     'fail-ledger': { focusTitle: '数据还没齐，这次没有出报告', focusSub: '补上缺的列再重跑', focusAction: 'rerun' },
     'fail-other': { focusTitle: '这次没有出稿', focusSub: '上一版报告仍然有效', focusAction: 'rerun' },
     stalled: { focusTitle: '已停住', focusSub: '已有一段时间没有进展，可以重跑试试', focusAction: 'rerun' },
-    signed: { focusTitle: '本期已签发', focusSub: '重新生成会使签名失效', focusAction: 'open' },
+    signed: { focusTitle: '本期已签发', focusSub: '重新生成会使签发失效', focusAction: 'open' },
   }
 
   return { state, stepsKnown: !!detail, steps, note: notes, ...FOCUS[state] }

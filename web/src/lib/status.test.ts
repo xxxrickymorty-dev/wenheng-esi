@@ -44,7 +44,7 @@ describe('签单三态映射', () => {
 
   it('approvalLabel 与守卫', () => {
     expect(approvalLabel('signed')).toBe('已签发')
-    expect(approvalLabel('stale')).toBe('签名已失效')
+    expect(approvalLabel('stale')).toBe('签发已失效')
     expect(approvalLabel('unsigned')).toBe('未签发')
     expect(approvalLabel(undefined)).toBe('—')
     expect(approvalLabel('pending')).toBe('pending')

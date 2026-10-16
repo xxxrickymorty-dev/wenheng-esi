@@ -65,7 +65,7 @@ describe('本期任务视图（票 06）', () => {
     expect(tv?.title).toBe('本期任务 · 202611')
     expect(tv?.prevNote).toBe('上一期 202609：已签单')
     const tv2 = taskView(home({ prev: { period: '202609', status: 'stale' } }))
-    expect(tv2?.prevNote).toBe('上一期 202609：签名已失效')
+    expect(tv2?.prevNote).toBe('上一期 202609：签发已失效')
     const tv3 = taskView(home({ prev: { period: '202609', status: 'unsigned' } }))
     expect(tv3?.prevNote).toBe('上一期 202609：待签单')
     const tv4 = taskView(home({ prev: null }))
