@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>陈列馆（学科情报阅览室）· 丁语言 — 静态稿</title>
+<style>
+  /* ============================================================
+     陈列馆 · 学科情报阅览室（丁语言重做）
+     交互逻辑重排（rick 2026-10-16：从用户角度）：
+     ① 主 CTA＝「开始翻阅」直达翻阅器（书刊优先，开卷有声）；
+     ② 3D 展厅降级为副入口并标注「实验」；
+     ③ 一册里有什么＝四个直达阅览位置的短入口；
+     ④ 卖点段落收敛，页面从「宣传长页」回到「阅览目录」。
+     字体＝衬线标题＋无衬线小字；方角、发丝线、零阴影（浮层除外）。
+     ============================================================ */
+  :root{
+    --deep:#12362A; --deep-2:#0F2E21;
+    --paper:#F5F3EC; --ink:#1E2A23; --ink-2:#4A564D; --ink-3:#7C857B;
+    --line:#DFDBCB; --line-2:#EAE7DB;
+    --ivory:#F6F1DE; --ivory-2:rgba(246,241,222,.78); --ivory-3:rgba(246,241,222,.55);
+    --green:#1A4B27; --gold:#C8B584;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 44px}
+
+  /* 顶栏 */
+  .top{background:var(--deep);color:var(--ivory);height:64px;display:flex;align-items:center;gap:28px;padding:0 44px}
+  .top .bm{display:flex;align-items:center;gap:11px}
+  .top .seal{width:30px;height:30px;border:1px solid var(--gold);border-radius:50%;display:grid;place-items:center;
+    font-family:var(--serif);font-size:15px;color:var(--gold)}
+  .top .bm b{font-family:var(--serif);font-size:19px;letter-spacing:.12em}
+  .top .bm span{font-size:10px;letter-spacing:.14em;color:var(--ivory-3)}
+  .top nav{display:flex;gap:24px;font-size:13px;color:var(--ivory-2);margin-left:22px}
+  .top nav a.on{color:var(--ivory);border-bottom:1px solid var(--gold);padding-bottom:3px}
+  .top .r{margin-left:auto;display:flex;gap:20px;align-items:center;font-size:13px;color:var(--ivory-2)}
+  .top .r .back{border:1px solid rgba(246,241,222,.3);padding:6px 14px}
+
+  /* 幕布 */
+  .hero{position:relative;height:460px;background:var(--deep-2)}
+  .hero .ph{position:absolute;inset:0;background:url("assets/ynu-library-real.jpg") center 60%/cover no-repeat;filter:saturate(.72) contrast(.98)}
+  .hero .scrim{position:absolute;inset:0;background:
+    linear-gradient(92deg, rgba(6,25,19,.93) 0%, rgba(6,25,19,.6) 42%, rgba(6,25,19,.18) 74%, rgba(6,25,19,.4) 100%),
+    linear-gradient(0deg, rgba(6,25,19,.66) 0%, rgba(6,25,19,0) 48%)}
+  .hero .inner{position:relative;max-width:1160px;margin:0 auto;padding:0 44px;height:100%;display:flex;flex-direction:column;justify-content:center;color:var(--ivory)}
+  .ov{font-size:11.5px;letter-spacing:.3em;color:var(--ivory-3)}
+  .hero h1{font-size:clamp(40px,4.2vw,56px);line-height:1.2;letter-spacing:.03em;margin:16px 0 0}
+  .hero .sub{color:var(--ivory-2);margin-top:12px;font-size:14.5px;max-width:52em}
+  .hero .acts{margin-top:28px;display:flex;align-items:center;gap:20px}
+  .btn-ivory{background:var(--ivory);color:#15271E;border:0;padding:13px 26px;font-size:15px;letter-spacing:.06em;font-weight:600}
+  .btn-ivory:hover{background:#FFF9E6}
+  .ghost{color:var(--ivory-2);font-size:13.5px;border-bottom:1px solid rgba(246,241,222,.32);padding-bottom:3px}
+  .ghost em{font-style:normal;font-size:11px;color:var(--ivory-3);margin-left:6px;letter-spacing:.1em}
+  .reads{position:absolute;right:0;bottom:0;display:flex;background:rgba(9,28,21,.86);border-top:1px solid rgba(246,241,222,.16)}
+  .reads div{padding:14px 24px;border-left:1px solid rgba(246,241,222,.12)}
+  .reads .k{font-size:10.5px;letter-spacing:.22em;color:var(--ivory-3)}
+  .reads .v{font-family:var(--serif);font-size:17px;margin-top:4px;color:var(--ivory)}
+
+  /* 书墙 */
+  .shelf{padding:52px 0 44px;border-bottom:1px solid var(--line)}
+  .hd{display:flex;align-items:baseline;gap:16px;margin-bottom:26px}
+  .hd h2{font-size:26px}
+  .hd .aside{margin-left:auto;font-size:13px;color:var(--ink-3)}
+  .books{display:grid;grid-template-columns:repeat(4,1fr);gap:26px}
+  .book{display:flex;flex-direction:column;gap:14px}
+  .cover{position:relative;aspect-ratio:3/4.05;background:linear-gradient(150deg,#1D4630,#143825 62%,#102C1D);color:#E9DFB9;
+    border:1px solid #47624F;padding:20px 18px 16px;box-shadow:inset 7px 0 8px rgba(10,25,16,.45), inset 9px 0 0 rgba(117,131,103,.25), 9px 11px 15px rgba(30,42,35,.22);
+    display:flex;flex-direction:column;cursor:pointer;transition:transform .28s}
+  .cover:hover{transform:translateY(-6px)}
+  .cover .cn{font-family:var(--serif);font-size:20px;letter-spacing:.14em;text-align:center;margin-top:40%}
+  .cover .en{font-size:8px;letter-spacing:.14em;text-align:center;color:#B9BB9B;margin-top:8px}
+  .cover .iss{position:absolute;left:0;right:0;bottom:26px;text-align:center;font-family:var(--serif);font-size:15px;letter-spacing:.1em}
+  .book .meta{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:var(--ink-3)}
+  .book .meta b{font-size:15px;color:var(--ink-2);font-weight:600}
+  .book .meta .new{font-size:11px;background:var(--green);color:var(--ivory);padding:2px 8px;letter-spacing:.08em}
+  .shelf-note{margin-top:20px;font-size:12.5px;color:var(--ink-3)}
+  .shelf-note a{border-bottom:1px solid var(--line);padding-bottom:2px;color:var(--ink-2)}
+
+  /* 一册里有什么（四直达） */
+  .inside{padding:48px 0;border-bottom:1px solid var(--line)}
+  .inside .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:2px solid var(--ink)}
+  .cell{padding:20px 20px 18px 0;border-right:1px solid var(--line-2)}
+  .cell:last-child{border-right:0}
+  .cell .cat{font-family:var(--serif);font-size:18px}
+  .cell .de{margin-top:8px;font-size:12.5px;color:var(--ink-3);min-height:52px}
+  .cell a{font-size:13px;color:var(--green);border-bottom:1px solid var(--green);padding-bottom:2px}
+  .ask{margin-top:26px;display:flex;align-items:center;gap:16px;border:1px solid var(--line);padding:14px 18px;background:#FCFBF6}
+  .ask b{font-family:var(--serif);font-size:16px;white-space:nowrap}
+  .ask input{flex:1;border:0;outline:none;background:transparent;font:inherit;font-size:14px;color:var(--ink-2)}
+  .ask button{background:var(--green);color:var(--ivory);border:0;padding:9px 20px;font-size:13.5px}
+
+  /* 阅览边界（深绿一条） */
+  .edge{background:var(--deep);color:var(--ivory);padding:44px 0}
+  .edge .in{display:grid;grid-template-columns:1.1fr .9fr;gap:60px;align-items:center}
+  .edge h2{font-size:26px;letter-spacing:.04em}
+  .edge p{color:var(--ivory-2);font-size:13.5px;margin-top:12px;max-width:44ch}
+  .edge .acts{margin-top:22px;display:flex;gap:22px;align-items:center}
+  .edge .ghost2{border:1px solid rgba(246,241,222,.3);padding:10px 18px;font-size:13.5px;color:var(--ivory-2)}
+  .edge dl{display:grid;grid-template-columns:auto 1fr;gap:9px 18px;font-size:13px}
+  .edge dt{color:var(--ivory-3)}
+  .edge dd{color:var(--ivory-2)}
+
+  /* 关于 + 页脚 */
+  .about{padding:40px 0 56px;display:flex;align-items:center;gap:30px}
+  .about .mark{width:64px;height:64px;border:1px solid var(--gold);display:grid;place-items:center;font-family:var(--serif);font-size:26px;color:#8A7753;flex:none}
+  .about h3{font-size:19px}
+  .about p{font-size:13px;color:var(--ink-3);margin-top:6px}
+  .about .r{margin-left:auto;display:flex;gap:18px;font-size:13px;color:var(--ink-2)}
+  .about .r a{border-bottom:1px solid var(--line);padding-bottom:2px}
+  .ft{background:var(--deep-2);color:var(--ivory-2);padding:32px 0 24px}
+  .ft .in{display:flex;justify-content:space-between;gap:24px;font-size:12px;color:var(--ivory-3)}
+  .ft .zh{font-family:var(--serif);letter-spacing:.24em}
+</style>
+</head>
+<body>
+  <header class="top">
+    <span class="bm"><span class="seal">雲</span>
+      <span><b>云南大学图书馆</b><br><span>YUNNAN UNIVERSITY LIBRARY</span></span>
+    </span>
+    <nav aria-label="陈列馆">
+      <a class="on" href="#">学科情报阅览室</a>
+      <a href="#shelf">历期馆藏</a>
+      <a href="#">学科索引</a>
+      <a href="#about">关于本馆</a>
+    </nav>
+    <span class="r"><a class="back" href="#">← 返回工作台</a></span>
+  </header>
+
+  <!-- 幕布：主 CTA＝开始翻阅 -->
+  <section class="hero">
+    <div class="ph" role="img" aria-label="云南大学呈贡校区图书馆"></div>
+    <div class="scrim"></div>
+    <div class="inner">
+      <div class="ov">学 科 情 报 阅 览 室 · 数 字 馆 藏</div>
+      <h1>一册一档，循数而读</h1>
+      <p class="sub">《学科信息参考》历期全内容——封面、目录、名词解释、指标与大表、双路线预测，一册册翻开看。翻页有声。</p>
+      <div class="acts">
+        <button class="btn-ivory">开始翻阅 · 总第 39 期 →</button>
+        <a class="ghost" href="#">走进 3D 展厅<em>实验</em></a>
+      </div>
+    </div>
+    <div class="reads" aria-hidden="true">
+      <div><div class="k">历 期 馆 藏</div><div class="v">39 期</div></div>
+      <div><div class="k">开 放 预 览</div><div class="v">5 期</div></div>
+      <div><div class="k">在 监 测 学 科</div><div class="v">22 个</div></div>
+    </div>
+  </section>
+
+  <!-- 书墙 -->
+  <section class="shelf" id="shelf">
+    <div class="wrap">
+      <div class="hd">
+        <h2>历期馆藏</h2>
+        <span class="aside">开卷有声 · 点封面即翻阅</span>
+      </div>
+      <div class="books">
+        <a class="book" href="#">
+          <div class="cover"><div class="cn">学科信息参考</div><div class="en">DISCIPLINARY INFORMATION REFERENCE</div><div class="iss">2026 年第 5 期</div></div>
+          <div class="meta"><b>2026.09</b><span class="new">本期</span></div>
+        </a>
+        <a class="book" href="#">
+          <div class="cover"><div class="cn">学科信息参考</div><div class="en">DISCIPLINARY INFORMATION REFERENCE</div><div class="iss">2026 年第 4 期</div></div>
+          <div class="meta"><b>2026.07</b><span>总第 38 期</span></div>
+        </a>
+        <a class="book" href="#">
+          <div class="cover"><div class="cn">学科信息参考</div><div class="en">DISCIPLINARY INFORMATION REFERENCE</div><div class="iss">2026 年第 3 期</div></div>
+          <div class="meta"><b>2026.05</b><span>总第 37 期</span></div>
+        </a>
+        <a class="book" href="#">
+          <div class="cover"><div class="cn">学科信息参考</div><div class="en">DISCIPLINARY INFORMATION REFERENCE</div><div class="iss">2026 年第 2 期</div></div>
+          <div class="meta"><b>2026.03</b><span>总第 36 期</span></div>
+        </a>
+      </div>
+      <p class="shelf-note">更早的期次在<strong>书架下层</strong>——<a href="#">浏览全部 39 期 →</a>　｜　当前对未登录/未开放期次只读安全预览：封面、目录、名词解释。</p>
+    </div>
+  </section>
+
+  <!-- 一册里有什么：四个直达入口 -->
+  <section class="inside">
+    <div class="wrap">
+      <div class="hd"><h2>一册里有什么</h2><span class="aside">每个入口直接翻到那一叠纸</span></div>
+      <div class="grid">
+        <div class="cell">
+          <div class="cat">封面 · 目录</div>
+          <div class="de">先看这一期的目录；名词解释在前，正文按章节顺排。</div>
+          <a href="#">翻开本期 →</a>
+        </div>
+        <div class="cell">
+          <div class="cat">名词解释</div>
+          <div class="de">报告里每个专有词的含义与口径，集中在最前面。</div>
+          <a href="#">直达名词页 →</a>
+        </div>
+        <div class="cell">
+          <div class="cat">指标 · 大表 · 图表</div>
+          <div class="de">排名、升降、阈值距离，十六学科图表槽位。</div>
+          <a href="#">直达指标页 →</a>
+        </div>
+        <div class="cell">
+          <div class="cat">双路线预测</div>
+          <div class="de">总被引 / 国内排名两条路线，各自的入选与回测。</div>
+          <a href="#">直达预测页 →</a>
+        </div>
+      </div>
+      <div class="ask">
+        <b>问文衡</b>
+        <input placeholder="问一句：化学的接近度是多少？ / 哪些学科最接近 1%？">
+        <button>去问文衡 →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 阅览边界 -->
+  <section class="edge">
+    <div class="wrap in">
+      <div>
+        <h2>每一本馆藏，都有清晰的阅览边界</h2>
+        <p>登录后可查阅已开放期次的封面、目录与名词解释；指标、大表与预测属于全内容，仅在登录后、且在册页中翻阅——不做整册下载。</p>
+        <div class="acts">
+          <a class="ghost2" href="#">了解阅览规则 →</a>
+        </div>
+      </div>
+      <dl>
+        <dt>封面 · 目录</dt><dd>安全预览，即时可读</dd>
+        <dt>名词解释</dt><dd>安全预览，即时可读</dd>
+        <dt>指标 / 大表</dt><dd>登录后，在册页中翻阅</dd>
+        <dt>预测 · 全文</dt><dd>登录后，在册页中翻阅</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- 关于 + 页脚 -->
+  <section class="about">
+    <div class="wrap" style="display:flex;align-items:center;gap:30px;width:100%">
+      <span class="mark">阅</span>
+      <div>
+        <h3>云南大学图书馆中的数字学科阅览空间</h3>
+        <p>汇集《学科信息参考》历期馆藏，以安全预览连接封面、目录与名词解释。</p>
+      </div>
+      <span class="r">
+        <a href="#">走进 3D 展厅（实验）</a>
+        <a href="#">返回工作台 →</a>
+      </span>
+    </div>
+  </section>
+
+  <footer class="ft">
+    <div class="wrap in">
+      <span>云南大学图书馆 · 学科信息参考</span>
+      <span class="zh">会 泽 百 家　至 公 天 下</span>
+      <span>YUNNAN UNIVERSITY LIBRARY</span>
+    </div>
+  </footer>
+</body>
+</html>
