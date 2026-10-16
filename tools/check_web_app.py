@@ -311,6 +311,8 @@ def main():
             txt = page.inner_text("main")
             check("取数台：期次数据状态与开始前检查都在",
                   "自动取数台" in txt and "开始前检查" in txt, "")
+            check("开始前检查四灯齐全（浏览器 / ESI / InCites / 数据期）",
+                  all(s in txt for s in ("取数专用浏览器", "ESI 网站", "InCites 网站", "数据期")), "")
             page.locator("details.fold summary", has_text="取数清单").first.click()
             page.wait_for_timeout(300)
             n_groups = page.locator(".aq-g").count()

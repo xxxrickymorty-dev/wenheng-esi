@@ -82,6 +82,22 @@ def parse(raw):
     return f"{m.group(1)}{int(m.group(2)):02d}" if m else t
 
 
+def release_of(date_str) -> str:
+    """数据集更新日（`2026-09-02`）→ 双月期次（`202609`）；认不出来返回空串。
+
+    双月节拍是 01/03/05/07/09/11（见 `forecast_select.next_periods`）。月份落在偶月时
+    归到**前一个**双月（`2026-10-05 → 202609`）——宁可保守，也不把数据算成还没到的那一期。
+    取数前校验用这一条判「这一期的数据更新了没有」（票 04）。
+    """
+    m = re.match(r"^\s*(20\d{2})\s*[-/.年\s]\s*(\d{1,2})", str(date_str or ""))
+    if not m:
+        return ""
+    year, mon = m.group(1), int(m.group(2))
+    if not 1 <= mon <= 12:
+        return ""
+    return f"{year}{mon if mon % 2 else mon - 1:02d}"
+
+
 def from_dir(path):
     """目录名 / 路径 → 期次；不是期次目录返回 None。
 

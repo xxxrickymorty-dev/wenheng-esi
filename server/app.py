@@ -788,10 +788,12 @@ def _period_has_data(period: str) -> bool:
 def _acquisition_only_periods(known: set[str]) -> list[dict]:
     """还没出稿、但取数已经有动静的期次：有取数状态，或当期核对副本已就位。
 
-    取数台接手「未出稿的当期」——这些期次不在 period_cards（那要 red_slots.json），
+    取数台接手「未出稿的当期」——这些期次不在 period_cards（那靠 red_slots.json），
     列表里单独补进来（状态按「未签发」显示，出稿后由 period_cards 接管）。
+    ⚠️ 「只是点过一次重新检查」的期次不算（那种状态里连文件都没有）：只在 `started`
+    （确实取到过文件）或有核对副本时才进列表——否则列表会多出一个点进去就 404 的空期次。
     """
-    extra = set(acquisition.periods())
+    extra = {p for p in acquisition.periods() if _acq_touched(p)}
     acq_root = config.OUT_DIR / "_acquisition"
     if acq_root.is_dir():
         for d in acq_root.iterdir():
@@ -905,17 +907,29 @@ def _acq_reconcile(period: str, state: dict) -> dict:
     return {"expected": exp, "actual": actual, "ok": ok}
 
 
+def _acq_touched(period: str) -> bool:
+    """这一期有没有**取数动静**（不只是点过一次「重新检查」）。
+
+    只检查过的状态里只有 `{period, preflight}`——没有 groups/totals/copy。
+    用它把「点过一次检查的空期次」从期次列表和「往期」判据里排除掉。
+    """
+    st = acquisition.load(period) or {}
+    return bool(st.get("groups") or st.get("totals") or st.get("copy"))
+
+
 def _acq_mode(period: str) -> str:
     """`collect`＝当期可取；`readonly`＝往期档案只读（票 03）。
 
-    判据是**数据条件**：本机已经取过比它更新的期次 → 它就是往期（ESI/InCites 不提供历史数据，
-    对往期重取只会把当期数据写进往期目录）。
+    判据是**真取过**：比它更新的期次里只要有一期有取数动静（`_acq_touched`），它就是往期
+    （ESI/InCites 不提供历史数据，对往期重取只会把当期数据写进往期目录）。
+    ⚠️ 只看"有没有状态文件"不够——**点一次「重新检查」也会落个状态文件**，那不算取过。
     """
     try:
-        newer = any(p > period for p in acquisition.periods())
+        if any(p > period and _acq_touched(p) for p in acquisition.periods()):
+            return "readonly"
     except Exception:                                                # noqa: BLE001
-        newer = False
-    return "readonly" if newer else "collect"
+        pass
+    return "collect"
 
 
 @app.get("/api/periods/{period}/acquisition")
@@ -1068,10 +1082,27 @@ async def api_acq_browser(request: Request):
             "note": "已打开取数专用浏览器；首次使用需要在这个窗口里登录 ESI / InCites 一次。"}
 
 
+def _acq_data_block(period: str):
+    """取数前「数据期」校验（票 04）：**明确判定未更新**时拦下，读不到就放行。
+
+    判据来自最近一次 preflight（`state.preflight.data`）：要求期次 vs 网站数据集更新日。
+    宁可放行也不要因网络/登录抖动把取数锁死——真正的不发车由前端「开始前检查」先挡一遍。
+    """
+    st = acquisition.load(period) or {}
+    data = (st.get("preflight") or {}).get("data") or {}
+    if data.get("ok") is False:
+        return JSONResponse({"error": data.get("note") or "这一期的数据还没更新。",
+                             "hint": "等网站更新后再取。"}, status_code=409)
+    return None
+
+
 @app.post("/api/periods/{period}/acquisition/start")
 @admin_route
 async def api_acq_start(request: Request, period: str):
     """开始取数（按 9 组下载；完成后自动建当期核对副本）。"""
+    blocked = _acq_data_block(period)
+    if blocked:
+        return blocked
     return _acq_spawn(period, "fetch")
 
 
@@ -1079,6 +1110,9 @@ async def api_acq_start(request: Request, period: str):
 @admin_route
 async def api_acq_retry(request: Request, period: str):
     """断组重试：只重下指定的组（body: {"group": "esi-papers"}）。"""
+    blocked = _acq_data_block(period)
+    if blocked:
+        return blocked
     try:
         body = await request.json()
     except Exception:                                                # noqa: BLE001

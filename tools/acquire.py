@@ -33,6 +33,7 @@ sys.path.insert(0, str(REPO / "src"))
 import acquisition_state as A                                          # noqa: E402
 import ledger_merge as LM                                              # noqa: E402
 import ledger_patch as LP                                              # noqa: E402
+import period as period_mod                                            # noqa: E402
 
 #: 取数用的解释器（playwright 装系统 python 里；可用环境变量覆盖）
 FETCH_PY = os.environ.get("WENHENG_FETCH_PYTHON") or shutil.which("python") or sys.executable
@@ -216,21 +217,55 @@ try:
             pg2 = next((x for x in ctx.pages if "incites.clarivate.com" in x.url), None) or pg
             if pg2:
                 cfg = pg2.request.get("https://incites.clarivate.com/config", timeout=20000)
-                out["incites"] = "ok" if cfg.headers.get("pssid") else "bad"
+                sid = cfg.headers.get("pssid")
+                out["incites"] = "ok" if sid else "bad"
+                try:
+                    # 这个端点要带 `/config` 里读到的会话头（同 clarivate_incites_fetch._session）
+                    dep = pg2.request.get(
+                        "https://incites.clarivate.com/route/incites-app/about/data/display/wosanddeploydate",
+                        headers={"x-1p-inc-sid": sid or ""}, timeout=20000)
+                    if dep.ok:
+                        out["deploy_date"] = str((dep.json() or {}).get("deploydate") or "")
+                except Exception:
+                    pass
 except Exception:
     pass
 print(json.dumps(out))
 """
 
 
+def _data_gate(period: str, deploy_date: str) -> dict:
+    """要求期次 vs 网站当前数据集更新日（票 04）：没更新就不发车。
+
+    ESI 侧没有机器可读的发布日期（项目约定「发布即下载，下载日＝ESI 发布日期」），
+    所以用 InCites/WoS 的数据集更新日 + 双月节拍归位来判；**读不到就放行**（ok=None），
+    只提示去连浏览器，不硬拦（免得网络/登录一抖就取不了数）。
+    """
+    rel = period_mod.release_of(deploy_date) if deploy_date else ""
+    if not rel:
+        return {"ok": None, "deploy_date": deploy_date, "release": "",
+                "note": "没读到数据集更新日——先连上取数浏览器并在 InCites 登录，再点「重新检查」。"}
+    if rel == period:
+        return {"ok": True, "deploy_date": deploy_date, "release": rel, "note": ""}
+    if rel < period:
+        return {"ok": False, "deploy_date": deploy_date, "release": rel,
+                "note": (f"这一期的数据还没更新：网站当前数据集更新于 {deploy_date}（对应 {rel}）；"
+                         f"等 {period} 的数据上线后再取。")}
+    return {"ok": True, "deploy_date": deploy_date, "release": rel,
+            "note": f"网站已是更新的一期（{rel}）——这一期属往期，不可重取。"}
+
+
 def cmd_preflight(args) -> int:
     r = subprocess.run([FETCH_PY, "-c", _PROBE], capture_output=True, text=True,
                        encoding="utf-8", errors="replace", timeout=120)
     try:
-        pf = json.loads((r.stdout or "").strip().splitlines()[-1])
+        pf: dict = json.loads((r.stdout or "").strip().splitlines()[-1])
     except (json.JSONDecodeError, IndexError):
         pf = {"browser": "bad", "esi": "waiting", "incites": "waiting"}
-    st = A.load_state(args.period) or A.scan(args.period)
+    pf["data"] = _data_gate(args.period, pf.pop("deploy_date", "") or "")
+    # ⚠️ 只检查（还没取过数）的期次**不 scan**：scan 会按「最新 InCites 快照」把别人的文件
+    # 算成这一期的（2026-10-16 实测：光点一次检查，202611 就凭空多了 26/64）。
+    st = A.load_state(args.period) or {"period": args.period}
     st["preflight"] = pf
     A.write_state(args.period, st)
     print(f"[preflight] {pf}")

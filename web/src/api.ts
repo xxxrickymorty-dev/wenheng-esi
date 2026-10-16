@@ -228,7 +228,13 @@ export type AcquisitionState = {
   }
   updated_at?: string
   data_period?: { esi?: string; incites?: string }
-  preflight?: { browser?: string; esi?: string; incites?: string }
+  preflight?: {
+    browser?: string
+    esi?: string
+    incites?: string
+    /** 数据期校验（票 04）：`ok:false` ＝网站数据集还没更新到这一期，不发车 */
+    data?: { ok?: boolean | null; deploy_date?: string; release?: string; note?: string }
+  }
   capabilities?: { start?: boolean; retry?: boolean; merge?: boolean }
   groups?: AcqGroup[]
   totals?: { groups?: number; expected?: number; verified?: number; downloaded?: number; failed?: number }

@@ -179,6 +179,12 @@ export function Acquire({ period }: { period: string | null }) {
       load(true)
       return
     }
+    /* 数据期：这一期网站还没更新就不发车（票 04）——说清"当前是哪一期"，别让人白等 */
+    if (pf?.data && pf.data.ok === false) {
+      await load(true)
+      setNote(pf.data.note || '这一期的数据还没更新——等网站更新后再取。')
+      return
+    }
     await act('start')
   }, [act, load, preflightWithBrowser])
 
@@ -189,6 +195,11 @@ export function Acquire({ period }: { period: string | null }) {
     const pf = r?.preflight
     if (pf && (pf.browser !== 'ok' || pf.esi !== 'ok' || pf.incites !== 'ok')) {
       load(true)
+      return
+    }
+    if (pf?.data && pf.data.ok === false) {
+      await load(true)
+      setNote(pf.data.note || '这一期的数据还没更新——等网站更新后再取。')
       return
     }
     await act('retry', { group: gid })
@@ -352,8 +363,14 @@ export function Acquire({ period }: { period: string | null }) {
             <span className={`aq-chip ${state.preflight?.incites === 'ok' ? 'ok' : state.preflight?.incites === 'bad' ? 'bad' : ''}`}>
               <Icon name="seal" size={15} />InCites 网站 · {pfText('site', state.preflight?.incites)}
             </span>
+            {/* 第四个灯：这一期的数据更新了没有（票 04）——用网站数据集更新日 + 双月节拍判 */}
+            <span className={`aq-chip ${state.preflight?.data?.ok === true ? 'ok' : state.preflight?.data?.ok === false ? 'bad' : ''}`}>
+              <Icon name="clock" size={15} />数据期 · {state.preflight?.data?.ok === true ? '已更新'
+                : state.preflight?.data?.ok === false ? `还没更新（当前 ${state.preflight?.data?.release || '—'}）` : '没读到'}
+            </span>
             <Info label="开始前检查什么" end>
-              <p>检查取数专用的浏览器是否开着、两家网站是否已登录。登录由馆员手动完成；本页不接触、不保存账号密码。检查通过后才能开始。</p>
+              <p>检查取数专用的浏览器是否开着、两家网站是否已登录、这一期的数据更新了没有。登录由馆员手动完成；本页不接触、不保存账号密码。检查通过后才能开始。</p>
+              <p>「数据期」怎么判：拿网站当前的数据集更新日{state.preflight?.data?.deploy_date ? `（${state.preflight.data.deploy_date}）` : ''}按双月节拍归到期次，和你要取的这一期比；对不上就不发车。</p>
             </Info>
           </div>
 
