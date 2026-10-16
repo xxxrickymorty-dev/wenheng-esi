@@ -49,16 +49,15 @@ def _snap_map() -> dict:
 
 
 def resolve_snapshot(period: str, incites_root: pathlib.Path, explicit: str | None = None) -> str:
-    """期次 → InCites 快照目录名：显式指定 > SNAP_MAP 登记 > 最新一个（并如实标注）。"""
-    root = pathlib.Path(incites_root)
+    """期次 → InCites 快照目录名：显式指定 > SNAP_MAP 登记 > **空串**。
+
+    2026-10-16 收紧：未登记的期次**不再退回「最新一个」快照**——那会把别期下载的文件
+    算成本期的（实测只点一次「重新检查」就让未取数的 202611 凭空 26/64）。未登记一律空串，
+    由调用方按「空着 + 标黄」处理。`incites_root` 仅为保持调用签名，本函数不再读它。
+    """
     if explicit is not None:
         return explicit
-    mapped = _snap_map().get(period)
-    if mapped:
-        return mapped
-    dirs = sorted((d.name for d in root.iterdir() if d.is_dir() and not d.name.startswith("_")),
-                  reverse=True) if root.exists() else []
-    return dirs[0] if dirs else ""
+    return _snap_map().get(period) or ""
 
 
 def _snap_date(snapshot: str) -> str:
@@ -309,9 +308,14 @@ def periods() -> list[str]:
 # ------------------------------------------------------------------ 组装状态
 def scan(period: str, *, esi_root: pathlib.Path | str | None = None,
          snapshot: str | None = None, preserve: bool = True) -> dict:
-    """按两路下载包重建状态（保留 preflight / capabilities / copy / op 等既有字段）。"""
+    """按两路下载包重建状态（保留 preflight / capabilities / copy / op 等既有字段）。
+
+    期次未登记在 `SNAP_MAP`（且没显式给快照）时，**InCites 一路留空**、状态标
+    `snapshot_registered=False`——不再借用「最新一个」快照，免得把别期文件算成本期的。
+    """
     esi_root = pathlib.Path(esi_root) if esi_root else ESI_ROOT_DEFAULT
     snap = resolve_snapshot(period, INCITES_ROOT_DEFAULT, snapshot)
+    snap_registered = snapshot is not None or bool(_snap_map().get(period))
     groups = scan_groups(period, esi_root, snap)
     verified = downloaded = failed = 0
     for g in groups:
@@ -334,6 +338,7 @@ def scan(period: str, *, esi_root: pathlib.Path | str | None = None,
     state.update({
         "data_period": {"esi": _period_esi_label(period), "incites": _snap_date(snap)},
         "snapshot": snap,
+        "snapshot_registered": snap_registered,
         "groups": groups,
         "totals": {"groups": len(groups), "expected": sum(len(g["files"]) for g in groups),
                    "verified": verified, "downloaded": downloaded, "failed": failed},

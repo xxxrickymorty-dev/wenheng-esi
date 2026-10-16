@@ -296,8 +296,9 @@ def cmd_fetch(args) -> int:
     st = A.load_state(period) or A.scan(period)
     snapshot = st.get("snapshot") or A.resolve_snapshot(period, A.INCITES_ROOT_DEFAULT)
     if not snapshot:
-        _set_op(period, "fetch", "failed", "认不出 InCites 快照目录")
-        print("[拒绝] 认不出 InCites 快照目录——先跑一次 incites 任一条命令或给 SNAP_MAP 登记。")
+        _set_op(period, "fetch", "failed", "这一期未登记 InCites 快照")
+        print(f"[拒绝] {period} 未登记 InCites 快照目录——先在 src/extract_matrix.py 的 "
+              f"SNAP_MAP 登记该期快照名再取数（不再自动借用「最新一个」快照，免得算错期）。")
         return 1
     st["snapshot"] = snapshot
     A.write_state(period, st)

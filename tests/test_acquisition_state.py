@@ -107,6 +107,31 @@ def test_scan_pending_when_absent(tmp_path, monkeypatch):
     assert all(g["state"] == "pending" for g in state["groups"])
 
 
+def test_unmapped_period_does_not_borrow_latest_snapshot(tmp_path, monkeypatch):
+    """scan 收紧（2026-10-16）：未登记 SNAP_MAP 的期次不得借用「最新一个」InCites 快照。
+
+    旧行为会把最新快照里的 22 学科文件算成新期次的（实测未取数的 202611 凭空 26/64）。
+    """
+    inc = tmp_path / "incites"
+    _build_incites(inc, "数据覆盖2016-2026.06.30")            # 最新快照里有一整套文件
+    monkeypatch.setattr(A, "STATE_DIR", tmp_path / "out" / "_acquisition")
+    monkeypatch.setattr(A, "INCITES_ROOT_DEFAULT", inc)
+    monkeypatch.setattr(A, "_snap_map", lambda: {"202609": "数据覆盖2016-2026.06.30"})
+    state = A.scan("202611", esi_root=tmp_path / "none-esi")
+    assert state["snapshot"] == "" and state["snapshot_registered"] is False
+    assert state["data_period"]["incites"] == ""
+    inc_g = next(g for g in state["groups"] if g["id"] == "incites-subjects")
+    assert inc_g["state"] == "pending" and inc_g["verified"] == 0
+    assert state["totals"]["verified"] == 0                   # 一个文件都不该算进来
+
+
+def test_resolve_snapshot_explicit_and_mapped(monkeypatch):
+    monkeypatch.setattr(A, "_snap_map", lambda: {"202609": "数据覆盖2016-2026.06.30"})
+    assert A.resolve_snapshot("202609", A.INCITES_ROOT_DEFAULT) == "数据覆盖2016-2026.06.30"
+    assert A.resolve_snapshot("202605", A.INCITES_ROOT_DEFAULT, "显式快照") == "显式快照"
+    assert A.resolve_snapshot("202611", A.INCITES_ROOT_DEFAULT) == ""   # 未登记 → 空
+
+
 def test_write_load_roundtrip_and_preserve(tmp_path, monkeypatch):
     monkeypatch.setattr(A, "STATE_DIR", tmp_path / "out" / "_acquisition")
     A.write_state("202609", {"totals": {"verified": 1}, "preflight": {"browser": "ok"}})
