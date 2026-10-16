@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 全站冗余收敛 · 改前 / 改后对照稿</title>
+<style>
+:root{
+  --bg:#F4F2EA;--card:#F7F5EE;--panel:#ECE9DC;
+  --ink:#20211C;--ink-2:#4C4E45;--ink-3:#63655A;
+  --line:#D8DCC9;--line-2:#E7E9DA;
+  --zhu:#1A4B27;--zhu-soft:#E4EADB;--gline:#2A6642;
+  --gold:#B19A65;--gold-soft:#EFE9D9;--gold-ink:#6A5A2E;
+  --ok:#235C36;--ok-soft:#E2ECE0;
+  --warn:#75622D;--warn-soft:#F5ECD7;
+  --bad:#B4392E;--bad-soft:#F3E4DF;
+  --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.75 var(--sans)}
+.review{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding:9px 22px;background:var(--panel);border-bottom:1px dashed var(--line);font-size:12.5px;color:var(--ink-2)}
+.review b{color:var(--gold-ink)}
+.topbar{display:flex;align-items:center;gap:14px;padding:0 22px;height:56px;background:var(--bg);border-bottom:1px solid var(--gline)}
+.brand{display:flex;align-items:baseline;gap:9px;font-family:var(--serif);white-space:nowrap}
+.brand strong{font-size:21px;letter-spacing:.04em}
+.brand span{font-size:13px;color:var(--ink-3);letter-spacing:.06em}
+.nav{display:flex;gap:4px;margin-left:auto}
+.nav a{padding:6px 11px;color:var(--ink-2);text-decoration:none;font-size:13.5px;white-space:nowrap;border-bottom:2px solid transparent}
+.nav a.active{color:var(--ink);font-weight:650;border-bottom-color:var(--gline)}
+.nav .sep{border-left:1px solid var(--line);margin:6px 8px}
+.who{display:flex;align-items:center;gap:8px;border-left:1px solid var(--line);padding-left:14px;color:var(--ink-2);font-size:13px;white-space:nowrap}
+.avatar{display:grid;place-items:center;width:26px;height:26px;background:var(--zhu);color:#F6F4EC;font-size:13px}
+.chip-prop{border:1px dashed var(--zhu);color:var(--zhu);padding:2px 10px;font-size:12.5px;white-space:nowrap}
+.wrap{max-width:1440px;margin:auto;padding:18px 22px 80px}
+h1{font-family:var(--serif);font-size:23px;margin:10px 0 2px}
+.sub{color:var(--ink-3);font-size:13.5px;margin:0 0 10px}
+.toc{display:flex;gap:8px 14px;flex-wrap:wrap;font-size:13px;margin:8px 0 22px}
+.toc a{color:var(--zhu);text-decoration:none;border-bottom:1px solid var(--line)}
+h2.sec{font-family:var(--serif);font-size:19px;margin:38px 0 4px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+h2.sec .pill{font-weight:650}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2.5px 10px;font-size:12.5px}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.zhu{background:var(--zhu-soft);color:var(--zhu)}
+.pill.plain{background:var(--panel);color:var(--ink-2);border:1px solid var(--line)}
+.sec-note{color:var(--ink-2);font-size:13.5px;margin:2px 0 12px;max-width:980px}
+.cmp{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:1180px){.cmp{grid-template-columns:1fr}}
+.col{min-width:0}
+.col>h3{margin:0 0 8px;font-family:var(--serif);font-size:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.frame{position:relative;border:1px solid var(--line);background:var(--bg)}
+.frame-tag{position:absolute;top:8px;right:10px;z-index:5;font:11.5px var(--mono);color:var(--ink-3);background:rgba(247,245,238,.92);border:1px solid var(--line);padding:1px 9px}
+.frame-inner{padding:34px 14px 14px}
+.card{background:var(--card);border:1px solid var(--line);padding:14px 16px}
+.card+.card{margin-top:12px}
+.hint{color:var(--ink-3);font-size:12.5px}
+.mono{font-family:var(--mono)}
+.btn{padding:6px 12px;border:1px solid var(--line);background:var(--card);font:inherit;font-size:13.5px;cursor:pointer;color:var(--ink)}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-weight:650}
+.btn.big{padding:10px 18px;font-size:15px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;background:var(--card);border:1px solid var(--line)}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line-2);text-align:left;vertical-align:top}
+th{color:var(--ink-3);font-weight:650;font-size:12.5px;border-bottom:1px solid var(--gline)}
+tr:last-child td{border-bottom:0}
+td.src{font-family:var(--mono);font-size:12px;color:var(--ink-3);white-space:nowrap}
+.tag{display:inline-block;padding:1px 8px;font-size:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink-2)}
+.del{color:var(--bad);font-weight:650}
+.num{font:650 15px var(--mono)}
+.num.good{color:var(--ok)}
+/* ② 状态区对比 */
+.mast{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.mast .big{font-family:var(--serif);font-size:34px;letter-spacing:.02em}
+.seal{border:1px solid var(--gline);color:var(--zhu);padding:2px 10px;font-family:var(--serif);font-size:15px}
+.rd{display:flex;border:1px solid var(--line);background:var(--card);margin-top:12px}
+.rd>div{flex:1;padding:10px 12px;border-right:1px solid var(--line-2)}
+.rd>div:last-child{border-right:0}
+.rd .t{font-size:13.5px}
+.rd .s{color:var(--ink-3);font-size:12.5px}
+.focus{margin-top:12px;border:1px solid var(--line);border-left:3px solid var(--gline);background:var(--panel);padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.focus .big{font-family:var(--serif);font-size:19px}
+.focus .sub{color:var(--ink-2);font-size:13px}
+.taskline{margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;color:var(--ink-2);font-size:13.5px}
+.banner{margin-top:12px;border:1px solid var(--line);border-left:3px solid var(--ok);background:var(--ok-soft);padding:11px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:13.5px}
+.band{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-top:2px solid var(--gline);padding:12px 16px}
+.band .big{font-family:var(--serif);font-size:26px}
+.act{background:var(--card);border:1px solid var(--line);padding:16px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px}
+.act .txt{font-size:15.5px}
+.act .go{margin-left:auto;display:flex;gap:10px;align-items:center}
+.lastrun{margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);padding:9px 16px;color:var(--ink-2);font-size:13px}
+.lastrun b{color:var(--ink)}
+.anno{position:relative;display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;background:var(--gold);color:#fff;font:650 12px/1 var(--sans);cursor:help}
+.dot{width:20px;height:20px;min-width:20px;padding:0;border:1px solid var(--line);background:var(--card);color:var(--ink-3);font-size:12px;cursor:pointer}
+.dot:hover{border-color:var(--zhu);color:var(--zhu)}
+.count{margin-top:10px;font-size:12.5px;color:var(--ink-2)}
+.count b{color:var(--gold-ink)}
+.fix{margin-top:12px;font-size:13px;color:var(--ink-2);border-top:1px dashed var(--line);padding-top:8px}
+.pop{position:fixed;z-index:50;max-width:340px;display:none;background:#fff;border:1px solid var(--line);padding:11px 13px;font-size:13px;color:var(--ink-2);box-shadow:0 8px 26px rgba(32,33,28,.16)}
+.pop b{color:var(--ink)}
+.check{margin-top:16px;background:var(--card);border:1px solid var(--line);border-top:2px solid var(--gline);padding:16px 20px}
+.check h3{margin:0 0 6px;font-family:var(--serif);font-size:16px}
+.check ul{margin:6px 0 0;padding-left:20px;color:var(--ink-2);font-size:13.5px}
+.check li{margin:5px 0}
+.foldnote{color:var(--ink-3);font-size:12.5px;margin:10px 2px 0}
+</style>
+</head>
+<body>
+<div class="review">
+  <b>静态对照稿 · 全站冗余收敛</b>
+  <span>左＝现状（按真实结构与原文案复刻，出处见各段）｜右＝提案。与既有 4 份「信息减负对照稿」同向；本稿补<strong>跨屏</strong>部分（词汇/状态/入口/机制语/布局），状态带与主动作的改后形态沿用《生成台-信息减负对照稿》口径。</span>
+</div>
+
+<header class="topbar">
+  <div class="brand"><strong>文衡</strong><span>云南大学图书馆 · 学科信息参考</span></div>
+  <nav class="nav" aria-label="工作区">
+    <a class="active" href="#">出报告</a><a href="#">灵活报告</a><a href="#">报告</a><a href="#">问文衡</a>
+    <span class="sep"></span><a href="#">主台账</a><a href="#">运行档案</a>
+    <span class="chip-prop" title="提案：期次是全局控件，从报告屏升到顶栏">期次 202609 ▾（提案：升顶栏）</span>
+  </nav>
+  <div class="who">陈列馆 › &nbsp;云大绿｜朱砂 &nbsp;<span class="avatar">a</span>admin · 管理员</div>
+</header>
+
+<main class="wrap">
+  <h1>全站冗余收敛 · 改前 / 改后对照稿</h1>
+  <p class="sub">判据：UX.md §七「Show the Task, Not the Menu」· §十硬指标（首屏≤180字、主动作≤1、hint≤24字、口径全站一份）· §四无技术术语。2026-10-17。</p>
+  <nav class="toc">
+    <a href="#s1">① 词汇三套→一套</a>
+    <a href="#s2">② 状态 5 处→2 词</a>
+    <a href="#s3">③ 入口 13→6</a>
+    <a href="#s4">④ 机制语清零</a>
+    <a href="#s5">⑤ 表类屏收敛</a>
+    <a href="#s6">⑥ 对话落点</a>
+    <a href="#s7">⑦ 布局硬伤</a>
+    <a href="#s8">⑧ 验收清单</a>
+  </nav>
+
+  <!-- ① 词汇 -->
+  <h2 class="sec" id="s1">① 词汇三套并存 → 一套词表 <span class="pill warn">同一动作最多 4 个名字</span></h2>
+  <p class="sec-note">现状：任务条、顶部站条、屏题各说各话，且 4 个站盖 5 个屏（「生成初稿」下同时挂生成台和预测台）——用户不知道自己在哪一步。提案：先定词表，全站只用表内词。</p>
+  <table>
+    <tr><th style="width:130px">这件事</th><th>现状（并存的叫法）</th><th>统一叫法（词表）</th></tr>
+    <tr><td>每期第 1 步</td><td>「下载数据」（任务条）·「下载数据核验」（站条）·「自动下载数据台」（屏题）·「取数」（UX.md）</td><td><b>取数</b>（机器进度）＋<b>取数核验</b>（人的步骤）；屏题＝步骤名</td></tr>
+    <tr><td>出稿动作</td><td>「一键生成」·「生成初稿」·「已出稿」·「出稿」</td><td><b>一键生成</b>（机器）＋<b>生成初稿</b>（人的步骤）；状态词不参与命名</td></tr>
+    <tr><td>顶部站条</td><td>4 站盖 5 屏；「生成初稿」挂生成台＋预测台两屏</td><td><b>5 站 5 屏</b>：取数核验 · 选章节 · 预测选模 · 生成初稿 · 核验定稿</td></tr>
+    <tr><td>屏题</td><td>另起新名（自动下载数据台 / 潜力学科预测 / 审核·试排报告…）</td><td>屏题＝站名，不另起名；副题只写期次</td></tr>
+    <tr><td>状态词</td><td>已生成 / 已就绪 / 已完成 / 已出稿 / 可交付 / 签名已失效</td><td>只两套：<b>任务</b>（进行中 / 已完成 / 未开始）＋<b>签发</b>（未签发 / 已签发 / 签发已失效）</td></tr>
+    <tr><td>签发用字</td><td>签名 / 签发 / 签单 混用</td><td>动作叫<b>签单</b>、状态叫<b>签发</b>；「签名」只指数字签名时才出现</td></tr>
+  </table>
+
+  <!-- ② 状态 -->
+  <h2 class="sec" id="s2">② 「本期已生成」说 5 遍 → 2 个词说完 <span class="pill warn">主动作 5 个 → 1 个</span></h2>
+  <p class="sec-note">工作台首屏现状：同一个事实出现在 5 处、4 种措辞（①印章 ②焦点带 ③横幅 ④任务行 ⑤读数带）；「打开报告/去审核台/看详细过程/改选去预测台」再加主动作共 5 个按钮。提案沿用《生成台-信息减负对照稿》改后：状态带 2 词＋主动作 1 个，其余进折叠与页脚。金色编号＝重复点位置。</p>
+  <div class="cmp">
+    <section class="col">
+      <h3>改前 · 状态区（现状复刻） <span class="pill warn">状态说法 <b class="mono">5</b> 处</span> <span class="pill plain">主动作 5 个</span></h3>
+      <div class="frame" id="frameBefore" style="height:520px">
+        <span class="frame-tag">生成台首屏上半 · 520px</span>
+        <div class="frame-inner">
+          <div class="mast">
+            <span class="big">202609</span>
+            <span class="seal">已生成 <span class="anno">①</span></span>
+          </div>
+          <div class="rd">
+            <div><div class="t">✓ 下载数据</div><div class="s">下载数据完成（64 / 64）</div></div>
+            <div><div class="t">✓ 核对并并入</div><div class="s">已并入台账</div></div>
+            <div><div class="t">✓ 一键生成</div><div class="s">已出稿 <span class="anno">⑤</span></div></div>
+          </div>
+          <div class="focus">
+            <div>
+              <div class="big">本期报告已就绪 <span class="anno">②</span></div>
+              <div class="sub">复核后签单，这一版才会被标记为「可交付」。</div>
+            </div>
+            <span style="margin-left:auto"></span>
+            <button class="btn primary">✓ 复核并签单</button>
+          </div>
+          <div class="taskline">
+            <span>任务：已完成 <span class="anno">④</span> · 期次 202609 · 页面正在更新进度 <span class="anno" title="矛盾句：任务已完成却说正在更新">⚠</span></span>
+            <button class="btn" style="margin-left:auto">☰ 看详细过程</button>
+          </div>
+          <div class="banner">
+            <span>✓ 本期报告已生成 <span class="anno">③</span> · 任务结束不代表报告合格或已签发，管理员当前不能下载未签发初稿。</span>
+            <span style="margin-left:auto;display:flex;gap:10px"><button class="btn">打开报告</button><button class="btn">去审核台</button></span>
+          </div>
+          <div class="count">同义重复：<b>①已生成 ②已就绪 ③已生成 ④已完成 ⑤已出稿</b>——4 种措辞说同一件事；横幅那句边界声明与页脚「说明④」重复。</div>
+        </div>
+      </div>
+    </section>
+    <section class="col">
+      <h3>改后 · 提案（与生成台对照稿同向） <span class="pill ok">状态 <b class="mono">2</b> 词</span> <span class="pill plain">主动作 1 个</span></h3>
+      <div class="frame" id="frameAfter" style="height:520px">
+        <span class="frame-tag">同视口 520px</span>
+        <div class="frame-inner">
+          <div class="band">
+            <span class="big mono">202609</span>
+            <span class="pill ok">任务：已完成</span>
+            <span class="pill warn">未签发</span>
+            <button class="dot" data-info="<b>状态从哪来</b><br>任务状态来自本期任务记录；签发状态来自审核台签单。本页只读。">ⓘ</button>
+          </div>
+          <div class="act">
+            <span class="txt">这一版等你复核签单；签发前不能下载初稿。</span>
+            <span class="go">
+              <a class="hint" href="#">打开报告 ↗</a>
+              <button class="btn primary big">✓ 复核并签单</button>
+            </span>
+          </div>
+          <div class="lastrun">
+            <span>最近运行 <b>10-13 13:09</b> · 全绿 · <b>247 秒</b> · 104 张图</span>
+            <a class="hint" href="#">查看运行档案 →</a>
+          </div>
+          <div class="fix">
+            取消：印章文案（印章保留为装饰、不带字）、焦点带与横幅的重复陈述、任务行、「看详细过程」按钮（并入运行档案）、「改选去预测台」折叠（删）。进度三站进状态带 ⓘ 或折叠。
+          </div>
+          <div class="count">状态只说 <b>2 个词</b>（任务 / 签发各一，两套各 3 词全站通用）；主动作 <b>1 个</b>（复核并签单）；「打开报告」降为文字链接。</div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <b>状态区可见字数（实测，评审注释不计）</b>：改前 <b class="num" id="nBefore">…</b> 字 → 改后 <b class="num good" id="nAfter">…</b> 字（目标 ≤180）。
+  </div>
+  <div class="card" style="margin-top:12px">
+    <b>矛盾句与边界声明</b>：「页面正在更新进度」在任务完成后仍显示 → 删（进度只在跑任务时显示）；「任务结束不代表……」一句是口径边界，页脚「说明④」已有 → 横幅删，只留主按钮下的半句话「签发前不能下载初稿」（≤24 字）。
+  </div>
+
+  <!-- ③ 入口 -->
+  <h2 class="sec" id="s3">③ 跨屏入口收敛：13 → 6 <span class="pill warn">同一目的地最多 6 个入口</span></h2>
+  <p class="sec-note">现状：同一件事在不同屏有多个门（报告屏三卡＝第二套菜单，撞 §七「Show the Task, Not the Menu」）。提案：每个目的地全站只留 1 个常驻入口＋案发现场的文字链接。</p>
+  <table>
+    <tr><th style="width:120px">去哪</th><th>现状入口（数 · 位置）</th><th>改后</th></tr>
+    <tr><td>预测选模</td><td>2 · 工作台「预测模型选择」折叠里的「改选去预测台」＋站条「生成初稿」代打</td><td>站条独立一站「预测选模」；折叠删</td></tr>
+    <tr><td>运行记录</td><td>3 · 「看详细过程」按钮＋「工具调用记录」折叠＋顶栏「运行档案」</td><td>只留顶栏「运行档案」；案发现场一行文字链接「查看运行档案 →」</td></tr>
+    <tr><td>审核签单</td><td>6 · 焦点带按钮＋横幅按钮＋待人工 5 行各一个按钮＋对勘本右栏链接</td><td>焦点带 1 个主按钮；待人工行内文字链接</td></tr>
+    <tr><td>对勘/红件/溯源</td><td>5 · 报告屏三卡＋顶栏「报告」＋待人工行按钮</td><td>报告屏内一行小链接（三卡退化为一行），不设第二套菜单</td></tr>
+    <tr><td>期次切换</td><td>1 且藏在报告屏「期次印记链」方块里（仅小字「点一枚换一期」，不像可点）</td><td><b>升顶栏全局控件</b>（见本页顶栏虚线框）；印记链退为纯展示</td></tr>
+    <tr><td>报告产物</td><td>11 个「打开」按钮排成卡片栅格</td><td>产物表整行可点，删「打开」列</td></tr>
+  </table>
+
+  <!-- ④ 机制语 -->
+  <h2 class="sec" id="s4">④ 机制语清零（§四：界面不出现技术术语） <span class="pill warn">12 处</span></h2>
+  <p class="sec-note">含一处防线盲区：<b>「机器断言 全绿」来自后端数据字段</b>，绕过了 check_web_app.py「只扫自撰文案」的检查（banned.ts 里明明收了这词）——把数据驱动文案也纳入扫描，或后端直接出人话。</p>
+  <table>
+    <tr><th style="width:220px">现文案</th><th style="width:150px">出处</th><th>改后</th></tr>
+    <tr><td>机器断言 全绿</td><td class="src">后端数据字段</td><td>数据校验全绿（扫描补数据驱动文案）</td></tr>
+    <tr><td>全链路 … 秒</td><td class="src">Archive.tsx:152,315</td><td>全程 … 秒</td></tr>
+    <tr><td>合成记录</td><td class="src">Archive.tsx:162</td><td>补记</td></tr>
+    <tr><td>目录名 202607</td><td class="src">Report.tsx:477 · Workbench.tsx:515</td><td class="del">删</td>（期次号已够）</tr>
+    <tr><td>台账里（现场重读）</td><td class="src">Trace.tsx:92</td><td>台账现值</td></tr>
+    <tr><td>第二条产线</td><td class="src">Flexible.tsx:289</td><td class="del">删</td>（「内部参考件 · 非报送」已说清）</td></tr>
+    <tr><td>规则规划 / AI 自主规划</td><td class="src">Flexible.tsx:69,75</td><td>按规则出稿 / 自由出稿</td></tr>
+    <tr><td>本轮不办清单 / 记住本轮范围</td><td class="src">Pick.tsx:117,120</td><td>复制「这轮不做」/ 记住这轮选择</td></tr>
+    <tr><td>图例：✓ 已完成 · ● 进行中 · ○ 未开始</td><td class="src">DialogPage.tsx:666</td><td class="del">删</td>（状态本来就带文字）</td></tr>
+    <tr><td>页面正在更新进度（与「已完成」同屏）</td><td class="src">Workbench.tsx:48</td><td>只在跑任务时显示「进度自动刷新」</td></tr>
+    <tr><td>签名已失效</td><td class="src">报告印记链 · 对话落点</td><td>签发已失效（全站统一「签发」）</td></tr>
+    <tr><td>成品展示面（鼠标提示）</td><td class="src">App.tsx 陈列馆链接</td><td>陈列馆（成品）</td></tr>
+  </table>
+
+  <!-- ⑤ 表类屏 -->
+  <h2 class="sec" id="s5">⑤ 表类屏（红件 / 溯源）：T 编号退后台 <span class="pill warn">hint 50 字 → ⓘ</span></h2>
+  <div class="cmp">
+    <section class="col">
+      <h3>改前 · 红色件清单 <span class="pill warn">19 个分组芯片</span></h3>
+      <div class="frame" style="height:300px">
+        <span class="frame-tag">现状复刻</span>
+        <div class="frame-inner">
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <span class="tag">T20 240</span><span class="tag">大表数值 239</span><span class="tag">T19 110</span><span class="tag">正文 19</span>
+            <span class="tag">T17 7</span><span class="tag">T03 6</span><span class="tag">T04 6</span><span class="tag">T05 6</span><span class="tag">T06 6</span>
+            <span class="tag">…（还有 10 个，多数只 6 条）</span>
+          </div>
+          <p style="font-size:13px;color:var(--ink-2);margin-top:12px">「修改前」显示「—」＝母版此处原本就是空白（大表在母版里是空表、本期逐格填入），不是漏记。</p>
+          <p class="hint">表头：位置 · 修改前 · 修改后 · 来源（溯源页另有「台账里（现场重读）」列）</p>
+          <div class="count">T 编号是内部槽位号，馆员与评委读不出含义；hint <b>50+ 字</b>压在表格上方。</div>
+        </div>
+      </div>
+    </section>
+    <section class="col">
+      <h3>改后 <span class="pill ok">6 个分组</span> <span class="pill ok">hint 进 ⓘ</span></h3>
+      <div class="frame" style="height:300px">
+        <span class="frame-tag">同视口</span>
+        <div class="frame-inner">
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <span class="tag">大表 239</span><span class="tag">学科×高校 240</span><span class="tag">图表 102</span>
+            <span class="tag">省域 110</span><span class="tag">正文 19</span><span class="tag">其他 16 ▾</span>
+          </div>
+          <p style="font-size:13px;color:var(--ink-2);margin-top:12px">表格与现状一致，只改表头：「台账里（现场重读）」→「台账现值」。</p>
+          <p class="hint">ⓘ 「—」＝母版原处空白（点开 3 秒可读）　分组下拉里保留 T 编号供追溯</p>
+          <div class="count">分组名＝内容名；T 编号退进下拉与溯源页（那儿是它的主场）。</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ⑥ 对话落点 -->
+  <h2 class="sec" id="s6">⑥ 对话落点：删图例行、统一「签发」 <span class="pill warn">2 处</span></h2>
+  <div class="cmp">
+    <section class="col">
+      <h3>改前</h3>
+      <div class="frame" style="height:190px">
+        <div class="frame-inner">
+          <div class="card" style="text-align:center">
+            <p style="margin:0">本期动态 · 202611　① 下载数据 ● 进行中　② 核对并并入 ○ 未开始　③ 一键生成 ○ 未开始　<a href="#" style="color:var(--zhu)">去生成台 ›</a></p>
+            <p class="hint" style="margin:8px 0 0">图例：✓ 已完成 · ● 进行中 · ○ 未开始</p>
+            <p class="hint" style="margin:4px 0 0">上一期 202609：签名已失效</p>
+          </div>
+          <div class="count">状态已带文字（「进行中」），图例行是多余的符号字典；「签名」与全站「签发」不一致。</div>
+        </div>
+      </div>
+    </section>
+    <section class="col">
+      <h3>改后</h3>
+      <div class="frame" style="height:190px">
+        <div class="frame-inner">
+          <div class="card" style="text-align:center">
+            <p style="margin:0">本期动态 · 202611　① 取数 进行中　② 核对并并入 未开始　③ 一键生成 未开始　<a href="#" style="color:var(--zhu)">去生成台 ›</a></p>
+            <p class="hint" style="margin:8px 0 0">上一期 202609：签发已失效</p>
+          </div>
+          <div class="count">图例行删；站点名用词表词（下载数据→取数）；「签名已失效」→「签发已失效」。</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ⑦ 布局 -->
+  <h2 class="sec" id="s7">⑦ 布局硬伤 2 处 <span class="pill warn">约白丢一屏</span></h2>
+  <div class="cmp">
+    <section class="col">
+      <div class="card">
+        <b>报告整页</b>：「待人工的地方」与「本期产物」之间一大段空白（2026-10-17 实测截图）。
+        <div class="count">改法：产物区并进同一栅格流、去掉空 section，全页高度省约一屏。</div>
+      </div>
+    </section>
+    <section class="col">
+      <div class="card">
+        <b>对勘本右栏</b>：过半是占位灰卡「（把光标移到左侧改动卡上）」。
+        <div class="count">改法：占位卡删（悬停浮层已有同样提示）；右栏收窄为 260px 校记条。</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ⑧ 验收 -->
+  <section class="check" id="s8">
+    <h3>验收清单（10 秒盲测）</h3>
+    <ul>
+      <li><b>盲测一</b>：打开生成台，3 秒说出「下一步做什么」——答「复核签单」即过（现状要读 5 处才敢确定）。</li>
+      <li><b>盲测二</b>：「这期做完没有？」——答「任务已完成、未签发」两词即过（现状 4 种措辞）。</li>
+      <li><b>盲测三</b>：在报告屏找「运行档案」——全站只有 1 个入口即过。</li>
+      <li><b>盲测四</b>：任读红件页一个分组名——没有 T 编号即过。</li>
+      <li><b>指标</b>：重复状态 <b class="num good">5→2</b> · 主动作 <b class="num good">5→1</b> · 跨屏入口 <b class="num good">13→6</b> · 机制语 <b class="num good">12→0</b>。</li>
+    </ul>
+    <p class="foldnote">落地顺序（低风险在前）：① 文案层（机制语/矛盾句/hint 进 ⓘ）→ ② 状态合一 → ③ 入口收敛 → ④ 布局修缮 → ⑤ 站条统一（动骨架，先过本稿再动 React）。审过即按此进码；词表写进 web/UX.md §十。</p>
+  </section>
+</main>
+
+<div class="pop" id="pop"></div>
+
+<script>
+/* 首屏可见字数：按视口实测（Range API 逐个文本节点量，折叠内容不算） */
+function visibleChars(frame){
+  const box = frame.getBoundingClientRect();
+  const top = box.top, bottom = box.top + frame.clientHeight;
+  const walker = document.createTreeWalker(frame, NodeFilter.SHOW_TEXT);
+  let n = 0, node;
+  while((node = walker.nextNode())){
+    const t = (node.nodeValue || "").replace(/\s+/g, "");
+    if(!t) continue;
+    if(node.parentElement && node.parentElement.closest("details:not([open]),.count,.fix,.anno,.frame-tag")) continue;  /* 折叠与评审注释不算首屏 */
+    const r = document.createRange();
+    r.selectNodeContents(node);
+    const rect = r.getBoundingClientRect();
+    if(rect.width === 0 && rect.height === 0) continue;
+    if(rect.bottom > top && rect.top < bottom) n += t.length;
+  }
+  return n;
+}
+window.addEventListener("load", function(){
+  const b = visibleChars(document.getElementById("frameBefore"));
+  const a = visibleChars(document.getElementById("frameAfter"));
+  ["nBefore","nBefore2"].forEach(function(id){ const el = document.getElementById(id); if(el) el.textContent = b; });
+  ["nAfter","nAfter2"].forEach(function(id){ const el = document.getElementById(id); if(el) el.textContent = a; });
+});
+/* ⓘ 弹层 */
+const pop = document.getElementById("pop");
+document.querySelectorAll(".dot").forEach(function(btn){
+  btn.addEventListener("click", function(e){
+    e.stopPropagation();
+    if(pop.style.display === "block" && pop.dataset.src === btn.dataset.info){ pop.style.display = "none"; return; }
+    pop.innerHTML = btn.dataset.info; pop.dataset.src = btn.dataset.info;
+    pop.style.display = "block";
+    const r = btn.getBoundingClientRect();
+    pop.style.left = Math.max(10, Math.min(window.innerWidth - 360, r.left - 40)) + "px";
+    pop.style.top = (r.bottom + 8) + "px";
+  });
+});
+document.addEventListener("click", function(){ pop.style.display = "none"; });
+</script>
+</body>
+</html>
