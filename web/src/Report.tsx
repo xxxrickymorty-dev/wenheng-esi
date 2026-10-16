@@ -234,7 +234,7 @@ function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSee
             {manual.length > 0 && (
               <a className="hint ml-auto ink-zhu fw-650 no-underline"
                  href={period ? appHref('review', period) : '/app/?view=review'}>
-                去「出报告 · ④ 核验与定稿」逐项处理（{manual.length} 处）→
+                去「出报告 · 核验与定稿」逐项处理（{manual.length} 处）→
               </a>
             )}
           </h2>
@@ -252,7 +252,7 @@ function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSee
                   <div className="mn-acts">
                     <a className="btn"
                        href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}${r.loc ? `&focus=${encodeURIComponent(r.loc)}` : ''}`}>
-                      去④核验定稿 →
+                      去核验与定稿 →
                     </a>
                   </div>
                 </div>
@@ -260,7 +260,7 @@ function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSee
               {manual.length > 8 && (
                 <p className="hint">
                   另 {manual.length - 8} 处
-                  {canSeeAdminBits ? '见图册「红色件清单」。' : '去「出报告 · ④ 核验与定稿」处理。'}
+                  {canSeeAdminBits ? '见图册「红色件清单」。' : '去「出报告 · 核验与定稿」处理。'}
                 </p>
               )}
             </div>
@@ -444,10 +444,10 @@ function ReportStatus({ status, period }: { status: string; period: string | nul
         {signed
           ? '这一版已签发：报告屏只读展示，内容不再改动。'
           : stale
-            ? '这一版内容变过、签名已失效——要改请到「出报告 · ④ 核验与定稿」。'
-            : '这一版还没签发——要改请到「出报告 · ④ 核验与定稿」。'}
+            ? '这一版内容变过、签名已失效——要改请到「出报告 · 核验与定稿」。'
+            : '这一版还没签发——要改请到「出报告 · 核验与定稿」。'}
       </span>
-      {!signed && <a className="rep-go" href={href}>去④核验与定稿 →</a>}
+      {!signed && <a className="rep-go" href={href}>去核验与定稿 →</a>}
     </div>
   )
 }
@@ -471,11 +471,10 @@ export function Report({
     <>
       <div className="report-head">
         <div>
-          <div className="eyebrow">学科信息参考 · ESI 双月报告</div>
           <h1 className="display">
             {row?.label ?? '（选择期次）'}
             <small>
-              目录名 {current ?? '—'} · 成品展示台（只读）
+              学科信息参考 · ESI 双月报告 ｜ 目录名 {current ?? '—'} · 成品展示台（只读）
             </small>
           </h1>
           <div className="rule" />

@@ -98,9 +98,7 @@ html{scroll-behavior:smooth;scroll-padding-top:104px}
 
 /* ===== 票 02（W1）：陈列馆首屏产品名/规模事实 + CTA 收敛 + 揭示兜底 + 度量 ===== */
 
-/* A. 首屏产品名与一行规模事实 */
-.home-hero-owner { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; font-size: 13.5px; letter-spacing: .1em; line-height: 1.5; color: #f3e8c6; }
-.home-hero-owner > span { height: 1px; width: 35px; background: #d6c699; }
+/* A. 首屏产品名与一行规模事实（2026-10-16 taste P5：眉标行删除，产品名折进副题） */
 .home-hero-facts { margin: 14px 0 0; font-size: 14px; line-height: 1.75; letter-spacing: .02em; color: #ece5cf; max-width: 660px; }
 
 /* B. 页尾次级入口（「进入 3D 图书馆」全站仅首屏 1 处） */

@@ -78,9 +78,8 @@ function HeroSection({ onEnterExterior }: { onEnterExterior: () => void }) {
     <img className="home-hero-image" src={`${import.meta.env.BASE_URL}assets/ynu-library-real.png`} alt="云南大学呈贡校区图书馆，中央玻璃穹顶、红砖翼楼、双塔及入口广场" width={1280} height={720} fetchPriority="high" />
     <div className="home-hero-shade" />
     <div className="home-hero-content">
-      <p className="home-hero-owner"><span /> 云南大学图书馆 · 学科情报平台「文衡」</p>
       <h1 id="hero-title">云南大学<br /><em>图书馆</em></h1>
-      <p className="home-hero-subtitle">学科信息参考 <b>·</b> 数字馆藏 <b>·</b> 数据阅览</p>
+      <p className="home-hero-subtitle">学科情报平台「文衡」 <b>·</b> 学科信息参考 <b>·</b> 数字馆藏 <b>·</b> 数据阅览</p>
       <p className="home-hero-facts">22 个学科在监测 · 14 个已进入 ESI 全球前 1% ｜ 自 2019 年起 39 期连续记录 · 291 篇顶尖论文在册</p>
       <div className="home-hero-actions">
         <button type="button" className="home-button ivory" onClick={onEnterExterior}>进入3D图书馆 <ArrowUpRight size={18} /></button>

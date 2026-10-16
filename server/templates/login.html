@@ -4,11 +4,9 @@
 {% block body_attrs %}class="theme-ynu"{% endblock %}
 
 {# 欢迎页 ＝ 登录页（rick 2026-09-21 定：把建筑图做首屏；2026-09-28 二改：满屏图书馆背景；
-   2026-09-28 三改：登录卡改玻璃拟态（参考 CodePen「Glassmorphism | Login Form」bGwYYPQ 的
-   视觉语汇——毛玻璃卡片 + 浮动玻璃方块 + 浮动标签输入框）；四改：陈列馆入口移入
-   工作区导航（工作区顶部「陈列馆」），登录页不再设游客入口。
-   适配本仓铁律：**零 CDN**——原稿的 Google 字体（El Messiri）、Font Awesome、外链眼睛
-   图标全部不引，改用系统字体 + 内联 SVG 复刻；背景仍是本馆照片，不给卡通渐变。
+   2026-09-28 三改：登录卡玻璃拟态；2026-10-16 四改（taste 评审：玻璃是禁项、眉标与小菱形是装饰）：
+   登录卡改**深绿实色面板**、顶部眉标文字折进导语、列表菱形点删除。
+   适配本仓铁律：**零 CDN**——系统字体 + 内联 SVG；背景仍是本馆照片，不给卡通渐变。
    为什么放在登录页而不是 `/`：`/` 是馆员工作台（2026-09-19 刻意改过去的，
    回答"这次要我做什么决定"），不该被一张宣传图顶掉；而未登录的人第一眼看到的
    就是这一页 —— 它才是系统真正的门面。
@@ -37,17 +35,12 @@
   }
   /* --- 左：文案（暗底上全部转米白，强调符用金） --- */
   .welcome-copy { padding: 0 4px; }
-  .welcome-copy .eyebrow {
-    display: flex; align-items: center; gap: 11px;
-    font-family: var(--mono, monospace); font-size: 10.5px; letter-spacing: .18em;
-    color: rgba(240, 236, 214, .78); text-transform: uppercase;
-  }
   .welcome-copy .emblem {
-    width: 38px; height: 38px; flex: none;
+    display: block; width: 38px; height: 38px; margin: 0 0 16px;
     background: #F2EDDC; border-radius: 50%; padding: 2px;
   }
   .welcome-copy h1 {
-    margin: 14px 0 0; font-family: var(--serif); font-weight: 700;
+    margin: 0; font-family: var(--serif); font-weight: 700;
     font-size: 46px; letter-spacing: .1em; line-height: 1.15; color: #F6F1DE;
   }
   .welcome-copy h1 i { font-style: normal; color: var(--gold); }
@@ -58,53 +51,23 @@
   .welcome-copy .lede strong { color: #F6F1DE; }
   .welcome-facts { list-style: none; margin: 22px 0 0; padding: 0; display: grid; gap: 9px; }
   .welcome-facts li {
-    position: relative; padding-left: 18px; font-size: 12.5px; color: rgba(240, 236, 220, .78);
-  }
-  .welcome-facts li::before {
-    content: ""; position: absolute; left: 2px; top: 7px;
-    width: 6px; height: 6px; border: 1px solid var(--gold); transform: rotate(45deg);
+    font-size: 12.5px; color: rgba(240, 236, 220, .78);
   }
   .welcome-facts li strong { color: #F6F1DE; }
 
-  /* ===================== 右：玻璃拟态登录卡 ===================== */
+  /* ===================== 右：登录卡（实色面板——2026-10-16 taste：玻璃拟态退场） ===================== */
   .welcome .login-wrap {
     min-height: 0; padding: 0; height: 100%;
     display: flex; align-items: center; justify-content: center;
   }
   .glass-wrap { position: relative; width: 100%; max-width: 430px; }
-  /* 浮动玻璃方块（原稿的 square(n)，位置按本页收窄，避免压到左列文案） */
-  .glass-square {
-    position: absolute; background: rgba(255, 255, 255, .10);
-    -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
-    box-shadow: 0 25px 45px rgba(0, 0, 0, .18);
-    border: 1px solid rgba(255, 255, 255, .18); border-radius: 15px;
-    animation: glass-float 10s linear infinite;
-    animation-delay: calc(-1s * var(--i));
-    pointer-events: none; z-index: 0;
-  }
-  @keyframes glass-float {
-    0%, 100% { transform: translateY(-20px); }
-    50% { transform: translateY(20px); }
-  }
-  .glass-square:nth-child(1) { width: 100px; height: 100px; top: -40px; right: -50px; }
-  .glass-square:nth-child(2) { width: 140px; height: 140px; top: 120px; left: -90px; }
-  .glass-square:nth-child(3) { width: 60px; height: 60px; bottom: 70px; right: -40px; }
-  .glass-square:nth-child(4) { width: 50px; height: 50px; bottom: 20px; left: -60px; }
-  .glass-square:nth-child(5) { width: 45px; height: 45px; top: -30px; left: -45px; }
-  .glass-square:nth-child(6) { width: 80px; height: 80px; top: 210px; right: -90px; }
 
-  /* 卡片本体：深色毛玻璃（原稿 .container 的语汇；这里压暗一档，
-     因为背景是亮照片——纯白玻璃上白字对比度不够）。压深投影，浮在照片上 */
+  /* 卡片本体：深绿实色（浮在照片上，压深投影定边界；不用毛玻璃、不用渐变罩） */
   body.theme-ynu .plaque {
     position: relative; z-index: 1;
-    width: 100%; background: rgba(10, 30, 23, .42);
-    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, .20); border-radius: 16px;
+    width: 100%; background: #0F2E21;
+    border: 1px solid rgba(255, 255, 255, .14); border-radius: 16px;
     box-shadow: 0 25px 45px rgba(0, 0, 0, .35);
-  }
-  body.theme-ynu .plaque::after {
-    content: ""; position: absolute; inset: 5px; border-radius: 11px; pointer-events: none;
-    background: linear-gradient(to bottom, rgba(255, 255, 255, .10), rgba(255, 255, 255, .02) 32%, transparent 62%);
   }
   body.theme-ynu .plaque .body { padding: 30px 28px 26px; position: relative; z-index: 1; }
   body.theme-ynu .plaque .mark { color: #F6F1DE; }
@@ -167,8 +130,7 @@
     transition: background .4s, color .4s, box-shadow .3s;
   }
   body.theme-ynu .plaque .btn.primary:hover {
-    background: linear-gradient(115deg, rgba(255, 255, 255, .28), rgba(255, 255, 255, .6));
-    color: #fff;
+    background: #EFE9D6; color: #123619;
   }
   body.theme-ynu .plaque .btn.line {
     background: transparent; color: rgba(255, 255, 255, .92);
@@ -186,13 +148,12 @@
     border-left: 3px solid #FF9C86; color: #FFD9D0; border-radius: 10px;
   }
 
-  /* --- 窄屏：文案在上、卡在下；固定背景跟随滚动；方块收掉防溢出 --- */
+  /* --- 窄屏：文案在上、卡在下；固定背景跟随滚动 --- */
   @media (max-width: 940px) {
     body.theme-ynu { background-attachment: scroll; }
     .welcome { grid-template-columns: 1fr; gap: 28px; min-height: 0; padding: 26px 0; }
     .welcome-copy h1 { font-size: 34px; }
     .glass-wrap { max-width: 430px; margin: 0 auto; }
-    .glass-square { display: none; }
   }
   /* 手机顶栏：品牌不折行；副标题让位（否则「文衡」会被挤成两行） */
   @media (max-width: 760px) {
@@ -206,14 +167,11 @@
 <div class="welcome">
 
   <section class="welcome-copy">
-    <p class="eyebrow">
-      <img class="emblem" src="{{ asset('img/ynu-emblem.png') }}" alt="云南大学校徽" width="38" height="38">
-      <span>云南大学图书馆 · 学科信息参考</span>
-    </p>
+    <img class="emblem" src="{{ asset('img/ynu-emblem.png') }}" alt="云南大学校徽" width="38" height="38">
     <h1>文<i>衡</i></h1>
     <p class="lede">
-      把《学科信息参考》双月报告从「人工搬数」变成一条<strong>可复核的流水线</strong>：
-      解析台账 → 断言闸 → 出数 → 出图 → 填母版，每一步都留下可回查的痕迹。
+      云南大学图书馆《学科信息参考》双月报告，从「人工搬数」变成一条<strong>可复核的流水线</strong>：
+      解析台账 → 数据校验 → 出数 → 出图 → 填母版，每一步都留下可回查的痕迹。
     </p>
     <ul class="welcome-facts">
       <li>复刻产线按馆约定出稿，母版 <strong>704 槽位</strong>逐格替换，可签发盖章</li>
@@ -225,13 +183,6 @@
   <section>
     <div class="login-wrap">
       <div class="glass-wrap">
-        <div class="glass-square" style="--i:0"></div>
-        <div class="glass-square" style="--i:1"></div>
-        <div class="glass-square" style="--i:2"></div>
-        <div class="glass-square" style="--i:3"></div>
-        <div class="glass-square" style="--i:4"></div>
-        <div class="glass-square" style="--i:5"></div>
-
         <div class="plaque">
           <div class="body">
             <div class="mark">文<i>衡</i></div>

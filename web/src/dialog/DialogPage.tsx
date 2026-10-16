@@ -627,9 +627,8 @@ export default function DialogPage() {
           <div className="dlg-thread-in">
             {active.turns.length === 0 && (
               <section className="dlg-land" aria-label="文衡首页">
-                <p className="dlg-land-kicker">WENHENG · 学科信息参考</p>
                 <h1 className="dlg-land-title">文衡，帮你做报告、查数据</h1>
-                <p className="dlg-land-sub">出报告 · 查数据 · 核台账——期次我来认（按数据截止月），认出来先说给你看。</p>
+                <p className="dlg-land-sub">《学科信息参考》：出报告 · 查数据 · 核台账——期次我来认（按数据截止月），认出来先说给你看。</p>
                 <p className="dlg-land-label">想做什么？点一下，把示例句填进输入框</p>
                 <div className="dlg-land-modes">
                   {LANDING_MODES.map((mode) => (
