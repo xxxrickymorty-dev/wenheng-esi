@@ -49,8 +49,6 @@ function initialPalette(): Palette {
 
 export default function App() {
   const [palette, setPalette] = useState<Palette>(initialPalette)
-  /* 窄屏左栏抽屉（2026-10-15）：宽屏无关；<=900px 时用顶栏按钮开合。 */
-  const [menuOpen, setMenuOpen] = useState(false)
   const [healthy, setHealthy] = useState<boolean | null>(null)
   const [me, setMe] = useState<Me | null>(null)
   /* 角色是否已有结论：false = 还没问过（探活失败 / 首屏）；true = 问过了（me 为 null 即未登录） */
@@ -83,15 +81,6 @@ export default function App() {
       // 浏览器不允许保存时，当前页面仍可正常切换。
     }
   }, [palette])
-
-  /* 窄屏抽屉：点链接后收起；Esc 关闭（与遮罩点击一致）。 */
-  const closeMenu = useCallback(() => setMenuOpen(false), [])
-  useEffect(() => {
-    if (!menuOpen) return
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setMenuOpen(false) }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [menuOpen])
 
   const refreshPeriods = useCallback(async () => {
     const request = ++periodsRequestRef.current
@@ -484,24 +473,17 @@ export default function App() {
      下载数据台、台账、运行档案、红件清单、逐格溯源对操作员不可见；其余屏可见但无写按钮。
      2026-10-15 新信息架构（rick 定 A 方案）：**4 主区 + 1 管理** —— 下载数据/审核/预测/红件/图册/对勘/溯源
      不再是平级入口，降为「出报告」四步流水里的步骤或报告的下钻；深链 ?view=… 一律保留。 */
-  const NAV: { key: string; label: string; icon: string; href: string }[] = [
-    { key: 'flow', label: '出报告', icon: 'play', href: '/app/' },
-    { key: 'flexible', label: '灵活报告', icon: 'chart', href: '/app/?view=analysis' },
-    { key: 'report', label: '报告', icon: 'doc', href: '/app/?view=report' },
-    { key: 'ask', label: '问文衡', icon: 'chat', href: '/app/dialog/' },
+  const NAV: { key: string; label: string; href: string }[] = [
+    { key: 'flow', label: '出报告', href: '/app/' },
+    { key: 'flexible', label: '灵活报告', href: '/app/?view=analysis' },
+    { key: 'report', label: '报告', href: '/app/?view=report' },
+    { key: 'ask', label: '问文衡', href: '/app/dialog/' },
   ]
-  /* 子屏归到哪个主区（决定左栏高亮）；TITLE 决定页题 */
+  /* 子屏归到哪个主区（决定顶栏高亮） */
   const GROUP: Record<string, string> = {
     workbench: 'flow', acquire: 'flow', pick: 'flow', review: 'flow', forecast: 'flow',
     report: 'report', red: 'report', charts: 'report', reading: 'report', trace: 'report',
     analysis: 'flexible', dialog: 'ask', ledger: 'admin', archive: 'admin',
-  }
-  const TITLE: Record<string, string> = {
-    workbench: '出报告', acquire: '出报告 · 下载数据核验', pick: '出报告 · 选择章节',
-    forecast: '出报告 · 预测选模', review: '出报告 · 核验与定稿', report: '报告',
-    red: '报告 · 红色件清单', charts: '报告 · 图册', reading: '报告 · 对勘本',
-    trace: '报告 · 逐格溯源', analysis: '灵活报告', dialog: '问文衡',
-    ledger: '主台账', archive: '运行档案',
   }
   /* 「出报告」四步流水（新 IA）：步骤条只在流水屏出现；②选择章节＝最省版（只记本轮范围）。
      2026-10-16 二版（rick 拍板）：不画序号——顺序由位置与细线方向表达（仍是真顺序的 ol）。 */
@@ -528,47 +510,51 @@ export default function App() {
       ? h === '/app/' ? buildPeriodUrl(h, selected)
         : h.startsWith('/app/?') ? buildPeriodUrl(h, selected) : h
       : h)
-  /* 顶栏标题＝当前屏名（与左栏高亮同源，改一处两边一致） */
-  const navLabel = TITLE[view] ?? '文衡'
   const activeNav = GROUP[view] ?? 'flow'
   const inFlow = activeNav === 'flow'
   const flowActive = FLOW_ACTIVE[view] ?? ''
   const flowActiveIdx = Math.max(0, FLOW_STEPS.findIndex((s) => s.key === flowActive))
 
   return (
-    <div className="ws-shell">
+    <div className="app-shell">
       <Sprite />
       <a className="skip-link" href="#main">跳到主要内容</a>
 
-      {/* 常驻左栏（2026-10-15）：品牌 / 工作区导航 / 里子入口 / 身份。窄屏变抽屉。 */}
-      <aside className={`ws-side${menuOpen ? ' open' : ''}`} id="ws-side" aria-label="工作区导航">
-        <div className="ws-brand">
-          <strong>文衡</strong>
-          <span>云南大学图书馆<br />学科信息参考</span>
-        </div>
-        <nav className="ws-nav" aria-label="工作区">
-          <p className="ws-cap">工作区</p>
+      {/* 顶栏（2026-10-17 庚·卷宗）：品牌 / 导航 / 陈列馆 / 配色开关 / 身份；正文自然滚动。 */}
+      <header className="app-top">
+        <a className="app-brand" href={navHref('/app/')}>
+          <b>文衡</b>
+          <span>云南大学图书馆 · 学科信息参考</span>
+        </a>
+        <nav className="app-nav" aria-label="工作区">
           {NAV.map((n) => (
-            <a key={n.key} href={navHref(n.href)} onClick={closeMenu}
+            <a key={n.key} href={navHref(n.href)}
                aria-current={activeNav === n.key ? 'page' : undefined}>
-              <Icon name={n.icon} size={19} />{n.label}
+              {n.label}
             </a>
           ))}
           {me?.role === 'admin' && (
             <>
-              <p className="ws-cap">管理 · 仅管理员</p>
-              <a href={navHref('/app/?view=ledger')} onClick={closeMenu}
-                 aria-current={view === 'ledger' ? 'page' : undefined}>
-                <Icon name="ledger" size={19} />主台账
+              <span className="app-nav-sep" aria-hidden="true" />
+              <a href={navHref('/app/?view=ledger')} aria-current={view === 'ledger' ? 'page' : undefined}>
+                主台账
               </a>
-              <a href={navHref('/app/?view=archive')} onClick={closeMenu}
-                 aria-current={view === 'archive' ? 'page' : undefined}>
-                <Icon name="archive" size={19} />运行档案
+              <a href={navHref('/app/?view=archive')} aria-current={view === 'archive' ? 'page' : undefined}>
+                运行档案
               </a>
             </>
           )}
         </nav>
-        <div className="ws-user">
+        <div className="app-side">
+          {/* 陈列馆＝给人看的「展示面」，不在工作区里——顶栏给一个离开工作区的入口（2026-10-15） */}
+          <a className="app-jump" href="/app/shelf/" title="去陈列馆（成品展示面）">
+            陈列馆 <Icon name="arrow" size={14} />
+          </a>
+          {/* 皮肤开关：与对话页同款（2026-10-12）；默认云大绿 */}
+          <span className="skin-switch" role="group" aria-label="切换配色">
+            <button type="button" aria-pressed={palette === 'ynu'} onClick={() => setPalette('ynu')}>云大绿</button>
+            <button type="button" aria-pressed={palette === 'zhu'} onClick={() => setPalette('zhu')}>朱砂</button>
+          </span>
           {me ? <UserChip me={me} /> : (
             <span className="user-chip" aria-live="polite">
               <span className="user-chip-btn" aria-disabled="true">
@@ -578,29 +564,9 @@ export default function App() {
             </span>
           )}
         </div>
-      </aside>
-      <div className={`ws-overlay${menuOpen ? ' open' : ''}`} onClick={closeMenu} aria-hidden="true" />
+      </header>
 
-      <div className="ws-main">
-        <header className="topbar">
-          <button type="button" className="ws-menu" onClick={() => setMenuOpen((v) => !v)}
-                  aria-label="打开导航" aria-expanded={menuOpen} aria-controls="ws-side">
-            <Icon name="menu" size={20} />
-          </button>
-          <span className="ws-title">{navLabel}</span>
-          {/* 陈列馆＝给人看的「展示面」，不在工作区里——顶栏给一个离开工作区的入口（2026-10-15） */}
-          <a className="ws-jump ml-auto" href="/app/shelf/" title="去陈列馆（成品展示面）">
-            陈列馆 <Icon name="arrow" size={15} />
-          </a>
-          {/* 皮肤开关：与对话页同款（2026-10-12）；默认云大绿 */}
-          <span className="skin-switch" role="group" aria-label="切换配色">
-            <button type="button" aria-pressed={palette === 'ynu'} onClick={() => setPalette('ynu')}>云大绿</button>
-            <button type="button" aria-pressed={palette === 'zhu'} onClick={() => setPalette('zhu')}>朱砂</button>
-          </span>
-        </header>
-
-        <div className="ws-scroll">
-          <main className="wrap" id="main">
+      <main className="wrap" id="main">
         {healthy === false && (
           <div className="banner bad mt-0">
             <span className="ico"><Icon name="alert" size={22} /></span>
@@ -781,8 +747,6 @@ export default function App() {
           </div>
         </div>
       </footer>
-        </div>
-      </div>
     </div>
   )
 }
