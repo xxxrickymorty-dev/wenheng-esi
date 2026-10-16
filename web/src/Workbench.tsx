@@ -195,10 +195,6 @@ function ModelSummary({
           <p>重出报告后：未进 1% 的学科都会按选择出图（进本期图册）；报告正文只用接近度前二。</p>
         </Info>
       </div>
-      <p className="lead-155">
-        模型选择按期次保存；改选去预测台——那边能对着五个模型的预测图挑，改完回来自动同步。
-      </p>
-
       <div className="panel-row">
         <label htmlFor="workbench-task-period" className="grid-dim">
           期次
@@ -210,7 +206,13 @@ function ModelSummary({
           </select>
         </label>
         <div className="minw-160">
-          <small className="dim-block">预测数据</small>
+          <small className="dim-block">预测数据<Info label="数据说明">
+            <p>{freshnessText}</p>
+            <p><b>V1 推荐基线</b>：{meta?.recommendation_baseline ?? '—'}（不是预测数据期次）。</p>
+            <p><b>最近一次完整运行记录写入时间（北京时间）</b>：{formatProvenanceTime(meta?.run_record_at)}</p>
+            <p><b>上次处理使用的文件</b>：{meta?.processed_input?.name ?? '无法核实'}
+              {meta?.processed_input?.last_modified_at ? `（文件最后修改：${formatProvenanceTime(meta.processed_input.last_modified_at)}）` : ''}。</p>
+          </Info></small>
           <strong className="mono-16">{meta?.source_period || '未就绪'}</strong>
         </div>
         <div className="minw-190">
@@ -226,15 +228,13 @@ function ModelSummary({
         </div>
       </div>
 
-      <div className="degraded" style={{ borderLeft: meta?.data_freshness === 'needs_check' ? '3px solid var(--gold)' : undefined }}>
-        <b>期次与数据说明</b>：{freshnessText}
-        <Info label="来源与时间" end>
-          <p><b>V1 推荐基线</b>：{meta?.recommendation_baseline ?? '—'}（不是预测数据期次）。</p>
-          <p><b>最近一次完整运行记录写入时间（北京时间）</b>：{formatProvenanceTime(meta?.run_record_at)}</p>
-          <p><b>上次处理使用的文件</b>：{meta?.processed_input?.name ?? '无法核实'}
-            {meta?.processed_input?.last_modified_at ? `（文件最后修改：${formatProvenanceTime(meta.processed_input.last_modified_at)}）` : ''}。</p>
-        </Info>
-      </div>
+      {/* 期次与数据说明：只在「台账/输入比最近一次完整运行更新」时整条冒出提醒（要动作的）；
+          平时那句「无法确认…」收进「预测数据」旁的 ⓘ——不占版面（2026-10-16 rick：太挤）。 */}
+      {meta?.data_freshness === 'needs_check' && (
+        <div className="degraded" style={{ borderLeft: '3px solid var(--gold)' }}>
+          <b>期次与数据说明</b>：{freshnessText}
+        </div>
+      )}
 
       {routes.length > 0 && (
         <div role="group" aria-label="模型路线" className="roww my-14-10">
@@ -260,12 +260,11 @@ function ModelSummary({
         <>
           <div className="tablewrap mt-12">
             <table>
-              <thead><tr><th>潜力学科</th><th>V1 推荐</th><th>本期已选</th><th>模型说明</th></tr></thead>
+              <thead><tr><th>潜力学科</th><th>V1 推荐</th><th>本期已选</th></tr></thead>
               <tbody>
                 {subjects.map((subject) => {
                   const rec = meta.recommendations?.[currentRoute]?.[subject] ?? ''
                   const mine = state.choice[currentRoute]?.[subject] ?? ''
-                  const actual = mine || rec
                   return (
                     <tr key={subject}>
                       <td>{subject}</td>
@@ -280,11 +279,10 @@ function ModelSummary({
                           <span className="ink-3">默认</span>
                         )}
                       </td>
-                      <td><span className="mdesc">{MODEL_DESC[actual] ?? '由 V1 推荐按学科指定。'}</span></td>
                     </tr>
                   )
                 })}
-                {subjects.length === 0 && <tr><td colSpan={4} className="ink-3">接口暂未返回候选学科。</td></tr>}
+                {subjects.length === 0 && <tr><td colSpan={3} className="ink-3">接口暂未返回候选学科。</td></tr>}
               </tbody>
             </table>
           </div>

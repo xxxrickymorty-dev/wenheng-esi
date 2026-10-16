@@ -38,6 +38,24 @@ function newPeriodProblem(v: string): string {
   return ''
 }
 
+/** 后台脚本的原文（op.note）→ 馆员话（web/AGENTS.md 纪律 2：错误提示不出现技术术语）。
+    认识的模式给整句人话；不认识的原样返回 ''，由调用方兜底展示原文——消息不吞。
+    技术原文仍收进 title 供排查。已知模式：
+    「清洗链退出码 1」「清洗链退出码 1；旧格被改…」「N 组命令失败 / M 份未通过核验」「gN 退出码 1」。 */
+function humanOpNote(raw: string): string {
+  if (raw.startsWith('清洗链退出码')) {
+    const rest = raw.replace(/^清洗链退出码\s*\d+\s*；?/, '').trim()
+    return rest
+      ? `后台整理这一步没跑成：${rest}。数据没有变，可再试一次；反复失败请到运行档案看日志。`
+      : '后台整理这一步没跑成（核对副本没有产出）。数据没有变，可再试一次；反复失败请到运行档案看日志。'
+  }
+  const groups = raw.match(/^(\d+)\s*组命令失败\s*\/\s*(\d+)\s*份未通过核验$/)
+  if (groups) return `有 ${groups[1]} 组没下完、${groups[2]} 份没通过核验——可逐组重试，只会补缺的文件。`
+  const one = raw.match(/^g?(\S+?)\s*退出码\s*\d+$/)
+  if (one) return `第 ${one[1]} 组没下完——重试只会补缺的文件。`
+  return ''
+}
+
 type PageView = 'ready' | 'blocked' | 'running' | 'partial' | 'review' | 'merged'
 
 function deriveView(s: AcquisitionState): PageView {
@@ -340,11 +358,13 @@ export function Acquire({ period, onOpenPeriod }: {
             <div aria-live="polite">
               <div className="big">{opRunning && op ? `${OP_CN[op.kind ?? ''] ?? '正在执行'}……` : title}</div>
               {((opRunning && op) || sub) && (
-                <div className="sub">{opRunning && op ? (op.note || '进度会自动更新，可以留在这一页') : sub}</div>
+                <div className="sub" title={opRunning && op ? (op.note || undefined) : undefined}>
+                  {opRunning && op ? (humanOpNote(op.note ?? '') || op.note || '进度会自动更新，可以留在这一页') : sub}
+                </div>
               )}
               {op?.state === 'failed' && (
-                <div className="hint note-bad">
-                  上一步没有完成：{op.note || '原因见下载数据状态'}。
+                <div className="hint note-bad" title={op.note || undefined}>
+                  {humanOpNote(op.note ?? '') || `上一步没有完成：${op.note || '原因见下载数据状态'}`}
                 </div>
               )}
               {needsTool && !canRun && !opRunning && (
