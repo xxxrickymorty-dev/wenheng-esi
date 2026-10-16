@@ -14,6 +14,7 @@ import {
 } from './api-forecast'
 import { applyPeriod, buildPeriodUrl } from './lib/period'
 import { errorNote } from './lib/status'
+import { wireEnter } from './lib/motion'
 import { pickRunForPeriod } from './lib/run'
 import { UserChip } from './lib/UserChip'
 import { useJobRun, type Run } from './hooks/useJobRun'
@@ -306,6 +307,29 @@ export default function App() {
     window.addEventListener('beforeunload', warnBeforeLeaving)
     return () => window.removeEventListener('beforeunload', warnBeforeLeaving)
   }, [anyForecastChoiceDirty])
+
+  /* 动效层接线（taste P4，2026-10-16）：主区一级块入场错峰（首屏内依次 70ms）；
+     灵活报告两栏左横右纵各自从本侧进。异步到达的块经 MutationObserver 补接（元素级幂等，
+     已接过的不会重放）；接线失败/无 IO 时 m-done 全展示（见 lib/motion.ts）。 */
+  useEffect(() => {
+    const main = document.querySelector<HTMLElement>('main')
+    if (!main) return
+    const wireList = () => {
+      let i = 0
+      for (const el of Array.from(main.children) as HTMLElement[]) {
+        if (el.classList.contains('fx-panes')) continue   // 两栏各自从本侧进（下段）
+        wireEnter(el, { delayMs: Math.min(i, 8) * 70 })
+        i += 1
+      }
+      document.querySelectorAll<HTMLElement>('.fx-panes > .fx-pane').forEach((el, j) => {
+        wireEnter(el, { delayMs: j * 90, side: j === 0 ? 'left' : 'right' })
+      })
+    }
+    wireList()
+    const mo = new MutationObserver(() => wireList())
+    mo.observe(main, { childList: true })
+    return () => mo.disconnect()
+  }, [view, selected])
 
   function reloadForecastChoice() {
     if (!selected) return

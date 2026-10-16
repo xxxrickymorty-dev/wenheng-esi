@@ -19,6 +19,7 @@ import {
 import { Icon } from './icons'
 import { ConfirmButton } from './ConfirmButton'
 import { errorNote } from './lib/status'
+import { wireAll } from './lib/motion'
 
 type Section = { title: string; html: string }
 
@@ -177,6 +178,11 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
         openImage(img)
       })
     }
+  }, [pan])
+
+  /** 动效层（taste P4）：栏内正文逐段升起——正文/流式小节出现后补接（已接过的幂等，不重放） */
+  useEffect(() => {
+    wireAll(boxRef.current, '.fx-pane-b .fx-md > *', 50)
   }, [pan])
 
   /** 生成（流式）：目标意图由按下的那一栏定，学科用该栏控制条的选择；两栏可同时跑 */

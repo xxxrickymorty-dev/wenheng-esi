@@ -1088,3 +1088,21 @@ a{color:inherit}
 .pick-note b{color:var(--ink)}
 .pick-note ul{margin:8px 0 0;padding-left:22px}
 
+/* ============================================================================
+   动效层（taste P4，2026-10-16）：入场错峰＋滚动逐段＋按下回弹。只动 transform / opacity。
+   预置隐藏只在 html.m-js（index.html 内联脚本先于渲染加上）时生效；
+   html.m-ready＝接线成功（2.5 秒兜底不再强制展开）；html.m-done＝兜底/失败——全部展开。
+   任何情况内容都出得来（"脚本失败不藏内容"）；reduced-motion 全降级。
+   ========================================================================== */
+.btn:active{transform:translateY(1px)}
+.m-enter{transition:opacity .5s cubic-bezier(.2,.7,.2,1),transform .5s cubic-bezier(.2,.7,.2,1)}
+html.m-js .m-enter:not(.m-in){opacity:0;transform:translateY(14px)}
+html.m-js .m-enter.m-left:not(.m-in){transform:translateX(-16px)}
+html.m-js .m-enter.m-right:not(.m-in){transform:translateX(16px)}
+html.m-js .m-enter.m-in{opacity:1;transform:none}
+html.m-done .m-enter{opacity:1!important;transform:none!important;transition:none!important}
+@media (prefers-reduced-motion: reduce){
+  .btn:active{transform:none}
+  html.m-js .m-enter{opacity:1!important;transform:none!important;transition:none!important}
+}
+

@@ -6,6 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#F4F3ED" />
     <title>文衡 · 工作区</title>
+    <script>
+      /* 动效层开关（taste P4，2026-10-16）：m-js＝JS 在场才允许预置隐藏；
+         2.5 秒兜底——接线没成功（m-ready 缺席）就全部展开，任何情况内容都出得来。 */
+      (function () {
+        var d = document.documentElement;
+        d.classList.add('m-js');
+        setTimeout(function () {
+          if (!d.classList.contains('m-ready')) d.classList.add('m-done');
+        }, 2500);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
