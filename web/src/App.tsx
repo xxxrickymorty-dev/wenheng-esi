@@ -687,9 +687,7 @@ export default function App() {
           <PeriodsPanel periods={periods} selected={selected} healthy={healthy} onPick={pickPeriod} />
         )}
 
-        <p className="hint mt-14">
-          {busy && '正在提交生成请求……'}
-        </p>
+        {busy && <p className="hint mt-14">正在提交生成请求……</p>}
       </main>
 
       {/* 全局页脚（2026-10-01，rick：形态参考陈列馆）：口径 · 来源 · 只读声明全站唯一一份；

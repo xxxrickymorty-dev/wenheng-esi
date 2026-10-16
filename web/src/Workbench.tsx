@@ -186,7 +186,6 @@ function ModelSummary({
   return (
     <section className="card mt-18 pad-card">
       <div className="rowc">
-        <span className="fc-no">01</span>
         <h2 className="fs-21">预测模型 · 本期已选</h2>
         <span className="chip-gold">
           只读 · 改选去预测台

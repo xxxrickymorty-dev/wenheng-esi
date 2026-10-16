@@ -214,7 +214,7 @@ function Trial({
   return (
     <section className="card mt-18 pad-card">
       <h2 className="h-sec">
-        <span className="fc-no">01</span>预测图
+        预测图
       </h2>
 
       <div className="fc-form">
@@ -255,7 +255,8 @@ function Trial({
         </div>
       )}
       {busy && (
-        <div className="pending-box mt-12" role="status">
+        <div className="fc-run" role="status">
+          <span className="fc-run-dot" aria-hidden="true" />
           正在跑{model === 'all' ? '五模型滚动回测与预测' : '模型'}……大约十几秒。
         </div>
       )}
@@ -298,7 +299,7 @@ function PickTable({
   return (
     <section className="card mt-18 pad-card">
       <h2 className="h-sec">
-        <span className="fc-no">02</span>本期用哪个模型
+        本期用哪个模型
       </h2>
 
       {!choice?.loaded && (
@@ -470,9 +471,9 @@ export function Forecast({
             <Trial meta={meta} choice={choice} route={currentRoute} onChoiceChange={onChoiceChange} />
           ) : (
             <section className="card mt-18 pad-card">
-              <h2 className="h-sec"><span className="fc-no">01</span>预测图</h2>
+              <h2 className="h-sec">预测图</h2>
               <div className="pending-box mt-12">
-                操作员只读：预测试跑会自动运行模型，仅管理员可用。已保存的模型选择见 02。
+                操作员只读：预测试跑会自动运行模型，仅管理员可用。已保存的模型选择见「本期用哪个模型」。
               </div>
             </section>
           )}
@@ -481,11 +482,11 @@ export function Forecast({
                      onChange={onChoiceChange} canEdit={canEdit} />
 
           <details className="fold">
-            <summary>03 学科板 · 现状（本路线 {boardRows.length || 8} 科）<span className="sm">{boardSm}</span></summary>
+            <summary>学科板 · 现状（本路线 {boardRows.length || 8} 科）<span className="sm">{boardSm}</span></summary>
             <div className="fold-inner">
               <p className="hint mt-4">
                 接近度＝离门槛的百分数点值；过线是滚动监测信号，不等同于正式入榜时间。
-                这一板是预测阶段的选模记录，<b>不是</b>报告最终采用的模型——报告用哪套看上面 02。
+                这一板是预测阶段的选模记录，<b>不是</b>报告最终采用的模型——报告用哪套看上面「本期用哪个模型」。
               </p>
               {boardNote && <div className="pending-box mt-10">{boardNote}</div>}
               {!!boardRows.length && (
@@ -518,7 +519,7 @@ export function Forecast({
           </details>
 
           <details className="fold">
-            <summary>04 预测口径与边界<span className="sm">过线定义 · 模型冻结 · 多期外推 · 与报告的关系</span></summary>
+            <summary>预测口径与边界<span className="sm">过线定义 · 模型冻结 · 多期外推 · 与报告的关系</span></summary>
             <div className="fold-inner">
               <ul className="fc-ticks">
                 <li><b>被引路线</b>：预测总被引达到或超过预测 ESI 前1%被引阈值时，记为模型过线。</li>

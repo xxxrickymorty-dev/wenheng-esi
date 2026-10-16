@@ -136,7 +136,7 @@ a{color:inherit}
 .ar-step-detail{flex:1;min-width:180px;color:var(--ink-2);font-size:13.5px}
 .ar-step-sec{color:var(--ink-3);font-size:12.5px;font-variant-numeric:tabular-nums}
 
-.wrap{max-width:1180px;margin:0 auto;padding:26px 22px 70px}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 22px 42px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
 
 /* ---------- 三步条 ---------- */
@@ -442,8 +442,12 @@ a{color:inherit}
    预测台——逐科模型选择 + 试跑（静态稿 mockups/预测台.html 的落地版）
    ========================================================================== */
 .fc-lead{color:var(--ink-2);font-size:16px;margin:8px 0 0;max-width:74ch}
-.fc-no{font-family:var(--mono);font-size:12px;letter-spacing:.18em;color:var(--zhu);
-  background:var(--zhu-soft);border-radius:6px;padding:2px 7px}
+/* （.fc-no 装饰编号 2026-10-16 删除——taste P3：位置即顺序，不加 01/02/03）
+   运行中占位＝色阶块，不用虚线框（虚线只留给真表格与表单） */
+.fc-run{margin-top:12px;background:var(--panel);border-radius:var(--r-sm);padding:13px 16px;
+  display:flex;align-items:center;gap:9px;color:var(--ink-2);font-size:14.5px}
+.fc-run-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);flex:0 0 auto;
+  animation:fxpulse 1.1s infinite ease-in-out}
 .fc-stamps{display:flex;gap:22px;flex-wrap:wrap;margin-top:14px;font-size:14px;color:var(--ink-3)}
 .fc-stamps b{color:var(--ink-2)}
 /* 页头带（票 13）：期次 / 数据截至 / 路线（唯一控件）/ 保存（唯一一处）——粘性跟随 */
@@ -959,7 +963,7 @@ a{color:inherit}
    循环脉冲、进度条过渡、平滑滚动、悬停位移在系统「减少动态效果」下一并停。 */
 @media (prefers-reduced-motion: reduce){
   .fx-log{scroll-behavior:auto}
-  .dot.run{animation:none}
+  .dot.run,.fc-run-dot{animation:none}
   .wf-track i,.aq-track i,.bd-bar i{transition:none}
   .seal,.who-exit,.who-exit .exit,.entry{transition:none}
   .sealbox:hover .seal{translate:0 0}
@@ -1029,7 +1033,7 @@ a{color:inherit}
 .chain .cap,.sealbox .lbl,.sealbox .now-tag,.legend,.rc-chip,.margin-note .tag,
 .margin-note>p.mn-src,.mn-acts .btn,.chg-b .row .t,.bd-meta,.tr-now span,.ar-chain-node small,
 .ar-step-sec,.ar-art .m,.rv-docmeta,.rv-docname,.rv-next,.rv-todo-v,.rv-flag,.rv-chip,
-.fx-pane-meta,.fx-plan .chip,.btn.small,.btn-lite,.fc-no,.fc-stat,.fc-more summary,.fc-gal-reset,
+.fx-pane-meta,.fx-plan .chip,.btn.small,.btn-lite,.fc-stat,.fc-more summary,.fc-gal-reset,
 .aq-src,.aq-gstat,.aq-chip,.aq-fname,.aq-fname small,.aq-fres,.aq-gnote,.aq-files>summary,
 .app-footer .f-bottom,.chip-gold,.dim-block,.fs-13,.info-body,.fc-metrics span,.an-pop,.grid-dim,
 .dlg-land-prev,.dlg-wk-link,.dlg-land-dyn

@@ -141,7 +141,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
           {/* ===== 01 过程回放（链 + 瀑布，同一份数据只此一处；diji 票 12 合并 01/02/03） ===== */}
           <section className="card mt-18 pad-card">
             <h2 className="h-sec">
-              <span className="fc-no">01</span>过程回放
+              过程回放
               <span className="hint">
                 {d.replay.n} 次迁移 · {d.waterfall.length} 步
                 {d.waterfall_total ? ` · 全链路 ${d.waterfall_total} 秒` : ''}
@@ -185,7 +185,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
           {/* ===== 03 审计结论（失败优先：只露待确认/不通过，通过项折起） ===== */}
           <section className="card mt-18 pad-card">
             <h2 className="h-sec">
-              <span className="fc-no">03</span>审计结论
+              审计结论
               <span className="hint">
                 {d.audit.exists
                   ? `${auditRows.length} 项：${auditPass.length} 通过 · ${auditRows.filter((r) => r.status === 'review').length} 待确认 · ${auditRows.filter((r) => r.status === 'fail').length} 不通过`
@@ -255,7 +255,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
           {/* ===== 04 产物与日志包 ===== */}
           <section className="card mt-18 pad-card">
             <h2 className="h-sec">
-              <span className="fc-no">04</span>产物与日志包
+              产物与日志包
               <span className="hint">日志包 {d.logpack.n_files} 个文件 · {humanSize(d.logpack.bytes)}</span>
             </h2>
             <div className="ar-arts">
@@ -285,7 +285,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
             <div className="grid2 mt-0">
             <section className="card pad-card">
               <h2 className="h-sec">
-                <span className="fc-no">05</span>运行环境快照
+                运行环境快照
               </h2>
               <dl className="ar-kv">
                 <div><dt>Python</dt><dd className="mono">{str(env.python ?? deps.python)}</dd></div>
@@ -300,7 +300,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
 
             <section className="card pad-card">
               <h2 className="h-sec">
-                <span className="fc-no">06</span>运行指标
+                运行指标
               </h2>
               <dl className="ar-kv">
                 <div><dt>当期 / 上期</dt><dd>{str(stats.period ?? d.period)} / {str(stats.prev)}</dd></div>

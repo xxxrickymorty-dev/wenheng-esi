@@ -71,6 +71,11 @@ export function RedList({ period }: { period: string | null }) {
                    placeholder="搜索位置 / 修改前 / 修改后 / 来源…" />
             <span className="hint">匹配 <b className="mono">{shown.length} / {rows.length}</b> 条</span>
           </div>
+          {shown.some((r) => !r.old) && (
+            <p className="hint mt-8">
+              「修改前」显示「—」＝母版此处原本就是空白（大表在母版里是空表、本期逐格填入），不是漏记。
+            </p>
+          )}
           <div className="tablewrap">
             <table>
               <thead>
@@ -89,7 +94,7 @@ export function RedList({ period }: { period: string | null }) {
                     <td className="mono fs-135 ink-3 nowrap">
                       {r.label || r.group}
                     </td>
-                    <td className="ink-3">{r.old}</td>
+                    <td className="ink-3">{r.old || '—'}</td>
                     <td className="ink-zhu">{r.new}</td>
                     <td className="fs-14">{r.src}</td>
                   </tr>
