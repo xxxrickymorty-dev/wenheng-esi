@@ -47,3 +47,6 @@ server/static/_shots/
 
 # taste-skill 审计工作目录（截图/报告，不入库）
 .taste-skill/
+
+# ---------- img2threejs 重建工作区（recon/）：PBR 贴图渲染件体积大且可用 tools/run_pbr_extraction.py 复现，不入库 ----------
+recon/yunnan-library/material-evidence/*/*_*.png

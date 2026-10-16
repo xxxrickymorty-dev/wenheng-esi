@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "verdict": "pass",
+  "confidence": 0.819,
+  "estimatedFidelity": 0.819,
+  "targetThreshold": 0.7,
+  "materialId": "glass-dark",
+  "sourceImage": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\glass-dark.png",
+  "outDir": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-dark",
+  "palette": [
+    "#2B5157",
+    "#724123",
+    "#CBA27B",
+    "#527071",
+    "#A1805E"
+  ],
+  "maps": {
+    "albedo": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-dark\\glass-dark_albedo.png",
+      "url": "glass-dark_albedo.png",
+      "channel": "albedo",
+      "source": "reference-pixel-extraction"
+    },
+    "roughness": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-dark\\glass-dark_roughness.png",
+      "url": "glass-dark_roughness.png",
+      "channel": "roughness",
+      "source": "reference-pixel-extraction"
+    },
+    "height": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-dark\\glass-dark_height.png",
+      "url": "glass-dark_height.png",
+      "channel": "height",
+      "source": "reference-pixel-extraction"
+    },
+    "normal": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-dark\\glass-dark_normal.png",
+      "url": "glass-dark_normal.png",
+      "channel": "normal",
+      "source": "reference-pixel-extraction"
+    },
+    "ao": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\glass-dark\\glass-dark_ao.png",
+      "url": "glass-dark_ao.png",
+      "channel": "ao",
+      "source": "reference-pixel-extraction"
+    }
+  },
+  "diagnostics": {
+    "sourceWidth": 50,
+    "sourceHeight": 40,
+    "mapSize": 1024,
+    "cropBBoxPixels": {
+      "x": 0,
+      "y": 0,
+      "width": 50,
+      "height": 40
+    },
+    "mask": {
+      "backgroundColor": "#6A4744",
+      "backgroundNoise": 62.177,
+      "transparentPixelFraction": 0.0,
+      "foregroundCoverage": 0.907
+    },
+    "mapStats": {
+      "valueRange": 0.4386,
+      "heightP90Gradient": 0.03309,
+      "roughnessBase": 0.698,
+      "roughnessVariation": 0.069,
+      "normalStrength": 0.195,
+      "blurRadius": 21
+    },
+    "palette": [
+      "#2B5157",
+      "#724123",
+      "#CBA27B",
+      "#527071",
+      "#A1805E"
+    ]
+  },
+  "warnings": [
+    "image is not clearly isolated from background; using most pixels as material evidence",
+    "object/background separation is weak",
+    "single-image inverse rendering cannot prove true physical PBR; confidence is capped"
+  ],
+  "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
+}

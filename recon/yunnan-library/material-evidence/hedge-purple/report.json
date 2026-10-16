@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "verdict": "pass",
+  "confidence": 0.829,
+  "estimatedFidelity": 0.829,
+  "targetThreshold": 0.7,
+  "materialId": "hedge-purple",
+  "sourceImage": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\hedge-purple.png",
+  "outDir": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\hedge-purple",
+  "palette": [
+    "#C39508",
+    "#A8830E",
+    "#44382C",
+    "#7F6818",
+    "#DCB999"
+  ],
+  "maps": {
+    "albedo": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\hedge-purple\\hedge-purple_albedo.png",
+      "url": "hedge-purple_albedo.png",
+      "channel": "albedo",
+      "source": "reference-pixel-extraction"
+    },
+    "roughness": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\hedge-purple\\hedge-purple_roughness.png",
+      "url": "hedge-purple_roughness.png",
+      "channel": "roughness",
+      "source": "reference-pixel-extraction"
+    },
+    "height": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\hedge-purple\\hedge-purple_height.png",
+      "url": "hedge-purple_height.png",
+      "channel": "height",
+      "source": "reference-pixel-extraction"
+    },
+    "normal": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\hedge-purple\\hedge-purple_normal.png",
+      "url": "hedge-purple_normal.png",
+      "channel": "normal",
+      "source": "reference-pixel-extraction"
+    },
+    "ao": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\hedge-purple\\hedge-purple_ao.png",
+      "url": "hedge-purple_ao.png",
+      "channel": "ao",
+      "source": "reference-pixel-extraction"
+    }
+  },
+  "diagnostics": {
+    "sourceWidth": 175,
+    "sourceHeight": 30,
+    "mapSize": 1024,
+    "cropBBoxPixels": {
+      "x": 0,
+      "y": 0,
+      "width": 175,
+      "height": 30
+    },
+    "mask": {
+      "backgroundColor": "#BE935C",
+      "backgroundNoise": 111.18,
+      "transparentPixelFraction": 0.0,
+      "foregroundCoverage": 0.9053
+    },
+    "mapStats": {
+      "valueRange": 0.6323,
+      "heightP90Gradient": 0.05722,
+      "roughnessBase": 0.708,
+      "roughnessVariation": 0.101,
+      "normalStrength": 0.223,
+      "blurRadius": 21
+    },
+    "palette": [
+      "#C39508",
+      "#A8830E",
+      "#44382C",
+      "#7F6818",
+      "#DCB999"
+    ]
+  },
+  "warnings": [
+    "image is not clearly isolated from background; using most pixels as material evidence",
+    "object/background separation is weak",
+    "single-image inverse rendering cannot prove true physical PBR; confidence is capped"
+  ],
+  "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
+}

@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "verdict": "pass",
+  "confidence": 0.829,
+  "estimatedFidelity": 0.829,
+  "targetThreshold": 0.7,
+  "materialId": "roof-ridge",
+  "sourceImage": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\roof-ridge.png",
+  "outDir": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-ridge",
+  "palette": [
+    "#5B682A",
+    "#355725",
+    "#0C391B",
+    "#7B7C43",
+    "#E2A488"
+  ],
+  "maps": {
+    "albedo": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-ridge\\roof-ridge_albedo.png",
+      "url": "roof-ridge_albedo.png",
+      "channel": "albedo",
+      "source": "reference-pixel-extraction"
+    },
+    "roughness": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-ridge\\roof-ridge_roughness.png",
+      "url": "roof-ridge_roughness.png",
+      "channel": "roughness",
+      "source": "reference-pixel-extraction"
+    },
+    "height": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-ridge\\roof-ridge_height.png",
+      "url": "roof-ridge_height.png",
+      "channel": "height",
+      "source": "reference-pixel-extraction"
+    },
+    "normal": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-ridge\\roof-ridge_normal.png",
+      "url": "roof-ridge_normal.png",
+      "channel": "normal",
+      "source": "reference-pixel-extraction"
+    },
+    "ao": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\roof-ridge\\roof-ridge_ao.png",
+      "url": "roof-ridge_ao.png",
+      "channel": "ao",
+      "source": "reference-pixel-extraction"
+    }
+  },
+  "diagnostics": {
+    "sourceWidth": 200,
+    "sourceHeight": 30,
+    "mapSize": 1024,
+    "cropBBoxPixels": {
+      "x": 0,
+      "y": 0,
+      "width": 200,
+      "height": 30
+    },
+    "mask": {
+      "backgroundColor": "#4D5021",
+      "backgroundNoise": 35.623,
+      "transparentPixelFraction": 0.0,
+      "foregroundCoverage": 0.9982
+    },
+    "mapStats": {
+      "valueRange": 0.5527,
+      "heightP90Gradient": 0.04008,
+      "roughnessBase": 0.717,
+      "roughnessVariation": 0.08,
+      "normalStrength": 0.203,
+      "blurRadius": 21
+    },
+    "palette": [
+      "#5B682A",
+      "#355725",
+      "#0C391B",
+      "#7B7C43",
+      "#E2A488"
+    ]
+  },
+  "warnings": [
+    "image is not clearly isolated from background; using most pixels as material evidence",
+    "object/background separation is weak",
+    "single-image inverse rendering cannot prove true physical PBR; confidence is capped"
+  ],
+  "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
+}

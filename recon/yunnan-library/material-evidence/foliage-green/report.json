@@ -1,0 +1,85 @@
+{
+  "ok": true,
+  "verdict": "pass",
+  "confidence": 0.86,
+  "estimatedFidelity": 0.86,
+  "targetThreshold": 0.7,
+  "materialId": "foliage-green",
+  "sourceImage": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\foliage-green.png",
+  "outDir": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\foliage-green",
+  "palette": [
+    "#203726",
+    "#334F12",
+    "#808379",
+    "#53583B",
+    "#516A0B"
+  ],
+  "maps": {
+    "albedo": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\foliage-green\\foliage-green_albedo.png",
+      "url": "foliage-green_albedo.png",
+      "channel": "albedo",
+      "source": "reference-pixel-extraction"
+    },
+    "roughness": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\foliage-green\\foliage-green_roughness.png",
+      "url": "foliage-green_roughness.png",
+      "channel": "roughness",
+      "source": "reference-pixel-extraction"
+    },
+    "height": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\foliage-green\\foliage-green_height.png",
+      "url": "foliage-green_height.png",
+      "channel": "height",
+      "source": "reference-pixel-extraction"
+    },
+    "normal": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\foliage-green\\foliage-green_normal.png",
+      "url": "foliage-green_normal.png",
+      "channel": "normal",
+      "source": "reference-pixel-extraction"
+    },
+    "ao": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\foliage-green\\foliage-green_ao.png",
+      "url": "foliage-green_ao.png",
+      "channel": "ao",
+      "source": "reference-pixel-extraction"
+    }
+  },
+  "diagnostics": {
+    "sourceWidth": 140,
+    "sourceHeight": 100,
+    "mapSize": 1024,
+    "cropBBoxPixels": {
+      "x": 0,
+      "y": 0,
+      "width": 140,
+      "height": 100
+    },
+    "mask": {
+      "backgroundColor": "#A99B94",
+      "backgroundNoise": 48.301,
+      "transparentPixelFraction": 0.0,
+      "foregroundCoverage": 0.5376
+    },
+    "mapStats": {
+      "valueRange": 0.387,
+      "heightP90Gradient": 0.04374,
+      "roughnessBase": 0.703,
+      "roughnessVariation": 0.084,
+      "normalStrength": 0.208,
+      "blurRadius": 21
+    },
+    "palette": [
+      "#203726",
+      "#334F12",
+      "#808379",
+      "#53583B",
+      "#516A0B"
+    ]
+  },
+  "warnings": [
+    "single-image inverse rendering cannot prove true physical PBR; confidence is capped"
+  ],
+  "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
+}

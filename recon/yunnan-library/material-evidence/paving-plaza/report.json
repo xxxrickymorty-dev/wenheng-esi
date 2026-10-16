@@ -1,0 +1,88 @@
+{
+  "ok": true,
+  "verdict": "pass",
+  "confidence": 0.751,
+  "estimatedFidelity": 0.751,
+  "targetThreshold": 0.7,
+  "materialId": "paving-plaza",
+  "sourceImage": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\paving-plaza.png",
+  "outDir": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\paving-plaza",
+  "palette": [
+    "#E6C2AA",
+    "#E8C8B1",
+    "#E2BDA5",
+    "#E4C5B0",
+    "#EACDB5"
+  ],
+  "maps": {
+    "albedo": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\paving-plaza\\paving-plaza_albedo.png",
+      "url": "paving-plaza_albedo.png",
+      "channel": "albedo",
+      "source": "reference-pixel-extraction"
+    },
+    "roughness": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\paving-plaza\\paving-plaza_roughness.png",
+      "url": "paving-plaza_roughness.png",
+      "channel": "roughness",
+      "source": "reference-pixel-extraction"
+    },
+    "height": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\paving-plaza\\paving-plaza_height.png",
+      "url": "paving-plaza_height.png",
+      "channel": "height",
+      "source": "reference-pixel-extraction"
+    },
+    "normal": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\paving-plaza\\paving-plaza_normal.png",
+      "url": "paving-plaza_normal.png",
+      "channel": "normal",
+      "source": "reference-pixel-extraction"
+    },
+    "ao": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\paving-plaza\\paving-plaza_ao.png",
+      "url": "paving-plaza_ao.png",
+      "channel": "ao",
+      "source": "reference-pixel-extraction"
+    }
+  },
+  "diagnostics": {
+    "sourceWidth": 200,
+    "sourceHeight": 26,
+    "mapSize": 1024,
+    "cropBBoxPixels": {
+      "x": 0,
+      "y": 0,
+      "width": 200,
+      "height": 26
+    },
+    "mask": {
+      "backgroundColor": "#E5C3A9",
+      "backgroundNoise": 10.488,
+      "transparentPixelFraction": 0.0,
+      "foregroundCoverage": 1.0
+    },
+    "mapStats": {
+      "valueRange": 0.08,
+      "heightP90Gradient": 0.04487,
+      "roughnessBase": 0.717,
+      "roughnessVariation": 0.084,
+      "normalStrength": 0.209,
+      "blurRadius": 21
+    },
+    "palette": [
+      "#E6C2AA",
+      "#E8C8B1",
+      "#E2BDA5",
+      "#E4C5B0",
+      "#EACDB5"
+    ]
+  },
+  "warnings": [
+    "image is not clearly isolated from background; using most pixels as material evidence",
+    "object/background separation is weak",
+    "single-image inverse rendering cannot prove true physical PBR; confidence is capped",
+    "low value range weakens height/roughness inference"
+  ],
+  "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
+}

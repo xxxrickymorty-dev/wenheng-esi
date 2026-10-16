@@ -1,0 +1,149 @@
+{
+  "brick-terracotta": [
+    "zones-ref04/zone-r1c1.png",
+    18,
+    58,
+    45,
+    50
+  ],
+  "trim-limestone": [
+    "zones-ref03/zone-r1c1.png",
+    30,
+    49,
+    340,
+    12
+  ],
+  "stone-olive": [
+    "zones-ref03/zone-r1c1.png",
+    145,
+    136,
+    22,
+    58
+  ],
+  "glass-dark": [
+    "zones-ref03/zone-r1c1.png",
+    55,
+    66,
+    50,
+    40
+  ],
+  "glass-dome": [
+    "zones-ref04/zone-r0c1.png",
+    150,
+    50,
+    80,
+    70
+  ],
+  "glass-sky": [
+    "zones-ref04/zone-r1c0.png",
+    195,
+    95,
+    160,
+    85
+  ],
+  "roof-tile": [
+    "zones-ref04/zone-r1c1.png",
+    40,
+    150,
+    220,
+    100
+  ],
+  "roof-ridge": [
+    "zones-ref04/zone-r0c0.png",
+    20,
+    165,
+    200,
+    30
+  ],
+  "paving-plaza": [
+    "zones-ref03/zone-r2c1.png",
+    40,
+    78,
+    200,
+    26
+  ],
+  "terrace-stone": [
+    "zones-ref03/zone-r1c1.png",
+    120,
+    220,
+    160,
+    40
+  ],
+  "pool-water": [
+    "zones-ref03/zone-r2c1.png",
+    55,
+    115,
+    220,
+    65
+  ],
+  "pool-stone": [
+    "zones-ref03/zone-r2c1.png",
+    135,
+    145,
+    110,
+    55
+  ],
+  "lawn-turf": [
+    "zones-ref03/zone-r2c1.png",
+    40,
+    18,
+    120,
+    38
+  ],
+  "hedge-purple": [
+    "zones-ref03/zone-r2c1.png",
+    145,
+    8,
+    175,
+    30
+  ],
+  "foliage-green": [
+    "refs/ref-01-front-aerial.png",
+    330,
+    480,
+    140,
+    100
+  ],
+  "bark-brown": [
+    "refs/ref-01-front-aerial.png",
+    436,
+    543,
+    24,
+    70
+  ],
+  "steel-dark": [
+    "zones-ref04/zone-r1c0.png",
+    210,
+    110,
+    130,
+    70
+  ],
+  "dome-frame": [
+    "zones-ref04/zone-r0c1.png",
+    150,
+    55,
+    80,
+    55
+  ],
+  "equipment-white": [
+    "zones-ref04/zone-r0c1.png",
+    250,
+    122,
+    75,
+    25
+  ],
+  "roof-deck": [
+    "zones-ref04/zone-r0c1.png",
+    30,
+    175,
+    150,
+    55
+  ],
+  "banner-red": [
+    "zones-ref03/zone-r1c1.png",
+    114,
+    158,
+    18,
+    38
+  ]
+}

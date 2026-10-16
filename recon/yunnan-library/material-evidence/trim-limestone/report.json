@@ -1,0 +1,88 @@
+{
+  "ok": true,
+  "verdict": "pass",
+  "confidence": 0.769,
+  "estimatedFidelity": 0.769,
+  "targetThreshold": 0.7,
+  "materialId": "trim-limestone",
+  "sourceImage": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\trim-limestone.png",
+  "outDir": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\trim-limestone",
+  "palette": [
+    "#886635",
+    "#2B4E53",
+    "#A06F35",
+    "#514B30",
+    "#807763"
+  ],
+  "maps": {
+    "albedo": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\trim-limestone\\trim-limestone_albedo.png",
+      "url": "trim-limestone_albedo.png",
+      "channel": "albedo",
+      "source": "reference-pixel-extraction"
+    },
+    "roughness": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\trim-limestone\\trim-limestone_roughness.png",
+      "url": "trim-limestone_roughness.png",
+      "channel": "roughness",
+      "source": "reference-pixel-extraction"
+    },
+    "height": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\trim-limestone\\trim-limestone_height.png",
+      "url": "trim-limestone_height.png",
+      "channel": "height",
+      "source": "reference-pixel-extraction"
+    },
+    "normal": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\trim-limestone\\trim-limestone_normal.png",
+      "url": "trim-limestone_normal.png",
+      "channel": "normal",
+      "source": "reference-pixel-extraction"
+    },
+    "ao": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\trim-limestone\\trim-limestone_ao.png",
+      "url": "trim-limestone_ao.png",
+      "channel": "ao",
+      "source": "reference-pixel-extraction"
+    }
+  },
+  "diagnostics": {
+    "sourceWidth": 340,
+    "sourceHeight": 12,
+    "mapSize": 1024,
+    "cropBBoxPixels": {
+      "x": 0,
+      "y": 0,
+      "width": 340,
+      "height": 12
+    },
+    "mask": {
+      "backgroundColor": "#9FA7AF",
+      "backgroundNoise": 141.124,
+      "transparentPixelFraction": 0.0,
+      "foregroundCoverage": 0.9642
+    },
+    "mapStats": {
+      "valueRange": 0.2373,
+      "heightP90Gradient": 0.09051,
+      "roughnessBase": 0.737,
+      "roughnessVariation": 0.17,
+      "normalStrength": 0.262,
+      "blurRadius": 21
+    },
+    "palette": [
+      "#886635",
+      "#2B4E53",
+      "#A06F35",
+      "#514B30",
+      "#807763"
+    ]
+  },
+  "warnings": [
+    "image is not clearly isolated from background; using most pixels as material evidence",
+    "object/background separation is weak",
+    "single-image inverse rendering cannot prove true physical PBR; confidence is capped",
+    "low value range weakens height/roughness inference"
+  ],
+  "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
+}

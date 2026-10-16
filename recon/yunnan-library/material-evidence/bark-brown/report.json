@@ -1,0 +1,85 @@
+{
+  "ok": true,
+  "verdict": "pass",
+  "confidence": 0.85,
+  "estimatedFidelity": 0.85,
+  "targetThreshold": 0.7,
+  "materialId": "bark-brown",
+  "sourceImage": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\bark-brown.png",
+  "outDir": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\bark-brown",
+  "palette": [
+    "#5C7A84",
+    "#4E636B",
+    "#7F867C",
+    "#384F1A",
+    "#5E6349"
+  ],
+  "maps": {
+    "albedo": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\bark-brown\\bark-brown_albedo.png",
+      "url": "bark-brown_albedo.png",
+      "channel": "albedo",
+      "source": "reference-pixel-extraction"
+    },
+    "roughness": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\bark-brown\\bark-brown_roughness.png",
+      "url": "bark-brown_roughness.png",
+      "channel": "roughness",
+      "source": "reference-pixel-extraction"
+    },
+    "height": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\bark-brown\\bark-brown_height.png",
+      "url": "bark-brown_height.png",
+      "channel": "height",
+      "source": "reference-pixel-extraction"
+    },
+    "normal": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\bark-brown\\bark-brown_normal.png",
+      "url": "bark-brown_normal.png",
+      "channel": "normal",
+      "source": "reference-pixel-extraction"
+    },
+    "ao": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\bark-brown\\bark-brown_ao.png",
+      "url": "bark-brown_ao.png",
+      "channel": "ao",
+      "source": "reference-pixel-extraction"
+    }
+  },
+  "diagnostics": {
+    "sourceWidth": 24,
+    "sourceHeight": 70,
+    "mapSize": 1024,
+    "cropBBoxPixels": {
+      "x": 0,
+      "y": 0,
+      "width": 24,
+      "height": 70
+    },
+    "mask": {
+      "backgroundColor": "#6A7B81",
+      "backgroundNoise": 62.801,
+      "transparentPixelFraction": 0.0,
+      "foregroundCoverage": 0.4905
+    },
+    "mapStats": {
+      "valueRange": 0.243,
+      "heightP90Gradient": 0.0349,
+      "roughnessBase": 0.685,
+      "roughnessVariation": 0.062,
+      "normalStrength": 0.197,
+      "blurRadius": 21
+    },
+    "palette": [
+      "#5C7A84",
+      "#4E636B",
+      "#7F867C",
+      "#384F1A",
+      "#5E6349"
+    ]
+  },
+  "warnings": [
+    "single-image inverse rendering cannot prove true physical PBR; confidence is capped"
+  ],
+  "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
+}

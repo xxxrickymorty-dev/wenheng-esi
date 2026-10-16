@@ -1,0 +1,562 @@
+{
+  "targetName": "YNU Library",
+  "sourceImage": "refs/ref-03-elevation.png",
+  "referenceViews": [
+    "refs/ref-03-elevation.png",
+    "refs/ref-01-front-aerial.png",
+    "refs/ref-04-close-aerial.png",
+    "refs/ref-02-birdseye.png"
+  ],
+  "preSpecAssessment": {
+    "objectClass": {
+      "primaryType": "architectural complex (university library building: central domed hall, symmetric brick wings, twin corner towers, axial plaza with pool)",
+      "primaryDomain": "object",
+      "formLanguage": ["architectural", "hard-surface", "geometric"],
+      "structureKind": ["compound object", "repeated modules", "layered shell"],
+      "motionPotential": ["static prop", "detachable"],
+      "materialFamilies": ["ceramic", "stone", "glass-like", "metal", "leaf", "liquid-like", "mixed"],
+      "notes": "Symmetric bilateral complex around a central axis (forward +Z toward the plaza). Front face = 5-storey wings (terracotta brick, cream string courses, barrel-tile hip roofs) ending in square belfry towers with pyramid roofs; centre = tall glazed loggia behind a columned portico, glass dome with cream drum above; two low front pavilions flank the portico; rear wings extend north closing a courtyard with glazed vault gallery and a sloped glass canopy (report hall) at the west nook. Foreground plaza: grand steps, turf parterre with dark hedge blocks, scalloped-edge pool with two stepped circular fountains, plane-tree rows. Inference, not measurement: exact north (rear) plan depths and courtyard details are inferred from aerials (ref-02/ref-04); rear facades assumed to continue the front rhythm."
+    },
+    "complexity": {
+      "tier": "ultra-complex",
+      "scores": {
+        "silhouetteComplexity": 3,
+        "componentCount": 3,
+        "hierarchyDepth": 3,
+        "repetitionDensity": 3,
+        "materialLayerCount": 3,
+        "localDetailDensity": 2,
+        "occlusionRisk": 2,
+        "actionReadinessNeed": 1
+      },
+      "estimatedCounts": {
+        "macroComponents": 12,
+        "mesoComponents": 30,
+        "microFeatureGroups": 12,
+        "materialLayers": 8,
+        "repetitionSystems": 5
+      },
+      "reasoning": [
+        "Silhouette is heavily interrupted: dome + drum above the central glazed attic, two tall towers with pyramid caps, hip-roofed wings and pavilions, all read against the sky in the elevation view.",
+        "Hundreds of visible sub-parts: window grids on both wings (approx 5 floors x 14 bays per wing), pilaster strips, string courses, roof ridges, drum windows, colonnade, balustrades.",
+        "Deep hierarchy: root > wing > body/roof > window-grid repetition > frame/glass/sill micro features; every macro mass carries 3+ levels.",
+        "Repetition density is high and regular (brick courses, tile ribs, windows, dentils, balusters, tree rows, hedge blocks) — the building's identity IS its rhythm.",
+        "Materials: terracotta brick, cream limestone trim, olive stone piers/columns, two glazing systems (dark curtain glass, blue-grey dome glass), barrel tile, granite paving/step stone, pool water, foliage — 8+ distinct responses.",
+        "Local detail density is moderate per surface but the repeated systems make small errors (wrong window pitch, missing dentils) highly visible at the review distance.",
+        "Occlusion: single views hide the rear plan; the 4 supplied views cover the front, both aerials and a rear-quarter, so rear massing is inferable but reported as inference.",
+        "Action readiness: static architectural prop; needs clickable/explodable part tree for the demo but no skeletal animation."
+      ]
+    },
+    "specDepthDecision": {
+      "requiredDepth": "ultra-complex",
+      "minimumComponentLevels": ["macro", "meso", "micro"],
+      "needsRepetitionSystems": true,
+      "needsMaterialLocalOverrides": true,
+      "needsMultipleReviewViews": true,
+      "needsActionReadyHierarchy": true,
+      "rationale": "Architectural complex with dense repeated systems and many materials: fidelity depends on deep hierarchy (root > block > assembly > feature) and repetition systems for windows, columns, ridges and planting. Ultra-complex floors (5 macro / 16 meso / 8 micro / 4 material layers / 2 repetition systems / 5 viewpoints) are the correct bar."
+    },
+    "unknownsToResolveBeforeImplementation": [
+      "Exact north (rear) elevation of the wings — hidden in all views; assumed to continue the front window rhythm and cornice lines (marked low confidence in the spec components).",
+      "Precise depth of the courtyard and the glazed barrel-vault gallery connection between central block and wings — read only from aerials; modeled as a simplified ribbed glass vault.",
+      "The west courtyard sloped glass canopy (report hall) footprint and glazing slope — read from ref-04 only; modeled as a single-pitch framed glass box.",
+      "Tower roof form: silhouette reads as a shallow pyramid/hip with ridge; exact pitch ambiguous — chose a shallow hip pyramid matching the elevation silhouette.",
+      "Ground-storey treatment of the wings behind the terrace balustrades is partially hidden by planting; modeled as regular windows matching floor 2 rhythm.",
+      "Interior: not reconstructed (a separate atrium GLB already exists for the web interior scene).",
+      "Scale calibration: all dimensions are relative; the model is normalized to the building footprint, not surveyed meters."
+    ],
+    "detailInventory": {
+      "scanMethod": "grid-3x3",
+      "targetMinDetails": 16,
+      "note": "Scanned ref-04 (close aerial: roof, dome, courtyard, canopy) and ref-03 (elevation: colonnade, windows, tower, pool) zone by zone. Each detail maps to a component.localFeatures or material.localOverrides entry that the spec authors.",
+      "details": [
+        {
+          "id": "dome-glass-grid",
+          "kind": "linework",
+          "description": "Dome shell is a regular grid of near-square glass panes (approx 8 rows) with visible steel meridian ribs and two concentric ring ribs; darker seams at each pane joint.",
+          "region": {"x": 0.42, "y": 0.04, "width": 0.14, "height": 0.12, "units": "normalized"},
+          "scale": "dome dia ~1/6 of building height; panes ~0.4m",
+          "affects": "material+form",
+          "mapsTo": {"type": "component-localFeature", "ref": "dome-shell/dome-grid-pattern"},
+          "evidenceRef": "zones-ref04/zone-r0c1.png",
+          "confidence": 0.9
+        },
+        {
+          "id": "dome-drum-window-ribbon",
+          "kind": "linework",
+          "description": "Continuous ribbon of dark rectangular windows around the cream drum, separated by slim cream mullions; reads as a glazed band under the dome.",
+          "region": {"x": 0.43, "y": 0.10, "width": 0.12, "height": 0.03, "units": "normalized"},
+          "scale": "window height ~0.9m",
+          "affects": "material",
+          "mapsTo": {"type": "component-localFeature", "ref": "dome-drum/window-ribbon"},
+          "evidenceRef": "zones-ref04/zone-r0c1.png",
+          "confidence": 0.85
+        },
+        {
+          "id": "dome-drum-cornice",
+          "kind": "bevel",
+          "description": "Pale cornice ring with a fine dentil course at the drum base and a plain ring at the glazing head; both catch a bright edge line under sunlight.",
+          "region": {"x": 0.43, "y": 0.135, "width": 0.12, "height": 0.015, "units": "normalized"},
+          "scale": "ring proud ~0.25m",
+          "affects": "form",
+          "mapsTo": {"type": "component-localFeature", "ref": "dome-drum/cornice-ring"},
+          "evidenceRef": "zones-ref04/zone-r0c1.png",
+          "confidence": 0.8
+        },
+        {
+          "id": "dome-apex-finial",
+          "kind": "ridge",
+          "description": "Small pale cap/vent at the dome apex on a short stem, visible as a bright dot against the glass grid.",
+          "region": {"x": 0.485, "y": 0.045, "width": 0.02, "height": 0.02, "units": "normalized"},
+          "scale": "cap dia ~0.6m",
+          "affects": "form",
+          "mapsTo": {"type": "component-localFeature", "ref": "dome-finial/apex-cap"},
+          "evidenceRef": "refs/ref-03-elevation.png",
+          "confidence": 0.7
+        },
+        {
+          "id": "loggia-mullion-grid",
+          "kind": "linework",
+          "description": "Central block front: tall continuous curtain wall divided by olive-tan piers into 7 bays, each bay crossed by thin transom lines (4 pane rows); dark green-blue glass.",
+          "region": {"x": 0.40, "y": 0.36, "width": 0.20, "height": 0.10, "units": "normalized"},
+          "scale": "loggia height ~2 storeys",
+          "affects": "material+form",
+          "mapsTo": {"type": "component-localFeature", "ref": "glazed-loggia/mullion-grid"},
+          "evidenceRef": "zones-ref03/zone-r1c1.png",
+          "confidence": 0.9
+        },
+        {
+          "id": "attic-dentil-band",
+          "kind": "fastener",
+          "description": "Closely spaced pale dentil brackets in a row under the central entablature (top of the loggia), casting a fine repeated shadow line.",
+          "region": {"x": 0.40, "y": 0.335, "width": 0.20, "height": 0.02, "units": "normalized"},
+          "scale": "bracket ~0.35m pitch",
+          "affects": "form",
+          "mapsTo": {"type": "component-localFeature", "ref": "attic-band/dentil-brackets"},
+          "evidenceRef": "zones-ref03/zone-r1c1.png",
+          "confidence": 0.8
+        },
+        {
+          "id": "portico-capitals",
+          "kind": "bevel",
+          "description": "Square olive-tan portico columns with simple flared capitals and a continuous architrave band; bright bevel line where capital meets entablature.",
+          "region": {"x": 0.36, "y": 0.44, "width": 0.28, "height": 0.07, "units": "normalized"},
+          "scale": "columns ~9m tall",
+          "affects": "form",
+          "mapsTo": {"type": "component-localFeature", "ref": "portico-columns/column-capitals"},
+          "evidenceRef": "zones-ref03/zone-r1c1.png",
+          "confidence": 0.85
+        },
+        {
+          "id": "entrance-banners",
+          "kind": "decal",
+          "description": "Two red vertical banner panels flanking the recessed entrance doors behind the portico; saturated red against dark glass.",
+          "region": {"x": 0.46, "y": 0.455, "width": 0.08, "height": 0.035, "units": "normalized"},
+          "scale": "banner ~1.2m x 3m",
+          "affects": "material",
+          "mapsTo": {"type": "component-localFeature", "ref": "entrance-banners/banner-panels"},
+          "evidenceRef": "zones-ref03/zone-r1c1.png",
+          "confidence": 0.75
+        },
+        {
+          "id": "grandsteps-nosing",
+          "kind": "ridge",
+          "description": "Pale stone nosing strip along every riser of the three wide flight of steps, reading as horizontal light lines across the grey granite.",
+          "region": {"x": 0.36, "y": 0.50, "width": 0.28, "height": 0.06, "units": "normalized"},
+          "scale": "riser 0.15m, nosing lip 0.03m",
+          "affects": "form+material",
+          "mapsTo": {"type": "component-localFeature", "ref": "grand-steps/nosing-bands"},
+          "evidenceRef": "zones-ref03/zone-r1c1.png",
+          "confidence": 0.8
+        },
+        {
+          "id": "wing-window-reveal",
+          "kind": "groove",
+          "description": "Each wing window sits in a shallow recess: cream frame surround, dark glass set back ~0.15m, with a projecting sill ledge below; the reveal casts a soft shadow.",
+          "region": {"x": 0.10, "y": 0.42, "width": 0.30, "height": 0.05, "units": "normalized"},
+          "scale": "window ~1.5m x 2.4m, 14 bays per wing",
+          "affects": "form+material",
+          "mapsTo": {"type": "component-localFeature", "ref": "wing-windows/recessed-reveal"},
+          "evidenceRef": "zones-ref03/zone-r1c0.png",
+          "confidence": 0.9
+        },
+        {
+          "id": "wing-pilasters",
+          "kind": "ridge",
+          "description": "Vertical brick pilaster strips between window bays, slightly proud of the wall plane, breaking the facade into regular bays.",
+          "region": {"x": 0.10, "y": 0.40, "width": 0.30, "height": 0.10, "units": "normalized"},
+          "scale": "strip width ~0.7m, proud 0.1m",
+          "affects": "form",
+          "mapsTo": {"type": "component-localFeature", "ref": "wing-body/pilaster-strips"},
+          "evidenceRef": "zones-ref04/zone-r1c1.png",
+          "confidence": 0.85
+        },
+        {
+          "id": "wing-stringcourses",
+          "kind": "ridge",
+          "description": "Thin cream horizontal band at each floor line of the wings, continuous past the pilasters.",
+          "region": {"x": 0.10, "y": 0.41, "width": 0.30, "height": 0.08, "units": "normalized"},
+          "scale": "band ~0.25m tall",
+          "affects": "form+material",
+          "mapsTo": {"type": "component-localFeature", "ref": "wing-body/string-courses"},
+          "evidenceRef": "zones-ref03/zone-r1c0.png",
+          "confidence": 0.85
+        },
+        {
+          "id": "wing-eave-cornice",
+          "kind": "bevel",
+          "description": "Pale projecting cornice with dentil shadow line directly under the wing eaves, brighter on the sunlit face.",
+          "region": {"x": 0.10, "y": 0.365, "width": 0.30, "height": 0.025, "units": "normalized"},
+          "scale": "cornice proud ~0.4m",
+          "affects": "form",
+          "mapsTo": {"type": "component-localFeature", "ref": "wing-body/eave-cornice"},
+          "evidenceRef": "zones-ref04/zone-r1c1.png",
+          "confidence": 0.85
+        },
+        {
+          "id": "roof-ridge-caps",
+          "kind": "ridge",
+          "description": "Lighter tan capping runs along every hip ridge and the roof ridge of the wings, pavilions and towers; clearly brighter than the tile field.",
+          "region": {"x": 0.06, "y": 0.30, "width": 0.34, "height": 0.08, "units": "normalized"},
+          "scale": "cap width ~0.35m",
+          "affects": "material+form",
+          "mapsTo": {"type": "component-localFeature", "ref": "wing-roofs/ridge-caps"},
+          "evidenceRef": "zones-ref04/zone-r1c1.png",
+          "confidence": 0.85
+        },
+        {
+          "id": "roof-tile-ribs",
+          "kind": "linework",
+          "description": "Barrel-tile rib pattern running down each roof slope; fine parallel ribs with slight tone variation, rows visible along the slope direction.",
+          "region": {"x": 0.40, "y": 0.28, "width": 0.35, "height": 0.18, "units": "normalized"},
+          "scale": "rib pitch ~0.25m",
+          "affects": "material",
+          "mapsTo": {"type": "material-localOverride", "ref": "roof-tile/barrel-ribs"},
+          "evidenceRef": "zones-ref04/zone-r1c1.png",
+          "confidence": 0.8
+        },
+        {
+          "id": "tower-belfry-arches",
+          "kind": "hole",
+          "description": "Two arched openings with cream surrounds at the tower belfry stage (front face); dark shadow inside; cream arch band above each.",
+          "region": {"x": 0.845, "y": 0.30, "width": 0.06, "height": 0.05, "units": "normalized"},
+          "scale": "arch ~1.4m wide x 2.2m tall",
+          "affects": "form",
+          "mapsTo": {"type": "component-localFeature", "ref": "tower-belfry/arch-openings"},
+          "evidenceRef": "zones-ref03/zone-r1c2.png",
+          "confidence": 0.8
+        },
+        {
+          "id": "tower-paired-slots",
+          "kind": "linework",
+          "description": "Stack of narrow paired windows on the cream front panel of each tower, one pair per floor, cream frames, dark glass.",
+          "region": {"x": 0.855, "y": 0.36, "width": 0.05, "height": 0.20, "units": "normalized"},
+          "scale": "each slot ~0.5m x 1.5m",
+          "affects": "material+form",
+          "mapsTo": {"type": "component-localFeature", "ref": "tower-frontpanel/paired-slots"},
+          "evidenceRef": "zones-ref03/zone-r1c2.png",
+          "confidence": 0.8
+        },
+        {
+          "id": "tower-quoins",
+          "kind": "ridge",
+          "description": "Pale vertical quoin strips on the tower corners and a cream band at each tower stage line.",
+          "region": {"x": 0.84, "y": 0.33, "width": 0.07, "height": 0.10, "units": "normalized"},
+          "scale": "strip ~0.4m wide",
+          "affects": "form+material",
+          "mapsTo": {"type": "component-localFeature", "ref": "tower-shaft/corner-quoins"},
+          "evidenceRef": "zones-ref03/zone-r1c2.png",
+          "confidence": 0.75
+        },
+        {
+          "id": "tower-balustrade",
+          "kind": "fastener",
+          "description": "Row of small repeated baluster posts between rail and cornice at the tower top stage; reads as fine vertical rhythm under the pyramid roof.",
+          "region": {"x": 0.84, "y": 0.30, "width": 0.07, "height": 0.03, "units": "normalized"},
+          "scale": "baluster pitch ~0.3m",
+          "affects": "form",
+          "mapsTo": {"type": "component-localFeature", "ref": "tower-balustrade/baluster-row"},
+          "evidenceRef": "refs/ref-03-elevation.png",
+          "confidence": 0.65
+        },
+        {
+          "id": "canopy-pane-grid",
+          "kind": "linework",
+          "description": "Sloped courtyard canopy: square glass panes in a regular steel grid, slight blue-green tint, frame lines bright against the dark interior below.",
+          "region": {"x": 0.16, "y": 0.45, "width": 0.20, "height": 0.16, "units": "normalized"},
+          "scale": "pane ~1.2m square",
+          "affects": "material+form",
+          "mapsTo": {"type": "component-localFeature", "ref": "glass-canopy/pane-grid"},
+          "evidenceRef": "zones-ref04/zone-r1c0.png",
+          "confidence": 0.85
+        },
+        {
+          "id": "vault-rib-row",
+          "kind": "fastener",
+          "description": "Glazed barrel vault bridging central block and wing: repeated parallel steel ribs over curved glass, row of bright rib lines.",
+          "region": {"x": 0.62, "y": 0.13, "width": 0.25, "height": 0.10, "units": "normalized"},
+          "scale": "rib pitch ~2m, vault span ~5m",
+          "affects": "form+material",
+          "mapsTo": {"type": "component-localFeature", "ref": "gallery-vault/rib-row"},
+          "evidenceRef": "zones-ref04/zone-r0c2.png",
+          "confidence": 0.7
+        },
+        {
+          "id": "fountain-step-rings",
+          "kind": "bevel",
+          "description": "Two circular fountains on the pool axis: stacked pale stone rings (3 steps) around a low centre, bright step edges against the turquoise water.",
+          "region": {"x": 0.44, "y": 0.86, "width": 0.12, "height": 0.09, "units": "normalized"},
+          "scale": "outer ring dia ~7m",
+          "affects": "form",
+          "mapsTo": {"type": "component-localFeature", "ref": "fountain-rings/step-rings"},
+          "evidenceRef": "zones-ref03/zone-r2c1.png",
+          "confidence": 0.85
+        },
+        {
+          "id": "pool-coping-lobes",
+          "kind": "linework",
+          "description": "Pale stone coping traces a scalloped/lobed pool edge; the pool lining is turquoise with a visible shallow shelf and step edge into the water.",
+          "region": {"x": 0.05, "y": 0.78, "width": 0.55, "height": 0.20, "units": "normalized"},
+          "scale": "lobes ~4m wide",
+          "affects": "form+material",
+          "mapsTo": {"type": "component-localFeature", "ref": "pool-basin/scalloped-coping"},
+          "evidenceRef": "zones-ref03/zone-r2c1.png",
+          "confidence": 0.75
+        },
+        {
+          "id": "parterre-hedge-blocks",
+          "kind": "ridge",
+          "description": "Central parterre: green turf strips with rows of dark plum hedge blocks (approx 8 modules) laid on the plaza axis, each block slightly raised with a soft shadow.",
+          "region": {"x": 0.42, "y": 0.60, "width": 0.20, "height": 0.06, "units": "normalized"},
+          "scale": "module ~2.5m, block ~1.6m",
+          "affects": "form+material",
+          "mapsTo": {"type": "component-localFeature", "ref": "parterre-blocks/hedge-rows"},
+          "evidenceRef": "zones-ref03/zone-r2c1.png",
+          "confidence": 0.8
+        },
+        {
+          "id": "wing-base-ivy",
+          "kind": "stain",
+          "description": "Green ivy/vine patches climbing the wing base walls in the courtyard, plus planting shadow at the base; soft green mottling over brick.",
+          "region": {"x": 0.28, "y": 0.55, "width": 0.25, "height": 0.20, "units": "normalized"},
+          "scale": "patches up to 8m tall",
+          "affects": "material",
+          "mapsTo": {"type": "material-localOverride", "ref": "brick-terracotta/ivy-stain"},
+          "evidenceRef": "zones-ref04/zone-r1c1.png",
+          "confidence": 0.7
+        },
+        {
+          "id": "pool-water-sheen",
+          "kind": "gloss",
+          "description": "Water sheet reads glassy turquoise with soft sky sheen and faint ripple; bright foam ring where water meets the fountain rings.",
+          "region": {"x": 0.10, "y": 0.80, "width": 0.45, "height": 0.18, "units": "normalized"},
+          "scale": "sheet across ~60m pool",
+          "affects": "material",
+          "mapsTo": {"type": "material-localOverride", "ref": "pool-water/specular-sheet"},
+          "evidenceRef": "zones-ref03/zone-r2c1.png",
+          "confidence": 0.8
+        },
+        {
+          "id": "solar-heater-row",
+          "kind": "fastener",
+          "description": "Row of repeated dark slanted vacuum-tube solar panels on the central roof deck beside the dome, plus white AC boxes and low skylight strips.",
+          "region": {"x": 0.44, "y": 0.115, "width": 0.10, "height": 0.03, "units": "normalized"},
+          "scale": "panel row ~12m long",
+          "affects": "form+material",
+          "mapsTo": {"type": "component-localFeature", "ref": "roof-deck/solar-row"},
+          "evidenceRef": "zones-ref04/zone-r0c1.png",
+          "confidence": 0.75
+        },
+        {
+          "id": "glazing-sky-sheen",
+          "kind": "gloss",
+          "description": "Wing and loggia glazing carry a broad low-roughness sky reflection band (bright at grazing angles, dark against the interior) — the facade's most visible finish response.",
+          "region": {"x": 0.10, "y": 0.42, "width": 0.30, "height": 0.06, "units": "normalized"},
+          "scale": "band across full facade",
+          "affects": "material",
+          "mapsTo": {"type": "material-localOverride", "ref": "glass-dark/sky-sheen"},
+          "evidenceRef": "refs/ref-03-elevation.png",
+          "confidence": 0.85
+        }
+      ]
+    },
+    "anatomy": {
+      "applies": false,
+      "styleHeads": 0.0,
+      "proportions": {"headUnit": 0.0, "torso": 0.0, "legs": 0.0, "shoulderWidth": 0.0, "hipWidth": 0.0},
+      "pose": {"type": "unassessed", "jointAngles": {}},
+      "faceLandmarks": {"eyeLine": 0.0, "eyeSpacing": 0.0, "noseBase": 0.0, "mouthLine": 0.0, "hairline": 0.0},
+      "features": [],
+      "confidence": 0.0,
+      "note": "Architecture — anatomy not applicable."
+    },
+    "referenceSuitability": {
+      "verdict": "pass",
+      "projectionApplicability": "not-applicable",
+      "materialEvidenceApplicability": "applicable",
+      "rationale": "Four views cover the front elevation, front 3/4 aerial, close aerial (roof/massing) and rear-quarter aerial. Front photos show a strong silhouette and every major material. This is an architectural scene rather than a single isolated object, but the building is an unambiguous single target occupying the frame centre; hidden sides are inferable from the aerial views and are reported as inference. Exact photo-projection is not applicable (no surface pattern worth projecting at this scale); material evidence extraction applies for palette/scalars."
+    }
+  },
+  "qualityContract": {
+    "qualityBar": "ultra-complex",
+    "definitionOfDone": [
+      "From the plaza (ref-03 alignment) the silhouette reads as the same building: central glazed loggia + dome above, two symmetric 5-storey wings ending in belfry towers with pyramid caps, low pavilions flanking the entrance, wide steps to the terrace.",
+      "Window rhythm is legible and regular on both wings (no missing/extra bays, floor lines continuous); towers carry the paired-slot windows and belfry arches.",
+      "Roofscape matches the aerials: hip roofs with pale ridge caps on wings/pavilions/towers, flat central deck with dome + drum + equipment cluster (solar row, AC boxes, low skylights), courtyard glass vault and sloped glass canopy present.",
+      "Plaza stage matches ref-01/ref-03: turf parterre with dark hedge blocks on the axis, scalloped pool with two stepped circular fountains, tree rows, warm granite paving; steps and terrace balustrade on the central axis.",
+      "Materials are reference-derived: two glazing systems (dark curtain glass, blue-grey dome glass), terracotta brick with subtle per-bay variation, pale limestone trim/string courses/cornices, olive-tan portico columns, barrel-tile roofs with rib pattern, water with glass sheen — each with independent roughness/response.",
+      "Clickable/explodable part tree: every named component is addressable via sculptRuntime; no orphan meshes; symmetric pairs mirror exactly.",
+      "All six review viewpoints (front, front-high 3/4, close aerial, rear 3/4, left, right) hold the structure without broken silhouettes or floating parts."
+    ],
+    "minimumSpecDepth": {
+      "macroComponents": 5,
+      "mesoComponents": 16,
+      "microFeatureGroups": 8,
+      "materialLayers": 4,
+      "repetitionSystems": 2,
+      "reviewViewpoints": 5
+    },
+    "featureGroups": [
+      {
+        "id": "central-dome-composition",
+        "name": "Central glazed loggia + dome",
+        "required": true,
+        "qualityCriteria": [
+          "Loggia glass band divided by olive piers into the same bay count as the reference, with transom lines; dark glass with sky sheen.",
+          "Dome sits on a cream drum with a continuous window ribbon; dome shell shows the pane grid + meridian/ring ribs; apex cap present.",
+          "Dentil attic band between loggia top and parapet; dome reads clearly above the ridge line from the plaza."
+        ],
+        "evidenceRefs": ["zones-ref03/zone-r1c1.png", "zones-ref04/zone-r0c1.png"],
+        "failureModes": [
+          "dome too small/large or swallowed behind the parapet in the elevation",
+          "loggia reads as solid wall instead of a glazed band",
+          "drum without window ribbon or dome without grid pattern"
+        ]
+      },
+      {
+        "id": "wing-facade-rhythm",
+        "name": "Symmetric wing facades",
+        "required": true,
+        "qualityCriteria": [
+          "Regular window grid (bay pitch constant, floor lines continuous), recessed reveals with sills, pilaster strips between bays.",
+          "Cream string courses at each floor line and eave cornice with dentils.",
+          "Wings mirror each other exactly (reflection, not rotation)."
+        ],
+        "evidenceRefs": ["zones-ref03/zone-r1c0.png", "zones-ref04/zone-r1c1.png"],
+        "failureModes": [
+          "window pitch drifts across the facade",
+          "string courses interrupted or missing",
+          "west/east wings differ in composition"
+        ]
+      },
+      {
+        "id": "twin-tower-ends",
+        "name": "Twin corner towers",
+        "required": true,
+        "qualityCriteria": [
+          "Square shaft with cream front panel carrying stacked narrow paired windows; arched belfry stage with cream surrounds; balustrade row; shallow hip/pyramid roof with ridge cap and finial.",
+          "Towers rise clearly above the wings in the elevation silhouette; tower top reads open (arch shadows), not solid."
+        ],
+        "evidenceRefs": ["zones-ref03/zone-r1c2.png", "zones-ref04/zone-r0c0.png"],
+        "failureModes": [
+          "tower reads as a plain brick box (no cream panel/slots/arches)",
+          "tower height lost against the wing",
+          "pyramid roof wrong pitch or missing"
+        ]
+      },
+      {
+        "id": "entrance-portico-terrace",
+        "name": "Entrance portico, terrace and grand steps",
+        "required": true,
+        "qualityCriteria": [
+          "Columned portico on the central axis with entablature slab, recessed glazed wall with red banners behind.",
+          "Three wide flights of steps between plaza and terrace with pale nosing lines and landing bands; terrace balustrade segments on both sides.",
+          "Portico reads in front of the loggia with correct depth when seen from the plaza (ref-03) and from above (ref-04)."
+        ],
+        "evidenceRefs": ["zones-ref03/zone-r1c1.png", "zones-ref04/zone-r2c0.png"],
+        "failureModes": [
+          "portico merged into the facade with no depth",
+          "steps missing or replaced by a single ramp",
+          "banners absent"
+        ]
+      },
+      {
+        "id": "roofscape-aerial",
+        "name": "Roofscape and courtyard glazing (aerial match)",
+        "required": true,
+        "qualityCriteria": [
+          "Hip roofs with tile rib pattern and pale ridge caps on wings, pavilions and towers; correct hip slopes.",
+          "Central flat deck with dome + drum, solar panel row, AC boxes, low skylight strips; parapet with coping line.",
+          "Courtyard contains the ribbed glass barrel vault gallery and the sloped framed glass canopy at the west nook."
+        ],
+        "evidenceRefs": ["zones-ref04/zone-r0c1.png", "zones-ref04/zone-r1c0.png", "zones-ref04/zone-r0c2.png"],
+        "failureModes": [
+          "roofs flat or wrongly pitched",
+          "central deck empty (no equipment)",
+          "glass vault/canopy missing so the courtyard loses its glass identity"
+        ]
+      },
+      {
+        "id": "plaza-water-axis",
+        "name": "Axial plaza with pool and parterre",
+        "required": true,
+        "qualityCriteria": [
+          "Parterre on axis: turf strips with dark hedge blocks in rows, bounded by pale paving.",
+          "Pool basin with scalloped pale coping and two stepped circular fountains on axis, turquoise water with sheen.",
+          "Plane-tree rows frame the plaza; paving tones warm grey-beige matching ref-03."
+        ],
+        "evidenceRefs": ["zones-ref03/zone-r2c1.png", "refs/ref-01-front-aerial.png"],
+        "failureModes": [
+          "pool a plain rectangle (lobes/coping lost)",
+          "parterre missing so the axis reads empty",
+          "water reads flat grey instead of turquoise with sheen"
+        ]
+      }
+    ],
+    "visualDeltaChecks": [
+      "silhouette and negative-space delta against ref-03 (front) and ref-01 (front aerial)",
+      "component hierarchy depth delta (macro/meso/micro counts vs minimums)",
+      "repetition density and distribution delta (window bays, tile ribs, balusters, trees)",
+      "material albedo/roughness/normal response delta (brick, trim, two glazings, tile, water)",
+      "local feature placement and scale delta (dome grid, dentils, banners, ridge caps, fountain rings)"
+    ],
+    "antiShallowSpecRules": [
+      "Do not proceed to code if qualityContract.qualityBar is unassessed.",
+      "Do not proceed to code if the spec only contains a root component for a moderate or complex object.",
+      "Do not proceed to code if required featureGroups are not represented by componentTree, materials, or repetitionSystems.",
+      "Do not proceed to code if visible local features are described only in prose and not attached to components/materials/evidenceRefs.",
+      "Do not pass structural-pass if the west/east halves are not exact mirrors (reflection, not rotation) and towers/wings/pavilions lack their attachment to the main mass.",
+      "Do not pass reference-fidelity material look-dev from a source image without usable referencePbr evidence or an explicit documented limitation.",
+      "Do not satisfy repeated architectural rhythm (windows, dentils, ridge caps, balusters, hedges, tree rows) without a repetitionSystem or instanced micro parts.",
+      "Do not place adjacent separate-geometry parts below 0.02 world-unit seam overlap (source: grimoire/build/geometry_patterns.md)."
+    ]
+  },
+  "authoringInstruction": "Fill observed object class, complexity reasoning, featureGroups, visualDeltaChecks, and unknowns before generating or implementing ObjectSculptSpec.",
+  "localSpecSearch": {
+    "collection": "core_3d",
+    "query": "YNU Library",
+    "index": {
+      "status": "rebuilt",
+      "reason": "missing",
+      "fingerprint": "06f0b2ece2935e441653f5c3533f91b3a4d6163f2aec4267559d7d8419bdd040"
+    },
+    "matches": [
+      {
+        "record_id": "core.shader-mapping-customshadermaterial-csm-weathering-hooks",
+        "file_path": "docs/raw/img2threejs-skill-dataset.json",
+        "heading": null,
+        "key_path": "categories.rendering_shader_mapping[1]",
+        "score": 3.256486414944,
+        "snippets": [
+          "Extension library exposing csm_* output variables to inject procedural noise/masks into an otherwise-standard lit material, used for dynamic tarnish/patina effects."
+        ],
+        "source_refs": [
+          {"path": "docs/raw/img2threejs-skill-dataset.json", "heading": null, "key_path": "categories.rendering_shader_mapping[1]"}
+        ],
+        "evidence_refs": [
+          {"kind": "source", "ref": "docs/raw/img2threejs-skill-dataset.json", "note": "img2threejs NotebookLM research distillation"}
+        ]
+      }
+    ]
+  }
+}

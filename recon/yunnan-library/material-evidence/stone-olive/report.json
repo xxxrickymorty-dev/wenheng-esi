@@ -1,0 +1,85 @@
+{
+  "ok": true,
+  "verdict": "pass",
+  "confidence": 0.86,
+  "estimatedFidelity": 0.86,
+  "targetThreshold": 0.7,
+  "materialId": "stone-olive",
+  "sourceImage": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\stone-olive.png",
+  "outDir": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\stone-olive",
+  "palette": [
+    "#06181C",
+    "#02090B",
+    "#202F30",
+    "#706152",
+    "#D0AC96"
+  ],
+  "maps": {
+    "albedo": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\stone-olive\\stone-olive_albedo.png",
+      "url": "stone-olive_albedo.png",
+      "channel": "albedo",
+      "source": "reference-pixel-extraction"
+    },
+    "roughness": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\stone-olive\\stone-olive_roughness.png",
+      "url": "stone-olive_roughness.png",
+      "channel": "roughness",
+      "source": "reference-pixel-extraction"
+    },
+    "height": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\stone-olive\\stone-olive_height.png",
+      "url": "stone-olive_height.png",
+      "channel": "height",
+      "source": "reference-pixel-extraction"
+    },
+    "normal": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\stone-olive\\stone-olive_normal.png",
+      "url": "stone-olive_normal.png",
+      "channel": "normal",
+      "source": "reference-pixel-extraction"
+    },
+    "ao": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\stone-olive\\stone-olive_ao.png",
+      "url": "stone-olive_ao.png",
+      "channel": "ao",
+      "source": "reference-pixel-extraction"
+    }
+  },
+  "diagnostics": {
+    "sourceWidth": 22,
+    "sourceHeight": 58,
+    "mapSize": 1024,
+    "cropBBoxPixels": {
+      "x": 0,
+      "y": 0,
+      "width": 22,
+      "height": 58
+    },
+    "mask": {
+      "backgroundColor": "#4C483E",
+      "backgroundNoise": 197.254,
+      "transparentPixelFraction": 0.0,
+      "foregroundCoverage": 0.7876
+    },
+    "mapStats": {
+      "valueRange": 0.6901,
+      "heightP90Gradient": 0.01858,
+      "roughnessBase": 0.686,
+      "roughnessVariation": 0.05,
+      "normalStrength": 0.178,
+      "blurRadius": 21
+    },
+    "palette": [
+      "#06181C",
+      "#02090B",
+      "#202F30",
+      "#706152",
+      "#D0AC96"
+    ]
+  },
+  "warnings": [
+    "single-image inverse rendering cannot prove true physical PBR; confidence is capped"
+  ],
+  "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
+}

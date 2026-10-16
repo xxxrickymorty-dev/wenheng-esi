@@ -1,0 +1,85 @@
+{
+  "ok": true,
+  "verdict": "pass",
+  "confidence": 0.856,
+  "estimatedFidelity": 0.856,
+  "targetThreshold": 0.7,
+  "materialId": "pool-water",
+  "sourceImage": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\crops\\pool-water.png",
+  "outDir": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\pool-water",
+  "palette": [
+    "#76B8B5",
+    "#76B3AC",
+    "#E3C7B0",
+    "#589494",
+    "#296666"
+  ],
+  "maps": {
+    "albedo": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\pool-water\\pool-water_albedo.png",
+      "url": "pool-water_albedo.png",
+      "channel": "albedo",
+      "source": "reference-pixel-extraction"
+    },
+    "roughness": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\pool-water\\pool-water_roughness.png",
+      "url": "pool-water_roughness.png",
+      "channel": "roughness",
+      "source": "reference-pixel-extraction"
+    },
+    "height": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\pool-water\\pool-water_height.png",
+      "url": "pool-water_height.png",
+      "channel": "height",
+      "source": "reference-pixel-extraction"
+    },
+    "normal": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\pool-water\\pool-water_normal.png",
+      "url": "pool-water_normal.png",
+      "channel": "normal",
+      "source": "reference-pixel-extraction"
+    },
+    "ao": {
+      "path": "C:\\Users\\damn\\Desktop\\首届高校图书馆\\wenheng\\recon\\yunnan-library\\material-evidence\\pool-water\\pool-water_ao.png",
+      "url": "pool-water_ao.png",
+      "channel": "ao",
+      "source": "reference-pixel-extraction"
+    }
+  },
+  "diagnostics": {
+    "sourceWidth": 220,
+    "sourceHeight": 65,
+    "mapSize": 1024,
+    "cropBBoxPixels": {
+      "x": 0,
+      "y": 0,
+      "width": 220,
+      "height": 65
+    },
+    "mask": {
+      "backgroundColor": "#76BAB2",
+      "backgroundNoise": 113.539,
+      "transparentPixelFraction": 0.0,
+      "foregroundCoverage": 0.8787
+    },
+    "mapStats": {
+      "valueRange": 0.3903,
+      "heightP90Gradient": 0.02083,
+      "roughnessBase": 0.691,
+      "roughnessVariation": 0.05,
+      "normalStrength": 0.181,
+      "blurRadius": 21
+    },
+    "palette": [
+      "#76B8B5",
+      "#76B3AC",
+      "#E3C7B0",
+      "#589494",
+      "#296666"
+    ]
+  },
+  "warnings": [
+    "single-image inverse rendering cannot prove true physical PBR; confidence is capped"
+  ],
+  "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
+}
