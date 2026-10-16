@@ -7,6 +7,7 @@ import { getCollation, type CollationRow } from './api-collation'
 import { getFacts } from './api-workbench'
 import { Icon } from './icons'
 import { appHref, errorNote } from './lib/status'
+import { collationSectionLabel } from './lib/labels'
 
 const CAP = 120   // 单个分组最多渲染这么多条（大表组可能几百条）；其余提示走搜索
 
@@ -134,7 +135,7 @@ export function Reading({ period }: { period: string | null }) {
             {sections.map(([k, list]) => (
               <a key={k} className="nav-i" href="#" aria-current={k === sec}
                  onClick={(e) => { e.preventDefault(); setSec(k) }}>
-                <span>{k}</span><span className="n">{list.length}</span>
+                <span>{collationSectionLabel(k)}</span><span className="n">{list.length}</span>
               </a>
             ))}
             <div className="kv rd-sep">
@@ -145,7 +146,7 @@ export function Reading({ period }: { period: string | null }) {
           {/* 中：改动卡 */}
           <div className="col-m">
             <h3 className="baseline-row">
-              {sec}
+              {sec ? collationSectionLabel(sec) : ''}
               <span className="hint mono ml-auto">{shown.length} 处</span>
             </h3>
             <div className="mt-12">

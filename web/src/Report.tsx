@@ -19,6 +19,7 @@ import { getCharts, getCollation, type ChartRow, type CollationRow } from './api
 import { getFacts, type Facts } from './api-workbench'
 import { Icon } from './icons'
 import { APPROVAL_LABEL, approvalLabel, appHref, errorNote } from './lib/status'
+import { collationSectionLabel } from './lib/labels'
 
 /** 人工空位的来源说人话（票 14）：内部脚本名不直出面客 */
 function humanSource(source?: string): string {
@@ -217,7 +218,7 @@ function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSee
                 {Object.entries(bySection).map(([sec, n]) => (
                   <a className="rc-chip" key={sec}
                      href={`/app/?view=reading&period=${encodeURIComponent(period ?? '')}&section=${encodeURIComponent(sec)}`}>
-                    {sec} <b>{n}</b>
+                    {collationSectionLabel(sec)} <b>{n}</b>
                   </a>
                 ))}
               </div>

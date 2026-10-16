@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { getCharts, type ChartRow } from './api-collation'
 import { Icon } from './icons'
 import { appHref, errorNote } from './lib/status'
+import { chartGroupLabel } from './lib/labels'
 
 export function Charts({ period }: { period: string | null }) {
   const [rows, setRows] = useState<ChartRow[] | null>(null)
@@ -28,7 +29,7 @@ export function Charts({ period }: { period: string | null }) {
   const shown = useMemo(() => {
     if (!rows) return []
     const k = q.trim().toLowerCase()
-    return k ? rows.filter((r) => `${r.group} ${r.name}`.toLowerCase().includes(k)) : rows
+    return k ? rows.filter((r) => `${chartGroupLabel(r.group)} ${r.group} ${r.name}`.toLowerCase().includes(k)) : rows
   }, [rows, q])
 
   const byGroup = useMemo(() => {
@@ -71,12 +72,12 @@ export function Charts({ period }: { period: string | null }) {
           {byGroup.map(([g, list]) => (
             <div key={g}>
               <div className="sec-h">
-                <h3>{g}</h3>
+                <h3>{chartGroupLabel(g)}</h3>
                 <span className="hint mono">{list.length} 张</span>
               </div>
               <div className="gal">
                 {list.map((c) => (
-                  <a key={c.url} href={c.url} target="_blank" rel="noreferrer" title={`${g} / ${c.name}`}>
+                  <a key={c.url} href={c.url} target="_blank" rel="noreferrer" title={`${chartGroupLabel(g)} / ${c.name}`}>
                     <img src={c.url} alt={c.name} loading="lazy" decoding="async"
                          className="gal-img" />
                     <span className="hint fs-13">{c.name}</span>
