@@ -674,7 +674,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
    ⚠ rv- 前缀：报告区内部与右栏自成一体，不碰既有类。
    ========================================================================== */
 .rv-lead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 2px 0}
-.rv-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start;margin-top:14px}
+.rv-grid{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:18px;align-items:start;margin-top:14px}
 @media (max-width:1080px){
   .rv-grid{grid-template-columns:1fr}
   /* 窄屏单列：右栏回到普通流，取消吸顶与内滚（!important 压过后面的基础规则） */

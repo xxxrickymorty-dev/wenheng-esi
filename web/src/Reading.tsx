@@ -210,12 +210,7 @@ export function Reading({ period }: { period: string | null }) {
                   {(hover.oldPreview ?? hover.old ?? '（空）')} → {(hover.manual ? '待人工补录' : (hover.newPreview ?? hover.new ?? '（空）'))}
                 </div>
               </div>
-            ) : (
-              <div className="pop op-55">
-                <div className="ph">出处</div>
-                <div className="pc">（把光标移到左侧改动卡上）</div>
-              </div>
-            )}
+            ) : null}
             <p className="hint mt-12">
               签单去<a href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}>审核台</a>。
             </p>
