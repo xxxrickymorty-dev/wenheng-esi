@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>选章节 · 汇-绿蓝 02 — 静态稿</title>
+<style>
+  /* ============================================================
+     汇-绿蓝 整套 · 02 选章节（站二）
+     这一站是人的决定，故绿器为主（工序／人做主），蓝场退到次席
+     只留读数。器件用「水位标尺」表示已选占比，不动戳印与钤印
+     ——那两件要到站四、五才落。屏题＝站名「选章节」。
+     状态词只两套：任务＋签发。动作叫「签单」，状态叫「签发」。
+     ============================================================ */
+  :root{
+    --blue:#17456E; --blue-2:#0F2E4C; --blue-3:#2F6B8E;
+    --blue-4:#8FB6CE; --blue-5:#DCE8F0;
+    --green:#26483B; --green-2:#163228; --green-3:#2F7A58;
+    --green-4:#7FB79B; --green-5:#DFEDE6;
+    --paper:#F2EFE6; --paper-2:#E4DFD0;
+    --ink:#15222B; --ink-2:#43525C; --ink-3:#7B8892;
+    --red:#B23A2B;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--green-3);color:#fff}
+
+  .bar{background:var(--blue-2);height:60px;display:flex;align-items:center;gap:22px;padding:0 30px}
+  .bar .wm{font-family:var(--serif);font-size:20px;letter-spacing:.18em;color:var(--blue-5)}
+  .bar .sub{font-family:var(--kai);font-size:10.5px;letter-spacing:.22em;
+    color:rgba(220,232,240,.5);line-height:1.55}
+  .stations{display:flex;gap:2px;margin-left:14px}
+  .stations a{padding:8px 14px;font-family:var(--kai);font-size:12px;letter-spacing:.14em;
+    color:rgba(220,232,240,.62);white-space:nowrap}
+  .stations a.on{color:var(--blue-2);background:var(--blue-5);font-weight:700}
+  .stations a.done{color:var(--green-4)}
+  .bar .r{margin-left:auto;display:flex;align-items:center;gap:16px;font-family:var(--kai);
+    font-size:11px;letter-spacing:.22em;color:rgba(220,232,240,.5)}
+  .pal{display:inline-flex;gap:7px}
+  .pal i{width:22px;height:12px;display:inline-block;border:1px solid rgba(220,232,240,.26)}
+  .pal i.g{background:var(--green-3)}.pal i.b{background:var(--blue-3)}
+  .pal i.on{outline:2px solid var(--blue-5);outline-offset:2px}
+
+  /* 绿场题头：人做主 */
+  .hero{background:var(--green);color:var(--green-5);padding:44px 30px 38px}
+  .hi{max-width:1280px;margin:0 auto;display:grid;
+    grid-template-columns:minmax(0,1fr) 300px;gap:44px;align-items:end}
+  .hi .ov{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:rgba(223,237,230,.55)}
+  .hi h1{font-family:var(--serif);font-size:clamp(38px,5vw,66px);line-height:1.06;
+    letter-spacing:.04em;margin-top:12px}
+  .hi .deck{font-family:var(--kai);font-size:15px;line-height:2.05;
+    color:rgba(223,237,230,.82);margin-top:14px;max-width:34ch}
+  .hi .acts{margin-top:24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  .btn{background:var(--green-5);color:var(--green-2);border:0;padding:13px 28px;font-size:15px;
+    letter-spacing:.14em;font-weight:700}
+  .btn:hover{background:#fff}
+  .hi .ghost{font-family:var(--kai);font-size:13px;letter-spacing:.18em;color:rgba(223,237,230,.78);
+    box-shadow:inset 0 -1px 0 rgba(223,237,230,.38);padding-bottom:3px}
+
+  /* 水位：已选占比 */
+  .gauge{background:var(--green-2);border:1px solid rgba(223,237,230,.2);padding:16px 18px}
+  .gauge .gh{display:flex;justify-content:space-between;font-family:var(--kai);
+    font-size:10px;letter-spacing:.32em;color:rgba(223,237,230,.6)}
+  .gauge .scale{position:relative;height:132px;margin-top:11px;background:var(--green-2);
+    border:1px solid rgba(223,237,230,.16);overflow:hidden}
+  .gauge .ticks{position:absolute;inset:0;display:flex;justify-content:space-between;padding:0 3px;z-index:3}
+  .gauge .tk{width:1.5px;height:9px;background:rgba(223,237,230,.28);align-self:flex-start}
+  .gauge .tk.maj{height:17px;background:rgba(223,237,230,.55)}
+  .gauge .water{position:absolute;left:0;right:0;bottom:0;height:86%;
+    background:var(--green-3);border-top:2px solid var(--green-4)}
+  .gauge .thr{position:absolute;left:0;right:0;height:0;border-top:2px dashed var(--red);
+    z-index:4;bottom:100%}
+  .gauge .thr .lb{position:absolute;right:6px;top:-22px;font-family:var(--kai);
+    font-size:9.5px;letter-spacing:.24em;color:#F0B5A6;background:var(--green-2);padding:2px 8px}
+  .gauge .read{position:absolute;left:13px;bottom:10px;z-index:5;font-family:var(--mono);
+    font-size:26px;letter-spacing:.1em;color:var(--green-5)}
+  .gauge .read small{display:block;font-family:var(--kai);font-size:9.5px;
+    letter-spacing:.3em;color:rgba(223,237,230,.6);margin-top:2px}
+
+  .band{background:var(--green-2);color:var(--green-5);padding:15px 30px;display:flex;
+    gap:20px;flex-wrap:wrap;align-items:center;font-family:var(--kai);font-size:12px;letter-spacing:.22em}
+  .band .pill{padding:4px 13px;font-family:var(--serif);font-size:13px;letter-spacing:.18em}
+  .band .pill.g{background:var(--green-3);color:#08201A}
+  .band .pill.b{background:var(--blue-3);color:var(--blue-5)}
+  .band .r{margin-left:auto;color:rgba(223,237,230,.62)}
+
+  .main{max-width:1280px;margin:0 auto;padding:38px 30px 0;
+    display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr);gap:44px;align-items:start}
+  .sect .hd{display:flex;align-items:baseline;gap:16px;border-bottom:2px solid var(--ink);
+    padding-bottom:11px;flex-wrap:wrap}
+  .sect h2{font-family:var(--serif);font-size:22px;letter-spacing:.1em}
+  .sect h2 .n{font-family:var(--kai);font-size:10.5px;letter-spacing:.42em;color:var(--ink-3);
+    display:block;margin-bottom:2px;font-weight:400}
+  .sect .lnk{margin-left:auto;font-family:var(--kai);font-size:12.5px;letter-spacing:.18em;
+    color:var(--green);box-shadow:inset 0 -1px 0 var(--green);padding-bottom:2px}
+
+  /* 章节清单 */
+  .chaps{margin-top:4px}
+  .ch{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:14px;align-items:center;
+    padding:11px 0;border-bottom:1px solid var(--paper-2)}
+  .ch .bx{width:19px;height:19px;border:1.5px solid var(--green-3);flex:none;
+    display:grid;place-items:center}
+  .ch.on .bx{background:var(--green-3)}
+  .ch .bx svg{width:11px;height:11px;display:block}
+  .ch .nm{font-family:var(--serif);font-size:15px;letter-spacing:.03em}
+  .ch .nm small{display:block;font-family:var(--kai);font-size:11px;color:var(--ink-3);
+    letter-spacing:.14em;margin-top:2px}
+  .ch .pg{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--ink-3)}
+  .ch .tg{font-family:var(--kai);font-size:10.5px;letter-spacing:.18em;padding:3px 10px;
+    background:rgba(47,122,88,.14);color:var(--green)}
+  .ch.off .tg{background:var(--paper-2);color:var(--ink-3)}
+  .ch.off .nm{color:var(--ink-3)}
+
+  /* 选中摘要 */
+  .sum{background:var(--green);color:var(--green-5);padding:20px 22px}
+  .sum .sh{font-family:var(--kai);font-size:10.5px;letter-spacing:.36em;
+    color:rgba(223,237,230,.6);border-bottom:1px solid rgba(223,237,230,.2);padding-bottom:10px}
+  .sum .big{font-family:var(--serif);font-size:44px;line-height:1;letter-spacing:.02em;
+    margin-top:16px;font-variant-numeric:tabular-nums}
+  .sum .big small{font-family:var(--kai);font-size:12px;letter-spacing:.32em;
+    color:rgba(223,237,230,.62);display:block;margin-top:6px}
+  .sum ul{list-style:none;margin-top:18px}
+  .sum li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;
+    border-bottom:1px solid rgba(223,237,230,.18);font-family:var(--kai);font-size:12px;
+    letter-spacing:.14em;color:rgba(223,237,230,.82)}
+  .sum li b{font-family:var(--serif);color:var(--green-5);letter-spacing:.08em}
+  .sum .note{margin-top:16px;font-family:var(--kai);font-size:11.5px;line-height:1.95;
+    letter-spacing:.12em;color:rgba(223,237,230,.72)}
+
+  .data{max-width:1280px;margin:38px auto 0;padding:0 30px}
+  .data .dt{font-family:var(--kai);font-size:10.5px;letter-spacing:.42em;color:var(--ink-3);
+    border-bottom:2px solid var(--ink);padding-bottom:11px}
+  .data dl{margin-top:6px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 32px}
+  .data .pair{display:flex;justify-content:space-between;gap:12px;
+    border-bottom:1px solid var(--paper-2);padding:10px 0;font-family:var(--kai);font-size:12.5px}
+  .data dt{color:var(--ink-3);letter-spacing:.16em;white-space:nowrap}
+  .data dd{color:var(--ink);text-align:right;overflow-wrap:anywhere}
+  .data dd b{font-family:var(--serif);font-size:16px;letter-spacing:.04em}
+
+  .foot{background:var(--ink);color:rgba(220,232,240,.62);margin-top:44px;padding:22px 30px;
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11px;letter-spacing:.32em}
+  .foot b{font-family:var(--serif);font-size:12.5px;letter-spacing:.22em;color:var(--blue-5);display:block}
+  .foot .dual{display:flex;gap:11px;align-items:center}
+  .foot .dual i{width:24px;height:12px;display:inline-block}
+  .foot .dual i.g{background:var(--green-3)}
+  .foot .dual i.b{background:var(--blue-3)}
+
+  @media (max-width:1040px){
+    .hi{grid-template-columns:1fr;gap:30px}
+    .main{grid-template-columns:1fr;gap:32px}
+    .data dl{grid-template-columns:1fr 1fr}
+    .stations{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="wm">文衡</span>
+  <span class="sub">雲 南 大 學 圖 書 館<br>學 科 信 息 參 考</span>
+  <nav class="stations" aria-label="五站五屏">
+    <a class="done" href="#">✓ 取数核验</a>
+    <a class="on" href="#">2 选章节</a>
+    <a href="#">3 预测选模</a>
+    <a href="#">4 生成初稿</a>
+    <a href="#">5 核验定稿</a>
+  </nav>
+  <span class="r">
+    <span>出 报 告 ↖</span>
+    <span class="pal"><i class="g on" title="绿·器"></i><i class="b" title="蓝·场"></i></span>
+  </span>
+</header>
+
+<section class="hero">
+  <div class="hi">
+    <div>
+      <div class="ov">站 二 · 雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+      <h1>选章节</h1>
+      <p class="deck">按大纲勾出本期要出的章节。这一站是人的决定，勾完才能往下走。</p>
+      <div class="acts">
+        <button class="btn">按 大 纲 全 选 →</button>
+        <a class="ghost" href="#">看上一期选了什么</a>
+      </div>
+    </div>
+
+    <div class="gauge">
+      <div class="gh"><b>已 选 占 比</b><span>2 0 2 6 0 9</span></div>
+      <div class="scale">
+        <div class="ticks" aria-hidden="true">
+          <span class="tk maj"></span><span class="tk"></span><span class="tk"></span><span class="tk"></span>
+          <span class="tk maj"></span><span class="tk"></span><span class="tk"></span><span class="tk"></span>
+          <span class="tk maj"></span><span class="tk"></span><span class="tk"></span><span class="tk"></span>
+          <span class="tk maj"></span>
+        </div>
+        <div class="water"></div>
+        <div class="thr"><span class="lb">全 選 線</span></div>
+        <div class="read">86%<small>1 0 / 1 1</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="band">
+  <span class="pill g">任务 · 进行中</span>
+  <span class="pill b">签发 · 未签发</span>
+  <span class="r">第 39 期　·　2 0 2 6 0 9　·　屏 题 ＝ 站 名</span>
+</div>
+
+<section class="main">
+  <div class="sect">
+    <div class="hd">
+      <h2><span class="n">报 告 大 纲 · 附 录 A</span>章节清单</h2>
+      <a class="lnk" href="#">上一期选了什么 →</a>
+    </div>
+    <div class="chaps">
+      <div class="ch on"><span class="bx"><svg viewBox="0 0 11 11" fill="none" stroke="#F2EFE6"
+        stroke-width="2"><path d="M2 6l2.5 2.5L9 3"/></svg></span>
+        <div class="nm">一　概述<small>本期总说</small></div><div class="pg">P. 1</div><div class="tg">已 选</div></div>
+      <div class="ch on"><span class="bx"><svg viewBox="0 0 11 11" fill="none" stroke="#F2EFE6"
+        stroke-width="2"><path d="M2 6l2.5 2.5L9 3"/></svg></span>
+        <div class="nm">二　发展情况<small>含表 1 学科排名</small></div><div class="pg">P. 3</div><div class="tg">已 选</div></div>
+      <div class="ch on"><span class="bx"><svg viewBox="0 0 11 11" fill="none" stroke="#F2EFE6"
+        stroke-width="2"><path d="M2 6l2.5 2.5L9 3"/></svg></span>
+        <div class="nm">　　表 2　高被引滚动<small>滚动窗口</small></div><div class="pg">P. 7</div><div class="tg">已 选</div></div>
+      <div class="ch on"><span class="bx"><svg viewBox="0 0 11 11" fill="none" stroke="#F2EFE6"
+        stroke-width="2"><path d="M2 6l2.5 2.5L9 3"/></svg></span>
+        <div class="nm">　　CNCI 与月度发文<small>两组曲线</small></div><div class="pg">P. 9</div><div class="tg">已 选</div></div>
+      <div class="ch on"><span class="bx"><svg viewBox="0 0 11 11" fill="none" stroke="#F2EFE6"
+        stroke-width="2"><path d="M2 6l2.5 2.5L9 3"/></svg></span>
+        <div class="nm">三　进入预测<small>含表 3</small></div><div class="pg">P. 12</div><div class="tg">已 选</div></div>
+      <div class="ch on"><span class="bx"><svg viewBox="0 0 11 11" fill="none" stroke="#F2EFE6"
+        stroke-width="2"><path d="M2 6l2.5 2.5L9 3"/></svg></span>
+        <div class="nm">四　专题<small>贡献度与热力图</small></div><div class="pg">P. 16</div><div class="tg">已 选</div></div>
+      <div class="ch on"><span class="bx"><svg viewBox="0 0 11 11" fill="none" stroke="#F2EFE6"
+        stroke-width="2"><path d="M2 6l2.5 2.5L9 3"/></svg></span>
+        <div class="nm">　　网络图<small>合作者网络</small></div><div class="pg">P. 19</div><div class="tg">已 选</div></div>
+      <div class="ch on"><span class="bx"><svg viewBox="0 0 11 11" fill="none" stroke="#F2EFE6"
+        stroke-width="2"><path d="M2 6l2.5 2.5L9 3"/></svg></span>
+        <div class="nm">附录 A　每期操作清单<small>人工→agent 对照</small></div><div class="pg">P. 21</div><div class="tg">已 选</div></div>
+      <div class="ch on"><span class="bx"><svg viewBox="0 0 11 11" fill="none" stroke="#F2EFE6"
+        stroke-width="2"><path d="M2 6l2.5 2.5L9 3"/></svg></span>
+        <div class="nm">附录 B　图表模板清单<small>C1–C8</small></div><div class="pg">P. 23</div><div class="tg">已 选</div></div>
+      <div class="ch on"><span class="bx"><svg viewBox="0 0 11 11" fill="none" stroke="#F2EFE6"
+        stroke-width="2"><path d="M2 6l2.5 2.5L9 3"/></svg></span>
+        <div class="nm">名词解释<small>ESI 与流程用词</small></div><div class="pg">P. 25</div><div class="tg">已 选</div></div>
+      <div class="ch off"><span class="bx"></span>
+        <div class="nm">学院顶尖表<small>第 5 期金母版才有</small></div><div class="pg">—</div><div class="tg">未 選</div></div>
+    </div>
+
+    <p style="margin-top:18px;font-family:var(--kai);font-size:12px;line-height:2;
+      letter-spacing:.12em;color:var(--ink-3);max-width:92ch">
+      <b style="color:var(--ink-2);font-family:var(--serif);letter-spacing:.16em">與 報 告 的 關 係</b>
+      本期勾中的章节，决定后面出稿会排哪些图、哪些表。不勾的章节不排图也不进正文。改了要重出，未签发的初稿随时可改。</p>
+  </div>
+
+  <div>
+    <div class="sum">
+      <div class="sh">本 期 勾 中 · 摘 要</div>
+      <div class="big">10 / 11<small>章 節 已 選</small></div>
+      <ul>
+        <li><span>圖 表 模 板</span><b>C1 – C8</b></li>
+        <li><span>表 1</span><b>學 科 排 名</b></li>
+        <li><span>表 2</span><b>高 被 引 滾 動</b></li>
+        <li><span>表 3</span><b>進 入 預 測</b></li>
+        <li><span>預 計 頁 數</span><b>約 26 頁</b></li>
+      </ul>
+      <div class="note">学院顶尖表本期不选——它只在有学院数据的期次出现。改了勾选要重出，签发前随便改。</div>
+    </div>
+  </div>
+</section>
+
+<section class="data">
+  <div class="dt">本 期 數 據</div>
+  <dl>
+    <div class="pair"><dt>期 次</dt><dd><b>202609</b>　第 39 期</dd></div>
+    <div class="pair"><dt>章 節 已 選</dt><dd><b>10 / 11</b></dd></div>
+    <div class="pair"><dt>圖 表 模 板</dt><dd>C1 – C8</dd></div>
+    <div class="pair"><dt>上 期 選 法</dt><dd>11 / 11</dd></div>
+    <div class="pair"><dt>最 後 修 改</dt><dd>2026-10-12 22:18</dd></div>
+    <div class="pair"><dt>任 務</dt><dd>进行中</dd></div>
+    <div class="pair"><dt>簽 發</dt><dd>未签发</dd></div>
+    <div class="pair"><dt>數 據 源</dt><dd>已核对并并入</dd></div>
+    <div class="pair"><dt>下 一 站</dt><dd>预测选模</dd></div>
+  </dl>
+</section>
+
+<footer class="foot">
+  <div><b>文衡 · 汇</b>雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+  <div class="dual"><i class="b"></i><i class="g"></i>　藍 為 場　·　綠 為 器</div>
+  <div>站 二 / 五　·　選 章 節</div>
+</footer>
+</body>
+</html>

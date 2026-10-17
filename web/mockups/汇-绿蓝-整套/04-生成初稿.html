@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生成初稿 · 汇-绿蓝 04 — 静态稿</title>
+<style>
+  /* ============================================================
+     汇-绿蓝 整套 · 04 生成初稿（站四）
+     机器「一键生成」出稿，人「生成初稿」那一步看完再交复核。
+     蓝场（时序：翻牌）与绿器（戳印）在此相接——**第一枚橡皮戳
+     「已出稿」落在这屏**，第二枚留给复核、钤印留给签单。
+     屏题＝站名「生成初稿」。状态词只两套：任务＋签发。
+     ============================================================ */
+  :root{
+    --blue:#17456E; --blue-2:#0F2E4C; --blue-3:#2F6B8E;
+    --blue-4:#8FB6CE; --blue-5:#DCE8F0;
+    --green:#26483B; --green-2:#163228; --green-3:#2F7A58;
+    --green-4:#7FB79B; --green-5:#DFEDE6;
+    --paper:#F2EFE6; --paper-2:#E4DFD0;
+    --ink:#15222B; --ink-2:#43525C; --ink-3:#7B8892;
+    --red:#B23A2B;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--green-3);color:#fff}
+
+  .bar{background:var(--blue-2);height:60px;display:flex;align-items:center;gap:22px;padding:0 30px}
+  .bar .wm{font-family:var(--serif);font-size:20px;letter-spacing:.18em;color:var(--blue-5)}
+  .bar .sub{font-family:var(--kai);font-size:10.5px;letter-spacing:.22em;
+    color:rgba(220,232,240,.5);line-height:1.55}
+  .stations{display:flex;gap:2px;margin-left:14px}
+  .stations a{padding:8px 14px;font-family:var(--kai);font-size:12px;letter-spacing:.14em;
+    color:rgba(220,232,240,.62);white-space:nowrap}
+  .stations a.on{color:var(--blue-2);background:var(--blue-5);font-weight:700}
+  .stations a.done{color:var(--green-4)}
+  .bar .r{margin-left:auto;display:flex;align-items:center;gap:16px;font-family:var(--kai);
+    font-size:11px;letter-spacing:.22em;color:rgba(220,232,240,.5)}
+  .pal{display:inline-flex;gap:7px}
+  .pal i{width:22px;height:12px;display:inline-block;border:1px solid rgba(220,232,240,.26)}
+  .pal i.g{background:var(--green-3)}.pal i.b{background:var(--blue-3)}
+  .pal i.on{outline:2px solid var(--blue-5);outline-offset:2px}
+
+  .hero{background:var(--blue);color:var(--blue-5);padding:44px 30px 38px}
+  .hi{max-width:1280px;margin:0 auto;display:grid;
+    grid-template-columns:minmax(0,1fr) auto;gap:48px;align-items:end}
+  .hi .ov{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:rgba(220,232,240,.55)}
+  .hi h1{font-family:var(--serif);font-size:clamp(38px,5vw,66px);line-height:1.06;
+    letter-spacing:.04em;margin-top:12px}
+  .hi .deck{font-family:var(--kai);font-size:15px;line-height:2.05;
+    color:rgba(220,232,240,.8);margin-top:14px;max-width:34ch}
+  .hi .acts{margin-top:24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  .btn{background:var(--green-3);color:#08201A;border:0;padding:13px 28px;font-size:15px;
+    letter-spacing:.14em;font-weight:700}
+  .btn:hover{background:#3A9069}
+  .hi .ghost{font-family:var(--kai);font-size:13px;letter-spacing:.18em;color:rgba(220,232,240,.78);
+    box-shadow:inset 0 -1px 0 rgba(220,232,240,.38);padding-bottom:3px}
+
+  .flaps{display:flex;flex-direction:column;gap:15px;align-items:flex-end}
+  .flaps .grp{text-align:right}
+  .flaps .gl{font-family:var(--kai);font-size:10px;letter-spacing:.36em;
+    color:rgba(220,232,240,.55);margin-bottom:7px}
+  .flap-row{display:flex;gap:5px}
+  .flap{position:relative;width:36px;height:50px;background:var(--blue-2);
+    display:grid;place-items:center;font-family:var(--mono);font-size:25px;font-weight:700;
+    color:var(--blue-5);font-variant-numeric:tabular-nums}
+  .flap::after{content:"";position:absolute;left:0;right:0;top:50%;height:2px;background:var(--blue)}
+  .flap.sm{width:27px;height:38px;font-size:18px}
+  .flap.sm::after{height:1.5px}
+  .flap.colon{width:14px;background:transparent;font-size:20px;color:rgba(220,232,240,.4)}
+  .flap.colon::after{display:none}
+  .flap.gap{width:16px;background:transparent}
+  .flap.gap::after{display:none}
+  .flap.gr{color:var(--green-4)}
+  .flap.rd{color:#E8917C}
+
+  .band{background:var(--green-2);color:var(--green-5);padding:15px 30px;display:flex;
+    gap:20px;flex-wrap:wrap;align-items:center;font-family:var(--kai);font-size:12px;letter-spacing:.22em}
+  .band .pill{padding:4px 13px;font-family:var(--serif);font-size:13px;letter-spacing:.18em}
+  .band .pill.g{background:var(--green-3);color:#08201A}
+  .band .pill.b{background:var(--blue-3);color:var(--blue-5)}
+  .band .r{margin-left:auto;color:rgba(223,237,230,.62)}
+
+  .main{max-width:1280px;margin:0 auto;padding:38px 30px 0;
+    display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr);gap:44px;align-items:start}
+  .sect .hd{display:flex;align-items:baseline;gap:16px;border-bottom:2px solid var(--ink);
+    padding-bottom:11px;flex-wrap:wrap}
+  .sect h2{font-family:var(--serif);font-size:22px;letter-spacing:.1em}
+  .sect h2 .n{font-family:var(--kai);font-size:10.5px;letter-spacing:.42em;color:var(--ink-3);
+    display:block;margin-bottom:2px;font-weight:400}
+  .sect .lnk{margin-left:auto;font-family:var(--kai);font-size:12.5px;letter-spacing:.18em;
+    color:var(--green);box-shadow:inset 0 -1px 0 var(--green);padding-bottom:2px}
+
+  /* 产物清单 */
+  .outs{margin-top:6px}
+  .out{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:14px;align-items:center;
+    padding:11px 0;border-bottom:1px solid var(--paper-2)}
+  .out .ic{width:26px;height:26px;flex:none;color:var(--blue-3)}
+  .out .ic svg{width:100%;height:100%;display:block}
+  .out .nm{font-family:var(--serif);font-size:15px;letter-spacing:.03em}
+  .out .nm small{display:block;font-family:var(--kai);font-size:11px;color:var(--ink-3);
+    letter-spacing:.14em;margin-top:2px}
+  .out .n{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;color:var(--ink-3)}
+  .out .st{font-family:var(--kai);font-size:10.5px;letter-spacing:.18em;padding:3px 11px;
+    background:rgba(47,122,88,.14);color:var(--green)}
+  .out .st.p{background:rgba(47,107,142,.14);color:var(--blue)}
+
+  /* 戳记区：第一枚戳在此落下 */
+  .stampbox{background:var(--paper-2);padding:22px 22px 18px;text-align:center}
+  .stampbox .sh{font-family:var(--kai);font-size:10.5px;letter-spacing:.36em;color:var(--ink-3);
+    border-bottom:1px solid var(--paper,#F2EFE6);padding-bottom:11px}
+  .stampcol{display:flex;gap:20px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:18px}
+  .stp{width:112px;height:112px;position:relative;flex:none}
+  .stp svg{width:100%;height:100%;display:block;overflow:visible}
+  .stp .sx{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;padding:10px}
+  .stp .sx .t{font-family:var(--serif);font-size:11.5px;font-weight:700;line-height:1.35;letter-spacing:.08em}
+  .stp .sx .d{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;margin-top:5px}
+  .stp.g1{color:var(--green-3);transform:rotate(-6deg)}
+  .stp.g2{color:var(--green);transform:rotate(3deg)}
+  .stp.r1{color:var(--red);transform:rotate(-3deg)}
+  .stp.g1 .sx{color:var(--green-2)}
+  .stp.g2 .sx{color:var(--green-2)}
+  .stp.r1 .sx{color:#8B2A1E}
+  .stp.pending{opacity:.42}
+  .stampcap{font-family:var(--kai);font-size:11px;letter-spacing:.32em;color:var(--ink-3);
+    margin-top:16px}
+
+  .data{max-width:1280px;margin:38px auto 0;padding:0 30px}
+  .data .dt{font-family:var(--kai);font-size:10.5px;letter-spacing:.42em;color:var(--ink-3);
+    border-bottom:2px solid var(--ink);padding-bottom:11px}
+  .data dl{margin-top:6px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 32px}
+  .data .pair{display:flex;justify-content:space-between;gap:12px;
+    border-bottom:1px solid var(--paper-2);padding:10px 0;font-family:var(--kai);font-size:12.5px}
+  .data dt{color:var(--ink-3);letter-spacing:.16em;white-space:nowrap}
+  .data dd{color:var(--ink);text-align:right;overflow-wrap:anywhere}
+  .data dd b{font-family:var(--serif);font-size:16px;letter-spacing:.04em}
+
+  .foot{background:var(--ink);color:rgba(220,232,240,.62);margin-top:44px;padding:22px 30px;
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11px;letter-spacing:.32em}
+  .foot b{font-family:var(--serif);font-size:12.5px;letter-spacing:.22em;color:var(--blue-5);display:block}
+  .foot .dual{display:flex;gap:11px;align-items:center}
+  .foot .dual i{width:24px;height:12px;display:inline-block}
+  .foot .dual i.g{background:var(--green-3)}
+  .foot .dual i.b{background:var(--blue-3)}
+
+  @media (max-width:1040px){
+    .hi{grid-template-columns:1fr;gap:30px}
+    .flaps{align-items:flex-start}.flaps .grp{text-align:left}
+    .main{grid-template-columns:1fr;gap:32px}
+    .data dl{grid-template-columns:1fr 1fr}
+    .stations{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="wm">文衡</span>
+  <span class="sub">雲 南 大 學 圖 書 館<br>學 科 信 息 參 考</span>
+  <nav class="stations" aria-label="五站五屏">
+    <a class="done" href="#">✓ 取数核验</a>
+    <a class="done" href="#">✓ 选章节</a>
+    <a class="done" href="#">✓ 预测选模</a>
+    <a class="on" href="#">4 生成初稿</a>
+    <a href="#">5 核验定稿</a>
+  </nav>
+  <span class="r">
+    <span>出 报 告 ↖</span>
+    <span class="pal"><i class="b on" title="蓝·场"></i><i class="g on" title="绿·器"></i></span>
+  </span>
+</header>
+
+<section class="hero">
+  <div class="hi">
+    <div>
+      <div class="ov">站 四 · 雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+      <h1>生成初稿</h1>
+      <p class="deck">机器把稿子排出来（一键生成），人看完再交复核。任务结束不代表报告合格或已签发。</p>
+      <div class="acts">
+        <button class="btn">一 键 生 成 →</button>
+        <a class="ghost" href="#">看运行档案</a>
+      </div>
+    </div>
+
+    <div class="flaps" aria-label="生成时刻">
+      <div class="grp">
+        <div class="gl">期 次 · 目 錄 號</div>
+        <div class="flap-row">
+          <span class="flap">2</span><span class="flap">0</span><span class="flap">2</span>
+          <span class="flap gr">6</span><span class="flap rd">0</span><span class="flap rd">9</span>
+        </div>
+      </div>
+      <div class="grp">
+        <div class="gl">一 鍵 生 成 · 完 成</div>
+        <div class="flap-row">
+          <span class="flap sm gr">1</span><span class="flap sm gr">5</span>
+          <span class="flap sm colon">:</span>
+          <span class="flap sm gr">0</span><span class="flap sm gr">3</span>
+          <span class="flap sm gap"></span>
+          <span class="flap sm">1</span><span class="flap sm">5</span>
+          <span class="flap sm colon">:</span>
+          <span class="flap sm">1</span><span class="flap sm">2</span>
+        </div>
+      </div>
+      <div class="grp">
+        <div class="gl">產 物 · 頁 數</div>
+        <div class="flap-row">
+          <span class="flap sm">2</span><span class="flap sm">4</span>
+          <span class="flap sm gap"></span>
+          <span class="flap sm">7</span><span class="flap sm">件</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="band">
+  <span class="pill g">任务 · 已完成</span>
+  <span class="pill b">签发 · 未签发</span>
+  <span class="r">第 39 期　·　2 0 2 6 0 9　·　屏 题 ＝ 站 名</span>
+</div>
+
+<section class="main">
+  <div class="sect">
+    <div class="hd">
+      <h2><span class="n">產 物 · 本 期 成 稿</span>产物清单</h2>
+      <a class="lnk" href="#">打开报告 →</a>
+    </div>
+    <div class="outs">
+      <div class="out">
+        <span class="ic"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M5 3h12l4 4v16H5z"/><line x1="9" y1="12" x2="17" y2="12"/>
+          <line x1="9" y1="17" x2="17" y2="17"/></svg></span>
+        <div class="nm">报告初稿_202609.docx<small>正文 · 五章 ＋ 附录 A/B</small></div>
+        <div class="n">24 頁</div>
+        <div class="st">已 出 稿</div>
+      </div>
+      <div class="out">
+        <span class="ic"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="5" width="20" height="16"/><line x1="3" y1="11" x2="23" y2="11"/>
+          <line x1="13" y1="11" x2="13" y2="21"/></svg></span>
+        <div class="nm">本期图册<small>未进 1% 的学科各一图</small></div>
+        <div class="n">8 幅</div>
+        <div class="st">已 出 稿</div>
+      </div>
+      <div class="out">
+        <span class="ic"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="6" width="20" height="14"/><line x1="3" y1="11" x2="23" y2="11"/>
+          <line x1="3" y1="15.5" x2="23" y2="15.5"/></svg></span>
+        <div class="nm">表 1 · 学科排名<small>22 学科</small></div>
+        <div class="n">1 表</div>
+        <div class="st">已 出 稿</div>
+      </div>
+      <div class="out">
+        <span class="ic"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5">
+          <line x1="3" y1="21" x2="23" y2="21"/><polyline points="4,17 10,11 15,14 22,6"/></svg></span>
+        <div class="nm">表 2 · 高被引滚动<small>滚动窗口</small></div>
+        <div class="n">1 表</div>
+        <div class="st">已 出 稿</div>
+      </div>
+      <div class="out">
+        <span class="ic"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="13" cy="13" r="9"/><line x1="13" y1="7" x2="13" y2="13"/>
+          <line x1="13" y1="13" x2="18" y2="15"/></svg></span>
+        <div class="nm">表 3 · 进入预测<small>接近度前二用此表</small></div>
+        <div class="n">1 表</div>
+        <div class="st">已 出 稿</div>
+      </div>
+      <div class="out">
+        <span class="ic"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="4" width="20" height="18"/><line x1="3" y1="9" x2="23" y2="9"/>
+          <line x1="9" y1="9" x2="9" y2="22"/><line x1="15" y1="9" x2="15" y2="22"/></svg></span>
+        <div class="nm">CNCI 与月度发文<small>图表模板 C1–C8</small></div>
+        <div class="n">2 图</div>
+        <div class="st">已 出 稿</div>
+      </div>
+      <div class="out">
+        <span class="ic"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="9" r="3"/><circle cx="18" cy="16" r="3"/>
+          <line x1="10.5" y1="11" x2="15.5" y2="14"/></svg></span>
+        <div class="nm">专题 · 贡献度与热力图<small>含合作者网络</small></div>
+        <div class="n">2 图</div>
+        <div class="st p">待 複 核</div>
+      </div>
+    </div>
+
+    <p style="margin-top:18px;font-family:var(--kai);font-size:12px;line-height:2;
+      letter-spacing:.12em;color:var(--ink-3);max-width:92ch">
+      <b style="color:var(--ink-2);font-family:var(--serif);letter-spacing:.16em">與 報 告 的 關 係</b>
+      出稿只是机器排完版。这一版还没经过复核，管理员不能下载。复核无异议后签单，才会被标记为「可交付」。要改随时可改，签发前不锁。</p>
+  </div>
+
+  <div>
+    <div class="stampbox">
+      <div class="sh">橡 皮 戳 · 本 期 蓋 章 進 度</div>
+      <div class="stampcol">
+        <!-- 已并入（在此屏之前已落） -->
+        <div class="stp g1">
+          <svg viewBox="0 0 132 132" aria-hidden="true">
+            <defs><filter id="inkA" x="-8%" y="-8%" width="116%" height="116%">
+              <feTurbulence type="fractalNoise" baseFrequency="1.3" numOctaves="2" seed="4"/>
+              <feDisplacementMap in="SourceGraphic" scale="2.4"/></filter></defs>
+            <g filter="url(#inkA)">
+              <circle cx="66" cy="66" r="58" fill="none" stroke="currentColor" stroke-width="4.5"/>
+              <circle cx="66" cy="66" r="49" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            </g>
+          </svg>
+          <div class="sx"><span class="t">已 并 入<br>台 賬</span><span class="d">09.13</span></div>
+        </div>
+        <!-- 已出稿（本屏落下） -->
+        <div class="stp g2">
+          <svg viewBox="0 0 132 132" aria-hidden="true">
+            <defs><filter id="inkB" x="-8%" y="-8%" width="116%" height="116%">
+              <feTurbulence type="fractalNoise" baseFrequency="1.3" numOctaves="2" seed="9"/>
+              <feDisplacementMap in="SourceGraphic" scale="2.4"/></filter></defs>
+            <g filter="url(#inkB)">
+              <rect x="8" y="8" width="116" height="116" fill="none" stroke="currentColor" stroke-width="4.5"/>
+              <rect x="17" y="17" width="98" height="98" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            </g>
+          </svg>
+          <div class="sx"><span class="t">已 出 稿</span><span class="d">10.13 15:03</span></div>
+        </div>
+        <!-- 复核通过（未落） -->
+        <div class="stp r1 pending">
+          <svg viewBox="0 0 132 132" aria-hidden="true">
+            <defs><filter id="inkC" x="-8%" y="-8%" width="116%" height="116%">
+              <feTurbulence type="fractalNoise" baseFrequency="1.3" numOctaves="2" seed="14"/>
+              <feDisplacementMap in="SourceGraphic" scale="2.4"/></filter></defs>
+            <g filter="url(#inkC)">
+              <polygon points="66,8 122,42 108,108 24,108 10,42" fill="none" stroke="currentColor" stroke-width="4.5"/>
+              <polygon points="66,20 112,47 101,98 31,98 20,47" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            </g>
+          </svg>
+          <div class="sx"><span class="t">復 核 通 過</span><span class="d">PENDING</span></div>
+        </div>
+      </div>
+      <div class="stampcap">三 枚 橡 皮 戳 · 本 期 已 鈐 二</div>
+    </div>
+  </div>
+</section>
+
+<section class="data">
+  <div class="dt">本 期 數 據</div>
+  <dl>
+    <div class="pair"><dt>期 次</dt><dd><b>202609</b>　第 39 期</dd></div>
+    <div class="pair"><dt>一 鍵 生 成</dt><dd>2026-10-13 15:03</dd></div>
+    <div class="pair"><dt>產 物</dt><dd><b>7</b> 件 · 約 24 頁</dd></div>
+    <div class="pair"><dt>圖 冊</dt><dd>8 幅</dd></div>
+    <div class="pair"><dt>報 告 文 件</dt><dd>报告初稿_202609.docx</dd></div>
+    <div class="pair"><dt>任 務</dt><dd>已完成</dd></div>
+    <div class="pair"><dt>簽 發</dt><dd>未签发</dd></div>
+    <div class="pair"><dt>下 一 站</dt><dd>核验定稿</dd></div>
+    <div class="pair"><dt>下 載</dt><dd>未签发初稿不得下载</dd></div>
+  </dl>
+</section>
+
+<footer class="foot">
+  <div><b>文衡 · 汇</b>雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+  <div class="dual"><i class="b"></i><i class="g"></i>　藍 為 場　·　綠 為 器</div>
+  <div>站 四 / 五　·　生 成 初 稿</div>
+</footer>
+</body>
+</html>
