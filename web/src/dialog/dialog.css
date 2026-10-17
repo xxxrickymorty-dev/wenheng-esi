@@ -161,15 +161,16 @@
   border:1px solid var(--line);border-radius:0;font-size:15.5px}
 .dlg-gate a{color:var(--zhu);font-weight:600}
 
-/* ---------- 底：输入框（纸面＋墨绿钮） ---------- */
-.dlg-composer{flex:0 0 auto;border-top:1px solid var(--line);background:var(--bg);
+/* ---------- 底：输入框（2026-10-17 rick：对话框变绿＝随主题场色） ---------- */
+.dlg-composer{flex:0 0 auto;border-top:1px solid var(--field-3);background:var(--field-2);
   padding:14px 30px 18px}
 .dlg-composer-in{max-width:var(--dlg-col);margin:0 auto}
-.dlg-box{display:flex;gap:10px;align-items:flex-end;border:1px solid var(--ink-3);
-  border-radius:0;background:#fff;padding:10px 12px}
-.dlg-box:focus-within{border-color:var(--zhu)}
+.dlg-box{display:flex;gap:10px;align-items:flex-end;border:1px solid var(--field-3);
+  border-radius:0;background:var(--field);padding:10px 12px}
+.dlg-box:focus-within{border-color:var(--tool-4)}
 .dlg-box textarea{flex:1;border:0;background:transparent;resize:none;font:inherit;
-  color:var(--ink);height:28px;outline:none}
+  color:var(--field-5);height:28px;outline:none}
+.dlg-box textarea::placeholder{color:var(--field-4)}
 .dlg-send{transition:filter .15s;flex:0 0 auto;width:var(--dlg-hit);height:var(--dlg-hit);border-radius:0;
   border:0;background:var(--tool-3);color:#fff;font-size:17px;cursor:pointer;
   display:inline-flex;align-items:center;justify-content:center}
@@ -192,8 +193,13 @@
 .dlg-land-modes{display:flex;gap:14px;margin:16px 0 0;flex-wrap:wrap;justify-content:center}
 .dlg-land-mode{border:1px solid var(--tool-3);background:var(--tool-3);border-radius:0;
   padding:14px 30px;font-size:16px;font-weight:600;font-family:var(--serif);letter-spacing:.18em;
-  color:#fff;cursor:pointer;transition:filter .15s}
-.dlg-land-mode:hover{filter:brightness(1.12)}
+  color:#fff;cursor:pointer;transition:filter .15s,transform .18s;
+  animation:dlg-mode-in .5s ease both}
+.dlg-land-mode:nth-child(2){animation-delay:.09s}
+.dlg-land-mode:nth-child(3){animation-delay:.18s}
+@keyframes dlg-mode-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.dlg-land-mode:hover{filter:brightness(1.12);transform:translateY(-3px)}
+.dlg-land-mode:active{transform:translateY(0)}
 .dlg-land-pills{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;max-width:820px;margin:12px 0 6px}
 .dlg-land-pill{border:1px solid var(--field-3);background:transparent;border-radius:0;
   padding:9px 17px;font-size:13.5px;color:var(--field-5);cursor:pointer;
