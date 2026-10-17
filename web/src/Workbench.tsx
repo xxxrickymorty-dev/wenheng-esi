@@ -3,7 +3,8 @@
    设计取自静态稿 mockups/v2-工作台与报告.html；状态与文案规格见 web/UX-生成台.md。 */
 
 import type { ApiError, Me, Period, PeriodDetail } from './api'
-import type { ForecastChoiceEntry } from './api-forecast'
+import { useEffect, useState } from 'react'
+import { getForecastBoard, type ForecastBoardRow, type ForecastChoiceEntry } from './api-forecast'
 import { ConfirmButton } from './ConfirmButton'
 import { Info } from './Info'
 import { Tools } from './Tools'
@@ -111,7 +112,7 @@ function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }
 export function Workbench({
   period, me, wb, err, healthy, run, approvalStatus, activityState,
   actionLockReason, activeRun, actionsLocked, submitting, onGenerate,
-  forecastChoice,
+  periods, forecastChoice,
   forecastAppliedStale, forecastAppliedDiffs, autoConfirmRerun,
   showTools, toolJobId, toolArtifactsToken, onToolActionStart, onToolActionEnd, onToolUploaded,
 }: {
@@ -128,6 +129,7 @@ export function Workbench({
   actionsLocked: boolean
   submitting: boolean
   onGenerate: () => void
+  periods: Period[]
   forecastChoice: ForecastChoiceEntry | null
   /** 已保存的模型选择 ≠ 上次出稿实际用的选择（报告还是旧的）；无出稿快照时恒 false */
   forecastAppliedStale: boolean
@@ -144,6 +146,19 @@ export function Workbench({
   onToolUploaded: (jobId: string, period: string) => void
 }) {
   const isAdmin = me?.role === 'admin'
+  /* 水位卡读数＝预测看板真值（接近度/阈值），只透传不换算（2026-10-17 绿蓝融合 U2）。
+     只在已出稿后取——没出过稿的期次没有看板文件，取了只会白报 404。 */
+  const [board, setBoard] = useState<ForecastBoardRow[]>([])
+  const generated = wb.steps[2]?.on === true
+  useEffect(() => {
+    if (!period || !generated) { setBoard([]); return }
+    let alive = true
+    getForecastBoard(period)
+      .then((b) => { if (alive) setBoard(Object.values(b.routes ?? {})[0] ?? []) })
+      .catch(() => { if (alive) setBoard([]) })
+    return () => { alive = false }
+  }, [period, generated])
+  const issueNo = /第 (\d+) 期/.exec(periods.find((p) => p.period === period)?.label ?? '')?.[1] ?? ''
   /* 2026-10-12：出报告对操作员也开放（后端 POST /api/jobs 已开）；下载数据/工具折仍只管理员。 */
   const canRun = !!me
   const canGenerate = canRun && period != null && /^\d{6}$/.test(period) && !actionsLocked && !activeRun && !submitting
@@ -152,57 +167,119 @@ export function Workbench({
 
   return (
     <>
-      <section className="card">
-        <div className="steps">
-          <h1>{period ?? '（选择期次）'}</h1>
-          <span className="steps-meta">
-            <span className="pill">{STATE_LABEL[wb.state]}</span>
-            <span className={`pill ${approvalStatus === 'signed' ? 'signed' : approvalStatus === 'stale' ? 'stale' : 'unsigned'}`}>
+      {/* 蓝场题头（2026-10-17 绿蓝融合 U2，据 汇-绿蓝.html）：焦点陈述＋主动作＋翻牌数字 */}
+      <section className="wb-hero">
+        <div className="wb-hero-main">
+          <p className="kik">云南 大 學 圖 書 館 藏 · 学 科 情 報 · 出 報 告 台</p>
+          <div className="wb-hero-pills">
+            <span className="pill on-field">{STATE_LABEL[wb.state]}</span>
+            <span className={`pill on-field ${approvalStatus === 'signed' ? 'signed' : approvalStatus === 'stale' ? 'stale' : 'unsigned'}`}>
               {approvalLabel(approvalStatus)}
             </span>
-            <Info label="状态从哪来" end>
+            <Info label="状态从哪来">
               <p>任务状态来自本期任务记录；签发状态来自审核台签单。本页只读，不改任何数据。</p>
             </Info>
-          </span>
-          <Steps wb={wb} period={period} />
-        </div>
-
-        <div className="focus mx-card-22">
-          <div>
-            <div className="big">{wb.focusTitle}</div>
-            <div className="sub">{wb.focusSub}</div>
           </div>
-          <div className="cta">
+          <h1>{wb.focusTitle}</h1>
+          <p className="wb-hero-sub">{wb.focusSub}</p>
+          <div className="wb-hero-act">
             {wb.focusAction === 'generate' && canRun && (
               <>
-                <span className="hint">约 3 分钟</span>
-                <button className="btn primary" onClick={onGenerate} disabled={!canGenerate}>
+                <button className="btn primary big" onClick={onGenerate} disabled={!canGenerate}>
                   <Icon name="play" size={20} />开始生成
                 </button>
+                <span className="wb-hero-link">约 3 分钟</span>
               </>
             )}
             {wb.focusAction === 'rerun' && canRun && (
-              <ConfirmButton className="btn" disabled={!canGenerate}
+              <ConfirmButton className="btn primary big" disabled={!canGenerate}
                              confirmText="确认重跑？会撤下当前成品" onConfirm={onGenerate}>
                 <Icon name="refresh" size={20} />重新生成
               </ConfirmButton>
             )}
             {wb.focusAction === 'sign' && (
               <>
-                <a className="hint" href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}>打开报告 ↗</a>
-                <a className="btn primary" href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="seal" size={20} />复核并签单</a>
+                <a className="btn primary big" href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="seal" size={20} />复核并签单</a>
+                <a className="wb-hero-link" href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}>打开报告 ↗</a>
               </>
             )}
             {wb.focusAction === 'open' && (
-              <a className="btn" href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="doc" size={20} />打开报告</a>
+              <a className="btn primary big" href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="doc" size={20} />打开报告</a>
             )}
             {wb.focusAction === 'acquire' && isAdmin && (
-              <a className="btn primary" href={`/app/?view=acquire${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
-                <Icon name="download" size={20} />去下载数据
+              <a className="btn primary big" href={`/app/?view=acquire${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+                <Icon name="download" size={20} />去取数台
               </a>
             )}
           </div>
         </div>
+        <div className="wb-flaps" aria-label="本期读数">
+          <div className="flaprow">
+            <span className="flabel">期 次 · 目 錄</span>
+            <span className="flaps">{(period ?? '——————').split('').map((d, i) => <i key={i}>{d}</i>)}</span>
+          </div>
+          <div className="flaprow">
+            <span className="flabel">總 第 · 期</span>
+            <span className="flaps">{(issueNo || '—').split('').map((d, i) => <i key={i}>{d}</i>)}</span>
+            <span className="flabel">簽 發</span>
+            <span className="flaps sm"><i>{approvalStatus === 'signed' ? '签' : approvalStatus === 'stale' ? '效' : '待'}</i></span>
+          </div>
+        </div>
+      </section>
+
+      {/* 绿·器（汇-绿蓝）：潜力学科水尺（预测看板真值）＋ 本期工序进度 */}
+      <section className="gaugeband">
+        <div className="gb-grid">
+          <div className="gb-copy">
+            <p className="kik">水 位 標 尺 · 接 近 度</p>
+            <h2>阈值即水位线，<br />潜力学科各是一根水尺。</h2>
+            <p className="gb-note">ESI 前 1% 被引阈值是警戒水位。读数只来自预测看板（接近度＝百分数点值），前端不换算。</p>
+          </div>
+          <div className="gauge">
+            <div className="gauge-head"><span>潜 力 學 科 水 位</span><span className="mono">{period ?? ''}</span></div>
+            {board.length ? board.map((r) => (
+              <div className="gauge-row" key={r.subject}>
+                <span className="g-name">{r.subject}</span>
+                <span className="g-bar"><i style={{ width: `${Math.min(100, Math.max(0, r.prox ?? 0))}%` }} /></span>
+                <span className="g-val mono">{r.prox == null ? '—' : `${r.prox}%`}</span>
+              </div>
+            )) : <p className="gb-note">这一期还没有水位读数——先完成一次生成。</p>}
+            <div className="gauge-thr">ESI 前 1% 阈值（100%）</div>
+          </div>
+        </div>
+        <Steps wb={wb} period={period} />
+      </section>
+
+      {/* 三枚橡皮戳（戳印之一）＋ 本期数据 */}
+      <section className="wb-stamps">
+        <div className="stamp-col">
+          <div className={`stamp ${wb.steps[1]?.on ? 'on' : ''}`}><b>已并入<br />台账</b><small>{wb.steps[1]?.on ? '完成' : '未完成'}</small></div>
+          <div className={`stamp ${wb.steps[2]?.on ? 'on' : ''}`}><b>已出稿</b><small>{wb.steps[2]?.on ? '完成' : '未完成'}</small></div>
+          <div className={`stamp warn ${approvalStatus === 'signed' ? 'on' : ''}`}><b>复核通过</b><small>{approvalStatus === 'signed' ? '已签发' : 'PENDING'}</small></div>
+        </div>
+        <dl className="data">
+          <div><dt>期 次</dt><dd className="mono">{period ?? '—'}</dd></div>
+          <div><dt>取 数</dt><dd>{wb.steps[0]?.detail ?? '—'}</dd></div>
+          <div><dt>核对并并入</dt><dd>{wb.steps[1]?.detail ?? '—'}</dd></div>
+          <div><dt>一键生成</dt><dd>{wb.steps[2]?.detail ?? '—'}</dd></div>
+          <div><dt>签 发</dt><dd>{approvalLabel(approvalStatus)}</dd></div>
+        </dl>
+      </section>
+
+      {wb.focusAction === 'sign' && (
+        /* 签单区（戳印之二：钤印落在动作上，据 汇-绿蓝.html） */
+        <section className="sign">
+          <div>
+            <p className="kik">核 驗 與 簽 單</p>
+            <h2>盖印签单，此版归档。</h2>
+            <p className="sign-note">{wb.focusSub}</p>
+            <div className="wb-hero-act">
+              <a className="btn primary big" href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="seal" size={20} />复核并签单</a>
+            </div>
+          </div>
+          <div className="seal-mark" aria-hidden="true">至公天下</div>
+        </section>
+      )}
 
         {forecastAppliedStale && (!run || isTerminal(run.status ?? undefined)) && (
           /* 改选还没进报告（2026-10-16，rick）：说清哪几处改了、报告是旧的、重出才生效。
@@ -277,8 +354,6 @@ export function Workbench({
             <div className="degraded">{wb.note}</div>
           </div>
         )}
-      </section>
-
       {showTools && (
         <details className="fold">
           <summary>这一期的工具<span className="sm">上传 · 重跑 · 回滚 · 台账 · 日志包</span></summary>

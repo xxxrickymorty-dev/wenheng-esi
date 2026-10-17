@@ -697,6 +697,7 @@ export default function App() {
                         actionsLocked={jobActionsLocked}
                         submitting={busy}
                         onGenerate={onGenerate}
+                        periods={periods}
                         forecastChoice={selectedForecastChoice}
                         forecastAppliedStale={selectedForecastStale}
                         forecastAppliedDiffs={selectedForecastStaleDiffs}
