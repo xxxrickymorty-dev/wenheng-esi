@@ -5,8 +5,11 @@
 Chrome 已保存的密码 + 站点带出的账号（loginId）自动填表 → 脚本只点「Sign in / 登录」（可信点击）→ 等回到应用。
 
 两条安全线（有意为之）：
-- **凭据零落盘**：账号 / 密码从不进入本模块，也不写入任何仓库文件；
-  脚本只检查登录页输入框「有没有被 Chrome 填上」，填不上就停。
+- **凭据零落盘**：账号 / 密码从不写入任何仓库文件，密码也从不进入本模块；
+  脚本只检查登录页输入框「有没有被填上」，填不上就停。
+  唯一例外（2026-10-17，rick 明示要预填）：**账号（邮箱）**在用户显式放入
+  `~/.chrome-clarivate/email.txt` 或设 `WENHENG_CLARIVATE_EMAIL` 时，用于预填登录页账号栏
+  （Chrome 的保存项对本站只自动填密码、不填账号）——默认什么都不存，密码仍只靠 Chrome。
 - **填不上就停**：字段没自动填充、点了没回到应用（疑似风控 / 验证码）——
   一律报「请人工登录一次」，绝不代替人做验证、绝不猜密码。
 
@@ -15,6 +18,8 @@ Chrome 已保存的密码 + 站点带出的账号（loginId）自动填表 → �
 """
 from __future__ import annotations
 
+import os
+import pathlib
 import re
 import time
 
@@ -36,6 +41,25 @@ _SITES = {
 _EMAIL_SEL = 'input[name="email"], input[type="email"], input[autocomplete="email"]'
 
 _LOGIN_MARK = "access.clarivate.com/login"
+
+#: 账号（邮箱）预填来源（**仓外**本地文件；密码无此机制）——用户显式放置才生效
+_EMAIL_FILE = pathlib.Path.home() / ".chrome-clarivate" / "email.txt"
+
+
+def _prefill_email() -> str:
+    """显式配置的账号（邮箱）：`WENHENG_CLARIVATE_EMAIL` > `~/.chrome-clarivate/email.txt`；没有则 ""。
+
+    只用于预填登录页账号栏（Chrome 只自动填密码不填账号，缺账号时表单校验会静默挡下）。
+    **密码没有任何来源**——仍然只靠 Chrome 自己填。
+    """
+    env = (os.environ.get("WENHENG_CLARIVATE_EMAIL") or "").strip()
+    if env:
+        return env
+    try:
+        # utf-8-sig：Windows 编辑器/Powershell 存的文件常带 BOM，别让它混进账号
+        return (_EMAIL_FILE.read_text(encoding="utf-8-sig").splitlines() or [""])[0].strip()
+    except OSError:
+        return ""
 
 
 def _on_login_page(page) -> bool:
@@ -87,11 +111,12 @@ def _goto_login(page, site: str) -> None:
 
 
 def _wait_for_autofill(page, timeout_s: float = 15) -> None:
-    """等 Chrome 把保存的账号密码填进登录表单；没填上就叫停（绝不猜凭据）。
+    """等 Chrome 把保存的密码填进登录表单；没填上就叫停（绝不猜凭据）。
 
     ⚠ 实测（2026-10-14）：本机 Chrome 的保存项**只自动填密码、不填邮箱**；邮箱靠登录
     URL 的 `loginId` 参数（站点从「浏览器记住的账号」带出）。缺一，点 Sign in 会被表单
-    校验静默挡下——所以邮箱栏为空也直接叫停，别让它白点。
+    校验静默挡下——所以邮箱栏为空时先用 `_prefill_email()`（用户显式放置的账号）预填，
+    还填不上就叫停，别让它白点。
     """
     pw = page.locator('input[type="password"]').first
     try:
@@ -115,9 +140,17 @@ def _wait_for_autofill(page, timeout_s: float = 15) -> None:
             if (email.input_value() or "").strip():
                 return
             page.wait_for_timeout(500)
+        pre = _prefill_email()                               # 显式配置过账号才代填（仍不碰密码）
+        if pre:
+            try:
+                email.fill(pre)
+            except Exception:                                # noqa: BLE001
+                pass
+            if (email.input_value() or "").strip():
+                return
         raise SystemExit(
             "[需要人工] 登录页的账号栏是空的（Chrome 没有预填账号）——"
-            "请在取数浏览器里人工登录一次。"
+            "请在取数浏览器里人工登录一次，或把账号放入 ~/.chrome-clarivate/email.txt。"
         )
 
 
