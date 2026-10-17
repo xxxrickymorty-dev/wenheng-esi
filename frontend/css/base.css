@@ -1,0 +1,344 @@
+/* ============================================================
+   base.css — 文衡新前端 · 基础与通用块
+   ------------------------------------------------------------
+   这里每一块将来都能直译成一个 React 组件，类名即组件名。
+   零渐变、零投影、零玻璃、零圆角面板；层次靠字号与色阶。
+   ============================================================ */
+
+/* ── 复位 ── */
+*, *::after, *::before { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: var(--paper); }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--fs-base) / 1.75 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; cursor: pointer; font-family: var(--serif); background: none; border: 0; }
+table { width: 100%; border-collapse: collapse; }
+::selection { background: var(--green-3); color: #fff; }
+
+/* ─────────────────────────────────────────────
+   TopBar — 顶栏（含 5 站导航）
+   ───────────────────────────────────────────── */
+.topbar {
+  background: var(--blue-2);
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 0 var(--pad-x);
+}
+.topbar__wm {
+  font-family: var(--serif);
+  font-size: 20px;
+  letter-spacing: .18em;
+  color: var(--blue-5);
+}
+.topbar__sub {
+  font-family: var(--kai);
+  font-size: 10.5px;
+  letter-spacing: .22em;
+  color: rgba(220, 232, 240, .5);
+  line-height: 1.55;
+}
+.topbar__right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--kai);
+  font-size: 11px;
+  letter-spacing: .22em;
+  color: rgba(220, 232, 240, .5);
+}
+.topbar__here { color: var(--blue-5); font-weight: 700; }
+
+/* StationNav — 5 站 5 屏（顶栏里那排） */
+.stationnav { display: flex; gap: 2px; margin-left: 14px; }
+.stationnav a {
+  padding: 8px 14px;
+  font-family: var(--kai);
+  font-size: 12px;
+  letter-spacing: .14em;
+  color: rgba(220, 232, 240, .62);
+  white-space: nowrap;
+}
+.stationnav a.is-on   { color: var(--blue-2); background: var(--blue-5); font-weight: 700; }
+.stationnav a.is-done { color: var(--green-4); }
+
+/* PaletteChip — 品牌调色板 */
+.palette { display: inline-flex; gap: 7px; }
+.palette i {
+  width: 22px;
+  height: 12px;
+  display: inline-block;
+  border: 1px solid rgba(220, 232, 240, .26);
+}
+.palette i.g { background: var(--green-3); }
+.palette i.b { background: var(--blue-3); }
+.palette i.is-on { outline: 2px solid var(--blue-5); outline-offset: 2px; }
+
+/* ─────────────────────────────────────────────
+   StatusBand — 状态带（任务 + 签发，全站就两套词）
+   ───────────────────────────────────────────── */
+.band {
+  background: var(--green-2);
+  color: var(--green-5);
+  padding: 15px var(--pad-x);
+  display: flex;
+  gap: var(--gap-3);
+  flex-wrap: wrap;
+  align-items: center;
+  font-family: var(--kai);
+  font-size: var(--fs-sm);
+  letter-spacing: .22em;
+}
+.band__pill {
+  padding: 4px 13px;
+  font-family: var(--serif);
+  font-size: 13px;
+  letter-spacing: .18em;
+  background: var(--green-3);
+  color: #08201A;
+}
+.band__pill--blue { background: var(--blue-3); color: var(--blue-5); }
+.band__pill--dark { background: var(--green-2); color: var(--green-5); }
+.band__right {
+  margin-left: auto;
+  color: rgba(223, 237, 230, .62);
+}
+
+/* ─────────────────────────────────────────────
+   SectionHead — 分节标题
+   ───────────────────────────────────────────── */
+.sect__hd {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 11px;
+  flex-wrap: wrap;
+}
+.sect__hd h2 {
+  font-family: var(--serif);
+  font-size: var(--fs-lg);
+  letter-spacing: .1em;
+}
+.sect__kicker {
+  font-family: var(--kai);
+  font-size: var(--fs-lb);
+  letter-spacing: .42em;
+  color: var(--ink-3);
+  display: block;
+  margin-bottom: 2px;
+  font-weight: 400;
+}
+.sect__link {
+  margin-left: auto;
+  font-family: var(--kai);
+  font-size: 12.5px;
+  letter-spacing: .18em;
+  color: var(--green);
+  box-shadow: inset 0 -1px 0 var(--green);
+  padding-bottom: 2px;
+}
+.sect__link:hover { color: var(--green-3); }
+
+/* 副说明（与报告的关系） */
+.relnote {
+  margin-top: 18px;
+  font-family: var(--kai);
+  font-size: var(--fs-sm);
+  line-height: 2;
+  letter-spacing: .12em;
+  color: var(--ink-3);
+  max-width: 92ch;
+}
+.relnote b {
+  color: var(--ink-2);
+  font-family: var(--serif);
+  font-weight: 700;
+  letter-spacing: .16em;
+}
+
+/* ─────────────────────────────────────────────
+   DataTable — 选模表 / 期次表
+   ───────────────────────────────────────────── */
+.table thead th {
+  font-family: var(--kai);
+  font-size: var(--fs-lb);
+  letter-spacing: .32em;
+  color: var(--ink-3);
+  text-align: left;
+  font-weight: 400;
+  padding: 13px 14px 10px 0;
+  border-bottom: 1px solid var(--ink);
+}
+.table thead th:last-child { padding-right: 0; }
+.table tbody td {
+  padding: 12px 14px 12px 0;
+  border-bottom: 1px solid var(--paper-2);
+  font-family: var(--serif);
+  font-size: 15px;
+  vertical-align: baseline;
+  letter-spacing: .03em;
+}
+.table tbody td:last-child { padding-right: 0; }
+.table tbody tr:last-child td { border-bottom: 0; }
+.table tbody tr.is-now { background: rgba(47, 107, 142, .1); }
+.table td.c-subj  { font-weight: 700; }
+.table td.c-model { font-family: var(--kai); font-size: 13px; color: var(--ink-2); letter-spacing: .12em; }
+.table td.c-pick  { font-weight: 700; color: var(--green); }
+.table td.c-mono  { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; color: var(--ink-3); }
+.table td.c-per   { font-family: var(--mono); font-size: 13px; letter-spacing: .1em; font-weight: 700; }
+.table .dflt {
+  color: var(--ink-3);
+  font-family: var(--kai);
+  font-size: 12.5px;
+  letter-spacing: .18em;
+}
+.chg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--blue);
+  font-family: var(--kai);
+  font-size: 11px;
+  letter-spacing: .16em;
+  margin-left: 9px;
+  white-space: nowrap;
+}
+.chg::before { content: ""; width: 7px; height: 7px; background: var(--blue); flex: none; }
+
+/* Tag — 状态小签 */
+.tag {
+  display: inline-block;
+  padding: 3px 10px;
+  font-family: var(--kai);
+  font-size: 10.5px;
+  letter-spacing: .18em;
+  white-space: nowrap;
+}
+.tag--g { background: rgba(47, 122, 88, .14); color: var(--green); }
+.tag--b { background: rgba(47, 107, 142, .14); color: var(--blue); }
+.tag--r { background: rgba(178, 58, 43, .12); color: var(--red); }
+
+/* ─────────────────────────────────────────────
+   DataPanel — 本期数据（键值表）
+   ───────────────────────────────────────────── */
+.datapanel__title {
+  font-family: var(--kai);
+  font-size: var(--fs-lb);
+  letter-spacing: .42em;
+  color: var(--ink-3);
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 11px;
+}
+.datapanel dl {
+  margin-top: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 32px;
+}
+.datapanel__pair {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--paper-2);
+  padding: 10px 0;
+  font-family: var(--kai);
+  font-size: 12.5px;
+}
+.datapanel dt {
+  color: var(--ink-3);
+  letter-spacing: .16em;
+  white-space: nowrap;
+}
+.datapanel dd {
+  color: var(--ink);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.datapanel dd b {
+  font-family: var(--serif);
+  font-size: 16px;
+  letter-spacing: .04em;
+}
+
+/* ─────────────────────────────────────────────
+   按钮与链接
+   ───────────────────────────────────────────── */
+.btn {
+  background: var(--green-3);
+  color: #08201A;
+  border: 0;
+  padding: 13px 28px;
+  font-size: 15px;
+  letter-spacing: .14em;
+  font-weight: 700;
+}
+.btn:hover { background: #3A9069; }
+.btn--paper { background: var(--green-5); color: var(--green-2); }
+.btn--paper:hover { background: #fff; }
+.ghost {
+  font-family: var(--kai);
+  font-size: 13px;
+  letter-spacing: .18em;
+  color: rgba(220, 232, 240, .78);
+  box-shadow: inset 0 -1px 0 rgba(220, 232, 240, .38);
+  padding-bottom: 3px;
+}
+.ghost--dark {
+  color: var(--ink-2);
+  box-shadow: inset 0 -1px 0 var(--paper-3);
+}
+.ghost:hover { color: #fff; box-shadow: inset 0 -1px 0 #fff; }
+.ghost--dark:hover { color: var(--green); box-shadow: inset 0 -1px 0 var(--green); }
+
+/* ─────────────────────────────────────────────
+   PageFoot — 页脚
+   ───────────────────────────────────────────── */
+.pagefoot {
+  background: var(--ink);
+  color: rgba(220, 232, 240, .62);
+  margin-top: 44px;
+  padding: 22px var(--pad-x);
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-family: var(--kai);
+  font-size: 11px;
+  letter-spacing: .32em;
+}
+.pagefoot b {
+  font-family: var(--serif);
+  font-size: 12.5px;
+  letter-spacing: .22em;
+  color: var(--blue-5);
+  display: block;
+}
+.pagefoot__dual { display: flex; gap: 11px; align-items: center; }
+.pagefoot__dual i { width: 24px; height: 12px; display: inline-block; }
+.pagefoot__dual i.g { background: var(--green-3); }
+.pagefoot__dual i.b { background: var(--blue-3); }
+
+/* ─────────────────────────────────────────────
+   布局工具
+   ───────────────────────────────────────────── */
+.wrap    { max-width: var(--maxw); margin: 0 auto; padding: 0 var(--pad-x); }
+.pad-top { padding-top: 38px; }
+.grid-2  { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: var(--gap-5); align-items: start; }
+.grid-2--even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+
+/* ─────────────────────────────────────────────
+   响应式
+   ───────────────────────────────────────────── */
+@media (max-width: 1040px) {
+  .grid-2, .grid-2--even { grid-template-columns: 1fr; gap: var(--gap-4); }
+  .datapanel dl { grid-template-columns: 1fr 1fr; }
+  .stationnav { display: none; }
+}

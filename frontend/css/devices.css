@@ -1,0 +1,353 @@
+/* ============================================================
+   devices.css — 四件器件（汇-绿蓝 的签名物）
+   ------------------------------------------------------------
+   ① FlapDigits 翻牌数字  —— 读数（时序 / 编号）
+   ② Gauge       水位标尺 —— 读数（阈值 / 接近度）
+   ③ Stamp       橡皮戳   —— 戳印（工序留痕）
+   ④ Seal        钤印     —— 戳印（签单）
+   前两件属「蓝·场」，后两件属「绿·器」。
+   牌缝／刻度／戳框／印框都是该器物本身的结构，不是装饰线。
+   ============================================================ */
+
+/* ─────────────────────────────────────────────
+   ① FlapDigits — 翻牌数字
+   ───────────────────────────────────────────── */
+.flaps {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: flex-end;
+}
+.flaps__grp { text-align: right; }
+.flaps__label {
+  font-family: var(--kai);
+  font-size: 10px;
+  letter-spacing: .36em;
+  color: rgba(220, 232, 240, .55);
+  margin-bottom: 7px;
+}
+.flaps__row { display: flex; gap: 5px; }
+
+.flap {
+  position: relative;
+  width: 36px;
+  height: 50px;
+  background: var(--blue-2);
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 25px;
+  font-weight: 700;
+  color: var(--blue-5);
+  font-variant-numeric: tabular-nums;
+}
+/* 牌缝：翻牌本身的结构 */
+.flap::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  height: 2px;
+  background: var(--blue);
+}
+.flap--sm { width: 27px; height: 38px; font-size: 18px; }
+.flap--sm::after { height: 1.5px; }
+.flap--colon { width: 14px; background: transparent; font-size: 20px; color: rgba(220, 232, 240, .4); }
+.flap--colon::after { display: none; }
+.flap--gap   { width: 16px; background: transparent; }
+.flap--gap::after { display: none; }
+.flap--gr { color: var(--green-4); }
+.flap--rd { color: #E8917C; }
+
+/* 深色场里用（签发台 / 绿器区） */
+.flaps--on-green .flap { background: var(--green-2); }
+.flaps--on-green .flap::after { background: var(--green); }
+.flaps--on-green .flaps__label { color: rgba(223, 237, 230, .55); }
+
+/* ─────────────────────────────────────────────
+   ② Gauge — 水位标尺
+   ───────────────────────────────────────────── */
+.gauge {
+  background: var(--blue-2);
+  border: 1px solid rgba(220, 232, 240, .18);
+  padding: 18px 22px 20px;
+}
+.gauge--green {
+  background: var(--green-2);
+  border-color: rgba(223, 237, 230, .2);
+}
+.gauge--box {
+  background: var(--green);
+  border: 0;
+}
+.gauge__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-family: var(--kai);
+  font-size: 10px;
+  letter-spacing: .32em;
+  color: rgba(220, 232, 240, .55);
+}
+.gauge--green .gauge__head,
+.gauge--box .gauge__head { color: rgba(223, 237, 230, .6); }
+.gauge__head b {
+  font-family: var(--serif);
+  font-size: 12px;
+  letter-spacing: .18em;
+  color: var(--blue-5);
+}
+.gauge--green .gauge__head b,
+.gauge--box .gauge__head b { color: var(--green-5); }
+
+.gauge__scale {
+  position: relative;
+  height: 196px;
+  margin-top: 13px;
+  background: var(--blue-2);
+  border: 1px solid rgba(220, 232, 240, .14);
+  overflow: hidden;
+}
+.gauge--green .gauge__scale,
+.gauge--box .gauge__scale {
+  background: var(--green-2);
+  border-color: rgba(223, 237, 230, .16);
+}
+.gauge--short .gauge__scale { height: 132px; }
+
+/* 刻度 */
+.gauge__ticks {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 3px;
+  z-index: 3;
+}
+.gauge__tick {
+  width: 1.5px;
+  height: 10px;
+  background: rgba(220, 232, 240, .26);
+  align-self: flex-start;
+}
+.gauge__tick.is-major { height: 19px; background: rgba(220, 232, 240, .5); }
+
+/* 水体 */
+.gauge__water {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  background: var(--green-3);
+  border-top: 2px solid var(--green-4);
+}
+.gauge--blue .gauge__water {
+  background: var(--blue-3);
+  border-top-color: var(--blue-4);
+}
+
+/* 阈值：警戒水位线（红色只此一处） */
+.gauge__threshold {
+  position: absolute;
+  left: 0; right: 0;
+  height: 0;
+  border-top: 2px dashed var(--red);
+  z-index: 4;
+}
+.gauge__threshold-label {
+  position: absolute;
+  right: 7px;
+  top: -21px;
+  font-family: var(--kai);
+  font-size: 9.5px;
+  letter-spacing: .24em;
+  color: var(--red-soft);
+  background: var(--blue-2);
+  padding: 2px 8px;
+}
+.gauge--green .gauge__threshold-label,
+.gauge--box .gauge__threshold-label { background: var(--green-2); }
+
+/* 读数 */
+.gauge__read {
+  position: absolute;
+  left: 13px;
+  bottom: 10px;
+  z-index: 5;
+  font-family: var(--mono);
+  font-size: 26px;
+  letter-spacing: .1em;
+  color: var(--blue-5);
+}
+.gauge--green .gauge__read,
+.gauge--box .gauge__read { color: var(--green-5); }
+.gauge__read small {
+  display: block;
+  font-family: var(--kai);
+  font-size: 9.5px;
+  letter-spacing: .3em;
+  color: rgba(220, 232, 240, .55);
+  margin-top: 2px;
+}
+.gauge--green .gauge__read small,
+.gauge--box .gauge__read small { color: rgba(223, 237, 230, .6); }
+
+/* 八根水尺（预测选模用） */
+.gauge__rods {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 14px;
+  gap: 6px;
+  z-index: 2;
+}
+.gauge__rod { flex: 1; position: relative; }
+.gauge__rod i {
+  display: block;
+  width: 100%;
+  background: var(--blue-3);
+  border-top: 2px solid var(--blue-4);
+}
+.gauge__rod.is-top i { background: var(--green-3); border-top-color: var(--green-4); }
+.gauge__rod span {
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: .06em;
+  color: rgba(220, 232, 240, .5);
+}
+
+/* 表格里的接近度小水尺 */
+.level { display: flex; align-items: center; gap: 9px; min-width: 132px; }
+.level__track {
+  position: relative;
+  flex: 1;
+  height: 7px;
+  background: var(--paper-2);
+}
+.level__track i {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  background: var(--blue-3);
+}
+.level__track::after {
+  content: "";
+  position: absolute;
+  right: 0; top: -4px; bottom: -4px;
+  width: 2px;
+  background: var(--red);
+}
+.level__pct {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  color: var(--ink-3);
+  width: 36px;
+  text-align: right;
+}
+
+/* ─────────────────────────────────────────────
+   ③ Stamp — 橡皮戳（三枚）
+   ───────────────────────────────────────────── */
+.stampbox {
+  background: var(--paper-2);
+  padding: 22px 22px 18px;
+  text-align: center;
+}
+.stampbox--green { background: var(--green); color: var(--green-5); }
+.stampbox__head {
+  font-family: var(--kai);
+  font-size: 10.5px;
+  letter-spacing: .36em;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--paper);
+  padding-bottom: 11px;
+}
+.stampbox--green .stampbox__head {
+  color: rgba(223, 237, 230, .6);
+  border-bottom-color: rgba(223, 237, 230, .2);
+}
+.stamprow {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+.stamp { width: 112px; height: 112px; position: relative; flex: none; }
+.stamp svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.stamp__text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 10px;
+}
+.stamp__text .t {
+  font-family: var(--serif);
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: .08em;
+}
+.stamp__text .d {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .12em;
+  margin-top: 5px;
+}
+.stamp--round  { color: var(--green-3); transform: rotate(-6deg); }
+.stamp--square { color: var(--green);   transform: rotate(3deg); }
+.stamp--penta  { color: var(--red);     transform: rotate(-3deg); }
+.stamp--round  .stamp__text { color: var(--green-2); }
+.stamp--square .stamp__text { color: var(--green-2); }
+.stamp--penta  .stamp__text { color: var(--red-ink); }
+/* 绿场版本 */
+.stampbox--green .stamp--round  { color: #A8D4B8; }
+.stampbox--green .stamp--square { color: var(--green-4); }
+.stampbox--green .stamp--penta  { color: var(--red-soft); }
+.stampbox--green .stamp--round  .stamp__text { color: var(--green-2); }
+.stampbox--green .stamp--square .stamp__text { color: var(--green-2); }
+.stampbox--green .stamp--penta  .stamp__text { color: #5A1D12; }
+/* 未落章 */
+.stamp.is-pending { opacity: .42; }
+.stampcap {
+  font-family: var(--kai);
+  font-size: 11px;
+  letter-spacing: .32em;
+  color: var(--ink-3);
+  margin-top: 16px;
+}
+.stampbox--green .stampcap { color: rgba(223, 237, 230, .62); }
+
+/* ─────────────────────────────────────────────
+   ④ Seal — 至公天下 钤印
+   ───────────────────────────────────────────── */
+.sealwrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.seal { width: 224px; height: 224px; transform: rotate(-8deg); }
+.seal svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.sealcap {
+  font-family: var(--kai);
+  font-size: 11px;
+  letter-spacing: .36em;
+  color: rgba(223, 237, 230, .62);
+  text-align: center;
+}
+
+@media (max-width: 1040px) {
+  .flaps { align-items: flex-start; }
+  .flaps__grp { text-align: left; }
+  .sealwrap { align-items: flex-start; }
+  .seal { width: 190px; height: 190px; }
+}

@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>零件目录 · 文衡新前端 — 静态件</title>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/devices.css">
+<style>
+  /* 只属于本页的编排样式，不进 base */
+  .kit-head { background: var(--ink); color: var(--paper); padding: 34px var(--pad-x) 30px; }
+  .kit-head h1 { font-family: var(--serif); font-size: 34px; letter-spacing: .12em; color: var(--blue-5); }
+  .kit-head p { font-family: var(--kai); font-size: 13px; letter-spacing: .18em;
+    color: rgba(220,232,240,.7); margin-top: 10px; max-width: 74ch; line-height: 2; }
+  .kit-nav { margin-top: 18px; display: flex; gap: 18px; flex-wrap: wrap;
+    font-family: var(--kai); font-size: 12px; letter-spacing: .18em; }
+  .kit-nav a { color: var(--green-4); box-shadow: inset 0 -1px 0 rgba(127,183,155,.5); padding-bottom: 3px; }
+
+  .kit { max-width: var(--maxw); margin: 0 auto; padding: 0 var(--pad-x) 60px; }
+  .piece { margin-top: 44px; }
+  .piece__id {
+    display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+    border-bottom: 2px solid var(--ink); padding-bottom: 10px;
+  }
+  .piece__id h2 { font-family: var(--serif); font-size: 21px; letter-spacing: .1em; }
+  .piece__id .cls {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+    background: var(--paper-2); color: var(--ink-2); padding: 3px 11px;
+  }
+  .piece__id .map { margin-left: auto; font-family: var(--kai); font-size: 11.5px;
+    letter-spacing: .18em; color: var(--ink-3); }
+  .piece__id .map b { color: var(--green); font-family: var(--serif); letter-spacing: .12em; }
+  .piece__demo { margin-top: 18px; }
+  .piece__demo--dark  { background: var(--blue-2); padding: 22px; }
+  .piece__demo--green { background: var(--green-2); padding: 22px; }
+  .piece__note {
+    margin-top: 12px; font-family: var(--kai); font-size: 12px; line-height: 1.95;
+    letter-spacing: .12em; color: var(--ink-3); max-width: 92ch;
+  }
+
+  /* 令牌色卡 */
+  .swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 16px; }
+  .sw { padding: 14px 12px; color: #fff; }
+  .sw .n { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; opacity: .85; }
+  .sw .h { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; opacity: .7; margin-top: 4px; }
+  .sw.light { color: var(--ink); }
+  .sw-row-label { font-family: var(--kai); font-size: 11px; letter-spacing: .32em;
+    color: var(--ink-3); margin: 18px 0 8px; }
+
+  /* 栅格说明 */
+  .scalelist { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; margin-top: 16px; }
+  .scaleitem { background: var(--paper-2); padding: 14px 12px; }
+  .scaleitem .n { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; color: var(--ink-3); }
+  .scaleitem .v { font-family: var(--serif); font-size: 17px; margin-top: 5px; }
+</style>
+</head>
+<body>
+
+<header class="kit-head">
+  <h1>零件目录</h1>
+  <p>这套静态件是新前端的底座：每一块都定好了类名，将来换什么栈都能机械搬成组件。
+     配色分工——蓝＝场（数据／时序／读数），绿＝器（工序／戳印／签发）；红色只作警戒。
+     零渐变、零投影、零玻璃、零圆角面板。栈未定，先不出工程。</p>
+  <nav class="kit-nav">
+    <a href="#tokens">令牌</a><a href="#topbar">顶栏</a><a href="#band">状态带</a>
+    <a href="#head">分节标题</a><a href="#table">表格</a><a href="#tag">状态签</a>
+    <a href="#data">数据面板</a><a href="#btn">按钮</a><a href="#foot">页脚</a>
+    <a href="#flap">① 翻牌</a><a href="#gauge">② 水位</a><a href="#stamp">③ 橡皮戳</a><a href="#seal">④ 钤印</a>
+  </nav>
+</header>
+
+<main class="kit">
+
+  <!-- ═══ 令牌 ═══ -->
+  <section class="piece" id="tokens">
+    <div class="piece__id">
+      <h2>设计令牌</h2>
+      <span class="cls">css/tokens.css</span>
+      <span class="map">将来映射为 <b>theme.ts</b></span>
+    </div>
+
+    <div class="swatch-row-label sw-row-label">蓝 · 场</div>
+    <div class="swatches">
+      <div class="sw" style="background:var(--blue-2)"><div class="n">--blue-2</div><div class="h">#0F2E4C</div></div>
+      <div class="sw" style="background:var(--blue)"><div class="n">--blue</div><div class="h">#17456E</div></div>
+      <div class="sw" style="background:var(--blue-3)"><div class="n">--blue-3</div><div class="h">#2F6B8E</div></div>
+      <div class="sw" style="background:var(--blue-4)"><div class="n">--blue-4</div><div class="h">#8FB6CE</div></div>
+      <div class="sw light" style="background:var(--blue-5)"><div class="n">--blue-5</div><div class="h">#DCE8F0</div></div>
+    </div>
+
+    <div class="sw-row-label">绿 · 器</div>
+    <div class="swatches">
+      <div class="sw" style="background:var(--green-2)"><div class="n">--green-2</div><div class="h">#163228</div></div>
+      <div class="sw" style="background:var(--green)"><div class="n">--green</div><div class="h">#26483B</div></div>
+      <div class="sw" style="background:var(--green-3)"><div class="n">--green-3</div><div class="h">#2F7A58</div></div>
+      <div class="sw" style="background:var(--green-4)"><div class="n">--green-4</div><div class="h">#7FB79B</div></div>
+      <div class="sw light" style="background:var(--green-5)"><div class="n">--green-5</div><div class="h">#DFEDE6</div></div>
+    </div>
+
+    <div class="sw-row-label">纸与墨 ＋ 警戒</div>
+    <div class="swatches">
+      <div class="sw light" style="background:var(--paper)"><div class="n">--paper</div><div class="h">#F2EFE6</div></div>
+      <div class="sw light" style="background:var(--paper-2)"><div class="n">--paper-2</div><div class="h">#E4DFD0</div></div>
+      <div class="sw" style="background:var(--ink)"><div class="n">--ink</div><div class="h">#15222B</div></div>
+      <div class="sw" style="background:var(--ink-2)"><div class="n">--ink-2</div><div class="h">#43525C</div></div>
+      <div class="sw" style="background:var(--red)"><div class="n">--red</div><div class="h">#B23A2B</div></div>
+    </div>
+
+    <div class="sw-row-label">尺度</div>
+    <div class="scalelist">
+      <div class="scaleitem"><div class="n">--gap-1</div><div class="v">6</div></div>
+      <div class="scaleitem"><div class="n">--gap-2</div><div class="v">12</div></div>
+      <div class="scaleitem"><div class="n">--gap-3</div><div class="v">20</div></div>
+      <div class="scaleitem"><div class="n">--gap-4</div><div class="v">32</div></div>
+      <div class="scaleitem"><div class="n">--gap-5</div><div class="v">48</div></div>
+      <div class="scaleitem"><div class="n">--maxw</div><div class="v">1280</div></div>
+    </div>
+  </section>
+
+  <!-- ═══ 顶栏 ═══ -->
+  <section class="piece" id="topbar">
+    <div class="piece__id">
+      <h2>TopBar 顶栏</h2>
+      <span class="cls">.topbar .topbar__wm .topbar__sub .stationnav .palette</span>
+      <span class="map">→ <b>TopBar.tsx</b></span>
+    </div>
+    <div class="piece__demo" style="padding:0">
+      <header class="topbar">
+        <span class="topbar__wm">文衡</span>
+        <span class="topbar__sub">雲 南 大 學 圖 書 館<br>學 科 信 息 參 考</span>
+        <nav class="stationnav" aria-label="五站五屏">
+          <a class="is-on" href="#">1 取数核验</a><a href="#">2 选章节</a>
+          <a href="#">3 预测选模</a><a href="#">4 生成初稿</a><a href="#">5 核验定稿</a>
+        </nav>
+        <span class="topbar__right">
+          <span>出 报 告 ↖</span>
+          <span class="palette"><i class="b is-on"></i><i class="g"></i></span>
+        </span>
+      </header>
+    </div>
+    <p class="piece__note">五站五屏的导航直接长在顶栏里——屏题＝站名，不另起名。
+      <b>.is-on</b> 当前站、<b>.is-done</b> 已过站。调色板小块是全站共用的开关。</p>
+  </section>
+
+  <!-- ═══ 状态带 ═══ -->
+  <section class="piece" id="band">
+    <div class="piece__id">
+      <h2>StatusBand 状态带</h2>
+      <span class="cls">.band .band__pill .band__pill--blue .band__right</span>
+      <span class="map">→ <b>StatusBand.tsx</b></span>
+    </div>
+    <div class="piece__demo" style="padding:0">
+      <div class="band">
+        <span class="band__pill">任务 · 已完成</span>
+        <span class="band__pill band__pill--blue">签发 · 未签发</span>
+        <span class="band__right">第 39 期　·　2 0 2 6 0 9</span>
+      </div>
+    </div>
+    <p class="piece__note">状态词全站只两套：<b>任务</b>（进行中／已完成／未开始）＋
+      <b>签发</b>（未签发／已签发／签发已失效）。动作叫「签单」，状态叫「签发」。</p>
+  </section>
+
+  <!-- ═══ 分节标题 ═══ -->
+  <section class="piece" id="head">
+    <div class="piece__id">
+      <h2>SectionHead 分节标题</h2>
+      <span class="cls">.sect__hd .sect__kicker .sect__link / .relnote</span>
+      <span class="map">→ <b>SectionHead.tsx</b></span>
+    </div>
+    <div class="piece__demo">
+      <div class="sect__hd">
+        <h2><span class="sect__kicker">八 家 · 選 模 表</span>本期选模</h2>
+        <a class="sect__link" href="#">去预测台看图改选 →</a>
+      </div>
+      <p class="relnote"><b>與 報 告 的 關 係</b>　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图。</p>
+    </div>
+  </section>
+
+  <!-- ═══ 表格 ═══ -->
+  <section class="piece" id="table">
+    <div class="piece__id">
+      <h2>DataTable 表格</h2>
+      <span class="cls">.table .c-subj .c-model .c-pick .dflt .chg</span>
+      <span class="map">→ <b>DataTable.tsx</b></span>
+    </div>
+    <div class="piece__demo">
+      <table class="table">
+        <thead><tr>
+          <th style="width:28%">潛 力 學 科</th><th style="width:32%">V 1 推 薦</th><th>本 期 已 選</th>
+        </tr></thead>
+        <tbody>
+          <tr><td class="c-subj">免疫学</td><td class="c-model">季节性 ETS 模型</td>
+            <td class="c-pick">SARIMA 模型<span class="chg">已改选</span></td></tr>
+          <tr><td class="c-subj">分子生物学与遗传学</td><td class="c-model">季节性 ETS 模型</td>
+            <td class="dflt">默 认</td></tr>
+          <tr><td class="c-subj">多学科</td><td class="c-model">Holt 趋势模型</td>
+            <td class="dflt">默 认</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══ 状态签 ═══ -->
+  <section class="piece" id="tag">
+    <div class="piece__id">
+      <h2>Tag 状态签</h2>
+      <span class="cls">.tag .tag--g .tag--b .tag--r</span>
+      <span class="map">→ <b>Tag.tsx</b></span>
+    </div>
+    <div class="piece__demo">
+      <span class="tag tag--g">已 完 成</span>
+      <span class="tag tag--b">未 簽 發</span>
+      <span class="tag tag--g">已 簽 發</span>
+      <span class="tag tag--r">簽 發 已 失 效</span>
+    </div>
+    <p class="piece__note">只给「任务」「签发」两套状态词上色。不给别的字加色。</p>
+  </section>
+
+  <!-- ═══ 数据面板 ═══ -->
+  <section class="piece" id="data">
+    <div class="piece__id">
+      <h2>DataPanel 数据面板</h2>
+      <span class="cls">.datapanel .datapanel__title .datapanel__pair</span>
+      <span class="map">→ <b>DataPanel.tsx</b></span>
+    </div>
+    <div class="piece__demo">
+      <div class="datapanel">
+        <div class="datapanel__title">本 期 數 據</div>
+        <dl>
+          <div class="datapanel__pair"><dt>期 次</dt><dd><b>202609</b>　第 39 期</dd></div>
+          <div class="datapanel__pair"><dt>預 測 / 實 際</dt><dd>202609 / 202609</dd></div>
+          <div class="datapanel__pair"><dt>下 載 數 據</dt><dd><b>64 / 64</b></dd></div>
+          <div class="datapanel__pair"><dt>台 賬 文 件</dt><dd>云大全学科排名、阈值动态检测表.xlsx</dd></div>
+          <div class="datapanel__pair"><dt>任 務</dt><dd>已完成</dd></div>
+          <div class="datapanel__pair"><dt>簽 發</dt><dd>未签发</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 按钮 ═══ -->
+  <section class="piece" id="btn">
+    <div class="piece__id">
+      <h2>Button / Link 按钮与链接</h2>
+      <span class="cls">.btn .btn--paper .ghost .ghost--dark</span>
+      <span class="map">→ <b>Button.tsx</b></span>
+    </div>
+    <div class="piece__demo piece__demo--dark">
+      <button class="btn">复 核 并 签 单 →</button>
+      <button class="btn btn--paper">盖 印 签 单 →</button>
+      <a class="ghost" href="#">看详细过程</a>
+      <a class="ghost ghost--dark" href="#">看运行档案</a>
+    </div>
+    <p class="piece__note">主动作全站只 1 个。<b>.ghost</b> 用在蓝／绿深场，<b>.ghost--dark</b> 用在纸面。</p>
+  </section>
+
+  <!-- ═══ 页脚 ═══ -->
+  <section class="piece" id="foot">
+    <div class="piece__id">
+      <h2>PageFoot 页脚</h2>
+      <span class="cls">.pagefoot .pagefoot__dual</span>
+      <span class="map">→ <b>PageFoot.tsx</b></span>
+    </div>
+    <div class="piece__demo" style="padding:0">
+      <footer class="pagefoot">
+        <div><b>文衡 · 汇</b>雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+        <div class="pagefoot__dual"><i class="b"></i><i class="g"></i>　藍 為 場　·　綠 為 器</div>
+        <div>站 一 / 五　·　取 數 核 驗</div>
+      </footer>
+    </div>
+  </section>
+
+  <!-- ═══ ① 翻牌 ═══ -->
+  <section class="piece" id="flap">
+    <div class="piece__id">
+      <h2>① FlapDigits 翻牌数字</h2>
+      <span class="cls">.flaps .flaps__grp .flap .flap--sm .flap--colon .flap--gap</span>
+      <span class="map">→ <b>FlapDigits.tsx</b>　属「蓝·场」</span>
+    </div>
+    <div class="piece__demo piece__demo--dark">
+      <div class="flaps" style="align-items:flex-start">
+        <div class="flaps__grp">
+          <div class="flaps__label">期 次 · 目 錄 號</div>
+          <div class="flaps__row">
+            <span class="flap">2</span><span class="flap">0</span><span class="flap">2</span>
+            <span class="flap flap--gr">6</span><span class="flap flap--rd">0</span><span class="flap flap--rd">9</span>
+          </div>
+        </div>
+        <div class="flaps__grp">
+          <div class="flaps__label">開 始 · 完 成</div>
+          <div class="flaps__row">
+            <span class="flap flap--sm flap--gr">0</span><span class="flap flap--sm flap--gr">7</span>
+            <span class="flap flap--sm flap--colon">:</span>
+            <span class="flap flap--sm flap--gr">5</span><span class="flap flap--sm flap--gr">5</span>
+            <span class="flap flap--sm flap--gap"></span>
+            <span class="flap flap--sm">1</span><span class="flap flap--sm">5</span>
+            <span class="flap flap--sm flap--colon">:</span>
+            <span class="flap flap--sm">0</span><span class="flap flap--sm">3</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="piece__note">牌缝是翻牌本身的结构，不是装饰线。<b>.flap--gap</b> 是空格牌，
+      <b>.flap--colon</b> 是冒号牌。改色走 <b>.flap--gr / .flap--rd</b>。</p>
+  </section>
+
+  <!-- ═══ ② 水位 ═══ -->
+  <section class="piece" id="gauge">
+    <div class="piece__id">
+      <h2>② Gauge 水位标尺</h2>
+      <span class="cls">.gauge .gauge__scale .gauge__water .gauge__threshold .gauge__rods .level</span>
+      <span class="map">→ <b>Gauge.tsx</b>　属「蓝·场」</span>
+    </div>
+    <div class="piece__demo piece__demo--dark">
+      <div class="gauge gauge--green gauge--short" style="max-width:520px">
+        <div class="gauge__head"><b>取 數 完 成 度</b><span>2 0 2 6 0 9</span></div>
+        <div class="gauge__scale">
+          <div class="gauge__ticks" aria-hidden="true">
+            <span class="gauge__tick is-major"></span><span class="gauge__tick"></span>
+            <span class="gauge__tick"></span><span class="gauge__tick"></span>
+            <span class="gauge__tick is-major"></span><span class="gauge__tick"></span>
+            <span class="gauge__tick"></span><span class="gauge__tick"></span>
+            <span class="gauge__tick is-major"></span><span class="gauge__tick"></span>
+            <span class="gauge__tick"></span><span class="gauge__tick"></span>
+            <span class="gauge__tick is-major"></span>
+          </div>
+          <div class="gauge__water" style="height:100%"></div>
+          <div class="gauge__threshold" style="bottom:100%">
+            <span class="gauge__threshold-label">齐 全 线</span>
+          </div>
+          <div class="gauge__read">100%<small>6 4 / 6 4</small></div>
+        </div>
+      </div>
+
+      <div class="gauge gauge--green gauge--short" style="max-width:520px;margin-top:20px">
+        <div class="gauge__head"><b>八 根 水 尺 · 接 近 度</b><span>2 0 2 6 0 9</span></div>
+        <div class="gauge__scale">
+          <div class="gauge__threshold" style="bottom:72%">
+            <span class="gauge__threshold-label">ESI 前 1% 閾 值</span>
+          </div>
+          <div class="gauge__rods" aria-hidden="true">
+            <div class="gauge__rod is-top"><i style="height:88%"></i></div>
+            <div class="gauge__rod is-top"><i style="height:81%"></i></div>
+            <div class="gauge__rod"><i style="height:67%"></i></div>
+            <div class="gauge__rod"><i style="height:54%"></i></div>
+            <div class="gauge__rod"><i style="height:47%"></i></div>
+            <div class="gauge__rod"><i style="height:39%"></i></div>
+            <div class="gauge__rod"><i style="height:31%"></i></div>
+            <div class="gauge__rod"><i style="height:22%"></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="piece__note">阈值虚线是警戒水位线（红色只此一处）。<b>.gauge--green</b> 用在绿器区，
+      <b>.gauge--short</b> 矮版。表格里的接近度小水尺走 <b>.level</b>。</p>
+  </section>
+
+  <!-- ═══ ③ 橡皮戳 ═══ -->
+  <section class="piece" id="stamp">
+    <div class="piece__id">
+      <h2>③ Stamp 橡皮戳</h2>
+      <span class="cls">.stampbox .stamprow .stamp .stamp--round .stamp--square .stamp--penta</span>
+      <span class="map">→ <b>Stamp.tsx</b>　属「绿·器」</span>
+    </div>
+    <div class="piece__demo">
+      <div class="stampbox">
+        <div class="stampbox__head">橡 皮 戳 · 本 期 蓋 章 進 度</div>
+        <div class="stamprow">
+          <div class="stamp stamp--round">
+            <svg viewBox="0 0 132 132" aria-hidden="true">
+              <defs><filter id="kA" x="-8%" y="-8%" width="116%" height="116%">
+                <feTurbulence type="fractalNoise" baseFrequency="1.3" numOctaves="2" seed="4"/>
+                <feDisplacementMap in="SourceGraphic" scale="2.4"/></filter></defs>
+              <g filter="url(#kA)">
+                <circle cx="66" cy="66" r="58" fill="none" stroke="currentColor" stroke-width="4.5"/>
+                <circle cx="66" cy="66" r="49" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              </g>
+            </svg>
+            <div class="stamp__text"><span class="t">已 并 入<br>台 賬</span><span class="d">09.13</span></div>
+          </div>
+          <div class="stamp stamp--square">
+            <svg viewBox="0 0 132 132" aria-hidden="true">
+              <defs><filter id="kB" x="-8%" y="-8%" width="116%" height="116%">
+                <feTurbulence type="fractalNoise" baseFrequency="1.3" numOctaves="2" seed="9"/>
+                <feDisplacementMap in="SourceGraphic" scale="2.4"/></filter></defs>
+              <g filter="url(#kB)">
+                <rect x="8" y="8" width="116" height="116" fill="none" stroke="currentColor" stroke-width="4.5"/>
+                <rect x="17" y="17" width="98" height="98" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              </g>
+            </svg>
+            <div class="stamp__text"><span class="t">已 出 稿</span><span class="d">10.13 15:03</span></div>
+          </div>
+          <div class="stamp stamp--penta is-pending">
+            <svg viewBox="0 0 132 132" aria-hidden="true">
+              <defs><filter id="kC" x="-8%" y="-8%" width="116%" height="116%">
+                <feTurbulence type="fractalNoise" baseFrequency="1.3" numOctaves="2" seed="14"/>
+                <feDisplacementMap in="SourceGraphic" scale="2.4"/></filter></defs>
+              <g filter="url(#kC)">
+                <polygon points="66,8 122,42 108,108 24,108 10,42" fill="none" stroke="currentColor" stroke-width="4.5"/>
+                <polygon points="66,20 112,47 101,98 31,98 20,47" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              </g>
+            </svg>
+            <div class="stamp__text"><span class="t">復 核 通 過</span><span class="d">PENDING</span></div>
+          </div>
+        </div>
+        <div class="stampcap">三 枚 橡 皮 戳 · 本 期 已 鈐 二</div>
+      </div>
+    </div>
+    <p class="piece__note">三枚形状各不同：圆＝并入、方＝出稿、五边＝复核（红色只此一处）。
+      <b>.is-pending</b> 表示未落章。<b>.stampbox--green</b> 是绿场版本。</p>
+  </section>
+
+  <!-- ═══ ④ 钤印 ═══ -->
+  <section class="piece" id="seal">
+    <div class="piece__id">
+      <h2>④ Seal 至公天下 钤印</h2>
+      <span class="cls">.sealwrap .seal .sealcap</span>
+      <span class="map">→ <b>Seal.tsx</b>　属「绿·器」</span>
+    </div>
+    <div class="piece__demo piece__demo--green">
+      <div class="sealwrap" style="align-items:flex-start">
+        <div class="seal">
+          <svg viewBox="0 0 212 212" aria-label="至公天下 钤印">
+            <defs><filter id="kS" x="-6%" y="-6%" width="112%" height="112%">
+              <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="21"/>
+              <feDisplacementMap in="SourceGraphic" scale="3"/></filter></defs>
+            <g filter="url(#kS)">
+              <rect x="7" y="7" width="198" height="198" fill="#B23A2B"/>
+              <rect x="21" y="21" width="170" height="170" fill="none" stroke="#DFEDE6" stroke-width="3.2"/>
+            </g>
+            <g font-family="'Noto Serif SC','Songti SC',serif" font-weight="700"
+               font-size="58" text-anchor="middle" fill="#DFEDE6" letter-spacing="4">
+              <text x="72" y="90">至</text><text x="152" y="90">公</text>
+              <text x="72" y="164">天</text><text x="152" y="164">下</text>
+            </g>
+            <line x1="106" y1="26" x2="106" y2="186" stroke="#DFEDE6" stroke-width="1.6" opacity=".5"/>
+            <line x1="26" y1="106" x2="186" y2="106" stroke="#DFEDE6" stroke-width="1.6" opacity=".5"/>
+          </svg>
+        </div>
+        <div class="sealcap">鈐 印 後 即 為 可 交 付</div>
+      </div>
+    </div>
+    <p class="piece__note">全套只在「核验定稿」一屏落一次，落在「盖印签单」那个动作旁。
+      取「至公天下」——至公堂是原云南贡院旧址，本义即取士之公。</p>
+  </section>
+
+</main>
+
+<footer class="pagefoot">
+  <div><b>文衡 · 新前端零件目录</b>雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+  <div class="pagefoot__dual"><i class="b"></i><i class="g"></i>　藍 為 場　·　綠 為 器</div>
+  <div>栈 未 定　·　只 出 静 态 件</div>
+</footer>
+
+</body>
+</html>

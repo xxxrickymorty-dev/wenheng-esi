@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>取数核验 · 新前端 01 — 静态件</title>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="../css/devices.css">
+<style>
+  .hero { background: var(--blue); color: var(--blue-5); padding: 46px var(--pad-x) 40px; }
+  .hero__in { max-width: var(--maxw); margin: 0 auto; display: grid;
+    grid-template-columns: minmax(0,1fr) auto; gap: 48px; align-items: end; }
+  .hero__ov { font-family: var(--kai); font-size: 11px; letter-spacing: .42em; color: rgba(220,232,240,.55); }
+  .hero h1 { font-family: var(--serif); font-size: clamp(38px,5vw,66px); line-height: 1.06;
+    letter-spacing: .04em; margin-top: 12px; }
+  .hero__deck { font-family: var(--kai); font-size: 15px; line-height: 2.05;
+    color: rgba(220,232,240,.8); margin-top: 14px; max-width: 34ch; }
+  .hero__acts { margin-top: 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+
+  .srcs { margin-top: 6px; }
+  .src { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; gap: 14px;
+    align-items: center; padding: 11px 0; border-bottom: 1px solid var(--paper-2); }
+  .src__ic { width: 26px; height: 26px; flex: none; color: var(--blue-3); }
+  .src__ic svg { width: 100%; height: 100%; display: block; }
+  .src__nm { font-family: var(--serif); font-size: 15px; letter-spacing: .03em; }
+  .src__nm small { display: block; font-family: var(--kai); font-size: 11px; color: var(--ink-3);
+    letter-spacing: .14em; margin-top: 2px; }
+  .src__n { font-family: var(--mono); font-size: 11.5px; letter-spacing: .12em; color: var(--ink-3); }
+
+  .check { background: var(--paper-2); padding: 20px 22px; }
+  .check__h { font-family: var(--kai); font-size: 10.5px; letter-spacing: .36em; color: var(--ink-3);
+    border-bottom: 1px solid var(--paper-3); padding-bottom: 10px; }
+  .check ul { list-style: none; margin-top: 12px; }
+  .check li { display: flex; gap: 11px; align-items: baseline; padding: 8px 0;
+    border-bottom: 1px solid var(--paper-2); font-family: var(--kai); font-size: 12.5px;
+    letter-spacing: .12em; color: var(--ink-2); }
+  .check li:last-child { border-bottom: 0; }
+  .check li .m { width: 7px; height: 7px; flex: none; background: var(--green-3); }
+  .check li.is-no .m { background: var(--red); }
+  .check li.is-no { color: var(--ink-3); }
+  .check li b { color: var(--ink); font-family: var(--serif); letter-spacing: .06em; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="topbar__wm">文衡</span>
+  <span class="topbar__sub">雲 南 大 學 圖 書 館<br>學 科 信 息 參 考</span>
+  <nav class="stationnav" aria-label="五站五屏">
+    <a class="is-on" href="01-取数核验.html">1 取数核验</a><a href="#">2 选章节</a>
+    <a href="#">3 预测选模</a><a href="#">4 生成初稿</a><a href="05-核验定稿.html">5 核验定稿</a>
+  </nav>
+  <span class="topbar__right">
+    <a href="00-出报告.html">出 报 告 ↖</a>
+    <span class="palette"><i class="b is-on"></i><i class="g"></i></span>
+  </span>
+</header>
+
+<section class="hero">
+  <div class="hero__in">
+    <div>
+      <div class="hero__ov">站 一 · 雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+      <h1>取数核验</h1>
+      <p class="hero__deck">机器先把当期原始数据取回来（取数），人再逐项核对（取数核验）。两步合在一屏。</p>
+      <div class="hero__acts">
+        <button class="btn">开 始 取 数 →</button>
+        <a class="ghost" href="#">看运行档案</a>
+      </div>
+    </div>
+
+    <!-- ① FlapDigits -->
+    <div class="flaps" aria-label="期次与时刻">
+      <div class="flaps__grp">
+        <div class="flaps__label">期 次 · 目 錄 號</div>
+        <div class="flaps__row">
+          <span class="flap">2</span><span class="flap">0</span><span class="flap">2</span>
+          <span class="flap flap--gr">6</span><span class="flap flap--rd">0</span><span class="flap flap--rd">9</span>
+        </div>
+      </div>
+      <div class="flaps__grp">
+        <div class="flaps__label">開 始 · 完 成</div>
+        <div class="flaps__row">
+          <span class="flap flap--sm flap--gr">0</span><span class="flap flap--sm flap--gr">7</span>
+          <span class="flap flap--sm flap--colon">:</span>
+          <span class="flap flap--sm flap--gr">5</span><span class="flap flap--sm flap--gr">5</span>
+          <span class="flap flap--sm flap--gap"></span>
+          <span class="flap flap--sm">1</span><span class="flap flap--sm">2</span>
+          <span class="flap flap--sm flap--colon">:</span>
+          <span class="flap flap--sm">4</span><span class="flap flap--sm">0</span>
+        </div>
+      </div>
+      <div class="flaps__grp">
+        <div class="flaps__label">數 據 份 數</div>
+        <div class="flaps__row">
+          <span class="flap flap--sm flap--gr">6</span><span class="flap flap--sm flap--gr">4</span>
+          <span class="flap flap--sm flap--gap"></span>
+          <span class="flap flap--sm flap--gr">6</span><span class="flap flap--sm flap--gr">4</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="band">
+  <span class="band__pill">任务 · 已完成</span>
+  <span class="band__pill band__pill--blue">签发 · 未签发</span>
+  <span class="band__right">第 39 期　·　2 0 2 6 0 9　·　屏 题 ＝ 站 名</span>
+</div>
+
+<section class="wrap pad-top">
+  <div class="grid-2">
+    <div>
+      <div class="sect__hd">
+        <h2><span class="sect__kicker">数 据 来 源 · 两 个 台</span>取数清单</h2>
+        <a class="sect__link" href="#">看运行档案 →</a>
+      </div>
+      <div class="srcs">
+        <div class="src">
+          <span class="src__ic"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="5" width="20" height="16"/><line x1="3" y1="10" x2="23" y2="10"/>
+            <line x1="8" y1="15" x2="18" y2="15"/></svg></span>
+          <div class="src__nm">ESI 全球机构总表<small>Clarivate · 自动取数台</small></div>
+          <div class="src__n">1 张</div><div class="tag tag--g">已 取</div>
+        </div>
+        <div class="src">
+          <span class="src__ic"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M13 3 22 8v10l-9 5-9-5V8z"/><line x1="4" y1="8" x2="22" y2="8"/></svg></span>
+          <div class="src__nm">22 学科机构表<small>ESI · 分学科</small></div>
+          <div class="src__n">22 张</div><div class="tag tag--g">已 取</div>
+        </div>
+        <div class="src">
+          <span class="src__ic"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="4" width="8" height="18"/><rect x="15" y="11" width="8" height="11"/></svg></span>
+          <div class="src__nm">全球·中国·云大学科汇总<small>ESI · 三口径</small></div>
+          <div class="src__n">1 张</div><div class="tag tag--g">已 取</div>
+        </div>
+        <div class="src">
+          <span class="src__ic"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M5 3h12l4 4v16H5z"/><line x1="9" y1="12" x2="17" y2="12"/>
+            <line x1="9" y1="17" x2="17" y2="17"/></svg></span>
+          <div class="src__nm">云大 Top·高被引·热点论文明细<small>ESI · 论文清单</small></div>
+          <div class="src__n">1 张</div><div class="tag tag--g">已 取</div>
+        </div>
+        <div class="src">
+          <span class="src__ic"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5">
+            <line x1="3" y1="21" x2="23" y2="21"/><rect x="5" y="12" width="4" height="9"/>
+            <rect x="11" y="7" width="4" height="14"/><rect x="17" y="15" width="4" height="6"/></svg></span>
+          <div class="src__nm">三张阈值 · 三张基线<small>ESI · 阈值与基线</small></div>
+          <div class="src__n">6 张</div><div class="tag tag--g">已 取</div>
+        </div>
+        <div class="src">
+          <span class="src__ic"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="13" cy="13" r="9"/><line x1="13" y1="4" x2="13" y2="22"/>
+            <line x1="4" y1="13" x2="22" y2="13"/></svg></span>
+          <div class="src__nm">InCites 分学科全球机构排名表<small>Clarivate · 22 张</small></div>
+          <div class="src__n">22 张</div><div class="tag tag--g">已 取</div>
+        </div>
+        <div class="src">
+          <span class="src__ic"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M4 21V6l7 4V6l7 4V6l4 3v12z"/></svg></span>
+          <div class="src__nm">InCites 全球机构排名表<small>Clarivate · 总表</small></div>
+          <div class="src__n">1 张</div><div class="tag tag--b">待 核 驗</div>
+        </div>
+      </div>
+
+      <p class="relnote"><b>與 報 告 的 關 係</b>　本屏取回的原始数据只进台账，不直接进报告。核对无误后按「核对并并入」并入台账，下一站才拿它选章节。缺一份就退回补取，不带病往下走。</p>
+    </div>
+
+    <div>
+      <div class="check">
+        <div class="check__h">核 驗 項 · 取 數 核 驗</div>
+        <ul>
+          <li><span class="m"></span><span>期次号与目录号一致　<b>202609 / 202609</b></span></li>
+          <li><span class="m"></span><span>源表张数齐全　<b>64 / 64</b></span></li>
+          <li><span class="m"></span><span>云大口径可解析（全文搜 YUNNAN）</span></li>
+          <li><span class="m"></span><span>阈值表三条线齐全</span></li>
+          <li><span class="m"></span><span>论文明细行数与汇总一致</span></li>
+          <li class="is-no"><span class="m"></span><span>InCites 全球机构排名表待核（历史 13 期口径不全）</span></li>
+        </ul>
+      </div>
+
+      <!-- ② Gauge -->
+      <div class="gauge gauge--green gauge--short" style="margin-top:18px">
+        <div class="gauge__head"><b>取 數 完 成 度</b><span>第 3 9 期 · 2 0 2 6 0 9</span></div>
+        <div class="gauge__scale">
+          <div class="gauge__ticks" aria-hidden="true">
+            <span class="gauge__tick is-major"></span><span class="gauge__tick"></span>
+            <span class="gauge__tick"></span><span class="gauge__tick"></span>
+            <span class="gauge__tick is-major"></span><span class="gauge__tick"></span>
+            <span class="gauge__tick"></span><span class="gauge__tick"></span>
+            <span class="gauge__tick is-major"></span><span class="gauge__tick"></span>
+            <span class="gauge__tick"></span><span class="gauge__tick"></span>
+            <span class="gauge__tick is-major"></span>
+          </div>
+          <div class="gauge__water" style="height:100%"></div>
+          <div class="gauge__threshold" style="bottom:100%">
+            <span class="gauge__threshold-label">齐 全 线</span>
+          </div>
+          <div class="gauge__read">100%<small>6 4 / 6 4</small></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap pad-top">
+  <div class="datapanel">
+    <div class="datapanel__title">本 期 數 據</div>
+    <dl>
+      <div class="datapanel__pair"><dt>期 次</dt><dd><b>202609</b>　第 39 期</dd></div>
+      <div class="datapanel__pair"><dt>取 數 開 始</dt><dd>2026-09-28 07:55</dd></div>
+      <div class="datapanel__pair"><dt>取 數 完 成</dt><dd>2026-09-28 12:40</dd></div>
+      <div class="datapanel__pair"><dt>源 表 份 數</dt><dd><b>64 / 64</b></dd></div>
+      <div class="datapanel__pair"><dt>核 對 並 並 入</dt><dd>已并入台账</dd></div>
+      <div class="datapanel__pair"><dt>台 賬 文 件</dt><dd>云大全学科排名、阈值动态检测表.xlsx</dd></div>
+      <div class="datapanel__pair"><dt>預 測 / 實 際</dt><dd>202609 / 202609</dd></div>
+      <div class="datapanel__pair"><dt>任 務</dt><dd>已完成</dd></div>
+      <div class="datapanel__pair"><dt>簽 發</dt><dd>未签发</dd></div>
+    </dl>
+  </div>
+</section>
+
+<footer class="pagefoot">
+  <div><b>文衡 · 汇</b>雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+  <div class="pagefoot__dual"><i class="b"></i><i class="g"></i>　藍 為 場　·　綠 為 器</div>
+  <div>站 一 / 五　·　取 數 核 驗</div>
+</footer>
+
+</body>
+</html>

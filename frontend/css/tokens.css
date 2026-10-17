@@ -1,0 +1,60 @@
+/* ============================================================
+   tokens.css — 文衡新前端 · 设计令牌（汇-绿蓝）
+   ------------------------------------------------------------
+   分工（这是整套的骨架，别改含义）：
+     蓝 ＝ 场（数据 / 时序 / 读数）
+     绿 ＝ 器（工序 / 戳印 / 签发）
+   红色只作警戒（阈值虚线、复核 PENDING），全站两处以内。
+   全部走 CSS 变量，换主题只改这一份。
+   ============================================================ */
+:root {
+  /* ── 蓝 · 场 ── */
+  --blue:      #17456E;
+  --blue-2:    #0F2E4C;
+  --blue-3:    #2F6B8E;
+  --blue-4:    #8FB6CE;
+  --blue-5:    #DCE8F0;
+
+  /* ── 绿 · 器 ── */
+  --green:     #26483B;
+  --green-2:   #163228;
+  --green-3:   #2F7A58;
+  --green-4:   #7FB79B;
+  --green-5:   #DFEDE6;
+
+  /* ── 纸与墨 ── */
+  --paper:     #F2EFE6;
+  --paper-2:   #E4DFD0;
+  --paper-3:   #D6D0C0;
+  --ink:       #15222B;
+  --ink-2:     #43525C;
+  --ink-3:     #7B8892;
+
+  /* ── 警戒（少用） ── */
+  --red:       #B23A2B;
+  --red-soft:  #F0B5A6;
+  --red-ink:   #8B2A1E;
+
+  /* ── 字体：三种，到顶 ── */
+  --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", SimSun, serif;
+  --kai:   "KaiTi", "STKaiti", "FangSong", "STFangsong", serif;
+  --sans:  system-ui, -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  --mono:  "Cascadia Mono", Consolas, "Courier New", monospace;
+
+  /* ── 尺度 ── */
+  --gap-1: 6px;
+  --gap-2: 12px;
+  --gap-3: 20px;
+  --gap-4: 32px;
+  --gap-5: 48px;
+  --pad-x: 30px;
+  --maxw:  1280px;
+
+  /* ── 字号 ── */
+  --fs-ov:   11px;   /* 题头小字 */
+  --fs-lb:   10.5px; /* 字段标签 */
+  --fs-sm:   12px;
+  --fs-base: 15px;
+  --fs-md:   17px;
+  --fs-lg:   22px;
+}
