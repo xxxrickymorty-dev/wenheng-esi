@@ -72,11 +72,13 @@ const LANDING_EXAMPLES = [
   '物理学的 1% 阈值是多少', '数学什么时候进入前 1%', '202609 到哪一步了',
 ]
 
-function initialPalette(): 'ynu' | 'zhu' {
+function initialPalette(): 'blue' | 'green' {
   try {
-    return localStorage.getItem(PALETTE_STORAGE_KEY) === 'zhu' ? 'zhu' : 'ynu'
+    const v = localStorage.getItem(PALETTE_STORAGE_KEY)
+    if (v === 'green' || v === 'blue') return v
+    return v === 'zhu' ? 'green' : 'blue'
   } catch {
-    return 'ynu'
+    return 'blue'
   }
 }
 
@@ -604,12 +606,12 @@ export default function DialogPage() {
           <div className="dlg-right">
             {/* 2026-10-12（rick）：工作台下拉取消——只留一个「去生成台」入口（各台之间在工作区导航里走）。 */}
             <a className="dlg-wk-link" href={withPeriod('/app/')}>去生成台 ▸</a>
-            {/* 皮肤开关：与工作区同款（共享 .skin-switch）；默认云大绿 */}
-            <span className="skin-switch" role="group" aria-label="切换配色">
-              <button type="button" aria-pressed={palette === 'ynu'}
-                      onClick={() => setPalette('ynu')}>云大绿</button>
-              <button type="button" aria-pressed={palette === 'zhu'}
-                      onClick={() => setPalette('zhu')}>朱砂</button>
+          {/* 皮肤开关：与工作区同款（共享 .skin-switch）；默认蓝场 */}
+          <span className="skin-switch" role="group" aria-label="切换配色">
+            <button type="button" aria-pressed={palette === 'blue'}
+                    onClick={() => setPalette('blue')}>蓝场</button>
+            <button type="button" aria-pressed={palette === 'green'}
+                    onClick={() => setPalette('green')}>绿场</button>
             </span>
             <SlotChip label="期次" value={active.slots.period}
                       onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'period') }))} />

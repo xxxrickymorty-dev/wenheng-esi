@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react'
 import {
   getJob, getPeriodArtifacts, getPeriodDetail,
-  getRollbackPoints, humanSize, postJobWithFile, rerunJob, rollbackPeriod,
+  getRollbackPoints, humanSize, rerunJob, rollbackPeriod,
   type Artifact, type Job, type RollbackPoint,
 } from './api'
 import { ConfirmButton } from './ConfirmButton'
@@ -44,9 +44,6 @@ export function Tools({
   onUploaded: (jobId: string, period: string) => void
   refreshToken?: number
 }) {
-  const [file, setFile] = useState<File | null>(null)
-  const [newPeriod, setNewPeriod] = useState('')
-  const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ period: string | null; ok: boolean; text: string } | null>(null)
   const [rerunning, setRerunning] = useState(false)
   const [jobView, setJobView] = useState<PeriodJobView>({
@@ -125,29 +122,8 @@ export function Tools({
     return () => { alive = false }
   }, [period, jobId, refreshToken, localRefresh])
 
-  async function upload() {
-    if (actionsLocked || busy || rerunning) return
-    const actionPeriod = period
-    if (!file) { setMsg({ period: actionPeriod, ok: false, text: '先选一个台账文件（.xlsx）。' }); return }
-    if (!/^\d{6}$/.test(newPeriod.trim())) { setMsg({ period: actionPeriod, ok: false, text: '期次要填 6 位数，如 202609。' }); return }
-    if (!onActionStart('upload')) return
-    setBusy(true); setMsg(null)
-    try {
-      const r = await postJobWithFile(newPeriod.trim(), file)
-      onUploaded(r.job_id, newPeriod.trim())
-      setMsg({ period: actionPeriod, ok: true, text: `已开始生成 ${newPeriod.trim()}——进度就在上面。` })
-      setFile(null); setNewPeriod('')
-    } catch (e) {
-      const h = e as { status?: number; body?: { error?: string; hint?: string }; message?: string }
-      setMsg({ period: actionPeriod, ok: false, text: (h.body?.error ?? h.message ?? '上传失败') + (h.body?.hint ? `（${h.body.hint}）` : '') })
-    } finally {
-      setBusy(false)
-      onActionEnd('upload')
-    }
-  }
-
   async function rerun() {
-    if (actionsLocked || busy || rerunning) return
+    if (actionsLocked || rerunning) return
     const id = effJobId
     const actionPeriod = period
     if (!id || !actionPeriod) return
@@ -167,7 +143,7 @@ export function Tools({
   }
 
   async function rollback() {
-    if (actionsLocked || busy || rerunning) return
+    if (actionsLocked || rerunning) return
     const actionPeriod = period
     if (!actionPeriod || !point) return
     if (!onActionStart('rollback')) return
@@ -194,19 +170,8 @@ export function Tools({
 
       <div className="mt-12">
         <div>
-          {/* 上传当期数据表（老站同一套口径：期次 6 位必填） */}
-          <h3 className="fs-15">上传当期数据表</h3>
-          <div className="toolbar">
-            <input type="file" accept=".xlsx" aria-label="选择要上传的当期数据表（xlsx）"
-                   onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-            <input className="search maxw-150" value={newPeriod} aria-label="新期次（六位数字）"
-                   onChange={(e) => setNewPeriod(e.target.value)} placeholder="期次 202609" />
-            <ConfirmButton className="btn" disabled={actionsLocked || busy || rerunning}
-                           confirmText="确认上传？会覆盖本期的核对副本"
-                           onConfirm={upload}>
-              <Icon name="refresh" size={19} />{busy ? '正在上传……' : '上传并生成'}
-            </ConfirmButton>
-          </div>
+          {/* 2026-10-17 rick 拍板：数据按期次自动读台账，上传入口删除 */}
+          <p className="hint mt-8">数据按期次自动读台账——不再手工上传。</p>
 
           {/* 产物下载 + 重跑 */}
           <h3 className="fs-15 mt-18">产物与重跑</h3>
@@ -234,7 +199,7 @@ export function Tools({
           )}
           {period && effJobId && (
             <div className="toolbar">
-              <ConfirmButton className="btn" disabled={actionsLocked || busy || rerunning}
+              <ConfirmButton className="btn" disabled={actionsLocked || rerunning}
                              confirmText="确认重跑？会撤下当前成品"
                              title="按同一期台账再跑一遍；旧稿先撤下、可回滚"
                              onConfirm={rerun}>
@@ -251,7 +216,7 @@ export function Tools({
                                borderRadius: 8, background: 'var(--card)', color: 'var(--ink)', font: 'inherit' }}>
                 {points.map((p) => <option key={p.id} value={p.id}>{fmtPoint(p.id)} · {p.files.length} 个文件</option>)}
               </select>
-              <ConfirmButton className="btn" disabled={actionsLocked || busy || rerunning}
+              <ConfirmButton className="btn" disabled={actionsLocked || rerunning}
                              confirmText="确认回滚？当前成品会先撤下"
                              onConfirm={rollback}>
                 <Icon name="refresh" size={19} />回滚到这一版

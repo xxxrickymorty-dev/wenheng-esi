@@ -356,7 +356,7 @@ export function Workbench({
         )}
       {showTools && (
         <details className="fold">
-          <summary>这一期的工具<span className="sm">上传 · 重跑 · 回滚 · 台账 · 日志包</span></summary>
+          <summary>这一期的工具<span className="sm">重跑 · 回滚 · 台账 · 日志包</span></summary>
           <p className="hint fold-lead">
             看数据源：<a href={`/app/?view=ledger${period ? `&period=${encodeURIComponent(period)}` : ''}`}>主台账（只读）→</a>
           </p>
@@ -404,7 +404,7 @@ export function PeriodsPanel({ periods, selected, healthy, onPick }: {
                             onClick={() => location.reload()}>重新检查</button>
                     一次。</>
                 ) : (
-                  <>还没有任何期次。先在下方「这一期的工具」上传当期数据表，生成第一期。<a href="#tools">去上传 →</a></>
+                  <>还没有任何期次。数据按期次自动读台账；生成第一期后这里就有记录。<a href="#tools">去看这一期的工具 →</a></>
                 )}
               </td></tr>
             )}
