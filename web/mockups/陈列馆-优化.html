@@ -72,7 +72,10 @@
     linear-gradient(100deg,rgba(20,52,42,.94) 0%,rgba(20,52,42,.72) 38%,rgba(20,52,42,.28) 72%,rgba(20,52,42,.5) 100%),
     linear-gradient(0deg,rgba(20,52,42,.88) 0%,rgba(20,52,42,0) 52%)}
   .hero .in{position:relative;z-index:2;width:100%;max-width:1220px;
-    margin:0 auto;padding:112px 36px 92px}
+    margin:0 auto;padding:112px 36px 92px;
+    display:grid;grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr);
+    gap:36px;align-items:center}
+  .hero .lede{min-width:0}
   .hero .kicker{font-family:var(--kai);font-size:11px;letter-spacing:.46em;color:rgba(234,242,236,.62)}
   .hero h1{font-family:var(--serif);font-size:clamp(46px,7vw,102px);line-height:1.02;
     letter-spacing:.02em;color:#EAF2EC;margin-top:18px}
@@ -287,9 +290,46 @@
     .btn:hover{transform:none}
   }
 
+  /* ───────── 螺旋阶梯：书是人类进步的阶梯 ───────── */
+  .spiral{position:relative;justify-self:center;width:min(100%,400px);margin:0}
+  .spiral svg{width:100%;height:auto;display:block;overflow:visible}
+  .spiral-cap{margin-top:14px;text-align:center;font-family:var(--kai);
+    font-size:12px;letter-spacing:.26em;color:rgba(234,242,236,.72)}
+  .spiral-cap b{font-family:var(--serif);color:var(--g-pale);letter-spacing:.14em;
+    font-size:13px;display:block;margin-bottom:3px}
+  /* 阶：自下而上次第升起 */
+  @keyframes treadIn{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:none}}
+  .treads .tr{animation:treadIn .72s cubic-bezier(.2,.8,.2,1) both}
+  .treads .tr:nth-child(1){animation-delay:.06s}
+  .treads .tr:nth-child(2){animation-delay:.13s}
+  .treads .tr:nth-child(3){animation-delay:.20s}
+  .treads .tr:nth-child(4){animation-delay:.27s}
+  .treads .tr:nth-child(5){animation-delay:.34s}
+  .treads .tr:nth-child(6){animation-delay:.41s}
+  .treads .tr:nth-child(7){animation-delay:.48s}
+  .treads .tr:nth-child(8){animation-delay:.55s}
+  .treads .tr:nth-child(9){animation-delay:.62s}
+  .treads .tr:nth-child(10){animation-delay:.69s}
+  .treads .tr:nth-child(11){animation-delay:.76s}
+  .treads .tr:nth-child(12){animation-delay:.83s}
+  /* 栏杆：一笔画出螺旋 */
+  @keyframes drawRail{from{stroke-dashoffset:1000}to{stroke-dashoffset:0}}
+  .spiral .rail{stroke-dasharray:1000;stroke-dashoffset:1000;
+    animation:drawRail 1.5s cubic-bezier(.2,.8,.2,1) .35s both}
+  .spiral .bal{animation:treadIn .6s cubic-bezier(.2,.8,.2,1) both;
+    animation-delay:.5s}
+  /* 滚动＝拾级而上：整架随页缓升、微转 */
+  @keyframes climb{from{transform:translateY(34px) rotate(-3.5deg)}
+                   to{transform:translateY(-28px) rotate(3.5deg)}}
+  @supports (animation-timeline: view()){
+    .spiral{animation:climb linear both;
+      animation-timeline:view();animation-range:entry 0% cover 78%}
+  }
+
   /* ───────── 响应式 ───────── */
   @media (max-width:1040px){
-    .hero .in{padding:88px 22px 72px}
+    .hero .in{padding:88px 22px 72px;grid-template-columns:1fr;gap:40px}
+    .spiral{width:min(84%,340px);justify-self:start}
     .ask .grid,.safe .grid,.about .in{grid-template-columns:1fr;gap:34px}
     .feats{grid-template-columns:1fr 1fr;gap:30px 0}
     .ft{padding:0 18px 0 0}
@@ -338,14 +378,62 @@
   <div class="scrim" aria-hidden="true"></div>
 
   <div class="in">
-    <div class="kicker">雲 南 大 學 圖 書 館 · 學 科 情 報 平 台 的 門 面</div>
-    <h1>云南大学<br><em>图书馆</em></h1>
-    <p class="sub">学科信息参考 · 呈贡馆藏 · 逐册装帧。这里陈列的是每一期成刊，一册一册，循流而上。</p>
-    <p class="facts"><b>22</b> 个学科在监测 · <b>14</b> 个已进 ESI 全球前 1% · <b>2019</b> 年起 <b>39</b> 期连续记录 · <b>291</b> 篇热点／高被引上榜</p>
-    <div class="acts">
-      <button class="btn">走 进 馆 藏 →</button>
-      <a class="ghost" href="#disciplines">学科速览</a>
+    <div class="lede">
+      <div class="kicker">雲 南 大 學 圖 書 館 · 學 科 情 報 平 台 的 門 面</div>
+      <h1>云南大学<br><em>图书馆</em></h1>
+      <p class="sub">学科信息参考 · 呈贡馆藏 · 逐册装帧。这里陈列的是每一期成刊，一册一册，循流而上。</p>
+      <p class="facts"><b>22</b> 个学科在监测 · <b>14</b> 个已进 ESI 全球前 1% · <b>2019</b> 年起 <b>39</b> 期连续记录 · <b>291</b> 篇热点／高被引上榜</p>
+      <div class="acts">
+        <button class="btn">走 进 馆 藏 →</button>
+        <a class="ghost" href="#disciplines">学科速览</a>
+      </div>
     </div>
+
+    <!-- 螺旋阶梯：一阶一册，盘旋而上 -->
+    <figure class="spiral" aria-label="螺旋阶梯，寓意书是人类进步的阶梯">
+      <svg viewBox="0 0 360 440" role="img" aria-hidden="true">
+        <!-- 中柱 -->
+        <rect x="170" y="64" width="20" height="348" fill="#0F2C22"/>
+        <rect x="170" y="64" width="7" height="348" fill="#1A4433"/>
+
+        <!-- 栏杆（一笔画出螺旋） -->
+        <path class="rail" fill="none" stroke="#8FC4A6" stroke-width="3" stroke-linejoin="round"
+              stroke-linecap="round" opacity=".82"
+              d="M298,342 L282,339 L239,331 L180,314 L121,287 L78,251 L62,210 L78,169 L121,133 L180,106 L239,89 L282,81"/>
+        <!-- 立柱（栏杆支杆） -->
+        <g class="bal" stroke="#8FC4A6" stroke-width="1.6" opacity=".55">
+          <line x1="298" y1="380" x2="298" y2="342"/><line x1="282" y1="377" x2="282" y2="339"/>
+          <line x1="239" y1="369" x2="239" y2="331"/><line x1="180" y1="352" x2="180" y2="314"/>
+          <line x1="121" y1="325" x2="121" y2="287"/><line x1="78" y1="289" x2="78" y2="251"/>
+          <line x1="62" y1="248" x2="62" y2="210"/><line x1="78" y1="207" x2="78" y2="169"/>
+          <line x1="121" y1="171" x2="121" y2="133"/><line x1="180" y1="144" x2="180" y2="106"/>
+          <line x1="239" y1="127" x2="239" y2="89"/><line x1="282" y1="119" x2="282" y2="81"/>
+        </g>
+
+        <!-- 阶：自下而上，越上越亮（平色阶，不用渐变） -->
+        <g class="treads">
+          <ellipse class="tr" cx="298" cy="380" rx="32" ry="11" fill="#1A4433" transform="rotate(0 298 380)"/>
+          <ellipse class="tr" cx="282" cy="377" rx="32" ry="11" fill="#1A4433" transform="rotate(30 282 377)"/>
+          <ellipse class="tr" cx="239" cy="369" rx="32" ry="11" fill="#1E5240" transform="rotate(60 239 369)"/>
+          <ellipse class="tr" cx="180" cy="352" rx="32" ry="11" fill="#1E5240" transform="rotate(90 180 352)"/>
+          <ellipse class="tr" cx="121" cy="325" rx="32" ry="11" fill="#256B4C" transform="rotate(120 121 325)"/>
+          <ellipse class="tr" cx="78" cy="289" rx="32" ry="11" fill="#256B4C" transform="rotate(150 78 289)"/>
+          <ellipse class="tr" cx="62" cy="248" rx="32" ry="11" fill="#2F7A58" transform="rotate(180 62 248)"/>
+          <ellipse class="tr" cx="78" cy="207" rx="32" ry="11" fill="#2F7A58" transform="rotate(210 78 207)"/>
+          <ellipse class="tr" cx="121" cy="171" rx="32" ry="11" fill="#4A9873" transform="rotate(240 121 171)"/>
+          <ellipse class="tr" cx="180" cy="144" rx="32" ry="11" fill="#4A9873" transform="rotate(270 180 144)"/>
+          <ellipse class="tr" cx="239" cy="127" rx="32" ry="11" fill="#6FB491" transform="rotate(300 239 127)"/>
+          <ellipse class="tr" cx="282" cy="119" rx="32" ry="11" fill="#A8D4B8" transform="rotate(330 282 119)"/>
+        </g>
+
+        <!-- 顶阶：当期 -->
+        <circle cx="282" cy="119" r="5" fill="#EAF2EC"/>
+      </svg>
+      <figcaption class="spiral-cap">
+        <b>书 是 人 类 进 步 的 阶 梯</b>
+        一 阶 一 冊　·　盤 旋 而 上
+      </figcaption>
+    </figure>
   </div>
 
   <div class="cap"><b>呈贡校区 · 图书馆</b>云大馆侧、呈贡新馆中庭</div>
