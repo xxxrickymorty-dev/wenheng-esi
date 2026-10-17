@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>取数核验 · 跨页双联 01 — 静态稿</title>
+<style>
+  /* ============================================================
+     跨页双联 · 会泽 / 至公（戊·跨页 × 双联·会泽至公 融合）
+     一句话：整站是一本书的对开跨页。左页「会泽」深绿品牌面
+     （印记、五站导航、屏题＝站名、期题、陈述、主动作、状态）；
+     右页「至公」纸面工作面（题带、五站工序条、当站名录、
+     本期数据、与报告的关系）。订口一条金线贯缝，「至公天下」
+     钤印位正落缝上——签单＝把两联合上，这一版方为可交付。
+     材质五件各一职：深绿＝会泽左页／纸＝至公右页／石＝百家
+     名录块／金＝订口／朱砂＝钤印与已改选。零圆角、零投影、
+     零渐变、零玻璃。静态稿：仅 hover 微反馈。
+     ============================================================ */
+  :root{
+    --deep:#143729; --deep-2:#0F2C21;
+    --ivory:#F6F1DE; --ivory-2:rgba(246,241,222,.80); --ivory-3:rgba(246,241,222,.54);
+    --paper:#F5F3EC; --stone:#E8DCC8; --stone-2:#DCCDB2; --stone-3:#C9B694;
+    --ink:#1E2A23; --ink-2:#4A564D; --ink-3:#7C857B; --line:#DFDBCB; --line-2:#EAE7DB;
+    --gold:#C8B584; --seam:#B08E48; --red:#A82F22; --green:#1A4B27;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer}
+  ::selection{background:var(--gold);color:#1E2A23}
+
+  /* ───── 跨页本体：34 / 66，订口金线 ───── */
+  .spread{display:grid;grid-template-columns:34% 66%;min-height:100vh;position:relative}
+
+  /* ───── 左页 · 会泽（品牌面） ───── */
+  .page-l{background:var(--deep);color:var(--ivory);padding:34px 38px 28px;display:flex;flex-direction:column}
+  .bm{display:flex;align-items:baseline;gap:10px}
+  .bm b{font-family:var(--serif);font-size:23px;letter-spacing:.14em}
+  .bm span{font-family:var(--kai);font-size:10.5px;letter-spacing:.16em;color:var(--ivory-3);line-height:1.7}
+  .nav{margin-top:22px;display:flex;flex-direction:column;gap:1px;font-family:var(--kai);font-size:13px;letter-spacing:.12em;color:var(--ivory-2)}
+  .nav a{padding:6px 0;display:flex;align-items:center;gap:10px}
+  .nav a::before{content:"";width:9px;height:2px;flex:none;background:transparent}
+  .nav a[aria-current]{color:var(--ivory)}
+  .nav a[aria-current]::before{background:var(--gold)}
+  .nav a:hover{color:var(--ivory)}
+  .nav .m{margin-top:13px;font-family:var(--kai);font-size:11px;letter-spacing:.26em;color:var(--ivory-3)}
+  .nav .q{opacity:.62}
+
+  .hero-l{margin:auto 0;padding:24px 0 18px}
+  .ov{font-family:var(--kai);font-size:11px;letter-spacing:.24em;color:var(--ivory-3)}
+  .hero-l h1{font-family:var(--serif);font-size:clamp(34px,3.1vw,46px);line-height:1.18;letter-spacing:.05em;margin:13px 0 8px}
+  .vol{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .vol .b{font-family:var(--serif);font-size:21px;letter-spacing:.10em}
+  .vol .c{font-family:var(--kai);font-size:12px;letter-spacing:.26em;color:var(--ivory-3)}
+  .rule{width:62px;height:1px;background:var(--gold);margin:17px 0 13px}
+  .gloss{font-family:var(--kai);font-size:12px;line-height:1.95;letter-spacing:.10em;color:var(--ivory-3);max-width:26ch}
+  .stm{font-family:var(--serif);font-size:21px;line-height:1.55;letter-spacing:.05em;margin-top:15px}
+  .sub{color:var(--ivory-2);font-size:13px;line-height:1.9;margin-top:9px;max-width:30ch}
+  .acts{margin-top:22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .btn{background:var(--ivory);color:#15271E;border:0;padding:14px 30px;font-size:15px;letter-spacing:.10em;font-weight:650}
+  .btn:hover{background:#FFF9E6}
+  .ghost{font-family:var(--kai);font-size:12.5px;letter-spacing:.16em;color:var(--ivory-2);box-shadow:inset 0 -1px 0 rgba(246,241,222,.34);padding-bottom:3px}
+  .ghost:hover{color:var(--ivory);box-shadow:inset 0 -1px 0 var(--gold)}
+
+  .state{margin-top:22px;display:flex;gap:26px;flex-wrap:wrap;border-top:1px solid rgba(246,241,222,.16);padding-top:14px}
+  .state .s{display:flex;flex-direction:column;gap:3px}
+  .state .k{font-family:var(--kai);font-size:10px;letter-spacing:.22em;color:var(--ivory-3)}
+  .state .v{font-family:var(--serif);font-size:15px;letter-spacing:.10em}
+
+  .footline{margin-top:auto;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:10.5px;letter-spacing:.22em;color:var(--ivory-3);
+    border-top:1px solid rgba(246,241,222,.14);padding-top:13px}
+
+  /* ───── 订口 · 钤印位（公文盖章框，正落缝上） ───── */
+  .sealwrap{position:absolute;left:34%;top:286px;transform:translateX(-68%) rotate(-4deg);z-index:4;
+    width:132px;background:var(--paper);border:1.5px solid var(--red);padding:9px 9px 7px}
+  .sealwrap .seal{display:block;width:100%;height:auto}
+  .sealwrap .cap{margin-top:5px;text-align:center;font-family:var(--kai);font-size:9.5px;
+    letter-spacing:.22em;color:var(--red)}
+  .sealwrap.lg{width:188px;top:250px;transform:translateX(-78%) rotate(-4deg)}
+
+  /* ───── 右页 · 至公（工作面） ───── */
+  .page-r{background:var(--paper);border-left:3px solid var(--seam);padding:0 0 30px;min-width:0}
+  .rtop{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;padding:24px 44px 0;
+    font-family:var(--kai);font-size:10.5px;letter-spacing:.22em;color:var(--ink-3)}
+  .rtop .r{margin-left:auto;display:flex;gap:18px;align-items:baseline}
+  .rtop a:hover{color:var(--ink)}
+
+  /* 五站工序条 */
+  .steps{position:relative;display:grid;grid-template-columns:repeat(5,1fr);margin:20px 44px 0;
+    border-bottom:1px solid var(--line)}
+  .steps .pt{position:absolute;top:0;left:0;right:0;height:2px;background:var(--line-2)}
+  .steps .pr{position:absolute;top:0;left:0;height:2px;background:var(--green)}
+  .st{display:block;padding:15px 12px 13px 0;border-right:1px solid var(--line-2)}
+  .st:last-child{border-right:0}
+  .st .k{font-family:var(--kai);font-size:10px;letter-spacing:.22em;color:var(--ink-3)}
+  .st .lb{font-family:var(--serif);font-size:14.5px;letter-spacing:.06em;margin-top:4px;color:var(--ink-2)}
+  .st .ms{font-family:var(--kai);font-size:11px;letter-spacing:.10em;color:var(--ink-3);margin-top:3px}
+  .st:hover .lb{color:var(--green)}
+  .st.at{box-shadow:inset 0 -3px 0 var(--gold)}
+  .st.done .lb{color:var(--ink-2)}
+  .st.done .ms::before{content:"✓ ";color:var(--green)}
+  .st.now .lb{color:var(--ink);font-weight:650}
+  .st.now .lb::before{content:"■ ";font-size:9px;color:var(--red);vertical-align:middle}
+
+  /* 名录块：石＝会泽百家 */
+  .roster{margin:28px 44px 0;background:var(--stone);border:1px solid var(--stone-3);padding:20px 22px 14px}
+  .roster .rh{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:9px}
+  .roster h2{font-family:var(--serif);font-size:19px;letter-spacing:.10em}
+  .roster .n{font-family:var(--kai);font-size:10px;letter-spacing:.24em;color:var(--ink-3)}
+  .roster .r{margin-left:auto;font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--ink-3)}
+  .rows{margin-top:2px}
+  .rr{display:grid;grid-template-columns:var(--cols,1fr);gap:16px;align-items:baseline;padding:9px 0;border-bottom:1px solid rgba(30,42,35,.13)}
+  .rr:last-child{border-bottom:0}
+  .rr.off{opacity:.62}
+  .rr > :last-child{justify-self:end;text-align:right}
+  .rr.head > :last-child{justify-self:end}
+  .rr .mrk{color:var(--ink-2);font-family:var(--kai);font-size:11px;letter-spacing:.12em;white-space:nowrap}
+  .rr .mrk::before{content:"◆ ";font-size:8px}
+  .bar{display:inline-block;width:62px;height:4px;background:var(--stone-3);vertical-align:middle;margin-right:9px}
+  .bar i{display:block;height:100%;background:var(--green)}
+  .rr.head{padding:10px 0 6px;border-bottom:1px solid rgba(30,42,35,.22)}
+  .rr.head span{font-family:var(--kai);font-size:10px;letter-spacing:.24em;color:var(--ink-3)}
+  .rr .nm{font-family:var(--serif);font-size:14px;letter-spacing:.02em}
+  .rr .tx{font-family:var(--kai);font-size:12.5px;letter-spacing:.04em;color:var(--ink-2)}
+  .rr .num{font-family:var(--serif);font-size:13.5px;letter-spacing:.04em;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .rr .tag{font-family:var(--kai);font-size:11px;letter-spacing:.18em;color:var(--ink-3);white-space:nowrap}
+  .rr .chg{color:var(--red);font-family:var(--kai);font-size:11px;letter-spacing:.12em;white-space:nowrap;margin-left:10px}
+  .rr .chg::before{content:"◆ ";font-size:8px}
+  .rnote{margin-top:10px;font-family:var(--kai);font-size:11px;letter-spacing:.12em;color:var(--ink-3)}
+
+  /* 本期数据 */
+  .data{margin:26px 44px 0;border-top:1px solid var(--line);padding-top:15px}
+  .data .dt{font-family:var(--kai);font-size:10px;letter-spacing:.24em;color:var(--ink-3)}
+  .data dl{display:grid;grid-template-columns:1fr 1fr;gap:0 34px;margin-top:6px}
+  .pair{display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--line-2);font-size:12.5px}
+  .pair dt{font-family:var(--kai);letter-spacing:.16em;color:var(--ink-3);flex:none}
+  .pair dd{color:var(--ink-2);text-align:right;overflow-wrap:anywhere}
+  .pair dd b{font-family:var(--serif);font-size:14.5px;letter-spacing:.04em;color:var(--ink)}
+
+  /* 与报告的关系 */
+  .rel{margin:22px 44px 0;padding-top:13px;border-top:1px solid var(--line-2);
+    font-family:var(--kai);font-size:11.5px;line-height:2.05;letter-spacing:.10em;color:var(--ink-3);max-width:94ch}
+  .rel b{font-family:var(--serif);font-size:12.5px;letter-spacing:.18em;color:var(--ink-2)}
+
+  /* ───── 核验清单（站一 / 站五） ───── */
+  .check{margin:22px 44px 0;border-top:1px solid var(--line);padding-top:13px}
+  .check .ch{font-family:var(--kai);font-size:10px;letter-spacing:.24em;color:var(--ink-3)}
+  .ck{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:baseline;
+    padding:9px 0;border-bottom:1px solid var(--line-2)}
+  .ck .m{width:15px;height:15px;border:1.5px solid var(--green);display:grid;place-items:center;
+    font-family:var(--sans);font-size:9px;color:var(--green);flex:none}
+  .ck.no .m{border-color:var(--red);color:var(--red)}
+  .ck .nm{font-family:var(--serif);font-size:14px;letter-spacing:.02em}
+  .ck .nm small{display:block;font-family:var(--kai);font-size:11px;letter-spacing:.10em;
+    color:var(--ink-3);margin-top:2px}
+  .ck .tg{font-family:var(--kai);font-size:11px;letter-spacing:.20em;color:var(--ink-3);white-space:nowrap}
+
+  /* ───── 摘要块（站二 / 站四） ───── */
+  .sum{margin:22px 44px 0;border:1px solid var(--line);padding:15px 20px 11px}
+  .sum .sh{font-family:var(--kai);font-size:10px;letter-spacing:.24em;color:var(--ink-3)}
+
+  /* ───── 题带（非出报告屏：主台账 / 问文衡） ───── */
+  .strip{margin:20px 44px 0;padding:13px 0;border-top:2px solid var(--ink);border-bottom:1px solid var(--line);
+    display:flex;gap:26px;flex-wrap:wrap;align-items:baseline;
+    font-family:var(--kai);font-size:11.5px;letter-spacing:.20em;color:var(--ink-2)}
+  .strip b{font-family:var(--serif);font-size:19px;letter-spacing:.08em;color:var(--ink)}
+  .strip .r{margin-left:auto;color:var(--ink-3)}
+
+  /* ───── 问答（问文衡） ───── */
+  .qa{margin:24px 44px 0}
+  .q{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:baseline;padding-top:16px}
+  .q .m{flex:none;font-family:var(--kai);font-size:13px;letter-spacing:.14em;color:var(--ink-3)}
+  .q .t{font-family:var(--serif);font-size:15.5px;letter-spacing:.03em}
+  .a{margin:9px 0 0 25px;padding:13px 18px;background:var(--stone);border-left:3px solid var(--stone-3)}
+  .a .t{font-family:var(--kai);font-size:13px;line-height:2.1;letter-spacing:.06em;color:var(--ink-2)}
+  .a .t b{font-family:var(--serif);color:var(--ink);letter-spacing:.03em}
+  .a .src{margin-top:9px;display:flex;gap:16px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:10.5px;letter-spacing:.18em;color:var(--ink-3)}
+  .ask{margin-top:22px;padding-top:16px;border-top:1px solid var(--line-2)}
+  .ask .row{display:flex;gap:12px}
+  .ask textarea{flex:1;height:62px;border:1.5px solid var(--stone-3);background:var(--paper);
+    padding:11px 14px;font-family:var(--kai);font-size:13px;letter-spacing:.08em;color:var(--ink);resize:none}
+  .ask .send{border:0;background:var(--deep);color:var(--ivory);padding:0 22px;
+    font-family:var(--serif);font-size:14px;letter-spacing:.14em}
+  .ask .send:hover{background:var(--deep-2)}
+  .ask .chips{margin-top:11px;display:flex;gap:15px;flex-wrap:wrap;align-items:center;
+    font-family:var(--kai);font-size:11.5px;letter-spacing:.14em;color:var(--ink-3)}
+  .ask .chips a{box-shadow:inset 0 -1px 0 var(--stone-3);padding-bottom:2px}
+  .ask .chips a:hover{color:var(--green);box-shadow:inset 0 -1px 0 var(--green)}
+
+  /* ───── 小印（台账行内 · 已签发） ───── */
+  .glyph{display:inline-block;width:11px;height:11px;background:var(--red);
+    outline:1.5px solid var(--red);outline-offset:1.5px;vertical-align:-1px;margin-left:8px}
+
+  /* ───── 词条（名词解释 · 定词表） ───── */
+  .term{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr);gap:18px;align-items:baseline;
+    padding:10px 0;border-bottom:1px solid rgba(30,42,35,.13)}
+  .term:last-child{border-bottom:0}
+  .term .k{font-family:var(--serif);font-size:14.5px;letter-spacing:.08em}
+  .term .k em{font-style:normal;font-family:var(--kai);font-size:10.5px;letter-spacing:.22em;
+    color:var(--ink-3);margin-left:9px}
+  .term .d{font-family:var(--kai);font-size:12px;line-height:1.95;letter-spacing:.06em;color:var(--ink-2)}
+</style>
+</head>
+<body>
+<div class="spread">
+
+  <!-- ══════ 左页 · 会泽 ══════ -->
+  <aside class="page-l">
+    <div class="bm"><b>文衡</b><span>云 南 大 学 图 书 馆<br>学 科 信 息 参 考</span></div>
+    <nav class="nav" aria-label="工作区">
+      <a href="00-出报告.html" aria-current="page">出报告</a>
+      <a href="#">灵活报告</a>
+      <a href="#">报告</a>
+      <a href="07-问文衡.html">问文衡</a>
+      <a class="m" href="06-主台账.html">主 台 账</a>
+      <a class="q" href="#">运行档案</a>
+      <a class="q" href="#">陈列馆 ↗</a>
+    </nav>
+
+    <div class="hero-l">
+      <div class="ov">出 报 告 · 站 一</div>
+      <h1>取数核验</h1>
+      <div class="vol"><span class="b">第 39 期</span><span class="c">二 零 二 六 年 九 月 · 目 录 2 0 2 6 0 9</span></div>
+      <div class="rule"></div>
+      <p class="gloss">会泽百家，海纳百川，兼收并蓄；至公天下，两联合一，方为可交付。</p>
+      <div class="stm">机器取数，人来核对。</div>
+      <p class="sub">取回的原始数据只进台账，不直接进报告。核对无误后并入，下一站才拿它选章节。</p>
+      <div class="acts">
+        <button class="btn">开 始 取 数 →</button>
+        <a class="ghost" href="#">看运行档案</a>
+      </div>
+      <div class="state">
+        <div class="s"><span class="k">任 务</span><span class="v">已完成</span></div>
+        <div class="s"><span class="k">签 发</span><span class="v">未签发</span></div>
+        <div class="s"><span class="k">源 表</span><span class="v">64 / 64</span></div>
+      </div>
+    </div>
+
+    <div class="footline">
+      <span>会 泽 百 家 · 至 公 天 下</span>
+      <span>admin · 管 理 員</span>
+    </div>
+  </aside>
+
+  <!-- ══════ 订口 · 钤印位 ══════ -->
+  <div class="sealwrap" aria-label="钤印位 · 待合">
+    <svg class="seal" viewBox="0 0 114 114" aria-hidden="true">
+      <rect x="3" y="3" width="108" height="108" fill="none" stroke="#A82F22" stroke-width="2.2"/>
+      <rect x="11" y="11" width="92" height="92" fill="none" stroke="#A82F22" stroke-width="1.1" stroke-dasharray="5 3.5"/>
+      <g font-family="SimSun,'Noto Serif SC',serif" font-weight="700" font-size="26"
+         text-anchor="middle" fill="#A82F22" letter-spacing="3">
+        <text x="57" y="50">至公</text>
+        <text x="57" y="86">天下</text>
+      </g>
+    </svg>
+    <div class="cap">鈐 印 位 · 待 合</div>
+  </div>
+
+  <!-- ══════ 右页 · 至公 ══════ -->
+  <main class="page-r">
+    <div class="rtop">
+      <span>至 公 天 下 · 以 天 下 为 公</span>
+      <span class="r"><span>云 南 大 学 图 书 馆 · 学 科 信 息 参 考</span><a href="#">陈 列 馆 ↗</a></span>
+    </div>
+
+    <!-- 五站工序条 -->
+    <div class="steps" aria-label="出报告五站">
+      <span class="pt" aria-hidden="true"></span><span class="pr" style="width:80%" aria-hidden="true"></span>
+      <a class="st done at" href="01-取数核验.html"><div class="k">一</div><div class="lb">取数核验</div><div class="ms">64 / 64</div></a>
+      <a class="st done" href="02-选章节.html"><div class="k">二</div><div class="lb">选章节</div><div class="ms">10 / 11</div></a>
+      <a class="st done" href="03-预测选模.html"><div class="k">三</div><div class="lb">预测选模</div><div class="ms">八家已保存</div></a>
+      <a class="st done" href="04-生成初稿.html"><div class="k">四</div><div class="lb">生成初稿</div><div class="ms">10-13 15:03</div></a>
+      <a class="st now" href="05-核验定稿.html"><div class="k">五</div><div class="lb">核验定稿</div><div class="ms">待复核签单</div></a>
+    </div>
+
+    <!-- 名录：取数清单 -->
+    <section class="roster">
+      <div class="rh">
+        <h2>取数清单</h2><span class="n">两 个 台 · 八 类</span>
+        <span class="r">自動 取 数 台 × 馆 内 核 对</span>
+      </div>
+      <div class="rows" style="--cols:2fr 1.5fr .62fr .72fr">
+        <div class="rr head"><span>源 表</span><span>出 处</span><span>份 数</span><span>状 态</span></div>
+        <div class="rr"><span class="nm">ESI 全球机构总表</span><span class="tx">Clarivate · 自动取数台</span><span class="num">1 张</span><span class="tag">已 取</span></div>
+        <div class="rr"><span class="nm">22 学科机构表</span><span class="tx">ESI · 分学科</span><span class="num">22 张</span><span class="tag">已 取</span></div>
+        <div class="rr"><span class="nm">全球·中国·云大学科汇总</span><span class="tx">ESI · 三口径</span><span class="num">1 张</span><span class="tag">已 取</span></div>
+        <div class="rr"><span class="nm">云大 Top·高被引·热点论文明细</span><span class="tx">ESI · 论文清单</span><span class="num">1 张</span><span class="tag">已 取</span></div>
+        <div class="rr"><span class="nm">三张阈值 · 三张基线</span><span class="tx">ESI · 阈值与基线</span><span class="num">6 张</span><span class="tag">已 取</span></div>
+        <div class="rr"><span class="nm">InCites 分学科全球机构排名表</span><span class="tx">Clarivate · 22 张</span><span class="num">22 张</span><span class="tag">已 取</span></div>
+        <div class="rr"><span class="nm">InCites 全球·中国·云大 22 学科汇总</span><span class="tx">Clarivate · 三口径</span><span class="num">1 张</span><span class="tag">已 取</span></div>
+        <div class="rr"><span class="nm">InCites 全球机构排名表</span><span class="tx">Clarivate · 总表</span><span class="num">1 张</span><span class="chg">待核验</span></div>
+      </div>
+      <div class="rnote">已 取 7 / 8　·　六 十 四 张 源 表 齐 全　·　缺 一 份 就 退 回 补 取</div>
+    </section>
+
+    <!-- 核验清单 -->
+    <section class="check">
+      <div class="ch">核 驗 项 · 六 條</div>
+      <div class="ck"><span class="m">✓</span><div class="nm">期次号与目录号一致<small>202609 / 202609</small></div><div class="tg">通 过</div></div>
+      <div class="ck"><span class="m">✓</span><div class="nm">源表张数齐全<small>64 / 64</small></div><div class="tg">通 过</div></div>
+      <div class="ck"><span class="m">✓</span><div class="nm">云大口径可解析<small>全文搜 YUNNAN</small></div><div class="tg">通 过</div></div>
+      <div class="ck"><span class="m">✓</span><div class="nm">阈值表三条线齐全</div><div class="tg">通 过</div></div>
+      <div class="ck"><span class="m">✓</span><div class="nm">论文明细行数与汇总一致</div><div class="tg">通 过</div></div>
+      <div class="ck no"><span class="m">!</span><div class="nm">InCites 全球机构排名表待核<small>历史 13 期口径不全</small></div><div class="tg">附 注</div></div>
+    </section>
+
+    <!-- 本期数据 -->
+    <section class="data">
+      <div class="dt">本 期 数 据</div>
+      <dl>
+        <div class="pair"><dt>期 次</dt><dd><b>202609</b>　第 39 期</dd></div>
+        <div class="pair"><dt>预 测 / 输 出</dt><dd>202609 / 202609</dd></div>
+        <div class="pair"><dt>取 数 开 始</dt><dd>2026-09-28 07:55</dd></div>
+        <div class="pair"><dt>取 数 完 成</dt><dd>2026-09-28 12:40</dd></div>
+        <div class="pair"><dt>源 表 份 数</dt><dd><b>64 / 64</b></dd></div>
+        <div class="pair"><dt>核 对 并 并 入</dt><dd>已并入台账</dd></div>
+        <div class="pair"><dt>台 账 文 件</dt><dd>云大全学科排名、阈值动态检测表.xlsx</dd></div>
+        <div class="pair"><dt>最 后 修 改</dt><dd>2026-09-28 07:55</dd></div>
+      </dl>
+    </section>
+
+    <p class="rel"><b>与 报 告 的 关 系</b>　本屏取回的原始数据只进台账，不直接进报告。核对无误并入后，下一站才拿它选章节；缺一份就退回补取，不带病往下走。</p>
+  </main>
+</div>
+</body>
+</html>
