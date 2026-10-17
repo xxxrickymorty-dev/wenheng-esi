@@ -367,6 +367,12 @@ export function Acquire({ period, onOpenPeriod }: {
                   {humanOpNote(op.note ?? '') || `上一步没有完成：${op.note || '原因见下载数据状态'}`}
                 </div>
               )}
+              {/* 下载/整理做完后的说明话（比如：已经并入台账的期次补下载——下载完成了，
+                  但本地已有这一期的数据，所以没有再合并）。以前只有出错才说话，
+                  「为什么没往下走」没处讲（2026-10-17 rick 反馈）。 */}
+              {op?.state === 'done' && op.kind === 'fetch' && op.note && (
+                <div className="hint" title={op.note}>{op.note}</div>
+              )}
               {needsTool && !canRun && !opRunning && (
                 <div className="hint note-warn">{toolMissing}</div>
               )}
