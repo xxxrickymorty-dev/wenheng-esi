@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>主台账 · 汇-绿蓝 06 — 静态稿</title>
+<style>
+  /* ============================================================
+     汇-绿蓝 整套 · 06 主台账
+     全站唯一事实源。蓝场为主（数据在场），翻牌数字表示当前期。
+     不动戳印与钤印——那是五站里的工序物，台账只管读。
+     45 期双月序列（201903 起），22 工作表。禁改：台账只读。
+     ============================================================ */
+  :root{
+    --blue:#17456E; --blue-2:#0F2E4C; --blue-3:#2F6B8E;
+    --blue-4:#8FB6CE; --blue-5:#DCE8F0;
+    --green:#26483B; --green-2:#163228; --green-3:#2F7A58;
+    --green-4:#7FB79B; --green-5:#DFEDE6;
+    --paper:#F2EFE6; --paper-2:#E4DFD0;
+    --ink:#15222B; --ink-2:#43525C; --ink-3:#7B8892;
+    --red:#B23A2B;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--green-3);color:#fff}
+
+  .bar{background:var(--blue-2);height:60px;display:flex;align-items:center;gap:22px;padding:0 30px}
+  .bar .wm{font-family:var(--serif);font-size:20px;letter-spacing:.18em;color:var(--blue-5)}
+  .bar .sub{font-family:var(--kai);font-size:10.5px;letter-spacing:.22em;
+    color:rgba(220,232,240,.5);line-height:1.55}
+  .stations{display:flex;gap:2px;margin-left:14px}
+  .stations a{padding:8px 14px;font-family:var(--kai);font-size:12px;letter-spacing:.14em;
+    color:rgba(220,232,240,.62);white-space:nowrap}
+  .stations a.on{color:var(--blue-2);background:var(--blue-5);font-weight:700}
+  .stations a.done{color:var(--green-4)}
+  .bar .r{margin-left:auto;display:flex;align-items:center;gap:16px;font-family:var(--kai);
+    font-size:11px;letter-spacing:.22em;color:rgba(220,232,240,.5)}
+  .pal{display:inline-flex;gap:7px}
+  .pal i{width:22px;height:12px;display:inline-block;border:1px solid rgba(220,232,240,.26)}
+  .pal i.g{background:var(--green-3)}.pal i.b{background:var(--blue-3)}
+  .pal i.on{outline:2px solid var(--blue-5);outline-offset:2px}
+
+  .hero{background:var(--blue);color:var(--blue-5);padding:42px 30px 36px}
+  .hi{max-width:1280px;margin:0 auto;display:grid;
+    grid-template-columns:minmax(0,1fr) auto;gap:48px;align-items:end}
+  .hi .ov{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:rgba(220,232,240,.55)}
+  .hi h1{font-family:var(--serif);font-size:clamp(36px,4.6vw,60px);line-height:1.08;
+    letter-spacing:.04em;margin-top:12px}
+  .hi .deck{font-family:var(--kai);font-size:14.5px;line-height:2.05;
+    color:rgba(220,232,240,.8);margin-top:13px;max-width:36ch}
+  .hi .acts{margin-top:22px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  .btn{background:var(--green-3);color:#08201A;border:0;padding:12px 26px;font-size:14.5px;
+    letter-spacing:.14em;font-weight:700}
+  .btn:hover{background:#3A9069}
+  .hi .ghost{font-family:var(--kai);font-size:13px;letter-spacing:.18em;color:rgba(220,232,240,.78);
+    box-shadow:inset 0 -1px 0 rgba(220,232,240,.38);padding-bottom:3px}
+
+  .flaps{display:flex;flex-direction:column;gap:14px;align-items:flex-end}
+  .flaps .grp{text-align:right}
+  .flaps .gl{font-family:var(--kai);font-size:10px;letter-spacing:.36em;
+    color:rgba(220,232,240,.55);margin-bottom:7px}
+  .flap-row{display:flex;gap:5px}
+  .flap{position:relative;width:36px;height:50px;background:var(--blue-2);
+    display:grid;place-items:center;font-family:var(--mono);font-size:25px;font-weight:700;
+    color:var(--blue-5);font-variant-numeric:tabular-nums}
+  .flap::after{content:"";position:absolute;left:0;right:0;top:50%;height:2px;background:var(--blue)}
+  .flap.sm{width:27px;height:38px;font-size:18px}
+  .flap.sm::after{height:1.5px}
+  .flap.colon{width:14px;background:transparent;font-size:20px;color:rgba(220,232,240,.4)}
+  .flap.colon::after{display:none}
+  .flap.gap{width:16px;background:transparent}
+  .flap.gap::after{display:none}
+  .flap.gr{color:var(--green-4)}
+  .flap.rd{color:#E8917C}
+
+  .band{background:var(--green-2);color:var(--green-5);padding:15px 30px;display:flex;
+    gap:20px;flex-wrap:wrap;align-items:center;font-family:var(--kai);font-size:12px;letter-spacing:.22em}
+  .band .pill{padding:4px 13px;font-family:var(--serif);font-size:13px;letter-spacing:.18em}
+  .band .pill.g{background:var(--green-3);color:#08201A}
+  .band .pill.b{background:var(--blue-3);color:var(--blue-5)}
+  .band .r{margin-left:auto;color:rgba(223,237,230,.62)}
+
+  .main{max-width:1280px;margin:0 auto;padding:36px 30px 0}
+  .sect .hd{display:flex;align-items:baseline;gap:16px;border-bottom:2px solid var(--ink);
+    padding-bottom:11px;flex-wrap:wrap}
+  .sect h2{font-family:var(--serif);font-size:22px;letter-spacing:.1em}
+  .sect h2 .n{font-family:var(--kai);font-size:10.5px;letter-spacing:.42em;color:var(--ink-3);
+    display:block;margin-bottom:2px;font-weight:400}
+  .sect .lnk{margin-left:auto;font-family:var(--kai);font-size:12.5px;letter-spacing:.18em;
+    color:var(--green);box-shadow:inset 0 -1px 0 var(--green);padding-bottom:2px}
+
+  table{width:100%;border-collapse:collapse;margin-top:6px}
+  thead th{font-family:var(--kai);font-size:11px;letter-spacing:.32em;color:var(--ink-3);
+    text-align:left;font-weight:400;padding:12px 12px 9px 0;border-bottom:1px solid var(--ink)}
+  thead th:last-child{padding-right:0}
+  tbody td{padding:11px 12px 11px 0;border-bottom:1px solid var(--paper-2);
+    font-family:var(--serif);font-size:14.5px;vertical-align:baseline;letter-spacing:.03em}
+  tbody td:last-child{padding-right:0}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr.now{background:rgba(47,107,142,.1)}
+  tbody td.no{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;color:var(--ink-3)}
+  tbody td.per{font-family:var(--mono);font-size:13px;letter-spacing:.1em;font-weight:700}
+  tbody td.mdl{font-family:var(--kai);font-size:12.5px;color:var(--ink-2);letter-spacing:.12em}
+  .tag{display:inline-block;padding:3px 10px;font-family:var(--kai);font-size:10.5px;
+    letter-spacing:.18em;white-space:nowrap}
+  .tag.g{background:rgba(47,122,88,.14);color:var(--green)}
+  .tag.b{background:rgba(47,107,142,.14);color:var(--blue)}
+  .tag.r{background:rgba(178,58,43,.12);color:var(--red)}
+
+  /* 工作表 */
+  .sheets{margin-top:34px;display:grid;grid-template-columns:repeat(4,1fr);gap:2px;background:var(--paper-2)}
+  .sh{background:var(--paper);padding:13px 15px}
+  .sh .k{font-family:var(--kai);font-size:10px;letter-spacing:.32em;color:var(--ink-3)}
+  .sh .v{font-family:var(--serif);font-size:15px;letter-spacing:.03em;margin-top:5px}
+  .sh .v.mono{font-family:var(--mono);font-size:13px;letter-spacing:.12em}
+
+  .data{max-width:1280px;margin:34px auto 0;padding:0 30px}
+  .data .dt{font-family:var(--kai);font-size:10.5px;letter-spacing:.42em;color:var(--ink-3);
+    border-bottom:2px solid var(--ink);padding-bottom:11px}
+  .data dl{margin-top:6px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 32px}
+  .data .pair{display:flex;justify-content:space-between;gap:12px;
+    border-bottom:1px solid var(--paper-2);padding:10px 0;font-family:var(--kai);font-size:12.5px}
+  .data dt{color:var(--ink-3);letter-spacing:.16em;white-space:nowrap}
+  .data dd{color:var(--ink);text-align:right;overflow-wrap:anywhere}
+  .data dd b{font-family:var(--serif);font-size:16px;letter-spacing:.04em}
+
+  .foot{background:var(--ink);color:rgba(220,232,240,.62);margin-top:44px;padding:22px 30px;
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11px;letter-spacing:.32em}
+  .foot b{font-family:var(--serif);font-size:12.5px;letter-spacing:.22em;color:var(--blue-5);display:block}
+  .foot .dual{display:flex;gap:11px;align-items:center}
+  .foot .dual i{width:24px;height:12px;display:inline-block}
+  .foot .dual i.g{background:var(--green-3)}
+  .foot .dual i.b{background:var(--blue-3)}
+
+  @media (max-width:1040px){
+    .hi{grid-template-columns:1fr;gap:30px}
+    .flaps{align-items:flex-start}.flaps .grp{text-align:left}
+    .sheets{grid-template-columns:1fr 1fr}
+    .data dl{grid-template-columns:1fr 1fr}
+    .stations{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="wm">文衡</span>
+  <span class="sub">雲 南 大 學 圖 書 館<br>學 科 信 息 參 考</span>
+  <nav class="stations" aria-label="五站五屏">
+    <a href="#">1 取数核验</a><a href="#">2 选章节</a><a href="#">3 预测选模</a>
+    <a href="#">4 生成初稿</a><a href="#">5 核验定稿</a>
+  </nav>
+  <span class="r">
+    <span class="on" style="color:var(--blue-5);font-weight:700">主 台 账</span>
+    <span>出 报 告 ↖</span>
+    <span class="pal"><i class="b on" title="蓝·场"></i><i class="g" title="绿·器"></i></span>
+  </span>
+</header>
+
+<section class="hero">
+  <div class="hi">
+    <div>
+      <div class="ov">雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+      <h1>主台账</h1>
+      <p class="deck">全站唯一事实源。22 工作表、45 期双月序列（201903 起）。只读——数字只从这里出。</p>
+      <div class="acts">
+        <button class="btn">查 看 当 期 →</button>
+        <a class="ghost" href="#">看运行档案</a>
+      </div>
+    </div>
+
+    <div class="flaps" aria-label="当前期">
+      <div class="grp">
+        <div class="gl">當 前 期 · 目 錄 號</div>
+        <div class="flap-row">
+          <span class="flap">2</span><span class="flap">0</span><span class="flap">2</span>
+          <span class="flap gr">6</span><span class="flap rd">0</span><span class="flap rd">9</span>
+        </div>
+      </div>
+      <div class="grp">
+        <div class="gl">序 列 · 期 數</div>
+        <div class="flap-row">
+          <span class="flap sm">2</span><span class="flap sm">0</span><span class="flap sm">1</span>
+          <span class="flap sm">9</span><span class="flap sm">0</span><span class="flap sm">3</span>
+          <span class="flap sm gap"></span>
+          <span class="flap sm gr">4</span><span class="flap sm gr">5</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="band">
+  <span class="pill g">任务 · 已完成</span>
+  <span class="pill b">签发 · 未签发</span>
+  <span class="r">只 讀　·　禁 改　·　運 行 期 有 护 欄</span>
+</div>
+
+<section class="main">
+  <div class="sect">
+    <div class="hd">
+      <h2><span class="n">4 5 期 · 雙 月 序 列</span>期次序列</h2>
+      <a class="lnk" href="#">看运行档案 →</a>
+    </div>
+    <table>
+      <thead><tr>
+        <th style="width:46px">號</th>
+        <th style="width:110px">期 次</th>
+        <th style="width:110px">年 月</th>
+        <th style="width:150px">任 務</th>
+        <th style="width:130px">簽 發</th>
+        <th>產 物</th>
+      </tr></thead>
+      <tbody>
+        <tr class="now"><td class="no">45</td><td class="per">202609</td><td class="per">2026.09</td>
+          <td><span class="tag g">已 完 成</span></td><td><span class="tag b">未 簽 發</span></td>
+          <td class="mdl">7 件 · 約 24 頁</td></tr>
+        <tr><td class="no">44</td><td class="per">202607</td><td class="per">2026.07</td>
+          <td><span class="tag g">已 完 成</span></td><td><span class="tag g">已 簽 發</span></td>
+          <td class="mdl">7 件 · 約 23 頁</td></tr>
+        <tr><td class="no">43</td><td class="per">202605</td><td class="per">2026.05</td>
+          <td><span class="tag g">已 完 成</span></td><td><span class="tag g">已 簽 發</span></td>
+          <td class="mdl">7 件 · 約 22 頁</td></tr>
+        <tr><td class="no">42</td><td class="per">202603</td><td class="per">2026.03</td>
+          <td><span class="tag g">已 完 成</span></td><td><span class="tag g">已 簽 發</span></td>
+          <td class="mdl">7 件 · 約 22 頁</td></tr>
+        <tr><td class="no">41</td><td class="per">202601</td><td class="per">2026.01</td>
+          <td><span class="tag g">已 完 成</span></td><td><span class="tag g">已 簽 發</span></td>
+          <td class="mdl">7 件 · 約 21 頁</td></tr>
+        <tr><td class="no">40</td><td class="per">202511</td><td class="per">2025.11</td>
+          <td><span class="tag g">已 完 成</span></td><td><span class="tag r">簽 發 已 失 效</span></td>
+          <td class="mdl">6 件 · 約 20 頁</td></tr>
+        <tr><td class="no">39</td><td class="per">202509</td><td class="per">2025.09</td>
+          <td><span class="tag g">已 完 成</span></td><td><span class="tag g">已 簽 發</span></td>
+          <td class="mdl">6 件 · 約 20 頁</td></tr>
+        <tr><td class="no">38</td><td class="per">202507</td><td class="per">2025.07</td>
+          <td><span class="tag g">已 完 成</span></td><td><span class="tag g">已 簽 發</span></td>
+          <td class="mdl">6 件 · 約 19 頁</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top:18px;font-family:var(--kai);font-size:12px;line-height:2;
+      letter-spacing:.12em;color:var(--ink-3);max-width:92ch">
+      <b style="color:var(--ink-2);font-family:var(--serif);letter-spacing:.16em">與 報 告 的 關 係</b>
+      报告里的每个数字都能回溯到本台账的某一格。台账只读，运行期有护栏——谁改了会被记下来。要更正数字，走人工更正，不改台账。</p>
+  </div>
+
+  <!-- 工作表 -->
+  <div class="sheets">
+    <div class="sh"><div class="k">工 作 表</div><div class="v">22 张</div></div>
+    <div class="sh"><div class="k">序 列</div><div class="v">45 期</div></div>
+    <div class="sh"><div class="k">起</div><div class="v mono">201903</div></div>
+    <div class="sh"><div class="k">迄</div><div class="v mono">202609</div></div>
+    <div class="sh"><div class="k">口 徑</div><div class="v">总被引 · 论文数 · CNCI</div></div>
+    <div class="sh"><div class="k">閾 值</div><div class="v">接近度 · 阈值 · 国内外排名</div></div>
+    <div class="sh"><div class="k">回 測</div><div class="v">实际与预测差值</div></div>
+    <div class="sh"><div class="k">狀 態</div><div class="v">只 讀</div></div>
+  </div>
+</section>
+
+<section class="data">
+  <div class="dt">本 期 數 據</div>
+  <dl>
+    <div class="pair"><dt>台 賬 文 件</dt><dd>云大全学科排名、阈值动态检测表.xlsx</dd></div>
+    <div class="pair"><dt>最 後 修 改</dt><dd>2026 年 9 月 28 日 07:55</dd></div>
+    <div class="pair"><dt>當 前 期</dt><dd><b>202609</b>　第 45 期</dd></div>
+    <div class="pair"><dt>預 測 / 實 際</dt><dd>202609 / 202609</dd></div>
+    <div class="pair"><dt>下 載 數 據</dt><dd><b>64 / 64</b></dd></div>
+    <div class="pair"><dt>任 務</dt><dd>已完成</dd></div>
+  </dl>
+</section>
+
+<footer class="foot">
+  <div><b>文衡 · 汇</b>雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+  <div class="dual"><i class="b"></i><i class="g"></i>　藍 為 場　·　綠 為 器</div>
+  <div>主 台 账　·　唯 一 事 實 源　·　只 讀</div>
+</footer>
+</body>
+</html>

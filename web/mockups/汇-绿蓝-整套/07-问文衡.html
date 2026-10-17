@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>问文衡 · 汇-绿蓝 07 — 静态稿</title>
+<style>
+  /* ============================================================
+     汇-绿蓝 整套 · 07 问文衡
+     对话落点。蓝场为主（问答是读数），翻牌数字记期次与时刻。
+     回答里引到的数字都回指台账，口径全站一份——名词解释即
+     《全站-冗余收敛对照稿》的定词表，全站同词同义。
+     ============================================================ */
+  :root{
+    --blue:#17456E; --blue-2:#0F2E4C; --blue-3:#2F6B8E;
+    --blue-4:#8FB6CE; --blue-5:#DCE8F0;
+    --green:#26483B; --green-2:#163228; --green-3:#2F7A58;
+    --green-4:#7FB79B; --green-5:#DFEDE6;
+    --paper:#F2EFE6; --paper-2:#E4DFD0;
+    --ink:#15222B; --ink-2:#43525C; --ink-3:#7B8892;
+    --red:#B23A2B;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--green-3);color:#fff}
+
+  .bar{background:var(--blue-2);height:60px;display:flex;align-items:center;gap:22px;padding:0 30px}
+  .bar .wm{font-family:var(--serif);font-size:20px;letter-spacing:.18em;color:var(--blue-5)}
+  .bar .sub{font-family:var(--kai);font-size:10.5px;letter-spacing:.22em;
+    color:rgba(220,232,240,.5);line-height:1.55}
+  .stations{display:flex;gap:2px;margin-left:14px}
+  .stations a{padding:8px 14px;font-family:var(--kai);font-size:12px;letter-spacing:.14em;
+    color:rgba(220,232,240,.62);white-space:nowrap}
+  .stations a.done{color:var(--green-4)}
+  .bar .r{margin-left:auto;display:flex;align-items:center;gap:16px;font-family:var(--kai);
+    font-size:11px;letter-spacing:.22em;color:rgba(220,232,240,.5)}
+  .pal{display:inline-flex;gap:7px}
+  .pal i{width:22px;height:12px;display:inline-block;border:1px solid rgba(220,232,240,.26)}
+  .pal i.g{background:var(--green-3)}.pal i.b{background:var(--blue-3)}
+  .pal i.on{outline:2px solid var(--blue-5);outline-offset:2px}
+
+  .hero{background:var(--blue);color:var(--blue-5);padding:42px 30px 36px}
+  .hi{max-width:1280px;margin:0 auto;display:grid;
+    grid-template-columns:minmax(0,1fr) auto;gap:48px;align-items:end}
+  .hi .ov{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:rgba(220,232,240,.55)}
+  .hi h1{font-family:var(--serif);font-size:clamp(36px,4.6vw,60px);line-height:1.08;
+    letter-spacing:.04em;margin-top:12px}
+  .hi .deck{font-family:var(--kai);font-size:14.5px;line-height:2.05;
+    color:rgba(220,232,240,.8);margin-top:13px;max-width:36ch}
+  .hi .acts{margin-top:22px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  .btn{background:var(--green-3);color:#08201A;border:0;padding:12px 26px;font-size:14.5px;
+    letter-spacing:.14em;font-weight:700}
+  .btn:hover{background:#3A9069}
+  .hi .ghost{font-family:var(--kai);font-size:13px;letter-spacing:.18em;color:rgba(220,232,240,.78);
+    box-shadow:inset 0 -1px 0 rgba(220,232,240,.38);padding-bottom:3px}
+
+  .flaps{display:flex;flex-direction:column;gap:14px;align-items:flex-end}
+  .flaps .grp{text-align:right}
+  .flaps .gl{font-family:var(--kai);font-size:10px;letter-spacing:.36em;
+    color:rgba(220,232,240,.55);margin-bottom:7px}
+  .flap-row{display:flex;gap:5px}
+  .flap{position:relative;width:36px;height:50px;background:var(--blue-2);
+    display:grid;place-items:center;font-family:var(--mono);font-size:25px;font-weight:700;
+    color:var(--blue-5);font-variant-numeric:tabular-nums}
+  .flap::after{content:"";position:absolute;left:0;right:0;top:50%;height:2px;background:var(--blue)}
+  .flap.sm{width:27px;height:38px;font-size:18px}
+  .flap.sm::after{height:1.5px}
+  .flap.colon{width:14px;background:transparent;font-size:20px;color:rgba(220,232,240,.4)}
+  .flap.colon::after{display:none}
+  .flap.gap{width:16px;background:transparent}
+  .flap.gap::after{display:none}
+  .flap.gr{color:var(--green-4)}
+  .flap.rd{color:#E8917C}
+
+  .band{background:var(--green-2);color:var(--green-5);padding:15px 30px;display:flex;
+    gap:20px;flex-wrap:wrap;align-items:center;font-family:var(--kai);font-size:12px;letter-spacing:.22em}
+  .band .pill{padding:4px 13px;font-family:var(--serif);font-size:13px;letter-spacing:.18em}
+  .band .pill.g{background:var(--green-3);color:#08201A}
+  .band .pill.b{background:var(--blue-3);color:var(--blue-5)}
+  .band .r{margin-left:auto;color:rgba(223,237,230,.62)}
+
+  .main{max-width:1280px;margin:0 auto;padding:36px 30px 0;
+    display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:44px;align-items:start}
+  .sect .hd{display:flex;align-items:baseline;gap:16px;border-bottom:2px solid var(--ink);
+    padding-bottom:11px;flex-wrap:wrap}
+  .sect h2{font-family:var(--serif);font-size:22px;letter-spacing:.1em}
+  .sect h2 .n{font-family:var(--kai);font-size:10.5px;letter-spacing:.42em;color:var(--ink-3);
+    display:block;margin-bottom:2px;font-weight:400}
+  .sect .lnk{margin-left:auto;font-family:var(--kai);font-size:12.5px;letter-spacing:.18em;
+    color:var(--green);box-shadow:inset 0 -1px 0 var(--green);padding-bottom:2px}
+
+  /* 问答 */
+  .qa{margin-top:16px}
+  .q{display:flex;gap:14px;align-items:flex-start}
+  .q .m{width:8px;height:8px;background:var(--blue-3);margin-top:9px;flex:none}
+  .q .t{font-family:var(--serif);font-size:17px;letter-spacing:.03em;line-height:1.6}
+  .a{margin:12px 0 0 22px;padding-left:16px;border-left:2px solid var(--green-3)}
+  .a .t{font-family:var(--kai);font-size:14px;line-height:2.05;color:var(--ink-2)}
+  .a .t b{color:var(--ink);font-family:var(--serif);letter-spacing:.04em}
+  .a .src{margin-top:9px;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;
+    color:var(--ink-3);display:flex;gap:12px;flex-wrap:wrap}
+  .a .src i{font-style:normal;padding:2px 9px;background:var(--paper-2)}
+  .qa .sep{height:1px;background:var(--paper-2);margin:22px 0}
+
+  /* 输入 */
+  .ask{margin-top:22px;border:1px solid var(--ink);background:var(--paper-2);padding:14px}
+  .ask .row{display:flex;gap:12px}
+  .ask textarea{flex:1;min-height:52px;resize:none;border:1px solid var(--line,#D6D0C0);
+    background:var(--paper);padding:11px 13px;font-family:var(--serif);font-size:15px;
+    line-height:1.7;color:var(--ink);outline:none}
+  .ask textarea:focus{border-color:var(--green)}
+  .ask .send{padding:0 24px;background:var(--green-3);color:#08201A;font-family:var(--serif);
+    font-size:14px;letter-spacing:.16em;font-weight:700}
+  .ask .send:hover{background:var(--green)}
+  .chips{margin-top:11px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .chips .lb{font-family:var(--kai);font-size:10px;letter-spacing:.32em;color:var(--ink-3)}
+  .chips a{font-family:var(--kai);font-size:12px;letter-spacing:.12em;color:var(--ink-2);
+    padding:6px 13px;border:1px solid var(--paper,#F2EFE6);background:var(--paper)}
+  .chips a:hover{border-color:var(--green-3);color:var(--green)}
+
+  /* 名词解释（定词表） */
+  .gloss{background:var(--green);color:var(--green-5);padding:22px 24px}
+  .gloss .gh{font-family:var(--kai);font-size:10.5px;letter-spacing:.36em;
+    color:rgba(223,237,230,.6);border-bottom:1px solid rgba(223,237,230,.2);padding-bottom:11px}
+  .gl{padding:13px 0;border-bottom:1px solid rgba(223,237,230,.18)}
+  .gl:last-child{border-bottom:0}
+  .gl .term{font-family:var(--serif);font-size:15.5px;font-weight:700;letter-spacing:.06em;
+    display:flex;align-items:baseline;gap:11px;flex-wrap:wrap}
+  .gl .term .tag{font-family:var(--sans);font-size:9px;letter-spacing:.22em;
+    padding:2px 9px;background:var(--green-3);color:#08201A;font-weight:700}
+  .gl .def{font-family:var(--kai);font-size:12.5px;line-height:2;color:rgba(223,237,230,.82);
+    margin-top:6px}
+
+  .data{max-width:1280px;margin:34px auto 0;padding:0 30px}
+  .data .dt{font-family:var(--kai);font-size:10.5px;letter-spacing:.42em;color:var(--ink-3);
+    border-bottom:2px solid var(--ink);padding-bottom:11px}
+  .data dl{margin-top:6px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 32px}
+  .data .pair{display:flex;justify-content:space-between;gap:12px;
+    border-bottom:1px solid var(--paper-2);padding:10px 0;font-family:var(--kai);font-size:12.5px}
+  .data dt{color:var(--ink-3);letter-spacing:.16em;white-space:nowrap}
+  .data dd{color:var(--ink);text-align:right;overflow-wrap:anywhere}
+  .data dd b{font-family:var(--serif);font-size:16px;letter-spacing:.04em}
+
+  .foot{background:var(--ink);color:rgba(220,232,240,.62);margin-top:44px;padding:22px 30px;
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11px;letter-spacing:.32em}
+  .foot b{font-family:var(--serif);font-size:12.5px;letter-spacing:.22em;color:var(--blue-5);display:block}
+  .foot .dual{display:flex;gap:11px;align-items:center}
+  .foot .dual i{width:24px;height:12px;display:inline-block}
+  .foot .dual i.g{background:var(--green-3)}
+  .foot .dual i.b{background:var(--blue-3)}
+
+  @media (max-width:1040px){
+    .hi{grid-template-columns:1fr;gap:30px}
+    .flaps{align-items:flex-start}.flaps .grp{text-align:left}
+    .main{grid-template-columns:1fr;gap:32px}
+    .data dl{grid-template-columns:1fr 1fr}
+    .stations{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="wm">文衡</span>
+  <span class="sub">雲 南 大 學 圖 書 館<br>學 科 信 息 參 考</span>
+  <nav class="stations" aria-label="五站五屏">
+    <a class="done" href="#">✓ 取数核验</a>
+    <a class="done" href="#">✓ 选章节</a>
+    <a class="done" href="#">✓ 预测选模</a>
+    <a class="done" href="#">✓ 生成初稿</a>
+    <a class="done" href="#">✓ 核验定稿</a>
+  </nav>
+  <span class="r">
+    <span class="on" style="color:var(--blue-5);font-weight:700">問 文 衡</span>
+    <span class="pal"><i class="b on" title="蓝·场"></i><i class="g" title="绿·器"></i></span>
+  </span>
+</header>
+
+<section class="hero">
+  <div class="hi">
+    <div>
+      <div class="ov">雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+      <h1>问文衡</h1>
+      <p class="deck">一句问一句答。答里的每个数字都能回指台账，口径全站一份。</p>
+      <div class="acts">
+        <button class="btn">开 始 询 问 →</button>
+        <a class="ghost" href="#">看主台账</a>
+      </div>
+    </div>
+
+    <div class="flaps" aria-label="本期动态">
+      <div class="grp">
+        <div class="gl">期 次 · 目 錄 號</div>
+        <div class="flap-row">
+          <span class="flap">2</span><span class="flap">0</span><span class="flap">2</span>
+          <span class="flap gr">6</span><span class="flap rd">0</span><span class="flap rd">9</span>
+        </div>
+      </div>
+      <div class="grp">
+        <div class="gl">任 務 · 簽 發</div>
+        <div class="flap-row">
+          <span class="flap sm gr">完</span>
+          <span class="flap sm gap"></span>
+          <span class="flap sm rd">未</span><span class="flap sm rd">簽</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="band">
+  <span class="pill g">任务 · 已完成</span>
+  <span class="pill b">签发 · 未签发</span>
+  <span class="r">口 徑 全 站 一 份　·　名 詞 解 釋 即 定 詞 表</span>
+</div>
+
+<section class="main">
+  <div class="sect">
+    <div class="hd">
+      <h2><span class="n">問 答 · 節 選</span>本期问过什么</h2>
+      <a class="lnk" href="#">看主台账 →</a>
+    </div>
+
+    <div class="qa">
+      <div class="q"><span class="m"></span>
+        <div class="t">云南大学热点论文数量有多少？</div></div>
+      <div class="a">
+        <div class="t">截至本期（<b>202609</b>），热点论文与高被引论文合计上榜 <b>291</b> 篇。分项与逐篇明细在本期图册与主台账里，报告正文取的是汇总口径。</div>
+        <div class="src"><i>来源 · 主台账</i><i>口径 · 汇总</i><i>202609</i></div>
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="q"><span class="m"></span>
+        <div class="t">某一学科的接近度是多少？</div></div>
+      <div class="a">
+        <div class="t">接近度＝本校被引数离 ESI 前 1% 阈值还差多少。本期最高是<b>免疫学 0.88</b>，其后是<b>分子生物学与遗传学 0.81</b>——报告正文用的就是接近度前二。八家的水尺都在「预测选模」那屏。</div>
+        <div class="src"><i>来源 · 主台账</i><i>口径 · 接近度</i><i>路线 1</i></div>
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="q"><span class="m"></span>
+        <div class="t">云南大学什么时候能进前 1%？</div></div>
+      <div class="a">
+        <div class="t">这个要靠预测，不是定数。本期已有 <b>14</b> 个学科进 ESI 全球前 1%；22 个在监测里。谁能再进，看「进入预测」那章的表 3——它给的是趋势与所需增量，不是承诺日期。</div>
+        <div class="src"><i>来源 · 报告表 3</i><i>口径 · 进入预测</i><i>202609</i></div>
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="q"><span class="m"></span>
+        <div class="t">这期做完没有？</div></div>
+      <div class="a">
+        <div class="t"><b>任务已完成、未签发</b>。两个词就够——任务状态说机器跑完了，签发状态说这一版还没人签。签发前不能下载初稿。</div>
+        <div class="src"><i>来源 · 运行档案</i><i>口径 · 状态词两套</i></div>
+      </div>
+
+      <!-- 输入 -->
+      <div class="ask">
+        <div class="row">
+          <textarea placeholder="问一句：本期哪几家离前 1% 最近"></textarea>
+          <button class="send">去 问 →</button>
+        </div>
+        <div class="chips">
+          <span class="lb">試 問</span>
+          <a href="#">本期哪几家离前 1% 最近</a>
+          <a href="#">这期改了哪个模型</a>
+          <a href="#">报告里哪张图是新增的</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 名词解释：定词表 -->
+  <div class="gloss">
+    <div class="gh">名 詞 解 釋 · 全 站 同 詞 同 義</div>
+    <div class="gl">
+      <div class="term">取数<span class="tag">机 器 进 度</span></div>
+      <div class="def">机器把当期原始数据取回来。人核对那一步叫「取数核验」。</div>
+    </div>
+    <div class="gl">
+      <div class="term">一键生成<span class="tag">机 器 进 度</span></div>
+      <div class="def">机器把稿子排出来。人那一步叫「生成初稿」。</div>
+    </div>
+    <div class="gl">
+      <div class="term">五 站 五 屏<span class="tag">流 程</span></div>
+      <div class="def">取数核验 · 选章节 · 预测选模 · 生成初稿 · 核验定稿。一步一屏。</div>
+    </div>
+    <div class="gl">
+      <div class="term">签单<span class="tag">动 作</span></div>
+      <div class="def">复核无异议后签下这一版的动作。</div>
+    </div>
+    <div class="gl">
+      <div class="term">签发<span class="tag">状 态</span></div>
+      <div class="def">未签发 / 已签发 / 签发已失效。签发前不能下载初稿。</div>
+    </div>
+    <div class="gl">
+      <div class="term">任务<span class="tag">状 态</span></div>
+      <div class="def">进行中 / 已完成 / 未开始。全站就这两套状态词。</div>
+    </div>
+    <div class="gl">
+      <div class="term">接近度<span class="tag">學 科 詞</span></div>
+      <div class="def">本校被引数离 ESI 前 1% 阈值还差多少。报告正文取前二。</div>
+    </div>
+  </div>
+</section>
+
+<section class="data">
+  <div class="dt">本 期 數 據</div>
+  <dl>
+    <div class="pair"><dt>期 次</dt><dd><b>202609</b>　第 39 期</dd></div>
+    <div class="pair"><dt>已 進 前 1 %</dt><dd><b>14</b> 个学科</dd></div>
+    <div class="pair"><dt>在 監 測</dt><dd><b>22</b> 个学科</dd></div>
+    <div class="pair"><dt>上 榜 論 文</dt><dd><b>291</b> 篇</dd></div>
+    <div class="pair"><dt>接 近 度 前 二</dt><dd>免疫学 · 分子生物学与遗传学</dd></div>
+    <div class="pair"><dt>任 務 / 簽 發</dt><dd>已完成 / 未签发</dd></div>
+  </dl>
+</section>
+
+<footer class="foot">
+  <div><b>文衡 · 汇</b>雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+  <div class="dual"><i class="b"></i><i class="g"></i>　藍 為 場　·　綠 為 器</div>
+  <div>問 文 衡　·　口 徑 全 站 一 份</div>
+</footer>
+</body>
+</html>
