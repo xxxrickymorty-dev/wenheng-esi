@@ -36,14 +36,16 @@ import { Archive } from './Archive'
 import { deriveWorkbench, statusToWB, type WBState } from './wb'
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'warned', 'waiting-approval', 'fail-ledger', 'fail-other', 'stalled', 'signed']
-type Palette = 'ynu' | 'zhu'
+type Palette = 'blue' | 'green'
 const PALETTE_STORAGE_KEY = 'wenheng-palette'
 
 function initialPalette(): Palette {
   try {
-    return localStorage.getItem(PALETTE_STORAGE_KEY) === 'zhu' ? 'zhu' : 'ynu'
+    const v = localStorage.getItem(PALETTE_STORAGE_KEY)
+    if (v === 'green' || v === 'blue') return v
+    return v === 'zhu' ? 'green' : 'blue'
   } catch {
-    return 'ynu'
+    return 'blue'
   }
 }
 
@@ -551,7 +553,7 @@ export default function App() {
           {periods.length > 0 && (
             <label className="app-period">期次
               <select value={selected ?? ''} onChange={(e) => pickPeriod(e.target.value)} aria-label="切换期次">
-                {periods.map((p) => <option key={p.period} value={p.period}>{p.label || p.period}</option>)}
+                {periods.map((p) => <option key={p.period} value={p.period}>{p.period}</option>)}
                 {selected && !periods.some((p) => p.period === selected) && <option value={selected}>{selected}</option>}
               </select>
             </label>
@@ -562,8 +564,8 @@ export default function App() {
           </a>
           {/* 皮肤开关：与对话页同款（2026-10-12）；默认云大绿 */}
           <span className="skin-switch" role="group" aria-label="切换配色">
-            <button type="button" aria-pressed={palette === 'ynu'} onClick={() => setPalette('ynu')}>云大绿</button>
-            <button type="button" aria-pressed={palette === 'zhu'} onClick={() => setPalette('zhu')}>朱砂</button>
+            <button type="button" aria-pressed={palette === 'blue'} onClick={() => setPalette('blue')}>蓝场</button>
+            <button type="button" aria-pressed={palette === 'green'} onClick={() => setPalette('green')}>绿场</button>
           </span>
           {me ? <UserChip me={me} /> : (
             <span className="user-chip" aria-live="polite">

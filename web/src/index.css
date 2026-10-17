@@ -16,37 +16,37 @@ code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,
 ::placeholder{opacity:1;color:color-mix(in oklab, currentColor 50%, transparent)}
 
 /* ============================================================================
-   文衡 · 工作台令牌（庚·卷宗语言，2026-10-17 rick 拍板重设计）
-   纸面＋墨＋云大绿重线：方角、无阴影、一色到底；取值参考静态稿 庚-卷宗.html，
-   文字/底色组合逐一验过 ≥4.5:1（WCAG AA）。改配色只改这一处。
-   --zhu 仍是全站主强调色变量名（ynu=云大绿 / zhu=朱砂），组件不必改。
+   文衡 · 工作台令牌（绿蓝双主题，2026-10-17 rick 拍板，据 汇-绿蓝.html 融合）
+   蓝·场（题头/顶栏大场面色）＋绿·器（控件/强调/重线色）；绿主题两族对调。
+   朱砂退役；红 #B23A2B 只做警戒。语义色（ok/warn/bad）不随主题变。
+   文字/底色组合实测 ≥4.5:1（WCAG AA）。改配色只改这两处（blue / green）。
+   --zhu 仍是全站主强调色变量名（＝器色），组件不必改。
    ========================================================================== */
-:root{
-  --bg:#F4F2EA; --card:#F7F5EE; --panel:#ECE9DC;
-  --ink:#20211C; --ink-2:#4C4E45; --ink-3:#63655A;
-  --line:#D8DCC9; --line-2:#E7E9DA;
-  --zhu:#1A4B27; --zhu-soft:#E4EADB;
-  --gline:#2A6642;
-  --gold:#B19A65; --gold-soft:#EFE9D9; --gold-ink:#6A5A2E;
-  --ok:#235C36; --ok-soft:#E2ECE0;
-  --warn:#75622D; --warn-soft:#F5ECD7;
-  --bad:#B4392E; --bad-soft:#F3E4DF;
+:root, html[data-palette="blue"]{
+  --field:#17456E; --field-2:#0F2E4C; --field-3:#2F6B8E; --field-4:#8FB6CE; --field-5:#DCE8F0;
+  --tool:#26483B; --tool-2:#163228; --tool-3:#2F7A58; --tool-4:#7FB79B; --tool-5:#DFEDE6;
+  --bg:#F2EFE6; --card:#F7F4EC; --panel:#E4DFD0;
+  --ink:#15222B; --ink-2:#43525C; --ink-3:#556169;
+  --line:#D6D0C0; --line-2:#E4DFD0;
+  --zhu:#26483B; --zhu-soft:#DFEDE6;
+  --gline:#163228;
+  --gold:#2F7A58; --gold-soft:#DFEDE6; --gold-ink:#163228;
+  --ok:#276B4C; --ok-soft:#DFEDE6;
+  --warn:#B23A2B; --warn-soft:#F4DDD7;
+  --bad:#B23A2B; --bad-soft:#F4DDD7;
   --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+  --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
   --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
   --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
   --r:0px; --r-sm:0px;
   --shadow:none;
 }
-html[data-palette="zhu"]{
-  --bg:#F3EFE6; --card:#FAF7EF; --panel:#F1ECE0;
-  --ink:#2F2A24; --ink-2:#524A40; --ink-3:#6B6154;
-  --line:#D9CFBC; --line-2:#E7DFD0;
-  --zhu:#A93429; --zhu-soft:#F0DCD5;
-  --gline:#8E3A2E;
-  --gold:#A9853F; --gold-soft:#EFE3C9; --gold-ink:#6E5620;
-  --ok:#3F6B4A; --ok-soft:#E2ECE0;
-  --warn:#7D5518; --warn-soft:#F5EAD2;
-  --bad:#A8321F; --bad-soft:#F4DDD7;
+html[data-palette="green"]{
+  --field:#26483B; --field-2:#163228; --field-3:#2F7A58; --field-4:#7FB79B; --field-5:#DFEDE6;
+  --tool:#17456E; --tool-2:#0F2E4C; --tool-3:#2F6B8E; --tool-4:#8FB6CE; --tool-5:#DCE8F0;
+  --zhu:#17456E; --zhu-soft:#DCE8F0;
+  --gline:#0F2E4C;
+  --gold:#2F6B8E; --gold-soft:#DCE8F0; --gold-ink:#0F2E4C;
 }
 
 html,body,#root{height:100%}
@@ -56,28 +56,34 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0}
 :focus-visible{outline:2px solid var(--zhu);outline-offset:2px;border-radius:0}
 a{color:inherit}
 
-/* ---------- 工作台外壳（2026-10-17 庚·卷宗：顶栏制，无左栏） ----------
-   顶栏 56px：品牌 / 横向导航 / 右侧（陈列馆 / 配色 / 身份）；正文自然滚动；
+/* ---------- 工作台外壳（2026-10-17 绿蓝语言：顶栏制，深色「场」条） ----------
+   顶栏 60px：品牌 / 横向导航 / 右侧（期次 / 陈列馆 / 配色 / 身份）；正文自然滚动；
    内容区 1240px。窄屏顶栏折行、导航横滑。 */
 .app-shell{min-height:100dvh;display:flex;flex-direction:column}
-.app-top{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:26px;
-  min-height:56px;padding:0 clamp(16px,4vw,40px);background:var(--bg);
-  border-bottom:1px solid var(--gline)}
-.app-brand{display:flex;align-items:baseline;gap:9px;white-space:nowrap;text-decoration:none;flex:0 0 auto}
-.app-brand b{font-family:var(--serif);font-size:20px;font-weight:600;letter-spacing:.12em}
-.app-brand span{font-size:10.5px;letter-spacing:.16em;color:var(--ink-3)}
-.app-nav{display:flex;align-items:center;gap:24px;margin-left:auto;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.app-nav a{white-space:nowrap;padding:4px 0;font-size:13.5px;color:var(--ink-2);
+.app-top{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;
+  min-height:60px;padding:0 clamp(14px,2.5vw,28px);background:var(--field-2);color:var(--field-5)}
+.app-brand{display:flex;align-items:baseline;gap:10px;white-space:nowrap;text-decoration:none;flex:0 0 auto}
+.app-brand b{font-family:var(--serif);font-size:21px;font-weight:600;letter-spacing:.18em;color:var(--field-5)}
+.app-brand span{font-size:11px;letter-spacing:.16em;color:var(--field-4)}
+.app-nav{display:flex;align-items:center;gap:22px;margin-left:auto;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.app-nav a{white-space:nowrap;padding:6px 2px;font-size:14px;color:var(--field-4);
   border-bottom:2px solid transparent;transition:color .15s,border-color .15s}
-.app-nav a[aria-current="page"]{color:var(--ink);font-weight:600;border-bottom-color:var(--gline)}
-.app-nav a:hover{color:var(--zhu)}
-.app-nav-sep{flex:0 0 auto;width:1px;height:14px;background:var(--line)}
-.app-side{display:flex;align-items:center;gap:14px;margin-left:26px;flex:0 0 auto}
-.app-jump{display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:0 12px;
-  border:1px solid var(--line);background:transparent;color:var(--ink-2);text-decoration:none;
+.app-nav a[aria-current="page"]{color:var(--field-5);font-weight:600;border-bottom-color:var(--tool-3)}
+.app-nav a:hover{color:var(--field-5)}
+.app-nav-sep{flex:0 0 auto;width:1px;height:14px;background:var(--field-3)}
+.app-side{display:flex;align-items:center;gap:12px;margin-left:18px;flex:0 0 auto}
+.app-jump{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 12px;
+  border:1px solid var(--field-3);background:transparent;color:var(--field-4);text-decoration:none;
   font-size:13.5px;transition:border-color .15s,color .15s;white-space:nowrap}
-.app-jump:hover{border-color:var(--gline);color:var(--zhu)}
-.app-jump svg{color:var(--gold)}
+.app-jump:hover{border-color:var(--field-4);color:var(--field-5)}
+.app-jump svg{color:var(--tool-4)}
+.app-side .user-chip{color:var(--field-5)}
+.app-side .user-chip-btn:hover{background:var(--field)}
+.app-side .app-period{color:var(--field-4)}
+.app-side .app-period select{background:var(--field);border-color:var(--field-3);color:var(--field-5)}
+.app-side .skin-switch{border-color:var(--field-3);background:transparent}
+.app-side .skin-switch button{color:var(--field-4)}
+.app-side .skin-switch button[aria-pressed="true"]{background:var(--tool-3);color:#fff}
 .app-side .user-chip-pop{top:calc(100% + 10px);bottom:auto;left:auto;right:0}
 .skip-link{position:absolute;left:-999px;top:8px;z-index:100;background:var(--card);padding:10px 14px;border:1px solid var(--gline)}
 .skip-link:focus{left:8px}
@@ -974,22 +980,22 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
    全局页脚（2026-10-17 庚：纸面 + 顶部绿重线，收掉深底块）
    内容三栏（品牌 / 说明 / 入口）＋底行；不吸底、不占首屏。
    ========================================================================== */
-.app-footer{background:var(--bg);color:var(--ink-2);border-top:2px solid var(--gline)}
+.app-footer{background:var(--field-2);color:var(--field-4);border-top:0}
 .app-footer .inner{max-width:1240px;margin:0 auto;padding:40px 40px 52px}
 .app-footer .cols{display:flex;gap:36px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
 .app-footer .f-brand{flex:0 0 auto}
-.app-footer .f-brand strong{display:block;font-family:var(--serif);font-size:26px;font-weight:600;letter-spacing:.14em;color:var(--zhu)}
-.app-footer .f-brand span{display:block;margin-top:9px;font-size:11px;letter-spacing:.2em;color:var(--ink-3)}
+.app-footer .f-brand strong{display:block;font-family:var(--serif);font-size:26px;font-weight:600;letter-spacing:.14em;color:var(--field-5)}
+.app-footer .f-brand span{display:block;margin-top:9px;font-size:11px;letter-spacing:.2em;color:var(--field-3)}
 .app-footer .f-note{flex:1 1 400px;max-width:620px}
-.app-footer .f-note b{display:block;font-size:13.5px;font-weight:600;color:var(--ink);letter-spacing:.05em}
-.app-footer .f-note p{margin:10px 0 0;font-size:13px;line-height:1.95;color:var(--ink-3)}
+.app-footer .f-note b{display:block;font-size:13.5px;font-weight:600;color:var(--field-5);letter-spacing:.05em}
+.app-footer .f-note p{margin:10px 0 0;font-size:13px;line-height:1.95;color:var(--field-4)}
 .app-footer .f-nav{display:flex;gap:24px;font-size:13.5px;white-space:nowrap;padding-top:4px}
-.app-footer .f-nav a{color:var(--ink-2);text-decoration:none;padding-bottom:2px;
+.app-footer .f-nav a{color:var(--field-4);text-decoration:none;padding-bottom:2px;
   border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
-.app-footer .f-nav a:hover{color:var(--zhu);border-color:var(--zhu)}
+.app-footer .f-nav a:hover{color:var(--field-5);border-color:var(--tool-3)}
 .app-footer .f-bottom{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
-  margin-top:30px;padding-top:14px;border-top:1px solid var(--line);
-  font-size:12.5px;color:var(--ink-3)}
+  margin-top:30px;padding-top:14px;border-top:1px solid var(--field-3);
+  font-size:12.5px;color:var(--field-4)}
 /* 合规声明（请勿外传）：底部行中位（2026-10-14 rick；原为工作台顶部右对齐一行） */
 .app-footer .f-claim{letter-spacing:.06em;user-select:none}
 @media (max-width:760px){
