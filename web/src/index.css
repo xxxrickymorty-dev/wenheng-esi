@@ -739,7 +739,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
    ⚠ rv- 前缀：报告区内部与右栏自成一体，不碰既有类。
    ========================================================================== */
 .rv-lead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 2px 0}
-.rv-grid{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:18px;align-items:start;margin-top:14px}
+.rv-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start;margin-top:14px}
 @media (max-width:1080px){
   .rv-grid{grid-template-columns:1fr}
   /* 窄屏单列：右栏回到普通流，取消吸顶与内滚（!important 压过后面的基础规则） */
@@ -780,8 +780,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 /* 右栏 */
 /* 右栏吸顶 + 限高内滚：报告很长时，签单/下载/空位清单永远够得着，不用把整页拖到底
    （顶栏 56px 常驻，吸顶线落在其下方） */
-.rv-side{position:sticky;top:68px;display:grid;gap:14px;min-width:0;
-  max-height:calc(100vh - 80px);overflow-y:auto;padding-right:2px}
+.rv-side{position:sticky;top:68px;display:grid;gap:14px;min-width:0}
 .rv-card{padding:16px 16px 14px}
 .rv-card h3{font-size:16px;display:flex;align-items:center;gap:8px}
 .rv-kv{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:5px 0;
