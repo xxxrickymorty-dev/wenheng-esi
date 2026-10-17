@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 出报告页重设计 — 28 方向盲评汇总（2026-10-17）</title>
+<style>
+:root{
+  --paper:#F4F2EA; --paper2:#EDEAE0; --card:#FBFAF5;
+  --ink:#26251F; --ink2:#6E6A5E; --ink3:#9A9588;
+  --green:#1A4B27; --green2:#2A6642; --gold:#B19A65; --red:#B4392E;
+  --line:#D8D3C4; --line2:#C7C1B0;
+  --serif:"Noto Serif SC","Songti SC","STSong","SimSun",serif;
+  --sans:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  --mono:"Cascadia Mono","Courier New",monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.75;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 36px}
+a{color:var(--green)}
+
+/* ---------- 页头 ---------- */
+.mast{border-bottom:1px solid var(--line2);padding:52px 0 34px;position:relative}
+.mast::after{content:"";display:block;position:absolute;left:36px;right:36px;bottom:-4px;border-bottom:1px solid var(--line)}
+.mast .crumb{font-size:12px;letter-spacing:.28em;color:var(--ink3);margin-bottom:18px}
+.mast .crumb b{color:var(--green);font-weight:600}
+.mast h1{font-family:var(--serif);font-size:clamp(30px,4.2vw,46px);font-weight:700;line-height:1.25;letter-spacing:.01em}
+.mast h1 em{font-style:normal;color:var(--green)}
+.mast .sub{margin-top:14px;color:var(--ink2);max-width:760px;font-size:14.5px}
+.mast .meta{margin-top:22px;display:flex;flex-wrap:wrap;gap:10px 26px;font-size:12.5px;color:var(--ink2)}
+.mast .meta span{display:inline-flex;align-items:center;gap:7px}
+.mast .meta i{font-style:normal;color:var(--gold);font-family:var(--serif)}
+
+/* ---------- 统计卡 ---------- */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:38px 0 10px}
+.stat{border:1px solid var(--line2);background:var(--card);padding:20px 22px 16px;position:relative}
+.stat::before{content:"";position:absolute;top:0;left:0;width:26px;height:2px;background:var(--green)}
+.stat .num{font-family:var(--serif);font-size:40px;font-weight:700;line-height:1;color:var(--green)}
+.stat .num small{font-size:16px;color:var(--ink3);font-weight:400;margin-left:2px}
+.stat .lab{font-size:12.5px;color:var(--ink2);margin-top:8px}
+.stat.warn .num{color:var(--red)}
+.stat.warn::before{background:var(--red)}
+
+/* ---------- 分布 ---------- */
+section{margin:52px 0}
+.sec-head{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--line2);padding-bottom:10px;margin-bottom:24px}
+.sec-head .no{font-family:var(--serif);color:var(--gold);font-size:14px;letter-spacing:.1em}
+.sec-head h2{font-family:var(--serif);font-size:23px;font-weight:700}
+.sec-head .hint{margin-left:auto;font-size:12px;color:var(--ink3)}
+.dist{display:grid;gap:10px;max-width:720px}
+.dist-row{display:grid;grid-template-columns:86px 1fr 74px;align-items:center;gap:14px;font-size:13.5px}
+.dist-row .sc{font-family:var(--serif);font-weight:700;text-align:right}
+.dist-row .bar{height:22px;background:var(--paper2);border:1px solid var(--line);position:relative}
+.dist-row .bar i{position:absolute;inset:0 auto 0 0;display:block}
+.dist-row .ct{font-family:var(--mono);font-size:12.5px;color:var(--ink2)}
+.dist-note{margin-top:14px;font-size:13px;color:var(--ink2);max-width:760px}
+.dist-note b{color:var(--ink)}
+
+/* ---------- 共性问题 ---------- */
+.issues{counter-reset:iss}
+.issue{display:grid;grid-template-columns:44px 1fr;gap:16px;padding:17px 0;border-bottom:1px dashed var(--line2)}
+.issue:last-child{border-bottom:0}
+.issue::before{counter-increment:iss;content:counter(iss,cjk-ideographic);font-family:var(--serif);font-size:24px;color:var(--gold);line-height:1.2}
+.issue h3{font-size:15.5px;font-weight:600;margin-bottom:5px}
+.issue h3 .freq{font-family:var(--sans);font-size:11px;font-weight:400;color:var(--paper);background:var(--green2);padding:1px 8px;margin-left:9px;vertical-align:2px;letter-spacing:.05em}
+.issue h3 .freq.hot{background:var(--red)}
+.issue p{font-size:13.5px;color:var(--ink2)}
+.issue p code{font-family:var(--mono);font-size:12px;background:var(--paper2);padding:1px 5px;color:var(--ink)}
+.issue p b{color:var(--ink);font-weight:600}
+
+/* ---------- 控件 ---------- */
+.controls{border:1px solid var(--line2);background:var(--card);padding:20px 22px;margin-bottom:26px;position:sticky;top:0;z-index:30;box-shadow:0 1px 0 var(--line)}
+.ctl-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px}
+.ctl-row + .ctl-row{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+.ctl-lab{font-size:12px;color:var(--ink3);letter-spacing:.14em;flex-basis:100%}
+.slider-box{display:flex;align-items:center;gap:14px;flex:1;min-width:280px}
+.slider-box input[type=range]{flex:1;accent-color:var(--green);height:2px}
+.slider-val{font-family:var(--serif);font-weight:700;font-size:19px;color:var(--green);min-width:118px}
+.slider-val small{font-size:12px;color:var(--ink2);font-weight:400;margin-left:4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-size:12.5px;border:1px solid var(--line2);background:var(--paper);color:var(--ink2);padding:4px 13px;cursor:pointer;user-select:none;transition:all .15s}
+.chip:hover{border-color:var(--green2);color:var(--green)}
+.chip.on{background:var(--green);border-color:var(--green);color:var(--paper)}
+.chip .n{font-family:var(--mono);font-size:11px;opacity:.75;margin-left:5px}
+select{font-family:var(--sans);font-size:13px;border:1px solid var(--line2);background:var(--paper);color:var(--ink);padding:5px 10px;cursor:pointer}
+.btn{font-family:var(--serif);font-size:14px;border:1px solid var(--green);background:var(--green);color:var(--paper);padding:7px 22px;cursor:pointer;letter-spacing:.06em}
+.btn:hover{background:var(--green2)}
+.btn.ghost{background:transparent;color:var(--green)}
+.btn.ghost:hover{background:var(--green);color:var(--paper)}
+.count{margin-left:auto;font-size:12.5px;color:var(--ink2);font-family:var(--mono)}
+
+/* ---------- 排名图 ---------- */
+.chart{border:1px solid var(--line2);background:var(--card);padding:26px 28px 20px}
+.crow{display:grid;grid-template-columns:150px 1px 1fr 46px;align-items:center;gap:0 14px;padding:5px 0}
+.crow .nm{font-size:13.5px;text-align:right;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crow .ax{width:1px;height:24px;background:var(--line2)}
+.crow .tr{height:24px;background:var(--paper2);position:relative;border-left:1px solid var(--line2)}
+.crow .tr i{position:absolute;top:0;bottom:0;left:0;display:block;min-width:2px}
+.crow .tr i.t8{background:var(--green)}
+.crow .tr i.t7{background:var(--gold)}
+.crow .tr i.t6{background:var(--red)}
+.crow .sc{font-family:var(--serif);font-weight:700;font-size:15px;text-align:left;padding-left:12px}
+.crow .sc.s8{color:var(--green)} .crow .sc.s7{color:#8f7a4e} .crow .sc.s6{color:var(--red)}
+.crow:hover .nm{color:var(--green)}
+.crow.hide{display:none}
+.chart-legend{display:flex;gap:22px;margin-top:18px;padding-top:14px;border-top:1px dashed var(--line);font-size:12px;color:var(--ink2)}
+.chart-legend i{display:inline-block;width:12px;height:12px;margin-right:6px;vertical-align:-1px}
+
+/* ---------- 画廊 ---------- */
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:22px}
+.gcard{border:1px solid var(--line2);background:var(--card);display:flex;flex-direction:column;transition:border-color .15s}
+.gcard:hover{border-color:var(--green2)}
+.gcard.hide{display:none}
+.gshot{height:210px;overflow:hidden;position:relative;cursor:zoom-in;border-bottom:1px solid var(--line2);background:var(--paper2)}
+.gshot img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block;transition:transform .35s}
+.gcard:hover .gshot img{transform:scale(1.03)}
+.gshot .badge{position:absolute;top:0;left:0;font-family:var(--serif);font-weight:700;font-size:19px;color:var(--paper);padding:3px 14px 4px;letter-spacing:.02em}
+.gshot .badge.b8{background:var(--green)} .gshot .badge.b7{background:#8f7a4e} .gshot .badge.b6{background:var(--red)}
+.gshot .rd{position:absolute;bottom:8px;right:8px;font-size:11px;background:rgba(244,242,234,.92);color:var(--ink2);padding:2px 9px;letter-spacing:.05em}
+.gbody{padding:16px 18px 15px;display:flex;flex-direction:column;gap:9px;flex:1}
+.gbody h3{font-family:var(--serif);font-size:17.5px;font-weight:700}
+.gbody .claim{font-size:13px;color:var(--ink2)}
+.gbody .flaw{font-size:13px;color:var(--ink);border-left:2px solid var(--red);padding-left:11px}
+.gbody .flaw b{color:var(--red);font-weight:600}
+.gbody .keep{font-size:13px;color:var(--ink2);border-left:2px solid var(--green2);padding-left:11px;margin-top:auto}
+.gbody .keep b{color:var(--green);font-weight:600}
+
+/* ---------- 方法论 ---------- */
+.method{background:var(--card);border:1px solid var(--line2);padding:34px 38px}
+.method h3{font-family:var(--serif);font-size:18px;margin:22px 0 10px;color:var(--green)}
+.method h3:first-child{margin-top:0}
+.method p,.method li{font-size:14px;color:var(--ink2);max-width:880px}
+.method p + p{margin-top:8px}
+.method ul,.method ol{margin:8px 0 0 20px}
+.method li{margin-bottom:5px}
+.method b{color:var(--ink)}
+.method .loop{display:flex;gap:10px;overflow-x:auto;padding:14px 2px 6px;margin-top:10px}
+.loop .cell{flex-shrink:0;width:118px}
+.loop .cell img{width:100%;height:96px;object-fit:cover;object-position:top center;border:1px solid var(--line2);cursor:zoom-in;display:block}
+.loop .cell .cap{font-size:11px;color:var(--ink3);text-align:center;margin-top:5px;font-family:var(--mono)}
+.loop .cell .cap b{color:var(--ink2)}
+.verdict{margin-top:26px;border:1px solid var(--red);background:#FBF3F1;padding:18px 22px}
+.verdict h4{font-family:var(--serif);color:var(--red);font-size:16px;margin-bottom:7px}
+.verdict p{font-size:13.5px;color:#7a4438}
+
+/* ---------- 灯箱 ---------- */
+.lightbox{position:fixed;inset:0;background:rgba(20,20,16,.9);display:none;align-items:center;justify-content:center;z-index:100;padding:3vh 3vw}
+.lightbox.open{display:flex}
+.lightbox img{max-width:94vw;max-height:88vh;border:1px solid var(--line2);background:var(--paper)}
+.lightbox .cap{position:absolute;bottom:2.2vh;left:0;right:0;text-align:center;color:var(--paper);font-size:13px;font-family:var(--serif);letter-spacing:.08em}
+.lightbox .x{position:absolute;top:2vh;right:2.4vw;color:var(--paper);font-size:26px;cursor:pointer;font-family:var(--serif);opacity:.8}
+.lightbox .x:hover{opacity:1}
+
+footer{border-top:3px double var(--line2);margin-top:64px;padding:26px 0 46px;font-size:12px;color:var(--ink3)}
+footer .wrap{display:flex;flex-wrap:wrap;gap:8px 30px;justify-content:space-between}
+
+@media (max-width:760px){
+  .wrap{padding:0 20px}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .crow{grid-template-columns:96px 1fr 40px}
+  .crow .ax{display:none}
+  .method{padding:24px 20px}
+  .mast::after{left:20px;right:20px}
+}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="wrap">
+    <div class="crumb">文衡 · 学科信息参考 · <b>出报告页重设计</b> · 评审档案</div>
+    <h1>28 个方向，一次<em>单盲</em>评审</h1>
+    <p class="sub">出报告页重设计发散至今的全部 28 个方向，用同一份批评者提示词、只给整页截图、在全新上下文里逐一盲评。本页是分数排名、共性问题与全量截图的档案；筛选控件可只看某一档或某一轮。</p>
+    <div class="meta">
+      <span><i>编号</i>2026-10-17</span>
+      <span><i>对象</i>28 方向 / 4 轮发散 + 融合 + 轨</span>
+      <span><i>协议</i>单盲 · 单截图 · 同提示词 · 10 分制</span>
+      <span><i>截图</i>1440px 整页 · dpr=1</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- 统计 -->
+  <div class="stats">
+    <div class="stat"><div class="num">28<small>个</small></div><div class="lab">参评方向（不含 3 张对比页与 style-explorer）</div></div>
+    <div class="stat"><div class="num">7.0</div><div class="lab">平均分（中位数 7）</div></div>
+    <div class="stat"><div class="num">8<small>分 ×4</small></div><div class="lab">最高档：戊-跨页 / 券-票根 / 样-校样 / 双联-会泽至公</div></div>
+    <div class="stat warn"><div class="num">0</div><div class="lab">达到工作室级门槛（9 分）的方向数</div></div>
+  </div>
+
+  <!-- 分布 -->
+  <section>
+    <div class="sec-head"><span class="no">壹</span><h2>分数分布</h2><span class="hint">n = 28</span></div>
+    <div class="dist">
+      <div class="dist-row"><span class="sc" style="color:var(--green)">8 分</span><div class="bar"><i style="width:14.3%;background:var(--green)"></i></div><span class="ct">4 个</span></div>
+      <div class="dist-row"><span class="sc" style="color:#8f7a4e">7 分</span><div class="bar"><i style="width:67.9%;background:var(--gold)"></i></div><span class="ct">19 个</span></div>
+      <div class="dist-row"><span class="sc" style="color:var(--red)">6 分</span><div class="bar"><i style="width:17.9%;background:var(--red)"></i></div><span class="ct">5 个</span></div>
+    </div>
+    <p class="dist-note">分布呈<b>单峰抱团</b>：没有方向真正失败，也没有方向真正成立。6 分档五个方向的死因高度一致——<b>读不通的文案</b>与<b>状态自相矛盾</b>；8 分档四个方向的共性是<b>隐喻落进了版式</b>（齿孔、红笔批注、对开中缝），而不是贴在表面的一张图。</p>
+  </section>
+
+  <!-- 共性问题 -->
+  <section>
+    <div class="sec-head"><span class="no">贰</span><h2>跨方向共性问题</h2><span class="hint">按被点名频次排序 · 这是下一轮的改进入场券</span></div>
+    <div class="issues">
+      <div class="issue"><div><h3>顶栏红绿色块是无标签的假细节<span class="freq hot">几乎每份评审都点名</span></h3><p>右上角两个纯色小方块（阵列馆 / 出报告态）不靠文字、不靠图标，只靠颜色区分——评审的第一反应都是「这两个色块是什么」。要么加标签，要么删。</p></div></div>
+      <div class="issue"><div><h3>同一状态一页说 3–5 遍</h3><p>「64/64 完成」出现在读数带、工序条、本期数据表、页脚注，同一期次号出现 4 种写法。顶级工作室的做法是<b>一个事实只占一个位置</b>，其余位置引用它。</p></div></div>
+      <div class="issue"><div><h3>选模表退回组件库默认样式</h3><p>8 行表格里有 6 行写着「默认」，浏览器默认表格 + 默认链接蓝。这是全页最「产品后台」的一块，恰好长在每个方向的隐喻世界之外。</p></div></div>
+      <div class="issue"><div><h3>日期格式 3–4 种混用</h3><p><code>2026-09-28</code> / <code>二零二六年九月</code> / <code>9 月 28 日</code> / <code>07:55</code> 同页并陈。选定一种主格式（其余只做变体）即可。</p></div></div>
+      <div class="issue"><div><h3>读不通的占位 / 乱码文案<span class="freq">5 个方向中招</span></h3><p>爨碑题跋「通行证 / 季杰」、山水「Y1 法录」、盾徽「有奖大方」、石阶「第八卷力学」、四训生造文言原注。<b>这是 6 分档的共同死因</b>，7 分档也有中招的。</p></div></div>
+      <div class="issue"><div><h3>「已就绪」与「待签单」状态互相矛盾<span class="freq">骗用户已成功级</span></h3><p>壬-印谱、券-票根、癸-借阅卡、贡榜-放榜、石阶-测绘都被点名：一枚「已就绪 / 已完成」的大印/大章，和「复核并签单」的主动作同页，用户会以为事已办完。真实状态是<b>差最后一步</b>，版式必须站在这一步上。</p></div></div>
+      <div class="issue"><div><h3>动效全部未验证</h3><p>全部方向都是静态稿；翻牌、撕线、环合等隐喻天然带动效暗示，不验证就等于欠账。</p></div></div>
+    </div>
+  </section>
+
+  <!-- 控件 + 排名图 -->
+  <section>
+    <div class="sec-head"><span class="no">叁</span><h2>排名与筛选</h2><span class="hint">拖动阈值可只看高分段</span></div>
+    <div class="controls">
+      <div class="ctl-row">
+        <div class="slider-box">
+          <input type="range" id="minScore" min="0" max="10" step="0.5" value="0">
+          <div class="slider-val" id="scoreVal">≥ 0 分<small>（全部）</small></div>
+        </div>
+        <div class="count" id="count">显示 28 / 28</div>
+      </div>
+      <div class="ctl-row">
+        <span class="ctl-lab">轮次（可多选）</span>
+        <div class="chips" id="roundChips"></div>
+      </div>
+      <div class="ctl-row">
+        <span class="ctl-lab">排序</span>
+        <select id="sortBy">
+          <option value="score-desc">分数 ↓</option>
+          <option value="score-asc">分数 ↑</option>
+          <option value="round">按轮次</option>
+          <option value="name">按名称</option>
+        </select>
+        <button class="btn ghost" id="resetBtn">重 置</button>
+      </div>
+    </div>
+    <div class="chart" id="chart"></div>
+    <div class="chart-legend">
+      <span><i style="background:var(--green)"></i>8 分 · 隐喻成立</span>
+      <span><i style="background:var(--gold)"></i>7 分 · 方向对、执行欠</span>
+      <span><i style="background:var(--red)"></i>6 分 · 共性问题重症</span>
+    </div>
+  </section>
+
+  <!-- 画廊 -->
+  <section>
+    <div class="sec-head"><span class="no">肆</span><h2>全量画廊</h2><span class="hint">点图看整页 · 28 张</span></div>
+    <div class="gal" id="gallery"></div>
+    <p style="font-size:12.5px;color:var(--ink3);margin-top:18px">注：短板列为当轮评审结论的归纳压缩，完整原文未随子代理上下文落盘；全部截图存档于 <b>shots/</b>，可随时复评。「保留」列是评审中明确说「别动」的部分。</p>
+  </section>
+
+  <!-- 方法论 -->
+  <section>
+    <div class="sec-head"><span class="no">伍</span><h2>方法论与诚实声明</h2><span class="hint">这些数字该怎么信</span></div>
+    <div class="method">
+      <h3>协议</h3>
+      <p>每个方向走同一条流水线：整页截图（1440px 宽、device_scale_factor=1）→ 全新上下文调用批评者子代理 → <b>只给截图</b>，不给代码、不给实现细节、不给前几轮意见 → 评估三问（这个设计想表达什么美学？顶级工作室会怎么做？最大差距在哪？）→ 10 分制。提示词固定：要求整体结构与细节双层面、警惕 AI 生成痕迹并据此扣分、紧凑具体、大胆有立场。</p>
+      <p>截图 dpr 从 2 降到 1 是中途的仪器修正：dpr=2 的图压缩后小字糊掉，批评者开始误读内容（把 202609 读成 282689、指控不存在的「年度备注/无」行）。</p>
+
+      <h3>庚-卷宗的 11 轮：为什么这个协议测不出 9 分</h3>
+      <p>第一段任务是以庚-卷宗为对象跑「批评者循环」，同一稿反复评到独立给出 9 分或以上为止。实际跑了 11 轮，分数在 4–6 之间震荡，从未接近 9：</p>
+      <div class="loop" id="loopStrip"></div>
+      <p style="margin-top:12px">跨轮评审意见<b>互相矛盾</b>（同一元素被不同轮的批评者一个说「放大」一个说「删除」），且同稿分差最大 ±1.5。这不是某一轮批评者不称职，是<b>单盲 + 单截图 + 单评审</b>这个仪器本身的方差。据此停止追 9 分，改为用带锚点、带任务语境的评审手册（三秒测试 / 品类标杆 / AI 痕迹扣分项）把 28 个方向放在同一把尺上横评——这才是本页的数字来源。</p>
+
+      <h3>这些数字的置信度</h3>
+      <ul>
+        <li><b>可作横向比较，不可作绝对标高。</b>同档内（7 分那 19 个）的先后不代表真实差距，分差已在仪器噪声量级内。</li>
+        <li><b>共性清单比排名可信。</b>七条共性问题几乎每条都被多个独立批评者重复点名，跨样本抵消了方差。</li>
+        <li><b>要提分，先改共性问题。</b>顶栏假色块、状态重复、默认表格、日期格式——这些都是确定项，不需要再评审。</li>
+        <li>如需复评：截图在 <b>shots/</b>，庚的 11 轮档案在 <b>loop/</b>，工具是 <b>wenheng/tmp/_critic_shot.py</b> 与 <b>_dir_shots.py</b>。</li>
+      </ul>
+
+      <div class="verdict">
+        <h4>结论</h4>
+        <p>28 个方向没有一个是废稿，也没有一个能直接交付。四个 8 分方向（戊-跨页、券-票根、样-校样、双联-会泽至公）共同证明了这条路线可行：<b>把「复核并签单」这个动作塞进一个具体的物，让隐喻承担结构而不是装饰</b>。下一步不是再发散，是把共性问题清单拿到这四个方向上逐条改。</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>文衡 · 出报告页重设计 · 评审档案 2026-10-17</span>
+    <span>云南大学图书馆 · 学科信息参考</span>
+    <span>单文件 · 零依赖 · 截图相对路径引用</span>
+  </div>
+</footer>
+
+<div class="lightbox" id="lightbox">
+  <span class="x" id="lbClose">×</span>
+  <img id="lbImg" src="" alt="">
+  <div class="cap" id="lbCap"></div>
+</div>
+
+<script>
+var DIRS = [
+ {n:"戊 · 跨页", f:"戊-跨页.png", s:8, r:"发散一", c:"整页对折成书：左页深绿品牌面 sticky 通高，右页纸面工作面，中间一条金色接缝。", w:"顶栏假色块；对折隐喻在中窄视口未验证。", k:"双色对页＋左页 sticky＋金缝——八分档里骨架最干净的一稿。"},
+ {n:"券 · 票根", f:"券-票根.png", s:8, r:"发散三", c:"本期报告做成本期车票：左存根（条码＋票号）可撕，中间齿孔撕线，右主券；四道工序＝一条线上的四个站。", w:"「已就绪」与「待签单」同页（状态矛盾共病）；齿孔撕线暗示了不存在的交互。", k:"齿孔＋存根＋席位表 1A–8A——隐喻落进版式而非贴纸的样板。"},
+ {n:"样 · 校样", f:"样-校样.png", s:8, r:"发散三", c:"本期报告做成待签发的校样：暖黄稿纸、行文带红笔校对符号、页边双色批注、右下「待签发」章。", w:"红笔符号密度逼近 AI 痕迹红线，再浓一格就扣分；校对符号需要真懂行才不违和。", k:"红笔批注系统——「复核」这个动作唯一找到物质对应物的一稿。"},
+ {n:"双联 · 会泽至公", f:"双联-会泽至公.png", s:8, r:"发散四", c:"「会泽百家／至公天下」这组可核实的二元，做成对开双联：左联暖石密排八家，右联海蓝疏朗唯签单一句，中缝钤印正落缝上。", w:"左联密排与右联一句的反差接近炫技；右联海蓝再次偏离云大绿。", k:"二元对开＋缝上印——签单即两联合一，八分档里概念最完整。"},
+ {n:"甲 · 馆刊", f:"甲-馆刊.png", s:7, r:"基准", c:"把工作台做成本期《学科信息参考》题头页：大号衬线期题、hairline 目录、纸面底色。", w:"刊头仪式感压过了工具动作；顶栏假色块；日期三种格式并陈。", k:"刊物身份＋hairline 目录——产品身份路线的锚。"},
+ {n:"乙 · 档案室", f:"乙-档案室.png", s:7, r:"基准", c:"值班台上的仪表：深绿黑底、象牙白字、三个大读数、冷绿细线走工序。", w:"暗底偏离全项目共用的纸面品牌；顶栏假色块。", k:"三读数仪表条——状态读取最快的一稿。"},
+ {n:"丙 · 阅览桌", f:"丙-阅览桌.png", s:6, r:"基准", c:"一页干净的工作文档：暖白纸底、黑墨字、大留白，全页只有一个主角（本期报告已就绪）。", w:"安全到没有立场：无母题、无记忆点，评审找不到可扣分也找不到可记住的东西；双卡 bento 是组件库默认样式。", k:"单主角＋淡彩状态标签的克制。"},
+ {n:"丁 · 幕布", f:"丁-幕布.png", s:7, r:"发散一", c:"把本馆照片当幕布：满幅真实建筑图＋象牙白衬线大字，首屏即电影。", w:"照片的版权与真实性未验；读数带压图右下，破坏首屏完整。", k:"电影感首屏的节奏。"},
+ {n:"己 · 大字报", f:"己-大字报.png", s:7, r:"发散一", c:"海报级字号对比：巨幅「39」做底纹、朱砂方块做句点，内容全走可见竖线网格。", w:"海报骨架扛工作台信息时密度吃紧；选模表退回默认样式。", k:"39 底纹＋竖线网格——rick 选定的方向 DNA。"},
+ {n:"壬 · 印谱", f:"壬-印谱.png", s:7, r:"发散二", c:"把「签单」做成「盖章」：玄色顶栏＋宣纸主体，右下角押 280px 朱砂巨印「已就绪」。", w:"「已就绪」实印与「待签单」同页，被评骗用户已成功级；小字全楷，辨读负担重。", k:"四方印带（实印／朱框／空印）——工序状态最雅的编码。"},
+ {n:"癸 · 借阅卡", f:"癸-借阅卡.png", s:7, r:"发散二", c:"把本期报告做成插进卡片柜的一张借阅卡：索书号／日期戳／借阅规则，两侧露出其他期卡片角。", w:"状态矛盾同壬；隐喻铺满全页，每个元素都要是卡片，反而找不到动作。", k:"橡皮日期戳＋借阅规则五条。"},
+ {n:"子 · 电报", f:"子-电报.png", s:6, r:"发散二", c:"把流程做成电报：发报方＝Clarivate，收报方＝馆员，报文是真实内容，三枚橡皮戳盖住报文。", w:"时刻表与报文说同一件事（重复共病重症）；三戳＋急件章堆砌，AI 痕迹重灾区。", k:"收发方栏的语义清晰。"},
+ {n:"庚 · 卷宗", f:"庚-卷宗.png", s:7, r:"融合", c:"己的海报骨架＋甲的题头；本会话又整体重构为「公文签发单」单一语言，跑了 11 轮批评者循环。", w:"11 轮盲评分数在 4–6 震荡未收敛（见方法节）；签发单语言与工具感的距离仍在拉锯。", k:"签发框＋流转记录表＋装订线——公文语汇最完整的一稿。"},
+ {n:"辛 · 双栏", f:"辛-双栏.png", s:7, r:"融合", c:"非对称骨架：左陈述右 2×2 读数格；下方左宽选模／右窄回执，信息一屏两组。", w:"双栏各说各话，弱于轨-双轨的中缝对勘；顶栏假色块。", k:"2×2 读数格＋回执窄栏。"},
+ {n:"旋 · 石墨", f:"旋-石墨.png", s:6, r:"发散二·续", c:"石墨旋转的单环母题：环开口＝未签，暖纸单环，是轨-双轨的前身。", w:"单环承载的信息量不足，首屏大环沦为装饰；环形进度与四步工序的对应读不出。", k:"环开口＝未签的状态隐喻。"},
+ {n:"红头 · 公函", f:"红头-公函.png", s:7, r:"发散三", c:"本期报告做成一份上报公文：红头＋发文字号＋仿宋正文＋附件＋落款印章；四工序＝发文办理单。", w:"公文体与「馆员工具」的功能距离最远；红头与品牌绿争主角。", k:"发文办理单四步＋版记。"},
+ {n:"版 · 头版", f:"版-头版.png", s:7, r:"发散三", c:"本期报告做成头版头条：报头＋三层标题＋三栏正文带栏线；四工序＝一版简讯。", w:"密实新闻纸与全项目共用的疏朗纸面品牌撕扯；首字下沉在工作台语境显过。", k:"三层标题的信息层级。"},
+ {n:"轨 · 站台", f:"轨-站台.png", s:7, r:"发散三", c:"深色发车牌挂在浅色站台混凝土上，班次 202609 用翻牌数字，四工序＝轨道四站。", w:"深牌浅台的双色系统与纸面品牌不共源；翻牌动效未验证。", k:"翻牌数字（中缝＝翻牌本身结构）。"},
+ {n:"爨碑 · 拓片", f:"爨碑-拓片.png", s:6, r:"发散四", c:"会泽院基座爨体刻石做成一通碑＋一幅拓片：黑地白字拓面为主体，界格为碑上界线，题跋在侧。", w:"题跋读不通：「通行证／季杰」级乱码；加载不了真爨体，重衬线近似四不像；竖排题跋＋黑底让信息几乎不可操作。", k:"黑地白字拓面的材料感。"},
+ {n:"贡榜 · 放榜", f:"贡榜-放榜.png", s:7, r:"发散四", c:"「出报告」＝放榜：本期报告是张挂的一张榜，八家是榜上名单，四工序是填榜／核榜／钤印／张挂。", w:"「已就绪」大红榜与「待签单」并陈（状态矛盾共病）；放榜仪式感大于工具性。", k:"红纸米书金边朱印的榜式视觉。"},
+ {n:"山水 · 校歌", f:"山水-校歌.png", s:7, r:"发散四", c:"校歌起句「太华巍巍，拔海千寻」入画：墨分五色山水横幅（分层实色剪影），题字压留白，钤印落山脚。", w:"「Y1 法录」级读不通文案；山水母题与出报告的功能关联最弱，近乎换皮。", k:"分层实色剪影的山形做法（非渐变）。"},
+ {n:"盾徽 · 海蓝", f:"盾徽-海蓝.png", s:7, r:"发散四", c:"借校徽三实构（盾形不封口＋会泽院线描＋海蓝）做本期报告徽记，正式呈文体。", w:"「有奖大方」级乱码；海蓝是唯一故意偏离云大绿的方向，品牌一致性存疑。", k:"盾形不封口的制式。"},
+ {n:"线装 · 函套", f:"线装-函套.png", s:7, r:"发散四", c:"466 万册馆藏的装订世界：左封面题签＋钤藏书印，中书脊见线孔丝线，右书页见版心／鱼尾／象鼻。", w:"左中右三栏的阅读顺序负担；书页细节多但多数不承载信息。", k:"版心鱼尾象鼻的书页结构。"},
+ {n:"四训 · 校训", f:"四训-校训.png", s:6, r:"发散四", c:"校训四句四格接住四道工序，墨分四阶做四象限。", w:"为对齐生造文言原注（只核实到「自尊」一节）；四格与四工序的对应勉强；注文读不通。", k:"四字格的骨架。"},
+ {n:"水位 · 阈值", f:"水位-阈值.png", s:7, r:"发散四", c:"ESI 阈值＝警戒水位线，接近度＝水位读数：首屏一道水位标尺，八家是八根水尺。", w:"水尺刻度是版式示意，接近度栏无真实数据支撑——装饰性刻度混进数据区。", k:"阈值＝水位的概念转换本身。"},
+ {n:"百衲 · 百家", f:"百衲-百家.png", s:7, r:"发散四", c:"「会泽百家」做成一幅百衲：选模八家＝八片补子各色各纹，四工序＝四片补子，缀合成整幅。", w:"八色补子的色彩管理最容易花；补子纹样与内容无对应，接近贴纸化。", k:"补子拼合的结构。"},
+ {n:"石阶 · 测绘", f:"石阶-测绘.png", s:7, r:"发散四", c:"会泽院石阶做成建筑测绘图：石阶剖面＋尺寸线＋标高符号，四工序＝四级踏步，自 ±0.125 登至 ±0.000。", w:"「第八卷力学」级乱码；状态矛盾共病；尺寸线标高在工作台语境是纯装饰。", k:"尺寸线＋标高符号的测绘语汇。"},
+ {n:"轨 · 双轨", f:"轨-双轨.png", s:7, r:"轨", c:"左右双轨对勘：左轨＝规则口径，右轨＝本期实际取值，中缝两半环拼合——环合即通过，开口即未落定。", w:"对勘表的阅读门槛最高，馆员需要学习才能用；冷纸色与全项目暖纸不共源。", k:"中缝对勘母题＋三拍同心环——「核」这个主动作找到形制的一稿。"}
+];
+DIRS = DIRS.filter(function(d){return d.f;});
+
+var ROUND_ORDER = ["基准","发散一","发散二","发散二·续","融合","发散三","发散四","轨"];
+var loopScores = [5,4.5,4.5,5,6,4.5,5,5.5,6,5,4];
+var state = {min:0, rounds:{}, sort:"score-desc"};
+ROUND_ORDER.forEach(function(r){state.rounds[r]=true;});
+
+var chart = document.getElementById("chart");
+var gallery = document.getElementById("gallery");
+var count = document.getElementById("count");
+
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");}
+
+function visible(){
+  return DIRS.filter(function(d){
+    return d.s >= state.min && state.rounds[d.r];
+  });
+}
+function sorted(list){
+  var l = list.slice();
+  if(state.sort==="score-desc") l.sort(function(a,b){return b.s-a.s || ROUND_ORDER.indexOf(a.r)-ROUND_ORDER.indexOf(b.r);});
+  else if(state.sort==="score-asc") l.sort(function(a,b){return a.s-b.s || ROUND_ORDER.indexOf(a.r)-ROUND_ORDER.indexOf(b.r);});
+  else if(state.sort==="round") l.sort(function(a,b){return ROUND_ORDER.indexOf(a.r)-ROUND_ORDER.indexOf(b.r) || b.s-a.s;});
+  else l.sort(function(a,b){return a.n.localeCompare(b.n,"zh");});
+  return l;
+}
+function tier(s){return s>=8?8:(s>=7?7:6);}
+
+function renderChart(){
+  var list = sorted(visible());
+  var html = "";
+  list.forEach(function(d){
+    var t = tier(d.s);
+    html += '<div class="crow" data-f="'+esc(d.f)+'" data-n="'+esc(d.n)+'" data-s="'+d.s+'">'
+      + '<span class="nm">'+esc(d.n)+'</span><span class="ax"></span>'
+      + '<span class="tr"><i class="t'+t+'" style="width:'+(d.s*10)+'%"></i></span>'
+      + '<span class="sc s'+t+'">'+d.s.toFixed(1).replace(/\.0$/,"")+'</span></div>';
+  });
+  if(!list.length) html = '<p style="color:var(--ink3);font-size:13.5px;padding:20px 0">当前筛选下没有方向。点「重置」恢复全部。</p>';
+  chart.innerHTML = html;
+  count.textContent = "显示 " + list.length + " / " + DIRS.length;
+}
+function renderGallery(){
+  var list = sorted(visible());
+  var html = "";
+  list.forEach(function(d){
+    var t = tier(d.s);
+    html += '<div class="gcard" data-f="'+esc(d.f)+'" data-n="'+esc(d.n)+'" data-s="'+d.s+'">'
+      + '<div class="gshot"><img loading="lazy" src="shots/'+esc(d.f)+'" alt="'+esc(d.n)+'">'
+      + '<span class="badge b'+t+'">'+d.s.toFixed(1).replace(/\.0$/,"")+'</span>'
+      + '<span class="rd">'+esc(d.r)+'</span></div>'
+      + '<div class="gbody"><h3>'+esc(d.n)+'</h3>'
+      + '<p class="claim">'+esc(d.c)+'</p>'
+      + '<p class="flaw"><b>短板</b>　'+esc(d.w)+'</p>'
+      + '<p class="keep"><b>保留</b>　'+esc(d.k)+'</p></div></div>';
+  });
+  gallery.innerHTML = html;
+}
+function renderChips(){
+  var box = document.getElementById("roundChips");
+  var html = "";
+  ROUND_ORDER.forEach(function(r){
+    var n = DIRS.filter(function(d){return d.r===r;}).length;
+    if(!n) return;
+    html += '<span class="chip on" data-r="'+esc(r)+'">'+esc(r)+'<span class="n">'+n+'</span></span>';
+  });
+  box.innerHTML = html;
+  box.querySelectorAll(".chip").forEach(function(ch){
+    ch.addEventListener("click", function(){
+      var r = ch.getAttribute("data-r");
+      state.rounds[r] = !state.rounds[r];
+      ch.classList.toggle("on", state.rounds[r]);
+      renderChart(); renderGallery();
+    });
+  });
+}
+function renderLoop(){
+  var box = document.getElementById("loopStrip");
+  var html = "";
+  for(var i=1;i<=11;i++){
+    html += '<div class="cell"><img loading="lazy" src="loop/r'+i+'.png" alt="R'+i+'" data-cap="庚-卷宗 · 第 '+i+' 轮 · 评分 '+loopScores[i-1]+'">'
+      + '<div class="cap">R'+i+' · <b>'+loopScores[i-1]+'</b></div></div>';
+  }
+  box.innerHTML = html;
+}
+function updateScoreLabel(){
+  var v = state.min;
+  var txt = v===0 ? "≥ 0 分" : "≥ " + (v%1?v.toFixed(1):v) + " 分";
+  var sub = v===0 ? "（全部）" : "";
+  document.getElementById("scoreVal").innerHTML = txt + "<small>" + sub + "</small>";
+}
+
+/* 灯箱 */
+var lb = document.getElementById("lightbox"), lbImg = document.getElementById("lbImg"), lbCap = document.getElementById("lbCap");
+function openLB(src, cap){ lbImg.src = src; lbCap.textContent = cap; lb.classList.add("open"); }
+function closeLB(){ lb.classList.remove("open"); lbImg.src = ""; }
+document.getElementById("lbClose").addEventListener("click", closeLB);
+lb.addEventListener("click", function(e){ if(e.target===lb) closeLB(); });
+document.addEventListener("keydown", function(e){ if(e.key==="Escape") closeLB(); });
+document.addEventListener("click", function(e){
+  var t = e.target;
+  if(t.tagName==="IMG"){
+    if(t.closest(".gshot")) openLB(t.src, t.closest(".gcard").querySelector("h3").textContent + " · 整页截图");
+    else if(t.closest(".cell")) openLB(t.src, t.getAttribute("data-cap"));
+  }
+});
+
+/* 控件事件 */
+document.getElementById("minScore").addEventListener("input", function(){
+  state.min = parseFloat(this.value);
+  updateScoreLabel(); renderChart(); renderGallery();
+});
+document.getElementById("sortBy").addEventListener("change", function(){
+  state.sort = this.value; renderChart(); renderGallery();
+});
+document.getElementById("resetBtn").addEventListener("click", function(){
+  state.min = 0; state.sort = "score-desc";
+  ROUND_ORDER.forEach(function(r){state.rounds[r]=true;});
+  document.getElementById("minScore").value = 0;
+  document.getElementById("sortBy").value = "score-desc";
+  document.querySelectorAll("#roundChips .chip").forEach(function(c){c.classList.add("on");});
+  updateScoreLabel(); renderChart(); renderGallery();
+});
+
+renderChips(); renderLoop(); updateScoreLabel(); renderChart(); renderGallery();
+</script>
+</body>
+</html>
