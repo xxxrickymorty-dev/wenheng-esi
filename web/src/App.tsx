@@ -546,6 +546,15 @@ export default function App() {
           )}
         </nav>
         <div className="app-side">
+          {/* 期次是全局控件（2026-10-17 冗余收敛稿③）：从报告屏印记链升到顶栏，各屏同一份 */}
+          {periods.length > 0 && (
+            <label className="app-period">期次
+              <select value={selected ?? ''} onChange={(e) => pickPeriod(e.target.value)} aria-label="切换期次">
+                {periods.map((p) => <option key={p.period} value={p.period}>{p.label || p.period}</option>)}
+                {selected && !periods.some((p) => p.period === selected) && <option value={selected}>{selected}</option>}
+              </select>
+            </label>
+          )}
           {/* 陈列馆＝给人看的「展示面」，不在工作区里——顶栏给一个离开工作区的入口（2026-10-15） */}
           <a className="app-jump" href="/app/shelf/" title="陈列馆（成品）">
             陈列馆 <Icon name="arrow" size={14} />
@@ -666,7 +675,7 @@ export default function App() {
             onChanged={() => { void refreshPeriods().catch(() => { /* 刷新失败不影响操作结果 */ }) }}
           />
         ) : view === 'report' ? (
-          <Report periods={periods} current={selected} onPick={pickPeriod} guest={noAdminBits}
+          <Report periods={periods} current={selected} guest={noAdminBits}
             canSeeAdminBits={me?.role === 'admin'}
             refreshToken={selected ? artifactRefreshByPeriod[selected] ?? 0 : 0} />
         ) : (
@@ -685,17 +694,10 @@ export default function App() {
                         actionsLocked={jobActionsLocked}
                         submitting={busy}
                         onGenerate={onGenerate}
-                        periods={periods}
-                        forecastMeta={forecastMeta}
-                        forecastMetaError={forecastMetaError}
-                        actualOutputPeriod={busy || toolAction ? null : runForSelected?.outputPeriod ?? null}
                         forecastChoice={selectedForecastChoice}
-                        forecastChoiceDirty={selectedForecastChoiceDirty}
                         forecastAppliedStale={selectedForecastStale}
                         forecastAppliedDiffs={selectedForecastStaleDiffs}
                         autoConfirmRerun={autoConfirmRerun}
-                        onPickPeriod={pickPeriod}
-                        onReloadForecastChoice={reloadForecastChoice}
                         showTools={!noAdminBits && me?.role === 'admin'}
                         toolJobId={runForSelected?.jobId ?? null}
                         toolArtifactsToken={selected ? artifactRefreshByPeriod[selected] ?? 0 : 0}

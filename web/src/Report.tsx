@@ -29,11 +29,10 @@ function humanSource(source?: string): string {
 
 /** 期次印记链：签过＝朱印 / 签名失效＝金印 / 未签发＝墨线框。这是产品的原创资产，也是本屏的记忆点。 */
 function Chain({
-  periods, current, onPick,
+  periods, current,
 }: {
   periods: Period[]
   current: string | null
-  onPick: (p: string) => void
 }) {
   return (
     <aside className="chain">
@@ -41,25 +40,22 @@ function Chain({
       <p className="cap">
         按时间从左到右。已签发是朱印，签发已失效是金印，未签发是墨线框。
         <br />
-        （期号与月份来自后端；点一枚换一期。）
+        （期号与月份来自后端；换期次用顶栏的期次选择。）
       </p>
       <div className="seals">
         {periods.map((p) => {
           const cls = p.status === 'signed' ? 'signed' : p.status === 'stale' ? 'stale' : 'unsigned'
           const isNow = p.period === current
           return (
-            <button
+            <span
               key={p.period}
-              type="button"
               className="sealbox"
-              onClick={() => onPick(p.period)}
-              style={{ background: 'none', border: 0, cursor: 'pointer', padding: 0 }}
               aria-current={isNow}
             >
               <span className="now-tag">{isNow ? '本期' : ''}</span>
               <span className={`seal ${cls} ${isNow ? 'now' : ''}`}>{p.period}</span>
               <span className="lbl">{p.label}</span>
-            </button>
+            </span>
           )
         })}
       </div>
@@ -111,25 +107,32 @@ function Artifacts({ period, guest, approvalStatus, refreshToken }: {
 
   return (
     <div className="artifacts art-grid">
-      {current.items.map((a) => (
-        <div className="art" key={a.key}>
-          <span className="ico"><Icon name={a.key === 'report' ? 'doc' : a.key.includes('red') ? 'list' : 'chart'} size={22} /></span>
-          <span>
-            <span className="n">{a.key === 'diagnosis' ? '校验说明' : a.label}</span>
-            <span className="m">
-              {a.name}
-              {a.size != null ? ` · ${humanSize(a.size)}` : ''}
-            </span>
-          </span>
-          <span className="go">
-            {a.key === 'report' && approvalStatus !== 'signed'
-              ? <span className="hint rp-inline" role="note">
-                  未签发，暂不能下载
+      {current.items.map((a) => {
+        const blocked = a.key === 'report' && approvalStatus !== 'signed'
+        return (
+          <div className="art" key={a.key}>
+            <span className="ico"><Icon name={a.key === 'report' ? 'doc' : a.key.includes('red') ? 'list' : 'chart'} size={22} /></span>
+            {blocked ? (
+              <span>
+                <span className="n">{a.key === 'diagnosis' ? '校验说明' : a.label}</span>
+                <span className="m">
+                  {a.name}
+                  {a.size != null ? ` · ${humanSize(a.size)}` : ''}
+                  {' · 未签发，暂不能下载'}
                 </span>
-              : <a href={a.url} target="_blank" rel="noreferrer">打开</a>}
-          </span>
-        </div>
-      ))}
+              </span>
+            ) : (
+              <a className="art-open" href={a.url} target="_blank" rel="noreferrer">
+                <span className="n">{a.key === 'diagnosis' ? '校验说明' : a.label}</span>
+                <span className="m">
+                  {a.name}
+                  {a.size != null ? ` · ${humanSize(a.size)}` : ''}
+                </span>
+              </a>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -179,37 +182,18 @@ function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSee
               共 {col.length} 处 · 待人工 {manual.length} 处
             </span>
           </h2>
-          {/* 两扇门摆在明面：对勘本（正文级对照）/ 红色件清单（定稿依据）——都是**只读下钻**。
-              2026-10-11：红件清单是操作员不可见的「里子」——只给管理员留这扇门。 */}
-          <div className="rc-doors">
-            <a className="entry" href={period ? appHref('reading', period) : '/app/?view=reading'}>
-              <span>
-                <span className="t">打开对勘本 · 正文级对照</span>
-                <span className="d">左分组 / 中改动卡 / 右校记 · 可搜、可只看待人工、← → 换分组</span>
-              </span>
-              <span className="go">→</span>
-            </a>
+          {/* 下钻入口收成一行小链接（2026-10-17 冗余收敛稿③：三卡＝第二套菜单，退化为行内链接）。
+              2026-10-11：红色件清单/逐格溯源是操作员不可见的「里子」——只给管理员留。 */}
+          <p className="hint rc-links">
+            逐格核对：
+            <a href={period ? appHref('reading', period) : '/app/?view=reading'}>对勘本（正文级对照）</a>
             {canSeeAdminBits && (
-              <a className="entry" href={period ? appHref('red', period) : '/app/?view=red'}>
-                <span>
-                  <span className="t">红色件清单 · 定稿依据</span>
-                  <span className="d">逐格列出「改了什么、来自哪里」，可搜索、可下载 Markdown</span>
-                </span>
-                <span className="go">→</span>
-              </a>
+              <> · <a href={period ? appHref('red', period) : '/app/?view=red'}>红色件清单（定稿依据）</a></>
             )}
-            {/* 逐格溯源入口（P1）：报告里的值 ↔ 台账现场重读，和上面两扇门同一排（三卡整齐）。
-                2026-10-11：溯源是操作员不可见的「里子」，只给管理员留。 */}
             {canSeeAdminBits && (
-              <a className="entry" href={period ? appHref('trace', period) : '/app/?view=trace'}>
-                <span>
-                  <span className="t">逐格溯源</span>
-                  <span className="d">报告里每个数字 ↔ 台账现场重读的值并排对照，写清来源表与「怎么来的」</span>
-                </span>
-                <span className="go">→</span>
-              </a>
+              <> · <a href={period ? appHref('trace', period) : '/app/?view=trace'}>逐格溯源</a></>
             )}
-          </div>
+          </p>
           {/* 章节直达收进折叠：对勘本自己就能换分组，11 张卡不再占屏（票 14） */}
           <details className="fold">
             <summary>按章节直达（{Object.keys(bySection).length} 章）</summary>
@@ -453,11 +437,10 @@ function ReportStatus({ status, period }: { status: string; period: string | nul
 }
 
 export function Report({
-  periods, current, onPick, guest, refreshToken = 0, canSeeAdminBits = true,
+  periods, current, guest, refreshToken = 0, canSeeAdminBits = true,
 }: {
   periods: Period[]
   current: string | null
-  onPick: (p: string) => void
   guest?: boolean
   refreshToken?: number
   /** 2026-10-11：操作员看不到红件清单/逐格溯源入口（真门在后端）。 */
@@ -487,7 +470,7 @@ export function Report({
         </div>
 
         {/* 印记链：今天就有真数据 */}
-        <Chain periods={periods} current={current} onPick={onPick} />
+          <Chain periods={periods} current={current} />
       </div>
 
       {/* 顶尖论文增长轨迹——全页宽（rick 定 2026-09-25）：45 期每期标数值，

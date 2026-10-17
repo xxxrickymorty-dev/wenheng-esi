@@ -339,6 +339,12 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 /* 对勘入口（票 14）：两扇门并排 + 章节直达折叠 + 朱批「去补」动作 */
 .rc-doors{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:12px}
 .rc-doors .entry{margin-top:0}
+.app-period{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--ink-3);white-space:nowrap}
+.app-period select{min-height:32px;padding:0 8px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:13.5px;border-radius:0}
+.rc-links{display:flex;gap:6px 10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.rc-links a{color:var(--zhu);font-weight:600}
+.art-open{flex:1;min-width:0;color:inherit;text-decoration:none}
+.art-open:hover .n{color:var(--zhu);text-decoration:underline}
 @media (max-width:1020px){.rc-doors{grid-template-columns:1fr}}
 .rc-chips{display:flex;flex-wrap:wrap;gap:6px}
 .rc-chip{transition:background .15s,color .15s,border-color .15s;display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border:1px solid var(--line);

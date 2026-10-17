@@ -3,8 +3,7 @@
    设计取自静态稿 mockups/v2-工作台与报告.html；状态与文案规格见 web/UX-生成台.md。 */
 
 import type { ApiError, Me, Period, PeriodDetail } from './api'
-import { formatProvenanceTime, type ForecastChoiceEntry, type ForecastMeta } from './api-forecast'
-import { useState } from 'react'
+import type { ForecastChoiceEntry } from './api-forecast'
 import { ConfirmButton } from './ConfirmButton'
 import { Info } from './Info'
 import { Tools } from './Tools'
@@ -109,165 +108,11 @@ function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }
   return null
 }
 
-function ModelSummary({
-  period, periods, meta, metaError, actualOutputPeriod, state, dirty,
-  onPickPeriod, onReload,
-}: {
-  period: string | null
-  periods: Period[]
-  meta: ForecastMeta | null
-  metaError: string
-  actualOutputPeriod: string | null
-  state: ForecastChoiceEntry | null
-  dirty: boolean
-  onPickPeriod: (period: string) => void
-  onReload: () => void
-}) {
-  const [route, setRoute] = useState(meta?.routes[0]?.value ?? '')
-  const routes = meta?.routes ?? []
-  const subjects = meta?.subjects ?? []
-  const source = meta?.upstream_workbook
-  const sourceTime = source?.last_modified_at ?? null
-  const freshnessText = meta?.data_freshness === 'needs_check'
-    ? '检测到台账或输入文件比最近一次完整运行更新，请重新处理确认——下方预览读取的仍是预测数据。'
-    : '无法确认上游台账的最新更新是否已进入预测数据；下方预览读取的是预测数据。'
-  const currentRoute = routes.some((item) => item.value === route) ? route : (routes[0]?.value ?? '')
-
-  return (
-    <section className="card mt-18 pad-card">
-      <div className="rowc">
-        <h2 className="fs-21">预测模型 · 本期已选</h2>
-        <span className="chip-gold">
-          只读 · 改选去预测台
-        </span>
-        <Info label="选模口径" end>
-          <p>模型选择按期次保存，全站只有一份——这里显示的就是本期配置。</p>
-          <p>重出报告后：未进 1% 的学科都会按选择出图（进本期图册）；报告正文优先出改过模型的学科（不足两个按接近度补齐）。</p>
-        </Info>
-      </div>
-      <div className="panel-row">
-        <label htmlFor="workbench-task-period" className="grid-dim">
-          期次
-          <select id="workbench-task-period" value={period ?? ''} onChange={(e) => onPickPeriod(e.target.value)}
-                  style={{ minWidth: 170, padding: '5px 9px', border: '1px solid var(--line)', borderRadius: 7, background: 'var(--card)', color: 'var(--ink)', font: 'inherit', fontSize: 16 }}>
-            {!period && <option value="">请选择期次</option>}
-            {periods.map((item) => <option key={item.period} value={item.period}>{item.period}</option>)}
-            {period && !periods.some((item) => item.period === period) && <option value={period}>{period}</option>}
-          </select>
-        </label>
-        <div className="minw-160">
-          <small className="dim-block">预测数据<Info label="数据说明">
-            <p>{freshnessText}</p>
-            <p><b>V1 推荐基线</b>：{meta?.recommendation_baseline ?? '—'}（不是预测数据期次）。</p>
-            <p><b>最近一次完整运行记录写入时间（北京时间）</b>：{formatProvenanceTime(meta?.run_record_at)}</p>
-            <p><b>上次处理使用的文件</b>：{meta?.processed_input?.name ?? '无法核实'}
-              {meta?.processed_input?.last_modified_at ? `（文件最后修改：${formatProvenanceTime(meta.processed_input.last_modified_at)}）` : ''}。</p>
-          </Info></small>
-          <strong className="mono-16">{meta?.source_period || '未就绪'}</strong>
-        </div>
-        <div className="minw-190">
-          <small className="dim-block">实际输出</small>
-          <strong className="gold-15">{actualOutputPeriod || '任务完成后显示'}</strong>
-        </div>
-        <div className="minw-260 flex-1">
-          <small className="dim-block">台账文件</small>
-          <strong className="fs-14">{source?.name ?? '云大全学科排名、阈值动态检测表.xlsx'}</strong>
-          <span className="dim-block">
-            最后修改（北京时间）：{sourceTime ? formatProvenanceTime(sourceTime) : '本机未找到'}
-          </span>
-        </div>
-      </div>
-
-      {/* 期次与数据说明：只在「台账/输入比最近一次完整运行更新」时整条冒出提醒（要动作的）；
-          平时那句「无法确认…」收进「预测数据」旁的 ⓘ——不占版面（2026-10-16 rick：太挤）。 */}
-      {meta?.data_freshness === 'needs_check' && (
-        <div className="degraded" style={{ borderLeft: '3px solid var(--gold)' }}>
-          <b>期次与数据说明</b>：{freshnessText}
-        </div>
-      )}
-
-      {routes.length > 0 && (
-        <div role="group" aria-label="模型路线" className="roww my-14-10">
-          {routes.map((item) => (
-            <button key={item.value} type="button" className="btn" aria-pressed={item.value === currentRoute}
-                    onClick={() => setRoute(item.value)} style={item.value === currentRoute ? { borderColor: 'var(--zhu)', background: 'var(--zhu-soft)', color: 'var(--zhu)' } : undefined}>
-              {item.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {!meta ? (
-        <div className="pending-box mt-12">{metaError || '正在读取模型清单……'}</div>
-      ) : !state?.loaded ? (
-        <div className="pending-box mt-12">
-          {state?.error || (state?.loading ? '正在读取本期已保存的选择……' : '尚未读取本期已保存的选择。')}
-          {state?.error && <button type="button" className="btn ml-10" onClick={onReload} >重新读取</button>}
-        </div>
-      ) : !meta?.available ? (
-        <div className="pending-box mt-12">预测数据随报告一起产出——先完成一次生成，这里就会出现候选学科。</div>
-      ) : (
-        <>
-          <div className="tablewrap mt-12">
-            <table>
-              <thead><tr><th>潜力学科</th><th>V1 推荐</th><th>本期已选</th></tr></thead>
-              <tbody>
-                {subjects.map((subject) => {
-                  const rec = meta.recommendations?.[currentRoute]?.[subject] ?? ''
-                  const mine = state.choice[currentRoute]?.[subject] ?? ''
-                  return (
-                    <tr key={subject}>
-                      <td>{subject}</td>
-                      <td>{rec || 'V1 推荐'}</td>
-                      <td>
-                        {mine ? (
-                          <>
-                            <b>{mine}</b>
-                            <span className="ml-6 ink-zhu">已改选</span>
-                          </>
-                        ) : (
-                          <span className="ink-3">默认</span>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-                {subjects.length === 0 && <tr><td colSpan={3} className="ink-3">接口暂未返回候选学科。</td></tr>}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="wb-toolbar">
-            <a className="btn primary" href={`/app/?view=forecast${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
-              去预测台看图改选 →
-            </a>
-            {dirty ? (
-              <>
-                <span role="status" className="hint warn-650">
-                  有未保存修改——保存后才能开始生成。
-                </span>
-                <ConfirmButton className="btn" confirmText="确认放弃？会回到上次保存的版本" onConfirm={onReload}>放弃修改并重新读取</ConfirmButton>
-              </>
-            ) : (
-              <span role="status" className="hint ok-text">
-                {state?.error || `已保存${state?.by ? ` · ${state.by}` : ''}${state?.at ? ` · ${state.at}` : ''}`}
-              </span>
-            )}
-          </div>
-        </>
-      )}
-
-      <div className="degraded"><b>与报告的关系</b>：任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册）；报告正文优先出改过模型的学科（不足两个按接近度补齐）；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</div>
-    </section>
-  )
-}
-
 export function Workbench({
   period, me, wb, err, healthy, run, approvalStatus, activityState,
   actionLockReason, activeRun, actionsLocked, submitting, onGenerate,
-  periods, forecastMeta, forecastMetaError, actualOutputPeriod, forecastChoice, forecastChoiceDirty,
+  forecastChoice,
   forecastAppliedStale, forecastAppliedDiffs, autoConfirmRerun,
-  onPickPeriod, onReloadForecastChoice,
   showTools, toolJobId, toolArtifactsToken, onToolActionStart, onToolActionEnd, onToolUploaded,
 }: {
   period: string | null
@@ -283,20 +128,13 @@ export function Workbench({
   actionsLocked: boolean
   submitting: boolean
   onGenerate: () => void
-  periods: Period[]
-  forecastMeta: ForecastMeta | null
-  forecastMetaError: string
-  actualOutputPeriod: string | null
   forecastChoice: ForecastChoiceEntry | null
-  forecastChoiceDirty: boolean
   /** 已保存的模型选择 ≠ 上次出稿实际用的选择（报告还是旧的）；无出稿快照时恒 false */
   forecastAppliedStale: boolean
   /** 提示条里列的改动（「总被引：免疫学 → SARIMA模型」这类人话） */
   forecastAppliedDiffs: string[]
   /** 从预测台「回出报告并重新生成」来（?rerun=1）：重跑确认态直接打开一次 */
   autoConfirmRerun: boolean
-  onPickPeriod: (period: string) => void
-  onReloadForecastChoice: () => void
   /** 「工具调用记录」折叠（2026-10-01 从 App 抽出）：角色未确认/操作员（只读）时不渲染 */
   showTools: boolean
   toolJobId: string | null
@@ -441,17 +279,9 @@ export function Workbench({
         )}
       </section>
 
-      <details className="fold">
-        <summary>预测模型选择<span className="sm">改选去预测台</span></summary>
-        <ModelSummary period={period} periods={periods} meta={forecastMeta} metaError={forecastMetaError}
-                      actualOutputPeriod={actualOutputPeriod} state={forecastChoice}
-                      dirty={forecastChoiceDirty} onPickPeriod={onPickPeriod}
-                      onReload={onReloadForecastChoice} />
-      </details>
-
       {showTools && (
         <details className="fold">
-          <summary>工具调用记录<span className="sm">上传 · 重跑 · 回滚 · 台账 · 日志包</span></summary>
+          <summary>这一期的工具<span className="sm">上传 · 重跑 · 回滚 · 台账 · 日志包</span></summary>
           <p className="hint fold-lead">
             看数据源：<a href={`/app/?view=ledger${period ? `&period=${encodeURIComponent(period)}` : ''}`}>主台账（只读）→</a>
           </p>
@@ -499,7 +329,7 @@ export function PeriodsPanel({ periods, selected, healthy, onPick }: {
                             onClick={() => location.reload()}>重新检查</button>
                     一次。</>
                 ) : (
-                  <>还没有任何期次。先在下方「工具调用记录」上传当期数据表，生成第一期。<a href="#tools">去上传 →</a></>
+                  <>还没有任何期次。先在下方「这一期的工具」上传当期数据表，生成第一期。<a href="#tools">去上传 →</a></>
                 )}
               </td></tr>
             )}
