@@ -19,3 +19,8 @@ periods = _state.periods
 #: 当期核对副本（`out/_acquisition/<期次>/监测表.xlsx`；ADR-0004 载体，2026-10-13 起不进 input/）
 COPY_NAME = _state.COPY_NAME
 copy_path = _state.copy_path
+#: 「下载数据专用浏览器」（独立 profile + CDP 9222）的认主口径，唯一实现在 src/acquisition_state.py
+CDP_PORT = _state.CDP_PORT
+CDP_PROFILE_DIR = _state.CDP_PROFILE_DIR
+cdp_listener_cmdline = _state.cdp_listener_cmdline
+cdp_browser_ours = _state.cdp_browser_ours

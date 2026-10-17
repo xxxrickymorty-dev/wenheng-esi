@@ -1,0 +1,137 @@
+# -*- coding: utf-8 -*-
+"""取数开始前检查的两个坑（2026-10-17 事故复盘）：
+
+- 探针/取数解释器必须**真装了 playwright**：`shutil.which("python")` 在 `uv run` 的 PATH 里
+  先命中 `.venv` 的 python（没 playwright），探针一 import 就炸 → preflight 永远 browser:"bad"。
+- 9222 认主：**任意占端口的进程不算**「下载数据专用浏览器」——被无头 Edge 之类骗过就永远不开登录窗口。
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import pathlib
+import sys
+
+REPO = pathlib.Path(__file__).resolve().parent.parent
+for p in (str(REPO), str(REPO / "src"), str(REPO / "tools")):
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+import acquire as acq                                                    # noqa: E402
+import acquisition_state as st                                           # noqa: E402
+from server import app as app_module                                     # noqa: E402
+
+
+# ------------------------------------------------------------------ fetch_python 挑解释器
+def test_挑解释器_显式环境变量优先(tmp_path, monkeypatch, capsys):
+    want = str(tmp_path / "x" / "python.exe")
+    monkeypatch.setenv("WENHENG_FETCH_PYTHON", want)
+    monkeypatch.setattr(acq, "_has_playwright", lambda exe: False)
+    assert acq._pick_fetch_python() == want
+    assert "WENHENG_FETCH_PYTHON" in capsys.readouterr().err, "没 playwright 该提示"
+
+
+def test_挑解释器_跳过没playwright的取第一个有的(tmp_path, monkeypatch):
+    monkeypatch.delenv("WENHENG_FETCH_PYTHON", raising=False)
+    bad = str(tmp_path / "bad" / "python.exe")
+    good = str(tmp_path / "good" / "python.exe")
+    monkeypatch.setattr(acq.shutil, "which", lambda name: bad)
+    monkeypatch.setattr(acq.sys, "executable", good)
+    monkeypatch.setattr(acq, "_has_playwright", lambda exe: exe == good)
+    assert acq._pick_fetch_python() == good
+
+
+def test_挑解释器_一个都没有_回落并警告(tmp_path, monkeypatch, capsys):
+    monkeypatch.delenv("WENHENG_FETCH_PYTHON", raising=False)
+    fallback = str(tmp_path / "fallback" / "python.exe")
+    monkeypatch.setattr(acq.shutil, "which", lambda name: fallback)
+    monkeypatch.setattr(acq.sys, "executable", fallback)
+    monkeypatch.setattr(acq, "_has_playwright", lambda exe: False)
+    assert acq._pick_fetch_python() == fallback
+    assert "没找到装 playwright" in capsys.readouterr().err
+
+
+def test_fetch_python_只挑一次并记住(monkeypatch):
+    calls = []
+    monkeypatch.setattr(acq, "_pick_fetch_python", lambda: calls.append(1) or "C:\\p\\python.exe")
+    monkeypatch.setattr(acq, "_FETCH_PY", None)
+    assert acq.fetch_python() == "C:\\p\\python.exe"
+    assert acq.fetch_python() == "C:\\p\\python.exe"
+    assert len(calls) == 1
+
+
+def test_跳过Windows商店占位stub(tmp_path, monkeypatch):
+    monkeypatch.delenv("WENHENG_FETCH_PYTHON", raising=False)
+    stub = str(tmp_path / "WindowsApps" / "python.exe")
+    monkeypatch.setattr(acq.shutil, "which", lambda name: stub)
+    monkeypatch.setattr(acq.sys, "executable", stub)
+    monkeypatch.setattr(acq, "_has_playwright", lambda exe: True)   # stub 也装了也不许用
+    assert acq._pick_fetch_python() != stub
+
+
+# ------------------------------------------------------------------ 9222 认主
+def test_认主_占用者带专用profile才算(monkeypatch):
+    monkeypatch.setattr(st, "cdp_listener_cmdline",
+                        lambda port=st.CDP_PORT:
+                        f"chrome.exe --remote-debugging-port=9222 --user-data-dir={st.CDP_PROFILE_DIR}")
+    assert st.cdp_browser_ours() is True
+
+
+def test_认主_大小写不同也算_别的profile不算(monkeypatch):
+    monkeypatch.setattr(st, "cdp_listener_cmdline",
+                        lambda port=st.CDP_PORT: f"--user-data-dir={str(st.CDP_PROFILE_DIR).upper()}")
+    assert st.cdp_browser_ours() is True
+    monkeypatch.setattr(st, "cdp_listener_cmdline",
+                        lambda port=st.CDP_PORT: "msedge.exe --user-data-dir=C:\\tmp\\opencode\\edge-dbg")
+    assert st.cdp_browser_ours() is False
+    monkeypatch.setattr(st, "cdp_listener_cmdline", lambda port=st.CDP_PORT: "")
+    assert st.cdp_browser_ours() is False
+
+
+def test_专用浏览器在跑_得应答CDP且认主(monkeypatch):
+    monkeypatch.setattr(app_module, "_acq_cdp_responds", lambda: True)
+    monkeypatch.setattr(app_module.acquisition, "cdp_browser_ours", lambda: False)
+    assert app_module._acq_cdp_alive() is False, "别人占 9222 不能算在跑"
+    monkeypatch.setattr(app_module.acquisition, "cdp_browser_ours", lambda: True)
+    assert app_module._acq_cdp_alive() is True
+    monkeypatch.setattr(app_module, "_acq_cdp_responds", lambda: False)
+    assert app_module._acq_cdp_alive() is False
+
+
+# ------------------------------------------------------------------ preflight 探针后认主降级
+class _FakeRun:
+    def __init__(self, stdout: str):
+        self.returncode = 0
+        self.stdout = stdout
+        self.stderr = ""
+
+
+def _probe_stdout(browser: str) -> str:
+    return json.dumps({"browser": browser, "esi": "waiting", "incites": "waiting"})
+
+
+def _run_preflight(tmp_path, monkeypatch, browser: str, ours: bool) -> dict:
+    monkeypatch.setattr(acq.A, "STATE_DIR", tmp_path / "_acquisition")
+    monkeypatch.setattr(acq, "fetch_python", lambda: "C:\\fake\\python.exe")
+    monkeypatch.setattr(acq.subprocess, "run", lambda *a, **kw: _FakeRun(_probe_stdout(browser)))
+    monkeypatch.setattr(acq.A, "cdp_browser_ours", lambda: ours)
+    rc = acq.cmd_preflight(argparse.Namespace(period="202611"))
+    assert rc == 0
+    saved = json.loads((tmp_path / "_acquisition" / "202611.json").read_text(encoding="utf-8"))
+    return saved["preflight"]
+
+
+def test_preflight_别的浏览器占着9222_照报未连接(tmp_path, monkeypatch):
+    pf = _run_preflight(tmp_path, monkeypatch, browser="ok", ours=False)
+    assert pf["browser"] == "bad", "无头 Edge 之类占 9222，探针不许报已连接"
+
+
+def test_preflight_自家浏览器_已连接照报(tmp_path, monkeypatch):
+    pf = _run_preflight(tmp_path, monkeypatch, browser="ok", ours=True)
+    assert pf["browser"] == "ok"
+
+
+def test_preflight_本来就没连上_不认主也不改(tmp_path, monkeypatch):
+    pf = _run_preflight(tmp_path, monkeypatch, browser="bad", ours=False)
+    assert pf["browser"] == "bad"

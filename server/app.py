@@ -1024,8 +1024,8 @@ def _acq_chrome_exe():
     return None
 
 
-def _acq_cdp_alive() -> bool:
-    """9222 上是不是已经有一个**能应答 CDP 版本 JSON**的浏览器（端口被别的程序占不算）。"""
+def _acq_cdp_responds() -> bool:
+    """9222 有没有**能应答 CDP 版本 JSON**的浏览器（不管是谁的）。"""
     import json as _json
     import urllib.request as _urlreq
     for url in ("http://127.0.0.1:9222", "http://localhost:9222"):
@@ -1036,6 +1036,16 @@ def _acq_cdp_alive() -> bool:
         except Exception:  # noqa: BLE001
             continue
     return False
+
+
+def _acq_cdp_alive() -> bool:
+    """「下载数据专用浏览器」在跑：①9222 应答 CDP 版本 JSON **且** ②端口占用者命令行带专用 profile。
+
+    只看①会被任意占 9222 的进程骗过（2026-10-17 实测：opencode 会话遗留的无头 Edge 也开 9222，
+    `/json/version` 照样 200 → 曾被当成「已经在跑」→ 永远不开登录窗口）。认主口径见
+    `src/acquisition_state.cdp_browser_ours`。
+    """
+    return _acq_cdp_responds() and acquisition.cdp_browser_ours()
 
 
 def _acq_kill_profile_chrome(profile: pathlib.Path) -> int:
@@ -1061,18 +1071,24 @@ def _acq_kill_profile_chrome(profile: pathlib.Path) -> int:
 @app.post("/api/acquisition/browser")
 @admin_route
 async def api_acq_browser(request: Request):
-    """把「取数专用浏览器」拉起来（独立 profile `~/.chrome-clarivate` + CDP 9222）。
+    """把「下载数据专用浏览器」拉起来（独立 profile `~/.chrome-clarivate` + CDP 9222）。
 
     已经在跑就不重复起。**只负责开窗**——登录仍由人（或 Chrome 记住的凭据）完成。
+    9222 被**别的**程序占着时明确报错、不硬开（新开的 Chrome 抢不到端口，白弹窗还误导）。
     """
     if _acq_cdp_alive():
         return {"ok": True, "started": False, "already": True,
                 "note": "下载数据专用浏览器已经在跑。"}
+    if _acq_cdp_responds():
+        owner = acquisition.cdp_listener_cmdline()[:120]
+        return {"ok": False, "started": False, "already": False,
+                "note": "9222 端口被别的程序占着（不是下载数据专用浏览器），"
+                        f"先关掉占用它的浏览器/程序再试。占用者命令行：{owner}"}
     exe = _acq_chrome_exe()
     if not exe:
         return {"ok": False, "started": False, "already": False,
                 "note": "没找到 Chrome（装一个，或把 chrome.exe 的路径告诉我）。"}
-    profile = pathlib.Path.home() / ".chrome-clarivate"
+    profile = acquisition.CDP_PROFILE_DIR
     try:
         profile.mkdir(parents=True, exist_ok=True)
     except OSError as e:

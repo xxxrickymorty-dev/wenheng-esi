@@ -11,7 +11,7 @@
     python tools\\acquire.py copy 202611
     python tools\\acquire.py merge 202611 --dry
     python tools\\acquire.py merge 202611
-    python tools\\acquire.py preflight 202611      # 需系统 python（playwright 在那边）
+    python tools\\acquire.py preflight 202611      # 探针/取数用带 playwright 的 python（fetch_python 自动挑）
     python tools\\acquire.py fetch 202611          # 同上；跑 9 组下载 → 自动 scan + copy
 """
 from __future__ import annotations
@@ -35,8 +35,55 @@ import ledger_merge as LM                                              # noqa: E
 import ledger_patch as LP                                              # noqa: E402
 import period as period_mod                                            # noqa: E402
 
-#: 取数用的解释器（playwright 装系统 python 里；可用环境变量覆盖）
-FETCH_PY = os.environ.get("WENHENG_FETCH_PYTHON") or shutil.which("python") or sys.executable
+#: 取数/探针解释器的缓存（首次 `fetch_python()` 时挑一次）
+_FETCH_PY: str | None = None
+
+
+def _has_playwright(exe: str | None) -> bool:
+    """这个解释器能不能 `import playwright`（探针/取数脚本的硬前提）。"""
+    if not exe or not pathlib.Path(exe).exists():
+        return False
+    try:
+        r = subprocess.run([exe, "-c", "import playwright"],  # noqa: S603
+                           capture_output=True, timeout=60)
+        return r.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def _pick_fetch_python() -> str:
+    """挑一个**真装了 playwright** 的解释器。
+
+    `shutil.which("python")` 在 `uv run` / venv 的 PATH 里会先命中 `.venv\\Scripts\\python.exe`
+    （没 playwright）——探针一 import 就炸、preflight 永远 browser:"bad"（2026-10-17 实测）。
+    显式给了 WENHENG_FETCH_PYTHON 就用它（尊重指定，只提示不拦截）。
+    """
+    env = os.environ.get("WENHENG_FETCH_PYTHON")
+    if env:
+        if not _has_playwright(env):
+            print(f"[警告] WENHENG_FETCH_PYTHON 指定的解释器没有 playwright：{env}", file=sys.stderr)
+        return env
+    cands = [c for c in (shutil.which("python"), sys.executable)
+             if c and "WindowsApps" not in c]      # 商店占位 stub 跳过（跑起来只弹商店）
+    for root, pat in ((os.environ.get("LOCALAPPDATA"), "Programs/Python/*/python.exe"),
+                      (os.environ.get("PROGRAMFILES"), "Python*/python.exe"),
+                      (os.environ.get("PROGRAMFILES(X86)"), "Python*/python.exe")):
+        if root:
+            cands += sorted((str(p) for p in pathlib.Path(root).glob(pat)), reverse=True)
+    for c in dict.fromkeys(cands):                  # 去重保序
+        if _has_playwright(c):
+            return c
+    print("[警告] 没找到装 playwright 的 python，取数/开始前检查会失败；"
+          "请用 WENHENG_FETCH_PYTHON 指定（playwright 通常装在系统 python）", file=sys.stderr)
+    return shutil.which("python") or sys.executable
+
+
+def fetch_python() -> str:
+    """取数用解释器（首次调用挑一次并记住）。"""
+    global _FETCH_PY
+    if _FETCH_PY is None:
+        _FETCH_PY = _pick_fetch_python()
+    return _FETCH_PY
 
 
 def _now() -> str:
@@ -256,12 +303,16 @@ def _data_gate(period: str, deploy_date: str) -> dict:
 
 
 def cmd_preflight(args) -> int:
-    r = subprocess.run([FETCH_PY, "-c", _PROBE], capture_output=True, text=True,
+    r = subprocess.run([fetch_python(), "-c", _PROBE], capture_output=True, text=True,
                        encoding="utf-8", errors="replace", timeout=120)
     try:
         pf: dict = json.loads((r.stdout or "").strip().splitlines()[-1])
     except (json.JSONDecodeError, IndexError):
         pf = {"browser": "bad", "esi": "waiting", "incites": "waiting"}
+    # 认主：9222 上得是「下载数据专用浏览器」（命令行带专用 profile）——别的浏览器占着不算。
+    # 不认主的话，无头 Edge 之类占着 9222 会让探针报「已连接」，前端就不去开真浏览器了（死路）。
+    if pf.get("browser") == "ok" and not A.cdp_browser_ours():
+        pf["browser"] = "bad"
     pf["data"] = _data_gate(args.period, pf.pop("deploy_date", "") or "")
     # ⚠️ 只检查（还没取过数）的期次**不 scan**：scan 会按「最新 InCites 快照」把别人的文件
     # 算成这一期的（2026-10-16 实测：光点一次检查，202611 就凭空多了 26/64）。
@@ -278,16 +329,17 @@ def _fetch_steps(period: str, snapshot: str) -> list:
     inc = A.INCITES_ROOT_DEFAULT / snapshot
     esi_script = REPO / "tools" / "clarivate_esi_fetch.py"
     inc_script = REPO / "tools" / "clarivate_incites_fetch.py"
+    py = fetch_python()
     return [
-        ("esi-institutions", [FETCH_PY, esi_script, "institutions", "--out", esi]),
-        ("esi-subjects", [FETCH_PY, esi_script, "subjects", "--out", esi]),
-        ("esi-fields", [FETCH_PY, esi_script, "fields", "--out", esi]),
-        ("esi-papers", [FETCH_PY, esi_script, "toppapers", "--out", esi]),
-        ("esi-thresholds", [FETCH_PY, esi_script, "thresholds", "--out", esi]),
-        ("esi-baselines", [FETCH_PY, esi_script, "baselines", "--out", esi]),
-        ("incites-subjects", [FETCH_PY, inc_script, "subjects", "--out", inc]),
-        ("incites-fields", [FETCH_PY, inc_script, "fields", "--out", inc]),
-        ("incites-institutions", [FETCH_PY, inc_script, "institutions", "--out", inc]),
+        ("esi-institutions", [py, esi_script, "institutions", "--out", esi]),
+        ("esi-subjects", [py, esi_script, "subjects", "--out", esi]),
+        ("esi-fields", [py, esi_script, "fields", "--out", esi]),
+        ("esi-papers", [py, esi_script, "toppapers", "--out", esi]),
+        ("esi-thresholds", [py, esi_script, "thresholds", "--out", esi]),
+        ("esi-baselines", [py, esi_script, "baselines", "--out", esi]),
+        ("incites-subjects", [py, inc_script, "subjects", "--out", inc]),
+        ("incites-fields", [py, inc_script, "fields", "--out", inc]),
+        ("incites-institutions", [py, inc_script, "institutions", "--out", inc]),
     ]
 
 

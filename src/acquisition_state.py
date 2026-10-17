@@ -15,6 +15,7 @@ import json
 import os
 import pathlib
 import re
+import subprocess
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
@@ -348,3 +349,31 @@ def scan(period: str, *, esi_root: pathlib.Path | str | None = None,
         "copy": copy_state,
     })
     return state
+
+
+# ------------------------------------------------------------------ 下载数据专用浏览器（CDP 9222）
+#: 「下载数据专用浏览器」＝独立 profile + CDP 9222 的 Chrome（`server/app.py` 负责拉起）。
+#: 认主唯一口径：**端口占用者命令行**里得带这个 profile——任意占 9222 的进程不算数。
+#: （2026-10-17 实测：opencode 会话遗留的无头 Edge 也开 9222，`/json/version` 照样 200，
+#: 曾被当成「专用浏览器已在跑」→ 页面永远不开登录窗口。）
+CDP_PORT = 9222
+CDP_PROFILE_DIR = pathlib.Path.home() / ".chrome-clarivate"
+
+
+def cdp_listener_cmdline(port: int = CDP_PORT) -> str:
+    """监听 `port` 的进程命令行（没占用 / 拿不到就返回 ""）。"""
+    ps = (
+        f"$c = Get-NetTCPConnection -LocalPort {int(port)} -State Listen "
+        f"-ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty OwningProcess; "
+        f"if ($c) {{ (Get-CimInstance Win32_Process -Filter \"ProcessId=$c\").CommandLine }}")
+    try:
+        r = subprocess.run(["powershell", "-NoProfile", "-Command", ps],  # noqa: S603
+                           capture_output=True, text=True, timeout=30)
+        return (r.stdout or "").strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def cdp_browser_ours() -> bool:
+    """9222 上跑的是不是「下载数据专用浏览器」本身（命令行带专用 profile；大小写不敏感）。"""
+    return str(CDP_PROFILE_DIR).lower() in cdp_listener_cmdline().lower()
