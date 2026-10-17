@@ -109,7 +109,7 @@ describe('deriveWorkbench（真实数据推导，不编状态）', () => {
     const wb = deriveWorkbench('202607', [], detail(
       { fetch: false, merge: false },
       { started: true, verified: 31, expected: 64, copy: 'none' }), true)
-    expect(wb.steps[0].detail).toBe('下载中（31 / 64）')
+    expect(wb.steps[0].detail).toBe('取数中（31 / 64）')
     expect(wb.steps[1].detail).toBe('核对副本还没建')
     expect(wb.steps[0].now).toBe(true)
   })
@@ -124,7 +124,7 @@ describe('deriveWorkbench（真实数据推导，不编状态）', () => {
     const merged = deriveWorkbench('202608', [], detail(
       { fetch: true, merge: true },
       { started: true, verified: 64, expected: 64, copy: 'merged' }), true)
-    expect(merged.steps[0].detail).toBe('下载数据完成（64 / 64）')
+    expect(merged.steps[0].detail).toBe('取数完成（64 / 64）')
     expect(merged.steps[1].detail).toBe('已并入台账')
 
     const legacy = deriveWorkbench('202607', [], detail(

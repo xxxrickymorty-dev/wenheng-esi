@@ -392,7 +392,7 @@ export function Review({
         <a className="hint no-underline" href={back} >← 回报告</a>
         <span className="ink-line">·</span>
         <h2 className="h-sec h-lg ml-4">
-          <Icon name="seal" size={22} />审核 · 试排报告
+          <Icon name="seal" size={22} />核验定稿
         </h2>
         {doubtN > 0 && <span className="hint gold-650">存疑 {doubtN} 处</span>}
       </div>

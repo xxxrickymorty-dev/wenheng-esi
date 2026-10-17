@@ -62,7 +62,7 @@ export function Pick({ period }: { period: string | null }) {
   return (
     <>
       <div className="h-sec pick-title">
-        <b>出报告 · ② 选择章节</b>
+          <b>出报告 · ② 选章节</b>
       </div>
 
       <section className="card mt-16 pad-card">

@@ -485,16 +485,17 @@ export default function App() {
     report: 'report', red: 'report', charts: 'report', reading: 'report', trace: 'report',
     analysis: 'flexible', dialog: 'ask', ledger: 'admin', archive: 'admin',
   }
-  /* 「出报告」四步流水（新 IA）：步骤条只在流水屏出现；②选择章节＝最省版（只记本轮范围）。
-     2026-10-16 二版（rick 拍板）：不画序号——顺序由位置与细线方向表达（仍是真顺序的 ol）。 */
+  /* 「出报告」五步流水（2026-10-17 冗余收敛稿①⑤：站名＝屏名，预测选模独立一站）。
+     步骤条只在流水屏出现；2026-10-16 二版（rick 拍板）：不画序号——顺序由位置与细线方向表达。 */
   const FLOW_STEPS: { key: string; label: string; href?: string }[] = [
-    { key: 'acquire', label: '下载数据核验', href: '/app/?view=acquire' },
-    { key: 'pick', label: '选择章节', href: '/app/?view=pick' },
+    { key: 'acquire', label: '取数核验', href: '/app/?view=acquire' },
+    { key: 'pick', label: '选章节', href: '/app/?view=pick' },
+    { key: 'forecast', label: '预测选模', href: '/app/?view=forecast' },
     { key: 'gen', label: '生成初稿', href: '/app/' },
-    { key: 'review', label: '核验与定稿', href: '/app/?view=review' },
+    { key: 'review', label: '核验定稿', href: '/app/?view=review' },
   ]
   const FLOW_ACTIVE: Record<string, string> = {
-    acquire: 'acquire', pick: 'pick', workbench: 'gen', review: 'review', forecast: 'gen',
+    acquire: 'acquire', pick: 'pick', workbench: 'gen', review: 'review', forecast: 'forecast',
   }
   const isOperator = me?.role === 'operator'
   const notLoggedIn = roleKnown && !me
@@ -589,8 +590,8 @@ export default function App() {
           </div>
         )}
 
-        {/* 「出报告」四步流水步骤条（新 IA 二版 2026-10-16，rick 拍板）：一条 2px 细线（含当前步）
-            ＋ 四张等大方角卡片；不画序号——顺序由位置与细线方向表达（仍是真顺序的 ol）。只在流水屏出现。 */}
+        {/* 「出报告」五步流水步骤条（2026-10-16 二版 rick 拍板；2026-10-17 五站五屏）：一条 2px 细线（含当前步）
+            ＋ 五张等大方角卡片；不画序号——顺序由位置与细线方向表达（仍是真顺序的 ol）。只在流水屏出现。 */}
         {inFlow && roleKnown && !notLoggedIn && !operatorDenied && (
           <nav className="ia-steps" aria-label="出报告步骤">
             <div className="ia-rail" aria-hidden="true">
@@ -602,7 +603,7 @@ export default function App() {
             <ol className="ia-steps-list">
               {FLOW_STEPS.map((s, i) => {
                 const on = s.key === flowActive
-                /* 操作员不可见的两屏（下载数据/选材）不再从列表里消失——整条流水保持四条等大，
+                /* 操作员不可见的两屏（下载数据/选材）不再从列表里消失——整条流水保持五条等大，
                    那两张卡置灰标注「仅管理员」；功能门仍在后端（直开 URL 一样进不去）。 */
                 const na = !!isOperator && (s.key === 'acquire' || s.key === 'pick')
                 const cls = `ia-card${i < flowActiveIdx ? ' done' : ''}${on ? ' now' : ''}${na ? ' na' : ''}`

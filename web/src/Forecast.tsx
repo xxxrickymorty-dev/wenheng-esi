@@ -410,7 +410,7 @@ export function Forecast({
       <section className="card pad-20-22-18">
         <div className="rowc12">
           <div>
-            <h1 className="fs-25">潜力学科预测</h1>
+            <h1 className="fs-25">预测选模</h1>
             <p className="fc-lead mt-6">先看图，再定稿。</p>
           </div>
           {/* 回程（2026-10-16，rick）：改完要不要重出、改没改，下方提示条说清；这里只负责回得去 */}

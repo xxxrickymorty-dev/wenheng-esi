@@ -285,9 +285,9 @@ def main():
             steps = page.eval_on_selector_all(
                 "nav[aria-label='出报告步骤'] a, nav[aria-label='出报告步骤'] span",
                 "els => els.map(e => e.innerText.trim())")
-            i_take = next((i for i, s in enumerate(steps) if "下载数据" in s), -1)
+            i_take = next((i for i, s in enumerate(steps) if "取数" in s), -1)
             i_gen = next((i for i, s in enumerate(steps) if "生成" in s), -1)
-            check("出报告步骤条：① 下载数据核验 在 ③ 生成初稿 之前",
+            check("出报告步骤条：① 取数核验 在 生成初稿 之前",
                   i_take >= 0 and i_gen >= 0 and i_take < i_gen, str(steps[:4]))
             # 采集/并入台账解耦：**当期**（已并入）仍要有整期重取入口（2026-10-16 票 01）
             has_refetch = page.eval_on_selector_all(
@@ -315,7 +315,7 @@ def main():
                   f"head={head_txt[:70]!r} focus={focus_txt[:40]!r}")
             txt = page.inner_text("main")
             check("取数台：期次数据状态与开始前检查都在",
-                  "自动下载数据台" in txt and "开始前检查" in txt, "")
+                  "取数核验" in txt and "开始前检查" in txt, "")
             check("开始前检查四灯齐全（浏览器 / ESI / InCites / 数据期）",
                   all(s in txt for s in ("下载数据专用浏览器", "ESI 网站", "InCites 网站", "数据期")), "")
             page.locator("details.fold summary", has_text="下载数据清单").first.click()

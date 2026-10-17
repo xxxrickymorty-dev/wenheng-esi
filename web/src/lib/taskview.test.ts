@@ -28,7 +28,7 @@ describe('本期任务视图（票 06）', () => {
     const notYet = taskView(home({ released: false, n_missing: 4 }))
     expect(notYet?.rows.map((r) => r.mark)).toEqual(['●', '○', '○'])
     expect(notYet?.rows[0].note).toBe('数据未到（随发布）')
-    expect(notYet?.cta).toEqual({ label: '去下载数据台 ▸', kind: 'goto', view: 'acquire' })
+    expect(notYet?.cta).toEqual({ label: '去取数台 ▸', kind: 'goto', view: 'acquire' })
 
     const missing = taskView(home({ released: true, n_missing: 2 }))
     expect(missing?.rows[0].note).toBe('还缺 2 件')
@@ -56,18 +56,18 @@ describe('本期任务视图（票 06）', () => {
       steps: [{ key: 'acquire', done: true }, { key: 'merge', done: true },
               { key: 'generate', done: true }] }))
     expect(tv?.rows.map((r) => r.mark)).toEqual(['✓', '✓', '✓'])
-    expect(tv?.rows[2].note).toBe('已出好 · 待签单')
+    expect(tv?.rows[2].note).toBe('已出好 · 未签发')
     expect(tv?.cta).toEqual({ label: '去审核台签单 ▸', kind: 'goto', view: 'review' })
   })
 
   it('标题带本期期次；上一期签发状态如实说（三种状态都有说法）', () => {
     const tv = taskView(home({ period: '202611', prev: { period: '202609', status: 'signed' } }))
     expect(tv?.title).toBe('本期任务 · 202611')
-    expect(tv?.prevNote).toBe('上一期 202609：已签单')
+    expect(tv?.prevNote).toBe('上一期 202609：已签发')
     const tv2 = taskView(home({ prev: { period: '202609', status: 'stale' } }))
     expect(tv2?.prevNote).toBe('上一期 202609：签发已失效')
     const tv3 = taskView(home({ prev: { period: '202609', status: 'unsigned' } }))
-    expect(tv3?.prevNote).toBe('上一期 202609：待签单')
+    expect(tv3?.prevNote).toBe('上一期 202609：未签发')
     const tv4 = taskView(home({ prev: null }))
     expect(tv4?.prevNote).toBe('')
   })

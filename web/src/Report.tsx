@@ -2,7 +2,7 @@
    定位：**只看不改的成品展示台**——按期次看全文 / 读数 / 图 / 期次印记链，四个下钻入口
    （红件清单、图册、对勘本、逐格溯源）。
    与 G 的翻书**分工**：翻书＝读正文（人的阅读）；这里＝看数据与出处（大表 / 朱批 / 溯源 / 印记链）。
-   🔴 本屏无任何写动作（生成 / 签单 / 覆盖 / 重跑）：要改请到「出报告 · ④ 核验与定稿」，
+   🔴 本屏无任何写动作（生成 / 签单 / 覆盖 / 重跑）：要改请到「出报告 · ④ 核验定稿」，
       未签发的期在这里只给一句下一步引导，不给写入口。
 
    🔴 诚实边界（项目红线：缺数据不填假数）：
@@ -211,14 +211,14 @@ function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSee
         </div>
 
         {/* 页边朱批：待人工的那几处——本屏只读，逐条只做**下钻**（落到④对应空位），
-            不在报告屏里改；真正的写动作在「出报告 · ④ 核验与定稿」。 */}
+            不在报告屏里改；真正的写动作在「出报告 · ④ 核验定稿」。 */}
         <div>
           <h2 className="h-sec">
             <Icon name="alert" size={20} />待人工的地方
             {manual.length > 0 && (
               <a className="hint ml-auto ink-zhu fw-650 no-underline"
                  href={period ? appHref('review', period) : '/app/?view=review'}>
-                去「出报告 · 核验与定稿」逐项处理（{manual.length} 处）→
+                去「出报告 · 核验定稿」逐项处理（{manual.length} 处）→
               </a>
             )}
           </h2>
@@ -236,7 +236,7 @@ function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSee
                   <div className="mn-acts">
                     <a className="btn"
                        href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}${r.loc ? `&focus=${encodeURIComponent(r.loc)}` : ''}`}>
-                      去核验与定稿 →
+                      去核验定稿 →
                     </a>
                   </div>
                 </div>
@@ -244,7 +244,7 @@ function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSee
               {manual.length > 8 && (
                 <p className="hint">
                   另 {manual.length - 8} 处
-                  {canSeeAdminBits ? '见图册「红色件清单」。' : '去「出报告 · 核验与定稿」处理。'}
+                  {canSeeAdminBits ? '见图册「红色件清单」。' : '去「出报告 · 核验定稿」处理。'}
                 </p>
               )}
             </div>
@@ -414,7 +414,7 @@ function FactsStrip({ period, onFacts }: {
 }
 
 /** 签发态 · 只读声明（票 03）：报告屏只展示成品，不给生成 / 签单 / 覆盖 / 重跑任何入口；
-    未签发的期在这里给一句「去④核验与定稿」引导，写动作只在「出报告 · ④ 核验与定稿」发生。 */
+    未签发的期在这里给一句「去④核验定稿」引导，写动作只在「出报告 · ④ 核验定稿」发生。 */
 function ReportStatus({ status, period }: { status: string; period: string | null }) {
   const signed = status === 'signed'
   const stale = status === 'stale'
@@ -428,10 +428,10 @@ function ReportStatus({ status, period }: { status: string; period: string | nul
         {signed
           ? '这一版已签发：报告屏只读展示，内容不再改动。'
           : stale
-            ? '这一版内容变过、签发已失效——要改请到「出报告 · 核验与定稿」。'
-            : '这一版还没签发——要改请到「出报告 · 核验与定稿」。'}
+            ? '这一版内容变过、签发已失效——要改请到「出报告 · 核验定稿」。'
+            : '这一版还没签发——要改请到「出报告 · 核验定稿」。'}
       </span>
-      {!signed && <a className="rep-go" href={href}>去核验与定稿 →</a>}
+      {!signed && <a className="rep-go" href={href}>去核验定稿 →</a>}
     </div>
   )
 }
@@ -462,7 +462,7 @@ export function Report({
           </h1>
           <div className="rule" />
 
-          {/* 签发态 + 只读声明：本屏只看不改；未签发只给「去④核验与定稿」一句引导 */}
+          {/* 签发态 + 只读声明：本屏只看不改；未签发只给「去④核验定稿」一句引导 */}
           <ReportStatus status={row?.status ?? 'unsigned'} period={current} />
 
           {/* 读数带：真数据（后端 facts 接口已交付） */}

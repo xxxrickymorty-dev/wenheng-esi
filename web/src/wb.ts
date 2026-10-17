@@ -10,16 +10,16 @@ export type WBState =
   | 'fail-ledger' | 'fail-other' | 'stalled' | 'signed'
 
 export const STATE_LABEL: Record<WBState, string> = {
-  empty: '数据还没取齐',
-  ready: '待生成',
-  running: '生成中',
-  done: '已生成',
-  warned: '已生成，有校验提醒',
-  'waiting-approval': '待签单',
+  empty: '未开始',
+  ready: '未开始',
+  running: '进行中',
+  done: '已完成',
+  warned: '已完成，有校验提醒',
+  'waiting-approval': '已完成',
   'fail-ledger': '数据还没齐',
   'fail-other': '这次没有出稿',
   stalled: '已停住',
-  signed: '已签发',
+  signed: '已完成',
 }
 
 /** 三步条上每格显示什么（ADR-0004：下载数据 → 核对并并入 → 生成） */
@@ -44,18 +44,18 @@ function buildSteps(detail: PeriodDetail | null, generated: boolean, period: str
   const known = !!s
   const fetchDetail = !known ? '未就绪'
     : s?.fetch
-      ? (acq?.started ? `下载数据完成（${acq.verified ?? '—'} / ${acq.expected ?? '—'}）` : '数据已就位')
+      ? (acq?.started ? `取数完成（${acq.verified ?? '—'} / ${acq.expected ?? '—'}）` : '数据已就位')
       : acq?.started
-        ? `下载中（${acq.verified ?? '—'} / ${acq.expected ?? '—'}）`
-        : '还没开始下载数据'
+        ? `取数中（${acq.verified ?? '—'} / ${acq.expected ?? '—'}）`
+        : '还没开始取数'
   const mergeDetail = !known ? '未就绪'
     : s?.merge ? '已并入台账'
       : acq?.copy === 'review' ? '待核对（核对副本已建）' : '核对副本还没建'
   return [
-    { key: 'fetch', title: '下载数据', detail: fetchDetail, on: !!s?.fetch, now: known && !s?.fetch },
+    { key: 'fetch', title: '取数', detail: fetchDetail, on: !!s?.fetch, now: known && !s?.fetch },
     { key: 'merge', title: '核对并并入', detail: mergeDetail,
       on: !!s?.merge, now: known && !!s?.fetch && !s?.merge },
-    { key: 'generate', title: '一键生成', detail: generated ? '已出稿' : (known ? '约 3 分钟出报告' : `${period} 尚未出稿`),
+    { key: 'generate', title: '一键生成', detail: generated ? '已完成' : (known ? '约 3 分钟出报告' : `${period} 尚未出稿`),
       on: generated, now: known ? (!!s?.fetch && !!s?.merge && !generated) : !generated },
   ]
 }
@@ -132,10 +132,10 @@ export function deriveWorkbench(
   const steps = buildSteps(detail, generated, period ?? '本期')
 
   const FOCUS: Record<WBState, Pick<Workbench, 'focusTitle' | 'focusSub' | 'focusAction'>> = {
-    empty: { focusTitle: '先去下载数据，再回来生成', focusSub: '在下载数据台：下载 → 逐份核验 → 核对并并入台账', focusAction: 'acquire' },
+    empty: { focusTitle: '数据还没取齐，先去下载数据', focusSub: '在取数台：下载 → 逐份核验 → 核对并并入台账', focusAction: 'acquire' },
     ready: { focusTitle: '这一期还差最后一步：生成报告', focusSub: '前两步已就绪 · 约 3 分钟出报告', focusAction: 'generate' },
     running: { focusTitle: '正在生成……', focusSub: '可以切到别的页面，进度不会丢', focusAction: 'none' },
-    done: { focusTitle: '本期报告已就绪', focusSub: '复核后签单，这一版才会被标记为「可交付」', focusAction: 'sign' },
+    done: { focusTitle: '本期报告已就绪', focusSub: '复核后签单；签发前不能下载初稿。', focusAction: 'sign' },
     warned: { focusTitle: '已生成，有校验提醒', focusSub: '任务结束不代表报告合格或已签发', focusAction: 'open' },
     'waiting-approval': { focusTitle: '待签单', focusSub: '报告已出，等你在审核台签单', focusAction: 'none' },
     'fail-ledger': { focusTitle: '数据还没齐，这次没有出报告', focusSub: '补上缺的列再重跑', focusAction: 'rerun' },

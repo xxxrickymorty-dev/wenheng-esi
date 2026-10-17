@@ -28,12 +28,12 @@ export type TaskView = {
 }
 
 const LABELS: Record<HomeStepKey, string> = {
-  acquire: '下载数据', merge: '核对并并入', generate: '一键生成',
+  acquire: '取数', merge: '核对并并入', generate: '一键生成',
 }
 
 /** 上一期签发状态 → 馆员话术（后端 approval 三态 + 兜底原样）。 */
 const PREV_LABEL: Record<string, string> = {
-  signed: '已签单', stale: '签发已失效', unsigned: '待签单',
+  signed: '已签发', stale: '签发已失效', unsigned: '未签发',
 }
 
 export function taskView(h: DialogHome | null): TaskView | null {
@@ -50,12 +50,12 @@ export function taskView(h: DialogHome | null): TaskView | null {
     { mark: mark('merge'), label: LABELS.merge,
       note: done('merge') ? '已并入' : h.stuck === 'merge' ? '卡在这' : '未开始' },
     { mark: mark('generate'), label: LABELS.generate,
-      note: done('generate') ? (h.stuck === 'sign' ? '已出好 · 待签单' : '已出好')
+      note: done('generate') ? (h.stuck === 'sign' ? '已出好 · 未签发' : '已出好')
         : h.stuck === 'generate' ? '卡在这' : '未开始' },
   ]
 
   const cta: TaskViewCta | null =
-    h.stuck === 'acquire' ? { label: '去下载数据台 ▸', kind: 'goto', view: 'acquire' }
+    h.stuck === 'acquire' ? { label: '去取数台 ▸', kind: 'goto', view: 'acquire' }
     : h.stuck === 'merge' ? { label: '去核对 ▸', kind: 'goto', view: 'acquire' }
     : h.stuck === 'generate' ? { label: '一键生成 ▸', kind: 'gen' }
     : h.stuck === 'sign' ? { label: '去审核台签单 ▸', kind: 'goto', view: 'review' }

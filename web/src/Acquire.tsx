@@ -328,7 +328,7 @@ export function Acquire({ period, onOpenPeriod }: {
           {/* ===== 期次数据状态 ===== */}
           <section className="card pad-card-x">
             <div className="aq-head">
-              <h1 className="fs-24">自动下载数据台</h1>
+              <h1 className="fs-24">取数核验</h1>
               <span className="pill unsigned mono">{period}</span>
               <span className={`pill ${pill[view][1]}`}>{pill[view][0]}</span>
               <span className="hint aq-num">采集 · {expected > 0 ? `已取到 ${verified} / ${expected}` : '未开始'}{lastFetchAt ? ` · 最近下载 ${lastFetchAt}` : ''}</span>

@@ -1066,7 +1066,8 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 .ia-rail-seg:nth-child(2){transition-delay:70ms}
 .ia-rail-seg:nth-child(3){transition-delay:140ms}
 .ia-rail-seg:nth-child(4){transition-delay:210ms}
-.ia-steps-list{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 0;padding:0;list-style:none}
+.ia-rail-seg:nth-child(5){transition-delay:280ms}
+.ia-steps-list{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:10px 0 0;padding:0;list-style:none}
 .ia-card{display:flex}
 .ia-card a,.ia-card>span{flex:1 1 auto;display:flex;align-items:center;justify-content:center;
   min-height:56px;background:var(--card);border:1px solid var(--line);
