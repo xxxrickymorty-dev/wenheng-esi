@@ -58,9 +58,12 @@ def test_开新一期拒绝非双月与非法期次(tmp_path, monkeypatch):
         assert not (st_dir / f"{bad}.json").exists(), bad
 
 
-def test_开新一期需要管理员(tmp_path, monkeypatch):
+def test_开新一期操作员可用_未登录仍拦(tmp_path, monkeypatch):
+    """2026-10-17 rick：demo（操作员）放开取数权限——开新一期不再仅管理员。"""
     r, _ = _call(monkeypatch, tmp_path, "202611", user=config.OPERATOR_USER)
-    assert r.status_code == 403
+    assert isinstance(r, dict), r
+    saved = A.load_state("202611")
+    assert saved["opened"]["by"] == config.OPERATOR_USER
     r, _ = _call(monkeypatch, tmp_path, "202611", user=None)
     assert r.status_code == 401
 

@@ -421,6 +421,17 @@ def main():
         operator.wait_for_timeout(600)
         check("操作员直开台账 → 不可见空态",
               "操作员不可见" in operator.inner_text("main"), "")
+        # 2026-10-17 rick：demo 放开取数核验与选章节（后端同批改 @user_route）
+        operator.goto(BASE + "/app/?view=acquire&period=202609", wait_until="networkidle")
+        operator.wait_for_timeout(600)
+        acq_txt = operator.inner_text("main")
+        check("操作员可进取数核验（2026-10-17 放开）",
+              "操作员不可见" not in acq_txt and "取数核验" in acq_txt, "")
+        operator.goto(BASE + "/app/?view=pick&period=202609", wait_until="networkidle")
+        operator.wait_for_timeout(600)
+        check("操作员可进选章节（2026-10-17 放开）",
+              "操作员不可见" not in operator.inner_text("main")
+              and "选章节" in operator.inner_text("main"), "")
         # 报告页产物：无红件三件与运行日志（服务端已过滤）
         operator.goto(BASE + "/app/?view=report", wait_until="networkidle")
         operator.wait_for_timeout(600)

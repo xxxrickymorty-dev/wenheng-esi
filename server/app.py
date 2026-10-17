@@ -948,7 +948,7 @@ def _acq_mode(period: str) -> str:
 
 
 @app.get("/api/periods/{period}/acquisition")
-@admin_route
+@user_route
 async def api_period_acquisition(request: Request, period: str):
     """自动取数台状态（只读）。没有取数记录时 started=false——界面显示「还没开始」，不编数据。
 
@@ -1069,7 +1069,7 @@ def _acq_kill_profile_chrome(profile: pathlib.Path) -> int:
 
 
 @app.post("/api/acquisition/browser")
-@admin_route
+@user_route
 async def api_acq_browser(request: Request):
     """把「下载数据专用浏览器」拉起来（独立 profile `~/.chrome-clarivate` + CDP 9222）。
 
@@ -1128,7 +1128,7 @@ def _acq_data_block(period: str):
 
 
 @app.post("/api/periods/{period}/acquisition/start")
-@admin_route
+@user_route
 async def api_acq_start(request: Request, period: str):
     """开始取数（按 9 组下载；完成后自动建当期核对副本）。"""
     blocked = _acq_data_block(period)
@@ -1138,7 +1138,7 @@ async def api_acq_start(request: Request, period: str):
 
 
 @app.post("/api/periods/{period}/acquisition/open")
-@admin_route
+@user_route
 async def api_acq_open(request: Request, period: str):
     """开新一期（票 05）：登记期次、落一个只含 preflight 的空状态——**不 scan、不取数**。
 
@@ -1160,7 +1160,7 @@ async def api_acq_open(request: Request, period: str):
 
 
 @app.post("/api/periods/{period}/acquisition/retry")
-@admin_route
+@user_route
 async def api_acq_retry(request: Request, period: str):
     """断组重试：只重下指定的组（body: {"group": "esi-papers"}）。"""
     blocked = _acq_data_block(period)
@@ -1175,14 +1175,14 @@ async def api_acq_retry(request: Request, period: str):
 
 
 @app.post("/api/periods/{period}/acquisition/copy")
-@admin_route
+@user_route
 async def api_acq_copy(request: Request, period: str):
     """重建当期核对副本（`out/_acquisition/<期次>/监测表.xlsx`）；主台账不碰。"""
     return _acq_spawn(period, "copy")
 
 
 @app.post("/api/periods/{period}/acquisition/merge")
-@admin_route
+@user_route
 async def api_acq_merge(request: Request, period: str):
     """把已核对副本并入主台账（写前备份 + 写后五查）。
 
@@ -1204,7 +1204,7 @@ async def api_acq_merge(request: Request, period: str):
 
 
 @app.post("/api/periods/{period}/acquisition/preflight")
-@admin_route
+@user_route
 async def api_acq_preflight(request: Request, period: str):
     """开始前检查：取数专用浏览器是否开着、两家网站是否已登录。同步跑（几秒）。"""
     if not re.fullmatch(r"\d{6}", period or ""):
@@ -1675,7 +1675,7 @@ async def api_period_redslots(request: Request, period: str,
 
 
 @app.get("/api/periods/{period}/outline")
-@admin_route
+@user_route
 async def api_period_outline(request: Request, period: str):
     """②选材 · 报告大纲（**只读**，最省版）。
 

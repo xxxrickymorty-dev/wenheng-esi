@@ -505,8 +505,9 @@ export default function App() {
   const gated = notLoggedIn
   /* 角色还没确认时，先不渲染只给管理员的块（避免未登录先发出被拒的请求） */
   const noAdminBits = !roleKnown || gated
-  /* 操作员不可见的「里子」屏（rick 2026-10-11 定）：直开 URL 给空态，真门在后端。 */
-  const OPERATOR_DENIED = new Set(['acquire', 'pick', 'ledger', 'archive', 'red', 'trace'])
+  /* 操作员不可见的「里子」屏（rick 2026-10-11 定）：直开 URL 给空态，真门在后端。
+     2026-10-17 rick：demo 放开取数核验与选章节（后端同批改 @user_route）。 */
+  const OPERATOR_DENIED = new Set(['ledger', 'archive', 'red', 'trace'])
   const operatorDenied = !!isOperator && OPERATOR_DENIED.has(view)
   const navHref = (h: string) =>
     (selected
@@ -605,15 +606,11 @@ export default function App() {
             <ol className="ia-steps-list">
               {FLOW_STEPS.map((s, i) => {
                 const on = s.key === flowActive
-                /* 操作员不可见的两屏（下载数据/选材）不再从列表里消失——整条流水保持五条等大，
-                   那两张卡置灰标注「仅管理员」；功能门仍在后端（直开 URL 一样进不去）。 */
-                const na = !!isOperator && (s.key === 'acquire' || s.key === 'pick')
-                const cls = `ia-card${i < flowActiveIdx ? ' done' : ''}${on ? ' now' : ''}${na ? ' na' : ''}`
+                /* 2026-10-17 rick：demo 放开取数核验与选章节——五卡全员可点（后端同批改 @user_route）。 */
+                const cls = `ia-card${i < flowActiveIdx ? ' done' : ''}${on ? ' now' : ''}`
                 return (
                   <li key={s.key} className={cls}>
-                    {na ? (
-                      <span title="这一屏仅管理员可用">{s.label}</span>
-                    ) : s.href ? (
+                    {s.href ? (
                       <a href={navHref(s.href)} aria-current={on ? 'step' : undefined}>{s.label}</a>
                     ) : (
                       <span title="还没做：从某期报告里勾选章节加进初稿（.scratch/ia-rework 票 06，待设计）">
