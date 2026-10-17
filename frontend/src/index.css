@@ -1,0 +1,64 @@
+/* ============================================================
+   src/index.css — Tailwind v4 主题层
+   ------------------------------------------------------------
+   这一层把 tokens.css 的设计令牌灌进 Tailwind，之后全用工具类。
+   命名：蓝＝场 → sea；绿＝器 → pine。语义见 README。
+   红色只作警戒（阈值虚线、复核 PENDING）。
+   ============================================================ */
+@import "tailwindcss";
+
+@theme {
+  /* ── 蓝 · 场（sea） ── */
+  --color-sea-50:  #DCE8F0;
+  --color-sea-100: #8FB6CE;
+  --color-sea-200: #2F6B8E;
+  --color-sea-300: #17456E;
+  --color-sea-400: #0F2E4C;
+
+  /* ── 绿 · 器（pine） ── */
+  --color-pine-50:  #DFEDE6;
+  --color-pine-100: #7FB79B;
+  --color-pine-200: #2F7A58;
+  --color-pine-300: #26483B;
+  --color-pine-400: #163228;
+
+  /* ── 纸与墨 ── */
+  --color-paper-50:  #F2EFE6;
+  --color-paper-100: #E4DFD0;
+  --color-paper-200: #D6D0C0;
+  --color-ink-300:  #15222B;
+  --color-ink-200:  #43525C;
+  --color-ink-100:  #7B8892;
+
+  /* ── 警戒（少用） ── */
+  --color-red-300:  #B23A2B;
+  --color-red-100:  #F0B5A6;
+  --color-red-ink:  #8B2A1E;
+
+  /* ── 字体：三种到顶 ── */
+  --font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", SimSun, serif;
+  --font-kai:   "KaiTi", "STKaiti", "FangSong", "STFangsong", serif;
+  --font-sans:  system-ui, -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  --font-mono:  "Cascadia Mono", Consolas, "Courier New", monospace;
+
+  /* ── 尺度 ── */
+  --spacing-gutter: 30px;
+  --spacing-block:  48px;
+  --spacing-unit:   12px;
+  --container-max:  1280px;
+}
+
+/* 全站底子 */
+@layer base {
+  html { background: var(--color-paper-50); }
+  body {
+    background: var(--color-paper-50);
+    color: var(--color-ink-300);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: var(--font-serif); font-weight: 600; }
+  ::selection { background: var(--color-pine-200); color: #fff; }
+}
