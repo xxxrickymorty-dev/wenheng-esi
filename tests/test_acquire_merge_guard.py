@@ -77,3 +77,52 @@ def test_没有副本_被拒(tmp_path, monkeypatch, capsys):
     assert rc == 1
     assert "待核对" in capsys.readouterr().out
     assert ledger.read_bytes() == b"ledger-bytes"
+
+
+def _fetch_args(period, **kw):
+    ns = dict(period=period, groups=None, no_copy=False)
+    ns.update(kw)
+    return argparse.Namespace(**ns)
+
+
+def _fake_scan(copy_state):
+    def scan(period, snapshot=None, esi_root=None, preserve=True):
+        return {"period": period, "copy": copy_state,
+                "groups": [{"id": "g1", "state": "ok", "title": "第 1 组",
+                            "verified": 1, "files": [{"state": "ok"}]}],
+                "totals": {"groups": 1, "expected": 1, "verified": 1, "downloaded": 1, "failed": 0}}
+    return scan
+
+
+def test_已并入台账的期次_重下载只补文件不再合并(tmp_path, monkeypatch):
+    """票 02「已并入不再改」在 fetch 侧的体现：不再自动建核对副本/合并，如实说明（2026-10-17 反馈）。"""
+    _write_state(tmp_path, "202605", {"state": "merged", "path": "out/_acquisition/202605/监测表.xlsx"})
+    monkeypatch.setattr(acq.A, "resolve_snapshot", lambda *a, **k: "snapshot-x")
+    monkeypatch.setattr(acq.A, "scan", _fake_scan({"state": "merged"}))
+    monkeypatch.setattr(acq, "_fetch_steps", lambda p, s: [("g1", ["fake-cmd"])])
+    monkeypatch.setattr(acq, "_run", lambda cmd: 0)
+    copies = []
+    monkeypatch.setattr(acq, "cmd_copy", lambda args: copies.append(args) or 0)
+
+    rc = acq.cmd_fetch(_fetch_args("202605"))
+
+    assert rc == 0
+    assert not copies, "已并入台账的期次不该再自动建核对副本/合并"
+    st = json.loads((tmp_path / "_acquisition" / "202605.json").read_text(encoding="utf-8"))
+    assert st["op"]["state"] == "done"
+    assert "下载完成" in st["op"]["note"] and "未再合并" in st["op"]["note"], st["op"]
+
+
+def test_未并入的期次_重下载照旧建核对副本(tmp_path, monkeypatch):
+    _write_state(tmp_path, "202605", {"state": "none", "path": "input/202605/监测表.xlsx"})
+    monkeypatch.setattr(acq.A, "resolve_snapshot", lambda *a, **k: "snapshot-x")
+    monkeypatch.setattr(acq.A, "scan", _fake_scan({"state": "none"}))
+    monkeypatch.setattr(acq, "_fetch_steps", lambda p, s: [("g1", ["fake-cmd"])])
+    monkeypatch.setattr(acq, "_run", lambda cmd: 0)
+    copies = []
+    monkeypatch.setattr(acq, "cmd_copy", lambda args: copies.append(args) or 0)
+
+    rc = acq.cmd_fetch(_fetch_args("202605"))
+
+    assert rc == 0
+    assert len(copies) == 1, "没并入的期次要照旧把核对副本建出来"

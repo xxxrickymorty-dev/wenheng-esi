@@ -382,6 +382,11 @@ def cmd_fetch(args) -> int:
     if args.no_copy:
         _set_op(period, "fetch", "done", "全部核验通过（未自动建副本）")
         return 0
+    if (st.get("copy") or {}).get("state") == "merged":
+        # 已并入台账的期次（票 02「已并入不再改」，merge 也只会拒写）：补下载到此为止——
+        # 不再自动建核对副本/合并，如实说明原因，别摆成红色失败（2026-10-17 rick 反馈）
+        _set_op(period, "fetch", "done", "下载完成；因本地已有数据（此前已并入台账），未再合并")
+        return 0
     _set_op(period, "fetch", "done", "全部核验通过，正在新建监测表")
     return cmd_copy(argparse.Namespace(period=period, out=None, snapshot=snapshot, esi_root=None))
 
