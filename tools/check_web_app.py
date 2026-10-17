@@ -154,14 +154,14 @@ def main():
         check("管理员 GET /app/shelf/ → 200", bool(resp3) and resp3.status == 200,
               f"got {resp3.status if resp3 else '?'}")
         try:
-            admin_shelf.wait_for_selector(".home-book-item", timeout=15000)
+            admin_shelf.wait_for_selector(".sl-cover", timeout=15000)
             check("管理员进陈列馆能看到册位（不弹回）", True)
         except Exception as e:                                       # noqa: BLE001
             check("管理员进陈列馆能看到册位（不弹回）", False,
                   f"url={admin_shelf.url} {str(e)[:60]}")
         # 管理员开书应看到全内容册页（数字体检 / 学科大表 / 双路线预测）
         try:
-            admin_shelf.click(".home-book-item")
+            admin_shelf.click(".sl-cover")
             admin_shelf.wait_for_selector("#flipbook", timeout=15000)
             pages_text = admin_shelf.evaluate(
                 "() => document.querySelector('.flip-page-templates')?.textContent ?? ''")
@@ -450,13 +450,13 @@ def main():
         except Exception as e:                                       # noqa: BLE001
             check("陈列馆首页渲染（.home-hero）", False, str(e)[:80])
         try:
-            has_band = bool(operator.query_selector("#ask .home-ask-form"))
-            has_nav = bool(operator.query_selector('.home-nav-back[href="/app/dialog/"]'))
+            has_band = bool(operator.query_selector("#ask .sl-askform"))
+            has_nav = bool(operator.query_selector('.sl-back[href="/app/dialog/"]'))
             check("陈列馆有「问文衡」条带与导航入口", has_band and has_nav, "")
         except Exception as e:                                       # noqa: BLE001
             check("陈列馆有「问文衡」条带与导航入口", False, str(e)[:80])
         try:
-            operator.click(".home-book-item")
+            operator.click(".sl-cover")
             operator.wait_for_selector("#flipbook", timeout=10000)
             n_pages = operator.eval_on_selector_all(".flip-page", "els => els.length")
             check("翻页阅读器打开（#flipbook 带页）", n_pages >= 3, f"{n_pages} 页")
