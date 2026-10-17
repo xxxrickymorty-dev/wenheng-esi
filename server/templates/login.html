@@ -62,30 +62,46 @@
   }
   .glass-wrap { position: relative; width: 100%; max-width: 430px; }
 
-  /* 卡片本体：深绿实色（浮在照片上，压深投影定边界；不用毛玻璃、不用渐变罩） */
+  /* 卡片本体：深绿实色方角面板（2026-10-17 高级版：金色细线双框＋入场动效；零 CDN 不变） */
   body.theme-ynu .plaque {
     position: relative; z-index: 1;
     width: 100%; background: #0F2E21;
-    border: 1px solid rgba(255, 255, 255, .14); border-radius: 16px;
-    box-shadow: 0 25px 45px rgba(0, 0, 0, .35);
+    border: 1px solid rgba(246, 241, 222, .22); border-radius: 0;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, .42);
+    animation: wh-card-in .65s ease both;
   }
-  body.theme-ynu .plaque .body { padding: 30px 28px 26px; position: relative; z-index: 1; }
-  body.theme-ynu .plaque .mark { color: #F6F1DE; }
-  body.theme-ynu .plaque .mark i { color: var(--gold); }
-  body.theme-ynu .plaque .tagline { color: rgba(240, 236, 220, .72); }
-  body.theme-ynu .plaque hr { border-top: 1px solid rgba(255, 255, 255, .18); }
+  body.theme-ynu .plaque::before {
+    content: ""; position: absolute; inset: 7px; pointer-events: none;
+    border: 1px solid rgba(177, 154, 101, .38);
+  }
+  @keyframes wh-card-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+  body.theme-ynu .plaque .body { padding: 38px 34px 30px; position: relative; z-index: 1; }
+  body.theme-ynu .plaque .kicker {
+    margin: 0 0 14px; font-family: var(--kai, "KaiTi", serif); font-size: 10px;
+    letter-spacing: .5em; color: rgba(240, 236, 220, .62);
+  }
+  body.theme-ynu .plaque .mark {
+    color: #F6F1DE; font-family: var(--serif); font-size: 40px; font-weight: 700;
+    letter-spacing: .22em; line-height: 1.1;
+  }
+  body.theme-ynu .plaque .mark i { font-style: normal; color: var(--gold); }
+  body.theme-ynu .plaque .tagline {
+    color: rgba(240, 236, 220, .72); font-family: var(--kai, "KaiTi", serif);
+    font-size: 12px; letter-spacing: .18em; margin-top: 12px;
+  }
+  body.theme-ynu .plaque hr { border-top: 1px solid rgba(177, 154, 101, .42); margin: 22px 0; }
 
   /* 输入框：浮动标签（input 在前、span 在后，`:focus`/`:valid` 提起）+ 内联 SVG 前导图标 */
   body.theme-ynu .plaque .inputBx { position: relative; margin-bottom: 18px; }
   body.theme-ynu .plaque .inputBx input {
-    width: 100%; margin-top: 0; padding: 10px 42px 10px 40px;
-    background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .28);
-    border-radius: 12px; color: #fff; font-size: 14.5px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, .12);
+    width: 100%; margin-top: 0; padding: 11px 42px 11px 40px;
+    background: rgba(255, 255, 255, .10); border: 1px solid rgba(246, 241, 222, .26);
+    border-radius: 0; color: #fff; font-size: 14.5px;
+    box-shadow: none;
     transition: border-color .2s, background .2s;
   }
   body.theme-ynu .plaque .inputBx input:focus {
-    border-color: rgba(255, 255, 255, .65); background: rgba(255, 255, 255, .2);
+    border-color: rgba(177, 154, 101, .85); background: rgba(255, 255, 255, .16);
   }
   body.theme-ynu .plaque .inputBx input:focus-visible {
     outline: 2px solid rgba(255, 255, 255, .7); outline-offset: 1px;
@@ -124,13 +140,13 @@
 
   /* 提交（原稿 input[type=submit]：白底深字，hover 玻璃化）/ 游客次按钮 */
   body.theme-ynu .plaque .btn.primary {
-    background: #fff; color: #123619; border: 0; border-radius: 14px;
-    padding: 12px 16px; font-size: 15px; letter-spacing: .28em; text-indent: .28em;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, .28);
-    transition: background .4s, color .4s, box-shadow .3s;
+    background: #F6F1DE; color: #123619; border: 0; border-radius: 0;
+    padding: 15px 16px; font-size: 15px; letter-spacing: .5em; text-indent: .5em;
+    box-shadow: none;
+    transition: background .3s, color .3s, letter-spacing .3s;
   }
   body.theme-ynu .plaque .btn.primary:hover {
-    background: #EFE9D6; color: #123619;
+    background: var(--gold); color: #0F2E21; letter-spacing: .58em;
   }
   body.theme-ynu .plaque .btn.line {
     background: transparent; color: rgba(255, 255, 255, .92);
@@ -185,6 +201,7 @@
       <div class="glass-wrap">
         <div class="plaque">
           <div class="body">
+            <p class="kicker">雲 南 大 學 圖 書 館 · 學 科 情 報 參 考</p>
             <div class="mark">文<i>衡</i></div>
             <p class="tagline">首届高校图书馆「AI+管理服务」大赛 · 演示环境</p>
             <hr>
