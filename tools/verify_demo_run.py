@@ -13,8 +13,10 @@
   3. 终态被 `agent.states.is_terminal` 认出（页面才会停轮询、放出重跑按钮）；
   4. 任务页 badge 的类名与文案与 `agent.states` 逐字一致。
 
-⚠️ 会真跑一遍流水线（约 3 分钟；2026-10-16 起未进 1% 学科全画后实测 190 秒）并覆盖 `out/<期次>/` 下的产物——
+⚠️ 会真跑一遍流水线（约 3 分钟；2026-10-16 起未进 1% 学科全画后实测 187–190 秒）并覆盖 `out/<期次>/` 下的产物——
    这正是演示站「一键生成」按钮的行为，不要在需要保留当期产物时跑。
+   等待窗口默认 480s（`WENHENG_VERIFY_WAIT` 可改）：2026-10-19 修——原窗口 180s 小于实际 187s，
+   任务明明 completed 也被判假红（实测任务号 20261019-101153-20de，exit 0 / 187.1s）。
 """
 import http.cookiejar
 import json
@@ -93,10 +95,12 @@ job_id = json.loads(body)["job_id"]
 print(f"  任务号 {job_id}")
 
 print("=== 2. 轮询到终态 ===")
+#: 等待窗口：全画后实测 ~190s（2026-10-16 起），窗口必须大于它，否则任务已完成也判假红
+WAIT_S = int(os.environ.get("WENHENG_VERIFY_WAIT") or 480)
 statuses = []
 final = None
 t0 = time.time()
-while time.time() - t0 < 180:
+while time.time() - t0 < WAIT_S:
     time.sleep(1.0)
     c, b = get(f"/api/jobs/{job_id}")
     if c != 200:
@@ -111,6 +115,8 @@ while time.time() - t0 < 180:
         break
 
 print(f"  状态轨迹：{statuses}")
+if final and not states.is_terminal(final.get("status")):
+    print(f"  ⚠ 等满 {WAIT_S}s 仍未到终态——看 out/_jobs/{job_id}/console.log 是还在跑还是卡住")
 check("观察到非终态（说明先 running 再收尾）",
       any(not states.is_terminal(s) for s in statuses[:-1]) or statuses[0] != statuses[-1],
       f"{statuses}")

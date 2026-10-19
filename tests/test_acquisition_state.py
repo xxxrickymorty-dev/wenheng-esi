@@ -2,7 +2,9 @@
 """取数状态（src/acquisition_state.py）：逐文件核验 + 状态组装。
 
 合成一套最小两路下载包跑全量分组；另用真实 202609 包做一次带护栏的回归。
+2026-10-19（ADR-0010）补：状态文件并发读锁下的写/读重试、pid 判活。
 """
+import os
 import pathlib
 import sys
 
@@ -159,3 +161,69 @@ def test_scan_real_202609():
     state = A.scan(period)
     assert state["totals"]["verified"] >= 60, state["totals"]
     assert state["totals"]["failed"] == 0
+
+
+# ------------------------------------------------------------------ 并发读锁与活性（ADR-0010）
+def test_write_state_撞并发读锁会重试成功(tmp_path, monkeypatch):
+    """Windows 上 os.replace 撞并发读句柄会 PermissionError——重试后要成功。
+
+    2026-10-17 取 202609 就是死在这一步（整个取数进程暴死）；实测一边读一边写
+    200 次 139 次失败。
+    """
+    monkeypatch.setattr(A, "STATE_DIR", tmp_path / "out" / "_acquisition")
+    monkeypatch.setattr(A.time, "sleep", lambda _s: None)
+    real_replace = pathlib.Path.replace
+    calls = {"n": 0}
+
+    def flaky(self, target):
+        calls["n"] += 1
+        if calls["n"] <= 2:
+            raise PermissionError(13, "拒绝访问。")
+        return real_replace(self, target)
+
+    monkeypatch.setattr(pathlib.Path, "replace", flaky)
+    A.write_state("202609", {"x": 1})
+    assert calls["n"] == 3, "前两次失败后第三次应成功"
+    saved = A.load_state("202609")
+    assert saved is not None and saved["x"] == 1
+
+
+def test_write_state_持续被占则如实抛出(tmp_path, monkeypatch):
+    """重试耗尽仍被占：如实抛 PermissionError（调用方兜底落 failed），不静默丢状态。"""
+    monkeypatch.setattr(A, "STATE_DIR", tmp_path / "out" / "_acquisition")
+    monkeypatch.setattr(A.time, "sleep", lambda _s: None)
+
+    def always_blocked(self, target):
+        raise PermissionError(13, "拒绝访问。")
+
+    monkeypatch.setattr(pathlib.Path, "replace", always_blocked)
+    with pytest.raises(PermissionError):
+        A.write_state("202609", {"x": 1})
+
+
+def test_load_state_替换空窗里的坏读会重试(tmp_path, monkeypatch):
+    """写方原子替换的空窗：第一次读可能半截/读不动——load_state 重试 ≤3 次。"""
+    monkeypatch.setattr(A, "STATE_DIR", tmp_path / "out" / "_acquisition")
+    A.write_state("202609", {"x": 1})
+    real_read = pathlib.Path.read_text
+    calls = {"n": 0}
+
+    def flaky(self, *a, **kw):
+        if self.name == "202609.json" and calls["n"] == 0:
+            calls["n"] += 1
+            raise OSError("sharing violation")
+        return real_read(self, *a, **kw)
+
+    monkeypatch.setattr(A.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(pathlib.Path, "read_text", flaky)
+    got = A.load_state("202609")
+    assert got is not None and got["x"] == 1 and calls["n"] == 1
+
+
+def test_pid_alive_本进程真_不存在与坏值假():
+    assert A.pid_alive(os.getpid()) is True
+    assert A.pid_alive(999999999) is False          # 不存在的 pid
+    assert A.pid_alive(0) is False
+    assert A.pid_alive(-1) is False
+    assert A.pid_alive(None) is False
+    assert A.pid_alive("不是数字") is False

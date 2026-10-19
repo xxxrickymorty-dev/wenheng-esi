@@ -973,16 +973,33 @@ def _acq_acquire_py():
 
 
 def _acq_op_running(period: str):
-    """正在跑的取数任务；超过 1 小时没动静视作已死（放行新任务）。"""
+    """正在跑的取数任务；**判活＝进程在不在**（`op.pid`），无 pid 的旧状态回退 15 分钟时间口径。
+
+    ADR-0010（2026-10-19）：此前只看「状态文件 1 小时内有改动」——进程暴死后要干等
+    1 小时才放行（2026-10-17 实测）。现在进程已不存在时，**在这里（写动作路径；GET 不改
+    状态）**把 `op` 落 `failed` 并放行新任务。
+    """
     st = acquisition.load(period) or {}
     op = st.get("op") or {}
     if op.get("state") != "running":
+        return None
+    pid = op.get("pid")
+    if isinstance(pid, int) and not isinstance(pid, bool) and pid > 0:
+        if acquisition.pid_alive(pid):
+            return op
+        st["op"] = {**op, "state": "failed",
+                    "note": "任务进程已退出（上次运行中断）",
+                    "at": time.strftime("%Y-%m-%d %H:%M:%S")}
+        try:
+            acquisition.write_state(period, st)
+        except OSError:
+            pass
         return None
     try:
         age = time.time() - acquisition.state_path(period).stat().st_mtime
     except OSError:
         age = 0
-    return None if age > 3600 else op
+    return None if age > acquisition.OP_STALE_SECONDS else op
 
 
 def _acq_spawn(period: str, action: str, extra: list | None = None):

@@ -17,6 +17,7 @@ import pathlib
 import re
 import subprocess
 import sys
+import time
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 #: 状态目录；环境变量可覆盖（集成测试/临时演练不碰真状态）
@@ -273,14 +274,38 @@ def copy_path(period: str) -> pathlib.Path:
 
 
 
+#: 状态文件写/读重试参数（Windows 并发读锁；测试可调小）
+WRITE_RETRIES = 5
+WRITE_RETRY_SLEEP = 0.1
+READ_RETRIES = 3
+READ_RETRY_SLEEP = 0.05
+
+#: 「任务还在跑」的时间兜底（秒）——**只用于没有 pid 的旧状态**；有 pid 的按进程判活。
+#: 原口径是 1 小时（进程暴死后要等满 1 小时才放行新任务，2026-10-17 实测），收紧为 15 分钟。
+OP_STALE_SECONDS = 15 * 60
+
+
 def load_state(period: str) -> dict | None:
-    """读一期取数状态；没有/读不动 → None（界面显示「还没开始」，不编数据）。"""
+    """读一期取数状态；没有/读不动 → None（界面显示「还没开始」，不编数据）。
+
+    带读重试（≤3 次×50ms）：写方正在做原子替换的空窗里会 FileNotFound/读到半截——
+    那是瞬时态不是损坏（2026-10-19，ADR-0010）。**真的没有**（首次 FileNotFoundError）
+    直接返回 None，不重试。
+    """
     if not PERIOD_RE.match(period or ""):
         return None
-    try:
-        data = json.loads((STATE_DIR / f"{period}.json").read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
+    path = STATE_DIR / f"{period}.json"
+    data = None
+    for attempt in range(READ_RETRIES):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            break
+        except FileNotFoundError:
+            return None
+        except (OSError, json.JSONDecodeError):
+            if attempt == READ_RETRIES - 1:
+                return None
+            time.sleep(READ_RETRY_SLEEP)
     if not isinstance(data, dict):
         return None
     data["period"] = period
@@ -288,15 +313,65 @@ def load_state(period: str) -> dict | None:
 
 
 def write_state(period: str, state: dict) -> pathlib.Path:
-    """原子写（tmp → replace）；补 period / updated_at。"""
+    """原子写（tmp → replace）；补 period / updated_at。
+
+    Windows 上 `os.replace` 撞上**并发读句柄**会 `PermissionError`（WinError 5/32）——
+    取数台前端 4 秒轮询就是常态读方，修掉（2026-10-19，ADR-0010）以前整个取数进程会暴死
+    （2026-10-17 实测，`out/_acquisition/202609-fetch.log` 末尾）。所以替换
+    **重试 ≤5 次×100ms**，仍失败才抛。
+    """
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     state = dict(state)
     state["period"] = period
     state["updated_at"] = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
     tmp = STATE_DIR / f".{period}.tmp"
     tmp.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
-    tmp.replace(STATE_DIR / f"{period}.json")
-    return STATE_DIR / f"{period}.json"
+    target = STATE_DIR / f"{period}.json"
+    for attempt in range(WRITE_RETRIES):
+        try:
+            tmp.replace(target)
+            return target
+        except PermissionError:
+            if attempt == WRITE_RETRIES - 1:
+                raise
+            time.sleep(WRITE_RETRY_SLEEP)
+    return target                                                    # pragma: no cover
+
+
+def pid_alive(pid) -> bool:
+    """这个进程号还在不在（取数任务活性判据；server 与 tools 共用这一份）。
+
+    Windows 用 `OpenProcess` + `GetExitCodeProcess`（`STILL_ACTIVE=259`）；
+    其余平台用 `os.kill(pid, 0)` 语义。拿不到句柄/权限不足一律按「不在」处理——
+    调用方还有 15 分钟时间兜底（`OP_STALE_SECONDS`）。pid 复用理论上会误判「活着」，
+    概率极低、知情接受（ADR-0010）。
+    """
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return False
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        import ctypes                                                # noqa: PLC0415
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.OpenProcess(0x1000, False, pid)            # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            return False
+        try:
+            code = ctypes.c_ulong()
+            if kernel32.GetExitCodeProcess(handle, ctypes.byref(code)):
+                return code.value == 259                             # STILL_ACTIVE
+            return False
+        finally:
+            kernel32.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True                                                  # 存在但没权限查：算活着
 
 
 def periods() -> list[str]:

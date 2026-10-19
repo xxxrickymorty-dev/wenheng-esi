@@ -24,3 +24,6 @@ CDP_PORT = _state.CDP_PORT
 CDP_PROFILE_DIR = _state.CDP_PROFILE_DIR
 cdp_listener_cmdline = _state.cdp_listener_cmdline
 cdp_browser_ours = _state.cdp_browser_ours
+#: 取数任务活性（ADR-0010）：判活＝进程在不在；时间兜底只留给无 pid 的旧状态
+pid_alive = _state.pid_alive
+OP_STALE_SECONDS = _state.OP_STALE_SECONDS

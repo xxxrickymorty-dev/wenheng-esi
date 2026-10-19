@@ -118,6 +118,9 @@
   （`out/_forecast_choices/<期次>.json`）→ legacy（`out/<期次>/forecast_choice.json`）；
   建任务时冻结进 job 快照，运行时写 `out/<期次>/_forecast_choice_applied.json`。
   server / jobs / run_pipeline / report_forecast 都只是它的 adapter，别各自再实现读序。
+- **取数 `op` 的活性判据＝pid 判活**（`src/acquisition_state.py::pid_alive`，server 与 tools 同一份：
+  进程死 → 写动作处自动落 `failed` 并放行），时间口径（15 分钟）只留给无 pid 的旧状态；
+  状态文件写/读带重试（并发读不再 WinError 5 暴死）——见 `docs/adr/0010`。
 
 ## 界面用语
 
@@ -128,8 +131,8 @@
 ## 验收三件套（改状态相关代码后按序跑）
 
 ```bash
-uv run python -m pytest -m ""          # 全量 1323 例（默认 1318 例，5 个 slow 被 marker 排除）
-uv run python -m uvicorn server.app:app --port 8080   # 起服务：一律 uv run；⚠ 控制台脚本直呼（uv run pytest/uvicorn）会撞中文路径 trampoline，走 python -m；起后跑 server/e2e_check.py（只读 209 断言）
+uv run python -m pytest -m ""          # 全量 1352 例（默认 1347 例，5 个 slow 被 marker 排除）
+uv run python -m uvicorn server.app:app --port 8080   # 起服务：一律 uv run；⚠ 控制台脚本直呼（uv run pytest/uvicorn）会撞中文路径 trampoline，走 python -m；起后跑 server/e2e_check.py（只读 210 断言）
 uv run python tools/verify_demo_run.py <期次>   # 写路径验收
 ```
 

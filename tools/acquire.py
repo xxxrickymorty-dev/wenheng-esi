@@ -24,6 +24,7 @@ import pathlib
 import shutil
 import subprocess
 import sys
+import traceback
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 PY = REPO / ".venv" / "Scripts" / "python.exe"
@@ -91,8 +92,9 @@ def _now() -> str:
 
 
 def _set_op(period: str, kind: str, state: str, note: str = "") -> dict:
+    """写任务进度 `op`。**带 pid**（写方进程号）——服务端据此判活（ADR-0010）。"""
     st = A.load_state(period) or {}
-    st["op"] = {"kind": kind, "state": state, "note": note, "at": _now()}
+    st["op"] = {"kind": kind, "state": state, "note": note, "at": _now(), "pid": os.getpid()}
     A.write_state(period, st)
     return st
 
@@ -391,10 +393,37 @@ def cmd_fetch(args) -> int:
     return cmd_copy(argparse.Namespace(period=period, out=None, snapshot=snapshot, esi_root=None))
 
 
+def _guarded(args) -> int:
+    """顶层兜底：任何未捕获异常都先把 `op` 落 `failed`（带一行原因）再退出（ADR-0010）。
+
+    背景：2026-10-17 取 202609 时进程暴死（状态文件 WinError 5），`op.state=running`
+    挂了整整两天——靠服务端「1 小时自愈」才放行。现在进程自己落 `failed`，界面立刻
+    能看到失败与原因，不用等时间口径。
+    """
+    try:
+        return args.fn(args)
+    except SystemExit:
+        raise
+    except KeyboardInterrupt:
+        try:
+            _set_op(args.period, args.cmd, "failed", "已中断（Ctrl+C）")
+        except Exception:                                            # noqa: BLE001
+            pass
+        print("\n[中断] 已停止，状态已落 failed。", flush=True)
+        return 1
+    except BaseException as e:                                       # noqa: BLE001 —— 任何死法都要留痕
+        try:
+            _set_op(args.period, args.cmd, "failed",
+                    f"意外中断：{type(e).__name__}: {' '.join(str(e).split())[:160]}")
+        except Exception:                                            # noqa: BLE001 —— 兜底里再炸就只剩日志
+            pass
+        print("\n[失败] " + traceback.format_exc(), flush=True)
+        return 1
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="取数模块编排器（scan/copy/merge/preflight/fetch）")
     sub = ap.add_subparsers(dest="cmd", required=True)
-
     p1 = sub.add_parser("scan", help="扫下载包、逐文件核验、写状态")
     p1.add_argument("period")
     p1.add_argument("--snapshot", default=None)
@@ -428,7 +457,7 @@ def main() -> int:
     p5.set_defaults(fn=cmd_fetch)
 
     args = ap.parse_args()
-    return args.fn(args)
+    return _guarded(args)
 
 
 if __name__ == "__main__":

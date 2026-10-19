@@ -4,6 +4,8 @@
 - 探针/取数解释器必须**真装了 playwright**：`shutil.which("python")` 在 `uv run` 的 PATH 里
   先命中 `.venv` 的 python（没 playwright），探针一 import 就炸 → preflight 永远 browser:"bad"。
 - 9222 认主：**任意占端口的进程不算**「下载数据专用浏览器」——被无头 Edge 之类骗过就永远不开登录窗口。
+
+2026-10-19（ADR-0010）补：op 记 pid、判活（`_acq_op_running`）、顶层崩溃兜底（`_guarded`）。
 """
 from __future__ import annotations
 
@@ -12,6 +14,7 @@ import json
 import os
 import pathlib
 import sys
+import time
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 for p in (str(REPO), str(REPO / "src"), str(REPO / "tools")):
@@ -135,3 +138,61 @@ def test_preflight_自家浏览器_已连接照报(tmp_path, monkeypatch):
 def test_preflight_本来就没连上_不认主也不改(tmp_path, monkeypatch):
     pf = _run_preflight(tmp_path, monkeypatch, browser="bad", ours=False)
     assert pf["browser"] == "bad"
+
+
+# ------------------------------------------------------------------ op 活性与崩溃兜底（ADR-0010）
+def test_set_op_带pid(tmp_path, monkeypatch):
+    """`op` 记写方进程号——服务端据此判活（原来是「1 小时没动静」的时间口径）。"""
+    monkeypatch.setattr(acq.A, "STATE_DIR", tmp_path / "_acquisition")
+    acq._set_op("202611", "fetch", "running", "正在下载")
+    saved = json.loads((tmp_path / "_acquisition" / "202611.json").read_text(encoding="utf-8"))
+    assert saved["op"]["pid"] == os.getpid()
+
+
+def test_取数流程崩溃_顶层兜底落failed(tmp_path, monkeypatch):
+    """2026-10-17 暴死留下的 op=running 僵尸：现在进程自己落 failed（带一行原因）。"""
+    monkeypatch.setattr(acq.A, "STATE_DIR", tmp_path / "_acquisition")
+
+    def boom(_args):
+        raise RuntimeError("模拟暴死")
+
+    rc = acq._guarded(argparse.Namespace(cmd="fetch", period="202611", fn=boom))
+    assert rc == 1
+    saved = json.loads((tmp_path / "_acquisition" / "202611.json").read_text(encoding="utf-8"))
+    assert saved["op"]["state"] == "failed"
+    assert "RuntimeError" in saved["op"]["note"] and "模拟暴死" in saved["op"]["note"]
+    assert saved["op"]["pid"] == os.getpid()
+
+
+def _op_state(**op) -> dict:
+    return {"op": {"kind": "fetch", "state": "running", "at": "2026-10-17 13:02:40", **op}}
+
+
+def test_op判活_进程已死_自动落failed并放行(tmp_path, monkeypatch):
+    monkeypatch.setattr(app_module.acquisition, "load", lambda _p: _op_state(pid=424242))
+    monkeypatch.setattr(app_module.acquisition, "pid_alive", lambda _pid: False)
+    saved: dict = {}
+    monkeypatch.setattr(app_module.acquisition, "write_state",
+                        lambda p, s: saved.update(period=p, state=s))
+    monkeypatch.setattr(app_module.acquisition, "state_path", lambda _p: tmp_path / "x.json")
+    assert app_module._acq_op_running("202609") is None, "进程死了要放行新任务"
+    assert saved["state"]["op"]["state"] == "failed"
+    assert "进程已退出" in saved["state"]["op"]["note"]
+
+
+def test_op判活_进程活着_仍然拦(tmp_path, monkeypatch):
+    monkeypatch.setattr(app_module.acquisition, "load", lambda _p: _op_state(pid=os.getpid()))
+    monkeypatch.setattr(app_module.acquisition, "pid_alive", lambda _pid: True)
+    assert app_module._acq_op_running("202609") is not None
+
+
+def test_op无pid旧状态_15分钟兜底(tmp_path, monkeypatch):
+    """没有 pid 的历史状态回退时间口径：阈值 15 分钟（原 1 小时）。"""
+    state_file = tmp_path / "202609.json"
+    state_file.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(app_module.acquisition, "load", lambda _p: _op_state())
+    monkeypatch.setattr(app_module.acquisition, "state_path", lambda _p: state_file)
+    assert app_module._acq_op_running("202609") is not None, "刚写过 → 还在跑"
+    old = time.time() - app_module.acquisition.OP_STALE_SECONDS - 5
+    os.utime(state_file, (old, old))
+    assert app_module._acq_op_running("202609") is None, "超 15 分钟 → 放行"

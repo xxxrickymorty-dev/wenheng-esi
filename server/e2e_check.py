@@ -185,13 +185,16 @@ st, gme, _ = call("GET", "/api/me", opener=gop)
 check("GET /api/me（操作员）→ 200", st == 200, f"got {st}")
 check("操作员角色是 operator", '"role":"operator"' in gme or '"role": "operator"' in gme,
       f"body={gme[:100]}")
-for _path in ("/api/periods/202607/redslots", "/api/periods/202607/acquisition",
+for _path in ("/api/periods/202607/redslots",
               "/api/periods/202607/trace", "/api/periods/202607/archive",
               "/api/ledger/sheets"):
     st, _, _ = call("GET", _path, opener=gop)
     check(f"操作员访问隐藏屏端点被挡（403）：{_path}", st == 403, f"got {st}")
-st, _, _ = call("POST", "/api/periods/202607/acquisition/preflight", opener=gop)
-check("操作员访问取数写动作被挡（403）", st == 403, f"got {st}")
+# 2026-10-17 政策：取数八连对操作员开放（契约 §7.1 修订）——写探针**不得真跑**取数写动作
+# （preflight 会拉真探针、真写状态；2026-10-19 前的版本在这里真跑过一次、脏了 202607 状态）。
+# 用非法期次探写口：过了角色门才轮到期次校验 → 404（不是 403），且零副作用。
+st, _, _ = call("POST", "/api/periods/abc/acquisition/preflight", opener=gop)
+check("操作员可取数写口（过了角色门；非法期次→404 不是 403）", st == 404, f"got {st}")
 st, _, _ = call("POST", "/api/periods/199901/sign", {"known": "true", "note": "e2e-操作员权限探针"}, opener=gop)
 check("操作员可走签单口（审批已开放；199901→404，不是 403）", st == 404, f"got {st}")
 st, _, _ = call("POST", "/api/jobs", {"period": ""}, opener=gop)
@@ -200,7 +203,9 @@ st, _, _ = call_json("POST", "/api/periods/199901/flexible/stream",
                      {"intent": "single_trend"}, opener=gop)
 check("操作员可走灵活出稿口（出报告已开放；199901→404，不是 403）", st == 404, f"got {st}")
 for _path in ("/api/periods/202607/facts", "/api/periods/202607/collation?limit=1",
-              "/api/periods/202607/charts", "/api/periods/202607/artifacts"):
+              "/api/periods/202607/charts", "/api/periods/202607/artifacts",
+              # 2026-10-17 开放：取数核验（只读口）与选章节
+              "/api/periods/202607/acquisition", "/api/periods/202607/outline"):
     st, _, _ = call("GET", _path, opener=gop)
     check(f"操作员可读只读端点（200）：{_path}", st == 200, f"got {st}")
 st, garts, _ = call("GET", "/api/periods/202607/artifacts", opener=gop)
