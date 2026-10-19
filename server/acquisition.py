@@ -27,3 +27,8 @@ cdp_browser_ours = _state.cdp_browser_ours
 #: 取数任务活性（ADR-0010）：判活＝进程在不在；时间兜底只留给无 pid 的旧状态
 pid_alive = _state.pid_alive
 OP_STALE_SECONDS = _state.OP_STALE_SECONDS
+
+#: 两路原始数据的根目录与「期次→InCites 快照」解析（打包下载等处要用；唯一实现在 src）
+ESI_ROOT_DEFAULT = _state.ESI_ROOT_DEFAULT
+INCITES_ROOT_DEFAULT = _state.INCITES_ROOT_DEFAULT
+resolve_snapshot = _state.resolve_snapshot
