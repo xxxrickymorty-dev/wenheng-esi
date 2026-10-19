@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="zh-CN" data-palette="green">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文衡 · 取数核验：三段式重设计（静态稿 v1 · 待审）</title>
+<style>
+  /* 令牌：逐字取自 web/src/index.css（绿场） */
+  :root, html[data-palette="green"]{
+    --field:#26483B; --field-2:#163228; --field-3:#2F7A58; --field-4:#7FB79B; --field-5:#DFEDE6;
+    --tool:#17456E; --tool-2:#0F2E4C; --tool-3:#2F6B8E; --tool-4:#8FB6CE; --tool-5:#DCE8F0;
+    --bg:#F2EFE6; --card:#F7F4EC; --panel:#E4DFD0;
+    --ink:#15222B; --ink-2:#43525C; --ink-3:#556169;
+    --line:#D6D0C0; --line-2:#E4DFD0;
+    --zhu:#17456E; --zhu-soft:#DCE8F0;
+    --ok:#276B4C; --ok-soft:#DFEDE6; --ok-line:#9CC4AE;
+    --gold:#2F6B8E; --gold-soft:#DCE8F0;
+    --warn:#B23A2B; --warn-soft:#F4DDD7;
+    --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0;border:0 solid}
+  body{background:var(--bg);color:var(--ink);font:15px/1.75 var(--sans)}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;background:transparent}
+  svg{display:block}
+
+  /* 顶栏（复刻，精简） */
+  .app-top{display:flex;align-items:center;gap:16px;min-height:56px;padding:0 clamp(14px,2.5vw,28px);
+    background:var(--field-2);color:var(--field-5)}
+  .app-brand{display:flex;align-items:baseline;gap:10px;white-space:nowrap}
+  .app-brand b{font-family:var(--serif);font-size:20px;letter-spacing:.18em}
+  .app-brand span{font-size:11px;letter-spacing:.16em;color:var(--field-4)}
+  .app-nav{display:flex;align-items:center;gap:16px;margin-left:auto;font-size:13px;white-space:nowrap}
+  .app-nav a{padding:6px 2px;color:var(--field-4);border-bottom:2px solid transparent}
+  .app-nav a[aria-current="page"]{color:var(--field-5);font-weight:600;border-bottom-color:var(--tool-3)}
+  .app-nav-sep{width:1px;height:14px;background:var(--field-3)}
+  .app-side{display:flex;align-items:center;gap:12px;margin-left:18px;white-space:nowrap;font-size:13px}
+  .app-jump{display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border:1px solid var(--field-3);color:var(--field-4)}
+  .skin-switch{display:inline-flex;border:1px solid var(--field-3)}
+  .skin-switch button{padding:4px 10px;font-size:12.5px;color:var(--field-4)}
+  .skin-switch button[aria-pressed="true"]{background:var(--tool-3);color:#fff}
+
+  .wrap{max-width:1080px;margin:0 auto;padding:22px 36px 44px}
+
+  /* 出报告四步条（复刻） */
+  .ia-steps{margin:12px 0 2px}
+  .ia-rail{display:flex;height:2px;background:var(--line-2)}
+  .ia-rail-seg{flex:1 1 0;background:var(--zhu)}
+  .ia-rail-seg.off{transform:scaleX(0)}
+  .ia-steps-list{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 0;padding:0;list-style:none}
+  .ia-card{display:flex}
+  .ia-card a{flex:1 1 auto;display:flex;align-items:center;justify-content:center;min-height:50px;
+    background:var(--card);border:1px solid var(--line);font-family:var(--serif);font-size:15px;color:var(--ink-3)}
+  .ia-card.now a{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:650}
+
+  /* 页头：期次 + 采集进度 + 开新一期 */
+  .head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:18px 0 4px}
+  .head h1{font-size:23px}
+  .pill{padding:2px 9px;font-size:12.5px;display:inline-block}
+  .pill.unsigned{background:var(--panel);color:var(--ink-3);border:1px solid var(--line)}
+  .pill.signed{background:var(--zhu-soft);color:var(--zhu)}
+  .pill.stale{background:var(--gold-soft);color:var(--gold)}
+  .hint{color:var(--ink-3);font-size:13.5px}
+  .ml-auto{margin-left:auto}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border:1px solid var(--line);
+    font-size:14px;font-weight:600;letter-spacing:.03em;color:inherit}
+  .btn.small{padding:5px 11px;font-size:13px;color:var(--ink-2)}
+  .btn.small:hover{background:var(--panel)}
+  .btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff}
+  .btn.stop{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+
+  /* ============ 三段式流程：左侧纵轨 + 三段卡片 ============ */
+  .flow{margin-top:20px;position:relative}
+  .stg{position:relative;display:grid;grid-template-columns:56px 1fr;gap:0}
+  .stg .node{position:relative;display:flex;justify-content:center}
+  .stg .node i{width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--line);background:var(--card);font-family:var(--serif);font-style:normal;
+    font-size:17px;color:var(--ink-3);z-index:1}
+  .stg .node::after{content:"";position:absolute;top:34px;bottom:0;width:2px;background:var(--line-2)}
+  .stg:last-child .node::after{display:none}
+  .stg.done .node i{background:var(--ok-soft);border-color:var(--ok-line);color:var(--ok)}
+  .stg.done .node::after{background:var(--ok-line)}
+  .stg.now .node i{background:var(--zhu);border-color:var(--zhu);color:#fff;font-weight:650}
+  .stg.locked .node i{border-style:dashed;color:var(--ink-3)}
+  .stg .body{min-width:0;padding:0 0 26px 12px}
+
+  .stg-card{border:1px solid var(--line);background:var(--card)}
+  .stg.now .stg-card{border-left:3px solid var(--zhu);background:#FAF8F1}
+  .stg.locked .stg-card{border-style:dashed;background:transparent;color:var(--ink-3)}
+  .stg-top{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
+  .stg.done .stg-top{border-bottom:none}
+  .stg-title{font-family:var(--serif);font-size:16.5px;font-weight:650}
+  .stg.locked .stg-title{font-weight:600}
+  .stg-stat{margin-left:auto;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+  .stg-stat.ok{color:var(--ok)}
+  .stg-stat.wait{color:var(--ink-3)}
+  .stg-stat.run{color:var(--gold)}
+  .stg-stat.bad{color:var(--warn)}
+  .stg-body{padding:14px 16px 15px}
+  .stg.done .stg-body{display:none}
+  .stg.done.open .stg-body{display:block}
+  .stg.done .stg-top{padding:10px 16px}
+  .stg.done .stg-inline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 16px 10px}
+  .stg .stg-inline{display:none}
+
+  /* 阶段内的大字（只给「现在」这一段用） */
+  .stg-big{font-family:var(--serif);font-size:clamp(22px,2.4vw,28px);font-weight:600;color:var(--zhu);line-height:1.35}
+  .stg-sub{color:var(--ink-2);font-size:14.5px;margin-top:2px}
+  .stg-hint{color:var(--ink-3);font-size:13.5px;margin-top:6px}
+  .stg-cta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
+
+  /* 检查灯 chips（第一段） */
+  .chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border:1px solid var(--line);font-size:13.5px;color:var(--ink-3)}
+  .chip.ok{color:var(--ok);border-color:var(--ok-line);background:var(--ok-soft)}
+  .chip.bad{color:var(--warn);border-color:var(--warn);background:var(--warn-soft)}
+  .chip.wait{color:var(--ink-3)}
+
+  /* 下载进度 */
+  .prog{display:flex;align-items:center;gap:12px;margin-top:12px}
+  .track{flex:1;height:8px;background:var(--line-2);overflow:hidden}
+  .track i{display:block;height:100%;background:var(--ok)}
+  .track.live i{background:var(--gold)}
+  .num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:13.5px;color:var(--ink-2)}
+
+  /* 折叠明细 */
+  details.fold{border:1px solid var(--line-2);background:var(--card);margin-top:14px}
+  details.fold>summary{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;font-size:14px;list-style:none}
+  details.fold>summary::-webkit-details-marker{display:none}
+  details.fold>summary::before{content:"▸";color:var(--zhu)}
+  details.fold[open]>summary::before{content:"▾"}
+  details.fold>summary .sm{color:var(--ink-3);font-size:13px;margin-left:auto}
+  .fold-inner{padding:2px 14px 14px}
+
+  /* 组卡（简版） */
+  .groups{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .g{border:1px solid var(--line-2);padding:10px 12px}
+  .g.ok{border-color:var(--ok-line)}
+  .g.live{border-color:var(--gold)}
+  .g-top{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-3)}
+  .g-name{font-weight:650;font-size:14.5px;margin-top:5px}
+  .g-bar{display:flex;align-items:center;gap:8px;margin-top:8px}
+  .g-bar .track{height:6px}
+
+  .foot-stamp{text-align:right;color:var(--ink-3);font-size:13px;margin-top:10px}
+
+  /* 演示切换（真实页没有） */
+  .tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 2px}
+  .tools .grp{font-size:13.5px;color:var(--ink-3)}
+  .tbtn{font-size:13.5px;padding:5px 13px;border:1px solid var(--line);background:var(--card);color:var(--ink-2)}
+  .tbtn.on{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:650}
+  .demo-note{font-size:13px;color:var(--ink-3);line-height:1.85;margin:2px 0 12px}
+  .demo-note b{color:var(--ink-2)}
+
+  /* 五态切换：每段的三形态（展开/收起/锁定）用 data-st 控制 */
+  .v{display:none}
+  body[data-st="a"] .v-a,body[data-st="b"] .v-b,body[data-st="c"] .v-c,
+  body[data-st="d"] .v-d,body[data-st="e"] .v-e{display:block}
+  /* 修正：行内 span 保持行内；flex 行保持 flex（别被上面的 display:block 压掉） */
+  body[data-st="a"] span.v-a,body[data-st="b"] span.v-b,body[data-st="c"] span.v-c,
+  body[data-st="d"] span.v-d,body[data-st="e"] span.v-e{display:inline}
+  body[data-st="a"] .prog.v-a,body[data-st="b"] .prog.v-b,body[data-st="c"] .prog.v-c{display:flex}
+  body[data-st="a"] .stg[data-stg="1"]{--x:0}
+  /* 阶段展开/收起：用 body 状态直接切 class */
+  body[data-st="a"] .stg1{/* 展开 */}
+  body[data-st="a"] .stg2,body[data-st="a"] .stg3{/* 锁定 */}
+  body[data-st="b"] .stg1{/* 收起 done */}
+  body[data-st="c"] .stg1,body[data-st="d"] .stg1,body[data-st="e"] .stg1{/* 收起 done */}
+  body[data-st="b"] .stg2,body[data-st="c"] .stg2{/* 展开 now */}
+  body[data-st="d"] .stg2,body[data-st="e"] .stg2{/* 收起 done */}
+  body[data-st="b"] .stg3,body[data-st="c"] .stg3{/* 锁定 */}
+  body[data-st="d"] .stg3{/* 展开 now */}
+  body[data-st="e"] .stg3{/* 收起 done */}
+</style>
+</head>
+<body data-st="b">
+
+<div class="wrap">
+
+  <!-- 顶栏（复刻） -->
+  <header class="app-top" style="margin:0 -36px 18px;border-radius:0">
+    <span class="app-brand"><b>文衡</b><span>云南大学图书馆 · 学科信息参考</span></span>
+    <nav class="app-nav">
+      <a href="#" aria-current="page">出报告</a><a href="#">灵活报告</a><a href="#">问文衡</a>
+      <span class="app-nav-sep"></span><a href="#">主台账</a><a href="#">运行档案</a>
+    </nav>
+    <span class="app-side"><span class="app-jump">期次 202603 ▾</span><span class="app-jump">陈列馆 ›</span>
+      <span class="skin-switch"><button>蓝场</button><button aria-pressed="true">绿场</button></span></span>
+  </header>
+
+  <p class="demo-note">
+    <b>静态稿 v1 · 待审（取数核验页重设计）。</b>设计主张：把「开始前检查 → 下载数据 → 并入台账」
+    做成<b>一条链上逐段解锁的三段</b>——左上竖直轨道 ①②③，每段自带状态灯；上一段没通过，下一段<b>锁着并写明等什么</b>；
+    做完的一段<b>缩成一行</b>（结论 + 重入口），页面永远只突出「现在该做的那一步」。下面可切换五种状态看效果。
+  </p>
+
+  <div class="tools">
+    <span class="grp">看哪个状态：</span>
+    <button class="tbtn" data-go="a" type="button">① 还没检查（后两段锁着）</button>
+    <button class="tbtn on" data-go="b" type="button">② 检查过了，可下载</button>
+    <button class="tbtn" data-go="c" type="button">③ 下载中（可停）</button>
+    <button class="tbtn" data-go="d" type="button">④ 下载完了，待并入</button>
+    <button class="tbtn" data-go="e" type="button">⑤ 已并入（全收）</button>
+  </div>
+
+  <!-- 出报告四步条 -->
+  <nav class="ia-steps"><div class="ia-rail"><i class="ia-rail-seg"></i><i class="ia-rail-seg off"></i><i class="ia-rail-seg off"></i><i class="ia-rail-seg off"></i></div>
+    <ol class="ia-steps-list">
+      <li class="ia-card now"><a href="#">取数核验</a></li>
+      <li class="ia-card"><a href="#">预测选模</a></li>
+      <li class="ia-card"><a href="#">生成初稿</a></li>
+      <li class="ia-card"><a href="#">核验定稿</a></li>
+    </ol>
+  </nav>
+
+  <!-- 页头 -->
+  <div class="head">
+    <h1>取数核验</h1>
+    <span class="pill unsigned" style="font-family:var(--mono)">202603</span>
+    <span class="hint">采集 · <span class="v v-a v-b">还没开始</span><span class="v v-c">已取到 41 / 64</span><span class="v v-d v-e">已取到 64 / 64</span> · 最近下载 2026-10-16 07:58:50</span>
+    <button class="btn small ml-auto" type="button">＋ 开新一期</button>
+  </div>
+
+  <!-- ==================== 三段式流程 ==================== -->
+  <div class="flow">
+
+    <!-- ── ① 开始前检查 ─────────────────────────── -->
+    <section class="stg stg1 done" id="stg1">
+      <div class="node"><i>①</i></div>
+      <div class="body"><div class="stg-card">
+        <div class="stg-top">
+          <span class="stg-title">开始前检查</span>
+          <span class="stg-stat ok">✓ 4 项都过了 · 2026-10-16 07:52</span>
+        </div>
+        <div class="stg-inline">
+          <span class="chip ok">浏览器已连接</span><span class="chip ok">ESI 已登录</span>
+          <span class="chip ok">InCites 已登录</span><span class="chip ok">数据期对得上</span>
+          <button class="btn small" type="button">重查</button>
+        </div>
+        <div class="stg-body">
+          <div class="stg-big">先检查，再下载</div>
+          <div class="stg-sub">四件事：下载数据专用浏览器开着、两家网站登录着、这一期的数据更新了没有。</div>
+          <div class="stg-cta">
+            <div class="chips">
+              <span class="chip wait">浏览器 · 没连</span><span class="chip wait">ESI · 没连</span>
+              <span class="chip wait">InCites · 没连</span><span class="chip wait">数据期 · 没读到</span>
+            </div>
+            <button class="btn primary" type="button">检查一下（会自动开浏览器）</button>
+          </div>
+          <div class="stg-hint">没通过会写清哪一条不过；通过后下一段「下载数据」才会亮起来。</div>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- ── ② 下载数据 ─────────────────────────── -->
+    <section class="stg stg2" id="stg2">
+      <div class="node"><i>②</i></div>
+      <div class="body"><div class="stg-card">
+        <div class="stg-top">
+          <span class="stg-title">下载数据</span>
+          <span class="stg-stat run v v-c">下载中 · 41 / 64</span>
+          <span class="stg-stat ok v v-d v-e">✓ 已取到 64 / 64</span>
+          <span class="stg-stat wait v v-a">等 ① 检查通过</span>
+          <span class="stg-stat wait v v-b">还没开始</span>
+        </div>
+
+        <!-- 收起态（b=待下载 / d、e=已完成） -->
+        <div class="stg-inline v v-d v-e">
+          <span class="hint">包里存回电脑：</span>
+          <button class="btn small" type="button">ESI 下载（约 13 MB）</button>
+          <button class="btn small" type="button">InCites 下载（约 170 MB）</button>
+          <button class="btn small v v-e" type="button">重新下载这一期</button>
+        </div>
+
+        <!-- 展开态 -->
+        <div class="stg-body v v-a v-b v-c">
+          <div class="stg-big v v-a">等上一步检查通过</div>
+          <div class="stg-sub v v-a">检查通过后，这里会出现「开始下载」。</div>
+          <div class="stg-big v v-b">检查都过了，可以下载这一期的数据</div>
+          <div class="stg-sub v v-b">9 组、共 64 份；下载中随时可停，停下的补缺不重复下载。</div>
+          <div class="stg-big v v-c">正在按组下载数据……</div>
+          <div class="stg-sub v v-c">可以离开这一页，进度不会丢。</div>
+
+          <div class="prog v v-c">
+            <span class="track live"><i style="width:64%"></i></span>
+            <span class="num">41 / 64</span>
+          </div>
+
+          <div class="stg-cta">
+            <button class="btn primary v v-b" type="button">开始下载（9 组 64 份）</button>
+            <button class="btn stop v v-c" type="button">停止下载</button>
+            <span class="hint v v-c">停止后已下载的文件都保留，之后可继续补缺。</span>
+          </div>
+
+          <details class="fold v v-b v-c">
+            <summary>下载清单（9 组）<span class="sm">41 / 64 份已到</span></summary>
+            <div class="fold-inner">
+              <div class="groups">
+                <div class="g ok"><div class="g-top"><span>ESI · 第 1 组</span><span>已完成</span></div>
+                  <div class="g-name">全球机构总表</div>
+                  <div class="g-bar"><span class="track"><i style="width:100%"></i></span><span class="num">1 / 1</span></div></div>
+                <div class="g live"><div class="g-top"><span>ESI · 第 2 组</span><span>下载到一半</span></div>
+                  <div class="g-name">22 学科机构表</div>
+                  <div class="g-bar"><span class="track live"><i style="width:64%"></i></span><span class="num">14 / 22</span></div></div>
+                <div class="g ok"><div class="g-top"><span>ESI · 第 5 组</span><span>已完成</span></div>
+                  <div class="g-name">三张阈值表</div>
+                  <div class="g-bar"><span class="track"><i style="width:100%"></i></span><span class="num">3 / 3</span></div></div>
+                <div class="g"><div class="g-top"><span>InCites · 第 1 组</span><span>还没开始</span></div>
+                  <div class="g-name">22 学科全球机构排名</div>
+                  <div class="g-bar"><span class="track"><i style="width:0"></i></span><span class="num">0 / 22</span></div></div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- ── ③ 并入台账 ─────────────────────────── -->
+    <section class="stg stg3" id="stg3">
+      <div class="node"><i>③</i></div>
+      <div class="body"><div class="stg-card">
+        <div class="stg-top">
+          <span class="stg-title">并入台账</span>
+          <span class="stg-stat ok v v-e">✓ 已并入（202603 列）· 2026-10-16 08:40</span>
+          <span class="stg-stat wait v v-a v-b v-c">等 ② 下载齐了自动解锁</span>
+          <span class="stg-stat run v v-d">核对表已生成 · 待核对</span>
+        </div>
+
+        <div class="stg-inline v v-e">
+          <span class="hint">数据已写进主台账。</span>
+          <button class="btn small v v-e" type="button">去生成台生成 ›</button>
+        </div>
+
+        <div class="stg-body v v-d">
+          <div class="stg-big">下载齐了。核对一下，就可以并入台账</div>
+          <div class="stg-sub">下面这张「本期新增列」核对表，就是将要写进 202603 列的全部数字。</div>
+          <details class="fold" open>
+            <summary>本期新增列核对表<span class="sm">9 张表</span></summary>
+            <div class="fold-inner"><p class="hint" style="margin:6px 0">（核对表逐格明细……并入前必看：审的＝写的。）</p></div>
+          </details>
+          <div class="stg-cta">
+            <button class="btn primary" type="button">核对无误 · 并入台账</button>
+            <span class="hint">并入是唯一会写主台账的动作：写前自动备份、写后逐项复查。</span>
+          </div>
+        </div>
+
+        <div class="stg-body v v-a v-b v-c">
+          <div class="stg-sub">这一段不用手动开：② 的 64 份都核验通过后，这里会自动生成核对表。</div>
+        </div>
+      </div></div>
+    </section>
+
+  </div>
+
+  <p class="foot-stamp">下载数据状态最后更新：2026-10-16 07:58</p>
+</div>
+
+<script>
+  const btns = [...document.querySelectorAll('.tbtn')]
+  function go(st) {
+    document.body.dataset.st = st
+    btns.forEach(b => b.classList.toggle('on', b.dataset.go === st))
+    // 段的 done/now/locked 类跟着状态走
+    const map = {
+      a: { 1: 'now', 2: 'locked', 3: 'locked' },
+      b: { 1: 'done', 2: 'now', 3: 'locked' },
+      c: { 1: 'done', 2: 'now', 3: 'locked' },
+      d: { 1: 'done', 2: 'done', 3: 'now' },
+      e: { 1: 'done', 2: 'done', 3: 'done' },
+    }[st]
+    for (const n of ['1', '2', '3']) {
+      const el = document.getElementById('stg' + n)
+      el.classList.remove('now', 'done', 'locked')
+      el.classList.add(map[n])
+    }
+  }
+  btns.forEach(b => b.addEventListener('click', () => go(b.dataset.go)))
+  go('b')
+</script>
+</body>
+</html>
