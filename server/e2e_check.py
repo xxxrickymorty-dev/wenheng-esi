@@ -198,6 +198,9 @@ check("操作员可取数写口（过了角色门；非法期次→404 不是 40
 # 停止下载（2026-10-19 晚）：202607 已完成、没有在跑的任务 → 409 且**不写状态**（零副作用）
 st, _, _ = call("POST", "/api/periods/202607/acquisition/stop", opener=gop)
 check("停止下载口：无可停任务→409（不写状态）", st == 409, f"got {st}")
+# 打包下载（2026-10-19 晚）：source 非法 → 400（零副作用；真下包几 MB～几百 MB，留给人工冒烟）
+st, _, _ = call("GET", "/api/periods/202607/acquisition/datapack?source=bogus", opener=gop)
+check("打包下载口：source 非法→400", st == 400, f"got {st}")
 st, _, _ = call("POST", "/api/periods/199901/sign", {"known": "true", "note": "e2e-操作员权限探针"}, opener=gop)
 check("操作员可走签单口（审批已开放；199901→404，不是 403）", st == 404, f"got {st}")
 st, _, _ = call("POST", "/api/jobs", {"period": ""}, opener=gop)

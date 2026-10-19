@@ -1313,38 +1313,49 @@ async def api_acq_stop(request: Request, period: str):
 
 @app.get("/api/periods/{period}/acquisition/datapack")
 @user_route
-async def api_acq_datapack(request: Request, period: str):
-    """把这一期「已下载的原始数据」打成一个 zip 下载（2026-10-19 馆员需求；操作员同样可用）。
+async def api_acq_datapack(request: Request, period: str, source: str = ""):
+    """已下载数据打包下载（2026-10-19 馆员需求；rick 定「拆两个包、两个按钮」）。
 
-    只读打包：`数据与复现/ESI数据/<期次>/` + `数据与复现/incites/<当期快照>/`。
-    包体不小（当期快照 150–300 MB）：落**系统临时目录**、响应结束即删——
-    不写 out/、不碰台账（见 `server/datapack.py` 的头注）。没下过数据的期次 → 404。
+    `source=esi`    → `数据与复现/ESI数据/<期次>/`（十余 MB）
+    `source=incites` → 当期 `incites/<快照>/`（150–300 MB，包里最大头）
+    只读打包：不写 out/、不碰台账；zip 落**系统临时目录**、响应结束即删（见 `server/datapack.py`）。
+    该来源没下载过 → 404；`source` 非法 → 400。
     """
     if not re.fullmatch(r"\d{6}", period or ""):
         return _period_missing()
+    if source not in ("esi", "incites"):
+        return JSONResponse({"error": "要下哪一路数据？这个包分两路：ESI 和 InCites。",
+                             "hint": "地址上带 ?source=esi 或 ?source=incites。"}, status_code=400)
     st = acquisition.load(period) or {}
     snapshot = (st.get("snapshot")
                 or acquisition.resolve_snapshot(period, acquisition.INCITES_ROOT_DEFAULT))
     esi_dir = acquisition.ESI_ROOT_DEFAULT / period
     inc_dir = (acquisition.INCITES_ROOT_DEFAULT / snapshot) if snapshot else None
-    if not esi_dir.is_dir() and not (inc_dir and inc_dir.is_dir()):
-        return JSONResponse({"error": "这一期还没有下载过数据。",
+    if source == "esi":
+        if not esi_dir.is_dir():
+            return JSONResponse({"error": "这一期还没有下载过 ESI 数据。",
+                                 "hint": "先在取数核验里下载好，再来打包。"}, status_code=404)
+    elif not (inc_dir and inc_dir.is_dir()):
+        return JSONResponse({"error": "这一期还没有下载过 InCites 数据。",
                              "hint": "先在取数核验里下载好，再来打包。"}, status_code=404)
     totals = st.get("totals") or {}
     readme = datapack.build_readme(period=period, snapshot=snapshot,
                                    verified=totals.get("verified"),
                                    expected=totals.get("expected"),
-                                   esi_dir=esi_dir, incites_dir=inc_dir)
+                                   esi_dir=esi_dir if source == "esi" else None,
+                                   incites_dir=inc_dir if source == "incites" else None)
     import os
     import tempfile
     stamp = time.strftime("%Y%m%d-%H%M%S")
-    name = f"wenheng-download-data-{period}-{stamp}.zip"   # ASCII 包名（个别浏览器中文名乱码）
-    tmp = pathlib.Path(tempfile.gettempdir()) / f".wenheng-datapack-{period}-{os.getpid()}-{stamp}"
+    name = f"wenheng-{source}-data-{period}-{stamp}.zip"   # ASCII 包名（个别浏览器中文名乱码）
+    tmp = pathlib.Path(tempfile.gettempdir()) / f".wenheng-datapack-{source}-{period}-{os.getpid()}-{stamp}"
     try:
         await run_in_threadpool(datapack.pack, tmp, period=period,
-                                esi_dir=esi_dir, incites_dir=inc_dir, readme=readme)
+                                esi_dir=esi_dir if source == "esi" else None,
+                                incites_dir=inc_dir if source == "incites" else None,
+                                readme=readme)
     except datapack.EmptyPack:
-        return JSONResponse({"error": "这一期还没有下载过数据。",
+        return JSONResponse({"error": "这一路还没有下载过数据。",
                              "hint": "先在取数核验里下载好，再来打包。"}, status_code=404)
     return FileResponse(tmp, filename=name, media_type="application/zip",
                         background=BackgroundTask(tmp.unlink, missing_ok=True))

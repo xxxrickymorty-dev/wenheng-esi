@@ -50,11 +50,19 @@ def _mb(n: int) -> str:
 def build_readme(*, period: str, snapshot: str = "", verified: int | None = None,
                  expected: int | None = None, esi_dir: pathlib.Path | str | None = None,
                  incites_dir: pathlib.Path | str | None = None) -> str:
-    """人话说明（放在包里的 `说明.txt`）。所有数字都来自实扫与状态，不编。"""
+    """人话说明（放在包里的 `说明.txt`）。所有数字都来自实扫与状态，不编。
+
+    只带一路（拆包下载的常态）时标题自动标「ESI 部分 / InCites 部分」。
+    """
     n_esi, b_esi = _dir_stats(esi_dir)
     n_inc, b_inc = _dir_stats(incites_dir)
+    title = "文衡 · 下载数据包"
+    if n_esi and not n_inc:
+        title += "（ESI 部分）"
+    elif n_inc and not n_esi:
+        title += "（InCites 部分）"
     lines = [
-        "文衡 · 下载数据包",
+        title,
         "=" * 18,
         f"期次：{period}",
         f"数据期（InCites 快照）：{snapshot or '未登记'}",

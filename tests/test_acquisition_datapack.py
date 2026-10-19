@@ -76,34 +76,65 @@ def test_pack_一个文件都没有_抛错且不留半成品(tmp_path):
     assert not out.exists()
 
 
-# ------------------------------------------------------------------ 端点
-def test_端点_操作员可下_包名ASCII_下完即删(tmp_path, monkeypatch):
-    esi, inc = _mk_period_dirs(tmp_path)
+# ------------------------------------------------------------------ 端点（拆两个包：?source=esi|incites）
+def _patch_roots(tmp_path, monkeypatch, st=None):
     monkeypatch.setattr(app_module.acquisition, "ESI_ROOT_DEFAULT", tmp_path / "ESI数据")
     monkeypatch.setattr(app_module.acquisition, "INCITES_ROOT_DEFAULT", tmp_path / "incites")
     monkeypatch.setattr(app_module.acquisition, "load",
-                        lambda _p: {"snapshot": "数据覆盖2015-2025.12.31",
-                                    "totals": {"verified": 56, "expected": 64}})
-    r = asyncio.run(app_module.api_acq_datapack(_Req(), "202603"))
+                        lambda _p: st if st is not None else
+                        {"snapshot": "数据覆盖2015-2025.12.31",
+                         "totals": {"verified": 56, "expected": 64}})
+    monkeypatch.setattr(app_module.acquisition, "resolve_snapshot", lambda *a, **k: "")
+
+
+def test_端点_esi包_操作员可下_只含ESI_下完即删(tmp_path, monkeypatch):
+    esi, _inc = _mk_period_dirs(tmp_path)
+    _patch_roots(tmp_path, monkeypatch)
+    r = asyncio.run(app_module.api_acq_datapack(_Req(), "202603", source="esi"))
     assert isinstance(r, FileResponse)
-    assert r.filename.startswith("wenheng-download-data-202603-") and r.filename.endswith(".zip")
+    assert r.filename.startswith("wenheng-esi-data-202603-") and r.filename.endswith(".zip")
     assert r.filename.isascii()
     p = pathlib.Path(r.path)
     assert p.exists() and zipfile.is_zipfile(p)
+    with zipfile.ZipFile(p) as z:
+        names = z.namelist()
+        assert not any(n.startswith("InCites数据/") for n in names), "ESI 包里不该有 InCites"
+        assert "ESI数据/202603/Institutions.xlsx" in names
+        assert "（ESI 部分）" in z.read(datapack.README_NAME).decode("utf-8")
     assert r.background is not None
     asyncio.run(r.background())                      # 响应结束 → 临时件删除
     assert not p.exists()
+    assert esi.is_dir()                              # 源目录只读、原样
 
 
-def test_端点_没下过数据_404(tmp_path, monkeypatch):
-    monkeypatch.setattr(app_module.acquisition, "ESI_ROOT_DEFAULT", tmp_path / "ESI数据")
-    monkeypatch.setattr(app_module.acquisition, "INCITES_ROOT_DEFAULT", tmp_path / "incites")
-    monkeypatch.setattr(app_module.acquisition, "load", lambda _p: {})
-    monkeypatch.setattr(app_module.acquisition, "resolve_snapshot", lambda *a, **k: "")
-    r = asyncio.run(app_module.api_acq_datapack(_Req(), "202603"))
+def test_端点_incites包_只含incites(tmp_path, monkeypatch):
+    _mk_period_dirs(tmp_path)
+    _patch_roots(tmp_path, monkeypatch)
+    r = asyncio.run(app_module.api_acq_datapack(_Req(), "202603", source="incites"))
+    assert isinstance(r, FileResponse)
+    assert r.filename.startswith("wenheng-incites-data-202603-")
+    with zipfile.ZipFile(pathlib.Path(r.path)) as z:
+        names = z.namelist()
+        assert not any(n.startswith("ESI数据/") for n in names), "InCites 包里不该有 ESI"
+        assert "InCites数据/数据覆盖2015-2025.12.31/数学.xlsx" in names
+        assert "（InCites 部分）" in z.read(datapack.README_NAME).decode("utf-8")
+    asyncio.run(r.background())
+
+
+def test_端点_source非法_400(tmp_path, monkeypatch):
+    _patch_roots(tmp_path, monkeypatch)
+    r = asyncio.run(app_module.api_acq_datapack(_Req(), "202603", source="bogus"))
+    assert isinstance(r, JSONResponse) and r.status_code == 400
+
+
+def test_端点_没下过这一路_404(tmp_path, monkeypatch):
+    _patch_roots(tmp_path, monkeypatch, st={})
+    r = asyncio.run(app_module.api_acq_datapack(_Req(), "202603", source="esi"))
     assert isinstance(r, JSONResponse) and r.status_code == 404
+    r2 = asyncio.run(app_module.api_acq_datapack(_Req(), "202603", source="incites"))
+    assert isinstance(r2, JSONResponse) and r2.status_code == 404
 
 
 def test_端点_非法期次_404():
-    r = asyncio.run(app_module.api_acq_datapack(_Req(), "20260"))
+    r = asyncio.run(app_module.api_acq_datapack(_Req(), "20260", source="esi"))
     assert r.status_code == 404
