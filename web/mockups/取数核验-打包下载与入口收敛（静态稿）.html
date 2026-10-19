@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="zh-CN" data-palette="green">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文衡 · 取数核验：打包下载 + 入口收敛（静态稿 v1 · 待审）</title>
+<style>
+  /* 令牌与关键组件样式：逐字取自 web/src/index.css（绿场） */
+  :root, html[data-palette="green"]{
+    --field:#26483B; --field-2:#163228; --field-3:#2F7A58; --field-4:#7FB79B; --field-5:#DFEDE6;
+    --tool:#17456E; --tool-2:#0F2E4C; --tool-3:#2F6B8E; --tool-4:#8FB6CE; --tool-5:#DCE8F0;
+    --bg:#F2EFE6; --card:#F7F4EC; --panel:#E4DFD0;
+    --ink:#15222B; --ink-2:#43525C; --ink-3:#556169;
+    --line:#D6D0C0; --line-2:#E4DFD0;
+    --zhu:#17456E; --zhu-soft:#DCE8F0;
+    --ok:#276B4C; --ok-soft:#DFEDE6;
+    --warn:#B23A2B; --warn-soft:#F4DDD7;
+    --bad:#B23A2B; --bad-soft:#F4DDD7;
+    --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0;border:0 solid}
+  body{background:var(--bg);color:var(--ink);font:15px/1.75 var(--sans)}
+  h1,h2{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;background:transparent}
+  svg{display:block}
+
+  .app-top{display:flex;align-items:center;gap:16px;min-height:56px;padding:0 clamp(14px,2.5vw,28px);
+    background:var(--field-2);color:var(--field-5)}
+  .app-brand{display:flex;align-items:baseline;gap:10px;white-space:nowrap}
+  .app-brand b{font-family:var(--serif);font-size:20px;letter-spacing:.18em}
+  .app-brand span{font-size:11px;letter-spacing:.16em;color:var(--field-4)}
+  .app-nav{display:flex;align-items:center;gap:16px;margin-left:auto;font-size:13px;white-space:nowrap;flex-wrap:nowrap}
+  .app-nav a{padding:6px 2px;color:var(--field-4);border-bottom:2px solid transparent}
+  .app-nav a[aria-current="page"]{color:var(--field-5);font-weight:600;border-bottom-color:var(--tool-3)}
+  .app-nav a.gone{position:relative;color:#E9A6A0;text-decoration:line-through}
+  .app-nav a.gone::after{content:"已关";font-size:10px;position:absolute;top:-9px;right:-24px;color:#E9A6A0}
+  .app-nav-sep{width:1px;height:14px;background:var(--field-3)}
+  .app-side{display:flex;align-items:center;gap:12px;margin-left:18px;white-space:nowrap;font-size:13.5px}
+  .app-jump{display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:0 12px;
+    border:1px solid var(--field-3);color:var(--field-4)}
+  .skin-switch{display:inline-flex;border:1px solid var(--field-3)}
+  .skin-switch button{padding:4px 10px;font-size:12.5px;color:var(--field-4)}
+  .skin-switch button[aria-pressed="true"]{background:var(--tool-3);color:#fff}
+
+  .wrap{max-width:1150px;margin:0 auto;padding:22px 36px 40px}
+  .ia-steps{margin:12px 0 2px}
+  .ia-rail{display:flex;height:2px;background:var(--line-2)}
+  .ia-rail-seg{flex:1 1 0;background:var(--zhu)}
+  .ia-rail-seg.off{transform:scaleX(0)}
+  .ia-steps-list{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:10px 0 0;padding:0;list-style:none}
+  .ia-steps-list.four{grid-template-columns:repeat(4,1fr)}
+  .ia-card{display:flex}
+  .ia-card a,.ia-card>span{flex:1 1 auto;display:flex;align-items:center;justify-content:center;min-height:52px;
+    background:var(--card);border:1px solid var(--line);font-family:var(--serif);font-size:15px;color:var(--ink-3)}
+  .ia-card.now a{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:650}
+  .ia-card.gone>span{border-style:dashed;color:#B07A74}
+
+  .card{background:var(--card);border:1px solid var(--line);padding:18px 20px}
+  .aq-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .fs-24{font-size:23px}
+  .pill{padding:2px 9px;font-size:12.5px;display:inline-block}
+  .pill.unsigned{background:var(--panel);color:var(--ink-3);border:1px solid var(--line)}
+  .pill.signed{background:var(--zhu-soft);color:var(--zhu)}
+  .hint{color:var(--ink-3);font-size:13.5px}
+  .ml-auto{margin-left:auto}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border:1px solid var(--line);
+    font-size:14px;font-weight:600;letter-spacing:.03em;color:inherit;background:transparent}
+  .btn.small{padding:5px 11px;font-size:13px;color:var(--ink-2)}
+  .btn.small:hover{background:var(--panel)}
+
+  .sec{margin:26px 0 8px}
+  .sec h2{font-size:17px;letter-spacing:.02em}
+  .sh{font-size:13px;color:var(--ink-3);margin:2px 0 10px}
+  .beforeafter{display:grid;grid-template-columns:1fr;gap:10px}
+  .ba{border:1px solid var(--line);background:var(--bg);padding:12px 14px}
+  .ba .tag{font-size:12px;color:var(--ink-3);letter-spacing:.08em;display:block;margin-bottom:8px}
+  .ba .tag b{color:var(--bad)}
+  .ba.after .tag b{color:var(--ok)}
+  .note-list{font-size:13.5px;color:var(--ink-2);line-height:1.9;margin:8px 0 0}
+  .note-list code{font-family:var(--mono);font-size:12.5px;color:var(--ink)}
+  .tree{font-family:var(--mono);font-size:13px;line-height:1.9;background:var(--card);border:1px solid var(--line);
+    padding:12px 16px;color:var(--ink-2)}
+  .tree b{color:var(--ink)}
+  .demo-note{font-size:13px;color:var(--ink-3);line-height:1.85;margin:2px 0 18px}
+  .demo-note b{color:var(--ink-2)}
+  .rule{height:1px;background:var(--line-2);margin:26px 0}
+</style>
+</head>
+<body>
+
+<!-- ============ 对照一：顶栏（前 / 后） ============ -->
+<div class="wrap">
+  <p class="demo-note">
+    <b>静态稿 v1 · 待审。</b>本稿两件事：<b>① 关掉「选章节」与「报告」两个入口</b>（下方前/后对照，红字＝现状、绿字＝改后）；
+    <b>② 取数核验页新增「打包下载」</b>：把这一期已下载的数据打成一个 zip，浏览器直接下载到操作员自己的电脑。
+  </p>
+
+  <div class="sec"><h2>① 顶栏：去掉「报告」</h2>
+    <p class="sh">「报告」本身是只读阅稿屏，馆员日常走「出报告 → 核验定稿」，这一个入口没用上。</p>
+    <div class="beforeafter">
+      <div class="ba"><span class="tag">改前 <b>（现状）</b></span>
+        <header class="app-top" style="min-height:48px">
+          <span class="app-brand"><b>文衡</b><span>云南大学图书馆 · 学科信息参考</span></span>
+          <nav class="app-nav">
+            <a href="#" aria-current="page">出报告</a><a href="#">灵活报告</a><a href="#" class="gone">报告</a>
+            <a href="#">问文衡</a><span class="app-nav-sep"></span><a href="#">主台账</a><a href="#">运行档案</a>
+          </nav>
+          <span class="app-side"><span class="app-jump">期次 202603 ▾</span><span class="app-jump">陈列馆 ›</span>
+            <span class="skin-switch"><button>蓝场</button><button aria-pressed="true">绿场</button></span></span>
+        </header>
+      </div>
+      <div class="ba after"><span class="tag">改后 <b>（去掉，导航只剩：出报告／灵活报告／问文衡 ｜ 主台账／运行档案）</b></span>
+        <header class="app-top" style="min-height:48px">
+          <span class="app-brand"><b>文衡</b><span>云南大学图书馆 · 学科信息参考</span></span>
+          <nav class="app-nav">
+            <a href="#" aria-current="page">出报告</a><a href="#">灵活报告</a>
+            <a href="#">问文衡</a><span class="app-nav-sep"></span><a href="#">主台账</a><a href="#">运行档案</a>
+          </nav>
+          <span class="app-side"><span class="app-jump">期次 202603 ▾</span><span class="app-jump">陈列馆 ›</span>
+            <span class="skin-switch"><button>蓝场</button><button aria-pressed="true">绿场</button></span></span>
+        </header>
+      </div>
+    </div>
+    <p class="note-list">说明：页面本身留着——「报告」深链（<code>?view=report</code>）不删；只关入口（导航不再显示）。</p>
+  </div>
+
+  <div class="rule"></div>
+
+  <!-- ============ 对照二：五步条（前 / 后） ============ -->
+  <div class="sec"><h2>② 出报告五步：去掉「选章节」</h2>
+    <p class="sh">这一步一直空着（「即将」），核验定稿里已有章节选择，单列一步反而添乱。</p>
+    <div class="beforeafter">
+      <div class="ba"><span class="tag">改前 <b>（现状：5 步）</b></span>
+        <nav class="ia-steps"><div class="ia-rail"><i class="ia-rail-seg"></i><i class="ia-rail-seg off"></i><i class="ia-rail-seg off"></i><i class="ia-rail-seg off"></i><i class="ia-rail-seg off"></i></div>
+          <ol class="ia-steps-list">
+            <li class="ia-card now"><a href="#">取数核验</a></li>
+            <li class="ia-card gone"><span>选章节</span></li>
+            <li class="ia-card"><a href="#">预测选模</a></li>
+            <li class="ia-card"><a href="#">生成初稿</a></li>
+            <li class="ia-card"><a href="#">核验定稿</a></li>
+          </ol>
+        </nav>
+      </div>
+      <div class="ba after"><span class="tag">改后 <b>（4 步：取数核验 → 预测选模 → 生成初稿 → 核验定稿）</b></span>
+        <nav class="ia-steps"><div class="ia-rail"><i class="ia-rail-seg"></i><i class="ia-rail-seg off"></i><i class="ia-rail-seg off"></i><i class="ia-rail-seg off"></i></div>
+          <ol class="ia-steps-list four">
+            <li class="ia-card now"><a href="#">取数核验</a></li>
+            <li class="ia-card"><a href="#">预测选模</a></li>
+            <li class="ia-card"><a href="#">生成初稿</a></li>
+            <li class="ia-card"><a href="#">核验定稿</a></li>
+          </ol>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+  <div class="rule"></div>
+
+  <!-- ============ 新按钮：打包下载 ============ -->
+  <div class="sec"><h2>③ 取数核验页：新增「打包下载」</h2>
+    <p class="sh">把这一期已下载的数据打成一个 zip（含数据清单里的全部文件），浏览器直接存到操作员电脑。以下是页头实样：</p>
+
+    <div class="card">
+      <div class="aq-head">
+        <h1 class="fs-24">取数核验</h1>
+        <span class="pill unsigned" style="font-family:var(--mono)">202603</span>
+        <span class="pill signed">已并入</span>
+        <span class="hint" style="font-variant-numeric:tabular-nums">采集 · 已取到 56 / 64 · 最近下载 2026-10-16 07:58:50</span>
+        <button class="btn small ml-auto" title="把这一期已下载的数据打包成一个 zip，存到你自己的电脑上">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m6 11 6 6 6-6"/><path d="M5 20h14"/></svg>
+          打包下载
+        </button>
+        <button class="btn small">＋ 开新一期</button>
+      </div>
+    </div>
+
+    <p class="note-list">
+      · 点了之后浏览器直接开始下载（大包要等一会，进度看浏览器自己的下载栏）；<br>
+      · 包里装什么（以 202603 为例，本机实测约 180 MB）：
+    </p>
+    <div class="tree">
+      <b>文衡-下载数据-202603.zip</b><br>
+      ├─ <b>说明.txt</b>　（这一期、数据期、打包时间、来源与只读说明）<br>
+      ├─ <b>ESI数据/202603/</b>　（全部已下载文件，约 13 MB）<br>
+      └─ <b>InCites数据/数据覆盖2015-2025.12.31/</b>　（当期快照全部文件，约 170 MB）
+    </div>
+    <p class="note-list">
+      · 没下全的期次也能打包（包里就是"已下载的"那部分，说明.txt 里写清数量）；<br>
+      · 操作员（demo）同样可以下载——这是把数据取回本地留存，不涉及任何写操作。
+    </p>
+  </div>
+</div>
+
+</body>
+</html>
