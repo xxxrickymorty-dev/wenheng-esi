@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="zh-CN" data-palette="green">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文衡 · 取数核验 —— 停止下载与「疑似中断」（静态稿 v1 · 待审）</title>
+<style>
+  /* ============ 令牌：逐字取自 web/src/index.css（绿场主题；截图里顶栏是深绿 = 绿场）============ */
+  :root, html[data-palette="blue"]{
+    --field:#17456E; --field-2:#0F2E4C; --field-3:#2F6B8E; --field-4:#8FB6CE; --field-5:#DCE8F0;
+    --tool:#26483B; --tool-2:#163228; --tool-3:#2F7A58; --tool-4:#7FB79B; --tool-5:#DFEDE6;
+    --bg:#F2EFE6; --card:#F7F4EC; --panel:#E4DFD0;
+    --ink:#15222B; --ink-2:#43525C; --ink-3:#556169;
+    --line:#D6D0C0; --line-2:#E4DFD0;
+    --zhu:#26483B; --zhu-soft:#DFEDE6;
+    --gline:#163228;
+    --gold:#2F7A58; --gold-soft:#DFEDE6; --gold-ink:#163228;
+    --ok:#276B4C; --ok-soft:#DFEDE6;
+    --warn:#B23A2B; --warn-soft:#F4DDD7;
+    --bad:#B23A2B; --bad-soft:#F4DDD7;
+    --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+    --r:0px; --r-sm:0px; --shadow:none;
+  }
+  html[data-palette="green"]{
+    --field:#26483B; --field-2:#163228; --field-3:#2F7A58; --field-4:#7FB79B; --field-5:#DFEDE6;
+    --tool:#17456E; --tool-2:#0F2E4C; --tool-3:#2F6B8E; --tool-4:#8FB6CE; --tool-5:#DCE8F0;
+    --zhu:#17456E; --zhu-soft:#DCE8F0;
+    --gline:#0F2E4C;
+    --gold:#2F6B8E; --gold-soft:#DCE8F0; --gold-ink:#0F2E4C;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0;border:0 solid}
+  body{background:var(--bg);color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;background:transparent}
+  svg{display:block}
+  :focus-visible{outline:2px solid var(--zhu);outline-offset:2px}
+
+  /* ---------- 顶栏（照 index.css .app-* 精简） ---------- */
+  .app-top{display:flex;align-items:center;gap:16px;min-height:60px;padding:0 clamp(14px,2.5vw,28px);
+    background:var(--field-2);color:var(--field-5)}
+  .app-brand{display:flex;align-items:baseline;gap:10px;white-space:nowrap}
+  .app-brand b{font-family:var(--serif);font-size:21px;font-weight:600;letter-spacing:.18em;color:var(--field-5)}
+  .app-brand span{font-size:11px;letter-spacing:.16em;color:var(--field-4)}
+  .app-nav{display:flex;align-items:center;gap:22px;margin-left:auto;font-size:14px}
+  .app-nav a{padding:6px 2px;color:var(--field-4);border-bottom:2px solid transparent}
+  .app-nav a[aria-current="page"]{color:var(--field-5);font-weight:600;border-bottom-color:var(--tool-3)}
+  .app-nav-sep{width:1px;height:14px;background:var(--field-3)}
+  .app-side{display:flex;align-items:center;gap:12px;margin-left:18px;white-space:nowrap}
+  .app-jump{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 12px;
+    border:1px solid var(--field-3);color:var(--field-4);font-size:13.5px}
+  .app-period select{background:var(--field);border:1px solid var(--field-3);color:var(--field-5);
+    padding:5px 8px;font-size:13.5px}
+  .skin-switch{display:inline-flex;border:1px solid var(--field-3)}
+  .skin-switch button{padding:5px 10px;font-size:13px;color:var(--field-4)}
+  .skin-switch button[aria-pressed="true"]{background:var(--tool-3);color:#fff}
+  .user-chip{color:var(--field-5);font-size:13.5px}
+
+  .wrap{max-width:1240px;margin:0 auto;padding:26px 40px 56px;width:100%}
+
+  /* ---------- 出报告五步（照 .ia-*） ---------- */
+  .ia-steps{margin:16px 0 2px}
+  .ia-rail{display:flex;height:2px;background:var(--line-2)}
+  .ia-rail-seg{flex:1 1 0;background:var(--zhu);transform:scaleX(1)}
+  .ia-rail-seg.off{transform:scaleX(0)}
+  .ia-steps-list{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:10px 0 0;padding:0;list-style:none}
+  .ia-card{display:flex}
+  .ia-card a,.ia-card>span{flex:1 1 auto;display:flex;align-items:center;justify-content:center;min-height:56px;
+    background:var(--card);border:1px solid var(--line);font-family:var(--serif);font-size:15.5px;
+    letter-spacing:.02em;color:var(--ink-3)}
+  .ia-card.done a{color:var(--ink-2)}
+  .ia-card.now a{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:650}
+
+  /* ---------- 复习工具条（演示用，真实页没有） ---------- */
+  .tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+  .tools .grp{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-3)}
+  .tbtn{font-size:13.5px;padding:5px 13px;border:1px solid var(--line);background:var(--card);color:var(--ink-2)}
+  .tbtn.on{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:650}
+  .demo-note{font-size:13px;color:var(--ink-3);margin:2px 0 16px;line-height:1.8}
+  .demo-note b{color:var(--ink-2)}
+
+  /* ---------- 卡片与焦点块 ---------- */
+  .card{background:var(--card);border:1px solid var(--line)}
+  .pad-card-x{padding:20px 22px}
+  .focus{margin-top:18px;background:var(--panel);border-left:3px solid var(--zhu);
+    padding:22px 26px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+  .focus .big{font-size:clamp(24px,2.6vw,31px);font-family:var(--serif);font-weight:600;
+    letter-spacing:.01em;line-height:1.35;color:var(--zhu)}
+  .focus .sub{color:var(--ink-2);font-size:14.5px;margin-top:4px}
+  .focus .cta{margin-left:auto;display:flex;gap:12px;align-items:center}
+  .btn{transition:background .15s,border-color .15s,color .15s;display:inline-flex;align-items:center;gap:8px;
+    padding:10px 20px;border:1px solid var(--line);font-size:14.5px;font-weight:600;letter-spacing:.04em;color:inherit}
+  .btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;padding:12px 24px}
+  .btn:hover{background:var(--panel)}
+  .btn.primary:hover{filter:brightness(1.06)}
+  .btn.small{padding:5px 11px;font-size:13px;color:var(--ink-2)}
+  .hint{color:var(--ink-3);font-size:14px}
+  .note-bad{margin-top:6px;color:var(--bad)}
+  .ml-auto{margin-left:auto}
+
+  /* ---------- 头部行 / 检查灯 / 折叠 ---------- */
+  .aq-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .aq-num{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .aq-stamp{text-align:right}
+  .fs-24{font-size:24px}
+  .pill{padding:2px 9px;font-size:12.5px;display:inline-block;letter-spacing:.02em}
+  .pill.signed{background:var(--zhu-soft);color:var(--zhu)}
+  .pill.stale{background:var(--gold-soft);color:var(--gold-ink)}
+  .pill.unsigned{background:var(--panel);color:var(--ink-3);border:1px solid var(--line)}
+  .pill.bad{background:var(--bad-soft);color:var(--bad)}
+  .aq-pf{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding:10px 14px;
+    border:1px solid var(--line);background:var(--card)}
+  .aq-pf-title{font-weight:650;color:var(--ink)}
+  .aq-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 11px;border:1px solid var(--line);
+    font-size:13px;color:var(--ink-3)}
+  .aq-chip.ok{color:var(--ok);border-color:var(--ok);background:var(--ok-soft)}
+  .fold{background:var(--card);border:1px solid var(--line);margin-top:18px;overflow:hidden}
+  .fold>summary{display:flex;align-items:center;gap:10px;padding:13px 18px;cursor:pointer;font-size:14.5px;list-style:none}
+  .fold>summary::-webkit-details-marker{display:none}
+  .fold>summary::before{content:"▸";color:var(--zhu)}
+  .fold[open]>summary::before{content:"▾"}
+  .fold>summary .sm{color:var(--ink-3);font-size:13.5px;margin-left:auto}
+  .fold-inner{padding:4px 18px 16px}
+
+  /* ---------- 组卡（照 .aq-g*） ---------- */
+  .aq-groups{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+  .aq-g{min-width:0;border:1px solid var(--line-2);background:var(--card);padding:11px 13px 10px}
+  .aq-g.ok{border-color:var(--ok)}
+  .aq-g.live{border-color:var(--gold)}
+  .aq-gtop{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .aq-src{font-size:12.5px;color:var(--ink-3);font-weight:650;letter-spacing:.03em}
+  .aq-gstat{font-size:12.5px;font-weight:650;color:var(--ink-3)}
+  .aq-gstat.ok{color:var(--ok)}
+  .aq-gstat.live{color:var(--gold-ink)}
+  .aq-gname{display:flex;align-items:center;gap:8px;margin-top:7px;font-weight:650;font-size:15px}
+  .aq-bar{display:flex;align-items:center;gap:8px;margin-top:8px}
+  .aq-track{flex:1;height:6px;background:var(--line-2);overflow:hidden}
+  .aq-track i{display:block;height:100%;background:var(--ok);transform-origin:left}
+  .aq-g.live .aq-track i{background:var(--gold)}
+  .aq-gacts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--line-2)}
+
+  /* ---------- 底栏（照截图的深色带，精简） ---------- */
+  .foot{margin-top:34px;background:var(--field-2);color:var(--field-4);padding:26px clamp(14px,2.5vw,28px)}
+  .foot .in{max-width:1240px;margin:0 auto;display:flex;gap:30px;flex-wrap:wrap}
+  .foot b{font-family:var(--serif);color:var(--field-5);font-size:20px;letter-spacing:.18em}
+  .foot .stmt{max-width:62ch;font-size:12.5px;line-height:1.9}
+  .foot .stmt b2{display:block;color:var(--field-5);font-weight:600;margin-bottom:4px}
+  .foot .links{display:flex;gap:18px;font-size:13px}
+
+  /* ---------- 三态切换 ---------- */
+  .st{display:none}
+  body[data-st="a"] .st-a,body[data-st="b"] .st-b,body[data-st="c"] .st-c{display:flex}
+  body[data-st="a"] .pillA,body[data-st="b"] .pillB,body[data-st="c"] .pillC{display:inline-block}
+  .pillA,.pillB,.pillC{display:none}
+</style>
+</head>
+<body data-st="a">
+
+<!-- ================= 顶栏（复刻） ================= -->
+<header class="app-top">
+  <a class="app-brand" href="#"><b>文衡</b><span>云南大学图书馆 · 学科信息参考</span></a>
+  <nav class="app-nav" aria-label="工作区">
+    <a href="#" aria-current="page">出报告</a>
+    <a href="#">灵活报告</a>
+    <a href="#">报告</a>
+    <a href="#">问文衡</a>
+    <span class="app-nav-sep" aria-hidden="true"></span>
+    <a href="#">主台账</a>
+    <a href="#">运行档案</a>
+  </nav>
+  <div class="app-side">
+    <span class="app-period"><select aria-label="期次"><option>202609</option></select></span>
+    <a class="app-jump" href="#">陈列馆 <span>›</span></a>
+    <span class="skin-switch" role="group" aria-label="配色">
+      <button type="button">蓝场</button><button type="button" aria-pressed="true">绿场</button>
+    </span>
+    <span class="user-chip">a · admin · 管理员</span>
+  </div>
+</header>
+
+<main class="wrap" id="main">
+
+  <!-- ================= 出报告五步 ================= -->
+  <nav class="ia-steps" aria-label="出报告步骤">
+    <div class="ia-rail" aria-hidden="true">
+      <i class="ia-rail-seg"></i><i class="ia-rail-seg off"></i><i class="ia-rail-seg off"></i>
+      <i class="ia-rail-seg off"></i><i class="ia-rail-seg off"></i>
+    </div>
+    <ol class="ia-steps-list">
+      <li class="ia-card now"><a href="#" aria-current="step">取数核验</a></li>
+      <li class="ia-card"><a href="#">选章节</a></li>
+      <li class="ia-card"><a href="#">预测选模</a></li>
+      <li class="ia-card"><a href="#">生成初稿</a></li>
+      <li class="ia-card"><a href="#">核验定稿</a></li>
+    </ol>
+  </nav>
+
+  <!-- ================= 演示控制（真实页没有这一段） ================= -->
+  <div class="tools">
+    <span class="grp">看哪个状态：</span>
+    <button class="tbtn on" data-go="a" type="button">① 下载中（带「停止下载」）</button>
+    <button class="tbtn" data-go="b" type="button">② 上次中断了（自动认出来）</button>
+    <button class="tbtn" data-go="c" type="button">③ 已停止（可继续下载）</button>
+  </div>
+  <p class="demo-note">
+    <b>静态稿 v1 · 待审。</b>新增三样：① 下载进行中多一个「停止下载」按钮；② 下载中途断掉（程序停了/电脑休眠）时，页面不再永远显示「正在下载」，
+    自动改说「上次下载中断了」并给出下一步；③ 停止/中断后都能一键「继续下载」，只补没下到的文件。
+    数据为示意（非本机真实状态）。
+  </p>
+
+  <!-- ================= 期次数据状态 ================= -->
+  <section class="card pad-card-x">
+    <div class="aq-head">
+      <h1 class="fs-24">取数核验</h1>
+      <span class="pill unsigned" style="font-family:var(--mono)">202609</span>
+      <!-- 状态徽章随演示状态切换 -->
+      <span class="pill stale pillA">下载中</span>
+      <span class="pill bad pillB">已中断</span>
+      <span class="pill unsigned pillC">已停止</span>
+      <span class="hint aq-num">采集 · 已取到 41 / 64 · 最近下载 2026-10-17 13:02:40</span>
+      <button type="button" class="btn small ml-auto">＋ 开新一期</button>
+    </div>
+  </section>
+
+  <!-- ================= 主动作（三态各一张） ================= -->
+  <div class="focus st st-a">
+    <div aria-live="polite">
+      <div class="big">正在按组下载数据……</div>
+      <div class="sub">可以离开这一页，进度不会丢。</div>
+      <div class="hint">停止后已下载的文件都会保留，之后可以继续下载补缺的。</div>
+    </div>
+    <div class="cta">
+      <button class="btn" type="button" title="停掉这次下载；已经下到的文件保留，可随时继续">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12"/></svg>
+        停止下载
+      </button>
+    </div>
+  </div>
+
+  <div class="focus st st-b">
+    <div aria-live="polite">
+      <div class="big">上次下载中断了</div>
+      <div class="sub">上一次是 2026-10-17 13:02 开始的，之后就没有再往下走——下载程序已经停了（电脑休眠、程序被关掉都可能）。已经下载的文件都在，没有丢。</div>
+      <div class="hint note-bad">已取到 41 / 64。点「继续下载」只会补没下到的文件，已下过的不重复下载。</div>
+    </div>
+    <div class="cta">
+      <button class="btn primary" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v11"/><path d="m6 11 6 6 6-6"/><path d="M5 20h14"/></svg>
+        继续下载（补缺的）
+      </button>
+    </div>
+  </div>
+
+  <div class="focus st st-c">
+    <div aria-live="polite">
+      <div class="big">下载已停止</div>
+      <div class="sub">已经下载的文件都在（41 / 64）。等准备好再点「继续下载」，只补没下到的文件。</div>
+    </div>
+    <div class="cta">
+      <button class="btn primary" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v11"/><path d="m6 11 6 6 6-6"/><path d="M5 20h14"/></svg>
+        继续下载（补缺的）
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= 开始前检查 ================= -->
+  <div class="aq-pf" role="group" aria-label="开始前检查">
+    <span class="aq-pf-title">开始前检查</span>
+    <span class="aq-chip ok">▷ 下载数据专用浏览器 · 已连接</span>
+    <span class="aq-chip ok">✓ ESI 网站 · 已登录</span>
+    <span class="aq-chip ok">✓ InCites 网站 · 已登录</span>
+    <span class="aq-chip ok">⏱ 数据期 · 已更新</span>
+  </div>
+
+  <!-- ================= 下载数据清单（示意） ================= -->
+  <details class="fold" open>
+    <summary>下载数据清单<span class="sm">9 组 · 64 份</span></summary>
+    <div class="fold-inner">
+      <div class="aq-groups">
+        <article class="aq-g ok">
+          <div class="aq-gtop"><span class="aq-src">ESI · 第 1 组</span><span class="aq-gstat ok">已完成</span></div>
+          <div class="aq-gname">全球机构总表</div>
+          <div class="aq-bar"><span class="aq-track"><i style="transform:scaleX(1)"></i></span><span class="hint aq-num">1 / 1</span></div>
+        </article>
+        <article class="aq-g live">
+          <div class="aq-gtop"><span class="aq-src">ESI · 第 2 组</span><span class="aq-gstat live">下载到一半</span></div>
+          <div class="aq-gname">22 学科机构表</div>
+          <div class="aq-bar"><span class="aq-track"><i style="transform:scaleX(0.64)"></i></span><span class="hint aq-num">14 / 22</span></div>
+          <div class="aq-gacts">
+            <button class="btn small" type="button">↻ 补下这一组（还缺 8 份）</button>
+            <span class="hint">已下过的不重复下载；已并入台账不影响补下。</span>
+          </div>
+        </article>
+        <article class="aq-g ok">
+          <div class="aq-gtop"><span class="aq-src">ESI · 第 5 组</span><span class="aq-gstat ok">已完成</span></div>
+          <div class="aq-gname">三张阈值表</div>
+          <div class="aq-bar"><span class="aq-track"><i style="transform:scaleX(1)"></i></span><span class="hint aq-num">3 / 3</span></div>
+        </article>
+        <article class="aq-g">
+          <div class="aq-gtop"><span class="aq-src">InCites · 第 1 组</span><span class="aq-gstat">还没开始</span></div>
+          <div class="aq-gname">22 学科全球机构排名</div>
+          <div class="aq-bar"><span class="aq-track"><i style="transform:scaleX(0)"></i></span><span class="hint aq-num">0 / 22</span></div>
+        </article>
+      </div>
+    </div>
+  </details>
+
+  <p class="hint aq-stamp" style="margin-top:12px">下载数据状态最后更新：2026-10-17 13:54</p>
+</main>
+
+<!-- ================= 底栏（复刻，精简） ================= -->
+<footer class="foot">
+  <div class="in">
+    <div><b>文衡</b><div class="hint" style="color:var(--field-4)">WENHENG · 学科信息参考</div></div>
+    <div class="stmt">
+      <b2>说明 · 口径、来源与只读声明</b2>
+      ① 数字只来自馆员维护的台账与派生产物，运行期大模型不进入数据路径；② 本系统是只读视图，不修改台账与报告；③ 预测章按「本期已选」的已保存选择执行，未列学科用 V1 推荐；④ 期次与状态以任务记录为准。
+    </div>
+    <div class="links"><a href="#">陈列馆</a><a href="#">主台账</a><a href="#">运行档案</a></div>
+  </div>
+</footer>
+
+<script>
+  /* 演示状态切换（真实页面没有这段） */
+  const btns = [...document.querySelectorAll('.tbtn')]
+  function go(st) {
+    document.body.dataset.st = st
+    btns.forEach(b => b.classList.toggle('on', b.dataset.go === st))
+  }
+  btns.forEach(b => b.addEventListener('click', () => go(b.dataset.go)))
+</script>
+</body>
+</html>
