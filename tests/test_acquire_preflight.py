@@ -177,7 +177,7 @@ def test_op判活_进程已死_自动落failed并放行(tmp_path, monkeypatch):
     monkeypatch.setattr(app_module.acquisition, "state_path", lambda _p: tmp_path / "x.json")
     assert app_module._acq_op_running("202609") is None, "进程死了要放行新任务"
     assert saved["state"]["op"]["state"] == "failed"
-    assert "进程已退出" in saved["state"]["op"]["note"]
+    assert saved["state"]["op"]["note"].startswith("上次运行中断")
 
 
 def test_op判活_进程活着_仍然拦(tmp_path, monkeypatch):
@@ -187,12 +187,93 @@ def test_op判活_进程活着_仍然拦(tmp_path, monkeypatch):
 
 
 def test_op无pid旧状态_15分钟兜底(tmp_path, monkeypatch):
-    """没有 pid 的历史状态回退时间口径：阈值 15 分钟（原 1 小时）。"""
+    """没有 pid 的历史状态回退时间口径：阈值 15 分钟（原 1 小时）。
+
+    超时视为中断 → 在写动作路径如实结清（落 failed）；不再干等 1 小时。
+    """
     state_file = tmp_path / "202609.json"
     state_file.write_text("{}", encoding="utf-8")
     monkeypatch.setattr(app_module.acquisition, "load", lambda _p: _op_state())
     monkeypatch.setattr(app_module.acquisition, "state_path", lambda _p: state_file)
+    saved: dict = {}
+    monkeypatch.setattr(app_module.acquisition, "write_state",
+                        lambda p, s: saved.update(period=p, state=s))
     assert app_module._acq_op_running("202609") is not None, "刚写过 → 还在跑"
     old = time.time() - app_module.acquisition.OP_STALE_SECONDS - 5
     os.utime(state_file, (old, old))
     assert app_module._acq_op_running("202609") is None, "超 15 分钟 → 放行"
+    assert saved["state"]["op"]["state"] == "failed"
+    assert "上次运行中断" in saved["state"]["op"]["note"]
+
+
+# ------------------------------------------------------------------ 疑似中断（只读 liveness）与停止下载（2026-10-19 晚）
+def test_liveness_四分类(tmp_path, monkeypatch):
+    """GET 只读判断：alive / dead / stale / 非 running → None（不改状态）。"""
+    state_file = tmp_path / "202609.json"
+    state_file.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(app_module.acquisition, "state_path", lambda _p: state_file)
+    monkeypatch.setattr(app_module.acquisition, "pid_alive", lambda pid: pid == 4242)
+    A = app_module._acq_op_liveness
+    assert A("202609", {"op": {"state": "failed"}}) is None
+    assert A("202609", {}) is None
+    assert A("202609", {"op": {"state": "running", "pid": 4242}}) == "alive"
+    assert A("202609", {"op": {"state": "running", "pid": 4243}}) == "dead"
+    assert A("202609", {"op": {"state": "running"}}) == "alive"     # 无 pid 且刚动过
+    old = time.time() - app_module.acquisition.OP_STALE_SECONDS - 5
+    os.utime(state_file, (old, old))
+    assert A("202609", {"op": {"state": "running"}}) == "stale"     # 无 pid 且太久没动静
+
+
+class _Req:
+    """极简请求替身：`user_route` 的登录门只读 session 里的用户。"""
+    session = {"user": "admin"}
+
+
+def test_停止_没有在跑的任务_409不写状态(monkeypatch):
+    monkeypatch.setattr(app_module.acquisition, "load", lambda _p: {"op": {"state": "failed"}})
+    writes: list = []
+    monkeypatch.setattr(app_module.acquisition, "write_state", lambda p, s: writes.append(s))
+    import asyncio
+    r = asyncio.run(app_module.api_acq_stop(_Req(), "202609"))
+    assert r.status_code == 409
+    assert writes == [], "409 不得写状态"
+
+
+def test_停止_僵尸直接结清(tmp_path, monkeypatch):
+    """进程早没了的 running → 停不假报「停成功」，如实落「上次运行中断」。"""
+    monkeypatch.setattr(app_module.acquisition, "load",
+                        lambda _p: {"op": {"state": "running", "pid": 424242, "kind": "fetch"}})
+    monkeypatch.setattr(app_module.acquisition, "pid_alive", lambda _pid: False)
+    saved: dict = {}
+    monkeypatch.setattr(app_module.acquisition, "write_state",
+                        lambda p, s: saved.update(state=s))
+    import asyncio
+    r = asyncio.run(app_module.api_acq_stop(_Req(), "202609"))
+    assert r["ok"] is True and r["stopped"] is False and r["liveness"] == "dead"
+    assert saved["state"]["op"]["state"] == "failed"
+    assert saved["state"]["op"]["note"].startswith("已停止")
+
+
+def test_停止_真在跑_连子进程一起停(tmp_path, monkeypatch):
+    """真起一个睡 60 秒的子进程（自成进程组），走停止端点 → 进程要没、状态落「已停止」。"""
+    import subprocess as sp
+    import sys as _sys
+    import asyncio
+    child = sp.Popen([_sys.executable, "-c", "import time; time.sleep(60)"],
+                     start_new_session=(os.name != "nt"))
+    try:
+        monkeypatch.setattr(app_module.acquisition, "load",
+                            lambda _p: {"op": {"state": "running", "pid": child.pid, "kind": "fetch"}})
+        saved: dict = {}
+        monkeypatch.setattr(app_module.acquisition, "write_state",
+                            lambda p, s: saved.update(state=s))
+        r = asyncio.run(app_module.api_acq_stop(_Req(), "202609"))
+        assert r["ok"] is True and r["stopped"] is True and r["liveness"] == "alive"
+        deadline = time.time() + 10
+        while time.time() < deadline and child.poll() is None:
+            time.sleep(0.2)
+        assert child.poll() is not None, "子进程应已被停掉"
+        assert saved["state"]["op"]["note"].startswith("已停止")
+    finally:
+        if child.poll() is None:
+            child.kill()

@@ -121,6 +121,8 @@
 - **取数 `op` 的活性判据＝pid 判活**（`src/acquisition_state.py::pid_alive`，server 与 tools 同一份：
   进程死 → 写动作处自动落 `failed` 并放行），时间口径（15 分钟）只留给无 pid 的旧状态；
   状态文件写/读带重试（并发读不再 WinError 5 暴死）——见 `docs/adr/0010`。
+  前端「疑似中断」＝ GET 只读字段 `op.liveness`（`alive/dead/stale`）；「停止下载」＝
+  `POST …/acquisition/stop`（杀进程树落「已停止」，文件保留可续下；无任务 409 不写状态）。
 
 ## 界面用语
 
@@ -131,8 +133,8 @@
 ## 验收三件套（改状态相关代码后按序跑）
 
 ```bash
-uv run python -m pytest -m ""          # 全量 1352 例（默认 1347 例，5 个 slow 被 marker 排除）
-uv run python -m uvicorn server.app:app --port 8080   # 起服务：一律 uv run；⚠ 控制台脚本直呼（uv run pytest/uvicorn）会撞中文路径 trampoline，走 python -m；起后跑 server/e2e_check.py（只读 210 断言）
+uv run python -m pytest -m ""          # 全量 1356 例（默认 1351 例，5 个 slow 被 marker 排除）
+uv run python -m uvicorn server.app:app --port 8080   # 起服务：一律 uv run；⚠ 控制台脚本直呼（uv run pytest/uvicorn）会撞中文路径 trampoline，走 python -m；起后跑 server/e2e_check.py（只读 211 断言）
 uv run python tools/verify_demo_run.py <期次>   # 写路径验收
 ```
 

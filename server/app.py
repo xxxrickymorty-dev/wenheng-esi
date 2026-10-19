@@ -961,6 +961,9 @@ async def api_period_acquisition(request: Request, period: str):
     state = acquisition.load(period)
     if state is None:
         return {"period": period, "started": False, "mode": mode}
+    lv = _acq_op_liveness(period, state)          # 只读判断：前端据此显示「疑似中断」
+    if lv is not None:
+        state = {**state, "op": {**(state.get("op") or {}), "liveness": lv}}
     return {"period": period, "started": True, "mode": mode,
             "reconcile": _acq_reconcile(period, state), **state}
 
@@ -972,34 +975,73 @@ def _acq_acquire_py():
     return config.ROOT / "tools" / "acquire.py"
 
 
-def _acq_op_running(period: str):
-    """正在跑的取数任务；**判活＝进程在不在**（`op.pid`），无 pid 的旧状态回退 15 分钟时间口径。
+def _acq_op_liveness(period: str, st: dict) -> str | None:
+    """正在跑的任务现在算不算活着（**只读判断，不改状态**）：
 
-    ADR-0010（2026-10-19）：此前只看「状态文件 1 小时内有改动」——进程暴死后要干等
-    1 小时才放行（2026-10-17 实测）。现在进程已不存在时，**在这里（写动作路径；GET 不改
-    状态）**把 `op` 落 `failed` 并放行新任务。
+    - `alive`：有 pid 且进程在；或没有 pid 但状态文件 15 分钟内动过（启动窗口/旧状态）；
+    - `dead`：有 pid 但进程没了（暴死/被强杀）；
+    - `stale`：没有 pid 且超过 15 分钟没动静（ADR-0010 之前留下的旧僵尸）；
+    - 非 running → None。
+
+    GET 只把它算出来展示（`op.liveness`）；**自动结清**发生在写动作路径（`_acq_op_running`）。
     """
-    st = acquisition.load(period) or {}
     op = st.get("op") or {}
     if op.get("state") != "running":
         return None
     pid = op.get("pid")
     if isinstance(pid, int) and not isinstance(pid, bool) and pid > 0:
-        if acquisition.pid_alive(pid):
-            return op
-        st["op"] = {**op, "state": "failed",
-                    "note": "任务进程已退出（上次运行中断）",
-                    "at": time.strftime("%Y-%m-%d %H:%M:%S")}
-        try:
-            acquisition.write_state(period, st)
-        except OSError:
-            pass
-        return None
+        return "alive" if acquisition.pid_alive(pid) else "dead"
     try:
         age = time.time() - acquisition.state_path(period).stat().st_mtime
     except OSError:
         age = 0
-    return None if age > acquisition.OP_STALE_SECONDS else op
+    return "alive" if age <= acquisition.OP_STALE_SECONDS else "stale"
+
+
+def _acq_op_running(period: str):
+    """正在跑的取数任务；**判活＝进程在不在**（`op.pid`），无 pid 的旧状态回退 15 分钟时间口径。
+
+    ADR-0010（2026-10-19）：此前只看「状态文件 1 小时内有改动」——进程暴死后要干等
+    1 小时才放行（2026-10-17 实测）。现在判活落在 `_acq_op_liveness`；`dead`/`stale` 时
+    **在这里（写动作路径；GET 不改状态）**把 `op` 落 `failed` 并放行新任务。
+    """
+    st = acquisition.load(period) or {}
+    lv = _acq_op_liveness(period, st)
+    if lv is None:
+        return None
+    if lv == "alive":
+        return st.get("op") or {}
+    why = "任务进程已退出" if lv == "dead" else "太久没有动静"
+    st["op"] = {**(st.get("op") or {}), "state": "failed",
+                "note": f"上次运行中断：{why}",
+                "at": time.strftime("%Y-%m-%d %H:%M:%S")}
+    try:
+        acquisition.write_state(period, st)
+    except OSError:
+        pass
+    return None
+
+
+def _acq_kill_tree(pid: int) -> bool:
+    """把取数任务**连它的子进程**一起停掉（Windows `taskkill /T /F`；POSIX 杀进程组）。"""
+    import os
+    import signal
+    if os.name == "nt":
+        try:
+            r = subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"],  # noqa: S603
+                               capture_output=True, text=True, timeout=30)
+            return r.returncode == 0
+        except (OSError, subprocess.SubprocessError):
+            return False
+    try:
+        os.killpg(os.getpgid(pid), signal.SIGKILL)
+        return True
+    except OSError:
+        try:
+            os.kill(pid, signal.SIGKILL)
+            return True
+        except OSError:
+            return False
 
 
 def _acq_spawn(period: str, action: str, extra: list | None = None):
@@ -1016,12 +1058,15 @@ def _acq_spawn(period: str, action: str, extra: list | None = None):
     acquisition.write_state(period, st)
     log = config.OUT_DIR / "_acquisition" / f"{period}-{action}.log"
     log.parent.mkdir(parents=True, exist_ok=True)
+    import os
     with open(log, "a", encoding="utf-8") as fh:
-        env = {**__import__("os").environ, "PYTHONIOENCODING": "utf-8",
+        env = {**os.environ, "PYTHONIOENCODING": "utf-8",
                "PYTHONUNBUFFERED": "1"}
         subprocess.Popen(  # noqa: S603 — 固定脚本路径 + 期次已校验，无注入面
             [str(config.PYTHON), str(_acq_acquire_py()), action, period, *(extra or [])],
-            cwd=str(config.ROOT), stdout=fh, stderr=subprocess.STDOUT, env=env)
+            cwd=str(config.ROOT), stdout=fh, stderr=subprocess.STDOUT, env=env,
+            # POSIX：自成进程组，「停止下载」才能连子进程一起停（Windows 用 taskkill /T）
+            start_new_session=(os.name != "nt"))
     return {"ok": True, "started": True, "log": log.name}
 
 
@@ -1233,6 +1278,36 @@ async def api_acq_preflight(request: Request, period: str):
     st = acquisition.load(period) or {}
     pf = st.get("preflight") or {}
     return {"ok": r.returncode == 0, "preflight": pf}
+
+
+@app.post("/api/periods/{period}/acquisition/stop")
+@user_route
+async def api_acq_stop(request: Request, period: str):
+    """停止正在跑的下载数据任务（2026-10-19 晚，ADR-0010「落地补记」；静态稿已过审）。
+
+    语义是**停止（可续）**、不是终止：已下载的文件保留，「继续下载」只补缺的。
+    正在跑 → 连子进程一起停掉后落 `failed`（note 前缀「已停止」）；
+    本来就是中断的僵尸 → 如实结清（「上次运行中断：…」）；没有在跑的任务 → 409、不写状态。
+    """
+    if not re.fullmatch(r"\d{6}", period or ""):
+        return _period_missing()
+    st = acquisition.load(period)
+    if st is None:
+        return _period_missing()
+    lv = _acq_op_liveness(period, st)
+    if lv is None:
+        return JSONResponse({"error": "现在没有在跑的下载任务。",
+                             "hint": "要下载请回到取数核验页点「继续下载」。"}, status_code=409)
+    stopped = False
+    pid = (st.get("op") or {}).get("pid")
+    if lv == "alive" and isinstance(pid, int) and not isinstance(pid, bool) and pid > 0:
+        stopped = _acq_kill_tree(pid)
+        time.sleep(0.6)                      # 等进程树退干净，免得它再回写一次状态
+    st["op"] = {**(st.get("op") or {}), "state": "failed",
+                "note": "已停止（人工）——已下载的文件保留，可继续下载补缺的",
+                "at": time.strftime("%Y-%m-%d %H:%M:%S")}
+    acquisition.write_state(period, st)
+    return {"ok": True, "stopped": stopped, "liveness": lv, "op": st["op"]}
 
 
 @app.get("/api/periods/{period}/artifacts")

@@ -195,6 +195,9 @@ for _path in ("/api/periods/202607/redslots",
 # 用非法期次探写口：过了角色门才轮到期次校验 → 404（不是 403），且零副作用。
 st, _, _ = call("POST", "/api/periods/abc/acquisition/preflight", opener=gop)
 check("操作员可取数写口（过了角色门；非法期次→404 不是 403）", st == 404, f"got {st}")
+# 停止下载（2026-10-19 晚）：202607 已完成、没有在跑的任务 → 409 且**不写状态**（零副作用）
+st, _, _ = call("POST", "/api/periods/202607/acquisition/stop", opener=gop)
+check("停止下载口：无可停任务→409（不写状态）", st == 409, f"got {st}")
 st, _, _ = call("POST", "/api/periods/199901/sign", {"known": "true", "note": "e2e-操作员权限探针"}, opener=gop)
 check("操作员可走签单口（审批已开放；199901→404，不是 403）", st == 404, f"got {st}")
 st, _, _ = call("POST", "/api/jobs", {"period": ""}, opener=gop)
