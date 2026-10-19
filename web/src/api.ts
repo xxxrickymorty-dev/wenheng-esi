@@ -240,8 +240,11 @@ export type AcquisitionState = {
   totals?: { groups?: number; expected?: number; verified?: number; downloaded?: number; failed?: number }
   copy?: { state?: string; path?: string; built_at?: string; merged_at?: string; merged_by?: string }
   review?: { sheets?: AcqReviewSheet[] }
-  /** 正在跑的任务（下载数据/建副本/并入）；闲时没有这个字段 */
-  op?: { kind?: string; state?: string; note?: string; at?: string }
+  /** 正在跑的任务（下载数据/建副本/并入）；闲时没有这个字段。
+      `liveness` 是服务端**只读**判的活性（2026-10-19 晚）：`alive` 进程在 /
+      `dead` 进程没了 / `stale` 无 pid 且太久没动静——前端据此把「疑似中断」说清楚。 */
+  op?: { kind?: string; state?: string; note?: string; at?: string; pid?: number
+         liveness?: 'alive' | 'dead' | 'stale' }
 }
 
 export async function getAcquisition(period: string): Promise<AcquisitionState> {

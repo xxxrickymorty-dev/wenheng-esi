@@ -262,6 +262,13 @@ export function Acquire({ period, onOpenPeriod }: {
 
   const op = state?.op
   const opRunning = op?.state === 'running'
+  /* 2026-10-19 晚（ADR-0010 落地补记）：`liveness` 是服务端**只读**判的（进程在不在）——
+     running 但进程没了/太久没动静 = 上次中断，不许继续假装「下载中」（202609 的僵尸就是这么来的）。
+     另两种「中断/停止」是服务端在写动作处落下的 failed（note 前缀见 server/app.py）。 */
+  const opInterrupted = opRunning && (op?.liveness === 'dead' || op?.liveness === 'stale')
+  const opBroken = op?.state === 'failed' && (op?.note ?? '').startsWith('上次运行中断')
+  const opStopped = op?.state === 'failed' && (op?.note ?? '').startsWith('已停止')
+  const opStory = opInterrupted || opBroken || opStopped
   const view: PageView = state ? deriveView(state) : 'ready'
   const totals = state?.totals ?? {}
   const expected = totals.expected ?? 0
@@ -297,6 +304,14 @@ export function Acquire({ period, onOpenPeriod }: {
     review: ['待核对', 'stale'],
     merged: ['已并入', 'signed'],
   }
+  /* 文件没取齐（view=running）时，「中断/停止」的故事占据头条（徽章与横幅都换上）；
+     文件齐/已并入时它退成一行提示（见下方 hint），不抢「已并入」的结论——
+     但**任何**「中断/停止」都不许再说「正在下载」（202609 的僵尸就是在这一点上骗人的）。 */
+  const showOpHero = opStory && view === 'running'
+  const [pillText, pillCls] = showOpHero
+    ? (opStopped ? ['已停止', 'unsigned'] as [string, string] : ['已中断', 'bad'] as [string, string])
+    : opStory ? pill[view]
+      : opRunning ? ['下载中', 'stale'] as [string, string] : pill[view]
 
   /* 如实：只有「开始前检查」这轮真通过才说「可以开始下载数据」——状态文件在不在不算
      （开新一期落的只是空壳，票 05）。 */
@@ -318,6 +333,22 @@ export function Acquire({ period, onOpenPeriod }: {
           : view === 'review' ? `核对无误后并入台账（只动 ${period} 列）。`
             : ''
 
+  /* 头条（横幅）话术：中断/停止的故事见 showOpHero；其余照旧 */
+  const heroTitle = showOpHero
+    ? (opStopped ? '下载已停止' : '上次下载中断了')
+    : opRunning && !opInterrupted && op ? `${OP_CN[op.kind ?? ''] ?? '正在执行'}……` : title
+  const heroSub = showOpHero
+    ? (opStopped
+      ? `已经下载的文件都在${expected > 0 ? `（${verified} / ${expected}）` : ''}。等准备好再点「继续下载」，只补没下到的文件。`
+      : (opInterrupted && op?.at
+        ? `最后一次动静是 ${op.at}，之后就没有再往下走——下载程序已经停了。已经下载的文件都在，没有丢。`
+        : '下载程序已经停了。已经下载的文件都在，没有丢。'))
+    : opRunning && !opInterrupted && op
+      ? (op.kind === 'fetch' || op.kind === 'stop'
+        ? '可以离开这一页，进度不会丢。'
+        : (humanOpNote(op.note ?? '') || op.note || '进度会自动更新，可以留在这一页'))
+      : sub
+
   return (
     <>
       {note && <div className="pending-box">{note}<button type="button" className="btn ml-10" onClick={() => { setNote(null); load() }}>重新读取</button></div>}
@@ -330,7 +361,7 @@ export function Acquire({ period, onOpenPeriod }: {
             <div className="aq-head">
               <h1 className="fs-24">取数核验</h1>
               <span className="pill unsigned mono">{period}</span>
-              <span className={`pill ${pill[view][1]}`}>{pill[view][0]}</span>
+              <span className={`pill ${pillCls}`}>{pillText}</span>
               <span className="hint aq-num">采集 · {expected > 0 ? `已取到 ${verified} / ${expected}` : '未开始'}{lastFetchAt ? ` · 最近下载 ${lastFetchAt}` : ''}</span>
               <button type="button" className="btn small ml-auto" aria-expanded={openForm}
                       onClick={() => { setOpenForm((v) => !v); setOpenErr('') }}>
@@ -356,13 +387,27 @@ export function Acquire({ period, onOpenPeriod }: {
           {/* ===== 主动作（每屏 1 个） ===== */}
           <div className="focus">
             <div aria-live="polite">
-              <div className="big">{opRunning && op ? `${OP_CN[op.kind ?? ''] ?? '正在执行'}……` : title}</div>
-              {((opRunning && op) || sub) && (
+              <div className="big">{heroTitle}</div>
+              {((opRunning && !opInterrupted && op) || showOpHero || sub) && (
                 <div className="sub" title={opRunning && op ? (op.note || undefined) : undefined}>
-                  {opRunning && op ? (humanOpNote(op.note ?? '') || op.note || '进度会自动更新，可以留在这一页') : sub}
+                  {heroSub}
                 </div>
               )}
-              {op?.state === 'failed' && (
+              {showOpHero && !opStopped && expected > 0 && (
+                <div className="hint note-bad">
+                  已取到 {verified} / {expected}。点「继续下载」只会补没下到的文件，已下过的不重复下载。
+                </div>
+              )}
+              {opRunning && !opInterrupted && (op.kind === 'fetch' || op.kind === 'stop') && (
+                <div className="hint">停止后已下载的文件都会保留，之后可以继续下载补缺的。</div>
+              )}
+              {opStory && !showOpHero && (
+                <div className="hint">
+                  {opStopped ? '上次的下载被停止了' : '上次的下载中断了（下载程序已经停了）'}
+                  {expected > 0 ? `；当前取到 ${verified} / ${expected}。` : '。'}
+                </div>
+              )}
+              {op?.state === 'failed' && !opStory && (
                 <div className="hint note-bad" title={op.note || undefined}>
                   {humanOpNote(op.note ?? '') || `上一步没有完成：${op.note || '原因见下载数据状态'}`}
                 </div>
@@ -389,6 +434,20 @@ export function Acquire({ period, onOpenPeriod }: {
               )}
             </div>
             <div className="cta">
+              {/* 中断/停止后「继续下载」（文件没取齐时；只补缺的） */}
+              {!ro && showOpHero && (
+                <button className="btn primary" disabled={!cap.start || busy}
+                        title={cap.start ? undefined : toolMissing} onClick={onStart}>
+                  <Icon name="download" size={20} />继续下载（补缺的）
+                </button>
+              )}
+              {/* 正在跑：停止下载（红；行内二次确认——复用 ConfirmButton 口径） */}
+              {!ro && opRunning && !opInterrupted && (
+                <ConfirmButton className="btn stop" confirmText="再点一次 · 确认停止" disabled={busy}
+                               onConfirm={() => { void act('stop') }}>
+                  <Icon name="stop" size={20} />停止下载
+                </ConfirmButton>
+              )}
               {!opRunning && !ro && view === 'ready' && (
                 <button className="btn primary" disabled={!cap.start || busy || opRunning}
                         title={cap.start ? undefined : toolMissing} onClick={onStart}>

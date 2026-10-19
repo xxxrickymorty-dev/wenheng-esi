@@ -96,6 +96,10 @@
   .btn:hover{background:var(--panel)}
   .btn.primary:hover{filter:brightness(1.06)}
   .btn.small{padding:5px 11px;font-size:13px;color:var(--ink-2)}
+  /* 停止下载：红描边 → 二次确认变实心红（与全站 ConfirmButton 同款口径） */
+  .btn.stop{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+  .btn.stop:hover{background:#EED2CB}
+  .btn.stop.confirming{background:var(--warn);border-color:var(--warn);color:#fff}
   .hint{color:var(--ink-3);font-size:14px}
   .note-bad{margin-top:6px;color:var(--bad)}
   .ml-auto{margin-left:auto}
@@ -205,9 +209,9 @@
     <button class="tbtn" data-go="c" type="button">③ 已停止（可继续下载）</button>
   </div>
   <p class="demo-note">
-    <b>静态稿 v1 · 待审。</b>新增三样：① 下载进行中多一个「停止下载」按钮；② 下载中途断掉（程序停了/电脑休眠）时，页面不再永远显示「正在下载」，
-    自动改说「上次下载中断了」并给出下一步；③ 停止/中断后都能一键「继续下载」，只补没下到的文件。
-    数据为示意（非本机真实状态）。
+    <b>静态稿 v2 · 待审。</b>新增三样：① 下载进行中多一个「停止下载」按钮（红色；点一次变「再点一次 · 确认停止」，3 秒退回——可点它看效果）；
+    ② 下载中途断掉（程序停了）时，页面不再永远显示「正在下载」，自动改说「上次下载中断了」并给出下一步；
+    ③ 停止/中断后都能一键「继续下载」，只补没下到的文件。数据为示意（非本机真实状态）。
   </p>
 
   <!-- ================= 期次数据状态 ================= -->
@@ -232,9 +236,9 @@
       <div class="hint">停止后已下载的文件都会保留，之后可以继续下载补缺的。</div>
     </div>
     <div class="cta">
-      <button class="btn" type="button" title="停掉这次下载；已经下到的文件保留，可随时继续">
+      <button class="btn stop" id="stopBtn" type="button" title="停掉这次下载；已经下到的文件保留，可随时继续">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12"/></svg>
-        停止下载
+        <span>停止下载</span>
       </button>
     </div>
   </div>
@@ -242,7 +246,7 @@
   <div class="focus st st-b">
     <div aria-live="polite">
       <div class="big">上次下载中断了</div>
-      <div class="sub">上一次是 2026-10-17 13:02 开始的，之后就没有再往下走——下载程序已经停了（电脑休眠、程序被关掉都可能）。已经下载的文件都在，没有丢。</div>
+      <div class="sub">最后一次动静是 2026-10-17 13:02，之后就没有再往下走——下载程序已经停了。已经下载的文件都在，没有丢。</div>
       <div class="hint note-bad">已取到 41 / 64。点「继续下载」只会补没下到的文件，已下过的不重复下载。</div>
     </div>
     <div class="cta">
@@ -331,6 +335,25 @@
     btns.forEach(b => b.classList.toggle('on', b.dataset.go === st))
   }
   btns.forEach(b => b.addEventListener('click', () => go(b.dataset.go)))
+
+  /* 「停止下载」的二次确认观感演示：点一次 → 变「再点一次 · 确认停止」实心红，3 秒退回（与全站 ConfirmButton 同款） */
+  const stopBtn = document.getElementById('stopBtn')
+  const stopLabel = stopBtn.querySelector('span')
+  let stopTimer
+  stopBtn.addEventListener('click', () => {
+    if (stopBtn.classList.contains('confirming')) {
+      clearTimeout(stopTimer)
+      stopBtn.classList.remove('confirming')
+      stopLabel.textContent = '停止下载'
+      return
+    }
+    stopBtn.classList.add('confirming')
+    stopLabel.textContent = '再点一次 · 确认停止'
+    stopTimer = setTimeout(() => {
+      stopBtn.classList.remove('confirming')
+      stopLabel.textContent = '停止下载'
+    }, 3000)
+  })
 </script>
 </body>
 </html>

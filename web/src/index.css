@@ -158,6 +158,10 @@ a{color:inherit}
 /* 行内二次确认态（票 06）：与警告同色系——醒目但不吓人，3 秒自动还原 */
 .btn.confirming{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
 .btn.primary.confirming{background:var(--warn);border-color:var(--warn);color:#fff}
+/* 停止下载（2026-10-19 晚）：红描边 → 悬停/二次确认变实心红（复用 ConfirmButton 的确认态） */
+.btn.stop{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+.btn.stop:hover{background:var(--warn);border-color:var(--warn);color:#fff}
+.btn.stop.confirming{background:var(--warn);border-color:var(--warn);color:#fff}
 .hint{color:var(--ink-3);font-size:14px}
 
 /* ---------- 状态条（颜色 + 图标 + 文字 三重编码；庚：平板＋左色线） ---------- */
