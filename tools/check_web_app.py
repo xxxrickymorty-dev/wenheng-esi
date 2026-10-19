@@ -280,8 +280,8 @@ def main():
             page.goto(BASE + "/app/?view=acquire&period=202609", wait_until="domcontentloaded")
             page.wait_for_selector(".aq-head", timeout=20000)
             navs = page.eval_on_selector_all("nav[aria-label='工作区'] a", "els => els.map(e => e.innerText.trim())")
-            check("左栏＝4 主区（出报告 / 灵活报告 / 报告 / 问文衡）",
-                  navs[:4] == ["出报告", "灵活报告", "报告", "问文衡"], str(navs))
+            check("左栏＝3 主区（出报告 / 灵活报告 / 问文衡；2026-10-19 去「报告」）",
+                  navs[:3] == ["出报告", "灵活报告", "问文衡"], str(navs))
             steps = page.eval_on_selector_all(
                 "nav[aria-label='出报告步骤'] a, nav[aria-label='出报告步骤'] span",
                 "els => els.map(e => e.innerText.trim())")

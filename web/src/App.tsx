@@ -478,26 +478,27 @@ export default function App() {
   const NAV: { key: string; label: string; href: string }[] = [
     { key: 'flow', label: '出报告', href: '/app/' },
     { key: 'flexible', label: '灵活报告', href: '/app/?view=analysis' },
-    { key: 'report', label: '报告', href: '/app/?view=report' },
+    /* 2026-10-19 rick：「报告」入口关闭（只读阅稿屏，日常走 出报告→核验定稿，用不上）——
+       页面与深链 ?view=report 保留；子屏（红件/图册/对勘/溯源）的「回报告」链接照旧。 */
     { key: 'ask', label: '问文衡', href: '/app/dialog/' },
   ]
-  /* 子屏归到哪个主区（决定顶栏高亮） */
+  /* 子屏归到哪个主区（决定顶栏高亮）；report 区已无导航项，子屏顶栏不高亮，属预期 */
   const GROUP: Record<string, string> = {
     workbench: 'flow', acquire: 'flow', pick: 'flow', review: 'flow', forecast: 'flow',
     report: 'report', red: 'report', charts: 'report', reading: 'report', trace: 'report',
     analysis: 'flexible', dialog: 'ask', ledger: 'admin', archive: 'admin',
   }
-  /* 「出报告」五步流水（2026-10-17 冗余收敛稿①⑤：站名＝屏名，预测选模独立一站）。
-     步骤条只在流水屏出现；2026-10-16 二版（rick 拍板）：不画序号——顺序由位置与细线方向表达。 */
+  /* 「出报告」四步流水（2026-10-19 rick：「选章节」入口关闭——一直空着，核验定稿里已有章节选择）。
+     步骤条只在流水屏出现；2026-10-16 二版（rick 拍板）：不画序号——顺序由位置与细线方向表达。
+     深链 ?view=pick 保留（页面不删），只是不再有入口。 */
   const FLOW_STEPS: { key: string; label: string; href?: string }[] = [
     { key: 'acquire', label: '取数核验', href: '/app/?view=acquire' },
-    { key: 'pick', label: '选章节', href: '/app/?view=pick' },
     { key: 'forecast', label: '预测选模', href: '/app/?view=forecast' },
     { key: 'gen', label: '生成初稿', href: '/app/' },
     { key: 'review', label: '核验定稿', href: '/app/?view=review' },
   ]
   const FLOW_ACTIVE: Record<string, string> = {
-    acquire: 'acquire', pick: 'pick', workbench: 'gen', review: 'review', forecast: 'forecast',
+    acquire: 'acquire', workbench: 'gen', review: 'review', forecast: 'forecast',
   }
   const isOperator = me?.role === 'operator'
   const notLoggedIn = roleKnown && !me

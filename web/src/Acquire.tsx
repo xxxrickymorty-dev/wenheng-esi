@@ -269,6 +269,9 @@ export function Acquire({ period, onOpenPeriod }: {
   const opBroken = op?.state === 'failed' && (op?.note ?? '').startsWith('上次运行中断')
   const opStopped = op?.state === 'failed' && (op?.note ?? '').startsWith('已停止')
   const opStory = opInterrupted || opBroken || opStopped
+  /* 「真的有活着的任务在跑」——僵尸（进程没了）不算，否则会把重取/并入口一起藏掉
+     （2026-10-19 实测：202609 的僵尸 op 让「重新下载这一期」不见了，check_web_app 逮到）。 */
+  const opBusy = opRunning && !opInterrupted
   const view: PageView = state ? deriveView(state) : 'ready'
   const totals = state?.totals ?? {}
   const expected = totals.expected ?? 0
@@ -292,6 +295,11 @@ export function Acquire({ period, onOpenPeriod }: {
      两处同写一句「已并入（202609 列）」是重复，删去头条那行（去重守卫见 e2e）。 */
   /* 最近一次「下载数据」的时间（只在最近一步确实是下载数据时才显示，免得把别的动作当成重取） */
   const lastFetchAt = op?.kind === 'fetch' ? (op.at ?? '') : ''
+  /* 打包下载（2026-10-19 馆员需求；rick 定「拆两个包、两个按钮」）：哪一路有文件就显示哪个按钮 */
+  const hasEsiPack = groups.some((g) => g.source === 'esi' && (g.verified ?? 0) > 0)
+  const hasIncitesPack = groups.some((g) => g.source === 'incites' && (g.verified ?? 0) > 0)
+  const packHref = (source: 'esi' | 'incites') =>
+    `/api/periods/${encodeURIComponent(period)}/acquisition/datapack?source=${source}`
   /* 往期档案只读（票 03）：期次早于「本机已取过的最新期次」就不能再取——ESI/InCites 没有历史数据 */
   const ro = state?.mode === 'readonly'
   const rec = state?.reconcile
@@ -363,6 +371,19 @@ export function Acquire({ period, onOpenPeriod }: {
               <span className="pill unsigned mono">{period}</span>
               <span className={`pill ${pillCls}`}>{pillText}</span>
               <span className="hint aq-num">采集 · {expected > 0 ? `已取到 ${verified} / ${expected}` : '未开始'}{lastFetchAt ? ` · 最近下载 ${lastFetchAt}` : ''}</span>
+              {/* 打包下载：把已下载的原始数据存回自己电脑（只读操作，操作员也可下；2026-10-19 馆员需求） */}
+              {hasEsiPack && (
+                <a className="btn small" href={packHref('esi')}
+                   title="把这一期已下载的 ESI 数据打包成 zip，存到你自己的电脑上">
+                  <Icon name="download" size={16} />ESI 下载
+                </a>
+              )}
+              {hasIncitesPack && (
+                <a className="btn small" href={packHref('incites')}
+                   title="把这一期已下载的 InCites 数据打包成 zip（包比较大，点完在下载栏等一会）">
+                  <Icon name="download" size={16} />InCites 下载
+                </a>
+              )}
               <button type="button" className="btn small ml-auto" aria-expanded={openForm}
                       onClick={() => { setOpenForm((v) => !v); setOpenErr('') }}>
                 <Icon name="plus" size={16} />开新一期
@@ -448,7 +469,7 @@ export function Acquire({ period, onOpenPeriod }: {
                   <Icon name="stop" size={20} />停止下载
                 </ConfirmButton>
               )}
-              {!opRunning && !ro && view === 'ready' && (
+              {!opBusy && !ro && view === 'ready' && (
                 <button className="btn primary" disabled={!cap.start || busy || opRunning}
                         title={cap.start ? undefined : toolMissing} onClick={onStart}>
                   <Icon name="download" size={20} />开始下载数据
@@ -456,34 +477,34 @@ export function Acquire({ period, onOpenPeriod }: {
               )}
               {/* 已取过之后（待核对 / 已并入）仍可重新下载这一期——采集与并入台账是两条线，
                   「并入过台账」不该把采集锁死（2026-10-16 票 01）；但**往期只读**（票 03） */}
-              {!opRunning && !ro && (view === 'review' || view === 'merged') && (
+              {!opBusy && !ro && (view === 'review' || view === 'merged') && (
                 <button className="btn" disabled={!cap.start || busy}
                         title={cap.start ? '重取只补没下到的文件；已并入台账不受影响' : toolMissing}
                         onClick={onStart}>
                   <Icon name="download" size={20} />重新下载这一期
                 </button>
               )}
-              {!opRunning && view === 'blocked' && (
+              {!opBusy && view === 'blocked' && (
                 <button className="btn" disabled={busy}
                         onClick={() => { void preflightWithBrowser().then(() => load(true)) }}>
                   <Icon name="refresh" size={20} />重新检查
                 </button>
               )}
-              {!opRunning && view === 'partial' && (
+              {!opBusy && view === 'partial' && (
                 <button className="btn primary" disabled={!cap.retry || busy || opRunning}
                         title={cap.retry ? undefined : toolMissing}
                         onClick={() => act('retry', failGroup?.id ? { group: failGroup.id } : undefined)}>
                   <Icon name="refresh" size={20} />重试这一组
                 </button>
               )}
-              {!opRunning && view === 'review' && (
+              {!opBusy && view === 'review' && (
                 <ConfirmButton className="btn primary" confirmText="再点一次 · 确认并入"
                                disabled={!cap.merge || busy}
                                onConfirm={() => { void act('merge') }}>
                   <Icon name="check" size={20} />核对无误 · 并入台账
                 </ConfirmButton>
               )}
-              {!opRunning && view === 'merged' && (
+              {!opBusy && view === 'merged' && (
                 <a className="btn primary" href={`/app/?period=${encodeURIComponent(period)}`}>
                   <Icon name="play" size={20} />去生成台生成
                 </a>
