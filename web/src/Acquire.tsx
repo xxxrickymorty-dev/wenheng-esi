@@ -333,11 +333,15 @@ export function Acquire({ period, onOpenPeriod }: {
      上一段没通过，下一段的按钮不出现（rick：检查无误后才显示下载）。 */
   const fetchBusy = opBusy && (op?.kind === 'fetch' || op?.kind === 'stop')
   const copyBusy = opBusy && (op?.kind === 'copy' || op?.kind === 'merge')
-  const s1done = pfPassed || (view !== 'ready' && view !== 'blocked')
+  /* ① 的结论只认**这四盏灯本身**：不看「期次走到哪一步」——已并入的老期次如果现在没登录网站，
+     也必须如实说「有没通过的项」，不能因为历史上下载过就打 ✓（2026-10-20 rick 逮到的假话）。 */
+  const pfHasBad = !!pf && (pf.browser === 'bad' || pf.esi === 'bad' || pf.incites === 'bad'
+    || pf.data?.ok === false)
+  const s1done = pfPassed
   const s2collapsed = (view === 'review' || view === 'merged') && !fetchBusy
   const s2locked = !s2collapsed && !pfPassed && (view === 'ready' || view === 'blocked')
   const s1stat: [string, string] = s1done ? ['✓ 4 项都过了', 'ok']
-    : view === 'blocked' ? ['有没通过的项', 'bad'] : ['还没检查', 'wait']
+    : pfHasBad ? ['有没通过的项', 'bad'] : ['还没检查', 'wait']
   const s2stat: [string, string] = s2collapsed ? [`✓ 已取到 ${verified} / ${expected}`, 'ok']
     : fetchBusy ? [`下载中 · ${verified} / ${expected}`, 'run']
       : opStory ? [(opStopped ? '已停止' : '已中断'), (opStopped ? 'wait' : 'bad')]
@@ -445,10 +449,16 @@ export function Acquire({ period, onOpenPeriod }: {
                 </div>
                 {/* 还没过：展开（四盏灯 + 检查按钮） */}
                 <div className="stg-body">
-                  <div className="stg-big">{view === 'blocked' ? '下载数据专用浏览器还没准备好' : '先检查，再下载'}</div>
+                  <div className="stg-big">{view === 'blocked' ? '下载数据专用浏览器还没准备好'
+                    : ro ? '往期档案只读'
+                      : (view === 'review' || view === 'merged') ? '现在的连接状态不齐'
+                        : '先检查，再下载'}</div>
                   <div className="stg-sub">{view === 'blocked'
                     ? '系统会自动打开下载数据专用浏览器；在里面登录 ESI / InCites 后，点「重新检查」。'
-                    : '四件事：下载数据专用浏览器开着、两家网站登录着、这一期的数据更新了没有。'}</div>
+                    : ro ? '这一期不能再取；这里只显示浏览器与登录的当前状态。'
+                      : (view === 'review' || view === 'merged')
+                        ? '这一期已经取完；这里只显示浏览器与登录的当前状态。'
+                        : '四件事：下载数据专用浏览器开着、两家网站登录着、这一期的数据更新了没有。'}</div>
                   <div className="stg-cta">
                     <div className="chips">
                       <span className={`aq-chip ${pf?.browser === 'ok' ? 'ok' : pf?.browser === 'bad' ? 'bad' : ''}`}>
