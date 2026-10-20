@@ -19,7 +19,7 @@
 | `src/` | 确定性流水线（解析台账 → 算大表 → 预测回测 → 渲染图 → 替换母版） |
 | `src/agent/` | Agent 层：`states.py`(状态机) / `tools.py`(工具契约) / `flow.py`(编排) / `heal.py`(自愈) / `trace.py` / `rules/repair_rules.yaml`(自愈规则库) |
 | `src/ai/` | AI 层（SPEC）：对外仅 `run`/`capabilities`/`set_switch`；**模型调用唯一进出一处**＝`_attempt.py`（盾→端口→校验→回落），`ai_calls` 留痕唯一写口＝`_record.Recorder` |
-| `src/flexible/` | 灵活报告（第二条产线）：查询 / 规划 / 图表规格 / 正文组装；模型口经 `src/ai/` 边界 |
+| `src/flexible/` | 灵活报告（第二条产线）：**单学科分析**（概况/影响力/排名/跨校/展望）+ 指定对标高校；查询 / 规划 / 图表规格 / 正文组装；模型口经 `src/ai/` 边界 |
 | `server/` | FastAPI + Jinja2 看板（服务端渲染） |
 | `web/` | 新工作区前端：React + TypeScript + Vite；经 FastAPI `/api/*` 取数，本机构建 `dist/` 并入库，由 FastAPI 挂载于 `/app/` |
 | `master/` | **结构金母版** `学科信息参考母版_2026第5期.docx`，必须入库 |
@@ -133,7 +133,7 @@
 ## 验收三件套（改状态相关代码后按序跑）
 
 ```bash
-uv run python -m pytest -m ""          # 全量 1362 例（默认 1357 例，5 个 slow 被 marker 排除）
+uv run python -m pytest -m ""          # 全量 1369 例（默认 1364 例，5 个 slow 被 marker 排除）
 uv run python -m uvicorn server.app:app --port 8080   # 起服务：一律 uv run；⚠ 控制台脚本直呼（uv run pytest/uvicorn）会撞中文路径 trampoline，走 python -m；起后跑 server/e2e_check.py（只读 223 断言）
 uv run python tools/verify_demo_run.py <期次>   # 写路径验收
 ```

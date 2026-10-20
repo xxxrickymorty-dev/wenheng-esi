@@ -73,9 +73,13 @@ def _period_esi_label(period: str) -> str:
 
 
 # ------------------------------------------------------------------ 逐文件核验
-def _check_xlsx(path: pathlib.Path, *, tags: tuple = (), min_rows: int = 1,
-                read_only: bool = False) -> str | None:
-    """→ None 表示通过；否则返回人话原因。"""
+def _check_xlsx(path: pathlib.Path, *, tags: tuple = (), tags_any: tuple = (),
+                min_rows: int = 1, read_only: bool = False) -> str | None:
+    """→ None 表示通过；否则返回人话原因。
+
+    `tags` 全部必须命中；`tags_any` 命中任意一个即可（老期次的中文/英文表头两种写法，
+    例如 InCites 研究领域表的「Web of Science 论文数」/「Web of Science Documents」）。
+    """
     import openpyxl                                                # noqa: PLC0415
     try:
         # ESI 新导出的 dimension 是坏的（A1）——必须普通模式才读得到全部；InCites 用只读模式省内存。
@@ -96,6 +100,8 @@ def _check_xlsx(path: pathlib.Path, *, tags: tuple = (), min_rows: int = 1,
     for tag in tags:
         if tag.lower() not in text.lower():
             return f"表头指纹对不上（缺「{tag}」）"
+    if tags_any and not any(t.lower() in text.lower() for t in tags_any):
+        return "表头指纹对不上（缺「" + "」/「".join(tags_any) + "」任一）"
     if n_rows < min_rows:
         return f"行数不足（{n_rows} < {min_rows}）"
     return None
@@ -207,7 +213,10 @@ def scan_groups(period: str, esi_root: pathlib.Path, snapshot: str) -> list[dict
          "files": subj_inc},
         {"id": "incites-fields", "source": "incites", "index": 2, "title": "全球、中国、云大研究领域汇总",
          "files": [_candidates_entry(inc, label, cands, _check_xlsx,
-                                     tags=("Web of Science 论文数",), min_rows=20, read_only=True)
+                                     # 202601 的快照是英文表头（Web of Science Documents）；
+                                     # 中文/英文两种写法都算同一张表（2026-10-20 核出）
+                                     tags_any=("Web of Science 论文数", "Web of Science Documents"),
+                                     min_rows=20, read_only=True)
                    for label, cands in (
                        ("全球研究领域", ("全球 研究领域.xlsx", "全球 研究领域 .xlsx", "全球研究领域.xlsx")),
                        ("中国研究领域", ("中国研究领域.xlsx",)),

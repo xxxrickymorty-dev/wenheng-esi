@@ -38,7 +38,8 @@ import sys
 import openpyxl
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "src"))
-from acquisition_state import SUBJECTS, ESI_ROOT_DEFAULT  # noqa: E402
+from acquisition_state import (INCITES_ROOT_DEFAULT, SUBJECTS, ESI_ROOT_DEFAULT,  # noqa: E402
+                              resolve_snapshot)
 
 ARCHIVE_DIRNAME = "_归档统一命名"
 #: 论文清单三类（与 scan_groups 的 glob 后缀一致）
@@ -224,13 +225,97 @@ def apply_plan(plan: dict, esi_root: pathlib.Path, write: bool) -> dict:
     return rec
 
 
+def _is_incites_fields(p: pathlib.Path) -> bool:
+    """InCites 研究领域汇总：名称/Name + Web of Science 论文数(Documents)，15–45 行。"""
+    try:
+        if not 15 <= _rows(p) <= 45:
+            return False
+        head = " ".join(_first_cells(p, rows=2)).lower()
+        has_docs = "web of science 论文数" in head or "web of science documents" in head
+        return has_docs and ("名称" in head or "name" in head)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+# ------------------------------------------------------------------ InCites 快照（同族命名坑）
+def plan_incites(snapshot_dir: pathlib.Path) -> dict:
+    """InCites 快照里的命名坑（**只改名、不归档**——额外的切法有用）：
+
+    · `Agricultural Sciencesxlsx.xlsx`（多打了一个 xlsx）→ `Agricultural Sciences.xlsx`
+    · `作者所在地中国 研究领域.xlsx`（中国领域当年的叫法）→ `中国研究领域.xlsx`
+    · `云大学科.xlsx`（其实是 InCites 的云南大学研究领域表）→ `云南大学研究领域.xlsx`
+    """
+    plan = {"dir": snapshot_dir, "rename": [], "warn": []}
+    if not snapshot_dir.is_dir():
+        return plan
+    files = {p.name for p in snapshot_dir.iterdir() if p.is_file()}
+    for p in sorted(snapshot_dir.iterdir()):
+        if not p.is_file():
+            continue
+        m = re.fullmatch(r"(.+?)xlsx\.xlsx", p.name, re.I)
+        if m:
+            target = f"{m.group(1)}.xlsx"
+            if target in files:
+                plan["warn"].append(f"{p.name} 应改成 {target}，但目标已存在（未动）")
+            else:
+                plan["rename"].append((p, target, "双扩展名 → 单扩展名"))
+                files.add(target)
+    alias = "作者所在地中国 研究领域.xlsx"
+    if alias in files and "中国研究领域.xlsx" not in files:
+        plan["rename"].append((snapshot_dir / alias, "中国研究领域.xlsx",
+                               "「作者所在地中国」＝中国领域表（基线量级与全球/中国一致）"))
+        files.add("中国研究领域.xlsx")
+    ynu = "云大学科.xlsx"
+    if ynu in files and "云南大学研究领域.xlsx" not in files \
+            and _is_incites_fields(snapshot_dir / ynu):
+        plan["rename"].append((snapshot_dir / ynu, "云南大学研究领域.xlsx",
+                               "名字叫「云大学科」，内容是本快照的云南大学研究领域表（23 行）"))
+    return plan
+
+
+def apply_incites(plan: dict, write: bool) -> dict:
+    rec = {"dir": str(plan["dir"]), "when": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+           "renamed": []}
+    if not write:
+        return rec
+    for src, dst, _why in plan["rename"]:
+        target = plan["dir"] / dst
+        if target.exists():
+            raise SystemExit(f"[拒绝] 目标已存在，不动：{target}")
+        rec["renamed"].append({"from": src.name, "to": dst, "size": src.stat().st_size,
+                               "sha256": _sha(src)})
+        src.rename(target)
+    (plan["dir"] / "_改名记录.json").write_text(
+        __import__("json").dumps(rec, ensure_ascii=False, indent=1), encoding="utf-8")
+    return rec
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="往期 ESI 包统一命名（默认只预览）")
     ap.add_argument("--periods", nargs="*", default=["202601", "202603", "202605", "202607"])
     ap.add_argument("--esi-root", default=str(ESI_ROOT_DEFAULT))
     ap.add_argument("--write", action="store_true", help="真正动盘（改名 + 归档 + 写记录）")
+    ap.add_argument("--incites", action="store_true",
+                    help="顺带核 InCites 快照的命名坑（双扩展名 / 作者所在地中国）")
     args = ap.parse_args()
     root = pathlib.Path(args.esi_root)
+
+    if args.incites:
+        for period in args.periods:
+            snap = resolve_snapshot(period, INCITES_ROOT_DEFAULT)
+            if not snap:
+                print(f"{period}：未登记 InCites 快照，跳过")
+                continue
+            plan = plan_incites(INCITES_ROOT_DEFAULT / snap)
+            print("=" * 78)
+            print(f"{period} · InCites {snap}：改名 {len(plan['rename'])} 个")
+            for src, dst, why in plan["rename"]:
+                print(f"  改名  {src.name}  →  {dst}   （{why}）")
+            for w in plan["warn"]:
+                print(f"  ⚠ {w}")
+            if args.write:
+                rec = apply_incites(plan, write=True)
+                print(f"  已执行：改名 {len(rec['renamed'])}")
 
     for period in args.periods:
         plan = plan_period(period, root)

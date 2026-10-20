@@ -120,3 +120,47 @@ def test_拒绝_目标存在时apply不覆盖(tmp_path):
     plan["rename"].append((src, "全球学科.xlsx", "test"))
     with pytest.raises(SystemExit):
         N.apply_plan(plan, root, write=True)
+
+
+# ------------------------------------------------------------------ InCites 快照的命名坑
+def _mk_incites(tmp_path: pathlib.Path) -> pathlib.Path:
+    d = tmp_path / "数据覆盖2015-2025.12.31"
+    d.mkdir(parents=True)
+    (d / "Agricultural Sciences.xlsx").write_bytes(b"ok")
+    (d / "Chemistryxlsx.xlsx").write_bytes(b"typo")          # 双扩展名
+    (d / "作者所在地中国 研究领域.xlsx").write_bytes(b"cn")   # 中国领域旧叫法
+    _xlsx(d / "云大学科.xlsx", [["名称", "排名", "Web of Science 论文数", "被引频次"],
+                                ["Agricultural Sciences", 754, 618, 8315],
+                                *[[f"F{i}", i, i * 10, i * 100] for i in range(20)]])
+    return d
+
+
+def test_incites_三处命名坑都认(tmp_path):
+    d = _mk_incites(tmp_path)
+    plan = N.plan_incites(d)
+    ren = {src.name: dst for src, dst, _ in plan["rename"]}
+    assert ren == {
+        "Chemistryxlsx.xlsx": "Chemistry.xlsx",
+        "作者所在地中国 研究领域.xlsx": "中国研究领域.xlsx",
+        "云大学科.xlsx": "云南大学研究领域.xlsx",
+    }
+
+
+def test_incites_云大学科内容不对就不动(tmp_path):
+    d = tmp_path / "snap"
+    d.mkdir()
+    _xlsx(d / "云大学科.xlsx", [["Indicators Results List: Research Fields"],
+                                ["Research Fields", "Web of Science Documents"],
+                                *[[f"F{i}", i] for i in range(20)]])   # 像 ESI 表，不是 InCites
+    plan = N.plan_incites(d)
+    assert plan["rename"] == [], "内容不像 InCites 研究领域表，不该改名"
+
+
+def test_incites_执行留痕(tmp_path):
+    d = _mk_incites(tmp_path)
+    rec = N.apply_incites(N.plan_incites(d), write=True)
+    assert len(rec["renamed"]) == 3
+    assert (d / "Chemistry.xlsx").exists() and (d / "中国研究领域.xlsx").exists()
+    assert (d / "云南大学研究领域.xlsx").exists()
+    man = json.loads((d / "_改名记录.json").read_text(encoding="utf-8"))
+    assert len(man["renamed"]) == 3
