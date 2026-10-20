@@ -63,7 +63,9 @@ def main() -> int:
     if not copy.exists() or copy.stat().st_mtime < src.stat().st_mtime:
         shutil.copy2(src, copy)
 
-    wb = openpyxl.load_workbook(copy, read_only=True, data_only=True)
+    # 不用 read_only=True：仓里有守卫（test_guard_no_readonly）专门钉这件事；
+    # 这里只读副本、不存盘，正常加载即可。
+    wb = openpyxl.load_workbook(copy, data_only=True)
     try:
         checks = []
 
