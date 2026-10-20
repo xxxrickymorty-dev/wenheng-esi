@@ -25,13 +25,13 @@ code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,
 :root, html[data-palette="blue"]{
   --field:#17456E; --field-2:#0F2E4C; --field-3:#2F6B8E; --field-4:#8FB6CE; --field-5:#DCE8F0;
   --tool:#26483B; --tool-2:#163228; --tool-3:#2F7A58; --tool-4:#7FB79B; --tool-5:#DFEDE6;
-  --bg:#F2EFE6; --card:#F7F4EC; --panel:#E4DFD0;
+  --bg:#F2EFE6; --card:#F7F4EC; --panel:#E4DFD0; --card-hi:#FAF8F1;
   --ink:#15222B; --ink-2:#43525C; --ink-3:#556169;
   --line:#D6D0C0; --line-2:#E4DFD0;
   --zhu:#26483B; --zhu-soft:#DFEDE6;
   --gline:#163228;
   --gold:#2F7A58; --gold-soft:#DFEDE6; --gold-ink:#163228;
-  --ok:#276B4C; --ok-soft:#DFEDE6;
+  --ok:#276B4C; --ok-soft:#DFEDE6; --ok-line:#9CC4AE;
   --warn:#B23A2B; --warn-soft:#F4DDD7;
   --bad:#B23A2B; --bad-soft:#F4DDD7;
   --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
@@ -854,6 +854,8 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 .aq-open-in{width:22ch;padding:6px 10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 /* `.btn.small` 在样式表更靠后，会盖掉 `.btn.primary` 的白字——这里提一级把它压回来 */
 .aq-open .btn.primary{color:#fff;background:var(--zhu);border-color:var(--zhu);font-weight:600}
+/* 同款：三段式里「去生成台生成」= btn small primary（2026-10-19） */
+.btn.small.primary{color:#fff;background:var(--zhu);border-color:var(--zhu);font-weight:600}
 .aq-open-in:focus{outline:2px solid var(--zhu);outline-offset:1px}
 .aq-duty{margin:10px 0 0;color:var(--ink-2);font-size:13.5px;line-height:1.7}
 
@@ -864,6 +866,48 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
   background:var(--card);border:1px solid var(--line);font-size:12.5px;color:var(--ink-3)}
 .aq-chip.ok{color:var(--ok);border-color:var(--ok);background:var(--ok-soft)}
 .aq-chip.bad{color:var(--bad);border-color:var(--bad);background:var(--bad-soft)}
+
+/* ===== 取数核验三段式（2026-10-19 rick 定：① 开始前检查 → ② 下载数据 → ③ 并入台账，逐段解锁） =====
+   上一段没过 → 下一段 locked（虚线 + 写明等什么）；做完的一段 done（内容收起、缩成一行结论＋重入口）。
+   静态稿对照：web/mockups/取数核验-三段式重设计（静态稿）.html */
+.flow{margin-top:18px}
+.stg{position:relative;display:grid;grid-template-columns:56px 1fr}
+.stg .node{position:relative;display:flex;justify-content:center}
+.stg .node i{width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--line);background:var(--card);font-family:var(--serif);font-style:normal;
+  font-size:17px;color:var(--ink-3);z-index:1}
+.stg .node::after{content:"";position:absolute;top:34px;bottom:0;width:2px;background:var(--line-2)}
+.stg:last-child .node::after{display:none}
+.stg.done .node i{background:var(--ok-soft);border-color:var(--ok-line);color:var(--ok)}
+.stg.done .node::after{background:var(--ok-line)}
+.stg.now .node i{background:var(--zhu);border-color:var(--zhu);color:#fff}
+.stg.locked .node i{border-style:dashed}
+.stg .body{min-width:0;padding:0 0 22px 12px}
+.stg-card{border:1px solid var(--line);background:var(--card)}
+.stg.now .stg-card{border-left:3px solid var(--zhu);background:var(--card-hi)}
+.stg.locked .stg-card{border-style:dashed;background:transparent}
+.stg-top{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
+.stg.done .stg-top{border-bottom:none;padding:10px 16px}
+.stg-title{font-family:var(--serif);font-size:16.5px;font-weight:650}
+.stg-stat{margin-left:auto;font-size:13px}
+.stg-stat.ok{color:var(--ok)}
+.stg-stat.wait{color:var(--ink-3)}
+.stg-stat.run{color:var(--gold)}
+.stg-stat.bad{color:var(--warn)}
+.stg-body{padding:14px 16px 15px}
+.stg.done .stg-body{display:none}
+.stg-inline{display:none}
+.stg.done .stg-inline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 16px 10px}
+/* ② 收起后点「下载清单」展开的明细区（只在 done 段显示，不挤占常驻高度） */
+.stg-extra{display:none}
+.stg.done .stg-extra{display:block;padding:0 16px 12px}
+.stg-big{font-family:var(--serif);font-size:clamp(20px,2.2vw,26px);font-weight:600;color:var(--zhu);line-height:1.35}
+.stg-sub{color:var(--ink-2);font-size:14.5px;margin-top:2px}
+.stg-cta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
+.chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.stg-prog{display:flex;align-items:center;gap:12px;margin-top:12px}
+.stg-packs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;
+  border-top:1px solid var(--line-2)}
 
 .aq-groups{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
 .aq-g{min-width:0;border:1px solid var(--line-2);background:var(--card);padding:11px 13px 10px}

@@ -303,22 +303,31 @@ def main():
             check("往期档案只读：没有取数入口，且写明缘由",
                   (not ro_refetch) and "往期档案只读" in ro_text,
                   f"fetchBtn={ro_refetch} note={'往期档案只读' in ro_text}")
+            # 三段式门禁（2026-10-19 rick 定）：没检查过 → 下载段锁着、不给「开始下载数据」
+            page.goto(BASE + "/app/?view=acquire&period=202611", wait_until="domcontentloaded")
+            page.wait_for_selector(".aq-head", timeout=20000)
+            gate_txt = page.inner_text("main")
+            gate_btn = page.eval_on_selector_all(
+                "button", "els => els.some(e => /开始下载数据/.test(e.innerText))")
+            check("三段式门禁：没检查过 → 下载段锁着（无「开始下载数据」，写明等检查）",
+                  (not gate_btn) and ("等 ① 检查通过" in gate_txt), f"btn={gate_btn}")
             page.goto(BASE + "/app/?view=acquire&period=202609", wait_until="domcontentloaded")
             page.wait_for_selector(".aq-head", timeout=20000)
             # 拍板 2026-10-16 中午：头条去重——只留**采集**进度行；「已并入（期次 列）」的结论归焦点卡。
             # （此前头条与焦点卡各写一句「已并入（202609 列）」，是重复。）
             head_txt = page.inner_text(".aq-head")
-            focus_txt = page.inner_text(".focus .big")
-            check("取数台头条去重：只留采集行（无「并入台账 ·」），并入结论归焦点卡",
+            flow_txt = page.inner_text(".flow")
+            check("取数台头条去重：只留采集行（无「并入台账 ·」），并入结论归三段条",
                   ("采集 ·" in head_txt) and ("并入台账" not in head_txt)
-                  and ("已并入" in focus_txt),
-                  f"head={head_txt[:70]!r} focus={focus_txt[:40]!r}")
+                  and ("已并入" in flow_txt),
+                  f"head={head_txt[:70]!r} flow={flow_txt[:40]!r}")
             txt = page.inner_text("main")
             check("取数台：期次数据状态与开始前检查都在",
                   "取数核验" in txt and "开始前检查" in txt, "")
             check("开始前检查四灯齐全（浏览器 / ESI / InCites / 数据期）",
-                  all(s in txt for s in ("下载数据专用浏览器", "ESI 网站", "InCites 网站", "数据期")), "")
-            page.locator("details.fold summary", has_text="下载数据清单").first.click()
+                  all(s in txt for s in ("浏览器", "ESI 登录", "InCites 登录", "数据期")), "")
+            # 三段式（2026-10-19）：② 收起后明细从「下载清单」按钮点开；展开态常驻同一份
+            page.locator("button", has_text="下载清单").first.click()
             page.wait_for_timeout(300)
             n_groups = page.locator(".aq-g").count()
             has_empty = "还没有下载数据记录" in page.inner_text("main")
@@ -382,7 +391,7 @@ def main():
             page.wait_for_selector(".aq-head", timeout=15000)
             txt = page.inner_text("main")
             check("取数台：未出稿期次也能看（待核对态）",
-                  "待核对" in txt and "已自动建好" in txt, "")
+                  "待核对" in txt and "核对表" in txt, "")
             page.goto(BASE + "/app/?period=209911", wait_until="domcontentloaded")
             page.wait_for_timeout(900)
             txt = page.inner_text("main")

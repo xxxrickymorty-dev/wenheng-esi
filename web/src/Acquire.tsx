@@ -138,6 +138,8 @@ export function Acquire({ period, onOpenPeriod }: {
   const [openForm, setOpenForm] = useState(false)
   const [newPeriod, setNewPeriod] = useState('')
   const [openErr, setOpenErr] = useState('')
+  /* ② 段收起后，「下载清单」仍可点开看（2026-10-19 三段式：明细不常驻，但要够得着） */
+  const [showGroups, setShowGroups] = useState(false)
   const stateRef = useRef<AcquisitionState | null>(null)
   const reloadTimer = useRef<number | undefined>(undefined)
   useEffect(() => () => { if (reloadTimer.current !== undefined) window.clearTimeout(reloadTimer.current) }, [])
@@ -326,36 +328,63 @@ export function Acquire({ period, onOpenPeriod }: {
   const pf = state?.preflight
   const pfPassed = !!pf && pf.browser === 'ok' && pf.esi === 'ok'
     && pf.incites === 'ok' && pf.data?.ok !== false
-  const title = view === 'ready'
-    ? (pfPassed ? '开始前检查通过，可以开始下载数据。' : '还没开始下载数据。')
-    : view === 'blocked' ? '下载数据专用浏览器还没准备好。'
-      : view === 'running' ? `正在下载数据${liveGroup?.title ? `：${liveGroup.title}` : ''}……`
-        : view === 'partial' ? `${failGroup?.title ?? '有一组'}有 ${failed} 份没通过核验。`
-          : view === 'review' ? '本期监测表已自动建好，请核对。'
-            : `已并入主台账（${period} 列）`
-  const sub = view === 'ready'
-    ? (pfPassed ? '9 组文件，取到后逐份核验。' : '点「开始下载数据」会先检查网站的数据更新了没有；需要时自动打开下载数据专用浏览器（首次在里面登录 ESI / InCites）。')
-    : view === 'blocked' ? '系统会自动打开下载数据专用浏览器；在里面登录 ESI / InCites 后，点「重新检查」。'
-      : view === 'running' ? '可以离开这一页，进度不会丢。'
-        : view === 'partial' ? '重试只补这一组，通过的不重复下载。'
-          : view === 'review' ? `核对无误后并入台账（只动 ${period} 列）。`
-            : ''
-
-  /* 头条（横幅）话术：中断/停止的故事见 showOpHero；其余照旧 */
-  const heroTitle = showOpHero
+  /* ===== 三段式（2026-10-19 rick 定：① 开始前检查 → ② 下载数据 → ③ 并入台账，逐段解锁） =====
+     每段三态：done（收起成一行结论＋重入口）/ now（展开）/ locked（虚线＋等什么）；
+     上一段没通过，下一段的按钮不出现（rick：检查无误后才显示下载）。 */
+  const fetchBusy = opBusy && (op?.kind === 'fetch' || op?.kind === 'stop')
+  const copyBusy = opBusy && (op?.kind === 'copy' || op?.kind === 'merge')
+  const s1done = pfPassed || (view !== 'ready' && view !== 'blocked')
+  const s2collapsed = (view === 'review' || view === 'merged') && !fetchBusy
+  const s2locked = !s2collapsed && !pfPassed && (view === 'ready' || view === 'blocked')
+  const s1stat: [string, string] = s1done ? ['✓ 4 项都过了', 'ok']
+    : view === 'blocked' ? ['有没通过的项', 'bad'] : ['还没检查', 'wait']
+  const s2stat: [string, string] = s2collapsed ? [`✓ 已取到 ${verified} / ${expected}`, 'ok']
+    : fetchBusy ? [`下载中 · ${verified} / ${expected}`, 'run']
+      : opStory ? [(opStopped ? '已停止' : '已中断'), (opStopped ? 'wait' : 'bad')]
+        : s2locked ? ['等 ① 检查通过', 'wait']
+          : view === 'partial' ? [`有 ${failed} 份没通过`, 'bad']
+            : ro ? ['往期只读', 'wait'] : ['可以下载', 'wait']
+  const s3stat: [string, string] = view === 'merged' ? [`✓ 已并入（${period} 列）`, 'ok']
+    : copyBusy ? [`${op?.kind === 'merge' ? '正在并入' : '正在建核对副本'}……`, 'run']
+      : view === 'review' ? ['核对表已生成 · 待核对', 'run'] : ['等 ② 下载齐了自动解锁', 'wait']
+  const s2big = showOpHero
     ? (opStopped ? '下载已停止' : '上次下载中断了')
-    : opRunning && !opInterrupted && op ? `${OP_CN[op.kind ?? ''] ?? '正在执行'}……` : title
-  const heroSub = showOpHero
+    : fetchBusy ? `正在按组下载数据${liveGroup?.title ? `：${liveGroup.title}` : ''}……`
+      : view === 'partial' ? `${failGroup?.title ?? '有一组'}有 ${failed} 份没通过核验。`
+        : view === 'running' ? '这一期还没取齐'
+          : pfPassed ? '检查都过了，可以下载这一期的数据' : '等上一步检查通过'
+  const s2sub = showOpHero
     ? (opStopped
       ? `已经下载的文件都在${expected > 0 ? `（${verified} / ${expected}）` : ''}。等准备好再点「继续下载」，只补没下到的文件。`
       : (opInterrupted && op?.at
         ? `最后一次动静是 ${op.at}，之后就没有再往下走——下载程序已经停了。已经下载的文件都在，没有丢。`
         : '下载程序已经停了。已经下载的文件都在，没有丢。'))
-    : opRunning && !opInterrupted && op
-      ? (op.kind === 'fetch' || op.kind === 'stop'
-        ? '可以离开这一页，进度不会丢。'
-        : (humanOpNote(op.note ?? '') || op.note || '进度会自动更新，可以留在这一页'))
-      : sub
+    : fetchBusy ? '可以离开这一页，进度不会丢。'
+      : view === 'partial' ? '重试只补这一组，通过的不重复下载。'
+        : view === 'running' ? `已取到 ${verified} / ${expected}；继续下载只补缺的文件。`
+          : pfPassed ? '9 组、共 64 份；下载中随时可停，停下的补缺不重复下载。'
+            : '① 的检查都过了，这里会出现「开始下载」。'
+  /* 失败的一行话：下载相关留 ②，建副本/并入相关留 ③（按 op.kind 归位） */
+  const opNoteLine = op?.state === 'failed' && !opStory
+    ? (humanOpNote(op.note ?? '') || `上一步没有完成：${op.note || '原因见下载数据状态'}`) : ''
+  /* 下载清单（组卡）：② 展开时常驻一处；收起后从「下载清单」按钮点开——不重复造两份 */
+  const groupsFold = (open?: boolean) => (
+    <details className="fold" open={open}>
+      <summary>下载数据清单<span className="sm">{totals.groups ?? groups.length ?? 9} 组 · {expected > 0 ? `${expected} 份` : '份数待定'}</span></summary>
+      <div className="fold-inner">
+        {groups.length === 0 ? (
+          <p className="hint m-0">还没有下载数据记录。</p>
+        ) : (
+          <div className="aq-groups">
+            {groups.map((g, i) => (
+              <GroupCard key={g.id ?? i} g={g} busy={busy} readonly={ro}
+                         onRetry={(gid) => { void onRetryGroup(gid) }} />
+            ))}
+          </div>
+        )}
+      </div>
+    </details>
+  )
 
   return (
     <>
@@ -371,19 +400,6 @@ export function Acquire({ period, onOpenPeriod }: {
               <span className="pill unsigned mono">{period}</span>
               <span className={`pill ${pillCls}`}>{pillText}</span>
               <span className="hint aq-num">采集 · {expected > 0 ? `已取到 ${verified} / ${expected}` : '未开始'}{lastFetchAt ? ` · 最近下载 ${lastFetchAt}` : ''}</span>
-              {/* 打包下载：把已下载的原始数据存回自己电脑（只读操作，操作员也可下；2026-10-19 馆员需求） */}
-              {hasEsiPack && (
-                <a className="btn small" href={packHref('esi')}
-                   title="把这一期已下载的 ESI 数据打包成 zip，存到你自己的电脑上">
-                  <Icon name="download" size={16} />ESI 下载
-                </a>
-              )}
-              {hasIncitesPack && (
-                <a className="btn small" href={packHref('incites')}
-                   title="把这一期已下载的 InCites 数据打包成 zip（包比较大，点完在下载栏等一会）">
-                  <Icon name="download" size={16} />InCites 下载
-                </a>
-              )}
               <button type="button" className="btn small ml-auto" aria-expanded={openForm}
                       onClick={() => { setOpenForm((v) => !v); setOpenErr('') }}>
                 <Icon name="plus" size={16} />开新一期
@@ -405,176 +421,266 @@ export function Acquire({ period, onOpenPeriod }: {
             )}
           </section>
 
-          {/* ===== 主动作（每屏 1 个） ===== */}
-          <div className="focus">
-            <div aria-live="polite">
-              <div className="big">{heroTitle}</div>
-              {((opRunning && !opInterrupted && op) || showOpHero || sub) && (
-                <div className="sub" title={opRunning && op ? (op.note || undefined) : undefined}>
-                  {heroSub}
-                </div>
-              )}
-              {showOpHero && !opStopped && expected > 0 && (
-                <div className="hint note-bad">
-                  已取到 {verified} / {expected}。点「继续下载」只会补没下到的文件，已下过的不重复下载。
-                </div>
-              )}
-              {opRunning && !opInterrupted && (op.kind === 'fetch' || op.kind === 'stop') && (
-                <div className="hint">停止后已下载的文件都会保留，之后可以继续下载补缺的。</div>
-              )}
-              {opStory && !showOpHero && (
-                <div className="hint">
-                  {opStopped ? '上次的下载被停止了' : '上次的下载中断了（下载程序已经停了）'}
-                  {expected > 0 ? `；当前取到 ${verified} / ${expected}。` : '。'}
-                </div>
-              )}
-              {op?.state === 'failed' && !opStory && (
-                <div className="hint note-bad" title={op.note || undefined}>
-                  {humanOpNote(op.note ?? '') || `上一步没有完成：${op.note || '原因见下载数据状态'}`}
-                </div>
-              )}
-              {/* 下载/整理做完后的说明话（比如：已经并入台账的期次补下载——下载完成了，
-                  但本地已有这一期的数据，所以没有再合并）。以前只有出错才说话，
-                  「为什么没往下走」没处讲（2026-10-17 rick 反馈）。 */}
-              {op?.state === 'done' && op.kind === 'fetch' && op.note && (
-                <div className="hint" title={op.note}>{op.note}</div>
-              )}
-              {needsTool && !canRun && !opRunning && (
-                <div className="hint note-warn">{toolMissing}</div>
-              )}
-              {ro && (
-                <div className="hint">
-                  往期档案只读：ESI / InCites 不提供历史数据，这一期不能再取（要补档只能在当期取）。
-                </div>
-              )}
-              {rec && rec.ok === false && (
-                <div className="hint note-bad">
-                  数据期对不上：这一期应是 {rec.expected?.esi || '—'} / {rec.expected?.incites || '—'}，
-                  实际取到 {rec.actual?.esi || '—'} / {rec.actual?.incites || '—'}——别把它当这一期的数据用。
-                </div>
-              )}
-            </div>
-            <div className="cta">
-              {/* 中断/停止后「继续下载」（文件没取齐时；只补缺的） */}
-              {!ro && showOpHero && (
-                <button className="btn primary" disabled={!cap.start || busy}
-                        title={cap.start ? undefined : toolMissing} onClick={onStart}>
-                  <Icon name="download" size={20} />继续下载（补缺的）
-                </button>
-              )}
-              {/* 正在跑：停止下载（红；行内二次确认——复用 ConfirmButton 口径） */}
-              {!ro && opRunning && !opInterrupted && (
-                <ConfirmButton className="btn stop" confirmText="再点一次 · 确认停止" disabled={busy}
-                               onConfirm={() => { void act('stop') }}>
-                  <Icon name="stop" size={20} />停止下载
-                </ConfirmButton>
-              )}
-              {!opBusy && !ro && view === 'ready' && (
-                <button className="btn primary" disabled={!cap.start || busy || opRunning}
-                        title={cap.start ? undefined : toolMissing} onClick={onStart}>
-                  <Icon name="download" size={20} />开始下载数据
-                </button>
-              )}
-              {/* 已取过之后（待核对 / 已并入）仍可重新下载这一期——采集与并入台账是两条线，
-                  「并入过台账」不该把采集锁死（2026-10-16 票 01）；但**往期只读**（票 03） */}
-              {!opBusy && !ro && (view === 'review' || view === 'merged') && (
-                <button className="btn" disabled={!cap.start || busy}
-                        title={cap.start ? '重取只补没下到的文件；已并入台账不受影响' : toolMissing}
-                        onClick={onStart}>
-                  <Icon name="download" size={20} />重新下载这一期
-                </button>
-              )}
-              {!opBusy && view === 'blocked' && (
-                <button className="btn" disabled={busy}
-                        onClick={() => { void preflightWithBrowser().then(() => load(true)) }}>
-                  <Icon name="refresh" size={20} />重新检查
-                </button>
-              )}
-              {!opBusy && view === 'partial' && (
-                <button className="btn primary" disabled={!cap.retry || busy || opRunning}
-                        title={cap.retry ? undefined : toolMissing}
-                        onClick={() => act('retry', failGroup?.id ? { group: failGroup.id } : undefined)}>
-                  <Icon name="refresh" size={20} />重试这一组
-                </button>
-              )}
-              {!opBusy && view === 'review' && (
-                <ConfirmButton className="btn primary" confirmText="再点一次 · 确认并入"
-                               disabled={!cap.merge || busy}
-                               onConfirm={() => { void act('merge') }}>
-                  <Icon name="check" size={20} />核对无误 · 并入台账
-                </ConfirmButton>
-              )}
-              {!opBusy && view === 'merged' && (
-                <a className="btn primary" href={`/app/?period=${encodeURIComponent(period)}`}>
-                  <Icon name="play" size={20} />去生成台生成
-                </a>
-              )}
-            </div>
-          </div>
+          {/* ===== 三段式：① 开始前检查 → ② 下载数据 → ③ 并入台账（2026-10-19 rick 定） ===== */}
+          <div className="flow">
 
-          {/* ===== 开始前检查 ===== */}
-          <div className="aq-pf" role="group" aria-label="开始前检查">
-            <span className="aq-pf-title">开始前检查</span>
-            <span className={`aq-chip ${state.preflight?.browser === 'ok' ? 'ok' : state.preflight?.browser === 'bad' ? 'bad' : ''}`}>
-              <Icon name="play" size={15} />下载数据专用浏览器 · {pfText('browser', state.preflight?.browser)}
-            </span>
-            <span className={`aq-chip ${state.preflight?.esi === 'ok' ? 'ok' : state.preflight?.esi === 'bad' ? 'bad' : ''}`}>
-              <Icon name="seal" size={15} />ESI 网站 · {pfText('site', state.preflight?.esi)}
-            </span>
-            <span className={`aq-chip ${state.preflight?.incites === 'ok' ? 'ok' : state.preflight?.incites === 'bad' ? 'bad' : ''}`}>
-              <Icon name="seal" size={15} />InCites 网站 · {pfText('site', state.preflight?.incites)}
-            </span>
-            {/* 第四个灯：这一期的数据更新了没有（票 04）——用网站数据集更新日 + 双月节拍判 */}
-            <span className={`aq-chip ${state.preflight?.data?.ok === true ? 'ok' : state.preflight?.data?.ok === false ? 'bad' : ''}`}>
-              <Icon name="clock" size={15} />数据期 · {state.preflight?.data?.ok === true ? '已更新'
-                : state.preflight?.data?.ok === false ? `还没更新（当前 ${state.preflight?.data?.release || '—'}）` : '没读到'}
-            </span>
-            <Info label="开始前检查什么" end>
-              <p>检查下载数据专用的浏览器是否开着、两家网站是否已登录、这一期的数据更新了没有。登录由馆员手动完成；本页不接触、不保存账号密码。检查通过后才能开始。</p>
-              <p>「数据期」怎么判：拿网站当前的数据集更新日{state.preflight?.data?.deploy_date ? `（${state.preflight.data.deploy_date}）` : ''}按双月节拍归到期次，和你要取的这一期比；对不上就不发车。</p>
-            </Info>
-          </div>
-
-          {/* ===== 下载数据清单（明细，默认收起） ===== */}
-          <details className="fold">
-            <summary>下载数据清单<span className="sm">{totals.groups ?? groups.length ?? 9} 组 · {expected > 0 ? `${expected} 份` : '份数待定'}</span></summary>
-            <div className="fold-inner">
-              {groups.length === 0 ? (
-                <p className="hint m-0">还没有下载数据记录。</p>
-              ) : (
-                <>
-                  <div className="aq-groups">
-                    {groups.map((g, i) => (
-                      <GroupCard key={g.id ?? i} g={g} busy={busy} readonly={ro}
-                                 onRetry={(gid) => { void onRetryGroup(gid) }} />
-                    ))}
+            {/* ── ① 开始前检查（最上面；过了才显示下载） ── */}
+            <section className={`stg ${s1done ? 'done' : 'now'}`}>
+              <div className="node"><i>①</i></div>
+              <div className="body"><div className="stg-card">
+                <div className="stg-top">
+                  <span className="stg-title">开始前检查</span>
+                  <span className={`stg-stat ${s1stat[1]}`}>{s1stat[0]}</span>
+                </div>
+                {/* 通过后：收起成一行（四盏小灯 + 重查） */}
+                <div className="stg-inline">
+                  <span className={`aq-chip ${pf?.browser === 'ok' ? 'ok' : 'bad'}`}><Icon name="play" size={15} />浏览器</span>
+                  <span className={`aq-chip ${pf?.esi === 'ok' ? 'ok' : 'bad'}`}><Icon name="seal" size={15} />ESI 登录</span>
+                  <span className={`aq-chip ${pf?.incites === 'ok' ? 'ok' : 'bad'}`}><Icon name="seal" size={15} />InCites 登录</span>
+                  <span className={`aq-chip ${pf?.data?.ok === true ? 'ok' : pf?.data?.ok === false ? 'bad' : ''}`}><Icon name="clock" size={15} />数据期</span>
+                  <button type="button" className="btn small" disabled={busy}
+                          onClick={() => { void preflightWithBrowser().then(() => load(true)) }}>
+                    <Icon name="refresh" size={15} />重查
+                  </button>
+                </div>
+                {/* 还没过：展开（四盏灯 + 检查按钮） */}
+                <div className="stg-body">
+                  <div className="stg-big">{view === 'blocked' ? '下载数据专用浏览器还没准备好' : '先检查，再下载'}</div>
+                  <div className="stg-sub">{view === 'blocked'
+                    ? '系统会自动打开下载数据专用浏览器；在里面登录 ESI / InCites 后，点「重新检查」。'
+                    : '四件事：下载数据专用浏览器开着、两家网站登录着、这一期的数据更新了没有。'}</div>
+                  <div className="stg-cta">
+                    <div className="chips">
+                      <span className={`aq-chip ${pf?.browser === 'ok' ? 'ok' : pf?.browser === 'bad' ? 'bad' : ''}`}>
+                        <Icon name="play" size={15} />下载数据专用浏览器 · {pfText('browser', pf?.browser)}
+                      </span>
+                      <span className={`aq-chip ${pf?.esi === 'ok' ? 'ok' : pf?.esi === 'bad' ? 'bad' : ''}`}>
+                        <Icon name="seal" size={15} />ESI 网站 · {pfText('site', pf?.esi)}
+                      </span>
+                      <span className={`aq-chip ${pf?.incites === 'ok' ? 'ok' : pf?.incites === 'bad' ? 'bad' : ''}`}>
+                        <Icon name="seal" size={15} />InCites 网站 · {pfText('site', pf?.incites)}
+                      </span>
+                      <span className={`aq-chip ${pf?.data?.ok === true ? 'ok' : pf?.data?.ok === false ? 'bad' : ''}`}>
+                        <Icon name="clock" size={15} />数据期 · {pf?.data?.ok === true ? '已更新'
+                          : pf?.data?.ok === false ? `还没更新（当前 ${pf?.data?.release || '—'}）` : '没读到'}
+                      </span>
+                    </div>
+                    <button type="button" className="btn primary" disabled={busy}
+                            onClick={() => { void preflightWithBrowser().then(() => load(true)) }}>
+                      <Icon name="refresh" size={20} />{view === 'blocked' ? '重新检查' : '检查一下（会自动开浏览器）'}
+                    </button>
                   </div>
-                </>
-              )}
-            </div>
-          </details>
-
-          {/* ===== 本期新增列核对表（待核对/已并入时出现） ===== */}
-          {showReview && reviewSheets.length > 0 && (
-            <details className="fold">
-              <summary>本期新增列核对表<span className="sm">{reviewSheets.length} 张表</span></summary>
-              <div className="fold-inner">
-                <p className="hint m-b-8">
-                  将并入主台账 {period} 列；历史列不动。
-                </p>
-                <div className="tablewrap">
-                  <table className="aq-rv">
-                    <thead><tr><th>工作表</th><th>新增</th><th>内容 / 示例值</th><th>来源</th></tr></thead>
-                    <tbody>
-                      {reviewSheets.map((r, i) => (
-                        <tr key={i}><td>{r.name}</td><td>{r.added}</td><td>{r.content}</td><td>{r.source}</td></tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <Info label="开始前检查什么" end>
+                    <p>检查下载数据专用的浏览器是否开着、两家网站是否已登录、这一期的数据更新了没有。登录由馆员手动完成；本页不接触、不保存账号密码。检查通过后才能开始。</p>
+                    <p>「数据期」怎么判：拿网站当前的数据集更新日{pf?.data?.deploy_date ? `（${pf.data.deploy_date}）` : ''}按双月节拍归到期次，和你要取的这一期比；对不上就不发车。</p>
+                  </Info>
                 </div>
-              </div>
-            </details>
-          )}
+              </div></div>
+            </section>
+
+            {/* ── ② 下载数据（① 过了才亮；下载中/中断都在这段讲） ── */}
+            <section className={`stg ${s2collapsed ? 'done' : s2locked ? 'locked' : 'now'}`}>
+              <div className="node"><i>②</i></div>
+              <div className="body"><div className="stg-card">
+                <div className="stg-top">
+                  <span className="stg-title">下载数据</span>
+                  <span className={`stg-stat ${s2stat[1]}`}>{s2stat[0]}</span>
+                </div>
+                {/* 取齐后收起：结论 + 存回电脑 + 重取 */}
+                <div className="stg-inline">
+                  {(hasEsiPack || hasIncitesPack) && <span className="hint">存回电脑：</span>}
+                  {hasEsiPack && (
+                    <a className="btn small" href={packHref('esi')}
+                       title="把这一期已下载的 ESI 数据打包成 zip，存到你自己的电脑上">
+                      <Icon name="download" size={16} />ESI 下载
+                    </a>
+                  )}
+                  {hasIncitesPack && (
+                    <a className="btn small" href={packHref('incites')}
+                       title="把这一期已下载的 InCites 数据打包成 zip（包比较大，点完在下载栏等一会）">
+                      <Icon name="download" size={16} />InCites 下载
+                    </a>
+                  )}
+                  {!ro && (
+                    <button type="button" className="btn small" disabled={!cap.start || busy}
+                            title={cap.start ? '重取只补没下到的文件；已并入台账不受影响' : toolMissing}
+                            onClick={onStart}>
+                      <Icon name="download" size={16} />重新下载这一期
+                    </button>
+                  )}
+                  {opStory && (
+                    <span className="hint">
+                      {opStopped ? '上次的下载被停止了' : '上次的下载中断了（下载程序已经停了）'}
+                      {expected > 0 ? `；当前取到 ${verified} / ${expected}。` : '。'}
+                    </span>
+                  )}
+                  {ro && (
+                    <span className="hint">往期档案只读，不能再取（要补档只能在当期取）。</span>
+                  )}
+                  <button type="button" className="btn small" aria-expanded={showGroups}
+                          onClick={() => setShowGroups((v) => !v)}>
+                    <Icon name="doc" size={16} />下载清单
+                  </button>
+                </div>
+                {showGroups && <div className="stg-extra">{groupsFold(true)}</div>}
+                {/* 展开态 */}
+                <div className="stg-body">
+                  <div className="stg-big">{s2big}</div>
+                  <div className="stg-sub">{s2sub}</div>
+                  {fetchBusy && expected > 0 && (
+                    <div className="stg-prog">
+                      <span className="aq-track"><i style={{ transform: `scaleX(${Math.min(100, Math.round(verified / expected * 100)) / 100})` }} /></span>
+                      <span className="aq-num">{verified} / {expected}</span>
+                    </div>
+                  )}
+                  {showOpHero && !opStopped && expected > 0 && (
+                    <div className="hint note-bad">
+                      已取到 {verified} / {expected}。点「继续下载」只会补没下到的文件，已下过的不重复下载。
+                    </div>
+                  )}
+                  {fetchBusy && (
+                    <div className="hint">停止后已下载的文件都会保留，之后可以继续下载补缺的。</div>
+                  )}
+                  {opNoteLine && op?.kind !== 'copy' && op?.kind !== 'merge' && (
+                    <div className="hint note-bad" title={op?.note || undefined}>{opNoteLine}</div>
+                  )}
+                  {/* 下载/整理做完后的说明话（比如已经并入台账的期次补下载——下载完成了，
+                      但本地已有这一期的数据，所以没有再合并）。 */}
+                  {op?.state === 'done' && op.kind === 'fetch' && op.note && (
+                    <div className="hint" title={op.note}>{op.note}</div>
+                  )}
+                  {needsTool && !canRun && !fetchBusy && view !== 'review' && (
+                    <div className="hint note-warn">{toolMissing}</div>
+                  )}
+                  {ro && (
+                    <div className="hint">
+                      往期档案只读：ESI / InCites 不提供历史数据，这一期不能再取（要补档只能在当期取）。
+                    </div>
+                  )}
+                  {rec && rec.ok === false && (
+                    <div className="hint note-bad">
+                      数据期对不上：这一期应是 {rec.expected?.esi || '—'} / {rec.expected?.incites || '—'}，
+                      实际取到 {rec.actual?.esi || '—'} / {rec.actual?.incites || '—'}——别把它当这一期的数据用。
+                    </div>
+                  )}
+                  <div className="stg-cta">
+                    {!ro && showOpHero && (
+                      <button className="btn primary" disabled={!cap.start || busy}
+                              title={cap.start ? undefined : toolMissing} onClick={onStart}>
+                        <Icon name="download" size={20} />继续下载（补缺的）
+                      </button>
+                    )}
+                    {!ro && fetchBusy && (
+                      <ConfirmButton className="btn stop" confirmText="再点一次 · 确认停止" disabled={busy}
+                                     onConfirm={() => { void act('stop') }}>
+                        <Icon name="stop" size={20} />停止下载
+                      </ConfirmButton>
+                    )}
+                    {!ro && !opBusy && view === 'ready' && pfPassed && (
+                      <button className="btn primary" disabled={!cap.start || busy}
+                              title={cap.start ? undefined : toolMissing} onClick={onStart}>
+                        <Icon name="download" size={20} />开始下载数据
+                      </button>
+                    )}
+                    {!ro && !opBusy && !opStory && view === 'running' && expected > 0 && (
+                      <button className="btn primary" disabled={!cap.start || busy}
+                              title={cap.start ? undefined : toolMissing} onClick={onStart}>
+                        <Icon name="download" size={20} />继续下载（补缺的）
+                      </button>
+                    )}
+                    {!ro && !opBusy && view === 'partial' && (
+                      <button className="btn primary" disabled={!cap.retry || busy}
+                              title={cap.retry ? undefined : toolMissing}
+                              onClick={() => act('retry', failGroup?.id ? { group: failGroup.id } : undefined)}>
+                        <Icon name="refresh" size={20} />重试这一组
+                      </button>
+                    )}
+                  </div>
+                  {(hasEsiPack || hasIncitesPack) && (
+                    <div className="stg-packs">
+                      <span className="hint">存回电脑：</span>
+                      {hasEsiPack && (
+                        <a className="btn small" href={packHref('esi')}
+                           title="把这一期已下载的 ESI 数据打包成 zip，存到你自己的电脑上">
+                          <Icon name="download" size={16} />ESI 下载
+                        </a>
+                      )}
+                      {hasIncitesPack && (
+                        <a className="btn small" href={packHref('incites')}
+                           title="把这一期已下载的 InCites 数据打包成 zip（包比较大，点完在下载栏等一会）">
+                          <Icon name="download" size={16} />InCites 下载
+                        </a>
+                      )}
+                    </div>
+                  )}
+                  {/* 下载数据清单（明细，默认收起；回到段内） */}
+                  {groupsFold()}
+                </div>
+              </div></div>
+            </section>
+
+            {/* ── ③ 并入台账（② 取齐后自动解锁） ── */}
+            <section className={`stg ${view === 'merged' ? 'done' : view === 'review' ? 'now' : 'locked'}`}>
+              <div className="node"><i>③</i></div>
+              <div className="body"><div className="stg-card">
+                <div className="stg-top">
+                  <span className="stg-title">并入台账</span>
+                  <span className={`stg-stat ${s3stat[1]}`}>{s3stat[0]}</span>
+                </div>
+                <div className="stg-inline">
+                  <span className="hint">数据已写进主台账。</span>
+                  <a className="btn small primary" href={`/app/?period=${encodeURIComponent(period)}`}>
+                    <Icon name="play" size={16} />去生成台生成
+                  </a>
+                </div>
+                <div className="stg-body">
+                  {view === 'review' ? (
+                    <>
+                      <div className="stg-big">下载齐了。核对一下，就可以并入台账</div>
+                      <div className="stg-sub">下面这张「本期新增列」核对表，就是将要写进 {period} 列的全部数字。</div>
+                      {copyBusy && (
+                        <div className="hint" title={op?.note || undefined}>{OP_CN[op?.kind ?? ''] ?? '正在处理'}……</div>
+                      )}
+                      {opNoteLine && (op?.kind === 'copy' || op?.kind === 'merge') && (
+                        <div className="hint note-bad" title={op?.note || undefined}>{opNoteLine}</div>
+                      )}
+                      {showReview && reviewSheets.length > 0 && (
+                        <details className="fold" open>
+                          <summary>本期新增列核对表<span className="sm">{reviewSheets.length} 张表</span></summary>
+                          <div className="fold-inner">
+                            <p className="hint m-b-8">将并入主台账 {period} 列；历史列不动。</p>
+                            <div className="tablewrap">
+                              <table className="aq-rv">
+                                <thead><tr><th>工作表</th><th>新增</th><th>内容 / 示例值</th><th>来源</th></tr></thead>
+                                <tbody>
+                                  {reviewSheets.map((r, i) => (
+                                    <tr key={i}><td>{r.name}</td><td>{r.added}</td><td>{r.content}</td><td>{r.source}</td></tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </details>
+                      )}
+                      <div className="stg-cta">
+                        <ConfirmButton className="btn primary" confirmText="再点一次 · 确认并入"
+                                       disabled={!cap.merge || busy}
+                                       onConfirm={() => { void act('merge') }}>
+                          <Icon name="check" size={20} />核对无误 · 并入台账
+                        </ConfirmButton>
+                        <span className="hint">并入是唯一会写主台账的动作：写前自动备份、写后逐项复查。</span>
+                      </div>
+                      {needsTool && !cap.merge && (
+                        <div className="hint note-warn">{toolMissing}</div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="stg-sub">这一段不用手动开：② 的 {expected > 0 ? expected : 64} 份都核验通过后，这里会自动生成核对表。</div>
+                  )}
+                </div>
+              </div></div>
+            </section>
+          </div>
 
           {state.updated_at && (
             <p className="hint mt-12 aq-stamp">下载数据状态最后更新：{state.updated_at}</p>
