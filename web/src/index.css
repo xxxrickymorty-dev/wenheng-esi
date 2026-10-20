@@ -626,7 +626,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
   border-bottom:1px solid var(--line-2);background:var(--card)}
 .fx-pane-ctl label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--ink-3);
   flex:1 1 160px;max-width:260px}
-.fx-pane-ctl select{font:inherit;font-size:13.5px;padding:6px 10px;border:1px solid var(--line);
+.fx-pane-ctl select,.fx-pane-ctl input{font:inherit;font-size:13.5px;padding:6px 10px;border:1px solid var(--line);
   background:var(--card);color:var(--ink);width:100%}
 /* 出稿动作＝本栏唯一的实色钮（约定：栏内动作只有生成/重新生成） */
 .fx-pane-ctl .btn.small{color:#fff;background:var(--zhu);border-color:var(--zhu);font-weight:600;padding:7px 14px;font-size:13px}
@@ -634,7 +634,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 /* 用途说明（票 04）：一句讲清「第二条产线 · 内部参考件 · 非报送」，≤60 字 */
 .fx-lead{margin:10px 0 0;max-width:66ch;font-size:14px;line-height:1.7;color:var(--ink-2)}
 .fx-lead strong{color:var(--ink);font-weight:600}
-.fx-panes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;align-items:start}
+.fx-panes{display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px;align-items:start}
 @media (max-width:1100px){.fx-panes{grid-template-columns:1fr}}
 .fx-pane{background:var(--card);border:1px solid var(--line);
   overflow:hidden;min-width:0}

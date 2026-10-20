@@ -173,7 +173,7 @@ def _rank_facts(cmp_prox: dict, cmp_papers: dict, disc: str) -> list[str]:
 
 
 def _render_charts(src: DataSource, plan: dict, chart_dir, specs_out, charts,
-                   default_disc=None, only_scope=None) -> str:
+                   default_disc=None, only_scope=None, only_kinds=None) -> str:
     """按规划**逐张**出图，返回 markdown 片段。
 
     🔴 这里曾经硬编码只认 3 个图型（cites_threshold / papers_delta / rank_pct）。
@@ -187,6 +187,8 @@ def _render_charts(src: DataSource, plan: dict, chart_dir, specs_out, charts,
     for c in plan["charts"]:
         kind = c.get("kind")
         if kind not in sp.KINDS:
+            continue
+        if only_kinds and kind not in only_kinds:
             continue
         scope = sp.KINDS[kind]["disc_scope"]
         if only_scope and scope != only_scope:
@@ -269,59 +271,151 @@ def _compose(topic: str, safe: str, *, facts=(), period: str = "", label: str = 
 
 
 def _single_sections(c: _ReportCtx) -> list:
-    """单学科诊断的节表（顺序即大纲）。"""
+    """单学科分析的节表（顺序即大纲；2026-10-20 定五节）。"""
     disc, dcn = c.plan["disc"], cn_name(c.plan["disc"])
     period = c.src.current_period()
     prev = c.src.periods[c.src.periods.index(period) - 1]
     win = c.plan["periods"]
-    c.selected = {"disc": disc, "disc_cn": dcn, "period": period, "prev": prev}
+    c.selected = {"disc": disc, "disc_cn": dcn, "period": period, "prev": prev,
+                  "peers": list(c.plan.get("peers") or [])}
 
     def sec_overview() -> str:
-        # 一、当期概况（每个数都走查询，带链）
+        # 一、学科概况（每个数都走查询，带链）
         rows, gap = _snapshot(c.src, disc, c.sources)
         facts = _snapshot_facts(rows, gap)
         c.pool += facts
-        # 🔴 引导句走 `gap_lead`（原来三支一律「…的核心指标如下」，模板腔）
         lead = c.P(op.gap_lead(period_label(period), dcn, gap),
                    "flexible/single_trend/概况", facts)
-        return lead + "\n\n" + _kv_table(rows)
+        return (lead + "\n\n" + _kv_table(rows)
+                + _render_charts(c.src, c.plan, c.chart_dir, c.specs_out, c.charts,
+                                 disc, only_kinds=("cites_threshold",)))
 
-    def sec_trend() -> str:
-        # 二、关键指标走势（描述性，规则生成；配 spec 图）
-        trend_rows = []
-        for met in ("proximity_1pct", "total_cites", "papers"):
-            r = q.series(c.src, met, disc, win)
-            c.sources.append(r)
-            if r["points"]:
-                trend_rows.append(r)
-        lines = []
-        for i, r in enumerate(trend_rows):
-            f = _series_facts(r)
-            c.pool += f
-            # 🔴 第一条带区间、后面两条换开头 —— 三条不能再是同一句式（rick 2026-09-21）
-            lines.append("- " + c.P(op.descriptive_trend(
-                r["points"], r["metric_cn"], dcn, r.get("better", "up"),
-                with_span=(i == 0)), "flexible/single_trend/趋势", f))
-        return "\n\n".join(lines) + _render_charts(c.src, c.plan, c.chart_dir, c.specs_out,
-                                                   c.charts, disc)
+    def sec_impact() -> str:
+        # 二、学术影响力：CNCI 走势 + 篇均由总被引/发文派生
+        cnci = q.series(c.src, "cnci", disc, win)
+        c.sources.append(cnci)
+        facts = _series_facts(cnci)
+        tc = q.series(c.src, "total_cites", disc, win)
+        pp = q.series(c.src, "papers", disc, win)
+        c.sources += [tc, pp]
+        if cnci["points"]:
+            last = cnci["points"][-1]
+            facts.append(f"最新 CNCI：{_fmt(last['value'])}（全球平均为 1.0）")
+            if tc["points"] and pp["points"] and pp["points"][-1]["value"]:
+                per = tc["points"][-1]["value"] / pp["points"][-1]["value"]
+                facts.append(f"最新篇均被引：{_fmt(per)} 次/篇")
+        c.pool += facts
+        lead = (f"{dcn}的 CNCI 在 {period_label(win[0])} 至 {period_label(win[-1])} 间"
+                f"由 {_fmt(cnci['points'][0]['value'])} 变为 "
+                f"{_fmt(cnci['points'][-1]['value'])}；CNCI 的全球平均水平恒为 1.0，"
+                f"高于 1.0 表示论文影响力高于全球同类论文。"
+                if cnci["points"] else f"{dcn}本期没有 CNCI 数据。")
+        return (c.P(lead, "flexible/single_trend/影响力", facts)
+                + _render_charts(c.src, c.plan, c.chart_dir, c.specs_out, c.charts,
+                                 disc, only_kinds=("cnci",)))
 
     def sec_rank() -> str:
-        # 三、相对位次（跨学科横截面）
-        cmp_prox = q.compare(c.src, "proximity_1pct", None, period)
-        c.sources.append(cmp_prox)
-        rank_pos = next((i for i, x in enumerate(cmp_prox["rows"], 1)
-                         if x["discipline"] == disc), None)
-        cmp_papers = q.compare(c.src, "papers", None, period)
-        c.sources.append(cmp_papers)
-        paper_pos = next((i for i, x in enumerate(cmp_papers["rows"], 1)
-                          if x["discipline"] == disc), None)
-        facts = _rank_facts(cmp_prox, cmp_papers, disc)
+        # 三、学科排名：国际/国内位次与百分位
+        ri = q.series(c.src, "rank_intl", disc, win)
+        rc = q.series(c.src, "rank_cn", disc, win)
+        rp = q.series(c.src, "rank_intl_pct", disc, win)
+        c.sources += [ri, rc, rp]
+        facts = _series_facts(ri) + _series_facts(rc)
+        if ri["points"] and rc["points"]:
+            first_i, last_i = ri["points"][0]["value"], ri["points"][-1]["value"]
+            first_c, last_c = rc["points"][0]["value"], rc["points"][-1]["value"]
+            lead = (f"{dcn}的国际排名从 {period_label(win[0])} 的第 {_fmt(first_i)} 名"
+                    f"变为第 {_fmt(last_i)} 名；国内排名从第 {_fmt(first_c)} 名"
+                    f"变为第 {_fmt(last_c)} 名。"
+                    + (f"最新国际排名百分位为 {_fmt(rp['points'][-1]['value'] * 100)}%。"
+                       if rp["points"] else ""))
+        else:
+            lead = f"{dcn}本期没有可用的排名序列。"
         c.pool += facts
-        return c.P(op.rank_sentence(cmp_prox["n"], rank_pos, paper_pos, dcn),
-                   "flexible/single_trend/相对位次", facts)
+        return (c.P(lead, "flexible/single_trend/排名", facts)
+                + _render_charts(c.src, c.plan, c.chart_dir, c.specs_out, c.charts,
+                                 disc, only_kinds=("rank_pct",)))
+
+    def sec_peers() -> str:
+        # 四、跨校对比：同一学科，云南大学 vs 用户指定高校
+        requested = list(c.plan.get("peers") or [])
+        if not requested:
+            return ("本次未指定对标高校。请先给出高校名单（中文校名或 ESI 英文名），"
+                    "例如“昆明理工大学、云南农业大学”；本节留空，不做默认名单。")
+        from . import peers as peer_mod                               # noqa: PLC0415
+        try:
+            data = peer_mod.compare(period, disc, requested)
+        except peer_mod.PeerError as e:
+            return f"跨校对比未完成：{e}"
+        c.selected["peers"] = data["requested"]
+        lines = [
+            "| 高校 | 全球位次 | 国内位次 | 发文量 | 总被引 | 篇均被引 | 顶尖论文 |",
+            "|---|---:|---:|---:|---:|---:|---:|",
+        ]
+        for row in data["rows"]:
+            name = row["cn"] or row["en"]
+            if row["en"] == data["ynu"]["en"]:
+                name = f"**{name}**"
+            if not row["present"]:
+                lines.append(f"| {name} | — | — | — | — | — | — |")
+                continue
+            v = row["values"]
+            lines.append(
+                f"| {name} | {_fmt(v['rank'])} | {_fmt(row['rank_cn'])} | "
+                f"{_fmt(v['papers'])} | {_fmt(v['cites'])} | "
+                f"{_fmt(v['cites_per_paper'])} | {_fmt(v['top_papers'])} |")
+        ynu = data["rows"][0]
+        peers_txt = "、".join(data["requested"]) or "（未指定）"
+        if data["period"] != period:
+            lead = (f"{period_label(period)}的机构表尚未归档，本节采用"
+                    f"{period_label(data['period'])}机构表：{dcn}学科，"
+                    f"云南大学全球第 {_fmt(ynu['values']['rank'])} 位"
+                    f"（大陆第 {_fmt(ynu['rank_cn'])} 位）；对标高校：{peers_txt}。")
+        else:
+            lead = (f"{period_label(data['period'])}机构表：{dcn}学科，"
+                    f"云南大学全球第 {_fmt(ynu['values']['rank'])} 位"
+                    f"（大陆第 {_fmt(ynu['rank_cn'])} 位）；对标高校：{peers_txt}。")
+        c.pool += [f"{r['cn'] or r['en']}：全球第 {_fmt(r['values']['rank'])} 位"
+                   for r in data["rows"] if r["present"]]
+        return (c.P(lead, "flexible/single_trend/跨校", c.pool[-len(data["rows"]):])
+                + "\n\n" + "\n".join(lines)
+                + f"\n\n来源：`{data['source']['dataset']}`（{data['source']['sheet']}）。")
+
+    def sec_outlook() -> str:
+        # 五、学科展望：被引频次与 1‰ 阈值（规则推演，不冒充预测模型）
+        span = c.src.filled_periods[-9:]
+        tc = q.series(c.src, "total_cites", disc, span)
+        th = q.series(c.src, "threshold_1permille", disc, span)
+        c.sources += [tc, th]
+        chart = _render_charts(c.src, c.plan, c.chart_dir, c.specs_out, c.charts,
+                               disc, only_kinds=("cites_permille",))
+        if not tc["points"] or not th["points"]:
+            return f"{dcn}暂无 1‰ 阈值数据，本节只保留被引频次走势。" + chart
+        gap = th["points"][-1]["value"] - tc["points"][-1]["value"]
+        first = tc["points"][0]["value"]
+        last = tc["points"][-1]["value"]
+        n = len(tc["points"]) - 1
+        growth = (last - first) / n if n else 0
+        facts = [f"最新总被引：{_fmt(last)}", f"最新 1‰ 阈值：{_fmt(th['points'][-1]['value'])}",
+                 f"距 1‰ 阈值：{_fmt(abs(gap))} 次（{'已超过' if gap <= 0 else '还差'}）"]
+        base = (f"最新总被引 {_fmt(last)} 次，1‰ 阈值为 "
+                f"{_fmt(th['points'][-1]['value'])} 次，"
+                + ("已高出阈值" if gap <= 0 else f"还差 {_fmt(gap)} 次"))
+        if gap > 0 and growth > 0:
+            need = int(gap / growth) + 1
+            years = need * 2 / 12
+            tail = (base + f"；按最近 {n + 1} 期平均每期净增 {_fmt(growth)} 次测算，"
+                    f"约需 {need} 期（约 {years:.1f} 年）达到 1‰ 阈值。"
+                    f"这是**规则推演**，不是预测模型，仅供判断参考。")
+        elif gap <= 0:
+            tail = base + "；按当期数据，我校该学科被引频次已达到 1‰ 阈值。"
+        else:
+            tail = base + "；最近窗口内被引频次未形成净增长，暂不外推追平时间。"
+        c.pool += facts
+        return c.P(tail, "flexible/single_trend/展望", facts) + chart
 
     def sec_judge_cause() -> str:
-        # 四、成因研判（判断草稿）：全篇事实摘要 + 该主题查询结果（本期异动）
+        # 成因研判（判断草稿）：全篇事实摘要 + 该主题查询结果（本期异动）
         facts = list(c.pool)
         an = q.anomaly(c.src, period)
         c.sources.append(an)
@@ -333,168 +427,26 @@ def _single_sections(c: _ReportCtx) -> list:
         return c.J("成因研判", f"{dcn}接近度走势的成因研判", safe, facts)
 
     def sec_judge_advice() -> str:
-        # 五、建议事项（判断草稿）
+        # 建议事项（判断草稿）
         safe = "\n".join([f"- {op.manual(f'{dcn}发展力度评价')}",
                           f"- {op.manual(f'{dcn}资源投入建议')}",
                           "- " + op.manual("是否需要向学院核实数据口径")])
         return c.J("建议事项", f"{dcn}的建议事项", safe, list(c.pool))
 
-    return [("当期概况", sec_overview), ("关键指标走势", sec_trend),
-            ("相对位次", sec_rank),
+    return [("学科概况", sec_overview), ("学术影响力", sec_impact),
+            ("学科排名", sec_rank), ("跨校对比", sec_peers),
+            ("学科展望", sec_outlook),
             ("成因研判（判断草稿）", sec_judge_cause),
             ("建议事项（判断草稿）", sec_judge_advice)]
 
 
-# ------------------------------------------------------------------ 横向对比
-def _cross_sections(c: _ReportCtx) -> list:
-    """横向对比的节表（顺序即大纲；指定学科/指标决定动态节）。"""
-    src, plan = c.src, c.plan
-    period = src.current_period()
-    met = plan.get("metric") or "proximity_1pct"
-    disc = plan.get("disc")
-    dcn = cn_name(disc) if disc else ""
-    win = plan.get("periods") or src.filled_periods[-7:]
-    c.selected = {"metric": met}
-
-    def sec_overview() -> str:
-        # 一、本期概览
-        sc = q.scope(src, period)
-        c.sources.append(sc)
-        c.selected.update({"period": period, "prev": sc["prev"]})
-        n_ent = sc["n_entered_1pct"]
-        cmp_n = len(src.disciplines)      # 🔴 别写死 22（学科数会变）
-        facts = [f"进入前1%学科数：{n_ent}", f"监测学科数：{cmp_n}",
-                 f"潜力学科数：{sc['n_potential']}"]
-        c.pool += facts
-        lead = (f"{period_label(period)}，云南大学共 **{n_ent}** 个学科进入 ESI 全球前 1%"
-                f"（占 {cmp_n} 个监测学科的 {n_ent / cmp_n * 100:.0f}%）；"
-                f"另有 **{sc['n_potential']}** 个学科尚未进入、列为潜力学科。")
-        return c.P(lead, "flexible/cross_compare/概览", facts)
-
-    def sec_anchor() -> str:
-        # 指定学科锚定 · 落点（rick 2026-09-29：指定了学科就得围着它写）
-        rows, gap = _snapshot(src, disc, c.sources)
-        cmp_prox = q.compare(src, "proximity_1pct", None, period)
-        c.sources.append(cmp_prox)
-        pos1 = next((k for k, x in enumerate(cmp_prox["rows"], 1)
-                     if x["discipline"] == disc), None)
-        cmp_papers = q.compare(src, "papers", None, period)
-        c.sources.append(cmp_papers)
-        pos2 = next((k for k, x in enumerate(cmp_papers["rows"], 1)
-                     if x["discipline"] == disc), None)
-        facts = _snapshot_facts(rows, gap) + _rank_facts(cmp_prox, cmp_papers, disc)
-        c.pool += facts
-        lead2 = c.P(op.gap_lead(period_label(period), dcn, gap),
-                    "flexible/cross_compare/落点", _snapshot_facts(rows, gap))
-        return (lead2 + "\n\n" + _kv_table(rows) + "\n\n"
-                + op.rank_sentence(cmp_prox["n"], pos1, pos2, dcn))
-
-    def sec_trend() -> str:
-        lines = []
-        for j, met2 in enumerate(("proximity_1pct", "total_cites", "papers")):
-            r = q.series(src, met2, disc, win)
-            c.sources.append(r)
-            if not r["points"]:
-                continue
-            f = _series_facts(r)
-            c.pool += f
-            lines.append("- " + c.P(op.descriptive_trend(
-                r["points"], r["metric_cn"], dcn, r.get("better", "up"),
-                with_span=(j == 0)), "flexible/cross_compare/走势", f))
-        return "\n\n".join(lines) + _render_charts(
-            src, plan, c.chart_dir, c.specs_out, c.charts, disc, only_scope="single")
-
-    def sec_compare() -> str:
-        # 横向对比（全池表 + 总览图）
-        cmp_r = q.compare(src, met, None, period)
-        c.sources.append(cmp_r)
-        c.metric_cn = cmp_r["metric_cn"]
-        c.cmp_rows = cmp_r["rows"]
-        tail = cmp_r["rows"][-3:]
-        body = (f"本期 {cmp_r['n']} 个学科的{cmp_r['metric_cn']}排序如下"
-                f"（{'由低到高' if cmp_r['better'] == 'down' else '由高到低'}，好在前）。\n\n"
-                + "| 位次 | 学科 | 数值 | 来源 |\n|---:|---|---:|---|\n"
-                + "\n".join(f"| {k} | {'**' if x['discipline'] == disc else ''}"
-                            f"{x['discipline_cn']}{'**' if x['discipline'] == disc else ''} | "
-                            f"{_fmt(x['value'])} | `{x['source']['origin_sheet']}` |"
-                            for k, x in enumerate(cmp_r["rows"][:8], 1))
-                + f"\n\n（末 3 位：{'、'.join(x['discipline_cn'] for x in tail)}）")
-        return body + _render_charts(src, plan, c.chart_dir, c.specs_out, c.charts, disc,
-                                     only_scope=("overview" if disc else None))
-
-    def sec_tier() -> str:
-        # 梯队划分（规则）
-        rows = c.cmp_rows
-        entered = [x for x in rows if float(x["value"]) >= 1.0]
-        near = [x for x in rows if 0.5 <= float(x["value"]) < 1.0]
-        far = [x for x in rows if float(x["value"]) < 0.5]
-        c.pool += [f"已进入前1%学科数：{len(entered)}", f"接近但未进入（50%–100%）：{len(near)}",
-                   f"距离较远（<50%）：{len(far)}"]
-        extra = ""
-        if disc:
-            tier = "已进入前 1% 一档" if any(x["discipline"] == disc for x in entered) else (
-                "接近但未进入一档" if any(x["discipline"] == disc for x in near)
-                else "距离较远一档")
-            extra = f"\n- **{dcn}** 位于「{tier}」。"
-        return (f"- **已进入前 1%**（接近度 ≥ 100%）：{len(entered)} 个 —— "
-                f"{'、'.join(x['discipline_cn'] for x in entered) or '无'}\n"
-                f"- **接近但未进入**（50%–100%）：{len(near)} 个 —— "
-                f"{'、'.join(x['discipline_cn'] for x in near) or '无'}\n"
-                f"- **距离较远**（<50%）：{len(far)} 个" + extra
-                + "\n\n> 梯队边界为**规则阈值**（100% / 50%），仅用于分档排序，不构成学科评价。")
-
-    def sec_judge_cause() -> str:
-        # 成因研判（判断草稿）：全篇事实摘要 + 该主题查询结果（本期异动）
-        facts = list(c.pool)
-        an = q.anomaly(src, period)
-        c.sources.append(an)
-        pool = [x for x in an["items"] if x["discipline"] == disc] if disc else an["items"]
-        for x in pool[:3]:
-            facts.append(f"{x['discipline_cn']}的{x['metric_cn']}本期出现 {x['ratio']} 倍环比变动"
-                         f"（{x['prev']}→{x['period']}）")
-        topic = (f"{dcn}接近度走势的成因研判" if disc else "本期学科格局变化的成因研判")
-        if disc:
-            safe = "\n".join([f"- {op.manual(f'{dcn}接近度变化的主要成因')}",
-                              f"- {op.manual(f'{dcn}与发文量、总被引的关联研判')}"])
-        else:
-            safe = "\n".join(["- " + op.manual("本期学科格局变化的主要成因"),
-                              "- " + op.manual("接近度异动的成因研判")])
-        return c.J("成因研判", topic, safe, facts)
-
-    def sec_judge_advice() -> str:
-        # 建议事项（判断草稿）
-        if disc:
-            safe = "\n".join([f"- {op.manual(f'{dcn}发展力度评价')}",
-                              f"- {op.manual(f'{dcn}资源投入建议')}",
-                              "- " + op.manual("是否需要向学院核实数据口径")])
-        else:
-            safe = "\n".join(["- " + op.manual("重点建设学科建议"),
-                              "- " + op.manual("潜力学科培育优先级"),
-                              "- " + op.manual("向学院核实的口径问题")])
-        topic = f"{dcn}的建议事项" if disc else "学科建设的建议事项"
-        return c.J("建议事项", topic, safe, list(c.pool))
-
-    sections = [("本期概览", sec_overview)]
-    if disc:
-        sections += [(f"{dcn} · 当期落点", sec_anchor), (f"{dcn} · 近 7 期走势", sec_trend)]
-    sections.append(("横向对比", sec_compare))
-    if met == "proximity_1pct":
-        sections.append(("梯队分布", sec_tier))
-    sections += [("成因研判（判断草稿）", sec_judge_cause),
-                 ("建议事项（判断草稿）", sec_judge_advice)]
-    return sections
-
-
 def _build(c: _ReportCtx, on_section=None, on_outline=None) -> dict:
-    """按 intent 取节表 → 逐节构建 → 返回既有形状的 built dict。"""
-    sections = (_single_sections(c) if c.plan["intent"] == "single_trend"
-                else _cross_sections(c))
+    """取节表 → 逐节构建 → 返回既有形状的 built dict。"""
+    sections = _single_sections(c)
     c.blocks = _collect(sections, on_section, on_outline)
-    selected = dict(c.selected)
-    if c.plan["intent"] != "single_trend":
-        selected["metric_cn"] = c.metric_cn
     return {"blocks": c.blocks, "sources": c.sources, "charts": c.charts,
-            "backstop_n": c.backstop_n, "write_log": c.log, "selected": selected}
+            "backstop_n": c.backstop_n, "write_log": c.log,
+            "selected": dict(c.selected)}
 
 
 # ------------------------------------------------------------------ 渲染
@@ -518,10 +470,11 @@ def _render(plan: dict, built: dict, meta: dict) -> str:
     for title, body in built["blocks"]:
         L += [f"## {title}", "", body, ""]
     L += ["---", "## 本稿如何产生（可验证的架构主张）", "",
-          "本件里的**每一个数字**都只经过这一条路径：",
+          "本件里的**台账数字**都只经过这一条路径：",
           "",
           "1. 规划器只决定「写哪个学科、配哪些图」——它的输出里**没有数字这个物种**；",
-          "2. 数值由查询工具从 `ledger_long.parquet` 取出，逐点附**来源链**；",
+          "2. 数值由查询工具从 `ledger_long.parquet` 取出，逐点附**来源链**；"
+          "第四节「跨校对比」另取 ESI 机构表（该节已标出源文件与工作表）；",
           "3. 图上每个点由引擎按 JSON spec 渲染，**模型不接触坐标**；",
           "4. 模型如给出图表声明，只允许 `invert` / `include` / `zero_base` 这类**语义**参数，"
           "轴范围永远由数据决定（代码里没有「纵轴上下界」这个字段）。",
@@ -626,12 +579,14 @@ def _write_summary(log: list, mode: str) -> dict | None:
 
 # ------------------------------------------------------------------ 主流程
 def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
-              n_periods=None, polish=None, plan=None, write=False, on_event=None) -> dict:
+              n_periods=None, polish=None, plan=None, write=False, on_event=None,
+              peers=None) -> dict:
     """产出灵活报告（含逐节回调）。`on_event(kind, payload)` 用于流式包装。"""
     t0 = time.time()
     src = DataSource(out_dir)
     if plan is None:
-        plan = planner.build(src, intent, disc=disc, metric=metric, n_periods=n_periods)
+        plan = planner.build(src, intent, disc=disc, metric=metric,
+                             n_periods=n_periods, peers=peers)
     mode = _resolve_write_mode(polish, write)
     d = _dir_for(out_dir, intent)
     chart_dir = d / "charts"
@@ -731,7 +686,7 @@ def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
 
 def generate(out_dir, intent: str = "single_trend", *,
              disc=None, metric=None, n_periods=None, polish=None,
-             plan=None, write=False) -> dict:
+             plan=None, write=False, peers=None) -> dict:
     """产出灵活报告。返回产物路径与自检结果。
 
     🔴 `out_dir` 是**期次目录**（`out/202607`）。产物一律落在
@@ -745,7 +700,7 @@ def generate(out_dir, intent: str = "single_trend", *,
       写作位配好即默认启用，传入与否不再改变行为。
     """
     return _generate(out_dir, intent, disc=disc, metric=metric, n_periods=n_periods,
-                     polish=polish, plan=plan, write=write)
+                     polish=polish, plan=plan, write=write, peers=peers)
 
 
 class _StopGeneration(Exception):
@@ -753,7 +708,8 @@ class _StopGeneration(Exception):
 
 
 def generate_stream(out_dir, intent: str = "single_trend", *, disc=None,
-                    metric=None, plan=None, write=False, should_stop=None):
+                    metric=None, plan=None, write=False, should_stop=None,
+                    peers=None):
     """流式产出（NDJSON 事件）：`status → plan → section×N → done`（或 `error`/`stopped`）。
 
     事件在**真实的节点**发出（规划完成 / 每节完成），不做假进度；
@@ -776,7 +732,7 @@ def generate_stream(out_dir, intent: str = "single_trend", *, disc=None,
     def worker():
         try:
             _generate(out_dir, intent, disc=disc, metric=metric, plan=plan,
-                      write=write, on_event=ev)
+                      write=write, on_event=ev, peers=peers)
         except _StopGeneration:
             q.put(("stopped", {}))
         except Exception as e:                                       # noqa: BLE001
@@ -819,7 +775,7 @@ def main(argv=None):
 
     例：
         python src/flexible/report.py out/202607 single_trend
-        python src/flexible/report.py out/202607 cross_compare 化学 write
+        python src/flexible/report.py out/202607 single_trend 化学 --peers 昆明理工大学
     （规划后端不再是参数：默认规则；配了云 `WENHENG_AI_*` 时自动问模型、失败回退。）
     """
     import sys

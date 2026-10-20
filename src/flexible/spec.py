@@ -77,6 +77,10 @@ KINDS: dict[str, dict] = {
         "cn": "顶尖论文量", "disc_scope": "single",
         "needs": ["top_papers"], "semantic": ("floor_zero",),
     },
+    "cites_permille": {
+        "cn": "被引频次与 ESI 前1‰ 阈值", "disc_scope": "single",
+        "needs": ["total_cites", "threshold_1permille"], "semantic": ("zero_base", "include"),
+    },
     "q_dist": {
         "cn": "期刊分区占比", "disc_scope": "single",
         "needs": ["q1q4"], "semantic": ("floor_zero",),
@@ -194,6 +198,9 @@ def make(src: DataSource, spec: dict, out_dir, *, ledger_dir=None) -> dict:
         charts.chart_papers_delta(_t(ld, "papers"), disc, path, periods + extra, **kw)
     elif kind == "cites_threshold":
         charts.chart_cites_threshold(_t(ld, "total_cites"), _t(ld, "threshold_1pct"),
+                                     disc, path, periods, **kw)
+    elif kind == "cites_permille":
+        charts.chart_cites_threshold(_t(ld, "total_cites"), _t(ld, "threshold_1permille"),
                                      disc, path, periods, **kw)
     elif kind == "top_papers":
         charts.chart_top_papers(_t(ld, "top_papers"), disc, path, periods, **kw)

@@ -2430,6 +2430,10 @@ async def api_period_flexible_generate(request: Request, period: str):
     body = await request.json()
     intent = str(body.get("intent") or "").strip()
     disc = str(body.get("disc") or "").strip() or None
+    peers = body.get("peers")
+    if isinstance(peers, str):
+        peers = peers.split(",")
+    peers = [str(x).strip() for x in (peers or []) if str(x).strip()]
     import flexible.planner as flex_planner                         # noqa: PLC0415
     if intent not in flex_planner.INTENTS:
         return JSONResponse({"error": f"未知意图：{intent}",
@@ -2437,7 +2441,7 @@ async def api_period_flexible_generate(request: Request, period: str):
     import flexible.report as flex_report                           # noqa: PLC0415
     t0 = time.time()
     try:
-        r = flex_report.generate(d, intent, disc=disc)
+        r = flex_report.generate(d, intent, disc=disc, peers=peers)
     except ValueError as e:
         return JSONResponse({"error": str(e)[:200],
                              "hint": "学科请从名单中选择（支持中文名）"}, status_code=400)
@@ -2487,6 +2491,10 @@ async def api_period_flexible_stream(request: Request, period: str):
     body = await request.json()
     intent = str(body.get("intent") or "").strip()
     disc = str(body.get("disc") or "").strip() or None
+    peers = body.get("peers")
+    if isinstance(peers, str):
+        peers = peers.split(",")
+    peers = [str(x).strip() for x in (peers or []) if str(x).strip()]
     import flexible.planner as flex_planner                         # noqa: PLC0415
     if intent not in flex_planner.INTENTS:
         return JSONResponse({"error": f"未知意图：{intent}",
@@ -2501,7 +2509,8 @@ async def api_period_flexible_stream(request: Request, period: str):
         try:
             first = True
             for ev in flex_report.generate_stream(d, intent, disc=disc,
-                                                  should_stop=stop.is_set):
+                                                  should_stop=stop.is_set,
+                                                  peers=peers):
                 line = _flex_stream_line(ev, d, intent)
                 if first:                                # 首行带令牌（停止键要用）
                     rec = json.loads(line)

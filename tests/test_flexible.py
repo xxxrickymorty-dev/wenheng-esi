@@ -39,12 +39,22 @@ def _period_dir():
 
 
 @pytest.fixture(scope="session")
-def src():
+def src(tmp_path_factory):
+    """金标期次的可写副本。
+
+    🔴 `out/` 是只读的（数据红线）：出稿、写 docx、生成图表一律落在临时副本，
+    测试结束后不留下任何对 `out/` 的改动。
+    """
     d = _period_dir()
     if d is None:
         skip_unless("out/ 下无含 ledger_long.parquet 的期次产物",
                     lambda: bool(_period_dir()))
-    return DataSource(d)
+    import shutil
+    tmp = tmp_path_factory.mktemp("period") / d.name
+    tmp.mkdir()
+    shutil.copyfile(d / "ledger_long.parquet", tmp / "ledger_long.parquet")
+    shutil.copytree(d / "wide", tmp / "wide")
+    return DataSource(tmp)
 
 
 @pytest.fixture(scope="session")
@@ -54,12 +64,10 @@ def flex_report_out(src, tmp_path_factory):
     ⚠ 显式注入 `RuleBrain`：session 级夹具的创建早于函数级 env 隔离，
     不注入就会带着本机 .env 的真 key 出网（2026-09-29 踩——结果随网络成败漂移）。
     """
-    from conftest import REPO
     import ai
     from ai._brain import RuleBrain
-    d = REPO / src.dir
     with ai.using(brain=RuleBrain()):
-        r = report.generate(d, "single_trend")
+        r = report.generate(src.dir, "single_trend")
     return r
 
 
@@ -269,11 +277,6 @@ class Test计划含校验点:
         for c in checks:
             assert set(c) == {"kind", "target", "expect"}
             assert c["kind"] in ("source_trace", "spec_query_match", "outline_match")
-
-    def test_横版计划也含校验点(self, src):
-        plan = planner.build(src, "cross_compare")
-        assert isinstance(plan.get("checks"), list)
-        assert 3 <= len(plan["checks"]) <= 5
 
     def test_校验点确定性(self, src):
         """同一意图两次规划 → 同一套校验点（可复现）。"""
@@ -578,7 +581,7 @@ class Test规则后端产出完整分析稿:
 
     def test_五个章节齐全(self, flex_report_out):
         md = pathlib.Path(flex_report_out["report"]).read_text(encoding="utf-8")
-        for sec in ("当期概况", "关键指标走势", "相对位次",
+        for sec in ("学科概况", "学术影响力", "学科排名", "跨校对比", "学科展望",
                     "成因研判（判断草稿）", "建议事项（判断草稿）", "本稿如何产生", "数据来源链"):
             assert sec in md, f"缺章节：{sec}"
 
@@ -589,7 +592,7 @@ class Test规则后端产出完整分析稿:
         from docx import Document
         doc = Document(str(dx))
         texts = [p.text for p in doc.paragraphs]
-        assert any("当期概况" in t for t in texts), "正文应在"
+        assert any("学科概况" in t for t in texts), "正文应在"
         assert texts[-1].startswith("内部参考 · 非报送件"), "页脚标注一次"
         assert len(doc.tables) >= 2, "概况表＋来源链表"
         assert len(doc.inline_shapes) >= 1, "图内嵌（离开 charts/ 也带图）"
@@ -623,7 +626,7 @@ class Test规则后端产出完整分析稿:
         with ai.using(brain=brain):
             r = report.generate(REPO / src.dir, "single_trend")
         assert r["plan"]["backend"] == "scripted"
-        assert r["n_charts"] == 2, r["plan"]["charts"]
+        assert r["n_charts"] == 4, r["plan"]["charts"]  # 五节固定四图，概览图不进
         assert r["check"]["pass"]
 
     def test_正文无漏标的判断句(self, flex_report_out):
@@ -639,7 +642,7 @@ class Test规则后端产出完整分析稿:
         assert report.BANNER in md
         assert "不带盖章位" in md
 
-    @pytest.mark.parametrize("intent", ["single_trend", "cross_compare"])
+    @pytest.mark.parametrize("intent", ["single_trend"])
     def test_正文里的图片相对路径真能打开(self, src, intent):
         """🔴 断链不抛异常 —— 只有按相对路径真的去开一次才能发现。
 
@@ -656,13 +659,17 @@ class Test规则后端产出完整分析稿:
             assert not lk.startswith(("http://", "https://", "/")), f"相对路径被写成 {lk}"
             assert (rp.parent / lk).is_file(), f"图片打不开：{rp.parent / lk}"
 
-    def test_两条意图都能出稿(self, src):
+    def test_单学科稿五节齐全并带跨校(self, src):
         from conftest import REPO
-        r = report.generate(REPO / src.dir, "cross_compare")
-        assert r["check"]["pass"]
+        r = report.generate(REPO / src.dir, "single_trend",
+                            disc="Plant & Animal Science",
+                            peers=["昆明理工大学", "云南农业大学"])
+        assert r["check"]["pass"], r["check"]
         md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
-        for sec in ("本期概览", "横向对比", "成因研判（判断草稿）", "建议事项（判断草稿）"):
-            assert sec in md
+        for sec in ("学科概况", "学术影响力", "学科排名", "跨校对比", "学科展望",
+                    "成因研判（判断草稿）", "建议事项（判断草稿）"):
+            assert sec in md, f"缺章节：{sec}"
+        assert "昆明理工大学" in md and "云南农业大学" in md
 
 
 class Test语言不死板:
@@ -687,15 +694,12 @@ class Test语言不死板:
         s = opinion.descriptive_trend(self._pts(vs), "某指标", "某学科")
         assert any(k in s for k in kw), f"{vs} → {s}"
 
-    def test_同报告内三条指标不撞同一句(self, flex_report_out):
+    def test_影响力与排名各有话说(self, flex_report_out):
         md = pathlib.Path(flex_report_out["report"]).read_text(encoding="utf-8")
-        seg = md.split("## 二、")[1].split("## 三、")[0]
-        lines = [l for l in seg.splitlines() if l.startswith("- ")]
-        assert len(lines) >= 3
-        heads = [l[:14] for l in lines]
-        assert len(set(heads)) == len(heads), f"三条开头撞了：{heads}"
-        # 旧句式「自 A 上升至 B」不该再出现三遍
-        assert seg.count("上升至") <= 1, "又退回模板句式了"
+        impact = md.split("## 二、学术影响力")[1].split("## 三、学科排名")[0]
+        rank = md.split("## 三、学科排名")[1].split("## 四、跨校对比")[0]
+        assert "CNCI" in impact and "1.0" in impact
+        assert "国际排名" in rank and "国内排名" in rank
 
     def test_规则后端可复现(self, src):
         """句式变体必须**确定性** —— 同一份数据两次跑出同一句。"""
@@ -833,14 +837,14 @@ class TestHTML渲染:
 class TestCLI与清单:
     def test_cli入口可跑(self, src, capsys):
         import run_flexible
-        rc = run_flexible.main([str(src.dir), "cross_compare"])
+        rc = run_flexible.main([str(src.dir), "single_trend"])
         assert rc == 0
         out = capsys.readouterr().out
         assert "自检 通过" in out and "数字可回溯" in out
 
     def test列表能列出刚生成的(self, src):
         reps = report.list_reports(src.dir)
-        assert any(r["intent"] == "cross_compare" for r in reps)
+        assert any(r["intent"] == "single_trend" for r in reps)
         for r in reps:
             assert pathlib.Path(r["path"]).is_file()
             assert r["meta"].get("backend")
@@ -849,39 +853,19 @@ class TestCLI与清单:
 class Test指定学科全链路:
     """rick 2026-09-29：「指定学科填了化学，报告和化学无关」——三层都不许再忽略。"""
 
-    def test_中文名可用且横版围着它写(self, src):
+    def test_中文名可用且围着它写(self, src):
         from conftest import REPO
-        r = report.generate(REPO / src.dir, "cross_compare", disc="化学")
+        r = report.generate(REPO / src.dir, "single_trend", disc="化学")
         assert r["check"]["pass"], r["check"]
         md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
-        assert "化学 · 当期落点" in md and "化学 · 近 7 期走势" in md
-        assert "**化学**" in md, "全池对比表里指定学科要加粗"
-        assert "化学" in r["plan"]["title"] and "横向对比" in r["plan"]["title"]
+        assert "化学" in r["plan"]["title"]
+        assert "化学" in md
         assert r["n_charts"] == 4, r["plan"]["charts"]
-        assert [c["disc"] for c in r["plan"]["charts"][:2]] == ["Chemistry", "Chemistry"]
-
-    def test_未指定学科时横版保持全池口径(self, src):
-        from conftest import REPO
-        r = report.generate(REPO / src.dir, "cross_compare")
-        md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
-        assert "当期落点" not in md
-        assert not r["plan"].get("disc")
+        assert all(c["disc"] == "Chemistry" for c in r["plan"]["charts"])
 
     def test_未知学科给人话报错(self, src):
         with pytest.raises(ValueError, match="不在监测名单"):
             planner.build(src, "single_trend", disc="量子计算")
-
-    def test_模型在横版乱塞单科图被丢弃(self, src):
-        """旧行为：模型挑「工程学」加一堆图、标题还写「工程学学科分析报告」——无指定学科时不许。"""
-        from _ai_helpers import ScriptedBrain, Turn
-        import ai
-        brain = ScriptedBrain([Turn(text='{"title": "工程学 学科分析报告", "charts": '
-                                          '[{"kind": "cnci", "disc": "Engineering"}, '
-                                          '{"kind": "overview_1pct"}]}')])
-        with ai.using(brain=brain):
-            plan = planner.build(src, "cross_compare")
-        assert [c["kind"] for c in plan["charts"]] == ["overview_1pct"]
-        assert "学科横向对比" in plan["title"], plan["title"]
 
     def test_指定学科时模型乱选也被扳回(self, src):
         from _ai_helpers import ScriptedBrain, Turn
@@ -889,7 +873,7 @@ class Test指定学科全链路:
         brain = ScriptedBrain([Turn(text='{"title": "工程学 学科分析报告", "charts": '
                                           '[{"kind": "cnci", "disc": "Physics"}]}')])
         with ai.using(brain=brain):
-            plan = planner.build(src, "cross_compare", disc="Chemistry")
+            plan = planner.build(src, "single_trend", disc="Chemistry")
         assert "化学" in plan["title"], plan["title"]
         assert all(c["disc"] in (None, "Chemistry") for c in plan["charts"])
 
@@ -941,10 +925,8 @@ class Test计划带候选排序:
         assert all(c["disc"] != "Bogus" for c in plan["considered"]), "白名单外的新栏一律剥"
         assert plan["considered"] and plan["considered"][0]["disc"] == plan["disc"]
 
-    def test_considered随计划落盘(self, flex_report_out, src):
-        from conftest import REPO
-        p = REPO / src.dir / "flexible" / "single_trend" / "flex_plan.json"
-        plan = json.loads(p.read_text(encoding="utf-8"))
+    def test_considered随计划返回(self, flex_report_out):
+        plan = flex_report_out["plan"]
         assert len(plan["considered"]) == 3
         assert plan["considered"][0]["disc"] == plan["disc"]
 
@@ -953,7 +935,7 @@ class Test流式生成:
     def test_事件序列与大纲同源(self, src):
         """status → plan(带大纲) → section×N（逐节标题==大纲）→ done；无假进度。"""
         from conftest import REPO
-        events = list(report.generate_stream(REPO / src.dir, "cross_compare"))
+        events = list(report.generate_stream(REPO / src.dir, "single_trend"))
         assert [e["event"] for e in events[:2]] == ["status", "plan"]
         assert events[-1]["event"] == "done"
         sec = [e for e in events if e["event"] == "section"]
@@ -1025,9 +1007,7 @@ class Test流式生成:
 
     @pytest.mark.parametrize("intent,kw", [
         ("single_trend", {}),
-        ("cross_compare", {}),
-        ("cross_compare", {"disc": "化学"}),
-        ("cross_compare", {"metric": "papers"}),
+        ("single_trend", {"disc": "化学"}),
     ])
     def test_大纲与正文标题一一对应(self, src, intent, kw):
         """防漂移（C8）：正文 `## 一、…` 的标题序列必须与大纲（同一份节表）逐字相同。
@@ -1077,7 +1057,7 @@ def _wr_reply(b):
 
 class Test写作位接线:
     def test_写作位开时全篇走写作位并留痕(self, src, tmp_path, monkeypatch):
-        """票 04：描述节改写 + 判断节创写，共 7 段调用；每段独立留痕。"""
+        """票 04：描述节改写 + 判断节创写，共 6 段调用；每段独立留痕。"""
         from _ai_helpers import ScriptedBrain
         import ai
         monkeypatch.setenv("WENHENG_FLEX_WRITE", "1")
@@ -1087,13 +1067,13 @@ class Test写作位接线:
             r = report.generate(tmp, "single_trend")
         assert r["mode"] == "write"
         polish_briefs = [b for b in brain.briefs if getattr(b, "ability", "") == "polish"]
-        assert len(polish_briefs) == 7, "概况 1 + 趋势 3 + 位次 1 + 判断节 2"
+        assert len(polish_briefs) == 6, "概况 1 + 影响力 1 + 排名 1 + 展望 1 + 判断节 2"
         rec_file = tmp_path / "202607" / "ai_calls.jsonl"
         rows = [json.loads(x) for x in
                 rec_file.read_text(encoding="utf-8").splitlines() if x.strip()]
-        assert len(rows) == 7 and all(x["capability"] == "polish" for x in rows)
+        assert len(rows) == 6 and all(x["capability"] == "polish" for x in rows)
         assert all(x["mode"] == "model" for x in rows)
-        assert r["write"] and r["write"]["segments"] == 7
+        assert r["write"] and r["write"]["segments"] == 6
         md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
         assert "改写：" in md
         cause = md.split("成因研判（判断草稿）")[1].split("建议事项（判断草稿）")[0]
@@ -1121,7 +1101,7 @@ class Test写作位接线:
         with ai.using(brain=brain, data_root=tmp_path):
             r = report.generate(tmp, "single_trend")
         assert r["mode"] == "write", "配好写作位后生成默认走创写（按钮不再是门槛）"
-        assert r["write"] and r["write"]["segments"] == 7
+        assert r["write"] and r["write"]["segments"] == 6
 
 
 class Test产线贯通:
@@ -1238,14 +1218,14 @@ class Test产线贯通:
         assert "【手工：" in cause, "规则版判断节＝空位"
         assert "细下划线的句子" not in md1, "规则版不摆空图例"
 
-    def test_两种意图_末两节同为判断草稿(self, tmp_path, monkeypatch):
+    def test_末两节同为判断草稿(self, tmp_path, monkeypatch):
         from _ai_helpers import ScriptedBrain
         import ai
         monkeypatch.setenv("WENHENG_FLEX_WRITE", "1")
         tmp = _copy_period(tmp_path)
         brain = ScriptedBrain([_wr_reply] * 12)
         with ai.using(brain=brain, data_root=tmp_path):
-            r = report.generate(tmp, "cross_compare", disc="化学")
+            r = report.generate(tmp, "single_trend", disc="化学")
         assert r["mode"] == "write" and r["check"]["pass"], r["check"]
         md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
         for sec in ("成因研判（判断草稿）", "建议事项（判断草稿）"):
@@ -1317,7 +1297,7 @@ class Test自检翻转与兜底补标:
         hypotheses_complete）清零，新字段（judgement_marked / judgement_leaks /
         backstop_n）有值。"""
         from conftest import REPO
-        events = list(report.generate_stream(REPO / src.dir, "cross_compare"))
+        events = list(report.generate_stream(REPO / src.dir, "single_trend"))
         c = events[-1]["check"]
         assert "no_professional_judgement" not in c and "hypotheses_complete" not in c
         assert c["judgement_marked"] is True and c["judgement_leaks"] == []

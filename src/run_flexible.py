@@ -4,8 +4,8 @@
 用法（workdir=wenheng）：
 
     .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend
-    .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 cross_compare
     .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend Engineering
+    .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 single_trend 植物与动物学 --peers 昆明理工大学,云南农业大学
 
     # 语言润色位（**可选**，默认关）：配了云 + 开 `WENHENG_FLEX_POLISH=1` 才生效。
     # 数字走防护盾（[[n]] 占位 + 校验 + 还原），失败或不可用一律原样回退。
@@ -19,7 +19,7 @@
     # 列出某期次已生成的分析稿
     .venv\\Scripts\\python.exe src\\run_flexible.py out/202607 --list
 
-意图：`single_trend`（单学科趋势诊断）/ `cross_compare`（多学科横向对比）。
+意图：`single_trend`（单学科分析报告；跨校对比是其中一节，对标高校用 `--peers` 指定）。
 规划后端（D6 收编后）：**规则**（默认，无 LLM）/ 云端模型（配 `WENHENG_AI_*` 才启用，
 经 AI 层出网、失败自动回退规则）。旧的 `ollama` / `http` 直连已废弃。
 
@@ -59,7 +59,12 @@ def main(argv):
         elif flag in ("--no-polish", "--raw"):
             polish = False
     write = "--write" in argv
-    r = report.generate(out_dir, intent, disc=disc, polish=polish, write=write)
+    peers = None
+    if "--peers" in argv:
+        i = argv.index("--peers")
+        peers = [x.strip() for x in (argv[i + 1] if i + 1 < len(argv) else "").split(",")
+                 if x.strip()]
+    r = report.generate(out_dir, intent, disc=disc, polish=polish, write=write, peers=peers)
     p = r["plan"]
     print(f"[灵活报告] {planner.INTENTS[intent]} → {r['report']}")
     print(f"  规划后端：{p['backend']}"

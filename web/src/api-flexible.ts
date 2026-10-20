@@ -40,7 +40,7 @@ export async function getFlexible(period: string, intent?: string,
 
 export async function runFlexible(
   period: string,
-  body: { intent: string; disc?: string },
+  body: { intent: string; disc?: string; peers?: string[] },
 ): Promise<{ ok: boolean; intent: string; elapsed: number; n_charts?: number; backend?: string }> {
   return req<{ ok: boolean; intent: string; elapsed: number; n_charts?: number; backend?: string }>(
     `/api/periods/${encodeURIComponent(period)}/flexible`,
@@ -86,7 +86,7 @@ export type FlexStreamEvent =
 /** 逐行读取 NDJSON 流（fetch + ReadableStream；不引依赖、不用 EventSource）。 */
 export async function runFlexibleStream(
   period: string,
-  body: { intent: string; disc?: string },
+  body: { intent: string; disc?: string; peers?: string[] },
   onEvent: (ev: FlexStreamEvent) => void,
   opts?: { signal?: AbortSignal },
 ): Promise<void> {

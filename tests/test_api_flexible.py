@@ -37,16 +37,15 @@ def _ctx_or_skip():
 
 
 class TestFlexible组装:
-    def test_列已生成两份(self):
+    def test_列已生成的报告(self):
         _d, ctx = _ctx_or_skip()
         ids = {r["intent"] for r in ctx["reports"]}
-        assert "single_trend" in ids and "cross_compare" in ids
+        assert "single_trend" in ids
 
     def test_intents是中文对(self):
         _d, ctx = _ctx_or_skip()
         assert ctx["intents"] == [
-            {"id": "single_trend", "cn": "单学科趋势诊断"},
-            {"id": "cross_compare", "cn": "多学科横向对比"},
+            {"id": "single_trend", "cn": "单学科分析报告"},
         ]
 
     def test_body_html指向保留的图表路由(self):

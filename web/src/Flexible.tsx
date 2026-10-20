@@ -51,12 +51,11 @@ function emptyPane(): Pane {
 
 /** 每栏一句话的视角（界面文案；未知意图不硬凑） */
 const PANE_LEAD: Record<string, string> = {
-  cross_compare: '横看 · 22 个学科与 1% 的距离',
-  single_trend: '纵看 · 单学科的多指标走势',
+  single_trend: '单学科 · 概况 / 影响力 / 排名 / 跨校 / 展望',
 }
 
-/** 栏序（rick 2026-10-14 定稿）：左·多学科横向 / 右·单学科纵向；未知意图排在后面 */
-const PANE_ORDER = ['cross_compare', 'single_trend']
+/** 栏序：灵活报告只剩单学科一份（2026-10-20） */
+const PANE_ORDER = ['single_trend']
 
 function metaLine(meta: Record<string, unknown> | null): string {
   const m = meta ?? {}
@@ -94,6 +93,8 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
   const [note, setNote] = useState<string | null>(null)
   /** 每栏自己的「指定学科」（生成时用；两栏互不影响） */
   const [discs, setDiscs] = useState<Record<string, string>>({})
+  /** 每栏自己的「对标高校」（跨校对比用；每次生成前填写） */
+  const [peers, setPeers] = useState<Record<string, string>>({})
   /** 每栏各自在出稿——两栏可同时流式、互不阻塞（2026-10-15 定稿） */
   const [busy, setBusy] = useState<Record<string, boolean>>({})
   const [, setTick] = useState(0)
@@ -116,7 +117,7 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
   useEffect(() => {
     if (!period) return
     let alive = true
-    setNote(null); setBusy({}); setDiscs({}); setIntents([])
+    setNote(null); setBusy({}); setDiscs({}); setPeers({}); setIntents([])
     setPan({})
     ;(async () => {
       try {
@@ -199,7 +200,10 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
     liveRef.current += 1
     if (liveRef.current === 1) startTimer()
     try {
-      await runFlexibleStream(period, { intent: targetIntent, disc: targetDisc || undefined },
+      const peerList = (peers[targetIntent] ?? '')
+        .split(/[,，、;；\n]+/).map((s) => s.trim()).filter(Boolean)
+      await runFlexibleStream(
+        period, { intent: targetIntent, disc: targetDisc || undefined, peers: peerList },
         (ev: FlexStreamEvent) => {
           setPan((p) => {
             const pane = p[targetIntent]
@@ -347,6 +351,12 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
                         <option key={x.en} value={x.en}>{x.cn}</option>
                       ))}
                     </select>
+                  </label>
+                  <label>对标高校
+                    <input type="text" value={peers[it.id] ?? ''}
+                           placeholder="如：昆明理工大学、云南农业大学"
+                           aria-label={`为「${it.cn}」指定对标高校（中文名或 ESI 英文名，可留空）`}
+                           onChange={(e) => setPeers((d) => ({ ...d, [it.id]: e.target.value }))} />
                   </label>
                   {pane.has ? (
                     <ConfirmButton className="btn small" confirmText="确认重出？"
