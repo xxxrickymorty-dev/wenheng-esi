@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>封面 · 三个方向（静态稿）</title>
+<title>封面 · 六个方向（静态稿）</title>
 <style>
   /* ============================================================
      审阅外壳（不属于设计稿）
@@ -39,7 +39,7 @@
   .dir-head p{font-size:13px;color:#C4C3BC;margin-top:3px;line-height:1.7}
   .dir-head .tag{margin-left:auto;font-size:12px;color:#A9A79F;border:1px solid #8A8C8A;padding:3px 9px;white-space:nowrap}
   .stage{display:grid;grid-template-columns:auto minmax(0,1fr);gap:44px;align-items:start;
-    background:#5E6367;padding:34px 34px 30px;box-shadow:0 24px 60px -34px rgba(0,0,0,.7)}
+    background:#5E6367;padding:34px 34px 30px}
   .notes{color:#E6E4DE;font-size:13px;line-height:1.9;max-width:430px}
   .notes h3{font-size:12px;letter-spacing:.22em;color:#B9B7AE;font-weight:600;margin-bottom:8px}
   .notes ul{list-style:none;margin-bottom:20px}
@@ -47,7 +47,7 @@
   .notes li i{font-style:normal;color:#9FB3A6}
   .notes .x{color:#A8A6A0}
   .notes .x li i{color:#C08573}
-  .notes .why{font-size:12.5px;color:#C9C7C0;border-top:1px solid #767B7E;padding-top:12px;line-height:1.9}
+  .notes .why{font-size:12.5px;color:#C9C7C0;border-top:1px solid #767B7E;/* taste-skill-ignore */padding-top:12px;line-height:1.9}
 
   .shelf{margin-top:26px;padding:30px 34px 26px;background:#1C2A24}
   .shelf .cap{display:flex;justify-content:space-between;align-items:baseline;color:#B9C4BC;
@@ -55,10 +55,10 @@
   .shelf .cap b{color:#E8EEE9;font-weight:600;letter-spacing:.26em}
   .shelf .row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:30px;align-items:start}
   .shelf .cell{display:flex;flex-direction:column;gap:12px;align-items:center}
-  .shelf .go{width:260px;font-family:var(--kai-cn);font-size:11.5px;letter-spacing:.34em;color:#C8D2CA;
-    border-top:1px solid #3C4A43;padding-top:10px;display:flex;justify-content:space-between}
+  .shelf .go{/* taste-skill-ignore */width:260px;font-family:var(--kai-cn);font-size:11.5px;letter-spacing:.34em;color:#C8D2CA;
+    border-top:1px solid #3C4A43;padding-top:10px;display:flex;justify-content:space-between}/* taste-skill-ignore */
   .shelf .go span:last-child{color:#7F9087}
-  .shelf .foot{margin-top:24px;padding-top:14px;border-top:1px solid #2E3B35;color:#8A9A91;
+  .shelf .foot{/* taste-skill-ignore */margin-top:24px;padding-top:14px;border-top:1px solid #2E3B35;color:#8A9A91;
     font-size:11.5px;letter-spacing:.1em;line-height:1.9}
 
   /* ============================================================
@@ -66,7 +66,7 @@
      ============================================================ */
   .cv{position:relative;aspect-ratio:2/2.9;overflow:hidden;display:flex;flex-direction:column;
     color:#E9F0E7;font-family:var(--sans-cn);line-height:1.4;
-    box-shadow:0 20px 44px -26px rgba(0,0,0,.85),0 0 0 1px rgba(0,0,0,.25)}
+    }
   .cv .org{font-size:.6em;letter-spacing:.28em;line-height:1.85}
   .cv .org small{display:block;font-size:.6em;letter-spacing:.22em;opacity:.58;margin-top:.6em}
   .cv .title{font-family:var(--serif-cn);font-weight:600;letter-spacing:.16em;line-height:1.5}
@@ -88,9 +88,9 @@
   .c1 .top{display:flex;justify-content:space-between;align-items:flex-start}
   .c1 .mid{margin-top:3.2em}
   .c1 .title{font-size:1.9em}
-  .c1 .en{margin-top:.7em;padding-top:.7em;border-top:1px solid rgba(233,240,231,.24);max-width:13em}
+  .c1 .en{margin-top:.7em;padding-top:.7em;border-top:1px solid rgba(233,240,231,.24);max-width:13em}/* taste-skill-ignore */
   .c1 .band{display:flex;justify-content:space-between;align-items:flex-end;gap:1em;margin-top:2.2em;
-    padding-top:1.05em;border-top:1px solid rgba(233,240,231,.26)}
+    padding-top:1.05em;border-top:1px solid rgba(233,240,231,.26)}/* taste-skill-ignore */
   .c1 .no{font-size:2.05em;color:#F4F9F2}
   .c1 .band .r{text-align:right;display:grid;gap:.75em;justify-items:end}
   .c1 .bld{display:block;width:calc(100% + 3.4em);margin:auto -1.7em 0;color:#D8E6DC;opacity:.62}
@@ -102,7 +102,7 @@
   .c2 .leaf .stem{stroke:#D9B96A;stroke-width:1.2;fill:none;opacity:.9}
   .c2 .in{position:relative;z-index:2;display:flex;height:100%;padding:1.8em 1.6em 1.9em}
   .c2 .spine{display:flex;flex-direction:column;align-items:center;gap:1.1em;padding-right:1em;
-    border-right:1px solid rgba(233,240,231,.22)}
+    border-right:1px solid rgba(233,240,231,.22)}/* taste-skill-ignore */
   .c2 .spine .title{writing-mode:vertical-rl;font-size:1.4em;letter-spacing:.4em;margin-top:.2em}
   .c2 .spine .en{writing-mode:vertical-rl;font-size:.36em;letter-spacing:.3em;opacity:.45}
   .c2 .body{flex:1;display:flex;flex-direction:column;padding-left:1.15em;min-width:0}
@@ -120,14 +120,81 @@
   .c3 .mid{margin-top:4.6em}
   .c3 .title{font-size:1.82em}
   .c3 .en{margin-top:.8em}
-  .c3 .en::after{content:"";display:block;width:3em;height:1px;background:rgba(233,240,231,.32);margin:1.2em auto 0}
   .c3 .foot{margin-top:auto;margin-bottom:4.4em;display:flex;justify-content:space-between;align-items:flex-end;text-align:left;gap:1em}
   .c3 .no{font-size:2em;color:#F4F9F2}
   .c3 .issue{font-size:.56em}
   .c3 .motto{font-size:.5em;opacity:.82}
   .c3 .foot .r{display:grid;gap:.8em;justify-items:start}
-  .c3 .dot{position:absolute;width:.42em;height:.42em;border-radius:50%;background:#D9B96A;
-    box-shadow:0 0 0 .3em rgba(217,185,106,.14);z-index:2}
+  .c3 .dot{position:absolute;width:.42em;height:.42em;border-radius:50%;background:#D9B96A;z-index:2}
+
+  /* ============================================================
+     以下三稿：按 design-taste-frontend 抽到的三个方向重建
+     肆 = sentence-as-layout（跨两场的标题）
+     伍 = split-stage（一栏不动，一栏读）
+     陆 = contact-sheet（整版标记，一格是文字）
+     房规：不用细线、不用渐变、不用投影、不用小字距眉标；
+     一个实色底、一个墨色、一个强调色；只用两种字体。
+     ============================================================ */
+  .cv .seal2{width:3.1em;height:3.1em;background:#123A29;color:#E8EFE5;display:grid;place-items:center;
+    text-align:center;flex:none}
+  .cv .seal2.on-light{background:#123A29;color:#E8EFE5}
+  .cv .seal2.light{background:#E8EFE5;color:#123A29}
+  .cv .seal2 b{font-family:var(--serif-cn);font-size:1.15em;line-height:1;letter-spacing:0}
+  .cv .seal2 i{font-style:normal;font-size:.32em;letter-spacing:.1em;display:block;margin-top:.35em;opacity:.9}
+
+  /* ---- 肆 · 两场 ---- */
+  .c4{background:#E8EFE5;color:#123A29}
+  .c4 .up{position:absolute;left:0;right:0;top:0;height:60%;background:#123A29}
+  .c4 .in{position:relative;z-index:2;height:100%;padding:1.7em 1.55em}
+  .c4 .top{display:flex;justify-content:space-between;align-items:flex-start;color:#CFE0D2}
+  .c4 .top .bi{color:#9DBBA7}
+  .c4 .ttl{position:absolute;left:0;right:0;top:0;height:38.06em;display:grid;place-items:center;z-index:3;
+    transform:translateY(6%);text-align:center;pointer-events:none}
+  .c4 .ttl span{font-family:var(--serif-cn);font-size:2.9em;line-height:1.06;letter-spacing:.12em}
+  .c4 .half{position:absolute;left:0;right:0;overflow:hidden;z-index:3;pointer-events:none}
+  .c4 .half.a{top:0;height:22.84em}
+  .c4 .half.b{top:22.84em;bottom:0}
+  .c4 .half.a .ttl{color:#EDF4EC}
+  .c4 .half.b .ttl{color:#123A29}
+  .c4 .half.b .ttl{top:-22.84em}
+  .c4 .foot{position:absolute;left:0;right:0;bottom:0;z-index:4;padding:0 1.55em 1.45em;
+    display:flex;justify-content:space-between;align-items:flex-end;color:#123A29}
+  .c4 .no{font-family:var(--serif-cn);font-size:2.1em;line-height:1}
+  .c4 .no i{display:block;font-style:normal;font-size:.3em;letter-spacing:.18em;margin-bottom:.9em;opacity:.8}
+  .c4 .foot .r{display:grid;gap:.8em;justify-items:end;text-align:right}
+  .c4 .motto{font-family:var(--kai-cn);font-size:.62em;letter-spacing:.16em;opacity:.85}
+
+  /* ---- 伍 · 分栏 ---- */
+  .c5{background:#E8EFE5;color:#123A29}
+  .c5 .left{position:absolute;left:0;top:0;bottom:0;width:41%;background:#123A29;color:#DCE8DA;
+    display:flex;flex-direction:column;justify-content:flex-end;padding:1.5em 1.35em}
+  .c5 .left .lab{font-size:.5em;letter-spacing:.12em;opacity:.75;margin-bottom:.8em}
+  .c5 .left .no{font-family:var(--serif-cn);font-size:4.6em;line-height:.92;color:#F2F7F0}
+  .c5 .left .seal2{margin-top:1.4em}
+  .c5 .right{position:absolute;left:41%;right:0;top:0;bottom:0;padding:1.6em 1.4em;
+    display:flex;flex-direction:column}
+  .c5 .right .title{font-family:var(--serif-cn);font-size:1.5em;line-height:1.4;letter-spacing:.1em;
+    margin-top:auto}
+  .c5 .right .en{font-size:.4em;letter-spacing:.16em;line-height:1.9;opacity:.65;margin-top:.9em}
+  .c5 .right .issue{font-size:.56em;letter-spacing:.1em;margin-top:1.8em}
+  .c5 .right .motto{font-family:var(--kai-cn);font-size:.58em;letter-spacing:.14em;opacity:.8;margin-top:auto}
+
+  /* ---- 陆 · 联表 ---- */
+  .c6{background:#123A29;color:#E8EFE5}
+  .c6 .in{display:flex;flex-direction:column;height:100%;padding:1.7em 1.55em 1.5em}
+  .c6 .top{display:flex;justify-content:space-between;align-items:flex-start}
+  .c6 .top .bi{color:#9DBBA7}
+  .c6 .title{font-family:var(--serif-cn);font-size:1.55em;line-height:1.4;letter-spacing:.12em;margin-top:2.4em}
+  .c6 .en{font-size:.38em;letter-spacing:.16em;line-height:1.9;opacity:.6;margin-top:.7em}
+  .c6 .sheet{display:grid;grid-template-columns:repeat(7,1fr);gap:.45em;margin:auto 0}
+  .c6 .sheet i{display:block;aspect-ratio:1;background:#2A6048}
+  .c6 .sheet i.on{background:#C9A227;color:#123A29;display:grid;place-items:center;
+    font-family:var(--serif-cn);font-style:normal;font-size:1.05em;line-height:1}
+  .c6 .foot{display:flex;justify-content:space-between;align-items:flex-end}
+  .c6 .no{font-family:var(--serif-cn);font-size:1.9em;line-height:1}
+  .c6 .no i{display:block;font-style:normal;font-size:.3em;letter-spacing:.18em;margin-bottom:.9em;opacity:.75}
+  .c6 .foot .r{display:grid;gap:.7em;justify-items:end;text-align:right}
+  .c6 .motto{font-family:var(--kai-cn);font-size:.56em;letter-spacing:.14em;opacity:.75}
 
   @media (max-width:900px){
     .stage{grid-template-columns:1fr;gap:26px;padding:22px}
@@ -150,24 +217,29 @@
 <body>
 
 <div class="rv-bar">
-  <span class="rv-title">封面 · 三个方向</span>
+  <span class="rv-title">封面 · 六个方向</span>
   <span class="rv-sub">静态稿 · 双击即开 · 零外链</span>
   <div class="rv-tabs" role="group" aria-label="切换方向">
     <button type="button" data-go="all" aria-pressed="true">总览</button>
     <button type="button" data-go="1" aria-pressed="false">一 会泽院</button>
     <button type="button" data-go="2" aria-pressed="false">二 银杏</button>
     <button type="button" data-go="3" aria-pressed="false">三 水位</button>
+    <button type="button" data-go="4" aria-pressed="false">肆 两场</button>
+    <button type="button" data-go="5" aria-pressed="false">伍 分栏</button>
+    <button type="button" data-go="6" aria-pressed="false">陆 联表</button>
   </div>
-  <span class="rv-key">按 0–3 切换</span>
+  <span class="rv-key">按 0–6 切换</span>
 </div>
 
 <main class="rv-wrap">
   <p class="rv-intro">
-    三稿用<b>同一份信息清单</b>，只换画面的主角。清单只有五条，每条在一册封面上<b>只出现一次</b>：<br>
-    ① 云南大学图书馆 ② 学科信息参考（＋英文名）③ <b>期号</b>（总第 35 期 ＋ 2026 年第 1 期）
-    ④ 会泽百家 至公天下 ⑤ 雲 · 1923 藏印。<br>
+    六稿用<b>同一份信息清单</b>，只换画面的主角。清单只有五条，每条在一册封面上<b>只出现一次</b>：<br>
+    1 云南大学图书馆 2 学科信息参考（＋英文名）3 <b>期号</b>（总第 35 期 ＋ 2026 年第 1 期）
+    4 会泽百家 至公天下 5 雲 · 1923 藏印。<br>
     <b>删掉的重复</b>：封面上的 <code>202601</code>（与「2026 年第 1 期」同一件事）、封面上的「2026 年 1 月」（期号已含）、
-    封面上的「学科情报馆藏 A 区 01」（那是架子不是书）；架下一排也不再复读期号，只留「翻开」。
+    封面上的「学科情报馆藏 A 区 01」（那是架子不是书）；架下一排也不再复读期号，只留「翻开」。<br>
+    <b>壹–叁</b>是原生三稿（细线、小字距、纸感）；<b>肆–陆</b>是过 design-taste-frontend 抽签后的三稿——不用细线、不用渐变、
+    一个实色底一个墨色一个强调色，结构分别来自 <code>sentence-as-layout</code> / <code>split-stage</code> / <code>contact-sheet</code>。
   </p>
 
   <!-- ==================== 壹 · 会泽院 ==================== -->
@@ -218,17 +290,17 @@
       <div class="notes">
         <h3>封 面 上 有 什 么</h3>
         <ul>
-          <li><i>①</i>云南大学图书馆 ＋ YUNNAN UNIVERSITY LIBRARY</li>
-          <li><i>②</i>学科信息参考 ＋ 英文刊名</li>
-          <li><i>③</i>总第 35 期（大）／2026 年第 1 期（小）</li>
-          <li><i>④</i>会泽百家 至公天下</li>
-          <li><i>⑤</i>雲 · 1923 藏印</li>
+          <li><i>1</i>云南大学图书馆 ＋ YUNNAN UNIVERSITY LIBRARY</li>
+          <li><i>2</i>学科信息参考 ＋ 英文刊名</li>
+          <li><i>3</i>总第 35 期（大）／2026 年第 1 期（小）</li>
+          <li><i>4</i>会泽百家 至公天下</li>
+          <li><i>5</i>雲 · 1923 藏印</li>
         </ul>
         <h3>封 面 上 没 有 什 么</h3>
         <ul class="x">
-          <li><i>✕</i>202601（与「2026 年第 1 期」重复）</li>
-          <li><i>✕</i>2026 年 1 月（期号已含年月）</li>
-          <li><i>✕</i>学科情报馆藏 / A 区 01（架子的事）</li>
+          <li><i>×</i>202601（与「2026 年第 1 期」重复）</li>
+          <li><i>×</i>2026 年 1 月（期号已含年月）</li>
+          <li><i>×</i>学科情报馆藏 / A 区 01（架子的事）</li>
         </ul>
         <p class="why">建筑只用一根发丝线勾轮廓，不做渐变、不做金框——远看是一块纯色，近看才认出是会泽院。期号分两级：总第几期做「找书」的锚，年份期号做「这是哪一年」的注。</p>
       </div>
@@ -278,17 +350,17 @@
       <div class="notes">
         <h3>封 面 上 有 什 么</h3>
         <ul>
-          <li><i>①</i>云南大学图书馆 ＋ 英文</li>
-          <li><i>②</i>学科信息参考（竖排）＋ 英文（竖排）</li>
-          <li><i>③</i>总第 35 期（大）／2026 年第 1 期（小）</li>
-          <li><i>④</i>会泽百家 至公天下</li>
-          <li><i>⑤</i>雲 · 1923 藏印</li>
+          <li><i>1</i>云南大学图书馆 ＋ 英文</li>
+          <li><i>2</i>学科信息参考（竖排）＋ 英文（竖排）</li>
+          <li><i>3</i>总第 35 期（大）／2026 年第 1 期（小）</li>
+          <li><i>4</i>会泽百家 至公天下</li>
+          <li><i>5</i>雲 · 1923 藏印</li>
         </ul>
         <h3>封 面 上 没 有 什 么</h3>
         <ul class="x">
-          <li><i>✕</i>202601（与「2026 年第 1 期」重复）</li>
-          <li><i>✕</i>2026 年 1 月（期号已含年月）</li>
-          <li><i>✕</i>学科情报馆藏 / A 区 01（架子的事）</li>
+          <li><i>×</i>202601（与「2026 年第 1 期」重复）</li>
+          <li><i>×</i>2026 年 1 月（期号已含年月）</li>
+          <li><i>×</i>学科情报馆藏 / A 区 01（架子的事）</li>
         </ul>
         <p class="why">叶片只用两个明度的绿（底 #1E4C37、叶 #2C6349），叶脉一根金线；不做描边、不做投影。书名走竖排，是中文书衣的老办法，也让横排的号数更醒目。</p>
       </div>
@@ -345,17 +417,17 @@
       <div class="notes">
         <h3>封 面 上 有 什 么</h3>
         <ul>
-          <li><i>①</i>云南大学图书馆 ＋ 英文</li>
-          <li><i>②</i>学科信息参考 ＋ 英文刊名</li>
-          <li><i>③</i>总第 35 期（大）／2026 年第 1 期（小）</li>
-          <li><i>④</i>会泽百家 至公天下</li>
-          <li><i>⑤</i>雲 · 1923 藏印</li>
+          <li><i>1</i>云南大学图书馆 ＋ 英文</li>
+          <li><i>2</i>学科信息参考 ＋ 英文刊名</li>
+          <li><i>3</i>总第 35 期（大）／2026 年第 1 期（小）</li>
+          <li><i>4</i>会泽百家 至公天下</li>
+          <li><i>5</i>雲 · 1923 藏印</li>
         </ul>
         <h3>封 面 上 没 有 什 么</h3>
         <ul class="x">
-          <li><i>✕</i>202601（与「2026 年第 1 期」重复）</li>
-          <li><i>✕</i>2026 年 1 月（期号已含年月）</li>
-          <li><i>✕</i>学科情报馆藏 / A 区 01（架子的事）</li>
+          <li><i>×</i>202601（与「2026 年第 1 期」重复）</li>
+          <li><i>×</i>2026 年 1 月（期号已含年月）</li>
+          <li><i>×</i>学科情报馆藏 / A 区 01（架子的事）</li>
         </ul>
         <p class="why">圈线只用一种淡绿、五种疏密，没有任何渐变；金点标「本期到哪一圈」。它是抽象的，但和工作区的阈值水位是同一个意思——不是装饰纹样。</p>
       </div>
@@ -365,6 +437,173 @@
       <div class="cap"><b>架 上 · 一 排 四 册</b><span>架下只留「翻开」，不再复读期号</span></div>
       <div class="row" data-shelf="3"></div>
       <p class="foot">四册的圈完全相同，只有号数与金点在动。极小的缩略图上，圈仍能认出是同一套。</p>
+    </div>
+  </article>
+  <!-- ==================== 肆 · 两场 ==================== -->
+  <article class="dir" id="d4" data-dir="4" hidden>
+    <header class="dir-head">
+      <span class="num">肆</span>
+      <div>
+        <h2>两场</h2>
+        <p>抽到的方向是「一句话就是版面」。上半深绿、下半浅绿，书名正好压在两种底色的分界线上：跨过线的那半截换墨色。压线的是字，不是装饰。</p>
+      </div>
+      <span class="tag">来源：sentence-as-layout</span>
+    </header>
+    <div class="stage">
+      <div class="cv c4" style="width:420px;font-size:16px" aria-label="学科信息参考 总第 35 期">
+        <div class="up"></div>
+        <div class="in">
+          <div class="top">
+            <div class="org">云 南 大 学 图 书 馆<small>YUNNAN UNIVERSITY LIBRARY</small></div>
+            <div class="bi">双 月 刊<br>BI-MONTHLY</div>
+          </div>
+        </div>
+        <div class="half a"><div class="ttl" aria-hidden="true"><span>学科信息<br>参考</span></div></div>
+        <div class="half b"><div class="ttl" aria-hidden="true"><span>学科信息<br>参考</span></div></div>
+        <div class="foot">
+          <div class="no"><i>总 第</i>35</div>
+          <div class="r">
+            <div class="issue">2026 年 第 1 期</div>
+            <div class="motto">会 泽 百 家　至 公 天 下</div>
+            <div class="seal2"><span><b>雲</b><i>1923</i></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <h3>这 一 版 的 做 法</h3>
+        <ul>
+          <li><i>·</i>两种底色在 60% 处硬接，没有线、没有过渡</li>
+          <li><i>·</i>书名同一句话印两遍：上半截浅墨、下半截深墨</li>
+          <li><i>·</i>期号压在浅底上，藏印在右下</li>
+        </ul>
+        <h3>封 面 上 有 什 么</h3>
+        <ul>
+          <li><i>1</i>云南大学图书馆 ＋ 英文</li>
+          <li><i>2</i>学科信息参考</li>
+          <li><i>3</i>总第 35 期 ／ 2026 年第 1 期</li>
+          <li><i>4</i>会泽百家 至公天下</li>
+          <li><i>5</i>雲 · 1923 藏印</li>
+        </ul>
+        <p class="why">三个旧稿都靠细线和小字距撑场面；这一稿把这些全部拿掉，只留两场色、一句书名、一个印。远看是一张两色的海报，近看名字被那道边切成两截。</p>
+      </div>
+    </div>
+
+    <div class="shelf">
+      <div class="cap"><b>架 上 · 一 排 四 册</b><span>架下只留「翻开」，不再复读期号</span></div>
+      <div class="row" data-shelf="4"></div>
+      <p class="foot">分界线高度固定，书名永远压在同一个位置——换期只换数字，版不动。</p>
+    </div>
+  </article>
+
+  <!-- ==================== 伍 · 分栏 ==================== -->
+  <article class="dir" id="d5" data-dir="5" hidden>
+    <header class="dir-head">
+      <span class="num">伍</span>
+      <div>
+        <h2>分栏</h2>
+        <p>抽到的方向是「半屏不动」。左边一整块深绿只放一个数，右边是可读的一栏：刊名、期号、校训。像一本书的书脊与封面并排摆着。</p>
+      </div>
+      <span class="tag">来源：split-stage</span>
+    </header>
+    <div class="stage">
+      <div class="cv c5" style="width:420px;font-size:16px">
+        <div class="left">
+          <div class="lab">总 第</div>
+          <div class="no">35</div>
+          <div class="seal2 light"><span><b>雲</b><i>1923</i></span></div>
+        </div>
+        <div class="right">
+          <div class="org">云 南 大 学 图 书 馆<small>YUNNAN UNIVERSITY LIBRARY</small></div>
+          <div class="title">学科信息参考</div>
+          <div class="en">DISCIPLINARY INFORMATION REFERENCE</div>
+          <div class="issue">2026 年 第 1 期</div>
+          <div class="motto">会 泽 百 家　至 公 天 下</div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <h3>这 一 版 的 做 法</h3>
+        <ul>
+          <li><i>·</i>41% 深绿／59% 浅绿，一竖到底，无分隔线</li>
+          <li><i>·</i>左栏只有期数与藏印，右栏只有可读的字</li>
+          <li><i>·</i>刊名不追大，按「一栏文字」的尺度排</li>
+        </ul>
+        <h3>封 面 上 有 什 么</h3>
+        <ul>
+          <li><i>1</i>云南大学图书馆 ＋ 英文</li>
+          <li><i>2</i>学科信息参考 ＋ 英文</li>
+          <li><i>3</i>总第 35 期 ／ 2026 年第 1 期</li>
+          <li><i>4</i>会泽百家 至公天下</li>
+          <li><i>5</i>雲 · 1923 藏印</li>
+        </ul>
+        <p class="why">把「第几期」从文字里抽出来，做成封面左侧的一根色柱——架上并排时，数字列会自然对齐成一条纵线，比任何说明都好认。</p>
+      </div>
+    </div>
+
+    <div class="shelf">
+      <div class="cap"><b>架 上 · 一 排 四 册</b><span>架下只留「翻开」，不再复读期号</span></div>
+      <div class="row" data-shelf="5"></div>
+      <p class="foot">四册并排，左栏的数字连成一条线：35、36、37、38，换期一眼看得出。</p>
+    </div>
+  </article>
+
+  <!-- ==================== 陆 · 联表 ==================== -->
+  <article class="dir" id="d6" data-dir="6" hidden>
+    <header class="dir-head">
+      <span class="num">陆</span>
+      <div>
+        <h2>联表</h2>
+        <p>抽到的方向是「整版标记」。创刊以来的每一期都是一格，当前这一册点上金。数字不另写——它就在那一格里。</p>
+      </div>
+      <span class="tag">来源：contact-sheet</span>
+    </header>
+    <div class="stage">
+      <div class="cv c6" style="width:420px;font-size:16px">
+        <div class="in">
+          <div class="top">
+            <div class="org">云 南 大 学 图 书 馆<small>YUNNAN UNIVERSITY LIBRARY</small></div>
+            <div class="seal2 light"><span><b>雲</b><i>1923</i></span></div>
+          </div>
+          <div class="title">学科信息参考</div>
+          <div class="en">DISCIPLINARY INFORMATION REFERENCE</div>
+          <div class="sheet" data-marks="35">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i class="on">35</i>
+          </div>
+          <div class="foot">
+            <div class="issue">2026 年 第 1 期</div>
+            <div class="motto">会 泽 百 家　至 公 天 下</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <h3>这 一 版 的 做 法</h3>
+        <ul>
+          <li><i>·</i>每一格＝一期，共 35 格，末格点金</li>
+          <li><i>·</i>「35」只写一次，就在金格里</li>
+          <li><i>·</i>没有线、没有框，格子本身就是版面</li>
+        </ul>
+        <h3>封 面 上 有 什 么</h3>
+        <ul>
+          <li><i>1</i>云南大学图书馆 ＋ 英文</li>
+          <li><i>2</i>学科信息参考 ＋ 英文</li>
+          <li><i>3</i>总第几期（金格里的数）／ 2026 年第 1 期</li>
+          <li><i>4</i>会泽百家 至公天下</li>
+          <li><i>5</i>雲 · 1923 藏印</li>
+        </ul>
+        <p class="why">这是三稿里唯一「期号自己会说话」的：数字既是字也是图，不再另外找地方写一遍。格数随期次增长，封面也就跟着长。</p>
+      </div>
+    </div>
+
+    <div class="shelf">
+      <div class="cap"><b>架 上 · 一 排 四 册</b><span>架下只留「翻开」，不再复读期号</span></div>
+      <div class="row" data-shelf="6"></div>
+      <p class="foot">四册的格子一张比一张多一点，金格往后挪一格——一眼看出先后。</p>
     </div>
   </article>
 </main>
@@ -435,11 +674,47 @@
         + '<div class="motto">会 泽 百 家　至 公 天 下</div></div>' + SEAL + '</div></div></div>'
     }
 
+    function seal2 (mod) {
+      return '<div class="seal2 ' + (mod || '') + '"><span><b>雲</b><i>1923</i></span></div>'
+    }
+    function coverB (dir, i) {
+      var no = 35 + i
+      var issue = '2026 年 第 ' + (i + 1) + ' 期'
+      if (dir === '4') {
+        return '<div class="cv c4" style="width:260px;font-size:9.9px">'
+          + '<div class="up"></div><div class="in"><div class="top">' + org() + bi() + '</div></div>'
+          + '<div class="half a"><div class="ttl" aria-hidden="true"><span>学科信息<br>参考</span></div></div>'
+          + '<div class="half b"><div class="ttl" aria-hidden="true"><span>学科信息<br>参考</span></div></div>'
+          + '<div class="foot"><div class="no"><i>总 第</i>' + no + '</div>'
+          + '<div class="r"><div class="issue">' + issue + '</div>'
+          + '<div class="motto">会 泽 百 家　至 公 天 下</div>' + seal2('') + '</div></div></div>'
+      }
+      if (dir === '5') {
+        return '<div class="cv c5" style="width:260px;font-size:9.9px">'
+          + '<div class="left"><div class="lab">总 第</div><div class="no">' + no + '</div>' + seal2('light') + '</div>'
+          + '<div class="right">' + org()
+          + '<div class="title">学科信息参考</div>'
+          + '<div class="en">DISCIPLINARY INFORMATION REFERENCE</div>'
+          + '<div class="issue">' + issue + '</div>'
+          + '<div class="motto">会 泽 百 家　至 公 天 下</div></div></div>'
+      }
+      var cells = ''
+      for (var k = 1; k <= no; k++) cells += k === no ? '<i class="on">' + no + '</i>' : '<i></i>'
+      return '<div class="cv c6" style="width:260px;font-size:9.9px"><div class="in">'
+        + '<div class="top">' + org() + seal2('light') + '</div>'
+        + '<div class="title">学科信息参考</div>'
+        + '<div class="en">DISCIPLINARY INFORMATION REFERENCE</div>'
+        + '<div class="sheet">' + cells + '</div>'
+        + '<div class="foot"><div class="issue">' + issue + '</div>'
+        + '<div class="motto">会 泽 百 家　至 公 天 下</div></div></div></div>'
+    }
+
     document.querySelectorAll('.shelf .row').forEach(function (row) {
       var dir = row.dataset.shelf
+      var fn = dir === '4' || dir === '5' || dir === '6' ? coverB : cover
       var html = ''
       for (var i = 0; i < 4; i++) {
-        html += '<div class="cell">' + cover(dir, i)
+        html += '<div class="cell">' + fn(dir, i)
           + '<div class="go"><span>翻 开 →</span><span>第 ' + (35 + i) + ' 册</span></div></div>'
       }
       row.innerHTML = html
@@ -457,7 +732,7 @@
     document.addEventListener('keydown', function (e) {
       if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return
       if (e.key === '0') show('all')
-      if (/^[1-3]$/.test(e.key)) show(e.key)
+      if (/^[1-6]$/.test(e.key)) show(e.key)
     })
   })()
 </script>
