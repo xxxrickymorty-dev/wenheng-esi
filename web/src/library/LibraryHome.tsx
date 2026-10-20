@@ -6,6 +6,7 @@ import type { ShelfBook } from './types'
 import type { ReaderSection } from './Reader'
 import './shelf-landing.css'
 import heroPhoto from './assets/ynu-library-real.png'
+import emblem from './assets/ynu-emblem.png'
 
 type LibraryHomeProps = {
   books: ShelfBook[]
@@ -134,7 +135,7 @@ export default function LibraryHome({ books, onOpenBook, backToWorkspace }: Libr
               <div className="sl-kik">COLLECTION / A 区 01</div>
               <h2>学科情报馆藏</h2>
             </div>
-            <p className="note">封面只用平色与结构线，期号是锚。刊物式装帧，不做渐变金饰。点封面翻开。</p>
+            <p className="note">深绿布纹、金线双框、校徽与「衡」印；期号是锚。点封面翻开。</p>
           </div>
           <div className="sl-books">
             {books.map((b, i) => {
@@ -145,12 +146,13 @@ export default function LibraryHome({ books, onOpenBook, backToWorkspace }: Libr
                         className={`sl-cover v${(i % 4) + 1}`}
                         onClick={(e) => onOpenBook(i, 'cover', e.currentTarget)}
                         aria-label={`翻开 ${b.period ?? b.cover[2] ?? ''}`}>
+                  <span className="sl-emblem"><img src={emblem} alt="" /></span>
                   <div className="c-top"><span>雲 南 大 學</span><span>Y N U</span></div>
                   <div className="rule thick" /><div className="rule" />
                   <div className="ser">学科信息参考<br />DISCIPLINARY INFORMATION REFERENCE</div>
                   <div className="num">{b.period ?? b.cover[2] ?? ''}</div>
                   <div className="iss">{b.cover[2] ?? ''}</div>
-                  <div className="bot"><span>學 科 情 報 館 藏</span><span>A 区 01</span></div>
+                  <div className="bot"><span>學 科 情 報 館 藏</span><span className="sl-seal">衡</span></div>
                 </button>
                 <div className="sl-bmeta">
                   <div className="no">{issueNo ? `N O . ${issueNo}` : ''}</div>

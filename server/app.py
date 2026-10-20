@@ -1690,6 +1690,20 @@ async def api_sandbox_heal(request: Request):                      # noqa: ARG00
     return {"available": True, **data}
 
 
+@app.get("/api/sandbox/migrate")
+@user_route
+async def api_sandbox_migrate(request: Request):                    # noqa: ARG001
+    """换馆沙盘故事卡（只读）：读 tmp/_migration_sandbox/readiness.json。"""
+    path = pathlib.Path(__file__).resolve().parent.parent / "tmp" / "_migration_sandbox" / "readiness.json"
+    if not path.exists():
+        return {"available": False, "hint": "先跑 tools/migration_check.py，刷新本页"}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"available": False, "hint": "换馆故事卡读不出来，重跑一次 tools/migration_check.py"}
+    return {"available": True, **data}
+
+
 @app.get("/api/periods/{period}/workbench")
 @user_route
 async def api_period_workbench(request: Request, period: str):

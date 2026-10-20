@@ -449,3 +449,20 @@ export type HealSandboxStory = {
 export async function getHealSandbox(): Promise<HealSandboxStory> {
   return req<HealSandboxStory>('/api/sandbox/heal')
 }
+
+/* ---------------------------------------------------------------- 换馆沙盘（只读故事卡） */
+export type MigrateCheck = { id: string; label: string; ok: boolean; detail: string }
+export type MigrateStory = {
+  available: boolean
+  hint?: string
+  generated_at?: string
+  school?: string
+  ledger?: string
+  checks?: MigrateCheck[]
+  ready?: boolean
+  note?: string
+}
+
+export async function getMigrateSandbox(): Promise<MigrateStory> {
+  return req<MigrateStory>('/api/sandbox/migrate')
+}

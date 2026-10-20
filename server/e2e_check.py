@@ -190,7 +190,7 @@ check("操作员角色是 operator", '"role":"operator"' in gme or '"role": "ope
 for _path in ("/api/periods/202607/redslots",
               "/api/periods/202607/trace", "/api/periods/202607/archive",
               "/api/periods/202607/ai-calls", "/api/periods/202607/water",
-              "/api/sandbox/heal"):
+              "/api/sandbox/heal", "/api/sandbox/migrate"):
     st, _, _ = call("GET", _path, opener=gop)
     check(f"操作员可读证据面（200）：{_path}", st == 200, f"got {st}")
 st, _, _ = call("GET", "/api/ledger/sheets", opener=gop)
@@ -853,6 +853,10 @@ check("water 有云大接近度行", "分子生物学与遗传学" in wt or "化
 # GET /api/sandbox/heal（自愈沙盘故事卡，2026-10-20）
 st, hs, _ = call("GET", "/api/sandbox/heal")
 check("sandbox/heal 200 且带 available", st == 200 and '"available"' in hs, f"got {st}")
+
+# GET /api/sandbox/migrate（换馆沙盘故事卡，2026-10-20）
+st, ms, _ = call("GET", "/api/sandbox/migrate")
+check("sandbox/migrate 200 且带 available", st == 200 and '"available"' in ms, f"got {st}")
 
 # GET /api/periods/{period}/flexible（灵活报告 JSON，契约 #21①）
 st, fx, _ = call("GET", "/api/periods/202607/flexible")

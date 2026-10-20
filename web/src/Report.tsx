@@ -331,7 +331,7 @@ function TrendCard({ trend, period }: { trend: Record<string, number>; period: s
 /** 读数带：真数据（GET /api/periods/{p}/facts，源与报告同款）。
     🔴 数字原样来自后端——这里只排版，不换算、不聚合、不四舍五入。
     趋势图不在这里画：它要占满整页宽（见 Report 里的 TrendCard），数据经 onFacts 上交。 */
-function FactsStrip({ period, onFacts }: {
+export function FactsStrip({ period, onFacts }: {
   period: string | null
   onFacts?: (f: Facts | null) => void
 }) {

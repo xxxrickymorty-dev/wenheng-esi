@@ -17,6 +17,7 @@ import {
   type PreviewBlock, type PreviewSeg, type ReportPreview,
 } from './api-report'
 import { ConfirmButton } from './ConfirmButton'
+import { FactsStrip } from './Report'
 import { Icon } from './icons'
 import { appHref, errorNote } from './lib/status'
 
@@ -198,6 +199,19 @@ export function Review({
 
   const fields = useMemo(() => Object.entries(preview?.fields ?? {}), [preview])
   const nField = fields.length
+  /* 章节导航（2026-10-20）：报告 124 块、5 万余像素；抽「一 概述 / 二 …」做吸顶目录。 */
+  const sections = useMemo(() => {
+    const out: { i: number; title: string }[] = []
+    for (const [i, b] of (preview?.blocks ?? []).entries()) {
+      if (b.t !== 'p') continue
+      const text = b.runs.map((r) => ('t' in r ? r.t : '')).join('').trim()
+      if (/^[一二三四五六七八九十]+[\s、]/.test(text) && text.length <= 30) {
+        out.push({ i, title: text })
+      }
+    }
+    return out
+  }, [preview])
+  const headingAt = (i: number) => sections.find((s) => s.i === i)
   // 未填的空（按报告顺序）：清单高亮、「下一处」跳转、计数共用这一份
   const emptyIds = useMemo(
     () => fields.filter(([id]) => !(vals[id] ?? '').trim()).map(([id]) => id),
@@ -418,6 +432,8 @@ export function Review({
         <div className="pending-box mt-14">正在读试排报告……</div>
       ) : (
         <div className="rv-grid">
+          <div className="rv-main">
+          <FactsStrip period={period} />
           <section className="card rv-report" aria-label="试排报告全文">
             <p className="rv-docmeta">
               <span>本稿由流水线生成 · {preview.updated_at || '—'} · 数字全部来自台账；带虚线框的空请就地填写。</span>
@@ -427,11 +443,28 @@ export function Review({
                 </button>
               )}
             </p>
-            {preview.blocks.map((b, i) => (
+            {sections.length > 0 && (
+              <nav className="rv-toc" aria-label="报告章节">
+                {sections.map((s) => (
+                  <button key={s.i} type="button"
+                          onClick={() => document.getElementById(`rv-b-${s.i}`)
+                            ?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+                    {s.title}
+                  </button>
+                ))}
+              </nav>
+            )}
+            {preview.blocks.map((b, i) => headingAt(i) ? (
+              <div id={`rv-b-${i}`} key={i}>
+                <BlockView block={b} vals={vals} onVal={(id, v) => setVals((s) => ({ ...s, [id]: v }))}
+                           disabled={!isAdmin || busy !== null} period={period} />
+              </div>
+            ) : (
               <BlockView key={i} block={b} vals={vals} onVal={(id, v) => setVals((s) => ({ ...s, [id]: v }))}
                          disabled={!isAdmin || busy !== null} period={period} />
             ))}
           </section>
+          </div>
 
           <aside className="rv-side">
             {/* ------- 签单 ------- */}

@@ -118,6 +118,11 @@ a{color:inherit}
 .ar-story-step.warn b{color:var(--warn)}
 .ar-story-step.todo b{color:var(--ink-3)}
 @media(max-width:900px){.ar-story{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.mig-four{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:12px}
+.mig-card{border:1px solid var(--line-2);background:var(--panel);padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.mig-card b{font-family:var(--serif);font-size:18px}
+.mig-card small{font-size:12.5px;line-height:1.6;color:var(--ink-3)}
+@media(max-width:900px){.mig-four{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .ar-steps{display:grid;gap:6px;margin-top:8px}
 .ar-step{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--line-2);background:var(--card)}
 .ar-step-name{font-weight:650;font-size:14px}
@@ -323,7 +328,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
   vertical-align:-1px;border:1px solid transparent}
 
 /* 读数带（庚：绿线通栏，四格） */
-.readouts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+.readouts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
   gap:0;padding:0;margin-top:18px;
   border-top:2px solid var(--gline);border-bottom:1px solid var(--gline)}
 .readout{padding:14px 18px 12px;border-right:1px solid var(--line)}
@@ -752,6 +757,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
    ========================================================================== */
 .rv-lead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 2px 0}
 .rv-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start;margin-top:14px}
+.rv-main{min-width:0}
 @media (max-width:1080px){
   .rv-grid{grid-template-columns:1fr}
   /* 窄屏单列：右栏回到普通流，取消吸顶与内滚（!important 压过后面的基础规则） */
@@ -760,6 +766,11 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 
 /* 报告纸（庚：纸面＝card 纸色，不另设白） */
 .rv-report{background:var(--card);padding:30px 38px 42px;font-family:var(--serif);min-width:0}
+.rv-toc{position:sticky;top:0;z-index:3;display:flex;gap:4px;flex-wrap:wrap;padding:8px 0;margin:0 0 14px;
+  background:var(--card);border-bottom:1px solid var(--line)}
+.rv-toc button{border:1px solid var(--line);background:transparent;color:var(--ink-2);
+  font-family:var(--sans);font-size:12px;padding:4px 10px;cursor:pointer}
+.rv-toc button:hover{border-color:var(--zhu);color:var(--zhu)}
 .rv-docmeta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   margin:0 0 20px;font-size:12.5px;color:var(--ink-3);font-family:var(--sans);
   border-bottom:1px solid var(--line);padding-bottom:10px}
