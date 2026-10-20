@@ -4,7 +4,7 @@
 
 import type { ApiError, Me, Period, PeriodDetail } from './api'
 import { useEffect, useState } from 'react'
-import { getForecastBoard, type ForecastBoardRow, type ForecastChoiceEntry } from './api-forecast'
+import { getForecastBoard, getWaterLevel, type ForecastBoardRow, type ForecastChoiceEntry, type WaterRow } from './api-forecast'
 import { ConfirmButton } from './ConfirmButton'
 import { Info } from './Info'
 import { Tools } from './Tools'
@@ -149,13 +149,22 @@ export function Workbench({
   /* 水位卡读数＝预测看板真值（接近度/阈值），只透传不换算（2026-10-17 绿蓝融合 U2）。
      只在已出稿后取——没出过稿的期次没有看板文件，取了只会白报 404。 */
   const [board, setBoard] = useState<ForecastBoardRow[]>([])
+  const [water, setWater] = useState<WaterRow[]>([])
   const generated = wb.steps[2]?.on === true
   useEffect(() => {
-    if (!period || !generated) { setBoard([]); return }
+    if (!period || !generated) { setBoard([]); setWater([]); return }
     let alive = true
-    getForecastBoard(period)
-      .then((b) => { if (alive) setBoard(Object.values(b.routes ?? {})[0] ?? []) })
-      .catch(() => { if (alive) setBoard([]) })
+    // 先读学科矩阵（matrix.json 的云大列，202609 起都有）；没有再退回预测看板。
+    getWaterLevel(period)
+      .then((w) => {
+        if (!alive) return
+        if (w.rows.length) { setWater(w.rows); setBoard([]); return }
+        setWater([])
+        return getForecastBoard(period).then((b) => {
+          if (alive) setBoard(Object.values(b.routes ?? {})[0] ?? [])
+        })
+      })
+      .catch(() => { if (alive) { setWater([]); setBoard([]) } })
     return () => { alive = false }
   }, [period, generated])
   const issueNo = /第 (\d+) 期/.exec(periods.find((p) => p.period === period)?.label ?? '')?.[1] ?? ''
@@ -164,6 +173,13 @@ export function Workbench({
   const canGenerate = canRun && period != null && /^\d{6}$/.test(period) && !actionsLocked && !activeRun && !submitting
     && (!run || isTerminal(run.status ?? undefined))
   const hasGenerateAction = wb.focusAction === 'generate' || wb.focusAction === 'rerun'
+  /** 水尺行：矩阵优先（全 22 学科），预测看板兜底（旧期次没有 matrix.json 时）。
+      「潜力学科」看的是还没进前 1% 的——已进入的排在最前会把水尺刷成 8 根满格。 */
+  const gaugePool: WaterRow[] = water.length
+    ? water
+    : board.map((r) => ({ subject: r.subject, prox: r.prox, state: 'unknown' as const }))
+  const gaugePotential = gaugePool.filter((r) => r.state !== 'in')
+  const gaugeRows = gaugePotential.length ? gaugePotential : gaugePool
 
   return (
     <>
@@ -233,15 +249,15 @@ export function Workbench({
           <div className="gb-copy">
             <p className="kik">水 位 標 尺 · 接 近 度</p>
             <h2>阈值即水位线，<br />潜力学科各是一根水尺。</h2>
-            <p className="gb-note">ESI 前 1% 被引阈值是警戒水位。读数只来自预测看板（接近度＝百分数点值），前端不换算。</p>
+            <p className="gb-note">ESI 前 1% 被引阈值是警戒水位。读数来自本期学科矩阵（接近度＝百分数点值），前端不换算。</p>
           </div>
           <div className="gauge">
             <div className="gauge-head"><span>潜 力 學 科 水 位</span><span className="mono">{period ?? ''}</span></div>
-            {board.length ? board.map((r) => (
+            {gaugeRows.length ? gaugeRows.slice(0, 8).map((r) => (
               <div className="gauge-row" key={r.subject}>
                 <span className="g-name">{r.subject}</span>
                 <span className="g-bar"><i style={{ width: `${Math.min(100, Math.max(0, r.prox ?? 0))}%` }} /></span>
-                <span className="g-val mono">{r.prox == null ? '—' : `${r.prox}%`}</span>
+                <span className="g-val mono">{r.state === 'in' ? '已进入' : r.prox == null ? '—' : `${r.prox}%`}</span>
               </div>
             )) : <p className="gb-note">这一期还没有水位读数——看板生成后显示。</p>}
             <div className="gauge-thr">ESI 前 1% 阈值（100%）</div>

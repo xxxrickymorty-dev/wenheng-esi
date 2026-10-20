@@ -169,3 +169,24 @@ export async function getForecastBoard(period?: string): Promise<ForecastBoard> 
   const q = period ? `?period=${encodeURIComponent(period)}` : ''
   return req<ForecastBoard>(`/api/forecast/board${q}`)
 }
+
+/* ---------------------------------------------------------------- 学科水位（首屏水尺） */
+
+/** 首屏水尺行：prox＝被引 ÷ 1% 阈值的百分数点值；state＝in/near/far。 */
+export type WaterRow = {
+  subject: string
+  prox: number | null
+  state: 'in' | 'near' | 'far' | 'unknown'
+}
+
+export type WaterLevel = {
+  period: string
+  snapshot: string
+  rows: WaterRow[]
+  note?: string
+}
+
+/** 学科水位（源：out/<期次>/matrix.json 的「云大」列）——纯只读，不重算口径。 */
+export async function getWaterLevel(period: string): Promise<WaterLevel> {
+  return req<WaterLevel>(`/api/periods/${encodeURIComponent(period)}/water`)
+}

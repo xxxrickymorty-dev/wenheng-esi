@@ -1634,6 +1634,44 @@ async def api_period_facts(request: Request, period: str):
     }
 
 
+@app.get("/api/periods/{period}/water")
+@user_route
+async def api_period_water(request: Request, period: str):
+    """学科水位（只读）：从 matrix.json 的「云大」列取接近度，给首屏水尺。
+
+    `prox`＝被引 ÷ 1% 阈值的百分数点值（100＝刚好到线）；`state`：
+    `in`＝已在 ESI 前 1% 榜内、`near`≥80%、`far`<80%。只读产物，不重算口径。
+    """
+    d = resolve_period_dir(period)
+    if d is None:
+        return _period_missing()
+    path = d / "matrix.json"
+    if not path.exists():
+        return {"period": period, "snapshot": "", "rows": [],
+                "note": "本期没有学科矩阵（matrix.json）"}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"period": period, "snapshot": "", "rows": [],
+                "note": "学科矩阵读不出来"}
+    rows = []
+    for subject, cells in (data.get("matrix") or {}).items():
+        raw = str(((cells or {}).get("云大") or {}).get("v") or "").strip()
+        if raw == "Y":
+            rows.append({"subject": subject, "prox": 100.0, "state": "in"})
+            continue
+        if raw.endswith("%"):
+            try:
+                prox = float(raw[:-1])
+            except ValueError:
+                continue
+            rows.append({"subject": subject, "prox": prox,
+                         "state": "near" if prox >= 80 else "far"})
+    rows.sort(key=lambda r: (-r["prox"], r["subject"]))
+    return {"period": period, "snapshot": str(data.get("snapshot") or ""),
+            "rows": rows}
+
+
 @app.get("/api/periods/{period}/workbench")
 @user_route
 async def api_period_workbench(request: Request, period: str):

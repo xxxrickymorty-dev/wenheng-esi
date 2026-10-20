@@ -189,7 +189,7 @@ check("操作员角色是 operator", '"role":"operator"' in gme or '"role": "ope
       f"body={gme[:100]}")
 for _path in ("/api/periods/202607/redslots",
               "/api/periods/202607/trace", "/api/periods/202607/archive",
-              "/api/periods/202607/ai-calls"):
+              "/api/periods/202607/ai-calls", "/api/periods/202607/water"):
     st, _, _ = call("GET", _path, opener=gop)
     check(f"操作员可读证据面（200）：{_path}", st == 200, f"got {st}")
 st, _, _ = call("GET", "/api/ledger/sheets", opener=gop)
@@ -843,6 +843,11 @@ check("board 两条路线各 8 学科",
 check("board 行带 model/prox/t1/both_under_5",
       all(k in bd for k in ('"model"', '"prox"', '"t1"', '"both_under_5"')))
 check("board 学科名已是中文（契约 #22）", "分子生物学与遗传学" in bd, f"body={bd[:100]}")
+
+# GET /api/periods/{period}/water（首屏学科水位，2026-10-20）
+st, wt, _ = call("GET", "/api/periods/202607/water")
+check("water 200 且带 rows", st == 200 and '"rows"' in wt, f"got {st}")
+check("water 有云大接近度行", "分子生物学与遗传学" in wt or "化学" in wt, f"body={wt[:100]}")
 
 # GET /api/periods/{period}/flexible（灵活报告 JSON，契约 #21①）
 st, fx, _ = call("GET", "/api/periods/202607/flexible")
