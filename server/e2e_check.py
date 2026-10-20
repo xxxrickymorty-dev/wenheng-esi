@@ -189,9 +189,11 @@ check("操作员角色是 operator", '"role":"operator"' in gme or '"role": "ope
       f"body={gme[:100]}")
 for _path in ("/api/periods/202607/redslots",
               "/api/periods/202607/trace", "/api/periods/202607/archive",
-              "/api/ledger/sheets"):
+              "/api/periods/202607/ai-calls"):
     st, _, _ = call("GET", _path, opener=gop)
-    check(f"操作员访问隐藏屏端点被挡（403）：{_path}", st == 403, f"got {st}")
+    check(f"操作员可读证据面（200）：{_path}", st == 200, f"got {st}")
+st, _, _ = call("GET", "/api/ledger/sheets", opener=gop)
+check("操作员仍不可见原始主台账（403）：/api/ledger/sheets", st == 403, f"got {st}")
 # 2026-10-17 政策：取数八连对操作员开放（契约 §7.1 修订）——写探针**不得真跑**取数写动作
 # （preflight 会拉真探针、真写状态；2026-10-19 前的版本在这里真跑过一次、脏了 202607 状态）。
 # 用非法期次探写口：过了角色门才轮到期次校验 → 404（不是 403），且零副作用。

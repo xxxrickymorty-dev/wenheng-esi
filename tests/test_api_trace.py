@@ -85,9 +85,11 @@ class Test分页适配:
 
 
 class Test权限与安全:
-    def test_trace用require_admin(self):
-        assert asyncio.run(app_module.api_period_trace(
-            _Req(config.OPERATOR_USER), "202609")).status_code == 403
+    def test_trace对操作员只读开放(self):
+        """2026-10-20 决赛证据面：逐格溯源只读开放；写口仍 admin。"""
+        view = asyncio.run(app_module.api_period_trace(
+            _Req(config.OPERATOR_USER), "202609"))
+        assert isinstance(view, dict) and view["period"] == "202609" and "rows" in view
         assert asyncio.run(app_module.api_period_trace(
             _Req(None), "202609")).status_code == 401
 

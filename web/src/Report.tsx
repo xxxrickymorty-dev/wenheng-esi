@@ -443,7 +443,7 @@ export function Report({
   current: string | null
   guest?: boolean
   refreshToken?: number
-  /** 2026-10-11：操作员看不到红件清单/逐格溯源入口（真门在后端）。 */
+  /** 2026-10-20：操作员也看红件清单/逐格溯源（只读证据面）；写动作的真门仍在后端。 */
   canSeeAdminBits?: boolean
 }) {
   const row = periods.find((p) => p.period === current) ?? null

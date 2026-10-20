@@ -508,7 +508,9 @@ export default function App() {
   const noAdminBits = !roleKnown || gated
   /* 操作员不可见的「里子」屏（rick 2026-10-11 定）：直开 URL 给空态，真门在后端。
      2026-10-17 rick：demo 放开取数核验与选章节（后端同批改 @user_route）。 */
-  const OPERATOR_DENIED = new Set(['ledger', 'archive', 'red', 'trace'])
+  /* 2026-10-20 决赛证据面：运行档案 / 逐格溯源 / 红件清单对操作员只读开放；
+     原始主台账仍只给管理员。写动作的真门仍在后端（@admin_route）。 */
+  const OPERATOR_DENIED = new Set(['ledger'])
   const operatorDenied = !!isOperator && OPERATOR_DENIED.has(view)
   const navHref = (h: string) =>
     (selected
@@ -538,12 +540,14 @@ export default function App() {
               {n.label}
             </a>
           ))}
-          {me?.role === 'admin' && (
+          {me && (
             <>
               <span className="app-nav-sep" aria-hidden="true" />
-              <a href={navHref('/app/?view=ledger')} aria-current={view === 'ledger' ? 'page' : undefined}>
-                主台账
-              </a>
+              {me.role === 'admin' && (
+                <a href={navHref('/app/?view=ledger')} aria-current={view === 'ledger' ? 'page' : undefined}>
+                  主台账
+                </a>
+              )}
               <a href={navHref('/app/?view=archive')} aria-current={view === 'archive' ? 'page' : undefined}>
                 运行档案
               </a>
@@ -677,7 +681,7 @@ export default function App() {
           />
         ) : view === 'report' ? (
           <Report periods={periods} current={selected} guest={noAdminBits}
-            canSeeAdminBits={me?.role === 'admin'}
+            canSeeAdminBits={!!me}
             refreshToken={selected ? artifactRefreshByPeriod[selected] ?? 0 : 0} />
         ) : (
           <>

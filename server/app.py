@@ -1716,7 +1716,7 @@ def _sanitize_paths(obj, keys):
 
 
 @app.get("/api/periods/{period}/archive")
-@admin_route
+@user_route
 async def api_period_archive(request: Request, period: str, job: str = ""):
     """期次运行档案 JSON（契约 §2.2 #18）—— 状态机回放 + 瀑布 + 审计 + 日志包清单。
 
@@ -1749,7 +1749,7 @@ async def api_period_archive(request: Request, period: str, job: str = ""):
 
 
 @app.get("/api/periods/{period}/trace")
-@admin_route
+@user_route
 async def api_period_trace(request: Request, period: str, cat: str = "bigtable",
                            limit: int = 60, offset: int = 0):
     """逐格溯源 JSON。现场真读台账（与老站同源）。
@@ -1793,7 +1793,7 @@ async def api_period_trace(request: Request, period: str, cat: str = "bigtable",
 
 
 @app.get("/api/periods/{period}/redslots")
-@admin_route
+@user_route
 async def api_period_redslots(request: Request, period: str,
                               limit: int = 50, offset: int = 0):
     d = resolve_period_dir(period)
@@ -2053,7 +2053,7 @@ async def api_ai_capabilities(request: Request):
 
 
 @app.get("/api/periods/{period}/ai-calls")
-@admin_route
+@user_route
 async def api_period_ai_calls(request: Request, period: str, limit: int = 100):
     """问答与模型调用记录（契约 #30；票 06 块）：只读 `out/<期次>/ai_calls.jsonl`。
 

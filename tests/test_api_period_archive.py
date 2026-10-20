@@ -68,9 +68,11 @@ class TestArchive组装:
 
 
 class Test权限:
-    def test_用require_admin(self):
-        assert asyncio.run(app_module.api_period_archive(
-            _Req(config.OPERATOR_USER), "202609")).status_code == 403
+    def test_操作员可读_匿名401(self):
+        """2026-10-20 决赛证据面：运行档案对操作员只读开放（写口仍 admin）。"""
+        view = asyncio.run(app_module.api_period_archive(
+            _Req(config.OPERATOR_USER), "202609"))
+        assert isinstance(view, dict) and view["period"] == "202609"
         assert asyncio.run(app_module.api_period_archive(
             _Req(None), "202609")).status_code == 401
 

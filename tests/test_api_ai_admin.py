@@ -106,5 +106,7 @@ def test_ai_calls只回摘要并按新到旧(monkeypatch, tmp_path):
     assert r["calls"][0]["n_tools"] == 1 and r["calls"][0]["fallback"] == "empty_reply"
     assert r["stats"] == {"n": 2, "model": 1, "fallback": 1, "avg_sec": 3.0,
                           "last_ts": "2026-09-29T11:00:00"}
-    assert asyncio.run(app_module.api_period_ai_calls(
-        _ReqJson(config.OPERATOR_USER), "202607")).status_code == 403
+    op = asyncio.run(app_module.api_period_ai_calls(
+        _ReqJson(config.OPERATOR_USER), "202607"))
+    assert isinstance(op, dict), "2026-10-20 起调用留痕对操作员只读开放"
+    assert "text_preview" not in op["calls"][0], "操作员也只回摘要"

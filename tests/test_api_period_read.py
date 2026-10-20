@@ -123,9 +123,11 @@ class TestCharts:
 
 
 class Test权限门:
-    def test_redslots仍只管理员(self):
-        assert asyncio.run(app_module.api_period_redslots(
-            _Req(config.OPERATOR_USER), "202609")).status_code == 403
+    def test_redslots对操作员只读开放(self):
+        """2026-10-20 决赛证据面：红件清单只读开放；写口仍 admin。"""
+        view = asyncio.run(app_module.api_period_redslots(
+            _Req(config.OPERATOR_USER), "202609"))
+        assert isinstance(view, dict) and "rows" in view
         assert asyncio.run(app_module.api_period_redslots(
             _Req(None), "202609")).status_code == 401
 
