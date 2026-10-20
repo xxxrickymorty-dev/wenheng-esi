@@ -499,10 +499,14 @@ export function Forecast({
             <Trial meta={meta} choice={choice} route={currentRoute} onChoiceChange={onChoiceChange} />
           ) : (
             <section className="card mt-18 pad-card">
-              <h2 className="h-sec">预测图</h2>
-              <div className="pending-box mt-12">
-                操作员只读：预测试跑会自动运行模型，仅管理员可用。已保存的模型选择见「本期用哪个模型」。
-              </div>
+              <h2 className="h-sec">预测结论</h2>
+              <p className="hint mt-8">
+                本期报告采用「本期用哪个模型」里已保存的逐科选择；操作员只读，不在这里试跑模型。
+              </p>
+              <p className="hint mt-4">
+                要看这一期怎么跑出来的（状态、用时、审计、产物）：
+                <a href={`/app/?view=archive${period ? `&period=${encodeURIComponent(period)}` : ''}`}>运行档案 ▸</a>
+              </p>
             </section>
           )}
 
