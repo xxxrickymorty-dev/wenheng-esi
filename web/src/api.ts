@@ -443,6 +443,7 @@ export type HealSandboxStory = {
   rules?: string[]
   outcome?: string
   failure?: string
+  events?: { ts?: string; phase?: string; tool?: string; observation?: string; decision?: string; reason?: string }[]
   ok?: boolean
 }
 

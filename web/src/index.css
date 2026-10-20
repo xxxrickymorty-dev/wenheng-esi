@@ -118,6 +118,15 @@ a{color:inherit}
 .ar-story-step.warn b{color:var(--warn)}
 .ar-story-step.todo b{color:var(--ink-3)}
 @media(max-width:900px){.ar-story{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.heal-trace{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:1px;background:var(--line)}
+.heal-trace li{display:grid;grid-template-columns:78px 170px minmax(0,1fr);gap:12px;align-items:baseline;
+  padding:8px 12px;background:var(--card)}
+.heal-phase{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase}
+.heal-trace li b{font-size:13.5px;font-weight:600}
+.heal-trace li small{font-size:12.5px;line-height:1.5;color:var(--ink-3)}
+.heal-trace li.warn b{color:var(--warn)}
+.heal-trace li.ok b{color:var(--ok)}
+@media(max-width:900px){.heal-trace li{grid-template-columns:70px minmax(0,1fr)}.heal-trace li small{grid-column:1/-1}}
 .mig-four{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:12px}
 .mig-card{border:1px solid var(--line-2);background:var(--panel);padding:14px 16px;display:flex;flex-direction:column;gap:6px}
 .mig-card b{font-family:var(--serif);font-size:18px}

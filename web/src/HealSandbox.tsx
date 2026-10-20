@@ -105,6 +105,27 @@ export function HealSandbox() {
         </p>
       </section>
 
+      {!!d.events?.length && (
+        <section className="card mt-18 pad-card">
+          <h2 className="h-sec">
+            决策轨迹
+            <span className="hint">{d.events.length} 条</span>
+          </h2>
+          <ol className="heal-trace">
+            {d.events.map((e, i) => (
+              <li key={i} className={e.decision === 'halt' ? 'warn' : e.decision === 'completed' ? 'ok' : ''}>
+                <span className="heal-phase">{e.phase || '—'}</span>
+                <b>{e.tool || e.decision || '—'}</b>
+                <small>{e.observation || e.reason || ''}</small>
+              </li>
+            ))}
+          </ol>
+          <p className="hint mt-10">
+            规划 → 执行 → 观察 → 决定 → 自愈 → 重试；每一步都进了 `agent_events.jsonl`，可回放。
+          </p>
+        </section>
+      )}
+
       <p className="hint mt-16">
         重跑一次：<span className="mono">uv run python tools\heal_sandbox.py</span>，刷新本页即可。
       </p>

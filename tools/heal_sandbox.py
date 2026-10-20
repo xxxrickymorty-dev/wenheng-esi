@@ -154,6 +154,18 @@ def main() -> int:
           and any("discipline_alias_map" in (rep.get("rules") or []) for rep in (r.repairs or []))
           and src_before == src_after and dirty_before == dirty_after)
     rules = [rule for rep in (r.repairs or []) for rule in (rep.get("rules") or [])]
+    events = []
+    events_path = WORK / "run" / "agent_events.jsonl"
+    if events_path.exists():
+        for line in events_path.read_text(encoding="utf-8").splitlines():
+            try:
+                e = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            events.append({k: e[k] for k in
+                           ("ts", "phase", "tool", "observation", "decision", "reason")
+                           if e.get(k)})
+
     story = {
         "generated_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "ledger": src.name,
@@ -169,6 +181,7 @@ def main() -> int:
         "rules": rules,
         "outcome": (r.repairs or [{}])[0].get("outcome", ""),
         "failure": str(r.failure or (r.repairs or [{}])[0].get("error_message") or "")[:300],
+        "events": events[:12],
         "ok": ok,
     }
     (WORK / "story.json").write_text(
