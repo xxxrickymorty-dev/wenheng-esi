@@ -129,7 +129,10 @@ def test_已出过稿_先问覆盖不报缺件(tmp_path):
     ans = run_dialog("帮我做 9 月的报告", root=tmp_path)
     assert "已经出过稿" in ans.text and "覆盖重出" in ans.text
     assert ans.data["run"] == {"period": "202609", "auto": False, "intent": "single_trend"}
-    assert [a["text"] for a in ans.data["actions"]] == ["覆盖重出", "保留，我先看看旧的"]
+    assert [a["text"] for a in ans.data["actions"]] == [
+        "看这一期怎么做的", "打开报告", "覆盖重出", "保留，我先看看旧的"]
+    assert ans.data["actions"][0] == {"kind": "goto", "view": "archive",
+                                      "period": "202609", "text": "看这一期怎么做的"}
 
 
 def test_显式期次优先_再出那期(tmp_path):
@@ -316,6 +319,10 @@ def test_出稿_产物已在_先问一次不自动跑(tmp_path):
     assert "已经有产物" in ans.text and "覆盖" in ans.text
     assert ans.data["run"] == {"period": "202607", "auto": False, "intent": "single_trend"}, \
         "产物已在：先问一次，绝不自动覆盖"
+    assert {"kind": "goto", "view": "archive", "period": "202607",
+            "text": "看这一期怎么做的"} in ans.data["actions"]
+    assert {"kind": "goto", "view": "report", "period": "202607",
+            "text": "打开报告"} in ans.data["actions"]
     assert {"kind": "run", "period": "202607", "text": "覆盖重出"} in ans.data["actions"]
     assert {"kind": "dismiss", "text": "保留，我先看看旧的"} in ans.data["actions"]
 

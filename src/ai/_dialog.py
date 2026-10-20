@@ -339,10 +339,16 @@ def _proceed(root, slot_period: str, p: Parse):
                 "去核对表格页确认一下。", "", actions, None, None)
     if inv["released"]:
         if _products_exist(root, target):
-            actions = [{"kind": "run", "period": target, "text": "覆盖重出"},
+            # 已出过稿：先给「看这一期怎么做的 / 打开报告」两条安全出口，
+            # 再给「覆盖重出」；评委演示不必为了看流程而覆盖金标成品。
+            actions = [{"kind": "goto", "view": "archive", "period": target,
+                        "text": "看这一期怎么做的"},
+                       {"kind": "goto", "view": "report", "period": target,
+                        "text": "打开报告"},
+                       {"kind": "run", "period": target, "text": "覆盖重出"},
                        {"kind": "dismiss", "text": "保留，我先看看旧的"}]
-            return ("核对通过、已并入台账。不过这一期已经有产物（上次出过）——"
-                    "直接重出会覆盖旧的。要覆盖重出吗？",
+            return ("核对通过、已并入台账。这一期已经有产物（上次出过）——"
+                    "可以先看这一期怎么做出来的，或直接覆盖重出。",
                     "ready", actions,
                     {"period": target, "auto": False, "intent": "single_trend"}, inv)
         return ("核对通过、已并入台账。开始出稿——",
@@ -549,8 +555,14 @@ def build(root, period, payload):                                  # noqa: ARG00
         if p.case == "period" and p.period and _products_exist(root, p.period):
             # 这期已出过稿（2026-10-11 rick 实问「帮我做 9 月的报告」）——
             # 先问一次覆盖，不静默重出、也不再报「还差几件」。
-            reply = "这一期已经出过稿了（成品还在）——直接重出会覆盖旧的。要覆盖重出吗？"
-            actions = [{"kind": "run", "period": p.period, "text": "覆盖重出"},
+            # 安全出口优先：看运行档案 / 打开报告；覆盖重出放第三位。
+            reply = ("这一期已经出过稿了（成品还在）——要看这一期怎么做出来的，"
+                     "还是覆盖重出？")
+            actions = [{"kind": "goto", "view": "archive", "period": p.period,
+                        "text": "看这一期怎么做的"},
+                       {"kind": "goto", "view": "report", "period": p.period,
+                        "text": "打开报告"},
+                       {"kind": "run", "period": p.period, "text": "覆盖重出"},
                        {"kind": "dismiss", "text": "保留，我先看看旧的"}]
             run = {"period": p.period, "auto": False, "intent": "single_trend"}
             verdict, inv = "ready", None
