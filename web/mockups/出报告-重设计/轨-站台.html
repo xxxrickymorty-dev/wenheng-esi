@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出报告 · 方向「轨」（站台）— 静态稿</title>
+<style>
+  /* ============================================================
+     方向「轨」· 站台（Departure Board / 发车牌）
+     一句话：本期报告做成一趟车的发车信息——深色发车牌挂在浅色
+     平台上，班次＝期次 202609（翻牌数字），四道工序＝一条轨道上
+     的四个站，终点站「可交付」；选模＝席位表。翻牌数字是车站
+     自己的显示方式，不是装饰。平台混凝土＋牌面板＋发车绿＋报站红。
+     零渐变、零投影。牌面用色阶分隔，不用细线。
+     ============================================================ */
+  :root{
+    --platform:#E4E0D4;        /* 站台混凝土 */
+    --platform-2:#D5D0C1;
+    --board:#171B1F;           /* 牌面 */
+    --board-2:#232A30;
+    --board-3:#2E373E;
+    --cream:#EDE6D2;           /* 牌上字 */
+    --cream-2:rgba(237,230,210,.62);
+    --cream-3:rgba(237,230,210,.34);
+    --ink:#1B1F22;
+    --ink-2:#4A5054;
+    --ink-3:#7E858A;
+    --line:#C7C2B2;
+    --go:#2E7D4F;              /* 发车绿 */
+    --red:#C2452D;             /* 报站红 */
+    --amber:#C9862B;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--platform);color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--red);color:var(--platform)}
+
+  /* ─── 顶栏 ─── */
+  .bar{background:var(--platform-2);height:58px;display:flex;align-items:center;gap:24px;
+    padding:0 34px;border-bottom:1px solid var(--line)}
+  .bar .wm{font-family:var(--serif);font-size:21px;letter-spacing:.16em}
+  .bar .sub{font-size:11px;letter-spacing:.2em;color:var(--ink-3);line-height:1.5}
+  .bar nav{display:flex;gap:21px;font-size:13px;color:var(--ink-2);margin-left:12px}
+  .bar nav a.on{color:var(--ink);font-weight:600;box-shadow:inset 0 -2px 0 var(--red)}
+  .bar .r{margin-left:auto;display:flex;align-items:center;gap:18px;font-size:12px;color:var(--ink-3)}
+  .pal{display:inline-flex;gap:7px}
+  .pal i{width:24px;height:13px;display:inline-block;border:1px solid var(--line)}
+  .pal i.g{background:#1A4B27}.pal i.z{background:#B43B31}
+  .pal i.on{outline:2px solid var(--ink);outline-offset:2px}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:38px 26px 74px}
+
+  /* ─── 发车牌 ─── */
+  .board{background:var(--board);color:var(--cream);padding:0}
+  .bhead{display:flex;align-items:center;gap:20px;padding:16px 30px;background:var(--board-2);
+    flex-wrap:wrap}
+  .bhead .t{font-family:var(--serif);font-size:13px;letter-spacing:.34em;color:var(--cream-2)}
+  .bhead .t b{color:var(--cream);font-size:15px;letter-spacing:.22em}
+  .bhead .r{margin-left:auto;display:flex;align-items:center;gap:18px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--cream-3)}
+
+  /* 班次行：翻牌数字 */
+  .bmain{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:30px;
+    padding:30px 30px 26px;align-items:end}
+  .dest .lb{font-family:var(--serif);font-size:11px;letter-spacing:.36em;color:var(--cream-3);margin-bottom:10px}
+  .dest h1{font-family:var(--serif);font-size:clamp(34px,4.6vw,62px);line-height:1.05;
+    letter-spacing:.02em;color:var(--cream)}
+  .dest .sub{margin-top:14px;font-family:var(--serif);font-size:16px;color:var(--cream-2);letter-spacing:.06em}
+  .dest .acts{margin-top:22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .btn{background:var(--cream);color:var(--board);border:0;padding:13px 26px;font-size:15px;
+    letter-spacing:.12em;font-weight:700}
+  .btn:hover{background:#FFFBEC}
+  .dest .ghost{font-family:var(--sans);font-size:12.5px;letter-spacing:.16em;color:var(--cream-2);
+    box-shadow:inset 0 -1px 0 var(--cream-3);padding-bottom:3px}
+
+  /* 翻牌组 */
+  .flaps{display:flex;flex-direction:column;gap:14px;align-items:flex-end}
+  .flaps .grp{text-align:right}
+  .flaps .gl{font-family:var(--serif);font-size:10.5px;letter-spacing:.32em;color:var(--cream-3);margin-bottom:7px}
+  .flap-row{display:flex;gap:4px}
+  /* 单张翻牌：中缝是翻牌本身的结构 */
+  .flap{position:relative;width:36px;height:52px;background:var(--board-3);
+    display:grid;place-items:center;font-family:var(--mono);font-size:26px;font-weight:700;
+    color:var(--cream);letter-spacing:0;font-variant-numeric:tabular-nums}
+  .flap::after{content:"";position:absolute;left:0;right:0;top:50%;height:2px;background:var(--board)}
+  .flap.sm{width:26px;height:38px;font-size:18px}
+  .flap.dot{width:14px;background:transparent;font-size:22px;color:var(--cream-3)}
+  .flap.dot::after{display:none}
+  .flap.go{color:var(--go)}
+  .flap.red{color:var(--red)}
+
+  /* 轨道：四个站 */
+  .track{padding:8px 30px 30px}
+  .track .tl{font-family:var(--serif);font-size:11px;letter-spacing:.36em;color:var(--cream-3);margin-bottom:26px}
+  .stations{position:relative;display:grid;grid-template-columns:repeat(4,1fr)}
+  /* 轨道线 */
+  .stations::before{content:"";position:absolute;left:10px;right:10px;top:13px;height:4px;
+    background:var(--board-3)}
+  .stations::after{content:"";position:absolute;left:10px;top:13px;height:4px;width:62%;
+    background:var(--go)}
+  .stn{position:relative;padding:0 22px 0 0;z-index:1}
+  .stn:not(:first-child){padding-left:0}
+  .stn .node{width:30px;height:30px;background:var(--board);display:grid;place-items:center}
+  .stn .node i{width:14px;height:14px;background:var(--cream-3);border-radius:50%;display:block}
+  .stn.done .node i{background:var(--go)}
+  .stn.now .node i{background:var(--red);box-shadow:0 0 0 5px rgba(194,69,45,.28)}
+  .stn.todo .node i{background:transparent;border:2.5px solid var(--cream-3)}
+  .stn .nm{margin-top:18px;font-family:var(--serif);font-size:clamp(17px,1.9vw,23px);
+    letter-spacing:.03em;color:var(--cream);line-height:1.3}
+  .stn .tm{margin-top:8px;font-family:var(--mono);font-size:12px;letter-spacing:.12em;
+    color:var(--cream-3);font-variant-numeric:tabular-nums}
+  .stn.now .nm{color:var(--red)}
+  .stn.todo .nm{color:var(--cream-3)}
+  .stn .flag{display:inline-block;margin-top:10px;font-family:var(--serif);font-size:11px;
+    letter-spacing:.26em;padding:3px 11px;background:var(--board-3);color:var(--cream-2)}
+  .stn.now .flag{background:var(--red);color:var(--cream)}
+  .stn.done .flag{background:rgba(46,125,79,.28);color:#8FCFA6}
+
+  /* 牌脚 */
+  .bfoot{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    padding:14px 30px 18px;background:var(--board-2);
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;color:var(--cream-3)}
+  .bfoot b{color:var(--cream-2);font-family:var(--serif);letter-spacing:.18em}
+
+  /* ─── 平台信息 ─── */
+  .platform{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:0;
+    margin-top:34px;background:var(--platform-2);border:1px solid var(--line)}
+  .pcard{padding:28px 30px}
+  .pcard+.pcard{border-left:1px solid var(--line)}
+  .pcard h2{font-family:var(--serif);font-size:22px;letter-spacing:.04em;display:flex;
+    align-items:center;gap:12px}
+  .pcard h2 .m{width:26px;height:26px;flex:none}
+  .pcard p{color:var(--ink-2);font-size:14.5px;line-height:1.9;margin-top:14px;max-width:44ch}
+  .pcard .lnx{display:flex;gap:22px;margin-top:20px;font-size:13.5px;flex-wrap:wrap}
+  .pcard .lnx a{box-shadow:inset 0 -1px 0 var(--line);padding-bottom:3px}
+  .pcard .lnx a:hover{color:var(--red);box-shadow:inset 0 -1px 0 var(--red)}
+  dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px 20px;font-size:14px;margin-top:6px}
+  dt{color:var(--ink-3);font-size:12.5px;letter-spacing:.16em;white-space:nowrap}
+  dd{color:var(--ink);text-align:right;overflow-wrap:anywhere}
+  dd b{font-family:var(--serif);font-size:18px;letter-spacing:.02em}
+  .pcard .foot{margin-top:20px;padding-top:15px;border-top:1px solid var(--line);
+    display:flex;justify-content:space-between;font-size:11.5px;letter-spacing:.2em;color:var(--ink-3)}
+  .pcard .foot b{color:var(--go);font-family:var(--serif);letter-spacing:.16em}
+
+  /* ─── 席位表 ─── */
+  .seats{margin-top:32px;background:var(--platform-2);border:1px solid var(--line)}
+  .seats .hd{display:flex;align-items:baseline;gap:18px;padding:18px 30px 14px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line)}
+  .seats h2{font-family:var(--serif);font-size:21px;letter-spacing:.06em}
+  .seats .lnk{margin-left:auto;font-size:13px;color:var(--red);box-shadow:inset 0 -1px 0 var(--red);padding-bottom:2px}
+  .tabs{display:flex;gap:24px;padding:0 30px;border-bottom:1px solid var(--line);font-size:12.5px}
+  .tabs span{padding:11px 0;color:var(--ink-3);border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tabs span.on{color:var(--ink);font-weight:600;border-bottom-color:var(--red)}
+  table{width:100%;border-collapse:collapse}
+  thead th{font-family:var(--serif);font-size:11px;letter-spacing:.32em;color:var(--ink-3);
+    text-align:left;font-weight:400;padding:12px 16px 10px 30px;border-bottom:1px solid var(--line)}
+  thead th:last-child{padding-right:30px}
+  tbody td{padding:12px 16px 12px 30px;border-bottom:1px solid var(--line);font-size:15px;vertical-align:baseline}
+  tbody td:last-child{padding-right:30px}
+  tbody tr:last-child td{border-bottom:0}
+  tbody td.subj{font-family:var(--serif);font-weight:600;letter-spacing:.02em}
+  tbody td.seat{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;color:var(--ink-3);width:58px}
+  tbody td.mdl{color:var(--ink-2);font-size:14px}
+  tbody td.pk{font-family:var(--serif);font-weight:600}
+  .chg{display:inline-flex;align-items:center;gap:6px;color:var(--red);font-family:var(--sans);
+    font-size:11px;letter-spacing:.18em;margin-left:10px;white-space:nowrap}
+  .chg::before{content:"";width:8px;height:8px;background:var(--red);flex:none}
+  .dflt{color:var(--ink-3);font-size:13px;letter-spacing:.14em}
+  .seats .foot{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:13px 30px 16px;border-top:1px solid var(--line);font-size:11.5px;letter-spacing:.18em;color:var(--ink-3)}
+  .seats .foot b{color:var(--ink);font-family:var(--serif);letter-spacing:.12em}
+
+  .rel{margin-top:22px;font-size:12.5px;line-height:2;color:var(--ink-3);max-width:92ch;
+    padding:0 4px}
+  .rel b{color:var(--ink-2);font-family:var(--serif);font-weight:600;letter-spacing:.06em}
+
+  .folio{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);
+    display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--ink-3)}
+  .folio b{font-family:var(--serif);font-size:14px;letter-spacing:.16em;color:var(--ink);display:block}
+
+  @media (max-width:960px){
+    .bmain{grid-template-columns:1fr}
+    .flaps{align-items:flex-start}
+    .flaps .grp{text-align:left}
+    .stations{grid-template-columns:1fr 1fr;gap:32px 0}
+    .stations::before,.stations::after{display:none}
+    .platform{grid-template-columns:1fr}
+    .pcard+.pcard{border-left:0;border-top:1px solid var(--line)}
+    table,thead,tbody,tr,td,th{display:block}
+    thead{display:none}
+    tbody tr{padding:12px 0;border-bottom:1px solid var(--line)}
+    tbody td{border:0;padding:2px 30px}
+    tbody td:last-child{padding-bottom:12px}
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="wm">文衡</span>
+  <span class="sub">云南大学图书馆<br>学科信息参考</span>
+  <nav aria-label="工作区">
+    <a class="on" href="#">出报告</a><a href="#">灵活报告</a><a href="#">报告</a><a href="#">问文衡</a>
+  </nav>
+  <span class="r">
+    <span>陈列馆 ↗</span>
+    <span class="pal"><i class="g on" title="云大绿"></i><i class="z" title="朱砂"></i></span>
+  </span>
+</header>
+
+<main class="wrap">
+
+  <!-- ─── 发车牌 ─── -->
+  <section class="board">
+    <div class="bhead">
+      <span class="t"><b>发 车 信 息</b>　学 科 信 息 参 考 · 出 报 告</span>
+      <span class="r">D E P A R T U R E　·　P L A T F O R M　3 9</span>
+    </div>
+
+    <div class="bmain">
+      <div class="dest">
+        <div class="lb">终 点 站</div>
+        <h1>本期报告已就绪</h1>
+        <p class="sub">复核后签单，这一版才会被标记为「可交付」。</p>
+        <div class="acts">
+          <button class="btn">复核并签单 →</button>
+          <a class="ghost" href="#">看详细过程</a>
+        </div>
+      </div>
+
+      <!-- 翻牌 -->
+      <div class="flaps">
+        <div class="grp">
+          <div class="gl">班 次 · 车 次</div>
+          <div class="flap-row">
+            <span class="flap">2</span><span class="flap">0</span>
+            <span class="flap">2</span><span class="flap">6</span>
+            <span class="flap red">0</span><span class="flap red">9</span>
+          </div>
+        </div>
+        <div class="grp">
+          <div class="gl">发 车 · 到 站</div>
+          <div class="flap-row">
+            <span class="flap sm go">0</span><span class="flap sm go">7</span>
+            <span class="flap sm dot">:</span>
+            <span class="flap sm go">5</span><span class="flap sm go">5</span>
+            <span class="flap sm" style="background:transparent;width:16px"></span>
+            <span class="flap sm">1</span><span class="flap sm">5</span>
+            <span class="flap sm dot">:</span>
+            <span class="flap sm">0</span><span class="flap sm">3</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 轨道四站 -->
+    <div class="track">
+      <div class="tl">本 期 线 路 · 四 站 · 终 点 可 交 付</div>
+      <div class="stations">
+        <div class="stn done">
+          <div class="node"><i></i></div>
+          <div class="nm">下载数据核验</div>
+          <div class="tm">09-28 07:55</div>
+          <div class="flag">完 成 · 64 / 64</div>
+        </div>
+        <div class="stn done">
+          <div class="node"><i></i></div>
+          <div class="nm">选择章节</div>
+          <div class="tm">10-12 22:18</div>
+          <div class="flag">完 成 · 全 选</div>
+        </div>
+        <div class="stn now">
+          <div class="node"><i></i></div>
+          <div class="nm">生成初稿</div>
+          <div class="tm">10-13 15:03</div>
+          <div class="flag">已 出 稿 · 当 前</div>
+        </div>
+        <div class="stn todo">
+          <div class="node"><i></i></div>
+          <div class="nm">核验与定稿</div>
+          <div class="tm">— : —</div>
+          <div class="flag">待 复 核 签 单</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bfoot">
+      <span><b>台 账</b>　云大全学科排名、阈值动态检测表.xlsx</span>
+      <span>数 据 口 径　预测 202609 · 输出 202609</span>
+      <span>任 务　已 完 成</span>
+    </div>
+  </section>
+
+  <!-- ─── 平台信息 ─── -->
+  <section class="platform">
+    <div class="pcard">
+      <h2>
+        <svg class="m" viewBox="0 0 40 40" aria-hidden="true">
+          <circle cx="20" cy="20" r="13" fill="none" stroke="#2E7D4F" stroke-width="5" stroke-linecap="round"/>
+          <circle cx="20" cy="20" r="5" fill="#2E7D4F"/>
+        </svg>
+        本期报告已生成
+      </h2>
+      <p>任务结束不代表报告合格或已签发——管理员当前不能下载未签发的初稿。复核无异议后签单，这一版即可交付。</p>
+      <div class="lnx"><a href="#">打开报告 →</a><a href="#">去审核台 →</a></div>
+    </div>
+
+    <div class="pcard">
+      <dl>
+        <dt>期　次</dt><dd><b>202609</b>　第 39 期</dd>
+        <dt>预测数据</dt><dd>202609</dd>
+        <dt>实际输出</dt><dd>202609</dd>
+        <dt>下载数据</dt><dd><b>64 / 64</b></dd>
+        <dt>台账文件</dt><dd>云大全学科排名、阈值动态检测表.xlsx</dd>
+        <dt>最后修改</dt><dd>2026 年 9 月 28 日 07:55</dd>
+        <dt>任　务</dt><dd>已完成</dd>
+      </dl>
+      <div class="foot"><span>已 并 入 台 账</span><b>已 出 稿　10-13 15:03</b></div>
+    </div>
+  </section>
+
+  <!-- ─── 席位表 ─── -->
+  <section class="seats">
+    <div class="hd">
+      <h2>本期选模 · 席位表</h2>
+      <a class="lnk" href="#">去预测台看图改选 →</a>
+    </div>
+    <div class="tabs"><span class="on">路线1 · 总被引 / ESI 前 1% 被引阈值</span><span>路线2 · 国内排名 / 国内前 1% 机构数</span></div>
+    <table>
+      <thead><tr>
+        <th style="width:58px">车 厢</th>
+        <th style="width:28%">潜 力 学 科</th>
+        <th style="width:30%">V 1 推 荐</th>
+        <th>本 期 已 选</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="seat">1A</td><td class="subj">免疫学</td><td class="mdl">季节性 ETS 模型</td><td class="pk">SARIMA 模型<span class="chg">已改选</span></td></tr>
+        <tr><td class="seat">2A</td><td class="subj">分子生物学与遗传学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="seat">3A</td><td class="subj">多学科</td><td class="mdl">Holt 趋势模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="seat">4A</td><td class="subj">物理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="seat">5A</td><td class="subj">神经科学与行为科学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="seat">6A</td><td class="subj">空间科学</td><td class="mdl">SARIMA 模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="seat">7A</td><td class="subj">精神病学与心理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="seat">8A</td><td class="subj">经济与商业</td><td class="mdl">SARIMA 模型</td><td class="dflt">默认</td></tr>
+      </tbody>
+    </table>
+    <div class="foot">
+      <span>已保存 · admin · 2026-10-16 12:12</span>
+      <span>改选请至 <b>预测台</b></span>
+    </div>
+  </section>
+
+  <p class="rel"><b>与报告的关系</b>　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+
+  <footer class="folio">
+    <div><b>文衡 · 轨</b>云 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+    <div>发 车 信 息 牌　·　第 39 期　·　2 0 2 6 0 9</div>
+    <div>平 台 3 9　·　待 发 车　·　签 单 后 开 出</div>
+  </footer>
+</main>
+</body>
+</html>

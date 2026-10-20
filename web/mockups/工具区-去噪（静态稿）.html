@@ -1,0 +1,567 @@
+﻿<!doctype html>
+<html lang="zh-CN" data-palette="blue">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文衡 · 生成台「这一期的工具」去噪 — 静态稿（待审）</title>
+<style>
+  /* ============ 令牌：逐字取自 web/src/index.css（2026-10-17 绿蓝双主题）============ */
+  :root, html[data-palette="blue"]{
+    --field:#17456E; --field-2:#0F2E4C; --field-3:#2F6B8E; --field-4:#8FB6CE; --field-5:#DCE8F0;
+    --tool:#26483B; --tool-2:#163228; --tool-3:#2F7A58; --tool-4:#7FB79B; --tool-5:#DFEDE6;
+    --bg:#F2EFE6; --card:#F7F4EC; --panel:#E4DFD0;
+    --ink:#15222B; --ink-2:#43525C; --ink-3:#556169;
+    --line:#D6D0C0; --line-2:#E4DFD0;
+    --zhu:#26483B; --zhu-soft:#DFEDE6;
+    --gline:#163228;
+    --gold:#2F7A58; --gold-soft:#DFEDE6; --gold-ink:#163228;
+    --ok:#276B4C; --ok-soft:#DFEDE6;
+    --warn:#B23A2B; --warn-soft:#F4DDD7;
+    --bad:#B23A2B; --bad-soft:#F4DDD7;
+    --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+    --r:0px; --r-sm:0px; --shadow:none;
+  }
+  html[data-palette="green"]{
+    --field:#26483B; --field-2:#163228; --field-3:#2F7A58; --field-4:#7FB79B; --field-5:#DFEDE6;
+    --tool:#17456E; --tool-2:#0F2E4C; --tool-3:#2F6B8E; --tool-4:#8FB6CE; --tool-5:#DCE8F0;
+    --zhu:#17456E; --zhu-soft:#DCE8F0;
+    --gline:#0F2E4C;
+    --gold:#2F6B8E; --gold-soft:#DCE8F0; --gold-ink:#0F2E4C;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0;border:0 solid}
+  html{-webkit-text-size-adjust:100%;line-height:1.5}
+  img,svg{display:block;vertical-align:middle}
+  ul,ol{list-style:none}
+  button,input,select{font:inherit;color:inherit;background-color:transparent}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:inherit}
+  b,strong{font-weight:bolder}
+  small{font-size:80%}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  :focus-visible{outline:2px solid var(--zhu);outline-offset:2px;border-radius:0}
+
+  /* ---------- 顶栏（与真机同款：深色「场」条） ---------- */
+  .app-top{display:flex;align-items:center;gap:16px;min-height:60px;
+    padding:0 clamp(14px,2.5vw,28px);background:var(--field-2);color:var(--field-5)}
+  .app-brand{display:flex;align-items:baseline;gap:10px;white-space:nowrap}
+  .app-brand b{font-family:var(--serif);font-size:21px;font-weight:600;letter-spacing:.18em;color:var(--field-5)}
+  .app-brand span{font-size:11px;letter-spacing:.16em;color:var(--field-4)}
+  .app-nav{display:flex;align-items:center;gap:22px;margin-left:auto}
+  .app-nav a{white-space:nowrap;padding:6px 2px;font-size:14px;color:var(--field-4);border-bottom:2px solid transparent}
+  .app-nav a[aria-current="page"]{color:var(--field-5);font-weight:600;border-bottom-color:var(--tool-3)}
+  .app-nav-sep{width:1px;height:14px;background:var(--field-3)}
+  .app-side{display:flex;align-items:center;gap:12px;margin-left:18px}
+  .app-jump{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 12px;
+    border:1px solid var(--field-3);color:var(--field-4);font-size:13.5px;white-space:nowrap}
+  .app-jump:hover{border-color:var(--field-4);color:var(--field-5)}
+  .app-period{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--field-4)}
+  .app-period select{min-height:32px;padding:0 8px;border:1px solid var(--field-3);background:var(--field);color:var(--field-5);font-size:13.5px}
+  .skin-switch{display:flex;border:1px solid var(--field-3);background:transparent}
+  .skin-switch button{font-size:13.5px;padding:0 12px;min-height:32px;color:var(--field-4);cursor:pointer}
+  .skin-switch button[aria-pressed="true"]{background:var(--tool-3);color:#fff}
+  .user-chip{display:inline-flex;align-items:center;gap:9px;font-size:13.5px;color:var(--field-5)}
+  .user-chip .av{width:26px;height:26px;background:var(--zhu);color:#F6F4EC;display:grid;place-items:center;font-family:var(--serif);font-size:13px}
+
+  /* ---------- 版心与基础件 ---------- */
+  .wrap{max-width:1240px;margin:0 auto;padding:26px 40px 56px;width:100%}
+  .card{background:var(--card);border:1px solid var(--line)}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid var(--line);
+    background:transparent;cursor:pointer;font-size:14.5px;font-weight:600;letter-spacing:.04em}
+  .btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;padding:12px 24px}
+  .btn:hover{background:var(--panel)}
+  .btn.primary:hover{filter:brightness(1.06);background:var(--zhu)}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+  .btn.confirming{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+  .btn.primary.confirming{background:var(--warn);border-color:var(--warn);color:#fff}
+  .hint{color:var(--ink-3);font-size:14px}
+  .fs-15{font-size:15px}
+  .mt-4{margin-top:4px}.mt-6{margin-top:6px}.mt-8{margin-top:8px}.mt-10{margin-top:10px}
+  .mt-12{margin-top:12px}.mt-18{margin-top:18px}
+  .divider-top{border-top:1px solid var(--line);padding-top:14px}
+  .pill{display:inline-block;padding:2px 9px;font-size:12.5px;letter-spacing:.02em;background:var(--panel);color:var(--ink-3);border:1px solid var(--line)}
+  .pill.warn-pill{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+
+  /* ---------- 折叠（与真机同款） ---------- */
+  .fold{background:var(--card);border:1px solid var(--line);margin-top:18px;overflow:hidden}
+  .fold>summary{display:flex;align-items:center;gap:10px;padding:13px 18px;cursor:pointer;font-size:14.5px;list-style:none}
+  .fold>summary::-webkit-details-marker{display:none}
+  .fold>summary::before{content:"▸";color:var(--zhu)}
+  .fold[open]>summary::before{content:"▾"}
+  .fold>summary .sm{color:var(--ink-3);font-size:13.5px;margin-left:auto}
+  .fold-inner{padding:4px 18px 16px}
+
+  /* ---------- 任务瀑布（与真机同款） ---------- */
+  .wf{display:flex;flex-direction:column}
+  .wf-row{display:flex;align-items:center;gap:14px;padding:9px 0;border-bottom:1px solid var(--line-2)}
+  .wf-row:last-child{border-bottom:none}
+  .wf-name{flex:0 0 210px;min-width:0;line-height:1.45}
+  .wf-name b{display:block;font-size:15px;font-weight:600}
+  .wf-name small{display:block;color:var(--ink-3);font-size:13px}
+  .wf-state{flex:0 0 88px;display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--ok)}
+  .wf-track{flex:1;height:8px;background:var(--line-2);overflow:hidden}
+  .wf-track i{display:block;height:100%;transform-origin:left;background:var(--ok)}
+  .wf-sec{flex:0 0 92px;text-align:right;font-family:var(--mono);font-size:14px;color:var(--ink-2)}
+
+  /* ============ 稿子自身的框（改动前 / 改动后） ============ */
+  .sheet{border:1px solid var(--line);background:var(--bg);margin-top:18px}
+  .sheet-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding:12px 18px;
+    background:var(--card);border-bottom:1px solid var(--line)}
+  .sheet-head h2{font-size:17px}
+  .sheet-head .tag{font-size:12.5px;padding:2px 9px;background:var(--panel);color:var(--ink-3);border:1px solid var(--line)}
+  .sheet-head .tag.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+  .sheet-body{padding:16px 22px 20px}
+
+  /* ============ 改后：上传台账 ============ */
+  .up-block{padding-top:2px}
+  .up-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .up-head .hint{margin-left:2px}
+  .up-row{display:flex;gap:12px;align-items:stretch;flex-wrap:wrap;margin-top:10px}
+  .file-pick{flex:1 1 320px;min-width:280px;display:flex;align-items:center;gap:10px;
+    padding:8px 10px;border:1px dashed var(--line);background:var(--card);cursor:pointer}
+  .file-pick.dragover{border-color:var(--zhu);background:var(--zhu-soft)}
+  .file-pick.has-file{border-style:solid}
+  .file-pick .pick-btn{flex:0 0 auto}
+  .file-pick .file-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    color:var(--ink-3);font-size:14px}
+  .file-pick.has-file .file-name{color:var(--ink)}
+  .file-pick .file-size{flex:0 0 auto;color:var(--ink-3);font-size:12.5px;font-family:var(--mono)}
+  .file-clear{flex:0 0 auto;border:0;background:transparent;color:var(--ink-3);cursor:pointer;
+    font-size:13px;padding:4px 6px}
+  .file-clear:hover{color:var(--bad)}
+  .up-period{flex:0 0 190px;display:flex;flex-direction:column;gap:4px}
+  .up-period label{font-size:12.5px;color:var(--ink-3)}
+  .up-period input{min-height:44px;padding:0 12px;border:1px solid var(--line);background:var(--card);
+    color:var(--ink);font-size:14.5px;width:100%}
+  .up-period input:focus{outline:2px solid var(--zhu);outline-offset:-2px}
+  .up-go{flex:0 0 auto;display:flex;align-items:flex-start}
+  .up-go .btn{min-height:44px}
+  .up-note{margin-top:10px;color:var(--ink-3);font-size:13.5px}
+  .up-msg{margin-top:8px;font-size:13.5px}
+
+  /* ============ 改后：产物 ============ */
+  .art-groups{display:grid;grid-template-columns:1fr 1fr;gap:14px 28px;margin-top:10px}
+  @media (max-width:900px){.art-groups{grid-template-columns:1fr}}
+  .art-group h4{font-size:12.5px;font-weight:600;letter-spacing:.14em;color:var(--ink-3);
+    padding-bottom:6px;border-bottom:1px solid var(--line-2)}
+  .art-list{display:grid;gap:2px;margin-top:6px}
+  .art-row{display:flex;align-items:baseline;gap:10px;padding:5px 2px;font-size:14px}
+  .art-row a{color:var(--ink);border-bottom:1px solid transparent}
+  .art-row a:hover{border-bottom-color:var(--ink-3)}
+  .art-row .meta{margin-left:auto;color:var(--ink-3);font-size:12.5px;font-family:var(--mono);white-space:nowrap}
+  .art-row .state{margin-left:6px}
+  .art-row.disabled a{color:var(--ink-2)}
+  .art-row .why{color:var(--ink-3);font-size:12.5px;margin-left:8px}
+
+  /* ============ 改后：版本与重跑 ============ */
+  .ver-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 0}
+  .ver-row .lbl{flex:0 0 64px;color:var(--ink-3);font-size:13.5px}
+  .ver-row .why{color:var(--ink-3);font-size:13.5px}
+  .ver-row select{max-width:260px;padding:7px 10px;border:1px solid var(--line);background:var(--card);
+    color:var(--ink);font-size:14px}
+
+  /* ============ 改后：页脚链接 ============ */
+  .links-row{display:flex;gap:22px;flex-wrap:wrap;margin-top:14px;font-size:13.5px;color:var(--ink-3)}
+  .links-row a{border-bottom:1px solid var(--line)}
+  .links-row a:hover{border-bottom-color:var(--ink-3)}
+
+  /* ============ 演示控制条 ============ */
+  .demo{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px;margin-top:16px}
+  .demo .tbtn{font-size:13.5px;padding:6px 13px;border:1px solid var(--line);background:var(--card);color:var(--ink-2);cursor:pointer}
+  .demo .tbtn.on{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:650}
+  .demo .readout{margin-left:auto;font-size:13px;color:var(--ink-3)}
+
+  /* ============ 标注（改动点①②③④） ============ */
+  .anno{position:relative}
+  body.show-anno .anno{outline:1px dashed var(--bad);outline-offset:5px}
+  .badge{display:none;position:absolute;left:-14px;top:-14px;z-index:5;min-width:22px;height:22px;
+    padding:0 6px;background:var(--bad);color:#fff;font-size:12.5px;line-height:22px;text-align:center;
+    font-family:var(--mono)}
+  body.show-anno .badge{display:inline-block}
+  .badge-note{display:none;position:absolute;right:0;top:-30px;background:var(--bad-soft);color:var(--bad);
+    font-size:12.5px;padding:2px 8px;white-space:nowrap}
+  body.show-anno .badge-note{display:inline-block}
+
+  /* ============ 说明区 ============ */
+  .notes{margin-top:18px}
+  .notes h2{font-size:17px;margin-bottom:8px}
+  .notes ul{padding-left:20px;margin:6px 0 12px}
+  .notes li{font-size:14px;color:var(--ink-2);margin:6px 0}
+  .notes b{color:var(--ink)}
+  .kbd{font-family:var(--mono);font-size:12.5px;background:var(--panel);padding:1px 6px}
+  .qtag{display:inline-block;font-size:12px;color:var(--gold-ink);background:var(--gold-soft);padding:2px 8px;font-weight:650;margin-right:6px}
+  .split{height:1px;background:var(--line-2);margin:14px 0}
+</style>
+</head>
+<body>
+<div class="app-top">
+  <span class="app-brand"><b>文衡</b><span>云南大学图书馆 · 学科信息参考</span></span>
+  <nav class="app-nav">
+    <a href="#" aria-current="page" onclick="return false">出报告</a>
+    <a href="#" onclick="return false">灵活报告</a>
+    <a href="#" onclick="return false">报告</a>
+    <a href="#" onclick="return false">问文衡</a>
+    <span class="app-nav-sep"></span>
+    <a href="#" onclick="return false">主台账</a>
+    <a href="#" onclick="return false">运行档案</a>
+  </nav>
+  <span class="app-side">
+    <label class="app-period">期次
+      <select><option>202609</option></select>
+    </label>
+    <a class="app-jump" href="#" onclick="return false">陈列馆 →</a>
+    <span class="skin-switch" role="group" aria-label="切换配色">
+      <button type="button" id="pBlue" aria-pressed="true">蓝场</button>
+      <button type="button" id="pGreen" aria-pressed="false">绿场</button>
+    </span>
+    <span class="user-chip"><span class="av">a</span>admin · 管理员</span>
+  </span>
+</div>
+
+<div class="wrap">
+  <p class="hint" style="letter-spacing:.06em">出报告 · 这一期的工具 · 静态稿（按 rick 2026-10-17 反馈）· 未动 React 代码</p>
+  <h1 style="font-size:26px;margin:6px 0 6px">工具区去噪</h1>
+  <p class="hint" style="max-width:86ch">
+    两件事：<b>① 红框</b>——原生文件控件换成自绘的文件选择（按钮＋文件名＋移除，可拖放）；
+    <b>② 太杂乱</b>——把「上传 / 产物 / 重跑与版本 / 任务瀑布」拆成四段，
+    每段一件事、一行一个动作；产物按「报告 / 数据与记录」分组、体积右对齐。
+  </p>
+
+  <!-- ================= 演示控制 ================= -->
+  <div class="card demo">
+    <span class="hint" style="font-size:13px">演示：</span>
+    <button class="tbtn on" id="annoBtn" type="button">显示改动标注</button>
+    <button class="tbtn" id="fakeFile" type="button">模拟选中一个台账文件</button>
+    <span class="readout">可切换右上「蓝场 / 绿场」看两套主题</span>
+  </div>
+
+  <!-- ================= 一、现状 ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <h2>现状</h2>
+      <span class="tag bad">rick 截图这一版</span>
+      <span class="hint">五件事平铺一列：原生文件控件、产物挤成一条跑马灯、按钮同权、瀑布跟着堆</span>
+    </div>
+    <div class="sheet-body">
+      <details class="fold" open>
+        <summary>这一期的工具<span class="sm">上传 · 重跑 · 回滚 · 台账 · 日志包</span></summary>
+        <div class="fold-inner">
+          <p class="hint">看数据源：主台账（只读）→</p>
+
+          <h3 class="fs-15 mt-12">上传当期数据表</h3>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px">
+            <input type="file" accept=".xlsx" aria-label="选择要上传的当期数据表">
+            <input style="padding:9px 12px;border:1px solid var(--line);background:var(--card);width:150px"
+                   placeholder="期次 202609" aria-label="期次">
+            <button class="btn" type="button">↻ 上传并生成</button>
+          </div>
+
+          <h3 class="fs-15 mt-18">产物与重跑</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+            <span class="pill">报告初稿_202609（试排）.docx · 7.9 MB · 未签发，管理员暂不能下载</span>
+            <a class="pill" href="#" onclick="return false">红色件清单.md · 1 KB</a>
+            <a class="pill" href="#" onclick="return false">审批记录.md · 928 B</a>
+            <a class="pill" href="#" onclick="return false">校验说明 · 1 KB</a>
+            <a class="pill" href="#" onclick="return false">预测回测报告.md · 954 B</a>
+            <a class="pill" href="#" onclick="return false">table2.csv · 2 KB</a>
+            <a class="pill" href="#" onclick="return false">red_slots.json · 117 KB</a>
+            <a class="pill" href="#" onclick="return false">run_log.json · 880 B</a>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px">
+            <button class="btn" type="button">↻ 重跑本期</button>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px">
+            <span class="hint">旧版留档</span>
+            <select style="max-width:220px;padding:7px 10px;border:1px solid var(--line);background:var(--card)">
+              <option>10-16 21:32 · 3 个文件</option>
+            </select>
+            <button class="btn" type="button">↻ 回滚到这一版</button>
+          </div>
+
+          <div class="divider-top mt-18">
+            <h3 class="fs-15">任务瀑布（各步耗时）</h3>
+            <div class="wf mt-10">
+              <div class="wf-row"><span class="wf-name"><b>解析台账</b><small>当期 202609 · 上期 · 机器断言 全绿</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="transform:scaleX(.004)"></i></span><span class="wf-sec">0.7 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>计算大表与概述</b><small>大表 22 学科 × 11 列 · 概述 11 项数字事实</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="transform:scaleX(.001)"></i></span><span class="wf-sec">0.1 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>学科×高校矩阵（InCites）</b><small>快照 数据覆盖 2016-2026.06.30 · 240 格</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="transform:scaleX(.45)"></i></span><span class="wf-sec">85.7 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>图表渲染</b><small>104 张图 · 16 学科 × 6 + 概览 · 预测 16 张</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="transform:scaleX(.49)"></i></span><span class="wf-sec">92.5 秒</span></div>
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ================= 二、改后 ================= -->
+  <section class="sheet">
+    <div class="sheet-head">
+      <h2>改后</h2>
+      <span class="tag">待拍板</span>
+      <span class="hint">四段各管一件事；上传区只留一个主动作；产物两行分组、体积右对齐</span>
+    </div>
+    <div class="sheet-body">
+      <details class="fold" open>
+        <summary>这一期的工具<span class="sm">上传 · 重跑 · 回滚 · 台账 · 日志包</span></summary>
+        <div class="fold-inner">
+
+          <!-- ① 上传 -->
+          <div class="up-block mt-12 anno" id="anno1">
+            <span class="badge">①</span><span class="badge-note">自绘文件选择＋标签化期次＋禁用态</span>
+            <div class="up-head">
+              <h3 class="fs-15">上传当期数据表</h3>
+              <span class="hint">.xlsx 台账文件；上传后按这一期整链跑一遍，会覆盖本期的核对副本（点按钮后还会再确认）。</span>
+            </div>
+            <div class="up-row">
+              <div class="file-pick" id="picker" role="button" tabindex="0"
+                   aria-label="选择或拖入台账文件（.xlsx）">
+                <input type="file" id="fileInput" accept=".xlsx" hidden>
+                <button class="btn pick-btn" type="button" id="pickBtn">选择文件</button>
+                <span class="file-name" id="fileName">未选择（.xlsx）</span>
+                <span class="file-size" id="fileSize"></span>
+                <button class="file-clear" type="button" id="fileClear" hidden>移除</button>
+              </div>
+              <div class="up-period">
+                <label for="periodInput">期次（6 位）</label>
+                <input id="periodInput" inputmode="numeric" maxlength="6" placeholder="如 202611">
+              </div>
+              <div class="up-go">
+                <button class="btn primary" type="button" id="uploadBtn" disabled>上传并生成</button>
+              </div>
+            </div>
+            <p class="up-note">也支持把文件直接拖到左边的框里。期次不能空、必须是 6 位数字。</p>
+            <p class="up-msg" id="uploadMsg"></p>
+          </div>
+
+          <!-- ② 产物 -->
+          <div class="divider-top mt-18 anno" id="anno2">
+            <span class="badge">②</span><span class="badge-note">按「报告 / 数据与记录」分组，体积右对齐</span>
+            <h3 class="fs-15">本期产物</h3>
+            <div class="art-groups">
+              <div class="art-group">
+                <h4>报告</h4>
+                <div class="art-list">
+                  <div class="art-row disabled">
+                    <a href="#" onclick="return false">报告初稿_202609（试排）.docx</a>
+                    <span class="meta">7.9 MB</span>
+                    <span class="state pill">未签发</span>
+                    <span class="why">暂不能下载</span>
+                  </div>
+                  <div class="art-row"><a href="#" onclick="return false">红色件清单.md</a><span class="meta">1 KB</span></div>
+                  <div class="art-row"><a href="#" onclick="return false">审批记录.md</a><span class="meta">928 B</span></div>
+                  <div class="art-row"><a href="#" onclick="return false">校验说明</a><span class="meta">1 KB</span></div>
+                </div>
+              </div>
+              <div class="art-group">
+                <h4>数据与记录</h4>
+                <div class="art-list">
+                  <div class="art-row"><a href="#" onclick="return false">table2.csv</a><span class="meta">2 KB</span></div>
+                  <div class="art-row"><a href="#" onclick="return false">预测回测报告.md</a><span class="meta">954 B</span></div>
+                  <div class="art-row"><a href="#" onclick="return false">red_slots.json</a><span class="meta">117 KB</span></div>
+                  <div class="art-row"><a href="#" onclick="return false">run_log.json</a><span class="meta">880 B</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ③ 版本与重跑 -->
+          <div class="divider-top mt-18 anno" id="anno3">
+            <span class="badge">③</span><span class="badge-note">重跑与回滚各一行；后果写在动作旁</span>
+            <h3 class="fs-15">版本与重跑</h3>
+            <div class="ver-row">
+              <span class="lbl">重跑</span>
+              <span class="why">按同一期台账再跑一遍；旧稿先撤下（可回滚），不会悄悄覆盖。</span>
+              <button class="btn" type="button" id="rerunBtn">↻ 重跑本期</button>
+              <span class="hint" id="rerunMsg"></span>
+            </div>
+            <div class="ver-row">
+              <span class="lbl">旧版</span>
+              <select aria-label="选择要回滚到的版本">
+                <option>10-16 21:32 · 3 个文件</option>
+              </select>
+              <button class="btn" type="button" id="rollbackBtn">↻ 回滚到这一版</button>
+              <span class="hint" id="rollbackMsg"></span>
+            </div>
+          </div>
+
+          <!-- ④ 任务瀑布 -->
+          <div class="divider-top mt-18 anno" id="anno4">
+            <span class="badge">④</span><span class="badge-note">瀑布自成一节（字更轻，不抢动作）</span>
+            <h3 class="fs-15">任务瀑布（各步耗时）<span class="hint" style="font-size:13px;margin-left:10px">全链路 190.3 秒 · 断言全绿 · 大表 22×11 · 图 104 张 · MAPE 1.27%</span></h3>
+            <div class="wf mt-10">
+              <div class="wf-row"><span class="wf-name"><b>解析台账</b><small>当期 202609 · 上期 · 机器断言 全绿</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="transform:scaleX(.004)"></i></span><span class="wf-sec">0.7 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>计算大表与概述</b><small>大表 22 学科 × 11 列 · 概述 11 项数字事实</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="transform:scaleX(.001)"></i></span><span class="wf-sec">0.1 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>预测回测</b><small>整体 MAPE 1.27%（验收线 &lt;5%）</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="transform:scaleX(.001)"></i></span><span class="wf-sec">0.2 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>省域表（ESI 机构总表）</b><small>11 所高校 · 学科榜 22 个</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="transform:scaleX(.035)"></i></span><span class="wf-sec">6.7 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>学科×高校矩阵（InCites）</b><small>快照 数据覆盖 2016-2026.06.30 · 240 格</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="transform:scaleX(.45)"></i></span><span class="wf-sec">85.7 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>图表渲染</b><small>104 张图 · 16 学科 × 6 + 概览 · 预测 16 张</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="transform:scaleX(.49)"></i></span><span class="wf-sec">92.5 秒</span></div>
+              <div class="wf-row"><span class="wf-name"><b>母版替换</b><small>报告初稿 + 红色件清单：报告初稿_202609（试排）.docx</small></span><span class="wf-state">✓ 完成</span><span class="wf-track"><i style="transform:scaleX(.023)"></i></span><span class="wf-sec">4.4 秒</span></div>
+            </div>
+          </div>
+
+          <!-- 相关入口 -->
+          <div class="links-row">
+            <a href="#" onclick="return false">看数据源：主台账（只读）→</a>
+            <a href="#" onclick="return false">看这一期运行档案 →</a>
+          </div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ================= 说明 ================= -->
+  <section class="notes card" style="padding:20px 22px">
+    <h2>改动对照</h2>
+    <ul>
+      <li><b>① 上传</b>：原生 <span class="kbd">&lt;input type="file"&gt;</span>（所以显示成「选择文件 未选择文件」挤在一起）
+        换成自绘选择框：按钮＋文件名＋体积＋移除；可拖放；期次加标签和校验；<b>文件与期次都齐了「上传并生成」才可点</b>。</li>
+      <li><b>② 产物</b>：一条跑马灯拆成「报告 / 数据与记录」两组、体积右对齐；未签发的初稿行保留「未签发 · 暂不能下载」。</li>
+      <li><b>③ 重跑与版本</b>：从产物里拆出来单独一段；「会撤下当前成品、可回滚」写在动作旁，不再靠悬停提示。</li>
+      <li><b>④ 瀑布</b>：自成一节、放在最末；上方加一行总耗时汇总（数据都来自后端），不再和按钮混排。</li>
+    </ul>
+    <div class="split"></div>
+    <h2>待拍板</h2>
+    <ul>
+      <li><span class="qtag">请定</span>期次：保留输入框（开新一期要用，现稿加了标签与校验）还是默认预填当前期、只允许改？</li>
+      <li><span class="qtag">请定</span>产物分组：「报告 / 数据与记录」两组（现稿）还是全部一行按体积排开？</li>
+      <li><span class="qtag">请定</span>任务瀑布：留在工具区末尾（现稿），还是挪去「运行档案」？</li>
+      <li><span class="qtag">请定</span>拖放上传要不要保留？（现稿做了，代价很小）</li>
+    </ul>
+    <div class="split"></div>
+    <h2>落地说明</h2>
+    <ul>
+      <li>纯前端：<span class="kbd">web/src/Tools.tsx</span>（布局与文件选择交互）＋ <span class="kbd">web/src/index.css</span>（新增 <span class="kbd">.file-pick / .art-* / .ver-*</span> 组件类，先翻再添）；接口与契约不动。</li>
+      <li>验证：<span class="kbd">npm run build</span> → 起服务跑 <span class="kbd">check_web_app</span>（选了文件/没选文件两种状态的按钮禁用逻辑进自测）。</li>
+      <li>⚠️ 并行会话正在重构出报告页：落地等它收尾、或由它一并带上，避免撞车（本稿只出静态件，未动 React 代码）。</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(function(){
+  // 配色切换（与真机同一套 data-palette）
+  var pBlue = document.getElementById('pBlue'), pGreen = document.getElementById('pGreen');
+  function setPalette(p){
+    document.documentElement.dataset.palette = p;
+    pBlue.setAttribute('aria-pressed', String(p === 'blue'));
+    pGreen.setAttribute('aria-pressed', String(p === 'green'));
+  }
+  pBlue.addEventListener('click', function(){ setPalette('blue'); });
+  pGreen.addEventListener('click', function(){ setPalette('green'); });
+
+  // 标注开关
+  document.body.classList.add('show-anno');
+  var annoBtn = document.getElementById('annoBtn');
+  annoBtn.addEventListener('click', function(){
+    var on = document.body.classList.toggle('show-anno');
+    annoBtn.classList.toggle('on', on);
+    annoBtn.textContent = on ? '显示改动标注' : '显示改动标注';
+  });
+
+  // 文件选择（真 input 隐藏，模拟上传流程；不联网）
+  var picker = document.getElementById('picker');
+  var fileInput = document.getElementById('fileInput');
+  var pickBtn = document.getElementById('pickBtn');
+  var fileName = document.getElementById('fileName');
+  var fileSize = document.getElementById('fileSize');
+  var fileClear = document.getElementById('fileClear');
+  var periodInput = document.getElementById('periodInput');
+  var uploadBtn = document.getElementById('uploadBtn');
+  var uploadMsg = document.getElementById('uploadMsg');
+
+  function humanSize(n){
+    if (!n && n !== 0) return '';
+    if (n >= 1048576) return (n / 1048576).toFixed(1) + ' MB';
+    if (n >= 1024) return Math.round(n / 1024) + ' KB';
+    return n + ' B';
+  }
+  function showFile(name, size){
+    fileName.textContent = name;
+    fileName.style.color = 'var(--ink)';
+    fileSize.textContent = size;
+    fileClear.hidden = false;
+    picker.classList.add('has-file');
+    syncUpload();
+  }
+  function clearFile(){
+    fileInput.value = '';
+    fileName.textContent = '未选择（.xlsx）';
+    fileName.style.color = 'var(--ink-3)';
+    fileSize.textContent = '';
+    fileClear.hidden = true;
+    picker.classList.remove('has-file');
+    uploadMsg.textContent = '';
+    syncUpload();
+  }
+  function syncUpload(){
+    var ok = picker.classList.contains('has-file') && /^\d{6}$/.test(periodInput.value.trim());
+    uploadBtn.disabled = !ok;
+  }
+  pickBtn.addEventListener('click', function(e){ e.stopPropagation(); fileInput.click(); });
+  picker.addEventListener('click', function(e){
+    if (e.target === fileClear) return;
+    fileInput.click();
+  });
+  fileInput.addEventListener('change', function(){
+    var f = fileInput.files && fileInput.files[0];
+    if (f) showFile(f.name, humanSize(f.size));
+  });
+  fileClear.addEventListener('click', function(e){ e.stopPropagation(); clearFile(); });
+  periodInput.addEventListener('input', syncUpload);
+
+  // 拖放
+  ;['dragenter','dragover'].forEach(function(t){
+    picker.addEventListener(t, function(e){ e.preventDefault(); picker.classList.add('dragover'); });
+  });
+  ;['dragleave','drop'].forEach(function(t){
+    picker.addEventListener(t, function(e){ e.preventDefault(); picker.classList.remove('dragover'); });
+  });
+  picker.addEventListener('drop', function(e){
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) showFile(f.name, humanSize(f.size));
+  });
+
+  // 演示：模拟选中
+  document.getElementById('fakeFile').addEventListener('click', function(){
+    showFile('云大全学科排名、阈值动态检测表.xlsx', '2.1 MB');
+    if (!periodInput.value) periodInput.value = '202611';
+    syncUpload();
+  });
+
+  // 上传（演示文案，与真机同口径）
+  uploadBtn.addEventListener('click', function(){
+    if (uploadBtn.disabled) return;
+    uploadMsg.style.color = 'var(--ok)';
+    uploadMsg.textContent = '已开始生成 ' + periodInput.value.trim() + '——进度就在上面。';
+  });
+
+  // 行内二次确认（与 ConfirmButton 同款：3 秒自动还原）
+  function arm(btn, confirmText, okText, msgEl){
+    var original = btn.textContent;
+    var timer;
+    btn.addEventListener('click', function(){
+      if (!btn.classList.contains('confirming')) {
+        btn.classList.add('confirming');
+        btn.textContent = confirmText;
+        timer = setTimeout(function(){
+          btn.classList.remove('confirming');
+          btn.textContent = original;
+        }, 3000);
+      } else {
+        clearTimeout(timer);
+        btn.classList.remove('confirming');
+        btn.textContent = original;
+        msgEl.style.color = 'var(--ok)';
+        msgEl.textContent = okText;
+      }
+    });
+  }
+  arm(document.getElementById('rerunBtn'), '确认重跑？会撤下当前成品',
+      '已重新开始——旧稿会先撤下（可回滚），不会悄悄覆盖。', document.getElementById('rerunMsg'));
+  arm(document.getElementById('rollbackBtn'), '确认回滚？当前成品会先撤下',
+      '已回滚到 10-16 21:32（3 个文件）；签字会失效，需重新签单。', document.getElementById('rollbackMsg'));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出报告 · 方向「爨碑」（拓片）— 静态稿</title>
+<style>
+  /* ============================================================
+     方向「爨碑」· 拓片
+     实物依据：会泽院基座「会泽百家 至公天下」八字刻石，字体是
+     **爨体**（爨宝子／爨龙颜碑一脉，云南自己的碑学传统，方笔、
+     扁方、古拙）。所以整页做成一通碑＋一幅拓片：黑地白字的拓
+     面是主体，界格是碑上的界线，题跋在侧，钤印落脚。
+     注：零依赖无法加载真爨体，此处以重衬线作横向压缩近似其
+     扁方（display: scaleX），正式版建议换真爨体或名家题字。
+     零渐变、零投影。界格／碑框／骑缝是碑刻本身的结构。
+     ============================================================ */
+  :root{
+    --stone:#22201D;    /* 碑石（拓面黑地） */
+    --stone-2:#312D27;
+    --rub:#EDE6D2;      /* 拓字（白） */
+    --rub-2:#D8CFB8;
+    --paper:#E9E1CB;    /* 装裱纸 */
+    --paper-2:#DCD1B4;
+    --ink:#2A251E;
+    --ink-2:#5B5245;
+    --ink-3:#8B8070;
+    --red:#A5291D;      /* 印泥 */
+    --gold:#B8934D;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:#CFC3A4;color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--red);color:#fff}
+
+  /* 爨体近似：横向压缩，得扁方 */
+  .cuon{font-family:var(--serif);font-weight:700;display:inline-block;
+    transform:scaleX(.88);transform-origin:left center;letter-spacing:.06em}
+
+  /* ─── 装裱通幅 ─── */
+  .scroll{max-width:1120px;margin:36px auto;background:var(--paper);
+    border:1px solid var(--paper-2);padding:34px 38px 26px}
+
+  /* 碑额 */
+  .crown{border:2px solid var(--ink);background:var(--stone);padding:26px 30px 22px;position:relative}
+  .crown .ov{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:var(--rub-2);text-align:center}
+  .crown h1{margin-top:16px;text-align:center;line-height:1.05;color:var(--rub)}
+  .crown h1 .big{font-family:var(--serif);font-weight:900;font-size:clamp(34px,5.6vw,68px);
+    display:inline-block;transform:scaleX(.9);letter-spacing:.16em}
+  .crown .sub{margin-top:14px;text-align:center;font-family:var(--kai);font-size:13px;
+    letter-spacing:.32em;color:var(--rub-2)}
+  .crown .er{position:absolute;left:30px;top:26px;font-family:var(--kai);font-size:11px;
+    letter-spacing:.32em;color:var(--rub-2);writing-mode:vertical-rl}
+  .crown .er2{position:absolute;right:30px;top:26px;font-family:var(--kai);font-size:11px;
+    letter-spacing:.32em;color:var(--rub-2);writing-mode:vertical-rl}
+
+  /* 碑身：界格＋拓文 */
+  .body-stone{border:2px solid var(--ink);border-top:0;background:var(--stone);padding:0}
+  .grid-cells{display:grid;grid-template-columns:repeat(4,1fr);gap:0;
+    border-bottom:1px solid rgba(237,230,210,.18)}
+  .cell{padding:22px 22px 20px;border-right:1px solid rgba(237,230,210,.18);position:relative}
+  .cell:last-child{border-right:0}
+  .cell .k{font-family:var(--kai);font-size:10.5px;letter-spacing:.32em;color:var(--rub-2)}
+  .cell .v{font-family:var(--serif);font-weight:700;font-size:clamp(19px,2.3vw,27px);line-height:1.28;
+    color:var(--rub);margin-top:10px;letter-spacing:.04em}
+  .cell .v.sm{font-size:clamp(15px,1.7vw,19px);line-height:1.4}
+  .cell .m{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:rgba(237,230,210,.55);margin-top:8px}
+  .cell.now .v{color:#F0A28C}
+  .cell.todo .v{color:rgba(237,230,210,.42)}
+  /* 界格点：碑刻界线 */
+  .cell::after{content:"";position:absolute;right:-3.5px;top:50%;width:5px;height:5px;
+    background:var(--rub-2);transform:translateY(-50%)}
+  .cell:last-child::after{display:none}
+
+  /* 正文拓文 */
+  .prose{padding:28px 32px 30px;display:grid;grid-template-columns:1.35fr .65fr;gap:34px}
+  .prose .tx h2{font-family:var(--serif);font-weight:700;font-size:clamp(22px,2.6vw,32px);
+    color:var(--rub);letter-spacing:.06em;line-height:1.35}
+  .prose .tx p{font-family:var(--serif);font-size:15px;line-height:2.05;color:rgba(237,230,210,.82);
+    margin-top:14px;letter-spacing:.04em;text-indent:2em}
+  .prose .tx p b{color:var(--rub);font-weight:700}
+  .prose .tx .note{font-family:var(--kai);font-size:12.5px;letter-spacing:.14em;
+    color:rgba(237,230,210,.55);margin-top:18px;text-indent:0;border-top:1px solid rgba(237,230,210,.18);padding-top:14px}
+  /* 数据格 */
+  .prose dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px 16px;
+    font-family:var(--kai);font-size:12.5px;letter-spacing:.12em;align-content:start}
+  .prose dt{color:rgba(237,230,210,.55);white-space:nowrap}
+  .prose dd{color:rgba(237,230,210,.9);text-align:right;overflow-wrap:anywhere}
+  .prose dd b{font-family:var(--serif);font-size:17px;letter-spacing:.06em;color:var(--rub)}
+
+  /* 碑侧：题跋 */
+  .side{border:2px solid var(--ink);border-top:0;background:var(--paper-2);
+    padding:22px 32px 22px;display:grid;grid-template-columns:auto 1fr;gap:26px;align-items:start}
+  .side .vert{font-family:var(--kai);writing-mode:vertical-rl;font-size:13px;letter-spacing:.32em;
+    color:var(--ink-2);line-height:2;height:150px}
+  .side .tx{font-family:var(--kai);font-size:13px;line-height:2.1;letter-spacing:.08em;color:var(--ink-2)}
+  .side .tx b{font-family:var(--serif);color:var(--ink);letter-spacing:.06em}
+  .side .seal{width:78px;height:78px;justify-self:end;align-self:end}
+
+  /* 碑林：选模＝碑目 */
+  .rub-list{margin-top:26px;border:2px solid var(--ink);background:var(--paper)}
+  .rub-list .hd{display:flex;align-items:baseline;gap:18px;padding:16px 28px 13px;
+    border-bottom:2px solid var(--ink);flex-wrap:wrap}
+  .rub-list h2{font-family:var(--serif);font-size:21px;letter-spacing:.12em}
+  .rub-list h2 .n{font-family:var(--kai);font-size:12px;letter-spacing:.32em;color:var(--ink-3);
+    display:block;margin-bottom:3px;font-weight:400}
+  .rub-list .lnk{margin-left:auto;font-family:var(--kai);font-size:13px;letter-spacing:.14em;
+    color:var(--red);box-shadow:inset 0 -1px 0 var(--red);padding-bottom:2px}
+  .tabs{display:flex;gap:24px;padding:0 28px;border-bottom:1px solid var(--paper-2);
+    font-family:var(--kai);font-size:12.5px;letter-spacing:.12em;color:var(--ink-3)}
+  .tabs span{padding:10px 0;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tabs span.on{color:var(--ink);font-weight:700;border-bottom-color:var(--red)}
+  table{width:100%;border-collapse:collapse}
+  thead th{font-family:var(--kai);font-size:11px;letter-spacing:.32em;color:var(--ink-3);
+    text-align:left;font-weight:400;padding:11px 16px 9px 28px;border-bottom:1.5px solid var(--ink)}
+  thead th:last-child{padding-right:28px}
+  tbody td{padding:11px 16px 11px 28px;border-bottom:1px solid var(--paper-2);
+    font-family:var(--serif);font-size:14.5px;vertical-align:baseline;letter-spacing:.03em}
+  tbody td:last-child{padding-right:28px}
+  tbody tr:last-child td{border-bottom:0}
+  tbody td.subj{font-weight:700}
+  tbody td.mdl{font-family:var(--kai);font-size:13px;color:var(--ink-2);letter-spacing:.1em}
+  tbody td.pk{font-weight:700}
+  .chg{display:inline-flex;align-items:center;gap:5px;color:var(--red);font-family:var(--kai);
+    font-size:11.5px;letter-spacing:.18em;margin-left:9px;white-space:nowrap}
+  .chg::before{content:"";width:7px;height:7px;background:var(--red);flex:none}
+  .dflt{color:var(--ink-3);font-family:var(--kai);font-size:12.5px;letter-spacing:.18em}
+  .rub-list .foot{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:12px 28px 15px;font-family:var(--kai);font-size:11.5px;letter-spacing:.22em;color:var(--ink-3)}
+  .rub-list .foot b{color:var(--ink);font-family:var(--serif);letter-spacing:.12em}
+  .rel{margin:18px 28px 20px;padding-top:14px;border-top:1px solid var(--paper-2);
+    font-family:var(--kai);font-size:12px;line-height:2;letter-spacing:.1em;color:var(--ink-3)}
+  .rel b{color:var(--ink-2);font-family:var(--serif);font-weight:700;letter-spacing:.14em}
+
+  .footbar{margin:24px 0 0;padding:16px 0 6px;border-top:2px solid var(--ink);
+    display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11.5px;letter-spacing:.26em;color:var(--ink-3)}
+  .footbar b{font-family:var(--serif);font-size:13px;letter-spacing:.18em;color:var(--ink);display:block}
+
+  @media (max-width:880px){
+    .scroll{margin:18px 12px;padding:18px 16px}
+    .grid-cells{grid-template-columns:1fr 1fr}
+    .cell:nth-child(2n){border-right:0}
+    .cell:nth-child(n+3){border-top:1px solid rgba(237,230,210,.18)}
+    .prose{grid-template-columns:1fr;gap:22px}
+    .side{grid-template-columns:1fr}
+    .side .vert{height:auto;writing-mode:horizontal-tb}
+    .crown .er,.crown .er2{display:none}
+    table,thead,tbody,tr,td,th{display:block}
+    thead{display:none}
+    tbody tr{padding:11px 0;border-bottom:1px solid var(--paper-2)}
+    tbody td{border:0;padding:2px 28px}
+    tbody td:last-child{padding-bottom:10px}
+  }
+</style>
+</head>
+<body>
+
+<div class="scroll">
+
+  <!-- 碑额 -->
+  <header class="crown">
+    <div class="er">雲 南 大 學 圖 書 館</div>
+    <div class="er2">學 科 信 息 參 考</div>
+    <div class="ov">出 报 告 · 第 三 十 九 期 · 目 錄 2 0 2 6 0 9</div>
+    <h1><span class="big">會 澤 百 家　至 公 天 下</span></h1>
+    <div class="sub">会 泽 院 基 座 刻 石 · 爨 体</div>
+  </header>
+
+  <!-- 碑身：界格四则 -->
+  <section class="body-stone">
+    <div class="grid-cells">
+      <div class="cell">
+        <div class="k">一 · 下 载 数 据 核 验</div>
+        <div class="v">64 / 64</div>
+        <div class="m">完 成 · 全 部 核 对</div>
+      </div>
+      <div class="cell">
+        <div class="k">二 · 选 择 章 节</div>
+        <div class="v sm">按 大 纲 全 选</div>
+        <div class="m">完 成</div>
+      </div>
+      <div class="cell now">
+        <div class="k">三 · 生 成 初 稿</div>
+        <div class="v sm">已 出 稿</div>
+        <div class="m">2 0 2 6 - 1 0 - 1 3　1 5 : 0 3</div>
+      </div>
+      <div class="cell todo">
+        <div class="k">四 · 核 验 与 定 稿</div>
+        <div class="v sm">待 簽 單</div>
+        <div class="m">復 核 無 異 議 後 簽 單</div>
+      </div>
+    </div>
+
+    <div class="prose">
+      <div class="tx">
+        <h2>本期报告已就绪</h2>
+        <p>第 <b>39</b> 期（<b>202609</b>）取数与编发工作已全部完成。下载数据 <b>64 / 64</b> 份，核对无误后并入台账；章节按大纲全选；初稿已于 <b>2026 年 10 月 13 日 15 时 03 分</b>出稿。</p>
+        <p>任务结束不代表报告合格或已签发——管理员当前不能下载未签发的初稿。复核无异议后签单，这一版即可交付。</p>
+        <div class="note">与 报 告 的 关 系　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</div>
+      </div>
+      <dl>
+        <dt>期 次</dt><dd><b>202609</b></dd>
+        <dt>預 測 數 據</dt><dd>202609</dd>
+        <dt>實 際 輸 出</dt><dd>202609</dd>
+        <dt>下 載 數 據</dt><dd>64 / 64</dd>
+        <dt>台 賬 文 件</dt><dd>云大全学科排名、阈值动态检测表.xlsx</dd>
+        <dt>最 後 修 改</dt><dd>2026 年 9 月 28 日 07:55</dd>
+        <dt>任 務</dt><dd>已 完 成</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- 碑侧：题跋 -->
+  <aside class="side">
+    <div class="vert">爨 寶 子 碑 一 脈 · 方 筆 扁 方</div>
+    <div class="tx">
+      <b>题 跋</b>　会泽院基座刻「会泽百家 至公天下」八字，字体为爨体——云南自己的碑学传统，方笔、扁方、古拙。今以拓片之制出本期报告：黑地白字为正文，界格为碑上界线，钤印落于碑侧。
+      <br><br>本期一通，<b>签发后归档</b>。未签发之拓本不得外传。
+    </div>
+    <svg class="seal" viewBox="0 0 78 78" aria-hidden="true">
+      <rect x="3" y="3" width="72" height="72" fill="#A5291D" opacity=".92"/>
+      <rect x="9" y="9" width="60" height="60" fill="none" stroke="#EDE6D2" stroke-width="1.8"/>
+      <text x="39" y="34" text-anchor="middle" font-family="SimSun,serif" font-size="17"
+            font-weight="700" fill="#EDE6D2" letter-spacing="1">文衡</text>
+      <text x="39" y="56" text-anchor="middle" font-family="SimSun,serif" font-size="13"
+            fill="#EDE6D2" letter-spacing="1">签单</text>
+    </svg>
+  </aside>
+
+  <!-- 碑目：本期选模 -->
+  <section class="rub-list">
+    <div class="hd">
+      <h2><span class="n">碑 目 · 附 錄</span>本期选模</h2>
+      <a class="lnk" href="#">去预测台看图改选 →</a>
+    </div>
+    <div class="tabs"><span class="on">路线1 · 总被引 / ESI 前 1% 被引阈值</span><span>路线2 · 国内排名 / 国内前 1% 机构数</span></div>
+    <table>
+      <thead><tr>
+        <th style="width:28%">潛 力 學 科</th>
+        <th style="width:32%">V 1 推 薦</th>
+        <th>本 期 已 選</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="subj">免疫学</td><td class="mdl">季节性 ETS 模型</td><td class="pk">SARIMA 模型<span class="chg">已改选</span></td></tr>
+        <tr><td class="subj">分子生物学与遗传学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默 認</td></tr>
+        <tr><td class="subj">多学科</td><td class="mdl">Holt 趋势模型</td><td class="dflt">默 認</td></tr>
+        <tr><td class="subj">物理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默 認</td></tr>
+        <tr><td class="subj">神经科学与行为科学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默 認</td></tr>
+        <tr><td class="subj">空间科学</td><td class="mdl">SARIMA 模型</td><td class="dflt">默 認</td></tr>
+        <tr><td class="subj">精神病学与心理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默 認</td></tr>
+        <tr><td class="subj">经济与商业</td><td class="mdl">SARIMA 模型</td><td class="dflt">默 認</td></tr>
+      </tbody>
+    </table>
+    <div class="foot">
+      <span>已 保 存 · admin · 2026-10-16 12:12</span>
+      <span>改 選 請 至　<b>預 測 台</b></span>
+    </div>
+    <p class="rel"><b>與 報 告 的 關 係</b>　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+  </section>
+
+  <footer class="footbar">
+    <div><b>文衡 · 爨碑</b>雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+    <div>拓 本 一 通　·　第 39 期　·　2 0 2 6 0 9</div>
+    <div>簽 發 後 歸 檔　·　未 簽 發 不 得 外 傳</div>
+  </footer>
+</div>
+</body>
+</html>

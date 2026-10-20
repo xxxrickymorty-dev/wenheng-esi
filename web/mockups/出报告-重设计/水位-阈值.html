@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出报告 · 方向「水位」（阈值）— 静态稿</title>
+<style>
+  /* ============================================================
+     方向「水位」· 阈值
+     实物依据：本期报告的硬指标是 ESI **阈值**与**接近度**（未进
+     1% 的学科要出图，报告正文取接近度前二）；而云大两馆一头枕
+     **翠湖**（东陆馆在翠湖北路），校歌唱**滇池淼淼**。所以把
+     「阈值」看成**水位线**，把「接近度」看成**水位读数**——
+     首屏是一道水位标尺，阈值即警戒水位，八家学科是八根水尺。
+     靛青＋水青＋骨白＋警戒朱。零渐变、零投影。
+     刻度线是水尺本身的结构。
+     ============================================================ */
+  :root{
+    --deep:#123A52;      /* 深水 */
+    --deep-2:#0B2B3D;
+    --mid:#2F6B87;
+    --shallow:#6FA8B8;   /* 水青 */
+    --foam:#DCE8EA;
+    --paper:#F0EDE3;
+    --ink:#14202A;
+    --ink-2:#42535E;
+    --ink-3:#7B8B95;
+    --line:#C7CFD1;
+    --red:#C2452D;       /* 警戒水位 */
+    --gold:#B8934D;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--red);color:#fff}
+
+  /* ─── 顶栏 ─── */
+  .bar{background:var(--deep);height:58px;display:flex;align-items:center;gap:22px;padding:0 32px}
+  .bar .wm{font-family:var(--serif);font-size:21px;letter-spacing:.18em;color:var(--foam)}
+  .bar .sub{font-family:var(--kai);font-size:11px;letter-spacing:.24em;color:rgba(220,232,234,.55);line-height:1.5}
+  .bar nav{display:flex;gap:20px;font-family:var(--kai);font-size:12.5px;letter-spacing:.18em;
+    color:rgba(220,232,234,.78);margin-left:12px}
+  .bar nav a.on{color:var(--foam);box-shadow:inset 0 -2px 0 var(--shallow)}
+  .bar .r{margin-left:auto;display:flex;align-items:center;gap:18px;font-family:var(--kai);
+    font-size:11.5px;letter-spacing:.22em;color:rgba(220,232,234,.55)}
+  .pal{display:inline-flex;gap:7px}
+  .pal i{width:24px;height:13px;display:inline-block;border:1px solid rgba(220,232,234,.28)}
+  .pal i.g{background:#1A4B27}.pal i.z{background:#B43B31}
+  .pal i.on{outline:2px solid var(--foam);outline-offset:2px}
+
+  /* ─── 水位首屏 ─── */
+  .hero{background:var(--deep);color:var(--foam);padding:44px 32px 0}
+  .hi{max-width:1180px;margin:0 auto;display:grid;
+    grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:52px;align-items:end}
+  .hi .ov{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:rgba(220,232,234,.55)}
+  .hi h1{font-family:var(--serif);font-size:clamp(38px,5vw,66px);line-height:1.08;
+    letter-spacing:.04em;margin-top:12px}
+  .hi .deck{font-family:var(--kai);font-size:15px;line-height:2;color:rgba(220,232,234,.78);
+    margin-top:14px;max-width:28ch}
+  .hi .acts{margin-top:24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  .btn{background:var(--foam);color:var(--deep);border:0;padding:13px 28px;font-size:15px;
+    letter-spacing:.14em;font-weight:700}
+  .btn:hover{background:#fff}
+  .hi .ghost{font-family:var(--kai);font-size:13px;letter-spacing:.18em;color:rgba(220,232,234,.75);
+    box-shadow:inset 0 -1px 0 rgba(220,232,234,.4);padding-bottom:3px}
+
+  /* 水位标尺 */
+  .gauge{padding:24px 0 0}
+  .gauge .gl{display:flex;justify-content:space-between;font-family:var(--kai);
+    font-size:10.5px;letter-spacing:.36em;color:rgba(220,232,234,.55);margin-bottom:12px}
+  .gauge .scale{position:relative;height:210px;background:var(--deep-2);
+    border:1px solid rgba(220,232,234,.22);display:flex;align-items:flex-end}
+  /* 水体 */
+  .gauge .water{position:absolute;left:0;right:0;bottom:0;height:56%;
+    background:var(--mid);border-top:2px solid var(--shallow)}
+  .gauge .water::after{content:"";position:absolute;left:0;right:0;top:6px;height:1px;
+    background:rgba(220,232,234,.35)}
+  /* 刻度 */
+  .gauge .ticks{position:absolute;inset:0;display:flex;justify-content:space-between;padding:0 2px}
+  .gauge .tk{width:1px;background:rgba(220,232,234,.3);height:10px;align-self:flex-start}
+  .gauge .tk.maj{height:18px;background:rgba(220,232,234,.55)}
+  /* 警戒水位（阈值） */
+  .gauge .warn{position:absolute;left:0;right:0;height:0;border-top:2px dashed var(--red);z-index:2}
+  .gauge .warn .wl{position:absolute;right:6px;top:-22px;font-family:var(--kai);
+    font-size:10.5px;letter-spacing:.28em;color:#FFB59E;background:var(--deep);padding:1px 8px}
+  /* 读数 */
+  .gauge .read{position:absolute;left:12px;bottom:12px;font-family:var(--mono);
+    font-size:22px;letter-spacing:.12em;color:var(--foam);z-index:3}
+  .gauge .read small{display:block;font-family:var(--kai);font-size:10.5px;
+    letter-spacing:.32em;color:rgba(220,232,234,.6);margin-top:3px}
+
+  /* ─── 四道工序＝四段水位 ─── */
+  .flow{background:var(--deep-2);color:var(--foam);margin-top:38px}
+  .flow .fi{max-width:1180px;margin:0 auto;padding:26px 32px 24px}
+  .flow .fh{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:10.5px;letter-spacing:.36em;color:rgba(220,232,234,.55)}
+  .flow .fh b{font-family:var(--serif);font-size:17px;letter-spacing:.16em;color:var(--foam)}
+  .flow .fh .r{margin-left:auto;letter-spacing:.28em}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:20px}
+  .st{padding:0 22px 0 0;position:relative}
+  .st:not(:first-child){padding-left:22px;border-left:1px solid rgba(220,232,234,.18)}
+  .st .bar-mini{height:6px;background:rgba(220,232,234,.18);margin-bottom:14px}
+  .st .bar-mini i{display:block;height:100%;background:var(--shallow)}
+  .st.now .bar-mini i{background:#FFB59E}
+  .st.todo .bar-mini i{width:0}
+  .st .k{font-family:var(--kai);font-size:10.5px;letter-spacing:.36em;color:rgba(220,232,234,.5)}
+  .st .v{font-family:var(--serif);font-size:clamp(18px,2.1vw,25px);line-height:1.28;
+    margin-top:8px;letter-spacing:.03em}
+  .st .m{font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+    color:rgba(220,232,234,.55);margin-top:7px}
+  .st.now .v{color:#FFB59E}
+  .st.todo .v{color:rgba(220,232,234,.42)}
+
+  /* ─── 主体 ─── */
+  .main{max-width:1180px;margin:0 auto;padding:48px 32px 0;
+    display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:52px;align-items:start}
+  .stmt h2{font-family:var(--serif);font-size:clamp(25px,3.1vw,38px);line-height:1.32;letter-spacing:.03em}
+  .stmt .lead{font-family:var(--kai);font-size:15px;line-height:2.05;color:var(--ink-2);
+    margin-top:16px;max-width:34ch}
+  .stmt .note{font-family:var(--kai);font-size:12.5px;line-height:2;letter-spacing:.12em;
+    color:var(--ink-3);margin-top:16px;padding-top:14px;border-top:1px solid var(--line);max-width:46ch}
+  .data{border-top:2px solid var(--ink);padding-top:18px}
+  .data .dt{font-family:var(--kai);font-size:11px;letter-spacing:.36em;color:var(--ink-3);margin-bottom:14px}
+  .data dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px 20px;font-family:var(--kai);font-size:13px}
+  .data dt{color:var(--ink-3);letter-spacing:.18em;white-space:nowrap}
+  .data dd{color:var(--ink);text-align:right;overflow-wrap:anywhere}
+  .data dd b{font-family:var(--serif);font-size:18px;letter-spacing:.04em}
+
+  /* ─── 选模：带接近度水尺 ─── */
+  .pick{max-width:1180px;margin:48px auto 0;padding:0 32px}
+  .pick .hd{display:flex;align-items:baseline;gap:20px;flex-wrap:wrap;
+    border-bottom:2px solid var(--ink);padding-bottom:13px}
+  .pick h2{font-family:var(--serif);font-size:clamp(23px,2.7vw,32px);letter-spacing:.12em}
+  .pick h2 .n{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:var(--ink-3);
+    display:block;margin-bottom:3px;font-weight:400}
+  .pick .lnk{margin-left:auto;font-family:var(--kai);font-size:13px;letter-spacing:.18em;
+    color:var(--mid);box-shadow:inset 0 -1px 0 var(--mid);padding-bottom:2px}
+  .tabs{display:flex;gap:26px;margin:16px 0 4px;font-family:var(--kai);font-size:13px;
+    letter-spacing:.14em;color:var(--ink-3)}
+  .tabs span{padding:7px 0;border-bottom:2px solid transparent}
+  .tabs span.on{color:var(--ink);font-weight:700;border-bottom-color:var(--mid)}
+  table{width:100%;border-collapse:collapse}
+  thead th{font-family:var(--kai);font-size:11px;letter-spacing:.32em;color:var(--ink-3);
+    text-align:left;font-weight:400;padding:13px 14px 10px 0;border-bottom:1px solid var(--ink)}
+  thead th:last-child{padding-right:0}
+  tbody td{padding:12px 14px 12px 0;border-bottom:1px solid var(--line);
+    font-family:var(--serif);font-size:15px;vertical-align:middle;letter-spacing:.03em}
+  tbody td:last-child{padding-right:0}
+  tbody tr:last-child td{border-bottom:0}
+  tbody td.subj{font-weight:700}
+  tbody td.mdl{font-family:var(--kai);font-size:13px;color:var(--ink-2);letter-spacing:.12em}
+  tbody td.pk{font-weight:700}
+  .chg{display:inline-flex;align-items:center;gap:5px;color:var(--red);font-family:var(--kai);
+    font-size:11px;letter-spacing:.16em;margin-left:8px;white-space:nowrap}
+  .chg::before{content:"";width:7px;height:7px;background:var(--red);flex:none}
+  .dflt{color:var(--ink-3);font-family:var(--kai);font-size:12.5px;letter-spacing:.18em}
+  /* 接近度水尺 */
+  .lvl{display:flex;align-items:center;gap:9px;min-width:140px}
+  .lvl .track{position:relative;flex:1;height:7px;background:var(--line)}
+  .lvl .track i{position:absolute;left:0;top:0;bottom:0;background:var(--mid)}
+  .lvl .track::after{content:"";position:absolute;right:0;top:-4px;bottom:-4px;width:2px;background:var(--red)}
+  .lvl .pct{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--ink-3);
+    width:38px;text-align:right}
+  .pick .foot{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:14px 0 4px;font-family:var(--kai);font-size:12px;letter-spacing:.22em;color:var(--ink-3)}
+  .pick .foot b{color:var(--ink);font-family:var(--serif);letter-spacing:.14em}
+  .rel{margin-top:16px;padding-top:15px;border-top:1px solid var(--line);
+    font-family:var(--kai);font-size:12.5px;line-height:2;letter-spacing:.12em;color:var(--ink-3);max-width:92ch}
+  .rel b{color:var(--ink-2);font-family:var(--serif);font-weight:700;letter-spacing:.16em}
+
+  .footbar{max-width:1180px;margin:40px auto 0;padding:18px 32px 42px;border-top:1px solid var(--line);
+    display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11.5px;letter-spacing:.32em;color:var(--ink-3)}
+  .footbar b{font-family:var(--serif);font-size:13px;letter-spacing:.22em;color:var(--ink);display:block}
+
+  @media (max-width:900px){
+    .hi{grid-template-columns:1fr;gap:30px}
+    .steps{grid-template-columns:1fr 1fr;gap:22px 0}
+    .st{border-left:0!important;padding-left:0!important;padding-right:12px}
+    .hero,.flow .fi,.main,.pick,.footbar{padding-left:20px;padding-right:20px}
+    .main{grid-template-columns:1fr;gap:30px}
+    .lvl{min-width:110px}
+    table,thead,tbody,tr,td,th{display:block}
+    thead{display:none}
+    tbody tr{padding:12px 0;border-bottom:1px solid var(--line)}
+    tbody td{border:0;padding:2px 0}
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="wm">文衡</span>
+  <span class="sub">雲 南 大 學 圖 書 館<br>學 科 信 息 參 考</span>
+  <nav aria-label="工作区">
+    <a class="on" href="#">出报告</a><a href="#">灵活报告</a><a href="#">报告</a><a href="#">问文衡</a>
+  </nav>
+  <span class="r">
+    <span>陈 列 馆 ↗</span>
+    <span class="pal"><i class="g on" title="云大绿"></i><i class="z" title="朱砂"></i></span>
+  </span>
+</header>
+
+<!-- ─── 水位首屏 ─── -->
+<section class="hero">
+  <div class="hi">
+    <div>
+      <div class="ov">雲 南 大 學 圖 書 館 · 學 科 信 息 參 考 · 出 報 告</div>
+      <h1>本期报告已就绪</h1>
+      <p class="deck">阈值即水位线。复核后签单，这一版才会被标记为「可交付」。任务结束不代表报告合格或已签发。</p>
+      <div class="acts">
+        <button class="btn">复核并签单 →</button>
+        <a class="ghost" href="#">看详细过程</a>
+      </div>
+    </div>
+
+    <!-- 水位标尺 -->
+    <div class="gauge">
+      <div class="gl"><span>水 位 标 尺 · 接 近 度</span><span>第 3 9 期 · 2 0 2 6 0 9</span></div>
+      <div class="scale">
+        <div class="ticks" aria-hidden="true">
+          <span class="tk maj"></span><span class="tk"></span><span class="tk"></span><span class="tk"></span>
+          <span class="tk maj"></span><span class="tk"></span><span class="tk"></span><span class="tk"></span>
+          <span class="tk maj"></span><span class="tk"></span><span class="tk"></span><span class="tk"></span>
+          <span class="tk maj"></span>
+        </div>
+        <div class="water"></div>
+        <div class="warn" style="bottom:78%"><span class="wl">ESI 前 1% 阈 值</span></div>
+        <div class="read">0.78<small>本 期 水 位</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 四道工序 ─── -->
+<section class="flow">
+  <div class="fi">
+    <div class="fh"><b>四 段 水 位</b>　下 载 数 据 核 验 → 核 验 与 定 稿<span class="r">2 0 2 6 0 9</span></div>
+    <div class="steps">
+      <div class="st"><div class="bar-mini"><i style="width:100%"></i></div>
+        <div class="k">一 段</div><div class="v">下载数据核验</div><div class="m">64 / 64 完成</div></div>
+      <div class="st"><div class="bar-mini"><i style="width:100%"></i></div>
+        <div class="k">二 段</div><div class="v">选择章节</div><div class="m">按大纲全选</div></div>
+      <div class="st now"><div class="bar-mini"><i style="width:72%"></i></div>
+        <div class="k">三 段</div><div class="v">生成初稿</div><div class="m">10-13 15:03 已出稿</div></div>
+      <div class="st todo"><div class="bar-mini"><i></i></div>
+        <div class="k">四 段</div><div class="v">核验与定稿</div><div class="m">待复核签单</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 主体 ─── -->
+<section class="main">
+  <div class="stmt">
+    <h2>复核后签单，<br>这一版即可交付。</h2>
+    <p class="lead">任务结束不代表报告合格或已签发——管理员当前不能下载未签发的初稿。复核无异议后签单，这一版才会被标记为「可交付」。</p>
+    <p class="note">本期八家潜力学科，未进 1% 的都会按你的选择出图（进本期图册），报告正文用接近度前二。所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+  </div>
+
+  <div class="data">
+    <div class="dt">本 期 數 據</div>
+    <dl>
+      <dt>期 次</dt><dd><b>202609</b>　第 39 期</dd>
+      <dt>預 測 / 實 際</dt><dd>202609 / 202609</dd>
+      <dt>下 載 數 據</dt><dd><b>64 / 64</b></dd>
+      <dt>核 對 並 並 入</dt><dd>已并入台账</dd>
+      <dt>台 賬 文 件</dt><dd>云大全学科排名、阈值动态检测表.xlsx</dd>
+      <dt>最 後 修 改</dt><dd>2026 年 9 月 28 日 07:55</dd>
+      <dt>任 務</dt><dd>已完成</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- ─── 选模（带接近度水尺） ─── -->
+<section class="pick">
+  <div class="hd">
+    <h2><span class="n">八 根 水 尺 · 附 表</span>本期选模</h2>
+    <a class="lnk" href="#">去预测台看图改选 →</a>
+  </div>
+  <div class="tabs"><span class="on">路线1 · 总被引 / ESI 前 1% 被引阈值</span><span>路线2 · 国内排名 / 国内前 1% 机构数</span></div>
+  <table>
+    <thead><tr>
+      <th style="width:22%">潛 力 學 科</th>
+      <th style="width:24%">V 1 推 薦</th>
+      <th style="width:20%">本 期 已 選</th>
+      <th>接 近 度（示 意）</th>
+    </tr></thead>
+    <tbody>
+      <tr><td class="subj">免疫学</td><td class="mdl">季节性 ETS 模型</td>
+        <td class="pk">SARIMA 模型<span class="chg">已改选</span></td>
+        <td><div class="lvl"><span class="track"><i style="width:88%"></i></span><span class="pct">88%</span></div></td></tr>
+      <tr><td class="subj">分子生物学与遗传学</td><td class="mdl">季节性 ETS 模型</td>
+        <td class="dflt">默 认</td>
+        <td><div class="lvl"><span class="track"><i style="width:81%"></i></span><span class="pct">81%</span></div></td></tr>
+      <tr><td class="subj">多学科</td><td class="mdl">Holt 趋势模型</td>
+        <td class="dflt">默 认</td>
+        <td><div class="lvl"><span class="track"><i style="width:67%"></i></span><span class="pct">67%</span></div></td></tr>
+      <tr><td class="subj">物理学</td><td class="mdl">经验贝叶斯状态空间模型</td>
+        <td class="dflt">默 认</td>
+        <td><div class="lvl"><span class="track"><i style="width:54%"></i></span><span class="pct">54%</span></div></td></tr>
+      <tr><td class="subj">神经科学与行为科学</td><td class="mdl">季节性 ETS 模型</td>
+        <td class="dflt">默 认</td>
+        <td><div class="lvl"><span class="track"><i style="width:47%"></i></span><span class="pct">47%</span></div></td></tr>
+      <tr><td class="subj">空间科学</td><td class="mdl">SARIMA 模型</td>
+        <td class="dflt">默 认</td>
+        <td><div class="lvl"><span class="track"><i style="width:39%"></i></span><span class="pct">39%</span></div></td></tr>
+      <tr><td class="subj">精神病学与心理学</td><td class="mdl">经验贝叶斯状态空间模型</td>
+        <td class="dflt">默 认</td>
+        <td><div class="lvl"><span class="track"><i style="width:31%"></i></span><span class="pct">31%</span></div></td></tr>
+      <tr><td class="subj">经济与商业</td><td class="mdl">SARIMA 模型</td>
+        <td class="dflt">默 认</td>
+        <td><div class="lvl"><span class="track"><i style="width:22%"></i></span><span class="pct">22%</span></div></td></tr>
+    </tbody>
+  </table>
+  <div class="foot">
+    <span>已 保 存 · admin · 2026-10-16 12:12</span>
+    <span>改 選 請 至　<b>預 測 台</b>　·　水 尺 讀 數 為 版 式 示 意</span>
+  </div>
+  <p class="rel"><b>與 報 告 的 關 係</b>　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+</section>
+
+<footer class="footbar">
+  <div><b>文衡 · 水位</b>雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+  <div>翠 湖 之 畔　·　滇 池 淼 淼　·　閾 值 即 水 位</div>
+  <div>第 39 期　·　2 0 2 6 0 9　·　簽 發 後 歸 檔</div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出报告 · 方向壬「印谱」— 静态稿</title>
+<style>
+  /* ============================================================
+     方向壬 · 印谱（Chinese Seal Compilation / 篆刻）
+     一句话：把"签单"做成"盖章"——主屏押一枚朱砂巨印「已就绪」，
+     工序＝四个小印（实印/朱框/空印），选模＝拓本边款，色调玄色
+     纸底＋朱砂＋金粉。零圆角、零阴影（印章的压感由 SVG 模拟）、
+     零渐变。题签竖排、馆名竖排——让图书馆真正像一间图书馆。
+     ============================================================ */
+  :root{
+    --paper:#F2EBD9;        /* 宣纸 */
+    --paper-2:#E8DFC3;       /* 旧宣 */
+    --ink:#161312;           /* 玄色 */
+    --ink-2:#3A312D;
+    --ink-3:#6E6760;
+    --line:#C8BFA8;          /* 暖灰线 */
+    --line-2:#DCD2B8;
+    --zhu:#A82B2B;           /* 朱砂 */
+    --zhu-2:#8B1F1F;          /* 暗朱 */
+    --zhu-soft:#E2C7C0;      /* 朱砂浅 */
+    --gold:#B49465;          /* 金粉 */
+    --gold-2:#8C7344;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong","Songti SC",serif;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--paper);color:var(--ink)}
+  body{font:15px/1.8 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--zhu);color:var(--paper)}
+
+  /* —— 题签顶栏：玄色 + 金粉馆名 + 竖排 —————————————————— */
+  .tiebanner{background:var(--ink);color:var(--gold);height:60px;display:flex;align-items:center;gap:24px;padding:0 40px;border-bottom:1px solid var(--gold-2)}
+  .tiebanner .bm{display:flex;align-items:baseline;gap:10px}
+  .tiebanner .bm b{font-family:var(--kai);font-size:22px;letter-spacing:.18em;font-weight:600}
+  .tiebanner .bm span{font-size:11px;letter-spacing:.2em;color:var(--gold);opacity:.7;line-height:1.7}
+  .tiebanner nav{display:flex;gap:24px;font-size:13.5px;color:var(--gold);opacity:.78;margin-left:auto}
+  .tiebanner nav a.on{color:var(--paper);border-bottom:1px solid var(--gold);padding-bottom:3px}
+  .tiebanner .r{display:flex;gap:18px;align-items:center;font-size:12.5px;color:var(--gold);opacity:.72;margin-left:24px}
+  .pal{display:inline-flex;gap:6px;align-items:center}
+  .pal i{width:22px;height:12px;display:inline-block;border:1px solid var(--gold-2)}
+  .pal i.g{background:#1A4B27}.pal i.z{background:#A82B2B}
+  .pal i.on{outline:1px solid var(--gold);outline-offset:1px}
+
+  /* —— 主体宣纸：纸纹极淡 —————————————————— */
+  .xuan{position:relative;background:var(--paper)}
+  .xuan::before{content:"";position:absolute;inset:0;background:
+    repeating-linear-gradient(0deg,transparent 0,transparent 2px,rgba(180,160,120,.03) 2px,rgba(180,160,120,.03) 3px);
+    pointer-events:none}
+
+  /* —— 主屏：左陈述 / 右巨印+竖排题记 ———————————————— */
+  .hero{max-width:1200px;margin:0 auto;padding:54px 40px 50px;display:grid;grid-template-columns:1.25fr 1fr;gap:60px;align-items:end}
+  .ov{font-size:11.5px;letter-spacing:.32em;color:var(--ink-3);font-family:var(--sans)}
+  .hero h1{font-family:var(--serif);font-size:clamp(46px,5vw,68px);line-height:1.12;letter-spacing:.02em;margin-top:18px}
+  .hero .yr{display:flex;gap:18px;margin-top:14px;font-family:var(--kai);font-size:18px;color:var(--ink-2);letter-spacing:.22em}
+  .hero .rule{width:72px;height:2px;background:var(--gold);margin:24px 0 18px}
+  .hero .stm{font-family:var(--kai);font-size:clamp(28px,2.8vw,38px);letter-spacing:.06em;color:var(--zhu-2)}
+  .hero .sub{color:var(--ink-2);font-size:14px;margin-top:12px;max-width:46ch}
+  .hero .acts{margin-top:28px;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+  .btn-zhu{background:var(--zhu);color:var(--paper);border:0;padding:13px 28px;font-size:15px;letter-spacing:.14em;font-weight:600;font-family:var(--serif)}
+  .btn-zhu:hover{background:var(--zhu-2)}
+  .hero .ghost{font-size:13.5px;color:var(--ink-2);border-bottom:1px solid var(--line);padding-bottom:3px}
+
+  /* 右侧：巨印 + 竖排题记 */
+  .sealblock{display:flex;flex-direction:column;align-items:center;gap:22px;padding-top:6px}
+  .seal-svg{width:280px;height:280px;display:block;filter:drop-shadow(2px 4px 0 rgba(0,0,0,.08))}
+  .vtitle{font-family:var(--kai);writing-mode:vertical-rl;font-size:13.5px;letter-spacing:.32em;color:var(--ink-2);line-height:2;text-align:center}
+  .seal-meta{display:flex;justify-content:space-between;align-items:baseline;width:100%;max-width:300px;font-family:var(--kai);font-size:13px;color:var(--ink-3);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 0}
+  .seal-meta div{font-family:var(--kai)}
+  .seal-meta div b{color:var(--ink);font-weight:600;font-family:var(--serif);font-size:14px;letter-spacing:.04em;margin-left:8px}
+
+  /* —— 工序：四方印带 —————————————————— */
+  .sealbar{max-width:1200px;margin:0 auto;padding:6px 40px 8px;display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .sbst{padding:24px 22px 22px 0;border-right:1px solid var(--line-2);display:flex;flex-direction:column;gap:10px;align-items:flex-start;position:relative}
+  .sbst:last-child{border-right:0}
+  .sbst:not(:first-child){padding-left:22px}
+  .sbst .lbl{font-family:var(--kai);font-size:14px;color:var(--ink-2);letter-spacing:.14em}
+  .sbst .desc{font-size:12.5px;color:var(--ink-3);line-height:1.5}
+  .sbst.done .seal{background:var(--zhu);color:var(--paper)}
+  .sbst.now .seal{background:transparent;border:2.5px solid var(--zhu);color:var(--zhu);outline-offset:1px}
+  .sbst.todo .seal{background:transparent;border:1.5px dashed var(--ink-3);color:var(--ink-3)}
+  .sbst .seal{width:46px;height:46px;display:grid;place-items:center;font-family:var(--serif);font-weight:700;font-size:11px;letter-spacing:.04em;border-radius:3px;line-height:1;flex:0 0 auto}
+  .sbst.now .lbl{color:var(--ink);font-weight:600}
+  .sbst.todo .lbl{color:var(--ink-3)}
+
+  /* —— 回执 + 数据 —————————————————— */
+  .body{max-width:1200px;margin:0 auto;padding:46px 40px 8px;display:grid;grid-template-columns:1.25fr 1fr;gap:60px}
+  .receipt{font-family:var(--kai)}
+  .receipt h3{font-family:var(--serif);font-size:21px;display:flex;align-items:center;gap:10px}
+  .receipt h3::before{content:"";width:30px;height:30px;background:var(--zhu);color:var(--paper);display:grid;place-items:center;font-family:var(--serif);font-size:12px;font-weight:700;clip-path:polygon(0 0,100% 0,100% 75%,75% 100%,0 100%);letter-spacing:0}
+  .receipt h3::after{content:"印";color:var(--paper)}
+  .receipt p{color:var(--ink-2);font-size:14px;max-width:54ch;margin-top:14px;line-height:2}
+  .receipt .lnx{display:flex;gap:24px;margin-top:22px;font-family:var(--sans);font-size:13.5px}
+  .receipt .lnx a{color:var(--ink-2);border-bottom:1px solid var(--line);padding-bottom:3px}
+  .receipt .lnx a:hover{border-color:var(--zhu);color:var(--zhu)}
+
+  /* 数据表（带竖直分隔感） */
+  .databox{border:1.5px solid var(--ink);background:var(--paper-2);padding:18px 22px}
+  .databox .ttl{font-family:var(--kai);font-size:12.5px;letter-spacing:.32em;color:var(--ink-2);text-align:center;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:10px}
+  .databox dl{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;font-size:13px}
+  .databox dt{font-family:var(--kai);color:var(--ink-3);font-size:13px;letter-spacing:.04em}
+  .databox dd{color:var(--ink);font-family:var(--serif);font-size:13px}
+  .databox dd.mono{font-family:var(--mono);font-size:12.5px}
+  .databox .sign{margin-top:14px;padding-top:10px;border-top:1px dashed var(--line);display:flex;justify-content:space-between;align-items:center;font-family:var(--kai);font-size:12.5px;color:var(--ink-3)}
+  .databox .sign b{font-family:var(--serif);color:var(--zhu-2);font-size:13px;letter-spacing:.06em}
+
+  /* —— 选模（拓本边款） —————————————————— */
+  .pick{max-width:1200px;margin:38px auto 0;padding:0 40px 60px}
+  .pick .hd{display:flex;align-items:baseline;gap:18px;border-bottom:2px solid var(--ink);padding-bottom:14px}
+  .pick h2{font-family:var(--serif);font-size:24px;letter-spacing:.04em}
+  .pick h2::before{content:"本期选模";display:block;font-family:var(--kai);font-size:13px;color:var(--ink-3);letter-spacing:.32em;margin-bottom:6px;font-weight:400}
+  .pick .lnk{margin-left:auto;font-size:13.5px;color:var(--zhu-2);border-bottom:1px solid var(--zhu);padding-bottom:2px;font-family:var(--sans)}
+  .routes{display:flex;gap:28px;margin:14px 0 6px;font-family:var(--sans);font-size:13.5px;color:var(--ink-3)}
+  .routes .on{color:var(--ink);font-weight:600;border-bottom:2px solid var(--zhu);padding-bottom:5px}
+
+  /* 表格做「拓本边款」感：细线 + 等宽数字 */
+  table{width:100%;border-collapse:collapse;font-size:14.5px}
+  thead th{font-family:var(--kai);font-size:12.5px;letter-spacing:.32em;color:var(--ink-3);text-align:left;font-weight:400;padding:12px 0 9px;border-bottom:1.5px solid var(--ink)}
+  tbody td{padding:11px 0;border-bottom:1px solid var(--line);font-family:var(--serif);vertical-align:baseline}
+  td.idx{font-family:var(--mono);color:var(--ink-3);font-size:12.5px;width:42px}
+  td.subj{color:var(--ink);font-weight:600}
+  td.mdl{color:var(--ink-2);font-family:var(--kai);font-size:14px;letter-spacing:.02em}
+  td.pk b{font-family:var(--serif);font-weight:600}
+  .chg{display:inline-flex;align-items:center;gap:5px;color:var(--zhu-2);font-family:var(--kai);font-size:12.5px;margin-left:8px;letter-spacing:.06em}
+  .chg::before{content:"";width:7px;height:7px;background:var(--zhu);border-radius:50%}
+  .dflt{color:var(--ink-3);font-family:var(--kai);font-size:13.5px;letter-spacing:.06em}
+  .save-line{margin-top:18px;display:flex;justify-content:space-between;font-family:var(--kai);font-size:13px;color:var(--ink-3)}
+  .save-line b{color:var(--ink);font-family:var(--serif);font-weight:600;letter-spacing:.04em}
+  .rel{margin-top:26px;padding-top:16px;border-top:1px dashed var(--line);font-family:var(--kai);font-size:13px;color:var(--ink-3);max-width:96ch;line-height:2}
+  .rel b{color:var(--ink-2);font-family:var(--serif);font-weight:600;letter-spacing:.04em}
+
+  /* —— 印谱页脚 —————————————————— */
+  .folio{max-width:1200px;margin:0 auto;padding:34px 40px 70px;display:flex;justify-content:space-between;align-items:flex-end;font-family:var(--kai);font-size:12px;color:var(--ink-3);letter-spacing:.24em;border-top:1px solid var(--line)}
+  .folio .f-l{display:flex;flex-direction:column;gap:4px}
+  .folio .f-l b{font-family:var(--serif);font-size:14px;color:var(--ink);letter-spacing:.06em}
+  .folio .f-r{text-align:right;line-height:2}
+
+  @media (max-width:980px){
+    .hero,.body{grid-template-columns:1fr;gap:30px}
+    .sealblock{align-items:flex-start}
+    .seal-meta{max-width:none}
+    .tiebanner nav{display:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- 题签顶栏 -->
+<header class="tiebanner">
+  <span class="bm"><b>文 衡</b><span>雲 南 大 學 圖 書 館<br>學 科 信 息 參 考</span></span>
+  <nav aria-label="工作区">
+    <a class="on" href="#">出 報 告</a><a href="#">靈 活 報 告</a><a href="#">報 告</a><a href="#">問 文 衡</a>
+  </nav>
+  <span class="r">
+    <span>陳 列 館 ↗</span>
+    <span class="pal"><i class="g on" title="雲大綠"></i><i class="z" title="硃砂"></i></span>
+  </span>
+</header>
+
+<!-- 宣纸主体 -->
+<div class="xuan">
+
+  <!-- 主屏 -->
+  <section class="hero">
+    <div>
+      <div class="ov">學 科 信 息 參 考 · 出 報 告 · 目 錄 2 0 2 6 0 9</div>
+      <h1>本期报告已就绪</h1>
+      <div class="yr"><span>第 39 期</span><span>丙 午 年 九 月</span></div>
+      <div class="rule"></div>
+      <div class="stm">複 核 並 簽 單</div>
+      <p class="sub">这一版才会被标记为「可交付」。</p>
+      <div class="acts">
+        <button class="btn-zhu">蓋 章 簽 單 →</button>
+        <a class="ghost" href="#">看详细过程</a>
+      </div>
+    </div>
+
+    <!-- 巨印 + 竖排题记 -->
+    <div class="sealblock">
+      <div class="vtitle">雲 南 大 學 圖 書 館 · 學 科 分 析 報 告</div>
+      <svg class="seal-svg" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg" aria-label="本期报告已就绪 · 朱印">
+        <defs>
+          <filter id="rough-zhu" x="-5%" y="-5%" width="110%" height="110%">
+            <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="7"/>
+            <feDisplacementMap in="SourceGraphic" scale="3.2"/>
+          </filter>
+          <filter id="ink-zhu" x="-5%" y="-5%" width="110%" height="110%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="11"/>
+            <feDisplacementMap in="SourceGraphic" scale="1.4"/>
+          </filter>
+          <pattern id="rice-paper" x="0" y="0" width="6" height="6" patternUnits="userSpaceOnUse">
+            <rect width="6" height="6" fill="#A82B2B"/>
+            <circle cx="1" cy="1" r=".4" fill="#8B1F1F" opacity=".6"/>
+            <circle cx="4" cy="3" r=".3" fill="#8B1F1F" opacity=".5"/>
+          </pattern>
+        </defs>
+        <!-- 印泥主体 -->
+        <rect x="6" y="6" width="208" height="208" fill="url(#rice-paper)" filter="url(#rough-zhu)"/>
+        <!-- 边框 -->
+        <rect x="6" y="6" width="208" height="208" fill="none" stroke="#6E1A1A" stroke-width="2" filter="url(#ink-zhu)"/>
+        <!-- 四字 -->
+        <g font-family="'Noto Serif SC','Songti SC',serif" font-weight="700" font-size="60" text-anchor="middle" fill="#F2EBD9" filter="url(#ink-zhu)" letter-spacing="2">
+          <text x="55" y="78">已</text>
+          <text x="165" y="78">就</text>
+          <text x="55" y="170">緒</text>
+          <text x="165" y="170">簽</text>
+        </g>
+        <!-- 中十字界格 -->
+        <line x1="110" y1="14" x2="110" y2="206" stroke="#6E1A1A" stroke-width="1.6" opacity=".55" filter="url(#ink-zhu)"/>
+        <line x1="14" y1="110" x2="206" y2="110" stroke="#6E1A1A" stroke-width="1.6" opacity=".55" filter="url(#ink-zhu)"/>
+        <!-- 边角小字（题记） -->
+        <text x="110" y="226" text-anchor="middle" font-family="KaiTi,STKaiti,serif" font-size="6" fill="#6E1A1A" letter-spacing="1.5" opacity=".7">雲大圖書館 · 印</text>
+      </svg>
+      <div class="seal-meta">
+        <div>印主<b>卜 彤</b></div>
+        <div>丙午年<b>九月廿八日</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 工序：四方印带 -->
+  <section class="sealbar" aria-label="出报告步骤">
+    <div class="sbst done">
+      <div class="seal">完</div>
+      <div class="lbl">下载数据核验</div>
+      <div class="desc">完成 · 64 / 64</div>
+    </div>
+    <div class="sbst done">
+      <div class="seal">完</div>
+      <div class="lbl">选择章节</div>
+      <div class="desc">完成 · 按大纲全选</div>
+    </div>
+    <div class="sbst now">
+      <div class="seal">当</div>
+      <div class="lbl">生成初稿</div>
+      <div class="desc">已出稿 · 2026-10-13 15:03</div>
+    </div>
+    <div class="sbst todo">
+      <div class="seal">待</div>
+      <div class="lbl">核验与定稿</div>
+      <div class="desc">待办 · 复核后签单</div>
+    </div>
+  </section>
+
+  <!-- 回执 + 数据 -->
+  <section class="body">
+    <div class="receipt">
+      <h3>本期报告已生成</h3>
+      <p>任务结束不代表报告合格或已签发——管理员当前不能下载未签发的初稿。复核无异议后盖印签单，这一版即可交付。</p>
+      <div class="lnx"><a href="#">打开报告 →</a><a href="#">去审核台 →</a></div>
+    </div>
+    <div class="databox">
+      <div class="ttl">台 账 信 息 · 签 单 凭 证</div>
+      <dl>
+        <dt>期次</dt><dd>202609 · 第 39 期</dd>
+        <dt>台账文件</dt><dd>云大全学科排名、阈值动态检测表.xlsx</dd>
+        <dt>最后修改</dt><dd>2026 年 9 月 28 日 07:55</dd>
+        <dt>预测数据</dt><dd class="mono">202609</dd>
+        <dt>实际输出</dt><dd class="mono">202609</dd>
+        <dt>任务</dt><dd>已完成</dd>
+      </dl>
+      <div class="sign">盖印后归档 · <b>云大图书馆 · 学科信息参考</b></div>
+    </div>
+  </section>
+
+  <!-- 选模（拓本边款式） -->
+  <section class="pick">
+    <div class="hd">
+      <h2>本期选模</h2>
+      <a class="lnk" href="#">去预测台看图改选 →</a>
+    </div>
+    <div class="routes"><span class="on">路线1 · 总被引 / ESI 前 1% 被引阈值</span><span>路线2 · 国内排名 / 国内前 1% 机构数</span></div>
+    <table>
+      <thead><tr>
+        <th style="width:42px"></th>
+        <th style="width:30%">潜 力 学 科</th>
+        <th style="width:34%">V 1 推 荐</th>
+        <th>本 期 已 选</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="idx">01</td><td class="subj">免 疫 学</td><td class="mdl">季 节 性 E T S 模 型</td><td class="pk"><b>SARIMA 模型</b><span class="chg">已改选</span></td></tr>
+        <tr><td class="idx">02</td><td class="subj">分子生物学与遗传学</td><td class="mdl">季 节 性 E T S 模 型</td><td class="dflt">默认</td></tr>
+        <tr><td class="idx">03</td><td class="subj">多 学 科</td><td class="mdl">H o l t 趋 势 模 型</td><td class="dflt">默认</td></tr>
+        <tr><td class="idx">04</td><td class="subj">物 理 学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="idx">05</td><td class="subj">神经科学与行为科学</td><td class="mdl">季 节 性 E T S 模 型</td><td class="dflt">默认</td></tr>
+        <tr><td class="idx">06</td><td class="subj">空 间 科 学</td><td class="mdl">S A R I M A 模 型</td><td class="dflt">默认</td></tr>
+        <tr><td class="idx">07</td><td class="subj">精神病学与心理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="idx">08</td><td class="subj">经 济 与 商 业</td><td class="mdl">S A R I M A 模 型</td><td class="dflt">默认</td></tr>
+      </tbody>
+    </table>
+    <div class="save-line">
+      <span>已保存 · admin · 2026-10-16 12:12</span>
+      <span>改选请至 <b>预测台</b></span>
+    </div>
+    <p class="rel"><b>与报告的关系</b>　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+  </section>
+
+  <!-- 印谱页脚 -->
+  <footer class="folio">
+    <div class="f-l">
+      <b>文衡 · 印谱</b>
+      <span>雲南大學圖書館 · 學科信息參考</span>
+    </div>
+    <div class="f-r">
+      第 39 期　·　二零二六年九月　·　本期目錄<br>
+      本期一印　·　签單入档　·　三校九审　·　不得翻印
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>

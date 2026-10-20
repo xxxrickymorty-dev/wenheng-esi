@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>封面 · 三个方向（静态稿）</title>
+<style>
+  /* ============================================================
+     审阅外壳（不属于设计稿）
+     三稿共用同一份信息清单，架上一排四册验证「换期也成立」。
+     ============================================================ */
+  :root{
+    --sans-cn:"Microsoft YaHei UI","Microsoft YaHei","PingFang SC",system-ui,-apple-system,sans-serif;
+    --serif-cn:Georgia,"Times New Roman","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+    --kai-cn:"KaiTi","STKaiti","Songti SC",SimSun,serif;
+    --mono-cn:"Cascadia Mono",Consolas,"Courier New",monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#6E7378;font-family:var(--sans-cn);color:#12181c;-webkit-font-smoothing:antialiased}
+  .rv-bar{position:sticky;top:0;z-index:99;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:9px 16px;background:#15181A;color:#E8E6E0;font-size:13px;line-height:1.4}
+  .rv-bar .rv-title{font-weight:650;letter-spacing:.06em}
+  .rv-bar .rv-sub{color:#8C949A}
+  .rv-tabs{display:flex;gap:3px;margin-left:auto}
+  .rv-tabs button{font:inherit;font-size:13px;padding:5px 12px;min-height:30px;border:0;cursor:pointer;
+    background:#23282B;color:#B9C0C5;border-radius:3px}
+  .rv-tabs button:hover{background:#2E3438;color:#fff}
+  .rv-tabs button[aria-pressed="true"]{background:#E8E6E0;color:#15181A;font-weight:650}
+  .rv-key{color:#7C848A;font-size:12px}
+  .rv-wrap{padding:26px 0 70px}
+  .rv-intro{max-width:1360px;margin:0 auto 26px;padding:0 24px;color:#F0EEE9;font-size:13.5px;line-height:1.85}
+  .rv-intro b{color:#fff}
+  .rv-intro code{font-family:var(--mono-cn);font-size:12.5px;color:#D6D2C6}
+  .dir{max-width:1360px;margin:0 auto 54px;padding:0 24px}
+  .dir[hidden]{display:none}
+  .dir-head{display:flex;align-items:baseline;gap:16px;margin-bottom:14px;color:#F2F0EB}
+  .dir-head .num{font-family:var(--serif-cn);font-size:38px;line-height:1;color:#C8C4B8;opacity:.55}
+  .dir-head h2{font-family:var(--serif-cn);font-size:21px;font-weight:600;letter-spacing:.04em}
+  .dir-head p{font-size:13px;color:#C4C3BC;margin-top:3px;line-height:1.7}
+  .dir-head .tag{margin-left:auto;font-size:12px;color:#A9A79F;border:1px solid #8A8C8A;padding:3px 9px;white-space:nowrap}
+  .stage{display:grid;grid-template-columns:auto minmax(0,1fr);gap:44px;align-items:start;
+    background:#5E6367;padding:34px 34px 30px;box-shadow:0 24px 60px -34px rgba(0,0,0,.7)}
+  .notes{color:#E6E4DE;font-size:13px;line-height:1.9;max-width:430px}
+  .notes h3{font-size:12px;letter-spacing:.22em;color:#B9B7AE;font-weight:600;margin-bottom:8px}
+  .notes ul{list-style:none;margin-bottom:20px}
+  .notes li{display:grid;grid-template-columns:15px 1fr;gap:8px;padding:3px 0;color:#EDEBE4}
+  .notes li i{font-style:normal;color:#9FB3A6}
+  .notes .x{color:#A8A6A0}
+  .notes .x li i{color:#C08573}
+  .notes .why{font-size:12.5px;color:#C9C7C0;border-top:1px solid #767B7E;padding-top:12px;line-height:1.9}
+
+  .shelf{margin-top:26px;padding:30px 34px 26px;background:#1C2A24}
+  .shelf .cap{display:flex;justify-content:space-between;align-items:baseline;color:#B9C4BC;
+    font-size:11.5px;letter-spacing:.18em;margin-bottom:22px}
+  .shelf .cap b{color:#E8EEE9;font-weight:600;letter-spacing:.26em}
+  .shelf .row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:30px;align-items:start}
+  .shelf .cell{display:flex;flex-direction:column;gap:12px}
+  .shelf .go{font-family:var(--kai-cn);font-size:11.5px;letter-spacing:.34em;color:#C8D2CA;
+    border-top:1px solid #3C4A43;padding-top:10px;display:flex;justify-content:space-between}
+  .shelf .go span:last-child{color:#7F9087}
+  .shelf .foot{margin-top:24px;padding-top:14px;border-top:1px solid #2E3B35;color:#8A9A91;
+    font-size:11.5px;letter-spacing:.1em;line-height:1.9}
+
+  /* ============================================================
+     封面骨架：全部尺寸用 em，缩放只改 font-size；画幅 2 : 2.9
+     ============================================================ */
+  .cv{position:relative;aspect-ratio:2/2.9;overflow:hidden;display:flex;flex-direction:column;
+    color:#E9F0E7;font-family:var(--sans-cn);line-height:1.4;
+    box-shadow:0 20px 44px -26px rgba(0,0,0,.85),0 0 0 1px rgba(0,0,0,.25)}
+  .cv .org{font-size:.6em;letter-spacing:.28em;line-height:1.85}
+  .cv .org small{display:block;font-size:.6em;letter-spacing:.22em;opacity:.58;margin-top:.6em}
+  .cv .title{font-family:var(--serif-cn);font-weight:600;letter-spacing:.16em;line-height:1.5}
+  .cv .en{font-size:.42em;letter-spacing:.3em;line-height:1.9;opacity:.62}
+  .cv .issue{font-size:.5em;letter-spacing:.22em;line-height:1.9}
+  .cv .no{font-family:var(--serif-cn);font-variant-numeric:tabular-nums;line-height:1}
+  .cv .no b{font-weight:600}
+  .cv .no i{font-style:normal;font-size:.34em;letter-spacing:.3em;display:block;margin-bottom:1em;opacity:.7}
+  .cv .motto{font-family:var(--kai-cn);font-size:.46em;letter-spacing:.3em;opacity:.72}
+  .cv .seal{width:3.4em;height:3.4em;border:1px solid rgba(233,240,231,.45);border-radius:50%;
+    display:grid;place-items:center;text-align:center;flex:none}
+  .cv .seal b{font-family:var(--serif-cn);font-size:1.02em;letter-spacing:0;line-height:1}
+  .cv .seal i{font-style:normal;font-size:.3em;letter-spacing:.14em;opacity:.7;display:block;margin-top:.4em}
+  .cv .bi{font-size:.38em;letter-spacing:.26em;opacity:.5;text-align:right;line-height:1.9}
+
+  /* ============ 壹 · 会泽院 ============ */
+  .c1{background:#143C2B}
+  .c1 .in{position:relative;z-index:2;display:flex;flex-direction:column;height:100%;padding:1.8em 1.7em 0}
+  .c1 .top{display:flex;justify-content:space-between;align-items:flex-start}
+  .c1 .mid{margin-top:3.2em}
+  .c1 .title{font-size:1.9em}
+  .c1 .en{margin-top:.7em;padding-top:.7em;border-top:1px solid rgba(233,240,231,.24);max-width:13em}
+  .c1 .band{display:flex;justify-content:space-between;align-items:flex-end;gap:1em;margin-top:2.2em;
+    padding-top:1.05em;border-top:1px solid rgba(233,240,231,.26)}
+  .c1 .no{font-size:2.05em;color:#F4F9F2}
+  .c1 .band .r{text-align:right;display:grid;gap:.75em;justify-items:end}
+  .c1 .bld{display:block;width:calc(100% + 3.4em);margin:auto -1.7em 0;color:#D8E6DC;opacity:.62}
+
+  /* ============ 贰 · 银杏 ============ */
+  .c2{background:#1E4C37}
+  .c2 .leaf{position:absolute;right:-8%;top:18%;width:92%;z-index:1}
+  .c2 .leaf .ven{stroke:#D9B96A;stroke-width:1;fill:none;opacity:.45}
+  .c2 .leaf .stem{stroke:#D9B96A;stroke-width:1.2;fill:none;opacity:.9}
+  .c2 .in{position:relative;z-index:2;display:flex;height:100%;padding:1.8em 1.6em 1.9em}
+  .c2 .spine{display:flex;flex-direction:column;align-items:center;gap:1.1em;padding-right:1em;
+    border-right:1px solid rgba(233,240,231,.22)}
+  .c2 .spine .title{writing-mode:vertical-rl;font-size:1.4em;letter-spacing:.4em;margin-top:.2em}
+  .c2 .spine .en{writing-mode:vertical-rl;font-size:.36em;letter-spacing:.3em;opacity:.45}
+  .c2 .body{flex:1;display:flex;flex-direction:column;padding-left:1.15em;min-width:0}
+  .c2 .top{align-self:flex-end;text-align:right}
+  .c2 .foot{margin-top:auto;display:grid;gap:.85em;justify-items:start}
+  .c2 .no{font-size:1.9em;color:#F4F9F2}
+  .c2 .seal{position:absolute;right:1.6em;bottom:1.5em;z-index:3}
+
+  /* ============ 叁 · 水位 ============ */
+  .c3{background:#0F3127}
+  .c3 .rings{position:absolute;left:50%;bottom:-42%;width:150%;transform:translateX(-50%);z-index:1}
+  .c3 .in{position:relative;z-index:2;display:flex;flex-direction:column;height:100%;
+    padding:1.8em 1.7em 1.6em;text-align:center}
+  .c3 .top{display:flex;justify-content:space-between;text-align:left}
+  .c3 .mid{margin-top:2.7em}
+  .c3 .title{font-size:1.82em}
+  .c3 .en{margin-top:.8em}
+  .c3 .en::after{content:"";display:block;width:3em;height:1px;background:rgba(233,240,231,.32);margin:1.2em auto 0}
+  .c3 .foot{margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;text-align:left;gap:1em}
+  .c3 .no{font-size:2em;color:#F4F9F2}
+  .c3 .foot .r{display:grid;gap:.8em;justify-items:start}
+  .c3 .dot{position:absolute;width:.42em;height:.42em;border-radius:50%;background:#D9B96A;
+    box-shadow:0 0 0 .3em rgba(217,185,106,.14);z-index:2}
+
+  @media (max-width:900px){
+    .stage{grid-template-columns:1fr;gap:26px;padding:22px}
+    .notes{max-width:none}
+    .dir-head{flex-wrap:wrap}
+    .dir-head .tag{margin-left:0}
+    .shelf .row{grid-template-columns:1fr 1fr;gap:24px}
+  }
+  @media (max-width:760px){
+    .rv-tabs{width:100%;margin-left:0;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+    .rv-tabs::-webkit-scrollbar{display:none}
+    .rv-tabs button{white-space:nowrap;flex:none}
+    .rv-key{display:none}
+    .dir{padding:0 12px}
+    .shelf{padding:22px 18px}
+    .shelf .cv{width:100%!important;font-size:6.4px!important}
+  }
+</style>
+</head>
+<body>
+
+<div class="rv-bar">
+  <span class="rv-title">封面 · 三个方向</span>
+  <span class="rv-sub">静态稿 · 双击即开 · 零外链</span>
+  <div class="rv-tabs" role="group" aria-label="切换方向">
+    <button type="button" data-go="all" aria-pressed="true">总览</button>
+    <button type="button" data-go="1" aria-pressed="false">一 会泽院</button>
+    <button type="button" data-go="2" aria-pressed="false">二 银杏</button>
+    <button type="button" data-go="3" aria-pressed="false">三 水位</button>
+  </div>
+  <span class="rv-key">按 0–3 切换</span>
+</div>
+
+<main class="rv-wrap">
+  <p class="rv-intro">
+    三稿用<b>同一份信息清单</b>，只换画面的主角。清单只有五条，每条在一册封面上<b>只出现一次</b>：<br>
+    ① 云南大学图书馆 ② 学科信息参考（＋英文名）③ <b>期号</b>（总第 35 期 ＋ 2026 年第 1 期）
+    ④ 会泽百家 至公天下 ⑤ 雲 · 1923 藏印。<br>
+    <b>删掉的重复</b>：封面上的 <code>202601</code>（与「2026 年第 1 期」同一件事）、封面上的「2026 年 1 月」（期号已含）、
+    封面上的「学科情报馆藏 A 区 01」（那是架子不是书）；架下一排也不再复读期号，只留「翻开」。
+  </p>
+
+  <!-- ==================== 壹 · 会泽院 ==================== -->
+  <article class="dir" id="d1" data-dir="1">
+    <header class="dir-head">
+      <span class="num">壹</span>
+      <div>
+        <h2>会泽院</h2>
+        <p>会泽院的立面铺满封面的下半截、出血到左右边，标题落在「天空」里。最庄重的一版，也最像一本正式出版物。</p>
+      </div>
+      <span class="tag">主角：建筑立面</span>
+    </header>
+    <div class="stage">
+      <div class="cv c1" style="width:420px;font-size:16px">
+        <div class="in">
+          <div class="top">
+            <div class="org">云 南 大 学 图 书 馆<small>YUNNAN UNIVERSITY LIBRARY</small></div>
+            <div class="bi">双 月 刊<br>BI-MONTHLY</div>
+          </div>
+          <div class="mid">
+            <div class="title">学科信息参考</div>
+            <div class="en">DISCIPLINARY INFORMATION<br>REFERENCE</div>
+          </div>
+          <div class="band">
+            <div class="no"><i>总 第</i><b>35</b></div>
+            <div class="r">
+              <div class="issue">2026 年 第 1 期</div>
+              <div class="motto">会 泽 百 家　至 公 天 下</div>
+              <div class="seal"><span><b>雲</b><i>1923</i></span></div>
+            </div>
+          </div>
+          <svg class="bld" viewBox="0 0 400 254" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+            <path d="M0 250h400" stroke-width="1.6"/>
+            <path d="M150 250h100M155 244h90M160 238h80M165 232h70M170 226h60"/>
+            <path d="M150 226V140h100v86M150 140l50-38 50 38M157 145h86"/>
+            <path d="M164 226v-62M186 226v-62M214 226v-62M236 226v-62"/>
+            <path d="M188 226v-30a12 12 0 0 1 24 0v30"/>
+            <path d="M24 226v-64h126M250 226v-64h126"/>
+            <path d="M18 162h132M250 162h132"/>
+            <path d="M40 176h22v26H40zM78 176h22v26H78zM116 176h22v26h-22z
+                     M262 176h22v26h-22zM300 176h22v26h-22zM338 176h22v26h-22z"/>
+            <path d="M40 189h22M78 189h22M116 189h22M262 189h22M300 189h22M338 189h22"/>
+            <path d="M18 162h364" stroke-width="1.8"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="notes">
+        <h3>封 面 上 有 什 么</h3>
+        <ul>
+          <li><i>①</i>云南大学图书馆 ＋ YUNNAN UNIVERSITY LIBRARY</li>
+          <li><i>②</i>学科信息参考 ＋ 英文刊名</li>
+          <li><i>③</i>总第 35 期（大）／2026 年第 1 期（小）</li>
+          <li><i>④</i>会泽百家 至公天下</li>
+          <li><i>⑤</i>雲 · 1923 藏印</li>
+        </ul>
+        <h3>封 面 上 没 有 什 么</h3>
+        <ul class="x">
+          <li><i>✕</i>202601（与「2026 年第 1 期」重复）</li>
+          <li><i>✕</i>2026 年 1 月（期号已含年月）</li>
+          <li><i>✕</i>学科情报馆藏 / A 区 01（架子的事）</li>
+        </ul>
+        <p class="why">建筑只用一根发丝线勾轮廓，不做渐变、不做金框——远看是一块纯色，近看才认出是会泽院。期号分两级：总第几期做「找书」的锚，年份期号做「这是哪一年」的注。</p>
+      </div>
+    </div>
+
+    <div class="shelf">
+      <div class="cap"><b>架 上 · 一 排 四 册</b><span>架下只留「翻开」，不再复读期号</span></div>
+      <div class="row" data-shelf="1"></div>
+      <p class="foot">四册只差两个数字：总第几期、2026 年第几期。其余全部不动——装帧统一，架上才认得出是一套。</p>
+    </div>
+  </article>
+
+  <!-- ==================== 贰 · 银杏 ==================== -->
+  <article class="dir" id="d2" data-dir="2" hidden>
+    <header class="dir-head">
+      <span class="num">贰</span>
+      <div>
+        <h2>银杏</h2>
+        <p>东陆园银杏道的一片叶子，压印在封面上；书名竖排在左，像一本线装书的书衣。最温润的一版，也最「云大」。</p>
+      </div>
+      <span class="tag">主角：一叶银杏</span>
+    </header>
+    <div class="stage">
+      <div class="cv c2" style="width:420px;font-size:16px">
+        <svg class="leaf" viewBox="0 0 300 360" fill="none" aria-hidden="true">
+          <path class="stem" d="M150 300v44"/>
+          <path d="M150.0 300.0 L 11.5 265.5 L 22.1 253.4 L 20.8 237.0 L 33.3 227.1 L 39.4 213.6 L 47.9 201.4 L 62.3 195.5 L 69.5 180.6 L 85.7 179.2 L 97.1 169.0 L 111.1 164.5 L 126.2 165.0 L 144.0 214.2 L 150.0 214.0 L 156.0 214.2 L 159.8 160.0 L 173.9 164.6 L 189.6 161.8 L 201.0 173.8 L 217.0 174.0 L 227.9 184.5 L 239.0 194.0 L 253.1 200.4 L 257.2 216.3 L 271.6 224.0 L 274.4 239.3 L 280.9 252.3 Z" fill="#2C6349"/>
+          <path class="ven" d="M150.0 300.0 L 33.2 252.8 M150.0 300.0 L 46.8 227.7 M150.0 300.0 L 65.7 206.4 M150.0 300.0 L 88.9 189.8 M150.0 300.0 L 115.3 178.9 M150.0 300.0 L 171.9 175.9 M150.0 300.0 L 199.2 184.0 M150.0 300.0 L 224.1 198.1 M150.0 300.0 L 245.1 217.3 M150.0 300.0 L 261.3 240.8"/>
+        </svg>
+        <div class="in">
+          <div class="spine">
+            <div class="title">学科信息参考</div>
+            <div class="en">DISCIPLINARY INFORMATION REFERENCE</div>
+          </div>
+          <div class="body">
+            <div class="top"><div class="org">云 南 大 学 图 书 馆<small>YUNNAN UNIVERSITY LIBRARY</small></div></div>
+            <div class="foot">
+              <div class="no"><i>总 第</i><b>35</b></div>
+              <div class="issue">2026 年 第 1 期</div>
+              <div class="motto">会 泽 百 家　至 公 天 下</div>
+            </div>
+          </div>
+        </div>
+        <div class="seal"><span><b>雲</b><i>1923</i></span></div>
+      </div>
+
+      <div class="notes">
+        <h3>封 面 上 有 什 么</h3>
+        <ul>
+          <li><i>①</i>云南大学图书馆 ＋ 英文</li>
+          <li><i>②</i>学科信息参考（竖排）＋ 英文（竖排）</li>
+          <li><i>③</i>总第 35 期（大）／2026 年第 1 期（小）</li>
+          <li><i>④</i>会泽百家 至公天下</li>
+          <li><i>⑤</i>雲 · 1923 藏印</li>
+        </ul>
+        <h3>封 面 上 没 有 什 么</h3>
+        <ul class="x">
+          <li><i>✕</i>202601（与「2026 年第 1 期」重复）</li>
+          <li><i>✕</i>2026 年 1 月（期号已含年月）</li>
+          <li><i>✕</i>学科情报馆藏 / A 区 01（架子的事）</li>
+        </ul>
+        <p class="why">叶片只用两个明度的绿（底 #1E4C37、叶 #2C6349），叶脉一根金线；不做描边、不做投影。书名走竖排，是中文书衣的老办法，也让横排的号数更醒目。</p>
+      </div>
+    </div>
+
+    <div class="shelf">
+      <div class="cap"><b>架 上 · 一 排 四 册</b><span>架下只留「翻开」，不再复读期号</span></div>
+      <div class="row" data-shelf="2"></div>
+      <p class="foot">四册的叶形完全一样，只有号数在换。叶脉走金线是唯一的一处暖色，全系列共用。</p>
+    </div>
+  </article>
+
+  <!-- ==================== 叁 · 水位 ==================== -->
+  <article class="dir" id="d3" data-dir="3" hidden>
+    <header class="dir-head">
+      <span class="num">叁</span>
+      <div>
+        <h2>水位</h2>
+        <p>同心圈＝学科与阈值的距离，也是翠湖、滇池的水纹。最抽象的一版，和工作区那条「水位标尺」是同一套说法。</p>
+      </div>
+      <span class="tag">主角：等高线</span>
+    </header>
+    <div class="stage">
+      <div class="cv c3" style="width:420px;font-size:16px">
+        <svg class="rings" viewBox="0 0 400 400" fill="none" aria-hidden="true">
+          <circle cx="200" cy="250" r="46" stroke="#B9D3C3" opacity=".30"/>
+          <circle cx="200" cy="250" r="82" stroke="#B9D3C3" opacity=".38"/>
+          <circle cx="200" cy="250" r="118" stroke="#B9D3C3" opacity=".46"/>
+          <circle cx="200" cy="250" r="154" stroke="#B9D3C3" opacity=".40" stroke-dasharray="3 6"/>
+          <circle cx="200" cy="250" r="190" stroke="#B9D3C3" opacity=".28" stroke-dasharray="2 8"/>
+          <circle cx="200" cy="250" r="226" stroke="#B9D3C3" opacity=".18" stroke-dasharray="1 10"/>
+        </svg>
+        <span class="dot" style="left:calc(50% - .21em);top:63.5%"></span>
+        <div class="in">
+          <div class="top">
+            <div class="org">云 南 大 学 图 书 馆<small>YUNNAN UNIVERSITY LIBRARY</small></div>
+            <div class="bi">双 月 刊<br>BI-MONTHLY</div>
+          </div>
+          <div class="mid">
+            <div class="title">学科信息参考</div>
+            <div class="en">DISCIPLINARY INFORMATION REFERENCE</div>
+          </div>
+          <div class="foot">
+            <div class="no"><i>总 第</i><b>35</b></div>
+            <div class="r">
+              <div class="issue">2026 年 第 1 期</div>
+              <div class="motto">会 泽 百 家　至 公 天 下</div>
+            </div>
+            <div class="seal"><span><b>雲</b><i>1923</i></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <h3>封 面 上 有 什 么</h3>
+        <ul>
+          <li><i>①</i>云南大学图书馆 ＋ 英文</li>
+          <li><i>②</i>学科信息参考 ＋ 英文刊名</li>
+          <li><i>③</i>总第 35 期（大）／2026 年第 1 期（小）</li>
+          <li><i>④</i>会泽百家 至公天下</li>
+          <li><i>⑤</i>雲 · 1923 藏印</li>
+        </ul>
+        <h3>封 面 上 没 有 什 么</h3>
+        <ul class="x">
+          <li><i>✕</i>202601（与「2026 年第 1 期」重复）</li>
+          <li><i>✕</i>2026 年 1 月（期号已含年月）</li>
+          <li><i>✕</i>学科情报馆藏 / A 区 01（架子的事）</li>
+        </ul>
+        <p class="why">圈线只用一种淡绿、五种疏密，没有任何渐变；金点标「本期到哪一圈」。它是抽象的，但和工作区的阈值水位是同一个意思——不是装饰纹样。</p>
+      </div>
+    </div>
+
+    <div class="shelf">
+      <div class="cap"><b>架 上 · 一 排 四 册</b><span>架下只留「翻开」，不再复读期号</span></div>
+      <div class="row" data-shelf="3"></div>
+      <p class="foot">四册的圈完全相同，只有号数与金点在动。极小的缩略图上，圈仍能认出是同一套。</p>
+    </div>
+  </article>
+</main>
+
+<script>
+  (function () {
+    /* ---- 架上一排：同一套版，只换号数 ---- */
+    var BLD = '<svg class="bld" viewBox="0 0 400 254" fill="none" stroke="currentColor" stroke-width="1">'
+      + '<path d="M0 250h400" stroke-width="1.6"/>'
+      + '<path d="M150 250h100M155 244h90M160 238h80M165 232h70M170 226h60"/>'
+      + '<path d="M150 226V140h100v86M150 140l50-38 50 38M157 145h86"/>'
+      + '<path d="M164 226v-62M186 226v-62M214 226v-62M236 226v-62"/>'
+      + '<path d="M188 226v-30a12 12 0 0 1 24 0v30"/>'
+      + '<path d="M24 226v-64h126M250 226v-64h126"/>'
+      + '<path d="M18 162h132M250 162h132"/>'
+      + '<path d="M40 176h22v26H40zM78 176h22v26H78zM116 176h22v26h-22zM262 176h22v26h-22zM300 176h22v26h-22zM338 176h22v26h-22z"/>'
+      + '<path d="M18 162h364" stroke-width="1.8"/></svg>'
+    var LEAF = '<svg class="leaf" viewBox="0 0 300 360" fill="none">'
+      + '<path class="stem" d="M150 300v44"/>'
+      + '<path d="M150.0 300.0 L 11.5 265.5 L 22.1 253.4 L 20.8 237.0 L 33.3 227.1 L 39.4 213.6 L 47.9 201.4 L 62.3 195.5 L 69.5 180.6 L 85.7 179.2 L 97.1 169.0 L 111.1 164.5 L 126.2 165.0 L 144.0 214.2 L 150.0 214.0 L 156.0 214.2 L 159.8 160.0 L 173.9 164.6 L 189.6 161.8 L 201.0 173.8 L 217.0 174.0 L 227.9 184.5 L 239.0 194.0 L 253.1 200.4 L 257.2 216.3 L 271.6 224.0 L 274.4 239.3 L 280.9 252.3 Z" fill="#2C6349"/>'
+      + '<path class="ven" d="M150.0 300.0 L 33.2 252.8 M150.0 300.0 L 46.8 227.7 M150.0 300.0 L 65.7 206.4 M150.0 300.0 L 88.9 189.8 M150.0 300.0 L 115.3 178.9 M150.0 300.0 L 171.9 175.9 M150.0 300.0 L 199.2 184.0 M150.0 300.0 L 224.1 198.1 M150.0 300.0 L 245.1 217.3 M150.0 300.0 L 261.3 240.8"/></svg>'
+    var RINGS = '<svg class="rings" viewBox="0 0 400 400" fill="none">'
+      + '<circle cx="200" cy="250" r="46" stroke="#B9D3C3" opacity=".30"/>'
+      + '<circle cx="200" cy="250" r="82" stroke="#B9D3C3" opacity=".38"/>'
+      + '<circle cx="200" cy="250" r="118" stroke="#B9D3C3" opacity=".46"/>'
+      + '<circle cx="200" cy="250" r="154" stroke="#B9D3C3" opacity=".40" stroke-dasharray="3 6"/>'
+      + '<circle cx="200" cy="250" r="190" stroke="#B9D3C3" opacity=".28" stroke-dasharray="2 8"/>'
+      + '<circle cx="200" cy="250" r="226" stroke="#B9D3C3" opacity=".18" stroke-dasharray="1 10"/></svg>'
+
+    var SEAL = '<div class="seal"><span><b>雲</b><i>1923</i></span></div>'
+
+    function org () {
+      return '<div class="org">云 南 大 学 图 书 馆<small>YUNNAN UNIVERSITY LIBRARY</small></div>'
+    }
+    function bi () {
+      return '<div class="bi">双 月 刊<br>BI-MONTHLY</div>'
+    }
+    function cover (dir, i) {
+      var no = 35 + i
+      var issue = '2026 年 第 ' + (i + 1) + ' 期'
+      if (dir === '1') {
+        return '<div class="cv c1" style="width:260px;font-size:9.9px"><div class="in">'
+          + '<div class="top">' + org() + bi() + '</div>'
+          + '<div class="mid"><div class="title">学科信息参考</div>'
+          + '<div class="en">DISCIPLINARY INFORMATION<br>REFERENCE</div></div>'
+          + '<div class="band"><div class="no"><i>总 第</i><b>' + no + '</b></div>'
+          + '<div class="r"><div class="issue">' + issue + '</div>'
+          + '<div class="motto">会 泽 百 家　至 公 天 下</div>' + SEAL + '</div></div>'
+          + BLD + '</div></div>'
+      }
+      if (dir === '2') {
+        return '<div class="cv c2" style="width:260px;font-size:9.9px">' + LEAF + '<div class="in">'
+          + '<div class="spine"><div class="title">学科信息参考</div>'
+          + '<div class="en">DISCIPLINARY INFORMATION REFERENCE</div></div>'
+          + '<div class="body"><div class="top">' + org() + '</div>'
+          + '<div class="foot"><div class="no"><i>总 第</i><b>' + no + '</b></div>'
+          + '<div class="issue">' + issue + '</div>'
+          + '<div class="motto">会 泽 百 家　至 公 天 下</div></div></div></div>'
+          + SEAL + '</div>'
+      }
+      return '<div class="cv c3" style="width:260px;font-size:9.9px">' + RINGS
+        + '<span class="dot" style="left:calc(50% - .21em);top:63.5%"></span>'
+        + '<div class="in"><div class="top">' + org() + bi() + '</div>'
+        + '<div class="mid"><div class="title">学科信息参考</div>'
+        + '<div class="en">DISCIPLINARY INFORMATION REFERENCE</div></div>'
+        + '<div class="foot"><div class="no"><i>总 第</i><b>' + no + '</b></div>'
+        + '<div class="r"><div class="issue">' + issue + '</div>'
+        + '<div class="motto">会 泽 百 家　至 公 天 下</div></div>' + SEAL + '</div></div></div>'
+    }
+
+    document.querySelectorAll('.shelf .row').forEach(function (row) {
+      var dir = row.dataset.shelf
+      var html = ''
+      for (var i = 0; i < 4; i++) {
+        html += '<div class="cell">' + cover(dir, i)
+          + '<div class="go"><span>翻 开 →</span><span>第 ' + (35 + i) + ' 册</span></div></div>'
+      }
+      row.innerHTML = html
+    })
+
+    /* ---- 方向切换 ---- */
+    var tabs = document.querySelectorAll('.rv-tabs button')
+    var dirs = document.querySelectorAll('.dir')
+    function show (key) {
+      dirs.forEach(function (d) { d.hidden = key !== 'all' && d.dataset.dir !== key })
+      tabs.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.go === key)) })
+      if (key !== 'all') window.scrollTo({ top: 0, behavior: 'instant' })
+    }
+    tabs.forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.go) }) })
+    document.addEventListener('keydown', function (e) {
+      if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return
+      if (e.key === '0') show('all')
+      if (/^[1-3]$/.test(e.key)) show(e.key)
+    })
+  })()
+</script>
+</body>
+</html>

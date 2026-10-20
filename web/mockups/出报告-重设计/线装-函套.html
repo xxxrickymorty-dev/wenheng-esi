@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出报告 · 方向「线装」（函套）— 静态稿</title>
+<style>
+  /* ============================================================
+     方向「线装」· 函套
+     实物依据：云大图书馆纸质藏书 466 万余册，古籍装订是馆里
+     真实在手的东西。所以本期报告做成一册线装书：左封面贴
+     题签、钤藏书印；中书脊见线孔与丝线；右书页见版心、鱼尾、
+     象鼻、书口。工序＝装订四则（裁页／折页／齐栏／装线）。
+     藏青函套＋米黄纸＋墨＋朱砂藏书印。零渐变、零投影。
+     版心／鱼尾／象鼻／线孔是线装书本身的结构。
+     ============================================================ */
+  :root{
+    --case:#2E4057;      /* 函套藏青 */
+    --case-2:#22313F;
+    --paper:#E8DCC0;     /* 书页米黄 */
+    --paper-2:#D8C9A6;
+    --paper-3:#C4B28B;
+    --ink:#1A1714;
+    --ink-2:#4A423A;
+    --ink-3:#7E7266;
+    --thread:#8B6B3E;    /* 丝线 */
+    --red:#A5291D;       /* 藏书印 */
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:#9C8F76;color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--red);color:#fff}
+
+  /* ─── 顶栏 ─── */
+  .bar{background:var(--case);height:58px;display:flex;align-items:center;gap:22px;padding:0 32px}
+  .bar .wm{font-family:var(--serif);font-size:21px;letter-spacing:.18em;color:#E8DCC0}
+  .bar .sub{font-family:var(--kai);font-size:11px;letter-spacing:.24em;color:rgba(232,220,192,.55);line-height:1.5}
+  .bar nav{display:flex;gap:20px;font-family:var(--kai);font-size:12.5px;letter-spacing:.18em;
+    color:rgba(232,220,192,.78);margin-left:12px}
+  .bar nav a.on{color:#F2E8D0;box-shadow:inset 0 -2px 0 var(--paper-3)}
+  .bar .r{margin-left:auto;display:flex;align-items:center;gap:18px;font-family:var(--kai);
+    font-size:11.5px;letter-spacing:.22em;color:rgba(232,220,192,.55)}
+  .pal{display:inline-flex;gap:7px}
+  .pal i{width:24px;height:13px;display:inline-block;border:1px solid rgba(232,220,192,.28)}
+  .pal i.g{background:#1A4B27}.pal i.z{background:#B43B31}
+  .pal i.on{outline:2px solid var(--paper-3);outline-offset:2px}
+
+  .wrap{max-width:1140px;margin:0 auto;padding:34px 26px 56px}
+
+  /* ─── 一册线装书 ─── */
+  .book{display:grid;grid-template-columns:1.15fr 74px 1.45fr;background:var(--paper);
+    border:1px solid var(--paper-3);position:relative}
+
+  /* 封面＋题签 */
+  .cover{background:var(--case);color:#E8DCC0;padding:34px 30px 30px;position:relative;
+    display:flex;flex-direction:column;min-height:520px}
+  .cover .co{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:rgba(232,220,192,.55)}
+  /* 题签（贴签） */
+  .label{margin-top:22px;background:var(--paper);color:var(--ink);border:1px solid var(--paper-3);
+    padding:20px 18px 18px;width:170px;position:relative}
+  .label .lt{font-family:var(--kai);font-size:10.5px;letter-spacing:.32em;color:var(--ink-3);
+    text-align:center;border-bottom:1px solid var(--paper-3);padding-bottom:8px}
+  .label h1{font-family:var(--serif);font-size:25px;line-height:1.32;letter-spacing:.12em;
+    text-align:center;margin-top:12px}
+  .label .ld{font-family:var(--kai);font-size:12px;letter-spacing:.28em;color:var(--ink-2);
+    text-align:center;margin-top:10px}
+  .cover .vol{margin-top:22px;font-family:var(--kai);font-size:12px;letter-spacing:.28em;
+    color:rgba(232,220,192,.7);line-height:2}
+  .cover .vol b{font-family:var(--serif);font-size:15px;letter-spacing:.16em;color:#E8DCC0}
+  /* 藏书印 */
+  .cover .libseal{margin-top:auto;width:92px;height:92px;transform:rotate(-8deg);opacity:.92}
+  .cover .foot{margin-top:16px;font-family:var(--kai);font-size:10.5px;letter-spacing:.32em;
+    color:rgba(232,220,192,.5)}
+
+  /* 书脊：线孔＋丝线 */
+  .spine{background:var(--case-2);position:relative;padding:26px 0}
+  .spine .holes{display:flex;flex-direction:column;justify-content:space-between;height:100%;align-items:center}
+  .spine .hole{width:11px;height:11px;background:#141E27;border-radius:50%}
+  /* 丝线 */
+  .spine .th{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none}
+  .spine .tx{writing-mode:vertical-rl;font-family:var(--kai);font-size:11px;letter-spacing:.32em;
+    color:rgba(232,220,192,.5);text-align:center;margin:0 auto;height:100%;
+    display:flex;align-items:center;justify-content:center}
+
+  /* 书页：版心／鱼尾／象鼻 */
+  .pages{padding:30px 34px 30px;display:flex;flex-direction:column;position:relative}
+  /* 书口（右侧裁口） */
+  .pages::after{content:"";position:absolute;right:0;top:26px;bottom:26px;width:8px;
+    background:repeating-linear-gradient(180deg,var(--paper-2) 0 3px,var(--paper-3) 3px 4px)}
+
+  .ptop{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;
+    padding-bottom:12px;border-bottom:1.5px solid var(--ink)}
+  .ptop .t{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:var(--ink-3)}
+  .ptop .r{margin-left:auto;font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--ink-3)}
+
+  /* 版心：居中栏，带鱼尾 */
+  .typeblock{margin-top:18px;position:relative;padding:16px 0 0}
+  /* 鱼尾 */
+  .fishtail{display:flex;align-items:center;gap:10px;justify-content:center;color:var(--ink-2)}
+  .fishtail svg{width:18px;height:16px}
+  .fishtail .fc{font-family:var(--kai);font-size:11px;letter-spacing:.36em}
+  /* 象鼻（版心上下横线） */
+  .xiangbi{height:1.5px;background:var(--ink);margin:10px 0}
+
+  .ptx h2{font-family:var(--serif);font-size:clamp(23px,2.8vw,33px);line-height:1.42;
+    letter-spacing:.06em;text-align:center;margin-top:14px}
+  .ptx .sub{font-family:var(--kai);font-size:13.5px;letter-spacing:.22em;color:var(--ink-2);
+    text-align:center;margin-top:10px}
+  .ptx p{font-family:var(--serif);font-size:14.5px;line-height:2.1;letter-spacing:.05em;
+    color:var(--ink);margin-top:16px;text-indent:2em;max-width:46ch;margin-left:auto;margin-right:auto}
+  .ptx p b{font-weight:700}
+
+  /* 装订四则 */
+  .bind{margin-top:22px;border-top:1.5px solid var(--ink);padding-top:16px}
+  .bind .bh{font-family:var(--kai);font-size:10.5px;letter-spacing:.42em;color:var(--ink-3);margin-bottom:14px}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+  .st{padding:0 14px 0 0}
+  .st:not(:first-child){padding-left:14px;border-left:1px solid var(--paper-3)}
+  .st .k{font-family:var(--kai);font-size:10px;letter-spacing:.36em;color:var(--ink-3)}
+  .st .v{font-family:var(--serif);font-size:16px;letter-spacing:.04em;margin-top:7px;line-height:1.35}
+  .st .m{font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--ink-3);margin-top:5px}
+  .st.now .v{color:var(--red)}
+  .st.todo .v{color:var(--ink-3)}
+  .st .tag{display:inline-block;margin-top:8px;font-family:var(--kai);font-size:9.5px;
+    letter-spacing:.26em;padding:2px 8px;background:var(--paper-2);color:var(--ink-3)}
+  .st.done .tag{background:rgba(165,41,29,.13);color:var(--red)}
+  .st.now .tag{background:var(--red);color:var(--paper)}
+
+  /* 数据：书末牌记 */
+  .colophon{margin-top:20px;padding-top:14px;border-top:1px solid var(--paper-3);
+    display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 18px;
+    font-family:var(--kai);font-size:11.5px;letter-spacing:.14em}
+  .colophon dt{color:var(--ink-3);white-space:nowrap}
+  .colophon dd{color:var(--ink-2);text-align:right;overflow-wrap:anywhere}
+  .colophon dd b{font-family:var(--serif);font-size:14px;letter-spacing:.06em;color:var(--ink)}
+
+  /* ─── 目录：选模 ─── */
+  .toc{margin-top:30px;background:var(--paper);border:1px solid var(--paper-3)}
+  .toc .hd{display:flex;align-items:baseline;gap:18px;padding:18px 30px 14px;
+    border-bottom:1.5px solid var(--ink);flex-wrap:wrap}
+  .toc h2{font-family:var(--serif);font-size:21px;letter-spacing:.14em}
+  .toc h2 .n{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:var(--ink-3);
+    display:block;margin-bottom:3px;font-weight:400}
+  .toc .lnk{margin-left:auto;font-family:var(--kai);font-size:12.5px;letter-spacing:.18em;
+    color:var(--red);box-shadow:inset 0 -1px 0 var(--red);padding-bottom:2px}
+  .tabs{display:flex;gap:24px;padding:0 30px;border-bottom:1px solid var(--paper-2);
+    font-family:var(--kai);font-size:12px;letter-spacing:.14em;color:var(--ink-3)}
+  .tabs span{padding:10px 0;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tabs span.on{color:var(--ink);font-weight:700;border-bottom-color:var(--red)}
+  table{width:100%;border-collapse:collapse}
+  thead th{font-family:var(--kai);font-size:11px;letter-spacing:.36em;color:var(--ink-3);
+    text-align:left;font-weight:400;padding:11px 16px 9px 30px;border-bottom:1px solid var(--ink)}
+  thead th:last-child{padding-right:30px}
+  tbody td{padding:11px 16px 11px 30px;border-bottom:1px solid var(--paper-2);
+    font-family:var(--serif);font-size:14.5px;vertical-align:baseline;letter-spacing:.03em}
+  tbody td:last-child{padding-right:30px}
+  tbody tr:last-child td{border-bottom:0}
+  tbody td.subj{font-weight:700}
+  tbody td.mdl{font-family:var(--kai);font-size:13px;color:var(--ink-2);letter-spacing:.12em}
+  tbody td.pk{font-weight:700}
+  .chg{display:inline-flex;align-items:center;gap:5px;color:var(--red);font-family:var(--kai);
+    font-size:11.5px;letter-spacing:.18em;margin-left:9px;white-space:nowrap}
+  .chg::before{content:"";width:7px;height:7px;background:var(--red);flex:none}
+  .dflt{color:var(--ink-3);font-family:var(--kai);font-size:12.5px;letter-spacing:.18em}
+  .toc .foot{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:12px 30px 15px;font-family:var(--kai);font-size:11px;letter-spacing:.26em;color:var(--ink-3)}
+  .toc .foot b{color:var(--ink);font-family:var(--serif);letter-spacing:.14em}
+  .rel{margin:16px 30px 18px;padding-top:13px;border-top:1px solid var(--paper-2);
+    font-family:var(--kai);font-size:12px;line-height:2;letter-spacing:.12em;color:var(--ink-3)}
+  .rel b{color:var(--ink-2);font-family:var(--serif);font-weight:700;letter-spacing:.16em}
+
+  .footbar{margin-top:24px;padding:16px 0 4px;border-top:1px solid rgba(232,220,192,.35);
+    display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11px;letter-spacing:.32em;color:rgba(232,220,192,.72)}
+  .footbar b{font-family:var(--serif);font-size:13px;letter-spacing:.22em;color:#E8DCC0;display:block}
+
+  @media (max-width:900px){
+    .book{grid-template-columns:1fr}
+    .cover{min-height:auto}
+    .spine{height:52px;padding:0}
+    .spine .holes{flex-direction:row;height:52px}
+    .spine .tx{writing-mode:horizontal-tb;height:auto}
+    .pages::after{display:none}
+    .steps{grid-template-columns:1fr 1fr;gap:16px 0}
+    .st{border-left:0!important;padding-left:0!important;padding-right:10px}
+    .wrap,.toc .hd,.toc .tabs,.toc .foot,.rel{padding-left:20px;padding-right:20px}
+    .rel{margin-left:20px;margin-right:20px}
+    table,thead,tbody,tr,td,th{display:block}
+    thead{display:none}
+    tbody tr{padding:11px 0;border-bottom:1px solid var(--paper-2)}
+    tbody td{border:0;padding:2px 30px}
+    tbody td:last-child{padding-bottom:10px}
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="wm">文衡</span>
+  <span class="sub">雲 南 大 學 圖 書 館<br>學 科 信 息 參 考</span>
+  <nav aria-label="工作区">
+    <a class="on" href="#">出报告</a><a href="#">灵活报告</a><a href="#">报告</a><a href="#">问文衡</a>
+  </nav>
+  <span class="r">
+    <span>陈 列 馆 ↗</span>
+    <span class="pal"><i class="g on" title="云大绿"></i><i class="z" title="朱砂"></i></span>
+  </span>
+</header>
+
+<main class="wrap">
+
+  <!-- ─── 一册线装书 ─── -->
+  <section class="book">
+
+    <!-- 封面＋题签 -->
+    <div class="cover">
+      <div class="co">函 套 · 線 裝 一 冊</div>
+
+      <div class="label">
+        <div class="lt">題 籤</div>
+        <h1>学科信息参考</h1>
+        <div class="ld">第 三 十 九 期</div>
+      </div>
+
+      <div class="vol">
+        <b>二〇二六年九月</b><br>
+        目 錄 号　2 0 2 6 0 9<br>
+        雲 南 大 學 圖 書 館 藏
+      </div>
+
+      <svg class="libseal" viewBox="0 0 92 92" aria-hidden="true">
+        <rect x="3" y="3" width="86" height="86" fill="#A5291D" opacity=".9"/>
+        <rect x="9" y="9" width="74" height="74" fill="none" stroke="#E8DCC0" stroke-width="1.8"/>
+        <text x="46" y="38" text-anchor="middle" font-family="SimSun,serif" font-size="15"
+              font-weight="700" fill="#E8DCC0" letter-spacing="1">云南</text>
+        <text x="46" y="58" text-anchor="middle" font-family="SimSun,serif" font-size="15"
+              font-weight="700" fill="#E8DCC0" letter-spacing="1">大学</text>
+        <text x="46" y="76" text-anchor="middle" font-family="SimSun,serif" font-size="11"
+              fill="#E8DCC0" letter-spacing="1">图书馆</text>
+      </svg>
+
+      <div class="foot">藏 本 · 一 冊　·　簽 發 後 入 藏</div>
+    </div>
+
+    <!-- 书脊：线孔＋丝线 -->
+    <div class="spine" aria-hidden="true">
+      <div class="holes">
+        <span class="hole"></span><span class="hole"></span><span class="hole"></span>
+        <span class="hole"></span><span class="hole"></span>
+      </div>
+      <svg class="th" viewBox="0 0 74 520" preserveAspectRatio="none">
+        <g stroke="#8B6B3E" stroke-width="1.6" fill="none">
+          <path d="M8,20 L66,60 L8,110 L66,160 L8,210 L66,260 L8,310 L66,360 L8,410 L66,460 L8,500"/>
+        </g>
+      </svg>
+    </div>
+
+    <!-- 书页：版心／鱼尾／象鼻 -->
+    <div class="pages">
+      <div class="ptop">
+        <span class="t">版 心 · 魚 尾 · 象 鼻</span>
+        <span class="r">2 0 2 6 0 9　·　3 9</span>
+      </div>
+
+      <!-- 鱼尾 -->
+      <div class="fishtail">
+        <svg viewBox="0 0 18 16" aria-hidden="true">
+          <path d="M0,0 L18,0 L18,5 L9,16 L0,5 Z" fill="none" stroke="#4A423A" stroke-width="1.4"/>
+        </svg>
+        <span class="fc">雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</span>
+        <svg viewBox="0 0 18 16" aria-hidden="true">
+          <path d="M0,0 L18,0 L18,5 L9,16 L0,5 Z" fill="none" stroke="#4A423A" stroke-width="1.4"/>
+        </svg>
+      </div>
+      <div class="xiangbi"></div>
+
+      <div class="ptx">
+        <h2>本期报告已就绪</h2>
+        <div class="sub">复 核 後 簽 單　·　此 版 即 可 交 付</div>
+        <p>第 <b>39</b> 期（<b>202609</b>）取数与编发工作已全部完成。下载数据 <b>64 / 64</b> 份，核对无误后并入台账；章节按大纲全选；初稿已于 <b>2026 年 10 月 13 日 15 时 03 分</b>出稿。</p>
+        <p>任务结束不代表报告合格或已签发——管理员当前不能下载未签发的初稿。</p>
+      </div>
+
+      <!-- 装订四则 -->
+      <div class="bind">
+        <div class="bh">裝 訂 四 則</div>
+        <div class="steps">
+          <div class="st done"><div class="k">裁 頁</div><div class="v">下载数据核验</div>
+            <div class="m">64 / 64</div><div class="tag">完 成</div></div>
+          <div class="st done"><div class="k">折 頁</div><div class="v">选择章节</div>
+            <div class="m">按大纲全选</div><div class="tag">完 成</div></div>
+          <div class="st now"><div class="k">齊 欄</div><div class="v">生成初稿</div>
+            <div class="m">10-13 15:03</div><div class="tag">待 複 核</div></div>
+          <div class="st todo"><div class="k">裝 線</div><div class="v">核验与定稿</div>
+            <div class="m">复核后签单</div><div class="tag">待 辦</div></div>
+        </div>
+      </div>
+
+      <!-- 牌记：数据 -->
+      <dl class="colophon">
+        <dt>期 次</dt><dd><b>202609</b>　第 39 期</dd>
+        <dt>預 測 / 實 際</dt><dd>202609 / 202609</dd>
+        <dt>核 對 並 並 入</dt><dd>已并入台账</dd>
+        <dt>台 賬 文 件</dt><dd>云大全学科排名、阈值动态检测表.xlsx</dd>
+        <dt>最 後 修 改</dt><dd>2026 年 9 月 28 日 07:55</dd>
+        <dt>任 務</dt><dd>已完成</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ─── 目录：本期选模 ─── -->
+  <section class="toc">
+    <div class="hd">
+      <h2><span class="n">目 錄 · 卷 首</span>本期选模</h2>
+      <a class="lnk" href="#">去预测台看图改选 →</a>
+    </div>
+    <div class="tabs"><span class="on">路线1 · 总被引 / ESI 前 1% 被引阈值</span><span>路线2 · 国内排名 / 国内前 1% 机构数</span></div>
+    <table>
+      <thead><tr>
+        <th style="width:28%">潛 力 學 科</th>
+        <th style="width:32%">V 1 推 薦</th>
+        <th>本 期 已 選</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="subj">免疫学</td><td class="mdl">季节性 ETS 模型</td><td class="pk">SARIMA 模型<span class="chg">已改选</span></td></tr>
+        <tr><td class="subj">分子生物学与遗传学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="subj">多学科</td><td class="mdl">Holt 趋势模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="subj">物理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="subj">神经科学与行为科学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="subj">空间科学</td><td class="mdl">SARIMA 模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="subj">精神病学与心理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="subj">经济与商业</td><td class="mdl">SARIMA 模型</td><td class="dflt">默 认</td></tr>
+      </tbody>
+    </table>
+    <div class="foot">
+      <span>已 保 存 · admin · 2026-10-16 12:12</span>
+      <span>改 選 請 至　<b>預 測 台</b></span>
+    </div>
+    <p class="rel"><b>與 報 告 的 關 係</b>　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+  </section>
+
+  <footer class="footbar">
+    <div><b>文衡 · 线装</b>雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+    <div>線 裝 一 冊　·　第 39 期　·　2 0 2 6 0 9</div>
+    <div>簽 發 後 入 藏　·　4 6 6 萬 冊 之 一</div>
+  </footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出报告 · 方向癸「借阅卡」— 静态稿</title>
+<style>
+  /* ============================================================
+     方向癸 · 借阅卡（Card Catalog / Library Card）
+     一句话：把"本期报告"做成图书馆借阅卡——卡片柜背景，主屏一张
+     实体借阅卡（索书号 / 期号 / 借出-应还日期 / 借阅人 / 印戳），
+     两侧露出其他期的卡片角；工序改用橡皮日期戳；选模表做成借阅
+     登记本的横格线。零圆角、零渐变，纸张感用 SVG noise。
+     ============================================================ */
+  :root{
+    --card:#F0E6CA;            /* 旧卡米黄 */
+    --card-2:#E6DAB9;           /* 卡背 */
+    --pocket:#2A201A;           /* 卡片柜深木 */
+    --pocket-2:#3B2D22;          /* 木纹浅 */
+    --line:#8C7344;             /* 卡边棕 */
+    --line-2:#C7B58A;            /* 卡内细线 */
+    --ink:#3C2D1F;              /* 卡上墨字 */
+    --ink-2:#6B5742;             /* 卡上次墨 */
+    --ink-3:#97825F;             /* 卡上灰 */
+    --green:#1A4B27;            /* 馆藏绿 */
+    --green-2:#0F2D17;
+    --red:#B43B31;              /* 印泥红 */
+    --red-soft:#E9C8C2;
+    --gold:#B49465;             /* 金粉（金属拉条） */
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong","Songti SC",serif;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Courier New","Cascadia Mono",Consolas,monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--pocket);color:var(--ink)}
+  body{font:14.5px/1.7 var(--mono);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--red);color:var(--card)}
+
+  /* —— 顶栏（卡片柜拉条上的签条） ———————————————— */
+  .tagbar{background:linear-gradient(180deg,#3B2D22,#1F1611);color:#E5D6A8;height:60px;display:flex;align-items:center;gap:22px;padding:0 40px;border-bottom:1px solid #5A4630;box-shadow:0 1px 0 rgba(0,0,0,.4)}
+  .tagbar .bm{display:flex;align-items:baseline;gap:10px;font-family:var(--serif)}
+  .tagbar .bm b{font-size:22px;letter-spacing:.14em}
+  .tagbar .bm span{font-size:11px;letter-spacing:.2em;color:#B69A65;line-height:1.6;font-family:var(--sans)}
+  .tagbar nav{display:flex;gap:22px;font-size:12.5px;color:#C0AC85;font-family:var(--sans);margin-left:auto}
+  .tagbar nav a.on{color:#F0E6CA;border-bottom:1px solid var(--gold);padding-bottom:3px}
+  .tagbar .r{display:flex;gap:16px;align-items:center;font-size:12px;color:#A88858;font-family:var(--sans);margin-left:24px}
+  .pal{display:inline-flex;gap:6px;align-items:center}
+  .pal i{width:22px;height:12px;display:inline-block;border:1px solid #5A4630}
+  .pal i.g{background:#1A4B27}.pal i.z{background:#B43B31}
+  .pal i.on{outline:1px solid #E5D6A8;outline-offset:1px}
+
+  /* —— 卡片柜背景（深木） ———————————————— */
+  .catalog{position:relative;background:
+    repeating-linear-gradient(90deg,transparent 0,transparent 8px,rgba(255,255,255,.015) 8px,rgba(255,255,255,.015) 9px),
+    linear-gradient(180deg,#2A201A 0%,#1E1610 100%);
+    padding:50px 40px 60px;overflow:hidden}
+  /* 木纹纹理 */
+  .catalog::before{content:"";position:absolute;inset:0;background:
+    radial-gradient(ellipse 60% 30% at 20% 12%,rgba(255,200,140,.05),transparent),
+    radial-gradient(ellipse 80% 40% at 80% 90%,rgba(255,200,140,.04),transparent);
+    pointer-events:none}
+
+  /* —— 卡片柜抽屉横条（金属拉条） ———————————————— */
+  .drawer-bar{display:flex;align-items:center;gap:18px;max-width:1180px;margin:0 auto 28px;padding:10px 22px;background:linear-gradient(180deg,#4A3A28,#2E2218);border:1px solid #5A4630;border-radius:2px;box-shadow:inset 0 1px 0 rgba(255,220,160,.12)}
+  .drawer-bar .knob{width:46px;height:14px;background:linear-gradient(180deg,#A88858,#6E5430);border-radius:2px;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 1px 0 rgba(0,0,0,.4);position:relative}
+  .drawer-bar .knob::before,.drawer-bar .knob::after{content:"";position:absolute;top:4px;width:3px;height:6px;background:#3B2D22;border-radius:1px}
+  .drawer-bar .knob::before{left:6px}.drawer-bar .knob::after{right:6px}
+  .drawer-bar .lb{font-family:var(--sans);font-size:12px;color:#C0AC85;letter-spacing:.18em;display:flex;gap:14px;align-items:center}
+  .drawer-bar .lb b{font-family:var(--serif);color:#F0E6CA;letter-spacing:.06em;font-size:13px}
+  .drawer-bar .r{margin-left:auto;font-family:var(--sans);font-size:12px;color:#97825F;letter-spacing:.14em}
+
+  /* —— 主屏：借阅卡 + 卡片柜探出角 ———————————————— */
+  .stage{position:relative;max-width:1180px;margin:0 auto}
+  /* 露出的卡片角：放在卡片背后 */
+  .peek-l,.peek-r{position:absolute;top:30px;width:74px;display:flex;flex-direction:column;gap:10px;z-index:1;pointer-events:none}
+  .peek-l{left:-32px}.peek-r{right:-32px}
+  .peek{height:74px;background:linear-gradient(180deg,#E2D2A8,#C8B384);border:1px solid #8C7344;border-radius:2px;position:relative;transform:rotate(-2deg);box-shadow:0 6px 14px rgba(0,0,0,.45)}
+  .peek::before{content:"";position:absolute;left:8px;top:8px;width:34px;height:34px;background:rgba(180,59,49,.18);border:1px solid rgba(180,59,49,.4);border-radius:50%}
+  .peek-l .peek:nth-child(2){transform:rotate(1.5deg);background:linear-gradient(180deg,#EADBB2,#D2BC8A)}
+  .peek-l .peek:nth-child(3){transform:rotate(-.8deg);background:linear-gradient(180deg,#D8C8A0,#B89E70)}
+  .peek-l .peek:nth-child(4){transform:rotate(2deg);background:linear-gradient(180deg,#E6D6A8,#C0A678)}
+  .peek-r .peek:nth-child(1){transform:rotate(2.4deg);background:linear-gradient(180deg,#E2D2A8,#C8B384)}
+  .peek-r .peek:nth-child(2){transform:rotate(-1deg);background:linear-gradient(180deg,#DCC890,#B89E70)}
+  .peek-r .peek:nth-child(3){transform:rotate(.6deg);background:linear-gradient(180deg,#E0D0A4,#C4AA80)}
+  .peek .num{position:absolute;right:8px;top:8px;font-family:var(--mono);font-size:11px;color:#3C2D1F;letter-spacing:.06em;font-weight:700}
+
+  /* 主借阅卡 */
+  .libcard{
+    position:relative;z-index:2;margin:0 auto;max-width:780px;
+    background:
+      repeating-linear-gradient(0deg,transparent 0,transparent 2px,rgba(120,90,40,.04) 2px,rgba(120,90,40,.04) 3px),
+      var(--card);
+    border:1.5px solid var(--line);
+    padding:30px 36px 24px;
+    box-shadow:0 12px 0 -6px rgba(0,0,0,.4),0 18px 40px rgba(0,0,0,.5);
+  }
+  /* 卡片四个角缺 */
+  .libcard::before,.libcard::after{content:"";position:absolute;width:14px;height:14px;border:1.5px solid var(--line)}
+  .libcard::before{top:-2px;left:-2px;border-right:0;border-bottom:0}
+  .libcard::after{bottom:-2px;right:-2px;border-left:0;border-top:0}
+
+  /* 卡片头部 */
+  .lch{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1.5px solid var(--line);padding-bottom:14px}
+  .lch .lb{display:flex;flex-direction:column;gap:3px}
+  .lch .lb .cn{font-family:var(--serif);font-size:13px;letter-spacing:.32em;color:var(--ink-2)}
+  .lch .lb .en{font-size:11px;letter-spacing:.18em;color:var(--ink-3);text-transform:uppercase}
+  .lch .no{font-family:var(--mono);font-size:24px;letter-spacing:.16em;color:var(--ink);font-weight:700}
+  .lch .no small{display:block;font-family:var(--sans);font-size:11px;color:var(--ink-3);letter-spacing:.32em;margin-top:2px;font-weight:400;text-align:right}
+
+  /* 卡片中部大书名 */
+  .lcm{text-align:center;padding:22px 0 18px;border-bottom:1.5px solid var(--line)}
+  .lcm .ty{font-family:var(--sans);font-size:11.5px;color:var(--ink-3);letter-spacing:.32em}
+  .lcm h1{font-family:var(--serif);font-size:34px;line-height:1.15;letter-spacing:.04em;margin-top:8px}
+  .lcm h1 small{display:block;font-family:var(--serif);font-size:18px;color:var(--ink-2);margin-top:6px;letter-spacing:.18em;font-weight:400}
+  .lcm .dat{font-family:var(--kai);font-size:13.5px;color:var(--ink-2);margin-top:10px;letter-spacing:.18em}
+
+  /* 字段表 */
+  .field{border-bottom:1.5px solid var(--line)}
+  .row{display:grid;grid-template-columns:130px 1fr;padding:10px 0;border-bottom:1px solid var(--line-2);font-size:13.5px;align-items:baseline}
+  .row:last-child{border-bottom:0}
+  .row .k{font-family:var(--sans);color:var(--ink-3);font-size:12.5px;letter-spacing:.18em}
+  .row .v{font-family:var(--mono);color:var(--ink);font-size:14.5px;letter-spacing:.04em}
+  .row .v .m{flex:1;min-width:0}
+  .row .v .stamp{margin-left:8px;font-family:var(--sans);font-size:11px;color:var(--green);border:1px solid var(--green);padding:1px 8px;border-radius:2px;letter-spacing:.06em;background:var(--card);font-weight:600}
+
+  /* 卡片印戳区 */
+  .stamps{display:flex;gap:18px;justify-content:flex-end;padding:20px 0 6px;align-items:center;flex-wrap:wrap}
+  .stamp{position:relative;display:inline-block;width:108px;height:108px;color:var(--red);font-family:var(--serif);font-weight:700}
+  .stamp svg{position:absolute;inset:0;width:100%;height:100%}
+  .stamp .sx{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-size:11.5px;line-height:1.25;letter-spacing:.04em;padding:8px;color:var(--red-2);filter:url(#ink-rough)}
+  .stamp.ok{color:var(--green)}
+  .stamp.ok .sx{color:#346538}
+  .stamp b{display:block;font-size:14px;letter-spacing:.1em}
+
+  /* 借阅规则 */
+  .rules{border-top:1.5px solid var(--line);padding-top:14px;margin-top:14px;font-family:var(--sans)}
+  .rules .ttl{font-size:11.5px;letter-spacing:.32em;color:var(--ink-3);margin-bottom:8px}
+  .rules ol{padding-left:18px;color:var(--ink-2);font-size:12.5px;line-height:1.85}
+  .rules li{margin:2px 0}
+  .rules li b{color:var(--ink);font-weight:600}
+
+  /* 卡片底部签字 */
+  .lcfoot{margin-top:14px;padding-top:10px;border-top:1px dashed var(--line);display:flex;justify-content:space-between;align-items:baseline;font-family:var(--sans);font-size:12px;color:var(--ink-3);letter-spacing:.06em}
+  .lcfoot b{font-family:var(--kai);color:var(--ink-2);font-size:14px;letter-spacing:.18em}
+
+  /* —— 借阅记录本（数据 + 工序） ———————————————— */
+  .ledger{max-width:1180px;margin:36px auto 0;background:var(--card);border:1.5px solid var(--line);padding:24px 32px;box-shadow:0 8px 24px rgba(0,0,0,.4);position:relative}
+  .ledger::before{content:"借 阅 记 录 本";position:absolute;top:-12px;left:32px;background:var(--pocket);color:var(--gold);font-family:var(--kai);font-size:13px;letter-spacing:.32em;padding:4px 18px;border:1px solid var(--line)}
+  .lg-h{display:flex;align-items:baseline;justify-content:space-between;padding-bottom:10px;border-bottom:1.5px solid var(--ink)}
+  .lg-h h2{font-family:var(--serif);font-size:20px}
+  .lg-h .meta{font-family:var(--mono);font-size:12px;color:var(--ink-3);letter-spacing:.08em}
+  .lg-body{display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1.5px solid var(--ink)}
+  .col-l{padding:18px 20px 18px 0;border-right:1px solid var(--line)}
+  .col-r{padding:18px 0 18px 20px}
+
+  /* 数据列 */
+  .vlist{font-family:var(--mono);font-size:13.5px}
+  .vlist li{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--line-2);gap:10px}
+  .vlist li:last-child{border-bottom:0}
+  .vlist li b{color:var(--ink);font-weight:400}
+  .vlist li span{color:var(--ink-2);font-size:12px;text-align:right}
+
+  /* 工序 */
+  .step-track{font-family:var(--sans)}
+  .step-track .lbl{font-size:11.5px;letter-spacing:.32em;color:var(--ink-3);margin-bottom:8px}
+  .stp-row{display:flex;gap:0;border-bottom:1px solid var(--line);align-items:center}
+  .stp{flex:1;padding:14px 12px 14px 0;border-right:1px solid var(--line-2);position:relative}
+  .stp:last-child{border-right:0}
+  .stp:not(:first-child){padding-left:12px}
+  .stp .nm{font-family:var(--serif);font-size:14px;color:var(--ink-2);font-weight:600}
+  .stp .ms{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:5px;letter-spacing:.04em}
+  .stp .dt{position:absolute;top:8px;right:8px;font-family:var(--sans);font-size:10px;letter-spacing:.18em;color:var(--ink-3)}
+  .stp.now .nm{color:var(--ink)}
+  .stp.now::after{content:"● 当 前";display:block;margin-top:8px;font-size:10px;letter-spacing:.18em;color:var(--green);font-weight:700}
+  .stp.done::after{content:"✓";position:absolute;top:8px;right:8px;color:var(--green);font-size:14px}
+  .stp.todo::after{content:"⋯";position:absolute;top:8px;right:8px;color:var(--ink-3);font-size:14px}
+
+  /* —— 选模（借阅登记本） ———————————————— */
+  .reg{max-width:1180px;margin:36px auto 0;background:var(--card);border:1.5px solid var(--line);padding:28px 32px 24px;box-shadow:0 8px 24px rgba(0,0,0,.4);position:relative}
+  .reg::before{content:"本 期 续 借 · 模 型 登 记";position:absolute;top:-12px;left:32px;background:var(--pocket);color:var(--gold);font-family:var(--kai);font-size:13px;letter-spacing:.32em;padding:4px 18px;border:1px solid var(--line)}
+  .reg .hd{display:flex;align-items:baseline;gap:18px;border-bottom:1.5px solid var(--ink);padding-bottom:12px;margin-bottom:14px}
+  .reg h2{font-family:var(--serif);font-size:21px}
+  .reg .lnk{margin-left:auto;font-family:var(--sans);font-size:13px;color:var(--red);border-bottom:1px solid var(--red);padding-bottom:2px}
+  .tabs{display:flex;gap:0;margin-bottom:0;font-family:var(--sans)}
+  .tabs span{padding:8px 16px;font-size:13px;color:var(--ink-3);border:1px solid var(--line-2);background:var(--card-2);cursor:pointer}
+  .tabs span.on{background:var(--card);color:var(--ink);font-weight:600;border-bottom-color:var(--card)}
+  /* 横格线借阅登记样式 */
+  .regtable{width:100%;border-collapse:collapse;font-family:var(--serif);font-size:14px}
+  .regtable thead th{font-family:var(--sans);font-size:11.5px;letter-spacing:.32em;color:var(--ink-3);text-align:left;font-weight:600;padding:12px 0 8px;border-bottom:1.5px solid var(--ink)}
+  .regtable tbody td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+  .regtable tbody td:first-child{padding-left:0}
+  .regtable tbody td:last-child{padding-right:0;text-align:right}
+  .regtable tbody tr:nth-child(even) td{background:rgba(140,115,68,.04)}
+  .regtable td .num{font-family:var(--mono);color:var(--ink-3);font-size:12px;margin-right:8px;display:inline-block;width:24px}
+  .regtable td .sb{font-family:var(--serif);font-weight:600;color:var(--ink)}
+  .regtable td.mdl{color:var(--ink-2);font-family:var(--kai);font-size:13.5px;letter-spacing:.02em}
+  .regtable td.pk b{font-family:var(--serif);font-weight:600}
+  .regtable td.pk .chg{display:inline-flex;align-items:center;gap:4px;color:var(--red);font-family:var(--kai);font-size:12px;margin-left:8px;letter-spacing:.06em}
+  .regtable td.pk .chg::before{content:"";width:6px;height:6px;background:var(--red);border-radius:50%}
+  .regtable td.df{color:var(--ink-3);font-family:var(--kai);font-size:13px}
+  .reg-foot{display:flex;justify-content:space-between;font-family:var(--sans);font-size:12px;color:var(--ink-3);padding-top:14px;border-top:1px dashed var(--line);margin-top:14px;letter-spacing:.06em}
+  .reg-foot b{color:var(--ink);font-weight:600;font-family:var(--serif)}
+  .reg-rel{margin-top:14px;padding:12px 0 0;border-top:1px dashed var(--line);font-family:var(--kai);font-size:13px;color:var(--ink-3);line-height:2}
+  .reg-rel b{color:var(--ink-2);font-family:var(--serif);font-weight:600;letter-spacing:.04em}
+
+  /* —— 卡片柜底部页脚 ———————————————— */
+  .cabfoot{max-width:1180px;margin:30px auto 0;padding:18px 0;border-top:1px dashed var(--line);display:flex;justify-content:space-between;font-family:var(--sans);font-size:11.5px;color:#97825F;letter-spacing:.18em}
+  .cabfoot .f-l{display:flex;flex-direction:column;gap:3px;color:#B69A65}
+  .cabfoot .f-l b{font-family:var(--serif);color:#F0E6CA;font-size:13px;letter-spacing:.06em}
+  .cabfoot .f-r{text-align:right;line-height:2}
+
+  @media (max-width:1000px){
+    .peek-l,.peek-r{display:none}
+    .stage{max-width:680px}
+    .libcard{padding:24px 22px}
+    .lg-body{grid-template-columns:1fr}
+    .col-l{border-right:0;border-bottom:1px solid var(--line);padding:18px 0}
+    .col-r{padding:18px 0}
+    .stp-row{flex-wrap:wrap}
+    .stp{flex:0 0 50%;border-right:0;border-top:1px solid var(--line-2)}
+  }
+</style>
+</head>
+<body>
+
+<!-- 全局印章粗糙滤镜 -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <filter id="ink-rough"><feTurbulence baseFrequency="1.6" numOctaves="2" seed="4"/><feDisplacementMap in="SourceGraphic" scale="2.2"/></filter>
+    <filter id="card-grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence baseFrequency="0.85" numOctaves="2" seed="2"/>
+      <feColorMatrix values="0 0 0 0 0.23  0 0 0 0 0.18  0 0 0 0 0.12  0 0 0 0.06 0"/>
+      <feComposite in2="SourceGraphic" operator="in"/>
+    </filter>
+  </defs>
+</svg>
+
+<!-- 题签顶栏 -->
+<header class="tagbar">
+  <span class="bm"><b>文 衡</b><span>雲 南 大 學 圖 書 館<br>學 科 信 息 參 考</span></span>
+  <nav aria-label="工作区">
+    <a class="on" href="#">出 報 告</a><a href="#">靈 活 報 告</a><a href="#">報 告</a><a href="#">問 文 衡</a>
+  </nav>
+  <span class="r">
+    <span>陳 列 館 ↗</span>
+    <span class="pal"><i class="g on" title="雲大綠"></i><i class="z" title="硃砂"></i></span>
+  </span>
+</header>
+
+<!-- 卡片柜抽屉 -->
+<main class="catalog">
+  <div class="drawer-bar">
+    <span class="knob" aria-hidden="true"></span>
+    <span class="knob" aria-hidden="true"></span>
+    <span class="knob" aria-hidden="true"></span>
+    <span class="lb"><b>抽屉 D-39</b>　出 报 告 · 第 三 十 九 期　·　2 0 2 6 0 9</span>
+    <span class="r">本抽屉共 8 张卡　·　3 张待还</span>
+  </div>
+
+  <!-- 主屏：探出的卡片角 + 主体借阅卡 -->
+  <div class="stage">
+    <!-- 左侧探出 4 张 -->
+    <div class="peek-l" aria-hidden="true">
+      <div class="peek"><span class="num">NO.038</span></div>
+      <div class="peek"><span class="num">NO.037</span></div>
+      <div class="peek"><span class="num">NO.036</span></div>
+      <div class="peek"><span class="num">NO.035</span></div>
+    </div>
+    <!-- 右侧探出 3 张 -->
+    <div class="peek-r" aria-hidden="true">
+      <div class="peek"><span class="num">NO.040</span></div>
+      <div class="peek"><span class="num">NO.041</span></div>
+      <div class="peek"><span class="num">NO.042</span></div>
+    </div>
+
+    <!-- 主体借阅卡 -->
+    <article class="libcard">
+      <div class="lch">
+        <div class="lb">
+          <span class="cn">学 科 信 息 参 考 · 借 阅 卡</span>
+          <span class="en">YUNNAN UNIVERSITY LIBRARY · DISCIPLINE CARD</span>
+        </div>
+        <div class="no">NO. 039<small>期 次 / 索 书 号</small></div>
+      </div>
+
+      <div class="lcm">
+        <div class="ty">本期目录</div>
+        <h1>学科信息参考<small>第 三 十 九 期</small></h1>
+        <div class="dat">—— 二 〇 二 六 年 九 月 · 二 十 八 日 归 档 ——</div>
+      </div>
+
+      <div class="field">
+        <div class="row"><span class="k">借 出 日 期</span><span class="v">2026 / 09 / 13</span></div>
+        <div class="row"><span class="k">应 还 日 期</span><span class="v">2026 / 10 / 31<span class="stamp">盖 印 签 单</span></span></div>
+        <div class="row"><span class="k">借 阅 人</span><span class="v">卜 彤  /  admin</span></div>
+        <div class="row"><span class="k">目 录 号</span><span class="v">202609</span></div>
+        <div class="row"><span class="k">预 测 / 输 出</span><span class="v">202609  /  202609</span></div>
+        <div class="row"><span class="k">报 告 文 件</span><span class="v">报告初稿_202609.docx</span></div>
+        <div class="row"><span class="k">台 账</span><span class="v">云大全学科排名、阈值动态检测表.xlsx</span></div>
+        <div class="row"><span class="k">下 载 数 据</span><span class="v">64 / 64<span class="stamp">完 整</span></span></div>
+      </div>
+
+      <!-- 印戳 -->
+      <div class="stamps">
+        <div class="stamp ok">
+          <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" stroke-width="1"/></svg>
+          <div class="sx">已 并 入<br>台 账<b>09.13</b></div>
+        </div>
+        <div class="stamp ok">
+          <svg viewBox="0 0 100 100"><rect x="6" y="6" width="88" height="88" fill="none" stroke="currentColor" stroke-width="3"/><rect x="12" y="12" width="76" height="76" fill="none" stroke="currentColor" stroke-width="1"/></svg>
+          <div class="sx">已 出 稿<b>10.13</b></div>
+        </div>
+        <div class="stamp">
+          <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" stroke-width="1"/></svg>
+          <div class="sx">复 核 通 过<b>PENDING</b></div>
+        </div>
+      </div>
+
+      <!-- 借阅规则 -->
+      <div class="rules">
+        <div class="ttl">借 阅 规 则 · 5 条</div>
+        <ol>
+          <li>取数必先核对，发现缺失立即退回取数台补齐。</li>
+          <li>出稿后必人工复核；复核无异议后盖印签单归档。</li>
+          <li>未签发初稿不得下载；归档后此卡作废。</li>
+          <li>模型选择由本期已保存选择决定；改选请至<b>预测台</b>。</li>
+          <li>复核章与签单章非同一人；本馆为卜彤（admin）。</li>
+        </ol>
+      </div>
+
+      <div class="lcfoot">
+        <span>本卡一式两份　·　馆员一份　·　陈列馆一份</span>
+        <b>卜 彤</b>
+      </div>
+    </article>
+  </div>
+
+  <!-- 借阅记录本（数据 + 工序） -->
+  <section class="ledger">
+    <div class="lg-h">
+      <h2>借 阅 记 录 本</h2>
+      <span class="meta">PERIOD 202609 · D-39 · 已 闭 架</span>
+    </div>
+    <div class="lg-body">
+      <div class="col-l">
+        <div class="vlist">
+          <li><b>台账文件</b><span>云大全学科排名、阈值动态检测表.xlsx</span></li>
+          <li><b>最后修改</b><span>2026 年 9 月 28 日 07:55</span></li>
+          <li><b>报告生成</b><span>2026-10-13 15:03:35</span></li>
+          <li><b>下载数据</b><span>64 / 64</span></li>
+          <li><b>选择章节</b><span>按大纲全选</span></li>
+          <li><b>任务状态</b><span>已完成</span></li>
+        </div>
+        <div class="receipt" style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)">
+          <h3 style="font-family:var(--serif);font-size:16px">本期报告已生成</h3>
+          <p style="font-family:var(--sans);font-size:12.5px;color:var(--ink-2);margin-top:8px;line-height:1.85">任务结束不代表报告合格或已签发——管理员当前不能下载未签发的初稿。复核无异议后盖印签单归档。</p>
+          <div style="margin-top:10px;display:flex;gap:18px;font-family:var(--sans);font-size:13px">
+            <a href="#" style="color:var(--ink-2);border-bottom:1px solid var(--line);padding-bottom:2px">打开报告 →</a>
+            <a href="#" style="color:var(--ink-2);border-bottom:1px solid var(--line);padding-bottom:2px">去审核台 →</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-r">
+        <div class="step-track">
+          <div class="lbl">工 序 · 闭 架 前 4 步</div>
+          <div class="stp-row">
+            <div class="stp done"><div class="dt">09.13</div><div class="nm">下载数据核验</div><div class="ms">完成 · 64 / 64</div></div>
+            <div class="stp done"><div class="dt">10.12</div><div class="nm">选择章节</div><div class="ms">完成 · 按大纲全选</div></div>
+            <div class="stp now"><div class="dt">10.13</div><div class="nm">生成初稿</div><div class="ms">已出稿 · 15:03</div></div>
+            <div class="stp todo"><div class="dt">—</div><div class="nm">核验与定稿</div><div class="ms">待办 · 复核后签单</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 选模：借阅登记本 -->
+  <section class="reg">
+    <div class="hd">
+      <h2>本期续借 · 模型登记</h2>
+      <a class="lnk" href="#">去预测台看图改选 →</a>
+    </div>
+    <div class="tabs"><span class="on">路线1 · 总被引 / ESI 前 1% 被引阈值</span><span>路线2 · 国内排名 / 国内前 1% 机构数</span></div>
+    <table class="regtable">
+      <thead><tr>
+        <th style="width:30px"></th>
+        <th>潜 力 学 科</th>
+        <th>V 1 推 荐</th>
+        <th>本 期 已 选</th>
+      </tr></thead>
+      <tbody>
+        <tr><td><span class="num">01</span></td><td><span class="sb">免 疫 学</span></td><td class="mdl">季 节 性 E T S 模 型</td><td class="pk"><b>SARIMA 模型</b><span class="chg">已 改 选</span></td></tr>
+        <tr><td><span class="num">02</span></td><td><span class="sb">分子生物学与遗传学</span></td><td class="mdl">季 节 性 E T S 模 型</td><td class="df">默 认</td></tr>
+        <tr><td><span class="num">03</span></td><td><span class="sb">多 学 科</span></td><td class="mdl">H o l t 趋 势 模 型</td><td class="df">默 认</td></tr>
+        <tr><td><span class="num">04</span></td><td><span class="sb">物 理 学</span></td><td class="mdl">经验贝叶斯状态空间模型</td><td class="df">默 认</td></tr>
+        <tr><td><span class="num">05</span></td><td><span class="sb">神经科学与行为科学</span></td><td class="mdl">季 节 性 E T S 模 型</td><td class="df">默 认</td></tr>
+        <tr><td><span class="num">06</span></td><td><span class="sb">空 间 科 学</span></td><td class="mdl">S A R I M A 模 型</td><td class="df">默 认</td></tr>
+        <tr><td><span class="num">07</span></td><td><span class="sb">精神病学与心理学</span></td><td class="mdl">经验贝叶斯状态空间模型</td><td class="df">默 认</td></tr>
+        <tr><td><span class="num">08</span></td><td><span class="sb">经 济 与 商 业</span></td><td class="mdl">S A R I M A 模 型</td><td class="df">默 认</td></tr>
+      </tbody>
+    </table>
+    <div class="reg-foot">
+      <span>已 保 存　·　ad min　·　2026-10-16 12:12</span>
+      <span>改 选 请 至　<b>预 测 台</b></span>
+    </div>
+    <p class="reg-rel"><b>与报告的关系</b>　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+  </section>
+
+  <!-- 卡片柜底部 -->
+  <div class="cabfoot">
+    <div class="f-l">
+      <b>文 衡 · 借 阅 卡</b>
+      <span>雲南大學圖書館 · 學科信息參考</span>
+    </div>
+    <div class="f-r">
+      第 39 期　·　二零二六年九月　·　本期目錄<br>
+      D-39 抽屉 · 已 闭 架 · 待 归 档
+    </div>
+  </div>
+</main>
+</body>
+</html>

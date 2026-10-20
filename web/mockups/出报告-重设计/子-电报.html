@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出报告 · 方向子「电报」— 静态稿</title>
+<style>
+  /* ============================================================
+     方向子 · 电报（Telegram / 邮报）
+     一句话：把本期报告做成一张电报纸——发报方＝Clarivate
+     （ESI/InCites）自动取数，收报方＝云大图书馆/admin；报文
+     是真实的内容（已核数、已并入、已出稿、待签单）；工序改
+     成"电报时刻表"（每步一个时刻戳）。零圆角、零渐变，纸纹用
+     SVG noise；红色橡皮戳盖住报文。
+     ============================================================ */
+  :root{
+    --paper:#F1E9D0;          /* 电报纸 */
+    --paper-2:#E5DBBC;         /* 旧纸 */
+    --ink:#2A1E12;             /* 油墨棕黑 */
+    --ink-2:#5C4630;           /* 次墨 */
+    --ink-3:#8A7456;            /* 灰墨 */
+    --line:#9C8359;             /* 暖棕细线 */
+    --line-2:#C7B080;
+    --green:#1A4B27;           /* 馆藏绿 */
+    --green-2:#0F2D17;
+    --green-soft:#E0E8DD;
+    --red:#A0392C;              /* 电报戳红 */
+    --red-2:#7E2620;
+    --red-soft:#E9D5CC;
+    --gold:#A88A4E;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Courier New","Cascadia Mono",Consolas,monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:#3A2D1F;color:var(--ink)}
+  body{font:14px/1.7 var(--mono);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--red);color:var(--paper)}
+
+  /* —— 顶栏（邮局的玻璃台面） ———————————————— */
+  .top{background:linear-gradient(180deg,#2A1E12,#1A130A);color:#D9C594;height:60px;display:flex;align-items:center;gap:22px;padding:0 40px;border-bottom:1px solid #5C4630;box-shadow:0 1px 0 rgba(0,0,0,.5)}
+  .top .bm{display:flex;align-items:baseline;gap:10px;font-family:var(--serif)}
+  .top .bm b{font-size:22px;letter-spacing:.16em}
+  .top .bm span{font-size:11px;letter-spacing:.2em;color:#A88A4E;line-height:1.6;font-family:var(--sans)}
+  .top nav{display:flex;gap:22px;font-size:12.5px;color:#A88A4E;font-family:var(--sans);margin-left:auto}
+  .top nav a.on{color:var(--paper);border-bottom:1px solid var(--gold);padding-bottom:3px}
+  .top .r{display:flex;gap:18px;align-items:center;font-size:12px;color:#A88A4E;font-family:var(--sans);margin-left:24px}
+  .pal{display:inline-flex;gap:6px;align-items:center}
+  .pal i{width:22px;height:12px;display:inline-block;border:1px solid #5C4630}
+  .pal i.g{background:#1A4B27}.pal i.z{background:#A0392C}
+  .pal i.on{outline:1px solid #D9C594;outline-offset:1px}
+
+  /* —— 桌面背景：木台 ———————————————— */
+  .desk{position:relative;background:
+    radial-gradient(ellipse at 50% 0%,rgba(255,200,140,.06),transparent 60%),
+    linear-gradient(180deg,#3A2D1F 0%,#221810 100%);
+    padding:46px 40px 60px}
+
+  /* —— 主屏：电报纸 ———————————————— */
+  .paper-wrap{max-width:1180px;margin:0 auto;position:relative}
+  .paper{
+    position:relative;background:var(--paper);
+    border:1.5px solid var(--line);
+    padding:34px 44px 38px;
+    box-shadow:0 18px 40px rgba(0,0,0,.45);
+  }
+  /* 纸纤维细纹 */
+  .paper::before{content:"";position:absolute;inset:0;background:
+    repeating-linear-gradient(0deg,transparent 0,transparent 2px,rgba(80,55,30,.04) 2px,rgba(80,55,30,.04) 3px),
+    repeating-linear-gradient(90deg,transparent 0,transparent 3px,rgba(80,55,30,.025) 3px,rgba(80,55,30,.025) 4px);
+    pointer-events:none}
+
+  /* 报头 */
+  .telhead{display:grid;grid-template-columns:auto 1fr auto;align-items:end;gap:24px;border-bottom:2px solid var(--ink);padding-bottom:14px;position:relative}
+  .telhead .logo{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+  .telhead .logo b{font-family:var(--serif);font-size:32px;letter-spacing:.32em;color:var(--ink)}
+  .telhead .logo span{font-size:10.5px;letter-spacing:.32em;color:var(--ink-3);font-family:var(--sans)}
+  .telhead .sub{display:flex;flex-direction:column;gap:2px;padding-bottom:4px}
+  .telhead .sub b{font-family:var(--serif);font-size:15px;color:var(--ink-2);letter-spacing:.18em}
+  .telhead .sub span{font-size:11px;letter-spacing:.18em;color:var(--ink-3);font-family:var(--sans)}
+  .telhead .stamp{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px;border:1.5px solid var(--red);padding:6px 14px;color:var(--red);transform:rotate(2deg);font-family:var(--serif)}
+  .telhead .stamp b{font-size:14px;letter-spacing:.14em;font-weight:700}
+  .telhead .stamp span{font-size:10.5px;letter-spacing:.18em;font-family:var(--sans);color:var(--red-2)}
+
+  /* 收发方栏 */
+  .party{display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1.5px solid var(--ink);font-size:13px}
+  .party .col{padding:14px 16px 14px 0;border-right:1px solid var(--line)}
+  .party .col:last-child{border-right:0;padding-left:16px;padding-right:0}
+  .party .row{display:flex;gap:14px;padding:3px 0;align-items:baseline}
+  .party .row .k{font-family:var(--sans);font-size:11.5px;letter-spacing:.32em;color:var(--ink-3);flex:0 0 56px}
+  .party .row .v{font-family:var(--mono);font-size:13.5px;color:var(--ink);letter-spacing:.04em;flex:1;min-width:0}
+  .party .row .v b{color:var(--green);font-weight:700}
+  .party .ttl{font-family:var(--sans);font-size:10.5px;letter-spacing:.32em;color:var(--red);margin-bottom:8px}
+
+  /* 报文 */
+  .body-msg{padding:24px 0 18px;border-bottom:1.5px dashed var(--line);display:grid;grid-template-columns:1fr 220px;gap:32px;align-items:start}
+  .msg{font-family:var(--serif);font-size:18px;line-height:2;color:var(--ink);position:relative}
+  .msg .tx{margin:0}
+  .msg .tx b{font-family:var(--serif);color:var(--ink);font-weight:700}
+  .msg .tx .pill{display:inline-block;background:var(--green);color:var(--paper);font-family:var(--sans);font-size:12px;letter-spacing:.18em;padding:2px 10px;border-radius:0;margin-left:4px}
+  .msg .tx .pill.warn{background:var(--red);color:var(--paper)}
+  .msg .sign{margin-top:24px;display:flex;justify-content:space-between;align-items:baseline;font-family:var(--sans);font-size:12px;color:var(--ink-3);letter-spacing:.18em;border-top:1px solid var(--line);padding-top:14px}
+  .msg .sign b{font-family:var(--serif);color:var(--ink);font-size:14px;letter-spacing:.06em}
+  .msg .sign .date{font-family:var(--mono);font-size:13px;color:var(--ink)}
+
+  /* 戳记栏 */
+  .stamps-side{display:flex;flex-direction:column;gap:14px;align-items:center;padding-top:6px}
+  .stp{width:148px;height:148px;position:relative;color:var(--red);font-family:var(--serif);font-weight:700;filter:url(#ink-rough-tg)}
+  .stp svg{position:absolute;inset:0;width:100%;height:100%}
+  .stp .sx{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-size:12.5px;line-height:1.3;letter-spacing:.04em;padding:12px;color:var(--red-2)}
+  .stp b{display:block;font-size:15px;letter-spacing:.1em;margin-top:2px}
+  .stp.ok{color:var(--green)}
+  .stp.ok .sx{color:var(--green-2)}
+  .stp.s1{transform:rotate(-6deg)}
+  .stp.s2{transform:rotate(3deg)}
+  .stp.s3{transform:rotate(-2deg)}
+
+  /* —— 工序：电报时刻表 ———————————————— */
+  .timetable{max-width:1180px;margin:36px auto 0;background:var(--paper);border:1.5px solid var(--line);padding:24px 36px;box-shadow:0 8px 24px rgba(0,0,0,.4);position:relative}
+  .timetable::before{content:"电 报 时 刻 表";position:absolute;top:-12px;left:36px;background:#221810;color:var(--gold);font-family:var(--serif);font-size:12px;letter-spacing:.32em;padding:4px 18px;border:1px solid var(--line)}
+  .tt-h{display:flex;align-items:baseline;justify-content:space-between;padding-bottom:10px;border-bottom:1.5px solid var(--ink);margin-bottom:14px}
+  .tt-h h2{font-family:var(--serif);font-size:19px}
+  .tt-h .meta{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);letter-spacing:.08em}
+  .tt{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+  .tt-s{padding:18px 16px 16px 0;border-right:1px solid var(--line);position:relative}
+  .tt-s:last-child{border-right:0}
+  .tt-s:not(:first-child){padding-left:16px}
+  .tt-s .time{font-family:var(--mono);font-size:18px;color:var(--green);letter-spacing:.06em;font-weight:700;line-height:1}
+  .tt-s .date{font-family:var(--sans);font-size:10.5px;color:var(--ink-3);letter-spacing:.18em;margin-top:4px}
+  .tt-s .nm{font-family:var(--serif);font-size:14.5px;color:var(--ink);font-weight:600;margin-top:14px}
+  .tt-s .ms{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);margin-top:4px;letter-spacing:.04em}
+  .tt-s.now .time{color:var(--red)}
+  .tt-s.now .nm::after{content:" ● 当 前";font-family:var(--sans);font-size:10px;letter-spacing:.18em;color:var(--red);font-weight:700}
+  .tt-s.done .time::before{content:"✓ ";color:var(--green);font-size:13px}
+  .tt-s.todo .time{color:var(--ink-3)}
+
+  /* —— 选模：电报清单 ———————————————— */
+  .cable{max-width:1180px;margin:30px auto 0;background:var(--paper);border:1.5px solid var(--line);padding:24px 36px 22px;box-shadow:0 8px 24px rgba(0,0,0,.4);position:relative}
+  .cable::before{content:"本 期 报 送 · 清 单";position:absolute;top:-12px;left:36px;background:#221810;color:var(--gold);font-family:var(--serif);font-size:12px;letter-spacing:.32em;padding:4px 18px;border:1px solid var(--line)}
+  .cb-h{display:flex;align-items:baseline;gap:18px;border-bottom:1.5px solid var(--ink);padding-bottom:12px;margin-bottom:14px}
+  .cb-h h2{font-family:var(--serif);font-size:20px}
+  .cb-h .lnk{margin-left:auto;font-family:var(--sans);font-size:13px;color:var(--red);border-bottom:1px solid var(--red);padding-bottom:2px}
+  .tabs{display:flex;gap:0;margin-bottom:0;font-family:var(--sans)}
+  .tabs span{padding:8px 16px;font-size:13px;color:var(--ink-3);border:1px solid var(--line-2);background:var(--paper-2);cursor:pointer}
+  .tabs span.on{background:var(--paper);color:var(--ink);font-weight:600;border-bottom-color:var(--paper)}
+  .cb-table{width:100%;border-collapse:collapse;font-size:14px}
+  .cb-table thead th{font-family:var(--sans);font-size:11.5px;letter-spacing:.32em;color:var(--ink-3);text-align:left;font-weight:600;padding:12px 0 8px;border-bottom:1.5px solid var(--ink)}
+  .cb-table tbody td{padding:9px 10px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:13.5px;vertical-align:middle}
+  .cb-table tbody td:first-child{font-family:var(--mono);color:var(--ink-3);font-size:12px;width:32px;text-align:right;padding-right:12px}
+  .cb-table tbody td:nth-child(2){font-family:var(--serif);font-weight:600;color:var(--ink);font-size:14px}
+  .cb-table tbody td:nth-child(3){color:var(--ink-2);font-family:var(--sans);font-size:13px;letter-spacing:.04em}
+  .cb-table tbody td:nth-child(4){color:var(--ink);font-family:var(--serif);font-weight:600}
+  .cb-table tbody td:last-child{text-align:right}
+  .cb-table tbody tr:nth-child(even){background:rgba(156,131,89,.05)}
+  .cb-table td .chg{display:inline-flex;align-items:center;gap:4px;color:var(--red);font-family:var(--sans);font-size:11.5px;margin-left:6px;letter-spacing:.04em;background:var(--red-soft);padding:1px 8px}
+  .cb-table td .df{color:var(--ink-3);font-family:var(--sans);font-size:12.5px}
+  .cb-foot{display:flex;justify-content:space-between;font-family:var(--sans);font-size:12px;color:var(--ink-3);padding-top:14px;border-top:1px dashed var(--line);margin-top:14px;letter-spacing:.06em}
+  .cb-foot b{color:var(--ink);font-family:var(--serif);font-weight:600;letter-spacing:.06em}
+  .cb-rel{margin-top:14px;padding:12px 0 0;border-top:1px dashed var(--line);font-family:var(--sans);font-size:12.5px;color:var(--ink-3);line-height:1.9}
+  .cb-rel b{color:var(--ink-2);font-family:var(--serif);font-weight:600;letter-spacing:.04em}
+
+  /* —— 页脚 ———————————————— */
+  .tf{padding:30px 40px 50px;display:flex;justify-content:space-between;align-items:flex-end;font-family:var(--sans);font-size:11.5px;color:#8A7456;letter-spacing:.18em;border-top:1px dashed #5C4630;max-width:1180px;margin:30px auto 0}
+  .tf .f-l{display:flex;flex-direction:column;gap:4px;color:#A88A4E}
+  .tf .f-l b{font-family:var(--serif);color:#D9C594;font-size:14px;letter-spacing:.06em}
+  .tf .f-r{text-align:right;line-height:2}
+
+  @media (max-width:1000px){
+    .telhead{grid-template-columns:1fr;gap:14px}
+    .telhead .stamp{align-self:flex-start;margin-left:0}
+    .body-msg{grid-template-columns:1fr}
+    .stamps-side{flex-direction:row;flex-wrap:wrap;justify-content:center;padding-top:20px;border-top:1px dashed var(--line)}
+    .party{grid-template-columns:1fr}
+    .party .col{border-right:0;border-bottom:1px solid var(--line);padding:14px 0}
+    .party .col:last-child{border-bottom:0}
+    .tt{grid-template-columns:repeat(2,1fr)}
+    .tt-s{border-right:0;border-bottom:1px solid var(--line)}
+    .top nav{display:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- 全局戳记粗糙滤镜 -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <filter id="ink-rough-tg"><feTurbulence baseFrequency="1.6" numOctaves="2" seed="6"/><feDisplacementMap in="SourceGraphic" scale="2"/></filter>
+  </defs>
+</svg>
+
+<!-- 顶栏 -->
+<header class="top">
+  <span class="bm"><b>文 衡</b><span>雲 南 大 學 圖 書 館<br>學 科 信 息 參 考</span></span>
+  <nav aria-label="工作区">
+    <a class="on" href="#">出 報 告</a><a href="#">靈 活 報 告</a><a href="#">報 告</a><a href="#">問 文 衡</a>
+  </nav>
+  <span class="r">
+    <span>陳 列 館 ↗</span>
+    <span class="pal"><i class="g on" title="雲大綠"></i><i class="z" title="朱 砂"></i></span>
+  </span>
+</header>
+
+<!-- 桌面 -->
+<main class="desk">
+
+  <!-- 主屏：电报纸 -->
+  <div class="paper-wrap">
+    <article class="paper">
+
+      <!-- 报头 -->
+      <header class="telhead">
+        <div class="logo">
+          <b>電 報</b>
+          <span>TELEGRAM · 第 39 期</span>
+        </div>
+        <div class="sub">
+          <b>学科信息参考 · 出报告</b>
+          <span>出 报 告 · 第 39 期　·　2026-09-28</span>
+        </div>
+        <div class="stamp">
+          <b>急 件</b>
+          <span>EXP · 已 抵 達</span>
+        </div>
+      </header>
+
+      <!-- 收发方 -->
+      <section class="party">
+        <div class="col">
+          <div class="ttl">发 报 方 · FROM</div>
+          <div class="row"><span class="k">单 位</span><span class="v">Clarivate · ESI / InCites</span></div>
+          <div class="row"><span class="k">类 别</span><span class="v">自动取数台 · agent</span></div>
+          <div class="row"><span class="k">签 发</span><span class="v">2026-09-28 07:55</span></div>
+        </div>
+        <div class="col">
+          <div class="ttl">收 报 方 · TO</div>
+          <div class="row"><span class="k">单 位</span><span class="v">雲南大學圖書館 · 学科分析平台</span></div>
+          <div class="row"><span class="k">收 件</span><span class="v"><b>卜 彤</b>　/　admin</span></div>
+          <div class="row"><span class="k">收 到</span><span class="v">2026-10-16 12:12</span></div>
+        </div>
+      </section>
+
+      <!-- 报文 + 戳记 -->
+      <section class="body-msg">
+        <div class="msg">
+          <p class="tx">
+            本期报告已就绪。<br>
+            <b>期次 202609 · 第 39 期</b>　｜　下载数据 <span class="pill">64 / 64</span><br>
+            数据已核对并并入台账　｜　报告已出稿 <span class="pill">10-13 15:03</span><br>
+            待馆员复核；<span class="pill warn">未签发初稿不得下载</span>。<br>
+            复核无异议后签单归档，此版方可交付。
+          </p>
+          <div class="sign">
+            <span>签 单 人</span>
+            <b>卜 彤</b>
+            <span class="date">2026-10-16</span>
+          </div>
+        </div>
+        <div class="stamps-side">
+          <div class="stp ok s1">
+            <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" stroke-width="1"/></svg>
+            <div class="sx">已 并 入<br>台 账<b>09.13</b></div>
+          </div>
+          <div class="stp ok s2">
+            <svg viewBox="0 0 100 100"><rect x="6" y="6" width="88" height="88" fill="none" stroke="currentColor" stroke-width="3"/><rect x="12" y="12" width="76" height="76" fill="none" stroke="currentColor" stroke-width="1"/></svg>
+            <div class="sx">已 出 稿<b>10.13 15:03</b></div>
+          </div>
+          <div class="stp s3">
+            <svg viewBox="0 0 100 100"><polygon points="50,4 96,28 88,88 12,88 4,28" fill="none" stroke="currentColor" stroke-width="3"/><polygon points="50,12 86,32 80,82 20,82 14,32" fill="none" stroke="currentColor" stroke-width="1"/></svg>
+            <div class="sx">复 核 通 过<b>PENDING</b></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 收报台账（底部印戳 + 字数） -->
+      <footer style="display:flex;justify-content:space-between;align-items:baseline;font-family:var(--sans);font-size:11.5px;color:var(--ink-3);letter-spacing:.18em;padding-top:14px;border-top:1.5px solid var(--ink)">
+        <span>本电报共 <b style="color:var(--ink);font-family:var(--serif)">64</b> 字　·　收报 <b style="color:var(--green)">3</b> / 待签 <b style="color:var(--red)">1</b></span>
+        <span>报类 / 出 报 告　·　编号 / 2 0 2 6 0 9　·　发 报 台 / 取 数 台</span>
+      </footer>
+
+    </article>
+  </div>
+
+  <!-- 时刻表 -->
+  <section class="timetable">
+    <div class="tt-h">
+      <h2>电报时刻表</h2>
+      <span class="meta">FOUR STOPS · EXP ROUTE 39</span>
+    </div>
+    <div class="tt">
+      <div class="tt-s done">
+        <div class="time">07 : 55</div>
+        <div class="date">2026 · 09 · 13 · 星期日</div>
+        <div class="nm">下载数据核验</div>
+        <div class="ms">完成 · 64 / 64</div>
+      </div>
+      <div class="tt-s done">
+        <div class="time">22 : 18</div>
+        <div class="date">2026 · 10 · 12 · 星期一</div>
+        <div class="nm">选择章节</div>
+        <div class="ms">完成 · 按大纲全选</div>
+      </div>
+      <div class="tt-s now">
+        <div class="time">15 : 03</div>
+        <div class="date">2026 · 10 · 13 · 星期二</div>
+        <div class="nm">生成初稿</div>
+        <div class="ms">已出稿 · 待复核</div>
+      </div>
+      <div class="tt-s todo">
+        <div class="time">— : —</div>
+        <div class="date">待 办</div>
+        <div class="nm">核验与定稿</div>
+        <div class="ms">复核后签单归档</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 选模：电报清单 -->
+  <section class="cable">
+    <div class="cb-h">
+      <h2>本期报送 · 清单</h2>
+      <a class="lnk" href="#">去预测台看图改选 →</a>
+    </div>
+    <div class="tabs"><span class="on">路线1 · 总被引 / ESI 前 1% 被引阈值</span><span>路线2 · 国内排名 / 国内前 1% 机构数</span></div>
+    <table class="cb-table">
+      <thead><tr>
+        <th></th>
+        <th>潜 力 学 科</th>
+        <th>V 1 推 荐</th>
+        <th>本 期 已 选</th>
+      </tr></thead>
+      <tbody>
+        <tr><td>01</td><td>免 疫 学</td><td>季 节 性 ETS 模 型</td><td>SARIMA 模 型<span class="chg">已 改 选</span></td></tr>
+        <tr><td>02</td><td>分子生物学与遗传学</td><td>季 节 性 ETS 模 型</td><td class="df">默 认</td></tr>
+        <tr><td>03</td><td>多 学 科</td><td>Holt 趋 势 模 型</td><td class="df">默 认</td></tr>
+        <tr><td>04</td><td>物 理 学</td><td>经验贝叶斯状态空间模型</td><td class="df">默 认</td></tr>
+        <tr><td>05</td><td>神经科学与行为科学</td><td>季 节 性 ETS 模 型</td><td class="df">默 认</td></tr>
+        <tr><td>06</td><td>空 间 科 学</td><td>SARIMA 模 型</td><td class="df">默 认</td></tr>
+        <tr><td>07</td><td>精神病学与心理学</td><td>经验贝叶斯状态空间模型</td><td class="df">默 认</td></tr>
+        <tr><td>08</td><td>经 济 与 商 业</td><td>SARIMA 模 型</td><td class="df">默 认</td></tr>
+      </tbody>
+    </table>
+    <div class="cb-foot">
+      <span>已 保 存　·　ad min　·　2026-10-16 12:12</span>
+      <span>改 选 请 至　<b>预 测 台</b></span>
+    </div>
+    <p class="cb-rel"><b>与报告的关系</b>　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+  </section>
+
+  <!-- 页脚 -->
+  <div class="tf">
+    <div class="f-l">
+      <b>文 衡 · 电 报</b>
+      <span>雲南大學圖書館 · 學科信息參考</span>
+    </div>
+    <div class="f-r">
+      第 39 期　·　二零二六年九月　·　本期目錄<br>
+      发报台 / 取数台　·　收报台 / 馆员　·　本电报仅一份
+    </div>
+  </div>
+
+</main>
+</body>
+</html>

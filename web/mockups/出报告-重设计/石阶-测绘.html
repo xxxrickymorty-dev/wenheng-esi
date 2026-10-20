@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出报告 · 方向「石阶」（测绘）— 静态稿</title>
+<style>
+  /* ============================================================
+     方向「石阶」· 测绘
+     实物依据：会泽院是云大标志性石砌主楼（1923 年开学当日奠基，
+     与学校同龄），「采中西法式，兼存古尚新」；其台阶与线脚是
+     可测量的实物。所以本期报告做成一张建筑测绘图：剖面画石阶，
+     四道工序即**四级踏步**，向上登到「可交付」；尺寸线、标高
+     符号、石砌填充线是测绘图本身的表达法。
+     石色＋墨线＋标高红。零渐变、零投影。
+     尺寸线／标高／剖面线是测绘图本身的结构，非装饰细线。
+     ============================================================ */
+  :root{
+    --paper:#E7E2D4;      /* 图纸 */
+    --paper-2:#D6D0BE;
+    --stone:#C4BCAC;      /* 石面 */
+    --stone-2:#ADA492;
+    --ink:#1E2428;
+    --ink-2:#4B5257;
+    --ink-3:#82888D;
+    --line:#A9B0B2;
+    --red:#C2452D;        /* 标高红 */
+    --green:#2F5D4B;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:#B8B2A2;color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--red);color:#fff}
+
+  /* ─── 顶栏 ─── */
+  .bar{background:var(--ink);height:58px;display:flex;align-items:center;gap:22px;padding:0 32px}
+  .bar .wm{font-family:var(--serif);font-size:21px;letter-spacing:.18em;color:#E7E2D4}
+  .bar .sub{font-family:var(--kai);font-size:11px;letter-spacing:.24em;color:rgba(231,226,212,.55);line-height:1.5}
+  .bar nav{display:flex;gap:20px;font-family:var(--kai);font-size:12.5px;letter-spacing:.18em;
+    color:rgba(231,226,212,.78);margin-left:12px}
+  .bar nav a.on{color:#F0EAD8;box-shadow:inset 0 -2px 0 var(--red)}
+  .bar .r{margin-left:auto;display:flex;align-items:center;gap:18px;font-family:var(--kai);
+    font-size:11.5px;letter-spacing:.22em;color:rgba(231,226,212,.55)}
+  .pal{display:inline-flex;gap:7px}
+  .pal i{width:24px;height:13px;display:inline-block;border:1px solid rgba(231,226,212,.28)}
+  .pal i.g{background:#1A4B27}.pal i.z{background:#B43B31}
+  .pal i.on{outline:2px solid #E7E2D4;outline-offset:2px}
+
+  .sheet{max-width:1180px;margin:30px auto 0;background:var(--paper);border:1px solid var(--stone-2)}
+
+  /* ─── 图签 ─── */
+  .titleblock{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0;
+    border-bottom:2px solid var(--ink)}
+  .tb-l{padding:28px 34px 24px}
+  .tb-l .ov{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:var(--ink-3)}
+  .tb-l h1{font-family:var(--serif);font-size:clamp(32px,4.4vw,54px);line-height:1.1;
+    letter-spacing:.04em;margin-top:12px}
+  .tb-l .deck{font-family:var(--kai);font-size:14.5px;line-height:2;color:var(--ink-2);
+    margin-top:14px;max-width:32ch}
+  .tb-l .acts{margin-top:22px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  .btn{background:var(--ink);color:var(--paper);border:0;padding:13px 28px;font-size:15px;
+    letter-spacing:.14em;font-weight:700}
+  .btn:hover{background:var(--red)}
+  .tb-l .ghost{font-family:var(--kai);font-size:13px;letter-spacing:.18em;color:var(--ink-2);
+    box-shadow:inset 0 -1px 0 var(--line);padding-bottom:3px}
+
+  /* 图签栏（右侧） */
+  .tb-r{border-left:2px solid var(--ink);background:var(--paper-2);
+    display:grid;grid-template-rows:repeat(4,1fr);min-width:250px}
+  .tb-r .cell{padding:11px 20px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;justify-content:center}
+  .tb-r .cell:last-child{border-bottom:0}
+  .tb-r .k{font-family:var(--kai);font-size:9.5px;letter-spacing:.36em;color:var(--ink-3)}
+  .tb-r .v{font-family:var(--serif);font-size:16px;letter-spacing:.06em;margin-top:3px}
+  .tb-r .v.mono{font-family:var(--mono);font-size:13px;letter-spacing:.12em}
+  .tb-r .v.red{color:var(--red)}
+
+  /* ─── 剖面：石阶 ─── */
+  .section{padding:0}
+  .section .cap{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    padding:14px 34px;border-bottom:1px solid var(--line);
+    font-family:var(--kai);font-size:10.5px;letter-spacing:.36em;color:var(--ink-3)}
+  .section .cap b{font-family:var(--serif);font-size:13px;letter-spacing:.18em;color:var(--ink)}
+  .drawwrap{padding:8px 20px 0}
+  .drawwrap svg{display:block;width:100%;height:auto}
+
+  /* ─── 标高说明：工序 ＝ 四级踏步 ─── */
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;
+    border-top:1px solid var(--line);border-bottom:2px solid var(--ink)}
+  .st{padding:20px 22px 18px;border-right:1px solid var(--line);position:relative}
+  .st:last-child{border-right:0}
+  .st .el{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--red)}
+  .st .k{font-family:var(--kai);font-size:10.5px;letter-spacing:.36em;color:var(--ink-3);margin-top:6px}
+  .st .v{font-family:var(--serif);font-size:clamp(17px,2vw,23px);line-height:1.3;
+    letter-spacing:.03em;margin-top:8px}
+  .st .m{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--ink-3);margin-top:7px}
+  .st .tag{display:inline-block;margin-top:9px;font-family:var(--kai);font-size:9.5px;
+    letter-spacing:.28em;padding:2px 9px;background:var(--paper-2);color:var(--ink-3)}
+  .st.done .tag{background:rgba(47,93,75,.16);color:var(--green)}
+  .st.now .tag{background:var(--red);color:var(--paper)}
+  .st.now .v{color:var(--red)}
+  .st.todo .v{color:var(--ink-3)}
+
+  /* ─── 说明与数据 ─── */
+  .notes{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:0;
+    border-bottom:2px solid var(--ink)}
+  .nl{padding:26px 34px 24px;border-right:1px solid var(--line)}
+  .nr{padding:26px 30px 24px;background:var(--paper-2)}
+  .nl h2{font-family:var(--serif);font-size:clamp(23px,2.8vw,32px);line-height:1.34;letter-spacing:.03em}
+  .nl .lead{font-family:var(--kai);font-size:14.5px;line-height:2.05;color:var(--ink-2);
+    margin-top:14px;max-width:36ch}
+  .nl .warn{margin-top:16px;padding:12px 16px;border-left:3px solid var(--red);
+    background:rgba(194,69,45,.07);font-family:var(--kai);font-size:12.5px;line-height:1.95;
+    letter-spacing:.1em;color:var(--ink-2)}
+  .nl .warn b{color:var(--red);font-family:var(--serif);letter-spacing:.14em}
+  .nr .dt{font-family:var(--kai);font-size:10.5px;letter-spacing:.36em;color:var(--ink-3);margin-bottom:14px}
+  .nr dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px 18px;
+    font-family:var(--kai);font-size:12.5px}
+  .nr dt{color:var(--ink-3);letter-spacing:.18em;white-space:nowrap}
+  .nr dd{color:var(--ink);text-align:right;overflow-wrap:anywhere}
+  .nr dd b{font-family:var(--serif);font-size:17px;letter-spacing:.05em}
+
+  /* ─── 明细表：选模 ─── */
+  .schedule{padding:28px 34px 22px}
+  .schedule .hd{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;
+    border-bottom:2px solid var(--ink);padding-bottom:13px}
+  .schedule h2{font-family:var(--serif);font-size:clamp(22px,2.6vw,30px);letter-spacing:.12em}
+  .schedule h2 .n{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:var(--ink-3);
+    display:block;margin-bottom:3px;font-weight:400}
+  .schedule .lnk{margin-left:auto;font-family:var(--kai);font-size:13px;letter-spacing:.18em;
+    color:var(--red);box-shadow:inset 0 -1px 0 var(--red);padding-bottom:2px}
+  .tabs{display:flex;gap:26px;margin:16px 0 4px;font-family:var(--kai);font-size:12.5px;
+    letter-spacing:.14em;color:var(--ink-3)}
+  .tabs span{padding:7px 0;border-bottom:2px solid transparent}
+  .tabs span.on{color:var(--ink);font-weight:700;border-bottom-color:var(--red)}
+  table{width:100%;border-collapse:collapse}
+  thead th{font-family:var(--kai);font-size:11px;letter-spacing:.36em;color:var(--ink-3);
+    text-align:left;font-weight:400;padding:12px 14px 10px 0;border-bottom:1px solid var(--ink)}
+  thead th:last-child{padding-right:0}
+  tbody td{padding:12px 14px 12px 0;border-bottom:1px solid var(--paper-2);
+    font-family:var(--serif);font-size:15px;vertical-align:baseline;letter-spacing:.03em}
+  tbody td:last-child{padding-right:0}
+  tbody tr:last-child td{border-bottom:0}
+  tbody td.subj{font-weight:700}
+  tbody td.no{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--ink-3);width:44px}
+  tbody td.mdl{font-family:var(--kai);font-size:13px;color:var(--ink-2);letter-spacing:.12em}
+  tbody td.pk{font-weight:700}
+  .chg{display:inline-flex;align-items:center;gap:5px;color:var(--red);font-family:var(--kai);
+    font-size:11.5px;letter-spacing:.18em;margin-left:9px;white-space:nowrap}
+  .chg::before{content:"";width:7px;height:7px;background:var(--red);flex:none}
+  .dflt{color:var(--ink-3);font-family:var(--kai);font-size:12.5px;letter-spacing:.18em}
+  .schedule .foot{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:14px 0 4px;font-family:var(--kai);font-size:11.5px;letter-spacing:.22em;color:var(--ink-3)}
+  .schedule .foot b{color:var(--ink);font-family:var(--serif);letter-spacing:.14em}
+  .rel{margin-top:16px;padding-top:15px;border-top:1px solid var(--paper-2);
+    font-family:var(--kai);font-size:12px;line-height:2;letter-spacing:.12em;color:var(--ink-3);max-width:92ch}
+  .rel b{color:var(--ink-2);font-family:var(--serif);font-weight:700;letter-spacing:.16em}
+
+  .footbar{max-width:1180px;margin:0 auto 30px;padding:16px 34px 6px;background:var(--paper);
+    border:1px solid var(--stone-2);border-top:0;display:flex;justify-content:space-between;
+    gap:18px;flex-wrap:wrap;font-family:var(--kai);font-size:11px;letter-spacing:.32em;color:var(--ink-3)}
+  .footbar b{font-family:var(--serif);font-size:13px;letter-spacing:.22em;color:var(--ink);display:block}
+
+  @media (max-width:900px){
+    .titleblock{grid-template-columns:1fr}
+    .tb-r{border-left:0;border-top:2px solid var(--ink);grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+    .tb-r .cell{border-bottom:1px solid var(--line)}
+    .steps{grid-template-columns:1fr 1fr}
+    .st{border-bottom:1px solid var(--line)}
+    .notes{grid-template-columns:1fr}
+    .nl{border-right:0;border-bottom:1px solid var(--line)}
+    .tb-l,.nl,.nr,.schedule,.footbar,.section .cap{padding-left:20px;padding-right:20px}
+    table,thead,tbody,tr,td,th{display:block}
+    thead{display:none}
+    tbody tr{padding:12px 0;border-bottom:1px solid var(--paper-2)}
+    tbody td{border:0;padding:2px 0}
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="wm">文衡</span>
+  <span class="sub">雲 南 大 學 圖 書 館<br>學 科 信 息 參 考</span>
+  <nav aria-label="工作区">
+    <a class="on" href="#">出报告</a><a href="#">灵活报告</a><a href="#">报告</a><a href="#">问文衡</a>
+  </nav>
+  <span class="r">
+    <span>陈 列 馆 ↗</span>
+    <span class="pal"><i class="g on" title="云大绿"></i><i class="z" title="朱砂"></i></span>
+  </span>
+</header>
+
+<div class="sheet">
+
+  <!-- ─── 图签 ─── -->
+  <header class="titleblock">
+    <div class="tb-l">
+      <div class="ov">雲 南 大 學 圖 書 館 · 學 科 信 息 參 考 · 出 報 告</div>
+      <h1>本期报告已就绪</h1>
+      <p class="deck">会泽院石阶剖面。四道工序即四级踏步，向上登至「可交付」。复核后签单，这一版才会被标记为「可交付」。</p>
+      <div class="acts">
+        <button class="btn">复核并签单 →</button>
+        <a class="ghost" href="#">看详细过程</a>
+      </div>
+    </div>
+    <div class="tb-r">
+      <div class="cell"><span class="k">圖 名</span><span class="v">学科信息参考 · 第 39 期</span></div>
+      <div class="cell"><span class="k">編 號</span><span class="v mono">2 0 2 6 0 9</span></div>
+      <div class="cell"><span class="k">比 例</span><span class="v mono">1 : 1</span></div>
+      <div class="cell"><span class="k">狀 態</span><span class="v red">待 簽 單</span></div>
+    </div>
+  </header>
+
+  <!-- ─── 剖面：石阶 ─── -->
+  <section class="section">
+    <div class="cap"><b>石 階 剖 面</b><span>踏 步 即 工 序　·　標 高 以 「可 交 付」 為 ± 0 . 0 0 0</span></div>
+    <div class="drawwrap">
+      <svg viewBox="0 0 1120 300" role="img"
+        aria-label="石阶剖面图：四级踏步自下而上，最高一级标高为可交付">
+        <!-- 地面线 -->
+        <line x1="40" y1="252" x2="1080" y2="252" stroke="#1E2428" stroke-width="2.2"/>
+        <!-- 石砌填充（剖面线） -->
+        <g stroke="#A9B0B2" stroke-width="1">
+          <line x1="60" y1="252" x2="88" y2="224"/><line x1="100" y1="252" x2="128" y2="224"/>
+          <line x1="140" y1="252" x2="168" y2="224"/><line x1="180" y1="252" x2="208" y2="224"/>
+          <line x1="220" y1="252" x2="248" y2="224"/><line x1="260" y1="252" x2="288" y2="224"/>
+          <line x1="300" y1="252" x2="328" y2="224"/><line x1="340" y1="252" x2="368" y2="224"/>
+          <line x1="380" y1="252" x2="408" y2="224"/><line x1="420" y1="252" x2="448" y2="224"/>
+          <line x1="460" y1="252" x2="488" y2="224"/><line x1="500" y1="252" x2="528" y2="224"/>
+          <line x1="540" y1="252" x2="568" y2="224"/><line x1="580" y1="252" x2="608" y2="224"/>
+          <line x1="620" y1="252" x2="648" y2="224"/><line x1="660" y1="252" x2="688" y2="224"/>
+          <line x1="700" y1="252" x2="728" y2="224"/><line x1="740" y1="252" x2="768" y2="224"/>
+          <line x1="780" y1="252" x2="808" y2="224"/><line x1="820" y1="252" x2="848" y2="224"/>
+          <line x1="860" y1="252" x2="888" y2="224"/><line x1="900" y1="252" x2="928" y2="224"/>
+          <line x1="940" y1="252" x2="968" y2="224"/><line x1="980" y1="252" x2="1008" y2="224"/>
+          <line x1="1020" y1="252" x2="1048" y2="224"/>
+        </g>
+        <!-- 四级踏步（剖面实线） -->
+        <path d="M120,252 L120,204 L360,204 L360,156 L600,156 L600,108 L840,108 L840,60 L1060,60 L1060,252"
+              fill="#C4BCAC" stroke="#1E2428" stroke-width="2.4" stroke-linejoin="miter"/>
+        <!-- 踏步分隔 -->
+        <g stroke="#1E2428" stroke-width="1.4">
+          <line x1="360" y1="204" x2="360" y2="252"/>
+          <line x1="600" y1="156" x2="600" y2="252"/>
+          <line x1="840" y1="108" x2="840" y2="252"/>
+        </g>
+        <!-- 尺寸线（踏步宽） -->
+        <g stroke="#4B5257" stroke-width="1">
+          <line x1="120" y1="278" x2="360" y2="278"/><line x1="360" y1="278" x2="600" y2="278"/>
+          <line x1="600" y1="278" x2="840" y2="278"/><line x1="840" y1="278" x2="1060" y2="278"/>
+        </g>
+        <g stroke="#4B5257" stroke-width="1">
+          <line x1="120" y1="273" x2="120" y2="283"/><line x1="360" y1="273" x2="360" y2="283"/>
+          <line x1="600" y1="273" x2="600" y2="283"/><line x1="840" y1="273" x2="840" y2="283"/>
+          <line x1="1060" y1="273" x2="1060" y2="283"/>
+        </g>
+        <g fill="#4B5257" font-family="Cascadia Mono,Consolas,monospace" font-size="11"
+           text-anchor="middle" letter-spacing="1">
+          <text x="240" y="294">6 4 / 6 4</text>
+          <text x="480" y="294">全 選</text>
+          <text x="720" y="294">1 5 : 0 3</text>
+          <text x="950" y="294">待 簽</text>
+        </g>
+
+        <!-- 标高符号（红三角）＋ 引出线 -->
+        <g stroke="#C2452D" stroke-width="1.3" fill="#C2452D">
+          <polygon points="352,196 360,182 368,196"/>
+          <line x1="360" y1="182" x2="360" y2="150"/>
+          <polygon points="592,148 600,134 608,148"/>
+          <line x1="600" y1="134" x2="600" y2="102"/>
+          <polygon points="832,100 840,86 848,100"/>
+          <line x1="840" y1="86" x2="840" y2="54"/>
+          <polygon points="1052,52 1060,38 1068,52"/>
+          <line x1="1060" y1="38" x2="1060" y2="16"/>
+        </g>
+        <g fill="#C2452D" font-family="KaiTi,STKaiti,serif" font-size="12" letter-spacing="2">
+          <text x="360" y="144">± 0 . 1 2 5</text>
+          <text x="600" y="96">± 0 . 2 5 0</text>
+          <text x="840" y="48">± 0 . 3 7 5</text>
+          <text x="1060" y="12" text-anchor="end">± 0 . 0 0 0　可 交 付</text>
+        </g>
+
+        <!-- 竖向尺寸（踏步高） -->
+        <g stroke="#82888D" stroke-width="1" stroke-dasharray="4 3">
+          <line x1="92" y1="204" x2="92" y2="252"/>
+          <line x1="92" y1="156" x2="92" y2="204"/>
+          <line x1="92" y1="108" x2="92" y2="156"/>
+          <line x1="92" y1="60" x2="92" y2="108"/>
+        </g>
+        <text x="72" y="232" fill="#82888D" font-family="Cascadia Mono,monospace" font-size="10"
+              text-anchor="middle">1</text>
+        <text x="72" y="184" fill="#82888D" font-family="Cascadia Mono,monospace" font-size="10"
+              text-anchor="middle">2</text>
+        <text x="72" y="136" fill="#82888D" font-family="Cascadia Mono,monospace" font-size="10"
+              text-anchor="middle">3</text>
+        <text x="72" y="88" fill="#82888D" font-family="Cascadia Mono,monospace" font-size="10"
+              text-anchor="middle">4</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ─── 工序：四级踏步 ─── -->
+  <section class="steps" aria-label="出报告四道工序">
+    <div class="st done"><div class="el">± 0 . 1 2 5</div><div class="k">踏 步 一</div>
+      <div class="v">下载数据核验</div><div class="m">64 / 64 完成</div><div class="tag">完 成</div></div>
+    <div class="st done"><div class="el">± 0 . 2 5 0</div><div class="k">踏 步 二</div>
+      <div class="v">选择章节</div><div class="m">按大纲全选</div><div class="tag">完 成</div></div>
+    <div class="st now"><div class="el">± 0 . 3 7 5</div><div class="k">踏 步 三</div>
+      <div class="v">生成初稿</div><div class="m">10-13 15:03 已出稿</div><div class="tag">待 複 核</div></div>
+    <div class="st todo"><div class="el">± 0 . 0 0 0</div><div class="k">踏 步 四</div>
+      <div class="v">核验与定稿</div><div class="m">复核无异议后签单</div><div class="tag">待 辦</div></div>
+  </section>
+
+  <!-- ─── 说明与数据 ─── -->
+  <section class="notes">
+    <div class="nl">
+      <h2>复核后签单，<br>这一版即可交付。</h2>
+      <p class="lead">任务结束不代表报告合格或已签发——管理员当前不能下载未签发的初稿。复核无异议后签单，这一版才会被标记为「可交付」。</p>
+      <div class="warn"><b>設 註</b>　本期八家潜力学科，未进 1% 的都会按你的选择出图（进本期图册），报告正文用接近度前二。所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</div>
+    </div>
+    <div class="nr">
+      <div class="dt">材 料 表 · 數 據</div>
+      <dl>
+        <dt>期 次</dt><dd><b>202609</b>　第 39 期</dd>
+        <dt>預 測 / 實 際</dt><dd>202609 / 202609</dd>
+        <dt>下 載 數 據</dt><dd><b>64 / 64</b></dd>
+        <dt>核 對 並 並 入</dt><dd>已并入台账</dd>
+        <dt>台 賬 文 件</dt><dd>云大全学科排名、阈值动态检测表.xlsx</dd>
+        <dt>最 後 修 改</dt><dd>2026 年 9 月 28 日 07:55</dd>
+        <dt>任 務</dt><dd>已完成</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ─── 明细表 ─── -->
+  <section class="schedule">
+    <div class="hd">
+      <h2><span class="n">明 細 表 · 附 件</span>本期选模</h2>
+      <a class="lnk" href="#">去预测台看图改选 →</a>
+    </div>
+    <div class="tabs"><span class="on">路线1 · 总被引 / ESI 前 1% 被引阈值</span><span>路线2 · 国内排名 / 国内前 1% 机构数</span></div>
+    <table>
+      <thead><tr>
+        <th style="width:44px">號</th>
+        <th style="width:26%">潛 力 學 科</th>
+        <th style="width:30%">V 1 推 薦</th>
+        <th>本 期 已 選</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="no">01</td><td class="subj">免疫学</td><td class="mdl">季节性 ETS 模型</td><td class="pk">SARIMA 模型<span class="chg">已改选</span></td></tr>
+        <tr><td class="no">02</td><td class="subj">分子生物学与遗传学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="no">03</td><td class="subj">多学科</td><td class="mdl">Holt 趋势模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="no">04</td><td class="subj">物理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="no">05</td><td class="subj">神经科学与行为科学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="no">06</td><td class="subj">空间科学</td><td class="mdl">SARIMA 模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="no">07</td><td class="subj">精神病学与心理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="no">08</td><td class="subj">经济与商业</td><td class="mdl">SARIMA 模型</td><td class="dflt">默 认</td></tr>
+      </tbody>
+    </table>
+    <div class="foot">
+      <span>已 保 存 · admin · 2026-10-16 12:12</span>
+      <span>改 選 請 至　<b>預 測 台</b></span>
+    </div>
+    <p class="rel"><b>與 報 告 的 關 係</b>　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+  </section>
+</div>
+
+<footer class="footbar">
+  <div><b>文衡 · 石阶</b>會 澤 院 石 階 · 採 中 西 法 式 兼 存 古 尚 新</div>
+  <div>四 級 踏 步　·　登 至 可 交 付　·　1 : 1</div>
+  <div>第 39 期　·　2 0 2 6 0 9　·　簽 發 後 歸 檔</div>
+</footer>
+</body>
+</html>

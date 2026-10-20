@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出报告 · 方向「四训」（校训）— 静态稿</title>
+<style>
+  /* ============================================================
+     方向「四训」· 校训
+     实物依据：云大校训「自尊 · 致知 · 正义 · 力行」，1923 年
+     唐继尧订立。四句四格，恰好接住出报告的四道工序。
+     注：唐继尧原注只核实到「自尊」一节（「志学而立，健以自强。
+     不偏不倚，毋怠毋荒。世方万变，我自抱一。高乃自危，立乃毋踬。」）
+     与「致知」相关的自述（「以致良知为师，以知行合一为归」
+     「阐旧学以培新知，造通才而应世变」）。「正义」「力行」两格
+     只用四字本身，不代拟原注。墨分四阶做四象限。
+     零渐变、零投影。象限界线是四分本身的结构。
+     ============================================================ */
+  :root{
+    --paper:#F1EEE4;
+    --ink:#141517;
+    --q1:#1B1D20;  --q2:#33383D;  --q3:#5C6268;  --q4:#9AA0A5;
+    --rice:#F1EEE4;
+    --red:#AE2F22;
+    --gold:#B8934D;
+    --line:#D4D0C4;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--red);color:#fff}
+
+  /* ─── 顶栏 ─── */
+  .bar{height:58px;display:flex;align-items:center;gap:24px;padding:0 32px;
+    border-bottom:2px solid var(--ink)}
+  .bar .wm{font-family:var(--serif);font-size:21px;letter-spacing:.18em}
+  .bar .sub{font-family:var(--kai);font-size:11px;letter-spacing:.24em;color:#7E7266;line-height:1.5}
+  .bar nav{display:flex;gap:21px;font-family:var(--kai);font-size:13px;letter-spacing:.18em;
+    color:#4A423A;margin-left:12px}
+  .bar nav a.on{color:var(--ink);font-weight:700;box-shadow:inset 0 -2px 0 var(--red)}
+  .bar .r{margin-left:auto;display:flex;align-items:center;gap:18px;font-family:var(--kai);
+    font-size:12px;letter-spacing:.22em;color:#7E7266}
+  .pal{display:inline-flex;gap:7px}
+  .pal i{width:24px;height:13px;display:inline-block;border:1px solid var(--line)}
+  .pal i.g{background:#1A4B27}.pal i.z{background:#B43B31}
+  .pal i.on{outline:2px solid var(--ink);outline-offset:2px}
+
+  /* ─── 题头 ─── */
+  .head{max-width:1180px;margin:0 auto;padding:38px 32px 26px;
+    display:flex;justify-content:space-between;align-items:flex-end;gap:28px;flex-wrap:wrap}
+  .head .l .ov{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:#7E7266}
+  .head .l h1{font-family:var(--serif);font-size:clamp(32px,4.4vw,54px);line-height:1.12;
+    letter-spacing:.04em;margin-top:10px}
+  .head .l .sub{font-family:var(--kai);font-size:14px;letter-spacing:.22em;color:#4A423A;margin-top:10px}
+  .head .r{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+  .head .r .motto{font-family:var(--serif);font-size:clamp(20px,2.6vw,30px);letter-spacing:.32em;
+    color:var(--red);font-weight:700}
+  .head .r .note{font-family:var(--kai);font-size:11.5px;letter-spacing:.28em;color:#7E7266}
+  .head .acts{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+  .btn{background:var(--ink);color:var(--paper);border:0;padding:13px 28px;font-size:15px;
+    letter-spacing:.14em;font-weight:700}
+  .btn:hover{background:var(--red)}
+  .head .ghost{font-family:var(--kai);font-size:13px;letter-spacing:.18em;color:#4A423A;
+    box-shadow:inset 0 -1px 0 var(--line);padding-bottom:3px}
+
+  /* ─── 四象限 ─── */
+  .quad{max-width:1180px;margin:0 auto;padding:0 32px;display:grid;
+    grid-template-columns:1fr 1fr;gap:2px;background:var(--ink)}
+  .q{padding:34px 36px 30px;min-height:270px;display:flex;flex-direction:column}
+  .q.q1{background:var(--q1);color:var(--rice)}
+  .q.q2{background:var(--q2);color:var(--rice)}
+  .q.q3{background:var(--q3);color:var(--rice)}
+  .q.q4{background:var(--q4);color:var(--ink)}
+  .q .idx{font-family:var(--mono);font-size:11px;letter-spacing:.36em;opacity:.6}
+  .q h2{font-family:var(--serif);font-size:clamp(40px,5.2vw,68px);line-height:1.02;
+    letter-spacing:.16em;margin-top:10px;font-weight:700}
+  .q .gloss{font-family:var(--kai);font-size:13.5px;line-height:2.05;letter-spacing:.12em;
+    margin-top:16px;opacity:.82;max-width:26ch}
+  .q .gloss .src{display:block;margin-top:8px;font-size:10.5px;letter-spacing:.24em;opacity:.62}
+  .q .state{margin-top:auto;padding-top:20px;display:flex;align-items:baseline;
+    justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .q .state .k{font-family:var(--kai);font-size:11px;letter-spacing:.36em;opacity:.62}
+  .q .state .v{font-family:var(--serif);font-size:17px;letter-spacing:.06em}
+  .q .state .m{font-family:var(--mono);font-size:11px;letter-spacing:.12em;opacity:.62}
+  .q.q1 .state .v{color:#F0C583}
+  .q.q4 .state .v{color:var(--red)}
+  .q.todo .state .v{opacity:.5}
+
+  /* ─── 主体 ─── */
+  .main{max-width:1180px;margin:0 auto;padding:44px 32px 0;
+    display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:52px;align-items:start}
+  .stmt h2{font-family:var(--serif);font-size:clamp(25px,3.1vw,38px);line-height:1.32;letter-spacing:.03em}
+  .stmt .lead{font-family:var(--kai);font-size:15px;line-height:2.05;color:#4A423A;
+    margin-top:16px;max-width:34ch}
+  .stmt .note{font-family:var(--kai);font-size:12.5px;line-height:2;letter-spacing:.12em;
+    color:#7E7266;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);max-width:46ch}
+  .data{border-top:2px solid var(--ink);padding-top:18px}
+  .data .dt{font-family:var(--kai);font-size:11px;letter-spacing:.36em;color:#7E7266;margin-bottom:14px}
+  .data dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px 20px;font-family:var(--kai);font-size:13px}
+  .data dt{color:#7E7266;letter-spacing:.18em;white-space:nowrap}
+  .data dd{color:var(--ink);text-align:right;overflow-wrap:anywhere}
+  .data dd b{font-family:var(--serif);font-size:18px;letter-spacing:.04em}
+
+  /* ─── 选模 ─── */
+  .pick{max-width:1180px;margin:48px auto 0;padding:0 32px}
+  .pick .hd{display:flex;align-items:baseline;gap:20px;flex-wrap:wrap;
+    border-bottom:2px solid var(--ink);padding-bottom:13px}
+  .pick h2{font-family:var(--serif);font-size:clamp(23px,2.7vw,32px);letter-spacing:.12em}
+  .pick h2 .n{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:#7E7266;
+    display:block;margin-bottom:3px;font-weight:400}
+  .pick .lnk{margin-left:auto;font-family:var(--kai);font-size:13px;letter-spacing:.18em;
+    color:var(--red);box-shadow:inset 0 -1px 0 var(--red);padding-bottom:2px}
+  .tabs{display:flex;gap:26px;margin:16px 0 4px;font-family:var(--kai);font-size:13px;
+    letter-spacing:.14em;color:#7E7266}
+  .tabs span{padding:7px 0;border-bottom:2px solid transparent}
+  .tabs span.on{color:var(--ink);font-weight:700;border-bottom-color:var(--red)}
+  table{width:100%;border-collapse:collapse}
+  thead th{font-family:var(--kai);font-size:11px;letter-spacing:.36em;color:#7E7266;
+    text-align:left;font-weight:400;padding:13px 16px 10px 0;border-bottom:1px solid var(--ink)}
+  thead th:last-child{padding-right:0}
+  tbody td{padding:13px 16px 13px 0;border-bottom:1px solid var(--line);
+    font-family:var(--serif);font-size:15.5px;vertical-align:baseline;letter-spacing:.03em}
+  tbody td:last-child{padding-right:0}
+  tbody tr:last-child td{border-bottom:0}
+  tbody td.subj{font-weight:700}
+  tbody td.mdl{font-family:var(--kai);font-size:13.5px;color:#4A423A;letter-spacing:.12em}
+  tbody td.pk{font-weight:700}
+  .chg{display:inline-flex;align-items:center;gap:6px;color:var(--red);font-family:var(--kai);
+    font-size:11.5px;letter-spacing:.18em;margin-left:10px;white-space:nowrap}
+  .chg::before{content:"";width:7px;height:7px;background:var(--red);flex:none}
+  .dflt{color:#7E7266;font-family:var(--kai);font-size:13px;letter-spacing:.18em}
+  .pick .foot{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:14px 0 4px;font-family:var(--kai);font-size:12px;letter-spacing:.22em;color:#7E7266}
+  .pick .foot b{color:var(--ink);font-family:var(--serif);letter-spacing:.14em}
+  .rel{margin-top:16px;padding-top:15px;border-top:1px solid var(--line);
+    font-family:var(--kai);font-size:12.5px;line-height:2;letter-spacing:.12em;color:#7E7266;max-width:92ch}
+  .rel b{color:#4A423A;font-family:var(--serif);font-weight:700;letter-spacing:.16em}
+
+  .footbar{max-width:1180px;margin:40px auto 0;padding:18px 32px 42px;border-top:1px solid var(--line);
+    display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11.5px;letter-spacing:.32em;color:#7E7266}
+  .footbar b{font-family:var(--serif);font-size:13px;letter-spacing:.22em;color:var(--ink);display:block}
+
+  @media (max-width:880px){
+    .quad{grid-template-columns:1fr;padding-left:18px;padding-right:18px}
+    .q{min-height:auto;padding:26px 22px}
+    .head,.main,.pick,.footbar{padding-left:18px;padding-right:18px}
+    .head{flex-direction:column;align-items:flex-start}
+    .head .r{align-items:flex-start}
+    .main{grid-template-columns:1fr;gap:30px}
+    table,thead,tbody,tr,td,th{display:block}
+    thead{display:none}
+    tbody tr{padding:12px 0;border-bottom:1px solid var(--line)}
+    tbody td{border:0;padding:2px 0}
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="wm">文衡</span>
+  <span class="sub">雲 南 大 學 圖 書 館<br>學 科 信 息 參 考</span>
+  <nav aria-label="工作区">
+    <a class="on" href="#">出报告</a><a href="#">灵活报告</a><a href="#">报告</a><a href="#">问文衡</a>
+  </nav>
+  <span class="r">
+    <span>陈 列 馆 ↗</span>
+    <span class="pal"><i class="g on" title="云大绿"></i><i class="z" title="朱砂"></i></span>
+  </span>
+</header>
+
+<!-- ─── 题头 ─── -->
+<section class="head">
+  <div class="l">
+    <div class="ov">雲 南 大 學 圖 書 館 · 學 科 信 息 參 考 · 出 報 告</div>
+    <h1>本期报告已就绪</h1>
+    <div class="sub">第 39 期 · 2026 年 9 月 · 目錄 2 0 2 6 0 9</div>
+  </div>
+  <div class="r">
+    <div class="motto">自 尊 · 致 知 · 正 義 · 力 行</div>
+    <div class="note">一 九 二 三 年 唐 繼 堯 訂 立 · 四 句 接 四 道 工 序</div>
+    <div class="acts">
+      <button class="btn">复核并签单 →</button>
+      <a class="ghost" href="#">看详细过程</a>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 四象限 ─── -->
+<section class="quad">
+
+  <div class="q q1">
+    <div class="idx">其 一 · 立 根 本</div>
+    <h2>自 尊</h2>
+    <p class="gloss">志学而立，健以自强。不偏不倚，毋怠毋荒。世方万变，我自抱一。高乃自危，立乃毋踬。
+      <span class="src">— 唐 繼 堯 校 訓 原 注</span></p>
+    <div class="state">
+      <div><div class="k">工 序 一</div><div class="v">下载数据核验</div></div>
+      <div class="m">64 / 64 完成</div>
+    </div>
+  </div>
+
+  <div class="q q2">
+    <div class="idx">其 二 · 求 真 知</div>
+    <h2>致 知</h2>
+    <p class="gloss">以致良知为师，以知行合一为归；阐旧学以培新知，造通才而应世变。
+      <span class="src">— 唐 繼 堯 自 述 所 學</span></p>
+    <div class="state">
+      <div><div class="k">工 序 二</div><div class="v">选择章节</div></div>
+      <div class="m">按大纲全选</div>
+    </div>
+  </div>
+
+  <div class="q q3">
+    <div class="idx">其 三 · 持 中 正</div>
+    <h2>正 義</h2>
+    <p class="gloss">出稿之要，在于中正。数据如实，口径如一，不增不减。本期预测与实际输出同为 202609。
+      <span class="src">— 本 期 实 事</span></p>
+    <div class="state">
+      <div><div class="k">工 序 三</div><div class="v">生成初稿</div></div>
+      <div class="m">10-13 15:03 已出稿</div>
+    </div>
+  </div>
+
+  <div class="q q4 todo">
+    <div class="idx">其 四 · 見 踐 行</div>
+    <h2>力 行</h2>
+    <p class="gloss">知行合一，签而方行。复核无异议后签单，这一版才会被标记为「可交付」。管理员当前不能下载未签发的初稿。
+      <span class="src">— 本 期 待 辦</span></p>
+    <div class="state">
+      <div><div class="k">工 序 四</div><div class="v">核验与定稿</div></div>
+      <div class="m">待 簽 單</div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 主体 ─── -->
+<section class="main">
+  <div class="stmt">
+    <h2>复核后签单，<br>这一版即可交付。</h2>
+    <p class="lead">任务结束不代表报告合格或已签发——管理员当前不能下载未签发的初稿。复核无异议后签单，这一版才会被标记为「可交付」。</p>
+    <p class="note">本期八家潜力学科，各按其法出图（进本期图册），报告正文用接近度前二。所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+  </div>
+
+  <div class="data">
+    <div class="dt">本 期 數 據</div>
+    <dl>
+      <dt>期 次</dt><dd><b>202609</b>　第 39 期</dd>
+      <dt>預 測 / 實 際</dt><dd>202609 / 202609</dd>
+      <dt>下 載 數 據</dt><dd><b>64 / 64</b></dd>
+      <dt>核 對 並 並 入</dt><dd>已并入台账</dd>
+      <dt>台 賬 文 件</dt><dd>云大全学科排名、阈值动态检测表.xlsx</dd>
+      <dt>最 後 修 改</dt><dd>2026 年 9 月 28 日 07:55</dd>
+      <dt>任 務</dt><dd>已完成</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- ─── 选模 ─── -->
+<section class="pick">
+  <div class="hd">
+    <h2><span class="n">附 表 · 選 模</span>本期选模</h2>
+    <a class="lnk" href="#">去预测台看图改选 →</a>
+  </div>
+  <div class="tabs"><span class="on">路线1 · 总被引 / ESI 前 1% 被引阈值</span><span>路线2 · 国内排名 / 国内前 1% 机构数</span></div>
+  <table>
+    <thead><tr>
+      <th style="width:28%">潛 力 學 科</th>
+      <th style="width:32%">V 1 推 薦</th>
+      <th>本 期 已 選</th>
+    </tr></thead>
+    <tbody>
+      <tr><td class="subj">免疫学</td><td class="mdl">季节性 ETS 模型</td><td class="pk">SARIMA 模型<span class="chg">已改选</span></td></tr>
+      <tr><td class="subj">分子生物学与遗传学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">多学科</td><td class="mdl">Holt 趋势模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">物理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">神经科学与行为科学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">空间科学</td><td class="mdl">SARIMA 模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">精神病学与心理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">经济与商业</td><td class="mdl">SARIMA 模型</td><td class="dflt">默 认</td></tr>
+    </tbody>
+  </table>
+  <div class="foot">
+    <span>已 保 存 · admin · 2026-10-16 12:12</span>
+    <span>改 選 請 至　<b>預 測 台</b></span>
+  </div>
+  <p class="rel"><b>與 報 告 的 關 係</b>　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+</section>
+
+<footer class="footbar">
+  <div><b>文衡 · 四训</b>雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+  <div>自 尊　致 知　正 義　力 行　·　一 九 二 三</div>
+  <div>第 39 期　·　2 0 2 6 0 9　·　簽 發 後 歸 檔</div>
+</footer>
+</body>
+</html>

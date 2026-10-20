@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出报告 · 方向「样」（校样）— 静态稿</title>
+<style>
+  /* ============================================================
+     方向「样」· 校样（Galley Proof / 校样纸）
+     一句话：本期报告做成一份待签发的校样——暖黄稿纸、行文里带
+     红笔校对符号、页边红笔批注与蓝色钢笔签注、右下角「待签发」
+     红章；四道工序＝发稿／排版／出样／校对签发。校样纸＋墨黑
+     ＋校对红＋钢笔蓝。楷体做批注（手写感）。
+     红笔校对符号是校对本身的语言，不是装饰。零渐变、零投影。
+     ============================================================ */
+  :root{
+    --paper:#F4EDD8;          /* 校样纸 */
+    --paper-2:#EBE2C8;
+    --ink:#17161A;
+    --ink-2:#3F3D42;
+    --ink-3:#7A7670;
+    --line:#C9BFA2;
+    --line-2:#DBD2B8;
+    --red:#BE3225;            /* 校对红 */
+    --red-2:#8F2218;
+    --blue:#2A4A80;           /* 钢笔蓝 */
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:#D9D2C0;color:var(--ink);font:15px/1.8 var(--serif);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:700}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--red);color:var(--paper)}
+
+  /* ─── 顶栏 ─── */
+  .bar{background:var(--paper);height:56px;display:flex;align-items:center;gap:22px;
+    padding:0 30px;border-bottom:1px solid var(--line)}
+  .bar .wm{font-family:var(--serif);font-size:21px;letter-spacing:.16em}
+  .bar .sub{font-size:11px;letter-spacing:.2em;color:var(--ink-3);line-height:1.5}
+  .bar nav{display:flex;gap:20px;font-size:13px;color:var(--ink-2);margin-left:12px}
+  .bar nav a.on{color:var(--red);font-weight:600;box-shadow:inset 0 -2px 0 var(--red)}
+  .bar .r{margin-left:auto;display:flex;align-items:center;gap:18px;font-size:12px;color:var(--ink-3)}
+  .pal{display:inline-flex;gap:7px}
+  .pal i{width:24px;height:13px;display:inline-block;border:1px solid var(--line)}
+  .pal i.g{background:#1A4B27}.pal i.z{background:#B43B31}
+  .pal i.on{outline:2px solid var(--ink);outline-offset:2px}
+
+  /* ─── 校样纸 ─── */
+  .proof{max-width:1060px;margin:34px auto;background:var(--paper);
+    border:1px solid var(--line);padding:0}
+
+  /* 校样头 */
+  .phead{display:flex;flex-wrap:wrap;gap:0;border-bottom:2px solid var(--ink);background:var(--paper-2)}
+  .phead .c{padding:11px 20px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+  .phead .c:last-child{border-right:0}
+  .phead .k{font-family:var(--sans);font-size:10px;letter-spacing:.28em;color:var(--ink-3)}
+  .phead .v{font-family:var(--serif);font-size:15px;letter-spacing:.06em}
+  .phead .v.mono{font-family:var(--kai);letter-spacing:.14em}
+  .phead .grow{flex:1;border-right:0}
+  .phead .round{margin:9px 16px;padding:0 16px;background:var(--red);color:var(--paper);
+    display:flex;flex-direction:column;justify-content:center;align-items:center;transform:rotate(-2deg);
+    font-family:var(--serif)}
+  .phead .round b{font-size:15px;letter-spacing:.22em}
+  .phead .round span{font-size:9.5px;letter-spacing:.24em;opacity:.88}
+
+  /* ─── 校样行文区：左校对符号 / 正文 / 右批注 ─── */
+  .galley{display:grid;grid-template-columns:82px minmax(0,1fr) 168px;gap:0;
+    border-bottom:2px solid var(--ink);background:var(--paper)}
+  .marks{padding:26px 8px 26px 18px;border-right:1px solid var(--line-2);position:relative}
+  .marks .m{height:44px;display:flex;align-items:center;justify-content:flex-end;color:var(--red);
+    font-family:var(--kai);font-size:13px;letter-spacing:.1em}
+  .marks .m svg{overflow:visible}
+  .text{padding:26px 30px 30px;position:relative}
+  .text h1{font-family:var(--serif);font-size:clamp(28px,3.4vw,42px);line-height:1.32;
+    letter-spacing:.03em;position:relative;display:inline-block}
+  /* 标题下的红笔波浪（校对：保留／重排） */
+  .text h1::after{content:"";position:absolute;left:0;right:0;bottom:-7px;height:7px;
+    background:
+      radial-gradient(circle at 4px 7px,transparent 3.6px,var(--red) 3.8px,var(--red) 4.6px,transparent 4.8px) repeat-x;
+    background-size:8px 7px;opacity:.85}
+  .text .sub{font-family:var(--kai);font-size:16px;color:var(--ink-2);margin-top:20px;letter-spacing:.08em}
+  .text p{font-family:var(--serif);font-size:15.5px;line-height:2.15;letter-spacing:.02em;
+    color:var(--ink);margin-top:16px;text-indent:2em;position:relative}
+  /* 增补号：^ */
+  .ins{position:relative;color:var(--red)}
+  .ins::after{content:"^";position:absolute;left:50%;bottom:-13px;transform:translateX(-50%);
+    color:var(--red);font-family:var(--kai);font-size:15px;line-height:1}
+  /* 删除线（校对删除号） */
+  .del{position:relative;color:var(--ink-3)}
+  .del::after{content:"";position:absolute;left:-2px;right:-2px;top:52%;height:2px;
+    background:var(--red);transform:rotate(-6deg)}
+  /* 蓝笔下划线 */
+  .blue{box-shadow:inset 0 -1.5px 0 var(--blue);color:var(--blue)}
+
+  /* 右批注栏 */
+  .notes{padding:26px 18px 26px 14px;border-left:1px solid var(--line-2);position:relative}
+  .notes .n{font-family:var(--kai);font-size:13px;line-height:1.75;letter-spacing:.06em;
+    color:var(--blue);margin-bottom:16px;position:relative;padding-left:14px}
+  .notes .n::before{content:"";position:absolute;left:0;top:8px;width:7px;height:7px;
+    background:var(--blue);border-radius:50%}
+  .notes .n.red{color:var(--red)}
+  .notes .n.red::before{background:var(--red)}
+  .notes .n .who{display:block;font-family:var(--sans);font-size:9.5px;letter-spacing:.24em;
+    color:var(--ink-3);margin-top:4px}
+
+  /* 签发章 */
+  .stampzone{margin:26px 0 0;display:flex;justify-content:flex-end;padding:0 6px}
+  .stamp{width:150px;height:150px;transform:rotate(-13deg);opacity:.86}
+  .stamp svg{width:100%;height:100%;display:block}
+
+  /* ─── 校对单：四道工序 ─── */
+  .docket{border-bottom:2px solid var(--ink);padding:24px 30px 22px;background:var(--paper-2)}
+  .docket h2{font-family:var(--serif);font-size:18px;letter-spacing:.18em;display:flex;align-items:baseline;gap:16px}
+  .docket h2 .n{margin-left:auto;font-family:var(--kai);font-size:13px;letter-spacing:.18em;color:var(--ink-3)}
+  .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:20px}
+  .fl{padding:0 20px 0 0;border-right:1px solid var(--line);position:relative}
+  .fl:last-child{border-right:0}
+  .fl:not(:first-child){padding-left:20px}
+  .fl .k{font-family:var(--sans);font-size:10px;letter-spacing:.28em;color:var(--ink-3)}
+  .fl .v{font-family:var(--serif);font-size:19px;letter-spacing:.03em;margin-top:8px;line-height:1.35}
+  .fl .s{font-family:var(--kai);font-size:12.5px;color:var(--ink-3);margin-top:5px;letter-spacing:.08em}
+  .fl .tag{display:inline-flex;align-items:center;gap:5px;margin-top:10px;
+    font-family:var(--sans);font-size:10px;letter-spacing:.22em;padding:3px 10px;
+    background:var(--line-2);color:var(--ink-3)}
+  .fl.done .tag{background:#DCE4D8;color:#2A5A45}
+  .fl.now .tag{background:#EFD6D0;color:var(--red)}
+  .fl.now .v{color:var(--red)}
+  .fl.todo .v{color:var(--ink-3)}
+  .fl .sign-here{margin-top:10px;display:inline-block;padding:4px 11px;border:1.5px dashed var(--red);
+    color:var(--red);font-family:var(--kai);font-size:12.5px;letter-spacing:.18em}
+
+  /* ─── 附表：选模 ─── */
+  .annex{padding:26px 30px 8px}
+  .annex .hd{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+  .annex h2{font-family:var(--serif);font-size:19px;letter-spacing:.14em}
+  .annex h2 .a{color:var(--red);font-family:var(--kai);font-size:13px;letter-spacing:.24em}
+  .annex .lnk{margin-left:auto;font-family:var(--kai);font-size:13px;letter-spacing:.12em;
+    color:var(--red);box-shadow:inset 0 -1px 0 var(--red);padding-bottom:2px}
+  .tabs{display:flex;gap:22px;margin:16px 0 2px;font-family:var(--kai);font-size:13px;
+    letter-spacing:.1em;color:var(--ink-3)}
+  .tabs .on{color:var(--ink);font-weight:700;box-shadow:inset 0 -2px 0 var(--red);padding-bottom:5px}
+  table{width:100%;border-collapse:collapse}
+  thead th{font-family:var(--sans);font-size:10.5px;letter-spacing:.28em;color:var(--ink-3);
+    text-align:left;font-weight:600;padding:11px 14px 9px 0;border-bottom:1.5px solid var(--ink)}
+  thead th:last-child{padding-right:0}
+  tbody td{padding:11px 14px 11px 0;border-bottom:1px solid var(--line-2);
+    font-family:var(--serif);font-size:14.5px;vertical-align:baseline}
+  tbody td:last-child{padding-right:0}
+  tbody tr:last-child td{border-bottom:0}
+  tbody td.subj{font-weight:700}
+  tbody td.mdl{color:var(--ink-2);font-family:var(--kai);font-size:13.5px;letter-spacing:.06em}
+  tbody td.pk{font-weight:700}
+  .chg{display:inline-flex;align-items:center;gap:5px;color:var(--red);font-family:var(--sans);
+    font-size:10.5px;letter-spacing:.18em;margin-left:9px;white-space:nowrap}
+  .chg::before{content:"";width:7px;height:7px;background:var(--red);flex:none}
+  .dflt{color:var(--ink-3);font-family:var(--kai);font-size:13px;letter-spacing:.14em}
+  .annex .foot{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:13px 0 4px;font-family:var(--kai);font-size:12px;letter-spacing:.14em;color:var(--ink-3)}
+  .annex .foot b{color:var(--ink);font-family:var(--serif);font-weight:600;letter-spacing:.1em}
+  .rel{margin-top:12px;padding-top:13px;border-top:1px solid var(--line-2);
+    font-family:var(--kai);font-size:12.5px;line-height:1.95;letter-spacing:.06em;color:var(--ink-3)}
+  .rel b{color:var(--ink-2);font-family:var(--serif);font-weight:700;letter-spacing:.1em}
+
+  /* ─── 页脚 ─── */
+  .foot{margin:22px 30px 0;padding:14px 0 26px;border-top:2px solid var(--ink);
+    display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11.5px;letter-spacing:.22em;color:var(--ink-3)}
+  .foot b{font-family:var(--serif);font-size:13px;letter-spacing:.16em;color:var(--ink);display:block}
+
+  @media (max-width:920px){
+    .galley{grid-template-columns:1fr}
+    .marks{display:none}
+    .notes{border-left:0;border-top:1px solid var(--line-2);padding:18px}
+    .flow{grid-template-columns:1fr 1fr;gap:22px 0}
+    .fl{border-right:0;border-top:1px solid var(--line);padding:16px 12px 0}
+    .fl:not(:first-child){padding-left:12px}
+    .phead .grow{display:none}
+    .annex,.docket,.foot{padding-left:18px;padding-right:18px}
+    .foot{margin-left:18px;margin-right:18px}
+    table,thead,tbody,tr,td,th{display:block}
+    thead{display:none}
+    tbody tr{padding:11px 0;border-bottom:1px solid var(--line-2)}
+    tbody td{border:0;padding:2px 0}
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="wm">文衡</span>
+  <span class="sub">云南大学图书馆<br>学科信息参考</span>
+  <nav aria-label="工作区">
+    <a class="on" href="#">出报告</a><a href="#">灵活报告</a><a href="#">报告</a><a href="#">问文衡</a>
+  </nav>
+  <span class="r">
+    <span>陈列馆 ↗</span>
+    <span class="pal"><i class="g on" title="云大绿"></i><i class="z" title="朱砂"></i></span>
+  </span>
+</header>
+
+<!-- ─── 校样纸 ─── -->
+<div class="proof">
+
+  <!-- 校样头 -->
+  <header class="phead">
+    <div class="c"><span class="k">品 名</span><span class="v">学科信息参考</span></div>
+    <div class="c"><span class="k">版 次</span><span class="v mono">出 报 告</span></div>
+    <div class="c"><span class="k">期 号</span><span class="v">202609 · 第 39 期</span></div>
+    <div class="c"><span class="k">页 码</span><span class="v mono">1 / 1</span></div>
+    <div class="grow"></div>
+    <div class="round"><b>待 签 发</b><span>校 对 中</span></div>
+  </header>
+
+  <!-- 校样行文 -->
+  <section class="galley">
+
+    <!-- 左：校对符号 -->
+    <div class="marks" aria-hidden="true">
+      <div class="m">＿＿</div>
+      <div class="m">＼</div>
+      <div class="m">
+        <svg width="34" height="18" viewBox="0 0 34 18">
+          <path d="M2 15 Q 9 2 17 9 T 32 4" fill="none" stroke="#BE3225" stroke-width="1.6"/>
+        </svg>
+      </div>
+      <div class="m">○</div>
+      <div class="m">√</div>
+      <div class="m">△</div>
+    </div>
+
+    <!-- 中：正文 -->
+    <div class="text">
+      <h1>本期报告已就绪</h1>
+      <p class="sub">复核后签单，这一版才会被标记为「可交付」。</p>
+
+      <p>本期第 39 期（<span class="ins">202609</span>）取数与编发工作已全部完成。<span class="del">任务结束后即可交付</span>任务结束不代表报告合格或已签发——管理员当前不能下载未签发的初稿。</p>
+
+      <p>下载数据 <span class="blue">64 / 64</span> 份，已核对并并入台账；章节按大纲全选；初稿已于 <span class="ins">2026-10-13 15:03</span> 出稿。四道工序止于「核验与定稿」。</p>
+
+      <p>预测数据 <span class="blue">202609</span>，实际输出 <span class="blue">202609</span>，两者一致；台账文件《云大全学科排名、阈值动态检测表.xlsx》，最后修改 <span class="ins">2026 年 9 月 28 日 07:55</span>。</p>
+
+      <p>本期选模已保存（admin · 2026-10-16 12:12）。所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+
+      <div class="stampzone">
+        <div class="stamp" aria-hidden="true">
+          <svg viewBox="0 0 150 150">
+            <rect x="8" y="8" width="134" height="134" fill="none" stroke="#BE3225" stroke-width="5"/>
+            <rect x="18" y="18" width="114" height="114" fill="none" stroke="#BE3225" stroke-width="1.4"/>
+            <text x="75" y="66" text-anchor="middle" font-family="SimSun,serif" font-size="30"
+                  font-weight="700" fill="#BE3225" letter-spacing="3">待签发</text>
+            <text x="75" y="98" text-anchor="middle" font-family="SimSun,serif" font-size="15"
+                  fill="#BE3225" letter-spacing="4">202609</text>
+            <line x1="34" y1="110" x2="116" y2="110" stroke="#BE3225" stroke-width="1.4"/>
+            <text x="75" y="128" text-anchor="middle" font-family="SimSun,serif" font-size="11"
+                  fill="#BE3225" letter-spacing="2">文 衡 工 作 台</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右：批注 -->
+    <aside class="notes">
+      <div class="n red">此处「202609」为目录号，请与台账核对一致。<span class="who">红 笔 · 校 对</span></div>
+      <div class="n">64 / 64 已核对，与取数台记录一致。<span class="who">蓝 笔 · 复 核</span></div>
+      <div class="n red">删去「任务结束后即可交付」——未签发不得交付。<span class="who">红 笔 · 校 对</span></div>
+      <div class="n">出稿时间 15:03，与运行档案一致。<span class="who">蓝 笔 · 复 核</span></div>
+      <div class="n red">复核无异议后方可签发。<span class="who">红 笔 · 签 发</span></div>
+    </aside>
+  </section>
+
+  <!-- 校对单：四道工序 -->
+  <section class="docket">
+    <h2>校 对 单<span class="n">发 稿 → 签 发 · 四 个 环 节</span></h2>
+    <div class="flow">
+      <div class="fl done">
+        <div class="k">环 节 一</div><div class="v">下载数据核验</div>
+        <div class="s">64 / 64 份，全部核对</div><div class="tag">已 完 成</div>
+      </div>
+      <div class="fl done">
+        <div class="k">环 节 二</div><div class="v">选择章节</div>
+        <div class="s">按大纲全选</div><div class="tag">已 完 成</div>
+      </div>
+      <div class="fl now">
+        <div class="k">环 节 三</div><div class="v">生成初稿</div>
+        <div class="s">2026-10-13 15:03 出稿</div><div class="tag">待 复 核</div>
+      </div>
+      <div class="fl todo">
+        <div class="k">环 节 四</div><div class="v">核验与定稿</div>
+        <div class="s">复核无异议后签单</div><div class="sign-here">请 签 发</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 附表 -->
+  <section class="annex">
+    <div class="hd">
+      <h2><span class="a">附 表</span>　本期选模表</h2>
+      <a class="lnk" href="#">去预测台看图改选 →</a>
+    </div>
+    <div class="tabs"><span class="on">路线1 · 总被引 / ESI 前 1% 被引阈值</span><span>路线2 · 国内排名 / 国内前 1% 机构数</span></div>
+    <table>
+      <thead><tr>
+        <th style="width:28%">潜 力 学 科</th>
+        <th style="width:32%">V 1 推 荐</th>
+        <th>本 期 已 选</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="subj">免疫学</td><td class="mdl">季节性 ETS 模型</td><td class="pk">SARIMA 模型<span class="chg">已改选</span></td></tr>
+        <tr><td class="subj">分子生物学与遗传学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="subj">多学科</td><td class="mdl">Holt 趋势模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="subj">物理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="subj">神经科学与行为科学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="subj">空间科学</td><td class="mdl">SARIMA 模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="subj">精神病学与心理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="subj">经济与商业</td><td class="mdl">SARIMA 模型</td><td class="dflt">默认</td></tr>
+      </tbody>
+    </table>
+    <div class="foot">
+      <span>已保存 · admin · 2026-10-16 12:12</span>
+      <span>改选请至 <b>预测台</b></span>
+    </div>
+    <p class="rel"><b>与报告的关系</b>　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+  </section>
+
+  <footer class="foot">
+    <div><b>文衡 · 样</b>云 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+    <div>校 样 一 份　·　第 39 期　·　2 0 2 6 0 9</div>
+    <div>校 对　admin　·　签 发　待 办　·　签 发 后 归 档</div>
+  </footer>
+</div>
+</body>
+</html>

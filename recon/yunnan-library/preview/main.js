@@ -1,4 +1,5 @@
 ﻿import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {
   createYNULibraryModel,
   createYNULibraryLookDevLights,
@@ -120,6 +121,17 @@ function applyView() {
 }
 applyView();
 
+// Free orbit for humans; headless captures never touch it and stay deterministic.
+const viewTarget = Number.isFinite(azimuth) ? [0, 12, -8] : (VIEWS[viewName] || VIEWS['front-elevation']).target;
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(viewTarget[0], viewTarget[1], viewTarget[2]);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI / 2 - 0.02;
+controls.minDistance = 30;
+controls.maxDistance = 420;
+controls.update();
+
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -128,6 +140,7 @@ window.addEventListener('resize', () => {
 
 let frames = 0;
 function tick() {
+  controls.update();
   renderer.render(scene, camera);
   frames += 1;
   if (frames === 5) {

@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出报告 · 方向「红头」（公函）— 静态稿</title>
+<style>
+  /* ============================================================
+     方向「红头」· 公函（Official Letterhead / 红头文件）
+     一句话：本期报告做成本馆一份上报公文——红头发文机关标志＋
+     红线＋发文字号＋标题＋主送＋仿宋正文＋附件＋落款印章；
+     四道工序＝公文办理单（拟稿／核稿／复核／签发）；本期选模＝
+     附件一。公文红＋墨黑＋白纸，仿宋是公文正文字体。
+     红线与印章是公文本身的结构，不是装饰细线。零渐变、零投影。
+     ============================================================ */
+  :root{
+    --paper:#FCFBF7;
+    --red:#B3231B;          /* 公文红 */
+    --red-2:#8C1810;
+    --ink:#1A1A1A;
+    --ink-2:#3D3D3D;
+    --ink-3:#6E6E6E;
+    --line:#D4D0C6;
+    --line-2:#E6E2D8;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --fang:"FangSong","FangSong_GB2312","STFangsong","Songti SC",SimSun,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:#E8E4DA;color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer}
+  ::selection{background:var(--red);color:var(--paper)}
+
+  /* ─── 顶栏（工作区，公文之外） ─── */
+  .bar{background:var(--paper);height:56px;display:flex;align-items:center;gap:24px;
+    padding:0 32px;border-bottom:1px solid var(--line)}
+  .bar .wm{font-family:var(--serif);font-size:21px;letter-spacing:.16em}
+  .bar .sub{font-size:11px;letter-spacing:.2em;color:var(--ink-3);line-height:1.5}
+  .bar nav{display:flex;gap:20px;font-size:13px;color:var(--ink-2);margin-left:12px}
+  .bar nav a.on{color:var(--red);font-weight:600;box-shadow:inset 0 -2px 0 var(--red)}
+  .bar .r{margin-left:auto;display:flex;align-items:center;gap:18px;font-size:12px;color:var(--ink-3)}
+  .pal{display:inline-flex;gap:7px}
+  .pal i{width:24px;height:13px;display:inline-block;border:1px solid var(--line)}
+  .pal i.g{background:#1A4B27}.pal i.z{background:#B43B31}
+  .pal i.on{outline:2px solid var(--ink);outline-offset:2px}
+
+  /* ─── 公文纸 ─── */
+  .sheet{max-width:920px;margin:40px auto;background:var(--paper);
+    padding:52px 64px 44px;border:1px solid var(--line)}
+
+  /* 红头 */
+  .masthead{text-align:center;padding-bottom:6px}
+  .masthead .org{font-family:var(--serif);font-size:clamp(30px,4.4vw,52px);color:var(--red);
+    letter-spacing:.18em;font-weight:700;line-height:1.25}
+  .masthead .doc{font-family:var(--serif);font-size:clamp(20px,2.8vw,30px);color:var(--red);
+    letter-spacing:.34em;font-weight:600;margin-top:2px}
+  /* 红头下的红反线 */
+  .redrule{height:3px;background:var(--red);margin:18px 0 4px;position:relative}
+  .redrule::after{content:"";position:absolute;left:0;right:0;top:7px;height:1px;background:var(--red)}
+
+  /* 文号行 */
+  .docno{display:flex;justify-content:space-between;align-items:baseline;gap:20px;
+    padding:18px 0 26px;font-family:var(--fang);font-size:15px;flex-wrap:wrap}
+  .docno .no{letter-spacing:.12em;color:var(--ink)}
+  .docno .sec{color:var(--red);letter-spacing:.24em;font-family:var(--serif);font-size:13px}
+
+  /* 标题 */
+  .title{font-family:var(--serif);font-size:clamp(22px,2.9vw,32px);line-height:1.55;
+    text-align:center;letter-spacing:.06em;font-weight:700;color:var(--ink);
+    max-width:22ch;margin:6px auto 30px}
+  .title em{font-style:normal;color:var(--red)}
+
+  /* 主送 */
+  .to{font-family:var(--fang);font-size:17px;line-height:1.95;color:var(--ink);letter-spacing:.04em}
+
+  /* 正文（仿宋，首行缩进） */
+  .body p{font-family:var(--fang);font-size:17px;line-height:2.05;letter-spacing:.03em;
+    color:var(--ink);text-indent:2em;margin-top:14px}
+  .body h3{font-family:var(--fang);font-size:17px;font-weight:700;letter-spacing:.04em;
+    margin-top:22px;text-indent:2em}
+  .body .em{color:var(--red);font-weight:700}
+  .body .data{font-family:var(--serif);font-weight:600;letter-spacing:.02em}
+
+  /* 附件说明 */
+  .attach{font-family:var(--fang);font-size:16px;line-height:2;letter-spacing:.04em;margin-top:26px;text-indent:2em}
+  .attach .list{display:block;text-indent:0;padding-left:2em;margin-top:2px}
+
+  /* 落款＋印章 */
+  .sign{position:relative;margin-top:44px;padding-right:12px;text-align:right;
+    font-family:var(--fang);font-size:17px;line-height:2;letter-spacing:.08em}
+  .sign .org2{font-family:var(--serif);font-size:19px;letter-spacing:.18em;font-weight:600}
+  .sign .date{margin-top:2px}
+  /* 印章：红色圆形，骑年压月 */
+  .seal{position:absolute;right:56px;top:-6px;width:132px;height:132px;opacity:.82;
+    transform:rotate(-11deg);pointer-events:none}
+  .seal svg{width:100%;height:100%;display:block}
+
+  /* 附注 */
+  .remark{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);
+    font-family:var(--fang);font-size:14px;color:var(--ink-3);letter-spacing:.06em;line-height:1.95}
+
+  /* 版记 */
+  .colophon{margin-top:26px;padding-top:14px;border-top:2px solid var(--ink);
+    display:grid;grid-template-columns:1fr 1fr;gap:6px 28px;
+    font-family:var(--fang);font-size:13px;color:var(--ink-3);letter-spacing:.06em;line-height:1.9}
+  .colophon b{color:var(--ink-2);font-weight:400}
+
+  /* ─── 办理单：四道工序＝公文办理环节 ─── */
+  .docket{max-width:920px;margin:0 auto 0;padding:0 64px}
+  .docket-in{background:var(--paper);border:1px solid var(--line);border-top:0;padding:30px 40px 26px}
+  .docket h2{font-family:var(--serif);font-size:19px;letter-spacing:.16em;
+    display:flex;align-items:baseline;gap:16px}
+  .docket h2 .n{margin-left:auto;font-family:var(--fang);font-size:13px;letter-spacing:.18em;color:var(--ink-3)}
+  .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:22px}
+  .fl{padding:0 22px 0 0;border-right:1px solid var(--line-2);position:relative}
+  .fl:last-child{border-right:0}
+  .fl:not(:first-child){padding-left:22px}
+  .fl .k{font-family:var(--serif);font-size:12px;letter-spacing:.28em;color:var(--ink-3)}
+  .fl .v{font-family:var(--serif);font-size:21px;letter-spacing:.03em;margin-top:8px;line-height:1.3}
+  .fl .s{font-family:var(--fang);font-size:12.5px;color:var(--ink-3);margin-top:6px;letter-spacing:.06em}
+  .fl .state{display:inline-flex;align-items:center;gap:6px;margin-top:10px;
+    font-family:var(--sans);font-size:11px;letter-spacing:.22em;padding:3px 10px;
+    background:var(--line-2);color:var(--ink-3)}
+  .fl.done .state{background:#E8EDE6;color:#2A5A45}
+  .fl.now .state{background:#F2DED9;color:var(--red)}
+  .fl.now .v{color:var(--red)}
+  .fl.todo .v{color:var(--ink-3)}
+  .fl .sign-here{margin-top:10px;display:inline-block;padding:4px 12px;
+    border:1.5px dashed var(--red);color:var(--red);font-family:var(--fang);
+    font-size:12.5px;letter-spacing:.16em}
+
+  /* ─── 附件一：选模表 ─── */
+  .annex{max-width:920px;margin:34px auto 0;padding:0 64px 70px}
+  .annex-in{background:var(--paper);border:1px solid var(--line);padding:30px 40px 26px}
+  .annex .hd{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+  .annex h2{font-family:var(--serif);font-size:19px;letter-spacing:.16em}
+  .annex h2 .a{color:var(--red);letter-spacing:.22em;font-size:13px;font-family:var(--fang)}
+  .annex .lnk{margin-left:auto;font-family:var(--fang);font-size:13px;letter-spacing:.12em;
+    color:var(--red);box-shadow:inset 0 -1px 0 var(--red);padding-bottom:2px}
+  .tabs{display:flex;gap:22px;margin:18px 0 2px;font-family:var(--fang);font-size:13px;color:var(--ink-3)}
+  .tabs .on{color:var(--ink);font-weight:700;box-shadow:inset 0 -2px 0 var(--red);padding-bottom:6px}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  thead th{font-family:var(--serif);font-size:11.5px;letter-spacing:.28em;color:var(--ink-3);
+    text-align:left;font-weight:400;padding:11px 16px 10px 0;border-bottom:1.5px solid var(--ink)}
+  thead th:last-child{padding-right:0}
+  tbody td{padding:11px 16px 11px 0;border-bottom:1px solid var(--line-2);
+    font-family:var(--fang);font-size:15px;letter-spacing:.03em;vertical-align:baseline}
+  tbody td:last-child{padding-right:0}
+  tbody td.subj{font-family:var(--serif);font-weight:600;letter-spacing:.04em}
+  tbody td.pk{font-family:var(--serif);font-weight:600}
+  .chg{display:inline-flex;align-items:center;gap:6px;color:var(--red);font-family:var(--sans);
+    font-size:11px;letter-spacing:.18em;margin-left:10px;white-space:nowrap}
+  .chg::before{content:"";width:7px;height:7px;background:var(--red);flex:none}
+  .dflt{color:var(--ink-3);font-family:var(--fang);font-size:13.5px;letter-spacing:.12em}
+  .annex .foot{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    margin-top:14px;font-family:var(--fang);font-size:12px;letter-spacing:.12em;color:var(--ink-3)}
+  .annex .foot b{color:var(--ink-2);font-family:var(--serif);font-weight:600}
+  .rel{margin-top:18px;padding-top:14px;border-top:1px solid var(--line-2);
+    font-family:var(--fang);font-size:12.5px;line-height:2;letter-spacing:.05em;color:var(--ink-3)}
+  .rel b{color:var(--ink-2);font-family:var(--serif);font-weight:600}
+
+  @media (max-width:820px){
+    .sheet{padding:32px 24px}
+    .docket,.annex{padding-left:16px;padding-right:16px}
+    .docket-in,.annex-in{padding:24px 18px}
+    .flow{grid-template-columns:1fr 1fr;gap:24px 0}
+    .fl{border-right:0;border-top:1px solid var(--line-2);padding:18px 14px 0}
+    .fl:not(:first-child){padding-left:14px}
+    .colophon{grid-template-columns:1fr}
+    .seal{width:100px;height:100px;right:16px;top:0}
+    table,thead,tbody,tr,td,th{display:block}
+    thead{display:none}
+    tbody tr{padding:12px 0;border-bottom:1px solid var(--line-2)}
+    tbody td{border:0;padding:2px 0}
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="wm">文衡</span>
+  <span class="sub">云南大学图书馆<br>学科信息参考</span>
+  <nav aria-label="工作区">
+    <a class="on" href="#">出报告</a><a href="#">灵活报告</a><a href="#">报告</a><a href="#">问文衡</a>
+  </nav>
+  <span class="r">
+    <span>陈列馆 ↗</span>
+    <span class="pal"><i class="g on" title="云大绿"></i><i class="z" title="朱砂"></i></span>
+  </span>
+</header>
+
+<!-- ─── 公文纸 ─── -->
+<article class="sheet">
+
+  <!-- 红头 -->
+  <header class="masthead">
+    <div class="org">云南大学图书馆文 件</div>
+    <div class="doc">学 科 信 息 参 考</div>
+  </header>
+  <div class="redrule" aria-hidden="true"></div>
+
+  <!-- 文号 -->
+  <div class="docno">
+    <span class="no">云大馆发〔2026〕39 号</span>
+    <span class="sec">内 部 · 签 发 前 不 得 下 载</span>
+  </div>
+
+  <!-- 标题 -->
+  <h1 class="title">关于第 39 期《学科信息参考》<em>编发情况</em>的报告</h1>
+
+  <!-- 主送 -->
+  <div class="to">馆领导：</div>
+
+  <!-- 正文 -->
+  <div class="body">
+    <p>本期报告已就绪。第 39 期（<span class="data">202609</span>）取数与编发工作已全部完成，现将有关情况报告如下。</p>
+
+    <h3>一、本期进度</h3>
+    <p>下载数据 <span class="data">64 / 64</span> 份，已核对并并入台账；章节按大纲全选；初稿已于 <span class="data">2026 年 10 月 13 日 15 时 03 分</span>出稿。四道工序止于「核验与定稿」，待复核签单。</p>
+
+    <h3>二、报告状态</h3>
+    <p>任务结束不代表报告合格或已签发——管理员当前不能下载未签发的初稿。<span class="em">复核无异议后签单，这一版即可交付。</span></p>
+
+    <h3>三、本期数据</h3>
+    <p>预测数据 <span class="data">202609</span>，实际输出 <span class="data">202609</span>，两者一致；台账文件为《云大全学科排名、阈值动态检测表.xlsx》，最后修改 <span class="data">2026 年 9 月 28 日 07:55</span>。</p>
+  </div>
+
+  <!-- 附件 -->
+  <div class="attach">
+    附件：1. 本期选模表
+    <span class="list">2. 台账与数据核验记录</span>
+  </div>
+
+  <!-- 落款＋印章 -->
+  <div class="sign">
+    <div class="seal" aria-hidden="true">
+      <svg viewBox="0 0 140 140">
+        <circle cx="70" cy="70" r="64" fill="none" stroke="#B3231B" stroke-width="4"/>
+        <circle cx="70" cy="70" r="56" fill="none" stroke="#B3231B" stroke-width="1.2"/>
+        <path d="M70 30 L78 58 L107 58 L83 75 L92 103 L70 86 L48 103 L57 75 L33 58 L62 58 Z"
+              fill="#B3231B" opacity=".9"/>
+        <text x="70" y="122" text-anchor="middle" font-family="SimSun,serif" font-size="11"
+              fill="#B3231B" letter-spacing="1.5">云 南 大 学 圖 書 館</text>
+      </svg>
+    </div>
+    <div class="org2">云南大学图书馆</div>
+    <div class="date">2026 年 9 月 28 日</div>
+  </div>
+
+  <!-- 附注 -->
+  <div class="remark">（此件发至馆领导及学科分析组。签发前，请勿将初稿转发或下载。）</div>
+
+  <!-- 版记 -->
+  <div class="colophon">
+    <div><b>主 题 词：</b>学科信息参考　出报告　第 39 期　ESI</div>
+    <div><b>抄　　　送：</b>学科分析组、参考咨询部</div>
+    <div><b>印 发 机 关：</b>云南大学图书馆　办公室</div>
+    <div><b>印 发 日 期：</b>2026 年 9 月 28 日　印发</div>
+  </div>
+</article>
+
+<!-- ─── 办理单：四道工序 ─── -->
+<section class="docket">
+  <div class="docket-in">
+    <h2>发 文 办 理 单<span class="n">拟稿 → 签发 · 四 个 环 节</span></h2>
+    <div class="flow">
+      <div class="fl done">
+        <div class="k">环 节 一</div>
+        <div class="v">下载数据核验</div>
+        <div class="s">64 / 64 份，全部核对</div>
+        <div class="state">已 完 成</div>
+      </div>
+      <div class="fl done">
+        <div class="k">环 节 二</div>
+        <div class="v">选择章节</div>
+        <div class="s">按大纲全选</div>
+        <div class="state">已 完 成</div>
+      </div>
+      <div class="fl now">
+        <div class="k">环 节 三</div>
+        <div class="v">生成初稿</div>
+        <div class="s">2026-10-13 15:03 出稿</div>
+        <div class="state">待 复 核</div>
+      </div>
+      <div class="fl todo">
+        <div class="k">环 节 四</div>
+        <div class="v">核验与定稿</div>
+        <div class="s">复核无异议后签单</div>
+        <div class="sign-here">请 签 发</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 附件一：选模表 ─── -->
+<section class="annex">
+  <div class="annex-in">
+    <div class="hd">
+      <h2><span class="a">附 件 一</span>　本期选模表</h2>
+      <a class="lnk" href="#">去预测台看图改选 →</a>
+    </div>
+    <div class="tabs"><span class="on">路线1 · 总被引 / ESI 前 1% 被引阈值</span><span>路线2 · 国内排名 / 国内前 1% 机构数</span></div>
+    <table>
+      <thead><tr>
+        <th style="width:30%">潜 力 学 科</th>
+        <th style="width:32%">V 1 推 荐</th>
+        <th>本 期 已 选</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="subj">免疫学</td><td>季节性 ETS 模型</td><td class="pk">SARIMA 模型<span class="chg">已改选</span></td></tr>
+        <tr><td class="subj">分子生物学与遗传学</td><td>季节性 ETS 模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="subj">多学科</td><td>Holt 趋势模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="subj">物理学</td><td>经验贝叶斯状态空间模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="subj">神经科学与行为科学</td><td>季节性 ETS 模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="subj">空间科学</td><td>SARIMA 模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="subj">精神病学与心理学</td><td>经验贝叶斯状态空间模型</td><td class="dflt">默认</td></tr>
+        <tr><td class="subj">经济与商业</td><td>SARIMA 模型</td><td class="dflt">默认</td></tr>
+      </tbody>
+    </table>
+    <div class="foot">
+      <span>已保存 · admin · 2026-10-16 12:12</span>
+      <span>改选请至 <b>预测台</b></span>
+    </div>
+    <p class="rel"><b>与报告的关系</b>　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+  </div>
+</section>
+</body>
+</html>

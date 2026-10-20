@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出报告 · 方向「百衲」（百家）— 静态稿</title>
+<style>
+  /* ============================================================
+     方向「百衲」· 百家
+     实物依据：「会泽**百家**」——百家即众家并置；云南是多民族
+     省份（世居民族众多），织锦／百衲／扎染是这里真实的拼合工艺：
+     小幅布片各成其色，缀合成整幅。所以本期报告做成一幅百衲：
+     选模八家＝八片补子，四道工序＝四片补子，各片纹样不同而
+     成一整幅。方角、平色、几何纹（非渐变、非圆角卡片）。
+     靛／朱／米／金（织锦色）。
+     ============================================================ */
+  :root{
+    --indigo:#24405C;   --indigo-2:#16283B;
+    --red:#B23A2B;      --red-2:#8B2A1E;
+    --cream:#E4D8B8;    --cream-2:#D2C29B;
+    --gold:#A8863C;     --gold-2:#83642A;
+    --green:#3C6B4F;
+    --ink:#1E1A14;
+    --ink-2:#4E4536;
+    --ink-3:#8A7B62;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--ink);color:var(--cream);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--gold);color:var(--ink)}
+
+  /* ─── 顶栏 ─── */
+  .bar{background:var(--indigo-2);height:58px;display:flex;align-items:center;gap:22px;padding:0 32px}
+  .bar .wm{font-family:var(--serif);font-size:21px;letter-spacing:.18em;color:var(--cream)}
+  .bar .sub{font-family:var(--kai);font-size:11px;letter-spacing:.24em;color:rgba(228,216,184,.55);line-height:1.5}
+  .bar nav{display:flex;gap:20px;font-family:var(--kai);font-size:12.5px;letter-spacing:.18em;
+    color:rgba(228,216,184,.78);margin-left:12px}
+  .bar nav a.on{color:var(--cream);box-shadow:inset 0 -2px 0 var(--gold)}
+  .bar .r{margin-left:auto;display:flex;align-items:center;gap:18px;font-family:var(--kai);
+    font-size:11.5px;letter-spacing:.22em;color:rgba(228,216,184,.55)}
+  .pal{display:inline-flex;gap:7px}
+  .pal i{width:24px;height:13px;display:inline-block;border:1px solid rgba(228,216,184,.28)}
+  .pal i.g{background:#1A4B27}.pal i.z{background:#B43B31}
+  .pal i.on{outline:2px solid var(--gold);outline-offset:2px}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:34px 26px 58px}
+
+  /* ─── 题头补子 ─── */
+  .head{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:3px;background:var(--gold-2)}
+  .head .a{background:var(--indigo);padding:38px 36px 32px}
+  .head .b{background:var(--red);padding:38px 34px 32px;display:flex;flex-direction:column}
+  .head .ov{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:rgba(228,216,184,.62)}
+  .head h1{font-family:var(--serif);font-size:clamp(36px,4.8vw,62px);line-height:1.08;
+    letter-spacing:.05em;margin-top:12px;color:var(--cream)}
+  .head .deck{font-family:var(--kai);font-size:14.5px;line-height:2;color:rgba(228,216,184,.8);
+    margin-top:14px;max-width:28ch}
+  .head .acts{margin-top:24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  .btn{background:var(--cream);color:var(--indigo-2);border:0;padding:13px 28px;font-size:15px;
+    letter-spacing:.14em;font-weight:700}
+  .btn:hover{background:#F4EAC8}
+  .head .ghost{font-family:var(--kai);font-size:13px;letter-spacing:.18em;color:rgba(228,216,184,.78);
+    box-shadow:inset 0 -1px 0 rgba(228,216,184,.4);padding-bottom:3px}
+
+  .head .b .k{font-family:var(--kai);font-size:10.5px;letter-spacing:.42em;color:rgba(228,216,184,.62)}
+  .head .b .v{font-family:var(--serif);font-size:clamp(28px,3.6vw,44px);letter-spacing:.14em;
+    color:var(--cream);margin-top:10px;line-height:1.1}
+  .head .b .v.red{color:#FFE2C2}
+  .head .b dl{margin-top:auto;display:grid;grid-template-columns:auto 1fr;gap:8px 16px;
+    font-family:var(--kai);font-size:11.5px;letter-spacing:.16em}
+  .head .b dt{color:rgba(228,216,184,.62);white-space:nowrap}
+  .head .b dd{color:var(--cream);text-align:right;overflow-wrap:anywhere}
+  .head .b dd b{font-family:var(--serif);font-size:14px;letter-spacing:.08em}
+
+  /* ─── 百衲：工序四片 ─── */
+  .patch4{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;background:var(--gold-2);margin-top:3px}
+  .pt{padding:24px 24px 22px;min-height:180px;display:flex;flex-direction:column;position:relative;overflow:hidden}
+  .pt .k{font-family:var(--kai);font-size:10.5px;letter-spacing:.42em;opacity:.72}
+  .pt .v{font-family:var(--serif);font-size:clamp(18px,2.1vw,25px);line-height:1.28;
+    margin-top:10px;letter-spacing:.03em}
+  .pt .m{font-family:var(--mono);font-size:11px;letter-spacing:.12em;opacity:.62;margin-top:8px}
+  .pt .tag{margin-top:auto;padding-top:16px;font-family:var(--kai);font-size:10px;
+    letter-spacing:.32em;opacity:.72}
+  /* 补子纹样（平色几何） */
+  .pt.p1{background:var(--green);color:var(--cream)}
+  .pt.p2{background:var(--gold);color:#241A08}
+  .pt.p3{background:var(--red);color:var(--cream)}
+  .pt.p4{background:var(--cream-2);color:var(--ink)}
+  .pt .weave{position:absolute;inset:0;pointer-events:none;opacity:.2}
+  .pt.p1 .weave{background:repeating-linear-gradient(90deg,transparent 0 9px,rgba(228,216,184,.5) 9px 10px)}
+  .pt.p2 .weave{background:repeating-linear-gradient(45deg,transparent 0 11px,rgba(36,26,8,.5) 11px 12px)}
+  .pt.p3 .weave{background:repeating-linear-gradient(0deg,transparent 0 10px,rgba(228,216,184,.5) 10px 11px)}
+  .pt.p4 .weave{background:repeating-linear-gradient(-45deg,transparent 0 11px,rgba(36,26,8,.4) 11px 12px)}
+
+  /* ─── 百衲：八家补子 ─── */
+  .patch8{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;background:var(--gold-2);margin-top:3px}
+  .pc{padding:20px 22px 18px;min-height:150px;display:flex;flex-direction:column;
+    position:relative;overflow:hidden}
+  .pc .no{font-family:var(--mono);font-size:10.5px;letter-spacing:.28em;opacity:.62}
+  .pc .n{font-family:var(--serif);font-size:18px;line-height:1.32;letter-spacing:.05em;margin-top:8px}
+  .pc .m{font-family:var(--kai);font-size:11.5px;letter-spacing:.12em;opacity:.75;margin-top:6px}
+  .pc .p{margin-top:auto;padding-top:14px;font-family:var(--kai);font-size:11px;
+    letter-spacing:.18em;opacity:.72}
+  .pc .p b{font-family:var(--serif);font-size:13px;letter-spacing:.1em}
+  .pc .chg{color:#FFD8A8;margin-left:6px}
+  .pc .chg::before{content:"◆";font-size:8px;vertical-align:2px;margin-right:3px}
+  /* 八片各色（织锦配色，非乱配） */
+  .pc.c1{background:var(--indigo);color:var(--cream)}
+  .pc.c2{background:var(--cream-2);color:var(--ink)}
+  .pc.c3{background:var(--red);color:var(--cream)}
+  .pc.c4{background:var(--green);color:var(--cream)}
+  .pc.c5{background:var(--gold);color:#241A08}
+  .pc.c6{background:var(--indigo-2);color:var(--cream)}
+  .pc.c7{background:var(--red-2);color:var(--cream)}
+  .pc.c8{background:var(--cream);color:var(--ink)}
+  .pc .weave{position:absolute;inset:0;pointer-events:none;opacity:.18}
+  .pc.c1 .weave{background:repeating-linear-gradient(45deg,transparent 0 8px,rgba(228,216,184,.6) 8px 9px)}
+  .pc.c2 .weave{background:repeating-linear-gradient(0deg,transparent 0 9px,rgba(36,26,8,.5) 9px 10px)}
+  .pc.c3 .weave{background:repeating-linear-gradient(90deg,transparent 0 9px,rgba(228,216,184,.6) 9px 10px)}
+  .pc.c4 .weave{background:repeating-linear-gradient(-45deg,transparent 0 9px,rgba(228,216,184,.5) 9px 10px)}
+  .pc.c5 .weave{background:repeating-linear-gradient(60deg,transparent 0 10px,rgba(36,26,8,.5) 10px 11px)}
+  .pc.c6 .weave{background:repeating-linear-gradient(-60deg,transparent 0 10px,rgba(228,216,184,.5) 10px 11px)}
+  .pc.c7 .weave{background:repeating-linear-gradient(30deg,transparent 0 10px,rgba(228,216,184,.5) 10px 11px)}
+  .pc.c8 .weave{background:repeating-linear-gradient(-30deg,transparent 0 10px,rgba(36,26,8,.45) 10px 11px)}
+
+  /* ─── 缝线说明条 ─── */
+  .seam{background:var(--gold-2);color:var(--cream);padding:22px 32px;
+    display:flex;justify-content:space-between;gap:26px;flex-wrap:wrap;align-items:center}
+  .seam .t{font-family:var(--serif);font-size:18px;letter-spacing:.14em}
+  .seam .d{font-family:var(--kai);font-size:12.5px;line-height:1.95;letter-spacing:.12em;
+    color:rgba(228,216,184,.82);max-width:52ch}
+  .seam .d b{font-family:var(--serif);color:var(--cream);letter-spacing:.14em}
+  .seam .s{width:82px;height:82px;transform:rotate(-7deg);opacity:.94;flex:none}
+
+  /* ─── 选模：缀合表 ─── */
+  .list{margin-top:3px;background:var(--cream);color:var(--ink);padding:28px 32px 22px}
+  .list .hd{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;
+    border-bottom:2px solid var(--ink);padding-bottom:13px}
+  .list h2{font-family:var(--serif);font-size:clamp(22px,2.6vw,30px);letter-spacing:.12em}
+  .list h2 .n{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:var(--ink-3);
+    display:block;margin-bottom:3px;font-weight:400}
+  .list .lnk{margin-left:auto;font-family:var(--kai);font-size:13px;letter-spacing:.18em;
+    color:var(--red-2);box-shadow:inset 0 -1px 0 var(--red-2);padding-bottom:2px}
+  .tabs{display:flex;gap:24px;margin:16px 0 4px;font-family:var(--kai);font-size:12.5px;
+    letter-spacing:.14em;color:var(--ink-3)}
+  .tabs span{padding:7px 0;border-bottom:2px solid transparent}
+  .tabs span.on{color:var(--ink);font-weight:700;border-bottom-color:var(--red-2)}
+  table{width:100%;border-collapse:collapse}
+  thead th{font-family:var(--kai);font-size:11px;letter-spacing:.36em;color:var(--ink-3);
+    text-align:left;font-weight:400;padding:12px 14px 10px 0;border-bottom:1.5px solid var(--ink)}
+  thead th:last-child{padding-right:0}
+  tbody td{padding:12px 14px 12px 0;border-bottom:1px solid var(--cream-2);
+    font-family:var(--serif);font-size:15px;vertical-align:baseline;letter-spacing:.03em}
+  tbody td:last-child{padding-right:0}
+  tbody tr:last-child td{border-bottom:0}
+  tbody td.subj{font-weight:700}
+  tbody td.mdl{font-family:var(--kai);font-size:13px;color:var(--ink-2);letter-spacing:.12em}
+  tbody td.pk{font-weight:700}
+  .chg{display:inline-flex;align-items:center;gap:5px;color:var(--red-2);font-family:var(--kai);
+    font-size:11.5px;letter-spacing:.18em;margin-left:9px;white-space:nowrap}
+  .chg::before{content:"";width:7px;height:7px;background:var(--red-2);flex:none}
+  .dflt{color:var(--ink-3);font-family:var(--kai);font-size:12.5px;letter-spacing:.18em}
+  .list .foot{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:14px 0 4px;font-family:var(--kai);font-size:11.5px;letter-spacing:.22em;color:var(--ink-3)}
+  .list .foot b{color:var(--ink);font-family:var(--serif);letter-spacing:.14em}
+  .rel{margin-top:16px;padding-top:15px;border-top:1px solid var(--cream-2);
+    font-family:var(--kai);font-size:12px;line-height:2;letter-spacing:.12em;color:var(--ink-3)}
+  .rel b{color:var(--ink-2);font-family:var(--serif);font-weight:700;letter-spacing:.16em}
+
+  .footbar{margin-top:24px;padding:18px 4px 4px;border-top:1px solid rgba(228,216,184,.22);
+    display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11px;letter-spacing:.32em;color:rgba(228,216,184,.62)}
+  .footbar b{font-family:var(--serif);font-size:13px;letter-spacing:.22em;color:var(--cream);display:block}
+
+  @media (max-width:920px){
+    .head{grid-template-columns:1fr}
+    .patch4,.patch8{grid-template-columns:1fr 1fr}
+    .head .a,.head .b,.pt,.pc{padding-left:22px;padding-right:22px}
+    .list,.seam{padding-left:22px;padding-right:22px}
+    .seam .s{display:none}
+    table,thead,tbody,tr,td,th{display:block}
+    thead{display:none}
+    tbody tr{padding:12px 0;border-bottom:1px solid var(--cream-2)}
+    tbody td{border:0;padding:2px 0}
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="wm">文衡</span>
+  <span class="sub">雲 南 大 學 圖 書 館<br>學 科 信 息 參 考</span>
+  <nav aria-label="工作区">
+    <a class="on" href="#">出报告</a><a href="#">灵活报告</a><a href="#">报告</a><a href="#">问文衡</a>
+  </nav>
+  <span class="r">
+    <span>陈 列 馆 ↗</span>
+    <span class="pal"><i class="g on" title="云大绿"></i><i class="z" title="朱砂"></i></span>
+  </span>
+</header>
+
+<main class="wrap">
+
+  <!-- ─── 题头补子 ─── -->
+  <section class="head">
+    <div class="a">
+      <div class="ov">雲 南 大 學 圖 書 館 · 學 科 信 息 參 考 · 出 報 告</div>
+      <h1>本期报告已就绪</h1>
+      <p class="deck">会泽百家：海纳百川，兼收并蓄，百家争鸣，融合创新。本期八家潜力学科各成一色，缀合成一幅。</p>
+      <div class="acts">
+        <button class="btn">复核并签单 →</button>
+        <a class="ghost" href="#">看详细过程</a>
+      </div>
+    </div>
+    <div class="b">
+      <div class="k">本 期 缀 合</div>
+      <div class="v red">待 簽 單</div>
+      <dl>
+        <dt>期 次</dt><dd><b>202609</b>　第 39 期</dd>
+        <dt>預 測 / 實 際</dt><dd>202609 / 202609</dd>
+        <dt>下 載 數 據</dt><dd><b>64 / 64</b></dd>
+        <dt>核 對 並 並 入</dt><dd>已并入台账</dd>
+        <dt>台 賬 文 件</dt><dd>云大全学科排名、阈值动态检测表.xlsx</dd>
+        <dt>最 後 修 改</dt><dd>2026 年 9 月 28 日 07:55</dd>
+        <dt>任 務</dt><dd>已完成</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ─── 工序四片 ─── -->
+  <section class="patch4" aria-label="出报告四道工序">
+    <div class="pt p1"><span class="weave"></span>
+      <div class="k">一 片 · 立</div><div class="v">下载数据核验</div>
+      <div class="m">64 / 64</div><div class="tag">完 成</div></div>
+    <div class="pt p2"><span class="weave"></span>
+      <div class="k">二 片 · 择</div><div class="v">选择章节</div>
+      <div class="m">按大纲全选</div><div class="tag">完 成</div></div>
+    <div class="pt p3"><span class="weave"></span>
+      <div class="k">三 片 · 成</div><div class="v">生成初稿</div>
+      <div class="m">10-13 15:03</div><div class="tag">待 複 核</div></div>
+    <div class="pt p4"><span class="weave"></span>
+      <div class="k">四 片 · 合</div><div class="v">核验与定稿</div>
+      <div class="m">复核后签单</div><div class="tag">待 辦</div></div>
+  </section>
+
+  <!-- ─── 八家补子 ─── -->
+  <section class="patch8" aria-label="本期选模八家">
+    <div class="pc c1"><span class="weave"></span><div class="no">0 1</div>
+      <div class="n">免疫学</div><div class="m">季节性 ETS 模型</div>
+      <div class="p"><b>SARIMA</b><span class="chg">已改选</span></div></div>
+    <div class="pc c2"><span class="weave"></span><div class="no">0 2</div>
+      <div class="n">分子生物学与遗传学</div><div class="m">季节性 ETS 模型</div>
+      <div class="p">默 认</div></div>
+    <div class="pc c3"><span class="weave"></span><div class="no">0 3</div>
+      <div class="n">多学科</div><div class="m">Holt 趋势模型</div>
+      <div class="p">默 认</div></div>
+    <div class="pc c4"><span class="weave"></span><div class="no">0 4</div>
+      <div class="n">物理学</div><div class="m">经验贝叶斯状态空间</div>
+      <div class="p">默 认</div></div>
+    <div class="pc c5"><span class="weave"></span><div class="no">0 5</div>
+      <div class="n">神经科学与行为科学</div><div class="m">季节性 ETS 模型</div>
+      <div class="p">默 认</div></div>
+    <div class="pc c6"><span class="weave"></span><div class="no">0 6</div>
+      <div class="n">空间科学</div><div class="m">SARIMA 模型</div>
+      <div class="p">默 认</div></div>
+    <div class="pc c7"><span class="weave"></span><div class="no">0 7</div>
+      <div class="n">精神病学与心理学</div><div class="m">经验贝叶斯状态空间</div>
+      <div class="p">默 认</div></div>
+    <div class="pc c8"><span class="weave"></span><div class="no">0 8</div>
+      <div class="n">经济与商业</div><div class="m">SARIMA 模型</div>
+      <div class="p">默 认</div></div>
+  </section>
+
+  <!-- ─── 缝线说明 ─── -->
+  <section class="seam">
+    <div class="t">缝 线 · 签 单</div>
+    <div class="d"><b>本期报告已生成。</b>　任务结束不代表报告合格或已签发——管理员当前不能下载未签发的初稿。复核无异议后签单，这一版即可交付。八片各成其色，签单方成一整幅。</div>
+    <svg class="s" viewBox="0 0 82 82" aria-hidden="true">
+      <rect x="3" y="3" width="76" height="76" fill="#E4D8B8" opacity=".95"/>
+      <rect x="9" y="9" width="64" height="64" fill="none" stroke="#8B2A1E" stroke-width="1.8"/>
+      <text x="41" y="36" text-anchor="middle" font-family="SimSun,serif" font-size="17"
+            font-weight="700" fill="#8B2A1E" letter-spacing="2">文衡</text>
+      <text x="41" y="58" text-anchor="middle" font-family="SimSun,serif" font-size="13"
+            fill="#8B2A1E" letter-spacing="2">签单</text>
+    </svg>
+  </section>
+
+  <!-- ─── 选模：缀合表 ─── -->
+  <section class="list">
+    <div class="hd">
+      <h2><span class="n">綴 合 明 細 · 附 表</span>本期选模</h2>
+      <a class="lnk" href="#">去预测台看图改选 →</a>
+    </div>
+    <div class="tabs"><span class="on">路线1 · 总被引 / ESI 前 1% 被引阈值</span><span>路线2 · 国内排名 / 国内前 1% 机构数</span></div>
+    <table>
+      <thead><tr>
+        <th style="width:28%">潛 力 學 科</th>
+        <th style="width:32%">V 1 推 薦</th>
+        <th>本 期 已 選</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="subj">免疫学</td><td class="mdl">季节性 ETS 模型</td><td class="pk">SARIMA 模型<span class="chg">已改选</span></td></tr>
+        <tr><td class="subj">分子生物学与遗传学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="subj">多学科</td><td class="mdl">Holt 趋势模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="subj">物理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="subj">神经科学与行为科学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="subj">空间科学</td><td class="mdl">SARIMA 模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="subj">精神病学与心理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默 认</td></tr>
+        <tr><td class="subj">经济与商业</td><td class="mdl">SARIMA 模型</td><td class="dflt">默 认</td></tr>
+      </tbody>
+    </table>
+    <div class="foot">
+      <span>已 保 存 · admin · 2026-10-16 12:12</span>
+      <span>改 選 請 至　<b>預 測 台</b></span>
+    </div>
+    <p class="rel"><b>與 報 告 的 關 係</b>　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+  </section>
+
+  <footer class="footbar">
+    <div><b>文衡 · 百衲</b>雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+    <div>會 澤 百 家　·　八 片 綴 合　·　方 成 一 幅</div>
+    <div>第 39 期　·　2 0 2 6 0 9　·　簽 發 後 歸 檔</div>
+  </footer>
+</main>
+</body>
+</html>

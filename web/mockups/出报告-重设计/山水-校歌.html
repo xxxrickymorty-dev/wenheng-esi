@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出报告 · 方向「山水」（校歌）— 静态稿</title>
+<style>
+  /* ============================================================
+     方向「山水」· 校歌
+     实物依据：熊庆来词、赵元任曲的云大校歌起句——
+     「太华巍巍，拔海千寻；滇池淼淼，万山为襟。」
+     太华山（西山）在滇池西岸，是昆明的山；「万山为襟」＝
+     万山作衣襟。所以首屏是一幅墨分五色的山水横幅：主峰、
+     层峦、湖面，题字压在留白处。万山即「百家」，湖面即
+     「至公」。墨黑＋骨白＋一点朱砂钤印。
+     山形用分层实色剪影（非渐变）。零投影、零玻璃。
+     ============================================================ */
+  :root{
+    --paper:#F2EFE6;       /* 留白 */
+    --paper-2:#E6E1D2;
+    --ink:#16181A;
+    --ink-2:#4A4C4E;
+    --ink-3:#82858A;
+    --m1:#16181A;  --m2:#3B3E41;  --m3:#6E7276;  --m4:#A2A6A9;  --m5:#CFD1D0;
+    --water:#DCDAD0;
+    --red:#AE2F22;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;font-family:var(--serif)}
+  ::selection{background:var(--red);color:#fff}
+
+  /* ─── 顶栏 ─── */
+  .bar{height:58px;display:flex;align-items:center;gap:24px;padding:0 32px;
+    border-bottom:1px solid var(--paper-2)}
+  .bar .wm{font-family:var(--serif);font-size:21px;letter-spacing:.18em}
+  .bar .sub{font-family:var(--kai);font-size:11px;letter-spacing:.24em;color:var(--ink-3);line-height:1.5}
+  .bar nav{display:flex;gap:21px;font-family:var(--kai);font-size:13px;letter-spacing:.18em;
+    color:var(--ink-2);margin-left:12px}
+  .bar nav a.on{color:var(--ink);font-weight:700;box-shadow:inset 0 -2px 0 var(--red)}
+  .bar .r{margin-left:auto;display:flex;align-items:center;gap:18px;font-family:var(--kai);
+    font-size:12px;letter-spacing:.22em;color:var(--ink-3)}
+  .pal{display:inline-flex;gap:7px}
+  .pal i{width:24px;height:13px;display:inline-block;border:1px solid var(--paper-2)}
+  .pal i.g{background:#1A4B27}.pal i.z{background:#B43B31}
+  .pal i.on{outline:2px solid var(--ink);outline-offset:2px}
+
+  /* ─── 山水横幅 ─── */
+  .scene{position:relative;width:100%;background:var(--paper);overflow:hidden}
+  .scene svg.landscape{display:block;width:100%;height:auto}
+  /* 题字压在留白处 */
+  .titlebox{position:absolute;left:8%;top:12%;max-width:38%;z-index:2}
+  .titlebox .ov{font-family:var(--kai);font-size:11.5px;letter-spacing:.42em;color:var(--ink-3)}
+  .titlebox h1{font-family:var(--serif);font-size:clamp(32px,4.4vw,58px);line-height:1.14;
+    letter-spacing:.05em;margin-top:12px;color:var(--ink)}
+  .titlebox .song{font-family:var(--kai);font-size:clamp(14px,1.6vw,19px);line-height:1.95;
+    color:var(--ink-2);margin-top:16px;border-left:2px solid var(--m3);padding-left:14px}
+  .titlebox .song b{font-family:var(--serif);color:var(--ink);letter-spacing:.14em}
+  /* 钤印落在山脚 */
+  .scene .seal{position:absolute;right:7%;bottom:12%;width:96px;height:96px;
+    transform:rotate(-7deg);z-index:3}
+
+  /* 山脚读数：工序＝四重山 */
+  .ridge{background:var(--ink);color:var(--paper);padding:0}
+  .ridge .in{max-width:1180px;margin:0 auto;padding:26px 32px 24px}
+  .ridge .rh{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11px;letter-spacing:.36em;color:rgba(242,239,230,.55)}
+  .ridge .rh b{font-family:var(--serif);font-size:17px;letter-spacing:.16em;color:var(--paper)}
+  .ridge .rh .r{margin-left:auto;letter-spacing:.28em}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:20px}
+  .st{padding:0 22px 0 0;position:relative}
+  .st:not(:first-child){padding-left:22px;border-left:1px solid rgba(242,239,230,.18)}
+  .st .k{font-family:var(--kai);font-size:10.5px;letter-spacing:.36em;color:rgba(242,239,230,.5)}
+  .st .v{font-family:var(--serif);font-size:clamp(19px,2.2vw,27px);line-height:1.25;
+    margin-top:9px;letter-spacing:.03em;color:var(--paper)}
+  .st .m{font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+    color:rgba(242,239,230,.55);margin-top:7px}
+  .st.now .v{color:#F2B39A}
+  .st.todo .v{color:rgba(242,239,230,.42)}
+
+  /* ─── 主体 ─── */
+  .main{max-width:1180px;margin:0 auto;padding:52px 32px 0;
+    display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:56px;align-items:start}
+  .stmt h2{font-family:var(--serif);font-size:clamp(28px,3.4vw,44px);line-height:1.24;letter-spacing:.03em}
+  .stmt .lead{font-family:var(--kai);font-size:16px;line-height:2.05;color:var(--ink-2);
+    margin-top:18px;max-width:32ch}
+  .stmt .note{font-family:var(--kai);font-size:13px;line-height:2;letter-spacing:.1em;
+    color:var(--ink-3);margin-top:16px;padding-top:14px;border-top:1px solid var(--paper-2);max-width:44ch}
+  .stmt .acts{margin-top:26px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+  .btn{background:var(--ink);color:var(--paper);border:0;padding:14px 30px;font-size:15px;
+    letter-spacing:.14em;font-weight:700}
+  .btn:hover{background:var(--red)}
+  .stmt .ghost{font-family:var(--kai);font-size:13px;letter-spacing:.18em;color:var(--ink-2);
+    box-shadow:inset 0 -1px 0 var(--paper-2);padding-bottom:3px}
+
+  .data{border-top:2px solid var(--ink);padding-top:18px}
+  .data .dt{font-family:var(--kai);font-size:11px;letter-spacing:.36em;color:var(--ink-3);margin-bottom:14px}
+  .data dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px 20px;font-family:var(--kai);font-size:13px}
+  .data dt{color:var(--ink-3);letter-spacing:.16em;white-space:nowrap}
+  .data dd{color:var(--ink);text-align:right;overflow-wrap:anywhere}
+  .data dd b{font-family:var(--serif);font-size:19px;letter-spacing:.04em}
+
+  /* ─── 选模：远山式行 ─── */
+  .pick{max-width:1180px;margin:56px auto 0;padding:0 32px}
+  .pick .hd{display:flex;align-items:baseline;gap:20px;flex-wrap:wrap;
+    border-bottom:2px solid var(--ink);padding-bottom:13px}
+  .pick h2{font-family:var(--serif);font-size:clamp(24px,2.8vw,34px);letter-spacing:.1em}
+  .pick h2 .n{font-family:var(--kai);font-size:11px;letter-spacing:.36em;color:var(--ink-3);
+    display:block;margin-bottom:3px;font-weight:400}
+  .pick .lnk{margin-left:auto;font-family:var(--kai);font-size:13px;letter-spacing:.18em;
+    color:var(--red);box-shadow:inset 0 -1px 0 var(--red);padding-bottom:2px}
+  .tabs{display:flex;gap:26px;margin:16px 0 4px;font-family:var(--kai);font-size:13px;
+    letter-spacing:.14em;color:var(--ink-3)}
+  .tabs span{padding:7px 0;border-bottom:2px solid transparent}
+  .tabs span.on{color:var(--ink);font-weight:700;border-bottom-color:var(--red)}
+  table{width:100%;border-collapse:collapse}
+  thead th{font-family:var(--kai);font-size:11px;letter-spacing:.36em;color:var(--ink-3);
+    text-align:left;font-weight:400;padding:13px 16px 10px 0;border-bottom:1px solid var(--ink)}
+  thead th:last-child{padding-right:0}
+  tbody td{padding:13px 16px 13px 0;border-bottom:1px solid var(--paper-2);
+    font-family:var(--serif);font-size:15.5px;vertical-align:baseline;letter-spacing:.03em}
+  tbody td:last-child{padding-right:0}
+  tbody tr:last-child td{border-bottom:0}
+  tbody td.subj{font-weight:700}
+  tbody td.mdl{font-family:var(--kai);font-size:13.5px;color:var(--ink-2);letter-spacing:.12em}
+  tbody td.pk{font-weight:700}
+  .chg{display:inline-flex;align-items:center;gap:6px;color:var(--red);font-family:var(--kai);
+    font-size:11.5px;letter-spacing:.18em;margin-left:10px;white-space:nowrap}
+  .chg::before{content:"";width:7px;height:7px;background:var(--red);flex:none}
+  .dflt{color:var(--ink-3);font-family:var(--kai);font-size:13px;letter-spacing:.18em}
+  .pick .foot{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:14px 0 4px;font-family:var(--kai);font-size:12px;letter-spacing:.22em;color:var(--ink-3)}
+  .pick .foot b{color:var(--ink);font-family:var(--serif);letter-spacing:.14em}
+  .rel{margin-top:16px;padding-top:15px;border-top:1px solid var(--paper-2);
+    font-family:var(--kai);font-size:12.5px;line-height:2;letter-spacing:.12em;color:var(--ink-3);max-width:92ch}
+  .rel b{color:var(--ink-2);font-family:var(--serif);font-weight:700;letter-spacing:.16em}
+
+  .footbar{max-width:1180px;margin:40px auto 0;padding:18px 32px 40px;border-top:1px solid var(--paper-2);
+    display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11.5px;letter-spacing:.32em;color:var(--ink-3)}
+  .footbar b{font-family:var(--serif);font-size:13px;letter-spacing:.22em;color:var(--ink);display:block}
+
+  @media (max-width:920px){
+    .titlebox{position:static;max-width:none;padding:28px 22px 8px}
+    .scene .seal{position:static;margin:0 22px 18px auto;display:block}
+    .ridge .in,.main,.pick,.footbar{padding-left:22px;padding-right:22px}
+    .main{grid-template-columns:1fr;gap:34px;padding-top:34px}
+    .steps{grid-template-columns:1fr 1fr;gap:20px 0}
+    .st{border-left:0!important;padding-left:0!important;padding-right:12px}
+    table,thead,tbody,tr,td,th{display:block}
+    thead{display:none}
+    tbody tr{padding:12px 0;border-bottom:1px solid var(--paper-2)}
+    tbody td{border:0;padding:2px 0}
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="wm">文衡</span>
+  <span class="sub">雲 南 大 學 圖 書 館<br>學 科 信 息 參 考</span>
+  <nav aria-label="工作区">
+    <a class="on" href="#">出报告</a><a href="#">灵活报告</a><a href="#">报告</a><a href="#">问文衡</a>
+  </nav>
+  <span class="r">
+    <span>陈 列 馆 ↗</span>
+    <span class="pal"><i class="g on" title="云大绿"></i><i class="z" title="朱砂"></i></span>
+  </span>
+</header>
+
+<!-- ─── 山水横幅 ─── -->
+<div class="scene">
+  <svg class="landscape" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice"
+       role="img" aria-label="太华山与滇池，万山为襟">
+    <!-- 远山（最淡） -->
+    <path d="M0,236 L110,196 L196,222 L286,182 L372,212 L470,172 L560,208 L660,178
+             L760,214 L858,184 L950,216 L1058,190 L1200,224 L1200,420 L0,420 Z" fill="#CFD1D0"/>
+    <!-- 中远山 -->
+    <path d="M0,268 L96,232 L182,258 L282,214 L380,252 L486,208 L592,250 L700,214
+             L812,254 L918,218 L1032,258 L1132,228 L1200,254 L1200,420 L0,420 Z" fill="#A2A6A9"/>
+    <!-- 中山 -->
+    <path d="M0,302 L88,272 L174,296 L268,254 L372,294 L472,258 L586,298 L694,262
+             L806,300 L916,268 L1034,302 L1136,276 L1200,298 L1200,420 L0,420 Z" fill="#6E7276"/>
+    <!-- 太华主峰（右，巍巍） -->
+    <path d="M742,302 L836,120 L902,214 L968,158 L1046,258 L1132,196 L1200,262
+             L1200,420 L742,420 Z" fill="#3B3E41"/>
+    <path d="M836,120 L868,170 L842,178 L818,152 Z" fill="#F2EFE6" opacity=".55"/>
+    <!-- 近山（最浓，左） -->
+    <path d="M0,342 L92,306 L182,334 L276,300 L372,338 L452,312 L548,344 L640,318
+             L722,346 L806,322 L888,350 L972,328 L1062,352 L1148,332 L1200,350 L1200,420 L0,420 Z" fill="#16181A"/>
+    <!-- 滇池水面 -->
+    <rect x="0" y="384" width="1200" height="36" fill="#DCDAD0"/>
+    <g stroke="#B9B7AC" stroke-width="1">
+      <line x1="40" y1="394" x2="220" y2="394"/><line x1="280" y1="394" x2="430" y2="394"/>
+      <line x1="500" y1="394" x2="700" y2="394"/><line x1="760" y1="394" x2="920" y2="394"/>
+      <line x1="980" y1="394" x2="1160" y2="394"/>
+      <line x1="120" y1="406" x2="320" y2="406"/><line x1="400" y1="406" x2="560" y2="406"/>
+      <line x1="640" y1="406" x2="840" y2="406"/><line x1="900" y1="406" x2="1100" y2="406"/>
+    </g>
+  </svg>
+
+  <div class="titlebox">
+    <div class="ov">出 报 告 · 第 三 十 九 期 · 目 錄 2 0 2 6 0 9</div>
+    <h1>本期报告已就绪</h1>
+    <p class="song"><b>太华巍巍，拔海千寻；滇池淼淼，万山为襟。</b><br>
+      复核后签单，这一版才会被标记为「可交付」。</p>
+  </div>
+
+  <svg class="seal" viewBox="0 0 96 96" aria-hidden="true">
+    <rect x="3" y="3" width="90" height="90" fill="#AE2F22" opacity=".92"/>
+    <rect x="9" y="9" width="78" height="78" fill="none" stroke="#F2EFE6" stroke-width="1.9"/>
+    <text x="48" y="42" text-anchor="middle" font-family="SimSun,serif" font-size="20"
+          font-weight="700" fill="#F2EFE6" letter-spacing="2">万山</text>
+    <text x="48" y="70" text-anchor="middle" font-family="SimSun,serif" font-size="20"
+          font-weight="700" fill="#F2EFE6" letter-spacing="2">为襟</text>
+  </svg>
+</div>
+
+<!-- ─── 山脚：四重山即四道工序 ─── -->
+<section class="ridge">
+  <div class="in">
+    <div class="rh"><b>本 期 四 重</b>　下 载 数 据 核 验 → 核 验 与 定 稿<span class="r">2 0 2 6 0 9</span></div>
+    <div class="steps">
+      <div class="st"><div class="k">一 重</div><div class="v">下载数据核验</div><div class="m">64 / 64 完成</div></div>
+      <div class="st"><div class="k">二 重</div><div class="v">选择章节</div><div class="m">按大纲全选</div></div>
+      <div class="st now"><div class="k">三 重</div><div class="v">生成初稿</div><div class="m">10-13 15:03 已出稿</div></div>
+      <div class="st todo"><div class="k">四 重</div><div class="v">核验与定稿</div><div class="m">待复核签单</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 主体 ─── -->
+<section class="main">
+  <div class="stmt">
+    <h2>复核后签单，<br>这一版即可交付。</h2>
+    <p class="lead">任务结束不代表报告合格或已签发——管理员当前不能下载未签发的初稿。复核无异议后签单，这一版才会被标记为「可交付」。</p>
+    <p class="note">本期八家潜力学科，各按其法出图（进本期图册），报告正文用接近度前二。所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+    <div class="acts">
+      <button class="btn">复核并签单 →</button>
+      <a class="ghost" href="#">看详细过程</a>
+    </div>
+  </div>
+
+  <div class="data">
+    <div class="dt">本 期 数 據</div>
+    <dl>
+      <dt>期 次</dt><dd><b>202609</b>　第 39 期</dd>
+      <dt>預 測 / 實 際</dt><dd>202609 / 202609</dd>
+      <dt>下 載 數 據</dt><dd><b>64 / 64</b></dd>
+      <dt>核 對 並 並 入</dt><dd>已并入台账</dd>
+      <dt>台 賬 文 件</dt><dd>云大全学科排名、阈值动态检测表.xlsx</dd>
+      <dt>最 後 修 改</dt><dd>2026 年 9 月 28 日 07:55</dd>
+      <dt>任 務</dt><dd>已完成</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- ─── 选模 ─── -->
+<section class="pick">
+  <div class="hd">
+    <h2><span class="n">本 期 選 模 · 八 家</span>本期选模</h2>
+    <a class="lnk" href="#">去预测台看图改选 →</a>
+  </div>
+  <div class="tabs"><span class="on">路线1 · 总被引 / ESI 前 1% 被引阈值</span><span>路线2 · 国内排名 / 国内前 1% 机构数</span></div>
+  <table>
+    <thead><tr>
+      <th style="width:28%">潛 力 學 科</th>
+      <th style="width:32%">V 1 推 薦</th>
+      <th>本 期 已 選</th>
+    </tr></thead>
+    <tbody>
+      <tr><td class="subj">免疫学</td><td class="mdl">季节性 ETS 模型</td><td class="pk">SARIMA 模型<span class="chg">已改选</span></td></tr>
+      <tr><td class="subj">分子生物学与遗传学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">多学科</td><td class="mdl">Holt 趋势模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">物理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">神经科学与行为科学</td><td class="mdl">季节性 ETS 模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">空间科学</td><td class="mdl">SARIMA 模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">精神病学与心理学</td><td class="mdl">经验贝叶斯状态空间模型</td><td class="dflt">默 认</td></tr>
+      <tr><td class="subj">经济与商业</td><td class="mdl">SARIMA 模型</td><td class="dflt">默 认</td></tr>
+    </tbody>
+  </table>
+  <div class="foot">
+    <span>已 保 存 · admin · 2026-10-16 12:12</span>
+    <span>改 選 請 至　<b>預 測 台</b></span>
+  </div>
+  <p class="rel"><b>與 報 告 的 關 係</b>　任务启动时固定读取本期已保存选择。重出后，未进 1% 的学科都会按你的选择出图（进本期图册），报告正文用接近度前二；所选模型若无法运行，仍按现有规则回退 V1 推荐并留下提醒。</p>
+</section>
+
+<footer class="footbar">
+  <div><b>文衡 · 山水</b>雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+  <div>太 华 巍 巍　·　滇 池 淼 淼　·　万 山 為 襟</div>
+  <div>第 39 期　·　2 0 2 6 0 9　·　簽 發 後 歸 檔</div>
+</footer>
+</body>
+</html>
