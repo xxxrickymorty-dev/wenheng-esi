@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>首屏 · 五个方向（静态稿）</title>
+<style>
+  /* ============================================================
+     审阅外壳（不属于设计稿本身）
+     五稿共用同一份内容：202607 / 第 38 期 / 已完成 / 未签发。
+     数字全部取自 out/202607 的真实产物（approval.json · run_log.json · overview_facts.json）。
+     ============================================================ */
+  :root{
+    --sans-cn:"Microsoft YaHei UI","Microsoft YaHei","PingFang SC",system-ui,-apple-system,sans-serif;
+    --serif-cn:Georgia,"Times New Roman","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+    --mono-cn:"Cascadia Mono",Consolas,"Courier New",monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#6E7378;font-family:var(--sans-cn);color:#12181c;-webkit-font-smoothing:antialiased}
+  .rv-bar{position:sticky;top:0;z-index:99;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:9px 16px;background:#15181A;color:#E8E6E0;font-size:13px;line-height:1.4}
+  .rv-bar .rv-title{font-weight:650;letter-spacing:.06em}
+  .rv-bar .rv-sub{color:#8C949A}
+  .rv-tabs{display:flex;gap:3px;margin-left:auto}
+  .rv-tabs button{font:inherit;font-size:13px;padding:5px 12px;min-height:30px;border:0;cursor:pointer;
+    background:#23282B;color:#B9C0C5;border-radius:3px}
+  .rv-tabs button:hover{background:#2E3438;color:#fff}
+  .rv-tabs button[aria-pressed="true"]{background:#E8E6E0;color:#15181A;font-weight:650}
+  .rv-key{color:#7C848A;font-size:12px}
+  .rv-wrap{padding:26px 0 70px}
+  .rv-intro{max-width:1440px;margin:0 auto 30px;padding:0 24px;color:#F0EEE9;font-size:13.5px;line-height:1.85}
+  .rv-intro b{color:#fff}
+  .rv-intro code{font-family:var(--mono-cn);font-size:12.5px;color:#D6D2C6}
+  .dir{max-width:1440px;margin:0 auto 46px;padding:0 24px}
+  .dir[hidden]{display:none}
+  .dir-head{display:flex;align-items:baseline;gap:16px;margin-bottom:12px;color:#F2F0EB}
+  .dir-head .num{font-family:var(--serif-cn);font-size:38px;line-height:1;color:#C8C4B8;opacity:.55}
+  .dir-head h2{font-family:var(--serif-cn);font-size:21px;font-weight:600;letter-spacing:.04em}
+  .dir-head p{font-size:13px;color:#C4C3BC;margin-top:3px;line-height:1.6}
+  .dir-head .tag{margin-left:auto;font-size:12px;color:#A9A79F;border:1px solid #8A8C8A;padding:3px 9px;white-space:nowrap}
+  .screen{width:100%;max-width:1440px;margin:0 auto;overflow:hidden;
+    box-shadow:0 24px 60px -30px rgba(0,0,0,.65),0 0 0 1px rgba(0,0,0,.35)}
+  @media (max-width:900px){
+    .dir-head{flex-wrap:wrap}
+    .dir-head .tag{margin-left:0}
+  }
+  @media (max-width:760px){
+    .rv-bar{gap:8px;padding:8px 10px}
+    .rv-tabs{width:100%;margin-left:0;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+    .rv-tabs::-webkit-scrollbar{display:none}
+    .rv-tabs button{white-space:nowrap;flex:none}
+    .rv-key{display:none}
+    .rv-wrap{padding:16px 0 40px}
+    .rv-intro{padding:0 14px;font-size:12.5px;line-height:1.8}
+    .dir{padding:0 12px;margin-bottom:30px}
+    .dir-head .num{font-size:26px}
+    .dir-head h2{font-size:18px}
+  }
+
+  /* ============================================================
+     方向一 · 年鉴
+     结构：目录栏（竖向工序）＋ 版心（结论＋数字）
+     手法：只有横线，没有卡片、没有圆角、没有阴影
+     ============================================================ */
+  #s1{font-family:var(--sans-cn);font-size:15px}
+  #s1 .screen{background:#F7F3EA;color:#1B2A22}
+  #s1 .top{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;
+    padding:22px 56px 16px;border-bottom:1px solid #D9D2C0}
+  #s1 .brand{display:flex;align-items:baseline;gap:14px}
+  #s1 .brand b{font-family:var(--serif-cn);font-size:24px;font-weight:600;letter-spacing:.22em}
+  #s1 .brand span{font-size:11.5px;letter-spacing:.2em;color:#7C8A80}
+  #s1 .meta{display:flex;align-items:center;gap:12px;font-size:11.5px;letter-spacing:.14em;color:#4C5B51;
+    font-variant-numeric:tabular-nums;white-space:nowrap}
+  #s1 .meta .sep{width:1px;height:12px;background:#C9C1AE}
+  #s1 .meta .uns{color:#8C4A33;font-weight:700}
+  #s1 .body{display:grid;grid-template-columns:326px minmax(0,1fr)}
+  #s1 .toc{padding:36px 34px 46px 56px;border-right:1px solid #D9D2C0}
+  #s1 .cap{font-size:11px;letter-spacing:.3em;color:#7C8A80;margin-bottom:6px}
+  #s1 .toc ol{list-style:none}
+  #s1 .toc li{display:flex;align-items:baseline;gap:10px;padding:15px 0 13px;border-bottom:1px solid #D9D2C0}
+  #s1 .toc li:first-child{border-top:1px solid #D9D2C0}
+  #s1 .no{font-family:var(--mono-cn);font-size:11.5px;color:#9AA69C;width:20px;flex:none}
+  #s1 .nm{font-size:16px;color:#4C5B51}
+  #s1 .fill{flex:1;min-width:12px;border-bottom:1px dotted #C4BCA8;transform:translateY(-4px)}
+  #s1 .st{font-size:13.5px;color:#7C8A80;font-variant-numeric:tabular-nums;white-space:nowrap}
+  #s1 li.done .nm{color:#1B2A22}
+  #s1 li.done .st::before{content:"✓ ";color:#2C5B3E}
+  #s1 li.now{padding-top:18px}
+  #s1 li.now .no{color:#2C5B3E;font-weight:700}
+  #s1 li.now .nm{font-weight:700;font-size:16.5px}
+  #s1 li.now .st{color:#2C5B3E;font-weight:700}
+  #s1 .tocnote{font-size:13.5px;line-height:1.9;color:#8A968C;margin-top:22px;max-width:24em}
+  #s1 .page{padding:40px 64px 30px}
+  #s1 .kick{font-size:11.5px;letter-spacing:.34em;color:#2C5B3E}
+  #s1 h1{font-family:var(--serif-cn);font-size:clamp(30px,3.1vw,44px);line-height:1.34;font-weight:600;
+    letter-spacing:.01em;margin:18px 0 0;max-width:19em}
+  #s1 .deck{font-size:17px;line-height:1.95;color:#4C5B51;margin-top:18px;max-width:34em}
+  #s1 .act{display:flex;align-items:center;gap:30px;margin-top:34px;flex-wrap:wrap}
+  #s1 .btn{display:inline-flex;align-items:center;gap:10px;min-height:50px;padding:0 34px;
+    background:#2C5B3E;color:#F7F3EA;font-size:18px;font-weight:600;letter-spacing:.08em;text-decoration:none}
+  #s1 .btn:hover{background:#22482F}
+  #s1 .lnk{font-size:14.5px;color:#4C5B51;text-decoration:none;border-bottom:1px solid #B9B29E;padding-bottom:2px}
+  #s1 .lnk:hover{color:#1B2A22;border-color:#1B2A22}
+  #s1 .figs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:56px;
+    border-top:1px solid #C9C1AE;border-bottom:1px solid #D9D2C0}
+  #s1 .figs>div{padding:18px 22px 16px;border-left:1px solid #D9D2C0}
+  #s1 .figs>div:first-child{border-left:0;padding-left:0}
+  #s1 .figs dt{font-size:11px;letter-spacing:.22em;color:#7C8A80}
+  #s1 .figs dd{font-family:var(--serif-cn);font-size:clamp(26px,2.6vw,36px);line-height:1.2;margin-top:8px;
+    font-variant-numeric:tabular-nums;letter-spacing:.01em}
+  #s1 .figs dd small{font-family:var(--sans-cn);font-size:14px;color:#7C8A80;margin-left:4px;letter-spacing:0}
+  #s1 .figs p{font-size:13.5px;color:#7C8A80;margin-top:5px;font-variant-numeric:tabular-nums}
+  #s1 .foot{display:flex;justify-content:space-between;gap:20px;margin-top:18px;font-size:13px;color:#8A968C}
+  @media (max-width:1080px){
+    #s1 .top{padding:18px 26px 14px}
+    #s1 .body{grid-template-columns:1fr}
+    #s1 .toc{border-right:0;border-bottom:1px solid #D9D2C0;padding:24px 26px}
+    #s1 .page{padding:28px 26px 24px}
+    #s1 .figs{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:34px}
+    #s1 .figs>div:nth-child(3){border-left:0;padding-left:0}
+    #s1 .figs>div:nth-child(n+3){border-top:1px solid #D9D2C0}
+  }
+
+  /* ============================================================
+     方向二 · 仪表
+     结构：顶栏＋主区＋右侧「接下来」栏
+     手法：白卡、浅灰底、状态条，产品感
+     ============================================================ */
+  #s2{font-family:var(--sans-cn);font-size:15px}
+  #s2 .screen{background:#F1F3F5;color:#12212E}
+  #s2 .bar{display:flex;align-items:center;gap:26px;min-height:54px;padding:0 26px;
+    background:#FFFFFF;border-bottom:1px solid #E1E6EA}
+  #s2 .logo{font-family:var(--serif-cn);font-size:19px;font-weight:600;letter-spacing:.16em}
+  #s2 .nav{display:flex;gap:4px}
+  #s2 .nav a{font-size:15px;color:#5A6B78;text-decoration:none;padding:16px 10px;border-bottom:2px solid transparent}
+  #s2 .nav a.on{color:#0F3547;font-weight:650;border-bottom-color:#0F5162}
+  #s2 .bar .right{margin-left:auto;display:flex;align-items:center;gap:12px}
+  #s2 .period{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;color:#12212E;
+    background:#F3F6F8;border:1px solid #DDE4E9;border-radius:7px;padding:6px 11px;font-variant-numeric:tabular-nums}
+  #s2 .avatar{width:30px;height:30px;border-radius:50%;background:#0F3547;color:#fff;
+    display:grid;place-items:center;font-size:12.5px;letter-spacing:.02em}
+  #s2 .main{display:grid;grid-template-columns:minmax(0,1fr) 326px;gap:20px;padding:20px 26px 26px;align-items:start}
+  #s2 .steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;list-style:none;
+    background:#fff;border:1px solid #E1E6EA;border-radius:11px;overflow:hidden}
+  #s2 .steps li{position:relative;padding:15px 16px 17px;border-left:1px solid #EDF1F4}
+  #s2 .steps li:first-child{border-left:0}
+  #s2 .steps li::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:transparent}
+  #s2 .steps li.done::after{background:#1E7A5A}
+  #s2 .steps li.now::after{background:#0F5162}
+  #s2 .steps .row{display:flex;align-items:center;gap:8px}
+  #s2 .steps .dot{width:17px;height:17px;border-radius:50%;display:grid;place-items:center;
+    font-size:10.5px;flex:none;border:1.5px solid #C3CFD7;color:#8A9AA5}
+  #s2 .steps li.done .dot{background:#1E7A5A;border-color:#1E7A5A;color:#fff}
+  #s2 .steps li.now .dot{border-color:#0F5162;color:#0F5162;font-weight:700}
+  #s2 .steps b{font-size:15px;font-weight:650;color:#12212E}
+  #s2 .steps li:not(.done):not(.now) b{color:#7A8894;font-weight:500}
+  #s2 .steps span.meta{display:block;margin-top:6px;font-size:13.5px;color:#7A8894;
+    font-variant-numeric:tabular-nums;padding-left:25px}
+  #s2 .steps li.now span.meta{color:#0F5162;font-weight:650}
+  #s2 .hero{background:#fff;border:1px solid #E1E6EA;border-radius:13px;padding:26px 28px 24px;margin-top:18px}
+  #s2 .chips{display:flex;gap:8px}
+  #s2 .chip{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;padding:3px 10px;border-radius:99px}
+  #s2 .chip.ok{background:#E4F2EC;color:#166247}
+  #s2 .chip.warn{background:#FBECE4;color:#8E3B21}
+  #s2 h1{font-size:clamp(24px,2.5vw,31px);font-weight:680;letter-spacing:-.01em;line-height:1.35;margin-top:14px}
+  #s2 .hero p{font-size:16.5px;line-height:1.85;color:#4A5B69;margin-top:9px;max-width:44em}
+  #s2 .cta{display:flex;align-items:center;gap:10px;margin-top:22px;flex-wrap:wrap}
+  #s2 .primary{min-height:48px;padding:0 26px;border-radius:9px;border:0;cursor:pointer;
+    background:#0F5162;color:#fff;font-size:17px;font-weight:650;letter-spacing:.03em}
+  #s2 .primary:hover{background:#0B4150}
+  #s2 .ghost{min-height:48px;padding:0 20px;border-radius:9px;border:1px solid #CCD8E0;background:#fff;
+    color:#12212E;font-size:15.5px;cursor:pointer}
+  #s2 .ghost:hover{background:#F5F8FA}
+  #s2 .more{font-size:14.5px;color:#5A6B78;margin-left:6px;text-decoration:none;border-bottom:1px dotted #A9B7C1}
+  #s2 .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:18px}
+  #s2 .metric{background:#fff;border:1px solid #E1E6EA;border-radius:11px;padding:14px 15px}
+  #s2 .metric dt{font-size:13.5px;color:#7A8894;letter-spacing:.04em}
+  #s2 .metric dd{font-family:var(--mono-cn);font-size:25px;line-height:1.25;margin-top:6px;
+    font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  #s2 .metric i{display:block;font-style:normal;font-size:13px;color:#5A6B78;margin-top:4px}
+  #s2 .metric i.up{color:#166247}
+  #s2 .rail{display:grid;gap:14px}
+  #s2 .railcard{background:#fff;border:1px solid #E1E6EA;border-radius:12px;padding:16px 16px 8px}
+  #s2 .railcard h2{font-size:11.5px;letter-spacing:.2em;color:#7A8894;font-weight:600;margin-bottom:6px;
+    font-family:var(--sans-cn)}
+  #s2 .next{list-style:none}
+  #s2 .next li{display:flex;gap:11px;padding:11px 8px;border-top:1px solid #EDF1F4;align-items:flex-start}
+  #s2 .next li:first-child{border-top:0;background:#F2F7F9;border-radius:7px;margin:4px 0}
+  #s2 .next .n{width:20px;height:20px;border-radius:50%;flex:none;display:grid;place-items:center;
+    font-size:11.5px;font-family:var(--mono-cn);background:#E8EEF2;color:#4A5B69}
+  #s2 .next li:first-child .n{background:#0F5162;color:#fff}
+  #s2 .next b{display:block;font-size:15px;font-weight:650}
+  #s2 .next i{display:block;font-style:normal;font-size:13.5px;color:#6C7C88;line-height:1.6;margin-top:2px}
+  #s2 .facts{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;padding-bottom:10px}
+  #s2 .facts div{padding:9px 0;border-top:1px solid #EDF1F4}
+  #s2 .facts div:nth-child(-n+2){border-top:0}
+  #s2 .facts dt{font-size:13.5px;color:#7A8894}
+  #s2 .facts dd{font-family:var(--mono-cn);font-size:16px;margin-top:3px;font-variant-numeric:tabular-nums}
+  #s2 .facts dd em{font-style:normal;font-family:var(--sans-cn);font-size:11.5px;color:#166247;margin-left:4px}
+  #s2 .railnote{font-size:13px;color:#8A97A2;padding:0 4px;line-height:1.7}
+  @media (max-width:1080px){
+    #s2 .main{grid-template-columns:1fr}
+    #s2 .rail{grid-template-columns:1fr 1fr}
+    #s2 .railnote{grid-column:1/-1}
+  }
+  @media (max-width:720px){
+    #s2 .steps{grid-template-columns:1fr 1fr}
+    #s2 .metrics{grid-template-columns:1fr 1fr}
+    #s2 .rail{grid-template-columns:1fr}
+  }
+
+  /* ============================================================
+     方向三 · 清单
+     结构：一条中轴窄列，没有卡片
+     手法：行、勾、一个实心动作；把「还剩什么」写成清单
+     ============================================================ */
+  #s3{font-family:var(--sans-cn);font-size:15px}
+  #s3 .screen{background:#FBFAF6;color:#191A17}
+  #s3 .page{max-width:700px;margin:0 auto;padding:40px 32px 40px}
+  #s3 .top{display:flex;align-items:baseline;justify-content:space-between;font-size:11.5px;
+    letter-spacing:.24em;color:#8A8B82}
+  #s3 .top b{font-family:var(--serif-cn);font-size:17px;letter-spacing:.3em;color:#191A17;font-weight:600}
+  #s3 .kick{margin-top:44px;font-size:11.5px;letter-spacing:.3em;color:#2B5F45}
+  #s3 h1{font-family:var(--serif-cn);font-size:clamp(28px,3vw,38px);line-height:1.4;font-weight:600;
+    margin-top:14px;letter-spacing:.01em}
+  #s3 .deck{font-size:17px;line-height:1.95;color:#5C5F58;margin-top:12px}
+  #s3 .list{margin-top:32px;list-style:none}
+  #s3 .list li{display:grid;grid-template-columns:26px minmax(0,1fr) auto;align-items:baseline;gap:12px;
+    padding:14px 0;border-top:1px solid #E6E4DC}
+  #s3 .list li:last-child{border-bottom:1px solid #E6E4DC}
+  #s3 .box{font-size:14px;color:#2B5F45;line-height:1.4;transform:translateY(-1px)}
+  #s3 .nm{font-size:18px;color:#191A17}
+  #s3 .meta{font-size:14px;color:#8A8B82;font-variant-numeric:tabular-nums;white-space:nowrap}
+  #s3 li.todo .box{color:#B4B5AC}
+  #s3 li.todo .nm{color:#8A8B82}
+  #s3 li.now .box{color:#2B5F45;font-weight:700;font-size:17px}
+  #s3 li.now .nm{font-weight:700;font-size:19px}
+  #s3 li.now .meta{color:#2B5F45;font-weight:700}
+  #s3 .cta{display:block;margin-top:30px;width:100%;min-height:58px;border:0;cursor:pointer;
+    background:#1E211D;color:#FBFAF6;font-size:18px;font-weight:600;letter-spacing:.1em;
+    display:flex;align-items:center;justify-content:center;gap:14px}
+  #s3 .cta:hover{background:#000}
+  #s3 .cta i{font-style:normal;font-size:19px;line-height:1}
+  #s3 .links{display:flex;gap:26px;margin-top:14px;font-size:15px;color:#5C5F58}
+  #s3 .links a{color:#5C5F58;text-decoration:none;border-bottom:1px solid #D8D5CA;padding-bottom:2px}
+  #s3 .links a:hover{color:#191A17;border-color:#191A17}
+  #s3 .figs{display:flex;gap:26px;flex-wrap:wrap;margin-top:34px;font-size:14px;color:#5C5F58;
+    font-variant-numeric:tabular-nums}
+  #s3 .figs b{font-family:var(--mono-cn);font-size:15px;font-weight:600;color:#191A17;margin-right:5px}
+  #s3 .foot{margin-top:30px;padding-top:14px;border-top:1px solid #EDEBE3;font-size:13px;color:#999A90;line-height:1.9}
+
+  /* ============================================================
+     方向四 · 书页
+     结构：对开双页，左页工序、右页正文，页边注在订口
+     手法：纸、衬线、双细线，像一本刊物的内页
+     ============================================================ */
+  #s4{font-family:var(--sans-cn);font-size:15px}
+  #s4 .screen{background:#E3D9C4;color:#241F1A;padding:26px}
+  #s4 .book{background:#FBF7EC;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.32fr);
+    box-shadow:0 0 0 1px #C9BCA4,0 18px 40px -26px rgba(60,45,25,.6)}
+  #s4 .pg{padding:34px 40px 26px;position:relative;display:flex;flex-direction:column;min-height:640px}
+  #s4 .pg.left{border-right:1px solid #D8CCB2;
+    background:linear-gradient(90deg,rgba(0,0,0,0) 92%,rgba(90,70,40,.06) 100%)}
+  #s4 .pg.right{background:linear-gradient(90deg,rgba(90,70,40,.06) 0,rgba(0,0,0,0) 8%)}
+  #s4 .rh{display:flex;justify-content:space-between;gap:14px;font-size:10.5px;letter-spacing:.26em;
+    color:#8A7A62;padding-bottom:10px;border-bottom:1px solid #C9BCA4;margin-bottom:28px}
+  #s4 .gh{font-family:var(--serif-cn);font-size:12px;letter-spacing:.4em;color:#7A2E22;margin-bottom:20px}
+  #s4 ol{list-style:none}
+  #s4 ol li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;padding:15px 0;
+    border-bottom:1px solid #E0D5BF}
+  #s4 ol li:last-child{border-bottom:0}
+  #s4 .rn{font-family:var(--serif-cn);font-size:13px;color:#A08E70;padding-top:3px;letter-spacing:.1em}
+  #s4 .tt{font-family:var(--serif-cn);font-size:19px;font-weight:600;line-height:1.5}
+  #s4 .mt{font-size:13.5px;color:#7C6E58;margin-top:3px;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+  #s4 li.now .tt{color:#7A2E22}
+  #s4 li.now .tt::after{content:"";display:block;width:34px;height:2px;background:#7A2E22;margin-top:6px}
+  #s4 li.now .rn{color:#7A2E22}
+  #s4 .abstract{margin-top:26px;border-left:2px solid #C9BCA4;padding:2px 0 2px 18px;
+    font-family:var(--serif-cn);font-size:16.5px;line-height:2.05;color:#4A4034}
+  #s4 h1{font-family:var(--serif-cn);font-size:clamp(28px,3vw,40px);line-height:1.5;font-weight:600;
+    letter-spacing:.02em;margin:0}
+  #s4 .lead{margin-top:26px;font-family:var(--serif-cn);font-size:17px;line-height:2.1;color:#4A4034;max-width:30em}
+  #s4 .act{display:flex;align-items:center;gap:26px;margin-top:30px;flex-wrap:wrap}
+  #s4 .btn{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:0 30px;
+    background:#2A241D;color:#FBF7EC;font-family:var(--serif-cn);font-size:18px;letter-spacing:.14em;text-decoration:none}
+  #s4 .btn:hover{background:#7A2E22}
+  #s4 .lnk{font-family:var(--serif-cn);font-size:14.5px;color:#4A4034;text-decoration:none;
+    border-bottom:1px solid #A8977A;padding-bottom:2px}
+  #s4 .tbl{margin-top:34px;border-top:1px solid #C9BCA4}
+  #s4 .tbl div{display:flex;align-items:baseline;gap:10px;padding:9px 0;border-bottom:1px solid #E0D5BF;font-size:15px}
+  #s4 .tbl dt{color:#7C6E58;flex:none}
+  #s4 .tbl .fill{flex:1;border-bottom:1px dotted #C6B79B;transform:translateY(-4px)}
+  #s4 .tbl dd{font-family:var(--serif-cn);font-size:16px;font-variant-numeric:tabular-nums}
+  #s4 .pn{margin-top:14px;padding-top:22px;display:flex;justify-content:space-between;align-items:baseline;
+    font-family:var(--serif-cn);font-size:13px;color:#8A7A62;letter-spacing:.2em}
+  #s4 .colo{margin-top:auto;padding:12px 0 0;border-top:1px solid #E0D5BF;font-size:13px;
+    color:#8A7A62;letter-spacing:.04em;line-height:1.9}
+  #s4 .edge{position:absolute;top:50%;font-size:10.5px;letter-spacing:.42em;color:#A08E70;
+    writing-mode:vertical-rl;transform:translateY(-50%)}
+  #s4 .edge.l{left:12px}
+  #s4 .edge.r{right:12px}
+  #s4 .pg.left{padding-left:48px}
+  #s4 .pg.right{padding-right:48px}
+  @media (max-width:980px){
+    #s4 .book{grid-template-columns:1fr}
+    #s4 .pg{min-height:0;padding:26px 26px 22px}
+    #s4 .pg.left{border-right:0;border-bottom:1px solid #D8CCB2}
+    #s4 .edge{display:none}
+  }
+
+  /* ============================================================
+     方向五 · 夜读
+     结构：一条横向工序轨 ＋ 居中的一句结论
+     手法：深底暖字、黄铜色节点、等宽数字，投影/暗场里最扛看
+     ============================================================ */
+  #s5{font-family:var(--sans-cn);font-size:15px}
+  #s5 .screen{background:#0E1211;color:#EFEBE2;position:relative;overflow:hidden}
+  #s5 .screen::before{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(90% 70% at 50% 0%,rgba(201,162,39,.10),rgba(201,162,39,0) 60%)}
+  #s5 .inner{max-width:1080px;margin:0 auto;padding:24px 34px 26px}
+  #s5 .top{display:flex;align-items:center;justify-content:space-between;gap:20px;
+    padding-bottom:16px;border-bottom:1px solid #252C28}
+  #s5 .brand{display:flex;align-items:baseline;gap:14px}
+  #s5 .brand b{font-family:var(--serif-cn);font-size:21px;font-weight:600;letter-spacing:.26em;color:#F4F0E7}
+  #s5 .brand span{font-size:11px;letter-spacing:.22em;color:#7E8A82}
+  #s5 .chip{font-family:var(--mono-cn);font-size:13.5px;color:#C7C0AE;border:1px solid #39423C;
+    padding:5px 11px;letter-spacing:.06em;font-variant-numeric:tabular-nums}
+  #s5 .kick{margin-top:34px;font-size:11.5px;letter-spacing:.32em;color:#C9A227}
+  #s5 h1{font-size:clamp(30px,3.6vw,46px);font-weight:400;line-height:1.42;letter-spacing:.01em;
+    color:#F6F2E9;margin-top:14px;max-width:20em}
+  #s5 .sub{font-size:17px;line-height:1.95;color:#A9B3AB;margin-top:14px;max-width:640px}
+  #s5 .track{position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+    margin-top:40px;padding-top:24px;list-style:none}
+  #s5 .track::before{content:"";position:absolute;left:6px;top:8px;height:1px;width:75%;background:#2C342F}
+  #s5 .track::after{content:"";position:absolute;left:6px;top:8px;height:1px;width:75%;background:#C9A227;opacity:.7}
+  #s5 .st{position:relative;padding-right:14px}
+  #s5 .st .nd{position:absolute;top:-26px;left:0;width:11px;height:11px;border-radius:50%;
+    background:#C9A227;box-shadow:0 0 0 4px rgba(201,162,39,.12)}
+  #s5 .st.now .nd{background:#0E1211;border:2px solid #C9A227;width:13px;height:13px;top:-27px;
+    box-shadow:0 0 0 5px rgba(201,162,39,.16)}
+  #s5 .st b{display:block;font-size:15.5px;font-weight:600;color:#EFEBE2}
+  #s5 .st.now b{color:#F6F2E9}
+  #s5 .st span{display:block;font-family:var(--mono-cn);font-size:13.5px;color:#7E8A82;margin-top:5px;
+    font-variant-numeric:tabular-nums}
+  #s5 .st.now span{color:#C9A227}
+  #s5 .act{display:flex;align-items:center;gap:14px;margin-top:30px;flex-wrap:wrap}
+  #s5 .btn{display:inline-flex;align-items:center;gap:10px;min-height:50px;padding:0 30px;border:0;cursor:pointer;
+    background:#EDE7DA;color:#121614;font-size:18px;font-weight:650;letter-spacing:.06em}
+  #s5 .btn:hover{background:#fff}
+  #s5 .ghost{min-height:50px;padding:0 22px;background:transparent;border:1px solid #3A423D;color:#DCD8CE;
+    font-size:15.5px;cursor:pointer}
+  #s5 .ghost:hover{border-color:#6E7A72;color:#fff}
+  #s5 .lnk{font-size:14px;color:#A9B3AB;text-decoration:none;border-bottom:1px solid #3A423D;padding-bottom:2px;
+    margin-left:4px}
+  #s5 .lnk:hover{color:#F6F2E9;border-color:#C9A227}
+  #s5 .rail{display:flex;flex-wrap:wrap;gap:8px 0;margin-top:26px;padding-top:16px;border-top:1px solid #252C28;
+    font-family:var(--mono-cn);font-size:13.5px;color:#8E9A92;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+  #s5 .rail span{padding:0 16px;border-left:1px solid #2C342F}
+  #s5 .rail span:first-child{padding-left:0;border-left:0}
+  @media (max-width:820px){
+    #s5 .track{grid-template-columns:1fr 1fr;gap:26px 0}
+    #s5 .track::before,#s5 .track::after{display:none}
+    #s5 .st .nd{position:static;display:inline-block;margin-bottom:8px}
+    #s5 .st.now .nd{margin-bottom:7px}
+  }
+
+  /* 窄屏生存规则（放在最后，确保覆盖各方向的基础规则）：不叠字、不横向溢出 */
+  @media (max-width:760px){
+    #s1 .top{flex-direction:column;align-items:flex-start;gap:10px;padding:16px 20px 12px}
+    #s1 .brand span{display:none}
+    #s1 .meta{flex-wrap:wrap;white-space:normal}
+    #s2 .bar{padding:8px 14px;gap:12px}
+    #s2 .nav{display:none}
+    #s2 .main{padding:14px}
+    #s2 .hero{padding:20px}
+    #s3 .page{padding:26px 20px 30px}
+    #s4 .screen{padding:10px}
+    #s4 h1{font-size:26px}
+    #s5 .inner{padding:18px 18px 22px}
+    #s5 .brand span{display:none}
+    #s5 h1{font-size:30px}
+  }
+</style>
+</head>
+<body>
+
+<div class="rv-bar">
+  <span class="rv-title">首屏 · 五个方向</span>
+  <span class="rv-sub">静态稿 · 双击即开 · 零外链</span>
+  <div class="rv-tabs" role="group" aria-label="切换方向">
+    <button type="button" data-go="all" aria-pressed="true">总览</button>
+    <button type="button" data-go="1" aria-pressed="false">一 年鉴</button>
+    <button type="button" data-go="2" aria-pressed="false">二 仪表</button>
+    <button type="button" data-go="3" aria-pressed="false">三 清单</button>
+    <button type="button" data-go="4" aria-pressed="false">四 书页</button>
+    <button type="button" data-go="5" aria-pressed="false">五 夜读</button>
+  </div>
+  <span class="rv-key">按 0–5 切换</span>
+</div>
+
+<main class="rv-wrap">
+  <p class="rv-intro">
+    只改<b>一个屏</b>：出报告的第一屏。五稿内容完全相同——<code>202607 · 第 38 期 · 已完成 · 未签发</code>，
+    数字取自真实产物（716 处内容 / 48 项校验 / 106 张图表 / 1 分 48 秒 / 全球 995 ↑13）。
+    差别只在<b>结构</b>：谁是主角、信息放在哪、下一步怎么被看见。<br>
+    共同约束：首屏只有一个主动作；签发状态用「颜色＋图标＋文字」三重编码；正文不小于 17px，标签不小于 13.5px。
+  </p>
+
+  <!-- ==================== 一 · 年鉴 ==================== -->
+  <article class="dir" id="s1" data-dir="1">
+    <header class="dir-head">
+      <span class="num">一</span>
+      <div>
+        <h2>年鉴</h2>
+        <p>目录栏就是工序条：左边四行是这一期的四道工序，右边是版心。像翻开一份统计年鉴的内页——结论在上，数字在下，没有一张卡片。</p>
+      </div>
+      <span class="tag">结构：目录 ＋ 版心</span>
+    </header>
+    <div class="screen">
+      <div class="top">
+        <div class="brand"><b>文衡</b><span>云 南 大 学 图 书 馆 · 学 科 信 息 参 考</span></div>
+        <div class="meta">
+          <span>202607 · 第 38 期</span><span class="sep"></span>
+          <span>已完成</span><span class="sep"></span>
+          <span class="uns">未签发</span>
+        </div>
+      </div>
+      <div class="body">
+        <aside class="toc">
+          <p class="cap">本 期 工 序</p>
+          <ol>
+            <li class="done"><span class="no">01</span><span class="nm">取数核验</span><span class="fill"></span><span class="st">64 / 64</span></li>
+            <li class="done"><span class="no">02</span><span class="nm">预测选模</span><span class="fill"></span><span class="st">已定</span></li>
+            <li class="done"><span class="no">03</span><span class="nm">生成初稿</span><span class="fill"></span><span class="st">1 分 48 秒</span></li>
+            <li class="now"><span class="no">04</span><span class="nm">核验定稿</span><span class="fill"></span><span class="st">当前</span></li>
+          </ol>
+          <p class="tocnote">前三步机器完成，合计 1 分 48 秒。这一步只有人能过。</p>
+        </aside>
+        <section class="page">
+          <p class="kick">第 四 步 · 核 验 定 稿</p>
+          <h1>本期报告已就绪，<br>复核签单后即可交付。</h1>
+          <p class="deck">716 处内容与 48 项校验全部通过。签发前不能下载初稿；上一版 202605 仍在，重跑不会动它。</p>
+          <div class="act">
+            <a class="btn" href="#">复核并签单</a>
+            <a class="lnk" href="#">打开报告 ↗</a>
+            <a class="lnk" href="#">看生成过程</a>
+          </div>
+          <dl class="figs">
+            <div><dt>内 容</dt><dd>716<small>处</small></dd><p>正文 19 · 表格 591 · 图表 106</p></div>
+            <div><dt>校 验</dt><dd>48<small>项</small></dd><p>未通过 0</p></div>
+            <div><dt>全球排名</dt><dd>995<small>位</small></dd><p>较上期 ↑ 13</p></div>
+            <div><dt>顶尖论文</dt><dd>274<small>篇</small></dd><p>较上期 ↑ 22</p></div>
+          </dl>
+          <p class="foot"><span>数据只来自主台账与本期产物</span><span>本页只读</span></p>
+        </section>
+      </div>
+    </div>
+  </article>
+
+  <!-- ==================== 二 · 仪表 ==================== -->
+  <article class="dir" id="s2" data-dir="2">
+    <header class="dir-head">
+      <span class="num">二</span>
+      <div>
+        <h2>仪表</h2>
+        <p>四道工序做成一条永远可见的进度带，下一步放进右侧「接下来」栏。适合把这一屏当成每天都在用的操作台：状态一眼扫完，动作永远在同一个位置。</p>
+      </div>
+      <span class="tag">结构：进度带 ＋ 右侧栏</span>
+    </header>
+    <div class="screen">
+      <div class="bar">
+        <span class="logo">文衡</span>
+        <nav class="nav"><a class="on" href="#">出报告</a><a href="#">灵活报告</a><a href="#">问文衡</a></nav>
+        <div class="right">
+          <span class="period">202607 · 第 38 期 ⌄</span>
+          <span class="avatar">卜</span>
+        </div>
+      </div>
+      <div class="main">
+        <div>
+          <ol class="steps">
+            <li class="done"><span class="row"><span class="dot">✓</span><b>取数核验</b></span><span class="meta">64 / 64 份</span></li>
+            <li class="done"><span class="row"><span class="dot">✓</span><b>预测选模</b></span><span class="meta">已选定</span></li>
+            <li class="done"><span class="row"><span class="dot">✓</span><b>生成初稿</b></span><span class="meta">用时 1 分 48 秒</span></li>
+            <li class="now"><span class="row"><span class="dot">4</span><b>核验定稿</b></span><span class="meta">现在这一步</span></li>
+          </ol>
+
+          <section class="hero">
+            <div class="chips"><span class="chip ok">✓ 已完成</span><span class="chip warn">! 未签发</span></div>
+            <h1>报告已生成，等你签单。</h1>
+            <p>716 处内容与 48 项校验都过了。签单之后，这一版才会被标为可交付、才能下载。</p>
+            <div class="cta">
+              <button class="primary" type="button">复核并签单</button>
+              <button class="ghost" type="button">打开报告</button>
+              <a class="more" href="#">看生成过程 →</a>
+            </div>
+          </section>
+
+          <dl class="metrics">
+            <div class="metric"><dt>内容单元</dt><dd>716</dd><i>正文 19 · 表格 591 · 图表 106</i></div>
+            <div class="metric"><dt>数据校验</dt><dd>48</dd><i>未通过 0 项</i></div>
+            <div class="metric"><dt>全球排名</dt><dd>995</dd><i class="up">↑ 13 位</i></div>
+            <div class="metric"><dt>顶尖论文</dt><dd>274</dd><i class="up">↑ 22 篇</i></div>
+          </dl>
+        </div>
+
+        <aside class="rail">
+          <div class="railcard">
+            <h2>接 下 来</h2>
+            <ol class="next">
+              <li><span class="n">1</span><div><b>复核并签单</b><i>在审核台逐格核对，签单后归档</i></div></li>
+              <li><span class="n">2</span><div><b>打开报告</b><i>看正文、图表与数字体检</i></div></li>
+              <li><span class="n">3</span><div><b>看生成过程</b><i>每一步做了什么、用了多久</i></div></li>
+            </ol>
+          </div>
+          <div class="railcard">
+            <h2>本 期 读 数</h2>
+            <dl class="facts">
+              <div><dt>国内高校</dt><dd>130</dd></div>
+              <div><dt>前 1% 学科</dt><dd>14</dd></div>
+              <div><dt>上一版</dt><dd>202605</dd></div>
+              <div><dt>签发</dt><dd>未签发</dd></div>
+            </dl>
+          </div>
+          <p class="railnote">数字只来自主台账与本期产物，本页只读。</p>
+        </aside>
+      </div>
+    </div>
+  </article>
+
+  <!-- ==================== 三 · 清单 ==================== -->
+  <article class="dir" id="s3" data-dir="3">
+    <header class="dir-head">
+      <span class="num">三</span>
+      <div>
+        <h2>清单</h2>
+        <p>只剩一条中轴窄列：四行工序，一行一个勾，底下就一个实心动作。信息最少、最不花，但「还差什么」一眼就完。</p>
+      </div>
+      <span class="tag">结构：单列 ＋ 清单</span>
+    </header>
+    <div class="screen">
+      <div class="page">
+        <div class="top"><b>文衡</b><span>202607 · 第 38 期</span></div>
+        <p class="kick">出 报 告 · 第 四 步</p>
+        <h1>只差一步：签单。</h1>
+        <p class="deck">报告已经生成，716 处内容与 48 项校验全部通过。签单之前，初稿不能下载。</p>
+        <ol class="list">
+          <li class="done"><span class="box">✓</span><span class="nm">取数核验</span><span class="meta">64 / 64 份</span></li>
+          <li class="done"><span class="box">✓</span><span class="nm">预测选模</span><span class="meta">已选定</span></li>
+          <li class="done"><span class="box">✓</span><span class="nm">生成初稿</span><span class="meta">1 分 48 秒</span></li>
+          <li class="now"><span class="box">→</span><span class="nm">核验定稿</span><span class="meta">现在</span></li>
+        </ol>
+        <button class="cta" type="button">复核并签单 <i>→</i></button>
+        <div class="links"><a href="#">打开报告 ↗</a><a href="#">看生成过程</a></div>
+        <div class="figs">
+          <span><b>716</b>处内容</span>
+          <span><b>48</b>项校验 · 未通过 0</span>
+          <span><b>106</b>张图表</span>
+        </div>
+        <p class="foot">上一版 202605 仍在，重跑不会动它。<br>数字只来自主台账与本期产物 · 本页只读</p>
+      </div>
+    </div>
+  </article>
+
+  <!-- ==================== 四 · 书页 ==================== -->
+  <article class="dir" id="s4" data-dir="4">
+    <header class="dir-head">
+      <span class="num">四</span>
+      <div>
+        <h2>书页</h2>
+        <p>做成一份刊物的对开内页：左页是目录式的四道工序，右页是这一期的正文与结论。语气最接近「一份可以签字归档的文件」，但要接受它不像软件。</p>
+      </div>
+      <span class="tag">结构：对开双页</span>
+    </header>
+    <div class="screen">
+      <div class="book">
+        <section class="pg left">
+          <div class="rh"><span>文 衡</span><span>学 科 信 息 参 考</span></div>
+          <p class="gh">工 序</p>
+          <ol>
+            <li><span class="rn">Ⅰ</span><div><p class="tt">取数核验</p><p class="mt">64 / 64 份 · 已完成</p></div></li>
+            <li><span class="rn">Ⅱ</span><div><p class="tt">预测选模</p><p class="mt">模型已选定 · 已完成</p></div></li>
+            <li><span class="rn">Ⅲ</span><div><p class="tt">生成初稿</p><p class="mt">用时 1 分 48 秒 · 已完成</p></div></li>
+            <li class="now"><span class="rn">Ⅳ</span><div><p class="tt">核验定稿</p><p class="mt">现在这一步</p></div></li>
+          </ol>
+          <p class="colo">数字只来自主台账与本期产物。<br>本页只读，不改台账与报告。</p>
+          <p class="pn"><span>第 三 十 八 期</span><span>37</span></p>
+        </section>
+        <section class="pg right">
+          <span class="edge r">数 据 只 读</span>
+          <div class="rh"><span>二 〇 二 六 年 七 月</span><span>第 四 步</span></div>
+          <h1>本期报告已就绪</h1>
+          <p class="abstract">716 处内容与 48 项校验已全部通过；签发之前，初稿不能下载。上一版 202605 仍在，重跑不会动它。</p>
+          <p class="lead">请逐格复核正文、表格与图表，确认无误后签单。签单即归档，此版成为可交付件。</p>
+          <div class="act">
+            <a class="btn" href="#">复 核 并 签 单</a>
+            <a class="lnk" href="#">打开报告 ↗</a>
+            <a class="lnk" href="#">看生成过程</a>
+          </div>
+          <dl class="tbl">
+            <div><dt>内容单元</dt><span class="fill"></span><dd>716 处</dd></div>
+            <div><dt>数据校验</dt><span class="fill"></span><dd>48 项 · 未通过 0</dd></div>
+            <div><dt>生成用时</dt><span class="fill"></span><dd>1 分 48 秒</dd></div>
+            <div><dt>签发状态</dt><span class="fill"></span><dd>未签发</dd></div>
+          </dl>
+          <p class="pn"><span>云 南 大 学 图 书 馆</span><span>38</span></p>
+        </section>
+      </div>
+    </div>
+  </article>
+
+  <!-- ==================== 五 · 夜读 ==================== -->
+  <article class="dir" id="s5" data-dir="5">
+    <header class="dir-head">
+      <span class="num">五</span>
+      <div>
+        <h2>夜读</h2>
+        <p>深底暖字，四道工序是一条横向轨，结论压在中间。投在答辩现场的暗场屏幕上最稳，也让「图书馆的夜里」这件事有画面。</p>
+      </div>
+      <span class="tag">结构：横向轨 ＋ 居中结论</span>
+    </header>
+    <div class="screen">
+      <div class="inner">
+        <div class="top">
+          <div class="brand"><b>文衡</b><span>云 南 大 学 图 书 馆 · 学 科 信 息 参 考</span></div>
+          <span class="chip">202607 · 第 38 期</span>
+        </div>
+        <p class="kick">第 四 步 · 核 验 定 稿</p>
+        <h1>报告已就绪，<br>等你签单。</h1>
+        <p class="sub">716 处内容与 48 项校验全部通过。签单之后才能下载与交付。</p>
+        <ol class="track">
+          <li class="st"><span class="nd"></span><b>取数核验</b><span>64 / 64 份</span></li>
+          <li class="st"><span class="nd"></span><b>预测选模</b><span>已选定</span></li>
+          <li class="st"><span class="nd"></span><b>生成初稿</b><span>1 分 48 秒</span></li>
+          <li class="st now"><span class="nd"></span><b>核验定稿</b><span>现在</span></li>
+        </ol>
+        <div class="act">
+          <button class="btn" type="button">复核并签单</button>
+          <button class="ghost" type="button">打开报告</button>
+          <a class="lnk" href="#">看生成过程 →</a>
+        </div>
+        <div class="rail">
+          <span>716 处内容</span><span>48 项校验 · 0 未通过</span><span>106 张图表</span>
+          <span>用时 1 分 48 秒</span><span>全球排名 995 ↑13</span>
+        </div>
+      </div>
+    </div>
+  </article>
+
+</main>
+
+<script>
+  (function () {
+    var tabs = document.querySelectorAll('.rv-tabs button')
+    var dirs = document.querySelectorAll('.dir')
+    function show (key) {
+      dirs.forEach(function (d) { d.hidden = key !== 'all' && d.dataset.dir !== key })
+      tabs.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.go === key)) })
+      if (key !== 'all') window.scrollTo({ top: 0, behavior: 'instant' })
+    }
+    tabs.forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.go) }) })
+    document.addEventListener('keydown', function (e) {
+      if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return
+      if (e.key === '0') show('all')
+      if (/^[1-5]$/.test(e.key)) show(e.key)
+    })
+  })()
+</script>
+</body>
+</html>
