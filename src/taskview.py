@@ -8,11 +8,13 @@
 - ② 核对并并入：该期在主台账**有效期次**里（并入的凭证）；
 - ③ 一键生成：`out/<期次>/red_slots.json` 在（出过稿的凭证）。
 
-本期＝**最新一期**（台账有效期次 ∪ 取数在途 ∪ out 目录里最新的六位数字目录）。
-取数在途＝`out/_acquisition/<期次>/`（核对副本已建）或 `out/_acquisition/<期次>.json`
-（状态已写）——2026-10-13 起 input/ 只放母本，旧的「input 六位目录」信号退役。
+本期＝**最新一个有内容的期次**（台账有效期次 ∪ 出过稿的产物 ∪ 取数四件已齐的期次）。
+只有取数状态文件、没有数据/产物的未来期次（`out/_acquisition/<期次>.json` 里的
+`opened`）只在**没有任何内容**时兜底，不能抢占一个已出稿但待重签的本期
+（2026-10-20 决赛演示态实况）。2026-10-13 起 input/ 只放母本，旧的「input 六位目录」信号退役。
 它三步全成**且已签发** → 顺延到下一期（双月序列，+2 个月）——把「等发布」摆上来；
 三步全成但没签发 → 停在本期、卡在「签单」（下一步是复核并签，不是开新期）。
+出过稿 ⇒ 数据取到并并入了：缺件不再把已出稿的本期倒退成「卡在取数」。
 
 签发是 server 层的账（`approval`）——调用方经 `status=` 注入（signed/stale/unsigned），
 本模块不 import server。只读、零副作用；路径与台账都可注入（repo_root / filled），测试用 tmp。
@@ -138,14 +140,26 @@ def scan(*, repo_root=None, filled=None, status=None) -> dict | None:
     def is_signed(period: str) -> bool:
         return bool(status and status(period) == "signed")
 
-    known = filled_set | _dirs(root / "out") | _acq_periods(root)
+    # 本期先看「有内容」的期次：台账有效期次 ∪ 出过稿的产物 ∪ 取数四件已齐的期次。
+    # 只有取数状态文件、没有数据/产物的未来期次，不能抢占一个已出稿但待重签的本期
+    # （2026-10-20 决赛演示态实况：202609 stale + 202611 只有 opened 状态文件）。
+    acq = _acq_periods(root)
+    acquired = {p for p in acq if _acquire_state(p, root)[0]}
+    content = filled_set | _product_dirs(root) | acquired
+    known = content | _dirs(root / "out") | acq
     if not known:
         return None
-    period = max(known)
+    period = max(content) if content else max(known)
 
     acquire_ok, n_missing = _acquire_state(period, root)
     merge_ok = period in filled_set
     generate_ok = (root / "out" / period / "red_slots.json").is_file()
+    # 出过稿 ⇒ 数据取到并并入了：否则「四件按文件判」的缺件
+    # （如 202609 缺顶尖论文清单）会把已出稿的本期倒退成「卡在取数」，与产物事实矛盾。
+    # 只在 generate_ok 时蕴含前两步；仅并入、未出稿时缺件仍应提示去补。
+    if generate_ok:
+        merge_ok = True
+        acquire_ok = True
     if acquire_ok and merge_ok and generate_ok and is_signed(period):
         # 本期做完（含签发）→ 看下一期（等发布）
         period = next_period(period)

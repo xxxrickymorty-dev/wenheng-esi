@@ -90,9 +90,58 @@ def test_全成未签发_卡在签单_不顺延(tmp_path):
     assert out["prev"] == {"period": "202607", "status": "signed"}
 
 
+def test_上期未签发_取数在途的新期不抢本期(tmp_path):
+    """2026-10-20 决赛演示态实况：202609 stale，202611 只有 opened 状态文件。
+
+    取数在途不等于本期——本期先看有内容（台账/产物）的期次。
+    """
+    root, data_root = _roots(tmp_path)
+    _give_all_pieces(root, data_root, "202609")
+    _gen(root, "202609")
+    (root / "out" / "_acquisition" / "202611").mkdir(parents=True, exist_ok=True)
+    (root / "out" / "_acquisition" / "202611.json").write_text("{}", encoding="utf-8")
+
+    out = taskview.scan(repo_root=root, filled=["202607", "202609"],
+                        status=lambda p: "stale" if p == "202609" else "signed")
+
+    assert out["period"] == "202609", "本期没签发，不能被只有取数状态的下一期顶掉"
+    assert [s["done"] for s in out["steps"]] == [True, True, True]
+    assert out["stuck"] == "sign"
+    assert out["prev"] == {"period": "202607", "status": "signed"}
+
+
+def test_已出稿_取数缺件也不倒退(tmp_path):
+    """后一步完成 ⇒ 前一步一定完成：出过稿就说明数据取到并并入了。
+
+    202609 实况：产物在，但「顶尖论文清单」缺件——不能因此把本期倒退成「卡在取数」。
+    """
+    root, _ = _roots(tmp_path)
+    _gen(root, "202609")
+
+    out = taskview.scan(repo_root=root, filled=["202609"],
+                        status=lambda p: "stale" if p == "202609" else "signed")
+
+    assert [s["done"] for s in out["steps"]] == [True, True, True]
+    assert out["stuck"] == "sign"
+
+
+def test_只有取数在途_没有内容_仍看该期(tmp_path):
+    """content 为空时的兜底：只有取数状态文件，也要把这一期摆出来（等取数）。"""
+    root, _ = _roots(tmp_path)
+    (root / "out" / "_acquisition" / "202611").mkdir(parents=True)
+
+    out = taskview.scan(repo_root=root, filled=[], status=lambda p: "unsigned")
+
+    assert out["period"] == "202611"
+    assert out["stuck"] == "acquire"
+    assert [s["done"] for s in out["steps"]] == [False, False, False]
+
+
 # ============================================================ 2. 卡在哪一步
 def test_新期未取数_卡在取数_数据未到(tmp_path):
     root, data_root = _roots(tmp_path)
+    _give_all_pieces(root, data_root, "202609")
+    _gen(root, "202609")                                             # 上期已出稿
     (root / "out" / "_acquisition" / "202611").mkdir(parents=True)   # 取数在途：还没取到
     out = taskview.scan(repo_root=root,
                         filled=["202609"], status=lambda p: "signed")
