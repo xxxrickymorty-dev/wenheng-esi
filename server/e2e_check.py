@@ -7,7 +7,8 @@
 
 验收范围：登录 → 首屏对勘本 → 控制台 /run → 期次入口 /p/<期次> → 期次红件清单
 → 任务入口与产物 → 签单闸门与落库（含撤回）→ 静态快照同源 → 任务状态口径同源。
-只读 + 一次签单/撤回 + 一次选模往返（验完写回原值），不动流水线数据；结束后 202607 停在 unsigned。
+只读 + 一次签单/撤回 + 一次选模往返（验完写回原值），不动流水线数据；
+结束后把 202607 的审批记录原样还原——演示期不留「e2e 探针」痕迹。
 
 三个容易写错的地方（都踩过，记在这里省得下次再踩）：
 1. Jinja 的 tojson 输出 `"k": "v"`（冒号后有空格），断言 JSON 时正则要允许空白；
@@ -15,6 +16,7 @@
    approvalStatus，不能断言文案；
 3. 路径一律以脚本自身位置为锚：脚本可能在 wenheng/ 下跑，也可能在仓库根跑。
 """
+import atexit
 import http.cookiejar
 import json
 import os
@@ -309,6 +311,24 @@ def _manual_slots():
 #   有待人工空位   → 不勾「已知悉」被知悉闸拦；
 #   两者都没有     → 不勾也直接可签（闸门只为待人工而设）——写死「必 409」会在干净数据上假失败。
 _pend, _manual = _pending_fills(), _manual_slots()
+
+# 演示期保护：e2e 会签/撤 202607 来验闸门，但跑完必须把审批记录原样放回，
+# 否则演示站会留下「e2e 探针」历史，评委点开审批记录看到的是测试痕迹。
+# atexit 兜底异常退出；正常结束前再显式还原并断言一次。
+_APPROVAL_FILES = [WENHENG / "out/202607/approval.json",
+                   WENHENG / "out/202607/审批记录.md"]
+_APPROVAL_BACKUP = {p: (p.read_bytes() if p.exists() else None) for p in _APPROVAL_FILES}
+
+
+def _restore_approval():
+    for path, data in _APPROVAL_BACKUP.items():
+        if data is None:
+            path.unlink(missing_ok=True)
+        else:
+            path.write_bytes(data)
+
+
+atexit.register(_restore_approval)
 
 call_json("POST", "/api/periods/202607/revoke", {"note": "e2e 前置归零"})
 check("前置：状态归零到 unsigned", _wstate() == "unsigned", f"got {_wstate()!r}")
@@ -849,6 +869,11 @@ check("灵活报告下载已带图（单文件 data URI）",
 st_dx, dx_body, _ = call("GET", "/p/202607/flexible/single_trend/report.docx")
 check("灵活报告 docx 下载 200", st_dx == 200, f"got {st_dx}")
 check("docx 是有效包（PK 头）", (dx_body or "")[:2] == "PK", (dx_body or "")[:8])
+
+_restore_approval()
+check("e2e 结束后审批记录已还原（演示期不留测试痕迹）",
+      all((p.read_bytes() if p.exists() else None) == data
+          for p, data in _APPROVAL_BACKUP.items()))
 
 out("=" * 56)
 if FAILS:
