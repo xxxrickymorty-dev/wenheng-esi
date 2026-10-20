@@ -31,6 +31,15 @@ const LABELS: Record<HomeStepKey, string> = {
   acquire: '取数', merge: '核对并并入', generate: '一键生成',
 }
 
+/** 卡点标记 → 馆员话术。● 只表示「当前卡在这」，不表示进程在跑——别说「进行中」。 */
+const MARK_LABEL: Record<TaskViewRow['mark'], string> = {
+  '✓': '已完成', '●': '待办', '○': '未开始',
+}
+
+export function markLabel(mark: TaskViewRow['mark']): string {
+  return MARK_LABEL[mark]
+}
+
 /** 上一期签发状态 → 馆员话术（后端 approval 三态 + 兜底原样）。 */
 const PREV_LABEL: Record<string, string> = {
   signed: '已签发', stale: '签发已失效', unsigned: '未签发',

@@ -243,7 +243,7 @@ export function Workbench({
                 <span className="g-bar"><i style={{ width: `${Math.min(100, Math.max(0, r.prox ?? 0))}%` }} /></span>
                 <span className="g-val mono">{r.prox == null ? '—' : `${r.prox}%`}</span>
               </div>
-            )) : <p className="gb-note">这一期还没有水位读数——先完成一次生成。</p>}
+            )) : <p className="gb-note">这一期还没有水位读数——看板生成后显示。</p>}
             <div className="gauge-thr">ESI 前 1% 阈值（100%）</div>
           </div>
         </div>

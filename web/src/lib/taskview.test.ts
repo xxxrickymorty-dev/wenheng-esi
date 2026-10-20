@@ -2,7 +2,7 @@
    状态由后端从既有产物判（GET /api/dialog/home）；这里只把状态翻成馆员话术与主按钮。
    卡在哪＝第一个没做完的那步（都做完但没签发＝卡在签单）。 */
 import { describe, expect, it } from 'vitest'
-import { taskView, type DialogHome } from './taskview'
+import { markLabel, taskView, type DialogHome } from './taskview'
 
 const home = (over: Partial<DialogHome> = {}): DialogHome => ({
   period: '202607',
@@ -22,6 +22,12 @@ describe('本期任务视图（票 06）', () => {
   it('空数据不显示（返回 null，界面退回普通问候）', () => {
     expect(taskView(null)).toBeNull()
     expect(taskView(home({ period: '' }))).toBeNull()
+  })
+
+  it('卡点说「待办」，不说「进行中」', () => {
+    expect(markLabel('✓')).toBe('已完成')
+    expect(markLabel('●')).toBe('待办')
+    expect(markLabel('○')).toBe('未开始')
   })
 
   it('卡在下载数据（没并入）：数据未到 / 缺 N 件两种说法', () => {

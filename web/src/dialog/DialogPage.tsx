@@ -23,7 +23,7 @@ import { buildPeriodUrl } from '../lib/period'
 import { trioLinks, type TrioLink } from '../lib/repro'
 import { latestProgress } from '../lib/runMachine'
 import { appHref, errorNote, isTerminalState, taskLabel } from '../lib/status'
-import { taskView } from '../lib/taskview'
+import { markLabel, taskView } from '../lib/taskview'
 import { UserChip } from '../lib/UserChip'
 import { NumberedText } from '../NumberedText'
 
@@ -566,10 +566,11 @@ export default function DialogPage() {
     )
   }
 
-  const withPeriod = (href: string) =>
-    active.slots.period && href !== '/app/shelf/'
-      ? buildPeriodUrl(href, active.slots.period)
-      : href
+  const withPeriod = (href: string) => {
+    /* 空态首屏还没进对话，槽位期次为空——用 home.period 兜底，CTA 才不会丢掉期次。 */
+    const period = active.slots.period || home?.period || ''
+    return period && href !== '/app/shelf/' ? buildPeriodUrl(href, period) : href
+  }
 
   return (
     <div className="dlg-shell">
@@ -659,11 +660,17 @@ export default function DialogPage() {
                           {['①', '②', '③'][index]} {row.label}
                           <span className="dlg-dyn-mark">
                             <i aria-hidden="true">{row.mark}</i>
-                            {row.mark === '✓' ? '已完成' : row.mark === '●' ? '进行中' : '未开始'}
+                            {markLabel(row.mark)}
                           </span>
                         </span>
                       ))}
-                      <a href={withPeriod('/app/')}>去生成台 ▸</a>
+                      {tv.cta && (
+                        <a href={withPeriod(tv.cta.kind === 'gen'
+                          ? '/app/'
+                          : `/app/?view=${tv.cta.view ?? 'workbench'}`)}>
+                          {tv.cta.label}
+                        </a>
+                      )}
                     </div>
                   </>
                 )}
