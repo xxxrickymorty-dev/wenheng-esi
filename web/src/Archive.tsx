@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
 import { getAcquisition, getArchive, humanSize, type AcquisitionState, type ArchiveData } from './api'
 import { AiRecords } from './AiRecords'
 import { Icon } from './icons'
+import { buildArchiveStory } from './lib/archiveStory'
 import { AUDIT_LABEL, acqGroupLabel, errorNote, taskLabel } from './lib/status'
 import { WaterfallRows } from './Waterfall'
 
@@ -55,6 +56,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
   const auditRows = d?.audit.exists ? d.audit.rows : []
   const auditBad = auditRows.filter((r) => r.status !== 'pass')
   const auditPass = auditRows.filter((r) => r.status === 'pass')
+  const story = d ? buildArchiveStory(d, acq, approvalStatus) : []
 
   return (
     <>
@@ -89,6 +91,17 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                 </a>
               )}
             </div>
+          </section>
+
+          {/* ===== 故事条（2026-10-20）：五步给评委看，日志表格留给技术复盘 ===== */}
+          <section className="ar-story" aria-label="这一期怎么做出来的">
+            {story.map((s) => (
+              <div className={`ar-story-step ${s.state}`} key={s.key}>
+                <span className="ar-story-k">{s.title}</span>
+                <b>{s.value}</b>
+                <small>{s.note}</small>
+              </div>
+            ))}
           </section>
 
           {/* ===== 任务凭据（页头 kv 折进来；减负：首屏不再铺三条凭据） ===== */}
