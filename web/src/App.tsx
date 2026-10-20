@@ -33,6 +33,7 @@ import { Reading } from './Reading'
 import { Trace } from './Trace'
 import { Forecast } from './Forecast'
 import { Archive } from './Archive'
+import { HealSandbox } from './HealSandbox'
 import { deriveWorkbench, statusToWB, type WBState } from './wb'
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'warned', 'waiting-approval', 'fail-ledger', 'fail-other', 'stalled', 'signed']
@@ -139,7 +140,7 @@ export default function App() {
   /* ?period= 深链：从老站迁移过来的等价地址（老站 /p/<期次> → 新站 ?view=report&period=<期次>） */
   const wantPeriod = new URLSearchParams(location.search).get('period')
   const _v = new URLSearchParams(location.search).get('view')
-  const view: 'workbench' | 'acquire' | 'pick' | 'report' | 'review' | 'ledger' | 'analysis' | 'red' | 'charts' | 'reading' | 'trace' | 'forecast' | 'archive' =
+  const view: 'workbench' | 'acquire' | 'pick' | 'report' | 'review' | 'ledger' | 'analysis' | 'red' | 'charts' | 'reading' | 'trace' | 'forecast' | 'archive' | 'heal' =
     _v === 'acquire' ? 'acquire'
       : _v === 'pick' ? 'pick'
       : _v === 'report' ? 'report'
@@ -152,7 +153,8 @@ export default function App() {
                     : _v === 'trace' ? 'trace'
                       : _v === 'forecast' ? 'forecast'
                         : _v === 'archive' ? 'archive'
-                          : 'workbench'
+                          : _v === 'heal' ? 'heal'
+                            : 'workbench'
 
   const demo = useMemo(() => {
     const v = new URLSearchParams(location.search).get('demo') as WBState | null
@@ -486,7 +488,7 @@ export default function App() {
   const GROUP: Record<string, string> = {
     workbench: 'flow', acquire: 'flow', pick: 'flow', review: 'flow', forecast: 'flow',
     report: 'report', red: 'report', charts: 'report', reading: 'report', trace: 'report',
-    analysis: 'flexible', dialog: 'ask', ledger: 'admin', archive: 'admin',
+    analysis: 'flexible', dialog: 'ask', ledger: 'admin', archive: 'admin', heal: 'admin',
   }
   /* 「出报告」四步流水（2026-10-19 rick：「选章节」入口关闭——一直空着，核验定稿里已有章节选择）。
      步骤条只在流水屏出现；2026-10-16 二版（rick 拍板）：不画序号——顺序由位置与细线方向表达。
@@ -551,6 +553,11 @@ export default function App() {
               <a href={navHref('/app/?view=archive')} aria-current={view === 'archive' ? 'page' : undefined}>
                 运行档案
               </a>
+              {me.role === 'admin' && (
+                <a href={navHref('/app/?view=heal')} aria-current={view === 'heal' ? 'page' : undefined}>
+                  自愈沙盘
+                </a>
+              )}
             </>
           )}
         </nav>
@@ -644,6 +651,8 @@ export default function App() {
           </div>
         ) : view === 'archive' ? (
           <Archive period={selected} approvalStatus={approvalStatus} />
+        ) : view === 'heal' ? (
+          <HealSandbox />
         ) : view === 'pick' ? (
           <Pick period={selected} />
         ) : view === 'acquire' ? (

@@ -424,3 +424,28 @@ export type AiCalls = {
 export async function getAiCalls(period: string): Promise<AiCalls> {
   return req<AiCalls>(`/api/periods/${encodeURIComponent(period)}/ai-calls`)
 }
+
+/* ---------------------------------------------------------------- 自愈沙盘（只读故事卡） */
+export type HealSandboxStory = {
+  available: boolean
+  hint?: string
+  generated_at?: string
+  ledger?: string
+  dirty_cell?: string
+  old?: string
+  new?: string
+  src_sha256?: string
+  dirty_sha256?: string
+  src_unchanged?: boolean
+  dirty_unchanged?: boolean
+  status?: string
+  attempts?: number[]
+  rules?: string[]
+  outcome?: string
+  failure?: string
+  ok?: boolean
+}
+
+export async function getHealSandbox(): Promise<HealSandboxStory> {
+  return req<HealSandboxStory>('/api/sandbox/heal')
+}

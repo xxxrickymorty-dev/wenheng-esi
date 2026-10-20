@@ -134,7 +134,7 @@
 
 ```bash
 uv run python -m pytest -m ""          # 全量 1375 例（默认 1370 例，5 个 slow 被 marker 排除）
-uv run python -m uvicorn server.app:app --port 8080   # 起服务：一律 uv run；⚠ 控制台脚本直呼（uv run pytest/uvicorn）会撞中文路径 trampoline，走 python -m；起后跑 server/e2e_check.py（只读 228 断言）
+uv run python -m uvicorn server.app:app --port 8080   # 起服务：一律 uv run；⚠ 控制台脚本直呼（uv run pytest/uvicorn）会撞中文路径 trampoline，走 python -m；起后跑 server/e2e_check.py（只读 230 断言）
 uv run python tools/verify_demo_run.py <期次>   # 写路径验收
 ```
 

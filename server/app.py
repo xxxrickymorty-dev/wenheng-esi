@@ -1672,6 +1672,24 @@ async def api_period_water(request: Request, period: str):
             "rows": rows}
 
 
+@app.get("/api/sandbox/heal")
+@user_route
+async def api_sandbox_heal(request: Request):                      # noqa: ARG001
+    """自愈沙盘故事卡（只读）：读 tmp/_heal_sandbox/story.json。
+
+    沙盘只碰副本；原件与脏件哈希由 tools/heal_sandbox.py 记录。没跑过就
+    返回 available=false，界面给一条「先跑哪条命令」，不编故事。
+    """
+    path = pathlib.Path(__file__).resolve().parent.parent / "tmp" / "_heal_sandbox" / "story.json"
+    if not path.exists():
+        return {"available": False, "hint": "先跑 tools/heal_sandbox.py，刷新本页"}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"available": False, "hint": "沙盘故事卡读不出来，重跑一次 tools/heal_sandbox.py"}
+    return {"available": True, **data}
+
+
 @app.get("/api/periods/{period}/workbench")
 @user_route
 async def api_period_workbench(request: Request, period: str):
