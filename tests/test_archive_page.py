@@ -40,6 +40,19 @@ def _progress(rows):
     return rows
 
 
+# ============================================================ 运行事实
+def test_运行事实_无任务失败缺步都说清():
+    empty = archive.run_facts({}, None, [], False)
+    assert empty == {"has_run": False, "status": "", "failed": False,
+                     "progress_missing": False, "steps": 0, "elapsed_sec": 0.0}
+    failed = archive.run_facts({"elapsed_sec": 12.5}, {"status": "failed"},
+                               [{"sec": 10.0}], False)
+    assert failed["has_run"] and failed["failed"]
+    assert failed["steps"] == 1 and failed["elapsed_sec"] == 12.5
+    missing = archive.run_facts({}, {"status": "completed"}, [], True)
+    assert missing["progress_missing"] is True and missing["failed"] is False
+
+
 # ============================================================ 任务瀑布
 def test_瀑布用步长而不是累计值():
     """`elapsed` 是累计秒：5→9 这一步的耗时是 4 秒，不是 9 秒。"""

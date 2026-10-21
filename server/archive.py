@@ -34,6 +34,7 @@ import datetime as dt
 import io
 import json
 import pathlib
+import re
 import zipfile
 
 #: 日志包里的回放最小集（相对 out/<期次>/ 或 out/<期次>/_jobs/<id>/）
@@ -275,6 +276,28 @@ def audit_view(out_dir):
 
 
 # ---------------------------------------------------------------- 汇总视图
+def run_facts(run_log, job, wf, progress_missing) -> dict:
+    """一次运行的事实：有没有跑、终态、步骤、用时、记录是否缺。
+
+    这是归档 module 对「运行」的唯一答案；五步故事/对话收尾/生成台摘要
+    只读它，不再各自解释 job.status、run_log.elapsed_sec 与 waterfall。
+    """
+    status = str((job or {}).get("status") or "")
+    has_run = bool(job or run_log or wf)
+    failed = bool(re.search(r"fail|error|escalat|cancel|abort", status, re.I))
+    elapsed = run_log.get("elapsed_sec") if isinstance(run_log, dict) else None
+    if not isinstance(elapsed, (int, float)):
+        elapsed = sum(r.get("sec") or 0 for r in wf)
+    return {
+        "has_run": has_run,
+        "status": status,
+        "failed": failed,
+        "progress_missing": bool(progress_missing),
+        "steps": len(wf),
+        "elapsed_sec": round(float(elapsed or 0), 1),
+    }
+
+
 def build(out_dir, job=None, artifacts=None):
     """一次运行的完整档案视图。缺什么标什么，绝不拿空值充数。"""
     out_dir = pathlib.Path(out_dir)
@@ -298,6 +321,7 @@ def build(out_dir, job=None, artifacts=None):
         "job_id": (job or {}).get("id", ""),
         "run_log": run_log,
         "stats": (job or {}).get("stats") or run_log,
+        "run": run_facts(run_log, job, wf, progress_missing),
         "waterfall": wf,
         "waterfall_summary": waterfall_summary(events),
         "waterfall_total": round(sum(r["sec"] for r in wf), 1),
