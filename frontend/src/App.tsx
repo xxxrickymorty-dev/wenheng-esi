@@ -3,8 +3,9 @@ import { TopBar, StatusBand, PageFoot, Palette } from "./components/shell";
 import { OutReport } from "./screens/OutReport";
 import { AcquireCheck } from "./screens/AcquireCheck";
 import { VerifyFinal } from "./screens/VerifyFinal";
+import { ShelfStair } from "./screens/ShelfStair";
 
-type ScreenId = "hub" | "acquire" | "verify";
+type ScreenId = "hub" | "acquire" | "verify" | "shelf";
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenId>("hub");
@@ -21,6 +22,12 @@ export default function App() {
         right={
           <>
             <button
+              onClick={() => setScreen("shelf")}
+              className="font-kai text-[11px] tracking-[.22em] text-sea-50/70 hover:text-sea-50"
+            >
+              陈 列 馆 ↗
+            </button>
+            <button
               onClick={() => setScreen("hub")}
               className="font-kai text-[11px] tracking-[.22em] text-sea-50/70 hover:text-sea-50"
             >
@@ -34,6 +41,7 @@ export default function App() {
       {screen === "hub" && <OutReport />}
       {screen === "acquire" && <AcquireCheck />}
       {screen === "verify" && <VerifyFinal />}
+      {screen === "shelf" && <ShelfStair />}
 
       {screen === "hub" && (
         <>
@@ -41,10 +49,12 @@ export default function App() {
         </>
       )}
 
-      <PageFoot
-        left="雲 南 大 學 圖 書 館 · 學 科 信 息 參 考"
-        right="并 行 实 验　·　随 时 可 能 删 除"
-      />
+      {screen !== "shelf" && (
+        <PageFoot
+          left="雲 南 大 學 圖 書 館 · 學 科 信 息 參 考"
+          right="并 行 实 验　·　随 时 可 能 删 除"
+        />
+      )}
     </>
   );
 }
