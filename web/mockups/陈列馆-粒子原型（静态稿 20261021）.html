@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>陈列馆 · 册与册之间（粒子原型）</title>
+<style>
+  :root{
+    --paper:#F2EFE6; --ink:#17331F; --ink-2:#4C5B51; --line:#D6D0C0;
+    --night:#0E1211; --night-ink:#E8EFE5; --night-2:#8A9A91;
+    --serif:Georgia,"Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+    --sans:"Microsoft YaHei UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);overflow:hidden;
+    transition:background .5s,color .5s}
+  #scene{position:fixed;inset:0;width:100%;height:100%;display:block}
+  .ui{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;
+    padding:clamp(18px,3vw,38px)}  .ui a,.ui button{pointer-events:auto}
+  .row{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+  .brand b{font-family:var(--serif);font-size:clamp(18px,2vw,24px);font-weight:600;letter-spacing:.22em}
+  .brand span{display:block;font-size:11.5px;letter-spacing:.2em;color:var(--ink-2);margin-top:6px}
+  .meta{text-align:right;font-size:11.5px;letter-spacing:.18em;color:var(--ink-2);line-height:1.9}
+  .meta b{font-family:var(--serif);font-size:clamp(20px,2.4vw,30px);font-weight:600;letter-spacing:.06em;
+    color:var(--ink);display:block}
+  .foot{display:grid;gap:clamp(10px,1.6vh,18px)}
+  .caption{text-align:left;margin:0}
+  .caption .no{font-family:var(--serif);font-size:clamp(12px,1.3vw,14px);letter-spacing:.34em;color:var(--ink-2)}
+  .caption .nm{font-family:var(--serif);font-size:clamp(19px,2.4vw,28px);letter-spacing:.1em;margin-top:4px}
+  .bar{display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
+  .hint{font-size:12px;letter-spacing:.06em;color:var(--ink-2);line-height:1.9;max-width:30em}
+  .acts{display:flex;gap:10px;align-items:center}
+  button{font:inherit;font-size:13.5px;letter-spacing:.12em;color:inherit;background:transparent;cursor:pointer;
+    border:1px solid var(--line);padding:9px 16px;min-height:40px}
+  button:hover{background:rgba(23,51,31,.06)}
+  button:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+  button.main{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  button.main:hover{filter:brightness(1.15)}
+  /* 夜场 */
+  body.night{--paper:#0E1211;--ink:#E8EFE5;--ink-2:#8A9A91;--line:#2A322E}
+  body.night button:hover{background:rgba(232,239,229,.08)}
+  body.night button.main{background:#E8EFE5;color:#0E1211;border-color:#E8EFE5}
+  .fallback{position:fixed;inset:0;display:none;place-items:center;padding:40px;text-align:center;
+    font-size:15px;line-height:1.9}
+  @media (max-width:760px){
+    .hint{display:none}
+    .bar{flex-direction:column;align-items:stretch;gap:12px}
+    .acts{justify-content:space-between}
+    .acts button{flex:1}
+    .caption .nm{font-size:22px}
+    .meta b{font-size:20px;white-space:nowrap}
+    .meta span{font-size:10.5px;white-space:nowrap}
+    .brand span{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){ .no-anim{display:none} }
+</style>
+</head>
+<body>
+<canvas id="scene" aria-hidden="true"></canvas>
+
+<div class="ui">
+  <div class="row">
+    <div class="brand">
+      <b>文衡</b>
+      <span>云 南 大 学 图 书 馆 · 学 科 信 息 参 考</span>
+    </div>
+    <div class="meta">
+      <b id="issueNo">总第 35 期</b>
+      <span id="issueLine">2026 年 第 1 期</span>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="caption">
+      <div class="no" id="capNo">第 1 册 · 共 4 册</div>
+      <div class="nm" id="capName">2026 年 第 1 期</div>
+    </div>
+    <div class="bar">
+      <p class="hint">移动鼠标——粒子会让开；按「下一册」，这一册散开、重聚成下一册的号数。<br>
+        键盘 ← → 也能翻；夜场按钮切换答辩用的暗底。</p>
+      <div class="acts">
+        <button type="button" id="prev" aria-label="上一册">← 上一册</button>
+        <button type="button" id="next" class="main" aria-label="下一册">下一册 →</button>
+        <button type="button" id="night" aria-pressed="false">夜 场</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="fallback" id="fallback">
+  <p>这台机器没有开启画面加速，粒子场景无法显示。<br>
+     册与册之间的信息仍然完整——请用上方按钮翻阅。</p>
+</div>
+
+<script>
+(function () {
+  'use strict'
+
+  /* ---------- 册次数据（原型用四册做样本；接真数据时换成覆盖报告里的期号） ---------- */
+  var BOOKS = [
+    { no: 35, year: 2026, issue: 1, label: '2026 年 第 1 期' },
+    { no: 36, year: 2026, issue: 2, label: '2026 年 第 2 期' },
+    { no: 37, year: 2026, issue: 3, label: '2026 年 第 3 期' },
+    { no: 38, year: 2026, issue: 4, label: '2026 年 第 4 期' }
+  ]
+  var cur = 0
+
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
+  var canvas = document.getElementById('scene')
+  var gl = canvas.getContext('webgl2', { antialias: true, alpha: false })
+
+  if (!gl) {
+    document.getElementById('fallback').style.display = 'grid'
+    canvas.style.display = 'none'
+    bindUI()
+    return
+  }
+
+  var COUNT = 20000
+  var AMBIENT = 0.12
+
+  /* ---------- 着色器：位置在 GPU 里插值，CPU 每帧只更新几个数 ---------- */
+  var VS = [
+    '#version 300 es',
+    'in vec2 aA; in vec2 aB; in float aSeed; in float aSize;',
+    'uniform float uP, uTime, uAspect, uScatter, uFit;',
+    'uniform vec2 uMouse;',
+    'out float vA;',
+    'void main(){',
+    '  float p = uP;',
+    '  vec2 pos = mix(aA, aB, smoothstep(0.0, 1.0, p));',
+    '  float burst = sin(p * 3.14159265);',           // 中途散得最开
+    '  vec2 dir = vec2(cos(aSeed*6.28318), sin(aSeed*6.28318));',
+    '  pos += dir * burst * (0.05 + 0.22 * fract(aSeed*7.31)) * uScatter;',
+    '  pos += vec2(sin(uTime*0.55 + aSeed*11.0), cos(uTime*0.47 + aSeed*8.0)) * 0.004;',
+    '  vec2 d = pos - uMouse;',
+    '  float dist = length(d);',
+    '  float f = smoothstep(0.30, 0.0, dist);',
+    '  pos += normalize(d + 0.00001) * f * 0.14;',
+    '  gl_Position = vec4(pos.x * uFit / uAspect, pos.y * uFit, 0.0, 1.0);',
+    '  gl_PointSize = aSize * (1.0 + f * 0.9);',
+    '  vA = 0.88 + 0.12 * (1.0 - p) + 0.18 * burst;',
+    '}'
+  ].join('\n')
+
+  var FS = [
+    '#version 300 es',
+    'precision mediump float;',
+    'in float vA; uniform vec3 uColor; out vec4 o;',
+    'void main(){',
+    '  vec2 uv = gl_PointCoord - 0.5;',
+    '  float r = length(uv);',
+    '  float a = smoothstep(0.5, 0.3, r);',
+    '  o = vec4(uColor, a * vA);',
+    '}'
+  ].join('\n')
+
+  function shader(type, src) {
+    var s = gl.createShader(type)
+    gl.shaderSource(s, src)
+    gl.compileShader(s)
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s))
+    return s
+  }
+
+  var prog = gl.createProgram()
+  gl.attachShader(prog, shader(gl.VERTEX_SHADER, VS))
+  gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, FS))
+  gl.linkProgram(prog)
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog))
+  gl.useProgram(prog)
+
+  var A = new Float32Array(COUNT * 2)
+  var B = new Float32Array(COUNT * 2)
+  var seed = new Float32Array(COUNT)
+  var size = new Float32Array(COUNT)
+
+  var bufA = gl.createBuffer()
+  var bufB = gl.createBuffer()
+
+  /* ---------- 把号数画成一张图，再从墨迹里取点 ---------- */
+  function sampleNumber(text) {
+    var W = 1200, H = 800
+    var off = document.createElement('canvas')
+    off.width = W; off.height = H
+    var g = off.getContext('2d')
+    g.fillStyle = '#000'
+    g.textAlign = 'center'
+    g.textBaseline = 'middle'
+    var fam = 'Georgia, "Songti SC", SimSun, serif'
+    g.font = '600 ' + Math.round(H * 0.64) + 'px ' + fam
+    g.fillText(text, W / 2, H * 0.46)
+    var data = g.getImageData(0, 0, W, H).data
+
+    var pts = []
+    for (var y = 0; y < H; y += 1) {
+      for (var x = 0; x < W; x += 1) {
+        if (data[(y * W + x) * 4 + 3] > 120) pts.push(x, y)
+      }
+    }
+    // 打散，让每一次重聚都是"重新排布"而不是整体平移
+    var n = pts.length / 2
+    for (var i = n - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1))
+      var ax = pts[i * 2], ay = pts[i * 2 + 1]
+      pts[i * 2] = pts[j * 2]; pts[i * 2 + 1] = pts[j * 2 + 1]
+      pts[j * 2] = ax; pts[j * 2 + 1] = ay
+    }
+
+    var ink = Math.floor(COUNT * (1 - AMBIENT))
+    var out = new Float32Array(COUNT * 2)
+    var aspect = W / H
+    for (var k = 0; k < COUNT; k++) {
+      var px, py
+      if (k < ink && n > 0) {
+        var idx = (k % n) * 2
+        px = pts[idx] + (Math.random() - 0.5) * 5.0
+        py = pts[idx + 1] + (Math.random() - 0.5) * 5.0
+      } else {
+        // 一小撮永远不归队：像浮尘，让画面有呼吸（铺得比号数更宽，免得缩到手机时挤成一条带）
+        px = W * 0.5 + (Math.random() - 0.5) * W * 2.1
+        py = H * 0.5 + (Math.random() - 0.5) * H * 1.9
+      }
+      out[k * 2] = ((px / W) - 0.5) * aspect * 2
+      out[k * 2 + 1] = -((py / H) - 0.5) * 2
+    }
+    return out
+  }
+
+  function initSeeds() {
+    for (var i = 0; i < COUNT; i++) {
+      seed[i] = Math.random()
+      size[i] = 2.1 + Math.random() * 2.0
+    }
+  }
+
+  function bindBuffers() {
+    var locA = gl.getAttribLocation(prog, 'aA')
+    var locB = gl.getAttribLocation(prog, 'aB')
+    var locS = gl.getAttribLocation(prog, 'aSeed')
+    var locZ = gl.getAttribLocation(prog, 'aSize')
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufA)
+    gl.bufferData(gl.ARRAY_BUFFER, A, gl.DYNAMIC_DRAW)
+    gl.enableVertexAttribArray(locA)
+    gl.vertexAttribPointer(locA, 2, gl.FLOAT, false, 0, 0)
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufB)
+    gl.bufferData(gl.ARRAY_BUFFER, B, gl.DYNAMIC_DRAW)
+    gl.enableVertexAttribArray(locB)
+    gl.vertexAttribPointer(locB, 2, gl.FLOAT, false, 0, 0)
+
+    var sb = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, sb)
+    gl.bufferData(gl.ARRAY_BUFFER, seed, gl.STATIC_DRAW)
+    gl.enableVertexAttribArray(locS)
+    gl.vertexAttribPointer(locS, 1, gl.FLOAT, false, 0, 0)
+
+    var zb = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, zb)
+    gl.bufferData(gl.ARRAY_BUFFER, size, gl.STATIC_DRAW)
+    gl.enableVertexAttribArray(locZ)
+    gl.vertexAttribPointer(locZ, 1, gl.FLOAT, false, 0, 0)
+  }
+
+  var uP = gl.getUniformLocation(prog, 'uP')
+  var uTime = gl.getUniformLocation(prog, 'uTime')
+  var uAspect = gl.getUniformLocation(prog, 'uAspect')
+  var uMouse = gl.getUniformLocation(prog, 'uMouse')
+  var uScatter = gl.getUniformLocation(prog, 'uScatter')
+  var uFit = gl.getUniformLocation(prog, 'uFit')
+  var uColor = gl.getUniformLocation(prog, 'uColor')
+
+  var dpr = 1, aspect = 1, fit = 1
+  var mouse = { x: 999, y: 999 }
+  var target = { x: 999, y: 999 }
+  var progress = 1
+  var fromIndex = 0
+  var startedAt = 0
+  var DUR = reduce ? 180 : 1200
+  var t0 = performance.now()
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2)
+    var w = canvas.clientWidth || window.innerWidth
+    var h = canvas.clientHeight || window.innerHeight
+    canvas.width = Math.round(w * dpr)
+    canvas.height = Math.round(h * dpr)
+    aspect = w / h
+    fit = Math.min(1, aspect / 1.55)
+    gl.viewport(0, 0, canvas.width, canvas.height)
+    gl.uniform1f(uAspect, aspect)
+    gl.uniform1f(uFit, fit)
+  }
+
+  function setIssue(i, instant) {
+    cur = (i + BOOKS.length) % BOOKS.length
+    var b = BOOKS[cur]
+    document.getElementById('issueNo').textContent = '总第 ' + b.no + ' 期'
+    document.getElementById('issueLine').textContent = b.label
+    document.getElementById('capNo').textContent = '第 ' + (cur + 1) + ' 册 · 共 ' + BOOKS.length + ' 册'
+    document.getElementById('capName').textContent = b.label
+
+    // 当前形态烘进 A，新号数算成 B
+    if (instant) {
+      A.set(B)
+      B.set(sampleNumber(String(b.no)))
+      progress = 1
+    } else {
+      A.set(B)
+      B.set(sampleNumber(String(b.no)))
+      progress = 0
+      startedAt = performance.now()
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufA)
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, A)
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufB)
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, B)
+  }
+
+  function ease(p) { return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2 }
+
+  function frame(now) {
+    var t = (now - t0) / 1000
+    if (progress < 1) {
+      var p = Math.min(1, (now - startedAt) / DUR)
+      progress = reduce ? 1 : p
+      gl.uniform1f(uP, ease(progress))
+    } else {
+      gl.uniform1f(uP, 1)
+    }
+    // 鼠标平滑：手一动是涟漪，不是硬跟随
+    mouse.x += (target.x - mouse.x) * 0.12
+    mouse.y += (target.y - mouse.y) * 0.12
+    gl.uniform2f(uMouse, mouse.x, mouse.y)
+    gl.uniform1f(uTime, t)
+    gl.uniform1f(uScatter, reduce ? 0 : 1)
+
+    var night = document.body.classList.contains('night')
+    if (night) gl.uniform3f(uColor, 0.561, 0.718, 0.604)
+    else gl.uniform3f(uColor, 0.106, 0.275, 0.212)
+
+    gl.clearColor(night ? 0.055 : 0.949, night ? 0.071 : 0.937, night ? 0.067 : 0.902, 1)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+    gl.drawArrays(gl.POINTS, 0, COUNT)
+
+    requestAnimationFrame(frame)
+  }
+
+  function bindUI() {
+    var next = document.getElementById('next')
+    var prev = document.getElementById('prev')
+    var night = document.getElementById('night')
+    if (next) next.addEventListener('click', function () { setIssue(cur + 1) })
+    if (prev) prev.addEventListener('click', function () { setIssue(cur - 1) })
+    if (night) night.addEventListener('click', function () {
+      var on = document.body.classList.toggle('night')
+      night.setAttribute('aria-pressed', String(on))
+    })
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight') setIssue(cur + 1)
+      if (e.key === 'ArrowLeft') setIssue(cur - 1)
+    })
+    window.addEventListener('pointermove', function (e) {
+      var w = canvas.clientWidth || window.innerWidth
+      var h = canvas.clientHeight || window.innerHeight
+      target.x = ((e.clientX / w) * 2 - 1) * aspect / fit
+      target.y = -((e.clientY / h) * 2 - 1) / fit
+    })
+    window.addEventListener('resize', resize)
+  }
+
+  /* ---------- 启动 ---------- */
+  initSeeds()
+  resize()
+  gl.enable(gl.BLEND)
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+  B.set(sampleNumber(String(BOOKS[0].no)))
+  A.set(B)
+  bindBuffers()
+  setIssue(0, true)
+
+  bindUI()
+  requestAnimationFrame(frame)
+})()
+</script>
+</body>
+</html>
