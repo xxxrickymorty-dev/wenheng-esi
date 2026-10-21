@@ -82,17 +82,29 @@ a{color:inherit}
 .story-h h2{font-size:20px;letter-spacing:.02em}
 .story-h .hint{margin-left:auto;font-size:13px;color:var(--ink-3);text-decoration:none;border-bottom:1px solid var(--line)}
 .story-h .hint:hover{color:var(--zhu);border-color:var(--zhu)}
+.playbtn{font:inherit;font-size:13px;padding:5px 13px;border:1px solid var(--line);background:var(--card);
+  color:var(--ink-2);cursor:pointer;transition:border-color .15s,color .15s}
+.playbtn:hover{border-color:var(--zhu);color:var(--zhu)}
+.playline{height:2px;background:var(--line-2);overflow:hidden;margin:-4px 0 14px}
+.playline i{display:block;height:100%;width:0;background:var(--gold-ink);transition:width .32s linear}
 .band{display:grid;grid-template-columns:repeat(5,1fr);border-top:3px solid var(--line)}
 .cell{position:relative;display:block;text-decoration:none;padding:16px 18px 14px;
-  border-right:1px dashed var(--line);border-top:3px solid var(--line);margin-top:-3px;transition:background .15s}
+  border-right:1px dashed var(--line);border-top:3px solid var(--line);margin-top:-3px;
+  transition:background .18s,opacity .3s,border-color .35s}
 .cell:last-child{border-right:0}
 .cell:hover{background:var(--panel)}
 .cell .idx{font:600 11px/1 var(--mono);letter-spacing:.12em;color:var(--ink-4)}
 .cell .t{display:block;font-family:var(--kai);font-size:12px;letter-spacing:.22em;color:var(--ink-3);margin:7px 0 2px}
 .cell .v{display:block;font-family:var(--serif);font-size:25px;line-height:1.3;letter-spacing:.01em;color:var(--ink)}
-.cell .n{display:block;font-size:13px;color:var(--ink-3);margin-top:5px;line-height:1.5}
+.cell .n{display:block;font-size:13px;color:var(--ink-3);margin-top:5px;line-height:1.5;min-height:1.5em}
+.cell .nt{font-style:normal}
 .cell .go{position:absolute;right:14px;top:14px;font-size:12px;color:var(--ink-4);opacity:0;transition:opacity .15s}
 .cell:hover .go{opacity:1}
+/* 回放中：还没走到的格子先压暗，走到就亮起来 */
+.cell.pending{opacity:.34}
+.cell.pending .v,.cell.pending .n{color:var(--ink-4)}
+.cell.live{background:var(--panel)}
+.cell.live .dot{animation:runpulse .9s ease-in-out infinite}
 .cell.ok{border-top-color:var(--ok)}
 .cell.ok .v{color:var(--ok)}
 .cell.warn{border-top-color:var(--gold-ink)}
@@ -104,7 +116,13 @@ a{color:inherit}
 .cell.run .v{color:var(--field-3)}
 .cell.run .dot{animation:runpulse 1.4s ease-in-out infinite}
 @keyframes runpulse{0%,100%{opacity:.25}50%{opacity:1}}
-@media (prefers-reduced-motion:reduce){.cell.run .dot{animation:none}}
+@media (prefers-reduced-motion:reduce){.cell.run .dot,.cell.live .dot{animation:none}}
+
+/* 回放旁白：一条一句话，换句时淡入 */
+.say{display:flex;align-items:center;gap:10px;margin:14px 0 0;min-height:26px;font-size:13.5px;color:var(--ink-3);line-height:1.6}
+.say .tag{flex:0 0 auto;font-family:var(--kai);font-size:10.5px;letter-spacing:.2em;color:var(--gold-ink);
+  border:1px solid var(--gold);padding:1px 8px}
+.say .txt{transition:opacity .18s}
 .cell .st{display:inline-flex;align-items:center;gap:5px}
 .cell .dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
 
@@ -218,45 +236,15 @@ details.fold summary .sm{margin-left:auto;font-weight:400;font-size:13px;color:v
   <section class="story" aria-label="这一期怎么走到这里">
     <div class="story-h">
       <h2>这一期怎么走到这里</h2>
+      <button class="playbtn" id="playbtn" type="button">▶ 重放</button>
       <a class="hint" href="#">运行档案 · 完整回放 →</a>
     </div>
-    <div class="band" id="band">
-      <a class="cell ok" href="#">
-        <span class="go">→</span>
-        <span class="idx">01</span>
-        <span class="t">取 数</span>
-        <b class="v">64 / 64</b>
-        <span class="n"><span class="st"><span class="dot"></span>已并入台账</span></span>
-      </a>
-      <a class="cell ok" href="#">
-        <span class="go">→</span>
-        <span class="idx">02</span>
-        <span class="t">生 成</span>
-        <b class="v">270 秒</b>
-        <span class="n"><span class="st"><span class="dot"></span>7 步 · 一次跑通</span></span>
-      </a>
-      <a class="cell warn" href="#">
-        <span class="go">→</span>
-        <span class="idx">03</span>
-        <span class="t">审 计</span>
-        <b class="v">3 / 6 通过</b>
-        <span class="n"><span class="st"><span class="dot"></span>2 待确认 · 0 不通过</span></span>
-      </a>
-      <a class="cell warn" href="#">
-        <span class="go">→</span>
-        <span class="idx">04</span>
-        <span class="t">签 发</span>
-        <b class="v">待重签</b>
-        <span class="n"><span class="st"><span class="dot"></span>内容改过，签名失效</span></span>
-      </a>
-      <a class="cell ok" href="#">
-        <span class="go">→</span>
-        <span class="idx">05</span>
-        <span class="t">留 痕</span>
-        <b class="v">13 个文件</b>
-        <span class="n"><span class="st"><span class="dot"></span>可回放 · 断言/审计/产物</span></span>
-      </a>
-    </div>
+    <div class="playline" id="playline" aria-hidden="true"><i></i></div>
+    <div class="band" id="band"></div>
+    <p class="say" id="say" aria-live="polite">
+      <span class="tag" id="saytag">回放</span>
+      <span class="txt" id="saytxt"></span>
+    </p>
   </section>
 
   <!-- 绿场水位：业务读数，保留 -->
@@ -311,12 +299,27 @@ const HERO = {
          <a class="hero-link" href="#">打开报告 ↗</a>`,
     flap: '效',
     cells: [
-      { s: 'ok', t: '取 数', v: '64 / 64', n: '已并入台账' },
-      { s: 'ok', t: '生 成', v: '270 秒', n: '7 步 · 一次跑通' },
-      { s: 'warn', t: '审 计', v: '3 / 6 通过', n: '2 待确认 · 0 不通过' },
-      { s: 'warn', t: '签 发', v: '待重签', n: '内容改过，签名失效' },
-      { s: 'ok', t: '留 痕', v: '13 个文件', n: '可回放 · 断言/审计/产物' },
+      { s: 'ok', t: '取 数', count: 64, den: 64, n: '已并入台账', dur: 900,
+        say: '64 份下载数据核验完，已并入主台账。' },
+      { s: 'ok', t: '生 成', count: 270, suffix: ' 秒', n: '7 步 · 一次跑通', dur: 2400,
+        say: '一次跑通 7 步——最费时的是学科矩阵（132 秒）和出图（115 秒）。',
+        steps: [
+          { name: '解析台账', sec: 0.9, cum: 0.9 },
+          { name: '计算大表与概述', sec: 0.1, cum: 1.0 },
+          { name: '预测回测', sec: 0.3, cum: 1.3 },
+          { name: '省域表', sec: 14.7, cum: 16.0 },
+          { name: '学科矩阵', sec: 132.3, cum: 148.3 },
+          { name: '图表渲染', sec: 115.4, cum: 263.7 },
+          { name: '母版替换', sec: 6.3, cum: 270.0 },
+        ] },
+      { s: 'warn', t: '审 计', count: 3, den: 6, suffix: ' 通过', n: '2 待确认 · 0 不通过', dur: 1100,
+        say: '6 项审计跑完：3 项通过，2 项要人看一眼（金样回测、手工槽）。' },
+      { s: 'warn', t: '签 发', text: '待重签', n: '内容改过，签名失效', dur: 620,
+        say: '报告内容改过，签名已失效——复核后要重新签单。' },
+      { s: 'ok', t: '留 痕', count: 13, suffix: ' 个文件', n: '可回放 · 断言/审计/产物', dur: 900,
+        say: '13 个文件封存：断言、审计、产物，都能回放。' },
     ],
+    final: '回放完 · 全程 4 分 30 秒；点每一格可以回到那一段的原件。',
     gauge: true,
   },
   signed: {
@@ -327,12 +330,27 @@ const HERO = {
          <a class="hero-link" href="#">看签单记录 ↗</a>`,
     flap: '签',
     cells: [
-      { s: 'ok', t: '取 数', v: '64 / 64', n: '已并入台账' },
-      { s: 'ok', t: '生 成', v: '270 秒', n: '7 步 · 一次跑通' },
-      { s: 'warn', t: '审 计', v: '3 / 6 通过', n: '2 待确认 · 0 不通过' },
-      { s: 'ok', t: '签 发', v: '已签发', n: '10-17 14:15 · admin' },
-      { s: 'ok', t: '留 痕', v: '13 个文件', n: '可回放 · 断言/审计/产物' },
+      { s: 'ok', t: '取 数', count: 64, den: 64, n: '已并入台账', dur: 800,
+        say: '64 份下载数据核验完，已并入主台账。' },
+      { s: 'ok', t: '生 成', count: 270, suffix: ' 秒', n: '7 步 · 一次跑通', dur: 2200,
+        say: '一次跑通 7 步——最费时的是学科矩阵（132 秒）和出图（115 秒）。',
+        steps: [
+          { name: '解析台账', sec: 0.9, cum: 0.9 },
+          { name: '计算大表与概述', sec: 0.1, cum: 1.0 },
+          { name: '预测回测', sec: 0.3, cum: 1.3 },
+          { name: '省域表', sec: 14.7, cum: 16.0 },
+          { name: '学科矩阵', sec: 132.3, cum: 148.3 },
+          { name: '图表渲染', sec: 115.4, cum: 263.7 },
+          { name: '母版替换', sec: 6.3, cum: 270.0 },
+        ] },
+      { s: 'warn', t: '审 计', count: 3, den: 6, suffix: ' 通过', n: '2 待确认 · 0 不通过', dur: 900,
+        say: '6 项审计跑完：3 项通过，2 项要人看一眼。' },
+      { s: 'ok', t: '签 发', text: '已签发', n: '10-17 14:15 · admin', dur: 620,
+        say: '复核无异议，签单落下——这一版可以交付。' },
+      { s: 'ok', t: '留 痕', count: 13, suffix: ' 个文件', n: '可回放 · 断言/审计/产物', dur: 800,
+        say: '13 个文件封存：断言、审计、产物，都能回放。' },
     ],
+    final: '回放完 · 这一版已签发，13 个文件封存，签单记录在运行档案。',
     gauge: true,
   },
   running: {
@@ -342,12 +360,18 @@ const HERO = {
     act: `<span class="btn" style="opacity:.55;cursor:not-allowed">第 4 步 / 共 7 步 · 正在出图</span>`,
     flap: '待',
     cells: [
-      { s: 'ok', t: '取 数', v: '64 / 64', n: '已并入台账' },
-      { s: 'run', t: '生 成', v: '62%', n: '正在出图（65 / 104）' },
-      { s: 'todo', t: '审 计', v: '未执行', n: '跑完才审计' },
-      { s: 'todo', t: '签 发', v: '未签发', n: '签单后才可下载' },
-      { s: 'todo', t: '留 痕', v: '无', n: '日志包跑完才生成' },
+      { s: 'ok', t: '取 数', count: 64, den: 64, n: '已并入台账', dur: 700,
+        say: '数据已经取齐并并入台账。' },
+      { s: 'run', t: '生 成', count: 62, suffix: '%', n: '正在出图（65 / 104）', dur: 2400,
+        say: '正在出图：104 张里已经画到 65 张。' },
+      { s: 'todo', t: '审 计', text: '未执行', n: '跑完才审计', dur: 500,
+        say: '审计要等这次运行跑完。' },
+      { s: 'todo', t: '签 发', text: '未签发', n: '签单后才可下载', dur: 500,
+        say: '还没到签单这一步。' },
+      { s: 'todo', t: '留 痕', text: '无', n: '日志包跑完才生成', dur: 500,
+        say: '日志包也要等跑完才封存。' },
     ],
+    final: '正在跑第 4 步——这一页会自己更新，切走也不会丢。',
     gauge: false,
   },
   empty: {
@@ -357,17 +381,62 @@ const HERO = {
     act: `<a class="btn primary on-field" href="#">去取数台</a>`,
     flap: '待',
     cells: [
-      { s: 'todo', t: '取 数', v: '——', n: '还没开始取数' },
-      { s: 'todo', t: '生 成', v: '未执行', n: '取数并入后才生成' },
-      { s: 'todo', t: '审 计', v: '未执行', n: '没有审计记录' },
-      { s: 'todo', t: '签 发', v: '未签发', n: '签单后才可下载' },
-      { s: 'todo', t: '留 痕', v: '无', n: '日志包未生成' },
+      { s: 'todo', t: '取 数', text: '——', n: '还没开始取数', dur: 600,
+        say: '还没开始取数。' },
+      { s: 'todo', t: '生 成', text: '未执行', n: '取数并入后才生成', dur: 500,
+        say: '数据并入台账之后才生成。' },
+      { s: 'todo', t: '审 计', text: '未执行', n: '没有审计记录', dur: 500,
+        say: '没有审计记录。' },
+      { s: 'todo', t: '签 发', text: '未签发', n: '签单后才可下载', dur: 500,
+        say: '签单后才可下载。' },
+      { s: 'todo', t: '留 痕', text: '无', n: '日志包未生成', dur: 500,
+        say: '日志包还没生成。' },
     ],
+    final: '还没开始；先在取数台把这一期的数据取齐。',
     gauge: false,
   },
 }
 
-function render(state) {
+const band = document.getElementById('band')
+const line = document.querySelector('#playline i')
+const sayTxt = document.getElementById('saytxt')
+const sayTag = document.getElementById('saytag')
+const playBtn = document.getElementById('playbtn')
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+let token = 0
+let playing = false
+let current = 'stale'
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+function cellValue(spec, n) {
+  if (spec.den != null) return `${n} / ${spec.den}${spec.suffix || ''}`
+  return `${n}${spec.suffix || ''}`
+}
+
+function finalCell(spec, i) {
+  const v = spec.count != null ? cellValue(spec, spec.count) : spec.text
+  return `<a class="cell ${spec.s}" href="#" data-i="${i}">
+    <span class="go">→</span>
+    <span class="idx">0${i + 1}</span>
+    <span class="t">${spec.t}</span>
+    <b class="v">${v}</b>
+    <span class="n"><span class="st"><span class="dot"></span><em class="nt">${spec.n}</em></span></span>
+  </a>`
+}
+
+function pendingCell(spec, i) {
+  return `<a class="cell pending" href="#" data-i="${i}">
+    <span class="go">→</span>
+    <span class="idx">0${i + 1}</span>
+    <span class="t">${spec.t}</span>
+    <b class="v">—</b>
+    <span class="n"><span class="st"><span class="dot"></span><em class="nt"></em></span></span>
+  </a>`
+}
+
+function renderShell(state) {
   const c = HERO[state]
   const p1 = document.getElementById('p1')
   const p2 = document.getElementById('p2')
@@ -378,20 +447,10 @@ function render(state) {
   document.getElementById('act').innerHTML = c.act
   document.getElementById('flapSign').textContent = c.flap
 
-  document.getElementById('band').innerHTML = c.cells.map((x, i) => `
-    <a class="cell ${x.s}" href="#">
-      <span class="go">→</span>
-      <span class="idx">0${i + 1}</span>
-      <span class="t">${x.t}</span>
-      <b class="v">${x.v}</b>
-      <span class="n"><span class="st"><span class="dot"></span>${x.n}</span></span>
-    </a>`).join('')
-
   const g = document.getElementById('gauge')
   g.style.display = c.gauge ? '' : 'none'
   document.querySelector('.gb-grid').classList.toggle('one', !c.gauge)
-  const note = document.querySelector('.gb-note')
-  note.textContent = c.gauge
+  document.querySelector('.gb-note').textContent = c.gauge
     ? 'ESI 前 1% 被引阈值是警戒水位。读数来自本期学科矩阵（接近度＝百分数点值），前端不换算。'
     : '这一期还没有水位读数——看板生成后显示。'
 
@@ -399,12 +458,127 @@ function render(state) {
     b.classList.toggle('on', b.dataset.state === state))
 }
 
-document.querySelector('.toolbar').addEventListener('click', (e) => {
-  const b = e.target.closest('button[data-state]')
-  if (b) render(b.dataset.state)
+function say(text) {
+  sayTxt.style.opacity = 0
+  setTimeout(() => {
+    sayTxt.textContent = text
+    sayTxt.style.opacity = 1
+  }, 110)
+}
+
+function tween(from, to, dur, my, onFrame) {
+  return new Promise((res) => {
+    const t0 = performance.now()
+    function frame(t) {
+      if (my !== token) return res()
+      const p = Math.min(1, (t - t0) / dur)
+      const eased = 1 - Math.pow(1 - p, 3)
+      onFrame(from + (to - from) * eased)
+      if (p < 1) requestAnimationFrame(frame)
+      else { onFrame(to); res() }
+    }
+    requestAnimationFrame(frame)
+  })
+}
+
+/* 回放：一格一格亮起来；生成那一格把 7 步按顺序走一遍 */
+async function play(state) {
+  const my = ++token
+  playing = true
+  current = state
+  renderShell(state)
+  const c = HERO[state]
+
+  band.innerHTML = c.cells.map((x, i) => pendingCell(x, i)).join('')
+  line.style.width = '0%'
+  sayTag.textContent = '回放中'
+  playBtn.textContent = '跳过'
+  say(c.cells[0].say)
+
+  const cells = [...band.querySelectorAll('.cell')]
+
+  for (let i = 0; i < c.cells.length; i++) {
+    if (my !== token) return
+    const spec = c.cells[i]
+    const cell = cells[i]
+    cell.classList.remove('pending')
+    cell.classList.add(spec.s, 'live')
+    line.style.width = `${((i + 0.6) / c.cells.length) * 100}%`
+    if (i > 0) say(spec.say)
+
+    const vEl = cell.querySelector('.v')
+    const ntEl = cell.querySelector('.nt')
+    if (!spec.steps) ntEl.textContent = spec.n
+
+    if (spec.steps) {
+      const slot = Math.round(spec.dur / spec.steps.length)
+      let prev = 0
+      for (const st of spec.steps) {
+        if (my !== token) return
+        ntEl.textContent = `${st.name} · ${st.sec} 秒`
+        vEl.textContent = cellValue(spec, Math.round(prev))
+        await tween(prev, st.cum, slot, my, (v) => {
+          vEl.textContent = cellValue(spec, Math.round(v))
+        })
+        prev = st.cum
+      }
+      ntEl.textContent = spec.n
+    } else if (spec.count != null) {
+      vEl.textContent = cellValue(spec, 0)
+      await tween(0, spec.count, spec.dur, my, (v) => {
+        vEl.textContent = cellValue(spec, Math.round(v))
+      })
+    } else {
+      vEl.style.opacity = 0
+      await sleep(90)
+      vEl.textContent = spec.text
+      vEl.style.transition = 'opacity .3s'
+      vEl.style.opacity = 1
+      await sleep(spec.dur)
+    }
+
+    cell.classList.remove('live')
+    if (my !== token) return
+  }
+
+  if (my !== token) return
+  playing = false
+  line.style.width = '100%'
+  sayTag.textContent = '回放完'
+  playBtn.textContent = '▶ 重放'
+  say(c.final)
+}
+
+/* 直接落到最终状态（减少动效 / 点“跳过”） */
+function finish(state) {
+  token++
+  playing = false
+  current = state
+  renderShell(state)
+  const c = HERO[state]
+  band.innerHTML = c.cells.map((x, i) => finalCell(x, i)).join('')
+  line.style.width = '100%'
+  sayTag.textContent = '回放完'
+  playBtn.textContent = '▶ 重放'
+  say(c.final)
+}
+
+playBtn.addEventListener('click', () => {
+  if (playing) finish(current)
+  else if (reduce) finish(current)
+  else play(current)
 })
 
-render('stale')
+document.querySelector('.toolbar').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-state]')
+  if (!b) return
+  if (reduce) finish(b.dataset.state)
+  else play(b.dataset.state)
+})
+
+const params = new URLSearchParams(location.search)
+if (reduce || params.has('static')) finish('stale')
+else play('stale')
 </script>
 </body>
 </html>
