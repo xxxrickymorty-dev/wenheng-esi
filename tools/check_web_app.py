@@ -13,10 +13,10 @@ r"""端到端：`/app`（React 工作区）在真实浏览器里跑通「登录 
 （断言无 `/app/shelf/` 链接、无「陈列馆」字样）；游客访问 /app/?view=... 必须被
 前端送回 `/app/shelf/`。
 
-2026-10-11 改：guest 角色取消，改「操作员」（账号 demo，只读）——操作员**不再**被
-送回陈列馆，而是进工作区（取数/台账/运行档案/红件/溯源不可见，写按钮不出现）；
-陈列馆两种角色同看全内容。断言改：操作员导航无「取数」、生成台无「开始生成」、
-报告页无红件产物、陈列馆翻页 ≥ 3 页。
+2026-10-11 改：guest 角色取消，改「操作员」（账号 demo/评委）——操作员**不再**被
+送回陈列馆，而是进工作区。2026-10-20 起：主台账仍 admin；运行档案/红件/溯源/水位/
+沙盘只读开放；签单/出稿/取数按 2026-10-12/10-17 政策开放。断言据此更新：
+报告页有红件/溯源入口、无运行日志产物；红件页/运行档案无下载按钮；陈列馆翻页 ≥ 3 页。
 
 跑法（playwright 在**系统 Python** 里，不在 `.venv`）：
 
@@ -56,7 +56,8 @@ def _env_file_value(key, default=""):
 
 USER = os.environ.get("WENHENG_E2E_USER") or _env_file_value("WENHENG_USER", "admin")
 PASS = os.environ.get("WENHENG_E2E_PASS") or _env_file_value("WENHENG_PASS")
-#: 操作员（评委，只读；2026-10-11 起取代 guest）——账号/口令从 .env 或环境变量来。
+#: 操作员（评委/馆员；2026-10-11 起取代 guest）——证据面只读，签单/出稿/取数
+#: 按 2026-10-12/10-17 政策开放；账号/口令从 .env 或环境变量来。
 OPERATOR_USER = (os.environ.get("WENHENG_E2E_OPERATOR_USER")
                  or _env_file_value("WENHENG_OPERATOR_USER", "demo"))
 OPERATOR_PASS = (os.environ.get("WENHENG_E2E_OPERATOR_PASS")
@@ -366,6 +367,9 @@ def main():
             trace = re.search(r"已并入主台账[^\n]{0,60}", txt)
             check("运行档案显示并入台账的留痕", trace is not None,
                   (trace.group(0)[:60] if trace else "没看到「已并入主台账…」"))
+            story = page.inner_text(".ar-story") if page.query_selector(".ar-story") else ""
+            check("运行档案五步故事条有步骤（不报 0 步）",
+                  "步" in story and "0 步" not in story, story[:80])
         except Exception as e:                                          # noqa: BLE001
             check("运行档案并入留痕", False, str(e)[:100])
 
@@ -441,12 +445,25 @@ def main():
         check("操作员可进选章节（2026-10-17 放开）",
               "操作员不可见" not in operator.inner_text("main")
               and "选章节" in operator.inner_text("main"), "")
-        # 报告页产物：无红件三件与运行日志（服务端已过滤）
+        # 报告页：红件/溯源入口只读开放；红件三件与运行日志的下载产物仍过滤
         operator.goto(BASE + "/app/?view=report", wait_until="networkidle")
         operator.wait_for_timeout(600)
         rep_text = operator.inner_text("main")
-        check("操作员报告页无红件产物",
-              "红色件清单" not in rep_text and "运行日志" not in rep_text, "")
+        check("操作员报告页有红件/溯源入口（只读开放）",
+              "红色件清单" in rep_text and "逐格溯源" in rep_text, "")
+        check("操作员报告页无运行日志产物", "运行日志" not in rep_text, "")
+        # 红件页：能看清单，但没有「下载 Markdown」下载口（仍 admin）
+        operator.goto(BASE + "/app/?view=red&period=202607", wait_until="networkidle")
+        operator.wait_for_timeout(600)
+        red_txt = operator.inner_text("main")
+        check("操作员可看红件清单（只读开放）", "红色件清单" in red_txt, "")
+        check("操作员红件页无下载按钮",
+              not operator.query_selector('a[href*="/download/red_list"]'), "")
+        # 运行档案：能看，但没有「下载日志包」入口（仍 admin）
+        operator.goto(BASE + "/app/?view=archive&period=202607", wait_until="networkidle")
+        operator.wait_for_timeout(800)
+        check("操作员运行档案无日志包下载按钮",
+              not operator.query_selector('a[href*="/download/logpack"]'), "")
         # 生成台：2026-10-12 起操作员也有出报告权限——不再出现「操作员只读」提示
         operator.goto(BASE + "/app/", wait_until="networkidle")
         operator.wait_for_timeout(600)
@@ -460,6 +477,20 @@ def main():
         check("操作员审核台可签单（提示与按钮都在）",
               "操作员可以签单与撤回" in rv_text and "签单" in rv_text
               and "操作员只读" not in rv_text, "")
+        # 核验页目录：吸顶避开顶栏，跳转目标留出顶栏高度（2026-10-20）
+        operator.goto(BASE + "/app/?view=review&period=202609", wait_until="networkidle")
+        operator.wait_for_timeout(1200)
+        try:
+            toc = operator.query_selector(".rv-toc")
+            top = operator.eval_on_selector(".rv-toc", "el => getComputedStyle(el).top") if toc else ""
+            margin = (operator.eval_on_selector("[id^='rv-b-']",
+                                               "el => getComputedStyle(el).scrollMarginTop")
+                      if operator.query_selector("[id^='rv-b-']") else "")
+            check("核验页目录吸顶避开顶栏、跳转留出高度",
+                  bool(toc) and top == "68px" and margin == "76px",
+                  f"top={top} margin={margin}")
+        except Exception as e:                                          # noqa: BLE001
+            check("核验页目录吸顶", False, str(e)[:100])
 
         resp2 = operator.goto(BASE + "/app/shelf/", wait_until="networkidle")
         check("GET /app/shelf/ → 200", bool(resp2) and resp2.status == 200,
