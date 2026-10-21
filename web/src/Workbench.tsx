@@ -7,8 +7,9 @@ import { useEffect, useState } from 'react'
 import { getForecastBoard, getWaterLevel, type ForecastBoardRow, type ForecastChoiceEntry, type WaterRow } from './api-forecast'
 import { ConfirmButton } from './ConfirmButton'
 import { Info } from './Info'
+import { StoryBand } from './StoryBand'
 import { Tools } from './Tools'
-import { appHref, approvalLabel, taskLabel as runStatusText } from './lib/status'
+import { appHref, approvalLabel } from './lib/status'
 import { Icon } from './icons'
 import { failureCopy, isTerminal, STATE_LABEL, type Workbench as WB, type WBState } from './wb'
 import type { ActivityState, Run } from './hooks/useJobRun'
@@ -20,25 +21,6 @@ export const MODEL_DESC: Record<string, string> = {
   '季节性ETS模型': '抓「6 期一轮」的双月节律。适合受学年与发布节奏影响的指标。',
   'SARIMA模型': '趋势 + 季节都管，参数在最初 30 期按 AIC 选定后固定。通用、稳。',
   '经验贝叶斯状态空间模型': '把趋势与季节当「状态」逐期更新。对噪声大的序列更稳健。',
-}
-
-function Steps({ wb, period }: { wb: WB; period: string | null }) {
-  const acquireHref = `/app/?view=acquire${period ? `&period=${encodeURIComponent(period)}` : ''}`
-  return (
-    <ol className="steplist">
-      {wb.steps.map((s, i) => (
-        <li key={s.key} className={`step ${s.on ? 'on' : ''} ${s.now ? 'now' : ''}`}>
-          <span className="dot">{s.on ? <Icon name="check" size={13} /> : i + 1}</span>
-          <span>
-            {s.key === 'fetch' && period
-              ? <a className="steplink" href={acquireHref} title="去下载数据台">{s.title}</a>
-              : s.title}
-            <small>{s.detail}</small>
-          </span>
-        </li>
-      ))}
-    </ol>
-  )
 }
 
 /** 进度连接状态的一句话（只在跑任务时显示——任务完成后不再复读状态）。 */
@@ -112,7 +94,7 @@ function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }
 export function Workbench({
   period, me, wb, err, healthy, run, approvalStatus, activityState,
   actionLockReason, activeRun, actionsLocked, submitting, onGenerate,
-  periods, forecastChoice,
+  periods, forecastChoice, detail,
   forecastAppliedStale, forecastAppliedDiffs, autoConfirmRerun,
   showTools, toolJobId, toolArtifactsToken, onToolActionStart, onToolActionEnd, onToolUploaded,
 }: {
@@ -131,6 +113,8 @@ export function Workbench({
   onGenerate: () => void
   periods: Period[]
   forecastChoice: ForecastChoiceEntry | null
+  /** 单期详情（取数/并入/出稿三步与取数摘要）；故事条用它在不读档案时也能说真话 */
+  detail: PeriodDetail | null
   /** 已保存的模型选择 ≠ 上次出稿实际用的选择（报告还是旧的）；无出稿快照时恒 false */
   forecastAppliedStale: boolean
   /** 提示条里列的改动（「总被引：免疫学 → SARIMA模型」这类人话） */
@@ -173,6 +157,8 @@ export function Workbench({
   const canGenerate = canRun && period != null && /^\d{6}$/.test(period) && !actionsLocked && !activeRun && !submitting
     && (!run || isTerminal(run.status ?? undefined))
   const hasGenerateAction = wb.focusAction === 'generate' || wb.focusAction === 'rerun'
+  /* 任务在跑（含进度还没接上的空窗）：故事条走「实时」，不放回放 */
+  const live = (!!run && !isTerminal(run.status ?? undefined)) || wb.state === 'running'
   /** 水尺行：矩阵优先（全 22 学科），预测看板兜底（旧期次没有 matrix.json 时）。
       「潜力学科」看的是还没进前 1% 的——已进入的排在最前会把水尺刷成 8 根满格。 */
   const gaugePool: WaterRow[] = water.length
@@ -243,7 +229,16 @@ export function Workbench({
         </div>
       </section>
 
-      {/* 绿·器（汇-绿蓝）：潜力学科水尺（预测看板真值）＋ 本期工序进度 */}
+      {/* 故事条（2026-10-21）：五步回放取代三步条 / 三枚橡皮戳 / 五行数据表 */}
+      <StoryBand
+        period={period}
+        approvalStatus={approvalStatus}
+        detail={detail}
+        live={live}
+        liveNote={run?.last ?? null}
+      />
+
+      {/* 绿·器（汇-绿蓝）：潜力学科水尺（预测看板真值） */}
       <section className="gaugeband">
         <div className="gb-grid">
           <div className="gb-copy">
@@ -263,39 +258,7 @@ export function Workbench({
             <div className="gauge-thr">ESI 前 1% 阈值（100%）</div>
           </div>
         </div>
-        <Steps wb={wb} period={period} />
       </section>
-
-      {/* 三枚橡皮戳（戳印之一）＋ 本期数据 */}
-      <section className="wb-stamps">
-        <div className="stamp-col">
-          <div className={`stamp ${wb.steps[1]?.on ? 'on' : ''}`}><b>已并入<br />台账</b><small>{wb.steps[1]?.on ? '完成' : '未完成'}</small></div>
-          <div className={`stamp ${wb.steps[2]?.on ? 'on' : ''}`}><b>已出稿</b><small>{wb.steps[2]?.on ? '完成' : '未完成'}</small></div>
-          <div className={`stamp warn ${approvalStatus === 'signed' ? 'on' : ''}`}><b>复核通过</b><small>{approvalStatus === 'signed' ? '已签发' : 'PENDING'}</small></div>
-        </div>
-        <dl className="data">
-          <div><dt>期 次</dt><dd className="mono">{period ?? '—'}</dd></div>
-          <div><dt>取 数</dt><dd>{wb.steps[0]?.detail ?? '—'}</dd></div>
-          <div><dt>核对并并入</dt><dd>{wb.steps[1]?.detail ?? '—'}</dd></div>
-          <div><dt>一键生成</dt><dd>{wb.steps[2]?.detail ?? '—'}</dd></div>
-          <div><dt>签 发</dt><dd>{approvalLabel(approvalStatus)}</dd></div>
-        </dl>
-      </section>
-
-      {wb.focusAction === 'sign' && (
-        /* 签单区（戳印之二：钤印落在动作上，据 汇-绿蓝.html） */
-        <section className="sign">
-          <div>
-            <p className="kik">核 驗 與 簽 單</p>
-            <h2>盖印签单，此版归档。</h2>
-            <p className="sign-note">{wb.focusSub}</p>
-            <div className="wb-hero-act">
-              <a className="btn primary big" href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="seal" size={20} />复核并签单</a>
-            </div>
-          </div>
-          <div className="seal-mark" aria-hidden="true">至公天下</div>
-        </section>
-      )}
 
         {forecastAppliedStale && (!run || isTerminal(run.status ?? undefined)) && (
           /* 改选还没进报告（2026-10-16，rick）：说清哪几处改了、报告是旧的、重出才生效。
@@ -341,13 +304,6 @@ export function Workbench({
               {`任务进行中 · 期次 ${run.requestedPeriod}${run.outputPeriod && run.outputPeriod !== run.requestedPeriod ? `（实际输出 ${run.outputPeriod}）` : ''} · ${runConnLabel(run)}`}
               {run.last ? ` · ${run.last}` : ''}
             </span>
-          </div>
-        ) : run ? (
-          <div className="runbar">
-            <span className="elapsed">
-              最近任务 {run.requestedPeriod} · {run.status ? runStatusText(run.status) : '—'}
-            </span>
-            <a className="btn runbar-log" href={`/app/?view=archive${period ? `&period=${encodeURIComponent(period)}` : ''}`}>查看运行档案 →</a>
           </div>
         ) : activeRun ? (
             <div className="elapsed"><Icon name="refresh" size={20} />有任务正在进行——完成后才能开始新的生成；想跟进进度，切到任务所属期次。</div>

@@ -724,6 +724,7 @@ export default function App() {
                         onGenerate={onGenerate}
                         periods={periods}
                         forecastChoice={selectedForecastChoice}
+                        detail={detail}
                         forecastAppliedStale={selectedForecastStale}
                         forecastAppliedDiffs={selectedForecastStaleDiffs}
                         autoConfirmRerun={autoConfirmRerun}

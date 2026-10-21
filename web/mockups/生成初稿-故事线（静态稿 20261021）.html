@@ -78,9 +78,12 @@ a{color:inherit}
 
 /* ============ 故事条：这一期怎么走到这里 ============ */
 .story{background:var(--card);border:1px solid var(--line);margin-top:16px;padding:22px 26px 20px}
-.story-h{display:flex;align-items:baseline;gap:14px;margin-bottom:16px}
+.story-h{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px}
 .story-h h2{font-size:20px;letter-spacing:.02em}
-.story-h .hint{margin-left:auto;font-size:13px;color:var(--ink-3);text-decoration:none;border-bottom:1px solid var(--line)}
+.story-title{display:grid;gap:3px}
+.runclock{margin:0;font:12.5px/1.5 var(--mono);letter-spacing:.02em;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.runclock b{font-weight:600;color:var(--ink-2)}
+.story-h .hint{margin-left:auto;font-size:13px;color:var(--ink-3);text-decoration:none;border-bottom:1px solid var(--line);margin-top:4px}
 .story-h .hint:hover{color:var(--zhu);border-color:var(--zhu)}
 .playbtn{font:inherit;font-size:13px;padding:5px 13px;border:1px solid var(--line);background:var(--card);
   color:var(--ink-2);cursor:pointer;transition:border-color .15s,color .15s}
@@ -235,7 +238,10 @@ details.fold summary .sm{margin-left:auto;font-weight:400;font-size:13px;color:v
   <!-- 故事条：取代三步条 / 三枚橡皮戳 / 五行数据表 -->
   <section class="story" aria-label="这一期怎么走到这里">
     <div class="story-h">
-      <h2>这一期怎么走到这里</h2>
+      <div class="story-title">
+        <h2>这一期怎么走到这里</h2>
+        <p class="runclock" id="runclock"></p>
+      </div>
       <button class="playbtn" id="playbtn" type="button">▶ 重放</button>
       <a class="hint" href="#">运行档案 · 完整回放 →</a>
     </div>
@@ -319,8 +325,9 @@ const HERO = {
       { s: 'ok', t: '留 痕', count: 13, suffix: ' 个文件', n: '可回放 · 断言/审计/产物', dur: 900,
         say: '13 个文件封存：断言、审计、产物，都能回放。' },
     ],
-    final: '回放完 · 全程 4 分 30 秒；点每一格可以回到那一段的原件。',
+    final: '回放完 · 点每一格可以回到那一段的原件。',
     gauge: true,
+    clock: { start: '2026-10-17 13:53:47', end: '13:58:17', total: '4 分 30 秒' },
   },
   signed: {
     p1: ['pill ok', '已完成'], p2: ['pill ok', '已签发'],
@@ -352,6 +359,7 @@ const HERO = {
     ],
     final: '回放完 · 这一版已签发，13 个文件封存，签单记录在运行档案。',
     gauge: true,
+    clock: { start: '2026-10-17 13:53:47', end: '13:58:17', total: '4 分 30 秒' },
   },
   running: {
     p1: ['pill ok', '进行中'], p2: ['pill', '未签发'],
@@ -373,6 +381,7 @@ const HERO = {
     ],
     final: '正在跑第 4 步——这一页会自己更新，切走也不会丢。',
     gauge: false,
+    clock: { start: '2026-10-17 13:53:47', live: true },
   },
   empty: {
     p1: ['pill', '未开始'], p2: ['pill', '未签发'],
@@ -394,6 +403,7 @@ const HERO = {
     ],
     final: '还没开始；先在取数台把这一期的数据取齐。',
     gauge: false,
+    clock: null,
   },
 }
 
@@ -402,7 +412,36 @@ const line = document.querySelector('#playline i')
 const sayTxt = document.getElementById('saytxt')
 const sayTag = document.getElementById('saytag')
 const playBtn = document.getElementById('playbtn')
+const clockEl = document.getElementById('runclock')
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+const pad2 = (n) => String(n).padStart(2, '0')
+
+/* 真实运行时间窗：平时显示首尾，回放时右侧跟着秒数走 */
+function clockFull(c) {
+  if (!c.clock) { clockEl.style.display = 'none'; clockEl.innerHTML = ''; return }
+  clockEl.style.display = ''
+  clockEl.innerHTML = c.clock.live
+    ? `<b>${c.clock.start}</b> 起 · 进行中`
+    : `<b>${c.clock.start}</b> → <b>${c.clock.end}</b> · ${c.clock.total}`
+}
+
+function clockStart(c) {
+  if (!c.clock) { clockEl.style.display = 'none'; clockEl.innerHTML = ''; return }
+  clockEl.style.display = ''
+  clockEl.innerHTML = c.clock.live
+    ? `<b>${c.clock.start}</b> 起 · 进行中`
+    : `<b>${c.clock.start}</b> 起 · 回放中`
+}
+
+function clockAt(c, sec) {
+  if (!c.clock || c.clock.live) return
+  const date = c.clock.start.slice(0, 10)
+  const [h, m, s] = c.clock.start.slice(11).split(':').map(Number)
+  const t = h * 3600 + m * 60 + s + Math.round(sec)
+  clockEl.innerHTML = `<b>${date} ${pad2(h)}:${pad2(m)}:${pad2(s)}</b> → ` +
+    `<b>${pad2(Math.floor(t / 3600))}:${pad2(Math.floor((t % 3600) / 60))}:${pad2(t % 60)}</b> · ${c.clock.total}`
+}
 
 let token = 0
 let playing = false
@@ -456,6 +495,8 @@ function renderShell(state) {
 
   ;[...document.querySelectorAll('.toolbar button')].forEach(b =>
     b.classList.toggle('on', b.dataset.state === state))
+
+  clockFull(c)
 }
 
 function say(text) {
@@ -493,6 +534,7 @@ async function play(state) {
   line.style.width = '0%'
   sayTag.textContent = '回放中'
   playBtn.textContent = '跳过'
+  clockStart(c)
   say(c.cells[0].say)
 
   const cells = [...band.querySelectorAll('.cell')]
@@ -519,10 +561,12 @@ async function play(state) {
         vEl.textContent = cellValue(spec, Math.round(prev))
         await tween(prev, st.cum, slot, my, (v) => {
           vEl.textContent = cellValue(spec, Math.round(v))
+          clockAt(c, v)
         })
         prev = st.cum
       }
       ntEl.textContent = spec.n
+      clockFull(c)
     } else if (spec.count != null) {
       vEl.textContent = cellValue(spec, 0)
       await tween(0, spec.count, spec.dur, my, (v) => {
