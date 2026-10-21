@@ -96,7 +96,7 @@ export const getWorkbench = (period: string) =>
   req<WorkbenchData>(`/api/periods/${encodeURIComponent(period)}/workbench`)
 
 /** POST /api/periods/{p}/fill —— 批量补录：{items: {todo_id: 值}} → {ok, saved}
-    只写产物目录的 manual_inputs.json，台账一个字节不动（后端口径）。 */
+    只写状态库里的填写记录，台账一个字节不动（后端口径）。 */
 export async function postFill(
   period: string,
   items: Record<string, string>,

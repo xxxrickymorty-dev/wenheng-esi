@@ -155,7 +155,7 @@
   <ul>
     <li><b>待补录 N 处</b>：可以直接填的（数字槽）。填完把对应位置的值写在这里就行。</li>
     <li><b>待确认 M 处</b>：结构性项（封面期次、年月、大表列名等），<b>只核对、不填</b>——这些填错整份报废。</li>
-    <li><b>保存填写</b>：把填值存到 <code>out/&lt;期次&gt;/manual_inputs.json</code>（记录填的人和时间）。
+    <li><b>保存填写</b>：把填值记进<b>状态库</b>（记录填的人和时间）。
         <span class="red">此步还没进报告。</span></li>
     <li><b>保存并重出报告</b>：把填值交给后端 → 旧成品撤到 <code>_superseded/</code>（可回滚）→
         不重新解析台账 → 约 2–15 秒重出一版新报告。<b>这一步做完，值才真正进稿。</b></li>
@@ -200,9 +200,8 @@
 <h2>5 · 它背后落了哪些文件（出问题时可查）</h2>
 <table>
   <tr><th style="width:300px">文件</th><th>作用</th></tr>
-  <tr><td><code>out/_state/wenheng.sqlite</code>（状态库）</td><td>签单记录本体：签单人、时间、批注、放行快照、指纹、操作历史（含撤回）；「存疑」标记也在这里。</td></tr>
+  <tr><td><code>out/_state/wenheng.sqlite</code>（状态库）</td><td>签单记录本体：签单人、时间、批注、放行快照、指纹、操作历史（含撤回）；「存疑」标记与「在线填」的内容也在这里（谁在什么时候填的哪一处）。</td></tr>
   <tr><td><code>out/&lt;期次&gt;/审批记录.md</code></td><td>给人看的同一份记录（谁、何时、放了什么行）；由状态库导出，可随时重出。</td></tr>
-  <tr><td><code>out/&lt;期次&gt;/manual_inputs.json</code></td><td>在线填的内容（谁在什么时候填的哪一处）。</td></tr>
   <tr><td><code>out/&lt;期次&gt;/_superseded/&lt;时间戳&gt;/</code></td><td>重出前的旧成品（可回滚）；失败运行不会留下「新表格+旧报告」的混装。</td></tr>
   <tr><td><code>out/&lt;期次&gt;/诊断报告.md</code></td><td>带病出稿时由生成台附上：哪条断言没过、怎么修。</td></tr>
 </table>
