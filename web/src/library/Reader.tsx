@@ -4,6 +4,7 @@ import type { ForecastRow, GlossaryEntry, ReportBlock, ReportCell,
               ShelfBook, ShelfTableRow } from './types'
 import './experience.css'
 import './flip-reader.css'
+import emblem from './assets/ynu-emblem.png'
 
 export type ReaderSection = 'cover' | 'toc' | 'glossary'
 
@@ -204,30 +205,22 @@ function Leaf({ book, n, children }: { book: ShelfBook; n: number; children: Rea
 }
 
 function ReferenceCover({ book }: { book: ShelfBook }) {
-  const { periodLabel, totalIssueLabel } = issueParts(book)
+  const { periodLabel } = issueParts(book)
+  const issue = book.cover[2] || periodLabel
   return <div className="cover-page reference-cover">
-    <div className="reference-cover-top">
-      <span className="reference-cover-brand">云南大学<small>YUNNAN UNIVERSITY</small></span>
-      <span className="reference-cover-collection">学科服务馆藏</span>
-    </div>
+    <div className="reference-cover-emblem"><img src={emblem} alt="云南大学校徽" /></div>
+    <div className="reference-cover-brandline">云南大学<small>YUNNAN UNIVERSITY</small></div>
     <div className="reference-cover-title">
       <h2>{book.cover[1]}</h2>
       <p>DISCIPLINARY INFORMATION REFERENCE</p>
       <span className="reference-cover-divider"><i /></span>
-      <strong>{periodLabel}</strong>
-      {totalIssueLabel && <em>{totalIssueLabel}</em>}
+      <strong>{issue}</strong>
+      {book.cover[3] && <em className="reference-cover-org">{book.cover[3]}</em>}
+      <span className="reference-cover-note">※ 本资料仅供校内人员参考 ※</span>
     </div>
-    <svg className="reference-campus-art" viewBox="0 0 520 210" aria-hidden="true">
-      <path d="M52 154H468M78 154L112 106H184L204 73H316L336 106H408L442 154" />
-      <path d="M182 154V101H338V154M217 154V92H303V154" />
-      <path d="M230 92V72H290V92M244 72V58H276V72" />
-      <path d="M135 154V120H171V154M349 154V120H385V154" />
-      <path d="M214 169H306M201 178H319M188 187H332M174 196H346" />
-      <path d="M230 110V146M248 110V146M266 110V146M284 110V146" />
-    </svg>
     <div className="reference-cover-footer">
-      <span className="reference-seal"><b>雲</b><small>1923</small></span>
-      <span className="reference-motto">会泽百家&nbsp;&nbsp;至公天下<small>YUNNAN UNIVERSITY</small></span>
+      <span className="reference-motto">会泽百家&nbsp;&nbsp;至公天下<small>YUNNAN UNIVERSITY LIBRARY</small></span>
+      <span className="reference-seal reference-seal-square"><b>衡</b><small>ESI</small></span>
     </div>
   </div>
 }

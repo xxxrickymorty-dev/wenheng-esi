@@ -87,20 +87,37 @@
 .sl-shelf h2{font-size:clamp(30px,3.6vw,44px);color:#fff}
 .sl-books{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:34px 26px}
 .sl-bw{display:flex;flex-direction:column;gap:14px}
+/* C 书封·布面（2026-10-20）：深绿布纹 + 金线双框 + 校徽 + 「衡」印 */
 .sl-cover{position:relative;aspect-ratio:2/2.9;display:flex;flex-direction:column;
-  padding:16px 16px 14px;color:var(--g-pale);text-align:left;border:0;cursor:pointer;font:inherit;
+  padding:22px 18px 16px;color:#EAD9A8;text-align:left;cursor:pointer;font:inherit;
+  border:1px solid rgba(215,197,141,.78);overflow:hidden;
+  background-color:#163228;
+  background-image:
+    repeating-linear-gradient(0deg,rgba(255,255,255,.026) 0 1px,transparent 1px 3px),
+    repeating-linear-gradient(90deg,rgba(0,0,0,.05) 0 1px,transparent 1px 4px);
   transition:transform .18s}
+.sl-cover::after{content:"";position:absolute;inset:6px;border:1px solid rgba(215,197,141,.42);
+  pointer-events:none}
 .sl-cover:hover{transform:translateY(-4px)}
-.sl-cover .c-top{display:flex;justify-content:space-between;font-family:var(--kai);font-size:10px;letter-spacing:.34em}
-.sl-cover .rule{height:1px;background:currentColor;opacity:.55;margin:8px 0}
-.sl-cover .rule.thick{height:2px;opacity:.9}
-.sl-cover .ser{font-family:var(--kai);font-size:11px;letter-spacing:.18em;line-height:1.9;margin-top:12px;opacity:.92}
-.sl-cover .num{font-family:var(--serif);font-size:34px;letter-spacing:.12em;margin:auto 0 4px}
-.sl-cover .iss{font-family:var(--kai);font-size:11px;letter-spacing:.22em;opacity:.85}
-.sl-cover .bot{display:flex;justify-content:space-between;font-family:var(--kai);font-size:9px;letter-spacing:.3em;
-  margin-top:14px;padding-top:10px;border-top:1px solid currentColor;opacity:.7}
-.sl-cover.v1{background:#1B4636}.sl-cover.v2{background:var(--g-mid);color:#F2EFE6}
-.sl-cover.v3{background:#223B30}.sl-cover.v4{background:#2C5A43}
+.sl-emblem{width:34px;height:34px;margin:0 auto 10px;border-radius:50%;background:#F6F2E4;
+  display:grid;place-items:center;box-shadow:0 0 0 1px rgba(215,197,141,.85)}
+.sl-emblem img{width:27px;height:27px;object-fit:contain;display:block}
+.sl-cover .c-top{display:flex;justify-content:space-between;font-family:var(--kai);font-size:9px;
+  letter-spacing:.3em;color:#EAD9A8}
+.sl-cover .rule{height:1px;background:#D7C58D;opacity:.5;margin:7px 0}
+.sl-cover .rule.thick{height:2px;opacity:.8}
+.sl-cover .ser{font-family:var(--kai);font-size:11px;letter-spacing:.16em;line-height:1.9;
+  margin-top:10px;color:#EAD9A8}
+.sl-cover .num{font-family:var(--serif);font-size:32px;letter-spacing:.1em;margin:auto 0 4px;
+  color:#EAD9A8}
+.sl-cover .iss{font-family:var(--kai);font-size:10.5px;letter-spacing:.18em;color:#D9C995}
+.sl-cover .bot{display:flex;justify-content:space-between;align-items:center;font-family:var(--kai);
+  font-size:8.5px;letter-spacing:.24em;margin-top:12px;padding-top:9px;
+  border-top:1px solid rgba(215,197,141,.35);color:#D9C995}
+.sl-seal{width:18px;height:18px;display:grid;place-items:center;background:#A8342A;color:#F2E6D2;
+  font-size:12px;line-height:1;letter-spacing:0;border:1px solid rgba(255,255,255,.18)}
+.sl-cover.v1{background-color:#163228}.sl-cover.v2{background-color:#1B4636}
+.sl-cover.v3{background-color:#14302A}.sl-cover.v4{background-color:#1E4B39}
 .sl-bmeta .no{font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:var(--g-pale);opacity:.8}
 .sl-bmeta .nm{font-family:var(--serif);font-size:17px;letter-spacing:.06em;color:#fff;margin:6px 0 10px}
 .sl-bmeta .go{font-family:var(--kai);font-size:12px;letter-spacing:.3em;color:var(--g-pale);
