@@ -183,7 +183,7 @@ function PeriodData({ period, canSeeAdminBits }: { period: string | null; canSee
             </span>
           </h2>
           {/* 下钻入口收成一行小链接（2026-10-17 冗余收敛稿③：三卡＝第二套菜单，退化为行内链接）。
-              2026-10-11：红色件清单/逐格溯源是操作员不可见的「里子」——只给管理员留。 */}
+              2026-10-20：红色件清单/逐格溯源对操作员只读开放；下载口仍只给管理员。 */}
           <p className="hint rc-links">
             逐格核对：
             <a href={period ? appHref('reading', period) : '/app/?view=reading'}>对勘本（正文级对照）</a>

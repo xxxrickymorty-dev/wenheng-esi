@@ -2435,7 +2435,7 @@ async def api_dialog_session(request: Request, session_id: str):
 async def api_dialog_home(request: Request):                      # noqa: ARG001
     """对话前门·空态「本期任务」（契约 #35，票 06）：三步状态从既有产物判，只读不新算。
 
-    本期＝最新六位期次目录（台账有效期次 ∪ input ∪ out）；三步全成且已签发 → 顺延下一期。
+    本期＝最新一个有内容的期次（台账有效期次 ∪ 出过稿的产物 ∪ 取数四件已齐）；三步全成且已签发 → 顺延下一期。
     签发状态在 server 层核实（`src/taskview` 不 import server）；扫描拿不到 → 空形状
     （界面退回普通问候，不编）。
     """
