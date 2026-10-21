@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
-"""系统状态库（SQLite）——签单与复核的运行期状态（ADR-0012 决定 3/6/7/8/11）。
+"""系统状态库（SQLite）——签单 / 复核 / 任务记录（ADR-0012 决定 3/6/7/8/11）。
 
-- **边界（spec 写死）**：只装**控制面状态**（签单 / 复核）。数字一个不装（唯一事实源仍是母本
-  xlsx），ESI / InCites 原始包不入库；**不存 status 列**——签单是否失效永远现场 glob + hash
-  `out/<期次>/` 的产物（`server/approval.py`），库里缓存状态必然与文件不一致。
+- **边界（spec 写死）**：只装**控制面状态**（签单 / 复核 / 任务记录）。数字一个不装（唯一事实源
+  仍是母本 xlsx），ESI / InCites 原始包不入库。
+- **签单不存 status 列**——签单是否失效永远现场 glob + hash `out/<期次>/` 的产物
+  （`server/approval.py`），库里缓存状态必然与文件不一致。
+  **任务记录反过来**：`jobs.status` 是**事实本身**（跑到哪一步、谁跑的），没有第二个真相源
+  要跟它比对，所以它既在 `payload` 里、又提升成列供 `active_job()` 一次查到
+  （「一次只跑一期」不再扫目录）。
 - **路径唯一口径**：`db_path()` → `out/_state/wenheng.sqlite`；`WENHENG_STATE_DB` 可覆盖
   （流水线子进程与 e2e 靠它指同一个库）。传 `out_dir` 时取它的**同级** `_state/`
   ——`out/<期次>` 解出 `out/_state`；测试把期次目录建在 tmp 下，库也就落在 tmp，互不污染。
@@ -30,7 +34,7 @@ import sqlite3
 import time
 
 #: schema 版本（写进 meta；只增不减，见模块头的迁移说明）。
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 #: 库文件名（`out/_state/` 下）。
 DB_NAME = "wenheng.sqlite"
 #: 覆盖库路径的环境变量（流水线子进程 / e2e 用）。
@@ -61,6 +65,20 @@ _DDL_001 = (
     " period TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL,"
     " payload TEXT NOT NULL DEFAULT '{}', updated_at TEXT NOT NULL DEFAULT '',"
     " PRIMARY KEY (period, key))",
+)
+
+#: 002 的业务表：任务记录（`out/_jobs/<id>/job.json` 的唯一真相源）。
+#: `payload` ＝ 原 `job.json` 的**完整字典**（往返相等，见 tests/test_state_store.py）；
+#: `status / period / created_at` 只是为查询提升出来的列，`updated_at` 记最后一次落库时间
+#: （不写进 payload，免得把「写库时刻」混进任务记录本身）。
+_DDL_002 = (
+    "CREATE TABLE IF NOT EXISTS jobs ("
+    " id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT '',"
+    " period TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT '',"
+    " updated_at TEXT NOT NULL DEFAULT '', payload TEXT NOT NULL)",
+    "CREATE INDEX IF NOT EXISTS idx_jobs_created ON jobs(created_at DESC, id DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_jobs_period ON jobs(period, created_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)",
 )
 
 
@@ -115,9 +133,16 @@ def _migrate_001(con) -> None:
         con.execute(stmt)
 
 
+def _migrate_002(con) -> None:
+    """002：建任务记录表（`job.json` 入库；第二批的期次产物仍未做）。"""
+    for stmt in _DDL_002:
+        con.execute(stmt)
+
+
 #: 有序迁移表（只增不改；id 一旦发出就不再动）。
 MIGRATIONS = (
     {"id": "001-approvals-reviews", "note": "approvals / approval_history / reviews", "fn": _migrate_001},
+    {"id": "002-jobs", "note": "jobs（原 out/_jobs/<id>/job.json）", "fn": _migrate_002},
 )
 
 
@@ -155,7 +180,7 @@ def _apply_migrations(con) -> tuple[bool, str]:
     db_version = _read_version(con)
     if db_version > SCHEMA_VERSION:
         note = (f"状态库 schema {db_version} 高于本程序 {SCHEMA_VERSION}：已降级为只读，"
-                "签单与存疑暂不可写（请升级程序；回滚请先 tools/state_export.py 导出）")
+                "签单、存疑与任务记录暂不可写（请升级程序；回滚请先 tools/state_export.py 导出）")
         _LOG.warning(note)
         return True, note
     _scaffold(con)
@@ -417,6 +442,92 @@ def replace_reviews(db_path, period, data) -> None:
                 (period, str(key), str(item.get("state") or "doubt"),
                  _dumps({k: v for k, v in item.items() if k != "state"}),
                  str(item.get("at") or "")))
+
+
+# --------------------------------------------------------------- 任务记录
+def get_job(db_path, job_id) -> dict | None:
+    """读一条任务记录（原 `job.json` 的字典，原样）；没有 / 坏行 → None。
+
+    库不存在 → None（读口不造文件，导入 app 时的 `recover_stale()` 不会顺手建库）。
+    """
+    path = pathlib.Path(db_path)
+    if not path.is_file():
+        return None
+    with _open(path) as (con, degraded, _note):
+        try:
+            row = con.execute(
+                "SELECT payload FROM jobs WHERE id=?", (str(job_id),)).fetchone()
+        except sqlite3.Error:
+            if degraded:
+                return None
+            raise
+        if row is None:
+            return None
+        try:
+            rec = json.loads(row[0])
+        except (TypeError, ValueError):
+            return None                       # 坏行当作没有：与旧 read_job 的坏 json 同口径
+        return rec if isinstance(rec, dict) else None
+
+
+def put_job(db_path, job) -> None:
+    """写/覆盖一条任务记录（upsert）。`job` 原样进 `payload`，一个字段都不增删。"""
+    if not isinstance(job, dict):
+        raise StoreError("任务记录形状非法（顶层不是对象）")
+    jid = str(job.get("id") or "")
+    if not jid:
+        raise StoreError("任务记录缺 id")
+    with _write(db_path) as con:
+        con.execute(
+            "INSERT INTO jobs (id, status, period, created_at, updated_at, payload)"
+            " VALUES (?, ?, ?, ?, ?, ?)"
+            " ON CONFLICT(id) DO UPDATE SET status=excluded.status,"
+            " period=excluded.period, created_at=excluded.created_at,"
+            " updated_at=excluded.updated_at, payload=excluded.payload",
+            (jid, str(job.get("status") or ""), str(job.get("period") or ""),
+             str(job.get("created_at") or ""), _now(), _dumps(job)))
+
+
+def list_jobs(db_path, *, period=None, statuses=None, limit=None) -> list[dict]:
+    """任务记录（`created_at` 新→旧，同秒按 id 新→旧）；库不存在 → `[]`。
+
+    `period` 按期次过滤；`statuses` 给一组库内状态名（`IN`，供 `active_job()` 一次查到
+    「在跑的那几条」——**不扫目录**）。`limit=None` = 全部。
+    """
+    path = pathlib.Path(db_path)
+    if not path.is_file():
+        return []
+    sql = "SELECT payload FROM jobs"
+    where, args = [], []
+    if period is not None:
+        where.append("period=?")
+        args.append(str(period))
+    if statuses:
+        marks = ",".join("?" for _ in statuses)
+        where.append(f"status IN ({marks})")
+        args.extend(str(s) for s in statuses)
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += " ORDER BY created_at DESC, id DESC"
+    if limit is not None:
+        sql += " LIMIT ?"
+        args.append(int(limit))
+    with _open(path) as (con, degraded, _note):
+        try:
+            rows = con.execute(sql, args).fetchall()
+        except sqlite3.Error:
+            if degraded:
+                return []
+            raise
+    out = []
+    for row in rows:
+        try:
+            rec = json.loads(row[0])
+        except (TypeError, ValueError):
+            continue
+        if isinstance(rec, dict):
+            out.append(rec)
+    return out
 
 
 # --------------------------------------------------------------- 期次清单（导出用）

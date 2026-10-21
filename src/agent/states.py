@@ -89,7 +89,7 @@ def is_terminal(status: str) -> bool:
 
 # ---------------------------------------------------------------- 旧名兼容
 #: 演示站 2026-09-15 之前用的是 `done / warn / failed / interrupted` 这套。
-#: `out/_jobs/` 下的历史 `job.json` 里存的还是旧值，读盘时要能认。
+#: `out/_jobs/` 下的历史任务记录（迁移前是 job.json）里存的还是旧值，读取时要能认。
 #: `interrupted`（服务重启中断）映射到 `failed`——10 态里没有它，
 #: 且语义上属"意外终止"而非"主动取消"。
 LEGACY: dict[str, str] = {

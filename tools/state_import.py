@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
-"""把现有 `out/*/approval.json`、`out/*/review.json` **显式**导入状态库（ADR-0012 决定 10）。
+"""把现有 `out/*/approval.json`、`out/*/review.json`、`out/_jobs/*/job.json`
+**显式**导入状态库（ADR-0012 决定 10）。
 
-- **幂等**：库里已有该期 → 跳过（不覆盖）；重复跑结果一致。空文件也报「空」而不是反复导入；
+- **幂等**：库里已有该期 / 该任务 id → 跳过（不覆盖）；重复跑结果一致。
+  空文件也报「空」而不是反复导入；
 - **不删原文件**：迁移期两处都在，但之后**只有库是真相**（`approval.json`/`review.json`
-  降为导出件，回退用 `tools/state_export.py`）；
-- 逐期打印：**导入 / 已存在跳过 / 形状非法**——隐式行为难调试，所以这里一句都不省。
+  降为导出件，回退用 `tools/state_export.py`；`job.json` 入库后谁都不再读它）；
+- 逐项打印：**导入 / 已存在跳过 / 形状非法**——隐式行为难调试，所以这里一句都不省。
 
 用法（在 `wenheng/` 下；也可 `uv run python -m tools.state_import`）：
 
-    uv run python tools\\state_import.py                  # 扫 out/ 下所有期次目录
-    uv run python tools\\state_import.py --period 202607  # 只导一期
+    uv run python tools\\state_import.py                  # 扫 out/ 下所有期次目录 + 全部任务记录
+    uv run python tools\\state_import.py --period 202607  # 只导一期（任务记录仍是全量）
     uv run python tools\\state_import.py --db D:\\tmp\\x.sqlite
 
 只写 `out/_state/wenheng.sqlite`（或 `--db` / `WENHENG_STATE_DB`），**一个字节都不碰产物与母本**。
@@ -32,6 +34,7 @@ from src import state_store  # noqa: E402
 PERIOD_RE = re.compile(r"^\d{6}(?:[_-].*)?$")
 APPROVAL_NAME = "approval.json"
 REVIEW_NAME = "review.json"
+JOB_NAME = "job.json"
 
 
 def _period_dirs(out_root: pathlib.Path):
@@ -121,8 +124,47 @@ def import_period(out_dir, db_path) -> list[str]:
     return lines
 
 
+def import_jobs(jobs_dir, db_path) -> list[str]:
+    """把 `out/_jobs/*/job.json` 导入任务记录；返回逐项结果行（幂等：已有 id 跳过）。"""
+    jobs_dir = pathlib.Path(jobs_dir)
+    if not jobs_dir.is_dir():
+        return ["任务记录：任务目录不存在，跳过"]
+    cands = sorted(jobs_dir.glob(f"*/{JOB_NAME}"))
+    if not cands:
+        return ["任务记录：没有 job.json，跳过"]
+    lines = []
+    for path in cands:
+        rec, problem = _job_record(path)
+        job_id = path.parent.name
+        if problem:
+            lines.append(f"任务 {job_id}：{problem}，未导入")
+        elif state_store.get_job(db_path, rec["id"]) is not None:
+            lines.append(f"任务 {job_id}：已存在跳过（库里已有，不覆盖）")
+        else:
+            try:
+                state_store.put_job(db_path, rec)
+            except state_store.StoreError as exc:
+                lines.append(f"任务 {job_id}：写入失败（{exc}），未导入")
+            else:
+                lines.append(f"任务 {job_id}：导入（{rec.get('status') or '无状态'} · "
+                             f"{rec.get('period') or '无期次'}）")
+    return lines
+
+
+def _job_record(path: pathlib.Path):
+    """`job.json` → `(任务记录, 问题)`；没有 id 就没法做幂等键，按形状非法处理。"""
+    rec, problem = _read_json(path)
+    if problem:
+        return None, problem
+    if not isinstance(rec, dict):
+        return None, "形状非法（顶层不是对象）"
+    if not rec.get("id"):
+        return None, "形状非法（缺 id）"
+    return rec, ""
+
+
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="把 approval.json / review.json 显式导入状态库")
+    ap = argparse.ArgumentParser(description="把 approval.json / review.json / job.json 显式导入状态库")
     ap.add_argument("--root", default=str(ROOT), help="仓库根（默认本文件上一层）")
     ap.add_argument("--db", default=None, help="状态库路径（默认 out/_state/wenheng.sqlite）")
     ap.add_argument("--period", default=None, help="只导这一期（目录名）")
@@ -146,6 +188,12 @@ def main(argv=None) -> int:
             print("  " + line)
             total += 1
     print(f"完成：{len(dirs)} 期 · {total} 项（审批+复核）")
+
+    job_lines = import_jobs(out_root / "_jobs", db)
+    for line in job_lines:
+        print("  " + line)
+    n_imported = sum(1 for line in job_lines if "：导入（" in line)
+    print(f"任务记录：导入 {n_imported} 条 / 处理 {len(job_lines)} 项")
     health = state_store.health(db)
     print(f"库状态：schema {health['schema_version']}/{health['code_version']}"
           f"{' · 降级只读：' + health['note'] if health['degraded'] else ''}")

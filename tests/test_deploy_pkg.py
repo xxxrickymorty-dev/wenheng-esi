@@ -35,7 +35,7 @@ def _fake_repo(tmp_path):
                 "out/202607/overview_facts.json", "out/202607/报告初稿_202607.docx",
                 "out/202607/_superseded/old.docx", "out/202609/x.json",
                 "out/_acquisition/202609/监测表.xlsx",
-                "out/_jobs/20260901/job.json", "tmp/junk.txt",
+                "out/_jobs/20260901/progress.jsonl", "tmp/junk.txt",
                 ".venv/pyvenv.cfg", "src/__pycache__/m.pyc",
                 "server/e2e_report.txt"):
         _mkfile(root / rel)
@@ -67,8 +67,15 @@ class Test进包口径:
         rels = _rels(_fake_repo(tmp_path), include_data=True)
         for rel in (f"input/{pkg.ledger_mod.LEDGER_NAME}", "out/202607/red_slots.json",
                     "out/_acquisition/202609/监测表.xlsx",
-                    "out/_jobs/20260901/job.json"):
+                    "out/_jobs/20260901/progress.jsonl"):
             assert rel in rels, rel
+
+    def test_状态库进包(self, tmp_path):
+        """签单/复核/任务记录都在 `out/_state`（ADR-0012 决定 11）——漏了它包就是空的。"""
+        root = _fake_repo(tmp_path)
+        _mkfile(root / "out/_state" / "wenheng.sqlite")
+        assert "out/_state/wenheng.sqlite" in _rels(root, include_data=True)
+        assert "out/_state/wenheng.sqlite" not in _rels(root, include_data=False)
 
     def test_纯代码包不含数据(self, tmp_path):
         rels = _rels(_fake_repo(tmp_path), include_data=False)

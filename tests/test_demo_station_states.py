@@ -9,14 +9,15 @@
 这组测试钉住「只有一份口径」这件事。最狠的一条是 `TERMINAL is states.TERMINAL`
 ——要求**同一个对象**，不是内容相等；复制一份出来就会红。
 """
-import json
 import pathlib
 import re
+import sqlite3
 import sys
 
 import pytest
 
 from agent import states
+from src import state_store
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 SERVER = REPO / "server"
@@ -25,6 +26,12 @@ if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
 from server import config, jobs                                   # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _tmp_state_db(tmp_path, monkeypatch):
+    """每个用例一个状态库：任务记录 2026-10-21 起只在库里（绝不碰 out/_state）。"""
+    monkeypatch.setenv(state_store.ENV_VAR, str(tmp_path / "_state" / "wenheng.sqlite"))
 
 
 # ============================================================ 口径唯一
@@ -55,7 +62,7 @@ def test_终态判定(status, expect):
 
 
 def test_旧名也能判终态():
-    """`out/_jobs/` 下的历史 job.json 存的是旧名，不能因此被判成"还在跑"。"""
+    """状态库里存的历史记录用旧名，不能因此被判成"还在跑"。"""
     assert jobs.is_terminal("done") is True
     assert jobs.is_terminal("warn") is True
     assert jobs.is_terminal("interrupted") is True
@@ -102,11 +109,9 @@ def test_退出码映射的产物都是合法状态名():
 
 # ============================================================ 读盘归一
 def _put(jobs_dir, job_id, **fields):
-    d = jobs_dir / job_id
-    d.mkdir(parents=True, exist_ok=True)
-    (d / "job.json").write_text(
-        json.dumps({"id": job_id, **fields}, ensure_ascii=False), encoding="utf-8")
-    return d
+    """往状态库播一条任务记录（库里就是任务记录的唯一真相源）；目录按需由调用方建。"""
+    state_store.put_job(state_store.db_path(), {"id": job_id, **fields})
+    return jobs_dir / job_id
 
 
 def test_读盘时把旧状态名归一(tmp_path, monkeypatch):
@@ -125,11 +130,13 @@ def test_列表页也拿到归一后的状态(tmp_path, monkeypatch):
     assert [j["status"] for j in jobs.list_jobs()] == ["warned"]
 
 
-def test_坏json不抛异常(tmp_path, monkeypatch):
+def test_坏记录不抛异常(tmp_path, monkeypatch):
+    """库里坏行当作没有（与旧 `read_job` 读坏 json 同口径），不能把列表页炸掉。"""
     monkeypatch.setattr(config, "JOBS_DIR", tmp_path)
-    d = tmp_path / "broken"
-    d.mkdir()
-    (d / "job.json").write_text("{ 这不是 json", encoding="utf-8")
+    db = state_store.db_path()
+    _put(tmp_path, "broken", status="completed", period="202607")
+    with sqlite3.connect(str(db)) as con:
+        con.execute("UPDATE jobs SET payload=? WHERE id=?", ("{ 这不是 json", "broken"))
     assert jobs.read_job("broken") is None
 
 
@@ -208,18 +215,16 @@ def test_前端话术与后端中文名逐字一致():
 
 # ============================================================ 步骤级不受牵连
 def test_进度文件路径失效时重定位到当前jobs目录(tmp_path, monkeypatch):
-    """工作区搬过家（`…“AI+管理服务”\\wenheng` → `…\\wenheng`），历史 job.json 里
+    """工作区搬过家（`…“AI+管理服务”\\wenheng` → `…\\wenheng`），历史记录里
     存的是旧绝对路径。不重定位的话，运行档案页会显示"没有进度事件"——
     读起来像这次运行没记录，其实文件一直在 `out/_jobs/<id>/` 下。"""
     monkeypatch.setattr(jobs.config, "JOBS_DIR", tmp_path)
     d = tmp_path / "j-old"
     d.mkdir()
     (d / "progress.jsonl").write_text('{"step":"parse","status":"done"}\n', encoding="utf-8")
-    (d / "job.json").write_text(json.dumps({
-        "id": "j-old", "status": "completed",
-        "progress": "D://旧工作区//wenheng//out//_jobs//j-old//progress.jsonl",
-        "console": "D://旧工作区//wenheng//out//_jobs//j-old//console.log",
-    }), encoding="utf-8")
+    _put(tmp_path, "j-old", status="completed",
+         progress="D://旧工作区//wenheng//out//_jobs//j-old//progress.jsonl",
+         console="D://旧工作区//wenheng//out//_jobs//j-old//console.log")
 
     j = jobs.read_job("j-old")
     assert j["progress"] == str(d / "progress.jsonl"), "同名文件就在本职目录，应重定位"
@@ -232,8 +237,16 @@ def test_路径本来就对时不动它(tmp_path, monkeypatch):
     d = tmp_path / "j-new"
     d.mkdir()
     (d / "progress.jsonl").write_text("", encoding="utf-8")
-    (d / "job.json").write_text(json.dumps({
-        "id": "j-new", "status": "completed",
-        "progress": str(d / "progress.jsonl"),
-    }), encoding="utf-8")
+    _put(tmp_path, "j-new", status="completed", progress=str(d / "progress.jsonl"))
     assert jobs.read_job("j-new")["progress"] == str(d / "progress.jsonl")
+
+
+def test_反斜杠旧路径也能重定位(tmp_path, monkeypatch):
+    """记录随部署包跨平台走：Windows 反斜杠路径在 Linux 上也必须认得出文件名。"""
+    monkeypatch.setattr(jobs.config, "JOBS_DIR", tmp_path)
+    d = tmp_path / "j-win"
+    d.mkdir()
+    (d / "console.log").write_text("ok\n", encoding="utf-8")
+    _put(tmp_path, "j-win", status="completed",
+         console="C:\\旧工作区\\wenheng\\out\\_jobs\\j-win\\console.log")
+    assert jobs.read_job("j-win")["console"] == str(d / "console.log")

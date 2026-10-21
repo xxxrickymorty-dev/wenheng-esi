@@ -51,12 +51,14 @@ def test_首次写时原子建库且带版本与迁移记录(tmp_path):
     state_store.put_approval(db, "202607", _rec())
 
     assert db.is_file()
-    assert {"meta", "migrations", "approvals", "approval_history", "reviews"} <= _tables(db)
+    assert {"meta", "migrations", "approvals", "approval_history", "reviews",
+            "jobs"} <= _tables(db)
     health = state_store.health(db)
     assert health["schema_version"] == state_store.SCHEMA_VERSION
     assert health["degraded"] is False
     with sqlite3.connect(str(db)) as con:
-        assert con.execute("SELECT COUNT(*) FROM migrations").fetchone()[0] == 1
+        assert con.execute("SELECT COUNT(*) FROM migrations").fetchone()[0] == \
+            len(state_store.MIGRATIONS)
         assert con.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
     assert not list(db.parent.glob("*.tmp-*"))                # 半截库不残留
 
@@ -66,7 +68,8 @@ def test_重复打开不会重跑迁移(tmp_path):
     state_store.put_approval(db, "202607", _rec())
     state_store.put_approval(db, "202607", _rec(note="第二次"))
     with sqlite3.connect(str(db)) as con:
-        assert con.execute("SELECT COUNT(*) FROM migrations").fetchone()[0] == 1
+        assert con.execute("SELECT COUNT(*) FROM migrations").fetchone()[0] == \
+            len(state_store.MIGRATIONS)
         assert con.execute("SELECT COUNT(*) FROM meta WHERE key='schema_version'").fetchone()[0] == 1
 
 
@@ -135,6 +138,96 @@ def test_存疑增删与整期覆盖(tmp_path):
     assert state_store.periods(db) == []                      # 只有复核行，没有签单 → 不算期次
     state_store.put_approval(db, "202607", _rec())
     assert state_store.periods(db) == ["202607"]
+
+
+# ---------------------------------------------------------------- 任务记录（第二批）
+def _job(**extra):
+    job = {"id": "20261021-101500-ab12", "period": "202607", "input": "input/x.xlsx",
+           "actor": "rick", "backtest": False, "status": "running",
+           "created_at": "2026-10-21 10:15:00", "started_at": "2026-10-21 10:15:00",
+           "finished_at": None, "exit_code": None,
+           "progress": "C:/旧工作区/out/_jobs/20261021-101500-ab12/progress.jsonl",
+           "console": "C:/旧工作区/out/_jobs/20261021-101500-ab12/console.log"}
+    job.update(extra)
+    return job
+
+
+def test_任务记录往返相等(tmp_path):
+    """`payload` 必须能**无损**还原成原 `job.json` 字典（null、布尔、数值、嵌套 stats 都要扛住）。"""
+    db = tmp_path / "wenheng.sqlite"
+    job = _job(status="completed", exit_code=0, finished_at="2026-10-21 10:18:00",
+               out_period="202607",
+               stats={"assertions": {"total": 48, "fail": 0}, "missing": [],
+                      "elapsed_sec": 96.5})
+    state_store.put_job(db, job)
+    assert state_store.get_job(db, job["id"]) == job
+
+
+def test_任务记录覆盖写不新增行(tmp_path):
+    db = tmp_path / "wenheng.sqlite"
+    job = _job()
+    state_store.put_job(db, job)
+    state_store.put_job(db, {**job, "status": "completed", "exit_code": 0})
+    assert state_store.get_job(db, job["id"])["status"] == "completed"
+    with sqlite3.connect(str(db)) as con:
+        assert con.execute("SELECT COUNT(*) FROM jobs").fetchone()[0] == 1
+        # 提升列与 payload 同源（active_job 的查询只认这两列）
+        assert con.execute("SELECT status, period FROM jobs").fetchone() == ("completed", "202607")
+
+
+def test_任务列表按创建时间新到旧且可按期次与状态过滤(tmp_path):
+    db = tmp_path / "wenheng.sqlite"
+    state_store.put_job(db, _job(id="a", created_at="2026-10-01 10:00:00", status="completed"))
+    state_store.put_job(db, _job(id="b", created_at="2026-10-20 10:00:00", status="running",
+                                 period="202609"))
+    state_store.put_job(db, _job(id="c", created_at="2026-10-21 10:00:00", status="failed"))
+    assert [j["id"] for j in state_store.list_jobs(db)] == ["c", "b", "a"]
+    assert [j["id"] for j in state_store.list_jobs(db, limit=2)] == ["c", "b"]
+    assert [j["id"] for j in state_store.list_jobs(db, period="202607")] == ["c", "a"]
+    assert [j["id"] for j in state_store.list_jobs(db, statuses=("running", "pending"))] == ["b"]
+
+
+def test_任务库不存在时读口不造文件(tmp_path):
+    """导入 `server.app` 会跑 `recover_stale()`——它不能顺手把库建出来。"""
+    db = tmp_path / "_state" / "wenheng.sqlite"
+    assert state_store.get_job(db, "x") is None
+    assert state_store.list_jobs(db) == []
+    assert not db.exists()
+
+
+def test_任务记录形状非法不落行(tmp_path):
+    db = tmp_path / "wenheng.sqlite"
+    with pytest.raises(state_store.StoreError):
+        state_store.put_job(db, ["not-a-dict"])
+    with pytest.raises(state_store.StoreError):
+        state_store.put_job(db, {"period": "202607"})     # 没有 id 就没有幂等键
+    assert state_store.list_jobs(db) == []
+
+
+def test_旧库升级到002不丢已有签单(tmp_path):
+    """手工造一个 001 时代的库 → 打开即补 002；签单不动，迁移不重跑。"""
+    db = tmp_path / "wenheng.sqlite"
+    con = sqlite3.connect(str(db))
+    try:
+        con.execute("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)")
+        con.execute("CREATE TABLE migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL,"
+                    " note TEXT NOT NULL DEFAULT '')")
+        state_store._migrate_001(con)
+        con.execute("INSERT INTO approvals (period, actor, signed_at, payload)"
+                    " VALUES (?, ?, ?, ?)", ("202607", "rick", "t", json.dumps({"signed": True})))
+        con.execute("INSERT INTO migrations (id, applied_at, note)"
+                    " VALUES ('001-approvals-reviews', 't', '')")
+        con.execute("INSERT INTO meta (key, value) VALUES ('schema_version', '1')")
+        con.commit()
+    finally:
+        con.close()
+
+    assert state_store.get_approval(db, "202607")["signed"] is True
+    assert state_store.get_job(db, "x") is None
+    with sqlite3.connect(str(db)) as con:
+        assert con.execute("SELECT COUNT(*) FROM migrations").fetchone()[0] == 2
+        tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    assert "jobs" in tables
 
 
 # ---------------------------------------------------------------- 降级

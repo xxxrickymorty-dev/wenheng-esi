@@ -249,13 +249,18 @@ check("操作员旧报告路由进新工作区阅读视图",
 out("=== 3.5 老站 302 落点（ADR-0002 阶段 2） ===")
 # 期望落点的单一事实源在 server/config.py 的 LEGACY_REDIRECTS；
 # 这里逐条打老 URL（自动跟随 302），断言最终落在新工作区对应视图。
-_job_cands = sorted((WENHENG / "out" / "_jobs").glob("*/job.json"))
-jobid = _job_cands[-1].parent.name if _job_cands else ""
-_job_rec = (json.loads((WENHENG / "out" / "_jobs" / jobid / "job.json").read_text(encoding="utf-8"))
-            if jobid else {})
+# 任务记录 2026-10-21 起只在系统状态库里（`out/_jobs/<id>/job.json` 已不再写），
+# 所以「最近一次任务」也改成查库——与 `jobs.list_jobs()` 同一口径。
+for _p in (str(WENHENG), str(WENHENG / "src")):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+import state_store as _store                                  # noqa: E402
+
+_jobs_db = _store.db_path(WENHENG / "out" / "_jobs")
+_jobs_hist = _store.list_jobs(_jobs_db, limit=1)
+jobid = _jobs_hist[0]["id"] if _jobs_hist else ""
+_job_rec = _jobs_hist[0] if _jobs_hist else {}
 _job_period = _job_rec.get("out_period") or _job_rec.get("period") or ""
-import sys as _sys
-_sys.path.insert(0, str(WENHENG))
 from server import config as _cfg                                  # noqa: E402
 for _old in _cfg.LEGACY_LIVE:
     _tpl = _cfg.LEGACY_REDIRECTS[_old]
@@ -338,10 +343,6 @@ _pend, _manual = _pending_fills(), _manual_slots()
 # 🔴 **不复制 .sqlite 来还原**：服务进程持着连接、WAL 未 checkpoint，复制出来的是
 # 不一致的快照。这里走 state_store 的行级读写（approval_history 一并覆盖）。
 # 若服务用 WENHENG_STATE_DB 指向了别的库，e2e 必须带同一个环境变量启动。
-for _p in (str(WENHENG), str(WENHENG / "src")):
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
-import state_store as _store                                  # noqa: E402
 from server import approval as _approval                      # noqa: E402
 
 _OUT_202607 = WENHENG / "out/202607"
@@ -473,7 +474,7 @@ check("快照内联全量槽位", snap.count('"loc"') >= 350, f"n={snap.count(ch
 
 out("=== 11. 任务状态口径同源（10 态）===")
 # 演示站的状态名必须来自 src/agent/states.py（WH-DOC-03 §6.3 要求恰好 10 态）。
-# 这里只读校验：历史 job.json 里存的旧名（done/warn/interrupted）也必须在
+# 这里只读校验：历史任务记录里存的旧名（done/warn/interrupted）也必须在
 # 读取时被归一——否则「已完成」的任务会被判成「仍在跑」。
 sys.path.insert(0, str(WENHENG / "src"))
 from agent import states                                          # noqa: E402
@@ -518,10 +519,16 @@ if jobid:
     try:
         _jz = _zf.ZipFile(_io.BytesIO(jraw))
         _jn = _jz.namelist()
+        _jpack = (json.loads(_jz.read("job/job.json").decode("utf-8"))
+                  if "job/job.json" in _jn else {})
     except Exception:                                              # noqa: BLE001
-        _jn = []
-    check("任务日志包带 job 上下文三件套",
-          all(n in _jn for n in ("job/job.json", "job/progress.jsonl", "job/console.log")),
+        _jn, _jpack = [], {}
+    # 包里的 `job.json` 是**由状态库渲染**的：字段必须与库里那条记录一致
+    # （磁盘上的旧 job.json 已停写，读到它会是 2026-10-21 之前的陈货）。
+    check("任务日志包带 job 上下文三件套（job.json 由状态库渲染）",
+          all(n in _jn for n in ("job/job.json", "job/progress.jsonl", "job/console.log"))
+          and _jpack.get("id") == jobid
+          and _jpack.get("status") == _job_rec.get("status"),
           str([n for n in _jn if n.startswith("job/")]))
     # 2026-10-12：出报告对操作员开放——任务下载口与期次口同款（拦红件/日志包、放行其余）
     st, _, _ = call("GET", f"/jobs/{jobid}/download/red_list", opener=gop)

@@ -13,8 +13,10 @@
 进包 / 不进包（口径写死在这里，部署清单 §0 引用本文件）：
     进：pyproject.toml、CONTEXT.md、GLOSSARY.md、AGENTS.md、docs/、src/、server/、tools/、tests/、
         master/、web/dist/；演示包另加 input/（只放母本）、out/202607/（剔除 _superseded）、
-        out/_acquisition/（取数状态 + 当期核对副本）、out/_jobs/、
-        out/_state/（系统状态库：签单与复核；打包前先 `wal_checkpoint(TRUNCATE)`）
+        out/_acquisition/（取数状态 + 当期核对副本）、
+        out/_jobs/（progress.jsonl / console.log / forecast_choice.json；任务记录本身已在
+        `out/_state` 的 `jobs` 表里，这里不再有 job.json）、
+        out/_state/（系统状态库：签单 / 复核 / 任务记录；打包前先 `wal_checkpoint(TRUNCATE)`）
     不进：server/.env（密钥）、web/node_modules/、__pycache__/、.pytest_cache/、
         .ruff_cache/、tmp/、.git/、_superseded/、out/ 其它期次
 

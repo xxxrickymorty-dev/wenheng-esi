@@ -215,19 +215,24 @@ def test_日志包内README写清与归档包的分工(tmp_path):
 
 
 def test_日志包带任务上下文(tmp_path):
+    """任务上下文三件套：`job.json` 由**库里的记录**渲染（磁盘上那份不再是读路径）。"""
     d = _make_out(tmp_path)
     jd = tmp_path / "_jobs" / "j1"
     jd.mkdir(parents=True)
-    (jd / "job.json").write_text('{"id":"j1"}', encoding="utf-8")
+    # 磁盘上留一份陈旧 job.json：包里必须是传进来的记录，而不是它。
+    (jd / "job.json").write_text('{"id": "stale"}', encoding="utf-8")
     (jd / "progress.jsonl").write_text('{"step":"parse","status":"done"}\n', encoding="utf-8")
     (jd / "console.log").write_text("[1/5] 解析台账\n", encoding="utf-8")
-    job = {"id": "j1", "progress": str(jd / "progress.jsonl")}
+    job = {"id": "j1", "status": "completed", "progress": str(jd / "progress.jsonl")}
     data, _ = archive.pack(d, job=job)
     with zipfile.ZipFile(io.BytesIO(data)) as z:
         names = z.namelist()
+        rendered = json.loads(z.read("job/job.json").decode("utf-8"))
     assert "job/job.json" in names
     assert "job/progress.jsonl" in names
     assert "job/console.log" in names
+    assert rendered["id"] == "j1" and rendered["status"] == "completed", \
+        "包里的 job.json 必须由库渲染；读到磁盘旧文件就是双真相"
 
 
 def test_打包不落盘不污染out目录(tmp_path):

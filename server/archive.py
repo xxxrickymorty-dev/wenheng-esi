@@ -55,12 +55,16 @@ LOGPACK_PERIOD_FILES = (
     "task_runs.jsonl",
 )
 
-#: 日志包额外带的任务上下文（相对 out/_jobs/<id>/）
+#: 日志包额外带的任务上下文（相对 out/_jobs/<id>/）。
+#: ⚠ `job.json` 不在这里：任务记录已入库（2026-10-21），包里那份由 `pack()` 用库里的
+#: 记录**渲染**出来（导出件）；磁盘上那份 `job.json` 不再是真相，也不该被当成文件读。
 LOGPACK_JOB_FILES = (
-    "job.json",
     "progress.jsonl",
     "console.log",
 )
+
+#: 任务记录在包内的名字（渲染自 `jobs` 表，见 `logpack_files` / `pack`）。
+JOB_RECORD_NAME = "job.json"
 
 #: 日志包的下载 key（走既有 `/…/download/{key}` 白名单，不新增路由）
 LOGPACK_KEY = "logpack"
@@ -121,7 +125,12 @@ def _synthesize_states(job):
         {"from": "running", "to": term, "trigger": "流水线退出码 %s" % (job.get("exit_code"),),
          "ts": job.get("finished_at") or "", "attempt": 1, "synthetic": True},
     ]
-    return chain, "演示站直跑路径不产生 state_history.jsonl，此链由 job.json 合成"
+    return chain, "演示站直跑路径不产生 state_history.jsonl，此链由任务记录合成"
+
+
+def _render_job(job) -> bytes:
+    """把任务记录渲染成包内 `job/job.json`（与历史 `job.json` 同格式：indent=1、中文不转义）。"""
+    return json.dumps(job or {}, ensure_ascii=False, indent=1).encode("utf-8")
 
 
 def state_replay(out_dir, job=None):
@@ -349,6 +358,8 @@ def logpack_files(out_dir, job=None):
         if p.exists():
             out.append({"name": name, "scope": "期次", "size": p.stat().st_size})
     if job:
+        # 任务记录由库渲染（`job.json` 已无文件）；大小按渲染后的字节算，页面显示才不虚。
+        out.append({"name": JOB_RECORD_NAME, "scope": "任务", "size": len(_render_job(job))})
         jd = pathlib.Path(job.get("progress", "")).parent if job.get("progress") else None
         if jd and jd.is_dir():
             for name in LOGPACK_JOB_FILES:
@@ -394,6 +405,9 @@ def pack(out_dir, job=None):
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("README.txt", _readme(out_dir, job, files))
         for f in files:
+            if f["scope"] == "任务" and f["name"] == JOB_RECORD_NAME:
+                z.writestr(f"job/{JOB_RECORD_NAME}", _render_job(job))
+                continue
             if f["scope"] == "任务" and job and job.get("progress"):
                 src = pathlib.Path(job["progress"]).parent / f["name"]
                 arc = f"job/{f['name']}"

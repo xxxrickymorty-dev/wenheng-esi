@@ -94,6 +94,28 @@ def test_空复核文件不算已导入(repo):
     assert state_store.get_reviews(_db(repo), "202609") == {}
 
 
+def test_任务记录显式导入且幂等(repo):
+    """`job.json` 只经显式工具入库：导入一次、重跑跳过、原文件不删（ADR-0012 决定 10）。"""
+    jobs_dir = repo / "out" / "_jobs"
+    job_id = "20261021-101500-ab12"
+    d = jobs_dir / job_id
+    d.mkdir(parents=True)
+    job = {"id": job_id, "period": "202607", "status": "done",
+           "created_at": "2026-10-21 10:15:00", "exit_code": 0,
+           "progress": str(d / "progress.jsonl")}
+    (d / "job.json").write_text(json.dumps(job, ensure_ascii=False), encoding="utf-8")
+    db = _db(repo)
+
+    first = "\n".join(state_import.import_jobs(jobs_dir, db))
+    assert "：导入（" in first
+    assert state_store.get_job(db, job_id) == job
+    assert (d / "job.json").is_file(), "导入不删原文件（回退还得靠它）"
+
+    second = "\n".join(state_import.import_jobs(jobs_dir, db))
+    assert "已存在跳过" in second
+    assert state_store.list_jobs(db) == [job]
+
+
 def test_命令入口扫描期次目录且跳过非期次(repo, capsys):
     assert state_import.main(["--root", str(repo)]) == 0
     out = capsys.readouterr().out

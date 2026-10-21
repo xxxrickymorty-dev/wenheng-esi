@@ -86,11 +86,13 @@ class Test瀑布口径:
 
 class Test真实任务:
     def test_真实job的progress可解析(self, repo):
-        cands = sorted((repo / "out" / "_jobs").glob("*/job.json"))
-        if not cands:
+        from src import state_store
+        db = state_store.db_path(repo / "out" / "_jobs")
+        records = state_store.list_jobs(db, limit=5)
+        if not records:
             from _guard_registry import skip_unless
-            skip_unless("out/_jobs 无任务", lambda: bool(list((repo / "out" / "_jobs").glob("*/job.json"))))
-        job = jobs.read_job(cands[-1].parent.name)
+            skip_unless("状态库无任务记录", lambda: bool(state_store.list_jobs(db, limit=1)))
+        job = jobs.read_job(records[0]["id"])
         events = jobs.read_progress(job)
         if events:
             rows = archive.waterfall(events)

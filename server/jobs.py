@@ -11,8 +11,16 @@ WH-DOC-03 §6.3 / WH-DOC-02 R-13 要求的 10 态对不上——`done` 不等于
 `Completed`，`interrupted` 干脆是个文档里不存在的状态。
 
 改动要点：
-  · 写盘一律写新名；读盘经 `normalize()` 认旧名，历史 `out/_jobs/*/job.json` 无需迁移；
+  · 写盘一律写新名；读盘经 `normalize()` 认旧名，历史任务记录无需迁移；
   · `TERMINAL` 只保留一个来源，`app.py` 判终态请用 `is_terminal()`（会先归一）。
+
+存储口径（2026-10-21，ADR-0012 第二批）
+--------------------------------------------------------------------------------
+任务记录**不再落 `out/_jobs/<id>/job.json`**，唯一真相源是系统状态库
+（`src/state_store.py` 的 `jobs` 表，`out/_state/wenheng.sqlite`）。
+`out/_jobs/<id>/` 目录照旧创建——`progress.jsonl` / `console.log` / `forecast_choice.json`
+还在里面（追加日志与 SSE 的字节偏移 tail 都靠它们），只是不再有 `job.json`。
+对外签名与返回字典形状一个没动：`app.py`、前端、e2e 建在这些形状上。
 """
 import asyncio
 import datetime as dt
@@ -27,8 +35,8 @@ from . import config
 
 #: config 导入时已把 src/ 放进 sys.path，这里可直接拿到 agent 层
 from agent import states as agent_states
-from src import atomic_io
 from src import forecast_choice
+from src import state_store
 
 #: 期次口径唯一来源（re-export，不另抄一份正则）
 from src import period as _period
@@ -73,13 +81,23 @@ def job_dir(job_id):
     return config.JOBS_DIR / job_id
 
 
+def state_db_path():
+    """任务记录所在的状态库：`out/_state/wenheng.sqlite`（与签单/复核同一个库）。
+
+    口径跟 `JOBS_DIR` 走（`out/_jobs` 的同级 `_state/`）：测试把 `JOBS_DIR` 指到 tmp，
+    库就落在 tmp，碰不到演示数据。`WENHENG_STATE_DB` 仍优先（e2e / 子进程靠它对齐）。
+    """
+    return state_store.db_path(config.JOBS_DIR)
+
+
 def _relocate(j):
     """把 `progress` / `console` 重新指回 `out/_jobs/<id>/` 下的同名文件。
 
-    为什么需要：历史 `job.json` 里存的是**绝对路径**，而工作区被搬过
+    为什么需要：历史记录里存的是**绝对路径**，而工作区被搬过
     （`首届高校图书馆“AI+管理服务”\\wenheng` → `首届高校图书馆\\wenheng`）。
     路径失效后进度事件与控制台输出全读不到，档案页会静默显示"没有进度事件"——
     读起来像"这次运行不是演示站发起的"，其实是**文件还在、指针过期**。
+    （入库时 payload 原样保存绝对路径，所以这条读侧修补照旧：库不会把指针变新。）
 
     只在本职目录里找同名文件；找不到就保持原值（让上层显示为缺失，而不是假装存在）。
     """
@@ -87,31 +105,33 @@ def _relocate(j):
         old = j.get(key)
         if not old:
             continue
-        cand = job_dir(j["id"]) / pathlib.Path(old).name
+        # 先把 Windows 分隔符归一：部署机是 Linux，`Path("C:\\…\\progress.jsonl").name`
+        # 在那边整串都算文件名，重定位会静默失效（记录随包跨平台走，必须两种写法都认）。
+        name = pathlib.PurePath(str(old).replace("\\", "/")).name
+        cand = job_dir(j["id"]) / name
         if cand.exists():
             j[key] = str(cand)
     return j
 
 
-def read_job(job_id):
-    p = job_dir(job_id) / "job.json"
-    if not p.exists():
-        return None
-    try:
-        j = json.loads(p.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
+def _prepare(j):
+    """读出来的任务记录：状态旧名归一 + 路径重定位（**唯一**的读侧加工点）。"""
     if isinstance(j, dict) and "status" in j:
         j["status"] = agent_states.normalize(j.get("status"))
         j = _relocate(j)
     return j
 
 
+def read_job(job_id):
+    """读一条任务记录；没有 → None（不再看 `job.json`，磁盘上那份不再是读路径）。"""
+    j = state_store.get_job(state_db_path(), job_id)
+    return _prepare(j) if j is not None else None
+
+
 def write_job(job):
-    d = job_dir(job["id"])
-    d.mkdir(parents=True, exist_ok=True)
-    atomic_io.write_text_atomic(
-        d / "job.json", json.dumps(job, ensure_ascii=False, indent=1))
+    """落库（upsert）；目录照旧确保存在——`_run` 要往里写 console.log。"""
+    job_dir(job["id"]).mkdir(parents=True, exist_ok=True)
+    state_store.put_job(state_db_path(), job)
 
 
 def _forecast_choice_snapshot(period):
@@ -122,19 +142,20 @@ def _forecast_choice_snapshot(period):
 
 
 def list_jobs(limit=20, period=None):
-    jobs = []
-    if config.JOBS_DIR.exists():
-        for d in config.JOBS_DIR.iterdir():
-            j = read_job(d.name)
-            if j and (period is None or j.get("period") == period):
-                jobs.append(j)
-    jobs.sort(key=lambda j: j.get("created_at", ""), reverse=True)
-    return jobs[:limit]
+    jobs = state_store.list_jobs(state_db_path(), period=period, limit=limit)
+    return [_prepare(j) for j in jobs]
+
+
+#: 「在跑」的库内状态：非终态里除 `waiting_approval` 之外的那几个。
+#: 待签单的任务没有进程在跑，不该挡住新任务——与旧实现只看内存 `_running` 同义。
+LIVE_STATUSES = (agent_states.PENDING, agent_states.RUNNING,
+                 agent_states.RETRYING, agent_states.STALLED)
 
 
 def active_job():
-    for jid in list(_running):
-        j = read_job(jid)
+    """「一次只跑一期」的判据：库里第一条在跑的任务（一次查询，不扫目录）。"""
+    for j in state_store.list_jobs(state_db_path(), statuses=LIVE_STATUSES, limit=20):
+        j = _prepare(j)
         if j and not is_terminal(j.get("status")):
             return j
     return None
@@ -147,10 +168,8 @@ def recover_stale():
     进程随服务一起消失属"意外终止"，不是馆员主动 `cancelled`；
     也不落 `stalled`——停滞是**非终态**，留着会让任务永远挂在半途。
     """
-    if not config.JOBS_DIR.exists():
-        return
-    for d in config.JOBS_DIR.iterdir():
-        j = read_job(d.name)
+    for j in state_store.list_jobs(state_db_path(), statuses=(agent_states.RUNNING,)):
+        j = _prepare(j)
         if j and j.get("status") == agent_states.RUNNING:
             j["status"] = agent_states.FAILED
             j["finished_at"] = _now()
