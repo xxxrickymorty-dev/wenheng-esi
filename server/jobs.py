@@ -27,6 +27,7 @@ from . import config
 
 #: config 导入时已把 src/ 放进 sys.path，这里可直接拿到 agent 层
 from agent import states as agent_states
+from src import atomic_io
 from src import forecast_choice
 
 #: 期次口径唯一来源（re-export，不另抄一份正则）
@@ -109,8 +110,8 @@ def read_job(job_id):
 def write_job(job):
     d = job_dir(job["id"])
     d.mkdir(parents=True, exist_ok=True)
-    (d / "job.json").write_text(
-        json.dumps(job, ensure_ascii=False, indent=1), encoding="utf-8")
+    atomic_io.write_text_atomic(
+        d / "job.json", json.dumps(job, ensure_ascii=False, indent=1))
 
 
 def _forecast_choice_snapshot(period):

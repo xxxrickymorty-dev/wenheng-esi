@@ -47,6 +47,9 @@ import sys
 import tempfile
 import time
 
+#: 状态文件原子写（ADR-0012 决定 1）；src/ 在 sys.path 上，扁平导入是本仓 src 内模块的常态
+import atomic_io
+
 # ------------------------------------------------------------------ 常量
 BIG_TABLE_ROWS = 22          # 数据行（表头除外；doc 里整表 23 行）
 BIG_TABLE_COLS = 11
@@ -533,9 +536,10 @@ def run_audit(out_dir, ledger=None, rate=SLOT_SAMPLE_RATE, seed=SLOT_SAMPLE_SEED
         },
     }
     out.mkdir(parents=True, exist_ok=True)
-    (out / "audit_record.json").write_text(
-        json.dumps(rec, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
-    (out / "审计记录.md").write_text(render_md(rec), encoding="utf-8")
+    atomic_io.write_text_atomic(
+        out / "audit_record.json",
+        json.dumps(rec, ensure_ascii=False, indent=1, default=str))
+    atomic_io.write_text_atomic(out / "审计记录.md", render_md(rec))
     return rec
 
 
@@ -623,8 +627,8 @@ def write_env_snapshot(run_dir):
         "deps": vers,
         "git_commit": _git_commit(),
     }
-    (root / "env_snapshot.json").write_text(
-        json.dumps(snap, ensure_ascii=False, indent=1), encoding="utf-8")
+    atomic_io.write_text_atomic(
+        root / "env_snapshot.json", json.dumps(snap, ensure_ascii=False, indent=1))
     return snap
 
 

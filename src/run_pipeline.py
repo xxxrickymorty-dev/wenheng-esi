@@ -24,6 +24,7 @@ import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
+import atomic_io  # noqa: E402
 import forecast_choice  # noqa: E402
 import ledger  # noqa: E402
 import parse_ledger  # noqa: E402
@@ -311,7 +312,8 @@ def main(ledger_path, out_root="out", run_backtest=False, period=None):
     if diag_path:
         log["artifacts"]["diagnosis"] = str(diag_path)
         log["diagnosis"] = True
-    (out_dir / "run_log.json").write_text(json.dumps(log, ensure_ascii=False, indent=1), encoding="utf-8")
+    atomic_io.write_text_atomic(
+        out_dir / "run_log.json", json.dumps(log, ensure_ascii=False, indent=1))
     print(json.dumps(log, ensure_ascii=False, indent=1))
     _emit("done", "完成", "done" if ok else "warn",
           f"全链路 {log['elapsed_sec']} 秒 · 断言 {'全绿' if ok else f'{n_fail} 项 FAIL'} · "

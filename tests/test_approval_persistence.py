@@ -99,14 +99,14 @@ def test_revoke_fails_without_changing_signed_record_when_replace_fails(
 def test_sign_succeeds_when_derived_markdown_write_fails(tmp_path, monkeypatch):
     out_dir = tmp_path / "202609"
     out_dir.mkdir()
-    real_write_text = Path.write_text
+    real_write = approval.atomic_io.write_text_atomic
 
-    def fail_record_write(path, *args, **kwargs):
-        if path.name == approval.RECORD_NAME:
+    def fail_record_write(path, text, *args, **kwargs):
+        if Path(path).name == approval.RECORD_NAME:
             raise OSError("simulated Markdown write failure")
-        return real_write_text(path, *args, **kwargs)
+        return real_write(path, text, *args, **kwargs)
 
-    monkeypatch.setattr(Path, "write_text", fail_record_write)
+    monkeypatch.setattr(approval.atomic_io, "write_text_atomic", fail_record_write)
 
     ok, _ = approval.sign(out_dir, "rick", _sign_data())
 

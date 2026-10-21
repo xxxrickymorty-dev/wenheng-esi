@@ -22,6 +22,8 @@ import pathlib
 import tempfile
 import time
 
+from src import atomic_io
+
 APPROVAL_NAME = "approval.json"
 RECORD_NAME = "审批记录.md"
 
@@ -222,6 +224,6 @@ def _write_record(out_dir, rec):
     if st == "stale":
         lines += ["", "> 报告初稿或红色件数据在签单之后被重新生成，本次签单不再对应当前稿件，需重新核对并签单。"]
     try:
-        (out_dir / RECORD_NAME).write_text("\n".join(lines) + "\n", encoding="utf-8")
+        atomic_io.write_text_atomic(out_dir / RECORD_NAME, "\n".join(lines) + "\n")
     except OSError:
         pass

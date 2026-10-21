@@ -20,6 +20,7 @@ import pathlib
 import re
 
 from . import artifacts
+from src import atomic_io
 
 #: 台账外的三张大表：**规格写死，状态不写死**。
 #:
@@ -321,7 +322,7 @@ def save_fill(out_dir, todo_id, value, by="?", at=None):
     rec = {"value": value, "by": by,
            "at": at or dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
     data[todo_id] = rec
-    p.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    atomic_io.write_text_atomic(p, json.dumps(data, ensure_ascii=False, indent=1))
     return {"ok": True, "id": todo_id, **rec, "n_filled": len(data)}
 
 
@@ -342,7 +343,7 @@ def toggle_flag(out_dir, loc, by="?", at=None):
         data[loc] = {"state": "doubt", "by": by,
                      "at": at or dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
         state = "doubt"
-    p.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    atomic_io.write_text_atomic(p, json.dumps(data, ensure_ascii=False, indent=1))
     return {"ok": True, "loc": loc, "state": state, "n_doubt": len(data)}
 
 

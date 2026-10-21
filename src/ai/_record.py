@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import pathlib
 import secrets
 import time
@@ -163,24 +162,27 @@ class Recorder:
         return append(switch_path(self.root), audit)
 
 
+def _atomic_io():
+    """公用原子写模块（`src/atomic_io.py`）。两种导入姿势都盖住：
+
+    仓里既有 `from src.ai import …`（仓库根在 sys.path），也有 `from ai import …`
+    （src/ 自己在 sys.path 上），所以这里不用相对导入。
+    """
+    try:
+        import atomic_io                                        # noqa: PLC0415
+    except ImportError:                                         # 只有仓库根在 sys.path
+        from src import atomic_io                               # noqa: PLC0415
+    return atomic_io
+
+
 def tmp_path(path) -> pathlib.Path:
     """同目录临时名（原子写用；同目录保证 os.replace 原子性）。"""
-    return pathlib.Path(path).with_name(
-        f"{pathlib.Path(path).name}.tmp-{os.getpid()}-{secrets.token_hex(3)}")
+    return _atomic_io().tmp_path(path)
 
 
 def atomic_write_text(path, text: str, encoding: str = "utf-8") -> None:
-    """原子写：tmp（同目录）+ os.replace；失败清理 tmp，目标文件保持旧内容。"""
-    path = pathlib.Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = tmp_path(path)
-    try:
-        with open(tmp, "w", encoding=encoding, newline="\n") as f:
-            f.write(text)
-        os.replace(tmp, path)
-    except OSError:
-        try:
-            tmp.unlink(missing_ok=True)
-        except OSError:
-            pass
-        raise
+    """原子写（薄封装 `src/atomic_io.py::write_text_atomic`）。
+
+    **保留 `newline="\\n"`**：`out/_ai/settings.json` 历来是 LF，换行翻译一开就成了字节回归。
+    """
+    _atomic_io().write_text_atomic(path, text, encoding=encoding, newline="\n")
