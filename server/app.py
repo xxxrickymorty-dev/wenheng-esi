@@ -26,7 +26,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import (acquisition, approval, archive, artifacts, collation, config, datapack, jobs,
-               report_preview, shelf_data, shelf_preview)
+               report_preview, shelf_data, shelf_preview, visibility)
 from . import forecasting
 from .guards import admin_route, user_file_route, user_route
 from starlette.background import BackgroundTask
@@ -171,9 +171,8 @@ def require_user_file(request: Request):
     return user
 
 
-#: 操作员不可见的产物键（红件三件 + 运行日志 + 日志包）——2026-10-11 角色分级。
-#: 产物清单过滤与下载口拦截共用这一份；键的定义在 `jobs._artifact_table` / `archive`。
-OPERATOR_HIDDEN_KEYS = frozenset({"red_list", "red_view", "red_json", "runlog", "logpack"})
+#: 兼容旧导入：真正的规则在 `server.visibility`，这里只是清单投影的别名。
+OPERATOR_HIDDEN_KEYS = visibility.ADMIN_ONLY
 
 
 def _role_of_request(request):
@@ -181,15 +180,13 @@ def _role_of_request(request):
 
 
 def _visible_artifacts(items, role):
-    """产物清单按角色过滤：操作员看不到红件三件与运行日志；管理员原样。"""
-    if role == "admin":
-        return items
-    return [a for a in items if a.get("key") not in OPERATOR_HIDDEN_KEYS]
+    """产物清单的 adapter：规则在 `visibility`，这里不重写 key 判断。"""
+    return visibility.visible(role, items)
 
 
 def _operator_download_guard(role, key):
-    """操作员下载口拦截：红件/日志包类键仅管理员可下载。"""
-    if role != "admin" and key in OPERATOR_HIDDEN_KEYS:
+    """下载口 adapter：红件/日志包/主台账的允许与否由 visibility 决定。"""
+    if not visibility.allowed(role, key, "download"):
         return JSONResponse({"error": "需要管理员权限",
                              "hint": "操作员只读，此文件仅管理员可下载"}, status_code=403)
     return None
@@ -832,7 +829,9 @@ async def api_me(request: Request):
     user = current_user(request)
     if not user:
         return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
-    return {"name": user, "role": config.role_of(user)}
+    role = config.role_of(user)
+    return {"name": user, "role": role,
+            "capabilities": visibility.capabilities(role)}
 
 
 @app.get("/api/periods/{period}")
@@ -1819,9 +1818,9 @@ async def api_period_archive(request: Request, period: str, job: str = ""):
     view["run_log"] = _sanitize_paths(view.get("run_log"), _path_keys)
     view["download_base"] = f"/p/{q}"
     # 操作员只读证据面，但红件/运行日志/日志包仍按 2026-10-11 政策只给管理员。
-    # 不给链接，避免页面上出现一点就 403 的按钮。
+    # 不给链接，避免页面上出现一点就 403 的按钮；决定走 visibility。
     view["logpack_url"] = (f"/p/{q}/download/{view['logpack']['key']}"
-                           if role == "admin" else "")
+                           if visibility.allowed(role, "logpack", "download") else "")
     return view
 
 
