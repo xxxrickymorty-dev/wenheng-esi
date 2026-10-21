@@ -79,8 +79,9 @@ export function StairParticles({ active, books }: Props) {
     ctx.useProgram(prog);
 
     // 台地：一级一册，每级是一片斜的矩形，全部由点组成
-    const PER = 3200;
-    const n = books * PER;
+    const PER = 2600;
+    const PER_RISER = 900;
+    const n = books * PER + (books - 1) * PER_RISER;
     const pos = new Float32Array(n * 2);
     const seed = new Float32Array(n);
     const book = new Float32Array(n);
@@ -98,6 +99,20 @@ export function StairParticles({ active, books }: Props) {
         seed[k] = Math.random();
         book[k] = b;
         k++;
+      }
+      // 立面：把这一级和下一级接起来，台阶才连成一段
+      if (b > 0) {
+        for (let i = 0; i < PER_RISER; i++) {
+          const v = Math.random();
+          const x = STEP.padX + b * STEP.w + v * STEP.depthX;
+          const top = STEP.padY - b * STEP.rise - v * STEP.depthY;
+          const y = top + Math.random() * STEP.rise;
+          pos[k * 2] = x;
+          pos[k * 2 + 1] = y;
+          seed[k] = Math.random();
+          book[k] = b;
+          k++;
+        }
       }
     }
 
