@@ -360,19 +360,35 @@ def trace_check(src: LedgerView, result: dict) -> dict:
     """对查询结果做「来源链自洽」抽查：链里的数字能回读到同一张表。
 
     用于验收第 6 条（每个数字可回溯）。逐点回读，统计一致率。
+
+    🔴 没有 `source` 的条目**算坏**，不再静默跳过——旧版跳过之后
+    `checked=0` 也能让自检判过（「0/0 全对」）。链里没有 metric 的条目
+    （进出事件、云大整体排名）只校验链的存在与定位，不做单格回读。
     """
-    pts = list(result.get("points") or result.get("items") or result.get("rows") or [])
+    pts = list(result.get("points") or result.get("items") or result.get("rows")
+               or result.get("events") or [])
+    if not pts and result.get("source") is not None:
+        pts = [{"value": result.get("value"), "source": result["source"]}]
     ok = bad = 0
     misses = []
-    for it in pts:
+    for i, it in enumerate(pts, 1):
         ch = it.get("source")
         if not ch:
+            bad += 1
+            misses.append(f"第 {i} 个数据点没有来源链")
+            continue
+        if "metric" not in ch or not isinstance(it.get("value"), (int, float)):
+            if ch.get("origin_sheet") and (ch.get("locator") or ch.get("discipline")):
+                ok += 1
+            else:
+                bad += 1
+                misses.append(ch.get("locator") or f"第 {i} 个数据点来源链不完整")
             continue
         v = src.at(ch["metric"], ch["discipline"], ch["period"])
         if v is None:
             bad += 1
             misses.append(ch["locator"])
-        elif isinstance(it.get("value"), (int, float)) and abs(v - it["value"]) < 1e-6:
+        elif abs(v - it["value"]) < 1e-6:
             ok += 1
         else:
             bad += 1

@@ -24,7 +24,7 @@ import pandas as pd
 
 import charts
 
-from .datasource import METRICS, DataSource, cn_name
+from .datasource import METRICS, DataSource, cn_name, relative_path
 
 #: 🔴 结构上禁止出现在 spec 里的键（纵轴范围类）。任何大小写/下划线的写法都拦。
 FORBIDDEN_KEYS = ("ylim", "ymin", "ymax", "vmin", "vmax", "range", "limits",
@@ -217,12 +217,22 @@ def make(src: DataSource, spec: dict, out_dir, *, ledger_dir=None) -> dict:
     else:                                                        # pragma: no cover
         raise SpecError(f"图型 {kind} 未接线")
 
-    # 数据来源（供报告层附链；概览图无学科）
-    sources = [{"dataset": f"{ld.as_posix()}/wide/{n}.parquet",
-                "table": n,
-                "origin_sheet": _origin_sheet(n),
-                "discipline": disc, "discipline_cn": cn_name(disc) if disc else None,
-                "periods": periods} for n in meta["needs"]]
+    # 数据来源（供报告层附链；概览图无学科）。
+    # 🔴 路径一律仓库相对：图源会随账本进 `flex_sources.json` 与报告附录。
+    sources = []
+    for n in meta["needs"]:
+        ledger_table = n in _PIVOT_FROM_LONG
+        p = ld / ("ledger_long.parquet" if ledger_table else f"wide/{n}.parquet")
+        sheet = _origin_sheet(n)
+        sources.append({
+            "dataset": relative_path(p),
+            "table": "ledger_long（透视）" if ledger_table else n,
+            "origin_sheet": sheet,
+            "discipline": disc, "discipline_cn": cn_name(disc) if disc else None,
+            "periods": periods,
+            "locator": f"{sheet}：{(disc and cn_name(disc)) or '全学科'} "
+                       f"{periods[0]}–{periods[-1]}",
+        })
 
     return {
         "path": str(path), "kind": kind, "kind_cn": meta["cn"],
@@ -278,8 +288,10 @@ def _ynd(ld):
 
 
 def _origin_sheet(w: str) -> str:
-    from .datasource import WIDE_SHEET
-    return WIDE_SHEET.get(w, "（派生）")
+    from .datasource import METRICS, WIDE_SHEET
+    # rank_intl / rank_cn 不是 wide/ 下的独立表（由 ledger_long 透视），
+    # 工作表名取指标白名单里的口径，不能落成「（派生）」。
+    return WIDE_SHEET.get(w) or METRICS.get(w, {}).get("sheet", "（派生）")
 
 
 def catalog() -> list[dict]:

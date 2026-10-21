@@ -22,10 +22,11 @@
 **逐节回调与流式**：`_generate(..., on_event=…)` 在「规划完成」「每节完成」时回调；
 `generate_stream()` 是同一个核的流式包装（真实事件，不做假进度）。
 
-🔴 三条自检在 `self_check()` 里，产出后立即跑，结果随报告一起落盘：
+🔴 自检在 `self_check()` 里，产出后立即跑，结果随报告一起落盘：
 
 1. 判断句都带了标记（`opinion.judgement_leaks`；`==…==` 待审线或 `【手工：…】`空位除外）
-2. 每个数字都能回读（`queries.trace_check`）
+2. 每个数字都能回读（查询/跨校/图表/派生数都登记在 `provenance` 的一本账上；
+   `queries.trace_check` 逐点回读，正文里没登记的数字同样判不过）
 3. 至少有一张图（空图分析稿不算完整稿）
 """
 from __future__ import annotations
@@ -37,7 +38,7 @@ import time
 from dataclasses import dataclass, field
 
 from . import opinion as op
-from . import planner, queries as q, spec as sp
+from . import planner, provenance as pv, queries as q, spec as sp
 from .datasource import DataSource, cn_name, period_label
 
 BANNER = "内部参考 · 非报送件"
@@ -76,11 +77,13 @@ def _numbered(labels: list[str]) -> list[str]:
 
 @dataclass
 class _ReportCtx:
-    """一次灵活报告构建的共享上下文：来源/图/假设/留痕都在这几个桶里。
+    """一次灵活报告构建的共享上下文。
 
-    「有哪些节」由 `_single_sections / _cross_sections` 返回的
-    `[(标题, 构建函数)]` 决定；**大纲就是这份表的标题**——标题与正文合成
-    一处编排，改节名不会再漏改大纲。
+    「有哪些节」由 `_single_sections` 返回的 `[(标题, 构建函数)]` 决定；
+    **大纲就是这份表的标题**——标题与正文合成一处编排，改节名不会再漏改大纲。
+
+    **一本账**：数字与图不再散在多个桶里，全部经 `ledger`（`provenance`）登记；
+    节的正文、附录、自查、`flex_sources.json` 读的是同一本账。
     """
 
     src: DataSource
@@ -89,13 +92,10 @@ class _ReportCtx:
     specs_out: list
     mode: str
     period_name: str
+    ledger: pv.Ledger
     blocks: list = field(default_factory=list)
-    sources: list = field(default_factory=list)
-    charts: list = field(default_factory=list)
     log: list = field(default_factory=list)
     selected: dict = field(default_factory=dict)
-    metric_cn: str = ""
-    cmp_rows: list = field(default_factory=list)
     pool: list = field(default_factory=list)
     """全篇事实摘要（各节已算过的数据点，人话一行一条）——判断节创写的输入之一。"""
     backstop_n: int = 0
@@ -130,21 +130,25 @@ def _collect(sections, on_section=None, on_outline=None) -> list:
 
 
 # ------------------------------------------------------------------ 单学科诊断
-def _snapshot(src: DataSource, disc: str, sources: list) -> tuple[list, float | None]:
-    """当期核心指标快照（概况/落点两处共用）。返回 (kv 行, 距阈值差)。"""
+def _snapshot(src: DataSource, disc: str, sec: pv.Section) -> tuple[list, float | None]:
+    """当期核心指标快照（概况/落点两处共用）。返回 (kv 行, 距阈值差)。
+
+    `sec` 是本节账本把手：查询与派生差都登记，正文里每个数都能回读。
+    """
     period = src.current_period()
     rows = []
+    got = {}
     for met in ("proximity_1pct", "rank", "total_cites", "threshold_1pct", "top_papers"):
-        r = q.series(src, met, disc, [period])
-        sources.append(r)
+        r = sec.query(q.series(src, met, disc, [period]))
+        got[met] = r
         if r["points"]:
             p = r["points"][0]
             rows.append((r["metric_cn"], p["value"], p["source"]))
-    tc = q.series(src, "total_cites", disc, [period])
-    th = q.series(src, "threshold_1pct", disc, [period])
-    sources.extend([tc, th])
+    tc, th = got["total_cites"], got["threshold_1pct"]
     gap = (tc["points"][0]["value"] - th["points"][0]["value"]
            if tc["points"] and th["points"] else None)
+    if gap is not None:
+        sec.derive("距 1% 阈值差", gap, inputs=(tc, th), unit="次", period=period)
     return rows, gap
 
 
@@ -163,18 +167,9 @@ def _series_facts(r: dict) -> list[str]:
     return [f"{r['metric_cn']}：{vs}（{r['points'][0]['period']}–{r['points'][-1]['period']}）"]
 
 
-def _rank_facts(cmp_prox: dict, cmp_papers: dict, disc: str) -> list[str]:
-    facts = []
-    for c in (cmp_prox, cmp_papers):
-        pos = next((i for i, x in enumerate(c["rows"], 1) if x["discipline"] == disc), None)
-        if pos:
-            facts.append(f"{c['metric_cn']}位次：第 {pos} 位（共 {c['n']}）")
-    return facts
-
-
-def _render_charts(src: DataSource, plan: dict, chart_dir, specs_out, charts,
+def _render_charts(src: DataSource, plan: dict, chart_dir, specs_out, sec: pv.Section,
                    default_disc=None, only_scope=None, only_kinds=None) -> str:
-    """按规划**逐张**出图，返回 markdown 片段。
+    """按规划**逐张**出图，登记进本节账本，返回 markdown 片段。
 
     🔴 这里曾经硬编码只认 3 个图型（cites_threshold / papers_delta / rank_pct）。
     真实模型一旦选了别的（实测 qwen2.5:3b 选了 `overview_1permille` + `cnci`），
@@ -201,7 +196,7 @@ def _render_charts(src: DataSource, plan: dict, chart_dir, specs_out, charts,
         else:
             s = sp.make(src, {"kind": kind}, chart_dir)
         specs_out.append(s)
-        charts.append(s)
+        sec.chart(s)
         # 🔴 相对路径以 **report.md 所在目录** 为锚（产物结构 = <intent>/report.md
         #    + <intent>/charts/*.png）。写成 `../charts/` 会指到 flexible/charts/
         #    这个不存在的目录 —— 图片全断链，且不抛异常，只有打开看才发现。
@@ -271,7 +266,11 @@ def _compose(topic: str, safe: str, *, facts=(), period: str = "", label: str = 
 
 
 def _single_sections(c: _ReportCtx) -> list:
-    """单学科分析的节表（顺序即大纲；2026-10-20 定五节）。"""
+    """单学科分析的节表（顺序即大纲；2026-10-20 定五节）。
+
+    每一节从 `c.ledger.section(...)` 取一个把手：画的每个数、每张图都登记到
+    同一本账。正文措辞不变，变的是「数字从哪来」有了单一检查面。
+    """
     disc, dcn = c.plan["disc"], cn_name(c.plan["disc"])
     period = c.src.current_period()
     prev = c.src.periods[c.src.periods.index(period) - 1]
@@ -281,28 +280,31 @@ def _single_sections(c: _ReportCtx) -> list:
 
     def sec_overview() -> str:
         # 一、学科概况（每个数都走查询，带链）
-        rows, gap = _snapshot(c.src, disc, c.sources)
+        sec = c.ledger.section("学科概况")
+        rows, gap = _snapshot(c.src, disc, sec)
         facts = _snapshot_facts(rows, gap)
         c.pool += facts
         lead = c.P(op.gap_lead(period_label(period), dcn, gap),
                    "flexible/single_trend/概况", facts)
         return (lead + "\n\n" + _kv_table(rows)
-                + _render_charts(c.src, c.plan, c.chart_dir, c.specs_out, c.charts,
+                + _render_charts(c.src, c.plan, c.chart_dir, c.specs_out, sec,
                                  disc, only_kinds=("cites_threshold",)))
 
     def sec_impact() -> str:
         # 二、学术影响力：CNCI 走势 + 篇均由总被引/发文派生
-        cnci = q.series(c.src, "cnci", disc, win)
-        c.sources.append(cnci)
+        sec = c.ledger.section("学术影响力")
+        cnci = sec.query(q.series(c.src, "cnci", disc, win))
         facts = _series_facts(cnci)
-        tc = q.series(c.src, "total_cites", disc, win)
-        pp = q.series(c.src, "papers", disc, win)
-        c.sources += [tc, pp]
+        tc = sec.query(q.series(c.src, "total_cites", disc, win))
+        pp = sec.query(q.series(c.src, "papers", disc, win))
         if cnci["points"]:
             last = cnci["points"][-1]
             facts.append(f"最新 CNCI：{_fmt(last['value'])}（全球平均为 1.0）")
             if tc["points"] and pp["points"] and pp["points"][-1]["value"]:
-                per = tc["points"][-1]["value"] / pp["points"][-1]["value"]
+                per = sec.derive(
+                    "最新篇均被引",
+                    tc["points"][-1]["value"] / pp["points"][-1]["value"],
+                    inputs=(tc, pp), unit="次/篇", period=pp["points"][-1]["period"])
                 facts.append(f"最新篇均被引：{_fmt(per)} 次/篇")
         c.pool += facts
         lead = (f"{dcn}的 CNCI 在 {period_label(win[0])} 至 {period_label(win[-1])} 间"
@@ -311,33 +313,38 @@ def _single_sections(c: _ReportCtx) -> list:
                 f"高于 1.0 表示论文影响力高于全球同类论文。"
                 if cnci["points"] else f"{dcn}本期没有 CNCI 数据。")
         return (c.P(lead, "flexible/single_trend/影响力", facts)
-                + _render_charts(c.src, c.plan, c.chart_dir, c.specs_out, c.charts,
+                + _render_charts(c.src, c.plan, c.chart_dir, c.specs_out, sec,
                                  disc, only_kinds=("cnci",)))
 
     def sec_rank() -> str:
         # 三、学科排名：国际/国内位次与百分位
-        ri = q.series(c.src, "rank_intl", disc, win)
-        rc = q.series(c.src, "rank_cn", disc, win)
-        rp = q.series(c.src, "rank_intl_pct", disc, win)
-        c.sources += [ri, rc, rp]
+        sec = c.ledger.section("学科排名")
+        ri = sec.query(q.series(c.src, "rank_intl", disc, win))
+        rc = sec.query(q.series(c.src, "rank_cn", disc, win))
+        rp = sec.query(q.series(c.src, "rank_intl_pct", disc, win))
         facts = _series_facts(ri) + _series_facts(rc)
         if ri["points"] and rc["points"]:
             first_i, last_i = ri["points"][0]["value"], ri["points"][-1]["value"]
             first_c, last_c = rc["points"][0]["value"], rc["points"][-1]["value"]
+            pct = ""
+            if rp["points"]:
+                last_pct = sec.derive(
+                    "最新国际排名百分位", rp["points"][-1]["value"] * 100,
+                    inputs=(rp,), unit="%", period=rp["points"][-1]["period"])
+                pct = f"最新国际排名百分位为 {_fmt(last_pct)}%。"
             lead = (f"{dcn}的国际排名从 {period_label(win[0])} 的第 {_fmt(first_i)} 名"
                     f"变为第 {_fmt(last_i)} 名；国内排名从第 {_fmt(first_c)} 名"
-                    f"变为第 {_fmt(last_c)} 名。"
-                    + (f"最新国际排名百分位为 {_fmt(rp['points'][-1]['value'] * 100)}%。"
-                       if rp["points"] else ""))
+                    f"变为第 {_fmt(last_c)} 名。" + pct)
         else:
             lead = f"{dcn}本期没有可用的排名序列。"
         c.pool += facts
         return (c.P(lead, "flexible/single_trend/排名", facts)
-                + _render_charts(c.src, c.plan, c.chart_dir, c.specs_out, c.charts,
+                + _render_charts(c.src, c.plan, c.chart_dir, c.specs_out, sec,
                                  disc, only_kinds=("rank_pct",)))
 
     def sec_peers() -> str:
         # 四、跨校对比：同一学科，云南大学 vs 用户指定高校
+        sec = c.ledger.section("跨校对比")
         requested = list(c.plan.get("peers") or [])
         if not requested:
             return ("本次未指定对标高校。请先给出高校名单（中文校名或 ESI 英文名），"
@@ -349,10 +356,9 @@ def _single_sections(c: _ReportCtx) -> list:
             return f"跨校对比未完成：{e}"
         c.selected["peers"] = data["requested"]
         c.selected["peer_source"] = data["source"]
-        # 跨校数字走 ESI 机构表，不在台账查询链里；单独登记一条来源，
-        # 让 flex_sources.json 与自检的 peer 项能看见它（不冒充 ledger 点）。
-        c.sources.append({"kind": "peers", "source": data["source"],
-                          "n": len(data["rows"]), "rows": data["rows"]})
+        # 跨校数字走 ESI 机构表，不在台账查询链里；作为**第一类证据**登记
+        # （kind=peers），附录因此显示真实数据件、工作表与实际期次。
+        sec.peer(data)
         lines = [
             "| 高校 | 全球位次 | 国内位次 | 发文量 | 总被引 | 篇均被引 | 顶尖论文 |",
             "|---|---:|---:|---:|---:|---:|---:|",
@@ -388,11 +394,11 @@ def _single_sections(c: _ReportCtx) -> list:
 
     def sec_outlook() -> str:
         # 五、学科展望：被引频次与 1‰ 阈值（规则推演，不冒充预测模型）
+        sec = c.ledger.section("学科展望")
         span = c.src.filled_periods[-9:]
-        tc = q.series(c.src, "total_cites", disc, span)
-        th = q.series(c.src, "threshold_1permille", disc, span)
-        c.sources += [tc, th]
-        chart = _render_charts(c.src, c.plan, c.chart_dir, c.specs_out, c.charts,
+        tc = sec.query(q.series(c.src, "total_cites", disc, span))
+        th = sec.query(q.series(c.src, "threshold_1permille", disc, span))
+        chart = _render_charts(c.src, c.plan, c.chart_dir, c.specs_out, sec,
                                disc, only_kinds=("cites_permille",))
         if not tc["points"] or not th["points"]:
             return f"{dcn}暂无 1‰ 阈值数据，本节只保留被引频次走势。" + chart
@@ -401,14 +407,23 @@ def _single_sections(c: _ReportCtx) -> list:
         last = tc["points"][-1]["value"]
         n = len(tc["points"]) - 1
         growth = (last - first) / n if n else 0
+        sec.derive("距 1‰ 阈值差", gap, inputs=(tc, th), unit="次",
+                   period=tc["points"][-1]["period"])
+        sec.derive("外推窗口期数", n + 1, inputs=(tc,), unit="期",
+                   period=tc["points"][-1]["period"])
         facts = [f"最新总被引：{_fmt(last)}", f"最新 1‰ 阈值：{_fmt(th['points'][-1]['value'])}",
                  f"距 1‰ 阈值：{_fmt(abs(gap))} 次（{'已超过' if gap <= 0 else '还差'}）"]
         base = (f"最新总被引 {_fmt(last)} 次，1‰ 阈值为 "
                 f"{_fmt(th['points'][-1]['value'])} 次，"
                 + ("已高出阈值" if gap <= 0 else f"还差 {_fmt(gap)} 次"))
         if gap > 0 and growth > 0:
+            growth = sec.derive("窗口内平均每期净增", growth, inputs=(tc,), unit="次/期",
+                                period=tc["points"][-1]["period"])
             need = int(gap / growth) + 1
-            years = need * 2 / 12
+            need = sec.derive("外推所需期数", need, inputs=(tc, th), unit="期",
+                              period=tc["points"][-1]["period"])
+            years = sec.derive("外推所需年数", need * 2 / 12, inputs=(tc, th), unit="年",
+                               period=tc["points"][-1]["period"])
             tail = (base + f"；按最近 {n + 1} 期平均每期净增 {_fmt(growth)} 次测算，"
                     f"约需 {need} 期（约 {years:.1f} 年）达到 1‰ 阈值。"
                     f"这是**规则推演**，不是预测模型，仅供判断参考。")
@@ -421,9 +436,10 @@ def _single_sections(c: _ReportCtx) -> list:
 
     def sec_judge_cause() -> str:
         # 成因研判（判断草稿）：全篇事实摘要 + 该主题查询结果（本期异动）
+        sec = c.ledger.section("成因研判（判断草稿）")
+        sec.inherit()          # 读全篇事实摘要：数字可能来自前面各节
         facts = list(c.pool)
-        an = q.anomaly(c.src, period)
-        c.sources.append(an)
+        an = sec.query(q.anomaly(c.src, period), allow_empty=True)
         for x in [i for i in an["items"] if i["discipline"] == disc][:3]:
             facts.append(f"{dcn}的{x['metric_cn']}本期出现 {x['ratio']} 倍环比变动"
                          f"（{x['prev']}→{x['period']}）")
@@ -433,6 +449,8 @@ def _single_sections(c: _ReportCtx) -> list:
 
     def sec_judge_advice() -> str:
         # 建议事项（判断草稿）
+        sec = c.ledger.section("建议事项（判断草稿）")
+        sec.inherit()
         safe = "\n".join([f"- {op.manual(f'{dcn}发展力度评价')}",
                           f"- {op.manual(f'{dcn}资源投入建议')}",
                           "- " + op.manual("是否需要向学院核实数据口径")])
@@ -446,10 +464,15 @@ def _single_sections(c: _ReportCtx) -> list:
 
 
 def _build(c: _ReportCtx, on_section=None, on_outline=None) -> dict:
-    """取节表 → 逐节构建 → 返回既有形状的 built dict。"""
+    """取节表 → 逐节构建 → 返回既有形状的 built dict。
+
+    `built["sources"]` 与 `built["charts"]` 都从**同一本账**读出：附录、自检、
+    `flex_sources.json` 不可能再各看各的。
+    """
     sections = _single_sections(c)
     c.blocks = _collect(sections, on_section, on_outline)
-    return {"blocks": c.blocks, "sources": c.sources, "charts": c.charts,
+    return {"blocks": c.blocks, "sources": c.ledger.sources_json(),
+            "charts": c.ledger.charts(), "ledger": c.ledger,
             "backstop_n": c.backstop_n, "write_log": c.log,
             "selected": dict(c.selected)}
 
@@ -488,29 +511,14 @@ def _render(plan: dict, built: dict, meta: dict) -> str:
           "草稿里的数字位是占位符，由工具回填、逐格可回读；"
           "馆员需拍板的判断句以细下划线标出（待审线）。"
           "（设计口径见 `评审文档/19` §2.2）", ""]
-    # 来源链附录
-    L += ["---", "## 附：数据来源链", "",
-          "| # | 查询 | 指标 | 学科 | 期次 | 台账工作表 |", "|---:|---|---|---|---|---|"]
-    n = 0
-    for r in built["sources"]:
-        if not isinstance(r, dict) or "kind" not in r:
-            continue
-        n += 1
-        first = (r.get("points") or r.get("rows") or r.get("items") or [{}])[0]
-        ch = first.get("source") or {}
-        L.append(f"| {n} | {r['kind']} | {ch.get('metric_cn') or r.get('metric_cn') or '—'} | "
-                 f"{ch.get('discipline_cn') or r.get('disc_cn') or '（全学科）'} | "
-                 f"{ch.get('period') or r.get('period') or '—'} | "
-                 f"{ch.get('origin_sheet') or '（派生）'} |")
-    L += ["", f"共 {n} 条查询；每条查询的**每个数据点**都带独立来源链"
-              f"（见 `flex_sources.json`，逐点 `{'{'}dataset, metric, discipline, period, "
-              f"origin_sheet{'}'}`）。", ""]
+    # 来源链附录：读同一本账（查询/图表/派生/跨校都在表里，各有真实来源）
+    L += ["---", "## 附：数据来源链", "", pv.ledger_of(built).appendix_markdown()]
     L += ["---", f"*{BANNER}｜灵活报告产线｜不带盖章位*", ""]
     return "\n".join(L)
 
 
 def self_check(report_md: str, src: DataSource, built: dict) -> dict:
-    """三条自检。任一项不过 → 报告里会明确写出来（不隐藏）。
+    """三条自检 + 账本自查。任一项不过 → `pass` 为 False（报告里会明确写出来）。
 
     🔴 `has_charts` 这条是真实模型跑出来的：qwen2.5:3b 选了 `overview_1permille`+
     `cnci`，旧代码只认 3 个硬编码图型 → **0 张图**，而当时自检照样判"通过"
@@ -519,38 +527,28 @@ def self_check(report_md: str, src: DataSource, built: dict) -> dict:
     🔴 2026-10-14 语义反转（票 03）：判断措辞不再"出现即失败"——传入的**期望是
     补标后的成稿**；`judgement_marked=False`（仍有未标记的判断句）才判不过。
     `backstop_n`＝兜底补标句数（从 built 读，透明计数、不判失败）。
+
+    🔴 2026-10-21（证据账）：`trace` / `peer` / `has_charts` 不再各扫一遍
+    `built["sources"]`——统一由 `provenance.Ledger.check` 出自同一本账；正文里
+    有登记不到的数字、声明的图没进账、条目缺来源，都判不过。
     """
     leaks = op.judgement_leaks(report_md)
     backstop_n = int(built.get("backstop_n") or 0)
-    trace = {"checked": 0, "ok": 0, "bad": 0, "misses": []}
-    for r in built["sources"]:
-        if isinstance(r, dict) and "kind" in r:
-            t = q.trace_check(src, r)
-            trace["checked"] += t["checked"]
-            trace["ok"] += t["ok"]
-            trace["bad"] += t["bad"]
-            trace["misses"] += t["misses"]
-    # 跨校数据不走 ledger_long，单独看「有没有登记来源」；没指定 peer 时不适用。
-    peers_requested = bool((built.get("selected") or {}).get("peers"))
-    peer_rows = [r for r in built["sources"]
-                 if isinstance(r, dict) and r.get("kind") == "peers"]
-    peer = {
-        "expected": peers_requested,
-        "n": len(peer_rows),
-        "ok": (not peers_requested)
-              or (len(peer_rows) == 1 and bool(peer_rows[0].get("source"))),
-    }
-    n_charts = len(built["charts"])
+    ledger = pv.ledger_of(built)
+    if ledger.view is None and src is not None:
+        # 手工拼的旧 built 若带了真查数面，就按产线口径严判（不再走宽松适配器）。
+        ledger.view, ledger.strict = src, True
+    evidence = ledger.check(
+        blocks=built.get("blocks") or [],
+        periods=list(getattr(src, "periods", []) or []),
+        declared_charts=built.get("charts") or [],
+        selected=built.get("selected") or {})
     return {
         "judgement_marked": not leaks,
         "judgement_leaks": leaks[:3],
         "backstop_n": backstop_n,
-        "trace": trace,
-        "trace_ok": trace["bad"] == 0,
-        "peer": peer,
-        "has_charts": n_charts >= 1,
-        "n_charts": n_charts,
-        "pass": (not leaks) and trace["bad"] == 0 and peer["ok"] and n_charts >= 1,
+        **evidence,
+        "pass": (not leaks) and evidence["evidence_ok"],
     }
 
 
@@ -634,7 +632,7 @@ def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
     period_name = pathlib.Path(out_dir).name
     specs_out: list[dict] = []
     ctx = _ReportCtx(src=src, plan=plan, chart_dir=chart_dir, specs_out=specs_out,
-                     mode=mode, period_name=period_name)
+                     mode=mode, period_name=period_name, ledger=pv.Ledger(src))
     built = _build(ctx, _sec, _outline)
 
     meta = {"generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -676,6 +674,7 @@ def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
               "elapsed": round(time.time() - t0, 1),
               "write": meta["write"]}
     if on_event:
+        counts = pv.ledger_of(built).counts()
         on_event("done", {"elapsed": result["elapsed"], "n_charts": result["n_charts"],
                           "backend": plan["backend"], "mode": mode,
                           "title": plan.get("title"),
@@ -694,7 +693,7 @@ def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
                               "trace_bad": int((check.get("trace") or {}).get("bad") or 0),
                               "has_charts": bool(check.get("has_charts")),
                           },
-                          "n_sources": len(built["sources"]),
+                          "n_sources": counts["query"] + counts["peer"],
                           "n_sections": len(built["blocks"]),
                           "write": meta["write"]})
     return result

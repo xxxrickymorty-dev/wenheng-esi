@@ -16,7 +16,7 @@ import pathlib
 import pandas as pd
 
 import period as period_mod
-from .datasource import METRICS, cn_name
+from .datasource import METRICS, cn_name, relative_path
 
 
 def _pivot(df, value: str):
@@ -114,7 +114,7 @@ class WorkbookView:
         """一个数字的来源链：监测表 → 指标 → 学科 → 期次 → 台账工作表。"""
         meta = METRICS.get(metric, {})
         return {
-            "dataset": str(self.path),
+            "dataset": relative_path(self.path),
             "metric": metric,
             "metric_cn": meta.get("cn", metric),
             "discipline": disc,

@@ -74,6 +74,32 @@ except ImportError:                                            # 直接以脚本
 
 import period as period_mod                                    # noqa: E402  期次口径唯一来源
 
+#: 代码仓根（`src/flexible/datasource.py` → 仓库）；报告与 JSON 里的路径都以它为锚。
+REPO = pathlib.Path(__file__).resolve().parents[2]
+
+
+def relative_path(path) -> str:
+    """把产物路径写成**仓库相对**：成品里不出现本机盘符或绝对路径。
+
+    正常情况（`out/<期次>/…` 就在仓里）返回真实的相对路径；测试/部署把期次目录
+    复制到仓外时，按产物结构还原成逻辑路径 `out/<期次>/…`——仍是可读、可交接的
+    写法，绝不回落到 `C:/…`。找不到结构时只留文件名。
+    """
+    p = pathlib.Path(path)
+    try:
+        return p.resolve().relative_to(REPO).as_posix()
+    except (ValueError, OSError):
+        pass
+    parts = list(p.parts)
+    if "out" in parts:
+        i = len(parts) - 1 - parts[::-1].index("out")
+        return "/".join(parts[i:])
+    if p.parent.name == "wide":
+        return f"out/{p.parent.parent.name}/wide/{p.name}"
+    if p.name == "ledger_long.parquet":
+        return f"out/{p.parent.name}/{p.name}"
+    return p.name
+
 
 def cn_name(en: str) -> str:
     return DISCIPLINES_CN.get(en, en)
@@ -264,10 +290,14 @@ class DataSource:
 
     # ------------------------------------------------------------ 来源链
     def chain(self, metric: str, disc: str, period: str) -> dict:
-        """一个数字的来源链：数据集 → 指标 → 学科 → 期次 → 台账工作表。"""
+        """一个数字的来源链：数据集 → 指标 → 学科 → 期次 → 台账工作表。
+
+        `dataset` 一律是**仓库相对**路径（`relative_path`）：它会原样进
+        `flex_sources.json` 与报告附录，不能把本机盘符带进成品。
+        """
         meta = METRICS.get(metric, {})
         return {
-            "dataset": f"{self.dir.as_posix()}/ledger_long.parquet",
+            "dataset": relative_path(self.dir / "ledger_long.parquet"),
             "metric": metric,
             "metric_cn": meta.get("cn", metric),
             "discipline": disc,

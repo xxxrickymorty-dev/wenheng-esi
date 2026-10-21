@@ -23,10 +23,11 @@
 | `queries.py` | 数据查询工具（series/at/compare/delta/events/anomaly/scope；LLM 拿数的唯一入口，白名单 schema） |
 | `summary.py` | 统计摘要 + 异常检测（**规则实现**，标记为「规划依据」而非「可引用数值」） |
 | `spec.py` | 图表声明语言 → 复用 `charts.py` 排版设施渲染 |
+| `provenance.py` | 证据账：查询/跨校/图表/派生数登记到一本账，附录与自检同读 |
 | `opinion.py` | 三级判断分级（描述性/解释性/专业判断） |
 | `planner.py` | 章节规划；`rule` 后端为默认，无 LLM 也能出完整计划 |
 | `report.py` | 编排：规划 → 查询 → 数字回填骨架 → spec 出图 → 产出 md |
 """
 
-__all__ = ["datasource", "workbook", "queries", "summary", "spec", "opinion",
-           "planner", "report"]
+__all__ = ["datasource", "workbook", "queries", "summary", "spec", "provenance",
+           "opinion", "planner", "report"]
