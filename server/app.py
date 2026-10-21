@@ -33,6 +33,7 @@ from starlette.background import BackgroundTask
 from src import parse_ledger  # 成品隔离/回滚的唯一口径（FINAL_PRODUCTS / SUPERSEDED_DIR）
 from .protected_static import AdminStaticFiles
 from src import period as period_mod  # 期次口径唯一来源（ADR-0001：新工作区 API 也用它）
+from src import period_facts  # 期次事实：目录/盘点/并入/产物/顺延的唯一 module
 from src import ledger as ledger_mod  # 动态监测表（母本）路径唯一口径（2026-10-13：input/ 只放母本）
 from src import forecast_choice  # 预测选模的唯一 implementation（读写/快照/留痕）
 from src import session_store  # 会话库（票 11）——对话前门会话的服务端持久化
@@ -314,11 +315,9 @@ def period_cards():
     cards = []
     if not config.OUT_DIR.exists():
         return cards
-    for d in config.OUT_DIR.iterdir():
-        if not d.is_dir() or not jobs.PERIOD_DIR_RE.match(d.name):
-            continue
-        if not (d / "red_slots.json").exists():
-            continue
+    for name in sorted(period_facts.product_periods(config.OUT_DIR, allow_suffix=True),
+                       reverse=True):
+        d = config.OUT_DIR / name
         rec = approval.read(d)
         cards.append({
             "period": d.name,
@@ -332,13 +331,8 @@ def period_cards():
 
 
 def resolve_period_dir(period):
-    """期次字符串 → out/ 下的实际目录（允许 202605_复现 这类后缀）。非法或不存在返回 None。"""
-    if not jobs.PERIOD_DIR_RE.match(period or ""):
-        return None
-    d = config.OUT_DIR / period
-    if d.is_dir() and (d / "red_slots.json").exists():
-        return d
-    return None
+    """期次字符串 → out/ 下的实际目录（adapter；事实在 period_facts.resolve）。"""
+    return period_facts.resolve(period, config.OUT_DIR)
 
 
 def _zip_response(data: bytes, filename: str):
@@ -779,8 +773,9 @@ def _period_has_data(period: str) -> bool:
     if not m:
         return False
     pid = m.group(1)
-    return (acquisition.load(pid) is not None
-            or acquisition.copy_path(pid).exists())
+    acq = acquisition.load(pid)
+    return period_facts.has_data(period, out_root=config.OUT_DIR, acquisition=acq,
+                                 copy_exists=acquisition.copy_path(pid).exists())
 
 
 def _acquisition_only_periods(known: set[str]) -> list[dict]:
@@ -844,11 +839,13 @@ async def api_period_detail(request: Request, period: str):
     """
     m = re.match(r"^(\d{6})", period or "")
     pid = m.group(1) if m else period
-    d = resolve_period_dir(period)
     acq = acquisition.load(pid)
     has_input = acquisition.copy_path(pid).exists()
-    if d is None and acq is None and not has_input:
+    f = period_facts.facts(period, out_root=config.OUT_DIR, acquisition=acq,
+                           copy_exists=has_input)
+    if not f.has_data:
         return _period_missing()
+    d = f.dir
     try:
         no, total = period_mod.issue_of(period)
         label = f"第 {total} 期 \u00b7 {period_mod.label(period)}"
@@ -861,20 +858,12 @@ async def api_period_detail(request: Request, period: str):
     verified = totals.get("verified") if isinstance(totals.get("verified"), int) else None
     expected = totals.get("expected") if isinstance(totals.get("expected"), int) else None
     copy_state = ((acq or {}).get("copy") or {}).get("state") or "none"
-    if acq is not None:
-        fetch_ok = (isinstance(verified, int) and isinstance(expected, int)
-                    and expected > 0 and verified >= expected)
-        merge_ok = copy_state == "merged"
-    elif has_input:
-        fetch_ok = merge_ok = True          # 历史期次按老路：数据已在（没有取数记录可考）
-    else:
-        fetch_ok = merge_ok = False
-    generated_ok = bool(d is not None and (d / "red_slots.json").exists())
-    steps = {"fetch": fetch_ok, "merge": merge_ok, "generate": generated_ok}
+    steps = {"fetch": f.acquire_ok, "merge": f.merge_ok, "generate": f.generate_ok}
     last = next(iter(jobs.list_jobs(limit=30, period=pid)), None)
     return {
         "period": pid, "label": label, "no": no, "total": total,
         "window": window, "palette": config.PALETTE, "steps": steps,
+        "task": f.as_home(),
         "acquisition": {"started": acq is not None, "verified": verified,
                         "expected": expected, "copy": copy_state},
         "lastJob": {"id": last["id"], "status": last["status"],
@@ -1644,31 +1633,7 @@ async def api_period_water(request: Request, period: str):
     d = resolve_period_dir(period)
     if d is None:
         return _period_missing()
-    path = d / "matrix.json"
-    if not path.exists():
-        return {"period": period, "snapshot": "", "rows": [],
-                "note": "本期没有学科矩阵（matrix.json）"}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {"period": period, "snapshot": "", "rows": [],
-                "note": "学科矩阵读不出来"}
-    rows = []
-    for subject, cells in (data.get("matrix") or {}).items():
-        raw = str(((cells or {}).get("云大") or {}).get("v") or "").strip()
-        if raw == "Y":
-            rows.append({"subject": subject, "prox": 100.0, "state": "in"})
-            continue
-        if raw.endswith("%"):
-            try:
-                prox = float(raw[:-1])
-            except ValueError:
-                continue
-            rows.append({"subject": subject, "prox": prox,
-                         "state": "near" if prox >= 80 else "far"})
-    rows.sort(key=lambda r: (-r["prox"], r["subject"]))
-    return {"period": period, "snapshot": str(data.get("snapshot") or ""),
-            "rows": rows}
+    return {"period": period, **period_facts.water_rows(d / "matrix.json")}
 
 
 @app.get("/api/sandbox/heal")
