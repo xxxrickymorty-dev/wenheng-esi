@@ -8,7 +8,7 @@
  * 书＝书脊（正视）+ 顶面（斜切）；不做真三维——离线、投影都稳。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StairParticles } from "./StairParticles";
+import { StairParticles, STEP } from "./StairParticles";
 import "../stair.css";
 
 type Book = { period: string; no: number; label: string };
@@ -22,8 +22,6 @@ const BOOKS: Book[] = [
   { period: "202609", no: 39, label: "2026 年 第 5 期" },
 ];
 
-const DX = 110;
-const DY = 78;
 const LAST = BOOKS[BOOKS.length - 1];
 
 export function ShelfStair() {
@@ -108,31 +106,31 @@ export function ShelfStair() {
             <button
               key={b.period}
               type="button"
-              className={`stair-book${i === stop ? " is-on" : ""}`}
-              style={{ left: i * DX, bottom: i * DY, zIndex: i + 1 }}
+              className={`stair-label${i === stop ? " is-on" : ""}`}
+              style={{
+                left: STEP.padX + i * STEP.w + 6,
+                top: STEP.padY - i * STEP.rise - 30,
+              }}
               onClick={() => jump(i / (stops - 1))}
               aria-label={`第 ${i + 1} 册，总第 ${b.no} 期，${b.label}`}
             >
-              <span className="stair-top" />
-              <span className="stair-spine">
-                <b>{b.period}</b>
-                <i>总第 {b.no} 期</i>
-              </span>
+              <b>{b.period}</b>
+              <i>总第 {b.no} 期</i>
             </button>
           ))}
 
           <button
             type="button"
-            className={`stair-door${atTop ? " is-open" : ""}`}
-            style={{ left: BOOKS.length * DX, bottom: BOOKS.length * DY, zIndex: 20 }}
+            className={`stair-label door${atTop ? " is-on" : ""}`}
+            style={{
+              left: STEP.padX + BOOKS.length * STEP.w - 150,
+              top: STEP.padY - BOOKS.length * STEP.rise - 46,
+            }}
             onClick={() => (atTop ? setOpened(true) : jump(1))}
             aria-label={atTop ? "推门进阅览室" : "走到梯顶"}
           >
-            <span className="door-face">
-              <i>阅 览 室</i>
-              <b>{LAST.period}</b>
-              <em>推 门 →</em>
-            </span>
+            <b>阅览室</b>
+            <i>推门 →</i>
           </button>
         </div>
 

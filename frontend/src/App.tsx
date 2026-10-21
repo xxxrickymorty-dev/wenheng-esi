@@ -7,28 +7,40 @@ import { ShelfStair } from "./screens/ShelfStair";
 
 type ScreenId = "hub" | "acquire" | "verify" | "shelf";
 
+/** 带 #shelf / #hub 之类就按它开；什么都没写，默认进陈列馆（实验目录现在只做这一屏）。 */
+function initialScreen(): ScreenId {
+  const h = location.hash.replace("#", "");
+  return h === "hub" || h === "acquire" || h === "verify" ? h : "shelf";
+}
+
 export default function App() {
-  const [screen, setScreen] = useState<ScreenId>("hub");
+  const [screen, setScreen] = useState<ScreenId>(initialScreen);
+
+  /** 切屏顺手写进地址，刷新还停在原处。 */
+  const go = (s: ScreenId) => {
+    setScreen(s);
+    history.replaceState(null, "", `#${s}`);
+  };
 
   return (
     <>
       <TopBar
         current={screen === "hub" ? "acquire" : screen === "verify" ? "verify" : "acquire"}
         onGo={(id) => {
-          if (id === "acquire") setScreen("acquire");
-          else if (id === "verify") setScreen("verify");
-          else setScreen("hub");
+          if (id === "acquire") go("acquire");
+          else if (id === "verify") go("verify");
+          else go("hub");
         }}
         right={
           <>
             <button
-              onClick={() => setScreen("shelf")}
+              onClick={() => go("shelf")}
               className="font-kai text-[11px] tracking-[.22em] text-sea-50/70 hover:text-sea-50"
             >
               陈 列 馆 ↗
             </button>
             <button
-              onClick={() => setScreen("hub")}
+              onClick={() => go("hub")}
               className="font-kai text-[11px] tracking-[.22em] text-sea-50/70 hover:text-sea-50"
             >
               出 报 告 ↖
