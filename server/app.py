@@ -1682,11 +1682,11 @@ async def api_sandbox_heal(request: Request):                      # noqa: ARG00
     """
     path = pathlib.Path(__file__).resolve().parent.parent / "tmp" / "_heal_sandbox" / "story.json"
     if not path.exists():
-        return {"available": False, "hint": "先跑 tools/heal_sandbox.py，刷新本页"}
+        return {"available": False, "hint": "先跑一次自愈沙盘工具，刷新本页"}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return {"available": False, "hint": "沙盘故事卡读不出来，重跑一次 tools/heal_sandbox.py"}
+        return {"available": False, "hint": "沙盘故事卡读不出来，重跑一次自愈沙盘工具"}
     return {"available": True, **data}
 
 
@@ -1696,11 +1696,11 @@ async def api_sandbox_migrate(request: Request):                    # noqa: ARG0
     """换馆沙盘故事卡（只读）：读 tmp/_migration_sandbox/readiness.json。"""
     path = pathlib.Path(__file__).resolve().parent.parent / "tmp" / "_migration_sandbox" / "readiness.json"
     if not path.exists():
-        return {"available": False, "hint": "先跑 tools/migration_check.py，刷新本页"}
+        return {"available": False, "hint": "先跑一次换馆沙盘工具，刷新本页"}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return {"available": False, "hint": "换馆故事卡读不出来，重跑一次 tools/migration_check.py"}
+        return {"available": False, "hint": "换馆故事卡读不出来，重跑一次换馆沙盘工具"}
     return {"available": True, **data}
 
 
