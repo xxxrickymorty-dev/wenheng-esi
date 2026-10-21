@@ -28,6 +28,8 @@ def test_跨校对比_云南大学与指定高校同表():
     ynu = data["rows"][0]
     assert ynu["present"] and ynu["values"]["rank"] and ynu["rank_cn"]
     assert data["source"]["dataset"].endswith("Plant & Animal Science.xlsx")
+    assert data["source"]["dataset"].startswith("数据与复现/ESI数据/"), \
+        "来源必须是仓库相对路径，不能把本机绝对路径写进报告"
 
 
 def test_英文校名也能解析():

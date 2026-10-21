@@ -348,6 +348,11 @@ def _single_sections(c: _ReportCtx) -> list:
         except peer_mod.PeerError as e:
             return f"跨校对比未完成：{e}"
         c.selected["peers"] = data["requested"]
+        c.selected["peer_source"] = data["source"]
+        # 跨校数字走 ESI 机构表，不在台账查询链里；单独登记一条来源，
+        # 让 flex_sources.json 与自检的 peer 项能看见它（不冒充 ledger 点）。
+        c.sources.append({"kind": "peers", "source": data["source"],
+                          "n": len(data["rows"]), "rows": data["rows"]})
         lines = [
             "| 高校 | 全球位次 | 国内位次 | 发文量 | 总被引 | 篇均被引 | 顶尖论文 |",
             "|---|---:|---:|---:|---:|---:|---:|",
@@ -525,6 +530,16 @@ def self_check(report_md: str, src: DataSource, built: dict) -> dict:
             trace["ok"] += t["ok"]
             trace["bad"] += t["bad"]
             trace["misses"] += t["misses"]
+    # 跨校数据不走 ledger_long，单独看「有没有登记来源」；没指定 peer 时不适用。
+    peers_requested = bool((built.get("selected") or {}).get("peers"))
+    peer_rows = [r for r in built["sources"]
+                 if isinstance(r, dict) and r.get("kind") == "peers"]
+    peer = {
+        "expected": peers_requested,
+        "n": len(peer_rows),
+        "ok": (not peers_requested)
+              or (len(peer_rows) == 1 and bool(peer_rows[0].get("source"))),
+    }
     n_charts = len(built["charts"])
     return {
         "judgement_marked": not leaks,
@@ -532,9 +547,10 @@ def self_check(report_md: str, src: DataSource, built: dict) -> dict:
         "backstop_n": backstop_n,
         "trace": trace,
         "trace_ok": trace["bad"] == 0,
+        "peer": peer,
         "has_charts": n_charts >= 1,
         "n_charts": n_charts,
-        "pass": (not leaks) and trace["bad"] == 0 and n_charts >= 1,
+        "pass": (not leaks) and trace["bad"] == 0 and peer["ok"] and n_charts >= 1,
     }
 
 

@@ -665,11 +665,17 @@ class Test规则后端产出完整分析稿:
                             disc="Plant & Animal Science",
                             peers=["昆明理工大学", "云南农业大学"])
         assert r["check"]["pass"], r["check"]
+        assert r["check"]["peer"] == {"expected": True, "n": 1, "ok": True}
         md = pathlib.Path(r["report"]).read_text(encoding="utf-8")
         for sec in ("学科概况", "学术影响力", "学科排名", "跨校对比", "学科展望",
                     "成因研判（判断草稿）", "建议事项（判断草稿）"):
             assert sec in md, f"缺章节：{sec}"
         assert "昆明理工大学" in md and "云南农业大学" in md
+        assert "来源：`数据与复现/ESI数据/" in md, "报告里的来源应是仓库相对路径"
+        sources = json.loads((pathlib.Path(r["dir"]) / "flex_sources.json")
+                             .read_text(encoding="utf-8"))
+        peer = [x for x in sources if isinstance(x, dict) and x.get("kind") == "peers"]
+        assert len(peer) == 1 and peer[0]["source"]["dataset"].startswith("数据与复现/ESI数据/")
 
 
 class Test语言不死板:

@@ -21,8 +21,19 @@ import openpyxl
 
 from .datasource import cn_name
 
-ESI_ROOT = pathlib.Path(__file__).resolve().parents[2].parent / "数据与复现" / "ESI数据"
+REPO = pathlib.Path(__file__).resolve().parents[2]
+WORKSPACE = REPO.parent
+ESI_ROOT = WORKSPACE / "数据与复现" / "ESI数据"
 TEMPLATE_DIR = "_归档统一命名"
+
+
+def _display_path(period: str, filename: str) -> str:
+    """报告里写的来源：仓库相对路径，不把本机绝对路径带进成品。"""
+    full = ESI_ROOT / period / filename
+    try:
+        return full.relative_to(WORKSPACE).as_posix()
+    except ValueError:                                          # 服务器数据根不在仓库旁
+        return f"数据与复现/ESI数据/{period}/{filename}"
 
 
 class PeerError(Exception):
@@ -300,7 +311,7 @@ def compare(period: str, disc_en: str, queries) -> dict:
         "ynu": {"en": ynu["en"], "cn": ynu["cn"] or "云南大学"},
         "rows": out_rows, "requested": [w["cn"] for w in wanted],
         "n_global": len(rows),
-        "source": {"dataset": f"{ESI_ROOT.as_posix()}/{actual}/{data['source']}",
+        "source": {"dataset": _display_path(actual, data["source"]),
                    "sheet": data["sheet"], "period": actual},
         "metrics": [{"key": k, "cn": v} for k, v in _METRICS],
     }
