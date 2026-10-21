@@ -6,10 +6,12 @@
 
 三件事：
 
-1. **落盘**：`out/<期次>/approval.json`（含操作历史）+ 导出一份 `审批记录.md`。
+1. **入库**：`out/_state/wenheng.sqlite` 的 `approvals` + `approval_history`（`src/state_store.py`，
+   ADR-0012）；签/撤时另**导出**一份 `审批记录.md`（人可读，给不了系统的人也能看懂）。
+   `approval.json` 已降为导出件（`tools/state_export.py`），不是真相。
 2. **绑版本**：签单时对报告初稿、`table2.csv` 与 `red_slots.json` 取 SHA-256 内容指纹。
    内容一变，签名立刻标记为 `stale`（已失效）——否则「签过」这两个字会跟着一份
-   没人看过的稿子走，这是审批里最危险的事。
+   没人看过的稿子走，这是审批里最危险的事。**失效永远现场算，库里不存 status**。
 3. **闸门**：签之前必过
    - 机器断言无 FAIL；
    - 待人工 `【手工：…】` 若 > 0，必须显式勾选「已知悉并放行」（理由写进批注）。
@@ -17,14 +19,15 @@
 不落库、不过闸的签单，等于没签。
 """
 import hashlib
-import json
 import pathlib
-import tempfile
+import sqlite3
 import time
 
-from src import atomic_io
+from src import atomic_io, state_store
 
+#: 导出件文件名（`approval.json`——不再是真相，只给回退/审计）。
 APPROVAL_NAME = "approval.json"
+#: 人可读导出件（`jobs` / `archive` / e2e 都当它是产物，所以签/撤时仍写）。
 RECORD_NAME = "审批记录.md"
 
 # 指纹覆盖的产物：任何一份变了，签名即失效
@@ -32,14 +35,22 @@ FINGERPRINT_GLOBS = ["red_slots.json", "报告初稿_*.docx", "table2.csv"]
 FINGERPRINT_ALGORITHM = "sha256"
 FINGERPRINT_VERSION = 1
 
+#: 写库失败／降级读时给调用方的失败原因前缀（路由据此回 409）。
+WRITE_ERROR = "审批记录写入失败，签发未生效"
+
 
 def _now():
     return time.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def _paths(out_dir):
+def _key(out_dir) -> tuple[pathlib.Path, str]:
+    """`(out_dir, 期次键)`——期次键＝目录名（`read(out_dir)` 只拿得到它，导入/导出同口径）。"""
     out_dir = pathlib.Path(out_dir)
-    return out_dir, out_dir / APPROVAL_NAME, out_dir / RECORD_NAME
+    return out_dir, out_dir.name
+
+
+def _db(out_dir):
+    return state_store.db_path(out_dir)
 
 
 def fingerprint(out_dir):
@@ -64,17 +75,16 @@ def fingerprint(out_dir):
 
 
 def read(out_dir):
-    """读审批记录；不存在则返回未签单的初始结构（不落盘）。"""
-    out_dir = pathlib.Path(out_dir)
-    p = out_dir / APPROVAL_NAME
-    if p.exists():
-        try:
-            rec = json.loads(p.read_text(encoding="utf-8"))
-            if isinstance(rec, dict):
-                rec.setdefault("history", [])
-                return rec
-        except (OSError, json.JSONDecodeError):
-            pass
+    """读审批记录（库为准）；没有则返回未签单的初始结构（不落盘、不建库）。
+
+    注意：**不读 `approval.json`**——迁移靠 `tools/state_import.py` 显式做，
+    隐式回读会造出两个真相（ADR-0012 决定 10）。
+    """
+    out_dir, period = _key(out_dir)
+    rec = state_store.get_approval(_db(out_dir), period)
+    if isinstance(rec, dict):
+        rec.setdefault("history", [])
+        return rec
     return {"signed": False, "actor": "", "signed_at": "", "note": "",
             "manual_ack": False, "snapshot": {}, "fingerprint": {}, "history": []}
 
@@ -98,9 +108,9 @@ def status(out_dir, rec=None):
 def sign(out_dir, actor, data, note="", manual_ack=False):
     """签单。返回 (ok, rec_or_error)。
 
-    闸门不过就拒绝落盘——这是审批门的意义所在。
+    闸门不过就拒绝落库——这是审批门的意义所在。
     """
-    out_dir, p, _ = _paths(out_dir)
+    out_dir, period = _key(out_dir)
     rec = read(out_dir)
     counts = (data or {}).get("counts") or {}
     assertions = (data or {}).get("assertions") or {}
@@ -119,7 +129,7 @@ def sign(out_dir, actor, data, note="", manual_ack=False):
         "signed_at": _now(),
         "note": (note or "").strip(),
         "manual_ack": bool(manual_ack),
-        "period": (data or {}).get("period") or out_dir.name,
+        "period": (data or {}).get("period") or period,
         "snapshot": {
             "counts": counts,
             "assertions": assertions,
@@ -129,20 +139,22 @@ def sign(out_dir, actor, data, note="", manual_ack=False):
         "red_slots_sha256": report_fingerprint["files"].get("red_slots.json"),
         "revoked_at": "",
     })
-    rec.setdefault("history", []).append({
+    entry = {
         "action": "sign", "actor": actor, "at": rec["signed_at"],
         "note": rec["note"], "manual_ack": bool(manual_ack),
         "manual_open": counts.get("manual", 0),
-    })
-    if not _write(p, rec):
-        return False, "审批记录写入失败，签发未生效"
+    }
+    try:
+        rec = state_store.put_approval(_db(out_dir), period, rec, history_entry=entry)
+    except (OSError, sqlite3.Error, state_store.StoreError) as exc:
+        return False, f"{WRITE_ERROR}：{exc}"
     _write_record(out_dir, rec)
     return True, rec
 
 
 def revoke(out_dir, actor, note=""):
     """撤回签单（保留历史，不删记录）。"""
-    out_dir, p, _ = _paths(out_dir)
+    out_dir, period = _key(out_dir)
     rec = read(out_dir)
     if not rec.get("signed"):
         return False, "本期尚未签单"
@@ -152,42 +164,16 @@ def revoke(out_dir, actor, note=""):
         "revoke_note": (note or "").strip(),
         "revoke_actor": actor,
     })
-    rec.setdefault("history", []).append({
+    entry = {
         "action": "revoke", "actor": actor, "at": rec["revoked_at"],
         "note": (note or "").strip(),
-    })
-    if not _write(p, rec):
-        return False, "审批记录写入失败，撤回未生效"
+    }
+    try:
+        rec = state_store.put_approval(_db(out_dir), period, rec, history_entry=entry)
+    except (OSError, sqlite3.Error, state_store.StoreError) as exc:
+        return False, f"审批记录写入失败，撤回未生效：{exc}"
     _write_record(out_dir, rec)
     return True, rec
-
-
-def _write(path, obj):
-    path = pathlib.Path(path)
-    temp_path = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            dir=path.parent,
-            prefix=f".{path.name}.",
-            suffix=".tmp",
-            delete=False,
-        ) as temp_file:
-            temp_path = pathlib.Path(temp_file.name)
-            temp_file.write(json.dumps(obj, ensure_ascii=False, indent=1))
-        temp_path.replace(path)
-        return True
-    except OSError:
-        return False
-    finally:
-        if temp_path is not None:
-            try:
-                temp_path.unlink()
-            except FileNotFoundError:
-                pass
-            except OSError:
-                pass
 
 
 def _write_record(out_dir, rec):
@@ -224,6 +210,7 @@ def _write_record(out_dir, rec):
     if st == "stale":
         lines += ["", "> 报告初稿或红色件数据在签单之后被重新生成，本次签单不再对应当前稿件，需重新核对并签单。"]
     try:
-        atomic_io.write_text_atomic(out_dir / RECORD_NAME, "\n".join(lines) + "\n")
+        atomic_io.write_text_atomic(pathlib.Path(out_dir) / RECORD_NAME,
+                                    "\n".join(lines) + "\n")
     except OSError:
         pass

@@ -20,7 +20,7 @@ import pathlib
 import re
 
 from . import artifacts
-from src import atomic_io
+from src import atomic_io, state_store
 
 #: 台账外的三张大表：**规格写死，状态不写死**。
 #:
@@ -327,24 +327,28 @@ def save_fill(out_dir, todo_id, value, by="?", at=None):
 
 
 def load_review(out_dir):
-    return _load_json(pathlib.Path(out_dir) / "review.json")
+    """一期的「存疑」标记：`{位置: {state, by, at}}`——库为准（ADR-0012），形状与旧 `review.json` 同。"""
+    out_dir = pathlib.Path(out_dir)
+    return state_store.get_reviews(state_store.db_path(out_dir), out_dir.name)
 
 
 def toggle_flag(out_dir, loc, by="?", at=None):
     """存疑/取消存疑（切换）。返回 {loc, state}。"""
     import datetime as dt
-    p = pathlib.Path(out_dir) / "review.json"
-    data = _load_json(p)
+    out_dir = pathlib.Path(out_dir)
+    db = state_store.db_path(out_dir)
+    period = out_dir.name
+    data = state_store.get_reviews(db, period)
     cur = data.get(loc) or {}
     if cur.get("state") == "doubt":
-        del data[loc]                       # 再点一次 = 撤销存疑
+        state_store.clear_review(db, period, loc)   # 再点一次 = 撤销存疑
         state = "clear"
     else:
-        data[loc] = {"state": "doubt", "by": by,
-                     "at": at or dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+        stamp = at or dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        state_store.set_review(db, period, loc, {"by": by, "at": stamp}, updated_at=stamp)
         state = "doubt"
-    atomic_io.write_text_atomic(p, json.dumps(data, ensure_ascii=False, indent=1))
-    return {"ok": True, "loc": loc, "state": state, "n_doubt": len(data)}
+    return {"ok": True, "loc": loc, "state": state,
+            "n_doubt": len(state_store.get_reviews(db, period))}
 
 
 def _fill_state(key, pending_ids, slot_locs):
@@ -489,7 +493,7 @@ def build(out_dir, period=None, approval=None):
         "n_orphan": n_orphan,
         "n_doubt": len(load_review(out_dir)),
         # 存疑明细（loc → {state,by,at}）：审核台要按位置显示「这处已标存疑」。
-        # 只读透传 review.json，不在装配层再加工。
+        # 只读透传状态库里的存疑标记，不在装配层再加工。
         "review": load_review(out_dir),
         "approval": approval or {},
         # 二级入口（审计视图）：给工程/评委深挖用，不占首屏

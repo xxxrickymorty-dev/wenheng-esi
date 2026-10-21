@@ -21,6 +21,7 @@ from _guard_registry import skip_unless                          # noqa: E402
 from server import report_preview, workbench                     # noqa: E402
 from server.app import resolve_period_dir                        # noqa: E402
 from server import app as app_module, config                     # noqa: E402
+from src import state_store                                      # noqa: E402
 
 
 class _Req:
@@ -140,7 +141,8 @@ class Test签单拦截已填未写入:
         assert resp.status_code == 409
         body = json.loads(resp.body)
         assert "没有写进报告" in body["error"]
-        assert not (d / "approval.json").exists(), "被拦时不能落审批记录"
+        db = out / "_state" / "wenheng.sqlite"
+        assert state_store.get_approval(db, "202609") is None, "被拦时不能落审批记录"
 
     def test_填值已写入时放行(self, tmp_path, monkeypatch):
         out, d = self._make_out(tmp_path)
@@ -160,4 +162,6 @@ class Test签单拦截已填未写入:
             _Req(config.ADMIN_USER, "POST", {"known": True, "note": "试签"}), "202609"))
         assert isinstance(resp, dict), f"放行时应返回签单结果：{resp!r}"
         assert resp["status"] == "signed"
-        assert (d / "approval.json").exists()
+        db = out / "_state" / "wenheng.sqlite"
+        rec = state_store.get_approval(db, "202609")
+        assert rec is not None and rec["signed"] is True

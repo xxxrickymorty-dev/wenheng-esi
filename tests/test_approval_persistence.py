@@ -1,8 +1,12 @@
-"""审批记录只有成功持久化后，签发/撤回操作才报告成功。"""
+"""审批记录只有成功持久化后，签发/撤回操作才报告成功。
+
+2026-10-21 起签单落在系统状态库（`out/_state/wenheng.sqlite`，ADR-0012），
+不再是 `approval.json`；所以「持久化失败」用**写库失败**注入，保留的也是库里的上一条记录。
+"""
 import asyncio
 import json
-import os
-from pathlib import Path
+import pathlib
+import sqlite3
 
 from server import approval
 from server import app as app_module
@@ -16,18 +20,19 @@ def _sign_data():
     }
 
 
-def _fail_replace_for(target_name):
-    real_replace = os.replace
-
-    def fail_replace(source, target):
-        if Path(target).name == target_name:
-            raise OSError("simulated persistence failure")
-        return real_replace(source, target)
-
-    return fail_replace
+def _state_db(out_dir):
+    """`out/<期次>` 同级的 `_state/`（与 `approval` 内部口径一致）。"""
+    return out_dir.parent / "_state" / "wenheng.sqlite"
 
 
-def test_sign_fails_and_preserves_last_record_when_approval_replace_fails(
+def _fail_store_write(monkeypatch, message="simulated persistence failure"):
+    def boom(*_args, **_kwargs):
+        raise sqlite3.OperationalError(message)
+
+    monkeypatch.setattr(approval.state_store, "put_approval", boom)
+
+
+def test_sign_fails_and_preserves_last_record_when_store_write_fails(
     tmp_path, monkeypatch
 ):
     out_dir = tmp_path / "202609"
@@ -36,20 +41,20 @@ def test_sign_fails_and_preserves_last_record_when_approval_replace_fails(
     assert ok
     ok, _ = approval.revoke(out_dir, "rick", "修正")
     assert ok
+    before = approval.read(out_dir)
 
-    approval_path = out_dir / approval.APPROVAL_NAME
-    old_bytes = approval_path.read_bytes()
-    monkeypatch.setattr(os, "replace", _fail_replace_for(approval.APPROVAL_NAME))
+    _fail_store_write(monkeypatch)
 
     ok, error = approval.sign(out_dir, "rick", _sign_data(), note="再次签发")
 
     assert not ok
     assert "写入失败" in error
-    assert approval_path.read_bytes() == old_bytes
-    persisted = approval.read(out_dir)
-    assert persisted["signed"] is False
-    assert [item["action"] for item in persisted["history"]] == ["sign", "revoke"]
-    assert not list(out_dir.glob(f".{approval.APPROVAL_NAME}.*.tmp"))
+    after = approval.read(out_dir)
+    assert after["signed"] is False
+    assert [item["action"] for item in after["history"]] == ["sign", "revoke"]
+    assert after["history"] == before["history"]          # 上一条记录原样保留
+    assert not list((tmp_path / "_state").glob("*.tmp-*"))  # 半截库/临时文件不残留
+    assert not (out_dir / approval.APPROVAL_NAME).exists()  # 文件不再是真相
 
 
 def test_sign_persists_state_and_history_for_a_fresh_read(tmp_path):
@@ -71,29 +76,29 @@ def test_sign_persists_state_and_history_for_a_fresh_read(tmp_path):
     assert [item["action"] for item in persisted["history"]] == ["sign"]
     assert persisted["history"][0]["manual_open"] == 2
     assert approval.status(out_dir, persisted) == "signed"
+    # 库是真身；导出件只有人可读的 Markdown
+    assert _state_db(out_dir).is_file()
+    assert (out_dir / approval.RECORD_NAME).is_file()
 
 
-def test_revoke_fails_without_changing_signed_record_when_replace_fails(
+def test_revoke_fails_without_changing_signed_record_when_store_write_fails(
     tmp_path, monkeypatch
 ):
     out_dir = tmp_path / "202609"
     out_dir.mkdir()
     ok, _ = approval.sign(out_dir, "rick", _sign_data())
     assert ok
+    before = approval.read(out_dir)
 
-    approval_path = out_dir / approval.APPROVAL_NAME
-    old_bytes = approval_path.read_bytes()
-    monkeypatch.setattr(os, "replace", _fail_replace_for(approval.APPROVAL_NAME))
+    _fail_store_write(monkeypatch)
 
     ok, error = approval.revoke(out_dir, "rick", "修正")
 
     assert not ok
     assert "写入失败" in error
-    assert approval_path.read_bytes() == old_bytes
-    persisted = approval.read(out_dir)
-    assert persisted["signed"] is True
-    assert [item["action"] for item in persisted["history"]] == ["sign"]
-    assert not list(out_dir.glob(f".{approval.APPROVAL_NAME}.*.tmp"))
+    assert approval.read(out_dir) == before               # 签名与历史一字未动
+    assert before["signed"] is True
+    assert not list((tmp_path / "_state").glob("*.tmp-*"))
 
 
 def test_sign_succeeds_when_derived_markdown_write_fails(tmp_path, monkeypatch):
@@ -102,7 +107,7 @@ def test_sign_succeeds_when_derived_markdown_write_fails(tmp_path, monkeypatch):
     real_write = approval.atomic_io.write_text_atomic
 
     def fail_record_write(path, text, *args, **kwargs):
-        if Path(path).name == approval.RECORD_NAME:
+        if pathlib.Path(path).name == approval.RECORD_NAME:
             raise OSError("simulated Markdown write failure")
         return real_write(path, text, *args, **kwargs)
 
@@ -122,7 +127,7 @@ def test_sign_route_returns_409_when_approval_persistence_fails(
     monkeypatch.setattr(app_module, "require_admin", lambda request: "rick")
     monkeypatch.setattr(app_module, "resolve_period_dir", lambda period: out_dir)
     monkeypatch.setattr(app_module.collation, "build", lambda period_dir: _sign_data())
-    monkeypatch.setattr(os, "replace", _fail_replace_for(approval.APPROVAL_NAME))
+    _fail_store_write(monkeypatch)
 
     class _Request:
         session = {"user": "rick"}

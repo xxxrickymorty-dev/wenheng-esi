@@ -13,7 +13,8 @@
 进包 / 不进包（口径写死在这里，部署清单 §0 引用本文件）：
     进：pyproject.toml、CONTEXT.md、GLOSSARY.md、AGENTS.md、docs/、src/、server/、tools/、tests/、
         master/、web/dist/；演示包另加 input/（只放母本）、out/202607/（剔除 _superseded）、
-        out/_acquisition/（取数状态 + 当期核对副本）、out/_jobs/
+        out/_acquisition/（取数状态 + 当期核对副本）、out/_jobs/、
+        out/_state/（系统状态库：签单与复核；打包前先 `wal_checkpoint(TRUNCATE)`）
     不进：server/.env（密钥）、web/node_modules/、__pycache__/、.pytest_cache/、
         .ruff_cache/、tmp/、.git/、_superseded/、out/ 其它期次
 
@@ -28,6 +29,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import pathlib
+import sqlite3
 import subprocess
 import sys
 import tarfile
@@ -37,6 +39,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent      # wenheng/
 sys.path.insert(0, str(ROOT / "src"))
 
 import ledger as ledger_mod  # noqa: E402
+import state_store  # noqa: E402
 
 DATA_PERIOD = "202607"                                     # 演示数据期次（首屏依赖）
 
@@ -80,7 +83,34 @@ def collect(root: pathlib.Path, include_data: bool = True) -> list[pathlib.Path]
         files += _tree_files(root / "out" / DATA_PERIOD, root)
         files += _tree_files(root / "out" / "_acquisition", root)
         files += _tree_files(root / "out" / "_jobs", root)
+        # 系统状态库（签单/复核，ADR-0012）：与 _jobs 同级，不跟期次走。
+        files += _tree_files(root / "out" / "_state", root)
     return sorted(set(files), key=lambda p: str(p.relative_to(root)))
+
+
+def checkpoint_state_db(root: pathlib.Path) -> None:
+    """打包前把状态库的 WAL 并回主文件（`wal_checkpoint(TRUNCATE)`）。
+
+    🔴 少了这一步，包里只有主文件、没有 `-wal`，最近的事务会**静默消失**（部署后
+    「刚签的单子不见了」）。服务还开着时 checkpoint 可能 busy——那就明说，别装作成功：
+    此时 `-wal` 会随目录一起进包，SQLite 解包后仍会重放，包不会丢数据。
+    """
+    db = root / "out" / "_state" / state_store.DB_NAME
+    if not db.is_file():
+        return
+    con = sqlite3.connect(str(db), timeout=5.0)
+    try:
+        busy = 1
+        for _ in range(3):
+            busy, _log, _done = con.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+            if not busy:
+                break
+            time.sleep(0.2)
+    finally:
+        con.close()
+    if busy:
+        print("[警告] 状态库 WAL 仍被占用（演示站开着？）——包里会连 -wal 一起带，"
+              "SQLite 会重放；要干净的包请先停服务再打")
 
 
 def preflight(root: pathlib.Path, include_data: bool = True) -> list[str]:
@@ -114,6 +144,8 @@ def preflight(root: pathlib.Path, include_data: bool = True) -> list[str]:
 def build(root: pathlib.Path, outdir: pathlib.Path, include_data: bool = True,
           name: str | None = None) -> pathlib.Path:
     """打包并写 `.sha256`，返回 tar.gz 路径（预检请先自行调用 preflight）。"""
+    if include_data:
+        checkpoint_state_db(root)                    # 先并 WAL，再列文件
     files = collect(root, include_data)
     outdir.mkdir(parents=True, exist_ok=True)
     name = name or f"wenheng-{'demo' if include_data else 'deploy'}-{time.strftime('%Y%m%d')}.tar.gz"

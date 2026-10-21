@@ -173,6 +173,8 @@ chmod 600 "$ENV_FILE"
 
 # 目录属主：流水线要往 out/ 写产物，必须是服务用户可写
 mkdir -p "$APP_DIR/out/_jobs"
+# 系统状态库（签单/复核，ADR-0012）：与 _jobs 同级；包里有 db 时也确保可写（WAL 要写旁文件）
+mkdir -p "$APP_DIR/out/_state"
 chown -R "$SVC_USER:$SVC_USER" "$APP_DIR"
 
 # ------------------------------------------------------- 6. systemd 服务

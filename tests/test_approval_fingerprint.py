@@ -5,7 +5,9 @@ import os
 
 import pytest
 
+import state_import
 from server import approval
+from src import state_store
 
 
 def _sign_data():
@@ -73,9 +75,14 @@ def test_sign_allows_missing_red_slots_and_records_null_hash(tmp_path):
 
 
 @pytest.mark.parametrize("legacy_format", ["size_mtime", "empty"])
-def test_legacy_signed_record_is_readable_but_stale_without_backfill(
+def test_legacy_signed_record_is_importable_but_stale_without_backfill(
     tmp_path, legacy_format
 ):
+    """旧 `approval.json` 由 `tools/state_import.py` **显式**导入；导入不改文件、不回填指纹。
+
+    库里没有该期时 `approval.read` 一律返回未签单——不隐式回读文件（ADR-0012 决定 10），
+    否则会同时存在两个真相。
+    """
     out_dir = tmp_path / "202609"
     out_dir.mkdir()
     if legacy_format == "size_mtime":
@@ -99,12 +106,15 @@ def test_legacy_signed_record_is_readable_but_stale_without_backfill(
     )
     old_bytes = approval_path.read_bytes()
 
+    assert approval.read(out_dir)["signed"] is False       # 导入前：库为准，不读文件
+    state_import.import_period(out_dir, state_store.db_path(out_dir))
+
     loaded = approval.read(out_dir)
 
     assert loaded["fingerprint"] == old_fingerprint
     assert "red_slots_sha256" not in loaded
     assert approval.status(out_dir, loaded) == "stale"
-    assert approval_path.read_bytes() == old_bytes
+    assert approval_path.read_bytes() == old_bytes          # 导入不删、不改原文件
 
 
 def test_content_fingerprint_does_not_change_when_only_mtime_changes(tmp_path):

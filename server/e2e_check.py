@@ -8,7 +8,7 @@
 验收范围：登录 → 首屏对勘本 → 控制台 /run → 期次入口 /p/<期次> → 期次红件清单
 → 任务入口与产物 → 签单闸门与落库（含撤回）→ 静态快照同源 → 任务状态口径同源。
 只读 + 一次签单/撤回 + 一次选模往返（验完写回原值），不动流水线数据；
-结束后把 202607 的审批记录原样还原——演示期不留「e2e 探针」痕迹。
+结束后把 202607 的审批状态（库内行 + 导出的 Markdown）原样还原——演示期不留「e2e 探针」痕迹。
 
 三个容易写错的地方（都踩过，记在这里省得下次再踩）：
 1. Jinja 的 tojson 输出 `"k": "v"`（冒号后有空格），断言 JSON 时正则要允许空白；
@@ -331,60 +331,74 @@ def _manual_slots():
 #   两者都没有     → 不勾也直接可签（闸门只为待人工而设）——写死「必 409」会在干净数据上假失败。
 _pend, _manual = _pending_fills(), _manual_slots()
 
-# 演示期保护：e2e 会签/撤 202607 来验闸门，但跑完必须把审批记录原样放回，
-# 否则演示站会留下「e2e 探针」历史，评委点开审批记录看到的是测试痕迹。
-# 备份落 tmp（不入演示数据目录）：正常退出 atexit 还原；硬杀/超时后下一次 e2e
-# 启动先按 tmp 里的备份恢复，避免 202607 停在 e2e 的签/撤状态。
-_APPROVAL_FILES = [WENHENG / "out/202607/approval.json",
-                   WENHENG / "out/202607/审批记录.md"]
+# 演示期保护：e2e 会签/撤 202607 来验闸门，但跑完必须把**状态库**里这一期的签单与存疑
+# 原样放回，否则演示站会留下「e2e 探针」历史，评委点开审批记录看到的是测试痕迹。
+# 快照落 tmp（不入演示数据目录）：正常退出 atexit 还原；硬杀/超时后下一次 e2e
+# 启动先按 tmp 里的快照恢复。
+# 🔴 **不复制 .sqlite 来还原**：服务进程持着连接、WAL 未 checkpoint，复制出来的是
+# 不一致的快照。这里走 state_store 的行级读写（approval_history 一并覆盖）。
+# 若服务用 WENHENG_STATE_DB 指向了别的库，e2e 必须带同一个环境变量启动。
+for _p in (str(WENHENG), str(WENHENG / "src")):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+import state_store as _store                                  # noqa: E402
+from server import approval as _approval                      # noqa: E402
+
+_OUT_202607 = WENHENG / "out/202607"
+_STATE_DB = _store.db_path(_OUT_202607)
+_RECORD_FILE = _OUT_202607 / "审批记录.md"
 _E2E_BACKUP_DIR = WENHENG / "tmp" / "_e2e_approval_backup"
 
 
+def _state_snapshot():
+    """202607 的库内状态（签单记录 + 历史 + 存疑）；库不存在 → 空快照。"""
+    return {"approval": _store.get_approval(_STATE_DB, "202607"),
+            "reviews": _store.get_reviews(_STATE_DB, "202607")}
+
+
+def _state_restore(snap):
+    snap = snap or {}
+    rec, reviews = snap.get("approval"), snap.get("reviews") or {}
+    if not _STATE_DB.is_file() and rec is None and not reviews:
+        return                          # 库本来就没有：不为了还原凭空建一个
+    _store.replace_approval(_STATE_DB, "202607", rec)
+    _store.replace_reviews(_STATE_DB, "202607", reviews)
+
+
 def _recover_from_disk():
-    """上一次 e2e 被硬杀时，从 tmp 备份恢复 202607 的审批记录。"""
-    manifest = _E2E_BACKUP_DIR / "manifest.json"
-    if not manifest.exists():
-        return
-    try:
-        items = json.loads(manifest.read_text(encoding="utf-8"))
-        for it in items:
-            target = WENHENG / str(it.get("rel") or "")
-            if not target.parent.is_dir():
-                continue
-            src = _E2E_BACKUP_DIR / target.name
-            if it.get("exists"):
-                if src.exists():
-                    target.write_bytes(src.read_bytes())
-            else:
-                target.unlink(missing_ok=True)
-    finally:
+    """上一次 e2e 被硬杀时，从 tmp 快照恢复 202607 的库内状态。"""
+    snap_file = _E2E_BACKUP_DIR / "state.json"
+    if snap_file.exists():
+        try:
+            _state_restore(json.loads(snap_file.read_text(encoding="utf-8")))
+        except (OSError, ValueError, _store.StoreError) as exc:
+            print(f"  ⚠ 上一次 e2e 的快照恢复失败：{exc}")
+        finally:
+            shutil.rmtree(_E2E_BACKUP_DIR, ignore_errors=True)
+    elif (_E2E_BACKUP_DIR / "manifest.json").exists():
+        # 旧版（字节备份 approval.json）留下的壳：approval.json 已不是真相，直接清掉。
         shutil.rmtree(_E2E_BACKUP_DIR, ignore_errors=True)
 
 
-def _take_disk_backup():
+def _take_disk_backup(snap):
     _E2E_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    manifest = []
-    for path in _APPROVAL_FILES:
-        rel = path.relative_to(WENHENG).as_posix()
-        exists = path.exists()
-        manifest.append({"rel": rel, "exists": exists})
-        if exists:
-            (_E2E_BACKUP_DIR / path.name).write_bytes(path.read_bytes())
-    (_E2E_BACKUP_DIR / "manifest.json").write_text(
-        json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+    (_E2E_BACKUP_DIR / "state.json").write_text(
+        json.dumps(snap, ensure_ascii=False), encoding="utf-8")
 
 
 _recover_from_disk()
-_APPROVAL_BACKUP = {p: (p.read_bytes() if p.exists() else None) for p in _APPROVAL_FILES}
-_take_disk_backup()
+_SNAPSHOT = _state_snapshot()
+_RECORD_BACKUP = _RECORD_FILE.read_bytes() if _RECORD_FILE.exists() else None
+_take_disk_backup(_SNAPSHOT)
 
 
 def _restore_approval():
-    for path, data in _APPROVAL_BACKUP.items():
-        if data is None:
-            path.unlink(missing_ok=True)
-        else:
-            path.write_bytes(data)
+    """还原库内状态 + `审批记录.md` 字节（它仍是文件，仍要原样放回）。"""
+    _state_restore(_SNAPSHOT)
+    if _RECORD_BACKUP is None:
+        _RECORD_FILE.unlink(missing_ok=True)
+    else:
+        _RECORD_FILE.write_bytes(_RECORD_BACKUP)
     shutil.rmtree(_E2E_BACKUP_DIR, ignore_errors=True)
 
 
@@ -427,9 +441,10 @@ else:
     check("签后 approvalStatus = signed", _wstate() == "signed", f"got {_wstate()!r}")
     _pl = call("GET", "/api/periods")[1]
     check("印记链反映已签（periods 里出现 signed）", '"signed"' in _pl)
-    check("审批记录已落盘", (WENHENG / "out/202607/approval.json").exists())
+    rec = _approval.read(_OUT_202607)
+    check("签单已写入状态库（approval.json 不再是真相）", bool(rec.get("signed")),
+          f"signed={rec.get('signed')!r}")
     check("审批记录 Markdown 已导出", (WENHENG / "out/202607/审批记录.md").exists())
-    rec = json.loads((WENHENG / "out/202607/approval.json").read_text(encoding="utf-8"))
     check("记录里绑了报告指纹", bool(rec.get("fingerprint")), str(rec.get("fingerprint"))[:60])
     check("记录含批注", rec.get("note") == "e2e 验收", f"note={rec.get('note')!r}")
     check("记录含操作历史", isinstance(rec.get("history"), list) and len(rec["history"]) >= 1)
@@ -438,7 +453,7 @@ else:
     _r3j = json.loads(_r3) if _r3.strip().startswith("{") else {}
     check("撤回成功", st == 200 and _r3j.get("status") == "unsigned", f"{st} {str(_r3j)[:60]}")
     check("撤回后回到 unsigned", _wstate() == "unsigned", f"got {_wstate()!r}")
-    rec2 = json.loads((WENHENG / "out/202607/approval.json").read_text(encoding="utf-8"))
+    rec2 = _approval.read(_OUT_202607)
     hist = [h.get("action") for h in rec2.get("history", [])]
     check("历史保留 sign→…→revoke", "sign" in hist and "revoke" in hist, str(hist))
 
@@ -945,8 +960,8 @@ check("docx 是有效包（PK 头）", (dx_body or "")[:2] == "PK", (dx_body or 
 
 _restore_approval()
 check("e2e 结束后审批记录已还原（演示期不留测试痕迹）",
-      all((p.read_bytes() if p.exists() else None) == data
-          for p, data in _APPROVAL_BACKUP.items()))
+      _state_snapshot() == _SNAPSHOT
+      and (_RECORD_FILE.read_bytes() if _RECORD_FILE.exists() else None) == _RECORD_BACKUP)
 
 out("=" * 56)
 if FAILS:
