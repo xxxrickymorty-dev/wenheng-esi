@@ -427,6 +427,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 .story-h .hint:hover{color:var(--zhu);border-color:var(--zhu)}
 .playline{height:2px;background:var(--line-2);overflow:hidden;margin:-2px 0 12px}
 .playline i{display:block;height:100%;width:0;background:var(--gold-ink);transition:width .3s linear}
+.playline.done i{width:100%}
 .band{display:grid;grid-template-columns:repeat(5,1fr);border-top:3px solid var(--line)}
 .cell{position:relative;display:block;text-decoration:none;padding:14px 16px 12px;
   border-right:1px dashed var(--line);border-top:3px solid var(--line);margin-top:-3px;

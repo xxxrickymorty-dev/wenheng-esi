@@ -189,6 +189,11 @@ export function StoryBand({ period, approvalStatus, detail, live, liveNote }: Pr
     : '这一期还没有运行记录；每一步的状态来自取数与签单记录，没有的不编。'
   const final = '点一格可以回到那一段的原件。'
 
+  const clockFull = useCallback(() => {
+    if (!clockRef.current || !clock || 'live' in clock) return
+    clockRef.current.innerHTML = `<b>${clock.start}</b> → <b>${clock.end}</b> · ${clock.total}`
+  }, [clock])
+
   const play = useCallback(async () => {
     const band = bandRef.current
     if (!band || !steps.length) return
@@ -286,9 +291,10 @@ export function StoryBand({ period, approvalStatus, detail, live, liveNote }: Pr
     if (my !== token.current) return
     playing.current = false
     if (btnRef.current) btnRef.current.textContent = '▶ 重放'
-    if (lineRef.current) lineRef.current.style.width = '100%'
+    if (lineRef.current) lineRef.current.style.width = ''
+    clockFull()
     setPhase('done')
-  }, [steps, archive, clock])
+  }, [steps, archive, clock, clockFull])
 
   /* 期次/档案/状态变了就重放一次；减少动效、未出稿、任务在跑时直接给终态 */
   useEffect(() => {
@@ -307,6 +313,8 @@ export function StoryBand({ period, approvalStatus, detail, live, liveNote }: Pr
       token.current++
       playing.current = false
       if (btnRef.current) btnRef.current.textContent = '▶ 重放'
+      if (lineRef.current) lineRef.current.style.width = ''
+      clockFull()
       setPhase('done')
       return
     }
@@ -344,7 +352,7 @@ export function StoryBand({ period, approvalStatus, detail, live, liveNote }: Pr
           运行档案 · 完整回放 →
         </a>
       </div>
-      <div className="playline" aria-hidden="true"><i ref={lineRef} /></div>
+      <div className={`playline${phase === 'done' && !live ? ' done' : ''}`} aria-hidden="true"><i ref={lineRef} /></div>
       <div className="band" ref={bandRef}>
         {steps.map((s, i) => (
           <a key={s.key} className={`cell ${pending ? 'pending' : s.state}`} href={cellHref(s.key)}>
