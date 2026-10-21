@@ -215,6 +215,7 @@
 .dlg-dyn-step{display:inline-flex;align-items:center;gap:6px}
 .dlg-dyn-mark{display:inline-flex;align-items:center;gap:3px;color:inherit}
 .dlg-dyn-mark i{font-style:normal;font-size:14px;line-height:1}
+.dlg-dyn-note{font-family:var(--sans);font-size:10.5px;letter-spacing:0;color:var(--ink-3)}
 .dlg-land-hint{margin:10px 0 0;font-family:var(--kai);font-size:11px;letter-spacing:.22em;color:var(--ink-3)}
 .dlg-land-prev{margin:12px 0 0;font-family:var(--kai);font-size:11px;letter-spacing:.22em;color:var(--ink-3)}
 .dlg-wk-link{display:inline-flex;align-items:center;min-height:32px;border:1px solid var(--line);background:var(--card);border-radius:0;padding:5px 13px;font-size:13.5px;color:var(--ink-2);text-decoration:none;transition:border-color .15s,color .15s}

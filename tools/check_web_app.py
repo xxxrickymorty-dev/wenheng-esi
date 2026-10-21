@@ -335,9 +335,9 @@ def main():
             check("取数台：清单展开（有组卡，或如实说没有记录）", n_groups > 0 or has_empty,
                   f"groups={n_groups}")
             page.goto(BASE + "/app/?period=202607", wait_until="domcontentloaded")
-            page.wait_for_selector(".steplist .steplink", timeout=15000)
-            href = page.get_attribute(".steplist .steplink", "href")
-            check("生成台三步条第一步可点入取数台", bool(href) and "view=acquire" in href, str(href))
+            page.wait_for_selector(".story .cell", timeout=15000)
+            href = page.get_attribute(".story .cell", "href")
+            check("生成台故事条第一步可点入取数台", bool(href) and "view=acquire" in href, str(href))
         except Exception as e:                                          # noqa: BLE001
             check("取数台回归（X2）", False, str(e)[:100])
 

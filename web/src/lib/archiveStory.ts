@@ -48,16 +48,21 @@ export function buildArchiveStory(
   const retried = (d.replay.chain ?? []).some(
     (c) => c.from === 'retrying' || c.to === 'retrying' || c.to === 'escalated',
   )
-  const elapsed = Math.round(Number(d.run_log?.elapsed_sec ?? d.waterfall_total ?? 0))
-  const jobStatus = String(d.job?.status ?? '')
-  const failed = /fail|error|escalat|cancel|abort/i.test(jobStatus)
-  const hasSteps = (d.waterfall?.length ?? 0) > 0
-  const hasRun = !!d.job_id || hasSteps || elapsed > 0
+  /* 一次运行的事实由 archive.run 给；旧 API 没有 run 时退回旧字段。 */
+  const run = d.run
+  const elapsed = run ? Math.round(run.elapsed_sec)
+    : Math.round(Number(d.run_log?.elapsed_sec ?? d.waterfall_total ?? 0))
+  const jobStatus = run ? run.status : String(d.job?.status ?? '')
+  const failed = run ? run.failed : /fail|error|escalat|cancel|abort/i.test(jobStatus)
+  const stepCount = run ? run.steps : (d.waterfall?.length ?? 0)
+  const hasSteps = stepCount > 0
+  const hasRun = run ? run.has_run : (!!d.job_id || hasSteps || elapsed > 0)
+  const progressMissing = run ? run.progress_missing : d.progress_missing
   let generate: StoryStep
   if (!hasRun) {
     generate = { key: 'generate', title: '生成', value: '无运行记录',
                  note: '这一期没有任务记录', state: 'todo' }
-  } else if (d.progress_missing) {
+  } else if (progressMissing) {
     generate = { key: 'generate', title: '生成', value: `${elapsed} 秒`,
                  note: '运行记录缺失，无法回放步骤', state: 'warn' }
   } else if (failed) {
@@ -68,7 +73,7 @@ export function buildArchiveStory(
                  note: '缺少任务步骤记录', state: 'warn' }
   } else {
     generate = { key: 'generate', title: '生成', value: `${elapsed} 秒`,
-                 note: retried ? '含自愈 / 升级' : `${d.waterfall.length} 步 · 一次跑通`,
+                 note: retried ? '含自愈 / 升级' : `${stepCount} 步 · 一次跑通`,
                  state: retried ? 'warn' : 'ok' }
   }
 

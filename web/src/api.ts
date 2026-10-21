@@ -27,8 +27,16 @@ export type PeriodDetail = {
   lastJob?: { id?: string; status?: string; created_at?: string }
 }
 
-/** 两个角色（2026-10-11）：admin＝管理员（全可见可写）；operator＝操作员（评委，只读）。 */
-export type Me = { name: string; role: 'admin' | 'operator' }
+/** 两个角色（2026-10-11）：admin＝管理员（全可见可写）；operator＝操作员（评委/馆员）。
+    2026-10-20：具体能看/能下载/能写什么由 `capabilities` 一份表给出，前端不再把
+    `role === 'admin'` 抄在六个组件里。 */
+export type Capabilities = {
+  views: Record<string, boolean>
+  see: Record<string, boolean>
+  download: Record<string, boolean>
+  actions: Record<string, boolean>
+}
+export type Me = { name: string; role: 'admin' | 'operator'; capabilities?: Capabilities }
 
 /** 统一错误体（契约 §3.4）：{error, hint?, missing?} */
 export type ApiError = { error: string; hint?: string; missing?: { sheet: string; column: string; note?: string }[] }
@@ -182,6 +190,15 @@ export type ArchiveData = {
   job_id: string
   stats: Record<string, unknown>
   run_log?: Record<string, unknown>
+  /** 一次运行的事实（server/archive.run）：五步故事只读它，不再解释 job/run_log。 */
+  run?: {
+    has_run: boolean
+    status: string
+    failed: boolean
+    progress_missing: boolean
+    steps: number
+    elapsed_sec: number
+  }
   waterfall: WaterfallRow[]
   waterfall_summary?: WaterfallSummary
   waterfall_total: number

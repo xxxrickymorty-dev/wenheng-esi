@@ -151,7 +151,7 @@ export function Review({
 
   const row = periods.find((p) => p.period === period) ?? null
   const status = row?.status ?? 'unsigned'
-  const isAdmin = me?.role === 'admin'
+  const isAdmin = me?.capabilities?.actions?.edit ?? me?.role === 'admin'
   /* 2026-10-12：审批（签单/撤回）对操作员也开放；在线填、标存疑、重出仍只管理员。 */
   const canSign = !!me
 

@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { getMigrateSandbox, type MigrateStory } from './api'
 
 const FOUR = [
-  { t: '台账模板', d: '按 12 张工作表 + 22 个规范学科名的固定结构维护；换校不换表结构。' },
+  { t: '台账模板', d: '按 17 张工作表 + 22 个规范学科名的固定结构维护；换校不换表结构。' },
   { t: '学科清单', d: '22 个学科的中英文名与顺序；别名表按新校口径补。' },
   { t: '数据源', d: 'ESI / InCites 的导出目录与账号；换馆只换源，不改引擎。' },
   { t: '母版封面', d: '报告母版里的校名、期号、封面图；结构母版不动。' },

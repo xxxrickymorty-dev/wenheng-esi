@@ -163,8 +163,8 @@ export default function DialogPage() {
   const tv = active.turns.length === 0 ? taskView(home) : null
   /* 2026-10-11：管理员专属位（AI 开关、回滚、自动修复）；2026-10-12：出报告/审批对
      操作员也开放——「开跑/覆盖重出」用 canRun（两种角色都行），真门仍在后端。 */
-  const canEdit = me?.role === 'admin'
-  const canRun = !!me
+  const canEdit = me?.capabilities?.actions?.edit ?? me?.role === 'admin'
+  const canRun = me?.capabilities?.actions?.run ?? !!me
 
   useEffect(() => {
     document.documentElement.dataset.palette = palette
@@ -659,6 +659,7 @@ export default function DialogPage() {
                             <i aria-hidden="true">{row.mark}</i>
                             {markLabel(row.mark)}
                           </span>
+                          {row.note && <small className="dlg-dyn-note">{row.note}</small>}
                         </span>
                       ))}
                       {tv.cta && (

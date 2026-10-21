@@ -136,9 +136,11 @@ export function StoryBand({ period, approvalStatus, detail, live, liveNote }: Pr
   const sayRef = useRef<HTMLSpanElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
 
-  /* 期次变了：重读这一期的运行档案；404 = 没出稿 / 没有档案，不是错误 */
+  /* 期次变了：重读这一期的运行档案；没出稿的期次没有档案，不请求（避免 404 噪音）。
+     404 = 没出稿 / 没有档案，不是错误。 */
+  const canReadArchive = !!detail?.steps?.generate
   useEffect(() => {
-    if (!period) { setArchive(null); return }
+    if (!period || !canReadArchive) { setArchive(null); return }
     let alive = true
     setArchive(undefined)
     setPhase('pending')
@@ -146,7 +148,7 @@ export function StoryBand({ period, approvalStatus, detail, live, liveNote }: Pr
       .then((a) => { if (alive) setArchive(a) })
       .catch(() => { if (alive) setArchive(null) })
     return () => { alive = false }
-  }, [period])
+  }, [period, canReadArchive])
 
   const acq = useMemo<AcquisitionState | null>(() => {
     const a = detail?.acquisition

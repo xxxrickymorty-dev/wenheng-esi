@@ -519,8 +519,15 @@ export default function App() {
      2026-10-17 rick：demo 放开取数核验与选章节（后端同批改 @user_route）。
      2026-10-20 决赛证据面：运行档案 / 逐格溯源 / 红件清单 / 水位 / 沙盘对操作员只读开放；
      原始主台账仍只给管理员；下载口与写动作的真门仍在后端。 */
-  const OPERATOR_DENIED = new Set(['ledger'])
-  const operatorDenied = !!isOperator && OPERATOR_DENIED.has(view)
+  /* 2026-10-20：页面可见性也读 /api/me 的 capabilities；老服务没有该字段时退回 ledger 一条。 */
+  const caps = me?.capabilities
+  const viewDenied = (v: string) => caps ? caps.views?.[v] === false : v === 'ledger'
+  const canEdit = caps?.actions?.edit ?? me?.role === 'admin'
+  const canSwitchModel = caps?.actions?.switch_model ?? me?.role === 'admin'
+  /* 红件/溯源「页面」对操作员开放；红件「产物下载」才看 download。 */
+  const canSeeAdminBits = caps?.views?.red ?? !!me
+  const canDownloadRedList = caps?.download?.red_list ?? me?.role === 'admin'
+  const operatorDenied = !!isOperator && viewDenied(view)
   const navHref = (h: string) =>
     (selected
       ? h === '/app/' ? buildPeriodUrl(h, selected)
@@ -681,7 +688,7 @@ export default function App() {
             onChoiceChange={changeForecastChoice}
             onSaveChoice={saveSelectedForecastChoice}
             onReloadChoice={reloadForecastChoice}
-            canEdit={me?.role === 'admin'}
+            canEdit={canSwitchModel}
           />
         ) : view === 'trace' ? (
           <Trace period={selected} />
@@ -690,9 +697,9 @@ export default function App() {
         ) : view === 'charts' ? (
           <Charts period={selected} />
         ) : view === 'red' ? (
-          <RedList period={selected} canDownload={me?.role === 'admin'} />
+          <RedList period={selected} canDownload={canDownloadRedList} />
         ) : view === 'analysis' ? (
-          <Analysis period={selected} canEdit={me?.role === 'admin'} />
+          <Analysis period={selected} canEdit={canEdit} />
         ) : view === 'ledger' ? (
           <Ledger />
         ) : view === 'review' ? (
@@ -704,7 +711,7 @@ export default function App() {
           />
         ) : view === 'report' ? (
           <Report periods={periods} current={selected} guest={noAdminBits}
-            canSeeAdminBits={!!me}
+            canSeeAdminBits={canSeeAdminBits}
             refreshToken={selected ? artifactRefreshByPeriod[selected] ?? 0 : 0} />
         ) : (
           <>
@@ -728,7 +735,7 @@ export default function App() {
                         forecastAppliedStale={selectedForecastStale}
                         forecastAppliedDiffs={selectedForecastStaleDiffs}
                         autoConfirmRerun={autoConfirmRerun}
-                        showTools={!noAdminBits && me?.role === 'admin'}
+                        showTools={!noAdminBits && canEdit}
                         toolJobId={runForSelected?.jobId ?? null}
                         toolArtifactsToken={selected ? artifactRefreshByPeriod[selected] ?? 0 : 0}
                         onToolActionStart={beginToolAction}
