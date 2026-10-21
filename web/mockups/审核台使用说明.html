@@ -106,7 +106,7 @@
   <div class="step"><span class="who">审核台</span><div class="no">④</div><div class="t">勾选放行</div>
     <div class="d">勾「我已逐项看过待人工与存疑处，同意放行」，可写批注</div></div>
   <div class="step hot"><span class="who">审核台</span><div class="no">⑤</div><div class="t">钤印签单</div>
-    <div class="d">过三道闸门 → 落盘 <code>approval.json</code> + <code>审批记录.md</code>，绑定指纹</div></div>
+    <div class="d">过三道闸门 → 记进<b>状态库</b>，同时导出 <code>审批记录.md</code>，绑定指纹</div></div>
   <div class="step"><span class="who">报告 / 下载</span><div class="no">⑥</div><div class="t">签发后</div>
     <div class="d">报告期次链盖朱印；管理员可以下载这一版；重跑 → 签名失效 → 回到②</div></div>
 </div>
@@ -144,7 +144,7 @@
   <ul>
     <li>列出报告里仍带 <code>【手工：…】</code> 占位的位置（如 正文/p1、正文/p2、省域表 province_p），
         也就是机器不敢替你编、必须人来定的数字槽。</li>
-    <li>「<b>标存疑</b>」＝把这一处记进 <code>out/&lt;期次&gt;/review.json</code>（留痕：谁、什么时候）；
+    <li>「<b>标存疑</b>」＝把这一处记进<b>状态库</b>（留痕：谁、什么时候）；
         再点一次＝取消存疑。它不硬拦签单，但签单前你必须勾选知悉。</li>
     <li>列表只展示前 12 处；<b>更多看完整版 → 报告屏的「红色件清单」</b>。</li>
   </ul>
@@ -200,16 +200,15 @@
 <h2>5 · 它背后落了哪些文件（出问题时可查）</h2>
 <table>
   <tr><th style="width:300px">文件</th><th>作用</th></tr>
-  <tr><td><code>out/&lt;期次&gt;/approval.json</code></td><td>签单记录本体：签单人、时间、批注、放行快照、指纹、操作历史（含撤回）。</td></tr>
-  <tr><td><code>out/&lt;期次&gt;/审批记录.md</code></td><td>给人看的同一份记录（谁、何时、放了什么行）。</td></tr>
+  <tr><td><code>out/_state/wenheng.sqlite</code>（状态库）</td><td>签单记录本体：签单人、时间、批注、放行快照、指纹、操作历史（含撤回）；「存疑」标记也在这里。</td></tr>
+  <tr><td><code>out/&lt;期次&gt;/审批记录.md</code></td><td>给人看的同一份记录（谁、何时、放了什么行）；由状态库导出，可随时重出。</td></tr>
   <tr><td><code>out/&lt;期次&gt;/manual_inputs.json</code></td><td>在线填的内容（谁在什么时候填的哪一处）。</td></tr>
-  <tr><td><code>out/&lt;期次&gt;/review.json</code></td><td>「存疑」标记。</td></tr>
   <tr><td><code>out/&lt;期次&gt;/_superseded/&lt;时间戳&gt;/</code></td><td>重出前的旧成品（可回滚）；失败运行不会留下「新表格+旧报告」的混装。</td></tr>
   <tr><td><code>out/&lt;期次&gt;/诊断报告.md</code></td><td>带病出稿时由生成台附上：哪条断言没过、怎么修。</td></tr>
 </table>
 
 <footer>
-  文衡 · 学科信息参考 — 审核台使用说明（离线单文件，零依赖；2026-09-28 版）<br>
+  文衡 · 学科信息参考 — 审核台使用说明（离线单文件，零依赖；2026-10-21 版）<br>
   口径来源：web/src/Review.tsx · server/approval.py · server/workbench.py —— 页面行为如与本文不符，以代码为准。
 </footer>
 
