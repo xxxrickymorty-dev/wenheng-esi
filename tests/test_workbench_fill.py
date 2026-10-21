@@ -9,6 +9,7 @@
 """
 from __future__ import annotations
 
+import json
 import pathlib
 import sys
 
@@ -19,6 +20,7 @@ for p in (str(REPO / "src"), str(REPO)):
 
 import fill_docx                                                # noqa: E402
 from server import workbench                                    # noqa: E402
+from src import state_store                                     # noqa: E402
 
 
 def _row(location, text, source="sentences.py（句骨架+数字槽）"):
@@ -89,3 +91,44 @@ def test_一个槽位里的多处标记各成一条():
     todo = workbench._todo_from_slot(row, 0)
     assert [t["id"] for t in todo] == ["正文/top_section::学科数",
                                        "正文/top_section::学院数"]
+
+
+# ============================================================ ④ 填写入库（ADR-0012）
+def test_save_fill写状态库不落期次文件(tmp_path):
+    """`manual_inputs.json` 已入库（2026-10-21）：写入口只碰库，产品目录不新增文件。"""
+    d = tmp_path / "out" / "202609"
+    d.mkdir(parents=True)
+
+    rec = workbench.save_fill(d, "正文/p1::甲", "X", by="馆员", at="2026-10-21 10:00:00")
+    assert rec == {"ok": True, "id": "正文/p1::甲", "value": "X", "by": "馆员",
+                   "at": "2026-10-21 10:00:00", "n_filled": 1}
+    assert not (d / "manual_inputs.json").exists(), "期次目录不再落 manual_inputs.json"
+    assert workbench.load_fills(d) == {
+        "正文/p1::甲": {"value": "X", "by": "馆员", "at": "2026-10-21 10:00:00"}}
+
+
+def test_三态由产物现场判_库里status不算数(tmp_path):
+    """pending / applied / orphan 是**读时算**的：库里那列写什么都改不了页面的判定。"""
+    d = tmp_path / "out" / "202609"
+    d.mkdir(parents=True)
+    rows = [
+        _row("正文/p1", "据【手工：ESI发布日期】数据"),      # 标记还在 → 填了但没重出
+        _row("正文/p4", "覆盖19个学科"),                    # 标记已被替换 → 已写入报告
+    ]
+    (d / "red_slots.json").write_text(json.dumps(rows, ensure_ascii=False), encoding="utf-8")
+    db = state_store.db_path(d)
+    fills = {
+        "正文/p1::ESI发布日期": {"value": "2026年9月23日", "by": "馆员", "at": "t"},
+        "正文/p4::学科数": {"value": "19", "by": "馆员", "at": "t"},
+        "正文/p9::学院数": {"value": "7", "by": "馆员", "at": "t"},   # 位置不存在 → 残留
+    }
+    for slot, rec in fills.items():
+        state_store.set_fill(db, d.name, slot, rec, status="applied")   # 故意全写 applied
+
+    data = workbench.build(d)
+    assert {f["key"]: f["state"] for f in data["fills_list"]} == {
+        "正文/p1::ESI发布日期": "pending",
+        "正文/p4::学科数": "applied",
+        "正文/p9::学院数": "orphan",
+    }
+    assert (data["n_filled"], data["n_applied"], data["n_orphan"]) == (2, 1, 1)

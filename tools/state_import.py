@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""把现有 `out/*/approval.json`、`out/*/review.json`、`out/_jobs/*/job.json`
-**显式**导入状态库（ADR-0012 决定 10）。
+"""把现有 `out/*/approval.json`、`out/*/review.json`、`out/*/manual_inputs.json`、
+`out/_jobs/*/job.json` **显式**导入状态库（ADR-0012 决定 10）。
 
 - **幂等**：库里已有该期 / 该任务 id → 跳过（不覆盖）；重复跑结果一致。
   空文件也报「空」而不是反复导入；
-- **不删原文件**：迁移期两处都在，但之后**只有库是真相**（`approval.json`/`review.json`
-  降为导出件，回退用 `tools/state_export.py`；`job.json` 入库后谁都不再读它）；
+- **不删原文件**：迁移期两处都在，但之后**只有库是真相**（`approval.json`/`review.json`/
+  `manual_inputs.json` 降为导出件，回退用 `tools/state_export.py`；`job.json` 入库后谁都不再读它）；
 - 逐项打印：**导入 / 已存在跳过 / 形状非法**——隐式行为难调试，所以这里一句都不省。
 
 用法（在 `wenheng/` 下；也可 `uv run python -m tools.state_import`）：
@@ -34,6 +34,7 @@ from src import state_store  # noqa: E402
 PERIOD_RE = re.compile(r"^\d{6}(?:[_-].*)?$")
 APPROVAL_NAME = "approval.json"
 REVIEW_NAME = "review.json"
+FILLS_NAME = "manual_inputs.json"
 JOB_NAME = "job.json"
 
 
@@ -80,6 +81,19 @@ def _review_map(path: pathlib.Path):
     return data, ""
 
 
+def _fills_map(path: pathlib.Path):
+    """`manual_inputs.json` → `({位置::标记: {value, by, at}}, 问题)`；键序原样保留（导出靠它）。"""
+    data, problem = _read_json(path)
+    if problem:
+        return None, problem
+    if not isinstance(data, dict):
+        return None, "形状非法（顶层不是对象）"
+    for key, item in data.items():
+        if not isinstance(item, dict) or "value" not in item:
+            return None, f"形状非法（{key!r} 不是 {{value, by, at}}）"
+    return data, ""
+
+
 def import_period(out_dir, db_path) -> list[str]:
     """导入一期；返回逐项结果行（幂等：已有则跳过、原文件不动）。"""
     out_dir = pathlib.Path(out_dir)
@@ -121,6 +135,25 @@ def import_period(out_dir, db_path) -> list[str]:
                 lines.append(f"{period} · 复核：写入失败（{exc}），未导入")
             else:
                 lines.append(f"{period} · 复核：导入 {len(data)} 处存疑")
+
+    fills_file = out_dir / FILLS_NAME
+    if not fills_file.is_file():
+        lines.append(f"{period} · 填写：无 {FILLS_NAME}，跳过")
+    else:
+        data, problem = _fills_map(fills_file)
+        if problem:
+            lines.append(f"{period} · 填写：{problem}，未导入")
+        elif not data:
+            lines.append(f"{period} · 填写：空文件，无内容可导入")
+        elif state_store.get_fills(db_path, period):
+            lines.append(f"{period} · 填写：已存在跳过（库里已有，不覆盖）")
+        else:
+            try:
+                state_store.replace_fills(db_path, period, data)
+            except state_store.StoreError as exc:
+                lines.append(f"{period} · 填写：写入失败（{exc}），未导入")
+            else:
+                lines.append(f"{period} · 填写：导入 {len(data)} 处填写")
     return lines
 
 
@@ -164,7 +197,8 @@ def _job_record(path: pathlib.Path):
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="把 approval.json / review.json / job.json 显式导入状态库")
+    ap = argparse.ArgumentParser(
+        description="把 approval.json / review.json / manual_inputs.json / job.json 显式导入状态库")
     ap.add_argument("--root", default=str(ROOT), help="仓库根（默认本文件上一层）")
     ap.add_argument("--db", default=None, help="状态库路径（默认 out/_state/wenheng.sqlite）")
     ap.add_argument("--period", default=None, help="只导这一期（目录名）")
@@ -187,7 +221,7 @@ def main(argv=None) -> int:
         for line in import_period(out_dir, db):
             print("  " + line)
             total += 1
-    print(f"完成：{len(dirs)} 期 · {total} 项（审批+复核）")
+    print(f"完成：{len(dirs)} 期 · {total} 项（审批+复核+填写）")
 
     job_lines = import_jobs(out_root / "_jobs", db)
     for line in job_lines:

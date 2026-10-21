@@ -33,9 +33,23 @@ def _record(period, history=True):
     return rec
 
 
+#: 填写样例：**插入序与字典序相反**（province_p 在 p4 前）——导出必须按 rowid 保序才逐字节相同。
+FILLS_202607 = {
+    "正文/province_p::总数": {"value": "54", "by": "馆员", "at": "2026-10-20 11:00:00"},
+    "正文/p4::学科数": {"value": "19", "by": "馆员", "at": "2026-10-20 11:01:00"},
+}
+
+
+def _write_fills(out_dir, data=None):
+    """按迁移前 `workbench.save_fill` 的写法落文件（indent=1、中文不转义、平台换行）。"""
+    (out_dir / "manual_inputs.json").write_text(
+        json.dumps(FILLS_202607 if data is None else data, ensure_ascii=False, indent=1),
+        encoding="utf-8")
+
+
 @pytest.fixture
 def repo(tmp_path):
-    """最小仓库：out/202607（签单+存疑）、out/202603（形状非法）、out/_jobs（非期次，不该被扫）。"""
+    """最小仓库：out/202607（签单+存疑+填写）、out/202603（形状非法）、out/_jobs（非期次，不该被扫）。"""
     out = tmp_path / "out"
     d = out / "202607"
     d.mkdir(parents=True)
@@ -44,6 +58,7 @@ def repo(tmp_path):
     (d / "review.json").write_text(json.dumps({
         "正文/p1": {"state": "doubt", "by": "馆员", "at": "2026-10-20 11:00:00"},
     }, ensure_ascii=False), encoding="utf-8")
+    _write_fills(d)
 
     bad = out / "202603"
     bad.mkdir()
@@ -92,6 +107,56 @@ def test_空复核文件不算已导入(repo):
     lines = "\n".join(state_import.import_period(out, _db(repo)))
     assert "空文件" in lines
     assert state_store.get_reviews(_db(repo), "202609") == {}
+
+
+def test_填写导入幂等且不删原文件(repo):
+    db = _db(repo)
+    f = repo / "out" / "202607" / "manual_inputs.json"
+    before = f.read_bytes()
+
+    first = "\n".join(state_import.import_period(repo / "out" / "202607", db))
+    assert "导入 2 处填写" in first
+    assert f.read_bytes() == before                              # 原文件一字未改
+    assert state_store.get_fills(db, "202607") == FILLS_202607
+    assert list(state_store.get_fills(db, "202607")) == list(FILLS_202607)   # 键序原样
+
+    second = "\n".join(state_import.import_period(repo / "out" / "202607", db))
+    assert "填写：已存在跳过" in second
+    assert state_store.get_fills(db, "202607") == FILLS_202607   # 重跑不改库
+
+
+def test_填写形状非法逐期报错且不落行(repo):
+    out = repo / "out" / "202610"
+    out.mkdir()
+    _write_fills(out, {"正文/p4::学科数": "19"})
+    lines = "\n".join(state_import.import_period(out, _db(repo)))
+    assert "填写：形状非法" in lines and "未导入" in lines
+    assert state_store.get_fills(_db(repo), "202610") == {}
+
+
+def test_填写导出与迁移前逐字节相同(repo):
+    """`manual_inputs.json` 是**逐字节可比**的导出件（键序 / indent / 中文 / 换行都不许变）。"""
+    db = _db(repo)
+    out_dir = repo / "out" / "202607"
+    original = (out_dir / "manual_inputs.json").read_bytes()
+    state_import.import_period(out_dir, db)
+    (out_dir / "manual_inputs.json").unlink()
+
+    state_export.export_period(out_dir, db)
+    assert (out_dir / "manual_inputs.json").read_bytes() == original
+    state_export.export_period(out_dir, db)                       # 幂等：再导一次仍一致
+    assert (out_dir / "manual_inputs.json").read_bytes() == original
+
+
+def test_只有填写的期次也能被导出命令扫到(repo):
+    db = _db(repo)
+    out = repo / "out" / "202611"
+    out.mkdir()
+    state_store.set_fill(db, "202611", "正文/p4::学科数",
+                         {"value": "19", "by": "馆员", "at": "t"})
+    assert "202611" in state_store.periods(db)
+    assert state_export.main(["--root", str(repo)]) == 0
+    assert (out / "manual_inputs.json").is_file()
 
 
 def test_任务记录显式导入且幂等(repo):
@@ -155,6 +220,21 @@ def test_反向e2e_导出再导入到新库逐字段相等(repo, tmp_path):
 
     assert state_store.get_approval(dst_db, "202607") == state_store.get_approval(src_db, "202607")
     assert state_store.get_reviews(dst_db, "202607") == state_store.get_reviews(src_db, "202607")
+
+
+def test_反向e2e_填写导出再导入逐字段相等(repo, tmp_path):
+    """回退路径的兜底（填写版）：库 → `state_export` → 新库 `state_import` → 逐字段相等。"""
+    src_db = _db(repo)
+    state_import.import_period(repo / "out" / "202607", src_db)
+    out_dir = repo / "out" / "202607"
+    (out_dir / "manual_inputs.json").unlink()
+    state_export.export_period(out_dir, src_db)
+
+    dst_db = tmp_path / "attic-fills" / "wenheng.sqlite"
+    state_import.import_period(out_dir, dst_db)
+
+    assert state_store.get_fills(dst_db, "202607") == state_store.get_fills(src_db, "202607")
+    assert state_store.get_fills(dst_db, "202607") == FILLS_202607
 
 
 def test_导出命令只导库里有的期次(repo, capsys):

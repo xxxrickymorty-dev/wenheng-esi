@@ -7,6 +7,7 @@ import pathlib
 import re
 
 from ai._brain import BrainError, Turn
+from src import state_store
 
 __all__ = ["BrainError", "FailingBrain", "ScriptedBrain", "Turn", "brief_texts",
            "raw_digits", "seed_period"]
@@ -46,10 +47,12 @@ MANUAL_SAMPLE = {
 
 
 def seed_period(root, period="202607", *, facts=None, meta=None, red=True, manual=True):
-    """给测试数据根落一份最小可用期次产物（overview_facts + meta [+ red_slots/manual_inputs]）。
+    """给测试数据根落一份最小可用期次产物（overview_facts + meta [+ red_slots + 填写入库]）。
 
     事实金样＝`tests/fixtures/ai/overview_facts_202607.json`（真产物快照，不触网）。
-    `manual=False` 时不写馆员填值——用来测「未填槽位整句丢」。
+    `manual=False` 时不落馆员填值（状态库里没有该期行）——用来测「未填槽位整句丢」。
+    填写已入库（ADR-0012）：库落在 `root/_state/wenheng.sqlite`（期次目录的同级），
+    不再写 `manual_inputs.json`。
     """
     d = pathlib.Path(root) / period
     d.mkdir(parents=True, exist_ok=True)
@@ -65,8 +68,7 @@ def seed_period(root, period="202607", *, facts=None, meta=None, red=True, manua
         (d / "red_slots.json").write_text(json.dumps(RED_SAMPLE, ensure_ascii=False),
                                           encoding="utf-8")
     if manual:
-        (d / "manual_inputs.json").write_text(json.dumps(MANUAL_SAMPLE, ensure_ascii=False),
-                                              encoding="utf-8")
+        state_store.replace_fills(state_store.db_path(d), period, MANUAL_SAMPLE)
     return d
 
 

@@ -131,10 +131,10 @@ class Test签单拦截已填未写入:
 
     def test_已填未写入被拦且不落approval(self, tmp_path, monkeypatch):
         out, d = self._make_out(tmp_path)
-        (d / "manual_inputs.json").write_text(json.dumps({
+        state_store.replace_fills(state_store.db_path(d), "202609", {
             "正文/p1::ESI发布日期": {"value": "2026年9月23日", "by": "demo",
                                      "at": "2026-09-28 22:03:10"},
-        }, ensure_ascii=False), encoding="utf-8")
+        })
         monkeypatch.setattr(config, "OUT_DIR", out)
         resp = asyncio.run(app_module.api_period_sign_json(
             _Req(config.ADMIN_USER, "POST", {"known": True, "note": "试签"}), "202609"))
@@ -153,10 +153,10 @@ class Test签单拦截已填未写入:
             "new_full": "据2026年9月23日ESI最新数据显示",
             "source": "sentences.py（句骨架+数字槽）",
         }], ensure_ascii=False), encoding="utf-8")
-        (d / "manual_inputs.json").write_text(json.dumps({
+        state_store.replace_fills(state_store.db_path(d), "202609", {
             "正文/p1::ESI发布日期": {"value": "2026年9月23日", "by": "demo",
                                      "at": "2026-09-28 22:03:10"},
-        }, ensure_ascii=False), encoding="utf-8")
+        })
         monkeypatch.setattr(config, "OUT_DIR", out)
         resp = asyncio.run(app_module.api_period_sign_json(
             _Req(config.ADMIN_USER, "POST", {"known": True, "note": "试签"}), "202609"))

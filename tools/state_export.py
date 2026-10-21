@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """把状态库反向导出成原格式文件（ADR-0012 决定 10：回退与审计用）。
 
-- 只写 `out/<期次>/approval.json` 与 `out/<期次>/review.json`（原子写）；
+- 只写 `out/<期次>/approval.json`、`review.json` 与 `manual_inputs.json`（原子写）；
 - **幂等**：同库导出两次字节一致；**不删库、不删文件**（回退时旧文件可能残留，以库为准）；
+  填写按库里的 rowid 序落盘，键序与迁移前那份文件相同——`manual_inputs.json` 是逐字节可比的；
 - 不写 `审批记录.md`：它是签/撤时顺手导出的产物，不由本工具重造。
 
 用法（在 `wenheng/` 下；也可 `uv run python -m tools.state_export`）：
@@ -26,6 +27,7 @@ from src import atomic_io, state_store  # noqa: E402
 
 APPROVAL_NAME = "approval.json"
 REVIEW_NAME = "review.json"
+FILLS_NAME = "manual_inputs.json"
 
 
 def _dump(obj) -> str:
@@ -52,11 +54,21 @@ def export_period(out_dir, db_path) -> list[str]:
     else:
         atomic_io.write_text_atomic(out_dir / REVIEW_NAME, _dump(reviews))
         lines.append(f"{period} · 复核：导出 {len(reviews)} 处存疑")
+
+    fills = state_store.get_fills(db_path, period)
+    if not fills:
+        lines.append(f"{period} · 填写：库里为空，未写 {FILLS_NAME}")
+    else:
+        # 与旧 `workbench.save_fill` 的写法同口径（indent=1、中文不转义、无尾换行；
+        # 换行为平台翻译，`atomic_io` 默认 newline=None）→ 与迁移前那份文件逐字节可比。
+        atomic_io.write_text_atomic(out_dir / FILLS_NAME, _dump(fills))
+        lines.append(f"{period} · 填写：导出 {len(fills)} 处填写")
     return lines
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="把状态库导出回 approval.json / review.json")
+    ap = argparse.ArgumentParser(
+        description="把状态库导出回 approval.json / review.json / manual_inputs.json")
     ap.add_argument("--root", default=str(ROOT), help="仓库根（默认本文件上一层）")
     ap.add_argument("--db", default=None, help="状态库路径（默认 out/_state/wenheng.sqlite）")
     ap.add_argument("--period", default=None, help="只导这一期（目录名）")

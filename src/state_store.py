@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
-"""系统状态库（SQLite）——签单 / 复核 / 任务记录（ADR-0012 决定 3/6/7/8/11）。
+"""系统状态库（SQLite）——签单 / 复核 / 任务记录 / 人工填写（ADR-0012 决定 3/6/7/8/11）。
 
-- **边界（spec 写死）**：只装**控制面状态**（签单 / 复核 / 任务记录）。数字一个不装（唯一事实源
-  仍是母本 xlsx），ESI / InCites 原始包不入库。
+- **边界（spec 写死）**：只装**控制面状态**（签单 / 复核 / 任务记录 / 人工填写）。数字一个不装
+  （唯一事实源仍是母本 xlsx），ESI / InCites 原始包不入库。
 - **签单不存 status 列**——签单是否失效永远现场 glob + hash `out/<期次>/` 的产物
   （`server/approval.py`），库里缓存状态必然与文件不一致。
   **任务记录反过来**：`jobs.status` 是**事实本身**（跑到哪一步、谁跑的），没有第二个真相源
   要跟它比对，所以它既在 `payload` 里、又提升成列供 `active_job()` 一次查到
   （「一次只跑一期」不再扫目录）。
+- **人工填写（003）**：一行一处（`period, slot`），详见 `_DDL_003` 的注释——`status` **不做真相**，
+  三态仍由 `server/workbench.py::_fill_state` 现场看产物重算（与签单同理）。
 - **路径唯一口径**：`db_path()` → `out/_state/wenheng.sqlite`；`WENHENG_STATE_DB` 可覆盖
   （流水线子进程与 e2e 靠它指同一个库）。传 `out_dir` 时取它的**同级** `_state/`
   ——`out/<期次>` 解出 `out/_state`；测试把期次目录建在 tmp 下，库也就落在 tmp，互不污染。
@@ -34,7 +36,7 @@ import sqlite3
 import time
 
 #: schema 版本（写进 meta；只增不减，见模块头的迁移说明）。
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 #: 库文件名（`out/_state/` 下）。
 DB_NAME = "wenheng.sqlite"
 #: 覆盖库路径的环境变量（流水线子进程 / e2e 用）。
@@ -82,6 +84,26 @@ _DDL_002 = (
 )
 
 
+#: 003 的业务表：人工填写（`out/<期次>/manual_inputs.json` 的唯一真相源）。
+#: **一行一处**（`位置::标记文字`），不是一期一行——要能回答「谁在什么时候填的哪一处」。
+#: `payload` ＝ 旧文件里那一项的原样字典（`{value, by, at}`；往返相等、导出逐字节可比）；
+#: `value / actor / at` 是为查询与审计提升的列（`actor` 即旧文件的 `by`）。
+#: 🔴 `status` 只记**落库那一刻**的三态（`pending / applied / orphan`），**不是真相**：
+#: 三态由 `workbench._fill_state` 每次现场看 `red_slots.json` / 生成稿重算，
+#: 读口（`get_fills`）不返回它，页面判定也不读它——同一个理由见 ADR-0012 决定 6。
+#: 写入口只可能知道「刚保存、还没重出」这一档，所以 `save_fill` 写 `pending`；
+#: 导入时旧文件没有这一列，同样记 `pending`（＝未经本次会话确认写进报告）。
+#: 排序靠 rowid（表是普通 rowid 表，`ON CONFLICT` 不改 rowid）——旧文件的键序就是写入序，
+#: 导出要逐字节相同就不能按 slot 字典序重排。
+_DDL_003 = (
+    "CREATE TABLE IF NOT EXISTS manual_inputs ("
+    " period TEXT NOT NULL, slot TEXT NOT NULL,"
+    " value TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pending',"
+    " actor TEXT NOT NULL DEFAULT '', at TEXT NOT NULL DEFAULT '',"
+    " payload TEXT NOT NULL, PRIMARY KEY (period, slot))",
+)
+
+
 class StoreError(RuntimeError):
     """状态库的显式失败（形状非法 / 迁移拒绝等）——调用方据此给失败结果，不猜。"""
 
@@ -117,6 +139,11 @@ def _dumps(obj) -> str:
     return json.dumps(obj, ensure_ascii=False)
 
 
+def _text(val) -> str:
+    """提升列一律存字符串（`None` → 空串；数字等原样转字面量，别丢 `0`）。"""
+    return "" if val is None else str(val)
+
+
 def _loads(raw, default):
     """坏行读成默认值——库里从不写坏，防御而已。"""
     try:
@@ -139,10 +166,18 @@ def _migrate_002(con) -> None:
         con.execute(stmt)
 
 
+def _migrate_003(con) -> None:
+    """003：建人工填写表（`manual_inputs.json` 入库；一期一行 → 一行一处）。"""
+    for stmt in _DDL_003:
+        con.execute(stmt)
+
+
 #: 有序迁移表（只增不改；id 一旦发出就不再动）。
 MIGRATIONS = (
     {"id": "001-approvals-reviews", "note": "approvals / approval_history / reviews", "fn": _migrate_001},
     {"id": "002-jobs", "note": "jobs（原 out/_jobs/<id>/job.json）", "fn": _migrate_002},
+    {"id": "003-manual-inputs", "note": "manual_inputs（原 out/<期次>/manual_inputs.json）",
+     "fn": _migrate_003},
 )
 
 
@@ -530,16 +565,89 @@ def list_jobs(db_path, *, period=None, statuses=None, limit=None) -> list[dict]:
     return out
 
 
+# --------------------------------------------------------------- 人工填写（003）
+#: `manual_inputs.status` 允许的三态（与 `server/workbench.py::_fill_state` 同一套词汇）。
+FILL_STATES = ("pending", "applied", "orphan")
+
+
+def get_fills(db_path, period) -> dict:
+    """一期的填写内容：`{位置::标记: {value, by, at}}`（与旧 `manual_inputs.json` 同形）；无 → `{}`。
+
+    库不存在 → `{}`（读口不造文件）。**按 rowid 序**返回＝旧文件的书写顺序：
+    JSON 顶层键序没排过，导出要逐字节相同就不能按 slot 重排。
+    `status` 列不返回——三态由 `workbench._fill_state` 现场重算（见 `_DDL_003`）。
+    """
+    period = str(period)
+    path = pathlib.Path(db_path)
+    if not path.is_file():
+        return {}
+    with _open(path) as (con, degraded, _note):
+        try:
+            rows = con.execute(
+                "SELECT slot, payload FROM manual_inputs WHERE period=? ORDER BY rowid",
+                (period,)).fetchall()
+        except sqlite3.Error:
+            if degraded:
+                return {}
+            raise
+    out = {}
+    for row in rows:
+        item = _loads(row["payload"], {})
+        if isinstance(item, dict):
+            out[str(row["slot"])] = item
+    return out
+
+
+def set_fill(db_path, period, slot, record, *, status="pending") -> None:
+    """写/覆盖一处填写（upsert）。`record` 即旧文件里那一项（`{value, by, at}`），原样进 payload。"""
+    period, slot = str(period), str(slot)
+    if not slot:
+        raise StoreError("填写位置不能为空")
+    if not isinstance(record, dict):
+        raise StoreError("填写形状非法（不是对象）")
+    if status not in FILL_STATES:
+        raise StoreError(f"填写状态非法：{status!r}（只收 {'/'.join(FILL_STATES)}）")
+    with _write(db_path) as con:
+        con.execute(
+            "INSERT INTO manual_inputs (period, slot, value, status, actor, at, payload)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)"
+            " ON CONFLICT(period, slot) DO UPDATE SET value=excluded.value,"
+            " status=excluded.status, actor=excluded.actor, at=excluded.at,"
+            " payload=excluded.payload",
+            (period, slot, _text(record.get("value")), str(status),
+             _text(record.get("by")), _text(record.get("at")), _dumps(record)))
+
+
+def replace_fills(db_path, period, data) -> None:
+    """整期覆盖（导入 / e2e 还原用）：`{}` = 全清；**按字典顺序落行**（导出键序由此而来）。"""
+    period = str(period)
+    if not isinstance(data, dict):
+        raise StoreError("填写集合形状非法（不是对象）")
+    for slot, item in data.items():
+        if not isinstance(item, dict):
+            raise StoreError(f"填写形状非法：{slot!r}")
+    with _write(db_path) as con:
+        con.execute("DELETE FROM manual_inputs WHERE period=?", (period,))
+        for slot, item in data.items():
+            con.execute(
+                "INSERT INTO manual_inputs (period, slot, value, status, actor, at, payload)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (period, str(slot), _text(item.get("value")),
+                 str(item.get("status") or "pending"),
+                 _text(item.get("by")), _text(item.get("at")), _dumps(item)))
+
+
 # --------------------------------------------------------------- 期次清单（导出用）
 def periods(db_path) -> list[str]:
-    """库里有签单或存疑的期次（字典序，即时间序）；库不存在 → `[]`。"""
+    """库里有状态的期次（签单 / 存疑 / 填写；字典序，即时间序）；库不存在 → `[]`。"""
     path = pathlib.Path(db_path)
     if not path.is_file():
         return []
     with _open(path) as (con, degraded, _note):
         try:
             rows = con.execute(
-                "SELECT period FROM approvals UNION SELECT period FROM reviews").fetchall()
+                "SELECT period FROM approvals UNION SELECT period FROM reviews"
+                " UNION SELECT period FROM manual_inputs").fetchall()
         except sqlite3.Error:
             if degraded:
                 return []

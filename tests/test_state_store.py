@@ -52,7 +52,7 @@ def test_首次写时原子建库且带版本与迁移记录(tmp_path):
 
     assert db.is_file()
     assert {"meta", "migrations", "approvals", "approval_history", "reviews",
-            "jobs"} <= _tables(db)
+            "jobs", "manual_inputs"} <= _tables(db)
     health = state_store.health(db)
     assert health["schema_version"] == state_store.SCHEMA_VERSION
     assert health["degraded"] is False
@@ -204,8 +204,8 @@ def test_任务记录形状非法不落行(tmp_path):
     assert state_store.list_jobs(db) == []
 
 
-def test_旧库升级到002不丢已有签单(tmp_path):
-    """手工造一个 001 时代的库 → 打开即补 002；签单不动，迁移不重跑。"""
+def test_旧库升级到最新schema不丢已有签单(tmp_path):
+    """手工造一个 001 时代的库 → 打开即补齐后续迁移；签单不动，迁移不重跑。"""
     db = tmp_path / "wenheng.sqlite"
     con = sqlite3.connect(str(db))
     try:
@@ -225,9 +225,108 @@ def test_旧库升级到002不丢已有签单(tmp_path):
     assert state_store.get_approval(db, "202607")["signed"] is True
     assert state_store.get_job(db, "x") is None
     with sqlite3.connect(str(db)) as con:
-        assert con.execute("SELECT COUNT(*) FROM migrations").fetchone()[0] == 2
+        assert con.execute("SELECT COUNT(*) FROM migrations").fetchone()[0] == \
+            len(state_store.MIGRATIONS)
         tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    assert "jobs" in tables
+    assert {"jobs", "manual_inputs"} <= tables
+
+
+def test_旧库002升级到003不丢前两批数据(tmp_path):
+    """002 库（签单 / 存疑 / 任务都在）→ 打开即补 003；三批各行一条不少。"""
+    db = tmp_path / "wenheng.sqlite"
+    con = sqlite3.connect(str(db))
+    try:
+        con.execute("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)")
+        con.execute("CREATE TABLE migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL,"
+                    " note TEXT NOT NULL DEFAULT '')")
+        state_store._migrate_001(con)
+        state_store._migrate_002(con)
+        con.execute("INSERT INTO approvals (period, actor, signed_at, payload)"
+                    " VALUES (?, ?, ?, ?)",
+                    ("202607", "rick", "t", json.dumps({"signed": True}, ensure_ascii=False)))
+        con.execute("INSERT INTO reviews (period, key, value, payload, updated_at)"
+                    " VALUES (?, ?, ?, ?, ?)", ("202607", "正文/p1", "doubt", "{}", "t"))
+        con.execute("INSERT INTO jobs (id, status, period, created_at, updated_at, payload)"
+                    " VALUES (?, ?, ?, ?, ?, ?)",
+                    ("job-1", "done", "202607", "t", "t", json.dumps({"id": "job-1"})))
+        con.execute("INSERT INTO migrations (id, applied_at, note) VALUES ('001-approvals-reviews', 't', '')")
+        con.execute("INSERT INTO migrations (id, applied_at, note) VALUES ('002-jobs', 't', '')")
+        con.execute("INSERT INTO meta (key, value) VALUES ('schema_version', '2')")
+        con.commit()
+    finally:
+        con.close()
+
+    assert state_store.get_fills(db, "202607") == {}             # 打开即补 003
+    assert state_store.get_approval(db, "202607")["signed"] is True
+    assert state_store.get_reviews(db, "202607")["正文/p1"]["state"] == "doubt"
+    assert state_store.get_job(db, "job-1")["id"] == "job-1"
+    assert state_store.health(db)["schema_version"] == state_store.SCHEMA_VERSION
+
+    state_store.set_fill(db, "202607", "正文/p4::学科数",
+                         {"value": "19", "by": "rick", "at": "t"})
+    assert state_store.get_fills(db, "202607")["正文/p4::学科数"]["value"] == "19"
+
+
+# ---------------------------------------------------------------- 人工填写（第三批）
+def _fill(value="19", by="馆员", at="2026-10-21 11:00:00"):
+    return {"value": value, "by": by, "at": at}
+
+
+def test_填写往返形状与旧文件一致(tmp_path):
+    """`get_fills` 必须原样还原旧 `manual_inputs.json` 的 `{value, by, at}`——不带 status。"""
+    db = tmp_path / "wenheng.sqlite"
+    assert state_store.get_fills(db, "202607") == {}          # 无库 → 空，不造文件
+    assert not db.exists()
+
+    state_store.replace_fills(db, "202607", {
+        "正文/province_p::总数": _fill("54"),
+        "正文/p4::学科数": _fill(),
+    })
+    got = state_store.get_fills(db, "202607")
+    assert got == {"正文/province_p::总数": _fill("54"), "正文/p4::学科数": _fill()}
+    # 键序＝写入序（导出逐字节可比的前提；JSON 顶层键序不是排过的）
+    assert list(got) == ["正文/province_p::总数", "正文/p4::学科数"]
+    # 三态不进读口：status 由 workbench 现场判（`_DDL_003`）
+    assert set(got["正文/p4::学科数"]) == {"value", "by", "at"}
+
+
+def test_填写覆盖写同一位置不新增行且查得到谁何时(tmp_path):
+    db = tmp_path / "wenheng.sqlite"
+    state_store.set_fill(db, "202607", "正文/p4::学科数", _fill())
+    state_store.set_fill(db, "202607", "正文/p4::学科数",
+                         _fill("20", by="rick", at="2026-10-21 12:00:00"))
+
+    assert state_store.get_fills(db, "202607") == {
+        "正文/p4::学科数": {"value": "20", "by": "rick", "at": "2026-10-21 12:00:00"}}
+    with sqlite3.connect(str(db)) as con:
+        assert con.execute("SELECT COUNT(*) FROM manual_inputs").fetchone()[0] == 1
+        # 提升列与 payload 同源：actor 即旧文件的 by；status 记落库时的态
+        row = con.execute("SELECT value, status, actor, at FROM manual_inputs").fetchone()
+        assert row == ("20", "pending", "rick", "2026-10-21 12:00:00")
+
+
+def test_填写按period隔离(tmp_path):
+    db = tmp_path / "wenheng.sqlite"
+    state_store.set_fill(db, "202607", "正文/p4::学科数", _fill())
+    state_store.set_fill(db, "202609", "正文/p4::学科数", _fill("20"))
+
+    assert state_store.get_fills(db, "202607")["正文/p4::学科数"]["value"] == "19"
+    assert state_store.get_fills(db, "202609")["正文/p4::学科数"]["value"] == "20"
+    assert state_store.get_fills(db, "202611") == {}
+    assert state_store.periods(db) == ["202607", "202609"]
+
+
+def test_填写状态只收三态且形状非法不落行(tmp_path):
+    db = tmp_path / "wenheng.sqlite"
+    with pytest.raises(state_store.StoreError):
+        state_store.set_fill(db, "202607", "正文/p4::学科数", _fill(), status="done")
+    with pytest.raises(state_store.StoreError):
+        state_store.set_fill(db, "202607", "", _fill())                    # 位置不能空
+    with pytest.raises(state_store.StoreError):
+        state_store.set_fill(db, "202607", "正文/p4::学科数", "19")         # 不是对象
+    with pytest.raises(state_store.StoreError):
+        state_store.replace_fills(db, "202607", {"正文/p4::学科数": "19"})
+    assert state_store.get_fills(db, "202607") == {}
 
 
 # ---------------------------------------------------------------- 降级

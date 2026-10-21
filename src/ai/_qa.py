@@ -7,7 +7,7 @@
 三处口径（2026-09-29 修，rick 实问暴露）：
 - **检索**：中文 2–4 字滑窗 + 报告别名（热点论文/高被引 → 顶尖论文），
   不再要求问句里带空格（旧版整句无空格＝零命中）；
-- **手工槽**：`out/<期次>/manual_inputs.json` 里馆员已填的值回填 `【手工：X】`；
+- **手工槽**：状态库 `manual_inputs`（原 `out/<期次>/manual_inputs.json`）里馆员已填的值回填 `【手工：X】`；
   未填的槽位**所在分句丢掉**（2026-10-11 由「整句丢」放宽）——不把裸占位符端给读者，
   也不让模型看见，同时保住同句里没槽位的数据（如顶尖论文总数）；
 - **证据**：模型轮看**全量段**（命中段排前），规则版仍只出命中段——
@@ -40,6 +40,11 @@ import re
 from . import _shield
 from ._draft import RuleDraft
 from ._numbered import NumberedText
+
+try:                                        # 仓根在 sys.path 上（server / tests）
+    from src import state_store
+except ImportError:                         # 只有 src/ 在 sys.path 上（流水线内部）
+    import state_store                      # type: ignore[no-redef]
 
 #: 检索词里没有信息量的常见词（切词后过滤）。
 _STOP = {"什么", "多少", "几门", "几个", "哪些", "这期", "本期", "请问", "怎么", "如何",
@@ -330,9 +335,13 @@ def _disc_index(items):
 
 
 def _manual_values(root, period) -> dict:
-    """馆员已填的手工槽：`{"<段key>": {字段: 值}}`（文件键形如 `正文/p4::学科数`）。"""
-    mi = _load_json(pathlib.Path(root) / str(period) / "manual_inputs.json",
-                    default={}) or {}
+    """馆员已填的手工槽：`{"<段key>": {字段: 值}}`（键形如 `正文/p4::学科数`，存在状态库）。
+
+    填写已入库（ADR-0012）：库在 `out/_state/`，由 `state_store.db_path` 唯一口径解出；
+    库不存在 → 空（读口不建库，与旧文件缺失同口径）。
+    """
+    db = state_store.db_path(pathlib.Path(root) / str(period))
+    mi = state_store.get_fills(db, str(period)) or {}
     out: dict = {}
     for key, item in mi.items():
         if "::" not in str(key):

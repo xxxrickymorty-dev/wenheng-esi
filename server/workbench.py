@@ -10,17 +10,16 @@
 2. **待拍板只收"不处理报告就出不来或不该出"的那批**（约 20 条），不是全部 354 条。
    239 个大表格子 + 99 张图的正确状态是"已可溯源、要查随时能点开"，把它们塞进
    待办清单，等于把"已完成"和"待处理"混在一起——那正是"找不到重点"的根源。
-3. 本模块**只读**。在线填的内容由别的模块写 `out/<期次>/manual_inputs.json`，
-   **台账一个字节都不碰**（改了就破溯源）。
+3. 本模块**只读**（`save_fill` 除外）。在线填的内容落系统状态库的 `manual_inputs` 表
+   （ADR-0012），**台账一个字节都不碰**（改了就破溯源）。
 """
 from __future__ import annotations
 
-import json
 import pathlib
 import re
 
 from . import artifacts
-from src import atomic_io, state_store
+from src import state_store
 
 #: 台账外的三张大表：**规格写死，状态不写死**。
 #:
@@ -303,27 +302,27 @@ def _todo_from_slot(row, idx):
 
 
 # ================================================================== 在线填 / 存疑
-# 两个状态文件都落在 out/<期次>/（产物目录），**台账一个字节不碰**。
-# 破坏了这条，"354 个数字可溯源"就变成一句空话 —— 修改必须发生在报告侧。
-
-def _load_json(path):
-    return artifacts.read_json(path) or {}
-
+# 填写落**系统状态库**（ADR-0012：`manual_inputs` 表，一行一处），存疑也走库；
+# 期次目录里不再写 `manual_inputs.json`（导出件由 `tools/state_export.py` 生成）。
+# **台账一个字节不碰** —— 破坏了这条，"354 个数字可溯源"就变成一句空话。
 
 def load_fills(out_dir):
-    return _load_json(pathlib.Path(out_dir) / "manual_inputs.json")
+    """一期的填写：`{位置::标记: {value, by, at}}`——库为准，形状与旧 `manual_inputs.json` 同。"""
+    out_dir = pathlib.Path(out_dir)
+    return state_store.get_fills(state_store.db_path(out_dir), out_dir.name)
 
 
 def save_fill(out_dir, todo_id, value, by="?", at=None):
-    """保存一处人工填写。返回记录。**只写产物侧**，永不写台账。"""
+    """保存一处人工填写。返回记录。**只写状态库**（产物目录不再落 json），永不写台账。"""
     import datetime as dt
-    p = pathlib.Path(out_dir) / "manual_inputs.json"
-    data = _load_json(p)
+    out_dir = pathlib.Path(out_dir)
+    db = state_store.db_path(out_dir)
     rec = {"value": value, "by": by,
            "at": at or dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-    data[todo_id] = rec
-    atomic_io.write_text_atomic(p, json.dumps(data, ensure_ascii=False, indent=1))
-    return {"ok": True, "id": todo_id, **rec, "n_filled": len(data)}
+    # status 只记「刚保存、还没重出」这一档；三态真相仍由 `_fill_state` 现场判（同 `_DDL_003` 注释）。
+    state_store.set_fill(db, out_dir.name, todo_id, rec, status="pending")
+    return {"ok": True, "id": todo_id, **rec,
+            "n_filled": len(state_store.get_fills(db, out_dir.name))}
 
 
 def load_review(out_dir):
