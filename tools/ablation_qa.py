@@ -54,6 +54,7 @@ sys.path.insert(0, str(REPO / "src"))
 
 import ai                                                       # noqa: E402
 import sentences                                                # noqa: E402
+import state_store                                              # noqa: E402
 from ai import _evidence, _plan, _qa                            # noqa: E402
 from flexible import queries                                    # noqa: E402
 from flexible.datasource import DataSource                      # noqa: E402
@@ -317,6 +318,34 @@ def num_forms(value):
     return forms
 
 
+def walk_numbers(obj, acc):
+    """把任意 JSON 结构里的数字（含字符串中的数字）折进 `acc`（白名单累加器）。"""
+    if isinstance(obj, dict):
+        for x in obj.values():
+            walk_numbers(x, acc)
+    elif isinstance(obj, list):
+        for x in obj:
+            walk_numbers(x, acc)
+    elif isinstance(obj, bool) or obj is None:
+        return
+    elif isinstance(obj, (int, float)):
+        acc |= num_forms(obj)
+    elif isinstance(obj, str):
+        for s in _NUM_RE.findall(obj):
+            if float(s) > 9:
+                acc |= num_forms(float(s))
+
+
+def fill_records(out_dir, period):
+    """一期的填写内容 `{位置::标记: {value, by, at}}`——**状态库是真相源**。
+
+    2026-10-22 起 `manual_inputs.json` 停写停读（spec `2026-10-21-系统状态库（SQLite）`，
+    schema 003），磁盘上那份文件只是导出件。继续扫文件不会报错，只会**慢慢失效**
+    （文件还在，填进来的新值永远进不了白名单）。
+    """
+    return state_store.get_fills(state_store.db_path(out_dir), period)
+
+
 def build_universe():
     """`out/<期次>` 全部台账值的「数字宇宙」（用于区分 游离真实 与 编造）。"""
     uni = set()
@@ -361,27 +390,12 @@ def build_universe():
                 uni |= num_forms(cites / thrm * 100)
     except OSError:
         pass
-    for name in ("overview_facts.json", "manual_inputs.json", "forecast_charts.json"):
-        obj = _qa._load_json(d / name)
+    for obj in (_qa._load_json(d / "overview_facts.json"),
+                _qa._load_json(d / "forecast_charts.json"),
+                fill_records(d, PERIOD)):       # 填写走状态库（文件是导出件，读了会慢慢失效）
         if obj is None:
             continue
-
-        def walk(o, _acc=uni):
-            if isinstance(o, dict):
-                for x in o.values():
-                    walk(x)
-            elif isinstance(o, list):
-                for x in o:
-                    walk(x)
-            elif isinstance(o, bool) or o is None:
-                return
-            elif isinstance(o, (int, float)):
-                _acc |= num_forms(o)
-            elif isinstance(o, str):
-                for s in _NUM_RE.findall(o):
-                    if float(s) > 9:
-                        _acc |= num_forms(float(s))
-        walk(obj)
+        walk_numbers(obj, uni)
     # A2 报告正文里出现过的数字也是台账真数（模型复述报告不该判编造）
     try:
         for s in _NUM_RE.findall(report_context("")):
