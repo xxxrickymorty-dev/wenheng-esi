@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>核验定稿 · 本期印章（静态稿 20261021）</title>
+<style>
+:root{
+  --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB;
+  --ink:#222B25; --ink-2:#3F4C42; --ink-3:#58655C; --ink-4:#7C8A80;
+  --line:#DDE1D8; --line-2:#E6E9E2;
+  --zhu:#1A4B27; --zhu-soft:#E3EDE4;
+  --seal:#B43B31; --seal-soft:#F4E6E2; --stamp-ink:#264A35;
+  --gold:#B19A65; --gold-soft:#F1EBDD; --gold-ink:#62501F;
+  --ok:#28643A; --ok-soft:#E2EEE4;
+  --bad:#B43B31; --bad-soft:#F4E6E2;
+  --serif:"Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+  --kai:"Kaiti SC",KaiTi,STKaiti,"Kaiti TC",serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  --r:14px; --r-sm:10px;
+  --shadow:0 1px 2px rgba(34,43,37,.06),0 8px 24px rgba(34,43,37,.06);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.7 var(--sans);padding-bottom:70px}
+h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0}
+.topbar{display:flex;align-items:center;gap:18px;padding:13px 22px;background:#12331F;color:#EDF1E9}
+.brand{display:flex;align-items:baseline;gap:10px;font-family:var(--serif)}
+.brand strong{font-size:21px;letter-spacing:.06em}
+.brand span{font-size:12.5px;color:#B9C7B7;letter-spacing:.14em}
+.nav{display:flex;gap:2px;margin-left:auto;font-size:14.5px}
+.nav a{padding:8px 12px;color:#CBD8C8;text-decoration:none}
+.nav a[aria-current="page"]{color:#fff;font-weight:600;border-bottom:2px solid #9EC3A4}
+.wrap{max-width:1440px;margin:0 auto;padding:20px 26px 40px}
+
+/* 四站条 */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:8px 0 18px}
+.steps div{background:var(--card);border:1px solid var(--line);text-align:center;padding:14px 8px;
+  font-size:15px;color:var(--ink-2)}
+.steps div.now{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:600}
+
+.lead{display:flex;align-items:center;gap:12px;margin:6px 2px 14px;color:var(--ink-3);font-size:14px}
+.lead h1{font-size:24px;color:var(--ink);display:flex;align-items:center;gap:9px}
+
+/* 读数带 */
+.readouts{display:grid;grid-template-columns:repeat(5,1fr);gap:0;background:var(--card);
+  border:1px solid var(--line);border-radius:var(--r) var(--r) 0 0;box-shadow:var(--shadow)}
+.readout{padding:16px 18px;border-right:1px solid var(--line-2)}
+.readout:last-child{border-right:0}
+.readout .k{font-size:13px;color:var(--ink-3)}
+.readout .v{font-family:var(--serif);font-size:31px;line-height:1.25;color:var(--ok)}
+.readout .d{font-size:12.5px;color:var(--ink-3);line-height:1.5}
+
+/* 两栏 */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 356px;gap:20px;align-items:start;margin-top:2px}
+@media (max-width:1080px){.grid{grid-template-columns:1fr}.side{position:static!important;max-height:none!important}}
+
+/* 报告纸 */
+.paper{background:#FFFEFA;border:1px solid var(--line);border-top:0;border-radius:0 0 var(--r) var(--r);
+  box-shadow:var(--shadow);padding:30px 38px 44px;font-family:var(--serif)}
+.paper .docmeta{font-family:var(--sans);font-size:12.5px;color:var(--ink-3);display:flex;
+  justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:22px}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;font-family:var(--sans);font-size:13px;margin-bottom:26px}
+.tabs span{border:1px solid var(--line);padding:5px 11px;color:var(--ink-2)}
+.tabs span.on{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:600}
+.cover{text-align:center;padding:18px 0 8px}
+.emblem{width:96px;height:96px;margin:0 auto 18px;border-radius:50%;border:2px solid #2F5A3A;
+  display:grid;place-content:center;color:#2F5A3A;font-family:var(--serif);font-size:13px;letter-spacing:.2em}
+.cover h2{font-size:38px;letter-spacing:.16em;margin-bottom:6px}
+.cover .sub{font-size:15px;color:var(--ink-3);letter-spacing:.3em}
+.para{font-size:15px;line-height:2;text-indent:2em;color:#2C342E;margin:14px 0;text-align:justify}
+.para b{font-weight:600}
+.fake{color:var(--ink-4)}
+
+/* 右栏 */
+.side{position:sticky;top:16px;display:grid;gap:14px;max-height:calc(100vh - 32px);overflow:auto}
+.side .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);padding:16px 16px 14px}
+.side h3{font-size:16.5px;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:6px 0;border-bottom:1px solid var(--line-2)}
+.kv b{font-variant-numeric:tabular-nums;font-weight:600}
+.kv b.doc{word-break:break-all;text-align:right;font-size:12.5px}
+.hint{color:var(--ink-3);font-size:13px;line-height:1.6;margin:7px 0 0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:10px 16px;
+  border-radius:9px;border:1px solid var(--line);background:var(--card);cursor:pointer;
+  font:inherit;font-size:15.5px;font-weight:600;color:inherit;text-decoration:none}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-size:16px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btns{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.btns .btn{flex:1;min-width:118px}
+.ack{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;margin-top:10px;line-height:1.55}
+.ack input{margin-top:4px}
+
+/* ================= 钤印 ================= */
+.stampcard h3{justify-content:space-between}
+.stampcard h3 em{font-style:normal;font-family:var(--sans);font-size:12px;color:var(--ink-3);letter-spacing:.04em}
+.stamps{display:grid;grid-template-columns:repeat(3,84px);justify-content:space-between;gap:8px;margin:12px 0 6px}
+.stamp{position:relative;width:84px;height:84px;display:grid;place-content:center;gap:2px;text-align:center;
+  font-family:var(--kai);border:2px solid var(--ink-4);border-radius:2px;color:var(--ink-4);
+  background:radial-gradient(circle at 32% 26%,rgba(124,138,128,.05),transparent 62%);
+  transform:rotate(var(--tilt,-3deg));transition:border-color .25s,color .25s,background .25s}
+.stamp b{font-size:14.5px;line-height:1.3;letter-spacing:.1em;font-weight:600;white-space:nowrap}
+.stamp small{font-size:10px;letter-spacing:.14em;opacity:.9;font-family:var(--sans);font-variant-numeric:tabular-nums}
+/* 完成了的工序＝墨绿干印；签发了的章＝朱砂鲜印；失效＝金 */
+.stamp.done{border-color:var(--stamp-ink);color:var(--stamp-ink);
+  background:radial-gradient(circle at 32% 26%,rgba(38,74,53,.07),transparent 64%)}
+.stamp.done::after{content:"";position:absolute;inset:-2px;border:2px solid rgba(38,74,53,.14);
+  border-radius:2px;transform:rotate(.6deg);pointer-events:none}
+.stamp.pending{border-style:dashed;color:var(--ink-3);background:none}
+.stamp.signed{border-color:var(--seal);color:var(--seal);
+  background:radial-gradient(circle at 32% 26%,rgba(180,59,49,.09),transparent 64%)}
+.stamp.signed::after{content:"";position:absolute;inset:-2px;border:2px solid rgba(180,59,49,.16);
+  border-radius:2px;transform:rotate(.6deg);pointer-events:none}
+.stamp.stale{border-color:var(--gold-ink);color:var(--gold-ink);
+  background:radial-gradient(circle at 32% 26%,rgba(177,154,101,.10),transparent 64%)}
+.stamp .tag{position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);
+  font-family:var(--sans);font-size:9.5px;letter-spacing:.1em;padding:1px 7px;
+  background:var(--card);border:1px solid currentColor;border-radius:99px;white-space:nowrap}
+
+/* 落章动效：下落 → 压实 → 回弹；同时墨迹向外晕开 */
+@keyframes stamp-land{
+  0%{opacity:0;transform:translateY(-16px) scale(1.6) rotate(-14deg);filter:blur(1.3px)}
+  54%{opacity:1;transform:translateY(1.5px) scale(.93) rotate(-1.2deg);filter:blur(0)}
+  72%{transform:translateY(0) scale(1.04) rotate(-4.2deg)}
+  100%{transform:translateY(0) scale(1) rotate(-3deg)}
+}
+@keyframes ink-spread{
+  0%{box-shadow:0 0 0 0 rgba(180,59,49,.32)}
+  60%{box-shadow:0 0 0 7px rgba(180,59,49,.12)}
+  100%{box-shadow:0 0 0 16px rgba(180,59,49,0)}
+}
+@keyframes paper-press{0%,100%{transform:translateY(0)}42%{transform:translateY(1.5px)}}
+.stamp.landing{animation:stamp-land .54s cubic-bezier(.22,.9,.28,1) both,
+                          ink-spread .62s ease-out both}
+.stampcard.pressing{animation:paper-press .34s ease-out}
+@media (prefers-reduced-motion:reduce){
+  .stamp.landing,.stampcard.pressing{animation:none!important}
+}
+body.slowmo .stamp.landing{animation-duration:2.16s,2.48s!important}
+
+.signedline{margin-top:10px;padding:9px 11px;background:var(--ok-soft);color:var(--ok);
+  font-size:13px;line-height:1.55;border-radius:8px}
+.signedline.gold{background:var(--gold-soft);color:var(--gold-ink)}
+.signedline.muted{background:var(--panel);color:var(--ink-3)}
+
+/* 审稿工具（不属于页面本身） */
+.toolbar{position:fixed;left:16px;bottom:16px;z-index:50;display:flex;align-items:center;gap:8px;
+  padding:9px 12px;background:#1C241E;color:#E9EEE7;border-radius:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.28);font-size:13px}
+.toolbar b{font-weight:600;letter-spacing:.06em;color:#9DB79F;font-size:11.5px;margin-right:4px}
+.toolbar button{font:inherit;font-size:13px;padding:5px 11px;border-radius:7px;cursor:pointer;
+  background:#2C362D;color:#E9EEE7;border:1px solid #3C473D}
+.toolbar button.on{background:#9EC3A4;color:#16241A;border-color:#9EC3A4;font-weight:600}
+.toolbar .sep{width:1px;height:20px;background:#3C473D;margin:0 2px}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><strong>文衡</strong><span>云南大学图书馆 · 学科信息参考</span></div>
+  <nav class="nav">
+    <a href="#">出报告</a><a href="#">灵活报告</a><a href="#">问文衡</a>
+    <a href="#">主台账</a><a href="#">运行档案</a>
+  </nav>
+</header>
+
+<div class="wrap">
+  <div class="steps">
+    <div>取数核验</div><div>预测选模</div><div>生成初稿</div><div class="now">核验定稿</div>
+  </div>
+
+  <div class="lead">
+    <span>← 回报告</span><span>·</span>
+    <h1><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>核验定稿</h1>
+    <span class="hint" style="margin-left:auto">存疑 0 处</span>
+  </div>
+
+  <div class="readouts">
+    <div class="readout"><div class="k">国际排名</div><div class="v">973</div><div class="d">比上期升 22（上期 995）</div></div>
+    <div class="readout"><div class="k">国内高校排名</div><div class="v">129</div><div class="d">比上期升 1 · 国内机构 154</div></div>
+    <div class="readout"><div class="k">前 1% 学科</div><div class="v">14</div><div class="d">尚无学科进入 1‰</div></div>
+    <div class="readout"><div class="k">顶尖论文</div><div class="v">291</div><div class="d">比上期增 17 篇（上期 274）</div></div>
+    <div class="readout"><div class="k">学科升降</div><div class="v">7 升</div><div class="d">降 8 · 持平 7</div></div>
+  </div>
+
+  <div class="grid">
+    <!-- 左：试排报告 -->
+    <section class="paper">
+      <div class="docmeta">
+        <span>本稿由流水线生成 · 2026-10-17 14:14:42 · 数字全部来自台账；带虚线框的空请就地填写。</span>
+        <span>还剩 0 处</span>
+      </div>
+      <div class="tabs">
+        <span class="on">一 概述</span><span>二 我校学科发展情况</span>
+        <span>三 我校潜力学科趋势预测</span><span>四 云南省主要高校</span><span>五 顶尖论文清单</span>
+      </div>
+      <div class="cover">
+        <div class="emblem">云大<br>1922</div>
+        <h2>学科信息参考</h2>
+        <div class="sub">2026 年 第 3 期 · 总第 39 期</div>
+      </div>
+      <p class="para"><b>本期看点</b>　我校 ESI 前 1% 学科保持 <b>14</b> 个，国际排名 <b>973</b> 位，较上期上升 <b>22</b> 位；顶尖论文 <b>291</b> 篇，较上期增加 <b>17</b> 篇。分子生物学与遗传学接近度 <b>88.01%</b>，是本期最接近阈值的学科。</p>
+      <p class="para fake">（此处为报告正文节选，静态稿只示意版面；真实页面里这里是可逐格核验的全文。）</p>
+    </section>
+
+    <!-- 右：钤印 + 签单 -->
+    <aside class="side">
+      <!-- ① 本期印章 -->
+      <section class="card stampcard" id="stampcard">
+        <h3>本期印章 <em>这一版怎么来的</em></h3>
+        <div class="stamps">
+          <div class="stamp done" style="--tilt:-3.4deg">
+            <b>已并入<br>台账</b><small>09.13</small>
+          </div>
+          <div class="stamp done" style="--tilt:2.6deg">
+            <b>已出稿</b><small>10-17 14:14</small>
+          </div>
+          <div class="stamp pending" id="seal3" style="--tilt:-2.2deg">
+            <b>复核通过</b><small>PENDING</small>
+          </div>
+        </div>
+        <p class="hint" id="stamphint">前两枚随流水线自动落下；第三枚由你签单时盖。</p>
+      </section>
+
+      <!-- ② 签单 -->
+      <section class="card">
+        <h3>审核 · 签单</h3>
+        <div class="kv"><span>报告版本</span><b class="doc">报告初稿_202609（试排）.docx</b></div>
+        <div class="kv"><span>生成时间</span><b>2026-10-17 14:14:42</b></div>
+        <div class="kv"><span>存疑</span><b>0 处</b></div>
+        <label class="ack"><input type="checkbox" id="ack" checked>
+          <span>我已逐项看过<b>待人工 0 处、存疑 0 处</b>，同意放行。</span></label>
+        <textarea aria-label="签单批注（可选）" rows="2" placeholder="批注（可选）：这一版为什么可以签单、还有哪些已知问题"
+          style="width:100%;font:inherit;font-size:13.5px;margin-top:10px;padding:8px 10px;border:1px solid var(--line);background:var(--card);color:inherit;resize:vertical"></textarea>
+        <div class="btns">
+          <button class="btn primary" id="signbtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+            签单
+          </button>
+          <button class="btn" id="revokebtn">撤回</button>
+        </div>
+        <p class="hint" id="signhint">签单后这一版即归档，可下载。</p>
+        <div id="signedbox"></div>
+        <p class="hint"><a href="#" style="color:var(--zhu)">看对勘本 →</a></p>
+      </section>
+
+      <!-- ③ 报告文件 -->
+      <section class="card">
+        <h3>报告文件</h3>
+        <div class="btns"><button class="btn" style="justify-content:center">下载报告（Word）</button></div>
+        <p class="hint">未签发时不能下载；签单后按钮才可用。</p>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<!-- 审稿工具：不属于页面 -->
+<div class="toolbar">
+  <b>审稿工具</b>
+  <button data-state="pending" class="on">未签</button>
+  <button data-state="signed">已签</button>
+  <button data-state="stale">失效</button>
+  <span class="sep"></span>
+  <button id="replay">重放盖章</button>
+  <button id="slow">慢放 ×4</button>
+</div>
+
+<script>
+const seal3 = document.getElementById('seal3')
+const hint = document.getElementById('stamphint')
+const card = document.getElementById('stampcard')
+const signbtn = document.getElementById('signbtn')
+const revokebtn = document.getElementById('revokebtn')
+const signedbox = document.getElementById('signedbox')
+const signhint = document.getElementById('signhint')
+const toolbar = document.querySelector('.toolbar')
+
+let state = 'pending'
+let animateNext = false
+
+function land() {
+  seal3.classList.remove('landing')
+  void seal3.offsetWidth
+  seal3.classList.add('landing')
+  card.classList.add('pressing')
+  setTimeout(() => card.classList.remove('pressing'), 360)
+}
+
+function render(withAnim) {
+  seal3.className = 'stamp ' + (state === 'pending' ? 'pending' : state === 'stale' ? 'stale' : 'signed')
+  seal3.style.setProperty('--tilt', '-2.2deg')
+  seal3.innerHTML = state === 'signed'
+    ? '<b>复核通过</b><small>10-17 14:15</small>'
+    : state === 'stale'
+      ? '<b>复核通过</b><small>已失效</small>'
+      : '<b>复核通过</b><small>PENDING</small>'
+
+  hint.textContent = state === 'signed'
+    ? '已签发 · 10-17 14:15 · admin。重新出稿会让这一枚失效。'
+    : state === 'stale'
+      ? '内容改过，这一枚已失效——重新签单会再盖一次。'
+      : '前两枚随流水线自动落下；第三枚由你签单时盖。'
+
+  signedbox.innerHTML = state === 'signed'
+    ? '<div class="signedline">已签发 · 2026-10-17 14:15 · admin</div>'
+    : state === 'stale'
+      ? '<div class="signedline gold">签发已失效：内容改过，需重新签单</div>'
+      : ''
+  signhint.textContent = state === 'signed'
+    ? '这一版已定稿；如需改动，签单会被撤回。'
+    : '签单后这一版即归档，可下载。'
+  signbtn.innerHTML = state === 'signed'
+    ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg> 重新签单'
+    : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg> 签单'
+  revokebtn.disabled = state !== 'signed'
+
+  if (withAnim) land()
+  ;[...toolbar.querySelectorAll('button[data-state]')].forEach(b =>
+    b.classList.toggle('on', b.dataset.state === state))
+}
+
+signbtn.addEventListener('click', () => {
+  const prev = state
+  state = 'signed'
+  // 真实页面：这里等后端返回成功再落章（失败则不盖）
+  signbtn.disabled = true
+  signbtn.textContent = '正在盖章…'
+  setTimeout(() => {
+    signbtn.disabled = false
+    render(true)
+    if (prev !== 'signed') seal3.focus?.()
+  }, 420)
+})
+
+revokebtn.addEventListener('click', () => { state = 'pending'; render(false) })
+
+toolbar.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-state]')
+  if (b) { state = b.dataset.state; render(false); return }
+  if (e.target.id === 'replay') { state = 'pending'; render(false); setTimeout(() => { state = 'signed'; render(true) }, 220) }
+  if (e.target.id === 'slow') {
+    const on = document.body.classList.toggle('slowmo')
+    e.target.classList.toggle('on', on)
+  }
+})
+
+render(false)
+</script>
+</body>
+</html>
