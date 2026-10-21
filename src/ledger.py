@@ -10,12 +10,16 @@
 
 历史期补跑＝母本 + 目标期次（`run_pipeline.py <母本> --period <期次>`；`src/rerun_history.py`
 同口径），报告各步按被补跑期切窗——"07 的报告不读 09 的数据"在消费层强制。
+
+工具面若要「运行时优先、回落原件」的定位、沙盘副本与工作簿契约（表清单 / 母版 /
+数据源目录），走 `ledger_contract`——它只组合本文件的路径，不另写字面量。
 """
 from __future__ import annotations
 
-import hashlib
 import pathlib
 import shutil
+
+import xlsx_io
 
 #: 母本文件名（与馆员原件同名；术语「动态监测表」见 GLOSSARY）。
 LEDGER_NAME = "云大全学科排名、阈值动态检测表.xlsx"
@@ -40,11 +44,8 @@ def mirror_path(repo_root) -> pathlib.Path:
 
 
 def sha256(path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(1 << 20), b""):
-            h.update(chunk)
-    return h.hexdigest()
+    """文件指纹（唯一实现 `xlsx_io.sha256_file`；缺文件抛）。"""
+    return xlsx_io.sha256_file(path)
 
 
 def sync(repo_root) -> pathlib.Path:

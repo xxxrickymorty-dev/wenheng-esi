@@ -25,11 +25,11 @@ from __future__ import annotations
 import pathlib
 from dataclasses import dataclass, replace
 
+#: 主台账文件名（唯一口径在 `ledger.LEDGER_NAME`；这里只做再导出）。
+from ledger import LEDGER_NAME
+
 #: 仓库根（wenheng/）；「数据与复现」在它的上一级。
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
-
-#: 主台账文件名（唯一事实源；有效期次＝列名六位且该列有数据，口径见 src/period.py）。
-LEDGER_NAME = "云大全学科排名、阈值动态检测表.xlsx"
 
 #: 四件的键与馆员话术（界面不露路径）。
 LABELS = (

@@ -10,11 +10,13 @@
 3. 改的是台账吗？——不是；脏件与原件哈希前后都不变。
 
 红线：只读 input/ 的原件；所有写入都在 tmp/_heal_sandbox/ 里。
+定位、复制、指纹走 `ledger_contract`；脏化只改目标 sheet 与 sharedStrings，
+落盘统一过 `xlsx_io.rewrite` 的良构闸（坏 XML 拒绝写、其余成员逐字节原样）。
 """
 from __future__ import annotations
 
 import datetime
-import hashlib
+import html
 import json
 import pathlib
 import re
@@ -27,100 +29,74 @@ for p in (str(REPO), str(REPO / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-import openpyxl                                                  # noqa: E402
-
+import ledger_contract as contract                               # noqa: E402
+import ledger_patch                                              # noqa: E402
+import xlsx_io                                                   # noqa: E402
 from agent import flow, states                                   # noqa: E402
 
 WORK = REPO / "tmp" / "_heal_sandbox"
-LEDGER_NAME = "云大全学科排名、阈值动态检测表.xlsx"
 
 
-def _sheet_xml(zf, title):
-    wb = zf.read("xl/workbook.xml").decode("utf-8")
-    rels = zf.read("xl/_rels/workbook.xml.rels").decode("utf-8")
-    rid = None
-    for tag in re.finditer(r"<sheet\b[^>]*>", wb):
-        t = re.search(r'name="([^"]*)"', tag.group(0))
-        r = re.search(r'r:id="([^"]*)"', tag.group(0))
-        if t and r and t.group(1) == title:
-            rid = r.group(1)
-            break
-    if rid is None:
-        raise LookupError(f"台账无工作表 {title}")
-    m = re.search(r'Id="%s"[^>]*Target="([^"]*)"' % re.escape(rid), rels)
-    target = m.group(1).lstrip("/")
-    return target if target.startswith("xl/") else "xl/" + target.lstrip("./")
+def corrupt_cell_text(path, sheet, old, new):
+    """把某工作表首列里第一个等于 `old` 的单元格改成 `new`（原地改）。
 
-
-def _si_texts(ss):
-    return ["".join(re.findall(r"<t[^>]*>(.*?)</t>", blk, re.S))
-            for blk in re.findall(r"<si>(.*?)</si>", ss, re.S)]
-
-
-def corrupt_cell_text(src, dst, sheet, old, new):
-    """把某工作表首列里第一个等于 old 的单元格改成 new；只动 sheet + sharedStrings。"""
-    with zipfile.ZipFile(src) as zf:
-        sheet_path = _sheet_xml(zf, sheet)
-        xml = zf.read(sheet_path).decode("utf-8")
-        ss = zf.read("xl/sharedStrings.xml").decode("utf-8")
-
-    wb = openpyxl.load_workbook(src, read_only=True, data_only=True)
-    try:
-        row = next(r[0].row for r in wb[sheet].iter_rows(min_col=1, max_col=1)
-                   if r[0].value == old)
-    finally:
-        wb.close()
+    只动目标 sheet（真台账再加 sharedStrings）；其余条目不经过内存重写，
+    由 `xlsx_io.rewrite` 逐字节复制。良构闸不过 → `SystemExit`，文件一字节不动。
+    """
+    grid, shared = ledger_patch.read_grid(path, sheet)
+    row = ledger_patch.locate(grid, shared, "A", old, by="col")
     coord = f"A{row}"
 
-    texts = _si_texts(ss)
-    if old not in texts:
-        raise LookupError(f"{sheet}!{coord} 的值 {old!r} 不在共享字符串表里")
-    if new in texts:
-        new_idx = texts.index(new)
-    else:
-        new_idx = len(texts)
-        ss = re.sub(r"</sst>\s*$", f"<si><t>{new}</t></si></sst>", ss)
+    with zipfile.ZipFile(path) as zf:
+        sheet_path = xlsx_io.member_of(zf, sheet)
+        xml = zf.read(sheet_path).decode("utf-8")
+        has_shared = "xl/sharedStrings.xml" in zf.namelist()
+        texts = xlsx_io.read_shared_strings(zf) if has_shared else []
+        ss = zf.read("xl/sharedStrings.xml").decode("utf-8") if has_shared else None
 
-    m = re.search(r'<c r="%s"([^>]*?)(?:/>|>.*?</c>)' % coord, xml, re.S)
+    # 真台账走共享串表；openpyxl 合成件写行内字符串（t="inlineStr"）。两条路都认。
+    attrs, inner = grid[row].get("A", ("", None))
+    use_shared = has_shared and not (inner and "<is>" in inner)
+    if use_shared:
+        if old not in texts:
+            raise LookupError(f"{sheet}!{coord} 的值 {old!r} 不在共享字符串表里")
+        if new in texts:
+            new_idx = texts.index(new)
+        else:
+            new_idx = len(texts)
+            ss = re.sub(r"</sst>\s*$",
+                        f"<si><t>{html.escape(new)}</t></si></sst>", ss)
+        value = f"<v>{new_idx}</v>"
+        cell_type = ' t="s"'
+        payload = {sheet_path: xml, "xl/sharedStrings.xml": ss}
+    else:
+        value = f"<is><t>{html.escape(new)}</t></is>"
+        cell_type = ' t="inlineStr"'
+        payload = {sheet_path: xml}
+
+    # 单元格坐标要卡边界：`A2` 不能误中 `A20`。
+    m = re.search(r'<c r="%s"(?=[\s/>])([^>]*?)(?:/>|>.*?</c>)' % coord, xml, re.S)
     if not m:
         raise LookupError(f"工作表 XML 里找不到单元格 {coord}")
-    style = re.search(r'\bs="(\d+)"', m.group(1))
+    style = re.search(r'\bs="(\d+)"', attrs or "")
     cell = (f'<c r="{coord}"' + (f' s="{style.group(1)}"' if style else "")
-            + f' t="s"><v>{new_idx}</v></c>')
+            + cell_type + f">{value}</c>")
     xml = xml[:m.start()] + cell + xml[m.end():]
 
-    with zipfile.ZipFile(src) as zin, zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zout:
-        for item in zin.infolist():
-            data = zin.read(item.filename)
-            if item.filename == sheet_path:
-                data = xml.encode("utf-8")
-            elif item.filename == "xl/sharedStrings.xml":
-                data = ss.encode("utf-8")
-            zout.writestr(item, data)
+    payload[sheet_path] = xml
+    xlsx_io.rewrite(path, payload)
     return coord
 
 
-def sha256(p):
-    return hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
-
-
-def find_ledger():
-    for p in (REPO / "input" / LEDGER_NAME,
-              REPO.parent / "数据与复现" / LEDGER_NAME):
-        if p.exists():
-            return p
-    raise SystemExit(f"找不到台账：{LEDGER_NAME}")
-
-
 def main() -> int:
-    src = find_ledger()
+    src = contract.require(REPO)
     if WORK.exists():
         shutil.rmtree(WORK)
     WORK.mkdir(parents=True, exist_ok=True)
-    dirty = WORK / "监测表_脏.xlsx"
-    coord = corrupt_cell_text(src, dirty, "总被引", "Chemistry", "化学")
+    dirty = contract.sandbox_copy(src, WORK / "监测表_脏.xlsx", refresh=True)
+    coord = corrupt_cell_text(dirty, "总被引", "Chemistry", "化学")
 
-    src_before, dirty_before = sha256(src), sha256(dirty)
+    src_before, dirty_before = contract.sha256(src), contract.sha256(dirty)
     print("=" * 64)
     print("自愈沙盘 · 一处脏：总被引!" + coord + "  Chemistry → 化学")
     print(f"原件  {src.name}  sha256={src_before[:16]}…")
@@ -143,7 +119,7 @@ def main() -> int:
     if diag.exists():
         print(f"\n诊断报告：{diag.relative_to(REPO)}")
 
-    src_after, dirty_after = sha256(src), sha256(dirty)
+    src_after, dirty_after = contract.sha256(src), contract.sha256(dirty)
     print("\n" + "=" * 64)
     print(f"原件哈希不变：{src_before == src_after}")
     print(f"脏件哈希不变：{dirty_before == dirty_after}")

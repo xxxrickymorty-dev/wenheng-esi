@@ -8,6 +8,9 @@
 表在不在、22 个学科名认不认、最新期次列有没有、母版在不在。
 不跑流水线、不改原件；结论写 tmp/_migration_sandbox/readiness.json。
 
+契约事实（母本名 / 表清单 / 学科名单 / 母版 / 数据源目录）全部来自
+`ledger_contract`——本工具不再各写一份，换馆时只改契约模块与配置。
+
 诚实边界：副本的数据仍是云大样本，这次验证的是「引擎不依赖校名、只依赖台账契约」；
 真实换馆还要换学科清单、数据源与母版封面（页面里列了这四件事）。
 """
@@ -16,7 +19,6 @@ from __future__ import annotations
 import datetime
 import json
 import pathlib
-import shutil
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
@@ -26,23 +28,9 @@ for p in (str(REPO), str(REPO / "src")):
 
 import openpyxl                                                  # noqa: E402
 
-from parse_ledger import DISCIPLINES_CN                          # noqa: E402
+import ledger_contract as contract                               # noqa: E402
 
-LEDGER_NAME = "云大全学科排名、阈值动态检测表.xlsx"
 WORK = REPO / "tmp" / "_migration_sandbox"
-REQUIRED_SHEETS = [
-    "总被引", "论文数", "CNCI", "接近度", "ESI被引阈值", "TOP论文",
-    "千分之一被引阈值", "新国际排名", "新国内排名", "国际排名", "国内排名",
-    "云大ESI排名",
-]
-
-
-def find_ledger():
-    for p in (REPO / "input" / LEDGER_NAME,
-              REPO.parent / "数据与复现" / LEDGER_NAME):
-        if p.exists():
-            return p
-    raise SystemExit(f"找不到台账：{LEDGER_NAME}")
 
 
 def latest_period(ws) -> str:
@@ -57,11 +45,9 @@ def latest_period(ws) -> str:
 
 
 def main() -> int:
-    src = find_ledger()
+    src = contract.require(REPO)
     WORK.mkdir(parents=True, exist_ok=True)
-    copy = WORK / "兄弟馆_监测表.xlsx"
-    if not copy.exists() or copy.stat().st_mtime < src.stat().st_mtime:
-        shutil.copy2(src, copy)
+    copy = contract.sandbox_copy(src, WORK / "兄弟馆_监测表.xlsx")
 
     # 不用 read_only=True：仓里有守卫（test_guard_no_readonly）专门钉这件事；
     # 这里只读副本、不存盘，正常加载即可。
@@ -69,9 +55,10 @@ def main() -> int:
     try:
         checks = []
 
-        missing_sheets = [s for s in REQUIRED_SHEETS if s not in wb.sheetnames]
+        missing_sheets = [s for s in contract.READINESS_SHEETS if s not in wb.sheetnames]
         checks.append({
-            "id": "sheets", "label": "必需的 12 张工作表",
+            "id": "sheets",
+            "label": f"必需的 {len(contract.READINESS_SHEETS)} 张工作表",
             "ok": not missing_sheets,
             "detail": "齐全" if not missing_sheets else "缺：" + "、".join(missing_sheets),
         })
@@ -83,7 +70,7 @@ def main() -> int:
                 if s:
                     names.append(s)
         name_set = set(names)
-        missing_disc = [f"{en}/{cn}" for en, cn in DISCIPLINES_CN.items()
+        missing_disc = [f"{en}/{cn}" for en, cn in contract.DISCIPLINES_CN.items()
                         if en not in name_set and cn not in name_set]
         checks.append({
             "id": "disciplines", "label": "22 个规范学科名",
@@ -98,19 +85,19 @@ def main() -> int:
             "detail": f"最新 {period}" if period else "没找到 6 位期次列",
         })
 
-        master = REPO / "master" / "学科信息参考母版_2026第5期.docx"
+        master = contract.master_path(REPO)
         checks.append({
             "id": "master", "label": "报告结构母版",
             "ok": master.exists(),
-            "detail": "在" if master.exists() else "缺 master/学科信息参考母版_2026第5期.docx",
+            "detail": "在" if master.exists() else f"缺 master/{contract.MASTER_NAME}",
         })
 
-        data_root = REPO.parent / "数据与复现"
-        sources = [p for p in (data_root / "ESI数据", data_root / "incites") if p.exists()]
+        sources = [p for p in (contract.esi_root(REPO), contract.incites_root(REPO))
+                   if p.exists()]
         checks.append({
             "id": "sources", "label": "数据源目录",
             "ok": len(sources) == 2,
-            "detail": f"ESI / InCites 都在" if len(sources) == 2 else "缺 ESI数据 或 incites 目录",
+            "detail": "ESI / InCites 都在" if len(sources) == 2 else "缺 ESI数据 或 incites 目录",
         })
     finally:
         wb.close()
