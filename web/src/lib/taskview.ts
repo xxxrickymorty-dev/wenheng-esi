@@ -53,7 +53,10 @@ export function taskView(h: DialogHome | null): TaskView | null {
 
   const rows: TaskViewRow[] = [
     { mark: mark('acquire'), label: LABELS.acquire,
-      note: done('acquire') ? '数据齐'
+      /* 已出稿时后端会把「取数」判完成（产物蕴含前两步），但缺件数仍如实返回；
+         不能因此说「数据齐」——说「已并入（缺 N 件）」才是真话。 */
+      note: done('acquire')
+        ? (h.n_missing > 0 ? `已并入（缺 ${h.n_missing} 件）` : '数据齐')
         : h.stuck === 'acquire' ? (h.released ? `还缺 ${h.n_missing} 件` : '数据未到（随发布）')
         : '未开始' },
     { mark: mark('merge'), label: LABELS.merge,

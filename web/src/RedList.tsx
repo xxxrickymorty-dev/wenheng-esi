@@ -21,7 +21,11 @@ function contentGroup(g: string): string {
   return '其他'
 }
 
-export function RedList({ period }: { period: string | null }) {
+export function RedList({ period, canDownload = false }: {
+  period: string | null
+  /** 红件 Markdown 下载口仍只给管理员（操作员只读屏，不给一点就 403 的按钮）。 */
+  canDownload?: boolean
+}) {
   const [rows, setRows] = useState<RedRow[] | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [q, setQ] = useState('')
@@ -67,7 +71,7 @@ export function RedList({ period }: { period: string | null }) {
       <h2 className="h-sec">
         <Icon name="list" size={21} />红色件清单
         {rows && <span className="hint hint-num">共 {rows.length} 条</span>}
-        {period && (
+        {period && canDownload && (
           <a className="btn line ml-auto btn-md" 
              href={`/p/${encodeURIComponent(period)}/download/red_list`}>下载 Markdown</a>
         )}

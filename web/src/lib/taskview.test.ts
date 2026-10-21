@@ -40,6 +40,13 @@ describe('本期任务视图（票 06）', () => {
     expect(missing?.rows[0].note).toBe('还缺 2 件')
   })
 
+  it('已出稿但取数缺件：说已并入（缺 N 件），不说数据齐', () => {
+    const tv = taskView(home({ released: true, n_missing: 1, stuck: 'sign',
+      steps: [{ key: 'acquire', done: true }, { key: 'merge', done: true },
+              { key: 'generate', done: true }] }))
+    expect(tv?.rows[0].note).toBe('已并入（缺 1 件）')
+  })
+
   it('卡在核对：① ✓ ② ● ③ ○，主按钮去核对（同一张核对页）', () => {
     const tv = taskView(home({ stuck: 'merge',
       steps: [{ key: 'acquire', done: true }, { key: 'merge', done: false },

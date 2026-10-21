@@ -58,9 +58,6 @@ type Conversation = { id: number; title: string; turns: Turn[]; slots: DialogSlo
 
 const PALETTE_STORAGE_KEY = 'wenheng-palette'
 
-/** 操作员不可见的入口（下载数据台 / 运行档案）——对话动作按此过滤。 */
-const OPERATOR_HIDDEN_HREFS = new Set(['/app/?view=acquire', '/app/?view=archive'])
-
 /** 空态首页（2026-10-12，P0-③）：模式 chips 与示例胶囊——点击＝把示例句填进输入框。 */
 const LANDING_MODES: { label: string; example: string }[] = [
   { label: '出报告', example: '帮我做 9 月的报告' },
@@ -731,12 +728,9 @@ export default function DialogPage() {
                   )}
                   {t.who === 'wh' && !!t.actions?.length && (
                     <div className="dlg-acts">
-                      {/* 2026-10-12：出稿（run）两种角色都有（操作员也可出报告）；
-                          隐藏屏入口（下载数据台/运行档案）对操作员不出现——真门都在后端。 */}
-                      {t.actions.filter((a) => canRun
-                        || (a.kind === 'goto'
-                            && !OPERATOR_HIDDEN_HREFS.has(`/app/?view=${a.view ?? 'acquire'}`)))
-                        .map((a, j) => {
+                      {/* 2026-10-20：出稿（run）与证据面入口（取数台/运行档案）两种角色都有；
+                          真门都在后端，前端不再按角色二次筛掉动作。 */}
+                      {t.actions.map((a, j) => {
                           const isPicked = t.picked === j
                           const locked = busy || !!running || t.picked !== undefined
                           const pickedTag = isPicked
@@ -850,7 +844,7 @@ function ResultBlock({ result, index, disabled, canEdit, onFix, onRollback }: {
                 </span>
               : <a key={a.key} className="dlg-act" href={a.href} title={a.from}>{a.label}</a>
           ))}
-          {canEdit && <a className="dlg-act ghost" href={result.archiveHref}>去运行档案看全程 ▸</a>}
+          <a className="dlg-act ghost" href={result.archiveHref}>去运行档案看全程 ▸</a>
         </div>
       )}
       {canEdit && result.fixable && (

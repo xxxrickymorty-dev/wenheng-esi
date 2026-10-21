@@ -1,6 +1,7 @@
 /* 文衡 · 工作台（外壳）
-   两种角色（2026-10-11）：admin＝管理员（全可见可写）；operator＝操作员（评委，只读）——
-   下载数据/台账/运行档案/红件/溯源对操作员不可见，写动作一律拦住（真门在后端）。
+   两种角色（2026-10-11）：admin＝管理员（全可见可写）；operator＝操作员（评委/馆员）——
+   主台账仅管理员；运行档案/红件/溯源/水位/沙盘对操作员只读开放。签单、出稿、取数
+   按既有政策对操作员开放（真门在后端，前端不假拦）。
    数据全部来自后端 API；接口没就绪的地方**如实标注"未就绪"**，不编数据。 */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -477,8 +478,9 @@ export default function App() {
   }
 
   /* 工作区导航（契约 §4：前端按 /api/me 的 role 决定显示什么；**真门在后端**，这里只是不打扰）。
-     角色（2026-10-11 改两级）：admin＝管理员（全可见）；operator＝操作员（评委，只读）——
-     下载数据台、台账、运行档案、红件清单、逐格溯源对操作员不可见；其余屏可见但无写按钮。
+     角色（2026-10-11 改两级）：admin＝管理员（全可见）；operator＝操作员（评委/馆员）——
+     主台账仅管理员；运行档案、红件清单、逐格溯源、水位、沙盘只读开放；签单/出稿/取数
+     按既有政策开放。写动作真门在后端，前端只表达当前角色能看到的入口。
      2026-10-15 新信息架构（rick 定 A 方案）：**4 主区 + 1 管理** —— 下载数据/审核/预测/红件/图册/对勘/溯源
      不再是平级入口，降为「出报告」四步流水里的步骤或报告的下钻；深链 ?view=… 一律保留。 */
   const NAV: { key: string; label: string; href: string }[] = [
@@ -514,9 +516,9 @@ export default function App() {
   /* 角色还没确认时，先不渲染只给管理员的块（避免未登录先发出被拒的请求） */
   const noAdminBits = !roleKnown || gated
   /* 操作员不可见的「里子」屏（rick 2026-10-11 定）：直开 URL 给空态，真门在后端。
-     2026-10-17 rick：demo 放开取数核验与选章节（后端同批改 @user_route）。 */
-  /* 2026-10-20 决赛证据面：运行档案 / 逐格溯源 / 红件清单对操作员只读开放；
-     原始主台账仍只给管理员。写动作的真门仍在后端（@admin_route）。 */
+     2026-10-17 rick：demo 放开取数核验与选章节（后端同批改 @user_route）。
+     2026-10-20 决赛证据面：运行档案 / 逐格溯源 / 红件清单 / 水位 / 沙盘对操作员只读开放；
+     原始主台账仍只给管理员；下载口与写动作的真门仍在后端。 */
   const OPERATOR_DENIED = new Set(['ledger'])
   const operatorDenied = !!isOperator && OPERATOR_DENIED.has(view)
   const navHref = (h: string) =>
@@ -656,8 +658,8 @@ export default function App() {
           </div>
         ) : operatorDenied ? (
           <div className="pending-box mt-0">
-            <b>操作员不可见</b> —— 这一屏在「管理」里（下载数据 / 台账 / 运行档案 / 红件 / 溯源），
-            操作员账号看不到。看报告请回 <a href={navHref('/app/?view=report')}>报告</a>。
+            <b>操作员不可见</b> —— 原始主台账仅管理员可用；运行档案、红件清单与逐格溯源
+            已对操作员只读开放。看报告请回 <a href={navHref('/app/?view=report')}>报告</a>。
           </div>
         ) : view === 'archive' ? (
           <Archive period={selected} approvalStatus={approvalStatus} />
@@ -688,7 +690,7 @@ export default function App() {
         ) : view === 'charts' ? (
           <Charts period={selected} />
         ) : view === 'red' ? (
-          <RedList period={selected} />
+          <RedList period={selected} canDownload={me?.role === 'admin'} />
         ) : view === 'analysis' ? (
           <Analysis period={selected} canEdit={me?.role === 'admin'} />
         ) : view === 'ledger' ? (
