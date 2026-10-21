@@ -22,6 +22,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import sys
 import urllib.error
 import urllib.parse
@@ -50,7 +51,8 @@ ADMIN_P = os.environ.get("WENHENG_E2E_PASS") or _env_file_value("WENHENG_PASS")
 if not ADMIN_P:
     print("未找到管理员口令：请在 server/.env 设置 WENHENG_PASS，或设 WENHENG_E2E_PASS 后重跑。")
     raise SystemExit(2)
-#: 操作员（评委，只读；2026-10-11 起取代 guest）——账号/口令从 .env 或环境变量来。
+#: 操作员（评委/馆员；2026-10-11 起取代 guest）——证据面只读，签单/出稿/取数按
+#: 2026-10-12/10-17 政策开放；账号/口令从 .env 或环境变量来。
 OPERATOR_U = os.environ.get("WENHENG_E2E_OPERATOR_USER") or _env_file_value("WENHENG_OPERATOR_USER", "demo")
 OPERATOR_P = os.environ.get("WENHENG_E2E_OPERATOR_PASS") or _env_file_value("WENHENG_OPERATOR_PASS")
 if not OPERATOR_P:
@@ -177,8 +179,9 @@ check("POST /login（管理员）先落陈列馆 /app/shelf/",
       final.rstrip("/") == BASE + "/app/shelf", f"final={final}")
 
 out("=== 3.1 操作员账号（demo）真登 + 只读角色门（契约 §4，2026-10-11） ===")
-# 2026-10-11：guest 取消，改「操作员」（评委，只读）——进工作区但不被送回陈列馆；
-# 取数/台账/运行档案/红件/溯源不可见，写动作一律 403；陈列馆两种角色同拿全数据。
+# 2026-10-11：guest 取消，改「操作员」（评委/馆员）——进工作区但不被送回陈列馆；
+# 原始主台账仅管理员；运行档案/红件/溯源/水位/沙盘 2026-10-20 起只读开放；
+# 签单/出稿/取数按 2026-10-12/10-17 政策开放；陈列馆两种角色同拿全数据。
 gop = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
 st, _, gfinal = call("POST", "/login", {"username": OPERATOR_U, "password": OPERATOR_P}, opener=gop)
 check("POST /login（操作员）也先落陈列馆 /app/shelf/",
@@ -223,6 +226,19 @@ st, garts, _ = call("GET", "/api/periods/202607/artifacts", opener=gop)
 check("操作员产物清单无红件与运行日志",
       st == 200 and "red_list" not in garts and "red_json" not in garts and "runlog" not in garts,
       f"got {st}")
+st, ga, _ = call("GET", "/api/periods/202607/archive", opener=gop)
+try:
+    _ga = json.loads(ga)
+except json.JSONDecodeError:
+    _ga = {}
+_ga_keys = {a.get("key") for a in _ga.get("artifacts") or [] if isinstance(a, dict)}
+check("操作员运行档案：无日志包下载、无红件/运行日志产物",
+      st == 200 and _ga.get("logpack_url") == ""
+      and not (_ga_keys & {"red_list", "red_view", "red_json", "runlog"}),
+      f"got {st}")
+for _key in ("logpack", "red_list"):
+    st, _, _ = call("GET", f"/api/periods/202607/download/{_key}", opener=gop)
+    check(f"操作员下载 {_key} 仍 403", st == 403, f"got {st}")
 st, gdata, _ = call("GET", "/app/shelf/data.js", opener=gop)
 check("操作员陈列馆数据=全数据（与管理员同份）",
       st == 200 and '"rank_intl_now"' in gdata, f"got {st}, bytes={len(gdata)}")
@@ -317,10 +333,50 @@ _pend, _manual = _pending_fills(), _manual_slots()
 
 # 演示期保护：e2e 会签/撤 202607 来验闸门，但跑完必须把审批记录原样放回，
 # 否则演示站会留下「e2e 探针」历史，评委点开审批记录看到的是测试痕迹。
-# atexit 兜底异常退出；正常结束前再显式还原并断言一次。
+# 备份落 tmp（不入演示数据目录）：正常退出 atexit 还原；硬杀/超时后下一次 e2e
+# 启动先按 tmp 里的备份恢复，避免 202607 停在 e2e 的签/撤状态。
 _APPROVAL_FILES = [WENHENG / "out/202607/approval.json",
                    WENHENG / "out/202607/审批记录.md"]
+_E2E_BACKUP_DIR = WENHENG / "tmp" / "_e2e_approval_backup"
+
+
+def _recover_from_disk():
+    """上一次 e2e 被硬杀时，从 tmp 备份恢复 202607 的审批记录。"""
+    manifest = _E2E_BACKUP_DIR / "manifest.json"
+    if not manifest.exists():
+        return
+    try:
+        items = json.loads(manifest.read_text(encoding="utf-8"))
+        for it in items:
+            target = WENHENG / str(it.get("rel") or "")
+            if not target.parent.is_dir():
+                continue
+            src = _E2E_BACKUP_DIR / target.name
+            if it.get("exists"):
+                if src.exists():
+                    target.write_bytes(src.read_bytes())
+            else:
+                target.unlink(missing_ok=True)
+    finally:
+        shutil.rmtree(_E2E_BACKUP_DIR, ignore_errors=True)
+
+
+def _take_disk_backup():
+    _E2E_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    manifest = []
+    for path in _APPROVAL_FILES:
+        rel = path.relative_to(WENHENG).as_posix()
+        exists = path.exists()
+        manifest.append({"rel": rel, "exists": exists})
+        if exists:
+            (_E2E_BACKUP_DIR / path.name).write_bytes(path.read_bytes())
+    (_E2E_BACKUP_DIR / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+
+
+_recover_from_disk()
 _APPROVAL_BACKUP = {p: (p.read_bytes() if p.exists() else None) for p in _APPROVAL_FILES}
+_take_disk_backup()
 
 
 def _restore_approval():
@@ -329,6 +385,7 @@ def _restore_approval():
             path.unlink(missing_ok=True)
         else:
             path.write_bytes(data)
+    shutil.rmtree(_E2E_BACKUP_DIR, ignore_errors=True)
 
 
 atexit.register(_restore_approval)

@@ -87,6 +87,9 @@ class Test分页适配:
 class Test权限与安全:
     def test_trace对操作员只读开放(self):
         """2026-10-20 决赛证据面：逐格溯源只读开放；写口仍 admin。"""
+        if resolve_period_dir("202609") is None:
+            from _guard_registry import skip_unless
+            skip_unless("out/202609 不存在", lambda: resolve_period_dir("202609") is not None)
         view = asyncio.run(app_module.api_period_trace(
             _Req(config.OPERATOR_USER), "202609"))
         assert isinstance(view, dict) and view["period"] == "202609" and "rows" in view

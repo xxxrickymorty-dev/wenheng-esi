@@ -1805,7 +1805,11 @@ async def api_period_archive(request: Request, period: str, job: str = ""):
         target = next((j for j in jobs.list_jobs(50)
                        if d.name in (j.get("period"), j.get("out_period"))), None)
     q = urllib.parse.quote(d.name)
-    view = archive.build(d, job=target, artifacts=jobs.collect_period_artifacts(d.name))
+    role = _role_of_request(request)
+    artifacts = jobs.collect_period_artifacts(d.name)
+    if role != "admin":
+        artifacts = _visible_artifacts(artifacts, role)
+    view = archive.build(d, job=target, artifacts=artifacts)
     view.pop("out_dir", None)                                  # 不回绝对路径
     view.pop("progress_path", None)
     # job/stats/run_log 里还有 input/progress/console 等本机路径：转仓库相对
@@ -1814,7 +1818,10 @@ async def api_period_archive(request: Request, period: str, job: str = ""):
     view["stats"] = _sanitize_paths(view.get("stats"), _path_keys)
     view["run_log"] = _sanitize_paths(view.get("run_log"), _path_keys)
     view["download_base"] = f"/p/{q}"
-    view["logpack_url"] = f"/p/{q}/download/{view['logpack']['key']}"
+    # 操作员只读证据面，但红件/运行日志/日志包仍按 2026-10-11 政策只给管理员。
+    # 不给链接，避免页面上出现一点就 403 的按钮。
+    view["logpack_url"] = (f"/p/{q}/download/{view['logpack']['key']}"
+                           if role == "admin" else "")
     return view
 
 

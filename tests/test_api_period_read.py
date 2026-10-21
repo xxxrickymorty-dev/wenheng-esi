@@ -125,6 +125,9 @@ class TestCharts:
 class Test权限门:
     def test_redslots对操作员只读开放(self):
         """2026-10-20 决赛证据面：红件清单只读开放；写口仍 admin。"""
+        if resolve_period_dir("202609") is None:
+            from _guard_registry import skip_unless
+            skip_unless("out/202609 不存在", lambda: resolve_period_dir("202609") is not None)
         view = asyncio.run(app_module.api_period_redslots(
             _Req(config.OPERATOR_USER), "202609"))
         assert isinstance(view, dict) and "rows" in view
