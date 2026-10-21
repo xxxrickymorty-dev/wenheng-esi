@@ -123,6 +123,7 @@ def test_已出稿_取数缺件也不倒退(tmp_path):
 
     assert [s["done"] for s in out["steps"]] == [True, True, True]
     assert out["stuck"] == "sign"
+    assert out["n_missing"] == 4, "缺件数仍要如实返回，前端据此说「已并入（缺 N 件）」"
 
 
 def test_只有取数在途_没有内容_仍看该期(tmp_path):
