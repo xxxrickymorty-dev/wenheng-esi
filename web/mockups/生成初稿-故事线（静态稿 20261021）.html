@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>出报告 · 生成初稿（故事线静态稿 20261021）</title>
+<style>
+:root{
+  --bg:#F4F3ED; --card:#FFFDF8; --panel:#F0F1EB;
+  --ink:#222B25; --ink-2:#3F4C42; --ink-3:#58655C; --ink-4:#7C8A80;
+  --line:#DDE1D8; --line-2:#E6E9E2;
+  --zhu:#1A4B27; --zhu-soft:#E3EDE4;
+  --gold:#B19A65; --gold-soft:#F1EBDD; --gold-ink:#62501F;
+  --ok:#28643A; --ok-soft:#E2EEE4;
+  --bad:#B43B31; --bad-soft:#F4E6E2;
+  --field:#17456E; --field-2:#0F2E4C; --field-3:#2F6B8E; --field-4:#8FB6CE; --field-5:#DCE8F0;
+  --tool:#26483B; --tool-2:#163228; --tool-3:#2F7A58; --tool-4:#7FB79B; --tool-5:#DFEDE6;
+  --serif:"Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+  --kai:"Kaiti SC",KaiTi,STKaiti,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  --shadow:0 1px 2px rgba(34,43,37,.06),0 8px 24px rgba(34,43,37,.06);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.7 var(--sans);padding-bottom:64px}
+h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0}
+a{color:inherit}
+
+/* 顶栏 */
+.topbar{display:flex;align-items:center;gap:16px;min-height:60px;padding:0 28px;background:var(--field-2);color:var(--field-5)}
+.brand{display:flex;align-items:baseline;gap:10px;font-family:var(--serif)}
+.brand strong{font-size:21px;letter-spacing:.18em}
+.brand span{font-size:11px;letter-spacing:.16em;color:var(--field-4)}
+.nav{display:flex;gap:18px;margin-left:auto;font-size:14px;color:var(--field-4)}
+.nav a{text-decoration:none;padding:6px 0}
+.nav a[aria-current="page"]{color:var(--field-5);font-weight:600;border-bottom:2px solid var(--tool-3)}
+.period{color:var(--field-4);font-size:13px;display:flex;align-items:center;gap:8px}
+.period select{background:var(--field);border:1px solid var(--field-3);color:var(--field-5);padding:6px 8px;font:inherit;font-size:13px}
+.chip{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--field-5)}
+.chip i{width:26px;height:26px;display:grid;place-items:center;background:var(--tool-3);font-style:normal;font-weight:600}
+
+.wrap{max-width:1280px;margin:0 auto;padding:0 24px}
+
+/* 四站条 */
+.ia-steps{margin:16px 0 2px}
+.ia-rail{display:flex;height:2px;background:var(--line-2)}
+.ia-rail i{flex:1 1 0;background:var(--zhu)}
+.ia-rail i.off{background:transparent}
+.ia-steps ol{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 0;padding:0;list-style:none}
+.ia-steps li a,.ia-steps li span{display:flex;align-items:center;justify-content:center;min-height:50px;
+  background:var(--card);border:1px solid var(--line);color:var(--ink-2);text-decoration:none;font-size:14px}
+.ia-steps li.now a{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:650}
+
+/* 蓝场题头 */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:36px;align-items:center;
+  background:var(--field);color:var(--field-5);padding:46px 56px 42px;margin-top:16px}
+.kik{font-family:var(--kai);font-size:11px;letter-spacing:.36em;color:var(--field-4);margin:0}
+.hero h1{font-size:clamp(30px,3.6vw,46px);line-height:1.25;letter-spacing:.04em;color:#fff;margin:12px 0 12px}
+.hero-sub{color:var(--field-4);font-size:15px;max-width:34em;margin:0}
+.pills{display:flex;gap:10px;align-items:center;margin-top:2px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;font-size:13px;border-radius:2px;
+  background:rgba(255,255,255,.12);color:var(--field-5);border:1px solid var(--field-3)}
+.pill.ok{border-color:var(--tool-4);color:var(--tool-5)}
+.pill.gold{border-color:#C9B47E;color:#F1E4BE}
+.hero-act{display:flex;gap:16px;align-items:center;margin-top:22px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:50px;padding:11px 20px;
+  border:1px solid var(--line);background:var(--card);color:inherit;font:inherit;font-size:16px;font-weight:600;text-decoration:none;cursor:pointer}
+.btn.primary{background:var(--tool-3);border-color:var(--tool-4);color:#fff;font-size:16.5px}
+.btn.primary.on-field{background:#fff;border-color:#fff;color:var(--field)}
+.hero-link{color:var(--field-4);font-size:14px;text-decoration:none;border-bottom:1px solid var(--field-3);padding-bottom:2px}
+.wb-flaps{display:grid;gap:14px}
+.flaprow{display:flex;align-items:center;gap:10px}
+.flabel{font-family:var(--kai);font-size:11px;letter-spacing:.32em;color:var(--field-4)}
+.flaps{display:flex;gap:5px}
+.flaps i{width:34px;height:48px;display:grid;place-items:center;background:var(--field-2);color:var(--field-5);
+  font:600 20px/1 var(--mono);font-style:normal;border-top:2px solid var(--field-3)}
+.flaps.sm i{width:30px;height:34px;font-size:15px}
+
+/* ============ 故事条：这一期怎么走到这里 ============ */
+.story{background:var(--card);border:1px solid var(--line);margin-top:16px;padding:22px 26px 20px}
+.story-h{display:flex;align-items:baseline;gap:14px;margin-bottom:16px}
+.story-h h2{font-size:20px;letter-spacing:.02em}
+.story-h .hint{margin-left:auto;font-size:13px;color:var(--ink-3);text-decoration:none;border-bottom:1px solid var(--line)}
+.story-h .hint:hover{color:var(--zhu);border-color:var(--zhu)}
+.band{display:grid;grid-template-columns:repeat(5,1fr);border-top:3px solid var(--line)}
+.cell{position:relative;display:block;text-decoration:none;padding:16px 18px 14px;
+  border-right:1px dashed var(--line);border-top:3px solid var(--line);margin-top:-3px;transition:background .15s}
+.cell:last-child{border-right:0}
+.cell:hover{background:var(--panel)}
+.cell .idx{font:600 11px/1 var(--mono);letter-spacing:.12em;color:var(--ink-4)}
+.cell .t{display:block;font-family:var(--kai);font-size:12px;letter-spacing:.22em;color:var(--ink-3);margin:7px 0 2px}
+.cell .v{display:block;font-family:var(--serif);font-size:25px;line-height:1.3;letter-spacing:.01em;color:var(--ink)}
+.cell .n{display:block;font-size:13px;color:var(--ink-3);margin-top:5px;line-height:1.5}
+.cell .go{position:absolute;right:14px;top:14px;font-size:12px;color:var(--ink-4);opacity:0;transition:opacity .15s}
+.cell:hover .go{opacity:1}
+.cell.ok{border-top-color:var(--ok)}
+.cell.ok .v{color:var(--ok)}
+.cell.warn{border-top-color:var(--gold-ink)}
+.cell.warn .v{color:var(--gold-ink)}
+.cell.warn .n{color:var(--gold-ink)}
+.cell.todo{border-top-color:var(--ink-4)}
+.cell.todo .v,.cell.todo .n{color:var(--ink-4)}
+.cell.run{border-top-color:var(--field-3)}
+.cell.run .v{color:var(--field-3)}
+.cell.run .dot{animation:runpulse 1.4s ease-in-out infinite}
+@keyframes runpulse{0%,100%{opacity:.25}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.cell.run .dot{animation:none}}
+.cell .st{display:inline-flex;align-items:center;gap:5px}
+.cell .dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+
+/* 绿场水位 */
+.gaugeband{background:var(--tool);color:var(--tool-5);padding:40px 56px 30px;margin-top:16px}
+.gb-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,520px);gap:36px;align-items:start}
+.gb-grid.one{grid-template-columns:minmax(0,1fr)}
+.gb-copy h2{font-size:clamp(24px,2.6vw,34px);line-height:1.45;color:#fff;margin:12px 0 14px}
+.gb-note{color:var(--tool-4);font-size:13.5px;line-height:1.9;max-width:34em;margin:0}
+.gauge{background:var(--tool-2);border:1px solid var(--tool-3);padding:16px 18px}
+.gauge-head{display:flex;justify-content:space-between;font-family:var(--kai);font-size:11px;letter-spacing:.32em;color:var(--tool-4);margin-bottom:12px}
+.gauge-row{display:grid;grid-template-columns:minmax(96px,150px) minmax(0,1fr) 72px;gap:10px;align-items:center;padding:5px 0}
+.g-name{font-size:13px;color:var(--tool-5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g-bar{height:12px;background:var(--tool);border:1px solid var(--tool-3);position:relative}
+.g-bar i{position:absolute;inset:0 auto 0 0;background:var(--tool-3)}
+.g-val{font-size:12.5px;color:var(--tool-4);text-align:right;font-variant-numeric:tabular-nums}
+.gauge-thr{margin-top:10px;padding-top:8px;border-top:1px dashed var(--bad);font-family:var(--kai);font-size:11px;letter-spacing:.28em;color:var(--tool-4)}
+
+/* 折叠 */
+details.fold{margin-top:16px;background:var(--card);border:1px solid var(--line)}
+details.fold summary{cursor:pointer;padding:15px 18px;font-weight:600;display:flex;align-items:center;gap:10px}
+details.fold summary::-webkit-details-marker{display:none}
+details.fold summary::before{content:"▸";color:var(--ink-4);font-size:12px}
+details.fold[open] summary::before{content:"▾"}
+details.fold summary .sm{margin-left:auto;font-weight:400;font-size:13px;color:var(--ink-3)}
+
+.note{margin:22px 2px 0;font-size:12.5px;color:var(--ink-4);line-height:1.8}
+
+/* 审稿工具 */
+.toolbar{position:fixed;left:16px;bottom:16px;z-index:50;display:flex;align-items:center;gap:8px;
+  padding:9px 12px;background:#1C241E;color:#E9EEE7;border-radius:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.28);font-size:13px}
+.toolbar b{font-weight:600;letter-spacing:.06em;color:#9DB79F;font-size:11.5px;margin-right:2px}
+.toolbar button{font:inherit;font-size:13px;padding:5px 11px;border-radius:7px;cursor:pointer;
+  background:#2C362D;color:#E9EEE7;border:1px solid #3C473D}
+.toolbar button.on{background:#9EC3A4;color:#16241A;border-color:#9EC3A4;font-weight:600}
+@media (max-width:1020px){
+  .nav{display:none}
+  .brand span{display:none}
+  .topbar{padding:0 18px;gap:12px}
+  .hero{grid-template-columns:1fr;padding:34px 24px}
+  .gb-grid{grid-template-columns:1fr}
+  .gaugeband{padding:30px 24px}
+  .band{grid-template-columns:1fr 1fr}
+  .ia-steps ol{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><strong>文衡</strong><span>云南大学图书馆 · 学科信息参考</span></div>
+  <nav class="nav">
+    <a href="#" aria-current="page">出报告</a>
+    <a href="#">灵活报告</a>
+    <a href="#">问文衡</a>
+    <a href="#">主台账</a>
+    <a href="#">运行档案</a>
+  </nav>
+  <label class="period">期次
+    <select aria-label="切换期次"><option>202609</option><option>202611</option></select>
+  </label>
+  <span class="chip"><i>a</i>admin · 管理员</span>
+</header>
+
+<div class="wrap">
+
+  <nav class="ia-steps" aria-label="出报告步骤">
+    <div class="ia-rail" aria-hidden="true"><i></i><i></i><i></i><i class="off"></i></div>
+    <ol>
+      <li><a href="#">取数核验</a></li>
+      <li><a href="#">预测选模</a></li>
+      <li class="now"><a href="#">生成初稿</a></li>
+      <li><a href="#">核验定稿</a></li>
+    </ol>
+  </nav>
+
+  <!-- 蓝场题头：一句话结论 + 唯一主按钮 -->
+  <section class="hero">
+    <div>
+      <p class="kik">雲 南 大 學 圖 書 館 藏 · 學 科 情 報 · 出 報 告 台</p>
+      <div class="pills" id="pills">
+        <span class="pill ok" id="p1">已完成</span>
+        <span class="pill gold" id="p2">签发已失效</span>
+      </div>
+      <h1 id="h1">本期报告已就绪</h1>
+      <p class="hero-sub" id="sub">复核后签单；签发前不能下载初稿。</p>
+      <div class="hero-act" id="act">
+        <a class="btn primary" href="#">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+          复核并签单
+        </a>
+        <a class="hero-link" href="#">打开报告 ↗</a>
+      </div>
+    </div>
+    <div class="wb-flaps">
+      <div class="flaprow">
+        <span class="flabel">期 次 · 目 錄</span>
+        <span class="flaps"><i>2</i><i>0</i><i>2</i><i>6</i><i>0</i><i>9</i></span>
+      </div>
+      <div class="flaprow">
+        <span class="flabel">總 第 · 期</span>
+        <span class="flaps sm"><i>3</i><i>9</i></span>
+        <span class="flabel">簽 發</span>
+        <span class="flaps sm"><i id="flapSign">效</i></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 故事条：取代三步条 / 三枚橡皮戳 / 五行数据表 -->
+  <section class="story" aria-label="这一期怎么走到这里">
+    <div class="story-h">
+      <h2>这一期怎么走到这里</h2>
+      <a class="hint" href="#">运行档案 · 完整回放 →</a>
+    </div>
+    <div class="band" id="band">
+      <a class="cell ok" href="#">
+        <span class="go">→</span>
+        <span class="idx">01</span>
+        <span class="t">取 数</span>
+        <b class="v">64 / 64</b>
+        <span class="n"><span class="st"><span class="dot"></span>已并入台账</span></span>
+      </a>
+      <a class="cell ok" href="#">
+        <span class="go">→</span>
+        <span class="idx">02</span>
+        <span class="t">生 成</span>
+        <b class="v">270 秒</b>
+        <span class="n"><span class="st"><span class="dot"></span>7 步 · 一次跑通</span></span>
+      </a>
+      <a class="cell warn" href="#">
+        <span class="go">→</span>
+        <span class="idx">03</span>
+        <span class="t">审 计</span>
+        <b class="v">3 / 6 通过</b>
+        <span class="n"><span class="st"><span class="dot"></span>2 待确认 · 0 不通过</span></span>
+      </a>
+      <a class="cell warn" href="#">
+        <span class="go">→</span>
+        <span class="idx">04</span>
+        <span class="t">签 发</span>
+        <b class="v">待重签</b>
+        <span class="n"><span class="st"><span class="dot"></span>内容改过，签名失效</span></span>
+      </a>
+      <a class="cell ok" href="#">
+        <span class="go">→</span>
+        <span class="idx">05</span>
+        <span class="t">留 痕</span>
+        <b class="v">13 个文件</b>
+        <span class="n"><span class="st"><span class="dot"></span>可回放 · 断言/审计/产物</span></span>
+      </a>
+    </div>
+  </section>
+
+  <!-- 绿场水位：业务读数，保留 -->
+  <section class="gaugeband">
+    <div class="gb-grid">
+      <div class="gb-copy">
+        <p class="kik">水 位 標 尺 · 接 近 度</p>
+        <h2>阈值即水位线，<br>潜力学科各是一根水尺。</h2>
+        <p class="gb-note">ESI 前 1% 被引阈值是警戒水位。读数来自本期学科矩阵（接近度＝百分数点值），前端不换算。</p>
+      </div>
+      <div class="gauge" id="gauge">
+        <div class="gauge-head"><span>潜 力 學 科 水 位</span><span>202609</span></div>
+        <div class="gauge-row"><span class="g-name">分子生物学与遗传学</span><span class="g-bar"><i style="width:88.01%"></i></span><span class="g-val">88.01%</span></div>
+        <div class="gauge-row"><span class="g-name">物理学</span><span class="g-bar"><i style="width:81.21%"></i></span><span class="g-val">81.21%</span></div>
+        <div class="gauge-row"><span class="g-name">空间科学</span><span class="g-bar"><i style="width:30.16%"></i></span><span class="g-val">30.16%</span></div>
+        <div class="gauge-row"><span class="g-name">精神病学与心理学</span><span class="g-bar"><i style="width:28.88%"></i></span><span class="g-val">28.88%</span></div>
+        <div class="gauge-row"><span class="g-name">免疫学</span><span class="g-bar"><i style="width:21.03%"></i></span><span class="g-val">21.03%</span></div>
+        <div class="gauge-row"><span class="g-name">神经系统科学与行为学</span><span class="g-bar"><i style="width:18.41%"></i></span><span class="g-val">18.41%</span></div>
+        <div class="gauge-row"><span class="g-name">多学科</span><span class="g-bar"><i style="width:15.22%"></i></span><span class="g-val">15.22%</span></div>
+        <div class="gauge-row"><span class="g-name">经济与商业</span><span class="g-bar"><i style="width:15.07%"></i></span><span class="g-val">15.07%</span></div>
+        <div class="gauge-thr">ESI 前 1% 阈值（100%）</div>
+      </div>
+    </div>
+  </section>
+
+  <details class="fold">
+    <summary>这一期的工具<span class="sm">重跑 · 回滚 · 台账 · 日志包</span></summary>
+  </details>
+  <details class="fold">
+    <summary>全部期次<span class="sm">共 6 期</span></summary>
+  </details>
+
+  <p class="note">数字只来自馆员维护的台账与派生产物，运行期大模型不进入数据路径；本页只读，不改台账与报告。</p>
+</div>
+
+<!-- 审稿工具：不属于页面 -->
+<div class="toolbar">
+  <b>审稿工具</b>
+  <button data-state="stale" class="on">已出稿 · 待签</button>
+  <button data-state="running">生成中</button>
+  <button data-state="signed">已签发</button>
+  <button data-state="empty">未出稿</button>
+</div>
+
+<script>
+const HERO = {
+  stale: {
+    p1: ['pill ok', '已完成'], p2: ['pill gold', '签发已失效'],
+    h1: '本期报告已就绪',
+    sub: '复核后签单；签发前不能下载初稿。',
+    act: `<a class="btn primary" href="#"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>复核并签单</a>
+         <a class="hero-link" href="#">打开报告 ↗</a>`,
+    flap: '效',
+    cells: [
+      { s: 'ok', t: '取 数', v: '64 / 64', n: '已并入台账' },
+      { s: 'ok', t: '生 成', v: '270 秒', n: '7 步 · 一次跑通' },
+      { s: 'warn', t: '审 计', v: '3 / 6 通过', n: '2 待确认 · 0 不通过' },
+      { s: 'warn', t: '签 发', v: '待重签', n: '内容改过，签名失效' },
+      { s: 'ok', t: '留 痕', v: '13 个文件', n: '可回放 · 断言/审计/产物' },
+    ],
+    gauge: true,
+  },
+  signed: {
+    p1: ['pill ok', '已完成'], p2: ['pill ok', '已签发'],
+    h1: '本期已签发',
+    sub: '这一版已归档、可下载；重新生成会使签发失效。',
+    act: `<a class="btn primary" href="#"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>打开报告</a>
+         <a class="hero-link" href="#">看签单记录 ↗</a>`,
+    flap: '签',
+    cells: [
+      { s: 'ok', t: '取 数', v: '64 / 64', n: '已并入台账' },
+      { s: 'ok', t: '生 成', v: '270 秒', n: '7 步 · 一次跑通' },
+      { s: 'warn', t: '审 计', v: '3 / 6 通过', n: '2 待确认 · 0 不通过' },
+      { s: 'ok', t: '签 发', v: '已签发', n: '10-17 14:15 · admin' },
+      { s: 'ok', t: '留 痕', v: '13 个文件', n: '可回放 · 断言/审计/产物' },
+    ],
+    gauge: true,
+  },
+  running: {
+    p1: ['pill ok', '进行中'], p2: ['pill', '未签发'],
+    h1: '正在生成……',
+    sub: '这一步约 3 分钟；可以切到别的页面，进度不会丢。',
+    act: `<span class="btn" style="opacity:.55;cursor:not-allowed">第 4 步 / 共 7 步 · 正在出图</span>`,
+    flap: '待',
+    cells: [
+      { s: 'ok', t: '取 数', v: '64 / 64', n: '已并入台账' },
+      { s: 'run', t: '生 成', v: '62%', n: '正在出图（65 / 104）' },
+      { s: 'todo', t: '审 计', v: '未执行', n: '跑完才审计' },
+      { s: 'todo', t: '签 发', v: '未签发', n: '签单后才可下载' },
+      { s: 'todo', t: '留 痕', v: '无', n: '日志包跑完才生成' },
+    ],
+    gauge: false,
+  },
+  empty: {
+    p1: ['pill', '未开始'], p2: ['pill', '未签发'],
+    h1: '数据还没取齐，先去下载数据',
+    sub: '在取数台：下载 → 逐份核验 → 核对并并入台账。',
+    act: `<a class="btn primary on-field" href="#">去取数台</a>`,
+    flap: '待',
+    cells: [
+      { s: 'todo', t: '取 数', v: '——', n: '还没开始取数' },
+      { s: 'todo', t: '生 成', v: '未执行', n: '取数并入后才生成' },
+      { s: 'todo', t: '审 计', v: '未执行', n: '没有审计记录' },
+      { s: 'todo', t: '签 发', v: '未签发', n: '签单后才可下载' },
+      { s: 'todo', t: '留 痕', v: '无', n: '日志包未生成' },
+    ],
+    gauge: false,
+  },
+}
+
+function render(state) {
+  const c = HERO[state]
+  const p1 = document.getElementById('p1')
+  const p2 = document.getElementById('p2')
+  p1.className = c.p1[0]; p1.textContent = c.p1[1]
+  p2.className = c.p2[0]; p2.textContent = c.p2[1]
+  document.getElementById('h1').textContent = c.h1
+  document.getElementById('sub').textContent = c.sub
+  document.getElementById('act').innerHTML = c.act
+  document.getElementById('flapSign').textContent = c.flap
+
+  document.getElementById('band').innerHTML = c.cells.map((x, i) => `
+    <a class="cell ${x.s}" href="#">
+      <span class="go">→</span>
+      <span class="idx">0${i + 1}</span>
+      <span class="t">${x.t}</span>
+      <b class="v">${x.v}</b>
+      <span class="n"><span class="st"><span class="dot"></span>${x.n}</span></span>
+    </a>`).join('')
+
+  const g = document.getElementById('gauge')
+  g.style.display = c.gauge ? '' : 'none'
+  document.querySelector('.gb-grid').classList.toggle('one', !c.gauge)
+  const note = document.querySelector('.gb-note')
+  note.textContent = c.gauge
+    ? 'ESI 前 1% 被引阈值是警戒水位。读数来自本期学科矩阵（接近度＝百分数点值），前端不换算。'
+    : '这一期还没有水位读数——看板生成后显示。'
+
+  ;[...document.querySelectorAll('.toolbar button')].forEach(b =>
+    b.classList.toggle('on', b.dataset.state === state))
+}
+
+document.querySelector('.toolbar').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-state]')
+  if (b) render(b.dataset.state)
+})
+
+render('stale')
+</script>
+</body>
+</html>
