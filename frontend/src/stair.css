@@ -67,6 +67,16 @@
 .stair-book:hover { transform: translateY(-3px); }
 .stair-book:focus-visible { outline: 2px solid var(--color-pine-200); outline-offset: 4px; }
 
+/* 粒子层：五册书脊由点组成，压在书下面 */
+.stair-particles {
+  position: absolute;
+  inset: 0;
+  width: 860px;
+  height: 500px;
+  z-index: 0;
+  pointer-events: none;
+}
+
 .stair-spine {
   position: absolute;
   inset: 0;
@@ -74,11 +84,23 @@
   align-items: baseline;
   gap: 14px;
   padding: 0 16px;
-  background: var(--color-pine-300);
+  background: transparent;
   color: var(--color-paper-50);
-  border-left: 4px solid var(--color-pine-200);
+  z-index: 1;
 }
+/* 实心只留书脊这一侧，往书口化开——粒子接的是化开的那一半 */
+.stair-spine::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--color-pine-300);
+  -webkit-mask-image: linear-gradient(90deg, #000 0 40%, transparent 92%);
+  mask-image: linear-gradient(90deg, #000 0 40%, transparent 92%);
+}
+.stair-book.is-on .stair-spine::before { background: var(--color-pine-200); }
 .stair-spine b {
+  position: relative;
+  z-index: 1;
   font-family: var(--font-mono);
   font-size: 17px;
   font-weight: 600;
@@ -86,6 +108,8 @@
   line-height: 54px;
 }
 .stair-spine i {
+  position: relative;
+  z-index: 1;
   font-family: var(--font-kai);
   font-size: 10.5px;
   font-style: normal;
@@ -108,8 +132,6 @@
 }
 
 .stair-book.is-on .stair-spine {
-  background: var(--color-pine-200);
-  border-left-color: var(--color-paper-50);
   color: #08201A;
 }
 .stair-book.is-on .stair-top { background: var(--color-paper-50); }

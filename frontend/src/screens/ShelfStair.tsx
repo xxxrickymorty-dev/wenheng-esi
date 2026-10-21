@@ -8,6 +8,7 @@
  * 书＝书脊（正视）+ 顶面（斜切）；不做真三维——离线、投影都稳。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { StairParticles } from "./StairParticles";
 import "../stair.css";
 
 type Book = { period: string; no: number; label: string };
@@ -99,6 +100,10 @@ export function ShelfStair() {
           className="stair-world"
           style={{ transform: `scale(${s})` }}
         >
+          <StairParticles
+            books={BOOKS.length}
+            active={stop < BOOKS.length ? stop : -1}
+          />
           {BOOKS.map((b, i) => (
             <button
               key={b.period}
