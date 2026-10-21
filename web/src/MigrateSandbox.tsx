@@ -19,7 +19,7 @@ export function MigrateSandbox() {
   useEffect(() => {
     getMigrateSandbox()
       .then(setD)
-      .catch(() => setNote('换馆故事卡读不到——先跑一次 tools/migration_check.py。'))
+      .catch(() => setNote('换馆故事卡读不到——先跑一次换馆沙盘工具，再刷新本页。'))
   }, [])
 
   if (note) return <div className="pending-box mt-0">{note}</div>

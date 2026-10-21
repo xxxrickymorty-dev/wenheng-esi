@@ -42,7 +42,7 @@ export function HealSandbox() {
   useEffect(() => {
     getHealSandbox()
       .then(setD)
-      .catch(() => setNote('沙盘故事卡读不到——先跑一次 tools/heal_sandbox.py。'))
+      .catch(() => setNote('沙盘故事卡读不到——先跑一次自愈沙盘工具，再刷新本页。'))
   }, [])
 
   if (note) return <div className="pending-box mt-0">{note}</div>
