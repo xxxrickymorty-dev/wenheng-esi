@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>换馆沙盘 · 静态稿 20261021</title>
+<style>
+:root{
+  --bg:#F6F2E4; --card:#FBF8EE; --card-hi:#FFFDF6; --panel:#F2EFE6;
+  --ink:#222A25; --ink-2:#3E4A42; --ink-3:#5C5A50; --ink-4:#8A8578;
+  --line:#D8D2C2; --line-2:#E7E1D2;
+  --green:#1B4636; --green-deep:#163228; --green-soft:#E3EBE3;
+  --red:#A8342A; --red-soft:#F4E4DF;
+  --gold:#D7C58D; --gold-ink:#786433;
+  --ok:#2C6647;
+  --serif:"Noto Serif SC","Songti SC","SimSun",serif;
+  --kai:"KaiTi","STKaiti",serif;
+  --sans:"Microsoft YaHei",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;font-family:var(--serif);font-weight:600}
+p{margin:0}
+b,strong{font-weight:600}
+.mono{font-family:var(--mono);font-size:.92em;letter-spacing:0}
+
+/* 顶栏 */
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:18px;min-height:64px;
+  padding:0 clamp(18px,3.2vw,36px);background:var(--green-deep);color:#F2EDDD;
+  box-shadow:inset 0 -1px 0 rgba(215,197,141,.42)}
+.brand{display:flex;align-items:baseline;gap:14px;min-width:0}
+.brand b{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:.22em;color:#FFF9E8}
+.brand span{font-size:11.5px;letter-spacing:.1em;color:#B9B29C;white-space:nowrap}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:14px;flex:0 0 auto}
+.top-note{font-size:11.5px;letter-spacing:.08em;color:#9FA895;white-space:nowrap}
+.badge{font-family:var(--kai);font-size:12px;letter-spacing:.14em;color:var(--gold);
+  border:1px solid rgba(215,197,141,.66);padding:4px 10px;line-height:1.4;white-space:nowrap}
+
+/* 页壳 */
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px 56px;width:100%}
+.crumb{display:flex;align-items:center;gap:9px;padding-top:16px;font-size:12px;color:var(--ink-4);letter-spacing:.05em}
+.crumb i{font-style:normal;color:var(--line)}
+.build{display:flex;align-items:flex-start;gap:9px;margin-top:10px;padding:8px 12px;
+  border-left:2px solid var(--gold);background:rgba(215,197,141,.13);
+  font-size:12.5px;line-height:1.6;color:var(--ink-3)}
+.build .dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex:0 0 auto;margin-top:7px}
+
+/* 题头 */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:44px;align-items:center;padding:36px 0 6px}
+.kik{font-family:var(--kai);font-size:11.5px;letter-spacing:.36em;color:var(--gold-ink)}
+.hero h1{margin-top:13px;font-size:clamp(34px,4.2vw,46px);line-height:1.15;letter-spacing:.04em;color:var(--green)}
+.sub{display:flex;align-items:center;gap:12px;margin-top:14px;font-size:16px;color:var(--ink-2)}
+.sub::before{content:"";width:22px;height:1px;background:var(--green);flex:0 0 auto}
+.lead{margin-top:16px;max-width:68ch;font-size:15px;line-height:1.9;color:var(--ink-2)}
+.lead b{color:var(--ink)}
+.meta{display:flex;flex-wrap:wrap;align-items:center;gap:9px 14px;margin-top:18px}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;font-size:12.5px;line-height:1.6;letter-spacing:.02em}
+.pill.ok{background:var(--green-soft);color:var(--ok);border:1px solid #BECDBF}
+.pill.line{background:transparent;color:var(--ink-3);border:1px solid var(--line)}
+.time{font-family:var(--mono);font-size:12px;color:var(--ink-4);letter-spacing:.01em}
+.stamp{width:106px;height:106px;display:grid;place-content:center;justify-items:center;
+  border:3px double var(--red);color:var(--red);transform:rotate(4deg);opacity:.82;
+  font-family:var(--serif);font-size:19px;letter-spacing:.2em;line-height:1.65;text-align:center}
+.stamp small{display:block;margin-top:3px;font-family:var(--kai);font-size:9.5px;letter-spacing:.24em;color:var(--red)}
+
+/* 分区标题 */
+.sec{margin-top:34px}
+.sec-h{display:flex;align-items:baseline;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.sec-h h2{font-size:21px;letter-spacing:.02em;color:var(--ink)}
+.sec-k{font-family:var(--kai);font-size:10.5px;letter-spacing:.3em;color:var(--gold-ink)}
+.sec-meta{margin-left:auto;font-size:12.5px;color:var(--ink-4);letter-spacing:.03em}
+
+/* 五项读表要求 */
+.checks{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));margin-top:14px;
+  border:1px solid var(--line);background:var(--line);gap:1px}
+.check{display:flex;flex-direction:column;gap:6px;min-width:0;padding:18px 18px 16px;
+  background:var(--card);box-shadow:inset 0 3px 0 var(--ok)}
+.check-k{font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--ink-3);line-height:1.6}
+.check b{font-family:var(--serif);font-size:20px;font-weight:600;line-height:1.35;color:var(--ok)}
+.check b::before{content:"✓";margin-right:6px;font-family:var(--sans);font-size:15px;vertical-align:1px}
+.check small{font-size:12.5px;line-height:1.65;color:var(--ink-3)}
+.checks-note{margin-top:10px;font-size:12.5px;line-height:1.7;color:var(--ink-4)}
+
+/* 换馆四件事 */
+.four{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px}
+.fcard{position:relative;min-width:0;padding:20px 18px 18px;background:var(--card);border:1px solid var(--line)}
+.fcard::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:var(--gold)}
+.fcard .no{font-family:var(--kai);font-size:11px;letter-spacing:.3em;color:var(--gold-ink)}
+.fcard b{display:block;margin-top:7px;font-family:var(--serif);font-size:19px;font-weight:600;letter-spacing:.03em;color:var(--ink)}
+.fcard small{display:block;margin-top:8px;font-size:12.5px;line-height:1.8;color:var(--ink-3)}
+
+/* 说明块 */
+.note{margin-top:22px;padding:20px 24px;background:var(--panel);border-left:3px solid var(--gold)}
+.note .k{font-family:var(--kai);font-size:11px;letter-spacing:.24em;color:var(--gold-ink)}
+.note .lead{margin-top:8px;max-width:74ch;font-family:var(--serif);font-size:17px;line-height:1.8;color:var(--ink)}
+.note .lead b{color:var(--green)}
+.note .sub{margin-top:10px;max-width:74ch;font-size:13px;line-height:1.75;color:var(--ink-3)}
+
+/* 页脚 */
+.run{display:flex;align-items:center;gap:14px 18px;flex-wrap:wrap;margin-top:34px;
+  padding:18px 22px;background:var(--panel);border-top:3px solid var(--green);border-bottom:1px solid var(--line)}
+.run .k{font-family:var(--kai);font-size:11px;letter-spacing:.2em;color:var(--ink-3)}
+.run code{font-family:var(--mono);font-size:14px;color:var(--green);background:var(--card-hi);
+  border:1px solid var(--line);padding:8px 12px;line-height:1.5;overflow-wrap:anywhere}
+.run .sm{margin-left:auto;font-size:12.5px;line-height:1.6;color:var(--ink-4)}
+.foot{display:flex;gap:16px;flex-wrap:wrap;margin-top:22px;padding-top:14px;
+  border-top:1px solid var(--line-2);font-size:12px;color:var(--ink-4);letter-spacing:.02em}
+.foot span:last-child{margin-left:auto}
+
+@media (max-width:900px){
+  .hero{grid-template-columns:1fr;gap:22px;padding-top:28px}
+  .stamp{display:none}
+  .checks{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .four{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .run .sm{margin-left:0}
+  .wrap{padding:0 18px 48px}
+}
+@media (max-width:620px){
+  .brand span,.top-note,.crumb{display:none}
+  .top{min-height:58px;gap:10px}
+  .build{margin-top:14px}
+  .sec-h{flex-wrap:wrap;gap:8px 12px}
+  .sec-h h2{flex:0 0 auto}
+  .sec-k{display:none}
+  .checks,.four{grid-template-columns:1fr}
+  .hero h1{font-size:34px}
+  .note{padding:18px 16px}
+  .note .lead{font-size:16px}
+  .foot span:last-child{margin-left:0}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><b>文衡</b><span>云南大学图书馆 · 学科信息参考</span></div>
+  <div class="top-r">
+    <span class="top-note">决赛材料 · 推广证据</span>
+    <span class="badge">静态稿 · 待 rick 审</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="crumb"><span>工作台</span><i>/</i><span>证据页</span><i>/</i><span>换馆沙盘</span></div>
+  <p class="build"><span class="dot"></span>React 页（MigrateSandbox）已按此设计实现；本稿仅供审稿对照。</p>
+
+  <section class="hero">
+    <div>
+      <p class="kik">证 据 页 · 换 馆</p>
+      <h1>换馆沙盘</h1>
+      <p class="sub">只碰台账副本，不碰原始台账</p>
+      <p class="lead">
+        拿一份台账副本，按引擎的读表要求逐项检查：表在不在、22 个学科名认不认、
+        最新期次列有没有、母版在不在。<b>不跑流水线、不改原件。</b>
+      </p>
+      <div class="meta">
+        <span class="pill ok">结构齐全，换馆只差配置</span>
+        <span class="pill line">5 / 5 通过</span>
+        <span class="time">生成于 2026-10-20 22:29 · 演练样本</span>
+      </div>
+    </div>
+    <div class="stamp" aria-label="五项结构检查全部通过"><span>结构</span><span>齐全</span><small>沙盘留痕</small></div>
+  </section>
+
+  <section class="sec" aria-label="五项读表要求">
+    <div class="sec-h">
+      <h2>五项读表要求</h2><span class="sec-k">结 构 · 逐 项 核 对</span>
+      <span class="sec-meta">5 / 5 通过</span>
+    </div>
+    <div class="checks">
+      <div class="check">
+        <span class="check-k">必需的 12 张工作表</span>
+        <b>通过</b>
+        <small>齐全：12 张表名与顺序都对得上。</small>
+      </div>
+      <div class="check">
+        <span class="check-k">22 个规范学科名</span>
+        <b>通过</b>
+        <small>22 / 22 认得出，中英文任一写法都行。</small>
+      </div>
+      <div class="check">
+        <span class="check-k">最新期次列</span>
+        <b>通过</b>
+        <small>最新一期 202609 在表里。</small>
+      </div>
+      <div class="check">
+        <span class="check-k">报告结构母版</span>
+        <b>通过</b>
+        <small>母版在，章节骨架完整。</small>
+      </div>
+      <div class="check">
+        <span class="check-k">数据源目录</span>
+        <b>通过</b>
+        <small>ESI / InCites 两个目录都在。</small>
+      </div>
+    </div>
+    <p class="checks-note">只读副本，逐项核对结构；任何一项缺了，页面会直接写明缺在哪，不会带病出报告。</p>
+  </section>
+
+  <section class="sec" aria-label="换馆只改四件事">
+    <div class="sec-h">
+      <h2>换馆只改四件事</h2><span class="sec-k">换 配 置 · 不 换 引 擎</span>
+      <span class="sec-meta">其余照旧</span>
+    </div>
+    <div class="four">
+      <div class="fcard">
+        <span class="no">壹</span>
+        <b>台账模板</b>
+        <small>按 12 张工作表 + 22 个规范学科名的固定结构维护；换校不换表结构。</small>
+      </div>
+      <div class="fcard">
+        <span class="no">贰</span>
+        <b>学科清单</b>
+        <small>22 个学科的中英文名与顺序；别名表按新校口径补。</small>
+      </div>
+      <div class="fcard">
+        <span class="no">叁</span>
+        <b>数据源</b>
+        <small>ESI / InCites 的导出目录与账号；换馆只换源，不改引擎。</small>
+      </div>
+      <div class="fcard">
+        <span class="no">肆</span>
+        <b>母版封面</b>
+        <small>报告母版里的校名、期号、封面图；结构母版不动。</small>
+      </div>
+    </div>
+  </section>
+
+  <section class="note" aria-label="这次验证的是什么">
+    <p class="k">这 次 验 证 的 是 什 么</p>
+    <p class="lead">
+      样本仍是云大副本，验证的是<b>「引擎不依赖校名、只依赖台账的固定结构」</b>；
+      真实换馆按上面四件事替换。
+    </p>
+    <p class="sub">
+      演练时把云大台账副本改名为「兄弟馆_监测表.xlsx」，内容一字未改。
+      这次只做结构检查：不跑流水线、不改原件、不生成报告。
+    </p>
+  </section>
+
+  <section class="run" aria-label="重跑方式">
+    <span class="k">重跑一次：</span>
+    <code>uv run python tools\migration_check.py</code>
+    <span class="sm">刷新本页即可；只做结构检查，不跑流水线。</span>
+  </section>
+
+  <p class="foot"><span>文衡 · 学科信息参考 · 换馆沙盘</span><span>静态稿 2026-10-21 · 页面只读</span></p>
+</main>
+
+</body>
+</html>

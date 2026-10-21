@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>自愈沙盘 · 静态稿 20261021</title>
+<style>
+:root{
+  --bg:#F6F2E4; --card:#FBF8EE; --card-hi:#FFFDF6; --panel:#F2EFE6;
+  --ink:#222A25; --ink-2:#3E4A42; --ink-3:#5C5A50; --ink-4:#8A8578;
+  --line:#D8D2C2; --line-2:#E7E1D2;
+  --green:#1B4636; --green-deep:#163228; --green-soft:#E3EBE3;
+  --red:#A8342A; --red-soft:#F4E4DF;
+  --gold:#D7C58D; --gold-ink:#786433;
+  --ok:#2C6647;
+  --serif:"Noto Serif SC","Songti SC","SimSun",serif;
+  --kai:"KaiTi","STKaiti",serif;
+  --sans:"Microsoft YaHei",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;font-family:var(--serif);font-weight:600}
+p{margin:0}
+b,strong{font-weight:600}
+.mono{font-family:var(--mono);font-size:.92em;letter-spacing:0}
+
+/* 顶栏 */
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:18px;min-height:64px;padding:0 clamp(18px,3.2vw,36px);background:var(--green-deep);color:#F2EDDD;box-shadow:inset 0 -1px 0 rgba(215,197,141,.42)}
+.brand{display:flex;align-items:baseline;gap:14px;min-width:0}
+.brand b{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:.22em;color:#FFF9E8}
+.brand span{font-size:11.5px;letter-spacing:.1em;color:#B9B29C;white-space:nowrap}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:14px;flex:0 0 auto}
+.top-note{font-size:11.5px;letter-spacing:.08em;color:#9FA895;white-space:nowrap}
+.badge{font-family:var(--kai);font-size:12px;letter-spacing:.14em;color:var(--gold);border:1px solid rgba(215,197,141,.66);padding:4px 10px;line-height:1.4;white-space:nowrap}
+
+/* 页壳 */
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px 56px;width:100%}
+.crumb{display:flex;align-items:center;gap:9px;padding-top:16px;font-size:12px;color:var(--ink-4);letter-spacing:.05em}
+.crumb i{font-style:normal;color:var(--line)}
+.build{display:flex;align-items:flex-start;gap:9px;margin-top:10px;padding:8px 12px;border-left:2px solid var(--gold);background:rgba(215,197,141,.13);font-size:12.5px;line-height:1.6;color:var(--ink-3)}
+.build .dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex:0 0 auto;margin-top:7px}
+
+/* 题头 */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:44px;align-items:center;padding:36px 0 6px}
+.kik{font-family:var(--kai);font-size:11.5px;letter-spacing:.36em;color:var(--gold-ink)}
+.hero h1{margin-top:13px;font-size:clamp(34px,4.2vw,46px);line-height:1.15;letter-spacing:.04em;color:var(--green)}
+.sub{display:flex;align-items:center;gap:12px;margin-top:14px;font-size:16px;color:var(--ink-2)}
+.sub::before{content:"";width:22px;height:1px;background:var(--green);flex:0 0 auto}
+.lead{margin-top:16px;max-width:66ch;font-size:15px;line-height:1.9;color:var(--ink-2)}
+.lead b{color:var(--ink)}
+.meta{display:flex;flex-wrap:wrap;align-items:center;gap:9px 14px;margin-top:18px}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;font-size:12.5px;line-height:1.6;letter-spacing:.02em}
+.pill.ok{background:var(--green-soft);color:var(--ok);border:1px solid #BECDBF}
+.pill.line{background:transparent;color:var(--ink-3);border:1px solid var(--line)}
+.time{font-family:var(--mono);font-size:12px;color:var(--ink-4);letter-spacing:.01em}
+.stamp{width:106px;height:106px;display:grid;place-content:center;justify-items:center;border:3px double var(--red);color:var(--red);transform:rotate(-5deg);opacity:.82;font-family:var(--serif);font-size:19px;letter-spacing:.2em;line-height:1.65;text-align:center}
+.stamp small{display:block;margin-top:3px;font-family:var(--kai);font-size:9.5px;letter-spacing:.24em;color:var(--red)}
+
+/* 分区标题 */
+.sec{margin-top:34px}
+.sec-h{display:flex;align-items:baseline;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.sec-h h2{font-size:21px;letter-spacing:.02em;color:var(--ink)}
+.sec-k{font-family:var(--kai);font-size:10.5px;letter-spacing:.3em;color:var(--gold-ink)}
+.sec-meta{margin-left:auto;font-size:12.5px;color:var(--ink-4);letter-spacing:.03em}
+
+/* 五步故事 */
+.story{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));margin-top:14px;border:1px solid var(--line);background:var(--line);gap:1px}
+.step{display:flex;flex-direction:column;gap:6px;min-width:0;padding:18px 18px 16px;background:var(--card);box-shadow:inset 0 3px 0 var(--line)}
+.step-k{font-family:var(--kai);font-size:11px;letter-spacing:.2em;color:var(--ink-3)}
+.step b{font-family:var(--serif);font-size:19px;font-weight:600;line-height:1.4;letter-spacing:.01em;color:var(--ink);overflow-wrap:anywhere}
+.step b.mono{font-family:var(--mono);font-size:16px;letter-spacing:0}
+.step b s{color:var(--ink-4);text-decoration-thickness:1px;text-underline-offset:2px}
+.step small{font-size:12.5px;line-height:1.65;color:var(--ink-3)}
+.step.warn{box-shadow:inset 0 3px 0 var(--red)}
+.step.warn b{color:var(--red)}
+.step.ok{box-shadow:inset 0 3px 0 var(--ok)}
+.step.ok b{color:var(--ok)}
+.story-note{margin-top:10px;font-size:12.5px;line-height:1.7;color:var(--ink-4)}
+
+/* 卡片与对账表 */
+.card{margin-top:14px;background:var(--card);border:1px solid var(--line);padding:22px 24px 20px}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;min-width:600px}
+th{font-size:10.5px;font-weight:400;letter-spacing:.22em;color:var(--ink-3);text-align:left;padding:0 12px 9px;border-bottom:1px solid var(--green-deep)}
+th:nth-child(1){width:46%} th:nth-child(2){width:30%} th:nth-child(3){width:24%}
+td{padding:14px 12px;border-bottom:1px solid var(--line-2);vertical-align:top;font-size:14px}
+tr:last-child td{border-bottom:0}
+.file b{display:block;font-size:15px;line-height:1.5}
+.file small{display:block;margin-top:3px;font-size:12px;line-height:1.6;color:var(--ink-4);overflow-wrap:anywhere}
+.fp{font-family:var(--mono);font-size:13px;color:var(--ink-2);white-space:nowrap}
+.same{color:var(--ok);font-weight:600;white-space:nowrap}
+.same::before{content:"✓";margin-right:5px;font-family:var(--sans);font-size:12px}
+.after{margin-top:14px;padding-left:12px;border-left:2px solid var(--gold);font-size:13px;line-height:1.75;color:var(--ink-3)}
+
+/* 决策轨迹 */
+.trace{list-style:none;margin:0;padding:0;display:grid;gap:1px;background:var(--line);border:1px solid var(--line)}
+.trace li{display:grid;grid-template-columns:64px 172px minmax(0,1fr);gap:12px;align-items:baseline;padding:11px 14px;background:var(--card);min-width:0}
+.trace li:hover{background:var(--card-hi)}
+.phase{display:flex;align-items:center;gap:7px;font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--ink-4)}
+.phase::before{content:"";width:5px;height:5px;background:var(--line);flex:0 0 auto}
+.trace b{font-size:14px;font-weight:600;line-height:1.6;color:var(--ink)}
+.trace small{font-size:12.5px;line-height:1.7;color:var(--ink-3);overflow-wrap:anywhere}
+.trace .warn{box-shadow:inset 3px 0 0 var(--red)}
+.trace .warn b{color:var(--red)}
+.trace .warn .phase::before{background:var(--red)}
+.trace .ok{box-shadow:inset 3px 0 0 var(--ok)}
+.trace .ok b{color:var(--ok)}
+.trace .ok .phase::before{background:var(--ok)}
+
+/* 页脚 */
+.run{display:flex;align-items:center;gap:14px 18px;flex-wrap:wrap;margin-top:34px;padding:18px 22px;background:var(--panel);border-top:3px solid var(--green);border-bottom:1px solid var(--line)}
+.run .k{font-family:var(--kai);font-size:11px;letter-spacing:.2em;color:var(--ink-3)}
+.run code{font-family:var(--mono);font-size:14px;color:var(--green);background:var(--card-hi);
+  border:1px solid var(--line);padding:8px 12px;line-height:1.5;overflow-wrap:anywhere}
+.run .sm{margin-left:auto;font-size:12.5px;line-height:1.6;color:var(--ink-4)}
+.foot{display:flex;gap:16px;flex-wrap:wrap;margin-top:22px;padding-top:14px;border-top:1px solid var(--line-2);font-size:12px;color:var(--ink-4);letter-spacing:.02em}
+.foot span:last-child{margin-left:auto}
+
+@media (max-width:900px){
+  .hero{grid-template-columns:1fr;gap:22px;padding-top:28px}
+  .stamp{display:none}
+  .story{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .trace li{grid-template-columns:58px minmax(0,1fr)}
+  .trace small{grid-column:1/-1}
+  .run .sm{margin-left:0}
+  .wrap{padding:0 18px 48px}
+}
+@media (max-width:620px){
+  .brand span,.top-note,.crumb{display:none}
+  .top{min-height:58px;gap:10px}
+  .build{margin-top:14px}
+  .sec-h{flex-wrap:wrap;gap:8px 12px}
+  .sec-h h2{flex:0 0 auto}
+  .sec-k{display:none}
+  .story{grid-template-columns:1fr}
+  .hero h1{font-size:34px}
+  .card{padding:18px 16px}
+  .foot span:last-child{margin-left:0}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><b>文衡</b><span>云南大学图书馆 · 学科信息参考</span></div>
+  <div class="top-r">
+    <span class="top-note">决赛材料 · 证据页</span>
+    <span class="badge">静态稿 · 待 rick 审</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="crumb"><span>工作台</span><i>/</i><span>证据页</span><i>/</i><span>自愈沙盘</span></div>
+  <p class="build"><span class="dot"></span>React 页（HealSandbox）已按此设计实现；本稿仅供审稿对照。</p>
+
+  <section class="hero">
+    <div>
+      <p class="kik">证 据 页 · 自 愈</p>
+      <h1>自愈沙盘</h1>
+      <p class="sub">只碰副本，不碰原始台账</p>
+      <p class="lead">
+        一处故意改坏：<b class="mono">总被引!A2</b> 的 <b>Chemistry</b> 被改成 <b>化学</b>。
+        系统先拦停，再自己认出这是同一个学科，改读表口径后重跑通过。
+      </p>
+      <div class="meta">
+        <span class="pill ok">一次自愈成功</span>
+        <span class="pill line">8 条操作记录</span>
+        <span class="time">生成于 2026-10-21 07:38 · 用时 1.5 秒</span>
+      </div>
+    </div>
+    <div class="stamp" aria-label="原始台账未动"><span>原件</span><span>未动</span><small>沙盘留痕</small></div>
+  </section>
+
+  <section class="sec" aria-label="自愈五步">
+    <div class="sec-h">
+      <h2>五步</h2><span class="sec-k">一 处 改 坏 · 先 停 后 治</span>
+      <span class="sec-meta">202609 · 副本</span>
+    </div>
+    <div class="story">
+      <div class="step">
+        <span class="step-k">复制台账</span>
+        <b>202609</b>
+        <small>原始台账只读；副本放进临时目录。</small>
+      </div>
+      <div class="step">
+        <span class="step-k">改坏一处</span>
+        <b class="mono"><s>Chemistry</s> → 化学</b>
+        <small>位置：<span class="mono">总被引!A2</span>，只改这一个格子。</small>
+      </div>
+      <div class="step warn">
+        <span class="step-k">首轮拦停</span>
+        <b>3 项检查未过</b>
+        <small>系统停在这里，没有带着问题往下走。</small>
+      </div>
+      <div class="step ok">
+        <span class="step-k">自愈</span>
+        <b>学科别名规则</b>
+        <small>命中「学科别名规则」；只改读表口径，不改检查标准。</small>
+      </div>
+      <div class="step ok">
+        <span class="step-k">重跑</span>
+        <b class="mono">1 → 2</b>
+        <small>第 2 次跑通 · 已完成；两份文件都没有被改过。</small>
+      </div>
+    </div>
+    <p class="story-note">五步都在副本上完成——原始台账从头到尾没有被写入。</p>
+  </section>
+
+  <section class="sec" aria-label="文件指纹对账">
+    <div class="sec-h">
+      <h2>文件指纹对账</h2><span class="sec-k">运 行 前 后</span>
+      <span class="sec-meta">短指纹 · 16 位</span>
+    </div>
+    <div class="card">
+      <div class="tw">
+        <table>
+          <thead>
+            <tr><th>文件</th><th>文件指纹</th><th>运行前后</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="file"><b>原始台账</b><small>云大全学科排名、阈值动态检测表.xlsx</small></td>
+              <td class="fp">2c53131c88ef373c…</td>
+              <td><span class="same">不变</span></td>
+            </tr>
+            <tr>
+              <td class="file"><b>改坏的副本</b><small>沙盘副本 · 监测表.xlsx</small></td>
+              <td class="fp">97860f8a3ada7e5e…</td>
+              <td><span class="same">不变</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="after">自愈改的是「怎么读」，不是台账本身——所以两份文件的内容前后一致。</p>
+    </div>
+  </section>
+
+  <section class="sec" aria-label="决策轨迹">
+    <div class="sec-h">
+      <h2>决策轨迹</h2><span class="sec-k">计 划 · 执 行 · 观 察 · 决 定</span>
+      <span class="sec-meta">8 条操作记录</span>
+    </div>
+    <ol class="trace">
+      <li>
+        <span class="phase">计划</span>
+        <b>读台账</b>
+        <small>台账副本：监测表.xlsx；按固定顺序，一步接一步。</small>
+      </li>
+      <li>
+        <span class="phase">执行</span>
+        <b>解析台账</b>
+        <small>开始解析副本；原始台账不在读取范围内。</small>
+      </li>
+      <li class="warn">
+        <span class="phase">观察</span>
+        <b>解析台账</b>
+        <small>3 项检查未过：学科名「化学」与台账的既定写法对不上。</small>
+      </li>
+      <li class="warn">
+        <span class="phase">决定</span>
+        <b>系统动作 · 拦停</b>
+        <small>首轮失败即拦停，不带着问题往下走。</small>
+      </li>
+      <li>
+        <span class="phase">计划</span>
+        <b>系统动作 · 自愈</b>
+        <small>命中「学科别名规则」；尝试自愈，最多 1 次。</small>
+      </li>
+      <li>
+        <span class="phase">执行</span>
+        <b>套用修复规则</b>
+        <small>只改「怎么读」，不动台账里的任何一个字。</small>
+      </li>
+      <li>
+        <span class="phase">观察</span>
+        <b>解析台账</b>
+        <small>重试通过：「化学」认作 Chemistry，22 个学科全部对得上。</small>
+      </li>
+      <li class="ok">
+        <span class="phase">决定</span>
+        <b>系统动作 · 完成</b>
+        <small>第 2 次跑通，用时 1.5 秒；原始台账与副本前后一致。</small>
+      </li>
+    </ol>
+    <p class="story-note">计划 → 执行 → 观察 → 决定 → 自愈 → 重试；每一步都留了操作记录，可回放。</p>
+  </section>
+
+  <section class="run" aria-label="重跑方式">
+    <span class="k">重跑一次：</span>
+    <code>uv run python tools\heal_sandbox.py</code>
+    <span class="sm">只写临时目录；原始台账与副本都不动。</span>
+  </section>
+
+  <p class="foot"><span>文衡 · 学科信息参考 · 自愈沙盘</span><span>静态稿 2026-10-21 · 页面只读</span></p>
+</main>
+
+</body>
+</html>
