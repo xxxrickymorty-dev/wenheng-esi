@@ -640,6 +640,8 @@ def main(argv=None) -> int:
     ap.add_argument("--source", help="指定论文清单（默认按 find_list 找）")
     ap.add_argument("--out", help="统计写到别的 json（默认写回 ledger_dir/college_stats.json）")
     ap.add_argument("--check", help="只解析该清单并与 ledger_dir 现产逐字段比对，不落盘")
+    ap.add_argument("--ignore-source", action="store_true",
+                    help="比对时忽略 source 字段（同一份清单换个路径时用）")
     ap.add_argument("--review-only", action="store_true", help="只用现产缓存重写签认清单")
     ap.add_argument("--map", help="换一张映射表（演练用；默认 config/college_map.yaml）")
     ap.add_argument("--suggest", action="store_true", help="额外产建议文件（默认关）")
@@ -651,10 +653,15 @@ def main(argv=None) -> int:
     if a.check:
         now = json.loads((ld / "college_stats.json").read_text(encoding="utf-8"))
         other = parse(pathlib.Path(a.check), map_path=a.map)
+        if a.ignore_source:
+            now = {k: v for k, v in now.items() if k != "source"}
+            other = {k: v for k, v in other.items() if k != "source"}
         diffs = _check_against(now, other)
         print(f"现产：{now.get('n_papers')} 篇 / {now.get('n_cites')} 引 / "
               f"{now.get('n_units')} 个单元　重建：{other['n_papers']} 篇 / "
               f"{other['n_cites']} 引 / {other['n_units']} 个单元")
+        if a.ignore_source:
+            print("（按 --ignore-source 跳过 source 字段：同一份清单换个路径时用）")
         if diffs:
             print(f"差异 {len(diffs)} 处：")
             for d in diffs:

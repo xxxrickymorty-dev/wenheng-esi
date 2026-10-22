@@ -277,10 +277,19 @@ def test_命令行_check_对得上退0对不上退1(tmp_path, capsys):
     assert cs.main([str(d), "--check", str(p)]) == 0
     assert "0 差异" in capsys.readouterr().out
 
+    # 同一份清单换个路径 → source 字段必然不同；--ignore-source 只放这一个字段
+    v = dict(cs.parse(p), source="..\\数据与复现\\202609论文清单.xlsx")
+    (d / "college_stats.json").write_text(json.dumps(v, ensure_ascii=False, indent=1),
+                                         encoding="utf-8")
+    assert cs.main([str(d), "--check", str(p)]) == 1
+    assert "source" in capsys.readouterr().out
+    assert cs.main([str(d), "--check", str(p), "--ignore-source"]) == 0
+    assert "0 差异" in capsys.readouterr().out
+
     bad = json.loads((d / "college_stats.json").read_text(encoding="utf-8"))
     bad["n_papers"] = 999
     (d / "college_stats.json").write_text(json.dumps(bad, ensure_ascii=False), encoding="utf-8")
-    assert cs.main([str(d), "--check", str(p)]) == 1
+    assert cs.main([str(d), "--check", str(p), "--ignore-source"]) == 1
     assert "n_papers" in capsys.readouterr().out
 
 
