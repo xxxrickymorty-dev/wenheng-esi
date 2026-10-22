@@ -220,6 +220,25 @@ def test_load_state_替换空窗里的坏读会重试(tmp_path, monkeypatch):
     assert got is not None and got["x"] == 1 and calls["n"] == 1
 
 
+# ------------------------------------------------------------------ 核对副本路径（2026-10-22）
+def test_默认核对副本路径取copy_path口径(tmp_path, monkeypatch):
+    """旧默认值写的是 `input/<期次>/监测表.xlsx`——2026-10-13 起 input/ 只放母本，
+    核对副本的真实落点是 `out/_acquisition/<期次>/监测表.xlsx`，默认值必须来自 `copy_path()`。"""
+    monkeypatch.setattr(A, "STATE_DIR", tmp_path / "out" / "_acquisition")
+    state = A.scan("202611", esi_root=tmp_path / "none", snapshot="")
+    assert state["copy"]["state"] == "none"
+    assert state["copy"]["path"] == A.copy_path("202611").as_posix()
+    assert "input/" not in state["copy"]["path"]
+
+
+def test_旧状态里的旧副本路径原样读出不炸(tmp_path, monkeypatch):
+    """迁移前落的状态文件里可能还存着 `input/<期次>/监测表.xlsx`：读进来照原样，不猜、不改写。"""
+    monkeypatch.setattr(A, "STATE_DIR", tmp_path / "out" / "_acquisition")
+    A.write_state("202611", {"copy": {"state": "review", "path": "input/202611/监测表.xlsx"}})
+    state = A.scan("202611", esi_root=tmp_path / "none", snapshot="")
+    assert state["copy"] == {"state": "review", "path": "input/202611/监测表.xlsx"}
+
+
 def test_pid_alive_本进程真_不存在与坏值假():
     assert A.pid_alive(os.getpid()) is True
     assert A.pid_alive(999999999) is False          # 不存在的 pid

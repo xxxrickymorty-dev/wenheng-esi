@@ -414,11 +414,13 @@ def scan(period: str, *, esi_root: pathlib.Path | str | None = None,
     old = load_state(period) if preserve else None
     state = dict(old or {})
     # 历史期次（X3 之前手工并表的）：报告已出 = 数据确实已进台账，如实标注「视同已并入」
-    copy_state = state.get("copy") or {"state": "none", "path": f"input/{period}/监测表.xlsx"}
+    # 核对副本的真实落点：`out/_acquisition/<期次>/监测表.xlsx`（2026-10-13 起 input/ 只放母本）。
+    # 路径口径只走 `copy_path()`——这里曾手写 `input/{期次}/监测表.xlsx`，显示的是早已不存在的旧位置。
+    default_copy_path = copy_path(period).as_posix()
+    copy_state = state.get("copy") or {"state": "none", "path": default_copy_path}
     if (copy_state.get("state") in (None, "none")
             and (REPO / "out" / period / "red_slots.json").exists()):
-        copy_state = {"state": "merged", "path": copy_state.get("path",
-                                                               f"input/{period}/监测表.xlsx"),
+        copy_state = {"state": "merged", "path": copy_state.get("path", default_copy_path),
                       "note": "历史期次：报告已出，视同已并入"}
     state.update({
         "data_period": {"esi": _period_esi_label(period), "incites": _snap_date(snap)},
