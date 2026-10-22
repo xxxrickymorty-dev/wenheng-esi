@@ -198,7 +198,8 @@ PDF 里图表区外框 `Rect(80.6, 165.6, 314.7, 321.5)` pt → **234.1 × 155.9
    当前取 `r`。
 3. **图上自由文字**。如 1‰ 图里的红字「ESI1‰ 基线 = 100%」、`1pct` 图柱左端的数值标签位置。
 4. **网格线不穿标签**。无法控制（matplotlib 路径把它当二级障碍物躲）。
-5. **字体回退策略**。`c:txPr` 能指定 `<a:latin typeface="Times New Roman"/>` /
+5. **堆叠柱的系列级数值标签不渲染**（`1pct`/`1permille` 两张，见 §6.3）。
+6. **字体回退策略**。`c:txPr` 能指定 `<a:latin typeface="Times New Roman"/>` /
    `<a:ea typeface="宋体"/>`，但缺字时用 **Word 自己的**回退，不能像 matplotlib 那样钉住
    字体名列表（所以服务器字体与本地字体不一致时，观感差异比 PNG 路径更难控）。
 
@@ -208,7 +209,16 @@ PDF 里图表区外框 `Rect(80.6, 165.6, 314.7, 321.5)` pt → **234.1 × 155.9
 2. 图例的 handle 长度、字距由 Word 排版。
 3. 柱宽：matplotlib `width=0.16` → `gapWidth 500`（＝0.1667），差 4%。
 
-### 6.3 未覆盖
+### 6.3 逐图可见差异（相对 PNG 版）
+
+| 图 | 差异 | 原因 |
+|---|---|---|
+| **1% 接近度 / 1‰ 潜力** | **没有数值标签**（PNG 版标了） | Word 不渲染**堆叠柱**的系列级 `c:dLbls`：`inBase`/`ctr`/`outEnd` 三种位置都试过，一张也标不出来（导 PDF 逐张看过）。已显式关掉标签；数值由柱长 + 横轴刻度读出 |
+| **ESI 排名情况** | 三系列都没有数值标签；也没有图下数据表 | 3 系列 × 7 期 = 21 个标签在 13.9 cm 里必然叠；`_labels` 的避让机制在原生图表里没有对应物。数据表同理（PNG 版是自己画的表） |
+| **发展趋势** | 图下原生数据表**多一行「ESI1‰ 基线 100」** | `c:dTable` 会列出 plotArea 里的**全部**系列，而 100% 基线是靠一条常量系列画出来的（Word 没有「参考线」API）。PNG 版刻意删了那一行（rick 2026-09-24） |
+| 各图数值标签 | 边缘点的标签可能压轴刻度字 | §6.1-1，无自动避让 |
+
+### 6.4 未覆盖
 
 - **预测章 4 张配图仍是 PNG**。转它们需要 `src/report_forecast.py` 把「历史/拟合/预测」
   三条序列暴露出来（现在它只把图直接画成 PNG，`forecast_charts.json` 里只有元数据）。
@@ -227,10 +237,15 @@ PDF 里图表区外框 `Rect(80.6, 165.6, 314.7, 321.5)` pt → **234.1 × 155.9
 
 ### 7.1 不动就绿（已实测）
 
+⚠️ **验 native docx 时必须 `period_override` 或让目录名带期次**：`fill_docx.main` 的期次三级优先是
+`override > 目录名 > 台账最新`。把 `out/202607` 复制到 `tmp/_p607` 再跑（目录名没有 6 位期次），
+会被判成「台账最新＝202609」，产出「文件名 202607、内容是 202609」的错稿 ——
+`verify_report_cells` 立刻报 T01 207 处不符。这不是图表的问题，是**复现铁律**。
+
 | 验收 | 结果 | 为什么 |
 |---|---|---|
 | `tools/verify_report_docx.py` | **96/96 + 22/22 + 结构验证全绿** | 它只判「格子里恰 2 段 + 1 个 `w:drawing` + `wp:extent` = 8.26×5.50cm」。原生图表用 `wp:inline`，这两项**完全相同** |
-| `tools/verify_report_cells.py` | **不受影响** | 纯数字核验（T01/T19/T20/附录清单），全程不碰图形 |
+| `tools/verify_report_cells.py 202607` | **T01 220/0 · T19 99/0 · T20 242/0 · 附录 274/0，不符 0** | 纯数字核验（T01/T19/T20/附录清单），全程不碰图形 |
 | `tools/verify_demo_run.py` | **不受影响** | 验的是任务状态机（running → completed/warned）与徽章文案，不看图 |
 | `pytest -m "slow or not slow"` | 需重跑确认（见 §7.3） | 见下 |
 | 回测口径（`src/backtest.py`） | **不受影响** | 只读 docx 的**文字与表格**，不读图 |
@@ -242,6 +257,10 @@ uv run python tools\verify_report_docx.py "tmp\_native_check\报告_全原生_20
 # 大表数据行: 22/22
 # 正文: 原生图表(需人工确认)=6 图片段=17
 # 结构验证全绿
+
+uv run python tools\verify_report_cells.py 202607 `
+  --docx "$PWD\tmp\_p607\报告_原生_202607.docx"     # 必须绝对路径（工具要 relative_to(REPO)）
+# T01 220 核验 不符 0 / T19 99 不符 0 / T20 242 不符 0 / 附录 274 不符 0
 ```
 
 ### 7.2 需要同步改的 3 处
@@ -287,10 +306,12 @@ uv run python tools\verify_report_docx.py "tmp\_native_check\报告_全原生_20
 
 ## 8. 开关与默认路径
 
-- 环境变量 **`WENHENG_NATIVE_CHARTS`**（`1/true/yes/on` 打开），或
-  `fill_docx.main(native_charts=True)`；`run_pipeline` 也可以显式传。
-- **当前默认关**（PNG）。切默认只需把 `native_charts_enabled()` 的默认值翻成 True，
-  不动任何调用方 —— **这一步留给 rick 拍板**（要不要在评审前把默认路径切过去）。
+- **默认已切到原生图表**（rick 2026-10-23：「验证通过后就把报告初稿的默认路径切到原生图表」）。
+- 回 PNG 版报告的逃生口：**`WENHENG_NATIVE_CHARTS=0`**（`0/false/no/off`）。
+  回测/复现需要与旧产物逐字节比时用它；`fill_docx.main(native_charts=False)` 优先级更高。
+- **整段兜底**：原生规格构建若抛异常，`fill_docx.main` 会**整套回落 PNG** 并在红色件清单里
+  留一条「构建失败，已整体回落 PNG：…」。所以切换默认**不会**因为新渲染器出问题而产出缺图的报告。
+  单张失败则只回落那一张。
 - 两条路的关系（rick 2026-10-22 定）：
   **DOCX → 原生图表；`charts/**/*.png` → 网站/前端的唯一图源**。PNG 出图步骤**不删**，
   `steps.charts` 仍排在出 docx 之前。
