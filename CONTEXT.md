@@ -2,7 +2,7 @@
 
 > 一页纸，给「接手的人 / 未来的自己 / AI」看。详细规格看 `../评审文档/`，本文件不重复。
 > 术语（通用语言）见 `GLOSSARY.md`；本文件只管状态、红线与运行方式。
-> 最后核对：2026-10-10。
+> 最后核对：2026-10-22。
 
 ## 这是什么
 
@@ -134,7 +134,7 @@
 ## 验收三件套（改状态相关代码后按序跑）
 
 ```bash
-uv run python -m pytest -m ""          # 全量 1532 例（默认 1527 例，5 个 slow 被 marker 排除）
+uv run python -m pytest -m ""          # 全量 1537 例（默认 1532 例，5 个 slow 被 marker 排除）
 uv run python -m uvicorn server.app:app --port 8080   # 起服务：一律 uv run；⚠ 控制台脚本直呼（uv run pytest/uvicorn）会撞中文路径 trampoline，走 python -m；起后跑 server/e2e_check.py（只读 236 断言）
 uv run python tools/verify_demo_run.py <期次>   # 写路径验收
 ```
@@ -160,6 +160,9 @@ uv run python tools/verify_demo_run.py <期次>   # 写路径验收
 | — | `out/_archive/`（M4 期次归档） | ✅ 已实现（`audit.archive_period()`，只复制不动源目录；首次归档 202607＝135 文件 / 13.7MB） |
 | — | **Agent 自主性改造（31 号方案）** | 🟡 **设计已定案（2026-10-10 访谈）**：边界见 `docs/adr/0005-报告类Agent的自主性边界.md`；本批 = 灵活产线 L3（Planner 计划落盘 → Critic 成环 → 运行档案可见），固定产线 L2 与记忆放第二批，L4 排除。内部词已进 `GLOSSARY.md`（界面禁用）。票 01 已交付（`000a88e`）；票 02–06 在 `.scratch/agent-zizhu/issues/` |
 | — | **对话前门（"帮我做 9 月的报告"）** | 🟡 **设计已定案（2026-10-10 三轮访谈）**：边界见 `docs/adr/0006-对话是控制面表格是证据面.md`；对话只做指挥（认期次/盘点/引导取数/触发流水线/解释），表格页降为"被叫出来"；期次只有一个含义、数据未发布即停下反问；全量留痕、槽位级记忆。词条见 `GLOSSARY.md`（对话前门/盘点/槽位）。待 `/to-spec` → `/to-tickets` |
+| — | **系统状态库（ADR-0012）** | ✅ **这条线已收口（2026-10-22，`40b6bc3` → `f597b1c`）**：`out/_state/wenheng.sqlite`，**schema 004**；五类装入 `approvals` + `approval_history`、`jobs`、`reviews`、`manual_inputs`、`sources`（原始包只记清单与指纹，一个字节不入库）；导出 / 导入 / 清理（`tools/state_export.py` / `state_import.py` / `state_cleanup.py`）、打包脱敏（副本化名 + 泄漏即失败）、路径口径（`src/display_path.py`）、只读降级告警（`/api/status` 的 `state_db` + 页首横幅）都已落地。验证＝pytest 全量 **1537 例**（默认 1532 + 5 slow）、e2e **236 断言**、`verify_report_cells.py 202607` 不符 0、`ruff` 全绿。规格见 `docs/specs/2026-10-21-系统状态库（SQLite）.md` |
+| — | 悬案 1：台账镜像库 `out/_mirror/ledger.sqlite` 处置 | 🟡 **待 rick 定**：它是死代码（后续票没做，只有 CLI 与测试在用）——**复活接查询层**，还是**连 spec / 模块 / CLI / 测试一起删**？ADR-0012 决定 12 当时只写「不合并、不删」，本次与其零耦合，故原样留着 |
+| — | 悬案 2：202609 审批历史批注里有真人姓名 | 🟡 **待 rick 定**：一条历史批注写着「迪力夏提修改了学科数」，打包时靠 `--redact-term` 临时遮盖。三条路：**每次打包都带词** / **清空该批注** / **让批注不再进包** |
 
 ## 两个仓库
 
