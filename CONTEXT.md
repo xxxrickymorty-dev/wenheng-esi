@@ -28,6 +28,7 @@
 | `input/云大全学科排名、阈值动态检测表.xlsx` | **动态监测表（母本）的运行时副本**（只此一份、含全部期次；2026-10-13 rick 定 input/ 只放母本）——流水线/开跑口/问答回落/盘点都读它；并入后从 `../数据与复现/` 自动同步 |
 | `out/<期次>/` | 产物：`报告初稿_*.docx`、`charts/`、`table2.csv`、`red_slots.json`、`approval.json`；`_superseded/<时间戳>/` 是被新运行撤下的上版成品 |
 | `out/_jobs/` | 运行档案（每个任务一个目录） |
+| `out/_state/` | 系统状态库 `wenheng.sqlite`（签单 / 复核 / 任务记录 / 人工填写 / 数据来源清单）；`sources.md` 是来源清单的人读渲染件（`tools/sources_index.py export-md`） |
 | `out/_acquisition/<期次>.json` | 取数状态（取数台读；写方为取数工具，人触发；ADR-0004） |
 | `out/_acquisition/<期次>/监测表.xlsx` | 当期取数**核对副本**（ADR-0004 的「审的＝写的」载体；上传开跑也落这里） |
 | `tmp/` | 临时脚本，用完归位或删 |
@@ -133,7 +134,7 @@
 ## 验收三件套（改状态相关代码后按序跑）
 
 ```bash
-uv run python -m pytest -m ""          # 全量 1491 例（默认 1486 例，5 个 slow 被 marker 排除）
+uv run python -m pytest -m ""          # 全量 1509 例（默认 1504 例，5 个 slow 被 marker 排除）
 uv run python -m uvicorn server.app:app --port 8080   # 起服务：一律 uv run；⚠ 控制台脚本直呼（uv run pytest/uvicorn）会撞中文路径 trampoline，走 python -m；起后跑 server/e2e_check.py（只读 236 断言）
 uv run python tools/verify_demo_run.py <期次>   # 写路径验收
 ```
