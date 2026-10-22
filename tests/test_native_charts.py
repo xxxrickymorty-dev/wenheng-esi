@@ -60,6 +60,55 @@ def test_折线图数值标签用上方位():
     assert '<c:dLblPos val="t"/>' in xml
 
 
+def test_堆叠柱的标签位必须是_inBase():
+    """堆叠/百分比堆叠柱只认 ctr/inBase/inEnd；写 outEnd 同样让 Word 打不开整份文档。"""
+    groups = [{"kind": "bar", "cat_ax": "c1", "val_ax": "v1", "grouping": "stacked",
+               "series": [{"name": "a", "values": [1.0, 2.0], "color": "4472C4",
+                           "label_fmt": "0", "show_labels": True}]}]
+    axes = [{"id": "c1", "kind": "cat", "cross": "v1"},
+            {"id": "v1", "kind": "val", "cross": "c1"}]
+    xml = nc.combo_chart_xml(groups, axes, ["a", "b"])
+    assert '<c:dLblPos val="inBase"/>' in xml
+    assert '<c:dLblPos val="outEnd"/>' not in xml
+
+
+def test_组合图的轴_id_必须是数字():
+    """`c:axId/@val` 是 xsd:unsignedInt；写逻辑名 "c1" 会让 Word 打不开整份文档。"""
+    groups = [{"kind": "bar", "cat_ax": "c1", "val_ax": "v1",
+               "series": [{"name": "a", "values": [1.0, 2.0], "color": "4472C4"}]},
+              {"kind": "line", "cat_ax": "c1", "val_ax": "v1",
+               "series": [{"name": "b", "values": [2.0, 1.0], "color": "FF0000"}]}]
+    axes = [{"id": "c1", "kind": "cat", "cross": "v1"},
+            {"id": "v1", "kind": "val", "cross": "c1"}]
+    xml = nc.combo_chart_xml(groups, axes, ["a", "b"])
+    for v in re.findall(r'<c:axId val="([^"]*)"/>', xml):
+        assert v.isdigit(), f"axId 不是数字：{v}"
+    for v in re.findall(r'<c:crossAx val="([^"]*)"/>', xml):
+        assert v.isdigit(), f"crossAx 不是数字：{v}"
+
+
+def test_组合图的系列_idx_全局唯一():
+    """两个 chart group 各自从 0 数 idx → 重复；Word 自己生成的组合图是 bar 0,1 + line 2。"""
+    groups = [{"kind": "bar", "cat_ax": "c1", "val_ax": "v1",
+               "series": [{"name": "a", "values": [1.0, 2.0], "color": "4472C4"},
+                          {"name": "b", "values": [2.0, 1.0], "color": "70AD47"}]},
+              {"kind": "line", "cat_ax": "c1", "val_ax": "v1",
+               "series": [{"name": "c", "values": [3.0, 3.0], "color": "FF0000"}]}]
+    axes = [{"id": "c1", "kind": "cat", "cross": "v1"},
+            {"id": "v1", "kind": "val", "cross": "c1"}]
+    xml = nc.combo_chart_xml(groups, axes, ["a", "b"])
+    idx = re.findall(r'<c:ser><c:idx val="(\d+)"/>', xml)
+    assert idx == ["0", "1", "2"], idx
+
+
+def test_原生数据表放在_plotArea_里():
+    """`c:dTable` 是 plotArea 的子元素；放错到 chartSpace 虽然 Word 容忍，但不合规。"""
+    xml = nc.line_chart_xml([{"name": "x", "values": [1.0, 2.0], "color": "4472C4"}],
+                            ["a", "b"], dtable=nc.data_table_xml())
+    pa = xml[xml.find("<c:plotArea>"):xml.find("</c:plotArea>")]
+    assert "<c:dTable>" in pa
+
+
 def test_gapWidth_夹到_schema_上限_500():
     """matplotlib width=0.16 → gapWidth 525 > 500（ST_GapAmount 上限）→ Word 拒开。"""
     assert '<c:gapWidth val="500"/>' in _bar(gap=525)
@@ -110,14 +159,18 @@ def test_validate_chart_xml_拦住越界与折线标签位():
 
 
 # ============================================================ ② 口径一致
-def test_开关默认关_显式参数优先(monkeypatch):
+def test_开关默认开_可用环境变量回落到_PNG(monkeypatch):
+    """默认走原生图表（rick 2026-10-23 定）；`WENHENG_NATIVE_CHARTS=0` 回 PNG。"""
     import fill_docx  # noqa: PLC0415
     monkeypatch.delenv(fill_docx.NATIVE_CHARTS_ENV, raising=False)
-    assert fill_docx.native_charts_enabled() is False
-    assert fill_docx.native_charts_enabled(True) is True
-    monkeypatch.setenv(fill_docx.NATIVE_CHARTS_ENV, "1")
     assert fill_docx.native_charts_enabled() is True
     assert fill_docx.native_charts_enabled(False) is False
+    assert fill_docx.native_charts_enabled(True) is True
+    for v in ("0", "false", "no", "off", "OFF"):
+        monkeypatch.setenv(fill_docx.NATIVE_CHARTS_ENV, v)
+        assert fill_docx.native_charts_enabled() is False, v
+    monkeypatch.setenv(fill_docx.NATIVE_CHARTS_ENV, "1")
+    assert fill_docx.native_charts_enabled() is True
 
 
 def test_原生轴刻度与_matplotlib_路径逐学科一致():

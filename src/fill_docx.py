@@ -35,9 +35,11 @@ from parse_ledger import DISCIPLINES_CN, norm_disc_cn  # noqa: E402
 CELL_FONT = "楷体"
 CELL_SIZE = Pt(10)
 
-#: 原生图表开关（环境变量）。**默认关** —— 关时走 matplotlib PNG，产物一个字节不变。
-#: 打开：`set WENHENG_NATIVE_CHARTS=1` 或 `--native-charts`（`run_pipeline.py`）。
+#: 原生图表开关（环境变量）。**默认开**（rick 2026-10-23 定：DOCX 出原生图表）；
+#: 要回到 PNG 版报告：`set WENHENG_NATIVE_CHARTS=0`（回测/复现需要与旧产物逐字节比时用）。
+#: `charts/**/*.png` 无论开关如何都照旧生成 —— 它是网站/前端的唯一图源。
 NATIVE_CHARTS_ENV = "WENHENG_NATIVE_CHARTS"
+_PNG_ESCAPE = ("0", "false", "no", "off")
 
 
 def native_charts_enabled(explicit=None):
@@ -45,7 +47,10 @@ def native_charts_enabled(explicit=None):
     if explicit is not None:
         return bool(explicit)
     import os  # noqa: PLC0415
-    return os.environ.get(NATIVE_CHARTS_ENV, "").strip().lower() in ("1", "true", "yes", "on")
+    raw = os.environ.get(NATIVE_CHARTS_ENV)
+    if raw is None:
+        return True
+    return raw.strip().lower() not in _PNG_ESCAPE
 
 # 大表列序 → table2 字段
 TABLE2_COLS = ["discipline", "rank_cn_change", "papers", "cnci", "total_cites",
@@ -1146,20 +1151,29 @@ def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026�
     native_body = None
     if native_charts_enabled(native_charts):
         import native_report_charts  # noqa: PLC0415
-        native_specs = native_report_charts.slot_charts(ledger_dir, end_period=period)
-        if charts_only_demo:
-            native_specs = {k: v for k, v in native_specs.items()
-                            if k[0] == charts._slug("Chemistry")}
         try:
-            _cs = college_stats.load(ledger_dir, period, save=False)
-        except Exception:                                          # noqa: BLE001
-            _cs = None
-        native_body = native_report_charts.body_charts(ledger_dir, end_period=period,
-                                                       college=_cs)
-        slots.append({"location": "正文/图表渲染路径", "old": "matplotlib PNG",
-                      "new": f"Word 原生图表（{len(native_specs)} 张槽位图 + "
-                             f"{len(native_body)} 张正文图，可右键「编辑数据」）",
-                      "source": f"{NATIVE_CHARTS_ENV}=1"})
+            native_specs = native_report_charts.slot_charts(ledger_dir, end_period=period)
+            if charts_only_demo:
+                native_specs = {k: v for k, v in native_specs.items()
+                                if k[0] == charts._slug("Chemistry")}
+            try:
+                _cs = college_stats.load(ledger_dir, period, save=False)
+            except Exception:                                      # noqa: BLE001
+                _cs = None
+            native_body = native_report_charts.body_charts(ledger_dir, end_period=period,
+                                                          college=_cs)
+        except Exception as e:                                     # noqa: BLE001
+            # 🔴 兜底：原生路径整段失败就**整套回落到 PNG**（PNG 照旧是网站图源，
+            #    一定在）。绝不因为"新渲染器出问题"而产出一份缺图的报告。
+            native_specs, native_body = None, None
+            slots.append({"location": "正文/图表渲染路径", "old": "Word 原生图表",
+                          "new": f"构建失败，已整体回落 PNG：{type(e).__name__}: {e}",
+                          "source": f"{NATIVE_CHARTS_ENV}"})
+        if native_specs is not None:
+            slots.append({"location": "正文/图表渲染路径", "old": "matplotlib PNG",
+                          "new": f"Word 原生图表（{len(native_specs)} 张槽位图 + "
+                                 f"{len(native_body or {})} 张正文图，可右键「编辑数据」）",
+                          "source": f"{NATIVE_CHARTS_ENV}=1"})
     warns = fill_body_charts(doc, ledger_dir, slots, native=native_body)
     charts_used = ["Chemistry"] if charts_only_demo else DETAIL_TABLES
     chart_dir = ledger_dir / "charts"
