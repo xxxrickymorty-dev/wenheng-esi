@@ -133,8 +133,8 @@
 ## 验收三件套（改状态相关代码后按序跑）
 
 ```bash
-uv run python -m pytest -m ""          # 全量 1470 例（默认 1465 例，5 个 slow 被 marker 排除）
-uv run python -m uvicorn server.app:app --port 8080   # 起服务：一律 uv run；⚠ 控制台脚本直呼（uv run pytest/uvicorn）会撞中文路径 trampoline，走 python -m；起后跑 server/e2e_check.py（只读 235 断言）
+uv run python -m pytest -m ""          # 全量 1472 例（默认 1467 例，5 个 slow 被 marker 排除）
+uv run python -m uvicorn server.app:app --port 8080   # 起服务：一律 uv run；⚠ 控制台脚本直呼（uv run pytest/uvicorn）会撞中文路径 trampoline，走 python -m；起后跑 server/e2e_check.py（只读 236 断言）
 uv run python tools/verify_demo_run.py <期次>   # 写路径验收
 ```
 
