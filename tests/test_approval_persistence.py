@@ -52,7 +52,7 @@ def test_sign_fails_and_preserves_last_record_when_store_write_fails(
     ok, error = approval.sign(out_dir, "rick", _sign_data(), note="再次签发")
 
     assert not ok
-    assert "写入失败" in error
+    assert error.startswith("保存失败") and "没有生效" in error   # 给馆员的人话，不是技术原文
     after = approval.read(out_dir)
     assert after["signed"] is False
     assert [item["action"] for item in after["history"]] == ["sign", "revoke"]
@@ -99,7 +99,7 @@ def test_revoke_fails_without_changing_signed_record_when_store_write_fails(
     ok, error = approval.revoke(out_dir, "rick", "修正")
 
     assert not ok
-    assert "写入失败" in error
+    assert error.startswith("保存失败") and "没有生效" in error
     assert approval.read(out_dir) == before               # 签名与历史一字未动
     assert before["signed"] is True
     assert not list((tmp_path / "_state").glob("*.tmp-*"))
@@ -144,7 +144,7 @@ def test_sign_route_returns_409_when_approval_persistence_fails(
     )
 
     assert response.status_code == 409
-    assert "写入失败" in json.loads(response.body)["error"]
+    assert "保存失败" in json.loads(response.body)["error"]
     assert approval.read(out_dir)["signed"] is False
 
 

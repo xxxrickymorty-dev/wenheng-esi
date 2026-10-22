@@ -1442,7 +1442,9 @@ async def api_period_sign_json(request: Request, period: str):
             status_code=409)
     ok, res = approval.sign(d, current_user(request), collation.build(d), note=note, manual_ack=manual_ack)
     if not ok:
-        return JSONResponse({"error": str(res), "hint": "请先解决闸门拒绝的原因"}, status_code=409)
+        # 写库失败已经是给馆员的整句（含「这次没生效」），别再补「闸门」的提示误导人。
+        hint = "" if state_store.is_write_failure_note(res) else "请先解决闸门拒绝的原因"
+        return JSONResponse({"error": str(res), "hint": hint}, status_code=409)
     return {"status": approval.status(d, res), "fingerprint": approval.fingerprint(d)}
 
 
@@ -1519,7 +1521,8 @@ async def api_period_revoke_json(request: Request, period: str):
     note = str(body.get("note", ""))
     ok, res = approval.revoke(d, current_user(request), note=note)
     if not ok:
-        return JSONResponse({"error": str(res), "hint": "请先解决闸门拒绝的原因"}, status_code=409)
+        hint = "" if state_store.is_write_failure_note(res) else "请先解决闸门拒绝的原因"
+        return JSONResponse({"error": str(res), "hint": hint}, status_code=409)
     return {"status": approval.status(d, res)}
 
 
@@ -1535,10 +1538,18 @@ async def api_period_fill_json(request: Request, period: str):
         return JSONResponse({"error": "items 必须是 {todo_id: value}", "hint": "例：{'T01_r9c3': '33.87'}"}, status_code=400)
     from . import workbench                                     # noqa: PLC0415
     n = 0
-    for todo_id, value in items.items():
-        if str(todo_id).strip():
-            workbench.save_fill(d, str(todo_id), str(value), by=current_user(request))
-            n += 1
+    try:
+        for todo_id, value in items.items():
+            if str(todo_id).strip():
+                workbench.save_fill(d, str(todo_id), str(value), by=current_user(request))
+                n += 1
+    except state_store.WRITE_ERRORS as exc:
+        # 存储写不进去：回馆员人话（技术原文进日志）。多处以「这次没生效」为准——
+        # 已经存进去的那几处仍然有效，如实说出来，别让人以为全白填。
+        note = state_store.write_error_note(exc, action="填写")
+        if n:
+            note += f"（此前已保存的 {n} 处仍然有效）"
+        return JSONResponse({"error": note}, status_code=409)
     return {"ok": True, "saved": n}
 
 
@@ -1553,7 +1564,11 @@ async def api_period_flag_json(request: Request, period: str):
     if not loc:
         return JSONResponse({"error": "loc 不能为空", "hint": "例：T01/r9c3"}, status_code=400)
     from . import workbench                                     # noqa: PLC0415
-    r = workbench.toggle_flag(d, loc, by=current_user(request))
+    try:
+        r = workbench.toggle_flag(d, loc, by=current_user(request))
+    except state_store.WRITE_ERRORS as exc:
+        return JSONResponse({"error": state_store.write_error_note(exc, action="标记存疑")},
+                            status_code=409)
     return {"ok": True, "loc": r["loc"], "state": r["state"], "n_doubt": r["n_doubt"]}
 
 
@@ -1577,9 +1592,14 @@ async def api_period_rebuild_json(request: Request, period: str):
     import fill_docx                                        # noqa: PLC0415
     import parse_ledger                                     # noqa: PLC0415
     from . import workbench                                 # noqa: PLC0415
-    for todo_id, value in items.items():                    # ① 先存
-        if str(todo_id).strip():
-            workbench.save_fill(d, str(todo_id), str(value), by=current_user(request))
+    try:                                                    # ① 先存
+        for todo_id, value in items.items():
+            if str(todo_id).strip():
+                workbench.save_fill(d, str(todo_id), str(value), by=current_user(request))
+    except state_store.WRITE_ERRORS as exc:
+        # 存不进去就别往下走：重出只会把「没存上的填值」当没有，白跑一遍还撤掉旧成品。
+        return JSONResponse({"error": state_store.write_error_note(exc, action="填写")},
+                            status_code=409)
     fills = workbench.load_fills(d)
     if not fills:                                           # ② 没内容就不动产物
         return JSONResponse({"error": "还没有填写内容", "hint": "先在工作台填值再重出"}, status_code=409)

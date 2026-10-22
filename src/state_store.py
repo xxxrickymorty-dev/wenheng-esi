@@ -112,6 +112,34 @@ class SchemaTooNew(StoreError):
     """库的 schema 版本高于本程序：已只读降级，写口拒绝。"""
 
 
+#: 写口可能抛的异常（调用方统一 `except state_store.WRITE_ERRORS`，别各写一份）。
+WRITE_ERRORS = (OSError, sqlite3.Error, StoreError)
+
+#: 写库失败时**回给馆员的整句**（技术原文只进日志、不下发——ADR-0012 决定 7）。
+#: 一句覆盖签单 / 撤回签单 / 标记存疑 / 在线填写：馆员只需要知道「这次没生效」和「找谁」，
+#: 不需要库版本、迁移、导出工具这些字眼（看到 `tools/state_export.py` 会被引去乱执行）。
+READONLY_NOTE = ("保存失败：本机数据存储版本比程序新，已进入只读模式，请联系管理员升级程序。"
+                 "这次操作没有生效，你的改动没有被保存。")
+WRITE_FAILED_NOTE = ("保存失败：本机数据存储现在写不进去，请联系管理员处理。"
+                     "这次操作没有生效，你的改动没有被保存。")
+
+
+def write_error_note(exc, *, action="保存") -> str:
+    """把写库失败翻成馆员能懂的一句；**技术原文写进日志**（日志才是排障入口）。
+
+    降级（`SchemaTooNew`）与其它写失败分开说：前者的下一步是升级程序，后者是找管理员看存储；
+    两者都要说清「这次没生效」，否则馆员会以为已经存上了（这句是这条票的重点）。
+    """
+    note = READONLY_NOTE if isinstance(exc, SchemaTooNew) else WRITE_FAILED_NOTE
+    _LOG.warning("状态库写入失败（%s）：%s: %s", action, type(exc).__name__, exc)
+    return note
+
+
+def is_write_failure_note(message) -> bool:
+    """这句话是不是 `write_error_note()` 出的（路由据此不再追加「闸门」之类的提示）。"""
+    return str(message) in (READONLY_NOTE, WRITE_FAILED_NOTE)
+
+
 def db_path(out_dir=None, *, out_root=None) -> pathlib.Path:
     """状态库路径唯一口径；环境变量优先，其次 `out_dir` 同级 `_state/`，最后仓库 `out/_state`。
 

@@ -20,7 +20,6 @@
 """
 import hashlib
 import pathlib
-import sqlite3
 import time
 
 from src import atomic_io, state_store
@@ -34,9 +33,6 @@ RECORD_NAME = "审批记录.md"
 FINGERPRINT_GLOBS = ["red_slots.json", "报告初稿_*.docx", "table2.csv"]
 FINGERPRINT_ALGORITHM = "sha256"
 FINGERPRINT_VERSION = 1
-
-#: 写库失败／降级读时给调用方的失败原因前缀（路由据此回 409）。
-WRITE_ERROR = "审批记录写入失败，签发未生效"
 
 
 def _now():
@@ -152,8 +148,8 @@ def sign(out_dir, actor, data, note="", manual_ack=False):
     }
     try:
         rec = state_store.put_approval(_db(out_dir), period, rec, history_entry=entry)
-    except (OSError, sqlite3.Error, state_store.StoreError) as exc:
-        return False, f"{WRITE_ERROR}：{exc}"
+    except state_store.WRITE_ERRORS as exc:
+        return False, state_store.write_error_note(exc, action="签单")
     _write_record(out_dir, rec)
     return True, rec
 
@@ -176,8 +172,8 @@ def revoke(out_dir, actor, note=""):
     }
     try:
         rec = state_store.put_approval(_db(out_dir), period, rec, history_entry=entry)
-    except (OSError, sqlite3.Error, state_store.StoreError) as exc:
-        return False, f"审批记录写入失败，撤回未生效：{exc}"
+    except state_store.WRITE_ERRORS as exc:
+        return False, state_store.write_error_note(exc, action="撤回签单")
     _write_record(out_dir, rec)
     return True, rec
 

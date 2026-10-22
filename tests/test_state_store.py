@@ -350,4 +350,6 @@ def test_库版本高于代码只读降级不抛异常(tmp_path, monkeypatch):
     out_dir.mkdir()
     ok, error = approval.sign(out_dir, "rick", {"counts": {}, "assertions": {}})
     assert ok is False
-    assert "写入失败" in error and "只读" in error               # 失败结果，不炸进程
+    # 失败结果，不炸进程；给的是人话（库版本/迁移这些词只进日志）
+    assert error == state_store.READONLY_NOTE
+    assert "只读" in error and "schema" not in error
