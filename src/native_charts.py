@@ -160,7 +160,7 @@ def _dlabels(fmt, *, show=True, size=7, hide=(), pos="t"):
 
 def _ser_line(idx, name, vals, cats, *, color, label_fmt, show_labels=True,
               dash=None, marker="circle", marker_size=5, marker_fill="FFFFFF",
-              lw=12700, hide_labels=(), smooth=False):
+              lw=12700, hide_labels=(), smooth=False, val_fmt=None):
     ncat = len(cats)
     ln = f'<a:ln w="{lw}" cap="flat"><a:solidFill><a:srgbClr val="{_hex(color)}"/></a:solidFill>'
     ln += f'<a:prstDash val="{dash}"/>' if dash else "<a:round/>"
@@ -184,13 +184,20 @@ def _ser_line(idx, name, vals, cats, *, color, label_fmt, show_labels=True,
         f"<c:cat><c:strRef><c:f>{SHEET}!$B$1:${_col(ncat + 1)}$1</c:f><c:strCache>"
         f"{_str_cache(cats)}</c:strCache></c:strRef></c:cat>"
         f'<c:val><c:numRef><c:f>{SHEET}!$B${idx + 2}:${_col(ncat + 1)}${idx + 2}</c:f>'
-        f'<c:numCache>{_num_cache([float(v) for v in vals])}</c:numCache></c:numRef></c:val>'
+        f'<c:numCache>{_num_cache([float(v) for v in vals], val_fmt or "General")}'
+        "</c:numCache></c:numRef></c:val>"
         f'<c:smooth val="{1 if smooth else 0}"/>'
         "</c:ser>")
 
 
-def _ser_bar(idx, name, vals, cats, *, color, label_fmt, show_labels=True, hide_labels=()):
-    """柱系列。🔴 顺序＝CT_BarSer：`spPr` → `invertIfNegative` → `dLbls` → `cat` → `val`。"""
+def _ser_bar(idx, name, vals, cats, *, color, label_fmt, show_labels=True, hide_labels=(),
+             dlbl_pos="outEnd"):
+    """柱系列。🔴 顺序＝CT_BarSer：`spPr` → `invertIfNegative` → `dLbls` → `cat` → `val`。
+
+    🔴 `dlbl_pos` 按分组方式定：**clustered** 用 `outEnd`（柱外侧）；
+    **stacked / percentStacked** 只认 `ctr`/`inBase`/`inEnd` —— 给堆叠柱写 `outEnd`
+    会让 **Word 拒绝打开整份文档**（2026-10-22 实测）。
+    """
     ncat = len(cats)
     return (
         "<c:ser>"
@@ -201,7 +208,7 @@ def _ser_bar(idx, name, vals, cats, *, color, label_fmt, show_labels=True, hide_
         '<c:spPr><a:solidFill>'
         f'<a:srgbClr val="{_hex(color)}"/></a:solidFill><a:ln><a:noFill/></a:ln></c:spPr>'
         '<c:invertIfNegative val="0"/>'
-        + _dlabels(label_fmt, show=show_labels, hide=hide_labels, pos="outEnd") +
+        + _dlabels(label_fmt, show=show_labels, hide=hide_labels, pos=dlbl_pos) +
         f"<c:cat><c:strRef><c:f>{SHEET}!$B$1:${_col(ncat + 1)}$1</c:f><c:strCache>"
         f"{_str_cache(cats)}</c:strCache></c:strRef></c:cat>"
         f'<c:val><c:numRef><c:f>{SHEET}!$B${idx + 2}:${_col(ncat + 1)}${idx + 2}</c:f>'
@@ -245,7 +252,7 @@ def _val_axis(ax_id, cross_ax, *, pos="l", reverse=False, numfmt="General", majo
 
 
 def _cat_axis(ax_id, cross_ax, *, pos="b", reverse=False, crosses=None, fontsize=8,
-              rotation=None):
+              rotation=None, delete=False):
     tx = _txpr(fontsize)
     if rotation:
         tx = tx.replace('<a:bodyPr/>', f'<a:bodyPr rot="{rotation}"/>')
@@ -254,9 +261,10 @@ def _cat_axis(ax_id, cross_ax, *, pos="b", reverse=False, crosses=None, fontsize
     return (
         f'<c:catAx><c:axId val="{ax_id}"/>'
         f'<c:scaling><c:orientation val="{"maxMin" if reverse else "minMax"}"/></c:scaling>'
-        '<c:delete val="0"/>' + f'<c:axPos val="{pos}"/>'
+        f'<c:delete val="{1 if delete else 0}"/>' + f'<c:axPos val="{pos}"/>'
         '<c:majorTickMark val="none"/><c:minorTickMark val="none"/>'
-        '<c:tickLblPos val="nextTo"/><c:spPr><a:ln w="9525"><a:solidFill>'
+        f'<c:tickLblPos val="{"none" if delete else "nextTo"}"/>'
+        '<c:spPr><a:ln w="9525"><a:solidFill>'
         f'<a:srgbClr val="{AXIS_LINE}"/></a:solidFill></a:ln></c:spPr>'
         + tx + f'<c:crossAx val="{cross_ax}"/><c:crosses val="{cross}"/>'
         '<c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/>'
@@ -285,8 +293,12 @@ def _legend_xml(pos, size=8):
 
 
 def chart_space_xml(plot_area, *, title=None, legend_pos="t", legend_size=8,
-                    external=True, title_size=11, dtable=None):
-    """组装完整 `c:chartSpace`。子元素顺序＝CT_ChartSpace 的 schema 顺序，错序 Word 报损坏。"""
+                    external=True, title_size=11):
+    """组装完整 `c:chartSpace`。子元素顺序＝CT_ChartSpace 的 schema 顺序，错序 Word 报损坏。
+
+    ⚠ `c:dTable`（原生数据表）属于 **plotArea** 的子元素，不能挂在这里 —— 由
+    `line_chart_xml` / `combo_chart_xml` 拼进 `plot_area`（放错位置 Word 虽能容忍，但不合规）。
+    """
     return (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
         f'<c:chartSpace xmlns:c="{C_NS}" xmlns:a="{A_NS}" xmlns:r="{R_NS}">'
@@ -297,16 +309,16 @@ def chart_space_xml(plot_area, *, title=None, legend_pos="t", legend_size=8,
         '<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart>'
         # 图表区无填充无边框（原件观感；Word 默认会给图表区描边）
         '<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>'
-        + (dtable or "") +
-        ('<c:externalData r:id="rId1"><c:autoUpdate val="0"/></c:externalData>'
-         if external else "") +
+        + ('<c:externalData r:id="rId1"><c:autoUpdate val="0"/></c:externalData>'
+           if external else "") +
         "</c:chartSpace>")
 
 
 # ---------------------------------------------------------------- 图型
 def line_chart_xml(series, cats, *, reverse=False, numfmt="General", label_fmt=None,
                    major_unit=None, minimum=None, maximum=None, title=None,
-                   legend_pos="t", cat_fontsize=8, val_fontsize=8, gridlines=True):
+                   legend_pos="t", cat_fontsize=8, val_fontsize=8, gridlines=True,
+                   dtable=None):
     """折线图（多系列）。series: [{name, values, color, dash, marker, show_labels, hide_labels}]"""
     ser_xml = []
     for i, s in enumerate(series):
@@ -316,7 +328,8 @@ def line_chart_xml(series, cats, *, reverse=False, numfmt="General", label_fmt=N
             show_labels=s.get("show_labels", True), dash=s.get("dash"),
             marker=s.get("marker", "circle"), marker_size=s.get("marker_size", 5),
             marker_fill=s.get("marker_fill", "FFFFFF"), lw=s.get("lw", 12700),
-            hide_labels=s.get("hide_labels", ()), smooth=s.get("smooth", False)))
+            hide_labels=s.get("hide_labels", ()), smooth=s.get("smooth", False),
+            val_fmt=s.get("val_fmt")))
     plot = (
         '<c:plotArea><c:layout/><c:lineChart>'
         '<c:grouping val="standard"/><c:varyColors val="0"/>'
@@ -328,7 +341,8 @@ def line_chart_xml(series, cats, *, reverse=False, numfmt="General", label_fmt=N
         + _val_axis("222222222", "111111111", reverse=reverse, numfmt=numfmt,
                     major_unit=major_unit, minimum=minimum, maximum=maximum,
                     gridlines=gridlines, fontsize=val_fontsize)
-        + '<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr></c:plotArea>')
+        + (dtable or "") +
+        '<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr></c:plotArea>')
     return chart_space_xml(plot, title=title, legend_pos=legend_pos)
 
 
@@ -374,7 +388,7 @@ def bar_chart_xml(series, cats, *, bar_dir="col", grouping="clustered", gap_widt
 
 
 def combo_chart_xml(groups, axes, cats, *, title=None, legend_pos="b", cat_fontsize=8,
-                    val_fontsize=8):
+                    val_fontsize=8, dtable=None):
     """组合图：多个 chart group 共用一套坐标轴（如「柱 + 红线基线」「柱 + 折线双轴」）。
 
     `groups`：[{"kind": "bar"|"line", "series": [...], "cat_ax": id, "val_ax": id, ...}]
@@ -383,19 +397,31 @@ def combo_chart_xml(groups, axes, cats, *, title=None, legend_pos="b", cat_fonts
        val 额外认 `numfmt` / `major_unit` / `minimum` / `maximum` / `gridlines`。
 
     坐标轴声明顺序＝XML 里 plotArea 子元素的顺序（schema 要求所有 chart group 在轴之前）。
+
+    🔴 `id` 只是本函数内的**逻辑名**，写进 XML 前会换成数字：
+    `c:axId/@val` 的类型是 `ST_AxId = xsd:unsignedInt`，写 `val="c1"` 会让
+    **Word 拒绝打开整份文档**（2026-10-22 实测，最小组合图即复现）。
     """
+    axnum = {a["id"]: str(111111111 * (i + 1)) for i, a in enumerate(axes)}
     body = []
+    # 🔴 `c:idx`/`c:order` 在**整张图**里必须唯一（Word 自己生成的组合图是 bar 0,1 + line 2）。
+    #    两个 group 各自从 0 开始计数 → Word 拒绝打开整份文档（2026-10-22 实测）。
+    #    同时它也是内嵌工作簿的行号依据，所以必须与 `build_data_xlsx` 的系列顺序一致。
+    gidx = 0
     for g in groups:
         ser = []
-        for i, s in enumerate(g["series"]):
+        for s in g["series"]:
             if g["kind"] == "bar":
-                ser.append(_ser_bar(i, s["name"], s["values"], cats,
+                stacked = g.get("grouping", "clustered") in ("stacked", "percentStacked")
+                ser.append(_ser_bar(gidx, s["name"], s["values"], cats,
                                     color=s.get("color", C_BLUE),
                                     label_fmt=s.get("label_fmt", "General"),
                                     show_labels=s.get("show_labels", False),
-                                    hide_labels=s.get("hide_labels", ())))
+                                    hide_labels=s.get("hide_labels", ()),
+                                    dlbl_pos=s.get("dlbl_pos",
+                                                  "inBase" if stacked else "outEnd")))
             else:
-                ser.append(_ser_line(i, s["name"], s["values"], cats,
+                ser.append(_ser_line(gidx, s["name"], s["values"], cats,
                                      color=s.get("color", C_BLUE),
                                      label_fmt=s.get("label_fmt", "General"),
                                      show_labels=s.get("show_labels", False),
@@ -403,8 +429,11 @@ def combo_chart_xml(groups, axes, cats, *, title=None, legend_pos="b", cat_fonts
                                      marker_size=s.get("marker_size", 5),
                                      marker_fill=s.get("marker_fill", "FFFFFF"),
                                      lw=s.get("lw", 12700),
-                                     hide_labels=s.get("hide_labels", ())))
-        ax_ids = (f'<c:axId val="{g["cat_ax"]}"/><c:axId val="{g["val_ax"]}"/>')
+                                     hide_labels=s.get("hide_labels", ()),
+                                     val_fmt=s.get("val_fmt")))
+            gidx += 1
+        ax_ids = (f'<c:axId val="{axnum[g["cat_ax"]]}"/>'
+                  f'<c:axId val="{axnum[g["val_ax"]]}"/>')
         if g["kind"] == "bar":
             gap = max(0, min(500, int(round(g.get("gap_width", 150)))))
             ovl = max(-100, min(100, int(round(g.get("overlap", -27)))))
@@ -421,13 +450,14 @@ def combo_chart_xml(groups, axes, cats, *, title=None, legend_pos="b", cat_fonts
     ax_xml = []
     for a in axes:
         if a["kind"] == "cat":
-            ax_xml.append(_cat_axis(a["id"], a["cross"], pos=a.get("pos", "b"),
+            ax_xml.append(_cat_axis(axnum[a["id"]], axnum[a["cross"]], pos=a.get("pos", "b"),
                                     reverse=a.get("reverse", False),
                                     crosses=a.get("crosses"),
                                     fontsize=a.get("fontsize", cat_fontsize),
-                                    rotation=a.get("rotation")))
+                                    rotation=a.get("rotation"),
+                                    delete=a.get("delete", False)))
         else:
-            ax_xml.append(_val_axis(a["id"], a["cross"], pos=a.get("pos", "l"),
+            ax_xml.append(_val_axis(axnum[a["id"]], axnum[a["cross"]], pos=a.get("pos", "l"),
                                     reverse=a.get("reverse", False),
                                     numfmt=a.get("numfmt", "General"),
                                     major_unit=a.get("major_unit"),
@@ -436,7 +466,11 @@ def combo_chart_xml(groups, axes, cats, *, title=None, legend_pos="b", cat_fonts
                                     tick_label=a.get("tick_label", True),
                                     fontsize=a.get("fontsize", val_fontsize)))
     plot = ('<c:plotArea><c:layout/>' + "".join(body) + "".join(ax_xml) +
+            (dtable or "") +
             '<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr></c:plotArea>')
+    return chart_space_xml(plot, title=title, legend_pos=legend_pos)
+
+
     return chart_space_xml(plot, title=title, legend_pos=legend_pos)
 
 
@@ -593,6 +627,11 @@ def validate_chart_xml(xml):
             if pos in _LINE_ONLY_DLBLPOS:
                 raise ValueError(f"柱状图用了折线专属的 dLblPos=\"{pos}\""
                                  "（Word 会拒绝打开文档；柱状图请用 outEnd/inEnd/inBase/ctr）")
+        if re.search(r'<c:grouping val="(?:stacked|percentStacked)"/>', xml):
+            for pos in re.findall(r'<c:dLblPos val="([^"]*)"/>', xml):
+                if pos == "outEnd":
+                    raise ValueError("堆叠柱用了 dLblPos=\"outEnd\""
+                                     "（Word 会拒绝打开文档；堆叠柱只认 ctr/inBase/inEnd）")
 
     for m in re.finditer(r'<c:numFmt[^>]*>', xml):
         if m.group(0).count('"') % 2:
