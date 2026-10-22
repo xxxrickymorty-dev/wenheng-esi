@@ -294,6 +294,32 @@ def test_仓库相对记录在部署机上能还原(tmp_path, monkeypatch):
     assert j["input"] == str(tmp_path / "input" / "云大全学科排名、阈值动态检测表.xlsx")
 
 
+def test_兄弟目录写法也能还原(tmp_path, monkeypatch):
+    """母本来源在仓库外的**兄弟目录**：`input` 存 `../数据与复现/…`，读回来得能直接用。
+
+    档案页/SSE/日志包/重跑都拿 `job["input"]` 当真实路径使（`.parent`、`.exists()`），
+    所以折回后不许留 `..`——`Path / '..'` 自己不归一，漏了就是静默指错目录。
+    """
+    root = tmp_path / "wenheng"
+    monkeypatch.setattr(config, "ROOT", root)
+    monkeypatch.setattr(config, "JOBS_DIR", root / "out" / "_jobs")
+    d = root / "out" / "_jobs" / "j-sib"
+    d.mkdir(parents=True)
+    (d / "progress.jsonl").write_text('{"step": "parse"}\n', encoding="utf-8")
+    _put(root / "out" / "_jobs", "j-sib", status="completed",
+         input="../数据与复现/云大全学科排名、阈值动态检测表.xlsx",
+         progress="out/_jobs/j-sib/progress.jsonl",
+         console="out/_jobs/j-sib/console.log")
+
+    j = jobs.read_job("j-sib")
+    ledger = tmp_path / "数据与复现" / "云大全学科排名、阈值动态检测表.xlsx"
+    assert j["input"] == str(ledger)
+    assert ".." not in pathlib.Path(j["input"]).parts, f"折回后还留着 ..：{j['input']}"
+    assert pathlib.Path(j["input"]).parent == ledger.parent
+    assert jobs.read_progress(j) == [{"step": "parse"}], "进度事件读口要吃得下还原后的路径"
+    assert j["progress"] == str(d / "progress.jsonl")
+
+
 def test_新建任务记录里不含盘符与用户名(tmp_path, monkeypatch):
     """写侧那条：新建任务的 `input`/`progress`/`console` 一律仓库相对。"""
     monkeypatch.setattr(config, "ROOT", tmp_path)
@@ -320,4 +346,35 @@ def test_新建任务记录里不含盘符与用户名(tmp_path, monkeypatch):
         assert not display_path.is_absolute(value), f"{key} 仍存绝对路径：{value}"
         assert "Users" not in value, f"{key} 带上了本机用户目录：{value}"
     assert job["input"] == "input/云大全学科排名、阈值动态检测表.xlsx"
+
+
+def test_新建任务_母本在兄弟目录时存上一层相对写法(tmp_path, monkeypatch):
+    """写侧新一档：母本从 `../数据与复现/` 来时，记录里是 `../` 而不是绝对路径。
+
+    绝对路径会带上本机用户名（外发件泄漏扫描会判失败），`../../..` 链子换台机器不成立，
+    所以只有「工作区里的兄弟目录、只爬一层」这一档允许写成相对。
+    """
+    root = tmp_path / "wenheng"
+    monkeypatch.setattr(config, "ROOT", root)
+    monkeypatch.setattr(config, "OUT_DIR", root / "out")
+    monkeypatch.setattr(config, "JOBS_DIR", root / "out" / "_jobs")
+    monkeypatch.setattr(config, "FORECAST_CHOICES_DIR", root / "out" / "_forecast_choices")
+    monkeypatch.setattr(jobs, "_running", set())
+    monkeypatch.setattr(jobs, "active_job", lambda: None)
+
+    async def no_run(_job):
+        return None
+
+    monkeypatch.setattr(jobs, "_run", no_run)
+    ledger = tmp_path / "数据与复现" / "云大全学科排名、阈值动态检测表.xlsx"
+    ledger.parent.mkdir(parents=True)
+    ledger.write_bytes(b"x")
+
+    async def create():
+        return jobs.create_job("209904", ledger, "tester")
+
+    job = asyncio.run(create())
+    assert job["input"] == "../数据与复现/云大全学科排名、阈值动态检测表.xlsx"
+    assert "Users" not in job["input"]
+    assert display_path.from_repo_relative(job["input"], root) == ledger, "写出去的得能折回来"
 
