@@ -35,14 +35,6 @@ def source_path(repo_root) -> pathlib.Path:
     return pathlib.Path(repo_root).parent / "数据与复现" / LEDGER_NAME
 
 
-def mirror_path(repo_root) -> pathlib.Path:
-    """台账镜像（SQLite，只读派生；2026-10-13 票 01）：`<repo>/out/_mirror/ledger.sqlite`。
-
-    由 `src/ledger_mirror.py` 从母本确定性重建；**单向 ETL**，永不回写母本。
-    """
-    return pathlib.Path(repo_root) / "out" / "_mirror" / "ledger.sqlite"
-
-
 def sha256(path) -> str:
     """文件指纹（唯一实现 `xlsx_io.sha256_file`；缺文件抛）。"""
     return xlsx_io.sha256_file(path)

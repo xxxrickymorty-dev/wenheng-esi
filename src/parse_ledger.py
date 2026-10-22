@@ -795,8 +795,7 @@ def quarantine_final_products(out_dir, run_dir=None):
 def long_table(ledger):
     """宽表/分组表 → 长表（discipline, period, metric, source, value）——**唯一口径**。
 
-    `ledger_long.parquet`（`write_outputs`）与台账镜像（`src/ledger_mirror.py`）都用它；
-    口径只此一份，不复制。
+    `ledger_long.parquet`（`write_outputs`）用它；口径只此一份，不复制。
     """
     long_frames = []
     for m, df in ledger["wide"].items():
