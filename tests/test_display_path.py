@@ -16,12 +16,17 @@ def test_仓库内路径给仓库相对(tmp_path):
     assert display_path.to_repo_relative(p, root) == "out/_jobs/j1/progress.jsonl"
 
 
-def test_仓库外路径给绝对(tmp_path):
+def test_仓库外路径看远近(tmp_path):
+    """兄弟目录给 `../`，再远给绝对——判据是「换台机器还指得到吗」。"""
     root = tmp_path / "wenheng"
-    outside = tmp_path / "别处" / "x.xlsx"
-    value = display_path.to_repo_relative(outside, root)
-    assert display_path.is_absolute(value)
-    assert value.endswith("别处/x.xlsx")                      # 换算只改写法，不改路径内容
+    sibling = tmp_path / "数据与复现" / "x.xlsx"
+    assert display_path.to_repo_relative(sibling, root) == "../数据与复现/x.xlsx"
+    assert display_path.from_repo_relative("../数据与复现/x.xlsx", root) == sibling
+
+    far = tmp_path.parent.parent / "别的盘" / "x.xlsx"          # 要爬好几层
+    value = display_path.to_repo_relative(far, root)
+    assert display_path.is_absolute(value), f"太远的路径不该编成 ../ 链子：{value}"
+    assert value.endswith("x.xlsx")                            # 换算只改写法，不改路径内容
 
 
 def test_仓库相对能拼回原位置(tmp_path):

@@ -146,7 +146,7 @@ def cmd_copy(args) -> int:
         return 1
     rows = LM.review_summary(LEDGER, out, period)
     st = A.load_state(period) or A.scan(period, esi_root=args.esi_root or None)
-    rel = A.repo_display_path(out)          # 仓库相对（`--out` 指到仓库外时才是绝对路径）
+    rel = A.repo_display_path(out)          # 仓库相对；`--out` 指到工作区外的兄弟目录才是 `../`，再远才是绝对路径
     st["copy"] = {"state": "review", "path": rel, "built_at": _now(),
                   "master_sha": sha0, "sha256": LM.sha256_file(out)}
     st["review"] = {"sheets": rows}
