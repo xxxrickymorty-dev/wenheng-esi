@@ -18,7 +18,8 @@
         `out/_state` 的 `jobs` 表里，这里不再有 job.json）、
         out/_state/（系统状态库：签单 / 复核 / 任务记录；打包前先 `wal_checkpoint(TRUNCATE)`）
     不进：server/.env（密钥）、web/node_modules/、__pycache__/、.pytest_cache/、
-        .ruff_cache/、tmp/、.git/、_superseded/、out/ 其它期次
+        .ruff_cache/、tmp/、.git/、_superseded/、out/ 其它期次、
+        **out/_state/backups/（库的备份副本，含已清理的 e2e 历史；连同 -wal/-shm 一起不进包）**
 
 预检（缺了直接失败——别等服务器上才白屏）：
     · `web/dist/index.html` + `web/dist/assets/`（/app 首屏，ADR-0001 要求随包带）
@@ -55,10 +56,15 @@ EXCLUDE_PARTS = frozenset({
 })
 #: 文件名命中即排除（密钥 / 生成物；`server/.env.example` 不在其中，要进包）。
 EXCLUDE_NAMES = frozenset({".env", "e2e_report.txt"})
+#: 状态库备份目录（相对仓库根）：含已清理的 e2e 历史，只该留在本机。
+STATE_BACKUP_REL = ("out", "_state", "backups")
 
 
 def _excluded(rel: pathlib.Path) -> bool:
     if any(part in EXCLUDE_PARTS for part in rel.parts):
+        return True
+    # 主库仍进包（ADR-0012 决定 11），备份副本不进——包是演示件，不是机房快照。
+    if rel.parts[:len(STATE_BACKUP_REL)] == STATE_BACKUP_REL:
         return True
     return rel.name in EXCLUDE_NAMES
 

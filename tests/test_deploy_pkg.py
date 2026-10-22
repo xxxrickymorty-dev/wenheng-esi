@@ -5,6 +5,7 @@
 2026-09-17 的旧包是手搓 tar 命令，口径散在文档里，迟早漂。
 """
 import pathlib
+import sqlite3
 import sys
 import tarfile
 
@@ -19,6 +20,16 @@ import make_deploy_pkg as pkg                                   # noqa: E402
 def _mkfile(p: pathlib.Path):
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text("x", encoding="utf-8")
+    return p
+
+
+def _mkdb(p: pathlib.Path):
+    """建一个**真** sqlite 文件：`build()` 打包前会对主库做 `wal_checkpoint`。"""
+    p.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(str(p))
+    con.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)")
+    con.commit()
+    con.close()
     return p
 
 
@@ -37,8 +48,12 @@ def _fake_repo(tmp_path):
                 "out/_acquisition/202609/监测表.xlsx",
                 "out/_jobs/20260901/progress.jsonl", "tmp/junk.txt",
                 ".venv/pyvenv.cfg", "src/__pycache__/m.pyc",
-                "server/e2e_report.txt"):
+                "server/e2e_report.txt",
+                "out/_state/backups/wenheng-20261022-075735.sqlite",
+                "out/_state/backups/wenheng-20261022-075735.sqlite-wal",
+                "out/_state/backups/wenheng-20261022-075735.sqlite-shm"):
         _mkfile(root / rel)
+    _mkdb(root / "out/_state" / "wenheng.sqlite")
     return root
 
 
@@ -73,9 +88,18 @@ class Test进包口径:
     def test_状态库进包(self, tmp_path):
         """签单/复核/任务记录都在 `out/_state`（ADR-0012 决定 11）——漏了它包就是空的。"""
         root = _fake_repo(tmp_path)
-        _mkfile(root / "out/_state" / "wenheng.sqlite")
+        _mkdb(root / "out/_state" / "wenheng.sqlite")
         assert "out/_state/wenheng.sqlite" in _rels(root, include_data=True)
         assert "out/_state/wenheng.sqlite" not in _rels(root, include_data=False)
+
+    def test_状态库备份不进包(self, tmp_path):
+        """`out/_state/backups/` 是库的副本（含已清理的 e2e 历史）——只该留在本机。
+
+        主库要进包，备份（连同 `-wal` / `-shm` 副文件）不进；本机目录位置不动。
+        """
+        rels = _rels(_fake_repo(tmp_path), include_data=True)
+        assert "out/_state/wenheng.sqlite" in rels
+        assert not [r for r in rels if r.startswith("out/_state/backups/")]
 
     def test_纯代码包不含数据(self, tmp_path):
         rels = _rels(_fake_repo(tmp_path), include_data=False)
@@ -111,5 +135,7 @@ class Test打包:
             names = tf.getnames()
         assert "wenheng/pyproject.toml" in names
         assert "wenheng/web/dist/index.html" in names
+        assert "wenheng/out/_state/wenheng.sqlite" in names                # 主库进包
+        assert not [n for n in names if n.startswith("wenheng/out/_state/backups/")]
         assert not [n for n in names
                     if n.startswith("wenheng/server/.env") and not n.endswith(".example")]
