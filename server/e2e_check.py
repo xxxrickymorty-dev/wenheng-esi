@@ -336,12 +336,13 @@ def _manual_slots():
 #   两者都没有     → 不勾也直接可签（闸门只为待人工而设）——写死「必 409」会在干净数据上假失败。
 _pend, _manual = _pending_fills(), _manual_slots()
 
-# 演示期保护：e2e 会签/撤 202607 来验闸门，但跑完必须把**状态库**里这一期的签单与存疑
-# 原样放回，否则演示站会留下「e2e 探针」历史，评委点开审批记录看到的是测试痕迹。
+# 演示期保护：e2e 会签/撤 202607 来验闸门，但跑完必须把**状态库**里这一期的签单、
+# 历史与存疑原样放回，否则演示站会留下「e2e 探针」历史，评委点开审批记录看到的是测试痕迹；
+# 反过来，放回时也不能把这一期**本来就有的**历史清掉（该期没有签单行时格外容易踩，见下）。
 # 快照落 tmp（不入演示数据目录）：正常退出 atexit 还原；硬杀/超时后下一次 e2e
 # 启动先按 tmp 里的快照恢复。
 # 🔴 **不复制 .sqlite 来还原**：服务进程持着连接、WAL 未 checkpoint，复制出来的是
-# 不一致的快照。这里走 state_store 的行级读写（approval_history 一并覆盖）。
+# 不一致的快照。这里走 state_store 的行级读写（approval_history 按快照放回）。
 # 若服务用 WENHENG_STATE_DB 指向了别的库，e2e 必须带同一个环境变量启动。
 from server import approval as _approval                      # noqa: E402
 
@@ -352,17 +353,35 @@ _E2E_BACKUP_DIR = WENHENG / "tmp" / "_e2e_approval_backup"
 
 
 def _state_snapshot():
-    """202607 的库内状态（签单记录 + 历史 + 存疑）；库不存在 → 空快照。"""
+    """202607 的库内状态（签单记录 + 存疑 + 历史行 id）；库不存在 → 空快照。
+
+    历史行 id 要单独留一份：清理掉 e2e 签单行之后这一期可能**没有 approvals 行**、只剩历史，
+    而 `replace_approval(None)` 会把该期历史整段删掉——那等于吞掉真人操作。
+    """
     return {"approval": _store.get_approval(_STATE_DB, "202607"),
-            "reviews": _store.get_reviews(_STATE_DB, "202607")}
+            "reviews": _store.get_reviews(_STATE_DB, "202607"),
+            "history_ids": [r["id"] for r in _store.list_history(_STATE_DB, "202607")]}
 
 
 def _state_restore(snap):
     snap = snap or {}
     rec, reviews = snap.get("approval"), snap.get("reviews") or {}
-    if not _STATE_DB.is_file() and rec is None and not reviews:
+    ids = snap.get("history_ids")
+    if not _STATE_DB.is_file() and rec is None and not reviews and not ids:
         return                          # 库本来就没有：不为了还原凭空建一个
-    _store.replace_approval(_STATE_DB, "202607", rec)
+    if rec is not None:
+        # 有签单行：行 + 它自己的历史一并放回（`replace_approval` 覆盖整期历史）
+        _store.replace_approval(_STATE_DB, "202607", rec)
+    else:
+        # 没有签单行：只删本次跑出来的历史，快照里那几条必须留着
+        _store.delete_approval(_STATE_DB, "202607")
+        if ids is not None:
+            kept = set(ids)
+            _store.delete_history(
+                _STATE_DB, "202607",
+                [r["id"] for r in _store.list_history(_STATE_DB, "202607") if r["id"] not in kept])
+        # ids 为 None＝旧格式快照（没带历史 id）：无处恢复，只清签单行、不动历史
+        # （宁可留几条 e2e 流水，也不误删真人操作）
     _store.replace_reviews(_STATE_DB, "202607", reviews)
 
 
