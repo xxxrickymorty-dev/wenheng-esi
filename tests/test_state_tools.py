@@ -248,3 +248,60 @@ def test_导出命令只导库里有的期次(repo, capsys):
     assert (repo / "out" / "202607" / "approval.json").is_file()
     assert (repo / "out" / "202607" / "review.json").is_file()
     assert not (empty / "approval.json").exists()             # 库里没有 → 不造文件
+
+
+# ---------------------------------------------------------------- 导出件跟着真相源走
+def test_导出_库里没有的记录会删掉过期导出件(repo):
+    """库里已无签单/存疑（清理后只剩历史与填写）→ 残留的导出件必须删，否则下次被当真相。"""
+    db = _db(repo)
+    out_dir = repo / "out" / "202607"
+    state_store.set_fill(db, "202607", "正文/p4::学科数",
+                         {"value": "19", "by": "馆员", "at": "2026-10-20 11:00:00"})
+    assert (out_dir / "approval.json").is_file() and (out_dir / "review.json").is_file()
+
+    lines = "\n".join(state_export.export_period(out_dir, db))
+
+    assert not (out_dir / "approval.json").exists(), "库里没有签单行 → 过期导出件该删"
+    assert not (out_dir / "review.json").exists(), "库里没有存疑 → 过期导出件该删"
+    assert (out_dir / "manual_inputs.json").is_file(), "库里有填写 → 照常导出"
+    assert "已删除过期导出" in lines
+
+
+def test_导出_只删三件导出件不误碰同目录其他文件(repo):
+    out_dir = repo / "out" / "202607"
+    db = _db(repo)
+    state_store.set_fill(db, "202607", "正文/p4::学科数",
+                         {"value": "19", "by": "馆员", "at": "2026-10-20 11:00:00"})
+    others = {"审批记录.md": "# 审批记录\n", "red_slots.json": "{}", "table2.csv": "a,b\n"}
+    for name, text in others.items():
+        (out_dir / name).write_text(text, encoding="utf-8")
+
+    state_export.export_period(out_dir, db)
+
+    for name, text in others.items():
+        assert (out_dir / name).read_text(encoding="utf-8") == text, name
+
+
+def test_导出_库里没有且文件也不存在时不报错(repo):
+    db = _db(repo)
+    state_store.set_fill(db, "202607", "正文/p4::学科数",
+                         {"value": "19", "by": "馆员", "at": "2026-10-20 11:00:00"})
+    out_dir = repo / "out" / "202612"
+    out_dir.mkdir()
+
+    lines = state_export.export_period(out_dir, db)          # 不抛
+
+    assert list(out_dir.iterdir()) == [], "库里没有 → 一个文件都不造"
+    assert lines and all("无需删除" in line for line in lines)
+
+
+def test_导出_状态库不存在时一件都不删(repo):
+    """没库 ≠ 库里没有：刚 clone、库还没建时不得把导出件当垃圾清掉。"""
+    out_dir = repo / "out" / "202607"
+    before = sorted(p.name for p in out_dir.iterdir())
+
+    lines = state_export.export_period(out_dir, repo / "out" / "_state" / "没有这个库.sqlite")
+
+    assert sorted(p.name for p in out_dir.iterdir()) == before
+    assert "状态库不存在" in "\n".join(lines)
+

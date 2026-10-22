@@ -2,8 +2,11 @@
 """把状态库反向导出成原格式文件（ADR-0012 决定 10：回退与审计用）。
 
 - 只写 `out/<期次>/approval.json`、`review.json` 与 `manual_inputs.json`（原子写）；
-- **幂等**：同库导出两次字节一致；**不删库、不删文件**（回退时旧文件可能残留，以库为准）；
-  填写按库里的 rowid 序落盘，键序与迁移前那份文件相同——`manual_inputs.json` 是逐字节可比的；
+- **导出件跟着真相源走**：库里**有**该记录 → 写；库里**没有** → 把残留的过期导出件**删掉**
+  （留着会被下一次翻到的人当真相）。三类同一口径；除这三件外**一个文件都不碰**；
+- **幂等**：同库导出两次字节一致；**不删库**；状态库不存在 → 一件都不删（无从判断，
+  宁可留着也不误删）；填写按库里的 rowid 序落盘，键序与迁移前那份文件相同
+  ——`manual_inputs.json` 是逐字节可比的；
 - 不写 `审批记录.md`：它是签/撤时顺手导出的产物，不由本工具重造。
 
 用法（在 `wenheng/` 下；也可 `uv run python -m tools.state_export`）：
@@ -35,29 +38,54 @@ def _dump(obj) -> str:
     return json.dumps(obj, ensure_ascii=False, indent=1)
 
 
+def _drop_export(out_dir, name, period, label, lines) -> None:
+    """库里没有这份状态 → 移除残留导出件（不存在则什么都不做）。
+
+    🔴 导出件是「旧真相」：库里已经没有的签单/存疑/填值还留在目录里，下一个翻到它的人就会
+    把它当真相。所以这里的口径是「没有就删」，而不是「没有就不写」。删的是**这一个文件名**，
+    同目录的其他产物（`审批记录.md` / `red_slots.json` / `table2.csv` …）一律不碰。
+    """
+    path = pathlib.Path(out_dir) / name
+    if not path.exists():
+        lines.append(f"{period} · {label}：库里没有，无 {name}（无需删除）")
+        return
+    try:
+        path.unlink()
+    except OSError as exc:                       # 文件被占用：如实报，不装作删了
+        lines.append(f"{period} · {label}：库里没有，删除过期导出 {name} 失败：{exc}")
+        return
+    lines.append(f"{period} · {label}：库里没有，已删除过期导出 {name}")
+
+
 def export_period(out_dir, db_path) -> list[str]:
-    """导出一期；返回结果行。没有该期状态时一行都不写。"""
+    """导出一期；返回结果行。库里没有的记录 → 删掉对应的过期导出件。"""
     out_dir = pathlib.Path(out_dir)
     period = out_dir.name
     lines = []
 
+    # 库不存在时读口一律返回「没有」（`get_approval` → None / `get_reviews` → `{}`），
+    # 这时候删文件等于凭「没库」把导出件全清掉——刚 clone、库还没建就会中招。所以先拦住。
+    if not pathlib.Path(db_path).is_file():
+        lines.append(f"{period} · 状态库不存在，未导出也未删除任何文件")
+        return lines
+
     rec = state_store.get_approval(db_path, period)
     if rec is None:
-        lines.append(f"{period} · 审批：库里没有，跳过")
+        _drop_export(out_dir, APPROVAL_NAME, period, "审批", lines)
     else:
         atomic_io.write_text_atomic(out_dir / APPROVAL_NAME, _dump(rec))
         lines.append(f"{period} · 审批：导出 {len(rec.get('history') or [])} 条历史")
 
     reviews = state_store.get_reviews(db_path, period)
     if not reviews:
-        lines.append(f"{period} · 复核：库里为空，未写 {REVIEW_NAME}")
+        _drop_export(out_dir, REVIEW_NAME, period, "复核", lines)
     else:
         atomic_io.write_text_atomic(out_dir / REVIEW_NAME, _dump(reviews))
         lines.append(f"{period} · 复核：导出 {len(reviews)} 处存疑")
 
     fills = state_store.get_fills(db_path, period)
     if not fills:
-        lines.append(f"{period} · 填写：库里为空，未写 {FILLS_NAME}")
+        _drop_export(out_dir, FILLS_NAME, period, "填写", lines)
     else:
         # 与旧 `workbench.save_fill` 的写法同口径（indent=1、中文不转义、无尾换行；
         # 换行为平台翻译，`atomic_io` 默认 newline=None）→ 与迁移前那份文件逐字节可比。
