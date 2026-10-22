@@ -304,8 +304,25 @@ export async function postAcqBrowser(): Promise<{ ok: boolean; started: boolean;
     '/api/acquisition/browser', { method: 'POST' })
 }
 
+/** 本机数据存储能不能写（ADR-0012 决定 7）。技术细节留在后端日志，前端只用 degraded / message。 */
+export type StateDbStatus = {
+  /** 能读能写＝true；只读降级＝false */
+  ok?: boolean
+  schema_version?: number
+  code_schema_version?: number
+  /** 只读降级（库版本比程序新，或库打不开） */
+  degraded?: boolean
+  /** 给馆员看的一句话；正常时为空串 */
+  message?: string
+}
+
 /** 最近一次有产出的任务（老接口，字段形状见 jobs.list_jobs） */
-export type JobStatus = { active?: string | null; last?: { id?: string; period?: string } | null }
+export type JobStatus = {
+  active?: string | null
+  last?: { id?: string; period?: string } | null
+  /** 2026-10-22 加：库版本比程序新时只能只读——页面据此挂常驻告警 */
+  state_db?: StateDbStatus
+}
 
 export async function getStatus(): Promise<JobStatus> {
   return req<JobStatus>('/api/status')

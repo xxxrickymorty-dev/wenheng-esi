@@ -746,10 +746,16 @@ check("对话前门 · 已并入缺件直接放行（verdict=ready）",
       st3 == 200 and _dj3.get("verdict") == "ready", f"verdict={_dj3.get('verdict')}")
 st2, sj, _ = call("GET", "/api/status")
 try:
-    _active = (json.loads(sj) or {}).get("active")
+    _sj = json.loads(sj) or {}
 except json.JSONDecodeError:
-    _active = None
+    _sj = {}
+_active = _sj.get("active")
 check("对话前门 · 问一次没有启动任何任务", st2 == 200 and not _active, f"active={_active!r}")
+# ADR-0012 决定 7：库版本比程序新时只读降级，页面要有告警——先确认这条线本身在（正常库应报未降级）
+_sdb = _sj.get("state_db") or {}
+check("/api/status 带本机数据存储状态（可写、未降级）",
+      st2 == 200 and _sdb.get("ok") is True and _sdb.get("degraded") is False,
+      f"state_db={_sdb!r}")
 
 # GET /api/dialog/home（契约 #35，票 06：本期任务——三步状态从既有产物判，只读）
 st, hm, _ = call("GET", "/api/dialog/home")

@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  getHealth, getMe, getPeriodDetail, getPeriods, postJob,
+  getHealth, getMe, getPeriodDetail, getPeriods, getStatus, postJob,
   type ApiError, type Me, type Period, type PeriodDetail,
 } from './api'
 import {
@@ -16,6 +16,7 @@ import {
 import { applyPeriod, buildPeriodUrl } from './lib/period'
 import { forecastAppliedDiffs, forecastAppliedStale, sameForecastChoice, savedForecastChoice } from './lib/forecast'
 import { errorNote } from './lib/status'
+import { stateDbAlert, type StateDbAlert } from './lib/stateDb'
 import { wireEnter } from './lib/motion'
 import { pickRunForPeriod } from './lib/run'
 import { UserChip } from './lib/UserChip'
@@ -56,6 +57,8 @@ export default function App() {
   const [palette, setPalette] = useState<Palette>(initialPalette)
   const [healthy, setHealthy] = useState<boolean | null>(null)
   const [me, setMe] = useState<Me | null>(null)
+  /** 本机数据存储只读降级时的那条常驻告警（正常为 null＝零渲染） */
+  const [stateDbWarn, setStateDbWarn] = useState<StateDbAlert | null>(null)
   /* 角色是否已有结论：false = 还没问过（探活失败 / 首屏）；true = 问过了（me 为 null 即未登录） */
   const [roleKnown, setRoleKnown] = useState(false)
   const [periods, setPeriods] = useState<Period[]>([])
@@ -251,6 +254,21 @@ export default function App() {
   useEffect(() => {
     if (selected) refreshDetail(selected)
   }, [selected, refreshDetail])
+
+  /* 本机数据存储只读降级（ADR-0012 决定 7）：登录后问一次 /api/status，降级就挂常驻横幅。
+     两种角色都看（这是环境故障，不是权限）；读不到就不挂——横幅只报后端明确说的降级，
+     某次保存真的失败时，那次操作自己的失败提示照旧说清。 */
+  useEffect(() => {
+    if (!me) {
+      setStateDbWarn(null)
+      return
+    }
+    let alive = true
+    void getStatus().then((status) => {
+      if (alive) setStateDbWarn(stateDbAlert(status.state_db))
+    }).catch(() => { /* 问不到不影响使用（真门在后端） */ })
+    return () => { alive = false }
+  }, [me])
 
   useEffect(() => {
     /* 本期已保存的模型选择两种角色都读（操作员只读展示；保存按钮在预测台按角色裁剪）。 */
@@ -611,6 +629,20 @@ export default function App() {
       </header>
 
       <main className="wrap" id="main">
+        {/* 本机数据存储只读降级：常驻、不遮操作（不是 toast，自己不会消失）。
+            讲人话：哪些不受影响、哪些会失败、东西丢没丢。 */}
+        {stateDbWarn && (
+          <div className="banner warn" role="status">
+            <span className="ico"><Icon name="alert" size={22} /></span>
+            <span>
+              <b className="title">{stateDbWarn.message}</b>
+              <ul>
+                {stateDbWarn.lines.map((line) => <li key={line}>{line}</li>)}
+              </ul>
+            </span>
+          </div>
+        )}
+
         {healthy === false && (
           <div className="banner bad mt-0">
             <span className="ico"><Icon name="alert" size={22} /></span>

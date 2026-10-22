@@ -37,6 +37,7 @@ from src import period_facts  # 期次事实：目录/盘点/并入/产物/顺�
 from src import ledger as ledger_mod  # 动态监测表（母本）路径唯一口径（2026-10-13：input/ 只放母本）
 from src import forecast_choice  # 预测选模的唯一 implementation（读写/快照/留痕）
 from src import session_store  # 会话库（票 11）——对话前门会话的服务端持久化
+from src import state_store      # 系统状态库：/api/status 报「能不能写」（ADR-0012 决定 7）
 from esi_v1.data import display_name  # 学科名中文化（契约 #22）
 
 
@@ -741,16 +742,50 @@ async def healthz():
     return {"ok": True}
 
 
+#: 状态库只读降级时给馆员看的话（页面原文）。技术细节只进服务端日志：
+#: 这两句里不出现库名、版本号、迁移之类的字眼，只说「现在怎么样 + 找谁」。
+STATE_DB_TOO_NEW = "本机数据存储版本比程序新，已进入只读模式，请联系管理员。"
+STATE_DB_UNREADABLE = "本机数据存储打不开，保存类操作已暂停，请联系管理员。"
+
+
+def _state_db_status() -> dict:
+    """`/api/status` 的 `state_db`：本机状态库现在能不能写（ADR-0012 决定 7 的告警数据源）。
+
+    库不存在＝正常（还没签过单），**这里绝不建库**——`state_store.health()` 只连已存在的文件。
+    降级分两种：版本比程序新（能读、不能写）与库打不开；两种都给一句人话，页面据此挂横幅。
+    """
+    try:
+        h = state_store.health(jobs.state_db_path())
+    except OSError:                      # 路径本身读不了（权限/被占）：如实报，不装作健康
+        return {"ok": False, "schema_version": 0,
+                "code_schema_version": state_store.SCHEMA_VERSION,
+                "degraded": True, "message": STATE_DB_UNREADABLE}
+    degraded = bool(h.get("degraded"))
+    too_new = degraded and (h.get("schema_version") or 0) > (h.get("code_version") or 0)
+    return {
+        "ok": not degraded,
+        "schema_version": h.get("schema_version") or 0,
+        "code_schema_version": h.get("code_version") or 0,
+        "degraded": degraded,
+        "message": (STATE_DB_TOO_NEW if too_new else STATE_DB_UNREADABLE) if degraded else "",
+    }
+
+
 @app.get("/api/status")
 @user_route
 async def api_status(request: Request):
-    """工作区任务入口：只提供前端跳转所需的任务标识，不暴露落盘记录。"""
+    """工作区任务入口：只提供前端跳转所需的任务标识，不暴露落盘记录。
+
+    `state_db`（2026-10-22 加）：本机数据存储能不能写——库版本比程序新时只能只读，
+    页面据此挂一条常驻告警（写入会失败，得先让馆员知道为什么）。既有字段一个不动。
+    """
     active = jobs.active_job()
     last = next((j for j in jobs.list_jobs(20) if j.get("stats")), None)
     return {
         "active": (active or {}).get("id"),
         "last": ({"id": last.get("id"), "period": last.get("period")}
                  if last else None),
+        "state_db": _state_db_status(),
     }
 
 
