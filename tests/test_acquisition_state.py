@@ -4,6 +4,7 @@
 合成一套最小两路下载包跑全量分组；另用真实 202609 包做一次带护栏的回归。
 2026-10-19（ADR-0010）补：状态文件并发读锁下的写/读重试、pid 判活。
 """
+import importlib
 import os
 import pathlib
 import sys
@@ -221,14 +222,46 @@ def test_load_state_替换空窗里的坏读会重试(tmp_path, monkeypatch):
 
 
 # ------------------------------------------------------------------ 核对副本路径（2026-10-22）
-def test_默认核对副本路径取copy_path口径(tmp_path, monkeypatch):
-    """旧默认值写的是 `input/<期次>/监测表.xlsx`——2026-10-13 起 input/ 只放母本，
-    核对副本的真实落点是 `out/_acquisition/<期次>/监测表.xlsx`，默认值必须来自 `copy_path()`。"""
+def test_默认核对副本路径落仓库相对写法(tmp_path, monkeypatch):
+    """常态（`STATE_DIR` 就是 `REPO/out/_acquisition`）：落 JSON 的默认值是**仓库相对**——
+    不含盘符与用户名，换台机器也成立（状态文件在部署包白名单里）。"""
+    monkeypatch.setattr(A, "STATE_DIR", REPO / "out" / "_acquisition")
+    state = A.scan("209912", esi_root=tmp_path / "none", snapshot="")
+    path = state["copy"]["path"]
+    assert state["copy"]["state"] == "none"
+    assert path == "out/_acquisition/209912/监测表.xlsx"
+    assert path.startswith("out/_acquisition/")
+    assert ":" not in path and not path.startswith("/")        # 没有盘符
+    assert pathlib.Path.home().name not in path                # 不带用户名
+    assert not pathlib.PurePath(path).is_absolute()
+
+
+def test_状态目录指到仓库外时默认值退回绝对路径(tmp_path, monkeypatch):
+    """`WENHENG_ACQ_STATE_DIR` 指到仓库外（临时演练/集成测试）：判据「不在 `REPO` 之下」，
+    只能给绝对路径；读写仍走真实路径，照常可用。"""
     monkeypatch.setattr(A, "STATE_DIR", tmp_path / "out" / "_acquisition")
     state = A.scan("202611", esi_root=tmp_path / "none", snapshot="")
-    assert state["copy"]["state"] == "none"
-    assert state["copy"]["path"] == A.copy_path("202611").as_posix()
-    assert "input/" not in state["copy"]["path"]
+    path = pathlib.Path(state["copy"]["path"])
+    assert path.is_absolute() and path == A.copy_path("202611")
+    assert not A.repo_display_path(A.copy_path("202611")).startswith("out/")
+    A.write_state("202611", {"copy": {"state": "review", "path": state["copy"]["path"]}})
+    assert A.load_state("202611")["copy"]["path"] == path.as_posix()
+    assert (tmp_path / "out" / "_acquisition" / "202611.json").is_file()
+
+
+def test_环境变量指到仓库外时默认值也是绝对路径(tmp_path, monkeypatch):
+    """同一条判据走真实入口（环境变量在 import 时读）：这里重载模块模拟换进程。"""
+    monkeypatch.setenv("WENHENG_ACQ_STATE_DIR", str(tmp_path / "acq"))
+    importlib.reload(A)
+    try:
+        assert A.STATE_DIR == tmp_path / "acq"
+        assert A.repo_display_path(A.copy_path("202611")) == A.copy_path("202611").as_posix()
+        assert pathlib.Path(A.repo_display_path(A.copy_path("202611"))).is_absolute()
+    finally:
+        monkeypatch.delenv("WENHENG_ACQ_STATE_DIR")
+        importlib.reload(A)
+    assert A.STATE_DIR == REPO / "out" / "_acquisition"
+    assert A.repo_display_path(A.copy_path("202611")) == "out/_acquisition/202611/监测表.xlsx"
 
 
 def test_旧状态里的旧副本路径原样读出不炸(tmp_path, monkeypatch):

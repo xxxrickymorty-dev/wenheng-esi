@@ -278,9 +278,24 @@ COPY_NAME = "监测表.xlsx"
 
 
 def copy_path(period: str) -> pathlib.Path:
-    """本期核对副本路径：`out/_acquisition/<期次>/监测表.xlsx`。"""
+    """本期核对副本路径：`out/_acquisition/<期次>/监测表.xlsx`（真实可写路径）。"""
     return STATE_DIR / period / COPY_NAME
 
+
+def repo_display_path(p: pathlib.Path) -> str:
+    """真实路径 → **给人看 / 落状态 JSON** 的写法：在仓库之下给仓库相对，否则给绝对路径。
+
+    哪里需要这个：状态文件 `out/_acquisition/<期次>.json` 在部署包白名单里
+    （`tools/make_deploy_pkg.py`），把 `C:/Users/<用户名>/...` 写进去等于把开发机路径
+    打进包里，换台机器后也不成立。**判据是路径在不在 `REPO` 之下**：常态（`STATE_DIR`
+    就是 `REPO/out/_acquisition`）给 `out/_acquisition/<期次>/监测表.xlsx`；
+    `WENHENG_ACQ_STATE_DIR` 把状态指到仓库外（临时演练 / 集成测试）时只能给绝对路径。
+    只用于显示与落 JSON——读写仍走 `copy_path()` 的真实路径。
+    """
+    try:
+        return p.resolve().relative_to(REPO.resolve()).as_posix()
+    except ValueError:
+        return p.as_posix()
 
 
 #: 状态文件写/读重试参数（Windows 并发读锁；测试可调小）
@@ -416,7 +431,9 @@ def scan(period: str, *, esi_root: pathlib.Path | str | None = None,
     # 历史期次（X3 之前手工并表的）：报告已出 = 数据确实已进台账，如实标注「视同已并入」
     # 核对副本的真实落点：`out/_acquisition/<期次>/监测表.xlsx`（2026-10-13 起 input/ 只放母本）。
     # 路径口径只走 `copy_path()`——这里曾手写 `input/{期次}/监测表.xlsx`，显示的是早已不存在的旧位置。
-    default_copy_path = copy_path(period).as_posix()
+    # 落 JSON 的是**仓库相对**写法（`repo_display_path`）：状态文件进部署包白名单，
+    # 写绝对路径会把开发机路径（含用户名）带出去，换台机器也不成立。
+    default_copy_path = repo_display_path(copy_path(period))
     copy_state = state.get("copy") or {"state": "none", "path": default_copy_path}
     if (copy_state.get("state") in (None, "none")
             and (REPO / "out" / period / "red_slots.json").exists()):
