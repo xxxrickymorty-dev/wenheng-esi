@@ -701,8 +701,9 @@ def _render(table, band, value):
     tpl = table.get("template")
     if not tpl:
         return band["word"]
-    if value is None:                       # shape 表没有数值：占位显示
-        return tpl.replace("{value:.2f}", "〈值〉").replace("{value}", "〈值〉")
+    if value is None:                       # shape 表没有数值：仍填用词，值位置占位
+        return (tpl.replace("{value:.2f}", "〈值〉").replace("{value}", "〈值〉")
+                .replace("{word}", band["word"]).replace("{phrase}", band["word"]))
     phrase = band["word"]
     if table["kind"] == _CHANGE and _direction_of(value) != "flat":
         phrase = f"{band['word']}{abs(value):g}{table['unit']}"
