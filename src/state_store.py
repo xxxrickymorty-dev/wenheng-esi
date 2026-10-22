@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """系统状态库（SQLite）——签单 / 复核 / 任务记录 / 人工填写（ADR-0012 决定 3/6/7/8/11）。
 
-- **边界（spec 写死）**：只装**控制面状态**（签单 / 复核 / 任务记录 / 人工填写）。数字一个不装
-  （唯一事实源仍是母本 xlsx），ESI / InCites 原始包不入库。
+- **边界（spec 写死）**：只装**控制面状态**（签单 / 复核 / 任务记录 / 人工填写）与**数据来源清单**
+  （004：`../数据与复现/` 下每个文件的路径 / 大小 / 修改时间 / 指纹）。数字一个不装
+  （唯一事实源仍是母本 xlsx），ESI / InCites **原始文件**不入库（只入清单，ADR-0012 决定 2）。
 - **签单不存 status 列**——签单是否失效永远现场 glob + hash `out/<期次>/` 的产物
   （`server/approval.py`），库里缓存状态必然与文件不一致。
   **任务记录反过来**：`jobs.status` 是**事实本身**（跑到哪一步、谁跑的），没有第二个真相源
@@ -36,7 +37,7 @@ import sqlite3
 import time
 
 #: schema 版本（写进 meta；只增不减，见模块头的迁移说明）。
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 #: 库文件名（`out/_state/` 下）。
 DB_NAME = "wenheng.sqlite"
 #: 覆盖库路径的环境变量（流水线子进程 / e2e 用）。
@@ -101,6 +102,25 @@ _DDL_003 = (
     " value TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pending',"
     " actor TEXT NOT NULL DEFAULT '', at TEXT NOT NULL DEFAULT '',"
     " payload TEXT NOT NULL, PRIMARY KEY (period, slot))",
+)
+
+
+#: 004 的业务表：**数据来源清单**（`../数据与复现/` 下每个文件的路径 / 大小 / 修改时间 / 指纹）。
+#: 🔴 只装清单，**不装原始文件**（ADR-0012 决定 2）：原始包原地不动，库只有几十 KB。
+#: `kind` ∈ `esi` / `incites`；`scope`＝ESI 期次目录名或 InCites 快照目录名
+#: （直接躺在 kind 根下的散件记 `_root`，见 `tools/sources_index.py`）；
+#: `rel_path` 相对 `../数据与复现/`。`sha256` 空串＝**只有元数据**（还没算过指纹），
+#: 不是「没有这个文件」。`size` / `mtime_ns` 一起判「文件动过没有」：两项都没变时
+#: `tools/sources_index.py --hash` 跳过重算（InCites 9 GB 不可能每次全量重算）。
+#: `payload` 是保留位（将来深校验结论），当前写 `{}`。
+#: 与 `inventory.py`（件级盘点）分工：这里判「文件是不是原来那一份」，那里判「件在不在」。
+_DDL_004 = (
+    "CREATE TABLE IF NOT EXISTS sources ("
+    " kind TEXT NOT NULL, scope TEXT NOT NULL, rel_path TEXT NOT NULL,"
+    " size INTEGER NOT NULL DEFAULT 0, mtime_ns INTEGER NOT NULL DEFAULT 0,"
+    " sha256 TEXT NOT NULL DEFAULT '', scanned_at TEXT NOT NULL DEFAULT '',"
+    " payload TEXT NOT NULL DEFAULT '{}', PRIMARY KEY (kind, scope, rel_path))",
+    "CREATE INDEX IF NOT EXISTS idx_sources_scope ON sources(kind, scope)",
 )
 
 
@@ -200,12 +220,19 @@ def _migrate_003(con) -> None:
         con.execute(stmt)
 
 
+def _migrate_004(con) -> None:
+    """004：建数据来源清单表（文件级路径 / 大小 / 修改时间 / 指纹；原始文件不入库）。"""
+    for stmt in _DDL_004:
+        con.execute(stmt)
+
+
 #: 有序迁移表（只增不改；id 一旦发出就不再动）。
 MIGRATIONS = (
     {"id": "001-approvals-reviews", "note": "approvals / approval_history / reviews", "fn": _migrate_001},
     {"id": "002-jobs", "note": "jobs（原 out/_jobs/<id>/job.json）", "fn": _migrate_002},
     {"id": "003-manual-inputs", "note": "manual_inputs（原 out/<期次>/manual_inputs.json）",
      "fn": _migrate_003},
+    {"id": "004-sources", "note": "sources（../数据与复现/ 的文件级清单与指纹）", "fn": _migrate_004},
 )
 
 
@@ -754,6 +781,104 @@ def periods(db_path) -> list[str]:
                 return []
             raise
         return sorted({str(r[0]) for r in rows})
+
+
+# --------------------------------------------------------------- 数据来源清单（004）
+#: `sources.kind` 的合法值（与 `tools/sources_index.py` 的 kind 根一一对应）。
+SOURCE_KINDS = ("esi", "incites")
+
+
+def _source_row(row) -> dict:
+    return {"kind": row["kind"], "scope": row["scope"], "rel_path": row["rel_path"],
+            "size": int(row["size"]), "mtime_ns": int(row["mtime_ns"]),
+            "sha256": row["sha256"] or "", "scanned_at": row["scanned_at"] or "",
+            "payload": _loads(row["payload"], {})}
+
+
+def sources_rows(db_path, *, kind=None, scope=None) -> list[dict]:
+    """来源清单的行（`(kind, scope, rel_path)` 序）；库不存在 → `[]`（读口不造文件）。
+
+    只读；降级（库版本高于程序）时同样返回 `[]`，告警看 `health()`。
+    `kind` / `scope` 为过滤条件，`None` = 全部。
+    """
+    path = pathlib.Path(db_path)
+    if not path.is_file():
+        return []
+    sql = ("SELECT kind, scope, rel_path, size, mtime_ns, sha256, scanned_at, payload"
+           " FROM sources")
+    where, args = [], []
+    if kind is not None:
+        where.append("kind=?")
+        args.append(str(kind))
+    if scope is not None:
+        where.append("scope=?")
+        args.append(str(scope))
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += " ORDER BY kind, scope, rel_path"
+    with _open(path) as (con, degraded, _note):
+        try:
+            rows = con.execute(sql, args).fetchall()
+        except sqlite3.Error:
+            if degraded:
+                return []
+            raise
+    return [_source_row(r) for r in rows]
+
+
+def put_sources(db_path, entries) -> int:
+    """写/覆盖一批来源清单行（upsert，一个短事务）；返回写的行数。
+
+    调用方（`tools/sources_index.py`）负责「哪些行真的要写」——`size + mtime_ns` 都没变的行
+    它不会送进来，所以这里的 `scanned_at` 就是**最后一次看见文件变化**的时刻。
+    `entries` 里每条须有 `kind / scope / rel_path`；`sha256` 缺省为空串＝只有元数据。
+    """
+    rows = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise StoreError("来源词条形状非法（不是对象）")
+        kind = str(entry.get("kind") or "")
+        scope = str(entry.get("scope") or "")
+        rel_path = str(entry.get("rel_path") or "")
+        if kind not in SOURCE_KINDS:
+            raise StoreError(f"来源类别非法：{kind!r}（只收 {'/'.join(SOURCE_KINDS)}）")
+        if not scope or not rel_path:
+            raise StoreError("来源词条缺 scope / rel_path")
+        payload = entry.get("payload") or {}
+        if not isinstance(payload, dict):
+            raise StoreError(f"来源附带信息形状非法：{rel_path!r}")
+        rows.append((kind, scope, rel_path, int(entry.get("size") or 0),
+                     int(entry.get("mtime_ns") or 0), str(entry.get("sha256") or ""),
+                     str(entry.get("scanned_at") or _now()), _dumps(payload)))
+    if not rows:
+        return 0
+    with _write(db_path) as con:
+        con.executemany(
+            "INSERT INTO sources (kind, scope, rel_path, size, mtime_ns, sha256,"
+            " scanned_at, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            " ON CONFLICT(kind, scope, rel_path) DO UPDATE SET size=excluded.size,"
+            " mtime_ns=excluded.mtime_ns, sha256=excluded.sha256,"
+            " scanned_at=excluded.scanned_at, payload=excluded.payload", rows)
+    return len(rows)
+
+
+def delete_sources(db_path, keys) -> int:
+    """删掉指名的行（`scan` 发现磁盘上已经没有时用）；返回**实际删掉**的条数。
+
+    只删 `keys`（`(kind, scope, rel_path)`）里点名的行，别的行一概不碰——
+    与 `delete_history` 同理：错删清单不致命，但错删会让人以为文件真的没了。
+    """
+    wanted = [(str(kind), str(scope), str(rel_path)) for kind, scope, rel_path in keys]
+    if not wanted:
+        return 0
+    with _write(db_path) as con:
+        deleted = 0
+        for kind, scope, rel_path in wanted:
+            cur = con.execute(
+                "DELETE FROM sources WHERE kind=? AND scope=? AND rel_path=?",
+                (kind, scope, rel_path))
+            deleted += max(cur.rowcount or 0, 0)
+        return deleted
 
 
 # --------------------------------------------------------------- 自查
