@@ -811,18 +811,13 @@ def _trend_data_table(fig, rect, col_labels, row_labels, rows, row_colors, *,
     return tax
 
 
-def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k=4,
-                      entered=None):
-    """我校主要学科近期发展趋势（对标第 3/4/5 期原生图：1‰ 接近度前 4 学科 + ESI1‰ 线 + 图下数据表）。
+def trend_picks(cites, thr_1permille, end_period=None, n=7, top_k=4, entered=None):
+    """趋势图取数与选科（**口径单一来源**：PNG 路径与原生图表路径共用）。
 
-    与原件逐项对齐（其 chart XML 口径）：粗体标题；纵轴 20–100%、`0.00%` 两位小数，
-    **100% 的 1‰ 阈值线必须画进图里**（rick 2026-09-24；不能只用红字注明、也不能只留在表里；
-    起点 20 是 rick 定调「趋势明显点」）；
-    数据表贴在图下、列与数据点对齐、行标签用系列色，**不再带「ESI1‰ 100%」那行**。
-    折线带图例 + 末点数值（rick 反馈：原件那套无图例无标记看不清，故此处比原件多这两样）。
-    系列顺序＝**进入 ESI 1% 的先后**（原件三期一致：化学→植物与动物学→环境生态学→工程学），
-    由 `entered`（wide/entered_1pct.parquet）的首次在榜期给出；同期的按末列总被引降序兜底
-    （矩阵左端截断会把老学科并列到同一期）。不传 `entered` 时退回按最新接近度降序。
+    返回 `(picked_df, periods, picks)`：
+      · `picked_df`＝前 `top_k` 学科 × 窗口内期次的「1‰ 接近度（%）」；
+      · `periods`＝期次字符串列表（作图类目）；
+      · `picks`＝学科英文名列表（**顺序＝进入 ESI 1% 的先后**，同期的按末列总被引降序）。
     """
     df = (cites / thr_1permille * 100.0).copy()
     df.columns = [str(c) for c in df.columns]
@@ -847,8 +842,24 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
             s = pd.to_numeric(cw.loc[d], errors="coerce").dropna() if d in cw.index else None
             cite_last[d] = float(s.iloc[-1]) if s is not None and len(s) else 0.0
         picks.sort(key=lambda d: (_first_in(d), -cite_last[d]))
-    picked = df.loc[picks]
-    periods = [str(c) for c in df.columns]
+    return df.loc[picks], [str(c) for c in df.columns], picks
+
+
+def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k=4,
+                      entered=None):
+    """我校主要学科近期发展趋势（对标第 3/4/5 期原生图：1‰ 接近度前 4 学科 + ESI1‰ 线 + 图下数据表）。
+
+    与原件逐项对齐（其 chart XML 口径）：粗体标题；纵轴 20–100%、`0.00%` 两位小数，
+    **100% 的 1‰ 阈值线必须画进图里**（rick 2026-09-24；不能只用红字注明、也不能只留在表里；
+    起点 20 是 rick 定调「趋势明显点」）；
+    数据表贴在图下、列与数据点对齐、行标签用系列色，**不再带「ESI1‰ 100%」那行**。
+    折线带图例 + 末点数值（rick 反馈：原件那套无图例无标记看不清，故此处比原件多这两样）。
+    系列顺序＝**进入 ESI 1% 的先后**（原件三期一致：化学→植物与动物学→环境生态学→工程学），
+    由 `entered`（wide/entered_1pct.parquet）的首次在榜期给出；同期的按末列总被引降序兜底
+    （矩阵左端截断会把老学科并列到同一期）。不传 `entered` 时退回按最新接近度降序。
+    """
+    picked, periods, picks = trend_picks(cites, thr_1permille, end_period=end_period,
+                                         n=n, top_k=top_k, entered=entered)
     # 原件配色＝Office 主题色按系列序（其 chart XML 只显式写了 #7030A0 与红）：化学=accent1、
     # 植物与动物学=#7030A0、环境生态学=accent3、工程学=accent4。
     # accent3 原色 #A5A5A5 太浅（rick 反馈颜色浅）→ 稍加深到 #8C8C8C（线/标签同色）。
