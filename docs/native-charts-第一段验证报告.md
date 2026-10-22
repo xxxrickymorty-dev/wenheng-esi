@@ -252,7 +252,7 @@ PDF 里图表区外框 `Rect(80.6, 165.6, 314.7, 321.5)` pt → **234.1 × 155.9
 | `tools/verify_report_docx.py` | **96/96 + 22/22 + 结构验证全绿** | 它只判「格子里恰 2 段 + 1 个 `w:drawing` + `wp:extent` = 8.26×5.50cm」。原生图表用 `wp:inline`，这两项**完全相同** |
 | `tools/verify_report_cells.py 202607` | **T01 220/0 · T19 99/0 · T20 242/0 · 附录 274/0，不符 0** | 纯数字核验（T01/T19/T20/附录清单），全程不碰图形 |
 | `tools/verify_demo_run.py` | **不受影响** | 验的是任务状态机（running → completed/warned）与徽章文案，不看图 |
-| `pytest -m "slow or not slow"` | 需重跑确认（见 §7.3） | 见下 |
+| `pytest -m "slow or not slow"` | **EXIT 0**（全量套件，默认已切原生图表） | 新增 `tests/test_native_charts.py` 16 例；其余用例不受影响（图槽计数、红色件 source、网站图源都不变） |
 | 回测口径（`src/backtest.py`） | **不受影响** | 只读 docx 的**文字与表格**，不读图 |
 | `charts.render_all` 的 104 张 PNG | **逐字节不变** | 本次只从 `chart_trend_table` 里抽出了 `trend_picks()`（口径单一来源）。实测「重渲全部图 → 与 `out/202609/charts` 比 sha256」：**bad=0**；唯一"缺"的 16 张是 `forecast_*.png`（由 `report_forecast` 出，不在 `render_all` 里） |
 
@@ -295,6 +295,20 @@ uv run python tools\verify_report_cells.py 202607 `
   它会走 `skip_unless("red_slots.json 里没有图槽位", lambda: False)` ——
   探针返回 `False`（说得过去），守卫复核不会判失败，**等于这条守卫悄悄消失了**。
   真改了前缀的话，请把它换成"原生图槽位必须能在 docx 里找到 `c:chart`"。
+
+### 7.3b 本次实跑的验收记录
+
+| 命令 | 结果 |
+|---|---|
+| `uv run python -m pytest -q` | **EXIT 0**（默认已切原生图表） |
+| `uv run ruff check .` | All checks passed |
+| `tools/verify_report_docx.py`（202609 原生稿） | 96/96 + 22/22 + 全绿 |
+| `tools/verify_report_cells.py 202607 --docx <原生稿>` | 四条全部「不符 0」 |
+| Word 16.0 打开 202609 原生稿 | `OPEN_OK` 4.0 s，102 charts，全部有系列 |
+| `charts.render_all` 104 张 PNG vs `out/202609/charts` | sha256 全等（bad=0） |
+
+> ⚠ `tools/verify_demo_run.py` **本次没跑**（rick 要求留到验收阶段串行执行，
+> 它会重跑当期流水线并写 `out/`，与并行会话冲突）。
 
 ### 7.4 其它依赖「图片存在/尺寸」的断言（已逐条查过，均不受影响）
 
