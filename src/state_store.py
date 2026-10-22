@@ -534,6 +534,30 @@ def delete_history(db_path, period, ids) -> int:
         return cur.rowcount
 
 
+def set_history_payload(db_path, period, payloads) -> int:
+    """按 id **改写**历史行的 `payload`（清理工具用：只改自由文本，不动审计骨架）。
+
+    `payloads` ＝ `{id: payload}`（整份字典，键序原样保留）。**只写 `payload` 一列**——
+    提升列 `ts / action / actor` 与行本身都不动，删行更是本函数不做的事：
+    审计流水宁可留一条改了批注的记录，也不能少一行（少一行＝改审计）。
+    `period` 一起进 WHERE，防「改错期次」这类不可恢复的失误；返回实际改到的行数。
+    """
+    period = str(period)
+    items = [(int(hid), payload) for hid, payload in (payloads or {}).items()]
+    if not items:
+        return 0
+    changed = 0
+    with _write(db_path) as con:
+        for hid, payload in items:
+            if not isinstance(payload, dict):
+                raise StoreError("历史条目形状非法（payload 不是对象）")
+            cur = con.execute(
+                "UPDATE approval_history SET payload=? WHERE period=? AND id=?",
+                (_dumps(payload), period, hid))
+            changed += cur.rowcount
+    return changed
+
+
 def delete_approval(db_path, period) -> bool:
     """删掉一期的**当前签单行**（历史不动；e2e 残留清理用）；有行 → True。"""
     period = str(period)
