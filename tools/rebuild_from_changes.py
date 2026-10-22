@@ -11,8 +11,9 @@ import json
 import re
 from pathlib import Path
 
-D = Path(r"C:\Users\damn\.workbuddy\changes-detail\afa605d6-361f-4a90-8233-8aa11e68ed44")
-OUT = Path(r"C:\Users\damn\Desktop\首届高校图书馆\wenheng\tmp\_rebuild")
+D = (Path.home() / ".workbuddy" / "changes-detail"
+     / "afa605d6-361f-4a90-8233-8aa11e68ed44")      # 输入快照（本机才有的历史记录）
+OUT = Path(__file__).resolve().parents[1] / "tmp" / "_rebuild"
 OUT.mkdir(exist_ok=True)
 
 rows = []

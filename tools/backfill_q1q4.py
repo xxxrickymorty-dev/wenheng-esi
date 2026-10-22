@@ -33,7 +33,7 @@ import zipfile
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-ROOT = pathlib.Path(r"C:\Users\damn\Desktop\首届高校图书馆")
+ROOT = pathlib.Path(__file__).resolve().parents[2]    # 工作区根（本文件在 wenheng/tools/ 下）
 LED = ROOT / "数据与复现" / "云大全学科排名、阈值动态检测表.xlsx"
 INC = ROOT / "数据与复现" / "incites"
 BACKUP = ROOT / "归档" / "台账备份"

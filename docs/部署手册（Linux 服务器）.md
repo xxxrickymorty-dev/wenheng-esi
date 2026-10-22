@@ -32,7 +32,7 @@
 改了代码后重新打包：
 
 ```bash
-cd "C:/Users/damn/Desktop/首届高校图书馆“AI+管理服务”"
+cd <工作区根>          # 包含 wenheng/ 的那一层
 tar -czf wenheng-deploy-$(date +%Y%m%d).tar.gz \
   --exclude='wenheng/.venv' --exclude='*/__pycache__' --exclude='*.pyc' \
   --exclude='wenheng/.pytest_cache' --exclude='wenheng/.git' \

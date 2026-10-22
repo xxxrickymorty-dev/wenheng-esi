@@ -15,7 +15,8 @@ import sys
 from pathlib import Path
 from playwright.async_api import async_playwright
 
-G = Path(r"C:\Users\damn\Desktop\首届高校图书馆\设计文档\前端设计预览\G-复刻WorkingVolumes")
+G = (Path(__file__).resolve().parents[2] / "设计文档" / "前端设计预览"
+     / "G-复刻WorkingVolumes")
 SHOTS = G / "预览截图"
 SHOTS.mkdir(exist_ok=True)
 URL = (G / "index.html").as_uri()

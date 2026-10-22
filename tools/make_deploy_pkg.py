@@ -39,6 +39,20 @@
     命中即删包失败并列出 member × 次数——判据是「一个真名都不剩」，不是「改了几个字段」。
     `--no-redact` 显式关闭脱敏（**同时关闭扫描**：这种包只能自用、不能外发，脚本会喊一声）。
 
+    路径与用户名（2026-10-22 第二票；判据在 `_path_checks` 与 `path_rules`）：
+    同一次外发里另一类不该出现的东西是**本机绝对路径**——`C:\\Users\\<用户名>\\Desktop\\…`
+    既暴露开发机账号，换个用户名/换台机器也不成立。处理与 actor 同一套「先换、再扫、漏了失败」：
+      · 换：包内**副本**上把「本仓库根」前缀去掉（`out/202607/x.json` 仍指得回原处）、
+        把「本机家目录」前缀换成 `~/`；数据面文本与库内所有文本列都过一遍；
+      · 扫：两档范围，理由是**误伤边界不一样**——
+        ① 通用形态（盘符 `C:\\` / `C:/`、`/home/`、`/Users/`）**只扫数据面 + 库内文本列**：
+           代码与文档里合法地写这类前缀（docstring 举例、`.bat` 占位说明）不是泄漏；
+        ② 本机实际路径（本仓库根的绝对写法、`%USERPROFILE%` / `$HOME` 展开后的家目录）
+           **全包扫**：任何成员里出现这两个前缀都是本机信息，没有"合法举例"这回事。
+    实测依据（定判据前跑过一遍现有仓库）：通用形态若全包扫，`tools/*.py` 里 7 处硬编码的
+    开发机根目录会当场让打包失败——那批路径本身就是本机信息，已在本票里改成从 `__file__`
+    推导；而扫描按上面两档分范围后，现有 950 个成员的包全绿（0 命中）。
+
 预检（缺了直接失败——别等服务器上才白屏）：
     · `web/dist/index.html` + `web/dist/assets/`（/app 首屏，ADR-0001 要求随包带）
     · `master/` 母版 docx（fill_docx 依赖）
@@ -50,8 +64,10 @@ from __future__ import annotations
 import argparse
 import contextlib
 import hashlib
+import json
 import os
 import pathlib
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -108,6 +124,17 @@ _ACTOR_QUERIES = (
     "SELECT DISTINCT json_extract(payload, '$.actor') FROM jobs",
     "SELECT DISTINCT json_extract(payload, '$.by') FROM reviews",
 )
+
+#: 「本机绝对路径」的**通用形态**：盘符（`C:\` / `C:/`）与类 Unix 的家目录前缀。
+#: 前一个字符是字母数字时不算——`http://` 里的 `p:/` 不是盘符。
+DRIVE_RE = re.compile(r"(?<![A-Za-z0-9])[A-Za-z]:[\\/]")
+UNIX_HOME_RE = re.compile(r"(?:(?<=^)|(?<=[\s\"'(=:：,，]))/(?:home|Users)/[A-Za-z0-9._-]+")
+
+#: 通用形态的扫描范围：**只扫数据面 + 库内文本列**。
+#: 代码与文档里合法地写 `C:/Users/xxx`（docstring 举例）不算泄漏；数据里出现就是漏了。
+PATH_SCOPE_DATA = "data"
+#: 本机实际路径的扫描范围：**全包**（代码里出现同样是把本机信息带出去）。
+PATH_SCOPE_ALL = "all"
 
 
 class LeakError(RuntimeError):
@@ -270,34 +297,132 @@ def _ordered_terms(terms) -> list[tuple[str, str]]:
     return sorted(terms.items(), key=lambda kv: len(kv[0]), reverse=True)
 
 
-def redact_text(text: str, terms) -> str:
-    """逐词替换（长词先换）。"""
+def _sep_re(p) -> str:
+    """把一个路径写成「分隔符两种都认」的正则片段（`[\\/]+` 顺带吃掉 JSON 里的 `\\\\`）。"""
+    parts = re.split(r"[\\/]+", str(p).strip("\\/"))
+    return r"[\\/]+".join(re.escape(part) for part in parts)
+
+
+def _sep_forms(p) -> list[bytes]:
+    """一个路径的两种字面写法（`\\` 与 `/`），给按字节扫用。"""
+    text = str(p)
+    return [text.encode("utf-8"), text.replace("\\", "/").encode("utf-8")]
+
+
+def path_rules(root: pathlib.Path):
+    """本机绝对路径 → 包内写法：**只对副本**，真库/真产物一个字节不动。
+
+    两条规则，**长的先换**（仓库根通常在家目录之下，反过来会留下 `~/…/wenheng`）：
+      · 本仓库根 + 分隔符 → 空（`C:\\…\\wenheng\\out\\x.json` → `out/x.json`）。
+        去掉前缀后包内相对写法仍指得回原处（部署机的根是 `/opt/wenheng`）；
+      · 本机家目录 + 分隔符 → `~/`（`C:\\Users\\<用户名>\\AppData\\…` → `~/AppData/…`）。
+    没被这两条覆盖的盘符路径（别的盘、`D:\\`）字面保留，由泄漏扫描兜住并让打包失败。
+    """
+    home = pathlib.Path.home()
+    rules = []
+    for base, repl in ((pathlib.Path(root), ""), (home, "~/")):
+        pattern = re.compile(_sep_re(base) + r"[\\/]+",
+                             re.IGNORECASE if os.name == "nt" else 0)
+        rules.append((pattern, repl))
+    return rules
+
+
+def redact_text(text: str, terms, rules=()) -> str:
+    """本机路径先换（含用户名的那段整块去掉），再逐词换操作人（长词先换）。"""
+    for pattern, repl in rules:
+        text = pattern.sub(repl, text)
     for term, alias in _ordered_terms(terms):
         if term in text:
             text = text.replace(term, alias)
     return text
 
 
-def redact_db(db_path, terms) -> int:
-    """对**副本库**脱敏：所有文本列替换，然后 `VACUUM`（旧页里的原文不留）。返回改动的行数。"""
-    if not terms:
+def _portable_path(text: str, root: pathlib.Path) -> str:
+    """一个**绝对路径值** → 包内写法（仓库相对 posix / `~/…`）；其余原样返回。
+
+    与 `path_rules` 的区别：这里改的是**整个字段值**，所以能顺手把分隔符归一成 `/`
+    —— 库随包搬到 Linux 后 `out\\_jobs\\j1\\progress.jsonl` 会被当成一个文件名，
+    反斜杠在那里不是分隔符。日志/正文里只做前缀替换（`path_rules`），不碰分隔符。
+    """
+    for base, prefix in ((pathlib.Path(root), ""), (pathlib.Path.home(), "~/")):
+        for form in (str(base), str(base).replace("\\", "/")):
+            if not text.casefold().startswith(form.casefold()):
+                continue
+            rest = text[len(form):].lstrip("\\/").replace("\\", "/")
+            return prefix + rest
+    return text
+
+
+def _walk_paths(obj, root: pathlib.Path):
+    """递归把 JSON 里的绝对路径值换成包内写法（`jobs.payload` 的 `stats.input` 是嵌两层的那种）。"""
+    if isinstance(obj, str):
+        return _portable_path(obj, root)
+    if isinstance(obj, list):
+        return [_walk_paths(item, root) for item in obj]
+    if isinstance(obj, dict):
+        return {key: _walk_paths(value, root) for key, value in obj.items()}
+    return obj
+
+
+def _redact_job_paths(con, root: pathlib.Path) -> int:
+    """`jobs.payload` 的路径字段（`input` / `progress` / `console` / `stats.*`）换包内写法。
+
+    为什么不靠 `path_rules` 的正则一把梭：那只能换掉前缀，剩下的分隔符还是 Windows 的，
+    Linux 上读不出来——JSON 里是**值**，可以整串归一，就按值改。
+    """
+    changed = 0
+    for rowid, payload in con.execute("SELECT rowid, payload FROM jobs").fetchall():
+        try:
+            rec = json.loads(payload)
+        except (TypeError, ValueError):
+            continue
+        if not isinstance(rec, dict):
+            continue
+        new = _walk_paths(rec, root)
+        if new == rec:
+            continue
+        con.execute("UPDATE jobs SET payload=? WHERE rowid=?",
+                    (json.dumps(new, ensure_ascii=False), rowid))
+        changed += 1
+    return changed
+
+
+def redact_db(db_path, terms, rules=(), root=None) -> int:
+    """对**副本库**脱敏：所有文本列改写（操作人 → 化名、本机路径 → 包内写法），
+    然后 `VACUUM`（旧页里的原文不留）。返回改动的行数。
+
+    逐行读改写而不是 `UPDATE … replace()`：路径要按正则换（两种分隔符、前后缀），
+    SQL 的 `replace` 做不到；行数只有百级，代价可忽略。
+    `root` 给定时另跑一遍 `_redact_job_paths`（任务记录的路径值要整串归一成 posix）。
+    """
+    if not terms and not rules and root is None:
         return 0
     con = sqlite3.connect(str(db_path))
     changed = 0
     try:
         con.execute("PRAGMA journal_mode=DELETE")          # 副本不跟 -wal 走
+        if root is not None:
+            try:
+                changed += _redact_job_paths(con, pathlib.Path(root))
+            except sqlite3.Error:                          # 老库缺 jobs 表
+                pass
         tables = [r[0] for r in con.execute(
             "SELECT name FROM sqlite_master WHERE type='table'")]
         for table in tables:
             if table.startswith("sqlite_"):
                 continue
             for column in _text_columns(con, table):
-                for term, alias in _ordered_terms(terms):
-                    cur = con.execute(
-                        f'UPDATE "{table}" SET "{column}" = replace("{column}", ?, ?)'
-                        f' WHERE instr("{column}", ?) > 0',
-                        (term, alias, term))
-                    changed += max(cur.rowcount or 0, 0)
+                rows = con.execute(
+                    f'SELECT rowid, "{column}" FROM "{table}"').fetchall()
+                for rowid, value in rows:
+                    if not isinstance(value, str) or not value:
+                        continue
+                    new = redact_text(value, terms, rules)
+                    if new == value:
+                        continue
+                    con.execute(
+                        f'UPDATE "{table}" SET "{column}"=? WHERE rowid=?', (new, rowid))
+                    changed += 1
         con.commit()
         con.execute("VACUUM")                              # 重建文件：自由页里的原文也清掉
     finally:
@@ -341,14 +466,14 @@ def _render_records(root: pathlib.Path, files, db_copy: pathlib.Path,
     return mapping
 
 
-def _redact_file(src: pathlib.Path, dst: pathlib.Path, terms) -> bool:
+def _redact_file(src: pathlib.Path, dst: pathlib.Path, terms, rules=()) -> bool:
     """把一份数据文本的替换结果写到 `dst`；没变化返回 False（原件直接进包）。"""
     raw = src.read_bytes()
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError:
         return False
-    new = redact_text(text, terms)
+    new = redact_text(text, terms, rules)
     if new == text:
         return False
     dst.parent.mkdir(parents=True, exist_ok=True)
@@ -363,20 +488,25 @@ def stage_redacted(root: pathlib.Path, files, stage: pathlib.Path,
     只碰**副本**：主库走 backup API 复制（真库只读一次，名单也从副本上取），
     数据文本按 `TEXT_SUFFIXES` 换一份，`审批记录.md` 用脱敏库重渲染。
     真库、真产物一个字节都不动。
+
+    本机路径（`path_rules`）与操作人**共用**这条管线，但开关分得开：库里没有真实操作人时
+    名字不换，路径照样要换——老的 `jobs.payload` 里存的就是绝对路径。
     """
     mapping: dict[pathlib.Path, pathlib.Path] = {}
     db = state_db(root)
     copy = stage / "out" / "_state" / state_store.DB_NAME
+    rules = path_rules(root)
     if db.is_file():
         _copy_db(db, copy)
         terms = redaction_terms(copy, extra_terms)      # 名单从副本取：真库只读，不开写口
     else:
         terms = _extra_terms(extra_terms)               # 库不在，至少把追加词换掉
     rows = 0
-    if terms and db.is_file():
-        rows = redact_db(copy, terms)
+    if db.is_file():
+        rows = redact_db(copy, terms, rules, root)
         mapping[db] = copy
-        mapping.update(_render_records(root, files, copy, stage))
+        if terms:
+            mapping.update(_render_records(root, files, copy, stage))
     for f in files:
         if f in mapping:
             continue
@@ -385,7 +515,7 @@ def stage_redacted(root: pathlib.Path, files, stage: pathlib.Path,
             continue
         if f.suffix.lower() not in TEXT_SUFFIXES:
             continue
-        if _redact_file(f, stage / rel, terms):
+        if _redact_file(f, stage / rel, terms, rules):
             mapping[f] = stage / rel
     return mapping, terms, rows
 
@@ -395,7 +525,57 @@ def _data_member(name: str) -> bool:
     return any(name.startswith(f"wenheng/{p}/") for p in DATA_PREFIXES)
 
 
-def _scan_sqlite(raw: bytes, workdir: pathlib.Path, member: str, terms) -> list[dict]:
+def _path_checks(root: pathlib.Path | None = None) -> list[dict]:
+    """要扫的「绝对路径 / 本机信息」判据：`[{label, scope, literal?/pattern?}]`。
+
+    两档范围（理由写在模块头「路径与用户名」）：
+      · `PATH_SCOPE_ALL`——本机实际路径（仓库根与家目录的两种字面写法）：全包扫。
+        代码里写死开发机根目录同样是外发本机信息（`tools/*.py` 那 7 处就是这么来的）。
+      · `PATH_SCOPE_DATA`——通用形态（盘符 / `/home/` / `/Users/`）：只扫数据面与库。
+        代码/文档里的 `C:\\Users\\xxx` 是举例与占位，不是泄漏。
+    """
+    base = pathlib.Path(root) if root is not None else ROOT
+    home = pathlib.Path.home()
+    checks: list[dict] = []
+    for label, path in (("本机工作区路径", base), ("本机用户目录", home)):
+        for form in dict.fromkeys(_sep_forms(path)):      # 无反斜杠的路径两种写法相同，别重复报
+            checks.append({"label": label, "scope": PATH_SCOPE_ALL, "literal": form})
+    for label, pattern in (("盘符路径", DRIVE_RE), ("用户目录路径", UNIX_HOME_RE)):
+        checks.append({"label": label, "scope": PATH_SCOPE_DATA, "pattern": pattern})
+    return checks
+
+
+def _text_hits(text: str, checks) -> list[dict]:
+    """一段文本里命中了几次、第一个样本长什么样（报告里要能直接看出漏的是什么）。"""
+    hits = []
+    for check in checks:
+        if "literal" in check:
+            needle = check["literal"].decode("utf-8")
+            n = text.count(needle)
+            sample = needle
+        else:
+            found = check["pattern"].findall(text)
+            n = len(found)
+            first = check["pattern"].search(text)
+            sample = first.group(0) if first else ""
+        if n:
+            hits.append({"term": check["label"], "count": n, "sample": sample})
+    return hits
+
+
+def _is_text_member(name: str) -> bool:
+    """正文类成员（判据按扩展名，与 `TEXT_SUFFIXES` 同一张表）。
+
+    🔴 正则判据**只扫正文**：`.png` / `.docx` / `.parquet` / `.xlsx` 是压缩或二进制，
+    按 `errors="ignore"` 解出来的"文本"里会随机出现 `X:/` 这样的字节巧合
+    （实测 202607 报告初稿 docx 命中 98 次），那会把闸门变成噪声。
+    本机路径这类**字面**判据不受此限——它们按字节扫，二进制里也认得出来。
+    """
+    return pathlib.PurePosixPath(name).suffix.lower() in TEXT_SUFFIXES
+
+
+def _scan_sqlite(raw: bytes, workdir: pathlib.Path, member: str, terms,
+                 checks=()) -> list[dict]:
     """库内**所有文本列**逐格找（能报到表.列）；再比字节命中数，抓自由页残留。"""
     path = workdir / "scan.sqlite"
     path.write_bytes(raw)
@@ -421,6 +601,13 @@ def _scan_sqlite(raw: bytes, workdir: pathlib.Path, member: str, terms) -> list[
                                  "term": term,
                                  "count": sum(t.count(term) for t in texts)})
                     seen_bytes[term] += sum(t.encode("utf-8").count(needle) for t in texts)
+                if not checks:
+                    continue
+                texts = [str(r[0]) for r in con.execute(
+                    f'SELECT "{column}" FROM "{table}"').fetchall()
+                    if isinstance(r[0], str)]
+                for hit in _text_hits("\n".join(texts), checks):
+                    hits.append({"member": member, "where": f"{table}.{column}", **hit})
     finally:
         con.close()
     for term in terms:
@@ -431,39 +618,54 @@ def _scan_sqlite(raw: bytes, workdir: pathlib.Path, member: str, terms) -> list[
     return hits
 
 
-def scan_package(pkg: pathlib.Path, terms) -> list[dict]:
-    """包里还有没有真实操作人。`terms` 的**键**是脱敏前采集的真实名字。
+def scan_package(pkg: pathlib.Path, terms, root: pathlib.Path | None = None) -> list[dict]:
+    """包里还有没有真实操作人与本机绝对路径。`terms` 的**键**是脱敏前采集的真实名字。
 
     - 数据面（`out/`、`input/`）的每个成员按 UTF-8 字节扫，`.sqlite` 另按文本列逐格扫；
     - 非 ASCII 的词（真实姓名，不是 `admin` / `demo` 这类角色标识）**全包扫**：
       代码与文档里出现人名同样是外发人名；
+    - 路径判据按 `_path_checks()` 的两档范围扫（本机实际路径全包、通用形态只看数据面）；
     - `.docx` / `.parquet` 这类压缩/二进制内容扫不到——它们是产物，不是操作人记录。
-    返回 `[{member, where?, term, count}]`（空 = 干净）。
+    返回 `[{member, where?, term, count}]`（空 = 干净）；路径命中另有 `sample`。
     """
     ascii_terms = {t for t in terms if t.isascii()}
     name_terms = {t for t in terms if not t.isascii()}
+    all_checks = _path_checks(root)
     hits: list[dict] = []
     with tarfile.open(pkg) as tf, tempfile.TemporaryDirectory(prefix="wenheng-scan-") as td:
         workdir = pathlib.Path(td)
         for member in tf.getmembers():
             if not member.isfile():
                 continue
+            data = _data_member(member.name)
             scope = set(name_terms)
-            if _data_member(member.name):
+            if data:
                 scope |= ascii_terms
-            if not scope:
+            checks = [c for c in all_checks if data or c["scope"] == PATH_SCOPE_ALL]
+            if not scope and not checks:
                 continue
             handle = tf.extractfile(member)
             if handle is None:
                 continue
             raw = handle.read()
             if member.name.endswith(".sqlite"):
-                hits += _scan_sqlite(raw, workdir, member.name, scope)
+                hits += _scan_sqlite(raw, workdir, member.name, scope, checks)
                 continue
             for term in sorted(scope):
                 n = raw.count(term.encode("utf-8"))
                 if n:
                     hits.append({"member": member.name, "term": term, "count": n})
+            for check in checks:
+                if "literal" not in check:          # 正则判据只扫正文，见 `_is_text_member`
+                    continue
+                n = raw.count(check["literal"])
+                if n:
+                    hits.append({"member": member.name, "term": check["label"],
+                                 "count": n, "sample": check["literal"].decode("utf-8")})
+            pattern_checks = [c for c in checks if "pattern" in c]
+            if pattern_checks and _is_text_member(member.name):
+                for hit in _text_hits(raw.decode("utf-8", errors="ignore"), pattern_checks):
+                    hits.append({"member": member.name, **hit})
     return hits
 
 
@@ -516,28 +718,30 @@ def build(root: pathlib.Path, outdir: pathlib.Path, include_data: bool = True,
         mapping: dict[pathlib.Path, pathlib.Path] = {}
         if include_data and redact:
             mapping, terms, rows = stage_redacted(root, files, stage, extra_terms)
+            db = state_db(root)
             if terms:
-                db = state_db(root)
                 aliases = "、".join(f"{k} → {v}" for k, v in _ordered_terms(terms))
-                db_note = f"已脱敏 {rows} 处（VACUUM）" if db in mapping else "不在，未复制"
-                text_n = sum(1 for k in mapping if k != db)
                 print(f"[脱敏] 真实操作人/指定词 {len(terms)} 个：{aliases}")
-                print(f"[脱敏] 库副本：{db_note}；数据文本替换 {text_n} 个文件")
             else:
                 print("[脱敏] 库里没有采集到真实操作人名——无名字可换，扫描也无从判"
                       "（要换批注里的人名请用 --redact-term）")
+            db_note = f"已改写 {rows} 行（VACUUM）" if db in mapping else "不在，未复制"
+            text_n = sum(1 for k in mapping if k != db)
+            print(f"[脱敏] 库副本：{db_note}；数据文本改写 {text_n} 个文件"
+                  "（操作人化名 + 本机绝对路径 → 仓库相对 / `~/`）")
         with tarfile.open(pkg, "w:gz") as tf:
             for f in files:
                 src = mapping.get(f, f)
                 tf.add(src, arcname=str(pathlib.Path("wenheng") / f.relative_to(root)),
                        recursive=False)
         if include_data and redact:
-            hits = scan_package(pkg, terms)
+            hits = scan_package(pkg, terms, root)
             if hits:
                 pkg.unlink(missing_ok=True)
                 (outdir / (name + ".sha256")).unlink(missing_ok=True)
                 raise LeakError(hits)
-            print(f"[检查] 泄漏扫描：0 命中（判据：脱敏前的真实操作人名 {len(terms)} 个）")
+            print(f"[检查] 泄漏扫描：0 命中（判据：操作人名 {len(terms)} 个 + "
+                  "本机路径全包 / 通用绝对路径数据面）")
     digest = hashlib.sha256(pkg.read_bytes()).hexdigest()
     (outdir / (name + ".sha256")).write_text(f"{digest}  {name}\n", encoding="utf-8")
     return pkg
@@ -554,12 +758,13 @@ def git_dirty(root: pathlib.Path) -> bool:
 
 
 def _report_leaks(hits) -> None:
-    print(f"[失败] 包内仍有真实操作人：{len(hits)} 处（包已删除，别外发）")
+    print(f"[失败] 包内仍有不该外发的内容：{len(hits)} 处（包已删除，别外发）")
     for hit in hits:
         where = f"（{hit['where']}）" if hit.get("where") else ""
-        print(f"  · {hit['member']}{where}：{hit['term']} × {hit['count']}")
+        sample = f"  「{hit['sample']}」" if hit.get("sample") else ""
+        print(f"  · {hit['member']}{where}：{hit['term']} × {hit['count']}{sample}")
     print("  → 脱敏没覆盖到的位置请看 tools/make_deploy_pkg.py 的 TEXT_SUFFIXES / DATA_PREFIXES；"
-          "自由文本里的姓名用 --redact-term 追加")
+          "自由文本里的姓名用 --redact-term 追加；扫描范围与理由见 `_path_checks`")
 
 
 def main(argv=None) -> int:
@@ -588,7 +793,8 @@ def main(argv=None) -> int:
         print("[警告] 工作区有未提交改动 —— 包里带的是在途代码，"
               "要打正式包先 commit（或确认这就是你要发的版本）")
     if include_data and not redact and state_db(ROOT).is_file():
-        print("[警告] --no-redact：包里会带上真实操作人名（库 actor 列 / 审批记录.md / 数据文件），"
+        print("[警告] --no-redact：包里会带上真实操作人名（库 actor 列 / 审批记录.md / 数据文件）"
+              "与本机绝对路径（库内 jobs.payload / 运行日志），"
               "**这个包不能外发**；本次不做泄漏扫描。")
 
     outdir = pathlib.Path(a.out) if a.out else ROOT.parent

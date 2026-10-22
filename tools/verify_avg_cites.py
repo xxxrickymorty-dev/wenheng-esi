@@ -23,7 +23,7 @@ import openpyxl
 warnings.filterwarnings("ignore")
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-ROOT = pathlib.Path(r"C:\Users\damn\Desktop\首届高校图书馆")
+ROOT = pathlib.Path(__file__).resolve().parents[2]    # 工作区根（本文件在 wenheng/tools/ 下）
 BK = ROOT / "归档" / "台账备份"
 # 对「回填前」与「回填后（仅篇均被引）」两份中间态，验证只有 sheet14 变化。
 ORI = BK / "云大全学科排名、阈值动态检测表.回填篇均被引前.bak.xlsx"

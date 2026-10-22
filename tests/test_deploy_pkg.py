@@ -105,7 +105,9 @@ def _demo_repo(tmp_path, *, signer="admin", filler="demo", extra=None):
     store.set_fill(db, "202607", "正文/p1::当期机构总数",
                    {"value": "10428", "by": filler, "at": "2026-10-19 14:48:46"})
     store.put_job(db, {"id": "j1", "period": "202607", "actor": filler,
-                       "status": "completed", "created_at": "2026-10-19 10:11:53"})
+                       "status": "completed", "created_at": "2026-10-19 10:11:53",
+                       # 老记录里存的是绝对路径（本票要处理的那一类）
+                       "input": str(root / "input" / pkg.ledger_mod.LEDGER_NAME)})
     return root, db
 
 
@@ -328,3 +330,85 @@ class Test脱敏:
         installed = _unpack(p, tmp_path / "unpacked")
         md = (installed / "out/202607" / RECORD).read_text(encoding="utf-8")
         assert "admin" in md                                     # 自用备份：名字原样留着
+
+
+class Test路径与用户名:
+    """2026-10-22 第二票：包里出现本机绝对路径 / 用户名同样不能外发。
+
+    两档范围（理由见 `tools/make_deploy_pkg.py` 模块头）：
+    本机实际路径全包扫，通用形态（盘符 / `/home/` / `/Users/`）只看数据面。
+    """
+
+    def test_数据面与本机路径换成仓库相对(self, tmp_path):
+        root, _db = _demo_repo(tmp_path)
+        abs_input = str(root / "input" / pkg.ledger_mod.LEDGER_NAME)
+        _write(root / "out/202607/audit_record.json",
+               json.dumps({"out_dir": str(root / "out/202607"), "ledger": abs_input},
+                          ensure_ascii=False))
+
+        p = pkg.build(root, tmp_path / "pkg", include_data=True, name="d.tar.gz")
+        installed = _unpack(p, tmp_path / "unpacked")
+
+        rec = json.loads((installed / "out/202607/audit_record.json").read_text(encoding="utf-8"))
+        assert rec["out_dir"].replace("\\", "/") == "out/202607"     # 仓库根前缀去掉
+        # 数据面文本只去前缀（分隔符原样留着：日志与正文里的路径不保证是字段值）；
+        # 真正要在部署机上解析的是库里的任务记录，那条见下面。
+        assert rec["ledger"].replace("\\", "/") == f"input/{pkg.ledger_mod.LEDGER_NAME}"
+        assert not pkg.DRIVE_RE.search(json.dumps(rec, ensure_ascii=False))
+
+        # 库里的老记录（payload 存绝对路径）换成**posix** 仓库相对：
+        # 部署机是 Linux，`out\_jobs\…` 在那里会被当成一个文件名。
+        job_payload = json.loads(_rows(
+            installed / "out/_state/wenheng.sqlite", "SELECT payload FROM jobs")[0][0])
+        assert job_payload["input"] == f"input/{pkg.ledger_mod.LEDGER_NAME}"
+        assert not pkg.DRIVE_RE.search(json.dumps(job_payload, ensure_ascii=False))
+
+    def test_数据面植入本机用户目录就打包失败(self, tmp_path):
+        """判据是「一个本机路径都不剩」：脱敏覆盖不到的位置必须让打包失败。"""
+        root, _db = _demo_repo(tmp_path, extra={
+            "out/202607/导出的路径.txt":
+                "打开 C:\\Users\\someone\\Desktop\\wenheng\\out\\202607\\报告初稿.docx\n"})
+        out = tmp_path / "pkg"
+        try:
+            pkg.build(root, out, include_data=True, name="leak-path.tar.gz")
+        except pkg.LeakError as exc:
+            assert any("导出的路径.txt" in h["member"] for h in exc.hits)
+            assert any(h["term"] == "盘符路径" for h in exc.hits)
+            assert all(h["count"] >= 1 for h in exc.hits)
+        else:
+            raise AssertionError("带本机路径的包必须打包失败")
+        assert not (out / "leak-path.tar.gz").exists()
+        assert not (out / "leak-path.tar.gz.sha256").exists()
+
+    def test_代码与文档里的通用前缀不算泄漏(self, tmp_path):
+        """`C:/Users/xxx` 是 docstring 里的常见举例；把它算命中，闸门会永远红。"""
+        root, _db = _demo_repo(tmp_path, extra={
+            "docs/部署手册.md": "示例：数据放在 `C:/Users/xxx/Desktop/wenheng/input/` 下。\n"})
+        p = pkg.build(root, tmp_path / "pkg", include_data=True, name="d.tar.gz")
+        installed = _unpack(p, tmp_path / "unpacked")
+        assert (installed / "docs/部署手册.md").exists()
+        assert pkg.scan_package(p, {}, root) == []
+
+    def test_本机实际路径在代码里也拦(self, tmp_path):
+        """通用前缀可以举例，**本机真实路径**不行——代码里写死开发机根目录同样是外发本机信息。"""
+        root, _db = _demo_repo(tmp_path)
+        _write(root / "docs/笔记.md", f"截图取自 {root}/out/202607\n")
+        try:
+            pkg.build(root, tmp_path / "pkg", include_data=True, name="leak-doc.tar.gz")
+        except pkg.LeakError as exc:
+            assert any("笔记.md" in h["member"] for h in exc.hits)
+            assert any(h["term"] == "本机工作区路径" for h in exc.hits)
+        else:
+            raise AssertionError("代码/文档里出现本机真实路径也要打包失败")
+
+    def test_家目录写法换成代字号(self, tmp_path):
+        """家目录（`%USERPROFILE%` / `$HOME` 的展开形态）不是仓库路径，换成 `~/` 保留可读性。"""
+        root, _db = _demo_repo(tmp_path)
+        home = pathlib.Path.home()
+        _write(root / "out/202607/env_note.txt", f"缓存位于 {home / 'AppData' / 'cache'}\n")
+
+        p = pkg.build(root, tmp_path / "pkg", include_data=True, name="d.tar.gz")
+        installed = _unpack(p, tmp_path / "unpacked")
+        note = (installed / "out/202607/env_note.txt").read_text(encoding="utf-8")
+        assert note.startswith("缓存位于 ~/"), note
+        assert str(home) not in note and "Users" not in note

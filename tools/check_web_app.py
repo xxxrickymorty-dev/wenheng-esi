@@ -34,6 +34,7 @@ import os
 import pathlib
 import re
 import sys
+import tempfile
 import urllib.parse
 import urllib.request
 
@@ -68,8 +69,10 @@ if not PASS:
 if not OPERATOR_PASS:
     print("未找到操作员口令：请在 server/.env 设置 WENHENG_OPERATOR_PASS，或设 WENHENG_E2E_OPERATOR_PASS 后重跑。")
     raise SystemExit(2)
-SHOT = pathlib.Path(r"C:\Users\damn\AppData\Local\Temp\opencode\wh_app.png")
-SHOT_SHELF = pathlib.Path(r"C:\Users\damn\AppData\Local\Temp\opencode\wh_shelf.png")
+_SHOT_DIR = pathlib.Path(tempfile.gettempdir()) / "opencode"     # 本机临时目录，不写死在仓库里
+_SHOT_DIR.mkdir(parents=True, exist_ok=True)
+SHOT = _SHOT_DIR / "wh_app.png"
+SHOT_SHELF = _SHOT_DIR / "wh_shelf.png"
 
 failures = []
 
