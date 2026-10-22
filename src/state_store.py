@@ -438,6 +438,30 @@ def list_history(db_path, period) -> list[dict]:
              "actor": row["actor"], "payload": _loads(row["payload"], {})} for row in rows]
 
 
+def get_history(db_path, period) -> list[dict]:
+    """一期的审批历史，**`approval.json` 的形状**（只有 payload，不带库内 id）；按写入序。
+
+    给「这一期已经没有签单行、只剩历史」的读口用（`server/approval.py::read()`）：
+    撤回是**保留历史**的，所以历史比签单行活得久；未签不等于没发生过事。
+    与 `list_history()` 的差别只在形状——那个带 id 给审计/清理指名删行。
+    库不存在 → `[]`（读口不造文件）。
+    """
+    period = str(period)
+    path = pathlib.Path(db_path)
+    if not path.is_file():
+        return []
+    with _open(path) as (con, degraded, _note):
+        try:
+            rows = con.execute(
+                "SELECT payload FROM approval_history WHERE period=? ORDER BY id",
+                (period,)).fetchall()
+        except sqlite3.Error:
+            if degraded:
+                return []
+            raise
+    return [_loads(row[0], {}) for row in rows]
+
+
 def delete_history(db_path, period, ids) -> int:
     """按期次**指名**删历史行（清理工具用）；返回实际删掉的条数。
 

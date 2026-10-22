@@ -77,16 +77,22 @@ def fingerprint(out_dir):
 def read(out_dir):
     """读审批记录（库为准）；没有则返回未签单的初始结构（不落盘、不建库）。
 
+    🔴 **未签 ≠ 没有历史**：撤回是保留历史的，清理 e2e 残留也只会删签单行、留真人流水。
+    所以没有签单行时**仍把库里的历史带回来**（`signed=False`、其余字段形状不变）——
+    否则《审批记录.md》会渲染成一张空表，库里明明发生过的事在审计件上消失。
+
     注意：**不读 `approval.json`**——迁移靠 `tools/state_import.py` 显式做，
     隐式回读会造出两个真相（ADR-0012 决定 10）。
     """
     out_dir, period = _key(out_dir)
-    rec = state_store.get_approval(_db(out_dir), period)
+    db = _db(out_dir)
+    rec = state_store.get_approval(db, period)
     if isinstance(rec, dict):
         rec.setdefault("history", [])
         return rec
     return {"signed": False, "actor": "", "signed_at": "", "note": "",
-            "manual_ack": False, "snapshot": {}, "fingerprint": {}, "history": []}
+            "manual_ack": False, "snapshot": {}, "fingerprint": {},
+            "history": state_store.get_history(db, period)}
 
 
 def status(out_dir, rec=None):
