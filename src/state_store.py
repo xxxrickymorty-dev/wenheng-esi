@@ -414,6 +414,55 @@ def replace_approval(db_path, period, record) -> None:
                  str(entry.get("actor") or ""), _dumps(entry)))
 
 
+def list_history(db_path, period) -> list[dict]:
+    """一期的审批历史（**带库内 id**，按 id 序）——审计 / 清理工具用。
+
+    与 `get_approval()['history']` 的区别：那个是 `approval.json` 的形状（无 id），供前端与导出；
+    这个要能指名删哪一行，所以把 `id` 一起给出来，`payload` 保持原样字典。
+    库不存在 → `[]`（读口不造文件）。
+    """
+    period = str(period)
+    path = pathlib.Path(db_path)
+    if not path.is_file():
+        return []
+    with _open(path) as (con, degraded, _note):
+        try:
+            rows = con.execute(
+                "SELECT id, ts, action, actor, payload FROM approval_history"
+                " WHERE period=? ORDER BY id", (period,)).fetchall()
+        except sqlite3.Error:
+            if degraded:
+                return []
+            raise
+    return [{"id": int(row["id"]), "ts": row["ts"], "action": row["action"],
+             "actor": row["actor"], "payload": _loads(row["payload"], {})} for row in rows]
+
+
+def delete_history(db_path, period, ids) -> int:
+    """按期次**指名**删历史行（清理工具用）；返回实际删掉的条数。
+
+    只删 `ids` 里的行、且必须属于 `period`——防「删错期次」这类不可恢复的失误。
+    """
+    period = str(period)
+    wanted = [int(i) for i in ids]
+    if not wanted:
+        return 0
+    marks = ",".join("?" for _ in wanted)
+    with _write(db_path) as con:
+        cur = con.execute(
+            f"DELETE FROM approval_history WHERE period=? AND id IN ({marks})",
+            [period, *wanted])
+        return cur.rowcount
+
+
+def delete_approval(db_path, period) -> bool:
+    """删掉一期的**当前签单行**（历史不动；e2e 残留清理用）；有行 → True。"""
+    period = str(period)
+    with _write(db_path) as con:
+        cur = con.execute("DELETE FROM approvals WHERE period=?", (period,))
+        return cur.rowcount > 0
+
+
 # --------------------------------------------------------------- 复核（存疑）
 def get_reviews(db_path, period) -> dict:
     """一期的存疑标记：`{位置: {state, by, at}}`（与旧 `review.json` 同形）；无 → `{}`。"""
