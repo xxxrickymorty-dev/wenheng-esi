@@ -46,6 +46,26 @@ uv run python -m src.sentences --regress 202609
 
 退出码：`0` 通过；`2` 档位表非法（stderr 打「档位表报错：…」）；`--regress` 有差异返回 `1`。
 
+### 评审现场那一下：改一个边界，看句子变、数字不动
+
+```powershell
+# 1) 复制一份、只把 prox_level 的 [40,60) / [60,80) 边界从 60 挪到 50
+$s = Get-Content config\wording_tiers.yaml -Raw -Encoding UTF8
+$s = $s.Replace('- {lo: 40.0, hi: 60.0, word: "较高"}', '- {lo: 40.0, hi: 50.0, word: "较高"}')
+$s = $s.Replace('- {lo: 60.0, hi: 80.0, word: "很高"}', '- {lo: 50.0, hi: 80.0, word: "很高"}')
+[System.IO.File]::WriteAllText("$PWD\tmp\_wording_tiers_demo.yaml", $s, (New-Object System.Text.UTF8Encoding($false)))
+
+# 2) 用改过的表出句（p2 从「接近度较高」变「接近度很高」，56.74% / 14 / 1.61% 一个不动）
+uv run python -m src.sentences --preview --period 202609 --tiers tmp\_wording_tiers_demo.yaml
+
+# 3) 数字不动的机器判据（也可直接跑用例）
+uv run python -m pytest tests/test_wording_tiers.py -k 改档位 -q
+```
+
+⚠ **PowerShell 读写中文 YAML 别偷懒**：`Get-Content` 不加 `-Encoding UTF8` 会按系统码页（GBK）读，
+写回去就成乱码、PyYAML 直接报「found character '%'」。上面的 `WriteAllText` + `UTF8Encoding($false)`
+是刻意写成不带 BOM 的；手工改表请用 UTF-8 编辑器。
+
 ## 4. 校验规则（不过就炸，不静默回退）
 
 `validate_tiers()` 是唯一闸。任一不满足即抛 `TierError`，**指出是哪张表、第几档、哪个字段**：
