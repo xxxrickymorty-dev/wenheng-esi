@@ -246,6 +246,7 @@ def render_md(db_path, *, kind="all", scope=None) -> str:
         "",
         f"> 由 `tools/sources_index.py export-md` 于 {_now()} 从状态库渲染。",
         "> 只记路径 / 大小 / 修改时间 / 指纹；**原始文件不入库**，原始包原地不动（ADR-0012 决定 2）。",
+        "> `scope` 是期次目录名或 InCites 快照目录名；`_root`＝直接躺在该目录根下的散件。",
         "> 与 `src/inventory.py`（件级盘点：某期四件齐不齐）分工不同：这份判「每个文件是不是原来那一份」。",
         "",
     ]
