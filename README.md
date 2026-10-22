@@ -16,7 +16,7 @@
 - `tools/compare_reports.py` — 原件 vs 生成稿的结构对照（骨架/图表/表格/占位）
 - `tests/` — pytest 回归套件，见下文「测试」
 
-> 配套 Agent 技能：`C:\Users\damn\.agents\skills\wenheng-esi-report`（操作流程 + 踩坑清单），
+> 配套 Agent 技能：`~/.agents/skills/wenheng-esi-report`（操作流程 + 踩坑清单），
 > 新会话直接说「复现第 N 期报告 / 跑当期报告」即可。校验脚本已收编进本仓库 `tools/`。
 
 ## 运行

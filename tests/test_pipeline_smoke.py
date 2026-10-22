@@ -85,6 +85,9 @@ def test_端到端全链路(latest_ledger, tmp_path):
     assert log["charts"] > 0
     assert len(log["ledger_sha256"]) == 64, "run_log 应留台账指纹（R-24）"
     assert log["ledger_mutated"] is False
+    # run_log.json 随部署包外发：输入路径必须是仓库相对写法（口径见 src/display_path.py）。
+    assert run_pipeline.display_path.is_absolute(log["input"]) is False, \
+        f"run_log 的 input 带上了本机绝对路径：{log['input']}"
 
     for name in ("table2.csv", "overview_facts.json", "red_slots.json",
                  "红色件清单.md", "预测回测报告.md"):

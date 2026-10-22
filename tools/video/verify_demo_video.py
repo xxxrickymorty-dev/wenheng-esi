@@ -3,12 +3,15 @@
 
 静态卡段背景是浅色 #EFEDE7，若字幕没渲染/渲染成方块，底部不会有成片暗像素。
 """
-import io, pathlib, subprocess, sys
+import io, os, pathlib, subprocess, sys
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 from PIL import Image
 
-BIN = r"C:/Users/damn/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin"
-FFMPEG = BIN + "/ffmpeg.exe"
+WINGET_BIN = (pathlib.Path.home() / "AppData/Local/Microsoft/WinGet/Packages"
+              / "Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe"
+              / "ffmpeg-8.1.1-full_build/bin")
+BIN = pathlib.Path(os.environ.get("WENHENG_FFMPEG_BIN") or WINGET_BIN)
+FFMPEG = str(BIN / "ffmpeg.exe")
 BASE = pathlib.Path(__file__).resolve().parents[3]      # 工作区根（tools/<x>/ 上溯三层）
 FINAL = BASE / "申报材料/文衡演示视频_20260917.mp4"
 TMP = BASE / "wenheng/tmp/video/_frames"

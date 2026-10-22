@@ -5,7 +5,7 @@
 输入：tmp/video/seg_list.json + 各段 .webm
 输出：申报材料/文衡演示视频_20260917.mp4
 """
-import io, json, pathlib, subprocess, sys
+import io, json, os, pathlib, subprocess, sys, tempfile
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
@@ -15,9 +15,14 @@ BUILD = VID / "build"
 BUILD.mkdir(parents=True, exist_ok=True)
 FINAL = BASE / "申报材料/文衡演示视频_20260917.mp4"
 
-BIN = r"C:/Users/damn/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin"
-FFMPEG = BIN + "/ffmpeg.exe"
-FFPROBE = BIN + "/ffprobe.exe"
+#: ffmpeg 目录：写死 `C:/Users/<用户名>/…` 等于把本机账号打进仓库，改按家目录推导同一位置；
+#: 装在别处时用 `WENHENG_FFMPEG_BIN` 覆盖。
+WINGET_BIN = (pathlib.Path.home() / "AppData/Local/Microsoft/WinGet/Packages"
+              / "Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe"
+              / "ffmpeg-8.1.1-full_build/bin")
+BIN = pathlib.Path(os.environ.get("WENHENG_FFMPEG_BIN") or WINGET_BIN)
+FFMPEG = str(BIN / "ffmpeg.exe")
+FFPROBE = str(BIN / "ffprobe.exe")
 FONTS = r"C:/Windows/Fonts"
 FONT = "Microsoft YaHei"
 
@@ -28,7 +33,7 @@ CARD_SEGS = {0: ("s0", 8), 1: ("s1a", 13), 2: ("s1b", 13), 3: ("s1c", 13),
              9: ("s7", 45), 11: ("s9", 30), 12: ("s10", 12)}
 CARDS_DIR = VID / "cards"
 #: 字幕走纯 ASCII 路径：libass 对中文路径 + 冒号转义都不友好，放 Temp 最稳
-SUB_DIR = pathlib.Path(r"C:/Users/damn/AppData/Local/Temp/wenheng_video")
+SUB_DIR = pathlib.Path(tempfile.gettempdir()) / "wenheng_video"
 SUB_DIR.mkdir(parents=True, exist_ok=True)
 
 # 每段字幕（按顺序；每条在该段内均分时长）
