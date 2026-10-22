@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """监测表 Workbook 适配器：`LedgerView` 的**回落**实现（parquet 产物缺席时用）。
 
-只读：`parse_ledger.load_ledger` 现场解析 `input/<期次>/监测表.xlsx`（openpyxl 只读），
+只读：`parse_ledger.load_ledger` 现场解析运行时输入（口径唯一实现在 `ledger.runtime_path()`，
+即 `input/云大全学科排名、阈值动态检测表.xlsx` 母本；2026-10-13 起 input/ 只放它，见 ADR-0007），
 不写任何文件。规范名与 `DataSource`（parquet 面）对齐：转置排名表 pivot 成宽表、
 千分之一阈值走宽表——因此两个适配器对取数引擎**同协议同值**
 （`tests/test_flexible.py::Test两适配器同值` 有逐值等价用例）。
@@ -29,7 +30,10 @@ def _pivot(df, value: str):
 
 
 class WorkbookView:
-    """`input/<期次>/监测表.xlsx` 的只读 `LedgerView`。"""
+    """运行时输入（`input/云大全学科排名、阈值动态检测表.xlsx` 母本）的只读 `LedgerView`。
+
+    路径口径唯一实现在 `ledger.runtime_path()`，本类不自拼路径。
+    """
 
     def __init__(self, path):
         import parse_ledger                                        # noqa: PLC0415

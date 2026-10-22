@@ -7,7 +7,7 @@
 
 `LedgerView` 是取数引擎（`queries.py`）认的**数据面协议**；本模块的 `DataSource`
 是主适配器（parquet 产物），`flexible/workbook.py` 的 `WorkbookView` 是回落适配器
-（`input/<期次>/监测表.xlsx` 直读，parquet 缺席时用）——两者同协议、同值。
+（`input/云大全学科排名、阈值动态检测表.xlsx` 母本直读，parquet 缺席时用）——两者同协议、同值。
 
 「来源链」是灵活报告可信度的落点：每个数字都带
 `{dataset, metric, discipline, period, origin_sheet}`，
@@ -144,7 +144,8 @@ class LedgerView(Protocol):
 
     两适配器同协议、同值：
     - `DataSource`（本模块）＝ `out/<期次>/` parquet 产物，主；
-    - `WorkbookView`（`flexible/workbook.py`）＝ `input/<期次>/监测表.xlsx` 直读，回落。
+    - `WorkbookView`（`flexible/workbook.py`）＝ 运行时母本
+      `input/云大全学科排名、阈值动态检测表.xlsx` 直读，回落。
     引擎只调这组读方法——不碰文件系统、不 import openpyxl。
     """
 
