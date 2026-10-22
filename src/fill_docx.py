@@ -309,10 +309,8 @@ def insert_charts(doc, period_dir, discipline, slots, chart_dir, native=None):
                 img_p, spec["xml"], doc, w_cm=8.26, h_cm=5.50, doc_pr_id=docpr,
                 name=f"原生图表-{slug}-{fname}", xlsx_blob=spec.get("xlsx"))
             docpr += 1
-            kind = "原生图表"
         else:
             img_p.add_run().add_picture(str(png), width=Cm(8.26))
-            kind = "图"
         # 归一：只保留 图题（首个非空段）+ 本图段；清除骨架残留（空段/碎字），保 2 段结构防行高超限
         # 注意：cell.paragraphs 每次返回新包装对象，必须比较底层 XML 元素
         cap_el = next((p._element for p in cell.paragraphs if p.text.strip()), None)
@@ -1114,8 +1112,9 @@ def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026�
     只有演示站的「重出报告」显式传入 `manual_inputs.json` —— 那份产物是
     「叠加了人工输入、待签发」的稿子，两者不能混为一谈。
 
-    `native_charts`：None＝看环境变量 `WENHENG_NATIVE_CHARTS`（默认关，走 PNG）；
-    True/False 显式指定。**关时产物与从前逐字节一致**（PNG 路径未动）。
+    `native_charts`：None＝看环境变量 `WENHENG_NATIVE_CHARTS`
+    （**默认开**；设 `0/false/no/off` 回 PNG）。
+    **整段兜底**：原生规格构建抛异常时整体回落 PNG，绝不产出缺图的报告。
     """
     ledger_dir = pathlib.Path(ledger_dir)
 

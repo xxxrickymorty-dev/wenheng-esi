@@ -2,8 +2,9 @@
 """复刻报告的原生图表规格：C1–C6（96 个学科槽位）＋ 正文总览图。
 
 与 `charts.py` 的分工：
-  · `charts.py` ＝ matplotlib PNG 路径（**默认路径，一个字节不动**）；
-  · 本模块 ＝ 同一批数据 → 原生 chart part 的 XML + 内嵌工作簿（可选路径，开关控制）。
+  · `charts.py` ＝ matplotlib PNG 路径（**网站/前端的唯一图源**，出图步骤不删）；
+  · 本模块 ＝ 同一批数据 → 原生 chart part 的 XML + 内嵌工作簿
+    （**报告初稿的默认路径**，rick 2026-10-23 定；`WENHENG_NATIVE_CHARTS=0` 可回 PNG）。
 
 口径必须与 PNG 路径一致（窗口 7 期、差分多取一期、纵轴逐学科自适应、颜色、图例位置、
 数值标签）。纵轴范围/刻度直接复用 `native_charts.auto_axis`（它内部复用
