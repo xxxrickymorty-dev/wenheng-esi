@@ -667,8 +667,8 @@ def archive_period(out_dir, archive_root=None):
     man = collect_artifacts(out)
     man["archived_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
     man["period"] = period
-    (dst / "manifest.json").write_text(
-        json.dumps(man, ensure_ascii=False, indent=1), encoding="utf-8")
+    atomic_io.write_text_atomic(
+        dst / "manifest.json", json.dumps(man, ensure_ascii=False, indent=1))
     return {"archive": str(dst), "n_files": man["n_files"], "bytes": man["bytes"]}
 
 

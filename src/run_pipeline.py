@@ -100,7 +100,7 @@ def _write_diagnosis(led, P, out_dir, report, n_fail, run_dir=None):
              "自愈逾限、拦停不出稿的那份《诊断报告》由 `src/agent/flow.py` 产出，两者不是一回事。"]
     p = pathlib.Path(out_dir) / "诊断报告.md"
     try:
-        p.write_text("\n".join(body), encoding="utf-8")
+        atomic_io.write_text_atomic(p, "\n".join(body))
         return p
     except OSError:
         return None
@@ -194,8 +194,8 @@ def main(ledger_path, out_root="out", run_backtest=False, period=None):
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
         meta["period_current"] = P
         meta["period_prev"] = Q
-        meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=1, default=str),
-                             encoding="utf-8")
+        atomic_io.write_text_atomic(
+            meta_path, json.dumps(meta, ensure_ascii=False, indent=1, default=str))
         print(f"      补跑：当期={P} 上期={Q}（meta 已按被补跑期写回）")
     print(f"      大表 22×11 → {out_dir}/table2.csv；概述事实 → overview_facts.json")
     _emit("compute", "计算大表与概述", "done", "大表 22 学科 × 11 列 · 概述 11 项数字事实")

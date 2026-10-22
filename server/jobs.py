@@ -35,6 +35,7 @@ from . import config
 
 #: config 导入时已把 src/ 放进 sys.path，这里可直接拿到 agent 层
 from agent import states as agent_states
+from src import atomic_io
 from src import forecast_choice
 from src import state_store
 
@@ -187,8 +188,8 @@ def create_job(period, input_path, actor, backtest=False):
     d.mkdir(parents=True, exist_ok=True)
     snapshot_path = d / "forecast_choice.json"
     snapshot = _forecast_choice_snapshot(period)
-    snapshot_path.write_text(
-        json.dumps(snapshot, ensure_ascii=False, indent=1), encoding="utf-8")
+    atomic_io.write_text_atomic(
+        snapshot_path, json.dumps(snapshot, ensure_ascii=False, indent=1))
     job = {
         "id": jid, "period": period, "input": str(input_path), "actor": actor,
         "backtest": bool(backtest), "status": agent_states.RUNNING,
