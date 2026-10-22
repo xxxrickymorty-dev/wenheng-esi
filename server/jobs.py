@@ -36,6 +36,7 @@ from . import config
 #: config 导入时已把 src/ 放进 sys.path，这里可直接拿到 agent 层
 from agent import states as agent_states
 from src import atomic_io
+from src import display_path
 from src import forecast_choice
 from src import state_store
 
@@ -98,9 +99,12 @@ def _relocate(j):
     （`首届高校图书馆“AI+管理服务”\\wenheng` → `首届高校图书馆\\wenheng`）。
     路径失效后进度事件与控制台输出全读不到，档案页会静默显示"没有进度事件"——
     读起来像"这次运行不是演示站发起的"，其实是**文件还在、指针过期**。
-    （入库时 payload 原样保存绝对路径，所以这条读侧修补照旧：库不会把指针变新。）
 
-    只在本职目录里找同名文件；找不到就保持原值（让上层显示为缺失，而不是假装存在）。
+    2026-10-22 起新记录存**仓库相对**（`display_path.to_repo_relative`），
+    `_restore_paths()` 已把它们拼回仓库下的绝对路径；这里的同名修补仍然要留：
+    记录随部署包搬到另一台机器后，旧绝对路径照样失效，而文件就躺在
+    `out/_jobs/<id>/` 里。只在本职目录里找同名文件；找不到就保持原值
+    （让上层显示为缺失，而不是假装存在）。
     """
     for key in ("progress", "console"):
         old = j.get(key)
@@ -115,10 +119,38 @@ def _relocate(j):
     return j
 
 
+#: 任务记录里存**仓库相对写法**的字段（`display_path` 口径）：
+#: `input` 是母本/当期核对副本，`progress` / `console` 是 `out/_jobs/<id>/` 下的两个文件。
+#: 相对写法在部署包与换机后仍成立；绝对写法只可能是历史记录或仓库外的路径。
+PATH_KEYS = ("input", "progress", "console")
+
+
+def _restore_paths(j):
+    """读侧还原：仓库相对 → 仓库下的**绝对路径**（`progress` / `console` 还要能直接打开）。
+
+    为什么必须还原：`archive.build` / `/api/jobs/{id}/events` / 日志包 / 重跑
+    都把 `job["progress"]`、`job["input"]` 当真实路径用（`pathlib.Path(...)`、
+    `.parent`、`.exists()`）。留着相对写法在"服务不是从仓库根启动"时会解析错。
+
+    绝对写法**原样不动**：历史记录里是旧工作区的绝对路径，改写成 `Path(...)`
+    的字符串会把 `D://旧//…` 归一成 `D:\\旧\\…`，反而动了原文；交给 `_relocate`
+    按同名文件修补。
+    """
+    for key in PATH_KEYS:
+        old = j.get(key)
+        if not isinstance(old, str) or not old.strip():
+            continue
+        if display_path.is_absolute(old):
+            continue
+        j[key] = str(display_path.from_repo_relative(old, config.ROOT))
+    return j
+
+
 def _prepare(j):
-    """读出来的任务记录：状态旧名归一 + 路径重定位（**唯一**的读侧加工点）。"""
+    """读出来的任务记录：状态旧名归一 + 路径还原/重定位（**唯一**的读侧加工点）。"""
     if isinstance(j, dict) and "status" in j:
         j["status"] = agent_states.normalize(j.get("status"))
+        j = _restore_paths(j)
         j = _relocate(j)
     return j
 
@@ -178,6 +210,11 @@ def recover_stale():
             write_job(j)
 
 
+def _display(p):
+    """真实路径 → 记录里存的写法（仓库相对；仓库外才绝对）。口径见 `src/display_path.py`。"""
+    return display_path.to_repo_relative(p, config.ROOT)
+
+
 def create_job(period, input_path, actor, backtest=False):
     if not PERIOD_RE.match(period):
         raise ValueError("期次格式应为 6 位数字，如 202609")
@@ -191,11 +228,15 @@ def create_job(period, input_path, actor, backtest=False):
     atomic_io.write_text_atomic(
         snapshot_path, json.dumps(snapshot, ensure_ascii=False, indent=1))
     job = {
-        "id": jid, "period": period, "input": str(input_path), "actor": actor,
+        "id": jid, "period": period,
+        # 路径一律存**仓库相对**（`display_path` 口径）：记录随部署包走，
+        # 绝对路径换个用户名/换台机器就不成立，还会把本机路径打进包里。
+        "input": _display(input_path),
+        "actor": actor,
         "backtest": bool(backtest), "status": agent_states.RUNNING,
         "created_at": _now(), "started_at": _now(), "finished_at": None,
-        "exit_code": None, "progress": str(d / "progress.jsonl"),
-        "console": str(d / "console.log"),
+        "exit_code": None, "progress": _display(d / "progress.jsonl"),
+        "console": _display(d / "console.log"),
     }
     write_job(job)
     _running.add(jid)
@@ -216,7 +257,9 @@ async def _run(job):
         env["WENHENG_REFERENCE_DOCX"] = config.REFERENCE_DOCX
     # 期次显式传给流水线（2026-10-13 起输入是母本，台账最新期 ≠ 被跑期；
     # `--period` 让大表/图表/预测/报告全部按被跑期切窗——历史期补跑同一口径）。
-    cmd = [config.PYTHON, str(config.PIPELINE), job["input"], "--period", job["period"]]
+    # 记录里是仓库相对写法，起进程前拼回真实路径（子进程 cwd 不必等于仓库根）。
+    ledger = display_path.from_repo_relative(job["input"], config.ROOT)
+    cmd = [config.PYTHON, str(config.PIPELINE), str(ledger), "--period", job["period"]]
     if job.get("backtest"):
         cmd.append("--backtest")
 

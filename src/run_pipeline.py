@@ -25,6 +25,7 @@ import time
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 import atomic_io  # noqa: E402
+import display_path  # noqa: E402
 import forecast_choice  # noqa: E402
 import ledger  # noqa: E402
 import parse_ledger  # noqa: E402
@@ -290,7 +291,10 @@ def main(ledger_path, out_root="out", run_backtest=False, period=None):
         _emit("guard", "原件只读护栏", "failed", ledger_guard["message"])
 
     log = {
-        "period": P, "prev": Q, "input": str(p),
+        "period": P, "prev": Q,
+        # 输入存**仓库相对**：run_log.json 进部署包，绝对路径等于外发本机用户名；
+        # 读方（`server/forecasting.py::_resolve_processed_input`）两种写法都认。
+        "input": display_path.to_repo_relative(p, REPO),
         "assertions_ok": ok, "assertions_fail": n_fail, "missing": missing,
         "ledger_sha256": led_sha0,
         "ledger_mutated": ledger_guard is not None,

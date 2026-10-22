@@ -291,11 +291,14 @@ def repo_display_path(p: pathlib.Path) -> str:
     就是 `REPO/out/_acquisition`）给 `out/_acquisition/<期次>/监测表.xlsx`；
     `WENHENG_ACQ_STATE_DIR` 把状态指到仓库外（临时演练 / 集成测试）时只能给绝对路径。
     只用于显示与落 JSON——读写仍走 `copy_path()` 的真实路径。
+
+    换算本体在 `src/display_path.py`（任务记录也用它，同一口径只写一遍）。
     """
     try:
-        return p.resolve().relative_to(REPO.resolve()).as_posix()
-    except ValueError:
-        return p.as_posix()
+        from src import display_path
+    except ImportError:                                  # 只有 src/ 在 sys.path 上
+        import display_path                              # type: ignore[no-redef]
+    return display_path.to_repo_relative(p, REPO)
 
 
 #: 状态文件写/读重试参数（Windows 并发读锁；测试可调小）

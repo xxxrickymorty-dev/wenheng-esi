@@ -9,6 +9,7 @@
 这组测试钉住「只有一份口径」这件事。最狠的一条是 `TERMINAL is states.TERMINAL`
 ——要求**同一个对象**，不是内容相等；复制一份出来就会红。
 """
+import asyncio
 import pathlib
 import re
 import sqlite3
@@ -17,6 +18,7 @@ import sys
 import pytest
 
 from agent import states
+from src import display_path
 from src import state_store
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
@@ -250,3 +252,72 @@ def test_反斜杠旧路径也能重定位(tmp_path, monkeypatch):
     _put(tmp_path, "j-win", status="completed",
          console="C:\\旧工作区\\wenheng\\out\\_jobs\\j-win\\console.log")
     assert jobs.read_job("j-win")["console"] == str(d / "console.log")
+
+
+# ============================================================ 任务记录的路径写法（2026-10-22）
+# 背景：`jobs.payload.input` 此前存绝对路径（`C:\\Users\\<用户名>\\Desktop\\…`）。
+# 记录随部署包走，换台机器就不成立，还把开发机用户名打进了包——与
+# `out/_acquisition/*.json` 上一票修的是同一类问题。
+def test_旧记录的用户目录绝对路径能重定位(tmp_path, monkeypatch):
+    """历史记录写的是 `C:\\Users\\<用户名>\\…\\out\\_jobs\\<id>\\…`：用户名与工作区都换过
+    之后指针失效，但文件就在本职目录里——读出来必须还指得回真文件。"""
+    monkeypatch.setattr(jobs.config, "JOBS_DIR", tmp_path)
+    d = tmp_path / "j-user"
+    d.mkdir()
+    (d / "progress.jsonl").write_text('{"step": "parse"}\n', encoding="utf-8")
+    old = r"C:\Users\someone\Desktop\首届高校图书馆\wenheng"
+    _put(tmp_path, "j-user", status="completed",
+         progress=old + r"\out\_jobs\j-user\progress.jsonl",
+         console=old + r"\out\_jobs\j-user\console.log")
+
+    j = jobs.read_job("j-user")
+    assert j["progress"] == str(d / "progress.jsonl"), "同名文件在本职目录，应重定位"
+    assert j["console"] == old + r"\out\_jobs\j-user\console.log", \
+        "文件确实不在（没建 console.log），不许假装存在——保持原值让上层显示为缺失"
+
+
+def test_仓库相对记录在部署机上能还原(tmp_path, monkeypatch):
+    """新记录存仓库相对写法；读出来必须能直接用（档案页/SSE/日志包都当真实路径使）。"""
+    monkeypatch.setattr(config, "ROOT", tmp_path)
+    monkeypatch.setattr(config, "JOBS_DIR", tmp_path / "out" / "_jobs")
+    d = tmp_path / "out" / "_jobs" / "j-rel"
+    d.mkdir(parents=True)
+    (d / "progress.jsonl").write_text('{"step": "parse"}\n', encoding="utf-8")
+    _put(tmp_path, "j-rel", status="completed",
+         input="input/云大全学科排名、阈值动态检测表.xlsx",
+         progress="out/_jobs/j-rel/progress.jsonl",
+         console="out/_jobs/j-rel/console.log")
+
+    j = jobs.read_job("j-rel")
+    assert j["progress"] == str(d / "progress.jsonl")
+    assert j["console"] == str(d / "console.log")
+    assert j["input"] == str(tmp_path / "input" / "云大全学科排名、阈值动态检测表.xlsx")
+
+
+def test_新建任务记录里不含盘符与用户名(tmp_path, monkeypatch):
+    """写侧那条：新建任务的 `input`/`progress`/`console` 一律仓库相对。"""
+    monkeypatch.setattr(config, "ROOT", tmp_path)
+    monkeypatch.setattr(config, "OUT_DIR", tmp_path / "out")
+    monkeypatch.setattr(config, "JOBS_DIR", tmp_path / "out" / "_jobs")
+    monkeypatch.setattr(config, "FORECAST_CHOICES_DIR", tmp_path / "out" / "_forecast_choices")
+    monkeypatch.setattr(jobs, "_running", set())
+    monkeypatch.setattr(jobs, "active_job", lambda: None)
+
+    async def no_run(_job):
+        return None
+
+    monkeypatch.setattr(jobs, "_run", no_run)
+    ledger = tmp_path / "input" / "云大全学科排名、阈值动态检测表.xlsx"
+    ledger.parent.mkdir(parents=True)
+    ledger.write_bytes(b"x")
+
+    async def create():
+        return jobs.create_job("209903", ledger, "tester")
+
+    job = asyncio.run(create())
+    for key in jobs.PATH_KEYS:
+        value = job[key]
+        assert not display_path.is_absolute(value), f"{key} 仍存绝对路径：{value}"
+        assert "Users" not in value, f"{key} 带上了本机用户目录：{value}"
+    assert job["input"] == "input/云大全学科排名、阈值动态检测表.xlsx"
+
