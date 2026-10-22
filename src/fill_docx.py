@@ -27,12 +27,25 @@ from docx.table import Table  # noqa: E402
 import charts  # noqa: E402
 import college_stats  # noqa: E402
 import compute  # noqa: E402
+import native_charts  # noqa: E402
 import period as period_mod  # noqa: E402
 import sentences  # noqa: E402
 from parse_ledger import DISCIPLINES_CN, norm_disc_cn  # noqa: E402
 
 CELL_FONT = "楷体"
 CELL_SIZE = Pt(10)
+
+#: 原生图表开关（环境变量）。**默认关** —— 关时走 matplotlib PNG，产物一个字节不变。
+#: 打开：`set WENHENG_NATIVE_CHARTS=1` 或 `--native-charts`（`run_pipeline.py`）。
+NATIVE_CHARTS_ENV = "WENHENG_NATIVE_CHARTS"
+
+
+def native_charts_enabled(explicit=None):
+    """是否走原生图表路径。`explicit` 给了就以它为准（命令行/API 优先于环境变量）。"""
+    if explicit is not None:
+        return bool(explicit)
+    import os  # noqa: PLC0415
+    return os.environ.get(NATIVE_CHARTS_ENV, "").strip().lower() in ("1", "true", "yes", "on")
 
 # 大表列序 → table2 字段
 TABLE2_COLS = ["discipline", "rank_cn_change", "papers", "cnci", "total_cites",
@@ -243,13 +256,22 @@ def _apply_slot_geometry(tbl):
     tbl.autofit = False
 
 
-def insert_charts(doc, period_dir, discipline, slots, chart_dir):
+def _next_docpr_id(doc):
+    """文档里 `wp:docPr/@id` 的下一个可用号（原生图表图形框要唯一 id，否则 Word 报损坏）。"""
+    ids = [int(v) for v in re.findall(r'<wp:docPr[^>]*\bid="(\d+)"', doc.element.xml)]
+    return max(ids, default=0) + 1
+
+
+def insert_charts(doc, period_dir, discipline, slots, chart_dir, native=None):
     """向指定槽位表插入 6 图：填入既有空段（保持 2 段结构，避免行高超限）。
 
     🔴 **不能用 `doc.tables[idx]` 盲取**：学院统计表改成两张后，其后的表序号整体后移
     （2026-09-24 实测：6 张学科图被塞进「被引频次学院统计表」里）。改为按内容找——
     第 k 个「表头以『国内外排名百分位趋势』开头」的表 = `charts.DETAIL_TABLES[k]`；
     槽位标签用**实测序号**（对勘本/在线填按 T<序号> 回查 docx，必须与真实位置一致）。
+
+    `native` 非空时走**原生图表**路径：`{(slug, fname): {"xml":…, "xlsx":…}}` 由
+    `native_report_charts.slot_charts()` 一次算好传入（96 张图共用一份宽表，别逐张读盘）。
     """
     cands = [t for t in doc.tables if t.rows and t.rows[0].cells
              and t.rows[0].cells[0].text.strip().startswith("国内外排名百分位趋势")]
@@ -263,9 +285,11 @@ def insert_charts(doc, period_dir, discipline, slots, chart_dir):
     table_idx = next(i for i, t in enumerate(doc.tables) if t._tbl is tbl._tbl)
     _apply_slot_geometry(tbl)
     slug = charts._slug(discipline)
+    docpr = _next_docpr_id(doc) if native else 0
     for (ri, ci), fname in CHART_SLOTS.items():
+        spec = (native or {}).get((slug, fname))
         png = pathlib.Path(chart_dir) / slug / fname
-        if not png.exists():
+        if spec is None and not png.exists():
             continue
         cell = tbl.rows[ri].cells[ci]
         img_p = None
@@ -275,7 +299,15 @@ def insert_charts(doc, period_dir, discipline, slots, chart_dir):
         if img_p is None:
             img_p = cell.add_paragraph()
         img_p.alignment = 1  # 居中
-        img_p.add_run().add_picture(str(png), width=Cm(8.26))
+        if spec is not None:
+            native_charts.insert_chart_in_paragraph(
+                img_p, spec["xml"], doc, w_cm=8.26, h_cm=5.50, doc_pr_id=docpr,
+                name=f"原生图表-{slug}-{fname}", xlsx_blob=spec.get("xlsx"))
+            docpr += 1
+            kind = "原生图表"
+        else:
+            img_p.add_run().add_picture(str(png), width=Cm(8.26))
+            kind = "图"
         # 归一：只保留 图题（首个非空段）+ 本图段；清除骨架残留（空段/碎字），保 2 段结构防行高超限
         # 注意：cell.paragraphs 每次返回新包装对象，必须比较底层 XML 元素
         cap_el = next((p._element for p in cell.paragraphs if p.text.strip()), None)
@@ -290,7 +322,12 @@ def insert_charts(doc, period_dir, discipline, slots, chart_dir):
                               "source": "母版清理"})
             el.getparent().remove(el)
         slots.append({"location": f"T{table_idx:02d}/r{ri}c{ci}",
-                      "old": "（空槽位）", "new": f"[图] {slug}/{fname}",
+                      "old": "（空槽位）",
+                      "new": f"[图] {slug}/{fname}" + ("（原生图表）" if spec is not None else ""),
+                      # 🔴 source 必须保持 `charts/...`：`agent/audit.manual_slot_checklist`
+                      #    靠这个前缀把图槽排除在「待人工清点」之外（换前缀会让待清点虚高到 115）；
+                      #    `test_chart_preview` 也靠它把槽位反查成可预览的 PNG。
+                      #    原生图表模式下 PNG 照旧生成（网站的唯一图源），所以这个指针仍然有效。
                       "source": f"charts/{slug}/{fname}"})
 
 
@@ -440,14 +477,32 @@ def _insert_picture_after(doc, anchor_para, png, width_cm=13.9):
     return new_p
 
 
-def fill_body_charts(doc, ledger_dir, slots):
-    """正文概览图三张：我校排名（插入）、1%接近度（插入）、1‰潜力（替换旧图）。"""
+def _insert_chart_after(doc, anchor_para, spec, docpr, name):
+    """在锚点段后插入居中的**原生图表**段（`spec` 来自 `native_report_charts.body_charts`）。"""
+    from docx.enum.text import WD_ALIGN_PARAGRAPH  # noqa: PLC0415
+    new_p = doc.add_paragraph()
+    anchor_para._p.addnext(new_p._p)
+    new_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    native_charts.insert_chart_in_paragraph(
+        new_p, spec["xml"], doc, w_cm=spec["w_cm"], h_cm=spec["h_cm"],
+        doc_pr_id=_next_docpr_id(doc), name=name, xlsx_blob=spec.get("xlsx"))
+    return new_p
+
+
+def fill_body_charts(doc, ledger_dir, slots, native=None):
+    """正文概览图三张：我校排名（插入）、1%接近度（插入）、1‰潜力（替换旧图）。
+
+    `native` 非空时优先用**原生图表**（`native_report_charts.body_charts` 的规格），
+    该键缺失就回落 PNG —— 单张失败不会让整份报告缺图。
+    """
+    native = native or {}
     ov = pathlib.Path(ledger_dir) / "charts" / "_overview"
     plan = [
-        ("前1%学科继续保持", ov / "1pct.png", "正文/1%接近度图（新）", 14.3),
+        ("前1%学科继续保持", ov / "1pct.png", "正文/1%接近度图（新）", 14.3, "1pct"),
     ]
-    for anchor, png, label, w in plan:
-        if not png.exists():
+    for anchor, png, label, w, key in plan:
+        spec = native.get(key)
+        if spec is None and not png.exists():
             slots.append({"location": label, "old": "（缺图）", "new": str(png), "source": "charts/_overview"})
             continue
         hit = None
@@ -457,6 +512,11 @@ def fill_body_charts(doc, ledger_dir, slots):
                 break
         if hit is None:
             slots.append({"location": label, "old": "（未找到锚点段落）", "new": str(png), "source": "charts/_overview"})
+            continue
+        if spec is not None:
+            _insert_chart_after(doc, hit, spec, 0, f"原生图表-{key}")
+            slots.append({"location": label, "old": "（无图）", "new": f"[图] {png.name}（原生图表）",
+                          "source": f"charts/_overview/{png.name}"})
             continue
         _insert_picture_after(doc, hit, png, w)
         slots.append({"location": label, "old": "（无图）", "new": f"[图] {png.name}",
@@ -468,7 +528,13 @@ def fill_body_charts(doc, ledger_dir, slots):
         if "我校ESI学科1‰潜力值" in p.text:
             stripped = _strip_images(p) + _strip_chart_runs(p)
             png = ov / "1permille.png"
-            if png.exists():
+            spec = native.get("1permille")
+            if spec is not None:
+                _insert_chart_after(doc, p, spec, 0, "原生图表-1permille")
+                slots.append({"location": "正文/1‰潜力图", "old": f"（母版旧图 ×{stripped}）",
+                              "new": "[图] 1permille.png（原生图表）",
+                              "source": "charts/_overview/1permille.png"})
+            elif png.exists():
                 _insert_picture_after(doc, p, png, 14.5)
                 slots.append({"location": "正文/1‰潜力图", "old": f"（母版旧图 ×{stripped}）",
                               "new": f"[图] {png.name}", "source": f"charts/_overview/1permille.png"})
@@ -476,13 +542,14 @@ def fill_body_charts(doc, ledger_dir, slots):
 
     # —— 对标第4期 fmt（带数据表 / 顶尖论文分布）：新增/替换 ——
     plan2 = [
-        ("我校ESI排名情况", ov / "rank_table.png", "正文/排名情况图（第4期格式·带数据表）", 13.9),
-        ("下图显示的是近期我校主要学科", ov / "trend_table.png", "正文/发展趋势图（第4期格式·带数据表）", 14.5),
-        ("顶尖论文学科分布（篇）", ov / "top_by_subject.png", "正文/顶尖论文·学科分布", 13.5),
-        ("顶尖论文年代分布（篇）", ov / "top_by_year.png", "正文/顶尖论文·年代分布", 13.5),
+        ("我校ESI排名情况", ov / "rank_table.png", "正文/排名情况图（第4期格式·带数据表）", 13.9, "rank_table"),
+        ("下图显示的是近期我校主要学科", ov / "trend_table.png", "正文/发展趋势图（第4期格式·带数据表）", 14.5, "trend_table"),
+        ("顶尖论文学科分布（篇）", ov / "top_by_subject.png", "正文/顶尖论文·学科分布", 13.5, "top_by_subject"),
+        ("顶尖论文年代分布（篇）", ov / "top_by_year.png", "正文/顶尖论文·年代分布", 13.5, "top_by_year"),
     ]
-    for anchor, png, label, w in plan2:
-        if not png.exists():
+    for anchor, png, label, w, key in plan2:
+        spec = native.get(key)
+        if spec is None and not png.exists():
             slots.append({"location": label, "old": "（缺图）", "new": str(png), "source": "charts/_overview"})
             continue
         hit = next((p for p in doc.paragraphs if anchor in p.text), None)
@@ -495,13 +562,19 @@ def fill_body_charts(doc, ledger_dir, slots):
             # 同时删掉「与上期数据相比」段尾部遗留的旧版排名图（ynd_rank.png 已停用）
             for r in list(hit.runs):
                 r._element.getparent().remove(r._element)
+        if spec is not None:
+            _insert_chart_after(doc, hit, spec, 0, f"原生图表-{key}")
+            slots.append({"location": label, "old": f"（替换旧图 ×{stripped}）",
+                          "new": f"[图] {png.name}（原生图表）",
+                          "source": f"charts/_overview/{png.name}"})
+            continue
         _insert_picture_after(doc, hit, png, w)
         slots.append({"location": label, "old": f"（替换旧图 ×{stripped}）", "new": f"[图] {png.name}",
                       "source": f"charts/_overview/{png.name}"})
 
     # —— 学院件（数据源＝馆员《<期次>论文清单》）：两张饼图 + 统计表 + 附录清单表 ——
     warn = []
-    fill_college(doc, ledger_dir, slots, warn)
+    fill_college(doc, ledger_dir, slots, warn, native=native)
     # —— 预测章 4 张模型预测图：替换母版原生图表 ——
     fill_forecast_charts(doc, ledger_dir, slots, warn)
 
@@ -678,8 +751,11 @@ def _college_rule(cell, color):
             f"</w:tcBorders>"))
 
 
-def fill_college(doc, ledger_dir, slots, warns):
-    """学院件：两张贡献度饼图（替换母版旧图）+ 学院统计表（替换空占位）+ 附录清单表。"""
+def fill_college(doc, ledger_dir, slots, warns, native=None):
+    """学院件：两张贡献度饼图（替换母版旧图）+ 学院统计表（替换空占位）+ 附录清单表。
+
+    `native` 里有 `college_cites` / `college_papers` 规格时用**原生饼图/环形图**。
+    """
     ledger_dir = pathlib.Path(ledger_dir)
     m = re.search(r"(\d{6})", ledger_dir.name)
     period = m.group(1) if m else ""
@@ -689,10 +765,14 @@ def fill_college(doc, ledger_dir, slots, warns):
         return
 
     ov = ledger_dir / "charts" / "_overview"
-    for cap_kw, png, label in (
-            ("顶尖论文被引频次学院贡献度", ov / "college_cites.png", "正文/学院贡献度饼图（被引频次）"),
-            ("顶尖论文发文量学院贡献度", ov / "college_papers.png", "正文/学院贡献度饼图（发文量）")):
-        if not png.exists():
+    native = native or {}
+    for cap_kw, png, label, key in (
+            ("顶尖论文被引频次学院贡献度", ov / "college_cites.png", "正文/学院贡献度饼图（被引频次）",
+             "college_cites"),
+            ("顶尖论文发文量学院贡献度", ov / "college_papers.png", "正文/学院贡献度饼图（发文量）",
+             "college_papers")):
+        spec = native.get(key)
+        if spec is None and not png.exists():
             slots.append({"location": label, "old": "（缺图）", "new": str(png),
                           "source": "charts/_overview"})
             continue
@@ -703,7 +783,8 @@ def fill_college(doc, ledger_dir, slots, warns):
             # 必须整段就是标题：正文句里含「…被引频次学院贡献度…」会被误命中（p36 教训）
             if t == cap_kw or (t.startswith(cap_kw) and len(t) < 40):
                 for q in paras[i + 1:i + 4]:
-                    if q._element.findall(".//" + qn("a:blip")):
+                    if q._element.findall(".//" + qn("a:blip")) \
+                            or q._element.findall(".//" + qn("c:chart")):
                         tgt = q
                         break
                 break
@@ -711,12 +792,21 @@ def fill_college(doc, ledger_dir, slots, warns):
             slots.append({"location": label, "old": "（未找到母版旧图）", "new": str(png),
                           "source": "charts/_overview"})
             continue
-        n = _strip_images(tgt)
+        n = _strip_images(tgt) + _strip_chart_runs(tgt)
         from docx.enum.text import WD_ALIGN_PARAGRAPH  # noqa: PLC0415
         tgt.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        tgt.add_run().add_picture(str(png), width=Cm(13.6))
-        slots.append({"location": label, "old": f"（母版旧图 ×{n}）", "new": f"[图] {png.name}",
-                      "source": f"charts/_overview/{png.name}"})
+        if spec is not None:
+            native_charts.insert_chart_in_paragraph(
+                tgt, spec["xml"], doc, w_cm=spec["w_cm"], h_cm=spec["h_cm"],
+                doc_pr_id=_next_docpr_id(doc), name=f"原生图表-{key}",
+                xlsx_blob=spec.get("xlsx"))
+            slots.append({"location": label, "old": f"（母版旧图 ×{n}）",
+                          "new": f"[图] {png.name}（原生图表）",
+                          "source": f"charts/_overview/{png.name}"})
+        else:
+            tgt.add_run().add_picture(str(png), width=Cm(13.6))
+            slots.append({"location": label, "old": f"（母版旧图 ×{n}）", "new": f"[图] {png.name}",
+                          "source": f"charts/_overview/{png.name}"})
 
     # —— 学院统计表：**两张**（论文量降序 / 被引频次降序，对照出版件第 7 页），
     #    替换「学院顶尖论文发文量与被引频次统计表」后方的空占位表 ——
@@ -1011,13 +1101,16 @@ def fill_header_month(doc, period_dir, slots):
 
 def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026第5期.docx",
          out_path=None, charts_only_demo=False, period_override=None,
-         manual_inputs=None):
+         manual_inputs=None, native_charts=None):
     """`manual_inputs` 为 None 时**不应用**任何人工填值（机器稿保持纯机器产出）。
 
     ⚠ 这条默认值是刻意的：`run_pipeline` / `agent/tools.run_docx` 都不传它，
     所以流水线产出的永远是带 `【手工：…】` 占位的机器稿，可复现、可断言。
     只有演示站的「重出报告」显式传入 `manual_inputs.json` —— 那份产物是
     「叠加了人工输入、待签发」的稿子，两者不能混为一谈。
+
+    `native_charts`：None＝看环境变量 `WENHENG_NATIVE_CHARTS`（默认关，走 PNG）；
+    True/False 显式指定。**关时产物与从前逐字节一致**（PNG 路径未动）。
     """
     ledger_dir = pathlib.Path(ledger_dir)
 
@@ -1049,11 +1142,29 @@ def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026�
     if n_mat:
         print(f"      矩阵表 T20：填入 {n_mat} 格（数据源＝InCites 历史快照，见 matrix.json）")
     fill_texts(doc, ledger_dir, slots, period, prev, facts, fills=manual_inputs)
-    warns = fill_body_charts(doc, ledger_dir, slots)
+    native_specs = None
+    native_body = None
+    if native_charts_enabled(native_charts):
+        import native_report_charts  # noqa: PLC0415
+        native_specs = native_report_charts.slot_charts(ledger_dir, end_period=period)
+        if charts_only_demo:
+            native_specs = {k: v for k, v in native_specs.items()
+                            if k[0] == charts._slug("Chemistry")}
+        try:
+            _cs = college_stats.load(ledger_dir, period, save=False)
+        except Exception:                                          # noqa: BLE001
+            _cs = None
+        native_body = native_report_charts.body_charts(ledger_dir, end_period=period,
+                                                       college=_cs)
+        slots.append({"location": "正文/图表渲染路径", "old": "matplotlib PNG",
+                      "new": f"Word 原生图表（{len(native_specs)} 张槽位图 + "
+                             f"{len(native_body)} 张正文图，可右键「编辑数据」）",
+                      "source": f"{NATIVE_CHARTS_ENV}=1"})
+    warns = fill_body_charts(doc, ledger_dir, slots, native=native_body)
     charts_used = ["Chemistry"] if charts_only_demo else DETAIL_TABLES
     chart_dir = ledger_dir / "charts"
     for disc in charts_used:
-        insert_charts(doc, ledger_dir, disc, slots, chart_dir)
+        insert_charts(doc, ledger_dir, disc, slots, chart_dir, native=native_specs)
 
     # 带图段落统一「放宽固定行距」（rick 反馈：exact 行距段里内嵌图会压字）；表格槽位图不动。
     n_relax = relax_image_line_spacing(doc)
