@@ -6,7 +6,7 @@
 
 ## 技术栈（已定，别换）
 
-React + TypeScript + Vite + **自研 CSS 令牌系统**（`src/index.css`：云大绿/朱砂双主题、版式与组件类）。
+React + TypeScript + Vite + **自研 CSS 令牌系统**（`src/index.css`：绿蓝双主题〔蓝·场／绿·器，2026-10-17 rick 拍板〕、版式与组件类）。
 Tailwind / shadcn / GSAP 已于 2026-10-01 清除（装了不用＝第二套视觉语言 + 认知负担）；
 将来遇到真正复杂的交互原语（如非做不可的对话框），只复制**单个** Radix 组件进仓库、用项目类名样式化，不再整包装。
 后端是 `../server/`（FastAPI）——本工程**只做视图**：不预测、不换算、不聚合，
