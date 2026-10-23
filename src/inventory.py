@@ -124,13 +124,16 @@ def _has_papers(period: str, *, repo_root: pathlib.Path, data_root: pathlib.Path
     `数据与复现/<期次>论文清单.xlsx`（college_stats 的 source 可证），
     此前只查 `input/<期次>/顶尖论文清单.csv` → 把已完成的期次误报「缺 1 件」。
     2026-10-13：input/ 只放母本——当期核对区（`out/_acquisition/<期次>/`）也算取数口。
-    现在的判据：核对区下有 csv/xlsx 清单，或 `数据与复现/<期次>论文清单.xlsx`。
+    2026-10-23：清单统一收进 `数据与复现/论文清单/`，判据同时认新旧两处。
     """
     acq_dir = repo_root / "out" / "_acquisition" / period
     if acq_dir.is_dir() and (any(acq_dir.glob("*论文清单*.xlsx"))
                              or any(acq_dir.glob("*论文清单*.csv"))):
         return True
-    return any(data_root.glob(f"{period}*论文清单*.xlsx"))
+    for d in (data_root / "论文清单", data_root):
+        if d.is_dir() and any(d.glob(f"{period}*论文清单*.xlsx")):
+            return True
+    return False
 
 
 def _has_incites(period: str, data_root: pathlib.Path) -> bool:

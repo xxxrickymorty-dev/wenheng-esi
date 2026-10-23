@@ -334,13 +334,55 @@ def main(ledger_path, out_root="out", run_backtest=False, period=None):
     return 0 if ok else 1
 
 
-if __name__ == "__main__":
-    argv = sys.argv[1:]
+_USAGE = """用法：
+  uv run python src\\run_pipeline.py [台账.xlsx] [--period YYYYMM] [--backtest]
+
+  不带位置参数 → 用母本台账；输出永远写 out/<期次>/（会先撤下当期上版成品）。
+"""
+
+
+def _parse_argv(argv):
+    """严格解析参数：**未知参数直接报错**。
+
+    2026-10-23 血案：误敲 `--help`（本脚本没有这个开关）被当成"可选参数"忽略，
+    于是它拿默认台账直接开跑，把 out/202609 的成品撤进了 _superseded 并重算了一半。
+    所以这里改成：只认白名单，其他一律退出码 2 —— 宁可跑不起来，也不许悄悄跑。
+    """
     period = None
-    if "--period" in argv:
-        i = argv.index("--period")
-        period = argv[i + 1] if i + 1 < len(argv) else None
-        del argv[i:i + 2]
-    positional = [a for a in argv if not a.startswith("--")]
-    src = positional[0] if positional else str(ledger.runtime_path(REPO))
-    sys.exit(main(src, run_backtest="--backtest" in argv, period=period))
+    backtest = False
+    positional = []
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a in ("-h", "--help"):
+            print(_USAGE)
+            raise SystemExit(0)
+        if a == "--period":
+            if i + 1 >= len(argv) or not argv[i + 1].strip().isdigit():
+                print("参数错误：--period 后面要跟六位期次，如 --period 202609", file=sys.stderr)
+                print(_USAGE, file=sys.stderr)
+                raise SystemExit(2)
+            period = argv[i + 1].strip()
+            i += 2
+            continue
+        if a == "--backtest":
+            backtest = True
+            i += 1
+            continue
+        if a.startswith("-"):
+            print(f"参数错误：不认识的参数 {a}", file=sys.stderr)
+            print(_USAGE, file=sys.stderr)
+            raise SystemExit(2)
+        positional.append(a)
+        i += 1
+    if len(positional) > 1:
+        print(f"参数错误：只接受一个台账路径，收到 {len(positional)} 个：{positional}", file=sys.stderr)
+        print(_USAGE, file=sys.stderr)
+        raise SystemExit(2)
+    return (positional[0] if positional else None), period, backtest
+
+
+if __name__ == "__main__":
+    src, period, backtest = _parse_argv(sys.argv[1:])
+    sys.exit(main(src or str(ledger.runtime_path(REPO)),
+                  run_backtest=backtest, period=period))

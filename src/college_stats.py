@@ -34,7 +34,11 @@ from collections import Counter
 import openpyxl
 import yaml
 
-CAND_DIRS = ("input/{period}", "../数据与复现", "out/{period}", "{ledger_dir}")
+#: 清单搜索目录（按优先级）——2026-10-23 起清单统一收进 `数据与复现/论文清单/`，
+#: 文件名带期次（`202609论文清单.xlsx`）；其余位置保留兜底，免得老期次找不到。
+#: 学院归属由馆员判定（论文网站逐篇核对），本模块只做**名称归一 + 签认**，不猜归属。
+LIST_DIRS = ("../数据与复现/论文清单", "input/{period}", "../数据与复现",
+             "out/{period}", "{ledger_dir}")
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -145,14 +149,21 @@ def normalize_unit(unit: str, m: dict) -> str:
 
 # ──────────────────────────────────────────────────────────── 解析
 def find_list(ledger_dir: pathlib.Path, period: str) -> pathlib.Path | None:
-    """按优先级找清单：input/<期次>/ → ../数据与复现/ → out/<期次>/。"""
-    for d in (pathlib.Path("input") / period, pathlib.Path("..") / "数据与复现",
-              pathlib.Path(ledger_dir), pathlib.Path(ledger_dir).parent / period):
+    """按优先级找清单：`数据与复现/论文清单/` → input/<期次>/ → ../数据与复现/ → out/<期次>/。
+
+    同一目录里若既有 `202609论文清单.xlsx` 又有不带期次的旧名 `论文清单.xlsx`，
+    **优先取带期次的那份**——避免同目录多期清单时拿错期。
+    """
+    dirs = [pathlib.Path(s.format(period=period, ledger_dir=ledger_dir)) for s in LIST_DIRS]
+    dirs.append(pathlib.Path(ledger_dir).parent / period)
+    for d in dirs:
         if not d.is_dir():
             continue
         hits = sorted(q for q in d.glob("*论文清单*.xlsx") if not q.name.startswith("~$"))
-        if hits:
-            return hits[0]
+        if not hits:
+            continue
+        exact = [q for q in hits if q.name.startswith(period)]
+        return (exact or hits)[0]
     return None
 
 
