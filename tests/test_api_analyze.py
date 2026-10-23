@@ -12,7 +12,7 @@ for p in (str(REPO), str(REPO / "src")):
 
 from _guard_registry import skip_unless                         # noqa: E402
 import sentences                                              # noqa: E402
-import local_llm                                              # noqa: E402
+import shield_primitives                                              # noqa: E402
 from server.app import resolve_period_dir                     # noqa: E402
 from server import app as app_module, config                  # noqa: E402
 
@@ -50,7 +50,7 @@ class TestSentences组装:
 class Test数字防护盾:
     def test_protect把数字换成占位符(self):
         text = "我校共有5个学科进入ESI前1%，接近度为33.87%。"
-        protected, mapping = local_llm.protect(text)
+        protected, mapping = shield_primitives.protect(text)
         assert "[[1]]" in protected
         assert "[[2]]" in protected
         assert "[[3]]" in protected
@@ -60,21 +60,21 @@ class Test数字防护盾:
 
     def test_restore还原(self):
         text = "我校共有5个学科进入ESI前1%。"
-        protected, mapping = local_llm.protect(text)
-        restored = local_llm.restore(protected, mapping)
+        protected, mapping = shield_primitives.protect(text)
+        restored = shield_primitives.restore(protected, mapping)
         assert restored == text
 
     def test_validate通过(self):
         text = "共有5个学科。"
-        protected, mapping = local_llm.protect(text)
-        ok, detail = local_llm.validate(protected, mapping)
+        protected, mapping = shield_primitives.protect(text)
+        ok, detail = shield_primitives.validate(protected, mapping)
         assert ok is True
 
     def test_validate捕获篡改(self):
         text = "共有5个学科。"
-        protected, mapping = local_llm.protect(text)
+        protected, mapping = shield_primitives.protect(text)
         tampered = protected.replace("[[1]]", "99")
-        ok, detail = local_llm.validate(tampered, mapping)
+        ok, detail = shield_primitives.validate(tampered, mapping)
         assert ok is False
         assert detail["missing"] or detail["stray"]
 
