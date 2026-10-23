@@ -969,6 +969,17 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 .stg-big{font-family:var(--serif);font-size:clamp(20px,2.2vw,26px);font-weight:600;color:var(--zhu);line-height:1.35}
 .stg-sub{color:var(--ink-2);font-size:14.5px;margin-top:2px}
 .stg-cta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
+/* ⓘ 进操作行行尾（票 13）：贴行右端，弹层向上开——盖住它解释的控件区，
+   不跨界压下一节标题，也不再被视口左缘裁切 */
+.stg-cta>.info{margin-left:auto}
+.stg-cta>.info .info-body{top:auto;bottom:26px}
+/* 窄屏：ⓘ 换行到行尾时弹层不再以 20px 图标为锚（会伸出卡左缘），
+   改锚整条操作行、铺满行宽 */
+@media (max-width:900px){
+  .stg-cta{position:relative}
+  .stg-cta>.info{position:static}
+  .stg-cta>.info .info-body{left:0;right:0;width:auto;bottom:30px}
+}
 .chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .stg-prog{display:flex;align-items:center;gap:12px;margin-top:12px}
 .stg-packs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;

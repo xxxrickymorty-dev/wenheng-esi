@@ -479,11 +479,11 @@ export function Acquire({ period, onOpenPeriod }: {
                             onClick={() => { void preflightWithBrowser().then(() => load(true)) }}>
                       <Icon name="refresh" size={20} />{view === 'blocked' ? '重新检查' : '检查一下（会自动开浏览器）'}
                     </button>
+                    <Info label="开始前检查什么" end>
+                      <p>检查下载数据专用的浏览器是否开着、两家网站是否已登录、这一期的数据更新了没有。登录由馆员手动完成；本页不接触、不保存账号密码。检查通过后才能开始。</p>
+                      <p>「数据期」怎么判：拿网站当前的数据集更新日{pf?.data?.deploy_date ? `（${pf.data.deploy_date}）` : ''}按双月节拍归到期次，和你要取的这一期比；对不上就不发车。</p>
+                    </Info>
                   </div>
-                  <Info label="开始前检查什么" end>
-                    <p>检查下载数据专用的浏览器是否开着、两家网站是否已登录、这一期的数据更新了没有。登录由馆员手动完成；本页不接触、不保存账号密码。检查通过后才能开始。</p>
-                    <p>「数据期」怎么判：拿网站当前的数据集更新日{pf?.data?.deploy_date ? `（${pf.data.deploy_date}）` : ''}按双月节拍归到期次，和你要取的这一期比；对不上就不发车。</p>
-                  </Info>
                 </div>
               </div></div>
             </section>
