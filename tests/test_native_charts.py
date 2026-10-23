@@ -55,6 +55,24 @@ def test_柱状图不许用折线专属的数值标签位():
         assert bad not in xml
 
 
+def test_柱状图类目轴显式水平():
+    """不写 `rot` 时 Word 会把六位期次自动斜排 45°（2026-10-23 实测），必须写 rot="0"。"""
+    xml = _bar()
+    cat = xml[xml.find("<c:catAx>"):xml.find("</c:catAx>")]
+    assert '<a:bodyPr rot="0"/>' in cat
+    # 折线图的类目轴保持不写 rot（没有斜排问题，别动）
+    line = nc.line_chart_xml([{"name": "x", "values": [1.0, 2.0], "color": "4472C4"}], ["a", "b"])
+    line_cat = line[line.find("<c:catAx>"):line.find("</c:catAx>")]
+    assert 'rot="0"' not in line_cat
+
+
+def test_柱状图拒绝_bestFit_标签位():
+    """2026-10-23 实测：柱状图写 `dLblPos="bestFit"` 同样让 Word 拒开整份文档。"""
+    xml = _bar().replace('<c:dLblPos val="outEnd"/>', '<c:dLblPos val="bestFit"/>')
+    with pytest.raises(ValueError, match="bestFit"):
+        nc.validate_chart_xml(xml)
+
+
 def test_折线图数值标签用上方位():
     xml = nc.line_chart_xml([{"name": "x", "values": [1.0, 2.0], "color": "4472C4"}], ["a", "b"])
     assert '<c:dLblPos val="t"/>' in xml
@@ -231,6 +249,21 @@ def test_96_个槽位图规格齐且都能过_schema_护栏():
         nc.validate_chart_xml(spec["xml"])            # 不合法会抛
         assert spec["xlsx"][:2] == b"PK", f"{slug}/{fname} 的内嵌工作簿不是 xlsx"
         assert len(spec["xlsx"]) > 2000
+
+
+def test_柱状图槽位的期次标签水平_分区占比用整数标签():
+    """2026-10-23 视觉验收：C3/C5 期次不得斜排；C6 12 个标签在 8.26cm 内只能标整数百分比。"""
+    if not _ledger_available():
+        skip_unless("缺 out/202607 宽表（槽位图规格需要真实台账产物）", _ledger_available)
+    specs = nrc.slot_charts(LEDGER, end_period="202607", disciplines=["Chemistry"])
+    for fname in ("papers_new.png", "top_papers.png", "q_dist.png"):
+        xml = specs[("Chemistry", fname)]["xml"]
+        cat = xml[xml.find("<c:catAx>"):xml.find("</c:catAx>")]
+        assert '<a:bodyPr rot="0"/>' in cat, fname
+    q = specs[("Chemistry", "q_dist.png")]["xml"]
+    assert q.count('formatCode="0&quot;%&quot;"') == 3      # 3 个系列的数值标签
+    assert '<c:legendPos val="t"/>' in q
+    assert '<c:numFmt formatCode="0.##&quot;%&quot;"' not in q
 
 
 # ============================================================ ③ 插进母版

@@ -28,11 +28,13 @@
 
 ## 做不到的部分（原生图表能力边界，详见 `docs/native-charts-第一段验证报告.md`）
 
-1. **数值标签不自动避让**：Word/WPS 没有「躲开别的字」的机制。统一用 `dLblPos="t"`，
-   边缘点的标签会压到纵轴刻度字（matplotlib 路径靠 `_labels` 的贪心避让解决）。
-2. **图例只能选固定位**（`t/b/l/r/tr`），不能「坐标区外右上、距轴顶 1 行字高」。
-3. **图上自由文字**（如 1‰ 图的「ESI1‰ 基线 = 100%」）没有对应 API。
-4. 字体走 `a:latin/a:ea`，Word 缺字时用**它自己的**回退，不能像 matplotlib 那样钉住字体列表。
+1. **数值标签不自动避让**：Word/WPS 没有「躲开别的字」的机制。统一用 `dLblPos="outEnd"`
+   （折线用 `t`），密集分组柱只能降精度（C6 用整数百分比，见 `native_report_charts.c6_q_dist`）。
+2. **类目轴标签不写 `rot` 会被自动斜排**：Word 在放不下时把六位期次转 45°（2026-10-23 实测），
+   柱状图必须显式写 `<a:bodyPr rot="0"/>`（`bar_chart_xml` 已默认）。
+3. **图例只能选固定位**（`t/b/l/r/tr`），不能「坐标区外右上、距轴顶 1 行字高」。
+4. **图上自由文字**（如 1‰ 图的「ESI1‰ 基线 = 100%」）没有对应 API。
+5. 字体走 `a:latin/a:ea`，Word 缺字时用**它自己的**回退，不能像 matplotlib 那样钉住字体列表。
 """
 from __future__ import annotations
 
@@ -254,7 +256,9 @@ def _val_axis(ax_id, cross_ax, *, pos="l", reverse=False, numfmt="General", majo
 def _cat_axis(ax_id, cross_ax, *, pos="b", reverse=False, crosses=None, fontsize=8,
               rotation=None, delete=False):
     tx = _txpr(fontsize)
-    if rotation:
+    if rotation is not None:
+        # 🔴 省略 rot 时 Word **会在标签放不下时自动斜排**（2026-10-23 实测：
+        #    7 个六位期次在 8.26cm 图里被转 45°）。显式写 rot="0" 才是锁死水平。
         tx = tx.replace('<a:bodyPr/>', f'<a:bodyPr rot="{rotation}"/>')
     # 🔴 反向纵轴时 `crosses=autoZero` 会把**类目轴顶到上方**（0 落在轴外，Word 贴最近端）
     cross = crosses or "autoZero"
@@ -350,13 +354,17 @@ def bar_chart_xml(series, cats, *, bar_dir="col", grouping="clustered", gap_widt
                   overlap=-27, numfmt="General", label_fmt=None, reverse=False,
                   major_unit=None, minimum=None, maximum=None, title=None,
                   legend_pos="r", cat_fontsize=8, val_fontsize=8, gridlines=True,
-                  cat_rotation=None):
+                  cat_rotation=None, cat_crosses=None):
     """柱状图：`bar_dir` col（竖）/ bar（横）；`grouping` clustered / stacked / percentStacked。
 
     🔴 `gap_width` 的 schema 上限是 **500**（ST_GapAmount，0–500）。matplotlib 的
     `width=0.16` 换算成 gapWidth 是 (1−0.16)/0.16×100 = **525 > 500** —— 超范围会让
     **Word 拒绝打开整份文档**（2026-10-22 实测二分定位）。这里夹到 500（柱宽 1/6≈0.167，
     与 0.16 的观感差肉眼不可辨）；`overlap` 同理夹到 −100..100。
+
+    `cat_crosses`：类目轴与数值轴的交点（`autoZero`/`min`/`max`）。有负值的柱图传
+    `min` 把期次标签压到图底——`autoZero` 会把标签留在 0 线上，负值柱正好从字上穿过
+    （2026-10-23 实测 202609 化学「新增发文量」）。
     """
     gap_width = max(0, min(500, int(round(gap_width))))
     overlap = max(-100, min(100, int(round(overlap))))
@@ -376,8 +384,11 @@ def bar_chart_xml(series, cats, *, bar_dir="col", grouping="clustered", gap_widt
         '<c:axId val="111111111"/><c:axId val="222222222"/>'
         "</c:barChart>"
         + _cat_axis("111111111", "222222222", pos=("l" if bar_dir == "bar" else "b"),
-                    reverse=reverse, crosses=("max" if reverse else "autoZero"),
-                    fontsize=cat_fontsize, rotation=cat_rotation)
+                    reverse=reverse,
+                    crosses=(cat_crosses or ("max" if reverse else "autoZero")),
+                    fontsize=cat_fontsize,
+                    # 柱状图默认**显式水平**（rot="0"）：不写 rot 时 Word 会把期次标签自动斜排
+                    rotation=(0 if cat_rotation is None else cat_rotation))
         + _val_axis("222222222", "111111111",
                     pos=("b" if bar_dir == "bar" else "l"),
                     reverse=reverse, numfmt=numfmt, major_unit=major_unit,
@@ -597,14 +608,15 @@ def insert_chart_in_paragraph(p, xml_text, doc, *, w_cm=SLOT_W_CM, h_cm=SLOT_H_C
 
 
 _MAX_GAP_WIDTH = 500           # ST_GapAmount 上限（超了 Word 拒开整份文档，2026-10-22 实测）
-_LINE_ONLY_DLBLPOS = ("t", "b", "l", "r")   # 折线/散点专属；柱状图用会让 Word 拒开
+# 折线/散点专属位 + bestFit：柱状图用这些会让 Word 拒开整份文档（2026-10-22 / 10-23 实测）
+_BAR_INVALID_DLBLPOS = ("t", "b", "l", "r", "bestFit")
 
 
 def validate_chart_xml(xml):
     """插入前拦住三类会让 **Word 拒绝打开整份文档** 的写法。
 
-    2026-10-22 实测（逐项二分，报告见 `docs/native-charts-第一段验证报告.md`）：
-      1. 柱状/条形图的 `c:dLblPos` 用了折线专属位（t/b/l/r）——Word 直接报
+    2026-10-22 / 10-23 实测（逐项二分，报告见 `docs/native-charts-第一段验证报告.md`）：
+      1. 柱状/条形图的 `c:dLblPos` 用了折线专属位（t/b/l/r）或 `bestFit`——Word 直接报
          「Word 在读取该文件时遇到错误」，整份报告打不开，不是"图不显示"；
       2. `c:gapWidth` > 500（matplotlib `width=0.16` 换算出来是 525）；
       3. `formatCode="0.##"%"` 引号没转义 → 属性被截断。
@@ -624,8 +636,8 @@ def validate_chart_xml(xml):
 
     if "<c:barChart>" in xml or "<c:bar3DChart>" in xml:
         for pos in re.findall(r'<c:dLblPos val="([^"]*)"/>', xml):
-            if pos in _LINE_ONLY_DLBLPOS:
-                raise ValueError(f"柱状图用了折线专属的 dLblPos=\"{pos}\""
+            if pos in _BAR_INVALID_DLBLPOS:
+                raise ValueError(f"柱状图用了 dLblPos=\"{pos}\""
                                  "（Word 会拒绝打开文档；柱状图请用 outEnd/inEnd/inBase/ctr）")
         if re.search(r'<c:grouping val="(?:stacked|percentStacked)"/>', xml):
             for pos in re.findall(r'<c:dLblPos val="([^"]*)"/>', xml):

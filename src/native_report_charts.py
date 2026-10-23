@@ -100,7 +100,10 @@ def c3_papers_delta(w, disc, delta_periods):
     cats = [str(p) for p in delta_periods[1:]]
     b = nc.auto_axis([d.tolist()], zero_base=True, intervals=6, pad=0.08, integer=True)
     series = [{"name": "新增发文量", "values": d.tolist(), "color": C_BLUE, "label_fmt": "0"}]
+    # 🔴 期次是六位数，8.26cm 宽里不写 rot 时 Word 会自动斜排（2026-10-23 实测）；
+    #    `cat_crosses="min"` 把类目轴压到图底——202605 是 −63，轴在 0 线时柱子会从期次上穿过。
     xml = nc.bar_chart_xml(series, cats, gap_width=525, overlap=-27, label_fmt="0",
+                           legend_pos="t", cat_fontsize=7, cat_crosses="min",
                            **_axis_kw(b, integer=True))
     return xml, nc.build_data_xlsx(cats, series)
 
@@ -120,12 +123,21 @@ def c5_top_papers(w, disc, periods):
     v = w["top_papers"].loc[disc, periods].fillna(0).astype(float)
     b = nc.auto_axis([v.tolist()], intervals=7, pad=0.06, integer=True, floor_zero=False)
     series = [{"name": "顶尖论文发文量", "values": v.tolist(), "color": C_BLUE, "label_fmt": "0"}]
+    # 同 C3：期次标签显式水平（rot="0"）+ 图例置顶，给七列六位数腾出整幅宽度
     xml = nc.bar_chart_xml(series, [str(p) for p in periods], gap_width=525, overlap=-27,
-                           label_fmt="0", **_axis_kw(b, integer=True))
+                           label_fmt="0", legend_pos="t", cat_fontsize=7,
+                           **_axis_kw(b, integer=True))
     return xml, nc.build_data_xlsx([str(p) for p in periods], series)
 
 
 def c6_q_dist(w, disc, period):
+    """学科发文期刊分区占比：3 系列 × Q1–Q4 分组柱。
+
+    🔴 数值标签用**整数百分比**（`0"%"`）。Word 原生图表没有「标签错行避让」，
+    8.26cm 宽里 12 个两位小数标签（`32.98%`）必然互相压死（2026-10-23 实测 7pt/6pt
+    都不行，`bestFit` 会让 Word 拒开整份文档）。整数百分比是两端都能接受的最小精度：
+    12 个标签全部可读，内嵌工作簿仍保留原始两位小数。
+    """
     qkey = f"{period[:4]}.{period[4:]}"
     q1q4 = w["q1q4"]
     cats = ["Q1", "Q2", "Q3", "Q4"]
@@ -135,13 +147,13 @@ def c6_q_dist(w, disc, period):
         row = [float(s[c].iloc[0]) if len(s) and pd.notna(s[c].iloc[0]) else None
                for c in ("q1", "q2", "q3", "q4")]
         any_val = any_val or any(v is not None for v in row)
-        series.append({"name": lab, "values": row, "color": col, "label_fmt": '0.##"%"'})
+        series.append({"name": lab, "values": row, "color": col, "label_fmt": '0"%"'})
         flat.extend(v for v in row if v is not None)
     if not any_val:
         return None, None
     b = nc.auto_axis([flat], floor_zero=True, intervals=6, pad=0.05, integer=True)
-    xml = nc.bar_chart_xml(series, cats, gap_width=25, overlap=-8, label_fmt='0.##"%"',
-                           **_axis_kw(b, integer=True))
+    xml = nc.bar_chart_xml(series, cats, gap_width=25, overlap=-8, label_fmt='0"%"',
+                           legend_pos="t", **_axis_kw(b, integer=True))
     return xml, nc.build_data_xlsx(cats, series)
 
 
