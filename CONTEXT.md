@@ -2,7 +2,7 @@
 
 > 一页纸，给「接手的人 / 未来的自己 / AI」看。详细规格看 `../评审文档/`，本文件不重复。
 > 术语（通用语言）见 `GLOSSARY.md`；本文件只管状态、红线与运行方式。
-> 最后核对：2026-10-22。
+> 最后核对：2026-10-23。
 
 ## 这是什么
 
@@ -154,9 +154,9 @@ uv run python tools/verify_demo_run.py <期次>   # 写路径验收
 | L3 | 待裁决 13 号：两维度结论不一致时预测章以谁为准 | 待裁 |
 | L4 | #11 已定口径确认人＝卜彤，须当面知会馆员 | 待做 |
 | — | M3 自愈 | ✅ **已完成**（`187426a` + 09-16 补强）：`heal.py` + `rules/repair_rules.yaml`（6 条规则）+ `tests/test_agent_heal.py`（46 例，含真实台账端到端脏例与逐格对齐的「报告数字对」判据）。2 条 auto 已生效；**2 条 declare 待卜彤填 `approved_by` 才生效**；2 条 never 只出建议。补强项：失败运行不落盘 + 上版成品隔离（两条路径共用 `parse_ledger.quarantine_final_products`）+ 台账运行期 sha256 护栏 + 规则库故障与"无匹配"分开报 + 跳过登记复核 |
-| — | M4 审计闭环：`audit.py` / `scan_stale` / `collect_artifacts` / `out/_archive/` | 🟡 **4A 已完成（09-16），4B 未开工**：4A＝`src/agent/audit.py`（LLD §6.6 六项）+ 三个 P3 工具接线 + `write_env_snapshot` + `out/_archive/<期次>/`；实跑 202607 总判定「待人工确认」（4 项通过 / 2 项待签）。4B＝运行档案页（动演示站，待 rick 验收 4A 后决定）。**三个 M4 工具契约本就在 `tools.py` 里、只是 `_todo`，本次是接实现不是新建** |
+| — | M4 审计闭环：`audit.py` / `scan_stale` / `collect_artifacts` / `out/_archive/` | 🟡 **4A 已完成（09-16）；4B 已取消（2026-10-23 rick）**：4A＝`src/agent/audit.py`（LLD §6.6 六项）+ 三个 P3 工具接线 + `write_env_snapshot` + `out/_archive/<期次>/`；实跑 202607 总判定「待人工确认」（4 项通过 / 2 项待签）。4B＝运行档案页，**不再单独立项**——运行档案能力已随 web 证据面落地（`archive.run`／五步故事条／回放）。**三个 M4 工具契约本就在 `tools.py` 里、只是 `_todo`，本次是接实现不是新建** |
 | — | M4b 学院统计（`src/college_stats.py`，即 F34） | 已顺延 v2.0（赛后） |
-| — | M6 公网部署 | 🟡 **脚本与手册已就绪，待上机执行**：`server/deploy/deploy_linux.sh`（09-16 16:36）+ `docs/部署手册（Linux 服务器）.md`（目标 116.62.37.161:8080，服务名 `wenheng-demo`）。**尚无证据表明已在服务器执行过**；本机两条路径都探不通（沙箱出网走白名单代理，非白名单 IP 一律挡），**须由 rick 用手机流量或非沙箱网络确认** |
+| — | M6 公网部署 | ✅ **已上线并确认可达（2026-10-23 rick 确认）**：`116.62.37.161:8080`（nginx→uvicorn 8081，服务名 `wenheng-demo`；DeepSeek 已配，出网零数字、可关、回落标注）。部署走 `server/deploy/deploy_linux.sh` + `docs/部署手册（Linux 服务器）.md` |
 | — | `out/_archive/`（M4 期次归档） | ✅ 已实现（`audit.archive_period()`，只复制不动源目录；首次归档 202607＝135 文件 / 13.7MB） |
 | — | **Agent 自主性改造（31 号方案）** | 🟡 **设计已定案（2026-10-10 访谈）**：边界见 `docs/adr/0005-报告类Agent的自主性边界.md`；本批 = 灵活产线 L3（Planner 计划落盘 → Critic 成环 → 运行档案可见），固定产线 L2 与记忆放第二批，L4 排除。内部词已进 `GLOSSARY.md`（界面禁用）。票 01 已交付（`000a88e`）；票 02–06 在 `.scratch/agent-zizhu/issues/` |
 | — | **对话前门（"帮我做 9 月的报告"）** | 🟡 **设计已定案（2026-10-10 三轮访谈）**：边界见 `docs/adr/0006-对话是控制面表格是证据面.md`；对话只做指挥（认期次/盘点/引导取数/触发流水线/解释），表格页降为"被叫出来"；期次只有一个含义、数据未发布即停下反问；全量留痕、槽位级记忆。词条见 `GLOSSARY.md`（对话前门/盘点/槽位）。待 `/to-spec` → `/to-tickets` |
