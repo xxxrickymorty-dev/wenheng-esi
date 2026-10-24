@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 生成台 v2 · 极致低密 · 静态稿 20261024（待 rick 审）</title>
+<style>
+/* 令牌＝web/src/index.css（绿蓝·蓝场）；零圆角零阴影 */
+:root{
+  --field:#17456E;--field-2:#0F2E4C;--field-3:#2F6B8E;--field-4:#8FB6CE;--field-5:#DCE8F0;
+  --tool:#26483B;--tool-3:#2F7A58;--tool-5:#DFEDE6;
+  --bg:#F2EFE6;--card:#F7F4EC;--panel:#E4DFD0;--card-hi:#FAF8F1;
+  --ink:#15222B;--ink-3:#556169;--line:#D6D0C0;
+  --zhu:#26483B;--zhu-soft:#DFEDE6;--ok:#276B4C;--ok-soft:#DFEDE6;--ok-line:#9CC4AE;
+  --warn:#B23A2B;--warn-soft:#F4DDD7;
+  --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg)}
+body{color:var(--ink);font:15px/1.75 var(--sans)}
+button{font:inherit;cursor:pointer;border:0;background:none}
+.review{padding:10px 22px;background:var(--panel);border-bottom:1px solid var(--line);font-size:12.5px;color:var(--ink-3)}
+.review b{color:var(--field)}
+.top{display:flex;align-items:center;gap:18px;min-height:60px;padding:0 22px;background:var(--field-2);color:var(--field-5)}
+.top .brand b{font-family:var(--serif);font-size:21px;letter-spacing:.18em}
+.top .brand span{font-size:11px;letter-spacing:.16em;color:var(--field-4)}
+.top nav{display:flex;gap:20px;margin-left:auto;font-size:14px;color:var(--field-4)}
+.top nav a.cur{color:var(--field-5);font-weight:600;border-bottom:2px solid var(--tool-3);padding-bottom:4px}
+.state-tag{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding:24px 22px 6px;max-width:1240px;margin:0 auto}
+.state-tag .no{font:600 12px/1 var(--mono);letter-spacing:.18em;color:var(--field-3)}
+.state-tag h2{font-size:18px}
+.state-tag p{font-size:13px;color:var(--ink-3)}
+.wrap{max-width:1240px;margin:0 auto;padding:14px 22px 26px}
+
+/* ── 本期身份：一行 ── */
+.period-line{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding:6px 2px 0}
+.period-line h1{font-family:var(--serif);font-size:22px;letter-spacing:.05em}
+.period-line .dim{font-size:12.5px;color:var(--ink-3)}
+.period-line .prev{margin-left:auto;font-size:13px;color:var(--ink-3)}
+.period-line .prev b{color:var(--ok);font-weight:600}
+
+/* ── 流程图：整屏的主角 ── */
+.flow{display:flex;align-items:stretch;gap:0;margin:18px 0 8px;flex-wrap:wrap}
+.node{flex:1 1 130px;min-width:118px;position:relative;background:var(--card);border:1px solid var(--line);
+  border-top:3px solid var(--line);padding:12px 14px 10px}
+.node .k{display:block;font-size:11px;letter-spacing:.22em;color:var(--ink-3)}
+.node .v{display:block;font-family:var(--serif);font-size:20px;margin-top:2px}
+.node .n{display:block;font:12px var(--mono);color:var(--ink-3);margin-top:2px}
+.node.done{border-top-color:var(--ok)}
+.node.done .k,.node.done .v{color:var(--ok)}
+.node.now{border-top-color:var(--zhu);background:var(--card-hi)}
+.node.now .v{color:var(--zhu)}
+.node.bad{border-top-color:var(--warn)}
+.node.bad .k,.node.bad .v{color:var(--warn)}
+.node.todo{opacity:.55}
+.node .mark{position:absolute;right:10px;top:9px;font-size:13px}
+.node.done .mark{color:var(--ok)}
+.node.now .mark{color:var(--zhu)}
+.link{flex:0 0 34px;display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:14px}
+.link.ok{color:var(--ok)}
+.link.bad{color:var(--warn)}
+
+/* ── 主动作行：唯一主按钮 ── */
+.cta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:8px 2px 0}
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--card);padding:7px 16px;font-size:14.5px}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-size:16px;padding:10px 24px}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink-3)}
+.cta .why{font-size:13px;color:var(--ink-3)}
+
+/* 生成中的计时与取消 */
+.runmeta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:6px 2px 0;font:13px var(--mono);color:var(--ink-3)}
+.runmeta .btn{font-family:var(--sans)}
+
+/* 失败/空态的一句话 */
+.oneline{padding:8px 2px 0;font-size:14.5px}
+.oneline b{color:var(--warn)}
+.safe{margin:10px 2px 0;padding:8px 13px;background:var(--ok-soft);border:1px solid var(--ok-line);
+  font-size:13.5px;color:var(--ink-3);display:inline-block}
+
+/* 去哪了：降密后的内容去向说明（静态稿注释区） */
+.map{max-width:1240px;margin:30px auto 60px;padding:16px 22px;background:var(--panel);border:1px solid var(--line);
+  font-size:13px;color:var(--ink-3);line-height:2}
+.map b{color:var(--ink-2)}
+@media (max-width:860px){.flow{flex-direction:column}.link{transform:rotate(90deg);flex-basis:26px}.period-line .prev{margin-left:0}}
+</style>
+</head>
+<body>
+
+<div class="review">静态稿 v2 · 极致低密（rick 2026-10-24：「密度还是太大，极致降低，多用流程图」）·
+<b>待 rick 审</b> · 与 v1 的差别：正文全部折进流程图节点；故事条与信号数字整体迁往新屏「可视化工作流」（设计＝产线全景静态稿）；页脚已从全站撤销（声明收进顶栏 ⓘ）</div>
+
+<div class="top">
+  <div class="brand"><b>文衡</b> <span>云南大学图书馆 · 学科信息参考</span></div>
+  <nav><a class="cur" href="#">出报告</a><a href="#">可视化工作流</a><a href="#">灵活报告</a><a href="#">问文衡</a><a href="#">主台账</a></nav>
+</div>
+
+<!-- ═══ 状态一：待签发（整屏＝一行身份＋一张流程图＋一行动作）═══ -->
+<div class="state-tag"><span class="no">状态 1 / 4</span><h2>已出稿 · 待签发</h2><p>首屏文字 ≈70 字（v1 为 411 字）——状态长在图上，不写在段落里</p></div>
+<div class="wrap">
+  <div class="period-line">
+    <h1>本期 202609</h1><span class="dim">第四十期 · 数据截至 2026-09</span>
+    <span class="prev">上一期 202607 · <b>已签发</b> · 09-22</span>
+  </div>
+  <div class="flow">
+    <div class="node done"><span class="k">取 数</span><span class="v">64 / 64</span><span class="n">已并入</span><span class="mark">✓</span></div>
+    <div class="link ok">✓</div>
+    <div class="node done"><span class="k">生 成</span><span class="v">已出稿</span><span class="n">10-24 08:04</span><span class="mark">✓</span></div>
+    <div class="link ok">✓</div>
+    <div class="node done"><span class="k">审 计</span><span class="v">4 项过</span><span class="n">2 项待签</span><span class="mark">✓</span></div>
+    <div class="link ok">✓</div>
+    <div class="node now"><span class="k">签 发</span><span class="v">待签发</span><span class="n">7 处已填齐</span><span class="mark">●</span></div>
+  </div>
+  <div class="cta">
+    <button class="btn primary">复核并签单</button>
+    <button class="btn ghost">查看可视化工作流 →</button>
+    <span class="why">签单后可下载；重出会使签发失效</span>
+  </div>
+</div>
+
+<hr>
+
+<!-- ═══ 状态二：生成中 ═══ -->
+<div class="state-tag"><span class="no">状态 2 / 4</span><h2>生成中</h2><p>同一张图，走到哪亮到哪；长步骤给计数</p></div>
+<div class="wrap">
+  <div class="period-line"><h1>本期 202609</h1><span class="dim">第四十期</span></div>
+  <div class="flow">
+    <div class="node done"><span class="k">取 数</span><span class="v">✓</span><span class="n">3 秒</span></div>
+    <div class="link ok">✓</div>
+    <div class="node done"><span class="k">生 成</span><span class="v">✓</span><span class="n">104 图</span></div>
+    <div class="link ok">✓</div>
+    <div class="node now"><span class="k">审 计</span><span class="v">⟳ 68/104</span><span class="n">出图中</span><span class="mark">●</span></div>
+    <div class="link">·</div>
+    <div class="node todo"><span class="k">签 发</span><span class="v">—</span></div>
+  </div>
+  <div class="runmeta">已用 8 秒 <button class="btn">看日志</button><button class="btn ghost">取消</button></div>
+</div>
+
+<hr>
+
+<!-- ═══ 状态三：失败（解析）═══ -->
+<div class="state-tag"><span class="no">状态 3 / 4</span><h2>失败 · 解析没通过</h2><p>坏在哪个节点，图上一目了然；一句话说清缺什么怎么补</p></div>
+<div class="wrap">
+  <div class="flow">
+    <div class="node bad"><span class="k">取 数</span><span class="v">✕ 缺 1 列</span><span class="n">3 秒拦停</span><span class="mark">✕</span></div>
+    <div class="link bad">✕</div>
+    <div class="node todo"><span class="k">生 成</span><span class="v">—</span></div>
+    <div class="link">·</div>
+    <div class="node todo"><span class="k">审 计</span><span class="v">—</span></div>
+    <div class="link">·</div>
+    <div class="node todo"><span class="k">签 发</span><span class="v">—</span></div>
+  </div>
+  <div class="oneline">台账《千分之一被引阈值》还没有 202609 列——<b>补上这一列</b>，回来点「重新生成」。</div>
+  <div class="safe">上一版报告仍然有效（已留档，可回滚）</div>
+  <div class="cta"><button class="btn primary">重新生成</button><button class="btn ghost">回滚到上一版</button></div>
+</div>
+
+<hr>
+
+<!-- ═══ 状态四：空 ═══ -->
+<div class="state-tag"><span class="no">状态 4 / 4</span><h2>空 · 还没取数</h2><p>一句话＋一个动作</p></div>
+<div class="wrap">
+  <div class="flow">
+    <div class="node now"><span class="k">取 数</span><span class="v">未开始</span><span class="mark">●</span></div>
+    <div class="link">·</div>
+    <div class="node todo"><span class="k">生 成</span><span class="v">—</span></div>
+    <div class="link">·</div>
+    <div class="node todo"><span class="k">审 计</span><span class="v">—</span></div>
+    <div class="link">·</div>
+    <div class="node todo"><span class="k">签 发</span><span class="v">—</span></div>
+  </div>
+  <div class="oneline">这一期还没取数——取齐并入后，回来一键生成。</div>
+  <div class="cta"><button class="btn primary">去取数台</button></div>
+</div>
+
+<!-- ═══ 内容去向（降密的账，说给 rick 听）═══ -->
+<div class="map">
+  <b>降密之后，内容去了哪（没有丢）：</b><br>
+  ① 五格故事条与运行回放 → 新屏「<b>可视化工作流</b>」（设计＝《文衡-产线全景（静态稿 20261023）.html》，等轴取工厂全景，导航新入口）；<br>
+  ② 报告信号数字（704 槽 / 104 图 / 用时 / 回测偏差）→ 可视化工作流屏的真相面板与签发节点；生成台只留节点上的一枚数；<br>
+  ③ 口径/只读声明 → 顶栏「ⓘ 说明」（全站唯一一份，页脚已撤销）；<br>
+  ④ 上一期参照、期次身份 → 压缩成一行；失败详情清单 → 点「看缺什么清单」就地展开。
+</div>
+
+</body>
+</html>
