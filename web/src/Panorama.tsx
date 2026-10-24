@@ -36,22 +36,24 @@ const C = {
   card: 'var(--card)', ground: 'var(--panel)', grid: 'var(--line)', line: 'var(--line)',
   ink: 'var(--ink)', ink2: 'var(--ink-2)', ink3: 'var(--ink-3)',
   tool: 'var(--tool)', tool3: 'var(--tool-3)', zhu: 'var(--zhu)', warn: 'var(--warn)',
-  wallT: '#FBF8F0', wallL: '#F1ECDF', wallR: '#E0DACA', idleTop: '#CFC9B7', paper: '#E6E0CF',
+  wallT: '#FBF8F0', wallL: '#F4EFE2', wallR: '#DAD1BD', idleTop: '#CFC9B7', paper: '#E6E0CF',
 }
 
 function IsoBox({ x, y, w, d, h, z0 = 0, top, left = C.wallL, right = C.wallR,
-                  stroke = C.line, foot = true }: {
+                  stroke = C.line, foot = true, parapet = false }: {
   x: number; y: number; w: number; d: number; h: number; z0?: number
-  top: string; left?: string; right?: string; stroke?: string; foot?: boolean
+  top: string; left?: string; right?: string; stroke?: string; foot?: boolean; parapet?: boolean
 }) {
   const zt = z0 + h
   const o = { stroke, strokeWidth: 0.7 }
   return (
     <g>
-      {foot && <polygon points={pts([P(x, y, z0), P(x + w, y, z0), P(x + w, y + d, z0), P(x, y + d, z0)])} fill="rgba(21,34,43,.05)" />}
+      {foot && <polygon points={pts([P(x, y, z0), P(x + w, y, z0), P(x + w, y + d, z0), P(x, y + d, z0)])} fill="rgba(21,34,43,.04)" transform="translate(2,1.2)" />}
+      {foot && <polygon points={pts([P(x, y, z0), P(x + w, y, z0), P(x + w, y + d, z0), P(x, y + d, z0)])} fill="rgba(21,34,43,.06)" />}
       <polygon points={pts([P(x, y + d, zt), P(x + w, y + d, zt), P(x + w, y + d, z0), P(x, y + d, z0)])} fill={left} {...o} />
       <polygon points={pts([P(x + w, y, zt), P(x + w, y + d, zt), P(x + w, y + d, z0), P(x + w, y, z0)])} fill={right} {...o} />
       <polygon points={pts([P(x, y, zt), P(x + w, y, zt), P(x + w, y + d, zt), P(x, y + d, zt)])} fill={top} {...o} />
+      {parapet && <polygon points={pts([P(x + 0.9, y + 0.9, zt), P(x + w - 0.9, y + 0.9, zt), P(x + w - 0.9, y + d - 0.9, zt), P(x + 0.9, y + d - 0.9, zt)])} fill="none" stroke={stroke} strokeWidth={0.7} opacity={0.55} />}
     </g>
   )
 }
@@ -80,7 +82,8 @@ function Octagon({ cx, cy, r, z0, h, top, left = C.wallL, right = C.wallR }: {
   }
   return (
     <g>
-      <polygon {...o} points={pts(p8.map(p => P(p[0], p[1], z0)))} fill="rgba(21,34,43,.05)" />
+      <polygon {...o} points={pts(p8.map(p => P(p[0], p[1], z0)))} fill="rgba(21,34,43,.04)" transform="translate(2,1.2)" />
+      <polygon {...o} points={pts(p8.map(p => P(p[0], p[1], z0)))} fill="rgba(21,34,43,.06)" />
       {faces}
       <polygon {...o} points={pts(p8.map(p => P(p[0], p[1], z0 + h)))} fill={top} />
     </g>
@@ -104,6 +107,17 @@ function Road({ points, w = 13, flow = false, base = '#DCD6C5' }: {
   )
 }
 
+/* 链路方向：路段中点一枚小三角指向下游站——产线走向不靠文字也能读（静态装饰，无动画） */
+function Chevron({ points }: { points: [number, number][] }) {
+  const i = Math.floor((points.length - 1) / 2)
+  const [ax, ay] = P(points[i][0], points[i][1])
+  const [bx, by] = P(points[i + 1][0], points[i + 1][1])
+  const t = Math.atan2(by - ay, bx - ax), s = Math.sin(t), c = Math.cos(t)
+  const p2 = [bx - 8 * c - 4 * s, by - 8 * s + 4 * c]
+  const p3 = [bx - 8 * c + 4 * s, by - 8 * s - 4 * c]
+  return <polygon points={`${bx.toFixed(1)},${by.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)} ${p3[0].toFixed(1)},${p3[1].toFixed(1)}`} fill="#C7C0AE" />
+}
+
 function Tree({ x, y, r, color }: { x: number; y: number; r: number; color: string }) {
   const [bx, by] = P(x, y, 0)
   return (
@@ -113,6 +127,22 @@ function Tree({ x, y, r, color }: { x: number; y: number; r: number; color: stri
       <ellipse cx={bx} cy={by - r * 5.6} rx={r * 6} ry={r * 5.8} fill={color} />
     </g>
   )
+}
+
+/* 立面窗：左面（y+d 侧）竖长条窗×n，均匀分布；墙面提亮色（无令牌，就地常量与墙面同法） */
+function Windows({ x, y, w, d, z0, h, n = 3 }: {
+  x: number; y: number; w: number; d: number; z0: number; h: number; n?: number
+}) {
+  const els: ReactNode[] = []
+  const ww = 0.9, zh = Math.min(2.4, h * 0.45), zc = z0 + h * 0.38
+  const step = n > 1 ? (w - 1.8 - n * ww) / (n - 1) + ww : 0
+  for (let k = 0; k < n; k++) {
+    const xk = x + 0.9 + k * step
+    els.push(<polygon key={k}
+      points={pts([P(xk, y + d, zc), P(xk + ww, y + d, zc), P(xk + ww, y + d, zc + zh), P(xk, y + d, zc + zh)])}
+      fill="rgba(255,253,246,.55)" />)
+  }
+  return <g>{els}</g>
 }
 
 /* 建筑落影包围盒（标签锚点用） */
@@ -155,10 +185,14 @@ function Labels({ pills }: { pills: Pill[] }) {
         <line x1={ax.toFixed(1)} y1={ay.toFixed(1)}
           x2={(p.side === 'left' ? b.x + b.w / 2 : ax).toFixed(1)}
           y2={(p.side === 'top' ? b.y : p.side === 'bottom' ? b.y + b.h : ay).toFixed(1)}
-          stroke={C.line} strokeWidth={1} />
+          stroke={C.ink3} strokeWidth={1} />
+        <circle cx={(p.side === 'left' ? b.x + b.w / 2 : ax).toFixed(1)}
+          cy={(p.side === 'top' ? b.y : p.side === 'bottom' ? b.y + b.h : ay).toFixed(1)}
+          r={1.6} fill={C.ink3} />
+        <rect x={(r.x + 0.9).toFixed(1)} y={(r.y + 0.9).toFixed(1)} width={r.w.toFixed(1)} height={hg} fill="rgba(21,34,43,.10)" />
         <rect x={r.x.toFixed(1)} y={r.y.toFixed(1)} width={r.w.toFixed(1)} height={hg}
-          fill={C.card} stroke={p.stroke ?? C.line} strokeWidth={1} />
-        {p.dot && <circle cx={(x + 12).toFixed(1)} cy={(y + hg / 2).toFixed(1)} r={3.8} fill={p.dot} />}
+          fill="var(--card-hi)" stroke={p.stroke ?? C.line} strokeWidth={1} />
+        {p.dot && <circle cx={(x + 12).toFixed(1)} cy={(y + hg / 2).toFixed(1)} r={4.2} fill={p.dot} />}
         <text x={(x + (p.dot ? 22 : 10)).toFixed(1)} y={(y + hg / 2 + 4.4).toFixed(1)}>{p.text}</text>
       </g>,
     )
@@ -333,8 +367,8 @@ function Factory({ m, live }: { m: Model; live: boolean }) {
   const grid: ReactNode[] = []
   for (let v = -120; v <= 140; v += 5) {
     const a = P(v, -120), b = P(v, 140), c = P(-120, v), d = P(140, v)
-    grid.push(<line key={`v${v}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={C.grid} strokeWidth={0.55} opacity={0.5} />)
-    grid.push(<line key={`h${v}`} x1={c[0]} y1={c[1]} x2={d[0]} y2={d[1]} stroke={C.grid} strokeWidth={0.55} opacity={0.5} />)
+    grid.push(<line key={`v${v}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={C.grid} strokeWidth={0.55} opacity={0.35} />)
+    grid.push(<line key={`h${v}`} x1={c[0]} y1={c[1]} x2={d[0]} y2={d[1]} stroke={C.grid} strokeWidth={0.55} opacity={0.35} />)
   }
   els.push(<g key="grid">{grid}</g>)
   els.push(<g key="trees">
@@ -347,10 +381,13 @@ function Factory({ m, live }: { m: Model; live: boolean }) {
   /* 取数站（左上）：主楼＝ESI，披屋＝InCites */
   els.push(<g key="esi">
     <Road points={[[20, 17], [30, 28], [38, 35]]} />
+    <Chevron points={[[20, 17], [30, 28], [38, 35]]} />
     <Road points={[[34, 20], [40, 30], [42, 34]]} />
-    <IsoBox x={4} y={4} w={14} d={11} h={8} top={C.tool} />
+    <Chevron points={[[34, 20], [40, 30], [42, 34]]} />
+    <IsoBox x={4} y={4} w={14} d={11} h={8} top={C.tool} parapet />
+    <Windows x={4} y={4} w={14} d={11} z0={0} h={8} n={4} />
     <IsoBox x={6.5} y={6.5} w={3.2} d={3.2} h={3.4} z0={8} top={C.paper} />
-    <IsoBox x={23} y={7} w={12} d={10} h={6.5} top={C.tool3} />
+    <IsoBox x={23} y={7} w={12} d={10} h={6.5} top={C.tool3} parapet />
     <IsoBox x={28} y={11} w={1.1} d={1.1} h={3.2} z0={6.5} top={C.paper} foot={false} />
   </g>)
 
@@ -368,10 +405,20 @@ function Factory({ m, live }: { m: Model; live: boolean }) {
   const n = mlist.length
   const startX = 60.5
   const gap = n > 1 ? Math.min(6.2, 33.5 / (n - 1)) : 0
+  /* 中台→车间（主链路补断链，2026-10-25：原六段链路缺这一段，产线走向读不出来） */
+  els.push(<g key="hall2line">
+    <Road points={[[52, 33], [57, 27], [61, 21]]} />
+    <Chevron points={[[52, 33], [57, 27], [61, 21]]} />
+  </g>)
   els.push(<g key="linebg">
     <polygon points={pts([P(58, 10), P(96, 10), P(96, 32), P(58, 32)])} fill="#EDE8DA" stroke={C.line} strokeWidth={0.8} />
-    <IsoBox x={58} y={10} w={38} d={1.3} h={10} top={C.tool} foot={false} />
-    <IsoBox x={58} y={10} w={1.3} d={22} h={10} top={C.tool} foot={false} />
+    {[0.3, 0.55, 0.8].map(t => (
+      <line key={t} x1={P(58 + 38 * t, 10.6)[0]} y1={P(58 + 38 * t, 10.6)[1]}
+        x2={P(58 + 38 * t, 31.4)[0]} y2={P(58 + 38 * t, 31.4)[1]}
+        stroke={C.line} strokeWidth={0.6} opacity={0.5} />
+    ))}
+    <IsoBox x={58} y={10} w={38} d={1.3} h={10} top={C.tool} foot={false} parapet />
+    <IsoBox x={58} y={10} w={1.3} d={22} h={10} top={C.tool} foot={false} parapet />
     <Road points={[[62, 26], [78, 26], [93, 26]]} w={7} flow={live} base="#DFDAC9" />
   </g>)
   mlist.forEach((mm, i) => {
@@ -397,7 +444,9 @@ function Factory({ m, live }: { m: Model; live: boolean }) {
   const [ax, ay] = P(72.4, 50.4, 22.4)
   els.push(<g key="qc">
     <Road points={[[96, 29], [88, 40], [79, 46]]} />
-    <IsoBox x={68} y={46} w={9} d={9} h={15} top={C.card} />
+    <Chevron points={[[96, 29], [88, 40], [79, 46]]} />
+    <IsoBox x={68} y={46} w={9} d={9} h={15} top={C.card} parapet />
+    <Windows x={68} y={46} w={9} d={9} z0={0} h={15} n={3} />
     <IsoBox x={70.6} y={48.6} w={3.6} d={3.6} h={4} z0={15} top={C.tool} />
     <line x1={P(72.4, 50.4, 19)[0]} y1={P(72.4, 50.4, 19)[1]} x2={ax} y2={ay} stroke={C.ink2} strokeWidth={1.2} />
     <circle cx={ax} cy={ay} r={3} fill={DOT[m.qc]} />
@@ -411,8 +460,10 @@ function Factory({ m, live }: { m: Model; live: boolean }) {
   /* 签发台（中下）：桌面白纸＋印章 */
   els.push(<g key="sign">
     <Road points={[[73, 55], [64, 60], [54, 61]]} />
+    <Chevron points={[[73, 55], [64, 60], [54, 61]]} />
     <Road points={[[34, 66], [28, 64], [25, 61]]} base="#DFDAC9" />
-    <IsoBox x={36} y={60} w={15} d={8} h={3} top="#E9E3D4" />
+    <Chevron points={[[34, 66], [28, 64], [25, 61]]} />
+    <IsoBox x={36} y={60} w={15} d={8} h={3} top="#E9E3D4" parapet />
     <IsoBox x={38} y={61.6} w={4} d={3} h={0.5} z0={3} top="#FFFDF6" foot={false} />
     <IsoBox x={43} y={62} w={2.6} d={2.6} h={2.8} z0={3} top={C.zhu} foot={false} />
     <IsoBox x={46.4} y={62} w={2.2} d={2.2} h={1.2} z0={3} top={C.ink2} foot={false} />
@@ -425,7 +476,7 @@ function Factory({ m, live }: { m: Model; live: boolean }) {
     <IsoBox x={4} y={50} w={21} d={16} h={1.8} top="#EDE8DA" />
     {[5.5, 11, 16.5].map((bx, i) => (
       <g key={bx}>
-        <IsoBox x={bx} y={53} w={4.6} d={11} h={8} z0={1.8} top={i === 2 ? C.tool : C.ink2} />
+        <IsoBox x={bx} y={53} w={4.6} d={11} h={8} z0={1.8} top={i === 2 ? C.tool : C.ink2} parapet />
         {[0, 1, 2].map(k => (
           <IsoBox key={k} x={bx + 0.6 + k * 1.4} y={54} w={1} d={2.2} h={2.4} z0={9.8}
             top={k === 1 ? C.tool3 : C.idleTop} foot={false} />
