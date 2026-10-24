@@ -36,9 +36,10 @@ import { Reading } from './Reading'
 import { Trace } from './Trace'
 import { Forecast } from './Forecast'
 import { Archive } from './Archive'
+import { Panorama } from './Panorama'
 import { HealSandbox } from './HealSandbox'
 import { MigrateSandbox } from './MigrateSandbox'
-import { deriveWorkbench, statusToWB, type WBState } from './wb'
+import { deriveWorkbench, isTerminal, statusToWB, type WBState } from './wb'
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'warned', 'waiting-approval', 'fail-ledger', 'fail-other', 'stalled', 'signed']
 type Palette = 'blue' | 'green'
@@ -146,7 +147,7 @@ export default function App() {
   /* ?period= 深链：从老站迁移过来的等价地址（老站 /p/<期次> → 新站 ?view=report&period=<期次>） */
   const wantPeriod = new URLSearchParams(location.search).get('period')
   const _v = new URLSearchParams(location.search).get('view')
-  const view: 'workbench' | 'acquire' | 'pick' | 'report' | 'review' | 'ledger' | 'analysis' | 'red' | 'charts' | 'reading' | 'trace' | 'forecast' | 'archive' | 'heal' | 'migrate' =
+  const view: 'workbench' | 'acquire' | 'pick' | 'report' | 'review' | 'ledger' | 'analysis' | 'red' | 'charts' | 'reading' | 'trace' | 'forecast' | 'pano' | 'archive' | 'heal' | 'migrate' =
     _v === 'acquire' ? 'acquire'
       : _v === 'pick' ? 'pick'
       : _v === 'report' ? 'report'
@@ -158,7 +159,8 @@ export default function App() {
                   : _v === 'reading' ? 'reading'
                     : _v === 'trace' ? 'trace'
                       : _v === 'forecast' ? 'forecast'
-                        : _v === 'archive' ? 'archive'
+                        : _v === 'pano' ? 'pano'
+                          : _v === 'archive' ? 'archive'
                           : _v === 'heal' ? 'heal'
                             : _v === 'migrate' ? 'migrate'
                               : 'workbench'
@@ -504,6 +506,9 @@ export default function App() {
      不再是平级入口，降为「出报告」四步流水里的步骤或报告的下钻；深链 ?view=… 一律保留。 */
   const NAV: { key: string; label: string; href: string }[] = [
     { key: 'flow', label: '出报告', href: '/app/' },
+    /* 可视化工作流（2026-10-24 rick：产线全景静态稿升格为正式屏）——
+       五步故事的空间投影，评委 10 分钟看懂这条产线 */
+    { key: 'pano', label: '可视化工作流', href: '/app/?view=pano' },
     { key: 'flexible', label: '灵活报告', href: '/app/?view=analysis' },
     /* 2026-10-19 rick：「报告」入口关闭（只读阅稿屏，日常走 出报告→核验定稿，用不上）——
        页面与深链 ?view=report 保留；子屏（红件/图册/对勘/溯源）的「回报告」链接照旧。 */
@@ -513,8 +518,8 @@ export default function App() {
   const GROUP: Record<string, string> = {
     workbench: 'flow', acquire: 'flow', pick: 'flow', review: 'flow', forecast: 'flow',
     report: 'report', red: 'report', charts: 'report', reading: 'report', trace: 'report',
-    analysis: 'flexible', dialog: 'ask', ledger: 'admin', archive: 'admin', heal: 'admin',
-    migrate: 'admin',
+    analysis: 'flexible', pano: 'pano', dialog: 'ask', ledger: 'admin', archive: 'admin',
+    heal: 'admin', migrate: 'admin',
   }
   /* 「出报告」四步流水（2026-10-19 rick：「选章节」入口关闭——一直空着，核验定稿里已有章节选择）。
      步骤条只在流水屏出现；2026-10-16 二版（rick 拍板）：不画序号——顺序由位置与细线方向表达。
@@ -578,24 +583,12 @@ export default function App() {
           {me && (
             <>
               <span className="app-nav-sep" aria-hidden="true" />
-              {me.role === 'admin' && (
-                <a href={navHref('/app/?view=ledger')} aria-current={view === 'ledger' ? 'page' : undefined}>
-                  主台账
-                </a>
-              )}
+              {/* 2026-10-24 rick：导航瘦身——主台账 / 自愈沙盘 / 换馆沙盘撤出导航
+                 （页面与深链 ?view=ledger / heal / migrate 保留；沙盘属智能体演示，
+                 决赛需要时从地址或运行档案进）。运行档案是决赛证据面，留下。 */}
               <a href={navHref('/app/?view=archive')} aria-current={view === 'archive' ? 'page' : undefined}>
                 运行档案
               </a>
-              {me.role === 'admin' && (
-                <a href={navHref('/app/?view=heal')} aria-current={view === 'heal' ? 'page' : undefined}>
-                  自愈沙盘
-                </a>
-              )}
-              {me.role === 'admin' && (
-                <a href={navHref('/app/?view=migrate')} aria-current={view === 'migrate' ? 'page' : undefined}>
-                  换馆沙盘
-                </a>
-              )}
             </>
           )}
         </nav>
@@ -709,6 +702,14 @@ export default function App() {
             <b>操作员不可见</b> —— 原始主台账仅管理员可用；运行档案、红件清单与逐格溯源
             已对操作员只读开放。看报告请回 <a href={navHref('/app/?view=report')}>报告</a>。
           </div>
+        ) : view === 'pano' ? (
+          <Panorama
+            period={selected}
+            periods={periods}
+            detail={detail}
+            approvalStatus={approvalStatus}
+            live={(!!runForSelected && !isTerminal(runForSelected.status ?? undefined)) || wb.state === 'running'}
+            liveNote={runForSelected?.last ?? null} />
         ) : view === 'archive' ? (
           <Archive period={selected} approvalStatus={approvalStatus} />
         ) : view === 'heal' ? (

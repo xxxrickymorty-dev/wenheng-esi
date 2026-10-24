@@ -284,8 +284,11 @@ def main():
             page.goto(BASE + "/app/?view=acquire&period=202609", wait_until="domcontentloaded")
             page.wait_for_selector(".aq-head", timeout=20000)
             navs = page.eval_on_selector_all("nav[aria-label='工作区'] a", "els => els.map(e => e.innerText.trim())")
-            check("左栏＝3 主区（出报告 / 灵活报告 / 问文衡；2026-10-19 去「报告」）",
-                  navs[:3] == ["出报告", "灵活报告", "问文衡"], str(navs))
+            check("导航前四项（出报告 / 可视化工作流 / 灵活报告 / 问文衡；2026-10-24 加全景、导航瘦身）",
+                  navs[:4] == ["出报告", "可视化工作流", "灵活报告", "问文衡"], str(navs))
+            check("导航已瘦身（主台账 / 自愈沙盘 / 换馆沙盘不在导航；2026-10-24 rick，深链保留）",
+                  not any(n in navs for n in ("主台账", "自愈沙盘", "换馆沙盘")) and "运行档案" in navs,
+                  str(navs))
             steps = page.eval_on_selector_all(
                 "nav[aria-label='出报告步骤'] a, nav[aria-label='出报告步骤'] span",
                 "els => els.map(e => e.innerText.trim())")
@@ -344,6 +347,25 @@ def main():
             check("生成台故事条第一步可点入取数台", bool(href) and "view=acquire" in href, str(href))
         except Exception as e:                                          # noqa: BLE001
             check("取数台回归（X2）", False, str(e)[:100])
+
+        # ---- 1f0) 可视化工作流 · 产线全景（2026-10-24 rick 定）：真相面板 + 工厂场景，数字为真值 ----
+        try:
+            page.goto(BASE + "/app/?view=pano&period=202609", wait_until="domcontentloaded")
+            page.wait_for_selector(".pano-stage svg", timeout=20000)
+            pano_txt = page.inner_text("main")
+            check("产线全景：真相面板五段齐（取数 / 中台 / 产线 / 质检 / 签发）",
+                  all(k in pano_txt for k in ("取数", "中台", "产线", "质检", "签发")), "")
+            check("产线全景：真值声明在场（不新增数字、不演没发生的动画）",
+                  ("不新增数字" in pano_txt) and ("红色件清单" in pano_txt), "")
+            cams = page.eval_on_selector_all(".pano-cams button", "els => els.map(e => e.innerText.trim())")
+            check("产线全景：相机按钮在（全景 / 左转 / 右转 / 拉近 / 拉远）",
+                  cams == ["全景", "左转", "右转", "拉近", "拉远"], str(cams))
+            vb0 = page.eval_on_selector(".pano-stage svg", "el => el.getAttribute('viewBox')")
+            page.click(".pano-cams button:has-text('拉近')")
+            vb1 = page.eval_on_selector(".pano-stage svg", "el => el.getAttribute('viewBox')")
+            check("产线全景：相机只动 viewBox（不动数据）", vb0 != vb1, f"{vb0} -> {vb1}")
+        except Exception as e:                                          # noqa: BLE001
+            check("产线全景（2026-10-24）", False, str(e)[:100])
 
         # ---- 1f1) 开新一期（票 05）：入口在，非法期次当场挡下（不落状态） ----
         try:

@@ -52,6 +52,7 @@ VIEWS: dict[str, str] = {
     "reading": "user",
     "trace": "user",
     "forecast": "user",
+    "pano": "user",
     "archive": "user",
     "heal": "user",
     "migrate": "user",
