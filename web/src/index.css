@@ -18,28 +18,30 @@ code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,
 /* ============================================================================
    文衡 · 工作台令牌（绿蓝双主题，2026-10-17 rick 拍板，据 汇-绿蓝.html 融合）
    蓝·场（题头/顶栏大场面色）＋绿·器（控件/强调/重线色）；绿主题两族对调。
-   朱砂退役；红 #B23A2B 只做警戒。语义色（ok/warn/bad）不随主题变。
+   朱砂退役。语义色（ok/warn/bad）不随主题变，2026-10-24 起 warn/bad 分色：
+   红 #B23A2B＝失败 / 拦停 / 破坏性确认；琥珀 warn＝可继续的提醒（校验提醒、待重签类）。
+   纸面分层：底最深（bg）、卡片更亮（card）、一档浅阴影（--shadow）让卡片浮起——零圆角不变。
    文字/底色组合实测 ≥4.5:1（WCAG AA）。改配色只改这两处（blue / green）。
    --zhu 仍是全站主强调色变量名（＝器色），组件不必改。
    ========================================================================== */
 :root, html[data-palette="blue"]{
   --field:#17456E; --field-2:#0F2E4C; --field-3:#2F6B8E; --field-4:#8FB6CE; --field-5:#DCE8F0;
   --tool:#26483B; --tool-2:#163228; --tool-3:#2F7A58; --tool-4:#7FB79B; --tool-5:#DFEDE6;
-  --bg:#F2EFE6; --card:#F7F4EC; --panel:#E4DFD0; --card-hi:#FAF8F1;
-  --ink:#15222B; --ink-2:#43525C; --ink-3:#556169;
-  --line:#D6D0C0; --line-2:#E4DFD0;
+  --bg:#EDE9DE; --card:#FAF8F0; --panel:#E6E1D3; --card-hi:#FDFAF3;
+  --ink:#15222B; --ink-2:#43525C; --ink-3:#556169; --ink-4:#64717A;
+  --line:#D8D2C2; --line-2:#E6E1D3;
   --zhu:#26483B; --zhu-soft:#DFEDE6;
   --gline:#163228;
   --gold:#2F7A58; --gold-soft:#DFEDE6; --gold-ink:#163228;
   --ok:#276B4C; --ok-soft:#DFEDE6; --ok-line:#9CC4AE;
-  --warn:#B23A2B; --warn-soft:#F4DDD7;
+  --warn:#7C5A16; --warn-soft:#F3E9CF;
   --bad:#B23A2B; --bad-soft:#F4DDD7;
   --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
   --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
   --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
   --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
   --r:0px; --r-sm:0px;
-  --shadow:none;
+  --shadow:0 1px 2px rgba(21,34,43,.07);
 }
 html[data-palette="green"]{
   --field:#26483B; --field-2:#163228; --field-3:#2F7A58; --field-4:#7FB79B; --field-5:#DFEDE6;
@@ -139,7 +141,10 @@ a{color:inherit}
 .ar-step-sec{color:var(--ink-3);font-size:12.5px;font-variant-numeric:tabular-nums}
 
 .wrap{max-width:1240px;margin:0 auto;padding:26px 40px 56px;width:100%}
-.card{background:var(--card);border:1px solid var(--line)}
+/* 投影大屏不满幅两侧空（2026-10-24）：1600px 起放宽到 1480px，仍居中留白 */
+@media (min-width:1600px){.wrap{max-width:1480px}}
+/* 分层（2026-10-24）：底更深、卡片更亮＋一档浅阴影，卡片从纸面上「浮」起；零圆角不变 */
+.card{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
 
 /* ---------- 三步条（庚·卷宗「工序四站」：大字期题＋绿色进度线＋站列） ---------- */
 .steps{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 24px;
@@ -177,13 +182,13 @@ a{color:inherit}
 .btn:hover{background:var(--panel)}
 .btn.primary:hover{filter:brightness(1.06);background:var(--zhu)}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
-/* 行内二次确认态（票 06）：与警告同色系——醒目但不吓人，3 秒自动还原 */
-.btn.confirming{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
-.btn.primary.confirming{background:var(--warn);border-color:var(--warn);color:#fff}
+/* 行内二次确认态（票 06）：破坏性确认＝红（2026-10-24 warn/bad 分色）——醒目且不可误读，3 秒自动还原 */
+.btn.confirming{border-color:var(--bad);color:var(--bad);background:var(--bad-soft)}
+.btn.primary.confirming{background:var(--bad);border-color:var(--bad);color:#fff}
 /* 停止下载（2026-10-19 晚）：红描边 → 悬停/二次确认变实心红（复用 ConfirmButton 的确认态） */
-.btn.stop{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
-.btn.stop:hover{background:var(--warn);border-color:var(--warn);color:#fff}
-.btn.stop.confirming{background:var(--warn);border-color:var(--warn);color:#fff}
+.btn.stop{border-color:var(--bad);color:var(--bad);background:var(--bad-soft)}
+.btn.stop:hover{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.stop.confirming{background:var(--bad);border-color:var(--bad);color:#fff}
 .hint{color:var(--ink-3);font-size:14px}
 
 /* ---------- 状态条（颜色 + 图标 + 文字 三重编码；庚：平板＋左色线） ---------- */
@@ -343,9 +348,18 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 .readout{padding:14px 18px 12px;border-right:1px solid var(--line)}
 .readout:last-child{border-right:0}
 .readout .k{font-size:10.5px;letter-spacing:.24em;color:var(--ink-3)}
-.readout .v{font-family:var(--serif);font-size:clamp(1.5rem,2.6vw,2rem);line-height:1.1;margin-top:6px}
+.readout .v{font-family:var(--serif);font-size:clamp(1.5rem,2.6vw,2rem);line-height:1.1;margin-top:6px;
+  font-variant-numeric:tabular-nums}
 .readout .d{font-size:12.5px;color:var(--zhu);font-family:var(--mono)}
 .readout .v.pending{color:var(--ink-3);font-size:1.3rem}
+/* 读数值放不下大数字时（学科名等文字值）：仍走衬线 .v，只降字号、行高放宽 */
+.readout .v.tx{font-size:clamp(1.1rem,1.7vw,1.35rem);line-height:1.35;padding-top:.25em}
+/* vs 上期 delta 小 chip（生成台本期读数，2026-10-24）：箭头＋差值；上一期没数据时整枚不渲染。
+   进入数升→ok、降→bad；学科数与接近度差值走中性色。 */
+.readout .d.delta{display:inline-block;margin-top:7px;padding:1px 8px;border:1px solid var(--line-2);
+  background:var(--card);color:var(--ink-2);letter-spacing:.02em}
+.readout .d.delta.up{color:var(--ok);border-color:var(--ok-line);background:var(--ok-soft)}
+.readout .d.delta.down{color:var(--bad);border-color:var(--bad);background:var(--bad-soft)}
 
 /* 待接口的整块说明（诚实态，不填假数） */
 .pending-box{border:1px dashed var(--line);padding:16px 18px;
@@ -362,6 +376,8 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 .art .m{font-size:13px;color:var(--ink-3);margin-top:2px}
 .art .go{margin-left:auto;align-self:center;color:var(--zhu);font-size:14px;white-space:nowrap}
 .art a{text-decoration:none}
+/* 交互卡微抬升（2026-10-24 分层）：悬停加一档稍深阴影，克制——只这一档，不再多 */
+.art:hover{box-shadow:0 2px 6px rgba(21,34,43,.10)}
 
 /* 本期产物：3 列（rick 定 2026-09-25）——4 列时标题会折行、9 张还留孤行 */
 .art-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -388,16 +404,19 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 .wb2-node{flex:1 1 130px;min-width:118px;position:relative;background:var(--card);border:1px solid var(--line);
   border-top:3px solid var(--line);padding:12px 14px 10px}
 .wb2-node .k{display:block;font-size:11px;letter-spacing:.22em;color:var(--ink-3)}
-.wb2-node .v{display:block;font-family:var(--serif);font-size:20px;margin-top:2px;color:var(--ink)}
+.wb2-node .v{display:block;font-family:var(--serif);font-size:20px;margin-top:2px;color:var(--ink);
+  font-variant-numeric:tabular-nums}
 .wb2-node .n{display:block;font:12px var(--mono);color:var(--ink-3);margin-top:2px}
-.wb2-node.done{border-top-color:var(--tool-3)}
-.wb2-node.done .k,.wb2-node.done .v{color:var(--tool-3)}
-.wb2-node.now{border-top-color:var(--zhu);background:var(--card-hi)}
+/* 状态第二信号（2026-10-24）：三态各配底色填充——投影距离下不靠 3px 顶边线也能分辨。
+   done 文字用 tool-2（tool-3 在 tool-5 浅底上对比度不足 4.5，蓝主题实测 4.3）。 */
+.wb2-node.done{border-top-color:var(--tool-3);background:var(--tool-5)}
+.wb2-node.done .k,.wb2-node.done .v{color:var(--tool-2)}
+.wb2-node.now{border-color:var(--zhu);border-top-color:var(--zhu);background:var(--card-hi)}
 .wb2-node.now .v{color:var(--zhu)}
-.wb2-node.bad{border-top-color:var(--warn)}
+.wb2-node.bad{border-top-color:var(--warn);background:var(--warn-soft)}
 .wb2-node.bad .k,.wb2-node.bad .v{color:var(--warn)}
 .wb2-node.todo{opacity:.55}
-.wb2-node .mark{position:absolute;right:10px;top:9px;font-size:13px}
+.wb2-node .mark{position:absolute;right:10px;top:9px;font-size:13px;font-weight:700}
 .wb2-node.done .mark{color:var(--tool-3)}
 .wb2-node.now .mark{color:var(--zhu)}
 .wb2-node.bad .mark{color:var(--warn)}
@@ -469,12 +488,13 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 .cell.live .dot,.cell.run .dot{animation:runpulse .9s ease-in-out infinite}
 .cell.ok{border-top-color:var(--ok)}
 .cell.ok .v{color:var(--ok)}
-.cell.warn{border-top-color:var(--gold-ink)}
-.cell.warn .v,.cell.warn .n{color:var(--gold-ink)}
+.cell.warn{border-top-color:var(--warn)}
+.cell.warn .v,.cell.warn .n{color:var(--warn)}
 .cell.todo{border-top-color:var(--ink-4)}
 .cell.todo .v,.cell.todo .n{color:var(--ink-4)}
 /* 三态第二重视觉信号：格名（.t）随状态着色——细边框在投影/大龄场景不够看（10-24 对抗性审查） */
 .cell.ok .t{color:var(--ok)}
+.cell.warn .t{color:var(--warn)}
 .cell.run .t{color:var(--field-3)}
 .cell.todo .t{color:var(--ink-4)}
 .cell.run{border-top-color:var(--field-3)}
@@ -820,6 +840,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 .ar-art.primary{border-color:var(--gold)}
 .ar-art b{font-size:15px}
 .ar-art .m{display:block;font-size:13px;color:var(--ink-3);margin-top:3px;word-break:break-all}
+.ar-art:hover{box-shadow:0 2px 6px rgba(21,34,43,.10)}
 /* ============================================================================
    审核台 · 试排报告（2026-09-28 rick 定：整篇报告 + 就地填空 + 签单/下载同屏）
    ⚠ rv- 前缀：报告区内部与右栏自成一体，不碰既有类。
