@@ -15,7 +15,7 @@ import {
 } from './api-forecast'
 import { applyPeriod, buildPeriodUrl } from './lib/period'
 import { forecastAppliedDiffs, forecastAppliedStale, sameForecastChoice, savedForecastChoice } from './lib/forecast'
-import { errorNote } from './lib/status'
+import { approvalLabel, errorNote } from './lib/status'
 import { stateDbAlert, type StateDbAlert } from './lib/stateDb'
 import { wireEnter } from './lib/motion'
 import { pickRunForPeriod } from './lib/run'
@@ -25,7 +25,8 @@ import { Icon, Sprite } from './icons'
 import { Info } from './Info'
 import { Acquire } from './Acquire'
 import { Pick } from './Pick'
-import { Workbench, PeriodsPanel } from './Workbench'
+import { Workbench } from './Workbench'
+import { Tools } from './Tools'
 import { Report } from './Report'
 import { Review } from './Review'
 import { Ledger } from './Ledger'
@@ -593,11 +594,13 @@ export default function App() {
           )}
         </nav>
         <div className="app-side">
-          {/* 期次是全局控件（2026-10-17 冗余收敛稿③）：从报告屏印记链升到顶栏，各屏同一份 */}
+          {/* 期次是全局控件（2026-10-17 冗余收敛稿③）：从报告屏印记链升到顶栏，各屏同一份。
+              2026-10-24 rick 工作台减负：生成台尾部「全部期次」折块撤除，签发状态并进这里的
+              option 文案（期次 · 已签发/待重签/未签发）——不再另铺一张状态表。 */}
           {periods.length > 0 && (
             <label className="app-period">期次
               <select value={selected ?? ''} onChange={(e) => pickPeriod(e.target.value)} aria-label="切换期次">
-                {periods.map((p) => <option key={p.period} value={p.period}>{p.period}</option>)}
+                {periods.map((p) => <option key={p.period} value={p.period}>{p.period} · {approvalLabel(p.status)}</option>)}
                 {selected && !periods.some((p) => p.period === selected) && <option value={selected}>{selected}</option>}
               </select>
             </label>
@@ -711,7 +714,31 @@ export default function App() {
             live={(!!runForSelected && !isTerminal(runForSelected.status ?? undefined)) || wb.state === 'running'}
             liveNote={runForSelected?.last ?? null} />
         ) : view === 'archive' ? (
-          <Archive period={selected} approvalStatus={approvalStatus} />
+          <>
+            <Archive period={selected} approvalStatus={approvalStatus} />
+            {/* 「这一期的工具」折块（2026-10-24 rick 工作台减负）从生成台迁来：重跑/回滚/上传/
+                日志包都是管理向动作，放运行档案页（管理区）正合适，生成台首屏回归极致低密。
+                门控沿用生成台原条件（角色已确认且可编辑）；props 原样透传，组件本身未动。 */}
+            {!noAdminBits && canEdit && (
+              <details className="fold">
+                <summary>这一期的工具<span className="sm">重跑 · 回滚 · 台账 · 日志包</span></summary>
+                <p className="hint fold-lead">
+                  看数据源：<a href={`/app/?view=ledger${selected ? `&period=${encodeURIComponent(selected)}` : ''}`}>主台账（只读）→</a>
+                </p>
+                <Tools
+                  period={selected}
+                  jobId={runForSelected?.jobId ?? null}
+                  approvalStatus={approvalStatus}
+                  actionsLocked={jobActionsLocked}
+                  actionLockReason={actionLockReason}
+                  onActionStart={beginToolAction}
+                  onActionEnd={endToolAction}
+                  onUploaded={(jobId, period) => { pickPeriod(period); attach(jobId, period) }}
+                  refreshToken={selected ? artifactRefreshByPeriod[selected] ?? 0 : 0}
+                />
+              </details>
+            )}
+          </>
         ) : view === 'heal' ? (
           <HealSandbox />
         ) : view === 'migrate' ? (
@@ -757,6 +784,8 @@ export default function App() {
             refreshToken={selected ? artifactRefreshByPeriod[selected] ?? 0 : 0} />
         ) : (
           <>
+                      {/* 2026-10-24 rick 工作台减负：工具折块迁往运行档案页（archive 分支），
+                          此处不再传工具相关 props；beginToolAction/endToolAction/attach 仍由 App 持有。 */}
                       <Workbench
                         period={selected}
                         me={me}
@@ -777,18 +806,8 @@ export default function App() {
                         forecastAppliedStale={selectedForecastStale}
                         forecastAppliedDiffs={selectedForecastStaleDiffs}
                         autoConfirmRerun={autoConfirmRerun}
-                        showTools={!noAdminBits && canEdit}
-                        toolJobId={runForSelected?.jobId ?? null}
-                        toolArtifactsToken={selected ? artifactRefreshByPeriod[selected] ?? 0 : 0}
-                        onToolActionStart={beginToolAction}
-                        onToolActionEnd={endToolAction}
-                        onToolUploaded={(jobId, period) => { pickPeriod(period); attach(jobId, period) }}
                       />
           </>
-        )}
-
-        {view === 'workbench' && (
-          <PeriodsPanel periods={periods} selected={selected} healthy={healthy} onPick={pickPeriod} />
         )}
 
         {busy && <p className="hint mt-14">正在提交生成请求……</p>}

@@ -9,8 +9,7 @@ import { useEffect, useState } from 'react'
 import { getForecastBoard, getWaterLevel, type ForecastBoardRow, type ForecastChoiceEntry, type WaterRow } from './api-forecast'
 import { ConfirmButton } from './ConfirmButton'
 import { Info } from './Info'
-import { Tools } from './Tools'
-import { appHref, approvalLabel } from './lib/status'
+import { approvalLabel } from './lib/status'
 import { Icon } from './icons'
 import { failureCopy, isTerminal, type Workbench as WB, type WBState } from './wb'
 import type { ActivityState, Run } from './hooks/useJobRun'
@@ -147,7 +146,6 @@ export function Workbench({
   actionLockReason, activeRun, actionsLocked, submitting, onGenerate,
   periods, forecastChoice, detail,
   forecastAppliedStale, forecastAppliedDiffs, autoConfirmRerun,
-  showTools, toolJobId, toolArtifactsToken, onToolActionStart, onToolActionEnd, onToolUploaded,
 }: {
   period: string | null
   me: Me | null
@@ -172,13 +170,6 @@ export function Workbench({
   forecastAppliedDiffs: string[]
   /** 从预测台「回出报告并重新生成」来（?rerun=1）：重跑确认态直接打开一次 */
   autoConfirmRerun: boolean
-  /** 「工具调用记录」折叠（2026-10-01 从 App 抽出）：角色未确认/操作员（只读）时不渲染 */
-  showTools: boolean
-  toolJobId: string | null
-  toolArtifactsToken: number
-  onToolActionStart: (action: 'upload' | 'rerun' | 'rollback') => boolean
-  onToolActionEnd: (action: 'upload' | 'rerun' | 'rollback') => void
-  onToolUploaded: (jobId: string, period: string) => void
 }) {
   const isAdmin = me?.role === 'admin'
   /* 水位卡读数＝预测看板真值（接近度/阈值），只透传不换算（2026-10-17 绿蓝融合 U2）。
@@ -484,108 +475,9 @@ export function Workbench({
             <div className="degraded">{wb.note}</div>
           </div>
         )}
-      {showTools && (
-        <details className="fold">
-          <summary>这一期的工具<span className="sm">重跑 · 回滚 · 台账 · 日志包</span></summary>
-          <p className="hint fold-lead">
-            看数据源：<a href={`/app/?view=ledger${period ? `&period=${encodeURIComponent(period)}` : ''}`}>主台账（只读）→</a>
-          </p>
-          <Tools
-            period={period}
-            jobId={toolJobId}
-            approvalStatus={approvalStatus}
-            actionsLocked={actionsLocked}
-            actionLockReason={actionLockReason}
-            onActionStart={onToolActionStart}
-            onActionEnd={onToolActionEnd}
-            onUploaded={onToolUploaded}
-            refreshToken={toolArtifactsToken}
-          />
-        </details>
-      )}
+      {/* 「这一期的工具」折块（2026-10-24 rick 工作台减负）迁往运行档案页（App.tsx archive 分支）：
+          重跑/回滚/上传是管理向动作，生成台首屏回归极致低密；props 与门控原样搬走，组件未动。 */}
     </>
-  )
-}
-
-/** 全部期次（生成台尾块，2026-10-01 从 App.tsx 抽出）：行点击是鼠标便利，
-    「期次」单元格里的按钮是它的键盘等价物（点击冒泡到行，同一动作）。
-    表头排序（2026-10-24）：期次 / 状态两列可点，纯客户端排序不动后端；
-    默认期次新→旧（▼），状态序 已签发＞签发已失效＞未签发，再点换向。 */
-export function PeriodsPanel({ periods, selected, healthy, onPick }: {
-  periods: Period[]
-  selected: string | null
-  healthy: boolean | null
-  onPick: (period: string) => void
-}) {
-  const [sort, setSort] = useState<{ key: 'period' | 'status'; dir: 'asc' | 'desc' }>(
-    { key: 'period', dir: 'desc' })
-  const RANK: Record<string, number> = { signed: 0, stale: 1, unsigned: 2 }
-  const sorted = [...periods].sort((a, b) => {
-    if (sort.key === 'status') {
-      const d = (RANK[a.status] ?? 9) - (RANK[b.status] ?? 9)
-      return sort.dir === 'desc' ? d : -d
-    }
-    return sort.dir === 'desc' ? b.period.localeCompare(a.period) : a.period.localeCompare(b.period)
-  })
-  const toggleSort = (key: 'period' | 'status') =>
-    setSort(s => s.key === key ? { key, dir: s.dir === 'desc' ? 'asc' : 'desc' } : { key, dir: 'desc' })
-  const arrow = (key: 'period' | 'status') =>
-    sort.key === key ? (sort.dir === 'desc' ? ' ▼' : ' ▲') : ''
-  const ariaSort = (key: 'period' | 'status') =>
-    sort.key === key ? (sort.dir === 'desc' ? 'descending' : 'ascending') : 'none'
-  return (
-    <details className="fold">
-      <summary>全部期次<span className="sm">共 {periods.length} 期</span></summary>
-      <section className="card tablewrap mt-18">
-        <table className="periods">
-          <thead>
-            <tr>
-              <th aria-sort={ariaSort('period')}>
-                <button type="button" className="rowbtn nowrap" onClick={() => toggleSort('period')}>
-                  期次{arrow('period')}
-                </button>
-              </th>
-              <th aria-sort={ariaSort('status')}>
-                <button type="button" className="rowbtn nowrap" onClick={() => toggleSort('status')}>
-                  状态{arrow('status')}
-                </button>
-              </th>
-              <th className="w-90">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {periods.length === 0 && (
-              <tr><td colSpan={3} className="ink-3">
-                {healthy === false ? (
-                  <>服务未启动，读不到期次。起好服务后
-                    <button className="btn btn-xs mx-6"
-                            onClick={() => location.reload()}>重新检查</button>
-                    一次。</>
-                ) : (
-                  <>还没有任何期次。数据按期次自动读台账；生成第一期后这里就有记录。<a href="#tools">去看这一期的工具 →</a></>
-                )}
-              </td></tr>
-            )}
-            {sorted.map((p) => (
-              <tr key={p.period} className="period-row"
-                  onClick={() => onPick(p.period)}
-                  style={{ background: p.period === selected ? 'var(--panel)' : undefined }}>
-                <td><button type="button" className="rowbtn">{p.label}</button></td>
-                <td>
-                  <span className={`pill ${p.status === 'signed' ? 'signed' : p.status === 'stale' ? 'stale' : 'unsigned'}`}>
-                    {approvalLabel(p.status)}
-                  </span>
-                </td>
-                <td>
-                  <a href={appHref('report', p.period)}
-                     onClick={(e) => e.stopPropagation()}>打开</a>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-    </details>
   )
 }
 
