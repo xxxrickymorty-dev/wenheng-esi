@@ -22,6 +22,7 @@ import { pickRunForPeriod } from './lib/run'
 import { UserChip } from './lib/UserChip'
 import { useJobRun, type Run } from './hooks/useJobRun'
 import { Icon, Sprite } from './icons'
+import { Info } from './Info'
 import { Acquire } from './Acquire'
 import { Pick } from './Pick'
 import { Workbench, PeriodsPanel } from './Workbench'
@@ -608,6 +609,14 @@ export default function App() {
               </select>
             </label>
           )}
+          {/* 全站唯一一份口径/来源/只读声明（原页脚收进顶栏 ⓘ——2026-10-24 rick：页脚每页重复，徒增信息密度）。
+              合规声明（请勿外传，2026-10-14）一并入内。 */}
+          <Info label="口径、来源与只读声明">
+            <p>① 数字只来自馆员维护的台账与派生产物，运行期大模型不进入数据路径；</p>
+            <p>② 本系统是只读视图，不修改台账与报告；③ 预测章按「本期已选」的已保存选择执行，未列学科用 V1 推荐；④ 期次与状态以任务记录为准，未签发报告不可下载。</p>
+            <p>来源：期内产物目录 · 运行档案 · 预测选模配置。</p>
+            <p>分析报告属于内部资料，仅用于参赛，禁止外传。</p>
+          </Info>
           {/* 陈列馆＝给人看的「展示面」，不在工作区里——顶栏给一个离开工作区的入口（2026-10-15） */}
           <a className="app-jump" href="/app/shelf/" title="陈列馆（成品）">
             陈列馆 <Icon name="arrow" size={14} />
@@ -783,41 +792,6 @@ export default function App() {
 
         {busy && <p className="hint mt-14">正在提交生成请求……</p>}
       </main>
-
-      {/* 全局页脚（2026-10-01，rick：形态参考陈列馆）：口径 · 来源 · 只读声明全站唯一一份；
-          合规声明（请勿外传）2026-10-14 起放底部行中位（rick：自工作台顶部移入） */}
-      <footer className="app-footer" role="contentinfo">
-        <div className="inner">
-          <div className="cols">
-            <div className="f-brand">
-              <strong>文衡</strong>
-              <span>WENHENG · 学科信息参考</span>
-            </div>
-            <div className="f-note">
-              <b>说明 · 口径、来源与只读声明</b>
-              <p>
-                ① 数字只来自馆员维护的台账与派生产物，运行期大模型不进入数据路径；
-                ② 本系统是只读视图，不修改台账与报告；③ 预测章按「本期已选」的已保存选择执行，未列学科用 V1 推荐；
-                ④ 期次与状态以任务记录为准，未签发报告不可下载。来源：期内产物目录 · 运行档案 · 预测选模配置。
-              </p>
-            </div>
-            <nav className="f-nav" aria-label="页脚导航">
-              <a href="/app/shelf/">陈列馆</a>
-              {me?.role === 'admin' && (
-                <>
-                  <a href={navHref('/app/?view=ledger')}>主台账</a>
-                  <a href={navHref('/app/?view=archive')}>运行档案</a>
-                </>
-              )}
-            </nav>
-          </div>
-          <div className="f-bottom">
-            <span>云南大学图书馆 · 学科信息参考</span>
-            <span className="f-claim">分析报告属于内部资料，仅用于参赛，禁止外传。</span>
-            <span>会泽百家　至公天下</span>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }

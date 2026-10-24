@@ -1171,32 +1171,10 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
    全局页脚（2026-10-17 庚：纸面 + 顶部绿重线，收掉深底块）
    内容三栏（品牌 / 说明 / 入口）＋底行；不吸底、不占首屏。
    ========================================================================== */
-.app-footer{background:var(--field-2);color:var(--field-4);border-top:0}
-.app-footer .inner{max-width:1240px;margin:0 auto;padding:40px 40px 52px}
-.app-footer .cols{display:flex;gap:36px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
-.app-footer .f-brand{flex:0 0 auto}
-.app-footer .f-brand strong{display:block;font-family:var(--serif);font-size:26px;font-weight:600;letter-spacing:.14em;color:var(--field-5)}
-.app-footer .f-brand span{display:block;margin-top:9px;font-size:11px;letter-spacing:.2em;color:var(--field-3)}
-.app-footer .f-note{flex:1 1 400px;max-width:620px}
-.app-footer .f-note b{display:block;font-size:13.5px;font-weight:600;color:var(--field-5);letter-spacing:.05em}
-.app-footer .f-note p{margin:10px 0 0;font-size:13px;line-height:1.95;color:var(--field-4)}
-.app-footer .f-nav{display:flex;gap:24px;font-size:13.5px;white-space:nowrap;padding-top:4px}
-.app-footer .f-nav a{color:var(--field-4);text-decoration:none;padding-bottom:2px;
-  border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
-.app-footer .f-nav a:hover{color:var(--field-5);border-color:var(--tool-3)}
-.app-footer .f-bottom{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
-  margin-top:30px;padding-top:14px;border-top:1px solid var(--field-3);
-  font-size:12.5px;color:var(--field-4)}
-/* 合规声明（请勿外传）：底部行中位（2026-10-14 rick；原为工作台顶部右对齐一行） */
-.app-footer .f-claim{letter-spacing:.06em;user-select:none}
-@media (max-width:760px){
-  .app-footer .inner{padding:30px 14px 44px}
-  .app-footer .cols{gap:22px}
-  .app-footer .f-nav{gap:18px}
-}
-@media (prefers-reduced-motion: reduce){
-  .app-footer .f-nav a{transition:none}
-}
+/* ---------- 顶栏 ⓘ 说明（2026-10-24）：原全局页脚收进顶栏——页脚每页重复徒增密度。
+   ⓘ 在深色场条上：描边/文字用场色系；弹层仍是浅色卡片（浮在正文上）。 ---------- */
+.app-side .info>summary{background:transparent;border-color:var(--field-3);color:var(--field-4)}
+.app-side .info>summary:hover,.app-side .info[open]>summary{border-color:var(--field-5);color:var(--field-5)}
 
 /* ---------- 统一身份控件（2026-10-12）：工作区顶栏 / 对话页左下角，同一组件、同一交互 ---------- */
 .user-chip{position:relative;display:inline-flex;font-size:13.5px;color:var(--ink-2)}
@@ -1233,7 +1211,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 .ar-step-sec,.ar-art .m,.rv-docmeta,.rv-docname,.rv-next,.rv-todo-v,.rv-flag,.rv-chip,
 .fx-pane-meta,.fx-plan .chip,.btn.small,.btn-lite,.fc-stat,.fc-more summary,.fc-gal-reset,
 .aq-src,.aq-gstat,.aq-chip,.aq-fname,.aq-fname small,.aq-fres,.aq-gnote,.aq-files>summary,
-.app-footer .f-bottom,.chip-gold,.dim-block,.fs-13,.info-body,.fc-metrics span,.an-pop,.grid-dim,
+.chip-gold,.dim-block,.fs-13,.info-body,.fc-metrics span,.an-pop,.grid-dim,
 .dlg-land-prev,.dlg-wk-link,.dlg-land-dyn
 {font-size:var(--fs-min)}
 
@@ -1244,7 +1222,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 .rv-jump{min-height:var(--hit-min)}
 .rowbtn,.pill,.hint a,.period-row a,.art a,.ar-art a{min-height:24px}
 .hint a,.period-row a,.art a,.ar-art a{display:inline-flex;align-items:center}
-.rv-lead a,.rv-side a,.app-footer .f-nav a{display:inline-flex;align-items:center;min-height:var(--hit-min)}
+.rv-lead a,.rv-side a{display:inline-flex;align-items:center;min-height:var(--hit-min)}
 /* 审核台页题分隔点：原用 --line 当文字色（≈1.2:1，等于看不见）——改可读灰 */
 .rv-lead .ink-line{color:var(--ink-3)}
 
