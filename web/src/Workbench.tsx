@@ -117,6 +117,20 @@ function FlowLink({ st }: { st: 'ok' | 'bad' | 'todo' }) {
   )
 }
 
+/** 差值只留两位小数、去尾零（接近度是百分数点值，两期相减会有浮点尾巴） */
+function fmtDelta(n: number): string {
+  return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100)
+}
+
+/** 「较上一期」差值小签（本期读数，2026-10-24）：箭头＋差值；上一期没数据时整枚不渲染。
+    semantic＝进入数（升＝可喜、降＝要留意），走绿/红；其余差值中性色。 */
+function DeltaChip({ diff, semantic }: { diff: number | null; semantic?: boolean }) {
+  if (diff == null) return null
+  const cls = semantic ? (diff > 0 ? 'up' : diff < 0 ? 'down' : '') : ''
+  const txt = diff > 0 ? `↑ ${fmtDelta(diff)}` : diff < 0 ? `↓ ${fmtDelta(-diff)}` : '持平'
+  return <span className={cls ? `d delta ${cls}` : 'd delta'}>{txt} · 较上一期</span>
+}
+
 /** 审计行计数（数字只来自运行档案，不换算） */
 function countAudit(a: ArchiveData) {
   const rows = a.audit?.rows ?? []
@@ -255,6 +269,43 @@ export function Workbench({
   const prevLine = prevP
     ? `上一期 ${prevP.period} · ${prevP.status === 'signed' ? '已签发' : prevP.status === 'stale' ? '待重签' : '未签发'}`
     : ''
+  /* 上一期水位（2026-10-24 本期读数）：单独再取一次，取不到 → 不出「较上一期」差值小签。
+     只在本期已有矩阵读数时才取——本期没有（未出稿 / 临时期次），上一期多半也没有，
+     白跑一趟只会给没开过的期次打出 404 噪声。 */
+  const prevPeriodId = prevP?.period ?? ''
+  const waterReady = water.length > 0
+  const [prevWater, setPrevWater] = useState<WaterRow[] | null>(null)
+  useEffect(() => {
+    if (!prevPeriodId || !waterReady) { setPrevWater(null); return }
+    let alive = true
+    setPrevWater(null)
+    getWaterLevel(prevPeriodId)
+      .then((w) => { if (alive) setPrevWater(w.rows) })
+      .catch(() => { if (alive) setPrevWater(null) })
+    return () => { alive = false }
+  }, [prevPeriodId, waterReady])
+
+  /* ── 本期读数（2026-10-24）：学科矩阵三枚真值＋较上一期差值。
+     读数只认学科矩阵（水位接口）——预测看板兜底里没有「已进入」状态，拿来会编出假 0；
+     矩阵没读到就如实显示 —；上一期没有矩阵时差值小签整枚不渲染。差值只做减法展示。 ── */
+  const readIn = water.filter((r) => r.state === 'in').length
+  let near: WaterRow | null = null
+  for (const r of water) {
+    if (r.state === 'in' || r.prox == null) continue
+    if (!near || r.prox > (near.prox ?? 0)) near = r
+  }
+  let prevNear: WaterRow | null = null
+  for (const r of prevWater ?? []) {
+    if (r.state === 'in' || r.prox == null) continue
+    if (!prevNear || r.prox > (prevNear.prox ?? 0)) prevNear = r
+  }
+  const prevLen = prevWater?.length ?? 0
+  const prevHas = prevLen > 0
+  const dTotal = water.length && prevHas ? water.length - prevLen : null
+  const dIn = water.length && prevHas
+    ? readIn - (prevWater?.filter((r) => r.state === 'in').length ?? 0)
+    : null
+  const dProx = near?.prox != null && prevNear?.prox != null ? near.prox - prevNear.prox : null
   const WHY: Partial<Record<WBState, string>> = {
     ready: '前两步已就绪 · 约 3 分钟出报告',
     done: '签单后可下载；重出会使签发失效',
@@ -322,6 +373,26 @@ export function Workbench({
           <Info label="状态从哪来">
             <p>取数/生成节点来自单期详情与任务记录；审计读数来自运行档案；签发状态来自审核台签单。本页只读，不改任何数据。</p>
           </Info>
+        </div>
+      </section>
+
+      {/* 本期读数（2026-10-24）：学科矩阵三枚真值＋较上一期差值小签（读法沿用报告读数带）。
+          没读到矩阵就如实显示 —；差值只在上一期也有矩阵时出现——不显示假 0。 */}
+      <section className="readouts" aria-label="本期读数">
+        <div className="readout">
+          <div className="k">学科总数</div>
+          <div className={`v${water.length ? '' : ' pending'}`}>{water.length || '—'}</div>
+          <DeltaChip diff={dTotal} />
+        </div>
+        <div className="readout">
+          <div className="k">已进入前 1%</div>
+          <div className={`v${water.length ? '' : ' pending'}`}>{water.length ? readIn : '—'}</div>
+          <DeltaChip diff={dIn} semantic />
+        </div>
+        <div className="readout">
+          <div className="k">最接近前 1% 的潜力学科</div>
+          <div className={`v${near ? ' tx' : ' pending'}`}>{near ? `${near.subject} ${near.prox}%` : '—'}</div>
+          <DeltaChip diff={dProx} />
         </div>
       </section>
 
@@ -437,13 +508,31 @@ export function Workbench({
 }
 
 /** 全部期次（生成台尾块，2026-10-01 从 App.tsx 抽出）：行点击是鼠标便利，
-    「期次」单元格里的按钮是它的键盘等价物（点击冒泡到行，同一动作）。 */
+    「期次」单元格里的按钮是它的键盘等价物（点击冒泡到行，同一动作）。
+    表头排序（2026-10-24）：期次 / 状态两列可点，纯客户端排序不动后端；
+    默认期次新→旧（▼），状态序 已签发＞签发已失效＞未签发，再点换向。 */
 export function PeriodsPanel({ periods, selected, healthy, onPick }: {
   periods: Period[]
   selected: string | null
   healthy: boolean | null
   onPick: (period: string) => void
 }) {
+  const [sort, setSort] = useState<{ key: 'period' | 'status'; dir: 'asc' | 'desc' }>(
+    { key: 'period', dir: 'desc' })
+  const RANK: Record<string, number> = { signed: 0, stale: 1, unsigned: 2 }
+  const sorted = [...periods].sort((a, b) => {
+    if (sort.key === 'status') {
+      const d = (RANK[a.status] ?? 9) - (RANK[b.status] ?? 9)
+      return sort.dir === 'desc' ? d : -d
+    }
+    return sort.dir === 'desc' ? b.period.localeCompare(a.period) : a.period.localeCompare(b.period)
+  })
+  const toggleSort = (key: 'period' | 'status') =>
+    setSort(s => s.key === key ? { key, dir: s.dir === 'desc' ? 'asc' : 'desc' } : { key, dir: 'desc' })
+  const arrow = (key: 'period' | 'status') =>
+    sort.key === key ? (sort.dir === 'desc' ? ' ▼' : ' ▲') : ''
+  const ariaSort = (key: 'period' | 'status') =>
+    sort.key === key ? (sort.dir === 'desc' ? 'descending' : 'ascending') : 'none'
   return (
     <details className="fold">
       <summary>全部期次<span className="sm">共 {periods.length} 期</span></summary>
@@ -451,7 +540,17 @@ export function PeriodsPanel({ periods, selected, healthy, onPick }: {
         <table className="periods">
           <thead>
             <tr>
-              <th>期次</th><th>状态</th><th className="w-90">操作</th>
+              <th aria-sort={ariaSort('period')}>
+                <button type="button" className="rowbtn nowrap" onClick={() => toggleSort('period')}>
+                  期次{arrow('period')}
+                </button>
+              </th>
+              <th aria-sort={ariaSort('status')}>
+                <button type="button" className="rowbtn nowrap" onClick={() => toggleSort('status')}>
+                  状态{arrow('status')}
+                </button>
+              </th>
+              <th className="w-90">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -459,7 +558,7 @@ export function PeriodsPanel({ periods, selected, healthy, onPick }: {
               <tr><td colSpan={3} className="ink-3">
                 {healthy === false ? (
                   <>服务未启动，读不到期次。起好服务后
-                    <button className="btn btn-xs mx-6" 
+                    <button className="btn btn-xs mx-6"
                             onClick={() => location.reload()}>重新检查</button>
                     一次。</>
                 ) : (
@@ -467,7 +566,7 @@ export function PeriodsPanel({ periods, selected, healthy, onPick }: {
                 )}
               </td></tr>
             )}
-            {periods.map((p) => (
+            {sorted.map((p) => (
               <tr key={p.period} className="period-row"
                   onClick={() => onPick(p.period)}
                   style={{ background: p.period === selected ? 'var(--panel)' : undefined }}>
