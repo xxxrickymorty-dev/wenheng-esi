@@ -442,17 +442,21 @@ export function Acquire({ period, onOpenPeriod }: {
                   <span className="stg-title">开始前检查</span>
                   <span className={`stg-stat ${s1stat[1]}`}>{s1stat[0]}</span>
                 </div>
-                {/* 通过后：收起成一行（四盏小灯 + 重查） */}
-                <div className="stg-inline">
-                  <span className={`aq-chip ${pf?.browser === 'ok' ? 'ok' : 'bad'}`}><Icon name="window" size={15} />浏览器</span>
-                  <span className={`aq-chip ${pf?.esi === 'ok' ? 'ok' : 'bad'}`}><Icon name="seal" size={15} />ESI 登录</span>
-                  <span className={`aq-chip ${pf?.incites === 'ok' ? 'ok' : 'bad'}`}><Icon name="seal" size={15} />InCites 登录</span>
-                  <span className={`aq-chip ${pf?.data?.ok === true ? 'ok' : pf?.data?.ok === false ? 'bad' : ''}`}><Icon name="clock" size={15} />数据期</span>
-                  <button type="button" className="btn small" disabled={busy}
-                          onClick={() => { void preflightWithBrowser().then(() => load(true)) }}>
-                    <Icon name="refresh" size={15} />重查
-                  </button>
-                </div>
+                {/* 通过后：收起成一行（四盏小灯 + 重查）。
+                    2026-10-24 rick：往期（01–07）与 05 一致——只读期连收起灯行也不显示
+                    （「连接浏览器登录下载」只属于当期；09 等当期照旧）。 */}
+                {!ro && (
+                  <div className="stg-inline">
+                    <span className={`aq-chip ${pf?.browser === 'ok' ? 'ok' : 'bad'}`}><Icon name="window" size={15} />浏览器</span>
+                    <span className={`aq-chip ${pf?.esi === 'ok' ? 'ok' : 'bad'}`}><Icon name="seal" size={15} />ESI 登录</span>
+                    <span className={`aq-chip ${pf?.incites === 'ok' ? 'ok' : 'bad'}`}><Icon name="seal" size={15} />InCites 登录</span>
+                    <span className={`aq-chip ${pf?.data?.ok === true ? 'ok' : pf?.data?.ok === false ? 'bad' : ''}`}><Icon name="clock" size={15} />数据期</span>
+                    <button type="button" className="btn small" disabled={busy}
+                            onClick={() => { void preflightWithBrowser().then(() => load(true)) }}>
+                      <Icon name="refresh" size={15} />重查
+                    </button>
+                  </div>
+                )}
                 {/* 还没过：展开（四盏灯 + 检查按钮）。
                     2026-10-24 rick 红框：往期档案只读——浏览器/登录状态与检查按钮无需显示，
                     「连接浏览器登录下载」只属于当期（要补档只能在当期取，见②的说明）。 */}
