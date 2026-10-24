@@ -66,7 +66,6 @@ export function AiRecords({ period }: { period: string | null }) {
       <section className="card mt-18 pad-card">
         <h2 className="h-sec">
           问文衡 · 问答记录
-          <span className="hint">问 → 工具 → 模型 → 校验</span>
           <span className="hint" title="记录里有什么：问题、每次工具调用（读了什么、花了多久）、模型调用（用了哪个模型、成没成）、数字核对结果。不含回答正文与提示词。">?</span>
         </h2>
 

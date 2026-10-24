@@ -1,11 +1,13 @@
 /* 运行档案（契约 §2.2 #18）——一次运行的完整回放：
    状态怎么走的、每一步用了多久、审计怎么判的、日志包里都有什么。
-   只读页，不在顶栏；从生成台「这一期的工具」进来。
+   只读页；从顶栏进来；「这一期的工具」折块也在本页（2026-10-24 迁入）。
    数据全部来自 GET /api/periods/{p}/archive（后端已把服务器绝对路径剥掉）。
 
    减负版（2026-09-29，diji 票 12 对照稿过审）：同源数据一份只画一遍——
    01 过程回放（链＋瀑布各一次，删旧「01 表」「02 瀑布」「03 调度」三块重复）·
-   页头凭据折进「任务凭据」· 审计失败优先（通过项折起）· 编号 01→04 连续。 */
+   页头凭据折进「任务凭据」· 审计失败优先（通过项折起）· 编号 01→04 连续。
+   极简稿（2026-10-24，rick 拍板）：删页首回链行、页题导语、审计末行时间戳、
+   轨迹折块说明性小字；下载按钮只留「下载日志包」——只留数据、状态与错误。 */
 
 import { useEffect, useState } from 'react'
 import { getAcquisition, getArchive, humanSize, type AcquisitionState, type ArchiveData } from './api'
@@ -60,11 +62,6 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
 
   return (
     <>
-      <p className="hint mt-2">
-        <a href={`/app/?period=${period ? encodeURIComponent(period) : ''}`}>← 回生成台</a>
-        {' · '}期次 <b className="mono">{period ?? '—'}</b>
-      </p>
-
       {note && <div className="pending-box">{note}</div>}
       {!d && !note && <div className="pending-box">正在读这次运行的档案……</div>}
 
@@ -73,7 +70,6 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
           {/* ===== 页头 ===== */}
           <section className="card pad-card-lg">
             <h1 className="fs-24">运行档案 · {d.period}</h1>
-            <p className="fc-lead">这次运行的完整回放：状态、用时、审计、产物。</p>
             <div className="rowc mt-14">
               {!!job.status && (
                 <span className={`pill ${job.status === 'completed' ? 'signed' : job.status === 'warned' ? 'stale' : 'unsigned'}`}>
@@ -87,7 +83,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
               )}
               {!!d.logpack_url && (
                 <a className="btn primary ml-auto" href={d.logpack_url} >
-                  <Icon name="doc" size={19} />下载日志包（{d.logpack.n_files} 个文件 · {humanSize(d.logpack.bytes)}）
+                  <Icon name="doc" size={19} />下载日志包
                 </a>
               )}
             </div>
@@ -261,9 +257,6 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                     真值链：{typeof d.audit.truth_chain === 'string' ? d.audit.truth_chain : '—'}
                   </p>
                 )}
-                <p className="hint mt-10">
-                  {d.audit.generated_at} · 耗时 {d.audit.elapsed_s} 秒
-                </p>
               </>
             ) : (
               <p className="hint mt-8">没有审计记录。</p>
@@ -280,7 +273,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
               {!!d.logpack_url && (
                 <a className="ar-art primary" href={d.logpack_url}>
                   <b>运行日志包（ZIP）</b>
-                  <span className="m">回放最小集 · {d.logpack.n_files} 个文件 · {humanSize(d.logpack.bytes)}</span>
+                  <span className="m">{d.logpack.n_files} 个文件 · {humanSize(d.logpack.bytes)}</span>
                 </a>
               )}
               {d.artifacts.map((a) => (
@@ -334,7 +327,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
           {/* ===== 07 智能体轨迹文件（折叠收一句，票 12） ===== */}
           <details className="fold">
             <summary>智能体轨迹文件
-              <span className="sm">{d.trace_files.length ? `${d.trace_files.length} / 3` : '本次直跑线不产轨迹（真实记录缺口）'}</span>
+              <span className="sm">{d.trace_files.length ? `${d.trace_files.length} / 3` : '本次没有轨迹'}</span>
             </summary>
             <div className="fold-inner">
               {d.trace_files.length ? (
@@ -349,7 +342,7 @@ export function Archive({ period, approvalStatus }: { period: string | null; app
                 </div>
               ) : (
                 <p className="hint m-0">
-                  直跑不写轨迹（要编排器才写）。
+                  本次没有轨迹文件。
                 </p>
               )}
             </div>

@@ -1,8 +1,10 @@
 /* 分析台 · 灵活报告（第二条产线）——**双栏定稿**（rick 2026-10-14，grilling 两轮；
    2026-10-15 二稿：页头只留标题＋导语，每栏一条控制条「指定学科＋生成/重新生成」，
    两栏各自出稿、可同时流式互不阻塞；下载改 docx）。
+   2026-10-24 极简稿：删页头导语（药丸已说明「内部参考件」）、每栏视角小字、出稿信息
+   只留生成时间、空态说明段——只留数据、状态与错误（rick 拍板）。
    左右两栏 = 两份报告并排（横看 / 纵看），各栏独立滚动；生成中对应栏逐节长出；
-   窗格头 = 短名 + 一行视角 + 出稿信息 + 看规则稿 / 下载报告。
+   窗格头 = 短名 + 出稿信息 + 看规则稿 / 下载报告。
    全文写作升级（高推理、判断草稿、待审线）在引擎侧第二段做（ADR-0009）。
 
    正文来自后端（后端自己的 mdview.render，图指向 /p/<期次>/flexible/chart/<intent>/<name>）——
@@ -49,24 +51,16 @@ function emptyPane(): Pane {
            variant: '', bodies: {}, stream: null, error: '' }
 }
 
-/** 每栏一句话的视角（界面文案；未知意图不硬凑） */
-const PANE_LEAD: Record<string, string> = {
-  single_trend: '单学科 · 概况 / 影响力 / 排名 / 跨校 / 展望',
-}
-
 /** 栏序：灵活报告只剩单学科一份（2026-10-20） */
 const PANE_ORDER = ['single_trend']
 
+/** 出稿信息只留生成时间（2026-10-24 极简：图数正文可见、出稿方式在「生成详情」里）。 */
 function metaLine(meta: Record<string, unknown> | null): string {
   const m = meta ?? {}
-  const parts: string[] = []
-  if (typeof m.n_charts === 'number') parts.push(`${m.n_charts} 张图`)
   if (typeof m.generated_at === 'string' && m.generated_at) {
-    parts.push(`生成于 ${String(m.generated_at).slice(5, 16)}`)
+    return `生成于 ${String(m.generated_at).slice(5, 16)}`
   }
-  const backend = String(m.backend ?? '')
-  if (backend) parts.push(backend === 'rule' ? '按规则出稿' : '自由出稿')
-  return parts.join(' · ')
+  return ''
 }
 
 /** 出稿方式的人话（技术串不露脸；原始模型名收进窗格头「生成详情」折叠块）。 */
@@ -289,10 +283,6 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
           <span className="tag ml-6">{period ?? '（选择期次）'}</span>
           <span className="pill stale">内部参考件 · 非报送</span>
         </h2>
-        <p className="fx-lead">
-          <strong>灵活报告</strong>是<strong>内部参考件 · 非报送</strong>——
-          按题选学科产出参考件，不下载数据、不签单；「出报告」才是复刻产线。
-        </p>
         {note && <div className="pending-box mt-12">{note}</div>}
         {period && !note && !intents.length && (
           <p className="hint mt-12">正在读取灵活报告……</p>
@@ -313,8 +303,8 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
                 <div>
                   <h3>{it.cn}</h3>
                   <p className="fx-pane-meta">
-                    {PANE_LEAD[it.id] ? `${PANE_LEAD[it.id]} ｜ ` : ''}
-                    {pane.stream ? '正在出稿' : (pane.has ? metaLine(pane.meta) : '还没有出稿')}
+                    {pane.stream ? '正在出稿'
+                      : (pane.has ? (metaLine(pane.meta) || '已出稿') : '还没有出稿')}
                   </p>
                   {pane.has && !pane.stream && modelName(pane.meta) && (
                     <details className="fx-backend" data-src="backend">
@@ -405,11 +395,6 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
                 {!pane.stream && !pane.loading && !pane.has && !pane.error && (
                   <div className="fx-empty">
                     <b>这一份还没有出稿</b>
-                    <p>
-                      {canEdit
-                        ? '想出一份：在上面的控制条里选好「指定学科」（可不指定），点「生成」——成稿会在这里逐段长出来。'
-                        : '生成仅管理员可用；操作员可只读查看已有稿。'}
-                    </p>
                   </div>
                 )}
               </div>
