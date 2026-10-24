@@ -199,7 +199,10 @@ export function Acquire({ period, onOpenPeriod }: {
   const preflightWithBrowser = useCallback(async () => {
     let r = await act('preflight')
     if (r?.preflight?.browser !== 'ok') {
-      await postAcqBrowser().catch(() => null)
+      /* 开不起来要**说清原因**（端口被占/没装 Chrome……），不能只留下「未连接」三个字——
+         2026-10-24 实案：9222 被遗留无头浏览器占着，后端 note 全说了，前端却把它扔了 */
+      const br = await postAcqBrowser().catch(() => null)
+      if (br && br.ok === false && br.note) setNote(br.note)
       await new Promise((res) => setTimeout(res, 4500))   // 给窗口起来的时间
       r = await act('preflight')
     }
