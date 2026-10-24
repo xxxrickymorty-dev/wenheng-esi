@@ -343,7 +343,10 @@ export function Acquire({ period, onOpenPeriod }: {
   const s1done = pfPassed
   const s2collapsed = (view === 'review' || view === 'merged') && !fetchBusy
   const s2locked = !s2collapsed && !pfPassed && (view === 'ready' || view === 'blocked')
-  const s1stat: [string, string] = s1done ? ['✓ 4 项都过了', 'ok']
+  /* 2026-10-24 rick 红框：往期只读不显示检查灯——右上角也不再报「有没通过的项」
+     （只读期没有「通过」概念，报了是误导）；检查结论只属于当期。 */
+  const s1stat: [string, string] = ro ? ['往期只读 · 无需检查', 'wait']
+    : s1done ? ['✓ 4 项都过了', 'ok']
     : pfHasBad ? ['有没通过的项', 'bad'] : ['还没检查', 'wait']
   const s2stat: [string, string] = s2collapsed ? [`✓ 已取到 ${verified} / ${expected}`, 'ok']
     : fetchBusy ? [`取数中 · ${verified} / ${expected}`, 'run']
@@ -450,43 +453,48 @@ export function Acquire({ period, onOpenPeriod }: {
                     <Icon name="refresh" size={15} />重查
                   </button>
                 </div>
-                {/* 还没过：展开（四盏灯 + 检查按钮） */}
+                {/* 还没过：展开（四盏灯 + 检查按钮）。
+                    2026-10-24 rick 红框：往期档案只读——浏览器/登录状态与检查按钮无需显示，
+                    「连接浏览器登录下载」只属于当期（要补档只能在当期取，见②的说明）。 */}
                 <div className="stg-body">
                   <div className="stg-big">{view === 'blocked' ? '下载数据专用浏览器还没准备好'
                     : ro ? '往期档案只读'
                       : (view === 'review' || view === 'merged') ? '现在的连接状态不齐'
                         : '先检查，再下载'}</div>
-                  <div className="stg-sub">{view === 'blocked'
-                    ? '系统会自动打开下载数据专用浏览器；在里面登录 ESI / InCites 后，点「重新检查」。'
-                    : ro ? '这一期不能再取；这里只显示浏览器与登录的当前状态。'
-                      : (view === 'review' || view === 'merged')
-                        ? '这一期已取完；此处只显示当前连接状态。'
-                        : '四件事：下载数据专用浏览器开着、两家网站登录着、这一期的数据更新了没有。'}</div>
-                  <div className="stg-cta">
-                    <div className="chips">
-                      <span className={`aq-chip ${pf?.browser === 'ok' ? 'ok' : pf?.browser === 'bad' ? 'bad' : ''}`}>
-                        <Icon name="window" size={15} />下载数据专用浏览器 · {pfText('browser', pf?.browser)}
-                      </span>
-                      <span className={`aq-chip ${pf?.esi === 'ok' ? 'ok' : pf?.esi === 'bad' ? 'bad' : ''}`}>
-                        <Icon name="seal" size={15} />ESI 网站 · {pfText('site', pf?.esi)}
-                      </span>
-                      <span className={`aq-chip ${pf?.incites === 'ok' ? 'ok' : pf?.incites === 'bad' ? 'bad' : ''}`}>
-                        <Icon name="seal" size={15} />InCites 网站 · {pfText('site', pf?.incites)}
-                      </span>
-                      <span className={`aq-chip ${pf?.data?.ok === true ? 'ok' : pf?.data?.ok === false ? 'bad' : ''}`}>
-                        <Icon name="clock" size={15} />数据期 · {pf?.data?.ok === true ? '已更新'
-                          : pf?.data?.ok === false ? `还没更新（当前 ${pf?.data?.release || '—'}）` : '没读到'}
-                      </span>
-                    </div>
-                    <button type="button" className="btn primary" disabled={busy}
-                            onClick={() => { void preflightWithBrowser().then(() => load(true)) }}>
-                      <Icon name="refresh" size={20} />{view === 'blocked' ? '重新检查' : '检查一下（会自动开浏览器）'}
-                    </button>
-                    <Info label="开始前检查什么" end>
-                      <p>检查下载数据专用的浏览器是否开着、两家网站是否已登录、这一期的数据更新了没有。登录由馆员手动完成；本页不接触、不保存账号密码。检查通过后才能开始。</p>
-                      <p>「数据期」怎么判：拿网站当前的数据集更新日{pf?.data?.deploy_date ? `（${pf.data.deploy_date}）` : ''}按双月节拍归到期次，和你要取的这一期比；对不上就不发车。</p>
-                    </Info>
-                  </div>
+                  {!ro && (
+                    <>
+                      <div className="stg-sub">{view === 'blocked'
+                        ? '系统会自动打开下载数据专用浏览器；在里面登录 ESI / InCites 后，点「重新检查」。'
+                        : (view === 'review' || view === 'merged')
+                          ? '这一期已取完；此处只显示当前连接状态。'
+                          : '四件事：下载数据专用浏览器开着、两家网站登录着、这一期的数据更新了没有。'}</div>
+                      <div className="stg-cta">
+                        <div className="chips">
+                          <span className={`aq-chip ${pf?.browser === 'ok' ? 'ok' : pf?.browser === 'bad' ? 'bad' : ''}`}>
+                            <Icon name="window" size={15} />下载数据专用浏览器 · {pfText('browser', pf?.browser)}
+                          </span>
+                          <span className={`aq-chip ${pf?.esi === 'ok' ? 'ok' : pf?.esi === 'bad' ? 'bad' : ''}`}>
+                            <Icon name="seal" size={15} />ESI 网站 · {pfText('site', pf?.esi)}
+                          </span>
+                          <span className={`aq-chip ${pf?.incites === 'ok' ? 'ok' : pf?.incites === 'bad' ? 'bad' : ''}`}>
+                            <Icon name="seal" size={15} />InCites 网站 · {pfText('site', pf?.incites)}
+                          </span>
+                          <span className={`aq-chip ${pf?.data?.ok === true ? 'ok' : pf?.data?.ok === false ? 'bad' : ''}`}>
+                            <Icon name="clock" size={15} />数据期 · {pf?.data?.ok === true ? '已更新'
+                              : pf?.data?.ok === false ? `还没更新（当前 ${pf?.data?.release || '—'}）` : '没读到'}
+                          </span>
+                        </div>
+                        <button type="button" className="btn primary" disabled={busy}
+                                onClick={() => { void preflightWithBrowser().then(() => load(true)) }}>
+                          <Icon name="refresh" size={20} />{view === 'blocked' ? '重新检查' : '检查一下（会自动开浏览器）'}
+                        </button>
+                        <Info label="开始前检查什么" end>
+                          <p>检查下载数据专用的浏览器是否开着、两家网站是否已登录、这一期的数据更新了没有。登录由馆员手动完成；本页不接触、不保存账号密码。检查通过后才能开始。</p>
+                          <p>「数据期」怎么判：拿网站当前的数据集更新日{pf?.data?.deploy_date ? `（${pf.data.deploy_date}）` : ''}按双月节拍归到期次，和你要取的这一期比；对不上就不发车。</p>
+                        </Info>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div></div>
             </section>
