@@ -376,23 +376,44 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 
 /* ---------- 绿蓝融合 U2（2026-10-17，据 汇-绿蓝.html）：蓝场题头 / 水尺 / 橡皮戳 / 钤印 ---------- */
 .kik{font-family:var(--kai);font-size:11px;letter-spacing:.36em;color:var(--field-4)}
-.wb-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:36px;align-items:center;
-  background:var(--field);color:var(--field-5);padding:46px clamp(20px,4vw,56px) 42px;margin-top:16px}
-.wb-hero h1{font-family:var(--serif);font-size:clamp(30px,3.6vw,46px);line-height:1.25;letter-spacing:.04em;color:#fff;margin:10px 0 12px}
-.wb-hero-sub{color:var(--field-4);font-size:15px;max-width:34em}
-.wb-hero-pills{display:flex;gap:10px;align-items:center}
-.wb-hero-pills .pill.on-field{background:rgba(255,255,255,.12);color:var(--field-5);border:1px solid var(--field-3)}
-.wb-hero-act{display:flex;gap:16px;align-items:center;margin-top:22px;flex-wrap:wrap}
-.wb-hero-link{color:var(--field-4);font-size:14px;border-bottom:1px solid var(--field-3);padding-bottom:2px}
-.wb-hero-link:hover{color:var(--field-5)}
-.wb-flaps{display:grid;gap:14px}
-.flaprow{display:flex;align-items:center;gap:10px}
-.flabel{font-family:var(--kai);font-size:11px;letter-spacing:.32em;color:var(--field-4)}
-.flaps{display:flex;gap:5px}
-.flaps i{width:34px;height:48px;display:grid;place-items:center;background:var(--field-2);color:var(--field-5);
-  font:600 20px/1 var(--mono);font-style:normal;font-variant-numeric:tabular-nums;
-  border-top:2px solid var(--field-3)}
-.flaps.sm i{width:30px;height:34px;font-size:15px}
+/* ---------- 生成台 v2 极致低密（2026-10-24 rick 过审，静态稿 v2 同构）：一行身份＋四节点流程图＋主动作 ----------
+   旧蓝场题头（题句/药丸/翻牌）随之退役；gaugeband 水尺与折叠工具保留 */
+.wb2{padding:22px clamp(16px,3vw,36px) 4px;margin-top:14px}
+.wb2-line{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding:4px 2px 0}
+.wb2-period{font-family:var(--serif);font-size:22px;letter-spacing:.05em;color:var(--ink);margin:0}
+.wb2-line .dim{font-size:12.5px;color:var(--ink-3)}
+.wb2-line .prev{margin-left:auto;font-size:13px;color:var(--ink-3)}
+.wb2-line .prev b{color:var(--tool-3);font-weight:600}
+.wb2-flow{display:flex;align-items:stretch;margin:16px 0 6px;flex-wrap:wrap}
+.wb2-node{flex:1 1 130px;min-width:118px;position:relative;background:var(--card);border:1px solid var(--line);
+  border-top:3px solid var(--line);padding:12px 14px 10px}
+.wb2-node .k{display:block;font-size:11px;letter-spacing:.22em;color:var(--ink-3)}
+.wb2-node .v{display:block;font-family:var(--serif);font-size:20px;margin-top:2px;color:var(--ink)}
+.wb2-node .n{display:block;font:12px var(--mono);color:var(--ink-3);margin-top:2px}
+.wb2-node.done{border-top-color:var(--tool-3)}
+.wb2-node.done .k,.wb2-node.done .v{color:var(--tool-3)}
+.wb2-node.now{border-top-color:var(--zhu);background:var(--card-hi)}
+.wb2-node.now .v{color:var(--zhu)}
+.wb2-node.bad{border-top-color:var(--warn)}
+.wb2-node.bad .k,.wb2-node.bad .v{color:var(--warn)}
+.wb2-node.todo{opacity:.55}
+.wb2-node .mark{position:absolute;right:10px;top:9px;font-size:13px}
+.wb2-node.done .mark{color:var(--tool-3)}
+.wb2-node.now .mark{color:var(--zhu)}
+.wb2-node.bad .mark{color:var(--warn)}
+.wb2-link{flex:0 0 34px;display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:14px}
+.wb2-link.ok{color:var(--tool-3)}
+.wb2-link.bad{color:var(--warn)}
+.wb2-cta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:6px 2px 0}
+.wb2-cta .why{font-size:13px;color:var(--ink-3)}
+.wb2-cta>.info>summary{background:transparent;border-color:var(--line);color:var(--ink-3)}
+.wb2-ghost{border-color:transparent;background:transparent;color:var(--ink-3)}
+.wb2-ghost:hover{color:var(--zhu)}
+@media (max-width:860px){
+  .wb2-flow{flex-direction:column}
+  .wb2-link{transform:rotate(90deg);flex-basis:26px}
+  .wb2-line .prev{margin-left:0}
+}
 .gaugeband{background:var(--tool);color:var(--tool-5);padding:40px clamp(20px,4vw,56px) 30px;margin-top:16px}
 .gb-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,520px);gap:36px;align-items:start}
 .gb-copy h2{font-family:var(--serif);font-size:clamp(24px,2.6vw,34px);line-height:1.45;color:#fff;margin:12px 0 14px}

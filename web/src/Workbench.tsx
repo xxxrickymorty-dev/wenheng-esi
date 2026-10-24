@@ -1,17 +1,18 @@
 /* 生成台（工作台）——工具面。
-   第一屏＝「这一期现在到哪一步、下一步做什么」；全屏只有一处朱色实心焦点。
-   设计取自静态稿 mockups/v2-工作台与报告.html；状态与文案规格见 web/UX-生成台.md。 */
+   v2 极致低密（2026-10-24 rick 过审）：一行期次身份＋四节点流程图＋一行主动作，
+   状态全部长在图上（状态一约 70 字）；故事条与运行回放迁往「可视化工作流」屏。
+   设计稿：mockups/生成台-重设计-静态稿v2-极致低密-20261024.html；状态规格见 web/UX-生成台.md。 */
 
-import type { ApiError, Me, Period, PeriodDetail } from './api'
+import type { ApiError, ArchiveData, Me, Period, PeriodDetail } from './api'
+import { getArchive } from './api'
 import { useEffect, useState } from 'react'
 import { getForecastBoard, getWaterLevel, type ForecastBoardRow, type ForecastChoiceEntry, type WaterRow } from './api-forecast'
 import { ConfirmButton } from './ConfirmButton'
 import { Info } from './Info'
-import { StoryBand } from './StoryBand'
 import { Tools } from './Tools'
 import { appHref, approvalLabel } from './lib/status'
 import { Icon } from './icons'
-import { failureCopy, isTerminal, STATE_LABEL, type Workbench as WB, type WBState } from './wb'
+import { failureCopy, isTerminal, type Workbench as WB, type WBState } from './wb'
 import type { ActivityState, Run } from './hooks/useJobRun'
 
 /** 五个模型的一句话说明（界面上"帮馆员选"的文案；预测台也用同一份，改一处两边一致） */
@@ -91,6 +92,42 @@ function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }
   return null
 }
 
+/* ---------- v2 流程图：四节点（取数/生成/审计/签发）＋连接符（静态稿 v2 同构） ---------- */
+
+type NodeSt = 'done' | 'now' | 'bad' | 'todo'
+
+function FlowNode({ k, st, v, n }: { k: string; st: NodeSt; v: string; n?: string }) {
+  return (
+    <div className={`wb2-node ${st}`}>
+      <span className="k">{k}</span>
+      <span className="v">{v}</span>
+      {n && <span className="n">{n}</span>}
+      <span className="mark" aria-hidden="true">
+        {st === 'done' ? '✓' : st === 'bad' ? '✕' : st === 'now' ? '●' : ''}
+      </span>
+    </div>
+  )
+}
+
+function FlowLink({ st }: { st: 'ok' | 'bad' | 'todo' }) {
+  return (
+    <span className={`wb2-link ${st}`} aria-hidden="true">
+      {st === 'ok' ? '✓' : st === 'bad' ? '✕' : '·'}
+    </span>
+  )
+}
+
+/** 审计行计数（数字只来自运行档案，不换算） */
+function countAudit(a: ArchiveData) {
+  const rows = a.audit?.rows ?? []
+  return {
+    total: rows.length,
+    pass: rows.filter(r => r.status === 'pass').length,
+    review: rows.filter(r => r.status === 'review').length,
+    fail: rows.filter(r => r.status === 'fail').length,
+  }
+}
+
 export function Workbench({
   period, me, wb, err, healthy, run, approvalStatus, activityState,
   actionLockReason, activeRun, actionsLocked, submitting, onGenerate,
@@ -152,6 +189,18 @@ export function Workbench({
     return () => { alive = false }
   }, [period, generated])
   const issueNo = /第 (\d+) 期/.exec(periods.find((p) => p.period === period)?.label ?? '')?.[1] ?? ''
+  /* 审计节点读数：运行档案（v2 把原故事条里的一枚数搬上节点；回放动画在「可视化工作流」屏） */
+  const [audit, setAudit] = useState<{ total: number; pass: number; review: number; fail: number } | null>(null)
+  const canReadArchive = !!detail?.steps?.generate
+  useEffect(() => {
+    if (!period || !canReadArchive) { setAudit(null); return }
+    let alive = true
+    setAudit(null)
+    getArchive(period)
+      .then(a => { if (alive) setAudit(countAudit(a)) })
+      .catch(() => { if (alive) setAudit(null) })
+    return () => { alive = false }
+  }, [period, canReadArchive])
   /* 2026-10-12：出报告对操作员也开放（后端 POST /api/jobs 已开）；下载数据/工具折仍只管理员。 */
   const canRun = !!me
   const canGenerate = canRun && period != null && /^\d{6}$/.test(period) && !actionsLocked && !activeRun && !submitting
@@ -167,76 +216,114 @@ export function Workbench({
   const gaugePotential = gaugePool.filter((r) => r.state !== 'in')
   const gaugeRows = gaugePotential.length ? gaugePotential : gaugePool
 
+  /* ── v2 四节点：空·待生成·生成中·已出稿·失败·已签发，同一张图（状态长在图上）── */
+  const acqSum = detail?.acquisition
+  const merged = acqSum?.copy === 'merged'
+  const av = acqSum?.verified, ae = acqSum?.expected
+  const running = live || wb.state === 'running'
+  const lastAt = detail?.lastJob?.created_at
+    ? detail.lastJob.created_at.slice(5, 16).replace('T', ' ') : ''
+  const fetchNode: { st: NodeSt; v: string; n?: string } =
+    wb.state === 'fail-ledger' ? { st: 'bad', v: '✕ 数据没齐', n: '解析拦停' }
+      : merged ? { st: 'done', v: av != null && ae != null ? `${av} / ${ae}` : '已并入', n: '已并入台账' }
+        : acqSum?.started || detail?.steps?.fetch ? { st: 'now', v: '未并入', n: '在取数台' }
+          : { st: 'now', v: '未开始' }
+  const genNode: { st: NodeSt; v: string; n?: string } = running
+    ? { st: 'now', v: '⟳ 生成中', n: run?.last ?? '正在跑' }
+    : wb.state === 'fail-other' || wb.state === 'stalled' ? { st: 'bad', v: '✕ 没出稿', n: '上一版仍有效' }
+      : wb.state === 'fail-ledger' ? { st: 'todo', v: '—' }
+        : generated ? { st: 'done', v: '已出稿', n: lastAt || undefined }
+          : wb.state === 'ready' ? { st: 'now', v: '待生成', n: '约 3 分钟' }
+            : { st: 'todo', v: '—' }
+  const auditNode: { st: NodeSt; v: string; n?: string } = !generated && !running
+    ? { st: 'todo', v: '—' }
+    : audit
+      ? (audit.fail
+          ? { st: 'bad', v: `✕ ${audit.fail} 项不过`, n: '看校验说明' }
+          : { st: 'done', v: `${audit.pass} 项过`, n: audit.review ? `${audit.review} 项待签看` : '机器断言全过' })
+      : { st: 'done', v: '已审计', n: '读数在运行档案' }
+  const signNode: { st: NodeSt; v: string; n?: string } =
+    approvalStatus === 'signed' ? { st: 'done', v: '已签发', n: '报告可下载' }
+      : approvalStatus === 'stale' ? { st: 'now', v: '待重签', n: '内容改过，签名失效' }
+        : generated && !running ? { st: 'now', v: '待签发', n: '复核后签单' }
+          : { st: 'todo', v: '—' }
+  const linkSt = (a: NodeSt): 'ok' | 'bad' | 'todo' =>
+    a === 'done' ? 'ok' : a === 'bad' ? 'bad' : 'todo'
+  /* 上一期一行（期次列表新→旧，右邻一位即上一期；不编日期） */
+  const prevIdx = periods.findIndex(p => p.period === period)
+  const prevP = prevIdx >= 0 ? periods[prevIdx + 1] : undefined
+  const prevLine = prevP
+    ? `上一期 ${prevP.period} · ${prevP.status === 'signed' ? '已签发' : prevP.status === 'stale' ? '待重签' : '未签发'}`
+    : ''
+  const WHY: Partial<Record<WBState, string>> = {
+    ready: '前两步已就绪 · 约 3 分钟出报告',
+    done: '签单后可下载；重出会使签发失效',
+    'waiting-approval': '签单后可下载',
+    signed: '重新生成会使签发失效',
+    warned: '任务结束不代表报告合格或已签发——看校验说明',
+    empty: '取齐并入后，回来一键生成',
+  }
+  const why = WHY[wb.state] ?? ''
+
   return (
     <>
-      {/* 蓝场题头（2026-10-17 绿蓝融合 U2，据 汇-绿蓝.html）：焦点陈述＋主动作＋翻牌数字 */}
-      <section className="wb-hero">
-        <div className="wb-hero-main">
-          <p className="kik">云南 大 學 圖 書 館 藏 · 学 科 情 報 · 出 報 告 台</p>
-          <div className="wb-hero-pills">
-            <span className="pill on-field">{STATE_LABEL[wb.state]}</span>
-            <span className={`pill on-field ${approvalStatus === 'signed' ? 'signed' : approvalStatus === 'stale' ? 'stale' : 'unsigned'}`}>
-              {approvalLabel(approvalStatus)}
-            </span>
-            <Info label="状态从哪来">
-              <p>任务状态来自本期任务记录；签发状态来自审核台签单。本页只读，不改任何数据。</p>
-            </Info>
-          </div>
-          <h1>{wb.focusTitle}</h1>
-          <p className="wb-hero-sub">{wb.focusSub}</p>
-          <div className="wb-hero-act">
-            {wb.focusAction === 'generate' && canRun && (
-              <>
-                <button className="btn primary big" onClick={onGenerate} disabled={!canGenerate}>
-                  <Icon name="play" size={20} />开始生成
-                </button>
-                <span className="wb-hero-link">约 3 分钟</span>
-              </>
-            )}
-            {wb.focusAction === 'rerun' && canRun && (
-              <ConfirmButton className="btn primary big" disabled={!canGenerate}
-                             confirmText="确认重跑？会撤下当前成品" onConfirm={onGenerate}>
-                <Icon name="refresh" size={20} />重新生成
-              </ConfirmButton>
-            )}
-            {wb.focusAction === 'sign' && (
-              <>
-                <a className="btn primary big" href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="seal" size={20} />复核并签单</a>
-                <a className="wb-hero-link" href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}>打开报告 ↗</a>
-              </>
-            )}
-            {wb.focusAction === 'open' && (
-              <a className="btn primary big" href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}><Icon name="doc" size={20} />打开报告</a>
-            )}
-            {wb.focusAction === 'acquire' && isAdmin && (
-              <a className="btn primary big" href={`/app/?view=acquire${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
-                <Icon name="download" size={20} />去取数台
-              </a>
-            )}
-          </div>
+      {/* v2 极致低密（2026-10-24 rick 过审，静态稿 v2 同构）：一行期次身份＋四节点流程图＋一行主动作。
+          旧题头（题句/状态药丸/翻牌）与故事条退役——故事回放迁往「可视化工作流」屏。 */}
+      <section className="wb2" aria-label="本期进度">
+        <div className="wb2-line">
+          <h1 className="wb2-period">本期 {period ?? '——————'}</h1>
+          <span className="dim">
+            {issueNo ? `第 ${issueNo} 期` : '期次待定'}
+            {detail?.window ? ` · 数据截至 ${detail.window}` : ''}
+          </span>
+          {prevLine && <span className="prev">{prevLine}</span>}
         </div>
-        <div className="wb-flaps" aria-label="本期读数">
-          <div className="flaprow">
-            <span className="flabel">期 次 · 目 錄</span>
-            <span className="flaps">{(period ?? '——————').split('').map((d, i) => <i key={i}>{d}</i>)}</span>
-          </div>
-          <div className="flaprow">
-            <span className="flabel">總 第 · 期</span>
-            <span className="flaps">{(issueNo || '—').split('').map((d, i) => <i key={i}>{d}</i>)}</span>
-            <span className="flabel">簽 發</span>
-            <span className="flaps sm"><i>{approvalStatus === 'signed' ? '签' : approvalStatus === 'stale' ? '效' : '待'}</i></span>
-          </div>
+        <div className="wb2-flow">
+          <FlowNode k="取 数" st={fetchNode.st} v={fetchNode.v} n={fetchNode.n} />
+          <FlowLink st={linkSt(fetchNode.st)} />
+          <FlowNode k="生 成" st={genNode.st} v={genNode.v} n={genNode.n} />
+          <FlowLink st={linkSt(genNode.st)} />
+          <FlowNode k="审 计" st={auditNode.st} v={auditNode.v} n={auditNode.n} />
+          <FlowLink st={linkSt(auditNode.st)} />
+          <FlowNode k="签 发" st={signNode.st} v={signNode.v} n={signNode.n} />
+        </div>
+        <div className="wb2-cta">
+          {wb.focusAction === 'generate' && canRun && (
+            <button className="btn primary big" onClick={onGenerate} disabled={!canGenerate}>
+              <Icon name="play" size={20} />开始生成
+            </button>
+          )}
+          {wb.focusAction === 'rerun' && canRun && (
+            <ConfirmButton className="btn primary big" disabled={!canGenerate}
+                           confirmText="确认重跑？会撤下当前成品" onConfirm={onGenerate}
+                           autoConfirm={autoConfirmRerun}>
+              <Icon name="refresh" size={20} />重新生成
+            </ConfirmButton>
+          )}
+          {wb.focusAction === 'sign' && (
+            <a className="btn primary big" href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+              <Icon name="seal" size={20} />复核并签单
+            </a>
+          )}
+          {wb.focusAction === 'open' && (
+            <a className="btn primary big" href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+              <Icon name="doc" size={20} />打开报告
+            </a>
+          )}
+          {wb.focusAction === 'acquire' && isAdmin && (
+            <a className="btn primary big" href={`/app/?view=acquire${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+              <Icon name="download" size={20} />去取数台
+            </a>
+          )}
+          <a className="btn wb2-ghost" href={`/app/?view=pano${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+            查看可视化工作流 →
+          </a>
+          {why && <span className="why">{why}</span>}
+          <Info label="状态从哪来">
+            <p>取数/生成节点来自单期详情与任务记录；审计读数来自运行档案；签发状态来自审核台签单。本页只读，不改任何数据。</p>
+          </Info>
         </div>
       </section>
-
-      {/* 故事条（2026-10-21）：五步回放取代三步条 / 三枚橡皮戳 / 五行数据表 */}
-      <StoryBand
-        period={period}
-        approvalStatus={approvalStatus}
-        detail={detail}
-        live={live}
-        liveNote={run?.last ?? null}
-      />
 
       {/* 绿·器（汇-绿蓝）：潜力学科水尺（预测看板真值） */}
       <section className="gaugeband">

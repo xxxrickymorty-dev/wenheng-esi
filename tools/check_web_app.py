@@ -340,11 +340,13 @@ def main():
             has_empty = "还没有取数记录" in page.inner_text("main")
             check("取数台：清单展开（有组卡，或如实说没有记录）", n_groups > 0 or has_empty,
                   f"groups={n_groups}")
-            page.goto(BASE + "/app/?period=202607", wait_until="domcontentloaded")
+            # 故事条已迁可视化工作流屏（2026-10-24 rick：生成台 v2 极致低密）
+            page.goto(BASE + "/app/?view=pano&period=202607", wait_until="domcontentloaded")
             page.wait_for_selector(".story .cell", timeout=15000)
             page.wait_for_timeout(1500)   # 故事条开场按真实顺序回放，等首格就位再读 href（曾两次时序抖动）
             href = page.get_attribute(".story .cell", "href")
-            check("生成台故事条第一步可点入取数台", bool(href) and "view=acquire" in href, str(href))
+            check("可视化工作流屏故事条第一步可点入取数台（2026-10-24 自生成台迁入）",
+                  bool(href) and "view=acquire" in href, str(href))
         except Exception as e:                                          # noqa: BLE001
             check("取数台回归（X2）", False, str(e)[:100])
 
@@ -425,8 +427,9 @@ def main():
             page.goto(BASE + "/app/?period=209911", wait_until="domcontentloaded")
             page.wait_for_timeout(900)
             txt = page.inner_text("main")
-            check("生成台：未出稿期次引导去取数（不假装已生成）",
-                  "先去下载数据" in txt and "数据还没取齐" in txt, txt[:30].replace("\n", " "))
+            check("生成台：未出稿期次引导去取数（不假装已生成；2026-10-24 v2 文案长在节点上）",
+                  "去取数台" in txt and "已出稿" not in txt and "待生成" not in txt,
+                  txt[:60].replace("\n", " "))
         except Exception as e:                                          # noqa: BLE001
             check("未出稿取数期次回归（X2）", False, str(e)[:100])
         finally:

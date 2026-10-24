@@ -8,20 +8,20 @@
 /* ---------- 左：对话历史（深场条） ---------- */
 .dlg-side{flex:0 0 264px;display:flex;flex-direction:column;min-height:0;
   background:var(--field-2);color:var(--field-5);border-right:0}
-.dlg-me-wrap{padding:10px 12px 12px}
-.dlg-brand{display:flex;align-items:baseline;gap:8px;padding:18px 16px 12px}
+.dlg-me-wrap{padding:8px 12px 10px}
+.dlg-brand{display:flex;align-items:baseline;gap:8px;padding:13px 16px 9px}
 .dlg-brand strong{font-family:var(--serif);font-size:20px;letter-spacing:.14em;color:#fff}
 .dlg-brand span{font-family:var(--kai);font-size:10px;letter-spacing:.28em;color:var(--field-4)}
-.dlg-newchat{transition:background .15s,color .15s;margin:0 12px 10px;min-height:var(--dlg-hit);padding:10px 14px;border:1px solid var(--field-3);
-  background:transparent;border-radius:0;font:inherit;font-size:15px;cursor:pointer;text-align:left;color:var(--field-5)}
+.dlg-newchat{transition:background .15s,color .15s;margin:0 12px 8px;min-height:38px;padding:7px 14px;border:1px solid var(--field-3);
+  background:transparent;border-radius:0;font:inherit;font-size:14px;cursor:pointer;text-align:left;color:var(--field-5)}
 .dlg-newchat:hover{background:var(--field)}
-.dlg-hist{flex:1;overflow-y:auto;padding:0 8px 10px}
-.dlg-hist a{transition:background .15s,color .15s;display:block;padding:9px 10px;border-radius:0;text-decoration:none;
-  color:var(--field-4);font-size:14px;line-height:1.4}
+.dlg-hist{flex:1;overflow-y:auto;padding:0 8px 8px}
+.dlg-hist a{transition:background .15s,color .15s;display:block;padding:4px 10px;border-radius:0;text-decoration:none;
+  color:var(--field-4);font-size:12.5px;line-height:1.3}
 .dlg-hist a:hover{background:var(--field);color:#fff}
 .dlg-hist a[aria-current="true"]{background:var(--field);color:#fff;
   box-shadow:inset 3px 0 0 var(--tool-4)}
-.dlg-hist-note{padding:9px 10px;font-family:var(--kai);font-size:11px;letter-spacing:.14em;color:var(--field-4)}
+.dlg-hist-note{padding:5px 10px;font-family:var(--kai);font-size:10.5px;letter-spacing:.14em;color:var(--field-4)}
 .dlg-side .user-chip{color:var(--field-5)}
 .dlg-side .user-chip-btn:hover{background:var(--field)}
 .dlg-side .user-chip-pop{top:auto;bottom:calc(100% + 10px);left:0}
@@ -221,10 +221,10 @@
 .dlg-wk-link{display:inline-flex;align-items:center;min-height:32px;border:1px solid var(--line);background:var(--card);border-radius:0;padding:5px 13px;font-size:13.5px;color:var(--ink-2);text-decoration:none;transition:border-color .15s,color .15s}
 .dlg-wk-link:hover{border-color:var(--zhu);color:var(--zhu)}
 
-/* ── 保存的对话（2026-10-24 rick：要能看到/回到之前的对话）── */
-.dlg-hist-cap{margin:12px 6px 4px;font-size:11px;letter-spacing:.18em;color:var(--ink-3)}
+/* ── 保存的对话（2026-10-24 rick：要能看到/回到之前的对话；同日压缩行距，单屏全显不滚）── */
+.dlg-hist-cap{margin:8px 6px 2px;font-size:10.5px;letter-spacing:.18em;color:var(--ink-3)}
 .dlg-hist-row{display:flex;align-items:center;gap:2px}
 .dlg-hist-row>a{flex:1;min-width:0}
-.dlg-drop{flex:0 0 auto;border:0;background:none;color:var(--ink-3);padding:4px 7px;
-  font-size:12px;cursor:pointer}
+.dlg-drop{flex:0 0 auto;border:0;background:none;color:var(--ink-3);padding:2px 6px;
+  font-size:11.5px;cursor:pointer}
 .dlg-drop:hover,.dlg-drop.confirming{color:var(--warn)}

@@ -9,6 +9,7 @@ import {
   getAcquisition, getArchive, req,
   type AcquisitionState, type ArchiveData, type PeriodDetail, type Period,
 } from './api'
+import { StoryBand } from './StoryBand'
 
 type RowState = 'done' | 'run' | 'warn' | 'idle'
 type PanelRow = { name: string; state: RowState; note: string }
@@ -531,6 +532,16 @@ export function Panorama({ period, periods, detail, approvalStatus, live, liveNo
           ))}
         </div>
       </div>
+
+      {/* 五步故事条（2026-10-24 从生成台迁入，rick：要动态可播放）——
+          打开按真实顺序回放，任务在跑时走实时；与下面工厂是同一份真值的两种投影 */}
+      <StoryBand
+        period={period}
+        approvalStatus={approvalStatus}
+        detail={detail}
+        live={live}
+        liveNote={liveNote}
+      />
 
       <div className="pano-wrap">
         <aside className="pano-panel" aria-label="真相面板">
