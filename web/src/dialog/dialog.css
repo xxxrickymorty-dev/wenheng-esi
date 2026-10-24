@@ -220,3 +220,11 @@
 .dlg-land-prev{margin:12px 0 0;font-family:var(--kai);font-size:11px;letter-spacing:.22em;color:var(--ink-3)}
 .dlg-wk-link{display:inline-flex;align-items:center;min-height:32px;border:1px solid var(--line);background:var(--card);border-radius:0;padding:5px 13px;font-size:13.5px;color:var(--ink-2);text-decoration:none;transition:border-color .15s,color .15s}
 .dlg-wk-link:hover{border-color:var(--zhu);color:var(--zhu)}
+
+/* ── 保存的对话（2026-10-24 rick：要能看到/回到之前的对话）── */
+.dlg-hist-cap{margin:12px 6px 4px;font-size:11px;letter-spacing:.18em;color:var(--ink-3)}
+.dlg-hist-row{display:flex;align-items:center;gap:2px}
+.dlg-hist-row>a{flex:1;min-width:0}
+.dlg-drop{flex:0 0 auto;border:0;background:none;color:var(--ink-3);padding:4px 7px;
+  font-size:12px;cursor:pointer}
+.dlg-drop:hover,.dlg-drop.confirming{color:var(--warn)}

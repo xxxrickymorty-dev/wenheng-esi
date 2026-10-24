@@ -165,3 +165,42 @@ def test_路由存在且带登录门():
     src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
     assert '@app.get("/api/dialog/session/{session_id}")' in src
     assert "@user_route" in src.split('@app.get("/api/dialog/session/{session_id}")')[1][:200]
+
+
+# ============================================================ 5. 会话清单与删除（2026-10-24 rick：要能看到之前的对话）
+def call_list(user):
+    return asyncio.run(app_module.api_dialog_sessions(_ReqJson(user)))
+
+
+def call_drop(user, session_id):
+    return asyncio.run(app_module.api_dialog_session_drop(_ReqJson(user), session_id))
+
+
+def test_清单只列本人_最近在前(fake_ai):
+    a1 = call(config.ADMIN_USER, {"text": "第一段对话"})["session_id"]
+    a2 = call(config.ADMIN_USER, {"text": "第二段对话"})["session_id"]
+    call(config.OPERATOR_USER, {"text": "别人的对话"})
+    rows = call_list(config.ADMIN_USER)["sessions"]
+    assert [r["id"] for r in rows] == [a2, a1]            # 最近在前
+    assert rows[0]["title"] == "第二段对话"                  # 标题＝第一句用户话
+    assert all(r["n_turns"] == 2 for r in rows)            # me + wh 两回合
+    assert all(r["title"] != "别人的对话" for r in rows)     # 他人会话不可见
+
+
+def test_清单库不存在时为空(monkeypatch):
+    monkeypatch.setattr(app_module, "SESSION_DB_PATH",
+                        app_module.SESSION_DB_PATH / "不存在.sqlite")
+    assert call_list(config.ADMIN_USER) == {"sessions": []}
+
+
+def test_未装配库清单为空(monkeypatch):
+    monkeypatch.setattr(app_module, "SESSION_DB_PATH", None)
+    assert call_list(config.ADMIN_USER) == {"sessions": []}
+
+
+def test_删除仅本人_删完404(fake_ai):
+    sid = call(config.OPERATOR_USER, {"text": "要删的对话"})["session_id"]
+    assert call_drop(config.ADMIN_USER, sid).status_code == 403   # 他人不可删
+    assert call_drop(config.OPERATOR_USER, sid)["ok"] is True
+    assert call_drop(config.OPERATOR_USER, sid).status_code == 404  # 再删＝不存在
+    assert call_get(config.OPERATOR_USER, sid).status_code == 404   # 读随删消失

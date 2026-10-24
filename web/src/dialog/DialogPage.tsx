@@ -118,6 +118,18 @@ async function getDialogSession(id: string): Promise<RestoredSession> {
   return req<RestoredSession>(`/api/dialog/session/${encodeURIComponent(id)}`)
 }
 
+/** 保存的对话（2026-10-24 rick：要能看到/回到之前的对话）——服务端会话清单。 */
+type SavedSession = { id: string; title: string; n_turns: number; updated: string }
+
+async function getDialogSessions(): Promise<SavedSession[]> {
+  const d = await req<{ sessions: SavedSession[] }>('/api/dialog/sessions')
+  return d.sessions ?? []
+}
+
+async function dropDialogSession(id: string): Promise<void> {
+  await req<unknown>(`/api/dialog/session/${encodeURIComponent(id)}/drop`, { method: 'POST' })
+}
+
 /** 一轮对话（票 11 增补 session 收发；本页是唯一调用方，就地接线）。
     `session_id` 是票 11 新增字段（api-dialog.ts 的类型面外挂在这一层）。 */
 type TurnReply = DialogReply & { session_id?: string }
@@ -156,6 +168,16 @@ export default function DialogPage() {
   const [tick, setTick] = useState(0)
   const nextIdRef = useRef(2)
   const threadRef = useRef<HTMLDivElement>(null)
+  /* 保存的对话（服务端清单）：左栏「保存的对话」组；这次打开的本地对话仍归「这次打开」组 */
+  const [saved, setSaved] = useState<SavedSession[]>([])
+  const savedSeqRef = useRef(0)
+
+  function refreshSaved() {
+    const seq = ++savedSeqRef.current
+    getDialogSessions()
+      .then((list) => { if (seq === savedSeqRef.current) setSaved(list) })
+      .catch(() => { /* 清单拿不到不挡对话；下次动作再刷 */ })
+  }
 
   const active = convs.find((c) => c.id === activeId) ?? convs[0]
   const others = convs.filter((c) => c.turns.length > 0)
@@ -182,6 +204,7 @@ export default function DialogPage() {
       if (!alive) return
       setMe(m)
       setRoleKnown(true)
+      refreshSaved()
       /* 两种角色都进前门（2026-10-11）：操作员可查数据；出稿等写动作在下面按角色裁剪。 */
     })()
     return () => { alive = false }
@@ -208,6 +231,7 @@ export default function DialogPage() {
           turns: data.turns.map((t) => ({ who: t.who, text: t.text })),
         } : c)))
         if (activeIdRef.current === 1) writeSessionUrl(data.id)
+        refreshSaved()
       } catch {
         writeSessionUrl('')          // 拿不到就当没带：清参数，不挡新对话
       }
@@ -257,6 +281,30 @@ export default function DialogPage() {
     writeSessionUrl('')              // 票 11：「新对话」清掉 URL 里的 s（本地状态随新对话走）
   }
 
+  /* 打开一段保存的对话：拉全量回合落进本地列表并切过去（URL 跟过去，刷新仍可恢复） */
+  async function openSaved(s: SavedSession) {
+    try {
+      const data = await getDialogSession(s.id)
+      const conv: Conversation = {
+        id: nextIdRef.current++,
+        title: s.title || '保存的对话',
+        slots: data.slots,
+        sessionId: data.id,
+        turns: data.turns.map((t) => ({ who: t.who, text: t.text })),
+      }
+      setConvs((list) => [conv, ...list])
+      setActiveId(conv.id)
+      writeSessionUrl(data.id)
+    } catch {
+      /* 拿不到（刚被删等）就不切；清单下次刷新自会更新 */
+    }
+  }
+
+  async function dropSaved(s: SavedSession) {
+    try { await dropDialogSession(s.id) } catch { /* 删失败不动本地 */ }
+    refreshSaved()
+  }
+
   async function sendText(raw: string, slotsOverride?: DialogSlots) {
     const text = raw.trim()
     if (!text || busy || running) return
@@ -299,6 +347,7 @@ export default function DialogPage() {
       /* 票 11：把本回合的会话 id 回写 URL——刷新/换设备带它即恢复；
          还在这一段对话上才写（中途切走别把 URL 指到别处）。 */
       if (r.session_id && activeIdRef.current === convId) writeSessionUrl(r.session_id)
+      refreshSaved()
       /* 出稿意图（票 03/05）：auto=true 直接开跑，且此时**没有产物**＝首出期次
          （两段式要复刻先行——灵活报告只消费流水线产物）；auto=false 产物已在，
          等人在按钮上点了才跑（行内二次确认）。
@@ -578,20 +627,44 @@ export default function DialogPage() {
         <div className="dlg-brand"><strong>文衡</strong><span>云南大学图书馆</span></div>
         <button className="dlg-newchat" type="button" onClick={newChat}>＋ 新对话</button>
         <nav className="dlg-hist" aria-label="对话历史">
-          {others.length === 0 ? (
-            <p className="dlg-hist-note">这次打开里的对话会列在这里。</p>
-          ) : (
-            others.map((c) => (
-              <a key={c.id} href="#对话" aria-current={c.id === activeId ? 'true' : undefined}
-                 onClick={(e) => {
-                   e.preventDefault()
-                   setActiveId(c.id)
-                   writeSessionUrl(c.sessionId || '')   // 票 11：URL 跟着当前对话的会话走
-                 }}>
-                {c.title || '新对话'}
-              </a>
-            ))
-          )}
+          {(() => {
+            const savedList = saved.filter((s) => s.id !== active?.sessionId)
+            return (
+              <>
+                {savedList.length > 0 && (
+                  <>
+                    <p className="dlg-hist-cap">保存的对话</p>
+                    {savedList.map((s) => (
+                      <div key={s.id} className="dlg-hist-row">
+                        <a href="#对话" title={`${s.title || '保存的对话'} · ${s.updated}`}
+                           onClick={(e) => { e.preventDefault(); void openSaved(s) }}>
+                          {s.title || '保存的对话'}
+                        </a>
+                        <ConfirmButton className="dlg-drop" confirmText="删除？"
+                                       title="删除这段保存的对话"
+                                       onConfirm={() => { void dropSaved(s) }}>✕</ConfirmButton>
+                      </div>
+                    ))}
+                  </>
+                )}
+                {others.length > 0 && <p className="dlg-hist-cap">这次打开</p>}
+                {others.length === 0 && savedList.length === 0 ? (
+                  <p className="dlg-hist-note">对话会列在这里；关掉页面后还能从「保存的对话」回来。</p>
+                ) : (
+                  others.map((c) => (
+                    <a key={c.id} href="#对话" aria-current={c.id === activeId ? 'true' : undefined}
+                       onClick={(e) => {
+                         e.preventDefault()
+                         setActiveId(c.id)
+                         writeSessionUrl(c.sessionId || '')   // 票 11：URL 跟着当前对话的会话走
+                       }}>
+                      {c.title || '新对话'}
+                    </a>
+                  ))
+                )}
+              </>
+            )
+          })()}
         </nav>
         <div className="dlg-me-wrap">
           <UserChip me={me} />

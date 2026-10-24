@@ -2449,6 +2449,37 @@ async def api_dialog_session(request: Request, session_id: str):
     return {"id": data["id"], "slots": data["slots"], "turns": data["turns"]}
 
 
+@app.get("/api/dialog/sessions")
+@user_route
+async def api_dialog_sessions(request: Request):
+    """会话清单（契约 #36 增补，2026-10-24 rick：要能看到之前的对话）：
+    当前用户的保存对话，最近在前；库还没建过 → 空清单（空态不编）。"""
+    if SESSION_DB_PATH is None:
+        return {"sessions": []}
+    user = current_user(request) or ""
+    rows = await run_in_threadpool(session_store.list_sessions, SESSION_DB_PATH, user)
+    return {"sessions": [{"id": r["id"], "title": r["title"],
+                          "n_turns": r["n_turns"], "updated": r["updated"]} for r in rows]}
+
+
+@app.post("/api/dialog/session/{session_id}/drop")
+@user_route
+async def api_dialog_session_drop(request: Request, session_id: str):
+    """删一段保存的对话（仅本人；删除不可恢复，界面走行内确认）。"""
+    if SESSION_DB_PATH is None:
+        return JSONResponse({"error": "会话不存在"}, status_code=404)
+    user = current_user(request) or ""
+    try:
+        ok = await run_in_threadpool(session_store.drop, SESSION_DB_PATH, session_id, user)
+    except ValueError:
+        return JSONResponse({"error": "会话不存在"}, status_code=404)
+    except PermissionError:
+        return JSONResponse({"error": "会话不属于当前用户"}, status_code=403)
+    if not ok:
+        return JSONResponse({"error": "会话不存在"}, status_code=404)
+    return {"ok": True}
+
+
 @app.get("/api/dialog/home")
 @user_route
 async def api_dialog_home(request: Request):                      # noqa: ARG001
