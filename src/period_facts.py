@@ -56,8 +56,21 @@ def _dirs(parent: pathlib.Path) -> set:
     return {p.name for p in parent.iterdir() if p.is_dir() and _PERIOD_DIR.fullmatch(p.name)}
 
 
+def _has_report(d: pathlib.Path) -> bool:
+    """「这一期出过稿」的凭证：`red_slots.json`，或（报告初稿 docx ＋ meta.json）。
+
+    后者覆盖**半途 run**（docx 已落盘、red_slots 未出）：2026-10-17 实案里这种状态
+    让整期从 API 消失（工作台 / 报告预览 / 大纲全线 404），后续步骤全不可用。
+    注意 `facts.generate_ok` **不**放宽——三步条的「生成」仍只认 red_slots，
+    半途期次诚实显示「卡在生成」，指回生成台（或回滚到上一版）。"""
+    if (d / "red_slots.json").is_file():
+        return True
+    return bool((d / "meta.json").is_file()
+                and next(d.glob("报告初稿_*.docx"), None) is not None)
+
+
 def _product_dirs(out_root: pathlib.Path, *, allow_suffix: bool = False) -> set:
-    """出过稿的产物目录（凭证＝`red_slots.json`，与服务器同一判据）。
+    """出过稿的产物目录（凭证＝`_has_report`，与服务器同一判据）。
 
     `allow_suffix=True` 用于期次列表：`202605_复现` 这类人工后缀仍是可对勘的产物；
     本期任务的选择只用严格六位（`current`），不把复现目录当成新一期。
@@ -66,8 +79,7 @@ def _product_dirs(out_root: pathlib.Path, *, allow_suffix: bool = False) -> set:
         return set()
     rx = period_mod.PERIOD_DIR_RE if allow_suffix else _PERIOD_DIR
     return {p.name for p in out_root.iterdir()
-            if p.is_dir() and rx.match(p.name)
-            and (p / "red_slots.json").is_file()}
+            if p.is_dir() and rx.match(p.name) and _has_report(p)}
 
 
 def _acq_periods(out_root: pathlib.Path) -> set:
@@ -105,11 +117,15 @@ def _acquire_state(period: str, root: pathlib.Path) -> tuple:
 
 
 def resolve(period, out_root=None) -> pathlib.Path | None:
-    """期次字符串 → out/ 下的实际目录（允许 202605_复现 这类后缀）。"""
+    """期次字符串 → out/ 下的实际目录（允许 202605_复现 这类后缀）。
+
+    凭证＝`_has_report`（red_slots.json，或半途 run 的 docx＋meta）——
+    半途期次也要**可见**（回滚入口、报告预览的「去生成」指引都靠它），
+    完成与否交给 `facts.generate_ok` 说话。"""
     if not period_mod.PERIOD_DIR_RE.match(str(period or "")):
         return None
     d = _out_root(REPO_ROOT, out_root) / str(period)
-    if d.is_dir() and (d / "red_slots.json").exists():
+    if d.is_dir() and _has_report(d):
         return d
     return None
 
