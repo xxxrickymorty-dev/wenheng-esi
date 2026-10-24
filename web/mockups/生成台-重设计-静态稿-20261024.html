@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 生成台重设计 · 静态稿 20261024（待 rick 审）</title>
+<style>
+/* 令牌＝web/src/index.css（2026-10-17 绿蓝双主题，蓝场默认）；零圆角零阴影 */
+:root{
+  --field:#17456E;--field-2:#0F2E4C;--field-3:#2F6B8E;--field-4:#8FB6CE;--field-5:#DCE8F0;
+  --tool:#26483B;--tool-2:#163228;--tool-3:#2F7A58;--tool-4:#7FB79B;--tool-5:#DFEDE6;
+  --bg:#F2EFE6;--card:#F7F4EC;--panel:#E4DFD0;--card-hi:#FAF8F1;
+  --ink:#15222B;--ink-2:#43525C;--ink-3:#556169;
+  --line:#D6D0C0;--line-2:#E4DFD0;
+  --zhu:#26483B;--zhu-soft:#DFEDE6;--gline:#163228;
+  --ok:#276B4C;--ok-soft:#DFEDE6;--ok-line:#9CC4AE;
+  --warn:#B23A2B;--warn-soft:#F4DDD7;
+  --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg)}
+body{color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--serif);font-weight:600}
+a{color:inherit;text-decoration:none}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+
+/* ── 评审条（静态稿专用，非产品 UI）── */
+.review{padding:10px 22px;background:var(--panel);border-bottom:1px solid var(--line);
+  font-size:12.5px;color:var(--ink-2)}
+.review b{color:var(--field)}
+.state-tag{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+  padding:26px 22px 10px;max-width:1240px;margin:0 auto}
+.state-tag .no{font:600 12px/1 var(--mono);letter-spacing:.18em;color:var(--field-3)}
+.state-tag h2{font-size:19px}
+.state-tag p{font-size:13px;color:var(--ink-3)}
+
+/* ── 顶栏示意（沿用现行 app-top）── */
+.top{display:flex;align-items:center;gap:16px;min-height:60px;padding:0 22px;
+  background:var(--field-2);color:var(--field-5)}
+.top .brand b{font-family:var(--serif);font-size:21px;font-weight:600;letter-spacing:.18em}
+.top .brand span{font-size:11px;letter-spacing:.16em;color:var(--field-4)}
+.top nav{display:flex;gap:20px;margin-left:auto;font-size:14px;color:var(--field-4)}
+.top nav a.cur{color:var(--field-5);font-weight:600;border-bottom:2px solid var(--tool-3);padding-bottom:4px}
+
+.wrap{max-width:1240px;margin:0 auto;padding:26px 22px 60px}
+
+/* ── 焦点卡：本期身份 ── */
+.focus{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--field)}
+.focus-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding:18px 22px 0}
+.focus-head h1{font-size:27px;letter-spacing:.06em}
+.focus-head .issue{font-family:var(--kai,serif);font-size:12px;letter-spacing:.24em;color:var(--ink-3)}
+.focus-head .pill{font:12px/1 var(--mono);border:1px solid var(--line);padding:3px 8px;color:var(--ink-2)}
+.focus-head .prev{margin-left:auto;font-size:13px;color:var(--ink-3)}
+.focus-head .prev b{color:var(--ok);font-weight:600}
+.focus-sub{padding:4px 22px 0;font-size:13px;color:var(--ink-3)}
+
+/* ── 四步站条（=导航四步，同一套词）── */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+  border:1px solid var(--line);border-top:0;margin-top:16px}
+.step{background:var(--card);padding:13px 18px 12px;position:relative}
+.step .k{font-size:11px;letter-spacing:.2em;color:var(--ink-3)}
+.step .v{font-family:var(--serif);font-size:19px;margin-top:3px;color:var(--ink)}
+.step .n{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+.step.done .k{color:var(--ok)}
+.step.done .v{color:var(--ok)}
+.step.now{background:var(--card-hi)}
+.step.now::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--zhu)}
+.step.now .v{color:var(--zhu)}
+.step.lock .v,.step.lock .n{color:var(--ink-3)}
+.step .go{position:absolute;right:12px;top:12px;font-size:12px;color:var(--ink-3)}
+
+/* ── 主动作行 ── */
+.cta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 22px 18px}
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);
+  background:var(--card);padding:7px 16px;font-size:14.5px}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-size:16px;padding:10px 22px}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink-3)}
+.btn.ghost:hover{color:var(--warn)}
+.cta .why{font-size:13px;color:var(--ink-3)}
+
+/* ── 报告区（报告是主角）── */
+.report{background:var(--card);border:1px solid var(--line);margin-top:18px}
+.report-h{display:flex;align-items:center;gap:10px;padding:12px 22px;border-bottom:1px solid var(--line-2)}
+.report-h h3{font-size:16px}
+.report-h .hint{margin-left:auto;font-size:12.5px;color:var(--ink-3)}
+.report-body{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap;padding:20px 22px}
+.report-open{flex:1 1 300px;min-width:260px}
+.report-open .docname{font-family:var(--serif);font-size:21px;line-height:1.4}
+.report-open .meta{font-size:13px;color:var(--ink-3);margin-top:6px}
+.report-open .acts{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;
+  background:var(--line-2);border:1px solid var(--line-2);flex:1 1 320px;min-width:260px}
+.facts div{background:var(--card);padding:11px 14px}
+.facts b{display:block;font-family:var(--serif);font-size:21px;font-variant-numeric:tabular-nums}
+.facts span{font-size:12px;color:var(--ink-3)}
+
+/* ── 故事条（降半级：运行视角回放）── */
+.story-wrap{margin-top:18px}
+.story-cap{display:flex;align-items:baseline;gap:12px;padding:0 2px 8px;font-size:12.5px;color:var(--ink-3)}
+.story-cap b{font-family:var(--serif);font-size:14px;color:var(--ink-2);font-weight:600}
+.story{display:grid;grid-template-columns:repeat(5,1fr);border-top:3px solid var(--line);background:var(--card)}
+.cell{position:relative;padding:13px 16px 11px;border-right:1px dashed var(--line);margin-top:-3px;border-top:3px solid var(--line)}
+.cell:last-child{border-right:0}
+.cell .t{display:block;font-size:12px;letter-spacing:.2em;color:var(--ink-3);margin-top:4px}
+.cell .v{display:block;font-family:var(--serif);font-size:22px;line-height:1.3;font-variant-numeric:tabular-nums}
+.cell .n{display:block;font-size:12.5px;color:var(--ink-3);margin-top:3px;line-height:1.5;min-height:1.5em}
+.cell.ok{border-top-color:var(--ok)}
+.cell.ok .t,.cell.ok .v{color:var(--ok)}
+.cell.now{border-top-color:var(--field-3)}
+.cell.now .t,.cell.now .v{color:var(--field-3)}
+.cell.todo{border-top-color:var(--line)}
+.cell.todo .t,.cell.todo .v,.cell.todo .n{color:var(--ink-3)}
+.cell .go{position:absolute;right:12px;top:11px;font-size:12px;color:var(--ink-3);opacity:.45}
+
+/* ── 生成中态 ── */
+.runbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 22px;
+  background:var(--card);border:1px solid var(--line);border-left:3px solid var(--field-3)}
+.runbar b{font-family:var(--serif);font-size:17px}
+.runbar .t{font:13px var(--mono);color:var(--ink-3)}
+.runsteps{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line);
+  border:1px solid var(--line);border-top:0}
+.runsteps div{background:var(--card);padding:11px 16px;font-size:14px}
+.runsteps div.done{color:var(--ok)}
+.runsteps div.doing{color:var(--field-3);background:var(--card-hi)}
+.runsteps div.doing::after{content:" ⟳";font-family:var(--mono)}
+.runsteps small{display:block;font:12px var(--mono);color:var(--ink-3)}
+
+/* ── 失败 / 空态 ── */
+.statebox{background:var(--card);border:1px solid var(--line);padding:20px 22px}
+.statebox .big{font-family:var(--serif);font-size:20px;line-height:1.5}
+.statebox.bad .big{color:var(--warn)}
+.statebox .sub{font-size:14px;color:var(--ink-2);margin-top:8px}
+.statebox .safe{margin-top:12px;padding:9px 13px;background:var(--ok-soft);border:1px solid var(--ok-line);
+  font-size:13.5px;color:var(--ink-2)}
+.statebox .acts{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap}
+
+hr.sep{border:0;border-top:1px solid var(--line);margin:34px 0 0}
+
+@media (max-width:900px){
+  .steps,.story,.runsteps{grid-template-columns:repeat(2,1fr)}
+  .focus-head .prev{margin-left:0;flex-basis:100%}
+}
+</style>
+</head>
+<body>
+
+<div class="review">静态稿 20261024 · 生成台重设计 · <b>待 rick 审（对齐前不写码）</b> ·
+判据＝UX-生成台.md §3 状态清单/§4 错误文案/§8 验收 + 10-24 对抗性审查整改 ·
+令牌＝index.css 绿蓝（蓝场）· 数据＝202609 真实值 · 词表＝四步与导航同一套</div>
+
+<div class="top">
+  <div class="brand"><b>文衡</b><span>云南大学图书馆 · 学科信息参考</span></div>
+  <nav><a class="cur" href="#">出报告</a><a href="#">灵活报告</a><a href="#">问文衡</a><a href="#">主台账</a><a href="#">运行档案</a></nav>
+</div>
+
+<!-- ═══ 状态一：待签发（当前真实态，主展示）═══ -->
+<div class="state-tag"><span class="no">状态 1 / 4</span><h2>已出稿 · 待签发</h2><p>202609 的真实状态——四步走到第 ④ 步，唯一主动作是复核并签单（审查问题「主动作模糊」的解）</p></div>
+<div class="wrap">
+
+  <section class="focus">
+    <div class="focus-head">
+      <h1>本期 202609</h1><span class="issue">第 四 十 期</span>
+      <span class="pill">数据截至 2026-09</span>
+      <span class="prev">上一期 202607 · <b>已签发</b> · 卜彤 · 09-22 10:12</span>
+    </div>
+    <div class="focus-sub">双月一期：9 月这一期的数据已并入主台账，报告初稿已出，差最后一步签发。</div>
+    <div class="steps">
+      <div class="step done"><span class="k">① 取数核验</span><span class="v">64 / 64</span><span class="n">已并入 202609 列</span><span class="go">回看 →</span></div>
+      <div class="step done"><span class="k">② 预测选模</span><span class="v">用推荐</span><span class="n">5 科已指定</span><span class="go">回看 →</span></div>
+      <div class="step done"><span class="k">③ 生成初稿</span><span class="v">已出稿</span><span class="n">10-24 08:04</span><span class="go">回看 →</span></div>
+      <div class="step now"><span class="k">④ 核验定稿</span><span class="v">待签发</span><span class="n">待人工 7 处已填齐</span></div>
+    </div>
+    <div class="cta">
+      <button class="btn primary">复核并签单</button>
+      <button class="btn ghost">重放本次运行</button>
+      <span class="why">签单后可下载定稿；重出会使签发失效</span>
+    </div>
+  </section>
+
+  <section class="report">
+    <div class="report-h"><h3>报告初稿</h3><span class="hint">报告是主角——生成完直接在这里看</span></div>
+    <div class="report-body">
+      <div class="report-open">
+        <div class="docname">报告初稿_202609（试排）.docx</div>
+        <div class="meta">2026-10-24 08:04 生成 · 人工项 7 处已填 · 未签发</div>
+        <div class="acts">
+          <button class="btn">打开报告</button>
+          <button class="btn">看对勘本</button>
+          <button class="btn">下载 Word</button>
+        </div>
+      </div>
+      <div class="facts">
+        <div><b>704</b><span>红色件槽位</span></div>
+        <div><b>104</b><span>图表</span></div>
+        <div><b>2 分 31 秒</b><span>生成用时</span></div>
+        <div><b>1.27%</b><span>预测回测偏差</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="story-wrap">
+    <div class="story-cap"><b>本次运行的五段轨迹</b>运行视角回放（取数→生成→审计→签发→留痕），与上方四步是两套视角</div>
+    <div class="story">
+      <div class="cell ok"><span class="t">取 数</span><span class="v">64 / 64</span><span class="n">已并入</span><span class="go">→</span></div>
+      <div class="cell ok"><span class="t">生 成</span><span class="v">2 分 31 秒</span><span class="n">104 张图</span><span class="go">→</span></div>
+      <div class="cell ok"><span class="t">审 计</span><span class="v">4 项通过</span><span class="n">2 项待签</span><span class="go">→</span></div>
+      <div class="cell now"><span class="t">签 发</span><span class="v">待签发</span><span class="n">等卜彤</span><span class="go">→</span></div>
+      <div class="cell todo"><span class="t">留 痕</span><span class="v">—</span><span class="n">签发后归档</span></div>
+    </div>
+  </section>
+
+</div>
+
+<hr class="sep">
+
+<!-- ═══ 状态二：生成中 ═══ -->
+<div class="state-tag"><span class="no">状态 2 / 4</span><h2>生成中</h2><p>点下「开始生成」之后——五步人话进度，长步骤给计数（UX-生成台 §2）</p></div>
+<div class="wrap">
+  <div class="runbar"><b>正在生成 · 202609</b><span class="t">已用 8 秒</span>
+    <span style="margin-left:auto;display:flex;gap:10px"><button class="btn">看日志</button><button class="btn ghost">取消</button></span></div>
+  <div class="runsteps">
+    <div class="done">① 解析台账<small>22 学科 · 全过</small></div>
+    <div class="done">② 计算大表<small>242 格</small></div>
+    <div class="done">③ 预测回测<small>MAPE 1.3%</small></div>
+    <div class="doing">④ 出图<small>68 / 104</small></div>
+    <div>⑤ 装配报告<small>…</small></div>
+  </div>
+</div>
+
+<hr class="sep">
+
+<!-- ═══ 状态三：失败（解析）═══ -->
+<div class="state-tag"><span class="no">状态 3 / 4</span><h2>失败 · 解析没通过</h2><p>哪里错了＋下一步做什么，人话（UX-生成台 §4）；「上一版仍然有效」必须在场</p></div>
+<div class="wrap">
+  <section class="statebox bad">
+    <div class="big">解析没通过：台账《千分之一被引阈值》还没有 202609 列</div>
+    <div class="sub">补上这一列，回来点「重新生成」——其余四步不受影响，失败只用了 3 秒。</div>
+    <div class="safe">上一版报告仍然有效（已留档，可回滚）——你的数据与报告都没有丢。</div>
+    <div class="acts"><button class="btn primary">重新生成</button><button class="btn">看缺什么清单</button><button class="btn ghost">回滚到上一版</button></div>
+  </section>
+</div>
+
+<hr class="sep">
+
+<!-- ═══ 状态四：空（数据没取齐）═══ -->
+<div class="state-tag"><span class="no">状态 4 / 4</span><h2>空 · 数据还没取齐</h2><p>空态＝一句话＋一个下一步动作（UX §十），不摆没有动作的解释</p></div>
+<div class="wrap">
+  <section class="statebox">
+    <div class="big">这一期还没取数</div>
+    <div class="sub">先去取数台把 64 份数据取齐并入，回来这里一键生成。</div>
+    <div class="acts"><button class="btn primary">去取数台</button><button class="btn">换个期次</button></div>
+  </section>
+</div>
+
+</body>
+</html>
