@@ -25,6 +25,9 @@ type Props = {
   live: boolean
   /** 任务最后一步的人话（没有就退回「正在跑」） */
   liveNote?: string | null
+  /** 紧凑模式（2026-10-24 rick：全景屏内容太多）——题头只留一枚「重放」按钮，
+      标题/时钟/档案链接不上屏；五格与回放动画不变。 */
+  compact?: boolean
 }
 
 const REDUCE = typeof window !== 'undefined'
@@ -122,7 +125,7 @@ function fallbackStory(detail: PeriodDetail | null, approvalStatus: string): Sto
   return [acquire, generate, audit, sign, trail]
 }
 
-export function StoryBand({ period, approvalStatus, detail, live, liveNote }: Props) {
+export function StoryBand({ period, approvalStatus, detail, live, liveNote, compact = false }: Props) {
   const [archive, setArchive] = useState<ArchiveData | null | undefined>(undefined)
   const [phase, setPhase] = useState<'pending' | 'done'>('pending')
   const [playTick, setPlayTick] = useState(0)
@@ -334,6 +337,14 @@ export function StoryBand({ period, approvalStatus, detail, live, liveNote }: Pr
 
   return (
     <section className="story" aria-label="这一期怎么走到这里">
+      {compact ? (
+        /* 紧凑题头（全景屏）：只有重放入口；任务在跑/无记录时整行不上屏 */
+        !live && hasRun ? (
+          <div className="story-h story-h-min">
+            <button className="playbtn" ref={btnRef} type="button" onClick={onPlay} title="按真实顺序重放这五步">▶ 重放</button>
+          </div>
+        ) : null
+      ) : (
       <div className="story-h">
         <div className="story-title">
           <h2>这一期怎么走到这里</h2>
@@ -354,6 +365,7 @@ export function StoryBand({ period, approvalStatus, detail, live, liveNote }: Pr
           运行档案 · 完整回放 →
         </a>
       </div>
+      )}
       <div className={`playline${phase === 'done' && !live ? ' done' : ''}`} aria-hidden="true"><i ref={lineRef} /></div>
       <div className="band" ref={bandRef}>
         {steps.map((s, i) => (

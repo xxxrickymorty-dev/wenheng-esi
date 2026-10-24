@@ -1331,13 +1331,7 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
   color:var(--ink);padding-top:3px}
 .pano-title .pano-tag{font-size:11px;font-weight:400;color:var(--ink-3);letter-spacing:.06em;
   border:1px solid var(--line);padding:1px 6px;margin-left:10px;vertical-align:2px;white-space:nowrap}
-.pano-counters{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
-.pano-cnt{margin:0;background:var(--card);border:1px solid var(--line);padding:4px 12px;
-  min-width:70px;text-align:center}
-.pano-cnt b{display:block;font-size:19px;line-height:1.1;font-variant-numeric:tabular-nums;
-  font-weight:600;color:var(--ink)}
-.pano-cnt span{font-size:11px;color:var(--ink-3)}
-.pano-cnt.warn b{color:var(--warn)}
+.pano .playbtn{font-size:12px;padding:3px 10px}
 /* 故事条在全景页内压缩（原为生成台尺寸；回放与数字不变，只减留白） */
 .pano .story{padding:6px 10px 4px;margin-top:2px;flex:none}
 .pano .story-h{margin-bottom:6px;gap:10px}
@@ -1391,9 +1385,6 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
   .pano-panel{width:auto;order:2;overflow:visible}
   .pano-stage{height:360px;min-height:0;max-height:none;order:1}
   .pano-title{font-size:16px}
-  .pano-counters{margin-left:0;width:100%}
-  .pano-cnt{flex:1;min-width:0;padding:4px 8px}
-  .pano-cnt b{font-size:17px}
 }
 @media (prefers-reduced-motion: reduce){
   .pano-flow{animation:none}

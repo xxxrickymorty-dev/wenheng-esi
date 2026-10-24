@@ -171,7 +171,6 @@ function Labels({ pills }: { pills: Pill[] }) {
 type Machine = { name: string; sec: number; state: RowState }
 type Model = {
   sections: PanelSection[]
-  counters: { key: string; b: string; span: string; warn?: boolean }[]
   machines: Machine[]
   esi: RowState; hall: RowState; line: RowState; qc: RowState; sign: RowState
   labels: Record<'esi' | 'hall' | 'line' | 'qc' | 'sign' | 'arch', { text: string; state: RowState }>
@@ -277,12 +276,7 @@ function buildModel(
   ]
 
   const doneSteps = wf.filter(r => r.status === 'done' && !r.orphan).length
-  const counters = [
-    { key: 'steps', b: wf.length ? `${doneSteps}/${wf.length}` : '—', span: '本期步数' },
-    { key: 'audit', b: audit?.exists ? `${aPass}/${aRows.length}` : '—', span: '断言通过', warn: !!(aFail || aReview) },
-    { key: 'red', b: redTotal != null ? String(redTotal) : '—', span: '红色件', warn: !signed && redTotal != null },
-    { key: 'sign', b: signed ? '已签' : stale ? '待重签' : '待签', span: '签发', warn: stale },
-  ]
+  void doneSteps   /* 计数器已删（2026-10-24 rick：这一页内容太多）；步数/断言/红件都在面板与场景标签上 */
 
   const failedRun = run ? run.failed : /fail|error|escalat|cancel|abort/i.test(String(archive?.job?.['status'] ?? ''))
   const line: RowState = live ? 'run'
@@ -299,7 +293,7 @@ function buildModel(
     : acq?.started ? (v != null && e != null ? `取数站 · ${v} / ${e} 件` : '取数站 · 取数在途') : '待取数'
 
   return {
-    sections, counters,
+    sections,
     machines: wf.map(r => ({
       name: r.name, sec: r.sec,
       state: r.status === 'failed' || r.status === 'warn' || r.orphan ? 'warn'
@@ -572,23 +566,17 @@ export function Panorama({ period, periods, detail, approvalStatus, live, liveNo
         <h1 className="pano-title">产线全景
           <span className="pano-tag">{label} · 数字为真值</span>
         </h1>
-        <div className="pano-counters" aria-label="本期计数">
-          {model.counters.map(c => (
-            <p key={c.key} className={`pano-cnt${c.warn ? ' warn' : ''}`}>
-              <b>{c.b}</b><span>{c.span}</span>
-            </p>
-          ))}
-        </div>
       </div>
 
-      {/* 五步故事条（2026-10-24 从生成台迁入，rick：要动态可播放）——
-          打开按真实顺序回放，任务在跑时走实时；与下面工厂是同一份真值的两种投影 */}
+      {/* 五步故事条（2026-10-24 从生成台迁入，rick：要动态可播放；同日 rick 红框删计数器
+          与题头——紧凑模式只留一枚重放按钮，五格回放不变）——与下面工厂是同一份真值的两种投影 */}
       <StoryBand
         period={period}
         approvalStatus={approvalStatus}
         detail={detail}
         live={live}
         liveNote={liveNote}
+        compact
       />
 
       <div className="pano-wrap">
