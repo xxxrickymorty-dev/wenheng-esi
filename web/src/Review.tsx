@@ -143,6 +143,8 @@ export function Review({
   const [note, setNote] = useState('')
   const [known, setKnown] = useState(false)
   const [busy, setBusy] = useState<null | 'sign' | 'rebuild' | 'save' | 'revoke'>(null)
+  /* 章节目录的当前章（点击定位；对抗性审查 10-24：目录原先无任何当前位置表达） */
+  const [curSec, setCurSec] = useState(-1)
   const [msg, setMsg] = useState<Msg>(null)
   // 「跳到下一处」的游标：连点就按报告顺序依次落到每个空位（填完一处自动跳过）
   const [cursor, setCursor] = useState(0)
@@ -446,9 +448,10 @@ export function Review({
             {sections.length > 0 && (
               <nav className="rv-toc" aria-label="报告章节">
                 {sections.map((s) => (
-                  <button key={s.i} type="button"
-                          onClick={() => document.getElementById(`rv-b-${s.i}`)
-                            ?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+                  <button key={s.i} type="button" title={s.title}
+                          aria-current={curSec === s.i ? 'true' : undefined}
+                          onClick={() => { setCurSec(s.i); document.getElementById(`rv-b-${s.i}`)
+                            ?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}>
                     {s.title}
                   </button>
                 ))}
@@ -508,7 +511,7 @@ export function Review({
                         title={needAck && !known ? '先勾选上方「我已逐项看过」' : undefined}>
                   <Icon name="seal" size={19} />{busy === 'sign' ? '正在处理…' : '签单'}
                 </button>
-                <ConfirmButton className="btn" disabled={!canSign || busy !== null || !signed}
+                <ConfirmButton className="btn ghost" disabled={!canSign || busy !== null || !signed}
                                confirmText="确认撤回？签发会失效" onConfirm={doRevoke}>
                   <Icon name="refresh" size={18} />撤回
                 </ConfirmButton>

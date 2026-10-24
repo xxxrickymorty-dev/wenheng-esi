@@ -8,6 +8,7 @@ function Sprite() {
     <svg width="0" height="0" className="abs" aria-hidden="true">
       <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" {...S} /></symbol>
       <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5 19 12 7 19.5z" {...S} /></symbol>
+      <symbol id="i-window" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="1" {...S} /><path d="M3.5 9h17" {...S} /></symbol>
       <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1" {...S} /></symbol>
       <symbol id="i-alert" viewBox="0 0 24 24">
         <path d="M12 4 2.8 20h18.4z" {...S} />

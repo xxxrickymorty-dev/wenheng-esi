@@ -13,7 +13,7 @@ import { acqFileLabel, acqGroupLabel, errorNote } from './lib/status'
 
 /** 任务进行中的一句话（op.kind → 人话） */
 const OP_CN: Record<string, string> = {
-  fetch: '正在按组下载数据', copy: '正在新建当期核对副本', merge: '正在并入主台账', preflight: '正在检查',
+  fetch: '正在按组取数', copy: '正在新建当期核对副本', merge: '正在并入主台账', preflight: '正在检查',
 }
 
 const SOURCE_NAME: Record<string, string> = { esi: 'ESI', incites: 'InCites' }
@@ -346,41 +346,41 @@ export function Acquire({ period, onOpenPeriod }: {
   const s1stat: [string, string] = s1done ? ['✓ 4 项都过了', 'ok']
     : pfHasBad ? ['有没通过的项', 'bad'] : ['还没检查', 'wait']
   const s2stat: [string, string] = s2collapsed ? [`✓ 已取到 ${verified} / ${expected}`, 'ok']
-    : fetchBusy ? [`下载中 · ${verified} / ${expected}`, 'run']
+    : fetchBusy ? [`取数中 · ${verified} / ${expected}`, 'run']
       : opStory ? [(opStopped ? '已停止' : '已中断'), (opStopped ? 'wait' : 'bad')]
         : s2locked ? ['等 ① 检查通过', 'wait']
           : view === 'partial' ? [`有 ${failed} 份没通过`, 'bad']
-            : ro ? ['往期只读', 'wait'] : ['可以下载', 'wait']
+            : ro ? ['往期只读', 'wait'] : ['可以取数', 'wait']
   const s3stat: [string, string] = view === 'merged' ? [`✓ 已并入（${period} 列）`, 'ok']
     : copyBusy ? [`${op?.kind === 'merge' ? '正在并入' : '正在建核对副本'}……`, 'run']
-      : view === 'review' ? ['核对表已生成 · 待核对', 'run'] : ['等 ② 下载齐了自动解锁', 'wait']
+      : view === 'review' ? ['核对表已生成 · 待核对', 'run'] : ['等 ② 取数齐了自动解锁', 'wait']
   const s2big = showOpHero
-    ? (opStopped ? '下载已停止' : '上次下载中断了')
-    : fetchBusy ? `正在按组下载数据${liveGroup?.title ? `：${liveGroup.title}` : ''}……`
+    ? (opStopped ? '取数已停止' : '上次取数中断了')
+    : fetchBusy ? `正在按组取数${liveGroup?.title ? `：${liveGroup.title}` : ''}……`
       : view === 'partial' ? `${failGroup?.title ?? '有一组'}有 ${failed} 份没通过核验。`
         : view === 'running' ? '这一期还没取齐'
-          : pfPassed ? '检查都过了，可以下载这一期的数据' : '等上一步检查通过'
+          : pfPassed ? '检查都过了，可以取这一期的数据' : '等上一步检查通过'
   const s2sub = showOpHero
     ? (opStopped
-      ? `已经下载的文件都在${expected > 0 ? `（${verified} / ${expected}）` : ''}。等准备好再点「继续下载」，只补没下到的文件。`
+      ? `已经取到的文件都在${expected > 0 ? `（${verified} / ${expected}）` : ''}。等准备好再点「继续取数」，只补没下到的文件。`
       : (opInterrupted && op?.at
-        ? `最后一次动静是 ${op.at}，之后就没有再往下走——下载程序已经停了。已经下载的文件都在，没有丢。`
-        : '下载程序已经停了。已经下载的文件都在，没有丢。'))
+        ? `最后一次动静是 ${op.at}，之后就没有再往下走——取数程序已经停了。已经取到的文件都在，没有丢。`
+        : '取数程序已经停了。已经取到的文件都在，没有丢。'))
     : fetchBusy ? '可以离开这一页，进度不会丢。'
-      : view === 'partial' ? '重试只补这一组，通过的不重复下载。'
-        : view === 'running' ? `已取到 ${verified} / ${expected}；继续下载只补缺的文件。`
-          : pfPassed ? '9 组、共 64 份；下载中随时可停，停下的补缺不重复下载。'
-            : '① 的检查都过了，这里会出现「开始下载」。'
+      : view === 'partial' ? '重试只补这一组，通过的不重复取。'
+        : view === 'running' ? `已取到 ${verified} / ${expected}；继续取数只补缺的文件。`
+          : pfPassed ? '9 组、共 64 份；取数中随时可停，停下的补缺不重复取。'
+            : '① 的检查都过了，这里会出现「开始取数」。'
   /* 失败的一行话：下载相关留 ②，建副本/并入相关留 ③（按 op.kind 归位） */
   const opNoteLine = op?.state === 'failed' && !opStory
-    ? (humanOpNote(op.note ?? '') || `上一步没有完成：${op.note || '原因见下载数据状态'}`) : ''
+    ? (humanOpNote(op.note ?? '') || `上一步没有完成：${op.note || '原因见取数状态'}`) : ''
   /* 下载清单（组卡）：② 展开时常驻一处；收起后从「下载清单」按钮点开——不重复造两份 */
   const groupsFold = (open?: boolean) => (
     <details className="fold" open={open}>
-      <summary>下载数据清单<span className="sm">{totals.groups ?? groups.length ?? 9} 组 · {expected > 0 ? `${expected} 份` : '份数待定'}</span></summary>
+      <summary>取数清单<span className="sm">{totals.groups ?? groups.length ?? 9} 组 · {expected > 0 ? `${expected} 份` : '份数待定'}</span></summary>
       <div className="fold-inner">
         {groups.length === 0 ? (
-          <p className="hint m-0">还没有下载数据记录。</p>
+          <p className="hint m-0">还没有取数记录。</p>
         ) : (
           <div className="aq-groups">
             {groups.map((g, i) => (
@@ -396,7 +396,7 @@ export function Acquire({ period, onOpenPeriod }: {
   return (
     <>
       {note && <div className="pending-box">{note}<button type="button" className="btn ml-10" onClick={() => { setNote(null); load() }}>重新读取</button></div>}
-      {!state && !note && <div className="pending-box">{loading ? '正在读取下载数据状态……' : '还没有读到下载数据状态。'}</div>}
+      {!state && !note && <div className="pending-box">{loading ? '正在读取取数状态……' : '还没有读到取数状态。'}</div>}
 
       {state && (
         <>
@@ -406,7 +406,7 @@ export function Acquire({ period, onOpenPeriod }: {
               <h1 className="fs-24">取数核验</h1>
               <span className="pill unsigned mono">{period}</span>
               <span className={`pill ${pillCls}`}>{pillText}</span>
-              <span className="hint aq-num">采集 · {expected > 0 ? `已取到 ${verified} / ${expected}` : '未开始'}{lastFetchAt ? ` · 最近下载 ${lastFetchAt}` : ''}</span>
+              <span className="hint aq-num" title={`最近取数 ${lastFetchAt ?? '—'} · 取数状态更新 ${state.updated_at ?? '—'}`}>采集 · {expected > 0 ? `已取到 ${verified} / ${expected}` : '未开始'}</span>
               <button type="button" className="btn small ml-auto" aria-expanded={openForm}
                       onClick={() => { setOpenForm((v) => !v); setOpenErr('') }}>
                 <Icon name="plus" size={16} />开新一期
@@ -441,7 +441,7 @@ export function Acquire({ period, onOpenPeriod }: {
                 </div>
                 {/* 通过后：收起成一行（四盏小灯 + 重查） */}
                 <div className="stg-inline">
-                  <span className={`aq-chip ${pf?.browser === 'ok' ? 'ok' : 'bad'}`}><Icon name="play" size={15} />浏览器</span>
+                  <span className={`aq-chip ${pf?.browser === 'ok' ? 'ok' : 'bad'}`}><Icon name="window" size={15} />浏览器</span>
                   <span className={`aq-chip ${pf?.esi === 'ok' ? 'ok' : 'bad'}`}><Icon name="seal" size={15} />ESI 登录</span>
                   <span className={`aq-chip ${pf?.incites === 'ok' ? 'ok' : 'bad'}`}><Icon name="seal" size={15} />InCites 登录</span>
                   <span className={`aq-chip ${pf?.data?.ok === true ? 'ok' : pf?.data?.ok === false ? 'bad' : ''}`}><Icon name="clock" size={15} />数据期</span>
@@ -460,12 +460,12 @@ export function Acquire({ period, onOpenPeriod }: {
                     ? '系统会自动打开下载数据专用浏览器；在里面登录 ESI / InCites 后，点「重新检查」。'
                     : ro ? '这一期不能再取；这里只显示浏览器与登录的当前状态。'
                       : (view === 'review' || view === 'merged')
-                        ? '这一期已经取完；这里只显示浏览器与登录的当前状态。'
+                        ? '这一期已取完；此处只显示当前连接状态。'
                         : '四件事：下载数据专用浏览器开着、两家网站登录着、这一期的数据更新了没有。'}</div>
                   <div className="stg-cta">
                     <div className="chips">
                       <span className={`aq-chip ${pf?.browser === 'ok' ? 'ok' : pf?.browser === 'bad' ? 'bad' : ''}`}>
-                        <Icon name="play" size={15} />下载数据专用浏览器 · {pfText('browser', pf?.browser)}
+                        <Icon name="window" size={15} />下载数据专用浏览器 · {pfText('browser', pf?.browser)}
                       </span>
                       <span className={`aq-chip ${pf?.esi === 'ok' ? 'ok' : pf?.esi === 'bad' ? 'bad' : ''}`}>
                         <Icon name="seal" size={15} />ESI 网站 · {pfText('site', pf?.esi)}
@@ -496,7 +496,7 @@ export function Acquire({ period, onOpenPeriod }: {
               <div className="node"><i>②</i></div>
               <div className="body"><div className="stg-card">
                 <div className="stg-top">
-                  <span className="stg-title">下载数据</span>
+                  <span className="stg-title">取数</span>
                   <span className={`stg-stat ${s2stat[1]}`}>{s2stat[0]}</span>
                 </div>
                 {/* 取齐后收起：结论 + 存回电脑 + 重取 */}
@@ -518,12 +518,12 @@ export function Acquire({ period, onOpenPeriod }: {
                     <button type="button" className="btn small" disabled={!cap.start || busy}
                             title={cap.start ? '重取只补没下到的文件；已并入台账不受影响' : toolMissing}
                             onClick={onStart}>
-                      <Icon name="download" size={16} />重新下载这一期
+                      <Icon name="download" size={16} />重新取这一期
                     </button>
                   )}
                   {opStory && (
                     <span className="hint">
-                      {opStopped ? '上次的下载被停止了' : '上次的下载中断了（下载程序已经停了）'}
+                      {opStopped ? '上次的取数被停止了' : '上次的取数中断了'}
                       {expected > 0 ? `；当前取到 ${verified} / ${expected}。` : '。'}
                     </span>
                   )}
@@ -532,7 +532,7 @@ export function Acquire({ period, onOpenPeriod }: {
                   )}
                   <button type="button" className="btn small" aria-expanded={showGroups}
                           onClick={() => setShowGroups((v) => !v)}>
-                    <Icon name="doc" size={16} />下载清单
+                    <Icon name="doc" size={16} />取数清单
                   </button>
                 </div>
                 {showGroups && <div className="stg-extra">{groupsFold(true)}</div>}
@@ -548,11 +548,11 @@ export function Acquire({ period, onOpenPeriod }: {
                   )}
                   {showOpHero && !opStopped && expected > 0 && (
                     <div className="hint note-bad">
-                      已取到 {verified} / {expected}。点「继续下载」只会补没下到的文件，已下过的不重复下载。
+                      已取到 {verified} / {expected}。点「继续取数」只会补没下到的文件，已取过的不重复取。
                     </div>
                   )}
                   {fetchBusy && (
-                    <div className="hint">停止后已下载的文件都会保留，之后可以继续下载补缺的。</div>
+                    <div className="hint">停止后已取到的文件都会保留，之后可以继续取数补缺的。</div>
                   )}
                   {opNoteLine && op?.kind !== 'copy' && op?.kind !== 'merge' && (
                     <div className="hint note-bad" title={op?.note || undefined}>{opNoteLine}</div>
@@ -580,25 +580,25 @@ export function Acquire({ period, onOpenPeriod }: {
                     {!ro && showOpHero && (
                       <button className="btn primary" disabled={!cap.start || busy}
                               title={cap.start ? undefined : toolMissing} onClick={onStart}>
-                        <Icon name="download" size={20} />继续下载（补缺的）
+                        <Icon name="download" size={20} />继续取数（补缺的）
                       </button>
                     )}
                     {!ro && fetchBusy && (
                       <ConfirmButton className="btn stop" confirmText="再点一次 · 确认停止" disabled={busy}
                                      onConfirm={() => { void act('stop') }}>
-                        <Icon name="stop" size={20} />停止下载
+                        <Icon name="stop" size={20} />停止取数
                       </ConfirmButton>
                     )}
                     {!ro && !opBusy && view === 'ready' && pfPassed && (
                       <button className="btn primary" disabled={!cap.start || busy}
                               title={cap.start ? undefined : toolMissing} onClick={onStart}>
-                        <Icon name="download" size={20} />开始下载数据
+                        <Icon name="download" size={20} />开始取数
                       </button>
                     )}
                     {!ro && !opBusy && !opStory && view === 'running' && expected > 0 && (
                       <button className="btn primary" disabled={!cap.start || busy}
                               title={cap.start ? undefined : toolMissing} onClick={onStart}>
-                        <Icon name="download" size={20} />继续下载（补缺的）
+                        <Icon name="download" size={20} />继续取数（补缺的）
                       </button>
                     )}
                     {!ro && !opBusy && view === 'partial' && (
@@ -642,14 +642,14 @@ export function Acquire({ period, onOpenPeriod }: {
                 </div>
                 <div className="stg-inline">
                   <span className="hint">数据已写进主台账。</span>
-                  <a className="btn small primary" href={`/app/?period=${encodeURIComponent(period)}`}>
-                    <Icon name="play" size={16} />去生成台生成
+                  <a className="btn small" href={`/app/?period=${encodeURIComponent(period)}`}>
+                    <Icon name="arrow" size={16} />去生成初稿
                   </a>
                 </div>
                 <div className="stg-body">
                   {view === 'review' ? (
                     <>
-                      <div className="stg-big">下载齐了。核对一下，就可以并入台账</div>
+                      <div className="stg-big">取数齐了。核对一下，就可以并入台账</div>
                       <div className="stg-sub">下面这张「本期新增列」核对表，就是将要写进 {period} 列的全部数字。</div>
                       {copyBusy && (
                         <div className="hint" title={op?.note || undefined}>{OP_CN[op?.kind ?? ''] ?? '正在处理'}……</div>
@@ -694,10 +694,6 @@ export function Acquire({ period, onOpenPeriod }: {
               </div></div>
             </section>
           </div>
-
-          {state.updated_at && (
-            <p className="hint mt-12 aq-stamp">下载数据状态最后更新：{state.updated_at}</p>
-          )}
         </>
       )}
     </>

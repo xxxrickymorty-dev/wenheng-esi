@@ -440,7 +440,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
   transition:opacity .25s;font-variant-numeric:tabular-nums}
 .cell .n{display:block;font-size:13px;color:var(--ink-3);margin-top:4px;line-height:1.5;min-height:1.5em}
 .cell .nt{font-style:normal}
-.cell .go{position:absolute;right:13px;top:13px;font-size:12px;color:var(--ink-4);opacity:0;transition:opacity .15s}
+.cell .go{position:absolute;right:13px;top:13px;font-size:12px;color:var(--ink-4);opacity:.45;transition:opacity .15s}
 .cell:hover .go{opacity:1}
 .cell.pending{opacity:.34}
 .cell.pending .v,.cell.pending .n{color:var(--ink-4)}
@@ -452,6 +452,10 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 .cell.warn .v,.cell.warn .n{color:var(--gold-ink)}
 .cell.todo{border-top-color:var(--ink-4)}
 .cell.todo .v,.cell.todo .n{color:var(--ink-4)}
+/* 三态第二重视觉信号：格名（.t）随状态着色——细边框在投影/大龄场景不够看（10-24 对抗性审查） */
+.cell.ok .t{color:var(--ok)}
+.cell.run .t{color:var(--field-3)}
+.cell.todo .t{color:var(--ink-4)}
 .cell.run{border-top-color:var(--field-3)}
 .cell.run .v{color:var(--field-3)}
 .say{display:flex;align-items:center;gap:10px;margin:12px 0 0;min-height:24px;font-size:13px;
@@ -817,6 +821,10 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:14.5p
 .rv-toc button{border:1px solid var(--line);background:transparent;color:var(--ink-2);
   font-family:var(--sans);font-size:12px;padding:4px 10px;cursor:pointer}
 .rv-toc button:hover{border-color:var(--zhu);color:var(--zhu)}
+.rv-toc button[aria-current="true"]{border-color:var(--zhu);color:var(--zhu);font-weight:600;background:var(--zhu-soft)}
+/* 破坏性动作的静息降级（UX §十）：撤回这类按钮平时退成灰字无边框，确认态仍醒目 */
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink-3)}
+.btn.ghost:hover{color:var(--bad);border-color:var(--line)}
 .rv-docmeta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   margin:0 0 20px;font-size:12.5px;color:var(--ink-3);font-family:var(--sans);
   border-bottom:1px solid var(--line);padding-bottom:10px}

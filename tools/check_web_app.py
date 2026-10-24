@@ -295,25 +295,25 @@ def main():
                   i_take >= 0 and i_gen >= 0 and i_take < i_gen, str(steps[:4]))
             # 采集/并入台账解耦：**当期**（已并入）仍要有整期重取入口（2026-10-16 票 01）
             has_refetch = page.eval_on_selector_all(
-                "button", "els => els.some(e => /重新下载这一期/.test(e.innerText))")
+                "button", "els => els.some(e => /重新取这一期/.test(e.innerText))")
             check("当期（已并入）仍有整期重取入口（采集与并入台账解耦）",
                   has_refetch, f"found={has_refetch}")
             # 往期档案只读（票 03）：不再有取数入口，且写明缘由
             page.goto(BASE + "/app/?view=acquire&period=202605", wait_until="domcontentloaded")
             page.wait_for_selector(".aq-head", timeout=20000)
             ro_refetch = page.eval_on_selector_all(
-                "button", "els => els.some(e => /重新下载这一期|开始下载数据/.test(e.innerText))")
+                "button", "els => els.some(e => /重新取这一期|开始取数/.test(e.innerText))")
             ro_text = page.eval_on_selector_all("body", "els => els.map(e => e.textContent).join('')")
             check("往期档案只读：没有取数入口，且写明缘由",
                   (not ro_refetch) and "往期档案只读" in ro_text,
                   f"fetchBtn={ro_refetch} note={'往期档案只读' in ro_text}")
-            # 三段式门禁（2026-10-19 rick 定）：没检查过 → 下载段锁着、不给「开始下载数据」
+            # 三段式门禁（2026-10-19 rick 定）：没检查过 → 取数段锁着、不给「开始取数」
             page.goto(BASE + "/app/?view=acquire&period=202611", wait_until="domcontentloaded")
             page.wait_for_selector(".aq-head", timeout=20000)
             gate_txt = page.inner_text("main")
             gate_btn = page.eval_on_selector_all(
-                "button", "els => els.some(e => /开始下载数据/.test(e.innerText))")
-            check("三段式门禁：没检查过 → 下载段锁着（无「开始下载数据」，写明等检查）",
+                "button", "els => els.some(e => /开始取数/.test(e.innerText))")
+            check("三段式门禁：没检查过 → 取数段锁着（无「开始取数」，写明等检查）",
                   (not gate_btn) and ("等 ① 检查通过" in gate_txt), f"btn={gate_btn}")
             page.goto(BASE + "/app/?view=acquire&period=202609", wait_until="domcontentloaded")
             page.wait_for_selector(".aq-head", timeout=20000)
@@ -330,15 +330,16 @@ def main():
                   "取数核验" in txt and "开始前检查" in txt, "")
             check("开始前检查四灯齐全（浏览器 / ESI / InCites / 数据期）",
                   all(s in txt for s in ("浏览器", "ESI 登录", "InCites 登录", "数据期")), "")
-            # 三段式（2026-10-19）：② 收起后明细从「下载清单」按钮点开；展开态常驻同一份
-            page.locator("button", has_text="下载清单").first.click()
+            # 三段式（2026-10-19）：② 收起后明细从「取数清单」按钮点开；展开态常驻同一份
+            page.locator("button", has_text="取数清单").first.click()
             page.wait_for_timeout(300)
             n_groups = page.locator(".aq-g").count()
-            has_empty = "还没有下载数据记录" in page.inner_text("main")
+            has_empty = "还没有取数记录" in page.inner_text("main")
             check("取数台：清单展开（有组卡，或如实说没有记录）", n_groups > 0 or has_empty,
                   f"groups={n_groups}")
             page.goto(BASE + "/app/?period=202607", wait_until="domcontentloaded")
             page.wait_for_selector(".story .cell", timeout=15000)
+            page.wait_for_timeout(1500)   # 故事条开场按真实顺序回放，等首格就位再读 href（曾两次时序抖动）
             href = page.get_attribute(".story .cell", "href")
             check("生成台故事条第一步可点入取数台", bool(href) and "view=acquire" in href, str(href))
         except Exception as e:                                          # noqa: BLE001
