@@ -362,10 +362,28 @@ def main():
             cams = page.eval_on_selector_all(".pano-cams button", "els => els.map(e => e.innerText.trim())")
             check("产线全景：相机按钮在（全景 / 左转 / 右转 / 拉近 / 拉远）",
                   cams == ["全景", "左转", "右转", "拉近", "拉远"], str(cams))
+            fit = page.evaluate("() => ({doc: document.documentElement.scrollHeight, inner: window.innerHeight})")
+            check("产线全景：整页单屏不滚（2026-10-24 rick：右缘不要滚动条）",
+                  fit["doc"] <= fit["inner"] + 2, str(fit))
             vb0 = page.eval_on_selector(".pano-stage svg", "el => el.getAttribute('viewBox')")
             page.click(".pano-cams button:has-text('拉近')")
             vb1 = page.eval_on_selector(".pano-stage svg", "el => el.getAttribute('viewBox')")
             check("产线全景：相机只动 viewBox（不动数据）", vb0 != vb1, f"{vb0} -> {vb1}")
+            # 模型可动（2026-10-24 rick）：滚轮缩放、拖动平移都只改 viewBox；落点取舞台中心
+            box = page.locator(".pano-stage").bounding_box()
+            cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+            page.mouse.move(cx, cy)
+            page.mouse.wheel(0, -240)
+            page.wait_for_timeout(200)
+            vb2 = page.eval_on_selector(".pano-stage svg", "el => el.getAttribute('viewBox')")
+            check("产线全景：滚轮缩放生效（朝光标拉近）", vb1 != vb2, f"{vb1} -> {vb2}")
+            page.mouse.move(cx - 60, cy - 30)
+            page.mouse.down()
+            page.mouse.move(cx + 60, cy + 30, steps=6)
+            page.mouse.up()
+            page.wait_for_timeout(200)
+            vb3 = page.eval_on_selector(".pano-stage svg", "el => el.getAttribute('viewBox')")
+            check("产线全景：拖动平移生效", vb2 != vb3, f"{vb2} -> {vb3}")
         except Exception as e:                                          # noqa: BLE001
             check("产线全景（2026-10-24）", False, str(e)[:100])
 
@@ -549,6 +567,17 @@ def main():
         operator.wait_for_timeout(900)
         dlg_text = operator.inner_text("body")
         check("对话页空态有大标题", "文衡，帮你做报告、查数据" in dlg_text, "")
+        # 2026-10-24 rick：一页全显、不见滚动条——线程/左栏滚动条一律隐藏（内容仍可滚）
+        sb = operator.evaluate("""() => {
+          const out = []
+          for (const s of ['.dlg-thread', '.dlg-hist']) {
+            const el = document.querySelector(s)
+            if (el) out.push({s, computed: getComputedStyle(el).scrollbarWidth,
+                             layout: el.offsetWidth - el.clientWidth})
+          }
+          return out }""")
+        check("对话页滚动条隐藏（线程+左栏；scrollbar-width none 且不占布局）",
+              all(r["computed"] == "none" and r["layout"] == 0 for r in sb), str(sb))
         n_pills = operator.eval_on_selector_all(".dlg-land-pill", "els => els.length")
         check("对话页空态有示例胶囊（≥6）", n_pills >= 6, f"{n_pills} 个")
         check("对话页顶栏是「去生成台」（无工作台下拉）",

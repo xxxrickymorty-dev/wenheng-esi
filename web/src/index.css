@@ -1321,27 +1321,40 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
 }
 
 /* ---------- 可视化工作流 · 产线全景（2026-10-24，静态稿 20261023 升格）----------
-   左栏真相面板 + 等轴测工厂空间投影；零圆角零阴影纸感，色随绿蓝令牌走 */
-.pano{max-width:1280px;margin:0 auto;padding:6px 0 10px}
-.pano-top{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:12px}
-.pano-title{margin:0;font-family:var(--serif);font-size:19px;font-weight:600;letter-spacing:.04em;
-  color:var(--ink);padding-top:4px}
+   左栏真相面板 + 等轴测工厂空间投影；零圆角零阴影纸感，色随绿蓝令牌走。
+   2026-10-24 rick：整页单屏（右缘不出现滚动条）——满高弹性柱，舞台吃剩余高度；
+   左栏超长时内部可滚但不见条（与问文衡页同策）。 */
+.pano{display:flex;flex-direction:column;height:calc(100vh - 142px);min-height:520px;
+  max-width:1280px;margin:0 auto;padding:4px 0 2px;overflow:hidden}
+.pano-top{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:8px;flex:none}
+.pano-title{margin:0;font-family:var(--serif);font-size:17px;font-weight:600;letter-spacing:.04em;
+  color:var(--ink);padding-top:3px}
 .pano-title .pano-tag{font-size:11px;font-weight:400;color:var(--ink-3);letter-spacing:.06em;
   border:1px solid var(--line);padding:1px 6px;margin-left:10px;vertical-align:2px;white-space:nowrap}
 .pano-counters{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
-.pano-cnt{margin:0;background:var(--card);border:1px solid var(--line);padding:6px 14px;
-  min-width:74px;text-align:center}
-.pano-cnt b{display:block;font-size:22px;line-height:1.1;font-variant-numeric:tabular-nums;
+.pano-cnt{margin:0;background:var(--card);border:1px solid var(--line);padding:4px 12px;
+  min-width:70px;text-align:center}
+.pano-cnt b{display:block;font-size:19px;line-height:1.1;font-variant-numeric:tabular-nums;
   font-weight:600;color:var(--ink)}
 .pano-cnt span{font-size:11px;color:var(--ink-3)}
 .pano-cnt.warn b{color:var(--warn)}
-.pano-wrap{display:flex;gap:12px;align-items:stretch}
+/* 故事条在全景页内压缩（原为生成台尺寸；回放与数字不变，只减留白） */
+.pano .story{padding:6px 10px 4px;margin-top:2px;flex:none}
+.pano .story-h{margin-bottom:6px;gap:10px}
+.pano .story-title h2{font-size:14px}
+.pano .playline{margin:-2px 0 8px}
+.pano .cell{padding:6px 10px 5px}
+.pano .cell .v{font-size:16px}
+.pano .cell .n{font-size:11.5px;margin-top:1px}
+.pano .say{margin:5px 0 0;min-height:0;font-size:11.5px}
+.pano-wrap{flex:1;min-height:0;display:flex;gap:12px;align-items:stretch}
 .pano-panel{width:242px;flex:none;background:var(--card);border:1px solid var(--line);
-  padding:10px 12px;font-size:12.5px;overflow-y:auto;max-height:640px}
-.pano-sec h3{margin:12px 0 6px;font-size:12px;color:var(--ink-3);font-weight:400;
-  letter-spacing:.08em;border-bottom:1px solid var(--panel);padding-bottom:4px}
+  padding:8px 12px;font-size:12px;overflow-y:auto;scrollbar-width:none}
+.pano-panel::-webkit-scrollbar{display:none}
+.pano-sec h3{margin:9px 0 4px;font-size:11.5px;color:var(--ink-3);font-weight:400;
+  letter-spacing:.08em;border-bottom:1px solid var(--panel);padding-bottom:3px}
 .pano-sec:first-child h3{margin-top:0}
-.pano-row{display:flex;gap:6px;align-items:baseline;padding:3px 0;margin:0;line-height:1.45}
+.pano-row{display:flex;gap:6px;align-items:baseline;padding:2px 0;margin:0;line-height:1.4}
 .pano-row i{width:7px;height:7px;flex:none;display:inline-block;transform:rotate(45deg);
   background:var(--ink-3);align-self:center}
 .pano-row i.s-done{background:var(--tool-3)}
@@ -1350,28 +1363,37 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
 .pano-row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
 .pano-row .st{color:var(--ink-3);font-size:11px;flex:none}
 .pano-row .st.warn{color:var(--warn)}
-.pano-stage{position:relative;flex:1;min-width:0;height:590px;background:var(--panel);
-  border:1px solid var(--line);overflow:hidden}
+.pano-stage{position:relative;flex:1;min-width:0;min-height:280px;height:auto;max-height:640px;
+  background:var(--panel);border:1px solid var(--line);overflow:hidden;cursor:grab;touch-action:none}
+.pano-stage:active{cursor:grabbing}
 .pano-stage svg{display:block;width:100%;height:100%}
 .pano-stage text{font-family:var(--serif);font-size:12.5px;fill:var(--ink)}
 .pano-flow{animation:pano-dash 2s linear infinite}
 @keyframes pano-dash{to{stroke-dashoffset:-20}}
 .pano-cams{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:1px;
   background:var(--card);border:1px solid var(--line)}
+.pano-cams-hint{align-self:center;font-size:10.5px;color:var(--ink-3);letter-spacing:.1em;
+  padding:0 10px 0 12px;white-space:nowrap}
 .pano-cams button{font:inherit;font-size:11px;padding:6px 10px;background:var(--card);
   border:0;border-right:1px solid var(--panel);color:var(--ink-2);cursor:pointer}
 .pano-cams button:last-child{border-right:0}
 .pano-cams button:hover{background:var(--tool-5);color:var(--tool-2)}
-.pano-note{margin:10px 0 0;font-size:11.5px;color:var(--ink-3);line-height:1.6}
+.pano-note{flex:none;margin:6px 0 0;font-size:11px;color:var(--ink-3);line-height:1.5}
 .pano-note b{color:var(--ink-2)}
+/* 矮视口（rick 笔记本 ≈731px）：旁白行让位给工厂模型——回放动画与数字仍在格上 */
+@media (max-height:780px){
+  .pano .say{display:none}
+  .pano .story-h{margin-bottom:4px}
+}
 @media (max-width:760px){
+  .pano{height:auto;min-height:0;overflow:visible}
   .pano-wrap{flex-direction:column}
-  .pano-panel{width:auto;order:2;max-height:none}
-  .pano-stage{height:360px;order:1}
+  .pano-panel{width:auto;order:2;overflow:visible}
+  .pano-stage{height:360px;min-height:0;max-height:none;order:1}
   .pano-title{font-size:16px}
   .pano-counters{margin-left:0;width:100%}
-  .pano-cnt{flex:1;min-width:0;padding:5px 8px}
-  .pano-cnt b{font-size:18px}
+  .pano-cnt{flex:1;min-width:0;padding:4px 8px}
+  .pano-cnt b{font-size:17px}
 }
 @media (prefers-reduced-motion: reduce){
   .pano-flow{animation:none}

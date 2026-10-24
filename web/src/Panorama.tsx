@@ -4,7 +4,7 @@
    不新增数字、不演没发生的动画——流动动画只在任务真在跑时出现。
    真值四个只读源：取数记录 · 运行档案 · 红色件清单 · 签单状态；期次由顶栏全局选择器切换。 */
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
 import {
   getAcquisition, getArchive, req,
   type AcquisitionState, type ArchiveData, type PeriodDetail, type Period,
@@ -473,6 +473,11 @@ export function Panorama({ period, periods, detail, approvalStatus, live, liveNo
   const [archive, setArchive] = useState<ArchiveData | null | undefined>(undefined)
   const [redTotal, setRedTotal] = useState<number | null>(null)
   const [vb, setVb] = useState(VB_BASE)
+  const stageRef = useRef<HTMLDivElement | null>(null)
+  /* 拖动平移（2026-10-24 rick：模型要能动）：只动 viewBox，不动数据 */
+  const dragRef = useRef<{ px: number; py: number; vb: { x: number; y: number; w: number; h: number } } | null>(null)
+  const vbRef = useRef(vb)
+  vbRef.current = vb
 
   /* 期次变了重读三个只读源；没出稿的期次不请求运行档案（避免 404 噪音，与故事条同法） */
   const canReadArchive = !!detail?.steps?.generate
@@ -511,6 +516,49 @@ export function Panorama({ period, periods, detail, approvalStatus, live, liveNo
     }
     return v
   })
+
+  /* 滚轮缩放（朝光标；原生监听拿 passive:false 才能 preventDefault 屏蔽页面滚轮） */
+  useEffect(() => {
+    const el = stageRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const v = vbRef.current
+      const rect = el.getBoundingClientRect()
+      const cx = v.x + ((e.clientX - rect.left) / rect.width) * v.w
+      const cy = v.y + ((e.clientY - rect.top) / rect.height) * v.h
+      const k = e.deltaY > 0 ? 1.16 : 1 / 1.16
+      const nw = clampN(v.w * k, 380, 1500)
+      const nh = nw * (v.h / v.w)
+      setVb({
+        x: clampN(cx - (cx - v.x) * (nw / v.w), -260, 620),
+        y: clampN(cy - (cy - v.y) * (nh / v.h), -140, 380),
+        w: nw, h: nh,
+      })
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [period])   // 首渲染 period 为空时舞台不在树上（ref null），期次就位后要再挂一次
+
+  const onPointerDown = (e: RPointerEvent<HTMLDivElement>) => {
+    /* 相机按钮/链接不进拖拽（pointer capture 会吞掉它们的 click） */
+    if ((e.target as HTMLElement).closest('button, a')) return
+    dragRef.current = { px: e.clientX, py: e.clientY, vb: { ...vbRef.current } }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+  const onPointerMove = (e: RPointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current
+    const el = stageRef.current
+    if (!d || !el) return
+    const rect = el.getBoundingClientRect()
+    const scale = d.vb.w / rect.width
+    setVb(v => ({
+      ...v,
+      x: clampN(d.vb.x - (e.clientX - d.px) * scale, -260, 620),
+      y: clampN(d.vb.y - (e.clientY - d.py) * scale, -140, 380),
+    }))
+  }
+  const onPointerUp = () => { dragRef.current = null }
 
   if (!period) {
     return <div className="pending-box mt-0">选择期次后这里展示那一期的产线全景。</div>
@@ -559,13 +607,16 @@ export function Panorama({ period, periods, detail, approvalStatus, live, liveNo
           ))}
         </aside>
 
-        <div className="pano-stage">
+        <div className="pano-stage" ref={stageRef}
+             onPointerDown={onPointerDown} onPointerMove={onPointerMove}
+             onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
           <svg viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} preserveAspectRatio="xMidYMid meet"
             role="img"
             aria-label={`产线全景：${model.labels.line.text}；${model.labels.qc.text}；${model.labels.sign.text}`}>
             <Factory m={model} live={live} />
           </svg>
           <div className="pano-cams" role="group" aria-label="视角">
+            <span className="pano-cams-hint" aria-hidden="true">拖动平移 · 滚轮缩放</span>
             {CAMS.map(c => (
               <button key={c.act} type="button" onClick={() => cam(c.act)}>{c.label}</button>
             ))}
