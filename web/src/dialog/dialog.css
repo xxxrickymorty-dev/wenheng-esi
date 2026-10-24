@@ -193,9 +193,8 @@
 .dlg-land-kicker{font-family:var(--kai);font-size:11px;letter-spacing:.52em;color:var(--ink-3);margin:0 0 18px}
 .dlg-land-title{font-family:var(--serif);font-weight:600;
   font-size:clamp(34px,4.8vw,62px);line-height:1.25;letter-spacing:.08em;margin:0 0 20px;color:var(--ink)}
-.dlg-land-sub{margin:0;color:var(--ink-3);font-size:15px;line-height:2;max-width:36em}
-.dlg-land-label{margin:34px 0 0;font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:var(--ink-3)}
-.dlg-land-modes{display:flex;gap:14px;margin:16px 0 0;flex-wrap:wrap;justify-content:center}
+.dlg-land-label{margin:16px 0 0;font-family:var(--kai);font-size:11px;letter-spacing:.42em;color:var(--ink-3)}
+.dlg-land-modes{display:flex;gap:14px;margin:14px 0 0;flex-wrap:wrap;justify-content:center}
 .dlg-land-mode{border:1px solid var(--tool-3);background:var(--tool-3);border-radius:0;
   padding:14px 30px;font-size:16px;font-weight:600;font-family:var(--serif);letter-spacing:.18em;
   color:#fff;cursor:pointer;transition:filter .15s,transform .18s;
