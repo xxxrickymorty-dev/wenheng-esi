@@ -2,6 +2,7 @@
 
 > 给接手重构的模型 / agent。**读完这一份就能开工**，不用探索仓库。
 > 本文没写的，先问 rick；不要自己 `ls -R`、不要全库 grep。
+> 要做的是**升级**（改成什么样、按什么顺序）而不是单纯重构 → 先读 `docs/refactor/UPGRADE.md`。
 > 规模数字为 2026-10-25 实测，改代码后重跑 `uv run python tools/gen_route_map.py`
 > 与 `uv run python tools/gen_front_map.py` 同步。
 
