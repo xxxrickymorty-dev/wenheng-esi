@@ -20,6 +20,7 @@
 会话就判失败**。防的是"路径写错 → 整组守卫静默 skip → pytest 全绿"。
 """
 import os
+import json
 import pathlib
 import sys
 
@@ -53,6 +54,29 @@ def _ledgers():
     """仓库里的动态监测表（母本；2026-10-13 起 input/ 只放它）——数据驱动用例的探针。"""
     p = REPO / "input" / "云大全学科排名、阈值动态检测表.xlsx"
     return [p] if p.is_file() else []
+
+
+def is_demo_ledger(path=None):
+    """台账是否为 `tools/make_demo_ledger.py` 生成的演示数据。
+
+    以 `input/.demo_marker.json`（sidecar，含台账 sha256）为准：
+    标记在且 sha256 与台账一致才算演示数据 —— 防止真台账与旧标记错配。
+    演示数据在位时，钉真实指纹的数据测试应显式 skip（理由登记守卫体检）。
+    """
+    p = pathlib.Path(path) if path else (
+        REPO / "input" / "云大全学科排名、阈值动态检测表.xlsx")
+    if not p.is_file():
+        return False
+    marker = p.parent / ".demo_marker.json"
+    if not marker.is_file():
+        return False
+    try:
+        info = json.loads(marker.read_text(encoding="utf-8"))
+        import hashlib
+        return bool(info.get("demo")) and \
+            info.get("sha256") == hashlib.sha256(p.read_bytes()).hexdigest()
+    except (OSError, ValueError):
+        return False
 
 
 def _out_dirs():
@@ -106,6 +130,21 @@ def all_ledgers():
         skip_unless("input/ 下无台账（馆员数据不入库，属正常）",
                     lambda: bool(_ledgers()))
     return leds
+
+
+@pytest.fixture(scope="session")
+def real_ledger(all_ledgers):
+    """真实（非演示）台账；当前在位的是演示台账则 skip。
+
+    钉真实数据指纹的测试（金样 MAPE、期数、潜力集合等）用它：
+    演示台账能过形状断言但数值是合成的，指纹必然失败——
+    skip 理由登记进守卫体检，探针（is_demo_ledger）复核非静默降级。
+    """
+    if is_demo_ledger(all_ledgers[-1]):
+        skip_unless("在位台账为演示数据（make_demo_ledger），"
+                    "该用例钉的是真实台账指纹",
+                    lambda: not is_demo_ledger())
+    return all_ledgers[-1]
 
 
 @pytest.fixture(scope="session")

@@ -19,6 +19,9 @@
 | `src/` | 确定性流水线（解析台账 → 算大表 → 预测回测 → 渲染图 → 替换母版） |
 | `src/agent/` | Agent 层：`states.py`(状态机) / `tools.py`(工具契约) / `flow.py`(编排) / `heal.py`(自愈) / `trace.py` / `rules/repair_rules.yaml`(自愈规则库) |
 | `src/ai/` | AI 层（SPEC）：对外仅 `run`/`capabilities`/`set_switch`；**模型调用唯一进出一处**＝`_attempt.py`（盾→端口→校验→回落），`ai_calls` 留痕唯一写口＝`_record.Recorder` |
+| `src/aiqa_db.py` | **AI 问数库**（`out/_aidata/aiqa.sqlite`）：台账→SQLite 确定性 ETL（dim_discipline/dim_metric/dim_period/facts 长表/report_table2/report_overview/qa_log）；与 `src/ledger_mirror.py` 同口径；构建 `uv run python tools/build_aiqa_db.py` |
+| `src/aiqa_engine.py` | **问数引擎三口**：`plan`（规则规划器：问句→白名单查询规格，零数字）→ `execute`（参数化 SQL、只读）→ `render_text`/`suggest_chart`/`to_chart_data`（人话回答 + 图型建议 + ECharts 就绪数据） |
+| `server/mcp_aiqa.py` | **stdio MCP server**（零依赖）：工具 `aiqa_meta` / `aiqa_ask` / `aiqa_sql`（受控只读 SELECT：表列白名单 + 禁危险关键字 + 自动 LIMIT） |
 | `src/flexible/` | 灵活报告（第二条产线）：**单学科分析**（概况/影响力/排名/跨校/展望）+ 指定对标高校；查询 / 规划 / 图表规格 / 正文组装；模型口经 `src/ai/` 边界 |
 | `server/` | FastAPI + Jinja2 看板（服务端渲染） |
 | `web/` | 新工作区前端：React + TypeScript + Vite；经 FastAPI `/api/*` 取数，本机构建 `dist/` 并入库，由 FastAPI 挂载于 `/app/` |
@@ -28,6 +31,7 @@
 | `input/云大全学科排名、阈值动态检测表.xlsx` | **动态监测表（母本）的运行时副本**（只此一份、含全部期次；2026-10-13 rick 定 input/ 只放母本）——流水线/开跑口/问答回落/盘点都读它；并入后从 `../数据与复现/` 自动同步 |
 | `out/<期次>/` | 产物：`报告初稿_*.docx`、`charts/`、`table2.csv`、`red_slots.json`、`approval.json`；`_superseded/<时间戳>/` 是被新运行撤下的上版成品 |
 | `out/_jobs/` | 运行档案（每个任务一个目录） |
+| `out/_aidata/aiqa.sqlite` | **AI 问数库**（`src/aiqa_db.py` 确定性 ETL 构建；qa_log 是唯一运行期可写表——问数留痕） |
 | `out/_acquisition/<期次>.json` | 取数状态（取数台读；写方为取数工具，人触发；ADR-0004） |
 | `out/_acquisition/<期次>/监测表.xlsx` | 当期取数**核对副本**（ADR-0004 的「审的＝写的」载体；上传开跑也落这里） |
 | `tmp/` | 临时脚本，用完归位或删 |
@@ -159,6 +163,7 @@ uv run python tools/verify_demo_run.py <期次>   # 写路径验收
 | — | `out/_archive/`（M4 期次归档） | ✅ 已实现（`audit.archive_period()`，只复制不动源目录；首次归档 202607＝135 文件 / 13.7MB） |
 | — | **Agent 自主性改造（31 号方案）** | 🟡 **设计已定案（2026-10-10 访谈）**：边界见 `docs/adr/0005-报告类Agent的自主性边界.md`；本批 = 灵活产线 L3（Planner 计划落盘 → Critic 成环 → 运行档案可见），固定产线 L2 与记忆放第二批，L4 排除。内部词已进 `GLOSSARY.md`（界面禁用）。票 01 已交付（`000a88e`）；票 02–06 在 `.scratch/agent-zizhu/issues/` |
 | — | **对话前门（"帮我做 9 月的报告"）** | 🟡 **设计已定案（2026-10-10 三轮访谈）**：边界见 `docs/adr/0006-对话是控制面表格是证据面.md`；对话只做指挥（认期次/盘点/引导取数/触发流水线/解释），表格页降为"被叫出来"；期次只有一个含义、数据未发布即停下反问；全量留痕、槽位级记忆。词条见 `GLOSSARY.md`（对话前门/盘点/槽位）。待 `/to-spec` → `/to-tickets` |
+| — | **AI 问数（SQLite + 受控 NL2SQL + MCP + ECharts）** | ✅ **已完成（2026-10-25）**：台账镜像同口径建 `out/_aidata/aiqa.sqlite`（facts 17820 行）；`src/aiqa_engine.py` 规划器只产白名单规格（零数字，红线不破）；接口 #38 三口（`/api/aiqa/meta·ask·log`）；MCP server `server/mcp_aiqa.py`（stdio，`aiqa_sql` 受控只读）；前端 `web/src/Aiqa.tsx`（`/app/?view=aiqa`，ECharts npm 打包，line/bar/pie/table 切换）；spec 见 `docs/specs/2026-10-25-AI问数（SQLite+NL2SQL+MCP）.md`。演示环境：`uv run python tools/make_demo_ledger.py`（落 sidecar 演示标记，指纹测试自动 skip） |
 
 ## 两个仓库
 

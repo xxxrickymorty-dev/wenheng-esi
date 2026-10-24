@@ -39,7 +39,11 @@ def _sheet_xml(zf, title):
             break
     if rid is None:
         raise LookupError(f"台账无工作表 {title}")
-    m = re.search(r'Id="%s"[^>]*Target="([^"]*)"' % re.escape(rid), rels)
+    # 属性顺序不固定：Excel 写 Id 在前，openpyxl 写 Target 在前 —— 两个都认。
+    m = (re.search(r'Id="%s"[^>]*Target="([^"]*)"' % re.escape(rid), rels)
+         or re.search(r'Target="([^"]*)"[^>]*Id="%s"' % re.escape(rid), rels))
+    if m is None:
+        raise LookupError(f"rels 里找不到 {rid} 对应的工作表目标")
     target = m.group(1).lstrip("/")
     return target if target.startswith("xl/") else "xl/" + target.lstrip("./")
 
@@ -344,9 +348,9 @@ def test_诊断不写进产物_parquet字节可复现(tmp_path):
 
 # ============================================================ 5. 端到端脏例（需真实台账）
 @pytest.fixture(scope="module")
-def ledger_path(all_ledgers):
-    """复用 conftest 的台账夹具：跳过的登记与复核只在那一处做，别在这里另起一套。"""
-    return all_ledgers[-1]
+def ledger_path(real_ledger):
+    """真实台账（演示台账在位则 skip —— zip 级脏化指纹只对真数据有意义）。"""
+    return real_ledger
 
 
 @pytest.fixture(scope="module")

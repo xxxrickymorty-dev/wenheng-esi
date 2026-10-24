@@ -44,6 +44,13 @@ def out_dir(repo):
     if not (d / "wide" / "total_cites.parquet").exists():
         skip_unless("out/202607 派生数据缺失（不入库，属正常）",
                     lambda: (d / "wide" / "total_cites.parquet").exists())
+    # 演示台账跑出的产物：金样指纹（MAPE 3.263 / 46 期 / 潜力 8 学科）
+    # 只对真实台账成立，对演示数据必然失败 —— 显式 skip，理由登记守卫体检。
+    from conftest import is_demo_ledger
+    if is_demo_ledger():
+        skip_unless("out/202607 由演示台账产出（make_demo_ledger），"
+                    "指纹断言只对真实台账适用",
+                    lambda: not is_demo_ledger())
     return d
 
 

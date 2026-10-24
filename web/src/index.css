@@ -1236,3 +1236,37 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
   .btn:active{transform:none}
   html.m-js .m-enter{opacity:1!important;transform:none!important;transition:none!important}
 }
+
+/* ============================================================================
+   AI 问数（?view=aiqa，2026-10-25）：问一句 → 人话回答 + ECharts 图。
+   复用站内令牌（--ink/--line/--zhu/--card…），不引第二套样式。
+   ========================================================================== */
+.aiqa{display:grid;gap:18px}
+.aiqa-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.aiqa-head .sec-title{margin:0}
+.aiqa-facts{display:flex;gap:10px}
+.aiqa-facts span{border:1px solid var(--line);background:var(--card);padding:6px 12px;
+  font-size:13.5px;color:var(--ink-2)}
+.aiqa-ask{display:flex;gap:10px}
+.aiqa-ask input{flex:1;min-width:0;border:1px solid var(--line);background:var(--card);
+  color:var(--ink);padding:12px 14px;font-size:16px;font-family:inherit}
+.aiqa-ask input:focus-visible{outline:2px solid var(--zhu);outline-offset:1px}
+.aiqa-ask button{border:1px solid var(--zhu);background:var(--zhu);color:#fff;
+  padding:0 22px;font-size:15.5px;cursor:pointer;font-family:inherit}
+.aiqa-ask button:disabled{opacity:.45;cursor:not-allowed}
+.aiqa-ask button:not(:disabled):hover{filter:brightness(1.08)}
+.aiqa-samples{display:flex;gap:8px;flex-wrap:wrap}
+.aiqa-chip{border:1px solid var(--line);background:var(--panel);color:var(--ink-2);
+  padding:6px 12px;font-size:13.5px;cursor:pointer;font-family:inherit}
+.aiqa-chip:hover:not(:disabled){border-color:var(--zhu);color:var(--ink)}
+.aiqa-chip:disabled{opacity:.5;cursor:wait}
+.aiqa-result{display:grid;gap:16px}
+.aiqa-answer{border:1px solid var(--line);background:var(--card);padding:16px 20px}
+.aiqa-answer .aiqa-q{display:block;font-weight:650;color:var(--zhu);margin-bottom:8px}
+.aiqa-answer p{margin:4px 0;line-height:1.75}
+.aiqa-answer .aiqa-meta{margin-top:10px;border-top:1px dashed var(--line-2);padding-top:8px}
+.aiqa-chart{border:1px solid var(--line);background:var(--card);padding:16px 20px 8px}
+.aiqa-chart-head{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;margin-bottom:8px}
+.aiqa-canvas{width:100%;height:380px}
+.aiqa-table-note{border:1px dashed var(--line);padding:14px 18px;background:var(--panel)}

@@ -46,9 +46,16 @@ npm run lint
    忘了构建不会报任何错，演示站会继续跑旧代码。`tests/test_stack_contract.py` 里
    `test_web构建产物不含外链` 盯着 dist 的存在性与自足性。
 2. **不引 CDN。** 字体、图标、脚本全部打包进 dist；构建产物里出现 `http(s)://` 外链
-   = 断网崩版。
+   = 断网崩版。**ECharts 走 npm 包打包**（`npm install echarts`，按需 `echarts/core` + 渲染器），
+   也不引 `<script>`。
 3. **新增接口写进 `../server/app.py`**，必须是 `/api/*`、必须带登录检查
    （`current_user(request)`）、只允许 GET/POST——`tests/test_stack_contract.py` 三条契约钉着。
+
+## 视图清单（`src/`）
+
+| 视图 | 文件 | 说明 |
+|---|---|---|
+| AI 问数 | `Aiqa.tsx`（`/app/?view=aiqa`） | 自然语言问台账数 + ECharts 可视化（line/bar/pie/table 切换）；走契约 #38 三口（`/api/aiqa/meta·ask·log`）；样式类 `.aiqa-*`（`index.css` 尾部，复用站内令牌） |
 
 ## 挂载与路径（服务端）
 
