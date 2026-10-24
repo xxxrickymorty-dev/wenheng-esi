@@ -991,8 +991,14 @@ check("灵活报告 docx 下载 200", st_dx == 200, f"got {st_dx}")
 check("docx 是有效包（PK 头）", (dx_body or "")[:2] == "PK", (dx_body or "")[:8])
 
 _restore_approval()
+# 2026-10-24：历史行 id 是自增、不复用；还原＝整删重插 → id 必然整体后移，
+# 直接比较原始 id 永远不等（此前能过是恰好没触发过移位）。等值只看内容——approval 里
+# 已含全量 history payload；id 只服务于还原路径的指名删除，另比行数防多删少删。
+_now_snap = _state_snapshot()
 check("e2e 结束后审批记录已还原（演示期不留测试痕迹）",
-      _state_snapshot() == _SNAPSHOT
+      {k: v for k, v in _now_snap.items() if k != "history_ids"}
+      == {k: v for k, v in _SNAPSHOT.items() if k != "history_ids"}
+      and len(_now_snap["history_ids"]) == len(_SNAPSHOT["history_ids"])
       and (_RECORD_FILE.read_bytes() if _RECORD_FILE.exists() else None) == _RECORD_BACKUP)
 
 out("=" * 56)
