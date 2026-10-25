@@ -9,6 +9,11 @@ r"""端到端：`/app`（React 工作区）在真实浏览器里跑通「登录 
 前端送回工作台，旧断言恒超时），并跟随现版结构——陈列馆首页等 `.home-hero`，
 点第一本馆藏后等 `#flipbook`（翻页阅读器宿主）。锚点只认结构，不写死中文值。
 
+2026-10-25 改：陈列馆按 rick 钦定的「完整稿」形态重落地——首页是胡桃木书架
+（册位锚点 `.vol`），点册位后以 iframe 载入连续册页 `pages.html`（判据：
+`.detail-frame` 可见且 iframe src 含 pages.html）；旧 `.home-hero`/`#flipbook`/
+admin 全内容册页判据随旧版退役（新形态只出封面、目录、名词解释三样）。
+
 2026-09-28 增：工作区与陈列馆各自独立——管理员工作区不再出现陈列馆入口/文案
 （断言无 `/app/shelf/` 链接、无「陈列馆」字样）；游客访问 /app/?view=... 必须被
 前端送回 `/app/shelf/`。
@@ -158,22 +163,21 @@ def main():
         check("管理员 GET /app/shelf/ → 200", bool(resp3) and resp3.status == 200,
               f"got {resp3.status if resp3 else '?'}")
         try:
-            admin_shelf.wait_for_selector(".sl-cover", timeout=15000)
+            admin_shelf.wait_for_selector(".vol", timeout=15000)
             check("管理员进陈列馆能看到册位（不弹回）", True)
         except Exception as e:                                       # noqa: BLE001
             check("管理员进陈列馆能看到册位（不弹回）", False,
                   f"url={admin_shelf.url} {str(e)[:60]}")
-        # 管理员开书应看到全内容册页（数字体检 / 学科大表 / 双路线预测）
+        # 管理员点册位应以 iframe 载入连续册页 pages.html（2026-10-25 完整稿形态）
         try:
-            admin_shelf.click(".sl-cover")
-            admin_shelf.wait_for_selector("#flipbook", timeout=15000)
-            pages_text = admin_shelf.evaluate(
-                "() => document.querySelector('.flip-page-templates')?.textContent ?? ''")
-            check("管理员开书含全内容册页（数字体检 / 学科大表 / 双路线预测）",
-                  all(token in pages_text for token in ("数字体检", "学科大表", "双路线预测")),
-                  f"templates={len(pages_text)} 字")
+            admin_shelf.click(".vol")
+            admin_shelf.wait_for_selector(".detail-frame iframe", timeout=15000)
+            src = admin_shelf.evaluate(
+                "() => document.querySelector('.detail-frame iframe')?.src ?? ''")
+            check("管理员点书进连续册页（iframe 载 pages.html）",
+                  "pages.html" in src, f"src={src[:80]}")
         except Exception as e:                                       # noqa: BLE001
-            check("管理员开书含全内容册页（数字体检 / 学科大表 / 双路线预测）", False, str(e)[:80])
+            check("管理员点书进连续册页（iframe 载 pages.html）", False, str(e)[:80])
 
         # ---- 1c) 界面禁用词（票 09）：词表单源 web/src/lib/banned.ts ----
         # 策略：只扫**前端自撰区块**（标题/导语/提示/按钮/空错态等），不扫数据表、日志、
@@ -543,23 +547,25 @@ def main():
         check("GET /app/shelf/ → 200", bool(resp2) and resp2.status == 200,
               f"got {resp2.status if resp2 else '?'}")
         try:
-            operator.wait_for_selector(".home-hero", timeout=10000)
-            check("陈列馆首页渲染（.home-hero）", True)
+            operator.wait_for_selector(".shelf-view .vol", timeout=10000)
+            check("陈列馆首页渲染（胡桃木书架册位）", True)
         except Exception as e:                                       # noqa: BLE001
-            check("陈列馆首页渲染（.home-hero）", False, str(e)[:80])
+            check("陈列馆首页渲染（胡桃木书架册位）", False, str(e)[:80])
         try:
-            has_band = bool(operator.query_selector("#ask .sl-askform"))
-            has_nav = bool(operator.query_selector('.sl-back[href="/app/dialog/"]'))
+            has_band = bool(operator.query_selector("#ask .askform"))
+            has_nav = bool(operator.query_selector('.foot a[href="/app/dialog/"]'))
             check("陈列馆有「问文衡」条带与导航入口", has_band and has_nav, "")
         except Exception as e:                                       # noqa: BLE001
             check("陈列馆有「问文衡」条带与导航入口", False, str(e)[:80])
         try:
-            operator.click(".sl-cover")
-            operator.wait_for_selector("#flipbook", timeout=10000)
-            n_pages = operator.eval_on_selector_all(".flip-page", "els => els.length")
-            check("翻页阅读器打开（#flipbook 带页）", n_pages >= 3, f"{n_pages} 页")
+            operator.click(".vol")
+            operator.wait_for_selector(".detail-frame iframe", timeout=10000)
+            src = operator.evaluate(
+                "() => document.querySelector('.detail-frame iframe')?.src ?? ''")
+            check("点书进连续册页（iframe 载 pages.html）", "pages.html" in src,
+                  f"src={src[:80]}")
         except Exception as e:                                       # noqa: BLE001
-            check("翻页阅读器打开（#flipbook 带页）", False, str(e)[:80])
+            check("点书进连续册页（iframe 载 pages.html）", False, str(e)[:80])
         operator.screenshot(path=str(SHOT_SHELF))
 
         # ---- 2b) 对话页（2026-10-12）：空态＝文衡首页；顶栏＝去生成台；?ask= 自动发送 ----
