@@ -1411,3 +1411,27 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
 @media (prefers-reduced-motion: reduce){
   .pano-flow{animation:none}
 }
+
+/* ============================================================================
+   状态印（2026-10-25 rick 过审，谱：mockups/状态印章-谱（静态稿 20261025）.html）
+   一状态一印面：墨绿干印=机器完成／虚框空印=未定未签／朱砂满印=已签发／金印=失效。
+   印泥为资产色不随主题变（朱砂 #A82F22／墨绿 #264A35／金 #8A6B2E，与印谱稿同源）；
+   印感只靠 SVG 毛边滤镜（StateSeal.tsx 的 SealInkDefs，App 挂一次）与微倾。
+   零圆角、不加投影；中文 Chromium 小字 12px 钳制不涉及（印面全是 SVG 文本）。
+   ========================================================================== */
+.sseal{display:grid;place-items:center;background:#F2EDE0;border:1px solid rgba(168,47,34,.38);
+  padding:4px;flex:none}
+.sseal svg{width:100%;height:100%;display:block}
+.sseal-a{transform:rotate(-4deg)}
+.sseal-b{transform:rotate(2.6deg)}
+@keyframes sseal-land{0%{opacity:0;transform:translateY(-14px) scale(1.5);filter:blur(1px)}
+  55%{opacity:1;transform:translateY(1px) scale(.95);filter:blur(0)}
+  75%{transform:scale(1.03)}100%{transform:scale(1)}}
+.sseal.landing svg{animation:sseal-land .5s cubic-bezier(.22,.9,.28,1) both}
+@media (prefers-reduced-motion: reduce){
+  .sseal.landing svg{animation:none}
+}
+.sseal-defs{position:absolute;width:0;height:0}
+
+/* 审核台签单卡：标题行与本期印并排（印随签发态换面，签单成功落章一次） */
+.rv-sign-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}

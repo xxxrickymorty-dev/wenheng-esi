@@ -23,6 +23,7 @@ import { UserChip } from './lib/UserChip'
 import { useJobRun, type Run } from './hooks/useJobRun'
 import { usePeriodResource } from './hooks/usePeriodResource'
 import { Icon, Sprite } from './icons'
+import { SealInkDefs } from './StateSeal'
 import { Info } from './Info'
 import { Acquire } from './Acquire'
 import { Pick } from './Pick'
@@ -567,6 +568,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <Sprite />
+      <SealInkDefs />
       <a className="skip-link" href="#main">跳到主要内容</a>
 
       {/* 顶栏（2026-10-17 庚·卷宗）：品牌 / 导航 / 陈列馆 / 配色开关 / 身份；正文自然滚动。 */}

@@ -18,6 +18,7 @@ import {
 import { getCharts, getCollation, type ChartRow, type CollationRow } from './api-collation'
 import { getFacts, type Facts } from './api-workbench'
 import { Icon } from './icons'
+import { StateSeal } from './StateSeal'
 import { APPROVAL_LABEL, approvalLabel, appHref, errorNote } from './lib/status'
 import { collationSectionLabel } from './lib/labels'
 
@@ -421,6 +422,7 @@ function ReportStatus({ status, period }: { status: string; period: string | nul
   const href = period ? appHref('review', period) : '/app/?view=review'
   return (
     <div className={`rep-status${signed ? ' ok' : stale ? ' warn' : ''}`} role="note">
+      <StateSeal state={signed ? 'signed' : stale ? 'stale' : 'unsigned'} size={44} />
       <span className="rep-flag">
         <Icon name={signed ? 'check' : 'alert'} size={15} />{approvalLabel(status)}
       </span>

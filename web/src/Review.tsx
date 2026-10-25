@@ -8,7 +8,7 @@
    - GET facts：数据核对读数。
    🔴 真门在后端：签单 / 重出 / 下载都由后端闸门把关，前端只把它们摆到顺手的位置。 */
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { Me, Period } from './api'
 import { flagLoc, revokePeriod, signPeriod } from './api-sign'
 import { getWorkbench, postFill, type WorkbenchData } from './api-workbench'
@@ -19,6 +19,7 @@ import {
 import { ConfirmButton } from './ConfirmButton'
 import { FactsStrip } from './Report'
 import { Icon } from './icons'
+import { StateSeal } from './StateSeal'
 import { appHref, errorNote } from './lib/status'
 
 type Msg = { ok: boolean; text: string } | null
@@ -153,6 +154,17 @@ export function Review({
 
   const row = periods.find((p) => p.period === period) ?? null
   const status = row?.status ?? 'unsigned'
+  /* 本期印落章动效：签发态从未签翻到已签的那一刻放一次（签单接口回来、状态落真值时触发） */
+  const [sealLand, setSealLand] = useState(false)
+  const prevStatus = useRef(status)
+  useEffect(() => {
+    const justSigned = prevStatus.current !== 'signed' && status === 'signed'
+    prevStatus.current = status
+    if (!justSigned) return
+    setSealLand(true)
+    const t = setTimeout(() => setSealLand(false), 650)
+    return () => clearTimeout(t)
+  }, [status])
   const isAdmin = me?.capabilities?.actions?.edit ?? me?.role === 'admin'
   /* 2026-10-12：审批（签单/撤回）对操作员也开放；在线填、标存疑、重出仍只管理员。 */
   const canSign = !!me
@@ -472,7 +484,11 @@ export function Review({
           <aside className="rv-side">
             {/* ------- 签单 ------- */}
             <section className="card rv-card" id="rv-sign">
-              <h3><Icon name="seal" size={19} />审核 · 签单</h3>
+              <div className="rv-sign-head">
+                <h3><Icon name="seal" size={19} />审核 · 签单</h3>
+                <StateSeal state={signed ? 'signed' : status === 'stale' ? 'stale' : 'unsigned'}
+                           size={64} tilt="a" landing={sealLand} />
+              </div>
               <div className="rv-kv"><span>报告版本</span><b className="rv-docname">{preview.docx ?? '—'}</b></div>
               <div className="rv-kv"><span>生成时间</span><b>{preview.updated_at || '—'}</b></div>
               <div className="rv-kv"><span>存疑</span><b style={doubtN > 0 ? { color: 'var(--gold-ink)' } : undefined}>{doubtN} 处</b></div>
