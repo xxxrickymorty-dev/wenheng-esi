@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>状态印章 · 谱（静态稿 20261025）</title>
+<style>
+  /* 一状态一印面。语义沿 20261021 核验定稿印章稿（墨绿干印=流水线完成／虚框=待人工未蘸泥／
+     朱砂鲜印=已签发／金印=失效），工艺取 出报告-重设计（壬·印谱的 SVG 毛边印、癸·借阅卡的
+     全局 rough 滤镜、双联·会泽至公的缝上满印），色守 20261025 跨页令牌。
+     零圆角、零投影、零渐变；印感只靠毛边滤镜与微倾。 */
+  :root{
+    --deep:#143729;
+    --paper:#F5F3EC; --stone:#E8DCC8;
+    --ink:#1E2A23; --ink-2:#4A564D; --ink-3:#7C857B; --line:#DFDBCB;
+    --red:#A82F22; --green:#1A4B27; --gold:#C8B584; --gold-ink:#8A6B2E;
+    --dry:#264A35; /* 干印墨绿（沿 20261021 稿） */
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  h1,h2{font-family:var(--serif);font-weight:600}
+  ::selection{background:var(--gold);color:#1E2A23}
+
+  .hd{max-width:1080px;margin:0 auto;padding:34px 32px 0}
+  .hd .ov{font-family:var(--kai);font-size:11px;letter-spacing:.24em;color:var(--ink-3)}
+  .hd h1{font-size:30px;letter-spacing:.06em;margin:6px 0 4px}
+  .hd .lead{color:var(--ink-2);font-size:13px;max-width:74ch}
+  .hd .lead b{color:var(--ink)}
+
+  .plate{max-width:1080px;margin:22px auto 0;padding:0 32px;
+    display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-left:1px solid var(--line)}
+  .cell{border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+    padding:26px 24px 20px;display:flex;flex-direction:column;align-items:center;text-align:center}
+  .cell svg{width:148px;height:148px;display:block}
+  .tilt-a{transform:rotate(-4deg)} .tilt-b{transform:rotate(2.6deg)}
+  .cell h2{font-size:16px;letter-spacing:.12em;margin-top:16px}
+  .cell .where{font-family:var(--kai);font-size:11px;letter-spacing:.08em;color:var(--ink-3);margin-top:4px;max-width:26ch;line-height:1.8}
+  .cell .where em{font-style:normal;color:var(--ink-2)}
+
+  .bar-hd{max-width:1080px;margin:34px auto 0;padding:0 32px;display:flex;align-items:baseline;gap:14px}
+  .bar-hd h2{font-size:17px;letter-spacing:.12em}
+  .bar-hd span{font-family:var(--kai);font-size:11px;letter-spacing:.14em;color:var(--ink-3)}
+  .bar{max-width:1080px;margin:10px auto 0;padding:0 32px 8px;display:grid;grid-template-columns:repeat(5,1fr);
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .bst{display:flex;flex-direction:column;align-items:center;gap:6px;padding:18px 8px 16px;
+    border-right:1px solid var(--line)}
+  .bst:last-child{border-right:0}
+  .bst svg{width:64px;height:64px;display:block}
+  .bst .lb{font-family:var(--serif);font-size:13px;letter-spacing:.08em;color:var(--ink-2)}
+  .bar-note{max-width:1080px;margin:8px auto 0;padding:0 32px;font-family:var(--kai);
+    font-size:11px;letter-spacing:.1em;color:var(--ink-3)}
+
+  .ft{max-width:1080px;margin:26px auto 0;padding:0 32px 40px;border-top:1px solid var(--line)}
+  .ft p{font-family:var(--kai);font-size:11px;letter-spacing:.12em;color:var(--ink-3);padding-top:12px;line-height:2}
+
+  @media (max-width:900px){
+    .plate{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+</head>
+<body>
+
+<!-- 全局毛边滤镜（取自 癸·借阅卡） -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="ink-rough" x="-6%" y="-6%" width="112%" height="112%">
+      <feTurbulence type="fractalNoise" baseFrequency="1.6" numOctaves="2" seed="4"/>
+      <feDisplacementMap in="SourceGraphic" scale="2.4"/>
+    </filter>
+    <filter id="ink-rough-heavy" x="-8%" y="-8%" width="116%" height="116%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="11"/>
+      <feDisplacementMap in="SourceGraphic" scale="3.2"/>
+    </filter>
+  </defs>
+</svg>
+
+<header class="hd">
+  <p class="ov">文 衡 · 状 态 印 谱</p>
+  <h1>一状态，一印面。</h1>
+  <p class="lead">印面只说状态，不说别的：<b>墨绿干印</b>是机器做完的活，<b>虚框空印</b>是等人来定的局面，
+    <b>朱砂满印</b>是签单落章的那一下，<b>金印</b>是签后改稿的失效。印面用词与界面用语一致。</p>
+</header>
+
+<!-- 六枚状态印 -->
+<main class="plate">
+  <div class="cell">
+    <svg class="tilt-a" viewBox="0 0 220 220" aria-label="已并入台账印" role="img">
+      <g filter="url(#ink-rough)">
+        <rect x="10" y="10" width="200" height="200" fill="none" stroke="#264A35" stroke-width="5"/>
+        <rect x="23" y="23" width="174" height="174" fill="none" stroke="#264A35" stroke-width="1.6"/>
+        <g font-family="'Noto Serif SC','Songti SC',SimSun,serif" font-weight="700" font-size="56" text-anchor="middle" fill="#264A35">
+          <text x="64" y="94">并</text><text x="156" y="94">入</text>
+          <text x="64" y="180">台</text><text x="156" y="180">账</text>
+        </g>
+      </g>
+    </svg>
+    <h2>已并入台账</h2>
+    <p class="where"><em>机器干印 · 取数核验完成时自动落</em>——取数清单页脚、运行档案任务行。</p>
+  </div>
+
+  <div class="cell">
+    <svg class="tilt-b" viewBox="0 0 220 220" aria-label="已出稿印" role="img">
+      <g filter="url(#ink-rough)">
+        <rect x="10" y="10" width="200" height="200" fill="none" stroke="#264A35" stroke-width="5"/>
+        <rect x="23" y="23" width="174" height="174" fill="none" stroke="#264A35" stroke-width="1.6"/>
+        <g font-family="'Noto Serif SC','Songti SC',SimSun,serif" font-weight="700" font-size="56" text-anchor="middle" fill="#264A35">
+          <text x="64" y="94">已</text><text x="156" y="94">出</text>
+          <text x="110" y="180">稿</text>
+        </g>
+      </g>
+    </svg>
+    <h2>已出稿</h2>
+    <p class="where"><em>机器干印 · 初稿生成时自动落</em>——生成台回执、报告台角标。</p>
+  </div>
+
+  <div class="cell">
+    <svg class="tilt-a" viewBox="0 0 220 220" aria-label="待核验印" role="img">
+      <g filter="url(#ink-rough)">
+        <rect x="10" y="10" width="200" height="200" fill="none" stroke="#7C857B" stroke-width="3.4" stroke-dasharray="14 9"/>
+        <rect x="23" y="23" width="174" height="174" fill="none" stroke="#7C857B" stroke-width="1.2"/>
+        <g font-family="'Noto Serif SC','Songti SC',SimSun,serif" font-weight="700" font-size="56" text-anchor="middle" fill="#7C857B">
+          <text x="64" y="94">待</text><text x="156" y="94">核</text>
+          <text x="110" y="180">验</text>
+        </g>
+      </g>
+    </svg>
+    <h2>待核验</h2>
+    <p class="where"><em>淡墨虚框 · 清单缺一或存疑时</em>——取数清单行尾、校验项未过条。</p>
+  </div>
+
+  <div class="cell">
+    <svg class="tilt-b" viewBox="0 0 220 220" aria-label="未签发印" role="img">
+      <g filter="url(#ink-rough)">
+        <rect x="10" y="10" width="200" height="200" fill="none" stroke="#A82F22" stroke-width="3.4" stroke-dasharray="14 9"/>
+        <rect x="23" y="23" width="174" height="174" fill="none" stroke="#A82F22" stroke-width="1.2"/>
+        <g font-family="'Noto Serif SC','Songti SC',SimSun,serif" font-weight="700" font-size="56" text-anchor="middle" fill="#A82F22">
+          <text x="64" y="94">未</text><text x="156" y="94">签</text>
+          <text x="110" y="180">发</text>
+        </g>
+      </g>
+    </svg>
+    <h2>未签发</h2>
+    <p class="where"><em>朱砂虚框 · 空印未蘸泥，等人来签</em>——报告台「未 签 发」角标、审核台签单卡。</p>
+  </div>
+
+  <div class="cell">
+    <svg class="tilt-a" viewBox="0 0 220 220" aria-label="已签发印" role="img">
+      <g filter="url(#ink-rough-heavy)">
+        <rect x="10" y="10" width="200" height="200" fill="#A82F22"/>
+        <rect x="22" y="22" width="176" height="176" fill="none" stroke="#F5F3EC" stroke-width="2.6"/>
+        <g font-family="'Noto Serif SC','Songti SC',SimSun,serif" font-weight="700" font-size="56" text-anchor="middle" fill="#F5F3EC">
+          <text x="64" y="94">已</text><text x="156" y="94">签</text>
+          <text x="110" y="180">发</text>
+        </g>
+      </g>
+    </svg>
+    <h2>已签发</h2>
+    <p class="where"><em>朱砂满印 · 签单落章，双联缝印同款</em>——签后换下虚框，册页封面钤此。</p>
+  </div>
+
+  <div class="cell">
+    <svg class="tilt-b" viewBox="0 0 220 220" aria-label="签发失效印" role="img">
+      <g filter="url(#ink-rough)" opacity=".82">
+        <rect x="10" y="10" width="200" height="200" fill="none" stroke="#8A6B2E" stroke-width="4"/>
+        <rect x="23" y="23" width="174" height="174" fill="none" stroke="#8A6B2E" stroke-width="1.4"/>
+        <g font-family="'Noto Serif SC','Songti SC',SimSun,serif" font-weight="700" font-size="56" text-anchor="middle" fill="#8A6B2E">
+          <text x="64" y="94">签</text><text x="156" y="94">发</text>
+          <text x="64" y="180">失</text><text x="156" y="180">效</text>
+        </g>
+      </g>
+    </svg>
+    <h2>签发失效</h2>
+    <p class="where"><em>金印褪色 · 签后改一字即失效</em>——旧版报告角标，重新签单换新朱印。</p>
+  </div>
+</main>
+
+<!-- 五站工序小印 -->
+<div class="bar-hd">
+  <h2>五站工序小印</h2>
+  <span>完＝绿实印 · 当＝朱框 · 待＝虚框</span>
+</div>
+<section class="bar" aria-label="出报告工序印带">
+  <div class="bst">
+    <svg viewBox="0 0 220 220" aria-hidden="true">
+      <g filter="url(#ink-rough)">
+        <rect x="10" y="10" width="200" height="200" fill="none" stroke="#264A35" stroke-width="7"/>
+        <text x="110" y="158" text-anchor="middle" font-family="'Noto Serif SC','Songti SC',SimSun,serif" font-weight="700" font-size="120" fill="#264A35">完</text>
+      </g>
+    </svg>
+    <div class="lb">取数核验</div>
+  </div>
+  <div class="bst">
+    <svg viewBox="0 0 220 220" aria-hidden="true">
+      <g filter="url(#ink-rough)">
+        <rect x="10" y="10" width="200" height="200" fill="none" stroke="#264A35" stroke-width="7"/>
+        <text x="110" y="158" text-anchor="middle" font-family="'Noto Serif SC','Songti SC',SimSun,serif" font-weight="700" font-size="120" fill="#264A35">完</text>
+      </g>
+    </svg>
+    <div class="lb">预测选模</div>
+  </div>
+  <div class="bst">
+    <svg viewBox="0 0 220 220" aria-hidden="true">
+      <g filter="url(#ink-rough)">
+        <rect x="10" y="10" width="200" height="200" fill="none" stroke="#264A35" stroke-width="7"/>
+        <text x="110" y="158" text-anchor="middle" font-family="'Noto Serif SC','Songti SC',SimSun,serif" font-weight="700" font-size="120" fill="#264A35">完</text>
+      </g>
+    </svg>
+    <div class="lb">生成初稿</div>
+  </div>
+  <div class="bst">
+    <svg viewBox="0 0 220 220" aria-hidden="true">
+      <g filter="url(#ink-rough)">
+        <rect x="10" y="10" width="200" height="200" fill="none" stroke="#A82F22" stroke-width="7"/>
+        <text x="110" y="158" text-anchor="middle" font-family="'Noto Serif SC','Songti SC',SimSun,serif" font-weight="700" font-size="120" fill="#A82F22">当</text>
+      </g>
+    </svg>
+    <div class="lb">核验定稿</div>
+  </div>
+  <div class="bst">
+    <svg viewBox="0 0 220 220" aria-hidden="true">
+      <g filter="url(#ink-rough)">
+        <rect x="10" y="10" width="200" height="200" fill="none" stroke="#7C857B" stroke-width="5" stroke-dasharray="14 9"/>
+        <text x="110" y="158" text-anchor="middle" font-family="'Noto Serif SC','Songti SC',SimSun,serif" font-weight="700" font-size="120" fill="#7C857B">待</text>
+      </g>
+    </svg>
+    <div class="lb">签发归档</div>
+  </div>
+</section>
+<p class="bar-note">小印随工序推进替换：一站走完盖「完」，正在走的站挂「当」，没到的站虚框「待」。</p>
+
+<footer class="ft">
+  <p>工艺取自 出报告-重设计（壬·印谱毛边巨印／癸·借阅卡 rough 滤镜／双联·会泽至公缝上满印）；状态语义沿 20261021 核验定稿印章稿。换期只换印面下的小字日期，印面动词不动；印感只靠毛边与微倾，不加投影。</p>
+</footer>
+
+</body>
+</html>
