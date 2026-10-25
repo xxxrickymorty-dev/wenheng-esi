@@ -21,6 +21,7 @@ import { wireEnter } from './lib/motion'
 import { pickRunForPeriod } from './lib/run'
 import { UserChip } from './lib/UserChip'
 import { useJobRun, type Run } from './hooks/useJobRun'
+import { usePeriodResource } from './hooks/usePeriodResource'
 import { Icon, Sprite } from './icons'
 import { Info } from './Info'
 import { Acquire } from './Acquire'
@@ -81,8 +82,6 @@ export default function App() {
   const manualSelectionRef = useRef(false)
   const restoredActivePeriodRef = useRef<string | null>(null)
   const periodsRequestRef = useRef(0)
-  const detailRequestByPeriodRef = useRef<Record<string, number>>({})
-  const forecastChoiceRequestRef = useRef<Record<string, number>>({})
 
   useEffect(() => {
     document.documentElement.dataset.palette = palette
@@ -113,22 +112,46 @@ export default function App() {
     }
   }, [])
 
-  const refreshDetail = useCallback((period: string) => {
-    const request = (detailRequestByPeriodRef.current[period] ?? 0) + 1
-    detailRequestByPeriodRef.current[period] = request
-    void getPeriodDetail(period).then((detail) => {
-      if (detailRequestByPeriodRef.current[period] !== request) return
-      setDetailsByPeriod((current) => ({ ...current, [period]: detail }))
-    }).catch(() => {
-      if (detailRequestByPeriodRef.current[period] !== request) return
-      setDetailsByPeriod((current) => ({ ...current, [period]: null }))
-    })
-  }, [])
+  /* 期次详情：按期分桶缓存 + 按期序号防同期重发（2026-10-25 抽成 usePeriodResource，
+     语义与原手写版逐行一致：序号不符的迟到响应丢弃，相符的只写该期自己的桶）。 */
+  const { request: refreshDetail } = usePeriodResource(useMemo(() => ({
+    load: (period: string) => getPeriodDetail(period),
+    onData: (period: string, detail: PeriodDetail | null) =>
+      setDetailsByPeriod((current) => ({ ...current, [period]: detail })),
+    onError: (period: string) =>
+      setDetailsByPeriod((current) => ({ ...current, [period]: null })),
+  }), []))
+
+  /* 选模记录：与期次详情同一原语（usePeriodResource）。request 由下方 effect 调；
+     invalidate 供「重出完成后作废在途响应、重置占位让 effect 重拉」用——
+     与原手写版共享同一个计数器的行为等价。 */
+  const { request: loadForecastChoice, invalidate: invalidateForecastChoice } =
+    usePeriodResource(useMemo(() => ({
+      load: (period: string) => getForecastChoice(period),
+      onData: (period: string, record: Awaited<ReturnType<typeof getForecastChoice>>) =>
+        setForecastChoiceByPeriod((current) => ({
+          ...current,
+          [period]: {
+            loaded: true, loading: false, saving: false, error: '',
+            choice: record.choice ?? {}, saved: record.choice ?? {}, by: record.by ?? '', at: record.at ?? '',
+            applied: record.applied ?? null,
+          },
+        })),
+      onError: (period: string, e: unknown) =>
+        setForecastChoiceByPeriod((current) => ({
+          ...current,
+          [period]: {
+            loaded: false, loading: false, saving: false,
+            error: errorNote(e, '本期模型设置'),
+            choice: {}, saved: {}, by: '', at: '', applied: null,
+          },
+        })),
+    }), []))
 
   /* 按周期请求一份新的选模记录（loading 占位 → 由下方 effect 拉取）。
      重出完成后用它刷新「上次出稿实际用的选择」，让「报告还是旧的」提示及时消失。 */
   const requestForecastChoice = useCallback((period: string) => {
-    forecastChoiceRequestRef.current[period] = (forecastChoiceRequestRef.current[period] ?? 0) + 1
+    invalidateForecastChoice(period)
     setForecastChoiceByPeriod((current) => ({
       ...current,
       [period]: {
@@ -136,7 +159,7 @@ export default function App() {
         choice: {}, saved: {}, by: '', at: '', applied: null,
       },
     }))
-  }, [])
+  }, [invalidateForecastChoice])
 
   useEffect(() => () => { periodsRequestRef.current += 1 }, [])
 
@@ -279,8 +302,7 @@ export default function App() {
     if (!roleKnown || !me || !selected) return
     const existing = forecastChoiceByPeriod[selected]
     if (existing?.loaded || existing?.loading || existing?.error) return
-    const request = (forecastChoiceRequestRef.current[selected] ?? 0) + 1
-    forecastChoiceRequestRef.current[selected] = request
+    loadForecastChoice(selected)
     setForecastChoiceByPeriod((current) => ({
       ...current,
       [selected]: {
@@ -288,28 +310,7 @@ export default function App() {
         choice: {}, saved: {}, by: '', at: '', applied: null,
       },
     }))
-    void getForecastChoice(selected).then((record) => {
-      if (forecastChoiceRequestRef.current[selected] !== request) return
-      setForecastChoiceByPeriod((current) => ({
-        ...current,
-        [selected]: {
-          loaded: true, loading: false, saving: false, error: '',
-          choice: record.choice ?? {}, saved: record.choice ?? {}, by: record.by ?? '', at: record.at ?? '',
-          applied: record.applied ?? null,
-        },
-      }))
-    }).catch((e) => {
-      if (forecastChoiceRequestRef.current[selected] !== request) return
-      setForecastChoiceByPeriod((current) => ({
-        ...current,
-        [selected]: {
-          loaded: false, loading: false, saving: false,
-          error: errorNote(e, '本期模型设置'),
-          choice: {}, saved: {}, by: '', at: '', applied: null,
-        },
-      }))
-    })
-  }, [forecastChoiceByPeriod, me?.role, roleKnown, selected])
+  }, [forecastChoiceByPeriod, loadForecastChoice, me?.role, roleKnown, selected])
 
   const detail = selected ? detailsByPeriod[selected] ?? null : null
   const selectedForecastChoice = selected ? forecastChoiceByPeriod[selected] ?? null : null
