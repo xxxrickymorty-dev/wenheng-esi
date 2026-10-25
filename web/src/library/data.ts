@@ -1,6 +1,7 @@
 import { HttpError, req, type Me } from '../api'
 import type {
-  GlossaryEntry, ShelfBook, ShelfBookFull, ShelfLoadResult, ShelfBookPreview, TocEntry,
+  GlossaryEntry, ShelfBook, ShelfBookFull, ShelfLoadResult, ShelfBookPreview, ShelfStats,
+  TocEntry,
 } from './types'
 
 const DATA_PREFIX = 'window.WH_DATA = '
@@ -54,7 +55,29 @@ function readBook(value: unknown): ShelfBook | null {
            ...(period ? { period } : {}) }
 }
 
-function readPreviewScript(source: string): ShelfBook[] | null {
+/** 事实条盖章：一项一项验形状，缺了照给剩下的；但给了却形状不对就整条不要
+    （宁可没有事实条，不可给错数）。整体不是对象、或一项数都没有，也按没有处理。 */
+function readStats(value: unknown): ShelfStats | undefined {
+  if (!isRecord(value)) return undefined
+  const stats: ShelfStats = {}
+  let present = false
+  for (const key of ['monitored', 'topOnePercent', 'highlyCited'] as const) {
+    const raw = value[key]
+    if (raw === undefined) continue
+    if (typeof raw !== 'number' || !Number.isFinite(raw)) return undefined
+    stats[key] = raw
+    present = true
+  }
+  const rawSource = value.source
+  if (rawSource !== undefined) {
+    if (typeof rawSource !== 'string' || !rawSource.trim()) return undefined
+    stats.source = rawSource
+    present = true
+  }
+  return present ? stats : undefined
+}
+
+function readPreviewScript(source: string): { books: ShelfBook[]; stats?: ShelfStats } | null {
   const script = source.trim()
   if (!script.startsWith(DATA_PREFIX) || !script.endsWith(';')) return null
 
@@ -72,7 +95,8 @@ function readPreviewScript(source: string): ShelfBook[] | null {
     if (!book) return null
     books.push(book)
   }
-  return books
+  // 事实条是可选附件：形状不对就当没有，不影响书本身。
+  return { books, stats: readStats(payload.stats) }
 }
 
 function readFullScript(source: string): ShelfBookFull[] | null {
@@ -136,8 +160,9 @@ export async function loadShelfPreviews(signal: AbortSignal): Promise<ShelfLoadR
     return { kind: 'unavailable' }
   }
 
-  const books = readPreviewScript(script)
-  if (!books) return { kind: 'invalid-data' }
+  const preview = readPreviewScript(script)
+  if (!preview) return { kind: 'invalid-data' }
+  const { books, stats } = preview
 
   // 两种角色（管理员/操作员）都再取服务器组装的完整数据——陈列馆全内容；
   // 完整数据取不到时退回预览三件套（如实回落，不假装有内容）。
@@ -161,11 +186,12 @@ export async function loadShelfPreviews(signal: AbortSignal): Promise<ShelfLoadR
             const full = book.period ? byPeriod.get(book.period) : undefined
             return full ? { ...book, full } : book
           }),
+          ...(stats ? { stats } : {}),
         }
       }
     }
   } catch (error) {
     if (signal.aborted) throw error
   }
-  return { kind: 'preview', books }
+  return { kind: 'preview', books, ...(stats ? { stats } : {}) }
 }

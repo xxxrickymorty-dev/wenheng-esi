@@ -16,11 +16,24 @@ export type ShelfBookPreview = {
   glossary: GlossaryEntry[]
 }
 
+/** 陈列馆首页事实条：服务端随预览数据盖章给出（取自最新一期流水线产物）。
+    字段都可选——服务端缺哪项就省哪项；页面拿到 undefined 时自行回落。 */
+export type ShelfStats = {
+  /** 在监测的学科数 */
+  monitored?: number
+  /** 已进 ESI 全球前 1% 的学科数 */
+  topOnePercent?: number
+  /** 上榜论文数（热点∪高被引） */
+  highlyCited?: number
+  /** 数字出处，如「202609 期流水线产物（table2 与 overview_facts）」 */
+  source?: string
+}
+
 export type ShelfLoadResult =
   /** 完整数据拿到（两种角色同份，2026-10-11 起） */
-  | { kind: 'full'; books: ShelfBook[] }
+  | { kind: 'full'; books: ShelfBook[]; stats?: ShelfStats }
   /** 只有封面/目录/名词解释基础投影（完整数据取不到时的如实回落） */
-  | { kind: 'preview'; books: ShelfBook[] }
+  | { kind: 'preview'; books: ShelfBook[]; stats?: ShelfStats }
   | { kind: 'login' }
   | { kind: 'forbidden' }
   | { kind: 'unavailable' }

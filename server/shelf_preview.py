@@ -6,7 +6,7 @@ from pathlib import Path
 
 from docx import Document
 
-from . import config
+from . import artifacts, config
 
 _ISSUE_LINE = re.compile(r"^(?P<year>\d{4})年第\d+期（总第(?P<no>\d+)期）$")
 _MONTH_LINE = re.compile(r"(\d{4}年\d{1,2}月)\s*$")
@@ -62,6 +62,25 @@ def _preview_from_docx(docx_path: Path):
             "label": month.group(1), "no": int(issue.group("no"))}
 
 
+#: 陈列馆首页事实条从该期产物里取的数：键＝overview_facts.json 里的字段，值＝给前端的字段名。
+#: top_papers_now 的口径是「上榜论文」（热点∪高被引，与报告一致）。
+_STATS_FROM_FACTS = (("n_disc_1pct", "topOnePercent"), ("top_papers_now", "highlyCited"))
+
+
+def _stats_from_period(period_dir: Path) -> dict:
+    """首页事实条：最新一期产物里的三个数，哪项缺或形状不对就省哪项，绝不估数。"""
+    stats = {}
+    rows = artifacts.read_table2(period_dir)
+    if rows:
+        stats["monitored"] = len(rows)  # 对勘本一行一学科，行数就是在监测的学科数
+    facts = artifacts.read_facts(period_dir)
+    for key, name in _STATS_FROM_FACTS:
+        value = facts.get(key)
+        if isinstance(value, int) and not isinstance(value, bool):
+            stats[name] = value
+    return stats
+
+
 def build_preview(cards, *, out_dir=config.OUT_DIR):
     """按 period_cards 的期次构建安全投影，缺件或坏件逐期关闭。"""
     books = []
@@ -81,7 +100,16 @@ def build_preview(cards, *, out_dir=config.OUT_DIR):
                 and preview["cover"][2].strip().startswith(period_match.group("year"))):
             books.append({"period": period, **preview})
     books.sort(key=lambda book: book["period"])
-    return {"preview": True, "books": books, "trend": {}}
+    payload = {"preview": True, "books": books, "trend": {}}
+    # 首页事实条跟着书架上最新一期走：数从该期产物里取，产物不齐就整个不给，
+    # 前端按「没有事实条」处理（宁可缺，不可给没有出处的数）。
+    if books:
+        latest = books[-1]["period"]
+        stats = _stats_from_period(Path(out_dir) / latest)
+        if stats:
+            stats["source"] = f"{latest} 期流水线产物（table2 与 overview_facts）"
+            payload["stats"] = stats
+    return payload
 
 
 def javascript_response(cards):
