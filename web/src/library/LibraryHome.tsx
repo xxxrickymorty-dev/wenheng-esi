@@ -11,7 +11,6 @@ import emblem from './assets/ynu-emblem.png'
 type LibraryHomeProps = {
   books: ShelfBook[]
   backToWorkspace?: boolean
-  onEnterExterior: () => void
   onOpenBook: (bookIndex: number, section: ReaderSection, trigger: HTMLButtonElement) => void
 }
 

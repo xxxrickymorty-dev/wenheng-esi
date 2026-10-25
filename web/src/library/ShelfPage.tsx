@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { loadShelfPreviews } from './data'
 import { libraryAudio } from './library-audio'
-import LibraryExperience, { type ExperienceStage } from './LibraryExperience'
 import LibraryHome from './LibraryHome'
 import Reader, { type ReaderSection } from './Reader'
 import type { ShelfLoadResult } from './types'
@@ -11,8 +10,8 @@ type PageState =
   | { kind: 'loading' }
   | ShelfLoadResult
 
-type Stage = 'home' | ExperienceStage | 'reader'
-type ReaderReturnTo = 'home' | 'room'
+type Stage = 'home' | 'reader'
+type ReaderReturnTo = 'home'
 
 export default function ShelfPage() {
   const [state, setState] = useState<PageState>({ kind: 'loading' })
@@ -22,10 +21,7 @@ export default function ShelfPage() {
   const [attempt, setAttempt] = useState(0)
   const [motion, setMotion] = useState(true)
   const [soundEnabled, setSoundEnabled] = useState(() => libraryAudio.isEnabled())
-  const [view, setView] = useState<'front' | 'aerial'>('front')
-  const [returnIssue, setReturnIssue] = useState<number | null>(null)
   const returnFocusRef = useRef<HTMLElement | null>(null)
-  const enterTimeoutRef = useRef<number | null>(null)
 
   useEffect(() => {
     setMotion(!window.matchMedia('(prefers-reduced-motion: reduce)').matches)
@@ -69,10 +65,6 @@ export default function ShelfPage() {
     }
   }, [activeReader])
 
-  useEffect(() => () => {
-    if (enterTimeoutRef.current !== null) window.clearTimeout(enterTimeoutRef.current)
-  }, [])
-
   function retry() {
     setAttempt((current) => current + 1)
   }
@@ -81,57 +73,18 @@ export default function ShelfPage() {
     setSoundEnabled(libraryAudio.toggle())
   }
 
-  function enterExterior() {
-    if (enterTimeoutRef.current !== null) window.clearTimeout(enterTimeoutRef.current)
-    enterTimeoutRef.current = null
-    if (soundEnabled) libraryAudio.arm()
-    setReturnIssue(null)
-    setStage('exterior')
-  }
-
-  function enterRoom() {
-    if (stage !== 'exterior') return
-    setStage('entering')
-    enterTimeoutRef.current = window.setTimeout(() => {
-      enterTimeoutRef.current = null
-      setStage('room')
-    }, motion ? 1100 : 100)
-  }
-
-  function returnHome() {
-    if (enterTimeoutRef.current !== null) window.clearTimeout(enterTimeoutRef.current)
-    enterTimeoutRef.current = null
-    setReturnIssue(null)
-    setStage('home')
-  }
-
   function openReader(bookIndex: number, section: ReaderSection, returnTo: ReaderReturnTo, trigger?: HTMLButtonElement) {
     if ((state.kind !== 'preview' && state.kind !== 'full') || !state.books[bookIndex]) return
-    returnFocusRef.current = trigger
-      ?? document.querySelector<HTMLElement>('.room-catalog-list summary')
-      ?? document.querySelector<HTMLElement>('.room-heading h1')
+    returnFocusRef.current = trigger ?? null
     setReaderReturnTo(returnTo)
-    setReturnIssue(bookIndex)
     setActiveReader({ bookIndex, section })
     setStage('reader')
   }
 
   function closeReader() {
     if (!activeReader) return
-    const { bookIndex } = activeReader
     setActiveReader(null)
-    if (readerReturnTo === 'room' && motion) {
-      setReturnIssue(bookIndex)
-      setStage('returning')
-      return
-    }
-    setReturnIssue(null)
     setStage(readerReturnTo)
-  }
-
-  function finishReturn() {
-    setReturnIssue(null)
-    setStage('room')
   }
 
   if (state.kind === 'loading') {
@@ -189,39 +142,16 @@ export default function ShelfPage() {
   }
 
   const activeBook = activeReader ? state.books[activeReader.bookIndex] : undefined
-  const showHome = stage === 'home' || (stage === 'reader' && readerReturnTo === 'home')
-  const showExperience = stage !== 'home' && (stage !== 'reader' || readerReturnTo === 'room')
-  const experienceStage: ExperienceStage = stage === 'home' || stage === 'reader' ? 'room' : stage
 
   return <>
-    {showHome && <div hidden={stage !== 'home'}>
+    {/* 阅览期间首页隐藏但不卸载：归架后焦点能落回原来那枚书封按钮 */}
+    <div hidden={stage !== 'home'}>
       <LibraryHome
         books={state.books}
         backToWorkspace={state.kind === 'full'}
-        onEnterExterior={enterExterior}
         onOpenBook={(bookIndex, section, trigger) => openReader(bookIndex, section, 'home', trigger)}
       />
-    </div>}
-
-    {showExperience && <div hidden={stage === 'reader'}>
-      <LibraryExperience
-        books={state.books}
-        stage={experienceStage}
-        motion={motion}
-        soundEnabled={soundEnabled}
-        view={view}
-        returnIssue={returnIssue}
-        onMotionChange={setMotion}
-        onSoundToggle={toggleSound}
-        onViewChange={setView}
-        onEnterRoom={enterRoom}
-        onBackHome={returnHome}
-        onPickBook={(bookIndex) => openReader(bookIndex, 'cover', 'room')}
-        onTakeStart={() => libraryAudio.playPull()}
-        onReturnComplete={finishReturn}
-        onOpenPreview={(bookIndex, trigger) => openReader(bookIndex, 'cover', 'room', trigger)}
-      />
-    </div>}
+    </div>
 
     {stage === 'reader' && activeBook && activeReader && <Reader
       key={`${activeReader.bookIndex}-${activeReader.section}`}
@@ -232,7 +162,7 @@ export default function ShelfPage() {
       soundEnabled={soundEnabled}
       onMotionChange={setMotion}
       onSoundToggle={toggleSound}
-      onBackHome={returnHome}
+      onBackHome={closeReader}
       onClose={closeReader}
     />}
   </>

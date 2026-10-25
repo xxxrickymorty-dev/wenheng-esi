@@ -9,7 +9,6 @@ const PAGE_SOUNDS = [
   audioPath("page-4.mp3"),
 ] as const;
 
-const PULL_SOUND = audioPath("pull.mp3");
 const BGM_SOUND = audioPath("bgm.mp3");
 
 type AudioTemplate = HTMLAudioElement | null;
@@ -18,7 +17,6 @@ class LibraryAudioController {
   private enabled = true;
   private armed = false;
   private bgm: HTMLAudioElement | null = null;
-  private pullTemplate: AudioTemplate = null;
   private pageTemplates: HTMLAudioElement[] = [];
   private hiddenPaused = false;
   private lastPageSoundAt = 0;
@@ -36,10 +34,6 @@ class LibraryAudioController {
 
   isEnabled() {
     return this.enabled;
-  }
-
-  isArmed() {
-    return this.armed;
   }
 
   arm() {
@@ -79,12 +73,6 @@ class LibraryAudioController {
   toggle() {
     this.setEnabled(!this.enabled);
     return this.enabled;
-  }
-
-  playPull() {
-    if (!this.enabled) return;
-    this.arm();
-    this.playTemplate(this.pullTemplate, 0.86);
   }
 
   playPage() {
@@ -128,12 +116,6 @@ class LibraryAudioController {
 
   private prepareEffects() {
     if (typeof Audio === "undefined") return;
-
-    if (!this.pullTemplate) {
-      this.pullTemplate = new Audio(PULL_SOUND);
-      this.pullTemplate.preload = "auto";
-      this.pullTemplate.load();
-    }
 
     if (!this.pageTemplates.length) {
       this.pageTemplates = PAGE_SOUNDS.map(src => {
