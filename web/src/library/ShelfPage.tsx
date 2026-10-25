@@ -1,48 +1,20 @@
-import { useEffect, useRef, useState } from 'react'
+/* 陈列馆壳：五态加载（loading / login / forbidden / unavailable / invalid-data）+ 取数，
+   成功态整页交给 LibraryHome。
+   2026-10-25 起按 mockups/陈列馆-完整（静态稿 20261025）.html 落地：
+   翻书器与音效模块随旧版退役，不再接线（旧件文件保留不删）。 */
+
+import { useEffect, useState } from 'react'
 import { loadShelfPreviews } from './data'
-import { libraryAudio } from './library-audio'
 import LibraryHome from './LibraryHome'
-import Reader, { type ReaderSection } from './Reader'
 import type { ShelfLoadResult } from './types'
-import './library.css'
 
 type PageState =
   | { kind: 'loading' }
   | ShelfLoadResult
 
-type Stage = 'home' | 'reader'
-type ReaderReturnTo = 'home'
-
 export default function ShelfPage() {
   const [state, setState] = useState<PageState>({ kind: 'loading' })
-  const [stage, setStage] = useState<Stage>('home')
-  const [activeReader, setActiveReader] = useState<{ bookIndex: number; section: ReaderSection } | null>(null)
-  const [readerReturnTo, setReaderReturnTo] = useState<ReaderReturnTo>('home')
   const [attempt, setAttempt] = useState(0)
-  const [motion, setMotion] = useState(true)
-  const [soundEnabled, setSoundEnabled] = useState(() => libraryAudio.isEnabled())
-  const returnFocusRef = useRef<HTMLElement | null>(null)
-
-  useEffect(() => {
-    setMotion(!window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-  }, [])
-
-  useEffect(() => {
-    if (state.kind !== 'preview' && state.kind !== 'full') return
-
-    const onVisibility = () => libraryAudio.handleVisibility(document.hidden)
-    const armAudio = () => libraryAudio.arm()
-
-    document.addEventListener('visibilitychange', onVisibility)
-    window.addEventListener('pointerdown', armAudio, { capture: true, once: true })
-    window.addEventListener('keydown', armAudio, { capture: true, once: true })
-
-    return () => {
-      document.removeEventListener('visibilitychange', onVisibility)
-      window.removeEventListener('pointerdown', armAudio, true)
-      window.removeEventListener('keydown', armAudio, true)
-    }
-  }, [state.kind])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -58,33 +30,8 @@ export default function ShelfPage() {
     return () => controller.abort()
   }, [attempt])
 
-  useEffect(() => {
-    if (!activeReader && returnFocusRef.current) {
-      returnFocusRef.current.focus()
-      returnFocusRef.current = null
-    }
-  }, [activeReader])
-
   function retry() {
     setAttempt((current) => current + 1)
-  }
-
-  function toggleSound() {
-    setSoundEnabled(libraryAudio.toggle())
-  }
-
-  function openReader(bookIndex: number, section: ReaderSection, returnTo: ReaderReturnTo, trigger?: HTMLButtonElement) {
-    if ((state.kind !== 'preview' && state.kind !== 'full') || !state.books[bookIndex]) return
-    returnFocusRef.current = trigger ?? null
-    setReaderReturnTo(returnTo)
-    setActiveReader({ bookIndex, section })
-    setStage('reader')
-  }
-
-  function closeReader() {
-    if (!activeReader) return
-    setActiveReader(null)
-    setStage(readerReturnTo)
   }
 
   if (state.kind === 'loading') {
@@ -141,29 +88,5 @@ export default function ShelfPage() {
     )
   }
 
-  const activeBook = activeReader ? state.books[activeReader.bookIndex] : undefined
-
-  return <>
-    {/* 阅览期间首页隐藏但不卸载：归架后焦点能落回原来那枚书封按钮 */}
-    <div hidden={stage !== 'home'}>
-      <LibraryHome
-        books={state.books}
-        backToWorkspace={state.kind === 'full'}
-        onOpenBook={(bookIndex, section, trigger) => openReader(bookIndex, section, 'home', trigger)}
-      />
-    </div>
-
-    {stage === 'reader' && activeBook && activeReader && <Reader
-      key={`${activeReader.bookIndex}-${activeReader.section}`}
-      books={state.books}
-      bookIndex={activeReader.bookIndex}
-      initialSection={activeReader.section}
-      motion={motion}
-      soundEnabled={soundEnabled}
-      onMotionChange={setMotion}
-      onSoundToggle={toggleSound}
-      onBackHome={closeReader}
-      onClose={closeReader}
-    />}
-  </>
+  return <LibraryHome books={state.books} stats={state.stats} />
 }
