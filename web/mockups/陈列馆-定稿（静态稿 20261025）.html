@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#191320">
+<title>文衡 · 学科信息参考陈列馆</title>
+<style>
+  /* 定稿：以「陈列馆-合成（静态稿 20261025）」为底补四件——
+     架末「下一期 · 未出刊」空位、展签「阅览范围」、数字出处集中到 STATS、
+     帮助 dialog 交代可阅览范围。骨架取自「StripePress」稿（书架 → 详情 → 阅读器 → 帮助），
+     皮换回文衡自己的会泽院封面；详情页用纸面、口径用真数字。
+     深场是陈列，纸面是阅读，两界分明。 */
+  :root{
+    --night:#191320;--night-2:#120D18;
+    --ivory:#F2EDE1;--ivory-2:rgba(242,237,225,.66);--ivory-3:rgba(242,237,225,.38);
+    --paper:#F5F3EC;--ink:#1E2A23;--ink-2:#4A564D;--ink-3:#7C857B;
+    --line:#DCD8C9;--line-2:#E7E3D6;
+    --gold:#C9A961;--gold-2:#E0CB92;--green:#143C2B;--spine:#0F3126;--red:#A8342A;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,Georgia,serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"Cascadia Mono",Consolas,monospace;
+    --ease:cubic-bezier(.22,.61,.36,1);
+    --spine-h:100px;--top-h:46px;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;background:var(--night)}
+  body{min-width:320px;background:var(--night);color:var(--ivory);font:15px/1.85 var(--serif);
+    -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;
+    transition:background .6s var(--ease),color .4s}
+  body.is-detail{background:var(--paper);color:var(--ink)}
+  button,a{font:inherit;color:inherit}button{border:0;background:none;cursor:pointer}
+  a{text-decoration:none}
+  button:focus-visible,a:focus-visible{outline:2px solid currentColor;outline-offset:5px}
+  button:disabled{cursor:default;opacity:.35}
+  svg{display:block}
+  ::selection{background:var(--gold);color:#191320}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+    clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+  /* ── 固定层 ── */
+  .chrome{position:fixed;z-index:40;inset:0;pointer-events:none;color:var(--ivory);transition:color .4s}
+  .is-detail .chrome{color:var(--ink)}
+  .chrome button,.chrome a{pointer-events:auto}
+  .brand{position:absolute;left:max(20px,1.65vw);top:22px;display:flex;align-items:flex-start;gap:12px;line-height:1.2}
+  .brand-mark{width:25px;height:36px}
+  .brand-name{display:block;font:600 13.5px/1.25 var(--serif);letter-spacing:.04em}
+  .brand-tag{display:block;margin-top:5px;font-size:11px;letter-spacing:.08em;font-style:italic;opacity:.66}
+  .rail{position:absolute;left:max(20px,1.65vw);top:50%;transform:translateY(-42%);
+    display:flex;flex-direction:column;align-items:flex-start}
+  .rail button{position:relative;width:34px;height:34px;color:inherit}
+  .rail button::before{content:"";position:absolute;left:3px;top:16px;width:11px;height:2px;
+    background:currentColor;opacity:.3;transition:width .25s,opacity .25s}
+  .rail button:hover::before,.rail button[aria-current="true"]::before{width:17px;opacity:1}
+  .rail button::after{content:attr(data-period);position:absolute;left:34px;top:5px;
+    /* 字级豁免：10px 期次刻度注释（悬停才现身），非阅读正文 */
+    font:10px/2.4 var(--mono);letter-spacing:.08em;opacity:0;transform:translateX(-4px);
+    transition:.2s;white-space:nowrap}
+  .rail button:hover::after,.rail button:focus-visible::after{opacity:.7;transform:none}
+  .back{position:absolute;left:max(20px,1.65vw);top:calc(50% - 118px);width:36px;height:44px;
+    display:none;align-items:center;justify-content:center;font-size:26px;line-height:1}
+  .is-detail .back{display:flex}
+  .is-detail .rail{display:none}
+  .help{position:absolute;left:max(20px,1.65vw);bottom:18px;width:34px;height:44px;
+    font-size:19px;font-style:italic;text-align:left}
+
+  /* ── 书架 ── */
+  .home{min-height:100vh;transition:opacity .38s,transform .5s var(--ease)}
+  .is-opening .home{opacity:0;transform:scale(.975);pointer-events:none}
+  .is-detail .home{display:none}
+
+  .masthead{width:min(100%,1120px);margin:auto;padding:15vh 56px 0;text-align:center}
+  /* 字级豁免：masthead 大题为展示级字级（30–50px），不入六档 UI 音阶 */
+  .masthead h1{font-family:var(--serif);font-weight:600;font-size:clamp(30px,3.6vw,50px);
+    line-height:1.22;letter-spacing:.04em}
+  .masthead p{margin-top:14px;font-size:13.5px;letter-spacing:.16em;color:var(--ivory-3)}
+  .masthead .figs{margin-top:26px;display:flex;justify-content:center;gap:clamp(24px,5vw,64px);
+    flex-wrap:wrap;font-size:11px;letter-spacing:.2em;color:var(--ivory-3)}
+  .masthead .figs b{display:block;font-family:var(--serif);font-size:26px;letter-spacing:.04em;
+    color:var(--ivory);margin-top:4px;font-weight:600}
+
+  .book-list{width:min(100%,1120px);margin:auto;padding:9vh 56px 20vh;
+    display:grid;gap:74px}
+  .book-entry{min-width:0;opacity:0;transform:translateY(34px);
+    transition:opacity .8s var(--ease),transform .8s var(--ease)}
+  .book-entry.is-visible{opacity:1;transform:none}
+  .book-button{width:100%;min-height:150px;display:grid;place-items:center;perspective:1400px}
+  .book-object{--dim:1;position:relative;width:min(560px,62vw);height:var(--spine-h);
+    transform-style:preserve-3d;
+    filter:brightness(var(--dim)) drop-shadow(0 26px 20px rgba(0,0,0,.34));
+    transition:transform .45s var(--ease),filter .35s}
+  .book-button:hover .book-object,.book-button:focus-visible .book-object{
+    transform:translateY(-6px) scale(1.012);
+    filter:brightness(1.06) drop-shadow(0 34px 26px rgba(0,0,0,.42))}
+  .book-object::after{content:"";position:absolute;left:1%;right:1%;top:100%;height:14px;
+    background:linear-gradient(rgba(0,0,0,.55),transparent);
+    clip-path:polygon(0 0,100% 0,97% 100%,3% 100%)}
+
+  /* 顶面：封面的中段（金色刊名那一横） */
+  .book-top{position:absolute;left:0;right:0;bottom:100%;height:var(--top-h);overflow:hidden;
+    clip-path:polygon(2.2% 0,97.8% 0,100% 100%,0 100%);background:var(--green);
+    transition:transform .45s var(--ease);transform-origin:bottom}
+  .book-button:hover .book-top{transform:translateY(-3px)}
+  .book-top .cover-art{transform:scale(1.04);transform-origin:center bottom;filter:brightness(1.14)}
+  .book-top::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(255,255,255,.16),transparent 38%,rgba(0,0,0,.24));
+    box-shadow:inset 0 0 0 1px rgba(201,169,97,.34)}
+  /* 字级豁免：9px 书顶注释小字（随书顶面裁切呈现），非阅读正文 */
+  .top-caption{position:absolute;z-index:3;left:5%;right:5%;top:4px;display:flex;
+    justify-content:space-between;font:9px/1.4 var(--serif);letter-spacing:.2em;
+    color:var(--gold-2);opacity:.85}
+
+  /* 书脊 */
+  .book-spine{position:absolute;inset:0;display:grid;grid-template-columns:auto 1fr auto;
+    align-items:center;gap:16px;padding:0 24px;background:var(--spine);color:var(--gold-2);
+    border:1px solid rgba(201,169,97,.28);overflow:hidden;text-align:left;
+    box-shadow:inset 0 1px rgba(255,255,255,.10),inset 0 -10px 20px rgba(0,0,0,.28)}
+  .book-spine::before{content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(90deg,rgba(255,255,255,.026) 0 1px,transparent 1px 4px),
+      repeating-linear-gradient(0deg,rgba(255,255,255,.016) 0 1px,transparent 1px 3px)}
+  .spine-author,.spine-title,.spine-seal{position:relative;z-index:1}
+  .spine-author{font:11px/1.4 var(--mono);letter-spacing:.2em;color:var(--gold);opacity:.9}
+  .spine-title{text-align:center;font-family:var(--serif);font-size:19px;font-weight:600;
+    letter-spacing:.14em;white-space:nowrap;color:var(--gold-2)}
+  .spine-title small{display:block;margin-top:5px;font-size:11px;font-weight:400;
+    letter-spacing:.18em;opacity:.72;color:var(--gold-2)}
+  .spine-seal{justify-self:end;width:34px;height:34px;background:var(--red);
+    border:1px solid var(--gold);box-shadow:inset 0 0 0 2px rgba(201,169,97,.4);
+    display:grid;place-items:center;font-family:var(--serif);font-size:15px;
+    color:#F3E5C6;transform:rotate(-3deg)}
+  /* 字级豁免：10px 架位刻度注释（YUNNAN UNIVERSITY LIBRARY / A–01），非阅读正文 */
+  .book-index{position:absolute;right:26px;bottom:20px;font:10px var(--mono);
+    letter-spacing:.14em;color:var(--ivory-3)}
+
+  /* 架末空位：下一期的虚位。与书脊同尺寸同节奏：--spine 压暗 + 1px 虚线描边，
+     不做假封面、不可取出；流水线出刊后自动排进这一格。 */
+  .vacant-object{position:relative;width:min(560px,62vw);height:var(--spine-h);
+    display:grid;place-content:center;justify-items:center;gap:4px;text-align:center;
+    background:linear-gradient(rgba(15,49,38,.38),rgba(15,49,38,.38)),var(--night-2);
+    border:1px dashed rgba(201,169,97,.30);color:var(--ivory-3)}
+  .vacant-object::after{content:"";position:absolute;left:1%;right:1%;top:100%;height:14px;
+    background:linear-gradient(rgba(0,0,0,.26),transparent);
+    clip-path:polygon(0 0,100% 0,97% 100%,3% 100%)}
+  .vacant-title{font-family:var(--serif);font-size:13.5px;font-weight:600;
+    letter-spacing:.22em;color:var(--ivory-2)}
+  .vacant-note{font-size:11px;letter-spacing:.14em;color:var(--ivory-3)}
+
+  /* ── 详情页（纸面） ── */
+  .detail{display:none;min-height:100vh}
+  .is-detail .detail{display:block}
+  .detail-inner{width:min(1120px,calc(100% - 160px));margin:auto;padding:14vh 0 10vh;
+    display:grid;grid-template-columns:minmax(300px,.92fr) minmax(360px,1fr);
+    gap:clamp(56px,7vw,110px);align-items:start}
+  .is-detail .detail-book{animation:detail-book-in .8s var(--ease) both}
+  .is-detail .detail-copy{animation:detail-copy-in .75s .1s var(--ease) both}
+  .is-closing .detail{opacity:0;transition:opacity .26s}
+  .detail-book{position:sticky;top:14vh;min-height:600px;display:grid;place-items:center;
+    perspective:1500px}
+  .book-volume{position:relative;width:min(340px,27vw);aspect-ratio:2/2.9;
+    transform-style:preserve-3d;
+    transform:rotateX(var(--rx,4deg)) rotateY(var(--ry,-17deg)) rotateZ(-3.5deg);
+    transition:transform .22s ease-out;
+    filter:drop-shadow(26px 38px 26px rgba(20,44,32,.28))}
+  .book-front{position:absolute;inset:0;transform:translateZ(15px);background:var(--green);
+    border:1px solid rgba(201,169,97,.4);overflow:hidden;
+    box-shadow:inset 9px 0 16px rgba(0,0,0,.22)}
+  .book-front::after{content:"";position:absolute;inset:0;z-index:5;pointer-events:none;
+    background:linear-gradient(105deg,rgba(255,255,255,.14),transparent 20%,transparent 72%,rgba(0,0,0,.16))}
+  .book-pages{position:absolute;top:5px;bottom:4px;left:100%;width:30px;transform-origin:left;
+    transform:rotateY(90deg);
+    background:repeating-linear-gradient(90deg,#b8b2a0 0 1px,#e9e3cf 1px 3px);
+    box-shadow:inset 0 0 8px rgba(0,0,0,.24)}
+  .book-back{position:absolute;inset:0;transform:translateZ(-15px);background:var(--spine)}
+  .book-side{position:absolute;top:0;bottom:0;right:100%;width:30px;transform-origin:right;
+    transform:rotateY(-90deg);background:var(--spine);color:var(--gold-2);
+    display:grid;place-items:center;border:1px solid rgba(201,169,97,.26)}
+  .book-side span{writing-mode:vertical-rl;font-family:var(--serif);font-size:11px;
+    letter-spacing:.22em;white-space:nowrap}
+  .cover-art{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+
+  .detail-copy{padding-top:2vh;max-width:520px}
+  .detail-kicker{font:11px/1.6 var(--mono);letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-3)}
+  /* 字级豁免：详情页大题为展示级字级（32–48px），不入六档 UI 音阶 */
+  .detail-title{margin-top:16px;font-family:var(--serif);font-size:clamp(32px,3.2vw,48px);
+    font-weight:600;line-height:1.26;letter-spacing:.04em}
+  .detail-subtitle{margin-top:10px;font-size:19px;letter-spacing:.08em;color:var(--ink-2)}
+  .detail-rule{width:44px;height:1px;background:var(--ink);margin:26px 0;opacity:.5}
+  .detail-desc{font-size:15px;line-height:2.05;color:var(--ink-2);max-width:34em}
+
+  .figures{margin-top:26px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .figures div{padding:16px 14px 18px;border-right:1px solid var(--line-2)}
+  .figures div:last-child{border-right:0}
+  .figures span{display:block;font-size:11px;letter-spacing:.2em;color:var(--ink-3)}
+  .figures b{display:block;margin-top:5px;font-family:var(--serif);font-size:26px;
+    font-weight:600;letter-spacing:.02em}
+
+  .detail-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+  .action{min-height:46px;padding:10px 18px;border:1px solid var(--ink);
+    display:inline-flex;align-items:center;justify-content:space-between;gap:26px;
+    font:600 13.5px var(--sans);letter-spacing:.04em;transition:background .2s,color .2s}
+  .action:hover{background:var(--ink);color:var(--ivory)}
+  .action.secondary{border-color:rgba(36,35,33,.32)}
+
+  .detail-meta{margin-top:32px;border-top:1px solid var(--line);
+    display:grid;grid-template-columns:1fr 1fr}
+  .meta-cell{padding:16px 0;border-bottom:1px solid var(--line)}
+  .meta-cell:nth-child(odd){padding-right:20px}
+  .meta-cell span{display:block;font:11px var(--sans);letter-spacing:.1em;color:var(--ink-3)}
+  .meta-cell b{display:block;margin-top:4px;font-size:15px;font-weight:500;letter-spacing:.04em}
+
+  .toc{margin-top:34px}
+  .section-label{display:flex;align-items:center;gap:14px;font:600 13.5px var(--serif);
+    letter-spacing:.12em}
+  .section-label::before{content:"";width:42px;height:1px;background:currentColor}
+  .toc ol{margin-top:14px;list-style:none}
+  .toc li{display:grid;grid-template-columns:30px 1fr auto;gap:10px;padding:9px 0;
+    border-bottom:1px solid var(--line-2);font-size:13.5px}
+  .toc li span:first-child,.toc li span:last-child{font:11px/2.3 var(--mono);color:var(--ink-3)}
+
+  .colophon{margin-top:34px;display:flex;justify-content:space-between;gap:16px;
+    font:11px var(--sans);letter-spacing:.06em;color:var(--ink-3)}
+
+  /* ── 阅读器 / 帮助 ── */
+  dialog{margin:auto;border:0;padding:0;color:var(--ink);background:#EFEDE4;
+    max-width:none;max-height:none}
+  dialog::backdrop{background:rgba(18,15,16,.74)}
+  .reader{width:min(1060px,calc(100vw - 48px));height:min(720px,calc(100dvh - 48px));overflow:hidden}
+  .reader-shell{height:100%;display:grid;grid-template-rows:64px 1fr 68px}
+  .reader-head,.reader-foot{display:flex;align-items:center;justify-content:space-between;
+    gap:18px;padding:0 24px;border-bottom:1px solid #CBC6B8;font:12px var(--sans);letter-spacing:.08em}
+  .reader-foot{border-top:1px solid #CBC6B8;border-bottom:0}
+  .reader-close{width:44px;height:44px;font-size:26px}
+  .reader-stage{min-height:0;display:grid;place-items:center;padding:34px;perspective:1400px;overflow:auto}
+  .reader-page{width:min(660px,100%);min-height:400px;padding:44px 52px;background:#FAF8F0;
+    border:1px solid #D6D0C0;transform-origin:left center}
+  .reader-page.turning{animation:page-turn .4s var(--ease)}
+  .reader-page h2{font-size:26px;line-height:1.4;margin-bottom:18px}
+  .reader-page .lead{max-width:32em;line-height:2.1}
+  .reader-page ol{list-style:none;margin-top:20px}
+  .reader-page li{display:grid;grid-template-columns:34px 1fr auto;gap:12px;padding:10px 0;
+    border-bottom:1px solid #DDD7C7}
+  .reader-page li span:first-child,.reader-page li span:last-child{font:12px/2 var(--mono);color:#6E6A5F}
+  .reader-terms{display:grid;grid-template-columns:1fr 1fr;gap:0 34px}
+  .reader-terms section{padding:15px 0;border-bottom:1px solid #DDD7C7}
+  .reader-terms h3{font-size:19px}
+  .reader-terms p{font-size:13.5px;line-height:1.85;margin-top:6px;color:var(--ink-2)}
+  .reader-cover{display:grid;place-items:center;height:100%}
+  .reader-cover .mini{width:210px;aspect-ratio:2/2.9;position:relative;
+    filter:drop-shadow(10px 16px 14px rgba(20,44,32,.24))}
+  .reader-nav{min-width:96px;min-height:44px;border:1px solid #A9A495;padding:8px 14px}
+  .reader-nav:hover:not(:disabled){background:#242321;color:#EFEDE4}
+  .reader-count{font:12px var(--mono)}
+  .help-dialog{width:min(430px,calc(100vw - 40px));padding:34px}
+  .help-dialog h2{font-size:26px;margin-bottom:16px}
+  .help-dialog ul{list-style:none;display:grid;gap:11px;font:13.5px/1.8 var(--sans)}
+  .help-dialog li{display:flex;justify-content:space-between;gap:20px;
+    border-bottom:1px solid #D1CCBF;padding-bottom:9px}
+  .help-dialog button{margin-top:22px;min-height:44px;width:100%;border:1px solid #242321}
+
+  @keyframes detail-book-in{from{opacity:0;transform:translateY(45px) scale(.85) rotate(-4deg)}
+    to{opacity:1;transform:none}}
+  @keyframes detail-copy-in{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+  @keyframes page-turn{0%{opacity:.2;transform:rotateY(-16deg) translateX(-18px)}
+    100%{opacity:1;transform:none}}
+
+  @media(max-width:900px){
+    .masthead{padding:11vh 42px 0;text-align:left}
+    .book-list{padding:7vh 42px 18vh;gap:60px}
+    .book-object{width:min(560px,76vw);height:88px}
+    .vacant-object{width:min(560px,76vw)}
+    .book-spine{padding:0 16px;gap:10px}
+    .spine-title{font-size:15px}
+    /* 字级豁免：10px 书脊期号注释（同 .top-caption 口径） */
+    .spine-title small{font-size:10px}
+    .detail-inner{width:calc(100% - 110px);grid-template-columns:minmax(240px,.8fr) minmax(300px,1fr);gap:46px}
+    .book-volume{width:min(290px,32vw)}
+    .detail-book{min-height:520px}
+  }
+  @media(max-width:700px){
+    :root{--spine-h:74px;--top-h:32px}
+    .brand{left:18px;top:17px}
+    .brand-mark{width:21px;height:31px}
+    .rail,.back{left:12px}
+    .rail button::after{display:none}
+    .help{left:14px;bottom:8px}
+    .masthead{padding:9vh 20px 0}
+    .masthead h1{font-size:26px}
+    .masthead .figs{gap:20px}
+    .book-list{padding:6vh 20px 16vh 46px;gap:52px}
+    .book-button{min-height:112px}
+    .book-object{width:100%}
+    .vacant-object{width:100%}
+    .book-spine{grid-template-columns:1fr auto;padding:0 13px;gap:8px}
+    .spine-author{display:none}
+    .spine-title{text-align:left;font-size:15px;letter-spacing:.1em}
+    /* 字级豁免：7px 书顶注释小字（同 .top-caption 主规则口径） */
+    .top-caption{font-size:7px}
+    .book-index{display:none}
+    .detail-inner{width:calc(100% - 64px);padding:110px 0 60px;grid-template-columns:1fr;gap:42px}
+    .detail-book{position:relative;top:auto;min-height:420px}
+    .book-volume{width:min(250px,68vw)}
+    /* 字级豁免：展示级题字（同 .detail-title 主规则口径） */
+    .detail-title{font-size:32px}
+    .reader{width:calc(100vw - 20px);height:calc(100dvh - 20px)}
+    .reader-stage{padding:16px}
+    .reader-page{padding:28px 24px}
+    .reader-terms{grid-template-columns:1fr}
+    .colophon{flex-direction:column;gap:6px}
+  }
+  @media(prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    *,*::before,*::after{animation:none!important;transition:none!important}
+    .book-entry{opacity:1;transform:none}
+    .book-volume{transform:rotateX(3deg) rotateY(-12deg) rotateZ(-2deg)}
+  }
+</style>
+</head>
+<body>
+<div class="chrome" aria-label="陈列馆工具">
+  <a class="brand" href="#" id="brandHome" aria-label="回到陈列馆首页">
+    <svg class="brand-mark" viewBox="0 0 28 38" fill="none" stroke="currentColor" aria-hidden="true">
+      <path d="M4 3h20v32H4zM8 7h12v24H8zM11 10v18M17 10v18M8 19h12" stroke-width="1.2"/>
+      <path d="m11 14 3 5 3-5" stroke-width="1.2"/></svg>
+    <span><b class="brand-name">文衡 · 陈列馆</b><i class="brand-tag">学科情报阅览室</i></span>
+  </a>
+  <button class="back" id="backHome" aria-label="返回全部馆藏">←</button>
+  <nav class="rail" id="rail" aria-label="按期次定位"></nav>
+  <button class="help" id="helpOpen" aria-label="查看操作帮助">?</button>
+</div>
+
+<main>
+  <div class="home" id="home">
+    <header class="masthead">
+      <h1>一年六期，一期一册。</h1>
+      <p>云南大学图书馆 · 学科信息参考 · 2026 年馆藏</p>
+      <!-- 四格数字由脚本从 STATS / BOOKS 渲染（见 script 顶部），HTML 不写死 -->
+      <div class="figs" id="mastFigs"></div>
+    </header>
+    <div class="book-list" id="bookList" aria-label="2026 年馆藏"></div>
+    <span class="book-index" aria-hidden="true">YUNNAN UNIVERSITY LIBRARY&nbsp;&nbsp;/&nbsp;&nbsp;A–01</span>
+  </div>
+
+  <article class="detail" id="detail" aria-live="polite">
+    <div class="detail-inner">
+      <div class="detail-book" id="detailBook"></div>
+      <div class="detail-copy">
+        <p class="detail-kicker" id="detailKicker"></p>
+        <h1 class="detail-title">学科信息参考</h1>
+        <p class="detail-subtitle" id="detailSubtitle"></p>
+        <div class="detail-rule"></div>
+        <p class="detail-desc" id="detailDesc"></p>
+        <div class="figures" id="detailFigures"></div>
+        <div class="detail-actions">
+          <button class="action" id="readBook">翻阅本期 <span>↗</span></button>
+          <button class="action secondary" id="showToc">查看目录 <span>↓</span></button>
+        </div>
+        <div class="detail-meta" id="detailMeta"></div>
+        <section class="toc" id="toc" aria-labelledby="tocTitle">
+          <h2 class="section-label" id="tocTitle">本期目录</h2>
+          <ol id="tocList"></ol>
+        </section>
+        <div class="colophon">
+          <span>云南大学图书馆 · 学科服务部</span>
+          <span>学科情报馆藏 A 区 01 · 逐期装帧</span>
+        </div>
+      </div>
+    </div>
+  </article>
+</main>
+
+<dialog class="reader" id="reader" aria-labelledby="readerTitle">
+  <div class="reader-shell">
+    <header class="reader-head"><span id="readerTitle">学科信息参考</span>
+      <button class="reader-close" id="readerClose" aria-label="关闭阅读预览">×</button></header>
+    <div class="reader-stage"><div class="reader-page" id="readerPage"></div></div>
+    <footer class="reader-foot">
+      <button class="reader-nav" id="readerPrev">← 上一页</button>
+      <span class="reader-count" id="readerCount"></span>
+      <button class="reader-nav" id="readerNext">下一页 →</button>
+    </footer>
+  </div>
+</dialog>
+
+<dialog class="help-dialog" id="helpDialog" aria-labelledby="helpTitle">
+  <h2 id="helpTitle">在陈列馆里</h2>
+  <ul>
+    <li><span>逐册浏览</span><b>滚动页面</b></li>
+    <li><span>取出一册</span><b>点击书脊</b></li>
+    <li><span>返回书架</span><b>← 或 Esc</b></li>
+    <li><span>定位期次</span><b>左侧刻度</b></li>
+    <li><span>可阅览范围</span><b>封面 · 目录 · 名词解释（正文数值不出馆）</b></li>
+  </ul>
+  <button id="helpClose">知道了</button>
+</dialog>
+
+<p class="sr-only" id="live" aria-live="polite"></p>
+
+<script>
+(function(){
+'use strict';
+
+/* 演示值；真实接入时由 /app/shelf/preview.js 的 stats 字段供给（流水线确定性生成）。
+   「连续记录」不在此列：册数与总期从 BOOKS 导出。 */
+const STATS = { monitored: 22, topOnePercent: 14, highlyCited: 291 };
+
+/* 往期不编各期数字，只交代口径；实现语（句骨架、数据路径之类）不进读者文案。 */
+const PAST_DESC = '与当期同版式、同口径：学科监测、云南省高校对照、潜力学科预测与顶尖论文清单。数字一律誊自台账，写法逐期一致，每一格都能回溯到台账单元格。';
+
+/* 五期：同一本刊，同一套装帧，只换期号与总期。
+   当期数字取自 STATS；出版时间一律由期次号导出（periodToMonth），不手写。 */
+const BOOKS = [
+  { period:'202609', total:39, issue:'2026 年第 5 期', current:true,
+    desc:`本期监测 ${STATS.monitored} 个学科，其中 ${STATS.topOnePercent} 个进入 ESI 全球前 1%，收录 ${STATS.highlyCited} 篇热点与高被引论文；含云南省主要高校对照、本期潜力学科预测与顶尖论文清单。数字只认馆员维护的动态监测表：表上有的才写进馆，报告里每一格都能回溯到台账单元格。` },
+  { period:'202607', total:38, issue:'2026 年第 4 期', desc: PAST_DESC },
+  { period:'202605', total:37, issue:'2026 年第 3 期', desc: PAST_DESC },
+  { period:'202603', total:36, issue:'2026 年第 2 期', desc: PAST_DESC },
+  { period:'202601', total:35, issue:'2026 年第 1 期', desc: PAST_DESC }
+];
+
+/* 「连续记录」由 BOOKS 导出：馆藏册数与馆藏最深一册的总期号。 */
+const COLLECTION = { volumes: BOOKS.length, latestTotal: Math.max(...BOOKS.map(b => b.total)) };
+
+/* 期次号 → 出版时间：202609 → 「2026 年 9 月」。 */
+function periodToMonth(p){ return `${p.slice(0, 4)} 年 ${Number(p.slice(4, 6))} 月`; }
+
+const TOC = [['01','名词解释','—'],['02','一 概述','P. 1'],['03','二 我校学科发展情况','P. 2'],
+  ['04','三 我校潜力学科趋势预测','P. 26'],['05','四 云南省主要高校学科发展基本情况','P. 28'],
+  ['06','五 我校顶尖论文清单','P. 30']];
+
+const TERMS = [
+  ['取数','把当期的原始数据取回来；人核对的那一步叫取数核验。'],
+  ['一键生成','机器把稿子排出来，人再看一遍并交给复核。'],
+  ['签单','复核无异议后，签下这一版。'],
+  ['签发','这一版的状态：未签发、已签发或签发已失效。']
+];
+
+/* 会泽院封面：一张 SVG 通吃「书架顶面 / 详情页封面 / 阅读器封面」
+   只换期号与总期，不做五种艺术。 */
+function coverSVG(b, fit){
+  return `<svg class="cover-art" viewBox="0 0 400 580" preserveAspectRatio="${fit || 'xMidYMid'} slice" aria-hidden="true">
+    <rect width="400" height="580" fill="#143C2B"/>
+    <rect x="13" y="13" width="374" height="554" fill="none" stroke="#C9A961" stroke-width="1.4" opacity=".82"/>
+    <rect x="20" y="20" width="360" height="540" fill="none" stroke="#C9A961" stroke-width=".7" opacity=".42"/>
+    <text x="36" y="54" fill="#DCE8DB" font-family="serif" font-size="9.5" letter-spacing="2.6">雲 南 大 學 圖 書 館</text>
+    <text x="36" y="69" fill="#A9BBAE" font-family="Georgia,serif" font-size="5.4" letter-spacing="1.5">YUNNAN UNIVERSITY LIBRARY</text>
+    <text x="364" y="54" fill="#A9BBAE" font-family="serif" font-size="5.6" letter-spacing="1.6" text-anchor="end">雙 月 刊</text>
+    <text x="364" y="69" fill="#A9BBAE" font-family="Georgia,serif" font-size="5" letter-spacing="1.4" text-anchor="end">BI-MONTHLY</text>
+    <text x="200" y="152" fill="#E0CB92" font-family="serif" font-size="35" letter-spacing="4" text-anchor="middle">学科信息参考</text>
+    <text x="200" y="177" fill="#CDB986" font-family="Georgia,serif" font-size="7.4" letter-spacing="2.4" text-anchor="middle">DISCIPLINARY INFORMATION REFERENCE</text>
+    <path d="M126 194h148" stroke="#C9A961" stroke-width=".7" opacity=".5"/>
+    <text x="200" y="240" fill="#E8D5A4" font-family="Georgia,serif" font-size="25" letter-spacing="2" text-anchor="middle">${b.period}</text>
+    <text x="200" y="260" fill="#DCE8DB" font-family="serif" font-size="8.6" letter-spacing="2.4" text-anchor="middle">总 第 ${b.total} 期</text>
+    <text x="200" y="286" fill="#C9B27C" font-family="serif" font-size="7.4" letter-spacing="2.2" text-anchor="middle">会 泽 百 家　至 公 天 下</text>
+    <g transform="translate(0,296)" fill="none" stroke="#CBB98C" stroke-width="1" opacity=".46">
+      <path d="M0 250h400" stroke-width="1.5"/>
+      <path d="M150 250h100M155 244h90M160 238h80M165 232h70M170 226h60"/>
+      <path d="M150 226V140h100v86M150 140l50-38 50 38M157 145h86"/>
+      <path d="M164 226v-62M186 226v-62M214 226v-62M236 226v-62"/>
+      <path d="M188 226v-30a12 12 0 0 1 24 0v30"/>
+      <path d="M24 226v-64h126M250 226v-64h126"/>
+      <path d="M18 162h132M250 162h132"/>
+      <path d="M40 176h22v26H40zM78 176h22v26H78zM116 176h22v26h-22zM262 176h22v26h-22zM300 176h22v26h-22zM338 176h22v26h-22z"/>
+      <path d="M40 189h22M78 189h22M116 189h22M262 189h22M300 189h22M338 189h22"/>
+      <path d="M18 162h364" stroke-width="1.7"/>
+    </g>
+    <circle cx="200" cy="536" r="24" fill="#143C2B" stroke="#C9A961" stroke-width="1" opacity=".96"/>
+    <circle cx="200" cy="536" r="19" fill="none" stroke="#C9A961" stroke-width=".6" opacity=".6"/>
+    <text x="200" y="535" fill="#E0CB92" font-family="serif" font-size="13" text-anchor="middle">雲</text>
+    <text x="200" y="549" fill="#C9B27C" font-family="Georgia,serif" font-size="4.6" letter-spacing="1" text-anchor="middle">1923</text>
+  </svg>`;
+}
+
+function volumeMarkup(b, withSide){
+  return `<div class="book-volume">`
+    + `<div class="book-back"></div><div class="book-pages"></div>`
+    + (withSide ? `<div class="book-side"><span>学科信息参考 · ${b.period} · 总第 ${b.total} 期</span></div>` : '')
+    + `<div class="book-front">${coverSVG(b)}</div></div>`;
+}
+
+const home = document.getElementById('home');
+const list = document.getElementById('bookList');
+const rail = document.getElementById('rail');
+const detail = document.getElementById('detail');
+const detailBook = document.getElementById('detailBook');
+const live = document.getElementById('live');
+const reader = document.getElementById('reader');
+const page = document.getElementById('readerPage');
+const help = document.getElementById('helpDialog');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+
+/* masthead 数字：三格出自 STATS，「连续记录」由 BOOKS 导出（册数与最深总期）。 */
+document.getElementById('mastFigs').innerHTML = [
+  ['学科在监测', STATS.monitored],
+  ['已进 ESI 前 1%', STATS.topOnePercent],
+  ['热点 · 高被引', STATS.highlyCited],
+  ['连续记录', `${COLLECTION.latestTotal} 期`]
+].map(x => `<span>${x[0]}<b>${x[1]}</b></span>`).join('');
+
+let current = 0, detailOpen = false, restoreY = 0, readerPage = 0, transitioning = false;
+
+/* 书架 */
+BOOKS.forEach((b, i) => {
+  const entry = document.createElement('div');
+  entry.className = 'book-entry';
+  entry.id = 'book-' + b.period;
+  entry.innerHTML =
+    `<button class="book-button" data-index="${i}" aria-label="取出 ${b.period}，${b.issue}">`
+    + `<div class="book-object">`
+    + `<div class="book-top">${coverSVG(b, 'xMidYMax').replace('class="cover-art"', 'class="cover-art top-art"')}<div class="top-caption"><span>学科信息参考</span><span>${b.period}</span></div></div>`
+    + `<div class="book-spine">`
+    + `<span class="spine-author">${b.period}</span>`
+    + `<span class="spine-title">学科信息参考<small>${b.issue} · 总第 ${b.total} 期</small></span>`
+    + `<span class="spine-seal">衡</span>`
+    + `</div></div></button>`;
+  list.appendChild(entry);
+
+  const nav = document.createElement('button');
+  nav.dataset.period = b.period;
+  nav.dataset.index = i;
+  nav.setAttribute('aria-label', '定位到 ' + b.period);
+  nav.setAttribute('aria-current', i === 0 ? 'true' : 'false');
+  rail.appendChild(nav);
+});
+
+/* 架末空位：下一期尚未出刊。与书脊同尺寸占一格，虚位不可取出、不进期次刻度；
+   流水线出刊后自动入藏。全馆最会说话的展品：馆藏是活的、连续的。 */
+const vacancy = document.createElement('div');
+vacancy.className = 'book-entry';
+vacancy.id = 'book-next';
+vacancy.innerHTML =
+  `<button class="book-button is-vacant" disabled aria-label="下一期 · 尚未出刊">`
+  + `<div class="vacant-object">`
+  + `<span class="vacant-title">下一期 · 未出刊</span>`
+  + `<span class="vacant-note">流水线出刊后自动入藏</span>`
+  + `</div></button>`;
+list.appendChild(vacancy);
+
+const entries = [...document.querySelectorAll('.book-entry')];
+const railButtons = [...rail.children];
+
+if ('IntersectionObserver' in window && !reduced.matches) {
+  const io = new IntersectionObserver(items => items.forEach(item => {
+    if (item.isIntersecting) { item.target.classList.add('is-visible'); io.unobserve(item.target); }
+  }), { threshold: .08, rootMargin: '0px 0px -5%' });
+  entries.forEach(e => io.observe(e));
+} else {
+  entries.forEach(e => e.classList.add('is-visible'));
+}
+
+let ticking = false;
+function paintScroll() {
+  ticking = false;
+  if (detailOpen) return;
+  const mid = innerHeight * .52;
+  let best = 0, bestDistance = Infinity;
+  entries.forEach((entry, i) => {
+    const r = entry.getBoundingClientRect();
+    const center = r.top + r.height / 2;
+    const distance = Math.abs(center - mid);
+    const obj = entry.querySelector('.book-object');
+    if (obj) { /* 架末空位无书体，不参与明暗，但保留刻度跟随 */
+      const focus = Math.max(.5, 1 - distance / (innerHeight * 1.2));
+      obj.style.setProperty('--dim', focus.toFixed(2));
+    }
+    if (distance < bestDistance) { bestDistance = distance; best = i; }
+  });
+  railButtons.forEach((b, i) => b.setAttribute('aria-current', i === best ? 'true' : 'false'));
+}
+addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(paintScroll); } }, { passive: true });
+addEventListener('resize', paintScroll);
+paintScroll();
+
+/* 详情 */
+function select(i) {
+  current = (i + BOOKS.length) % BOOKS.length;
+  const b = BOOKS[current];
+  document.body.className = 'is-detail';
+  document.getElementById('detailKicker').textContent = `VOL. ${String(b.total).padStart(2,'0')} / ${b.period} / 会泽院装帧`;
+  document.getElementById('detailSubtitle').textContent = `${b.issue} · 总第 ${b.total} 期`;
+  document.getElementById('detailDesc').textContent = b.desc;
+
+  const figs = document.getElementById('detailFigures');
+  if (b.current) {
+    figs.style.display = 'grid';
+    figs.innerHTML = [['学科在监测', STATS.monitored], ['已进 ESI 前 1%', STATS.topOnePercent], ['热点 · 高被引', STATS.highlyCited]]
+      .map(x => `<div><span>${x[0]}</span><b>${x[1]}</b></div>`).join('');
+  } else {
+    figs.style.display = 'none';
+    figs.innerHTML = '';
+  }
+
+  detailBook.innerHTML = volumeMarkup(b, true);
+
+  document.getElementById('detailMeta').innerHTML = [
+    ['期号', b.period], ['出版时间', periodToMonth(b.period)],
+    ['装帧', '会泽院 · 布面烫金'], ['馆藏位置', 'A 区 01'],
+    ['阅览范围', '封面 · 目录 · 名词解释']
+  ].map(x => `<div class="meta-cell"><span>${x[0]}</span><b>${x[1]}</b></div>`).join('');
+
+  document.getElementById('tocList').innerHTML =
+    TOC.map(t => `<li><span>${t[0]}</span><span>${t[1]}</span><span>${t[2]}</span></li>`).join('');
+
+  live.textContent = `已取出 ${b.period}，${b.issue}`;
+}
+
+function openBook(i) {
+  if (transitioning) return;
+  transitioning = true;
+  restoreY = scrollY;
+  current = i;
+  document.body.classList.add('is-opening');
+  setTimeout(() => {
+    detailOpen = true;
+    select(i);
+    scrollTo(0, 0);
+    document.body.classList.remove('is-opening');
+    transitioning = false;
+  }, reduced.matches ? 0 : 360);
+}
+
+function closeBook() {
+  if (!detailOpen || transitioning || reader.open) return;
+  transitioning = true;
+  document.body.classList.add('is-closing');
+  setTimeout(() => {
+    detailOpen = false;
+    document.body.className = '';
+    home.style.opacity = '0';
+    scrollTo(0, restoreY);
+    requestAnimationFrame(() => {
+      home.style.opacity = '';
+      paintScroll();
+      transitioning = false;
+    });
+    live.textContent = '已返回全部馆藏';
+  }, reduced.matches ? 0 : 260);
+}
+
+list.addEventListener('click', e => {
+  const b = e.target.closest('.book-button');
+  if (b) openBook(Number(b.dataset.index));
+});
+rail.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (b) entries[Number(b.dataset.index)].scrollIntoView({ behavior: reduced.matches ? 'auto' : 'smooth', block: 'center' });
+});
+document.getElementById('backHome').addEventListener('click', closeBook);
+document.getElementById('brandHome').addEventListener('click', e => {
+  e.preventDefault();
+  if (detailOpen) closeBook();
+  else scrollTo({ top: 0, behavior: reduced.matches ? 'auto' : 'smooth' });
+});
+document.getElementById('showToc').addEventListener('click', () => {
+  document.getElementById('toc').scrollIntoView({ behavior: reduced.matches ? 'auto' : 'smooth', block: 'start' });
+});
+
+/* 3D 倾斜 */
+let tiltFrame = 0;
+detailBook.addEventListener('pointermove', e => {
+  if (reduced.matches || e.pointerType === 'touch') return;
+  const volume = detailBook.querySelector('.book-volume');
+  if (!volume) return;
+  const r = detailBook.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width - .5;
+  const y = (e.clientY - r.top) / r.height - .5;
+  cancelAnimationFrame(tiltFrame);
+  tiltFrame = requestAnimationFrame(() => {
+    volume.style.setProperty('--ry', `${-17 + x * 10}deg`);
+    volume.style.setProperty('--rx', `${4 - y * 8}deg`);
+  });
+});
+detailBook.addEventListener('pointerleave', () => {
+  const v = detailBook.querySelector('.book-volume');
+  if (v) { v.style.setProperty('--ry', '-17deg'); v.style.setProperty('--rx', '4deg'); }
+});
+
+/* 阅读器 */
+function readerContent() {
+  const b = BOOKS[current];
+  if (readerPage === 0) {
+    return `<div class="reader-cover"><div class="mini">${coverSVG(b)}</div></div>`;
+  }
+  if (readerPage === 1) {
+    return `<p class="detail-kicker">CONTENTS / ${b.period}</p><h2>本期目录</h2>`
+      + `<ol>${TOC.map(t => `<li><span>${t[0]}</span><span>${t[1]}</span><span>${t[2]}</span></li>`).join('')}</ol>`;
+  }
+  return `<p class="detail-kicker">GLOSSARY / 一词一义</p><h2>名词解释</h2>`
+    + `<div class="reader-terms">${TERMS.map(t => `<section><h3>${t[0]}</h3><p>${t[1]}</p></section>`).join('')}</div>`;
+}
+
+function paintReader(animate) {
+  if (animate) { page.classList.remove('turning'); void page.offsetWidth; page.classList.add('turning'); }
+  page.innerHTML = readerContent();
+  document.getElementById('readerCount').textContent = `${readerPage + 1} / 3`;
+  document.getElementById('readerPrev').disabled = readerPage === 0;
+  document.getElementById('readerNext').disabled = readerPage === 2;
+  document.getElementById('readerTitle').textContent = `学科信息参考 · ${BOOKS[current].period}`;
+}
+
+document.getElementById('readBook').addEventListener('click', () => {
+  readerPage = 0; paintReader(false); reader.showModal();
+});
+document.getElementById('readerClose').addEventListener('click', () => reader.close());
+document.getElementById('readerPrev').addEventListener('click', () => { if (readerPage > 0) { readerPage--; paintReader(true); } });
+document.getElementById('readerNext').addEventListener('click', () => { if (readerPage < 2) { readerPage++; paintReader(true); } });
+reader.addEventListener('click', e => { if (e.target === reader) reader.close(); });
+
+document.getElementById('helpOpen').addEventListener('click', () => help.showModal());
+document.getElementById('helpClose').addEventListener('click', () => help.close());
+help.addEventListener('click', e => { if (e.target === help) help.close(); });
+
+addEventListener('keydown', e => {
+  if (e.key === 'Escape' && detailOpen && !reader.open && !help.open) closeBook();
+  if (reader.open && e.key === 'ArrowRight' && readerPage < 2) { readerPage++; paintReader(true); }
+  if (reader.open && e.key === 'ArrowLeft' && readerPage > 0) { readerPage--; paintReader(true); }
+});
+
+})();
+</script>
+</body>
+</html>
