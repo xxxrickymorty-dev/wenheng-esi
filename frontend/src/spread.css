@@ -235,3 +235,23 @@
   .sp-spread .rr { grid-template-columns: minmax(0, 1.4fr) 60px 56px; }
   .sp-spread .rr .tx { display: none; }
 }
+
+/* ── 真数据件的样式（2026-10-25 接入 /api） ── */
+.sp-spread .sp-sel { font-family: var(--kai); font-size: 11.5px; letter-spacing: .1em;
+  color: var(--ink-2); background: transparent; border: 1px solid var(--line);
+  padding: 3px 6px; }
+.sp-spread .sp-sel:hover { border-color: var(--stone-3); }
+.sp-spread .sp-note { border: 1px dashed var(--line); padding: 12px 15px; margin-top: 14px;
+  color: var(--ink-3); font-size: 12.5px; line-height: 1.8; }
+.sp-spread .sp-ack { display: flex; gap: 9px; align-items: flex-start; margin-top: 10px;
+  font-size: 12.5px; line-height: 1.6; color: var(--ink-2); }
+.sp-spread .sp-ack input { margin-top: 4px; }
+.sp-spread .sp-noteinput { width: 100%; margin-top: 10px; padding: 8px 10px; resize: vertical;
+  border: 1px solid var(--line); background: #FFFDF8; color: var(--ink);
+  font-family: var(--sans); font-size: 12.5px; line-height: 1.7; }
+.sp-spread .sp-msg { margin-top: 10px; font-size: 12px; line-height: 1.7; padding: 8px 11px; }
+.sp-spread .sp-msg.ok { background: #E2EEE4; color: var(--green); }
+.sp-spread .sp-msg.bad { background: #F4DDD7; color: var(--red); }
+.sp-spread .sp-dl { display: block; margin-top: 14px; padding: 12px; text-align: center;
+  background: var(--green); color: var(--ivory); font-size: 14px; letter-spacing: .12em; font-weight: 650; }
+.sp-spread .sp-dl:hover { background: #153F21; }

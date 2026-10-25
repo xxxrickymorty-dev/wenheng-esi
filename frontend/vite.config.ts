@@ -7,6 +7,11 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: "/",
-  server: { port: 5180, strictPort: false },
+  server: {
+    host: '127.0.0.1',
+    port: 5180, strictPort: false,
+    /* dev 下 /api 转给同一台 FastAPI（登录 cookie 同 host 共享） */
+    proxy: { '/api': 'http://127.0.0.1:8080' },
+  },
   build: { outDir: "dist", emptyOutDir: true },
 });
