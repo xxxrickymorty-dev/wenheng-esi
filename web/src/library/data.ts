@@ -61,7 +61,9 @@ function readStats(value: unknown): ShelfStats | undefined {
   if (!isRecord(value)) return undefined
   const stats: ShelfStats = {}
   let present = false
-  for (const key of ['monitored', 'topOnePercent', 'highlyCited'] as const) {
+  for (const key of [
+    'monitored', 'topOnePercent', 'highlyCited', 'docSlots', 'selfChecks', 'pendingManual',
+  ] as const) {
     const raw = value[key]
     if (raw === undefined) continue
     if (typeof raw !== 'number' || !Number.isFinite(raw)) return undefined

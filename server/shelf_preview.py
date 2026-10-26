@@ -66,9 +66,12 @@ def _preview_from_docx(docx_path: Path):
 #: top_papers_now 的口径是「上榜论文」（热点∪高被引，与报告一致）。
 _STATS_FROM_FACTS = (("n_disc_1pct", "topOnePercent"), ("top_papers_now", "highlyCited"))
 
+#: 审计记录里「手工槽清点」条目的 id（audit.py 第 5 项）——待人工数从这条里取。
+_MANUAL_SLOTS_ID = "manual_slots"
+
 
 def _stats_from_period(period_dir: Path) -> dict:
-    """首页事实条：最新一期产物里的三个数，哪项缺或形状不对就省哪项，绝不估数。"""
+    """首页事实条：最新一期产物里的数，哪项缺或形状不对就省哪项，绝不估数。"""
     stats = {}
     rows = artifacts.read_table2(period_dir)
     if rows:
@@ -78,6 +81,24 @@ def _stats_from_period(period_dir: Path) -> dict:
         value = facts.get(key)
         if isinstance(value, int) and not isinstance(value, bool):
             stats[name] = value
+    # 出处槽数：red_slots.json 一槽一处出处（每条都带 source），条数就是「标了出处」的处数
+    slots = artifacts.read_slots(period_dir)
+    if slots:
+        stats["docSlots"] = len(slots)
+    # 机器自检数：meta.json 的断言清单——出稿前逐项过、全 PASS 才继续（口径与签单闸同源）
+    counts = artifacts.assertion_counts(artifacts.read_meta(period_dir))
+    if counts["total"]:
+        stats["selfChecks"] = counts["total"]
+    # 待人工数：审计记录「手工槽清点」条目的 n_pending；早期期次没有审计产物 → 省
+    audit = artifacts.read_json(period_dir / "audit_record.json")
+    items = audit.get("items") if isinstance(audit, dict) else None
+    if isinstance(items, list):
+        for item in items:
+            if isinstance(item, dict) and item.get("id") == _MANUAL_SLOTS_ID:
+                pending = item.get("n_pending")
+                if isinstance(pending, int) and not isinstance(pending, bool):
+                    stats["pendingManual"] = pending
+                break
     return stats
 
 
@@ -107,7 +128,7 @@ def build_preview(cards, *, out_dir=config.OUT_DIR):
         latest = books[-1]["period"]
         stats = _stats_from_period(Path(out_dir) / latest)
         if stats:
-            stats["source"] = f"{latest} 期流水线产物（table2 与 overview_facts）"
+            stats["source"] = f"{latest} 期流水线产物（table2、overview_facts、red_slots、meta、audit_record）"
             payload["stats"] = stats
     return payload
 

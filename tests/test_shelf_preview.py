@@ -33,8 +33,10 @@ def _report(path, *, valid=True, cover=True, delayed_body=False, issue="2026年�
     document.save(path)
 
 
-def _products(path, *, disciplines=22, n_disc=14, top=291):
-    """给某期写上对勘本与概述事实——首页事实条的两位出处；值原样写入以便试坏形状。"""
+def _products(path, *, disciplines=22, n_disc=14, top=291, slots=None, assertions=None, pending=None):
+    """给某期写上首页事实条的产物出处；值原样写入以便试坏形状。
+    slots / assertions / pending 分别写 red_slots.json、meta.json 断言、audit_record.json
+    的「手工槽清点」；None＝不写该文件（缺产物 → 对应项省略）。"""
     with (path / "table2.csv").open("w", encoding="utf-8-sig", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["discipline", "papers", "cnci", "total_cites"])
@@ -46,6 +48,16 @@ def _products(path, *, disciplines=22, n_disc=14, top=291):
     if top is not None:
         facts["top_papers_now"] = top
     (path / "overview_facts.json").write_text(json.dumps(facts, ensure_ascii=False), encoding="utf-8")
+    if slots is not None:
+        rows = [{"location": f"正文/p{i}", "old": "旧", "new": "新", "source": "sentences.py"}
+                for i in range(slots)]
+        (path / "red_slots.json").write_text(json.dumps(rows, ensure_ascii=False), encoding="utf-8")
+    if assertions is not None:
+        meta = {"assertions": [["PASS", f"断言{i}"] for i in range(assertions)]}
+        (path / "meta.json").write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+    if pending is not None:
+        audit = {"verdict": "review", "items": [{"id": "manual_slots", "n_pending": pending}]}
+        (path / "audit_record.json").write_text(json.dumps(audit, ensure_ascii=False), encoding="utf-8")
 
 
 def test_只提取封面目录和名词解释_正文哨兵不泄漏(tmp_path):
@@ -105,7 +117,7 @@ def test_按期次升序并补齐书架封面字段(tmp_path):
     ]
 
 
-def test_事实条盖章_三个数取自最新一期产物(tmp_path):
+def test_事实条盖章_数取自最新一期产物(tmp_path):
     old = tmp_path / "202601"
     latest = tmp_path / "202609"
     old.mkdir()
@@ -113,13 +125,14 @@ def test_事实条盖章_三个数取自最新一期产物(tmp_path):
     _report(old / "报告初稿_202601.docx", issue="2026年第1期（总第35期）", month="2026年1月")
     _report(latest / "报告初稿_202609.docx")
     _products(old, disciplines=20, n_disc=12, top=245)
-    _products(latest)
+    _products(latest, slots=3, assertions=2, pending=1)
 
     payload = shelf_preview.build_preview(
         [{"period": "202601"}, {"period": "202609"}], out_dir=tmp_path)
     assert payload["stats"] == {
         "monitored": 22, "topOnePercent": 14, "highlyCited": 291,
-        "source": "202609 期流水线产物（table2 与 overview_facts）",
+        "docSlots": 3, "selfChecks": 2, "pendingManual": 1,
+        "source": "202609 期流水线产物（table2、overview_facts、red_slots、meta、audit_record）",
     }
 
 
@@ -136,11 +149,23 @@ def test_事实条缺项就省项_最新一期全缺就整个不给(tmp_path):
     payload = shelf_preview.build_preview([{"period": "202601"}], out_dir=tmp_path)
     assert "stats" not in payload
 
-    # 只剩一个形状对的数：缺的省掉，剩下的照给，出处照样盖章。
+    # 只剩一个形状对的数；新三样给了坏形状（该是清单的给成标量）→ 新项按缺处理，
+    # 也不拖累已有数——宁可缺，不可给没有出处的数。
     _products(partial, disciplines=0, n_disc=14, top=None)
+    (partial / "red_slots.json").write_text(json.dumps({"坏": True}), encoding="utf-8")
+    (partial / "meta.json").write_text(json.dumps({"assertions": "不是清单"}), encoding="utf-8")
+    (partial / "audit_record.json").write_text(json.dumps({"items": "不是清单"}), encoding="utf-8")
     payload = shelf_preview.build_preview([{"period": "202601"}], out_dir=tmp_path)
     assert payload["stats"] == {
-        "topOnePercent": 14, "source": "202601 期流水线产物（table2 与 overview_facts）",
+        "topOnePercent": 14, "source": "202601 期流水线产物（table2、overview_facts、red_slots、meta、audit_record）",
+    }
+
+    # 新三样只有形状对的：槽位数照给、待人工 0 是真值照给（不省），其余缺 → 省。
+    _products(partial, disciplines=0, n_disc=None, top=None, slots=5, pending=0)
+    payload = shelf_preview.build_preview([{"period": "202601"}], out_dir=tmp_path)
+    assert payload["stats"] == {
+        "docSlots": 5, "pendingManual": 0,
+        "source": "202601 期流水线产物（table2、overview_facts、red_slots、meta、audit_record）",
     }
 
     # 最新一期（202603）什么产物都没有 → 整条不给，也不回退拿旧期凑数。

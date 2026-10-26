@@ -25,7 +25,13 @@ export type ShelfStats = {
   topOnePercent?: number
   /** 上榜论文数（热点∪高被引） */
   highlyCited?: number
-  /** 数字出处，如「202609 期流水线产物（table2 与 overview_facts）」 */
+  /** 报告出处槽数（red_slots.json 条数，一槽一处出处） */
+  docSlots?: number
+  /** 出稿前机器自检项数（meta.json 断言清单条数） */
+  selfChecks?: number
+  /** 待人工清点处数（审计记录「手工槽清点」的 n_pending） */
+  pendingManual?: number
+  /** 数字出处，如「202609 期流水线产物（table2、overview_facts、red_slots、meta、audit_record）」 */
   source?: string
 }
 
