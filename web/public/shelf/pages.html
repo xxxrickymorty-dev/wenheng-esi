@@ -91,14 +91,6 @@ button:disabled{opacity:.3;cursor:default}svg{display:block}::selection{backgrou
 .book-top-edge,.book-bottom-edge{position:absolute;left:0;right:0;height:var(--depth);background-image:var(--grain),linear-gradient(180deg,rgba(18,44,34,.35),transparent 14%,transparent 86%,rgba(18,44,34,.4)),repeating-linear-gradient(90deg,#b8ae96 0 1px,#d6cdb6 1px 2px,#a89e86 2px 3px);background-size:140px 140px,auto,auto;background-blend-mode:soft-light,normal,normal;box-shadow:inset 0 0 10px rgba(35,28,19,.24);filter:brightness(.84) saturate(.96)}
 .book-top-edge{top:0;transform-origin:top;transform:translateZ(calc(var(--depth) * .5)) rotateX(-90deg)}
 .book-bottom-edge{bottom:0;transform-origin:bottom;transform:translateZ(calc(var(--depth) * .5)) rotateX(90deg)}
-.stage-tools{margin-top:18px;width:min(430px,92%);display:grid;justify-items:center;gap:12px}
-.drag-hint{display:flex;align-items:center;gap:10px;font:11px/1.6 var(--sans);letter-spacing:.07em;color:var(--ink-faint)}
-.drag-hint::before{content:"";width:25px;height:1px;background:currentColor;opacity:.5}
-.view-switch{display:flex;align-items:center;border-top:1px solid var(--rule-soft);border-bottom:1px solid var(--rule-soft)}
-.view-switch button{position:relative;min-width:54px;padding:8px 10px;color:var(--ink-faint);font:11.5px/1.5 var(--sans);letter-spacing:.06em;transition:color .2s}
-.view-switch button+button::before{content:"";position:absolute;left:0;top:11px;bottom:11px;width:1px;background:var(--rule-soft)}
-.view-switch button::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:1px;background:var(--ink);transform:scaleX(0);transition:transform .24s var(--ease)}
-.view-switch button:hover,.view-switch button[aria-pressed="true"]{color:var(--ink)}.view-switch button[aria-pressed="true"]::after{transform:scaleX(1)}
 .story{min-width:0;padding-bottom:13vh}
 .issue-panel{padding:15vh 0 17vh;border-top:1px solid transparent}
 .issue-panel.is-first{padding-top:14.5vh}
@@ -149,7 +141,7 @@ dialog{margin:auto;border:0;padding:0;color:var(--ink);background:var(--paper);m
 @keyframes page-turn{0%{opacity:.2;transform:rotateY(-15deg) translateX(-18px)}100%{opacity:1;transform:none}}
 @media(max-width:1180px){
   .layout{width:calc(100% - 150px);grid-template-columns:minmax(0,1.22fr) minmax(400px,1fr)}
-  .book{width:clamp(258px,23vw,318px)}.stage-tools{width:min(380px,94%)}
+  .book{width:clamp(258px,23vw,318px)}
 }
 @media(max-width:900px){
   .layout{display:block;width:calc(100% - 86px);margin-left:62px;margin-right:24px}
@@ -158,7 +150,6 @@ dialog{margin:auto;border:0;padding:0;color:var(--ink);background:var(--paper);m
   .stage-caption{top:16px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:9px;gap:11px}.stage-caption b{font-size:12px}
   .book{width:min(200px,43vw)}.book-scene{padding-bottom:25px}
   .book-contact{width:78%;height:25px;bottom:3px}
-  .stage-tools{margin-top:8px;gap:5px}.drag-hint{font-size:9.5px}.view-switch button{min-width:45px;padding:5px 7px;font-size:10.5px}
   .story{padding-bottom:0}.issue-panel{padding:34px 0 60px;border-top:0}.issue-panel+.issue-panel{margin-top:0;padding-top:46px;border-top:1px solid var(--rule-soft)}
   .issue-panel h1{font-size:31px;margin-top:18px}.lede{font-size:15px}.byline{font-size:16px}.entry-group{margin-top:38px}.editor{margin-top:44px}.glossary,.contents{margin-top:52px}
   .glossary-grid{grid-template-columns:1fr;gap:24px}.footer-inner{width:calc(100% - 86px);margin-left:62px;margin-right:24px;flex-direction:column}
@@ -166,8 +157,7 @@ dialog{margin:auto;border:0;padding:0;color:var(--ink);background:var(--paper);m
 }
 @media(max-width:600px){
   .stage-col{height:45vh}.stage-inner{height:45vh;padding-top:18px}
-  .book{width:min(178px,44vw)}.stage-caption{top:10px}.stage-tools{margin-top:4px}
-  .view-switch button{min-width:41px;padding:4px 5px;font-size:10px}
+  .book{width:min(178px,44vw)}.stage-caption{top:10px}
   .issue-panel{padding:26px 0 52px}.issue-panel h1{font-size:28px}.glossary-grid{grid-template-columns:1fr}.reader{width:calc(100vw - 18px);height:calc(100dvh - 18px)}.reader-stage{padding:14px}.reader-page{padding:27px 23px;min-height:100%}.reader-page h2{font-size:25px}.reader-terms{grid-template-columns:1fr}.reader-head,.reader-foot{padding:0 13px}.reader-foot{gap:7px}.reader-nav{min-width:78px}
   .footer-inner{font-size:10.5px}
 }
@@ -196,15 +186,6 @@ dialog{margin:auto;border:0;padding:0;color:var(--ink);background:var(--paper);m
           <div class="book-contact" id="bookContact" aria-hidden="true"></div>
           <div class="book" id="book"></div>
         </div>
-        <div class="stage-tools">
-          <p class="drag-hint">拖动书封，或按方向键 · 四个视角可直接查看</p>
-          <div class="view-switch" role="group" aria-label="书体视角">
-            <button type="button" data-view="front" aria-pressed="true">正面</button>
-            <button type="button" data-view="spine" aria-pressed="false">书脊</button>
-            <button type="button" data-view="edge" aria-pressed="false">书口</button>
-            <button type="button" data-view="back" aria-pressed="false">封底</button>
-          </div>
-        </div>
       </div>
     </aside>
     <div class="story" id="story"></div>
@@ -220,7 +201,7 @@ dialog{margin:auto;border:0;padding:0;color:var(--ink);background:var(--paper);m
 </dialog>
 <dialog class="help-dialog" id="helpDialog" aria-labelledby="helpHeading">
   <h2 id="helpHeading">在这一排册页里</h2>
-  <ul><li><span>继续看下一册</span><b>向下滚动</b></li><li><span>定位期次</span><b>左侧刻度</b></li><li><span>转书</span><b>拖动书封 / 方向键</b></li><li><span>看侧面与封底</span><b>四个视角按钮</b></li><li><span>翻阅内容</span><b>「翻阅本期」</b></li></ul>
+  <ul><li><span>继续看下一册</span><b>向下滚动</b></li><li><span>定位期次</span><b>左侧刻度</b></li><li><span>转书</span><b>拖动书封 / 方向键</b></li><li><span>翻阅内容</span><b>「翻阅本期」</b></li></ul>
   <button id="helpClose">知道了</button>
 </dialog>
 <p class="sr-only" id="live" aria-live="polite"></p>
@@ -282,7 +263,6 @@ function renderBook(i){book.innerHTML=bookMarkup(BOOKS[i])}
 function applyAngles(){book.style.setProperty('--rx',angles.x.toFixed(2)+'deg');book.style.setProperty('--ry',angles.y.toFixed(2)+'deg');book.style.setProperty('--rz',angles.z.toFixed(2)+'deg');book.style.setProperty('--lx',Math.max(-46,Math.min(46,-angles.y*1.15)).toFixed(1)+'px');book.style.setProperty('--ly',Math.max(-18,Math.min(18,angles.x*1.6)).toFixed(1)+'px');contact.style.setProperty('--sx',Math.max(-24,Math.min(38,9+(angles.y+22)*-1.1)).toFixed(1)+'px');contact.style.setProperty('--ss',(1+Math.min(.42,Math.abs(angles.y+22)/200)).toFixed(2))}
 function setPose(name,animate=true){
  manual=true;angles={...POSES[name]};book.style.transition=animate&&!reduce?'transform .84s var(--ease)':'';applyAngles();
- document.querySelectorAll('.view-switch button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===name?'true':'false'));
  if(!animate)setTimeout(()=>book.style.transition='',0);
 }
 function updateChrome(i){
@@ -296,7 +276,7 @@ function updateChrome(i){
 function switchTo(i,instant=false){
  if(i===active&&i===rendered&&!isSwapping)return;
  active=i;updateChrome(i);wash(BOOKS[i].theme,!instant);
- if(instant||reduce){renderBook(i);rendered=i;angles={...POSES.front};book.style.transition='';applyAngles();isSwapping=false;pending=-1;isInitial=false;document.querySelectorAll('.view-switch button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view==='front'?'true':'false'));return}
+ if(instant||reduce){renderBook(i);rendered=i;angles={...POSES.front};book.style.transition='';applyAngles();isSwapping=false;pending=-1;isInitial=false;return}
  if(isSwapping){pending=i;return}
  if(i===rendered){isInitial=false;return}
  isSwapping=true;
@@ -309,7 +289,6 @@ function switchTo(i,instant=false){
   angles={x:4,y:94,z:-3};book.style.transition='';applyAngles();
   requestAnimationFrame(()=>{
    book.style.transition='transform .8s var(--ease)';angles={...POSES.front};applyAngles();
-   document.querySelectorAll('.view-switch button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view==='front'?'true':'false'));
    setTimeout(()=>{
     book.style.transition='';isSwapping=false;manual=false;isInitial=false;
     const p=pending;pending=-1;if(p>=0&&p!==rendered)switchTo(p,false);
@@ -325,7 +304,7 @@ function observe(){
  if(found!==active)switchTo(found);
 }
 let scrollRaf=0;addEventListener('scroll',()=>{if(scrollRaf)return;scrollRaf=requestAnimationFrame(()=>{scrollRaf=0;observe();if(!manual&&!isSwapping&&!drag){const p=panels[active],r=p.getBoundingClientRect(),prog=Math.max(0,Math.min(1,-r.top/Math.max(1,r.height-innerHeight)));book.style.transition='transform .18s ease-out';angles={x:6+prog*1.8,y:-22-prog*11,z:-3};applyAngles()}})},{passive:true});
-function onDown(e){if(isSwapping||(e.button!==undefined&&e.button!==0))return;book.style.transition='none';book.style.setProperty('--hx','0deg');book.style.setProperty('--hy','0deg');drag={id:e.pointerId,x:e.clientX,y:e.clientY,bx:angles.x,by:angles.y};scene.setPointerCapture(e.pointerId);book.classList.add('is-dragging');manual=true;document.querySelectorAll('.view-switch button').forEach(b=>b.setAttribute('aria-pressed','false'))}
+function onDown(e){if(isSwapping||(e.button!==undefined&&e.button!==0))return;book.style.transition='none';book.style.setProperty('--hx','0deg');book.style.setProperty('--hy','0deg');drag={id:e.pointerId,x:e.clientX,y:e.clientY,bx:angles.x,by:angles.y};scene.setPointerCapture(e.pointerId);book.classList.add('is-dragging');manual=true}
 function onMove(e){
  if(!drag||drag.id!==e.pointerId){
   if(!drag&&e.pointerType==='mouse'&&!reduce){const r=scene.getBoundingClientRect(),nx=(e.clientX-r.left)/r.width-.5,ny=(e.clientY-r.top)/r.height-.5;book.style.transition='transform .18s ease-out';book.style.setProperty('--lx',(nx*86).toFixed(1)+'px');book.style.setProperty('--ly',(ny*34).toFixed(1)+'px');book.style.setProperty('--hx',(-ny*1.8).toFixed(2)+'deg');book.style.setProperty('--hy',(nx*2.4).toFixed(2)+'deg')}
@@ -341,9 +320,8 @@ scene.addEventListener('keydown',e=>{
  if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','f','F'].includes(e.key))return;e.preventDefault();manual=true;
  if(e.key==='ArrowLeft')angles.y=Math.max(-206,angles.y-8);if(e.key==='ArrowRight')angles.y=Math.min(206,angles.y+8);
  if(e.key==='ArrowUp')angles.x=Math.max(-16,angles.x-5);if(e.key==='ArrowDown')angles.x=Math.min(18,angles.x+5);
- if(e.key==='Home'||e.key==='f'||e.key==='F')angles={...POSES.front};applyAngles();document.querySelectorAll('.view-switch button').forEach(b=>b.removeAttribute('aria-pressed'))
+ if(e.key==='Home'||e.key==='f'||e.key==='F')angles={...POSES.front};applyAngles()
 });
-document.querySelectorAll('.view-switch button').forEach(b=>b.addEventListener('click',()=>setPose(b.dataset.view)));
 
 function readerContent(i){
  const b=BOOKS[i];
