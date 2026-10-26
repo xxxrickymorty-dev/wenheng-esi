@@ -116,3 +116,17 @@
 .sp-spread .page-r { display: flex; flex-direction: column; }
 .sp-spread .ws-host { flex: 1; }
 .sp-spread .ws-strip .app-side { margin-left: auto; }
+
+/* ───── 陈列馆单栏（rick 2026-10-26：陈列馆不要左栏，左栏只放在工作区） ─────
+   左页、钤印位、右页顶条都不渲染，右页独占整幅；订口金线与纸色留白一并收掉，
+   让书架自己铺到四边。回工作区只留右上一条浮标（壳内没有浏览器后退可用）。 */
+.sp-spread.solo { grid-template-columns: minmax(0, 1fr); }
+.sp-spread.solo .page-r { border-left: 0; padding-bottom: 0; }
+.sp-spread.solo .back-home {
+  position: fixed; right: max(20px, 2.2vw); top: max(16px, 2.2vh); z-index: 70;
+  border: 1px solid rgba(242, 237, 225, .18); background: rgba(20, 18, 15, .46);
+  padding: 6px 13px;
+  font-family: var(--kai); font-size: 11.5px; letter-spacing: .2em;
+  color: rgba(242, 237, 225, .82);
+}
+.sp-spread.solo .back-home:hover { color: #FFF9E6; border-color: rgba(200, 181, 132, .7); }

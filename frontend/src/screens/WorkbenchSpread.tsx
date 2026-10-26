@@ -91,6 +91,17 @@ export function WorkbenchSpread() {
   const [land, setLand] = useState(false);
   const prevStatus = useRef<string>("unsigned");
 
+  /* 陈列馆＝独立展示面（rick 2026-10-26）：不套工作区壳——左页、钤印位、右页顶条一律不画，
+     右页独占整幅。左栏只留给工作区（本期四站、报告台、台账这些「事」）。 */
+  const bare = cur === "shelf";
+
+  /* 进出陈列馆时版式换栏，滚动位置一律归零（否则会落在书架中段或半屏工作台） */
+  const wasBare = useRef(false);
+  useEffect(() => {
+    if (bare || wasBare.current) window.scrollTo(0, 0);
+    wasBare.current = bare;
+  }, [bare]);
+
   /* 真签发态翻面的那一刻落章（ShellApp 上报的 status 是唯一事实源） */
   useEffect(() => {
     const st = ctx?.status ?? "unsigned";
@@ -112,7 +123,7 @@ export function WorkbenchSpread() {
           : status === "signed" ? "signed" : "unsigned";
 
   return (
-    <div className="sp-spread" style={{ "--lw": lw } as CSSProperties}>
+    <div className={bare ? "sp-spread solo" : "sp-spread"} style={{ "--lw": lw } as CSSProperties}>
 
       {/* 印泥毛边滤镜（跨页壳私有 id；工作区屏用 ws/ShellApp 里那套） */}
       <svg className="sp-defs" aria-hidden="true"><defs>
@@ -126,64 +137,76 @@ export function WorkbenchSpread() {
         </filter>
       </defs></svg>
 
-      {/* 左页 · 会泽 */}
-      <aside className="page-l">
-        <div className="bm"><b>文衡</b><span>云南大学图书馆<br />学科信息参考</span></div>
-        <nav className="nav" aria-label="工作区">
-          {NAV.map((n) => (
-            <a key={n.key} href={`#${n.key}`}
-               className={n.m ? "m" : n.q ? "q" : undefined}
-               aria-current={cur === n.key ? "page" : undefined}
-               onClick={(e) => { e.preventDefault(); setCur(n.key) }}>
-              {n.label}
-            </a>
-          ))}
-        </nav>
-        <div className="hero-l">
-          <p className="ov">{meta.ov}</p>
-          <h1>{meta.title}</h1>
-          <p className="vol">
-            <span className="b">{ctx?.label ?? (ctx?.period ?? "——————")}</span>
-            <span className="c">{ctx?.window ? `数据截至 ${ctx.window}` : ctx ? "—" : "正在连接服务…"}</span>
-          </p>
-          <div className="rule" />
-          <p className="stm">{meta.stm}</p>
-          <div className="state">
-            <div className="s"><span className="k">任 务</span><span className="v">{ctx?.task ?? "—"}</span></div>
-            <div className="s"><span className="k">签 发</span><span className="v">
-              {status === "signed" ? "已签发" : status === "stale" ? "签发已失效" : "未签发"}
-            </span></div>
-            <div className="s"><span className="k">取 数</span><span className="v">{ctx?.acq ?? "—"}</span></div>
+      {/* 左页 · 会泽：只在工作区出——陈列馆是成品展示面，不套壳 */}
+      {!bare && (
+        <aside className="page-l">
+          <div className="bm"><b>文衡</b><span>云南大学图书馆<br />学科信息参考</span></div>
+          <nav className="nav" aria-label="工作区">
+            {NAV.map((n) => (
+              <a key={n.key} href={`#${n.key}`}
+                 className={n.m ? "m" : n.q ? "q" : undefined}
+                 aria-current={cur === n.key ? "page" : undefined}
+                 onClick={(e) => { e.preventDefault(); setCur(n.key) }}>
+                {n.label}
+              </a>
+            ))}
+          </nav>
+          <div className="hero-l">
+            <p className="ov">{meta.ov}</p>
+            <h1>{meta.title}</h1>
+            <p className="vol">
+              <span className="b">{ctx?.label ?? (ctx?.period ?? "——————")}</span>
+              <span className="c">{ctx?.window ? `数据截至 ${ctx.window}` : ctx ? "—" : "正在连接服务…"}</span>
+            </p>
+            <div className="rule" />
+            <p className="stm">{meta.stm}</p>
+            <div className="state">
+              <div className="s"><span className="k">任 务</span><span className="v">{ctx?.task ?? "—"}</span></div>
+              <div className="s"><span className="k">签 发</span><span className="v">
+                {status === "signed" ? "已签发" : status === "stale" ? "签发已失效" : "未签发"}
+              </span></div>
+              <div className="s"><span className="k">取 数</span><span className="v">{ctx?.acq ?? "—"}</span></div>
+            </div>
+          </div>
+          <div className="footline">
+            <span>会 泽 百 家 · 至 公 天 下</span>
+            <span>并 行 实 验 · 随 时 可 能 删 除</span>
+          </div>
+        </aside>
+      )}
+
+      {/* 钤印位：纸卡垫底＋状态印（随站与真签发态换面）——钤在左栏订口，壳不在就不钤 */}
+      {!bare && (
+        <div className="sealbox" id="sp-seal" aria-hidden="true">
+          <div key={sealState} className={land ? "landing" : undefined}>
+            <SealFace state={sealState} />
           </div>
         </div>
-        <div className="footline">
-          <span>会 泽 百 家 · 至 公 天 下</span>
-          <span>并 行 实 验 · 随 时 可 能 删 除</span>
-        </div>
-      </aside>
+      )}
 
-      {/* 钤印位：纸卡垫底＋状态印（随站与真签发态换面） */}
-      <div className="sealbox" id="sp-seal" aria-hidden="true">
-        <div key={sealState} className={land ? "landing" : undefined}>
-          <SealFace state={sealState} />
-        </div>
-      </div>
-
-      {/* 右页 · 至公：真工作区（web/src 全量迁入 ws/，视图由左栏驱动） */}
+      {/* 右页 · 至公：真工作区（web/src 全量迁入 ws/，视图由左栏驱动）；
+          陈列馆独占整幅，只留一条回工作区的浮标（壳里没有浏览器后退可用） */}
       <section className="page-r">
-        <div className="rtop">
-          <span>{meta.title}</span>
-          <span>·</span>
-          <span>{ctx?.period ?? "——————"}</span>
-          <div className="r">
-            <span className="density" role="group" aria-label="左栏宽度">
-              {([["34%", "宽松"], ["28%", "紧凑"], ["24%", "极窄"]] as const).map(([v, name]) => (
-                <button key={v} type="button" onClick={() => setLw(v)}
-                        aria-pressed={lw === v ? "true" : "false"}>{name}</button>
-              ))}
-            </span>
+        {!bare && (
+          <div className="rtop">
+            <span>{meta.title}</span>
+            <span>·</span>
+            <span>{ctx?.period ?? "——————"}</span>
+            <div className="r">
+              <span className="density" role="group" aria-label="左栏宽度">
+                {([["34%", "宽松"], ["28%", "紧凑"], ["24%", "极窄"]] as const).map(([v, name]) => (
+                  <button key={v} type="button" onClick={() => setLw(v)}
+                          aria-pressed={lw === v ? "true" : "false"}>{name}</button>
+                ))}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
+        {bare && (
+          <button type="button" className="back-home" onClick={() => setCur("workbench")}>
+            ←　回 工 作 区
+          </button>
+        )}
         <div className="ws-host">
           <ShellApp view={cur} onNavigate={setCur} onContext={setCtx} />
         </div>

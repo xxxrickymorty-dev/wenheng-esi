@@ -367,6 +367,8 @@ export default function ShellApp({ view, onNavigate, onContext }: ShellAppProps)
      灵活报告两栏左横右纵各自从本侧进。异步到达的块经 MutationObserver 补接（元素级幂等，
      已接过的不会重放）；接线失败/无 IO 时 m-done 全展示（见 lib/motion.ts）。 */
   useEffect(() => {
+    /* 陈列馆自己排整页、自带连续册页的层叠，不接工作区的入场动效 */
+    if (view === 'shelf') return
     const main = document.querySelector<HTMLElement>('main')
     if (!main) return
     const wireList = () => {
@@ -608,6 +610,17 @@ export default function ShellApp({ view, onNavigate, onContext }: ShellAppProps)
     })
   }, [selected, periodRow?.status, periodRow?.label, detail, onContext])
 
+  /* 陈列馆＝独立成品展示面（rick 2026-10-26：左栏只放在工作区）：
+     不套工作区细条、不吃 .wrap 版心，整页交给 ShelfPage 自己排；
+     屏内「回工作台」链接仍就地拦截成壳内导航，不整页跳走。 */
+  if (view === 'shelf') {
+    return (
+      <div className="ws" ref={wsRef} onClick={onShellClick}>
+        <ShelfPage />
+      </div>
+    )
+  }
+
   return (
     <div className="ws" ref={wsRef} onClick={onShellClick}>
       <div className="app-shell">
@@ -732,8 +745,6 @@ export default function ShellApp({ view, onNavigate, onContext }: ShellAppProps)
           </div>
         ) : view === 'ask' ? (
           <DialogPage />
-        ) : view === 'shelf' ? (
-          <ShelfPage />
         ) : view === 'pano' ? (
           <Panorama
             period={selected}
