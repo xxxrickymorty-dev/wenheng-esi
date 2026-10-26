@@ -220,9 +220,10 @@ def ov_1pct(w, period):
          "grouping": "stacked", "gap_width": 40, "overlap": 100,
          # 🔴 Word 不渲染**堆叠柱**的系列级数值标签（inBase/ctr/outEnd 都试过，见验证报告 §6.1），
          #    与其留一套不生效的配置，不如显式关掉：数值由柱长与横轴刻度读出。
-         "series": [{"name": "与ESI前1%的接近度", "values": vals, "color": "B4A7D6",
+         # 色值＝原件第 5 期同一张图取色（2026-10-26 实测 #B3A2C7 紫 / #92D050 绿）
+         "series": [{"name": "与ESI前1%的接近度", "values": vals, "color": "B3A2C7",
                      "label_fmt": PCT_LITERAL, "show_labels": False},
-                    {"name": "与ESI前1%的差距", "values": gap, "color": "A9D18E",
+                    {"name": "与ESI前1%的差距", "values": gap, "color": "92D050",
                      "label_fmt": PCT_LITERAL, "show_labels": False}]},
         {"kind": "line", "cat_ax": "c1", "val_ax": "v1",
          "series": [{"name": "ESI前1%基线", "values": [100.0] * len(vals), "color": "FF0000",
@@ -233,8 +234,8 @@ def ov_1pct(w, period):
              "maximum": xmax, "major_unit": 100, "numfmt": PCT_LITERAL, "gridlines": False,
              "fontsize": 6.5}]
     xml = nc.combo_chart_xml(groups, axes, cats, legend_pos="b")
-    series = [{"name": "与ESI前1%的接近度", "values": vals, "color": "B4A7D6"},
-              {"name": "与ESI前1%的差距", "values": gap, "color": "A9D18E"},
+    series = [{"name": "与ESI前1%的接近度", "values": vals, "color": "B3A2C7"},
+              {"name": "与ESI前1%的差距", "values": gap, "color": "92D050"},
               {"name": "ESI前1%基线", "values": [100.0] * len(vals), "color": "FF0000"}]
     return _body("1pct", xml, nc.build_data_xlsx(cats, series))
 
@@ -247,20 +248,31 @@ def ov_1permille(w, period):
     cats = [charts._cn(d) for d in ratio.index]
     vals = [float(v) for v in ratio]
     gap = [100.0 - v for v in vals]
-    groups = [{"kind": "bar", "cat_ax": "c1", "val_ax": "v1", "bar_dir": "bar",
-               "grouping": "stacked", "gap_width": 60, "overlap": 100,
-               # 同 1pct：Word 不渲染堆叠柱的系列级数值标签 → 显式关掉（见验证报告 §6.1）
-               "series": [{"name": "1‰接近度", "values": vals, "color": "B4A7D6",
-                           "label_fmt": PCT_LITERAL, "show_labels": False},
-                          {"name": "与前1‰差距", "values": gap, "color": "A9D18E",
-                           "label_fmt": PCT_LITERAL, "show_labels": False}]}]
+    # 色值＝原件第 5 期同一张图取色（2026-10-26 实测 #92D050 绿 / #FFC000 橙黄）。
+    # 🔴 2026-10-26 前用的是 B4A7D6+A9D18E（紫+浅绿），与原件完全不同——rick 反馈
+    #    「图表样式跟原来不一样」的首因之一，改回原件配色。
+    groups = [
+        {"kind": "bar", "cat_ax": "c1", "val_ax": "v1", "bar_dir": "bar",
+         "grouping": "stacked", "gap_width": 60, "overlap": 100,
+         # 同 1pct：Word 不渲染堆叠柱的系列级数值标签 → 显式关掉（见验证报告 §6.1）
+         "series": [{"name": "1‰接近度", "values": vals, "color": "92D050",
+                     "label_fmt": PCT_LITERAL, "show_labels": False},
+                    {"name": "与前1‰差距", "values": gap, "color": "FFC000",
+                     "label_fmt": PCT_LITERAL, "show_labels": False}]},
+        # 100% 基线：与 1pct 图同法（横条图的 line 组＝一根竖线），rick 2026-09-24 对
+        # 趋势图提过「这张图必须要有阈值线」，1‰ 图同理。
+        {"kind": "line", "cat_ax": "c1", "val_ax": "v1",
+         "series": [{"name": "1‰基线", "values": [100.0] * len(cats), "color": "FF0000",
+                     "lw": 19050, "show_labels": False}]},
+    ]
     axes = [{"id": "c1", "kind": "cat", "cross": "v1", "pos": "l", "fontsize": 9.5},
             {"id": "v1", "kind": "val", "cross": "c1", "pos": "b", "minimum": 0,
-             "maximum": 105, "major_unit": 20, "numfmt": "0", "gridlines": True,
+             "maximum": 105, "major_unit": 20, "numfmt": PCT_LITERAL, "gridlines": True,
              "fontsize": 9.5}]
     xml = nc.combo_chart_xml(groups, axes, cats, legend_pos="b")
-    series = [{"name": "1‰接近度", "values": vals, "color": "B4A7D6"},
-              {"name": "与前1‰差距", "values": gap, "color": "A9D18E"}]
+    series = [{"name": "1‰接近度", "values": vals, "color": "92D050"},
+              {"name": "与前1‰差距", "values": gap, "color": "FFC000"},
+              {"name": "1‰基线", "values": [100.0] * len(cats), "color": "FF0000"}]
     return _body("1permille", xml, nc.build_data_xlsx(cats, series))
 
 
@@ -271,11 +283,16 @@ def ov_top_by_subject(w, period):
     s = s[s > 0].sort_values(ascending=False)
     cats = [charts._cn(d) for d in s.index]
     vals = [float(v) for v in s]
+    import math  # noqa: PLC0415
+
     b = nc.auto_axis([vals], floor_zero=True, intervals=6, pad=0.12, integer=True)
-    series = [{"name": "顶尖论文发文量", "values": vals, "color": C_BLUE, "label_fmt": "0"}]
+    # 原件：浅青柱 #7BDAEA、学科名竖排、无图例、纵轴 0–45（2026-10-26 取色/量轴）
+    top = int(math.ceil(max(vals) / 5.0) * 5) or 5
+    series = [{"name": "顶尖论文发文量", "values": vals, "color": "7BDAEA", "label_fmt": "0"}]
     xml = nc.bar_chart_xml(series, cats, gap_width=350, overlap=-27, label_fmt="0",
-                           major_unit=b[2], minimum=0, maximum=b[1], numfmt="0",
-                           cat_rotation="-2700000", cat_fontsize=6.6)
+                           major_unit=b[2], minimum=0, maximum=top, numfmt="0",
+                           legend_pos=None,
+                           cat_rotation="-5400000", cat_fontsize=6.6)
     return _body("top_by_subject", xml, nc.build_data_xlsx(cats, series))
 
 
@@ -286,10 +303,14 @@ def ov_top_by_year(w, period):
     s = s[s > 0]
     cats = [str(i) for i in s.index]
     vals = [float(v) for v in s]
+    import math  # noqa: PLC0415
+
     b = nc.auto_axis([vals], floor_zero=True, intervals=5, pad=0.12, integer=True)
-    series = [{"name": "顶尖论文发文量", "values": vals, "color": nc.C_ORANGE, "label_fmt": "0"}]
+    # 原件：金黄柱 #FFC000、纵轴 0–80（2026-10-26 取色/量轴）；向上取 20 的倍数，不裁数据
+    top = int(math.ceil(max(vals) / 20.0) * 20) or 20
+    series = [{"name": "顶尖论文发文量", "values": vals, "color": "FFC000", "label_fmt": "0"}]
     xml = nc.bar_chart_xml(series, cats, gap_width=100, overlap=-27, label_fmt="0",
-                           major_unit=b[2], minimum=0, maximum=b[1], numfmt="0",
+                           major_unit=b[2], minimum=0, maximum=top, numfmt="0",
                            legend_pos=None)
     return _body("top_by_year", xml, nc.build_data_xlsx(cats, series))
 
@@ -340,8 +361,9 @@ def ov_trend_table(w, *, n_periods=7, end_period=None, top_k=4):
     # 100% 基线：常量线画进图里（rick 2026-09-24「这张图必须要有千分之一的阈值线」）
     series.append({"name": "ESI1‰ 基线", "values": [100.0] * len(periods), "color": "FF0000",
                    "lw": 20320, "marker": "none", "show_labels": False})
+    # 纵轴 0–100%（10 格）＝原件口径；旧值 minimum=20 让数据区顶到一半高度（2026-10-26 改）
     xml = nc.line_chart_xml(series, periods, numfmt=PCT_LITERAL, label_fmt=PCT_LITERAL,
-                            minimum=20, maximum=100, major_unit=20, legend_pos="b",
+                            minimum=0, maximum=100, major_unit=10, legend_pos="b",
                             cat_fontsize=9.5, val_fontsize=10,
                             title="我校主要学科近期发展趋势",
                             dtable=nc.data_table_xml())

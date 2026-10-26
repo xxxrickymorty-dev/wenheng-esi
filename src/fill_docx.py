@@ -345,6 +345,28 @@ def _text_slot(location, old, new, source):
     return d
 
 
+def _blacken_red_runs(doc):
+    """把正文/表格里的**纯红** #FF0000 文字改黑，返回改动的 run 数。
+
+    母版用纯红标记「每期都要改数」的段落与图题（原件正文全黑）；`_replace_para` 只
+    能覆盖走文字槽位的那部分，图题段、引导语段不在槽位里，必须整篇扫一遍
+    （2026-10-26 rick 反馈「正文全是红字」）。只认纯红，其他颜色原样保留。
+    """
+    n = 0
+    paras = list(doc.paragraphs)
+    for t in doc.tables:
+        for row in t.rows:
+            for cell in row.cells:
+                paras.extend(cell.paragraphs)
+    for p in paras:
+        for r in p.runs:
+            col = r.font.color
+            if col is not None and col.rgb is not None and str(col.rgb).upper() == "FF0000":
+                r.font.color.rgb = RGBColor(0x00, 0x00, 0x00)
+                n += 1
+    return n
+
+
 def _replace_para(p, new_text):
     """保留首 run 格式，替换整段文本（删除其余 run）。
 
@@ -369,8 +391,48 @@ def _replace_para(p, new_text):
         first.text = new_text
         for r in runs[1:]:
             r._element.getparent().remove(r._element)
+        # 母版用纯红 #FF0000 标记「每期都要改数」的段落；填完值仍留红，整篇会像批注稿
+        # （2026-10-26 rick 反馈「正文全是红字」）。只把**纯红**改黑，其他颜色原样保留。
+        try:
+            col = first.font.color
+            if col is not None and col.rgb is not None and str(col.rgb).upper() == "FF0000":
+                first.font.color.rgb = RGBColor(0x00, 0x00, 0x00)
+        except (AttributeError, ValueError):
+            pass
     else:
         p.add_run(new_text)
+
+
+#: 母版里的「图题占位」字样（图插进去后必须删，否则页面上会多一行「（图）」）
+_PLACEHOLDER_CAPS = ("（图）", "(图)", "（更新图）", "(更新图)", "（缺图）", "(缺图)")
+
+
+def _drop_placeholder_after(para, limit=3):
+    """删掉紧跟在 `para` 之后的占位图题段落，返回被删掉的文字列表。
+
+    母版在每个图槽位后面留了一段「（图）」/「（更新图）」当占位；图替换进去后这段
+    就成了页面上孤零零的一行（2026-10-26 实测 p5「（图）」、p6「（更新图）」）。
+    只往前扫 `limit` 段、只认 `_PLACEHOLDER_CAPS` 里的整段文字，避免误删正文。
+    """
+    from docx.text.paragraph import Paragraph                   # noqa: PLC0415
+
+    dropped, blanks = [], 0
+    nxt = para._element.getnext()
+    while nxt is not None and nxt.tag == qn("w:p") and len(dropped) < limit and blanks <= 3:
+        p = Paragraph(nxt, para._parent)
+        txt = p.text.strip()
+        if txt in _PLACEHOLDER_CAPS:
+            dropped.append(txt)
+            following = nxt.getnext()
+            p._element.getparent().remove(p._element)
+            nxt = following
+            continue
+        if not txt:                      # 空段：可能是刚被 strip 掉旧图的那一段，跨过去继续找
+            blanks += 1
+            nxt = nxt.getnext()
+            continue
+        break
+    return dropped
 
 
 def _strip_images(p):
@@ -470,9 +532,24 @@ def _strip_native_chart_runs(doc, title_keyword):
     return hits
 
 
+def _tie_title_to_figure(para, max_len=40):
+    """短标题段加 `keepNext`，避免「标题在页底、图翻到下一页」。
+
+    只对短段生效（≤40 字）：plan2 的四个锚点里「下图显示的是近期我校主要学科…」
+    是一整句引导语，给它绑图会把整段推到下页，所以按长度筛。
+    """
+    try:
+        if len(para.text.strip()) <= max_len:
+            para.paragraph_format.keep_with_next = True
+    except (AttributeError, ValueError):
+        pass
+
+
 def _insert_picture_after(doc, anchor_para, png, width_cm=13.9):
-    """在锚点段后插入居中的图片段。"""
+    """在锚点段后插入居中的图片段（顺带清掉紧随其后的母版占位图题）。"""
     from docx.enum.text import WD_ALIGN_PARAGRAPH  # noqa: PLC0415
+    _drop_placeholder_after(anchor_para)
+    _tie_title_to_figure(anchor_para)
     new_p = doc.add_paragraph()
     anchor_para._p.addnext(new_p._p)
     new_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -483,6 +560,8 @@ def _insert_picture_after(doc, anchor_para, png, width_cm=13.9):
 def _insert_chart_after(doc, anchor_para, spec, docpr, name):
     """在锚点段后插入居中的**原生图表**段（`spec` 来自 `native_report_charts.body_charts`）。"""
     from docx.enum.text import WD_ALIGN_PARAGRAPH  # noqa: PLC0415
+    _drop_placeholder_after(anchor_para)
+    _tie_title_to_figure(anchor_para)
     new_p = doc.add_paragraph()
     anchor_para._p.addnext(new_p._p)
     new_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -560,6 +639,11 @@ def fill_body_charts(doc, ledger_dir, slots, native=None):
             slots.append({"location": label, "old": "（未找到锚点段落）", "new": str(png), "source": "charts/_overview"})
             continue
         stripped = _strip_images(hit)
+        dropped = _drop_placeholder_after(hit)
+        if dropped:
+            slots.append({"location": label + "/占位图题", "old": "、".join(dropped),
+                          "new": "已删除（母版占位字）",
+                          "source": "fill_docx._drop_placeholder_after"})
         if png.name == "rank_table.png":
             # 图内已带「我校ESI排名情况」标题 → 清掉母版占位图题「（图）」，避免页面上出现两次；
             # 同时删掉「与上期数据相比」段尾部遗留的旧版排名图（ynd_rank.png 已停用）
@@ -1185,6 +1269,12 @@ def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026�
         slots.append({"location": "正文/图片行距", "old": f"{n_relax} 个图段固定行距",
                       "new": f"{n_relax} 个图段改为单倍行距（图不再压字、仍随文流走）",
                       "source": "rick 2026-09-23（防 exact 行距压图）"})
+
+    n_red = _blacken_red_runs(doc)
+    if n_red:
+        slots.append({"location": "正文/母版红字", "old": f"{n_red} 个纯红 run（#FF0000）",
+                      "new": "已还原为黑色（原件正文全黑）",
+                      "source": "fill_docx._blacken_red_runs"})
 
     doc.save(out_path)
 
