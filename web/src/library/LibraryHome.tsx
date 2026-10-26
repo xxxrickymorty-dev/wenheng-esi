@@ -1,9 +1,11 @@
 /* 陈列馆首页 —— 按 web/mockups/陈列馆-完整（静态稿 20261025）.html 的 HTML 骨架 React 化
    （2026-10-25 rick 钦定：结构/文案/交互与静态稿逐一对齐，只做工程转译）。
    书架/四站/边界/问文衡/关于的文案为申报口径，一字未改；
-   事实数字由 preview.js stats 供给（缺省显示 —），其余申报口径硬编码待接线。
-   点书后原样载入连续册页 /app/shelf/pages.html（iframe 层），关闭路径三条：
-   「← 回书架」按钮 / Escape / iframe 内 postMessage('backToShelf')；另支持 #v-期次 深链。 */
+   事实数字由 preview.js stats 供给（缺省显示 —）；「19 张表」「约 20 秒」无产物口径，保留硬编码。
+   点书后原样载入连续册页 /app/shelf/pages.html（iframe 层），关闭路径两条：
+   Escape / iframe 内左栏 ← 或品牌点击 postMessage('backToShelf')；另支持 #v-期次 深链。
+   书架往期册封面由素材图叠「期号铭牌」（.reissue，比例照连续册页稿 cp-*）盖住素材内
+   烧死的当期号——2026-10-25 rick 裁定解决素材期号债。 */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
@@ -15,15 +17,23 @@ type LibraryHomeProps = {
   stats?: ShelfStats
 }
 
-/* 装帧映射（静态半边，硬编码自静态稿 BOOKS）：期次 → 装帧名 / 封面文件 / 书架 x 位。
+/* 装帧映射（静态半边，硬编码自静态稿 BOOKS）：期次 → 装帧名 / 封面文件。
+   书架 x 位不再逐册写死——volX() 按册数均分搁板（n=5 时输出与静态稿逐字一致，
+   将来加册自动收紧步长，2026-10-25 rick 裁定解决容量债）；
    动态半边（期号 / 总期数）由后端 cover[2] 解析，月份由 period 导出；
    查不到的将来期次回落「待装帧」——书架条目照渲染，无封面用占位（见 shelf-landing.css）。 */
-const DESIGN_MAP: Record<string, { design: string; cover: string; x: string }> = {
-  '202609': { design: '会泽院', cover: 'huizeyuan.webp', x: '16.8%' },
-  '202607': { design: '至公堂', cover: 'zhigongtang.webp', x: '30.5%' },
-  '202605': { design: '银杏', cover: 'yinxing.webp', x: '44.2%' },
-  '202603': { design: '阅览室', cover: 'yuelanshi.webp', x: '57.9%' },
-  '202601': { design: '校门', cover: 'xiaomen.webp', x: '71.6%' },
+const DESIGN_MAP: Record<string, { design: string; cover: string }> = {
+  '202609': { design: '会泽院', cover: 'huizeyuan.webp' },
+  '202607': { design: '至公堂', cover: 'zhigongtang.webp' },
+  '202605': { design: '银杏', cover: 'yinxing.webp' },
+  '202603': { design: '阅览室', cover: 'yuelanshi.webp' },
+  '202601': { design: '校门', cover: 'xiaomen.webp' },
+}
+
+/* 静态稿五册 x＝16.8% 起步、步长 13.7%；板右缘约 85%，超出五册时按剩余空间收紧步长 */
+function volX(idx: number, n: number) {
+  const step = Math.min(13.7, 68.2 / Math.max(1, n - 1))
+  return `${(16.8 + idx * step).toFixed(1)}%`
 }
 
 /* cover[2] 形如「2026年第5期（总第39期）」 */
@@ -36,7 +46,7 @@ type Vol = {
   total?: number
   design: string
   cover?: string
-  x?: string
+  latest?: boolean
 }
 
 function toVol(book: ShelfBook): Vol | null {
@@ -51,16 +61,19 @@ function toVol(book: ShelfBook): Vol | null {
   return {
     period, issue, month, total,
     design: mapped?.design ?? '待装帧',
-    ...(mapped ? { cover: mapped.cover, x: mapped.x } : {}),
+    ...(mapped ? { cover: mapped.cover } : {}),
   }
 }
 
-/* 书架按新 → 旧排（books 到手是期次升序；按期次倒排，等价于静态稿 BOOKS 的顺序） */
+/* 书架按新 → 旧排（books 到手是期次升序；按期次倒排，等价于静态稿 BOOKS 的顺序）；
+   最新一期即素材封面上的原印期号，往期封面需叠期号铭牌盖住烧死的「202609」 */
 function buildVols(books: ShelfBook[]): Vol[] {
-  return [...books]
+  const vols = [...books]
     .sort((a, b) => (b.period ?? '').localeCompare(a.period ?? ''))
     .map(toVol)
     .filter((v): v is Vol => v !== null)
+  if (vols.length) vols[0] = { ...vols[0], latest: true }
+  return vols
 }
 
 function designLabel(design: string) {
@@ -138,9 +151,10 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
           <p>云南大学图书馆 · 学科信息参考 · 2026 年馆藏</p>
         </div>
         <div className="shelf" id="shelf" aria-label="2026 年馆藏，共五册">
-          {/* 新书期次待装帧：DESIGN_MAP 查不到封面时用深绿底期号占位（样式见 shelf-landing.css） */}
-          {vols.map((v) => {
-            const style: CSSProperties & { '--x'?: string } = v.x ? { '--x': v.x } : {}
+          {/* 新书期次待装帧：DESIGN_MAP 查不到封面时用深绿底期号占位（样式见 shelf-landing.css）。
+              往期册封面叠期号铭牌：素材图里印的是当期号，铭牌盖住并印正确期号/月份 */}
+          {vols.map((v, i) => {
+            const style: CSSProperties & { '--x': string } = { '--x': volX(i, vols.length) }
             return (
               <a key={v.period} className="vol" href={`#v-${v.period}`} style={style}
                  aria-label={`${v.period}，${v.issue}，${designLabel(v.design)}`}
@@ -149,6 +163,13 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
                   ? <img className="face" src={`/app/shelf/assets/wenheng-covers/${v.cover}`}
                          alt={`学科信息参考 ${v.issue}，${v.design}装帧封面`} draggable={false} />
                   : <span className="face placeholder" aria-hidden="true"><b>{v.period}</b>待装帧</span>}
+                {v.cover && !v.latest && (
+                  <span className="reissue" aria-hidden="true">
+                    <span className="re-mask" />
+                    <b className="re-num">{v.period}</b>
+                    <i className="re-date">{v.month}</i>
+                  </span>
+                )}
                 <span className="cap"><b>{v.period}</b>{designLabel(v.design)}</span>
               </a>
             )
@@ -158,7 +179,7 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
       </section>
 
       {/* 册页：静态稿主流程不逐期展开——期次/目录/口径在 pages.html 的连续册页里 */}
-      {/* 事实数字由 preview.js stats 供给，申报口径硬编码待接线 */}
+      {/* 事实数字由 preview.js stats 供给（缺省 —）；「19 张表」「约 20 秒」无产物口径保留硬编码 */}
       <main className="flow" id="flow">
         {/* 四站 */}
         <section className="sec" id="how">
@@ -185,17 +206,17 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
             <article className="stn">
               <figure className="shot"><img src="/app/shelf/assets/shots/04-生成初稿.png" alt="生成初稿" loading="lazy" /></figure>
               <div className="txt"><h3>约 20 秒，排出一版可读的稿子。</h3>
-                <p>19 张台账表是全部数字的源头。报告里 704 个数字，704 个标了出处——点得回那一格。</p>
+                <p>19 张台账表是全部数字的源头。报告里 {fmt(stats?.docSlots)} 个数字，{fmt(stats?.docSlots)} 个标了出处——点得回那一格。</p>
                 <p>数字只有一个源头，稿子不在前端算任何一个数。</p>
-                <p className="metric">约 20 秒 ｜ 19 张表 ｜ 704 处出处</p></div>
+                <p className="metric">约 20 秒 ｜ 19 张表 ｜ {fmt(stats?.docSlots)} 处出处</p></div>
             </article>
 
             <article className="stn flip">
               <figure className="shot"><img src="/app/shelf/assets/shots/05-核验定稿.png" alt="核验定稿" loading="lazy" /></figure>
               <div className="txt"><h3>机器保数字，取舍你来定。</h3>
-                <p>出稿前机器逐项自检——54 项核对，全部通过才交到你手上。剩下的 7 处待人工，逐条看着补。</p>
+                <p>出稿前机器逐项自检——{fmt(stats?.selfChecks)} 项核对，全部通过才交到你手上。剩下的 {fmt(stats?.pendingManual)} 处待人工，逐条看着补。</p>
                 <p>复核无异议才签单，签了才签发。</p>
-                <p className="metric">54 项核对 ｜ 7 处待人工</p></div>
+                <p className="metric">{fmt(stats?.selfChecks)} 项核对 ｜ {fmt(stats?.pendingManual)} 处待人工</p></div>
             </article>
           </div>
         </section>
@@ -273,9 +294,9 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
         <div className="warn">陳 列 館 只 出 封 面 / 目 錄 / 名 詞 解 釋</div>
       </footer>
 
-      {/* 点书后：原样载入连续册页 */}
+      {/* 点书后：原样载入连续册页（2026-10-25 rick 裁定：去掉「← 回书架」按钮，
+          关闭走 iframe 内左栏 ← / 品牌点击的 postMessage 或 Escape） */}
       <div className="detail-frame" hidden={!detail.open}>
-        <button className="frame-back" type="button" aria-label="返回书架" onClick={closeDetail}>← 回书架</button>
         <iframe id="detailIframe" title="单册详情" referrerPolicy="no-referrer" src={frameSrc} />
       </div>
     </>
