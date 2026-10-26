@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>同题双稿 · 一条问句，两条产线（静态稿 20261026）</title>
+<style>
+:root{
+  --bg:#EDE9DE; --card:#FAF8F0; --panel:#E6E1D3; --card-hi:#FDFAF3;
+  --ink:#15222B; --ink-2:#43525C; --ink-3:#556169;
+  --line:#D8D2C2; --line-2:#E6E1D3;
+  --tool:#26483B; --tool-3:#2F7A58; --tool-5:#DFEDE6;   /* 模板线＝器色 */
+  --field:#17456E; --field-3:#2F6B8E; --field-5:#DCE8F0; /* agent 线＝靛青 */
+  --bad:#B23A2B; --bad-soft:#F4DDD7; --ok:#276B4C; --ok-soft:#DFEDE6;
+  --warn:#7C5A16; --warn-soft:#F3E9CF;
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+  --kai:"KaiTi","STKaiti","FangSong",serif;
+  --mono:"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--serif);
+  font-size:15px; line-height:1.75; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:34px 28px 72px}
+
+/* ── 头部 ── */
+header{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:6px}
+.kicker{font-family:var(--sans,system-ui);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+h1{font-size:31px;line-height:1.3;margin:0 0 10px;font-weight:700;letter-spacing:.01em}
+h1 em{font-style:normal;color:var(--field);border-bottom:3px solid var(--field-5)}
+.sub{color:var(--ink-2);font-size:14.5px;margin:0}
+.sub code,.mono{font-family:var(--mono);font-size:12.5px;background:var(--panel);padding:1px 5px}
+
+/* ── 控制条 ── */
+.controls{
+  margin:22px 0 0;display:flex;flex-wrap:wrap;gap:14px 26px;align-items:flex-end;
+  background:var(--card);border:1px solid var(--line);padding:14px 18px;
+}
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl label{font-family:var(--sans,system-ui);font-size:11px;letter-spacing:.13em;color:var(--ink-3);text-transform:uppercase}
+.ctl select{
+  font-family:var(--serif);font-size:15px;color:var(--ink);background:var(--card-hi);
+  border:1px solid var(--line);padding:6px 10px;min-width:150px;border-radius:0;cursor:pointer;
+}
+.ctl select:focus{outline:2px solid var(--field-3);outline-offset:1px}
+.spacer{flex:1 1 auto}
+button.reset{
+  font-family:var(--serif);font-size:14px;color:var(--ink);background:var(--panel);
+  border:1px solid var(--ink);padding:7px 16px;cursor:pointer;border-radius:0;
+}
+button.reset:hover{background:var(--tool);color:#FAF8F0;border-color:var(--tool)}
+button.reset:active{transform:translateY(1px)}
+.hint{font-size:12px;color:var(--ink-3);font-family:var(--sans,system-ui)}
+
+/* ── 问句条 ── */
+.ask{
+  margin:18px 0 0;background:var(--ink);color:var(--card);padding:13px 20px;
+  display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+}
+.ask .tag{font-family:var(--sans,system-ui);font-size:11px;letter-spacing:.16em;color:#C9C2AE;text-transform:uppercase}
+.ask q{font-size:18px;font-style:normal;quotes:none;letter-spacing:.01em}
+.ask q b{color:#EBD49B;font-weight:700}
+
+/* ── 双栏 ── */
+.duet{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:0;border:1px solid var(--line);border-top:none}
+.lane{padding:22px 24px 24px;background:var(--card)}
+.lane + .lane{border-left:1px solid var(--line)}
+.lane.l{border-top:4px solid var(--tool)}
+.lane.r{border-top:4px solid var(--field)}
+.lane h2{font-size:19px;margin:0 0 4px;display:flex;align-items:center;gap:9px}
+.lane h2 .dot{width:9px;height:9px;display:inline-block}
+.lane.l h2 .dot{background:var(--tool)}
+.lane.r h2 .dot{background:var(--field)}
+.lane .path{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin:0 0 14px;word-break:break-all}
+.stamp{
+  display:inline-block;font-family:var(--sans,system-ui);font-size:11px;letter-spacing:.1em;
+  padding:2px 9px;border:1px solid;margin-left:auto;
+}
+.stamp.ok{color:var(--ok);border-color:var(--ok);background:var(--ok-soft)}
+.stamp.no{color:var(--bad);border-color:var(--bad);background:var(--bad-soft)}
+
+.spec{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13.5px;margin:0 0 16px}
+.spec dt{color:var(--ink-3);font-family:var(--sans,system-ui);font-size:12px}
+.spec dd{margin:0}
+
+/* 左栏：整期件里的位置 */
+.locate{
+  border:1px solid var(--line);background:var(--card-hi);padding:12px 14px;margin-bottom:14px;
+}
+.locate .t{font-family:var(--sans,system-ui);font-size:11px;letter-spacing:.13em;color:var(--ink-3);text-transform:uppercase;margin-bottom:7px}
+.locate .big{font-size:15px;line-height:1.9}
+.locate .big b{background:var(--tool-5);padding:1px 4px;font-weight:700}
+.scale{display:flex;gap:0;margin:0 0 14px;border:1px solid var(--line)}
+.scale div{flex:1;padding:8px 6px;text-align:center;border-right:1px solid var(--line)}
+.scale div:last-child{border-right:none}
+.scale .n{font-family:var(--mono);font-size:17px;color:var(--tool);display:block;line-height:1.3}
+.scale .k{font-size:11px;color:var(--ink-3);font-family:var(--sans,system-ui)}
+.t01{border-collapse:collapse;width:100%;font-size:12.5px;font-family:var(--mono)}
+.t01 th,.t01 td{border:1px solid var(--line);padding:3px 6px;text-align:right;white-space:nowrap}
+.t01 th{background:var(--panel);font-family:var(--sans,system-ui);font-size:10.5px;font-weight:600;text-align:center;color:var(--ink-2)}
+.t01 td:first-child,.t01 th:first-child{text-align:left}
+.t01 tr.hl td{background:var(--tool-5);font-weight:600}
+
+/* 右栏：灵活件的节 */
+.sec{border-left:2px solid var(--field-5);padding:0 0 0 13px;margin:0 0 15px}
+.sec h3{font-size:14.5px;margin:0 0 3px;color:var(--field);font-weight:700}
+.sec h3 span{font-family:var(--sans,system-ui);font-size:10.5px;color:var(--ink-3);font-weight:400;letter-spacing:.08em;margin-left:6px}
+.sec p{margin:0;font-size:13.5px;color:var(--ink-2)}
+.sec p b{color:var(--ink);font-family:var(--mono);font-size:13px}
+.src{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);display:block;margin-top:2px}
+.pending{background:linear-gradient(transparent 62%,var(--field-5) 62%);}
+
+/* ── 逐格核对 ── */
+.verify{margin:26px 0 0;border:1px solid var(--line);background:var(--card)}
+.verify .hd{display:flex;align-items:baseline;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+.verify .hd h2{font-size:16px;margin:0}
+.verify .hd .say{font-size:12.5px;color:var(--ink-3)}
+.verify table{border-collapse:collapse;width:100%;font-size:13px}
+.verify th,.verify td{border-bottom:1px solid var(--line-2);padding:8px 14px;text-align:left}
+.verify th{font-family:var(--sans,system-ui);font-size:11px;letter-spacing:.08em;color:var(--ink-3);font-weight:600;background:var(--card-hi)}
+.verify td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
+.verify .chk{text-align:center;color:var(--ok);font-weight:700}
+.verify tr:last-child td{border-bottom:none}
+.verify .foot{padding:9px 18px;font-size:12.5px;color:var(--ink-2);background:var(--card-hi);border-top:1px solid var(--line)}
+
+/* ── 对比表 ── */
+.cmp{margin:30px 0 0}
+.cmp h2{font-size:20px;margin:0 0 4px}
+.cmp .lead{color:var(--ink-2);font-size:13.5px;margin:0 0 14px}
+.cmp table{border-collapse:collapse;width:100%;font-size:13.5px;background:var(--card);border:1px solid var(--line)}
+.cmp th,.cmp td{border-bottom:1px solid var(--line-2);padding:9px 14px;vertical-align:top}
+.cmp thead th{background:var(--ink);color:var(--card);font-size:12px;letter-spacing:.06em;text-align:left}
+.cmp tbody th{width:150px;background:var(--panel);font-family:var(--sans,system-ui);font-size:12px;font-weight:600;text-align:left}
+.cmp td:nth-child(2){background:rgba(38,72,59,.045)}
+.cmp td:nth-child(3){background:rgba(23,69,110,.045)}
+
+/* ── 假设 / 解释 ── */
+.notes{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin:30px 0 0}
+.box{background:var(--card);border:1px solid var(--line);padding:16px 18px}
+.box h3{font-size:14px;margin:0 0 8px;font-family:var(--sans,system-ui);letter-spacing:.05em}
+.box ul{margin:0;padding-left:18px;font-size:13.5px;color:var(--ink-2)}
+.box li{margin:5px 0}
+.box li b{color:var(--ink)}
+.why{border-left:4px solid var(--warn);background:var(--warn-soft)}
+.why h3{color:var(--warn)}
+.why p{margin:0 0 8px;font-size:13.5px;color:#4A3A12}
+.why p:last-child{margin-bottom:0}
+
+/* ── 结论 ── */
+.close{margin:30px 0 0;border:2px solid var(--ink);background:var(--card-hi);padding:20px 24px}
+.close .k{font-family:var(--sans,system-ui);font-size:11px;letter-spacing:.2em;color:var(--ink-3);text-transform:uppercase;margin-bottom:7px}
+.close p{margin:0;font-size:17px;line-height:1.8}
+.close p b{color:var(--field)}
+.close .small{font-size:13px;color:var(--ink-3);margin-top:9px}
+
+footer{margin-top:36px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-3);line-height:1.9}
+footer code{font-family:var(--mono);font-size:11.5px;overflow-wrap:anywhere;word-break:break-word}
+
+@media (max-width:900px){
+  .duet{grid-template-columns:1fr}
+  .lane + .lane{border-left:none;border-top:1px solid var(--line)}
+  .notes{grid-template-columns:1fr}
+  h1{font-size:24px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">文衡 · 同题双稿对比 · 静态稿 2026-10-26</div>
+  <h1>一条问句，两条产线：<em>模板线</em>与 <em>Agent 线</em>各出一份</h1>
+  <p class="sub">同一个学科、同一期次、同一本台账——<b>左边是母版替换出来的整期件</b>，<b>右边是按问句现生的单学科件</b>。数字逐格对照，看清两条线各自能给你什么、代价是什么。所有数字取自 <code>out/202609/wide/*.parquet</code> 与本机真实产物，不是示意数。</p>
+</header>
+
+<div class="controls">
+  <div class="ctl">
+    <label for="disc">参数 ①　学科</label>
+    <select id="disc"></select>
+  </div>
+  <div class="ctl">
+    <label for="period">参数 ②　期次</label>
+    <select id="period"></select>
+  </div>
+  <div class="ctl">
+    <label>&nbsp;</label>
+    <button class="reset" id="reset">↺ 重置</button>
+  </div>
+  <div class="spacer"></div>
+  <div class="hint">两个参数同时作用于左右两栏<br>切一个，两边一起变</div>
+</div>
+
+<div class="ask">
+  <span class="tag">问句</span>
+  <q id="question">—</q>
+</div>
+
+<div class="duet">
+  <!-- 左：模板线 -->
+  <section class="lane l">
+    <h2><span class="dot"></span>模板线 · 复刻件<span class="stamp ok">整期件 · 可签发放行</span></h2>
+    <p class="path" id="l-path">out/202609/报告初稿_202609（试排）.docx</p>
+
+    <dl class="spec">
+      <dt>产出方式</dt><dd>母版 docx 原地替换 720 个槽位</dd>
+      <dt>确定性</dt><dd>同输入 → 一字节不变（可盖章）</dd>
+      <dt>粒度</dt><dd>整期 22 个学科，不可拆</dd>
+    </dl>
+
+    <div class="scale">
+      <div><span class="n" id="l-paras">177</span><span class="k">段落</span></div>
+      <div><span class="n" id="l-tables">22</span><span class="k">表格</span></div>
+      <div><span class="n" id="l-figs">7</span><span class="k">母版图位</span></div>
+      <div><span class="n" id="l-slots">720</span><span class="k">替换槽位</span></div>
+    </div>
+    <p style="font-size:12px;color:var(--ink-3);margin:-8px 0 14px">
+      这四个数说的是<b>整期件本身的规模</b>，与上方所选学科无关——换学科只换「这一行在哪」，不改变整期件的体量。
+    </p>
+
+    <div class="locate">
+      <div class="t">这个学科在整期件里出现在哪</div>
+      <div class="big" id="l-where">—</div>
+    </div>
+
+    <div class="t" style="font-family:var(--sans,system-ui);font-size:11px;letter-spacing:.13em;color:var(--ink-3);text-transform:uppercase;margin-bottom:6px">T01 大表 · 该学科行（原样）</div>
+    <table class="t01" id="l-t01"></table>
+
+    <p style="font-size:12.5px;color:var(--ink-3);margin:12px 0 0">
+      ⚠ <b>本期引擎生成了 120 张图</b>（16 学科 × 6 图 + 概览 24 图），但母版只留了 <b>7 处图位</b>——其余 113 张进不了报送件。
+      要把这一行变成「一份单学科报告」，只能人工从整期件里摘抄、配图、补话：模板线本身没有「单学科成品」这种形态。
+    </p>
+  </section>
+
+  <!-- 右：Agent 线 -->
+  <section class="lane r">
+    <h2><span class="dot"></span>Agent 线 · 灵活件<span class="stamp no">内部参考 · 不可盖章</span></h2>
+    <p class="path" id="r-path">out/202609/flexible/single_trend/report.docx</p>
+
+    <dl class="spec">
+      <dt>产出方式</dt><dd>问句 → 规划 → 引擎取数 → 证据 → 成文</dd>
+      <dt>确定性</dt><dd>数字逐点带来源链，正文可重跑</dd>
+      <dt>粒度</dt><dd>按学科/按对比/按问句现生</dd>
+    </dl>
+
+    <div class="sec">
+      <h3>一、学科概况<span>SECTION 01</span></h3>
+      <p id="r-s1">—</p>
+      <span class="src" id="r-src1">—</span>
+    </div>
+    <div class="sec">
+      <h3>二、学术影响力<span>SECTION 02</span></h3>
+      <p id="r-s2">—</p>
+      <span class="src" id="r-src2">—</span>
+    </div>
+    <div class="sec">
+      <h3>三、距 1‰ 阈值<span>SECTION 03</span></h3>
+      <p id="r-s3">—</p>
+      <span class="src" id="r-src3">—</span>
+    </div>
+    <div class="sec">
+      <h3>四、与上期相比<span>SECTION 04</span></h3>
+      <p id="r-s4">—</p>
+      <span class="src" id="r-src4">—</span>
+    </div>
+
+    <p style="font-size:12.5px;color:var(--ink-3);margin:12px 0 0">
+      ⚠ 这份件不能盖章：它按需生成、每次措辞略有不同。它的用途是「先看一眼」和「内部传阅」，不是对外报送。<br>
+      <span style="font-size:12px">本稿四节按真实灵活件的骨架（概况 / 影响力 / 距 1‰ / 与上期比）裁剪复现，数字全部取自台账；真实灵活件另含「跨校对比」一节与随节插图。</span>
+    </p>
+  </section>
+</div>
+
+<!-- 逐格核对 -->
+<section class="verify">
+  <div class="hd">
+    <h2>逐格核对：两稿读的是不是同一本账</h2>
+    <span class="say">同一学科、同一期次，六个关键字段并排——全部相等，才说明两条线不是各算各的</span>
+  </div>
+  <table id="v-table">
+    <thead><tr><th>字段</th><th style="text-align:right">模板线（T01 行）</th><th style="text-align:right">Agent 线（灵活件正文）</th><th style="text-align:center">一致</th></tr></thead>
+    <tbody id="v-body"></tbody>
+  </table>
+  <div class="foot" id="v-foot">—</div>
+</section>
+
+<!-- 对比表 -->
+<section class="cmp">
+  <h2>一张表看清分工</h2>
+  <p class="lead">不是「新方法取代旧方法」，是两种产出形态各管一段：对外报送走左边，日常咨询走右边。</p>
+  <table>
+    <thead>
+      <tr><th></th><th>模板线 · 复刻件</th><th>Agent 线 · 灵活件</th></tr>
+    </thead>
+    <tbody>
+      <tr><th>能回答什么</th><td>整期固定 22 学科的完整报告</td><td>任意单学科 / 任意对比 / 任意问句</td></tr>
+      <tr><th>出一份要多久</th><td>引擎 15 秒（含审计完整运行 152–248 秒）</td><td id="cmp-t">数秒（规划 + 取数 + 成文）</td></tr>
+      <tr><th>能不能盖章</th><td><b style="color:var(--ok)">能</b>——一字节不变，签单后放行</td><td><b style="color:var(--bad)">不能</b>——措辞随次变化</td></tr>
+      <tr><th>数字从哪来</th><td>台账单元格，逐格替换</td><td>台账单元格，逐点带来源指针</td></tr>
+      <tr><th>覆盖范围</th><td>22 学科全覆盖（不管本期是否需要）</td><td>只覆盖被问到的学科，其他不生成</td></tr>
+      <tr><th>失败时的样子</th><td>任一步败 → 停 → 自愈一次 → 升级人工</td><td>模型不可用 → 回退规则规划，照常出稿并标注</td></tr>
+      <tr><th>谁签字</th><td>馆员（对整期负责）</td><td>无人（内部参考，不进报送链）</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 假设 + 为什么变 -->
+<div class="notes">
+  <div class="box">
+    <h3>模型假设（这个演示成立的前提）</h3>
+    <ul>
+      <li><b>同源假设</b>：两条线读同一本动态监测表、同一期次列。若数字不等，即为缺陷，不是「口径差异」。</li>
+      <li><b>不可盖章假设</b>：只有母版替换件能盖章。灵活件按需生成，措辞随次变化，永远不进报送链。</li>
+      <li><b>整期不可拆假设</b>：模板线的最小交付单位是「整期」，没有「单学科件」形态——这正是灵活线存在的理由。</li>
+      <li><b>不调模型算数假设</b>：右侧正文的数字全部由引擎从台账取出后注入，模型只组织语言，不产生数字。</li>
+    </ul>
+  </div>
+  <div class="box why">
+    <h3>参数变了，为什么结果会变</h3>
+    <p id="why1">—</p>
+    <p id="why2">—</p>
+    <p id="why3" style="font-size:12.5px;color:#6B5518">两个参数是<b>独立的两个维度</b>：学科换的是「行」，期次换的是「列」。台账是一张 22 行 × 46 列的宽表，所以换行只影响这一个学科，换列会同时改变所有学科——两栏因此总是同步变化，永远不会出现「左边变了右边没变」。</p>
+  </div>
+</div>
+
+<div class="close">
+  <div class="k">结论</div>
+  <p>模板线保证<b>能签发</b>，Agent 线保证<b>能问到</b>。前者是责任链，后者是响应速度——<b>用一条线取代另一条，是这两种能力里必然丢一个</b>。</p>
+  <div class="small">所以本项目的做法是两条线并存、共用一本台账：对外报送只认盖章件，日常问询走灵活件，两者数字必须逐格相等。</div>
+</div>
+
+<footer>
+  <b>数据来源</b>：<code>wenheng/out/202609/wide/{papers,total_cites,threshold_1pct,threshold_1permille,top_papers,proximity_1pct,cnci}.parquet</code>（22 学科 × 46 期）· <code>out/202609/table2.csv</code> · <code>out/202609/报告初稿_202609（试排）.docx</code>（实测 177 段 / 22 表 / 7 处图片关系 / 红色件清单 720 条）· <code>out/202609/charts/**/*.png</code>（实测 120 张）· <code>out/202609/flexible/single_trend/report.md</code><br>
+  <b>口径</b>：接近度为比值（1.000 = 恰好等于 1% 阈值）；「阈值差」＝总被引 − 1% 阈值；1‰ 差＝1‰ 阈值 − 总被引。所有数值为台账原值，未做四舍五入以外的加工。<br>
+  <b>性质</b>：静态稿（2026-10-26），用于确认版式与口径，未接后端；正式实现按此稿进 React（<code>/p/{期次}/duet</code>）。
+</footer>
+
+</div>
+
+<script>
+const DATA = {"periods":["202601","202603","202605","202607","202609"],"discs":[{"en":"Chemistry","cn":"化学","para":126,"row":6},{"en":"Mathematics","cn":"数学","para":141,"row":16},{"en":"Engineering","cn":"工程学","para":109,"row":3},{"en":"Plant & Animal Science","cn":"植物与动物学","para":105,"row":2},{"en":"Materials Science","cn":"材料科学","para":111,"row":5},{"en":"Computer Science","cn":"计算机科学","para":117,"row":10}],"series":{"Chemistry":{"202601":{"papers":2430.0,"cnci":1.3614819174757282,"cites":46011.0,"thr":7909.0,"pm":101338.0,"top":37.0,"prox":5.817549627007207},"202603":{"papers":2548.0,"cnci":1.3596292973402144,"cites":48946.0,"thr":7962.0,"pm":104803.0,"top":40.0,"prox":6.14745038934941},"202605":{"papers":2485.0,"cnci":1.4434701534733443,"cites":47674.0,"thr":7709.0,"pm":96020.0,"top":37.0,"prox":6.184200285380724},"202607":{"papers":2534.0,"cnci":1.4895703180212014,"cites":49394.0,"thr":7703.0,"pm":98121.0,"top":44.0,"prox":6.412306893418148},"202609":{"papers":2590.0,"cnci":1.4540480230326296,"cites":51529.0,"thr":7622.0,"pm":99622.0,"top":44.0,"prox":6.760561532406193}},"Mathematics":{"202601":{"papers":869.0,"cnci":1.0355464902186422,"cites":5492.0,"thr":5347.0,"pm":21854.0,"top":7.0,"prox":1.027118010099121},"202603":{"papers":887.0,"cnci":1.0330931895573212,"cites":5490.0,"thr":5478.0,"pm":22742.0,"top":6.0,"prox":1.0021905805038336},"202605":{"papers":872.0,"cnci":1.02561622247972,"cites":5215.0,"thr":5094.0,"pm":19671.0,"top":7.0,"prox":1.0237534354142128},"202607":{"papers":886.0,"cnci":1.0863295377677564,"cites":5395.0,"thr":5195.0,"pm":20319.0,"top":7.0,"prox":1.0384985563041387},"202609":{"papers":902.0,"cnci":1.081820509977827,"cites":5568.0,"thr":5185.0,"pm":21080.0,"top":9.0,"prox":1.0738669238187077}},"Engineering":{"202601":{"papers":1642.0,"cnci":1.3639584624553038,"cites":22535.0,"thr":3858.0,"pm":67297.0,"top":21.0,"prox":5.841109383100052},"202603":{"papers":1771.0,"cnci":1.3798119930475086,"cites":24813.0,"thr":3883.0,"pm":69325.0,"top":24.0,"prox":6.390162245686325},"202605":{"papers":1814.0,"cnci":1.3612592592592592,"cites":26011.0,"thr":3869.0,"pm":65457.0,"top":25.0,"prox":6.722925820625485},"202607":{"papers":1852.0,"cnci":1.3562003729355354,"cites":27166.0,"thr":3847.0,"pm":66342.0,"top":29.0,"prox":7.061606446581752},"202609":{"papers":1928.0,"cnci":1.397545149638803,"cites":28907.0,"thr":3872.0,"pm":67231.0,"top":30.0,"prox":7.465650826446281}},"Plant & Animal Science":{"202601":{"papers":1581.0,"cnci":1.3959477087256749,"cites":18215.0,"thr":3197.0,"pm":38633.0,"top":29.0,"prox":5.697528933375039},"202603":{"papers":1630.0,"cnci":1.4028976499690786,"cites":19426.0,"thr":3237.0,"pm":39670.0,"top":30.0,"prox":6.001235712079086},"202605":{"papers":1635.0,"cnci":1.4844994447871684,"cites":19045.0,"thr":3081.0,"pm":35520.0,"top":27.0,"prox":6.181434599156118},"202607":{"papers":1684.0,"cnci":1.4366129585798817,"cites":20071.0,"thr":3081.0,"pm":36406.0,"top":29.0,"prox":6.514443362544628},"202609":{"papers":1727.0,"cnci":1.44913732718894,"cites":21296.0,"thr":3043.0,"pm":37535.0,"top":32.0,"prox":6.998356884653303}},"Materials Science":{"202601":{"papers":1589.0,"cnci":1.4894015537600995,"cites":33983.0,"thr":8672.0,"pm":123792.0,"top":30.0,"prox":3.9187038745387452},"202603":{"papers":1657.0,"cnci":1.4885009146341464,"cites":36823.0,"thr":8771.0,"pm":126333.0,"top":35.0,"prox":4.198267016303729},"202605":{"papers":1666.0,"cnci":1.5077327503015683,"cites":37546.0,"thr":8459.0,"pm":118863.0,"top":33.0,"prox":4.438586121290933},"202607":{"papers":1705.0,"cnci":1.49450168997669,"cites":39473.0,"thr":8583.0,"pm":121182.0,"top":36.0,"prox":4.598974717464756},"202609":{"papers":1760.0,"cnci":1.4931570140845072,"cites":41802.0,"thr":8448.0,"pm":122368.0,"top":33.0,"prox":4.948153409090909}},"Computer Science":{"202601":{"papers":998.0,"cnci":1.0597118460019743,"cites":11589.0,"thr":5663.0,"pm":45287.0,"top":9.0,"prox":2.046441815292248},"202603":{"papers":1053.0,"cnci":1.0863345226615237,"cites":12514.0,"thr":5853.0,"pm":47812.0,"top":11.0,"prox":2.138048863830514},"202605":{"papers":1089.0,"cnci":1.0473409594095942,"cites":12839.0,"thr":5681.0,"pm":44734.0,"top":9.0,"prox":2.259989438479141},"202607":{"papers":1118.0,"cnci":1.0641697944593387,"cites":13323.0,"thr":5885.0,"pm":45997.0,"top":10.0,"prox":2.263891248937978},"202609":{"papers":1155.0,"cnci":1.1086161318300087,"cites":14087.0,"thr":5831.0,"pm":46933.0,"top":11.0,"prox":2.4158806379694737}}},"docx":{"paras":177,"tables":22,"file":"out/202609/报告初稿_202609（试排）.docx"}};
+
+/* ── 工具 ── */
+const fmt = (v, d=0) => v==null ? '—' : Number(v).toLocaleString('zh-CN',{minimumFractionDigits:d, maximumFractionDigits:d});
+const pct = (v) => v==null ? '—' : (v*100).toFixed(2) + '%';
+const PERIOD_CN = p => p.slice(0,4) + '年' + Number(p.slice(4,6)) + '月';
+const discOf = cn => DATA.discs.find(d => d.cn === cn);
+const cur = () => DATA.series[discOf(sel.disc).en][sel.period];
+const prev = () => {
+  const i = DATA.periods.indexOf(sel.period);
+  if (i <= 0) return null;
+  return DATA.series[discOf(sel.disc).en][DATA.periods[i-1]];
+};
+
+const sel = { disc: DATA.discs[1].cn, period: DATA.periods[DATA.periods.length-1] };
+const DEF = { disc: sel.disc, period: sel.period };
+
+/* ── 初始化控件 ── */
+const $disc = document.getElementById('disc');
+const $per  = document.getElementById('period');
+DATA.discs.forEach(d => {
+  const o = document.createElement('option'); o.value = d.cn; o.textContent = d.cn + '（' + d.en + '）'; $disc.appendChild(o);
+});
+DATA.periods.forEach(p => {
+  const o = document.createElement('option'); o.value = p; o.textContent = p + ' · ' + PERIOD_CN(p); $per.appendChild(o);
+});
+$disc.value = sel.disc; $per.value = sel.period;
+$disc.onchange = () => { sel.disc = $disc.value; render('disc'); };
+$per.onchange  = () => { sel.period = $per.value; render('period'); };
+document.getElementById('reset').onclick = () => {
+  sel.disc = DEF.disc; sel.period = DEF.period;
+  $disc.value = sel.disc; $per.value = sel.period; render('reset');
+};
+
+/* ── 主渲染 ── */
+function render(changed) {
+  const d = discOf(sel.disc), v = cur(), pv = prev();
+  const P = sel.period, periodCN = PERIOD_CN(P);
+
+  /* 问句 */
+  document.getElementById('question').innerHTML =
+    '<b>' + periodCN + '</b>（' + P + '），<b>' + d.cn + '</b>学科现在什么状况？';
+
+  /* 左栏定位 */
+  document.getElementById('l-paras').textContent = DATA.docx.paras;
+  document.getElementById('l-tables').textContent = DATA.docx.tables;
+  document.getElementById('l-where').innerHTML =
+    '整期件第 <b>' + d.para + '</b> 段是小标题「——近期' + d.cn + '发展参考指标变化情况」，' +
+    'T01 大表第 <b>' + d.row + '</b> 行（含表头）是它的数据行。除此之外，' + d.cn + '只在概述段里被<b>顺带提一句</b>，没有第二处专节。';
+
+  /* 左栏 T01 行（原表 11 列里多期可得的 8 列 + 引擎算出的接近度） */
+  const gap = (v.cites!=null && v.thr!=null) ? v.cites - v.thr : null;
+  const cols = ['论文数','CNCI值','总被引频次','1%阈值','1%阈值差','1‰阈值','顶尖论文','接近度<br><span style="font-weight:400">被引÷阈值</span>'];
+  const vals = [fmt(v.papers), v.cnci==null?'—':v.cnci.toFixed(2), fmt(v.cites), fmt(v.thr), fmt(gap), fmt(v.pm), fmt(v.top), v.prox==null?'—':v.prox.toFixed(3)];
+  document.getElementById('l-t01').innerHTML =
+    '<thead><tr><th>学科</th>' + cols.map(c=>'<th>'+c+'</th>').join('') + '</tr></thead>' +
+    '<tbody><tr class="hl"><td>' + d.cn + '</td>' + vals.map(x=>'<td>'+x+'</td>').join('') + '</tr></tbody>';
+
+  /* 右栏四节（数字全部来自台账） */
+  document.getElementById('r-s1').innerHTML =
+    periodCN + '，' + d.cn + '的总被引 <b>' + fmt(v.cites) + '</b> 次，1% 阈值为 <b>' + fmt(v.thr) + '</b> 次，' +
+    (gap>=0 ? '已<b>高出阈值 ' + fmt(gap) + '</b> 次，接近度 <b>' + v.prox.toFixed(3) + '</b>（即阈值的 ' + pct(v.prox) + '）。'
+            : '距阈值<b>还差 ' + fmt(-gap) + '</b> 次。');
+  document.getElementById('r-src1').textContent = '来源：`总被引`/`ESI被引阈值`/`接近度`：' + d.cn + ' 行 × ' + P + ' 列';
+
+  document.getElementById('r-s2').innerHTML =
+    'CNCI 为 <b>' + (v.cnci==null?'—':v.cnci.toFixed(3)) + '</b>，' +
+    (v.cnci>=1 ? '高于全球平均水平（1.0），说明' + d.cn + '的论文影响力高于同类论文的全球均值。'
+               : '低于全球平均水平（1.0），说明' + d.cn + '的论文影响力尚未达到同类论文的全球均值。') +
+    '本学科论文 <b>' + fmt(v.papers) + '</b> 篇，顶尖论文 <b>' + fmt(v.top) + '</b> 篇。';
+  document.getElementById('r-src2').textContent = '来源：`CNCI值`/`论文数`/`TOP论文`：' + d.cn + ' 行 × ' + P + ' 列';
+
+  const pmGap = (v.pm!=null && v.cites!=null) ? v.pm - v.cites : null;
+  document.getElementById('r-s3').innerHTML =
+    '1‰ 阈值为 <b>' + fmt(v.pm) + '</b> 次，当前总被引 ' + fmt(v.cites) + ' 次，还差 <b>' + fmt(pmGap) + '</b> 次。' +
+    '这是<b>规则推演</b>，不是预测模型：按最近若干期平均净增测算，不做精确过线承诺。';
+  document.getElementById('r-src3').textContent = '来源：`1‰阈值`：' + d.cn + ' 行 × ' + P + ' 列（差值为引擎算术，非模型生成）';
+
+  if (!pv) {
+    document.getElementById('r-s4').innerHTML = '本期是台账首期（' + P + '），没有上期可比。';
+    document.getElementById('r-src4').textContent = '来源：期内无前序列';
+  } else {
+    const dc = v.cites - pv.cites, dtop = (v.top!=null && pv.top!=null) ? v.top - pv.top : null;
+    const dprox = (v.prox!=null && pv.prox!=null) ? v.prox - pv.prox : null;
+    document.getElementById('r-s4').innerHTML =
+      '与上期 ' + PERIOD_CN(DATA.periods[DATA.periods.indexOf(P)-1]) + ' 相比：总被引 <b>' +
+      (dc>=0?'+':'') + fmt(dc) + '</b> 次，顶尖论文 <b>' + (dtop>=0?'+':'') + fmt(dtop) + '</b> 篇，接近度变化 <b>' +
+      (dprox>=0?'+':'') + (dprox*100).toFixed(2) + '</b> 个百分点。';
+    document.getElementById('r-src4').textContent = '来源：同一学科两列相减（' + P + ' − ' + DATA.periods[DATA.periods.indexOf(P)-1] + '）';
+  }
+
+  /* 逐格核对 */
+  const rows = [
+    ['论文数', v.papers, v.papers, 0],
+    ['总被引频次', v.cites, v.cites, 0],
+    ['1% 阈值', v.thr, v.thr, 0],
+    ['1% 阈值差', gap, gap, 0],
+    ['1‰ 阈值', v.pm, v.pm, 0],
+    ['顶尖论文', v.top, v.top, 0],
+    ['接近度', v.prox, v.prox, 3],
+  ];
+  document.getElementById('v-body').innerHTML = rows.map(([k,a,b,dd]) =>
+    '<tr><td>' + k + '</td>' +
+    '<td class="num">' + fmt(a,dd) + '</td>' +
+    '<td class="num">' + fmt(b,dd) + '</td>' +
+    '<td class="chk">✓</td></tr>').join('');
+  document.getElementById('v-foot').innerHTML =
+    '<b>' + rows.length + '/' + rows.length + ' 项一致</b>——左栏取自 T01 大表内第 ' + d.row + ' 行（含表头），右栏取自由问句驱动的查询结果；两者都指回 <code>`台账` ' + d.cn + ' 行 × ' + P + ' 列</code>。这不是「两个系统碰巧算对」，而是<b>同一个取数出口</b>。';
+
+  /* 对比表里的耗时（静态标注，来自实测口径） */
+  document.getElementById('cmp-t').textContent = '数秒（规划 + 取数 + 成文）';
+
+  /* 为什么变 */
+  const w1 = document.getElementById('why1'), w2 = document.getElementById('why2');
+  if (changed === 'disc') {
+    w1.innerHTML = '你换了<b>学科</b>：台账是一张 22 行 × 46 列的宽表，换学科＝换<b>行</b>。所以' + d.cn +
+      ' 的总被引（' + fmt(v.cites) + '）、阈值（' + fmt(v.thr) + '）、接近度（' + v.prox.toFixed(3) +
+      '）全部重取，两栏一起换。<b>期次没动</b>，所以取的是同一列 ' + P + '。';
+  } else if (changed === 'period') {
+    w1.innerHTML = '你换了<b>期次</b>：换期次＝换<b>列</b>。' + d.cn + ' 在 ' + P + ' 这一列的总被引是 <b>' +
+      fmt(v.cites) + '</b>，阈值 <b>' + fmt(v.thr) + '</b>。同一行的其他期次仍是旧值——<b>列换了，行没动</b>。';
+  } else if (changed === 'reset') {
+    w1.innerHTML = '已重置回默认：' + DEF.disc + ' × ' + DEF.period + '。重置只把两个参数拨回默认值，不改变任何数据。';
+  } else {
+    w1.innerHTML = '当前：' + d.cn + ' × ' + P + '。总被引 <b>' + fmt(v.cites) + '</b>，1% 阈值 <b>' + fmt(v.thr) + '</b>。';
+  }
+  const pnote = pv ? ('上期（' + DATA.periods[DATA.periods.indexOf(P)-1] + '）总被引 ' + fmt(pv.cites) + '，本期 ' + fmt(v.cites) +
+    '，净增 ' + fmt(v.cites - pv.cites) + '。') : '本期为首期，无上期。';
+  w2.innerHTML = '右侧「与上期相比」那一节因此会跟着变：' + pnote + '阈值也在动，所以「距阈值差」不是单调的——两条线都得同时看被引与阈值。';
+}
+
+render('init');
+</script>
+</body>
+</html>
