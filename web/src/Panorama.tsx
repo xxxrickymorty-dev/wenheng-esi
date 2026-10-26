@@ -23,6 +23,8 @@ type Props = {
   /** 任务在跑：产线建筑点亮「运行中」、路上出现流动，机器仍画上一轮的事实 */
   live: boolean
   liveNote?: string | null
+  /** 嵌入场合（如陈列馆）没有顶栏期次选择器——尾句可换成当场的切换方式 */
+  periodSwitchNote?: string
 }
 
 /* ---------- 等轴测几何（与静态稿同一套常数；P(x,y,z) → 屏幕坐标） ---------- */
@@ -513,7 +515,8 @@ const CAMS: { act: string; label: string }[] = [
   { act: 'out', label: '拉远' },
 ]
 
-export function Panorama({ period, periods, detail, approvalStatus, live, liveNote = null }: Props) {
+export function Panorama({ period, periods, detail, approvalStatus, live, liveNote = null,
+                            periodSwitchNote }: Props) {
   const [acq, setAcq] = useState<AcquisitionState | null>(null)
   const [archive, setArchive] = useState<ArchiveData | null | undefined>(undefined)
   const [redTotal, setRedTotal] = useState<number | null>(null)
@@ -666,7 +669,7 @@ export function Panorama({ period, periods, detail, approvalStatus, live, liveNo
       <p className="pano-note">
         <b>这张图只做一件事：把已有状态摆到空间里。</b>
         左栏是真相（取数记录 · 运行档案 · 红色件清单 · 签单状态），场景是它的空间投影——
-        不新增数字、不演没发生的动画；路上流动只在任务真在跑时出现。期次用顶栏选择器切换。
+        不新增数字、不演没发生的动画；路上流动只在任务真在跑时出现。{periodSwitchNote ?? '期次用顶栏选择器切换。'}
       </p>
     </div>
   )

@@ -262,3 +262,23 @@ h2.sec-title{font-size:clamp(30px,3.6vw,46px);font-weight:600;line-height:1.24;l
   cursor:pointer;transition:background .2s,color .2s,border-color .2s}
 .library-action:hover{filter:brightness(.96)}
 .library-action:focus-visible{outline:3px solid var(--zhu);outline-offset:3px}
+
+/* ── 产线全景（回放态）：四站图文之后、边界之前（2026-10-26） ── */
+.lib-pano { margin-top: 8px; }
+.lib-pano-head { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+.lib-pano-title { font-family: var(--serif); font-size: 18px; font-weight: 600; letter-spacing: .04em; }
+.lib-pano-deck { margin: 0; font-size: 13px; color: var(--ink-3); max-width: 72ch; }
+.lib-pano-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.lib-pano-chips button { font: inherit; font-family: var(--kai); font-size: 12.5px; letter-spacing: .08em;
+  padding: 4px 13px; background: transparent; border: 1px solid var(--line);
+  color: var(--ink-3); cursor: pointer; }
+.lib-pano-chips button:hover { color: var(--ink); border-color: var(--tool); }
+.lib-pano-chips button.is-on { background: var(--tool); border-color: var(--tool); color: #F6F1DE; }
+.lib-pano-hint { margin: 8px 0 0; font-size: 12.5px; color: var(--warn); }
+/* 嵌入场合：pano 高度随内容走（正式屏的 100vh 计算是给工作区框架的） */
+.lib-pano .pano { height: auto; min-height: 0; }
+.lib-pano .pano-stage { height: 520px; max-height: none; }
+.lib-pano .pano-wrap { min-height: 0; }
+@media (max-width: 900px) {
+  .lib-pano .pano-stage { height: 380px; }
+}

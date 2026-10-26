@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { ShelfBook, ShelfStats } from './types'
+import LibraryPano from './LibraryPano'
 import './shelf-landing.css'
 
 type LibraryHomeProps = {
@@ -219,6 +220,13 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
                 <p className="metric">{fmt(stats?.selfChecks)} 项核对 ｜ {fmt(stats?.pendingManual)} 处待人工</p></div>
             </article>
           </div>
+        </section>
+
+        {/* 产线全景（回放态）——rick 2026-10-26：可视化工作流放到书架下面。
+            四站图文讲完「是这么来的」，这里直接看真产线；实时运行态在工作区。
+            申报口径四站文案在上一段，一字未动。 */}
+        <section className="sec" id="pano">
+          <LibraryPano books={books} />
         </section>
 
         {/* 边界 */}
