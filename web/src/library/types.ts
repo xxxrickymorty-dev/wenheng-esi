@@ -36,10 +36,8 @@ export type ShelfStats = {
 }
 
 export type ShelfLoadResult =
-  /** 完整数据拿到（两种角色同份，2026-10-11 起） */
-  | { kind: 'full'; books: ShelfBook[]; stats?: ShelfStats }
-  /** 只有封面/目录/名词解释基础投影（完整数据取不到时的如实回落） */
-  | { kind: 'preview'; books: ShelfBook[]; stats?: ShelfStats }
+  /** 只有封面/目录/名词解释基础投影（完整数据不再预取，2026-10-26 起按需） */
+  | { kind: 'preview'; books: ShelfBook[]; stats?: ShelfStats; pendingPeriods?: string[] }
   | { kind: 'login' }
   | { kind: 'forbidden' }
   | { kind: 'unavailable' }

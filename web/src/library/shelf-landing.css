@@ -85,6 +85,18 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
    挂在 hover 说明里既保住信息，又不用在小徽标上挤两行。 */
 .vol .cap em{display:block;margin-top:2px;font-style:normal;font-family:var(--mono);
   font-size:11px;letter-spacing:.12em;color:var(--gold-2)}
+
+/* ── 首屏主次（rick 2026-10-26 裁「方案 C」）──
+   原来五册同级，一眼看不出哪本是当期；UX.md §十「每屏主动作 ≤1」也不满足。
+   当期抬高一级（24.9% → 30.4%）、书脊金线提亮、书目行期号加大变金；
+   往期压一档（24.2%）并降 7% 亮度，基线都齐在托板线上。
+   位置由 volLayout() 按「总宽居中」算，当期更宽会自然让开下一册。 */
+.vol.is-featured{height:30.4%;filter:drop-shadow(0 14px 22px rgba(24,14,6,.55))}
+.vol.is-featured::before{border-right-color:rgba(224,203,146,.55)}
+.vol.is-featured .cap b{font-size:15px;color:var(--gold-2)}
+.vol.is-sub{height:24.2%;filter:drop-shadow(0 8px 12px rgba(24,14,6,.42)) brightness(.93)}
+/* 待装帧的末位空格：不是书，去掉悬停抬升，免得像能点 */
+.vol.is-pending:hover{transform:none;filter:drop-shadow(0 8px 12px rgba(24,14,6,.42)) brightness(.93)}
 .vol:hover,.vol:focus-visible{transform:translateY(-14px) scale(1.075);z-index:6;
   filter:drop-shadow(0 22px 26px rgba(20,12,4,.5))}
 .vol:hover .cap,.vol:focus-visible .cap{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -223,9 +235,21 @@ h2.sec-title{font-size:clamp(30px,3.6vw,46px);font-weight:600;line-height:1.24;l
     background-position:center 40%;scrollbar-width:none}
   .shelf::-webkit-scrollbar{display:none}
   .vol{position:relative;left:auto;bottom:auto;height:46%;flex:none}
+  /* 窄屏不套桌面那套绝对高度（.is-sub 的 24.2% 曾把移动端书缩掉一半，2026-10-26 修）：
+     统一回 46%，当期只高一档 50%，主次保留、尺寸不缩水 */
+  .vol.is-sub{height:46%}
+  .vol.is-featured{height:50%}
   .vol:hover{transform:translateY(-8px) scale(1.05)}
+  .vol.is-pending:hover{transform:none}
+  /* 窄屏书目行压成一行（2026-10-26）：三行竖排＋衬底在 390 宽上占掉书高的三分之一，
+     看着像列表不像书架。改为「期号 · 装帧名」单行；月份让位（窄屏上期号已够识别，
+     详情页里仍然有）。 */
   .vol .cap{opacity:1;transform:translateX(-50%);top:calc(100% + 8px);
-    background:rgba(8,27,20,.72);padding:3px 7px;letter-spacing:.1em}
+    display:flex;align-items:baseline;gap:6px;white-space:nowrap;
+    background:rgba(8,27,20,.72);padding:2px 6px;letter-spacing:.08em}
+  .vol .cap b{font-size:12px;margin:0}
+  .vol.is-featured .cap b{font-size:13px}
+  .vol .cap em{display:none}
   .down,.index{display:none}
   .brand{position:absolute}
 }
@@ -242,12 +266,13 @@ h2.sec-title{font-size:clamp(30px,3.6vw,46px);font-weight:600;line-height:1.24;l
 /* ── 工程新增 a：新书期次待装帧 ──
    DESIGN_MAP 查不到的将来期次，书架条目照渲染：深绿布面 + 金线框 + 期号文字占位。
    配色取 :root 既有 --g-deep / --gold-2，不引入新色。 */
-.vol .face.placeholder{display:grid;place-items:center;background:var(--g-deep);
-  color:var(--gold-2);font:11px/1.9 var(--mono);letter-spacing:.16em;text-align:center;
+.vol .face.placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;background:var(--g-deep);
+  color:var(--gold-2);font:11px/1.5 var(--mono);letter-spacing:.16em;text-align:center;
   padding:10px 8px;
   box-shadow:inset 0 0 0 1px rgba(201,169,97,.28),inset 0 0 26px rgba(0,0,0,.32)}
 .vol .face.placeholder b{display:block;font-family:var(--serif);font-size:15px;
-  letter-spacing:.14em;color:#F6EDD6;margin-bottom:4px}
+  letter-spacing:.14em;color:#F6EDD6;margin-bottom:0}
 
 /* ── 工程新增 c：往期册封面期号铭牌（.reissue，2026-10-25 rick 裁定解决素材期号债）──
    素材封面左下印的都是当期号「202609」；往期册照连续册页稿 cp-* 的比例，

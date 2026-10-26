@@ -16,6 +16,8 @@ import './shelf-landing.css'
 type LibraryHomeProps = {
   books: ShelfBook[]
   stats?: ShelfStats
+  /** 排期里已建、还没出稿的期次；在书架末位补占位（2026-10-26 方案 C） */
+  pendingPeriods?: string[]
 }
 
 /* 装帧映射（静态半边，硬编码自静态稿 BOOKS）：期次 → 装帧名 / 封面文件。
@@ -32,9 +34,30 @@ const DESIGN_MAP: Record<string, { design: string; cover: string }> = {
 }
 
 /* 静态稿五册 x＝16.8% 起步、步长 13.7%；板右缘约 85%，超出五册时按剩余空间收紧步长 */
-function volX(idx: number, n: number) {
-  const step = Math.min(13.7, 68.2 / Math.max(1, n - 1))
-  return `${(16.8 + idx * step).toFixed(1)}%`
+/* 书架排布（2026-10-26 方案 C 重写）：改为「按总宽居中」。
+   旧法固定 16.8% 起、步长 13.7%，加册只压步长、压到 0 就叠——当期抬高后书更宽，
+   旧法必然压到下一册。新法：先按标准间距累加总宽，再整体居中。
+   n=5 无当期抬高时输出与旧法几乎一致（16.7 / 30.4 / 44.2 / 57.9 / 71.6），
+   当期抬高时靠自身宽度自然让位，6 册（含待装帧）时向两侧摊平。 */
+const H_STD = 24.9 // 与 .vol 的 height 一致
+const H_FEATURED = 30.4 // 与 .vol.is-featured 的 height 一致
+/** 书架高宽比 1600/1067 × 书封 210/297：把「高度百分比」换算成「宽度百分比」 */
+const W_RATIO = (1067 / 1600) * (210 / 297)
+const W_STD = H_STD * W_RATIO
+const W_FEATURED = H_FEATURED * W_RATIO
+const GAP = 1.96 // 标准间距（%），沿用旧法的步长 13.7 − 书宽 11.74
+
+function volLayout(n: number, featuredIdx: number): string[] {
+  if (n <= 0) return []
+  const widths = Array.from({ length: n }, (_, i) => (i === featuredIdx ? W_FEATURED : W_STD))
+  const total = widths.reduce((a, b) => a + b, 0) + GAP * (n - 1)
+  let x = Math.max(2, (100 - total) / 2)
+  const out: string[] = []
+  for (let i = 0; i < n; i++) {
+    out.push(`${x.toFixed(1)}%`)
+    x += widths[i] + GAP
+  }
+  return out
 }
 
 /* cover[2] 形如「2026年第5期（总第39期）」 */
@@ -47,7 +70,10 @@ type Vol = {
   total?: number
   design: string
   cover?: string
-  latest?: boolean
+  /** 书架最靠前的那一册（当期）：抬高、金线、书目行加金色期号 */
+  featured?: boolean
+  /** 排期已建、还没出稿的末位空格（无封面、不可点） */
+  pending?: boolean
 }
 
 function toVol(book: ShelfBook): Vol | null {
@@ -67,13 +93,21 @@ function toVol(book: ShelfBook): Vol | null {
 }
 
 /* 书架按新 → 旧排（books 到手是期次升序；按期次倒排，等价于静态稿 BOOKS 的顺序）；
-   最新一期即素材封面上的原印期号，往期封面需叠期号铭牌盖住烧死的「202609」 */
-function buildVols(books: ShelfBook[]): Vol[] {
+   最新一期即素材封面上的原印期号，往期封面需叠期号铭牌盖住烧死的「202609」。
+   2026-10-26 方案 C：末位补「待装帧」空格（排期已建、未出稿的期次，由 data.ts 供给），
+   并把排在最前的那一册标成 featured——首屏有主次，不再五册同级。
+   「待装帧」只认排期表，不从上一期推月份：推出来的期次是编的。 */
+function buildVols(books: ShelfBook[], pending: string[] = []): Vol[] {
   const vols = [...books]
     .sort((a, b) => (b.period ?? '').localeCompare(a.period ?? ''))
     .map(toVol)
     .filter((v): v is Vol => v !== null)
-  if (vols.length) vols[0] = { ...vols[0], latest: true }
+  for (const period of pending) {
+    if (vols.some((v) => v.period === period)) continue
+    vols.push({ period, issue: '', month: '', design: '待装帧', pending: true })
+  }
+  const firstReal = vols.findIndex((v) => !v.pending)
+  if (firstReal >= 0) vols[firstReal] = { ...vols[firstReal], featured: true }
   return vols
 }
 
@@ -88,8 +122,11 @@ function fmt(n?: number) {
 type DetailState = { open: boolean; period: string }
 const DETAIL_CLOSED: DetailState = { open: false, period: '' }
 
-export default function LibraryHome({ books, stats }: LibraryHomeProps) {
-  const vols = useMemo(() => buildVols(books), [books])
+export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHomeProps) {
+  const vols = useMemo(() => buildVols(books, pendingPeriods ?? []), [books, pendingPeriods])
+  /* 排布一次算好：当期下标决定每册多宽，宽度又决定后面每一册的起点 */
+  const xs = useMemo(() => volLayout(vols.length, vols.findIndex((v) => v.featured)), [vols])
+  const realCount = vols.filter((v) => !v.pending).length
   const [detail, setDetail] = useState<DetailState>(DETAIL_CLOSED)
 
   /* 「連 續 記 錄 · N 期」的 N：取各册 cover[2] 解析出的总期数最大值 */
@@ -156,20 +193,33 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
           <h1>一年六期，一期一册。</h1>
           <p>云南大学图书馆 · 学科信息参考 · 2026 年馆藏</p>
         </div>
-        <div className="shelf" id="shelf" aria-label={`2026 年馆藏，共 ${vols.length} 册`}>
+        <div className="shelf" id="shelf" aria-label={`2026 年馆藏，共 ${realCount} 册`}>
           {/* 新书期次待装帧：DESIGN_MAP 查不到封面时用深绿底期号占位（样式见 shelf-landing.css）。
               往期册封面叠期号铭牌：素材图里印的是当期号，铭牌盖住并印正确期号/月份 */}
           {vols.map((v, i) => {
-            const style: CSSProperties & { '--x': string } = { '--x': volX(i, vols.length) }
+            const style: CSSProperties & { '--x': string } = { '--x': xs[i] ?? '16.8%' }
+            const tone = v.featured ? ' is-featured' : ' is-sub'
+            /* 待装帧：不是书，不可点、不进 Tab 序，也不给 hover 书目行（面上已写期号与「待装帧」） */
+            if (v.pending) {
+              return (
+                <span key={v.period} className={`vol${tone} is-pending`} style={style}
+                      aria-label={`${v.period}，待装帧`}>
+                  <span className="face placeholder" aria-hidden="true"><b>{v.period}</b>待装帧</span>
+                </span>
+              )
+            }
             return (
-              <a key={v.period} className="vol" href={`#v-${v.period}`} style={style}
+              <a key={v.period} className={`vol${tone}`} href={`#v-${v.period}`} style={style}
                  aria-label={`${v.period}，${v.issue}，${designLabel(v.design)}`}
                  onClick={(e) => { e.preventDefault(); openDetail(v.period) }}>
                 {v.cover
                   ? <img className="face" src={`/app/shelf/assets/wenheng-covers/${v.cover}`}
                          alt={`学科信息参考 ${v.issue}，${v.design}装帧封面`} draggable={false} />
                   : <span className="face placeholder" aria-hidden="true"><b>{v.period}</b>待装帧</span>}
-                {v.cover && !v.latest && (
+                {/* 期号铭牌：六册一律叠（2026-10-26 方案 C）。原来只有往期叠，
+                    结果当期用素材原印的小字、往期反倒有大铭牌——主次倒挂。
+                    当期那册烧的就是对的期号，盖上再印同一个号，观感反而统一。 */}
+                {v.cover && (
                   <span className="reissue" aria-hidden="true">
                     <span className="re-mask" />
                     <b className="re-num">{v.period}</b>

@@ -91,5 +91,5 @@ export default function ShelfPage() {
     )
   }
 
-  return <LibraryHome books={state.books} stats={state.stats} />
+  return <LibraryHome books={state.books} stats={state.stats} pendingPeriods={state.pendingPeriods} />
 }

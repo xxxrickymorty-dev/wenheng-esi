@@ -1,4 +1,4 @@
-import { HttpError, req, type Me } from '../api'
+import { HttpError, getPeriods, req, type Me } from '../api'
 import type {
   GlossaryEntry, ShelfBook, ShelfLoadResult, ShelfBookPreview, ShelfStats,
   TocEntry,
@@ -119,6 +119,10 @@ export async function loadShelfPreviews(signal: AbortSignal): Promise<ShelfLoadR
 
   if (!isRoleResponse(me)) return { kind: 'unavailable' }
 
+  /* 排期表与馆藏预览并行取：排期只用来算「末位待装帧」那几格，拿不到就不画，
+     绝不能反过来拖慢首屏。762 B，与 preview.js 同时发出。 */
+  const periodsPromise = getPeriods().catch(() => [])
+
   let response: Response
   try {
     response = await fetch('/app/shelf/preview.js', {
@@ -149,5 +153,16 @@ export async function loadShelfPreviews(signal: AbortSignal): Promise<ShelfLoadR
   const preview = readPreviewScript(script)
   if (!preview) return { kind: 'invalid-data' }
   const { books, stats } = preview
-  return { kind: 'preview', books, ...(stats ? { stats } : {}) }
+
+  /* 末位「待装帧」（rick 2026-10-26 裁「方案 C」）：
+     排期里已经建出来、但还没出过稿的期次（generated === false），且书架上确实没有它，
+     就在末位补一个空书位。**只认排期表，不从上一期推算月份**——推出来的期次是编的。
+     排期拿不到 → 一格空位都不画，宁少不假。 */
+  const have = new Set(books.map((b) => b.period).filter((p): p is string => Boolean(p)))
+  const pendingPeriods = (await periodsPromise)
+    .filter((p) => p.generated === false && !have.has(p.period))
+    .map((p) => p.period)
+
+  return { kind: 'preview', books, ...(stats ? { stats } : {}),
+           ...(pendingPeriods.length ? { pendingPeriods } : {}) }
 }
