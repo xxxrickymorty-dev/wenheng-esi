@@ -10,8 +10,19 @@ export default defineConfig({
   server: {
     host: '127.0.0.1',
     port: 5180, strictPort: false,
-    /* dev 下 /api 转给同一台 FastAPI（登录 cookie 同 host 共享） */
-    proxy: { '/api': 'http://127.0.0.1:8080' },
+    /* dev 下 /api 与登录转给同一台 FastAPI（登录 cookie 同 host 共享）。
+       工作区全量迁入后，壳内 陈列馆(ShelfPage) 还要吃 8080 的陈列馆数据与素材。 */
+    proxy: {
+      '/api': 'http://127.0.0.1:8080',
+      '/login': 'http://127.0.0.1:8080',
+      '/logout': 'http://127.0.0.1:8080',
+      '/healthz': 'http://127.0.0.1:8080',
+      '/qr.png': 'http://127.0.0.1:8080',
+      '^/app/shelf/data\.js$': 'http://127.0.0.1:8080',
+      '^/app/shelf/preview\.js$': 'http://127.0.0.1:8080',
+      '/app/shelf/assets': 'http://127.0.0.1:8080',
+      '/app/shelf/pages.html': 'http://127.0.0.1:8080',
+    },
   },
   build: { outDir: "dist", emptyOutDir: true },
 });

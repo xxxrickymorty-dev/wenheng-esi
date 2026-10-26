@@ -1,0 +1,160 @@
+/* 阅读器（Reader）的深色外壳样式：顶栏、品牌、颗粒质感、焦点环。
+   3D 建筑外景与阅览室已于 2026-10-25 退役，这里只留阅读器还在用的部分。
+   注意 --gold / --cream 在这里覆盖 index.css 的同名变量，翻书器吃的是这套金铜色。 */
+:root {
+  --cream: #eee7d7;
+  --gold: #cbb98d;
+}
+
+.site {
+  position: relative;
+  width: 100%;
+  min-height: 100svh;
+  overflow: hidden;
+  background: #10291f;
+  color: var(--cream);
+  font-family: 'Noto Serif SC Variable', Georgia, 'Noto Serif CJK SC', 'Songti SC', SimSun, serif;
+}
+
+.scene-wrap {
+  position: absolute;
+  inset: 0;
+}
+
+.scene-wrap::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(7, 31, 27, .86), rgba(8, 31, 28, .38) 29%, transparent 56%), linear-gradient(0deg, rgba(6, 26, 23, .58), transparent 30%);
+  content: '';
+  pointer-events: none;
+}
+
+.grain {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: .08;
+  pointer-events: none;
+}
+
+.topbar {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  height: 82px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 clamp(24px, 4vw, 80px);
+  /* 2026-09-28：导航栏对齐首页（图一）——深绿实底 + 象牙白文字 + 金线底边，
+     建筑页 / 阅览室 / 阅读器三屏同一条顶栏。 */
+  background: #12362a;
+  color: #f0ead8;
+  border-bottom: 1px solid #bcad8550;
+  font-family: 'Noto Serif SC Variable', Georgia, 'Noto Serif CJK SC', serif;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #f3e9d1;
+  text-align: left;
+}
+
+.brand-mark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  color: var(--gold);
+  font-size: 23px;
+}
+
+.brand strong {
+  display: block;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: .17em;
+}
+
+.brand small {
+  display: block;
+  margin-top: 4px;
+  color: var(--gold);
+  font-size: 9px;
+  letter-spacing: .22em;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  color: #d8d6c6;
+  font-size: 12px;
+  letter-spacing: .12em;
+}
+
+.topbar-right i {
+  width: 1px;
+  height: 18px;
+  background: #908f7d;
+}
+
+.topbar-right button {
+  padding: 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.site :focus-visible {
+  outline: 3px solid var(--lib-focus-on-dark);
+  outline-offset: 3px;
+}
+
+@media (max-width: 800px) {
+  .topbar { height: 68px; }
+  .topbar-right > span,
+  .topbar-right i { display: none; }
+}
+
+@media (max-width: 600px) {
+  .site { min-height: 100svh; }
+  .topbar { padding: 0 18px; }
+  .brand-mark { width: 34px; height: 34px; font-size: 19px; }
+  .brand strong { font-size: 13px; }
+  .brand small { font-size: 7px; }
+  .topbar-right { font-size: 10px; }
+}
+
+@media (max-width: 420px) {
+  .topbar-right { gap: 7px; }
+  .topbar-right i { display: none; }
+  .topbar-right button { padding: 6px 4px; font-size: 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site *,
+  .site *::before,
+  .site *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+.topbar-right button {
+  min-height: 44px;
+}
+
+/* 阅读器顶栏文字下限（功能文本 ≥13.5px，附在末尾以覆盖窄屏回退） */
+.brand strong { font-size: 17px; }
+.topbar-right { font-size: 13.5px; }
+.topbar-right button { font-size: 13.5px; }

@@ -1,0 +1,1438 @@
+/* 基础 reset（2026-10-01 移除 Tailwind 时内置）：原样保留 Tailwind preflight 的关键行为，
+   避免整站边距/列表/表单/图片默认样式发生变化。改动这里必须跑全站截图核对。 */
+*,::after,::before,::backdrop,::file-selector-button{box-sizing:border-box;margin:0;padding:0;border:0 solid}
+.ws{-webkit-text-size-adjust:100%;line-height:1.5}
+img,svg,video,canvas,audio,iframe,embed,object{display:block;vertical-align:middle}
+img,video{max-width:100%;height:auto}
+ol,ul,menu{list-style:none}
+table{text-indent:0;border-color:inherit;border-collapse:collapse}
+button,input,select,optgroup,textarea,::file-selector-button{font:inherit;color:inherit;background-color:transparent}
+h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}
+a{color:inherit;text-decoration:inherit}
+b,strong{font-weight:bolder}
+small{font-size:80%}
+hr{height:0;color:inherit;border-top-width:1px}
+code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-size:1em}
+::placeholder{opacity:1;color:color-mix(in oklab, currentColor 50%, transparent)}
+
+/* ============================================================================
+   文衡 · 工作台令牌（绿蓝双主题，2026-10-17 rick 拍板，据 汇-绿蓝.html 融合）
+   蓝·场（题头/顶栏大场面色）＋绿·器（控件/强调/重线色）；绿主题两族对调。
+   朱砂退役。语义色（ok/warn/bad）不随主题变，2026-10-24 起 warn/bad 分色：
+   红 #B23A2B＝失败 / 拦停 / 破坏性确认；琥珀 warn＝可继续的提醒（校验提醒、待重签类）。
+   纸面分层：底最深（bg）、卡片更亮（card）、一档浅阴影（--shadow）让卡片浮起——零圆角不变。
+   文字/底色组合实测 ≥4.5:1（WCAG AA）。改配色只改这两处（blue / green）。
+   --zhu 仍是全站主强调色变量名（＝器色），组件不必改。
+   ========================================================================== */
+.ws, .ws[data-palette="blue"]{
+  --field:#17456E; --field-2:#0F2E4C; --field-3:#2F6B8E; --field-4:#8FB6CE; --field-5:#DCE8F0;
+  --tool:#26483B; --tool-2:#163228; --tool-3:#2F7A58; --tool-4:#7FB79B; --tool-5:#DFEDE6;
+  --bg:#EDE9DE; --card:#FAF8F0; --panel:#E6E1D3; --card-hi:#FDFAF3;
+  --ink:#15222B; --ink-2:#43525C; --ink-3:#556169; --ink-4:#64717A;
+  --line:#D8D2C2; --line-2:#E6E1D3;
+  --zhu:#26483B; --zhu-soft:#DFEDE6;
+  --gline:#163228;
+  --gold:#2F7A58; --gold-soft:#DFEDE6; --gold-ink:#163228;
+  --ok:#276B4C; --ok-soft:#DFEDE6; --ok-line:#9CC4AE;
+  --warn:#7C5A16; --warn-soft:#F3E9CF;
+  --bad:#B23A2B; --bad-soft:#F4DDD7;
+  --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+  --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  --r:0px; --r-sm:0px;
+  --shadow:0 1px 2px rgba(21,34,43,.07);
+  /* 字号音阶（2026-10-24 定稿）：全站六档＋clamp 英雄与豁免件；主角跨两级取值，配角压平——见 UX.md §九 */
+  --fs-xs:11px; --fs-sm:12px; --fs-label:13.5px; --fs-body:15px; --fs-h:19px; --fs-sh:26px;
+}
+.ws[data-palette="green"]{
+  --field:#26483B; --field-2:#163228; --field-3:#2F7A58; --field-4:#7FB79B; --field-5:#DFEDE6;
+  --tool:#17456E; --tool-2:#0F2E4C; --tool-3:#2F6B8E; --tool-4:#8FB6CE; --tool-5:#DCE8F0;
+  --zhu:#17456E; --zhu-soft:#DCE8F0;
+  --gline:#0F2E4C;
+  --gold:#2F6B8E; --gold-soft:#DCE8F0; --gold-ink:#0F2E4C;
+}
+
+.ws{min-height:100dvh;display:flex;flex-direction:column}
+.ws > .app-shell{flex:1;display:flex;flex-direction:column}
+.ws{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0}
+:focus-visible{outline:2px solid var(--zhu);outline-offset:2px;border-radius:0}
+a{color:inherit}
+
+/* ---------- 工作台外壳（2026-10-17 绿蓝语言：顶栏制，深色「场」条） ----------
+   顶栏 60px：品牌 / 横向导航 / 右侧（期次 / 陈列馆 / 配色 / 身份）；正文自然滚动；
+   内容区 1240px。窄屏顶栏折行、导航横滑。 */
+.app-shell{min-height:100dvh;display:flex;flex-direction:column}
+.app-top{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;
+  min-height:60px;padding:0 clamp(14px,2.5vw,28px);background:var(--field-2);color:var(--field-5)}
+.app-brand{display:flex;align-items:baseline;gap:10px;white-space:nowrap;text-decoration:none;flex:0 0 auto}
+.app-brand b{font-family:var(--serif);font-size:var(--fs-sh);font-weight:600;letter-spacing:.18em;color:var(--field-5)}
+.app-brand span{font-size:var(--fs-xs);letter-spacing:.16em;color:var(--field-4)}
+.app-nav{display:flex;align-items:center;gap:22px;margin-left:auto;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.app-nav a{white-space:nowrap;padding:6px 2px;font-size:var(--fs-label);color:var(--field-4);
+  border-bottom:2px solid transparent;transition:color .15s,border-color .15s}
+.app-nav a[aria-current="page"]{color:var(--field-5);font-weight:600;border-bottom-color:var(--tool-3)}
+.app-nav a:hover{color:var(--field-5)}
+.app-nav-sep{flex:0 0 auto;width:1px;height:14px;background:var(--field-3)}
+.app-side{display:flex;align-items:center;gap:12px;margin-left:18px;flex:0 0 auto}
+.app-jump{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 12px;
+  border:1px solid var(--field-3);background:transparent;color:var(--field-4);text-decoration:none;
+  font-size:var(--fs-label);transition:border-color .15s,color .15s;white-space:nowrap}
+.app-jump:hover{border-color:var(--field-4);color:var(--field-5)}
+.app-jump svg{color:var(--tool-4)}
+.app-side .user-chip{color:var(--field-5)}
+.app-side .user-chip-btn:hover{background:var(--field)}
+.app-side .app-period{color:var(--field-4)}
+.app-side .app-period select{background:var(--field);border-color:var(--field-3);color:var(--field-5)}
+.app-side .skin-switch{border-color:var(--field-3);background:transparent}
+.app-side .skin-switch button{color:var(--field-4)}
+.app-side .skin-switch button[aria-pressed="true"]{background:var(--tool-3);color:#fff}
+.app-side .user-chip-pop{top:calc(100% + 10px);bottom:auto;left:auto;right:0}
+.skip-link{position:absolute;left:-999px;top:8px;z-index:100;background:var(--card);padding:10px 14px;border:1px solid var(--gline)}
+.skip-link:focus{left:8px}
+
+@media (max-width:900px){
+  .app-top{flex-wrap:wrap;align-items:center;gap:8px 18px;padding:10px clamp(14px,4vw,22px)}
+  .app-nav{order:3;width:100%;margin-left:0;gap:18px}
+  .app-side{margin-left:auto;gap:10px}
+  .wrap{padding:18px 16px 60px}
+}
+
+/* ---------- 顶栏附注（期次章已废，保留折叠主体） ---------- */
+/* 就地折叠（票 11；UX.md 第十节）：包卡片的折叠壳，展开后卡片自身描边去掉 */
+.fold{background:var(--card);border:1px solid var(--line);margin-top:18px;overflow:hidden}
+.fold>summary{display:flex;align-items:center;gap:10px;padding:13px 18px;cursor:pointer;font-size:var(--fs-body);list-style:none}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::before{content:"▸";color:var(--zhu)}
+.fold[open]>summary::before{content:"▾"}
+.fold>summary .sm{color:var(--ink-3);font-size:var(--fs-label);margin-left:auto}
+.fold-inner{padding:4px 18px 16px}
+.fold .card{margin-top:0!important;border:0;box-shadow:none}
+/* 运行档案 · 智能体规划与调度（票 12） */
+.ar-chain{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.ar-chain-node{display:grid;gap:2px;padding:8px 12px;border:1px solid var(--line);background:var(--panel);font-size:var(--fs-label)}
+.ar-chain-node i{color:var(--ink-3);font-style:normal}
+.ar-chain-node small{color:var(--ink-3);font-size:var(--fs-sm)}
+.ar-story{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:18px}
+.ar-story-step{display:flex;flex-direction:column;gap:4px;padding:14px 16px;background:var(--card)}
+.ar-story-k{font-family:var(--kai);font-size:var(--fs-xs);letter-spacing:.24em;color:var(--ink-3)}
+.ar-story-step b{font-size:var(--fs-h);font-weight:600;line-height:1.2;color:var(--ink)}
+.ar-story-step small{font-size:var(--fs-sm);line-height:1.5;color:var(--ink-3)}
+.ar-story-step.warn b{color:var(--warn)}
+.ar-story-step.todo b{color:var(--ink-3)}
+@media(max-width:900px){.ar-story{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.heal-trace{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:1px;background:var(--line)}
+.heal-trace li{display:grid;grid-template-columns:78px 170px minmax(0,1fr);gap:12px;align-items:baseline;
+  padding:8px 12px;background:var(--card)}
+.heal-phase{font-family:var(--mono);font-size:var(--fs-xs);letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase}
+.heal-trace li b{font-size:var(--fs-label);font-weight:600}
+.heal-trace li small{font-size:var(--fs-sm);line-height:1.5;color:var(--ink-3)}
+.heal-trace li.warn b{color:var(--warn)}
+.heal-trace li.ok b{color:var(--ok)}
+@media(max-width:900px){.heal-trace li{grid-template-columns:70px minmax(0,1fr)}.heal-trace li small{grid-column:1/-1}}
+.mig-four{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:12px}
+.mig-card{border:1px solid var(--line-2);background:var(--panel);padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.mig-card b{font-family:var(--serif);font-size:var(--fs-h)}
+.mig-card small{font-size:var(--fs-sm);line-height:1.6;color:var(--ink-3)}
+@media(max-width:900px){.mig-four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ar-steps{display:grid;gap:6px;margin-top:8px}
+.ar-step{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--line-2);background:var(--card)}
+.ar-step-name{font-weight:650;font-size:var(--fs-label)}
+.ar-step-detail{flex:1;min-width:180px;color:var(--ink-2);font-size:var(--fs-label)}
+.ar-step-sec{color:var(--ink-3);font-size:var(--fs-sm);font-variant-numeric:tabular-nums}
+
+.wrap{max-width:1240px;margin:0 auto;padding:26px 40px 56px;width:100%}
+/* 投影大屏不满幅两侧空（2026-10-24）：1600px 起放宽到 1480px，仍居中留白 */
+@media (min-width:1600px){.wrap{max-width:1480px}}
+/* 分层（2026-10-24）：底更深、卡片更亮＋一档浅阴影，卡片从纸面上「浮」起；零圆角不变 */
+.card{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+
+/* ---------- 三步条（庚·卷宗「工序四站」：大字期题＋绿色进度线＋站列） ---------- */
+.steps{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 24px;
+  padding:34px 30px 0;border-bottom:1px solid var(--line)}
+.steps h1{font-size:clamp(36px,4.4vw,54px);line-height:1.05;letter-spacing:.03em;color:var(--zhu)}
+.steps-meta{display:flex;gap:8px 12px;align-items:center;justify-self:end;align-self:start;margin-top:14px}
+.steps .tag{justify-self:end;align-self:start;margin-top:12px;font-size:var(--fs-sm);letter-spacing:.1em;
+  color:var(--ink-2);border:1px solid var(--line);padding:4px 12px;white-space:nowrap;background:transparent}
+.steplist{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  margin:26px 0 0;padding:0;list-style:none}
+.step{display:flex;align-items:flex-start;gap:9px;font-size:var(--fs-label);color:var(--ink-3);
+  padding:14px 16px 14px 0;border-top:2px solid var(--line-2)}
+.step:not(:first-child){padding-left:16px}
+.step:not(:last-child){border-right:1px solid var(--line-2)}
+.step.on{border-top-color:var(--zhu);color:var(--ink-2)}
+.step.now{color:var(--ink);font-weight:650}
+.step .dot{width:20px;height:20px;display:grid;place-items:center;font-size:var(--fs-xs);font-weight:700;
+  border:1px solid var(--line);color:var(--ink-3);flex:0 0 auto;background:var(--card)}
+.step.on .dot{background:var(--zhu);border-color:var(--zhu);color:#F6F4EC}
+.step.now .dot{border-color:var(--zhu);color:var(--zhu)}
+.step small{display:block;font-size:var(--fs-sm);color:var(--ink-3);margin-top:2px;font-weight:400}
+
+/* ---------- 焦点块：全局唯一一处实色陈述（庚：绿色衬线句＋左绿线平板） ---------- */
+.focus{margin-top:0;background:var(--panel);border-left:3px solid var(--zhu);
+  padding:22px 26px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+/* 结论句＝本屏主角（taste P1，2026-10-16）：工作台/取数台共用——升 display 级 */
+.focus .big{font-size:clamp(24px,2.6vw,31px);font-family:var(--serif);font-weight:600;
+  letter-spacing:.01em;line-height:1.35;color:var(--zhu)}
+.focus .sub{color:var(--ink-2);font-size:var(--fs-body);margin-top:4px}
+.focus .cta{margin-left:auto;display:flex;gap:12px;align-items:center}
+.btn{transition:background .15s,border-color .15s,color .15s;display:inline-flex;align-items:center;gap:8px;
+  padding:10px 20px;border:1px solid var(--line);background:transparent;cursor:pointer;font:inherit;
+  font-size:var(--fs-body);font-weight:600;letter-spacing:.04em;color:inherit;text-decoration:none}
+.btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-size:var(--fs-body);padding:12px 24px}
+.btn:hover{background:var(--panel)}
+.btn.primary:hover{filter:brightness(1.06);background:var(--zhu)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+/* 行内二次确认态（票 06）：破坏性确认＝红（2026-10-24 warn/bad 分色）——醒目且不可误读，3 秒自动还原 */
+.btn.confirming{border-color:var(--bad);color:var(--bad);background:var(--bad-soft)}
+.btn.primary.confirming{background:var(--bad);border-color:var(--bad);color:#fff}
+/* 停止下载（2026-10-19 晚）：红描边 → 悬停/二次确认变实心红（复用 ConfirmButton 的确认态） */
+.btn.stop{border-color:var(--bad);color:var(--bad);background:var(--bad-soft)}
+.btn.stop:hover{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.stop.confirming{background:var(--bad);border-color:var(--bad);color:#fff}
+.hint{color:var(--ink-3);font-size:var(--fs-label)}
+
+/* ---------- 状态条（颜色 + 图标 + 文字 三重编码；庚：平板＋左色线） ---------- */
+.banner{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-left:3px solid currentColor;
+  margin-top:18px;font-size:var(--fs-body)}
+.banner.ok{background:var(--ok-soft);color:var(--ok)}
+.banner.bad{background:var(--bad-soft);color:var(--bad)}
+.banner.warn{background:var(--warn-soft);color:var(--warn)}
+.banner .ico{flex:0 0 22px;margin-top:2px}
+.banner b.title{display:block;font-size:var(--fs-h);margin-bottom:2px}
+.banner .acts{margin-top:10px;display:flex;gap:10px;flex-wrap:wrap}
+.banner .acts .btn{padding:9px 16px;font-size:var(--fs-label);background:transparent;
+  border-color:currentColor;color:inherit;font-weight:600}
+.banner ul{margin:6px 0 0;padding-left:20px}
+.banner li{margin:2px 0}
+
+.elapsed{display:flex;align-items:center;gap:8px;color:var(--ink-3);font-size:var(--fs-body);padding:2px 24px 14px}
+
+/* 表格列约定：数字右对齐；长文本限宽省略（悬浮 title 看全） */
+.periods td.num,.periods th.num{text-align:right;font-variant-numeric:tabular-nums}
+.periods td.ellip{max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* 执行条（LiveRun）：任务 · 签单状态 · 看详细过程 收成一行、右端对齐 */
+.runbar{display:flex;align-items:center;gap:10px 18px;flex-wrap:wrap;padding:4px 24px 14px}
+.runbar .elapsed{flex:1 1 340px;min-width:0;padding:0}
+.runbar-state{color:var(--ink-3);font-size:var(--fs-body);white-space:nowrap}
+.runbar-state b{margin-left:8px;color:var(--ink);font-weight:600}
+.runbar-log{flex:0 0 auto;margin-left:auto}
+.runlog{margin:0 24px 16px}
+.runlog pre{margin-top:0;max-height:260px;overflow:auto;background:var(--panel);
+  border:1px solid var(--line);padding:10px 12px;
+  font-size:var(--fs-sm);font-family:var(--mono);color:var(--ink-2)}
+
+/* ---------- 小卡片 ---------- */
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:18px}
+.mini{background:var(--card);border:1px solid var(--line);padding:16px 18px}
+.mini h3{margin:0 0 8px;font-size:var(--fs-body);color:var(--ink-2);font-weight:600}
+.mini p{margin:0;font-size:var(--fs-label);color:var(--ink-3);line-height:1.65}
+
+/* ---------- 预测模型 ---------- */
+.model{margin-top:18px;background:var(--card);border:1px solid var(--line)}
+.model summary{display:flex;align-items:center;gap:10px;padding:15px 20px;cursor:pointer;
+  font-size:var(--fs-body);list-style:none}
+.model summary::-webkit-details-marker{display:none}
+.model summary .k{font-weight:600}
+.model summary .v{color:var(--ink-2)}
+.model .body{padding:0 20px 18px}
+.model table{width:100%;border-collapse:collapse;font-size:var(--fs-body)}
+.model th,.model td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line-2);
+  vertical-align:top}
+.model th{color:var(--ink-3);font-weight:400;font-size:var(--fs-xs);letter-spacing:.2em;
+  border-bottom:1px solid var(--gline)}
+.model select{font:inherit;padding:7px 10px;border:1px solid var(--line);
+  background:var(--card);color:var(--ink)}
+.model .mdesc{display:block;color:var(--ink-3);font-size:var(--fs-label);margin-top:3px}
+
+/* ---------- 期次表（庚：透明表头＋绿下划线） ---------- */
+.periods{width:100%;border-collapse:collapse;font-size:var(--fs-body)}
+.periods th,.periods td{padding:12px 14px 10px;text-align:left}
+.periods th{font-size:var(--fs-xs);letter-spacing:.22em;color:var(--ink-3);font-weight:400;
+  border-bottom:1px solid var(--gline);padding-bottom:9px}
+.periods td{border-bottom:1px solid var(--line-2)}
+.periods tbody tr{transition:background .15s}
+.periods tbody tr:hover{background:var(--panel)}
+.periods .mono{font-family:var(--mono);color:var(--ink-3);font-size:var(--fs-label)}
+.pill{padding:2px 9px;font-size:var(--fs-sm);display:inline-block;letter-spacing:.02em}
+.pill.signed{background:var(--zhu-soft);color:var(--zhu)}
+.pill.stale{background:var(--gold-soft);color:var(--gold-ink)}
+.pill.unsigned{background:var(--panel);color:var(--ink-3);border:1px solid var(--line)}
+
+/* 裸表格（无组件类的 <table>）统一落庚语言；组件类各自覆盖 */
+main table{width:100%;border-collapse:collapse}
+main table th{font-size:var(--fs-xs);letter-spacing:.22em;color:var(--ink-3);font-weight:400;text-align:left;
+  padding:12px 10px 9px;border-bottom:1px solid var(--gline)}
+main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(--fs-body);text-align:left}
+
+/* ---------- 入口卡（报告屏的对照 / 红件 / 溯源入口；庚：落款行式平条） ---------- */
+.entry{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  margin-top:18px;background:transparent;border-bottom:1px solid var(--line);
+  padding:16px 2px;text-decoration:none;transition:background .15s}
+.entry:hover{background:var(--panel)}
+.entry .t{display:block;font-size:var(--fs-h);font-weight:600}
+.entry .d{display:block;font-size:var(--fs-label);color:var(--ink-3);margin-top:3px}
+.entry .go{color:var(--zhu);font-size:var(--fs-h)}
+
+/* ---------- 降级提示（诚实态：接口没就绪就明说） ---------- */
+.degraded{margin-top:14px;border:1px dashed var(--line);
+  padding:11px 14px;font-size:var(--fs-label);color:var(--ink-3);background:transparent}
+.degraded b{color:var(--ink-2)}
+
+/* 宽表：在容器里横向滚动，而不是把整页撑破（台账 19 行的表就是这么撑破 2217px 的） */
+.tablewrap{overflow-x:auto; -webkit-overflow-scrolling:touch}
+.tablewrap table{min-width:520px}
+
+@media (max-width:760px){
+  body{font-size:var(--fs-body)}
+  .steplist{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .step:nth-child(2n){border-right:0}
+  .focus .cta{margin-left:0}
+  /* 🔴 窄屏**不藏导航**：藏了就没法切工作区。顶栏折行、导航可横滑。 */
+  .report-head{grid-template-columns:minmax(0,1fr)}
+  .wrap{padding:18px 14px 56px}
+}
+
+/* ============================================================================
+   报告（数据视图）——庚·卷宗题头：大衬线期题＋右列说明
+   ========================================================================== */
+.report-head{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:40px;
+  padding:36px 0 0;align-items:start}
+@media (max-width:900px){.report-head{grid-template-columns:minmax(0,1fr)}}
+.eyebrow{font-size:var(--fs-xs);color:var(--ink-3);letter-spacing:.3em}
+.display{margin:14px 0 0;font-family:var(--serif);font-weight:600;line-height:1.06;
+  font-size:clamp(2.3rem,4.6vw,3.5rem);letter-spacing:.02em;color:var(--zhu)}
+.display small{display:block;font-size:.32em;font-weight:400;color:var(--ink-2);
+  letter-spacing:.02em;margin-top:.6em;line-height:1.5}
+.rule{width:72px;height:2px;background:var(--gline);margin:22px 0 0}
+
+/* 报告签发态 · 只读声明（票 03）：本屏只看不改；未签发只给「去④核验与定稿」一句引导 */
+.rep-status{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px;
+  padding:11px 15px;border:1px solid var(--line);
+  background:var(--panel);font-size:var(--fs-label);color:var(--ink-2)}
+.rep-status .rep-flag{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;
+  font-size:var(--fs-sm);font-weight:650;white-space:nowrap;
+  background:var(--warn-soft);color:var(--gold-ink)}
+.rep-status.ok .rep-flag{background:var(--ok-soft);color:var(--ok)}
+.rep-status .rep-note{flex:1;min-width:200px;line-height:1.6}
+.rep-status .rep-go{margin-left:auto;white-space:nowrap;text-decoration:none;
+  color:var(--zhu);font-weight:600}
+.rep-status .rep-go:hover{text-decoration:underline}
+
+/* 期次印记链：记忆点（庚：方印） */
+.chain{background:var(--card);border:1px solid var(--line);padding:20px 18px}
+.chain h3{margin:0 0 4px;font-size:var(--fs-body);color:var(--ink-2)}
+.chain .cap{margin:0 0 16px;font-size:var(--fs-label);color:var(--ink-3);line-height:1.6}
+.seals{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px}
+.sealbox{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.seal{width:44px;height:44px;display:grid;place-items:center;
+  font-family:var(--mono);font-size:var(--fs-xs);font-weight:700;position:relative;
+  transition:translate .18s ease}
+.seal.signed{background:var(--zhu);color:#F6F4EC;
+  box-shadow:inset 0 0 0 2px rgba(246,244,236,.32)}
+.seal.stale{background:transparent;color:var(--gold-ink);box-shadow:inset 0 0 0 2px var(--gold)}
+.seal.unsigned{background:transparent;color:var(--ink-3);box-shadow:inset 0 0 0 2px var(--line)}
+.seal.now{translate:0 -2px}
+.sealbox:hover .seal{translate:0 -3px}
+.sealbox .lbl{font-size:var(--fs-sm);color:var(--ink-3);line-height:1.45}
+.sealbox .now-tag{font-size:var(--fs-xs);color:var(--zhu);font-weight:700;letter-spacing:.06em}
+.legend{margin-top:14px;padding-top:12px;border-top:1px solid var(--line-2);
+  display:flex;gap:14px;flex-wrap:wrap;font-size:var(--fs-sm);color:var(--ink-3)}
+.legend i{display:inline-block;width:11px;height:11px;margin-right:5px;
+  vertical-align:-1px;border:1px solid transparent}
+
+/* 读数带（庚：绿线通栏，四格） */
+.readouts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:0;padding:0;margin-top:18px;
+  border-top:2px solid var(--gline);border-bottom:1px solid var(--gline)}
+.readout{padding:14px 18px 12px;border-right:1px solid var(--line)}
+.readout:last-child{border-right:0}
+.readout .k{font-size:var(--fs-xs);letter-spacing:.24em;color:var(--ink-3)}
+.readout .v{font-family:var(--serif);font-size:clamp(1.5rem,2.6vw,2rem);line-height:1.1;margin-top:6px;
+  font-variant-numeric:tabular-nums}
+.readout .d{font-size:var(--fs-sm);color:var(--zhu);font-family:var(--mono)}
+.readout .v.pending{color:var(--ink-3);font-size:1.3rem}
+/* 读数值放不下大数字时（学科名等文字值）：仍走衬线 .v，只降字号、行高放宽 */
+.readout .v.tx{font-size:clamp(1.1rem,1.7vw,1.35rem);line-height:1.35;padding-top:.25em}
+/* vs 上期 delta 小 chip（生成台本期读数，2026-10-24）：箭头＋差值；上一期没数据时整枚不渲染。
+   进入数升→ok、降→bad；学科数与接近度差值走中性色。 */
+.readout .d.delta{display:inline-block;margin-top:7px;padding:1px 8px;border:1px solid var(--line-2);
+  background:var(--card);color:var(--ink-2);letter-spacing:.02em}
+.readout .d.delta.up{color:var(--ok);border-color:var(--ok-line);background:var(--ok-soft)}
+.readout .d.delta.down{color:var(--bad);border-color:var(--bad);background:var(--bad-soft)}
+
+/* 待接口的整块说明（诚实态，不填假数） */
+.pending-box{border:1px dashed var(--line);padding:16px 18px;
+  margin-top:18px;color:var(--ink-3);font-size:var(--fs-label);line-height:1.75}
+.pending-box b{color:var(--ink-2)}
+.pending-box code{font-family:var(--mono);font-size:var(--fs-label);color:var(--ink-2)}
+
+/* 产物卡（真数据） */
+.artifacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-top:14px}
+.art{display:flex;gap:12px;align-items:flex-start;padding:15px 16px;border:1px solid var(--line-2);
+  background:var(--panel)}
+.art .ico{flex:0 0 24px;color:var(--zhu);margin-top:2px}
+.art .n{font-weight:600;font-size:var(--fs-body)}
+.art .m{font-size:var(--fs-label);color:var(--ink-3);margin-top:2px}
+.art .go{margin-left:auto;align-self:center;color:var(--zhu);font-size:var(--fs-label);white-space:nowrap}
+.art a{text-decoration:none}
+/* 交互卡微抬升（2026-10-24 分层）：悬停加一档稍深阴影，克制——只这一档，不再多 */
+.art:hover{box-shadow:0 2px 6px rgba(21,34,43,.10)}
+
+/* 本期产物：3 列（rick 定 2026-09-25）——4 列时标题会折行、9 张还留孤行 */
+.art-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:1100px){.art-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:700px){.art-grid{grid-template-columns:1fr}}
+
+/* 对勘入口（票 14）：两扇门并排 + 章节直达折叠 + 朱批「去补」动作 */
+.rc-doors{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:12px}
+.rc-doors .entry{margin-top:0}
+.app-period{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-label);color:var(--ink-3);white-space:nowrap}
+.app-period select{min-height:32px;padding:0 8px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:var(--fs-label);border-radius:0}
+
+/* ---------- 绿蓝融合 U2（2026-10-17，据 汇-绿蓝.html）：蓝场题头 / 水尺 / 橡皮戳 / 钤印 ---------- */
+.kik{font-family:var(--kai);font-size:var(--fs-xs);letter-spacing:.36em;color:var(--field-4)}
+/* ---------- 生成台 v2 极致低密（2026-10-24 rick 过审，静态稿 v2 同构）：一行身份＋四节点流程图＋主动作 ----------
+   旧蓝场题头（题句/药丸/翻牌）随之退役；gaugeband 水尺与折叠工具保留 */
+.wb2{padding:22px clamp(16px,3vw,36px) 4px;margin-top:14px}
+.wb2-line{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding:4px 2px 0}
+.wb2-period{font-family:var(--serif);font-size:var(--fs-sh);letter-spacing:.05em;color:var(--ink);margin:0}
+.wb2-line .dim{font-size:var(--fs-sm);color:var(--ink-3)}
+.wb2-line .prev{margin-left:auto;font-size:var(--fs-label);color:var(--ink-3)}
+.wb2-line .prev b{color:var(--tool-3);font-weight:600}
+.wb2-flow{display:flex;align-items:stretch;margin:16px 0 6px;flex-wrap:wrap}
+.wb2-node{flex:1 1 130px;min-width:118px;position:relative;background:var(--card);border:1px solid var(--line);
+  border-top:3px solid var(--line);padding:12px 14px 10px}
+.wb2-node .k{display:block;font-size:var(--fs-xs);letter-spacing:.22em;color:var(--ink-3)}
+.wb2-node .v{display:block;font-family:var(--serif);font-size:var(--fs-h);margin-top:2px;color:var(--ink);
+  font-variant-numeric:tabular-nums}
+.wb2-node .n{display:block;font:12px var(--mono);color:var(--ink-3);margin-top:2px}
+/* 状态第二信号（2026-10-24）：三态各配底色填充——投影距离下不靠 3px 顶边线也能分辨。
+   done 文字用 tool-2（tool-3 在 tool-5 浅底上对比度不足 4.5，蓝主题实测 4.3）。 */
+.wb2-node.done{border-top-color:var(--tool-3);background:var(--tool-5)}
+.wb2-node.done .k,.wb2-node.done .v{color:var(--tool-2)}
+.wb2-node.now{border-color:var(--zhu);border-top-color:var(--zhu);background:var(--card-hi)}
+.wb2-node.now .v{color:var(--zhu)}
+.wb2-node.bad{border-top-color:var(--warn);background:var(--warn-soft)}
+.wb2-node.bad .k,.wb2-node.bad .v{color:var(--warn)}
+.wb2-node.todo{opacity:.55}
+.wb2-node .mark{position:absolute;right:10px;top:9px;font-size:var(--fs-label);font-weight:700}
+.wb2-node.done .mark{color:var(--tool-3)}
+.wb2-node.now .mark{color:var(--zhu)}
+.wb2-node.bad .mark{color:var(--warn)}
+.wb2-link{flex:0 0 34px;display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:var(--fs-label)}
+.wb2-link.ok{color:var(--tool-3)}
+.wb2-link.bad{color:var(--warn)}
+.wb2-cta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:6px 2px 0}
+.wb2-cta .why{font-size:var(--fs-label);color:var(--ink-3)}
+.wb2-cta>.info>summary{background:transparent;border-color:var(--line);color:var(--ink-3)}
+.wb2-ghost{border-color:transparent;background:transparent;color:var(--ink-3)}
+.wb2-ghost:hover{color:var(--zhu)}
+@media (max-width:860px){
+  .wb2-flow{flex-direction:column}
+  .wb2-link{transform:rotate(90deg);flex-basis:26px}
+  .wb2-line .prev{margin-left:0}
+}
+.gaugeband{background:var(--tool);color:var(--tool-5);padding:40px clamp(20px,4vw,56px) 30px;margin-top:16px}
+.gb-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,520px);gap:36px;align-items:start}
+.gb-copy h2{font-family:var(--serif);font-size:clamp(24px,2.6vw,34px);line-height:1.45;color:#fff;margin:12px 0 14px}
+.gb-note{color:var(--tool-4);font-size:var(--fs-label);line-height:1.9;max-width:34em}
+.gauge{background:var(--tool-2);border:1px solid var(--tool-3);padding:16px 18px}
+.gauge-head{display:flex;justify-content:space-between;font-family:var(--kai);font-size:var(--fs-xs);letter-spacing:.32em;color:var(--tool-4);margin-bottom:12px}
+.gauge-row{display:grid;grid-template-columns:minmax(96px,150px) minmax(0,1fr) 72px;gap:10px;align-items:center;padding:5px 0}
+.g-name{font-size:var(--fs-label);color:var(--tool-5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g-bar{height:12px;background:var(--tool);border:1px solid var(--tool-3);position:relative}
+.g-bar i{position:absolute;inset:0 auto 0 0;background:var(--tool-3)}
+.g-val{font-size:var(--fs-sm);color:var(--tool-4);text-align:right}
+.gauge-thr{margin-top:10px;padding-top:8px;border-top:1px dashed var(--bad);font-family:var(--kai);font-size:var(--fs-xs);letter-spacing:.28em;color:var(--field-4)}
+.gaugeband .steplist{margin-top:26px}
+.gaugeband .step{border-top-color:var(--tool-3);color:var(--tool-4)}
+.gaugeband .step.on{border-top-color:var(--tool-4);color:var(--tool-5)}
+.gaugeband .step.now{color:#fff}
+.gaugeband .step .dot{background:var(--tool-2);border-color:var(--tool-3);color:var(--tool-4)}
+.gaugeband .step.on .dot{background:var(--tool-3);border-color:var(--tool-3);color:#fff}
+.gaugeband .step small{color:var(--tool-4)}
+/* ===== 故事条（生成台，2026-10-21）：五步回放替代三步条 / 橡皮戳 / 数据表 ===== */
+.story{background:var(--card);border:1px solid var(--line);padding:20px 24px 16px;margin-top:16px}
+.story-h{display:flex;align-items:flex-start;gap:14px;margin-bottom:14px}
+.story-title{display:grid;gap:3px;min-width:0}
+.story-title h2{font-family:var(--serif);font-size:var(--fs-h);letter-spacing:.02em;color:var(--ink)}
+.runclock{margin:0;font:12.5px/1.5 var(--mono);letter-spacing:.02em;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.runclock b{font-weight:600;color:var(--ink-2)}
+.playbtn{flex:0 0 auto;font:inherit;font-size:var(--fs-label);padding:5px 13px;border:1px solid var(--line);
+  background:var(--card);color:var(--ink-2);cursor:pointer;transition:border-color .15s,color .15s}
+.playbtn:hover{border-color:var(--zhu);color:var(--zhu)}
+.story-h .hint{margin-left:auto;margin-top:4px;font-size:var(--fs-label);color:var(--ink-3);
+  text-decoration:none;border-bottom:1px solid var(--line);white-space:nowrap}
+.story-h .hint:hover{color:var(--zhu);border-color:var(--zhu)}
+.playline{height:2px;background:var(--line-2);overflow:hidden;margin:-2px 0 12px}
+.playline i{display:block;height:100%;width:0;background:var(--gold-ink);transition:width .3s linear}
+.playline.done i{width:100%}
+.band{display:grid;grid-template-columns:repeat(5,1fr);border-top:3px solid var(--line)}
+.cell{position:relative;display:block;text-decoration:none;padding:14px 16px 12px;
+  border-right:1px dashed var(--line);border-top:3px solid var(--line);margin-top:-3px;
+  transition:background .18s,opacity .3s,border-color .35s}
+.cell:last-child{border-right:0}
+.cell:hover{background:var(--panel)}
+.cell .idx{font:600 11px/1 var(--mono);letter-spacing:.12em;color:var(--ink-4)}
+.cell .t{display:block;font-family:var(--kai);font-size:var(--fs-sm);letter-spacing:.22em;color:var(--ink-3);margin:6px 0 2px}
+.cell .v{display:block;font-family:var(--serif);font-size:var(--fs-sh);line-height:1.3;color:var(--ink);
+  transition:opacity .25s;font-variant-numeric:tabular-nums}
+.cell .n{display:block;font-size:var(--fs-label);color:var(--ink-3);margin-top:4px;line-height:1.5;min-height:1.5em}
+.cell .nt{font-style:normal}
+.cell .go{position:absolute;right:13px;top:13px;font-size:var(--fs-sm);color:var(--ink-4);opacity:.45;transition:opacity .15s}
+.cell:hover .go{opacity:1}
+.cell.pending{opacity:.34}
+.cell.pending .v,.cell.pending .n{color:var(--ink-4)}
+.cell.live{background:var(--panel)}
+.cell.live .dot,.cell.run .dot{animation:runpulse .9s ease-in-out infinite}
+.cell.ok{border-top-color:var(--ok)}
+.cell.ok .v{color:var(--ok)}
+.cell.warn{border-top-color:var(--warn)}
+.cell.warn .v,.cell.warn .n{color:var(--warn)}
+.cell.todo{border-top-color:var(--ink-4)}
+.cell.todo .v,.cell.todo .n{color:var(--ink-4)}
+/* 三态第二重视觉信号：格名（.t）随状态着色——细边框在投影/大龄场景不够看（10-24 对抗性审查） */
+.cell.ok .t{color:var(--ok)}
+.cell.warn .t{color:var(--warn)}
+.cell.run .t{color:var(--field-3)}
+.cell.todo .t{color:var(--ink-4)}
+.cell.run{border-top-color:var(--field-3)}
+.cell.run .v{color:var(--field-3)}
+.say{display:flex;align-items:center;gap:10px;margin:12px 0 0;min-height:24px;font-size:var(--fs-label);
+  color:var(--ink-3);line-height:1.6}
+.say .tag{flex:0 0 auto;font-family:var(--kai);font-size:var(--fs-xs);letter-spacing:.2em;color:var(--gold-ink);
+  border:1px solid var(--gold);padding:1px 8px}
+.say .txt{transition:opacity .18s}
+@media (max-width:1020px){
+  .band{grid-template-columns:1fr 1fr}
+  .story{padding:16px 14px 12px}
+  .story-h{flex-wrap:wrap;gap:8px}
+  .story-h .hint{margin-left:0;white-space:normal}
+  .cell{padding:12px 12px 10px}
+  .cell .v{font-size:var(--fs-h)}
+}
+.rc-links{display:flex;gap:6px 10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.rc-links a{color:var(--zhu);font-weight:600}
+.art-open{flex:1;min-width:0;color:inherit;text-decoration:none}
+.art-open:hover .n{color:var(--zhu);text-decoration:underline}
+@media (max-width:1020px){.rc-doors{grid-template-columns:1fr}}
+.rc-chips{display:flex;flex-wrap:wrap;gap:6px}
+.rc-chip{transition:background .15s,color .15s,border-color .15s;display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border:1px solid var(--line);
+  background:var(--card);color:var(--ink-2);text-decoration:none;font-size:var(--fs-label)}
+.rc-chip:hover{border-color:var(--zhu);color:var(--zhu)}
+.rc-chip b{color:var(--ink-3);font-weight:600}
+.margin-note{display:grid;grid-template-columns:1fr auto;column-gap:16px;align-items:center;background:var(--card);border:1px solid var(--line);padding:13px 16px;margin-top:10px}
+.margin-note .tag{grid-column:1;font-size:var(--fs-label);color:var(--gold-ink)}
+.margin-note>p{grid-column:1;margin:5px 0 0;font-size:var(--fs-label);line-height:1.75;color:var(--ink-2)}
+.margin-note>p.mn-src{margin-top:4px;font-size:var(--fs-sm);color:var(--ink-3)}
+.margin-note .mn-acts{grid-column:2;grid-row:1/span 3;margin:0;align-self:center}
+.mn-acts{margin-top:8px}
+.mn-acts .btn{padding:4px 12px;font-size:var(--fs-label);text-decoration:none}
+
+/* 印记链：每格都留出「本期」标签那一行，否则当前期会被挤下去、整排不齐 */
+.sealbox .now-tag{display:block;min-height:1.35em}
+/* 产物卡：标题与文件名各占一行，别黏在一起 */
+.art .n{display:block}
+.art .m{display:block}
+
+/* 报告深入视图（P0-3/4）：搜索框 / 分类 chips / 图册网格 / 分组小标题 */
+.toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.search{flex:1;min-width:220px;max-width:380px;padding:9px 12px;border:1px solid var(--line);
+  background:var(--card);color:var(--ink);font:inherit;font-size:var(--fs-body)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.gal{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));margin-top:12px}
+.gal a{text-decoration:none}
+.sec-h{display:flex;align-items:baseline;gap:10px;margin-top:20px}
+
+/* 对勘本正文级阅读（P0-2）：三栏 / 分组导航 / 改动卡 / 校记 / 出处浮层
+   注：容器叫 .reading-grid —— .grid3 已被报告屏的 auto-fit 卡片布局占用，别混用 */
+.reading-grid{display:grid;grid-template-columns:210px minmax(0,1fr) 290px}
+.col-l{border-right:1px solid var(--line);padding:16px 0}
+.col-m{padding:16px 20px;border-right:1px solid var(--line);min-width:0}
+.col-r{padding:16px 18px;background:var(--panel-2)}
+.nav-i{display:flex;justify-content:space-between;gap:10px;padding:8px 18px;font-size:var(--fs-body);
+  color:var(--ink-2);border-left:3px solid transparent;cursor:pointer;text-decoration:none}
+.nav-i[aria-current=true]{border-left-color:var(--zhu);background:var(--panel);color:var(--ink);font-weight:600}
+.nav-i .n{font-family:var(--mono);color:var(--ink-3)}
+.chg{border:1px solid var(--line);background:var(--panel);margin-bottom:12px;outline:none}
+.chg:focus-visible{outline:2px solid var(--zhu);outline-offset:2px}
+.chg-h{display:flex;align-items:center;gap:10px;padding:9px 13px;border-bottom:1px solid var(--line);
+  background:var(--panel-2)}
+.chg-h .loc{font-family:var(--mono);font-size:var(--fs-label);color:var(--ink-3)}
+.chg-b{padding:11px 13px;font-size:var(--fs-body)}
+.chg-b .row{display:flex;gap:12px;padding:3px 0}
+.chg-b .row .t{flex:0 0 62px;font-family:var(--mono);font-size:var(--fs-label);color:var(--ink-3);padding-top:3px}
+.chg-b .old{color:var(--ink-3);text-decoration:line-through}
+.chg-b .new{color:var(--zhu);font-weight:600}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:var(--fs-label);
+  border-bottom:1px solid var(--line-2)}
+.kv .k{color:var(--ink-3)}
+.kv .v{font-family:var(--mono)}
+.pop{margin-top:10px;background:var(--ink);color:#f2eee3;padding:11px 14px;font-size:var(--fs-label)}
+.pop .ph{font-family:var(--mono);font-size:var(--fs-xs);letter-spacing:.22em;color:#9a9587}
+.pop .pc{font-family:var(--mono);color:#fff;word-break:break-word;margin:4px 0}
+.switch{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-2);background:var(--panel-2);
+  padding:8px 12px;font:inherit;font-size:var(--fs-label);color:var(--ink-2);cursor:pointer}
+.switch.on{background:var(--zhu-soft, rgba(178,58,42,.12));border-color:var(--zhu);color:var(--zhu)}
+.pill.manual{background:var(--zhu-soft, rgba(178,58,42,.12));border-color:var(--zhu);color:var(--zhu)}
+
+/* 任务瀑布（生成台·工具卡）：每步一行——名称/状态/横条/秒数。
+   横条只是「相对快慢」的示意，宽度用后端给的每步秒数直接画，前端不另算数。 */
+.wf{margin-top:10px;display:flex;flex-direction:column}
+.wf-row{display:flex;align-items:center;gap:14px;padding:9px 0;border-bottom:1px solid var(--line-2)}
+.wf-row:last-child{border-bottom:none}
+.wf-name{flex:0 0 210px;min-width:0;line-height:1.45}
+.wf-name b{display:block;font-size:var(--fs-body);font-weight:600}
+.wf-name small{display:block;color:var(--ink-3);font-size:var(--fs-label)}
+.wf-state{flex:0 0 88px;display:flex;align-items:center;gap:6px;font-size:var(--fs-label)}
+.wf-track{flex:1;height:8px;background:var(--line-2);overflow:hidden}
+.wf-track i{display:block;height:100%;transform-origin:left;transition:transform .3s;background:var(--zhu)}
+.wf-sec{flex:0 0 92px;text-align:right;font-family:var(--mono);font-size:var(--fs-label);color:var(--ink-2)}
+@media (max-width:760px){
+  .wf-row{flex-wrap:wrap;gap:6px 12px}
+  .wf-name{flex:1 1 100%}
+  .wf-track{flex:1 1 120px}
+  .wf-sec{flex:0 0 auto}
+}
+
+/* ============================================================================
+   预测台——逐科模型选择 + 试跑（静态稿 mockups/预测台.html 的落地版）
+   ========================================================================== */
+.fc-lead{color:var(--ink-2);font-size:var(--fs-body);margin:8px 0 0;max-width:74ch}
+/* （.fc-no 装饰编号 2026-10-16 删除——taste P3：位置即顺序，不加 01/02/03）
+   运行中占位＝色阶块，不用虚线框（虚线只留给真表格与表单） */
+.fc-run{margin-top:12px;background:var(--panel);padding:13px 16px;
+  display:flex;align-items:center;gap:9px;color:var(--ink-2);font-size:var(--fs-label)}
+.fc-run-dot{width:8px;height:8px;background:var(--gold);flex:0 0 auto;
+  animation:fxpulse 1.1s infinite ease-in-out}
+.fc-stamps{display:flex;gap:22px;flex-wrap:wrap;margin-top:14px;font-size:var(--fs-label);color:var(--ink-3)}
+.fc-stamps b{color:var(--ink-2)}
+/* 页头带（票 13）：期次 / 数据截至 / 路线（唯一控件）/ 保存（唯一一处）——粘性跟随
+   （顶栏 56px 常驻，吸顶线落在其下方） */
+.fc-band{position:sticky;top:68px;z-index:9;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  margin-top:14px;background:var(--card);border:1px solid var(--line);
+  padding:11px 16px}
+.fc-band .kv{color:var(--ink-3);font-size:var(--fs-label)}
+.fc-band .kv b{color:var(--ink);font-size:var(--fs-label)}
+.fc-seg{display:inline-flex;border:1px solid var(--line);overflow:hidden;background:var(--panel)}
+.fc-seg button{border:0;background:transparent;font:inherit;font-size:var(--fs-label);color:var(--ink-2);
+  padding:7px 14px;cursor:pointer;white-space:nowrap}
+.fc-seg button.on{background:var(--zhu);color:#fff;font-weight:600}
+.fc-band-state{margin-left:auto;color:var(--ok);font-size:var(--fs-label)}
+.fc-band-state.dirty{color:var(--warn);font-weight:650}
+/* ⓘ 口径弹层（票 13）：点开就地看这一段指什么 */
+.info{position:relative;display:inline-block;vertical-align:-3px}
+.info>summary{transition:border-color .15s,color .15s;list-style:none;cursor:pointer;display:inline-grid;place-items:center;
+  width:20px;height:20px;border:1px solid var(--line);background:var(--card);
+  color:var(--ink-3);font:12px/1 var(--serif)}
+.info>summary::-webkit-details-marker{display:none}
+.info>summary:hover{border-color:var(--zhu);color:var(--zhu)}
+.info[open]>summary{border-color:var(--zhu);color:var(--zhu)}
+.info-body{position:absolute;z-index:40;left:0;top:26px;width:min(400px,78vw);background:var(--card);
+  border:1px solid var(--gline);
+  padding:10px 13px;font-size:var(--fs-label);color:var(--ink-2);line-height:1.75;text-align:left}
+.info-body p{margin:5px 0}
+.info.end .info-body{left:auto;right:0}
+.fc-pick{width:100%;border-collapse:collapse;font-size:var(--fs-body);min-width:760px}
+.fc-pick th,.fc-pick td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line-2);
+  vertical-align:top}
+.fc-pick th{font-size:var(--fs-xs);letter-spacing:.22em;color:var(--ink-3);font-weight:400;
+  border-bottom:1px solid var(--gline)}
+.fc-pick select{font:inherit;padding:7px 10px;border:1px solid var(--line);
+  background:var(--card);color:var(--ink)}
+.fc-pick .mdesc{display:block;color:var(--ink-3);font-size:var(--fs-label);max-width:46ch}
+.fc-stat{display:block;color:var(--ink-3);font-size:var(--fs-sm);margin-top:4px}
+.fc-rec{color:var(--ink-2)}
+.fc-form{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:14px}
+.fc-form label{display:flex;flex-direction:column;gap:6px;font-size:var(--fs-label);color:var(--ink-2)}
+.fc-form select{font:inherit;padding:7px 10px;border:1px solid var(--line);
+  background:var(--card);color:var(--ink)}
+.fc-model{border:1px solid var(--line);margin-top:16px;overflow:hidden}
+.fc-model-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;
+  background:var(--panel);border-bottom:1px solid var(--line)}
+.fc-model-h h3{font-size:var(--fs-h)}
+.fc-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
+  background:var(--line-2)}
+.fc-metrics div{background:var(--card);padding:12px 16px}
+.fc-metrics b{display:block;font-family:var(--serif);font-size:1.3rem}
+.fc-metrics span{font-size:var(--fs-label);color:var(--ink-3)}
+.fc-break{margin:0;padding:9px 16px;font-size:var(--fs-label);color:var(--ink-3);
+  border-top:1px solid var(--line-2)}
+.fc-chart{display:block;width:100%;height:auto;border-top:1px solid var(--line-2);background:var(--card)}
+.fc-tbl{width:100%;border-collapse:collapse;font-size:var(--fs-label);min-width:560px}
+.fc-tbl th,.fc-tbl td{padding:9px 14px;border-bottom:1px solid var(--line-2);text-align:left}
+.fc-tbl th{font-size:var(--fs-xs);letter-spacing:.2em;color:var(--ink-3);font-weight:400;
+  border-bottom:1px solid var(--gline)}
+.fc-tbl td.num{text-align:right;font-family:var(--mono)}
+.fc-tbl tr.crossed td{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
+.fc-ticks{margin:10px 0 0;padding-left:22px;color:var(--ink-2)}
+.fc-ticks li{margin:5px 0}
+
+/* 全模型预测图（试跑 · 五模型两列网格 + 卡上改选，rick 2026-09-28） */
+.fc-gal{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+.fc-gal .fc-model{margin-top:0}
+.fc-gal .fc-model-h{padding:10px 13px}
+.fc-gal .fc-model-h h3{font-size:var(--fs-body)}
+.fc-gal .fc-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+.fc-gal .fc-metrics div{padding:9px 13px}
+.fc-gal .fc-metrics b{font-size:1.15rem}
+.fc-gal .fc-break{padding:7px 13px}
+.fc-gal .fc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 13px;border-top:1px solid var(--line-2)}
+.fc-gal-reset{margin-left:10px;padding:3px 9px;font-size:var(--fs-sm)}
+.fc-more{border-top:1px dashed var(--line-2)}
+.fc-more summary{padding:8px 13px;font-size:var(--fs-sm);color:var(--ink-3);cursor:pointer}
+@media (max-width:1020px){.fc-gal{grid-template-columns:1fr}}
+
+/* ============================================================================
+   学科板（预测台 01）——8 潜力学科 × 路线的现状卡：接近度条 / 模型 / 过线期
+   ========================================================================== */
+.bd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:14px}
+.bd-card{border:1px solid var(--line-2);background:var(--panel);padding:12px 14px}
+.bd-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.bd-top b{font-size:var(--fs-body)}
+.bd-prox{font-family:var(--serif);font-size:var(--fs-h);color:var(--zhu)}
+.bd-bar{display:block;height:7px;background:var(--line-2);overflow:hidden;margin:8px 0 9px}
+.bd-bar i{display:block;height:100%;background:var(--gold);transform-origin:left;transition:transform .3s}
+.bd-meta{display:flex;justify-content:space-between;gap:10px;font-size:var(--fs-sm);color:var(--ink-3);flex-wrap:wrap}
+.bd-cross{margin-top:7px;font-size:var(--fs-label);color:var(--ink-3)}
+.bd-cross.on{color:var(--ok);font-weight:600}
+
+/* ============================================================================
+   顶尖论文增长轨迹（报告页首屏，借「学科分析平台」那版版式）——纯 SVG，零依赖
+   ========================================================================== */
+.tr-wrap{margin-top:16px;border:1px solid var(--line-2);
+  background:var(--card);padding:14px 16px 10px}
+.tr-head{display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap}
+.tr-head b{font-family:var(--serif);font-size:var(--fs-h)}
+.tr-head .hint{margin-left:10px}
+.tr-now{text-align:right}
+.tr-now b{font-family:var(--serif);font-size:var(--fs-sh);line-height:1.1;display:block}
+.tr-now span{font-size:var(--fs-sm);color:var(--ink-3)}
+/* 45 期按固定宽度排开（每期都标数值），卡片装不下就横向拉动——不缩成一团 */
+.tr-scroll{overflow-x:auto;overflow-y:hidden;margin-top:6px}
+.tr-svg{display:block}
+.tr-grid{stroke:var(--line-2);stroke-width:1}
+.tr-area{fill:var(--zhu);opacity:.12;stroke:none}
+.tr-line{fill:none;stroke:var(--zhu);stroke-width:2}
+.tr-dot{fill:var(--bad);stroke:var(--card);stroke-width:2}
+.tr-tick{font:12px var(--mono);fill:var(--ink-3)}
+.tr-val{font:11px var(--mono);fill:var(--ink-2)}
+
+/* ============================================================================
+   灵活报告（分析台第二块）——双栏定稿（rick 2026-10-14）：两份报告并排、各自独立滚动
+   ⚠ fx- 前缀：正文样式只作用于 .fx-md，别外溢（md 渲染器出来的骨架见 mdview）
+   ========================================================================== */
+/* 本栏出稿控制条（2026-10-15 定稿）：左右两栏各自出稿、可同时——指定学科＋生成/重新生成 */
+.fx-pane-ctl{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:10px 18px;
+  border-bottom:1px solid var(--line-2);background:var(--card)}
+.fx-pane-ctl label{display:flex;flex-direction:column;gap:4px;font-size:var(--fs-sm);color:var(--ink-3);
+  flex:1 1 160px;max-width:260px}
+.fx-pane-ctl select,.fx-pane-ctl input{font:inherit;font-size:var(--fs-label);padding:6px 10px;border:1px solid var(--line);
+  background:var(--card);color:var(--ink);width:100%}
+/* 出稿动作＝本栏唯一的实色钮（约定：栏内动作只有生成/重新生成） */
+.fx-pane-ctl .btn.small{color:#fff;background:var(--zhu);border-color:var(--zhu);font-weight:600;padding:7px 14px;font-size:var(--fs-label)}
+.fx-pane-ctl .btn.small[disabled]{opacity:.55;cursor:not-allowed}
+/* 用途说明（票 04）：一句讲清「第二条产线 · 内部参考件 · 非报送」，≤60 字 */
+.fx-lead{margin:10px 0 0;max-width:66ch;font-size:var(--fs-label);line-height:1.7;color:var(--ink-2)}
+.fx-lead strong{color:var(--ink);font-weight:600}
+.fx-panes{display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px;align-items:start}
+@media (max-width:1100px){.fx-panes{grid-template-columns:1fr}}
+.fx-pane{background:var(--card);border:1px solid var(--line);
+  overflow:hidden;min-width:0}
+.fx-pane-h{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+  padding:14px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
+.fx-pane-h h3{font-size:var(--fs-h);letter-spacing:.04em}
+.fx-pane-meta{font-size:var(--fs-sm);color:var(--ink-3);margin:4px 0 0}
+.fx-pane-acts{display:flex;gap:8px;flex:0 0 auto;padding-top:2px;flex-wrap:wrap}
+/* 生成详情折叠（票 05）：模型名等技术串收在这里，默认不占屏；正文里的「规划后端」已换人话 */
+.fx-backend{margin-top:6px;font-size:var(--fs-sm);color:var(--ink-3)}
+.fx-backend>summary{cursor:pointer;list-style:none;color:var(--ink-3)}
+.fx-backend>summary::-webkit-details-marker{display:none}
+.fx-backend>summary::before{content:"▸ ";color:var(--zhu)}
+.fx-backend[open]>summary::before{content:"▾ "}
+.fx-backend p{margin:4px 0 0;font-family:var(--mono);word-break:break-all}
+.fx-pane-b{height:clamp(320px, calc(100vh - 400px), 820px);overflow:auto;padding:2px 18px 18px}
+.fx-pane-b .fx-md{margin-top:12px;border-top:0;padding-top:0}
+/* 空态卡（2026-10-15）：无产物时首屏也要有内容——色阶块，不用虚线框 */
+.fx-empty{margin:18px 0 0;background:var(--panel);padding:22px 20px;
+  color:var(--ink-3)}
+.fx-empty b{display:block;font-size:var(--fs-body);font-weight:600;color:var(--ink-2);margin-bottom:6px}
+.fx-empty p{margin:0;font-size:var(--fs-label);line-height:1.9}
+.fx-md{margin-top:16px;border-top:1px solid var(--line);padding-top:16px;font-size:var(--fs-body)}
+.fx-md h2{font-size:var(--fs-h);margin-top:6px}
+/* 报告题＝本屏主角（taste P1）：升 display 级、两行内（静态稿 .fx-md>h2:first-of-type 已示范） */
+.fx-md>h2:first-of-type{font-size:var(--fs-sh);letter-spacing:.015em;line-height:1.25}
+.fx-md h3{font-size:var(--fs-h);margin:22px 0 8px;padding-left:10px;border-left:3px solid var(--zhu)}
+.fx-md p{margin:8px 0;line-height:1.85}
+.fx-md blockquote{margin:10px 0;padding:10px 15px;background:var(--gold-soft);
+  border-left:3px solid var(--gold);
+  color:var(--ink-2);font-size:var(--fs-body)}
+.fx-md blockquote p{margin:3px 0}
+.fx-md hr{border:0;border-top:1px solid var(--line);margin:18px 0}
+.fx-md code{font-family:var(--mono);font-size:var(--fs-label);background:var(--panel);
+  border:1px solid var(--line-2);padding:1px 6px}
+/* 待审线（票 01）：==句子== → 细下划线；与下载件 SHELL 的 .fx-mark 同款（同 class、同参数） */
+.fx-md .fx-mark{text-decoration:underline;text-decoration-thickness:1px;
+  text-underline-offset:2px;text-decoration-color:var(--ink-2)}
+.fx-md table{width:100%;border-collapse:collapse;font-size:var(--fs-label);margin:10px 0}
+.fx-md th,.fx-md td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line-2)}
+.fx-md th{font-size:var(--fs-xs);letter-spacing:.2em;color:var(--ink-3);font-weight:400;
+  border-bottom:1px solid var(--gline)}
+/* 数据表标签去等宽（taste：等宽只留给真代码/真键名；数字对齐用等宽数字） */
+.fx-md table.dense td:first-child{width:64px;color:var(--ink-3);font-family:var(--sans);font-variant-numeric:tabular-nums}
+.fx-md table.dense td{font-variant-numeric:tabular-nums}
+.fx-md figure{margin:16px 0;text-align:center}
+.fx-md img{max-width:100%;border:1px solid var(--line);cursor:zoom-in}
+.fx-md figcaption{font-size:var(--fs-label);color:var(--ink-3);margin-top:6px}
+.fx-md ul,.fx-md ol{margin:8px 0;padding-left:24px}
+.fx-md li{margin:5px 0}
+/* 连续图两列一组（rick 2026-09-29：图缩小、一排放两张） */
+.fx-md .figrow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+.fx-md .figrow figure{margin:0}
+.fx-md .figrow img{width:100%;height:auto}
+@media (max-width:900px){.fx-md .figrow{grid-template-columns:1fr}}
+/* 「关于本稿」尾巴块（2026-10-14 rick）：本稿如何产生 + 数据来源链合成一块，不与正文混排
+   （taste P1：虚线框→色阶块，细线/虚线只留给真表格与表单——静态稿已示范） */
+.fx-md .fx-about{margin-top:18px;background:var(--panel)}
+.fx-md .fx-about>summary{cursor:pointer;padding:11px 15px;font-size:var(--fs-label);color:var(--ink-2);list-style:none}
+.fx-md .fx-about>summary::-webkit-details-marker{display:none}
+.fx-md .fx-about>summary::before{content:"▸";color:var(--zhu);margin-right:8px}
+.fx-md .fx-about[open]>summary::before{content:"▾"}
+.fx-md .fx-about .fx-about-in{padding:2px 15px 14px;border-top:1px solid var(--line-2)}
+.fx-md .fx-about h2{font-size:var(--fs-body);margin:16px 0 6px}
+
+/* ---- 出稿进度（双栏共用；dot 三态） ---- */
+.fx-status{display:flex;align-items:center;gap:8px;font-size:var(--fs-label);color:var(--ink-3);
+  min-height:20px;padding-top:12px}
+.fx-status .dot{width:8px;height:8px;flex:0 0 auto}
+.dot.run{background:var(--gold);animation:fxpulse 1.1s infinite ease-in-out}
+.dot.done{background:var(--ok)}
+.dot.bad{background:var(--bad)}
+@keyframes fxpulse{0%,100%{opacity:.35}50%{opacity:1}}
+.fx-plan{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 2px}
+.fx-plan .chip{background:var(--panel);border:1px solid var(--line);
+  padding:2px 9px;font-size:var(--fs-sm);color:var(--ink-2)}
+.fx-sec-h{font-size:var(--fs-body);margin:16px 0 6px;padding-left:10px;border-left:3px solid var(--zhu)}
+.btn.small{padding:5px 11px;font-size:var(--fs-label);color:var(--ink-2)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+
+/* ============================================================================
+   运行档案（下钻页，不在顶栏）——状态机回放 / 瀑布 / 审计 / 环境 / 日志包
+   ⚠ 类名一律 ar- 前缀：`.kv`（对勘本）与 `.art`（报告页产物卡）是既有类，别复用。
+   ========================================================================== */
+.ar-kv{margin:8px 0 0}
+.ar-kv div{display:flex;gap:14px;padding:7px 0;border-bottom:1px solid var(--line-2);font-size:var(--fs-label)}
+.ar-kv div:last-child{border-bottom:none}
+.ar-kv dt{flex:0 0 120px;color:var(--ink-3);font-size:var(--fs-label)}
+.ar-kv dd{margin:0;word-break:break-all}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+.ar-tbl{width:100%;border-collapse:collapse;font-size:var(--fs-label);min-width:620px}
+.ar-tbl th,.ar-tbl td{padding:10px 12px;border-bottom:1px solid var(--line-2);
+  text-align:left;vertical-align:top}
+.ar-tbl th{font-size:var(--fs-xs);letter-spacing:.2em;color:var(--ink-3);font-weight:400;
+  border-bottom:1px solid var(--gline)}
+.ar-tbl td.mono{font-family:var(--mono)}
+.ar-arts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px}
+.ar-art{display:block;padding:13px 15px;border:1px solid var(--line-2);
+  background:var(--panel);text-decoration:none}
+.ar-art.primary{border-color:var(--gold)}
+.ar-art b{font-size:var(--fs-body)}
+.ar-art .m{display:block;font-size:var(--fs-label);color:var(--ink-3);margin-top:3px;word-break:break-all}
+.ar-art:hover{box-shadow:0 2px 6px rgba(21,34,43,.10)}
+/* ============================================================================
+   审核台 · 试排报告（2026-09-28 rick 定：整篇报告 + 就地填空 + 签单/下载同屏）
+   ⚠ rv- 前缀：报告区内部与右栏自成一体，不碰既有类。
+   ========================================================================== */
+.rv-lead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 2px 0}
+.rv-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start;margin-top:14px}
+.rv-main{min-width:0}
+@media (max-width:1080px){
+  .rv-grid{grid-template-columns:1fr}
+  /* 窄屏单列：右栏回到普通流，取消吸顶与内滚（!important 压过后面的基础规则） */
+  .rv-side{position:static!important;max-height:none!important;overflow:visible!important}
+}
+
+/* 报告纸（庚：纸面＝card 纸色，不另设白） */
+.rv-report{background:var(--card);padding:30px 38px 42px;font-family:var(--serif);min-width:0}
+.rv-toc{position:sticky;top:68px;z-index:3;display:flex;gap:4px;flex-wrap:wrap;padding:8px 0;margin:0 0 14px;
+  background:var(--card);border-bottom:1px solid var(--line)}
+/* 目录跳转目标留出顶栏高度（顶栏 60px + 目录自身） */
+[id^="rv-b-"]{scroll-margin-top:76px}
+.rv-toc button{border:1px solid var(--line);background:transparent;color:var(--ink-2);
+  font-family:var(--sans);font-size:var(--fs-sm);padding:4px 10px;cursor:pointer}
+.rv-toc button:hover{border-color:var(--zhu);color:var(--zhu)}
+.rv-toc button[aria-current="true"]{border-color:var(--zhu);color:var(--zhu);font-weight:600;background:var(--zhu-soft)}
+/* 破坏性动作的静息降级（UX §十）：撤回这类按钮平时退成灰字无边框，确认态仍醒目 */
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink-3)}
+.btn.ghost:hover{color:var(--bad);border-color:var(--line)}
+.rv-docmeta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin:0 0 20px;font-size:var(--fs-sm);color:var(--ink-3);font-family:var(--sans);
+  border-bottom:1px solid var(--line);padding-bottom:10px}
+.rv-docmeta span{flex:1;min-width:260px}
+/* 行内「跳到下一处」小按钮（报告顶部一个；右栏清单里一个全宽按钮） */
+.rv-next{transition:background .15s,color .15s;margin-left:auto;border:1px solid var(--zhu);background:var(--card);color:var(--zhu);
+  font:inherit;font-size:var(--fs-sm);font-weight:600;padding:4px 13px;
+  cursor:pointer;white-space:nowrap}
+.rv-next:hover{background:var(--zhu-soft)}
+.rv-nextbtn{width:100%;margin-top:9px;justify-content:center;font-size:var(--fs-label);padding:9px 12px}
+.rv-para{margin:0 0 10px;text-indent:2em;font-size:15.5pt;line-height:1.95;text-align:justify;
+  overflow-wrap:break-word}
+.rv-center{text-indent:0;text-align:center!important}
+.rv-img{text-indent:0;text-align:center;margin:14px 0}
+.rv-img img,.rv-tblwrap img{max-width:100%;height:auto}
+.rv-tblwrap{overflow-x:auto;margin:12px 0 16px}
+.rv-tblwrap table{border-collapse:collapse;width:100%;font-size:var(--fs-label);font-family:var(--sans);line-height:1.6}
+.rv-tblwrap td{border:1px solid var(--line);padding:4px 7px;vertical-align:middle;white-space:pre-line}
+.rv-tblwrap tr:first-child td{background:var(--panel);font-weight:600}
+.rv-tblwrap img{max-width:230px;vertical-align:top}
+
+/* 就地填空：虚线朱框 = 待填；浅底实线 = 已填（还没重出） */
+.rv-in{font:inherit;font-size:.92em;color:var(--bad);min-width:110px;max-width:26em;
+  padding:1px 8px;margin:0 2px;border:1.5px dashed var(--bad);
+  background:var(--bad-soft);text-align:center;font-family:var(--sans)}
+.rv-in::placeholder{color:var(--bad);opacity:.75}
+.rv-in.filled{border-style:solid;background:var(--card);color:var(--ink);font-weight:600}
+.rv-in:focus{outline:2px solid var(--zhu);outline-offset:1px}
+
+/* 右栏 */
+/* 右栏吸顶 + 限高内滚：报告很长时，签单/下载/空位清单永远够得着，不用把整页拖到底
+   （顶栏 56px 常驻，吸顶线落在其下方） */
+.rv-side{position:sticky;top:68px;display:grid;gap:14px;min-width:0;
+  max-height:calc(100vh - 80px);overflow-y:auto;overflow-x:hidden}
+.rv-card{padding:16px 16px 14px}
+.rv-card h3{font-size:var(--fs-h);display:flex;align-items:center;gap:8px}
+.rv-kv{display:flex;justify-content:space-between;gap:10px;font-size:var(--fs-label);padding:5px 0;
+  border-bottom:1px solid var(--line-2)}
+.rv-kv b{font-variant-numeric:tabular-nums;font-weight:600}
+.rv-docname{word-break:break-all;text-align:right;font-size:var(--fs-sm)}
+.rv-ack{display:flex;gap:9px;align-items:flex-start;font-size:var(--fs-label);margin-top:10px;line-height:1.55}
+.rv-ack span{flex:1}
+.rv-note{width:100%;font:inherit;font-size:var(--fs-label);margin-top:10px;padding:8px 10px;
+  border:1px solid var(--line);background:var(--card);color:inherit;resize:vertical}
+.rv-btns{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.rv-btns .btn{flex:1;min-width:118px;justify-content:center}
+.rv-wide{flex-basis:100%}
+.rv-dl{width:100%;margin-top:8px}
+.rv-warn{margin:10px 0 0;padding:8px 11px;background:var(--warn-soft);
+  color:var(--warn);font-size:var(--fs-label);line-height:1.55}
+.rv-busy{margin:10px 0 0;color:var(--gold-ink);font-size:var(--fs-label)}
+.rv-msg{margin:10px 0 0;padding:8px 11px;font-size:var(--fs-label);line-height:1.55}
+.rv-msg.ok{background:var(--ok-soft);color:var(--ok)}
+.rv-msg.bad{background:var(--bad-soft);color:var(--bad)}
+
+/* 报告里的空：清单 + 跳转 + 存疑 */
+.rv-todo{list-style:none;margin:8px 0 0;padding:0}
+.rv-todo li{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--line-2)}
+.rv-todo li:last-child{border-bottom:none}
+.rv-todo-t{flex:1;font-size:var(--fs-label);text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rv-todo-v{font-size:var(--fs-sm);color:var(--ink-3);flex:0 0 auto}
+.rv-jump{transition:background .15s,color .15s;display:flex;align-items:center;gap:8px;flex:1;min-width:0;border:0;background:transparent;
+  font:inherit;color:inherit;cursor:pointer;padding:3px 4px;text-align:left}
+.rv-jump:hover{background:var(--panel)}
+.rv-dot{width:9px;height:9px;background:var(--bad);flex:0 0 auto}
+.rv-dot.done{background:var(--ok)}
+.rv-flag{transition:border-color .15s,color .15s;border:1px solid var(--line);background:var(--card);
+  font-size:var(--fs-sm);color:var(--ink-3);padding:2px 9px;cursor:pointer;flex:0 0 auto}
+.rv-flag:hover{border-color:var(--gold);color:var(--gold-ink)}
+.rv-flag.on{background:var(--gold-soft);border-color:var(--gold);color:var(--gold-ink);font-weight:600}
+.rv-flag[disabled]{opacity:.5;cursor:not-allowed}
+/* 票 14：存疑筛选 chips + 知悉未勾提示 */
+.rv-chips{display:flex;gap:6px;margin-top:8px}
+.rv-chip{border:1px solid var(--line);background:var(--card);padding:3px 11px;
+  font:inherit;font-size:var(--fs-sm);color:var(--ink-2);cursor:pointer}
+.rv-chip.on{border-color:var(--zhu);background:var(--zhu-soft);color:var(--zhu);font-weight:650}
+.rv-chip[disabled]{opacity:.45;cursor:not-allowed}
+.rv-ackhint{margin:10px 0 0;font-size:var(--fs-label);color:var(--warn);font-weight:650}
+.rv-confirm li{color:var(--ink-2)}
+
+/* ===== 票 03-C（P2）：审核台可点元素命中区——独立控件 ≥32px（与票 01 同口径） =====
+   票 01 已在通用段兜底 .rv-lead a / .rv-side a / .rv-chip / .rv-jump / .rv-flag；
+   这里补组件内的小号按钮（重新读取 / 去签单，此前约 25–27px）、就地填空框与空错态里的链接。 */
+.rv-card .btn,.rv-card .btn-xs,.rv-card .btn.small,.rv-card .btn-lite,
+.rv-side .btn,.rv-side .btn-xs,.rv-side .btn.small,.rv-side .btn-lite,
+.rv-pending a,.rv-pending .btn,.rv-pending .btn-xs{display:inline-flex;align-items:center;min-height:var(--hit-min)}
+.rv-in{min-height:var(--hit-min)}
+
+/* ===== 取数台（X2·票 12）：三步条步名链接 / 开始前检查 / 组卡 / 核对表 ===== */
+.steplink{transition:color .15s,border-color .15s;color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+.steplink:hover{color:var(--zhu);border-color:var(--zhu)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+
+.aq-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.aq-num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.aq-stamp{text-align:right}
+/* 开新一期（票 05）：页头行内表单 */
+.aq-open{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.aq-open-in{width:22ch;padding:6px 10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+/* `.btn.small` 在样式表更靠后，会盖掉 `.btn.primary` 的白字——这里提一级把它压回来 */
+.aq-open .btn.primary{color:#fff;background:var(--zhu);border-color:var(--zhu);font-weight:600}
+/* 同款：三段式里「去生成台生成」= btn small primary（2026-10-19） */
+.btn.small.primary{color:#fff;background:var(--zhu);border-color:var(--zhu);font-weight:600}
+.aq-open-in:focus{outline:2px solid var(--zhu);outline-offset:1px}
+.aq-duty{margin:10px 0 0;color:var(--ink-2);font-size:var(--fs-label);line-height:1.7}
+
+.aq-pf{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding:10px 14px;
+  background:var(--panel);border:1px solid var(--line-2);font-size:var(--fs-label);color:var(--ink-2)}
+.aq-pf-title{font-weight:650;color:var(--ink)}
+.aq-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 11px;
+  background:var(--card);border:1px solid var(--line);font-size:var(--fs-sm);color:var(--ink-3)}
+.aq-chip.ok{color:var(--ok);border-color:var(--ok);background:var(--ok-soft)}
+.aq-chip.bad{color:var(--bad);border-color:var(--bad);background:var(--bad-soft)}
+
+/* ===== 取数核验三段式（2026-10-19 rick 定：① 开始前检查 → ② 下载数据 → ③ 并入台账，逐段解锁） =====
+   上一段没过 → 下一段 locked（虚线 + 写明等什么）；做完的一段 done（内容收起、缩成一行结论＋重入口）。
+   静态稿对照：web/mockups/取数核验-三段式重设计（静态稿）.html */
+.flow{margin-top:18px}
+.stg{position:relative;display:grid;grid-template-columns:56px 1fr}
+.stg .node{position:relative;display:flex;justify-content:center}
+.stg .node i{width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--line);background:var(--card);font-family:var(--serif);font-style:normal;
+  font-size:var(--fs-h);color:var(--ink-3);z-index:1}
+.stg .node::after{content:"";position:absolute;top:34px;bottom:0;width:2px;background:var(--line-2)}
+.stg:last-child .node::after{display:none}
+.stg.done .node i{background:var(--ok-soft);border-color:var(--ok-line);color:var(--ok)}
+.stg.done .node::after{background:var(--ok-line)}
+.stg.now .node i{background:var(--zhu);border-color:var(--zhu);color:#fff}
+.stg.locked .node i{border-style:dashed}
+.stg .body{min-width:0;padding:0 0 22px 12px}
+.stg-card{border:1px solid var(--line);background:var(--card)}
+.stg.now .stg-card{border-left:3px solid var(--zhu);background:var(--card-hi)}
+.stg.locked .stg-card{border-style:dashed;background:transparent}
+.stg-top{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
+.stg.done .stg-top{border-bottom:none;padding:10px 16px}
+.stg-title{font-family:var(--serif);font-size:var(--fs-h);font-weight:650}
+.stg-stat{margin-left:auto;font-size:var(--fs-label)}
+.stg-stat.ok{color:var(--ok)}
+.stg-stat.wait{color:var(--ink-3)}
+.stg-stat.run{color:var(--gold)}
+.stg-stat.bad{color:var(--warn)}
+.stg-body{padding:14px 16px 15px}
+.stg.done .stg-body{display:none}
+.stg-inline{display:none}
+.stg.done .stg-inline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 16px 10px}
+/* ② 收起后点「下载清单」展开的明细区（只在 done 段显示，不挤占常驻高度） */
+.stg-extra{display:none}
+.stg.done .stg-extra{display:block;padding:0 16px 12px}
+.stg-big{font-family:var(--serif);font-size:clamp(20px,2.2vw,26px);font-weight:600;color:var(--zhu);line-height:1.35}
+.stg-sub{color:var(--ink-2);font-size:var(--fs-body);margin-top:2px}
+.stg-cta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
+/* ⓘ 进操作行行尾（票 13）：贴行右端，弹层向上开——盖住它解释的控件区，
+   不跨界压下一节标题，也不再被视口左缘裁切 */
+.stg-cta>.info{margin-left:auto}
+.stg-cta>.info .info-body{top:auto;bottom:26px}
+/* 窄屏：ⓘ 换行到行尾时弹层不再以 20px 图标为锚（会伸出卡左缘），
+   改锚整条操作行、铺满行宽 */
+@media (max-width:900px){
+  .stg-cta{position:relative}
+  .stg-cta>.info{position:static}
+  .stg-cta>.info .info-body{left:0;right:0;width:auto;bottom:30px}
+}
+.chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.stg-prog{display:flex;align-items:center;gap:12px;margin-top:12px}
+.stg-packs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;
+  border-top:1px solid var(--line-2)}
+
+.aq-groups{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+.aq-g{min-width:0;border:1px solid var(--line-2);background:var(--card);padding:11px 13px 10px}
+.aq-g.ok{border-color:var(--ok)}
+.aq-g.live{border-color:var(--gold)}
+.aq-g.bad{border-color:var(--bad);background:var(--bad-soft)}
+.aq-gtop{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.aq-src{font-size:var(--fs-sm);color:var(--ink-3);font-weight:650;letter-spacing:.03em}
+.aq-gstat{font-size:var(--fs-sm);font-weight:650;color:var(--ink-3)}
+.aq-gstat.ok{color:var(--ok)}
+.aq-gstat.live{color:var(--gold-ink)}
+.aq-gstat.bad{color:var(--bad)}
+.aq-gname{display:flex;align-items:center;gap:8px;margin-top:7px;font-weight:650;font-size:var(--fs-body);color:var(--ink)}
+.aq-gname svg{color:var(--zhu)}
+.aq-bar{display:flex;align-items:center;gap:8px;margin-top:8px}
+.aq-track{flex:1;height:6px;background:var(--line-2);overflow:hidden}
+.aq-track i{display:block;height:100%;background:var(--ok);transform-origin:left;transition:transform .3s}
+.aq-g.live .aq-track i{background:var(--gold)}
+.aq-g.bad .aq-track i{background:var(--bad)}
+.aq-files{margin-top:8px;border-top:1px solid var(--line-2)}
+.aq-files>summary{list-style:none;cursor:pointer;padding:6px 1px;font-size:var(--fs-sm);color:var(--ink-2);
+  font-weight:600;display:flex;align-items:center;gap:6px}
+.aq-files>summary::-webkit-details-marker{display:none}
+.aq-files>summary::before{content:"▸";color:var(--zhu)}
+.aq-files[open]>summary::before{content:"▾"}
+.aq-files ul{list-style:none;margin:0;padding:0 1px 4px;max-height:230px;overflow:auto}
+.aq-files li{display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-top:1px solid var(--line-2);font-size:var(--fs-sm)}
+.aq-fmark{color:var(--ink-3);padding-top:1px}
+.aq-fmark.ok{color:var(--ok)}
+.aq-fmark.bad{color:var(--bad)}
+.aq-fname{min-width:0;color:var(--ink-2);font-family:var(--mono);font-size:var(--fs-sm);word-break:break-all}
+.aq-fname small{display:block;color:var(--ink-3);font-family:var(--sans);font-size:var(--fs-sm)}
+.aq-fres{margin-left:auto;white-space:nowrap;font-size:var(--fs-sm);color:var(--ink-3)}
+.aq-fres.ok{color:var(--ok)}
+.aq-fres.bad{color:var(--bad)}
+.aq-gnote{margin:8px 0 0;font-size:var(--fs-sm);color:var(--bad)}
+/* 缺份的组就地补下（票：只补没下到的文件；已并入台账也能补） */
+.aq-gacts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--line-2)}
+.aq-gacts .hint{margin:0}
+.aq-rv{min-width:520px}
+.aq-rv th,.aq-rv td{border:1px solid var(--line);padding:6px 10px;text-align:left;font-size:var(--fs-label)}
+.aq-rv th{background:var(--panel);font-weight:600}
+.aq-rv td:nth-child(3){white-space:normal}
+
+@media (max-width:900px){
+  .aq-groups{grid-template-columns:1fr}
+}
+@media (max-width:760px){
+  .fc-pick,.fc-tbl{min-width:640px}
+}
+@media (max-width:1000px){
+  .reading-grid{grid-template-columns:1fr}
+  .col-l,.col-m{border-right:0;border-bottom:1px solid var(--line)}
+}
+
+/* ============================================================================
+   全局滚动条：浅绿 · 细一半（rick 2026-09-29）。
+   ——一处定义、全站生效（页面 / 右栏 / 表格 / 日志等所有滚动容器），
+   以后别再给单个容器另写滚动条样式。
+   分浏览器：Chrome/Edge/Safari 用 ::-webkit-scrollbar 精确 8px（默认 ≈15px 的一半）；
+   Firefox 不认伪元素，走标准属性 thin。Chrome 121+ 注意：标准属性一旦设置
+   非初始值会禁用伪元素，所以标准属性只放进 @supports not（即只给 Firefox）。
+   ========================================================================== */
+.ws{--scroll:#A9C6AE;--scroll-hover:#84B28D}
+*::-webkit-scrollbar{width:8px;height:8px}
+*::-webkit-scrollbar-track,*::-webkit-scrollbar-corner{background:transparent}
+*::-webkit-scrollbar-thumb{background:var(--scroll)}
+*::-webkit-scrollbar-thumb:hover{background:var(--scroll-hover)}
+@supports not selector(::-webkit-scrollbar){
+  *{scrollbar-width:thin;scrollbar-color:var(--scroll) transparent}
+}
+
+/* ============================================================================
+   布局小工具（2026-10-01）：只收「高频、静态」的样式，用来替掉散落的内联；
+   动态值（来自数据的宽度/颜色等）继续留在内联。新增样式优先落组件类，
+   确属高频复用的才进这里。
+   ========================================================================== */
+.mt-0{margin-top:0}.mt-2{margin-top:2px}.mt-4{margin-top:4px}.mt-6{margin-top:6px}
+.mt-8{margin-top:8px}.mt-9{margin-top:9px}.mt-10{margin-top:10px}.mt-12{margin-top:12px}
+.mt-14{margin-top:14px}.mt-18{margin-top:18px}
+.mb-8{margin-bottom:8px}.mb-10{margin-bottom:10px}
+.ml-4{margin-left:4px}.ml-6{margin-left:6px}.ml-10{margin-left:10px}.ml-12{margin-left:12px}
+.ml-auto{margin-left:auto}
+/* 列表行「选择」按钮：行点击是鼠标便利，这个按钮是它的键盘等价物 */
+.period-row{cursor:pointer}
+.rowbtn{border:0;background:none;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+/* 区段标题（原内联 flex 布局）：默认 19px，大标题加 .h-lg（页题；taste P1 22→24 微升） */
+.h-sec{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:var(--fs-h)}
+.h-sec.h-lg{font-size:var(--fs-sh)}
+.hint-num{font-weight:400;font-size:var(--fs-label)}
+/* 第二批（2026-10-01）：卡片内边距 / 文本色 / 字号 / 宽度等高频静态样式 */
+.pad-card{padding:20px 22px}.pad-card-lg{padding:22px 24px}.pad-card-x{padding:20px 24px}
+.card-foot{padding:0 24px 18px}
+.ink-3{color:var(--ink-3)}.ink-zhu{color:var(--zhu)}
+.dim-block{display:block;color:var(--ink-3);font-size:var(--fs-label)}
+.fs-13{font-size:13px}.fs-135{font-size:13.5px}.fs-14{font-size:14px}.fs-15{font-size:15px}.fs-24{font-size:24px}
+.w-150{width:150px}.w-170{width:170px}.w-190{width:190px}.maxw-150{max-width:150px}
+.ta-r{text-align:right}
+.m-0{margin:0}
+.block-12-16{margin:12px 0 16px}
+.btn-xs{padding:4px 10px;font-size:var(--fs-label)}
+.row-end{display:flex;gap:8px;align-items:center;margin-left:auto}
+.serif-prose{margin:0;font-family:var(--serif);font-size:16.5px;line-height:1.9}
+/* 第三批（2026-10-01）：值族工具类 + 组件类，收掉最后一批静态内联。
+   规则见 web/AGENTS.md 第 4 条：新增静态样式先翻这里，没有再添。 */
+.m-b-8{margin:0 0 8px}.m-b-10{margin:0 0 10px}
+.mx-4{margin:0 4px}.mx-6{margin:0 6px}
+.mt-16{margin-top:16px}.mt-22{margin-top:22px}.mt-26{margin-top:26px}
+.my-14-10{margin:14px 0 10px}
+.mx-card-22{margin:0 24px 22px}
+.pt-22{padding-top:22px}.pb-12{padding-bottom:12px}
+.pad-1-9{padding:1px 9px}.pad-3-10{padding:3px 10px}.pad-4-12{padding:4px 12px}
+.pad-10-14{padding:10px 14px}.pad-14-18{padding:14px 18px}.pad-18-22{padding:18px 22px}
+.pad-20-22-18{padding:20px 22px 18px}.pad-18-20-6{padding:18px 20px 6px}.pad-12-0-2{padding:12px 0 2px}
+.pad-card-foot2{padding:0 24px 20px}
+.fold-lead{padding:10px 18px 0;font-size:var(--fs-label)}
+.fs-125{font-size:12.5px}.fs-155{font-size:15.5px}.fs-20{font-size:20px}.fs-21{font-size:21px}.fs-25{font-size:25px}
+.w-52{width:52px}.w-90{width:90px}.w-200{width:200px}.w-210{width:210px}.w-230{width:230px}
+.w-12p{width:12%}.w-22p{width:22%}.w-26p{width:26%}
+.minw-160{min-width:160px}.minw-190{min-width:190px}.minw-260{min-width:260px}
+.op-55{opacity:.55}
+.fw-400{font-weight:400}.fw-650{font-weight:650}
+.flex-1{flex:1}
+.basis-full{flex-basis:100%;margin:4px 0 0}
+.rowc{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rowc8{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.roww{display:flex;gap:8px;flex-wrap:wrap}
+.rowc12{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.flex-g10{display:flex;gap:10px}
+.baseline{display:flex;align-items:baseline}
+.baseline-row{display:flex;align-items:baseline;gap:10px}
+.ink{color:var(--ink)}.ink-2{color:var(--ink-2)}.ink-line{color:var(--line)}.ink-bad{color:var(--bad)}
+.ok-text{color:var(--ok)}
+.gold-650{color:var(--gold-ink);font-weight:650}.gold-15{color:var(--gold-ink);font-size:var(--fs-body)}
+.warn-650{color:var(--warn);font-weight:650}.warn-border{border-color:var(--warn);color:var(--warn)}
+.note-warn{margin-top:6px;color:var(--warn)}.note-bad{margin-top:6px;color:var(--bad)}
+.bg-zhu{background:var(--zhu)}
+.sw-gold{box-shadow:inset 0 0 0 2px var(--gold)}.sw-line{box-shadow:inset 0 0 0 2px var(--line)}
+.chip-round{padding:6px 12px;font-size:var(--fs-label)}
+.chip-gold{padding:3px 9px;background:var(--gold-soft);color:var(--gold-ink);font-size:var(--fs-sm);font-weight:650}
+.panel-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;background:var(--panel);border:1px solid var(--line-2)}
+.wb-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:13px;border-top:1px solid var(--line-2)}
+.grid-dim{display:grid;gap:4px;color:var(--ink-3);font-size:var(--fs-label)}
+.mono-16{font-family:var(--mono);font-size:16px}
+.lead-155{margin:9px 0 14px;color:var(--ink-2);font-size:var(--fs-body)}
+.nowrap{white-space:nowrap}.no-underline{text-decoration:none}
+.cursor-p{cursor:pointer}.list-none{list-style:none}
+.abs{position:absolute}.rel-ib{position:relative;display:inline-block}
+.divider-top{border-top:1px solid var(--line);padding-top:14px}
+.lh-19{line-height:1.9}
+.btn-lite{padding:5px 12px;font-size:var(--fs-label)}.btn-md{padding:7px 14px;font-size:var(--fs-label)}
+.an-pop{position:absolute;z-index:30;left:0;top:calc(100% + 6px);width:300px;padding:10px 12px;font-size:var(--fs-label);line-height:1.7;font-family:var(--sans);font-weight:400;color:var(--ink-2);display:block}
+.an-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid var(--line-2)}
+.an-snippet{margin-top:10px;border:1px solid var(--line-2);background:var(--panel);padding:6px 12px}
+.an-list{margin:6px 0;padding-left:20px}
+.an-list2{margin:10px 0 0;padding-left:20px;line-height:1.9}
+.an-footer{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--line-2)}
+.ai-row{border-top:1px solid var(--line-2);padding:9px 0;cursor:pointer}
+.ai-row-btn{width:100%;border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;padding:0}
+.rd-head{padding:0 18px 8px;letter-spacing:.2em}
+.rd-sep{margin:12px 18px 0;border-top:1px solid var(--line);padding-top:10px}
+.gal-img{width:100%;border:1px solid var(--line);background:var(--panel)}
+.rp-inline{display:inline-block;max-width:150px;white-space:normal;text-align:right}
+
+/* 减动效（2026-10-01）：主工作区此前没有适配；库房各自已有。
+   循环脉冲、进度条过渡、平滑滚动、悬停位移在系统「减少动态效果」下一并停。 */
+@media (prefers-reduced-motion: reduce){
+  .fx-log{scroll-behavior:auto}
+  .dot.run,.fc-run-dot{animation:none}
+  .ia-rail-seg{transition:none}
+  .wf-track i,.aq-track i,.bd-bar i{transition:none}
+  .seal,.entry{transition:none}
+  .sealbox:hover .seal{translate:0 0}
+}
+
+/* ============================================================================
+   全局页脚（2026-10-17 庚：纸面 + 顶部绿重线，收掉深底块）
+   内容三栏（品牌 / 说明 / 入口）＋底行；不吸底、不占首屏。
+   ========================================================================== */
+/* ---------- 顶栏 ⓘ 说明（2026-10-24）：原全局页脚收进顶栏——页脚每页重复徒增密度。
+   ⓘ 在深色场条上：描边/文字用场色系；弹层仍是浅色卡片（浮在正文上）。 ---------- */
+.app-side .info>summary{background:transparent;border-color:var(--field-3);color:var(--field-4)}
+.app-side .info>summary:hover,.app-side .info[open]>summary{border-color:var(--field-5);color:var(--field-5)}
+
+/* ---------- 统一身份控件（2026-10-12）：工作区顶栏 / 对话页左下角，同一组件、同一交互 ---------- */
+.user-chip{position:relative;display:inline-flex;font-size:var(--fs-label);color:var(--ink-2)}
+.user-chip-dock{position:fixed;left:20px;bottom:16px;z-index:40;background:var(--card);border:1px solid var(--line)}
+/* 2026-10-14（rick）：角标缩小——默认只留头像圆（悬停/聚焦才展开名字），不再压住页面内容 */
+.user-chip-dock .user-chip-btn{padding:3px}
+.user-chip-dock .user-chip-name{display:none}
+.user-chip-dock:hover .user-chip-btn,.user-chip-dock:focus-within .user-chip-btn{padding:6px 14px 6px 6px}
+.user-chip-dock:hover .user-chip-name,.user-chip-dock:focus-within .user-chip-name{display:inline}
+.user-chip-btn{display:inline-flex;align-items:center;gap:9px;border:1px solid transparent;background:transparent;font:inherit;color:inherit;cursor:pointer;padding:5px 12px 5px 5px;transition:background .15s}
+.user-chip-btn:hover{background:var(--panel)}
+.user-chip .av{width:26px;height:26px;background:var(--zhu);color:#F6F4EC;display:grid;place-items:center;font-family:var(--serif);font-size:var(--fs-label)}
+.user-chip-pop{position:absolute;left:0;bottom:calc(100% + 8px);min-width:140px;background:var(--card);border:1px solid var(--gline);padding:6px;z-index:50}
+.user-chip-pop a{display:block;padding:9px 12px;color:var(--ink-2);text-decoration:none;font-size:var(--fs-label);transition:background .15s,color .15s}
+.user-chip-pop a:hover{background:var(--panel);color:var(--zhu)}
+
+/* ---------- 统一皮肤开关（2026-10-12）：与对话页同款分段开关；工作区放顶栏右端 ---------- */
+.skin-switch{display:flex;border:1px solid var(--line);background:var(--panel);overflow:hidden}
+.skin-switch button{border:0;background:transparent;font:inherit;font-size:var(--fs-label);padding:0 12px;min-height:32px;cursor:pointer;color:var(--ink-3);transition:background .15s,color .15s}
+.skin-switch button[aria-pressed="true"]{background:var(--zhu);color:#fff}
+
+/* ============================================================================
+   UX 基线（票 01 · W0，2026-10-15）：功能性文本 ≥13.5px、可点区 ≥44/32px。
+   只覆盖**功能性**文本；装饰性英文眉标 / 图表刻度 / 印面字样 / 法务小字登记豁免
+   （清单见 docs/UX评估（启发式与认知走查）-20261015.md §三）。
+   追加式覆盖——不改既有规则，便于评审与回退。
+   ========================================================================== */
+.ws{--fs-min:13.5px;--hit-min:32px}
+
+/* 功能性小字 → 13.5px（工作区顶栏 / 报告 / 审核台 / 分析台 / 预测台 / 取数台 / 档案 / 页脚法务行） */
+.app-brand span,.eyebrow,.step small,.fold>summary .sm,
+.chain .cap,.sealbox .lbl,.sealbox .now-tag,.legend,.rc-chip,.margin-note .tag,
+.margin-note>p.mn-src,.mn-acts .btn,.chg-b .row .t,.bd-meta,.tr-now span,.ar-chain-node small,
+.ar-step-sec,.ar-art .m,.rv-docmeta,.rv-docname,.rv-next,.rv-todo-v,.rv-flag,.rv-chip,
+.fx-pane-meta,.fx-plan .chip,.btn.small,.btn-lite,.fc-stat,.fc-more summary,.fc-gal-reset,
+.aq-src,.aq-gstat,.aq-chip,.aq-fname,.aq-fname small,.aq-fres,.aq-gnote,.aq-files>summary,
+.chip-gold,.dim-block,.fs-13,.info-body,.fc-metrics span,.an-pop,.grid-dim,
+.dlg-land-prev,.dlg-wk-link,.dlg-land-dyn
+{font-size:var(--fs-min)}
+
+/* 可点区下限：独立控件/按钮/芯片 ≥32px（主按钮 .btn.primary 已 44px+）；
+   行内与表格内的链接按 WCAG 2.5.8 下限 24px（整行本身是鼠标命中区）。 */
+.rv-next,.rv-flag,.rv-chip,.btn.small,.btn-lite{min-height:var(--hit-min)}
+.steplink{display:inline-flex;align-items:center;min-height:var(--hit-min)}
+.rv-jump{min-height:var(--hit-min)}
+.rowbtn,.pill,.hint a,.period-row a,.art a,.ar-art a{min-height:24px}
+.hint a,.period-row a,.art a,.ar-art a{display:inline-flex;align-items:center}
+.rv-lead a,.rv-side a{display:inline-flex;align-items:center;min-height:var(--hit-min)}
+/* 审核台页题分隔点：原用 --line 当文字色（≈1.2:1，等于看不见）——改可读灰 */
+.rv-lead .ink-line{color:var(--ink-3)}
+
+/* ============================================================================
+   新信息架构（2026-10-15，rick 定 A 方案：4 主区 + 1 管理）
+   「出报告」四步流水步骤条＝一条 2px 细线 ＋ 四张等大方角卡片
+   （2026-10-16 二版，rick 拍板：去序号 / 做成卡片 / 细线进度 / 方角只限此处）。
+   细线含当前步（①25% → ④100%）；当前卡浅绿底加粗；入场从零画到当前步；
+   reduced-motion 直接终态（见下方降级块）。只动 transform / 背景色。
+   ========================================================================== */
+.ia-steps{margin:16px 0 2px}
+.ia-rail{display:flex;height:2px;background:var(--line-2)}
+.ia-rail-seg{flex:1 1 0;background:var(--zhu);transform:scaleX(0);transform-origin:left center;
+  transition:transform .56s cubic-bezier(.2,0,0,1)}
+.ia-rail-seg.on{transform:scaleX(1)}
+.ia-rail-seg:nth-child(2){transition-delay:70ms}
+.ia-rail-seg:nth-child(3){transition-delay:140ms}
+.ia-rail-seg:nth-child(4){transition-delay:210ms}
+.ia-rail-seg:nth-child(5){transition-delay:280ms}
+.ia-steps-list{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 0;padding:0;list-style:none}   /* 2026-10-19：五步→四步（去「选章节」） */
+.ia-card{display:flex}
+.ia-card a,.ia-card>span{flex:1 1 auto;display:flex;align-items:center;justify-content:center;
+  min-height:56px;background:var(--card);border:1px solid var(--line);
+  font-family:var(--serif);font-size:var(--fs-body);letter-spacing:.02em;color:var(--ink-3);
+  text-decoration:none;transition:background .25s,color .25s,border-color .25s}
+.ia-card a:hover{background:var(--panel);color:var(--ink-2)}
+.ia-card.done a,.ia-card.done>span{color:var(--ink-2)}
+.ia-card.now a,.ia-card.now>span{background:var(--zhu-soft);border-color:var(--zhu);color:var(--zhu);font-weight:650}
+.ia-card.na>span{opacity:.4;cursor:not-allowed}
+@media (max-width:640px){
+  .ia-steps-list{gap:6px}
+  .ia-card a,.ia-card>span{min-height:46px;font-size:var(--fs-label);letter-spacing:0}
+}
+
+/* ============================================================================
+   ②选材（票 07 · 最省版）：报告大纲（只读）+「本轮办哪些节」
+   ========================================================================== */
+.pick-title{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.pick-tbl{width:100%;border-collapse:collapse;margin-top:8px}
+.pick-tbl td{padding:9px 10px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+.pick-tbl tr.sub td{padding-left:34px;color:var(--ink-2);font-size:var(--fs-body)}
+.pick-nm{font-weight:600}
+.pick-tbl tr.sub .pick-nm{font-weight:400}
+.pick-box-wrap{position:relative;display:inline-flex;align-items:center;gap:9px;min-height:32px;cursor:pointer}
+.pick-box-wrap input{position:absolute;opacity:0;width:1px;height:1px}
+.pick-box{width:18px;height:18px;border:1.5px solid var(--line);display:grid;place-items:center;font-size:var(--fs-label);color:#fff;background:var(--card)}
+.pick-box-wrap input:checked+.pick-box{background:var(--zhu);border-color:var(--zhu)}
+.pick-box-wrap input:focus-visible+.pick-box{outline:2px solid var(--zhu);outline-offset:2px}
+.pick-tbl tr.skipped .pick-nm{color:var(--ink-3)}
+.pick-src{font-family:var(--mono);font-size:var(--fs-label);color:var(--ink-3)}
+.pick-slots{text-align:right;font-family:var(--mono);font-size:var(--fs-label);color:var(--ink-3);white-space:nowrap}
+.pick-mono{font-family:var(--mono)}
+.pick-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--line-2)}
+.pick-foot .roww{margin-left:auto}
+.pick-note{border:1px dashed var(--line);padding:15px 18px;background:var(--panel);color:var(--ink-2);font-size:var(--fs-body)}
+.pick-note b{color:var(--ink)}
+.pick-note ul{margin:8px 0 0;padding-left:22px}
+
+/* ============================================================================
+   动效层（taste P4，2026-10-16）：入场错峰＋滚动逐段＋按下回弹。只动 transform / opacity。
+   预置隐藏只在 html.m-js（index.html 内联脚本先于渲染加上）时生效；
+   html.m-ready＝接线成功（2.5 秒兜底不再强制展开）；html.m-done＝兜底/失败——全部展开。
+   任何情况内容都出得来（"脚本失败不藏内容"）；reduced-motion 全降级。
+   ========================================================================== */
+.btn:active{transform:translateY(1px)}
+.m-enter{transition:opacity .5s cubic-bezier(.2,.7,.2,1),transform .5s cubic-bezier(.2,.7,.2,1)}
+html.m-js .m-enter:not(.m-in){opacity:0;transform:translateY(14px)}
+html.m-js .m-enter.m-left:not(.m-in){transform:translateX(-16px)}
+html.m-js .m-enter.m-right:not(.m-in){transform:translateX(16px)}
+html.m-js .m-enter.m-in{opacity:1;transform:none}
+html.m-done .m-enter{opacity:1!important;transform:none!important;transition:none!important}
+@media (prefers-reduced-motion: reduce){
+  .btn:active{transform:none}
+  html.m-js .m-enter{opacity:1!important;transform:none!important;transition:none!important}
+}
+
+/* ---------- 可视化工作流 · 产线全景（2026-10-24，静态稿 20261023 升格）----------
+   左栏真相面板 + 等轴测工厂空间投影；零圆角零阴影纸感，色随绿蓝令牌走。
+   2026-10-24 rick：整页单屏（右缘不出现滚动条）——满高弹性柱，舞台吃剩余高度；
+   左栏超长时内部可滚但不见条（与问文衡页同策）。 */
+.pano{display:flex;flex-direction:column;height:calc(100vh - 142px);min-height:520px;
+  max-width:1280px;margin:0 auto;padding:4px 0 2px;overflow:hidden}
+.pano-top{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:8px;flex:none}
+.pano-title{margin:0;font-family:var(--serif);font-size:var(--fs-h);font-weight:600;letter-spacing:.04em;
+  color:var(--ink);padding-top:3px}
+.pano-title .pano-tag{font-size:var(--fs-xs);font-weight:400;color:var(--ink-3);letter-spacing:.06em;
+  border:1px solid var(--line);padding:1px 6px;margin-left:10px;vertical-align:2px;white-space:nowrap}
+.pano .playbtn{font-size:var(--fs-sm);padding:3px 10px}
+/* 故事条在全景页内压缩（原为生成台尺寸；回放与数字不变，只减留白） */
+.pano .story{padding:6px 10px 4px;margin-top:2px;flex:none}
+.pano .story-h{margin-bottom:6px;gap:10px}
+.pano .story-title h2{font-size:var(--fs-label)}
+.pano .playline{margin:-2px 0 8px}
+.pano .cell{padding:6px 10px 5px}
+.pano .cell .v{font-size:var(--fs-h)}
+.pano .cell .n{font-size:var(--fs-xs);margin-top:1px}
+.pano .say{margin:5px 0 0;min-height:0;font-size:var(--fs-xs)}
+.pano-wrap{flex:1;min-height:0;display:flex;gap:12px;align-items:stretch}
+.pano-panel{width:242px;flex:none;background:var(--card);border:1px solid var(--line);
+  padding:8px 12px;font-size:var(--fs-sm);overflow-y:auto;scrollbar-width:none}
+.pano-panel::-webkit-scrollbar{display:none}
+.pano-sec h3{margin:9px 0 4px;font-size:var(--fs-xs);color:var(--ink-3);font-weight:400;
+  letter-spacing:.08em;border-bottom:1px solid var(--panel);padding-bottom:3px}
+.pano-sec:first-child h3{margin-top:0}
+.pano-row{display:flex;gap:6px;align-items:baseline;padding:2px 0;margin:0;line-height:1.4}
+.pano-row i{width:7px;height:7px;flex:none;display:inline-block;transform:rotate(45deg);
+  background:var(--ink-3);align-self:center}
+.pano-row i.s-done{background:var(--tool-3)}
+.pano-row i.s-run{background:var(--zhu)}
+.pano-row i.s-warn{background:var(--warn)}
+.pano-row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.pano-row .st{color:var(--ink-3);font-size:var(--fs-xs);flex:none}
+.pano-row .st.warn{color:var(--warn)}
+.pano-stage{position:relative;flex:1;min-width:0;min-height:280px;height:auto;max-height:640px;
+  background:var(--panel);border:1px solid var(--line);overflow:hidden;cursor:grab;touch-action:none}
+.pano-stage:active{cursor:grabbing}
+.pano-stage svg{display:block;width:100%;height:100%}
+.pano-stage text{font-family:var(--serif);font-size:var(--fs-sm);fill:var(--ink)}
+.pano-flow{animation:pano-dash 2s linear infinite}
+@keyframes pano-dash{to{stroke-dashoffset:-20}}
+.pano-cams{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:1px;
+  background:var(--card);border:1px solid var(--line)}
+.pano-cams-hint{align-self:center;font-size:var(--fs-xs);color:var(--ink-3);letter-spacing:.1em;
+  padding:0 10px 0 12px;white-space:nowrap}
+.pano-cams button{font:inherit;font-size:var(--fs-xs);padding:6px 10px;background:var(--card);
+  border:0;border-right:1px solid var(--panel);color:var(--ink-2);cursor:pointer}
+.pano-cams button:last-child{border-right:0}
+.pano-cams button:hover{background:var(--tool-5);color:var(--tool-2)}
+.pano-note{flex:none;margin:6px 0 0;font-size:var(--fs-xs);color:var(--ink-3);line-height:1.5}
+.pano-note b{color:var(--ink-2)}
+/* 矮视口（rick 笔记本 ≈731px）：旁白行让位给工厂模型——回放动画与数字仍在格上 */
+@media (max-height:780px){
+  .pano .say{display:none}
+  .pano .story-h{margin-bottom:4px}
+}
+@media (max-width:760px){
+  .pano{height:auto;min-height:0;overflow:visible}
+  .pano-wrap{flex-direction:column}
+  .pano-panel{width:auto;order:2;overflow:visible}
+  .pano-stage{height:360px;min-height:0;max-height:none;order:1}
+}
+@media (prefers-reduced-motion: reduce){
+  .pano-flow{animation:none}
+}
+
+/* ============================================================================
+   状态印（2026-10-25 rick 过审，谱：mockups/状态印章-谱（静态稿 20261025）.html）
+   一状态一印面：墨绿干印=机器完成／虚框空印=未定未签／朱砂满印=已签发／金印=失效。
+   印泥为资产色不随主题变（朱砂 #A82F22／墨绿 #264A35／金 #8A6B2E，与印谱稿同源）；
+   印感只靠 SVG 毛边滤镜（StateSeal.tsx 的 SealInkDefs，App 挂一次）与微倾。
+   零圆角、不加投影；中文 Chromium 小字 12px 钳制不涉及（印面全是 SVG 文本）。
+   ========================================================================== */
+.sseal{display:grid;place-items:center;background:#F2EDE0;border:1px solid rgba(168,47,34,.38);
+  padding:4px;flex:none}
+.sseal svg{width:100%;height:100%;display:block}
+.sseal-a{transform:rotate(-4deg)}
+.sseal-b{transform:rotate(2.6deg)}
+@keyframes sseal-land{0%{opacity:0;transform:translateY(-14px) scale(1.5);filter:blur(1px)}
+  55%{opacity:1;transform:translateY(1px) scale(.95);filter:blur(0)}
+  75%{transform:scale(1.03)}100%{transform:scale(1)}}
+.sseal.landing svg{animation:sseal-land .5s cubic-bezier(.22,.9,.28,1) both}
+@media (prefers-reduced-motion: reduce){
+  .sseal.landing svg{animation:none}
+}
+.sseal-defs{position:absolute;width:0;height:0}
+
+/* 审核台签单卡：标题行与本期印并排（印随签发态换面，签单成功落章一次） */
+.rv-sign-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}

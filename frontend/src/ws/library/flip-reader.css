@@ -1,0 +1,941 @@
+/* ============================================================================
+   学科情报阅览室 · 翻页阅读
+   转译自「数字图书馆阅览室」原型 app/globals.css 的 V6.4/V6.5（翻页体验 +
+   参考封面）与 app/experience/page.tsx 的 FlipReader；只保留访客安全预览
+   （封面 / 目录 / 名词解释）用得到的部分。
+   ========================================================================== */
+
+:root {
+  --paper: #f1eadc;
+}
+
+.site .sound-toggle[aria-pressed="true"]::before {
+  margin-right: 6px;
+  color: var(--gold);
+  content: "♪";
+}
+
+.site .sound-toggle[aria-pressed="false"] {
+  opacity: .62;
+}
+
+.site .sound-toggle[aria-pressed="false"]::before {
+  margin-right: 6px;
+  color: #b7b5aa;
+  content: "×";
+}
+
+/* 阅读阶段回归统一深绿背景，不露出大厅。 */
+.stage-reader {
+  background: #173d31;
+}
+
+.stage-reader .scene-wrap {
+  background: #173d31;
+}
+
+.stage-reader .scene-wrap::after {
+  background: none;
+}
+
+.stage-reader .reading-backdrop {
+  background: #173d31;
+}
+
+.stage-reader .grain {
+  opacity: .055;
+}
+
+.flip-reader {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  height: calc(100svh - 82px);
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: 'Noto Serif SC Variable', Georgia, 'Noto Serif CJK SC', 'Songti SC', SimSun, serif;
+}
+
+.flip-reader .reader-toolbar {
+  display: flex;
+  flex: none;
+  height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 clamp(24px, 4vw, 80px);
+  color: #d6d2bf;
+  font-size: 13px;
+}
+
+.flip-reader .reader-toolbar button {
+  padding: 12px;
+  border: 0;
+  background: none;
+  color: var(--cream);
+  cursor: pointer;
+}
+
+.flip-reader .reader-toolbar i {
+  margin: 0 12px;
+  color: var(--gold);
+  font-style: normal;
+}
+
+.reader-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- 书台与页 ---------- */
+
+.flip-reading-area {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  padding: 10px 20px 6px;
+  perspective: 2200px;
+  place-items: center;
+}
+
+.flip-wrap {
+  position: relative;
+  display: grid;
+  /* 2026-09-28：撤底部控件与工具条后，纵向只留顶栏+呼吸位，书做到最大 */
+  width: min(94vw, calc((100svh - 140px) * 1.36));
+  max-width: 1520px;
+  aspect-ratio: 1.36;
+  animation: reader-book-appear .55s both;
+  filter: drop-shadow(0 28px 34px rgba(0, 0, 0, .38));
+  place-items: center;
+}
+
+/* 归架＝关闭（合并成一个浮层按钮）；提示条同样浮层、不吃高度 */
+.flip-reader .reader-exit {transition:background .2s,color .2s;
+  position: absolute;
+  top: 14px;
+  left: clamp(20px, 4vw, 80px);
+  z-index: 6;
+  padding: 9px 15px;
+  border: 1px solid rgba(240, 234, 216, .35);
+  border-radius: 9px;
+  background: rgba(15, 43, 32, .55);
+  color: #f0ead8;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.flip-reader .reader-exit:hover { background: rgba(15, 43, 32, .82); }
+
+.flip-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  z-index: 5;
+  transform: translateX(-50%);
+  margin: 0;
+  color: rgba(230, 228, 208, .72);
+  font-size: 11.5px;
+  letter-spacing: .06em;
+  pointer-events: none;
+}
+
+.flipbook-host {
+  width: 100%;
+  height: 100%;
+}
+
+.flipbook-host.stf__parent {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.flip-page {
+  overflow: hidden;
+  border: 1px solid rgba(108, 92, 65, .18);
+  background: var(--paper);
+  color: #26382d;
+  box-shadow: inset 0 0 42px rgba(136, 112, 77, .16);
+}
+
+.flip-page.--left {
+  box-shadow: inset -18px 0 24px rgba(67, 52, 31, .12), inset 0 0 42px rgba(136, 112, 77, .16);
+}
+
+.flip-page.--right {
+  box-shadow: inset 18px 0 24px rgba(67, 52, 31, .10), inset 0 0 42px rgba(136, 112, 77, .16);
+}
+
+.flip-page-shell {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.flip-page-shell > .cover-page { height: 100%; min-height: 100%; }
+.flip-page-shell > .page-head { flex: none; }
+.flip-page-shell > .page-body { flex: 1; min-height: 0; }
+.flip-page-shell > .page-foot { flex: none; }
+
+.flip-page-templates {
+  display: none !important;
+}
+
+.flip-page canvas {
+  position: static !important;
+  width: 100% !important;
+  height: auto !important;
+}
+
+.flip-load-error,
+.flip-fallback {
+  display: grid;
+  width: min(520px, 86vw);
+  gap: 10px;
+  padding: 34px;
+  border: 1px solid rgba(203, 185, 141, .42);
+  background: rgba(20, 49, 39, .94);
+  color: var(--cream);
+  text-align: center;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, .3);
+}
+
+.flip-fallback {
+  width: min(720px, 94vw);
+  max-height: calc(100svh - 250px);
+  overflow: auto;
+  justify-items: start;
+  text-align: left;
+}
+
+.flip-fallback > strong {
+  color: #ead9a8;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: .08em;
+}
+
+.flip-fallback section {
+  width: 100%;
+}
+
+.flip-fallback h3 {
+  margin: 10px 0 4px;
+  color: #dfc782;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: .16em;
+}
+
+.flip-fallback p,
+.flip-fallback li,
+.flip-fallback dd {
+  color: #e6e0cd;
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.flip-fallback dt {
+  margin-top: 6px;
+  color: #ead9a8;
+  font-size: 13px;
+}
+
+.flip-fallback ol,
+.flip-fallback dl {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+
+.flip-fallback dd {
+  margin: 0 0 0 12px;
+}
+
+/* ---------- 页内版式（纸张） ---------- */
+
+.flip-reader .page-head,
+.flip-reader .page-foot {
+  display: flex;
+  flex: none;
+  height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 42px;
+  border-bottom: 1px solid #bdc0aa;
+  color: #758273;
+  font: 10px Georgia, 'Noto Serif CJK SC', serif;
+  letter-spacing: .13em;
+}
+
+.flip-reader .page-foot {
+  height: 38px;
+  margin-top: auto;
+  border-top: 1px solid #bdc0aa;
+  border-bottom: 0;
+}
+
+.flip-reader .page-body {
+  flex: 1;
+  padding: 28px 42px 20px;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #9a9478 transparent;
+}
+
+.flip-reader .page-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.flip-reader .page-body::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: #9a9478;
+}
+
+.flip-reader .page-body h2 {
+  margin: 12px 0 22px;
+  color: #183d30;
+  font-size: clamp(25px, 2.4vw, 38px);
+  font-weight: 400;
+  letter-spacing: .08em;
+  line-height: 1.35;
+}
+
+.flip-reader .kicker {
+  margin: 0;
+  color: #927a4c;
+  font-family: 'Noto Serif SC Variable', Georgia, 'Noto Serif CJK SC', serif;
+  font-size: 10px;
+  letter-spacing: .26em;
+}
+
+.flip-reader .catalog-fields {
+  display: grid;
+  grid-template-columns: 95px 1fr;
+  align-items: start;
+  row-gap: 17px;
+  padding-top: 25px;
+  border-top: 1px solid #b8bdac;
+  font-size: 13px;
+}
+
+.flip-reader .catalog-fields span { color: #8c9287; }
+.flip-reader .catalog-fields strong { font-weight: 400; line-height: 1.55; overflow-wrap: anywhere; }
+
+.flip-reader .catalog-quote {
+  margin-top: 38px;
+  color: #a2845c;
+  font-size: 15px;
+  letter-spacing: .2em;
+}
+
+.flip-reader .reader-toc-list {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.flip-reader .reader-toc-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 11px 2px;
+  border-bottom: 1px solid #c8cebf;
+}
+
+.flip-reader .reader-toc-index {
+  flex: 0 0 22px;
+  color: #a28c68;
+  font: 13px Georgia, serif;
+}
+
+.flip-reader .reader-toc-title {
+  flex: 1;
+  color: #26382d;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.flip-reader .reader-toc-page {
+  flex: none;
+  color: #849086;
+  font-size: 11px;
+}
+
+.flip-reader .reader-glossary-list {
+  display: grid;
+  gap: 13px;
+  margin: 2px 0 0;
+}
+
+.flip-reader .reader-glossary-entry {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #c8cebf;
+}
+
+.flip-reader .reader-glossary-entry:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.flip-reader .reader-glossary-entry dt {
+  color: #214b3c;
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.flip-reader .reader-glossary-entry dd {
+  margin: 5px 0 0;
+  color: #58645a;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+/* ---------- 报告正文（票 05，2026-10-11）：标题 / 段落 / 插图 / 表格 ---------- */
+
+.flip-reader .rp-h1 {
+  margin: 12px 0 10px;
+  color: #183d30;
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: .08em;
+  line-height: 1.45;
+}
+
+.flip-reader .rp-h1:first-of-type { margin-top: 2px; }
+
+.flip-reader .rp-h2 {
+  margin: 10px 0 6px;
+  color: #1d4a38;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: .05em;
+}
+
+.flip-reader .rp-p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.9;
+  text-align: justify;
+}
+
+.flip-reader .rp-fig {
+  margin: 6px 0 10px;
+  text-align: center;
+}
+
+.flip-reader .rp-fig img {
+  max-width: 100%;
+  max-height: 230px;
+  object-fit: contain;
+}
+
+.flip-reader .rp-tbl {
+  width: 100%;
+  margin: 4px 0 10px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.flip-reader .rp-tbl td {
+  padding: 2px 3px;
+  border: 1px solid #c9c4ae;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.flip-reader .rp-tbl tr:first-child td {
+  background: rgba(24, 61, 48, .06);
+  font-weight: 600;
+}
+
+.flip-reader .rp-tbl img {
+  display: block;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.flip-reader .rp-td { display: block; }
+
+.flip-reader .end-page {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.flip-reader .end-emblem {
+  display: grid;
+  width: 90px;
+  height: 90px;
+  place-items: center;
+  border: 1px solid #b49d75;
+  border-radius: 50%;
+  color: #9b835e;
+  font-size: 42px;
+}
+
+.flip-reader .end-page p {
+  max-width: 330px;
+  color: #64746b;
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.flip-reader .end-rule {
+  width: 80px;
+  height: 1px;
+  margin: 20px;
+  background: #b49d75;
+}
+
+.flip-reader .end-page strong {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.8;
+}
+
+.flip-reader .end-page small {
+  margin-top: 8px;
+  color: #908b79;
+  font: 9px Georgia, serif;
+  letter-spacing: .2em;
+}
+
+/* ---------- 底部控制条 ---------- */
+
+.flip-reader .reader-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 0 clamp(24px, 4vw, 80px) 20px;
+  color: #e0dbcb;
+  font-size: 12px;
+}
+
+.flip-reader-controls {
+  flex: none;
+  padding-top: 4px;
+  padding-bottom: 16px;
+}
+
+.flip-reader .issue-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.flip-reader .issue-switch label { color: #a9b4a6; }
+
+.flip-reader .issue-switch select {
+  max-width: 220px;
+  padding: 8px 12px;
+  border: 1px solid #9a9e80;
+  background: #183b2f;
+  color: #eee8d8;
+}
+
+.flip-reader .page-controls {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  font: 15px Georgia, serif;
+}
+
+.flip-reader .page-controls button {
+  width: 42px;
+  height: 38px;
+  border: 0;
+  background: #ebdfc0;
+  color: #19392d;
+  font-size: 21px;
+  cursor: pointer;
+}
+
+.flip-reader .page-controls button:disabled {
+  opacity: .35;
+  cursor: default;
+}
+
+.flip-reader .page-controls small { color: #a8b5a8; }
+.flip-reader .page-counter { min-width: 76px; text-align: center; }
+.flip-reader .reader-hint { color: #abb8a9; white-space: nowrap; }
+
+/* ---------- 参考封面（图3 的深绿布纹 + 金线 + 校园线稿） ---------- */
+
+.reference-cover {
+  position: relative;
+  overflow: hidden;
+  padding: 34px 38px 26px;
+  border: 3px solid #d7c58d;
+  background-color: #163228;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(238, 224, 182, .028) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, .05) 0 1px, transparent 1px 5px);
+  color: #e8d8a7;
+  box-shadow:
+    inset 0 0 0 5px #143d2e,
+    inset 0 0 0 7px rgba(215, 197, 141, .74),
+    inset 0 0 70px rgba(0, 0, 0, .26);
+}
+
+.reference-cover::after {
+  position: absolute;
+  inset: 14px;
+  border: 1px solid rgba(215, 197, 141, .48);
+  content: "";
+  pointer-events: none;
+}
+
+.reference-cover-emblem {
+  position: relative;
+  z-index: 2;
+  width: 78px;
+  height: 78px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: #F6F2E4;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 1px #d7c58d, 0 0 0 6px rgba(215, 197, 141, .12);
+}
+
+.reference-cover-emblem img {
+  display: block;
+  width: 66px;
+  height: 66px;
+  object-fit: contain;
+}
+
+.reference-cover-top {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.reference-cover-brand {
+  display: grid;
+  gap: 4px;
+  font-family: "STKaiti", "KaiTi", "Songti SC", serif;
+  font-size: 17px;
+  letter-spacing: .16em;
+}
+
+.reference-cover-brand small,
+.reference-cover-motto small {
+  color: #d2c492;
+  font: 8px Georgia, serif;
+  letter-spacing: .16em;
+}
+
+.reference-cover-collection {
+  color: #cfbf90;
+  font-size: 10px;
+  letter-spacing: .22em;
+}
+
+.reference-cover-title {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 46px;
+  text-align: center;
+}
+
+.reference-cover-title h2 {
+  margin: 0;
+  color: #ead9a8;
+  font-size: clamp(32px, 3.2vw, 48px);
+  font-weight: 400;
+  letter-spacing: .16em;
+  line-height: 1.18;
+}
+
+.reference-cover-title p {
+  margin: 8px 0 18px;
+  color: #d9c995;
+  font: 8.5px Georgia, serif;
+  letter-spacing: .18em;
+}
+
+.reference-cover-divider {
+  display: flex;
+  align-items: center;
+  width: 68%;
+  height: 16px;
+  margin-bottom: 8px;
+}
+
+.reference-cover-divider::before,
+.reference-cover-divider::after {
+  height: 1px;
+  flex: 1;
+  background: rgba(215, 197, 141, .55);
+  content: "";
+}
+
+.reference-cover-divider i {
+  width: 7px;
+  height: 7px;
+  margin: 0 10px;
+  border: 1px solid #d7c58d;
+  transform: rotate(45deg);
+}
+
+.reference-cover-title strong {
+  color: #ead9a8;
+  font: 600 21px "Noto Serif SC", "Source Han Serif SC", serif;
+  letter-spacing: .06em;
+}
+
+.reference-cover-title em {
+  margin-top: 5px;
+  color: #ddcd9d;
+  font-size: 13px;
+  font-style: normal;
+  letter-spacing: .16em;
+}
+
+.reference-campus-art {
+  position: absolute;
+  z-index: 1;
+  right: 6%;
+  bottom: 78px;
+  left: 6%;
+  width: 88%;
+  height: auto;
+  fill: none;
+  stroke: rgba(211, 194, 142, .34);
+  stroke-width: 1.35;
+  vector-effect: non-scaling-stroke;
+}
+
+.reference-cover-footer {
+  position: absolute;
+  z-index: 3;
+  right: 32px;
+  bottom: 26px;
+  left: 32px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.reference-seal {
+  display: grid;
+  width: 62px;
+  height: 62px;
+  flex: none;
+  place-content: center;
+  border: 1px solid #d7c58d;
+  border-radius: 50%;
+  text-align: center;
+  box-shadow: inset 0 0 0 4px #153d2e, inset 0 0 0 5px rgba(215, 197, 141, .55);
+}
+
+.reference-seal b {
+  font-size: 23px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.reference-seal small {
+  margin-top: 4px;
+  font: 7px Georgia, serif;
+}
+
+.reference-motto {
+  font-size: 10px;
+  letter-spacing: .16em;
+  line-height: 1.6;
+  text-align: right;
+}
+
+.reference-motto small {
+  display: block;
+  margin-top: 3px;
+}
+
+/* ---------- 适配 ---------- */
+
+@keyframes reader-book-appear {
+  from { opacity: 0; transform: translateY(40px) rotateX(10deg); }
+  to { opacity: 1; transform: translateY(0) rotateX(3deg); }
+}
+
+@media (max-width: 900px), (max-height: 650px) {
+  .flip-reader { height: calc(100svh - 68px); }
+  .flip-wrap { width: min(94vw, calc((100svh - 184px) * .72)); max-width: 700px; aspect-ratio: .72; }
+  .flip-reading-area { padding: 8px 10px 4px; }
+  .flip-reader-controls { padding: 5px 12px 10px; }
+  .flip-reader .reader-hint { display: none; }
+  .flip-reader .page-body { padding: 20px 24px; }
+  .flip-reader .page-head,
+  .flip-reader .page-foot { margin-right: 24px; margin-left: 24px; }
+}
+
+@media (max-width: 600px) {
+  .flip-reader { height: calc(100svh - 68px); }
+  .flip-reader .reader-toolbar { height: 46px; padding: 0 12px; font-size: 11px; }
+  .flip-reader .reader-toolbar span { display: none; }
+  .flip-wrap { width: min(94vw, calc((100svh - 170px) * .72)); max-height: calc(100svh - 170px); }
+  .flip-reader-controls { gap: 8px; }
+  .flip-reader .issue-switch { display: none; }
+  .flip-reader .page-controls { margin: auto; }
+  .flip-reader .page-body { padding: 17px 20px; }
+  .flip-reader .page-head,
+  .flip-reader .page-foot { margin-right: 20px; margin-left: 20px; }
+  .flip-reader .page-body h2 { font-size: 27px; }
+  .reference-cover { padding: 22px 23px 18px; }
+  .reference-cover-emblem { width: 62px; height: 62px; margin-bottom: 9px; }
+  .reference-cover-emblem img { width: 52px; height: 52px; }
+  .reference-cover-title { margin-top: 18px; }
+  .reference-toc-row { height: 27px; font-size: 11.5px; }
+  .reference-cover-toc { margin-top: 18px; }
+  .reference-seal-square { width: 54px; height: 54px; }
+  .reference-cover-title h2 { font-size: 31px; }
+  .reference-cover-title p { font-size: 8px; }
+  .reference-campus-art { bottom: 68px; }
+  .reference-cover-footer { right: 23px; bottom: 20px; left: 23px; }
+  .reference-seal { width: 52px; height: 52px; }
+  .reference-motto { font-size: 9px; }
+}
+
+@media (prefers-reduced-motion: reduce) {  .flip-wrap { animation: none; }
+}
+
+/* ---------- 全内容页（数字体检 / 本期指标 / 学科大表 / 顶尖论文 / 双路线预测） ---------- */
+.flip-page .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 4px 0 0; }
+.flip-page .kpi { border: 1px solid rgba(108, 92, 65, .28); border-radius: 8px; padding: 8px 10px; background: rgba(255, 253, 246, .72); }
+.flip-page .kpi span { display: block; font-size: 10px; color: #7a826f; letter-spacing: .08em; }
+.flip-page .kpi strong { font-family: Georgia, serif; font-size: 22px; color: #1d3f2e; line-height: 1.3; }
+.flip-page .kpi strong i { font-style: normal; font-size: 11px; color: #B43B31; margin-left: 4px; }
+.flip-page .kpi strong.small { font-size: 15px; letter-spacing: .02em; }
+.flip-page .data-table { width: 100%; border-collapse: collapse; font-size: 10.5px; margin-top: 4px; }
+.flip-page .data-table th, .flip-page .data-table td { border-bottom: 1px solid rgba(108, 92, 65, .22); padding: 3px 4px; text-align: left; }
+.flip-page .data-table th { background: rgba(241, 234, 220, .7); color: #7a826f; font-size: 10px; font-weight: 600; }
+.flip-page .data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.flip-page .badge { display: inline-block; border-radius: 999px; padding: 0 6px; font-size: 10px; white-space: nowrap; }
+.flip-page .badge.sig { background: #F4E3DE; color: #B43B31; }
+.flip-page .badge.watch { background: #EDEDE2; color: #46524A; }
+.flip-page .badge.base { background: #F3ECD8; color: #7A6528; }
+.flip-page .note-box { border: 1px solid rgba(108, 92, 65, .28); border-radius: 8px; padding: 7px 9px; margin-top: 8px; background: rgba(255, 253, 246, .72); font-size: 11px; color: #3a4a3f; }
+.flip-page .note-box strong { display: block; font-size: 11.5px; margin-bottom: 3px; color: #1d3f2e; }
+.flip-page .note-box p { margin: 2px 0 0; }
+.flip-page .note-box .muted-small { color: #7a826f; font-size: 10px; }
+.flip-page .table-note { margin-top: 6px; font-size: 10px; color: #7a826f; }
+
+/* ===== 票 02（W1）D：阅览器控制条（功能控件）度量（附录于末尾以覆盖窄屏回退） ===== */
+.flip-reader .reader-toolbar { font-size: 13.5px; }
+.flip-reader .reader-exit { font-size: 13.5px; }
+.flip-reader .reader-controls { font-size: 13.5px; }
+.flip-hint { font-size: 13.5px; }
+
+
+/* 图一版式：校名居中、机构/保密行、目录、红方印 */
+.reference-cover-brandline {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  color: #ead9a8;
+  font-family: "STKaiti", "KaiTi", "Songti SC", serif;
+  font-size: 15px;
+  letter-spacing: .24em;
+  text-indent: .24em;
+}
+.reference-cover-brandline small {
+  color: #d2c492;
+  font: 8px Georgia, serif;
+  letter-spacing: .22em;
+  text-indent: 0;
+}
+.reference-cover-org {
+  margin-top: 9px;
+  color: #d9c995;
+  font-size: 12.5px;
+  font-style: normal;
+  letter-spacing: .05em;
+}
+.reference-cover-note {
+  margin-top: 12px;
+  color: #cbb985;
+  font-size: 9.5px;
+  letter-spacing: .16em;
+}
+.reference-cover-toc {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  margin: 26px 7% 0;
+}
+.reference-toc-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: #d9c995;
+  font-size: 12px;
+  letter-spacing: .3em;
+}
+.reference-toc-h i {
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  background: #d7c58d;
+}
+.reference-toc-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  height: 32px;
+  color: #e8d8a7;
+  font-size: 13px;
+  letter-spacing: .05em;
+}
+.reference-toc-row .t { white-space: nowrap; }
+.reference-toc-row .d {
+  flex: 1;
+  border-bottom: 1px dotted rgba(215, 197, 141, .34);
+  transform: translateY(-3px);
+}
+.reference-toc-row .p {
+  min-width: 24px;
+  text-align: right;
+  font: 13px Georgia, serif;
+}
+.reference-seal-square {
+  width: 64px;
+  height: 64px;
+  border: 0;
+  border-radius: 0;
+  background: #a8342a;
+  color: #f2e6d2;
+  box-shadow: none;
+}
+.reference-seal-square b { font-size: 26px; }
+.reference-seal-square small { font-size: 7px; letter-spacing: .18em; }
