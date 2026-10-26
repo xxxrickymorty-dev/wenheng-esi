@@ -45,6 +45,25 @@ code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,
   /* 字号音阶（2026-10-24 定稿）：全站六档＋clamp 英雄与豁免件；主角跨两级取值，配角压平——见 UX.md §九 */
   --fs-xs:11px; --fs-sm:12px; --fs-label:13.5px; --fs-body:15px; --fs-h:19px; --fs-sh:26px;
 }
+
+/* ============================================================================
+   陈列馆（展陈面）专用色板 —— 第三套，2026-10-26 登记（rick 裁「按推荐」）
+   木 / 金 / 纸 三族，与工作区蓝绿两套并行；**不参与主题切换**（不受 html[data-palette] 影响，
+   因为陈列馆是「馆」不是「台」，木色是它的身份，换主题不该把书架刷成蓝的）。
+   唯一来源＝本段。消费方只有 web/src/library/shelf-landing.css（那里用 --night/--gold/--paper
+   等短名做别名，值全部指回这里）。改色只改这里。见 UX.md §九「陈列馆豁免」。
+   对比度口径：所有文字/底色组合实测 ≥4.5:1（2026-10-26 逐格验过），同工作区标准，不豁免。
+   ========================================================================== */
+:root{
+  --lib-night:#191310;  --lib-wood:#3A2A1A;
+  --lib-ivory:#F2EDE1;  --lib-ivory-2:rgba(242,237,225,.66); --lib-ivory-3:rgba(242,237,225,.4);
+  --lib-gold:#C9A961;   --lib-gold-2:#E0CB92;
+  --lib-paper:#F4F1E8;  --lib-paper-2:#E8E3D4; --lib-paper-3:#D3CDBA;
+  --lib-ink:#12201A;    --lib-ink-2:#3F5248;   --lib-ink-3:#556169;
+  --lib-line:#DDE1D8;
+  --lib-deep:#14342A;   --lib-mid:#2F7A58;     --lib-pale:#D6E6DB; --lib-mist:#EAF2EC;
+  --lib-red:#B23A2B;
+}
 html[data-palette="green"]{
   --field:#26483B; --field-2:#163228; --field-3:#2F7A58; --field-4:#7FB79B; --field-5:#DFEDE6;
   --tool:#17456E; --tool-2:#0F2E4C; --tool-3:#2F6B8E; --tool-4:#8FB6CE; --tool-5:#DCE8F0;

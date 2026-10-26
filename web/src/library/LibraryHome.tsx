@@ -105,7 +105,7 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
 
   const closeDetail = useCallback(() => {
     setDetail(DETAIL_CLOSED)
-    document.title = '文衡 · 学科情报阅览室'
+    document.title = '文衡 · 陈列馆'
     window.scrollTo(0, 0)
   }, [])
 
@@ -124,12 +124,18 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
     }
   }, [detail.open, closeDetail])
 
-  /* 深链 #v-202607：期次存在则直接进详情 */
+  /* 深链 #v-202607：期次存在则直接进详情。
+     2026-10-26 补 hashchange：此前只在首次挂载读一次 hash，页内由外部链接改 hash 不响应。 */
   useEffect(() => {
-    const m = /^#v-(\d{6})$/.exec(window.location.hash || '')
-    if (!m) return
-    if (!vols.some((v) => v.period === m[1])) return
-    openDetail(m[1])
+    const apply = () => {
+      const m = /^#v-(\d{6})$/.exec(window.location.hash || '')
+      if (!m) return
+      if (!vols.some((v) => v.period === m[1])) return
+      openDetail(m[1])
+    }
+    apply()
+    window.addEventListener('hashchange', apply)
+    return () => window.removeEventListener('hashchange', apply)
   }, [vols, openDetail])
 
   const frameSrc = detail.open ? `/app/shelf/pages.html#issue-${detail.period}` : 'about:blank'
@@ -141,9 +147,8 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
           <path d="M4 3h20v32H4zM8 7h12v24H8zM11 10v18M17 10v18M8 19h12" strokeWidth="1.2" />
           <path d="m11 14 3 5 3-5" strokeWidth="1.2" />
         </svg>
-        <div className="brand-txt"><b>文衡 · 陈列馆</b><span>学科情报阅览室</span></div>
+        <div className="brand-txt"><b>文衡 · 陈列馆</b><span>云南大学图书馆</span></div>
       </header>
-      <span className="index" aria-hidden="true">YUNNAN UNIVERSITY LIBRARY / A–01</span>
 
       {/* 首屏 · 书架 */}
       <section className="shelf-view">
@@ -151,7 +156,7 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
           <h1>一年六期，一期一册。</h1>
           <p>云南大学图书馆 · 学科信息参考 · 2026 年馆藏</p>
         </div>
-        <div className="shelf" id="shelf" aria-label="2026 年馆藏，共五册">
+        <div className="shelf" id="shelf" aria-label={`2026 年馆藏，共 ${vols.length} 册`}>
           {/* 新书期次待装帧：DESIGN_MAP 查不到封面时用深绿底期号占位（样式见 shelf-landing.css）。
               往期册封面叠期号铭牌：素材图里印的是当期号，铭牌盖住并印正确期号/月份 */}
           {vols.map((v, i) => {
@@ -168,15 +173,19 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
                   <span className="reissue" aria-hidden="true">
                     <span className="re-mask" />
                     <b className="re-num">{v.period}</b>
-                    <i className="re-date">{v.month}</i>
                   </span>
                 )}
-                <span className="cap"><b>{v.period}</b>{designLabel(v.design)}</span>
+                <span className="cap"><b>{v.period}</b>{designLabel(v.design)}<em>{v.month}</em></span>
               </a>
             )
           })}
+          {/* 滚动提示：2026-10-26 从 section 底部挪进书架内部，按托板线定位（见 shelf-landing.css .down） */}
+          <p className="down">向 下 滚 动 · 逐 期 册 页</p>
         </div>
-        <p className="down">向 下 滚 动 · 逐 期 册 页</p>
+        {/* 角落编号：2026-10-26 收进 .shelf-view 内。原来挂在外层，
+            绝对定位落到「初始包含块」的底部＝视口底，落点在木色/纸色之间随视口漂，
+            实测 1366 上压在中灰木纹上只有 2.0:1。收进来后固定在首屏右下（纸色区）。 */}
+        <span className="index" aria-hidden="true">YUNNAN UNIVERSITY LIBRARY / A–01</span>
       </section>
 
       {/* 册页：静态稿主流程不逐期展开——期次/目录/口径在 pages.html 的连续册页里 */}
@@ -189,7 +198,7 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
             <p className="deck">四站走完，才允许装帧。每一步都留痕，每一步都能回去看。</p>
 
             <article className="stn">
-              <figure className="shot"><img src="/app/shelf/assets/shots/01-取数核验.png" alt="取数核验" loading="lazy" /></figure>
+              <figure className="shot"><img src="/app/shelf/assets/shots/01-取数核验.webp" alt="取数核验" loading="lazy" /></figure>
               <div className="txt"><h3>一期数据，一次取齐。</h3>
                 <p>机器跑的那一步叫「取数」，人核对的那一步叫「取数核验」。两步合成一屏，屏题就是步骤名。</p>
                 <p>缺哪张表、哪一列，逐条写明，补上重跑。</p>
@@ -197,7 +206,7 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
             </article>
 
             <article className="stn flip">
-              <figure className="shot"><img src="/app/shelf/assets/shots/03-预测选模.png" alt="预测选模" loading="lazy" /></figure>
+              <figure className="shot"><img src="/app/shelf/assets/shots/03-预测选模.webp" alt="预测选模" loading="lazy" /></figure>
               <div className="txt"><h3>潜力学科，先算接近度，再选模型。</h3>
                 <p>每个学科到前 1% 还有多远，是「接近度」。按接近度排开，谁先到、谁还远，一屏看完。</p>
                 <p>模型逐科选，选完才落到下一站。</p>
@@ -205,7 +214,7 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
             </article>
 
             <article className="stn">
-              <figure className="shot"><img src="/app/shelf/assets/shots/04-生成初稿.png" alt="生成初稿" loading="lazy" /></figure>
+              <figure className="shot"><img src="/app/shelf/assets/shots/04-生成初稿.webp" alt="生成初稿" loading="lazy" /></figure>
               <div className="txt"><h3>约 20 秒，排出一版可读的稿子。</h3>
                 <p>19 张台账表是全部数字的源头。报告里 {fmt(stats?.docSlots)} 个数字，{fmt(stats?.docSlots)} 个标了出处——点得回那一格。</p>
                 <p>数字只有一个源头，稿子不在前端算任何一个数。</p>
@@ -213,7 +222,7 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
             </article>
 
             <article className="stn flip">
-              <figure className="shot"><img src="/app/shelf/assets/shots/05-核验定稿.png" alt="核验定稿" loading="lazy" /></figure>
+              <figure className="shot"><img src="/app/shelf/assets/shots/05-核验定稿.webp" alt="核验定稿" loading="lazy" /></figure>
               <div className="txt"><h3>机器保数字，取舍你来定。</h3>
                 <p>出稿前机器逐项自检——{fmt(stats?.selfChecks)} 项核对，全部通过才交到你手上。剩下的 {fmt(stats?.pendingManual)} 处待人工，逐条看着补。</p>
                 <p>复核无异议才签单，签了才签发。</p>
@@ -226,7 +235,7 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
             四站图文讲完「是这么来的」，这里直接看真产线；实时运行态在工作区。
             申报口径四站文案在上一段，一字未动。 */}
         <section className="sec" id="pano">
-          <LibraryPano books={books} />
+          <div className="wrap"><LibraryPano books={books} /></div>
         </section>
 
         {/* 边界 */}
@@ -299,7 +308,6 @@ export default function LibraryHome({ books, stats }: LibraryHomeProps) {
           <a href="/app/dialog/">问文衡</a>
         </div>
         <div>逐 期 裝 幀　·　A 区 01</div>
-        <div className="warn">陳 列 館 只 出 封 面 / 目 錄 / 名 詞 解 釋</div>
       </footer>
 
       {/* 点书后：原样载入连续册页（2026-10-25 rick 裁定：去掉「← 回书架」按钮，

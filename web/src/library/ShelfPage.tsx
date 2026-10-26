@@ -38,7 +38,10 @@ export default function ShelfPage() {
     return (
       <main className="library-page">
         <div className="library-shell">
-          <p className="library-status" role="status" aria-live="polite">正在确认身份并调取馆藏……</p>
+          <p className="library-status" role="status" aria-live="polite">
+            <b>文衡 · 陈列馆</b>
+            <span>正在确认身份并调取馆藏……</span>
+          </p>
         </div>
       </main>
     )

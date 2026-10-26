@@ -1,6 +1,6 @@
 import { HttpError, req, type Me } from '../api'
 import type {
-  GlossaryEntry, ShelfBook, ShelfBookFull, ShelfLoadResult, ShelfBookPreview, ShelfStats,
+  GlossaryEntry, ShelfBook, ShelfLoadResult, ShelfBookPreview, ShelfStats,
   TocEntry,
 } from './types'
 
@@ -101,28 +101,12 @@ function readPreviewScript(source: string): { books: ShelfBook[]; stats?: ShelfS
   return { books, stats: readStats(payload.stats) }
 }
 
-function readFullScript(source: string): ShelfBookFull[] | null {
-  const script = source.trim()
-  if (!script.startsWith(DATA_PREFIX) || !script.endsWith(';')) return null
-
-  let payload: unknown
-  try {
-    payload = JSON.parse(script.slice(DATA_PREFIX.length, -1)) as unknown
-  } catch {
-    return null
-  }
-  if (!isRecord(payload) || !Array.isArray(payload.books)) return null
-
-  // 服务器组装的形状，字段在渲染处按需读；这里只筛掉非对象项。
-  const books: ShelfBookFull[] = []
-  for (const value of payload.books) {
-    if (isRecord(value)) books.push(value as ShelfBookFull)
-  }
-  return books
-}
-
-/** 先确认当前账号；登录后一律读馆藏预览投影——管理员从工作区进陈列馆也看同一份
-    （管理员完整数据在 `shelf/data.js`，暂未接前端）。 */
+/** 先确认当前账号；登录后一律读馆藏预览投影——管理员从工作区进陈列馆也看同一份。
+    2026-10-26：**不再预取 `shelf/data.js`**（109 KB，页面从不消费 `book.full`；
+    `LibraryHome` 只用 period / cover[2] / stats）。此前它是首屏的串行前置请求，
+    且 `cache:'no-store'` 每次刷新重下。实测屏蔽后页面照常渲染（对照实验见
+    `wenheng/tmp/shelf_audit/exp_datajs.py`）。要恢复「管理员看全内容」，应先让页面
+    真的用上 `full`，再按需（点开某册时）取，而不是整包预取。 */
 export async function loadShelfPreviews(signal: AbortSignal): Promise<ShelfLoadResult> {
   let me: unknown
   try {
@@ -165,35 +149,5 @@ export async function loadShelfPreviews(signal: AbortSignal): Promise<ShelfLoadR
   const preview = readPreviewScript(script)
   if (!preview) return { kind: 'invalid-data' }
   const { books, stats } = preview
-
-  // 两种角色（管理员/操作员）都再取服务器组装的完整数据——陈列馆全内容；
-  // 完整数据取不到时退回预览三件套（如实回落，不假装有内容）。
-  try {
-    const fullResponse = await fetch('/app/shelf/data.js', {
-      credentials: 'same-origin',
-      headers: { Accept: 'application/javascript' },
-      cache: 'no-store',
-      signal,
-    })
-    if (fullResponse.ok && !fullResponse.redirected) {
-      const fullBooks = readFullScript(await fullResponse.text())
-      if (fullBooks) {
-        const byPeriod = new Map<string, ShelfBookFull>()
-        for (const full of fullBooks) {
-          if (typeof full.period === 'string' && full.period) byPeriod.set(full.period, full)
-        }
-        return {
-          kind: 'full',
-          books: books.map((book) => {
-            const full = book.period ? byPeriod.get(book.period) : undefined
-            return full ? { ...book, full } : book
-          }),
-          ...(stats ? { stats } : {}),
-        }
-      }
-    }
-  } catch (error) {
-    if (signal.aborted) throw error
-  }
   return { kind: 'preview', books, ...(stats ? { stats } : {}) }
 }

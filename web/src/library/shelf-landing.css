@@ -6,17 +6,19 @@
    .detail-title / .byline / .byline-src / .rule / .lede / .note / .figs / .entry-group /
    .section-label / .entry-stack / .entry-row / .detail-colophon、body.in-detail 全部分支、
    dialog 与全部 .reader*、@keyframes turn，以及引用以上类名的 1080px / 820px 媒体查询段。
-   书架底图改绝对路径 /app/shelf/assets/shelf-walnut.jpg；
+   书架底图改绝对路径 /app/shelf/assets/shelf-walnut.webp；
    文末「工程新增」两小段为落地必需（各段自注）。 */
 :root{
-  /* 书架 */
-  --night:#191310;--ivory:#F2EDE1;--ivory-2:rgba(242,237,225,.66);--ivory-3:rgba(242,237,225,.4);
-  --gold:#C9A961;--gold-2:#E0CB92;
-  /* 册页 */
-  --paper:#F4F1E8;--paper-2:#E8E3D4;--paper-3:#D3CDBA;
-  --ink:#12201A;--ink-2:#3F5248;--ink-3:#74857B;
-  --line:#DDE1D8;--g-deep:#14342A;--g-mid:#2F7A58;--g-pale:#D6E6DB;--g-mist:#EAF2EC;
-  --red:#B23A2B;
+  /* 短名别名：值全部来自 index.css 的陈列馆色板（--lib-*，2026-10-26 登记的唯一来源）。
+     这里**只做别名，不写死颜色**；改色去 index.css。
+     2026-10-26 前这里直接声明 --ink / --ink-2 / --ink-3 / --line，把全局墨色悄悄改了
+     （Panorama 因此在陈列馆里用了另一套墨色）——已改为 --lib-* 命名隔离。 */
+  --night:var(--lib-night);--ivory:var(--lib-ivory);
+  --ivory-2:var(--lib-ivory-2);--ivory-3:var(--lib-ivory-3);
+  --gold:var(--lib-gold);--gold-2:var(--lib-gold-2);
+  --paper:var(--lib-paper);--paper-2:var(--lib-paper-2);--paper-3:var(--lib-paper-3);
+  --g-deep:var(--lib-deep);--g-mid:var(--lib-mid);--g-pale:var(--lib-pale);--g-mist:var(--lib-mist);
+  --red:var(--lib-red);
   --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,Georgia,serif;
   --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
   --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
@@ -40,7 +42,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .brand-txt span{display:block;margin-top:5px;font-size:11px;font-style:italic;
   letter-spacing:.08em;opacity:.5}
 .index{position:absolute;right:max(20px,2.2vw);bottom:max(16px,2.2vh);z-index:30;
-  font:10px var(--mono);letter-spacing:.18em;color:rgba(242,237,225,.34)}
+  font:11px var(--mono);letter-spacing:.18em;color:var(--lib-ink-3)}
 
 /* ══════ 首屏 · 书架 ══════ */
 .shelf-view{position:relative;min-height:100svh;display:grid;place-items:center;isolation:isolate}
@@ -52,7 +54,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
   color:rgba(242,237,225,.62);text-shadow:0 1px 12px rgba(12,8,4,.6)}
 .shelf{position:relative;width:min(100%,1560px);aspect-ratio:1600/1067;
   background-image:linear-gradient(rgba(20,52,42,.18),rgba(20,52,42,.18)),
-    url("/app/shelf/assets/shelf-walnut.jpg");
+    url("/app/shelf/assets/shelf-walnut.webp");
   background-size:100% 100%,100% 100%;background-position:center,center;
   background-repeat:no-repeat,no-repeat;background-blend-mode:multiply,normal}
 /* 书架底边渐入纸色，不让深场与纸场硬切 */
@@ -79,94 +81,104 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
   transition:opacity .3s var(--ease),transform .3s var(--ease)}
 .vol .cap b{display:block;font-family:var(--serif);font-size:14px;letter-spacing:.18em;
   color:#F6EDD6;margin-bottom:2px}
+/* 月份从封面铭牌搬到这里（2026-10-26）：铭牌上的月份实测 3.55px，等于没印；
+   挂在 hover 说明里既保住信息，又不用在小徽标上挤两行。 */
+.vol .cap em{display:block;margin-top:2px;font-style:normal;font-family:var(--mono);
+  font-size:11px;letter-spacing:.12em;color:var(--gold-2)}
 .vol:hover,.vol:focus-visible{transform:translateY(-14px) scale(1.075);z-index:6;
   filter:drop-shadow(0 22px 26px rgba(20,12,4,.5))}
 .vol:hover .cap,.vol:focus-visible .cap{opacity:1;transform:translateX(-50%) translateY(0)}
 .vol:active{transform:translateY(-10px) scale(1.05)}
-.down{position:absolute;left:50%;bottom:max(20px,3vh);transform:translateX(-50%);z-index:5;
-  font:10px var(--mono);letter-spacing:.34em;color:rgba(242,237,225,.42);white-space:nowrap}
+/* 「向下滚动」——2026-10-26 修（原病灶：贴在 .shelf-view 底部 = 落在 ::after 的纸色渐变上，
+   米白字 1.00:1 完全不可见；且 1366×768 / 1440×900 上首屏 960px 高于折叠线，它连视口都不在）。
+   改法：① 挪进 .shelf 内部，按托板线（bottom 43.75%）定位到托板正下方 46px，任何视口都贴着书；
+        ② 字色改 --gold-2（金），并叠两层深色 text-shadow 压住木纹亮斑——沿用 .vol .cap 已有的写法，
+           不引入新视觉语言；实测 6 视口均 ≥4.5:1；③ 字号 10 → 11px（UX.md 音阶下限）。 */
+.down{position:absolute;left:50%;bottom:calc(43.75% - 46px);transform:translateX(-50%);z-index:5;
+  margin:0;font:11px var(--mono);letter-spacing:.34em;color:var(--gold-2);white-space:nowrap;
+  text-shadow:0 0 12px rgba(8,5,2,.92),0 1px 3px rgba(8,5,2,.95)}
 
 /* ══════ 册页（文档流） ══════ */
-.flow{position:relative;z-index:3;background:var(--paper);color:var(--ink)}
+.flow{position:relative;z-index:3;background:var(--paper);color:var(--lib-ink)}
 .wrap{max-width:1180px;margin:0 auto;padding:0 clamp(18px,5vw,52px)}
-.sec{padding:clamp(52px,8vh,92px) 0;border-top:1px solid var(--line)}
+.sec{padding:clamp(52px,8vh,92px) 0;border-top:1px solid var(--lib-line)}
 .sec:first-child{border-top:0}
 .vol-num{font-size:clamp(46px,7vw,88px);letter-spacing:.06em;line-height:1.05;
   font-variant-numeric:tabular-nums}
-.vol-line{font-family:var(--kai);font-size:12px;letter-spacing:.2em;color:var(--ink-3);
+.vol-line{font-family:var(--kai);font-size:12px;letter-spacing:.2em;color:var(--lib-ink-3);
   margin-top:14px}
 .deck{font-family:var(--serif);font-size:clamp(16px,1.6vw,18px);line-height:2.05;
-  color:var(--ink-2);max-width:34em;margin-top:18px}
+  color:var(--lib-ink-2);max-width:34em;margin-top:18px}
 h2.sec-title{font-size:clamp(30px,3.6vw,46px);font-weight:600;line-height:1.24;letter-spacing:.02em}
 
 .idx{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.06fr);
   gap:clamp(28px,5vw,60px);margin-top:clamp(28px,4vh,46px)}
 .col-h{display:flex;justify-content:space-between;align-items:baseline;gap:14px;
-  padding-bottom:10px;border-bottom:2px solid var(--ink)}
+  padding-bottom:10px;border-bottom:2px solid var(--lib-ink)}
 .col-h b{font-family:var(--kai);font-size:13.5px;letter-spacing:.34em}
-.col-h span{font-family:var(--kai);font-size:10.5px;letter-spacing:.2em;color:var(--ink-3)}
+.col-h span{font-family:var(--kai);font-size:10.5px;letter-spacing:.2em;color:var(--lib-ink-3)}
 .toc{list-style:none}
 .toc li{display:grid;grid-template-columns:2.8em 1fr auto;gap:12px;align-items:baseline;
-  padding:14px 0;border-bottom:1px solid var(--line)}
-.toc .n{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--ink-3)}
+  padding:14px 0;border-bottom:1px solid var(--lib-line)}
+.toc .n{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--lib-ink-3)}
 .toc .t{font-family:var(--serif);font-size:clamp(16px,1.6vw,20px);letter-spacing:.04em;
   line-height:1.7}
-.toc .p{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.toc .p{font-family:var(--mono);font-size:11px;color:var(--lib-ink-3)}
 .term-item{display:grid;grid-template-columns:minmax(7em,9.5em) minmax(0,1fr);gap:4px 18px;
-  padding:16px 0;border-bottom:1px solid var(--line)}
+  padding:16px 0;border-bottom:1px solid var(--lib-line)}
 .term-item .term{font-family:var(--serif);font-size:17px;line-height:1.6;display:flex;
   align-items:baseline;gap:8px;flex-wrap:wrap}
-.term-item .tag{font-family:var(--kai);font-size:9.5px;letter-spacing:.2em;color:var(--ink-3);
-  border:1px solid var(--line);padding:1px 7px;white-space:nowrap}
+.term-item .tag{font-family:var(--kai);font-size:9.5px;letter-spacing:.2em;color:var(--lib-ink-3);
+  border:1px solid var(--lib-line);padding:1px 7px;white-space:nowrap}
 .term-item .tag.mac{color:var(--g-mid);border-color:var(--g-mid)}
-.term-item .def{font-family:var(--serif);font-size:15px;line-height:2;color:var(--ink-2)}
+.term-item .def{font-family:var(--serif);font-size:15px;line-height:2;color:var(--lib-ink-2)}
 .term-item .use{grid-column:2;font-family:var(--kai);font-size:11.5px;letter-spacing:.12em;
-  color:var(--ink-3);margin-top:4px}
+  color:var(--lib-ink-3);margin-top:4px}
 
 /* 四站 */
 .stn{display:grid;grid-template-columns:minmax(0,1.04fr) minmax(0,1fr);
   gap:clamp(22px,4vw,54px);align-items:center;padding:clamp(30px,5vh,52px) 0;
-  border-top:1px solid var(--line)}
+  border-top:1px solid var(--lib-line)}
 .stn:first-of-type{border-top:0;padding-top:0}
 .stn.flip .shot{order:2}
 .shot{margin:0}
-.shot img{display:block;width:100%;height:auto;border:1px solid var(--line);
+.shot img{display:block;width:100%;height:auto;border:1px solid var(--lib-line);
   background:var(--paper-2)}
 .stn h3{font-family:var(--serif);font-weight:600;font-size:clamp(22px,2.5vw,32px);
   line-height:1.45;margin:0 0 14px}
-.stn p{font-family:var(--serif);font-size:15.5px;line-height:2.05;color:var(--ink-2);
+.stn p{font-family:var(--serif);font-size:15.5px;line-height:2.05;color:var(--lib-ink-2);
   margin:0 0 12px}
-.stn .metric{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;color:var(--ink-3);
-  margin:16px 0 0;padding-top:12px;border-top:1px solid var(--line)}
+.stn .metric{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;color:var(--lib-ink-3);
+  margin:16px 0 0;padding-top:12px;border-top:1px solid var(--lib-line)}
 
 /* 边界 */
 .bnd{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,400px);
   gap:clamp(28px,4vw,58px);align-items:start}
 .bnd .deck{max-width:30em}
-.bnd .deck a{border-bottom:1px solid var(--g-mid);color:var(--ink)}
-.bndbox{border:1px solid var(--line);padding:clamp(20px,3vw,30px)}
-.bndbox .h{font-family:var(--kai);font-size:11px;letter-spacing:.4em;color:var(--ink-3);
+.bnd .deck a{border-bottom:1px solid var(--g-mid);color:var(--lib-ink)}
+.bndbox{border:1px solid var(--lib-line);padding:clamp(20px,3vw,30px)}
+.bndbox .h{font-family:var(--kai);font-size:11px;letter-spacing:.4em;color:var(--lib-ink-3);
   margin-bottom:16px}
 .bndbox ul{list-style:none;display:grid;gap:13px}
 .bndbox li{display:flex;align-items:center;gap:12px;font-family:var(--kai);font-size:13.5px;
   letter-spacing:.2em}
 .bndbox li .m{flex:0 0 auto;width:9px;height:9px;background:var(--g-mid)}
-.bndbox li.no{color:var(--ink-3);text-decoration:line-through}
+.bndbox li.no{color:var(--lib-ink-3);text-decoration:line-through}
 .bndbox li.no .m{background:var(--red)}
 
 /* 问文衡 */
 .ask{background:var(--g-mist)}
 .askgrid{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.1fr);
   gap:clamp(28px,4vw,60px);align-items:center}
-.askform{display:flex;align-items:stretch;max-width:600px;border-bottom:1px solid var(--ink)}
+.askform{display:flex;align-items:stretch;max-width:600px;border-bottom:1px solid var(--lib-ink)}
 .askform input{flex:1;min-width:0;font:inherit;font-family:var(--serif);font-size:16px;
-  background:transparent;border:0;padding:14px 4px;color:var(--ink)}
-.askform input::placeholder{color:var(--ink-3)}
+  background:transparent;border:0;padding:14px 4px;color:var(--lib-ink)}
+.askform input::placeholder{color:var(--lib-ink-3)}
 .askform button{border:0;min-height:48px;padding:0 22px;background:var(--g-deep);
   color:var(--paper);font-family:var(--serif);letter-spacing:.14em;font-size:14px}
 .chips{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:baseline;margin-top:20px;
   font-family:var(--kai);font-size:12px;letter-spacing:.08em}
-.chips .lb{letter-spacing:.34em;color:var(--ink-3)}
+.chips .lb{letter-spacing:.34em;color:var(--lib-ink-3)}
 .chips a{border-bottom:1px solid var(--paper-3);padding-bottom:2px}
 .chips a:hover{border-color:var(--g-mid)}
 
@@ -176,11 +188,11 @@ h2.sec-title{font-size:clamp(30px,3.6vw,46px);font-weight:600;line-height:1.24;l
   gap:clamp(28px,4vw,60px);align-items:start}
 .about h2{color:#F4F1E8}
 .about .deck{color:#D6E6DB}
-.about .deck a{border-bottom:1px solid #7FBF9C}
+.about .deck a{border-bottom:1px solid #7FBF9C;white-space:nowrap}
 .facts{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid rgba(214,230,219,.34)}
 .facts .f{padding:20px 18px 22px;border-bottom:1px solid rgba(214,230,219,.34)}
 .facts .f:nth-child(odd){border-right:1px solid rgba(214,230,219,.34);padding-left:0}
-.facts .k{font-family:var(--kai);font-size:10.5px;letter-spacing:.3em;color:#AFC3B6}
+.facts .k{font-family:var(--kai);font-size:11px;letter-spacing:.3em;color:#AFC3B6}
 .facts .v{font-family:var(--serif);font-weight:600;font-size:clamp(30px,3.2vw,42px);
   line-height:1.2;color:#F4F1E8;margin-top:6px}
 .facts .v.sm{font-size:clamp(15px,1.55vw,18px);letter-spacing:.1em;line-height:1.75}
@@ -201,6 +213,10 @@ h2.sec-title{font-size:clamp(30px,3.6vw,46px);font-weight:600;line-height:1.24;l
 }
 @media (max-width:820px){
   .shelf-view{min-height:0;padding-top:96px;display:block}
+  /* 窄屏纸色渐变收口（2026-10-26）：原来 38vh/360px 一路盖到书架中部，
+     实测 768×1024 上整排书被封白、书目几乎读不出。收到 11vh（＝书架自身下内边距以内），
+     书体留在木色上，只让书架下沿那圈过渡到纸色。 */
+  .shelf-view::after{height:min(11vh,110px)}
   .headline{position:static;transform:none;width:auto;padding:0 20px 12px;text-align:center}
   .shelf{display:flex;align-items:flex-end;gap:10px;overflow-x:auto;
     aspect-ratio:auto;height:56vh;padding:0 22px 12vh;background-size:cover;
@@ -208,8 +224,8 @@ h2.sec-title{font-size:clamp(30px,3.6vw,46px);font-weight:600;line-height:1.24;l
   .shelf::-webkit-scrollbar{display:none}
   .vol{position:relative;left:auto;bottom:auto;height:46%;flex:none}
   .vol:hover{transform:translateY(-8px) scale(1.05)}
-  .vol .cap{opacity:1;transform:translateX(-50%);top:calc(100% + 8px);font-size:9px}
-  .vol .cap b{font-size:11px}
+  .vol .cap{opacity:1;transform:translateX(-50%);top:calc(100% + 8px);
+    background:rgba(8,27,20,.72);padding:3px 7px;letter-spacing:.1em}
   .down,.index{display:none}
   .brand{position:absolute}
 }
@@ -239,21 +255,25 @@ h2.sec-title{font-size:clamp(30px,3.6vw,46px);font-weight:600;line-height:1.24;l
 .vol .reissue{position:absolute;inset:0;z-index:3;pointer-events:none;color:#eadfc0}
 .vol .reissue .re-mask{position:absolute;left:0;top:78.5%;width:63%;height:13.5%;
   background:linear-gradient(90deg,rgba(8,27,20,1) 0 66%,rgba(8,27,20,.92) 78%,transparent)}
-.vol .reissue .re-num{position:absolute;left:8.7%;top:80%;
-  font:600 6.8cqw/1.15 Georgia,"Noto Serif SC",serif;letter-spacing:.055em;color:#d7c18a}
-.vol .reissue .re-date{position:absolute;left:9.2%;top:88.6%;
-  font:400 2.1cqw/1 Georgia,serif;letter-spacing:.24em;color:#e5ddc8}
+.vol .reissue .re-num{position:absolute;left:8.7%;top:81.5%;
+  font:600 8.6cqw/1.1 Georgia,"Noto Serif SC",serif;letter-spacing:.055em;color:var(--gold-2)}
+/* .re-date（月份，2.1cqw＝3.55px）已删：字号低于可读下限，月份改挂 .vol .cap em */
 
 /* ── 工程新增 b：五态加载 / 错误页最小样式 ──
    ShelfPage 保留原五态 JSX（.library-* 类），旧版整册样式文件解除接线后，把五态实际
    用到的规则按最小集合平移至此；令牌（--bg/--ink/--ink-2/--line/--r/--card/--shadow/
    --zhu）仍来自 ../index.css。 */
-.library-page{min-height:100%;box-sizing:border-box;
+.library-page{min-height:100dvh;box-sizing:border-box;display:grid;align-content:center;
   padding:clamp(18px,4vw,48px) clamp(14px,3vw,32px) 56px;
   background:var(--bg);color:var(--ink);font-size:17px}
 .library-shell{width:min(100%,1180px);margin:0 auto}
 .library-message,.library-status{margin:0;padding:clamp(22px,4vw,36px);
   border:1px solid var(--line);border-radius:var(--r);background:var(--card);box-shadow:var(--shadow)}
+/* 加载态（2026-10-26 修）：原来是页顶一张 1180×100 的方角白卡、下方 800px 全空，
+   看起来像加载失败；而 LCP 2.3s 全砸在这张卡上。改为垂直居中＋品牌行＋一句进度。 */
+.library-status b{display:block;font-family:var(--serif);font-size:15px;font-weight:600;
+  letter-spacing:.2em;color:var(--ink);margin-bottom:10px}
+.library-status span{display:block;color:var(--ink-2)}
 .library-message h1{font-size:21px;line-height:1.35}
 .library-message p{margin:10px 0 18px;color:var(--ink-2)}
 .library-action{display:inline-flex;align-items:center;justify-content:center;
@@ -267,12 +287,12 @@ h2.sec-title{font-size:clamp(30px,3.6vw,46px);font-weight:600;line-height:1.24;l
 .lib-pano { margin-top: 8px; }
 .lib-pano-head { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
 .lib-pano-title { font-family: var(--serif); font-size: 18px; font-weight: 600; letter-spacing: .04em; }
-.lib-pano-deck { margin: 0; font-size: 13px; color: var(--ink-3); max-width: 72ch; }
+.lib-pano-deck { margin: 0; font-size: 13px; color: var(--lib-ink-3); max-width: 72ch; }
 .lib-pano-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
 .lib-pano-chips button { font: inherit; font-family: var(--kai); font-size: 12.5px; letter-spacing: .08em;
-  padding: 4px 13px; background: transparent; border: 1px solid var(--line);
-  color: var(--ink-3); cursor: pointer; }
-.lib-pano-chips button:hover { color: var(--ink); border-color: var(--tool); }
+  padding: 4px 13px; background: transparent; border: 1px solid var(--lib-line);
+  color: var(--lib-ink-3); cursor: pointer; }
+.lib-pano-chips button:hover { color: var(--lib-ink); border-color: var(--tool); }
 .lib-pano-chips button.is-on { background: var(--tool); border-color: var(--tool); color: #F6F1DE; }
 .lib-pano-hint { margin: 8px 0 0; font-size: 12.5px; color: var(--warn); }
 /* 嵌入场合：pano 高度随内容走（正式屏的 100vh 计算是给工作区框架的） */

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>陈列馆首屏 · 主次对照稿 · 2026-10-26</title>
+<style>
+:root{
+  --night:#191310; --ivory:#F2EDE1; --gold:#C9A961; --gold-2:#E0CB92;
+  --paper:#F4F1E8; --ink:#12201A; --ink-2:#3F5248; --ink-3:#556169;
+  --line:#DDE1D8; --deep:#14342A; --mid:#2F7A58; --red:#B23A2B;
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,Georgia,serif;
+  --mono:"Cascadia Mono",Consolas,monospace;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--serif);
+  -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto;padding:34px 28px 72px}
+header{border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:6px}
+.kicker{font-family:var(--sans);font-size:11px;letter-spacing:.2em;color:var(--ink-3)}
+h1{font-size:27px;margin:8px 0 10px;line-height:1.32}
+.sub{color:var(--ink-2);font-size:14px;margin:0;max-width:58em}
+.sub code{font-family:var(--mono);font-size:12.5px;background:#E6E1D3;padding:1px 5px}
+
+.opt{margin:34px 0 0;border:1px solid var(--line);background:#FAF8F0}
+.opt .hd{display:flex;align-items:baseline;gap:12px;padding:11px 16px;border-bottom:1px solid var(--line);
+  background:#E6E1D3;flex-wrap:wrap}
+.opt .hd b{font-size:15px}
+.opt .hd .tag{font-family:var(--mono);font-size:11px;padding:1px 7px;border:1px solid var(--ink-3);color:var(--ink-3)}
+.opt .hd .tag.rec{border-color:var(--mid);color:var(--mid)}
+.opt .hd .tag.now{border-color:var(--red);color:var(--red)}
+.opt .hd span.note{font-family:var(--sans);font-size:11.5px;color:var(--ink-3)}
+
+/* ── 书架舞台：与 shelf-landing.css 同构，只是尺寸随容器 ── */
+.stage{position:relative;width:100%;aspect-ratio:1600/1067;isolation:isolate;
+  background-image:linear-gradient(rgba(20,52,42,.18),rgba(20,52,42,.18)),url("assets/shelf-walnut.jpg");
+  background-size:100% 100%,100% 100%;background-position:center,center;
+  background-repeat:no-repeat,no-repeat;background-blend-mode:multiply,normal}
+.stage::after{content:"";position:absolute;left:0;right:0;bottom:0;height:34%;z-index:4;pointer-events:none;
+  background:linear-gradient(180deg,rgba(244,241,232,0) 0%,rgba(244,241,232,.72) 56%,rgba(244,241,232,.97) 82%,var(--paper) 100%)}
+.brand{position:absolute;left:2.2%;top:2.4%;z-index:30;display:flex;align-items:flex-start;gap:10px;color:var(--ivory)}
+.brand svg{width:24px;height:34px}
+.brand b{display:block;font-size:13px;letter-spacing:.04em;font-weight:600;white-space:nowrap}
+.brand i{display:block;margin-top:4px;font-size:10.5px;font-style:italic;letter-spacing:.08em;opacity:.5}
+.headline{position:absolute;left:50%;top:8.5%;transform:translateX(-50%);z-index:3;text-align:center;
+  width:min(92%,760px)}
+.headline h2{font-size:clamp(20px,2.5vw,38px);font-weight:600;line-height:1.3;letter-spacing:.06em;
+  color:#F4EFE3;text-shadow:0 2px 18px rgba(12,8,4,.55)}
+.headline p{margin-top:10px;font-size:clamp(10px,1vw,13px);letter-spacing:.22em;
+  color:rgba(242,237,225,.62)}
+
+.vol{position:absolute;bottom:43.75%;height:24.9%;aspect-ratio:210/297;left:var(--x);
+  transform-origin:50% 100%;filter:drop-shadow(0 8px 12px rgba(24,14,6,.42))}
+.vol .face{display:block;width:100%;height:100%;object-fit:cover;
+  box-shadow:inset 0 0 0 1px rgba(201,169,97,.18)}
+.vol::before{content:"";position:absolute;left:0;top:1px;bottom:1px;width:6px;
+  background:linear-gradient(90deg,#0A2118,#123326 62%,#0B2419);
+  border-right:1px solid rgba(201,169,97,.22);
+  transform:translateX(-5px) skewY(-.6deg);transform-origin:right center}
+.vol .cap{position:absolute;left:50%;top:calc(100% + 34px);transform:translateX(-50%);white-space:nowrap;
+  font:11px/1.5 var(--mono);letter-spacing:.16em;color:rgba(242,237,225,.82);
+  text-shadow:0 1px 10px rgba(10,6,2,.85)}
+.vol .cap b{display:block;font-family:var(--serif);font-size:13px;letter-spacing:.18em;color:#F6EDD6}
+.reissue{position:absolute;inset:0;z-index:3;pointer-events:none}
+.re-mask{position:absolute;left:0;top:78.5%;width:63%;height:13.5%;
+  background:linear-gradient(90deg,rgba(8,27,20,1) 0 66%,rgba(8,27,20,.92) 78%,transparent)}
+.re-num{position:absolute;left:8.7%;top:81.5%;font:600 8.6cqw/1.1 Georgia,"Noto Serif SC",serif;
+  letter-spacing:.055em;color:var(--gold-2)}
+.vol{container-type:inline-size}
+/* 三稿都不变、也与主次无关：本稿省略「向下滚动」提示，避免与常显的书目行叠字。线上它是有的。 */
+.down{display:none;position:absolute;left:50%;bottom:calc(43.75% - 46px);transform:translateX(-50%);z-index:5;
+  font:11px var(--mono);letter-spacing:.34em;color:var(--gold-2);white-space:nowrap;
+  text-shadow:0 0 12px rgba(8,5,2,.92),0 1px 3px rgba(8,5,2,.95)}
+
+/* 待装帧占位：与 shelf-landing.css 的 .face.placeholder 同构 */
+.placeholder{display:grid;place-items:center;background:var(--deep);color:var(--gold-2);
+  font:11px/1.9 var(--mono);letter-spacing:.16em;text-align:center;padding:10px 8px;
+  box-shadow:inset 0 0 0 1px rgba(201,169,97,.28),inset 0 0 26px rgba(0,0,0,.32)}
+.placeholder b{display:block;font-family:var(--serif);font-size:15px;letter-spacing:.14em;
+  color:#F6EDD6;margin-bottom:4px}
+
+/* 方案 B/C：最新一册抬高、其余压一档 */
+.hero-vol{height:30.4%;filter:drop-shadow(0 14px 22px rgba(24,14,6,.55))}
+.hero-vol::before{background:linear-gradient(90deg,#0A2118,#123326 62%,#0B2419);
+  border-right:1px solid rgba(224,203,146,.55)}
+.hero-vol .cap{top:calc(100% + 34px)}
+.hero-vol .cap b{font-size:15px;color:var(--gold-2)}
+.sub-vol{height:24.2%;filter:drop-shadow(0 8px 12px rgba(24,14,6,.42)) brightness(.93)}
+
+/* 评审条 */
+.verdict{display:flex;gap:0;border-top:1px solid var(--line);font-family:var(--sans);font-size:12px}
+.verdict div{flex:1;padding:10px 14px;border-right:1px solid var(--line)}
+.verdict div:last-child{border-right:none}
+.verdict .k{display:block;font-size:10.5px;color:var(--ink-3);margin-bottom:2px}
+.verdict .v{font-size:12.5px;color:var(--ink)}
+.verdict .v.bad{color:var(--red)}
+.verdict .v.ok{color:var(--mid)}
+
+h2.sec{font-size:19px;margin:38px 0 8px}
+table{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:12.5px;
+  background:#FAF8F0;border:1px solid var(--line)}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #E6E1D3;vertical-align:top;line-height:1.6}
+th{background:#E6E1D3;font-size:11.5px;color:var(--ink-2);white-space:nowrap}
+td code{font-family:var(--mono);font-size:11.5px;background:#E6E1D3;padding:0 4px}
+.foot{margin-top:36px;padding-top:14px;border-top:1px solid var(--line);
+  font-family:var(--sans);font-size:11.5px;color:var(--ink-3)}
+@media(max-width:820px){ .verdict{flex-wrap:wrap} .verdict div{flex:1 1 50%} h1{font-size:21px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">文衡 · 陈列馆 / 静态稿 20261026 / 待 rick 裁</div>
+  <h1>首屏主次：三稿对照</h1>
+  <p class="sub">只改首屏书架的<b>主次关系</b>，其余一切不动（木色、金线、书脊、铭牌、滚动提示、下方四站都照旧）。
+  三稿都能双击打开，图和底图是仓库里的真素材（<code>mockups/assets/</code>），不是示意图。</p>
+</header>
+
+<!-- ───────── A 现状 ───────── -->
+<section class="opt">
+  <div class="hd">
+    <b>A · 现状：五册同级</b>
+    <span class="tag now">现在线上就是这个</span>
+    <span class="note">五册视觉权重完全相同，没有「先看最新一期」的引导</span>
+  </div>
+  <div class="stage">
+    <div class="brand">
+      <svg viewBox="0 0 28 38" fill="none" stroke="currentColor" aria-hidden="true">
+        <path d="M4 3h20v32H4zM8 7h12v24H8zM11 10v18M17 10v18M8 19h12" stroke-width="1.2"/>
+        <path d="m11 14 3 5 3-5" stroke-width="1.2"/>
+      </svg>
+      <div><b>文衡 · 陈列馆</b><i>云南大学图书馆</i></div>
+    </div>
+    <div class="headline"><h2>一年六期，一期一册。</h2><p>云南大学图书馆 · 学科信息参考 · 2026 年馆藏</p></div>
+
+    <a class="vol" style="--x:16.8%"><img class="face" src="assets/wenheng-covers/huizeyuan.webp" alt="">
+      <span class="cap"><b>202609</b>会泽院装帧</span></a>
+    <a class="vol" style="--x:30.5%"><img class="face" src="assets/wenheng-covers/zhigongtang.webp" alt="">
+      <span class="reissue"><span class="re-mask"></span><b class="re-num">202607</b></span>
+      <span class="cap"><b>202607</b>至公堂装帧</span></a>
+    <a class="vol" style="--x:44.2%"><img class="face" src="assets/wenheng-covers/yinxing.webp" alt="">
+      <span class="reissue"><span class="re-mask"></span><b class="re-num">202605</b></span>
+      <span class="cap"><b>202605</b>银杏装帧</span></a>
+    <a class="vol" style="--x:57.9%"><img class="face" src="assets/wenheng-covers/yuelanshi.webp" alt="">
+      <span class="reissue"><span class="re-mask"></span><b class="re-num">202603</b></span>
+      <span class="cap"><b>202603</b>阅览室装帧</span></a>
+    <a class="vol" style="--x:71.6%"><img class="face" src="assets/wenheng-covers/xiaomen.webp" alt="">
+      <span class="reissue"><span class="re-mask"></span><b class="re-num">202601</b></span>
+      <span class="cap"><b>202601</b>校门装帧</span></a>
+
+    <p class="down">向 下 滚 动 · 逐 期 册 页</p>
+  </div>
+  <div class="verdict">
+    <div><span class="k">3 秒内看见什么</span><span class="v">五本一模一样重的书</span></div>
+    <div><span class="k">标题与陈列是否相符</span><span class="v bad">「一年六期」但只有五册，且没交代第六册</span></div>
+    <div><span class="k">主动作</span><span class="v bad">5 个同级（UX.md §十 要求 ≤1）</span></div>
+    <div><span class="k">改动量</span><span class="v">0</span></div>
+  </div>
+</section>
+
+<!-- ───────── B 主次 ───────── -->
+<section class="opt">
+  <div class="hd">
+    <b>B · 当期为主：最新一册抬高</b>
+    <span class="tag rec">推荐</span>
+    <span class="note">当期高 30.4%（原 24.9%）、书脊金线提亮、期号加金；往期压到 24.2% 并降 7% 亮度，基线齐平</span>
+  </div>
+  <div class="stage">
+    <div class="brand">
+      <svg viewBox="0 0 28 38" fill="none" stroke="currentColor" aria-hidden="true">
+        <path d="M4 3h20v32H4zM8 7h12v24H8zM11 10v18M17 10v18M8 19h12" stroke-width="1.2"/>
+        <path d="m11 14 3 5 3-5" stroke-width="1.2"/>
+      </svg>
+      <div><b>文衡 · 陈列馆</b><i>云南大学图书馆</i></div>
+    </div>
+    <div class="headline"><h2>一年六期，一期一册。</h2><p>云南大学图书馆 · 学科信息参考 · 2026 年馆藏</p></div>
+
+    <a class="vol hero-vol" style="--x:16.8%"><img class="face" src="assets/wenheng-covers/huizeyuan.webp" alt="">
+      <span class="cap"><b>202609</b>会泽院装帧</span></a>
+    <a class="vol sub-vol" style="--x:33.4%"><img class="face" src="assets/wenheng-covers/zhigongtang.webp" alt="">
+      <span class="reissue"><span class="re-mask"></span><b class="re-num">202607</b></span>
+      <span class="cap"><b>202607</b>至公堂装帧</span></a>
+    <a class="vol sub-vol" style="--x:47.6%"><img class="face" src="assets/wenheng-covers/yinxing.webp" alt="">
+      <span class="reissue"><span class="re-mask"></span><b class="re-num">202605</b></span>
+      <span class="cap"><b>202605</b>银杏装帧</span></a>
+    <a class="vol sub-vol" style="--x:61.8%"><img class="face" src="assets/wenheng-covers/yuelanshi.webp" alt="">
+      <span class="reissue"><span class="re-mask"></span><b class="re-num">202603</b></span>
+      <span class="cap"><b>202603</b>阅览室装帧</span></a>
+    <a class="vol sub-vol" style="--x:76%"><img class="face" src="assets/wenheng-covers/xiaomen.webp" alt="">
+      <span class="reissue"><span class="re-mask"></span><b class="re-num">202601</b></span>
+      <span class="cap"><b>202601</b>校门装帧</span></a>
+
+    <p class="down">向 下 滚 动 · 逐 期 册 页</p>
+  </div>
+  <div class="verdict">
+    <div><span class="k">3 秒内看见什么</span><span class="v ok">「这一期在这儿」，其余是往期</span></div>
+    <div><span class="k">标题与陈列是否相符</span><span class="v bad">仍只有五册（第六册未解释）</span></div>
+    <div><span class="k">主动作</span><span class="v ok">1 个主（当期）＋4 个次</span></div>
+    <div><span class="k">改动量</span><span class="v">S · 只动 <code>.vol</code> 高度与亮度</span></div>
+  </div>
+</section>
+
+<!-- ───────── C 主次 + 待装帧 ───────── -->
+<section class="opt">
+  <div class="hd">
+    <b>C · 主次 ＋ 第六格「待装帧」</b>
+    <span class="tag rec">推荐</span>
+    <span class="note">在 B 之上补一格 <code>202611</code> 占位——把「一年六期」兑现成看得见的六个位置</span>
+  </div>
+  <div class="stage">
+    <div class="brand">
+      <svg viewBox="0 0 28 38" fill="none" stroke="currentColor" aria-hidden="true">
+        <path d="M4 3h20v32H4zM8 7h12v24H8zM11 10v18M17 10v18M8 19h12" stroke-width="1.2"/>
+        <path d="m11 14 3 5 3-5" stroke-width="1.2"/>
+      </svg>
+      <div><b>文衡 · 陈列馆</b><i>云南大学图书馆</i></div>
+    </div>
+    <div class="headline"><h2>一年六期，一期一册。</h2><p>云南大学图书馆 · 学科信息参考 · 2026 年馆藏</p></div>
+
+    <a class="vol hero-vol" style="--x:13%"><img class="face" src="assets/wenheng-covers/huizeyuan.webp" alt="">
+      <span class="cap"><b>202609</b>会泽院装帧</span></a>
+    <a class="vol sub-vol" style="--x:27.6%"><img class="face" src="assets/wenheng-covers/zhigongtang.webp" alt="">
+      <span class="reissue"><span class="re-mask"></span><b class="re-num">202607</b></span>
+      <span class="cap"><b>202607</b>至公堂装帧</span></a>
+    <a class="vol sub-vol" style="--x:40.1%"><img class="face" src="assets/wenheng-covers/yinxing.webp" alt="">
+      <span class="reissue"><span class="re-mask"></span><b class="re-num">202605</b></span>
+      <span class="cap"><b>202605</b>银杏装帧</span></a>
+    <a class="vol sub-vol" style="--x:52.6%"><img class="face" src="assets/wenheng-covers/yuelanshi.webp" alt="">
+      <span class="reissue"><span class="re-mask"></span><b class="re-num">202603</b></span>
+      <span class="cap"><b>202603</b>阅览室装帧</span></a>
+    <a class="vol sub-vol" style="--x:65.1%"><img class="face" src="assets/wenheng-covers/xiaomen.webp" alt="">
+      <span class="reissue"><span class="re-mask"></span><b class="re-num">202601</b></span>
+      <span class="cap"><b>202601</b>校门装帧</span></a>
+    <span class="vol sub-vol" style="--x:77.6%">
+      <span class="face placeholder"><b>202611</b>待装帧</span>
+      <span class="cap"><b>202611</b>待装帧</span>
+    </span>
+
+    <p class="down">向 下 滚 动 · 逐 期 册 页</p>
+  </div>
+  <div class="verdict">
+    <div><span class="k">3 秒内看见什么</span><span class="v ok">当期在前，六个位置齐了，末位空着在等</span></div>
+    <div><span class="k">标题与陈列是否相符</span><span class="v ok">六期＝六格，兑现</span></div>
+    <div><span class="k">主动作</span><span class="v ok">1 个主（当期）＋4 次＋1 个空位</span></div>
+    <div><span class="k">改动量</span><span class="v">S+ · 占位样式已写好，只是没被渲染</span></div>
+  </div>
+</section>
+
+<h2 class="sec">三稿差别只在这几行</h2>
+<table>
+<tr><th>项</th><th>A 现状</th><th>B</th><th>C</th></tr>
+<tr><td>当期 <code>.vol</code> 高度</td><td>24.9%</td><td>30.4%</td><td>30.4%</td></tr>
+<tr><td>往期高度 / 亮度</td><td>24.9% / 1</td><td>24.2% / .93</td><td>24.2% / .93</td></tr>
+<tr><td>书脊金线</td><td><code>rgba(201,169,97,.22)</code></td><td>当期 <code>.55</code></td><td>同 B</td></tr>
+<tr><td>期号颜色</td><td>cap 里 <code>#F6EDD6</code> 13px</td><td>当期 15px + 金 <code>--gold-2</code></td><td>同 B</td></tr>
+<tr><td>架上层数</td><td>5</td><td>5</td><td>6（末位待装帧）</td></tr>
+<tr><td>起始 x</td><td>16.8%</td><td>16.8%</td><td>13%</td></tr>
+<tr><td>UX.md §十「每屏主动作 ≤1」</td><td>✗ 5 个</td><td>✓ 1 主 4 次</td><td>✓ 1 主 4 次 + 1 空位</td></tr>
+</table>
+
+<h2 class="sec">实现口径（裁完照这个落）</h2>
+<table>
+<tr><th>要改的</th><th>怎么改</th></tr>
+<tr><td><code>LibraryHome.tsx</code> 的 <code>volX()</code> / <code>.vol</code></td><td>加一个 <code>featured</code> 标记（当期＝<code>vols[0]</code>），按它切 <code>.hero-vol</code> / <code>.sub-vol</code> 两个类，不动现有 <code>--x</code> 计算</td></tr>
+<tr><td>第六格</td><td><code>/api/periods</code> 已经返回 <code>202611（generated:false）</code>，比 <code>preview.js</code> 多一条。把它并进 <code>vols</code> 时置 <code>cover: undefined</code>，现有 <code>.face.placeholder</code> 分支自动接住——<b>不用新写样式</b></td></tr>
+<tr><td>不建议的</td><td>给待装帧格加「即将出版」「敬请期待」之类文案：期次不知道什么时候出，写死会变成谎。留白 + 期号就够</td></tr>
+</table>
+
+<div class="foot">
+  静态稿 2026-10-26 · 零依赖单文件，双击即开 · 素材取自 <code>mockups/assets/</code>（与线上同一批封面与胡桃木底图）<br>
+  字体在你机器上没装 Noto Serif SC 时会落到宋体，观感差异属正常；线上是打包进 dist 的变量字体。<br>
+  三稿里的图都为真素材，尺寸比例照 <code>shelf-landing.css</code> 计算，不是目测摆的。<br>本稿省略了「向下滚动」提示（三稿都一样，与主次无关），也把书目行改成常显——线上书目行只在 hover 出现。
+</div>
+
+</div>
+</body>
+</html>
