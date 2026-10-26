@@ -212,7 +212,7 @@ footer code{font-family:var(--mono);font-size:11.5px;overflow-wrap:anywhere;word
     <div class="scale">
       <div><span class="n" id="l-paras">177</span><span class="k">段落</span></div>
       <div><span class="n" id="l-tables">22</span><span class="k">表格</span></div>
-      <div><span class="n" id="l-figs">7</span><span class="k">母版图位</span></div>
+      <div><span class="n" id="l-figs">110</span><span class="k">原生图表</span></div>
       <div><span class="n" id="l-slots">720</span><span class="k">替换槽位</span></div>
     </div>
     <p style="font-size:12px;color:var(--ink-3);margin:-8px 0 14px">
@@ -228,8 +228,9 @@ footer code{font-family:var(--mono);font-size:11.5px;overflow-wrap:anywhere;word
     <table class="t01" id="l-t01"></table>
 
     <p style="font-size:12.5px;color:var(--ink-3);margin:12px 0 0">
-      ⚠ <b>本期引擎生成了 120 张图</b>（16 学科 × 6 图 + 概览 24 图），但母版只留了 <b>7 处图位</b>——其余 113 张进不了报送件。
-      要把这一行变成「一份单学科报告」，只能人工从整期件里摘抄、配图、补话：模板线本身没有「单学科成品」这种形态。
+      ⚠ 件内 <b>110 张 Word 原生图表</b>（右键「编辑数据」可改，改完自动重绘）＋ 7 张位图，合计 117 张；
+      人工原件（第 1–4 期）是 98–102 张<b>位图截图</b>，改不了——<b>图没缩水，是形态从「截图」升级成了「可编辑图表」</b>。
+      但要把这一行变成「一份单学科报告」，仍只能人工从整期件里摘抄、配图、补话：模板线没有「单学科成品」这种形态。
     </p>
   </section>
 
@@ -298,6 +299,7 @@ footer code{font-family:var(--mono);font-size:11.5px;overflow-wrap:anywhere;word
       <tr><th>出一份要多久</th><td>引擎 15 秒（含审计完整运行 152–248 秒）</td><td id="cmp-t">数秒（规划 + 取数 + 成文）</td></tr>
       <tr><th>能不能盖章</th><td><b style="color:var(--ok)">能</b>——一字节不变，签单后放行</td><td><b style="color:var(--bad)">不能</b>——措辞随次变化</td></tr>
       <tr><th>数字从哪来</th><td>台账单元格，逐格替换</td><td>台账单元格，逐点带来源指针</td></tr>
+      <tr><th>图是什么形态</th><td>110 张 Word 原生图表（可右键「编辑数据」）＋ 7 张位图</td><td>PNG 位图，随节插入，不可编辑</td></tr>
       <tr><th>覆盖范围</th><td>22 学科全覆盖（不管本期是否需要）</td><td>只覆盖被问到的学科，其他不生成</td></tr>
       <tr><th>失败时的样子</th><td>任一步败 → 停 → 自愈一次 → 升级人工</td><td>模型不可用 → 回退规则规划，照常出稿并标注</td></tr>
       <tr><th>谁签字</th><td>馆员（对整期负责）</td><td>无人（内部参考，不进报送链）</td></tr>
@@ -331,7 +333,7 @@ footer code{font-family:var(--mono);font-size:11.5px;overflow-wrap:anywhere;word
 </div>
 
 <footer>
-  <b>数据来源</b>：<code>wenheng/out/202609/wide/{papers,total_cites,threshold_1pct,threshold_1permille,top_papers,proximity_1pct,cnci}.parquet</code>（22 学科 × 46 期）· <code>out/202609/table2.csv</code> · <code>out/202609/报告初稿_202609（试排）.docx</code>（实测 177 段 / 22 表 / 7 处图片关系 / 红色件清单 720 条）· <code>out/202609/charts/**/*.png</code>（实测 120 张）· <code>out/202609/flexible/single_trend/report.md</code><br>
+  <b>数据来源</b>：<code>wenheng/out/202609/wide/{papers,total_cites,threshold_1pct,threshold_1permille,top_papers,proximity_1pct,cnci}.parquet</code>（22 学科 × 46 期）· <code>out/202609/table2.csv</code> · <code>out/202609/报告初稿_202609（试排）.docx</code>（解包实测：177 段 / 22 表 / <code>word/charts</code> 110 个＋<code>word/media</code> 7 张＝117 图 / 红色件清单 720 条）· <code>out/202609/charts/**/*.png</code>（实测 120 张）· 原件第 1–4 期 106–109 张（98–102 为位图）· <code>out/202609/flexible/single_trend/report.md</code><br>
   <b>口径</b>：接近度为比值（1.000 = 恰好等于 1% 阈值）；「阈值差」＝总被引 − 1% 阈值；1‰ 差＝1‰ 阈值 − 总被引。所有数值为台账原值，未做四舍五入以外的加工。<br>
   <b>性质</b>：静态稿（2026-10-26），用于确认版式与口径，未接后端；正式实现按此稿进 React（<code>/p/{期次}/duet</code>）。
 </footer>
