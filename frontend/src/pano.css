@@ -1,0 +1,83 @@
+/* ============================================================
+   陈列馆 · 书架下的产线全景（回放态）
+   .pano 规则自 web/src/index.css 1350-1417 行原样拷入；令牌就地
+   定义（web 蓝场值）——陈列馆语境用固定纸色，不随 lab 主题变。
+   上接书阶黑场：本区块自身纸面，顶部一条装帧间题头。
+   ============================================================ */
+
+.pano-undershelf {
+  /* web 蓝场令牌就地补齐（Panorama 的 C 常量与 .pano 规则都用它们） */
+  --card: #FAF8F0; --panel: #E6E1D3; --card-hi: #FDFAF3;
+  --line: #D8D2C2; --line-2: #E6E1D3;
+  --ink: #15222B; --ink-2: #43525C; --ink-3: #556169; --ink-4: #64717A;
+  --tool: #26483B; --tool-2: #163228; --tool-3: #2F7A58; --tool-5: #DFEDE6;
+  --zhu: #26483B; --warn: #7C5A16;
+  --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", SimSun, serif;
+  --sans: system-ui, -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  --fs-xs: 11px; --fs-sm: 12px; --fs-label: 13.5px; --fs-h: 19px;
+
+  position: relative;
+  background: #F2EFE6;
+  color: var(--ink);
+  font: 15px/1.7 var(--sans);
+  padding: 30px clamp(20px, 4vw, 48px) 42px;
+  border-top: 3px solid #B08E48;
+}
+.pano-undershelf ::selection { background: #C8B584; color: #15222B; }
+
+.pus-head { max-width: 1200px; margin: 0 auto 16px; }
+.pus-kik { font-family: KaiTi, STKaiti, serif; font-size: 11px; letter-spacing: .24em; color: #7C857B; }
+.pus-head h2 { margin: 6px 0 4px; font-family: var(--serif); font-weight: 600; font-size: 24px; letter-spacing: .04em; }
+.pus-note { margin: 0 0 12px; font-size: 12.5px; color: var(--ink-3); max-width: 78ch; }
+.pus-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.pus-chip { font: inherit; font-family: KaiTi, STKaiti, serif; font-size: 12px; letter-spacing: .08em;
+  padding: 4px 12px; background: transparent; border: 1px solid var(--line);
+  color: var(--ink-3); cursor: pointer; }
+.pus-chip:hover { color: var(--ink); border-color: var(--tool); }
+.pus-chip.is-on { background: var(--tool); border-color: var(--tool); color: #F6F1DE; }
+
+/* ── .pano（自 web/src/index.css 拷入；高度改为随内容，书架下方是流式区） ── */
+.pano-undershelf .pano { display: flex; flex-direction: column; max-width: 1200px; margin: 0 auto; min-height: 0; }
+.pano-top { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; flex: none }
+.pano-title { margin: 0; font-family: var(--serif); font-size: var(--fs-h); font-weight: 600; letter-spacing: .04em; }
+.pano-title .pano-tag { font-size: var(--fs-xs); font-weight: 400; color: var(--ink-3); letter-spacing: .06em; margin-left: 10px }
+.pano-wrap { flex: 1; min-height: 0; display: flex; gap: 12px; align-items: stretch }
+.pano-panel { width: 242px; flex: none; background: var(--card); border: 1px solid var(--line);
+  padding: 12px 14px; overflow-y: auto; }
+.pano-panel::-webkit-scrollbar { display: none }
+.pano-sec h3 { margin: 9px 0 4px; font-size: var(--fs-xs); color: var(--ink-3); font-weight: 400;
+  letter-spacing: .18em; }
+.pano-sec:first-child h3 { margin-top: 0 }
+.pano-row { display: flex; gap: 6px; align-items: baseline; padding: 2px 0; margin: 0; line-height: 1.4 }
+.pano-row i { width: 7px; height: 7px; flex: none; display: inline-block; transform: rotate(45deg); }
+.pano-row i.s-done { background: var(--tool-3) }
+.pano-row i.s-run { background: var(--zhu) }
+.pano-row i.s-warn { background: var(--warn) }
+.pano-row i.s-idle { background: var(--line) }
+.pano-row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink) }
+.pano-row .st { color: var(--ink-3); font-size: var(--fs-xs); flex: none }
+.pano-row .st.warn { color: var(--warn) }
+.pano-stage { position: relative; flex: 1; min-width: 0; height: 520px;
+  background: var(--panel); border: 1px solid var(--line); overflow: hidden; cursor: grab; touch-action: none }
+.pano-stage:active { cursor: grabbing }
+.pano-stage svg { display: block; width: 100%; height: 100% }
+.pano-stage text { font-family: var(--serif); font-size: var(--fs-sm); fill: var(--ink) }
+.pano-cams { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; gap: 1px;
+  background: var(--card); border: 1px solid var(--line) }
+.pano-cams-hint { align-self: center; font-size: var(--fs-xs); color: var(--ink-3); letter-spacing: .1em;
+  padding: 0 10px 0 12px; white-space: nowrap }
+.pano-cams button { font: inherit; font-size: var(--fs-xs); padding: 6px 10px; background: var(--card);
+  border: 0; border-right: 1px solid var(--panel); color: var(--ink-2); cursor: pointer }
+.pano-cams button:last-child { border-right: 0 }
+.pano-cams button:hover { background: var(--tool-5); color: var(--tool-2) }
+.pano-note { flex: none; margin: 6px 0 0; font-size: var(--fs-xs); color: var(--ink-3); line-height: 1.5 }
+.pano-note b { color: var(--ink-2) }
+
+@media (max-width: 900px) {
+  .pano-wrap { flex-direction: column }
+  .pano-panel { width: auto; order: 2; overflow: visible }
+  .pano-stage { height: 380px; order: 1 }
+}
+
+/* 书阶右栏滚出书阶后隐去（ShelfStair 控制） */
+.stair-rail.is-gone { opacity: 0; pointer-events: none; transition: opacity .35s ease; }

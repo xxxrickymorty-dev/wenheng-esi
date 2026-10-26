@@ -70,6 +70,12 @@ export type AcquisitionState = {
   period: string
   started?: boolean
   mode?: string
+  /** 要求期次 vs 实际下到哪一期；对不上＝拿当期数据冒充往期（票 03） */
+  reconcile?: {
+    expected?: { esi?: string; incites?: string }
+    actual?: { esi?: string; incites?: string }
+    ok?: boolean
+  }
   updated_at?: string
   groups?: AcqGroup[]
   totals?: { groups?: number; expected?: number; verified?: number; downloaded?: number; failed?: number }
@@ -188,3 +194,42 @@ export function acqStateLabel(state?: string): string {
   }
   return (state && m[state]) || state || '—'
 }
+
+/* ── 运行档案（产线全景的回放真源） ──────────────────────── */
+
+export type WaterfallRow = {
+  step: string
+  name: string
+  status: string
+  detail: string
+  sec: number
+  at: string
+  /** 只有开工或只有收工记录：耗时不闭合，界面要标出来 */
+  orphan: boolean
+}
+
+export type ArchiveAudit = {
+  exists: boolean
+  verdict: string
+  verdict_label: string
+  rows: { id: string; title: string; status: string; metric: string; reason: string }[]
+  generated_at: string
+  truth_chain: string
+  elapsed_s: number
+}
+
+export type ArchiveData = {
+  period: string
+  job: Record<string, unknown>
+  job_id: string
+  /** 一次运行的事实（server/archive.run）：产线只读它，不解释 job/run_log。 */
+  run?: { has_run: boolean; status: string; failed: boolean; progress_missing: boolean; steps: number; elapsed_sec: number }
+  waterfall: WaterfallRow[]
+  waterfall_total: number
+  audit: ArchiveAudit
+  logpack: { key: string; n_files: number; bytes: number }
+}
+
+/** 这次运行的完整档案（状态机回放 / 瀑布 / 审计 / 日志包）——只读 */
+export const getArchive = (period: string) =>
+  req<ArchiveData>(`/api/periods/${encodeURIComponent(period)}/archive`)

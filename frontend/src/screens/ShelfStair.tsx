@@ -9,6 +9,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StairParticles, STEP } from "./StairParticles";
+import { PanoUnderShelf } from "./PanoUnderShelf";
 import "../stair.css";
 
 type Book = { period: string; no: number; label: string };
@@ -39,6 +40,9 @@ export function ShelfStair() {
   const atTop = p > 0.9;
   const current = BOOKS[Math.min(BOOKS.length - 1, stop)];
 
+  /* 滚出书阶（进入书架下的产线区）后隐去右栏刻度——它是书阶的随行者，不进纸面区 */
+  const [railGone, setRailGone] = useState(false);
+
   const progressOf = useCallback(() => {
     const el = root.current;
     if (!el) return 0;
@@ -59,7 +63,11 @@ export function ShelfStair() {
   );
 
   useEffect(() => {
-    const onScroll = () => setP(progressOf());
+    const onScroll = () => {
+    setP(progressOf());
+    const el = root.current;
+    if (el) setRailGone(window.scrollY > el.offsetTop + el.offsetHeight - window.innerHeight + 60);
+  };
     const onKey = (e: KeyboardEvent) => {
       const step = 1 / (stops - 1);
       if (e.key === "ArrowDown") { e.preventDefault(); jump(Math.min(1, p + step)); }
@@ -87,6 +95,7 @@ export function ShelfStair() {
   const s = fit * (reduce ? 1 : 1 + p * 0.18);
 
   return (
+    <>
     <div className="stair-root" ref={root}>
       <div className="stair-stage">
         <div className="stair-head">
@@ -138,7 +147,7 @@ export function ShelfStair() {
       </div>
 
       {/* 右栏：跟着屏幕，不随页面滚走 */}
-      <aside className="stair-rail" aria-label="第几级">
+      <aside className={`stair-rail${railGone ? " is-gone" : ""}`} aria-label="第几级">
         <div className="rail-head">
           <span>{stop === stops - 1 ? "梯 顶" : `第 ${stop + 1} 级`}</span>
           <b>{current?.period}</b>
@@ -199,5 +208,10 @@ export function ShelfStair() {
         </div>
       )}
     </div>
+
+      {/* 书架下面：产线全景 · 回放态（rick 2026-10-26：整个流程在陈列馆直观展现；
+          只做回放，实时运行态留在工作区） */}
+      <PanoUnderShelf />
+    </>
   );
 }
