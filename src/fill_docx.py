@@ -35,11 +35,12 @@ from parse_ledger import DISCIPLINES_CN, norm_disc_cn  # noqa: E402
 CELL_FONT = "楷体"
 CELL_SIZE = Pt(10)
 
-#: 原生图表开关（环境变量）。**默认开**（rick 2026-10-23 定：DOCX 出原生图表）；
-#: 要回到 PNG 版报告：`set WENHENG_NATIVE_CHARTS=0`（回测/复现需要与旧产物逐字节比时用）。
+#: 原生图表开关（环境变量）。**默认关＝走 PNG**（rick 2026-10-26 裁决：
+#: 原生图表画不出堆叠柱的段内数值标签、数据表宽度不可控、观感不如 matplotlib 版）。
+#: 要开原生图表：`set WENHENG_NATIVE_CHARTS=1`（可右键「编辑数据」，代价是上面三条）。
 #: `charts/**/*.png` 无论开关如何都照旧生成 —— 它是网站/前端的唯一图源。
 NATIVE_CHARTS_ENV = "WENHENG_NATIVE_CHARTS"
-_PNG_ESCAPE = ("0", "false", "no", "off")
+_NATIVE_ON = ("1", "true", "yes", "on")
 
 
 def native_charts_enabled(explicit=None):
@@ -49,8 +50,8 @@ def native_charts_enabled(explicit=None):
     import os  # noqa: PLC0415
     raw = os.environ.get(NATIVE_CHARTS_ENV)
     if raw is None:
-        return True
-    return raw.strip().lower() not in _PNG_ESCAPE
+        return False                     # 2026-10-26 起默认 PNG，见上方注释
+    return raw.strip().lower() in _NATIVE_ON
 
 # 大表列序 → table2 字段
 TABLE2_COLS = ["discipline", "rank_cn_change", "papers", "cnci", "total_cites",
@@ -1197,7 +1198,7 @@ def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026�
     「叠加了人工输入、待签发」的稿子，两者不能混为一谈。
 
     `native_charts`：None＝看环境变量 `WENHENG_NATIVE_CHARTS`
-    （**默认开**；设 `0/false/no/off` 回 PNG）。
+    （**默认关＝走 PNG**；设 `1/true/yes/on` 开原生图表）。
     **整段兜底**：原生规格构建抛异常时整体回落 PNG，绝不产出缺图的报告。
     """
     ledger_dir = pathlib.Path(ledger_dir)

@@ -177,18 +177,19 @@ def test_validate_chart_xml_拦住越界与折线标签位():
 
 
 # ============================================================ ② 口径一致
-def test_开关默认开_可用环境变量回落到_PNG(monkeypatch):
-    """默认走原生图表（rick 2026-10-23 定）；`WENHENG_NATIVE_CHARTS=0` 回 PNG。"""
+def test_开关默认关_可用环境变量开回原生(monkeypatch):
+    """默认走 PNG（rick 2026-10-26 裁决：原生图表观感不如 matplotlib 版）；
+    `WENHENG_NATIVE_CHARTS=1` 才开原生图表。"""
     import fill_docx  # noqa: PLC0415
     monkeypatch.delenv(fill_docx.NATIVE_CHARTS_ENV, raising=False)
-    assert fill_docx.native_charts_enabled() is True
+    assert fill_docx.native_charts_enabled() is False
     assert fill_docx.native_charts_enabled(False) is False
     assert fill_docx.native_charts_enabled(True) is True
-    for v in ("0", "false", "no", "off", "OFF"):
+    for v in ("1", "true", "yes", "on", "ON"):
         monkeypatch.setenv(fill_docx.NATIVE_CHARTS_ENV, v)
-        assert fill_docx.native_charts_enabled() is False, v
-    monkeypatch.setenv(fill_docx.NATIVE_CHARTS_ENV, "1")
-    assert fill_docx.native_charts_enabled() is True
+        assert fill_docx.native_charts_enabled() is True, v
+    monkeypatch.setenv(fill_docx.NATIVE_CHARTS_ENV, "0")
+    assert fill_docx.native_charts_enabled() is False
 
 
 def test_原生轴刻度与_matplotlib_路径逐学科一致():
