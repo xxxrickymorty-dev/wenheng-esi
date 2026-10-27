@@ -12,6 +12,7 @@
    数字与回执号均为示例。出稿轨迹（逐段流式）沿用现版行为，换壳令牌。
    ============================================================ */
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: #F5F3EC; }  /* 帧外不留深色画布（作用域外的说明条同理） */
 
 .q-note {
   background: #1E2A23; color: #C9B694; font: 11px/1.8 KaiTi, STKaiti, "FangSong", serif;
@@ -165,7 +166,9 @@
 .q-act.primary:hover { background: #235A38; }
 .q-act.dashed { border-style: dashed; color: var(--ink-2); }
 
-/* 落点（空态门面） */
+/* 落点（空态门面）：在右页剩余高度里垂直居中，composer 沉底 */
+.sp-spread .page-r.land { display: flex; flex-direction: column; }
+.sp-spread .page-r.land .q-land { margin: auto 0; }
 .q-land { max-width: 880px; margin: 0 auto; padding: clamp(40px,10vh,96px) clamp(20px,2.6vw,40px) 20px; text-align: center; }
 .q-land .ov { font-family: var(--kai); font-size: 11px; letter-spacing: .52em; color: var(--ink-3); }
 .q-land h2 { font-family: var(--serif); font-weight: 600; font-size: clamp(30px,3.6vw,46px);
@@ -185,8 +188,8 @@
 .q-dyn .cur { color: var(--warn); }
 .q-dyn .nt { font-family: var(--sans); letter-spacing: 0; font-size: 11px; }
 
-/* 输入框：白纸原色，聚焦金线居中展开（与陈列馆问文衡框同一母题） */
-.q-composer { position: sticky; bottom: 0; background: linear-gradient(to top, var(--paper) 78%, transparent); padding: 18px 0 6px; }
+/* 输入框：白纸原色，聚焦金线居中展开（与陈列馆问文衡框同一母题）；零渐变，压边线收口 */
+.q-composer { position: sticky; bottom: 0; background: var(--paper); border-top: 1px solid var(--line-2); padding: 16px 0 6px; }
 .q-box { display: flex; gap: 10px; align-items: flex-end; border: 1px solid var(--line); background: #FFFDF6; padding: 10px 12px; position: relative; }
 .q-box::after { content: ""; position: absolute; left: 50%; right: 50%; bottom: -1px; height: 2px; background: var(--seam); transition: left .25s, right .25s; }
 .q-box:focus-within::after { left: 12px; right: 12px; }
@@ -358,7 +361,7 @@
     <div class="footline"><span>文衡 · 对话前门</span><span>数字不出网 · 回执可审计</span></div>
   </aside>
 
-  <main class="page-r">
+  <main class="page-r land">
     <div class="rtop">
       <span>问文衡 · 对话</span>
       <div class="r">

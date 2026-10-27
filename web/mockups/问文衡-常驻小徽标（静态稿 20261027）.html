@@ -13,6 +13,7 @@
    数字与回执号均为示例。
    ============================================================ */
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: #F5F3EC; }  /* 帧外不留深色画布 */
 
 .q-note {
   background: #1E2A23; color: #C9B694; font: 11px/1.8 KaiTi, STKaiti, "FangSong", serif;
@@ -20,7 +21,8 @@
 }
 .q-note b { color: #F6F1DE; font-weight: 400; }
 .q-cap { padding: 10px 18px 6px; font-family: KaiTi, STKaiti, serif; font-size: 12px;
-  letter-spacing: .22em; color: #4A564D; display: flex; gap: 18px; align-items: baseline; flex-wrap: wrap;}
+  letter-spacing: .22em; color: #4A564D; display: flex; gap: 18px; align-items: baseline; flex-wrap: wrap;
+  background: #F5F3EC; }
 .q-cap b { font-family: "Noto Serif SC","Songti SC",SimSun,serif; font-size: 14px; color: #1E2A23; letter-spacing: .1em; }
 
 /* ── 跨页双联壳（同 spread.css） ─────────────────────────── */
@@ -95,20 +97,23 @@
 .q-row .act { font-family: var(--kai); font-size: 12px; letter-spacing: .14em; color: var(--green);
   background: none; border: 0; box-shadow: inset 0 -1px 0 var(--gold); padding-bottom: 2px; flex: 0 0 auto; }
 
-/* ── 常驻徽标：印钮 ─────────────────────────────────────── */
+/* ── 常驻徽标：印钮（悬停向左展开「问文衡」，纯 CSS） ────── */
 .q-fab { position: absolute; right: 22px; bottom: 22px; width: 46px; height: 46px;
   background: var(--deep); color: var(--ivory); border: 0; z-index: 6;
-  font-family: var(--serif); font-size: 20px; font-weight: 600; }
+  font-family: var(--serif); font-size: 20px; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  white-space: nowrap; overflow: hidden; transition: width .18s ease; }
 .q-fab::after { content: ""; position: absolute; inset: 3px; border: 1px solid rgba(246,241,222,.32); pointer-events: none; }
-.q-fab:hover { background: #0F2C21; }
+.q-fab:hover { background: #0F2C21; width: 138px; }
 .q-fab .dot { position: absolute; top: -4px; right: -4px; width: 9px; height: 9px; display: none; }
 .q-fab.busy .dot { display: block; background: var(--red); }
 .q-fab.fresh .dot { display: block; background: var(--gold); }
-.q-fab .xl { display: none; }
+.q-fab .xl { display: none; font-family: var(--kai); font-size: 11px; letter-spacing: .22em; color: rgba(246,241,222,.85); }
+.q-fab:hover .xl { display: inline; }
 
-/* 徽标三态标本（帧外说明行） */
+/* 徽标三态标本（帧外说明行；在 .sp-spread 作用域外，背景用字面量不走 var） */
 .q-spec { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; padding: 14px 22px 26px;
-  background: var(--paper); font-family: var(--kai); font-size: 11px; letter-spacing: .18em; color: #4A564D; }
+  background: #F5F3EC; font-family: KaiTi, STKaiti, serif; font-size: 11px; letter-spacing: .18em; color: #4A564D; }
 .q-spec .it { display: flex; align-items: center; gap: 10px; }
 .q-spec .fab { position: relative; width: 38px; height: 38px; background: #143729; color: #F6F1DE;
   display: inline-flex; align-items: center; justify-content: center;
@@ -137,6 +142,9 @@
 .qd-tt span { font-family: var(--kai); font-size: 9.5px; letter-spacing: .3em; color: var(--ink-3); }
 .qd-slot { margin-left: auto; font-family: var(--kai); font-size: 10.5px; letter-spacing: .16em; color: var(--ink-3); }
 .qd-slot b { font-family: var(--mono); color: var(--ink); }
+.qd-hist { border: 1px solid var(--line); background: transparent; padding: 4px 9px;
+  font-family: var(--kai); font-size: 10.5px; letter-spacing: .14em; color: var(--ink-2); }
+.qd-hist:hover { border-color: var(--green); color: var(--green); }
 .qd-x { border: 0; background: none; color: var(--ink-3); font-size: 15px; padding: 4px 6px; }
 .qd-x:hover { color: var(--ink); }
 
@@ -180,7 +188,7 @@
 .q-send:hover { background: #235A38; }
 .qd-hint { margin-top: 6px; font-family: var(--kai); font-size: 10px; letter-spacing: .18em; color: var(--ink-3); }
 
-@media (prefers-reduced-motion: reduce) { .q-box::after { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .q-box::after { transition: none; } .q-fab { transition: none; } }
 </style>
 </head>
 <body>
@@ -238,8 +246,8 @@
       <div class="q-row"><span class="nm">红色件清单</span><span class="ds">红色件 6 处 · 全部指回台账</span><span class="st ok">已生成</span><button class="act" type="button">查看 ↗</button></div>
     </div>
 
-    <!-- 常驻徽标：每一站都在 -->
-    <button class="q-fab" type="button" aria-label="问文衡">问<span class="dot"></span></button>
+    <!-- 常驻徽标：每一站都在；悬停展开「问文衡」 -->
+    <button class="q-fab" type="button" aria-label="问文衡">问<span class="xl" aria-hidden="true">问 文 衡</span><span class="dot"></span></button>
   </main>
 </section>
 
@@ -278,6 +286,17 @@
     <div class="footline"><span>文衡 · 工作区</span><span>抽屉只盖右页 · 左栏与钤印位不动</span></div>
   </aside>
 
+  <div class="sealbox" aria-hidden="true">
+    <svg viewBox="0 0 220 220">
+      <rect x="10" y="10" width="200" height="200" fill="#264A35" />
+      <rect x="22" y="22" width="176" height="176" fill="none" stroke="#F5F3EC" stroke-width="2.6" />
+      <g font-family="'Noto Serif SC','Songti SC',SimSun,serif" font-weight="700" font-size="56"
+         text-anchor="middle" fill="#F5F3EC">
+        <text x="64" y="94">已</text><text x="156" y="94">签</text><text x="110" y="180">发</text>
+      </g>
+    </svg>
+  </div>
+
   <main class="page-r">
     <div class="rtop"><span>报告台 · 本期成品</span></div>
     <div class="q-bg">
@@ -294,6 +313,7 @@
         <span class="qd-seal">问</span>
         <span class="qd-tt"><b>问文衡</b><span>工 作 区 · 对 话</span></span>
         <span class="qd-slot">期次 <b>202609</b></span>
+        <button class="qd-hist" type="button">往期 ▾</button>
         <button class="qd-x" type="button" aria-label="收起">✕</button>
       </div>
 
