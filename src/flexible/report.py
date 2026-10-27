@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import shutil
 import time
 from dataclasses import dataclass, field
@@ -489,6 +490,15 @@ def _render(plan: dict, built: dict, meta: dict) -> str:
         L += [f"> {MARK_LEGEND}", ""]
     if plan.get("fallback_reason"):
         L += [f"> ⚠ 规划回退：{plan['fallback_reason']}", ""]
+    # 票 03（成环）：重规划后仍不过 → 报告明写「需人工接手」——馆员一眼
+    # 知道该自己上了。措辞避开判断句兑底词表（建议/应当/必须/值得/需要/优先）。
+    cr = meta.get("critic") or {}
+    if cr.get("escalated"):
+        L += [f"> ⚠️ **需人工接手**：本稿自动校验未通过"
+              f"（已自动重规划 {cr.get('rounds', 0)} 次，仍未通过）。"
+              f"请馆员人工复核后再使用；失败明细见运行档案。", ""]
+    elif cr.get("rounds"):
+        L += ["> ↻ 自动校验未通过，已自动重规划一次，重规划后校验通过。", ""]
     L += [
          f"> 期次：**{period_label(built['selected']['period'])}**"
          + (f"（上期 {period_label(built['selected']['prev'])}）"
@@ -755,12 +765,40 @@ def _write_summary(log: list, mode: str) -> dict | None:
 
 
 # ------------------------------------------------------------------ 主流程
+MAX_CRITIC_ROUNDS = 1
+"""校验不过时自动重规划的次数上限（票 03；与自愈 `MAX_HEAL_ATTEMPTS = 1`
+同构：`src/agent/flow.py`）。重规划仍不过 → 交人（escalated），不无限循环。"""
+
+
+def _critic_hint(check: dict) -> str:
+    """校验失败 misses → 喂回规划器的短句（票 03：失败原因当提示）。
+
+    🔴 数字一律 `[[n]]` 占位后才进规划提示（红线同 planning_input：
+    模型拿不到任何数值）。锚点 misses 本就不含报告数值，这里对
+    整串再过一遍占位兑底（coverage/trace 的明细可能带数字）。
+    """
+    bits: list[str] = []
+    for a in check.get("anchors") or []:
+        bits += [str(m) for m in (a.get("misses") or [])[:3]]
+    un = check.get("unregistered") or {}
+    for x in (un.get("charts") or [])[:2]:
+        bits.append(f"图未登记进账：{x}")
+    for x in (un.get("numbers") or [])[:2]:
+        bits.append(f"正文数字未登记来源：{x}")
+    text = "；".join(bits[:6]) if bits else "自动校验未通过（明细见运行档案）"
+    text = re.sub(r"\d+(?:\.\d+)?", "[[n]]", text)
+    return text[:300]
+
+
 def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
               n_periods=None, polish=None, plan=None, write=False, on_event=None,
               peers=None) -> dict:
     """产出灵活报告（含逐节回调）。`on_event(kind, payload)` 用于流式包装。"""
     t0 = time.time()
     src = DataSource(out_dir)
+    # 票 03：调用方显式传入 plan（「AI 润色」重出稿）＝要求同大纲同数字，
+    # 重规划会违背这个承诺 → 复用规划时**不重规划**（校验不过照实标出）。
+    plan_given = plan is not None
     if plan is None:
         plan = planner.build(src, intent, disc=disc, metric=metric,
                              n_periods=n_periods, peers=peers)
@@ -793,16 +831,51 @@ def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
                                          for c in plan.get("charts") or []]})
 
     period_name = pathlib.Path(out_dir).name
+
+    def _fresh_meta() -> dict:
+        return {"generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "intent": intent, "backend": plan["backend"], "mode": mode,
+                "write": _write_summary(built.get("write_log") or [], mode)}
+
     specs_out: list[dict] = []
     ctx = _ReportCtx(src=src, plan=plan, chart_dir=chart_dir, specs_out=specs_out,
                      mode=mode, period_name=period_name, ledger=pv.Ledger(src))
     built = _build(ctx, _sec, _outline)
-
-    meta = {"generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "intent": intent, "backend": plan["backend"], "mode": mode,
-            "write": _write_summary(built.get("write_log") or [], mode)}
+    meta = _fresh_meta()
     md = _render(plan, built, meta)
     check = self_check(md, src, built)
+
+    # 票 03（成环）：校验不过 → 失败原因当提示喂回、重规划一次再重建；
+    # 仍不过 → meta["critic"].escalated 标「需人工接手」，报告明写。
+    # 通过时零额外开销（一行判断）。规则后端的重规划＝同计划重试一次
+    # （规划是确定性的，价值在瞬时故障自愈）；模型后端才真正吃到喂回提示。
+    critic: dict | None = None
+    rounds = 0
+    while (not check["pass"] and not plan_given
+           and rounds < MAX_CRITIC_ROUNDS):
+        rounds += 1
+        hint = _critic_hint(check)
+        first_misses = [str(m) for a in (check.get("anchors") or [])
+                        for m in (a.get("misses") or [])][:3]
+        if on_event:
+            on_event("status", {"stage": "校验未通过，自动重规划中"})
+        plan = planner.build(src, intent, disc=disc, metric=metric,
+                             n_periods=n_periods, peers=peers,
+                             critic_hint=hint)
+        specs_out = []              # 新计划 → 新执行记录（不沾上一轮）
+        ctx = _ReportCtx(src=src, plan=plan, chart_dir=chart_dir,
+                         specs_out=specs_out, mode=mode,
+                         period_name=period_name, ledger=pv.Ledger(src))
+        built = _build(ctx, _sec, _outline)
+        meta = _fresh_meta()
+        md = _render(plan, built, meta)
+        check = self_check(md, src, built)
+        critic = {"rounds": rounds, "hint": hint,
+                  "first_misses": first_misses}
+    if critic:
+        critic["escalated"] = not check["pass"]
+        meta["critic"] = critic
+        md = _render(plan, built, meta)   # 重规划轨迹/交人标注进报告（纯拼接）
 
     (d / "report.md").write_text(md, encoding="utf-8")
     # 独立可打开的 HTML（可导出、可离线看；不依赖任何 CDN）
@@ -842,6 +915,9 @@ def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
                           "backend": plan["backend"], "mode": mode,
                           "title": plan.get("title"),
                           "check_pass": bool(check.get("pass")),
+                          # 票 03：重规划仍不过＝交人（展示层据此出「需人工接手」）。
+                          # 顶层新增键（check 摘要字段面不动，流式消费者兼容）。
+                          "escalated": bool((meta.get("critic") or {}).get("escalated")),
                           # 票 05：校验没过要「明说哪条没过」——自检明细随 done 走
                           # （展示层据此出人话；不把整份 check（含 misses 明细）塞进事件）。
                           # 票 03（2026-10-14）：字段面翻转——judgement_marked /

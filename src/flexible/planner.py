@@ -129,8 +129,14 @@ def _rule_plan(src: DataSource, intent: str, *, disc=None, metric=None,
 
 
 # ------------------------------------------------------------------ 模型后端
-def _model_prompt(src: DataSource, intent: str, target=None) -> str:
-    """给模型的提示。**不含任何数值** —— 只有字段字典、图型目录与规划依据摘要。"""
+def _model_prompt(src: DataSource, intent: str, target=None,
+                  critic_hint: str | None = None) -> str:
+    """给模型的提示。**不含任何数值** —— 只有字段字典、图型目录与规划依据摘要。
+
+    `critic_hint`（票 03 成环）：上一轮校验失败的人话短句（数字已
+    在 `report._critic_hint` 里占位过），告诉模型上轮规划错在哪、
+    本轮避开。仍然不含任何数值。
+    """
     sc = q.scope(src, src.current_period())
     payload = {
         "意图": {intent: INTENTS[intent]},
@@ -152,6 +158,10 @@ def _model_prompt(src: DataSource, intent: str, target=None) -> str:
             "en": target, "cn": cn_name(target),
             "硬约束": "单学科类图只能用这个学科；若给标题，标题必须含该学科中文名；不得另选学科",
         }
+    if critic_hint:
+        payload["上一轮校验_未通过项"] = str(critic_hint)[:300]
+        payload["本轮要求"] = ("上一轮的规划在这些项上失败；本轮的"
+                               "图型与学科选择必须避免同样问题")
     return (
         "你是学科分析报告的**章节规划器**。你只决定「写哪个学科、配哪些图」这几个选择，"
         "不要输出任何数字、不要计算、不要给纵轴范围。\n"
@@ -165,11 +175,12 @@ def _model_prompt(src: DataSource, intent: str, target=None) -> str:
     )
 
 
-def _brain_plan(src, intent, target=None):
+def _brain_plan(src, intent, target=None, critic_hint: str | None = None):
     """经 AI 层模型边界问云端（盾保护 + 校验）。返回 `(规划 JSON | None, 原因, 后端名)`。"""
     from ai import _attempt                                         # noqa: PLC0415
 
-    res = _attempt.attempt(_model_prompt(src, intent, target), system=_PLAN_SYSTEM,
+    res = _attempt.attempt(_model_prompt(src, intent, target, critic_hint),
+                           system=_PLAN_SYSTEM,
                            ability="flex-plan", anchored=False,
                            allow_substrings=tuple(sp.KINDS))
     if not res.attempted:
@@ -321,10 +332,14 @@ def _fallback_text(reason: str) -> str:
 
 
 def build(src: DataSource, intent: str = "single_trend", *,
-          disc=None, metric=None, n_periods=None, peers=None) -> dict:
+          disc=None, metric=None, n_periods=None, peers=None,
+          critic_hint: str | None = None) -> dict:
     """产出章节规划：默认规则；配了云才问模型（不合法/失败一律回退规则）。
 
     `disc` 收英文规范名或中文名；未知学科直接 `ValueError`（不再静默忽略）。
+    `critic_hint`（票 03 成环）：校验失败原因的人话短句，**只进模型提示**
+    （数字已在喂回侧占位）；规则后端是确定性的，喂回对它不改变输出——
+    规则后端的重规划等价于**同计划重试一次**（瞬时故障自愈，与自愈同构）。
     """
     if intent not in INTENTS:
         raise ValueError(f"未登记的意图 {intent!r}（允许：{sorted(INTENTS)}）")
@@ -338,7 +353,7 @@ def build(src: DataSource, intent: str = "single_trend", *,
     # 单学科稿未指定学科：挑科已在规则里定了（潜力学科口径）——把结果作为
     # 模型的**既定目标**告诉它（它只规划图与标题，不换分析对象）。
     model_target = target or (fallback.get("disc") if intent == "single_trend" else None)
-    got, reason, backend_name = _brain_plan(src, intent, model_target)
+    got, reason, backend_name = _brain_plan(src, intent, model_target, critic_hint)
     if got is None:
         if reason is not None:                        # 规则部署 reason=None（不是失败）
             fallback["fallback_reason"] = _fallback_text(reason)

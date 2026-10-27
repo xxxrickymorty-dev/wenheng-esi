@@ -458,6 +458,139 @@ class Test校验执行声明三锚点:
         assert om["target"] == "charts" and om["expect"] == "declared==emitted"
 
 
+# ================================================================ 1.6 成环重规划（票 03）
+class Test成环重规划:
+    """票 03：校验不过 → 重规划一次（失败原因喂回）；仍不过 → 交人。
+
+    判定/锚点本身票 02 已测——这里测**编排**：触发条件、恰好一次、
+    喂回纪律（数字占位）、两态标记（救回 / 需人工接手）。
+    缝 S1＝generate()；坏例用 monkeypatch self_check 首轮注入假红
+    （真实锚点判红票 02 已覆盖，这里只负责「红了之后系统怎么反应」）。
+    """
+
+    @staticmethod
+    def _fake_self_check(red_rounds):
+        """包装真 self_check：前 red_rounds 轮强制红（带锚点 misses）。"""
+        real = report.self_check
+        calls = {"n": 0}
+
+        def fake(md, src_, built):
+            calls["n"] += 1
+            c = real(md, src_, built)
+            if calls["n"] <= red_rounds:
+                return {**c, "pass": False,
+                        "anchors": [{"kind": "outline_match", "target": "charts",
+                                     "pass": False,
+                                     "misses": ["声明图未产出：top_papers（Physics）"]}]}
+            return c
+
+        return fake, calls
+
+    @staticmethod
+    def _spy_build(monkeypatch):
+        """包装 planner.build：记录调用次数与 critic_hint（不改行为）。"""
+        real = planner.build
+        calls = []
+
+        def fake(src_, intent, **kw):
+            calls.append(kw)
+            return real(src_, intent, **kw)
+
+        monkeypatch.setattr(report.planner, "build", fake)
+        return calls
+
+    @staticmethod
+    def _meta(r):
+        return json.loads((pathlib.Path(r["dir"]) / "flex_meta.json")
+                          .read_text(encoding="utf-8"))
+
+    @staticmethod
+    def _md(r):
+        return (pathlib.Path(r["dir"]) / "report.md").read_text(encoding="utf-8")
+
+    def test_通过时零重规划(self, src, monkeypatch):
+        """干净产物：planner 只调一次（无 hint）、meta 无 critic 键（零额外开销）。"""
+        calls = self._spy_build(monkeypatch)
+        import ai
+        from ai._brain import RuleBrain
+        with ai.using(brain=RuleBrain()):
+            r = report.generate(src.dir, "single_trend")
+        assert r["check"]["pass"] is True
+        assert len(calls) == 1 and "critic_hint" not in calls[0]
+        assert "critic" not in self._meta(r)
+        assert "需人工接手" not in self._md(r)
+
+    def test_校验不过_恰好重规划一次_失败原因进提示(self, src, monkeypatch):
+        """首轮假红 → 恰好重规划一次、hint 含 misses 且**数字已占位**；
+        重规划后真校验过 → 救回（rounds=1、非交人、报告留轨迹行）。"""
+        fake_check, _ = self._fake_self_check(red_rounds=1)
+        monkeypatch.setattr(report, "self_check", fake_check)
+        calls = self._spy_build(monkeypatch)
+        import ai
+        from ai._brain import RuleBrain
+        with ai.using(brain=RuleBrain()):
+            r = report.generate(src.dir, "single_trend")
+        assert len(calls) == 2                       # 首轮 + 重规划一次
+        hint = calls[1]["critic_hint"]
+        assert "声明图未产出" in hint
+        assert not re.search(r"\d", hint)            # 喂回纪律：数字全部占位
+        assert r["check"]["pass"] is True
+        meta = self._meta(r)
+        assert meta["critic"]["rounds"] == 1
+        assert meta["critic"]["escalated"] is False
+        md = self._md(r)
+        assert "需人工接手" not in md
+        assert "已自动重规划一次" in md
+
+    def test_重规划仍不过_标需人工接手(self, src, monkeypatch):
+        """恒红 → 恰好重规划一次后停下，报告与元数据明写「需人工接手」。"""
+        fake_check, _ = self._fake_self_check(red_rounds=99)
+        monkeypatch.setattr(report, "self_check", fake_check)
+        calls = self._spy_build(monkeypatch)
+        import ai
+        from ai._brain import RuleBrain
+        with ai.using(brain=RuleBrain()):
+            r = report.generate(src.dir, "single_trend")
+        assert len(calls) == 2                       # 上限一次，不无限循环
+        meta = self._meta(r)
+        assert meta["critic"]["rounds"] == 1
+        assert meta["critic"]["escalated"] is True
+        assert meta["critic"]["first_misses"]        # 首轮失败原因留档
+        assert r["check"]["pass"] is False
+        assert "需人工接手" in self._md(r)
+
+    def test_交人态_流式done事件带escalated与status(self, src, monkeypatch):
+        """流式面：重规划时发 status；done 顶层带 escalated（字段面只加不改）。"""
+        fake_check, _ = self._fake_self_check(red_rounds=99)
+        monkeypatch.setattr(report, "self_check", fake_check)
+        import ai
+        from ai._brain import RuleBrain
+        with ai.using(brain=RuleBrain()):
+            events = list(report.generate_stream(src.dir, "single_trend"))
+        kinds = [e["event"] for e in events]
+        assert kinds[-1] == "done"
+        done = events[-1]
+        assert done["escalated"] is True
+        assert done["check_pass"] is False
+        assert any(e["event"] == "status" and "重规划" in e.get("stage", "")
+                   for e in events)
+
+    def test_复用规划不重规划(self, src, monkeypatch):
+        """传入 plan（AI 润色重出稿）＝同大纲同数字承诺，校验不过也不重规划。"""
+        import ai
+        from ai._brain import RuleBrain
+        with ai.using(brain=RuleBrain()):
+            plan = planner.build(src, "single_trend")
+        fake_check, _ = self._fake_self_check(red_rounds=99)
+        monkeypatch.setattr(report, "self_check", fake_check)
+        calls = self._spy_build(monkeypatch)
+        with ai.using(brain=RuleBrain()):
+            r = report.generate(src.dir, "single_trend", plan=plan)
+        assert len(calls) == 0                       # 规划完全复用
+        assert r["check"]["pass"] is False
+        assert "critic" not in self._meta(r)         # 无重规划轨迹
+
+
 # ================================================================ 2. 不可分叉
 class Test数字可回溯:
     """验收第 6 条：每个数字能指到查询记录与台账来源。"""
