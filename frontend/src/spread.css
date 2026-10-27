@@ -130,3 +130,46 @@
   color: rgba(242, 237, 225, .82);
 }
 .sp-spread.solo .back-home:hover { color: #FFF9E6; border-color: rgba(200, 181, 132, .7); }
+
+/* ───── 问文衡常驻徽标 + 右抽屉（2026-10-28 rick 裁「B 为主、A 为展开态」） ─────
+   静态稿：web/mockups/问文衡-常驻小徽标（静态稿 20261027）.html。
+   徽标每一站右页角常驻（陈列馆 solo 不出）；答复中＝朱点；抽屉只盖右页，
+   左栏与钤印位不动；「整页 ↗」＝左栏 ask 视图（DialogPage page 态，A 案）。 */
+.sp-spread .page-r { position: relative; }
+.sp-spread .sp-fab { position: fixed; right: 22px; bottom: 22px; width: 46px; height: 46px;
+  background: var(--deep); color: var(--ivory); border: 0; z-index: 40; cursor: pointer;
+  font-family: var(--serif); font-size: 20px; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center; }
+.sp-spread .sp-fab::after { content: ""; position: absolute; inset: 3px;
+  border: 1px solid rgba(246, 241, 222, .32); pointer-events: none; }
+.sp-spread .sp-fab:hover { background: var(--deep-2); }
+.sp-spread .sp-fab .dot { display: none; position: absolute; top: -4px; right: -4px;
+  width: 9px; height: 9px; background: var(--red); }
+.sp-spread .sp-fab.busy .dot { display: block; }
+.sp-spread .sp-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(480px, 46%);
+  z-index: 50; background: #FBF8EF; border-left: 3px solid var(--seam);
+  display: flex; flex-direction: column; }
+.sp-spread .sp-drawer-h { display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px 10px; border-bottom: 1px solid var(--line); }
+.sp-spread .sp-drawer-h .sp-drawer-seal { flex: 0 0 30px; width: 30px; height: 30px;
+  background: var(--deep); color: var(--ivory); position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--serif); font-size: 15px; font-weight: 600; }
+.sp-spread .sp-drawer-h .sp-drawer-seal::after { content: ""; position: absolute; inset: 2px;
+  border: 1px solid rgba(246, 241, 222, .32); }
+.sp-spread .sp-drawer-h .tt { display: flex; flex-direction: column; line-height: 1.4; }
+.sp-spread .sp-drawer-h .tt b { font-family: var(--serif); font-size: 16px; letter-spacing: .12em; }
+.sp-spread .sp-drawer-h .tt i { font-style: normal; font-family: var(--kai); font-size: 9.5px;
+  letter-spacing: .3em; color: var(--ink-3); }
+.sp-spread .sp-drawer-h .slot { margin-left: auto; font-family: var(--kai); font-size: 10.5px;
+  letter-spacing: .16em; color: var(--ink-3); }
+.sp-spread .sp-drawer-h .slot b { font-family: var(--mono); color: var(--ink); }
+.sp-spread .sp-drawer-h .sp-drawer-x { border: 1px solid var(--line); background: transparent;
+  padding: 4px 9px; font: inherit; font-family: var(--kai); font-size: 10.5px;
+  letter-spacing: .14em; color: var(--ink-2); cursor: pointer; }
+.sp-spread .sp-drawer-h .sp-drawer-x:hover { border-color: var(--green); color: var(--green); }
+.sp-spread .sp-drawer .dlg-host { flex: 1; min-height: 0; display: flex; }
+.sp-spread .sp-drawer .dlg-host > * { flex: 1; min-width: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .sp-spread .sp-fab, .sp-spread .sp-drawer, .sp-spread .sp-drawer * { transition: none !important; }
+}

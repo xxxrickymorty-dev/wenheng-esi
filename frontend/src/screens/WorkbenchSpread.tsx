@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import "../spread.css";
 import ShellApp, { type WsContext, type WsView } from "../ws/ShellApp";
+import DialogPage from "../ws/dialog/DialogPage";
 
 /* ── 状态印：印面与「状态印章·谱 20261025」逐字一致（正本在 web/src/StateSeal.tsx） ── */
 
@@ -90,6 +91,11 @@ export function WorkbenchSpread() {
   const [ctx, setCtx] = useState<WsContext | null>(null);
   const [land, setLand] = useState(false);
   const prevStatus = useRef<string>("unsigned");
+
+  /* 问文衡常驻徽标 + 右抽屉（2026-10-28 rick 裁「B 为主、A 为展开态」）：
+     徽标每一站右页角常驻；抽屉小问不离站，「整页 ↗」＝左栏 ask 视图（A 案）。 */
+  const [askOpen, setAskOpen] = useState(false);
+  const [askBusy, setAskBusy] = useState(false);
 
   /* 陈列馆＝独立展示面（rick 2026-10-26）：不套工作区壳——左页、钤印位、右页顶条一律不画，
      右页独占整幅。左栏只留给工作区（本期四站、报告台、台账这些「事」）。 */
@@ -210,6 +216,31 @@ export function WorkbenchSpread() {
         <div className="ws-host">
           <ShellApp view={cur} onNavigate={setCur} onContext={setCtx} />
         </div>
+
+        {/* 常驻徽标：每一站右页角（陈列馆 solo 是成品展示面，不出）；答复中＝朱点 */}
+        {!bare && (
+          <button type="button" className={`sp-fab${askBusy ? " busy" : ""}`}
+                  aria-label="问文衡" onClick={() => setAskOpen(true)}>
+            问<span className="dot" aria-hidden="true" />
+          </button>
+        )}
+        {/* 右抽屉：只盖右页，左栏与钤印位不动；DialogPage drawer 紧凑态 */}
+        {!bare && askOpen && (
+          <aside className="sp-drawer" aria-label="问文衡抽屉">
+            <header className="sp-drawer-h">
+              <span className="sp-drawer-seal" aria-hidden="true">问</span>
+              <span className="tt"><b>问文衡</b><i>工 作 区 · 对 话</i></span>
+              <span className="slot">期次 <b>{ctx?.period ?? "——————"}</b></span>
+              <button type="button" className="sp-drawer-x"
+                      onClick={() => { setAskOpen(false); setCur("ask") }}>整页 ↗</button>
+              <button type="button" className="sp-drawer-x" aria-label="收起"
+                      onClick={() => setAskOpen(false)}>✕</button>
+            </header>
+            <div className="dlg-host">
+              <DialogPage variant="drawer" onBusyChange={setAskBusy} />
+            </div>
+          </aside>
+        )}
       </section>
     </div>
   );
