@@ -64,36 +64,36 @@ html[data-palette="green"]{
 html{background:var(--bg)}
 body{font-family:var(--sans);color:var(--ink);font-size:var(--fs-body);line-height:1.6}
 
-/* ---------- 壳：左栏 + 主区（顶栏不存在） ---------- */
+/* ---------- 壳：左栏 + 主区（顶栏不存在；左栏一屏放全，禁止栏内滚动——UX.md §九「壳栏一屏」） ---------- */
 .frame{display:flex;min-height:100vh}
 .shell{width:264px;flex:none;background:var(--field);color:#F4F1E8;display:flex;flex-direction:column;
-  padding:20px 18px 14px;position:sticky;top:0;height:100vh;overflow:auto}
-.brand{font-family:var(--serif);text-decoration:none;color:inherit;display:block;margin-bottom:18px}
+  padding:14px 18px 10px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{font-family:var(--serif);text-decoration:none;color:inherit;display:block;margin-bottom:10px}
 .brand b{font-size:var(--fs-sh);letter-spacing:6px;font-weight:600}
 .brand span{display:block;font-size:var(--fs-xs);opacity:.72;margin-top:2px;letter-spacing:1px}
-.shell-nav{display:flex;flex-direction:column;gap:2px;margin-bottom:16px}
-.shell-nav a{color:inherit;text-decoration:none;font-size:var(--fs-label);padding:7px 10px;opacity:.8}
+.shell-nav{display:flex;flex-direction:column;gap:1px;margin-bottom:10px}
+.shell-nav a{color:inherit;text-decoration:none;font-size:var(--fs-label);padding:4px 10px;opacity:.8}
 .shell-nav a:hover{background:rgba(255,255,255,.08);opacity:1}
 .shell-nav a.on{background:rgba(255,255,255,.14);opacity:1}
-.shell-nav .sep{border-top:1px solid rgba(255,255,255,.18);margin:8px 4px}
+.shell-nav .sep{border-top:1px solid rgba(255,255,255,.18);margin:6px 4px}
 .shell-nav .ext{opacity:.6;font-size:var(--fs-sm)}
-.hero{border-top:1px solid rgba(255,255,255,.2);padding-top:14px;margin-top:auto}
+.hero{border-top:1px solid rgba(255,255,255,.2);padding-top:10px;margin-top:auto}
 .hero-kicker{font-size:var(--fs-xs);letter-spacing:3px;opacity:.72}
-.hero-title{font-family:var(--serif);font-size:var(--fs-sh);font-weight:600;margin:4px 0 10px;letter-spacing:2px}
-.hero-period{margin-bottom:10px}
+.hero-title{font-family:var(--serif);font-size:var(--fs-sh);font-weight:600;margin:2px 0 6px;letter-spacing:2px}
+.hero-period{margin-bottom:8px}
 .hero-period select{width:100%;background:rgba(255,255,255,.1);color:inherit;border:1px solid rgba(255,255,255,.3);
-  font:inherit;font-size:var(--fs-label);padding:6px 8px}
+  font:inherit;font-size:var(--fs-label);padding:4px 8px}
 .hero-period option{color:var(--ink)}
-.hero-meta{font-size:var(--fs-xs);opacity:.72;line-height:1.7}
-.hero-motto{font-family:var(--serif);font-size:var(--fs-label);margin-top:12px;opacity:.9}
-.hero-stats{display:flex;gap:18px;margin-top:12px;font-size:var(--fs-xs);opacity:.85}
+.hero-meta{font-size:var(--fs-xs);opacity:.72;line-height:1.6}
+.hero-motto{font-family:var(--serif);font-size:var(--fs-label);margin-top:6px;opacity:.9}
+.hero-stats{display:flex;gap:16px;margin-top:6px;font-size:var(--fs-xs);opacity:.85}
 .hero-stats b{display:block;font-size:var(--fs-label);font-weight:600}
-.shell-foot{border-top:1px solid rgba(255,255,255,.2);margin-top:16px;padding-top:10px}
-.motto-line{font-size:var(--fs-xs);opacity:.6;margin-bottom:8px;letter-spacing:2px}
+.shell-foot{border-top:1px solid rgba(255,255,255,.2);margin-top:8px;padding-top:6px}
+.motto-line{font-size:var(--fs-xs);opacity:.6;margin-bottom:4px;letter-spacing:2px}
 .foot-row{display:flex;align-items:center;gap:10px}
 .foot-row .spacer{flex:1}
 .info-pop{position:relative}
-.info-pop>summary{list-style:none;cursor:pointer;font-size:var(--fs-xs);opacity:.85;border:1px solid rgba(255,255,255,.3);padding:2px 8px}
+.info-pop>summary{list-style:none;cursor:pointer;font-size:var(--fs-xs);opacity:.85;border:1px solid rgba(255,255,255,.3);padding:2px 8px;white-space:nowrap}
 .info-pop>summary::-webkit-details-marker{display:none}
 .info-pop[open]>summary{background:rgba(255,255,255,.14)}
 .info-pop .pop{position:absolute;bottom:calc(100% + 8px);left:0;width:300px;background:var(--card);color:var(--ink);
@@ -104,8 +104,9 @@ body{font-family:var(--sans);color:var(--ink);font-size:var(--fs-body);line-heig
 .skin-dots button[data-p="green"]{background:#1F3A2E}
 .skin-dots button[data-p="blue"]{background:#17456E}
 .skin-dots button.on{outline:2px solid rgba(255,255,255,.85);outline-offset:1px}
-.user-chip{display:flex;align-items:center;gap:6px;font-size:var(--fs-xs);opacity:.9}
-.user-chip .av{width:20px;height:20px;background:rgba(255,255,255,.2);display:inline-flex;align-items:center;justify-content:center;font-size:var(--fs-xs)}
+.foot-user{margin-top:6px}
+.user-chip{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-xs);opacity:.9;white-space:nowrap}
+.user-chip .av{width:20px;height:20px;background:rgba(255,255,255,.2);display:inline-flex;align-items:center;justify-content:center;font-size:var(--fs-xs);flex:none}
 
 /* ---------- 主区 ---------- */
 .main{flex:1;min-width:0;padding:26px 40px 120px}
@@ -181,9 +182,9 @@ body{font-family:var(--sans);color:var(--ink);font-size:var(--fs-body);line-heig
 .minibar a{color:#F4F1E8;text-decoration:none;border:1px solid rgba(255,255,255,.5);padding:2px 10px}
 
 /* 审稿切换条（仅本静态稿） */
-.gate{position:fixed;top:10px;right:12px;z-index:99;display:flex;gap:6px;align-items:center;background:var(--card);
-  border:1px solid var(--line);box-shadow:var(--shadow);padding:6px 8px;font-size:var(--fs-xs);opacity:.94}
-.main{padding-top:64px}
+/* 审稿切换条：文档流内联（不悬浮、不遮任何内容）——仅本静态稿所有 */
+.gate{display:flex;gap:6px;align-items:center;width:max-content;margin:0 auto 14px;background:var(--card);
+  border:1px solid var(--line);box-shadow:var(--shadow);padding:6px 8px;font-size:var(--fs-xs)}
 .gate button{font:inherit;font-size:var(--fs-xs);border:1px solid var(--line);background:transparent;color:var(--ink-2);padding:2px 8px;cursor:pointer}
 .gate button.on{background:var(--tool-2);color:#F4F1E8;border-color:var(--tool-2)}
 
@@ -215,15 +216,6 @@ html[data-state="clean"] .head-sign,html[data-state="dirty"] .head-sign{display:
 </style>
 </head>
 <body>
-<div class="gate" aria-label="静态稿态切换（仅供审稿）">
-  审稿切换：
-  <button data-s="clean" class="on">干净未签</button>
-  <button data-s="dirty">有待填未签</button>
-  <button data-s="signed">已签</button>
-  <button data-s="stale">签发失效</button>
-  ｜配色：<button data-p="green" class="on">绿</button><button data-p="blue">蓝</button>
-</div>
-
 <div class="frame">
   <!-- ======== 左栏壳：顶栏五件套的收编处（期次→hero 下拉；ⓘ/配色/身份→底部；陈列馆沿用左栏原入口） ======== -->
   <aside class="shell">
@@ -276,7 +268,9 @@ html[data-state="clean"] .head-sign,html[data-state="dirty"] .head-sign{display:
           <button type="button" data-p="green" class="on" title="绿场"></button>
           <button type="button" data-p="blue" title="蓝场"></button>
         </span>
-        <!-- 顶栏身份 chip 收编于此 -->
+      </div>
+      <!-- 顶栏身份 chip 收编于此（独立一行，防折行） -->
+      <div class="foot-user">
         <span class="user-chip"><span class="av">a</span>admin · 管理员</span>
       </div>
     </div>
@@ -284,6 +278,16 @@ html[data-state="clean"] .head-sign,html[data-state="dirty"] .head-sign{display:
 
   <!-- ======== 主区：无顶栏；头部状态行 + 报告卡（全宽）+ 文末定稿条 ======== -->
   <main class="main">
+    <!-- 静态稿审稿条（不属于产品 UI）：态切换走文档流，不遮任何内容 -->
+    <div class="gate" aria-label="静态稿态切换（仅供审稿）">
+      审稿切换：
+      <button data-s="clean" class="on">干净未签</button>
+      <button data-s="dirty">有待填未签</button>
+      <button data-s="signed">已签</button>
+      <button data-s="stale">签发失效</button>
+      ｜配色：<button data-p="green" class="on">绿</button><button data-p="blue">蓝</button>
+    </div>
+
     <!-- 头部状态行：进屏即见（方案 A），只一行，主动作仍在文末定稿条 -->
     <div class="doc-head">
       <span class="seal seal-big mini" aria-hidden="true"></span>
