@@ -150,8 +150,13 @@ function writeSessionUrl(id: string) {
   window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : ''))
 }
 
-export default function DialogPage() {
-  const [palette, setPalette] = useState(initialPalette)
+export default function DialogPage({ variant = 'page', onBusyChange }: {
+  /** page＝壳内整页（2026-10-28 A 案：拆自带侧栏，左栏/顶条归工作台壳）；drawer＝右抽屉紧凑态（B 案）。 */
+  variant?: 'page' | 'drawer'
+  /** 忙碌上报（抽屉徽标「答复中」朱点的事实源；page 态可不传）。 */
+  onBusyChange?: (busy: boolean) => void
+} = {}) {
+  const [palette] = useState(initialPalette)
   const [me, setMe] = useState<Me | null>(null)
   const [roleKnown, setRoleKnown] = useState(false)
   const [convs, setConvs] = useState<Conversation[]>(() => [freshConversation(1)])
@@ -188,13 +193,9 @@ export default function DialogPage() {
   const canEdit = me?.capabilities?.actions?.edit ?? me?.role === 'admin'
   const canRun = me?.capabilities?.actions?.run ?? !!me
 
+  /* 皮肤由工作区统一管（App.tsx 同写 documentElement）；本页只随大流，壳内开关已撤。 */
   useEffect(() => {
     document.documentElement.dataset.palette = palette
-    try {
-      localStorage.setItem(PALETTE_STORAGE_KEY, palette)
-    } catch {
-      /* 浏览器不允许保存时，当前页面仍可正常切换 */
-    }
   }, [palette])
 
   useEffect(() => {
@@ -603,6 +604,10 @@ export default function DialogPage() {
     }
   }
 
+  /* 抽屉徽标「答复中」朱点的事实源（page 态不传就是空操作） */
+  const busyNow = busy || !!running
+  useEffect(() => { onBusyChange?.(busyNow) }, [busyNow, onBusyChange])
+
   if (roleKnown && !me) {
     return (
       <main className="dlg-gate">
@@ -618,87 +623,21 @@ export default function DialogPage() {
     return period && href !== '/app/shelf/' ? buildPeriodUrl(href, period) : href
   }
 
-  return (
-    <div className="dlg-shell">
-      <a className="dlg-skip" href="#dlg-thread">跳到对话内容</a>
-      <h1 className="dlg-vh">文衡 · 对话前门</h1>
-
-      <aside className="dlg-side">
-        <div className="dlg-brand"><strong>文衡</strong><span>云南大学图书馆</span></div>
-        <button className="dlg-newchat" type="button" onClick={newChat}>＋ 新对话</button>
-        <nav className="dlg-hist" aria-label="对话历史">
-          {(() => {
-            const savedList = saved.filter((s) => s.id !== active?.sessionId)
-            return (
-              <>
-                {savedList.length > 0 && (
-                  <>
-                    <p className="dlg-hist-cap">保存的对话</p>
-                    {savedList.map((s) => (
-                      <div key={s.id} className="dlg-hist-row">
-                        <a href="#对话" title={`${s.title || '保存的对话'} · ${s.updated}`}
-                           onClick={(e) => { e.preventDefault(); void openSaved(s) }}>
-                          {s.title || '保存的对话'}
-                        </a>
-                        <ConfirmButton className="dlg-drop" confirmText="删除？"
-                                       title="删除这段保存的对话"
-                                       onConfirm={() => { void dropSaved(s) }}>✕</ConfirmButton>
-                      </div>
-                    ))}
-                  </>
-                )}
-                {others.length > 0 && <p className="dlg-hist-cap">这次打开</p>}
-                {others.length === 0 && savedList.length === 0 ? (
-                  <p className="dlg-hist-note">对话会列在这里；关掉页面后还能从「保存的对话」回来。</p>
-                ) : (
-                  others.map((c) => (
-                    <a key={c.id} href="#对话" aria-current={c.id === activeId ? 'true' : undefined}
-                       onClick={(e) => {
-                         e.preventDefault()
-                         setActiveId(c.id)
-                         writeSessionUrl(c.sessionId || '')   // 票 11：URL 跟着当前对话的会话走
-                       }}>
-                      {c.title || '新对话'}
-                    </a>
-                  ))
-                )}
-              </>
-            )
-          })()}
-        </nav>
-        <div className="dlg-me-wrap">
-          <UserChip me={me} />
-        </div>
-      </aside>
-
-      <section className="dlg-main">
-        <header className="dlg-topbar">
-          <span className="dlg-ttl">{active.title || '新对话'}</span>
-          <div className="dlg-right">
-            {/* 2026-10-12（rick）：工作台下拉取消——只留一个「去生成台」入口（各台之间在工作区导航里走）。 */}
-            <a className="dlg-wk-link" href={withPeriod('/app/')}>去生成台 ▸</a>
-          {/* 皮肤开关：与工作区同款（共享 .skin-switch）；默认蓝场 */}
-          <span className="skin-switch" role="group" aria-label="切换配色">
-            <button type="button" aria-pressed={palette === 'blue'}
-                    onClick={() => setPalette('blue')}>蓝场</button>
-            <button type="button" aria-pressed={palette === 'green'}
-                    onClick={() => setPalette('green')}>绿场</button>
-            </span>
-            <SlotChip label="期次" value={active.slots.period}
-                      onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'period') }))} />
-            <SlotChip label="意图" value={active.slots.intent}
-                      onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'intent') }))} />
-            {hasSlots(active.slots) && (
-              <span className="dlg-vh" role="status">
-                {`当前槽位：期次 ${active.slots.period || '未设'}，意图 ${active.slots.intent || '未设'}`}
-              </span>
-            )}
-          </div>
-        </header>
-
-        <div className="dlg-thread" ref={threadRef} id="dlg-thread" aria-live="polite">
+  /* 对话流：page / drawer 两种壳共用一份（2026-10-28 拆自带侧栏——壳内不再有第二个导航） */
+  const threadEl = (
+    <div className="dlg-thread" ref={threadRef} id={variant === 'page' ? 'dlg-thread' : undefined} aria-live="polite">
           <div className="dlg-thread-in">
-            {active.turns.length === 0 && (
+            {active.turns.length === 0 && (variant === 'drawer' ? (
+              <div className="dlg-land-mini" aria-label="文衡">
+                <p className="dlg-land-m-hint">问一句 —— 数字全部来自台账与产物，答语附对账回执。</p>
+                <div className="dlg-land-pills">
+                  {LANDING_EXAMPLES.slice(0, 4).map((example) => (
+                    <button key={example} type="button" className="dlg-land-pill"
+                            onClick={() => setInput(example)}>{example}</button>
+                  ))}
+                </div>
+              </div>
+            ) : (
               <section className="dlg-land" aria-label="文衡首页">
                 <h1 className="dlg-land-title">文衡，帮你做报告、查数据</h1>
                 {/* 2026-10-24 rick 红框删：副题段与「想做什么」提示行（内容太多，一页展示不用下滑） */}
@@ -746,7 +685,7 @@ export default function DialogPage() {
                 )}
                 {tv?.prevNote && <p className="dlg-land-prev">{tv.prevNote}</p>}
               </section>
-            )}
+            ))}
             {active.turns.map((t, i) => t.who === 'sys' ? (
               <p key={i} className="dlg-sys">{t.text}</p>
             ) : (
@@ -864,8 +803,10 @@ export default function DialogPage() {
             )}
           </div>
         </div>
+  )
 
-        <div className="dlg-composer">
+  const composerEl = (
+    <div className="dlg-composer">
           <form className="dlg-composer-in" onSubmit={(e) => { e.preventDefault(); void sendText(input) }}>
             <div className="dlg-box">
               <textarea rows={1} aria-label="对文衡说话" value={input}
@@ -889,6 +830,87 @@ export default function DialogPage() {
             </div>
           </form>
         </div>
+  )
+
+  if (variant === 'drawer') {
+    return (
+      <div className="dlg-shell in-drawer">
+        {threadEl}
+        {composerEl}
+      </div>
+    )
+  }
+
+  return (
+    <div className="dlg-shell in-shell">
+      <a className="dlg-skip" href="#dlg-thread">跳到对话内容</a>
+      <h1 className="dlg-vh">文衡 · 对话前门</h1>
+      <section className="dlg-main">
+        <header className="dlg-topbar">
+          <span className="dlg-ttl dlg-vh">{active.title || '新对话'}</span>
+          <div className="dlg-right">
+            {/* 壳内工具条（2026-10-28）：原深场侧栏收编到这里——新对话 / 往期对话 / 槽位 / 本人。
+                「去生成台」与皮肤开关随侧栏一并撤：左栏导航归工作台壳，配色由壳令牌负责。 */}
+            <button className="dlg-chip" type="button" onClick={newChat}>＋ 新对话</button>
+            <details className="dlg-histpop">
+              <summary className="dlg-chip">往期对话 ▾</summary>
+              <div className="dlg-histpop-in">
+                <nav className="dlg-hist" aria-label="对话历史">
+                  {(() => {
+                    const savedList = saved.filter((s) => s.id !== active?.sessionId)
+                    return (
+                      <>
+                        {savedList.length > 0 && (
+                          <>
+                            <p className="dlg-hist-cap">保存的对话</p>
+                            {savedList.map((s) => (
+                              <div key={s.id} className="dlg-hist-row">
+                                <a href="#对话" title={`${s.title || '保存的对话'} · ${s.updated}`}
+                                   onClick={(e) => { e.preventDefault(); void openSaved(s) }}>
+                                  {s.title || '保存的对话'}
+                                </a>
+                                <ConfirmButton className="dlg-drop" confirmText="删除？"
+                                               title="删除这段保存的对话"
+                                               onConfirm={() => { void dropSaved(s) }}>✕</ConfirmButton>
+                              </div>
+                            ))}
+                          </>
+                        )}
+                        {others.length > 0 && <p className="dlg-hist-cap">这次打开</p>}
+                        {others.length === 0 && savedList.length === 0 ? (
+                          <p className="dlg-hist-note">对话会列在这里；关掉页面后还能从「保存的对话」回来。</p>
+                        ) : (
+                          others.map((c) => (
+                            <a key={c.id} href="#对话" aria-current={c.id === activeId ? 'true' : undefined}
+                               onClick={(e) => {
+                                 e.preventDefault()
+                                 setActiveId(c.id)
+                                 writeSessionUrl(c.sessionId || '')   // 票 11：URL 跟着当前对话的会话走
+                               }}>
+                              {c.title || '新对话'}
+                            </a>
+                          ))
+                        )}
+                      </>
+                    )
+                  })()}
+                </nav>
+              </div>
+            </details>
+            <SlotChip label="期次" value={active.slots.period}
+                      onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'period') }))} />
+            <SlotChip label="意图" value={active.slots.intent}
+                      onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'intent') }))} />
+            {hasSlots(active.slots) && (
+              <span className="dlg-vh" role="status">
+                {`当前槽位：期次 ${active.slots.period || '未设'}，意图 ${active.slots.intent || '未设'}`}
+              </span>
+            )}
+            <UserChip me={me} />
+          </div>
+        </header>
+        {threadEl}
+        {composerEl}
       </section>
     </div>
   )
@@ -964,10 +986,12 @@ function fallbackNote(notice: string): { human: string; detail: string } | null 
   return { human, detail: notice }
 }
 
-/** 查数据的回答（票 07）：正文带角标（点数字看来源）＋作答方式小字＋规则版对照。 */
+/** 查数据的回答（票 07）：答语成「文书」——溯源签条 + 对账印 + 回执号
+    （2026-10-28 rick 裁：静态稿 问文衡-壳内整页/常驻小徽标 同构；shield/record_id 都是后端既有字段）。 */
 function AnswerBlock({ answer }: { answer: DialogAnswer }) {
   const answered = answer.mode === 'model' || answer.mode === 'rule'
   const fb = fallbackNote(answer.notice)
+  const allPass = answer.shield.passed === answer.shield.checked
   return (
     <div className="dlg-ans">
       {!!answer.text && <NumberedText text={answer.text} sources={answer.sources} />}
@@ -977,15 +1001,52 @@ function AnswerBlock({ answer }: { answer: DialogAnswer }) {
           <NumberedText text={answer.rule_text} sources={answer.sources} />
         </details>
       )}
-      {answered && (
-        <div className="an-footer">
-          <span className={`pill ${answer.mode === 'model' ? 'signed' : 'stale'}`}>
-            {answer.mode === 'model' ? '大模型作答' : '规则版作答'}
-          </span>
+      {answered && (answer.sources.length > 0 || answer.shield.checked > 0) && (
+        <div className="dlg-doc">
+          {answer.sources.length > 0 && (() => {
+            const head = answer.sources.slice(0, 6)
+            const tail = answer.sources.slice(6)
+            return (
+              <>
+                <div className="dlg-doc-cap"><span>溯 源</span><i /><span>点数字看出处</span></div>
+                {head.map((s, i) => (
+                  <div className="dlg-src" key={s.index}>
+                    <i>{i + 1}</i>
+                    <span className="lb">{s.label || s.kind}</span>
+                    <span className="dt">{s.detail || s.pointer}</span>
+                    <span className="vl">{s.value}</span>
+                  </div>
+                ))}
+                {tail.length > 0 && (
+                  <details className="dlg-src-more">
+                    <summary>展开其余 {tail.length} 条溯源</summary>
+                    {tail.map((s, i) => (
+                      <div className="dlg-src" key={s.index}>
+                        <i>{i + 7}</i>
+                        <span className="lb">{s.label || s.kind}</span>
+                        <span className="dt">{s.detail || s.pointer}</span>
+                        <span className="vl">{s.value}</span>
+                      </div>
+                    ))}
+                  </details>
+                )}
+              </>
+            )
+          })()}
           {answer.shield.checked > 0 && (
-            <span className="pill ok">数字已核对：{answer.shield.passed} 个</span>
+            <div className="dlg-sealrow">
+              <span className={`dlg-seal${allPass ? '' : ' warn'}`} aria-hidden="true">
+                {allPass ? '已核' : '存疑'}
+              </span>
+              <span className="dlg-sealtx">
+                {allPass
+                  ? `${answer.shield.passed} / ${answer.shield.checked} 项对账全过`
+                  : `${answer.shield.passed} / ${answer.shield.checked} 项对账通过，其余按台账原文给`}
+                {' · '}{answer.mode === 'model' ? '大模型表述' : '台账原文作答'}
+                {answer.record_id && <span className="rc">回执 {answer.record_id} · 可复核</span>}
+              </span>
+            </div>
           )}
-          <span className="hint">点数字看来源</span>
         </div>
       )}
       {fb ? (

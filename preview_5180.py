@@ -40,7 +40,10 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None  # 3xx 原样透传，浏览器带着正确 Origin 自己再发
 
 
-_opener = urllib.request.build_opener(_NoRedirect)
+# 强制直连：urllib 默认读系统代理（梯子一开注册表 ProxyEnable 就翻true），
+# 会把 127.0.0.1:5180 也发给代理 —— 代理端口活着就绕路、死了就 10061 拒连。
+# localhost 永远不该走代理，ProxyHandler({}) = 一律直连。
+_opener = urllib.request.build_opener(_NoRedirect, urllib.request.ProxyHandler({}))
 
 
 def _fetch_vite(method, url, headers, body):

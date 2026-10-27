@@ -232,3 +232,156 @@
 .dlg-drop{flex:0 0 auto;border:0;background:none;color:var(--ink-3);padding:2px 6px;
   font-size:11.5px;cursor:pointer}
 .dlg-drop:hover,.dlg-drop.confirming{color:var(--warn)}
+
+/* ============================================================
+   壳内与抽屉（2026-10-28，rick 裁「B 为主、A 为展开态」）
+   静态稿：web/mockups/问文衡-壳内整页 / 问文衡-常驻小徽标（20261027）。
+   A 案＝.in-shell：跨页壳 ask 视图整页，dlg 令牌重映射到壳语言（会泽/至公/金线），
+   自带深场侧栏已拆（新对话/往期/槽位/本人 收进壳内工具条）。
+   B 案＝.in-drawer：右抽屉紧凑态，壳 chrome（印钮/抽屉头）由 WorkbenchSpread 出。
+   两态共用一份 thread/composer（DialogPage threadEl/composerEl）。
+   零圆角零投影零渐变。
+   ============================================================ */
+
+/* ---- 令牌重映射：dlg-* 用到的全部变量 → 跨页壳语言 ---- */
+.dlg-shell.in-shell,
+.dlg-shell.in-drawer {
+  --bg: #F5F3EC; --card: #FBF8EF; --panel: #EDE9DC; --card-hi: #FFFDF6;
+  --ink: #1E2A23; --ink-2: #4A564D; --ink-3: #7C857B;
+  --line: #DFDBCB; --line-2: #EAE7DB;
+  --zhu: #1A4B27; --zhu-soft: #E7EDE4;
+  --tool: #26483B; --tool-2: #163228; --tool-3: #1A4B27; --tool-4: #7FA98F; --tool-5: #E7EDE4;
+  --field: #143729; --field-2: #0F2C21; --field-3: #2E5C46; --field-4: #9FB8A8; --field-5: #E9EFE9;
+  --gold: #1A4B27; --gold-soft: #E7EDE4; --gold-ink: #163228;
+  --ok: #276B4C; --ok-soft: #E7EDE4; --ok-line: #9CC4AE;
+  --warn: #7C5A16; --warn-soft: #F3E9CF;
+  --bad: #B23A2B; --bad-soft: #F4DDD7;
+}
+
+/* ---- A 案 · 壳内整页 ---- */
+.dlg-shell.in-shell { --dlg-col: 880px; height: 100%; min-height: 0; flex-direction: column; }
+.dlg-shell.in-shell .dlg-main { flex: 1; }
+.dlg-shell.in-shell .dlg-topbar {
+  background: transparent; color: var(--ink-3); border-bottom: 0;
+  padding: 0 2px 9px; font-size: 12px;
+}
+.dlg-shell.in-shell .dlg-topbar::after { content: ""; display: block; order: 2; }
+.dlg-shell.in-shell .dlg-chip {
+  border: 1px solid var(--line); background: transparent; border-radius: 0;
+  padding: 4px 11px; font: inherit; font-family: var(--kai); font-size: 11px;
+  letter-spacing: .14em; color: var(--ink-2); cursor: pointer; min-height: 28px;
+}
+.dlg-shell.in-shell .dlg-chip:hover { border-color: var(--zhu); color: var(--zhu); }
+.dlg-shell.in-shell .dlg-slot { background: transparent; border-color: var(--line); min-height: 28px; }
+.dlg-shell.in-shell .dlg-slot-k { color: var(--ink-3); }
+.dlg-shell.in-shell .dlg-slot-v { color: var(--ink); }
+.dlg-shell.in-shell .dlg-slot-x:hover { background: var(--panel); color: var(--ink); }
+/* 往期对话下拉（原侧栏 hist 收编；details 原生开关，零 JS） */
+.dlg-histpop { position: relative; }
+.dlg-histpop summary { list-style: none; }
+.dlg-histpop summary::-webkit-details-marker { display: none; }
+.dlg-histpop-in {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; width: 320px;
+  max-height: min(430px, 52vh); overflow: auto; background: var(--card-hi);
+  border: 1px solid var(--line); padding: 6px 6px 8px;
+}
+.dlg-histpop-in .dlg-hist { display: block; flex: none; overflow: visible; padding: 0; }
+.dlg-histpop-in .dlg-hist a { color: var(--ink-2); font-size: 12.5px; padding: 5px 10px; }
+.dlg-histpop-in .dlg-hist a:hover { background: var(--panel); color: var(--ink); }
+.dlg-histpop-in .dlg-hist a[aria-current="true"] { background: var(--panel); color: var(--ink); box-shadow: inset 3px 0 0 var(--zhu); }
+.dlg-histpop-in .dlg-hist-cap { margin: 8px 6px 2px; }
+.dlg-histpop-in .dlg-hist-note { color: var(--ink-3); }
+.dlg-histpop-in .dlg-drop { color: var(--ink-3); }
+.dlg-histpop-in .dlg-drop:hover { color: var(--warn); }
+/* 本人章（UserChip 底色由 ws 蓝绿改纸面） */
+.dlg-shell.in-shell .dlg-me-wrap { padding: 0; }
+.dlg-shell.in-shell .user-chip { color: var(--ink-2); }
+
+/* ---- B 案 · 右抽屉紧凑态（壳 chrome 在 spread.css .sp-drawer） ---- */
+.dlg-shell.in-drawer {
+  --dlg-col: 100%; --dlg-hit: 38px;
+  height: 100%; min-height: 0; flex-direction: column; background: transparent;
+  font-size: 14px; line-height: 1.7;
+}
+.dlg-shell.in-drawer .dlg-thread { background: transparent; padding: 12px 14px 6px; }
+.dlg-shell.in-drawer .dlg-composer { background: transparent; border-top: 1px solid var(--line); padding: 10px 14px 12px; }
+.dlg-shell.in-drawer .dlg-turn { margin-bottom: 13px; }
+.dlg-shell.in-drawer .dlg-who { flex-basis: 26px; width: 26px; height: 26px; font-size: 11.5px; }
+.dlg-shell.in-drawer .dlg-turn.me .dlg-bub { margin-left: 30px; padding: 4px 10px; }
+.dlg-shell.in-drawer .dlg-turn.wh .dlg-bub { padding-top: 2px; }
+.dlg-shell.in-drawer .dlg-nm { font-size: 10px; }
+.dlg-shell.in-drawer .dlg-bub { font-size: 14px; }
+.dlg-shell.in-drawer .dlg-act { min-height: 32px; padding: 4px 13px; font-size: 13px; }
+.dlg-shell.in-drawer .dlg-box { padding: 7px 9px; }
+.dlg-shell.in-drawer .dlg-box textarea { height: 24px; font-size: 14px; }
+.dlg-shell.in-drawer .dlg-send { width: var(--dlg-hit); height: var(--dlg-hit); font-size: 14px; }
+.dlg-shell.in-drawer .dlg-sys { margin-left: 40px; font-size: 11px; }
+.dlg-shell.in-drawer .dlg-gate { margin: 40px 14px; padding: 14px 16px; font-size: 14px; }
+/* 抽屉空态：一行话 + 例句胶囊（大字报留给整页） */
+.dlg-land-mini { padding: clamp(10px, 4vh, 34px) 4px 8px; }
+.dlg-land-m-hint { font-family: var(--serif); font-size: 15.5px; letter-spacing: .04em; line-height: 1.6; }
+.dlg-land-mini .dlg-land-pills { justify-content: flex-start; margin: 10px 0 0; }
+.dlg-land-mini .dlg-land-pill { padding: 6px 12px; font-size: 12.5px; }
+
+/* ---- 答语文书（两态共用）：溯源签条 + 对账印 + 回执号 ---- */
+.dlg-doc { margin-top: 8px; border: 1px solid var(--line); border-radius: 0;
+  background: var(--card-hi); padding: 9px 13px 10px; }
+.dlg-doc-cap { display: flex; align-items: baseline; gap: 10px; font-family: var(--kai);
+  font-size: 10.5px; letter-spacing: .22em; color: var(--ink-3); margin-bottom: 6px; }
+.dlg-doc-cap i { font-style: normal; flex: 1; height: 1px; background: var(--line-2); }
+.dlg-src { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; font-size: 13px; }
+.dlg-src + .dlg-src { border-top: 1px dashed var(--line-2); }
+.dlg-src i { font-style: normal; flex: 0 0 18px; font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
+.dlg-src .lb { font-family: var(--kai); letter-spacing: .06em; color: var(--ink-2); flex: 0 0 auto; }
+.dlg-src .dt { color: var(--ink-3); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dlg-src .vl { font-family: var(--mono); font-weight: 600; color: var(--ink); flex: 0 0 auto; }
+.dlg-sealrow { display: flex; align-items: center; gap: 12px; margin-top: 9px; padding-top: 9px;
+  border-top: 1px solid var(--line-2); flex-wrap: wrap; }
+.dlg-seal { flex: 0 0 auto; width: 36px; height: 36px; background: var(--tool-3); color: #F5F3EC;
+  display: flex; align-items: center; justify-content: center; transform: rotate(-3deg);
+  font-family: var(--serif); font-weight: 700; font-size: 13.5px; letter-spacing: .06em; }
+.dlg-seal.warn { background: var(--warn); }
+.dlg-sealtx { font-size: 13px; color: var(--ink-2); min-width: 0; }
+.dlg-sealtx .rc { font-family: var(--mono); font-size: 11px; color: var(--ink-3); display: block; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dlg-shell.in-shell *, .dlg-shell.in-drawer * { transition: none !important; animation: none !important; }
+}
+
+/* ---- 按钮规则提权（壳内实测踩坑 2026-10-28）----
+   ws.css 的 `.ws button{border:0;background:none;color:inherit}`（0,1,1）压过
+   dlg 的单击名按钮规则（0,1,0）——表现＝落点模式钮/例句胶囊/送发键变裸文本。
+   在壳内一律以 .dlg-shell 前缀（0,2,0）重申；多类规则（.dlg-act.primary 等）
+   本来就赢，不在此列。抽屉在 .ws 外不受压制，但前缀规则对它同样成立。 */
+.dlg-shell .dlg-land-mode { border: 1px solid var(--tool-3); background: var(--tool-3); color: #fff; }
+.dlg-shell .dlg-land-pill { border: 1px solid var(--line); background: transparent; color: var(--ink-2); }
+.dlg-shell .dlg-land-pill:hover { border-color: var(--zhu); color: var(--zhu); background: var(--zhu-soft); }
+.dlg-shell .dlg-act { border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+.dlg-shell .dlg-act.ghost { background: transparent; color: var(--ink-2); border-style: dashed; }
+.dlg-shell .dlg-act[aria-disabled="true"], .dlg-shell .dlg-act:disabled { opacity: .55; }
+.dlg-shell .dlg-send { background: var(--tool-3); color: #fff; }
+.dlg-shell .dlg-qa { border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); }
+.dlg-shell .dlg-slot-x { color: var(--ink-3); }
+.dlg-shell .dlg-slot-x:hover { background: var(--panel); color: var(--ink); }
+.dlg-shell .dlg-drop { color: var(--ink-3); }
+
+/* ↑ 兜底 .dlg-shell .dlg-act 与 .dlg-act.primary 同特异性、后者在前会被压——重申一次；
+   问句对齐静态稿：去泡（zhu-soft 底改透明），只留缩进。 */
+.dlg-shell .dlg-act.primary { background: var(--tool-3); border-color: var(--tool-3); color: #fff; }
+.dlg-shell .dlg-act.primary.picked,
+.dlg-shell .dlg-act.picked { background: var(--panel); border-color: var(--line); color: var(--ink-3); }
+.dlg-shell .dlg-act.confirming { border-color: var(--warn); color: var(--warn); background: var(--warn-soft); }
+.dlg-shell .dlg-act.primary.confirming { background: var(--warn); border-color: var(--warn); color: #fff; }
+.dlg-shell.in-shell .dlg-turn.me .dlg-bub,
+.dlg-shell.in-drawer .dlg-turn.me .dlg-bub { background: transparent; padding: 6px 0 0 12px; }
+
+/* 长对话在页内滚：线程自限高（rtop+深蓝条+工具条+composer 约 300px），composer 不出视口 */
+.dlg-shell.in-shell .dlg-thread { max-height: calc(100dvh - 300px); }
+.dlg-shell.in-drawer .dlg-thread { flex: 1; }
+/* 溯源折叠（>6 条时；对账印随首屏上移） */
+.dlg-src-more summary { cursor: pointer; font-family: var(--kai); font-size: 11px;
+  letter-spacing: .18em; color: var(--ink-3); padding: 6px 0 2px; min-height: 24px;
+  display: inline-flex; align-items: center; }
+.dlg-src-more summary:hover { color: var(--zhu); }
+.dlg-src-more[open] summary { padding-bottom: 2px; }
+.dlg-src-more .dlg-src:first-of-type { border-top: 1px dashed var(--line-2); }
