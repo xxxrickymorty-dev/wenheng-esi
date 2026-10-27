@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="zh-CN" data-palette="blue" data-state="pass" data-mark="on">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 本期规划与校验 v2（静态稿 · 票 04/05 · 20261027）</title>
+<style>
+/* ============================================================
+   给 rick 审核的静态稿：单文件、双击即开、零依赖。
+   v2（20261027）替代 2026-10-10 旧稿，改四处：
+   ① 校验第③项按 2026-10-27 裁定改为「图表清单」口径
+     （章节比对已撤——计划里没有章节声明，比对空转）；
+   ② 「交人」坏例改为真实可发生的姿势
+     （旧稿「来源没被图用上」恰是实现里不做的那半边——
+      接近度/名次只进正文，按那个判会在干净稿上误报）；
+   ③ 补齐四态：一次通过 / 修复后通过 / 需人工接手 / 无产物；
+   ④ 令牌对齐 src/index.css（绿蓝双主题、零圆角、六档字号）。
+   数据取 202607 真实产物（flex_plan / flex_meta 的 check；
+   规则后端、4 图、14 条查询 67 个数据点、校验全过）。
+   ============================================================ */
+:root, html[data-palette="blue"]{
+  --field:#17456E; --field-2:#0F2E4C;
+  --tool:#26483B; --tool-2:#163228; --tool-3:#2F7A58; --tool-5:#DFEDE6;
+  --bg:#EDE9DE; --card:#FAF8F0; --panel:#E6E1D3; --card-hi:#FDFAF3;
+  --ink:#15222B; --ink-2:#43525C; --ink-3:#556169;
+  --line:#D8D2C2; --line-2:#E6E1D3;
+  --zhu:#26483B; --zhu-soft:#DFEDE6;
+  --gold:#2F7A58; --gold-soft:#DFEDE6; --gold-ink:#163228;
+  --ok:#276B4C; --ok-soft:#DFEDE6; --ok-line:#9CC4AE;
+  --warn:#7C5A16; --warn-soft:#F3E9CF;
+  --bad:#B23A2B; --bad-soft:#F4DDD7;
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  --r:0px; --r-sm:0px;
+  --shadow:0 1px 2px rgba(21,34,43,.07);
+  --fs-xs:11px; --fs-sm:12px; --fs-label:13.5px; --fs-body:15px; --fs-h:19px; --fs-sh:26px;
+}
+html[data-palette="green"]{
+  --field:#1F3A2E; --field-2:#152B21;
+  --tool:#26483B; --tool-2:#163228;
+  --bg:#EEEDE2; --card:#FAF9F0; --panel:#E4E4D2;
+  --zhu:#1A4B27; --zhu-soft:#E3EDE4;
+  --gold:#1A4B27; --gold-ink:#143729;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:var(--fs-body)/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0}
+:focus-visible{outline:2px solid var(--zhu);outline-offset:2px;border-radius:0}
+.mono{font-family:var(--mono)}
+.muted{color:var(--ink-3)}
+main{max-width:1020px;margin:0 auto;padding:24px 22px 80px}
+
+.review{position:sticky;top:0;z-index:9;display:flex;flex-wrap:wrap;gap:10px 22px;
+  align-items:center;padding:11px 22px;background:var(--panel);
+  border-bottom:1px dashed var(--line);font-size:var(--fs-label);color:var(--ink-2)}
+.review b{color:var(--ink)}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{padding:4px 12px;border:1px solid var(--line);background:var(--card);
+  border-radius:var(--r);cursor:pointer;font:inherit;font-size:var(--fs-label);color:inherit}
+.seg button[aria-pressed="true"]{background:var(--zhu);border-color:var(--zhu);color:#fff}
+
+.section-title{font-family:var(--serif);font-size:22px;margin:34px 0 0;
+  padding-bottom:8px;border-bottom:2px solid var(--ink)}
+.section-title small{font-weight:400;font-size:var(--fs-sm);color:var(--ink-3);margin-left:10px}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);padding:18px 22px;margin-top:16px}
+.card h2{font-size:var(--fs-h);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card h2 .no{font:600 var(--fs-sm)/1 var(--mono);background:var(--zhu-soft);color:var(--zhu);
+  border-radius:var(--r);padding:5px 7px}
+.hint{font-weight:400;font-size:var(--fs-sm);color:var(--ink-3);margin-left:auto}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px 26px}
+.kv dt{font-size:var(--fs-sm);color:var(--ink-3)}
+.kv dd{margin:2px 0 0}
+.foot{font-size:var(--fs-sm);color:var(--ink-3);margin:12px 0 0;padding-top:10px;
+  border-top:1px dashed var(--line-2)}
+
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:var(--r);
+  padding:2px 11px;font-size:var(--fs-label);border:1px solid transparent;white-space:nowrap}
+.badge.ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok-line)}
+.badge.warn{background:var(--warn-soft);color:var(--warn)}
+.badge.bad{background:var(--bad-soft);color:var(--bad)}
+.badge.plain{background:var(--panel);color:var(--ink-2);border-color:var(--line)}
+
+.new{position:relative;border:1.5px solid var(--bad);border-radius:var(--r-sm);
+  padding:16px 18px;background:#FFFBF9}
+html[data-mark="off"] .new{border:0;background:transparent;padding:16px 0}
+html[data-mark="off"] .tag{display:none}
+.tag{position:absolute;top:-11px;left:14px;background:var(--bad);color:#fff;
+  font-size:var(--fs-xs);border-radius:var(--r);padding:1px 10px}
+
+/* 生成台入口行 */
+.newline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:var(--fs-body)}
+.link{color:var(--gold);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+/* 三行卡（票 04 第一行 / 票 05 第二三行） */
+.row{display:grid;grid-template-columns:118px minmax(0,1fr);gap:12px;
+  padding:12px 0;border-top:1px dashed var(--line-2)}
+.row:first-of-type{border-top:0}
+.row .lb{font-size:var(--fs-label);color:var(--ink-3);padding-top:2px}
+.row .lb b{display:block;color:var(--ink);font-size:var(--fs-body);font-weight:650}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:1px 11px;font-size:var(--fs-label)}
+ul.checks{margin:6px 0 0;padding:0;list-style:none;font-size:var(--fs-body)}
+ul.checks li{display:flex;gap:9px;align-items:flex-start;padding:3px 0}
+ul.checks .m{flex:0 0 auto;font-family:var(--mono);font-size:var(--fs-label)}
+ul.checks .m.ok{color:var(--ok)} ul.checks .m.no{color:var(--bad)}
+ul.checks .why{color:var(--ink-3);font-size:var(--fs-sm);margin-left:6px}
+.remark{margin-top:8px;font-size:var(--fs-label);color:var(--ink-2);
+  border-left:3px solid var(--gold);background:var(--gold-soft);
+  border-radius:var(--r);padding:6px 12px}
+.remark b{color:var(--ink)}
+.intent+.intent{margin-top:14px;padding-top:14px;border-top:1px solid var(--line-2)}
+.intent .it{font-weight:650;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* 无产物态 */
+.none{border:1px dashed var(--line);background:transparent;border-radius:var(--r);
+  padding:14px 18px;color:var(--ink-3);font-size:var(--fs-label)}
+[data-state] .st{display:none}
+html[data-state="pass"] .st-pass{display:block}
+html[data-state="fixed"] .st-fixed{display:block}
+html[data-state="hand"] .st-hand{display:block}
+html[data-state="none"] .st-none{display:block}
+.st-title{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+</style>
+</head>
+<body>
+
+<div class="review">
+  <span><b>静态稿 v2 · 票 04/05</b>（本期规划与校验 · 20261027）</span>
+  <span class="seg" role="group" aria-label="卡片状态">
+    <button aria-pressed="true"  onclick="st('pass',this)">一次通过</button>
+    <button aria-pressed="false" onclick="st('fixed',this)">修复后通过</button>
+    <button aria-pressed="false" onclick="st('hand',this)">需人工接手</button>
+    <button aria-pressed="false" onclick="st('none',this)">无产物</button>
+  </span>
+  <span class="seg" role="group" aria-label="高亮">
+    <button aria-pressed="true" onclick="mark('on',this)">改动高亮</button>
+    <button aria-pressed="false" onclick="mark('off',this)">看正常态</button>
+  </span>
+  <span class="seg" role="group" aria-label="配色">
+    <button aria-pressed="true" onclick="pal('blue',this)">蓝·场</button>
+    <button aria-pressed="false" onclick="pal('green',this)">绿·器</button>
+  </span>
+</div>
+
+<main>
+
+  <!-- ================================================================
+       ① 生成台：任务卡里多一行入口（票 04 验收③）
+       ================================================================ -->
+  <h2 class="section-title">① 生成台 <small>改动：任务卡里多一行「本期规划」入口</small></h2>
+
+  <section class="card">
+    <h2><span class="no">本期</span>202607 期 · 生成任务<span class="hint">三步：取数 → 核对并并入 → 一键生成</span></h2>
+
+    <div style="display:flex;gap:10px;margin:12px 0 0;flex-wrap:wrap">
+      <span class="badge ok">数据已就绪</span>
+      <span class="badge plain">灵活报告 2 份</span>
+    </div>
+
+    <div style="margin-top:14px">
+      <div class="new">
+        <span class="tag">新增</span>
+        <div class="newline">
+          <b>本期规划：</b>
+          <span>工程学 · 近 7 期 · 4 张图 · 3 项数据校验</span>
+          <span class="link">点看 ▸</span>
+          <span class="muted" style="font-size:var(--fs-sm)">（跳到运行档案的「本期规划与校验」）</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="foot">口径：这一行只在<b>本期出过灵活报告</b>时出现；本期没有产物就整行不显示，不留空壳（无产物态见下）。</p>
+  </section>
+
+  <!-- ================================================================
+       ② 运行档案：本期规划与校验卡（票 04 第一行 / 票 05 第二三行）
+          三行结构：本期规划 / 数据校验 / 回退与交人
+          多意图逐条列出（票 04 验收④），不合并、不丢。
+       ================================================================ -->
+  <h2 class="section-title">② 运行档案 <small>新增「本期规划与校验」卡——三行：规划 / 校验 / 回退与交人</small></h2>
+
+  <!-- ─────────────── 态一：一次通过 ─────────────── -->
+  <section class="card st st-pass">
+    <div class="st-title">
+      <h2>本期规划与校验<span class="hint">灵活报告 · 2 份，逐份列出</span></h2>
+      <span class="badge ok">3 项数据校验全过</span>
+    </div>
+
+    <div class="intent">
+      <div class="it">① 单学科趋势诊断 <span class="badge plain">规划：自动 · 未改动</span></div>
+      <div class="row"><div class="lb">本期规划<b>打算做什么</b></div>
+        <div>
+          <div class="kv">
+            <div><dt>分析对象</dt><dd><b>工程学</b>（全池 22 学科里，离 1% 线最近的潜力学科）</dd></div>
+            <div><dt>观察窗口</dt><dd>近 7 期（202509–202609）</dd></div>
+            <div><dt>配图</dt><dd>4 张</dd></div>
+          </div>
+          <div class="chips">
+            <span class="chip">被引 vs 1% 阈值 · 看追赶态势</span>
+            <span class="chip">CNCI · 看影响力相对水平</span>
+            <span class="chip">排名百分位 · 看相对位次</span>
+            <span class="chip">被引 vs 1‰ 阈值 · 看顶尖差距</span>
+          </div>
+        </div>
+      </div>
+      <div class="row"><div class="lb">数据校验<b>核哪几件事</b></div>
+        <div>
+          <ul class="checks">
+            <li><span class="m ok">✓</span><span>每个数字都能指回台账的格子<span class="why">（67 / 67）</span></span></li>
+            <li><span class="m ok">✓</span><span>每个数据点都带完整出处<span class="why">（数据集 · 指标 · 学科 · 期次）</span></span></li>
+            <li><span class="m ok">✓</span><span>声明的图与实际出的图一致<span class="why">（4 / 4）</span></span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="row"><div class="lb">回退与交人<b>中间发生了什么</b></div>
+        <div>一次通过——没有重跑，也没有需要人工接手的地方；稿子已放行，等复核签单。</div>
+      </div>
+    </div>
+
+    <div class="intent">
+      <div class="it">② 全学科横向对比 <span class="badge plain">规划：自动 · 未改动</span></div>
+      <div class="row"><div class="lb">本期规划<b>打算做什么</b></div>
+        <div>
+          <div class="kv">
+            <div><dt>分析对象</dt><dd>全池 22 学科一起看</dd></div>
+            <div><dt>配图</dt><dd>4 张</dd></div>
+          </div>
+          <div class="chips">
+            <span class="chip">22 学科与 1% 基线的距离一览</span>
+            <span class="chip">已进线学科与 1‰ 的差距</span>
+          </div>
+        </div>
+      </div>
+      <div class="row"><div class="lb">数据校验<b>核哪几件事</b></div>
+        <div>
+          <ul class="checks">
+            <li><span class="m ok">✓</span><span>每个数字都能指回台账的格子<span class="why">（62 / 62）</span></span></li>
+            <li><span class="m ok">✓</span><span>每个数据点都带完整出处</span></li>
+            <li><span class="m ok">✓</span><span>声明的图与实际出的图一致<span class="why">（4 / 4）</span></span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="row"><div class="lb">回退与交人<b>中间发生了什么</b></div>
+        <div>一次通过。</div>
+      </div>
+    </div>
+
+    <p class="foot">这张卡只展示，不改任何东西。本期有几份灵活报告就列几段——逐条列出，不合并、不丢。</p>
+  </section>
+
+  <!-- ─────────────── 态二：修复后通过 ─────────────── -->
+  <section class="card st st-fixed">
+    <div class="st-title">
+      <h2>本期规划与校验<span class="hint">灵活报告 · 单学科趋势诊断</span></h2>
+      <span class="badge ok">已自动修复 · 校验通过</span>
+    </div>
+
+    <div class="intent">
+      <div class="it">① 单学科趋势诊断 <span class="badge warn">规划：修复过 1 次</span></div>
+      <div class="row"><div class="lb">本期规划<b>打算做什么</b></div>
+        <div>
+          <div class="kv">
+            <div><dt>分析对象</dt><dd><b>工程学</b>（离 1% 线最近的潜力学科）</dd></div>
+            <div><dt>配图</dt><dd>4 张</dd></div>
+          </div>
+        </div>
+      </div>
+      <div class="row"><div class="lb">数据校验<b>核哪几件事</b></div>
+        <div>
+          <ul class="checks">
+            <li><span class="m ok">✓</span><span>每个数字都能指回台账的格子<span class="why">（67 / 67）</span></span></li>
+            <li><span class="m ok">✓</span><span>每个数据点都带完整出处</span></li>
+            <li><span class="m no">✗</span><span>声明的图与实际出的图一致<span class="why">（首轮 3 / 4：「排名百分位」图没有出出来）</span></span></li>
+          </ul>
+          <div class="remark"><b>自动修复：</b>带着这条原因<b>重新规划了一次</b>（上限就是 1 次），按新规划重出稿。</div>
+        </div>
+      </div>
+      <div class="row"><div class="lb">回退与交人<b>中间发生了什么</b></div>
+        <div>
+          <ul class="checks">
+            <li><span class="m ok">✓</span><span>自动修复 1 次 → 复检通过<span class="why">（修复后 4 / 4）</span></span></li>
+            <li><span class="m ok">✓</span><span>无需人工接手，稿子已放行</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <p class="foot">「修复后通过」的稿子会带一枚醒目标记——馆员知道这份稿子中间返过一次工，复核时可以多看一眼。</p>
+  </section>
+
+  <!-- ─────────────── 态三：需人工接手 ─────────────── -->
+  <section class="card st st-hand">
+    <div class="st-title">
+      <h2>本期规划与校验<span class="hint">灵活报告 · 单学科趋势诊断</span></h2>
+      <span class="badge bad">需人工接手</span>
+    </div>
+
+    <div class="intent">
+      <div class="it">① 单学科趋势诊断 <span class="badge bad">修复后仍未通过</span></div>
+      <div class="row"><div class="lb">本期规划<b>打算做什么</b></div>
+        <div>
+          <div class="kv">
+            <div><dt>分析对象</dt><dd><b>工程学</b></dd></div>
+            <div><dt>配图</dt><dd>4 张</dd></div>
+          </div>
+        </div>
+      </div>
+      <div class="row"><div class="lb">数据校验<b>核哪几件事</b></div>
+        <div>
+          <ul class="checks">
+            <li><span class="m ok">✓</span><span>每个数字都能指回台账的格子</span></li>
+            <li><span class="m no">✗</span><span>每个数据点都带完整出处<span class="why">（「排名百分位」要用的数据，在本期台账里缺失）</span></span></li>
+            <li><span class="m ok">✓</span><span>声明的图与实际出的图一致</span></li>
+          </ul>
+          <div class="remark"><b>自动修复：</b>已带着这条原因重新规划过 1 次（上限就是 1 次），复检<b>仍不过</b>——系统停下，<b>不带着问题出稿</b>。</div>
+        </div>
+      </div>
+      <div class="row"><div class="lb">回退与交人<b>中间发生了什么</b></div>
+        <div>
+          <ul class="checks">
+            <li><span class="m no">✗</span><span>自动修复 1 次 → 复检仍不过</span></li>
+            <li><span class="m no">✗</span><span><b>需人工接手</b>：请馆员人工复核后再使用；失败原因已写进明细，报告首页也有同样的提示</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <p class="foot">交人的稿子三处都写明「需人工接手」：这张卡、报告首页、档案明细——馆员一眼知道该自己上了。</p>
+  </section>
+
+  <!-- ─────────────── 态四：无产物 ─────────────── -->
+  <section class="card st st-none">
+    <div class="st-title">
+      <h2>本期规划与校验<span class="hint">另一期次的对照（如 202601 期）</span></h2>
+    </div>
+    <div class="none">
+      本期还没有灵活报告——没有可展示的规划与校验。<b>整卡不渲染</b>，
+      生成台也没有「本期规划」入口行，不留空壳。
+    </div>
+    <p class="foot">对照上方的生成台：入口行与这张卡同进退——有产物一起出现，没产物一起不出现。</p>
+  </section>
+
+  <p class="foot" style="margin-top:26px">
+    口径核对：界面只出现馆员话术（本期规划 / 数据校验 / 自动修复 / 需人工接手），
+    内部称谓与实现名词一律不上屏（对照 web/src/lib/banned.ts 黑名单逐词验过）。
+    校验三项与真实判定一一对应：①数字可回读（含正文覆盖）②数据点出处齐全
+    （来源链双向，按指标对图、不按类型）③声明与实际产出一致
+    （2026-10-27 裁定：只对图表清单，不对章节）。每段都能指回真实产物字段。
+    <!-- 字段对照（审核用，不上屏）：flex_plan.json 的 charts/considered/
+         fallback_reason；flex_meta.json 的 check（pass/trace/coverage）
+         与 critic（rounds/escalated/hint）。 -->
+  </p>
+
+</main>
+
+<script>
+function st(v, btn){
+  document.documentElement.dataset.state = v;
+  const seg = btn.parentNode;
+  seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+}
+function mark(v, btn){
+  document.documentElement.dataset.mark = v;
+  btn.parentNode.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+}
+function pal(v, btn){
+  document.documentElement.dataset.palette = v;
+  btn.parentNode.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+}
+</script>
+</body>
+</html>
