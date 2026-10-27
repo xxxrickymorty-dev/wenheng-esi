@@ -105,10 +105,93 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
    米白字 1.00:1 完全不可见；且 1366×768 / 1440×900 上首屏 960px 高于折叠线，它连视口都不在）。
    改法：① 挪进 .shelf 内部，按托板线（bottom 43.75%）定位到托板正下方 46px，任何视口都贴着书；
         ② 字色改 --gold-2（金），并叠两层深色 text-shadow 压住木纹亮斑——沿用 .vol .cap 已有的写法，
-           不引入新视觉语言；实测 6 视口均 ≥4.5:1；③ 字号 10 → 11px（UX.md 音阶下限）。 */
-.down{position:absolute;left:50%;bottom:calc(43.75% - 46px);transform:translateX(-50%);z-index:5;
+           不引入新视觉语言；实测 6 视口均 ≥4.5:1；③ 字号 10 → 11px（UX.md 音阶下限）。
+   2026-10-26 二次修（rick 截图：hover 书目行压在这条提示上）：居中的提示与居中的该册书目行
+   恰好同高。改成「谁被看谁说话」——鼠标落到书册上时提示让位淡出；平时轻微上下浮动当引导。
+   居中改用独立的 translate 属性（transform 留给 :active / 以后的位移，互不打架）。 */
+.down{position:absolute;left:50%;translate:-50% 0;bottom:calc(43.75% - 46px);z-index:5;
   margin:0;font:11px var(--mono);letter-spacing:.34em;color:var(--gold-2);white-space:nowrap;
-  text-shadow:0 0 12px rgba(8,5,2,.92),0 1px 3px rgba(8,5,2,.95)}
+  text-shadow:0 0 12px rgba(8,5,2,.92),0 1px 3px rgba(8,5,2,.95);
+  transition:opacity .22s var(--ease);
+  animation:nudge 2.8s ease-in-out 1.4s infinite}
+@keyframes nudge{0%,100%{translate:-50% 0}50%{translate:-50% 5px}}
+/* 书册被 hover / 键盘聚焦时，这条提示让位——否则它一定压在该册的书目行上 */
+.shelf:has(.vol:hover) .down,.shelf:has(.vol:focus-visible) .down{opacity:0;animation-play-state:paused}
+
+/* ══════ 动效（2026-10-26 rick：「整个网站的动效太少了，很死板」）══════
+   取「光 / 尘 / 纸」三种物理感，不用弹跳、不用霓虹、不加依赖：
+   ① 书册依次落架（像一册册摆上架）  ② 标题淡入 + 字距收拢
+   ③ 开场一道金光沿托板走过（一次性）  ④ 浮尘常驻（6 粒，极轻）
+   ⑤ 书册 hover 时金线亮起（配合已有的抬升）  ⑥ 章节进入视口淡入上浮
+   全部在 prefers-reduced-motion 下停在终态；不碰任何数字，不做计数动画
+   ——数字跳起来会让人以为在编数。 */
+
+/* ① 书册依次落架：用独立的 translate 属性做入场，transform 留给 hover，两者互不覆盖。
+   animation-fill-mode:both 保证动画结束后 translate 停在 0，hover 的 transform 照常生效。 */
+@keyframes vol-in{from{translate:0 22px;opacity:0}to{translate:0 0;opacity:1}}
+.vol{translate:0 22px;opacity:0;
+  animation:vol-in .62s var(--ease) both;
+  animation-delay:calc(var(--i, 0) * 55ms + 60ms)}
+
+/* ② 标题淡入 + 字距从松收到标准（衬线大字收字距＝「落定」的感觉） */
+@keyframes rise-in{from{opacity:0;translate:0 14px}to{opacity:1;translate:0 0}}
+@keyframes track-in{from{opacity:0;letter-spacing:.2em}to{opacity:1;letter-spacing:.06em}}
+.headline h1{animation:track-in 1.05s var(--ease) both .04s}
+.headline p{animation:rise-in .85s var(--ease) both .32s}
+
+/* ③ 开场一道金光沿托板前沿走过，2.8s 一次，之后不再出现 */
+@keyframes board-sheen{
+  0%{opacity:0;background-position:130% 0}
+  16%{opacity:.95}
+  68%{opacity:.5}
+  100%{opacity:0;background-position:-30% 0}}
+.shelf-view::before{content:"";position:absolute;left:50%;translate:-50% 0;
+  bottom:calc(43.4% - 1px);width:min(100%,1560px);height:2px;z-index:4;pointer-events:none;
+  background:linear-gradient(90deg,transparent 0%,transparent 36%,rgba(224,203,146,.95) 50%,
+    transparent 64%,transparent 100%);
+  background-size:260% 100%;
+  animation:board-sheen 2.8s var(--ease) .45s both}
+
+/* ④ 浮尘：6 粒金色微尘缓慢上浮，周期各不相同，避免同频 */
+@keyframes drift{
+  0%{opacity:0;translate:0 0}
+  10%{opacity:.30}
+  55%{opacity:.14;translate:8px -110px}
+  88%{opacity:.22}
+  100%{opacity:0;translate:16px -230px}}
+.dust{position:absolute;inset:0;z-index:2;overflow:hidden;pointer-events:none}
+.dust i{position:absolute;left:var(--x);bottom:6%;width:2px;height:2px;border-radius:50%;
+  background:var(--gold-2);opacity:0;
+  animation:drift var(--dur) linear var(--delay) infinite}
+
+/* ⑤ 书册 hover：书脊金线亮起（抬升与阴影已在 .vol:hover 里） */
+.vol:hover::before,.vol:focus-visible::before{border-right-color:rgba(224,203,146,.85)}
+
+/* ⑦ 四站截图：鼠标经过时极轻微推近 + 边框转金——让人知道它是「真系统的一屏」而不是插图 */
+.shot{overflow:hidden}
+.shot img{transition:transform .55s var(--ease),border-color .35s var(--ease)}
+.shot:hover img{transform:scale(1.015);border-color:rgba(201,169,97,.75)}
+
+/* ⑧ 问文衡输入框：聚焦时底线从中间向两侧展开 */
+.askform{position:relative}
+.askform::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;
+  background:var(--g-mid);transform:scaleX(0);transform-origin:50% 50%;
+  transition:transform .42s var(--ease)}
+.askform:focus-within::after{transform:scaleX(1)}
+
+/* ⑥ 章节进入视口：只对「挂载时在折叠线以下」的段生效，首屏内容永不隐藏 */
+.sec.reveal-arm{opacity:0;translate:0 26px;
+  transition:opacity .72s var(--ease),translate .72s var(--ease)}
+.sec.reveal-arm.is-in{opacity:1;translate:0 0}
+
+@media (prefers-reduced-motion:reduce){
+  .vol,.headline h1,.headline p,.shelf-view::before,.dust i,.down{animation:none}
+  .vol{translate:0 0;opacity:1}
+  .dust{display:none}
+  .sec.reveal-arm{opacity:1;translate:0 0;transition:none}
+  .shot img,.askform::after{transition:none}
+  .shot:hover img{transform:none}
+}
 
 /* ══════ 册页（文档流） ══════ */
 .flow{position:relative;z-index:3;background:var(--paper);color:var(--lib-ink)}

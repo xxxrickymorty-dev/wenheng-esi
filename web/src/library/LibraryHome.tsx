@@ -122,6 +122,17 @@ function fmt(n?: number) {
 type DetailState = { open: boolean; period: string }
 const DETAIL_CLOSED: DetailState = { open: false, period: '' }
 
+/* 浮尘（2026-10-26 动效）：6 粒金色微尘，各自不同的周期与延时，避免同频成阵。
+   只是氛围，不放数字、不代表状态；prefers-reduced-motion 下整层不渲染。 */
+const DUST = [
+  { x: '14%', dur: '24s', delay: '0s' },
+  { x: '27%', dur: '31s', delay: '4s' },
+  { x: '43%', dur: '27s', delay: '9s' },
+  { x: '58%', dur: '34s', delay: '2s' },
+  { x: '71%', dur: '29s', delay: '13s' },
+  { x: '86%', dur: '26s', delay: '6s' },
+]
+
 export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHomeProps) {
   const vols = useMemo(() => buildVols(books, pendingPeriods ?? []), [books, pendingPeriods])
   /* 排布一次算好：当期下标决定每册多宽，宽度又决定后面每一册的起点 */
@@ -175,6 +186,37 @@ export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHom
     return () => window.removeEventListener('hashchange', apply)
   }, [vols, openDetail])
 
+  /* 章节揭示（2026-10-26）：只把「挂载时在折叠线以下」的段先藏起来，再滚动淡入。
+     首屏内容永不隐藏；IntersectionObserver 不触发时 2.5 s 整体放行——
+     这一页是给评委看的，宁可不做动画，也不能出现空白段。 */
+  useEffect(() => {
+    const secs = Array.from(document.querySelectorAll<HTMLElement>('.flow .sec'))
+    if (!secs.length) return
+    if (!('IntersectionObserver' in window)) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const armed = secs.filter((s) => s.getBoundingClientRect().top > window.innerHeight * 0.9)
+    if (!armed.length) return
+    armed.forEach((s) => s.classList.add('reveal-arm'))
+    let fired = false
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue
+        fired = true
+        e.target.classList.add('is-in')
+        io.unobserve(e.target)
+      }
+    }, { rootMargin: '0px 0px -10% 0px', threshold: 0.05 })
+    armed.forEach((s) => io.observe(s))
+    const safety = window.setTimeout(() => {
+      if (!fired) armed.forEach((s) => s.classList.add('is-in'))
+    }, 2500)
+    return () => {
+      io.disconnect()
+      window.clearTimeout(safety)
+      armed.forEach((s) => s.classList.remove('reveal-arm', 'is-in'))
+    }
+  }, [])
+
   const frameSrc = detail.open ? `/app/shelf/pages.html#issue-${detail.period}` : 'about:blank'
 
   return (
@@ -189,6 +231,11 @@ export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHom
 
       {/* 首屏 · 书架 */}
       <section className="shelf-view">
+        <span className="dust" aria-hidden="true">
+          {DUST.map((d) => (
+            <i key={d.x} style={{ '--x': d.x, '--dur': d.dur, '--delay': d.delay } as CSSProperties} />
+          ))}
+        </span>
         <div className="headline">
           <h1>一年六期，一期一册。</h1>
           <p>云南大学图书馆 · 学科信息参考 · 2026 年馆藏</p>
@@ -197,7 +244,7 @@ export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHom
           {/* 新书期次待装帧：DESIGN_MAP 查不到封面时用深绿底期号占位（样式见 shelf-landing.css）。
               往期册封面叠期号铭牌：素材图里印的是当期号，铭牌盖住并印正确期号/月份 */}
           {vols.map((v, i) => {
-            const style: CSSProperties & { '--x': string } = { '--x': xs[i] ?? '16.8%' }
+            const style = { '--x': xs[i] ?? '16.8%', '--i': i } as CSSProperties
             const tone = v.featured ? ' is-featured' : ' is-sub'
             /* 待装帧：不是书，不可点、不进 Tab 序，也不给 hover 书目行（面上已写期号与「待装帧」） */
             if (v.pending) {
