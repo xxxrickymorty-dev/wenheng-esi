@@ -10,6 +10,9 @@ export default defineConfig({
   server: {
     host: '127.0.0.1',
     port: 5180, strictPort: false,
+    /* 8080 预览壳（wenheng/preview_5180.py）反代 /app 到这里时，HMR 直连 5180，
+       不走那条 HTTP 反代（它不转 WebSocket）；直连 5180 浏览时本来就是默认值。 */
+    hmr: { host: '127.0.0.1', port: 5180 },
     /* dev 下 /api 与登录转给同一台 FastAPI（登录 cookie 同 host 共享）。
        工作区全量迁入后，壳内 陈列馆(ShelfPage) 还要吃 8080 的陈列馆数据与素材。 */
     proxy: {
