@@ -304,6 +304,160 @@ class Test计划含校验点:
         assert isinstance(checks, list) and 3 <= len(checks) <= 5
 
 
+# ================================================================ 1.5 校验执行声明（票 02）
+class Test校验执行声明三锚点:
+    """票 02：计划里**声明过的校验点被真的执行**——三锚点机械可核、坏例必拦。
+
+    走缝 S1 的产物（flex_report_out，规则后端），从落盘产物重建 built 再调
+    `report.self_check`（坏例姿势照 `test_一张图都没有时自检必须判不过`）：
+    flex_plan.json＝声明，flex_specs.json＝实际执行，flex_sources.json＝来源与
+    产出图（同一份好产物的坏例变体，不铺多套夹具）。
+    """
+
+    @staticmethod
+    def _artifacts(flex_report_out):
+        d = pathlib.Path(flex_report_out["dir"])
+
+        def load(name):
+            return json.loads((d / name).read_text(encoding="utf-8"))
+
+        return {"plan": load("flex_plan.json"), "specs": load("flex_specs.json"),
+                "sources": load("flex_sources.json"),
+                "md": (d / "report.md").read_text(encoding="utf-8"), "dir": d}
+
+    @classmethod
+    def _built(cls, art, mutate=None):
+        """好产物的 built（sources/charts/specs/plan 同源）；mutate 注入一处破坏。"""
+        art = {k: json.loads(json.dumps(art[k]))          # 深拷贝：坏例互不沾染
+               for k in ("plan", "specs", "sources")}
+        # charts 对齐 `ledger.charts()` 的落盘形状（{**payload, path: file}）——
+        # flex_sources.json 的 chart 条目只有 `file` 键，缺 `path` 会让
+        # 账本自查把 declared 图数成 0（evidence_ok 恒 False，与锚点无关）。
+        built = {"blocks": [], "sources": art["sources"],
+                 "charts": [dict(x, path=x.get("file")) for x in art["sources"]
+                            if x.get("kind") == "chart"],
+                 "specs": art["specs"], "plan": art["plan"]}
+        if mutate:
+            mutate(built)
+        return built
+
+    @staticmethod
+    def _anchor(check, kind):
+        return next(a for a in check["anchors"] if a["kind"] == kind)
+
+    def test_干净对照_三锚点全过(self, flex_report_out):
+        """什么都不破坏：三锚点全绿、check.pass 仍 True、anchors 三条齐。"""
+        art = self._artifacts(flex_report_out)
+        c = report.self_check(art["md"], None, self._built(art))
+        assert c["pass"], c
+        anchors = c["anchors"]
+        assert [a["kind"] for a in anchors] == \
+            ["source_trace", "spec_query_match", "outline_match"]
+        for a in anchors:
+            assert set(a) == {"kind", "target", "pass", "misses"}
+            assert a["pass"] is True and a["misses"] == [], a
+        # 落盘看得见：flex_meta.json 的 check 里带锚点明细
+        meta = json.loads((art["dir"] / "flex_meta.json").read_text(encoding="utf-8"))
+        assert len(meta["check"]["anchors"]) == 3
+
+    def test_挖空出处_红且指向来源链(self, flex_report_out):
+        """① 正向：点的 source 四字段缺一即红。"""
+
+        def mutate(built):
+            for x in built["sources"]:
+                if x.get("kind") == "series" and x.get("points"):
+                    x["points"][0]["source"] = {}
+                    return
+            raise AssertionError("夹具里没有带数据点的来源条目")
+
+        art = self._artifacts(flex_report_out)
+        c = report.self_check(art["md"], None, self._built(art, mutate))
+        assert not c["pass"], c
+        a = self._anchor(c, "source_trace")
+        assert not a["pass"] and a["misses"]
+
+    def test_红队_指标来源条目删光必红且指向来源链(self, flex_report_out):
+        """红队（spec 验收判据②的载体）：来源链缺一个指标 → 必须红，
+        失败项指向 source_trace。
+
+        🔴 删的是声明图要消费的指标，且要**删光它的全部查询条目**——
+        同一指标可能有多条查询记录（如 total_cites 在本稿有 3 条），
+        只删一条指标仍在账上，反向比对判绿是**正确行为**，不构成坏例。
+        挑 needed 里条目最少的指标下手，misses 收到一条明确短句。
+        """
+        art = self._artifacts(flex_report_out)
+
+        def mutate(built):
+            needed = {m for c in built["plan"]["charts"]
+                      for m in spec.KINDS[c["kind"]]["needs"]}
+            victim = min(sorted(needed),
+                         key=lambda m: sum(1 for x in built["sources"]
+                                           if x.get("metric") == m))
+            built["sources"] = [x for x in built["sources"]
+                                if x.get("metric") != victim]
+
+        c = report.self_check(art["md"], None, self._built(art, mutate))
+        assert not c["pass"], c
+        a = self._anchor(c, "source_trace")
+        assert not a["pass"] and a["misses"]
+
+    def test_多声明一张图未执行_红指向图声明比对(self, flex_report_out):
+        """② 声明未执行：计划多声明一张没执行的图。"""
+
+        def mutate(built):
+            built["plan"]["charts"].append(
+                {"kind": "top_papers", "disc": built["plan"]["disc"]})
+
+        art = self._artifacts(flex_report_out)
+        c = report.self_check(art["md"], None, self._built(art, mutate))
+        assert not c["pass"], c
+        a = self._anchor(c, "spec_query_match")
+        assert not a["pass"] and any("未执行" in m for m in a["misses"])
+
+    def test_多执行一个查询未声明_红指向图声明比对(self, flex_report_out):
+        """② 执行未声明（双向的另一半）：执行记录里多出一个没声明的 spec。"""
+
+        def mutate(built):
+            built["specs"].append({"kind": "papers_delta", "disc": built["plan"]["disc"]})
+
+        art = self._artifacts(flex_report_out)
+        c = report.self_check(art["md"], None, self._built(art, mutate))
+        assert not c["pass"], c
+        a = self._anchor(c, "spec_query_match")
+        assert not a["pass"] and any("未声明" in m for m in a["misses"])
+
+    def test_声明图未产出_红指向图表清单比对(self, flex_report_out):
+        """③ 声明未产出（收敛到图表清单后的双向之一）。"""
+        art = self._artifacts(flex_report_out)
+        c = report.self_check(art["md"], None,
+                              self._built(art, lambda b: b["charts"].pop()))
+        assert not c["pass"], c
+        a = self._anchor(c, "outline_match")
+        assert not a["pass"] and any("未产出" in m for m in a["misses"])
+
+    def test_多产出一张图_红指向图表清单比对(self, flex_report_out):
+        """③ 多产出未声明（双向的另一半）。"""
+
+        def mutate(built):
+            disc = built["plan"]["disc"]
+            built["charts"].append({"kind": "chart", "chart_kind": "top_papers",
+                                    "file": f"charts/top_papers__{disc}.png",
+                                    "sources": [{"discipline": disc}]})
+
+        art = self._artifacts(flex_report_out)
+        c = report.self_check(art["md"], None, self._built(art, mutate))
+        assert not c["pass"], c
+        a = self._anchor(c, "outline_match")
+        assert not a["pass"] and any("未声明" in m for m in a["misses"])
+
+    def test_大纲比对收敛到图表清单(self, src):
+        """③ 二选一已裁（2026-10-27）：撤 sections 维度，target=charts、
+        expect=declared==emitted（词表 {kind,target,expect} 不变）。"""
+        plan = planner.build(src, "single_trend")
+        om = next(c for c in plan["checks"] if c["kind"] == "outline_match")
+        assert om["target"] == "charts" and om["expect"] == "declared==emitted"
+
+
 # ================================================================ 2. 不可分叉
 class Test数字可回溯:
     """验收第 6 条：每个数字能指到查询记录与台账来源。"""

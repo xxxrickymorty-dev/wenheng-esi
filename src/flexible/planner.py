@@ -42,15 +42,18 @@ _PLAN_KEYS = ("intent", "disc", "metric", "periods", "n_periods", "charts", "tit
 def checks_for(intent: str) -> list[dict]:
     """本意图的校验点清单（确定性、可复现；键仅 `kind` / `target` / `expect`）。
 
-    三条锚点（spec §实现决策）：
+    三条锚点（spec §实现决策；③ 2026-10-27 裁定收敛到图表清单）：
     - `source_trace`：数据点与来源**双向**对得上；
     - `spec_query_match`：图（spec）声明与实际执行一致；
-    - `outline_match`：声明清单（章节 / 图表）与实际产出一致。
+    - `outline_match`：**声明的图表清单**与实际产出一致。
+      🔴 不补 sections 声明：`_PLAN_KEYS` 键面冻结、模型面不扩，计划里本来
+      就没有 sections 键——原型（prototype/critic-anchors）证明按 sections
+      比对无从比对、恒绿（空转），故撤掉该维度，收敛到图表清单。
     """
     return [
         {"kind": "source_trace", "target": "all_points", "expect": "bidirectional"},
         {"kind": "spec_query_match", "target": "charts", "expect": "declared==executed"},
-        {"kind": "outline_match", "target": "sections", "expect": "declared==emitted"},
+        {"kind": "outline_match", "target": "charts", "expect": "declared==emitted"},
     ]
 
 _PLAN_SYSTEM = (

@@ -39,7 +39,7 @@ from dataclasses import dataclass, field
 
 from . import opinion as op
 from . import planner, provenance as pv, queries as q, spec as sp
-from .datasource import DataSource, cn_name, period_label
+from .datasource import METRICS, DataSource, cn_name, period_label
 
 BANNER = "内部参考 · 非报送件"
 """导出件页脚/页眉标注。从源头杜绝「分析稿被误当正式报告发出去」。"""
@@ -473,6 +473,9 @@ def _build(c: _ReportCtx, on_section=None, on_outline=None) -> dict:
     c.blocks = _collect(sections, on_section, on_outline)
     return {"blocks": c.blocks, "sources": c.ledger.sources_json(),
             "charts": c.ledger.charts(), "ledger": c.ledger,
+            # 票 02：锚点要比对的三样都随 built 走——specs＝实际执行的 spec 清单
+            # （与 flex_specs.json 同源），plan＝含 checks 的声明（自检签名不变）。
+            "specs": [s["spec"] for s in c.specs_out], "plan": dict(c.plan),
             "backstop_n": c.backstop_n, "write_log": c.log,
             "selected": dict(c.selected)}
 
@@ -517,8 +520,158 @@ def _render(plan: dict, built: dict, meta: dict) -> str:
     return "\n".join(L)
 
 
+# ------------------------------------------------------------------ 校验锚点（票 02）
+def _chart_tag(key: str) -> str:
+    """`kind|disc` → 人话短名（misses 用；只含图型名/学科名，不含报告数值）。"""
+    kind, _, disc = key.partition("|")
+    return f"{kind}（{disc}）" if disc else kind
+
+
+def _declared_chart_keys(plan: dict) -> list[str]:
+    """计划声明的图（flex_plan.json 的 charts）→ `kind|disc` 键，保序去重。"""
+    keys = [f"{c.get('kind')}|{c.get('disc') or ''}"
+            for c in plan.get("charts") or [] if isinstance(c, dict)]
+    return list(dict.fromkeys(keys))
+
+
+def _anchor_source_trace(plan: dict, built: dict) -> dict:
+    """① source_trace（all_points / bidirectional）：数据点与来源双向对得上。
+
+    正向＝每个数据点的 `source` 四字段（dataset/metric/discipline/period）齐全，
+    缺一即红。反向＝**按 metric ↔ 消费它的图**：每张声明图要消费的指标
+    （`spec.KINDS[kind]["needs"]`），在来源清单里至少有一条查询条目。
+
+    🔴 反向**不按 kind 比对**：来源条目的 kind 是查询类型（series/compare/…），
+    图的 kind 是图型（cites_threshold/…）——两套词表永远匹配不上，原型
+    （prototype/critic-anchors，202607 真产物）在干净产物上即误报。
+
+    🔴 反向也**不做「来源条目必须被图消费」**这半边：概况节的接近度/名次/
+    顶尖论文、影响力节的发文数等只进正文表格与导语句，本来就没有图消费
+    （proximity_1pct/rank/top_papers/papers/rank_intl_pct 均无图），按此判
+    会在干净产物上误报。「来源被消费」由证据账的 coverage（正文数字全覆盖，
+    `provenance._coverage`）承担，这里不重复。needs 里的非台账表
+    （q1q4/ynd_rank/entered_1pct）是宽表直读、不走查询链，同样不参与比对。
+    """
+    fwd: list[str] = []
+    have: set[str] = set()
+    for entry in built.get("sources") or []:
+        if not isinstance(entry, dict) or entry.get("kind") not in pv.QUERY_KINDS:
+            continue                                    # chart/derived/peers 无逐点链
+        metric = entry.get("metric")
+        if metric:
+            have.add(str(metric))
+        pts = [x for x in (entry.get("points") or entry.get("items")
+                           or entry.get("rows") or entry.get("events") or [])
+               if isinstance(x, dict)]
+        if not pts and isinstance(entry.get("source"), dict):
+            pts = [{"source": entry["source"]}]         # at/delta：链在顶层
+        for it in pts:
+            m = it.get("metric") or metric
+            if m:
+                have.add(str(m))
+            for key in ("source", "source_prev"):
+                chain = it.get(key)
+                if not isinstance(chain, dict):
+                    continue                            # 无链的点由 trace 判坏，不在此重复
+                missing = [f for f in ("dataset", "metric", "discipline", "period")
+                           if not chain.get(f)]
+                if missing:
+                    fwd.append(f"数据点缺出处（{'、'.join(missing)}）："
+                               f"{m or '?'}·{chain.get('period') or it.get('period') or '?'}")
+    needed: set[str] = set()
+    for c in plan.get("charts") or []:
+        meta = sp.KINDS.get((c or {}).get("kind"))
+        if meta:
+            needed |= {m for m in meta["needs"] if m in METRICS}
+    misses = fwd + [f"声明图的指标 {m} 无来源条目" for m in sorted(needed - have)]
+    return {"pass": not misses, "misses": misses}
+
+
+def _anchor_spec_query(plan: dict, built: dict) -> dict:
+    """② spec_query_match（charts / declared==executed）：声明 ↔ 执行记录，双向。
+
+    声明＝计划 `charts`（落 `flex_plan.json`）；执行＝`spec.make` 实际渲染的
+    spec 清单（与 `flex_specs.json` 同源，随 `built["specs"]` 进自检）。
+    声明未执行、执行未声明都红。比对键＝kind+disc——两边都是图表声明、
+    同一套词表（①的那种 kind 错位在这里不存在）。
+    """
+    declared = _declared_chart_keys(plan)
+    executed = list(dict.fromkeys(
+        f"{s.get('kind')}|{s.get('disc') or ''}"
+        for s in built.get("specs") or [] if isinstance(s, dict)))
+    dset, eset = set(declared), set(executed)
+    misses = ([f"声明图未执行：{_chart_tag(x)}"
+               for x in declared if x not in eset]
+              + [f"执行了未声明的图：{_chart_tag(x)}"
+                 for x in executed if x not in dset])
+    return {"pass": not misses, "misses": misses}
+
+
+def _emitted_chart_key(ch: dict) -> str:
+    """一条已产出图（账本 payload 或 spec.make 结果）→ `kind|disc` 键。"""
+    kind = ch.get("chart_kind") or ch.get("kind")
+    if kind == "chart":                     # 账本 payload 的占位 kind，不是图型
+        kind = ""
+    disc = None
+    if isinstance(ch.get("spec"), dict):
+        disc = ch["spec"].get("disc")
+    if disc is None:
+        for s in ch.get("sources") or []:
+            if isinstance(s, dict) and s.get("discipline"):
+                disc = s["discipline"]
+                break
+    return f"{kind or ''}|{disc or ''}"
+
+
+def _anchor_outline(plan: dict, built: dict) -> dict:
+    """③ outline_match（charts / declared==emitted）：声明 ↔ 产出图表清单，双向。
+
+    声明＝计划 `charts`；产出＝账本登记的图表文件清单（`built["charts"]`，
+    与 flex_meta.json 的 charts 同源）。声明未产出、多产出未声明都红。
+
+    🔴 2026-10-27 裁定：**撤掉 sections 维度**，收敛到图表清单。理由：计划里
+    没有 sections 键——`_PLAN_KEYS` 键面冻结、模型面不扩，原型证明按 sections
+    比对无从比对、恒绿（空转）；`checks` 词表 {kind,target,expect} 仍在 spec
+    冻结形状内（target=charts），不引入新键。
+    """
+    declared = _declared_chart_keys(plan)
+    emitted = list(dict.fromkeys(
+        _emitted_chart_key(ch) for ch in built.get("charts") or [] if isinstance(ch, dict)))
+    dset, eset = set(declared), set(emitted)
+    misses = ([f"声明图未产出：{_chart_tag(x)}"
+               for x in declared if x not in eset]
+              + [f"多产出未声明的图：{_chart_tag(x)}"
+                 for x in emitted if x not in dset])
+    return {"pass": not misses, "misses": misses}
+
+
+def _anchor_checks(plan: dict, built: dict) -> list[dict]:
+    """执行计划里**声明过的**校验点（`plan["checks"]`，规则生成），逐条机械判定。
+
+    校验点只由规则产出（`planner.checks_for`），这里只认 kind 分派；
+    判定全部是规则比对，不经任何模型。
+    """
+    out = []
+    for chk in plan.get("checks") or []:
+        chk = chk if isinstance(chk, dict) else {}
+        kind = chk.get("kind")
+        if kind == "source_trace":
+            res = _anchor_source_trace(plan, built)
+        elif kind == "spec_query_match":
+            res = _anchor_spec_query(plan, built)
+        elif kind == "outline_match":
+            res = _anchor_outline(plan, built)
+        else:
+            # 冒出未实现的 kind＝规则与实现脱节——fail-closed 宁红不放过
+            # （不做「0/0 全对」）。
+            res = {"pass": False, "misses": [f"未实现的校验点：{kind}"]}
+        out.append({"kind": kind, "target": chk.get("target"),
+                    "pass": bool(res["pass"]), "misses": res["misses"][:5]})
+    return out
+
+
 def self_check(report_md: str, src: DataSource, built: dict) -> dict:
-    """三条自检 + 账本自查。任一项不过 → `pass` 为 False（报告里会明确写出来）。
+    """三条自检 + 账本自查 + 计划校验点。任一项不过 → `pass` 为 False（报告里会明确写出来）。
 
     🔴 `has_charts` 这条是真实模型跑出来的：qwen2.5:3b 选了 `overview_1permille`+
     `cnci`，旧代码只认 3 个硬编码图型 → **0 张图**，而当时自检照样判"通过"
@@ -531,6 +684,13 @@ def self_check(report_md: str, src: DataSource, built: dict) -> dict:
     🔴 2026-10-21（证据账）：`trace` / `peer` / `has_charts` 不再各扫一遍
     `built["sources"]`——统一由 `provenance.Ledger.check` 出自同一本账；正文里
     有登记不到的数字、声明的图没进账、条目缺来源，都判不过。
+
+    🔴 2026-10-27（票 02，校验执行声明）：计划里**声明过的校验点被真的执行**——
+    三锚点（来源链双向 / 图声明↔执行 / 声明↔产出图表清单）逐条机械判定，
+    明细进 `check["anchors"]`（每条 {kind, target, pass, misses}），随 check
+    一起落 `flex_meta.json`；`pass`＝既有各项 AND 三锚点全过。计划经
+    `built["plan"]` 进来自检（`_build` 挂入），签名不变；旧调用方的 built
+    没有 plan 时无锚点可执行，语义与升级前一致（只加不改）。
     """
     leaks = op.judgement_leaks(report_md)
     backstop_n = int(built.get("backstop_n") or 0)
@@ -543,12 +703,15 @@ def self_check(report_md: str, src: DataSource, built: dict) -> dict:
         periods=list(getattr(src, "periods", []) or []),
         declared_charts=built.get("charts") or [],
         selected=built.get("selected") or {})
+    anchors = _anchor_checks(built.get("plan") or {}, built)
     return {
         "judgement_marked": not leaks,
         "judgement_leaks": leaks[:3],
         "backstop_n": backstop_n,
         **evidence,
-        "pass": (not leaks) and evidence["evidence_ok"],
+        "anchors": anchors,
+        "pass": ((not leaks) and evidence["evidence_ok"]
+                 and all(a["pass"] for a in anchors)),
     }
 
 
