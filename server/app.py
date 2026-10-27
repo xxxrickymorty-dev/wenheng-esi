@@ -2077,9 +2077,9 @@ async def api_ledger_sheets(request: Request, period: str = ""):
         periods = [c for c in cols[1:] if c and c[0].isdigit() and len(c) == 6]
         sheets.append({
             "name": ws.title,
-            "columns": cols[:20],
+            "columns": cols,
             "n_columns": len(cols),
-            "periods": periods[:30],
+            "periods": periods,
             "n_periods": len(periods),
         })
     wb.close()
