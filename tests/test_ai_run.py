@@ -247,6 +247,34 @@ def test_回执双面_界面还原值_记录只digest():
     assert "22" not in blob and "总被引" not in blob, "记录面不得出现还原值"
 
 
+def test_对话回合回执_穿run落两头_界面有摘要_记录只剩digest(tmp_path):
+    """receipts-lite（2026-10-26 fc 定）：dialog 带期次回合的盘点真回执——
+    `Answer.receipts` 给界面面，`ai_calls` 的 tools 字段只留 digest（盘点注入同
+    test_ai_dialog 的 `using(inventory=…)` 姿势）。"""
+    inv = {"period": "202607", "released": True,
+           "pieces": [{"key": k, "label": lb, "state": "ok", "note": ""} for k, lb in
+                      (("monitor", "动态监测表"), ("esi", "ESI 原始包"),
+                       ("papers", "顶尖论文清单"), ("incites", "InCites 快照"))],
+           "n_pieces": 4, "n_missing": 0, "fallback": ""}
+    with ai.using(data_root=tmp_path, inventory=(lambda _p: inv)):
+        ans = ai.run("dialog", "", payload={"text": "帮我做 7 月的报告",
+                                            "today": "2026-10-10"}, actor="admin")
+    assert [r.tool for r in ans.receipts] == ["product_status", "scan_inventory"], \
+        "产物核对在前、盘点在后；其他能力恒空不在此列"
+    face = ans.as_dict()
+    assert ([r["summary"] for r in face["receipts"]]
+            == ["该期暂无成品", "盘点 · 202607（必需件 4 件）"]), "界面面给人话摘要"
+    rec = records(tmp_path, "202607")[0]
+    tools = rec["tools"]
+    assert [t["tool"] for t in tools] == ["product_status", "scan_inventory"]
+    for t in tools:
+        assert "summary" not in t and t["summary_digest"], "记录面只留摘要 digest"
+        assert t["refused"] is False and t["ok"] is True
+    blob = json.dumps(tools, ensure_ascii=False)
+    assert "盘点 · 202607" not in blob and "必需件" not in blob and "该期暂无成品" not in blob, \
+        "记录面不得出现摘要原文（label 本名除外）"
+
+
 def test_问句外发面也占位():
     from ai._core import _question_face
     assert not raw_digits(_question_face({"question": "本期第 22 名是谁？"}))

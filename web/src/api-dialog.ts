@@ -56,6 +56,18 @@ export type DialogAnswer = {
   record_id: string | null
 }
 
+/** 单条工具回执（AI 层工具调用的双面回执，形状＝src/ai/_types.py `Receipt.as_dict()`）：
+    refused=true＝这趟工具没让做（界面照降级显示，原因不在这判）。 */
+export type DialogReceipt = {
+  tool: string
+  label: string
+  ok: boolean
+  summary: string
+  elapsed_ms: number
+  args_digest: string
+  refused: boolean
+}
+
 export type DialogReply = {
   mode: string
   backend: string
@@ -77,6 +89,8 @@ export type DialogReply = {
   run: DialogRun | null
   /** 查数据的回答（票 07）；其余轮次为 null */
   answer: DialogAnswer | null
+  /** 工具回执（AI 层双面回执）；本轮没有工具调用时缺省/为空 */
+  receipts?: DialogReceipt[]
   /** 本回合的会话 id（票 11）：续聊把它回传（刷新/换设备恢复用） */
   session_id?: string
 }

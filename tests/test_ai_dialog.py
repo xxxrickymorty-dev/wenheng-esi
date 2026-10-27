@@ -516,3 +516,45 @@ def test_内核缺席_注入的brain一次都不问(tmp_path):
     assert brain.briefs == [], "内核不启＝零外发"
     assert ans.mode == "rule" and ans.backend == "rule"
     assert "kernel" not in ans.data
+
+
+# ============================================================ 9. 回执（receipts-lite，2026-10-26 fc 定）
+def test_规则回执_盘点齐_两工具各一张(tmp_path):
+    """带期次的写报告轮：产物核对在前、盘点在后，摘要只含对话里已显示的数。"""
+    ans = run_dialog("做 7 月的报告", root=tmp_path, inventory=FULL_202607)
+    rs = ans.receipts
+    assert [r.tool for r in rs] == ["product_status", "scan_inventory"]
+    ps, scan = rs
+    assert ps.label == "产物核对" and ps.ok and ps.refused is False
+    assert ps.summary == "该期暂无成品", "没出过稿（无红件清单）→ 如实说暂无"
+    assert scan.label == "盘点" and scan.ok and scan.refused is False
+    assert scan.summary == "盘点 · 202607（必需件 4 件）"
+    assert ps.args_digest and scan.args_digest, "args 只进 digest"
+
+
+def test_规则回执_缺件_摘要补缺件数(tmp_path):
+    inv = fake_inventory("202609", released=True, missing=("papers",), fallback="202607")
+    ans = run_dialog("帮我做9月份的报告", root=tmp_path, inventory=inv)
+    scan = ans.receipts[-1]
+    assert scan.tool == "scan_inventory" and scan.ok
+    assert scan.summary == "盘点 · 202609（必需件 4 件，缺 1 件）"
+
+
+def test_规则回执_盘点不到_ok为假(tmp_path):
+    """替身盘点 None（演示站没有台账）→ 回执照出，ok=False、如实说看不到。"""
+    ans = run_dialog("帮我做9月份的报告", root=tmp_path, inventory=None)
+    scans = [r for r in ans.receipts if r.tool == "scan_inventory"]
+    assert len(scans) == 1 and scans[0].ok is False and scans[0].refused is False
+    assert scans[0].summary == "该期数据状态在这里看不到"
+
+
+def test_规则回执_成品已存在_只有产物核对(tmp_path):
+    d = tmp_path / "202609"
+    d.mkdir()
+    (d / "red_slots.json").write_text("[]", encoding="utf-8")
+    ans = run_dialog("帮我做 9 月的报告", root=tmp_path)
+    ps = [r for r in ans.receipts if r.tool == "product_status"]
+    assert len(ps) == 1 and ps[0].ok and ps[0].summary == "该期已有成品"
+    assert ps[0].label == "产物核对"
+    assert not any(r.tool == "scan_inventory" for r in ans.receipts), \
+        "已出过稿分支先问覆盖，不走盘点"

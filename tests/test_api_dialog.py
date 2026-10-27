@@ -389,3 +389,17 @@ def test_路由存在且带登录门():
     src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
     assert '@app.post("/api/dialog/turn")' in src
     assert "@user_route" in src.split('@app.post("/api/dialog/turn")')[1][:200]
+
+
+# ============================================================ 4. 回执（receipts-lite）随响应透出
+def test_响应带receipts字段_界面面有摘要(tmp_path):
+    """Answer.as_dict() 本就带 receipts；路由原样透出——回执条直接吃这一字段。"""
+    inv = fake_inventory("202607", released=True)
+    with ai.using(data_root=tmp_path, inventory=lambda p: inv):
+        r = call(config.ADMIN_USER, {"text": "做 7 月的报告"})
+    assert isinstance(r["receipts"], list) and len(r["receipts"]) == 2
+    assert [t["tool"] for t in r["receipts"]] == ["product_status", "scan_inventory"]
+    assert r["receipts"][1]["summary"] == "盘点 · 202607（必需件 4 件）"
+    for t in r["receipts"]:
+        assert {"tool", "label", "ok", "summary", "elapsed_ms",
+                "args_digest", "refused"} <= set(t), "界面面字段齐全"

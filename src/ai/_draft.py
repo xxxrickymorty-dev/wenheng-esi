@@ -76,6 +76,9 @@ class RuleDraft:
     record_period: str = ""
     #: 规划摘要（票 04：进留痕——"模型选了哪些查询、规划来自模型还是规则"）。
     plan: dict | None = None
+    #: 工具回执（receipts-lite，2026-10-26 fc 审查定）：确定性工具调用的双面凭据
+    #: （`Receipt`），只由 dialog 出（内核轮在前、规则轮在后）；其余能力恒空。
+    receipts: tuple = ()
 
     @property
     def mapping(self) -> dict:

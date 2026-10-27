@@ -13,7 +13,7 @@ import { req, getArtifacts, getJobProgress, getMe, getPeriods,
          getRollbackPoints, postJob, rollbackPeriod,
          type Me, type RollbackPoint } from '../api'
 import { getDialogHome, postDialogTurnStream,
-         type DialogAction, type DialogAnswer, type DialogHome, type DialogReply,
+         type DialogAction, type DialogAnswer, type DialogHome, type DialogReceipt, type DialogReply,
          type DialogRun } from '../api-dialog'
 import { runFlexibleStream, stopFlexible, type FlexCheck, type FlexStreamEvent } from '../api-flexible'
 import { ConfirmButton } from '../ConfirmButton'
@@ -51,7 +51,9 @@ type TraceResult = {
 }
 type Turn = { who: 'me' | 'wh' | 'sys'; text: string; notice?: string; actions?: DialogAction[]
               /** 追问卡选了第几颗（已选态）；undefined＝还没选 */
-              picked?: number; run?: DialogRun; trace?: Trace; answer?: DialogAnswer }
+              picked?: number; run?: DialogRun; trace?: Trace; answer?: DialogAnswer
+              /** 工具回执（AI 层双面回执）；本轮没有就缺省/为空，界面不出回执条 */
+              receipts?: DialogReceipt[] }
 type Conversation = { id: number; title: string; turns: Turn[]; slots: DialogSlots
                       /** 服务端会话 id（票 11）：这页打开里的每段对话各归一个服务端会话 */
                       sessionId?: string }
@@ -342,7 +344,8 @@ export default function DialogPage() {
         slots: r.slots,
         turns: [...c.turns, { who: 'wh', text: r.text, notice: r.notice,
                               actions: r.actions, run: r.run ?? undefined,
-                              answer: r.answer ?? undefined }],
+                              answer: r.answer ?? undefined,
+                              receipts: r.receipts }],
       }))
       /* 票 11：把本回合的会话 id 回写 URL——刷新/换设备带它即恢复；
          还在这一段对话上才写（中途切走别把 URL 指到别处）。 */
@@ -850,6 +853,9 @@ export default function DialogPage() {
                         })}
                     </div>
                   )}
+                  {t.who === 'wh' && !!t.receipts?.length && (
+                    <ReceiptBar receipts={t.receipts} />
+                  )}
                 </div>
               </div>
             ))}
@@ -999,6 +1005,34 @@ function AnswerBlock({ answer }: { answer: DialogAnswer }) {
       ) : (
         !!answer.notice && <p className="dlg-notice">{answer.notice}</p>
       )}
+    </div>
+  )
+}
+
+/** 回执条（AI 层工具调用的双面回执）：每条一枚 chip＝✓/×＋名称＋用时，明细（summary）
+    收进悬浮提示（title）；没成或被拒的走琥珀降级（同 AnswerBlock「规则版作答」pill 的
+    克制程度，不红色警报）。样式全用 index.css 既有类：.chips 容器＋.pill ok/.pill stale，
+    零圆角、不另起色。chip 的类名与文字由 receiptChips 出（纯函数，vitest 直测）。 */
+export type ReceiptChipVM = { cls: string; text: string; summary: string }
+
+export function receiptChips(receipts: DialogReceipt[]): ReceiptChipVM[] {
+  return receipts.map((r) => {
+    const degraded = !r.ok || r.refused
+    const ms = r.elapsed_ms > 0 ? ` ${r.elapsed_ms}ms` : ''
+    return {
+      cls: degraded ? 'pill stale' : 'pill ok',
+      text: `${degraded ? '×' : '✓'} ${r.label}${ms}`,
+      summary: r.summary,
+    }
+  })
+}
+
+function ReceiptBar({ receipts }: { receipts: DialogReceipt[] }) {
+  return (
+    <div className="chips mt-8">
+      {receiptChips(receipts).map((c, i) => (
+        <span key={i} className={c.cls} title={c.summary}>{c.text}</span>
+      ))}
     </div>
   )
 }

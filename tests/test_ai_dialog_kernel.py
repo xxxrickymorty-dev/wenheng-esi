@@ -379,3 +379,53 @@ def test_短应诺_不问内核(tmp_path):
 # ============================================================ 7. 内核静态纪律
 def test_系统提示零数字():
     assert not any(ch.isdigit() for ch in _dialog_kernel.KERNEL_SYSTEM)
+
+
+# ============================================================ 8. 内核工具回执（receipts-lite）
+def test_内核回执_product_status_进answer与tools记录(tmp_path):
+    """包装器真执行了工具 → KernelResult.receipts 带回执；记录面 tools 只留 digest。"""
+    (tmp_path / "202607").mkdir()
+    (tmp_path / "202607" / "red_slots.json").write_text("[]", encoding="utf-8")
+    turns = [_tool("product_status", {"period": "202607"}),
+             json.dumps({"period": "", "intent": ""})]
+    stream = ScriptedStream(turns)
+    ans = run_dialog("那期出过吗", root=tmp_path, kernel=stream, periods=PERIODS,
+                     history=[{"who": "me", "text": "查 202607"}])
+    assert ans.receipts, "内核轮的工具调用也要留回执"
+    ps = ans.receipts[0]
+    assert ps.tool == "product_status" and ps.label == "产物核对"
+    assert ps.ok and ps.refused is False and ps.summary == "该期已有成品"
+    assert ps.args_digest, "args 只进 digest"
+    rec = records(tmp_path, "_ai")[0]
+    assert rec["tools"] and rec["tools"][0]["tool"] == "product_status"
+    assert "summary" not in rec["tools"][0] and rec["tools"][0]["summary_digest"]
+
+
+def test_内核回执_scan_inventory_摘要带件数(tmp_path):
+    inv = fake_inventory("202607", released=True, missing=("papers",))
+    turns = [_tool("scan_inventory", {"period": "202607"}),
+             json.dumps({"period": "202607", "intent": ""})]
+    stream = ScriptedStream(turns)
+    with ai.using(data_root=tmp_path, inventory=(lambda _p: inv), dialog_kernel=stream):
+        ans = ai.run("dialog", "", payload={
+            "text": "那期能出吗", "today": TODAY,
+            "history": [{"who": "me", "text": "查 202609 的化学"}],
+            "periods": PERIODS}, actor="admin")
+    scans = [r for r in ans.receipts if r.tool == "scan_inventory"]
+    assert len(scans) == 1 and scans[0].ok
+    assert scans[0].summary == "盘点 · 202607（必需件 4 件，缺 1 件）"
+    assert ans.data["kernel"]["tools"] == ["scan_inventory"], "既有记录面键不动"
+
+
+def test_内核回执_盘点不到_ok为假(tmp_path):
+    turns = [_tool("scan_inventory", {"period": "202607"}),
+             json.dumps({"period": "202607", "intent": ""})]
+    stream = ScriptedStream(turns)
+    with ai.using(data_root=tmp_path, inventory=(lambda _p: None), dialog_kernel=stream):
+        ans = ai.run("dialog", "", payload={
+            "text": "那期能出吗", "today": TODAY,
+            "history": [{"who": "me", "text": "查 202609 的化学"}],
+            "periods": PERIODS}, actor="admin")
+    scans = [r for r in ans.receipts if r.tool == "scan_inventory"]
+    assert len(scans) == 1 and scans[0].ok is False
+    assert scans[0].summary == "该期数据状态在这里看不到"

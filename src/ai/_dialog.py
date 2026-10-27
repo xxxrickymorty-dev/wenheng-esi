@@ -45,6 +45,7 @@ from __future__ import annotations
 import datetime
 import pathlib
 import re
+import time
 import unicodedata
 from dataclasses import dataclass, replace
 
@@ -502,6 +503,7 @@ def build(root, period, payload):                                  # noqa: ARG00
     # 短应诺（「对啊」）是规则确定性命中（槽位带过轮），不问内核。
     kernel_record = None
     kernel_filled = False
+    kernel_receipts: tuple = ()
     if p.case == "no_period" and history and not _AFFIRM.fullmatch(text.strip()):
         kr = _dialog_kernel.assist(
             text, history=history, periods=_periods_from(payload), slot=slot,
@@ -509,6 +511,7 @@ def build(root, period, payload):                                  # noqa: ARG00
                    "product_status": lambda per: _products_exist(root, per)})
         if kr.status != "off":
             kernel_record = kr.record()
+        kernel_receipts = tuple(kr.receipts)
         if kr.status == "ok":
             if kr.period:
                 p = replace(p, case="period", period=kr.period,
@@ -536,6 +539,7 @@ def build(root, period, payload):                                  # noqa: ARG00
         kind = "unclear"
 
     run = None
+    rcpts: list = []                     # 规则轮回执（receipts-lite：只登记下面真调用的两工具）
     if kind == "query":
         # 查数据（票 07）：不盘点、不出稿；正文本地只在「没期次」时出声，
         # 有期次时的回答由服务器调 qa 能力给出（本能力只做路由）。
@@ -552,7 +556,15 @@ def build(root, period, payload):                                  # noqa: ARG00
         reply, verdict, actions, run, inv = _proceed(
             root, p.period if kernel_filled else period, p)
     else:
-        if p.case == "period" and p.period and _products_exist(root, p.period):
+        has_products = False
+        if p.case == "period" and p.period:
+            # 产物核对（确定性工具，receipts-lite）：True/False 都照实出回执。
+            tc0 = time.perf_counter()
+            has_products = _products_exist(root, p.period)
+            rcpts.append(_dialog_kernel.tool_receipt(
+                "product_status", "产物核对", {"period": p.period},
+                "该期已有成品" if has_products else "该期暂无成品", ok=True, t0=tc0))
+        if has_products:
             # 这期已出过稿（2026-10-11 rick 实问「帮我做 9 月的报告」）——
             # 先问一次覆盖，不静默重出、也不再报「还差几件」。
             # 安全出口优先：看运行档案 / 打开报告；覆盖重出放第三位。
@@ -567,7 +579,21 @@ def build(root, period, payload):                                  # noqa: ARG00
             run = {"period": p.period, "auto": False, "intent": "single_trend"}
             verdict, inv = "ready", None
         else:
-            inv = _scan_inventory(p.period) if (p.case == "period" and p.period) else None
+            inv = None
+            if p.case == "period" and p.period:
+                # 盘点（确定性工具，receipts-lite）：盘到与否都照实出回执。
+                tc0 = time.perf_counter()
+                inv = _scan_inventory(p.period)
+                if inv is None:
+                    rcpts.append(_dialog_kernel.tool_receipt(
+                        "scan_inventory", "盘点", {"period": p.period},
+                        "该期数据状态在这里看不到", ok=False, t0=tc0))
+                else:
+                    missing = f"，缺 {inv['n_missing']} 件" if inv["n_missing"] else ""
+                    rcpts.append(_dialog_kernel.tool_receipt(
+                        "scan_inventory", "盘点", {"period": p.period},
+                        f"盘点 · {inv['period']}（必需件 {inv['n_pieces']} 件{missing}）",
+                        ok=True, t0=tc0))
             if inv is None:
                 if p.case == "period" and p.period:
                     # 有期次但盘点不到（如演示站没有台账/数据与复现）——如实说，别演。
@@ -599,4 +625,5 @@ def build(root, period, payload):                                  # noqa: ARG00
         evidence=(),
         data=data,
         record_period=p.period,
+        receipts=kernel_receipts + tuple(rcpts),   # 内核轮在前、规则轮在后（receipts-lite）
     )

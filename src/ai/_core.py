@@ -149,12 +149,14 @@ def _terminal(cap, period, role, *, mode, notice, t0, backend=None):
 def _publish(cap, period, role, *, mode, backend, notice, text, rule_text, sources,
              parts, shield_res, fallback, question_face, t0,
              fallback_detail=None, egress=None, elapsed_ms=None, data=None,
-             plan=None, record=None):
+             plan=None, record=None, receipts=()):
     """先写留痕、后发布；模型版发布以记录成功为前提（SPEC §2.2 / C1）。
 
     `period` 是**记账期次**（dialog 用解析出的那一期，其余能力＝调用期次）；
     `data` 是能力专属结构化结果（dialog 的槽位），只挂在 `Answer.data` 上；
     `plan` 是规划摘要（票 04：origin/specs/note），进记录追加位；
+    `receipts`（receipts-lite，2026-10-26 fc 定）是确定性工具调用的回执（现只 dialog 出）：
+    记录面进 `ai_calls` 的 tools 字段（只 digest），界面面进 `Answer.receipts`；
     `record`（票 03）是**记录面覆盖**（dialog 内核轮）：键 ∈ {mode, backend, fallback,
     egress, elapsed_ms}——只改 `ai_calls` 那行，`Answer.mode/backend` 不动
     （对话正文仍是规则拼装，模型只补槽）。
@@ -171,6 +173,7 @@ def _publish(cap, period, role, *, mode, backend, notice, text, rule_text, sourc
         shield=shield_res.as_dict(),
         text_protected=(_shield.protect(text)[0] if text else ""),
         question=question_face,
+        receipts=receipts,
         egress_items=int((rec_egress or {}).get("items") or 0),
         egress_bytes=int((rec_egress or {}).get("bytes") or 0),
         elapsed_ms=(int((time.time() - t0) * 1000) if rec_elapsed is None else rec_elapsed),
@@ -184,7 +187,7 @@ def _publish(cap, period, role, *, mode, backend, notice, text, rule_text, sourc
             fallback = fallback or "record_failed"
     segments = tuple(Segment(p.name, mode, "") for p in parts)
     return Answer(mode=mode, backend=backend, text=text, rule_text=rule_text,
-                  notice=notice, sources=tuple(sources), receipts=(),
+                  notice=notice, sources=tuple(sources), receipts=tuple(receipts),
                   shield=shield_res, record_id=rid, segments=segments, data=data)
 
 
@@ -284,7 +287,7 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
                     egress=(outcome.egress if outcome is not None else None),
                     elapsed_ms=(outcome.elapsed_ms if outcome is not None else None),
                     t0=t0, fallback_detail=fallback_detail, data=draft.data,
-                    plan=draft.plan, record=record)
+                    plan=draft.plan, record=record, receipts=draft.receipts)
 
 
 def capabilities(actor=None) -> tuple[CapabilityInfo, ...]:

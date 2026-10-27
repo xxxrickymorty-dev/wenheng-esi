@@ -34,7 +34,8 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass, field, replace
 
-from . import _brain, _config, _runtime
+from . import _brain, _config, _record, _runtime
+from ._types import Receipt
 
 #: 内核工具轮上限（1 次首答 + 至多 3 轮工具）——防模型空转；超限＝回落。
 MAX_STEPS = 4
@@ -76,6 +77,9 @@ class KernelResult:
     egress: dict = field(default_factory=dict)
     elapsed_ms: int = 0
     tools_used: tuple = ()
+    #: 内核工具的回执（receipts-lite，2026-10-26 fc 定）：包装器真执行了哪个工具，
+    #: 双面凭据随 `build()` 并进 `RuleDraft.receipts`（记录面走 ai_calls 的 tools 字段）。
+    receipts: tuple = ()
 
     def record(self) -> dict:
         """进 `Answer.data["kernel"]` 的记录面（`_core` 消费；不进 `as_dict()`）。"""
@@ -88,6 +92,20 @@ class KernelResult:
         if self.tools_used:
             rec["tools"] = list(self.tools_used)
         return rec
+
+
+# ---------------------------------------------------------------- 回执（receipts-lite）
+def tool_receipt(tool: str, label: str, args: dict, summary: str, *,
+                 ok: bool, t0: float, refused: bool = False) -> Receipt:
+    """确定性工具调用的回执（双面，C2）。放本模块、`_dialog` 复用——反向导入会成环。
+
+    `t0` 是调用方取的 `time.perf_counter()` 起点（把真实工具调用包住）；
+    `args` 只进 `args_digest`（记录面）；`summary` 是界面面人话（一句以内）——
+    数字只许用对话界面已显示的盘点件数这类，不放任何报告数值。
+    """
+    return Receipt(tool=tool, label=label, args_digest=_record.digest(args),
+                   summary=summary, elapsed_ms=int((time.perf_counter() - t0) * 1000),
+                   ok=ok, refused=refused)
 
 
 # ---------------------------------------------------------------- 装配（懒导入/注入）
@@ -167,7 +185,7 @@ def _blocks_text(content) -> str:
 
 
 # ---------------------------------------------------------------- 工具（只读、零台账数值）
-def _build_tools(pi, periods, callables, used: list):
+def _build_tools(pi, periods, callables, used: list, receipts: list):
     async def list_periods(tool_call_id, params, cancel_event=None, on_update=None):  # noqa: ARG001
         used.append("list_periods")
         return pi.AgentToolResult(
@@ -178,14 +196,27 @@ def _build_tools(pi, periods, callables, used: list):
         period = str((params or {}).get("period") or "").strip()
         fn = callables.get("scan_inventory")
         inv = None
+        t0 = time.perf_counter()
         if fn is not None and _PERIOD_RE.fullmatch(period):
             try:
                 inv = fn(period)
             except Exception:                                      # noqa: BLE001
                 inv = None
-        payload = {"period": period, "found": bool(inv)}
         if inv:
             pieces = [p for p in (inv.get("pieces") or []) if isinstance(p, dict)]
+            n_pieces = int(inv.get("n_pieces") or len(pieces))
+            n_missing = int(inv.get("n_missing") or 0)
+            missing = f"，缺 {n_missing} 件" if n_missing else ""
+            receipts.append(tool_receipt(
+                "scan_inventory", "盘点", {"period": period},
+                f"盘点 · {inv.get('period') or period}（必需件 {n_pieces} 件{missing}）",
+                ok=True, t0=t0))
+        else:
+            receipts.append(tool_receipt(
+                "scan_inventory", "盘点", {"period": period},
+                "该期数据状态在这里看不到", ok=False, t0=t0))
+        payload = {"period": period, "found": bool(inv)}
+        if inv:
             payload["released"] = bool(inv.get("released"))
             payload["ok"] = [str(p.get("label") or "") for p in pieces if p.get("state") == "ok"]
             payload["missing"] = [str(p.get("label") or "") for p in pieces if p.get("state") != "ok"]
@@ -197,11 +228,17 @@ def _build_tools(pi, periods, callables, used: list):
         period = str((params or {}).get("period") or "").strip()
         fn = callables.get("product_status")
         has = False
+        ok = True
+        t0 = time.perf_counter()
         if fn is not None and _PERIOD_RE.fullmatch(period):
             try:
                 has = bool(fn(period))
             except Exception:                                      # noqa: BLE001
                 has = False
+                ok = False
+        receipts.append(tool_receipt(
+            "product_status", "产物核对", {"period": period},
+            "该期已有成品" if has else "该期暂无成品", ok=ok, t0=t0))
         return pi.AgentToolResult(
             content=[pi.TextContent(text=json.dumps(
                 {"period": period, "has_products": has}, ensure_ascii=False))])
@@ -427,7 +464,8 @@ def parse_slots(raw, periods) -> tuple[str, str] | None:
 # ---------------------------------------------------------------- 主入口
 def _run(pi, text, *, history, periods, slot, callables, stream_fn, timeout, model_id):
     used: list = []
-    tools = _build_tools(pi, periods, callables, used)
+    receipts: list = []
+    tools = _build_tools(pi, periods, callables, used, receipts)
     user = _user_message(text, history, slot)
     model = pi.Model(api="openai", provider="openai", id=str(model_id or "scripted"))
 
@@ -447,16 +485,17 @@ def _run(pi, text, *, history, periods, slot, callables, stream_fn, timeout, mod
         return last
 
     last = asyncio.run(asyncio.wait_for(drain(), timeout=timeout))
-    return last, tuple(used)
+    return last, tuple(used), tuple(receipts)
 
 
 def assist(text, *, history=(), periods=(), slot="", tools=None, timeout=None) -> KernelResult:
     """跑一次内核补槽。**运行期故障不抛**：以 KernelResult（status=fallback）表达。"""
     t0 = time.time()
 
-    def _fallback(reason: str, backend: str, egress: dict, used=()) -> KernelResult:
+    def _fallback(reason: str, backend: str, egress: dict, used=(), receipts=()) -> KernelResult:
         return KernelResult(status="fallback", mode="fallback", backend=backend,
                             reason=reason, egress=dict(egress), tools_used=tuple(used),
+                            receipts=tuple(receipts),
                             elapsed_ms=int((time.time() - t0) * 1000))
 
     if not available():
@@ -479,9 +518,9 @@ def assist(text, *, history=(), periods=(), slot="", tools=None, timeout=None) -
             clean.append(s)
 
     try:
-        last, used = _run(pi, text, history=history, periods=tuple(clean), slot=slot,
-                          callables=dict(tools or {}), stream_fn=stream_fn,
-                          timeout=timeout, model_id=str(cfg["model"] or "scripted"))
+        last, used, receipts = _run(pi, text, history=history, periods=tuple(clean), slot=slot,
+                                    callables=dict(tools or {}), stream_fn=stream_fn,
+                                    timeout=timeout, model_id=str(cfg["model"] or "scripted"))
     except (asyncio.TimeoutError, TimeoutError):
         return _fallback("brain_error:timeout", backend, egress)
     except _brain.BrainError as e:
@@ -492,15 +531,15 @@ def assist(text, *, history=(), periods=(), slot="", tools=None, timeout=None) -
 
     elapsed = int((time.time() - t0) * 1000)
     if last is None:
-        return _fallback("empty_reply", backend, egress, used)
+        return _fallback("empty_reply", backend, egress, used, receipts)
     if getattr(last, "stop_reason", "") in ("error", "aborted"):
-        return _fallback("brain_error:aborted", backend, egress, used)
+        return _fallback("brain_error:aborted", backend, egress, used, receipts)
     slots = parse_slots(_blocks_text(last.content), clean)
     if slots is None:
-        res = _fallback("brain_error:bad_response", backend, egress, used)
+        res = _fallback("brain_error:bad_response", backend, egress, used, receipts)
         snippet = " ".join(_blocks_text(last.content).split())[:120]
         return replace(res, detail=snippet)
     period, intent = slots
     return KernelResult(status="ok", period=period, intent=intent, mode="model",
                         backend=backend, egress=dict(egress), tools_used=used,
-                        elapsed_ms=elapsed)
+                        receipts=receipts, elapsed_ms=elapsed)
