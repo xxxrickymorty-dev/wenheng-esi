@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>问文衡 · 方案A 壳内整页（静态稿 20261027）</title>
+<style>
+/* ============================================================
+   问文衡重设计 · 方案A：壳内整页（静态稿 20261027）
+   壳样式与 spread.css（工作台壳-跨页左栏 静态稿 20261025）同构；
+   对话区为新设计：q- 前缀，零圆角 / 零投影 / 零渐变。
+   数字与回执号均为示例。出稿轨迹（逐段流式）沿用现版行为，换壳令牌。
+   ============================================================ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.q-note {
+  background: #1E2A23; color: #C9B694; font: 11px/1.8 KaiTi, STKaiti, "FangSong", serif;
+  letter-spacing: .18em; padding: 8px 18px; display: flex; gap: 24px; flex-wrap: wrap;
+}
+.q-note b { color: #F6F1DE; font-weight: 400; }
+
+/* ── 跨页双联壳（同 spread.css） ─────────────────────────── */
+.sp-spread {
+  --deep: #143729; --deep-2: #0F2C21;
+  --ivory: #F6F1DE; --ivory-2: rgba(246,241,222,.80); --ivory-3: rgba(246,241,222,.54);
+  --paper: #F5F3EC; --card: #FBF8EF; --panel: #EDE9DC;
+  --ink: #1E2A23; --ink-2: #4A564D; --ink-3: #7C857B;
+  --line: #DFDBCB; --line-2: #EAE7DB;
+  --gold: #C8B584; --seam: #B08E48; --red: #A82F22; --green: #1A4B27; --warn: #7C5A16;
+  --serif: "Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+  --kai: KaiTi, STKaiti, FangSong, STFangsong, serif;
+  --sans: system-ui, -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  --mono: "Cascadia Mono", Consolas, "Courier New", monospace;
+  --lw: 28%;
+  display: grid; grid-template-columns: var(--lw) minmax(0,1fr);
+  min-height: 100dvh; position: relative;
+  background: var(--paper); color: var(--ink);
+  font: 15px/1.75 var(--sans); -webkit-font-smoothing: antialiased;
+}
+.sp-spread h1, .sp-spread h2, .sp-spread h3 { font-family: var(--serif); font-weight: 600; }
+.sp-spread a { color: inherit; text-decoration: none; }
+.sp-spread button { font: inherit; cursor: pointer; }
+.sp-spread ::selection { background: var(--gold); color: #1E2A23; }
+
+/* 左页 · 会泽 */
+.sp-spread .page-l { background: var(--deep); color: var(--ivory); padding: clamp(15px,2.1vh,28px) clamp(18px,2vw,30px);
+  display: flex; flex-direction: column; position: sticky; top: 0; height: 100dvh; overflow: hidden; }
+.sp-spread .bm { display: flex; align-items: baseline; gap: 10px; }
+.sp-spread .bm b { font-family: var(--serif); font-size: clamp(19px,2.4vh,23px); letter-spacing: .14em; }
+.sp-spread .bm span { font-family: var(--kai); font-size: 10.5px; letter-spacing: .16em; color: var(--ivory-3); line-height: 1.7; }
+.sp-spread .nav { margin-top: clamp(10px,1.9vh,20px); display: flex; flex-direction: column;
+  font-size: clamp(12px,1.55vh,13.5px); letter-spacing: .04em; color: var(--ivory-2); }
+.sp-spread .nav a { padding: clamp(3px,.6vh,6px) 0; display: flex; align-items: center; gap: 10px; }
+.sp-spread .nav a::before { content: ""; width: 9px; height: 2px; flex: none; background: transparent; }
+.sp-spread .nav a[aria-current] { color: var(--ivory); }
+.sp-spread .nav a[aria-current]::before { background: var(--gold); }
+.sp-spread .nav .m { margin-top: clamp(7px,1.2vh,13px); font-family: var(--kai); font-size: 10.5px; letter-spacing: .24em; color: var(--ivory-3); }
+.sp-spread .hero-l { margin: auto 0; padding: clamp(6px,1.4vh,20px) 0; }
+.sp-spread .ov { font-family: var(--kai); font-size: 11px; letter-spacing: .24em; color: var(--ivory-3); }
+.sp-spread .hero-l h1 { font-size: clamp(26px,min(2.7vw,4.3vh),42px); line-height: 1.16; letter-spacing: .05em; margin: clamp(7px,1.2vh,12px) 0 6px; }
+.sp-spread .rule { width: 62px; height: 1px; background: var(--gold); margin: clamp(8px,1.3vh,14px) 0 clamp(6px,1vh,10px); }
+.sp-spread .stm { font-family: var(--serif); font-size: clamp(16px,2.1vh,19px); line-height: 1.5; letter-spacing: .05em; }
+.sp-spread .sub { color: var(--ivory-2); font-size: clamp(11.5px,1.5vh,12.5px); line-height: 1.75; margin-top: 6px; max-width: 34ch; }
+.sp-spread .acts { margin-top: clamp(11px,1.9vh,20px); display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.sp-spread .btn { background: var(--ivory); color: #15271E; border: 0; padding: clamp(8px,1.5vh,11px) clamp(16px,1.8vw,24px);
+  font-size: clamp(13px,1.7vh,14.5px); letter-spacing: .10em; font-weight: 650; font-family: var(--serif); }
+.sp-spread .btn:hover { background: #FFF9E6; }
+.sp-spread .ghost { font-family: var(--kai); font-size: 12.5px; letter-spacing: .16em; color: var(--ivory-2);
+  background: transparent; border: 0; box-shadow: inset 0 -1px 0 rgba(246,241,222,.34); padding-bottom: 3px; }
+.sp-spread .ghost:hover { color: var(--ivory); box-shadow: inset 0 -1px 0 var(--gold); }
+.sp-spread .state { margin-top: clamp(10px,1.7vh,20px); display: flex; gap: 22px; flex-wrap: wrap;
+  border-top: 1px solid rgba(246,241,222,.16); padding-top: clamp(8px,1.3vh,13px); }
+.sp-spread .state .s { display: flex; flex-direction: column; gap: 3px; }
+.sp-spread .state .k { font-family: var(--kai); font-size: 10px; letter-spacing: .22em; color: var(--ivory-3); }
+.sp-spread .state .v { font-family: var(--serif); font-size: 15px; letter-spacing: .10em; }
+.sp-spread .footline { margin-top: auto; display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  font-family: var(--kai); font-size: 10px; letter-spacing: .2em; color: var(--ivory-3);
+  border-top: 1px solid rgba(246,241,222,.14); padding-top: clamp(7px,1.2vh,11px); }
+
+/* 钤印位（状态印 · 已签发满印） */
+.sp-spread .sealbox { position: absolute; left: var(--lw); top: 250px; transform: translateX(-70%) rotate(-4deg);
+  width: 108px; height: 108px; background: #F2EDE0; border: 1px solid rgba(168,47,34,.38);
+  padding: 8px; z-index: 3; }
+.sp-spread .sealbox svg { width: 100%; height: 100%; display: block; }
+
+/* 右页 · 至公 */
+.sp-spread .page-r { background: var(--paper); border-left: 3px solid var(--seam); padding: 0 0 30px; min-width: 0; position: relative; }
+.sp-spread .rtop { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 18px clamp(20px,2.6vw,40px) 0;
+  font-size: 11px; letter-spacing: .14em; color: var(--ink-3); }
+.sp-spread .rtop .r { margin-left: auto; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.sp-spread .rtop .chip { border: 1px solid var(--line); padding: 4px 11px; background: transparent;
+  font-family: var(--kai); letter-spacing: .14em; color: var(--ink-2); }
+.sp-spread .rtop .chip:hover { border-color: var(--green); color: var(--green); }
+.sp-spread .rtop .chip b { font-family: var(--mono); font-weight: 600; color: var(--ink); }
+
+/* ── 对话区（新设计，q- 前缀） ───────────────────────────── */
+.q-wrap { max-width: 880px; margin: 0 auto; padding: clamp(18px,3vh,34px) clamp(20px,2.6vw,40px) 0; }
+
+/* 一轮 = 界栏行：印位 32px + 内容 */
+.q-turn { display: flex; gap: 14px; margin-bottom: clamp(16px,2.6vh,26px); }
+.q-who { flex: 0 0 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  font: 600 13px/1 var(--serif); letter-spacing: 0; }
+.q-turn.me .q-who { border: 1px solid var(--line); color: var(--ink-3); background: transparent; }
+.q-turn.wh .q-who { background: var(--green); color: #F5F3EC; }
+.q-body { flex: 1; min-width: 0; }
+.q-turn.me .q-body { padding-top: 5px; color: var(--ink); }
+.q-turn.me .q-body { margin-left: 12px; max-width: 72%; }
+.q-turn.wh .q-nm { font-family: var(--kai); font-size: 10.5px; letter-spacing: .24em; color: var(--ink-3); margin-bottom: 3px; }
+.q-text { overflow-wrap: anywhere; }
+.q-turn.me .q-text { font-size: 15px; }
+.q-turn.wh .q-text { font-family: var(--serif); font-size: 16.5px; line-height: 1.65; letter-spacing: .01em; }
+.q-text b { font-weight: 650; }
+.q-sys { margin: 0 0 16px 46px; font-family: var(--kai); font-size: 11.5px; letter-spacing: .14em; color: var(--ink-3); }
+
+/* 答语文书：溯源 + 对账印 + 回执号（对话前门的真回执，首次成文书） */
+.q-doc { margin-top: 10px; border: 1px solid var(--line); background: var(--card); padding: 12px 16px 13px; }
+.q-doc-cap { display: flex; align-items: baseline; gap: 10px; font-family: var(--kai); font-size: 10.5px;
+  letter-spacing: .22em; color: var(--ink-3); margin-bottom: 8px; }
+.q-doc-cap i { font-style: normal; flex: 1; height: 1px; background: var(--line-2); }
+.q-src { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; font-size: 13.5px; }
+.q-src + .q-src { border-top: 1px dashed var(--line-2); }
+.q-src i { font-style: normal; flex: 0 0 18px; font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+.q-src .lb { font-family: var(--kai); letter-spacing: .06em; color: var(--ink-2); flex: 0 0 auto; }
+.q-src .dt { color: var(--ink-3); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.q-src .vl { font-family: var(--mono); font-weight: 600; color: var(--ink); flex: 0 0 auto; }
+.q-sealrow { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding-top: 10px;
+  border-top: 1px solid var(--line-2); flex-wrap: wrap; }
+.q-seal { flex: 0 0 auto; width: 40px; height: 40px; background: var(--green); color: #F5F3EC;
+  display: flex; align-items: center; justify-content: center; transform: rotate(-3deg);
+  font-family: var(--serif); font-weight: 700; font-size: 15px; letter-spacing: .06em; }
+.q-sealtx { font-size: 13px; color: var(--ink-2); }
+.q-sealtx b { font-family: var(--mono); font-weight: 600; color: var(--ink); }
+.q-sealtx .rc { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); display: block; }
+.q-sealrow .lnk { margin-left: auto; font-family: var(--kai); font-size: 12px; letter-spacing: .14em;
+  color: var(--green); box-shadow: inset 0 -1px 0 var(--gold); padding-bottom: 2px; background: none; border: 0; }
+
+/* 必需件盘点（缺件＝错误 + 下一步） */
+.q-inv { margin-top: 10px; border: 1px solid var(--line); background: var(--card); padding: 12px 16px 13px; }
+.q-inv-row { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; font-size: 14px; }
+.q-inv-row + .q-inv-row { border-top: 1px dashed var(--line-2); }
+.q-inv-row .mk { flex: 0 0 18px; font-family: var(--mono); font-size: 13px; }
+.q-inv-row.ok .mk { color: var(--green); }
+.q-inv-row.no .mk { color: var(--red); }
+.q-inv-row .lb { flex: 0 0 auto; }
+.q-inv-row .nt { margin-left: auto; font-size: 12.5px; color: var(--ink-3); }
+.q-inv-row.no .lb { color: var(--red); }
+
+/* 工序条：流程承载状态 */
+.q-flow { display: flex; align-items: center; gap: 0; margin-top: 12px; flex-wrap: wrap; }
+.q-flow .st { display: flex; align-items: center; gap: 8px; }
+.q-flow .st .d { width: 10px; height: 10px; border: 1.5px solid var(--ink-3); background: transparent; flex: 0 0 auto; }
+.q-flow .st.done .d { background: var(--green); border-color: var(--green); }
+.q-flow .st.cur .d { border-color: var(--warn); background: #F3E9CF; }
+.q-flow .st .t { font-family: var(--kai); font-size: 11.5px; letter-spacing: .16em; color: var(--ink-3); }
+.q-flow .st.cur .t { color: var(--warn); }
+.q-flow .st.done .t { color: var(--ink-2); }
+.q-flow .ln { width: clamp(14px,2.4vw,34px); height: 1px; background: var(--line); margin: 0 8px; }
+
+/* 动作 */
+.q-acts { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.q-act { border: 1px solid var(--ink); background: transparent; padding: 8px 20px;
+  font-family: var(--serif); font-size: 14px; letter-spacing: .10em; color: var(--ink); }
+.q-act:hover { background: var(--panel); }
+.q-act.primary { background: var(--green); border-color: var(--green); color: #F5F3EC; }
+.q-act.primary:hover { background: #235A38; }
+.q-act.dashed { border-style: dashed; color: var(--ink-2); }
+
+/* 落点（空态门面） */
+.q-land { max-width: 880px; margin: 0 auto; padding: clamp(40px,10vh,96px) clamp(20px,2.6vw,40px) 20px; text-align: center; }
+.q-land .ov { font-family: var(--kai); font-size: 11px; letter-spacing: .52em; color: var(--ink-3); }
+.q-land h2 { font-family: var(--serif); font-weight: 600; font-size: clamp(30px,3.6vw,46px);
+  line-height: 1.3; letter-spacing: .08em; margin: 14px 0 24px; }
+.q-land-modes { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.q-land-modes .q-act { padding: 12px 30px; font-size: 15.5px; }
+.q-land .lbl { margin: 26px 0 0; font-family: var(--kai); font-size: 11px; letter-spacing: .42em; color: var(--ink-3); }
+.q-pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 760px; margin: 14px auto 0; }
+.q-pill { border: 1px solid var(--line); background: transparent; padding: 8px 16px;
+  font-size: 13.5px; color: var(--ink-2); }
+.q-pill:hover { border-color: var(--green); color: var(--green); background: #EFF3EA; }
+.q-dyn { margin: 34px auto 0; max-width: 680px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 8px 20px; border: 1px solid var(--line); background: var(--card); padding: 12px 22px;
+  font-family: var(--kai); font-size: 12px; letter-spacing: .14em; color: var(--ink-3); }
+.q-dyn b { font-family: var(--serif); letter-spacing: .12em; color: var(--ink); font-weight: 600; }
+.q-dyn .ok { color: var(--green); }
+.q-dyn .cur { color: var(--warn); }
+.q-dyn .nt { font-family: var(--sans); letter-spacing: 0; font-size: 11px; }
+
+/* 输入框：白纸原色，聚焦金线居中展开（与陈列馆问文衡框同一母题） */
+.q-composer { position: sticky; bottom: 0; background: linear-gradient(to top, var(--paper) 78%, transparent); padding: 18px 0 6px; }
+.q-box { display: flex; gap: 10px; align-items: flex-end; border: 1px solid var(--line); background: #FFFDF6; padding: 10px 12px; position: relative; }
+.q-box::after { content: ""; position: absolute; left: 50%; right: 50%; bottom: -1px; height: 2px; background: var(--seam); transition: left .25s, right .25s; }
+.q-box:focus-within::after { left: 12px; right: 12px; }
+.q-box textarea { flex: 1; border: 0; background: transparent; resize: none; font: inherit; color: var(--ink); height: 28px; outline: none; }
+.q-box textarea::placeholder { color: var(--ink-3); font-family: var(--kai); }
+.q-send { flex: 0 0 auto; width: 44px; height: 44px; border: 0; background: var(--green); color: #F5F3EC;
+  font-family: var(--serif); font-size: 16px; letter-spacing: 0; }
+.q-send:hover { background: #235A38; }
+.q-hint { margin-top: 7px; text-align: center; font-family: var(--kai); font-size: 10.5px; letter-spacing: .2em; color: var(--ink-3); }
+
+@media (prefers-reduced-motion: reduce) { .q-box::after { transition: none; } }
+</style>
+</head>
+<body>
+
+<div class="q-note">
+  <span>静态稿 20261027 · <b>问文衡重设计 · 方案 A 壳内整页</b></span>
+  <span>壳＝工作台壳-跨页左栏（20261025 过审稿同构）· 对话区 q- 新件</span>
+  <span>文中数字 / 回执号均为示例 · 出稿轨迹沿用现版流式行为</span>
+</div>
+
+<!-- ══ 帧① 有对话：问 → 带回执的答 → 缺件盘点 ══ -->
+<section class="sp-spread" aria-label="帧① 对话进行中">
+  <aside class="page-l">
+    <div class="bm"><b>会 泽</b><span>文衡 · 学科信息参考<br>自动化工作区</span></div>
+    <nav class="nav">
+      <a href="#">出报告</a>
+      <a href="#">报告台</a>
+      <a href="#">灵活报告</a>
+      <a href="#" aria-current="true">问文衡</a>
+      <a href="#" class="m">主 台 账</a>
+      <a href="#">运行档案</a>
+      <a href="#" class="q">陈列馆 ↗</a>
+    </nav>
+    <div class="hero-l">
+      <div class="ov">工 作 区 · 对 话</div>
+      <h1>问文衡</h1>
+      <div class="rule"></div>
+      <div class="stm">工作台里能查的，这里都能问。</div>
+      <p class="sub">对话只做指挥：数字全部来自台账与产物，答语附溯源与对账回执。</p>
+      <div class="acts">
+        <button class="btn" type="button">出报告</button>
+        <button class="ghost" type="button">查数据</button>
+        <button class="ghost" type="button">看进展</button>
+      </div>
+    </div>
+    <div class="state">
+      <div class="s"><span class="k">期 次</span><span class="v">202609</span></div>
+      <div class="s"><span class="k">签 发</span><span class="v">已入台账</span></div>
+      <div class="s"><span class="k">对 账</span><span class="v">12 / 12</span></div>
+    </div>
+    <div class="footline"><span>文衡 · 对话前门</span><span>数字不出网 · 回执可审计</span></div>
+  </aside>
+
+  <div class="sealbox" aria-hidden="true">
+    <svg viewBox="0 0 220 220">
+      <rect x="10" y="10" width="200" height="200" fill="#264A35" />
+      <rect x="22" y="22" width="176" height="176" fill="none" stroke="#F5F3EC" stroke-width="2.6" />
+      <g font-family="'Noto Serif SC','Songti SC',SimSun,serif" font-weight="700" font-size="56"
+         text-anchor="middle" fill="#F5F3EC">
+        <text x="64" y="94">已</text><text x="156" y="94">签</text><text x="110" y="180">发</text>
+      </g>
+    </svg>
+  </div>
+
+  <main class="page-r">
+    <div class="rtop">
+      <span>问文衡 · 对话</span>
+      <div class="r">
+        <button class="chip" type="button">往期对话 ▾</button>
+        <span class="chip">期次 <b>202609</b></span>
+        <button class="chip" type="button">＋ 新对话</button>
+      </div>
+    </div>
+
+    <div class="q-wrap">
+      <p class="q-sys">第 2 段对话 · 已保存 · 续聊沿用本期槽位</p>
+
+      <div class="q-turn me">
+        <div class="q-who">你</div>
+        <div class="q-body"><div class="q-text">查一下植物与动物学 202609 的千分之一阈值，过线没有？</div></div>
+      </div>
+
+      <div class="q-turn wh">
+        <div class="q-who">衡</div>
+        <div class="q-body">
+          <div class="q-nm">文 衡 · 查 数 据</div>
+          <div class="q-text">植物与动物学 202609 的千分之一阈值是 <b>0.86</b>；该学科当期篇均被引折算 <b>0.91</b>，<b>已过线</b>，超出阈值约 5.8%。</div>
+          <div class="q-doc">
+            <div class="q-doc-cap"><span>溯 源</span><i></i><span>3 条 · 全部指回台账</span></div>
+            <div class="q-src"><i>①</i><span class="lb">动态监测表</span><span class="dt">L38 · 植物与动物学 · 1‰ 阈值列</span><span class="vl">0.86</span></div>
+            <div class="q-src"><i>②</i><span class="lb">ESI 快照</span><span class="dt">2026-09-12 · 植物与动物学 · 篇均被引</span><span class="vl">0.91</span></div>
+            <div class="q-src"><i>③</i><span class="lb">报告 §2</span><span class="dt">out/202609 · 学科态势 · 阈值一段</span><span class="vl">§2.1</span></div>
+            <div class="q-sealrow">
+              <span class="q-seal">已核</span>
+              <span class="sealtx q-sealtx"><b>12 / 12</b> 项对账全过 · 本答按台账原文作答
+                <span class="rc">回执 qa-20261027-0417 · 记录 9f3c2e · 可复核</span></span>
+              <button class="lnk" type="button">逐条对账 ↗</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="q-turn me">
+        <div class="q-who">你</div>
+        <div class="q-body"><div class="q-text">好，那把 202611 的报告先跑起来。</div></div>
+      </div>
+
+      <div class="q-turn wh">
+        <div class="q-who">衡</div>
+        <div class="q-body">
+          <div class="q-nm">文 衡 · 出 报 告</div>
+          <div class="q-text">202611 还不能开跑：四件里缺三件。少的是<b>原始数据</b>，不是机器坏了。</div>
+          <div class="q-inv">
+            <div class="q-inv-row ok"><span class="mk">✓</span><span class="lb">动态监测表（台账）</span><span class="nt">已上传 · 2026-10-26</span></div>
+            <div class="q-inv-row no"><span class="mk">✕</span><span class="lb">ESI 原始包</span><span class="nt">未导出 · 取数路径图谱 §3</span></div>
+            <div class="q-inv-row no"><span class="mk">✕</span><span class="lb">InCites 快照</span><span class="nt">未导出</span></div>
+            <div class="q-inv-row no"><span class="mk">✕</span><span class="lb">人工值</span><span class="nt">等上一件齐了再录</span></div>
+            <div class="q-flow">
+              <span class="st cur"><span class="d"></span><span class="t">取数</span></span><span class="ln"></span>
+              <span class="st"><span class="d"></span><span class="t">选模</span></span><span class="ln"></span>
+              <span class="st"><span class="d"></span><span class="t">核验</span></span><span class="ln"></span>
+              <span class="st"><span class="d"></span><span class="t">定稿</span></span>
+            </div>
+          </div>
+          <div class="q-acts">
+            <button class="q-act primary" type="button">去取数台</button>
+            <button class="q-act dashed" type="button">数据齐了提醒我</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="q-composer">
+        <div class="q-box">
+          <textarea rows="1" placeholder="问一句，或下一个指令……"></textarea>
+          <button class="q-send" type="button">送</button>
+        </div>
+        <div class="q-hint">回车即送 · 换行 Shift＋回车 · 答案整段到（数字先过后端核对）</div>
+      </div>
+    </div>
+  </main>
+</section>
+
+<!-- ══ 帧② 落点空态：大字报门面 ══ -->
+<section class="sp-spread" aria-label="帧② 落点空态" style="border-top:1px solid #B08E48;">
+  <aside class="page-l">
+    <div class="bm"><b>会 泽</b><span>文衡 · 学科信息参考<br>自动化工作区</span></div>
+    <nav class="nav">
+      <a href="#">出报告</a>
+      <a href="#">报告台</a>
+      <a href="#">灵活报告</a>
+      <a href="#" aria-current="true">问文衡</a>
+      <a href="#" class="m">主 台 账</a>
+      <a href="#">运行档案</a>
+      <a href="#" class="q">陈列馆 ↗</a>
+    </nav>
+    <div class="hero-l">
+      <div class="ov">工 作 区 · 对 话</div>
+      <h1>问文衡</h1>
+      <div class="rule"></div>
+      <div class="stm">工作台里能查的，这里都能问。</div>
+      <p class="sub">左边三颗钮＝把示例句填进输入框；也可以直接照着右页的例子说。</p>
+    </div>
+    <div class="state">
+      <div class="s"><span class="k">期 次</span><span class="v">202609</span></div>
+      <div class="s"><span class="k">签 发</span><span class="v">已入台账</span></div>
+      <div class="s"><span class="k">会 话</span><span class="v">2 段</span></div>
+    </div>
+    <div class="footline"><span>文衡 · 对话前门</span><span>数字不出网 · 回执可审计</span></div>
+  </aside>
+
+  <main class="page-r">
+    <div class="rtop">
+      <span>问文衡 · 对话</span>
+      <div class="r">
+        <button class="chip" type="button">往期对话 ▾</button>
+        <span class="chip">期次 <b>202609</b></span>
+        <button class="chip" type="button">＋ 新对话</button>
+      </div>
+    </div>
+
+    <div class="q-land">
+      <div class="ov">工 作 区 · 对 话</div>
+      <h2>文衡，帮你做报告、查数据</h2>
+      <div class="q-land-modes">
+        <button class="q-act primary" type="button">出报告</button>
+        <button class="q-act" type="button">查数据</button>
+        <button class="q-act" type="button">看进展</button>
+      </div>
+      <p class="lbl">或 者 ，照 着 下 面 的 例 子 说 一 句</p>
+      <div class="q-pills">
+        <button class="q-pill" type="button">帮我做 9 月的报告</button>
+        <button class="q-pill" type="button">查一下化学的接近度</button>
+        <button class="q-pill" type="button">云南大学国际排名走势</button>
+        <button class="q-pill" type="button">物理学的 1% 阈值是多少</button>
+        <button class="q-pill" type="button">数学什么时候进入前 1%</button>
+        <button class="q-pill" type="button">202609 到哪一步了</button>
+      </div>
+      <div class="q-dyn">
+        <b>本期动态 · 202609</b>
+        <span class="ok">① 取数 ✓ 已核</span>
+        <span class="ok">② 出稿 ✓ 已出</span>
+        <span class="ok">③ 签发 ✓ 已入台账</span>
+        <span class="nt">下一期 202611：ESI 原始包与 InCites 快照尚未导出</span>
+      </div>
+    </div>
+
+    <div class="q-wrap" style="padding-top:8px;">
+      <div class="q-composer">
+        <div class="q-box">
+          <textarea rows="1" placeholder="问一句，或下一个指令……"></textarea>
+          <button class="q-send" type="button">送</button>
+        </div>
+        <div class="q-hint">回车即送 · 换行 Shift＋回车 · 答案整段到（数字先过后端核对）</div>
+      </div>
+    </div>
+  </main>
+</section>
+
+</body>
+</html>

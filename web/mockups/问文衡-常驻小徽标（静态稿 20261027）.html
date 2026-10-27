@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>问文衡 · 方案B 常驻小徽标（静态稿 20261027）</title>
+<style>
+/* ============================================================
+   问文衡重设计 · 方案B：常驻小徽标 + 右抽屉（静态稿 20261027）
+   问文衡不再是独立页面，而是盖在每一站右页角的常驻印钮；
+   点开右抽屉小问不离站；长答与出稿轨迹「展开为整页」（＝方案A）。
+   壳样式与 spread.css（20261025 过审稿）同构；q- 新件零圆角零投影零渐变。
+   数字与回执号均为示例。
+   ============================================================ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.q-note {
+  background: #1E2A23; color: #C9B694; font: 11px/1.8 KaiTi, STKaiti, "FangSong", serif;
+  letter-spacing: .18em; padding: 8px 18px; display: flex; gap: 24px; flex-wrap: wrap;
+}
+.q-note b { color: #F6F1DE; font-weight: 400; }
+.q-cap { padding: 10px 18px 6px; font-family: KaiTi, STKaiti, serif; font-size: 12px;
+  letter-spacing: .22em; color: #4A564D; display: flex; gap: 18px; align-items: baseline; flex-wrap: wrap;}
+.q-cap b { font-family: "Noto Serif SC","Songti SC",SimSun,serif; font-size: 14px; color: #1E2A23; letter-spacing: .1em; }
+
+/* ── 跨页双联壳（同 spread.css） ─────────────────────────── */
+.sp-spread {
+  --deep: #143729; --ivory: #F6F1DE; --ivory-2: rgba(246,241,222,.80); --ivory-3: rgba(246,241,222,.54);
+  --paper: #F5F3EC; --card: #FBF8EF; --panel: #EDE9DC;
+  --ink: #1E2A23; --ink-2: #4A564D; --ink-3: #7C857B;
+  --line: #DFDBCB; --line-2: #EAE7DB;
+  --gold: #C8B584; --seam: #B08E48; --red: #A82F22; --green: #1A4B27; --warn: #7C5A16;
+  --serif: "Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+  --kai: KaiTi, STKaiti, FangSong, STFangsong, serif;
+  --sans: system-ui, -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  --mono: "Cascadia Mono", Consolas, "Courier New", monospace;
+  --lw: 28%;
+  display: grid; grid-template-columns: var(--lw) minmax(0,1fr);
+  min-height: 100dvh; position: relative;
+  background: var(--paper); color: var(--ink);
+  font: 15px/1.75 var(--sans); -webkit-font-smoothing: antialiased;
+}
+.sp-spread h1, .sp-spread h2, .sp-spread h3 { font-family: var(--serif); font-weight: 600; }
+.sp-spread a { color: inherit; text-decoration: none; }
+.sp-spread button { font: inherit; cursor: pointer; }
+.sp-spread ::selection { background: var(--gold); color: #1E2A23; }
+
+.sp-spread .page-l { background: var(--deep); color: var(--ivory); padding: clamp(15px,2.1vh,28px) clamp(18px,2vw,30px);
+  display: flex; flex-direction: column; position: sticky; top: 0; height: 100dvh; overflow: hidden; }
+.sp-spread .bm { display: flex; align-items: baseline; gap: 10px; }
+.sp-spread .bm b { font-family: var(--serif); font-size: clamp(19px,2.4vh,23px); letter-spacing: .14em; }
+.sp-spread .bm span { font-family: var(--kai); font-size: 10.5px; letter-spacing: .16em; color: var(--ivory-3); line-height: 1.7; }
+.sp-spread .nav { margin-top: clamp(10px,1.9vh,20px); display: flex; flex-direction: column;
+  font-size: clamp(12px,1.55vh,13.5px); letter-spacing: .04em; color: var(--ivory-2); }
+.sp-spread .nav a { padding: clamp(3px,.6vh,6px) 0; display: flex; align-items: center; gap: 10px; }
+.sp-spread .nav a::before { content: ""; width: 9px; height: 2px; flex: none; background: transparent; }
+.sp-spread .nav a[aria-current] { color: var(--ivory); }
+.sp-spread .nav a[aria-current]::before { background: var(--gold); }
+.sp-spread .nav .m { margin-top: clamp(7px,1.2vh,13px); font-family: var(--kai); font-size: 10.5px; letter-spacing: .24em; color: var(--ivory-3); }
+.sp-spread .hero-l { margin: auto 0; padding: clamp(6px,1.4vh,20px) 0; }
+.sp-spread .ov { font-family: var(--kai); font-size: 11px; letter-spacing: .24em; color: var(--ivory-3); }
+.sp-spread .hero-l h1 { font-size: clamp(26px,min(2.7vw,4.3vh),42px); line-height: 1.16; letter-spacing: .05em; margin: clamp(7px,1.2vh,12px) 0 6px; }
+.sp-spread .rule { width: 62px; height: 1px; background: var(--gold); margin: clamp(8px,1.3vh,14px) 0 clamp(6px,1vh,10px); }
+.sp-spread .stm { font-family: var(--serif); font-size: clamp(16px,2.1vh,19px); line-height: 1.5; letter-spacing: .05em; }
+.sp-spread .state { margin-top: clamp(10px,1.7vh,20px); display: flex; gap: 22px; flex-wrap: wrap;
+  border-top: 1px solid rgba(246,241,222,.16); padding-top: clamp(8px,1.3vh,13px); }
+.sp-spread .state .s { display: flex; flex-direction: column; gap: 3px; }
+.sp-spread .state .k { font-family: var(--kai); font-size: 10px; letter-spacing: .22em; color: var(--ivory-3); }
+.sp-spread .state .v { font-family: var(--serif); font-size: 15px; letter-spacing: .10em; }
+.sp-spread .footline { margin-top: auto; display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  font-family: var(--kai); font-size: 10px; letter-spacing: .2em; color: var(--ivory-3);
+  border-top: 1px solid rgba(246,241,222,.14); padding-top: clamp(7px,1.2vh,11px); }
+
+.sp-spread .sealbox { position: absolute; left: var(--lw); top: 250px; transform: translateX(-70%) rotate(-4deg);
+  width: 108px; height: 108px; background: #F2EDE0; border: 1px solid rgba(168,47,34,.38);
+  padding: 8px; z-index: 3; }
+.sp-spread .sealbox svg { width: 100%; height: 100%; display: block; }
+
+.sp-spread .page-r { background: var(--paper); border-left: 3px solid var(--seam); padding: 0 0 30px; min-width: 0; position: relative; }
+.sp-spread .rtop { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 18px clamp(20px,2.6vw,40px) 0;
+  font-size: 11px; letter-spacing: .14em; color: var(--ink-3); }
+.sp-spread .rtop .r { margin-left: auto; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+
+/* 背景内容：报告台（示意，低密度） */
+.q-bg { max-width: 880px; margin: 0 auto; padding: clamp(18px,3vh,30px) clamp(20px,2.6vw,40px) 0; }
+.q-bg h2 { font-size: 21px; letter-spacing: .06em; margin-bottom: 4px; }
+.q-bg .sub { font-family: var(--kai); font-size: 11px; letter-spacing: .2em; color: var(--ink-3); margin-bottom: 16px; }
+.q-row { display: flex; gap: 14px; align-items: baseline; padding: 11px 2px; border-top: 1px solid var(--line-2); }
+.q-row:last-child { border-bottom: 1px solid var(--line-2); }
+.q-row .nm { font-family: var(--serif); font-size: 15.5px; flex: 0 0 auto; }
+.q-row .ds { color: var(--ink-3); font-size: 12.5px; flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.q-row .st { font-family: var(--kai); font-size: 11px; letter-spacing: .18em; flex: 0 0 auto; }
+.q-row .st.ok { color: var(--green); }
+.q-row .act { font-family: var(--kai); font-size: 12px; letter-spacing: .14em; color: var(--green);
+  background: none; border: 0; box-shadow: inset 0 -1px 0 var(--gold); padding-bottom: 2px; flex: 0 0 auto; }
+
+/* ── 常驻徽标：印钮 ─────────────────────────────────────── */
+.q-fab { position: absolute; right: 22px; bottom: 22px; width: 46px; height: 46px;
+  background: var(--deep); color: var(--ivory); border: 0; z-index: 6;
+  font-family: var(--serif); font-size: 20px; font-weight: 600; }
+.q-fab::after { content: ""; position: absolute; inset: 3px; border: 1px solid rgba(246,241,222,.32); pointer-events: none; }
+.q-fab:hover { background: #0F2C21; }
+.q-fab .dot { position: absolute; top: -4px; right: -4px; width: 9px; height: 9px; display: none; }
+.q-fab.busy .dot { display: block; background: var(--red); }
+.q-fab.fresh .dot { display: block; background: var(--gold); }
+.q-fab .xl { display: none; }
+
+/* 徽标三态标本（帧外说明行） */
+.q-spec { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; padding: 14px 22px 26px;
+  background: var(--paper); font-family: var(--kai); font-size: 11px; letter-spacing: .18em; color: #4A564D; }
+.q-spec .it { display: flex; align-items: center; gap: 10px; }
+.q-spec .fab { position: relative; width: 38px; height: 38px; background: #143729; color: #F6F1DE;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: "Noto Serif SC","Songti SC",SimSun,serif; font-size: 17px; font-weight: 600; }
+.q-spec .fab::after { content: ""; position: absolute; inset: 3px; border: 1px solid rgba(246,241,222,.32); }
+.q-spec .fab .dot { position: absolute; top: -3px; right: -3px; width: 8px; height: 8px; display: none; }
+.q-spec .fab.busy .dot { display: block; background: #A82F22; }
+.q-spec .fab.fresh .dot { display: block; background: #C8B584; }
+.q-spec .fab.wide { width: auto; padding: 0 14px; gap: 8px; }
+.q-spec .fab.wide i { font-style: normal; font-family: KaiTi, serif; font-size: 11px;
+  letter-spacing: .22em; color: rgba(246,241,222,.8); }
+.q-spec .arw { color: #7C857B; }
+
+/* ── 右抽屉 ─────────────────────────────────────────────── */
+.q-drawer { position: absolute; top: 0; right: 0; bottom: 0; width: min(480px, 46%); z-index: 8;
+  background: var(--card); border-left: 3px solid var(--seam);
+  display: flex; flex-direction: column; }
+.qd-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--line); }
+.qd-seal { flex: 0 0 30px; width: 30px; height: 30px; background: var(--deep); color: var(--ivory);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--serif); font-size: 15px; font-weight: 600; position: relative; }
+.qd-seal::after { content: ""; position: absolute; inset: 2px; border: 1px solid rgba(246,241,222,.32); }
+.qd-tt { display: flex; flex-direction: column; }
+.qd-tt b { font-family: var(--serif); font-size: 16px; letter-spacing: .12em; }
+.qd-tt span { font-family: var(--kai); font-size: 9.5px; letter-spacing: .3em; color: var(--ink-3); }
+.qd-slot { margin-left: auto; font-family: var(--kai); font-size: 10.5px; letter-spacing: .16em; color: var(--ink-3); }
+.qd-slot b { font-family: var(--mono); color: var(--ink); }
+.qd-x { border: 0; background: none; color: var(--ink-3); font-size: 15px; padding: 4px 6px; }
+.qd-x:hover { color: var(--ink); }
+
+.qd-thread { flex: 1; overflow-y: auto; padding: 14px 16px 6px; scrollbar-width: none; }
+.qd-thread::-webkit-scrollbar { display: none; }
+.q-turn { display: flex; gap: 10px; margin-bottom: 16px; }
+.q-who { flex: 0 0 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+  font: 600 11.5px/1 var(--serif); }
+.q-turn.me .q-who { border: 1px solid var(--line); color: var(--ink-3); background: transparent; }
+.q-turn.wh .q-who { background: var(--green); color: #F5F3EC; }
+.q-body { flex: 1; min-width: 0; }
+.q-turn.me .q-body { padding-top: 3px; margin-left: 8px; max-width: 80%; font-size: 14px; }
+.q-turn.wh .q-nm { font-family: var(--kai); font-size: 10px; letter-spacing: .24em; color: var(--ink-3); margin-bottom: 2px; }
+.q-turn.wh .q-text { font-family: var(--serif); font-size: 15px; line-height: 1.62; }
+.q-turn.wh .q-text b { font-weight: 650; }
+.q-doc { margin-top: 8px; border: 1px solid var(--line); background: #FFFDF6; padding: 9px 12px 10px; }
+.q-rc { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
+  font-family: var(--kai); font-size: 11px; letter-spacing: .1em; color: var(--ink-3); }
+.q-rc .ok { color: var(--green); }
+.q-rc .mono { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0; }
+.q-rc .lnk { margin-left: auto; color: var(--green); background: none; border: 0;
+  box-shadow: inset 0 -1px 0 var(--gold); padding-bottom: 1px; font: inherit; letter-spacing: .12em; }
+.q-acts { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.q-act { border: 1px solid var(--ink); background: transparent; padding: 6px 16px;
+  font-family: var(--serif); font-size: 13px; letter-spacing: .1em; color: var(--ink); }
+.q-act:hover { background: var(--panel); }
+.q-act.primary { background: var(--green); border-color: var(--green); color: #F5F3EC; }
+.q-act.expand { border-style: dashed; color: var(--ink-2); }
+
+.qd-composer { border-top: 1px solid var(--line); padding: 12px 16px 14px; background: var(--card); }
+.q-box { display: flex; gap: 8px; align-items: flex-end; border: 1px solid var(--line); background: #FFFDF6;
+  padding: 8px 10px; position: relative; }
+.q-box::after { content: ""; position: absolute; left: 50%; right: 50%; bottom: -1px; height: 2px;
+  background: var(--seam); transition: left .25s, right .25s; }
+.q-box:focus-within::after { left: 10px; right: 10px; }
+.q-box textarea { flex: 1; border: 0; background: transparent; resize: none; font: inherit;
+  color: var(--ink); height: 26px; outline: none; }
+.q-box textarea::placeholder { color: var(--ink-3); font-family: var(--kai); }
+.q-send { flex: 0 0 auto; width: 38px; height: 38px; border: 0; background: var(--green); color: #F5F3EC;
+  font-family: var(--serif); font-size: 14px; }
+.q-send:hover { background: #235A38; }
+.qd-hint { margin-top: 6px; font-family: var(--kai); font-size: 10px; letter-spacing: .18em; color: var(--ink-3); }
+
+@media (prefers-reduced-motion: reduce) { .q-box::after { transition: none; } }
+</style>
+</head>
+<body>
+
+<div class="q-note">
+  <span>静态稿 20261027 · <b>问文衡重设计 · 方案 B 常驻小徽标 ＋ 右抽屉</b></span>
+  <span>徽标＝每一站右页角常驻印钮 · 抽屉小问不离站 · 长答「展开为整页」＝方案 A</span>
+  <span>文中数字 / 回执号均为示例</span>
+</div>
+
+<!-- ══ 帧① 报告台 + 常驻徽标（未开） ══ -->
+<section class="sp-spread" aria-label="帧① 常驻徽标">
+  <aside class="page-l">
+    <div class="bm"><b>会 泽</b><span>文衡 · 学科信息参考<br>自动化工作区</span></div>
+    <nav class="nav">
+      <a href="#">出报告</a>
+      <a href="#" aria-current="true">报告台</a>
+      <a href="#">灵活报告</a>
+      <a href="#">问文衡</a>
+      <a href="#" class="m">主 台 账</a>
+      <a href="#">运行档案</a>
+      <a href="#" class="q">陈列馆 ↗</a>
+    </nav>
+    <div class="hero-l">
+      <div class="ov">本 期 · 成 品</div>
+      <h1>报告台</h1>
+      <div class="rule"></div>
+      <div class="stm">一期成册，逐格可追。</div>
+    </div>
+    <div class="state">
+      <div class="s"><span class="k">期 次</span><span class="v">202609</span></div>
+      <div class="s"><span class="k">签 发</span><span class="v">已入台账</span></div>
+    </div>
+    <div class="footline"><span>文衡 · 工作区</span><span>数字不出网 · 回执可审计</span></div>
+  </aside>
+
+  <div class="sealbox" aria-hidden="true">
+    <svg viewBox="0 0 220 220">
+      <rect x="10" y="10" width="200" height="200" fill="#264A35" />
+      <rect x="22" y="22" width="176" height="176" fill="none" stroke="#F5F3EC" stroke-width="2.6" />
+      <g font-family="'Noto Serif SC','Songti SC',SimSun,serif" font-weight="700" font-size="56"
+         text-anchor="middle" fill="#F5F3EC">
+        <text x="64" y="94">已</text><text x="156" y="94">签</text><text x="110" y="180">发</text>
+      </g>
+    </svg>
+  </div>
+
+  <main class="page-r">
+    <div class="rtop"><span>报告台 · 本期成品</span></div>
+    <div class="q-bg">
+      <h2>202609 · 三件套</h2>
+      <div class="sub">机器保数字，取舍你来定。</div>
+      <div class="q-row"><span class="nm">报告初稿</span><span class="ds">202609 · 学科信息参考 · 正文九节 · 图 94 张</span><span class="st ok">已签发 · 可下载</span><button class="act" type="button">下载 ↧</button></div>
+      <div class="q-row"><span class="nm">对照差异报告</span><span class="ds">与第 5 期人工原件逐节对勘</span><span class="st ok">已生成</span><button class="act" type="button">下载 ↧</button></div>
+      <div class="q-row"><span class="nm">红色件清单</span><span class="ds">红色件 6 处 · 全部指回台账</span><span class="st ok">已生成</span><button class="act" type="button">查看 ↗</button></div>
+    </div>
+
+    <!-- 常驻徽标：每一站都在 -->
+    <button class="q-fab" type="button" aria-label="问文衡">问<span class="dot"></span></button>
+  </main>
+</section>
+
+<div class="q-cap"><b>徽标三态</b><span>常驻＝深绿印钮，任何一站的右页角都在</span><span>答复中＝朱点 · 有新答＝金点 · 悬停＝展开「问文衡」</span></div>
+<div class="q-spec">
+  <span class="it"><span class="fab">问</span>常驻</span>
+  <span class="it"><span class="fab busy">问<i class="dot"></i></span>答复中（朱点）</span>
+  <span class="it"><span class="fab fresh">问<i class="dot"></i></span>有新答（金点）</span>
+  <span class="it"><span class="fab wide">问<i>问 文 衡</i></span>悬停展开</span>
+  <span class="arw">── 右页角 22px 内边距 · 零圆角零投影 · 与钤印同族（印面字＋细内框）</span>
+</div>
+
+<!-- ══ 帧② 抽屉打开：小问不离站 ══ -->
+<section class="sp-spread" aria-label="帧② 抽屉打开" style="border-top:1px solid #B08E48;">
+  <aside class="page-l">
+    <div class="bm"><b>会 泽</b><span>文衡 · 学科信息参考<br>自动化工作区</span></div>
+    <nav class="nav">
+      <a href="#">出报告</a>
+      <a href="#" aria-current="true">报告台</a>
+      <a href="#">灵活报告</a>
+      <a href="#">问文衡</a>
+      <a href="#" class="m">主 台 账</a>
+      <a href="#">运行档案</a>
+      <a href="#" class="q">陈列馆 ↗</a>
+    </nav>
+    <div class="hero-l">
+      <div class="ov">本 期 · 成 品</div>
+      <h1>报告台</h1>
+      <div class="rule"></div>
+      <div class="stm">一期成册，逐格可追。</div>
+    </div>
+    <div class="state">
+      <div class="s"><span class="k">期 次</span><span class="v">202609</span></div>
+      <div class="s"><span class="k">签 发</span><span class="v">已入台账</span></div>
+    </div>
+    <div class="footline"><span>文衡 · 工作区</span><span>抽屉只盖右页 · 左栏与钤印位不动</span></div>
+  </aside>
+
+  <main class="page-r">
+    <div class="rtop"><span>报告台 · 本期成品</span></div>
+    <div class="q-bg">
+      <h2>202609 · 三件套</h2>
+      <div class="sub">机器保数字，取舍你来定。</div>
+      <div class="q-row"><span class="nm">报告初稿</span><span class="ds">202609 · 学科信息参考 · 正文九节 · 图 94 张</span><span class="st ok">已签发 · 可下载</span><button class="act" type="button">下载 ↧</button></div>
+      <div class="q-row"><span class="nm">对照差异报告</span><span class="ds">与第 5 期人工原件逐节对勘</span><span class="st ok">已生成</span><button class="act" type="button">下载 ↧</button></div>
+      <div class="q-row"><span class="nm">红色件清单</span><span class="ds">红色件 6 处 · 全部指回台账</span><span class="st ok">已生成</span><button class="act" type="button">查看 ↗</button></div>
+    </div>
+
+    <!-- 右抽屉：盖在右页上，问完即回 -->
+    <aside class="q-drawer" aria-label="问文衡抽屉">
+      <div class="qd-head">
+        <span class="qd-seal">问</span>
+        <span class="qd-tt"><b>问文衡</b><span>工 作 区 · 对 话</span></span>
+        <span class="qd-slot">期次 <b>202609</b></span>
+        <button class="qd-x" type="button" aria-label="收起">✕</button>
+      </div>
+
+      <div class="qd-thread">
+        <div class="q-turn me">
+          <div class="q-who">你</div>
+          <div class="q-body">查一下化学 202609 的接近度，过线没有？</div>
+        </div>
+        <div class="q-turn wh">
+          <div class="q-who">衡</div>
+          <div class="q-body">
+            <div class="q-nm">文 衡 · 查 数 据</div>
+            <div class="q-text">化学 202609 接近度 <b>106%</b>——已过 1% 线，超出约 6 个百分点。</div>
+            <div class="q-doc">
+              <div class="q-rc">
+                <span class="ok">对账 12 / 12 已核</span>
+                <span>溯源 3 条 ▾</span>
+                <span class="mono">回执 qa-20261027-0391</span>
+                <button class="lnk" type="button">逐条 ↗</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="q-turn wh">
+          <div class="q-who">衡</div>
+          <div class="q-body">
+            <div class="q-nm">文 衡 · 看 进 展</div>
+            <div class="q-text">202611 取数未开始：ESI 原始包与 InCites 快照都没导出。</div>
+            <div class="q-acts">
+              <button class="q-act primary" type="button">去取数台</button>
+              <button class="q-act expand" type="button">展开为整页 ↗</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="qd-composer">
+        <div class="q-box">
+          <textarea rows="1" placeholder="问一句，或下一个指令……"></textarea>
+          <button class="q-send" type="button">送</button>
+        </div>
+        <div class="qd-hint">抽屉里答小问 · 出稿与长答「展开为整页」 · 回车即送</div>
+      </div>
+    </aside>
+  </main>
+</section>
+
+</body>
+</html>
