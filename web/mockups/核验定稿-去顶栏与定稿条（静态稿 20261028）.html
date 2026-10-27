@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="zh-CN" data-palette="green" data-state="clean">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 核验定稿：去顶栏与定稿条 v1（静态稿 20261028）</title>
+<style>
+/* ============================================================
+   给 rick 审核的静态稿：单文件、双击即开、零依赖（内联少量原生 JS 仅供切态演示）。
+
+   【约束简报（refactoring-ui Workflow B）】
+   内容分级：主＝定稿条（每态恰一个主动作：签单／确认签单／下载报告）；次＝正文头部状态行
+   与「待填 N」跳转 chip；三＝meta 行（文件名·时间）、看对勘本、批注（收起）。
+   令牌全部取自 src/index.css 对版（web/mockups/运行档案-本期规划与校验（静态稿 20261027）.html
+   同源）：绿蓝双主题、零圆角、一档浅阴影、六档字号（11/12/13.5/15/19/26）。
+   馆员话术：签单／撤回／待人工／存疑／下载报告（Word）；无技术词上屏。
+
+   【三案收敛（design-it-twice：A 极简决策条 / B 卷宗封底 / C 文档定稿条）】
+   ① 顶部导航栏整条删除（rick 裁）。五件套去向（三案一致）：
+      期次切换→左栏 hero 原位变下拉；ⓘ 口径声明→左栏底部浮层（全站唯一一份，文案原样）；
+      陈列馆入口→删（左栏已有）；配色开关＋身份 chip→左栏底部工具行。
+   ② 签单＝正文末尾一条「定稿条」（C），正文卡头部另有一行小状态（A 的进屏即见）；
+      右侧三卡整栏解散（rick：右侧多余）。
+   ③ 确认交互＝C 两段式：干净期点一次即签；有待填/存疑时点「签单」→条内展开确认面
+      （知悉勾选原文一字不动＋批注＋「确认签单」）——恒显示的仪式勾选改为确认面内容。
+   ④ 状态语言＝印章唯一（空印/满印/金印）。砍掉：结果 msg 卡、下载卡 hint、
+      「已签单，可下载」等三处重复表述；已签态登记签发时间·签单人（B 卷宗登记项）。
+   ⑤ 「报告里的空」todo→正文头部「待填 N ▾」chip 展开面板；长文用吸底迷你条引路
+      （仅未签且定稿条出视口时出现）。
+
+   【四态演示】右上角审稿切换：干净未签 / 有待填未签 / 已签 / 签发失效。
+   ============================================================ */
+:root, html[data-palette="blue"]{
+  --field:#17456E; --field-2:#0F2E4C;
+  --tool:#26483B; --tool-2:#163228; --tool-3:#2F7A58; --tool-5:#DFEDE6;
+  --bg:#EDE9DE; --card:#FAF8F0; --panel:#E6E1D3; --card-hi:#FDFAF3;
+  --ink:#15222B; --ink-2:#43525C; --ink-3:#556169;
+  --line:#D8D2C2; --line-2:#E6E1D3;
+  --zhu:#26483B; --zhu-soft:#DFEDE6;
+  --gold:#2F7A58; --gold-soft:#DFEDE6; --gold-ink:#163228;
+  --ok:#276B4C; --ok-soft:#DFEDE6; --ok-line:#9CC4AE;
+  --warn:#7C5A16; --warn-soft:#F3E9CF;
+  --bad:#B23A2B; --bad-soft:#F4DDD7;
+  --seal:#A63A2B; --seal-soft:#F4DDD7;
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --r:0px; --shadow:0 1px 2px rgba(21,34,43,.07);
+  --fs-xs:11px; --fs-sm:12px; --fs-label:13.5px; --fs-body:15px; --fs-h:19px; --fs-sh:26px;
+}
+html[data-palette="green"]{
+  --field:#1F3A2E; --field-2:#152B21;
+  --tool:#17456E; --tool-2:#0F2E4C; --tool-3:#2C6E9E; --tool-5:#DDE9F2;
+  --bg:#EDE9DE; --card:#FAF8F0; --panel:#E6E1D3; --card-hi:#FDFAF3;
+  --ink:#15222B; --ink-2:#43525C; --ink-3:#556169;
+  --line:#D8D2C2; --line-2:#E6E1D3;
+  --zhu:#1F3A2E; --zhu-soft:#E2EAE2;
+  --gold:#7C5A16; --gold-soft:#F3E9CF; --gold-ink:#4A3610;
+  --ok:#276B4C; --ok-soft:#DFEDE6; --ok-line:#9CC4AE;
+  --warn:#7C5A16; --warn-soft:#F3E9CF;
+  --bad:#B23A2B; --bad-soft:#F4DDD7;
+  --seal:#A63A2B; --seal-soft:#F4DDD7;
+}
+*{box-sizing:border-box;margin:0;padding:0;border-radius:var(--r)}
+html{background:var(--bg)}
+body{font-family:var(--sans);color:var(--ink);font-size:var(--fs-body);line-height:1.6}
+
+/* ---------- 壳：左栏 + 主区（顶栏不存在） ---------- */
+.frame{display:flex;min-height:100vh}
+.shell{width:264px;flex:none;background:var(--field);color:#F4F1E8;display:flex;flex-direction:column;
+  padding:20px 18px 14px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{font-family:var(--serif);text-decoration:none;color:inherit;display:block;margin-bottom:18px}
+.brand b{font-size:var(--fs-sh);letter-spacing:6px;font-weight:600}
+.brand span{display:block;font-size:var(--fs-xs);opacity:.72;margin-top:2px;letter-spacing:1px}
+.shell-nav{display:flex;flex-direction:column;gap:2px;margin-bottom:16px}
+.shell-nav a{color:inherit;text-decoration:none;font-size:var(--fs-label);padding:7px 10px;opacity:.8}
+.shell-nav a:hover{background:rgba(255,255,255,.08);opacity:1}
+.shell-nav a.on{background:rgba(255,255,255,.14);opacity:1}
+.shell-nav .sep{border-top:1px solid rgba(255,255,255,.18);margin:8px 4px}
+.shell-nav .ext{opacity:.6;font-size:var(--fs-sm)}
+.hero{border-top:1px solid rgba(255,255,255,.2);padding-top:14px;margin-top:auto}
+.hero-kicker{font-size:var(--fs-xs);letter-spacing:3px;opacity:.72}
+.hero-title{font-family:var(--serif);font-size:var(--fs-sh);font-weight:600;margin:4px 0 10px;letter-spacing:2px}
+.hero-period{margin-bottom:10px}
+.hero-period select{width:100%;background:rgba(255,255,255,.1);color:inherit;border:1px solid rgba(255,255,255,.3);
+  font:inherit;font-size:var(--fs-label);padding:6px 8px}
+.hero-period option{color:var(--ink)}
+.hero-meta{font-size:var(--fs-xs);opacity:.72;line-height:1.7}
+.hero-motto{font-family:var(--serif);font-size:var(--fs-label);margin-top:12px;opacity:.9}
+.hero-stats{display:flex;gap:18px;margin-top:12px;font-size:var(--fs-xs);opacity:.85}
+.hero-stats b{display:block;font-size:var(--fs-label);font-weight:600}
+.shell-foot{border-top:1px solid rgba(255,255,255,.2);margin-top:16px;padding-top:10px}
+.motto-line{font-size:var(--fs-xs);opacity:.6;margin-bottom:8px;letter-spacing:2px}
+.foot-row{display:flex;align-items:center;gap:10px}
+.foot-row .spacer{flex:1}
+.info-pop{position:relative}
+.info-pop>summary{list-style:none;cursor:pointer;font-size:var(--fs-xs);opacity:.85;border:1px solid rgba(255,255,255,.3);padding:2px 8px}
+.info-pop>summary::-webkit-details-marker{display:none}
+.info-pop[open]>summary{background:rgba(255,255,255,.14)}
+.info-pop .pop{position:absolute;bottom:calc(100% + 8px);left:0;width:300px;background:var(--card);color:var(--ink);
+  border:1px solid var(--line);box-shadow:var(--shadow);padding:12px 14px;font-size:var(--fs-sm);z-index:9}
+.info-pop .pop p{margin-bottom:6px;color:var(--ink-2)}
+.skin-dots{display:flex;gap:4px}
+.skin-dots button{width:16px;height:16px;border:1px solid rgba(255,255,255,.5);cursor:pointer;padding:0}
+.skin-dots button[data-p="green"]{background:#1F3A2E}
+.skin-dots button[data-p="blue"]{background:#17456E}
+.skin-dots button.on{outline:2px solid rgba(255,255,255,.85);outline-offset:1px}
+.user-chip{display:flex;align-items:center;gap:6px;font-size:var(--fs-xs);opacity:.9}
+.user-chip .av{width:20px;height:20px;background:rgba(255,255,255,.2);display:inline-flex;align-items:center;justify-content:center;font-size:var(--fs-xs)}
+
+/* ---------- 主区 ---------- */
+.main{flex:1;min-width:0;padding:26px 40px 120px}
+.doc-head{display:flex;align-items:flex-start;gap:14px;max-width:960px;margin:0 auto 14px}
+.doc-head .body-meta{flex:1;min-width:0}
+.doc-head .concl{font-size:var(--fs-body);font-weight:600}
+.doc-head .meta{font-size:var(--fs-xs);color:var(--ink-3);margin-top:2px}
+.doc-head .to-sign{font-size:var(--fs-label);color:var(--tool-3);text-decoration:none;white-space:nowrap;padding-top:4px}
+
+/* 印章：唯一状态表达 */
+.seal{width:56px;height:56px;flex:none;border:2px solid var(--seal);color:var(--seal);
+  display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:600;
+  font-size:var(--fs-label);letter-spacing:2px;transform:rotate(-6deg);text-align:center;line-height:1.3;background:transparent}
+.seal.full{background:var(--seal);color:#F8F3EC;border-color:var(--seal)}
+.seal.stale-seal{border-color:var(--gold);color:var(--gold)}
+.seal.mini{width:40px;height:40px;font-size:var(--fs-xs);border-width:1.5px}
+
+/* 报告卡 */
+.doc{max-width:960px;margin:0 auto;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+.doc-nav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 22px;border-bottom:1px solid var(--line-2);background:var(--panel)}
+.todo-pop{position:relative}
+.todo-pop>summary{list-style:none;cursor:pointer;font-size:var(--fs-label);padding:3px 10px;border:1px solid var(--line);
+  background:var(--card);color:var(--warn)}
+.todo-pop>summary::-webkit-details-marker{display:none}
+.todo-pop[open] .pop{position:absolute;top:calc(100% + 6px);left:0;width:340px;background:var(--card-hi);
+  border:1px solid var(--line);box-shadow:var(--shadow);padding:10px 12px;z-index:8}
+.todo-pop li{list-style:none;display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);padding:4px 0;border-bottom:1px dashed var(--line-2)}
+.todo-pop li:last-child{border-bottom:0}
+.todo-pop .t{flex:1}
+.todo-pop .st{color:var(--warn)}
+.todo-pop .jd{font-size:var(--fs-xs);color:var(--tool-3);text-decoration:none}
+.doc-nav .toc{display:flex;gap:4px;flex-wrap:wrap}
+.doc-nav .toc button{font-size:var(--fs-sm);padding:3px 9px;background:transparent;border:1px solid transparent;color:var(--ink-2);cursor:pointer}
+.doc-nav .toc button.on{border-color:var(--line);background:var(--card);color:var(--ink)}
+.doc-body{padding:26px 0 30px}
+.doc-inner{max-width:72ch;margin:0 auto;padding:0 32px}
+.doc-inner h3{font-family:var(--serif);font-size:var(--fs-h);font-weight:600;margin:22px 0 10px}
+.doc-inner p{margin-bottom:10px;color:var(--ink);max-width:72ch}
+.doc-inner .meta-line{font-size:var(--fs-sm);color:var(--ink-3)}
+.fill-empty{display:inline-block;min-width:180px;border:1px dashed var(--ink-3);padding:1px 8px;color:var(--ink-3);font-size:var(--fs-sm)}
+.mini-table{width:100%;border-collapse:collapse;font-size:var(--fs-sm);margin:8px 0 14px;font-variant-numeric:tabular-nums}
+.mini-table th,.mini-table td{border:1px solid var(--line);padding:4px 8px;text-align:left}
+.mini-table th{background:var(--panel);font-weight:500;color:var(--ink-2)}
+
+/* ---------- 定稿条（正文末尾） ---------- */
+.finalize{margin-top:26px;border-top:2px solid var(--tool-2);background:var(--panel)}
+.finalize .bar{display:flex;align-items:flex-start;gap:16px;padding:16px 22px}
+.finalize .fx-main{flex:1;min-width:0}
+.finalize .fx-line{font-size:var(--fs-body);font-weight:600}
+.finalize .fx-meta{font-size:var(--fs-xs);color:var(--ink-3);margin-top:3px}
+.finalize .fx-actions{display:flex;align-items:center;gap:10px;flex:none;padding-top:2px}
+.finalize .fx-extra{border-top:1px dashed var(--line);padding:14px 22px 16px;display:none;flex-direction:column;gap:10px}
+.ack{display:flex;gap:8px;font-size:var(--fs-label);align-items:flex-start;color:var(--ink)}
+.ack input{margin-top:4px;flex:none}
+.fx-note{width:100%;border:1px solid var(--line);background:var(--card);font:inherit;font-size:var(--fs-label);
+  color:var(--ink);padding:6px 8px;resize:vertical}
+.fx-note::placeholder{color:var(--ink-3)}
+.btn{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:var(--fs-label);padding:7px 18px;
+  border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;text-decoration:none}
+.btn.primary{background:var(--tool-2);border-color:var(--tool-2);color:#F4F1E8;font-weight:600}
+.btn.primary:hover{background:var(--tool)}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.hintlink{font-size:var(--fs-label);color:var(--tool-3);text-decoration:none}
+.fx-retract{font-size:var(--fs-label);color:var(--ink-2);background:transparent;border:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.fx-retract .confirm{color:var(--bad);font-weight:600}
+
+/* 吸底迷你条（未签且定稿条出视口） */
+.minibar{position:fixed;left:264px;right:0;bottom:0;background:var(--tool-2);color:#F4F1E8;
+  display:none;align-items:center;gap:12px;padding:8px 24px;font-size:var(--fs-label);box-shadow:var(--shadow);z-index:7}
+.minibar.on{display:flex}
+.minibar .grow{flex:1}
+.minibar a{color:#F4F1E8;text-decoration:none;border:1px solid rgba(255,255,255,.5);padding:2px 10px}
+
+/* 审稿切换条（仅本静态稿） */
+.gate{position:fixed;top:10px;right:12px;z-index:99;display:flex;gap:6px;align-items:center;background:var(--card);
+  border:1px solid var(--line);box-shadow:var(--shadow);padding:6px 8px;font-size:var(--fs-xs);opacity:.94}
+.main{padding-top:64px}
+.gate button{font:inherit;font-size:var(--fs-xs);border:1px solid var(--line);background:transparent;color:var(--ink-2);padding:2px 8px;cursor:pointer}
+.gate button.on{background:var(--tool-2);color:#F4F1E8;border-color:var(--tool-2)}
+
+/* 态可见性（全走类，不用内联样式——内联会压过状态规则） */
+.only-unsign{display:inline}
+html[data-state="signed"] .only-unsign{display:none}
+.only-signed{display:none}
+html[data-state="signed"] .only-signed{display:inline}
+.only-dirty{display:inline}
+html[data-state="clean"] .only-dirty,html[data-state="stale"] .only-dirty,html[data-state="signed"] .only-dirty{display:none}
+.only-stale{display:none}
+html[data-state="stale"] .only-stale{display:inline}
+.fx-concl-clean,.fx-concl-dirty,.fx-concl-stale{display:none}
+html[data-state="clean"] .fx-concl-clean{display:block}
+html[data-state="dirty"] .fx-concl-dirty{display:block}
+html[data-state="stale"] .fx-concl-stale{display:block}
+.hc{display:none}
+html[data-state="clean"] .hc-clean{display:inline}
+html[data-state="dirty"] .hc-dirty{display:inline}
+html[data-state="signed"] .hc-signed{display:inline}
+html[data-state="stale"] .hc-stale{display:inline}
+html[data-state="clean"] .seal-big::after,html[data-state="dirty"] .seal-big::after{content:"未签发"}
+html[data-state="signed"] .seal-big::after{content:"已签发"}
+html[data-state="stale"] .seal-big::after{content:"签发失效"}
+html[data-state="stale"] .seal-big{border-color:var(--gold);color:var(--gold)}
+html[data-state="signed"] .seal-big{background:var(--seal);color:#F8F3EC}
+.head-sign{display:none}
+html[data-state="clean"] .head-sign,html[data-state="dirty"] .head-sign{display:inline}
+</style>
+</head>
+<body>
+<div class="gate" aria-label="静态稿态切换（仅供审稿）">
+  审稿切换：
+  <button data-s="clean" class="on">干净未签</button>
+  <button data-s="dirty">有待填未签</button>
+  <button data-s="signed">已签</button>
+  <button data-s="stale">签发失效</button>
+  ｜配色：<button data-p="green" class="on">绿</button><button data-p="blue">蓝</button>
+</div>
+
+<div class="frame">
+  <!-- ======== 左栏壳：顶栏五件套的收编处（期次→hero 下拉；ⓘ/配色/身份→底部；陈列馆沿用左栏原入口） ======== -->
+  <aside class="shell">
+    <a class="brand" href="#"><b>文衡</b><span>云南大学图书馆 · 学科信息参考</span></a>
+    <nav class="shell-nav">
+      <a href="#">出报告</a>
+      <a href="#">报告台</a>
+      <a href="#">灵活报告</a>
+      <a href="#">问文衡</a>
+      <span class="sep"></span>
+      <a href="#">主台账</a>
+      <a href="#">运行档案</a>
+      <a class="ext" href="#">陈列馆 ⇥</a>
+    </nav>
+    <div class="hero">
+      <p class="hero-kicker">本期 · 第四站</p>
+      <h1 class="hero-title">核验定稿</h1>
+      <div class="hero-period">
+        <!-- 顶栏期次下拉收编于此：全局唯一期次控件，选项带签发状态 -->
+        <select aria-label="切换期次">
+          <option>第39期 · 2026年9月（202609 · 已签发）</option>
+          <option>第38期 · 2026年7月（202607 · 已签发）</option>
+          <option>第37期 · 2026年5月（202605 · 已签发）</option>
+        </select>
+      </div>
+      <p class="hero-meta">数据截至 2016.1.1–2026.6.30<br>机器保数字，取舍你来定。</p>
+      <div class="hero-stats">
+        <span>任务<b>已完成</b></span>
+        <span>签发<b>已签发</b></span>
+        <span>取数<b>64 / 64</b></span>
+      </div>
+      <p class="hero-motto">会泽百家 · 至公天下</p>
+    </div>
+    <div class="shell-foot">
+      <p class="motto-line">并行实验 · 随时可能删除</p>
+      <div class="foot-row">
+        <!-- 顶栏 ⓘ 收编于此：全站唯一一份口径/来源/只读声明，文案原样 -->
+        <details class="info-pop">
+          <summary>ⓘ 说明</summary>
+          <div class="pop">
+            <p>① 数字只来自馆员维护的台账与派生产物，运行期大模型不进入数据路径；</p>
+            <p>② 本系统是只读视图，不修改台账与报告；③ 预测章按「本期已选」的已保存选择执行，未列学科用 V1 推荐；④ 期次与状态以任务记录为准，未签发报告不可下载。</p>
+            <p>来源：期内产物目录 · 运行档案 · 预测选模配置。</p>
+            <p>分析报告属于内部资料，仅用于参赛，禁止外传。</p>
+          </div>
+        </details>
+        <span class="spacer"></span>
+        <!-- 顶栏配色开关收编于此：双色点 -->
+        <span class="skin-dots" role="group" aria-label="切换配色">
+          <button type="button" data-p="green" class="on" title="绿场"></button>
+          <button type="button" data-p="blue" title="蓝场"></button>
+        </span>
+        <!-- 顶栏身份 chip 收编于此 -->
+        <span class="user-chip"><span class="av">a</span>admin · 管理员</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ======== 主区：无顶栏；头部状态行 + 报告卡（全宽）+ 文末定稿条 ======== -->
+  <main class="main">
+    <!-- 头部状态行：进屏即见（方案 A），只一行，主动作仍在文末定稿条 -->
+    <div class="doc-head">
+      <span class="seal seal-big mini" aria-hidden="true"></span>
+      <div class="body-meta">
+        <p class="concl">
+          <span class="hc hc-clean">核验全过：无待填、无存疑——读完可签单。</span>
+          <span class="hc hc-dirty">待人工 2 处 · 存疑 1 处——补齐再签。</span>
+          <span class="hc hc-signed">已签发——这一版定稿，可下载。</span>
+          <span class="hc hc-stale">签发已失效——有填写还没写进报告，重签即可。</span>
+        </p>
+        <p class="meta">学科信息参考_202609（试排）.docx · 2026-10-27 08:28</p>
+      </div>
+      <a class="to-sign head-sign" href="#fx-sign">去签单 ↓</a>
+    </div>
+
+    <div class="doc">
+      <!-- 头部细导航：待填 chip（todo 收编）+ 章节 TOC -->
+      <nav class="doc-nav">
+        <details class="todo-pop only-dirty">
+          <summary>待填 2 ▾</summary>
+          <div class="pop">
+            <ul>
+              <li><span class="t">概述 · 重点学科数说明</span><span class="st">待填</span><a class="jd" href="#">跳转</a><a class="jd" href="#">存疑</a></li>
+              <li><span class="t">结论 · 潜力学科展望</span><span class="st" style="color:var(--ok)">已填</span><a class="jd" href="#">跳转</a><a class="jd" href="#">已存疑</a></li>
+            </ul>
+          </div>
+        </details>
+        <div class="toc">
+          <button class="on">一 概述</button>
+          <button>二 我校学科发展情况</button>
+          <button>三 潜力学科趋势预测</button>
+          <button>四 云南省高校学科发展基本情况</button>
+          <button>五 顶尖论文清单</button>
+        </div>
+      </nav>
+
+      <div class="doc-body">
+        <div class="doc-inner">
+          <h3>一 概述</h3>
+          <p class="meta-line">本稿由流水线生成 · 数字全部来自台账；带虚线框的空请就地填写。</p>
+          <p>据 2026 年 9 月 ESI 最新数据显示，本期全球共有 10674 个机构登上 ESI 前百分之一榜单，我校位于第 973 位，较上期上升 22 位。</p>
+          <p>本期我校共有 <span class="fill-empty">请填写本期重点学科数说明</span> 个学科进入 ESI 全球前百分之一。</p>
+          <h3>五 顶尖论文清单（节选）</h3>
+          <table class="mini-table">
+            <tr><th>#</th><th>WOS 号</th><th>被引</th><th>学科</th></tr>
+            <tr><td>179</td><td>WOS:001402657700001</td><td>57</td><td>ENVIRONMENT/ECOLOGY</td></tr>
+            <tr><td>180</td><td>WOS:001227230300005</td><td>56</td><td>PHYSICS</td></tr>
+            <tr><td>181</td><td>WOS:001244887000001</td><td>56</td><td>PHYSICS</td></tr>
+          </table>
+          <p>……（正文从略）……</p>
+        </div>
+
+        <!-- ======== 定稿条：签单＝文档身上的最后一道工序（C），状态唯一表达＝印章 ======== -->
+        <section class="finalize" id="fx-sign" aria-label="签单">
+          <div class="bar">
+            <span class="seal seal-big" aria-hidden="true"></span>
+            <div class="fx-main">
+              <!-- 干净态：一句话，无仪式件 -->
+              <p class="fx-line fx-concl-clean">本稿无待填、无存疑——可以直接签单。</p>
+              <!-- 异常态：前置摘要一行（联动句压缩），确认面收在展开层 -->
+              <p class="fx-line fx-concl-dirty">待人工 2 处 · 存疑 1 处 · 点「签单」会先把已填的 2 处写进报告，再签发。</p>
+              <!-- 失效态：结论行＋主动作翻回重签 -->
+              <p class="fx-line fx-concl-stale">签发已失效——有填写还没写进报告，重签即可。</p>
+              <!-- 已签态：登记项（B 卷宗登记思想：签发时间·签单人入档） -->
+              <p class="fx-line only-signed">已签发 · 2026-09-23 10:05 · admin</p>
+              <p class="fx-meta only-signed">学科信息参考_202609（试排）.docx · 可下载</p>
+              <p class="fx-meta only-unsign">学科信息参考_202609（试排）.docx · 2026-10-27 08:28</p>
+            </div>
+            <div class="fx-actions">
+              <!-- 未签主动作：签单（干净态一次即签；异常态进入下方确认面） -->
+              <span class="only-unsign">
+                <button class="btn primary" id="fx-go">签单</button>
+              </span>
+              <!-- 已签主动作：下载；撤回为次动作（行内二次确认） -->
+              <span class="only-signed">
+                <button class="btn primary">下载报告（Word）</button>
+                <button class="fx-retract" id="fx-retract">撤回</button>
+              </span>
+              <a class="hintlink" href="#">看对勘本 →</a>
+            </div>
+          </div>
+          <!-- 展开确认面：仅异常未签态（点「签单」出现；知悉文案原文一字不动） -->
+          <div class="fx-extra fx-confirm" id="fx-confirm">
+            <label class="ack">
+              <input type="checkbox" id="fx-ack">
+              <span>我已逐项看过<b>待人工 2 处、存疑 1 处</b>，同意放行。</span>
+            </label>
+            <textarea class="fx-note" rows="2" placeholder="批注（可选）：这一版为什么可以签单、还有哪些已知问题"></textarea>
+            <div style="display:flex;gap:10px">
+              <button class="btn primary" id="fx-do" disabled>确认签单</button>
+              <button class="btn ghost" id="fx-cancel">收起</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- 吸底迷你条：仅未签态且定稿条出视口时出现（JS 演示） -->
+<div class="minibar" id="minibar">
+  <span style="opacity:.85">待签 · 待人工 2 处 · 存疑 1 处</span>
+  <span class="grow"></span>
+  <a href="#fx-sign">去签单 ↓</a>
+</div>
+
+<script>
+/* 仅供审稿演示：态切换 / 配色切换 / 确认面展开 / 吸底条出现逻辑（真实实现走 React 状态）。 */
+var html = document.documentElement;
+document.querySelectorAll('.gate button[data-s]').forEach(function (b) {
+  b.onclick = function () {
+    html.dataset.state = b.dataset.s;
+    document.querySelectorAll('.gate button[data-s]').forEach(function (x) { x.classList.toggle('on', x === b); });
+    document.getElementById('fx-confirm').style.display = 'none';
+    updateMinibar();
+  };
+});
+document.querySelectorAll('.gate button[data-p]').forEach(function (b) {
+  b.onclick = function () {
+    html.dataset.palette = b.dataset.p;
+    document.querySelectorAll('.gate button[data-p]').forEach(function (x) { x.classList.toggle('on', x === b); });
+  };
+});
+/* 干净态：点「签单」一次即签（演示直接翻已签态）；异常/失效态：展开确认面（不弹窗、不跳页） */
+document.getElementById('fx-go').onclick = function () {
+  if (html.dataset.state === 'clean') { html.dataset.state = 'signed'; syncGate(); updateMinibar(); return; }
+  var box = document.getElementById('fx-confirm');
+  box.style.display = (html.dataset.state === 'dirty' || html.dataset.state === 'stale') ? 'flex' : 'none';
+  if (box.style.display === 'flex') document.getElementById('fx-ack').focus();
+};
+document.getElementById('fx-cancel').onclick = function () { document.getElementById('fx-confirm').style.display = 'none'; };
+document.getElementById('fx-ack').onchange = function (e) { document.getElementById('fx-do').disabled = !e.target.checked; };
+document.getElementById('fx-do').onclick = function () { html.dataset.state = 'signed'; syncGate(); };
+document.getElementById('fx-retract').onclick = function () {
+  var t = this;
+  if (t.dataset.arm) { html.dataset.state = 'stale'; t.dataset.arm = ''; t.innerHTML = '撤回'; syncGate(); }
+  else { t.dataset.arm = '1'; t.innerHTML = '<span class="confirm">确认撤回？签发会失效</span>';
+    setTimeout(function () { if (t.dataset.arm) { t.dataset.arm = ''; t.innerHTML = '撤回'; } }, 4000); }
+};
+function syncGate() {
+  document.querySelectorAll('.gate button[data-s]').forEach(function (x) { x.classList.toggle('on', x.dataset.s === html.dataset.state); });
+}
+/* 吸底迷你条：仅未签且定稿条出视口（IntersectionObserver，真实实现同款机制） */
+var fx = document.getElementById('fx-sign'), mb = document.getElementById('minibar');
+var fxInView = true;
+function updateMinibar() {
+  var unsign = html.dataset.state === 'clean' || html.dataset.state === 'dirty';
+  mb.classList.toggle('on', unsign && !fxInView);
+}
+new IntersectionObserver(function (es) {
+  es.forEach(function (e) { fxInView = e.isIntersecting; });
+  updateMinibar();
+}, { rootMargin: '0px' }).observe(fx);
+</script>
+</body>
+</html>
