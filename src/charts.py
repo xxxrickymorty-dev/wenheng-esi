@@ -116,6 +116,41 @@ _LABEL_LINE_PT = FONT_SIZE * 1.35                  # 一行文字实占高度（
 _LABEL_PX = (_LABEL_DY_PT + _LABEL_LINE_PT) / 72.0 * plt.rcParams["figure.dpi"]   # ≈56px
 
 
+def _ends(ax, xs, ys, fmt="{:.2f}", size=None, side=None):
+    """双线折线图专用：**只标首末两点**，中间点靠纵轴刻度读（仍走 `_labels` 避让）。
+
+    🔴 2026-10-26 rick 定：馆员 18 条批注里 15 条都在说「数据标识」——两条线 × 7 期
+    ＝ 14 个标签塞进 8.26cm 宽的图，`_labels` 避让到头也只能把字号压到 7pt（8pt 就
+    1–3 处压字），读者仍分不清哪个数配哪条线。改成 4 个标签后字号回到 8pt，
+    既全标又不乱。（批注证据见 评审文档/34）
+
+    端点标签 **ha 朝外**（首点 left / 末点 right）：居中会把首点标签顶到纵轴刻度字上
+    （实测 `103.04%` 压在 y 轴左边）。
+
+    ⚠️ 别自己写「首末点两个 annotate」跳过 `_labels`：试过两版都撞别的东西——
+    两线在端点数值接近时（29.68% vs 30.24%）两个标签叠在一起（202609 实测 5 处）；
+    改成「靠下的朝下挂」又压到横轴期次字 `202509`（5→8 处）。交给 `_labels` 的逐档
+    避让才稳：它对纵/横轴刻度字、图例、网格线、另一组标签都有障碍判定。
+    """
+    vals, xs = list(ys), list(xs)
+    n = len(vals)
+    if n == 0:
+        return []
+    size = FONT_SIZE if size is None else size
+    idx_all = [0] if n == 1 else [0, n - 1]
+    keep = [i for i in idx_all
+            if vals[i] is not None and not pd.isna(vals[i])]
+    if not keep:
+        return []
+    sel_x = [xs[i] for i in keep]
+    sel_y = [vals[i] for i in keep]
+    ha = ["left" if i == 0 else "right" for i in keep]
+    if side is not None:                       # side 按 idx 顺序给，跟着 keep 一起过滤
+        m = dict(zip(idx_all, side))
+        side = [m.get(i) for i in keep]
+    return _labels(ax, sel_x, sel_y, fmt, size=size, ha=ha, side=side)
+
+
 def _relayout(fig):
     """按**出图口径**跑一次 tight_layout。
 
@@ -189,8 +224,16 @@ def _inflate(bb, px):
 
 
 def _labels(ax, xs, ys, fmt="{:.2f}", dy=4, size=FONT_SIZE, dodge=True, two_sided=True,
-            color=None):
+            color=None, ha="center", side=None):
     """逐点标数值；默认正值标上方、负值标下方，并**自动避让**别压到任何字。
+
+    `ha` 可传字符串（全体同用）或逐点序列（端点标签要朝外放时用，见 `_ends`）。
+
+    `side` 指定标签挂哪一侧（True＝上、False＝下），同样支持标量/逐点序列，`None`
+    的元素表示「这个点交给自动避让」。🔴 给了 `side` 的点就**不再两侧试探**
+    （`two_sided` 对它失效），只在该侧内逐档找最优——反向轴上「值大的线」必须把
+    标签挂在自己下方才不会读错归属（馆员批注 id=10「数值大的应该在下方」，
+    2026-10-20），但自动避让只会把两个标签都往上摞。
 
     🔴 必须防压字（rick 2026-09-18 截图：顶尖论文 27 压在「顶尖论文发文量」上）。
     两条线的数值贴在一起、或分组柱三根挨着时，标签比柱子还宽，按默认位置必叠。
@@ -221,15 +264,20 @@ def _labels(ax, xs, ys, fmt="{:.2f}", dy=4, size=FONT_SIZE, dodge=True, two_side
     """
     fig = ax.figure
     prior = list(ax.texts)                  # 本图此前已放的标签（同图多次 _labels 时要互相避让）
-    anns, ups = [], []
-    for x, y in zip(xs, ys):
+    anns, ups, forced = [], [], []
+    seq = isinstance(ha, (list, tuple))
+    seq_side = isinstance(side, (list, tuple))
+    for k, (x, y) in enumerate(zip(xs, ys)):
         if y is None or pd.isna(y):
             continue
-        up = float(y) >= 0
+        sv = (side[k] if seq_side else side)
+        forced.append(sv is not None)
+        up = (float(y) >= 0) if sv is None else bool(sv)
         anns.append(ax.annotate(fmt.format(y) if fmt else str(y), (x, y),
                                 textcoords="offset points",
                                 xytext=(0, dy if up else -dy),
-                                ha="center", va="bottom" if up else "top",
+                                ha=(ha[k] if seq else ha),
+                                va="bottom" if up else "top",
                                 fontsize=size, color=(color or C_TEXT)))
         ups.append(up)
     if not anns or not dodge:
@@ -356,17 +404,18 @@ def _labels(ax, xs, ys, fmt="{:.2f}", dy=4, size=FONT_SIZE, dodge=True, two_side
                     break
         return (b_ov if b_ov is not None else (0.0, 0.0, 0.0)), b_k
 
-    for ann, up0 in zip(anns, ups):
+    for j, (ann, up0) in enumerate(zip(anns, ups)):
         cands = []
-        for side in ((True, False) if two_sided else (up0,)):
-            ov, k = _best_on(ann, side, dy if side else -dy)
+        for sd in ((up0,) if forced[j] else
+                   ((True, False) if two_sided else (up0,))):
+            ov, k = _best_on(ann, sd, dy if sd else -dy)
             # 第 4 元＝「是否离开了自然侧」：三项分数都一样时守自然侧，观感与原件一致
-            cands.append((ov[0], ov[1], ov[2], 0 if side == up0 else 1, side, k))
+            # （`forced` 的点只有一个候选，这一项恒为 0）
+            cands.append((ov[0], ov[1], ov[2], 0 if sd == up0 else 1, sd, k))
         cands.sort(key=lambda c: (c[0], c[1], c[2], c[3]))
-        _, _, _, _, side, k = cands[0]
+        _, _, _, _, sd, k = cands[0]
         # 目标最小的那一档；实在躲不开也只会退回原位，不会比原来更差
-        placed.append(_place(ann, side, dy if side else -dy, k))
-    return anns
+        placed.append(_place(ann, sd, dy if sd else -dy, k))
     return anns
 
 
@@ -536,11 +585,28 @@ def chart_rank_pct(rank_intl, rank_cn, disc, out_png, periods, *, invert=None):
     # （轴放最后：_auto_ylim 要按 tight_layout 后的真实高度算「轴顶留白」）
     _auto_ylim(ax, [ri, rc], intervals=4, pad=0.06, fmt="{:g}%",
                invert=(True if invert is None else bool(invert)))
-    # 数值标签最后放：要躲开上面已定好的轴/标题/图例（两条线贴近时标签必压）
-    # 🔴 这图 14 个标签（两线 × 7 期）**不跟全局 +1**：8pt 时四期各多 1–3 处压字
-    #    （含 202601 '30.86%'×期次行 929px²）；7.5pt 也还有 1 处，7pt 是 0 的上限。
-    _labels(ax, x, ri, "{:.2f}%", size=7)
-    _labels(ax, x, rc, "{:.2f}%", size=7)
+    # 数值标签最后放：要躲开上面已定好的轴/标题/图例。
+    # 🔴 只标首末两点（2026-10-26 rick 定，见 `_ends` 注释与 评审文档/34）：
+    #    14 个标签挤在 8.26cm 里，馆员批注「数据标识感觉乱」「两线接近时分不清」。
+    # 🔴 挂哪一侧**按屏幕上下显式指定**（馆员批注 id=10「数值大的应该在下方」）：
+    #    百分位是反向轴（值小＝排名好＝屏幕靠上），同一端点上「屏幕靠上那条线」的标签
+    #    挂上方、另一条挂下方，读者才不会把两个数配错线。交给自动避让做不到——
+    #    它只会把两个标签都往上摞（实测 SocialSciencesgeneral 首点 82.22% 在 79.35% 上方）。
+    inv = True if invert is None else bool(invert)
+    ri_l, rc_l = list(ri), list(rc)            # Series 按标签索引，取端点位置要用 list
+    idx_ep = [0] if len(ri_l) == 1 else [0, len(ri_l) - 1]
+    side_a, side_b = [], []
+    for i in idx_ep:
+        a, b = ri_l[i], rc_l[i]
+        if a is None or pd.isna(a) or b is None or pd.isna(b):
+            side_a.append(None)
+            side_b.append(None)
+            continue
+        a_up = (float(a) > float(b)) != inv     # a 在屏幕上方（反向轴上值大者反而在下）
+        side_a.append(a_up)
+        side_b.append(not a_up)
+    _ends(ax, x, ri_l, "{:.2f}%", side=side_a)
+    _ends(ax, x, rc_l, "{:.2f}%", side=side_b)
     _save(fig, out_png)
 
 
@@ -611,8 +677,9 @@ def chart_cites_threshold(cites, threshold, disc, out_png, periods, *, zero_base
     _auto_ylim(ax, [c, t], intervals=5, pad=0.06, fmt="{:,.0f}",
                zero_base=(False if zero_base is None else bool(zero_base)),
                include=(None if include is None else list(include)))
-    _labels(ax, x, c, "{:.0f}")   # 原件数据标签无千分位（轴刻度才有）
-    _labels(ax, x, t, "{:.0f}")
+    # 只标首末两点（同上，评审文档/34 的 15 条批注）；原件标签无千分位，轴刻度才有
+    _ends(ax, x, c, "{:.0f}")
+    _ends(ax, x, t, "{:.0f}")
     _save(fig, out_png)
 
 

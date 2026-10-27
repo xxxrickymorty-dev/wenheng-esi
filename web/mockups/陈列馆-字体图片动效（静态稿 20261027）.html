@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<!-- ═══════════════════════════════════════════════════════════════════════
+陈列馆 · 字体图片动效（静态稿 20261027）——rick 审稿用，单文件双击即开
+═══════════════════════════════════════════════════════════════════════
+审什么：评审文档 35 号 §11 八处动效（已落地 e4516509）之上，增补第 ⑨–⑮ 处——
+专补 rick 点名的两类：字体动效（章节标题/说明行/事实行/大数）与图片动效（四站截图）。
+页面其余部分＝正式站现状（方案 C 书架 + §11 八处），逐字平移自
+web/src/library/LibraryHome.tsx + shelf-landing.css，仅供对照，别在本稿上加正式站功能。
+
+本次新增（全部一次性、不循环、reduced-motion 出终态）：
+  ⑨ 章节大标题「落墨」  h2.sec-title 逐字上浮 8px + blur 2.5px→0，字间 26ms
+  ⑩ 说明行「显影」      .deck 上浮 10px + blur 3px→0，接标题尾
+  ⑪ 事实行「刻度」      .metric 既有灰线上叠金色刻度线 scaleX 0→1（线才能从零画起）
+  ⑫ 大数「盖印」        .facts .v scale .985→1 + blur 3px→0（不做计数——数字跳会像编数）
+  ⑬ 截图「显影」        .shot img blur 6px + saturate .85 → 原样，上浮 8px
+  ⑭ 截图「金光」        .shot::after 金色发丝光扫过一次 0.9s，方向按图序交替（呼应 ③）
+  ⑮ 段内错峰            揭示粒度从「整段」细化到「每站」：站内件按阅读序错开 60–100ms，
+                        flip 站反序（文字列在左先看，就先动文字）——修「整段一坨淡入」
+
+三条老约束继续守：不循环 / 位移≤20px·缩放≤1.02 / 动效不承载信息；
+新增只动 transform·opacity·filter（⑭ 用 background-position，随 ③ 的既有写法）。
+blur 是 §11 没用过的新维度（≤6px，远低于 14px 上限）——口味保守可整体拿掉，先请 rick 定。
+
+左下角「审稿工具」可：重播全部一次性动效 / 模拟降级 / 翻新增清单。不入正式站。
+React 化要点（审过再动）：⑨ 需一个把标题拆字的 helper（aria-label 保全文、char span
+aria-hidden）；⑮ 需把 LibraryHome 的 arming 从「只看 .sec」扩到「.sec + .stn」；
+其余全是 CSS，可整段平移进 shelf-landing.css。静态稿的 body.play 门（重播用）不需要——
+React 挂载即播，等价于 play 常开。
+═══════════════════════════════════════════════════════════════════════ -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>陈列馆 · 字体图片动效（静态稿 20261027）</title>
+<style>
+:root{
+  /* 令牌值抄自 src/index.css 的 --lib-*（2026-10-26 登记的唯一来源），稿内写死以便双击即开 */
+  --night:#191310;--wood:#3A2A1A;
+  --ivory:#F2EDE1;--ivory-2:rgba(242,237,225,.66);--ivory-3:rgba(242,237,225,.4);
+  --gold:#C9A961;--gold-2:#E0CB92;
+  --paper:#F4F1E8;--paper-2:#E8E3D4;--paper-3:#D3CDBA;
+  --ink:#12201A;--ink-2:#3F5248;--ink-3:#556169;
+  --line:#DDE1D8;
+  --g-deep:#14342A;--g-mid:#2F7A58;--g-pale:#D6E6DB;--g-mist:#EAF2EC;
+  --red:#B23A2B;
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,Georgia,serif;
+  --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+  --mono:"Cascadia Mono",Consolas,monospace;
+  --ease:cubic-bezier(.22,.61,.36,1);
+  /* 动效曲线（design-to-motion skill B6）：入场位移用 --me，透明度/模糊用 --me2，扫光/刻度用 --mio */
+  --me:cubic-bezier(0.16,1,0.3,1);
+  --me2:cubic-bezier(0.33,1,0.68,1);
+  --mio:cubic-bezier(0.65,0,0.35,1);
+}
+*,::after,::before{box-sizing:border-box;margin:0;padding:0}
+body{min-width:320px;background:var(--night);color:var(--ivory);font:15px/1.8 var(--serif);
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:4px}
+::selection{background:var(--gold);color:#191310}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+
+/* ── 品牌 ── */
+.brand{position:absolute;left:max(20px,2.2vw);top:max(18px,2.4vh);z-index:30;
+  display:flex;align-items:flex-start;gap:12px;line-height:1.2;color:var(--ivory)}
+.brand .mk{width:26px;height:37px}
+.brand b{display:block;font-size:14px;letter-spacing:.04em;font-weight:600;white-space:nowrap}
+.brand-txt span{display:block;margin-top:5px;font-size:11px;font-style:italic;
+  letter-spacing:.08em;opacity:.5}
+.index{position:absolute;right:max(20px,2.2vw);bottom:max(16px,2.2vh);z-index:30;
+  font:11px var(--mono);letter-spacing:.18em;color:var(--ink-3)}
+
+/* ══════ 首屏 · 书架（现状平移，动效 = §11 ①–⑤） ══════ */
+.shelf-view{position:relative;min-height:100svh;display:grid;place-items:center;isolation:isolate}
+.headline{position:absolute;left:50%;top:8.5%;transform:translateX(-50%);z-index:3;text-align:center;
+  width:min(92%,760px);pointer-events:none}
+.headline h1{font-size:clamp(24px,2.5vw,38px);font-weight:600;line-height:1.3;letter-spacing:.06em;
+  color:#F4EFE3;text-shadow:0 2px 18px rgba(12,8,4,.55)}
+.headline p{margin-top:10px;font-size:clamp(11px,1vw,13px);letter-spacing:.22em;
+  color:rgba(242,237,225,.62);text-shadow:0 1px 12px rgba(12,8,4,.6)}
+.shelf{position:relative;width:min(100%,1560px);aspect-ratio:1600/1067;
+  background-image:linear-gradient(rgba(20,52,42,.18),rgba(20,52,42,.18)),
+    url("assets/shelf-walnut.jpg");
+  background-size:100% 100%,100% 100%;background-position:center,center;
+  background-repeat:no-repeat,no-repeat;background-blend-mode:multiply,normal}
+.shelf-view::after{content:"";position:absolute;left:0;right:0;bottom:0;height:min(38vh,360px);
+  z-index:4;pointer-events:none;
+  background:linear-gradient(180deg,rgba(244,241,232,0) 0%,rgba(244,241,232,.72) 56%,rgba(244,241,232,.97) 82%,var(--paper) 100%)}
+.vol{position:absolute;bottom:43.75%;height:24.9%;aspect-ratio:210/297;left:var(--x);
+  transform-origin:50% 100%;filter:drop-shadow(0 8px 12px rgba(24,14,6,.42));
+  transition:transform .42s var(--ease),filter .42s var(--ease);
+  container-type:inline-size}
+.vol .face{display:block;width:100%;height:100%;object-fit:cover;
+  box-shadow:inset 0 0 0 1px rgba(201,169,97,.18)}
+.vol::before{content:"";position:absolute;left:0;top:1px;bottom:1px;width:6px;
+  background:linear-gradient(90deg,#0A2118,#123326 62%,#0B2419);
+  border-right:1px solid rgba(201,169,97,.22);
+  transform:translateX(-5px) skewY(-.6deg);transform-origin:right center}
+.vol::after{content:"";position:absolute;left:-4px;right:0;top:-3px;height:4px;
+  background:linear-gradient(90deg,#b9b09a,#e7dfc9 60%,#cdc4ac);
+  clip-path:polygon(1.5% 100%,0 0,100% 0,98.5% 100%);opacity:.9}
+.vol .cap{position:absolute;left:50%;top:calc(100% + 14px);
+  transform:translateX(-50%) translateY(-4px);white-space:nowrap;
+  font:11px/1.5 var(--mono);letter-spacing:.16em;color:rgba(242,237,225,.78);
+  text-shadow:0 1px 10px rgba(10,6,2,.8);opacity:0;pointer-events:none;
+  transition:opacity .3s var(--ease),transform .3s var(--ease)}
+.vol .cap b{display:block;font-family:var(--serif);font-size:14px;letter-spacing:.18em;
+  color:#F6EDD6;margin-bottom:2px}
+.vol .cap em{display:block;margin-top:2px;font-style:normal;font-family:var(--mono);
+  font-size:11px;letter-spacing:.12em;color:var(--gold-2)}
+.vol.is-featured{height:30.4%;filter:drop-shadow(0 14px 22px rgba(24,14,6,.55))}
+.vol.is-featured::before{border-right-color:rgba(224,203,146,.55)}
+.vol.is-featured .cap b{font-size:15px;color:var(--gold-2)}
+.vol.is-sub{height:24.2%;filter:drop-shadow(0 8px 12px rgba(24,14,6,.42)) brightness(.93)}
+.vol.is-pending:hover{transform:none;filter:drop-shadow(0 8px 12px rgba(24,14,6,.42)) brightness(.93)}
+.vol:hover,.vol:focus-visible{transform:translateY(-14px) scale(1.075);z-index:6;
+  filter:drop-shadow(0 22px 26px rgba(20,12,4,.5))}
+.vol:hover .cap,.vol:focus-visible .cap{opacity:1;transform:translateX(-50%) translateY(0)}
+.vol:active{transform:translateY(-10px) scale(1.05)}
+.down{position:absolute;left:50%;translate:-50% 0;bottom:calc(43.75% - 46px);z-index:5;
+  margin:0;font:11px var(--mono);letter-spacing:.34em;color:var(--gold-2);white-space:nowrap;
+  text-shadow:0 0 12px rgba(8,5,2,.92),0 1px 3px rgba(8,5,2,.95);
+  transition:opacity .22s var(--ease);
+  animation:nudge 2.8s ease-in-out 1.4s infinite}
+@keyframes nudge{0%,100%{translate:-50% 0}50%{translate:-50% 5px}}
+.shelf:has(.vol:hover) .down,.shelf:has(.vol:focus-visible) .down{opacity:0;animation-play-state:paused}
+
+/* §11 ①–④ 的一次性开场：静态稿里挂 body.play 门，供「重播」按钮复演；
+   React 挂载即播＝play 常开，无需这个门 */
+@keyframes vol-in{from{translate:0 22px;opacity:0}to{translate:0 0;opacity:1}}
+@keyframes rise-in{from{opacity:0;translate:0 14px}to{opacity:1;translate:0 0}}
+@keyframes track-in{from{opacity:0;letter-spacing:.2em}to{opacity:1;letter-spacing:.06em}}
+@keyframes board-sheen{
+  0%{opacity:0;background-position:130% 0}
+  16%{opacity:.95}
+  68%{opacity:.5}
+  100%{opacity:0;background-position:-30% 0}}
+body.play .vol{translate:0 22px;opacity:0;
+  animation:vol-in .62s var(--ease) both;
+  animation-delay:calc(var(--i, 0) * 55ms + 60ms)}
+body.play .headline h1{animation:track-in 1.05s var(--ease) both .04s}
+body.play .headline p{animation:rise-in .85s var(--ease) both .32s}
+.shelf-view::before{content:"";position:absolute;left:50%;translate:-50% 0;
+  bottom:calc(43.4% - 1px);width:min(100%,1560px);height:2px;z-index:4;pointer-events:none;
+  opacity:0;
+  background:linear-gradient(90deg,transparent 0%,transparent 36%,rgba(224,203,146,.95) 50%,
+    transparent 64%,transparent 100%);
+  background-size:260% 100%}
+body.play .shelf-view::before{animation:board-sheen 2.8s var(--ease) .45s both}
+@keyframes drift{
+  0%{opacity:0;translate:0 0}
+  10%{opacity:.30}
+  55%{opacity:.14;translate:8px -110px}
+  88%{opacity:.22}
+  100%{opacity:0;translate:16px -230px}}
+.dust{position:absolute;inset:0;z-index:2;overflow:hidden;pointer-events:none}
+.dust i{position:absolute;left:var(--x);bottom:6%;width:2px;height:2px;border-radius:50%;
+  background:var(--gold-2);opacity:0;
+  animation:drift var(--dur) linear var(--delay) infinite}
+.vol:hover::before,.vol:focus-visible::before{border-right-color:rgba(224,203,146,.85)}
+
+/* ══════ 本次新增：字体图片动效 ⑨–⑮ ══════
+   揭示机制沿用既有 reveal-arm / is-in（IO、rootMargin -10%、2.5s 兜底、首屏永不藏），
+   但粒度从「整段」细化到「段内件」——藏的不再是 .sec 本身，而是段里的字与图。
+   没有 JS / IO 时 reveal-arm 根本不挂，一切照常可见：宁可不做动画，不能留空白。 */
+
+/* ⑨ 章节大标题「落墨」：逐字上浮 + blur 归焦。char span 由 HTML/React 拆好，
+   h2 自带 aria-label 全文、char 层 aria-hidden，读屏读的是整句 */
+.sec-title .ch{display:inline-block;white-space:pre}
+.sec.reveal-arm .sec-title .ch{opacity:0;translate:0 8px;filter:blur(2.5px)}
+.sec.reveal-arm.is-in .sec-title .ch{animation:ch-in .55s var(--me) both;
+  animation-delay:calc(var(--ci,0) * 26ms)}
+@keyframes ch-in{from{opacity:0;translate:0 8px;filter:blur(2.5px)}
+  to{opacity:1;translate:0 0;filter:blur(0)}}
+
+/* ⑩ 说明行「显影」：接在标题字尾（.5s）之后 */
+.sec.reveal-arm .deck,.sec.reveal-arm .lib-pano-head{opacity:0;translate:0 10px;filter:blur(3px)}
+.sec.reveal-arm.is-in .deck,.sec.reveal-arm.is-in .lib-pano-head{
+  animation:deck-in .7s var(--me) .5s both}
+@keyframes deck-in{from{opacity:0;translate:0 10px;filter:blur(3px)}
+  to{opacity:1;translate:0 0;filter:blur(0)}}
+
+/* ⑪ 事实行「刻度」：metric 自带灰色上边线，金色刻度叠在上面从左画到右，字随后显 */
+.stn .metric{position:relative}
+.stn .metric::before{content:"";position:absolute;left:0;top:-1px;width:100%;height:1px;
+  background:var(--gold);transform:scaleX(0);transform-origin:0 50%}
+.stn.reveal-arm.is-in .metric::before{animation:tick-in .6s var(--mio) .34s both}
+@keyframes tick-in{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.stn.reveal-arm .metric{opacity:0}
+.stn.reveal-arm.is-in .metric{animation:soft-in .5s var(--me2) .42s both}
+@keyframes soft-in{from{opacity:0}to{opacity:1}}
+
+/* ⑫ 大数「盖印」：缩到 98.5% 再落回 100%（≤1.02 约束内），blur 归焦；不做计数。
+   四格按 --fi 错 70ms，视线从左上扫到右下 */
+.facts .f{--fi:0}
+.facts .f:nth-child(2){--fi:1}.facts .f:nth-child(3){--fi:2}.facts .f:nth-child(4){--fi:3}
+.sec.reveal-arm .facts .k{opacity:0}
+.sec.reveal-arm .facts .v{opacity:0;transform:scale(.985);
+  transform-origin:0 50%;filter:blur(3px)}
+.sec.reveal-arm.is-in .facts .k{animation:soft-in .5s var(--me2) both;
+  animation-delay:calc(.1s + var(--fi) * 70ms)}
+.sec.reveal-arm.is-in .facts .v{animation:stamp-in .7s var(--me) both;
+  animation-delay:calc(.18s + var(--fi) * 70ms)}
+@keyframes stamp-in{from{opacity:0;transform:scale(.985);filter:blur(3px)}
+  to{opacity:1;transform:scale(1);filter:blur(0)}}
+
+/* ⑬ 截图「显影」：像刚冲出来的一屏——从微糊微灰到原样，上浮 8px；
+   transform 留给既有 hover（scale 1.015），入场走 translate，互不覆盖。
+   --rvd（reveal delay）挂在 .shot 上，⑬⑭ 共用，flip 站统一换挡 */
+.stn .shot{--rvd:.08s}
+.stn.flip .shot{--rvd:.26s}
+.stn.reveal-arm .shot img{opacity:0;translate:0 8px;
+  filter:blur(6px) saturate(.85)}
+.stn.reveal-arm.is-in .shot img{
+  animation:shot-in .8s var(--me) var(--rvd,.08s) both}
+@keyframes shot-in{from{opacity:0;translate:0 8px;filter:blur(6px) saturate(.85)}
+  to{opacity:1;translate:0 0;filter:blur(0) saturate(1)}}
+
+/* ⑭ 截图「金光」：一道金色发丝光沿相框扫过一次，方向按图序交替（呼应 ③ 托板扫光）；
+   只在截图显影落定后走（延迟 = 显影起点 + .85s） */
+.shot{position:relative}
+.shot::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;
+  background:linear-gradient(90deg,transparent 0%,transparent 36%,rgba(224,203,146,.5) 50%,
+    transparent 64%,transparent 100%);
+  background-size:260% 100%;background-position:130% 0}
+.stn.reveal-arm.is-in .shot::after{
+  animation:shot-sheen .9s var(--mio) both;
+  animation-delay:calc(var(--rvd,.08s) + .85s)}
+.stn.flip .shot::after{background-position:-30% 0}
+@keyframes shot-sheen{0%{opacity:0;background-position:130% 0}
+  18%{opacity:.9}70%{opacity:.4}100%{opacity:0;background-position:-30% 0}}
+@keyframes shot-sheen-rev{0%{opacity:0;background-position:-30% 0}
+  18%{opacity:.9}70%{opacity:.4}100%{opacity:0;background-position:130% 0}}
+.stn.reveal-arm.is-in.flip .shot::after{
+  animation-name:shot-sheen-rev}
+
+/* ⑮ 段内错峰：站的触发粒度＝每个 .stn 自己（挂载时在折叠线以下才 arm）。
+   正序站（图左文右）：图 .08s → h3 .2s → 段落 .3s → 刻度 .34s/.42s；
+   flip 站（文左图右）：文字列先动，图随后——「先看哪、再动哪」。
+   窄屏（≤900px 单列）回到 DOM 序：图先。 */
+.stn.reveal-arm h3{opacity:0;translate:0 10px}
+.stn.reveal-arm p{opacity:0;translate:0 10px}
+.stn.reveal-arm.is-in h3{animation:rise-in .6s var(--me) .2s both}
+.stn.reveal-arm.is-in p{animation:rise-in .6s var(--me) .3s both}
+.stn.flip h3{animation-delay:.08s!important}
+.stn.flip p{animation-delay:.18s!important}
+/* 其它段的件：边界盒 / 问文衡右列 / 全景画布占位 */
+.sec .reveal-arm .bndbox,.sec.reveal-arm .bndbox,
+.sec .reveal-arm .askgrid>div:last-child,.sec.reveal-arm .askgrid>div:last-child,
+.sec .reveal-arm .pano-stage-ph,.sec.reveal-arm .pano-stage-ph{opacity:0;translate:0 10px}
+.sec .reveal-arm.is-in .bndbox,.sec.reveal-arm.is-in .bndbox,
+.sec .reveal-arm.is-in .askgrid>div:last-child,.sec.reveal-arm.is-in .askgrid>div:last-child,
+.sec .reveal-arm.is-in .pano-stage-ph,.sec.reveal-arm.is-in .pano-stage-ph{
+  animation:rise-in .65s var(--me) .15s both}
+/* 降级：reveal-arm 不挂（JS 查过媒体查询就早退）；万一挂了也全亮、不播。
+   §11 旧动效的降级也在这里兜住（正式站 shelf-landing.css 已有同款，勿漏平移） */
+@media (prefers-reduced-motion:reduce){
+  body.play .vol,body.play .headline h1,body.play .headline p,
+  body.play .shelf-view::before,.down{animation:none}
+  body.play .vol{translate:0 0;opacity:1}
+  .dust{display:none}
+  .sec.reveal-arm .sec-title .ch,.sec.reveal-arm .deck,.sec.reveal-arm .lib-pano-head,
+  .stn.reveal-arm .metric,.sec.reveal-arm .facts .k,.sec.reveal-arm .facts .v,
+  .stn.reveal-arm .shot img,.stn.reveal-arm h3,.stn.reveal-arm p,
+  .sec.reveal-arm .bndbox,.sec.reveal-arm .askgrid>div:last-child,
+  .sec.reveal-arm .pano-stage-ph{
+    opacity:1;translate:0 0;transform:none;filter:none;animation:none}
+  .stn.reveal-arm .metric::before{transform:scaleX(1);animation:none}
+  .stn.reveal-arm.is-in .shot::after{animation:none}
+}
+/* 审稿工具的「模拟降级」：正式站没有 body.rm，这条只服务本稿 */
+body.rm .vol,body.rm .headline h1,body.rm .headline p,body.rm .shelf-view::before,
+body.rm .dust i,body.rm .down{animation:none}
+body.rm .vol{translate:0 0;opacity:1}
+body.rm .dust{display:none}
+body.rm .sec.reveal-arm .sec-title .ch,body.rm .sec.reveal-arm .deck,
+body.rm .sec.reveal-arm .lib-pano-head,body.rm .stn.reveal-arm .metric,
+body.rm .sec.reveal-arm .facts .k,body.rm .sec.reveal-arm .facts .v,
+body.rm .stn.reveal-arm .shot img,body.rm .stn.reveal-arm h3,body.rm .stn.reveal-arm p,
+body.rm .sec.reveal-arm .bndbox,body.rm .sec.reveal-arm .askgrid>div:last-child,
+body.rm .sec.reveal-arm .pano-stage-ph{
+  opacity:1;translate:0 0;transform:none;filter:none;animation:none}
+body.rm .stn.reveal-arm .metric::before{transform:scaleX(1);animation:none}
+body.rm .stn.reveal-arm.is-in .shot::after{animation:none}
+
+/* ══════ 册页（文档流）——现状平移 ══════ */
+.flow{position:relative;z-index:3;background:var(--paper);color:var(--ink)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 clamp(18px,5vw,52px)}
+.sec{padding:clamp(52px,8vh,92px) 0;border-top:1px solid var(--line)}
+.sec:first-child{border-top:0}
+.deck{font-family:var(--serif);font-size:clamp(16px,1.6vw,18px);line-height:2.05;
+  color:var(--ink-2);max-width:34em;margin-top:18px}
+h2.sec-title{font-size:clamp(30px,3.6vw,46px);font-weight:600;line-height:1.24;letter-spacing:.02em}
+
+/* 四站 */
+.stn{display:grid;grid-template-columns:minmax(0,1.04fr) minmax(0,1fr);
+  gap:clamp(22px,4vw,54px);align-items:center;padding:clamp(30px,5vh,52px) 0;
+  border-top:1px solid var(--line)}
+.stn:first-of-type{border-top:0;padding-top:0}
+.stn.flip .shot{order:2}
+.shot{margin:0}
+.shot img{display:block;width:100%;height:auto;border:1px solid var(--line);
+  background:var(--paper-2);transition:transform .55s var(--ease),border-color .35s var(--ease)}
+.shot:hover img{transform:scale(1.015);border-color:rgba(201,169,97,.75)}
+.stn h3{font-family:var(--serif);font-weight:600;font-size:clamp(22px,2.5vw,32px);
+  line-height:1.45;margin:0 0 14px}
+.stn p{font-family:var(--serif);font-size:15.5px;line-height:2.05;color:var(--ink-2);
+  margin:0 0 12px}
+.stn .metric{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;color:var(--ink-3);
+  margin:16px 0 0;padding-top:12px;border-top:1px solid var(--line)}
+
+/* 边界 */
+.bnd{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,400px);
+  gap:clamp(28px,4vw,58px);align-items:start}
+.bnd .deck{max-width:30em}
+.bnd .deck a{border-bottom:1px solid var(--g-mid);color:var(--ink)}
+.bndbox{border:1px solid var(--line);padding:clamp(20px,3vw,30px)}
+.bndbox .h{font-family:var(--kai);font-size:11px;letter-spacing:.4em;color:var(--ink-3);
+  margin-bottom:16px}
+.bndbox ul{list-style:none;display:grid;gap:13px}
+.bndbox li{display:flex;align-items:center;gap:12px;font-family:var(--kai);font-size:13.5px;
+  letter-spacing:.2em}
+.bndbox li .m{flex:0 0 auto;width:9px;height:9px;background:var(--g-mid)}
+.bndbox li.no{color:var(--ink-3);text-decoration:line-through}
+.bndbox li.no .m{background:var(--red)}
+
+/* 问文衡 */
+.ask{background:var(--g-mist)}
+.askgrid{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.1fr);
+  gap:clamp(28px,4vw,60px);align-items:center}
+.askform{display:flex;align-items:stretch;max-width:600px;border-bottom:1px solid var(--ink);position:relative}
+.askform input{flex:1;min-width:0;font:inherit;font-family:var(--serif);font-size:16px;
+  background:transparent;border:0;padding:14px 4px;color:var(--ink)}
+.askform input::placeholder{color:var(--ink-3)}
+.askform button{border:0;min-height:48px;padding:0 22px;background:var(--g-deep);
+  color:var(--paper);font-family:var(--serif);letter-spacing:.14em;font-size:14px}
+.askform::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;
+  background:var(--g-mid);transform:scaleX(0);transform-origin:50% 50%;
+  transition:transform .42s var(--ease)}
+.askform:focus-within::after{transform:scaleX(1)}
+.chips{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:baseline;margin-top:20px;
+  font-family:var(--kai);font-size:12px;letter-spacing:.08em}
+.chips .lb{letter-spacing:.34em;color:var(--ink-3)}
+.chips a{border-bottom:1px solid var(--paper-3);padding-bottom:2px}
+.chips a:hover{border-color:var(--g-mid)}
+
+/* 关于 */
+.about{background:var(--g-deep);color:#F4F1E8;border-top:0}
+.about-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.9fr);
+  gap:clamp(28px,4vw,60px);align-items:start}
+.about h2{color:#F4F1E8}
+.about .deck{color:#D6E6DB}
+.about .deck a{border-bottom:1px solid #7FBF9C;white-space:nowrap}
+.facts{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid rgba(214,230,219,.34)}
+.facts .f{padding:20px 18px 22px;border-bottom:1px solid rgba(214,230,219,.34)}
+.facts .f:nth-child(odd){border-right:1px solid rgba(214,230,219,.34);padding-left:0}
+.facts .k{font-family:var(--kai);font-size:11px;letter-spacing:.3em;color:#AFC3B6}
+.facts .v{font-family:var(--serif);font-weight:600;font-size:clamp(30px,3.2vw,42px);
+  line-height:1.2;color:#F4F1E8;margin-top:6px}
+.facts .v.sm{font-size:clamp(15px,1.55vw,18px);letter-spacing:.1em;line-height:1.75}
+
+/* 产线全景占位（正式站为 LibraryPano 回放组件，自带播放动效，本稿不实现） */
+.lib-pano-head{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:12px}
+.lib-pano-title{font-family:var(--serif);font-size:18px;font-weight:600;letter-spacing:.04em}
+.lib-pano-deck{margin:0;font-size:13px;color:var(--ink-3);max-width:72ch}
+.pano-stage-ph{height:520px;display:grid;place-items:center;border:1px dashed var(--line);
+  color:var(--ink-3);font-family:var(--kai);font-size:13px;letter-spacing:.12em;
+  background:var(--paper-2)}
+
+.foot{display:flex;justify-content:space-between;gap:16px 26px;flex-wrap:wrap;
+  background:#0E2B21;color:var(--g-pale);padding:24px clamp(18px,5vw,52px);
+  font-family:var(--kai);font-size:11px;letter-spacing:.22em;line-height:2}
+.foot b{font-family:var(--serif);letter-spacing:.2em}
+.foot .links{display:flex;gap:22px;flex-wrap:wrap}
+.foot .links a{border-bottom:1px solid rgba(214,230,219,.45);padding-bottom:2px}
+
+@media (max-width:900px){
+  .stn,.bnd,.askgrid,.about-grid{grid-template-columns:minmax(0,1fr)}
+  .stn.flip .shot{order:0;--rvd:.08s}
+  .stn.flip h3{animation-delay:.2s!important}
+  .stn.flip p{animation-delay:.3s!important}
+  .pano-stage-ph{height:380px}
+}
+@media (max-width:820px){
+  .shelf-view{min-height:0;padding-top:96px;display:block}
+  .shelf-view::after{height:min(11vh,110px)}
+  .headline{position:static;transform:none;width:auto;padding:0 20px 12px;text-align:center}
+  .shelf{display:flex;align-items:flex-end;gap:10px;overflow-x:auto;
+    aspect-ratio:auto;height:56vh;padding:0 22px 12vh;background-size:cover;
+    background-position:center 40%;scrollbar-width:none}
+  .shelf::-webkit-scrollbar{display:none}
+  .vol{position:relative;left:auto;bottom:auto;height:46%;flex:none}
+  .vol.is-sub{height:46%}
+  .vol.is-featured{height:50%}
+  .vol:hover{transform:translateY(-8px) scale(1.05)}
+  .vol.is-pending:hover{transform:none}
+  .vol .cap{opacity:1;transform:translateX(-50%);top:calc(100% + 8px);
+    display:flex;align-items:baseline;gap:6px;white-space:nowrap;
+    background:rgba(8,27,20,.72);padding:2px 6px;letter-spacing:.08em}
+  .vol .cap b{font-size:12px;margin:0}
+  .vol.is-featured .cap b{font-size:13px}
+  .vol .cap em{display:none}
+  .down,.index{display:none}
+  .brand{position:absolute}
+}
+
+/* ── 审稿工具（只在本稿，不入正式站）── */
+.draft-bar{position:fixed;left:14px;bottom:14px;z-index:80;display:flex;gap:8px;align-items:center;
+  font-family:var(--mono);font-size:11px;color:var(--ivory-2)}
+.draft-bar b{font-family:var(--kai);letter-spacing:.2em;color:var(--gold-2);font-weight:400}
+.draft-bar button{border:1px dashed rgba(224,203,146,.55);padding:7px 12px;color:var(--ivory);
+  font-family:var(--kai);font-size:12px;letter-spacing:.14em;background:rgba(20,52,42,.72)}
+.draft-bar button:hover{border-color:var(--gold-2);color:var(--gold-2)}
+.draft-note{position:fixed;left:14px;bottom:52px;z-index:80;width:min(360px,86vw);
+  border:1px dashed rgba(224,203,146,.55);background:rgba(20,52,42,.9);color:var(--ivory);
+  padding:14px 16px;font:12px/1.9 var(--serif);display:none}
+.draft-note.show{display:block}
+.draft-note h3{font-family:var(--kai);font-size:12px;letter-spacing:.24em;color:var(--gold-2);
+  font-weight:400;margin-bottom:8px}
+.draft-note li{margin-left:18px;margin-bottom:3px}
+.draft-note small{color:var(--ivory-2)}
+</style>
+</head>
+<body class="play">
+
+<header class="brand">
+  <svg class="mk" viewBox="0 0 28 38" fill="none" stroke="currentColor" aria-hidden="true">
+    <path d="M4 3h20v32H4zM8 7h12v24H8zM11 10v18M17 10v18M8 19h12" strokeWidth="1.2" />
+    <path d="m11 14 3 5 3-5" strokeWidth="1.2" />
+  </svg>
+  <div class="brand-txt"><b>文衡 · 陈列馆</b><span>云南大学图书馆</span></div>
+</header>
+
+<!-- 首屏 · 书架（现状，§11 ①–⑤） -->
+<section class="shelf-view">
+  <span class="dust" aria-hidden="true">
+    <i style="--x:14%;--dur:24s;--delay:0s"></i><i style="--x:27%;--dur:31s;--delay:4s"></i>
+    <i style="--x:43%;--dur:27s;--delay:9s"></i><i style="--x:58%;--dur:34s;--delay:2s"></i>
+    <i style="--x:71%;--dur:29s;--delay:13s"></i><i style="--x:86%;--dur:26s;--delay:6s"></i>
+  </span>
+  <div class="headline">
+    <h1>一年六期，一期一册。</h1>
+    <p>云南大学图书馆 · 学科信息参考 · 2026 年馆藏</p>
+  </div>
+  <div class="shelf" id="shelf" aria-label="2026 年馆藏，共 5 册">
+    <a class="vol is-featured" href="#v-202609" style="--x:8.6%;--i:0" aria-label="202609，2026 年第 5 期，会泽院装帧">
+      <img class="face" src="assets/wenheng-covers/huizeyuan.webp" alt="学科信息参考 2026 年第 5 期，会泽院装帧封面" draggable="false">
+      <span class="reissue" aria-hidden="true"><span class="re-mask"></span><b class="re-num">202609</b></span>
+      <span class="cap"><b>202609</b>会泽院装帧<em>2026 年 9 月</em></span>
+    </a>
+    <a class="vol is-sub" href="#v-202607" style="--x:24.9%;--i:1" aria-label="202607，2026 年第 4 期，至公堂装帧">
+      <img class="face" src="assets/wenheng-covers/zhigongtang.webp" alt="学科信息参考 2026 年第 4 期，至公堂装帧封面" draggable="false">
+      <span class="reissue" aria-hidden="true"><span class="re-mask"></span><b class="re-num">202607</b></span>
+      <span class="cap"><b>202607</b>至公堂装帧<em>2026 年 7 月</em></span>
+    </a>
+    <a class="vol is-sub" href="#v-202605" style="--x:38.6%;--i:2" aria-label="202605，2026 年第 3 期，银杏装帧">
+      <img class="face" src="assets/wenheng-covers/yinxing.webp" alt="学科信息参考 2026 年第 3 期，银杏装帧封面" draggable="false">
+      <span class="reissue" aria-hidden="true"><span class="re-mask"></span><b class="re-num">202605</b></span>
+      <span class="cap"><b>202605</b>银杏装帧<em>2026 年 5 月</em></span>
+    </a>
+    <a class="vol is-sub" href="#v-202603" style="--x:52.3%;--i:3" aria-label="202603，2026 年第 2 期，阅览室装帧">
+      <img class="face" src="assets/wenheng-covers/yuelanshi.webp" alt="学科信息参考 2026 年第 2 期，阅览室装帧封面" draggable="false">
+      <span class="reissue" aria-hidden="true"><span class="re-mask"></span><b class="re-num">202603</b></span>
+      <span class="cap"><b>202603</b>阅览室装帧<em>2026 年 3 月</em></span>
+    </a>
+    <a class="vol is-sub" href="#v-202601" style="--x:66.0%;--i:4" aria-label="202601，2026 年第 1 期，校门装帧">
+      <img class="face" src="assets/wenheng-covers/xiaomen.webp" alt="学科信息参考 2026 年第 1 期，校门装帧封面" draggable="false">
+      <span class="reissue" aria-hidden="true"><span class="re-mask"></span><b class="re-num">202601</b></span>
+      <span class="cap"><b>202601</b>校门装帧<em>2026 年 1 月</em></span>
+    </a>
+    <span class="vol is-sub is-pending" style="--x:79.7%;--i:5" aria-label="202611，待装帧">
+      <span class="face placeholder" aria-hidden="true"><b>202611</b>待装帧</span>
+    </span>
+    <p class="down">向 下 滚 动 · 逐 期 册 页</p>
+  </div>
+  <span class="index" aria-hidden="true">YUNNAN UNIVERSITY LIBRARY / A–01</span>
+</section>
+
+<main class="flow" id="flow">
+
+  <!-- 四站：⑨⑩ 标题与说明行错峰，⑮ 每站自己触发、站内再错峰，⑬⑭ 截图显影＋金光 -->
+  <section class="sec" id="how">
+    <div class="wrap">
+      <h2 class="sec-title" aria-label="一期一册，是这么来的。"><span aria-hidden="true"><span class="ch" style="--ci:0">一</span><span class="ch" style="--ci:1">期</span><span class="ch" style="--ci:2">一</span><span class="ch" style="--ci:3">册</span><span class="ch" style="--ci:4">，</span><br><span class="ch" style="--ci:5">是</span><span class="ch" style="--ci:6">这</span><span class="ch" style="--ci:7">么</span><span class="ch" style="--ci:8">来</span><span class="ch" style="--ci:9">的</span><span class="ch" style="--ci:10">。</span></span></h2>
+      <p class="deck">四站走完，才允许装帧。每一步都留痕，每一步都能回去看。</p>
+
+      <article class="stn">
+        <figure class="shot"><img src="戊-跨页双联-整套/shots/01-取数核验.png" alt="取数核验" loading="lazy"></figure>
+        <div class="txt"><h3>一期数据，一次取齐。</h3>
+          <p>机器跑的那一步叫「取数」，人核对的那一步叫「取数核验」。两步合成一屏，屏题就是步骤名。</p>
+          <p>缺哪张表、哪一列，逐条写明，补上重跑。</p>
+          <p class="metric">22 个学科在监测 ｜ 14 个已进 ESI 全球前 1%</p></div>
+      </article>
+
+      <article class="stn flip">
+        <figure class="shot"><img src="戊-跨页双联-整套/shots/03-预测选模.png" alt="预测选模" loading="lazy"></figure>
+        <div class="txt"><h3>潜力学科，先算接近度，再选模型。</h3>
+          <p>每个学科到前 1% 还有多远，是「接近度」。按接近度排开，谁先到、谁还远，一屏看完。</p>
+          <p>模型逐科选，选完才落到下一站。</p>
+          <p class="metric">291 篇热点／高被引 ｜ 逐 学 科 择 模</p></div>
+      </article>
+
+      <article class="stn">
+        <figure class="shot"><img src="戊-跨页双联-整套/shots/04-生成初稿.png" alt="生成初稿" loading="lazy"></figure>
+        <div class="txt"><h3>约 20 秒，排出一版可读的稿子。</h3>
+          <p>19 张台账表是全部数字的源头。报告里 704 个数字，704 个标了出处——点得回那一格。</p>
+          <p>数字只有一个源头，稿子不在前端算任何一个数。</p>
+          <p class="metric">约 20 秒 ｜ 19 张表 ｜ 704 处出处</p></div>
+      </article>
+
+      <article class="stn flip">
+        <figure class="shot"><img src="戊-跨页双联-整套/shots/05-核验定稿.png" alt="核验定稿" loading="lazy"></figure>
+        <div class="txt"><h3>机器保数字，取舍你来定。</h3>
+          <p>出稿前机器逐项自检——54 项核对，全部通过才交到你手上。剩下的 7 处待人工，逐条看着补。</p>
+          <p>复核无异议才签单，签了才签发。</p>
+          <p class="metric">54 项核对 ｜ 7 处待人工</p></div>
+      </article>
+    </div>
+  </section>
+
+  <!-- 产线全景：占位（正式站为回放组件，自带播放动效） -->
+  <section class="sec" id="pano">
+    <div class="wrap">
+      <div class="lib-pano-head"><span class="lib-pano-title">产线全景 · 回放</span>
+        <p class="lib-pano-deck">四站讲完「是这么来的」，这里看真产线跑一遍（约 20 秒，可拖进度）。</p></div>
+      <div class="pano-stage-ph">（产线回放画布 · 正式站为 LibraryPano 回放组件，自带播放动效，本稿不重复实现）</div>
+    </div>
+  </section>
+
+  <!-- 边界 -->
+  <section class="sec" id="boundary">
+    <div class="wrap bnd">
+      <div>
+        <h2 class="sec-title" aria-label="看得见的边界"><span aria-hidden="true"><span class="ch" style="--ci:0">看</span><span class="ch" style="--ci:1">得</span><span class="ch" style="--ci:2">见</span><span class="ch" style="--ci:3">的</span><span class="ch" style="--ci:4">边</span><span class="ch" style="--ci:5">界</span></span></h2>
+        <p class="deck">陈列馆只开放三样内容。要看正文与数值，<a href="#">进工作区</a>——那里每一步都留痕。</p>
+      </div>
+      <div class="bndbox">
+        <div class="h">館 藏 閱 讀 範 圍</div>
+        <ul>
+          <li><span class="m"></span>封 面</li>
+          <li><span class="m"></span>目 錄</li>
+          <li><span class="m"></span>名 詞 解 釋</li>
+          <li class="no"><span class="m"></span>正 文 數 值　不出館</li>
+          <li class="no"><span class="m"></span>運 行 檔 案　不出館</li>
+          <li class="no"><span class="m"></span>台 賬 原 件　不出館</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 问文衡 -->
+  <section class="sec ask" id="ask">
+    <div class="wrap askgrid">
+      <div>
+        <h2 class="sec-title" aria-label="问文衡"><span aria-hidden="true"><span class="ch" style="--ci:0">问</span><span class="ch" style="--ci:1">文</span><span class="ch" style="--ci:2">衡</span></span></h2>
+        <p class="deck">工作台里能查的，这里都能问。先问一句，点进去接着聊。</p>
+      </div>
+      <div>
+        <form class="askform" action="#" method="get">
+          <label class="sr-only" for="q">问文衡</label>
+          <input id="q" name="ask" type="text" autocomplete="off" placeholder="问一句：某学科的接近度是多少">
+          <button type="submit">去 问 文 衡 ↖</button>
+        </form>
+        <div class="chips">
+          <span class="lb">试 问</span>
+          <a href="#">某一学科的接近度是多少</a>
+          <a href="#">云南大学什么时候能进前 1%</a>
+          <a href="#">这期做了没有</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 关于：⑫ 大数盖印（不做计数） -->
+  <section class="sec about" id="about">
+    <div class="wrap about-grid">
+      <div>
+        <h2 class="sec-title" aria-label="关于本册"><span aria-hidden="true"><span class="ch" style="--ci:0">关</span><span class="ch" style="--ci:1">于</span><span class="ch" style="--ci:2">本</span><span class="ch" style="--ci:3">册</span></span></h2>
+        <p class="deck">《学科信息参考》是云南大学图书馆的双月刊。每期取数、核对、出稿、签发，一步一步留痕，再装帧成册，陈列于此。</p>
+        <p class="deck">馆藏位置　学科情报馆藏 A 区 01　·　<a href="#">回 工 作 台 ↖</a></p>
+      </div>
+      <div class="facts">
+        <div class="f"><div class="k">學 科 監 測</div><div class="v">22</div></div>
+        <div class="f"><div class="k">已 進 前 1 %</div><div class="v">14</div></div>
+        <div class="f"><div class="k">連 續 記 錄</div><div class="v sm">2019 年起 · 39 期</div></div>
+        <div class="f"><div class="k">上 榜 論 文</div><div class="v">291</div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div><b>文衡 · 陈列馆</b>　雲 南 大 學 圖 書 館 · 學 科 信 息 參 考</div>
+  <div class="links"><a href="#">陈列馆</a><a href="#">回工作台</a><a href="#">问文衡</a></div>
+  <div>逐 期 裝 幀　·　A 区 01</div>
+</footer>
+
+<!-- 审稿工具：重播 / 模拟降级 / 新增清单。只在本稿 -->
+<div class="draft-bar">
+  <b>审稿工具</b>
+  <button type="button" id="btnReplay">重播动效</button>
+  <button type="button" id="btnReduce">模拟降级</button>
+  <button type="button" id="btnList">新增清单</button>
+</div>
+<aside class="draft-note" id="draftNote" aria-label="本次新增动效清单">
+  <h3>本稿新增（编号续 §11）</h3>
+  <ul>
+    <li>⑨ 章节大标题逐字「落墨」（8px＋blur 2.5px）</li>
+    <li>⑩ 说明行「显影」（10px＋blur 3px）</li>
+    <li>⑪ metric 金色刻度线从左画到右</li>
+    <li>⑫ 关于页四个大数「盖印」（scale .985→1）<small>，不做计数</small></li>
+    <li>⑬ 四站截图「显影」（blur 6px＋saturate .85→1）</li>
+    <li>⑭ 截图相框金光扫过一次，图序交替方向</li>
+    <li>⑮ 每站自己触发，站内件按阅读序错峰，flip 站反序</li>
+  </ul>
+  <small>守约：全部一次性 · 位移≤10px · 零缩放入场 · 不碰数字 · 降级出终态。<br>
+  blur 为 §11 未用过的新维度，可整体拿掉，请 rick 定。</small>
+</aside>
+
+<script>
+/* 审稿脚本：揭示挂载逻辑与 LibraryHome.tsx 的「章节揭示」完全同构，
+   差别只有一处——arming 对象从「.sec」扩成「.sec + .stn」（⑮ 的粒度细化）。
+   首屏永不藏：挂载时顶边在视口 90% 以内的段不 arm；IO 不在 / 降级 → 直接不 arm。 */
+(function(){
+  var reduce = function(){
+    return document.body.classList.contains('rm') ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  };
+  var io = null, safety = null, armed = [];
+
+  function disarm(){
+    if (io) io.disconnect();
+    if (safety) clearTimeout(safety);
+    io = null; safety = null;
+    armed.forEach(function(el){ el.classList.remove('reveal-arm','is-in'); });
+    armed = [];
+  }
+
+  function arm(){
+    disarm();
+    if (reduce() || !('IntersectionObserver' in window)) return;
+    var els = Array.prototype.slice.call(
+      document.querySelectorAll('#flow .sec, #flow .sec > .wrap > .stn'));
+    armed = els.filter(function(el){
+      return el.getBoundingClientRect().top > window.innerHeight * 0.9;
+    });
+    if (!armed.length) return;
+    armed.forEach(function(el){ el.classList.add('reveal-arm'); });
+    var fired = false;
+    io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (!e.isIntersecting) return;
+        fired = true;
+        e.target.classList.add('is-in');
+        io.unobserve(e.target);
+      });
+    }, { rootMargin: '0px 0px -10% 0px', threshold: 0.05 });
+    armed.forEach(function(el){ io.observe(el); });
+    safety = setTimeout(function(){
+      if (!fired) armed.forEach(function(el){ el.classList.add('is-in'); });
+    }, 2500);
+  }
+
+  /* 重播：开场动画（body.play 门）+ 滚动回顶 + 重新 arm */
+  document.getElementById('btnReplay').addEventListener('click', function(){
+    document.body.classList.remove('play');
+    void document.body.offsetWidth; /* 强制回流，让一次性动画从头再走 */
+    document.body.classList.add('play');
+    window.scrollTo(0, 0);
+    arm();
+  });
+
+  document.getElementById('btnReduce').addEventListener('click', function(){
+    document.body.classList.toggle('rm');
+    this.textContent = document.body.classList.contains('rm') ? '恢复动效' : '模拟降级';
+    arm();
+  });
+
+  document.getElementById('btnList').addEventListener('click', function(){
+    document.getElementById('draftNote').classList.toggle('show');
+  });
+
+  window.addEventListener('load', arm);
+})();
+</script>
+</body>
+</html>
