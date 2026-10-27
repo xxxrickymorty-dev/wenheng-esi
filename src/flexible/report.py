@@ -899,6 +899,9 @@ def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
         encoding="utf-8")
     (d / "flex_meta.json").write_text(
         json.dumps({**meta, "check": check,
+                    # 票 06（度量三指标）：单份时长的数据面——运行档案
+                    # 汇总时从这里读；口径见 docs/metrics-三指标口径.md。
+                    "elapsed": round(time.time() - t0, 1),
                     "selected": built["selected"],
                     "n_charts": len(built["charts"]),
                     "charts": [pathlib.Path(s["path"]).name for s in built["charts"]],

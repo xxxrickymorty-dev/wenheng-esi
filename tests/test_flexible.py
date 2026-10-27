@@ -19,7 +19,7 @@ import pytest
 
 from _guard_registry import skip_unless
 
-from flexible import mdview, opinion, planner, polish, queries, report, spec
+from flexible import mdview, metrics, opinion, planner, polish, queries, report, spec
 from flexible.datasource import DataSource
 
 # ---------------------------------------------------------------- 夹具
@@ -589,6 +589,83 @@ class Test成环重规划:
         assert len(calls) == 0                       # 规划完全复用
         assert r["check"]["pass"] is False
         assert "critic" not in self._meta(r)         # 无重规划轨迹
+
+
+# ================================================================ 1.7 度量三指标（票 06）
+class Test度量三指标:
+    """票 06：三指标数据面——口径＋从既有产物计算（flex_meta/plan）。
+
+    口径文档：docs/metrics-三指标口径.md；不做 UI（等 04/05 过审）。
+    样本＝一个 flexible/<intent>/ 目录；分母 0 → None（不适用，不冒充）。
+    """
+
+    @staticmethod
+    def _mk_meta(d, *, backend="rule", fallback=None, check_pass=True,
+                 escalated=False, rounds=0, elapsed=None):
+        d.mkdir(parents=True)
+        (d / "flex_plan.json").write_text(json.dumps(
+            {"backend": backend, "fallback_reason": fallback}), encoding="utf-8")
+        meta = {"check": {"pass": check_pass}}
+        if rounds:
+            meta["critic"] = {"rounds": rounds, "escalated": escalated}
+        if elapsed is not None:
+            meta["elapsed"] = elapsed
+        (d / "flex_meta.json").write_text(json.dumps(meta), encoding="utf-8")
+
+    def test_四类产物三指标口径(self, tmp_path):
+        base = tmp_path / "202607"
+        fl = base / "flexible"
+        self._mk_meta(fl / "a", backend="openai:gpt", check_pass=True,
+                      elapsed=12.0)                     # 模型规划直接合法
+        self._mk_meta(fl / "b", fallback="模型规划未通过校验，已回退规则规划",
+                      check_pass=True, rounds=1,
+                      elapsed=20.0)                     # 模型回退；首轮被拦、救回
+        self._mk_meta(fl / "c", check_pass=False, escalated=True, rounds=1,
+                      elapsed=30.0)                     # 纯规则部署；交人
+        (fl / "empty").mkdir()                          # 半成品不算样本
+        s = metrics.summarize(base)
+        assert s["n"] == 3
+        # 计划合法率：模型参与 2 份，合法 1 份
+        assert s["plans"] == {"model_n": 2, "model_legal": 1, "legal_rate": 0.5}
+        # 拦截：b（轨迹）+ c（终态不过）＝2；交人：c＝1
+        assert s["checks"]["intercepted"] == 2
+        assert s["checks"]["intercept_rate"] == round(2 / 3, 3)
+        assert s["checks"]["escalated"] == 1
+        assert s["checks"]["escalate_rate"] == round(1 / 3, 3)
+        # 时长：12/20/30 → p50＝上中位 20
+        assert s["duration_sec"] == {"n": 3, "mean": round(62 / 3, 1),
+                                     "p50": 20.0, "max": 30.0}
+
+    def test_空期次与无数据_不适用不冒充(self, tmp_path):
+        """无产物 / 无模型参与 / 无时长 → 各率 None，不冒充 100%。"""
+        s = metrics.summarize(tmp_path)                 # 无 flexible 目录
+        assert s["n"] == 0
+        assert s["plans"]["legal_rate"] is None
+        assert s["checks"]["intercept_rate"] is None
+        assert s["duration_sec"]["mean"] is None
+        # 有产物但纯规则部署且无时长字段（旧产物）
+        fl = tmp_path / "x" / "flexible"
+        self._mk_meta(fl / "a", check_pass=True)
+        s2 = metrics.summarize(tmp_path / "x")
+        assert s2["n"] == 1
+        assert s2["plans"]["legal_rate"] is None       # 零模型参与 → 不适用
+        assert s2["duration_sec"]["p50"] is None
+        assert s2["checks"]["intercepted"] == 0
+
+    def test_真实产物带elapsed且可汇总(self, src):
+        """generate 落盘 flex_meta 带 elapsed（票 06 数据面）；summarize 吃真产物。"""
+        import ai
+        from ai._brain import RuleBrain
+        with ai.using(brain=RuleBrain()):
+            r = report.generate(src.dir, "single_trend")
+        meta = json.loads((pathlib.Path(r["dir"]) / "flex_meta.json")
+                          .read_text(encoding="utf-8"))
+        assert isinstance(meta.get("elapsed"), (int, float)) and meta["elapsed"] > 0
+        s = metrics.summarize(src.dir)
+        assert s["n"] == 1
+        assert s["duration_sec"]["n"] == 1 and s["duration_sec"]["max"] > 0
+        assert s["checks"]["intercepted"] == 0          # 干净产物不被拦
+        assert s["plans"]["legal_rate"] is None         # 规则部署 → 不适用
 
 
 # ================================================================ 2. 不可分叉
