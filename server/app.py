@@ -34,6 +34,7 @@ from src import parse_ledger  # 成品隔离/回滚的唯一口径（FINAL_PRODU
 from .protected_static import AdminStaticFiles
 from src import period as period_mod  # 期次口径唯一来源（ADR-0001：新工作区 API 也用它）
 from src import period_facts  # 期次事实：目录/盘点/并入/产物/顺延的唯一 module
+from src import chart_data  # 图册 ECharts 同源数据（画了什么导什么；2026-10-28 前端全量 ECharts 化）
 from src import ledger as ledger_mod  # 动态监测表（母本）路径唯一口径（2026-10-13：input/ 只放母本）
 from src import forecast_choice  # 预测选模的唯一 implementation（读写/快照/留痕）
 from src import session_store  # 会话库（票 11）——对话前门会话的服务端持久化
@@ -2031,6 +2032,23 @@ async def api_period_charts_json(request: Request, period: str,
                       "label": labels.get(it["name"], ""),
                       "url": f"/p/{q}/chart/" + urllib.parse.quote(it["rel"])})
     return _paginate(items, limit, offset)
+
+
+@app.get("/api/periods/{period}/charts-data")
+@user_route
+async def api_period_charts_data(request: Request, period: str):
+    """图册 ECharts 交互图的数据（契约 #38）：现读台账宽表，与报告 PNG 同一批数字。
+
+    「画了什么导什么」——窗口/交集/×100/差分都照抄画图函数口径，前端零换算。
+    台账没并入的期次回 404：前端拿到 404/无数据一律回退 PNG 原图。
+    """
+    d = resolve_period_dir(period)
+    if d is None:
+        return _period_missing()
+    try:
+        return chart_data.build(d)
+    except FileNotFoundError:
+        return _period_missing()
 
 
 def _forecast_chart_labels(period_dir):

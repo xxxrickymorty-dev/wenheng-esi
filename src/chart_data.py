@@ -256,6 +256,27 @@ def _forecast_payload(ledger_dir: pathlib.Path) -> dict:
 
 # ---------- 整包 ----------
 
+def _college_stats_as_drawn(ledger_dir: pathlib.Path,
+                            end_period) -> dict | None:
+    """学院统计照 PNG 的来源取：**缓存逐字优先**，缺席才现算。
+
+    报告的学院饼图/合成表就是拿 `college_stats.json` 画的；直接走
+    `college_stats.load` 在缓存口径过期时会重算——归一映射会把单元
+    重新分组（2026-10-28 实测 202607：缓存 24 单元 → 重算 23 单元，
+    「天文研究所＋别名」并成一行），前端饼图就跟报告 PNG 对不上了。
+    所以这里宁可逐字用缓存（画了什么导什么），不追求「更新」。
+    """
+    j = pathlib.Path(ledger_dir) / "college_stats.json"
+    if j.exists():
+        try:
+            st = json.loads(j.read_text(encoding="utf-8"))
+            if st and st.get("units"):
+                return st
+        except (OSError, json.JSONDecodeError):
+            pass
+    return college_stats.load(ledger_dir, end_period, save=False)
+
+
 def build(ledger_dir="out/202607", end_period=None, n_periods=7) -> dict:
     """整包导出：现读台账宽表，返回可直接 JSON 化的 dict（不落盘、不动 out/）。"""
     ledger_dir = pathlib.Path(ledger_dir)
@@ -270,7 +291,7 @@ def build(ledger_dir="out/202607", end_period=None, n_periods=7) -> dict:
     for optional, key in (("top_by_year", "top_by_year"), ("college_stats", "_college_stats")):
         p = ledger_dir / "wide" / f"{optional}.parquet"
         if key == "_college_stats":
-            wide[key] = college_stats.load(ledger_dir, end_period, save=False)
+            wide[key] = _college_stats_as_drawn(ledger_dir, end_period)
         elif p.exists():
             wide[key] = pd.read_parquet(p)
     longdf = pd.read_parquet(ledger_dir / "ledger_long.parquet")

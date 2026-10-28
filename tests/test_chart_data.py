@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import pathlib
 import sys
@@ -180,3 +181,49 @@ def test_forecast_payload_skips_legacy_entries_without_series(tmp_path):
     payload = chart_data._forecast_payload(tmp_path)
     assert set(payload) == {"forecast_2_cites"}     # 老期次条目无序列 → 不导出（前端回退 PNG）
     assert payload["forecast_2_cites"]["fut_periods"] == ["202503"]
+
+
+# ---------- 接口层（契约 #38）：/api/periods/<p>/charts-data 就是 build() 的原样出口 ----------
+
+def _api_charts_data(user, period):
+    from server import app as app_module
+
+    class _Req:
+        def __init__(self, user_):
+            self.session = {"user": user_} if user_ else {}
+
+    return asyncio.run(app_module.api_period_charts_data(_Req(user), period))
+
+
+def test_charts_data_endpoint_serves_build_verbatim():
+    """接口里外就是 build()：同输入同 dict；NaN 一个都不许漏出 JSON。"""
+    if not OUT.is_dir():
+        skip_unless("out/202607 不存在（历史产物不入库，属正常）", lambda: OUT.is_dir())
+    from server import config
+
+    body = _api_charts_data(config.OPERATOR_USER, "202607")
+    assert body == chart_data.build(OUT)
+    json.dumps(body, ensure_ascii=False, allow_nan=False)   # NaN → ValueError
+
+
+def test_charts_data_endpoint_requires_login():
+    r = _api_charts_data(None, "202607")
+    assert r.status_code == 401
+
+
+def test_charts_data_endpoint_unknown_period_is_404():
+    from server import config
+
+    r = _api_charts_data(config.OPERATOR_USER, "199901")
+    assert r.status_code == 404
+
+
+def test_college_stats_served_as_drawn_on_real_ledger():
+    """学院统计必须与报告 PNG 同一批：缓存逐字优先，不许重算改分组。"""
+    if not OUT.is_dir():
+        skip_unless("out/202607 不存在（历史产物不入库，属正常）", lambda: OUT.is_dir())
+    data = chart_data.build(OUT)
+    cached = json.loads((OUT / "college_stats.json").read_text(encoding="utf-8"))
+    assert cached.get("units"), "缓存缺席时本用例没有意义（重算兜底仍由 load 承担）"
+    for key, mode in (("college_cites", "cites"), ("college_papers", "papers")):
+        assert data["_overview"][key]["items"] == chart_data._college_items(cached, mode)
