@@ -156,6 +156,9 @@ export function Review({
   const status = row?.status ?? 'unsigned'
   /* 本期印落章动效：签发态从未签翻到已签的那一刻放一次（签单接口回来、状态落真值时触发） */
   const [sealLand, setSealLand] = useState(false)
+  /* 浮动工具签（报告里的空）与批注折叠的开关 */
+  const [todoOpen, setTodoOpen] = useState(false)
+  const [noteOpen, setNoteOpen] = useState(false)
   const prevStatus = useRef(status)
   useEffect(() => {
     const justSigned = prevStatus.current !== 'signed' && status === 'signed'
@@ -394,10 +397,6 @@ export function Review({
     setCursor((c) => (c + 1) % emptyIds.length)
   }
 
-  function jumpToSign() {
-    document.getElementById('rv-sign')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
-  }
-
   if (!period) {
     return (
       <section className="card pad-card-lg">
@@ -445,8 +444,11 @@ export function Review({
       ) : !preview ? (
         <div className="pending-box mt-14">正在读试排报告……</div>
       ) : (
-        <div className="rv-grid">
-          <div className="rv-main">
+        /* 核验定稿 · 阅读流（2026-10-28 rick 裁「右侧签单栏去掉，报告太窄」）：
+           单栏阅读——稿面限宽居中；签单收进吸底定稿条（已裁决口径：
+           文末定稿条＋印章唯一状态表达＋两段式确认）；
+           「报告里的空」收成右下浮动工具签，读稿时让位、要用一击展开。 */
+        <div className="rv-flow">
           <FactsStrip period={period} />
           <section className="card rv-report" aria-label="试排报告全文">
             <p className="rv-docmeta">
@@ -479,179 +481,189 @@ export function Review({
                          disabled={!isAdmin || busy !== null} period={period} />
             ))}
           </section>
-          </div>
 
-          <aside className="rv-side">
-            {/* ------- 签单 ------- */}
-            <section className="card rv-card" id="rv-sign">
-              <div className="rv-sign-head">
-                <h3><Icon name="seal" size={19} />审核 · 签单</h3>
-                <StateSeal state={signed ? 'signed' : status === 'stale' ? 'stale' : 'unsigned'}
-                           size={64} tilt="a" landing={sealLand} />
-              </div>
-              <div className="rv-kv"><span>报告版本</span><b className="rv-docname">{preview.docx ?? '—'}</b></div>
-              <div className="rv-kv"><span>生成时间</span><b>{preview.updated_at || '—'}</b></div>
-              <div className="rv-kv"><span>存疑</span><b style={doubtN > 0 ? { color: 'var(--gold-ink)' } : undefined}>{doubtN} 处</b></div>
-              {/* A（P1）：一句说清已填 / 待填 / 点签单会先写进报告——数字随真实值联动，不再与旧提示并置矛盾 */}
-              {nField > 0 && (
-                <p className="rv-warn" role="note">
-                  待人工项 {nField} 处：已填 {nField - nLeft} · 待填 {nLeft}。
-                  {signed
-                    ? writeN > 0
-                      ? `有 ${writeN} 处填写还没写进报告——点下方「保存并重出报告」写入；重出后签发失效，需重新签单。`
-                      : '已签单，这一版已定稿。'
-                    : writeN > 0
-                      ? `点「签单」会先把已填的 ${writeN} 处写进报告，再签发。`
-                      : nLeft > 0
-                        ? `还有 ${nLeft} 处待填，补齐后可点「签单」签发。`
-                        : '点「签单」即可签发。'}
-                </p>
-              )}
-              <label className="rv-ack">
-                <input type="checkbox" checked={known} disabled={!canSign || busy !== null}
-                       onChange={(e) => setKnown(e.target.checked)} />
-                <span>我已逐项看过<b>待人工 {nField} 处、存疑 {doubtN} 处</b>，同意放行。</span>
-              </label>
-              <textarea
-                className="rv-note"
-                aria-label="签单批注（可选）"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="批注（可选）：这一版为什么可以签单、还有哪些已知问题"
-                rows={2}
-                disabled={!canSign}
-              />
-              <div className="rv-btns">
-                <button className="btn primary" onClick={doSign}
-                        disabled={!canSign || busy !== null || signed || (needAck && !known)}
-                        title={needAck && !known ? '先勾选上方「我已逐项看过」' : undefined}>
-                  <Icon name="seal" size={19} />{busy === 'sign' ? '正在处理…' : '签单'}
-                </button>
-                <ConfirmButton className="btn ghost" disabled={!canSign || busy !== null || !signed}
-                               confirmText="确认撤回？签发会失效" onConfirm={doRevoke}>
-                  <Icon name="refresh" size={18} />撤回
-                </ConfirmButton>
-              </div>
-              {busyText && <p className="rv-busy" role="status">{busyText}</p>}
-              {msg && <p className={msg.ok ? 'rv-msg ok' : 'rv-msg bad'} role="status">{msg.text}</p>}
-              <p className="hint mt-8">
-                <a href={appHref('reading', period)}>看对勘本 →</a>
-              </p>
-            </section>
-
-            {/* ------- 下载 ------- */}
-            <section className="card rv-card">
-              <h3><Icon name="doc" size={19} />报告文件</h3>
-              {signed ? (
-                <a className="btn primary rv-dl" href={`/api/periods/${encodeURIComponent(period)}/download/report`}>
-                  <Icon name="doc" size={19} />下载报告（Word）
-                </a>
-              ) : (
-                <button className="btn rv-dl" disabled>
-                  <Icon name="doc" size={19} />下载报告（Word）
-                </button>
-              )}
-              <p className="hint mt-8">
-                {signed ? '已签单，可下载。'
-                  : status === 'stale' ? '签发已失效，重签后可下载。'
-                    : '签单后可下载。'}
-              </p>
-            </section>
-
-            {/* ------- 报告里的空 ------- */}
-            <section className="card rv-card">
-              <h3><Icon name="list" size={19} />报告里的空
-                <span className="hint fw-400 ml-auto">
-                  {nLeft > 0 ? `还剩 ${nLeft} 处` : '已填齐'}{doubtN > 0 ? ` · 存疑 ${doubtN} 处` : ''}
-                </span>
-              </h3>
-              {nField > 0 && (
-                <button type="button" className="btn rv-nextbtn" onClick={jumpNext}
-                        disabled={emptyIds.length === 0}
-                        title="按报告顺序跳到下一处未填的空，并聚焦到输入框">
-                  {emptyIds.length > 0 ? `跳到下一处未填（还剩 ${emptyIds.length} 处）` : '都已填齐'}
-                </button>
-              )}
-              {nField > 0 && (
-                <div className="rv-chips" role="group" aria-label="按存疑筛选">
-                  <button type="button" className={`rv-chip${!onlyDoubt ? ' on' : ''}`}
-                          onClick={() => setOnlyDoubt(false)}>全部 {nField}</button>
-                  <button type="button" className={`rv-chip${onlyDoubt ? ' on' : ''}`}
-                          onClick={() => setOnlyDoubt(true)} disabled={doubtN === 0}
-                          title={doubtN === 0 ? '还没有标存疑的处' : '只看已标存疑的处'}>
-                    只看存疑 {doubtN}
+          {/* ------- 报告里的空：右下浮动工具签（读稿时让位） ------- */}
+          {nField > 0 && (
+            <div className="rv-todofloat">
+              <button type="button" className="rv-todofab"
+                      aria-expanded={todoOpen}
+                      aria-label={`报告里的空：待填 ${nLeft} 处${doubtN > 0 ? `，存疑 ${doubtN} 处` : ''}`}
+                      onClick={() => setTodoOpen((o) => !o)}>
+                空 <b>{nLeft}</b>/{nField}{doubtN > 0 ? <i> · 疑 {doubtN}</i> : null}
+              </button>
+              {todoOpen && (
+                <aside className="card rv-todopanel">
+                  <div className="rv-todopanel-h">
+                    <h3><Icon name="list" size={19} />报告里的空</h3>
+                    <button type="button" className="rv-todopanel-x" aria-label="收起"
+                            onClick={() => setTodoOpen(false)}>✕</button>
+                  </div>
+                  <button type="button" className="btn rv-nextbtn" onClick={jumpNext}
+                          disabled={emptyIds.length === 0}
+                          title="按报告顺序跳到下一处未填的空，并聚焦到输入框">
+                    {emptyIds.length > 0 ? `跳到下一处未填（还剩 ${emptyIds.length} 处）` : '都已填齐'}
                   </button>
-                </div>
-              )}
-              {nField === 0 ? (
-                <p className="hint mt-8">
-                  没有要填的——可直接签单。
-                  <button type="button" className="btn ml-10 pad-4-12 fs-13" 
-                          onClick={jumpToSign}>去签单 ↓</button>
-                </p>
-              ) : fieldsShown.length === 0 ? (
-                <p className="hint mt-8">没有标存疑的处。</p>
-              ) : (
-                <ul className="rv-todo">
-                  {fieldsShown.map(([id, meta]) => {
-                    const v = vals[id] ?? ''
-                    const isDoubt = !!doubt[meta.where]
-                    return (
-                      <li key={id}>
-                        <button type="button" className="rv-jump" onClick={() => jumpTo(id)}>
-                          <span className={`rv-dot${v.trim() ? ' done' : ''}`} aria-hidden="true" />
-                          <span className="rv-todo-t">{meta.title}</span>
-                          <span className="rv-todo-v">{v.trim() ? '已填' : '待填'}</span>
+                  <div className="rv-chips" role="group" aria-label="按存疑筛选">
+                    <button type="button" className={`rv-chip${!onlyDoubt ? ' on' : ''}`}
+                            onClick={() => setOnlyDoubt(false)}>全部 {nField}</button>
+                    <button type="button" className={`rv-chip${onlyDoubt ? ' on' : ''}`}
+                            onClick={() => setOnlyDoubt(true)} disabled={doubtN === 0}
+                            title={doubtN === 0 ? '还没有标存疑的处' : '只看已标存疑的处'}>
+                      只看存疑 {doubtN}
+                    </button>
+                  </div>
+                  {fieldsShown.length === 0 ? (
+                    <p className="hint mt-8">没有标存疑的处。</p>
+                  ) : (
+                    <ul className="rv-todo">
+                      {fieldsShown.map(([id, meta]) => {
+                        const v = vals[id] ?? ''
+                        const isDoubt = !!doubt[meta.where]
+                        return (
+                          <li key={id}>
+                            <button type="button" className="rv-jump" onClick={() => jumpTo(id)}>
+                              <span className={`rv-dot${v.trim() ? ' done' : ''}`} aria-hidden="true" />
+                              <span className="rv-todo-t">{meta.title}</span>
+                              <span className="rv-todo-v">{v.trim() ? '已填' : '待填'}</span>
+                            </button>
+                            <button type="button" className={`rv-flag${isDoubt ? ' on' : ''}`}
+                                    title={isDoubt ? '取消存疑' : '这一处标存疑'}
+                                    onClick={() => doFlag(meta.where)} disabled={!isAdmin || busy !== null}>
+                              {isDoubt ? '已存疑' : '存疑'}
+                            </button>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                  {(wb?.todo_confirm ?? []).length > 0 && (
+                    <>
+                      <p className="hint mt-10">另需核对：</p>
+                      <ul className="rv-todo rv-confirm">
+                        {wb!.todo_confirm.map((t) => (
+                          <li key={t.id}><span className="rv-todo-t">{t.title}</span></li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {wbNote && (
+                    <p className="hint ink-bad">
+                      {wbNote}
+                      {!wbNote.includes('权限') && (
+                        <button type="button" className="btn ml-10 pad-3-10 fs-13"
+                                onClick={() => { void refreshWb().catch(() => setWbNote('填写记录还是读不到——稍后再试。')) }}>
+                          重新读取
                         </button>
-                        <button type="button" className={`rv-flag${isDoubt ? ' on' : ''}`}
-                                title={isDoubt ? '取消存疑' : '这一处标存疑'}
-                                onClick={() => doFlag(meta.where)} disabled={!isAdmin || busy !== null}>
-                          {isDoubt ? '已存疑' : '存疑'}
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
+                      )}
+                    </p>
+                  )}
+                  <div className="rv-btns mt-12">
+                    <button className="btn" onClick={doSave}
+                            disabled={!isAdmin || busy !== null || nField === 0}>
+                      <Icon name="doc" size={18} />保存填写
+                    </button>
+                    <ConfirmButton className="btn primary rv-wide"
+                                   disabled={!isAdmin || busy !== null || nField === 0}
+                                   confirmText="确认重出？旧稿会先撤下、可回滚"
+                                   title="把填的值写进报告并重出（约 2–15 秒）"
+                                   onConfirm={doRebuild}>
+                      <Icon name="refresh" size={18} />{busy === 'rebuild' ? '正在重出……' : '保存并重出报告'}
+                    </ConfirmButton>
+                  </div>
+                  <p className="hint mt-8">
+                    填的值只进报告、不动台账{appliedN > 0 ? `；已写入 ${appliedN} 处` : ''}。
+                  </p>
+                </aside>
               )}
-              {(wb?.todo_confirm ?? []).length > 0 && (
-                <>
-                  <p className="hint mt-10">另需核对：</p>
-                  <ul className="rv-todo rv-confirm">
-                    {wb!.todo_confirm.map((t) => (
-                      <li key={t.id}><span className="rv-todo-t">{t.title}</span></li>
-                    ))}
-                  </ul>
-                </>
-              )}
-              {wbNote && (
-                <p className="hint ink-bad">
-                  {wbNote}
-                  {!wbNote.includes('权限') && (
-                    <button type="button" className="btn ml-10 pad-3-10 fs-13" 
-                            onClick={() => { void refreshWb().catch(() => setWbNote('填写记录还是读不到——稍后再试。')) }}>
-                      重新读取
+            </div>
+          )}
+
+          {/* ------- 定稿条：签单/下载的唯一收口（吸底） -------
+              两段式：干净一击即签；有待填或存疑时确认面就地展开。
+              印章是唯一的状态表达——条上不再重复「已签发」字样。
+              A（P1）联动句保留在确认面：数字随真实值联动。 */}
+          <section className="rv-signbar" id="rv-sign" aria-label="审核与签单">
+            {(busyText || msg) && (
+              <p className={msg ? (msg.ok ? 'rv-msg ok' : 'rv-msg bad') : 'rv-busy'} role="status">
+                {busyText || msg!.text}
+              </p>
+            )}
+            <div className="rv-signbar-in">
+              <div className="rv-signseal">
+                <StateSeal state={signed ? 'signed' : status === 'stale' ? 'stale' : 'unsigned'}
+                           size={46} tilt="a" landing={sealLand} />
+              </div>
+              <div className="rv-signdoc">
+                <b className="rv-docname">{preview.docx ?? '—'}</b>
+                <span className="rv-signmeta">
+                  生成 {preview.updated_at || '—'} · 存疑 {doubtN} 处
+                  {nField > 0 ? ` · 待人工 ${nField} 处（已填 ${nField - nLeft}）` : ''}
+                  {signed ? ` · 已签单${me?.name ? ` · ${me.name}` : ''}，这一版已定稿`
+                    : status === 'stale' ? ' · 签发已失效，重签后可下载' : ''}
+                </span>
+              </div>
+              <div className="rv-signacts">
+                {needAck && !signed && (
+                  <div className="rv-confirm">
+                    <label className="rv-ack">
+                      <input type="checkbox" checked={known} disabled={!canSign || busy !== null}
+                             onChange={(e) => setKnown(e.target.checked)} />
+                      <span>我已逐项看过待人工与存疑，同意放行。</span>
+                    </label>
+                    {noteOpen ? (
+                      <textarea
+                        className="rv-note"
+                        aria-label="签单批注（可选）"
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        placeholder="批注（可选）：这一版为什么可以签单、还有哪些已知问题"
+                        rows={2}
+                        disabled={!canSign}
+                        autoFocus
+                      />
+                    ) : (
+                      <button type="button" className="rv-notetoggle"
+                              onClick={() => setNoteOpen(true)} disabled={!canSign}>
+                        批注（可选）▾
+                      </button>
+                    )}
+                    {nField > 0 && (
+                      <p className="rv-warn" role="note">
+                        {writeN > 0
+                          ? `点「签单」会先把已填的 ${writeN} 处写进报告，再签发。`
+                          : nLeft > 0
+                            ? `还有 ${nLeft} 处待填，补齐后可点「签单」签发。`
+                            : '点「签单」即可签发。'}
+                      </p>
+                    )}
+                    {signed && writeN > 0 && (
+                      <p className="rv-warn" role="note">
+                        有 {writeN} 处填写还没写进报告——保存并重出后签发失效，需重新签单。
+                      </p>
+                    )}
+                  </div>
+                )}
+                <div className="rv-signbtns">
+                  {signed ? (
+                    <a className="btn primary" href={`/api/periods/${encodeURIComponent(period)}/download/report`}>
+                      <Icon name="doc" size={19} />下载报告（Word）
+                    </a>
+                  ) : (
+                    <button className="btn primary" onClick={doSign}
+                            disabled={!canSign || busy !== null || signed || (needAck && !known)}
+                            title={needAck && !known ? '先勾选「我已逐项看过」' : undefined}>
+                      <Icon name="seal" size={19} />{busy === 'sign' ? '正在处理…' : '签单'}
                     </button>
                   )}
-                </p>
-              )}
-              <div className="rv-btns mt-12">
-                <button className="btn" onClick={doSave}
-                        disabled={!isAdmin || busy !== null || nField === 0}>
-                  <Icon name="doc" size={18} />保存填写
-                </button>
-                <ConfirmButton className="btn primary rv-wide"
-                               disabled={!isAdmin || busy !== null || nField === 0}
-                               confirmText="确认重出？旧稿会先撤下、可回滚"
-                               title="把填的值写进报告并重出（约 2–15 秒）"
-                               onConfirm={doRebuild}>
-                  <Icon name="refresh" size={18} />{busy === 'rebuild' ? '正在重出……' : '保存并重出报告'}
-                </ConfirmButton>
+                  <ConfirmButton className="btn ghost" disabled={!canSign || busy !== null || !signed}
+                                 confirmText="确认撤回？签发会失效" onConfirm={doRevoke}>
+                    <Icon name="refresh" size={18} />撤回
+                  </ConfirmButton>
+                  <a className="btn ghost" href={appHref('reading', period)}>看对勘本 →</a>
+                </div>
               </div>
-              <p className="hint mt-8">
-                填的值只进报告、不动台账{appliedN > 0 ? `；已写入 ${appliedN} 处` : ''}。
-              </p>
-            </section>
-          </aside>
+            </div>
+          </section>
         </div>
       )}
     </>
