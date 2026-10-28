@@ -14,6 +14,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import pathlib
 import re
 import time
@@ -282,3 +283,42 @@ def image(out_dir, rid):
     if data is None:
         return None
     return data["images"].get(rid)
+
+
+def chart_map(out_dir):
+    """报告插图 rId → 图册图位 {group, name}——逐字节比对，确定性。
+
+    docx 里嵌的就是管线画的那份 PNG（fill_docx 原字节入包），与
+    `out/<期次>/charts/**` 逐字节比对即可对上；不猜、不按顺序数。
+    同名图在多个学科组下各有一份（22 个 `rank_pct.png`），
+    所以映射值是（组, 文件名）；对不上的图（封面/截图类）不进映射，
+    前端自然保留原图。缓存与 load() 同一套：docx 一变即失效。
+    """
+    out_dir = pathlib.Path(out_dir)
+    docx = _find_docx(out_dir)
+    if docx is None:
+        return {}
+    st = docx.stat()
+    key = ("chart_map", str(docx), st.st_mtime_ns, st.st_size)
+    hit = _CACHE.get(key)
+    if hit is not None:
+        return hit
+    data = load(out_dir)
+    if data is None:
+        return {}
+    charts: dict[str, tuple[str, str]] = {}
+    cdir = out_dir / "charts"
+    if cdir.is_dir():
+        for p in sorted(cdir.rglob("*.png")):
+            digest = hashlib.sha256(p.read_bytes()).hexdigest()
+            charts.setdefault(digest, (p.parent.name, p.name))
+    m: dict[str, dict[str, str]] = {}
+    if charts:
+        for rid, (blob, _ct) in data["images"].items():
+            g_n = charts.get(hashlib.sha256(blob).hexdigest())
+            if g_n:
+                m[rid] = {"group": g_n[0], "name": g_n[1]}
+    _CACHE[key] = m
+    while len(_CACHE) > _MAX_CACHE:
+        _CACHE.pop(next(iter(_CACHE)))
+    return m

@@ -201,9 +201,30 @@ def test_charts_data_endpoint_serves_build_verbatim():
         skip_unless("out/202607 不存在（历史产物不入库，属正常）", lambda: OUT.is_dir())
     from server import config
 
-    body = _api_charts_data(config.OPERATOR_USER, "202607")
+    r = _api_charts_data(config.OPERATOR_USER, "202607")
+    body = json.loads(r.body) if hasattr(r, "body") else r
+    # report_map 是接口层附加（审核台的桥），不算 build() 的输出
+    body.pop("report_map", None)
     assert body == chart_data.build(OUT)
     json.dumps(body, ensure_ascii=False, allow_nan=False)   # NaN → ValueError
+
+
+def test_charts_data_report_map_links_docx_to_gallery():
+    """审核台的桥：docx 插图 rId → 图册图位，逐字节比对，不许猜。"""
+    from server import report_preview
+
+    has = (OUT / "charts").is_dir() and bool(list(OUT.glob("报告初稿_*.docx")))
+    if not has:
+        skip_unless("缺 docx 或 charts 目录（历史产物不入库，属正常）", lambda: has)
+    m = report_preview.chart_map(OUT)
+    assert m, "docx 与图册都在，插图却一张没对上——映射断了"
+    for rid, slot in m.items():
+        assert (OUT / "charts" / slot["group"] / slot["name"]).is_file(), (rid, slot)
+    # 抽一个：docx 里的字节必须与图位文件逐字节一致
+    rid = next(iter(m))
+    slot = m[rid]
+    blob = report_preview.load(OUT)["images"][rid][0]
+    assert blob == (OUT / "charts" / slot["group"] / slot["name"]).read_bytes()
 
 
 def test_charts_data_endpoint_requires_login():

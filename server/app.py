@@ -2041,14 +2041,23 @@ async def api_period_charts_data(request: Request, period: str):
 
     「画了什么导什么」——窗口/交集/×100/差分都照抄画图函数口径，前端零换算。
     台账没并入的期次回 404：前端拿到 404/无数据一律回退 PNG 原图。
+
+    另附 `report_map`（2026-10-28 rick 裁决：审核台正文全换 ECharts）：
+    docx 插图 rId → 图册图位（组, 文件名），逐字节比对得出——
+    前端据此把正文里的图换成同源交互图；对不上就保留原图。
     """
     d = resolve_period_dir(period)
     if d is None:
         return _period_missing()
     try:
-        return chart_data.build(d)
+        payload = chart_data.build(d)
     except FileNotFoundError:
         return _period_missing()
+    try:
+        payload["report_map"] = report_preview.chart_map(d)
+    except Exception:                     # 映射缺席不该拖垮图册数据本身
+        payload["report_map"] = {}
+    return payload
 
 
 def _forecast_chart_labels(period_dir):
