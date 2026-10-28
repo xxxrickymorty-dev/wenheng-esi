@@ -117,15 +117,16 @@ a{color:inherit}
 .pl-slot .psig:hover,.pl-slot .psig[aria-expanded="true"]{border-color:var(--gold);
   background:rgba(245,243,236,.08)}
 .pl-slot .psig .tx .st,.pl-slot .psig .cw{color:rgba(245,243,236,.62)}
-/* 落款面在左栏里以签为定位基准、随栏收窄（page-l overflow:hidden，
-   超宽会被裁） */
-.pl-slot .sig-pop{width:min(300px, calc(100% + 44px))}
+/* 落款面 2026-10-28 改「浮出左栏」：fixed + portal 到 body
+   （page-l 是 sticky，自带 stacking context——困在栏里的浮层
+   会被右页 .wrap 盖住，实测），锚定栏缘外 10px；
+   左栏内不再需要收窄/定位覆写 */
 .pl-slot-user{margin-top:clamp(12px,2vh,20px)}
 .pl-slot-user .user-chip{width:100%;color:var(--ivory)}
 .pl-slot-user .user-chip-btn{width:100%;background:transparent;color:var(--ivory);
   border:1px solid rgba(245,243,236,.34)}
-/* 身份签在导航下：弹出菜单向下走（上方是导航，别盖） */
-.pl-slot-user .user-chip-pop{top:calc(100% + 10px);bottom:auto;left:0;right:auto}
+/* 身份菜单 2026-10-28 改「浮出左栏」（UserChip float 模式内联定位），
+   左栏内的方向覆写作废 */
 
 @media (max-width:900px){
   .wrap{padding:18px 16px 60px}

@@ -99,10 +99,27 @@ export default function ShellApp({ view, onNavigate, onContext }: ShellAppProps)
   /* 面板（2026-10-28 rick 裁「删顶部栏」）：只剩期次落款面，
      期次签与身份签整个搬进左栏（portal 挂 WorkbenchSpread 的槽位）。 */
   const [panel, setPanel] = useState<'sig' | null>(null)
+  /* 落款面「浮出左栏」（2026-10-28 rick 圈遮挡）：absolute 版塞在
+     overflow:hidden 的 258px 窄栏里，实测盖掉 55% 导航面积——
+     改 fixed 锚定签钮，落点在左栏右缘外的右页上方。 */
+  const [sigAnchor, setSigAnchor] = useState<{ x: number; y: number } | null>(null)
   const [plSigSlot, setPlSigSlot] = useState<HTMLElement | null>(null)
   const [plUserSlot, setPlUserSlot] = useState<HTMLElement | null>(null)
   const psigRef = useRef<HTMLButtonElement | null>(null)
   const sigPopRef = useRef<HTMLDivElement | null>(null)
+
+  const toggleSig = () => {
+    if (panel !== 'sig' && psigRef.current) {
+      /* 锚定左栏右缘（不是签右缘）：左栏窄时签几乎撑满，
+         以签定位仍会压栏——落点统一在栏缘外 10px */
+      const pl = document.querySelector('.page-l')
+      if (pl) {
+        const r = pl.getBoundingClientRect()
+        setSigAnchor({ x: r.right + 10, y: psigRef.current.getBoundingClientRect().top })
+      }
+    }
+    setPanel((p) => (p === 'sig' ? null : 'sig'))
+  }
 
   const [healthy, setHealthy] = useState<boolean | null>(null)
   const [me, setMe] = useState<Me | null>(null)
@@ -676,13 +693,14 @@ export default function ShellApp({ view, onNavigate, onContext }: ShellAppProps)
           <button className="psig" type="button" ref={psigRef}
                   aria-expanded={panel === 'sig'} aria-haspopup="true"
                   title="期次与签发态以这里为准——点开换期"
-                  onClick={(e) => { e.stopPropagation(); setPanel((p) => (p === 'sig' ? null : 'sig')) }}>
+                  onClick={(e) => { e.stopPropagation(); toggleSig() }}>
             <span className="mk" data-state={sigMark(approvalStatus).state} aria-hidden="true">{sigMark(approvalStatus).char}</span>
             <span className="tx"><b>{selected ?? '——————'}</b><span className="st"> · {approvalLabel(approvalStatus)}</span></span>
             <span className="cw">换期 ▾</span>
           </button>
-          {panel === 'sig' && (
-            <div className="sig-pop" role="menu" aria-label="期次落款" ref={sigPopRef}>
+          {panel === 'sig' && sigAnchor && createPortal(
+            <div className="sig-pop" role="menu" aria-label="期次落款" ref={sigPopRef}
+                 style={{ position: 'fixed', left: sigAnchor.x, top: sigAnchor.y }}>
               <div className="cap">期 次 落 款 · 点 一 期 即 换</div>
               {periods.map((p) => {
                 const m = sigMark(p.status)
@@ -697,13 +715,14 @@ export default function ShellApp({ view, onNavigate, onContext }: ShellAppProps)
                   </button>
                 )
               })}
-            </div>
+            </div>,
+            document.body,
           )}
         </span>,
         plSigSlot,
       )}
       {plUserSlot && createPortal(
-        me ? <UserChip me={me} /> : (
+        me ? <UserChip me={me} float /> : (
           <span className="user-chip" aria-live="polite">
             <span className="user-chip-btn" aria-disabled="true">
               <span className="av">？</span>
