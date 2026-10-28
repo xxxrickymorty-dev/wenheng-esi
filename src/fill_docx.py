@@ -24,6 +24,7 @@ from docx.oxml.ns import nsdecls, qn  # noqa: E402
 from docx.shared import Cm, Pt, RGBColor  # noqa: E402
 from docx.table import Table  # noqa: E402
 
+import atomic_io  # noqa: E402
 import charts  # noqa: E402
 import college_stats  # noqa: E402
 import compute  # noqa: E402
@@ -100,6 +101,21 @@ PROVINCE_COLS = ("国内排名", "国际排名", "ESI前1%学科数", "发文量
 #: 学科×高校矩阵 T20 的 11 列（简称）→ 与 extract_matrix.py 的键一致
 MATRIX_COLS = ("云大", "昆工", "昆医", "师大", "农大", "大理大学", "财大",
                "西林", "民大", "中医药大学", "曲靖师范")
+
+
+def _save_docx(doc, tmp_path, out_path):
+    """docx 成品落盘：`doc.save` 写进同目录 tmp → `os.replace` 换成正式名。
+
+    `doc.save` 是二进制、自己写盘，用不了 `write_text_atomic`；但重试口径仍走
+    `atomic_io.replace`（Windows 上报告常被 Word 打开着，`os.replace` 会 WinError 5/32）。
+    失败时清掉 tmp，`out_path` 保持上一次的完整产物。
+    """
+    tmp_path = pathlib.Path(tmp_path)
+    try:
+        doc.save(str(tmp_path))
+        atomic_io.replace(tmp_path, out_path)
+    finally:
+        tmp_path.unlink(missing_ok=True)
 
 
 def _missing(slots, location, msg, source):
@@ -1230,13 +1246,17 @@ def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026�
 
     out_path = pathlib.Path(out_path or ledger_dir / f"报告初稿_{period}（试排）.docx")
     prev_month = str(int(prev[4:]))
+    # 🔴 成品走原子写（R2-5，2026-10-28）：母版先复制到**同目录 tmp**，全程在 tmp 上
+    #    编辑，最后一步 `os.replace` 才让它变成 `out_path` —— 中途崩掉/被 Word 占住时，
+    #    目录里不会出现「半截报告」或「没填数的母版副本」。
+    tmp_doc = atomic_io.tmp_path(out_path)
+    shutil.copy(master, tmp_doc)
+    doc = Document(str(tmp_doc))
     t2 = compute.build_table2(wide, ni, nc, thr, period, prev)
     ynd = pd.read_parquet(f"{ledger_dir}/wide/ynd_rank.parquet").set_index("period")
     top_total = pd.read_parquet(f"{ledger_dir}/wide/top_total.parquet").set_index("period")["total"].to_dict()
     facts = compute.build_overview(wide, ni, nc, thr, ynd, top_total, period, prev)
 
-    shutil.copy(master, out_path)
-    doc = Document(str(out_path))
     slots = []
 
     fill_big_table(doc, t2, slots, prev_month)
@@ -1293,10 +1313,13 @@ def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026�
                       "new": "已还原为黑色（原件正文全黑）",
                       "source": "fill_docx._blacken_red_runs"})
 
-    doc.save(out_path)
+    # 写回 tmp 再 `os.replace`：`doc.save` 自己写盘（二进制），用不了 write_text_atomic，
+    # 但重试口径仍是 `atomic_io.replace` 那一份（Windows 上 docx 常被 Word 占着）。
+    _save_docx(doc, tmp_doc, out_path)
 
-    (ledger_dir / "red_slots.json").write_text(
-        json.dumps(slots, ensure_ascii=False, indent=1), encoding="utf-8")
+    atomic_io.write_text_atomic(
+        ledger_dir / "red_slots.json",
+        json.dumps(slots, ensure_ascii=False, indent=1))
 
     n_img = sum(1 for s in slots if s["new"].startswith("[图]"))
     n_text = sum(1 for s in slots if not s["location"].startswith("T01/r") and not s["new"].startswith("[图]"))
@@ -1323,7 +1346,7 @@ def main(ledger_dir="out/202607", master="master/学科信息参考母版_2026�
         "- 1‰接近度趋势图（「从国内排名上看」段原图）：需历史 1‰ 阈值列，台账现只存最近两期，暂无法重建；",
         "  建议《千分之一被引阈值》表按列追存历史后由流水线自动生成。", "",
         "## 说明", "签单核对方法：打开报告初稿，对照 red_slots.json 逐条核对“改了啥、来自哪”。"]
-    (ledger_dir / "红色件清单.md").write_text("\n".join(md), encoding="utf-8")
+    atomic_io.write_text_atomic(ledger_dir / "红色件清单.md", "\n".join(md))
     print(f"报告初稿 → {out_path}")
     print(f"红色件：{len(slots)} 条（大表 {sum(1 for s in slots if s['location'].startswith('T01/r'))} 格 + 文字 {n_text} + 图 {n_img}）")
     return out_path

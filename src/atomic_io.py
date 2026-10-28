@@ -33,6 +33,23 @@ def tmp_path(path) -> pathlib.Path:
     return path.with_name(f"{path.name}.tmp-{os.getpid()}-{secrets.token_hex(3)}")
 
 
+def replace(tmp, path) -> None:
+    """同目录 tmp → 目标：`os.replace`，撞 Windows 并发读句柄时退避重试。
+
+    单独抽出来是为了**二进制产物**（`python-docx` 的 `doc.save` 自己写盘，给不了
+    文本）也能共用同一套重试；参数仍只在 `acquisition_state` 里定义一份。
+    """
+    path = pathlib.Path(path)
+    for attempt in range(_acq.WRITE_RETRIES):
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError:
+            if attempt == _acq.WRITE_RETRIES - 1:
+                raise
+            time.sleep(_acq.WRITE_RETRY_SLEEP)
+
+
 def write_text_atomic(path, text: str, *, encoding: str = "utf-8", newline=None) -> None:
     """把 `text` 原子写到 `path`；中途失败时目标文件保持旧内容、tmp 被清理。
 
@@ -49,14 +66,7 @@ def write_text_atomic(path, text: str, *, encoding: str = "utf-8", newline=None)
             f.write(text)
             f.flush()
             os.fsync(f.fileno())
-        for attempt in range(_acq.WRITE_RETRIES):
-            try:
-                os.replace(tmp, path)
-                return
-            except PermissionError:
-                if attempt == _acq.WRITE_RETRIES - 1:
-                    raise
-                time.sleep(_acq.WRITE_RETRY_SLEEP)
+        replace(tmp, path)
     except OSError:
         try:
             tmp.unlink(missing_ok=True)
