@@ -3046,3 +3046,117 @@ async def qr(request: Request):
         return StreamingResponse(io.BytesIO(buf.getvalue()), media_type="image/png")
     except Exception:  # noqa: BLE001
         return JSONResponse({"url": url}, status_code=200)
+
+
+# ---------------- AI 问数（SQLite + 受控 NL2SQL；2026-10-25）----------------
+# 数据层：src/aiqa_db.py（out/_aidata/aiqa.sqlite，单向 ETL、运行期只读 + qa_log 留痕）；
+# 引擎：src/aiqa_engine.py（规则规划器 → 白名单参数化 SQL → 人话渲染 + 图型建议）。
+# 红线：模型的输出类型里没有数值——规划只产白名单规格，SQL 由引擎拼装执行。
+
+
+def _aiqa_con():
+    """问数库只读连接；缺库 503 人话（提示管理员先构建）。"""
+    try:
+        from src import aiqa_db                                   # noqa: PLC0415
+        return aiqa_db.connect_ro(config.ROOT), None
+    except FileNotFoundError:
+        return None, JSONResponse(
+            {"error": "问数数据库还没建好",
+             "hint": "请在服务器上运行 tools/build_aiqa_db.py 后重试"},
+            status_code=503)
+
+
+@app.get("/api/aiqa/meta")
+@user_route
+async def api_aiqa_meta(request: Request):
+    """问数库元信息（期次 / 指标白名单 / 学科名单 / 期次轴）。已登录即可。"""
+    con, err = _aiqa_con()
+    if err:
+        return err
+    try:
+        from src import aiqa_db                                   # noqa: PLC0415
+        m = aiqa_db.meta(config.ROOT)
+        return {
+            "period": m.get("period", ""),
+            "built_at": m.get("built_at", ""),
+            "n_facts": int(m.get("n_facts", "0") or 0),
+            "disciplines": aiqa_db.view_disciplines(con),
+            "metrics": aiqa_db.view_metrics(con),
+            "periods": aiqa_db.view_periods(con),
+        }
+    finally:
+        con.close()
+
+
+@app.post("/api/aiqa/ask")
+@user_route
+async def api_aiqa_ask(request: Request):
+    """问数主口（契约 #38）：{question} → 规格化查询 + 人话回答 + 图表数据。
+
+    规划＝规则适配器（离线可跑）；执行＝白名单参数化 SQL（只读连接）；
+    每问落 `qa_log` 留痕（写失败不阻塞查询）。
+    """
+    con, err = _aiqa_con()
+    if err:
+        return err
+    t0 = time.time()
+    try:
+        from src import aiqa_db, aiqa_engine                      # noqa: PLC0415
+        try:
+            body = await request.json()
+        except Exception:                                          # noqa: BLE001
+            return JSONResponse({"error": "请求不是合法 JSON"},
+                                status_code=400)
+        question = str((body or {}).get("question") or "").strip()
+        if not question:
+            return JSONResponse({"error": "问题不能为空",
+                                 "hint": "试试「化学的总被引趋势」"},
+                                status_code=400)
+        plan = aiqa_engine.plan(question, con)
+        result = aiqa_engine.execute(con, plan["specs"])
+        text = aiqa_engine.render_text(con, question, result)
+        chart = aiqa_engine.suggest_chart(con, plan["specs"], result)
+        chart_data = aiqa_engine.to_chart_data(con, chart, result)
+        elapsed = int((time.time() - t0) * 1000)
+        user = current_user(request) or ""
+        n_rows = sum(len(r.get("points") or r.get("items") or
+                         r.get("rows") or []) for r in result.get("rows") or [])
+        record_id = aiqa_db.log_qa(
+            config.ROOT, user=user, question=question, specs=plan["specs"],
+            plan_origin=plan["origin"], n_rows=n_rows, elapsed_ms=elapsed,
+            answer_text=text, chart_kind=chart.get("kind", ""))
+        return {
+            "question": question,
+            "plan": {"specs": plan["specs"], "origin": plan["origin"],
+                     "note": plan.get("note", "")},
+            "answer": text,
+            "chart": chart,
+            "chart_data": chart_data,
+            "record_id": record_id,
+            "elapsed_ms": elapsed,
+        }
+    finally:
+        con.close()
+
+
+@app.get("/api/aiqa/log")
+@admin_route
+async def api_aiqa_log(request: Request, limit: int = 50):
+    """问数留痕（仅管理员）：最近 N 条（新→旧）。"""
+    con, err = _aiqa_con()
+    if err:
+        return err
+    try:
+        limit = max(1, min(int(limit or 50), 500))
+        rows = [dict(r) for r in con.execute(
+            "SELECT id, ts, user, question, specs, plan_origin, n_rows,"
+            " elapsed_ms, answer_text, chart_kind FROM qa_log "
+            "ORDER BY id DESC LIMIT ?", (limit,))]
+        for r in rows:
+            try:
+                r["specs"] = json.loads(r.get("specs") or "[]")
+            except Exception:                                      # noqa: BLE001
+                r["specs"] = []
+        return {"log": rows, "n": len(rows)}
+    finally:
+        con.close()
