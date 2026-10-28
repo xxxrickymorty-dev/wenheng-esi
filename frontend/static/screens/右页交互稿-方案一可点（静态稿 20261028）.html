@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>右页交互稿 · 方案一可点（静态稿 20261028）</title>
+<style>
+/* ============================================================
+   右页交互稿 · 方案一「签条页眉」可点版（20261028）
+   rick 口谕：从结构与交互角度再设计，按顶尖设计师工作流补任务分析→IA→交互规则。
+   本稿＝可点原型：交互规则全部真实生效（不是画出来的）。
+   交互规则（见页眉标注）：
+   ① 期次签：点开/点外/Esc 关；同一时点只开一个面；
+   ② 换期即换：签、左栏 hero、页头三处同变（状态单源）；
+   ③ 密度：即时生效，无保存动作；
+   ④ ⓘ：渐进披露（声明藏在需要时）；
+   ⑤ 全部动作有即时反馈（悬停态、选中态、开关态）。
+   ============================================================ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: #F5F3EC; }
+body { font: 15px/1.75 system-ui, -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif; }
+
+.note { background: #1E2A23; color: #C9B694; font: 11px/1.8 KaiTi, STKaiti, "FangSong", serif;
+  letter-spacing: .18em; padding: 8px 18px; display: flex; gap: 22px; flex-wrap: wrap; }
+.note b { color: #F6F1DE; font-weight: 400; }
+.cap { padding: 9px 18px 4px; font-family: KaiTi, STKaiti, serif; font-size: 12px;
+  letter-spacing: .2em; color: #4A564D; background: #F5F3EC; display: flex; gap: 20px; flex-wrap: wrap; }
+.cap b { font-family: "Noto Serif SC","Songti SC",SimSun,serif; font-size: 13.5px; color: #1E2A23; }
+.cap .try { color: #1A4B27; }
+
+.sp-spread {
+  --lw: 24%;
+  --deep: #143729; --deep-2: #0F2C21;
+  --ivory: #F6F1DE; --ivory-2: rgba(246,241,222,.80); --ivory-3: rgba(246,241,222,.54);
+  --paper: #F5F3EC; --card: #FBF8EF; --card-hi: #FFFDF6; --panel: #EDE9DC;
+  --ink: #1E2A23; --ink-2: #4A564D; --ink-3: #7C857B;
+  --line: #DFDBCB; --line-2: #EAE7DB;
+  --gold: #C8B584; --seam: #B08E48; --red: #A82F22; --green: #1A4B27; --warn: #7C5A16;
+  --serif: "Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+  --kai: KaiTi, STKaiti, FangSong, STFangsong, serif;
+  --sans: system-ui, -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  --mono: "Cascadia Mono", Consolas, "Courier New", monospace;
+  display: grid; grid-template-columns: var(--lw) minmax(0,1fr);
+  min-height: 100dvh; position: relative;
+  background: var(--paper); color: var(--ink);
+  font: 15px/1.75 var(--sans); -webkit-font-smoothing: antialiased;
+  transition: grid-template-columns .18s ease;
+}
+.sp-spread h1, .sp-spread h2, .sp-spread h3 { font-family: var(--serif); font-weight: 600; }
+.sp-spread a { color: inherit; text-decoration: none; }
+.sp-spread button { font: inherit; cursor: pointer; }
+.sp-spread ::selection { background: var(--gold); color: #1E2A23; }
+.sp-spread :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+.sp-spread .page-l { background: var(--deep); color: var(--ivory); padding: clamp(15px,2.1vh,28px) clamp(16px,1.6vw,26px);
+  display: flex; flex-direction: column; position: sticky; top: 0; height: 100dvh; overflow: hidden; }
+.sp-spread .bm { display: flex; align-items: baseline; gap: 10px; }
+.sp-spread .bm b { font-family: var(--serif); font-size: clamp(18px,2.3vh,22px); letter-spacing: .14em; }
+.sp-spread .bm span { font-family: var(--kai); font-size: 10px; letter-spacing: .14em; color: var(--ivory-3); line-height: 1.7; }
+.sp-spread .nav { margin-top: clamp(10px,1.9vh,20px); display: flex; flex-direction: column;
+  font-size: clamp(11.5px,1.5vh,13px); letter-spacing: .04em; color: var(--ivory-2); }
+.sp-spread .nav a { padding: clamp(3px,.6vh,6px) 0; display: flex; align-items: center; gap: 10px; }
+.sp-spread .nav a::before { content: ""; width: 9px; height: 2px; flex: none; background: transparent; }
+.sp-spread .nav a[aria-current] { color: var(--ivory); }
+.sp-spread .nav a[aria-current]::before { background: var(--gold); }
+.sp-spread .nav .m { margin-top: clamp(7px,1.2vh,13px); font-family: var(--kai); font-size: 10.5px; letter-spacing: .24em; color: var(--ivory-3); }
+.sp-spread .nav .q { opacity: .62; }
+.sp-spread .hero-l { margin: auto 0; padding: clamp(6px,1.4vh,20px) 0; }
+.sp-spread .ov { font-family: var(--kai); font-size: 11px; letter-spacing: .24em; color: var(--ivory-3); }
+.sp-spread .hero-l h1 { font-size: clamp(24px,2.6vh,38px); line-height: 1.16; letter-spacing: .05em; margin: clamp(7px,1.2vh,12px) 0 6px; }
+.sp-spread .vol { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.sp-spread .vol .b { font-family: var(--serif); font-size: clamp(15px,1.9vh,18px); letter-spacing: .08em; }
+.sp-spread .vol .c { font-family: var(--kai); font-size: 10.5px; letter-spacing: .18em; color: var(--ivory-3); }
+.sp-spread .rule { width: 62px; height: 1px; background: var(--gold); margin: clamp(8px,1.3vh,14px) 0 clamp(6px,1vh,10px); }
+.sp-spread .stm { font-family: var(--serif); font-size: clamp(15px,2vh,18px); line-height: 1.5; letter-spacing: .04em; }
+.sp-spread .state { margin-top: clamp(10px,1.7vh,20px); display: flex; gap: 18px; flex-wrap: wrap;
+  border-top: 1px solid rgba(246,241,222,.16); padding-top: clamp(8px,1.3vh,13px); }
+.sp-spread .state .s { display: flex; flex-direction: column; gap: 3px; }
+.sp-spread .state .k { font-family: var(--kai); font-size: 10px; letter-spacing: .22em; color: var(--ivory-3); }
+.sp-spread .state .v { font-family: var(--serif); font-size: 14.5px; letter-spacing: .08em; }
+.sp-spread .footline { margin-top: auto; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  font-family: var(--kai); font-size: 10px; letter-spacing: .18em; color: var(--ivory-3);
+  border-top: 1px solid rgba(246,241,222,.14); padding-top: clamp(7px,1.2vh,11px); }
+.sp-spread .sealbox { position: absolute; left: var(--lw); top: 250px; transform: translateX(-70%) rotate(-4deg);
+  width: 104px; height: 104px; background: #F2EDE0; border: 1px solid rgba(168,47,34,.38);
+  padding: 8px; z-index: 3; }
+.sp-spread .sealbox svg { width: 100%; height: 100%; display: block; }
+
+.sp-spread .page-r { background: var(--paper); border-left: 3px solid var(--seam); min-width: 0; position: relative; }
+
+/* ── 签条页眉 ── */
+.pg-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 13px clamp(20px,2.6vw,40px) 11px; border-bottom: 1px solid var(--line-2);
+  position: relative; z-index: 10; }
+.pg-head .r { margin-left: auto; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.psig { display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--line);
+  background: var(--card-hi); padding: 6px 12px 6px 8px; cursor: pointer;
+  transition: border-color .15s, background .15s; }
+.psig:hover { border-color: var(--seam); }
+.psig[aria-expanded="true"] { border-color: var(--seam); background: #FFFEF9; }
+.psig .mk { width: 18px; height: 18px; color: #F5F3EC;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--serif); font-size: 10px; font-weight: 700; transform: rotate(-3deg); }
+.psig .mk[data-state="ok"] { background: var(--green); }
+.psig .mk[data-state="re"] { background: var(--warn); }
+.psig .mk[data-state="no"] { background: transparent; border: 1.5px dashed var(--red); color: var(--red); }
+.psig .tx { font-family: var(--kai); font-size: 12.5px; letter-spacing: .14em; color: var(--ink); }
+.psig .tx b { font-family: var(--mono); font-weight: 600; letter-spacing: .02em; }
+.psig .tx .st { color: var(--ink-3); }
+.psig .cw { font-family: var(--kai); font-size: 10px; color: var(--ink-3); }
+.pg-head .info { border: 1px dashed var(--line); background: transparent; padding: 5px 10px;
+  font-family: var(--kai); font-size: 11px; letter-spacing: .16em; color: var(--ink-3); }
+.pg-head .info:hover, .pg-head .info[aria-expanded="true"] { color: var(--ink-2); border-color: var(--ink-3); background: #FFFEF9; }
+.pg-head .who { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); }
+.pg-head .who .av { width: 22px; height: 22px; background: var(--green); color: #F5F3EC;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--serif); font-size: 11px; }
+.pg-head .dense { display: inline-flex; border: 1px solid var(--line); }
+.pg-head .dense button { border: 0; background: transparent; padding: 5px 10px;
+  font-family: var(--kai); font-size: 11px; letter-spacing: .14em; color: var(--ink-3); }
+.pg-head .dense button:hover { color: var(--ink); }
+.pg-head .dense button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+/* 落款面（唯一会开的两个面之一） */
+.sig-pop { position: absolute; top: 52px; left: clamp(20px,2.6vw,40px); z-index: 30;
+  width: 300px; background: var(--card-hi); border: 1px solid var(--line); padding: 8px 8px 6px;
+  display: none; }
+.sig-pop.open { display: block; }
+.sig-pop .cap { padding: 5px 10px 5px; font-family: var(--kai); font-size: 10px;
+  letter-spacing: .2em; color: var(--ink-3); background: transparent; }
+.sig-pop .row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; font-size: 13px;
+  cursor: pointer; border: 0; background: transparent; width: 100%; text-align: left; }
+.sig-pop .row:hover { background: var(--panel); }
+.sig-pop .row[aria-current="true"] { background: var(--panel); box-shadow: inset 3px 0 0 var(--green); }
+.sig-pop .row .mk { width: 16px; height: 16px; flex: 0 0 16px; display: inline-flex;
+  align-items: center; justify-content: center; font-family: var(--serif); font-size: 9px; font-weight: 700; }
+.sig-pop .row[data-state="ok"] .mk { background: var(--green); color: #F5F3EC; }
+.sig-pop .row[data-state="re"] .mk { background: var(--warn); color: #F5F3EC; }
+.sig-pop .row[data-state="no"] .mk { border: 1.5px dashed var(--red); color: var(--red); }
+.sig-pop .row b { font-family: var(--mono); font-weight: 600; }
+.sig-pop .row .lb { color: var(--ink-3); font-size: 12px; margin-left: auto; }
+/* ⓘ 声明面 */
+.info-pop { position: absolute; top: 52px; left: 190px; z-index: 30; width: 360px;
+  background: var(--card-hi); border: 1px solid var(--line); padding: 12px 16px; display: none; }
+.info-pop.open { display: block; }
+.info-pop .sc { font-family: var(--kai); font-size: 10px; letter-spacing: .22em; color: var(--ink-3); margin-bottom: 6px; }
+.info-pop p { font-size: 12.5px; line-height: 1.85; color: var(--ink-2); }
+.info-pop p b { color: var(--ink); font-weight: 600; }
+.info-pop .comp { margin-top: 6px; font-family: var(--kai); font-size: 11px; letter-spacing: .12em; color: var(--warn); }
+
+/* ── 真屏内容（工作台） ── */
+.wb { padding: clamp(16px,2.6vh,28px) clamp(20px,2.6vw,40px) 40px; max-width: 1180px; }
+.wb .flow { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 20px;
+  border-top: 2px solid var(--ink-2); padding-top: 14px; }
+.wb .fcell { border: 1px solid var(--line); background: var(--card); text-align: center;
+  padding: 10px 0; font-family: var(--serif); font-size: 14.5px; letter-spacing: .08em; color: var(--ink-2); }
+.wb .fcell.now { background: #EFF3EA; border-color: var(--green); color: var(--green); font-weight: 650; }
+.wb .h-row { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.wb .h-row h2 { font-size: 24px; letter-spacing: .04em; }
+.wb .h-row h2 b { font-family: var(--mono); font-weight: 600; }
+.wb .h-row .sub { font-family: var(--kai); font-size: 11px; letter-spacing: .18em; color: var(--ink-3); }
+.wb .h-row .prev { margin-left: auto; font-family: var(--kai); font-size: 11px; letter-spacing: .16em; color: var(--ink-3); }
+.wb .cards { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-top: 16px; }
+.wb .cd { border: 1px solid var(--line); background: var(--card); padding: 12px 14px; }
+.wb .cd .k { font-family: var(--kai); font-size: 10.5px; letter-spacing: .22em; color: var(--ink-3); display: flex; justify-content: space-between; }
+.wb .cd .k i { font-style: normal; color: var(--green); }
+.wb .cd .v { font-family: var(--serif); font-size: 19px; letter-spacing: .06em; margin-top: 5px; }
+.wb .cd .n { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+.wb .acts { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-top: 18px; }
+.wb .btn { background: var(--green); color: #F5F3EC; border: 0; padding: 10px 24px;
+  font-family: var(--serif); font-size: 14.5px; letter-spacing: .1em; }
+.wb .btn:hover { background: #235A38; }
+.wb .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--ink); }
+.wb .btn.ghost:hover { background: var(--panel); }
+.wb .warnln { font-family: var(--kai); font-size: 11px; letter-spacing: .14em; color: var(--ink-3); }
+.wb .stats { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); margin-top: 22px;
+  border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); }
+.wb .st { padding: 14px 18px 14px 0; }
+.wb .st + .st { border-left: 1px solid var(--line-2); padding-left: 18px; }
+.wb .st .k { font-family: var(--kai); font-size: 10.5px; letter-spacing: .2em; color: var(--ink-3); }
+.wb .st .v { font-family: var(--serif); font-size: 30px; letter-spacing: .02em; margin-top: 4px; }
+.wb .st .v small { font-family: var(--sans); font-size: 13px; color: var(--ink-2); letter-spacing: 0; margin-left: 8px; }
+.wb .band { background: var(--deep); color: var(--ivory); margin-top: 26px;
+  padding: clamp(18px,3vh,30px) clamp(20px,2.6vw,40px); display: grid;
+  grid-template-columns: minmax(0,.9fr) minmax(0,1.1fr); gap: 40px; }
+.wb .band .ov { font-family: var(--kai); font-size: 10.5px; letter-spacing: .3em; color: var(--ivory-3); }
+.wb .band h3 { font-size: clamp(20px,2.4vw,30px); line-height: 1.35; letter-spacing: .04em; margin-top: 10px; }
+.wb .band .deck { color: var(--ivory-2); font-size: 12.5px; line-height: 1.9; margin-top: 10px; max-width: 30ch; }
+.wb .band .lb { display: flex; justify-content: space-between; font-family: var(--kai); font-size: 10px;
+  letter-spacing: .24em; color: var(--ivory-3); }
+.wb .band .rows { margin-top: 10px; }
+.wb .band .row { display: grid; grid-template-columns: 150px 1fr 52px; gap: 12px; align-items: center;
+  padding: 7px 0; border-bottom: 1px solid rgba(246,241,222,.12); font-size: 13px; }
+.wb .band .nm { letter-spacing: .04em; }
+.wb .band .bar { height: 8px; background: rgba(246,241,222,.14); position: relative; }
+.wb .band .bar i { position: absolute; inset: 0 auto 0 0; background: #3E7A5C; }
+.wb .band .pc { font-family: var(--mono); text-align: right; color: var(--ivory-2); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="note">
+  <span>交互稿 20261028 · <b>方案一「签条页眉」可点版</b></span>
+  <span>交互规则真实生效：①点签开/点外/Esc 关 ②同一时点只开一个面 ③换期三处同变（状态单源）④密度即时生效 ⑤动作全有反馈</span>
+</div>
+<div class="cap">
+  <b>试这几下</b>
+  <span class="try">点「期次签」开落款面 → 再点「202607 待重签」看三处同变</span>
+  <span class="try">按 Esc 关面</span>
+  <span class="try">点「ⓘ 口径」看声明</span>
+  <span class="try">点密度「宽松／极窄」看左栏即时变宽窄</span>
+</div>
+
+<section class="sp-spread" aria-label="方案一交互稿">
+  <aside class="page-l">
+    <div class="bm"><b>文 衡</b><span>云南大学图书馆<br>学科信息参考</span></div>
+    <nav class="nav" aria-label="工作区">
+      <a href="#" aria-current="true">出报告</a>
+      <a href="#">报告台</a>
+      <a href="#">灵活报告</a>
+      <a href="#">问文衡</a>
+      <a href="#" class="m">主 台 账</a>
+      <a href="#">运行档案</a>
+      <a href="#" class="q">陈列馆 ↗</a>
+    </nav>
+    <div class="hero-l">
+      <p class="ov">本 期 · 出 报 告</p>
+      <h1>工作台</h1>
+      <p class="vol"><span class="b" id="hero-period">第 39 期 · 2026年9月</span><span class="c">数据截至 2016.1.1 – 2026.6.30</span></p>
+      <div class="rule"></div>
+      <p class="stm">台账往前推一步，报告就有初稿。</p>
+      <div class="state">
+        <div class="s"><span class="k">任 务</span><span class="v" id="hero-task">已完成</span></div>
+        <div class="s"><span class="k">签 发</span><span class="v" id="hero-status">已签发</span></div>
+        <div class="s"><span class="k">取 数</span><span class="v">64 / 64</span></div>
+      </div>
+    </div>
+    <div class="footline"><span>会 泽 百 家 · 至 公 天 下</span><span>并 行 实 验 · 随 时 可 能 删 除</span></div>
+  </aside>
+
+  <div class="sealbox" aria-hidden="true">
+    <svg viewBox="0 0 220 220">
+      <rect id="seal-frame" x="10" y="10" width="200" height="200" fill="none" stroke="#A82F22" stroke-width="5" />
+      <rect id="seal-inner" x="23" y="23" width="174" height="174" fill="none" stroke="#A82F22" stroke-width="1.6" />
+      <g id="seal-chars" font-family="'Noto Serif SC','Songti SC',SimSun,serif" font-weight="700" font-size="56"
+         text-anchor="middle" fill="#A82F22">
+        <text x="64" y="94">已</text><text x="156" y="94">出</text><text x="110" y="180">稿</text>
+      </g>
+    </svg>
+  </div>
+
+  <main class="page-r">
+    <div class="pg-head">
+      <button class="psig" type="button" id="psig" aria-expanded="false" aria-haspopup="true">
+        <span class="mk" data-state="ok" aria-hidden="true" id="psig-mk">签</span>
+        <span class="tx"><b id="psig-period">202609</b><span class="st" id="psig-status"> · 已签发</span></span>
+        <span class="cw">换期 ▾</span>
+      </button>
+      <button class="info" type="button" id="infobtn" aria-expanded="false" aria-haspopup="true">ⓘ 口径</button>
+      <div class="r">
+        <span class="who"><span class="av" aria-hidden="true">a</span>admin · 管理员</span>
+        <span class="dense" role="group" aria-label="左栏宽度">
+          <button type="button" data-lw="34%">宽松</button>
+          <button type="button" data-lw="28%">紧凑</button>
+          <button type="button" data-lw="24%" aria-pressed="true">极窄</button>
+        </span>
+      </div>
+    </div>
+
+    <!-- 期次落款面 -->
+    <div class="sig-pop" id="sigpop" role="menu" aria-label="期次落款">
+      <div class="cap">期 次 落 款 · 点 一 期 即 换</div>
+      <button class="row" type="button" data-state="ok" data-period="202609" data-issue="第 39 期 · 2026年9月"
+              data-status-label="已签发" data-task="已完成" data-seal="已出稿" aria-current="true">
+        <span class="mk" aria-hidden="true">签</span><b>202609</b><span class="lb">已签发 · 本期</span>
+      </button>
+      <button class="row" type="button" data-state="re" data-period="202607" data-issue="第 38 期 · 2026年7月"
+              data-status-label="待重签" data-task="已完成" data-seal="签发失效">
+        <span class="mk" aria-hidden="true">重</span><b>202607</b><span class="lb">待重签</span>
+      </button>
+      <button class="row" type="button" data-state="no" data-period="202611" data-issue="第 40 期 · 2026年11月"
+              data-status-label="未签发" data-task="未开始" data-seal="未签发">
+        <span class="mk" aria-hidden="true">未</span><b>202611</b><span class="lb">未签发</span>
+      </button>
+    </div>
+
+    <!-- ⓘ 声明面 -->
+    <div class="info-pop" id="infopop" aria-label="口径、来源与只读声明">
+      <div class="sc">口 径 、 来 源 与 只 读 声 明</div>
+      <p><b>①</b> 数字只来自馆员维护的台账与派生产物，运行期大模型不进入数据路径；<b>②</b> 本系统是只读视图，不修改台账与报告；<b>③</b> 预测章按「本期已选」的已保存选择执行，未列学科用 V1 推荐；<b>④</b> 期次与状态以任务记录为准，未签发报告不可下载。</p>
+      <p>来源：期内产物目录 · 运行档案 · 预测选模配置。</p>
+      <p class="comp">分析报告属于内部资料，仅用于参赛，禁止外传。</p>
+    </div>
+
+    <div class="wb">
+      <div class="flow">
+        <div class="fcell">取数核验</div>
+        <div class="fcell">预测选模</div>
+        <div class="fcell now">生成初稿</div>
+        <div class="fcell">核验定稿</div>
+      </div>
+      <div class="h-row">
+        <h2>本期 <b id="page-period">202609</b></h2>
+        <span class="sub" id="page-issue">第 39 期 · 数据截至 2016.1.1 - 2026.6.30</span>
+        <span class="prev">上一期 202607 · 已签发</span>
+      </div>
+      <div class="cards">
+        <div class="cd"><div class="k">取 数<i>✓</i></div><div class="v">64 / 64</div><div class="n">已并入台账</div></div>
+        <div class="cd"><div class="k">生 成<i>✓</i></div><div class="v">已出稿</div><div class="n">10-24 08:01</div></div>
+        <div class="cd"><div class="k">审 计<i>✓</i></div><div class="v">4 项过</div><div class="n">2 项待签</div></div>
+        <div class="cd"><div class="k">签 发<i>✓</i></div><div class="v" id="card-status">已签发</div><div class="n">报告可下载</div></div>
+      </div>
+      <div class="acts">
+        <button class="btn" type="button">打开报告</button>
+        <button class="btn ghost" type="button">查看可视化工作流 →</button>
+        <span class="warnln">重新生成会使签发失效 ⓘ</span>
+      </div>
+      <div class="stats">
+        <div class="st"><div class="k">学科总数</div><div class="v">22<small>持平 · 较上一期</small></div></div>
+        <div class="st"><div class="k">已进入前 1%</div><div class="v">14<small>持平 · 较上一期</small></div></div>
+        <div class="st"><div class="k">最接近前 1% 的潜力学科</div><div class="v">88.01%<small>分子生物学与遗传学 ↑3.51</small></div></div>
+      </div>
+      <div class="band">
+        <div>
+          <div class="ov">水 位 德 尺 · 接 近 度</div>
+          <h3>阈值即水位线，<br>潜力学科各是一根水尺。</h3>
+          <p class="deck">ESI 前 1% 被引阈值显示成水位。读数来自本期学科矩阵（接近度＝百分位阈值），前瞻不算数。</p>
+        </div>
+        <div>
+          <div class="lb"><span>潜 力 学 科 排 位</span><span id="band-period">202609</span></div>
+          <div class="rows">
+            <div class="row"><span class="nm">分子生物学与遗传学</span><span class="bar"><i style="width:88%"></i></span><span class="pc">88.01%</span></div>
+            <div class="row"><span class="nm">物理学</span><span class="bar"><i style="width:81%"></i></span><span class="pc">81.21%</span></div>
+            <div class="row"><span class="nm">空间科学</span><span class="bar"><i style="width:30%"></i></span><span class="pc">30.16%</span></div>
+            <div class="row"><span class="nm">精神病学与心理学</span><span class="bar"><i style="width:29%"></i></span><span class="pc">28.88%</span></div>
+            <div class="row"><span class="nm">免疫学</span><span class="bar"><i style="width:21%"></i></span><span class="pc">21.03%</span></div>
+            <div class="row"><span class="nm">神经系统科学与行为学</span><span class="bar"><i style="width:18%"></i></span><span class="pc">18.41%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</section>
+
+<script>
+/* 交互规则落码（原型）：五个规则各一段，能对着源码讲。 */
+(function () {
+  var spread = document.querySelector(".sp-spread");
+  var psig = document.getElementById("psig");
+  var sigpop = document.getElementById("sigpop");
+  var infobtn = document.getElementById("infobtn");
+  var infopop = document.getElementById("infopop");
+
+  /* 规则①＋②：面只有两种开闭；开一个必关另一个（同一时点只开一个面） */
+  function closePops() {
+    sigpop.classList.remove("open");
+    infopop.classList.remove("open");
+    psig.setAttribute("aria-expanded", "false");
+    infobtn.setAttribute("aria-expanded", "false");
+  }
+  psig.addEventListener("click", function (e) {
+    e.stopPropagation();
+    var willOpen = !sigpop.classList.contains("open");
+    closePops();
+    if (willOpen) { sigpop.classList.add("open"); psig.setAttribute("aria-expanded", "true"); }
+  });
+  infobtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    var willOpen = !infopop.classList.contains("open");
+    closePops();
+    if (willOpen) { infopop.classList.add("open"); infobtn.setAttribute("aria-expanded", "true"); }
+  });
+  /* 点外面＝关（面外即「与当前动作无关」） */
+  document.addEventListener("click", function (e) {
+    if (!sigpop.contains(e.target) && !infopop.contains(e.target)) closePops();
+  });
+  /* Esc＝紧急退出，焦点还给开它的钮 */
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
+      if (sigpop.classList.contains("open") || infopop.classList.contains("open")) {
+        closePops(); psig.focus();
+      }
+    }
+  });
+
+  /* 规则③：换期——状态单源（一个数据点，三处同变），印面跟签发态走 */
+  var SEAL_COLORS = { ok: "#1A4B27", re: "#7C5A16", no: "#A82F22" };
+  var rows = sigpop.querySelectorAll(".row");
+  rows.forEach(function (row) {
+    row.addEventListener("click", function () {
+      var period = row.dataset.period;
+      var state = row.dataset.state;
+      var stateLabel = { ok: " · 已签发", re: " · 待重签", no: " · 未签发" }[state];
+      rows.forEach(function (r) { r.setAttribute("aria-current", r === row ? "true" : "false"); });
+      document.getElementById("psig-period").textContent = period;
+      document.getElementById("psig-status").textContent = stateLabel;
+      document.getElementById("psig-mk").dataset.state = state;
+      document.getElementById("psig-mk").textContent = { ok: "签", re: "重", no: "未" }[state];
+      document.getElementById("hero-period").textContent = row.dataset.issue.replace(/ · 2026.*$/, "");
+      document.getElementById("hero-status").textContent = stateLabel.replace(" · ", "");
+      document.getElementById("hero-task").textContent = row.dataset.task;
+      document.getElementById("page-period").textContent = period;
+      document.getElementById("page-issue").textContent = row.dataset.issue + " · 数据截至 2016.1.1 - 2026.6.30";
+      document.getElementById("band-period").textContent = period;
+      document.getElementById("card-status").textContent = stateLabel.replace(" · ", "");
+      /* 上一期标签跟期走（另一份示意数据：本期 202609 的上一期是 202607，反之亦然） */
+      document.querySelector(".h-row .prev").textContent =
+        period === "202609" ? "上一期 202607 · 已签发" : "上一期 202609 · 已签发";
+      /* 钤印换面：印随签发态（并＝满印绿，重签＝金，未签＝虚框朱） */
+      var chars = { ok: ["已", "出", "稿"], re: ["签", "发", "失", "效"], no: ["未", "签", "发"] };
+      var g = document.getElementById("seal-chars");
+      var list = chars[state];
+      var pos = list.length === 3 ? [[64, 94], [156, 94], [110, 180]] : [[64, 94], [156, 94], [64, 180], [156, 180]];
+      g.innerHTML = list.map(function (ch, i) {
+        return "<text x=\"" + pos[i][0] + "\" y=\"" + (pos[i][1] > 94 ? 180 : 94) + "\">" + ch + "</text>";
+      }).join("");
+      var ink = SEAL_COLORS[state];
+      g.setAttribute("fill", ink);
+      var frame = document.getElementById("seal-frame"), inner = document.getElementById("seal-inner");
+      if (state === "ok") { /* 已出稿：实框 */ }
+      frame.setAttribute("fill", "none");
+      frame.setAttribute("stroke", ink);
+      frame.setAttribute("stroke-dasharray", state === "no" ? "14 9" : "none");
+      inner.setAttribute("stroke", ink);
+      /* 换完即收（动作完成，面就该走——不留空面占视线） */
+      closePops();
+      psig.focus();
+    });
+  });
+
+  /* 规则④：密度即时生效（无保存）——左栏宽度是纯视图偏好 */
+  var denseBtns = document.querySelectorAll(".dense button");
+  denseBtns.forEach(function (b) {
+    b.addEventListener("click", function () {
+      denseBtns.forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+      spread.style.setProperty("--lw", b.dataset.lw);
+    });
+  });
+})();
+</script>
+</body>
+</html>
