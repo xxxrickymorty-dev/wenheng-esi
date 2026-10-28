@@ -224,7 +224,7 @@ export function qDistOption(row: NonNullable<DisciplineCharts['q_dist']>): EChar
     textStyle: baseText,
     legend: legendTop({ itemWidth: 12, itemHeight: 8 }),
     tooltip: { trigger: 'axis', confine: true, axisPointer: { type: 'shadow' }, valueFormatter: (v: Num) => (v == null ? '—' : v + '%') },
-    grid: { left: 42, right: 12, top: 30, bottom: 24 },
+    grid: { left: 42, right: 12, top: 36, bottom: 24 },
     xAxis: catAxis(['Q1', 'Q2', 'Q3', 'Q4'], 0, 11),
     yAxis: valAxis({
       max: Math.ceil(hi / 20) * 20,
@@ -233,7 +233,10 @@ export function qDistOption(row: NonNullable<DisciplineCharts['q_dist']>): EChar
     series: row.entities.map((e) => ({
       name: e.name, type: 'bar', data: e.values, barGap: '12%', barCategoryGap: '55%',
       itemStyle: { color: e.color },
-      label: { ...allLabels((v) => (v == null ? '' : v + '%')), fontSize: 9.5 }, labelLayout: LY,
+      // 三系列标签跨系列不参与统一布局（labelLayout 只算本系列）——
+      // 柱端标签斜排 30° 让横向占位变窄，结构性互不压（数字一个不藏）
+      label: { ...allLabels((v) => (v == null ? '' : v + '%')),
+               fontSize: 9.5, rotate: 30, align: 'left' }, labelLayout: LY,
     })),
   } as unknown as EChartsOption
 }
