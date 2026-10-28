@@ -566,19 +566,8 @@ export function Review({
               </p>
             )}
             <b className="rv-docname">{preview.docx ?? '—'}</b>
-            <span className="rv-signmeta">
-              生成 {preview.updated_at || '—'}<br />
-              存疑 {doubtN} 处
-              {nField > 0 ? ` · 待人工 ${nField} 处（已填 ${nField - nLeft}）` : ''}
-            </span>
-            {signed && (
-              <span className="rv-signedline">
-                已签单{me?.name ? ` · ${me.name}` : ''}，这一版已定稿
-              </span>
-            )}
-            {!signed && status === 'stale' && (
-              <span className="rv-signedline warn">签发已失效，重签后可下载</span>
-            )}
+            {/* 生成时间/存疑/已签句已撤（2026-10-28 rick：说明全站
+                只能有一次——签发态左栏钤印已表达，存疑数在确认面） */}
             {needAck && !signed && (
               <div className="rv-confirm">
                 <label className="rv-ack">

@@ -298,8 +298,6 @@ export function Acquire({ period, onOpenPeriod }: {
      重新下载数据只会补没下到的文件，台账那一列一字不动。
      2026-10-16 中午拍板：头条只留**采集**进度行——「已并入（期次 列）」的结论由焦点卡承担，
      两处同写一句「已并入（202609 列）」是重复，删去头条那行（去重守卫见 e2e）。 */
-  /* 最近一次「下载数据」的时间（只在最近一步确实是下载数据时才显示，免得把别的动作当成重取） */
-  const lastFetchAt = op?.kind === 'fetch' ? (op.at ?? '') : ''
   /* 打包下载（2026-10-19 馆员需求；rick 定「拆两个包、两个按钮」）：哪一路有文件就显示哪个按钮 */
   const hasEsiPack = groups.some((g) => g.source === 'esi' && (g.verified ?? 0) > 0)
   const hasIncitesPack = groups.some((g) => g.source === 'incites' && (g.verified ?? 0) > 0)
@@ -337,17 +335,14 @@ export function Acquire({ period, onOpenPeriod }: {
   const fetchBusy = opBusy && (op?.kind === 'fetch' || op?.kind === 'stop')
   const copyBusy = opBusy && (op?.kind === 'copy' || op?.kind === 'merge')
   /* ① 的结论只认**这四盏灯本身**：不看「期次走到哪一步」——已并入的老期次如果现在没登录网站，
-     也必须如实说「有没通过的项」，不能因为历史上下载过就打 ✓（2026-10-20 rick 逮到的假话）。 */
-  const pfHasBad = !!pf && (pf.browser === 'bad' || pf.esi === 'bad' || pf.incites === 'bad'
-    || pf.data?.ok === false)
+     也必须如实说「有没通过的项」，不能因为历史上下载过就打 ✓（2026-10-20 rick 逮到的假话）。
+     （卡头状态词已撤，pfHasBad 随之退役；s1done 只管卡壳 done/now 态。） */
   const s1done = pfPassed
   const s2collapsed = (view === 'review' || view === 'merged') && !fetchBusy
   const s2locked = !s2collapsed && !pfPassed && (view === 'ready' || view === 'blocked')
   /* 2026-10-24 rick 红框：往期只读不显示检查灯——右上角也不再报「有没通过的项」
      （只读期没有「通过」概念，报了是误导）；检查结论只属于当期。 */
-  const s1stat: [string, string] = ro ? ['往期只读 · 无需检查', 'wait']
-    : s1done ? ['✓ 4 项都过了', 'ok']
-    : pfHasBad ? ['有没通过的项', 'bad'] : ['还没检查', 'wait']
+  /* ① 卡头状态词已撤（2026-10-28 rick：与卡内四盏灯重复） */
   const s2stat: [string, string] = s2collapsed ? [`✓ 已取到 ${verified} / ${expected}`, 'ok']
     : fetchBusy ? [`取数中 · ${verified} / ${expected}`, 'run']
       : opStory ? [(opStopped ? '已停止' : '已中断'), (opStopped ? 'wait' : 'bad')]
@@ -409,7 +404,8 @@ export function Acquire({ period, onOpenPeriod }: {
               <h1 className="fs-24">取数核验</h1>
               <span className="pill unsigned mono">{period}</span>
               <span className={`pill ${pillCls}`}>{pillText}</span>
-              <span className="hint aq-num" title={`最近取数 ${lastFetchAt ?? '—'} · 取数状态更新 ${state.updated_at ?? '—'}`}>采集 · {expected > 0 ? `已取到 ${verified} / ${expected}` : '未开始'}</span>
+              {/* 采集进度行已撤（2026-10-28 rick 裁「说明全站只能有一次」
+                  ——与节点②的 ✓ 已取到重复） */}
               <button type="button" className="btn small ml-auto" aria-expanded={openForm}
                       onClick={() => { setOpenForm((v) => !v); setOpenErr('') }}>
                 <Icon name="plus" size={16} />开新一期
@@ -440,7 +436,6 @@ export function Acquire({ period, onOpenPeriod }: {
               <div className="body"><div className="stg-card">
                 <div className="stg-top">
                   <span className="stg-title">开始前检查</span>
-                  <span className={`stg-stat ${s1stat[1]}`}>{s1stat[0]}</span>
                 </div>
                 {/* 通过后：收起成一行（四盏小灯 + 重查）。
                     2026-10-24 rick：往期（01–07）与 05 一致——只读期连收起灯行也不显示
@@ -467,11 +462,13 @@ export function Acquire({ period, onOpenPeriod }: {
                         : '先检查，再下载'}</div>
                   {!ro && (
                     <>
-                      <div className="stg-sub">{view === 'blocked'
-                        ? '系统会自动打开下载数据专用浏览器；在里面登录 ESI / InCites 后，点「重新检查」。'
-                        : (view === 'review' || view === 'merged')
-                          ? '这一期已取完；此处只显示当前连接状态。'
+                      {/* merged/review 态不写说明句（2026-10-28 rick：
+                          「这一期已取完…」与节点②结论重复——说明全站唯一） */}
+                      {view !== 'review' && view !== 'merged' && (
+                        <div className="stg-sub">{view === 'blocked'
+                          ? '系统会自动打开下载数据专用浏览器；在里面登录 ESI / InCites 后，点「重新检查」。'
                           : '四件事：下载数据专用浏览器开着、两家网站登录着、这一期的数据更新了没有。'}</div>
+                      )}
                       <div className="stg-cta">
                         <div className="chips">
                           <span className={`aq-chip ${pf?.browser === 'ok' ? 'ok' : pf?.browser === 'bad' ? 'bad' : ''}`}>
@@ -533,12 +530,8 @@ export function Acquire({ period, onOpenPeriod }: {
                       <Icon name="download" size={16} />重新取这一期
                     </button>
                   )}
-                  {opStory && (
-                    <span className="hint">
-                      {opStopped ? '上次的取数被停止了' : '上次的取数中断了'}
-                      {expected > 0 ? `；当前取到 ${verified} / ${expected}。` : '。'}
-                    </span>
-                  )}
+                  {/* 中断说明已撤（2026-10-28 rick：与节点右上「已中断」
+                      与展开态大字重复——说明全站唯一） */}
                   {ro && (
                     <span className="hint">往期档案只读，不能再取（要补档只能在当期取）。</span>
                   )}
@@ -653,7 +646,8 @@ export function Acquire({ period, onOpenPeriod }: {
                   <span className={`stg-stat ${s3stat[1]}`}>{s3stat[0]}</span>
                 </div>
                 <div className="stg-inline">
-                  <span className="hint">数据已写进主台账。</span>
+                  {/* 「数据已写进主台账」已撤（2026-10-28 rick：与节点右上
+                      ✓ 已并入重复——说明全站唯一） */}
                   <a className="btn small" href={`/app/?period=${encodeURIComponent(period)}`}>
                     <Icon name="arrow" size={16} />去生成初稿
                   </a>
