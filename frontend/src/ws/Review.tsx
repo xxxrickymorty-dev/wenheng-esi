@@ -156,8 +156,9 @@ export function Review({
   const status = row?.status ?? 'unsigned'
   /* 本期印落章动效：签发态从未签翻到已签的那一刻放一次（签单接口回来、状态落真值时触发） */
   const [sealLand, setSealLand] = useState(false)
-  /* 浮动工具签（报告里的空）与批注折叠的开关 */
+  /* 浮动工具签（报告里的空）、章节签与批注折叠的开关 */
   const [todoOpen, setTodoOpen] = useState(false)
+  const [tocOpen, setTocOpen] = useState(false)
   const [noteOpen, setNoteOpen] = useState(false)
   const prevStatus = useRef(status)
   useEffect(() => {
@@ -229,6 +230,40 @@ export function Review({
     return out
   }, [preview])
   const headingAt = (i: number) => sections.find((s) => s.i === i)
+
+  /* 当前章跟踪：滚动时找最后一个过了线的章标题——
+     工作区滚动可能发生在 window 或壳容器，scroll 又不冒泡，
+     用 capture 在 window 捕获所有元素的 scroll；
+     重算同步做（rAF 在被遮挡的 tab 里会冻结，跟踪会卡死），
+     100ms 限频足够顺滑。 */
+  useEffect(() => {
+    if (sections.length === 0) return
+    let last = 0
+    const onScroll = () => {
+      const now = Date.now()
+      if (now - last < 100) return
+      last = now
+      let cur = -1
+      for (const s of sections) {
+        const el = document.getElementById(`rv-b-${s.i}`)
+        if (el && el.getBoundingClientRect().top <= 96) cur = s.i
+        else break
+      }
+      setCurSec((c) => (c === cur ? c : cur))
+    }
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true })
+    onScroll()
+    return () => {
+      window.removeEventListener('scroll', onScroll, { capture: true })
+    }
+  }, [sections])
+
+  function jumpToSec(i: number) {
+    setCurSec(i)
+    setTocOpen(false)
+    document.getElementById(`rv-b-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   // 未填的空（按报告顺序）：清单高亮、「下一处」跳转、计数共用这一份
   const emptyIds = useMemo(
     () => fields.filter(([id]) => !(vals[id] ?? '').trim()).map(([id]) => id),
@@ -459,18 +494,6 @@ export function Review({
                 </button>
               )}
             </p>
-            {sections.length > 0 && (
-              <nav className="rv-toc" aria-label="报告章节">
-                {sections.map((s) => (
-                  <button key={s.i} type="button" title={s.title}
-                          aria-current={curSec === s.i ? 'true' : undefined}
-                          onClick={() => { setCurSec(s.i); document.getElementById(`rv-b-${s.i}`)
-                            ?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}>
-                    {s.title}
-                  </button>
-                ))}
-              </nav>
-            )}
             {preview.blocks.map((b, i) => headingAt(i) ? (
               <div id={`rv-b-${i}`} key={i}>
                 <BlockView block={b} vals={vals} onVal={(id, v) => setVals((s) => ({ ...s, [id]: v }))}
@@ -482,9 +505,37 @@ export function Review({
             ))}
           </section>
 
-          {/* ------- 报告里的空：右下浮动工具签（读稿时让位） ------- */}
-          {nField > 0 && (
-            <div className="rv-todofloat">
+          {/* ------- 右下浮动工具签（2026-10-28：目录也进来——吸顶目录悬空诡异，砍常驻） ------- */}
+          {(sections.length > 0 || nField > 0) && (
+            <div className="rv-floatdock">
+              {sections.length > 0 && (
+                <div className="rv-tocwrap">
+                  <button type="button" className="rv-fab"
+                          aria-expanded={tocOpen}
+                          title={curSec >= 0 ? sections.find((s) => s.i === curSec)?.title : '跳到某一章'}
+                          onClick={() => setTocOpen((o) => !o)}>
+                    目录
+                  </button>
+                  {tocOpen && (
+                    <nav className="card rv-tocpanel" aria-label="报告章节">
+                      <div className="rv-todopanel-h">
+                        <h3>章节</h3>
+                        <button type="button" className="rv-todopanel-x" aria-label="收起"
+                                onClick={() => setTocOpen(false)}>✕</button>
+                      </div>
+                      {sections.map((s) => (
+                        <button key={s.i} type="button" className="rv-tocitem"
+                                aria-current={curSec === s.i ? 'true' : undefined}
+                                onClick={() => jumpToSec(s.i)}>
+                          {s.title}
+                        </button>
+                      ))}
+                    </nav>
+                  )}
+                </div>
+              )}
+              {nField > 0 && (
+                <div className="rv-todowrap">
               <button type="button" className="rv-todofab"
                       aria-expanded={todoOpen}
                       aria-label={`报告里的空：待填 ${nLeft} 处${doubtN > 0 ? `，存疑 ${doubtN} 处` : ''}`}
@@ -574,6 +625,8 @@ export function Review({
                     填的值只进报告、不动台账{appliedN > 0 ? `；已写入 ${appliedN} 处` : ''}。
                   </p>
                 </aside>
+              )}
+                </div>
               )}
             </div>
           )}
