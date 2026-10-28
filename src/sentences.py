@@ -504,7 +504,11 @@ def build(facts, period, prev, college=None, forecast=None, targets=None, tiers=
     qianfen = ("，其中已有学科进入前1‰" if p1["any_1permille"]
                else "，但暂时还没有前1‰的学科")
     years = p1.get("permille_years_est")
-    if years:
+    # 三态，不是两态（R2-4，2026-10-28）：已进入 / 有年数 / 估不出。
+    # `if years:` 会把 `0.0`（当年即可进入）当成「估不出」—— 判 None 才不误伤。
+    if best["prox_pct"] >= 100:
+        years_text = f"{cn_name(best['discipline'])}已进入ESI前1‰。"
+    elif years is not None:
         years_text = f"按此增长率，{cn_name(best['discipline'])}进入ESI前1‰的时间预计还需要{years}年左右。"
     else:
         years_text = f"按当前增速尚难估算{cn_name(best['discipline'])}进入ESI前1‰的时间。"

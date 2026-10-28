@@ -54,6 +54,29 @@ def fmt_pct_change(v):
     return f"{arrow}{abs(v):.2f}%"
 
 
+def permille_years(prox_pct, prox_prev_pct):
+    """按上期增速外推：进入 1‰ 还要几年（`None` = 不算，不是「等于 0」）。
+
+    🔴 三条口径（R2-4，2026-10-28）：
+
+    1. `prox_pct >= 100` → **None**。学科已经进入前 1‰，句子里该说「已进入」，
+       不是「按当前增速尚难估算」。旧写法会算出一个 `-0.0`/小数年，两种都是错话。
+    2. 增速不过 0.1 百分点/年（≈没增长）→ None（估不出来，别硬给年数）。
+    3. **不出负零**：`//` 作用在浮点上是「向下取整」，当年数落在 (0, 1) 区间会给出
+       `-0.0`；而 `-0.0` 在 `if years:` 里是假 —— 这正是「当期自相矛盾」的来路。
+       这里把 0 统一成 `0.0`。
+    """
+    if prox_pct >= 100:
+        return None
+    if prox_prev_pct is None:
+        return None
+    growth = (prox_pct - prox_prev_pct) * 6          # 百分点/年（双月×6）
+    if not growth > 0.1:
+        return None
+    years = -(-(100 - prox_pct) // growth)           # ceil((100-prox)/growth)
+    return years or 0.0                              # -0.0 / 0.0 → 0.0
+
+
 def build_table2(wide, new_intl, new_cn, thr, period=None, prev=None):
     if period is None or prev is None:
         period, prev = detect_periods(wide)
@@ -176,12 +199,8 @@ def build_overview(wide, new_intl, new_cn, thr, ynd_rank, top_total, period=None
     ratio_1pm = (c / tp).dropna()
     facts["any_1permille"] = bool((ratio_1pm >= 1).any())
     best_info = facts["best_1permille"]
-    if best_info["prox_prev_pct"] is not None:
-        growth = (best_info["prox_pct"] - best_info["prox_prev_pct"]) * 6  # 百分点/年（双月×6）
-        facts["permille_years_est"] = (-(-(100 - best_info["prox_pct"]) // growth)
-                                       if growth > 0.1 else None)
-    else:
-        facts["permille_years_est"] = None
+    facts["permille_years_est"] = permille_years(best_info["prox_pct"],
+                                                 best_info["prox_prev_pct"])
     # 覆盖窗口与上期中文标签
     import calendar
     y, m = int(period[:4]), int(period[4:])
