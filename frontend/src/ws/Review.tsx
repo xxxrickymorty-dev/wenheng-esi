@@ -144,8 +144,6 @@ export function Review({
   const [note, setNote] = useState('')
   const [known, setKnown] = useState(false)
   const [busy, setBusy] = useState<null | 'sign' | 'rebuild' | 'save' | 'revoke'>(null)
-  /* 章节目录的当前章（点击定位；对抗性审查 10-24：目录原先无任何当前位置表达） */
-  const [curSec, setCurSec] = useState(-1)
   const [msg, setMsg] = useState<Msg>(null)
   // 「跳到下一处」的游标：连点就按报告顺序依次落到每个空位（填完一处自动跳过）
   const [cursor, setCursor] = useState(0)
@@ -229,72 +227,6 @@ export function Review({
     return out
   }, [preview])
   const headingAt = (i: number) => sections.find((s) => s.i === i)
-
-  /* 当前章跟踪：滚动时找最后一个过了线的章标题——
-     工作区滚动可能发生在 window 或壳容器，scroll 又不冒泡，
-     用 capture 在 window 捕获所有元素的 scroll；
-     重算同步做（rAF 在被遮挡的 tab 里会冻结，跟踪会卡死），
-     100ms 限频足够顺滑。 */
-  useEffect(() => {
-    if (sections.length === 0) return
-    let last = 0
-    const onScroll = () => {
-      const now = Date.now()
-      if (now - last < 100) return
-      last = now
-      let cur = -1
-      for (const s of sections) {
-        const el = document.getElementById(`rv-b-${s.i}`)
-        if (el && el.getBoundingClientRect().top <= 96) cur = s.i
-        else break
-      }
-      setCurSec((c) => (c === cur ? c : cur))
-    }
-    window.addEventListener('scroll', onScroll, { capture: true, passive: true })
-    onScroll()
-    return () => {
-      window.removeEventListener('scroll', onScroll, { capture: true })
-    }
-  }, [sections])
-
-  /* 章节轨水平定位：锚稿面左缘外 56px，但不压左栏（≥其右缘+10）。
-     --lw 的 % 在 grid 与 fixed 里基准不同，CSS 算不准——用实测 rect。
-     触发：resize / 稿面尺寸变化（RO）/ 左栏宽与折叠变化（MO style）。 */
-  const railRef = useRef<HTMLElement>(null)
-  useEffect(() => {
-    const place = () => {
-      const el = railRef.current
-      const rep = document.querySelector('.rv-report')
-      if (!el || !rep) return
-      const plRight = document.querySelector('.page-l')?.getBoundingClientRect().right ?? 0
-      const x = Math.max(plRight + 10, rep.getBoundingClientRect().left - 56)
-      el.style.left = `${Math.round(x)}px`
-    }
-    place()
-    window.addEventListener('resize', place)
-    const rep = document.querySelector('.rv-report')
-    const ws = document.querySelector('.ws')
-    const spread = document.querySelector('.sp-spread')
-    /* 列宽代理：page-l 会因折叠被整个替换（RO 会盯死旧节点），
-       右列恒存的根是 .ws（ShellApp 根）——左栏拖宽/折叠都表现为
-       它的宽度变化。React 用 setProperty 写 --lw，MO 收不到
-       style 变化，MO 只兜 fold 类切换。 */
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null
-    if (ro && rep) ro.observe(rep)
-    if (ro && ws) ro.observe(ws)
-    const mo = spread ? new MutationObserver(place) : null
-    if (mo && spread) mo.observe(spread, { attributes: true, attributeFilter: ['class'] })
-    return () => {
-      window.removeEventListener('resize', place)
-      ro?.disconnect()
-      mo?.disconnect()
-    }
-  }, [preview])
-
-  function jumpToSec(i: number) {
-    setCurSec(i)
-    document.getElementById(`rv-b-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
 
   // 未填的空（按报告顺序）：清单高亮、「下一处」跳转、计数共用这一份
   const emptyIds = useMemo(
@@ -536,21 +468,6 @@ export function Review({
                          disabled={!isAdmin || busy !== null} period={period} />
             ))}
           </section>
-
-          {/* ------- 章节轨（2026-10-28 rick 定：五部分＝五条横线，放左侧，点击跳转） -------
-              贴稿面左缘外侧的一列书签线：当前章朱色加长，悬停报章名。 */}
-          {sections.length > 0 && (
-            <nav ref={railRef} className="rv-tocrail" aria-label="报告章节">
-              {sections.map((s) => (
-                <button key={s.i} type="button" className="rv-tocrail-b"
-                        aria-current={curSec === s.i ? 'true' : undefined}
-                        aria-label={`跳到 ${s.title}`} title={s.title}
-                        onClick={() => jumpToSec(s.i)}>
-                  <i aria-hidden="true" />
-                </button>
-              ))}
-            </nav>
-          )}
 
           {/* ------- 报告里的空：右下浮动工具签（读稿时让位） ------- */}
           {nField > 0 && (
