@@ -271,6 +271,35 @@ def _overview_rows(out_dir: pathlib.Path, period: str) -> list[tuple]:
     return rows
 
 
+def _period_dirs(repo_root, marker: str) -> list[tuple[str, pathlib.Path]]:
+    """`out/` 下带 `marker` 文件的期次目录（按期次升序）。"""
+    out = pathlib.Path(repo_root) / "out"
+    if not out.is_dir():
+        return []
+    ret = []
+    for d in sorted(out.iterdir()):
+        if d.is_dir() and _PERIOD_RE.match(d.name) and (d / marker).is_file():
+            ret.append((d.name, d))
+    return ret
+
+
+def _multi_period_rows(repo_root, reader, marker: str) -> tuple[list[tuple], list[str]]:
+    """逐期读 `out/<期次>/<marker>` → (行, 覆盖到的期次)。
+
+    报告大表与概述**每期一份**，表主键又含 `period`，本来就该全收。只灌建库那一期的话，
+    问「202609 的报告大表」就只能回退或答空（2026-10-28 实踩，见 `report_table2` 的注释）。
+    缺文件的期次跳过、不编数；`reader` 返回空也不记期次。
+    """
+    rows: list[tuple] = []
+    periods: list[str] = []
+    for p, d in _period_dirs(repo_root, marker):
+        got = reader(d, p)
+        if got:
+            rows += got
+            periods.append(p)
+    return rows, periods
+
+
 #: 省域宽表的行索引 → (中文名, 白名单键, 单位, 方向)。行索引**原样**落 `metric_cn`——
 #: 宽表里的括号已经带了单位，渲染时直接用，不另拼。
 _PROVINCE_METRICS: tuple[tuple[str, str, str, str], ...] = (
@@ -406,8 +435,9 @@ def build(repo_root=REPO, *, out_period=None) -> dict:
         y, m = p[:4], p[4:]
         period_rows.append((p, f"{y}年{int(m)}月", i, 1 if p in filled else 0))
 
-    t2 = _table2_rows(out_dir, period)
-    ov = _overview_rows(out_dir, period)
+    t2, t2_periods = _multi_period_rows(repo_root, _table2_rows, "table2.csv")
+    ov, ov_periods = _multi_period_rows(repo_root, _overview_rows,
+                                        "overview_facts.json")
     prov, prov_skipped = _province_rows(out_dir, period)
     ynd, ynd_bad = _ynd_rank_rows(out_dir)
 
@@ -466,7 +496,9 @@ def build(repo_root=REPO, *, out_period=None) -> dict:
             "n_facts": str(len(facts)),
             "bad_periods": ",".join(bad_periods),
             "n_table2": str(len(t2)),
+            "table2_periods": ",".join(t2_periods),
             "n_overview": str(len(ov)),
+            "overview_periods": ",".join(ov_periods),
             "n_province": str(len(prov)),
             "n_province_uni": str(len({r[1] for r in prov})),
             "province_skipped": ",".join(prov_skipped),

@@ -35,6 +35,8 @@ def main(argv=None):
     print(f"✓ AI 问数库已重建：{m['path']}")
     print(f"  期次={m['period']}  事实={m['n_facts']}  "
           f"大表行={m['n_table2']}  概述键={m['n_overview']}")
+    print(f"  报告大表覆盖：{m['table2_periods'] or '（无）'}")
+    print(f"  概述覆盖：{m['overview_periods'] or '（无）'}")
     print(f"  省域快照={m['n_province']} 格 / {m['n_province_uni']} 校  "
           f"云大排名={m['n_ynd_rank']} 期"
           + (f"  ⚠ 缺源：{m['missing_sources']}" if m["missing_sources"] else ""))

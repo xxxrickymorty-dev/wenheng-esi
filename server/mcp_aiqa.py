@@ -59,7 +59,8 @@ _SQL_COLS = frozenset({
     "id", "ts", "user", "question", "specs", "plan_origin", "n_rows",
     "elapsed_ms", "answer_text", "chart_kind", "schema_version",
     "built_at", "ledger_sha256", "n_facts", "n_table2", "n_overview",
-    "bad_periods", "content_sha256", "path",
+    "bad_periods", "table2_periods", "overview_periods",
+    "content_sha256", "path",
     # province_fact / dim_province_metric / ynd_rank_series
     "university", "unit", "rank_intl", "rank_cn", "rank_cn_uni",
     # meta 新增键
