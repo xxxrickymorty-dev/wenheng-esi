@@ -950,11 +950,10 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .rv-confirm .rv-warn{margin:0}
 .rv-signbtns{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
 .rv-signbtns .btn{min-height:40px}
-/* 右下浮动工具 dock（2026-10-28）：目录签＋「报告里的空」签竖叠——
-   读稿时让位，要用一击展开 */
+/* 右下浮动工具 dock（2026-10-28）：「报告里的空」签——读稿时让位 */
 .rv-floatdock{position:fixed;right:22px;bottom:96px;z-index:30;display:flex;
   flex-direction:column;align-items:flex-end;gap:10px}
-.rv-tocwrap,.rv-todowrap{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.rv-todowrap{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
 .rv-fab{border:1px solid var(--line);background:var(--card);color:var(--ink);
   font:inherit;font-size:var(--fs-label);padding:9px 14px;cursor:pointer;
   box-shadow:0 6px 18px rgba(31,42,36,.16)}
@@ -969,16 +968,18 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .rv-todofab i{font-style:normal;color:var(--gold-ink)}
 .rv-todopanel{width:min(360px,86vw);max-height:min(64vh,560px);overflow-y:auto;
   padding:14px 16px 12px;box-shadow:0 10px 28px rgba(31,42,36,.2)}
-/* 章节签面板：竖排章节，当前章朱字高亮 */
-.rv-tocpanel{width:min(300px,80vw);max-height:min(60vh,520px);overflow-y:auto;
-  padding:14px 16px 12px;box-shadow:0 10px 28px rgba(31,42,36,.2);
-  display:flex;flex-direction:column;gap:2px}
-.rv-tocitem{border:0;background:transparent;color:var(--ink-2);font:inherit;
-  font-size:var(--fs-label);text-align:left;padding:7px 8px;cursor:pointer;
-  line-height:1.5}
-.rv-tocitem:hover{color:var(--zhu);background:var(--zhu-soft)}
-.rv-tocitem[aria-current="true"]{color:var(--zhu);font-weight:650;
-  background:var(--zhu-soft);border-left:3px solid var(--zhu)}
+/* 章节轨（2026-10-28 rick 定）：五部分＝五条横线，贴稿面左缘外侧，
+   像线装书书耳的书签线——当前章朱色加长，点击跳章。
+   水平位置由 JS 实测（稿面左缘-56px，不压左栏）——--lw 的 %
+   在 grid 与 fixed 里基准不同，CSS calc 必错位。 */
+.rv-tocrail{position:fixed;left:220px;top:50%;transform:translateY(-50%);z-index:25;
+  display:flex;flex-direction:column;gap:6px;padding:8px 6px}
+.rv-tocrail-b{display:grid;place-items:center;width:44px;height:30px;
+  border:0;background:transparent;cursor:pointer;padding:0}
+.rv-tocrail-b i{width:30px;height:3px;border-radius:2px;background:var(--line);
+  transition:width .18s,background .18s}
+.rv-tocrail-b:hover i{background:var(--ink-2);width:40px}
+.rv-tocrail-b[aria-current="true"] i{background:var(--zhu);width:44px;height:4px}
 .rv-todopanel-h{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .rv-todopanel-h h3{font-size:var(--fs-h);display:flex;align-items:center;gap:8px;margin:0}
 .rv-todopanel-x{margin-left:auto;border:1px solid var(--line);background:transparent;

@@ -156,9 +156,8 @@ export function Review({
   const status = row?.status ?? 'unsigned'
   /* 本期印落章动效：签发态从未签翻到已签的那一刻放一次（签单接口回来、状态落真值时触发） */
   const [sealLand, setSealLand] = useState(false)
-  /* 浮动工具签（报告里的空）、章节签与批注折叠的开关 */
+  /* 浮动工具签（报告里的空）与批注折叠的开关 */
   const [todoOpen, setTodoOpen] = useState(false)
-  const [tocOpen, setTocOpen] = useState(false)
   const [noteOpen, setNoteOpen] = useState(false)
   const prevStatus = useRef(status)
   useEffect(() => {
@@ -258,9 +257,42 @@ export function Review({
     }
   }, [sections])
 
+  /* 章节轨水平定位：锚稿面左缘外 56px，但不压左栏（≥其右缘+10）。
+     --lw 的 % 在 grid 与 fixed 里基准不同，CSS 算不准——用实测 rect。
+     触发：resize / 稿面尺寸变化（RO）/ 左栏宽与折叠变化（MO style）。 */
+  const railRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const place = () => {
+      const el = railRef.current
+      const rep = document.querySelector('.rv-report')
+      if (!el || !rep) return
+      const plRight = document.querySelector('.page-l')?.getBoundingClientRect().right ?? 0
+      const x = Math.max(plRight + 10, rep.getBoundingClientRect().left - 56)
+      el.style.left = `${Math.round(x)}px`
+    }
+    place()
+    window.addEventListener('resize', place)
+    const rep = document.querySelector('.rv-report')
+    const ws = document.querySelector('.ws')
+    const spread = document.querySelector('.sp-spread')
+    /* 列宽代理：page-l 会因折叠被整个替换（RO 会盯死旧节点），
+       右列恒存的根是 .ws（ShellApp 根）——左栏拖宽/折叠都表现为
+       它的宽度变化。React 用 setProperty 写 --lw，MO 收不到
+       style 变化，MO 只兜 fold 类切换。 */
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null
+    if (ro && rep) ro.observe(rep)
+    if (ro && ws) ro.observe(ws)
+    const mo = spread ? new MutationObserver(place) : null
+    if (mo && spread) mo.observe(spread, { attributes: true, attributeFilter: ['class'] })
+    return () => {
+      window.removeEventListener('resize', place)
+      ro?.disconnect()
+      mo?.disconnect()
+    }
+  }, [preview])
+
   function jumpToSec(i: number) {
     setCurSec(i)
-    setTocOpen(false)
     document.getElementById(`rv-b-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -505,37 +537,25 @@ export function Review({
             ))}
           </section>
 
-          {/* ------- 右下浮动工具签（2026-10-28：目录也进来——吸顶目录悬空诡异，砍常驻） ------- */}
-          {(sections.length > 0 || nField > 0) && (
+          {/* ------- 章节轨（2026-10-28 rick 定：五部分＝五条横线，放左侧，点击跳转） -------
+              贴稿面左缘外侧的一列书签线：当前章朱色加长，悬停报章名。 */}
+          {sections.length > 0 && (
+            <nav ref={railRef} className="rv-tocrail" aria-label="报告章节">
+              {sections.map((s) => (
+                <button key={s.i} type="button" className="rv-tocrail-b"
+                        aria-current={curSec === s.i ? 'true' : undefined}
+                        aria-label={`跳到 ${s.title}`} title={s.title}
+                        onClick={() => jumpToSec(s.i)}>
+                  <i aria-hidden="true" />
+                </button>
+              ))}
+            </nav>
+          )}
+
+          {/* ------- 报告里的空：右下浮动工具签（读稿时让位） ------- */}
+          {nField > 0 && (
             <div className="rv-floatdock">
-              {sections.length > 0 && (
-                <div className="rv-tocwrap">
-                  <button type="button" className="rv-fab"
-                          aria-expanded={tocOpen}
-                          title={curSec >= 0 ? sections.find((s) => s.i === curSec)?.title : '跳到某一章'}
-                          onClick={() => setTocOpen((o) => !o)}>
-                    目录
-                  </button>
-                  {tocOpen && (
-                    <nav className="card rv-tocpanel" aria-label="报告章节">
-                      <div className="rv-todopanel-h">
-                        <h3>章节</h3>
-                        <button type="button" className="rv-todopanel-x" aria-label="收起"
-                                onClick={() => setTocOpen(false)}>✕</button>
-                      </div>
-                      {sections.map((s) => (
-                        <button key={s.i} type="button" className="rv-tocitem"
-                                aria-current={curSec === s.i ? 'true' : undefined}
-                                onClick={() => jumpToSec(s.i)}>
-                          {s.title}
-                        </button>
-                      ))}
-                    </nav>
-                  )}
-                </div>
-              )}
-              {nField > 0 && (
-                <div className="rv-todowrap">
+              <div className="rv-todowrap">
               <button type="button" className="rv-todofab"
                       aria-expanded={todoOpen}
                       aria-label={`报告里的空：待填 ${nLeft} 处${doubtN > 0 ? `，存疑 ${doubtN} 处` : ''}`}
@@ -626,9 +646,8 @@ export function Review({
                   </p>
                 </aside>
               )}
-                </div>
-              )}
             </div>
+          </div>
           )}
 
           {/* ------- 定稿条：签单/下载的唯一收口（吸底） -------
