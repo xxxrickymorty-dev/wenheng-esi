@@ -43,17 +43,23 @@ function endLabels(n: number, fmt: (v: Num) => string, position: 'top' | 'bottom
   }
 }
 
+/** 标签布局：挤了就挪开——不藏数字（复核场景每个数都要看得见）。
+    ⚠ labelLayout 是 series 级配置，挂在 label 里不生效（2026-10-28 实踩）。 */
+const LX = { moveOverlap: 'shiftX' as const }   // 柱/点标签：横向让位
+const LY = { moveOverlap: 'shiftY' as const }   // 端点标签：纵向让位
+
 /** 全点标签（柱/点上方；复核场景数字不许藏） */
 const allLabels = (fmt: (v: Num) => string) => ({
   show: true, fontFamily: FONT, fontSize: 10, color: INK, position: 'top' as const,
   formatter: asFmt((p) => (p.value == null ? '' : fmt(p.value as number))),
-  labelLayout: { hideOverlap: false },
 })
 
 const catAxis = (data: string[], rotate = 0, fontSize = 10.5) => ({
   type: 'category' as const, data,
   axisTick: { show: false }, axisLine: { lineStyle: { color: LINE } },
-  axisLabel: { color: INK2, fontSize, fontFamily: FONT, rotate, hideOverlap: true },
+  // 期次/季度这类短标签全量显示（PNG 口径）——自动隐藏会在窄槽位吞掉一半期次
+  axisLabel: { color: INK2, fontSize, fontFamily: FONT, rotate,
+               interval: 0, hideOverlap: false },
 })
 
 const valAxis = (extra?: Record<string, unknown>) => ({
@@ -83,7 +89,7 @@ export function rankPctOption(row: RankPctRow): EChartsOption {
   return {
     textStyle: baseText,
     legend: legendTop(),
-    tooltip: { trigger: 'axis', valueFormatter: (v: Num) => fmt2(v) },
+    tooltip: { trigger: 'axis', confine: true, valueFormatter: (v: Num) => fmt2(v) },
     grid: { left: 56, right: 18, top: 30, bottom: 24 },
     xAxis: catAxis(row.periods),
     yAxis: valAxis({
@@ -95,10 +101,10 @@ export function rankPctOption(row: RankPctRow): EChartsOption {
     series: [
       { name: row.labels.intl, type: 'line', data: ri, symbol: 'circle', symbolSize: 5,
         itemStyle: { color: C_BLUE }, lineStyle: { width: 1.4, color: C_BLUE },
-        label: endLabels(row.periods.length, fmt2, 'top') },
+        label: endLabels(row.periods.length, fmt2, 'top'), labelLayout: LY },
       { name: row.labels.cn, type: 'line', data: rc, symbol: 'circle', symbolSize: 5,
         itemStyle: { color: C_GREEN }, lineStyle: { width: 1.4, color: C_GREEN },
-        label: endLabels(row.periods.length, fmt2, 'bottom') },
+        label: endLabels(row.periods.length, fmt2, 'bottom'), labelLayout: LY },
     ],
   } as unknown as EChartsOption
 }
@@ -110,11 +116,12 @@ export function cnciOption(row: NonNullable<DisciplineCharts['cnci']>): EChartsO
   const lo = Math.min(...withBase)
   const hi = Math.max(...withBase)
   const pad = (hi - lo) * 0.18
-  const fmtG = (v: Num) => (v == null ? '' : Number(v.toPrecision(2)).toString())
+  // 刻度两位小数再去尾零——toPrecision(2) 会把 1.05 舍成 "1.1"，跟 1.1 撞字
+  const fmtG = (v: Num) => (v == null ? '' : Number(v.toFixed(2)).toString())
   return {
     textStyle: baseText,
     legend: legendTop(),
-    tooltip: { trigger: 'axis', valueFormatter: (v: Num) => (v == null ? '—' : v.toFixed(2)) },
+    tooltip: { trigger: 'axis', confine: true, valueFormatter: (v: Num) => (v == null ? '—' : v.toFixed(2)) },
     grid: { left: 40, right: 16, top: 30, bottom: 24 },
     xAxis: catAxis(row.periods),
     yAxis: valAxis({
@@ -124,11 +131,11 @@ export function cnciOption(row: NonNullable<DisciplineCharts['cnci']>): EChartsO
     series: [
       { name: 'CNCI 值', type: 'line', data: row.values, symbol: 'circle', symbolSize: 5,
         itemStyle: { color: C_BLUE }, lineStyle: { width: 1.4, color: C_BLUE },
-        label: allLabels((v) => (v == null ? '' : v.toFixed(2))) },
+        label: allLabels((v) => (v == null ? '' : v.toFixed(2))), labelLayout: LX },
       { name: 'CNCI 国际均值', type: 'line', data: row.periods.map(() => row.baseline),
         symbol: 'circle', symbolSize: 5,
         itemStyle: { color: C_GREEN }, lineStyle: { width: 1.4, color: C_GREEN },
-        label: allLabels(fmtG) },
+        label: allLabels(fmtG), labelLayout: LX },
     ],
   } as unknown as EChartsOption
 }
@@ -141,7 +148,7 @@ export function papersNewOption(row: NonNullable<DisciplineCharts['papers_new']>
   return {
     textStyle: baseText,
     legend: legendTop({ left: 'right' }),
-    tooltip: { trigger: 'axis', valueFormatter: fmtInt },
+    tooltip: { trigger: 'axis', confine: true, valueFormatter: fmtInt },
     grid: { left: 40, right: 16, top: 30, bottom: 24 },
     xAxis: catAxis(row.periods),
     yAxis: valAxis({
@@ -152,7 +159,7 @@ export function papersNewOption(row: NonNullable<DisciplineCharts['papers_new']>
     series: [{
       name: '新增发文量', type: 'bar', data: vals, barWidth: '40%',
       itemStyle: { color: C_BLUE },
-      label: allLabels(fmtInt),
+      label: allLabels(fmtInt), labelLayout: LX,
     }],
   } as unknown as EChartsOption
 }
@@ -165,7 +172,7 @@ export function citesThresholdOption(
   return {
     textStyle: baseText,
     legend: legendTop(),
-    tooltip: { trigger: 'axis', valueFormatter: fmtInt },
+    tooltip: { trigger: 'axis', confine: true, valueFormatter: fmtInt },
     grid: { left: 62, right: 18, top: 30, bottom: 24 },
     xAxis: catAxis(row.periods),
     yAxis: valAxis({
@@ -174,10 +181,10 @@ export function citesThresholdOption(
     series: [
       { name: '被引频次', type: 'line', data: row.cites, symbol: 'circle', symbolSize: 5,
         itemStyle: { color: C_BLUE }, lineStyle: { width: 1.4, color: C_BLUE },
-        label: endLabels(n, fmtInt, 'top') },
+        label: endLabels(n, fmtInt, 'top'), labelLayout: LY },
       { name: 'ESI 阈值', type: 'line', data: row.threshold, symbol: 'circle', symbolSize: 5,
         itemStyle: { color: C_GREEN }, lineStyle: { width: 1.4, color: C_GREEN },
-        label: endLabels(n, fmtInt, 'bottom') },
+        label: endLabels(n, fmtInt, 'bottom'), labelLayout: LY },
     ],
   } as unknown as EChartsOption
 }
@@ -192,7 +199,7 @@ export function topPapersOption(row: NonNullable<DisciplineCharts['top_papers']>
   return {
     textStyle: baseText,
     legend: legendTop({ left: 'right' }),
-    tooltip: { trigger: 'axis', valueFormatter: fmtInt },
+    tooltip: { trigger: 'axis', confine: true, valueFormatter: fmtInt },
     grid: { left: 36, right: 16, top: 30, bottom: 24 },
     xAxis: catAxis(row.periods),
     yAxis: valAxis({
@@ -203,7 +210,7 @@ export function topPapersOption(row: NonNullable<DisciplineCharts['top_papers']>
     series: [{
       name: '顶尖论文发文量', type: 'bar', data: row.values, barWidth: '40%',
       itemStyle: { color: C_BLUE },
-      label: allLabels(fmtInt),
+      label: allLabels(fmtInt), labelLayout: LX,
     }],
   } as unknown as EChartsOption
 }
@@ -216,7 +223,7 @@ export function qDistOption(row: NonNullable<DisciplineCharts['q_dist']>): EChar
   return {
     textStyle: baseText,
     legend: legendTop({ itemWidth: 12, itemHeight: 8 }),
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (v: Num) => (v == null ? '—' : v + '%') },
+    tooltip: { trigger: 'axis', confine: true, axisPointer: { type: 'shadow' }, valueFormatter: (v: Num) => (v == null ? '—' : v + '%') },
     grid: { left: 42, right: 12, top: 30, bottom: 24 },
     xAxis: catAxis(['Q1', 'Q2', 'Q3', 'Q4'], 0, 11),
     yAxis: valAxis({
@@ -226,7 +233,7 @@ export function qDistOption(row: NonNullable<DisciplineCharts['q_dist']>): EChar
     series: row.entities.map((e) => ({
       name: e.name, type: 'bar', data: e.values, barGap: '12%', barCategoryGap: '55%',
       itemStyle: { color: e.color },
-      label: { ...allLabels((v) => (v == null ? '' : v + '%')), fontSize: 9.5 },
+      label: { ...allLabels((v) => (v == null ? '' : v + '%')), fontSize: 9.5 }, labelLayout: LX,
     })),
   } as unknown as EChartsOption
 }
@@ -241,7 +248,7 @@ export function onePctOption(row: { items: OnePctItem[] }): EChartsOption {
     textStyle: baseText,
     legend: legendBottom({ itemWidth: 12, itemHeight: 8 }),
     tooltip: {
-      trigger: 'axis', axisPointer: { type: 'shadow' },
+      confine: true, trigger: 'axis', axisPointer: { type: 'shadow' },
       formatter: asTip((ps) => {
         const bars = ps.filter((p) => p.seriesName !== 'ESI前1%基线')
         return (bars[0]?.name ?? '') + '<br>' +
@@ -279,7 +286,7 @@ export function onePermilleOption(row: { items: OnePctItem[] }): EChartsOption {
   return {
     textStyle: baseText,
     legend: legendBottom({ itemWidth: 12, itemHeight: 8 }),
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: fmt2 },
+    tooltip: { trigger: 'axis', confine: true, axisPointer: { type: 'shadow' }, valueFormatter: fmt2 },
     grid: { left: 92, right: 46, top: 8, bottom: 34 },
     xAxis: valAxis({
       min: 0, max: 105,
@@ -310,12 +317,12 @@ export function rankTableOption(row: RankTableRow): EChartsOption {
     data: row.series[key], symbol: 'circle', symbolSize: 5,
     itemStyle: { color: row.labels[key].color },
     lineStyle: { width: 1.6, color: row.labels[key].color },
-    label: endLabels(n, fmtInt, 'top'),
+    label: endLabels(n, fmtInt, 'top'), labelLayout: LY,
   })
   return {
     textStyle: baseText,
     legend: legendBottom(),
-    tooltip: { trigger: 'axis', valueFormatter: fmtInt },
+    tooltip: { trigger: 'axis', confine: true, valueFormatter: fmtInt },
     title: { text: '我校ESI排名情况', left: 'center', top: 0,
              textStyle: { color: '#1F1F1F', fontSize: 13, fontFamily: FONT, fontWeight: 600 } },
     grid: { left: 46, right: 52, top: 32, bottom: 44 },
@@ -339,7 +346,7 @@ export function trendTableOption(row: TrendTableRow): EChartsOption {
   return {
     textStyle: baseText,
     legend: legendBottom(),
-    tooltip: { trigger: 'axis', valueFormatter: fmt2 },
+    tooltip: { trigger: 'axis', confine: true, valueFormatter: fmt2 },
     title: { text: '我校主要学科近期发展趋势', left: 'center', top: 0,
              textStyle: { color: '#1F1F1F', fontSize: 13, fontFamily: FONT, fontWeight: 600 } },
     grid: { left: 52, right: 20, top: 30, bottom: 40 },
@@ -358,6 +365,7 @@ export function trendTableOption(row: TrendTableRow): EChartsOption {
           formatter: asFmt((p) =>
             p.dataIndex === n - 1 && p.value != null ? fmt2(p.value as number) : ''),
         },
+        labelLayout: LY,
       })),
       { name: 'ESI1‰基线', type: 'line', data: [],
         markLine: { silent: true, symbol: 'none', data: [{ yAxis: row.baseline }],
@@ -376,7 +384,7 @@ export function topByYearOption(row: { labels: string[]; values: Num[] }): EChar
     textStyle: baseText,
     title: { text: '顶尖论文年代分布（篇）', left: 'center', top: 0,
              textStyle: { color: '#1F1F1F', fontSize: 12, fontFamily: FONT, fontWeight: 600 } },
-    tooltip: { trigger: 'axis', valueFormatter: fmtInt },
+    tooltip: { trigger: 'axis', confine: true, valueFormatter: fmtInt },
     grid: { left: 36, right: 14, top: 32, bottom: 24 },
     xAxis: catAxis(row.labels, 0, 9.5),
     yAxis: valAxis({ max: Math.ceil((hi + 2) / 5) * 5,
@@ -384,7 +392,7 @@ export function topByYearOption(row: { labels: string[]; values: Num[] }): EChar
     series: [{
       name: '顶尖论文', type: 'bar', data: row.values, barWidth: '66%',
       itemStyle: { color: C_ORANGE },
-      label: allLabels(fmtInt),
+      label: allLabels(fmtInt), labelLayout: LX,
     }],
   } as unknown as EChartsOption
 }
@@ -396,7 +404,7 @@ export function topBySubjectOption(
     textStyle: baseText,
     title: { text: '顶尖论文学科分布（篇）', left: 'center', top: 0,
              textStyle: { color: '#1F1F1F', fontSize: 12, fontFamily: FONT, fontWeight: 600 } },
-    tooltip: { trigger: 'axis', valueFormatter: fmtInt },
+    tooltip: { trigger: 'axis', confine: true, valueFormatter: fmtInt },
     grid: { left: 36, right: 14, top: 32, bottom: 52 },
     xAxis: catAxis(row.items.map((i) => i.name_cn), 38, 9),
     yAxis: valAxis({ max: Math.ceil((hi + 2) / 5) * 5,
@@ -404,7 +412,7 @@ export function topBySubjectOption(
     series: [{
       name: '顶尖论文', type: 'bar', data: row.items.map((i) => i.value), barWidth: '62%',
       itemStyle: { color: C_BLUE },
-      label: allLabels(fmtInt),
+      label: allLabels(fmtInt), labelLayout: LX,
     }],
   } as unknown as EChartsOption
 }
@@ -416,7 +424,7 @@ export function collegePieOption(row: { items: CollegeItem[] }, mode: 'cites' | 
   return {
     textStyle: baseText,
     tooltip: {
-      trigger: 'item',
+      confine: true, trigger: 'item',
       formatter: asFmt((p) =>
         `${p.name ?? ''}：${Number(p.value).toLocaleString('en-US')}（${Number(p.percent ?? 0).toFixed(2)}%）`),
     },
@@ -461,7 +469,7 @@ export function forecastOption(row: ForecastSeries): EChartsOption {
   return {
     textStyle: baseText,
     legend: legendBottom(),
-    tooltip: { trigger: 'axis' },
+    tooltip: { trigger: 'axis', confine: true },
     grid: { left: 56, right: 18, top: 16, bottom: 40 },
     xAxis: {
       ...catAxis(allP, 0, 9.5),
@@ -505,7 +513,7 @@ export function forecastRunOption(
   return {
     textStyle: baseText,
     legend: legendTop(),
-    tooltip: { trigger: 'axis' },
+    tooltip: { trigger: 'axis', confine: true },
     grid: { left: 52, right: 16, top: 28, bottom: 24 },
     xAxis: {
       ...catAxis(allP, 35, 9),
