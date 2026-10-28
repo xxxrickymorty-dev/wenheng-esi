@@ -439,14 +439,13 @@ export function Review({
         <div className="rv-flow">
           <FactsStrip period={period} />
           <section className="card rv-report" aria-label="试排报告全文">
-            <p className="rv-docmeta">
-              <span>本稿由流水线生成 · {preview.updated_at || '—'} · 数字全部来自台账；带虚线框的空请就地填写。</span>
-              {emptyIds.length > 0 && (
+            {emptyIds.length > 0 && (
+              <p className="rv-docmeta">
                 <button type="button" className="rv-next" onClick={jumpNext}>
                   还剩 {emptyIds.length} 处 · 跳到下一处 ↓
                 </button>
-              )}
-            </p>
+              </p>
+            )}
             {preview.blocks.map((b, i) => headingAt(i) ? (
               <div id={`rv-b-${i}`} key={i}>
                 <BlockView block={b} vals={vals} onVal={(id, v) => setVals((s) => ({ ...s, [id]: v }))}

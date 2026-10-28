@@ -120,11 +120,12 @@ a{color:inherit}
 /* 落款面在左栏里以签为定位基准、随栏收窄（page-l overflow:hidden，
    超宽会被裁） */
 .pl-slot .sig-pop{width:min(300px, calc(100% + 44px))}
-.pl-slot-user{margin-top:auto}
+.pl-slot-user{margin-top:clamp(12px,2vh,20px)}
 .pl-slot-user .user-chip{width:100%;color:var(--ivory)}
 .pl-slot-user .user-chip-btn{width:100%;background:transparent;color:var(--ivory);
   border:1px solid rgba(245,243,236,.34)}
-.pl-slot-user .user-chip-pop{bottom:calc(100% + 10px);top:auto}
+/* 身份签在导航下：弹出菜单向下走（上方是导航，别盖） */
+.pl-slot-user .user-chip-pop{top:calc(100% + 10px);bottom:auto;left:0;right:auto}
 
 @media (max-width:900px){
   .wrap{padding:18px 16px 60px}

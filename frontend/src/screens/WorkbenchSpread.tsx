@@ -65,27 +65,6 @@ const NAV: { key: WsView; label: string; m?: boolean; q?: boolean }[] = [
   { key: "shelf", label: "陈列馆 ↗", q: true },
 ];
 
-const VIEW_META: Record<string, { ov: string; title: string; stm: string }> = {
-  workbench: { ov: "本期 · 出报告", title: "工作台", stm: "台账往前推一步，报告就有初稿。" },
-  acquire: { ov: "本期 · 第 一 站", title: "取数核验", stm: "机器取数，人来核对。" },
-  pick: { ov: "本期 · 选 模", title: "预测选模", stm: "模型替学科作答，人来定夺。" },
-  forecast: { ov: "本期 · 选 模", title: "预测台", stm: "五家各答一遍，误差最小者上。" },
-  review: { ov: "本期 · 第 四 站", title: "核验定稿", stm: "机器保数字，取舍你来定。" },
-  report: { ov: "本期 · 成 品", title: "报告台", stm: "一期成册，逐格可追。" },
-  red: { ov: "报告 · 下 钻", title: "红色件清单", stm: "逐条看，逐条清。" },
-  charts: { ov: "报告 · 下 钻", title: "图 册", stm: "一百零八张，图图有出处。" },
-  reading: { ov: "报告 · 下 钻", title: "阅 稿", stm: "正文与数字同屏。" },
-  trace: { ov: "报告 · 下 钻", title: "逐格溯源", stm: "点一格，回台账。" },
-  pano: { ov: "工作区 · 产 线", title: "可视化工作流", stm: "把已有状态摆到空间里。" },
-  analysis: { ov: "工作区 · 篇 章", title: "灵活报告", stm: "指定学科，即时成篇。" },
-  ask: { ov: "工作区 · 对 话", title: "问文衡", stm: "工作台里能查的，这里都能问。" },
-  ledger: { ov: "管理 · 源 头", title: "主 台 账", stm: "一本台账，全部源头。" },
-  archive: { ov: "管理 · 留 痕", title: "运行档案", stm: "每一步都留痕，每一步都能回去看。" },
-  heal: { ov: "管理 · 沙 盘", title: "自愈沙盘", stm: "断了自愈，全程可看。" },
-  migrate: { ov: "管理 · 沙 盘", title: "换馆沙盘", stm: "换一台馆，照搬即走。" },
-  shelf: { ov: "成 品 馆", title: "陈列馆", stm: "一年六期，一期一册。" },
-};
-
 /* 左栏宽度与收起（2026-10-28 rick：左栏可收回可拖动，参考 DeepSeek Harness 侧栏）：
    拖动条在订口上（hover 亮金线），18–40% 连续调宽、双击回默认、方向键微调；
    收起后左页合成「书脊」（竖排品牌＋展开钮）——合上左页，翻开即回。
@@ -187,7 +166,6 @@ export function WorkbenchSpread() {
     return () => window.clearTimeout(t);
   }, [ctx?.status]);
 
-  const meta = VIEW_META[cur] ?? { ov: "文 衡 · 工 作 区", title: cur, stm: "" };
   const status = ctx?.status ?? "unsigned";
   /* 印随站换面＋印随签发态（交互稿方案一 20261028 rick 审）：
      取数/选模＝机器站，恒干印「并入台账」；其余站随真签发态——
@@ -242,23 +220,8 @@ export function WorkbenchSpread() {
               </a>
             ))}
           </nav>
-          <div className="hero-l">
-            <p className="ov">{meta.ov}</p>
-            <h1>{meta.title}</h1>
-            <p className="vol">
-              <span className="b">{ctx?.label ?? (ctx?.period ?? "——————")}</span>
-              <span className="c">{ctx?.window ? `数据截至 ${ctx.window}` : ctx ? "—" : "正在连接服务…"}</span>
-            </p>
-            <div className="rule" />
-            <p className="stm">{meta.stm}</p>
-            <div className="state">
-              <div className="s"><span className="k">任 务</span><span className="v">{ctx?.task ?? "—"}</span></div>
-              <div className="s"><span className="k">签 发</span><span className="v">
-                {status === "signed" ? "已签发" : status === "stale" ? "签发已失效" : "未签发"}
-              </span></div>
-              <div className="s"><span className="k">取 数</span><span className="v">{ctx?.acq ?? "—"}</span></div>
-            </div>
-          </div>
+          {/* 管理员签在导航下（2026-10-28 rick 裁：hero 删——
+              期次/任务/取数与期次签重复，口号不再占版面） */}
           <div id="pl-user-slot" className="pl-slot pl-slot-user" />
           <div className="footline">
             <span>会 泽 百 家 · 至 公 天 下</span>
