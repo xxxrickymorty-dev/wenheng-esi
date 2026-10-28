@@ -225,7 +225,6 @@ export function WorkbenchSpread() {
           <div id="pl-user-slot" className="pl-slot pl-slot-user" />
           <div className="footline">
             <span>会 泽 百 家 · 至 公 天 下</span>
-            <span>并 行 实 验 · 随 时 可 能 删 除</span>
           </div>
         </aside>
       ))}

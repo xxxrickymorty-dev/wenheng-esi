@@ -193,7 +193,6 @@ export function Workbench({
       .catch(() => { if (alive) { setWater([]); setBoard([]) } })
     return () => { alive = false }
   }, [period, generated])
-  const issueNo = /第 (\d+) 期/.exec(periods.find((p) => p.period === period)?.label ?? '')?.[1] ?? ''
   /* 审计节点读数：运行档案（v2 把原故事条里的一枚数搬上节点；回放动画在「可视化工作流」屏） */
   const [audit, setAudit] = useState<{ total: number; pass: number; review: number; fail: number } | null>(null)
   const canReadArchive = !!detail?.steps?.generate
@@ -254,12 +253,10 @@ export function Workbench({
           : { st: 'todo', v: '—' }
   const linkSt = (a: NodeSt): 'ok' | 'bad' | 'todo' =>
     a === 'done' ? 'ok' : a === 'bad' ? 'bad' : 'todo'
-  /* 上一期一行（期次列表新→旧，右邻一位即上一期；不编日期） */
+  /* 上一期一行已撤（2026-10-28 rick 裁「小字都删」）；
+     prevP 仍供上一期水位差值（较上一期小签）使用 */
   const prevIdx = periods.findIndex(p => p.period === period)
   const prevP = prevIdx >= 0 ? periods[prevIdx + 1] : undefined
-  const prevLine = prevP
-    ? `上一期 ${prevP.period} · ${prevP.status === 'signed' ? '已签发' : prevP.status === 'stale' ? '待重签' : '未签发'}`
-    : ''
   /* 上一期水位（2026-10-24 本期读数）：单独再取一次，取不到 → 不出「较上一期」差值小签。
      只在本期已有矩阵读数时才取——本期没有（未出稿 / 临时期次），上一期多半也没有，
      白跑一趟只会给没开过的期次打出 404 噪声。 */
@@ -297,28 +294,17 @@ export function Workbench({
     ? readIn - (prevWater?.filter((r) => r.state === 'in').length ?? 0)
     : null
   const dProx = near?.prox != null && prevNear?.prox != null ? near.prox - prevNear.prox : null
-  const WHY: Partial<Record<WBState, string>> = {
-    ready: '前两步已就绪 · 约 3 分钟出报告',
-    done: '签单后可下载；重出会使签发失效',
-    'waiting-approval': '签单后可下载',
-    signed: '重新生成会使签发失效',
-    warned: '任务结束不代表报告合格或已签发——看校验说明',
-    empty: '取齐并入后，回来一键生成',
-  }
-  const why = WHY[wb.state] ?? ''
+  /* 状态说明小字（WHY/why）已撤（2026-10-28 rick 裁「小字都删」） */
 
   return (
     <>
       {/* v2 极致低密（2026-10-24 rick 过审，静态稿 v2 同构）：一行期次身份＋四节点流程图＋一行主动作。
-          旧题头（题句/状态药丸/翻牌）与故事条退役——故事回放迁往「可视化工作流」屏。 */}
+          旧题头（题句/状态药丸/翻牌）与故事条退役——故事回放迁往「可视化工作流」屏。
+          2026-10-28：期次旁的期数/数据截至小字、右上「上一期」小字、
+          主动作行的状态说明小字一并退役。 */}
       <section className="wb2" aria-label="本期进度">
         <div className="wb2-line">
           <h1 className="wb2-period">本期 {period ?? '——————'}</h1>
-          <span className="dim">
-            {issueNo ? `第 ${issueNo} 期` : '期次待定'}
-            {detail?.window ? ` · 数据截至 ${detail.window}` : ''}
-          </span>
-          {prevLine && <span className="prev">{prevLine}</span>}
         </div>
         <div className="wb2-flow">
           <FlowNode k="取 数" st={fetchNode.st} v={fetchNode.v} n={fetchNode.n} />
@@ -360,7 +346,6 @@ export function Workbench({
           <a className="btn wb2-ghost" href={`/app/?view=pano${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
             查看可视化工作流 →
           </a>
-          {why && <span className="why">{why}</span>}
           <Info label="状态从哪来">
             <p>取数/生成节点来自单期详情与任务记录；审计读数来自运行档案；签发状态来自审核台签单。本页只读，不改任何数据。</p>
           </Info>
@@ -393,7 +378,6 @@ export function Workbench({
           <div className="gb-copy">
             <p className="kik">水 位 標 尺 · 接 近 度</p>
             <h2>阈值即水位线，<br />潜力学科各是一根水尺。</h2>
-            <p className="gb-note">ESI 前 1% 被引阈值是警戒水位。读数来自本期学科矩阵（接近度＝百分数点值），前端不换算。</p>
           </div>
           <div className="gauge">
             <div className="gauge-head"><span>潜 力 學 科 水 位</span><span className="mono">{period ?? ''}</span></div>
