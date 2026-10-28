@@ -907,6 +907,9 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .rv-tblwrap table{border-collapse:collapse;width:100%;font-size:var(--fs-label);font-family:var(--sans);line-height:1.6}
 .rv-tblwrap td{border:1px solid var(--line);padding:4px 7px;vertical-align:middle;white-space:pre-line}
 .rv-tblwrap tr:first-child td{background:var(--panel);font-weight:600}
+/* 图格豁免：四联图面板第一行是插图不是表头，
+   母版里也没有这个底色（Word 无），刷上会像两张图自带深底 */
+.rv-tblwrap tr:first-child td:has(.gal-chart){background:transparent}
 .rv-tblwrap img{max-width:230px;vertical-align:top}
 
 /* 就地填空：虚线朱框 = 待填；浅底实线 = 已填（还没重出） */
