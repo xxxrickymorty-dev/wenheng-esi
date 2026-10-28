@@ -4,7 +4,7 @@
    预测口径与边界（2026-10-24 rick 工作台减负）：底部折块撤除，内容原文收进页头带右端「口径与边界」ⓘ。
    数字全部来自服务端产物——本页只显示，不重算。 */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   formatProvenanceTime, getForecastBoard, runForecast,
   type ForecastBoard, type ForecastChoiceEntry, type ForecastMeta,
@@ -14,6 +14,8 @@ import { Info } from './Info'
 import { Icon } from './icons'
 import { forecastAppliedDiffs, forecastAppliedStale, shortRouteLabel } from './lib/forecast'
 import { MODEL_DESC } from './Workbench'
+import { ChartFigure } from './charts/ChartFigure'
+import { forecastRunOption } from './charts/options'
 
 /** 显示格式（千分位 + 固定小数位）——只影响「怎么显示」，不参与任何计算；
     位数沿用老站预测页。后端没给的数一律显示 —，不补零、不猜。 */
@@ -87,6 +89,16 @@ function ForecastTable({ run, r }: { run: ForecastRun; r: ForecastModelResult })
   )
 }
 
+/** 试跑趋势图：与后端 _chart 同一批数字（run.history + r.forecast），前端只画不算。
+    历史行缺席（旧缓存 / 接口降级）时回退后端出的 PNG，不硬画。 */
+function ModelChart({ run, r }: { run: ForecastRun; r: ForecastModelResult }) {
+  const option = useMemo(
+    () => forecastRunOption(run.history ?? [], r.forecast, run.metric_names),
+    [run.history, r.forecast, run.metric_names])
+  return <ChartFigure option={option} height={220}
+                      ariaLabel={`${run.subject} · ${r.model} 预测趋势图`} />
+}
+
 /** 候选模型图卡：五模型比较和单模型试跑都走这一张（卡题、标签、按钮、折叠一致）。 */
 function ModelCard({
   run, r, mine, active, pickable, onPick,
@@ -120,7 +132,9 @@ function ModelCard({
         <div><b>{r.status === 'PASS' ? '通过' : '需复核'}</b><span>运行状态</span></div>
       </div>
 
-      <img className="fc-chart" src={r.chart} alt={`${run.subject} · ${r.model} 预测趋势图`} loading="lazy" decoding="async" />
+      {run.history && run.history.length > 0
+        ? <ModelChart run={run} r={r} />
+        : <img className="fc-chart" src={r.chart} alt={`${run.subject} · ${r.model} 预测趋势图`} loading="lazy" decoding="async" />}
 
       <div className="fc-actions">
         {active

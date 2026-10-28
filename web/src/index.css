@@ -1454,3 +1454,15 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
 
 /* 审核台签单卡：标题行与本期印并排（印随签发态换面，签单成功落章一次） */
 .rv-sign-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+
+/* 图册 ECharts 化（2026-10-28）：交互图单元 + 附表；PNG 原图仍是一键可达的对照 */
+.gal-echart{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));margin-top:12px}
+.gal-cell{border:1px solid var(--line-2);background:var(--card-hi);padding:8px 10px 10px;margin:0}
+.gal-chart{width:100%;position:relative}
+.gal-chart-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink-4);font-size:var(--fs-sm)}
+.gal-cap{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:var(--fs-label);color:var(--ink-2);margin:6px 0 0}
+.gal-cap a{color:var(--ink-3);font-size:var(--fs-sm);white-space:nowrap}
+.mini-table{width:100%;border-collapse:collapse;margin-top:6px;font-size:var(--fs-sm)}
+.mini-table th,.mini-table td{border:1px solid var(--line);padding:2px 6px;text-align:center;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.mini-table th{font-weight:600;color:var(--ink);background:var(--panel)}
+.mini-table td:first-child,.mini-table th:first-child{text-align:left}

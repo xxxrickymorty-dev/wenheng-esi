@@ -77,6 +77,8 @@ export type ForecastRun = {
   errors: { model: string; error: string }[]
   notice: string
   source_period: string
+  /** 历史实际值（后端 _chart 画图用的同一批行；数字原样，NaN 已是 null） */
+  history?: { period: number; metric1: number | null; metric2: number | null }[]
   results: ForecastModelResult[]
 }
 
