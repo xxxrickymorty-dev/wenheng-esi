@@ -228,6 +228,10 @@ export function WorkbenchSpread() {
       ) : (
         <aside className="page-l">
           <div className="bm"><b>文衡</b><span>云南大学图书馆<br />学科信息参考</span></div>
+          {/* 期次签/身份签的槽位：内容由 ShellApp portal 渲染（2026-10-28
+              rick 裁「删顶部栏」——期次选择与管理员搬左栏，其余删）。
+              折叠时本栏被书脊替换，两签随栏暂隐，展开即回。 */}
+          <div id="pl-sig-slot" className="pl-slot" />
           <nav className="nav" aria-label="工作区">
             {NAV.map((n) => (
               <a key={n.key} href={`#${n.key}`}
@@ -255,6 +259,7 @@ export function WorkbenchSpread() {
               <div className="s"><span className="k">取 数</span><span className="v">{ctx?.acq ?? "—"}</span></div>
             </div>
           </div>
+          <div id="pl-user-slot" className="pl-slot pl-slot-user" />
           <div className="footline">
             <span>会 泽 百 家 · 至 公 天 下</span>
             <span>并 行 实 验 · 随 时 可 能 删 除</span>
@@ -302,8 +307,7 @@ export function WorkbenchSpread() {
           </button>
         )}
         <div className="ws-host">
-          <ShellApp view={cur} onNavigate={setCur} onContext={setCtx}
-                    density={{ lw, onLw: setLw }} />
+          <ShellApp view={cur} onNavigate={setCur} onContext={setCtx} />
         </div>
 
         {/* 常驻徽标：每一站右页角（陈列馆 solo 是成品展示面，不出）；答复中＝朱点 */}

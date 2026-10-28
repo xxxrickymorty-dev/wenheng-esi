@@ -67,16 +67,10 @@ a{color:inherit}
 .ws > .app-shell{flex:1;display:flex;flex-direction:column}
 
 /* ---------- 签条页眉（方案一交互稿 20261028 逐字落地）----------
-   右页唯一页眉＝一条纸面细条：期次签＋ⓘ 靠左，身份＋密度靠右。
-   期次签＝期次+签发态唯一真相点，点开落款面换期；ⓘ 口径面与落款面
-   同一时点只开一个面。规则：点开/点外/Esc 关；选期即换、换完即收；
-   密度即时生效无保存。戳色取资产语义色，不随蓝绿主题变。 */
-.pg-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-  padding:13px clamp(20px,2.6vw,40px) 11px;border-bottom:1px solid var(--line-2);
-  position:relative;z-index:10}
-.pg-head .pg-r{margin-left:auto;display:inline-flex;align-items:center;gap:14px;flex-wrap:wrap}
-.pg-head .user-chip{color:var(--ink-2)}
-.pg-head .user-chip-pop{top:calc(100% + 10px);bottom:auto;left:auto;right:0}
+   期次签＝期次+签发态唯一真相点，点开落款面换期。
+   2026-10-28 rick 定「删顶部栏」：.pg-head 整条退役，
+   期次签/身份签 portal 进左栏槽位（.pl-slot，深色底适配见下）；
+   ⓘ 口径与密度三档退役。戳色取资产语义色，不随蓝绿主题变。 */
 .pg-sig{position:relative;display:inline-flex}
 .psig{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--line);
   background:var(--card-hi);padding:6px 12px 6px 8px;cursor:pointer;color:var(--ink);
@@ -109,30 +103,30 @@ a{color:inherit}
 .sig-pop .row[data-state="no"] .mk{border:1.5px dashed var(--bad);color:var(--bad)}
 .sig-pop .row b{font-family:var(--mono);font-weight:600}
 .sig-pop .row .lb{color:var(--ink-3);font-size:12px;margin-left:auto}
-/* ⓘ 口径面：声明文案单源 lib/declaration（与页内其他 ⓘ 同文） */
-.pg-info-wrap{position:relative;display:inline-flex}
-.pg-info{border:1px dashed var(--line);background:transparent;padding:5px 10px;
-  font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--ink-3);cursor:pointer;
-  transition:border-color .15s,color .15s;min-height:32px}
-.pg-info:hover,.pg-info[aria-expanded="true"]{color:var(--ink-2);border-color:var(--ink-3);background:#FFFEF9}
-.info-pop{position:absolute;top:calc(100% + 10px);left:0;z-index:60;width:min(380px,72vw);
-  background:var(--card-hi);border:1px solid var(--line);padding:12px 16px;
-  box-shadow:0 10px 28px rgba(31,42,36,.14)}
-.info-pop .sc{font-family:var(--kai);font-size:10px;letter-spacing:.22em;color:var(--ink-3);margin-bottom:6px}
-.info-pop p{font-size:12.5px;line-height:1.85;color:var(--ink-2);margin:5px 0}
-/* 密度三档（交互稿 .dense）：即时生效、无保存；选中＝墨底反白 */
-.dense{display:inline-flex;border:1px solid var(--line);background:var(--card-hi)}
-.dense button{border:0;background:transparent;padding:5px 10px;min-height:30px;
-  font-family:var(--kai);font-size:11px;letter-spacing:.14em;color:var(--ink-3);
-  cursor:pointer;transition:color .15s,background .15s}
-.dense button:hover{color:var(--ink)}
-.dense button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+/* ⓘ 口径面已退役（2026-10-28 rick 定）——声明文案单源
+   lib/declaration 留档；.info-pop 样式随入口一并撤 */
 .skip-link{position:absolute;left:-999px;top:8px;z-index:100;background:var(--card);padding:10px 14px;border:1px solid var(--gline)}
 .skip-link:focus{left:8px}
 
+/* 左栏槽位：期次签/身份签搬进深色书签栏（2026-10-28）——
+   签本体反白成「象牙线框」，戳色不变；落款面仍是纸面浮层 */
+.pl-slot{margin:2px 0 10px;min-height:0}
+.pl-slot:empty{display:none}
+.pl-slot .psig{border-color:rgba(245,243,236,.34);background:transparent;
+  color:var(--ivory);width:100%}
+.pl-slot .psig:hover,.pl-slot .psig[aria-expanded="true"]{border-color:var(--gold);
+  background:rgba(245,243,236,.08)}
+.pl-slot .psig .tx .st,.pl-slot .psig .cw{color:rgba(245,243,236,.62)}
+/* 落款面在左栏里以签为定位基准、随栏收窄（page-l overflow:hidden，
+   超宽会被裁） */
+.pl-slot .sig-pop{width:min(300px, calc(100% + 44px))}
+.pl-slot-user{margin-top:auto}
+.pl-slot-user .user-chip{width:100%;color:var(--ivory)}
+.pl-slot-user .user-chip-btn{width:100%;background:transparent;color:var(--ivory);
+  border:1px solid rgba(245,243,236,.34)}
+.pl-slot-user .user-chip-pop{bottom:calc(100% + 10px);top:auto}
+
 @media (max-width:900px){
-  .pg-head{gap:10px;padding:10px 16px}
-  .pg-head .pg-r{gap:10px}
   .wrap{padding:18px 16px 60px}
 }
 
