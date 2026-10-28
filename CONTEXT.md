@@ -163,6 +163,8 @@ uv run python tools/verify_demo_run.py <期次>   # 写路径验收
 | — | **系统状态库（ADR-0012）** | ✅ **这条线已收口（2026-10-22，`40b6bc3` → `f597b1c`）**：`out/_state/wenheng.sqlite`，**schema 004**；五类装入 `approvals` + `approval_history`、`jobs`、`reviews`、`manual_inputs`、`sources`（原始包只记清单与指纹，一个字节不入库）；导出 / 导入 / 清理（`tools/state_export.py` / `state_import.py` / `state_cleanup.py`，清理工具含 **`scrub-note`**：清批注里的真人姓名，带一致性备份与 `tmp/_cleanup_<期次>_note/before.json` 留痕）、打包脱敏（副本化名 + 泄漏即失败）、路径口径（`src/display_path.py`）、只读降级告警（`/api/status` 的 `state_db` + 页首横幅）都已落地。验证＝pytest 全量 **1527 例**（默认 1522 + 5 slow；ADR-0013 删镜像测试后由此前 1537 降到此处）、e2e **236 断言**、`verify_report_cells.py 202607` 不符 0、`ruff` 全绿。规格见 `docs/specs/2026-10-21-系统状态库（SQLite）.md` |
 | — | 悬案 2：202609 审批历史批注里有真人姓名 | ✅ **已落地（2026-10-22）**：按 rick 的决定**清空该批注**（不是每次打包带 `--redact-term` 遮盖）。`tools/state_cleanup.py scrub-note` 只改 `payload` 一列、整条置空串、行数不变；改前 sqlite 一致性备份 + `tmp/_cleanup_202609_note/before.json` 留痕，导出件按库重渲染 |
 
+| — | **母本有 3 期 `top_papers` 的期次写成小数**：`2023.01` / `2023.3` / `2023.5`。落到 `out/<期次>/ledger_long.parquet` 是 66 行（3 期 × 22 学科 × 仅该指标）。AI 问数建库按 `src/aiqa_db.py::_PERIOD_RE` 判形态（六位 YYYYMM），**映射不唯一故不猜**——跳过并在 `meta.bad_periods` 记账，不去补数；报告大表与图表不受影响（走 wide 表，不走 long 表）。 | 待定：需确认那三期究竟是 `202301` / `202303` / `202305` 还是别的月份，再修母本（母本只读红线，不能就地回填） |
+
 ## 两个仓库
 
 | 仓库 | 路径 | 远程 |
