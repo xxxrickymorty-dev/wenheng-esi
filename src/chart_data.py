@@ -229,6 +229,8 @@ def _college_items(stats, mode: str) -> list | None:
     for i, (v, u) in enumerate(keep):
         gray = (small and i == len(keep) - 1)
         out.append({"name": u, "value": _num(v),
+                    # 饼图标签的百分比也是画进 PNG 的数（v/total*100），一并导出
+                    "pct": _num(v / total * 100),
                     "color": "#D9D9D9" if gray else palette[i % len(palette)]})
     return out
 

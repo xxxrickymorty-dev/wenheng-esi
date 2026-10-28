@@ -162,6 +162,8 @@ def test_college_items_merge_small_into_other():
     assert [i["name"] for i in items] == ["A 学院", "B 学院", "其他（2 个单位）"]
     assert items[-1]["color"] == "#D9D9D9"
     assert items[-1]["value"] == pytest.approx(20.0)
+    assert items[0]["pct"] == pytest.approx(90.0)     # 标签里的百分比也是画进 PNG 的数
+    assert items[-1]["pct"] == pytest.approx(2.0)
     assert chart_data._college_items({"units": []}, "cites") is None
     assert chart_data._college_items(None, "cites") is None
 
