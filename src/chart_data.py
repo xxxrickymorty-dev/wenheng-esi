@@ -237,20 +237,84 @@ def _college_items(stats, mode: str) -> list | None:
 
 # ---------- 预测图（序列由 report_forecast 出图时落档，这里只搬运） ----------
 
+_FORECAST_SERIES_CACHE: dict = {}   # 进程内：期次目录 → (key, {(序号,kind): 序列})
+
+
+def _forecast_cache_path(ledger_dir: pathlib.Path) -> pathlib.Path:
+    return (pathlib.Path(__file__).resolve().parent.parent / "tmp"
+            / "forecast_series" / f"{ledger_dir.name}.json")
+
+
+def _recompute_forecast_series(ledger_dir: pathlib.Path) -> dict:
+    """老期次缺序列：只读重算（确定性引擎，与当年 PNG 同一批数字）。
+
+    结果落 `tmp/forecast_series/<期次>.json`（按 json mtime 失效，
+    写失败即忘，纯加速）——out/ 一字不碰；重算约 1–8s/期，缓存后无感。
+    """
+    mp = ledger_dir / "forecast_charts.json"
+    try:
+        st = mp.stat()
+        key = f"{st.st_mtime_ns}-{st.st_size}"
+    except OSError:
+        return {}
+    hit = _FORECAST_SERIES_CACHE.get(str(ledger_dir))
+    if hit and hit[0] == key:
+        return hit[1]
+    cp = _forecast_cache_path(ledger_dir)
+    if cp.is_file():
+        try:
+            j = json.loads(cp.read_text(encoding="utf-8"))
+            if j.get("key") == key and isinstance(j.get("series"), dict):
+                snap = {tuple(k.split("|")): v for k, v in j["series"].items()}
+                _FORECAST_SERIES_CACHE[str(ledger_dir)] = (key, snap)
+                return snap
+        except (OSError, json.JSONDecodeError, AttributeError):
+            pass
+    import report_forecast                                 # noqa: PLC0415
+    raw = report_forecast.series_only(ledger_dir)
+    snap = {(str(i), kind): v for (i, kind), v in raw.items()}
+    _FORECAST_SERIES_CACHE[str(ledger_dir)] = (key, snap)
+    try:
+        cp.parent.mkdir(parents=True, exist_ok=True)
+        cp.write_text(json.dumps({
+            "key": key,
+            "series": {"|".join(map(str, k)): v for k, v in snap.items()},
+        }, ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass
+    return snap
+
+
 def _forecast_payload(ledger_dir: pathlib.Path) -> dict:
-    """`forecast_<序>_<cites|rank>` → 出图时记录的序列；老期次无 series 字段 → 跳过。"""
+    """`forecast_<序>_<cites|rank>` → 出图时记录的序列。
+
+    新期次：序列出图时已落档（2026-10-28 起），照搬。老期次 json 缺
+    series 字段 → 按确定性引擎**只读重算**兜底（与当年画进 PNG 的序列
+    逐字节同源，tmp 落盘缓存）；重算失败（如数据校验闸门）→ 该条缺席，
+    前端回退 PNG 原图。
+    """
     mp = ledger_dir / "forecast_charts.json"
     try:
         meta = json.loads(mp.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {}
+    charts = meta.get("charts")
+    if not isinstance(charts, list):
+        return {}
+    need = any(isinstance(c, dict) and not isinstance(c.get("series"), dict)
+               for c in charts)
+    try:
+        snap = _recompute_forecast_series(ledger_dir) if need else {}
+    except Exception:                                  # noqa: BLE001
+        snap = {}          # 重算失败（缺数据/校验闸门）→ 缺序列，前端回退 PNG
     out = {}
-    for c in meta.get("charts", []):
+    for c in charts:
         if not isinstance(c, dict) or not isinstance(c.get("png"), str):
             continue
-        if not isinstance(c.get("series"), dict):
-            continue                      # 老期次：只有元数据，没序列 → 前端回退 PNG
-        out[c["png"].removesuffix(".png")] = c["series"]
+        s = c.get("series") if isinstance(c.get("series"), dict) \
+            else snap.get((str(c.get("index")), c.get("kind")))
+        if isinstance(s, dict) and s:
+            out[c["png"].removesuffix(".png")] = s
     return out
 
 

@@ -55,6 +55,12 @@ CITES_COLORS = ("#00B050", "#92D050", "#4472C4", "#9DC3E6")
 RANK_LABELS = ("云大排名", "云大排名预测值", "国内机构数", "国内机构预测值")
 RANK_COLORS = ("#7030A0", "#B08BD0", "#FF0000", "#FF9E9E")
 
+# 两路线的出图参数（_generate 与 series_only 共用一份口径）
+_TASK_STYLES = (
+    ("citation", "cites", CITES_LABELS, CITES_COLORS),
+    ("rank", "rank", RANK_LABELS, RANK_COLORS),
+)
+
 
 def _forecast_upto(period_dir, period_override=None):
     """预测窗口截到哪一期：显式 override 优先，否则认目录名（out/202605 → 202605）。
@@ -198,6 +204,31 @@ def _series_snapshot(periods, best, hist, model_hist, fut, labels, colors) -> di
     }
 
 
+def _chart_series(data, cn, task, model, warnings):
+    """单图序列（_generate 与 series_only 共用）：选模跑预测 + 两列拟合/预测。"""
+    periods, series = subject_task_data(data, cn, task)
+    res = _run_with_choice(cn, periods, series, task, model, warnings)
+    best = min(res["results"], key=lambda r: r["rolling_mape"])
+    columns = TASK_COLUMNS[task]
+    hist, model_hist, fut = [], [], []
+    for column in columns:
+        fitted, future, _params = fit_and_forecast(best["model"], series[column], HORIZON)
+        y = np.asarray(series[column], dtype=float)
+        fitted = np.asarray(fitted, dtype=float).copy()
+        # V1 口径：拟合从第 7 期起；初始化毛刺可能再延续几期（UC 实测第 7 期
+        # 还是 217 vs 实际 134），继续裁到模型落位（首个相对误差 ≤25% 的点）。
+        fitted[:FIT_MAPE_START_INDEX] = np.nan
+        k = FIT_MAPE_START_INDEX
+        while 0 < k < len(fitted) and np.isfinite(fitted[k]) and y[k] \
+                and abs(fitted[k] - y[k]) / abs(y[k]) > 0.25:
+            fitted[k] = np.nan
+            k += 1
+        hist.append(y)
+        model_hist.append(fitted)
+        fut.append(future)
+    return periods, best, hist, model_hist, fut
+
+
 def _generate(period_dir, choice_path=None, period_override=None) -> int:
     """渲染预测图；返回张数（异常向上抛，由调用方决定降级策略）。
 
@@ -239,30 +270,10 @@ def _generate(period_dir, choice_path=None, period_override=None) -> int:
         warnings.append("预测图：本期数据校验未过，只出报告前二；其余学科待数据修正后重出。")
     made, chart_meta = [], []
     for i, cn in enumerate(to_chart, 1):
-        for task, kind, labels, colors in (
-                ("citation", "cites", CITES_LABELS, CITES_COLORS),
-                ("rank", "rank", RANK_LABELS, RANK_COLORS)):
-            periods, series = subject_task_data(data, cn, task)
+        for task, kind, labels, colors in _TASK_STYLES:
             model = choices.get((task, cn), "recommended")
-            res = _run_with_choice(cn, periods, series, task, model, warnings)
-            best = min(res["results"], key=lambda r: r["rolling_mape"])
-            columns = TASK_COLUMNS[task]
-            hist, model_hist, fut = [], [], []
-            for column in columns:
-                fitted, future, _params = fit_and_forecast(best["model"], series[column], HORIZON)
-                y = np.asarray(series[column], dtype=float)
-                fitted = np.asarray(fitted, dtype=float).copy()
-                # V1 口径：拟合从第 7 期起；初始化毛刺可能再延续几期（UC 实测第 7 期
-                # 还是 217 vs 实际 134），继续裁到模型落位（首个相对误差 ≤25% 的点）。
-                fitted[:FIT_MAPE_START_INDEX] = np.nan
-                k = FIT_MAPE_START_INDEX
-                while 0 < k < len(fitted) and np.isfinite(fitted[k]) and y[k] \
-                        and abs(fitted[k] - y[k]) / abs(y[k]) > 0.25:
-                    fitted[k] = np.nan
-                    k += 1
-                hist.append(y)
-                model_hist.append(fitted)
-                fut.append(future)
+            periods, best, hist, model_hist, fut = _chart_series(
+                data, cn, task, model, warnings)
             png = ov / f"forecast_{i}_{kind}.png"
             charts.chart_forecast(
                 [str(p) for p in periods], tuple(hist), tuple(model_hist),
@@ -291,6 +302,52 @@ def _generate(period_dir, choice_path=None, period_override=None) -> int:
     (period_dir / "forecast_charts.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
     return len(made)
+
+
+def series_only(period_dir, choice_path=None, period_override=None) -> dict:
+    """只读重算预测序列 → `{(序号, kind): _series_snapshot 形状}`。
+
+    给 chart_data 兜底：老期次的 forecast_charts.json 没落 series 字段
+    （序列落档 2026-10-28 才上线）。重算走**同一条确定性路径**
+    （同 `load_standard_input` / 选模快照 / V1 拟合裁剪），引擎逐字节
+    可复现——202609 实测四图重画与 out/ 里的报告 PNG 逐字节一致
+    （tmp/probe_forecast_series.py）。这里不画图、不落档、不写 out/；
+    任何失败向上抛，由调用方决定回退（缺序列 → 前端回退 PNG 原图）。
+    """
+    period_dir = pathlib.Path(period_dir)
+    upto = _forecast_upto(period_dir, period_override)
+    subjects_cn, _period = pick_subjects(period_dir, upto=upto)
+    if len(subjects_cn) < 2:
+        raise ValueError("未进入 1% 的潜力学科不足 2 个。")
+    choices, warnings = load_choice(period_dir, choice_path)
+    report = pick_report_subjects(subjects_cn, choices)
+
+    validation_failed = False
+    try:
+        data, _meta = load_standard_input(period_dir, upto=upto)
+    except ValueError as exc:
+        if "V1输入校验失败" not in str(exc):
+            raise
+        if "经济与商业" in report:
+            raise
+        validation_failed = True
+        data, _meta = load_standard_input(period_dir, validate=False, upto=upto)
+    known = set(data["学科"])
+    missing = [s for s in subjects_cn if s not in known]
+    if missing:
+        raise ValueError(f"潜力学科不在 V1 标准输入里：{'、'.join(missing)}")
+
+    ordered = report + [s for s in subjects_cn if s not in report]
+    to_chart = report if validation_failed else ordered
+    out: dict = {}
+    for i, cn in enumerate(to_chart, 1):
+        for task, kind, labels, colors in _TASK_STYLES:
+            model = choices.get((task, cn), "recommended")
+            periods, best, hist, model_hist, fut = _chart_series(
+                data, cn, task, model, warnings)
+            out[(i, kind)] = _series_snapshot(
+                periods, best, hist, model_hist, fut, labels, colors)
+    return out
 
 
 def main(period_dir=None):

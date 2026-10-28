@@ -179,8 +179,72 @@ def test_forecast_payload_skips_legacy_entries_without_series(tmp_path):
     (tmp_path / "forecast_charts.json").write_text(
         json.dumps(legacy, ensure_ascii=False), encoding="utf-8")
     payload = chart_data._forecast_payload(tmp_path)
-    assert set(payload) == {"forecast_2_cites"}     # 老期次条目无序列 → 不导出（前端回退 PNG）
+    # fixture 目录没有预测输入 → 只读重算失败 → 老期次条目不导出（前端回退 PNG）
+    assert set(payload) == {"forecast_2_cites"}
     assert payload["forecast_2_cites"]["fut_periods"] == ["202503"]
+
+
+def test_forecast_payload_legacy_series_recovered_by_recompute(tmp_path, monkeypatch):
+    """老期次 json 缺序列 → chart_data 只读重算兜底（引擎在此桩掉）。"""
+    legacy = {"charts": [
+        {"png": "forecast_1_cites.png", "subject": "化学", "kind": "cites",
+         "index": 1},
+    ]}
+    (tmp_path / "forecast_charts.json").write_text(
+        json.dumps(legacy, ensure_ascii=False), encoding="utf-8")
+    snap = {"hist_periods": ["202501"], "fut_periods": ["202503"],
+            "columns": [{"actual": [1.0], "fitted": [None], "future": [2.0]}]}
+    seen = {}
+    def fake_recompute(d):
+        seen["dir"] = d
+        return {("1", "cites"): snap}
+    monkeypatch.setattr(chart_data, "_recompute_forecast_series", fake_recompute)
+    payload = chart_data._forecast_payload(tmp_path)
+    assert seen["dir"] == tmp_path                     # 缺序列才触发重算
+    assert payload["forecast_1_cites"] is snap
+
+
+def test_forecast_payload_recompute_failure_keeps_legacy_png_fallback(tmp_path,
+                                                                      monkeypatch):
+    legacy = {"charts": [
+        {"png": "forecast_1_cites.png", "subject": "化学", "kind": "cites",
+         "index": 1},
+        {"png": "forecast_2_cites.png", "subject": "植物与动物学", "kind": "cites",
+         "index": 2,
+         "series": {"hist_periods": ["202501"], "fut_periods": ["202503"],
+                    "columns": [{"actual": [1.0], "fitted": [None], "future": [2.0]}]}},
+    ]}
+    (tmp_path / "forecast_charts.json").write_text(
+        json.dumps(legacy, ensure_ascii=False), encoding="utf-8")
+    def boom(_d):
+        raise FileNotFoundError("没有 wide/proximity_1pct.parquet")
+    monkeypatch.setattr(chart_data, "_recompute_forecast_series", boom)
+    payload = chart_data._forecast_payload(tmp_path)
+    # 重算失败不拦页面：该条缺席 → 前端回退 PNG 原图
+    assert set(payload) == {"forecast_2_cites"}
+
+
+def test_forecast_payload_recomputes_real_legacy_period():
+    """202609 预测落档早于序列落档（2026-10-28 上线）→ 重算 16 条同源序列。
+
+    同源判据：重算走与出图同一条确定性路径（report_forecast.series_only）；
+    tmp/probe_forecast_series.py 已证四图按重算序列重画与 out/ PNG 逐字节一致。
+    """
+    d = ROOT / "out" / "202609"
+    has = (d / "forecast_charts.json").is_file()
+    if not has:
+        skip_unless("out/202609 预测落档不存在（历史产物不入库，属正常）",
+                    lambda: has)
+    payload = chart_data._forecast_payload(d)
+    assert len(payload) >= 16                          # 8 学科 × 被引/排名
+    row = payload["forecast_1_cites"]
+    assert len(row["hist_periods"]) >= 20
+    assert len(row["fut_periods"]) == 18               # HORIZON＝3 年
+    assert [c["actual_label"] for c in row["columns"]] == ["被引频次", "阈值"]
+    for c in row["columns"]:
+        assert len(c["actual"]) == len(row["hist_periods"])
+        assert len(c["fitted"]) == len(row["hist_periods"])
+        assert len(c["future"]) == len(row["fut_periods"])
 
 
 # ---------- 接口层（契约 #38）：/api/periods/<p>/charts-data 就是 build() 的原样出口 ----------
