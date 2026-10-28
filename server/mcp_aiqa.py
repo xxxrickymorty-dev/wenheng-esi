@@ -48,6 +48,8 @@ from aiqa_engine import (execute, plan, render_text,      # noqa: E402
 _SQL_TABLES = frozenset({
     "facts", "dim_discipline", "dim_metric", "dim_period",
     "report_table2", "report_overview", "qa_log", "meta",
+    # 省域高校当期快照 / 云大排名序列（2026-10 新增）
+    "province_fact", "dim_province_metric", "ynd_rank_series",
 })
 _SQL_COLS = frozenset({
     "discipline", "discipline_cn", "ord", "metric", "metric_cn", "better",
@@ -58,6 +60,11 @@ _SQL_COLS = frozenset({
     "elapsed_ms", "answer_text", "chart_kind", "schema_version",
     "built_at", "ledger_sha256", "n_facts", "n_table2", "n_overview",
     "bad_periods", "content_sha256", "path",
+    # province_fact / dim_province_metric / ynd_rank_series
+    "university", "unit", "rank_intl", "rank_cn", "rank_cn_uni",
+    # meta 新增键
+    "n_province", "n_province_uni", "province_skipped",
+    "n_ynd_rank", "ynd_rank_bad_periods", "missing_sources",
 })
 _FORBIDDEN = re.compile(
     r"\b(attach|detach|pragma|vacuum|reindex|replace\s+into|insert|update|"
@@ -159,6 +166,7 @@ TOOLS = [
     {
         "name": "aiqa_ask",
         "description": ("自然语言问数：问「化学的总被引趋势」「202607 论文数前 5 名」"
+                        "「云南大学和昆明理工大学的论文量对比」「云大国内排名趋势」"
                         "这类问题，返回人话答案 + ECharts 就绪的图表数据"
                         "（categories/series）。推荐入口。"),
         "inputSchema": {
@@ -172,7 +180,8 @@ TOOLS = [
         "name": "aiqa_sql",
         "description": ("受控只读 SQL：仅 SELECT，表/列白名单，自动补 LIMIT。"
                         "表：facts（学科×期次×指标事实）、report_table2（当期大表）、"
-                        "report_overview（概述事实）、dim_*（维度）、qa_log（问数留痕）。"),
+                        "report_overview（概述事实）、dim_*（维度）、qa_log（问数留痕）、"
+                        "province_fact（省域高校当期快照）、ynd_rank_series（云大排名序列）。"),
         "inputSchema": {
             "type": "object",
             "properties": {"sql": {"type": "string",

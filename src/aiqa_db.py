@@ -13,7 +13,19 @@
 | `facts` | 长表事实（学科×期次×指标×来源 → 值） | `out/<期次>/ledger_long.parquet` |
 | `report_table2` | 当期报告大表 22×11（每格带来源指针） | `out/<期次>/table2.csv` |
 | `report_overview` | 概述事实（键值对，含顶尖论文/排名等） | `out/<期次>/overview_facts.json` |
+| `province_fact` | **省域高校当期快照**（期次×高校×省域指标 → 值） | `out/<期次>/wide/province.parquet` |
+| `dim_province_metric` | 省域指标字典（与 `dim_metric` 分家，见下） | 同上（宽表行索引） |
+| `ynd_rank_series` | 云大自己的排名序列（国际/国内/国内高校） | `out/<期次>/wide/ynd_rank.parquet` |
 | `qa_log` | 问数留痕（问题 / 规格 / 行数 / 耗时） | 运行时写（唯一写表） |
+
+**为什么省域指标单开一张 `dim_province_metric`、不并进 `dim_metric`**：
+`dim_metric` 是「学科口径」的一把尺（22 学科 × 指标），`facts` 的每一行都挂着
+`discipline`；省域表是「高校口径」（云南 9 所高校 × 6 指标），没有学科维度，且同名
+指标的数不同源——同一期云南大学「论文量」在省域表是 13940，在学科口径的
+`papers` 是分学科论文数。若并进 `dim_metric`，`view_cross`/`view_series` 这些
+「按 metric 跨学科取」的视图会把两种口径串成一锅，问「化学的论文数」可能捞到高校口径。
+分家后每条问法只有一条缝：学科问法只读 `facts`，省域问法只读 `province_fact`，
+两边各有一张白名单字典，互不可见。
 
 红线（与镜像同款，spec 2026-10-12）：
 - **单向 ETL**：本库永不回写台账 / 产物；除 `qa_log` 外全部表只读；
@@ -41,7 +53,7 @@ if str(REPO) not in __import__("sys").path:
 if str(REPO / "src") not in __import__("sys").path:
     __import__("sys").path.insert(0, str(REPO / "src"))
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 #: 「写留痕」唯一授权表（其余表 ETL 时建，运行期只读）。
 LOG_TABLE = "qa_log"
@@ -96,6 +108,34 @@ CREATE TABLE IF NOT EXISTS report_overview (
   key TEXT NOT NULL,
   value TEXT,
   PRIMARY KEY (period, key)
+);
+
+-- 省域指标字典（**与 dim_metric 分家**：高校口径 vs 学科口径，见模块 docstring）
+CREATE TABLE IF NOT EXISTS dim_province_metric (
+  metric TEXT PRIMARY KEY,            -- 白名单键，统一 pv_ 前缀（pv_papers…）
+  metric_cn TEXT NOT NULL,            -- 宽表行索引原样，如「论文量（篇）」
+  unit TEXT NOT NULL DEFAULT '',      -- 篇 / 次（只用于渲染，不参与查询）
+  better TEXT NOT NULL DEFAULT 'up',  -- up=越大越好 / down / none
+  ord INTEGER NOT NULL DEFAULT 0
+);
+
+-- 省域高校**当期快照**（长表）：period 标明是哪一期；非历史序列。
+-- 源：out/<期次>/wide/province.parquet（6 指标 × 9 高校，行=指标名、列=高校名）
+CREATE TABLE IF NOT EXISTS province_fact (
+  period TEXT NOT NULL,               -- YYYYMM（= 建库期次，快照不跨期累积）
+  university TEXT NOT NULL,           -- 高校名（宽表列名原样）
+  metric TEXT NOT NULL,               -- dim_province_metric.metric
+  value REAL,
+  PRIMARY KEY (period, university, metric)
+);
+CREATE INDEX IF NOT EXISTS idx_province_metric ON province_fact(metric, period);
+
+-- 云大排名序列（历史序列，20 期；源 wide/ynd_rank.parquet）
+CREATE TABLE IF NOT EXISTS ynd_rank_series (
+  period TEXT PRIMARY KEY,            -- YYYYMM
+  rank_intl REAL,                     -- 国际排名
+  rank_cn REAL,                       -- 国内排名（含科研机构的大榜）
+  rank_cn_uni REAL                    -- 国内高校排名（只排高校）
 );
 
 -- 问数留痕（**唯一运行期可写表**）
@@ -231,6 +271,86 @@ def _overview_rows(out_dir: pathlib.Path, period: str) -> list[tuple]:
     return rows
 
 
+#: 省域宽表的行索引 → (中文名, 白名单键, 单位, 方向)。行索引**原样**落 `metric_cn`——
+#: 宽表里的括号已经带了单位，渲染时直接用，不另拼。
+_PROVINCE_METRICS: tuple[tuple[str, str, str, str], ...] = (
+    ("论文量（篇）", "pv_papers", "篇", "up"),
+    ("被引频次（次）", "pv_cites", "次", "up"),
+    ("顶尖论文（篇）", "pv_top_papers", "篇", "up"),
+    ("高被引论文（篇）", "pv_hi_cited", "篇", "up"),
+    ("热点论文（篇）", "pv_hot_papers", "篇", "up"),
+    ("研究前沿（篇）", "pv_research_fronts", "篇", "up"),
+)
+
+
+def province_metric_dict() -> list[tuple]:
+    """dim_province_metric 的行（确定性顺序 = 宽表行序）。"""
+    return [(k, cn, unit, better, i)
+            for i, (cn, k, unit, better) in enumerate(_PROVINCE_METRICS)]
+
+
+def _province_rows(out_dir, period: str) -> tuple[list[tuple], list[str]]:
+    """out/<期次>/wide/province.parquet → province_fact 行 + 未识别行索引。
+
+    实测结构（202601/202605/202607 三期一致）：6 行 × 9 列，
+    **行索引＝中文指标名（含单位）**，**列＝高校名**（9 列全是高校，没有别的列）。
+    即宽表是「指标 × 高校」矩阵，落库要 melt 成长表。
+
+    缺失文件 → ([], [])，不编数；不在 `_PROVINCE_METRICS` 里的行索引跳过并回报
+    （上游加了新指标时，是加白名单而不是猜口径）。
+    """
+    f = pathlib.Path(out_dir) / "wide" / "province.parquet"
+    if not f.is_file():
+        return [], []
+    import pandas as pd
+
+    df = pd.read_parquet(f)
+    key_of = {cn: k for cn, k, _u, _b in _PROVINCE_METRICS}
+    rows, skipped = [], []
+    for label in df.index:
+        cn = str(label)
+        k = key_of.get(cn)
+        if k is None:
+            skipped.append(cn)
+            continue
+        for uni in df.columns:
+            v = df.at[label, uni]
+            rows.append((str(period), str(uni), k,
+                         None if pd.isna(v) else float(v)))
+    return sorted(rows), sorted(skipped)
+
+
+def _ynd_rank_rows(out_dir) -> tuple[list[tuple], list[str]]:
+    """out/<期次>/wide/ynd_rank.parquet → ynd_rank_series 行 + 被跳过的期次。
+
+    实测 20×4：`period` 是**字符串** `'202307'`（不是 float），且序列尾部会超出
+    建库期次（202607 期的文件里含 202609）——所以本表按序列原样入，不按建库期次裁剪；
+    问「最新」时取表内最大 period，答案里显式印出该期次，不让人误以为是报告期。
+    期次非 6 位数字 → 跳过并回报（同 facts 的口径，不猜）。
+    """
+    f = pathlib.Path(out_dir) / "wide" / "ynd_rank.parquet"
+    if not f.is_file():
+        return [], []
+    import pandas as pd
+
+    df = pd.read_parquet(f)
+    rows, bad = [], []
+    for r in df.itertuples(index=False):
+        # 兼容未来写成 float 的情况（202607.0 → '202607'），但只认 6 位整数形态
+        try:
+            per = str(int(float(r.period)))
+        except (TypeError, ValueError):
+            per = str(r.period)
+        if not _PERIOD_RE.match(per):
+            bad.append(str(r.period))
+            continue
+        rows.append((per,
+                     None if pd.isna(r.rank_intl) else float(r.rank_intl),
+                     None if pd.isna(r.rank_cn) else float(r.rank_cn),
+                     None if pd.isna(r.rank_cn_uni) else float(r.rank_cn_uni)))
+    return sorted(rows), sorted(set(bad))
+
+
 def _hash_rows(rows) -> str:
     h = hashlib.sha256()
     for t in rows:
@@ -288,10 +408,13 @@ def build(repo_root=REPO, *, out_period=None) -> dict:
 
     t2 = _table2_rows(out_dir, period)
     ov = _overview_rows(out_dir, period)
+    prov, prov_skipped = _province_rows(out_dir, period)
+    ynd, ynd_bad = _ynd_rank_rows(out_dir)
 
     content_rows = ([("schema_version", str(SCHEMA_VERSION)),
                      ("period", period)]
-                    + sorted(facts) + sorted(t2) + sorted(ov))
+                    + sorted(facts) + sorted(t2) + sorted(ov)
+                    + sorted(prov) + sorted(ynd))
     content_sha = _hash_rows(content_rows)
 
     target = db_path(repo_root)
@@ -322,6 +445,18 @@ def build(repo_root=REPO, *, out_period=None) -> dict:
                         "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", t2)
         con.executemany("INSERT OR REPLACE INTO report_overview "
                         "(period, key, value) VALUES (?,?,?)", ov)
+        con.executemany("INSERT OR REPLACE INTO dim_province_metric "
+                        "(metric, metric_cn, unit, better, ord) VALUES (?,?,?,?,?)",
+                        province_metric_dict())
+        con.executemany("INSERT OR REPLACE INTO province_fact "
+                        "(period, university, metric, value) VALUES (?,?,?,?)",
+                        prov)
+        con.executemany("INSERT OR REPLACE INTO ynd_rank_series "
+                        "(period, rank_intl, rank_cn, rank_cn_uni) "
+                        "VALUES (?,?,?,?)", ynd)
+        # 缺文件不是错误，但必须留痕——空表 + meta 明说缺什么，绝不补数
+        missing = [name for name, rows in (("province", prov), ("ynd_rank", ynd))
+                   if not rows]
         meta = {
             "schema_version": str(SCHEMA_VERSION),
             "built_at": _now(),
@@ -332,6 +467,12 @@ def build(repo_root=REPO, *, out_period=None) -> dict:
             "bad_periods": ",".join(bad_periods),
             "n_table2": str(len(t2)),
             "n_overview": str(len(ov)),
+            "n_province": str(len(prov)),
+            "n_province_uni": str(len({r[1] for r in prov})),
+            "province_skipped": ",".join(prov_skipped),
+            "n_ynd_rank": str(len(ynd)),
+            "ynd_rank_bad_periods": ",".join(ynd_bad),
+            "missing_sources": ",".join(missing),
             "content_sha256": content_sha,
         }
         con.executemany("INSERT OR REPLACE INTO meta (key, value) VALUES (?,?)",
@@ -360,7 +501,11 @@ def meta(repo_root=REPO) -> dict:
 
 
 def verify(repo_root=REPO) -> dict:
-    """自校验：meta 存在 + facts 计数一致 + dim 三表非空（有数据时）。"""
+    """自校验：meta 存在 + 各表计数与 meta 一致 + dim 三表非空（有数据时）。
+
+    新加的两张表（省域快照 / 云大排名序列）同样按「计数 == meta」校验——
+    空表是合法状态（源缺文件），此时 meta 会是 "0"，两边仍然对齐。
+    """
     p = db_path(repo_root)
     if not p.is_file():
         return {"ok": False, "reason": f"库不存在：{p}"}
@@ -371,12 +516,17 @@ def verify(repo_root=REPO) -> dict:
         n_disc = con.execute("SELECT COUNT(*) FROM dim_discipline").fetchone()[0]
         n_metric = con.execute("SELECT COUNT(*) FROM dim_metric").fetchone()[0]
         n_period = con.execute("SELECT COUNT(*) FROM dim_period").fetchone()[0]
+        n_prov = con.execute("SELECT COUNT(*) FROM province_fact").fetchone()[0]
+        n_ynd = con.execute("SELECT COUNT(*) FROM ynd_rank_series").fetchone()[0]
     finally:
         con.close()
     ok = (str(n) == m.get("n_facts") and n_disc > 0
-          and n_metric > 0 and n_period > 0)
+          and n_metric > 0 and n_period > 0
+          and str(n_prov) == m.get("n_province", "0")
+          and str(n_ynd) == m.get("n_ynd_rank", "0"))
     return {"ok": ok, "n_facts": n, "n_discipline": n_disc,
             "n_metric": n_metric, "n_period": n_period,
+            "n_province": n_prov, "n_ynd_rank": n_ynd,
             "content_sha256": m.get("content_sha256", "")}
 
 
@@ -439,6 +589,72 @@ def view_cross(con, metric, period) -> list[dict]:
                 "FROM facts f JOIN dim_discipline d ON d.discipline=f.discipline "
                 "WHERE f.metric=? AND f.source=? AND f.period=? "
                 "ORDER BY d.ord", (m, src, str(period)))]
+
+
+def view_province_metrics(con) -> list[dict]:
+    """省域指标白名单（键 / 中文名 / 单位 / 方向）。"""
+    return [{"metric": r[0], "metric_cn": r[1], "unit": r[2], "better": r[3]}
+            for r in con.execute(
+                "SELECT metric, metric_cn, unit, better FROM dim_province_metric "
+                "ORDER BY ord")]
+
+
+def view_province_universities(con, period=None) -> list[str]:
+    """省域表里出现的高校名（有 period 时只列该期）。"""
+    if period:
+        return [r[0] for r in con.execute(
+            "SELECT DISTINCT university FROM province_fact WHERE period=? "
+            "ORDER BY university", (str(period),))]
+    return [r[0] for r in con.execute(
+        "SELECT DISTINCT university FROM province_fact ORDER BY university")]
+
+
+def view_province_periods(con) -> list[str]:
+    """省域快照期次（升序；通常只有建库那一期）。"""
+    return [r[0] for r in con.execute(
+        "SELECT DISTINCT period FROM province_fact ORDER BY period")]
+
+
+def view_province(con, metric, period=None, universities=None) -> list[dict]:
+    """某期某省域指标的高校截面 → [{university, value}]（按值降序，None 沉底）。
+
+    `metric` 必须是 `dim_province_metric` 白名单键；`universities` 为 None 取全表。
+    所有取值走 `?` 参数，列名不出白名单。
+    """
+    per = str(period) if period else (view_province_periods(con) or [""])[-1]
+    q = ("SELECT university, value FROM province_fact WHERE period=? AND metric=?")
+    args: list = [per, str(metric)]
+    if universities:
+        q += f" AND university IN ({','.join('?' * len(universities))})"
+        args += [str(u) for u in universities]
+    q += " ORDER BY (value IS NULL), value DESC, university"
+    return [{"university": r[0], "value": r[1]} for r in con.execute(q, args)]
+
+
+#: 云大排名序列可查列（白名单；列名直接拼进 SQL，故必须来自此元组）。
+YND_RANK_COLS = ("rank_intl", "rank_cn", "rank_cn_uni")
+
+
+def view_ynd_rank(con, period_max=None) -> list[dict]:
+    """云大排名序列（期次升序）→ [{period, rank_intl, rank_cn, rank_cn_uni}]。"""
+    q = ("SELECT period, rank_intl, rank_cn, rank_cn_uni FROM ynd_rank_series")
+    args: list = []
+    if period_max:
+        q += " WHERE period<=?"
+        args.append(str(period_max))
+    q += " ORDER BY period"
+    return [{"period": r[0], "rank_intl": r[1], "rank_cn": r[2],
+             "rank_cn_uni": r[3]} for r in con.execute(q, args)]
+
+
+def view_ynd_rank_latest(con) -> dict:
+    """序列最新一期（表内最大 period）；空表给 {}。"""
+    r = con.execute("SELECT period, rank_intl, rank_cn, rank_cn_uni "
+                    "FROM ynd_rank_series ORDER BY period DESC LIMIT 1").fetchone()
+    if not r:
+        return {}
+    return {"period": r[0], "rank_intl": r[1], "rank_cn": r[2],
+            "rank_cn_uni": r[3]}
 
 
 def log_qa(repo_root, *, user, question, specs, plan_origin, n_rows,

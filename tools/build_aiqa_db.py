@@ -35,6 +35,9 @@ def main(argv=None):
     print(f"✓ AI 问数库已重建：{m['path']}")
     print(f"  期次={m['period']}  事实={m['n_facts']}  "
           f"大表行={m['n_table2']}  概述键={m['n_overview']}")
+    print(f"  省域快照={m['n_province']} 格 / {m['n_province_uni']} 校  "
+          f"云大排名={m['n_ynd_rank']} 期"
+          + (f"  ⚠ 缺源：{m['missing_sources']}" if m["missing_sources"] else ""))
     print(f"  content_sha256={m['content_sha256'][:16]}…")
     v = aiqa_db.verify(root)
     print(("✓ 自校验通过" if v["ok"] else "✗ 自校验失败：" + str(v)))

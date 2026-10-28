@@ -57,7 +57,44 @@ _TABLE2_COLS = {
 }
 
 #: 规格类型白名单。
-_KINDS = ("series", "compare", "at", "overview", "table2")
+#: 原 5 类（学科口径）：series / compare / at / overview / table2；
+#: 新增 2 类：`province_compare`（省域高校当期快照对比）、`ynd_rank`（云大排名序列）。
+#: 新增两类各自只读一张表（province_fact / ynd_rank_series），与学科口径的 facts
+#: 完全隔离——同一个问题只能命中一条缝。
+_KINDS = ("series", "compare", "at", "overview", "table2",
+          "province_compare", "ynd_rank")
+
+#: 省域指标别名 → `dim_province_metric.metric`（高校口径，pv_ 前缀）。
+#: 与 `_METRIC_ALIAS`（学科口径）刻意不共用：同一句「论文量」在两套口径里是不同的数。
+_PROVINCE_METRIC_ALIAS = {
+    "论文量": "pv_papers", "论文数": "pv_papers", "发文量": "pv_papers",
+    "发文": "pv_papers", "论文": "pv_papers",
+    "被引频次": "pv_cites", "被引": "pv_cites", "总被引": "pv_cites",
+    "引用频次": "pv_cites", "引用": "pv_cites",
+    "顶尖论文": "pv_top_papers", "顶尖": "pv_top_papers",
+    "高被引论文": "pv_hi_cited", "高被引": "pv_hi_cited",
+    "热点论文": "pv_hot_papers", "热点": "pv_hot_papers",
+    "研究前沿": "pv_research_fronts", "前沿": "pv_research_fronts",
+}
+
+#: 高校简称 → 全名（只收不会与学科名混淆的；全名本身由库里的 university 列提供）。
+_UNI_ALIAS = {
+    "云大": "云南大学", "昆工": "昆明理工大学", "昆医": "昆明医科大学",
+    "云师大": "云南师范大学", "云农大": "云南农业大学", "西南林大": "西南林业大学",
+    "云民大": "云南民族大学", "云财大": "云南财经大学",
+}
+
+#: 省域问法的区域触发词（缺高校名时靠它认出一整片高校的排名/对比）。
+_PROVINCE_HINTS = ("云南高校", "云南省内", "省内高校", "云南各高校", "省域",
+                   "云南的大学", "云南省高校")
+
+#: 云大排名序列的列别名 → `aiqa_db.YND_RANK_COLS`（按长度降序匹配）。
+_YND_COL_ALIAS = {
+    "国内高校排名": "rank_cn_uni", "全国高校排名": "rank_cn_uni",
+    "高校排名": "rank_cn_uni",
+    "国际排名": "rank_intl", "世界排名": "rank_intl", "全球排名": "rank_intl",
+    "国内排名": "rank_cn", "全国排名": "rank_cn",
+}
 
 _PERIOD_RE = re.compile(r"20\d{4}")
 
@@ -103,6 +140,34 @@ def _periods_in(text: str, filled: list[str]) -> list[str]:
     return sorted(set(found))
 
 
+def _province_metric_of(text: str) -> str | None:
+    """问句 → 省域指标键（按别名长度降序，防「高被引论文」被「论文」截胡）。"""
+    for k in sorted(_PROVINCE_METRIC_ALIAS, key=len, reverse=True):
+        if k in text:
+            return _PROVINCE_METRIC_ALIAS[k]
+    return None
+
+
+def _unis_in(text: str, known: list[str]) -> list[str]:
+    """问句里出现的高校（全名优先，简称兜底；按出现先后排序）。"""
+    hits: list[str] = []
+    for n in sorted(known, key=len, reverse=True):
+        if n and n in text:
+            hits.append(n)
+    for a, full in _UNI_ALIAS.items():
+        if a in text and full in known and full not in hits:
+            hits.append(full)
+    return sorted(set(hits), key=lambda n: text.find(n) if text.find(n) >= 0 else 10 ** 6)
+
+
+def _ynd_col_of(text: str) -> str:
+    """问句 → 排名列白名单键；没点名给 `all`（三列都答，不猜口径）。"""
+    for k in sorted(_YND_COL_ALIAS, key=len, reverse=True):
+        if k in text:
+            return _YND_COL_ALIAS[k]
+    return "all"
+
+
 # ============================================================ 规划器（规则版）
 
 def plan(question: str, con) -> dict:
@@ -124,6 +189,28 @@ def plan(question: str, con) -> dict:
 
     if not q:
         return {"specs": [], "origin": "rule", "note": "空问题"}
+
+    # ⓪ 云大自身排名（必须排在通用指标分支之前：否则「国际排名」会被当成
+    #    「跨 22 学科比排名」——那是学科口径，不是云大在榜单上的位次）。
+    if (not hit_discs and any(w in q for w in ("云大", "云南大学"))
+            and any(w in q for w in ("排名", "位次"))):
+        mode = "series" if any(w in q for w in ("趋势", "走势", "变化", "历期",
+                                               "历年", "以来")) else "at"
+        specs.append({"kind": "ynd_rank", "metric": _ynd_col_of(q), "mode": mode,
+                      "period": periods[-1] if periods else ""})
+        return {"specs": specs, "origin": "rule", "note": ""}
+
+    # ⓪·2 省域高校对比（高校口径，只读 province_fact；学科名在场则不抢）
+    pmetric = _province_metric_of(q)
+    if pmetric and not hit_discs:
+        unis = _unis_in(q, aiqa_db.view_province_universities(con))
+        if unis or any(w in q for w in _PROVINCE_HINTS):
+            mt = re.search(r"前\s*(\d{1,2})\s*名", q)
+            specs.append({"kind": "province_compare", "metric": pmetric,
+                          "universities": unis or None,
+                          "period": periods[-1] if periods else "",
+                          "top": int(mt.group(1)) if mt else None})
+            return {"specs": specs, "origin": "rule", "note": ""}
 
     # ① 概述类：「多少个学科进入前1%」「整体情况」
     if not metric and not hit_discs and any(
@@ -262,6 +349,41 @@ def execute(con, specs: list[dict]) -> dict:
             rows.append({"type": "table2", "period": period, "rows": got})
             if not columns:
                 columns = list(got[0].keys()) if got else []
+        elif kind == "province_compare":
+            metric = spec.get("metric", "")
+            if metric not in {r["metric"] for r in aiqa_db.view_province_metrics(con)}:
+                notes.append(f"省域指标 {metric!r} 不在白名单")
+                continue
+            period = spec.get("period") or (aiqa_db.view_province_periods(con) or [""])[-1]
+            items = aiqa_db.view_province(con, metric, period,
+                                          spec.get("universities"))
+            top = spec.get("top")
+            if top:
+                items = items[:int(top)]
+            if not items:
+                notes.append(f"{period} 期没有省域高校数据（{metric}）")
+            rows.append({"type": "province_compare", "metric": metric,
+                         "period": period, "items": items})
+            if not columns:
+                columns = ["university", "value"]
+        elif kind == "ynd_rank":
+            metric = spec.get("metric") or "all"
+            cols = aiqa_db.YND_RANK_COLS if metric == "all" else (metric,)
+            if any(c not in aiqa_db.YND_RANK_COLS for c in cols):
+                notes.append(f"排名列 {metric!r} 不在白名单")
+                continue
+            series = aiqa_db.view_ynd_rank(con, period_max=spec.get("period") or None)
+            if not series:
+                notes.append("云大排名序列无数据")
+            if spec.get("mode") == "series":
+                rows.append({"type": "ynd_rank", "metric": metric, "mode": "series",
+                             "cols": list(cols), "points": series})
+            else:
+                rows.append({"type": "ynd_rank", "metric": metric, "mode": "at",
+                             "cols": list(cols),
+                             "point": series[-1] if series else {}})
+            if not columns:
+                columns = ["period"] + list(cols)
     return {"rows": rows, "columns": columns, "note": "；".join(notes)}
 
 
@@ -291,6 +413,18 @@ def _metric_cn(con, metric) -> str:
         if r["metric"] == metric:
             return r["metric_cn"]
     return metric
+
+
+def _province_metric_cn(con, metric) -> str:
+    for r in aiqa_db.view_province_metrics(con):
+        if r["metric"] == metric:
+            return r["metric_cn"]
+    return metric
+
+
+#: 云大排名序列列 → 中文名（渲染用，零计算）。
+_YND_COL_CN = {"rank_intl": "国际排名", "rank_cn": "国内排名",
+               "rank_cn_uni": "国内高校排名"}
 
 
 def _disc_cn(con, disc) -> str:
@@ -348,6 +482,49 @@ def render_text(con, question, result) -> str:
                     f"顶尖论文 {row.get('top_papers') if row.get('top_papers') is not None else '—'}，"
                     f"国内排名 {row.get('rank_cn_change') or '—'}，"
                     f"接近度变化 {row.get('prox_change') or '—'}。")
+        elif t == "province_compare":
+            cn = _province_metric_cn(con, r.get("metric", ""))
+            items = r.get("items") or []
+            if not items:
+                lines.append(f"{r.get('period', '')} 期省域高校{cn}暂无数据。")
+                continue
+            head = "、".join(
+                f"{c['university']} {_fmt_val(r['metric'], c['value'])}"
+                for c in items)
+            lines.append(f"{r.get('period', '')} 期省域高校{cn}：{head}。")
+        elif t == "ynd_rank":
+            cols = list(r.get("cols") or ["rank_intl"])
+            if r.get("mode") == "series":
+                pts = r.get("points") or []
+                if not pts:
+                    lines.append("云南大学排名序列暂无数据。")
+                    continue
+                for c in cols:
+                    vals = [(p["period"], p.get(c)) for p in pts
+                            if p.get(c) is not None]
+                    if not vals:
+                        lines.append(f"云南大学{_YND_COL_CN.get(c, c)}暂无数据。")
+                        continue
+                    lines.append(
+                        f"云南大学{_YND_COL_CN.get(c, c)}"
+                        f"（{vals[0][0]} 至 {vals[-1][0]}）：共 {len(vals)} 期，"
+                        f"最新 {vals[-1][0]} 为 {vals[-1][1]:,.0f}。")
+            else:
+                p = r.get("point") or {}
+                if not p:
+                    lines.append("云南大学排名序列暂无数据。")
+                    continue
+                got = [(c, p.get(c)) for c in cols if p.get(c) is not None]
+                if not got:
+                    lines.append("云南大学排名序列暂无数据。")
+                elif len(got) == 1:
+                    c, v = got[0]
+                    lines.append(f"云南大学 {p['period']} 的"
+                                 f"{_YND_COL_CN.get(c, c)}为 {v:,.0f}。")
+                else:
+                    body = "；".join(f"{_YND_COL_CN.get(c, c)} {v:,.0f}"
+                                    for c, v in got)
+                    lines.append(f"云南大学 {p['period']}：{body}。")
     if result.get("note"):
         lines.append(result["note"])
     if not lines:
@@ -363,6 +540,8 @@ def suggest_chart(con, specs, result) -> dict:
     - series（时间序列）→ line；
     - compare 全学科 >6 个 → bar（横向条形更易读）；≤6 个 → bar；
       问句带「占比/份额」时 → pie（占比语义）；
+    - province_compare（省域高校截面）→ bar（高校是类目，比大小最直观）；
+    - ynd_rank 趋势 → line；单点（最新一期）→ table；
     - table2 / overview / at → table。
     """
     rows = result.get("rows") or []
@@ -374,6 +553,16 @@ def suggest_chart(con, specs, result) -> dict:
                     "y": [f"{r['disc']}.{r['metric']}"],
                     "title": f"{_disc_cn(con, r['disc'])} · "
                              f"{_metric_cn(con, r['metric'])} 走势"}
+        if t == "province_compare":
+            return {"kind": "bar", "x": "university", "y": ["value"],
+                    "title": f"{r.get('period', '')} 期省域高校"
+                             f"{_province_metric_cn(con, r.get('metric', ''))}"}
+        if t == "ynd_rank":
+            if r.get("mode") == "series":
+                return {"kind": "line", "x": "period", "y": list(r.get("cols") or []),
+                        "title": "云南大学排名走势"}
+            return {"kind": "table", "x": "", "y": [],
+                    "title": f"云南大学 {r.get('point', {}).get('period', '')} 排名"}
         if t == "compare":
             n = len(r.get("items") or [])
             if want_pie and 2 <= n <= 10:
@@ -412,4 +601,18 @@ def to_chart_data(con, chart: dict, result) -> dict:
             out["series"].append({
                 "name": _metric_cn(con, r["metric"]),
                 "data": [c["value"] for c in items]})
+        elif kind in ("bar", "pie") and r.get("type") == "province_compare":
+            items = [c for c in (r.get("items") or [])
+                     if c["value"] is not None]
+            out["categories"] = [c["university"] for c in items]
+            out["series"].append({
+                "name": _province_metric_cn(con, r["metric"]),
+                "data": [c["value"] for c in items]})
+        elif kind == "line" and r.get("type") == "ynd_rank":
+            pts = [p for p in (r.get("points") or [])]
+            out["categories"] = [p["period"] for p in pts]
+            for c in (r.get("cols") or []):
+                out["series"].append({
+                    "name": _YND_COL_CN.get(c, c),
+                    "data": [p.get(c) for p in pts]})
     return out
