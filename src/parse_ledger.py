@@ -792,10 +792,21 @@ def quarantine_final_products(out_dir, run_dir=None):
         return []          # 搬迁/留痕失败不阻断生产（与 agent/trace.py 同口径）
 
 
+#: 不在 `ledger["wide"]` 里、但同样要进长表的两张**独立**宽表（`index=discipline`、
+#: `columns=期次`）。它们各有自己的期次骨架（1‰ 阈值表比总被引表少/多建过列），
+#: 所以各自 melt，不能混进 `wide` 的循环。
+STANDALONE_LONG_METRICS = ("threshold_1permille", "entered_1pct")
+
+
 def long_table(ledger):
     """宽表/分组表 → 长表（discipline, period, metric, source, value）——**唯一口径**。
 
     `ledger_long.parquet`（`write_outputs`）用它；口径只此一份，不复制。
+
+    🔴 行序是接口的一部分：`wide` 的 9 个指标 → new_intl/new_cn → rank_intl/rank_cn
+    → `STANDALONE_LONG_METRICS`（threshold_1permille / entered_1pct）。新增指标只能
+    **追加在末尾**，否则下游按行 diff 的比对会整片变红。两张独立宽表的 `source`
+    为 NaN（与 `wide` 同口径：该维度不适用），下游一律按 `metric` 取数。
     """
     long_frames = []
     for m, df in ledger["wide"].items():
@@ -808,6 +819,15 @@ def long_table(ledger):
                       ("rank_cn", ["n_inst_1pct", "rank", "rank_pct"])]:
         long_frames.append(ledger[key].melt(id_vars=["discipline", "period"], value_vars=cols,
                                             var_name="metric", value_name="value").assign(source=key))
+    for m in STANDALONE_LONG_METRICS:
+        df = ledger[m]
+        # 前 1% 进入状态在内存里是 0.0/1.0 的 float；若上游给的是 bool，先归一成数值——
+        # 长表 value 列恒为 float，混进 bool 会让整列退化成 object、parquet 写不回去。
+        if df.dtypes.map(pd.api.types.is_bool_dtype).any():
+            df = df.astype(float)
+        long_frames.append(df.rename_axis("discipline").reset_index()
+                           .melt(id_vars="discipline", var_name="period", value_name="value")
+                           .assign(metric=m))
     return pd.concat(long_frames, ignore_index=True)
 
 

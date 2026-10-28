@@ -54,7 +54,8 @@ _LONG_SPEC = {
     "rank_intl": ("rank", "rank_intl"),
 }
 
-#: 宽表直读（不在 ledger_long 里的指标）：千分之一阈值。
+#: 宽表直读：千分之一阈值。它在 ledger_long 里也有一份（同一批格子），但读数一律走
+#: `wide/`——期次骨架与取值逐格相同，走宽表少一次长表过滤，且老报告口径一个字没变。
 _WIDE_ONLY = ("threshold_1permille",)
 
 #: 宽表名 → 台账工作表（`wide/<name>.parquet` 的溯源）
