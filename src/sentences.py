@@ -317,6 +317,39 @@ def updown_phrase(delta, unit="位", tiers=None):
     return tier_word(tiers, "rank_shift", 0, direction="flat")
 
 
+def _delta_phrase(delta, unit="篇"):
+    """数量较上期的增减 → 「增加14篇」/「减少11篇」/「持平」。
+
+    🔴 2026-10-28（R2-1）：旧写法是 `f"较上期总数增加{delta}篇"`，负增长时出句变成
+    「较上期总数增加-11篇」—— 一份成品报告里出现双重否定的数字（202605 期实测）。
+    方向词由**符号**决定，负号不再进正文；0 不带数字也不带单位（「持平」）。
+    """
+    if delta > 0:
+        return f"增加{delta}{unit}"
+    if delta < 0:
+        return f"减少{abs(delta)}{unit}"
+    return "持平"
+
+
+def _pct_phrase(v):
+    """百分点变动 → 「上升3.00%」/「下降3.00%」/「持平」（同 `_delta_phrase` 的口径）。"""
+    if v > 0:
+        return f"上升{v:.2f}%"
+    if v < 0:
+        return f"下降{abs(v):.2f}%"
+    return "持平"
+
+
+def _pct_pair(v1, v2):
+    """两点变动 → 「分别上升A%和B%」。
+
+    方向词只挂在第一个数上（「分别…和…」的并列读法）；第二个数为负时**必须**补
+    方向词，否则出句是「分别上升5.00%和-3.00%」（R2-1 同族）。
+    """
+    tail = _pct_phrase(v2) if v2 <= 0 else f"{v2:.2f}%"
+    return f"分别{_pct_phrase(v1)}和{tail}"
+
+
 def top3_text(groups):
     """[(count, [disc_en,...]), ...] → '化学44篇、材料科学36篇、工程学和植物与动物学同为29篇'"""
     parts = []
@@ -485,18 +518,27 @@ def build(facts, period, prev, college=None, forecast=None, targets=None, tiers=
           f"接近度为{best['prox_pct']:.2f}%，{prev_clause}较一年前上升"
           f"{MANUAL.format('去年同期升幅%')}，{years_text}")
 
+    # 「较大降幅」只在真有降幅时才说；drop=0（全学科无一降位）时给中性句，
+    # 否则出句是「继续呈现较大降幅…下降了0位」（R2-1 同族，2026-10-28）。
+    if d3["drop"]:
+        d3_p3 = (f"值得关注的是{cn_name(d3['discipline'])}国内排名继续呈现较大降幅，"
+                 f"该学科本期较{prev_m}月下降了{d3['drop']}位，国内排名为{d3['rank']}。")
+    else:
+        d3_p3 = (f"{cn_name(d3['discipline'])}国内排名本期与{prev_m}月持平，"
+                 f"国内排名为{d3['rank']}。")
     p3 = (f"本期我校{cn_name(d1)}和{cn_name(d2)}在ESI前1%接近度方面较{prev_m}月{prox_verdict}，"
-          f"分别上升{c1:.2f}%和{c2:.2f}%；值得关注的是{cn_name(d3['discipline'])}国内排名"
-          f"继续呈现较大降幅，该学科本期较{prev_m}月下降了{d3['drop']}位，国内排名为{d3['rank']}。")
+          f"{_pct_pair(c1, c2)}；{d3_p3}")
 
     if col:
-        p4 = (f"本期我校共有{p1['top_papers_now']}篇顶尖论文，较上期总数增加{p1['top_papers_delta']}篇，"
+        p4 = (f"本期我校共有{p1['top_papers_now']}篇顶尖论文，较上期总数"
+              f"{_delta_phrase(p1['top_papers_delta'])}，"
               f"分别有{col['n_subjects']}个学科来自{col['n_units']}个学院。"
               f"论文量排名前三位的学科分别是{top3_text(p1['top3_groups'])}。"
               f"本期顶尖论文量及其被引频次学院贡献度排名前三位的是："
               f"{'、'.join(u for u, _p in col['by_cites'])}。")
     else:
-        p4 = (f"本期我校共有{p1['top_papers_now']}篇顶尖论文，较上期总数增加{p1['top_papers_delta']}篇，"
+        p4 = (f"本期我校共有{p1['top_papers_now']}篇顶尖论文，较上期总数"
+              f"{_delta_phrase(p1['top_papers_delta'])}，"
               f"覆盖{MANUAL.format('学科数')}个学科。"
               f"论文量排名前三位的学科分别是{top3_text(p1['top3_groups'])}。")
 
@@ -510,11 +552,15 @@ def build(facts, period, prev, college=None, forecast=None, targets=None, tiers=
              f"排在{p1['rank_cn_uni_now']}名；本期云南大学国际排名{p1['rank_intl_now']}位，"
              f"较上期{updown_phrase(p1['rank_intl_delta'], tiers=tiers)}。")
 
+    if d3["drop"]:
+        d3_sit = (f"{cn_name(d3['discipline'])}继续呈现排名下降现象，"
+                  f"本期较{prev_m}月下降了{d3['drop']}位，国内排名为{d3['rank']}。")
+    else:
+        d3_sit = f"{cn_name(d3['discipline'])}国内排名本期与{prev_m}月持平，为{d3['rank']}。"
     situation = (f"本期云南大学22个ESI学科从国内排名上看，有{p1['rank_up']}个学科排名上升，"
                  f"有{p1['rank_down']}个学科排名下降，{p1['rank_flat']}个学科排名与{prev_m}月持平；"
                  f"本期我校{cn_name(d1)}和{cn_name(d2)}在接近度方面较{prev_m}月{prox_verdict}，"
-                 f"分别上升{c1:.2f}%和{c2:.2f}%；{cn_name(d3['discipline'])}继续呈现排名下降现象，"
-                 f"本期较{prev_m}月下降了{d3['drop']}位，国内排名为{d3['rank']}。")
+                 f"{_pct_pair(c1, c2)}；{d3_sit}")
 
     # 期号口径唯一在 `period.issue_of`：早于锚点直接报错，不给封面算假期号。
     idx, total = period_mod.issue_of(period)
@@ -540,14 +586,16 @@ def build(facts, period, prev, college=None, forecast=None, targets=None, tiers=
     if col:
         by_p = "、".join(f"{u['unit']}（{u['papers']}篇）" for u in col["by_papers"])
         by_c = "、".join(f"{u}（{p:.2f}%）" for u, p in col["by_cites"])
-        top_section = (f"本期我校共有{p1['top_papers_now']}篇顶尖论文，较上期总数增加"
-                       f"{p1['top_papers_delta']}篇，分别有{col['n_subjects']}个学科来自"
+        top_section = (f"本期我校共有{p1['top_papers_now']}篇顶尖论文，较上期总数"
+                       f"{_delta_phrase(p1['top_papers_delta'])}，"
+                       f"分别有{col['n_subjects']}个学科来自"
                        f"{col['n_units']}个学院。论文量排名前三位的学科分别是{top3_paren}。"
                        f"本期顶尖论文量排名前3位的学院分别是{by_p}；"
                        f"顶尖论文被引频次学院贡献度排名前三位的是：{by_c}。")
     else:
-        top_section = (f"本期我校共有{p1['top_papers_now']}篇顶尖论文，较上期总数增加"
-                       f"{p1['top_papers_delta']}篇，覆盖{MANUAL.format('学科数')}个学科。"
+        top_section = (f"本期我校共有{p1['top_papers_now']}篇顶尖论文，较上期总数"
+                       f"{_delta_phrase(p1['top_papers_delta'])}，"
+                       f"覆盖{MANUAL.format('学科数')}个学科。"
                        f"论文量排名前三位的学科分别是{top3_paren}。")
 
     def _dir_chg(v):

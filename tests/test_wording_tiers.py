@@ -232,6 +232,19 @@ class Test与今天逐字一致:
         # 202607 的那份 docx 生成时还没有 college_stats.json（报告写「覆盖19个学科」），
         # 故 p4 / top_section 的差异是**改动前就有的**，与措辞档位无关。
         allow = {"p4", "top_section"} if period == "202607" else set()
+        if period == "202605":
+            # 202605 的那份 docx 是 **R2-1 修复前**的产物：p4 / top_section 里写着
+            # 「较上期总数增加-11篇」—— 正是本轮修掉的 S0 缺陷（红队报告
+            # `docs/reviews/2026-10-28-ADR0014-对抗性审查-第二轮.md` R2-1）。
+            # 基线不可改（`out/` 只读、不许重跑出稿），所以这两段放过；
+            # **但必须证明差异只来自这一处**，否则等于把别的漂移一起放过。
+            allow = {"p4", "top_section"}
+            docx = sorted((repo / "out" / period).glob("报告初稿*.docx"))[-1]
+            from docx import Document                                # noqa: PLC0415
+            baseline = "\n".join(p.text for p in Document(str(docx)).paragraphs)
+            assert "较上期总数增加-11篇" in baseline, "基线里没有这条已知缺陷，豁免站不住脚"
+            assert "较上期总数减少11篇" in sentences.build_period(
+                repo / "out" / period)["p4"], "机器稿没修好 R2-1，豁免站不住脚"
         assert bad == len(diffs) and diffs <= allow, "\n".join(lines)
 
     def test_五期用词都是表里的词(self, repo):
