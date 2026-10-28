@@ -215,7 +215,7 @@ export function topPapersOption(row: NonNullable<DisciplineCharts['top_papers']>
   } as unknown as EChartsOption
 }
 
-/* ---------- ⑥ Q1–Q4 分区占比（三实体分组柱，逐柱标数） ---------- */
+/* ---------- ⑥ Q1–Q4 分区占比（三实体分组柱；数值不印，点击/悬停看） ---------- */
 
 export function qDistOption(row: NonNullable<DisciplineCharts['q_dist']>): EChartsOption {
   const flat = row.entities.flatMap((e) => e.values).filter((v): v is number => v != null)
@@ -223,22 +223,22 @@ export function qDistOption(row: NonNullable<DisciplineCharts['q_dist']>): EChar
   return {
     textStyle: baseText,
     legend: legendTop({ itemWidth: 12, itemHeight: 8 }),
-    tooltip: { trigger: 'axis', confine: true, axisPointer: { type: 'shadow' }, valueFormatter: (v: Num) => (v == null ? '—' : v + '%') },
-    grid: { left: 42, right: 12, top: 50, bottom: 24 },
+    // rick 2026-10-28：柱上不印数值（窄槽位怎么排都挤），
+    // 点一下/悬停即看——triggerOn 同时支持鼠标移动与点击
+    tooltip: {
+      trigger: 'axis', confine: true, triggerOn: 'mousemove|click',
+      axisPointer: { type: 'shadow' },
+      valueFormatter: (v: Num) => (v == null ? '—' : v + '%'),
+    },
+    grid: { left: 42, right: 12, top: 30, bottom: 24 },
     xAxis: catAxis(['Q1', 'Q2', 'Q3', 'Q4'], 0, 11),
     yAxis: valAxis({
-      // 顶端留标签位：三系列标签逐级抬 16px（见下），最高柱上方要有余量
-      max: Math.min(100, Math.ceil((hi + 14) / 20) * 20),
+      max: Math.ceil(hi / 20) * 20,
       axisLabel: { formatter: '{value}%', color: INK2, fontSize: 10.5, fontFamily: FONT },
     }),
     series: row.entities.map((e) => ({
       name: e.name, type: 'bar', data: e.values, barGap: '12%', barCategoryGap: '55%',
       itemStyle: { color: e.color },
-      // 三系列标签跨系列不参与统一布局（labelLayout 只算本系列）——
-      // 竖排标签（rotate 90）：宽 12px < 柱距 28px，结构性永不互撞；
-      // 水平/斜排/逐级车道都有数据死角（柱高差≈车道距时必撞），竖排无。
-      label: { ...allLabels((v) => (v == null ? '' : v + '%')),
-               fontSize: 9.5, rotate: 90 }, labelLayout: LY,
     })),
   } as unknown as EChartsOption
 }
