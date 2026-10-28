@@ -90,8 +90,8 @@ export function rankPctOption(row: RankPctRow): EChartsOption {
     textStyle: baseText,
     legend: legendTop(),
     tooltip: { trigger: 'axis', confine: true, valueFormatter: (v: Num) => fmt2(v) },
-    grid: { left: 56, right: 18, top: 30, bottom: 24 },
-    xAxis: catAxis(row.periods),
+    grid: { left: 56, right: 18, top: 30, bottom: 38 },    // 斜排期次需要额外底部空间
+    xAxis: catAxis(row.periods, 32, 10),
     yAxis: valAxis({
       inverse: true,                                  // 百分位越小＝排名越好＝越靠上
       min: Math.floor((Math.min(...yv) - pad) * 100) / 100,
@@ -122,8 +122,8 @@ export function cnciOption(row: NonNullable<DisciplineCharts['cnci']>): EChartsO
     textStyle: baseText,
     legend: legendTop(),
     tooltip: { trigger: 'axis', confine: true, valueFormatter: (v: Num) => (v == null ? '—' : v.toFixed(2)) },
-    grid: { left: 40, right: 16, top: 30, bottom: 24 },
-    xAxis: catAxis(row.periods),
+    grid: { left: 40, right: 16, top: 30, bottom: 38 },    // 斜排期次需要额外底部空间
+    xAxis: catAxis(row.periods, 32, 10),
     yAxis: valAxis({
       min: Math.floor((lo - pad) * 10) / 10, max: Math.ceil((hi + pad) * 10) / 10,
       axisLabel: { formatter: (v: number) => fmtG(v), color: INK2, fontSize: 10.5, fontFamily: FONT },
@@ -149,8 +149,8 @@ export function papersNewOption(row: NonNullable<DisciplineCharts['papers_new']>
     textStyle: baseText,
     legend: legendTop({ left: 'right' }),
     tooltip: { trigger: 'axis', confine: true, valueFormatter: fmtInt },
-    grid: { left: 40, right: 16, top: 30, bottom: 24 },
-    xAxis: catAxis(row.periods),
+    grid: { left: 40, right: 16, top: 30, bottom: 38 },    // 斜排期次需要额外底部空间
+    xAxis: catAxis(row.periods, 32, 10),
     yAxis: valAxis({
       min: (v: { min: number }) => Math.min(0, v.min),
       max: Math.ceil(hi / 10) * 10 + 10,
@@ -173,8 +173,8 @@ export function citesThresholdOption(
     textStyle: baseText,
     legend: legendTop(),
     tooltip: { trigger: 'axis', confine: true, valueFormatter: fmtInt },
-    grid: { left: 62, right: 18, top: 30, bottom: 24 },
-    xAxis: catAxis(row.periods),
+    grid: { left: 62, right: 18, top: 30, bottom: 38 },    // 斜排期次需要额外底部空间
+    xAxis: catAxis(row.periods, 32, 10),
     yAxis: valAxis({
       axisLabel: { formatter: (v: number) => Math.round(v).toLocaleString('en-US'), color: INK2, fontSize: 10.5, fontFamily: FONT },
     }),
@@ -200,8 +200,8 @@ export function topPapersOption(row: NonNullable<DisciplineCharts['top_papers']>
     textStyle: baseText,
     legend: legendTop({ left: 'right' }),
     tooltip: { trigger: 'axis', confine: true, valueFormatter: fmtInt },
-    grid: { left: 36, right: 16, top: 30, bottom: 24 },
-    xAxis: catAxis(row.periods),
+    grid: { left: 36, right: 16, top: 30, bottom: 38 },    // 斜排期次需要额外底部空间
+    xAxis: catAxis(row.periods, 32, 10),
     yAxis: valAxis({
       // 原件是截断轴（下界跟本学科最小值走），保留这个观感
       min: Math.max(0, Math.floor(lo - pad)), max: Math.ceil(hi + pad),
@@ -233,7 +233,7 @@ export function qDistOption(row: NonNullable<DisciplineCharts['q_dist']>): EChar
     series: row.entities.map((e) => ({
       name: e.name, type: 'bar', data: e.values, barGap: '12%', barCategoryGap: '55%',
       itemStyle: { color: e.color },
-      label: { ...allLabels((v) => (v == null ? '' : v + '%')), fontSize: 9.5 }, labelLayout: LX,
+      label: { ...allLabels((v) => (v == null ? '' : v + '%')), fontSize: 9.5 }, labelLayout: LY,
     })),
   } as unknown as EChartsOption
 }
@@ -326,7 +326,7 @@ export function rankTableOption(row: RankTableRow): EChartsOption {
     title: { text: '我校ESI排名情况', left: 'center', top: 0,
              textStyle: { color: '#1F1F1F', fontSize: 13, fontFamily: FONT, fontWeight: 600 } },
     grid: { left: 46, right: 52, top: 32, bottom: 44 },
-    xAxis: catAxis(row.periods, 0, 10),
+    xAxis: catAxis(row.periods, 32, 10),
     yAxis: [
       { type: 'value', inverse: true, min: 120, max: 170, interval: 5,
         axisLabel: { color: INK2, fontSize: 10, fontFamily: FONT },
