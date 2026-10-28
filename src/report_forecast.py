@@ -180,6 +180,24 @@ def generate(period_dir, choice_path=None, period_override=None) -> int:
         raise
 
 
+def _series_snapshot(periods, best, hist, model_hist, fut, labels, colors) -> dict:
+    """`chart_forecast` 画进图里的序列原样转 JSON 可存格式（NaN→null，浮点保持原值）。"""
+    def arr(a):
+        return [None if not np.isfinite(float(v)) else float(v) for v in a]
+
+    return {
+        "hist_periods": [str(p) for p in periods],
+        "fut_periods": [str(r["period"]) for r in best["forecast"]],
+        "columns": [
+            {"actual_label": labels[2 * j], "model_label": labels[2 * j + 1],
+             "actual_color": colors[2 * j], "model_color": colors[2 * j + 1],
+             "actual": arr(hist[j]), "fitted": arr(model_hist[j]),
+             "future": arr(fut[j])}
+            for j in range(2)
+        ],
+    }
+
+
 def _generate(period_dir, choice_path=None, period_override=None) -> int:
     """渲染预测图；返回张数（异常向上抛，由调用方决定降级策略）。
 
@@ -258,6 +276,10 @@ def _generate(period_dir, choice_path=None, period_override=None) -> int:
                 "rolling_mape": round(float(best["rolling_mape"]), 2),
                 "first_crossing": best["first_crossing"],
                 "png": png.name,
+                # 画了什么就导什么（2026-10-28 前端 ECharts 化）：把画进图的序列原样
+                # 落档，图册交互版与 PNG 同一批数字；拟合段 NaN→null（前端连点画虚线）。
+                "series": _series_snapshot(periods, best, hist, model_hist, fut,
+                                           labels, colors),
             })
 
     meta = {"period": period, **_choice_provenance(period_dir, period, choice_path),

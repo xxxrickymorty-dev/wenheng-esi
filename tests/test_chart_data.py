@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import json
 import pathlib
 import sys
 
@@ -22,6 +23,7 @@ if str(ROOT) not in sys.path:
 
 import charts
 import chart_data
+import period as period_mod
 
 OUT = ROOT / "out" / "202607"
 
@@ -77,3 +79,102 @@ def test_build_matches_independent_recomputation_on_real_ledger():
         want = [None if pd.isna(v) else float(v) * 100
                 for v in pivot.loc[disc, row["periods"]].astype(float)]
         assert row["series"]["intl"] == want, disc
+
+
+# ---------- 全图型对账（2026-10-28 前端全量 ECharts 化：每个 builder 独立重算对账） ----------
+
+def test_full_build_keys_on_real_ledger():
+    if not OUT.is_dir():
+        skip_unless("out/202607 不存在（历史产物不入库，属正常）", lambda: OUT.is_dir())
+    data = chart_data.build(OUT)
+    assert data["schema"] == 2
+    n_disc = len(data["disciplines"])
+    assert n_disc == 16, n_disc
+    for key in ("cnci", "papers_new", "cites_threshold", "top_papers", "q_dist"):
+        assert all(key in row for row in data["disciplines"].values()), key
+    ov = data["_overview"]
+    for key in ("1pct", "1permille", "rank_table", "trend_table",
+                "top_by_subject", "top_by_year", "college_cites", "college_papers"):
+        assert key in ov, key
+    # q_dist 实体名随原件外显（数据叫「全球」，图上叫「国际」）
+    ents = next(iter(data["disciplines"].values()))["q_dist"]["entities"]
+    assert [e["name"] for e in ents] == ["云南大学", "中国大陆", "国际"]
+
+
+def test_papers_new_is_diff_of_papers_on_real_ledger():
+    if not OUT.is_dir():
+        skip_unless("out/202607 不存在（历史产物不入库，属正常）", lambda: OUT.is_dir())
+    data = chart_data.build(OUT)
+    papers = pd.read_parquet(OUT / "wide" / "papers.parquet")
+    disc = "Plant & Animal Science"
+    row = data["disciplines"][disc]["papers_new"]
+    # 与 render_all 同一窗口口径取列，再做同一差分
+    filled = period_mod.filled({"total_cites": pd.read_parquet(OUT / "wide" / "total_cites.parquet")})
+    filled = [c for c in filled if c <= "202607"]
+    ps = [p for p in filled[-8:] if p in papers.columns]
+    want = papers.loc[disc, ps].astype(float).diff().iloc[1:]
+    assert row["periods"] == [str(c) for c in want.index]
+    assert row["values"] == pytest.approx(
+        [None if pd.isna(x) else float(x) for x in want])
+
+
+def test_overview_1pct_matches_ratio_recompute_on_real_ledger():
+    if not OUT.is_dir():
+        skip_unless("out/202607 不存在（历史产物不入库，属正常）", lambda: OUT.is_dir())
+    data = chart_data.build(OUT)
+    cites = pd.read_parquet(OUT / "wide" / "total_cites.parquet")
+    thr = pd.read_parquet(OUT / "wide" / "threshold_1pct.parquet")
+    ratio = (cites["202607"] / thr["202607"] * 100).dropna().sort_values()
+    items = data["_overview"]["1pct"]["items"]
+    assert [i["name_cn"] for i in items] == [charts._cn(d) for d in ratio.index]
+    assert [i["ratio"] for i in items] == pytest.approx([float(r) for r in ratio])
+    # 差距段＝到 100% 的距离，<100% 才有（clip 口径）
+    assert items[-1]["gap"] == pytest.approx(max(0.0, 100 - float(ratio.iloc[-1])))
+
+
+def test_trend_table_picks_match_shared_selector_on_real_ledger():
+    if not OUT.is_dir():
+        skip_unless("out/202607 不存在（历史产物不入库，属正常）", lambda: OUT.is_dir())
+    data = chart_data.build(OUT)
+    cites = pd.read_parquet(OUT / "wide" / "total_cites.parquet")
+    thr = pd.read_parquet(OUT / "wide" / "threshold_1permille.parquet")
+    ent = pd.read_parquet(OUT / "wide" / "entered_1pct.parquet")
+    picked, periods, picks = charts.trend_picks(cites, thr, end_period="202607",
+                                                n=7, top_k=4, entered=ent)
+    row = data["_overview"]["trend_table"]
+    assert row["periods"] == periods
+    assert [s["disc"] for s in row["series"]] == picks       # 顺序＝进 1% 先后
+    assert row["baseline"] == 100.0
+    for s in row["series"]:
+        assert len(s["values"]) == len(periods)
+        assert s["color"] in chart_data.TREND_COLORS
+
+
+def test_college_items_merge_small_into_other():
+    stats = {"units": [
+        {"unit": "A 学院", "cites": 900, "papers": 60},
+        {"unit": "B 学院", "cites": 80, "papers": 8},
+        {"unit": "C 中心", "cites": 10, "papers": 1},
+        {"unit": "D 所", "cites": 10, "papers": 1},
+    ]}
+    items = chart_data._college_items(stats, "cites")
+    # 1000 总量里 <1.5%（<15）的 C/D 合并，其余按原样；「其他」恒为中性灰
+    assert [i["name"] for i in items] == ["A 学院", "B 学院", "其他（2 个单位）"]
+    assert items[-1]["color"] == "#D9D9D9"
+    assert items[-1]["value"] == pytest.approx(20.0)
+    assert chart_data._college_items({"units": []}, "cites") is None
+    assert chart_data._college_items(None, "cites") is None
+
+
+def test_forecast_payload_skips_legacy_entries_without_series(tmp_path):
+    legacy = {"charts": [
+        {"png": "forecast_1_cites.png", "subject": "化学", "kind": "cites"},
+        {"png": "forecast_2_cites.png", "subject": "植物与动物学", "kind": "cites",
+         "series": {"hist_periods": ["202501"], "fut_periods": ["202503"],
+                    "columns": [{"actual": [1.0], "fitted": [None], "future": [2.0]}]}},
+    ]}
+    (tmp_path / "forecast_charts.json").write_text(
+        json.dumps(legacy, ensure_ascii=False), encoding="utf-8")
+    payload = chart_data._forecast_payload(tmp_path)
+    assert set(payload) == {"forecast_2_cites"}     # 老期次条目无序列 → 不导出（前端回退 PNG）
+    assert payload["forecast_2_cites"]["fut_periods"] == ["202503"]
