@@ -3,6 +3,8 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+# 沙箱把 TMP 指到不可写目录时，pytest 会把 basetemp 退到仓库内（pytest-of-<user>/）
+pytest-of-*/
 
 # ---------- 机密 ----------
 server/.env

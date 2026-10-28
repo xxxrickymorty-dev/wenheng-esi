@@ -242,7 +242,8 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
         outcome = _attempt.attempt(
             draft.task, system=_system_for(cap.id), ability=cap.id,
             anchored=cap.id not in ("qa", "review"),
-            evidence=draft.evidence, tools=(),
+            evidence=draft.evidence, tools=draft.tools, execute=draft.execute,
+            max_steps=draft.max_steps,
             rule_protected=draft.rule_protected, mapping=draft.mapping)
         if outcome.attempted:
             if outcome.text is None:
@@ -287,7 +288,9 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
                     egress=(outcome.egress if outcome is not None else None),
                     elapsed_ms=(outcome.elapsed_ms if outcome is not None else None),
                     t0=t0, fallback_detail=fallback_detail, data=draft.data,
-                    plan=draft.plan, record=record, receipts=draft.receipts)
+                    plan=draft.plan, record=record,
+                    receipts=draft.receipts + tuple(
+                        (outcome.receipts if outcome is not None else ()) or ()))
 
 
 def capabilities(actor=None) -> tuple[CapabilityInfo, ...]:

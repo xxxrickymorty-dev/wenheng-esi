@@ -15,12 +15,14 @@ NUM = shield_primitives.NUM
 MARK = shield_primitives.MARK
 
 
-def numberize(texts) -> tuple[list[str], dict, list]:
+def numberize(texts, start: int = 0) -> tuple[list[str], dict, list]:
     """编号的**唯一实现**：多段文本共用一套连续编号。
 
     返回 `(受保护各段, mapping, hits)`；`hits = [(段号, 段内位置, k, 原值), ...]`
     按扫描序——调用方在同一遍里同时拿到「哪一段哪一个数」与「它是第几号」，
     来源注册不再需要第二次扫描、也不再靠顺序约定对齐。
+    `start`＝编号起点偏移（默认 0＝从 1 起）：续接场景（`NumberedText.append`，
+    qa 原生工具环）从既有最大 k 续号——既有签名向后兼容。
     `protect` / `protect_chunks` 都是它的薄委托。
     """
     mapping: dict = {}
@@ -28,7 +30,7 @@ def numberize(texts) -> tuple[list[str], dict, list]:
     hits: list = []
 
     def repl(m, ti):
-        k = str(len(mapping) + 1)
+        k = str(start + len(mapping) + 1)
         mapping[k] = m.group(0)
         hits.append((ti, m.start(), k, m.group(0)))
         return f"[[{k}]]"

@@ -15,7 +15,7 @@ import pytest
 
 import ai
 from ai import _config
-from ai._brain import OpenAIBrain, RuleBrain
+from ai._brain import Brief, BrainError, OpenAIBrain, RuleBrain
 from _ai_helpers import raw_digits
 
 FAIL = {
@@ -185,3 +185,55 @@ def test_run经env装配_走真适配器(tmp_path, fake, monkeypatch):
         ans = ai.run("diagnose", "202607", payload={"failure": FAIL}, actor="system")
     assert ans.mode == "model" and ans.backend == "openai:deepseek-flash"
     assert len(fake.requests) == 1
+
+
+# ============================================================ 原生工具环（2026-10-28 fc 定稿）
+def _tool_brief():
+    return Brief(ability="qa", system="s", task="问",
+                 tools=({"type": "function",
+                         "function": {"name": "query_series", "description": "查走势"}},))
+
+
+def test_带工具_payload带tools_响应tool_calls解码(fake):
+    """Brief.tools 非空 → payload 带 tools；响应 message.tool_calls → Turn(calls)，
+    arguments 解成 dict，text 与 calls 互斥。"""
+    fake.raw = json.dumps({"choices": [{"message": {
+        "content": None,
+        "tool_calls": [{"id": "c1", "type": "function",
+                        "function": {"name": "query_series",
+                                     "arguments": '{"metric": "proximity", "disc": "Chemistry"}'}}]}}]})
+    turn = brain(fake).think(_tool_brief())
+    assert turn.text is None, "有 calls 则 text 为 None"
+    assert turn.calls == ({"name": "query_series",
+                           "arguments": {"metric": "proximity", "disc": "Chemistry"}},)
+    body = fake.requests[0]["json"]
+    assert body["tools"] == [dict(t) for t in _tool_brief().tools], "外发带工具 schema"
+
+
+def test_无工具_payload不带tools_键都不出现(fake):
+    fake.reply = lambda req: "答"
+    brain(fake).think(Brief(ability="diagnose", system="s", task="t"))
+    assert "tools" not in fake.requests[0]["json"], "无工具不发 tools 键"
+
+
+def test_空arguments_解成空dict(fake):
+    fake.raw = json.dumps({"choices": [{"message": {"tool_calls": [
+        {"function": {"name": "query_overall_rank", "arguments": ""}}]}}]})
+    turn = brain(fake).think(_tool_brief())
+    assert turn.calls == ({"name": "query_overall_rank", "arguments": {}},)
+
+
+def test_坏arguments_JSON_报bad_response(fake):
+    fake.raw = json.dumps({"choices": [{"message": {"tool_calls": [
+        {"function": {"name": "query_series", "arguments": "这不是JSON"}}]}}]})
+    with pytest.raises(BrainError) as ei:
+        brain(fake).think(_tool_brief())
+    assert ei.value.code == "bad_response"
+
+
+def test_工具调用缺name_报bad_response(fake):
+    fake.raw = json.dumps({"choices": [{"message": {"tool_calls": [
+        {"function": {"arguments": "{}"}}]}}]})
+    with pytest.raises(BrainError) as ei:
+        brain(fake).think(_tool_brief())
+    assert ei.value.code == "bad_response"

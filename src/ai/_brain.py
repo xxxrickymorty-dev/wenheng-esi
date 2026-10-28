@@ -84,7 +84,8 @@ def _user_content(brief: Brief) -> str:
 class RuleBrain:
     """规则适配器：进程内、确定性、**演示站永远走它**（无 key 物理上无法外发）。
 
-    它不做业务逻辑——只是把构建器已备好的规则版候选原样交回（回落物先存在，D-ports O3）。
+    它不做业务逻辑——只是把构建器已备好的规则版候选原样交回（回落物先存在，D-ports O3）；
+    `Brief.tools` 原样忽略（规则部署物理上无工具环）。
     """
 
     name = "rule"
@@ -102,7 +103,10 @@ class OpenAIBrain:
       不做半句模型半句规则（SPEC §2.5）。
     - 外发预算：字符上限（`max_egress_chars`），超限**不发包**直接回落（code=egress_budget），
       预算内只发占位面（Brief 构造已保证零数字）。
-    - diagnose 是锚定型改写，本适配器不发工具（function calling 随 qa 落地，D2 之后）。
+    - 原生工具环（2026-10-28 fc 定稿）：`Brief.tools` 非空 → payload 带 `tools`
+      （OpenAI function schema，只有名字/描述，零数字）；响应 `message.tool_calls` →
+      `Turn(calls=({"name", "arguments"(已解码 dict)}, …))`（text 与 calls 互斥）。
+      单发语义不变——工具环的循环、守卫与回落都在边界（`_attempt`），本适配器只翻译协议。
     """
 
     is_rule = False
@@ -138,6 +142,8 @@ class OpenAIBrain:
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
         }
+        if brief.tools:
+            payload["tools"] = [dict(t) for t in brief.tools]
         req = urllib.request.Request(
             f"{self.base_url}/chat/completions",
             data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
@@ -157,7 +163,31 @@ class OpenAIBrain:
         except (json.JSONDecodeError, UnicodeDecodeError) as e:
             raise BrainError("响应不是合法 JSON", code="bad_response") from e
         try:
-            content = data["choices"][0]["message"].get("content")
-        except (KeyError, IndexError, TypeError) as e:
+            message = data["choices"][0]["message"]
+            content = message.get("content")
+            raw_calls = message.get("tool_calls")
+        except (KeyError, IndexError, TypeError, AttributeError) as e:
             raise BrainError("响应缺 choices/content", code="bad_response") from e
+        if raw_calls:
+            return Turn(calls=tuple(self._decode_call(c) for c in raw_calls))
         return Turn(text=str(content or ""))
+
+    @staticmethod
+    def _decode_call(item) -> dict:
+        """一条 tool_calls → `{"name", "arguments"(dict)}`；形状坏/参数坏 JSON → 协议失败。"""
+        try:
+            fn = item.get("function") or {}
+            name = str(fn["name"])
+            raw = fn.get("arguments")
+        except (KeyError, TypeError, ValueError, AttributeError) as e:
+            raise BrainError("工具调用缺 function/name", code="bad_response") from e
+        if isinstance(raw, dict):
+            args = raw                                   # 有的 provider 直发对象
+        else:
+            try:
+                args = json.loads(raw) if str(raw or "").strip() else {}
+            except (TypeError, ValueError) as e:
+                raise BrainError("工具调用参数不是合法 JSON", code="bad_response") from e
+        if not isinstance(args, dict):
+            raise BrainError("工具调用参数不是对象", code="bad_response")
+        return {"name": name, "arguments": args}

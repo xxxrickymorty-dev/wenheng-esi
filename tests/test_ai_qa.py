@@ -707,3 +707,165 @@ def test_进度回调_模型轮有规则轮无(tmp_path, monkeypatch):
         ai.run("qa", "202607", payload={"question": "化学的接近度", "history": []},
                actor="admin")
     assert not any(str(s).startswith("model:") for s in seen), seen
+
+
+# ============================================================ 原生工具环（2026-10-28 fc 定稿）
+def _cite_last_evidence(b):
+    """写作轮替身：引用工具结果（最后一段证据）里的全部标记——工具结果是 fact，不算越题。"""
+    marks = re.findall(r"\[\[\d+\]\]", b.evidence[-1] if b.evidence else "")
+    assert marks, "工具结果里应有占位标记（执行器已注册编号）"
+    return Turn(text="化学的接近度：" + "、".join(marks) + "。")
+
+
+def _cite_static(b):
+    """写作轮替身：只引静态证据段（不引工具结果）。"""
+    for seg in b.evidence:
+        m = re.search(r"\[\[\d+\]\]", seg)
+        if m:
+            return Turn(text=f"答 {m.group(0)}。")
+    return Turn(text="无法依据本期数据回答。")
+
+
+class Test原生工具环:
+    """qa 写作轮原生 function calling：模型只选（工具名+参数）不造；
+    值只从引擎一条缝进来；出网零数字由构造保证；每次能力调用一条留痕。
+
+    问句用规则规划器覆盖得到的（「化学的接近度…」）——规划轮不碰替身，
+    ScriptedBrain 的第一拍留给写作轮的工具调用。
+    """
+
+    def _qa_tool(self, root, calls_then_answer, question="化学的接近度最近几期怎么变的",
+                 history=None):
+        brain = ScriptedBrain(calls_then_answer)
+        ans = qa(root, question=question, brain=brain, history=history)
+        return ans, brain
+
+    def test_有台账视图_挂四件工具_schema零数字(self, tmp_path, monkeypatch):
+        root = _seed_ledger(tmp_path, monkeypatch)
+        # 替身必须引用本期事实（qa 是自由作答型：只复述问句＝越题，会回落规则版）。
+        ans, brain = self._qa_tool(root, [_cite_static])
+        assert ans.mode == "model"
+        tools = brain.briefs[0].tools
+        assert tools, "有台账视图就要挂工具"
+        names = [t["function"]["name"] for t in tools]
+        assert names == ["query_series", "query_at", "query_events", "query_overall_rank"]
+        blob = json.dumps(tools, ensure_ascii=False)
+        assert not raw_digits(blob), f"工具 schema 必须零数字：{blob[:120]!r}"
+        metric_enum = tools[0]["function"]["parameters"]["properties"]["metric"]["enum"]
+        from ai import _plan
+        assert set(metric_enum) == {a for a, _c, _cn in _plan.MODEL_METRICS}
+        assert "Chemistry" in tools[0]["function"]["parameters"]["properties"]["disc"]["enum"]
+        for t in brain.briefs[0].egress_texts():
+            assert not raw_digits(t), f"外发含数字原值：{t[:80]!r}"
+
+    def test_无台账视图_不挂工具_现状不变(self, tmp_path):
+        seed_period(tmp_path)
+        ans, brain = self._qa_tool(tmp_path, [_cite_static], question="顶尖论文")
+        assert brain.briefs[0].tools == (), "视图拿不到就不挂工具"
+        assert ans.mode == "model" and ans.receipts == ()
+
+    def test_合法查询_工具环全链_数字到格_回执两头(self, tmp_path, monkeypatch):
+        root = _seed_ledger(tmp_path, monkeypatch)
+        call = {"name": "query_series",
+                "arguments": {"metric": "proximity", "disc": "Chemistry"}}
+        ans, brain = self._qa_tool(root, [Turn(calls=(call,)), _cite_last_evidence])
+        assert ans.mode == "model" and "676.06" in ans.text
+        # 数字注册进同一 mapping：used_by 指到台账格
+        src = [s for s in ans.sources if s.value == "676.06"]
+        assert src and src[0].kind == "ledger_cell"
+        assert src[0].pointer == "台账#接近度/化学/202607"
+        # 回执：界面面有摘要（零数字），记录面只剩 digest
+        assert len(ans.receipts) == 1
+        r = ans.receipts[0]
+        assert (r.tool, r.label, r.ok, r.refused) == ("query_series", "查台账", True, False)
+        assert r.summary == "查 化学·接近度" and not raw_digits(r.summary)
+        assert r.args_digest
+        rec = records(root)[0]
+        assert rec["mode"] == "model" and rec["fallback"] is None
+        tools_rec = rec["tools"]
+        assert len(tools_rec) == 1 and tools_rec[0]["tool"] == "query_series"
+        assert "summary" not in tools_rec[0] and tools_rec[0]["summary_digest"]
+        # 工具结果文本必须是占位面（外发零数字）
+        assert not raw_digits(brain.briefs[1].evidence[-1])
+        assert "618.42" not in "\n".join(brain.briefs[1].evidence), "原值不外发"
+
+    def test_单期at_系统补当期(self, tmp_path, monkeypatch):
+        root = _seed_ledger(tmp_path, monkeypatch)
+        call = {"name": "query_at",
+                "arguments": {"metric": "proximity", "disc": "Chemistry"}}
+        ans, brain = self._qa_tool(root, [Turn(calls=(call,)), _cite_last_evidence])
+        assert ans.mode == "model"
+        assert "单期值" in brain.briefs[1].evidence[-1], "at 段进证据（期次由系统补）"
+        assert any(s.pointer == "台账#接近度/化学/202607" for s in ans.sources)
+
+    def test_越权指标_拒不回落_模型可继续作答(self, tmp_path, monkeypatch):
+        root = _seed_ledger(tmp_path, monkeypatch)
+        call = {"name": "query_series",
+                "arguments": {"metric": "drop_table", "disc": "Chemistry"}}
+        ans, brain = self._qa_tool(root, [Turn(calls=(call,)), _cite_static])
+        assert ans.mode == "model", "拒答不是回落：模型收到拒答句后仍可作答"
+        assert "该查询不在可查范围" in brain.briefs[1].evidence[-1]
+        assert not raw_digits(brain.briefs[1].evidence[-1]), "拒答句零数字"
+        r = ans.receipts[0]
+        assert r.ok is False and r.refused is True
+        rec = records(root)[0]
+        assert rec["fallback"] is None and rec["tools"][0]["refused"] is True
+
+    def test_越权学科_同样拒(self, tmp_path, monkeypatch):
+        root = _seed_ledger(tmp_path, monkeypatch)
+        call = {"name": "query_series",
+                "arguments": {"metric": "papers", "disc": "NoSuchDisc"}}
+        ans, _ = self._qa_tool(root, [Turn(calls=(call,)), _cite_static])
+        assert ans.mode == "model"
+        assert ans.receipts[0].refused is True
+
+    def test_未知工具名_拒(self, tmp_path, monkeypatch):
+        root = _seed_ledger(tmp_path, monkeypatch)
+        call = {"name": "drop_table", "arguments": {}}
+        ans, _ = self._qa_tool(root, [Turn(calls=(call,)), _cite_static])
+        assert ans.receipts[0].refused is True
+
+    def test_同规格去重_复用已注册文本不再注册(self, tmp_path, monkeypatch):
+        root = _seed_ledger(tmp_path, monkeypatch)
+        call = {"name": "query_series",
+                "arguments": {"metric": "proximity", "disc": "Chemistry"}}
+        ans, brain = self._qa_tool(root, [Turn(calls=(call, call)), _cite_last_evidence])
+        assert ans.mode == "model"
+        b2 = brain.briefs[1]
+        assert b2.evidence[-2] == b2.evidence[-1], "同规格第二次返回同一占位文本"
+        # 去重＝第二次没长出新编号：总数 == 原有证据的编号 + 工具结果那一段的编号
+        # （若重新注册，这里会多出一组新号——memo 命中必须原样复用已注册文本）。
+        marks_two = re.findall(r"\[\[\d+\]\]", b2.evidence[-1])
+        base = "\n".join(b2.evidence[:-2])
+        marks_all = re.findall(r"\[\[\d+\]\]", "\n".join(b2.evidence))
+        assert len(set(marks_all)) == len(set(re.findall(r"\[\[\d+\]\]", base))) + len(
+            set(marks_two)), "去重不再注册新编号"
+        assert len(ans.receipts) == 2 and all(r.ok for r in ans.receipts)
+
+    def test_末轮仍calls_回落规则版(self, tmp_path, monkeypatch):
+        root = _seed_ledger(tmp_path, monkeypatch)
+        call = {"name": "query_series",
+                "arguments": {"metric": "proximity", "disc": "Chemistry"}}
+        ans, _ = self._qa_tool(root, [Turn(calls=(call,)), Turn(calls=(call,))])
+        assert ans.mode == "rule" and ans.text == ans.rule_text
+        assert "连续请求工具未作答" in ans.notice
+        assert records(root)[0]["fallback"] == "calls_unsupported"
+
+    def test_规则部署_工具挂了但物理不执行(self, tmp_path, monkeypatch):
+        root = _seed_ledger(tmp_path, monkeypatch)
+        ans = qa(root, question="化学的接近度")     # 不注 brain → RuleBrain
+        assert ans.mode == "rule" and ans.receipts == ()
+        assert "台账《接近度》表" in ans.text, "规则版照旧（台账段走规划器）"
+
+    def test_越题判定_只引工具结果不算越题(self, tmp_path, monkeypatch):
+        root = _seed_ledger(tmp_path, monkeypatch)
+        call = {"name": "query_series",
+                "arguments": {"metric": "proximity", "disc": "Chemistry"}}
+
+        def only_tool(b):
+            k = re.findall(r"\[\[\d+\]\]", b.evidence[-1])[0]
+            return Turn(text=f"答 {k}。")
+
+        ans, _ = self._qa_tool(root, [Turn(calls=(call,)), only_tool])
+        assert ans.mode == "model", "工具结果是 fact：只引它不算越题"
+        assert records(root)[0]["fallback"] is None
