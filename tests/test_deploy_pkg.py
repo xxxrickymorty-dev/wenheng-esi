@@ -68,6 +68,13 @@ def _fake_repo(tmp_path):
                 "out/_state/backups/wenheng-20261022-075735.sqlite-shm"):
         _mkfile(root / rel)
     _mkdb(root / "out/_state" / "wenheng.sqlite")
+    # AI 问数库：`preflight` 会核它存在、且期次与演示期一致——打包缺了它，
+    # 演示站进「AI 问数」只有一句 503（2026-10-28 加）。这里造同形的库。
+    con = sqlite3.connect(str(_mkdb(root / "out" / "_aidata" / "aiqa.sqlite")))
+    con.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('period', ?)",
+                (pkg.DATA_PERIOD,))
+    con.commit()
+    con.close()
     return root
 
 

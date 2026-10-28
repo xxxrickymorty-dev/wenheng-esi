@@ -121,6 +121,13 @@ def _disc_map(con) -> dict[str, str]:
 def _metric_of(text: str) -> str | None:
     """问句 → 指标（按别名长度降序做包含，防「前1%阈值」被「阈值」截胡）。"""
     low = text.lower()
+    # 「‰ / 千分」是强信号，必须先判：问「前1‰被引阈值」时句子里同时含「被引阈值」，
+    # 只按别名长度会被它截胡成 1% 阈值（2026-10-28 实踩）。带「排名/千分位」的是
+    # 千分位排名，其余一律按 1‰ 被引阈值。
+    if "‰" in text or "千分" in text:
+        if "排名" in text or "千分位" in text:
+            return "permille_rank"
+        return "threshold_1permille"
     for k in sorted(_METRIC_ALIAS, key=len, reverse=True):
         if k in low or k in text:
             return _METRIC_ALIAS[k]
@@ -221,6 +228,14 @@ def plan(question: str, con) -> dict:
 
     # ② 学科×指标：单学科 → series / at；多学科或「排名/对比」→ compare
     if metric and hit_discs:
+        # 千分位排名只有报告大表里有（facts 没有这条历史序列）→ 整行走 table2，
+        # 否则会被 ② 送进 series、再被 metric 白名单挡下，报一句「不在白名单」。
+        if metric == "permille_rank":
+            specs.append({"kind": "table2", "discs": hit_discs,
+                          "period": periods[-1] if periods else
+                          (filled[-1] if filled else "")})
+            return {"specs": specs, "origin": "rule",
+                    "note": "千分位排名只在当期报告大表里，按大表取（无历史序列）"}
         ps = periods or [filled[-1]] if filled else []
         if len(hit_discs) == 1 and ("趋势" in q or "走势" in q or "变化" in q
                                     or "历期" in q or "以来" in q or not periods):
@@ -346,6 +361,17 @@ def execute(con, specs: list[dict]) -> dict:
             discs = spec.get("discs")
             sql, args = _table2_join(period, discs)
             got = [dict(r) for r in con.execute(sql, args)]
+            if not got:
+                # `report_table2` 只存**建库那一期**（facts 是全量历史），而 plan 默认拿
+                # facts 最新期 → 问「化学的大表」会查空（2026-10-28 实踩）。期次不在大表里
+                # 就退回大表自己的期次，并在 note 里明说是哪一期，不假装是问的那一期。
+                avail = [r[0] for r in con.execute(
+                    "SELECT DISTINCT period FROM report_table2 ORDER BY period DESC")]
+                if avail and avail[0] != period:
+                    period = avail[0]
+                    sql, args = _table2_join(period, discs)
+                    got = [dict(r) for r in con.execute(sql, args)]
+                    notes.append(f"报告大表只有 {period} 这一期，已按该期取")
             rows.append({"type": "table2", "period": period, "rows": got})
             if not columns:
                 columns = list(got[0].keys()) if got else []
@@ -481,6 +507,7 @@ def render_text(con, question, result) -> str:
                     f"CNCI {row.get('cnci') if row.get('cnci') is not None else '—'}，"
                     f"顶尖论文 {row.get('top_papers') if row.get('top_papers') is not None else '—'}，"
                     f"国内排名 {row.get('rank_cn_change') or '—'}，"
+                    f"千分位 {row.get('permille_rank') if row.get('permille_rank') is not None else '—'}，"
                     f"接近度变化 {row.get('prox_change') or '—'}。")
         elif t == "province_compare":
             cn = _province_metric_cn(con, r.get("metric", ""))
