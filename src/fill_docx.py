@@ -102,6 +102,16 @@ MATRIX_COLS = ("云大", "昆工", "昆医", "师大", "农大", "大理大学",
                "西林", "民大", "中医药大学", "曲靖师范")
 
 
+def _missing(slots, location, msg, source):
+    """缺数据 / 缺表时的**哨兵红件**：宁可红件清单里多一条，也不许静默留白。
+
+    R2-3（2026-10-28）：这三处原先直接 `return 0`，表格整片空白、红件清单也不记，
+    状态照旧 `completed` —— 「缺一步」被读成「这一步本来就没内容」。
+    """
+    slots.append({"location": location, "old": "", "new": f"[缺] {msg}", "source": source})
+    print(f"[warn] {location}：{msg}（{source}）→ 已记入红件清单")
+
+
 def fill_matrix(doc, ledger_dir, slots):
     """填学科×高校矩阵 T20（23 行 × 12 列：表头 + 22 学科 × 11 校）。
 
@@ -115,10 +125,12 @@ def fill_matrix(doc, ledger_dir, slots):
     """
     p = pathlib.Path(ledger_dir) / "matrix.json"
     if not p.exists():
+        _missing(slots, "T20/整表", "矩阵表未生成（缺 matrix.json）", "fill_matrix")
         return 0
     try:
         data = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
+        _missing(slots, "T20/整表", "矩阵表读不出（matrix.json 损坏）", "fill_matrix")
         return 0
     mat = data.get("matrix") or {}
     t20 = None
@@ -131,6 +143,7 @@ def fill_matrix(doc, ledger_dir, slots):
             t20 = cand
             break
     if t20 is None:
+        _missing(slots, "T20/整表", "母版里找不到矩阵表（表头含 云大/昆工）", "fill_matrix")
         return 0
     col_of = {c.text.strip(): i for i, c in enumerate(t20.rows[0].cells)}
     n = 0
@@ -169,14 +182,17 @@ def fill_province(doc, ledger_dir, slots):
     """
     p = pathlib.Path(ledger_dir) / "province.json"
     if not p.exists():
+        _missing(slots, "T19/整表", "省域表未生成（缺 province.json）", "fill_province")
         return 0
     try:
         data = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
+        _missing(slots, "T19/整表", "省域表读不出（province.json 损坏）", "fill_province")
         return 0
     uni = data.get("universities") or {}
     t19 = next((t for t in doc.tables if (len(t.rows), len(t.columns)) == (13, 10)), None)
     if t19 is None:
+        _missing(slots, "T19/整表", "母版里找不到 13×10 的省域表", "fill_province")
         return 0
     n = 0
     # ⚠ 母版里 T19 **整表是空的**（连机构名都没有），所以不能按首列已有名字去查 ——

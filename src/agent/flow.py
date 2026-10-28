@@ -30,8 +30,12 @@ import time
 from . import states, tools
 from .trace import Trace
 
-#: 主干步骤表（唯一事实源）。`server/config.py` 的 STEPS 应与之一致，
-#: 由 tests/test_agent_flow.py 断言防漂移。
+#: agent 主干步骤表（**agent 主干**的唯一事实源，不等于产线全部步骤）：
+#: `server/config.py` 的 STEPS 应与本表一致，由 tests/test_agent_flow.py 断言防漂移。
+#: ⚠ 产线另有 **province（省域表 T19）/ matrix（学科×高校矩阵 T20）** 两步，只在
+#: `src/run_pipeline.py` 里执行、**不在本表**（R2-3，2026-10-28）：所以「本表跑完 5 步」
+#: 不等于「产线数据齐了」。这两步的产物缺失时，`fill_docx` 会在红件清单里留哨兵，
+#: 不再静默留白。
 STEPS: tuple[dict, ...] = (
     {"id": "parse", "label": "解析台账",
      "desc": "22 个工作表归一化 + 机器断言", "tool": "run_parse"},
