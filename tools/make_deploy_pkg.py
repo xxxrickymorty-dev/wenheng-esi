@@ -18,7 +18,8 @@
         out/_acquisition/（取数状态 + 当期核对副本）、
         out/_jobs/（progress.jsonl / console.log / forecast_choice.json；任务记录本身已在
         `out/_state` 的 `jobs` 表里，这里不再有 job.json）、
-        out/_state/（系统状态库：签单 / 复核 / 任务记录；打包前先 `wal_checkpoint(TRUNCATE)`）
+        out/_state/（系统状态库：签单 / 复核 / 任务记录；打包前先 `wal_checkpoint(TRUNCATE)`）、
+        out/_aidata/（AI 问数库 aiqa.sqlite；期次须与 DATA_PERIOD 一致，preflight 会卡）
     不进：server/.env（密钥）、web/node_modules/、__pycache__/、.pytest_cache/、
         .ruff_cache/、tmp/、.git/、_superseded/、out/ 其它期次、
         **out/_state/backups/（库的备份副本，含已清理的 e2e 历史；连同 -wal/-shm 一起不进包）**
@@ -182,6 +183,10 @@ def collect(root: pathlib.Path, include_data: bool = True) -> list[pathlib.Path]
         files += _tree_files(root / "out" / "_jobs", root)
         # 系统状态库（签单/复核，ADR-0012）：与 _jobs 同级，不跟期次走。
         files += _tree_files(root / "out" / "_state", root)
+        # AI 问数库（out/_aidata/aiqa.sqlite）：同样不跟期次走——缺它「AI 问数」页
+        # 只会回一句 503。`*.tmp` 是建库原子替换的中间态，进包没意义，剔掉。
+        files += [p for p in _tree_files(root / "out" / "_aidata", root)
+                  if p.suffix != ".tmp"]
     return sorted(set(files), key=lambda p: str(p.relative_to(root)))
 
 
@@ -699,6 +704,30 @@ def preflight(root: pathlib.Path, include_data: bool = True) -> list[str]:
                 ledger_mod.sha256(rt) != ledger_mod.sha256(src):
             problems.append("input/ 母本与 数据与复现 馆员原件不一致 —— "
                             "先跑 uv run python tools\\sync_input_ledger.py（或 acquire merge 自动同步）")
+        # AI 问数库：期次必须与演示期一致（report_table2 / report_overview 按当期建）。
+        # 缺了、或建的不是演示期，演示站进「AI 问数」只会看到一句 503。
+        aiqa_sqlite = root / "out" / "_aidata" / "aiqa.sqlite"
+        if not aiqa_sqlite.is_file():
+            problems.append("out/_aidata/aiqa.sqlite 缺失 —— 先跑 "
+                            f"uv run python tools\\build_aiqa_db.py --period {DATA_PERIOD}")
+        else:
+            period_in_db = ""
+            try:
+                con = sqlite3.connect(str(aiqa_sqlite))
+                try:
+                    row = con.execute(
+                        "SELECT value FROM meta WHERE key='period'").fetchone()
+                    period_in_db = row[0] if row else ""
+                finally:
+                    con.close()
+            except sqlite3.Error as e:
+                problems.append(f"out/_aidata/aiqa.sqlite 读不出 meta（{e}）—— 重跑 "
+                                f"uv run python tools\\build_aiqa_db.py --period {DATA_PERIOD}")
+            if period_in_db and period_in_db != DATA_PERIOD:
+                problems.append(
+                    f"out/_aidata/aiqa.sqlite 建的是 {period_in_db} 期，演示期是 "
+                    f"{DATA_PERIOD} —— 重跑 uv run python tools\\build_aiqa_db.py "
+                    f"--period {DATA_PERIOD}")
     return problems
 
 

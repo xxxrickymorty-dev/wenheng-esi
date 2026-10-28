@@ -3,6 +3,7 @@
 
 用法：
   uv run python tools/build_aiqa_db.py            # 重建（台账镜像 + 当期产物 → out/_aidata/aiqa.sqlite）
+  uv run python tools/build_aiqa_db.py --period 202607   # 指定报告期次（打演示包前用）
   uv run python tools/build_aiqa_db.py --verify   # 自校验
 """
 from __future__ import annotations
@@ -30,7 +31,7 @@ def main(argv=None):
         r = aiqa_db.verify(root)
         print(("✓ " if r["ok"] else "✗ ") + str(r))
         return 0 if r["ok"] else 2
-    m = aiqa_db.build(root)
+    m = aiqa_db.build(root, out_period=args.period or None)
     print(f"✓ AI 问数库已重建：{m['path']}")
     print(f"  期次={m['period']}  事实={m['n_facts']}  "
           f"大表行={m['n_table2']}  概述键={m['n_overview']}")
