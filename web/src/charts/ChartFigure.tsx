@@ -29,10 +29,12 @@ function useNearViewport(ref: React.RefObject<HTMLDivElement | null>): boolean {
   return near
 }
 
-export function ChartFigure({ option, height = 230, ariaLabel }: {
+export function ChartFigure({ option, height = 230, ariaLabel, fallbackSrc }: {
   option: EChartsOption
   height?: number
   ariaLabel: string
+  /** 画不出来时露的原图（审核台用：正文里的图不许开天窗） */
+  fallbackSrc?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const near = useNearViewport(ref)
@@ -55,7 +57,9 @@ export function ChartFigure({ option, height = 230, ariaLabel }: {
     <div ref={ref} className="gal-chart" style={{ height }}
          role="img" aria-label={ariaLabel}>
       {!near && <span className="gal-chart-hint">图表在进入视野时绘制</span>}
-      {failed && <span className="gal-chart-hint">这张图暂时画不出来，可看原图</span>}
+      {failed && (fallbackSrc
+        ? <img src={fallbackSrc} alt={ariaLabel} />
+        : <span className="gal-chart-hint">这张图暂时画不出来，可看原图</span>)}
     </div>
   )
 }

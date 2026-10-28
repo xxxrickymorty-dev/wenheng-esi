@@ -2,8 +2,9 @@
    整篇试排报告从头到尾铺开、报告里的空就地填、签单与下载同屏。
    退出「对勘本 / T19-r2c0 / extract_province」那一套技术行话——那是审计视图（读报屏 → 对勘本）。
 
-   数据三路：
+   数据四路：
    - GET report-preview：docx 全文块 + 报告里的空（id 与工作台同一套键）；
+   - GET charts-data：同源交互图数据 ＋ report_map（docx 插图 → 图册图位）；
    - GET workbench：填写记录 / 存疑状态；
    - GET facts：数据核对读数。
    🔴 真门在后端：签单 / 重出 / 下载都由后端闸门把关，前端只把它们摆到顺手的位置。 */
@@ -16,6 +17,9 @@ import {
   getReportPreview, rebuildPeriod, reportImageUrl,
   type PreviewBlock, type PreviewSeg, type ReportPreview,
 } from './api-report'
+import { chartDataFor, getChartsData, type ChartsData } from './lib/chartsData'
+import { buildOption } from './charts/build'
+import { ChartFigure } from './charts/ChartFigure'
 import { ConfirmButton } from './ConfirmButton'
 import { FactsStrip } from './Report'
 import { Icon } from './icons'
@@ -65,13 +69,14 @@ function Runs({
 
 /** 一个块：段落 / 表格（可带图）/ 插图。全部按 docx 原顺序、原内容。 */
 function BlockView({
-  block, vals, onVal, disabled, period,
+  block, vals, onVal, disabled, period, data,
 }: {
   block: PreviewBlock
   vals: Record<string, string>
   onVal: (id: string, v: string) => void
   disabled: boolean
   period: string
+  data: ChartsData | null
 }) {
   if (block.t === 'p') {
     const cls = `rv-para${block.align === 'center' ? ' rv-center' : ''}`
@@ -85,7 +90,23 @@ function BlockView({
   }
   if (block.t === 'img') {
     /* 图占位（2026-10-16）：按 docx 原尺寸同时锁定宽与比例——懒加载图落位不再撑版面，
-       否则「报告里的空」深跳转会被中途加载的图顶走（rick 实测落在上一节）。 */
+       否则「报告里的空」深跳转会被中途加载的图顶走（rick 实测落在上一节）。
+       2026-10-28 rick 裁决：正文里的图换同源交互图（report_map 桥，尺寸照 docx 槽位）；
+       对不上（封面/截图类）或数据缺席时保留 docx 原图——审核语境不开天窗。 */
+    const slot = data?.report_map?.[block.rid] ?? null
+    const hit = data && slot ? chartDataFor(data, slot.group, slot.name) : null
+    const option = hit ? buildOption(hit) : null
+    if (option) {
+      return (
+        <p className="rv-img"
+           style={block.w_cm ? { width: `${Math.round(block.w_cm * 37.8)}px` } : undefined}>
+          <ChartFigure option={option}
+                       height={block.h_cm ? Math.round(block.h_cm * 37.8) : 300}
+                       ariaLabel="报告插图（交互版，数字与印出的 PNG 同源）"
+                       fallbackSrc={reportImageUrl(period, block.rid)} />
+        </p>
+      )
+    }
     const style: CSSProperties | undefined = block.w_cm
       ? {
         width: `${Math.round(block.w_cm * 37.8)}px`,
@@ -108,16 +129,32 @@ function BlockView({
               {row.map((cell, ci) => (
                 <td key={ci} colSpan={cell.span || undefined}>
                   {cell.text}
-                  {(cell.imgs ?? []).map((im) => (
-                    <img key={im.rid} src={reportImageUrl(period, im.rid)} alt="图表"
-                         loading="lazy" decoding="async"
-                         style={im.w_cm
-                           ? {
-                             width: `${Math.round(im.w_cm * 37.8)}px`,
-                             ...(im.h_cm ? { aspectRatio: `${im.w_cm} / ${im.h_cm}` } : {}),
-                           }
-                           : undefined} />
-                  ))}
+                  {(cell.imgs ?? []).map((im) => {
+                    const slot = data?.report_map?.[im.rid] ?? null
+                    const hit = data && slot ? chartDataFor(data, slot.group, slot.name) : null
+                    const option = hit ? buildOption(hit) : null
+                    if (option) {
+                      return (
+                        <div key={im.rid}
+                             style={im.w_cm ? { width: `${Math.round(im.w_cm * 37.8)}px` } : undefined}>
+                          <ChartFigure option={option}
+                                       height={im.h_cm ? Math.round(im.h_cm * 37.8) : 260}
+                                       ariaLabel="图表（交互版，数字与印出的 PNG 同源）"
+                                       fallbackSrc={reportImageUrl(period, im.rid)} />
+                        </div>
+                      )
+                    }
+                    return (
+                      <img key={im.rid} src={reportImageUrl(period, im.rid)} alt="图表"
+                           loading="lazy" decoding="async"
+                           style={im.w_cm
+                             ? {
+                               width: `${Math.round(im.w_cm * 37.8)}px`,
+                               ...(im.h_cm ? { aspectRatio: `${im.w_cm} / ${im.h_cm}` } : {}),
+                             }
+                             : undefined} />
+                    )
+                  })}
                 </td>
               ))}
             </tr>
@@ -138,6 +175,8 @@ export function Review({
 }) {
   const [preview, setPreview] = useState<ReportPreview | null>(null)
   const [previewNote, setPreviewNote] = useState<string | null>(null)
+  /* 同源交互图的数据面（含 report_map）；读不到就整页回退 docx 原图 */
+  const [data, setData] = useState<ChartsData | null>(null)
   const [wb, setWb] = useState<WorkbenchData | null>(null)
   const [wbNote, setWbNote] = useState<string | null>(null)
   const [vals, setVals] = useState<Record<string, string>>({})
@@ -172,7 +211,7 @@ export function Review({
   useEffect(() => {
     if (!period) return
     let alive = true
-    setPreview(null); setPreviewNote(null); setWb(null); setWbNote(null)
+    setPreview(null); setPreviewNote(null); setWb(null); setWbNote(null); setData(null)
     setVals({}); setMsg(null); setKnown(false); setNote(''); setOnlyDoubt(false)
 
     getReportPreview(period)
@@ -193,12 +232,17 @@ export function Review({
         if (!alive) return
         setWbNote(errorNote(e, '填写数据'))
       })
+    getChartsData(period)
+      .then((r) => { if (alive) setData(r) })
+      .catch(() => { if (alive) setData(null) })
     return () => { alive = false }
   }, [period])
 
   async function refreshPreview() {
     if (!period) return
     setPreview(await getReportPreview(period))
+    /* 重出报告后 docx 变了 → 插图 rId 也变了，映射必须跟着重取 */
+    try { setData(await getChartsData(period)) } catch { setData(null) }
   }
 
   async function refreshWb() {
@@ -472,11 +516,11 @@ export function Review({
             {preview.blocks.map((b, i) => headingAt(i) ? (
               <div id={`rv-b-${i}`} key={i}>
                 <BlockView block={b} vals={vals} onVal={(id, v) => setVals((s) => ({ ...s, [id]: v }))}
-                           disabled={!isAdmin || busy !== null} period={period} />
+                           disabled={!isAdmin || busy !== null} period={period} data={data} />
               </div>
             ) : (
               <BlockView key={i} block={b} vals={vals} onVal={(id, v) => setVals((s) => ({ ...s, [id]: v }))}
-                         disabled={!isAdmin || busy !== null} period={period} />
+                         disabled={!isAdmin || busy !== null} period={period} data={data} />
             ))}
           </section>
           </div>

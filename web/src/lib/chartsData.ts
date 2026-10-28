@@ -73,6 +73,9 @@ export type ChartsData = {
     college_papers?: { items: CollegeItem[] }
   }
   forecast: Record<string, ForecastSeries>
+  /** 审核台的桥：docx 插图 rId → 图册图位（服务端逐字节比对得出）。
+      缺键（没出稿/对不上）＝前端保留 docx 原图。 */
+  report_map?: Record<string, { group: string; name: string }>
 }
 
 export async function getChartsData(period: string): Promise<ChartsData> {
