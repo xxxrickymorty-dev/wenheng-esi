@@ -921,29 +921,33 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .rv-in.filled{border-style:solid;background:var(--card);color:var(--ink);font-weight:600}
 .rv-in:focus{outline:2px solid var(--zhu);outline-offset:1px}
 
-/* 定稿条（2026-10-28 重构）：签单/下载的唯一收口，吸底常驻。
-   上缘墨线＋金线＝卷宗封条；印章是唯一状态表达。 */
-.rv-signbar{position:sticky;bottom:0;z-index:20;margin-top:6px;
-  background:var(--card);border-top:3px double var(--ink);
-  padding:10px clamp(14px,2.4vw,26px) 12px;
-  box-shadow:0 -1px 0 var(--gold)}
-.rv-signbar .rv-msg,.rv-signbar .rv-busy{margin:0 0 8px;font-size:var(--fs-label)}
-.rv-signbar-in{display:flex;align-items:center;gap:16px;flex-wrap:wrap;max-width:1200px;margin-inline:auto}
-.rv-signseal{flex:none;display:grid;place-items:center}
-.rv-signdoc{flex:1;min-width:220px;display:grid;gap:2px}
-.rv-signdoc .rv-docname{word-break:break-all;text-align:left;font-size:var(--fs-body);font-weight:650}
-.rv-signmeta{font-size:var(--fs-label);color:var(--ink-3);font-variant-numeric:tabular-nums}
-.rv-signacts{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end}
+/* 定稿签（2026-10-28 二改，rick：「底部签单图标去掉——左栏已有大印，
+   剩下的放右侧空白处悬浮」）：签单/下载的唯一收口竖签，
+   悬浮右缘、垂直居中；签头双线（墨＋金）是卷宗封条的收束。
+   两段式确认（勾选＋批注折叠）竖排进签。 */
+.rv-sidesign{position:fixed;right:14px;top:50%;transform:translateY(-50%);
+  z-index:25;width:198px;display:grid;gap:8px;
+  background:var(--card);border:1px solid var(--line);
+  padding:16px 14px 13px;box-shadow:0 10px 28px rgba(31,42,36,.16)}
+.rv-sidesign::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;
+  background:var(--ink);box-shadow:0 5px 0 -2px var(--gold)}
+.rv-sidesign .rv-msg,.rv-sidesign .rv-busy{margin:0;font-size:var(--fs-label)}
+.rv-sidesign .rv-docname{word-break:break-all;text-align:left;
+  font-size:var(--fs-label);font-weight:650;line-height:1.6}
+.rv-sidesign .rv-signmeta{font-size:var(--fs-label);color:var(--ink-3);
+  font-variant-numeric:tabular-nums;line-height:1.8}
+.rv-sidesign .rv-signedline{font-size:var(--fs-label);color:var(--ok);font-weight:650;line-height:1.6}
+.rv-sidesign .rv-signedline.warn{color:var(--warn)}
 /* 确认面：有待填/存疑才展开（两段式——干净一击即签） */
-.rv-confirm{display:grid;gap:6px;max-width:460px}
+.rv-confirm{display:grid;gap:6px}
 .rv-confirm .rv-ack{margin-top:0}
-.rv-notetoggle{align-self:start;border:0;background:transparent;color:var(--ink-3);
+.rv-notetoggle{justify-self:start;border:0;background:transparent;color:var(--ink-3);
   font:inherit;font-size:var(--fs-label);cursor:pointer;padding:2px 0;
   text-decoration:underline dotted;text-underline-offset:3px}
 .rv-notetoggle:hover{color:var(--ink)}
 .rv-confirm .rv-warn{margin:0}
-.rv-signbtns{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
-.rv-signbtns .btn{min-height:40px}
+.rv-signbtns{display:grid;gap:8px}
+.rv-signbtns .btn{min-height:38px;width:100%;justify-content:center}
 /* 右下浮动工具 dock（2026-10-28）：「报告里的空」签——读稿时让位 */
 .rv-floatdock{position:fixed;right:22px;bottom:96px;z-index:30;display:flex;
   flex-direction:column;align-items:flex-end;gap:10px}
@@ -1320,7 +1324,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .rv-jump{min-height:var(--hit-min)}
 .rowbtn,.pill,.hint a,.period-row a,.art a,.ar-art a{min-height:24px}
 .hint a,.period-row a,.art a,.ar-art a{display:inline-flex;align-items:center}
-.rv-lead a,.rv-signbar a{display:inline-flex;align-items:center;min-height:var(--hit-min)}
+.rv-lead a,.rv-sidesign a{display:inline-flex;align-items:center;min-height:var(--hit-min)}
 /* 审核台页题分隔点：原用 --line 当文字色（≈1.2:1，等于看不见）——改可读灰 */
 .rv-lead .ink-line{color:var(--ink-3)}
 

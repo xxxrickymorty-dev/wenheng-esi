@@ -8,7 +8,7 @@
    - GET facts：数据核对读数。
    🔴 真门在后端：签单 / 重出 / 下载都由后端闸门把关，前端只把它们摆到顺手的位置。 */
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { Me, Period } from './api'
 import { flagLoc, revokePeriod, signPeriod } from './api-sign'
 import { getWorkbench, postFill, type WorkbenchData } from './api-workbench'
@@ -19,7 +19,7 @@ import {
 import { ConfirmButton } from './ConfirmButton'
 import { FactsStrip } from './Report'
 import { Icon } from './icons'
-import { StateSeal } from './StateSeal'
+
 import { appHref, errorNote } from './lib/status'
 
 type Msg = { ok: boolean; text: string } | null
@@ -152,20 +152,9 @@ export function Review({
 
   const row = periods.find((p) => p.period === period) ?? null
   const status = row?.status ?? 'unsigned'
-  /* 本期印落章动效：签发态从未签翻到已签的那一刻放一次（签单接口回来、状态落真值时触发） */
-  const [sealLand, setSealLand] = useState(false)
   /* 浮动工具签（报告里的空）与批注折叠的开关 */
   const [todoOpen, setTodoOpen] = useState(false)
   const [noteOpen, setNoteOpen] = useState(false)
-  const prevStatus = useRef(status)
-  useEffect(() => {
-    const justSigned = prevStatus.current !== 'signed' && status === 'signed'
-    prevStatus.current = status
-    if (!justSigned) return
-    setSealLand(true)
-    const t = setTimeout(() => setSealLand(false), 650)
-    return () => clearTimeout(t)
-  }, [status])
   const isAdmin = me?.capabilities?.actions?.edit ?? me?.role === 'admin'
   /* 2026-10-12：审批（签单/撤回）对操作员也开放；在线填、标存疑、重出仍只管理员。 */
   const canSign = !!me
@@ -567,92 +556,89 @@ export function Review({
           </div>
           )}
 
-          {/* ------- 定稿条：签单/下载的唯一收口（吸底） -------
-              两段式：干净一击即签；有待填或存疑时确认面就地展开。
-              印章是唯一的状态表达——条上不再重复「已签发」字样。
-              A（P1）联动句保留在确认面：数字随真实值联动。 */}
-          <section className="rv-signbar" id="rv-sign" aria-label="审核与签单">
+          {/* ------- 定稿签：审核与签单的唯一收口（右侧悬浮） -------
+              2026-10-28 二改（rick）：条上印章撤——左栏钤印是
+              唯一状态表达；剩余内容收成右侧竖签悬浮，
+              纸签压纸面，读稿不占版心。两段式确认原样。 */}
+          <aside className="rv-sidesign" id="rv-sign" aria-label="审核与签单">
             {(busyText || msg) && (
               <p className={msg ? (msg.ok ? 'rv-msg ok' : 'rv-msg bad') : 'rv-busy'} role="status">
                 {busyText || msg!.text}
               </p>
             )}
-            <div className="rv-signbar-in">
-              <div className="rv-signseal">
-                <StateSeal state={signed ? 'signed' : status === 'stale' ? 'stale' : 'unsigned'}
-                           size={46} tilt="a" landing={sealLand} />
-              </div>
-              <div className="rv-signdoc">
-                <b className="rv-docname">{preview.docx ?? '—'}</b>
-                <span className="rv-signmeta">
-                  生成 {preview.updated_at || '—'} · 存疑 {doubtN} 处
-                  {nField > 0 ? ` · 待人工 ${nField} 处（已填 ${nField - nLeft}）` : ''}
-                  {signed ? ` · 已签单${me?.name ? ` · ${me.name}` : ''}，这一版已定稿`
-                    : status === 'stale' ? ' · 签发已失效，重签后可下载' : ''}
-                </span>
-              </div>
-              <div className="rv-signacts">
-                {needAck && !signed && (
-                  <div className="rv-confirm">
-                    <label className="rv-ack">
-                      <input type="checkbox" checked={known} disabled={!canSign || busy !== null}
-                             onChange={(e) => setKnown(e.target.checked)} />
-                      <span>我已逐项看过待人工与存疑，同意放行。</span>
-                    </label>
-                    {noteOpen ? (
-                      <textarea
-                        className="rv-note"
-                        aria-label="签单批注（可选）"
-                        value={note}
-                        onChange={(e) => setNote(e.target.value)}
-                        placeholder="批注（可选）：这一版为什么可以签单、还有哪些已知问题"
-                        rows={2}
-                        disabled={!canSign}
-                        autoFocus
-                      />
-                    ) : (
-                      <button type="button" className="rv-notetoggle"
-                              onClick={() => setNoteOpen(true)} disabled={!canSign}>
-                        批注（可选）▾
-                      </button>
-                    )}
-                    {nField > 0 && (
-                      <p className="rv-warn" role="note">
-                        {writeN > 0
-                          ? `点「签单」会先把已填的 ${writeN} 处写进报告，再签发。`
-                          : nLeft > 0
-                            ? `还有 ${nLeft} 处待填，补齐后可点「签单」签发。`
-                            : '点「签单」即可签发。'}
-                      </p>
-                    )}
-                    {signed && writeN > 0 && (
-                      <p className="rv-warn" role="note">
-                        有 {writeN} 处填写还没写进报告——保存并重出后签发失效，需重新签单。
-                      </p>
-                    )}
-                  </div>
+            <b className="rv-docname">{preview.docx ?? '—'}</b>
+            <span className="rv-signmeta">
+              生成 {preview.updated_at || '—'}<br />
+              存疑 {doubtN} 处
+              {nField > 0 ? ` · 待人工 ${nField} 处（已填 ${nField - nLeft}）` : ''}
+            </span>
+            {signed && (
+              <span className="rv-signedline">
+                已签单{me?.name ? ` · ${me.name}` : ''}，这一版已定稿
+              </span>
+            )}
+            {!signed && status === 'stale' && (
+              <span className="rv-signedline warn">签发已失效，重签后可下载</span>
+            )}
+            {needAck && !signed && (
+              <div className="rv-confirm">
+                <label className="rv-ack">
+                  <input type="checkbox" checked={known} disabled={!canSign || busy !== null}
+                         onChange={(e) => setKnown(e.target.checked)} />
+                  <span>我已逐项看过待人工与存疑，同意放行。</span>
+                </label>
+                {noteOpen ? (
+                  <textarea
+                    className="rv-note"
+                    aria-label="签单批注（可选）"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="批注（可选）：这一版为什么可以签单、还有哪些已知问题"
+                    rows={2}
+                    disabled={!canSign}
+                    autoFocus
+                  />
+                ) : (
+                  <button type="button" className="rv-notetoggle"
+                          onClick={() => setNoteOpen(true)} disabled={!canSign}>
+                    批注（可选）▾
+                  </button>
                 )}
-                <div className="rv-signbtns">
-                  {signed ? (
-                    <a className="btn primary" href={`/api/periods/${encodeURIComponent(period)}/download/report`}>
-                      <Icon name="doc" size={19} />下载报告（Word）
-                    </a>
-                  ) : (
-                    <button className="btn primary" onClick={doSign}
-                            disabled={!canSign || busy !== null || signed || (needAck && !known)}
-                            title={needAck && !known ? '先勾选「我已逐项看过」' : undefined}>
-                      <Icon name="seal" size={19} />{busy === 'sign' ? '正在处理…' : '签单'}
-                    </button>
-                  )}
-                  <ConfirmButton className="btn ghost" disabled={!canSign || busy !== null || !signed}
-                                 confirmText="确认撤回？签发会失效" onConfirm={doRevoke}>
-                    <Icon name="refresh" size={18} />撤回
-                  </ConfirmButton>
-                  <a className="btn ghost" href={appHref('reading', period)}>看对勘本 →</a>
-                </div>
+                {nField > 0 && (
+                  <p className="rv-warn" role="note">
+                    {writeN > 0
+                      ? `点「签单」会先把已填的 ${writeN} 处写进报告，再签发。`
+                      : nLeft > 0
+                        ? `还有 ${nLeft} 处待填，补齐后可点「签单」签发。`
+                        : '点「签单」即可签发。'}
+                  </p>
+                )}
+                {signed && writeN > 0 && (
+                  <p className="rv-warn" role="note">
+                    有 {writeN} 处填写还没写进报告——保存并重出后签发失效，需重新签单。
+                  </p>
+                )}
               </div>
+            )}
+            <div className="rv-signbtns">
+              {signed ? (
+                <a className="btn primary" href={`/api/periods/${encodeURIComponent(period)}/download/report`}>
+                  <Icon name="doc" size={19} />下载报告（Word）
+                </a>
+              ) : (
+                <button className="btn primary" onClick={doSign}
+                        disabled={!canSign || busy !== null || signed || (needAck && !known)}
+                        title={needAck && !known ? '先勾选「我已逐项看过」' : undefined}>
+                  <Icon name="seal" size={19} />{busy === 'sign' ? '正在处理…' : '签单'}
+                </button>
+              )}
+              <ConfirmButton className="btn ghost" disabled={!canSign || busy !== null || !signed}
+                             confirmText="确认撤回？签发会失效" onConfirm={doRevoke}>
+                <Icon name="refresh" size={18} />撤回
+              </ConfirmButton>
+              <a className="btn ghost" href={appHref('reading', period)}>看对勘本 →</a>
             </div>
-          </section>
+          </aside>
         </div>
       )}
     </>
