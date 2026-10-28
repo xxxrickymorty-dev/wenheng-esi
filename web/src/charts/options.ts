@@ -231,14 +231,14 @@ export function qDistOption(row: NonNullable<DisciplineCharts['q_dist']>): EChar
       max: Math.min(100, Math.ceil((hi + 14) / 20) * 20),
       axisLabel: { formatter: '{value}%', color: INK2, fontSize: 10.5, fontFamily: FONT },
     }),
-    series: row.entities.map((e, j) => ({
+    series: row.entities.map((e) => ({
       name: e.name, type: 'bar', data: e.values, barGap: '12%', barCategoryGap: '55%',
       itemStyle: { color: e.color },
       // 三系列标签跨系列不参与统一布局（labelLayout 只算本系列）——
-      // 用 labelLayout.dy 按系列逐级抬 16px（≥标签盒高 12px）：
-      // 同高柱组的标签也分层不压。⚠ label.offset 在本版本不生效（实踩）。
-      label: { ...allLabels((v) => (v == null ? '' : v + '%')), fontSize: 9.5 },
-      labelLayout: { moveOverlap: 'shiftY', dy: -j * 16 },
+      // 竖排标签（rotate 90）：宽 12px < 柱距 28px，结构性永不互撞；
+      // 水平/斜排/逐级车道都有数据死角（柱高差≈车道距时必撞），竖排无。
+      label: { ...allLabels((v) => (v == null ? '' : v + '%')),
+               fontSize: 9.5, rotate: 90 }, labelLayout: LY,
     })),
   } as unknown as EChartsOption
 }
