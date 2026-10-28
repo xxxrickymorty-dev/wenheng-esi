@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>文衡 · 方向 A 排字房</title>
+<style>
+  :root{
+    --paper:#F4F1E7;      /* 纸 */
+    --pine:#1F5B4A;       /* 主色 青瓷绿 */
+    --pine-deep:#143D31;  /* 书脊 */
+    --pine-soft:#E3EDE7;  /* 选中底 */
+    --line:#C9D8CE;       /* 描边 */
+    --ink:#1A211E;        /* 墨 */
+    --ink-2:#4F5B55;
+    --zhu:#A8332A;        /* 朱砂 只给印章 */
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",STSong,SimSun,serif;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    height:900px;width:1440px;overflow:hidden;background:#E8E4D8;
+    font-family:var(--serif);color:var(--ink);-webkit-font-smoothing:antialiased;
+  }
+  .app{display:flex;height:100%}
+
+  /* —— 书脊 —— */
+  .spine{
+    width:56px;flex:0 0 56px;background:var(--pine-deep);
+    display:flex;flex-direction:column;align-items:center;
+    border-right:1px solid var(--pine);
+  }
+  .spine .mark{
+    width:32px;height:32px;margin:18px 0 0;background:var(--paper);color:var(--pine-deep);
+    display:grid;place-items:center;font-size:17px;
+  }
+  .spine .vname{
+    writing-mode:vertical-rl;margin-top:22px;font-size:13px;letter-spacing:.32em;
+    color:#A9C0B4;
+  }
+  .spine .nav{margin-top:26px;display:flex;flex-direction:column;width:100%}
+  .spine .nav a{
+    display:block;text-align:center;padding:11px 0;font-size:13px;letter-spacing:.14em;
+    color:#A9C0B4;text-decoration:none;
+  }
+  .spine .nav a.on{background:var(--pine);color:#F4F1E7;box-shadow:inset 2px 0 0 #EDEFE9}
+  .spine .foot{margin-top:auto;padding-bottom:16px;font-size:11px;letter-spacing:.3em;
+    color:#A9C0B4;writing-mode:vertical-rl}
+
+  /* —— 主区：一张纸 —— */
+  .stage{flex:1;display:flex;justify-content:center;overflow:hidden}
+  .paper{
+    width:984px;margin:34px 0 34px;background:var(--paper);
+    border:1px solid var(--line);
+    padding:0 62px 30px;display:flex;flex-direction:column;
+  }
+  .col{flex:1;display:flex;flex-direction:column}
+
+  /* 纸眉：同一字号，同一基线 */
+  .masthead{display:flex;justify-content:space-between;align-items:baseline;
+    padding:16px 0 12px;border-bottom:1px solid var(--line);
+    font-size:12px;color:var(--ink-2);letter-spacing:.06em}
+  .masthead b{font-weight:600;color:var(--pine);letter-spacing:.12em}
+
+  h1{font-size:27px;font-weight:600;letter-spacing:.04em;margin:26px 0 8px}
+  .sub{font-size:14px;color:var(--ink-2);line-height:1.75}
+
+  /* 铅字盘读数 */
+  .typeset{display:grid;grid-template-columns:repeat(3,1fr);margin:22px 0 0;
+    border:1px solid var(--line)}
+  .cell{padding:16px 18px 15px;border-right:1px solid var(--line);background:var(--pine-soft)}
+  .cell:last-child{border-right:none}
+  .cell .k{font-size:12px;color:#41604F;letter-spacing:.1em;height:17px}
+  .cell .v{font-family:var(--mono);font-size:31px;line-height:1.2;margin:5px 0 3px;color:var(--pine-deep);height:38px}
+  .cell .v em{font-style:normal;font-size:15px;font-family:var(--serif);color:var(--ink-2);margin-left:5px}
+  .cell .d{font-size:12px;color:#35624A;height:17px}
+
+  /* 正文 + 旁注：版心占左 648，右侧是天头旁注，不是空白 */
+  .colsplit{display:flex;gap:34px;margin:24px 0 0}
+  .body-copy{flex:0 0 648px;font-size:15px;line-height:2.05;color:#26302C}
+  .body-copy p{margin:0 0 11px;text-indent:2em}
+  .body-copy p.lead{text-indent:0}
+  .mark-num{font-family:var(--mono);font-size:11px;color:var(--pine);vertical-align:super}
+  .margin-note{flex:1;border-left:1px solid var(--line);padding-left:20px;
+    font-size:12px;color:var(--ink-2);line-height:1.95}
+  .margin-note dt{color:var(--pine);margin-top:2px}
+  .margin-note dd{margin:0 0 9px}
+
+  /* 操作区 */
+  .action{margin-top:auto;padding:20px 0 0;border-top:1px solid var(--line);
+    display:flex;align-items:center;gap:14px}
+  .steps{display:flex;align-items:center;flex:1}
+  .step{display:flex;align-items:center;gap:9px;padding-right:20px}
+  .dot{width:11px;height:11px;background:var(--pine);flex:0 0 11px}
+  .step span{font-size:13px;letter-spacing:.06em;color:var(--pine-deep)}
+  .dash{width:26px;height:1px;background:var(--line);margin-right:20px;flex:0 0 26px}
+  .btn{font-family:var(--serif);font-size:15px;letter-spacing:.1em;color:var(--paper);
+    background:var(--pine);border:none;padding:13px 30px;cursor:pointer}
+  .btn.ghost{background:transparent;color:var(--pine);border:1px solid var(--pine)}
+  /* 印章：不进按钮基线，缩在纸的右下角，淡 = 还没盖 */
+  .seal{
+    width:64px;height:64px;flex:0 0 64px;border:2px solid var(--zhu);color:var(--zhu);
+    display:grid;place-items:center;transform:rotate(-7deg);opacity:.3;
+    font-size:13px;line-height:1.25;text-align:center;letter-spacing:.05em;margin-left:10px;
+  }
+  .status-line{font-size:12px;color:var(--ink-2);letter-spacing:.06em;padding-top:12px}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="spine">
+    <div class="mark">衡</div>
+    <div class="vname">云南大学图书馆</div>
+    <div class="nav">
+      <a class="on">生成台</a>
+      <a>取数核验</a>
+      <a>报告台</a>
+      <a>问文衡</a>
+      <a>运行档案</a>
+      <a>陈列馆</a>
+    </div>
+    <div class="foot">参评国馆 立言天下</div>
+  </nav>
+
+  <div class="stage"><div class="paper"><div class="col">
+    <div class="masthead"><b>文衡 · 学科信息参考</b><span>202609 期 · 数据截至 2026-09-23</span></div>
+
+    <h1>本期概览</h1>
+    <p class="sub">双月 ESI 学科分析，覆盖全校 22 个 ESI 学科。</p>
+
+    <div class="typeset">
+      <div class="cell">
+        <div class="k">进入 ESI 前 1%</div>
+        <div class="v">14<em>个学科</em></div>
+        <div class="d">较上期持平</div>
+      </div>
+      <div class="cell">
+        <div class="k">国际排名</div>
+        <div class="v">973<em>位</em></div>
+        <div class="d">较上期 995 位上升 22 位</div>
+      </div>
+      <div class="cell">
+        <div class="k">顶尖论文</div>
+        <div class="v">291<em>篇</em></div>
+        <div class="d">较上期 274 篇增加 17 篇</div>
+      </div>
+    </div>
+
+    <div class="colsplit">
+      <div class="body-copy">
+        <p class="lead">本期我校 ESI 国际排名 973 位，较 202607 期的 995 位上升 22 位；国内机构排名 154 位，国内高校排名 129 位。<span class="mark-num">1</span></p>
+        <p>进入 ESI 全球前 1% 的学科 14 个，顶尖论文合计 291 篇。22 个学科中，7 个国际排名上升、8 个下降、7 个持平。</p>
+        <p>最接近进入前 1‰ 的是植物与动物学，接近度 56.74%，较上期的 55.13% 提高 1.61 个百分点。<span class="mark-num">2</span></p>
+        <p>尚未进入前 1% 的学科中，分子生物学与遗传学最为接近，接近度 88.01%，较上期提高 3.51 个百分点。</p>
+      </div>
+      <dl class="margin-note">
+        <dt>1 国际排名</dt><dd>我校在全球 ESI 机构中的位次，来自动态监测表。</dd>
+        <dt>2 接近度</dt><dd>被引频次 ÷ 该学科阈值。满 100% 即进入。</dd>
+        <dt>取数口径</dt><dd>与 202607 期一致，未改阈值来源。</dd>
+      </dl>
+    </div>
+
+    <div class="action">
+      <div class="steps">
+        <div class="step"><i class="dot"></i><span>取数</span></div><i class="dash"></i>
+        <div class="step"><i class="dot"></i><span>核对并并入</span></div><i class="dash"></i>
+        <div class="step"><i class="dot"></i><span>一键生成</span></div>
+      </div>
+      <button class="btn">签单并下载</button>
+      <button class="btn ghost">看全文</button>
+      <div class="seal"><div>待<br>签单</div></div>
+    </div>
+    <div class="status-line">三步已完成 · 报告初稿已生成 · 尚未签发</div>
+  </div></div></div>
+</div>
+</body>
+</html>

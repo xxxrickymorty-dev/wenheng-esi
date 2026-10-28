@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>文衡 · 方向 C 游标</title>
+<style>
+  :root{
+    --bg:#F7F8F6;         /* 冷白 */
+    --panel:#FFFFFF;
+    --spruce:#1F5F4B;     /* 主色 松绿 */
+    --live:#35A260;       /* 游标亮 只给正在动的东西 */
+    --tick:#8A918C;       /* 刻度灰 */
+    --line:#DFE3E0;
+    --ink:#1B2420;
+    --ink-2:#5C6B63;
+    --sans:"Inter","Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{height:900px;width:1440px;overflow:hidden;background:var(--bg);font-family:var(--sans);
+    color:var(--ink);-webkit-font-smoothing:antialiased}
+  .wrap{height:100%;padding:0 56px;display:flex;flex-direction:column}
+
+  /* 导航：横向一行，不要侧栏 */
+  .nav{height:42px;display:flex;align-items:center;gap:26px;border-bottom:1px solid var(--line)}
+  .logo{font-size:14px;font-weight:500;letter-spacing:.16em;color:var(--spruce)}
+  .nav a{font-size:13px;color:var(--ink-2);text-decoration:none}
+  .nav a.on{color:var(--ink);border-bottom:2px solid var(--spruce);padding-bottom:11px}
+  .nav .sp{flex:1}
+  .nav .u{font-size:12.5px;color:var(--ink-2)}
+
+  /* 身份带 */
+  .idband{height:124px;display:flex;align-items:center;gap:24px;background:var(--panel);
+    border:1px solid var(--line);border-radius:6px;padding:0 26px;margin-top:34px}
+  .pid{font-family:var(--mono);font-size:40px;letter-spacing:.02em;color:var(--spruce);line-height:1}
+  .idmeta{font-size:13px;color:var(--ink-2);line-height:1.8}
+  .chip{margin-left:auto;font-size:12.5px;letter-spacing:.06em;padding:7px 14px;border-radius:6px;
+    border:1px solid var(--live);color:#1F6B3A;background:#EAF6EE}
+  .idlinks{font-size:13px;color:var(--ink-2);line-height:1.8;text-align:right}
+
+  /* 流程带 */
+  .flow{height:150px;background:var(--panel);border:1px solid var(--line);border-radius:6px;
+    margin-top:18px;padding:0 26px;display:flex;align-items:center}
+  .node{display:flex;flex-direction:column;gap:8px;flex:0 0 auto}
+  .bullet{width:15px;height:15px;border-radius:50%;background:var(--spruce);
+    box-shadow:0 0 0 4px #E6EFE9}
+  .node .t{font-size:13.5px;color:var(--ink)}
+  .node .d{font-size:12px;color:var(--ink-2)}
+  .rail{flex:1;height:1px;background:var(--line);margin:0 22px;position:relative}
+  .rail i{position:absolute;left:0;top:-1px;height:3px;width:100%;background:var(--spruce);border-radius:2px}
+
+  /* 读数带 */
+  .gauges{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
+  .rowm{display:flex;align-items:center;gap:26px;padding:26px;height:98px;
+    border-bottom:1px solid var(--line)}
+  .rowm:last-child{border-bottom:none}
+  .lab{flex:0 0 136px;font-size:13px;color:var(--ink-2);line-height:1.55}
+  .bignum{flex:0 0 176px;font-family:var(--mono);font-size:33px;letter-spacing:-.01em;
+    color:var(--ink);line-height:1}
+  .bignum small{font-family:var(--sans);font-size:13px;color:var(--ink-2);margin-left:6px}
+  .delta{flex:0 0 104px;font-size:12.5px;color:var(--spruce);line-height:1.5}
+  .track{flex:1;min-width:0}
+
+  /* 22 格：把个数画成看得见的量 */
+  .cells{display:flex;gap:4px;align-items:center}
+  .cells i{flex:0 0 20px;width:20px;height:26px;border:1px solid var(--tick);border-radius:2px}
+  .cells i.on{background:var(--spruce);border-color:var(--spruce)}
+
+  /* 标尺：真正的游标卡尺 */
+  .scale{position:relative;height:46px;display:block}
+  .scale .axis{position:absolute;left:0;right:0;top:27px;height:1px;background:var(--tick)}
+  .scale .tick{position:absolute;top:27px;width:1px;height:6px;background:var(--tick)}
+  .scale .tick.major{height:10px;background:var(--ink-2)}
+  .scale .tlabel{position:absolute;top:36px;font-family:var(--mono);font-size:11.5px;
+    color:var(--ink-2);transform:translateX(-50%)}
+  .scale .prev{position:absolute;top:22px;width:0;height:0;border-left:5px solid transparent;
+    border-right:5px solid transparent;border-bottom:8px solid var(--tick);transform:translateX(-5px)}
+  .scale .cal{position:absolute;top:0;background:var(--spruce);border-radius:3px;padding:4px 9px;
+    font-family:var(--mono);font-size:12.5px;color:#fff;transform:translateX(-50%);white-space:nowrap}
+  .scale .cal::after{content:"";position:absolute;left:50%;top:100%;transform:translateX(-50%);
+    width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;
+    border-top:6px solid var(--spruce)}
+
+  /* 接近度条：离阈值还差多少，是量不是标签 */
+  .bar{position:relative;height:46px;display:block}
+  .bar .bt{position:absolute;left:0;right:0;top:18px;height:12px;border-radius:6px;background:#E9ECEA}
+  .bar .bt i{display:block;height:12px;border-radius:6px;background:var(--spruce)}
+  .bar .thr{position:absolute;top:10px;width:0;height:34px;border-left:1px dashed var(--tick)}
+  .bar .thr span{position:absolute;top:36px;left:4px;font-family:var(--mono);font-size:11.5px;
+    color:var(--ink-2);white-space:nowrap}
+  .bar .plab{position:absolute;top:36px;font-family:var(--mono);font-size:11.5px;color:var(--spruce);
+    transform:translateX(-50%)}
+
+  /* 操作区 */
+  .do{margin-top:20px;height:46px;display:flex;align-items:center;gap:14px}
+  .btn{font-family:var(--sans);font-size:14.5px;letter-spacing:.04em;color:#fff;background:var(--spruce);
+    border:none;border-radius:6px;padding:13px 30px;cursor:pointer}
+  .btn.ghost{background:var(--panel);color:var(--spruce);border:1px solid var(--spruce)}
+  .note{font-size:12.5px;color:var(--ink-2);margin-left:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="nav">
+    <span class="logo">文衡</span>
+    <a class="on">生成台</a><a>取数核验</a><a>报告台</a><a>问文衡</a><a>运行档案</a><a>陈列馆</a>
+    <span class="sp"></span><span class="u">云南大学图书馆</span>
+  </div>
+
+  <div class="idband">
+    <span class="pid">202609</span>
+    <span class="idmeta">9 月期<br>数据截至 2026-09-23</span>
+    <span class="chip">报告已出稿 · 待签单</span>
+    <span class="idlinks">已入册 5 期<br>上一期 202607</span>
+  </div>
+
+  <div class="flow">
+    <div class="node"><span class="bullet"></span><span class="t">取数</span><span class="d">源表已核验</span></div>
+    <span class="rail"><i></i></span>
+    <div class="node"><span class="bullet"></span><span class="t">核对并并入</span><span class="d">台账已更新</span></div>
+    <span class="rail"><i></i></span>
+    <div class="node"><span class="bullet"></span><span class="t">一键生成</span><span class="d">初稿已完成</span></div>
+  </div>
+
+  <div class="gauges">
+    <div class="rowm">
+      <span class="lab">进入 ESI 前 1%<br>学科数</span>
+      <span class="bignum">14<small>/ 22 个</small></span>
+      <span class="delta">与上期持平</span>
+      <span class="track"><span class="cells" id="cells"></span></span>
+    </div>
+    <div class="rowm">
+      <span class="lab">ESI<br>国际排名</span>
+      <span class="bignum">973<small>位</small></span>
+      <span class="delta">前进 22 位</span>
+      <span class="track"><span class="scale" id="sc1"></span></span>
+    </div>
+    <div class="rowm">
+      <span class="lab">顶尖论文<br>合计</span>
+      <span class="bignum">291<small>篇</small></span>
+      <span class="delta">增加 17 篇</span>
+      <span class="track"><span class="scale" id="sc2"></span></span>
+    </div>
+    <div class="rowm">
+      <span class="lab">离前 1‰ 最近<br>植物与动物学</span>
+      <span class="bignum">56.7<small>%</small></span>
+      <span class="delta">提高 1.61</span>
+      <span class="track"><span class="bar" id="bar1"></span></span>
+    </div>
+  </div>
+
+  <div class="do">
+    <button class="btn">签单并下载</button>
+    <button class="btn ghost">看全文</button>
+    <span class="note">三步全部完成，报告尚未签发</span>
+  </div>
+</div>
+
+<script>
+  const fill = (n, total) => [...Array(total)].map((_, i) =>
+    `<i class="${i < n ? 'on' : ''}"></i>`).join('')
+  document.getElementById('cells').innerHTML = fill(14, 22)
+
+  /* 标尺：刻度值全部来自真实台账，上期是灰三角，当期是绿游标 */
+  function scale(id, min, max, steps, cur, prev, unit) {
+    const el = document.getElementById(id)
+    const pos = v => ((v - min) / (max - min)) * 100
+    let html = '<span class="axis"></span>'
+    for (let i = 0; i <= steps; i++) {
+      const v = min + (max - min) * i / steps
+      html += `<span class="tick${i % 2 === 0 ? ' major' : ''}" style="left:${pos(v)}%"></span>`
+    }
+    /* 只标四个位置，避免刻度数字互相挤压 */
+    ;[min, min + (max - min) / 3, min + (max - min) * 2 / 3, max].forEach(v => {
+      html += `<span class="tlabel" style="left:${pos(v)}%">${Math.round(v)}</span>`
+    })
+    html += `<span class="prev" style="left:${pos(prev)}%"></span>`
+    html += `<span class="cal" style="left:${pos(cur)}%">${cur}${unit}</span>`
+    el.innerHTML = html
+  }
+  scale('sc1', 960, 1120, 8, 973, 995, '')
+  scale('sc2', 240, 300, 6, 291, 274, '')
+
+  /* 接近度：绿条是现在的量，虚线是门槛，两者之间的距离就是还差多少 */
+  document.getElementById('bar1').innerHTML =
+    `<span class="bt"><i style="width:56.74%"></i></span>
+     <span class="plab" style="left:56.74%">56.7</span>
+     <span class="thr" style="left:100%"><span>1‰ 门槛</span></span>`
+</script>
+</body>
+</html>
