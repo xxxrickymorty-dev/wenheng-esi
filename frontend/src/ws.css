@@ -60,46 +60,28 @@ code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,
 h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0}
 :focus-visible{outline:2px solid var(--zhu);outline-offset:2px;border-radius:0}
 a{color:inherit}
-
-/* ---------- 工作台外壳（2026-10-17 绿蓝语言：顶栏制，深色「场」条） ----------
-   顶栏 60px：品牌 / 横向导航 / 右侧（期次 / 陈列馆 / 配色 / 身份）；正文自然滚动；
-   内容区 1240px。窄屏顶栏折行、导航横滑。 */
+/* ---------- 工作台外壳 ----------
+   顶栏制已废（2026-10-28 rick 裁「不要顶部导航栏」）：跨页壳只有
+   左栏（品牌/导航/hero）＋右页签条页眉。app-shell 仍是壳级容器。 */
 .app-shell{min-height:100dvh;display:flex;flex-direction:column}
-.app-top{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;
-  min-height:60px;padding:0 clamp(14px,2.5vw,28px);background:var(--field-2);color:var(--field-5)}
-.app-brand{display:flex;align-items:baseline;gap:10px;white-space:nowrap;text-decoration:none;flex:0 0 auto}
-.app-brand b{font-family:var(--serif);font-size:var(--fs-sh);font-weight:600;letter-spacing:.18em;color:var(--field-5)}
-.app-brand span{font-size:var(--fs-xs);letter-spacing:.16em;color:var(--field-4)}
-.app-nav{display:flex;align-items:center;gap:22px;margin-left:auto;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.app-nav a{white-space:nowrap;padding:6px 2px;font-size:var(--fs-label);color:var(--field-4);
-  border-bottom:2px solid transparent;transition:color .15s,border-color .15s}
-.app-nav a[aria-current="page"]{color:var(--field-5);font-weight:600;border-bottom-color:var(--tool-3)}
-.app-nav a:hover{color:var(--field-5)}
-.app-nav-sep{flex:0 0 auto;width:1px;height:14px;background:var(--field-3)}
-.app-side{display:flex;align-items:center;gap:12px;margin-left:18px;flex:0 0 auto}
-.app-jump{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 12px;
-  border:1px solid var(--field-3);background:transparent;color:var(--field-4);text-decoration:none;
-  font-size:var(--fs-label);transition:border-color .15s,color .15s;white-space:nowrap}
-.app-jump:hover{border-color:var(--field-4);color:var(--field-5)}
-.app-jump svg{color:var(--tool-4)}
-.app-side .user-chip{color:var(--field-5)}
-.app-side .user-chip-btn:hover{background:var(--field)}
-.app-side .app-period{color:var(--field-4)}
-.app-side .app-period select{background:var(--field);border-color:var(--field-3);color:var(--field-5)}
-.app-side .skin-switch{border-color:var(--field-3);background:transparent}
-.app-side .skin-switch button{color:var(--field-4)}
-.app-side .skin-switch button[aria-pressed="true"]{background:var(--tool-3);color:#fff}
-.app-side .user-chip-pop{top:calc(100% + 10px);bottom:auto;left:auto;right:0}
+.ws > .app-shell{flex:1;display:flex;flex-direction:column}
 
-/* ---------- 签条页眉（方案一交互稿 20261028 落地）----------
+/* ---------- 签条页眉（方案一交互稿 20261028 逐字落地）----------
+   右页唯一页眉＝一条纸面细条：期次签＋ⓘ 靠左，身份＋密度靠右。
    期次签＝期次+签发态唯一真相点，点开落款面换期；ⓘ 口径面与落款面
    同一时点只开一个面。规则：点开/点外/Esc 关；选期即换、换完即收；
    密度即时生效无保存。戳色取资产语义色，不随蓝绿主题变。 */
+.pg-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:13px clamp(20px,2.6vw,40px) 11px;border-bottom:1px solid var(--line-2);
+  position:relative;z-index:10}
+.pg-head .pg-r{margin-left:auto;display:inline-flex;align-items:center;gap:14px;flex-wrap:wrap}
+.pg-head .user-chip{color:var(--ink-2)}
+.pg-head .user-chip-pop{top:calc(100% + 10px);bottom:auto;left:auto;right:0}
 .pg-sig{position:relative;display:inline-flex}
 .psig{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--line);
   background:var(--card-hi);padding:6px 12px 6px 8px;cursor:pointer;color:var(--ink);
   transition:border-color .15s,background .15s}
-.psig:hover,.psig[aria-expanded="true"]{border-color:var(--ink-3)}
+.psig:hover,.psig[aria-expanded="true"]{border-color:var(--seam)}
 .psig[aria-expanded="true"]{background:#FFFEF9}
 .psig .mk{width:18px;height:18px;flex:none;color:#F5F3EC;display:inline-flex;align-items:center;
   justify-content:center;font-family:var(--serif);font-size:10px;font-weight:700;transform:rotate(-3deg)}
@@ -112,7 +94,8 @@ a{color:inherit}
 .psig .cw{font-family:var(--kai);font-size:10px;color:var(--ink-3)}
 /* 落款面：点一行即换期；当前行留痕（内嵌绿条）；戳随签发态 */
 .sig-pop{position:absolute;top:calc(100% + 10px);left:0;z-index:60;width:300px;
-  background:var(--card-hi);border:1px solid var(--line);padding:8px 8px 6px}
+  background:var(--card-hi);border:1px solid var(--line);padding:8px 8px 6px;
+  box-shadow:0 10px 28px rgba(31,42,36,.14)}
 .sig-pop .cap{font-family:var(--kai);font-size:10px;letter-spacing:.2em;color:var(--ink-3);padding:5px 10px}
 .sig-pop .row{display:flex;align-items:center;gap:10px;width:100%;padding:7px 10px;
   font-size:13px;cursor:pointer;border:0;background:transparent;text-align:left;
@@ -128,23 +111,28 @@ a{color:inherit}
 .sig-pop .row .lb{color:var(--ink-3);font-size:12px;margin-left:auto}
 /* ⓘ 口径面：声明文案单源 lib/declaration（与页内其他 ⓘ 同文） */
 .pg-info-wrap{position:relative;display:inline-flex}
-.pg-info{border:1px dashed var(--field-3);background:transparent;padding:5px 10px;
-  font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--field-4);cursor:pointer;
+.pg-info{border:1px dashed var(--line);background:transparent;padding:5px 10px;
+  font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--ink-3);cursor:pointer;
   transition:border-color .15s,color .15s;min-height:32px}
-.pg-info:hover,.pg-info[aria-expanded="true"]{color:var(--field-5);border-color:var(--field-4)}
+.pg-info:hover,.pg-info[aria-expanded="true"]{color:var(--ink-2);border-color:var(--ink-3);background:#FFFEF9}
 .info-pop{position:absolute;top:calc(100% + 10px);left:0;z-index:60;width:min(380px,72vw);
-  background:var(--card-hi);border:1px solid var(--line);padding:12px 16px}
+  background:var(--card-hi);border:1px solid var(--line);padding:12px 16px;
+  box-shadow:0 10px 28px rgba(31,42,36,.14)}
 .info-pop .sc{font-family:var(--kai);font-size:10px;letter-spacing:.22em;color:var(--ink-3);margin-bottom:6px}
 .info-pop p{font-size:12.5px;line-height:1.85;color:var(--ink-2);margin:5px 0}
-/* 页眉右端组：身份 + 密度（密度复用 skin-switch 场条样式） */
-.pg-r{margin-left:auto;display:inline-flex;align-items:center;gap:12px}
+/* 密度三档（交互稿 .dense）：即时生效、无保存；选中＝墨底反白 */
+.dense{display:inline-flex;border:1px solid var(--line);background:var(--card-hi)}
+.dense button{border:0;background:transparent;padding:5px 10px;min-height:30px;
+  font-family:var(--kai);font-size:11px;letter-spacing:.14em;color:var(--ink-3);
+  cursor:pointer;transition:color .15s,background .15s}
+.dense button:hover{color:var(--ink)}
+.dense button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
 .skip-link{position:absolute;left:-999px;top:8px;z-index:100;background:var(--card);padding:10px 14px;border:1px solid var(--gline)}
 .skip-link:focus{left:8px}
 
 @media (max-width:900px){
-  .app-top{flex-wrap:wrap;align-items:center;gap:8px 18px;padding:10px clamp(14px,4vw,22px)}
-  .app-nav{order:3;width:100%;margin-left:0;gap:18px}
-  .app-side{margin-left:auto;gap:10px}
+  .pg-head{gap:10px;padding:10px 16px}
+  .pg-head .pg-r{gap:10px}
   .wrap{padding:18px 16px 60px}
 }
 
@@ -438,8 +426,6 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 /* 对勘入口（票 14）：两扇门并排 + 章节直达折叠 + 朱批「去补」动作 */
 .rc-doors{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:12px}
 .rc-doors .entry{margin-top:0}
-.app-period{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-label);color:var(--ink-3);white-space:nowrap}
-.app-period select{min-height:32px;padding:0 8px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:var(--fs-label);border-radius:0}
 
 /* ---------- 绿蓝融合 U2（2026-10-17，据 汇-绿蓝.html）：蓝场题头 / 水尺 / 橡皮戳 / 钤印 ---------- */
 .kik{font-family:var(--kai);font-size:var(--fs-xs);letter-spacing:.36em;color:var(--field-4)}
@@ -1264,12 +1250,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
    全局页脚（2026-10-17 庚：纸面 + 顶部绿重线，收掉深底块）
    内容三栏（品牌 / 说明 / 入口）＋底行；不吸底、不占首屏。
    ========================================================================== */
-/* ---------- 顶栏 ⓘ 说明（2026-10-24）：原全局页脚收进顶栏——页脚每页重复徒增密度。
-   ⓘ 在深色场条上：描边/文字用场色系；弹层仍是浅色卡片（浮在正文上）。 ---------- */
-.app-side .info>summary{background:transparent;border-color:var(--field-3);color:var(--field-4)}
-.app-side .info>summary:hover,.app-side .info[open]>summary{border-color:var(--field-5);color:var(--field-5)}
-
-/* ---------- 统一身份控件（2026-10-12）：工作区顶栏 / 对话页左下角，同一组件、同一交互 ---------- */
+/* ---------- 统一身份控件（2026-10-12）：工作区页眉 / 对话页左下角，同一组件、同一交互 ---------- */
 .user-chip{position:relative;display:inline-flex;font-size:var(--fs-label);color:var(--ink-2)}
 .user-chip-dock{position:fixed;left:20px;bottom:16px;z-index:40;background:var(--card);border:1px solid var(--line)}
 /* 2026-10-14（rick）：角标缩小——默认只留头像圆（悬停/聚焦才展开名字），不再压住页面内容 */
@@ -1283,11 +1264,6 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .user-chip-pop{position:absolute;left:0;bottom:calc(100% + 8px);min-width:140px;background:var(--card);border:1px solid var(--gline);padding:6px;z-index:50}
 .user-chip-pop a{display:block;padding:9px 12px;color:var(--ink-2);text-decoration:none;font-size:var(--fs-label);transition:background .15s,color .15s}
 .user-chip-pop a:hover{background:var(--panel);color:var(--zhu)}
-
-/* ---------- 统一皮肤开关（2026-10-12）：与对话页同款分段开关；工作区放顶栏右端 ---------- */
-.skin-switch{display:flex;border:1px solid var(--line);background:var(--panel);overflow:hidden}
-.skin-switch button{border:0;background:transparent;font:inherit;font-size:var(--fs-label);padding:0 12px;min-height:32px;cursor:pointer;color:var(--ink-3);transition:background .15s,color .15s}
-.skin-switch button[aria-pressed="true"]{background:var(--zhu);color:#fff}
 
 /* ============================================================================
    UX 基线（票 01 · W0，2026-10-15）：功能性文本 ≥13.5px、可点区 ≥44/32px。

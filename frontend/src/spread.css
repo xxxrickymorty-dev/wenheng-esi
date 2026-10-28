@@ -108,8 +108,7 @@
 .sp-spread .ws-host { min-width: 0; }
 .sp-spread .page-r { display: flex; flex-direction: column; }
 .sp-spread .ws-host { flex: 1; }
-/* 2026-10-28 签条页眉（方案一）：页眉通栏——期次签/ⓘ 靠左，身份/密度靠右 */
-.sp-spread .ws-strip .app-side { flex: 1; margin-left: 0; min-width: 0; flex-wrap: wrap; }
+/* 签条页眉（方案一）：右页唯一页眉在 ShellApp（pg-head），壳层不再有顶条 */
 
 /* ───── 陈列馆单栏（rick 2026-10-26：陈列馆不要左栏，左栏只放在工作区） ─────
    左页、钤印位、右页顶条都不渲染，右页独占整幅；订口金线与纸色留白一并收掉，
