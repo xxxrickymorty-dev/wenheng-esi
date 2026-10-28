@@ -90,6 +90,54 @@ a{color:inherit}
 .app-side .skin-switch button{color:var(--field-4)}
 .app-side .skin-switch button[aria-pressed="true"]{background:var(--tool-3);color:#fff}
 .app-side .user-chip-pop{top:calc(100% + 10px);bottom:auto;left:auto;right:0}
+
+/* ---------- 签条页眉（方案一交互稿 20261028 落地）----------
+   期次签＝期次+签发态唯一真相点，点开落款面换期；ⓘ 口径面与落款面
+   同一时点只开一个面。规则：点开/点外/Esc 关；选期即换、换完即收；
+   密度即时生效无保存。戳色取资产语义色，不随蓝绿主题变。 */
+.pg-sig{position:relative;display:inline-flex}
+.psig{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--line);
+  background:var(--card-hi);padding:6px 12px 6px 8px;cursor:pointer;color:var(--ink);
+  transition:border-color .15s,background .15s}
+.psig:hover,.psig[aria-expanded="true"]{border-color:var(--ink-3)}
+.psig[aria-expanded="true"]{background:#FFFEF9}
+.psig .mk{width:18px;height:18px;flex:none;color:#F5F3EC;display:inline-flex;align-items:center;
+  justify-content:center;font-family:var(--serif);font-size:10px;font-weight:700;transform:rotate(-3deg)}
+.psig .mk[data-state="ok"]{background:var(--ok)}
+.psig .mk[data-state="re"]{background:var(--warn)}
+.psig .mk[data-state="no"]{background:transparent;border:1.5px dashed var(--bad);color:var(--bad)}
+.psig .tx{font-family:var(--kai);font-size:12.5px;letter-spacing:.14em;white-space:nowrap}
+.psig .tx b{font-family:var(--mono);font-weight:600;letter-spacing:.02em}
+.psig .tx .st{color:var(--ink-3)}
+.psig .cw{font-family:var(--kai);font-size:10px;color:var(--ink-3)}
+/* 落款面：点一行即换期；当前行留痕（内嵌绿条）；戳随签发态 */
+.sig-pop{position:absolute;top:calc(100% + 10px);left:0;z-index:60;width:300px;
+  background:var(--card-hi);border:1px solid var(--line);padding:8px 8px 6px}
+.sig-pop .cap{font-family:var(--kai);font-size:10px;letter-spacing:.2em;color:var(--ink-3);padding:5px 10px}
+.sig-pop .row{display:flex;align-items:center;gap:10px;width:100%;padding:7px 10px;
+  font-size:13px;cursor:pointer;border:0;background:transparent;text-align:left;
+  font-family:inherit;color:var(--ink);transition:background .15s}
+.sig-pop .row:hover{background:var(--panel)}
+.sig-pop .row[aria-current="true"]{background:var(--panel);box-shadow:inset 3px 0 0 var(--ok)}
+.sig-pop .row .mk{width:16px;height:16px;flex:0 0 16px;display:inline-flex;align-items:center;
+  justify-content:center;font-family:var(--serif);font-size:9px;font-weight:700}
+.sig-pop .row[data-state="ok"] .mk{background:var(--ok);color:#F5F3EC}
+.sig-pop .row[data-state="re"] .mk{background:var(--warn);color:#F5F3EC}
+.sig-pop .row[data-state="no"] .mk{border:1.5px dashed var(--bad);color:var(--bad)}
+.sig-pop .row b{font-family:var(--mono);font-weight:600}
+.sig-pop .row .lb{color:var(--ink-3);font-size:12px;margin-left:auto}
+/* ⓘ 口径面：声明文案单源 lib/declaration（与页内其他 ⓘ 同文） */
+.pg-info-wrap{position:relative;display:inline-flex}
+.pg-info{border:1px dashed var(--field-3);background:transparent;padding:5px 10px;
+  font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--field-4);cursor:pointer;
+  transition:border-color .15s,color .15s;min-height:32px}
+.pg-info:hover,.pg-info[aria-expanded="true"]{color:var(--field-5);border-color:var(--field-4)}
+.info-pop{position:absolute;top:calc(100% + 10px);left:0;z-index:60;width:min(380px,72vw);
+  background:var(--card-hi);border:1px solid var(--line);padding:12px 16px}
+.info-pop .sc{font-family:var(--kai);font-size:10px;letter-spacing:.22em;color:var(--ink-3);margin-bottom:6px}
+.info-pop p{font-size:12.5px;line-height:1.85;color:var(--ink-2);margin:5px 0}
+/* 页眉右端组：身份 + 密度（密度复用 skin-switch 场条样式） */
+.pg-r{margin-left:auto;display:inline-flex;align-items:center;gap:12px}
 .skip-link{position:absolute;left:-999px;top:8px;z-index:100;background:var(--card);padding:10px 14px;border:1px solid var(--gline)}
 .skip-link:focus{left:8px}
 

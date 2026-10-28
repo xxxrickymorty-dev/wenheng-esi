@@ -20,11 +20,11 @@ import { stateDbAlert, type StateDbAlert } from './lib/stateDb'
 import { wireEnter } from './lib/motion'
 import { pickRunForPeriod } from './lib/run'
 import { UserChip } from './lib/UserChip'
+import { Declaration } from './lib/declaration'
 import { useJobRun, type Run } from './hooks/useJobRun'
 import { usePeriodResource } from './hooks/usePeriodResource'
 import { Icon, Sprite } from './icons'
 import { SealInkDefs } from './StateSeal'
-import { Info } from './Info'
 import { Acquire } from './Acquire'
 import { Pick } from './Pick'
 import { Workbench } from './Workbench'
@@ -63,6 +63,8 @@ export type WsContext = {
   window: string | null
   task: string
   acq: string
+  /** 是否已出稿（期次列表的 generated）——钤印在签发态 unsigned 时区分「已出稿墨绿干印/未签发朱虚框」 */
+  generated: boolean | null
 }
 
 function lastJobLabel(detail: PeriodDetail | null): string {
@@ -79,11 +81,23 @@ type ShellAppProps = {
   view: WsView
   onNavigate: (view: WsView) => void
   onContext: (ctx: WsContext) => void
+  /** 左栏密度偏好（跨页壳持有 --lw；签条页眉的三档钮是它的唯一入口） */
+  density?: { lw: string; onLw: (lw: string) => void }
 }
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'warned', 'waiting-approval', 'fail-ledger', 'fail-other', 'stalled', 'signed']
 type Palette = 'blue' | 'green'
 const PALETTE_STORAGE_KEY = 'wenheng-palette'
+
+/** 期次签小戳（方案一交互稿 20261028）：签发三态 → 戳色/戳字。
+    ok=绿底「签」·re=金底「重」·no=朱虚框「未」；未知状态不谎称，画空戳「·」。
+    色取资产语义色（--ok/--warn/--bad，不随蓝绿主题变）。 */
+function sigMark(status: string | null | undefined): { state: 'ok' | 're' | 'no'; char: string } {
+  if (status === 'signed') return { state: 'ok', char: '签' }
+  if (status === 'stale') return { state: 're', char: '重' }
+  if (status === 'unsigned') return { state: 'no', char: '未' }
+  return { state: 'no', char: '·' }
+}
 
 function initialPalette(): Palette {
   try {
@@ -95,8 +109,16 @@ function initialPalette(): Palette {
   }
 }
 
-export default function ShellApp({ view, onNavigate, onContext }: ShellAppProps) {
+export default function ShellApp({ view, onNavigate, onContext, density }: ShellAppProps) {
   const wsRef = useRef<HTMLDivElement | null>(null)
+
+  /* 签条页眉的面（方案一交互稿 20261028）：同一时点只开一个面——
+     'sig'＝期次落款面，'info'＝口径声明面；null＝全收。 */
+  const [panel, setPanel] = useState<'sig' | 'info' | null>(null)
+  const psigRef = useRef<HTMLButtonElement | null>(null)
+  const sigPopRef = useRef<HTMLDivElement | null>(null)
+  const infoBtnRef = useRef<HTMLButtonElement | null>(null)
+  const infoPopRef = useRef<HTMLDivElement | null>(null)
 
   const [palette, setPalette] = useState<Palette>(initialPalette)
   const [healthy, setHealthy] = useState<boolean | null>(null)
@@ -131,6 +153,33 @@ export default function ShellApp({ view, onNavigate, onContext }: ShellAppProps)
       // 浏览器不允许保存时，当前页面仍可正常切换。
     }
   }, [palette])
+
+  /* 规则①（点开／点外／Esc 关）：面外即「与当前动作无关」，点外就收；
+     Esc 是紧急退出，关后焦点还给期次签——用户永远有出路。
+     （钮与面上的点击靠 stopPropagation 与 contains 判定不误关。） */
+  useEffect(() => {
+    if (!panel) return
+    const onDocClick = (event: MouseEvent) => {
+      const t = event.target as Node | null
+      if (!t) return
+      if (sigPopRef.current?.contains(t) || psigRef.current?.contains(t)) return
+      if (infoPopRef.current?.contains(t) || infoBtnRef.current?.contains(t)) return
+      setPanel(null)
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      /* 焦点还给「开它的」那个面钮（交互稿原型里只还给签；规则原文是开谁的还谁） */
+      const opener = panel === 'sig' ? psigRef.current : infoBtnRef.current
+      setPanel(null)
+      opener?.focus()
+    }
+    document.addEventListener('click', onDocClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('click', onDocClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [panel])
 
   const refreshPeriods = useCallback(async () => {
     const request = ++periodsRequestRef.current
@@ -264,6 +313,15 @@ export default function ShellApp({ view, onNavigate, onContext }: ShellAppProps)
     manualSelectionRef.current = true
     setSelected(period)
     applyPeriod(period)   /* 票 03：期次变更一律写 URL（唯一真相） */
+  }
+
+  /* 规则③（落款面选期）：动作完成面就走（换完即收），焦点还给期次签。
+     期次变更走 pickPeriod——URL 是唯一真相；签、左栏 hero、页头、钤印
+     全部从同一份 selected/status 派生，同源同变。 */
+  function choosePeriod(period: string) {
+    pickPeriod(period)
+    setPanel(null)
+    psigRef.current?.focus()
   }
 
   useEffect(() => {
@@ -607,8 +665,9 @@ export default function ShellApp({ view, onNavigate, onContext }: ShellAppProps)
       window: detail?.window ?? null,
       task: lastJobLabel(detail),
       acq: av != null && ae != null ? `${av} / ${ae}` : '—',
+      generated: periodRow?.generated ?? null,
     })
-  }, [selected, periodRow?.status, periodRow?.label, detail, onContext])
+  }, [selected, periodRow?.status, periodRow?.label, periodRow?.generated, detail, onContext])
 
   /* 陈列馆＝独立成品展示面（rick 2026-10-26：左栏只放在工作区）：
      不套工作区细条、不吃 .wrap 版心，整页交给 ShelfPage 自己排；
@@ -628,28 +687,60 @@ export default function ShellApp({ view, onNavigate, onContext }: ShellAppProps)
       <SealInkDefs />
       <a className="skip-link" href="#main">跳到主要内容</a>
 
-      {/* 壳内细条：品牌与导航在跨页壳左栏——这里只留 期次/口径/陈列馆/配色/身份 */}
+      {/* 壳内细条＝签条页眉（方案一交互稿 20261028 落地）：
+          期次签＝期次+签发态的唯一真相点（原 select 升级），点开落款面换期；
+          ⓘ 口径面与落款面同一时点只开一个面；身份与密度收进页眉右端。
+          品牌与导航在跨页壳左栏——两栏永不重复对方的职责。 */}
       <header className="app-top ws-strip">
         <div className="app-side">
-          {/* 期次是全局控件（2026-10-17 冗余收敛稿③）：从报告屏印记链升到顶栏，各屏同一份。
-              2026-10-24 rick 工作台减负：生成台尾部「全部期次」折块撤除，签发状态并进这里的
-              option 文案（期次 · 已签发/待重签/未签发）——不再另铺一张状态表。 */}
+          {/* 期次是全局控件（2026-10-17 冗余收敛稿③），2026-10-28 起长成「期次签」：
+              戳色跟签发态走（绿·签／金·重／朱虚框·未），换期在落款面里完成——
+              签、左栏 hero、页头、钤印同源同变（URL 里的期次仍是唯一真相）。 */}
           {periods.length > 0 && (
-            <label className="app-period">期次
-              <select value={selected ?? ''} onChange={(e) => pickPeriod(e.target.value)} aria-label="切换期次">
-                {periods.map((p) => <option key={p.period} value={p.period}>{p.period} · {approvalLabel(p.status)}</option>)}
-                {selected && !periods.some((p) => p.period === selected) && <option value={selected}>{selected}</option>}
-              </select>
-            </label>
+            <span className="pg-sig">
+              <button className="psig" type="button" ref={psigRef}
+                      aria-expanded={panel === 'sig'} aria-haspopup="true"
+                      title="期次与签发态以这里为准——点开换期"
+                      onClick={(e) => { e.stopPropagation(); setPanel((p) => (p === 'sig' ? null : 'sig')) }}>
+                <span className="mk" data-state={sigMark(approvalStatus).state} aria-hidden="true">{sigMark(approvalStatus).char}</span>
+                <span className="tx"><b>{selected ?? '——————'}</b><span className="st"> · {approvalLabel(approvalStatus)}</span></span>
+                <span className="cw">换期 ▾</span>
+              </button>
+              {panel === 'sig' && (
+                <div className="sig-pop" role="menu" aria-label="期次落款" ref={sigPopRef}>
+                  <div className="cap">期 次 落 款 · 点 一 期 即 换</div>
+                  {periods.map((p) => {
+                    const m = sigMark(p.status)
+                    return (
+                      <button key={p.period} type="button" role="menuitem" className="row"
+                              data-state={m.state}
+                              aria-current={p.period === selected ? 'true' : undefined}
+                              onClick={() => choosePeriod(p.period)}>
+                        <span className="mk" aria-hidden="true">{m.char}</span>
+                        <b>{p.period}</b>
+                        <span className="lb">{approvalLabel(p.status)}{p.period === selected ? ' · 本期' : ''}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </span>
           )}
-          {/* 全站唯一一份口径/来源/只读声明（原页脚收进顶栏 ⓘ——2026-10-24 rick：页脚每页重复，徒增信息密度）。
-              合规声明（请勿外传，2026-10-14）一并入内。 */}
-          <Info label="口径、来源与只读声明">
-            <p>① 数字只来自馆员维护的台账与派生产物，运行期大模型不进入数据路径；</p>
-            <p>② 本系统是只读视图，不修改台账与报告；③ 预测章按「本期已选」的已保存选择执行，未列学科用 V1 推荐；④ 期次与状态以任务记录为准，未签发报告不可下载。</p>
-            <p>来源：期内产物目录 · 运行档案 · 预测选模配置。</p>
-            <p>分析报告属于内部资料，仅用于参赛，禁止外传。</p>
-          </Info>
+          {/* ⓘ 声明面：全站唯一一份口径/来源/只读声明（文案单源 lib/declaration）。
+              与落款面互斥——同一时点只开一个面。 */}
+          <span className="pg-info-wrap">
+            <button className="pg-info" type="button" ref={infoBtnRef}
+                    aria-expanded={panel === 'info'} aria-haspopup="true"
+                    onClick={(e) => { e.stopPropagation(); setPanel((p) => (p === 'info' ? null : 'info')) }}>
+              ⓘ 口径
+            </button>
+            {panel === 'info' && (
+              <div className="info-pop" role="note" aria-label="口径、来源与只读声明" ref={infoPopRef}>
+                <div className="sc">口 径 、 来 源 与 只 读 声 明</div>
+                <Declaration />
+              </div>
+            )}
+          </span>
           {/* 陈列馆＝给人看的「展示面」，不在工作区里——顶栏给一个离开工作区的入口（2026-10-15） */}
           <a className="app-jump" href="/app/shelf/" title="陈列馆（成品）"
              onClick={(e) => { e.preventDefault(); onNavigate('shelf') }}>
@@ -660,14 +751,25 @@ export default function ShellApp({ view, onNavigate, onContext }: ShellAppProps)
             <button type="button" aria-pressed={palette === 'blue'} onClick={() => setPalette('blue')}>蓝场</button>
             <button type="button" aria-pressed={palette === 'green'} onClick={() => setPalette('green')}>绿场</button>
           </span>
-          {me ? <UserChip me={me} /> : (
-            <span className="user-chip" aria-live="polite">
-              <span className="user-chip-btn" aria-disabled="true">
-                <span className="av">？</span>
-                <span className="user-chip-name">{roleKnown ? '未登录' : '角色确认中…'}</span>
+          {/* 页眉右端：身份 + 密度（交互稿方案一）。密度即时生效、无保存——视图偏好不该有仪式感。 */}
+          <span className="pg-r">
+            {me ? <UserChip me={me} /> : (
+              <span className="user-chip" aria-live="polite">
+                <span className="user-chip-btn" aria-disabled="true">
+                  <span className="av">？</span>
+                  <span className="user-chip-name">{roleKnown ? '未登录' : '角色确认中…'}</span>
+                </span>
               </span>
-            </span>
-          )}
+            )}
+            {density && (
+              <span className="skin-switch" role="group" aria-label="左栏宽度">
+                {([['34%', '宽松'], ['28%', '紧凑'], ['24%', '极窄']] as const).map(([v, name]) => (
+                  <button key={v} type="button" aria-pressed={density.lw === v}
+                          onClick={() => density.onLw(v)}>{name}</button>
+                ))}
+              </span>
+            )}
+          </span>
         </div>
       </header>
 

@@ -121,12 +121,15 @@ export function WorkbenchSpread() {
 
   const meta = VIEW_META[cur] ?? { ov: "文 衡 · 工 作 区", title: cur, stm: "" };
   const status = ctx?.status ?? "unsigned";
-  /* 印随站换面：机器站=干印；其余按真签发态（未签=虚框，签后=满印，失效=金印） */
+  /* 印随站换面＋印随签发态（交互稿方案一 20261028 rick 审）：
+     取数/选模＝机器站，恒干印「并入台账」；其余站随真签发态——
+     已签发＝朱满印、签发失效＝金印、未出稿未签发＝朱虚框、已出稿未签发＝墨绿干印。
+     （原「印随站」把 workbench 钉死在已出稿，换期时印不跟期次走——按交互稿改。） */
   const sealState: SealState =
     cur === "acquire" || cur === "pick" ? "merged"
-      : cur === "forecast" || cur === "workbench" ? "drafted"
-        : status === "stale" ? "stale"
-          : status === "signed" ? "signed" : "unsigned";
+      : status === "stale" ? "stale"
+        : status === "signed" ? "signed"
+          : ctx?.generated === false ? "unsigned" : "drafted";
 
   return (
     <div className={bare ? "sp-spread solo" : "sp-spread"} style={{ "--lw": lw } as CSSProperties}>
@@ -191,30 +194,18 @@ export function WorkbenchSpread() {
       )}
 
       {/* 右页 · 至公：真工作区（web/src 全量迁入 ws/，视图由左栏驱动）；
-          陈列馆独占整幅，只留一条回工作区的浮标（壳里没有浏览器后退可用） */}
+          2026-10-28 起右页页眉＝签条页眉（方案一交互稿：期次签/ⓘ/身份/密度
+          都在 ShellApp 的壳内细条，rtop 撤除——屏题在左栏 hero，期次在期次签，
+          两处不再重复）。陈列馆独占整幅，只留一条回工作区的浮标。 */}
       <section className="page-r">
-        {!bare && (
-          <div className="rtop">
-            <span>{meta.title}</span>
-            <span>·</span>
-            <span>{ctx?.period ?? "——————"}</span>
-            <div className="r">
-              <span className="density" role="group" aria-label="左栏宽度">
-                {([["34%", "宽松"], ["28%", "紧凑"], ["24%", "极窄"]] as const).map(([v, name]) => (
-                  <button key={v} type="button" onClick={() => setLw(v)}
-                          aria-pressed={lw === v ? "true" : "false"}>{name}</button>
-                ))}
-              </span>
-            </div>
-          </div>
-        )}
         {bare && (
           <button type="button" className="back-home" onClick={() => setCur("workbench")}>
             ←　回 工 作 区
           </button>
         )}
         <div className="ws-host">
-          <ShellApp view={cur} onNavigate={setCur} onContext={setCtx} />
+          <ShellApp view={cur} onNavigate={setCur} onContext={setCtx}
+                    density={{ lw, onLw: setLw }} />
         </div>
 
         {/* 常驻徽标：每一站右页角（陈列馆 solo 是成品展示面，不出）；答复中＝朱点 */}

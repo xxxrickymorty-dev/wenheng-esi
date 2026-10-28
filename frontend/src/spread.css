@@ -92,14 +92,7 @@
 
 /* ───── 右页 · 至公 ───── */
 .sp-spread .page-r { background: var(--paper); border-left: 3px solid var(--seam); padding: 0 0 34px; min-width: 0; }
-.sp-spread .rtop { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 20px clamp(20px, 2.6vw, 40px) 0;
-  font-family: var(--sans); font-size: 11px; letter-spacing: .14em; color: var(--ink-3); }
-.sp-spread .rtop .r { margin-left: auto; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
-.sp-spread .density { display: inline-flex; border: 1px solid var(--line); }
-.sp-spread .density button { border: 0; background: transparent; padding: 5px 10px; font: inherit; font-family: var(--kai);
-  font-size: 11px; letter-spacing: .14em; color: var(--ink-3); }
-.sp-spread .density button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
-.sp-spread .density button:hover:not([aria-pressed="true"]) { color: var(--ink); }
+/* 2026-10-28 签条页眉落地：rtop 撤除——屏题在左栏 hero，期次在期次签，密度在页眉右端。 */
 
 /* 工序条 */
 .sp-spread .st { display: block; padding: 14px 10px 12px 0; border-right: 1px solid var(--line-2); }
@@ -115,7 +108,8 @@
 .sp-spread .ws-host { min-width: 0; }
 .sp-spread .page-r { display: flex; flex-direction: column; }
 .sp-spread .ws-host { flex: 1; }
-.sp-spread .ws-strip .app-side { margin-left: auto; }
+/* 2026-10-28 签条页眉（方案一）：页眉通栏——期次签/ⓘ 靠左，身份/密度靠右 */
+.sp-spread .ws-strip .app-side { flex: 1; margin-left: 0; min-width: 0; flex-wrap: wrap; }
 
 /* ───── 陈列馆单栏（rick 2026-10-26：陈列馆不要左栏，左栏只放在工作区） ─────
    左页、钤印位、右页顶条都不渲染，右页独占整幅；订口金线与纸色留白一并收掉，
