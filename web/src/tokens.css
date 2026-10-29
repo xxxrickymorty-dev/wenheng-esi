@@ -1,0 +1,56 @@
+/* 自动生成，不要手改。改令牌请改 web/design/tokens/core.json 再跑 npm run tokens */
+/* 生成器：web/scripts/build-tokens.mjs（零依赖；将来跨端再换 style-dictionary） */
+/* 陈列馆木色（--lib-*）不参与主题，仍写在 web/src/index.css */
+:root{
+  /* 颜色 */
+  --field:#26483B;
+  --field-2:#163228;
+  --field-3:#2F7A58;
+  --field-4:#7FB79B;
+  --field-5:#DFEDE6;
+  --tool:#26483B;
+  --tool-2:#163228;
+  --tool-3:#2F7A58;
+  --tool-4:#7FB79B;
+  --tool-5:#DFEDE6;
+  --zhu:#26483B;
+  --zhu-soft:#DFEDE6;
+  --gline:#163228;
+  --gold:#2F7A58;
+  --gold-soft:#DFEDE6;
+  --gold-ink:#163228;
+  --bg:#EDE9DE;
+  --card:#FAF8F0;
+  --panel:#E6E1D3;
+  --card-hi:#FDFAF3;
+  --ink:#15222B;
+  --ink-2:#43525C;
+  --ink-3:#556169;
+  --ink-4:#64717A;
+  --line:#D8D2C2;
+  --line-2:#E6E1D3;
+  --ok:#276B4C;
+  --ok-soft:#DFEDE6;
+  --ok-line:#9CC4AE;
+  --warn:#7C5A16;
+  --warn-soft:#F3E9CF;
+  --bad:#B23A2B;
+  --bad-soft:#F4DDD7;
+  /* 字体 */
+  --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+  --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  /* 圆角 */
+  --r:0px;
+  --r-sm:0px;
+  /* 阴影 */
+  --shadow:0 1px 2px rgba(21,34,43,.07);
+  /* 字号 */
+  --fs-xs:11px;
+  --fs-sm:12px;
+  --fs-label:13.5px;
+  --fs-body:15px;
+  --fs-h:19px;
+  --fs-sh:26px;
+}

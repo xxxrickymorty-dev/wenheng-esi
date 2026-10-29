@@ -1,3 +1,4 @@
+@import "./tokens.css";
 /* 基础 reset（2026-10-01 移除 Tailwind 时内置）：原样保留 Tailwind preflight 的关键行为，
    避免整站边距/列表/表单/图片默认样式发生变化。改动这里必须跑全站截图核对。 */
 *,::after,::before,::backdrop,::file-selector-button{box-sizing:border-box;margin:0;padding:0;border:0 solid}
@@ -16,43 +17,23 @@ code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,
 ::placeholder{opacity:1;color:color-mix(in oklab, currentColor 50%, transparent)}
 
 /* ============================================================================
-   文衡 · 工作台令牌（绿蓝双主题，2026-10-17 rick 拍板，据 汇-绿蓝.html 融合）
-   蓝·场（题头/顶栏大场面色）＋绿·器（控件/强调/重线色）；绿主题两族对调。
-   朱砂退役。语义色（ok/warn/bad）不随主题变，2026-10-24 起 warn/bad 分色：
-   红 #B23A2B＝失败 / 拦停 / 破坏性确认；琥珀 warn＝可继续的提醒（校验提醒、待重签类）。
+   文衡 · 工作区令牌 —— 已搬到 web/design/tokens/core.json，由脚本生成 src/tokens.css
+   （本文件第一行 import 进来）。改配色只改 core.json，再跑 npm run tokens。
+
+   2026-10-29 蓝色退场：全站只留绿色单主题（场地与器物同取绿阶，绿蓝对调那一版并入默认）。
+   语义色（ok/warn/bad）不随主题变：红 #B23A2B＝失败 / 拦停 / 破坏性确认；
+   琥珀 warn＝可继续的提醒（校验提醒、待重签类）。
    纸面分层：底最深（bg）、卡片更亮（card）、一档浅阴影（--shadow）让卡片浮起——零圆角不变。
-   文字/底色组合实测 ≥4.5:1（WCAG AA）。改配色只改这两处（blue / green）。
+   文字/底色组合实测 ≥4.5:1（WCAG AA）。
    --zhu 仍是全站主强调色变量名（＝器色），组件不必改。
    ========================================================================== */
-:root, html[data-palette="blue"]{
-  --field:#17456E; --field-2:#0F2E4C; --field-3:#2F6B8E; --field-4:#8FB6CE; --field-5:#DCE8F0;
-  --tool:#26483B; --tool-2:#163228; --tool-3:#2F7A58; --tool-4:#7FB79B; --tool-5:#DFEDE6;
-  --bg:#EDE9DE; --card:#FAF8F0; --panel:#E6E1D3; --card-hi:#FDFAF3;
-  --ink:#15222B; --ink-2:#43525C; --ink-3:#556169; --ink-4:#64717A;
-  --line:#D8D2C2; --line-2:#E6E1D3;
-  --zhu:#26483B; --zhu-soft:#DFEDE6;
-  --gline:#163228;
-  --gold:#2F7A58; --gold-soft:#DFEDE6; --gold-ink:#163228;
-  --ok:#276B4C; --ok-soft:#DFEDE6; --ok-line:#9CC4AE;
-  --warn:#7C5A16; --warn-soft:#F3E9CF;
-  --bad:#B23A2B; --bad-soft:#F4DDD7;
-  --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
-  --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
-  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
-  --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
-  --r:0px; --r-sm:0px;
-  --shadow:0 1px 2px rgba(21,34,43,.07);
-  /* 字号音阶（2026-10-24 定稿）：全站六档＋clamp 英雄与豁免件；主角跨两级取值，配角压平——见 UX.md §九 */
-  --fs-xs:11px; --fs-sm:12px; --fs-label:13.5px; --fs-body:15px; --fs-h:19px; --fs-sh:26px;
-}
 
 /* ============================================================================
-   陈列馆（展陈面）专用色板 —— 第三套，2026-10-26 登记（rick 裁「按推荐」）
-   木 / 金 / 纸 三族，与工作区蓝绿两套并行；**不参与主题切换**（不受 html[data-palette] 影响，
-   因为陈列馆是「馆」不是「台」，木色是它的身份，换主题不该把书架刷成蓝的）。
-   唯一来源＝本段。消费方只有 web/src/library/shelf-landing.css（那里用 --night/--gold/--paper
-   等短名做别名，值全部指回这里）。改色只改这里。见 UX.md §九「陈列馆豁免」。
-   对比度口径：所有文字/底色组合实测 ≥4.5:1（2026-10-26 逐格验过），同工作区标准，不豁免。
+   陈列馆（展陈面）专用色板 —— 木 / 金 / 纸 三族，**不参与主题**（2026-10-26 登记）
+   与工作区令牌各自独立；它不随主题变，因为陈列馆是「馆」不是「台」，木色是它的身份。
+   唯一来源＝本段，不搬进 core.json。消费方只有 web/src/library/shelf-landing.css
+   （那里用 --night/--gold/--paper 等短名做别名，值全部指回这里）。改色只改这里。
+   见 UX.md §九「陈列馆豁免」。对比度口径：所有文字/底色组合实测 ≥4.5:1（2026-10-26 逐格验过）。
    ========================================================================== */
 :root{
   --lib-night:#191310;  --lib-wood:#3A2A1A;
@@ -64,13 +45,6 @@ code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,
   --lib-deep:#14342A;   --lib-mid:#2F7A58;     --lib-pale:#D6E6DB; --lib-mist:#EAF2EC;
   --lib-red:#B23A2B;
 }
-html[data-palette="green"]{
-  --field:#26483B; --field-2:#163228; --field-3:#2F7A58; --field-4:#7FB79B; --field-5:#DFEDE6;
-  --tool:#17456E; --tool-2:#0F2E4C; --tool-3:#2F6B8E; --tool-4:#8FB6CE; --tool-5:#DCE8F0;
-  --zhu:#17456E; --zhu-soft:#DCE8F0;
-  --gline:#0F2E4C;
-  --gold:#2F6B8E; --gold-soft:#DCE8F0; --gold-ink:#0F2E4C;
-}
 
 html,body,#root{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);
@@ -79,8 +53,8 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0}
 :focus-visible{outline:2px solid var(--zhu);outline-offset:2px;border-radius:0}
 a{color:inherit}
 
-/* ---------- 工作台外壳（2026-10-17 绿蓝语言：顶栏制，深色「场」条） ----------
-   顶栏 60px：品牌 / 横向导航 / 右侧（期次 / 陈列馆 / 配色 / 身份）；正文自然滚动；
+/* ---------- 工作台外壳（2026-10-17 起的顶栏制，深色「场」条） ----------
+   顶栏 60px：品牌 / 横向导航 / 右侧（期次 / 说明 / 陈列馆 / 身份）；正文自然滚动；
    内容区 1240px。窄屏顶栏折行、导航横滑。 */
 .app-shell{min-height:100dvh;display:flex;flex-direction:column}
 .app-top{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;
@@ -104,9 +78,6 @@ a{color:inherit}
 .app-side .user-chip-btn:hover{background:var(--field)}
 .app-side .app-period{color:var(--field-4)}
 .app-side .app-period select{background:var(--field);border-color:var(--field-3);color:var(--field-5)}
-.app-side .skin-switch{border-color:var(--field-3);background:transparent}
-.app-side .skin-switch button{color:var(--field-4)}
-.app-side .skin-switch button[aria-pressed="true"]{background:var(--tool-3);color:#fff}
 .app-side .user-chip-pop{top:calc(100% + 10px);bottom:auto;left:auto;right:0}
 .skip-link{position:absolute;left:-999px;top:8px;z-index:100;background:var(--card);padding:10px 14px;border:1px solid var(--gline)}
 .skip-link:focus{left:8px}
@@ -411,10 +382,10 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .app-period{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-label);color:var(--ink-3);white-space:nowrap}
 .app-period select{min-height:32px;padding:0 8px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:var(--fs-label);border-radius:0}
 
-/* ---------- 绿蓝融合 U2（2026-10-17，据 汇-绿蓝.html）：蓝场题头 / 水尺 / 橡皮戳 / 钤印 ---------- */
+/* ---------- 绿蓝融合 U2（2026-10-17，据 汇-绿蓝.html）：场色题头 / 水尺 / 橡皮戳 / 钤印 ---------- */
 .kik{font-family:var(--kai);font-size:var(--fs-xs);letter-spacing:.36em;color:var(--field-4)}
 /* ---------- 生成台 v2 极致低密（2026-10-24 rick 过审，静态稿 v2 同构）：一行身份＋四节点流程图＋主动作 ----------
-   旧蓝场题头（题句/药丸/翻牌）随之退役；gaugeband 水尺与折叠工具保留 */
+   旧题头（题句/药丸/翻牌）随之退役；gaugeband 水尺与折叠工具保留 */
 .wb2{padding:22px clamp(16px,3vw,36px) 4px;margin-top:14px}
 .wb2-line{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding:4px 2px 0}
 .wb2-period{font-family:var(--serif);font-size:var(--fs-sh);letter-spacing:.05em;color:var(--ink);margin:0}
@@ -1261,11 +1232,6 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .user-chip-pop{position:absolute;left:0;bottom:calc(100% + 8px);min-width:140px;background:var(--card);border:1px solid var(--gline);padding:6px;z-index:50}
 .user-chip-pop a{display:block;padding:9px 12px;color:var(--ink-2);text-decoration:none;font-size:var(--fs-label);transition:background .15s,color .15s}
 .user-chip-pop a:hover{background:var(--panel);color:var(--zhu)}
-
-/* ---------- 统一皮肤开关（2026-10-12）：与对话页同款分段开关；工作区放顶栏右端 ---------- */
-.skin-switch{display:flex;border:1px solid var(--line);background:var(--panel);overflow:hidden}
-.skin-switch button{border:0;background:transparent;font:inherit;font-size:var(--fs-label);padding:0 12px;min-height:32px;cursor:pointer;color:var(--ink-3);transition:background .15s,color .15s}
-.skin-switch button[aria-pressed="true"]{background:var(--zhu);color:#fff}
 
 /* ============================================================================
    UX 基线（票 01 · W0，2026-10-15）：功能性文本 ≥13.5px、可点区 ≥44/32px。

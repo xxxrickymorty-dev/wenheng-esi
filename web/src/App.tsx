@@ -45,21 +45,8 @@ import { MigrateSandbox } from './MigrateSandbox'
 import { deriveWorkbench, isTerminal, statusToWB, type WBState } from './wb'
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'warned', 'waiting-approval', 'fail-ledger', 'fail-other', 'stalled', 'signed']
-type Palette = 'blue' | 'green'
-const PALETTE_STORAGE_KEY = 'wenheng-palette'
-
-function initialPalette(): Palette {
-  try {
-    const v = localStorage.getItem(PALETTE_STORAGE_KEY)
-    if (v === 'green' || v === 'blue') return v
-    return v === 'zhu' ? 'green' : 'blue'
-  } catch {
-    return 'blue'
-  }
-}
 
 export default function App() {
-  const [palette, setPalette] = useState<Palette>(initialPalette)
   const [healthy, setHealthy] = useState<boolean | null>(null)
   const [me, setMe] = useState<Me | null>(null)
   /** 本机数据存储只读降级时的那条常驻告警（正常为 null＝零渲染） */
@@ -83,15 +70,6 @@ export default function App() {
   const manualSelectionRef = useRef(false)
   const restoredActivePeriodRef = useRef<string | null>(null)
   const periodsRequestRef = useRef(0)
-
-  useEffect(() => {
-    document.documentElement.dataset.palette = palette
-    try {
-      localStorage.setItem(PALETTE_STORAGE_KEY, palette)
-    } catch {
-      // 浏览器不允许保存时，当前页面仍可正常切换。
-    }
-  }, [palette])
 
   const refreshPeriods = useCallback(async () => {
     const request = ++periodsRequestRef.current
@@ -570,7 +548,7 @@ export default function App() {
       <SealInkDefs />
       <a className="skip-link" href="#main">跳到主要内容</a>
 
-      {/* 顶栏（2026-10-17 庚·卷宗）：品牌 / 导航 / 陈列馆 / 配色开关 / 身份；正文自然滚动。 */}
+      {/* 顶栏（2026-10-17 庚·卷宗）：品牌 / 导航 / 陈列馆 / 身份；正文自然滚动。 */}
       <header className="app-top">
         <a className="app-brand" href={navHref('/app/')}>
           <b>文衡</b>
@@ -619,11 +597,6 @@ export default function App() {
           <a className="app-jump" href="/app/shelf/" title="陈列馆（成品）">
             陈列馆 <Icon name="arrow" size={14} />
           </a>
-          {/* 皮肤开关：与对话页同款（2026-10-12）；默认云大绿 */}
-          <span className="skin-switch" role="group" aria-label="切换配色">
-            <button type="button" aria-pressed={palette === 'blue'} onClick={() => setPalette('blue')}>蓝场</button>
-            <button type="button" aria-pressed={palette === 'green'} onClick={() => setPalette('green')}>绿场</button>
-          </span>
           {me ? <UserChip me={me} /> : (
             <span className="user-chip" aria-live="polite">
               <span className="user-chip-btn" aria-disabled="true">

@@ -33,7 +33,7 @@ const P = (x: number, y: number, z = 0): [number, number] =>
   [470 + (x - y) * 4.3, 150 + (x + y) * 2.45 - z * 4.3]
 const pts = (arr: [number, number][]) => arr.map(([a, b]) => `${a.toFixed(1)},${b.toFixed(1)}`).join(' ')
 
-/* 色板＝现行绿蓝令牌（蓝场/绿场切换时整座工厂跟着换）；纸感墙面色无令牌，就地常量 */
+/* 色板＝现行工作区令牌（整座工厂随主题走）；纸感墙面色无令牌，就地常量 */
 const C = {
   card: 'var(--card)', ground: 'var(--panel)', grid: 'var(--line)', line: 'var(--line)',
   ink: 'var(--ink)', ink2: 'var(--ink-2)', ink3: 'var(--ink-3)',
