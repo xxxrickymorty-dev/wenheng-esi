@@ -25,6 +25,22 @@ uv run python tools\verify_demo_run.py 202607  # 写路径（会重跑当期流�
 uv run python tools\verify_report_cells.py 202607   # 逐格回读原始源
 ```
 
+## 本地端口（服务只许 8080；起不来先查占用者，不要换端口）
+
+- **唯一入口 8080**：`uv run python -m uvicorn server.app:app --host 127.0.0.1 --port 8080`。
+  旧站模板（`/`）、React（`/app/`，读 `web/dist`）、API（`/api/*`）同一个进程全包。
+  **不需要第二个端口，也不需要 `preview_5180` 那类反代包装层。**
+- **起不来就查，不许试探**：`netstat -ano | findstr :8080` 看占用者，判断「复用」还是「关掉它」。
+  换一个端口 = 多一个正主，两周后没人知道哪个在真跑。
+- **前端开发态才起 vite**（默认 5173，`/api` 代理到 8080）；改完 `npm run build` 更新
+  `web/dist` 后关掉 vite。`/app/` 永远读 dist，不读 dev server。
+- **临时静态预览（`http.server`）用完即关**，不许常驻。
+- 盘点：`uv run python tools/ports.py`（默认只列本项目端口并标违规；`--all` 列全部回环）。
+
+> **2026-10-29 清理记录**：曾同时有 5180 / 5181 / 8080 / 8081 / 8082 / 8091 / 8777 七个端口——
+> 三个是同一份 `server.app`、两个是同一组 vite，外加一层 `preview_5180` 反代。收敛后只留 8080。
+> 清理当晚另有一个会话把 8091 又起回来一次：**规则写进文档，才不会被下一个会话重新违反。**
+
 ## 提交纪律
 
 - **做完就提交，不要攒**；只 add 自己的文件；提交前看 `git diff` + `git status`。
