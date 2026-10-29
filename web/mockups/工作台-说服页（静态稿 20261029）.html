@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-palette="blue">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>文衡 · 数字不出自模型，只出自台账</title>
+<meta name="description" content="把 ESI/InCites 台账，变成一份逐格可查的双月学科报告。">
+<style>
+/* ── 稿子口径：单文件、零外链、零字体下载、零图片。首屏内容全在 HTML 里，JS 只做增强。 ── */
+:root{
+  --paper:#fbfaf6; --paper-2:#f4f1e8; --ink:#141f1a; --ink-2:#5b6a63; --ink-3:#8a978f;
+  --line:#e4e0d5; --line-2:#efece2;
+  --green:#2f7a58; --green-deep:#1d5740; --green-soft:#e5efe9;
+  --amber:#a9701a; --red:#b23a2b; --red-soft:#f6e2de;
+  --sans:"PingFang SC","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"Cascadia Mono",ui-monospace,"SF Mono",Consolas,monospace;
+  --w:1240px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 var(--sans);
+  font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;font-weight:700;letter-spacing:-.02em}
+p{margin:0}
+a{color:inherit}
+button{font:inherit}
+.wrap{max-width:var(--w);margin:0 auto;padding:0 clamp(20px,4.6vw,56px)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ── 顶条 ── */
+.strip{display:flex;align-items:center;gap:14px;padding:16px 0;border-bottom:1px solid var(--line);
+  font-size:13px;color:var(--ink-2)}
+.brand{display:flex;align-items:baseline;gap:9px}
+.brand b{font-size:17px;letter-spacing:.16em;color:var(--ink)}
+.brand span{font-size:11.5px;letter-spacing:.14em;color:var(--ink-3)}
+.strip .sep{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;
+  padding:4px 11px;font-size:12px;color:var(--ink-2);background:#fff}
+.pill i{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block}
+
+/* ── 首屏 ── */
+.hero{display:grid;grid-template-columns:minmax(0,1.06fr) minmax(0,1fr);min-width:0;gap:clamp(28px,5vw,72px);
+  align-items:start;padding:clamp(30px,5vh,62px) 0 clamp(26px,4.5vh,48px)}
+.eyebrow{font-size:12px;letter-spacing:.32em;color:var(--ink-3);margin-bottom:22px}
+h1{font-size:clamp(34px,4.3vw,60px);line-height:1.08;letter-spacing:-.03em;
+  text-wrap:balance;word-break:keep-all}
+h1 em{font-style:normal;color:var(--green)}
+.sub{margin-top:22px;font-size:clamp(15px,1.15vw,17.5px);color:var(--ink-2);max-width:30em}
+.cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:30px}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:13px 22px;
+  text-decoration:none;border:1px solid transparent;transition:transform .18s ease,background .18s ease,color .18s ease}
+.btn.primary{background:var(--green);color:#fff}
+.btn.primary:hover{background:var(--green-deep);transform:translateY(-1px)}
+.btn.ghost{border-color:var(--line);color:var(--ink);background:#fff}
+.btn.ghost:hover{border-color:var(--ink-3);transform:translateY(-1px)}
+.btn svg{width:14px;height:14px}
+
+.metrics{display:flex;gap:0;margin-top:clamp(30px,5vh,58px);border-top:1px solid var(--line)}
+.metrics div{flex:1;padding:16px 0 0;border-right:1px solid var(--line-2)}
+.metrics div:last-child{border-right:0}
+.metrics b{display:block;font-size:clamp(22px,2.1vw,30px);letter-spacing:-.02em;line-height:1.15}
+.metrics span{font-size:12.5px;color:var(--ink-3)}
+
+/* 产线 */
+.line-card{border:1px solid var(--line);background:#fff;border-radius:18px;padding:20px 22px 0;
+  box-shadow:0 24px 60px -40px rgba(20,32,26,.35);overflow:hidden}
+.rail{position:relative;display:flex;justify-content:space-between;padding:0 4px 16px}
+.rail .track{position:absolute;left:14px;right:14px;top:4px;height:1px;background:var(--line)}
+.rail .fill{position:absolute;left:14px;top:3px;height:3px;width:0;border-radius:2px;
+  background:linear-gradient(90deg,var(--green-soft),var(--green));
+  transform-origin:left center;transition:width .9s cubic-bezier(.22,.7,.2,1)}
+.stop{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;width:25%}
+.stop i{width:9px;height:9px;border-radius:50%;background:#fff;border:1px solid var(--ink-3);
+  transition:background .3s ease,border-color .3s ease,box-shadow .3s ease}
+.stop.on i{background:var(--green);border-color:var(--green);box-shadow:0 0 0 4px var(--green-soft)}
+.stop s{text-decoration:none;font-size:12.5px;color:var(--ink-3);transition:color .3s ease}
+.stop.on s{color:var(--ink)}
+
+/* 产出的那一页 */
+.sheet{position:relative;margin:2px 0 0;background:var(--paper);border:1px solid var(--line);
+  border-bottom:0;border-radius:12px 12px 0 0;padding:18px 20px 22px;
+  transform:translateY(26px);opacity:0;transition:transform .7s cubic-bezier(.2,.8,.2,1),opacity .5s ease}
+.line-card.run .sheet{transform:none;opacity:1}
+.sheet-h{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid var(--line);padding-bottom:9px}
+.sheet-h b{font-size:13.5px;letter-spacing:.05em}
+.sheet-h span{font-size:11px;color:var(--ink-3);margin-left:auto}
+.sheet p{font-size:12.5px;line-height:1.95;color:var(--ink-2);margin-top:11px}
+.sheet p b{color:var(--ink);font-weight:600}
+.sheet table{width:100%;border-collapse:collapse;margin-top:12px;font-size:11.5px}
+.sheet th,.sheet td{border:1px solid var(--line-2);padding:4px 6px;text-align:right;color:var(--ink-2)}
+.sheet th{color:var(--ink-3);font-weight:500;text-align:left;background:var(--paper-2)}
+.sheet td:first-child,.sheet th:first-child{text-align:left}
+
+/* ── 分屏通用 ── */
+.sec{padding:clamp(56px,9vh,104px) 0;border-top:1px solid var(--line)}
+.sec-h{display:flex;align-items:baseline;gap:16px;margin-bottom:clamp(26px,4vh,44px)}
+.sec-h h2{font-size:clamp(24px,2.6vw,34px);letter-spacing:-.03em}
+.sec-h .num{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+
+/* ── ② 矛盾：滑块 ── */
+.duel{display:grid;grid-template-columns:1fr 1fr;gap:clamp(18px,4vw,56px);align-items:start}
+.duel .side{padding:6px 0}
+.duel .side.r{text-align:right}
+.duel .role{font-size:12.5px;color:var(--ink-3);letter-spacing:.08em}
+.duel .big{font-size:clamp(30px,3.4vw,42px);letter-spacing:-.02em;line-height:1.15;margin-top:6px;
+  font-family:var(--sans);font-variant-numeric:tabular-nums}
+.duel .note{font-size:13px;color:var(--ink-2);margin-top:8px}
+.duel .side.r .big{color:var(--green)}
+.mid{font-size:12px;color:var(--ink-3);font-family:var(--mono)}
+.slider{display:flex;align-items:center;gap:14px;margin-top:clamp(26px,4vh,40px)}
+.slider input{flex:1;-webkit-appearance:none;appearance:none;height:2px;background:var(--line);
+  border-radius:2px;outline:none}
+.slider input::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;
+  background:#fff;border:1.5px solid var(--green);box-shadow:0 2px 10px rgba(20,32,26,.16);cursor:grab}
+.slider input::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;
+  border:1.5px solid var(--green);cursor:grab}
+.slider .hint{font-size:12px;color:var(--ink-3);white-space:nowrap}
+.cells{margin-top:22px;display:grid;width:100%;gap:3px;
+  grid-template-columns:repeat(auto-fill,minmax(9px,1fr))}
+.cells i{display:block;aspect-ratio:1;background:var(--amber);opacity:.3;border-radius:1px;
+  transition:opacity .3s ease}
+.count{margin-top:12px;font-family:var(--mono);font-size:13px;color:var(--ink-2)}
+.count b{color:var(--ink)}
+
+/* ── ③ 可追溯 ── */
+.trace{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);min-width:0;gap:clamp(26px,4vw,60px);
+  align-items:start}
+.sentence{font-size:clamp(19px,1.75vw,23px);line-height:2.05;letter-spacing:-.01em;position:relative}
+.sentence .n{position:relative;display:inline-block;color:var(--ink);cursor:pointer;
+  border-bottom:2px solid var(--green-soft);transition:border-color .15s ease,background .15s ease;
+  padding:0 1px;border-radius:3px}
+.sentence .n:hover,.sentence .n.on{background:var(--green-soft);border-color:var(--green)}
+.sentence .n sup{font-family:var(--mono);font-size:10px;color:var(--green);margin-left:2px;top:-.55em}
+.ledger{margin-top:14px;border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden}
+.ledger-h{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);
+  font-size:11.5px;color:var(--ink-3)}
+.ledger table{width:100%;border-collapse:collapse;font-size:12.5px}
+.ledger th,.ledger td{padding:8px 12px;text-align:right;border-bottom:1px solid var(--line-2);
+  transition:background .18s ease,color .18s ease}
+.ledger th{font-weight:500;color:var(--ink-3);font-size:11.5px}
+.ledger td:first-child,.ledger th:first-child{text-align:left}
+.ledger tr:last-child td{border-bottom:0}
+.ledger td.on{background:var(--green-soft);color:var(--green-deep);font-weight:600}
+.ledger .ptr{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.trace-note{font-size:12.5px;color:var(--ink-3);margin-top:14px}
+.link-line{position:absolute;inset:0;pointer-events:none;overflow:visible}
+
+/* ── ④ 证据 ── */
+.evidence{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(18px,2.4vw,32px)}
+.ev{border-top:1px solid var(--ink);padding-top:16px;min-width:0}
+.ev .v{font-size:clamp(26px,2.8vw,36px);letter-spacing:-.03em;line-height:1.1}
+.ev .k{font-size:12.5px;color:var(--ink-2);margin-top:6px}
+.ev .vis{margin-top:14px;min-height:72px;overflow:hidden}
+.ticks{display:grid;grid-template-columns:repeat(24,1fr);gap:3px}
+.ticks i{height:10px;background:var(--green);opacity:.25;border-radius:1px;
+  transition:opacity .3s ease}
+.ev:hover .ticks i{opacity:.9}
+.dots{display:grid;grid-template-columns:repeat(60,1fr);gap:2px}
+.dots i{aspect-ratio:1;background:var(--ink-3);opacity:.16;border-radius:50%;
+  transition:opacity .3s ease}
+.dots i.pick{background:var(--amber);opacity:1}
+.grid117{display:grid;grid-template-columns:repeat(26,1fr);gap:3px}
+.grid117 i{aspect-ratio:1;background:var(--green);opacity:.16;border-radius:1px}
+.grid117 i.native{outline:1px solid var(--green);outline-offset:-1px;opacity:.75}
+
+/* ── ⑤ 行动 ── */
+.act{padding:clamp(56px,9vh,104px) 0}
+.act .in{max-width:720px}
+.act h2{font-size:clamp(26px,3vw,40px);line-height:1.15;letter-spacing:-.03em}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.chips button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;
+  font-size:13px;color:var(--ink-2);cursor:pointer;transition:border-color .15s,color .15s}
+.chips button:hover{border-color:var(--green);color:var(--green)}
+.composer{margin-top:14px;display:flex;gap:10px;align-items:center;border:1px solid var(--line);
+  border-radius:16px;background:#fff;padding:10px 10px 10px 16px}
+.composer input{flex:1;border:0;outline:none;font:inherit;font-size:15px;background:transparent;color:var(--ink)}
+.composer input::placeholder{color:var(--ink-3)}
+.composer a{flex:0 0 auto;width:36px;height:36px;border-radius:50%;background:var(--green);color:#fff;
+  display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.act-links{display:flex;gap:22px;flex-wrap:wrap;margin-top:18px}
+.act-links a{font-size:13.5px;color:var(--ink-2);text-decoration:none;border-bottom:1px solid var(--line);
+  padding-bottom:2px;display:inline-flex;gap:6px;transition:color .15s,border-color .15s}
+.act-links a:hover{color:var(--green);border-color:var(--green)}
+.act .contact{font-size:12.5px;color:var(--ink-3);margin-top:26px;line-height:1.9}
+footer{border-top:1px solid var(--line);padding:22px 0 40px;font-size:12px;color:var(--ink-3);
+  display:flex;gap:14px;flex-wrap:wrap}
+
+/* ── 滚动揭示 ── */
+.anim .rv{opacity:0;transform:translateY(14px);
+  transition:opacity .6s ease,transform .6s cubic-bezier(.2,.8,.2,1)}
+.anim .rv.in{opacity:1;transform:none}
+
+@media (max-width:900px){
+  .hero,.trace,.act{grid-template-columns:1fr}
+  .evidence{grid-template-columns:minmax(0,1fr);gap:26px}
+  .duel{grid-template-columns:1fr;gap:10px}
+  .duel .side.r{text-align:left}
+  .mid{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .rv,.sheet,.stop i,.cells i{transition:none!important}
+  .anim .rv{opacity:1;transform:none}
+  .sheet{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+<script>document.documentElement.classList.add('anim')</script>
+
+<div class="wrap">
+  <header class="strip">
+    <span class="brand"><b>文衡</b><span>云南大学图书馆</span></span>
+    <span class="sep"></span>
+    <span class="pill"><i></i>第 5 期 · 202609 已签发</span>
+  </header>
+
+  <!-- ① 主张 + 产线 -->
+  <section class="hero">
+    <div>
+      <p class="eyebrow">学科信息参考 · 双月</p>
+      <h1>数字不出自模型，<br>只<em>出自台账</em>。</h1>
+      <p class="sub">一份 117 张图的双月决策报告，从台账那一格直接长出来——不是让 AI 写一篇，而是让脚本搬一次。</p>
+      <div class="cta">
+        <a class="btn primary" href="/app/dialog/">开一期真报告
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a class="btn ghost" href="/p/202609/report">看第 5 期原件</a>
+      </div>
+      <div class="metrics">
+        <div><b class="mono">117</b><span>张图表，脚本画</span></div>
+        <div><b class="mono">22</b><span>个学科，逐格核对</span></div>
+        <div><b class="mono">150<small style="font-size:.55em"> 秒</small></b><span>本期全链路实跑</span></div>
+        <div><b class="mono">0</b><span>处人工誊写</span></div>
+      </div>
+    </div>
+
+    <div class="line-card" id="lineCard">
+      <div class="rail">
+        <span class="track"></span><span class="fill" id="railFill"></span>
+        <span class="stop" data-i="0"><i></i><s>取数</s></span>
+        <span class="stop" data-i="1"><i></i><s>配图</s></span>
+        <span class="stop" data-i="2"><i></i><s>成表</s></span>
+        <span class="stop" data-i="3"><i></i><s>出稿</s></span>
+      </div>
+      <div class="sheet">
+        <div class="sheet-h"><b>学科信息参考 · 202609</b><span class="mono">第 5 期 / 总 39 期</span></div>
+        <p>数学：本期总被引 <b class="mono">5,568</b> 次，前 1% 阈值 <b class="mono">5,185</b> 次，高出 <b class="mono">383</b> 次，接近度 <b class="mono">107.39%</b>——已进入 ESI 前 1%。</p>
+        <table>
+          <tr><th>学科</th><th>论文</th><th>CNCI</th><th>总被引</th><th>接近度</th></tr>
+          <tr><td>数学</td><td>902</td><td>1.08</td><td>5,568</td><td>107.39%</td></tr>
+          <tr><td>化学</td><td>2,590</td><td>1.45</td><td>51,529</td><td>676.06%</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ② 矛盾 -->
+  <section class="sec">
+    <div class="sec-h"><span class="num mono">02</span><h2>越快，越不敢信</h2></div>
+    <div class="duel rv">
+      <div class="side">
+        <p class="role">手工时代</p>
+        <p class="big mono">≈ 3 天</p>
+        <p class="note">下载、画图、誊表、对一遍——几个人接力，721 处逐格核对。</p>
+      </div>
+      <div class="side r">
+        <p class="role">文衡</p>
+        <p class="big mono">150 秒</p>
+        <p class="note">一条产线跑完，人在两端：取数、签单，0 处人工誊写。</p>
+      </div>
+    </div>
+    <div class="slider">
+      <span class="hint">手工</span>
+      <input id="mix" type="range" min="0" max="100" value="0" aria-label="手工与文衡的对比">
+      <span class="hint">文衡</span>
+    </div>
+    <div class="cells" id="cells" aria-hidden="true"></div>
+    <p class="count">逐格核对 <b class="mono">721</b> 处，还剩下 <b class="mono" id="nCheckLeft">721</b> 处</p>
+  </section>
+
+  <!-- ③ 可追溯 -->
+  <section class="sec">
+    <div class="sec-h"><span class="num mono">03</span><h2>每个数，都能回到那一格</h2></div>
+    <div class="trace">
+      <div>
+        <p class="sentence rv" id="sentence">数学：本期总被引
+          <span class="n" data-cell="r0c1" tabindex="0">5,568<sup>1</sup></span> 次，前 1% 阈值
+          <span class="n" data-cell="r1c1" tabindex="0">5,185<sup>2</sup></span> 次，高出
+          <span class="n" data-cell="r2c1" tabindex="0">383<sup>3</sup></span> 次——已进入 ESI 前 1%。
+        </p>
+        <p class="trace-note">点一下数字（或 Tab 到它），看它从哪来。</p>
+      </div>
+      <div class="ledger rv">
+        <div class="ledger-h"><span class="mono">台账 · 接近度表 · 202609</span><span style="margin-left:auto" class="ptr">wide/202609</span></div>
+        <table>
+          <tr><th>指标</th><th>数学</th><th>化学</th></tr>
+          <tr><td>总被引</td><td data-cell="r0c1">5,568</td><td>51,529</td></tr>
+          <tr><td>前 1% 阈值</td><td data-cell="r1c1">5,185</td><td>7,622</td></tr>
+          <tr><td>高出阈值</td><td data-cell="r2c1">383</td><td>43,907</td></tr>
+          <tr><td>接近度</td><td data-cell="r3c1">107.39%</td><td>676.06%</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ④ 证据 -->
+  <section class="sec">
+    <div class="sec-h"><span class="num mono">04</span><h2>它凭什么值得签单</h2></div>
+    <div class="evidence">
+      <article class="ev rv">
+        <p class="v mono">48 / 48</p>
+        <p class="k">条断言全过，才允许出稿</p>
+        <div class="vis ticks" id="ticks" aria-hidden="true"></div>
+      </article>
+      <article class="ev rv">
+        <p class="v mono">721</p>
+        <p class="k">条红色件，条条指回台账格</p>
+        <div class="vis dots" id="dots" aria-hidden="true"></div>
+      </article>
+      <article class="ev rv">
+        <p class="v mono">117</p>
+        <p class="k">张图表与报告同源（6 张 Word 原生）</p>
+        <div class="vis grid117" id="grid117" aria-hidden="true"></div>
+      </article>
+    </div>
+    <div class="metrics rv" style="margin-top:clamp(30px,5vh,52px)">
+      <div><b class="mono">1.27%</b><span>预测回测误差（MAPE）</span></div>
+      <div><b class="mono">5 期</b><span>已入库，可回测</span></div>
+      <div><b class="mono">45 期</b><span>ESI 原始包在库</span></div>
+      <div><b class="mono">0</b><span>次改动原台账</span></div>
+    </div>
+  </section>
+
+  <!-- ⑤ 行动 -->
+  <section class="act">
+    <div class="in">
+      <h2>现在，用一句话开一期。</h2>
+      <div class="chips" id="chips">
+        <button type="button">帮我做 9 月的报告</button>
+        <button type="button">查一下数学的接近度</button>
+        <button type="button">202609 到哪一步了</button>
+      </div>
+      <div class="composer">
+        <input id="ask" placeholder="说一句话，比如「帮我做 9 月的报告」" aria-label="对话输入">
+        <a id="send" href="/app/dialog/" aria-label="发送">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" style="width:15px;height:15px">
+            <path d="M8 12V4M4.5 7.5L8 4l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+      </div>
+      <div class="act-links">
+        <a href="/app/dialog/">进对话前门<span aria-hidden="true">→</span></a>
+        <a href="/p/202609/report">看一份已签发的报告<span aria-hidden="true">→</span></a>
+      </div>
+      <p class="contact">文衡 · 云南大学图书馆学科服务<br>首届高校图书馆「AI+管理服务」大赛 · 决赛现场</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>文衡 · 数字不出自模型，只出自台账</span>
+    <span style="margin-left:auto" class="mono">202609 / 第 5 期</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* 产线：进视口跑一次，四站依次点亮，最后落出报告页 */
+  var card = document.getElementById('lineCard');
+  var fill = document.getElementById('railFill');
+  var stops = [].slice.call(card.querySelectorAll('.stop'));
+  function runLine() {
+    card.classList.add('run');
+    stops.forEach(function (s, i) {
+      setTimeout(function () {
+        s.classList.add('on');
+        fill.style.width = (i / (stops.length - 1) * 100) + '%';
+      }, reduce ? 0 : 220 + i * 300);
+    });
+  }
+
+  /* 滚动揭示：一次即止 */
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      e.target.classList.add('in');
+      io.unobserve(e.target);
+      if (e.target === card) runLine();
+    });
+  }, { rootMargin: '0px 0px -12% 0px' });
+  document.querySelectorAll('.rv').forEach(function (el) { io.observe(el); });
+  io.observe(card);
+
+  /* ② 滑块：0＝手工，100＝文衡。中间值只做过渡，终点是真值 */
+  var mix = document.getElementById('mix');
+  var cells = document.getElementById('cells');
+  var nCheck = document.getElementById('nCheck');
+  var nCheckLeft = document.getElementById('nCheckLeft');
+  var TOTAL = 721;
+  for (var i = 0; i < TOTAL; i++) cells.appendChild(document.createElement('i'));
+  var squares = [].slice.call(cells.children);
+  function paint(v) {
+    var k = v / 100;
+    var gone = Math.round(TOTAL * k);
+    nCheckLeft.textContent = TOTAL - gone;
+    for (var j = 0; j < squares.length; j++) {
+      squares[j].style.opacity = j < gone ? '0' : '.3';
+    }
+  }
+  mix.addEventListener('input', function () { paint(+mix.value); });
+  paint(0);
+
+  /* ③ 可追溯：角标 → 台账格，画一条 1px 连线 */
+  var sentence = document.getElementById('sentence');
+  var ledger = document.querySelector('.ledger');
+  var svg = null, raf = 0;
+  function clear() {
+    ledger.querySelectorAll('td.on').forEach(function (td) { td.classList.remove('on'); });
+    sentence.querySelectorAll('.n.on').forEach(function (n) { n.classList.remove('on'); });
+    if (svg) { svg.remove(); svg = null; }
+  }
+  function draw(badge) {
+    clear();
+    var key = badge.dataset.cell;
+    var cell = ledger.querySelector('td[data-cell="' + key + '"]');
+    if (!cell) return;
+    cell.classList.add('on');
+    badge.classList.add('on');
+    var host = sentence.getBoundingClientRect();
+    var a = badge.getBoundingClientRect();
+    var b = cell.getBoundingClientRect();
+    var NS = 'http://www.w3.org/2000/svg';
+    svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'link-line');
+    svg.setAttribute('width', host.width); svg.setAttribute('height', host.height);
+    var x1 = a.left - host.left + a.width / 2, y1 = a.bottom - host.top;
+    var x2 = b.left - host.left + b.width / 2, y2 = b.top - host.top;
+    var mid = (y1 + y2) / 2 + 18;
+    var path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', 'M' + x1 + ' ' + y1 + 'C' + x1 + ' ' + mid + ' ' + x2 + ' ' + mid + ' ' + x2 + ' ' + y2);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', '#2f7a58');
+    path.setAttribute('stroke-width', '1');
+    path.setAttribute('stroke-dasharray', '3 3');
+    svg.appendChild(path);
+    sentence.appendChild(svg);
+  }
+  sentence.querySelectorAll('.n').forEach(function (n) {
+    n.addEventListener('pointerenter', function () { draw(n); });
+    n.addEventListener('focus', function () { draw(n); });
+    n.addEventListener('click', function (e) { e.preventDefault(); draw(n); });
+    n.addEventListener('pointerleave', clear);
+    n.addEventListener('blur', clear);
+  });
+
+  /* ④ 证据三连：纯 DOM 生成，省一次 SVG 计算 */
+  var ticks = document.getElementById('ticks');
+  for (var t = 0; t < 48; t++) ticks.appendChild(document.createElement('i'));
+  var dots = document.getElementById('dots');
+  for (var d = 0; d < 721; d++) {
+    var dot = document.createElement('i');
+    if (d === 391) dot.className = 'pick';
+    dots.appendChild(dot);
+  }
+  var grid = document.getElementById('grid117');
+  for (var g = 0; g < 117; g++) {
+    var c = document.createElement('i');
+    if (g < 6) c.className = 'native';
+    grid.appendChild(c);
+  }
+
+  /* ⑤ 示例句 → 填进输入条 */
+  document.querySelectorAll('#chips button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var ask = document.getElementById('ask');
+      ask.value = btn.textContent.trim();
+      ask.focus();
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -509,9 +509,8 @@ export default function App() {
      不再是平级入口，降为「出报告」四步流水里的步骤或报告的下钻；深链 ?view=… 一律保留。 */
   const NAV: { key: string; label: string; href: string }[] = [
     { key: 'flow', label: '出报告', href: '/app/' },
-    /* 可视化工作流（2026-10-24 rick：产线全景静态稿升格为正式屏）——
-       五步故事的空间投影，评委 10 分钟看懂这条产线 */
-    { key: 'pano', label: '可视化工作流', href: '/app/?view=pano' },
+    /* 2026-10-29 rick：可视化工作台移到陈列馆（展示面归展示面），工作区不再挂这个入口；
+       页面与深链 ?view=pano 保留，从陈列馆进。 */
     { key: 'flexible', label: '灵活报告', href: '/app/?view=analysis' },
     /* 2026-10-19 rick：「报告」入口关闭（只读阅稿屏，日常走 出报告→核验定稿，用不上）——
        页面与深链 ?view=report 保留；子屏（红件/图册/对勘/溯源）的「回报告」链接照旧。 */
