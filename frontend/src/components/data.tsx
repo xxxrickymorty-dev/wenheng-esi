@@ -10,7 +10,7 @@ export type TagTone = "g" | "b" | "r";
 export function Tag({ tone = "g", children }: { tone?: TagTone; children: ReactNode }) {
   const map = {
     g: "bg-pine-200/15 text-pine-300",
-    b: "bg-sea-200/15 text-sea-300",
+    b: "bg-pine-200/15 text-pine-300",
     r: "bg-red-300/12 text-red-300",
   } as const;
   return (
@@ -34,12 +34,13 @@ export function Button({
 }) {
   const cls =
     variant === "paper"
-      ? "bg-pine-50 text-pine-400 hover:bg-white"
-      : "bg-pine-200 text-[#08201A] hover:bg-[#3A9069]";
+      ? "bg-pine-50 text-pine-400 hover:bg-white border border-pine-200 active:bg-pine-100"
+      : "bg-pine-200 text-[#08201A] hover:bg-[#3A9069] border-none active:bg-pine-300";
   return (
     <button
       onClick={onClick}
-      className={`${cls} px-[28px] py-[13px] font-serif text-[15px] font-bold tracking-[.14em]`}
+      style={{ transition: "background-color 120ms linear" }}
+      className={`${cls} wh-press rounded-none px-[28px] py-[13px] font-serif text-[15px] font-bold tracking-[.14em]`}
     >
       {children}
     </button>
@@ -50,7 +51,8 @@ export function GhostLink({ children }: { children: ReactNode }) {
   return (
     <a
       href="#"
-      className="pb-[3px] font-kai text-[13px] tracking-[.18em] text-sea-50/80 shadow-[inset_0_-1px_0_rgba(220,232,240,.38)] hover:text-white hover:shadow-[inset_0_-1px_0_white]"
+      style={{ transition: "color 120ms linear, box-shadow 120ms linear" }}
+      className="wh-press pb-[3px] font-kai text-[13px] tracking-[.18em] text-pine-50/80 shadow-[inset_0_-1px_0_var(--color-pine-50)] hover:text-white hover:shadow-[inset_0_-1px_0_white] active:text-white active:shadow-[inset_0_-1px_0_white]"
     >
       {children}
     </a>
@@ -93,7 +95,7 @@ export function DataTable<T>({
       </thead>
       <tbody>
         {rows.map((row) => (
-          <tr key={rowKey(row)} className={isNow?.(row) ? "bg-sea-200/10" : ""}>
+          <tr key={rowKey(row)} className={isNow?.(row) ? "bg-pine-200/10" : ""}>
             {cols.map((c) => (
               <td
                 key={c.key}

@@ -377,11 +377,11 @@ export default function ShellApp({ view, onNavigate, onContext }: ShellAppProps)
         /* 两栏各自从本侧进（下段）；审核台整张报告 5 万像素，按 4% 阈值永远进不了视口，
            以前会把整块卡在 opacity:0——它不做入场，直接显示。 */
         if (el.classList.contains('fx-panes') || el.classList.contains('rv-grid')) continue
-        wireEnter(el, { delayMs: Math.min(i, 8) * 70 })
+        wireEnter(el, { delayMs: Math.min(i, 5) * 60 })
         i += 1
       }
       document.querySelectorAll<HTMLElement>('.fx-panes > .fx-pane').forEach((el, j) => {
-        wireEnter(el, { delayMs: j * 90, side: j === 0 ? 'left' : 'right' })
+        wireEnter(el, { delayMs: j * 60, side: j === 0 ? 'left' : 'right' })
       })
     }
     wireList()

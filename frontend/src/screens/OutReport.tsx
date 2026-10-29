@@ -1,6 +1,6 @@
 import { SectionHead, SectionLink, RelNote } from "../components/shell";
 import { DataTable, DataPanel, Button, GhostLink, Wrap, Grid2, type Col } from "../components/data";
-import { FlapDigits, FlapGroup, Gauge, Stamp, StampBox, Seal } from "../components/devices";
+import { FlapDigits, FlapGroup, Gauge, Stamp, StampBox, Seal, MotionStyles } from "../components/devices";
 
 type Pick = { subj: string; mdl: string; chosen: string; changed?: boolean };
 
@@ -30,8 +30,8 @@ const COLS: Col<Pick>[] = [
       r.changed ? (
         <span className="font-bold text-pine-300">
           {r.chosen}
-          <span className="ml-[10px] inline-flex items-center gap-[6px] font-kai text-[11.5px] tracking-[.18em] text-sea-300">
-            <i className="h-[7px] w-[7px] flex-none bg-sea-300" />
+          <span className="ml-[10px] inline-flex items-center gap-[6px] font-kai text-[11.5px] tracking-[.18em] text-pine-300">
+            <i className="h-[7px] w-[7px] flex-none bg-pine-300" />
             已改选
           </span>
         </span>
@@ -44,17 +44,18 @@ const COLS: Col<Pick>[] = [
 export function OutReport() {
   return (
     <>
-      {/* 蓝场：题头 ＋ ① 翻牌 */}
-      <section className="bg-sea-300 pb-[46px] pt-[52px] text-sea-50">
+      <MotionStyles />
+      {/* 绿场：题头 ＋ ① 翻牌 */}
+      <section className="bg-pine-300 pb-[46px] pt-[52px] text-pine-50">
         <div className="mx-auto grid max-w-[1280px] grid-cols-[minmax(0,1fr)_auto] items-end gap-[56px] px-[30px] max-[1040px]:grid-cols-1">
-          <div>
-            <div className="font-kai text-[11px] tracking-[.42em] text-sea-50/55">
+          <div className="wh-reveal" style={{ animationDelay: "0ms" }}>
+            <div className="font-kai text-[13px] tracking-[.42em] text-pine-50/80">
               雲 南 大 學 圖 書 館 · 學 科 信 息 參 考 · 出 報 告
             </div>
             <h1 className="mt-[12px] font-serif text-[clamp(40px,5.4vw,72px)] leading-[1.06] tracking-[.04em]">
               本期报告已就绪
             </h1>
-            <p className="mt-[15px] max-w-[32ch] font-kai text-[15px] leading-[2.05] text-sea-50/80">
+            <p className="mt-[15px] max-w-[32ch] font-kai text-[15px] leading-[2.05] text-pine-50/80">
               阈值即水位线。复核后签单，这一版才会被标记为「可交付」。任务结束不代表报告合格或已签发。
             </p>
             <div className="mt-[26px] flex flex-wrap items-center gap-[22px]">
@@ -114,8 +115,8 @@ export function OutReport() {
       {/* 绿器：② 水位 ＋ 四道工序 */}
       <section className="bg-pine-300 pt-[42px] text-pine-50">
         <div className="mx-auto grid max-w-[1280px] grid-cols-[minmax(0,.92fr)_minmax(0,1.08fr)] items-center gap-[52px] px-[30px] max-[1040px]:grid-cols-1">
-          <div>
-            <div className="font-kai text-[11px] tracking-[.42em] text-pine-50/55">
+          <div className="wh-reveal" style={{ animationDelay: "60ms" }}>
+            <div className="font-kai text-[13px] tracking-[.42em] text-pine-50/80">
               水 位 標 尺 · 接 近 度
             </div>
             <h2 className="mt-[11px] font-serif text-[clamp(26px,3.2vw,40px)] leading-[1.24] tracking-[.03em]">
@@ -158,7 +159,7 @@ export function OutReport() {
                   style={{ width: `${st.w}%` }}
                 />
               </div>
-              <div className="font-kai text-[10.5px] tracking-[.36em] text-pine-50/50">{st.k}</div>
+              <div className="font-kai text-[13px] tracking-[.36em] text-pine-50/80">{st.k}</div>
               <div
                 className={`mt-[8px] font-serif text-[clamp(18px,2.1vw,25px)] leading-[1.28] tracking-[.03em] ${
                   st.s === "now" ? "text-red-100" : st.s === "todo" ? "text-pine-50/40" : ""
@@ -166,7 +167,7 @@ export function OutReport() {
               >
                 {st.v}
               </div>
-              <div className="mt-[7px] font-mono text-[11px] tracking-[.12em] text-pine-50/55">
+              <div className="mt-[7px] font-mono text-[13px] tracking-[.12em] text-pine-50/80">
                 {st.m}
               </div>
             </div>
@@ -175,7 +176,7 @@ export function OutReport() {
       </section>
 
       {/* ③ 橡皮戳 ＋ 数据 */}
-      <section className="pt-[38px]">
+      <section className="wh-reveal pt-[38px]" style={{ animationDelay: "120ms" }}>
         <Wrap>
           <Grid2>
             <StampBox head="橡 皮 戳 · 本 期 蓋 章 進 度" caption="三 枚 橡 皮 戳 · 本 期 已 鈐 二">
@@ -201,10 +202,10 @@ export function OutReport() {
       </section>
 
       {/* 签单区：④ 钤印 */}
-      <section className="mt-[48px] bg-pine-400 pb-[48px] pt-[52px] text-pine-50">
+      <section className="wh-reveal mt-[48px] bg-pine-400 pb-[48px] pt-[52px] text-pine-50" style={{ animationDelay: "180ms" }}>
         <div className="mx-auto grid max-w-[1280px] grid-cols-[minmax(0,1fr)_260px] items-center gap-[52px] px-[30px] max-[1040px]:grid-cols-1">
           <div>
-            <div className="font-kai text-[11px] tracking-[.42em] text-pine-50/55">
+            <div className="font-kai text-[13px] tracking-[.42em] text-pine-50/80">
               復 核 並 簽 單
             </div>
             <h2 className="mt-[12px] font-serif text-[clamp(30px,3.9vw,52px)] leading-[1.14] tracking-[.04em]">

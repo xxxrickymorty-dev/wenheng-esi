@@ -128,6 +128,19 @@ function BlockView({
   )
 }
 
+/* A 排字房 · 报告纸动效原语：把一次短动效挂到元素上并自清（换期抽出 / 签单纸沉）。 */
+function flashPaper(
+  el: HTMLElement,
+  cls: 'paper-shuffle' | 'paper-sink',
+  timer: { current?: number },
+) {
+  if (timer.current) window.clearTimeout(timer.current)
+  el.classList.remove('paper-shuffle', 'paper-sink')
+  void el.offsetWidth
+  el.classList.add(cls)
+  timer.current = window.setTimeout(() => el.classList.remove(cls), cls === 'paper-shuffle' ? 460 : 300)
+}
+
 export function Review({
   period, me, periods, onChanged,
 }: {
@@ -156,6 +169,7 @@ export function Review({
   const status = row?.status ?? 'unsigned'
   /* 本期印落章动效：签发态从未签翻到已签的那一刻放一次（签单接口回来、状态落真值时触发） */
   const [sealLand, setSealLand] = useState(false)
+  const reportRef = useRef<HTMLElement>(null)
   const prevStatus = useRef(status)
   useEffect(() => {
     const justSigned = prevStatus.current !== 'signed' && status === 'signed'
@@ -165,6 +179,26 @@ export function Review({
     const t = setTimeout(() => setSealLand(false), 650)
     return () => clearTimeout(t)
   }, [status])
+  /* A 排字房 · 期次切换：报告纸从右抽出换一张（仅真的换期时播，首帧/同期的重渲染不播）。
+     报告纸在换期重新拉数时会先卸载再挂载，故排到「新报告纸落定」时再播。 */
+  const prevPeriod = useRef<string | null>(period)
+  const shuffleQ = useRef(false)
+  const paperTimer = useRef<number | undefined>(undefined)
+  useEffect(() => {
+    const prev = prevPeriod.current
+    prevPeriod.current = period
+    if (prev !== null && prev !== period) shuffleQ.current = true
+  }, [period])
+  useEffect(() => {
+    if (!preview || !shuffleQ.current) return
+    shuffleQ.current = false
+    if (reportRef.current) flashPaper(reportRef.current, 'paper-shuffle', paperTimer)
+  }, [preview])
+  /* A 排字房 · 签单落章：印章落、纸受力——纸面下沉 2px 再回弹（与落章同步）。 */
+  useEffect(() => {
+    if (!sealLand || !reportRef.current) return
+    flashPaper(reportRef.current, 'paper-sink', paperTimer)
+  }, [sealLand])
   const isAdmin = me?.capabilities?.actions?.edit ?? me?.role === 'admin'
   /* 2026-10-12：审批（签单/撤回）对操作员也开放；在线填、标存疑、重出仍只管理员。 */
   const canSign = !!me
@@ -448,7 +482,7 @@ export function Review({
         <div className="rv-grid">
           <div className="rv-main">
           <FactsStrip period={period} />
-          <section className="card rv-report" aria-label="试排报告全文">
+          <section className="card rv-report" aria-label="试排报告全文" ref={reportRef}>
             <p className="rv-docmeta">
               <span>本稿由流水线生成 · {preview.updated_at || '—'} · 数字全部来自台账；带虚线框的空请就地填写。</span>
               {emptyIds.length > 0 && (

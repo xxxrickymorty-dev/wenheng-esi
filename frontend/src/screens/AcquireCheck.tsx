@@ -1,6 +1,6 @@
 import { StatusBand, SectionHead, SectionLink, RelNote, PageFoot } from "../components/shell";
 import { Tag, DataPanel, Button, GhostLink, Wrap, Grid2 } from "../components/data";
-import { FlapDigits, FlapGroup, Gauge } from "../components/devices";
+import { FlapDigits, FlapGroup, Gauge, MotionStyles } from "../components/devices";
 
 const SOURCES: { name: string; sub: string; n: string; done: boolean }[] = [
   { name: "ESI 全球机构总表", sub: "Clarivate · 自动取数台", n: "1 张", done: true },
@@ -24,16 +24,17 @@ const CHECKS: { t: string; ok: boolean }[] = [
 export function AcquireCheck() {
   return (
     <>
-      <section className="bg-sea-300 pb-[40px] pt-[46px] text-sea-50">
+      <MotionStyles />
+      <section className="bg-pine-300 pb-[40px] pt-[46px] text-pine-50">
         <div className="mx-auto grid max-w-[1280px] grid-cols-[minmax(0,1fr)_auto] items-end gap-[48px] px-[30px] max-[1040px]:grid-cols-1">
-          <div>
-            <div className="font-kai text-[11px] tracking-[.42em] text-sea-50/55">
+          <div className="wh-reveal" style={{ animationDelay: "0ms" }}>
+            <div className="font-kai text-[13px] tracking-[.42em] text-pine-50/80">
               站 一 · 雲 南 大 學 圖 書 館 · 學 科 信 息 參 考
             </div>
             <h1 className="mt-[12px] font-serif text-[clamp(38px,5vw,66px)] leading-[1.06] tracking-[.04em]">
               取数核验
             </h1>
-            <p className="mt-[14px] max-w-[34ch] font-kai text-[15px] leading-[2.05] text-sea-50/80">
+            <p className="mt-[14px] max-w-[34ch] font-kai text-[15px] leading-[2.05] text-pine-50/80">
               机器先把当期原始数据取回来（取数），人再逐项核对（取数核验）。两步合在一屏。
             </p>
             <div className="mt-[24px] flex flex-wrap items-center gap-[20px]">
@@ -73,7 +74,7 @@ export function AcquireCheck() {
 
       <StatusBand task="已完成" sign="未签发" right="第 39 期　·　2 0 2 6 0 9　·　屏 题 ＝ 站 名" />
 
-      <section className="pt-[38px]">
+      <section className="wh-reveal pt-[38px]" style={{ animationDelay: "60ms" }}>
         <Wrap>
           <Grid2>
             <div>
@@ -88,7 +89,7 @@ export function AcquireCheck() {
                     key={s.name}
                     className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-[14px] border-b border-paper-100 py-[11px]"
                   >
-                    <div className="h-[26px] w-[26px] flex-none text-sea-200">
+                    <div className="h-[26px] w-[26px] flex-none text-pine-200">
                       <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" strokeWidth="1.5">
                         <rect x="3" y="5" width="20" height="16" />
                         <line x1="3" y1="10" x2="23" y2="10" />
@@ -149,7 +150,7 @@ export function AcquireCheck() {
         </Wrap>
       </section>
 
-      <section className="pt-[38px]">
+      <section className="wh-reveal pt-[38px]" style={{ animationDelay: "120ms" }}>
         <Wrap>
           <DataPanel
             pairs={[

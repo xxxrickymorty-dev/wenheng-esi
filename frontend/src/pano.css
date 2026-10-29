@@ -7,17 +7,17 @@
 
 .pano-undershelf {
   /* web 蓝场令牌就地补齐（Panorama 的 C 常量与 .pano 规则都用它们） */
-  --card: #FAF8F0; --panel: #E6E1D3; --card-hi: #FDFAF3;
-  --line: #D8D2C2; --line-2: #E6E1D3;
-  --ink: #15222B; --ink-2: #43525C; --ink-3: #556169; --ink-4: #64717A;
-  --tool: #26483B; --tool-2: #163228; --tool-3: #2F7A58; --tool-5: #DFEDE6;
-  --zhu: #26483B; --warn: #7C5A16;
+  --card: #F4F1E7; --panel: #ECE7DB; --card-hi: #FAF8F1;
+  --line: #C9D8CE; --line-2: #E0E6E0;
+  --ink: #1A211E; --ink-2: #4F5B55; --ink-3: #5C6862; --ink-4: #6E7A72;
+  --tool: #1F5B4A; --tool-2: #143D31; --tool-3: #2F7A58; --tool-5: #E3EDE7;
+  --zhu: #1F5B4A; --zhu-soft: #E3EDE7; --warn: #7C5A16;
   --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", SimSun, serif;
   --sans: system-ui, -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
   --fs-xs: 11px; --fs-sm: 12px; --fs-label: 13.5px; --fs-h: 19px;
 
   position: relative;
-  background: #F2EFE6;
+  background: #F4F1E7;
   color: var(--ink);
   font: 15px/1.7 var(--sans);
   padding: 30px clamp(20px, 4vw, 48px) 42px;
@@ -26,7 +26,7 @@
 .pano-undershelf ::selection { background: #C8B584; color: #15222B; }
 
 .pus-head { max-width: 1200px; margin: 0 auto 16px; }
-.pus-kik { font-family: KaiTi, STKaiti, serif; font-size: 11px; letter-spacing: .24em; color: #7C857B; }
+.pus-kik { font-family: KaiTi, STKaiti, serif; font-size: 11px; letter-spacing: .24em; color: #5C6862; }
 .pus-head h2 { margin: 6px 0 4px; font-family: var(--serif); font-weight: 600; font-size: 24px; letter-spacing: .04em; }
 .pus-note { margin: 0 0 12px; font-size: 12.5px; color: var(--ink-3); max-width: 78ch; }
 .pus-chips { display: flex; gap: 6px; flex-wrap: wrap; }
