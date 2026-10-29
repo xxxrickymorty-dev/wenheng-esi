@@ -26,6 +26,9 @@ import { appHref, errorNote, isTerminalState, taskLabel } from '../lib/status'
 import { markLabel, taskView } from '../lib/taskview'
 import { UserChip } from '../lib/UserChip'
 import { NumberedText } from '../NumberedText'
+import { getModels, setActiveModel, type ModelsPayload } from '../api-models'
+import { ModelMenu, ModelSettings } from './ModelPanel'
+import { ToolTrace, type ToolCall } from './ToolTrace'
 
 /** 出稿轨迹（票 04）：逐段出（挑学科 / 配图 / 下载数据 / 数据校验 / 收尾 / 复刻）。
     全部文字由事件与接口字段组装（视图层只读，不现算数字）。 */
@@ -53,12 +56,12 @@ type Turn = { who: 'me' | 'wh' | 'sys'; text: string; notice?: string; actions?:
               /** 追问卡选了第几颗（已选态）；undefined＝还没选 */
               picked?: number; run?: DialogRun; trace?: Trace; answer?: DialogAnswer
               /** 工具回执（AI 层双面回执）；本轮没有就缺省/为空，界面不出回执条 */
-              receipts?: DialogReceipt[] }
+              receipts?: DialogReceipt[]
+              /** 这一轮的工具调用轨迹（2026-10-29）：模型查了哪些台账、查到没有 */
+              tools?: ToolCall[] }
 type Conversation = { id: number; title: string; turns: Turn[]; slots: DialogSlots
                       /** 服务端会话 id（票 11）：这页打开里的每段对话各归一个服务端会话 */
                       sessionId?: string }
-
-const PALETTE_STORAGE_KEY = 'wenheng-palette'
 
 /** 空态首页（2026-10-12，P0-③）：模式 chips 与示例胶囊——点击＝把示例句填进输入框。 */
 const LANDING_MODES: { label: string; example: string }[] = [
@@ -70,16 +73,6 @@ const LANDING_EXAMPLES = [
   '帮我做 9 月的报告', '查一下化学的接近度', '云南大学国际排名走势',
   '物理学的 1% 阈值是多少', '数学什么时候进入前 1%', '202609 到哪一步了',
 ]
-
-function initialPalette(): 'blue' | 'green' {
-  try {
-    const v = localStorage.getItem(PALETTE_STORAGE_KEY)
-    if (v === 'green' || v === 'blue') return v
-    return v === 'zhu' ? 'green' : 'blue'
-  } catch {
-    return 'blue'
-  }
-}
 
 const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 
@@ -153,7 +146,12 @@ function writeSessionUrl(id: string) {
 }
 
 export default function DialogPage() {
-  const [palette, setPalette] = useState(initialPalette)
+  /* 模型清单（2026-10-29）：当前用哪个模型由服务端保存，这里只读写清单 */
+  const [models, setModels] = useState<ModelsPayload | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  /* 本轮正在发生的工具调用（流式时实时追加；答完随回合落进 turns[i].tools） */
+  const [liveTools, setLiveTools] = useState<ToolCall[]>([])
+  const [modelMsg, setModelMsg] = useState('')
   const [me, setMe] = useState<Me | null>(null)
   const [roleKnown, setRoleKnown] = useState(false)
   const [convs, setConvs] = useState<Conversation[]>(() => [freshConversation(1)])
@@ -162,6 +160,9 @@ export default function DialogPage() {
   const [busy, setBusy] = useState(false)
   /* 阶段进度流（票 12）：等待时显示「正在做什么」（后端真实节点给，不演） */
   const [stage, setStage] = useState('')
+  /* 流式正文（2026-10-30）：answer 分块回流时的累积文本——有内容就盖掉 stage 占位，
+     让等待气泡渐进显示答案，不再卡在「正在写答案…」；done 到达后由真实回合接管。 */
+  const [streamText, setStreamText] = useState('')
   /* 空态第一屏「本期任务」（票 06）：从既有产物判的三步状态；拿不到就退回普通问候。 */
   const [home, setHome] = useState<DialogHome | null>(null)
   /* 正在出稿的那条回复（停止键要用：期次 + 消息下标 + run 令牌） */
@@ -191,15 +192,6 @@ export default function DialogPage() {
   const canRun = me?.capabilities?.actions?.run ?? !!me
 
   useEffect(() => {
-    document.documentElement.dataset.palette = palette
-    try {
-      localStorage.setItem(PALETTE_STORAGE_KEY, palette)
-    } catch {
-      /* 浏览器不允许保存时，当前页面仍可正常切换 */
-    }
-  }, [palette])
-
-  useEffect(() => {
     let alive = true
     void (async () => {
       const m = await getMe()
@@ -207,6 +199,7 @@ export default function DialogPage() {
       setMe(m)
       setRoleKnown(true)
       refreshSaved()
+      getModels().then(setModels).catch(() => setModels(null))
       /* 两种角色都进前门（2026-10-11）：操作员可查数据；出稿等写动作在下面按角色裁剪。 */
     })()
     return () => { alive = false }
@@ -313,6 +306,8 @@ export default function DialogPage() {
     setInput('')
     setBusy(true)
     setStage('')
+    setStreamText('')
+    setLiveTools([])
     const convId = active.id
     const slots = slotsOverride ?? active.slots
     const replyIndex = active.turns.length + 1          // 先发用户话，回复接在它后面
@@ -330,10 +325,17 @@ export default function DialogPage() {
         .slice(-6)
         .map((t) => ({ who: t.who, text: t.text.slice(0, 200) }))
       let r: DialogReply
+      let calls: ToolCall[] = []
       try {
-        /* 阶段进度流（票 12）：等待时看得到「正在做什么」；答案仍整段到 */
+        /* 阶段进度流（票 12）：等待时看得到「正在做什么」；正文分块回流（2026-10-29），
+           工具调用逐条实时报（同日）：等待气泡里能看到它查了哪些台账。 */
         r = await postDialogTurnStream(text, slots, history, active.sessionId,
-                                       (t) => setStage(t))
+                                       (t) => setStage(t),
+                                       (t) => setStreamText((s) => s + t),
+                                       (c) => {
+                                         calls = [...calls, c]
+                                         setLiveTools(calls)
+                                       })
       } catch {
         /* 进度流不可用（网络/部署差异）→ 回退同步口：界面照常，只是没有阶段提示 */
         r = await postTurn(text, slots, history, active.sessionId)
@@ -345,7 +347,8 @@ export default function DialogPage() {
         turns: [...c.turns, { who: 'wh', text: r.text, notice: r.notice,
                               actions: r.actions, run: r.run ?? undefined,
                               answer: r.answer ?? undefined,
-                              receipts: r.receipts }],
+                              receipts: r.receipts,
+                              tools: calls.length ? calls : undefined }],
       }))
       /* 票 11：把本回合的会话 id 回写 URL——刷新/换设备带它即恢复；
          还在这一段对话上才写（中途切走别把 URL 指到别处）。 */
@@ -364,6 +367,8 @@ export default function DialogPage() {
     } finally {
       setBusy(false)
       setStage('')
+      setStreamText('')
+      setLiveTools([])
     }
   }
 
@@ -594,6 +599,15 @@ export default function DialogPage() {
     }
   }
 
+  /** 换当前模型（2026-10-29）：写服务端，下一句话即生效；失败只说一句，不挡对话。 */
+  async function pickModel(id: string) {
+    try {
+      setModels(await setActiveModel(id))
+    } catch (e) {
+      setModelMsg(errorNote(e, '换模型'))
+    }
+  }
+
   /** 停止出稿：拿 run 令牌喊停（终态 `stopped` 从原流回来，这里不掐连接）。 */
   async function stopRun() {
     if (!running) return
@@ -680,13 +694,8 @@ export default function DialogPage() {
           <div className="dlg-right">
             {/* 2026-10-12（rick）：工作台下拉取消——只留一个「去生成台」入口（各台之间在工作区导航里走）。 */}
             <a className="dlg-wk-link" href={withPeriod('/app/')}>去生成台 ▸</a>
-          {/* 皮肤开关：与工作区同款（共享 .skin-switch）；默认蓝场 */}
-          <span className="skin-switch" role="group" aria-label="切换配色">
-            <button type="button" aria-pressed={palette === 'blue'}
-                    onClick={() => setPalette('blue')}>蓝场</button>
-            <button type="button" aria-pressed={palette === 'green'}
-                    onClick={() => setPalette('green')}>绿场</button>
-            </span>
+            <button type="button" className="dlg-gear" title="设置模型"
+                    aria-label="设置模型" onClick={() => setSettingsOpen(true)}>⚙</button>
             <SlotChip label="期次" value={active.slots.period}
                       onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'period') }))} />
             <SlotChip label="意图" value={active.slots.intent}
@@ -757,6 +766,7 @@ export default function DialogPage() {
                 <div className="dlg-who">{t.who === 'me' ? '你' : '文'}</div>
                 <div className="dlg-bub">
                   {t.who === 'wh' && <div className="dlg-nm">文衡</div>}
+                  {!!t.tools?.length && <ToolTrace calls={t.tools} />}
                   {t.text}
                   {t.answer && <AnswerBlock answer={t.answer} />}
                   {t.notice && <p className="dlg-notice">{t.notice}</p>}
@@ -863,8 +873,18 @@ export default function DialogPage() {
               <div className="dlg-turn wh">
                 <div className="dlg-who">文</div>
                 <div className="dlg-bub dlg-wait">
-                  <span className="dlg-dot" aria-hidden="true" />
-                  {stage || '正在理解这句话…'}
+                  {streamText ? (
+                    <span className="serif-prose dlg-streaming">
+                      {streamText.replace(/^#{1,3}\s*/gm, '').replace(/\*\*/g, '')}
+                      <span className="dlg-caret" aria-hidden="true" />
+                    </span>
+                  ) : (
+                    <>
+                      <span className="dlg-dot" aria-hidden="true" />
+                      {stage || '正在理解这句话…'}
+                    </>
+                  )}
+                  {!streamText && !!liveTools.length && <ToolTrace calls={liveTools} live />}
                 </div>
               </div>
             )}
@@ -876,7 +896,7 @@ export default function DialogPage() {
             <div className="dlg-box">
               <textarea rows={1} aria-label="对文衡说话" value={input}
                         placeholder={running ? '正在出稿…（点右边的 ■ 可以停）'
-                                             : '说一句话，比如「帮我做 9 月的报告」…'}
+                                             : '给文衡说一句，比如「帮我做 9 月的报告」'}
                         disabled={!!running}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => {
@@ -885,17 +905,28 @@ export default function DialogPage() {
                             void sendText(input)
                           }
                         }} />
-              {running ? (
-                <button className="dlg-send" type="button" aria-label="停止出稿"
-                        onClick={() => void stopRun()}>■</button>
-              ) : (
-                <button className="dlg-send" type="submit" aria-label="发送"
-                        disabled={busy || !input.trim()}>↑</button>
-              )}
+              <div className="dlg-box-bar">
+                <ModelMenu payload={models} busy={busy || !!running}
+                           onPicked={(id) => void pickModel(id)}
+                           onOpenSettings={() => setSettingsOpen(true)} />
+                <span className="dlg-box-tip">数字都来自台账，点角标可看来源</span>
+                {running ? (
+                  <button className="dlg-send" type="button" aria-label="停止出稿"
+                          onClick={() => void stopRun()}>■</button>
+                ) : (
+                  <button className="dlg-send" type="submit" aria-label="发送"
+                          disabled={busy || !input.trim()}>↑</button>
+                )}
+              </div>
             </div>
+            {modelMsg && <p className="dlg-composer-note">{modelMsg}</p>}
           </form>
         </div>
       </section>
+
+      <ModelSettings open={settingsOpen} me={me}
+                     onClose={() => setSettingsOpen(false)}
+                     onChanged={(p) => { setModels(p); setModelMsg('') }} />
     </div>
   )
 }

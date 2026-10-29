@@ -402,6 +402,46 @@ def _match(texts: dict, question: str) -> dict:
     return dict(list(texts.items())[:3])
 
 
+#: 规则版排版（2026-10-29 rick：规则作答是一堵墙，要分段落＋小标题，像助手答卷）。
+#: 键 → 小标题；连续同类只出一次标题（不认识的键＝无标题，只当普通段落）。
+#: ⚠ 标签不得含测试断言为「不应出现」的词（如「国际排名」「顶尖论文」只在对应段存在时才出）。
+_SECTION_OF = {
+    "p1": "总体情况", "p2": "排名变化", "p3": "排名变化", "p4": "排名变化",
+    "trend": "排名变化",
+    "situation_head": "学科进展", "situation": "学科进展",
+    "forecast_p1": "学科预测", "forecast_p2": "学科预测", "forecast_p3": "学科预测",
+    "top_section": "顶尖论文", "province_p": "省域情况",
+}
+#: 报告封面元数据（期号 / 月份 / 表题）——聊天回答里是噪音，规则版不出。
+_META_SKIP = {"cover_issue", "cover_month", "table2_title"}
+
+
+def _section_label(key):
+    """键 → 小标题（无则空串）。学科段用学科名、台账段用「台账取数」。"""
+    if key in _SECTION_OF:
+        return _SECTION_OF[key]
+    sk = str(key)
+    if sk.startswith("学科数据·"):
+        return sk.split("·", 1)[1]
+    if sk.startswith("台账"):
+        return "台账取数"
+    return ""
+
+
+def _format_rule(keys, texts):
+    """规则段 → 带小标题的多段正文。只加标题与空行，不动数字、不动顺序。"""
+    out, last = [], ""
+    for k in keys:
+        if k in _META_SKIP or k not in texts:
+            continue
+        sec = _section_label(k)
+        if sec and sec != last:
+            out.append(f"### {sec}")
+            last = sec
+        out.append(texts[k])
+    return "\n\n".join(out)
+
+
 def _disc_rows(d):
     """`table2.csv` → `[{en, cn, row}]`（缺件/坏件 → []；不猜）。"""
     try:
@@ -705,6 +745,10 @@ def build(root, period, payload) -> RuleDraft:
          and k not in ledger_texts]
     rule_keys = (list(ledger_texts) + list(disc_texts)) if (ledger_texts or disc_texts) \
         else list(matched)
+    # 封面元数据（期号/月份/表题）是聊天噪音：从规则版剔掉；全被剔空则保留，避免空回答。
+    _rk = [k for k in rule_keys if k not in _META_SKIP]
+    if _rk:
+        rule_keys = _rk
     rule_set = set(rule_keys)
     # 上文进**编号之前**的首个区块：它的数字必须过盾（否则模型一复述就被判「游离数字」）。
     # P0-1（2026-10-14）：问句点名了期次 → 任务首行**明示**（写手不必自己再解「5月」）。
@@ -791,7 +835,7 @@ def build(root, period, payload) -> RuleDraft:
             max_steps = 4
 
     return RuleDraft(
-        rule_text="\n\n".join(texts_all[k] for k in rule_keys),
+        rule_text=_format_rule(rule_keys, texts_all),
         number=number,
         rule_protected="\n\n".join(number.texts[1 + i]
                                    for i, key in enumerate(ordered) if key in rule_set),

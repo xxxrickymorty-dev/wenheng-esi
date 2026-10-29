@@ -9,7 +9,8 @@ export type PreviewSeg =
   | { ph: string; title: string; b?: boolean; size?: number | null }
 
 /** 表格单元里的图：带原始尺寸（cm）——前端预留占位，懒加载不撑版面
-    （2026-10-16：审核台深跳转会因图片未占位落错地方）。 */
+    （2026-10-16：审核台深跳转会因图片未占位落错地方）。
+ */
 export type PreviewImg = { rid: string; w_cm?: number; h_cm?: number }
 
 export type PreviewCell = { text: string; imgs?: PreviewImg[]; span?: number }

@@ -73,6 +73,9 @@ export type ChartsData = {
     college_papers?: { items: CollegeItem[] }
   }
   forecast: Record<string, ForecastSeries>
+  /** docx 插图 rId → 图册图位（2026-10-28 rick 裁决：审核台正文也换同源交互图）。
+      后端逐字节比对得出，只收对得上的；对不上的（封面/截图）没有这个键。 */
+  report_map?: Record<string, { group: string; name: string }>
 }
 
 export async function getChartsData(period: string): Promise<ChartsData> {

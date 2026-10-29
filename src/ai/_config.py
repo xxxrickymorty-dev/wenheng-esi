@@ -11,7 +11,7 @@
     WENHENG_AI_MODEL=deepseek-flash
     WENHENG_AI_KEY=sk-…
     WENHENG_AI_TIMEOUT=30          # 单次调用秒数
-    WENHENG_AI_MAX_TOKENS=2048     # 输出预算（推理型模型要留出正文余量）
+    WENHENG_AI_MAX_TOKENS=4096     # 输出预算（qa 长答案要留足，避免被截断）
     WENHENG_AI_MAX_CHARS=6000      # 外发字符上限（超过即回落，不发包）
 """
 from __future__ import annotations
@@ -39,8 +39,8 @@ def _num(name: str, default, cast):
         return default
 
 
-def cloud_config() -> dict:
-    """当前进程的云端配置（每次调用现读 env —— 部署事实，不是调用参数）。"""
+def _env_config() -> dict:
+    """只读环境变量的那份配置（界面上「服务器部署配置」那一行用的就是它）。"""
     return {
         "backend": _env("WENHENG_AI_BACKEND", "rule").lower() or "rule",
         "profile": _env("WENHENG_AI_PROFILE").lower(),
@@ -48,9 +48,35 @@ def cloud_config() -> dict:
         "model": _env("WENHENG_AI_MODEL"),
         "key": _env("WENHENG_AI_KEY"),
         "timeout": _num("WENHENG_AI_TIMEOUT", 30.0, float),
-        "max_tokens": _num("WENHENG_AI_MAX_TOKENS", 2048, int),
+        "max_tokens": _num("WENHENG_AI_MAX_TOKENS", 4096, int),
         "max_egress_chars": _num("WENHENG_AI_MAX_CHARS", 6000, int),
     }
+
+
+def cloud_config() -> dict:
+    """当前生效的云端配置（每次调用现读 —— 部署事实，不是调用参数）。
+
+    两条来源，优先级从高到低：
+    1. **运行期模型清单**（`out/_ai/models.json` 的当前项，界面上可切）——
+       只补地址/型号/key，超时与预算仍由环境变量定；
+    2. **环境变量**（`.env`，运维改）。
+    `WENHENG_AI_PROFILE=demo` 仍然一票否决：演示锁规则版时清单不生效（不出网）。
+    """
+    cfg = _env_config()
+    if cfg["profile"] == "demo":
+        return cfg
+    try:
+        from . import _models                                       # noqa: PLC0415
+
+        picked = _models.active_credentials()
+    except Exception as e:                                          # noqa: BLE001
+        log.warning("模型清单读取异常，按部署配置继续：%s", e)
+        picked = None
+    if picked:
+        cfg.update({"backend": "openai", "base_url": picked["base_url"],
+                    "model": picked["model"], "key": picked["key"],
+                    "source": f"清单：{picked['label']}"})
+    return cfg
 
 
 def build_brain():

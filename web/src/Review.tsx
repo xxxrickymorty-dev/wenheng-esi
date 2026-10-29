@@ -21,6 +21,9 @@ import { FactsStrip } from './Report'
 import { Icon } from './icons'
 import { StateSeal } from './StateSeal'
 import { appHref, errorNote } from './lib/status'
+import { chartDataFor, getChartsData, type ChartsData } from './lib/chartsData'
+import { buildOption } from './charts/build'
+import { ChartFigure } from './charts/ChartFigure'
 
 type Msg = { ok: boolean; text: string } | null
 
@@ -63,15 +66,54 @@ function Runs({
   )
 }
 
+/** 一处插图：能对上图册数据（report_map）的用 ECharts 重绘，对不上或不画不出时
+    照旧显示报告的 PNG（2026-10-28 rick 裁决：审核台正文也换同源交互图）。
+    宽度仍按 docx 原尺寸锁住——重绘不许改变版面节奏，对勘才比得下去。 */
+function Figure({
+  period, rid, w_cm, h_cm, charts, alt,
+}: {
+  period: string
+  rid: string
+  w_cm?: number
+  h_cm?: number
+  charts: ChartsData | null
+  alt: string
+}) {
+  const option = useMemo(() => {
+    const slot = charts?.report_map?.[rid]
+    if (!charts || !slot) return null
+    const hit = chartDataFor(charts, slot.group, slot.name)
+    return hit ? buildOption(hit) : null
+  }, [charts, rid])
+  const px = (cm?: number, dflt = 0) => (cm ? Math.round(cm * 37.8) : dflt)
+  if (option) {
+    return (
+      <span className="rv-fig" style={w_cm ? { width: `${px(w_cm)}px` } : undefined}>
+        <ChartFigure option={option} height={px(h_cm, 260)} ariaLabel={alt}
+                     fallbackSrc={reportImageUrl(period, rid)} />
+      </span>
+    )
+  }
+  const style: CSSProperties | undefined = w_cm
+    ? {
+      width: `${px(w_cm)}px`,
+      ...(h_cm ? { aspectRatio: `${w_cm} / ${h_cm}` } : {}),
+    }
+    : undefined
+  return <img src={reportImageUrl(period, rid)} alt={alt} loading="lazy" decoding="async"
+              style={style} />
+}
+
 /** 一个块：段落 / 表格（可带图）/ 插图。全部按 docx 原顺序、原内容。 */
 function BlockView({
-  block, vals, onVal, disabled, period,
+  block, vals, onVal, disabled, period, charts,
 }: {
   block: PreviewBlock
   vals: Record<string, string>
   onVal: (id: string, v: string) => void
   disabled: boolean
   period: string
+  charts: ChartsData | null
 }) {
   if (block.t === 'p') {
     const cls = `rv-para${block.align === 'center' ? ' rv-center' : ''}`
@@ -86,16 +128,10 @@ function BlockView({
   if (block.t === 'img') {
     /* 图占位（2026-10-16）：按 docx 原尺寸同时锁定宽与比例——懒加载图落位不再撑版面，
        否则「报告里的空」深跳转会被中途加载的图顶走（rick 实测落在上一节）。 */
-    const style: CSSProperties | undefined = block.w_cm
-      ? {
-        width: `${Math.round(block.w_cm * 37.8)}px`,
-        ...(block.h_cm ? { aspectRatio: `${block.w_cm} / ${block.h_cm}` } : {}),
-      }
-      : undefined
     return (
       <p className="rv-img">
-        <img src={reportImageUrl(period, block.rid)} alt="报告插图" loading="lazy" decoding="async"
-             style={style} />
+        <Figure period={period} rid={block.rid}
+                w_cm={block.w_cm} h_cm={block.h_cm} charts={charts} alt="报告插图" />
       </p>
     )
   }
@@ -109,14 +145,8 @@ function BlockView({
                 <td key={ci} colSpan={cell.span || undefined}>
                   {cell.text}
                   {(cell.imgs ?? []).map((im) => (
-                    <img key={im.rid} src={reportImageUrl(period, im.rid)} alt="图表"
-                         loading="lazy" decoding="async"
-                         style={im.w_cm
-                           ? {
-                             width: `${Math.round(im.w_cm * 37.8)}px`,
-                             ...(im.h_cm ? { aspectRatio: `${im.w_cm} / ${im.h_cm}` } : {}),
-                           }
-                           : undefined} />
+                    <Figure key={im.rid} period={period} rid={im.rid}
+                            w_cm={im.w_cm} h_cm={im.h_cm} charts={charts} alt="图表" />
                   ))}
                 </td>
               ))}
@@ -141,6 +171,8 @@ export function Review({
   const [wb, setWb] = useState<WorkbenchData | null>(null)
   const [wbNote, setWbNote] = useState<string | null>(null)
   const [vals, setVals] = useState<Record<string, string>>({})
+  /* 图册同源数据（2026-10-29）：报告插图能对上就重绘；拿不到就全走 PNG，不挡页面 */
+  const [charts, setCharts] = useState<ChartsData | null>(null)
   const [note, setNote] = useState('')
   const [known, setKnown] = useState(false)
   const [busy, setBusy] = useState<null | 'sign' | 'rebuild' | 'save' | 'revoke'>(null)
@@ -181,6 +213,9 @@ export function Review({
         if (!alive) return
         setPreviewNote(errorNote(e, '审核台', { n404: '这一期还没有出稿。' }))
       })
+    getChartsData(period)
+      .then((c) => { if (alive) setCharts(c) })
+      .catch(() => { if (alive) setCharts(null) })
     getWorkbench(period)
       .then((w) => {
         if (!alive) return
@@ -472,11 +507,13 @@ export function Review({
             {preview.blocks.map((b, i) => headingAt(i) ? (
               <div id={`rv-b-${i}`} key={i}>
                 <BlockView block={b} vals={vals} onVal={(id, v) => setVals((s) => ({ ...s, [id]: v }))}
-                           disabled={!isAdmin || busy !== null} period={period} />
+                           disabled={!isAdmin || busy !== null} period={period}
+                           charts={charts} />
               </div>
             ) : (
               <BlockView key={i} block={b} vals={vals} onVal={(id, v) => setVals((s) => ({ ...s, [id]: v }))}
-                         disabled={!isAdmin || busy !== null} period={period} />
+                         disabled={!isAdmin || busy !== null} period={period}
+                         charts={charts} />
             ))}
           </section>
           </div>

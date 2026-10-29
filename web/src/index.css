@@ -903,6 +903,12 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .rv-center{text-indent:0;text-align:center!important}
 .rv-img{text-indent:0;text-align:center;margin:14px 0}
 .rv-img img,.rv-tblwrap img{max-width:100%;height:auto}
+/* 报告插图改成图表重绘时的外框（2026-10-29）：宽度仍按 docx 原尺寸锁住，版面节奏不变 */
+.rv-fig{display:inline-block;max-width:100%}
+.rv-fig .gal-chart{width:100%}
+/* 报告插图改成图表重绘时的外框（2026-10-29）：宽度仍按 docx 原尺寸锁住，版面节奏不变 */
+.rv-fig{display:inline-block;max-width:100%}
+.rv-fig .gal-chart{width:100%}
 .rv-tblwrap{overflow-x:auto;margin:12px 0 16px}
 .rv-tblwrap table{border-collapse:collapse;width:100%;font-size:var(--fs-label);font-family:var(--sans);line-height:1.6}
 .rv-tblwrap td{border:1px solid var(--line);padding:4px 7px;vertical-align:middle;white-space:pre-line}

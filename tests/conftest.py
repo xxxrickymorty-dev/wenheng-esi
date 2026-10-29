@@ -96,6 +96,13 @@ def _isolate_ai_env(monkeypatch):
                 if k.startswith("WENHENG_AI_")
                 or k in ("WENHENG_FLEX_WRITE", "WENHENG_FLEX_POLISH")]:
         monkeypatch.delenv(key, raising=False)
+    # 运行期模型清单（2026-10-29）：开发机上 `out/_ai/models.json` 存着真模型与 key，
+    # 不清掉的话「默认＝规则版」的金样会随本机配置漂移。要测清单本身请用 tmp 数据根。
+    try:
+        from ai import _models
+        monkeypatch.setattr(_models, "active_credentials", lambda: None)
+    except Exception:                                             # noqa: BLE001
+        pass
 
 
 @pytest.fixture(scope="session")
