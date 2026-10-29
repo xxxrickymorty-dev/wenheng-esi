@@ -913,6 +913,8 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .rv-tblwrap table{border-collapse:collapse;width:100%;font-size:var(--fs-label);font-family:var(--sans);line-height:1.6}
 .rv-tblwrap td{border:1px solid var(--line);padding:4px 7px;vertical-align:middle;white-space:pre-line}
 .rv-tblwrap tr:first-child td{background:var(--panel);font-weight:600}
+/* 带图的表：首行是数据（图），不是表头——不上底色、不加粗（2026-10-29 rick：图被垫成深色） */
+.rv-tblwrap table.has-figs tr:first-child td{background:transparent;font-weight:inherit}
 .rv-tblwrap img{max-width:230px;vertical-align:top}
 
 /* 就地填空：虚线朱框 = 待填；浅底实线 = 已填（还没重出） */

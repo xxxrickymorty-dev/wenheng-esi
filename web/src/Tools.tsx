@@ -171,7 +171,6 @@ export function Tools({
       <div className="mt-12">
         <div>
           {/* 2026-10-17 rick 拍板：数据按期次自动读台账，上传入口删除 */}
-          <p className="hint mt-8">数据按期次自动读台账——不再手工上传。</p>
 
           {/* 产物下载 + 重跑 */}
           <h3 className="fs-15 mt-18">产物与重跑</h3>

@@ -8,7 +8,7 @@
    出好了＝报告初稿 / 对勘本 / 红件清单；覆盖确认＝行内二次确认（复用 `ConfirmButton`），
    回滚走既有 `rollback-points` / `rollback`（旧稿在 `_superseded/`）。 */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { req, getArtifacts, getJobProgress, getMe, getPeriods,
          getRollbackPoints, postJob, rollbackPeriod,
          type Me, type RollbackPoint } from '../api'
@@ -24,7 +24,6 @@ import { trioLinks, type TrioLink } from '../lib/repro'
 import { latestProgress } from '../lib/runMachine'
 import { appHref, errorNote, isTerminalState, taskLabel } from '../lib/status'
 import { markLabel, taskView } from '../lib/taskview'
-import { UserChip } from '../lib/UserChip'
 import { NumberedText } from '../NumberedText'
 import { getModels, setActiveModel, type ModelsPayload } from '../api-models'
 import { ModelMenu, ModelSettings } from './ModelPanel'
@@ -75,6 +74,31 @@ const LANDING_EXAMPLES = [
 ]
 
 const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms))
+
+/** 侧栏宽度（2026-10-29 rick：要能拖着调）。范围与默认值都写死一处，别处只读。 */
+const SIDE_KEY = 'wenheng-dlg-side'
+const SIDE_MIN = 208
+const SIDE_MAX = 420
+const SIDE_DEF = 264
+function initialSideWidth(): number {
+  try {
+    const v = Number(localStorage.getItem(SIDE_KEY))
+    if (Number.isFinite(v) && v >= SIDE_MIN && v <= SIDE_MAX) return v
+  } catch { /* 浏览器不许存就用默认宽 */ }
+  return SIDE_DEF
+}
+
+/** 相对时间（2026-10-29）：列表右侧只写「3天」这种量级——精确到秒没人看。 */
+function relTime(iso: string): string {
+  const t = new Date(String(iso || '').replace(' ', 'T')).getTime()
+  if (!Number.isFinite(t) || t <= 0) return ''
+  const sec = Math.max(0, Math.floor((Date.now() - t) / 1000))
+  if (sec < 60) return '刚刚'
+  if (sec < 3600) return `${Math.floor(sec / 60)}分钟`
+  if (sec < 86400) return `${Math.floor(sec / 3600)}小时`
+  if (sec < 86400 * 30) return `${Math.floor(sec / 86400)}天`
+  return `${Math.floor(sec / 86400 / 30)}个月`
+}
 
 /** 自检明细（票 05）→ 没过的那几条（馆员话术；全过给空表）。 */
 function checkFailures(c?: FlexCheck): string[] {
@@ -152,6 +176,11 @@ export default function DialogPage() {
   /* 本轮正在发生的工具调用（流式时实时追加；答完随回合落进 turns[i].tools） */
   const [liveTools, setLiveTools] = useState<ToolCall[]>([])
   const [modelMsg, setModelMsg] = useState('')
+  /* 侧栏宽度／用户菜单／搜索（2026-10-29 照 DeepSeek harness 的侧栏） */
+  const [sideW, setSideW] = useState(initialSideWidth)
+  const [meMenu, setMeMenu] = useState(false)
+  const [q, setQ] = useState('')
+  const [qOpen, setQOpen] = useState(false)
   const [me, setMe] = useState<Me | null>(null)
   const [roleKnown, setRoleKnown] = useState(false)
   const [convs, setConvs] = useState<Conversation[]>(() => [freshConversation(1)])
@@ -620,6 +649,60 @@ export default function DialogPage() {
     }
   }
 
+  /* 用户菜单：点外面或按 Esc 就收（2026-10-29，DeepSeek 同款手感） */
+  useEffect(() => {
+    if (!meMenu) return
+    const onDoc = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.dlg-me-wrap')) setMeMenu(false)
+    }
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setMeMenu(false) }
+    document.addEventListener('click', onDoc)
+    document.addEventListener('keydown', onEsc)
+    return () => {
+      document.removeEventListener('click', onDoc)
+      document.removeEventListener('keydown', onEsc)
+    }
+  }, [meMenu])
+
+  /** Ctrl+, 开模型设置（与用户菜单里那行 kbd 一致；只有管理员能开）。 */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault()
+        if (me?.role === 'admin') setSettingsOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [me])
+
+  /** 拖侧栏右缘调宽（2026-10-29）：pointer 事件整套走 window，拖出侧栏也不断。 */
+  function startResize(e: ReactPointerEvent<HTMLDivElement>) {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = sideW
+    const move = (ev: PointerEvent) => {
+      setSideW(Math.min(SIDE_MAX, Math.max(SIDE_MIN, startW + ev.clientX - startX)))
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      document.body.classList.remove('dlg-resizing')
+      setSideW((w) => {
+        try { localStorage.setItem(SIDE_KEY, String(Math.round(w))) } catch { /* 存不了就这页有效 */ }
+        return w
+      })
+    }
+    document.body.classList.add('dlg-resizing')
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
+  /* 侧栏清单：本地这段对话不重复出现（它就是当前这段），搜索只按标题过滤。 */
+  const savedList = saved.filter((x) => x.id !== active?.sessionId)
+  const savedShown = savedList.filter((x) =>
+    !q.trim() || String(x.title || '').toLowerCase().includes(q.trim().toLowerCase()))
+
   if (roleKnown && !me) {
     return (
       <main className="dlg-gate">
@@ -640,62 +723,107 @@ export default function DialogPage() {
       <a className="dlg-skip" href="#dlg-thread">跳到对话内容</a>
       <h1 className="dlg-vh">文衡 · 对话前门</h1>
 
-      <aside className="dlg-side">
-        <div className="dlg-brand"><strong>文衡</strong><span>云南大学图书馆</span></div>
-        <button className="dlg-newchat" type="button" onClick={newChat}>＋ 新对话</button>
-        <nav className="dlg-hist" aria-label="对话历史">
-          {(() => {
-            const savedList = saved.filter((s) => s.id !== active?.sessionId)
-            return (
-              <>
-                {savedList.length > 0 && (
-                  <>
-                    <p className="dlg-hist-cap">保存的对话</p>
-                    {savedList.map((s) => (
-                      <div key={s.id} className="dlg-hist-row">
-                        <a href="#对话" title={`${s.title || '保存的对话'} · ${s.updated}`}
-                           onClick={(e) => { e.preventDefault(); void openSaved(s) }}>
-                          {s.title || '保存的对话'}
-                        </a>
-                        <ConfirmButton className="dlg-drop" confirmText="删除？"
-                                       title="删除这段保存的对话"
-                                       onConfirm={() => { void dropSaved(s) }}>✕</ConfirmButton>
-                      </div>
-                    ))}
-                  </>
-                )}
-                {others.length > 0 && <p className="dlg-hist-cap">这次打开</p>}
-                {others.length === 0 && savedList.length === 0 ? (
-                  <p className="dlg-hist-note">对话会列在这里；关掉页面后还能从「保存的对话」回来。</p>
-                ) : (
-                  others.map((c) => (
-                    <a key={c.id} href="#对话" aria-current={c.id === activeId ? 'true' : undefined}
-                       onClick={(e) => {
-                         e.preventDefault()
-                         setActiveId(c.id)
-                         writeSessionUrl(c.sessionId || '')   // 票 11：URL 跟着当前对话的会话走
-                       }}>
-                      {c.title || '新对话'}
-                    </a>
-                  ))
-                )}
-              </>
-            )
-          })()}
-        </nav>
-        <div className="dlg-me-wrap">
-          <UserChip me={me} />
+      <aside className="dlg-side" style={{ width: `${sideW}px` }}>
+        {/* 顶部两页签（照 DeepSeek harness：应用 / 编辑 → 对话 / 工作台） */}
+        <div className="dlg-tabs">
+          <a className="dlg-tab on" href="/app/dialog/" aria-current="page">对话</a>
+          <a className="dlg-tab" href={withPeriod('/app/')}>工作台</a>
         </div>
+
+        <div className="dlg-brand"><strong>文衡</strong><span>ESI 报告台</span></div>
+
+        <button className="dlg-newchat" type="button" onClick={newChat}>
+          <span className="dlg-newchat-i" aria-hidden="true">＋</span>新对话
+        </button>
+
+        <nav className="dlg-nav" aria-label="功能入口">
+          <a href={withPeriod('/app/?view=tools')}>
+            <span className="dlg-nav-i" aria-hidden="true">◈</span>工具
+          </a>
+          <a href={withPeriod('/app/?view=archive')}>
+            <span className="dlg-nav-i" aria-hidden="true">▤</span>运行档案
+          </a>
+          <a href={withPeriod('/app/?view=review')}>
+            <span className="dlg-nav-i" aria-hidden="true">✎</span>审核台
+          </a>
+        </nav>
+
+        <div className="dlg-ws">
+          <div className="dlg-ws-h">
+            <span>工作区</span>
+            <div className="dlg-ws-tools">
+              <button type="button" aria-label="搜索对话" title="搜索对话"
+                      onClick={() => setQOpen((v) => !v)}>⌕</button>
+              <button type="button" aria-label="新对话" title="新对话" onClick={newChat}>＋</button>
+            </div>
+          </div>
+          {qOpen && (
+            <input className="dlg-ws-q" value={q} autoFocus placeholder="搜索对话"
+                   onChange={(e) => setQ(e.target.value)}
+                   onKeyDown={(e) => { if (e.key === 'Escape') { setQ(''); setQOpen(false) } }} />
+          )}
+          <nav className="dlg-hist" aria-label="对话历史">
+            {savedShown.map((x) => (
+              <div key={x.id} className="dlg-hist-row">
+                <a href="#对话" title={`${x.title || '保存的对话'} · ${x.updated}`}
+                   onClick={(e) => { e.preventDefault(); void openSaved(x) }}>
+                  <span className="dlg-hist-t">{x.title || '保存的对话'}</span>
+                  <span className="dlg-hist-w">{relTime(x.updated)}</span>
+                </a>
+                <ConfirmButton className="dlg-drop" confirmText="删除？"
+                               title="删除这段对话"
+                               onConfirm={() => { void dropSaved(x) }}>✕</ConfirmButton>
+              </div>
+            ))}
+            {others.map((c) => (
+              <div key={c.id} className="dlg-hist-row">
+                <a href="#对话" aria-current={c.id === activeId ? 'true' : undefined}
+                   onClick={(e) => {
+                     e.preventDefault()
+                     setActiveId(c.id)
+                     writeSessionUrl(c.sessionId || '')
+                   }}>
+                  <span className="dlg-hist-t">{c.title || '新对话'}</span>
+                  <span className="dlg-hist-w">当前</span>
+                </a>
+              </div>
+            ))}
+          </nav>
+        </div>
+
+        <div className="dlg-me-wrap">
+          <button type="button" className="dlg-me" aria-haspopup="menu" aria-expanded={meMenu}
+                  title={me ? `${me.name} · ${me.role === 'admin' ? '管理员' : '操作员'}` : ''}
+                  onClick={() => setMeMenu((v) => !v)}>
+            <span className="dlg-av" aria-hidden="true">{(me?.name || '·').slice(0, 1)}</span>
+            <span className="dlg-me-n">{me?.name || '…'}</span>
+            <span className="dlg-me-i" aria-hidden="true">⋯</span>
+          </button>
+          {meMenu && (
+            <div className="dlg-me-menu" role="menu">
+              {me?.role === 'admin' && (
+                <button type="button" role="menuitem"
+                        onClick={() => { setMeMenu(false); setSettingsOpen(true) }}>
+                  <span aria-hidden="true">⚙</span>设置
+                  <kbd>Ctrl + ,</kbd>
+                </button>
+              )}
+              <a role="menuitem" href="/logout">
+                <span aria-hidden="true">→</span>退出登录
+              </a>
+            </div>
+          )}
+        </div>
+
+        <div className="dlg-resize" role="separator" aria-orientation="vertical"
+             aria-label="拖动调节侧栏宽度" title="拖动调节宽度"
+             onPointerDown={startResize} />
       </aside>
 
       <section className="dlg-main">
         <header className="dlg-topbar">
           <span className="dlg-ttl">{active.title || '新对话'}</span>
           <div className="dlg-right">
-            {/* 2026-10-12（rick）：工作台下拉取消——只留一个「去生成台」入口（各台之间在工作区导航里走）。 */}
-            <a className="dlg-wk-link" href={withPeriod('/app/')}>去生成台 ▸</a>
-            <button type="button" className="dlg-gear" title="设置模型"
-                    aria-label="设置模型" onClick={() => setSettingsOpen(true)}>⚙</button>
             <SlotChip label="期次" value={active.slots.period}
                       onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'period') }))} />
             <SlotChip label="意图" value={active.slots.intent}
@@ -723,7 +851,6 @@ export default function DialogPage() {
                     </button>
                   ))}
                 </div>
-                <p className="dlg-land-label">或者，照着下面的例子说一句</p>
                 <div className="dlg-land-pills">
                   {LANDING_EXAMPLES.map((example) => (
                     <button key={example} type="button" className="dlg-land-pill"
@@ -737,13 +864,10 @@ export default function DialogPage() {
                       {tv.rows.map((row, index) => (
                         <span key={row.label}
                               className={`dlg-dyn-step ${row.mark === '✓' ? 'ok'
-                                : row.mark === '●' ? 'cur' : ''}`}>
+                                : row.mark === '●' ? 'cur' : ''}`}
+                              title={markLabel(row.mark)}>
                           {['①', '②', '③'][index]} {row.label}
-                          <span className="dlg-dyn-mark">
-                            <i aria-hidden="true">{row.mark}</i>
-                            {markLabel(row.mark)}
-                          </span>
-                          {row.note && <small className="dlg-dyn-note">{row.note}</small>}
+                          <i className="dlg-dyn-glyph" aria-hidden="true">{row.mark}</i>
                         </span>
                       ))}
                       {tv.cta && (
@@ -756,7 +880,6 @@ export default function DialogPage() {
                     </div>
                   </>
                 )}
-                {tv?.prevNote && <p className="dlg-land-prev">{tv.prevNote}</p>}
               </section>
             )}
             {active.turns.map((t, i) => t.who === 'sys' ? (
@@ -896,7 +1019,7 @@ export default function DialogPage() {
             <div className="dlg-box">
               <textarea rows={1} aria-label="对文衡说话" value={input}
                         placeholder={running ? '正在出稿…（点右边的 ■ 可以停）'
-                                             : '给文衡说一句，比如「帮我做 9 月的报告」'}
+                                             : '发消息给文衡'}
                         disabled={!!running}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => {
@@ -907,9 +1030,7 @@ export default function DialogPage() {
                         }} />
               <div className="dlg-box-bar">
                 <ModelMenu payload={models} busy={busy || !!running}
-                           onPicked={(id) => void pickModel(id)}
-                           onOpenSettings={() => setSettingsOpen(true)} />
-                <span className="dlg-box-tip">数字都来自台账，点角标可看来源</span>
+                           onPicked={(id) => void pickModel(id)} />
                 {running ? (
                   <button className="dlg-send" type="button" aria-label="停止出稿"
                           onClick={() => void stopRun()}>■</button>

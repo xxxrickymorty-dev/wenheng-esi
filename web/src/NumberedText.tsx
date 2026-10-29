@@ -48,7 +48,6 @@ export function NumberedText({ text, sources }: { text: string; sources: Numbere
                 <b className="ink">{src.label}</b>
                 <br />
                 {src.detail}
-                <span className="hint"> · 台账数字</span>
               </span>
             )}
           </span>,

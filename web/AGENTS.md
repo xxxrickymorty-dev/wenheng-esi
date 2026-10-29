@@ -32,6 +32,14 @@ Tailwind / shadcn / GSAP 已于 2026-10-01 清除（装了不用＝第二套视�
    来自数据的值（进度、颜色、宽度等）；其余静态样式写进组件类，或复用 `src/index.css`
    末尾「布局小工具」段已有的 `.mt-* / .ml-* / .h-sec / .hint-num`——先翻再添，别重复造。
 
+## 文案纪律（2026-10-29 rick 定）
+
+**Avoid unnecessary secondary labels and descriptions. Let the layout do the explaining.**
+
+- 不写解释性副标题，不写复述标题的小字，不标注「已经看得见」的事实。
+- 真要说明的，收进 `title`（悬停）、空态一句、或报错文案；正文只留内容。
+- 例外（必须留）：状态（加载中 / 空 / 出错）、危险动作的后果（写台账、覆盖重出）。
+
 ## 命令（在 `web/` 下）
 
 ```powershell

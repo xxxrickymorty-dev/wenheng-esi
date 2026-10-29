@@ -51,7 +51,6 @@ export function HealSandbox() {
   if (!d.available) {
     return (
       <>
-        <p className="hint mt-2">自愈沙盘 · 只碰副本，不碰原始台账</p>
         <section className="card pad-card-lg">
           <h1 className="fs-24">自愈沙盘</h1>
           <p className="fc-lead">还没跑过。先在终端执行一次，再刷新本页：</p>
@@ -78,7 +77,6 @@ export function HealSandbox() {
 
   return (
     <>
-      <p className="hint mt-2">自愈沙盘 · 只碰副本，不碰原始台账</p>
 
       <section className="card pad-card-lg">
         <h1 className="fs-24">自愈沙盘</h1>

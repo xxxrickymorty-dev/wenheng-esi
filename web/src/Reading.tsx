@@ -122,7 +122,6 @@ export function Reading({ period }: { period: string | null }) {
                     aria-pressed={onlyManual}>
               仅看待人工 <b className="mono">{nManual}</b>
             </button>
-            <span className="hint">悬停看出处 · 按 <b className="mono">← →</b> 换分组</span>
           </div>
         )}
       </section>
@@ -198,7 +197,6 @@ export function Reading({ period }: { period: string | null }) {
                   {assertions.total - assertions.fail} / {assertions.total} {assertions.fail === 0 ? '· 全部通过' : ''}
                 </span></div>
             )}
-            <p className="hint mt-10">悬停看出处。</p>
             {hover ? (
               <div className="pop">
                 <div className="ph">出处</div>
