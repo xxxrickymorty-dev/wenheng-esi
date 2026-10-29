@@ -187,9 +187,13 @@ def _ledger_source(cells, key, value):
 
 # ================================================================ 原生工具环（2026-10-28）
 
-#: 模型可见的四件只读工具（名字 → 引擎 op）。全部只读：没有写操作这一支。
+#: 模型可见的**五件**只读工具（名字 → 引擎 op）。全部只读：没有写操作这一支。
+#: 第五件 `query_compare` 是为什么加的（2026-10-29 实测）：模型看不见真值、只看得见
+#: 占位标记，比较类问题（「谁的 CNCI 更高」）它算不了——把「谁好谁差」交回引擎排序，
+#: 模型只读这个顺序。**系统不替模型算，模型也不替读者臆断。**
 _TOOL_OPS = {"query_series": "series", "query_at": "at",
-             "query_events": "events", "query_overall_rank": "overall_rank"}
+             "query_events": "events", "query_overall_rank": "overall_rank",
+             "query_compare": "compare"}
 
 #: 指标脸面（工具面零数字——`MODEL_METRICS` 的中文名带「1%」，不能直接进 schema）：
 #: 别名 → (短名, 话术)。短名进回执摘要（给人看），话术进工具说明（给模型看）。
@@ -229,7 +233,7 @@ def _fn(name, desc, props, required) -> dict:
 
 
 def _qa_tools(view) -> tuple:
-    """四件只读工具的 schema：模型只看见「能查什么」，看不见任何数值。"""
+    """五件只读工具的 schema：模型只看见「能查什么」，看不见任何数值。"""
     metrics = _metric_index()
     discs = [str(d) for d in (view.disciplines or ())]
     span = {"type": "string", "enum": ["recent", "all"],
@@ -246,6 +250,12 @@ def _qa_tools(view) -> tuple:
             {"disc": disc}, ["disc"]),
         _fn("query_overall_rank", "查本校整体排名（国际/国内）在最近若干期的序列",
             {"span": span}, []),
+        _fn("query_compare",
+            "查若干学科在同一期的某个指标谁高谁低（结果已按从好到差排好，读完就能比；"
+            "要比的学科放 discs，不填就是全部学科）",
+            {"metric": metric,
+             "discs": {"type": "array", "items": {"enum": discs},
+                       "description": "要比的学科（英文名列表）"}}, ["metric"]),
     )
 
 
@@ -287,12 +297,23 @@ def _qa_executor(view, period, number):
         if op is None:
             return refuse(name, args, "未登记的查询", t0)
         canon, metric_cn = "", ""
+        picked: list = []          # compare 要比的学科；其余 op 恒空（qargs 字面量全体求值）
         disc = str(args.get("disc") or "")
         if op in ("series", "at"):
             got = metrics.get(str(args.get("metric") or ""))
             if got is None:
                 return refuse(name, args, "指标不在可查范围", t0)
             canon, metric_cn, _hint = got
+        elif op == "compare":
+            got = metrics.get(str(args.get("metric") or ""))
+            if got is None:
+                return refuse(name, args, "指标不在可查范围", t0)
+            canon, metric_cn, _hint = got
+            got_picked = args.get("discs")
+            picked = ([str(x) for x in got_picked] if isinstance(got_picked, list) else [])
+            bad = [d for d in picked if d not in set(view.disciplines or ())]
+            if bad:
+                return refuse(name, args, "学科不在可查范围", t0)
         span = str(args.get("span") or "recent")
         if span not in ("recent", "all"):
             return refuse(name, args, "期次范围不在可查范围", t0)
@@ -306,9 +327,12 @@ def _qa_executor(view, period, number):
         qargs = {"series": {"metric": canon, "disc": disc, "periods": window},
                  "at": {"metric": canon, "disc": disc, "period": str(period)},
                  "events": {"disc": disc},
+                 "compare": {"metric": canon, "discs": picked or None,
+                             "period": str(period)},
                  "overall_rank": {"periods": window}}[op]
         summary = ("查 云大整体排名" if op == "overall_rank"
                    else f"查 {disc_cn(disc)}·进出事件" if op == "events"
+                   else f"查 {metric_cn}·横比" if op == "compare"
                    else f"查 {disc_cn(disc)}·{metric_cn}")
         memo_key = (op, tuple(sorted((k, str(v)) for k, v in qargs.items())))
         if memo_key in memo:
@@ -762,7 +786,9 @@ def build(root, period, payload) -> RuleDraft:
             tools = ()
         if tools:
             execute = _qa_executor(view, period, number)
-            max_steps = 2
+            # 4＝「取证 → 补证 → 再补 → 作答」的余量：真模型常要逐个学科拉数再对比，
+            # 步数给少了会把正常的多步取证判成「连续请求工具未作答」而误回落（实测 2026-10-29）。
+            max_steps = 4
 
     return RuleDraft(
         rule_text="\n\n".join(texts_all[k] for k in rule_keys),

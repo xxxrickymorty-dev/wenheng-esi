@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import json
+import re
 import secrets
 import socket
 import urllib.error
@@ -32,6 +33,25 @@ class BrainError(RuntimeError):
     def __init__(self, message, *, code: str | None = None):
         super().__init__(message)
         self.code = code or type(self).__name__
+
+
+_THINK = re.compile(r"<think>.*?</think>", re.S)
+
+
+def _strip_think(text: str) -> str:
+    """正文＝**思考之外**的部分（推理型模型专线）。
+
+    MiniMax-M2 / DeepSeek-R1 一类推理模型会把思考过程写进 `content`（vLLM 网关尤其常见，
+    不像 OpenAI 官方那样拆到 `reasoning_content`）。思考块里常出现数字原文的复述——
+    盾会把它们判成「游离数字」整份回落。它在想不代表它在编：把思考剥掉，
+    正文那一半照旧过盾。（工具轮不用它：`calls` 与 `text` 二选一。）
+    """
+    out = str(text or "")
+    if "<think>" not in out:
+        return out
+    out = _THINK.sub("", out)
+    out = out.replace("<think>", "").replace("</think>", "")   # 未闭合的兜底
+    return out.strip()
 
 
 @dataclass(frozen=True)
@@ -170,7 +190,7 @@ class OpenAIBrain:
             raise BrainError("响应缺 choices/content", code="bad_response") from e
         if raw_calls:
             return Turn(calls=tuple(self._decode_call(c) for c in raw_calls))
-        return Turn(text=str(content or ""))
+        return Turn(text=_strip_think(content))
 
     @staticmethod
     def _decode_call(item) -> dict:

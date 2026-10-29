@@ -740,7 +740,7 @@ class Test原生工具环:
         ans = qa(root, question=question, brain=brain, history=history)
         return ans, brain
 
-    def test_有台账视图_挂四件工具_schema零数字(self, tmp_path, monkeypatch):
+    def test_有台账视图_挂五件工具_schema零数字(self, tmp_path, monkeypatch):
         root = _seed_ledger(tmp_path, monkeypatch)
         # 替身必须引用本期事实（qa 是自由作答型：只复述问句＝越题，会回落规则版）。
         ans, brain = self._qa_tool(root, [_cite_static])
@@ -748,13 +748,18 @@ class Test原生工具环:
         tools = brain.briefs[0].tools
         assert tools, "有台账视图就要挂工具"
         names = [t["function"]["name"] for t in tools]
-        assert names == ["query_series", "query_at", "query_events", "query_overall_rank"]
+        assert names == ["query_series", "query_at", "query_events", "query_overall_rank",
+                         "query_compare"]
         blob = json.dumps(tools, ensure_ascii=False)
         assert not raw_digits(blob), f"工具 schema 必须零数字：{blob[:120]!r}"
         metric_enum = tools[0]["function"]["parameters"]["properties"]["metric"]["enum"]
         from ai import _plan
         assert set(metric_enum) == {a for a, _c, _cn in _plan.MODEL_METRICS}
         assert "Chemistry" in tools[0]["function"]["parameters"]["properties"]["disc"]["enum"]
+        # 第五件：横比（谁高谁低交给引擎排序——模型看不见真值，比不了）
+        cmp_fn = tools[-1]["function"]
+        assert cmp_fn["name"] == "query_compare" and cmp_fn["parameters"]["required"] == ["metric"]
+        assert not raw_digits(cmp_fn["description"]), "话术里不许出现数字"
         for t in brain.briefs[0].egress_texts():
             assert not raw_digits(t), f"外发含数字原值：{t[:80]!r}"
 
@@ -825,6 +830,39 @@ class Test原生工具环:
         ans, _ = self._qa_tool(root, [Turn(calls=(call,)), _cite_static])
         assert ans.receipts[0].refused is True
 
+    def test_横比_一期跨学科_引擎排序后进证据(self, tmp_path, monkeypatch):
+        """比较类问题的正解：谁高谁低由引擎算（按「好」的方向排），模型只读顺序——
+        它看不见真值，占位编号也**不是**大小，比不出来。"""
+        root = _seed_ledger(tmp_path, monkeypatch)
+        call = {"name": "query_compare", "arguments": {"metric": "proximity"}}   # 不填＝全部学科
+        ans, brain = self._qa_tool(root, [Turn(calls=(call,)), _cite_last_evidence])
+        assert ans.mode == "model"
+        seg = brain.briefs[1].evidence[-1]
+        assert "横向比较" in seg and "从好到差排列" in seg, seg
+        assert not raw_digits(seg), "结果必须是占位面"
+        r = ans.receipts[0]
+        assert (r.tool, r.ok, r.refused) == ("query_compare", True, False)
+        assert r.summary == "查 接近度·横比"
+
+    def test_横比_学科名越权_拒(self, tmp_path, monkeypatch):
+        root = _seed_ledger(tmp_path, monkeypatch)
+        call = {"name": "query_compare",
+                "arguments": {"metric": "proximity", "discs": ["NoSuch"]}}
+        ans, brain = self._qa_tool(root, [Turn(calls=(call,)), _cite_static])
+        assert ans.mode == "model", "拒答不是回落"
+        assert ans.receipts[0].refused is True
+        assert "不在可查范围" in brain.briefs[1].evidence[-1]
+
+    def test_横比_该期没有这个学科的数据_拒(self, tmp_path, monkeypatch):
+        """白名单过了、引擎取不到（数学在这张接近度表里没值）→ 也走拒，不回落。"""
+        root = _seed_ledger(tmp_path, monkeypatch)
+        call = {"name": "query_compare",
+                "arguments": {"metric": "proximity", "discs": ["Mathematics"]}}
+        ans, brain = self._qa_tool(root, [Turn(calls=(call,)), _cite_static])
+        assert ans.mode == "model"
+        assert ans.receipts[0].refused is True
+        assert not raw_digits(brain.briefs[1].evidence[-1])
+
     def test_同规格去重_复用已注册文本不再注册(self, tmp_path, monkeypatch):
         root = _seed_ledger(tmp_path, monkeypatch)
         call = {"name": "query_series",
@@ -846,7 +884,9 @@ class Test原生工具环:
         root = _seed_ledger(tmp_path, monkeypatch)
         call = {"name": "query_series",
                 "arguments": {"metric": "proximity", "disc": "Chemistry"}}
-        ans, _ = self._qa_tool(root, [Turn(calls=(call,)), Turn(calls=(call,))])
+        # 占满全部轮次还在要工具（turns 要比 max_steps 多一拍，否则取不到 turns 会
+        # 先撞上空回复）——这才叫「连续请求工具未作答」。
+        ans, _ = self._qa_tool(root, [Turn(calls=(call,)) for _ in range(6)])
         assert ans.mode == "rule" and ans.text == ans.rule_text
         assert "连续请求工具未作答" in ans.notice
         assert records(root)[0]["fallback"] == "calls_unsupported"

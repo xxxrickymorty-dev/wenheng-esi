@@ -983,6 +983,7 @@ function AnswerBlock({ answer }: { answer: DialogAnswer }) {
           <NumberedText text={answer.rule_text} sources={answer.sources} />
         </details>
       )}
+      {!!answer.receipts?.length && <ReceiptBar receipts={answer.receipts} />}
       {answered && (
         <div className="an-footer">
           <span className={`pill ${answer.mode === 'model' ? 'signed' : 'stale'}`}>

@@ -237,3 +237,18 @@ def test_工具调用缺name_报bad_response(fake):
     with pytest.raises(BrainError) as ei:
         brain(fake).think(_tool_brief())
     assert ei.value.code == "bad_response"
+
+
+@pytest.mark.parametrize("raw", [
+    "<think>它占 (618.42) 它占 (676.06)，<｜hy_place▁holder▁no▁813｜>看看</think>占 [[1]]%、[[2]]%。",
+    "<think>还没想完，正文在前</think>占 [[1]]%、[[2]]%。",   # 正常闭合
+    "占 [[1]]%、[[2]]%。",                                    # 没有思考块＝原样
+])
+def test_推理模型_思考块不进正文(fake, raw):
+    """MiniMax-M2 / R1 一类把 `<think>` 写进 content：正文只取思考之外的一半——
+    思考里常复述数字原值，留着会被盾判「游离数字」整份回落。"""
+    fake.raw = json.dumps({"choices": [{"message": {"content": raw}}]})
+    turn = brain(fake).think(_tool_brief())
+    assert not raw_digits(turn.text), f"思考块里的原值漏进正文：{turn.text!r}"
+    assert turn.text == "占 [[1]]%、[[2]]%。"
+    assert turn.calls == ()

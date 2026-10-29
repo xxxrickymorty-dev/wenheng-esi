@@ -54,6 +54,9 @@ export type DialogAnswer = {
   sources: { index: number; kind: string; pointer: string; label: string; detail: string; value: string }[]
   shield: { checked: number; passed: number }
   record_id: string | null
+  /** 工具回执（2026-10-28 qa 写作轮原生工具环）：模型自己拉的每一笔取证一条；
+      缺省/空＝这轮没走工具环（规则部署物理上没有）。形状＝Receipt.as_dict()。 */
+  receipts?: DialogReceipt[]
 }
 
 /** 单条工具回执（AI 层工具调用的双面回执，形状＝src/ai/_types.py `Receipt.as_dict()`）：
