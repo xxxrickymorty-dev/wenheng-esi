@@ -28,13 +28,13 @@ export function AcquireCheck() {
       <section className="bg-pine-300 pb-[40px] pt-[46px] text-pine-50">
         <div className="mx-auto grid max-w-[1280px] grid-cols-[minmax(0,1fr)_auto] items-end gap-[48px] px-[30px] max-[1040px]:grid-cols-1">
           <div className="wh-reveal" style={{ animationDelay: "0ms" }}>
-            <div className="font-kai text-[13px] tracking-[.42em] text-pine-50/80">
+            <div className="font-kai text-[13px] tracking-[.42em] text-pine-50">
               站 一 · 雲 南 大 學 圖 書 館 · 學 科 信 息 參 考
             </div>
             <h1 className="mt-[12px] font-serif text-[clamp(38px,5vw,66px)] leading-[1.06] tracking-[.04em]">
               取数核验
             </h1>
-            <p className="mt-[14px] max-w-[34ch] font-kai text-[15px] leading-[2.05] text-pine-50/80">
+            <p className="mt-[14px] max-w-[34ch] font-kai text-[15px] leading-[2.05] text-pine-50">
               机器先把当期原始数据取回来（取数），人再逐项核对（取数核验）。两步合在一屏。
             </p>
             <div className="mt-[24px] flex flex-wrap items-center gap-[20px]">
@@ -113,7 +113,7 @@ export function AcquireCheck() {
 
             <div>
               <div className="bg-paper-100 p-[20px_22px]">
-                <div className="border-b border-paper-200 pb-[10px] font-kai text-[10.5px] tracking-[.36em] text-ink-100">
+                <div className="border-b border-paper-200 pb-[10px] font-kai text-[11.5px] tracking-[.36em] text-ink-100">
                   核 驗 項 · 取 數 核 驗
                 </div>
                 <ul className="mt-[12px] list-none p-0">

@@ -27,7 +27,7 @@ export function TopBar({
   return (
     <header className="flex h-[60px] items-center gap-[22px] bg-pine-400 px-[30px]">
       <span className="font-serif text-[20px] tracking-[.18em] text-pine-50">文衡</span>
-      <span className="font-kai text-[13px] leading-[1.55] tracking-[.22em] text-pine-50/80">
+      <span className="font-kai text-[13px] leading-[1.55] tracking-[.22em] text-pine-50">
         雲 南 大 學 圖 書 館
         <br />
         學 科 信 息 參 考
@@ -48,7 +48,7 @@ export function TopBar({
                   ? "bg-pine-50 font-bold text-pine-400"
                   : done
                     ? "text-pine-100"
-                    : "text-pine-50/80",
+                    : "text-pine-50",
               ].join(" ")}
             >
               {done ? "✓ " : `${i + 1} `}
@@ -57,7 +57,7 @@ export function TopBar({
           );
         })}
       </nav>
-      <div className="ml-auto flex items-center gap-[16px] font-kai text-[13px] tracking-[.22em] text-pine-50/80">
+      <div className="ml-auto flex items-center gap-[16px] font-kai text-[13px] tracking-[.22em] text-pine-50">
         {right ?? (
           <>
             <span>出 报 告 ↖</span>
@@ -90,13 +90,13 @@ export function StatusBand({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-[20px] bg-pine-400 px-[30px] py-[15px] font-kai text-[12px] tracking-[.22em] text-pine-50">
-      <span className="bg-pine-200 px-[13px] py-1 font-serif text-[13px] tracking-[.18em] text-[#08201A]">
+      <span className="bg-pine-50 px-[13px] py-1 font-serif text-[13px] tracking-[.18em] text-[#08201A]">
         任务 · {task}
       </span>
-      <span className="bg-pine-200 px-[13px] py-1 font-serif text-[13px] tracking-[.18em] text-pine-50">
+      <span className="bg-pine-50 px-[13px] py-1 font-serif text-[13px] tracking-[.18em] text-[#08201A]">
         签发 · {sign}
       </span>
-      <div className="ml-auto text-pine-50/60">{right}</div>
+      <div className="ml-auto text-pine-100">{right}</div>
     </div>
   );
 }
@@ -114,7 +114,7 @@ export function SectionHead({
   return (
     <div className="flex flex-wrap items-baseline gap-[16px] border-b-2 border-ink-300 pb-[11px]">
       <h2 className="text-[22px] tracking-[.1em]">
-        <span className="mb-[2px] block font-kai text-[10.5px] font-normal tracking-[.42em] text-ink-100">
+        <span className="mb-[2px] block font-kai text-[11.5px] font-normal tracking-[.42em] text-ink-100">
           {kicker}
         </span>
         {title}
@@ -149,7 +149,7 @@ export function RelNote({ children }: { children: ReactNode }) {
 /* ── PageFoot 页脚 ───────────────────────────────── */
 export function PageFoot({ left, right }: { left: string; right?: ReactNode }) {
   return (
-    <footer className="mt-[44px] flex flex-wrap justify-between gap-[16px] bg-ink-300 px-[30px] py-[22px] font-kai text-[13px] tracking-[.32em] text-pine-50/80">
+    <footer className="mt-[44px] flex flex-wrap justify-between gap-[16px] bg-ink-300 px-[30px] py-[22px] font-kai text-[13px] tracking-[.32em] text-pine-50">
       <div>
         <b className="mb-1 block font-serif text-[12.5px] tracking-[.22em] text-pine-50">文衡 · 汇</b>
         {left}

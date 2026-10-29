@@ -9,13 +9,14 @@ export type TagTone = "g" | "b" | "r";
 
 export function Tag({ tone = "g", children }: { tone?: TagTone; children: ReactNode }) {
   const map = {
-    g: "bg-pine-200/15 text-pine-300",
-    b: "bg-pine-200/15 text-pine-300",
-    r: "bg-red-300/12 text-red-300",
+    /* 实色底 + 实色字：半透明底叠在不同父背景上会算出不确定的对比度，标签不该碰运气 */
+    g: "bg-pine-50 text-[#143D31]",
+    b: "bg-pine-50 text-[#143D31]",
+    r: "bg-[#F4DDD7] text-[#8B2A1E]",
   } as const;
   return (
     <span
-      className={`inline-block whitespace-nowrap px-[10px] py-[3px] font-kai text-[10.5px] tracking-[.18em] ${map[tone]}`}
+      className={`inline-block whitespace-nowrap px-[10px] py-[3px] font-kai text-[11.5px] tracking-[.18em] ${map[tone]}`}
     >
       {children}
     </span>
@@ -52,7 +53,7 @@ export function GhostLink({ children }: { children: ReactNode }) {
     <a
       href="#"
       style={{ transition: "color 120ms linear, box-shadow 120ms linear" }}
-      className="wh-press pb-[3px] font-kai text-[13px] tracking-[.18em] text-pine-50/80 shadow-[inset_0_-1px_0_var(--color-pine-50)] hover:text-white hover:shadow-[inset_0_-1px_0_white] active:text-white active:shadow-[inset_0_-1px_0_white]"
+      className="wh-press pb-[3px] font-kai text-[13px] tracking-[.18em] text-pine-50 shadow-[inset_0_-1px_0_var(--color-pine-50)] hover:text-white hover:shadow-[inset_0_-1px_0_white] active:text-white active:shadow-[inset_0_-1px_0_white]"
     >
       {children}
     </a>
@@ -86,7 +87,7 @@ export function DataTable<T>({
             <th
               key={c.key}
               style={c.width ? { width: c.width } : undefined}
-              className="border-b border-ink-300 pb-[10px] pr-[14px] pt-[13px] text-left font-kai text-[10.5px] font-normal tracking-[.32em] text-ink-100 last:pr-0"
+              className="border-b border-ink-300 pb-[10px] pr-[14px] pt-[13px] text-left font-kai text-[11.5px] font-normal tracking-[.32em] text-ink-100 last:pr-0"
             >
               {c.label}
             </th>
@@ -115,7 +116,7 @@ export function DataTable<T>({
 export function DataPanel({ pairs }: { pairs: [string, ReactNode][] }) {
   return (
     <div>
-      <div className="border-b-2 border-ink-300 pb-[11px] font-kai text-[10.5px] tracking-[.42em] text-ink-100">
+      <div className="border-b-2 border-ink-300 pb-[11px] font-kai text-[11.5px] tracking-[.42em] text-ink-100">
         本 期 數 據
       </div>
       <dl className="mt-[6px] grid grid-cols-3 gap-x-[32px] max-[1040px]:grid-cols-2">

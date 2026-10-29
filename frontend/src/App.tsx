@@ -40,13 +40,13 @@ export default function App() {
           <>
             <button
               onClick={() => go("shelf")}
-              className="font-kai text-[11px] tracking-[.22em] text-sea-50/70 hover:text-sea-50"
+              className="font-kai text-[13px] tracking-[.22em] text-pine-50 hover:text-white"
             >
               陈 列 馆 ↗
             </button>
             <button
               onClick={() => go("hub")}
-              className="font-kai text-[11px] tracking-[.22em] text-sea-50/70 hover:text-sea-50"
+              className="font-kai text-[13px] tracking-[.22em] text-pine-50 hover:text-white"
             >
               出 报 告 ↖
             </button>

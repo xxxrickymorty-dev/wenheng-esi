@@ -64,14 +64,14 @@ export function FlapDigits({
 }) {
   return (
     <div className={align === "right" ? "text-right" : "text-left"}>
-      <div className="mb-[7px] font-kai text-[13px] tracking-[.36em] text-pine-50/80">{label}</div>
+      <div className="mb-[7px] font-kai text-[13px] tracking-[.36em] text-pine-50">{label}</div>
       <div className="flex gap-[5px]">
         {pieces.map((p, i) => {
           if (p.kind === "colon")
             return (
               <span
                 key={i}
-                className={`relative grid place-items-center bg-transparent font-mono text-pine-50/40 ${
+                className={`relative grid place-items-center bg-transparent font-mono text-pine-100 ${
                   size === "lg" ? "h-[50px] w-[14px] text-[20px]" : "h-[38px] w-[14px] text-[18px]"
                 }`}
               >
@@ -139,7 +139,7 @@ export function Gauge({
 }) {
   const skin =
     variant === "green"
-      ? "bg-pine-400 border-pine-50/20"
+      ? "bg-pine-400 border-pine-100"
       : "bg-pine-400 border-pine-50/18";
 
   // 水面涨落：挂载时从 0 涨上来；water 变化时平滑过渡（涨/落都是水，不是开关）
@@ -152,7 +152,7 @@ export function Gauge({
 
   return (
     <div className={`border p-[18px_22px_20px] ${skin}`}>
-      <div className="flex flex-wrap justify-between gap-[14px] font-kai text-[13px] tracking-[.32em] text-pine-50/80">
+      <div className="flex flex-wrap justify-between gap-[14px] font-kai text-[13px] tracking-[.32em] text-pine-50">
         <b className="font-serif text-[12px] tracking-[.18em] text-pine-50">{head}</b>
         {sub ? <span>{sub}</span> : null}
       </div>
@@ -183,7 +183,7 @@ export function Gauge({
             className="absolute left-0 right-0 z-[4] border-t-2 border-dashed border-red-300"
             style={{ bottom: `${threshold}%` }}
           >
-            <span className="absolute right-[7px] top-[-21px] bg-pine-400 px-[8px] py-[2px] font-kai text-[9.5px] tracking-[.24em] text-red-100">
+            <span className="absolute right-[7px] top-[-21px] bg-pine-400 px-[8px] py-[2px] font-kai text-[11px] tracking-[.24em] text-red-100">
               {thresholdLabel}
             </span>
           </div>
@@ -193,7 +193,7 @@ export function Gauge({
           <div className="absolute bottom-[10px] left-[13px] z-[5] font-mono text-[26px] tracking-[.1em] text-pine-50">
             {read}
             {readLabel ? (
-              <small className="mt-[2px] block font-kai text-[9.5px] tracking-[.3em] text-pine-50/60">
+              <small className="mt-[2px] block font-kai text-[11px] tracking-[.3em] text-pine-100">
                 {readLabel}
               </small>
             ) : null}
@@ -255,10 +255,9 @@ export function Stamp({
         ? "text-pine-300"
         : "text-red-300";
 
+  /* 绿底上（onGreen）戳内的字必须反白，深绿字压在深绿底上只有 1.5:1，根本看不清 */
   const textColor = onGreen
-    ? shape === "penta"
-      ? "text-[#5A1D12]"
-      : "text-pine-400"
+    ? "text-pine-50"
     : shape === "penta"
       ? "text-red-ink"
       : "text-pine-400";
@@ -266,7 +265,7 @@ export function Stamp({
   const rot = shape === "round" ? "-rotate-6" : shape === "square" ? "rotate-3" : "-rotate-3";
 
   return (
-    <div className={`relative h-[112px] w-[112px] flex-none ${rot} ${color} ${pending ? "opacity-[.42]" : ""}`}>
+    <div className={`relative h-[112px] w-[112px] flex-none ${rot} ${color} ${pending ? "opacity-[.62]" : ""}`}>
       {/* 落章：橡皮戳压落下来（旋转保留在外层，落章动在里层，不破坏倾斜与毛边滤镜） */}
       <div className="wh-stamp block h-full w-full">
         <svg viewBox="0 0 132 132" className="block h-full w-full overflow-visible">
@@ -335,7 +334,7 @@ export function StampBox({
     >
       <div
         className={`border-b pb-[11px] font-kai text-[13px] tracking-[.36em] ${
-          onGreen ? "border-pine-50/20 text-pine-50/80" : "border-paper-50 text-ink-100"
+          onGreen ? "border-pine-100 text-pine-50" : "border-paper-50 text-ink-100"
         }`}
       >
         {head}
@@ -343,7 +342,7 @@ export function StampBox({
       <div className="mt-[18px] flex flex-wrap items-center justify-center gap-[18px]">{children}</div>
       <div
         className={`mt-[16px] font-kai text-[13px] tracking-[.32em] ${
-          onGreen ? "text-pine-50/80" : "text-ink-100"
+          onGreen ? "text-pine-50" : "text-ink-100"
         }`}
       >
         {caption}
@@ -389,7 +388,7 @@ export function Seal({ caption }: { caption?: string }) {
         </div>
       </div>
       {caption ? (
-        <div className="text-center font-kai text-[13px] tracking-[.36em] text-pine-50/80">{caption}</div>
+        <div className="text-center font-kai text-[13px] tracking-[.36em] text-pine-50">{caption}</div>
       ) : null}
     </div>
   );

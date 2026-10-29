@@ -23,7 +23,7 @@ export function VerifyFinal() {
             <h1 className="mt-[12px] font-serif text-[clamp(38px,5vw,64px)] leading-[1.08] tracking-[.04em]">
               核验定稿
             </h1>
-            <p className="mt-[14px] max-w-[34ch] font-kai text-[15px] leading-[2.05] text-pine-50/82">
+            <p className="mt-[14px] max-w-[34ch] font-kai text-[15px] leading-[2.05] text-pine-50">
               复核无异议后签单，这一版才会被标记为「可交付」。签单之后才轮到「签发」二字。
             </p>
             <div className="mt-[15px] inline-block border border-red-100/50 px-[14px] py-[7px] font-kai text-[12.5px] tracking-[.14em] text-red-100">
