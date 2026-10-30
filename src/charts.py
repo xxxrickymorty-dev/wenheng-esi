@@ -1244,6 +1244,84 @@ def chart_overview_1pct_v0(cites, threshold, out_png, period):
     _save(fig, out_png)
 
 
+# ---------- 多系列折线（他校简报：各校各期上榜学科数 + 事件点）----------
+#: 系列配色：前三个沿用原件三色，多出的按顺序循环（顺序固定 → 同输入同色）。
+_MULTI_COLORS = (C_BLUE, C_ORANGE, C_GREEN, C_YELLOW, C_LIGHTBLUE, C_GRAY)
+
+#: 事件类别 → 点形状（对应 `flexible/events.py` 的五类）。未登记的类别退成圆点，不抛错。
+_EVENT_MARKERS = {"enter": "^", "exit": "v", "overtake": "X", "flat": "s", "inflect": "D"}
+
+#: 同一坐标上撞了多个事件时只画一个点：结构变化 > 走势变化（`flat` 最让位）。
+#: 不让位的话「持平」的方块会把「名次交叉」的叉整个盖住，读者以为图上没有交叉。
+_EVENT_PRIORITY = {"enter": 0, "exit": 0, "overtake": 1, "inflect": 2, "flat": 3}
+
+
+def chart_multi_line(series, out_png, periods, *, events=None, integer=True,
+                     figsize=(6.4, 3.4), kind_labels=None):
+    """多系列折线：**新增图型**，画「各校 × 各期上榜学科数」。
+
+    这是纯追加的入口——既有 11 个图型一行没动，复刻报告不调它，出图逐字节不受影响。
+
+    · `series`：`{系列名: [值…]}`，**顺序即配色顺序**；`None` ＝该期无数据 → 断开
+      （matplotlib 遇 NaN 不连线），既不拿邻期顶替、也不贴 0。
+    · `events`：`[{school, index, value, kind}]`，只在这些坐标上画**点**；短句留给正文的
+      事件列表——8.26cm 宽的图里塞不下「新进 2 个学科：微生物学、地球科学」。
+    · `kind_labels`：`{kind: 中文名}`，只影响图例文字；缺省用 kind 原文。
+    · 纵轴照旧交给 `_auto_ylim`（按数据定），本函数**不收任何轴界参数**——与
+      `flexible/spec.py` 的红线同口径：AI/调用方都不得指定上下界。
+    """
+    names = list(series)
+    n = len(periods)
+    fig, ax = _fig(*figsize)
+    x = list(range(n))
+    ys = []
+    for i, name in enumerate(names):
+        vals = [None if v is None else float(v) for v in (series[name] or [])][:n]
+        vals += [None] * (n - len(vals))
+        color = _MULTI_COLORS[i % len(_MULTI_COLORS)]
+        ax.plot(x, [math.nan if v is None else v for v in vals], marker="o", ms=3.5, lw=1.2,
+                mfc="white", mec=color, mew=0.9, color=color, label=name)
+        ys.append(vals)
+    _style(ax)
+    _xticks(ax, periods)
+    _auto_ylim(ax, ys, intervals=5, pad=0.10, integer=integer,
+               fmt="{:g}" if integer else None)
+
+    # 事件点：同一坐标只留优先级最高的一个（否则「持平」的方块会盖住「名次交叉」的叉），
+    # 再按类别分组画，同一类别只进一次图例（顺序＝首次出现顺序，确定性）。
+    picked: dict[tuple, dict] = {}
+    for e in (events or []):
+        if (e.get("school") not in series or not isinstance(e.get("index"), int)
+                or not 0 <= e["index"] < n or e.get("value") is None):
+            continue
+        key = (e["school"], e["index"])
+        old = picked.get(key)
+        if old is None or _EVENT_PRIORITY.get(e.get("kind"), 9) < \
+                _EVENT_PRIORITY.get(old.get("kind"), 9):
+            picked[key] = e
+    pts = list(picked.values())
+    kinds: list[str] = []
+    for e in pts:
+        if e.get("kind") not in kinds:
+            kinds.append(e.get("kind"))
+    for k in kinds:
+        got = [e for e in pts if e.get("kind") == k]
+        ax.plot([e["index"] for e in got], [float(e["value"]) for e in got], ls="none",
+                marker=_EVENT_MARKERS.get(k, "o"), ms=6, mfc="white", mec=C_TEXT, mew=1.1,
+                zorder=5, label=(kind_labels or {}).get(k, k))
+
+    ncol = max(1, min(len(names) + len(kinds), 4))
+    _legend_top(ax, ncol=ncol)
+    # 末点标数值：各校末期常常只差 1，按末值排序**交替挂上下**，读者才不会把数配错线
+    # （同 `chart_rank_pct` 的 side 手法；剩下的交给 `_labels` 在该侧内逐档避让）。
+    order = [i for i, v in enumerate(ys) if n and v[-1] is not None]
+    order.sort(key=lambda i: -ys[i][-1])
+    for rank, i in enumerate(order):
+        _labels(ax, [x[-1]], [ys[i][-1]], "{:.0f}" if integer else "{:.2f}",
+                ha="right", side=[rank % 2 == 0])
+    _save(fig, out_png)
+
+
 def _infer_end_period(ledger_dir):
     """未显式指定当期时从产物目录名推断（out/202607、out/202605_复现 → 202607 / 202605）。
 
