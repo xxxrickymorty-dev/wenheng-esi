@@ -48,6 +48,73 @@ function endLabels(n: number, fmt: (v: Num) => string, position: 'top' | 'bottom
 const LX = { moveOverlap: 'shiftX' as const }   // 柱/点标签：横向让位
 const LY = { moveOverlap: 'shiftY' as const }   // 端点标签：纵向让位
 
+/* ---------- 事件标注（markers）----------
+   标哪几个点由后端 `src/flexible/events.py` 定：`kind` / `index` / `text` 原样传进来，
+   这里只决定画在哪——多校趋势图挂在对应学校那条线上（markPoint），
+   单学科趋势图没有「哪条线」的概念，画成该期次的一根竖线（markLine）。
+   🔴 不传 markers 时输出与加这个参数之前逐字节一致（options.test.ts 的快照钉着）。 */
+
+export type ChartMarker = {
+  /** 期次下标（0 = 窗口首期），与后端 events[].index 同一口径 */
+  index: number
+  /** 标注文字（后端 events[].text 原样，前端不改写） */
+  text: string
+  /** 五类事件之一（enter / exit / overtake / flat / inflect），只用来选色 */
+  kind: string
+  /** 多校趋势图：标在这所学校那条线上；不传＝没有对应线，画成竖线 */
+  school?: string
+}
+
+/** 事件色沿用本文件已有的图色（不另立一套配色） */
+const KIND_COLOR: Record<string, string> = {
+  enter: C_GREEN, exit: RED, overtake: C_ORANGE, flat: INK2, inflect: C_BLUE,
+}
+
+/** 越界的标注直接丢掉——不画到图外，也不替它猜一个期次 */
+const inRange = (markers: ChartMarker[] | undefined, periods: string[]) =>
+  (markers ?? []).filter((m) => Number.isInteger(m.index)
+    && m.index >= 0 && m.index < periods.length)
+
+/** 标注点：x 取期次名、y 取该期同源数值；该期没数（窗口缺口）就不标。
+
+    同一个坐标上可能落好几条事件（同一校同期两条、或两校该期同分）——标签按落点顺序
+    上下错开。错开的只是排版，文字与数值一个字都不改。
+
+    末期单独处理：那是几条线收敛、事件也最多的一期，标签压在线头上会糊成一团。
+    改挂到线的右侧留白栏里竖排（`grid.right` 已让出位置），线上一律不落字。 */
+function markPoints(marks: ChartMarker[], periods: string[], values: Num[],
+                    used: Map<string, number>) {
+  const last = periods.length - 1
+  return marks.flatMap((m) => {
+    const v = values[m.index]
+    if (v == null) return []
+    const key = `${m.index}|${v}`
+    const k = used.get(key) ?? 0
+    used.set(key, k + 1)
+    const label = m.index === last
+      ? { position: 'right' as const, distance: 10, offset: [0, k * 18] as [number, number] }
+      : { position: (k % 2 ? 'bottom' : 'top') as 'bottom' | 'top',
+          distance: 6 + Math.floor(k / 2) * 16 }
+    return [{
+      name: m.text,
+      coord: [periods[m.index], v],
+      itemStyle: { color: KIND_COLOR[m.kind] ?? INK2 },
+      label,
+    }]
+  })
+}
+
+/** 标注竖线（单学科趋势图用）：一根线一个事件，文字就是事件原话 */
+function markLines(marks: ChartMarker[], periods: string[]) {
+  return marks.map((m) => ({
+    xAxis: periods[m.index],
+    name: m.text,
+    lineStyle: { color: KIND_COLOR[m.kind] ?? INK2, width: 1, type: 'dashed' as const },
+    label: { show: true, formatter: '{b}', position: 'insideEndTop' as const,
+             color: KIND_COLOR[m.kind] ?? INK2, fontSize: 9.5, fontFamily: FONT },
+  }))
+}
+
 /** 全点标签（柱/点上方；复核场景数字不许藏） */
 const allLabels = (fmt: (v: Num) => string) => ({
   show: true, fontFamily: FONT, fontSize: 10, color: INK, position: 'top' as const,
@@ -349,8 +416,9 @@ export function rankTableOption(row: RankTableRow): EChartsOption {
 
 /* ---------- ⑩ 发展趋势（1‰ 接近度前 4 学科 + 100% 红基线；表另画） ---------- */
 
-export function trendTableOption(row: TrendTableRow): EChartsOption {
+export function trendTableOption(row: TrendTableRow, markers?: ChartMarker[]): EChartsOption {
   const n = row.periods.length
+  const marks = inRange(markers, row.periods)
   return {
     textStyle: baseText,
     legend: legendBottom(),
@@ -380,6 +448,11 @@ export function trendTableOption(row: TrendTableRow): EChartsOption {
                     lineStyle: { color: RED, width: 1.4 },
                     label: { show: true, position: 'insideEndTop', formatter: 'ESI1‰ 基线 = 100%',
                              color: RED, fontSize: 10, fontFamily: FONT } } },
+      // 事件竖线：只在真的传了标注时出现（不传＝输出与旧版逐字节一致）
+      ...(marks.length
+        ? [{ name: '事件', type: 'line' as const, data: [],
+             markLine: { silent: true, symbol: 'none', data: markLines(marks, row.periods) } }]
+        : []),
     ],
   } as unknown as EChartsOption
 }
@@ -534,6 +607,69 @@ export function forecastRunOption(
       { name: '数据／预测分界', type: 'line', data: [],
         markLine: { silent: true, symbol: 'none', data: [{ xAxis: hp.length - 0.5 }],
                     lineStyle: { color: '#B23A2A', width: 1 }, label: { show: false } } },
+    ],
+  } as unknown as EChartsOption
+}
+
+/* ---------- ⑯ 多校学科数趋势（他校简报：每校一条线，事件点打标注） ---------- */
+
+export type SchoolTrendRow = {
+  periods: string[]
+  /** 每校一条线；`counts` 与 `flexible.panel()` 的 `schools[].counts` 同源，null＝该期无数据 */
+  schools: { name: string; counts: Num[] }[]
+}
+
+/** 校线配色：全站单绿主题的几级绿（--field / --field-3 / --field-4 / --ink-2），按序循环 */
+const SCHOOL_LINE_COLORS = ['#26483B', '#2F7A58', '#7FB79B', '#43525C']
+
+const fmtCount = (v: Num) => (v == null ? '—' : String(Math.round(v)))
+
+export function schoolTrendOption(row: SchoolTrendRow, markers?: ChartMarker[]): EChartsOption {
+  const n = row.periods.length
+  const marks = inRange(markers, row.periods)
+  const names = new Set(row.schools.map((s) => s.name))
+  const loose = marks.filter((m) => !m.school || !names.has(m.school))   // 对不上线的，画竖线
+  const used = new Map<string, number>()                                  // 同一坐标的标注落点
+  // 纵轴贴着数据走（0 起点会把 9→14 压成一条平线）；上下各留一格给标注
+  const vals = row.schools.flatMap((s) => s.counts).filter((v): v is number => v != null)
+  const lo = vals.length ? Math.min(...vals) : 0
+  const hi = vals.length ? Math.max(...vals) : 0
+  return {
+    textStyle: baseText,
+    legend: legendTop(),
+    tooltip: { trigger: 'axis', confine: true, valueFormatter: fmtCount },
+    grid: { left: 52, right: 210, top: 46, bottom: 40 },   // 右侧留给末期事件的标注栏
+    xAxis: catAxis(row.periods, 32, 10),
+    yAxis: valAxis({
+      minInterval: 1,
+      min: Math.max(0, Math.floor(lo) - 1), max: Math.ceil(hi) + 1,
+      axisLabel: { formatter: '{value}', color: INK2, fontSize: 10.5, fontFamily: FONT },
+    }),
+    series: [
+      ...row.schools.map((s, i) => {
+        const color = SCHOOL_LINE_COLORS[i % SCHOOL_LINE_COLORS.length]
+        const own = marks.filter((m) => m.school === s.name)
+        const pts = own.length ? markPoints(own, row.periods, s.counts, used) : []
+        return {
+          name: s.name, type: 'line' as const, data: s.counts,
+          symbol: 'circle', symbolSize: 5,
+          itemStyle: { color }, lineStyle: { width: 1.6, color },
+          label: endLabels(n, fmtCount, 'top'), labelLayout: LY,
+          ...(pts.length
+            ? { markPoint: {
+                symbol: 'circle', symbolSize: 8,
+                label: { show: true, formatter: '{b}', position: 'top' as const, distance: 6,
+                         color: '#FFFFFF', fontSize: 10.5, fontFamily: FONT,
+                         padding: [2, 4], backgroundColor: color, borderRadius: 2 },
+                data: pts,
+              } }
+            : {}),
+        }
+      }),
+      ...(loose.length
+        ? [{ name: '事件', type: 'line' as const, data: [],
+             markLine: { silent: true, symbol: 'none', data: markLines(loose, row.periods) } }]
+        : []),
     ],
   } as unknown as EChartsOption
 }

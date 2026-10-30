@@ -63,6 +63,14 @@ async def lifespan(_app: FastAPI):
     # 直调处理函数的测试不跑 lifespan → SESSION_DB_PATH 保持 None → 不落库、绝不碰真数据。
     global SESSION_DB_PATH
     SESSION_DB_PATH = session_store.store_path(config.ROOT)
+    # 他校简报的读表缓存（阶段 2/3）：`panel()` 冷启 40 秒上下（六期 × 二十二学科），
+    # 现场演示不能让人干等第一次。这里在启动时就焐热——后台线程、只读、失败不影响服务。
+    # `_warm_async` 自己认 `WENHENG_PANEL_PREWARM=0` 与 pytest 两个关断位。
+    try:
+        from src.ai import _dialog as _dialog_mod                  # noqa: PLC0415
+        _dialog_mod._warm_async()
+    except Exception:                                             # noqa: BLE001
+        pass                                                      # 预热失败只影响首问快慢
     yield
 
 
@@ -1612,6 +1620,50 @@ async def api_period_charts_data(request: Request, period: str):
     except Exception:                     # 映射缺席不该拖垮图册数据本身
         payload["report_map"] = {}
     return payload
+
+
+def _panel_payload(period_end, schools, disciplines, n: int, with_grid: bool) -> dict:
+    """跑 `flexible.panel()`，并按需摘掉 `grid`。
+
+    `panel()` 返回的是**同一进程内**的结果（`_rows` 有 lru_cache），所以这里只做浅拷贝，
+    绝不原地 pop——那会把缓存里的矩阵也削掉，下一次调用就少一块。
+    """
+    import flexible.panel as flex_panel                              # noqa: PLC0415
+    result = flex_panel.panel(schools, disciplines=disciplines or None,
+                              period_end=period_end, n=n)
+    payload = dict(result)
+    if not with_grid:
+        payload.pop("grid", None)
+    return payload
+
+
+@app.get("/api/periods/{period}/panel-data")
+@user_route
+async def api_period_panel_data(request: Request, period: str, schools: str = "",   # noqa: ARG001
+                                n: int = 6, disciplines: str = "", grid: bool = False):
+    """多校面板（他校简报）的数据：`flexible.panel()` 的结果，**默认不带 `grid`**。
+
+    `schools` 逗号分隔（顿号、分号、「和」也认——与 `peers._split_queries` 同一套）；
+    `disciplines` 不传＝22 个学科全要；`period` 传 `latest` 取 ESI 目录里最新一期。
+    `?grid=1` 才返回全量矩阵（期次 × 学校 × 学科）：它只给前端画图，不进模型上下文
+    （`panel` 模块 docstring 的两层返回）。
+
+    冷启动约 24 秒（132 次读表）；同一进程内后续调用走 `panel._rows` 的 lru_cache，
+    实测 1 秒内。路由层**不**再叠一层缓存——两处缓存就有两处失效逻辑，收益不值。
+    校名对不上时 `panel` 给的是 `status=absent/error` 的整校记录，不是异常；
+    参数本身不合法（n<1、不认识的学科）才 400。
+    """
+    if period != "latest":
+        d = resolve_period_dir(period)
+        if d is None:
+            return _period_missing()
+    try:
+        return await run_in_threadpool(
+            _panel_payload, None if period == "latest" else period,
+            schools, disciplines, n, grid)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)[:300],
+                             "hint": "校名/学科名请用 ESI 表里的写法，期次用 6 位月份"}, status_code=400)
 
 
 def _forecast_chart_labels(period_dir):

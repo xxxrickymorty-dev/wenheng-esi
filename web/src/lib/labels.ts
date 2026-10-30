@@ -33,6 +33,18 @@ export function disciplineSlug(en: string): string {
   return en.replace(/[^A-Za-z0-9]+/g, '')
 }
 
+/** 归一化：小写 + 只留字母数字。两套表写法不同（图册用 `Environment/Ecology`，
+    他校简报的 `flexible.panel()` 用 `Environment Ecology`），靠它对齐到同一个键。 */
+const normDisc = (en: string) => en.toLowerCase().replace(/[^a-z0-9]+/g, '')
+
+const DISCIPLINE_CN: Record<string, string> = Object.fromEntries(
+  DISCIPLINES.map(([en, cn]) => [normDisc(en), cn]))
+
+/** ESI 学科英文名 → 中文名；表里没有的原样返回（不猜、不缩）。 */
+export function disciplineCn(en: string): string {
+  return DISCIPLINE_CN[normDisc(en)] ?? en
+}
+
 /** 图册分组（`out/<期次>/charts/` 的子目录名）→ 界面标签；`_overview`＝总览；未知原样。 */
 const CHART_GROUP_CN: Record<string, string> = Object.fromEntries([
   ['_overview', '总览'],

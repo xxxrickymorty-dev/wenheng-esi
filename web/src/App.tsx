@@ -492,6 +492,8 @@ export default function App() {
     /* 2026-10-29 rick：可视化工作台移到陈列馆（展示面归展示面），工作区不再挂这个入口；
        页面与深链 ?view=pano 保留，从陈列馆进。 */
     { key: 'flexible', label: '灵活报告', href: '/app/?view=analysis' },
+    /* 2026-10-30：他校简报（多校六期折线 + 事件标注）单独一页，地址 /app/panel/ */
+    { key: 'panel', label: '他校简报', href: '/app/panel/' },
     { key: 'aiqa', label: 'AI 问数', href: '/app/?view=aiqa' },
     /* 2026-10-19 rick：「报告」入口关闭（只读阅稿屏，日常走 出报告→核验定稿，用不上）——
        页面与深链 ?view=report 保留；子屏（红件/图册/对勘/溯源）的「回报告」链接照旧。 */
