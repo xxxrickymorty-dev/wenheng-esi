@@ -158,6 +158,43 @@ def _resolve(query: str, name_map: dict, period_end: str,
         return _scan_window(query, periods)              # 一家都没对上 → 再扩大范围
 
 
+def _resolve_variants(query: str, name_map: dict, period_end: str,
+                      periods: list[str], label: str) -> dict | None:
+    """校名解析（含「去掉/补回『大学』二字的简称」）。
+
+    唯一种允许的简称＝`replace("大学", "")`：用户输入「昆明理工」要落到「昆明理工大学」。
+    原样解析失败（absent 或子串误判多家）时才退一步试变体，且变体**只认 `name_map`
+    里的精确校名**（`map`/`trim`，不触发 `_match_ex` 的子串兜底——同一校在 22 张学科表
+    里重复出现会被误判多家）。变体也救不活时：若原样是「多家歧义」则保留 `error`，
+    否则 `absent`（不把真歧义悄悄降级成 absent）。
+    """
+    primary_err: PeerError | None = None
+    try:
+        got = _resolve(query, name_map, period_end, periods, label)
+    except PeerError as exc:
+        got = None
+        primary_err = exc
+    if got is not None:
+        return got
+    variants: list[str] = []
+    if "大学" in query:
+        v = query.replace("大学", "")
+        if v != query:
+            variants.append(v)
+    else:
+        variants.append(query + "大学")
+    for v in variants:
+        try:
+            hit = _match_ex([], name_map, v)          # 只走总表：map / trim，精确
+        except PeerError:
+            hit = None
+        if hit is not None:
+            return hit
+    if primary_err is not None:
+        raise primary_err                              # 原样多家歧义 → 保留 error
+    return None                                        # 原样 absent → 仍 absent
+
+
 def _pick_disciplines(names) -> list[str]:
     """学科参数 → 规范 stem 列表（按 `DISCIPLINES` 的字母序，保证确定性）。
 
@@ -271,7 +308,7 @@ def panel(schools, disciplines=None, period_end=None, n: int = 6) -> dict:
         rec = {"query": query, "cn": query, "en": "", "status": "ok",
                "match": "map", "counts": None, "entered": [], "exited": [], "note": ""}
         try:
-            got = _resolve(query, name_map, period_end, periods, label)
+            got = _resolve_variants(query, name_map, period_end, periods, label)
         except PeerError as exc:
             rec.update({"status": "error", "match": "error", "note": str(exc)})
             records.append(rec)

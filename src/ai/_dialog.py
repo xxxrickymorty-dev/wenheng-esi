@@ -123,6 +123,32 @@ _CUES_MULTI = ("对比", "比较", "比对", "对照", "比一比", "以及", "�
                "分别", "各自", "看看", "帮我", "麻烦", "横向", "各校", "多校")
 _CUES_ONE = ("和", "与", "跟", "及", "看", "查", "问", "请", "那", "这")
 
+#: 他校简报（阶段 2 续，2026-10-30）：已知的「去『大学』二字」简称 → 全称。
+#: 只在命中比较类字样时惰性构建（复用 `peers` 的缓存），用于识别「昆明理工 / 浙江工业」
+#: 这类写法。唯一允许的简称＝`replace("大学", "")`，不猜任何其它缩写（云大/昆工之类不认）。
+_SCHOOL_SHORT: dict[str, str] | None = None
+
+
+def _short_forms() -> dict[str, str]:
+    """所有校名的「去大学」简称 → 全称。惰性、缓存；建不出来（无数据）就返回空表。"""
+    global _SCHOOL_SHORT
+    if _SCHOOL_SHORT is not None:
+        return _SCHOOL_SHORT
+    forms: dict[str, str] = {}
+    try:
+        from flexible import peers as _peers                       # noqa: PLC0415
+        tpl = _peers._latest_template()
+        if tpl:
+            nm = _peers._name_map(str(tpl))
+            for _cn_norm, (_en, cn) in nm.items():
+                short = (cn or "").replace("大学", "")
+                if short and short != cn and short not in forms:
+                    forms[short] = cn
+    except Exception:                                             # noqa: BLE001
+        pass
+    _SCHOOL_SHORT = forms
+    return forms
+
 
 def parse_today(raw) -> datetime.date:
     """`payload.today` → date；缺省取真实今天；给了但不合法＝编程错误（抛）。"""
@@ -192,14 +218,30 @@ def _compare_schools(norm: str) -> list[str]:
 
     三条同时成立：比较类字样 + ≥2 所校名 + 无指标词。第三条是防抢：问
     「昆工和云大的化学接近度」是单学科问数，仍走 qa 的老路。
+
+    校名抽取两路：① 带后缀的完整校名（昆明理工大学）；② 去「大学」二字的简称
+    （昆明理工 / 浙江工业 / 上海交通 …），只认 `_short_forms()` 里的确切简称，
+    并对完整校名已占用的字符区间做重叠保护，避免「理工」嵌在「昆明理工」里被重复认。
     """
     if not _COMPARE.search(norm) or _METRIC.search(norm):
         return []
     names: list[str] = []
+    spans: list[tuple[int, int]] = []
     for m in _SCHOOL.finditer(norm):
         name = _trim_name(m.group(0))
         if name and name not in names:
             names.append(name)
+            spans.append((m.start(), m.end()))
+    for short, _full in sorted(_short_forms().items(), key=lambda kv: -len(kv[0])):
+        if len(short) < 2:
+            continue
+        idx = norm.find(short)
+        while idx != -1:
+            if not any(s <= idx < e for s, e in spans) and short not in names:
+                names.append(short)
+                spans.append((idx, idx + len(short)))
+                break
+            idx = norm.find(short, idx + 1)
     return names if len(names) >= 2 else []
 
 
