@@ -31,7 +31,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from flexible import planner, report  # noqa: E402
+from flexible import brief, planner, report  # noqa: E402
 
 
 def main(argv):
@@ -46,6 +46,29 @@ def main(argv):
                   f"后端={m.get('backend', '?'):6} 图={m.get('n_charts', '?')} "
                   f"→ {r['path']}")
         return 0
+    # 他校简报（多校 × 多学科）：不走 planner 的意图表，直接由 panel 出稿。
+    #   run_flexible.py out/202609 --brief 昆明理工大学,海南大学,云南大学 [--n 6]
+    if "--brief" in argv:
+        i = argv.index("--brief")
+        raw = argv[i + 1] if i + 1 < len(argv) and not argv[i + 1].startswith("-") else ""
+        schools = [x.strip() for x in raw.replace("，", ",").split(",") if x.strip()]
+        if not schools:
+            print("--brief 后面要跟校名，逗号分隔（如 昆明理工大学,海南大学）")
+            return 2
+        n = 6
+        if "--n" in argv:
+            j = argv.index("--n")
+            n = int(argv[j + 1]) if j + 1 < len(argv) else 6
+        r = brief.generate(out_dir, schools, n=n)
+        p = r["panel"]
+        print(f"[他校简报] {brief.TITLE} → {r['report']}")
+        print(f"  窗口：{p['periods'][0]}–{p['periods'][-1]}（{len(p['periods'])} 期）")
+        print("  " + "  ".join(f"{s['cn']}={s['counts']}" for s in p["schools"]))
+        print(f"  共同学科 {len(p['common'])} 个；事件 {len(p['events'])} 条；"
+              f"自检 {'通过 ✅' if r['check']['pass'] else '未通过 ❌'}")
+        for bad in r["check"]["problems"]:
+            print(f"    ! {bad}")
+        return 0 if r["check"]["pass"] else 1
     intent = argv[1] if len(argv) > 1 else "single_trend"
     disc = argv[2] if len(argv) > 2 and not argv[2].startswith("-") else None
     if intent not in planner.INTENTS:

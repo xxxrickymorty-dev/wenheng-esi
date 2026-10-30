@@ -27,7 +27,8 @@
 | `opinion.py` | 三级判断分级（描述性/解释性/专业判断） |
 | `planner.py` | 章节规划；`rule` 后端为默认，无 LLM 也能出完整计划 |
 | `report.py` | 编排：规划 → 查询 → 数字回填骨架 → spec 出图 → 产出 md |
+| `brief.py` | **他校简报**（多校 × 多学科）编排：`panel` 出数 → markdown 稿，零模型 |
 """
 
 __all__ = ["datasource", "workbook", "queries", "summary", "spec", "provenance",
-           "opinion", "planner", "report"]
+           "opinion", "planner", "report", "panel", "events", "brief"]
