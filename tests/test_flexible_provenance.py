@@ -18,7 +18,7 @@ import shutil
 
 import pytest
 
-from _guard_registry import skip_unless
+from _guard_registry import skip_unless, tmp_near_repo
 
 from flexible import datasource, peers, provenance, queries, report
 
@@ -230,6 +230,12 @@ class Test路径可交接:
         assert got.startswith("out/")
 
     def test_来源链不含盘符(self, tmp_path):
+        # 前提是「期次目录在仓外」，靠 `relative_path` 的结构还原成 `out/<期次>/…`；
+        # 临时根落进仓库时它会走「在仓里」那一档，测的就不是这条判据了。
+        from conftest import REPO
+        if tmp_near_repo(REPO):
+            skip_unless("系统 Temp 不可写，pytest 临时根落在仓库内/隔壁——「期次目录复制到仓外」这个前提测不了",
+                        lambda: not tmp_near_repo(REPO))
         d = tmp_path / "202601"
         (d / "wide").mkdir(parents=True)
         import pandas as pd
@@ -309,6 +315,10 @@ class Test端到端:
         assert flex_out["selected"]["period"] in rows[0], "应采用实际归档期次"
 
     def test_全部来源路径都是仓库相对(self, flex_out):
+        from conftest import REPO
+        if tmp_near_repo(REPO):
+            skip_unless("系统 Temp 不可写，pytest 临时根落在仓库内/隔壁——「产物复制到仓外仍写 out/…」这个前提测不了",
+                        lambda: not tmp_near_repo(REPO))
         d = pathlib.Path(flex_out["dir"])
         text = (d / "report.md").read_text(encoding="utf-8")
         assert "C:" not in text and "C:/" not in text

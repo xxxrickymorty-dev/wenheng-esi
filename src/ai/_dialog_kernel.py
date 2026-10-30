@@ -108,6 +108,13 @@ def tool_receipt(tool: str, label: str, args: dict, summary: str, *,
                    ok=ok, refused=refused)
 
 
+def _emit_trace(receipt) -> None:
+    """回执 → 界面的「工具调用」一条（2026-10-29）。旁路，失败不影响主流程。"""
+    _runtime.trace({"step": 1, "tool": receipt.tool, "label": receipt.label,
+                    "summary": receipt.summary, "ok": receipt.ok,
+                    "refused": receipt.refused, "ms": receipt.elapsed_ms})
+
+
 # ---------------------------------------------------------------- 装配（懒导入/注入）
 _pi_mod = None
 _pi_error = None
@@ -188,6 +195,8 @@ def _blocks_text(content) -> str:
 def _build_tools(pi, periods, callables, used: list, receipts: list):
     async def list_periods(tool_call_id, params, cancel_event=None, on_update=None):  # noqa: ARG001
         used.append("list_periods")
+        _runtime.trace({"step": 1, "tool": "list_periods", "label": "期次清单",
+                        "summary": "列出已知期次", "ok": True, "refused": False, "ms": 0})
         return pi.AgentToolResult(
             content=[pi.TextContent(text=json.dumps(list(periods), ensure_ascii=False))])
 
@@ -215,6 +224,7 @@ def _build_tools(pi, periods, callables, used: list, receipts: list):
             receipts.append(tool_receipt(
                 "scan_inventory", "盘点", {"period": period},
                 "该期数据状态在这里看不到", ok=False, t0=t0))
+        _emit_trace(receipts[-1])
         payload = {"period": period, "found": bool(inv)}
         if inv:
             payload["released"] = bool(inv.get("released"))
@@ -239,6 +249,7 @@ def _build_tools(pi, periods, callables, used: list, receipts: list):
         receipts.append(tool_receipt(
             "product_status", "产物核对", {"period": period},
             "该期已有成品" if has else "该期暂无成品", ok=ok, t0=t0))
+        _emit_trace(receipts[-1])
         return pi.AgentToolResult(
             content=[pi.TextContent(text=json.dumps(
                 {"period": period, "has_products": has}, ensure_ascii=False))])

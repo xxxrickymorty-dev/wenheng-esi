@@ -369,7 +369,8 @@ def _single_sections(c: _ReportCtx) -> list:
             if row["en"] == data["ynu"]["en"]:
                 name = f"**{name}**"
             if not row["present"]:
-                lines.append(f"| {name} | — | — | — | — | — | — |")
+                # 未上榜就写「未上榜」：破折号会被读成「暂无数据」，两件事不能混
+                lines.append(f"| {name} | 未上榜 | 未上榜 | 未上榜 | 未上榜 | 未上榜 | 未上榜 |")
                 continue
             v = row["values"]
             lines.append(

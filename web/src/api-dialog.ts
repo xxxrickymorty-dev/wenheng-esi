@@ -7,6 +7,7 @@ import { HttpError, req } from './api'
 import { parseNdjsonChunks } from './lib/dialog'
 import type { DialogSlots } from './lib/dialog'
 import type { DialogHome } from './lib/taskview'
+import type { ToolCall } from './dialog/ToolTrace'
 
 export type { DialogHome }
 
@@ -54,6 +55,9 @@ export type DialogAnswer = {
   sources: { index: number; kind: string; pointer: string; label: string; detail: string; value: string }[]
   shield: { checked: number; passed: number }
   record_id: string | null
+  /** 工具回执（2026-10-28 qa 写作轮原生工具环）：模型自己拉的每一笔取证一条；
+      缺省/空＝这轮没走工具环（规则部署物理上没有）。形状＝Receipt.as_dict()。 */
+  receipts?: DialogReceipt[]
 }
 
 /** 单条工具回执（AI 层工具调用的双面回执，形状＝src/ai/_types.py `Receipt.as_dict()`）：
@@ -110,12 +114,16 @@ export async function getDialogHome(): Promise<DialogHome> {
   return req<DialogHome>('/api/dialog/home')
 }
 
-/** 阶段进度流（票 12，契约 #37）：同一轮对话，但把「正在做什么」实时回给界面（onStage）。
-    最终仍返回完整的 DialogReply；**不流正文**——答案整段到（数字要先过后端核对）。
-    出错时调用方回退同步口（postDialogTurn）——界面照常，只是没有阶段提示。 */
+/** 阶段进度流（票 12，契约 #37）：同一轮对话，但把「正在做什么」实时回给界面（onStage），
+    把最终答案正文分块回流（onDelta），并把每次工具调用实时报出来（onTool，2026-10-29）——
+    界面因此能显示「它在查什么」，而不是干等。
+    最终仍返回完整的 DialogReply；数字盾已在后端还原，delta 只是最终安全文本的分块。
+    出错时调用方回退同步口（postDialogTurn）——界面照常，只是没有阶段提示与轨迹。 */
 export async function postDialogTurnStream(
   text: string, slots: DialogSlots, history: { who: string; text: string }[],
   session: string | undefined, onStage: (text: string) => void,
+  onDelta?: (text: string) => void,
+  onTool?: (call: ToolCall) => void,
 ): Promise<DialogReply> {
   const res = await fetch('/api/dialog/turn/stream', {
     method: 'POST',
@@ -134,6 +142,8 @@ export async function postDialogTurnStream(
     buf = parsed.buffer
     for (const ev of parsed.events) {
       if (ev.event === 'stage') onStage(ev.text)
+      else if (ev.event === 'delta') onDelta?.(ev.text)
+      else if (ev.event === 'tool') onTool?.(ev)
       else if (ev.event === 'done') reply = ev.payload as DialogReply
       else throw new HttpError(ev.status ?? 500, { error: ev.error })
     }

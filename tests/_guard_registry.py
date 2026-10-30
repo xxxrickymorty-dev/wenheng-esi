@@ -62,3 +62,34 @@ def outstanding() -> list[str]:
 def stats() -> tuple[int, int]:
     """(登记过的不同理由数, 其中站不住脚的条数)。"""
     return len({r for r, _ in SKIPS}), len(outstanding())
+
+
+def tmp_near_repo(repo) -> bool:
+    """pytest 的临时根是否落在仓库**之内或隔壁**（＝「临时目录在仓库外」的前提不成立）。
+
+    什么时候会这样：系统 Temp 不可写（沙箱 / 受限账户）时 `tempfile.gettempdir()`
+    退回当前目录，`tmp_path` 就落进仓库；或者临时根恰好是仓库的兄弟目录。
+    这两种位置上，凡是以「临时目录在仓库外」为前提的用例都测不了——
+    `display_path` 对「仓库内」与「一层兄弟目录」本来就另有两档写法
+    （见 `src/display_path.py` 的三档判据），断言会撞在档位差异上，而不是撞在 bug 上。
+
+    用法（**别放松断言**，登记跳过即可）：
+
+        if tmp_near_repo(REPO):
+            skip_unless("系统 Temp 不可写，pytest 临时根落在仓库内/隔壁", lambda: not tmp_near_repo(REPO))
+
+    探针语义照旧：临时根离得远（＝常态）时探针为真，跳过就站不住脚，会话收尾会判失败。
+    """
+    import os
+    import pathlib
+    import tempfile
+
+    base = pathlib.Path(repo).resolve()
+    root = pathlib.Path(tempfile.gettempdir()).resolve()
+    try:
+        root.relative_to(base)
+        return True                                    # 就在仓库里
+    except ValueError:
+        pass
+    rel = os.path.relpath(root, base)
+    return rel.startswith("..") and rel.count("..") <= 1   # 隔壁（只爬一层）

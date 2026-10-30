@@ -1,6 +1,6 @@
 import { StatusBand, SectionHead, SectionLink, RelNote, PageFoot } from "../components/shell";
 import { Tag, DataPanel, Button, GhostLink, Wrap, Grid2 } from "../components/data";
-import { Stamp, StampBox, Seal } from "../components/devices";
+import { Stamp, StampBox, Seal, MotionStyles } from "../components/devices";
 
 const REVS: { t: string; sub: string; ok: boolean }[] = [
   { t: "数字与台账一致", sub: "预测 202609 / 实际输出 202609，逐格回读源表", ok: true },
@@ -13,16 +13,17 @@ const REVS: { t: string; sub: string; ok: boolean }[] = [
 export function VerifyFinal() {
   return (
     <>
+      <MotionStyles />
       <section className="bg-pine-400 pb-[44px] pt-[50px] text-pine-50">
         <div className="mx-auto grid max-w-[1280px] grid-cols-[minmax(0,1fr)_280px] items-center gap-[52px] px-[30px] max-[1040px]:grid-cols-1">
-          <div>
-            <div className="font-kai text-[11px] tracking-[.42em] text-pine-50/55">
+          <div className="wh-reveal" style={{ animationDelay: "0ms" }}>
+            <div className="font-kai text-[13px] tracking-[.42em] text-pine-50/80">
               站 五 · 雲 南 大 學 圖 書 館 · 學 科 信 息 參 考
             </div>
             <h1 className="mt-[12px] font-serif text-[clamp(38px,5vw,64px)] leading-[1.08] tracking-[.04em]">
               核验定稿
             </h1>
-            <p className="mt-[14px] max-w-[34ch] font-kai text-[15px] leading-[2.05] text-pine-50/82">
+            <p className="mt-[14px] max-w-[34ch] font-kai text-[15px] leading-[2.05] text-pine-50">
               复核无异议后签单，这一版才会被标记为「可交付」。签单之后才轮到「签发」二字。
             </p>
             <div className="mt-[15px] inline-block border border-red-100/50 px-[14px] py-[7px] font-kai text-[12.5px] tracking-[.14em] text-red-100">
@@ -40,7 +41,7 @@ export function VerifyFinal() {
 
       <StatusBand task="已完成" sign="未签发" right="第 39 期　·　2 0 2 6 0 9　·　屏 題 ＝ 站 名" />
 
-      <section className="pt-[38px]">
+      <section className="wh-reveal pt-[38px]" style={{ animationDelay: "60ms" }}>
         <Wrap>
           <Grid2>
             <div>
@@ -83,7 +84,7 @@ export function VerifyFinal() {
         </Wrap>
       </section>
 
-      <section className="pt-[38px]">
+      <section className="wh-reveal pt-[38px]" style={{ animationDelay: "120ms" }}>
         <Wrap>
           <DataPanel
             pairs={[

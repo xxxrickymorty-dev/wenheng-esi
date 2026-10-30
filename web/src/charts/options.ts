@@ -239,6 +239,9 @@ export function qDistOption(row: NonNullable<DisciplineCharts['q_dist']>): EChar
     series: row.entities.map((e) => ({
       name: e.name, type: 'bar', data: e.values, barGap: '12%', barCategoryGap: '55%',
       itemStyle: { color: e.color },
+      /* 2026-10-29 rick：一格里三根柱各挂一个百分比，字挤成一团。柱上不打字，
+         鼠标指到哪一组就在提示框里给三个数（tooltip 已是 axis，一组一起出）。 */
+      label: { show: false },
     })),
   } as unknown as EChartsOption
 }

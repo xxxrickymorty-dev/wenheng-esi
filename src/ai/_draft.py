@@ -79,6 +79,12 @@ class RuleDraft:
     #: 工具回执（receipts-lite，2026-10-26 fc 审查定）：确定性工具调用的双面凭据
     #: （`Receipt`），只由 dialog 出（内核轮在前、规则轮在后）；其余能力恒空。
     receipts: tuple = ()
+    #: 原生工具面（qa function calling，2026-10-28 定稿）：只读工具 schema（零数字）＋
+    #: 宿主执行器回调（模型只选名与参数，值只从引擎一条缝进来）＋步数上限。
+    #: 经 `_core.run` 原样传给边界；视图缺/其余能力恒空——现状路径不变。
+    tools: tuple = ()
+    execute: object | None = None
+    max_steps: int = 1
 
     @property
     def mapping(self) -> dict:

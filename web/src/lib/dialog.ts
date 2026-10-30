@@ -50,6 +50,11 @@ export function withSessionId(search: string, id: string): string {
    只做**纯解析**——网络与界面在 api-dialog / DialogPage；这里可 vitest 直测。 */
 export type StreamEvent =
   | { event: 'stage'; stage: string; text: string }
+  | { event: 'delta'; text: string }
+  /* 工具调用轨迹（2026-10-29）：后端执行完一次只读工具就发一条——
+     名字与摘要是后端给的，模型写的字不进来（防夹带没出处的数字）。 */
+  | { event: 'tool'; tool: string; label: string; summary: string
+      ok: boolean; refused: boolean; ms: number }
   | { event: 'done'; payload: unknown }
   | { event: 'error'; error: string; status?: number }
 

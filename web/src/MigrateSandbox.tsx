@@ -28,7 +28,6 @@ export function MigrateSandbox() {
   if (!d.available) {
     return (
       <>
-        <p className="hint mt-2">换馆沙盘 · 只碰台账副本，不碰 input/ 原件</p>
         <section className="card pad-card-lg">
           <h1 className="fs-24">换馆沙盘</h1>
           <p className="fc-lead">还没跑过。先在终端执行一次，再刷新本页：</p>
@@ -41,7 +40,6 @@ export function MigrateSandbox() {
 
   return (
     <>
-      <p className="hint mt-2">换馆沙盘 · 只碰台账副本，不碰 input/ 原件</p>
 
       <section className="card pad-card-lg">
         <h1 className="fs-24">换馆沙盘</h1>

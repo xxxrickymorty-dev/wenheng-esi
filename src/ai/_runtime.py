@@ -76,3 +76,19 @@ def progress(code) -> None:
         cb(str(code))
     except Exception:                                             # noqa: BLE001
         pass
+
+
+def trace(event) -> None:
+    """工具调用轨迹（2026-10-29）：`using(trace=callable)` 注入；无回调＝静默。
+
+    `event` 只放**本就给界面看**的东西（工具名、中文摘要、耗时、成没成）——
+    不放进模型的任何原始文字，也不放台账数值：轨迹是「它问了什么、问到没有」，
+    不是第二个答案面。旁路性质同 `progress`：回调抛错不挡主流程。
+    """
+    cb = (_overrides_var.get() or {}).get("trace")
+    if cb is None:
+        return
+    try:
+        cb(dict(event))
+    except Exception:                                             # noqa: BLE001
+        pass

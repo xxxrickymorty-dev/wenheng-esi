@@ -8,27 +8,27 @@
 @import "tailwindcss";
 
 @theme {
-  /* ── 蓝 · 场（sea） ── */
-  --color-sea-50:  #DCE8F0;
-  --color-sea-100: #8FB6CE;
-  --color-sea-200: #2F6B8E;
-  --color-sea-300: #17456E;
-  --color-sea-400: #0F2E4C;
+  /* ── 青瓷绿（sea / pine 同一套，2026-10-29 A 排字房定稿） ── */
+  --color-sea-50:  #E3EDE7;
+  --color-sea-100: #7FB79B;
+  --color-sea-200: #2F7A58;
+  --color-sea-300: #1F5B4A;
+  --color-sea-400: #143D31;
 
-  /* ── 绿 · 器（pine） ── */
-  --color-pine-50:  #DFEDE6;
+  /* ── 青瓷绿（与 sea 同值；旧称 pine，保留别名） ── */
+  --color-pine-50:  #E3EDE7;
   --color-pine-100: #7FB79B;
   --color-pine-200: #2F7A58;
-  --color-pine-300: #26483B;
-  --color-pine-400: #163228;
+  --color-pine-300: #1F5B4A;
+  --color-pine-400: #143D31;
 
-  /* ── 纸与墨 ── */
-  --color-paper-50:  #F2EFE6;
-  --color-paper-100: #E4DFD0;
-  --color-paper-200: #D6D0C0;
-  --color-ink-300:  #15222B;
-  --color-ink-200:  #43525C;
-  --color-ink-100:  #7B8892;
+  /* ── 纸与墨（与 ws.css 同一套） ── */
+  --color-paper-50:  #F4F1E7;
+  --color-paper-100: #E8E4D8;
+  --color-paper-200: #ECE7DB;
+  --color-ink-300:   #1A211E;
+  --color-ink-200:   #4F5B55;
+  --color-ink-100:   #5C6862;
 
   /* ── 警戒（少用） ── */
   --color-red-300:  #B23A2B;

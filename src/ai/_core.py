@@ -42,7 +42,34 @@ QA_SYSTEM_PROMPT = (
     "不得改写标记本身。回答必须至少引用一条参考数据（即至少使用一个 [[n]] 标记）；"
     "若提问用词与数据里的口径不完全一致，先按数据的口径作答并说明对应关系"
     "（例如：热点论文在报告里并入「顶尖论文」统计）。"
-    "若参考数据确实不足以回答，请直接说明「无法依据本期数据回答」。只输出回答正文，不要解释。"
+    "若问题过于笼统、无法定位到具体学科与指标（例如只说「查一下数据」「查某期的数据」"
+    "却没指明学科和指标），不要输出任何内部推理、分析或内心独白，也不要编造或复述问题——"
+    "直接反问用户澄清：你想查哪个学科？哪个指标（接近度 / 总被引 / CNCI / 顶尖论文 / 排名 / 进出名单）？"
+    "反问澄清属于例外：此时无需引用 [[n]] 标记，直接追问即可，不要夹带其他内容。"
+    "同样，当你无法形成有效的工具调用、也找不到任何参考数据来回答时，直接追问，而不是臆测。"
+    "作答质量与排版：用自然中文、按「学科名：数值」成对列出，每个指标一行，"
+    "不要在一句话末尾堆一串裸数字；用户问了多个学科或多个指标要逐个回应，不要只答第一个。"
+    "⚠ 多个数值必须用文字隔开：每行只放一个学科（形如「- **数学**：接近度 [[n]]」），"
+    "**绝不要把两个标记紧挨着写**（那样会糊成一串看不出取舍），"
+    "也不要在同一行里连排多个学科的数。"
+    "被问到「A 和 B 谁的 CNCI 更高 / 谁进了前百分之一」这类比较时，先调 query_compare 拿到从好到差的排序再作答，"
+    "不要只答其中一个学科。不要复述工具返回的原始数据行，用自己的话总结结论。"
+    "排版要清楚：可以分小节——用「### 小标题」起一节、用「- 」列要点、用 **粗体** 突出学科名或结论；"
+    "但标题与粗体里同样不得出现任何没有 [[n]] 标记的数字。"
+    "回答要完整、不要中途截断；内容长就分行写，把最接近度 / 被引这类核心数放在每句开头。"
+    "本轮你有四件查询工具可用：query_series（某学科某指标的最近若干期）、"
+    "query_at（某学科某指标本期单值）、query_events（某学科进出名单的事件）、"
+    "query_overall_rank（本校整体排名）。参考数据只是先给你的一部分——"
+    "问到它里面没有的学科或指标（例如提到了别的学科、别的指标），先调工具去查，"
+    "不要先说没有数据。工具只在可查范围内工作：它回复不在可查范围、或查不到，"
+    "才算真的没有，此时说明「无法依据本期数据回答」。"
+    "若本轮没有工具，就直接按参考数据作答或说明无法回答。"
+    "每个占位标记背后都有一个真实数值（出稿时自动换回），你可以照常用它比较大小、"
+    "说高低、排先后；不要在回答里提到「占位」「标记」这类词，也不要建议读者自己去查。"
+    "⚠ 标记里的数字只是出现顺序的序号，**不代表数值大小**——"
+    "绝不可比较两个编号来推断谁高谁低（[[9]] 未必比 [[122]] 小）。"
+    "凡是要比大小、排先后的问题，一律调用 query_compare：它的结果按从好到差排好，"
+    "读完顺序即得结论。只输出回答正文，不要解释。"
 )
 
 #: review（复核参谋）纪律：只整理清单、风险排序；不代签、不改稿；引用规则同 qa。
@@ -242,7 +269,8 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
         outcome = _attempt.attempt(
             draft.task, system=_system_for(cap.id), ability=cap.id,
             anchored=cap.id not in ("qa", "review"),
-            evidence=draft.evidence, tools=(),
+            evidence=draft.evidence, tools=draft.tools, execute=draft.execute,
+            max_steps=draft.max_steps,
             rule_protected=draft.rule_protected, mapping=draft.mapping)
         if outcome.attempted:
             if outcome.text is None:
@@ -287,7 +315,9 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
                     egress=(outcome.egress if outcome is not None else None),
                     elapsed_ms=(outcome.elapsed_ms if outcome is not None else None),
                     t0=t0, fallback_detail=fallback_detail, data=draft.data,
-                    plan=draft.plan, record=record, receipts=draft.receipts)
+                    plan=draft.plan, record=record,
+                    receipts=draft.receipts + tuple(
+                        (outcome.receipts if outcome is not None else ()) or ()))
 
 
 def capabilities(actor=None) -> tuple[CapabilityInfo, ...]:

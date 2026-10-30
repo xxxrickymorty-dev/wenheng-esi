@@ -223,26 +223,122 @@ def fetch(period: str, disc_en: str) -> dict:
             "period": actual, "requested_period": period, "discipline": disc_en}
 
 
-def _match(rows, name_map, query) -> tuple[str, str]:
-    """查询名 → (英文名, 中文名)。先查总表，再查当期学科表。"""
+#: 挑「最相近候选」时忽略的虚词（只做词元包含，不引编辑距离库）
+_STOP = frozenset({"AND", "OF", "THE", "UNIVERSITY", "UNIV", "FOR", "IN", "AT"})
+
+
+def _tokens(query) -> list[str]:
+    """查询名 → 实词列表（去 AND/OF/UNIVERSITY 等虚词与「大学/学院」后缀）。"""
+    out: list[str] = []
+    for piece in re.split(r"[\s,，、;；/]+", str(query or "").strip()):
+        core = re.sub(r"(大学|学院|研究院|研究所)$", "", piece).strip() or piece
+        tok = core.upper()
+        if len(tok) < 2 or tok in _STOP or tok in out:
+            continue
+        out.append(tok)
+    return out
+
+
+@functools.lru_cache(maxsize=4)
+def _universe() -> tuple[str, int]:
+    """最新总表「学校总表」的 (文件名, 去重机构家数) —— 只用于报错时说明查了多大范围。"""
+    tpl = _latest_template()
+    if tpl is None:
+        return "", 0
+    wb = openpyxl.load_workbook(tpl, data_only=True, read_only=True)
+    try:
+        if "学校总表" not in wb.sheetnames:
+            return tpl.name, 0
+        names = {str(r[1]).strip().upper()
+                 for r in wb["学校总表"].iter_rows(min_row=2, values_only=True)
+                 if len(r) > 1 and r[1]}
+    finally:
+        wb.close()
+    return tpl.name, len(names)
+
+
+def _nearby(rows, query, k: int = 3) -> list[str]:
+    """本期机构表里「最相近」的 k 个英文名：按命中的实词个数排，不猜编辑距离。"""
+    toks = _tokens(query)
+    if not toks:
+        return []
+    scored = []
+    for r in rows:
+        en, cn = _norm(r["en"]), _norm(r["cn"])
+        hits = [t for t in toks if t in en or (cn and t in cn)]
+        if not hits:
+            continue
+        scored.append((-len(hits), -max(len(t) for t in hits), r.get("rank") or 1e9, r["en"]))
+    scored.sort()
+    out: list[str] = []
+    for *_, en in scored:
+        if en not in out:
+            out.append(en)
+        if len(out) >= k:
+            break
+    return out
+
+
+def _not_found(query, rows, sheet: str = "") -> PeerError:
+    """查不到时的报错。
+
+    本地数据分不清「该校整校未进 ESI」与「校名写法不一致」，所以两说并列，
+    不断言是哪一种；并把查过的表、总表规模、最相近候选一起给出来。
+    """
+    tpl_name, total = _universe()
+    where = f"「{sheet}」机构表（{len(rows)} 家）" if sheet else f"本期机构表（{len(rows)} 家）"
+    scope = (f"「{tpl_name}」学校总表 {total} 家机构中查不到该校名"
+             if total else "本期 ESI 总表")
+    near = _nearby(rows, query)
+    hint = f"最相近的候选英文名：{'、'.join(near)}。" if near else ""
+    return PeerError(
+        f"没找到高校「{query}」——本地数据无法区分两种情形："
+        f"① 该校整校未进入本期 ESI（{scope}）；"
+        f"② 校名写法与 ESI 不一致（简写、多「学院/大学」后缀、英文简称与全称不同）。"
+        f"已查{where}的中文名、英文名、去后缀与词元子串。{hint}"
+        f"请核对后重试；若该校该学科未上榜，本节可留空（未改动任何数据）。")
+
+
+def _match_ex(rows, name_map, query, *, sheet: str = "") -> dict:
+    """查询名 → `{en, cn, how}`。`how` 区分精确命中与兜底，调用方据此标 fuzzy。
+
+    `how` 取值：`map`（总表规范名精确）/ `table`（当期机构表精确）/
+    `trim`（去掉「大学/学院/研究院/研究所」后缀后精确）/ `substring`（子串兜底）。
+
+    子串兜底**不再取第一条**：唯一命中才返回并标 `substring`，多家命中直接报错——
+    「唯一」不等于「正确」，实测 'KUNMING UNIVERSITY' 只命中昆工，但那是昆明学院。
+    """
     nq = _norm(query)
     hit = name_map.get(nq)
     if hit:
-        return hit
+        return {"en": hit[0], "cn": hit[1], "how": "map"}
     # 中文去掉“大学/学院”后缀再试一次
     short = re.sub(r"(大学|学院|研究院|研究所)$", "", str(query).strip())
     if short and short != query:
         hit = name_map.get(_norm(short))
         if hit:
-            return hit
+            return {"en": hit[0], "cn": hit[1], "how": "trim"}
     for r in rows:
         if _norm(r["en"]) == nq or _norm(r["cn"]) == nq:
-            return r["en"], r["cn"] or r["en"]
-    for r in rows:
-        if nq and (nq in _norm(r["en"]) or (r["cn"] and nq in _norm(r["cn"]))):
-            return r["en"], r["cn"] or r["en"]
-    raise PeerError(f"没找到高校「{query}」。请用中文校名（如“昆明理工大学”）"
-                    f"或 ESI 英文名；可先确认该校在该学科是否上榜。")
+            return {"en": r["en"], "cn": r["cn"] or r["en"], "how": "table"}
+    cands = [r for r in rows
+             if nq and (nq in _norm(r["en"]) or (r["cn"] and nq in _norm(r["cn"])))]
+    if len(cands) == 1:
+        r = cands[0]
+        return {"en": r["en"], "cn": r["cn"] or r["en"], "how": "substring"}
+    if len(cands) > 1:
+        names = "、".join(r["en"] for r in cands[:5])
+        more = f" 等 {len(cands)} 家" if len(cands) > 5 else f"（共 {len(cands)} 家）"
+        raise PeerError(
+            f"「{query}」在本期机构表里对上了多家机构，无法确定是哪一所：{names}{more}。"
+            f"请给出更完整的校名（中文全称或 ESI 英文全称）后重试（未改动任何数据）。")
+    raise _not_found(query, rows, sheet)
+
+
+def _match(rows, name_map, query) -> tuple[str, str]:
+    """查询名 → (英文名, 中文名)。薄包装，保留旧签名给不关心 `how` 的调用方。"""
+    got = _match_ex(rows, name_map, query)
+    return got["en"], got["cn"]
 
 
 def _ynu(rows) -> dict | None:
@@ -279,27 +375,33 @@ def compare(period: str, disc_en: str, queries) -> dict:
     if ynu is None:
         raise PeerError(f"{period}「{cn_name(disc_en) or disc_en}」机构表里没有云南大学。")
 
+    # 报错文案里「查了哪张表」：原表的工作表名是占位的 SheetN，那就报文件名
+    label = (data["source"] if re.fullmatch(r"Sheet\d+", str(data["sheet"]))
+             else data["sheet"])
     wanted = []
     for q in _split_queries(queries):
-        en, cn = _match(rows, name_map, q)
-        if _norm(en) == _norm(ynu["en"]):
+        got = _match_ex(rows, name_map, q, sheet=label)
+        if _norm(got["en"]) == _norm(ynu["en"]):
             continue
-        if all(_norm(en) != _norm(w["en"]) for w in wanted):
-            wanted.append({"en": en, "cn": cn})
+        if all(_norm(got["en"]) != _norm(w["en"]) for w in wanted):
+            wanted.append(got)
 
     picked = [ynu] + [next((r for r in rows if _norm(r["en"]) == _norm(w["en"])), None)
                       for w in wanted]
     out_rows = []
     for r, w in zip(picked, [None] + wanted):
+        # `match` 让调用方区分「精确」「兜底」「未上榜」：唯一命中不等于对上了
+        how = "table" if w is None else w["how"]
         if r is None:
             assert w is not None
             out_rows.append({"en": w["en"], "cn": w["cn"], "present": False,
+                             "match": "absent",
                              "values": {k: None for k, _ in _METRICS},
                              "rank_cn": None})
             continue
         out_rows.append({
             "en": r["en"], "cn": r["cn"] or (w["cn"] if w else r["en"]),
-            "present": True,
+            "present": True, "match": how,
             "values": {k: r.get(k) for k, _ in _METRICS},
             "rank_cn": _domestic_rank(rows, r),
         })

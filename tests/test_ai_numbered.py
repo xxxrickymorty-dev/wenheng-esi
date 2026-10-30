@@ -66,6 +66,34 @@ class TestNumberedText:
         pieces, m2 = _shield.protect_chunks([text])
         assert (p, m) == (pieces[0], m2)
 
+    def test_续接_append_编号续起_mapping原地生长(self):
+        """qa 原生工具环（2026-10-28）：新段编号从既有最大 k 续；mapping 是**同一 dict**
+        （`draft.mapping` 引用者自动看到）；返回 nt 本身。"""
+        nt = NumberedText.of(["共 3 项"], _reg())
+        same_dict = nt.mapping
+        out = NumberedText.append(nt, ["涨 2.5 个点"], _reg("新"))
+        assert out is nt
+        assert nt.mapping is same_dict
+        assert nt.mapping == {"1": "3", "2": "2.5"}
+        assert nt.texts == ("共 [[1]] 项", "涨 [[2]] 个点")
+        assert [(s.index, s.value) for s in nt.sources] == [(1, "3"), (2, "2.5")]
+        assert nt.protected == "共 [[1]] 项\n涨 [[2]] 个点"
+
+    def test_续接_register_ti从零起_fact续接(self):
+        seen = []
+        nt = NumberedText.of(["甲 1"], _reg())
+
+        def register(ti, pos, value):                          # noqa: ARG001
+            seen.append((ti, value))
+            return {"kind": "ledger_cell", "pointer": f"台账#t/{value}",
+                    "label": "台账", "detail": "d", "fact": True}
+
+        NumberedText.append(nt, ["乙 2", "丙 7"], register)
+        assert seen == [(0, "2"), (1, "7")], "新段 register 的 ti 从 0 起"
+        assert nt.fact_keys == frozenset({1, 2, 3})
+        used = nt.used_by("乙 [[2]] 甲 [[1]]")
+        assert [s.pointer for s in used] == ["台账#t/2", "p0"], "续号来源可按发布次序取"
+
 
 class Test核心地板:
     def test_地板分支_正文无数字则来源为空(self, tmp_path, monkeypatch):

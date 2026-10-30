@@ -113,7 +113,6 @@ export function AiRecords({ period }: { period: string | null }) {
       <section className="card mt-18 pad-card">
         <h2 className="h-sec">
           运行级 · 模型参与
-          <span className="hint">主流水线零大模型</span>
         </h2>
         <div className="roww mt-12">
           <span className="pill unsigned">主体步骤 · 零模型</span>

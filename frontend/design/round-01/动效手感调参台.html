@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>动效手感调参台 · 文衡 5180</title>
+<style>
+  :root{
+    --bg:#F7F8F6; --panel:#FFFFFF; --spruce:#1F5F4B; --live:#35A260;
+    --line:#DFE3E0; --ink:#1B2420; --ink-2:#5C6B63;
+    --sans:"Inter","Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{height:860px;width:1280px;overflow:hidden;background:var(--bg);font-family:var(--sans);
+    color:var(--ink);-webkit-font-smoothing:antialiased}
+  .wrap{height:100%;padding:0 40px;display:flex;flex-direction:column}
+
+  header{height:58px;display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--line)}
+  header h1{font-size:15px;font-weight:500;letter-spacing:.04em}
+  header .sub{font-size:13px;color:var(--ink-2)}
+
+  .main{flex:1;display:flex;gap:28px;padding-top:22px;min-height:0}
+
+  /* —— 左：控制区 —— */
+  .ctrl{flex:0 0 300px;background:var(--panel);border:1px solid var(--line);border-radius:6px;
+    padding:22px 22px;display:flex;flex-direction:column}
+  .knob{margin-bottom:20px}
+  .knob .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .knob label{font-size:13px}
+  .knob .val{font-family:var(--mono);font-size:19px;color:var(--spruce)}
+  .knob .hint{font-size:11.5px;color:var(--ink-2);line-height:1.6;margin-top:5px}
+  input[type=range]{width:100%;accent-color:var(--spruce);height:22px}
+
+  .readout{border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    padding:14px 0;margin:2px 0 4px}
+  .readout .r{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0}
+  .readout .k{font-size:12.5px;color:var(--ink-2)}
+  .readout .v{font-family:var(--mono);font-size:15px}
+  .readout .v.hi{color:var(--spruce)}
+
+  .presets{margin-top:auto}
+  .presets .cap{font-size:11.5px;color:var(--ink-2);letter-spacing:.08em;margin-bottom:8px}
+  .pbtn{display:block;width:100%;text-align:left;font-family:var(--sans);font-size:13px;
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:9px 12px;
+    margin-bottom:7px;cursor:pointer;color:var(--ink)}
+  .pbtn:hover{border-color:var(--spruce)}
+  .pbtn b{font-weight:500;color:var(--spruce)}
+  .pbtn span{color:var(--ink-2);font-size:11.5px;margin-left:6px;font-family:var(--mono)}
+  .reset{width:100%;font-family:var(--sans);font-size:13px;background:var(--spruce);color:#fff;
+    border:none;border-radius:6px;padding:10px;cursor:pointer;margin-top:4px}
+
+  /* —— 右：展示区 —— */
+  .stage{flex:1;display:flex;flex-direction:column;gap:18px;min-width:0}
+  .chart{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px 22px;
+    height:270px;flex:0 0 270px}
+  .chart .cap{font-size:12px;color:var(--ink-2);margin-bottom:4px}
+
+  .demos{background:var(--panel);border:1px solid var(--line);border-radius:6px;flex:1;
+    padding:18px 22px;display:flex;flex-direction:column}
+  .demos .dhead{display:flex;align-items:center;margin-bottom:14px}
+  .demos .dhead .cap{font-size:12px;color:var(--ink-2)}
+  .play{margin-left:auto;font-family:var(--sans);font-size:13px;background:var(--spruce);color:#fff;
+    border:none;border-radius:6px;padding:8px 20px;cursor:pointer}
+  .three{flex:1;display:flex;gap:24px;align-items:center}
+  .demo{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:12px}
+  .demo .t{font-size:12.5px;color:var(--ink-2)}
+  .demo .boxarea{flex:1;border:1px solid var(--line);border-radius:6px;background:#F2F4F2;
+    display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .btn-demo{font-family:var(--sans);font-size:13px;background:var(--spruce);color:#fff;
+    border:none;border-radius:6px;padding:11px 22px;will-change:transform}
+  .panel-demo{width:150px;height:78px;background:var(--panel);border:1px solid var(--spruce);
+    border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12.5px;
+    color:var(--spruce);will-change:transform}
+  .seal-demo{width:64px;height:64px;border:2.5px solid #A8332A;color:#A8332A;border-radius:3px;
+    display:flex;align-items:center;justify-content:center;font-size:13px;will-change:transform,opacity}
+
+  .note{height:124px;background:var(--panel);border:1px solid var(--line);border-radius:6px;
+    padding:13px 22px;flex:0 0 124px}
+  .note .lead{font-size:13px;line-height:1.75;color:var(--ink)}
+  .note .lead b{color:var(--spruce);font-weight:500}
+  .note .assume{font-size:11.5px;color:var(--ink-2);line-height:1.7;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>动效手感调参台</h1>
+    <span class="sub">三个方向的分野不在颜色，在这一条曲线上</span>
+  </header>
+
+  <div class="main">
+    <div class="ctrl">
+      <div class="knob">
+        <div class="row"><label for="k">刚度 k</label><span class="val" id="kv">300</span></div>
+        <input type="range" id="k" min="100" max="500" step="5" value="300">
+        <div class="hint">弹簧有多硬。越硬推得越快，到位时间按 √k 缩短。</div>
+      </div>
+
+      <div class="knob">
+        <div class="row"><label for="c">阻尼 c</label><span class="val" id="cv">22</span></div>
+        <input type="range" id="c" min="4" max="40" step="1" value="22">
+        <div class="hint">油有多稠。越稠越不外溢，但太稠会黏住走不动。</div>
+      </div>
+
+      <div class="readout">
+        <div class="r"><span class="k">阻尼比 ζ</span><span class="v hi" id="zeta">0.64</span></div>
+        <div class="r"><span class="k">到位时长</span><span class="v" id="sett">—</span></div>
+        <div class="r"><span class="k">过冲幅度</span><span class="v" id="over">—</span></div>
+      </div>
+
+      <div class="presets">
+        <div class="cap">三个方向的手感</div>
+        <button class="pbtn" data-k="380" data-c="14">A 排字房 · 铅字落盘<span>380 / 14</span></button>
+        <button class="pbtn" data-k="180" data-c="34">B 标本册 · 叶子舒展<span>180 / 34</span></button>
+        <button class="pbtn" data-k="420" data-c="18">C 游标 · 推过刻度<span>420 / 18</span></button>
+        <button class="reset" id="reset">重置</button>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="chart">
+        <div class="cap">位移随时间：从 0 走到 1，中途冲过头的那一段就是手感</div>
+        <svg id="svg" viewBox="0 0 560 200" width="100%" height="196" preserveAspectRatio="none"></svg>
+      </div>
+
+      <div class="demos">
+        <div class="dhead"><span class="cap">同一条曲线，作用在三样东西上</span>
+          <button class="play" id="play">播放</button></div>
+        <div class="three">
+          <div class="demo">
+            <span class="t">按钮按下 · 过冲 4%</span>
+            <div class="boxarea"><button class="btn-demo" id="d1">签单并下载</button></div>
+          </div>
+          <div class="demo">
+            <span class="t">面板滑入 · 过冲 1%（面积大，不能晃）</span>
+            <div class="boxarea"><div class="panel-demo" id="d2">本期读数</div></div>
+          </div>
+          <div class="demo">
+            <span class="t">印章砸落 · 过冲 50%</span>
+            <div class="boxarea"><div class="seal-demo" id="d3">已签发</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="note">
+        <div class="lead" id="lead"></div>
+        <div class="assume">模型假设：无质量块 m=1，方程 ẍ = −k(x−1) − c·ẋ，起点 x=0 终点 x=1，半隐式欧拉 dt=1/240 秒。真实界面里位移要乘上实际距离，这条曲线只管形状。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const K = document.getElementById('k'), C = document.getElementById('c')
+
+  function sim(k, c) {
+    const dt = 1 / 240, out = []
+    let x = 0, v = 0
+    for (let i = 0; i < 240 * 4; i++) {
+      const a = -k * (x - 1) - c * v
+      v += a * dt; x += v * dt
+      out.push({ t: (i + 1) * dt, x })
+      if (i > 20 && Math.abs(x - 1) < 0.004 && Math.abs(v) < 0.04) break
+    }
+    return out
+  }
+
+  function draw() {
+    const k = +K.value, c = +C.value
+    const s = sim(k, c)
+    const T = s[s.length - 1].t
+    const peak = Math.max(...s.map(p => p.x))
+    const zeta = c / (2 * Math.sqrt(k))
+
+    document.getElementById('kv').textContent = k
+    document.getElementById('cv').textContent = c
+    document.getElementById('zeta').textContent = zeta.toFixed(2)
+    document.getElementById('sett').textContent = (T * 1000).toFixed(0) + ' ms'
+    document.getElementById('over').textContent = ((peak - 1) * 100).toFixed(1) + ' %'
+
+    /* 曲线 */
+    const tmax = Math.max(T, 0.25)
+    const X = t => 44 + (t / tmax) * 490
+    const Y = x => 168 - x * 116
+    let d = ''
+    s.forEach((p, i) => { d += (i ? 'L' : 'M') + X(p.t).toFixed(1) + ',' + Y(p.x).toFixed(1) })
+    const peakPt = s.reduce((a, b) => (b.x > a.x ? b : a), s[0])
+
+    document.getElementById('svg').innerHTML =
+      `<line x1="44" y1="168" x2="534" y2="168" stroke="#DFE3E0" stroke-width="1"/>
+       <line x1="44" y1="${Y(1)}" x2="534" y2="${Y(1)}" stroke="#1F5F4B" stroke-width="1"
+         stroke-dasharray="4 4"/>
+       <text x="38" y="${Y(1) + 4}" font-family="ui-monospace,monospace" font-size="11"
+         fill="#5C6B63" text-anchor="end">1.0</text>
+       <text x="38" y="172" font-family="ui-monospace,monospace" font-size="11"
+         fill="#5C6B63" text-anchor="end">0</text>
+       <path d="${d}" fill="none" stroke="#1F5F4B" stroke-width="2"/>
+       <circle cx="${X(peakPt.t)}" cy="${Y(peakPt.x)}" r="4" fill="#35A260"/>
+       <text x="${X(T)}" y="${Y(1) + 16}" font-family="ui-monospace,monospace" font-size="11"
+         fill="#5C6B63" text-anchor="middle">到位 ${(T * 1000).toFixed(0)}ms</text>`
+
+    /* 解释 */
+    let zone, effect
+    if (zeta < 0.7) {
+      zone = '<b>欠阻尼</b>，到位会冲过头再弹回来。'
+      effect = '过冲让小东西显得有弹性，作用在大面积上整块画面会晃。'
+    } else if (zeta < 1.05) {
+      zone = '<b>接近临界</b>，几乎不过冲。'
+      effect = '是不弹的前提下最快到位的一档，高频操作放这里。'
+    } else {
+      zone = '<b>过阻尼</b>，慢慢爬到位，一步不冲。'
+      effect = '大面积的东西要放这里，代价是手感发黏。'
+    }
+
+    const cmp = k >= 420 ? '刚度很高，推得快，'
+      : k >= 260 ? '刚度居中，' : '刚度偏低，弹簧软，'
+    const cmp2 = c >= 30 ? '阻尼又稠，把冲劲全吃掉了，所以到位最慢。'
+      : c >= 16 ? '阻尼适中，只吃掉一部分冲劲，还能看到一点回弹。'
+      : '阻尼很稀，冲劲几乎没被吃掉，所以过冲最明显。'
+
+    document.getElementById('lead').innerHTML =
+      `ζ = <b>${zeta.toFixed(2)}</b> · ${zone}`
+      + `<div style="margin-top:4px">${effect}</div>`
+      + `<div style="margin-top:4px">${cmp}${cmp2}</div>`
+  }
+
+  /* 三个演示：同一条曲线，位移幅度按东西的大小递减 */
+  const d1 = document.getElementById('d1'), d2 = document.getElementById('d2'),
+    d3 = document.getElementById('d3')
+  let raf = 0
+  function play() {
+    cancelAnimationFrame(raf)
+    const k = +K.value, c = +C.value, s = sim(k, c)
+    const dur = s[s.length - 1].t * 1000
+    const t0 = performance.now()
+    const tick = now => {
+      const p = Math.min((now - t0) / dur, 1)
+      const i = Math.min(Math.floor(p / s[s.length - 1].t * s.length), s.length - 1)
+      const q = s[i].x
+      d1.style.transform = `scale(${(1 - 0.04 * (1 - q)).toFixed(4)})`
+      d2.style.transform = `translateY(${(26 * (1 - q)).toFixed(2)}px)`
+      d3.style.transform = `scale(${(1 + 0.5 * (1 - q)).toFixed(4)})`
+      d3.style.opacity = Math.min(q, 1)
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+  }
+
+  K.addEventListener('input', draw)
+  C.addEventListener('input', draw)
+  document.getElementById('play').addEventListener('click', play)
+  document.querySelectorAll('.pbtn').forEach(b => b.addEventListener('click', () => {
+    K.value = b.dataset.k; C.value = b.dataset.c; draw(); play()
+  }))
+  document.getElementById('reset').addEventListener('click', () => {
+    K.value = 300; C.value = 22; draw()
+    d1.style.transform = ''; d2.style.transform = ''; d3.style.transform = ''; d3.style.opacity = ''
+  })
+
+  draw()
+</script>
+</body>
+</html>

@@ -50,6 +50,37 @@ class NumberedText:
         return cls(texts=tuple(pieces), mapping=mapping,
                    sources=tuple(sources), fact_keys=frozenset(facts))
 
+    @classmethod
+    def append(cls, nt: "NumberedText", texts, register) -> "NumberedText":
+        """续接编号（qa 原生工具环，2026-10-28）：新段编号从既有最大 k 续，**长在 nt 上**。
+
+        - `mapping` 就地 update（dict 同一对象——边界在 attempt 期间持着它，执行器
+          续号后模型引用新标记才不会被判「未知标记」；`draft.mapping` 引用者自动看到）；
+        - `texts / sources / fact_keys` 原地替换（frozen 只锁字段绑定；append 是本
+          不变量唯一授权的就地生长口——工具环发生在 attempt 期间，若返回新对象，
+          续出的来源就回不到 `draft.number`，发布面「第 k 个数字 ↔ sources[k]」会断）；
+          返回 `nt` 本身；
+        - `register(ti, pos, value)` 的 ti 从 0 起（只计本次新段，由本方法收口换算）。
+        """
+        start = max((int(k) for k in nt.mapping), default=0)
+        pieces, mapping, hits = _shield.numberize(texts, start=start)
+        nt.mapping.update(mapping)
+        sources = list(nt.sources)
+        facts = set(nt.fact_keys)
+        for ti, pos, k, value in hits:
+            info = register(ti, pos, value) or {}
+            if info.get("fact"):
+                facts.add(int(k))
+            sources.append(Source(index=int(k), kind=str(info.get("kind", "fact")),
+                                  pointer=str(info.get("pointer", "")),
+                                  label=str(info.get("label", "")),
+                                  detail=str(info.get("detail", "")),
+                                  value=value))
+        object.__setattr__(nt, "texts", nt.texts + tuple(pieces))
+        object.__setattr__(nt, "sources", tuple(sources))
+        object.__setattr__(nt, "fact_keys", frozenset(facts))
+        return nt
+
     @property
     def protected(self) -> str:
         """整篇保护面（各段换行相接）——发模型/RuleBrain 用。"""

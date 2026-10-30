@@ -299,7 +299,9 @@ class Test写作位模型与预算:
         fast = build_brain()
         assert isinstance(fast, OpenAIBrain), "对话/规划仍按 WENHENG_AI_* 装配"
         assert fast.model == "fast-model"
-        assert fast.timeout == 30.0 and fast.max_tokens == 2048
+        # 2026-10-29：对话侧默认输出预算提到 4096（qa 长答案留足，见 _config.py）；
+        # 写作位自己的预算（180s / 8000）不受影响，这里只钉「两份预算没串」。
+        assert fast.timeout == 30.0 and fast.max_tokens == 4096
 
     def test_demo档_锁规则版(self, monkeypatch):
         """演示站 `profile=demo`：即使机器上配了云，写作位也不出网。"""

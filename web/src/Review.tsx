@@ -120,9 +120,11 @@ function BlockView({
       </p>
     )
   }
+  /* 学科表第一行装的是图，不是表头——首行刷 --panel 会把图垫成深色（2026-10-29 rick 指出） */
+  const hasFigs = block.rows.some((row) => row.some((c) => (c.imgs ?? []).length > 0))
   return (
     <div className="rv-tblwrap">
-      <table>
+      <table className={hasFigs ? 'has-figs' : undefined}>
         <tbody>
           {block.rows.map((row, ri) => (
             <tr key={ri}>

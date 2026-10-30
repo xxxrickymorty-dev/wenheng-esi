@@ -5,12 +5,12 @@
 
 .sp-spread {
   /* 静态稿令牌 */
-  --deep: #143729; --deep-2: #0F2C21;
-  --ivory: #F6F1DE; --ivory-2: rgba(246, 241, 222, .80); --ivory-3: rgba(246, 241, 222, .54);
+  --deep: #143D31; --deep-2: #0F2E1F;
+  --ivory: #F6F1DE; --ivory-2: #C9D8CE; --ivory-3: #A9C0B4;
   --paper: #F5F3EC; --stone: #E8DCC8; --stone-2: #DCCDB2; --stone-3: #C9B694;
-  --ink: #1E2A23; --ink-2: #4A564D; --ink-3: #7C857B;
+  --ink: #1E2A23; --ink-2: #4A564D; --ink-3: #5C6862;
   --line: #DFDBCB; --line-2: #EAE7DB;
-  --gold: #C8B584; --seam: #B08E48; --red: #A82F22; --green: #1A4B27;
+  --gold: #C8B584; --seam: #B08E48; --red: #A82F22; --green: #1F5B4A;
   --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", SimSun, serif;
   --kai: KaiTi, STKaiti, FangSong, STFangsong, serif;
   --sans: system-ui, -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
@@ -52,7 +52,6 @@
 .sp-spread .nav a[aria-current]::before { background: var(--gold); }
 .sp-spread .nav a:hover { color: var(--ivory); }
 .sp-spread .nav .m { margin-top: clamp(7px, 1.2vh, 13px); font-family: var(--kai); font-size: 10.5px; letter-spacing: .24em; color: var(--ivory-3); }
-.sp-spread .nav .q { opacity: .62; }
 
 /* hero 区已撤（2026-10-28 rick 裁：期次/任务/取数与期次签重复、
    口号不占版面）——管理员签（pl-slot-user）占其位，

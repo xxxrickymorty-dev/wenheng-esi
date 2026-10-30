@@ -25,15 +25,15 @@ code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,
    --zhu 仍是全站主强调色变量名（＝器色），组件不必改。
    ========================================================================== */
 .ws, .ws[data-palette="blue"]{
-  --field:#17456E; --field-2:#0F2E4C; --field-3:#2F6B8E; --field-4:#8FB6CE; --field-5:#DCE8F0;
-  --tool:#26483B; --tool-2:#163228; --tool-3:#2F7A58; --tool-4:#7FB79B; --tool-5:#DFEDE6;
-  --bg:#EDE9DE; --card:#FAF8F0; --panel:#E6E1D3; --card-hi:#FDFAF3;
-  --ink:#15222B; --ink-2:#43525C; --ink-3:#556169; --ink-4:#64717A;
-  --line:#D8D2C2; --line-2:#E6E1D3;
-  --zhu:#26483B; --zhu-soft:#DFEDE6;
-  --gline:#163228;
-  --gold:#2F7A58; --gold-soft:#DFEDE6; --gold-ink:#163228;
-  --ok:#276B4C; --ok-soft:#DFEDE6; --ok-line:#9CC4AE;
+  --field:#1F5B4A; --field-2:#143D31; --field-3:#2F7A58; --field-4:#A9C0B4; --field-5:#E3EDE7;
+  --tool:#143D31; --tool-2:#1F5B4A; --tool-3:#2F7A58; --tool-4:#7FB79B; --tool-5:#E3EDE7;
+  --bg:#E8E4D8; --card:#F4F1E7; --panel:#ECE7DB; --card-hi:#FAF8F1;
+  --ink:#1A211E; --ink-2:#4F5B55; --ink-3:#5C6862; --ink-4:#6E7A72;
+  --line:#C9D8CE; --line-2:#E0E6E0;
+  --zhu:#1F5B4A; --zhu-soft:#E3EDE7;
+  --gline:#143D31;
+  --gold:#2F7A58; --gold-soft:#E3EDE7; --gold-ink:#143D31;
+  --ok:#276B4C; --ok-soft:#E3EDE7; --ok-line:#9CC4AE;
   --warn:#7C5A16; --warn-soft:#F3E9CF;
   --bad:#B23A2B; --bad-soft:#F4DDD7;
   --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
@@ -46,11 +46,11 @@ code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,
   --fs-xs:11px; --fs-sm:12px; --fs-label:13.5px; --fs-body:15px; --fs-h:19px; --fs-sh:26px;
 }
 .ws[data-palette="green"]{
-  --field:#26483B; --field-2:#163228; --field-3:#2F7A58; --field-4:#7FB79B; --field-5:#DFEDE6;
-  --tool:#17456E; --tool-2:#0F2E4C; --tool-3:#2F6B8E; --tool-4:#8FB6CE; --tool-5:#DCE8F0;
-  --zhu:#17456E; --zhu-soft:#DCE8F0;
-  --gline:#0F2E4C;
-  --gold:#2F6B8E; --gold-soft:#DCE8F0; --gold-ink:#0F2E4C;
+  --field:#1F5B4A; --field-2:#143D31; --field-3:#2F7A58; --field-4:#A9C0B4; --field-5:#E3EDE7;
+  --tool:#143D31; --tool-2:#1F5B4A; --tool-3:#2F7A58; --tool-4:#7FB79B; --tool-5:#E3EDE7;
+  --zhu:#1F5B4A; --zhu-soft:#E3EDE7;
+  --gline:#143D31;
+  --gold:#2F7A58; --gold-soft:#E3EDE7; --gold-ink:#143D31;
 }
 
 .ws{min-height:100dvh;display:flex;flex-direction:column}
@@ -210,7 +210,7 @@ a{color:inherit}
   letter-spacing:.01em;line-height:1.35;color:var(--zhu)}
 .focus .sub{color:var(--ink-2);font-size:var(--fs-body);margin-top:4px}
 .focus .cta{margin-left:auto;display:flex;gap:12px;align-items:center}
-.btn{transition:background .15s,border-color .15s,color .15s;display:inline-flex;align-items:center;gap:8px;
+.btn{transition:background .15s,border-color .15s,color .15s,transform .12s cubic-bezier(.34,1.56,.64,1);display:inline-flex;align-items:center;gap:8px;
   padding:10px 20px;border:1px solid var(--line);background:transparent;cursor:pointer;font:inherit;
   font-size:var(--fs-body);font-weight:600;letter-spacing:.04em;color:inherit;text-decoration:none}
 .btn.primary{background:var(--zhu);border-color:var(--zhu);color:#fff;font-size:var(--fs-body);padding:12px 24px}
@@ -1278,6 +1278,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
   .ia-rail-seg{transition:none}
   .wf-track i,.aq-track i,.bd-bar i{transition:none}
   .seal,.entry{transition:none}
+  .btn{transition:none}
   .sealbox:hover .seal{translate:0 0}
 }
 
@@ -1391,8 +1392,16 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
    html.m-ready＝接线成功（2.5 秒兜底不再强制展开）；html.m-done＝兜底/失败——全部展开。
    任何情况内容都出得来（"脚本失败不藏内容"）；reduced-motion 全降级。
    ========================================================================== */
-.btn:active{transform:translateY(1px)}
-.m-enter{transition:opacity .5s cubic-bezier(.2,.7,.2,1),transform .5s cubic-bezier(.2,.7,.2,1)}
+.btn:active{transform:scale(.97)}
+.m-enter{transition:opacity .26s cubic-bezier(.2,.8,.2,1),transform .26s cubic-bezier(.2,.8,.2,1)}
+/* A 排字房 · 期次切换 / 落章纸沉（组件在期次换、签单落章时挂类；此处只定义就绪） */
+@keyframes paper-shuffle{0%{opacity:0;transform:translateX(26px)}100%{opacity:1;transform:translateX(0)}}
+@keyframes paper-sink{0%{transform:translateY(0)}30%{transform:translateY(2px)}100%{transform:translateY(0)}}
+.paper-shuffle{animation:paper-shuffle .42s cubic-bezier(.2,.8,.2,1) both}
+.paper-sink{animation:paper-sink .26s cubic-bezier(.2,.8,.2,1) both}
+@media (prefers-reduced-motion: reduce){
+  .paper-shuffle,.paper-sink{animation:none}
+}
 html.m-js .m-enter:not(.m-in){opacity:0;transform:translateY(14px)}
 html.m-js .m-enter.m-left:not(.m-in){transform:translateX(-16px)}
 html.m-js .m-enter.m-right:not(.m-in){transform:translateX(16px)}

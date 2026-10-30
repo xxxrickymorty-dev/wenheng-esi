@@ -16,7 +16,7 @@ sys.path.insert(0, str(REPO / "src"))
 
 import acquisition_state as A  # noqa: E402
 
-from _guard_registry import skip_unless  # noqa: E402
+from _guard_registry import skip_unless, tmp_near_repo  # noqa: E402
 
 openpyxl = pytest.importorskip("openpyxl")
 
@@ -239,6 +239,9 @@ def test_默认核对副本路径落仓库相对写法(tmp_path, monkeypatch):
 def test_状态目录指到仓库外时默认值退回绝对路径(tmp_path, monkeypatch):
     """`WENHENG_ACQ_STATE_DIR` 指到仓库外（临时演练/集成测试）：判据「不在 `REPO` 之下」，
     只能给绝对路径；读写仍走真实路径，照常可用。"""
+    if tmp_near_repo(REPO):
+        skip_unless("系统 Temp 不可写，pytest 临时根落在仓库内/隔壁——「状态目录指到仓库外」这个前提测不了",
+                    lambda: not tmp_near_repo(REPO))
     monkeypatch.setattr(A, "STATE_DIR", tmp_path / "out" / "_acquisition")
     state = A.scan("202611", esi_root=tmp_path / "none", snapshot="")
     path = pathlib.Path(state["copy"]["path"])
@@ -251,6 +254,9 @@ def test_状态目录指到仓库外时默认值退回绝对路径(tmp_path, mon
 
 def test_环境变量指到仓库外时默认值也是绝对路径(tmp_path, monkeypatch):
     """同一条判据走真实入口（环境变量在 import 时读）：这里重载模块模拟换进程。"""
+    if tmp_near_repo(REPO):
+        skip_unless("系统 Temp 不可写，pytest 临时根落在仓库内/隔壁——「环境变量指到仓库外」这个前提测不了",
+                    lambda: not tmp_near_repo(REPO))
     monkeypatch.setenv("WENHENG_ACQ_STATE_DIR", str(tmp_path / "acq"))
     importlib.reload(A)
     try:

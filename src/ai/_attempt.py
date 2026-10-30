@@ -30,9 +30,10 @@ class FallbackReason(StrEnum):
     CALLS_UNSUPPORTED = "calls_unsupported"
     EMPTY_REPLY = "empty_reply"
     SHIELD_REJECT = "shield_reject"
-    #: 政策级：由调用方写入记录，边界不产生。
     OFF_TOPIC = "off_topic"
     KEEP_BROKEN = "keep_broken"
+    #: GUARD_REJECT：两处产生——政策级（调用方写记录）＋ 工具环里执行器违约
+    #: （边界拦执行器返回的裸数字，2026-10-28 fc 定稿）。
     GUARD_REJECT = "guard_reject"
     RECORD_FAILED = "record_failed"
 
@@ -49,7 +50,8 @@ class Outcome:
     - `text`＝可用文本（模型候选已还原 / 规则部署的规则物；失败为 None）；
     - `candidate_protected`＝通过校验的占位面候选（`_used_sources` 按它排来源）；
     - `attempted`＝配置了真实模型（False＝规则部署，不是失败）；
-    - `shield`＝本次尝试的校验计数（失败 passed=0，明细在 `detail`）。
+    - `shield`＝本次尝试的校验计数（失败 passed=0，明细在 `detail`）；
+    - `receipts`＝工具环执行回执（仅成功路径带；回落为空——2026-10-28 fc 定稿）。
     """
 
     text: str | None = None
@@ -63,6 +65,7 @@ class Outcome:
     egress: dict = field(default_factory=dict)
     notice: str = ""
     elapsed_ms: int = 0
+    receipts: tuple = ()
 
 
 def _reason_text(e) -> str:
@@ -71,12 +74,19 @@ def _reason_text(e) -> str:
 
 
 def attempt(task, *, system: str, ability: str, anchored: bool = True, evidence=(),
-            tools=(), rule_protected: str | None = None, mapping: dict | None = None,
+            tools=(), execute=None, max_steps: int = 1,
+            rule_protected: str | None = None, mapping: dict | None = None,
             allow_substrings=(), brain=None) -> Outcome:
     """执行一次调用尝试。运行期故障不抛（以 Outcome 表达）。
 
     `brain`：可选适配器覆盖（None＝部署装配）；写作位创写的专用模型/预算由此进入，
     本边界不读写作位配置。
+    原生工具环（2026-10-28 fc 定稿）：`tools` 非空且给了 `execute`（宿主执行器回调）时，
+    「真模型」路径进环——think → `turn.calls` → 逐调用执行（结果必须是执行器侧已注册
+    编号的占位面；裸数字即执行器违约 → GUARD_REJECT 回落）→ 结果追加进证据 →
+    再 think；`max_steps` 轮仍是 calls → CALLS_UNSUPPORTED 回落。`mapping` 以调用方
+    持有的 dict 为准——执行器续号（`NumberedText.append` 原地生长）边界自动看到。
+    无 tools / 无 execute / 规则部署的一切调用不进环，行为与从前逐字一致。
     """
     brain = _config.build_brain() if brain is None else brain
     attempted = not getattr(brain, "is_rule", False)
@@ -91,7 +101,14 @@ def attempt(task, *, system: str, ability: str, anchored: bool = True, evidence=
     if rule_protected is None:
         rule_protected = protected
 
+    # 工具环只在「真模型 + 带工具 + 给了执行器」时启用；这是既有全部能力的回归线。
+    tool_loop = attempted and bool(tools) and execute is not None
+    steps = max(int(max_steps or 1), 1)
+    receipts: list = []
+    live: tuple = ()           # 工具结果文本（执行器侧已注册编号的占位面）→ 下一轮进证据
+    step_now = 1               # 当前轮次（进 Brief.step；1 起，max_steps 轮内必须作答）
     brief = _brain.Brief(ability=ability, system=system, task=protected,
+                         step=1, max_steps=steps,
                          evidence=tuple(evidence), tools=tuple(tools),
                          rule_protected=rule_protected)
     egress = {"items": 1 + len(evidence) + (1 if tools else 0),
@@ -102,16 +119,64 @@ def attempt(task, *, system: str, ability: str, anchored: bool = True, evidence=
                        protected=protected, egress=egress,
                        elapsed_ms=int((time.time() - t0) * 1000), **kw)
 
-    try:
-        turn = brain.think(brief)
-    except _brain.BrainError as e:
-        return done(reason=brain_error(getattr(e, "code", type(e).__name__)),
-                    shield={"checked": len(mapping), "passed": 0},
-                    notice=f"模型调用失败（{_reason_text(e)}）。已回退规则版，内容与规则库一致。")
-    except Exception as e:                                     # noqa: BLE001
-        return done(reason=brain_error(type(e).__name__),
-                    shield={"checked": len(mapping), "passed": 0},
-                    notice=f"模型调用失败（{_reason_text(e)}）。已回退规则版，内容与规则库一致。")
+    while True:
+        try:
+            turn = brain.think(brief)
+        except _brain.BrainError as e:
+            return done(reason=brain_error(getattr(e, "code", type(e).__name__)),
+                        shield={"checked": len(mapping), "passed": 0},
+                        notice=f"模型调用失败（{_reason_text(e)}）。已回退规则版，内容与规则库一致。")
+        except Exception as e:                                     # noqa: BLE001
+            return done(reason=brain_error(type(e).__name__),
+                        shield={"checked": len(mapping), "passed": 0},
+                        notice=f"模型调用失败（{_reason_text(e)}）。已回退规则版，内容与规则库一致。")
+
+        if turn.calls and tool_loop:
+            if step_now >= steps:
+                # 末轮仍 calls：模型连续请求工具未作答 → 回落（回执不发布）。
+                return done(reason=FallbackReason.CALLS_UNSUPPORTED,
+                            shield={"checked": len(mapping), "passed": 0},
+                            notice="模型连续请求工具未作答。已回退规则版，内容与规则库一致。")
+            texts: list = []
+            for call in turn.calls:
+                try:
+                    text, receipt = execute(call)
+                except Exception as e:                             # noqa: BLE001
+                    return done(reason=brain_error(type(e).__name__),
+                                shield={"checked": len(mapping), "passed": 0},
+                                notice=(f"工具执行失败（{_reason_text(e)}）。"
+                                        "已回退规则版，内容与规则库一致。"))
+                receipts.append(receipt)
+                # 工具调用轨迹（2026-10-29）：只报「查了什么、查到没有、用多久」——
+                # 给界面的「工具调用」面板；不含模型原文、不含台账数值。
+                _runtime.trace({"step": step_now,
+                                "tool": getattr(receipt, "tool", "") or
+                                str((call or {}).get("name") or ""),
+                                "label": getattr(receipt, "label", "") or "查台账",
+                                "summary": getattr(receipt, "summary", "") or "",
+                                "ok": bool(getattr(receipt, "ok", True)),
+                                "refused": bool(getattr(receipt, "refused", False)),
+                                "ms": int(getattr(receipt, "elapsed_ms", 0) or 0)})
+                stray = _shield.visible_digits(str(text or ""))    # 内含 strip_marks
+                if stray:
+                    # 执行器违约（结果必须已是占位面）：防线不依赖执行器自觉。
+                    return done(reason=FallbackReason.GUARD_REJECT,
+                                detail={"tool": str((call or {}).get("name") or ""),
+                                        "stray": stray},
+                                shield={"checked": len(mapping), "passed": 0},
+                                notice="工具返回文本未通过数字校验，已回退规则版，内容与规则库一致。")
+                texts.append(str(text or ""))
+            live = live + tuple(texts)
+            step_now += 1
+            # 重造 Brief：证据追加了工具结果、step 前进；egress 按每轮 Brief 求和。
+            brief = _brain.Brief(ability=ability, system=system, task=protected,
+                                 step=step_now, max_steps=steps,
+                                 evidence=tuple(evidence) + live, tools=tuple(tools),
+                                 rule_protected=rule_protected)
+            egress = {"items": egress["items"] + 1 + len(live) + (1 if tools else 0),
+                      "bytes": egress["bytes"] + brief.egress_bytes()}
+            continue
+        break
 
     note = turn.note or ""
     candidate = turn.text if not turn.calls else None
@@ -147,4 +212,4 @@ def attempt(task, *, system: str, ability: str, anchored: bool = True, evidence=
     return done(text=_shield.restore(candidate, mapping),
                 candidate_protected=candidate,
                 shield={"checked": len(mapping), "passed": len(mapping)},
-                notice=note)
+                notice=note, receipts=tuple(receipts))

@@ -301,7 +301,6 @@ function TrendCard({ trend, period }: { trend: Record<string, number>; period: s
       <div className="tr-head">
         <div>
           <b>顶尖论文增长轨迹</b>
-          <span className="hint">按双月期次 · 单位 篇</span>
         </div>
         {nowEntry && <div className="tr-now"><b>{cv}</b><span>本期 · {fmtP(pts[ci][0])}</span></div>}
       </div>

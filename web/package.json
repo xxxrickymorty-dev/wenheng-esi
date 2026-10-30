@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "tokens": "node scripts/build-tokens.mjs",
+    "build": "npm run tokens && tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run",
     "preview": "vite preview"

@@ -232,6 +232,22 @@ class Test与今天逐字一致:
         # 202607 的那份 docx 生成时还没有 college_stats.json（报告写「覆盖19个学科」），
         # 故 p4 / top_section 的差异是**改动前就有的**，与措辞档位无关。
         allow = {"p4", "top_section"} if period == "202607" else set()
+        if period == "202605":
+            # 202605 于 2026-10-28 按 R2-1 修复后的代码重出（旧稿备份在
+            # `归档/202605-重出前-20261028/`），S0「增加-11篇」已消失。
+            # 但重出后 p4 / top_section 仍与 `build_period` 骨架差一处：
+            # 骨架留 `【手工：学科数】`，而成品由 college_stats 填成「19 个学科来自 23 个学院」。
+            # 这不是缺陷漂移，是「骨架 vs 装配」的固有差；下面四条断言把它钉死：
+            # 两边都必须已修正 R2-1，且差异只允许是这一处占位符替换。
+            allow = {"p4", "top_section"}
+            docx = sorted((repo / "out" / period).glob("报告初稿*.docx"))[-1]
+            from docx import Document                                # noqa: PLC0415
+            body = "\n".join(p.text for p in Document(str(docx)).paragraphs)
+            skel = sentences.build_period(repo / "out" / period)["p4"]
+            assert "较上期总数减少11篇" in body, "成品没修好 R2-1，豁免站不住脚"
+            assert "较上期总数增加-11篇" not in body, "成品仍有 S0 缺陷，豁免站不住脚"
+            assert "分别有19个学科来自23个学院" in body, "成品缺 college_stats 装配"
+            assert "【手工：学科数】" in skel, "骨架没有占位符，差异就不止这一处"
         assert bad == len(diffs) and diffs <= allow, "\n".join(lines)
 
     def test_五期用词都是表里的词(self, repo):

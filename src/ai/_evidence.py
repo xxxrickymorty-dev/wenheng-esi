@@ -159,8 +159,41 @@ def _at(res):
     return f"台账数据·{cn}·{cn_metric}·{p}", text, cells
 
 
+def _compare(res):
+    """`compare` Result → (key, text, cells)：某期某指标的**跨学科横截面**（无行 → None）。
+
+    引擎已按「好」在前排好（rank 类升序、其余降序）——文本的顺序**就是**好坏顺序，
+    写手不必自己比大小（它看不见真值，只看得见占位标记）。
+    """
+    rows = list(res.get("rows") or [])
+    if not rows:
+        return None
+    metric = str(res.get("metric") or "")
+    fmt = _FMT.get(metric, "int")
+    cn_metric = _CN.get(metric, str(res.get("metric_cn") or metric))
+    p = str(res.get("period") or "")
+    parts, cells, sheet = [], [], ""
+    for row in rows:
+        v = _fmt(row.get("value"), "int" if fmt == "rank" else fmt)
+        if v is None:
+            continue
+        cn = str(row.get("discipline_cn") or row.get("discipline") or "")
+        sheet = sheet or str((row.get("source") or {}).get("origin_sheet") or "")
+        unit = "%" if fmt == "pct" else " 位" if fmt == "rank" else ""
+        parts.append(f"{cn} {v}{unit}")
+        cells.append((v, sheet, cn, p))
+    if not parts:
+        return None
+    n = _CN_NUM.get(len(parts), len(parts))
+    key = f"台账数据·{cn_metric}·横比·{p}"
+    text = (f"各学科 · {cn_metric}（台账《{sheet}》表，{p} 期横向比较，"
+            f"按从好到差排列，共{n}个学科）：" + "、".join(parts) + "。")
+    return key, text, cells
+
+
 #: kind → 渲染器（引擎白名单里的 kind 子集；其余 kind 不进证据）。
-_RENDERERS = {"series": _series, "at": _at, "events": _events, "overall_rank": _overall}
+_RENDERERS = {"series": _series, "at": _at, "events": _events, "overall_rank": _overall,
+              "compare": _compare}
 
 
 def assemble(results, question="") -> dict:

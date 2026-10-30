@@ -27,6 +27,14 @@
   监测表回落（`_view_for`）；台账缺/坏、单条规格失败 → 静默跳过（与 v1 一致）。
   对外行为与 v1 逐字一致（既有用例钉着；`_ledger_segments` 等手写段装配退休）。
 
+2026-10-28（fc 定稿，写作轮原生工具环）：
+- 模型可以**自主拉证据**：`_qa_tools` 给四件只读工具（series/at/events/overall_rank），
+  schema 只发名字与馆员话术（零数字）；执行器校验参数（越权→拒：无数字人话＋refused
+  回执，不回落）→ 与 `_ledger_evidence` 同款切窗 → 引擎取数 → 证据装配 →
+  `NumberedText.append` 续号注册（精确台账格，fact=True）→ 返回占位面文本。
+  模型只选（工具名+参数）不造；值只从引擎一条缝进来；同规格 memo 去重。
+  视图拿不到就不挂工具（现状回落路径不变）；规则部署物理上无工具环。
+
 来源登记：问句里的数字 → `question`；事实段里的数字 → 按值匹配 `overview_facts.json`
 的具体键（product 指针），匹配不到的（句骨架里算出来的期号等）降到段落级指针。
 """
@@ -36,10 +44,12 @@ import csv
 import json
 import pathlib
 import re
+import time
 
-from . import _shield
+from . import _record, _shield
 from ._draft import RuleDraft
 from ._numbered import NumberedText
+from ._types import Receipt
 
 try:                                        # 仓根在 sys.path 上（server / tests）
     from src import state_store
@@ -105,10 +115,12 @@ def _view_for(root, period):
     return view
 
 
-def _ledger_evidence(root, period, question, disc_items, history=(), focus_period=""):
+def _ledger_evidence(root, period, question, disc_items, history=(), focus_period="",
+                     view=None):
     """台账证据（票 02/03 内核）：规划（规则→模型）→ 引擎取数 → 证据装配。
 
     `focus_period`＝问句点名的那一期（P0-1，2026-10-14）：规则面据此出 `at` 单值规格。
+    `view`＝调用方已装配的数据面视图（build 与工具面共用一次 `_view_for`；None＝自取）。
 
     返回 `(texts, cells, plan)`：`{段key: 文本}`、`{段key: [(数字串, 表, 学科, 期次)]}`
     与规划摘要（票 04 进留痕）。台账缺/坏 → `({}, {}, None)`；单条 spec 失败静默跳过
@@ -116,7 +128,8 @@ def _ledger_evidence(root, period, question, disc_items, history=(), focus_perio
     """
     from . import _evidence, _plan                               # noqa: PLC0415
 
-    view = _view_for(root, period)
+    if view is None:
+        view = _view_for(root, period)
     if view is None:
         return {}, {}, None
     try:
@@ -146,6 +159,205 @@ def _ledger_evidence(root, period, question, disc_items, history=(), focus_perio
     ev = _evidence.assemble(results, question)
     texts = {key: text for key, text in ev["chunks"]}
     return texts, ev["cells"], plan
+
+
+def _ledger_source(cells, key, value):
+    """cells → 台账来源字段（唯一命中到格；多期同值降行级；否则段落级）。
+
+    `_ledger_evidence` 的编号注册与工具环的续号注册共用这一份指针语义
+    （kind=ledger_cell、fact=True——工具结果也是本期事实，越题判定据此放行）。
+    """
+    hits = [(sheet, subj, p) for (v, sheet, subj, p) in cells if v == value]
+    if len(hits) == 1:
+        sheet, subj, p = hits[0]
+        return {"kind": "ledger_cell",
+                "pointer": f"台账#{sheet}/{subj}/{p}",
+                "label": f"台账 · {sheet} · {subj} · {p}",
+                "detail": "云大监测表（台账，运行期只读；与逐格溯源同一读取面）",
+                "fact": True}
+    if hits:
+        sheet, subj, _p = hits[0]
+        return {"kind": "ledger_cell", "pointer": f"台账#{sheet}/{subj}",
+                "label": f"台账 · {sheet} · {subj}",
+                "detail": "多期同值，未唯一到格", "fact": True}
+    return {"kind": "ledger_cell", "pointer": f"台账#{key}",
+            "label": f"台账 · {key}",
+            "detail": "数字属于该台账序列", "fact": True}
+
+
+# ================================================================ 原生工具环（2026-10-28）
+
+#: 模型可见的**五件**只读工具（名字 → 引擎 op）。全部只读：没有写操作这一支。
+#: 第五件 `query_compare` 是为什么加的（2026-10-29 实测）：模型看不见真值、只看得见
+#: 占位标记，比较类问题（「谁的 CNCI 更高」）它算不了——把「谁好谁差」交回引擎排序，
+#: 模型只读这个顺序。**系统不替模型算，模型也不替读者臆断。**
+_TOOL_OPS = {"query_series": "series", "query_at": "at",
+             "query_events": "events", "query_overall_rank": "overall_rank",
+             "query_compare": "compare"}
+
+#: 指标脸面（工具面零数字——`MODEL_METRICS` 的中文名带「1%」，不能直接进 schema）：
+#: 别名 → (短名, 话术)。短名进回执摘要（给人看），话术进工具说明（给模型看）。
+_METRIC_FACE = {
+    "proximity": ("接近度", "接近度（被引与门槛的比值）"),
+    "threshold": ("前百分之一阈值", "进入前百分之一所需的被引门槛"),
+    "threshold_permille": ("前千分之一阈值", "进入前千分之一所需的被引门槛"),
+    "total_cites": ("总被引频次", "总被引频次"),
+    "papers": ("论文数", "论文数"),
+    "cnci": ("CNCI", "篇均被引影响力"),
+    "top_papers": ("顶尖论文", "顶尖论文数"),
+    "rank_cn": ("国内排名", "国内排名"),
+    "rank_intl": ("国际排名", "国际排名"),
+}
+
+#: 默认看最近若干期（与台账段「最近六期」同口径）。
+_SPAN_N = 6
+
+
+def _metric_index() -> dict:
+    """别名 → (引擎规范名, 短名, 话术)：与 `_plan.MODEL_METRICS` 同一张表（唯一口径）。"""
+    from . import _plan                                        # noqa: PLC0415
+
+    out = {}
+    for alias, canon, _cn in _plan.MODEL_METRICS:
+        short, hint = _METRIC_FACE.get(alias, (canon, canon))
+        out[alias] = (canon, short, hint)
+    return out
+
+
+def _fn(name, desc, props, required) -> dict:
+    """一件工具的 OpenAI function schema（只有名字与话术，零数字）。"""
+    return {"type": "function",
+            "function": {"name": name, "description": desc,
+                         "parameters": {"type": "object", "properties": props,
+                                        "required": required}}}
+
+
+def _qa_tools(view) -> tuple:
+    """五件只读工具的 schema：模型只看见「能查什么」，看不见任何数值。"""
+    metrics = _metric_index()
+    discs = [str(d) for d in (view.disciplines or ())]
+    span = {"type": "string", "enum": ["recent", "all"],
+            "description": "recent＝最近若干期（默认）；all＝台账里的全部期次"}
+    metric = {"type": "string", "enum": sorted(metrics),
+              "description": "；".join(f"{a}＝{face[2]}" for a, face in metrics.items())}
+    disc = {"type": "string", "enum": discs, "description": "学科（英文名；只能从里面选）"}
+    return (
+        _fn("query_series", "查某学科某指标在最近若干期的取值序列（问走势、变化时用）",
+            {"metric": metric, "disc": disc, "span": span}, ["metric", "disc"]),
+        _fn("query_at", "查某学科某指标在本期的单值（期次由系统补，不要自己写期次）",
+            {"metric": metric, "disc": disc}, ["metric", "disc"]),
+        _fn("query_events", "查某学科进出 ESI 前百分之一名单的事件",
+            {"disc": disc}, ["disc"]),
+        _fn("query_overall_rank", "查本校整体排名（国际/国内）在最近若干期的序列",
+            {"span": span}, []),
+        _fn("query_compare",
+            "查若干学科在同一期的某个指标谁高谁低（结果已按从好到差排好，读完就能比；"
+            "要比的学科放 discs，不填就是全部学科）",
+            {"metric": metric,
+             "discs": {"type": "array", "items": {"enum": discs},
+                       "description": "要比的学科（英文名列表）"}}, ["metric"]),
+    )
+
+
+def _qa_executor(view, period, number):
+    """宿主执行器（写作轮原生工具环）：校验 → 切窗 → 引擎取数 → 装配 → 续号注册。
+
+    - **越权/取不到 → 拒**：返回一句无数字人话 + `refused` 回执，**不回落**——
+      模型收到拒答句后仍可作答（拒不是失败）；
+    - 取到 → 结果文本先经 `NumberedText.append` 续号注册（数字进同一套编号，
+      来源指到台账格），交出去的已经是占位面——外发零数字由构造保证；
+    - 同规格 memo：第二次直接复用已注册的占位文本，不再注册新编号。
+    """
+    metrics = _metric_index()
+    memo: dict = {}
+
+    def receipt(name, args, summary, t0, *, ok, refused):
+        return Receipt(tool=name, label="查台账", args_digest=_record.digest(args),
+                       summary=summary, ok=ok, refused=refused,
+                       elapsed_ms=int((time.time() - t0) * 1000))
+
+    def refuse(name, args, why, t0):
+        return (f"该查询不在可查范围（{why}）。请依据已有数据作答。",
+                receipt(name, args, "查台账", t0, ok=False, refused=True))
+
+    def disc_cn(en):
+        try:
+            from flexible.datasource import cn_name               # noqa: PLC0415
+
+            return cn_name(en)
+        except Exception:                                         # noqa: BLE001
+            return str(en or "")
+
+    def run(call):
+        t0 = time.time()
+        name = str((call or {}).get("name") or "")
+        args = (call or {}).get("arguments") or {}
+        args = dict(args) if isinstance(args, dict) else {}
+        op = _TOOL_OPS.get(name)
+        if op is None:
+            return refuse(name, args, "未登记的查询", t0)
+        canon, metric_cn = "", ""
+        picked: list = []          # compare 要比的学科；其余 op 恒空（qargs 字面量全体求值）
+        disc = str(args.get("disc") or "")
+        if op in ("series", "at"):
+            got = metrics.get(str(args.get("metric") or ""))
+            if got is None:
+                return refuse(name, args, "指标不在可查范围", t0)
+            canon, metric_cn, _hint = got
+        elif op == "compare":
+            got = metrics.get(str(args.get("metric") or ""))
+            if got is None:
+                return refuse(name, args, "指标不在可查范围", t0)
+            canon, metric_cn, _hint = got
+            got_picked = args.get("discs")
+            picked = ([str(x) for x in got_picked] if isinstance(got_picked, list) else [])
+            bad = [d for d in picked if d not in set(view.disciplines or ())]
+            if bad:
+                return refuse(name, args, "学科不在可查范围", t0)
+        span = str(args.get("span") or "recent")
+        if span not in ("recent", "all"):
+            return refuse(name, args, "期次范围不在可查范围", t0)
+        if op in ("series", "at", "events") and disc not in set(view.disciplines or ()):
+            return refuse(name, args, "学科不在可查范围", t0)
+
+        # 切窗：数据面可能是全史母本——"本期报告不读更晚期次"（与台账段同款）。
+        window = [str(p) for p in (view.periods or ()) if str(p) <= str(period)]
+        if span == "recent":
+            window = window[-_SPAN_N:]
+        qargs = {"series": {"metric": canon, "disc": disc, "periods": window},
+                 "at": {"metric": canon, "disc": disc, "period": str(period)},
+                 "events": {"disc": disc},
+                 "compare": {"metric": canon, "discs": picked or None,
+                             "period": str(period)},
+                 "overall_rank": {"periods": window}}[op]
+        summary = ("查 云大整体排名" if op == "overall_rank"
+                   else f"查 {disc_cn(disc)}·进出事件" if op == "events"
+                   else f"查 {metric_cn}·横比" if op == "compare"
+                   else f"查 {disc_cn(disc)}·{metric_cn}")
+        memo_key = (op, tuple(sorted((k, str(v)) for k, v in qargs.items())))
+        if memo_key in memo:
+            return memo[memo_key], receipt(name, args, summary, t0, ok=True, refused=False)
+
+        try:
+            from flexible import queries                          # noqa: PLC0415
+            from . import _evidence                               # noqa: PLC0415
+
+            res = queries.execute(view, op, **qargs)
+            ev = _evidence.assemble([res], "")
+        except Exception:                                         # noqa: BLE001
+            return refuse(name, args, "本期无可用数据", t0)
+        chunks = list(ev.get("chunks") or [])
+        if not chunks:
+            return refuse(name, args, "本期无可用数据", t0)
+        key, text = chunks[0]
+        cells = (ev.get("cells") or {}).get(key) or []
+        nt = NumberedText.append(number, [text],
+                                 lambda _ti, _pos, value: _ledger_source(cells, key, value))
+        protected = nt.texts[-1]
+        memo[memo_key] = protected
+        return protected, receipt(name, args, summary, t0, ok=True, refused=False)
+
+    return run
 
 
 def _load_json(path, default=None):
@@ -188,6 +400,46 @@ def _match(texts: dict, question: str) -> dict:
     if scored:
         return {k: texts[k] for k in sorted(scored, key=lambda x: -scored[x])}
     return dict(list(texts.items())[:3])
+
+
+#: 规则版排版（2026-10-29 rick：规则作答是一堵墙，要分段落＋小标题，像助手答卷）。
+#: 键 → 小标题；连续同类只出一次标题（不认识的键＝无标题，只当普通段落）。
+#: ⚠ 标签不得含测试断言为「不应出现」的词（如「国际排名」「顶尖论文」只在对应段存在时才出）。
+_SECTION_OF = {
+    "p1": "总体情况", "p2": "排名变化", "p3": "排名变化", "p4": "排名变化",
+    "trend": "排名变化",
+    "situation_head": "学科进展", "situation": "学科进展",
+    "forecast_p1": "学科预测", "forecast_p2": "学科预测", "forecast_p3": "学科预测",
+    "top_section": "顶尖论文", "province_p": "省域情况",
+}
+#: 报告封面元数据（期号 / 月份 / 表题）——聊天回答里是噪音，规则版不出。
+_META_SKIP = {"cover_issue", "cover_month", "table2_title"}
+
+
+def _section_label(key):
+    """键 → 小标题（无则空串）。学科段用学科名、台账段用「台账取数」。"""
+    if key in _SECTION_OF:
+        return _SECTION_OF[key]
+    sk = str(key)
+    if sk.startswith("学科数据·"):
+        return sk.split("·", 1)[1]
+    if sk.startswith("台账"):
+        return "台账取数"
+    return ""
+
+
+def _format_rule(keys, texts):
+    """规则段 → 带小标题的多段正文。只加标题与空行，不动数字、不动顺序。"""
+    out, last = [], ""
+    for k in keys:
+        if k in _META_SKIP or k not in texts:
+            continue
+        sec = _section_label(k)
+        if sec and sec != last:
+            out.append(f"### {sec}")
+            last = sec
+        out.append(texts[k])
+    return "\n\n".join(out)
 
 
 def _disc_rows(d):
@@ -478,9 +730,11 @@ def build(root, period, payload) -> RuleDraft:
     disc_idx = _disc_index(disc_items)
 
     # ---- 台账段（票 02/03 内核）：规划（规则→模型）→ 引擎取数 → 证据装配 ----
+    # 视图取一次：台账段与工具面共用（工具面的学科白名单就是它的数据范围）。
+    view = _view_for(root, period)
     ledger_texts, ledger_cells, ledger_plan = _ledger_evidence(
         root, period, question, disc_items, history=history,
-        focus_period=focus_period)
+        focus_period=focus_period, view=view)
     n_led = len(ledger_texts)
 
     texts_all = {**base_texts, **disc_texts, **ledger_texts}
@@ -491,6 +745,10 @@ def build(root, period, payload) -> RuleDraft:
          and k not in ledger_texts]
     rule_keys = (list(ledger_texts) + list(disc_texts)) if (ledger_texts or disc_texts) \
         else list(matched)
+    # 封面元数据（期号/月份/表题）是聊天噪音：从规则版剔掉；全被剔空则保留，避免空回答。
+    _rk = [k for k in rule_keys if k not in _META_SKIP]
+    if _rk:
+        rule_keys = _rk
     rule_set = set(rule_keys)
     # 上文进**编号之前**的首个区块：它的数字必须过盾（否则模型一复述就被判「游离数字」）。
     # P0-1（2026-10-14）：问句点名了期次 → 任务首行**明示**（写手不必自己再解「5月」）。
@@ -560,8 +818,24 @@ def build(root, period, payload) -> RuleDraft:
     if not task:                          # 无问句：给模型一个明确的概述任务
         task = "（未提供具体问题）请依据参考数据概述本期要点。"
 
+    # ---- 原生工具环（2026-10-28）：视图在就挂四件只读工具，让模型自己拉证据 ----
+    # 视图拿不到 → 不挂（现状路径逐字不变）；规则部署物理上没有工具环（RuleBrain 不看 tools）。
+    tools = ()
+    execute = None
+    max_steps = 1
+    if view is not None:
+        try:
+            tools = _qa_tools(view)
+        except Exception:                                         # noqa: BLE001
+            tools = ()
+        if tools:
+            execute = _qa_executor(view, period, number)
+            # 4＝「取证 → 补证 → 再补 → 作答」的余量：真模型常要逐个学科拉数再对比，
+            # 步数给少了会把正常的多步取证判成「连续请求工具未作答」而误回落（实测 2026-10-29）。
+            max_steps = 4
+
     return RuleDraft(
-        rule_text="\n\n".join(texts_all[k] for k in rule_keys),
+        rule_text=_format_rule(rule_keys, texts_all),
         number=number,
         rule_protected="\n\n".join(number.texts[1 + i]
                                    for i, key in enumerate(ordered) if key in rule_set),
@@ -569,4 +843,7 @@ def build(root, period, payload) -> RuleDraft:
         task=task,
         evidence=tuple(number.texts[1:]),
         plan=ledger_plan,
+        tools=tools,
+        execute=execute,
+        max_steps=max_steps,
     )

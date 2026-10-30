@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>文衡 · 方向 B 标本册</title>
+<style>
+  :root{
+    --hide:#EFE9DB;        /* 羊皮 */
+    --hide-2:#F7F3E8;      /* 卡面 */
+    --moss:#4A7C59;        /* 主色 苔绿 */
+    --moss-deep:#35533D;
+    --stem:#7A9A65;        /* 茎线 */
+    --slip:#F3E9C8;        /* 状态签底 */
+    --slip-ink:#6E5810;
+    --slip-line:#D9C377;
+    --line:#D8D6C2;
+    --ink:#243026;
+    --ink-2:#5E6B5F;
+    --serif:"Noto Serif SC","Songti SC",STSong,SimSun,serif;
+    --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{height:900px;width:1440px;overflow:hidden;background:var(--hide);
+    font-family:var(--serif);color:var(--ink);-webkit-font-smoothing:antialiased}
+
+  .band{height:64px;display:flex;align-items:center;gap:18px;padding:0 48px;
+    border-bottom:1px solid var(--line)}
+  .band .title{font-size:17px;font-weight:600;letter-spacing:.06em}
+  .band .meta{font-size:13px;color:var(--ink-2)}
+  .band .spacer{flex:1}
+  .band .entry{font-size:13.5px;color:var(--moss-deep);border-bottom:1px solid var(--stem);
+    padding-bottom:2px;letter-spacing:.04em}
+
+  .grid{padding:40px 48px;display:grid;grid-template-columns:repeat(3,1fr);
+    grid-template-rows:repeat(2,1fr);gap:26px;height:836px}
+  .card{background:var(--hide-2);border:1px solid var(--line);border-radius:4px;padding:20px 24px;
+    display:flex;flex-direction:column}
+  .card.now{border-color:var(--moss);box-shadow:inset 0 0 0 1px var(--moss)}
+  .head{display:flex;align-items:baseline;gap:12px}
+  .head .pid{font-family:var(--mono);font-size:19px;letter-spacing:.06em;color:var(--moss-deep)}
+  .head .pmonth{font-size:13px;color:var(--ink-2)}
+  .slip{margin-left:auto;font-size:11.5px;letter-spacing:.08em;padding:4px 9px;border-radius:2px;
+    border:1px solid var(--slip-line);background:var(--slip);color:var(--slip-ink)}
+  .slip.live{border-color:var(--stem);background:#E4EEE0;color:var(--moss-deep)}
+
+  .plot{margin:10px 0 8px;height:140px}
+  .plot .cap{font-size:11.5px;color:var(--ink-2);letter-spacing:.06em}
+
+  .facts{border-top:1px solid var(--line);margin-top:auto;padding-top:9px}
+  .fact{display:grid;grid-template-columns:1fr 84px 52px;align-items:baseline;padding:3px 0}
+  .fact .k{font-size:12.5px;color:var(--ink-2)}
+  .fact .v{font-family:var(--mono);font-size:15px;color:var(--ink);text-align:right}
+  .fact .v small{font-family:var(--serif);font-size:11.5px;color:var(--ink-2);margin-left:2px}
+  .fact .dl{font-family:var(--mono);font-size:11.5px;color:var(--moss-deep);text-align:right}
+  .fact .dl.flat{color:var(--ink-2)}
+  .fact .dl.dn{color:#9C5A1E}
+
+  .void{border:1px dashed var(--stem);border-radius:4px;
+    display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:6px;
+    padding:20px 24px}
+  .void .vh{display:flex;align-items:baseline;gap:12px}
+  .void .p{font-family:var(--mono);font-size:19px;letter-spacing:.06em;color:var(--moss-deep)}
+  .void .t{font-size:13px;color:var(--ink-2)}
+  .void .act{align-self:flex-start;font-size:13px;color:var(--moss-deep);border:1px solid var(--stem);
+    padding:8px 20px;border-radius:2px;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="band">
+  <span class="title">标本册</span>
+  <span class="meta">每两月压一期 · 已入册 5 期 · 202601 至今</span>
+  <span class="spacer"></span>
+  <span class="entry">陈列馆</span>
+  <span class="entry">主台账</span>
+  <span class="entry">问文衡</span>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <div class="head"><span class="pid">202601</span><span class="pmonth">1 月</span><span class="slip">已签发</span></div>
+    <div class="plot">
+      <div class="cap">顶尖论文 · 近五期</div>
+      <svg viewBox="0 0 349 140" width="100%" height="118">
+        <polyline points="14,120 94,84 175,106 255,62 335,28" fill="none" stroke="#C3CFB4" stroke-width="1.5"/>
+        <circle cx="94" cy="84" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="175" cy="106" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="255" cy="62" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="335" cy="28" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="14" cy="120" r="5" fill="#4A7C59"/>
+        <text x="14" y="107" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#35533D" text-anchor="middle">245</text>
+      </svg>
+    </div>
+    <div class="facts">
+      <div class="fact"><span class="k">进入前 1%</span><span class="v">13<small>个</small></span><span class="dl flat">首期</span></div>
+      <div class="fact"><span class="k">国际排名</span><span class="v">1111<small>位</small></span><span class="dl flat">首期</span></div>
+      <div class="fact"><span class="k">顶尖论文</span><span class="v">245<small>篇</small></span><span class="dl flat">首期</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="head"><span class="pid">202603</span><span class="pmonth">3 月</span><span class="slip">已签发</span></div>
+    <div class="plot">
+      <div class="cap">顶尖论文 · 近五期</div>
+      <svg viewBox="0 0 349 140" width="100%" height="118">
+        <polyline points="14,120 94,84 175,106 255,62 335,28" fill="none" stroke="#C3CFB4" stroke-width="1.5"/>
+        <circle cx="14" cy="120" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="175" cy="106" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="255" cy="62" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="335" cy="28" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="94" cy="84" r="5" fill="#4A7C59"/>
+        <text x="94" y="71" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#35533D" text-anchor="middle">263</text>
+      </svg>
+    </div>
+    <div class="facts">
+      <div class="fact"><span class="k">进入前 1%</span><span class="v">14<small>个</small></span><span class="dl">＋1</span></div>
+      <div class="fact"><span class="k">国际排名</span><span class="v">1083<small>位</small></span><span class="dl">进 28</span></div>
+      <div class="fact"><span class="k">顶尖论文</span><span class="v">263<small>篇</small></span><span class="dl">＋18</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="head"><span class="pid">202605</span><span class="pmonth">5 月</span><span class="slip">已签发</span></div>
+    <div class="plot">
+      <div class="cap">顶尖论文 · 近五期</div>
+      <svg viewBox="0 0 349 140" width="100%" height="118">
+        <polyline points="14,120 94,84 175,106 255,62 335,28" fill="none" stroke="#C3CFB4" stroke-width="1.5"/>
+        <circle cx="14" cy="120" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="94" cy="84" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="255" cy="62" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="335" cy="28" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="175" cy="106" r="5" fill="#4A7C59"/>
+        <text x="175" y="93" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#35533D" text-anchor="middle">252</text>
+      </svg>
+    </div>
+    <div class="facts">
+      <div class="fact"><span class="k">进入前 1%</span><span class="v">14<small>个</small></span><span class="dl flat">持平</span></div>
+      <div class="fact"><span class="k">国际排名</span><span class="v">1008<small>位</small></span><span class="dl">进 75</span></div>
+      <div class="fact"><span class="k">顶尖论文</span><span class="v">252<small>篇</small></span><span class="dl dn">−11</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="head"><span class="pid">202607</span><span class="pmonth">7 月</span><span class="slip">已签发</span></div>
+    <div class="plot">
+      <div class="cap">顶尖论文 · 近五期</div>
+      <svg viewBox="0 0 349 140" width="100%" height="118">
+        <polyline points="14,120 94,84 175,106 255,62 335,28" fill="none" stroke="#C3CFB4" stroke-width="1.5"/>
+        <circle cx="14" cy="120" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="94" cy="84" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="175" cy="106" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="335" cy="28" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="255" cy="62" r="5" fill="#4A7C59"/>
+        <text x="255" y="49" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#35533D" text-anchor="middle">274</text>
+      </svg>
+    </div>
+    <div class="facts">
+      <div class="fact"><span class="k">进入前 1%</span><span class="v">14<small>个</small></span><span class="dl flat">持平</span></div>
+      <div class="fact"><span class="k">国际排名</span><span class="v">995<small>位</small></span><span class="dl">进 13</span></div>
+      <div class="fact"><span class="k">顶尖论文</span><span class="v">274<small>篇</small></span><span class="dl">＋22</span></div>
+    </div>
+  </div>
+
+  <div class="card now">
+    <div class="head"><span class="pid">202609</span><span class="pmonth">9 月</span><span class="slip live">待签单</span></div>
+    <div class="plot">
+      <div class="cap">顶尖论文 · 近五期</div>
+      <svg viewBox="0 0 349 140" width="100%" height="118">
+        <polyline points="14,120 94,84 175,106 255,62 335,28" fill="none" stroke="#C3CFB4" stroke-width="1.5"/>
+        <circle cx="14" cy="120" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="94" cy="84" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="175" cy="106" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="255" cy="62" r="3" fill="#F7F3E8" stroke="#7A9A65" stroke-width="1.5"/>
+        <circle cx="335" cy="28" r="5.5" fill="#4A7C59"/>
+        <text x="335" y="15" font-family="ui-monospace,Menlo,monospace" font-size="12.5" fill="#35533D" text-anchor="middle">291</text>
+      </svg>
+    </div>
+    <div class="facts">
+      <div class="fact"><span class="k">进入前 1%</span><span class="v">14<small>个</small></span><span class="dl flat">持平</span></div>
+      <div class="fact"><span class="k">国际排名</span><span class="v">973<small>位</small></span><span class="dl">进 22</span></div>
+      <div class="fact"><span class="k">顶尖论文</span><span class="v">291<small>篇</small></span><span class="dl">＋17</span></div>
+    </div>
+  </div>
+
+  <div class="void">
+    <div class="vh"><span class="p">202611</span><span class="t">还没到取数的时候</span></div>
+    <svg viewBox="0 0 349 118" width="100%" height="118">
+      <polyline points="14,120 94,84 175,106 255,62 335,28" fill="none" stroke="#C9CFC0"
+        stroke-width="1.5" stroke-dasharray="5 5"/>
+      <circle cx="335" cy="28" r="3" fill="none" stroke="#C9CFC0" stroke-width="1.5"
+        stroke-dasharray="3 3"/>
+    </svg>
+    <div class="facts">
+      <div class="fact"><span class="k">下一次取数</span><span class="v">11<small>月</small></span><span class="dl flat">待定</span></div>
+    </div>
+    <span class="act">到点提醒我</span>
+  </div>
+</div>
+</body>
+</html>
