@@ -69,13 +69,24 @@ def test_开新一期操作员可用_未登录仍拦(tmp_path, monkeypatch):
 
 
 class Test路由:
+    """两条判据都是「这条 POST 到底注册上没有」，不绑具体实现文件。
+
+    2026-10-30 修：取数台路由 2026-10-25 从 `app.py` 迁到 `server/routes/acquisition.py`
+    （`@router.post`），且 FastAPI 0.141 起 `include_router` 只往 `app.routes` 里放一个
+    惰性的 `_IncludedRouter`，**不再把子路由摊平**——原来遍历 `app.routes` 找 `.path`
+    的写法会静默返回 None。改成看 OpenAPI（公开契约，跨版本稳）与 router 上的 APIRoute。
+    """
+
+    ROUTE = "/api/periods/{period}/acquisition/open"
+
     def test_open路由是POST_api(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.post("/api/periods/{period}/acquisition/open")' in src
+        from server.app import app
+        ops = app.openapi()["paths"].get(self.ROUTE) or {}
+        assert "post" in ops, f"OpenAPI 里没有 {self.ROUTE} 的 POST，只有 {sorted(ops)}"
 
     def test_open由本处理器接住(self):
-        from server.app import app
-        hit = next((r.endpoint.__name__ for r in app.routes
-                    if getattr(r, "path", "") == "/api/periods/{period}/acquisition/open"
+        from server.routes import acquisition as acq_routes
+        hit = next((r.endpoint.__name__ for r in acq_routes.router.routes
+                    if getattr(r, "path", "") == self.ROUTE
                     and "POST" in (getattr(r, "methods", None) or set())), None)
         assert hit == "api_acq_open"

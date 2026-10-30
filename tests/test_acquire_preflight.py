@@ -93,12 +93,20 @@ def test_认主_大小写不同也算_别的profile不算(monkeypatch):
 
 
 def test_专用浏览器在跑_得应答CDP且认主(monkeypatch):
-    monkeypatch.setattr(app_module, "_acq_cdp_responds", lambda: True)
-    monkeypatch.setattr(app_module.acquisition, "cdp_browser_ours", lambda: False)
+    """9222 认主：端口有应答 **且** 占用者是我们的 profile，两条都成立才算在跑。
+
+    2026-10-30 修：取数台路由 2026-10-25 迁到 `server/routes/acquisition.py`，
+    `_acq_cdp_alive` 的全局变量表也跟过去了。原来打 `app_module._acq_cdp_responds`
+    只是改了 re-export 的引用，被调用的仍是原函数——所以现在打**真正持有它**的模块。
+    """
+    from server import acquisition as acq_core
+    from server.routes import acquisition as acq_routes
+    monkeypatch.setattr(acq_routes, "_acq_cdp_responds", lambda: True)
+    monkeypatch.setattr(acq_core, "cdp_browser_ours", lambda: False)
     assert app_module._acq_cdp_alive() is False, "别人占 9222 不能算在跑"
-    monkeypatch.setattr(app_module.acquisition, "cdp_browser_ours", lambda: True)
+    monkeypatch.setattr(acq_core, "cdp_browser_ours", lambda: True)
     assert app_module._acq_cdp_alive() is True
-    monkeypatch.setattr(app_module, "_acq_cdp_responds", lambda: False)
+    monkeypatch.setattr(acq_routes, "_acq_cdp_responds", lambda: False)
     assert app_module._acq_cdp_alive() is False
 
 
