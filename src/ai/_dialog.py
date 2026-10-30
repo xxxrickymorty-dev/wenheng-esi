@@ -6,13 +6,19 @@
 缺就停 + 两条路（等发布 / 先做最新一期）、齐就给「去核对」。应答里出现的数字只有
 解析与盘点的回显，逐条登记为 `fact` 来源——对话不产生任何台账数字。
 
-**两意图（票 07，本能力只做路由）**：`kind ∈ {report, query, proceed, unclear}`——
+**两意图（票 07，本能力只做路由）**：`kind ∈ {report, query, proceed, unclear, compare}`——
 - `report`：写报告（认期次 → 盘点 → 核对 → 出稿），现有链路不动；
 - `query`：查数据——本能力**只判意图**，回答由服务器按意图调 `ai.run("qa", …)`
   （模型出口仍只有 `src/ai` 一处；这里不触网）；
 - `proceed`：没带期次的「核完了，继续/出稿」——推进动作；
 - `unclear`：认出了期次但没表态（「看看 9 月」「202607 怎么样」）——**不猜**，
   给两个明确出路（票 08 升级成单选卡）；都没中＝空（照旧反问期次）。
+- `compare`（阶段 2，2026-10-30）：他校简报——「对比昆明理工大学和海南大学最新一期
+  学科发展」。判据＝比较类字样 + 句中 ≥2 所校名 + 无指标词；命中即**直接调
+  `flexible.panel`** 出数字（`panel` 三态：一所查不到其余照常），**不经模型、不经 qa**。
+  形态选「规则命中直调」而不是「给内核加 panel 工具」：演示时不允许出现模型编数字的
+  可能，且离线（无 key）也要能答；内核只出 `{period,intent}` 两个槽，加数字工具就得
+  放宽 `parse_slots` 的零数字校验，等于拆掉唯一那条护栏。
 
 **模型只在兜底位**（2026-10-13 票 03，ADR-0008）：规则 parse 与全部既有分支原样优先；
 仅在「句内没有期次、有对话上文、规则未命中」的兜底点，若内核可用（qa 开关开 +
@@ -43,8 +49,10 @@
 from __future__ import annotations
 
 import datetime
+import os
 import pathlib
 import re
+import threading
 import time
 import unicodedata
 from dataclasses import dataclass, replace
@@ -54,12 +62,12 @@ from . import _runtime
 from ._draft import RuleDraft
 from ._numbered import NumberedText
 
-#: 四种解析结局：period（认出来了）/ publication_month（出稿月说法，拒收）/
+#: 五种解析结局：period（认出来了）/ publication_month（出稿月说法，拒收）/
 #: latest（「最新的」——落期次由 build 用 payload.periods 完成）/ no_period（没听出）。
 CASES = ("period", "publication_month", "latest", "no_period")
 
-#: 两意图路由（票 07）：一句话只归一类；认不准＝unclear（不猜，交给反问）。
-KINDS = ("report", "query", "proceed", "unclear")
+#: 意图路由（票 07 + 阶段 2）：一句话只归一类；认不准＝unclear（不猜，交给反问）。
+KINDS = ("report", "query", "proceed", "unclear", "compare")
 
 #: 一句里出现这些词 → 「继续/出稿」动作（核对回来后的推进；只在没带期次的句子上生效）。
 _PROCEED = re.compile(r"继续|核完|核过|核对完了|出稿|开跑|开生成|开始生成|开始出稿|跑一遍")
@@ -97,6 +105,24 @@ _REPORT_INTENT = re.compile(r"报告|出稿|生成|重出|再出|改做|做")
 _CN_DIGITS = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
               "六": 6, "七": 7, "八": 8, "九": 9}
 
+#: 他校简报（阶段 2）：窗口期数（含末期）。双月一年＝六期，与 `panel` 默认一致。
+PANEL_N = 6
+
+#: 比较类字样。与「≥2 所校名」「无指标词」三条同时成立才归 `compare`。
+_COMPARE = re.compile(r"对比|比较|比对|比一比|对照|各校|多校|他校|兄弟院校|横向")
+
+#: 指标词：出现就**不**归简报——那是单学科问数（qa）的口径，交给既有路由，不改旧行为。
+_METRIC = re.compile(r"接近度|被引|CNCI|阈值|顶尖|热点|发文|篇|排名|千分之一|1‰|前\s*1")
+
+#: 校名候选：中文名 2–10 字 + 大学/学院/学校。
+_SCHOOL = re.compile(r"[\u4e00-\u9fff]{2,10}?(?:大学|学院|学校)")
+
+#: 句首套话：摘掉后才是校名。多字词摘完仍 ≥4 字就摘；单字连接词只在摘完仍是
+#: 「≥2 字 + 大学/学院/学校」时摘——否则「同济大学」会被摘成「济大学」。
+_CUES_MULTI = ("对比", "比较", "比对", "对照", "比一比", "以及", "还有", "一下",
+               "分别", "各自", "看看", "帮我", "麻烦", "横向", "各校", "多校")
+_CUES_ONE = ("和", "与", "跟", "及", "看", "查", "问", "请", "那", "这")
+
 
 def parse_today(raw) -> datetime.date:
     """`payload.today` → date；缺省取真实今天；给了但不合法＝编程错误（抛）。"""
@@ -129,7 +155,9 @@ class Parse:
     month: int = 0
     intent: str = ""              # 「出报告」或空（意图槽）
     act: str = ""                 # 「proceed」或空（票 03：核完了/出稿——推进到出稿）
-    kind: str = ""                # 票 07 路由：report/query/proceed/unclear/空
+    kind: str = ""                # 票 07 路由：report/query/proceed/unclear/compare/空
+    #: 他校简报：句子里认出的校名（≥2 所才归 compare；不进 `as_data()`，不上响应面）。
+    schools: tuple = ()
 
     @property
     def label(self) -> str:
@@ -140,13 +168,51 @@ class Parse:
                 "intent": self.intent, "act": self.act, "kind": self.kind}
 
 
-def _kind_for(case: str, *, ask: bool, intent: str, hint: bool, act: str) -> str:
-    """路由（票 07，纯规则、确定性）：始终只有一个类别。
+def _trim_name(raw: str) -> str:
+    """候选串 → 校名：摘掉句首套话（「和海南大学」→「海南大学」）。
 
-    顺序即优先级：出稿月纠正（问句除外）→ 显式查（查/问）→ 推进 → 写报告 →
-    弱查（多少/接近度/进了没…）→ 认出了期次但没表态＝含糊（不猜、给反问）；
-    都没中＝空（照旧反问期次，不硬塞进四类）。
+    单字连接词只在摘完仍 ≥4 字时摘，`同济大学` 因此不会被摘成 `济大学`。
     """
+    name = raw
+    for _ in range(3):                       # 最多三层（「帮我对比昆明理工大学」）
+        before = name
+        for cue in _CUES_MULTI:
+            if name.startswith(cue) and len(name) - len(cue) >= 4:
+                name = name[len(cue):]
+        for cue in _CUES_ONE:
+            if name.startswith(cue) and len(name) - 1 >= 4:
+                name = name[1:]
+        if name == before:
+            break
+    return name
+
+
+def _compare_schools(norm: str) -> list[str]:
+    """句子里能认出的校名；**≥2 所**才算他校简报（认不出＝交给既有路由，不改旧行为）。
+
+    三条同时成立：比较类字样 + ≥2 所校名 + 无指标词。第三条是防抢：问
+    「昆工和云大的化学接近度」是单学科问数，仍走 qa 的老路。
+    """
+    if not _COMPARE.search(norm) or _METRIC.search(norm):
+        return []
+    names: list[str] = []
+    for m in _SCHOOL.finditer(norm):
+        name = _trim_name(m.group(0))
+        if name and name not in names:
+            names.append(name)
+    return names if len(names) >= 2 else []
+
+
+def _kind_for(case: str, *, ask: bool, intent: str, hint: bool, act: str,
+              compare: bool = False) -> str:
+    """路由（票 07 + 阶段 2，纯规则、确定性）：始终只有一个类别。
+
+    顺序即优先级：他校简报 → 出稿月纠正（问句除外）→ 显式查（查/问）→ 推进 →
+    写报告 → 弱查（多少/接近度/进了没…）→ 认出了期次但没表态＝含糊（不猜、给反问）；
+    都没中＝空（照旧反问期次，不硬塞进几类）。
+    """
+    if compare:
+        return "compare"
     if case == "publication_month":
         return "query" if ask else "report"
     if ask:
@@ -169,13 +235,19 @@ def parse(text, *, today: datetime.date | None = None) -> Parse:
     intent = "出报告" if _REPORT_INTENT.search(norm) else ""
     ask = bool(_ASK.search(norm))
     hint = bool(_QUERY_HINT.search(norm))
+    schools = tuple(_compare_schools(norm))
+    compare = bool(schools)
+
+    def route(case: str, **kw) -> str:
+        return _kind_for(case, ask=ask, intent=intent, hint=hint,
+                         compare=compare, **kw)
 
     m_period = _PERIOD.search(norm)
     if m_period:
         year, month = int(m_period.group(1)), int(m_period.group(2))
         return Parse("period", period=f"{year:04d}{month:02d}",
                      year=year, month=month, intent=intent,
-                     kind=_kind_for("period", ask=ask, intent=intent, hint=hint, act=""))
+                     kind=route("period", act=""), schools=schools)
 
     m_ym = _YEAR_MONTH.search(norm)
     m_cn = _MONTH_CN.search(norm)
@@ -190,21 +262,20 @@ def parse(text, *, today: datetime.date | None = None) -> Parse:
     if month and _PUBLICATION.search(norm):
         # 「9 月出稿 / 出稿月」＝把出稿月当期次——不支持，停下纠正（不换算）。
         return Parse("publication_month", year=year, month=month, intent=intent,
-                     kind=_kind_for("publication_month", ask=ask, intent=intent,
-                                    hint=hint, act=""))
+                     kind=route("publication_month", act=""), schools=schools)
     if month:
         return Parse("period", period=f"{year:04d}{month:02d}",
                      year=year, month=month, intent=intent,
-                     kind=_kind_for("period", ask=ask, intent=intent, hint=hint, act=""))
+                     kind=route("period", act=""), schools=schools)
     if _LATEST.search(norm):
         # 「最新的 / 最近一期」（2026-10-13 rick 截图实问）：不猜数字；落期次在
         # build()——用 payload.periods（服务端注入，降序）的最近有效期次。
         return Parse("latest", intent=intent,
-                     kind=_kind_for("latest", ask=ask, intent=intent, hint=hint, act=""))
+                     kind=route("latest", act=""), schools=schools)
     # 没带期次的「继续 / 出稿」＝推进动作（目标期次用槽位里的）；带期次的句子不算。
     act = "proceed" if _PROCEED.search(norm) else ""
     return Parse("no_period", intent=intent, act=act,
-                 kind=_kind_for("no_period", ask=ask, intent=intent, hint=hint, act=act))
+                 kind=route("no_period", act=act), schools=schools)
 
 
 def reply_for(p: Parse) -> str:
@@ -467,6 +538,201 @@ def _latest_from(payload) -> str:
     return periods[0] if periods else ""
 
 
+# ---------------------------------------------------------------- 他校简报（阶段 2）
+#: 预热只做一次（进程内）；失败不重试——它只影响首问快慢，不影响任何数字。
+_WARM = {"started": False}
+_WARM_LOCK = threading.Lock()
+
+
+def _warm_panel_cache() -> None:
+    """把 `panel()` 的读表缓存焐热（只读、不产数字、不改任何回答）。
+
+    走**公共 API**（`panel(["云南大学"])`）而不是 `panel._rows`：六期 × 二十二学科的
+    读表被 `lru_cache` 记住后，后面的对比问句从 20 多秒降到 1 秒内。云大是本项目
+    锚点校，拿它预热与「谁问」无关——缓存键是（期次, 学科），与校名无关。
+    """
+    try:
+        from flexible.panel import panel as _panel           # noqa: PLC0415
+    except Exception:                                        # noqa: BLE001
+        return
+    try:
+        _panel(["云南大学"], n=PANEL_N)
+    except Exception:                                        # noqa: BLE001
+        return
+
+
+def _warm_async() -> bool:
+    """后台预热（守护线程，进程内一次）。返回是否真的起了线程。
+
+    两个关断位：`WENHENG_PANEL_PREWARM=0`（运维）、pytest（用例会与预热线程抢同一份
+    `lru_cache`，同键重复计算，把断言拖成竞态）。**只在非 compare 轮触发**——否则
+    首问就是对比题时，预热会和 panel 自己抢同一批读表。
+    """
+    if os.environ.get("WENHENG_PANEL_PREWARM", "1") == "0":
+        return False
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return False
+    with _WARM_LOCK:
+        if _WARM["started"]:
+            return False
+        _WARM["started"] = True
+    threading.Thread(target=_warm_panel_cache, name="wenheng-panel-prewarm",
+                     daemon=True).start()
+    return True
+
+
+def _short(period: str) -> str:
+    """`202609` → `2026-09`（对话里比「2026年9月」省地方，且逐位可核）。"""
+    p = str(period)
+    return f"{p[:4]}-{p[4:6]}"
+
+
+def _panel_of(schools, period_end):
+    """调 `flexible.panel`（只读、零模型）。返回 `(panel, 中文错误)`。
+
+    延迟导入：openpyxl 不进 AI 层启动路径（与 `_real_scan` 同一姿势）。
+    面板自己三态不抛（absent/error 在校内表达），这里只兜**整批**失败
+    （期次不在数据目录、模块没装），照实回一句中文，不把异常甩给上层。
+    """
+    try:
+        from flexible.panel import panel as _panel           # noqa: PLC0415
+    except Exception as e:                                   # noqa: BLE001
+        return None, f"灵活产线模块没装上（{type(e).__name__}）"
+    try:
+        return _panel(list(schools), period_end=period_end or None, n=PANEL_N), ""
+    except Exception as e:                                   # noqa: BLE001
+        return None, str(e).strip() or type(e).__name__
+
+
+def _event_line(e: dict) -> str:
+    """事件 → 一行话。口径同 `flexible/brief.py::_event_text`（那边出产物件，这里不反向
+    依赖它的私有函数）：`overtake` 的 `school` 是**被追上的那方**，直接套 `text` 会读成
+    「昆明理工大学 6 期追平昆明理工」——主语宾语同一校。
+    """
+    if e.get("kind") == "overtake":
+        m = e.get("meta") or {}
+        verb = "追平" if m.get("gap") == 0 else "反超"
+        return f"被{m.get('with', '对手')}{verb}"
+    return str(e.get("text") or "")
+
+
+def _compare_reply(schools, period_end):
+    """他校简报 → `(lines, line_sources, data, ok)`。
+
+    **全文只由 `panel()` 的数字 + 固定句式拼出来**：这里不做任何算术
+    （「共同上榜 N 个」是 panel 的 `len(common)`），也没有模型参与——回答里的每个
+    数字都能在 `panel()` 的返回里逐字找到，也能回 ESI 学科表逐格核。
+
+    `lines` 与 `line_sources` 一一对应（同下标），交给 `_register_panel` 逐行登记
+    来源——这样「第 k 个数字 ↔ 来源」在长回答里仍按行对齐，而不是靠值猜。
+    """
+    from discipline_list import cn_of                        # noqa: PLC0415
+
+    _runtime.trace({"step": 1, "tool": "panel", "label": "他校取数",
+                    "summary": "正在读各期学科表", "ok": True, "refused": False, "ms": 0})
+    p, err = _panel_of(schools, period_end)
+    if p is None:
+        lines = [f"这次没取到数：{err}",
+                 "没有改动任何数据。换个期次，或核对一下校名在 ESI 里的写法再问一次。"]
+        srcs = [{"pointer": "panel/error", "label": "取数失败"}] * len(lines)
+        return lines, srcs, {"error": err}, False
+
+    end = p["period_end"]
+    periods = p["periods"]
+    discs = p["disciplines"]
+    span = f"{_short(periods[0])}–{_short(periods[-1])}"
+    lines: list[str] = []
+    srcs: list[dict] = []
+
+    def add(text, pointer, label):
+        lines.append(text)
+        srcs.append({"pointer": pointer, "label": label})
+
+    add(f"按 {_short(end)} 那期对比（窗口 {span}，{len(periods)} 期，{len(discs)} 个学科）：",
+        f"panel/{end}/window", "期次窗口与学科口径")
+    add("", f"panel/{end}/window", "期次窗口与学科口径")
+    add("各期上榜学科数（期次由左到右）：", f"panel/{end}/periods", "期次序列")
+    add("期次　" + " · ".join(_short(x) for x in periods),
+        f"panel/{end}/periods", "期次序列")
+    for s in p["schools"]:
+        if s["status"] != "ok":
+            continue                                 # 查不到的学校不画计数行（None≠0）
+        cells = " · ".join("—" if v is None else str(v) for v in s["counts"])
+        add(f"{s['cn']}　{cells}", f"panel/{end}/schools/{s['cn']}/counts",
+            f"{s['cn']} 各期上榜学科数")
+
+    ok = [s for s in p["schools"] if s["status"] == "ok"]
+    add("", f"panel/{end}/common", "末期满血交集")
+    if len(ok) >= 2 and p["common"]:
+        add(f"共同上榜 {len(p['common'])} 个学科：" + "、".join(cn_of(x) for x in p["common"]) + "。",
+            f"panel/{end}/common", "末期满血交集")
+        add("共同之外另有（本校末期满血 − 共同交集，不是全校独有）：",
+            f"panel/{end}/only", "各校另有")
+        for cn, stems in p["only"].items():
+            got = "、".join(cn_of(x) for x in stems) if stems else "—"
+            add(f"· {cn}：{got}", f"panel/{end}/only/{cn}", f"{cn} 共同之外另有")
+    elif len(ok) >= 2:
+        add(f"{_short(end)} 这期没有共同上榜的学科。", f"panel/{end}/common", "末期满血交集")
+    elif ok:
+        add(f"只纳入了 {len(ok)} 所学校——共同/差异要两所以上才算。",
+            f"panel/{end}/schools", "纳入的学校")
+
+    add("", f"panel/{end}/events", "值得标注的变化")
+    events = list(p["events"])
+    if events:
+        add("值得标注的变化：", f"panel/{end}/events", "值得标注的变化")
+        for e in events[:10]:
+            add(f"· {e['school']} · {_short(e['period'])}：{_event_line(e)}",
+                f"panel/{end}/events/{e['school']}/{e['period']}", "值得标注的变化")
+        if len(events) > 10:
+            add("· ……（其余未列，可在简报里看全）", f"panel/{end}/events", "值得标注的变化")
+    else:
+        why = str((getattr(p["events"], "meta", None) or {}).get("error") or "")
+        add("这一窗没有值得标注的变化。" + (f"（{why}）" if why else ""),
+            f"panel/{end}/events", "值得标注的变化")
+
+    if p["missing"]:
+        add("", f"panel/{end}/missing", "缺数据的期次")
+        add("下列期次没有学科表，表里记「—」，没有拿别的期次顶替："
+            + "、".join(_short(x) for x in p["missing"]),
+            f"panel/{end}/missing", "缺数据的期次")
+
+    bad = [s for s in p["schools"] if s["status"] != "ok"]
+    if bad:
+        add("", f"panel/{end}/schools", "未能纳入的学校")
+        for s in bad:
+            what = "整校未在 ESI 中出现" if s["status"] == "absent" else "校名对不上"
+            add(f"未能纳入：{s['query']}（{what}）——{s['note']}",
+                f"panel/{end}/schools/{s['query']}/note", f"{s['query']} 未能纳入的原因")
+
+    add("", f"panel/{end}/source", "数据源")
+    add(f"数据源：{p['source']['dataset']}（{len(discs)} 个学科表，只读）。"
+        f"上榜＝该校出现在该学科的 ESI 机构表；每个数字都能回原表逐格核对。",
+        f"panel/{end}/source", "数据源")
+
+    data = {"period_end": end, "periods": periods,
+            "schools": [{"query": s["query"], "cn": s["cn"], "status": s["status"],
+                         "counts": s["counts"]} for s in p["schools"]],
+            "common": list(p["common"]), "only": dict(p["only"]),
+            "events": [f"{e['school']} · {_short(e['period'])}：{_event_line(e)}"
+                       for e in events],
+            "missing": list(p["missing"]), "source": dict(p["source"])}
+    return lines, srcs, data, True
+
+
+def _register_panel(srcs):
+    """逐行来源登记器（`NumberedText.of` 的 register）：第 ti 行的数字归该行来源。"""
+    def register(ti, pos, value):                                  # noqa: ARG001
+        info = srcs[ti] if 0 <= ti < len(srcs) else None
+        if info is None:
+            return {"kind": "fact", "pointer": "panel/unknown", "label": "他校简报",
+                    "detail": "", "fact": True}
+        return {"kind": "fact", "pointer": info["pointer"], "label": info["label"],
+                "detail": "", "fact": True}
+
+    return register
+
+
 # ---------------------------------------------------------------- 构建器
 def build(root, period, payload):                                  # noqa: ARG001
     """构建器入口：一句话 → RuleDraft（应答 + 来源 + 槽位/盘点数据 + 记账期次）。
@@ -476,6 +742,8 @@ def build(root, period, payload):                                  # noqa: ARG00
     - **报告/推进意图没带期次 → 沿用槽位期次**（2026-10-11 rick 实问：说过「9 月的报告」
       再问「怎么不做」被反问期次——这不是猜，是接着聊）；短应诺（「对啊」）同此。
     - **「最新的」→ `payload.periods[0]`**（最近有效期次；2026-10-13 票 10，不猜数字）。
+    - **他校简报（阶段 2）**：比较类问句 → 直接调 `flexible.panel` 出六期计数/共同差异/
+      关键变化，逐行登记来源；期次缺了按台账最近一期，模型不参与（也不问内核）。
     - **指代兜底（票 03）**：句内没有期次、有对话上文、规则未命中 → 内核可用时问
       `_dialog_kernel`（只补 {period,intent} 槽位，零数字）；内核失败/坏输出/离线 →
       一切按原规则（含「查最新的」候选）。规则命中路径与内核缺席时逐字不变。
@@ -501,10 +769,12 @@ def build(root, period, payload):                                  # noqa: ARG00
     # 槽位（零数字、坏输出即拒）。内核不可用（无 key / demo / qa 关）＝零外发、不触发；
     # 内核失败/超时/坏输出 → 不改任何东西，一切按原规则（含「查最新的」候选）。
     # 短应诺（「对啊」）是规则确定性命中（槽位带过轮），不问内核。
+    # 他校简报（compare）**不问内核**：它的期次缺了按台账最近一期出，模型不必碰这一轮。
     kernel_record = None
     kernel_filled = False
     kernel_receipts: tuple = ()
-    if p.case == "no_period" and history and not _AFFIRM.fullmatch(text.strip()):
+    if (p.case == "no_period" and history and kind != "compare"
+            and not _AFFIRM.fullmatch(text.strip())):
         kr = _dialog_kernel.assist(
             text, history=history, periods=_periods_from(payload), slot=slot,
             tools={"scan_inventory": _scan_inventory,
@@ -539,7 +809,15 @@ def build(root, period, payload):                                  # noqa: ARG00
         kind = "unclear"
 
     run = None
-    rcpts: list = []                     # 规则轮回执（receipts-lite：只登记下面真调用的两工具）
+    actions: list = []
+    rcpts: list = []                     # 规则轮回执（receipts-lite：只登记下面真调用的工具）
+    lines: list | None = None            # 他校简报按行出（逐行登记来源）；其余仍是单段
+    register = None
+    compare_data = None
+    if kind != "compare":
+        # 冷启动 20 多秒不能让人干等（阶段 2）：在这一轮就把 panel 的读表缓存焐热，
+        # 后台线程、进程内一次；对比轮自己不预热（免得与 panel 抢同一批读表）。
+        _warm_async()
     if kind == "query":
         # 查数据（票 07）：不盘点、不出稿；正文本地只在「没期次」时出声，
         # 有期次时的回答由服务器调 qa 能力给出（本能力只做路由）。
@@ -550,6 +828,21 @@ def build(root, period, payload):                                  # noqa: ARG00
         verdict, inv = "", None
     elif kind == "unclear":
         reply, actions = _unclear_reply(p.period or period)
+        verdict, inv = "", None
+    elif kind == "compare":
+        # 他校简报（阶段 2）：期次优先句子里的，其次会话槽位，再次台账最近一期；
+        # 都没有就交给 panel 自己取数据目录最新一期（它会在回答里写明是哪一期）。
+        target = p.period or slot or latest
+        tc0 = time.perf_counter()
+        lines, srcs, compare_data, cmp_ok = _compare_reply(p.schools, target)
+        reply = "\n".join(lines)
+        register = _register_panel(srcs)
+        rcpts.append(_dialog_kernel.tool_receipt(
+            "panel", "他校取数",
+            {"schools": list(p.schools), "period": target},
+            (f"他校简报 · {compare_data.get('period_end') or target or '—'}"
+             f"（{len(p.schools)} 所）") if cmp_ok else "这一轮没取到数",
+            ok=cmp_ok, t0=tc0))
         verdict, inv = "", None
     elif kind == "proceed":
         # 内核补槽轮：目标期次用补出来的（规则轮原样用槽位，逐字不变）。
@@ -607,11 +900,16 @@ def build(root, period, payload):                                  # noqa: ARG00
                     reply, verdict, actions = reply_for(p), "", []
             else:
                 reply, verdict, actions = _compose(p, inv)
-    number = NumberedText.of([reply], _register(p, inv, latest=latest))
+    if lines is None:
+        lines = [reply]
+        register = _register(p, inv, latest=latest)
+    number = NumberedText.of(lines, register)
     data = {**p.as_data(), "verdict": verdict, "actions": actions,
             "inventory": inv, "run": run}
-    if kind in ("query", "unclear"):
-        data["intent"] = ""            # 查数据/含糊轮不动意图槽
+    if kind in ("query", "unclear", "compare"):
+        data["intent"] = ""            # 查数据/含糊/简报轮不动意图槽
+    if compare_data is not None:
+        data["compare"] = compare_data
     if kernel_record is not None:
         # 内核轮记录面（票 03）：核心据此把该轮 ai_calls 的 mode/backend/fallback/
         # egress/elapsed 记成 model|fallback 如实；不进 as_dict()（Answer 字段面冻结）。
@@ -619,11 +917,11 @@ def build(root, period, payload):                                  # noqa: ARG00
     return RuleDraft(
         rule_text=reply,
         number=number,
-        rule_protected=number.texts[0],
+        rule_protected=number.protected,
         parts=(),
         task="",                       # modeled=False：task 不参与模型轮
         evidence=(),
         data=data,
-        record_period=p.period,
+        record_period=(compare_data or {}).get("period_end") or p.period,
         receipts=kernel_receipts + tuple(rcpts),   # 内核轮在前、规则轮在后（receipts-lite）
     )
