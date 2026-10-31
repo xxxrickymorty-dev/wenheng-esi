@@ -72,7 +72,8 @@ def export(cn: str, period: str, cache: dict, insight: dict | None = None) -> pa
     ins = d.get("insight")
     if ins and (ins.get("text") or "").strip():
         doc.add_heading("六、解读", level=1)
-        doc.add_paragraph(ins["text"])
+        for pp in [x for x in ins["text"].split("\n\n") if x.strip()]:
+            doc.add_paragraph(pp)
         _small(doc, mr.insight_how(ins.get("mode")) + "。")
     _small(doc, "派生算法：" + " · ".join(d["algorithms"]) + "。")
     _small(doc, d["footer"]["source"])

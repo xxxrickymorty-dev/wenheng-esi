@@ -75,6 +75,17 @@ def facts_of(cns: list[str], cache: dict) -> list[str]:
     if n_pm:
         out.append(f"进入过全球前 1‰ 的有 {n_pm} 校"
                    + ("：" + "、".join(r["cn"] for r in rows if r["n_pm"]) if n_pm <= 6 else ""))
+    try:
+        import monitor.trend as mtrend                      # noqa: PLC0415
+        for r in rows:
+            tt = mtrend.combine(r["en"])
+            pts = tt.get("points") or []
+            if len(pts) >= 2 and pts[0].get("total_cites") and pts[-1].get("total_cites"):
+                growth = pts[-1]["total_cites"] / pts[0]["total_cites"]
+                out.append(f"{r['cn']} 总被引自 {pts[0]['period']} 的 {pts[0]['total_cites']:,.0f} "
+                           f"增至 {pts[-1]['period']} 的 {pts[-1]['total_cites']:,.0f}（约 {growth:.1f} 倍）")
+    except Exception:                                       # noqa: BLE001
+        pass
     return out
 
 
@@ -252,8 +263,8 @@ def generate(cns: list[str], period: str | None = None) -> pathlib.Path:
         facts = facts_of(seen, cache)
         if facts:
             safe = "；".join(facts) + "。各表数字即原始值，未做换算。"
-            topic = (f"为 {len(seen)} 所高校的 {period} 期 ESI 学科对比报告写一段总体解读："
-                     "150 字以内、不分点、不写建议，只概括校间格局与分学科强弱；"
+            topic = (f"为 {len(seen)} 所高校的 {period} 期 ESI 学科对比报告写一篇 500 字以上的总体解读，"
+                     "分 2-3 个自然段；只概括校间格局与分学科强弱，不写建议；"
                      "数字只准用事实摘要里出现过的。")
             ins = mi.compose_text(topic, facts, safe, label="monitor/insight_compare",
                                   veto=lambda t: mi.number_guard(t, [topic, *facts]))

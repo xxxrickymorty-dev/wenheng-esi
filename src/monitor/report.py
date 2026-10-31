@@ -562,11 +562,12 @@ def _insight_section(insight: dict | None, num: str = "六") -> str:
     if not insight or not (insight.get("text") or "").strip():
         return ""
     how = insight_how(insight.get("mode"))
-    body = _e(insight["text"]).replace("；", "；\n")
+    paras = [x for x in (_e(pp) for pp in insight["text"].split("\n\n")) if x.strip()]
+    body = "".join('<p style="margin-top:10px;max-width:70ch;color:var(--ink-2)">' + pp + "</p>" for pp in paras)
     return f"""
 <section>
 <h2><span class="num">{num}</span>解读</h2>
-<p style="margin-top:14px;max-width:70ch;color:var(--ink-2)">{body}</p>
+{body}
 <p class="note">{_e(how)}。</p>
 </section>"""
 
