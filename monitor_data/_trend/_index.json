@@ -1,0 +1,221 @@
+{
+ "built_at": "2026-10-31T13:32:48",
+ "periods": {
+  "201903": {
+   "status": "bad",
+   "reason": "机构总表等价物缺失（候选名全未命中）",
+   "n_files": 44
+  },
+  "201905": {
+   "status": "ok",
+   "n_files": 29,
+   "notes": "无阈值表：thr1 整期省略；Biology & Biochemistry: 全球机构-生物与生物化学.xlsx: 保排名子集；Chemistry: 全球机构-化学.xlsx: 保排名子集；Economics & Business: 全球机构-经济与商业.xlsx: 保排名子集；Engineering: 全球机构-工程.xlsx: 保排名子集；Environment Ecology: 全球机构-环境与生态.xlsx: 保排名子集；Geosciences: 全球机构-地球科学.xlsx: 保排名子集；Materials Science: 全球机构-材料科学.xlsx: 保排名子集；Mathematics: 全球机构-数学.xlsx: 保排名子集；Microbiology: 全球机构-微生物.xlsx: 保排名子集；Physics: 全球机构-物理.xlsx: 保排名子集；Plant & Animal Science: 全球机构-植物与动物学.xlsx: 保排名子集；保排名子集榜 11 张（m/line=None，名次为真实全局值）"
+  },
+  "201907": {
+   "status": "ok",
+   "n_files": 31,
+   "notes": "Agricultural Sciences: 全球机构-农业科学.xlsx: 保排名子集；Biology & Biochemistry: 全球机构-生物与生物化学.xlsx: 保排名子集；Chemistry: 全球机构-化学.xlsx: 保排名子集；Clinical Medicine: 全球机构-临床医学.xlsx: 保排名子集；Computer Science: 全球机构-计算机科学.xlsx: 保排名子集；Economics & Business: 全球机构-经济商业.xlsx: 保排名子集；Engineering: 全球机构-工程.xlsx: 保排名子集；Environment Ecology: 全球机构-环境生态.xlsx: 保排名子集；Geosciences: 全球机构-地球科学.xlsx: 保排名子集；Immunology: 全球机构-免疫学.xlsx: 保排名子集；Materials Science: 全球机构-材料科学.xlsx: 保排名子集；Microbiology: 全球机构-微生物.xlsx: 保排名子集；Molecular Biology & Genetics: 全球机构-分子生物与基因.xlsx: 保排名子集；Neuroscience & Behavior: 全球机构-神经科学与行为.xlsx: 保排名子集；Pharmacology & Toxicology: 全球机构-药学与毒理学.xlsx: 保排名子集；Physics: 全球机构-物理.xlsx: 保排名子集；Plant & Animal Science: 全球机构-植物与动物科学.xlsx: 保排名子集；Psychiatry Psychology: 全球机构-生理学与心理学.xlsx: 保排名子集；Social Sciences, General: 全球机构-社会科学.xlsx: 保排名子集；保排名子集榜 19 张（m/line=None，名次为真实全局值）"
+  },
+  "201909": {
+   "status": "bad",
+   "reason": "机构总表等价物缺失（候选名全未命中）",
+   "n_files": 0
+  },
+  "201911": {
+   "status": "ok",
+   "n_files": 34,
+   "notes": "Plant & Animal Science: Plant & Animal Science.xlsx: 手工摘录榜，只取全局排名（m/line=None）；保排名子集榜 1 张（m/line=None，名次为真实全局值）"
+  },
+  "202001": {
+   "status": "ok",
+   "n_files": 26,
+   "notes": "无阈值表：thr1 整期省略；Plant & Animal Science: Plant & Animal Science.xlsx: 手工摘录榜，只取全局排名（m/line=None）；保排名子集榜 1 张（m/line=None，名次为真实全局值）"
+  },
+  "202003": {
+   "status": "ok",
+   "n_files": 26,
+   "notes": "无阈值表：thr1 整期省略；Biology & Biochemistry: Biology & Biochemistry.xlsx: 保排名子集；Engineering: Engineering.xlsx: 保排名子集；Environment Ecology: Environment Ecology.xlsx: 保排名子集；Materials Science: Materials Science.xlsx: 保排名子集；Mathematics: Mathematics.xlsx: 保排名子集；Microbiology: Microbiology.xlsx: 保排名子集；Plant & Animal Science: Plant & Animal Science.xlsx: 手工摘录榜，只取全局排名（m/line=None）；保排名子集榜 7 张（m/line=None，名次为真实全局值）"
+  },
+  "202005": {
+   "status": "ok",
+   "n_files": 28,
+   "notes": "无阈值表：thr1 整期省略；Plant & Animal Science: Plant & Animal Science.xlsx: 手工摘录榜，只取全局排名（m/line=None）；保排名子集榜 1 张（m/line=None，名次为真实全局值）"
+  },
+  "202007": {
+   "status": "ok",
+   "n_files": 28,
+   "notes": "无阈值表：thr1 整期省略；全球机构.xlsx: 排名残表，n_inst=None；Agricultural Sciences: Agricultural Sciences.xlsx: 保排名子集；Biology & Biochemistry: Biology & Biochemistry.xlsx: 保排名子集；Chemistry: Chemistry.xlsx: 保排名子集；Clinical Medicine: Clinical Medicine.xlsx: 保排名子集；Computer Science: Computer Science.xlsx: 保排名子集；Environment Ecology: Environment Ecology.xlsx: 保排名子集；Geosciences: Geosciences.xlsx: 保排名子集；Mathematics: Mathematics.xlsx: 保排名子集；Microbiology: Microbiology.xlsx: 保排名子集；Multidisciplinary: Multidisciplinary.xlsx: 手工摘录榜，只取全局排名（m/line=None）；Pharmacology & Toxicology: Pharmacology & Toxicology.xlsx: 保排名子集；Plant & Animal Science: Plant & Animal Science.xlsx: 手工摘录榜，只取全局排名（m/line=None）；Psychiatry Psychology: Psychiatry Psychology.xlsx: 手工摘录榜，只取全局排名（m/line=None）；Social Sciences, General: Social Sciences, General.xlsx: 保排名子集；Space Science: 不可解析（Space Science.xlsx: 无 Institutions 表头行且首行不像数据行（版式不识别））；保排名子集榜 14 张（m/line=None，名次为真实全局值）；机构表为子集/残表：n_inst=None、points 缺或仅总排名"
+  },
+  "202009": {
+   "status": "ok",
+   "n_files": 30,
+   "notes": "世界机构排名.xlsx: 排名残表，n_inst=None；Chemistry: Chemistry.xlsx: 保排名子集；Plant & Animal Science: Plant & Animal Science.xlsx: 保排名子集；保排名子集榜 2 张（m/line=None，名次为真实全局值）；机构表为子集/残表：n_inst=None、points 缺或仅总排名"
+  },
+  "202011": {
+   "status": "ok",
+   "n_files": 32,
+   "notes": "Agricultural Sciences: Agricultural Sciences.xlsx: 保排名子集；Biology & Biochemistry: Biology & Biochemistry.xlsx: 保排名子集；Chemistry: 不可解析（Chemistry.xlsx: 无数据行）；Clinical Medicine: Clinical Medicine.xlsx: 保排名子集；Computer Science: Computer Science.xlsx: 保排名子集；Economics & Business: Economics & Business.xlsx: 保排名子集；Engineering: Engineering.xlsx: 保排名子集；Environment Ecology: Environment Ecology.xlsx: 保排名子集；Geosciences: Geosciences.xlsx: 保排名子集；Immunology: Immunology.xlsx: 保排名子集；Materials Science: Materials Science.xlsx: 保排名子集；Mathematics: Mathematics.xlsx: 保排名子集；Microbiology: Microbiology.xlsx: 保排名子集；Molecular Biology & Genetics: Molecular Biology & Genetics.xlsx: 保排名子集；Multidisciplinary: Multidisciplinary.xlsx: 保排名子集；Neuroscience & Behavior: Neuroscience & Behavior.xlsx: 保排名子集；Pharmacology & Toxicology: Pharmacology & Toxicology.xlsx: 保排名子集；Physics: Physics.xlsx: 保排名子集；Plant & Animal Science: Plant & Animal Science.xlsx: 保排名子集；Psychiatry Psychology: Psychiatry Psychology.xlsx: 保排名子集；Social Sciences, General: Social Sciences, General.xlsx: 保排名子集；Space Science: Space Science.xlsx: 保排名子集；保排名子集榜 21 张（m/line=None，名次为真实全局值）"
+  },
+  "202101": {
+   "status": "ok",
+   "n_files": 34,
+   "notes": "Chemistry: Chemistry.xlsx: 保排名子集；Geosciences: Geosciences.xlsx: 保排名子集；Materials Science: Materials Science.xlsx: 保排名子集；保排名子集榜 3 张（m/line=None，名次为真实全局值）"
+  },
+  "202103": {
+   "status": "ok",
+   "n_files": 38,
+   "notes": "Chemistry: Chemistry.xlsx: 保排名子集；Plant & Animal Science: Plant & Animal Science.xlsx: 保排名子集；保排名子集榜 2 张（m/line=None，名次为真实全局值）"
+  },
+  "202105": {
+   "status": "ok",
+   "n_files": 34,
+   "notes": "Agricultural Sciences: Agricultural Sciences.xlsx: 保排名子集；Chemistry: Chemistry.xlsx: 保排名子集；Clinical Medicine: Clinical Medicine.xlsx: 保排名子集；Computer Science: Computer Science.xlsx: 保排名子集；Economics & Business: Economics & Business.xlsx: 保排名子集；Engineering: Engineering.xlsx: 保排名子集；Environment Ecology: Environment Ecology.xlsx: 保排名子集；Materials Science: Materials Science.xlsx: 保排名子集；Microbiology: Microbiology.xlsx: 保排名子集；Molecular Biology & Genetics: Molecular Biology & Genetics.xlsx: 保排名子集；Multidisciplinary: Multidisciplinary.xlsx: 保排名子集；Plant & Animal Science: Plant & Animal Science.xlsx: 保排名子集；保排名子集榜 12 张（m/line=None，名次为真实全局值）"
+  },
+  "202107": {
+   "status": "ok",
+   "n_files": 34,
+   "notes": "全球机构.xlsx: 保排名子集，n_inst=None；机构表为子集/残表：n_inst=None、points 缺或仅总排名"
+  },
+  "202109": {
+   "status": "ok",
+   "n_files": 36,
+   "notes": "全球机构排名.xlsx: 保排名子集，n_inst=None；Biology & Biochemistry: Biology & Biochemistry.xlsx: 保排名子集；Computer Science: Computer Science.xlsx: 保排名子集；保排名子集榜 2 张（m/line=None，名次为真实全局值）；机构表为子集/残表：n_inst=None、points 缺或仅总排名"
+  },
+  "202111": {
+   "status": "ok",
+   "n_files": 34
+  },
+  "202201": {
+   "status": "ok",
+   "n_files": 34
+  },
+  "202203": {
+   "status": "ok",
+   "n_files": 34,
+   "notes": "全球机构.xlsx: 保排名子集，n_inst=None；Biology & Biochemistry: Biology & Biochemistry.xlsx: 保排名子集；Chemistry: Chemistry.xlsx: 保排名子集；Engineering: Engineering.xlsx: 保排名子集；Environment Ecology: Environment Ecology.xlsx: 保排名子集；Geosciences: Geosciences.xlsx: 保排名子集；Materials Science: Materials Science.xlsx: 保排名子集；Mathematics: Mathematics.xlsx: 保排名子集；Microbiology: Microbiology.xlsx: 保排名子集；Plant & Animal Science: Plant & Animal Science.xlsx: 保排名子集；保排名子集榜 9 张（m/line=None，名次为真实全局值）；机构表为子集/残表：n_inst=None、points 缺或仅总排名"
+  },
+  "202205": {
+   "status": "ok",
+   "n_files": 32,
+   "notes": "无阈值表：thr1 整期省略"
+  },
+  "202207": {
+   "status": "ok",
+   "n_files": 34,
+   "notes": "Institutions.xlsx: 保排名子集，n_inst=None；机构表为子集/残表：n_inst=None、points 缺或仅总排名"
+  },
+  "202209": {
+   "status": "ok",
+   "n_files": 34,
+   "notes": "Agricultural Sciences: Agricultural Sciences.xlsx: 保排名子集；Biology & Biochemistry: Biology & Biochemistry.xlsx: 保排名子集；Chemistry: Chemistry.xlsx: 保排名子集；Clinical Medicine: Clinical Medicine.xlsx: 保排名子集；Computer Science: Computer Science.xlsx: 保排名子集；Economics & Business: Economics & Business.xlsx: 保排名子集；Engineering: Engineering.xlsx: 保排名子集；Environment Ecology: Environment Ecology.xlsx: 保排名子集；Geosciences: Geosciences.xlsx: 保排名子集；Immunology: Immunology.xlsx: 保排名子集；保排名子集榜 10 张（m/line=None，名次为真实全局值）"
+  },
+  "202211": {
+   "status": "ok",
+   "n_files": 33,
+   "notes": "Agricultural Sciences: Agricultural Sciences.xlsx: 保排名子集；Biology & Biochemistry: Biology & Biochemistry.xlsx: 保排名子集；Chemistry: Chemistry.xlsx: 保排名子集；Clinical Medicine: Clinical Medicine.xlsx: 保排名子集；Computer Science: Computer Science.xlsx: 保排名子集；Economics & Business: Economics & Business.xlsx: 保排名子集；Engineering: Engineering.xlsx: 保排名子集；Environment Ecology: Environment Ecology.xlsx: 保排名子集；Geosciences: Geosciences.xlsx: 保排名子集；Immunology: Immunology.xlsx: 保排名子集；Materials Science: Materials Science.xlsx: 保排名子集；Mathematics: Mathematics.xlsx: 保排名子集；Microbiology: Microbiology.xlsx: 保排名子集；Molecular Biology & Genetics: Molecular Biology & Genetics.xlsx: 保排名子集；Neuroscience & Behavior: Neuroscience & Behavior.xlsx: 保排名子集；Pharmacology & Toxicology: Pharmacology & Toxicology.xlsx: 保排名子集；Physics: Physics.xlsx: 保排名子集；Plant & Animal Science: Plant & Animal Science.xlsx: 保排名子集；Psychiatry Psychology: Psychiatry Psychology.xlsx: 保排名子集；Social Sciences, General: Social Sciences, General.xlsx: 保排名子集；保排名子集榜 20 张（m/line=None，名次为真实全局值）"
+  },
+  "202301": {
+   "status": "ok",
+   "n_files": 35,
+   "notes": "Agricultural Sciences: Agricultural Sciences.xlsx: 保排名子集；Biology & Biochemistry: Biology & Biochemistry.xlsx: 保排名子集；Chemistry: Chemistry.xlsx: 保排名子集；Clinical Medicine: Clinical Medicine.xlsx: 保排名子集；Computer Science: Computer Science.xlsx: 保排名子集；Economics & Business: Economics & Business.xlsx: 保排名子集；Engineering: Engineering.xlsx: 保排名子集；Environment Ecology: Environment Ecology.xlsx: 保排名子集；Geosciences: Geosciences.xlsx: 保排名子集；Immunology: Immunology.xlsx: 保排名子集；Materials Science: Materials Science.xlsx: 保排名子集；Mathematics: Mathematics.xlsx: 保排名子集；Microbiology: Microbiology.xlsx: 保排名子集；Molecular Biology & Genetics: Molecular Biology & Genetics.xlsx: 保排名子集；Neuroscience & Behavior: Neuroscience & Behavior.xlsx: 保排名子集；Pharmacology & Toxicology: Pharmacology & Toxicology.xlsx: 保排名子集；Physics: Physics.xlsx: 保排名子集；Plant & Animal Science: Plant & Animal Science.xlsx: 保排名子集；Psychiatry Psychology: Psychiatry Psychology.xlsx: 保排名子集；Social Sciences, General: Social Sciences, General.xlsx: 保排名子集；保排名子集榜 20 张（m/line=None，名次为真实全局值）"
+  },
+  "202303": {
+   "status": "bad",
+   "reason": "22 张学科榜与 institutions.xlsx 为 202603 期内容的拷贝（CAS 化学行 118832/3668874 与 m=2275 逐字一致；m 序列上 202303 较 202301/202305 邻域 +30% 级跳变而 202603 平滑）——证据见 tests::test_202303_is_202603_copy",
+   "n_files": 42
+  },
+  "202305": {
+   "status": "ok",
+   "n_files": 35
+  },
+  "202307": {
+   "status": "ok",
+   "n_files": 33
+  },
+  "202309": {
+   "status": "ok",
+   "n_files": 35,
+   "notes": "Chemistry: Chemistry.xlsx: 保排名子集；保排名子集榜 1 张（m/line=None，名次为真实全局值）"
+  },
+  "202311": {
+   "status": "ok",
+   "n_files": 34,
+   "notes": "Plant & Animal Science: Plant & Animal Science.xlsx: 保排名子集；保排名子集榜 1 张（m/line=None，名次为真实全局值）"
+  },
+  "202401": {
+   "status": "ok",
+   "n_files": 34
+  },
+  "202403": {
+   "status": "ok",
+   "n_files": 34
+  },
+  "202405": {
+   "status": "ok",
+   "n_files": 32,
+   "notes": "Agricultural Sciences: Agricultural Sciences.xlsx: 保排名子集；Biology & Biochemistry: Biology & Biochemistry.xlsx: 保排名子集；Chemistry: Chemistry.xlsx: 保排名子集；Clinical Medicine: Clinical Medicine.xlsx: 保排名子集；Computer Science: Computer Science.xlsx: 保排名子集；Economics & Business: Economics & Business.xlsx: 保排名子集；Engineering: Engineering.xlsx: 保排名子集；Environment Ecology: Environment Ecology.xlsx: 保排名子集；Geosciences: Geosciences.xlsx: 保排名子集；Immunology: Immunology.xlsx: 保排名子集；Materials Science: Materials Science.xlsx: 保排名子集；Mathematics: Mathematics.xlsx: 保排名子集；Molecular Biology & Genetics: Molecular Biology & Genetics.xlsx: 保排名子集；Multidisciplinary: Multidisciplinary.xlsx: 保排名子集；Neuroscience & Behavior: Neuroscience & Behavior.xlsx: 保排名子集；Pharmacology & Toxicology: Pharmacology & Toxicology.xlsx: 保排名子集；Plant & Animal Science: Plant & Animal Science.xlsx: 保排名子集；Psychiatry Psychology: Psychiatry Psychology.xlsx: 保排名子集；Social Sciences, General: Social Sciences, General.xlsx: 保排名子集；Space Science: Space Science.xlsx: 保排名子集；保排名子集榜 20 张（m/line=None，名次为真实全局值）"
+  },
+  "202407": {
+   "status": "ok",
+   "n_files": 33
+  },
+  "202409": {
+   "status": "ok",
+   "n_files": 36
+  },
+  "202411": {
+   "status": "ok",
+   "n_files": 36,
+   "notes": "Geosciences: Geosciences.xlsx: 保排名子集；Immunology: Immunology.xlsx: 保排名子集；Materials Science: Materials Science.xlsx: 保排名子集；Microbiology: Microbiology.xlsx: 保排名子集；Multidisciplinary: Multidisciplinary.xlsx: 保排名子集；Neuroscience & Behavior: Neuroscience & Behavior.xlsx: 保排名子集；Pharmacology & Toxicology: Pharmacology & Toxicology.xlsx: 保排名子集；Physics: Physics.xlsx: 保排名子集；Plant & Animal Science: Plant & Animal Science.xlsx: 保排名子集；Psychiatry Psychology: Psychiatry Psychology.xlsx: 保排名子集；Social Sciences, General: Social Sciences, General.xlsx: 保排名子集；Space Science: Space Science.xlsx: 保排名子集；保排名子集榜 12 张（m/line=None，名次为真实全局值）"
+  },
+  "202501": {
+   "status": "ok",
+   "n_files": 37,
+   "notes": "机构表候选均不可用：Institutions.xlsx 不可解析（Institutions.xlsx: 无 Institutions 表头行且首行不像数据行（版式不识别））；机构表为子集/残表：n_inst=None、points 缺或仅总排名"
+  },
+  "202503": {
+   "status": "ok",
+   "n_files": 37,
+   "notes": "Clinical Medicine: Clinical Medicine.xlsx: 保排名子集；保排名子集榜 1 张（m/line=None，名次为真实全局值）"
+  },
+  "202505": {
+   "status": "ok",
+   "n_files": 38,
+   "notes": "Economics & Business: Economics & Business.xlsx: 保排名子集；Multidisciplinary: Multidisciplinary.xlsx: 保排名子集；Neuroscience & Behavior: Neuroscience & Behavior.xlsx: 保排名子集；Physics: Physics.xlsx: 保排名子集；Psychiatry Psychology: Psychiatry Psychology.xlsx: 保排名子集；Space Science: Space Science.xlsx: 保排名子集；保排名子集榜 6 张（m/line=None，名次为真实全局值）"
+  },
+  "202507": {
+   "status": "ok",
+   "n_files": 36
+  },
+  "202509": {
+   "status": "ok",
+   "n_files": 41,
+   "notes": "Agricultural Sciences: Agricultural Sciences.xlsx: 保排名子集；Biology & Biochemistry: Biology & Biochemistry.xlsx: 保排名子集；Chemistry: Chemistry.xlsx: 保排名子集；Clinical Medicine: Clinical Medicine.xlsx: 保排名子集；Computer Science: Computer Science.xlsx: 保排名子集；Economics & Business: Economics & Business.xlsx: 保排名子集；Engineering: Engineering.xlsx: 保排名子集；Environment Ecology: Environment Ecology.xlsx: 保排名子集；Geosciences: Geosciences.xlsx: 保排名子集；Immunology: Immunology.xlsx: 保排名子集；Materials Science: Materials Science.xlsx: 保排名子集；Mathematics: Mathematics.xlsx: 保排名子集；Microbiology: Microbiology.xlsx: 保排名子集；Multidisciplinary: Multidisciplinary.xlsx: 保排名子集；Neuroscience & Behavior: Neuroscience & Behavior.xlsx: 保排名子集；Pharmacology & Toxicology: Pharmacology & Toxicology.xlsx: 保排名子集；Plant & Animal Science: Plant & Animal Science.xlsx: 保排名子集；Psychiatry Psychology: Psychiatry Psychology.xlsx: 保排名子集；Social Sciences, General: Social Sciences, General.xlsx: 保排名子集；Space Science: Space Science.xlsx: 保排名子集；保排名子集榜 20 张（m/line=None，名次为真实全局值）"
+  },
+  "202511": {
+   "status": "ok",
+   "n_files": 36,
+   "notes": "Institutions.xlsx: 保排名子集，n_inst=None；Agricultural Sciences: Agricultural Sciences.xlsx: 保排名子集；保排名子集榜 1 张（m/line=None，名次为真实全局值）；机构表为子集/残表：n_inst=None、points 缺或仅总排名"
+  },
+  "202601": {
+   "status": "ok",
+   "n_files": 35
+  },
+  "202603": {
+   "status": "ok",
+   "n_files": 35
+  },
+  "202605": {
+   "status": "ok",
+   "n_files": 35
+  },
+  "202607": {
+   "status": "ok",
+   "n_files": 34
+  },
+  "202609": {
+   "status": "ok",
+   "n_files": 39
+  }
+ }
+}
