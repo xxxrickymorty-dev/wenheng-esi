@@ -691,6 +691,68 @@ def test_任务首行明示指向期次(tmp_path, monkeypatch):
     assert "已解析" in brain.briefs[0].task
 
 
+# ============================================================ 票 05：追问学科继承（2026-10-31）
+def _build(root, question, history):
+    """构建器级直测：`_qa.build` → RuleDraft（证据 / 规则版 / 来源都在稿上）。"""
+    from ai import _qa
+    return _qa.build(root, "202607", {"question": question, "history": history})
+
+
+def test_追问零学科命中_继承上文用户行的学科(tmp_path):
+    """问「查最新的」不带学科 → 从上文用户行（新→旧）继承学科直答段：
+    证据与规则版都含该段，数字照常指到 table2 的格。"""
+    seed_period(tmp_path)
+    _seed_table2(tmp_path)
+    draft = _build(tmp_path, "查最新的",
+                   [{"who": "me", "text": "查一下化学的接近度"}])
+    seg = "化学（Chemistry）本期数据"
+    assert any(seg in e for e in draft.evidence), "继承的学科段进证据"
+    assert seg in draft.rule_text, "规则版同样直答"
+    assert any(s.pointer.startswith("table2.csv#Chemistry") for s in draft.sources)
+
+
+def test_问句点名学科_不重复继承(tmp_path):
+    """问句本身点到学科 → 用问句的学科，上文里的别的学科不掺进来。"""
+    seed_period(tmp_path)
+    _seed_table2(tmp_path)
+    draft = _build(tmp_path, "化学的接近度是多少",
+                   [{"who": "me", "text": "数学的论文数是多少"}])
+    assert "化学（Chemistry）本期数据" in draft.rule_text
+    assert "数学（Mathematics）本期数据" not in draft.rule_text
+    assert "数学（Mathematics）本期数据" not in "".join(draft.evidence)
+
+
+def test_追问指向其他期次_不继承(tmp_path):
+    """「202605 那一期呢」点名期次且 ≠ 本期 → 不注入本期学科行（防张冠李戴）。"""
+    seed_period(tmp_path)
+    _seed_table2(tmp_path)
+    draft = _build(tmp_path, "202605 那一期呢",
+                   [{"who": "me", "text": "化学的接近度是多少"}])
+    assert "化学（Chemistry）本期数据" not in draft.rule_text
+    assert "化学（Chemistry）本期数据" not in "".join(draft.evidence)
+
+
+def test_继承至多两个学科(tmp_path):
+    """上文一句点三个学科 → 只继承两个（继承是推断不是明示）。"""
+    seed_period(tmp_path)
+    _seed_table2(tmp_path)
+    draft = _build(tmp_path, "查最新的",
+                   [{"who": "me", "text": "对比化学、生物学与生物化学和数学的数据"}])
+    assert "生物学与生物化学（Biology & Biochemistry）本期数据" in draft.rule_text
+    assert "化学（Chemistry）本期数据" in draft.rule_text
+    assert "数学（Mathematics）本期数据" not in draft.rule_text
+
+
+def test_继承只看用户行(tmp_path):
+    """上文只有文衡行时不出段——不继承自己的回答。"""
+    seed_period(tmp_path)
+    _seed_table2(tmp_path)
+    draft = _build(tmp_path, "查最新的",
+                   [{"who": "wh", "text": "化学的接近度是 676.06%"}])
+    assert "化学（Chemistry）本期数据" not in draft.rule_text
+    assert "化学（Chemistry）本期数据" not in "".join(draft.evidence)
+
+
 # ============================================================ 票 12：阶段进度流（进度回调）
 def test_进度回调_模型轮有规则轮无(tmp_path, monkeypatch):
     """`ai.using(progress=…)`：模型真被调用才发 `model:*`；规则轮不发（不演）。"""

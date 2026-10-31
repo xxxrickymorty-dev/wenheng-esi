@@ -2005,7 +2005,7 @@ async def _dialog_turn_impl(body: dict, user: str, progress=None) -> tuple:
             return {"error": "会话不属于当前用户"}, 403
         stored_turns = stored["turns"]
     # 对话上文（2026-10-12 rick 实问「这是几月的」）：追问要靠上文解指代——
-    # 只收 me/wh 的文本，条数与长度都截断（外发面另有 6000 字符上限兜底）。
+    # 只收 me/wh 的文本，条数与长度都截断（外发面另有字符上限兜底，默认 20000、env 可调）。
     # 带会话时改从库读（票 11），口径同上：最近 8 条、每条 200 字。
     history = []
     if stored_turns is not None:

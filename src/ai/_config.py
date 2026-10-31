@@ -12,7 +12,9 @@
     WENHENG_AI_KEY=sk-…
     WENHENG_AI_TIMEOUT=30          # 单次调用秒数
     WENHENG_AI_MAX_TOKENS=4096     # 输出预算（qa 长答案要留足，避免被截断）
-    WENHENG_AI_MAX_CHARS=6000      # 外发字符上限（超过即回落，不发包）
+    WENHENG_AI_MAX_CHARS=20000     # 外发字符上限（超过即回落，不发包）；
+                                   # qa 全量证据单轮实测约 8K 字符，留 2.5 倍余量；
+                                   # 单位是字符不是字节
 """
 from __future__ import annotations
 
@@ -49,7 +51,7 @@ def _env_config() -> dict:
         "key": _env("WENHENG_AI_KEY"),
         "timeout": _num("WENHENG_AI_TIMEOUT", 30.0, float),
         "max_tokens": _num("WENHENG_AI_MAX_TOKENS", 4096, int),
-        "max_egress_chars": _num("WENHENG_AI_MAX_CHARS", 6000, int),
+        "max_egress_chars": _num("WENHENG_AI_MAX_CHARS", 20000, int),
     }
 
 

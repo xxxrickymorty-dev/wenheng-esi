@@ -187,6 +187,20 @@ def test_run经env装配_走真适配器(tmp_path, fake, monkeypatch):
     assert len(fake.requests) == 1
 
 
+# ----------------------------------------------------------- 票 04：外发预算校准（2026-10-31）
+def test_外发预算_默认20000_env覆盖仍生效(monkeypatch):
+    """qa 全量证据单轮实测约 8K 字符——默认 6000 时按文档起服务问答必全军覆没
+    （egress_budget）。校准到 20000（2.5 倍余量；单位是字符不是字节）；
+    env 覆盖仍生效（部署可收紧）。"""
+    assert _config._env_config()["max_egress_chars"] == 20000, "env 未设时用校准默认"
+    b = OpenAIBrain(base_url="https://api.example.com/v1", model="m", key="sk-test")
+    assert b.max_egress_chars == 20000, "适配器不传参时同源默认"
+    monkeypatch.setenv("WENHENG_AI_MAX_CHARS", "1234")
+    assert _config._env_config()["max_egress_chars"] == 1234, "env 覆盖生效（部署可收紧）"
+    monkeypatch.delenv("WENHENG_AI_MAX_CHARS")
+    assert _config._env_config()["max_egress_chars"] == 20000, "用完 delenv 回默认"
+
+
 # ============================================================ 原生工具环（2026-10-28 fc 定稿）
 def _tool_brief():
     return Brief(ability="qa", system="s", task="问",

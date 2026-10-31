@@ -723,7 +723,19 @@ def build(root, period, payload) -> RuleDraft:
     matched = _match(base_texts, question)
 
     # ---- 学科问题直答段（2026-10-11）：问句点到哪个学科，就先给哪个学科的数据行 ----
-    disc_items = _disc_hits(question, _disc_rows(d))
+    # 追问学科继承（票 05，2026-10-31）：问句零学科命中且未指向其他期次时，从对话上文
+    # 的**用户行**（新→旧）找学科命中，第一个非空命中集继承为 disc_items（命中即停），
+    # 截到至多 2 个学科——继承是推断不是明示；期次指向的追问不注入本期行防张冠李戴
+    # （「上一期呢」的答案走台账段既有管道，不掺本期的学科直答段）。
+    rows = _disc_rows(d)
+    disc_items = _disc_hits(question, rows)
+    if not disc_items and focus_period in ("", str(period)):
+        for line in (str(h.get("text") or "") for h in reversed(history)
+                     if isinstance(h, dict) and h.get("who") == "me"):
+            hits = _disc_hits(line, rows)
+            if hits:
+                disc_items = hits[:2]           # 两个够对比类追问；继承是推断不是明示
+                break
     entered_map = _entered_for(d, [it["en"] for it in disc_items])
     disc_texts = {f"学科数据·{it['cn']}": _disc_segment(it, entered=entered_map.get(it["en"]))
                   for it in disc_items}

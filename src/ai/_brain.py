@@ -137,7 +137,7 @@ class OpenAIBrain:
     is_rule = False
 
     def __init__(self, *, base_url, model, key, timeout=30.0, max_tokens=2048,
-                 max_egress_chars=6000, temperature=0.2):
+                 max_egress_chars=20000, temperature=0.2):
         self.base_url = str(base_url).rstrip("/")
         self.model = str(model)
         self.name = f"openai:{self.model}"
