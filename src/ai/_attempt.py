@@ -17,6 +17,7 @@
 """
 from __future__ import annotations
 
+import json
 import time
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -73,6 +74,22 @@ def _reason_text(e) -> str:
     return msg[:80]
 
 
+#: 同参重复调用的工具消息回句（构造上零数字；不执行、不产生回执与轨迹）。
+_DUP_TOOL_TEXT = ("（该查询已执行过，参数完全相同；结果见上面的同名工具消息。"
+                  "请依据已有结果作答，不要再调用工具。）")
+
+
+def _canon_args(args) -> str:
+    """参数规范 JSON 串（去重键 + assistant 消息里 arguments 的线上格式）。"""
+    return json.dumps(args, ensure_ascii=False, sort_keys=True, default=str)
+
+
+def _round_items(brief: _brain.Brief) -> int:
+    """单轮外发面 items 明细：基面（ability+system+task 记 1）+ 证据 + 工具 schema + 历史。"""
+    return (1 + len(brief.evidence) + (1 if brief.tools else 0)
+            + (1 if brief.history else 0))
+
+
 def attempt(task, *, system: str, ability: str, anchored: bool = True, evidence=(),
             tools=(), execute=None, max_steps: int = 1,
             rule_protected: str | None = None, mapping: dict | None = None,
@@ -81,10 +98,14 @@ def attempt(task, *, system: str, ability: str, anchored: bool = True, evidence=
 
     `brain`：可选适配器覆盖（None＝部署装配）；写作位创写的专用模型/预算由此进入，
     本边界不读写作位配置。
-    原生工具环（2026-10-28 fc 定稿）：`tools` 非空且给了 `execute`（宿主执行器回调）时，
-    「真模型」路径进环——think → `turn.calls` → 逐调用执行（结果必须是执行器侧已注册
-    编号的占位面；裸数字即执行器违约 → GUARD_REJECT 回落）→ 结果追加进证据 →
-    再 think；`max_steps` 轮仍是 calls → CALLS_UNSUPPORTED 回落。`mapping` 以调用方
+    原生工具环（2026-10-31 升级为 OpenAI 官方多轮协议）：`tools` 非空且给了 `execute`
+    （宿主执行器回调）时，「真模型」路径进环——think → `turn.calls` → 逐调用执行
+    （结果必须是执行器侧已注册编号的占位面；裸数字即执行器违约 → GUARD_REJECT 回落）→
+    assistant(tool_calls) + role:"tool" 消息追加进 `Brief.history` → 再 think；
+    工具结果**不折进 evidence**（evidence 恒为首轮证据，结果只住在工具消息里）；
+    末轮（step_now == steps）`Brief.tools` 物理收口为空（等价 tool_choice:"none"），
+    该轮仍回 calls → CALLS_UNSUPPORTED（最后防线）；同参重复调用（工具名 + 参数规范
+    JSON 串）不再执行，直接回去重句（零数字，无回执无轨迹）。`mapping` 以调用方
     持有的 dict 为准——执行器续号（`NumberedText.append` 原地生长）边界自动看到。
     无 tools / 无 execute / 规则部署的一切调用不进环，行为与从前逐字一致。
     """
@@ -105,14 +126,17 @@ def attempt(task, *, system: str, ability: str, anchored: bool = True, evidence=
     tool_loop = attempted and bool(tools) and execute is not None
     steps = max(int(max_steps or 1), 1)
     receipts: list = []
-    live: tuple = ()           # 工具结果文本（执行器侧已注册编号的占位面）→ 下一轮进证据
+    history: tuple = ()        # 原生协议轮消息（assistant tool_calls + role:"tool"）
+    done_keys: set = set()     # 本次 attempt 已执行调用 (工具名, 参数规范 JSON) —— 同参去重
     step_now = 1               # 当前轮次（进 Brief.step；1 起，max_steps 轮内必须作答）
+    # 末轮物理收口：tool_loop 下最后一轮 Brief.tools=()（等价 tool_choice:"none"，
+    # 兼容一切 OpenAI 兼容网关）；非环路径（规则部署 / 未给执行器）与从前逐字一致。
     brief = _brain.Brief(ability=ability, system=system, task=protected,
                          step=1, max_steps=steps,
-                         evidence=tuple(evidence), tools=tuple(tools),
+                         evidence=tuple(evidence),
+                         tools=(tuple(tools) if (step_now < steps or not tool_loop) else ()),
                          rule_protected=rule_protected)
-    egress = {"items": 1 + len(evidence) + (1 if tools else 0),
-              "bytes": brief.egress_bytes()}
+    egress = {"items": _round_items(brief), "bytes": brief.egress_bytes()}
 
     def done(**kw) -> Outcome:
         return Outcome(attempted=attempted, backend=getattr(brain, "name", "rule"),
@@ -133,12 +157,27 @@ def attempt(task, *, system: str, ability: str, anchored: bool = True, evidence=
 
         if turn.calls and tool_loop:
             if step_now >= steps:
-                # 末轮仍 calls：模型连续请求工具未作答 → 回落（回执不发布）。
+                # 末轮仍 calls：末轮 Brief.tools 已收口为空，模型无视仍在要工具
+                # → 回落（回执不发布；最后防线）。
                 return done(reason=FallbackReason.CALLS_UNSUPPORTED,
                             shield={"checked": len(mapping), "passed": 0},
                             notice="模型连续请求工具未作答。已回退规则版，内容与规则库一致。")
-            texts: list = []
-            for call in turn.calls:
+            call_msgs: list = []
+            tool_msgs: list = []
+            for i, call in enumerate(turn.calls):
+                name = str((call or {}).get("name") or "")
+                args = (call or {}).get("arguments") or {}
+                args = dict(args) if isinstance(args, dict) else {}
+                cid = str((call or {}).get("id") or f"call_{i}")
+                args_json = _canon_args(args)
+                call_msgs.append({"id": cid, "type": "function",
+                                  "function": {"name": name, "arguments": args_json}})
+                key = (name, args_json)
+                if key in done_keys:
+                    # 同参重复：不执行、不发 receipt/trace——结果已在上一条同名工具消息里。
+                    tool_msgs.append({"role": "tool", "tool_call_id": cid,
+                                      "content": _DUP_TOOL_TEXT})
+                    continue
                 try:
                     text, receipt = execute(call)
                 except Exception as e:                             # noqa: BLE001
@@ -165,15 +204,22 @@ def attempt(task, *, system: str, ability: str, anchored: bool = True, evidence=
                                         "stray": stray},
                                 shield={"checked": len(mapping), "passed": 0},
                                 notice="工具返回文本未通过数字校验，已回退规则版，内容与规则库一致。")
-                texts.append(str(text or ""))
-            live = live + tuple(texts)
+                done_keys.add(key)
+                tool_msgs.append({"role": "tool", "tool_call_id": cid,
+                                  "content": str(text or "")})
+            # 原生多轮协议：assistant(tool_calls) 一条 + 每调用一条 role:"tool"。
+            history = history + ({"role": "assistant", "content": None,
+                                  "tool_calls": call_msgs},) + tuple(tool_msgs)
             step_now += 1
-            # 重造 Brief：证据追加了工具结果、step 前进；egress 按每轮 Brief 求和。
+            # 重造 Brief：结果只住在工具消息里（evidence 恒为首轮证据）、step 前进；
+            # egress 按每轮 Brief 求和（history 计入外发面）。
             brief = _brain.Brief(ability=ability, system=system, task=protected,
                                  step=step_now, max_steps=steps,
-                                 evidence=tuple(evidence) + live, tools=tuple(tools),
+                                 evidence=tuple(evidence),
+                                 tools=(tuple(tools) if step_now < steps else ()),
+                                 history=history,
                                  rule_protected=rule_protected)
-            egress = {"items": egress["items"] + 1 + len(live) + (1 if tools else 0),
+            egress = {"items": egress["items"] + _round_items(brief),
                       "bytes": egress["bytes"] + brief.egress_bytes()}
             continue
         break

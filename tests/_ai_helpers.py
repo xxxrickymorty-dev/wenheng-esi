@@ -10,7 +10,7 @@ from ai._brain import BrainError, Turn
 from src import state_store
 
 __all__ = ["BrainError", "FailingBrain", "ScriptedBrain", "Turn", "brief_texts",
-           "raw_digits", "seed_period"]
+           "raw_digits", "seed_period", "tool_texts"]
 
 FIXTURES = pathlib.Path(__file__).resolve().parent / "fixtures" / "ai"
 
@@ -116,3 +116,9 @@ class FailingBrain:
 
 def brief_texts(brief) -> tuple:
     return brief.egress_texts()
+
+
+def tool_texts(brief) -> list:
+    """Brief.history 里 role:"tool" 消息的正文（工具结果 / 拒答句 / 同参去重句）。"""
+    return [str(m.get("content") or "") for m in (brief.history or ())
+            if isinstance(m, dict) and m.get("role") == "tool"]

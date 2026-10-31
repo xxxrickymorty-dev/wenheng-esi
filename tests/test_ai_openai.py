@@ -205,7 +205,8 @@ def test_带工具_payload带tools_响应tool_calls解码(fake):
     turn = brain(fake).think(_tool_brief())
     assert turn.text is None, "有 calls 则 text 为 None"
     assert turn.calls == ({"name": "query_series",
-                           "arguments": {"metric": "proximity", "disc": "Chemistry"}},)
+                           "arguments": {"metric": "proximity", "disc": "Chemistry"},
+                           "id": "c1"},), "响应里的 tool_call id 被捕获"
     body = fake.requests[0]["json"]
     assert body["tools"] == [dict(t) for t in _tool_brief().tools], "外发带工具 schema"
 
@@ -220,7 +221,26 @@ def test_空arguments_解成空dict(fake):
     fake.raw = json.dumps({"choices": [{"message": {"tool_calls": [
         {"function": {"name": "query_overall_rank", "arguments": ""}}]}}]})
     turn = brain(fake).think(_tool_brief())
-    assert turn.calls == ({"name": "query_overall_rank", "arguments": {}},)
+    assert turn.calls == ({"name": "query_overall_rank", "arguments": {},
+                           "id": "call_0"},), "响应缺 id 时按序号合成"
+
+
+def test_history非空_messages为system用户加历史(fake):
+    """Brief.history 非空 → 追加在 system+user 之后（原生多轮协议）；
+    history 为空时 messages 与从前逐字一致（其余用例钉着）。"""
+    history = ({"role": "assistant", "content": None,
+                "tool_calls": [{"id": "c1", "type": "function",
+                                "function": {"name": "query_series",
+                                             "arguments": '{"metric": "x"}'}}]},
+               {"role": "tool", "tool_call_id": "c1", "content": "查得 [[1]]。"})
+    fake.reply = lambda req: "答"
+    brain(fake).think(Brief(ability="qa", system="s", task="问", history=history))
+    msgs = fake.requests[0]["json"]["messages"]
+    assert [m["role"] for m in msgs] == ["system", "user", "assistant", "tool"]
+    assert msgs[2]["tool_calls"][0]["function"]["arguments"] == '{"metric": "x"}', \
+        "arguments 以 JSON 串原样透传"
+    assert msgs[3]["tool_call_id"] == "c1", "tool_call_id 与 assistant 侧配对"
+    assert "查得" not in msgs[1]["content"], "user 消息不含工具结果文本"
 
 
 def test_坏arguments_JSON_报bad_response(fake):

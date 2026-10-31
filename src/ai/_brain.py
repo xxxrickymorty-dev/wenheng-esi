@@ -56,9 +56,9 @@ def _strip_think(text: str) -> str:
 
 @dataclass(frozen=True)
 class Brief:
-    """模块 → 端口。`task` / `evidence` / `tools` 就是「外发」的全部（最小外发，I5）：
+    """模块 → 端口。`task` / `evidence` / `tools` / `history` 就是「外发」的全部（最小外发，I5）：
     静态纪律提示 + 受保护任务行（数字已变 [[n]] 占位）+ 已占位化的证据摘要 +
-    只读工具规格。台账原值、来源映射与 `rule_protected` **不出发**。
+    只读工具规格 + 既有轮的协议消息。台账原值、来源映射与 `rule_protected` **不出发**。
     """
 
     ability: str
@@ -68,6 +68,7 @@ class Brief:
     max_steps: int = 1
     evidence: tuple[str, ...] = ()
     tools: tuple[dict, ...] = ()
+    history: tuple[dict, ...] = ()    # 原生多轮协议：assistant(tool_calls) + role:"tool" 消息
     rule_protected: str = ""          # 规则版候选（受保护）；仅 RuleBrain 消费
 
     def egress_texts(self) -> tuple[str, ...]:
@@ -77,6 +78,8 @@ class Brief:
         out = [self.ability, self.system, self.task, *self.evidence]
         if self.tools:
             out.append(json.dumps([dict(t) for t in self.tools], ensure_ascii=False, sort_keys=True))
+        if self.history:
+            out.append(json.dumps(list(self.history), ensure_ascii=False))
         return tuple(out)
 
     def egress_bytes(self) -> int:
@@ -105,7 +108,7 @@ class RuleBrain:
     """规则适配器：进程内、确定性、**演示站永远走它**（无 key 物理上无法外发）。
 
     它不做业务逻辑——只是把构建器已备好的规则版候选原样交回（回落物先存在，D-ports O3）；
-    `Brief.tools` 原样忽略（规则部署物理上无工具环）。
+    `Brief.tools` / `Brief.history` 原样忽略（规则部署物理上无工具环）。
     """
 
     name = "rule"
@@ -123,9 +126,11 @@ class OpenAIBrain:
       不做半句模型半句规则（SPEC §2.5）。
     - 外发预算：字符上限（`max_egress_chars`），超限**不发包**直接回落（code=egress_budget），
       预算内只发占位面（Brief 构造已保证零数字）。
-    - 原生工具环（2026-10-28 fc 定稿）：`Brief.tools` 非空 → payload 带 `tools`
-      （OpenAI function schema，只有名字/描述，零数字）；响应 `message.tool_calls` →
-      `Turn(calls=({"name", "arguments"(已解码 dict)}, …))`（text 与 calls 互斥）。
+    - 原生工具环（2026-10-31 升级为 OpenAI 官方多轮协议）：`Brief.tools` 非空 → payload 带
+      `tools`（OpenAI function schema，只有名字/描述，零数字）；`Brief.history` 非空 →
+      追加在 system+user 之后（assistant `tool_calls` + `role:"tool"`，arguments 为 JSON 串）；
+      响应 `message.tool_calls` → `Turn(calls=({"name", "arguments"(已解码 dict), "id"}, …))`
+      （text 与 calls 互斥）。
       单发语义不变——工具环的循环、守卫与回落都在边界（`_attempt`），本适配器只翻译协议。
     """
 
@@ -158,7 +163,7 @@ class OpenAIBrain:
             "messages": [
                 {"role": "system", "content": brief.system},
                 {"role": "user", "content": _user_content(brief)},
-            ],
+            ] + list(brief.history),
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
         }
@@ -189,13 +194,17 @@ class OpenAIBrain:
         except (KeyError, IndexError, TypeError, AttributeError) as e:
             raise BrainError("响应缺 choices/content", code="bad_response") from e
         if raw_calls:
-            return Turn(calls=tuple(self._decode_call(c) for c in raw_calls))
+            return Turn(calls=tuple(self._decode_call(c, i) for i, c in enumerate(raw_calls)))
         return Turn(text=_strip_think(content))
 
     @staticmethod
-    def _decode_call(item) -> dict:
-        """一条 tool_calls → `{"name", "arguments"(dict)}`；形状坏/参数坏 JSON → 协议失败。"""
+    def _decode_call(item, seq: int) -> dict:
+        """一条 tool_calls → `{"name", "arguments"(dict), "id"}`；形状坏/参数坏 JSON → 协议失败。
+
+        `id` 取响应 `tool_calls[].id`（回传工具消息时配对用）；缺省合成 `call_<seq>`。
+        """
         try:
+            cid = item.get("id")
             fn = item.get("function") or {}
             name = str(fn["name"])
             raw = fn.get("arguments")
@@ -210,4 +219,4 @@ class OpenAIBrain:
                 raise BrainError("工具调用参数不是合法 JSON", code="bad_response") from e
         if not isinstance(args, dict):
             raise BrainError("工具调用参数不是对象", code="bad_response")
-        return {"name": name, "arguments": args}
+        return {"name": name, "arguments": args, "id": str(cid) if cid else f"call_{seq}"}

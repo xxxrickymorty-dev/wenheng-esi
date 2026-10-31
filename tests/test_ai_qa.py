@@ -12,7 +12,7 @@ import re
 import pytest
 
 import ai
-from _ai_helpers import ScriptedBrain, Turn, raw_digits, seed_period
+from _ai_helpers import ScriptedBrain, Turn, raw_digits, seed_period, tool_texts
 
 NUM = re.compile(r"\d+(?:\.\d+)?")
 
@@ -713,11 +713,13 @@ def test_进度回调_模型轮有规则轮无(tmp_path, monkeypatch):
     assert not any(str(s).startswith("model:") for s in seen), seen
 
 
-# ============================================================ 原生工具环（2026-10-28 fc 定稿）
-def _cite_last_evidence(b):
-    """写作轮替身：引用工具结果（最后一段证据）里的全部标记——工具结果是 fact，不算越题。"""
-    marks = re.findall(r"\[\[\d+\]\]", b.evidence[-1] if b.evidence else "")
-    assert marks, "工具结果里应有占位标记（执行器已注册编号）"
+# ============================================================ 原生工具环（2026-10-28 fc 定稿；
+# 2026-10-31 升级 OpenAI 官方多轮协议：结果以工具消息回传，不再折进证据）
+def _cite_last_tool(b):
+    """写作轮替身：引用末条带标记的工具消息——工具结果是 fact，不算越题。"""
+    texts = [t for t in tool_texts(b) if re.findall(r"\[\[\d+\]\]", t)]
+    assert texts, "工具消息里应有占位标记（执行器已注册编号）"
+    marks = re.findall(r"\[\[\d+\]\]", texts[-1])
     return Turn(text="化学的接近度：" + "、".join(marks) + "。")
 
 
@@ -777,7 +779,7 @@ class Test原生工具环:
         root = _seed_ledger(tmp_path, monkeypatch)
         call = {"name": "query_series",
                 "arguments": {"metric": "proximity", "disc": "Chemistry"}}
-        ans, brain = self._qa_tool(root, [Turn(calls=(call,)), _cite_last_evidence])
+        ans, brain = self._qa_tool(root, [Turn(calls=(call,)), _cite_last_tool])
         assert ans.mode == "model" and "676.06" in ans.text
         # 数字注册进同一 mapping：used_by 指到台账格
         src = [s for s in ans.sources if s.value == "676.06"]
@@ -794,17 +796,23 @@ class Test原生工具环:
         tools_rec = rec["tools"]
         assert len(tools_rec) == 1 and tools_rec[0]["tool"] == "query_series"
         assert "summary" not in tools_rec[0] and tools_rec[0]["summary_digest"]
-        # 工具结果文本必须是占位面（外发零数字）
-        assert not raw_digits(brain.briefs[1].evidence[-1])
-        assert "618.42" not in "\n".join(brain.briefs[1].evidence), "原值不外发"
+        # 工具结果只住在工具消息里（占位面；evidence 恒为首轮静态证据）
+        b2 = brain.briefs[1]
+        assert b2.evidence == brain.briefs[0].evidence, "证据恒为首轮证据"
+        (tool_msg,) = [m for m in b2.history if m["role"] == "tool"]
+        assert not raw_digits(tool_msg["content"]), "工具结果是占位面"
+        assert "618.42" not in tool_msg["content"], "原值不外发"
+        asst_msg = next(m for m in b2.history if m["role"] == "assistant")
+        for tc in asst_msg["tool_calls"]:
+            assert not raw_digits(tc["function"]["arguments"]), "参数面零数字"
 
     def test_单期at_系统补当期(self, tmp_path, monkeypatch):
         root = _seed_ledger(tmp_path, monkeypatch)
         call = {"name": "query_at",
                 "arguments": {"metric": "proximity", "disc": "Chemistry"}}
-        ans, brain = self._qa_tool(root, [Turn(calls=(call,)), _cite_last_evidence])
+        ans, brain = self._qa_tool(root, [Turn(calls=(call,)), _cite_last_tool])
         assert ans.mode == "model"
-        assert "单期值" in brain.briefs[1].evidence[-1], "at 段进证据（期次由系统补）"
+        assert "单期值" in tool_texts(brain.briefs[1])[-1], "at 段在工具消息里（期次由系统补）"
         assert any(s.pointer == "台账#接近度/化学/202607" for s in ans.sources)
 
     def test_越权指标_拒不回落_模型可继续作答(self, tmp_path, monkeypatch):
@@ -813,8 +821,8 @@ class Test原生工具环:
                 "arguments": {"metric": "drop_table", "disc": "Chemistry"}}
         ans, brain = self._qa_tool(root, [Turn(calls=(call,)), _cite_static])
         assert ans.mode == "model", "拒答不是回落：模型收到拒答句后仍可作答"
-        assert "该查询不在可查范围" in brain.briefs[1].evidence[-1]
-        assert not raw_digits(brain.briefs[1].evidence[-1]), "拒答句零数字"
+        assert "该查询不在可查范围" in tool_texts(brain.briefs[1])[-1]
+        assert not raw_digits(tool_texts(brain.briefs[1])[-1]), "拒答句零数字"
         r = ans.receipts[0]
         assert r.ok is False and r.refused is True
         rec = records(root)[0]
@@ -834,14 +842,14 @@ class Test原生工具环:
         ans, _ = self._qa_tool(root, [Turn(calls=(call,)), _cite_static])
         assert ans.receipts[0].refused is True
 
-    def test_横比_一期跨学科_引擎排序后进证据(self, tmp_path, monkeypatch):
+    def test_横比_一期跨学科_引擎排序后进工具消息(self, tmp_path, monkeypatch):
         """比较类问题的正解：谁高谁低由引擎算（按「好」的方向排），模型只读顺序——
         它看不见真值，占位编号也**不是**大小，比不出来。"""
         root = _seed_ledger(tmp_path, monkeypatch)
         call = {"name": "query_compare", "arguments": {"metric": "proximity"}}   # 不填＝全部学科
-        ans, brain = self._qa_tool(root, [Turn(calls=(call,)), _cite_last_evidence])
+        ans, brain = self._qa_tool(root, [Turn(calls=(call,)), _cite_last_tool])
         assert ans.mode == "model"
-        seg = brain.briefs[1].evidence[-1]
+        seg = tool_texts(brain.briefs[1])[-1]
         assert "横向比较" in seg and "从好到差排列" in seg, seg
         assert not raw_digits(seg), "结果必须是占位面"
         r = ans.receipts[0]
@@ -855,7 +863,7 @@ class Test原生工具环:
         ans, brain = self._qa_tool(root, [Turn(calls=(call,)), _cite_static])
         assert ans.mode == "model", "拒答不是回落"
         assert ans.receipts[0].refused is True
-        assert "不在可查范围" in brain.briefs[1].evidence[-1]
+        assert "不在可查范围" in tool_texts(brain.briefs[1])[-1]
 
     def test_横比_该期没有这个学科的数据_拒(self, tmp_path, monkeypatch):
         """白名单过了、引擎取不到（数学在这张接近度表里没值）→ 也走拒，不回落。"""
@@ -865,24 +873,58 @@ class Test原生工具环:
         ans, brain = self._qa_tool(root, [Turn(calls=(call,)), _cite_static])
         assert ans.mode == "model"
         assert ans.receipts[0].refused is True
-        assert not raw_digits(brain.briefs[1].evidence[-1])
+        assert not raw_digits(tool_texts(brain.briefs[1])[-1])
 
-    def test_同规格去重_复用已注册文本不再注册(self, tmp_path, monkeypatch):
+    def test_同参重复第二次_不再进引擎_工具消息回去重句(self, tmp_path, monkeypatch):
+        """追问死循环根治（2026-10-31）：同参重复调用在边界去重——不再触发引擎，
+        只回一句零数字提示（不发回执、不发轨迹）。计数只看进入工具环之后的引擎调用
+        （构建器规则段也走 queries.execute，不计入）。"""
         root = _seed_ledger(tmp_path, monkeypatch)
+        from flexible import queries
+        state = {"in_loop": False}
+        sigs: list = []
+        real = queries.execute
+
+        def counting(view, op, **kw):
+            if state["in_loop"]:
+                sigs.append(json.dumps({"op": op, **kw}, sort_keys=True, default=str))
+            return real(view, op, **kw)
+
+        monkeypatch.setattr(queries, "execute", counting)
+
+        class LoopBrain(ScriptedBrain):
+            def think(self, brief):
+                state["in_loop"] = True
+                return super().think(brief)
+
         call = {"name": "query_series",
                 "arguments": {"metric": "proximity", "disc": "Chemistry"}}
-        ans, brain = self._qa_tool(root, [Turn(calls=(call, call)), _cite_last_evidence])
+        brain = LoopBrain([Turn(calls=(call,)), Turn(calls=(call,)), _cite_last_tool])
+        ans = qa(root, question="化学的接近度最近几期怎么变的", brain=brain)
         assert ans.mode == "model"
-        b2 = brain.briefs[1]
-        assert b2.evidence[-2] == b2.evidence[-1], "同规格第二次返回同一占位文本"
-        # 去重＝第二次没长出新编号：总数 == 原有证据的编号 + 工具结果那一段的编号
-        # （若重新注册，这里会多出一组新号——memo 命中必须原样复用已注册文本）。
-        marks_two = re.findall(r"\[\[\d+\]\]", b2.evidence[-1])
-        base = "\n".join(b2.evidence[:-2])
-        marks_all = re.findall(r"\[\[\d+\]\]", "\n".join(b2.evidence))
-        assert len(set(marks_all)) == len(set(re.findall(r"\[\[\d+\]\]", base))) + len(
-            set(marks_two)), "去重不再注册新编号"
-        assert len(ans.receipts) == 2 and all(r.ok for r in ans.receipts)
+        assert len(sigs) == 1, f"同参第二次不再进引擎：工具环内引擎调用 {sigs}"
+        t1, t2 = tool_texts(brain.briefs[2])[-2:]
+        assert "676.06" not in t1 and t1, "首查结果是占位面"
+        assert "该查询已执行过" in t2 and t2 != t1, "去重句进 history"
+        assert len(ans.receipts) == 1, "去重不产生回执"
+        assert not raw_digits(t1) and not raw_digits(t2), "结果与去重句零数字"
+
+    def test_执行器memo_边界不同参同规格_复用已注册文本不再注册(self, tmp_path, monkeypatch):
+        """边界去重按「工具名+参数」分键；span 缺省与显式 recent 边界上是两次调用，
+        进执行器后同规格（qargs 相同）→ memo 命中复用同一占位文本，不再注册新编号
+        （与边界去重叠加无害，memo 保留）。"""
+        root = _seed_ledger(tmp_path, monkeypatch)
+        call_a = {"name": "query_series",
+                  "arguments": {"metric": "proximity", "disc": "Chemistry"}}
+        call_b = {"name": "query_series",
+                  "arguments": {"metric": "proximity", "disc": "Chemistry",
+                                "span": "recent"}}
+        ans, brain = self._qa_tool(root, [Turn(calls=(call_a, call_b)), _cite_last_tool])
+        assert ans.mode == "model"
+        t1, t2 = tool_texts(brain.briefs[1])[-2:]
+        assert t1 == t2, "同规格第二次返回同一占位文本（memo 命中，编号不生长）"
+        assert len(ans.receipts) == 2 and all(r.ok for r in ans.receipts), \
+            "边界不同参＝两次真实执行，回执照发"
 
     def test_末轮仍calls_回落规则版(self, tmp_path, monkeypatch):
         root = _seed_ledger(tmp_path, monkeypatch)
@@ -907,7 +949,8 @@ class Test原生工具环:
                 "arguments": {"metric": "proximity", "disc": "Chemistry"}}
 
         def only_tool(b):
-            k = re.findall(r"\[\[\d+\]\]", b.evidence[-1])[0]
+            texts = [t for t in tool_texts(b) if re.findall(r"\[\[\d+\]\]", t)]
+            k = re.findall(r"\[\[\d+\]\]", texts[-1])[0]
             return Turn(text=f"答 {k}。")
 
         ans, _ = self._qa_tool(root, [Turn(calls=(call,)), only_tool])
