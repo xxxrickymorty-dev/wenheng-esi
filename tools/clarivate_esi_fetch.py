@@ -13,7 +13,7 @@
     python tools/clarivate_esi_fetch.py subjects         # Step 2 22 学科机构表（9 列；--force 覆盖）
     python tools/clarivate_esi_fetch.py subjects-7col    # 同上，历史 7 列版式
     python tools/clarivate_esi_fetch.py fields           # Step 3 全球/云大/中国 学科汇总
-    python tools/clarivate_esi_fetch.py toppapers        # Step 4 云大论文明细 ×3（文件名「数字在前」）
+    python tools/clarivate_esi_fetch.py toppapers        # Step 4 论文明细 ×3（--institution 换校）
     python tools/clarivate_esi_fetch.py thresholds       # Step 5a 阈值 ×3
     python tools/clarivate_esi_fetch.py baselines        # Step 5b 基线 ×3
     python tools/clarivate_esi_fetch.py login            # 检查/自动重登会话（不下载）
@@ -209,10 +209,12 @@ def _looks_like_xlsx(body: bytes) -> bool:
     return body[:2] == b"PK"
 
 
-# Step 4：云大论文明细（Documents Result List）。参数取自明细页 exportData() 拼的 URL。
+# Step 4：论文明细（Documents Result List）。参数取自明细页 exportData() 拼的 URL。
+# 换校只改 institution 一个 URL 参数（2026-10-31 实测：HAINAN UNIVERSITY 直取成功），
+# 无需界面过滤；失败多半是会话刚重登还没稳——先跑 `login` 再导出。
 _DOC_URL = (
     ESI + "/DocumentsExport.action?exportFile&_dc=1&groupBy=documentList&start=0&limit=5000"
-    "&author=&institution=YUNNAN%20UNIVERSITY&territory=&journal=&researchFront=&year=&title="
+    "&author=&institution={inst}&territory=&journal=&researchFront=&year=&title="
     "&researchField=&show={show}"
     "&sort=%5B%7B%22property%22%3A%22citations%22%2C%22direction%22%3A%22DESC%22%7D%5D"
     "&colFilterVal=&exportType=documents"
@@ -239,14 +241,16 @@ def _write_esi_csv(rows: list[tuple], path: Path) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8-sig")
 
 
-def cmd_toppapers(page: Page, out: Path, fmt: str) -> None:
-    """Step 4：云大 Top / Highly Cited / Hot 论文明细，出 xlsx + 同形 CSV。
+def cmd_toppapers(page: Page, out: Path, fmt: str, institution: str = "YUNNAN UNIVERSITY") -> None:
+    """Step 4：论文明细 ×3（Top / Highly Cited / Hot），出 xlsx + 同形 CSV。
 
-    文件名「数字在前」（如 274top.xlsx / 274top.csv）。
+    文件名「数字在前」（如 274top.xlsx / 274top.csv）。换校＝--institution 改 URL 过滤参数
+    （ESI 机构名写法照 Institutions 总表），其余流程不变。
     """
     out.mkdir(parents=True, exist_ok=True)
+    inst = quote(institution)
     for show, suffix in _TOPPAPERS:
-        resp = page.request.get(_DOC_URL.format(show=show))
+        resp = page.request.get(_DOC_URL.format(show=show, inst=inst))
         if not resp.ok or not _looks_like_xlsx(resp.body()):
             print(f"[FAIL] {suffix}: HTTP {resp.status}, {len(resp.body())} B（非 xlsx）")
             continue
@@ -348,6 +352,8 @@ def main() -> int:
     ap.add_argument("--out", default=str(DEFAULT_OUT))
     ap.add_argument("--format", default="XLS", choices=["XLS", "CSV", "PDF"])
     ap.add_argument("--force", action="store_true", help="覆盖已存在文件（subjects 用）")
+    ap.add_argument("--institution", default="YUNNAN UNIVERSITY",
+                    help="论文明细的机构过滤（ESI 机构名，换校改这里；toppapers 用）")
     args = ap.parse_args()
 
     with sync_playwright() as p:
@@ -360,6 +366,8 @@ def main() -> int:
         fn = COMMANDS[args.command]
         if args.command in ("subjects", "subjects-9col", "subjects-7col"):
             fn(page, Path(args.out), args.format, args.force)
+        elif args.command == "toppapers":
+            fn(page, Path(args.out), args.format, args.institution)
         else:
             fn(page, Path(args.out), args.format)
     write_fetch_meta(Path(args.out), args.command)

@@ -64,3 +64,15 @@ def test_render_unregistered_school_states():
     html = mr.render("中国政法大学", _PERIOD, cache)
     assert "未收录该校" in html
     assert "本期不出学科行" in html
+
+
+def test_doctor_checks_pass_on_202609():
+    """doctor D1/D2/D3/D6 对当期全绿（D3 的未入册校=政法大学，白名单内不算写法错）。"""
+    from monitor import doctor as mdoc
+    if not _PERIOD or not (mr.ESI_ROOT / _PERIOD).is_dir() or not mr.cache_path(_PERIOD).exists():
+        skip_unless("监测版期次数据或缓存缺席", lambda: _PERIOD is not None
+                    and (mr.ESI_ROOT / _PERIOD).is_dir())
+    rep = mdoc.check(_PERIOD)
+    assert rep["fails"] == 0, f"doctor 有 fail：{[i for i in rep['items'] if not i['ok']]}"
+    d3 = next(i for i in rep["items"] if i["id"] == "D3")
+    assert "未入册 1" in d3["detail"], "应恰好一所未入册校（中国政法大学）"

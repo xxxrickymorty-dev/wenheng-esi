@@ -1,0 +1,80 @@
+{
+ "generated": "2026-10-31",
+ "periods": 6,
+ "cells": 332,
+ "equal": 279,
+ "diff": 53,
+ "tolerance": {
+  "计数列": 0.5,
+  "比值列": 0.051
+ },
+ "per_period": [
+  {
+   "period": "202303",
+   "state": "不可比(手工件版式异常)",
+   "cells": 0,
+   "equal": 0,
+   "diff": 0,
+   "fields_hand": 14,
+   "fields_derived": 14,
+   "fields_extra": 0,
+   "notes": []
+  },
+  {
+   "period": "202601",
+   "state": "equal",
+   "cells": 52,
+   "equal": 52,
+   "diff": 0,
+   "fields_hand": 13,
+   "fields_derived": 13,
+   "fields_extra": 0,
+   "notes": []
+  },
+  {
+   "period": "202603",
+   "state": "diff",
+   "cells": 56,
+   "equal": 3,
+   "diff": 53,
+   "fields_hand": 14,
+   "fields_derived": 14,
+   "fields_extra": 0,
+   "notes": []
+  },
+  {
+   "period": "202605",
+   "state": "不可比(手工件版式异常)",
+   "cells": 0,
+   "equal": 0,
+   "diff": 0,
+   "fields_hand": 14,
+   "fields_derived": 14,
+   "fields_extra": 0,
+   "notes": []
+  },
+  {
+   "period": "202607",
+   "state": "equal",
+   "cells": 56,
+   "equal": 56,
+   "diff": 0,
+   "fields_hand": 14,
+   "fields_derived": 14,
+   "fields_extra": 0,
+   "notes": []
+  },
+  {
+   "period": "202609",
+   "state": "equal",
+   "cells": 168,
+   "equal": 168,
+   "diff": 0,
+   "fields_hand": 14,
+   "fields_derived": 14,
+   "fields_extra": 0,
+   "notes": []
+  }
+ ],
+ "diff_samples": []
+}
