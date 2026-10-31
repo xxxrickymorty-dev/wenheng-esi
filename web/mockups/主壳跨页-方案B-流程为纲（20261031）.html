@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>主壳跨页 · 方案B · 流程为纲（静态稿 20261031）</title>
+<style>
+  /* 主工作台壳 · 跨页书式 · 方案B「流程为纲 · 极致低密度」（静态稿 20261031，待 rick 审）。
+     视觉同族《高校ESI报告-插件市场（静态稿 20261031）》：左页会泽深绿 #143729＋象牙、右页纸面＋卡、订口金线、
+     零圆角、一档浅阴影。方案B 只验一件事：右页整屏＝一条横贯的四步流程大图，
+     节点即状态（色＋形＋字三重表意），第一眼只回答「到哪一步、下一步做什么」。
+     演示状态：202611 卡在第①步「取数·进行中」，进行中节点挂全屏唯一主按钮「去取数台」。
+     其余一切（期次切换·历史·工具）收进右上「更多 ▸」就地折叠；展开态看它：点按钮，或地址加 #more。
+     硬约束：左栏一屏放全禁滚动（720 高实测）、六档字号 11/12/13.5/15/19/26、tabular-nums、点击区 ≥44px。 */
+  :root{
+    --deep:#143729; --green:#1A4B27; --seam:#B08E48;
+    --ivory:#F6F1DE; --ivory-2:rgba(246,241,222,.80); --ivory-3:rgba(246,241,222,.54);
+    --paper:#F5F3EC; --card:#FAF8F0; --card-hi:#FDFAF3;
+    --ink:#15222B; --ink-2:#4A564D; --ink-3:#64717A;
+    --line:#D8D2C2; --line-2:#E6E1D3;
+    --shadow:0 1px 2px rgba(21,34,43,.07);
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --lw:26%; --fgap:clamp(20px,2.6vw,36px);
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--paper)}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);
+    font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;background:none;border:none;color:inherit}
+  :focus-visible{outline:2px solid var(--green);outline-offset:2px}
+  ::selection{background:var(--seam);color:var(--ink)}
+
+  .spread{display:grid;grid-template-columns:var(--lw) minmax(0,1fr);min-height:100dvh;position:relative}
+  .spread::after{content:"";position:absolute;top:0;bottom:0;left:var(--lw);width:1px;background:var(--seam);pointer-events:none}
+
+  /* ───── 左页 · 会泽（品牌＋导航＋身份行，一屏放全，禁滚动） ───── */
+  .page-l{background:var(--deep);color:var(--ivory);padding:clamp(15px,2.1vh,26px) clamp(18px,2vw,30px);
+    display:flex;flex-direction:column;position:sticky;top:0;height:100dvh;overflow:hidden}
+  .bm{display:flex;align-items:baseline;gap:10px}
+  .bm b{font-family:var(--serif);font-size:19px;font-weight:600;letter-spacing:.14em}
+  .bm span{font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--ivory-3);line-height:1.7}
+  .nav{margin-top:clamp(12px,2vh,22px);display:flex;flex-direction:column;
+    font-size:13.5px;letter-spacing:.05em;color:var(--ivory-2)}
+  .nav a{padding:clamp(8px,1.6vh,11px) 0;display:flex;align-items:center;gap:10px}
+  .nav a::before{content:"";width:9px;height:2px;flex:none;background:transparent}
+  .nav a[aria-current]{color:var(--ivory)}
+  .nav a[aria-current]::before{background:var(--seam)}
+  .nav a:hover{color:var(--ivory)}
+  .nav .m{margin-top:clamp(10px,1.6vh,16px);font-family:var(--kai);font-size:11px;
+    letter-spacing:.24em;color:var(--ivory-3);padding:2px 0}
+  .nav .q{opacity:.62}
+  .orn{margin-top:auto;width:1px;height:clamp(46px,9vh,96px);background:var(--seam);opacity:.65}
+  .footline{margin-top:clamp(12px,2vh,20px);display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:11px;letter-spacing:.2em;color:var(--ivory-3);
+    border-top:1px solid rgba(246,241,222,.14);padding-top:clamp(8px,1.3vh,12px)}
+
+  /* ───── 右页 · 至公（整屏＝一行身份＋一条流程＋一行上期） ───── */
+  .page-r{padding:clamp(16px,2.4vh,28px) clamp(18px,2.6vw,40px) clamp(10px,1.6vh,16px);
+    display:flex;flex-direction:column;height:100dvh;min-width:0;overflow-y:auto}
+
+  /* 期次身份行：一行，右上角是唯一的折叠钮 */
+  .topline{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .topline h1{font-family:var(--serif);font-size:19px;font-weight:600;letter-spacing:.08em}
+  .topline .vol{font-size:13.5px;letter-spacing:.14em;color:var(--ink-2)}
+  .topline .tag{font-size:11px;letter-spacing:.1em;border:1px solid var(--line);
+    padding:3px 10px;color:var(--ink-2);white-space:nowrap}
+  .more{margin-left:auto;display:inline-flex;align-items:center;gap:6px;
+    font-size:13.5px;letter-spacing:.08em;color:var(--ink-2);padding:10px 6px;min-height:44px}
+  .more:hover{color:var(--ink)}
+  .more i{font-style:normal;display:inline-block;transition:transform .2s}
+  .more[aria-expanded="true"] i{transform:rotate(90deg)}
+
+  /* 更多 · 就地折叠（期次切换 / 历史 / 工具 全在这里） */
+  .panel{margin-top:10px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);
+    padding:2px 22px 14px}
+  .plabel{font-family:var(--kai);font-size:11px;letter-spacing:.3em;color:var(--ink-3);margin:12px 0 0}
+  .prow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;
+    width:100%;text-align:left;min-height:44px;padding:8px 2px;
+    border-bottom:1px solid var(--line-2);font-size:13.5px;letter-spacing:.04em}
+  .prow:last-of-type{border-bottom:0}
+  button.prow:hover{background:var(--card-hi)}
+  .pk{display:inline-flex;align-items:center;gap:9px;color:var(--ink);white-space:nowrap}
+  .ps{font-size:12px;letter-spacing:.06em;white-space:nowrap}
+  .ps.ok{color:var(--green)} .ps.now{color:var(--deep)}
+  .ck{font-style:normal;color:var(--green);font-size:12px}
+  .ptools{display:flex;flex-wrap:wrap;gap:2px 26px;padding-top:2px}
+  .ptools a{font-size:13.5px;letter-spacing:.05em;color:var(--ink-2);padding:11px 2px}
+  .ptools a:hover{color:var(--ink);box-shadow:inset 0 -1px 0 var(--seam)}
+
+  /* 舞台：流程图垂直居中，是整屏的主角 */
+  .stage{flex:1;display:flex;flex-direction:column;justify-content:center;min-height:0;padding:clamp(10px,2vh,22px) 0}
+
+  /* ── 四步流程大图：节点即状态（色＋形＋字） ── */
+  .flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));column-gap:var(--fgap)}
+  .node{position:relative;display:flex;flex-direction:column;min-width:0;
+    background:var(--card);border:1px solid var(--line);border-top:3px solid var(--line);
+    box-shadow:var(--shadow);padding:18px 20px;min-height:clamp(150px,25vh,220px)}
+  .node .idx{position:absolute;top:16px;right:18px;font-family:var(--kai);font-size:11px;
+    letter-spacing:.2em;color:var(--ink-3);opacity:.6}
+  .mk{display:flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.18em;color:var(--ink-3)}
+  .node h2{font-family:var(--serif);font-size:19px;font-weight:600;letter-spacing:.06em;
+    color:var(--ink-3);margin-top:10px;line-height:1.4}
+  .node .go{margin-top:auto;display:block;width:100%;background:var(--deep);color:var(--ivory);
+    padding:11px 12px;font-size:15px;font-weight:600;letter-spacing:.1em;text-align:center;box-shadow:var(--shadow)}
+  .node .go:hover{background:var(--green);color:#fff}
+  .dot{width:9px;height:9px;flex:none;border-radius:50%;background:var(--seam)}
+  .ring{width:9px;height:9px;flex:none;border-radius:50%;border:1.5px solid var(--ink-3)}
+  /* 进行中：金线金点＋墨字大号；未开始：灰线空环压平 */
+  .node.now{background:var(--card-hi);border-color:var(--seam);border-top:3px solid var(--seam)}
+  .node.now .mk{color:var(--deep)}
+  .node.now h2{font-size:26px;color:var(--ink)}
+  .node.todo h2{color:var(--ink-3)}
+  .dot.live{animation:live 2.6s ease-in-out infinite}
+  @keyframes live{0%,100%{box-shadow:0 0 0 0 rgba(176,142,72,.38)}55%{box-shadow:0 0 0 6px rgba(176,142,72,0)}}
+  /* 连线：未走过的站段一律虚线灰 */
+  .node + .node::before{content:"";position:absolute;top:27px;left:calc(-1 * var(--fgap));
+    width:var(--fgap);border-top:1px dashed var(--line)}
+
+  /* 上期状态：一行 */
+  .prev{margin-top:clamp(22px,3.4vh,34px);font-size:13.5px;letter-spacing:.05em;color:var(--ink-2);
+    display:flex;align-items:center;gap:8px}
+  .prev b{font-weight:600;color:var(--ink)}
+  .prev .ck{font-size:12px}
+
+  .foot{margin-top:auto;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    border-top:1px solid var(--line-2);padding-top:9px;
+    font-size:11px;letter-spacing:.06em;color:var(--ink-3)}
+
+  /* ───── 窄屏：左栏折成顶横条，流程改双列／单列 ───── */
+  @media (max-width:1100px){
+    .spread{display:block}
+    .spread::after{display:none}
+    .page-l{position:static;height:auto;overflow:visible}
+    .nav{flex-direction:row;flex-wrap:wrap;gap:2px 20px;margin-top:12px}
+    .nav .m,.orn,.footline{display:none}
+    .page-r{height:auto;overflow:visible}
+    .flow{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:14px}
+    .node + .node::before{display:none}
+  }
+  @media (max-width:640px){
+    .flow{grid-template-columns:minmax(0,1fr)}
+    .more{margin-left:0}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .dot.live{animation:none}
+    .more i{transition:none}
+  }
+</style>
+</head>
+<body>
+<div class="spread">
+
+  <!-- ═══ 左页 · 会泽：品牌＋导航＋管理组＋身份行，一屏放全 ═══ -->
+  <aside class="page-l">
+    <div class="bm"><b>文衡</b><span>云南大学图书馆<br>学科信息参考</span></div>
+    <nav class="nav" aria-label="工作区">
+      <a href="#" aria-current="page">出报告</a>
+      <a href="#">灵活报告</a>
+      <a href="#">他校简报</a>
+      <a href="#">高校 ESI 报告</a>
+      <a href="#">AI 问数</a>
+      <a href="#">问文衡</a>
+      <span class="m">管 理</span>
+      <a href="#">运行档案</a>
+      <a class="q" href="#">陈列馆 ↗</a>
+    </nav>
+    <div class="orn" aria-hidden="true"></div>
+    <div class="footline">
+      <span>会 泽 百 家 · 至 公 天 下</span>
+      <span>admin · 管理员</span>
+    </div>
+  </aside>
+
+  <!-- ═══ 右页 · 至公：整屏一条流程 ═══ -->
+  <main class="page-r">
+
+    <!-- 期次身份：一行 -->
+    <div class="topline">
+      <h1>202611</h1>
+      <span class="vol">第 40 期</span>
+      <span class="tag">数据截至 2026-10</span>
+      <button class="more" id="more" type="button" aria-expanded="false" aria-controls="panel">更多 <i>▸</i></button>
+    </div>
+
+    <!-- 更多 · 就地折叠（期次切换 / 历史 / 工具；点「更多 ▸」或 #more 展开） -->
+    <div class="panel" id="panel" role="region" aria-label="更多：期次与工具" hidden>
+      <p class="plabel">期 次</p>
+      <div class="prow cur" aria-current="true">
+        <span class="pk"><i class="dot" aria-hidden="true"></i>202611 · 第 40 期</span>
+        <span class="ps now">进行中 · 当前</span>
+      </div>
+      <button class="prow" type="button">
+        <span class="pk"><i class="ck" aria-hidden="true">✓</i>202609 · 第 39 期</span>
+        <span class="ps ok">已签发</span>
+      </button>
+      <button class="prow" type="button">
+        <span class="pk"><i class="ck" aria-hidden="true">✓</i>202607 · 第 38 期</span>
+        <span class="ps ok">已签发</span>
+      </button>
+      <button class="prow" type="button">
+        <span class="pk"><i class="ck" aria-hidden="true">✓</i>202605 · 第 37 期</span>
+        <span class="ps ok">已签发</span>
+      </button>
+      <button class="prow" type="button">
+        <span class="pk"><i class="ck" aria-hidden="true">✓</i>202603 · 第 36 期</span>
+        <span class="ps ok">已签发</span>
+      </button>
+      <button class="prow" type="button">
+        <span class="pk"><i class="ck" aria-hidden="true">✓</i>202601 · 第 35 期</span>
+        <span class="ps ok">已签发</span>
+      </button>
+      <p class="plabel">工 具</p>
+      <div class="ptools">
+        <a href="#">可视化工作流</a>
+        <a href="#">主台账</a>
+        <a href="#">自愈沙盘</a>
+        <a href="#">换馆沙盘</a>
+      </div>
+    </div>
+
+    <!-- 流程大图：到哪一步（金点），下一步做什么（节点上的唯一主按钮） -->
+    <div class="stage">
+      <section class="flow" aria-label="出报告 · 四步流程">
+        <div class="node now">
+          <span class="idx" aria-hidden="true">壹</span>
+          <span class="mk"><i class="dot live" aria-hidden="true"></i>进行中</span>
+          <h2>取数核验</h2>
+          <button class="go" type="button">去取数台</button>
+        </div>
+        <div class="node todo">
+          <span class="idx" aria-hidden="true">贰</span>
+          <span class="mk"><i class="ring" aria-hidden="true"></i>未开始</span>
+          <h2>预测选模</h2>
+        </div>
+        <div class="node todo">
+          <span class="idx" aria-hidden="true">叁</span>
+          <span class="mk"><i class="ring" aria-hidden="true"></i>未开始</span>
+          <h2>生成初稿</h2>
+        </div>
+        <div class="node todo">
+          <span class="idx" aria-hidden="true">肆</span>
+          <span class="mk"><i class="ring" aria-hidden="true"></i>未开始</span>
+          <h2>核验定稿</h2>
+        </div>
+      </section>
+
+      <!-- 上期状态：一行 -->
+      <p class="prev">上一期 <b>202609</b> · <span class="ck" aria-hidden="true">✓</span> 已签发</p>
+    </div>
+
+    <p class="foot">
+      <span>静态稿 · 演示数据 · 20261031</span>
+      <span>方案 B · 流程为纲 · 折叠展开态：点右上「更多 ▸」或地址加 #more</span>
+    </p>
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var btn = document.getElementById("more");
+  var panel = document.getElementById("panel");
+  function set(open){
+    panel.hidden = !open;
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+  btn.addEventListener("click", function(){ set(panel.hidden); });
+  if (location.hash === "#more") set(true);
+})();
+</script>
+</body>
+</html>

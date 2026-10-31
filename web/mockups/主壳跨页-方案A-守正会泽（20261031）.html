@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>主工作台壳 · 方案A 守正会泽（静态稿）</title>
+<style>
+  /* 方案A · 守正：插件市场稿（20261031，rick 已审）的会泽跨页语言 1:1 延伸到主壳，不加新花样。
+     右页主角＝本期动态：大 seriffed 期次题＋三步大卡＋任务条；四步流水收次（细带）。
+     本稿验四件事：
+     ① 左栏 44px 行距下一屏放全（品牌＋导航＋管理组＋身份行，768 高不滚）；
+     ② 三步大卡与「卡在」任务条（状态三重编码：金点脉冲／空方／绿方＋菱形＋字）；
+     ③ 四步流水收次不抢戏（状态长在带上，当前步金短横，与左栏当前项同记号）；
+     ④ 期次架：当前期＋两期已签发＋上一期签发行。
+     演示数据：202611 进行中（取数未完成）；202609 已签发（2026-09-23）；202607 已签发。
+     琥珀 #7C5A16 仅用于「卡在」一句＝UX.md §九 语义色（插件市场稿同款），其余配色全在会泽族。 */
+  :root{
+    --deep:#143729;
+    --ivory:#F6F1DE; --ivory-2:rgba(246,241,222,.80); --ivory-3:rgba(246,241,222,.54);
+    --paper:#F5F3EC; --card:#FAF8F0; --card-hi:#FDFAF3;
+    --ink:#15222B; --ink-2:rgba(21,34,43,.80); --ink-3:rgba(21,34,43,.68);
+    --line:#D8D2C2; --hair:rgba(216,210,194,.55);
+    --green:#1A4B27; --seam:#B08E48; --warn:#7C5A16;
+    --shadow:0 1px 2px rgba(21,34,43,.07);
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --lw:clamp(232px,26%,360px);
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);
+    -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;background:none;border:none;color:inherit}
+  :focus-visible{outline:2px solid var(--green);outline-offset:2px}
+  .page-l :focus-visible{outline-color:var(--seam)}
+  ::selection{background:var(--seam);color:var(--ink)}
+
+  /* ───── 跨页本体 ───── */
+  .spread{display:grid;grid-template-columns:var(--lw) minmax(0,1fr);min-height:100dvh;position:relative}
+  .spread::after{content:"";position:absolute;top:0;bottom:0;left:var(--lw);width:1px;background:var(--seam);pointer-events:none}
+
+  /* ───── 左页 · 会泽（品牌面，一屏放全） ───── */
+  .page-l{background:var(--deep);color:var(--ivory);padding:clamp(18px,3vh,30px) clamp(18px,1.9vw,30px);
+    display:flex;flex-direction:column;position:sticky;top:0;height:100dvh;overflow:hidden}
+  .bm{display:flex;align-items:baseline;gap:10px;margin-bottom:18px}
+  .bm b{font-family:var(--serif);font-weight:600;font-size:19px;letter-spacing:.14em}
+  .bm span{font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--ivory-3);line-height:1.7}
+  .nav{margin:auto 0;display:flex;flex-direction:column;font-size:13.5px;letter-spacing:.05em;color:var(--ivory-2)}
+  .nav a{padding:12px 0;min-height:44px;display:flex;align-items:center;gap:10px}
+  .nav a::before{content:"";width:9px;height:2px;flex:none;background:transparent}
+  .nav a[aria-current]{color:var(--ivory)}
+  .nav a[aria-current]::before{background:var(--seam)}
+  .nav a:hover{color:var(--ivory)}
+  .nav .m{padding:4px 0 6px;font-family:var(--kai);font-size:11px;letter-spacing:.26em;color:var(--ivory-3)}
+  .nav .q{opacity:.62}
+  .idb{padding-top:16px}
+  .idb .rule{width:34px;height:1px;background:var(--seam);margin-bottom:10px}
+  .who{font-size:12px;letter-spacing:.12em;color:var(--ivory-2)}
+  .motto{margin-top:6px;font-family:var(--kai);font-size:11px;letter-spacing:.30em;color:var(--ivory-3)}
+
+  /* ───── 右页 · 至公（工作面 · 任务视图） ───── */
+  .page-r{padding:clamp(20px,3.6vh,38px) clamp(20px,3vw,46px) clamp(14px,2.4vh,22px);
+    display:flex;flex-direction:column;min-height:100dvh;min-width:0}
+
+  /* 期次题（主角） */
+  .masthead{position:relative;padding-bottom:16px;border-bottom:2px solid var(--ink)}
+  .masthead::after{content:"";position:absolute;left:0;bottom:-2px;width:34px;height:2px;background:var(--seam)}
+  .masthead h1{font-family:var(--serif);font-weight:600;font-size:26px;line-height:1.25;letter-spacing:.08em}
+  .dateline{margin-top:4px;font-family:var(--kai);font-size:12px;letter-spacing:.20em;color:var(--ink-3)}
+
+  .eyebrow{font-family:var(--kai);font-size:11px;letter-spacing:.22em;color:var(--ink-3)}
+
+  /* 本期动态 · 三步大卡 */
+  .dyn{margin-top:clamp(16px,2.6vh,26px)}
+  .cards{margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(208px,1fr));gap:12px}
+  .scard{background:var(--card);border:1px solid var(--line);border-top:2px solid var(--hair);
+    box-shadow:var(--shadow);padding:15px 18px 18px}
+  .scard.now{background:var(--card-hi);border-top-color:var(--seam)}
+  .shead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .idx{font-family:var(--kai);font-size:11px;letter-spacing:.24em;color:var(--ink-3)}
+  .st{font-size:12px;letter-spacing:.06em;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .st i{width:7px;height:7px;flex:none}
+  .st.run{color:var(--ink-2)}
+  .st.run i{background:var(--seam);border-radius:50%;animation:pulse 2.2s ease-out infinite}
+  .st.idle{color:var(--ink-3)}
+  .st.idle i{border:1px solid var(--ink-3)}
+  .st.ok{color:var(--green)}
+  .st.ok i{background:var(--green)}
+  .scard h2{margin-top:14px;font-family:var(--serif);font-weight:600;font-size:19px;line-height:1.4;letter-spacing:.10em}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(176,142,72,.38)}70%{box-shadow:0 0 0 7px rgba(176,142,72,0)}100%{box-shadow:0 0 0 0 rgba(176,142,72,0)}}
+
+  /* 任务条：卡在哪＋主动作（全屏唯一主动作） */
+  .band{margin-top:20px;padding-top:16px;border-top:1px solid var(--hair);
+    display:flex;align-items:center;gap:14px 18px;flex-wrap:wrap}
+  .stuck{display:inline-flex;align-items:center;gap:9px;font-size:15px;letter-spacing:.02em;color:var(--warn)}
+  .stuck i{width:8px;height:8px;flex:none;background:var(--warn);transform:rotate(45deg)}
+  .go{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;min-height:44px;
+    padding:10px 26px;background:var(--deep);color:var(--ivory);font-size:15px;letter-spacing:.12em;box-shadow:var(--shadow)}
+  .go:hover{background:var(--green)}
+
+  /* 四步流水（收次） */
+  .pipe{margin-top:clamp(18px,3vh,30px)}
+  .ptrack{position:relative;height:2px;background:var(--hair);margin-top:12px}
+  .ptrack i{position:absolute;left:0;top:0;bottom:0;width:12.5%;background:var(--green)}
+  .psteps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+  .psteps a{min-height:44px;padding:10px 14px 4px 0;display:flex;flex-direction:column;gap:5px}
+  .pn{font-family:var(--serif);font-weight:600;font-size:13.5px;line-height:1.6;letter-spacing:.06em;color:var(--ink-2)}
+  .psteps a:hover .pn{color:var(--ink)}
+  .psteps a.now .pn{color:var(--ink)}
+  .psteps a.now .pn::before{content:"";display:inline-block;width:9px;height:2px;background:var(--seam);
+    margin-right:8px;vertical-align:middle}
+  .ps{font-size:11px;letter-spacing:.06em;display:inline-flex;align-items:center;gap:6px}
+  .ps i{width:7px;height:7px;flex:none}
+  .ps.run{color:var(--ink-2)}
+  .ps.run i{background:var(--seam);border-radius:50%;animation:pulse 2.2s ease-out infinite}
+  .ps.idle{color:var(--ink-3)}
+  .ps.idle i{border:1px solid var(--ink-3)}
+
+  /* 期次架：切换＋上一期签发行 */
+  .shelf{margin-top:clamp(18px,3vh,30px);padding-top:16px;border-top:1px solid var(--hair);
+    display:flex;align-items:center;gap:12px 18px;flex-wrap:wrap}
+  .chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .chips button{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 16px;
+    background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);
+    font-size:13.5px;letter-spacing:.06em;color:var(--ink-2)}
+  .chips button:hover{border-color:var(--ink-3);color:var(--ink)}
+  .chips button[aria-pressed="true"]{background:var(--card-hi);border-color:var(--ink);color:var(--ink);font-weight:600}
+  .chips em{font-style:normal;font-size:11px;letter-spacing:.06em;color:var(--green);
+    display:inline-flex;align-items:center;gap:5px}
+  .chips em i{width:7px;height:7px;flex:none;background:var(--green)}
+  .lastline{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.04em;color:var(--ink-2);white-space:nowrap}
+  .lastline i{width:7px;height:7px;flex:none;background:var(--green)}
+
+  .foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--hair);
+    font-size:11px;letter-spacing:.10em;color:var(--ink-3)}
+
+  /* ───── 窄屏：左栏折成顶带 ───── */
+  @media (max-width:960px){
+    .spread{display:block}
+    .spread::after{display:none}
+    .page-l{position:static;height:auto;overflow:visible}
+    .bm{margin-bottom:4px}
+    .nav{margin:12px 0 0;flex-direction:row;flex-wrap:wrap;gap:0 22px}
+    .nav a{padding:10px 0;min-height:44px}
+    .nav .m{width:100%;margin-top:8px}
+    .idb{display:flex;align-items:baseline;gap:16px;margin-top:10px;padding-top:12px;
+      border-top:1px solid rgba(246,241,222,.16)}
+    .idb .rule{display:none}
+    .motto{margin-left:auto;margin-top:0}
+    .page-r{min-height:0}
+    .cards{grid-template-columns:1fr 1fr}
+  }
+  @media (max-width:640px){
+    .cards{grid-template-columns:1fr}
+    .psteps{grid-template-columns:1fr 1fr;row-gap:10px}
+    .lastline{margin-left:0;white-space:normal}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .st.run i,.ps.run i{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="spread">
+
+  <!-- ═══ 左页 · 会泽（品牌面） ═══ -->
+  <aside class="page-l">
+    <div class="bm"><b>文衡</b><span>云南大学图书馆<br>学科信息参考</span></div>
+    <nav class="nav" aria-label="工作区">
+      <a href="#" aria-current="page">出报告</a>
+      <a href="#">灵活报告</a>
+      <a href="#">他校简报</a>
+      <a href="#">高校 ESI 报告</a>
+      <a href="#">AI 问数</a>
+      <a href="#">问文衡</a>
+      <span class="m">管 理</span>
+      <a href="#">运行档案</a>
+      <a class="q" href="#">陈列馆 ↗</a>
+    </nav>
+    <div class="idb">
+      <div class="rule" aria-hidden="true"></div>
+      <p class="who">admin · 馆员</p>
+      <p class="motto">会泽百家 · 至公天下</p>
+    </div>
+  </aside>
+
+  <!-- ═══ 右页 · 至公（工作面 · 任务视图） ═══ -->
+  <main class="page-r">
+
+    <header class="masthead">
+      <h1>202611</h1>
+      <p class="dateline">二零二六年十一月 · 第 40 期</p>
+    </header>
+
+    <!-- 本期动态：三步大卡＋任务条 -->
+    <section class="dyn" aria-label="本期动态">
+      <p class="eyebrow">本 期 动 态</p>
+      <div class="cards">
+        <article class="scard now">
+          <div class="shead"><span class="idx">第 一 步</span><span class="st run"><i aria-hidden="true"></i>进行中</span></div>
+          <h2>取数</h2>
+        </article>
+        <article class="scard">
+          <div class="shead"><span class="idx">第 二 步</span><span class="st idle"><i aria-hidden="true"></i>未开始</span></div>
+          <h2>核对并并入</h2>
+        </article>
+        <article class="scard">
+          <div class="shead"><span class="idx">第 三 步</span><span class="st idle"><i aria-hidden="true"></i>未开始</span></div>
+          <h2>一键生成</h2>
+        </article>
+      </div>
+      <div class="band">
+        <p class="stuck"><i aria-hidden="true"></i>当前卡在：取数未完成</p>
+        <a class="go" href="#">去取数台</a>
+      </div>
+    </section>
+
+    <!-- 四步流水（收次） -->
+    <section class="pipe" aria-label="出报告四步">
+      <p class="eyebrow">出 报 告 · 四 步</p>
+      <div class="ptrack" aria-hidden="true"><i></i></div>
+      <div class="psteps">
+        <a href="#" aria-current="step"><span class="pn">取数核验</span><span class="ps run"><i aria-hidden="true"></i>进行中</span></a>
+        <a href="#"><span class="pn">预测选模</span><span class="ps idle"><i aria-hidden="true"></i>未开始</span></a>
+        <a href="#"><span class="pn">生成初稿</span><span class="ps idle"><i aria-hidden="true"></i>未开始</span></a>
+        <a href="#"><span class="pn">核验定稿</span><span class="ps idle"><i aria-hidden="true"></i>未开始</span></a>
+      </div>
+    </section>
+
+    <!-- 期次架：切换＋上一期签发行 -->
+    <section class="shelf" aria-label="期次">
+      <p class="eyebrow">期 次</p>
+      <div class="chips" role="group" aria-label="期次切换">
+        <button type="button" aria-pressed="true">202611</button>
+        <button type="button" aria-pressed="false">202609<em><i aria-hidden="true"></i>已签发</em></button>
+        <button type="button" aria-pressed="false">202607<em><i aria-hidden="true"></i>已签发</em></button>
+      </div>
+      <p class="lastline"><i aria-hidden="true"></i>上一期 202609 · 已签发 · 2026-09-23</p>
+    </section>
+
+    <footer class="foot">静态稿 · 演示数据 · 20261031</footer>
+  </main>
+</div>
+</body>
+</html>
