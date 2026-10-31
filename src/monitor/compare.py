@@ -82,6 +82,14 @@ def render(cns: list[str], period: str, cache: dict, insight: dict | None = None
     cols = [r for r in (_school_row(cache, cn) for cn in cns) if r is not None]
     unknown = [cn for cn in cns if sch.find(cn) is None]
     cols.sort(key=lambda r: -(r["total"][3] if r["total"] else 0))
+
+    _CN_NUM = ["一", "二", "三", "四", "五", "六"]
+    _sec = [1]
+
+    def _nxt() -> str:
+        _sec[0] += 1
+        return _CN_NUM[_sec[0] - 1]
+
     col_names = [r["cn"] for r in cols]
 
     # ---- 总量表（每校一行）----
@@ -115,8 +123,30 @@ def render(cns: list[str], period: str, cache: dict, insight: dict | None = None
             + "".join(cells) + "</tr>")
     matrix_head = "".join(f'<th class="n">{_e(n)}</th>' for n in col_names)
 
+    # ---- 趋势对比（_trend 档案回填；每校一条线，≥2 校有序列才渲染）----
+    import monitor.trend as mtrend                                  # noqa: PLC0415
+    series_c, series_r = [], []
+    for r in cols:
+        try:
+            tt = mtrend.combine(r["en"])
+        except Exception:                                          # noqa: BLE001
+            tt = {"points": []}
+        pts = tt.get("points") or []
+        if len(pts) >= 2:
+            series_c.append((r["cn"], [(p["period"], p.get("total_cites")) for p in pts]))
+            series_r.append((r["cn"], [(p["period"], p.get("total_rank")) for p in pts]))
+    trend_html = ""
+    if len(series_c) >= 2:
+        prange = f"{series_c[0][1][0][0]}–{series_c[0][1][-1][0]}"
+        trend_html = (
+            '<section>\n<h2><span class="num">' + _nxt() + '</span>趋势对比</h2>\n'
+            + '<p class="cap">总被引轨迹</p>' + mch.line_chart(series_c)
+            + '<p class="cap">总排名轨迹（越上越好）</p>'
+            + mch.line_chart(series_r, y_invert=True)
+            + f'\n<p class="note">期次 {prange}，由历史全球档案回填；口径同单校报告趋势章。</p>\n</section>')
+
     # ---- 恰好 2 校：逐学科位次哑铃（都上榜学科按位次差降序取前 8）；>2 校矩阵已足够 ----
-    dumbbell_html, num_matrix = "", "二"
+    dumbbell_html = ""
     if len(cols) == 2:
         a, b = cols
         shared = sorted((st for st in stems if st in a["present"] and st in b["present"]),
@@ -124,10 +154,26 @@ def render(cns: list[str], period: str, cache: dict, insight: dict | None = None
         if shared:
             rows_dl = [(_cn(st), a["present"][st][0], b["present"][st][0]) for st in shared]
             dumbbell_html = (
-                '<section>\n<h2><span class="num">二</span>逐学科位次哑铃</h2>\n'
+                '<section>\n<h2><span class="num">' + _nxt() + '</span>逐学科位次哑铃</h2>\n'
                 + mch.dumbbell(rows_dl, name_a=a["cn"], name_b=b["cn"])
                 + '\n<p class="note">排名越小越好；只取两校都上榜学科中位次差最大的前 8 个。</p>\n</section>')
-            num_matrix = "三"
+    num_matrix = _nxt()
+
+    # ---- 学科结构小环图（≤6 校；更多校矩阵已承载对比）----
+    donut_grid = ""
+    if 2 <= len(cols) <= 6:
+        cells = []
+        for r in cols:
+            items = sorted(((_cn(st), rr[2]) for st, rr in r["present"].items()),
+                           key=lambda kv: -kv[1])
+            total_p = sum(v for _n, v in items)
+            cells.append('<div class="mdonut">'
+                         + mch.donut(items, title=r["cn"] + "\n" + _fmt(total_p))
+                         + '</div>')
+        donut_grid = ('<section>\n<h2><span class="num">' + _nxt()
+                      + '</span>学科结构</h2>\n<div class="mdonuts">'
+                      + "".join(cells)
+                      + '</div>\n<p class="note">各校在榜学科论文份额；口径同单校报告相对强度注。</p>\n</section>')
 
     return f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -140,7 +186,8 @@ def render(cns: list[str], period: str, cache: dict, insight: dict | None = None
 .mtable{{min-width:{520 + 110 * max(len(cols), 1)}px}}
 .mtable td.n,.mtable th.n{{text-align:right}}
 td.pm{{background:var(--warn-bg)}}td.ok{{background:var(--ok-bg)}}
-td.dim{{color:var(--muted)}}td.n i{{font-style:normal;font-size:11px;color:var(--muted)}}
+td.dim{{color:var(--muted)}}
+.mdonuts{{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:16px}}td.n i{{font-style:normal;font-size:11px;color:var(--muted)}}
 </style>
 </head>
 <body>
@@ -160,6 +207,7 @@ td.dim{{color:var(--muted)}}td.n i{{font-style:normal;font-size:11px;color:var(-
 <p class="note">上榜＝22 学科全球榜内搜到该校；前 1%＝被引 ≥ 该学科机构阈值；前 1‰＝排名压过 1‰ 线（第 ⌊(m+1)/10⌋ 位）。</p>
 </section>
 
+{trend_html}
 {dumbbell_html}
 <section>
 <h2><span class="num">{num_matrix}</span>学科矩阵（全球排名 / 榜内所数）</h2>
@@ -170,7 +218,9 @@ td.dim{{color:var(--muted)}}td.n i{{font-style:normal;font-size:11px;color:var(-
 <p class="note">着色＝档位：<span class="pill pm">前 1‰</span> <span class="pill ok">前 1%</span>；「—」＝该校该学科未上榜（无被引数据，不外推）。未入册校不进矩阵。</p>
 </section>
 
-{mr._insight_section(insight, num="四" if dumbbell_html else "三")}
+{donut_grid}
+
+{mr._insight_section(insight, num=_nxt())}
 
 <footer>
 数据来源：Clarivate ESI（Essential Science Indicators）{_e(period)} 期全局件（{_e(cache.get("download") or "—")} 下载）；

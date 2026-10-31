@@ -18,6 +18,45 @@ import { HttpError } from '../api'
 
 const RUN_STEPS = ['取数', '拼表', '出稿', '核验', '签发']
 
+/* 预开页的加载反馈：点击手势内开窗后立刻写入五步动画，生成完由 opener 回填报告地址；
+   失败则在原页显示原因。离开这个加载页前，用户不是在盯空白。 */
+function loadingDoc(label: string): string {
+  const stepsJs = JSON.stringify(RUN_STEPS)
+  return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">` +
+    `<title>正在生成 · 文衡监测版</title><style>` +
+    `body{margin:0;background:#F5F3EC;color:#1E2A23;font-family:system-ui,"Microsoft YaHei",sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}` +
+    `.box{width:min(420px,86vw);background:#FAF8F0;border:1px solid #DFDBCB;box-shadow:0 1px 2px rgba(21,34,43,.07);padding:26px 30px}` +
+    `.brand{font-family:serif;letter-spacing:.14em;font-size:14px;color:#143729}` +
+    `h1{font-size:17px;margin:10px 0 2px;font-weight:600}` +
+    `.sub{font-size:12px;color:#7C857B;margin:0 0 16px}` +
+    `.bar{height:3px;background:#EAE7DB;margin:12px 0 8px}.fl{height:100%;width:20%;background:#1A4B27;transition:width .5s}` +
+    `.step{font-size:12px;color:#1A4B27;letter-spacing:.06em}` +
+    `.hint{font-size:11px;color:#7C857B;margin-top:14px;line-height:1.7}` +
+    `</style></head><body><div class="box">` +
+    `<div class="brand">文衡 · 高校 ESI 报告</div>` +
+    `<h1>正在生成：${label}</h1>` +
+    `<p class="sub">完成后本页自动跳转为报告。</p>` +
+    `<div class="bar"><div class="fl" id="fl"></div></div>` +
+    `<p class="step" id="st">第 1/5 步 · 取数</p>` +
+    `<p class="hint">若长时间停留在此页，回插件页看卡片状态或重新生成。</p>` +
+    `<script>var s=${stepsJs},i=0;setInterval(function(){i=(i+1)%s.length;document.getElementById('fl').style.width=((i+1)/s.length*100)+'%';document.getElementById('st').textContent='第 '+(i+1)+'/'+s.length+' 步 · '+s[i];},600);</script>` +
+    `</div></body></html>`
+}
+
+function errDoc(msg: string): string {
+  return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>生成失败 · 文衡监测版</title>` +
+    `<style>body{margin:0;background:#F5F3EC;color:#1E2A23;font-family:system-ui,"Microsoft YaHei",sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}.box{width:min(420px,86vw);background:#FAF8F0;border:1px solid #DFDBCB;padding:26px 30px}.t{font-size:15px;font-weight:600;color:#B23A2B;margin:0 0 8px}.m{font-size:12.5px;color:#4A564D;line-height:1.8;margin:0}</style></head>` +
+    `<body><div class="box"><p class="t">生成没跑成</p><p class="m">${msg}<br>回到插件页重试；本页可关闭。</p></div></body></html>`
+}
+
+function writeDoc(w: Window, html: string) {
+  try {
+    w.document.open()
+    w.document.write(html)
+    w.document.close()
+  } catch { /* opener 已断开等场景：放弃回写，不影响主流程 */ }
+}
+
 type CardState = { busy: boolean; step: number; done: boolean; url: string | null; err: string }
 
 export default function SchoolsPage() {
@@ -54,13 +93,17 @@ export default function SchoolsPage() {
     if (queue.length < 2 || cmpBusy) return
     setCmpBusy(true)
     const w = window.open('about:blank', '_blank')
-    if (w) w.opener = null
+    if (w) {
+      w.opener = null
+      writeDoc(w, loadingDoc(`${queue.length} 所学校 · 对比报告`))
+    }
     try {
       const r = await generateCompareReport(queue)
-      if (w && !w.closed) w.location.href = r.url
-      else window.open(r.url, '_blank', 'noopener')
+      const abs1 = new URL(r.url, window.location.origin).href
+      if (w && !w.closed) w.location.href = abs1
+      else window.open(abs1, '_blank', 'noopener')
     } catch (e) {
-      if (w && !w.closed) w.close()
+      if (w && !w.closed) writeDoc(w, errDoc(e instanceof HttpError ? e.message : '生成没跑成，稍后再试'))
       setQueue((qq) => [...qq])
       window.alert(e instanceof HttpError ? e.message : '对比报告没跑成，稍后再试')
     } finally {
@@ -72,7 +115,10 @@ export default function SchoolsPage() {
     /* 进度条按静态稿节奏播（5 步）；真实请求并行跑，两边都齐才算完成。
        报告页在点击手势内先开（预开空白页，到手后再回填地址）——await 之后开窗会被弹窗策略拦。 */
     const w = window.open('about:blank', '_blank')
-    if (w) w.opener = null
+    if (w) {
+      w.opener = null
+      writeDoc(w, loadingDoc(cn + ' · 监测报告'))
+    }
     setCards((c): Record<string, CardState> => ({ ...c, [cn]: { busy: true, step: 0, done: false, url: null, err: '' } }))
     const anim = setInterval(() => {
       setCards((c): Record<string, CardState> => {
@@ -92,13 +138,13 @@ export default function SchoolsPage() {
         schools: d.schools.map((s) => s.cn === cn ? { ...s, generated: true, url: r.url } : s),
       }))
       if (w && !w.closed) {
-        w.location.href = r.url
+        w.location.href = new URL(r.url, window.location.origin).href
       } else {
-        window.open(r.url, '_blank', 'noopener')
+        window.open(new URL(r.url, window.location.origin).href, '_blank', 'noopener')
       }
     } catch (e) {
       clearInterval(anim)
-      if (w && !w.closed) w.close()
+      if (w && !w.closed) writeDoc(w, errDoc(e instanceof HttpError ? e.message : '生成没跑成，稍后再试'))
       setCards((c): Record<string, CardState> => ({
         ...c, [cn]: {
           busy: false, step: 0, done: false, url: null,

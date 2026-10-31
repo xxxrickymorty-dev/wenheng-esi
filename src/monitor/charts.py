@@ -115,7 +115,7 @@ def line_chart(series, *, width=860, height=280, y_invert=False, ref_lines=(), y
     lo, hi = lo - pad, hi + pad
     ml, mr, mt, mb = 52, 14, 10, 24
     plot_w, plot_h = width - ml - mr, height - mt - mb
-    colors = [OK, WARN, INK]
+    colors = [OK, WARN, INK, "#7FB79B", "#A8B8D0", "#C9A66B"]  # 多系列（对比折线）六色循环
 
     def xi(x):
         return ml + (plot_w * cols.index(x) / (len(cols) - 1) if len(cols) > 1 else plot_w / 2)

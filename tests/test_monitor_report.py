@@ -225,17 +225,18 @@ def test_charts_dumbbell():
 
 
 def test_compare_dumbbell_section():
-    """恰两校 → 哑铃小节（章二），矩阵顺延章三；三校不出现哑铃（矩阵已足够）。"""
+    """恰两校 → 哑铃小节（章三），矩阵顺延章四；三校不出现哑铃（矩阵已足够）。"""
     if not _PERIOD or not mr.cache_path(_PERIOD).exists():
         skip_unless("监测版期次缓存未建", _cache_probe)
     cache = mr.load_cache(_PERIOD)
     html2 = mcmp.render(["海南大学", "清华大学"], _PERIOD, cache)
     assert "逐学科位次哑铃" in html2
     assert "<svg" in html2 and "排名越小越好" in html2
-    assert '<span class="num">三</span>学科矩阵' in html2
+    assert "趋势对比" in html2, "对比件已补趋势章（rick 2026-10-31 裁）"
+    assert '<span class="num">四</span>学科矩阵' in html2
     html3 = mcmp.render(["海南大学", "清华大学", "贵州大学"], _PERIOD, cache)
     assert "逐学科位次哑铃" not in html3
-    assert '<span class="num">二</span>学科矩阵' in html3
+    assert '<span class="num">三</span>学科矩阵' in html3
 
 
 # ---------------------------------------------------------------- 数据装配层 + 打印 + Word 导出（P1 收尾）
