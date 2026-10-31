@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>高校 ESI 报告 · 插件市场（静态稿）</title>
+<style>
+  /* 壳沿 20261025 跨页左栏稿：左「会泽」深绿品牌面 / 右「至公」纸面工作面，订口金线。
+     零圆角、一档浅阴影。本稿验三件事：
+     ① 左栏新增「高校 ESI 报告」入口；② 插件市场式选校网格（985/211 槽位）；
+     ③ 点「生成」走五步工序到「初稿待签」。院校名单为演示样本，落码前按名录校准。 */
+  :root{
+    --deep:#143729; --deep-2:#0F2C21;
+    --ivory:#F6F1DE; --ivory-2:rgba(246,241,222,.80); --ivory-3:rgba(246,241,222,.54);
+    --paper:#F5F3EC; --card:#FAF8F0; --card-hi:#FDFAF3;
+    --ink:#1E2A23; --ink-2:#4A564D; --ink-3:#7C857B;
+    --line:#DFDBCB; --line-2:#EAE7DB;
+    --green:#1A4B27; --gold:#C8B584; --seam:#B08E48;
+    --ok:#276B4C; --ok-soft:#DFEDE6; --warn:#7C5A16; --warn-soft:#F3E9CF;
+    --shadow:0 1px 2px rgba(21,34,43,.07);
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --lw:26%;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;background:none;border:none;color:inherit}
+  :focus-visible{outline:2px solid var(--green);outline-offset:2px}
+  ::selection{background:var(--gold);color:#1E2A23}
+
+  .spread{display:grid;grid-template-columns:var(--lw) minmax(0,1fr);min-height:100dvh;position:relative}
+  .spread::after{content:"";position:absolute;top:0;bottom:0;left:var(--lw);width:1px;background:var(--seam);pointer-events:none}
+
+  /* ───── 左页 · 会泽 ───── */
+  .page-l{background:var(--deep);color:var(--ivory);padding:clamp(15px,2.1vh,28px) clamp(18px,2vw,30px);
+    display:flex;flex-direction:column;position:sticky;top:0;height:100dvh;overflow:hidden}
+  .bm{display:flex;align-items:baseline;gap:10px}
+  .bm b{font-family:var(--serif);font-size:clamp(19px,2.4vh,23px);letter-spacing:.14em}
+  .bm span{font-family:var(--kai);font-size:10.5px;letter-spacing:.16em;color:var(--ivory-3);line-height:1.7}
+  .nav{margin-top:clamp(10px,1.9vh,20px);display:flex;flex-direction:column;font-size:clamp(12px,1.55vh,13.5px);letter-spacing:.04em;color:var(--ivory-2)}
+  .nav a{padding:clamp(3px,.6vh,6px) 0;display:flex;align-items:center;gap:10px}
+  .nav a::before{content:"";width:9px;height:2px;flex:none;background:transparent}
+  .nav a[aria-current]{color:var(--ivory)}
+  .nav a[aria-current]::before{background:var(--gold)}
+  .nav a:hover{color:var(--ivory)}
+  .nav .m{margin-top:clamp(7px,1.2vh,13px);font-family:var(--kai);font-size:10.5px;letter-spacing:.24em;color:var(--ivory-3)}
+  .nav .q{opacity:.62}
+  .hero-l{margin-top:auto;padding-top:18px}
+  .hero-l .ov{font-family:var(--kai);font-size:11px;letter-spacing:.3em;color:var(--ivory-3)}
+  .hero-l h1{font-family:var(--serif);font-size:clamp(24px,3.2vh,32px);font-weight:600;letter-spacing:.06em;margin-top:6px}
+  .hero-l .vol{display:flex;align-items:baseline;gap:12px;margin-top:8px;font-family:var(--kai);color:var(--ivory-2)}
+  .hero-l .vol .b{font-size:clamp(15px,1.9vh,18px);letter-spacing:.1em}
+  .hero-l .vol .c{font-size:11px;letter-spacing:.2em;color:var(--ivory-3)}
+  .hero-l .rule{width:34px;height:1px;background:var(--seam);margin:clamp(10px,1.6vh,16px) 0}
+  .hero-l .stm{font-family:var(--serif);font-size:clamp(14px,1.8vh,16px);letter-spacing:.05em;color:var(--ivory)}
+  .hero-l .sub{font-size:12px;line-height:1.8;color:var(--ivory-3);margin-top:8px;max-width:34ch}
+  .hero-l .acts{margin-top:clamp(12px,1.9vh,18px)}
+  .hero-l .btn{display:inline-block;padding:7px 18px;background:var(--ivory);color:var(--deep);
+    font-size:12.5px;letter-spacing:.08em;box-shadow:var(--shadow)}
+  .hero-l .btn:hover{background:#fff}
+
+  /* ───── 右页 · 至公 ───── */
+  .page-r{padding:clamp(16px,2.4vh,30px) clamp(18px,2.6vw,40px) clamp(14px,2vh,24px);
+    display:flex;flex-direction:column;height:100dvh}
+  .bar{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .tabs{display:flex;gap:2px}
+  .tabs button{padding:6px 12px 8px;font-size:13px;letter-spacing:.05em;color:var(--ink-3);
+    border-bottom:2px solid transparent}
+  .tabs button em{font-style:normal;font-size:11px;margin-left:5px;color:var(--ink-3)}
+  .tabs button[aria-pressed="true"]{color:var(--ink);border-bottom-color:var(--gold)}
+  .tabs button:hover{color:var(--ink)}
+  .search{margin-left:auto;position:relative}
+  .search input{width:min(220px,42vw);padding:6px 10px;border:1px solid var(--line);background:var(--card);
+    color:var(--ink);font:12.5px/1.5 var(--sans);letter-spacing:.03em}
+  .search input::placeholder{color:var(--ink-3)}
+  .search input:focus{outline:none;border-color:var(--ink-3)}
+
+  .grid{margin-top:clamp(12px,2vh,20px);display:grid;grid-template-columns:repeat(auto-fill,minmax(194px,1fr));
+    gap:10px;align-content:start;overflow-y:auto;padding-bottom:8px;flex:1;scroll-behavior:smooth}
+  .slot{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);padding:12px 13px 11px;
+    display:flex;flex-direction:column;gap:9px;min-height:104px}
+  .slot:hover{background:var(--card-hi)}
+  .slot .top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+  .slot .mg{font-style:normal;width:34px;height:34px;flex:none;display:grid;place-items:center;
+    background:var(--ok-soft);color:var(--green);font-family:var(--serif);font-size:17px;font-weight:600}
+  .slot .bdg{font-size:10px;letter-spacing:.12em;padding:1px 7px;line-height:1.7}
+  .slot .bdg.b985{background:var(--green);color:var(--ivory)}
+  .slot .bdg.b211{border:1px solid var(--line);color:var(--ink-3)}
+  .slot h3{font-size:13.5px;font-weight:600;letter-spacing:.02em;line-height:1.5}
+  .slot .foot{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .slot .st{font-size:11px;letter-spacing:.04em;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .slot .st::before{content:"";width:6px;height:6px;flex:none}
+  .st-new{color:var(--ink-3)}        .st-new::before{background:transparent;border:1px solid var(--ink-3)}
+  .st-ready{color:var(--warn)}       .st-ready::before{background:var(--warn)}
+  .st-run{color:var(--green)}        .st-run::before{background:var(--green)}
+  .st-draft{color:var(--ok)}         .st-draft::before{background:var(--ok)}
+  .st-signed{color:var(--green);font-weight:600} .st-signed::before{background:var(--green)}
+  .slot .act{font-size:11.5px;letter-spacing:.06em;padding:3px 12px;border:1px solid var(--line-2);color:var(--ink-2)}
+  .slot .act:hover{border-color:var(--ink-3);color:var(--ink)}
+  .slot .act.go{background:var(--deep);border-color:var(--deep);color:var(--ivory)}
+  .slot .act.go:hover{background:var(--green);border-color:var(--green);color:#fff}
+  .slot .act[disabled]{opacity:.45;cursor:default}
+  .slot .prog{margin-top:2px}
+  .slot .prog .tr{height:2px;background:var(--line-2)}
+  .slot .prog .fl{height:100%;background:var(--green);transition:width .5s}
+  .slot .prog .lb{font-size:10.5px;color:var(--green);letter-spacing:.06em;margin-top:4px}
+  .empty{grid-column:1/-1;text-align:center;color:var(--ink-3);font-size:12.5px;padding:40px 0}
+
+  .foot{padding-top:10px;border-top:1px solid var(--line-2);font-size:11px;color:var(--ink-3);letter-spacing:.04em}
+
+  @media (max-width:900px){
+    .spread{display:block}
+    .spread::after{display:none}
+    .page-l{position:static;height:auto}
+    .hero-l{margin-top:14px}
+    .page-r{height:auto}
+    .grid{overflow:visible}
+  }
+  @media (prefers-reduced-motion:reduce){.grid{scroll-behavior:auto}.slot .prog .fl{transition:none}}
+</style>
+</head>
+<body>
+<div class="spread">
+
+  <!-- ═══ 左页 · 会泽 ═══ -->
+  <aside class="page-l">
+    <div class="bm"><b>文衡</b><span>云南大学图书馆<br>学科信息参考</span></div>
+    <nav class="nav" aria-label="工作区">
+      <a href="#">出报告</a>
+      <a href="#">灵活报告</a>
+      <a href="#">他校简报</a>
+      <a href="#" aria-current="page">高校 ESI 报告</a>
+      <a href="#">AI 问数</a>
+      <a href="#">问文衡</a>
+      <a class="m" href="#">管 理</a>
+      <a href="#">主台账</a>
+      <a href="#">运行档案</a>
+      <a class="q" href="#">陈列馆 ↗</a>
+    </nav>
+    <div class="hero-l">
+      <p class="ov">监 测 版 · 全 国 槽 位</p>
+      <h1>高校 ESI 报告</h1>
+      <p class="vol"><span class="b" id="cntAll">— 所</span><span class="c">985 · 211</span></p>
+      <div class="rule"></div>
+      <p class="stm">换校，不换产线。</p>
+      <p class="sub">数据只要 ESI 每期导出；监测表由系统一期一期替学校攒，从接入当期开始。</p>
+      <div class="acts"><a class="btn" href="#grid">从榜单选校 ↓</a></div>
+    </div>
+  </aside>
+
+  <!-- ═══ 右页 · 至公 ═══ -->
+  <main class="page-r">
+    <div class="bar" role="toolbar" aria-label="筛选">
+      <div class="tabs" id="tabs">
+        <button type="button" data-tier="all" aria-pressed="true">全部<em></em></button>
+        <button type="button" data-tier="985" aria-pressed="false">985<em></em></button>
+        <button type="button" data-tier="211" aria-pressed="false">211<em></em></button>
+      </div>
+      <div class="search"><input id="q" type="search" placeholder="搜校名" aria-label="搜校名"></div>
+    </div>
+
+    <div class="grid" id="grid" aria-live="polite"></div>
+
+    <p class="foot">静态稿 20261031 · 院校名单为演示样本（分址院校暂并一卡），落码前按教育部名录与 ESI 机构写法校准</p>
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  /* ── 槽位数据：[校名, 层, 态]；层 985/211（985 校只挂 985 徽）──
+     态：new 未建档 / ready 数据就绪 / run 生成中 / draft 初稿待签 / signed 已签发
+     演示只有云大走完过全流程（202609 已签发），其余为槽位现状 */
+  var RUN_STEPS = ["取数", "拼表", "出稿", "核验", "签发"];
+  var ST_LABEL = {new:"未建档", ready:"数据就绪", run:"生成中", draft:"初稿待签", signed:"已签发"};
+  var D = [
+    /* ── 985（39）── */
+    ["清华大学","985","new"],["北京大学","985","new"],["中国人民大学","985","new"],
+    ["北京航空航天大学","985","new"],["北京理工大学","985","new"],["北京师范大学","985","new"],
+    ["中国农业大学","985","new"],["中央民族大学","985","new"],["南开大学","985","new"],
+    ["天津大学","985","new"],["大连理工大学","985","new"],["东北大学","985","new"],
+    ["吉林大学","985","new"],["哈尔滨工业大学","985","new"],["复旦大学","985","new"],
+    ["同济大学","985","new"],["上海交通大学","985","new"],["华东师范大学","985","new"],
+    ["南京大学","985","new"],["东南大学","985","new"],["浙江大学","985","new"],
+    ["中国科学技术大学","985","new"],["厦门大学","985","new"],["山东大学","985","new"],
+    ["中国海洋大学","985","new"],["武汉大学","985","new"],["华中科技大学","985","new"],
+    ["湖南大学","985","new"],["中南大学","985","new"],["国防科技大学","985","new"],
+    ["中山大学","985","new"],["华南理工大学","985","new"],["四川大学","985","new"],
+    ["电子科技大学","985","new"],["重庆大学","985","new"],["西安交通大学","985","new"],
+    ["西北工业大学","985","new"],["西北农林科技大学","985","new"],["兰州大学","985","new"],
+    /* ── 211（72，非 985）── */
+    ["北京交通大学","211","new"],["北京工业大学","211","new"],["北京科技大学","211","new"],
+    ["北京化工大学","211","new"],["北京邮电大学","211","new"],["北京林业大学","211","new"],
+    ["北京中医药大学","211","new"],["北京外国语大学","211","new"],["中国传媒大学","211","new"],
+    ["中央财经大学","211","new"],["对外经济贸易大学","211","new"],["中国政法大学","211","new"],
+    ["华北电力大学","211","new"],["北京体育大学","211","new"],["中央音乐学院","211","new"],
+    ["天津医科大学","211","new"],["河北工业大学","211","new"],["太原理工大学","211","new"],
+    ["内蒙古大学","211","new"],["辽宁大学","211","new"],["大连海事大学","211","new"],
+    ["延边大学","211","new"],["东北师范大学","211","new"],["哈尔滨工程大学","211","new"],
+    ["东北农业大学","211","new"],["东北林业大学","211","new"],["华东理工大学","211","new"],
+    ["东华大学","211","new"],["上海外国语大学","211","new"],["上海财经大学","211","new"],
+    ["上海大学","211","new"],["海军军医大学","211","new"],["苏州大学","211","new"],
+    ["南京航空航天大学","211","new"],["南京理工大学","211","new"],["中国矿业大学","211","new"],
+    ["河海大学","211","new"],["江南大学","211","new"],["南京农业大学","211","new"],
+    ["中国药科大学","211","new"],["南京师范大学","211","new"],["安徽大学","211","new"],
+    ["合肥工业大学","211","new"],["福州大学","211","new"],["南昌大学","211","new"],
+    ["郑州大学","211","ready"],["武汉理工大学","211","new"],["华中农业大学","211","new"],
+    ["华中师范大学","211","new"],["中南财经政法大学","211","new"],["中国地质大学","211","new"],
+    ["湖南师范大学","211","new"],["暨南大学","211","new"],["华南师范大学","211","new"],
+    ["广西大学","211","new"],["海南大学","211","run"],["西南大学","211","new"],
+    ["西南交通大学","211","new"],["西南财经大学","211","new"],["四川农业大学","211","new"],
+    ["贵州大学","211","new"],["云南大学","211","signed"],
+    ["西藏大学","211","new"],["西北大学","211","new"],["西安电子科技大学","211","new"],
+    ["长安大学","211","new"],["陕西师范大学","211","new"],["空军军医大学","211","new"],
+    ["青海大学","211","new"],["宁夏大学","211","new"],["新疆大学","211","new"],
+    ["石河子大学","211","new"]
+  ];
+  /* 演示：海南大学定格在第三步（拼表） */
+  var RUN_AT = {"海南大学":2};
+
+  var grid = document.getElementById("grid");
+  var q = document.getElementById("q");
+  var tier = "all";
+
+  function card(row){
+    var name = row[0], t = row[1], st = row[2];
+    var el = document.createElement("article");
+    el.className = "slot"; el.dataset.name = name; el.dataset.tier = t; el.dataset.st = st;
+    var badge = t === "985" ? '<span class="bdg b985">985</span>' : '<span class="bdg b211">211</span>';
+    var h = '<div class="top"><i class="mg">' + name.charAt(0) + "</i>" + badge + "</div><h3>" + name + "</h3><div class='foot'>";
+    if (st === "new")      h += '<span class="st st-new">' + ST_LABEL.new + '</span><button class="act" type="button" data-act="join" title="登记校名与 ESI 写法，接好每期导出">建档</button>';
+    else if (st === "ready") h += '<span class="st st-ready">' + ST_LABEL.ready + '</span><button class="act go" type="button" data-act="go">生成</button>';
+    else if (st === "run")   h += '<span class="st st-run">' + ST_LABEL.run + '</span><span class="act" disabled></span>';
+    else                 h += '<span class="st ' + (st === "signed" ? "st-signed" : "st-draft") + '">' + ST_LABEL[st] + (st === "signed" ? " · 202609" : "") + '</span><button class="act" type="button" data-act="view" title="落码后进核验定稿">查看</button>';
+    h += "</div>";
+    if (st === "run") h += '<div class="prog"><div class="tr"><div class="fl"></div></div><p class="lb"></p></div>';
+    el.innerHTML = h;
+    return el;
+  }
+
+  function render(){
+    var kw = q.value.trim().toLowerCase();
+    grid.innerHTML = "";
+    var rows = D.filter(function(r){
+      if (tier !== "all" && r[1] !== tier) return false;
+      if (kw && r[0].toLowerCase().indexOf(kw) < 0) return false;
+      return true;
+    });
+    if (!rows.length){ var p = document.createElement("p"); p.className = "empty"; p.textContent = "没有匹配的学校"; grid.appendChild(p); }
+    rows.forEach(function(r){
+      var c = card(r);
+      grid.appendChild(c);
+      if (r[2] === "run") paint(c, RUN_AT[r[0]] || 0);
+    });
+  }
+
+  function paint(el, step){
+    /* step 从 0 计；到第五步收口成「初稿待签」 */
+    var at = Math.min(step, RUN_STEPS.length - 1);
+    el.querySelector(".fl").style.width = ((at + 1) / RUN_STEPS.length * 100) + "%";
+    el.querySelector(".lb").textContent = "第 " + (at + 1) + "/" + RUN_STEPS.length + " 步 · " + RUN_STEPS[at];
+  }
+
+  grid.addEventListener("click", function(e){
+    var btn = e.target.closest("button[data-act]");
+    if (!btn || btn.disabled) return;
+    var el = btn.closest(".slot"), name = el.dataset.name;
+    if (btn.dataset.act === "go"){
+      btn.disabled = true; btn.textContent = "";
+      el.dataset.st = "run"; el.querySelector(".st").className = "st st-run";
+      el.querySelector(".st").textContent = ST_LABEL.run;
+      var prog = document.createElement("div");
+      prog.className = "prog";
+      prog.innerHTML = '<div class="tr"><div class="fl"></div></div><p class="lb"></p>';
+      el.appendChild(prog);
+      var i = 0; paint(el, i);
+      var tm = setInterval(function(){
+        i += 1;
+        if (i < RUN_STEPS.length){ paint(el, i); return; }
+        clearInterval(tm);
+        el.querySelector(".st").className = "st st-draft";
+        el.querySelector(".st").textContent = ST_LABEL.draft;
+        prog.remove();
+        btn.className = "act"; btn.dataset.act = "view"; btn.disabled = false;
+        btn.title = "落码后进核验定稿"; btn.textContent = "查看";
+      }, 850);
+    }
+  });
+
+  document.getElementById("tabs").addEventListener("click", function(e){
+    var b = e.target.closest("button[data-tier]");
+    if (!b) return;
+    tier = b.dataset.tier;
+    document.querySelectorAll("#tabs button").forEach(function(x){
+      x.setAttribute("aria-pressed", x === b ? "true" : "false");
+    });
+    render();
+  });
+  q.addEventListener("input", render);
+
+  /* 计数进页签与左页 */
+  var n985 = D.filter(function(r){ return r[1] === "985"; }).length;
+  var n211 = D.filter(function(r){ return r[1] === "211"; }).length;
+  var ems = document.querySelectorAll("#tabs em");
+  ems[0].textContent = D.length; ems[1].textContent = n985; ems[2].textContent = n211;
+  document.getElementById("cntAll").textContent = "内置 " + D.length + " 所";
+
+  render();
+})();
+</script>
+</body>
+</html>
