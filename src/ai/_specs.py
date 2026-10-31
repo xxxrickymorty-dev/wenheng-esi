@@ -37,6 +37,10 @@ CAPABILITIES: tuple[Capability, ...] = (
     Capability("brief", "期次导读", "planned", "admin", False, ()),
     Capability("dialog", "对话前门", "ready", "operator", True, ("text",),
                "这句话暂时理解不了，请换一句再试。", modeled=False),
+    # 问数直答（2026-10-31）：问数句式直调 aiqa 引擎（确定性、零模型）。不是 ai.run
+    # 的可跑能力——只借开关体系做路径选择：关＝问数句式回落既有路由（模型作答）。
+    Capability("qa_direct", "问数直答", "ready", "operator", True, (),
+               "问数引擎暂时没接上，这句交给常规问答。", modeled=False),
 )
 
 _BY_ID = {c.id: c for c in CAPABILITIES}

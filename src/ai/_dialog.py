@@ -993,7 +993,8 @@ def build(root, period, payload):                                  # noqa: ARG00
     # 「有没有期次」分家：槽位期次喂给引擎当入参，模型转述退为引擎认不出时的兜底。
     # 槽继承三形态：上一期（rel）/ 换学科（disc）/ 裸期次续问；比较类、报告与推进
     # 意图优先级更高（上面已路由）；多期序列问法照旧反问。
-    if (kind in ("query", "unclear", "")
+    if (payload.get("qa_direct", True)
+            and kind in ("query", "unclear", "")
             and not _SERIES_SPAN.search(norm_text)
             and (metric_hit or (qctx and (rel_hit or m_disc_now or p.period)))):
         p = replace(p, kind="qa")

@@ -1984,6 +1984,11 @@ async def _dialog_turn_impl(body: dict, user: str, progress=None) -> tuple:
     # 「上一期呢」「那材料科学呢」这类追问；形状不合法的值丢弃。
     qmetric = str(slots.get("qmetric") or "").strip()[:12]
     qdisc = str(slots.get("qdisc") or "").strip()[:16]
+    # 问数直答开关（ai 能力 qa_direct，settings.json 即时生效）：关＝问数句式回落
+    # 既有路由（模型作答）——rick 2026-10-31 要 A/B 两条路径。
+    from ai import _settings as _ai_settings                     # noqa: PLC0415
+    qa_direct = bool(_ai_settings.store_for(config.OUT_DIR)
+                     .read().get("caps", {}).get("qa_direct", True))
     # 会话（票 11）：有 session → 归属校验 + 历史从库读；无 → 本回合结束时建新会话。
     session_id = str(body.get("session") or "").strip()
     stored_turns = None
@@ -2026,7 +2031,8 @@ async def _dialog_turn_impl(body: dict, user: str, progress=None) -> tuple:
     ans = await run_in_threadpool(ai.run, "dialog", period,
                                   payload={"text": text, "history": history,
                                            "periods": periods,
-                                           "qmetric": qmetric, "qdisc": qdisc}, actor=actor)
+                                           "qmetric": qmetric, "qdisc": qdisc,
+                                           "qa_direct": qa_direct}, actor=actor)
     if ans.mode in ("closed", "denied", "unavailable"):
         r = _answer_response(ans)
         return json.loads(r.body), r.status_code

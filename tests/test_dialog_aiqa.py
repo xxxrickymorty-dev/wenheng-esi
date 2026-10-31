@@ -39,11 +39,14 @@ class _Bomb:
         raise AssertionError("问数轮不该问模型")
 
 
-def run_dialog(text, *, root, slot="", history=None, qmetric="", qdisc="", **ov):
+def run_dialog(text, *, root, slot="", history=None, qmetric="", qdisc="",
+               qa_direct=None, **ov):
+    payload = {"text": text, "history": history or [],
+               "qmetric": qmetric, "qdisc": qdisc}
+    if qa_direct is not None:
+        payload["qa_direct"] = qa_direct
     with ai.using(data_root=root, brain=_Bomb(), **ov):
-        return ai.run("dialog", slot,
-                      payload={"text": text, "history": history or [],
-                               "qmetric": qmetric, "qdisc": qdisc}, actor="admin")
+        return ai.run("dialog", slot, payload=payload, actor="admin")
 
 
 # ---------------------------------------------------------------- 最小问数库
@@ -316,3 +319,19 @@ class TestEngine:
             con.close()
         kinds = [(s["metric"], s["kind"]) for s in qp["specs"]]
         assert kinds == [("threshold_1pct", "at"), ("proximity_1pct", "at")], kinds
+
+
+# ============================================================ ⑧ 直答开关（二步补）
+class TestSwitch:
+    def test_开关关_问数句式回落既有路由(self, tmp_path):
+        ans = run_dialog("查一下化学的接近度", root=tmp_path, slot="202607", qa_direct=False)
+        assert ans.data["kind"] == "query", "关＝回落既有路由（模型作答）"
+
+    def test_开关缺省开_照旧直调(self, aiqa_root):
+        ans = run_dialog("查一下化学的接近度", root=aiqa_root)
+        assert ans.data["kind"] == "qa"
+
+    def test_开关关_比较类照旧简报(self, tmp_path):
+        ans = run_dialog("对比昆明理工大学和海南大学最新一期学科发展",
+                         root=tmp_path, qa_direct=False)
+        assert ans.data["kind"] == "compare"
