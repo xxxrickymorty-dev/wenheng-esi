@@ -1972,6 +1972,7 @@ async def _dialog_turn_impl(body: dict, user: str, progress=None) -> tuple:
             except Exception:                                     # noqa: BLE001
                 pass
 
+    t0 = time.monotonic()
     text = str(body.get("text") or "").strip()
     if not text:
         return {"error": "请先说一句话"}, 400
@@ -2094,6 +2095,8 @@ async def _dialog_turn_impl(body: dict, user: str, progress=None) -> tuple:
         except Exception:                                     # noqa: BLE001
             session_id = ""
     resp["session_id"] = session_id
+    resp["elapsed_ms"] = int((time.monotonic() - t0) * 1000)
+    resp["ts"] = time.strftime("%H:%M")
     return resp, 200
 
 

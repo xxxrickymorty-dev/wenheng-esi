@@ -58,6 +58,9 @@ type Turn = { who: 'me' | 'wh' | 'sys'; text: string; notice?: string; actions?:
               picked?: number; run?: DialogRun; trace?: Trace; answer?: DialogAnswer
               /** 问数图块（2026-10-31）：kind="qa" 轮后端直调引擎出的图；没图就缺省 */
               qa?: DialogQa
+              /** 整轮耗时与时间（2026-10-31）：每句话都报，照 dsh 的消息元信息 */
+              elapsed?: number
+              ts?: string
               /** 工具回执（AI 层双面回执）；本轮没有就缺省/为空，界面不出回执条 */
               receipts?: DialogReceipt[]
               /** 这一轮的工具调用轨迹（2026-10-29）：模型查了哪些台账、查到没有 */
@@ -381,6 +384,8 @@ export default function DialogPage() {
                               actions: r.actions, run: r.run ?? undefined,
                               answer: r.answer ?? undefined,
                               qa: r.qa ?? undefined,
+                              elapsed: r.elapsed_ms ?? undefined,
+                              ts: r.ts ?? undefined,
                               receipts: r.receipts,
                               tools: calls.length ? calls : undefined }],
       }))
@@ -906,6 +911,11 @@ export default function DialogPage() {
                   {t.answer && <AnswerBlock answer={t.answer} />}
                   {t.qa && <QaChart qa={t.qa} />}
                   {t.notice && <p className="dlg-notice">{t.notice}</p>}
+                  {t.who === 'wh' && t.elapsed != null && (
+                    <p className="dlg-notice">
+                      耗时 {(t.elapsed / 1000).toFixed(1)} 秒{t.ts ? ` · ${t.ts}` : ''}
+                    </p>
+                  )}
                   {t.trace && (
                     <div className="dlg-trk" aria-live="polite">
                       <div className="dlg-trk-h">
@@ -1151,13 +1161,14 @@ function AnswerBlock({ answer }: { answer: DialogAnswer }) {
       {!!answer.receipts?.length && <ReceiptBar receipts={answer.receipts} />}
       {answered && (
         <div className="an-footer">
-          <span className={`pill ${answer.mode === 'model' ? 'signed' : 'stale'}`}>
-            {answer.mode === 'model' ? '大模型作答' : '规则版作答'}
+          <span className={`pill ${answer.mode === 'failed' ? 'bad' : answer.mode === 'model' ? 'signed' : 'stale'}`}>
+            {answer.mode === 'failed' ? '本轮未作答' : answer.mode === 'model' ? '大模型作答' : '规则版作答'}
           </span>
           {answer.shield.checked > 0 && (
             <span className="pill ok">数字已核对：{answer.shield.passed} 个</span>
           )}
           <span className="hint">点数字看来源</span>
+          <a className="hint" href="/app/?view=ledger" target="_blank" rel="noopener">打开台账 ↗</a>
         </div>
       )}
       {fb ? (

@@ -45,6 +45,9 @@ QA_SYSTEM_PROMPT = (
     "若问题过于笼统、无法定位到具体学科与指标（例如只说「查一下数据」「查某期的数据」"
     "却没指明学科和指标），不要输出任何内部推理、分析或内心独白，也不要编造或复述问题——"
     "直接反问用户澄清：你想查哪个学科？哪个指标（接近度 / 总被引 / CNCI / 顶尖论文 / 排名 / 进出名单）？"
+    "版式：第一句直接给结论与数字；需要展开时用「· 」要点行（至多三条）；"
+    "关键数字用 **加粗**（加粗的是 [[n]] 标记整体，如 **[[1]]**）；"
+    "同一主题内不要用小标题，两行能说清就不要写第三行。"
     "反问澄清属于例外：此时无需引用 [[n]] 标记，直接追问即可，不要夹带其他内容。"
     "同样，当你无法形成有效的工具调用、也找不到任何参考数据来回答时，直接追问，而不是臆测。"
     "作答质量与排版：用自然中文、按「学科名：数值」成对列出，每个指标一行，"
@@ -84,6 +87,11 @@ REVIEW_SYSTEM_PROMPT = (
 
 _SYSTEM_PROMPTS = {"diagnose": SYSTEM_PROMPT, "qa": QA_SYSTEM_PROMPT,
                    "review": REVIEW_SYSTEM_PROMPT}
+
+#: 问答必须模型作答（rick 2026-10-31）：模型失败/超时不再顶规则版，显式失败态。
+#: 文案讲人话＋给下一步；规则版只留「看规则版」参照（数字对照用）。
+_QA_TIMEOUT_TEXT = "模型超时了，这一句没答成。稍等再问一次，或换个问法。"
+_QA_FAILED_TEXT = "模型这一轮没有作答。稍等再问一次，或换个问法。"
 
 #: 无数字地板文案（构造上不可能违反盾；规则版自身也过不了盾时的最后一格）。
 FLOOR_TEXT = "本次建议未通过数字校验，请直接打开台账与规则库核对。"
@@ -274,16 +282,29 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
             rule_protected=draft.rule_protected, mapping=draft.mapping)
         if outcome.attempted:
             if outcome.text is None:
-                # 传输/校验回落：码与文案由边界给，正文回规则版。
+                # 传输/校验回落：码与文案由边界给。问答（qa）必须模型作答——失败与
+                # 超时显式化（不顶规则版；规则版只留「看规则版」数字对照）。
                 fallback = outcome.reason
                 fallback_detail = ({k: len(v) for k, v in (outcome.detail or {}).items()}
                                    if outcome.detail else None)
                 notice = outcome.notice
-            elif (cap.id in ("qa", "review")
+                if cap.id == "qa":
+                    mode, backend = "failed", outcome.backend
+                    _fail_blob = str(fallback) + str(outcome.detail or "")
+                    text = (_QA_TIMEOUT_TEXT if "timeout" in _fail_blob.lower()
+                            else _QA_FAILED_TEXT)
+            elif (cap.id == "review"
                   and not draft.number.cited_facts(outcome.candidate_protected)):
-                # 越题：自由作答型未引用本期事实，按政策回落（政策留在能力口）。
+                # 越题：review 保持回落（政策留在能力口）。
                 fallback = _attempt.FallbackReason.OFF_TOPIC
                 notice = "模型作答未引用本期事实，已回退规则版。"
+            elif cap.id == "qa" and not draft.number.cited_facts(outcome.candidate_protected):
+                # 问答越题（未引用事实）＝多是澄清/换口径的回答：模型必须作答（rick
+                # 2026-10-31），照发——盾已验证无未标记数字，来源计数如实为 0；
+                # fallback 记录照记（off_topic），审计面不丢。
+                mode, backend, text = "model", outcome.backend, outcome.text
+                fallback = _attempt.FallbackReason.OFF_TOPIC
+                notice = "模型作答未引用台账事实（如澄清或换口径），如实照发。"
             else:
                 mode, backend, text = "model", outcome.backend, outcome.text
                 notice = outcome.notice

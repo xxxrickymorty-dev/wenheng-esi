@@ -29,15 +29,19 @@ def _rows(root, period="202607"):
     ("bad_response", "brain_error:bad_response"),
 ])
 class Test_码与驱动:
-    def test_能力口_失败_记rule_带码(self, tmp_path, code, reason):
+    def test_能力口_失败_显式失败态_带码(self, tmp_path, code, reason):
+        # 2026-10-31 rick：问答必须模型作答——失败/超时不顶规则版，显式失败态；
+        # 超时码答「超时」，其余答「没有作答」；回落码照记（AiRecords 口径不变）。
         seed_period(tmp_path)
         with ai.using(data_root=tmp_path, brain=FailingBrain(BrainError("超时", code=code))):
             ans = ai.run("qa", "202607", payload={"question": "本期总被引多少？"},
                          actor="admin")
-        assert ans.mode == "rule"
+        assert ans.mode == "failed"
+        assert ("超时" if code == "timeout" else "没有作答") in ans.text
+        assert ans.rule_text, "规则版留作「看规则版」参照"
         row = _rows(tmp_path)[0]
         assert row["capability"] == "qa"
-        assert row["mode"] == "rule" and row["fallback"] == reason
+        assert row["mode"] == "failed" and row["fallback"] == reason
 
     def test_写作位_失败_记rule_带码(self, tmp_path, monkeypatch, code, reason):
         monkeypatch.setenv(_writer.ENV_ON, "1")

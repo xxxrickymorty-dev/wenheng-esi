@@ -999,6 +999,11 @@ def build(root, period, payload):                                  # noqa: ARG00
             and (metric_hit or (qctx and (rel_hit or m_disc_now or p.period)))):
         p = replace(p, kind="qa")
         kind = "qa"
+    if kind == "unclear" and qctx and (p.period or rel_hit or m_disc_now):
+        # 直答关着也必须模型作答（rick 2026-10-31）：带问数槽的追问解析出了期次/
+        # 学科/指标，就不落含糊卡——交给既有 query 路由（服务器按意图调 qa 能力）。
+        p = replace(p, kind="query")
+        kind = "query"
 
     run = None
     actions: list = []

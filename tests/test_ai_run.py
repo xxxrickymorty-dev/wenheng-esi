@@ -224,7 +224,7 @@ def test_capabilities_角色与开关(tmp_path):
     with ai.using(data_root=tmp_path):
         admin = {c.id: c for c in ai.capabilities(actor="admin")}
         guest = {c.id: c for c in ai.capabilities(actor="guest")}
-    assert set(admin) == {"qa", "review", "diagnose", "brief", "dialog"}
+    assert set(admin) == {"qa", "review", "diagnose", "brief", "dialog", "qa_direct"}
     assert admin["diagnose"].stage == "ready" and admin["diagnose"].allowed
     assert admin["qa"].stage == "ready" and admin["review"].stage == "ready"
     assert not guest["diagnose"].allowed, "guest 默认全拒（fail-closed）"

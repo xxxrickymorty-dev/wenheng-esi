@@ -97,29 +97,32 @@ def test_问句数字占位_外发零值_模型还原(tmp_path):
     assert any(s.pointer.startswith("overview_facts.json#") for s in ans.sources)
 
 
-def test_越题_不引用事实回落(tmp_path):
+def test_越题_不引用事实_模型照发如实标注(tmp_path):
+    # 2026-10-31 rick：问答必须模型作答——越题（多为澄清/概述句）照发，盾已验无游离数字
     seed_period(tmp_path)
     brain = ScriptedBrain([lambda b: Turn(text="本期整体情况良好。")])
     ans = qa(tmp_path, question="本期怎么样", brain=brain)
-    assert ans.mode == "rule" and ans.text == ans.rule_text
-    assert "未引用本期事实" in ans.notice
+    assert ans.mode == "model" and ans.text == "本期整体情况良好。"
+    assert "未引用" in ans.notice
     assert records(tmp_path)[0]["fallback"] == "off_topic"
 
 
-def test_只引用问句数字也判越题(tmp_path):
+def test_只引用问句数字也判越题_照发(tmp_path):
     seed_period(tmp_path)
     brain = ScriptedBrain([lambda b: Turn(text="[[1]] 是位次。")])
     ans = qa(tmp_path, question="995 是什么", brain=brain)
-    assert ans.mode == "rule"
+    assert ans.mode == "model"
     assert records(tmp_path)[0]["fallback"] == "off_topic"
 
 
 @pytest.mark.parametrize("suffix", [" 另见 7 项。", " [[999]] 无此来源。"])
 def test_自由型盾_游离数字_未知标记都拒(tmp_path, suffix):
+    # 2026-10-31：盾拒不顶规则版——显式失败态（规则版只留「看规则版」参照）
     seed_period(tmp_path)
     brain = ScriptedBrain([lambda b: Turn(text=b.task + suffix)])
     ans = qa(tmp_path, question="995 是什么", brain=brain)
-    assert ans.mode == "rule" and "数字校验" in ans.notice
+    assert ans.mode == "failed" and "没有作答" in ans.text
+    assert ans.rule_text, "规则版留作参照"
     assert records(tmp_path)[0]["fallback"] == "shield_reject"
 
 
@@ -138,11 +141,12 @@ def test_自由型盾_重复引用同一来源放行(tmp_path):
     assert records(tmp_path)[0]["fallback"] is None
 
 
-def test_工具请求本轮不开放_回落(tmp_path):
+def test_工具请求本轮不开放_显式失败(tmp_path):
     seed_period(tmp_path)
     brain = ScriptedBrain([Turn(calls=({"tool": "read_cell", "args": {}},))])
     ans = qa(tmp_path, question="本期怎么样", brain=brain)
-    assert ans.mode == "rule" and "工具" in ans.notice
+    assert ans.mode == "failed" and "没有作答" in ans.text
+    assert "工具" in ans.notice
     assert records(tmp_path)[0]["fallback"] == "calls_unsupported"
 
 
@@ -887,7 +891,7 @@ class Test原生工具环:
         # 占满全部轮次还在要工具（turns 要比 max_steps 多一拍，否则取不到 turns 会
         # 先撞上空回复）——这才叫「连续请求工具未作答」。
         ans, _ = self._qa_tool(root, [Turn(calls=(call,)) for _ in range(6)])
-        assert ans.mode == "rule" and ans.text == ans.rule_text
+        assert ans.mode == "failed" and "没有作答" in ans.text
         assert "连续请求工具未作答" in ans.notice
         assert records(root)[0]["fallback"] == "calls_unsupported"
 

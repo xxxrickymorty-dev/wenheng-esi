@@ -84,10 +84,11 @@ def test_参数与角色原样交给能力口(monkeypatch):
     r = call(config.ADMIN_USER, {"text": "再出 202605 的",
                                 "slots": {"period": "202609", "intent": "出报告", "qmetric": "", "qdisc": ""}})
     assert r["slots"] == {"period": "202605", "intent": "出报告", "qmetric": "", "qdisc": ""}, "只改期次，意图不动"
-    assert seen == {"cap": "dialog", "period": "202609",
-                    "payload": {"text": "再出 202605 的", "history": [],
-                                "periods": ["202605"], "qmetric": "", "qdisc": ""},
-                    "actor": "admin"}
+    assert seen["cap"] == "dialog" and seen["period"] == "202609"
+    assert seen["actor"] == "admin"
+    assert seen["payload"]["text"] == "再出 202605 的"
+    assert seen["payload"]["periods"] == ["202605"]
+    assert {"qmetric", "qdisc", "qa_direct"} <= set(seen["payload"]), "问数槽与直答开关随 payload 走"
     assert r["verdict"] == "" and r["inventory"] is None and r["actions"] == []
 
 
@@ -227,10 +228,11 @@ def test_查数据_服务器按意图调qa(monkeypatch, tmp_path):
     assert r["answer"]["text"].startswith("化学的接近度") and r["answer"]["record_id"] == "r-qa"
     assert r["slots"] == {"period": "202607", "intent": "", "qmetric": "", "qdisc": ""}, "期次解析与槽位共享"
     assert r["run"] is None, "查数据不出稿"
-    assert calls == [("dialog", "202607", {"text": "查一下化学的接近度", "history": [],
-                                           "periods": [], "qmetric": "", "qdisc": ""}),
-                     ("qa", "202607", {"question": "查一下化学的接近度", "history": []})], \
-        "两意图经同一端点：服务器按意图调 ai.run(\"qa\", …)，问句原样"
+    assert calls[0][0] == "dialog" and calls[0][1] == "202607"
+    assert calls[0][2]["text"] == "查一下化学的接近度"
+    assert {"qmetric", "qdisc", "qa_direct"} <= set(calls[0][2]), "开关与问数槽随 payload 走"
+    assert calls[1] == ("qa", "202607", {"question": "查一下化学的接近度", "history": []}), \
+        "两意图经同一端点：服务器按意图调 ai.run('qa', …)，问句原样"
 
 
 def test_查数据_没期次_先要期次不调qa(monkeypatch):

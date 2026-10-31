@@ -112,6 +112,9 @@ export type DialogReply = {
   receipts?: DialogReceipt[]
   /** 本回合的会话 id（票 11）：续聊把它回传（刷新/换设备恢复用） */
   session_id?: string
+  /** 整轮耗时与时间（2026-10-31）：每句话都报（照 dsh 的消息元信息） */
+  elapsed_ms?: number
+  ts?: string
 }
 
 export async function postDialogTurn(text: string, slots: DialogSlots,
