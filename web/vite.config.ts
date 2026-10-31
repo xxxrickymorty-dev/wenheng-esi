@@ -29,6 +29,7 @@ export default defineConfig({
         shelf: resolve(WEB_ROOT, 'shelf/index.html'),
         dialog: resolve(WEB_ROOT, 'dialog/index.html'),
         panel: resolve(WEB_ROOT, 'panel/index.html'),
+        schools: resolve(WEB_ROOT, 'schools/index.html'),
       },
     },
   },

@@ -52,3 +52,7 @@ server/static/_shots/
 
 # ---------- img2threejs 重建工作区（recon/）：PBR 贴图渲染件体积大且可用 tools/run_pbr_extraction.py 复现，不入库 ----------
 recon/yunnan-library/material-evidence/*/*_*.png
+
+# ---------- 监测版（高校 ESI 报告）----------
+# 每校生成的 HTML 报告是产物不入库；_cache_<期次>.json 是确定性派生缓存，入库（演示机免重建）。
+monitor_data/*/*.html

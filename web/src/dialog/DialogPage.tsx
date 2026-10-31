@@ -746,6 +746,9 @@ export default function DialogPage() {
           <a href={withPeriod('/app/?view=review')}>
             <span className="dlg-nav-i" aria-hidden="true">✎</span>审核台
           </a>
+          <a href="/app/schools/">
+            <span className="dlg-nav-i" aria-hidden="true">▦</span>高校ESI报告
+          </a>
         </nav>
 
         <div className="dlg-ws">

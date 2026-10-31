@@ -2881,3 +2881,83 @@ async def api_aiqa_log(request: Request, limit: int = 50):
         return {"log": rows, "n": len(rows)}
     finally:
         con.close()
+
+
+# ================================================================ 监测版（高校 ESI 报告）
+# 第三条产线（src/monitor/）：ESI-only 全校站位报告，只读全局件，不碰台账与 out/。
+# 契约：《监测版包契约-ESIonly（2026-10-31）》（工作区仓库① 设计文档）。
+
+from src.monitor import report as monitor_report          # noqa: E402
+from src.monitor import schools as monitor_schools        # noqa: E402
+
+
+def _monitor_school_payload(period: str) -> dict:
+    cache = monitor_report.load_cache(period)
+    en_set_known = set()
+    if cache:
+        en_set_known = {row[0] for row in cache["cn_inst"]}
+        en_set_known |= {en for v in cache["fields"].values() for en in v["schools"]}
+    items = []
+    for s in monitor_schools.SCHOOLS:
+        f = monitor_report.MONITOR_ROOT / s["cn"] / f"{period}.html"
+        items.append({
+            "cn": s["cn"], "en": s["en"], "prov": s["prov"], "is985": s["is985"],
+            "known": (not cache) or (s["en"] in en_set_known),
+            "generated": f.exists(),
+            "url": f"/monitor/report/{urllib.parse.quote(s['cn'])}/{period}.html" if f.exists() else None,
+        })
+    return {"period": period, "built": (cache or {}).get("built"), "schools": items}
+
+
+@app.get("/api/monitor/schools")
+@user_route
+async def api_monitor_schools(request: Request):
+    """监测版内置院校清单：985/211 槽位 + 每校「ESI 是否在册 / 报告是否已生成」。"""
+    period = monitor_report.latest_period()
+    if not period:
+        return JSONResponse({"error": "没有可用的 ESI 期次数据",
+                             "hint": "数据与复现/ESI数据/ 下需要有带 Institutions.xlsx 的期次目录"},
+                            status_code=404)
+    return _monitor_school_payload(period)
+
+
+@app.post("/api/monitor/report")
+@user_route
+async def api_monitor_report(request: Request):
+    """生成一所学校的站位报告（同校同期已生成则直接复用，不重复算）。"""
+    try:
+        body = await request.json()
+    except Exception:                                          # noqa: BLE001
+        body = {}
+    cn = str(body.get("school") or "").strip()
+    s = monitor_schools.find(cn)
+    if s is None:
+        return JSONResponse({"error": f"名单里没有「{cn}」这所学校",
+                             "hint": "从清单里选，或先在 src/monitor/schools.py 里补录"},
+                            status_code=404)
+    period = monitor_report.latest_period()
+    if not period:
+        return JSONResponse({"error": "没有可用的 ESI 期次数据",
+                             "hint": "数据与复现/ESI数据/ 下需要有带 Institutions.xlsx 的期次目录"},
+                            status_code=404)
+    def _gen():
+        return monitor_report.generate(cn, period)
+    try:
+        path = await run_in_threadpool(_gen)
+    except FileNotFoundError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    url = f"/monitor/report/{urllib.parse.quote(cn)}/{period}.html"
+    return {"period": period, "url": url, "cached": path.exists() and path.stat().st_size > 0}
+
+
+@app.get("/monitor/report/{cn}/{fname}")
+@user_file_route
+def monitor_report_page(request: Request, cn: str, fname: str):
+    """监测版报告页（登录后可看；admin 与操作员同权——只读验证件）。"""
+    if not re.fullmatch(r"20\d{4}\.html", fname or ""):
+        raise HTTPException(status_code=404)
+    p = monitor_report.MONITOR_ROOT / cn / fname
+    if not p.is_relative_to(monitor_report.MONITOR_ROOT) or not p.exists():
+        raise HTTPException(status_code=404)
+    return FileResponse(p, media_type="text/html; charset=utf-8",
+                        headers={"Cache-Control": "no-cache"})
