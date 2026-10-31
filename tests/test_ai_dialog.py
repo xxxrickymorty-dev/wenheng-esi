@@ -116,9 +116,9 @@ def test_操作员报告意图_照常走盘点(tmp_path):
     assert "操作员只读" not in ans.text
     assert "盘点 · 202607" in ans.text and "数据齐" in ans.text
     assert ans.data["verdict"] == "ready"
-    # 查数据不受影响（照旧路由）
+    # 查数据不受影响（2026-10-31 起指标句直调问数引擎）
     q = run_dialog("查一下化学的接近度", root=tmp_path, period="202607")
-    assert q.data["kind"] == "query"
+    assert q.data["kind"] == "qa"
 
 
 def test_已出过稿_先问覆盖不报缺件(tmp_path):
@@ -182,8 +182,9 @@ def test_最新的_带上文_落最近期次不再复读(tmp_path):
 
 
 def test_查最新一期_直接带期次(tmp_path):
+    # 2026-10-31 二步：指标句直调问数引擎，期次解析随引擎（对话层不再落 period 槽）
     ans = run_dialog("查最新一期的化学接近度", root=tmp_path, periods=PERIODS)
-    assert ans.data["kind"] == "query" and ans.data["period"] == "202609"
+    assert ans.data["kind"] == "qa"
 
 
 def test_做最新的报告_走报告路(tmp_path):
@@ -345,9 +346,9 @@ def test_路由_查数据_句中期次(tmp_path):
     assert ans.data["period"] == "202607"
 
 
-def test_路由_查数据_期次从槽位来(tmp_path):
+def test_路由_问数_期次从槽位来(tmp_path):
     ans = run_dialog("查一下化学的接近度", root=tmp_path, period="202607")
-    assert ans.data["kind"] == "query"
+    assert ans.data["kind"] == "qa"
     assert ans.data["verdict"] == "" and ans.data["inventory"] is None
     assert ans.data["run"] is None and ans.data["actions"] == []
 
@@ -362,8 +363,8 @@ def test_查数据不盘点_盘点只属于写报告链路(tmp_path):
     with ai.using(data_root=tmp_path, inventory=pick):
         ans = ai.run("dialog", "202607",
                      payload={"text": "查一下化学的接近度", "today": TODAY}, actor="admin")
-    assert ans.data["kind"] == "query"
-    assert seen == [], "查数据不该触发盘点（件在不在是写报告链路的事）"
+    assert ans.data["kind"] == "qa"
+    assert seen == [], "查数据（含问数直答）不该触发盘点（件在不在是写报告链路的事）"
 
 
 def test_路由_推进(tmp_path):
@@ -400,7 +401,7 @@ def test_路由_含糊不触发盘点与出稿(tmp_path):
 
 def test_查数据_弱信号也算(tmp_path):
     ans = run_dialog("高被引论文有几篇", root=tmp_path, period="202607")
-    assert ans.data["kind"] == "query"
+    assert ans.data["kind"] == "qa", "高被引是指标词（2026-10-31 起直调问数引擎）"
 
 
 def test_含糊_选项发回自己能再路由(tmp_path):

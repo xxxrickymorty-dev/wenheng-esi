@@ -836,6 +836,10 @@ export default function DialogPage() {
                       onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'period') }))} />
             <SlotChip label="意图" value={active.slots.intent}
                       onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'intent') }))} />
+            <SlotChip label="学科" value={active.slots.qdisc}
+                      onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'qdisc') }))} />
+            <SlotChip label="指标" value={active.slots.qmetric}
+                      onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'qmetric') }))} />
             {hasSlots(active.slots) && (
               <span className="dlg-vh" role="status">
                 {`当前槽位：期次 ${active.slots.period || '未设'}，意图 ${active.slots.intent || '未设'}`}

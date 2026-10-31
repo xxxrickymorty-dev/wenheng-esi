@@ -136,15 +136,22 @@ def _metric_of(text: str) -> str | None:
 
 def _periods_in(text: str, filled: list[str]) -> list[str]:
     """问句里的期次（YYYYMM）；「最新/当期/最新一期」→ 最新有数据期。"""
-    if any(w in text for w in ("最新", "当期", "本期", "最近一期", "最近")):
-        return [filled[-1]] if filled else []
+    # 优先级：句内显式期次 > 上一期（有数据期倒数第二） > 最新。
+    # 显式期次必须最先扫——「上一期呢（阈值）（物理学） 202605」里上一期词和
+    # 显式期次并存时，答句内点名的那个（2026-10-31 追问链的教训）。
     found = [p for p in _PERIOD_RE.findall(text) if p in filled]
-    # 2026年7月 形态
     for y, m in re.findall(r"(20\d\d)年(\d{1,2})月", text):
         p = f"{y}{int(m):02d}"
         if p in filled:
             found.append(p)
-    return sorted(set(found))
+    if found:
+        return sorted(set(found))
+    if any(w in text for w in ("上一期", "上期", "前一期")):
+        # 上一期＝有数据期里的倒数第二期；只有一期时退回最新（不猜更早）
+        return [filled[-2]] if len(filled) >= 2 else ([filled[-1]] if filled else [])
+    if any(w in text for w in ("最新", "当期", "本期", "最近一期", "最近")):
+        return [filled[-1]] if filled else []
+    return []
 
 
 def _province_metric_of(text: str) -> str | None:
@@ -245,6 +252,11 @@ def plan(question: str, con) -> dict:
         elif len(hit_discs) == 1 and periods:
             specs.append({"kind": "at", "metric": metric, "disc": hit_discs[0],
                           "period": periods[-1]})
+            # 阈值问句答双值：线（阈值）＋本校位置（接近度）——同科同期各成一行，
+            # 两个数都出自 facts，回答里并排才回答「离门槛还有多远」。
+            if metric == "threshold_1pct":
+                specs.append({"kind": "at", "metric": "proximity_1pct",
+                              "disc": hit_discs[0], "period": periods[-1]})
         else:
             specs.append({"kind": "compare", "metric": metric,
                           "discs": hit_discs,

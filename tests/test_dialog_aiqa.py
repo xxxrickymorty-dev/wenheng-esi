@@ -39,10 +39,11 @@ class _Bomb:
         raise AssertionError("问数轮不该问模型")
 
 
-def run_dialog(text, *, root, slot="", history=None, **ov):
+def run_dialog(text, *, root, slot="", history=None, qmetric="", qdisc="", **ov):
     with ai.using(data_root=root, brain=_Bomb(), **ov):
         return ai.run("dialog", slot,
-                      payload={"text": text, "history": history or []}, actor="admin")
+                      payload={"text": text, "history": history or [],
+                               "qmetric": qmetric, "qdisc": qdisc}, actor="admin")
 
 
 # ---------------------------------------------------------------- 最小问数库
@@ -61,7 +62,8 @@ def _make_aiqa_db(data_root: pathlib.Path) -> None:
             "VALUES (?,?,?)", [("Chemistry", "化学", 1)])
         con.executemany(
             "INSERT OR REPLACE INTO dim_metric (metric, metric_cn, better) VALUES (?,?,?)",
-            [("proximity_1pct", "ESI前1%接近度", "up")])
+            [("proximity_1pct", "ESI前1%接近度", "up"),
+             ("threshold_1pct", "ESI前1%被引阈值", "up")])
         con.executemany(
             "INSERT OR REPLACE INTO dim_period (period, label, ord, filled) VALUES (?,?,?,?)",
             [("202607", "2026年7月", 0, 1), ("202609", "2026年9月", 1, 1)])
@@ -69,7 +71,9 @@ def _make_aiqa_db(data_root: pathlib.Path) -> None:
             "INSERT OR REPLACE INTO facts (discipline, period, metric, source, value) "
             "VALUES (?,?,?,?,?)",
             [("Chemistry", "202607", "proximity_1pct", "", 0.512),
-             ("Chemistry", "202609", "proximity_1pct", "", 0.548)])
+             ("Chemistry", "202609", "proximity_1pct", "", 0.548),
+             ("Chemistry", "202607", "threshold_1pct", "", 21073.0),
+             ("Chemistry", "202609", "threshold_1pct", "", 23105.0)])
         con.commit()
     finally:
         con.close()
@@ -173,9 +177,12 @@ class TestAbsent:
 
 # ============================================================ ④ 既有路由不被破坏
 class TestPinned:
-    def test_带槽位期次_仍走既有query路由(self, tmp_path):
-        ans = run_dialog("查一下化学的接近度", root=tmp_path, slot="202607")
-        assert ans.data["kind"] == "query"
+    def test_带槽位期次_问数句式直调引擎且期次就槽(self, aiqa_root):
+        # 2026-10-31 二步翻转：旧钉「槽位期次→模型转述」被证死板（问阈值答接近度、
+        # 槽位 202607 答 202609）——现在凡问数句式直调引擎，槽位期次喂给引擎。
+        ans = run_dialog("查一下化学的接近度", root=aiqa_root, slot="202607")
+        assert ans.data["kind"] == "qa"
+        assert "202607" in ans.text and "0.512" in ans.text, ans.text
         assert ans.data["verdict"] == "" and ans.data["inventory"] is None
         assert ans.data["run"] is None and ans.data["actions"] == []
 
@@ -263,3 +270,49 @@ class TestServerFold:
         r = _api_call(config.ADMIN_USER, {"text": "查一下台账"})
         assert r["kind"] == "query" and r["answer"] is None and r["qa"] is None
         assert r["text"] == "反问。"
+
+
+# ============================================================ ⑥ 问数槽继承（二步）
+class TestSlotInherit:
+    def test_上一期呢_继承指标学科并偏移(self, aiqa_root):
+        ans = run_dialog("上一期呢", root=aiqa_root, qmetric="接近度", qdisc="化学")
+        assert ans.data["kind"] == "qa"
+        assert "202607" in ans.text and "0.512" in ans.text, ans.text
+
+    def test_上一期是7月的_带槽落qa不落unclear(self, aiqa_root):
+        ans = run_dialog("上一期是7月的", root=aiqa_root, qmetric="接近度", qdisc="化学")
+        assert ans.data["kind"] == "qa", ans.text
+        assert "202607" in ans.text, ans.text
+
+    def test_换学科追问_只换学科(self, aiqa_root):
+        ans = run_dialog("那数学呢", root=aiqa_root, qmetric="接近度", qdisc="化学")
+        assert ans.data["kind"] == "qa", ans.text
+
+    def test_阈值问句答双值_线加位置(self, aiqa_root):
+        ans = run_dialog("202607 化学的前1%阈值是多少", root=aiqa_root)
+        assert ans.data["kind"] == "qa"
+        assert "阈值" in ans.text and "接近度" in ans.text, ans.text
+        assert "21,073" in ans.text, ans.text
+
+    def test_写报告轮清问数槽(self, aiqa_root):
+        ans = run_dialog("帮我做9月份的报告", root=aiqa_root, qmetric="接近度", qdisc="化学")
+        assert ans.data["qmetric"] == "" and ans.data["qdisc"] == ""
+
+
+# ============================================================ ⑦ 引擎期次偏移与双值规格
+class TestEngine:
+    def test_上一期_取有数据期倒数第二(self):
+        from aiqa_engine import _periods_in
+        assert _periods_in("上一期呢", ["202607", "202609"]) == ["202607"]
+        assert _periods_in("上期的阈值", ["202605", "202607", "202609"]) == ["202607"]
+
+    def test_阈值问句规划出双规格(self, aiqa_root):
+        import sqlite3
+        from aiqa_engine import plan
+        con = sqlite3.connect(str(aiqa_root / "_aidata" / "aiqa.sqlite"))
+        try:
+            qp = plan("202607 化学的前1%阈值是多少", con)
+        finally:
+            con.close()
+        kinds = [(s["metric"], s["kind"]) for s in qp["specs"]]
+        assert kinds == [("threshold_1pct", "at"), ("proximity_1pct", "at")], kinds

@@ -61,7 +61,7 @@ def test_一轮对话_答复槽位与盘点都透出(tmp_path):
     with ai.using(data_root=tmp_path, inventory=lambda p: inv):
         r = call(config.ADMIN_USER, {"text": "做 7 月的报告"})
     assert "数据截至 2026-07" in r["text"] and r["record_id"]
-    assert r["slots"] == {"period": "202607", "intent": "出报告"}
+    assert r["slots"] == {"period": "202607", "intent": "出报告", "qmetric": "", "qdisc": ""}
     assert r["verdict"] == "ready"
     assert r["inventory"]["n_missing"] == 0 and r["inventory"]["released"] is True
     assert r["actions"] == [{"kind": "goto", "view": "acquire", "period": "202607",
@@ -82,11 +82,12 @@ def test_参数与角色原样交给能力口(monkeypatch):
 
     monkeypatch.setattr("ai.run", fake_run)
     r = call(config.ADMIN_USER, {"text": "再出 202605 的",
-                                "slots": {"period": "202609", "intent": "出报告"}})
-    assert r["slots"] == {"period": "202605", "intent": "出报告"}, "只改期次，意图不动"
+                                "slots": {"period": "202609", "intent": "出报告", "qmetric": "", "qdisc": ""}})
+    assert r["slots"] == {"period": "202605", "intent": "出报告", "qmetric": "", "qdisc": ""}, "只改期次，意图不动"
     assert seen == {"cap": "dialog", "period": "202609",
                     "payload": {"text": "再出 202605 的", "history": [],
-                                "periods": ["202605"]}, "actor": "admin"}
+                                "periods": ["202605"], "qmetric": "", "qdisc": ""},
+                    "actor": "admin"}
     assert r["verdict"] == "" and r["inventory"] is None and r["actions"] == []
 
 
@@ -95,8 +96,8 @@ def test_槽位合并_解析到才覆盖_其余不变(monkeypatch):
     fake = _types.Answer(mode="rule", backend="rule", text="…",
                          data={"case": "no_period", "period": "", "intent": ""})
     monkeypatch.setattr("ai.run", lambda *a, **k: fake)
-    r = call(config.ADMIN_USER, {"text": "你好", "slots": {"period": "202609", "intent": ""}})
-    assert r["slots"] == {"period": "202609", "intent": ""}, "没解析到就不动槽位"
+    r = call(config.ADMIN_USER, {"text": "你好", "slots": {"period": "202609", "intent": "", "qmetric": "", "qdisc": ""}})
+    assert r["slots"] == {"period": "202609", "intent": "", "qmetric": "", "qdisc": ""}, "没解析到就不动槽位"
 
 
 def test_槽位期次非法形状_丢弃不猜(monkeypatch):
@@ -111,7 +112,7 @@ def test_槽位期次非法形状_丢弃不猜(monkeypatch):
     monkeypatch.setattr("ai.run", fake_run)
     r = call(config.ADMIN_USER, {"text": "你好", "slots": {"period": "2026-09"}})
     assert seen["period"] == "", "非法期次不进能力口"
-    assert r["slots"] == {"period": "", "intent": ""}
+    assert r["slots"] == {"period": "", "intent": "", "qmetric": "", "qdisc": ""}
 
 
 # ============================================================ 2. 票 02：盘点走 API
@@ -131,8 +132,8 @@ def test_改做202607的_槽位改期次其余不变(tmp_path):
     invs = {"202607": fake_inventory("202607", released=True)}
     with ai.using(data_root=tmp_path, inventory=lambda p: invs.get(p)):
         r = call(config.ADMIN_USER, {"text": "改做 202607 的",
-                                    "slots": {"period": "202609", "intent": "出报告"}})
-    assert r["slots"] == {"period": "202607", "intent": "出报告"}
+                                    "slots": {"period": "202609", "intent": "出报告", "qmetric": "", "qdisc": ""}})
+    assert r["slots"] == {"period": "202607", "intent": "出报告", "qmetric": "", "qdisc": ""}
     assert r["verdict"] == "ready"
 
 
@@ -170,10 +171,10 @@ def test_核完了继续_进入出稿(tmp_path):
     inv = fake_inventory("202607", released=True)
     with ai.using(data_root=tmp_path, inventory=lambda p: inv):
         r = call(config.ADMIN_USER, {"text": "核完了，继续",
-                                    "slots": {"period": "202607", "intent": "出报告"}})
+                                    "slots": {"period": "202607", "intent": "出报告", "qmetric": "", "qdisc": ""}})
     assert "核对通过" in r["text"] and "开始出稿" in r["text"]
     assert r["run"] == {"period": "202607", "auto": True, "intent": "single_trend"}
-    assert r["slots"] == {"period": "202607", "intent": "出报告"}, "槽位不动"
+    assert r["slots"] == {"period": "202607", "intent": "出报告", "qmetric": "", "qdisc": ""}, "槽位不动"
 
 
 def test_未核对就出稿_拦住并指回核对(tmp_path):
@@ -181,7 +182,7 @@ def test_未核对就出稿_拦住并指回核对(tmp_path):
                          missing=("papers", "incites"), fallback="202607")
     with ai.using(data_root=tmp_path, inventory=lambda p: inv):
         r = call(config.ADMIN_USER, {"text": "出稿",
-                                    "slots": {"period": "202611", "intent": "出报告"}})
+                                    "slots": {"period": "202611", "intent": "出报告", "qmetric": "", "qdisc": ""}})
     assert "先别出稿" in r["text"]
     assert r["run"] is None
     assert {"kind": "goto", "view": "acquire", "period": "202611",
@@ -224,10 +225,10 @@ def test_查数据_服务器按意图调qa(monkeypatch, tmp_path):
     r = call(config.ADMIN_USER, {"text": "查一下化学的接近度", "slots": {"period": "202607"}})
     assert r["kind"] == "query" and r["answer"] is not None
     assert r["answer"]["text"].startswith("化学的接近度") and r["answer"]["record_id"] == "r-qa"
-    assert r["slots"] == {"period": "202607", "intent": ""}, "期次解析与槽位共享"
+    assert r["slots"] == {"period": "202607", "intent": "", "qmetric": "", "qdisc": ""}, "期次解析与槽位共享"
     assert r["run"] is None, "查数据不出稿"
     assert calls == [("dialog", "202607", {"text": "查一下化学的接近度", "history": [],
-                                           "periods": []}),
+                                           "periods": [], "qmetric": "", "qdisc": ""}),
                      ("qa", "202607", {"question": "查一下化学的接近度", "history": []})], \
         "两意图经同一端点：服务器按意图调 ai.run(\"qa\", …)，问句原样"
 

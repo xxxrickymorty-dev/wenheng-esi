@@ -1980,6 +1980,10 @@ async def _dialog_turn_impl(body: dict, user: str, progress=None) -> tuple:
     if period and not re.fullmatch(r"\d{6}", period):
         period = ""                                   # 形状不合法就丢弃，不猜
     intent = str(slots.get("intent") or "").strip()[:20]
+    # 问数槽（2026-10-31 二步）：上一轮认出的指标/学科随对话流动——引擎拿它解
+    # 「上一期呢」「那材料科学呢」这类追问；形状不合法的值丢弃。
+    qmetric = str(slots.get("qmetric") or "").strip()[:12]
+    qdisc = str(slots.get("qdisc") or "").strip()[:16]
     # 会话（票 11）：有 session → 归属校验 + 历史从库读；无 → 本回合结束时建新会话。
     session_id = str(body.get("session") or "").strip()
     stored_turns = None
@@ -2021,7 +2025,8 @@ async def _dialog_turn_impl(body: dict, user: str, progress=None) -> tuple:
     _prog("理解")                                                 # 票 12：进对话能力前
     ans = await run_in_threadpool(ai.run, "dialog", period,
                                   payload={"text": text, "history": history,
-                                           "periods": periods}, actor=actor)
+                                           "periods": periods,
+                                           "qmetric": qmetric, "qdisc": qdisc}, actor=actor)
     if ans.mode in ("closed", "denied", "unavailable"):
         r = _answer_response(ans)
         return json.loads(r.body), r.status_code
@@ -2029,7 +2034,9 @@ async def _dialog_turn_impl(body: dict, user: str, progress=None) -> tuple:
     resp = ans.as_dict()
     resp["kind"] = str(turn.get("kind") or "")
     resp["slots"] = {"period": str(turn.get("period") or period),
-                     "intent": str(turn.get("intent") or intent)}
+                     "intent": str(turn.get("intent") or intent),
+                     "qmetric": str(turn.get("qmetric") or qmetric),
+                     "qdisc": str(turn.get("qdisc") or qdisc)}
     resp["verdict"] = str(turn.get("verdict") or "")
     resp["inventory"] = turn.get("inventory") if isinstance(turn.get("inventory"), dict) else None
     resp["actions"] = turn.get("actions") if isinstance(turn.get("actions"), list) else []
@@ -2899,7 +2906,6 @@ async def api_aiqa_log(request: Request, limit: int = 50):
 # 契约：《监测版包契约-ESIonly（2026-10-31）》（工作区仓库① 设计文档）。
 
 from src.monitor import compare as monitor_compare        # noqa: E402
-from src.monitor import docx as monitor_docx              # noqa: E402
 from src.monitor import docx as monitor_docx              # noqa: E402
 from src.monitor import report as monitor_report          # noqa: E402
 from src.monitor import schools as monitor_schools        # noqa: E402

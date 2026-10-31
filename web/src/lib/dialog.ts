@@ -1,15 +1,18 @@
 /* 对话前门（票 01）：槽位的纯逻辑（ADR-0003 → vitest 直接测）。
-   槽位＝可显示、可清、可审计的少量状态（GLOSSARY「槽位」）：当前期次 / 当前意图。
+   槽位＝可显示、可清、可审计的少量状态（GLOSSARY「槽位」）：当前期次 / 当前意图 /
+   问数槽（学科 · 指标，2026-10-31——追问「上一期呢」「那数学呢」的继承载体）。
    每轮的合并由后端完成（只覆盖本轮解析到的）；这里只有「空态 / 清掉 / 起标题」——
    不存历史、不猜期次、不做换算。 */
 
-export type SlotKey = 'period' | 'intent'
+export type SlotKey = 'period' | 'intent' | 'qmetric' | 'qdisc'
 
-export type DialogSlots = { period: string; intent: string }
+export type DialogSlots = { period: string; intent: string;
+  /** 问数槽（2026-10-31）：上一轮认出的指标/学科，追问继承用 */
+  qmetric: string; qdisc: string }
 
 /** 未设状态：两格都空（清掉后回到这里）。 */
 export function emptySlots(): DialogSlots {
-  return { period: '', intent: '' }
+  return { period: '', intent: '', qmetric: '', qdisc: '' }
 }
 
 /** 清掉一格（✕）：另一格不变。 */

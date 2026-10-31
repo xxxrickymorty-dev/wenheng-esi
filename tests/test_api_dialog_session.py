@@ -105,7 +105,8 @@ def test_槽位随会话落库(fake_ai):
                                  "slots": {"period": "202607", "intent": "出报告"}})
     sid = r["session_id"]
     body = call_get(config.ADMIN_USER, sid)
-    assert body["slots"] == {"period": "202607", "intent": "出报告"}
+    assert body["slots"] == {"period": "202607", "intent": "出报告",
+                        "qmetric": "", "qdisc": ""}
     assert body["slots"] == r["slots"]
 
 

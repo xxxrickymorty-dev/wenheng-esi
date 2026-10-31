@@ -23,23 +23,23 @@ describe('进度流的行解析（票 12）：半行留缓冲、坏行丢弃', (
 
 describe('槽位（可显示、可清、回未设）', () => {
   it('空态：两格都没设', () => {
-    expect(emptySlots()).toEqual({ period: '', intent: '' })
+    expect(emptySlots()).toEqual({ period: '', intent: '', qmetric: '', qdisc: '' })
     expect(hasSlots(emptySlots())).toBe(false)
   })
 
   it('清期次：回到未设，意图不动', () => {
-    const s = clearSlot({ period: '202609', intent: '出报告' }, 'period')
-    expect(s).toEqual({ period: '', intent: '出报告' })
+    const s = clearSlot({ period: '202609', intent: '出报告', qmetric: '', qdisc: '' }, 'period')
+    expect(s).toEqual({ period: '', intent: '出报告', qmetric: '', qdisc: '' })
     expect(hasSlots(s)).toBe(true)
   })
 
   it('清意图：回到未设，期次不动', () => {
-    expect(clearSlot({ period: '202609', intent: '出报告' }, 'intent'))
-      .toEqual({ period: '202609', intent: '' })
+    expect(clearSlot({ period: '202609', intent: '出报告', qmetric: '', qdisc: '' }, 'intent'))
+      .toEqual({ period: '202609', intent: '', qmetric: '', qdisc: '' })
   })
 
   it('两格都清掉 = 回到未设状态', () => {
-    const s = clearSlot(clearSlot({ period: '202609', intent: '出报告' }, 'period'), 'intent')
+    const s = clearSlot(clearSlot({ period: '202609', intent: '出报告', qmetric: '', qdisc: '' }, 'period'), 'intent')
     expect(s).toEqual(emptySlots())
     expect(hasSlots(s)).toBe(false)
   })

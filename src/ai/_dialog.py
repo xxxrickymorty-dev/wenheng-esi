@@ -108,6 +108,16 @@ _LATEST = re.compile(r"(?:最新|最近)(?:的(?![几哪])|[一那]?期|的那?�
 #: （2026-10-13 的既定话术钉着；引擎的多期序列以后再并，先不改这轮的路由面）。
 _SERIES_SPAN = re.compile(r"(?:最近|最新)\s*的?\s*(?:[几六两三四五七八九十多]|\d+)\s*期")
 
+#: 学科词（22 规范学科的中文面，抄 `parse_ledger.DISCIPLINES_CN` 的值）：问数槽要认
+#: 「那材料科学呢」这类换学科追问；对话只认词，不产生任何台账数字。
+_DISC_CN = ("农业科学", "生物学与生物化学", "化学", "临床医学", "计算机科学", "经济与商业",
+            "工程学", "环境生态学", "地球科学", "免疫学", "材料科学", "数学", "微生物学",
+            "分子生物学与遗传学", "多学科", "神经系统科学与行为学", "药理学与毒理学",
+            "物理学", "植物与动物学", "精神病学与心理学", "社会科学", "空间科学")
+_DISC_RE = re.compile("|".join(sorted(_DISC_CN, key=len, reverse=True)))
+#: 上一期/上期/前一期：问数续聊的期次偏移词（引擎侧 `_periods_in` 同词表）。
+_PREV_RE = re.compile(r"上一期|上期|前一期")
+
 _REPORT_INTENT = re.compile(r"报告|出稿|生成|重出|再出|改做|做")
 
 _CN_DIGITS = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
@@ -580,6 +590,14 @@ def _register(p: Parse, inv: dict | None, *, latest: str = ""):
     return register
 
 
+def _period_in_text(norm: str, periods_desc) -> str:
+    """句内出现的已知期次（取最新提到的一个）；没有 → 空。"""
+    for x in periods_desc:
+        if x and x in norm:
+            return x
+    return ""
+
+
 def _periods_from(payload) -> list:
     """`payload["periods"]`（服务端注入的已知期次，降序）→ 六位期次列表；坏形状丢弃。"""
     raw = payload.get("periods") if isinstance(payload.get("periods"), list) else []
@@ -926,7 +944,17 @@ def build(root, period, payload):                                  # noqa: ARG00
     kernel_record = None
     kernel_filled = False
     kernel_receipts: tuple = ()
+    norm_text = unicodedata.normalize("NFKC", text)
+    metric_hit = bool(_METRIC.search(norm_text))
+    rel_hit = bool(_PREV_RE.search(norm_text))
+    m_disc_now = _DISC_RE.search(norm_text)
+    slot_qm = str(payload.get("qmetric") or "")
+    slot_qd = str(payload.get("qdisc") or "")
+    qctx = bool(slot_qm or slot_qd)
+    # 问数槽在场且这轮是问数续聊（上一期/指标词）→ 内核让路：这类句子由问数引擎
+    # 直答（下面 qa 门），内核的期次兜底只服务报告/推进那些轮。
     if (p.case == "no_period" and history and kind != "compare"
+            and not (qctx and (rel_hit or metric_hit))
             and not _AFFIRM.fullmatch(text.strip())):
         kr = _dialog_kernel.assist(
             text, history=history, periods=_periods_from(payload), slot=slot,
@@ -961,14 +989,13 @@ def build(root, period, payload):                                  # noqa: ARG00
         p = replace(p, kind="unclear")
         kind = "unclear"
 
-    # 问数（aiqa，2026-10-31）：问数句式（指标词）且这轮**没有任何期次可依**
-    # （句里没有、槽位没有、也不是「最新的」）——今天这条路只会反问「查哪一期」，
-    # 现在落 qa 直调问数引擎（引擎自带期次解析，缺省最新一期）。有期次的查数据轮
-    # 照旧走既有路由（服务器按意图调 qa 能力），不破坏既有 query 优先级。
-    norm_text = unicodedata.normalize("NFKC", text)
-    metric_hit = bool(_METRIC.search(norm_text))
-    if (kind == "query" and metric_hit and not p.period and not slot
-            and not was_latest and not _SERIES_SPAN.search(norm_text)):
+    # 问数（2026-10-31 二步）：**凡问数句式或带问数槽的追问都直调引擎**——不再按
+    # 「有没有期次」分家：槽位期次喂给引擎当入参，模型转述退为引擎认不出时的兜底。
+    # 槽继承三形态：上一期（rel）/ 换学科（disc）/ 裸期次续问；比较类、报告与推进
+    # 意图优先级更高（上面已路由）；多期序列问法照旧反问。
+    if (kind in ("query", "unclear", "")
+            and not _SERIES_SPAN.search(norm_text)
+            and (metric_hit or (qctx and (rel_hit or m_disc_now or p.period)))):
         p = replace(p, kind="qa")
         kind = "qa"
 
@@ -985,13 +1012,33 @@ def build(root, period, payload):                                  # noqa: ARG00
         _warm_async()
     if kind == "qa":
         # 问数直调（2026-10-31，照他校简报先例）：不经模型、不经既有 qa 能力；
-        # 行与来源一一对应，图块（chart/chart_data）与留痕号随 data 折给前端。
+        # 规划问句把**问数槽**折进去：上一轮认出的指标/学科、槽位期次都算数
+        # （「上一期呢」「那材料科学呢」由此活）；句里已带的不重复。留痕记折完的问句。
+        eff = text
+        if not metric_hit and slot_qm:
+            eff += f"（{slot_qm}）"
+        if slot_qd and (not m_disc_now or m_disc_now.group(0) != slot_qd):
+            eff += f"（{slot_qd}）"
+        if rel_hit and not _PERIOD.search(norm_text):
+            # 上一期锚点：句内期次 > 槽位期次 > 最近有效期次；取「有数据期」降序列的下一位
+            # （答过 202607 再问上一期＝202605——锚着对话走，不是全局倒数第二）。
+            periods_desc = _periods_from(payload)
+            anchor = next((x for x in (_period_in_text(norm_text, periods_desc),
+                                       slot, periods_desc[0] if periods_desc else "") if x), "")
+            prev = ""
+            if anchor and anchor in periods_desc:
+                i = periods_desc.index(anchor)
+                prev = periods_desc[i + 1] if i + 1 < len(periods_desc) else ""
+            if prev:
+                eff += f" {prev}"
+        elif slot and not _PERIOD.search(norm_text):
+            eff += f" {slot}"
         tc0 = time.perf_counter()
-        lines, srcs, qa_data, qa_ok = _aiqa_reply(text, root)
+        lines, srcs, qa_data, qa_ok = _aiqa_reply(eff, root)
         reply = "\n".join(lines)
         register = _register_panel(srcs)
         rcpts.append(_dialog_kernel.tool_receipt(
-            "aiqa", "问数", {"question": text},
+            "aiqa", "问数", {"question": eff},
             "问数引擎按台账答了这一句" if qa_ok else "问数底表还没生成",
             ok=qa_ok, t0=tc0))
         verdict, inv = "", None
@@ -1085,10 +1132,19 @@ def build(root, period, payload):                                  # noqa: ARG00
             "inventory": inv, "run": run}
     if kind in ("query", "unclear", "compare", "qa"):
         data["intent"] = ""            # 查数据/含糊/简报/问数轮不动意图槽
+    if kind in ("report", "proceed", "compare"):
+        data["qmetric"] = ""           # 切去写报告/推进/简报＝问数上下文到头了
+        data["qdisc"] = ""
     if compare_data is not None:
         data["compare"] = compare_data
     if qa_data is not None:
         data["qa"] = qa_data
+        _m_hits = [m.group(0) for m in _METRIC.finditer(norm_text)]
+        data["qmetric"] = slot_qm or (max(_m_hits, key=len) if _m_hits else "")
+        # 答的是哪期就锚哪期（写回 period 槽）：「上一期呢」的锚点跟着对话走
+        data["period"] = _period_in_text(unicodedata.normalize("NFKC", eff),
+                                         _periods_from(payload))
+        data["qdisc"] = slot_qd or (m_disc_now.group(0) if m_disc_now else "")
     if kernel_record is not None:
         # 内核轮记录面（票 03）：核心据此把该轮 ai_calls 的 mode/backend/fallback/
         # egress/elapsed 记成 model|fallback 如实；不进 as_dict()（Answer 字段面冻结）。
