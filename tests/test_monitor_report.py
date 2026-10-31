@@ -12,6 +12,7 @@ import pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 
 from _guard_registry import skip_unless            # noqa: E402
+from monitor import insight as mi                  # noqa: E402
 from monitor import report as mr                   # noqa: E402
 from monitor import schools as sch                 # noqa: E402
 
@@ -76,3 +77,31 @@ def test_doctor_checks_pass_on_202609():
     assert rep["fails"] == 0, f"doctor 有 fail：{[i for i in rep['items'] if not i['ok']]}"
     d3 = next(i for i in rep["items"] if i["id"] == "D3")
     assert "未入册 1" in d3["detail"], "应恰好一所未入册校（中国政法大学）"
+
+
+def test_insight_facts_deterministic():
+    """解读事实行：海大＝12 学科全入围、2 个前 1‰、总排名 871——全部带数字的关系句。"""
+    if not _PERIOD or not mr.cache_path(_PERIOD).exists():
+        skip_unless("监测版期次缓存未建", _cache_probe)
+    facts = mi.facts_of("海南大学", mr.load_cache(_PERIOD))
+    joined = "；".join(facts)
+    assert "上榜 12/22 学科" in joined
+    assert "2 个学科进入全球前 1‰" in joined and "农业科学" in joined
+    assert "全球机构总排名 871" in joined
+    assert mi.number_guard("被引 68,391 领先", facts) is False
+    assert mi.number_guard("被引 999,999 领先", facts) is True, "事实外数字必须拒收"
+
+
+def test_render_insight_section():
+    """解读段：给了就渲染并如实标注来源；不给就不出现。"""
+    if not _PERIOD or not mr.cache_path(_PERIOD).exists():
+        skip_unless("监测版期次缓存未建", _cache_probe)
+    cache = mr.load_cache(_PERIOD)
+    base = mr.render("海南大学", _PERIOD, cache)
+    assert "解读" not in base, "缺省不带解读段"
+    with_it = mr.render("海南大学", _PERIOD, cache,
+                        insight={"text": "总体格局稳中有进。", "mode": "rule"})
+    assert "总体格局稳中有进" in with_it and "规则拼装" in with_it
+    modelled = mr.render("海南大学", _PERIOD, cache,
+                         insight={"text": "格局概括。", "mode": "model"})
+    assert "模型解读（数字已过盾校验）" in modelled

@@ -85,7 +85,8 @@ def build_cache(period: str) -> dict:
                              _f(x[3]), _f(x[4]), _f(x[5]), _f(x[9])])
             neighbors[name] = rows
     cn_inst = [[str(r[1]).strip(), int(_f(r[0])), _f(r[3]), _f(r[4]), _f(r[5]), _f(r[9])]
-               for r in inst if str(r[2]).strip() == "CHINA MAINLAND"]
+               for r in inst
+               if str(r[2]).strip() in ("CHINA MAINLAND", "N/A")]  # N/A＝属地未标注（如部属医院），按名关键词进省内
 
     # ---- 阈值 + 22 榜本校行（国内排名在建缓存时一次算好） ----
     wbt = openpyxl.load_workbook(base / "ThresholdESI.xlsx")
@@ -196,8 +197,8 @@ footer{margin-top:clamp(48px,8vh,76px);padding:22px 0 46px;border-top:1px solid 
 """
 
 
-def render(cn: str, period: str, cache: dict) -> str:
-    """最简版站位报告：纯全局件，无论文清单、无图表。"""
+def render(cn: str, period: str, cache: dict, insight: dict | None = None) -> str:
+    """最简版站位报告：纯全局件，无论文清单、无图表。insight＝AI/骨架解读（可缺省）。"""
     s = sch.find(cn)
     if s is None:
         raise KeyError(cn)
@@ -345,6 +346,8 @@ def render(cn: str, period: str, cache: dict) -> str:
 <p class="note">样例用「总被引排名邻近」规则；正式版对标校进 org.peers 配置，可按学科分别设定。</p>
 </section>
 
+{_insight_section(insight)}
+
 <footer>
 数据来源：Clarivate ESI（Essential Science Indicators）{_e(period)} 期全局件，云南大学图书馆订阅账号下载
 （{_e(cache.get("download") or "—")}）；本报告是监测版包契约的验证件，不是对外报告，数字未经该校核对。<br>
@@ -358,13 +361,33 @@ def render(cn: str, period: str, cache: dict) -> str:
 """
 
 
+def _insight_section(insight: dict | None) -> str:
+    """篇尾解读段：AI 模型文本或句骨架（mode 如实标注；缺省＝无此段）。"""
+    if not insight or not (insight.get("text") or "").strip():
+        return ""
+    how = "模型解读（数字已过盾校验）" if insight.get("mode") == "model" else "规则拼装（写作位未开或模型不可用）"
+    body = _e(insight["text"]).replace("；", "；\n")
+    return f"""
+<section>
+<h2><span class="num">六</span>解读</h2>
+<p style="margin-top:14px;max-width:70ch;color:var(--ink-2)">{body}</p>
+<p class="note">{_e(how)}。</p>
+</section>"""
+
+
 def generate(cn: str, period: str | None = None) -> pathlib.Path:
     """生成（或复用）一所学校的站位报告，返回文件路径。"""
     period = period or latest_period()
     if not period:
         raise FileNotFoundError("数据与复现/ESI数据/ 下没有可用的 ESI 期次目录")
     cache = load_cache(period) or build_cache(period)
+    ins: dict | None = None
+    try:
+        from monitor import insight as _ins                              # noqa: PLC0415
+        ins = _ins.insight(cn, period, cache)
+    except Exception:                                                   # noqa: BLE001
+        ins = None
     out = MONITOR_ROOT / cn / f"{period}.html"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(render(cn, period, cache), encoding="utf-8")
+    out.write_text(render(cn, period, cache, insight=ins), encoding="utf-8")
     return out
