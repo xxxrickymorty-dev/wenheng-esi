@@ -62,7 +62,7 @@ def hbar_log(rows, *, lo=1.0, ref=None, ref_label="", width=860, fmt=str,
 
 def permille_strip(rows, *, width=860):
     """1‰ 位置条带。rows = [(学科, rank, m, line)]；ink 方块=本校位，warn 竖线=1‰ 线。"""
-    label_w, track_w, right_w = 150, width - 150 - 190, 150
+    label_w, track_w, right_w = 150, width - 150 - 215, 215
     row_h, top = 34, 8
     h = len(rows) * row_h + 8
     s = [f'<svg viewBox="0 0 {width} {h}" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">']
@@ -208,9 +208,9 @@ def donut(items, *, width=420, title=""):
     if not items or total <= 0:
         return (f'<svg viewBox="0 0 {width} 40" width="100%" role="img" '
                 'xmlns="http://www.w3.org/2000/svg"></svg>')
-    row_h = 20
-    h = max(210, len(items) * row_h + 14)
-    cx, cy, r, sw = 118, h / 2, 78, 34
+    row_h = 15
+    h = max(180, len(items) * row_h + 12)
+    cx, cy, r, sw = 108, h / 2, 72, 30
     circ = 2 * math.pi * r
     s = [f'<svg viewBox="0 0 {width} {h:.0f}" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">']
     acc = 0.0
@@ -227,15 +227,15 @@ def donut(items, *, width=420, title=""):
         last = k == len(lines) - 1
         s.append(f'<text x="{cx}" y="{y0 + k * 16:.1f}" text-anchor="middle" '
                  f'font-size="{15 if last else 11}" fill="{INK if last else MUT}" {FONT}>{_esc(ln)}</text>')
-    lx = 228
-    ly = (h - len(items) * row_h) / 2 + 4
+    lx = 200
+    ly = (h - len(items) * row_h) / 2 + 3
     for i, (label, v) in enumerate(items):
         y = ly + i * row_h
         c = DONUT_COLORS[i % len(DONUT_COLORS)]
-        s.append(f'<rect x="{lx}" y="{y - 9:.1f}" width="10" height="10" fill="{c}"/>')
+        s.append(f'<rect x="{lx}" y="{y - 8:.1f}" width="8" height="8" fill="{c}"/>')
         if len(label) > 9:
             label = label[:8] + "…"
-        s.append(f'<text x="{lx + 15}" y="{y:.1f}" font-size="11" fill="{INK}">{_esc(label)}</text>')
+        s.append(f'<text x="{lx + 13}" y="{y + 3:.1f}" font-size="10.5" fill="{INK}">{_esc(label)}</text>')
         s.append(f'<text x="{width - 6}" y="{y:.1f}" text-anchor="end" font-size="10.5" fill="{MUT}" {FONT}>'
                  f'{_esc(f"{v:,.0f} · {v / total * 100:.1f}%")}</text>')
     s.append("</svg>")

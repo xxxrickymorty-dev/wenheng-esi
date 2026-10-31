@@ -6,8 +6,9 @@
 - 走 `ai._writer.compose`（内部过盾：模型只能引用题面+事实里出现的数字）；
   额外挂一道**调用侧数字白名单 veto**——输出里出现事实行没有的数字即拒收、回落骨架
   （fc 论证的教训：外发数字防线宁可两道）；
-- 写作位开关沿用全站唯一旋钮 `WENHENG_FLEX_WRITE`（默认关）；
-  关着 / 无模型 / 任一校验不过 → 返回句骨架（`mode="rule"`），报告照常完整。
+- **默认走模型**（rick 2026-10-31 裁：解读默认 LLM 而非规则模板）：直调 `_attempt.attempt`
+  （anchored＝数字盾），不经写作位开关；无模型部署 / 调用失败 / 任一校验不过 →
+  返回句骨架（`mode="rule"`），报告照常完整。
 任何异常都不抛：解读是锦上添花，不是产出步骤。
 """
 from __future__ import annotations
@@ -97,6 +98,40 @@ _CN = {"Agricultural Sciences": "农业科学", "Biology & Biochemistry": "生�
 cn_name = lambda stem: _CN.get(stem, stem)  # noqa: E731
 
 
+_SYS = (
+    "你是 ESI 学科监测报告的解读撰写者，面向图书馆员与学科办。"
+    "写中文解读：2-4 句、一段成文、不分点、不写建议与套话；"
+    "有观点、有侧重，点出学科格局、位次关系与最值得注意的一两个事实，语气克制。"
+    "任务里的所有数字都已替换为 [[n]] 占位标记：写进正文的数字必须以 [[n]] 形式出现"
+    "（按解读需要自由选取，可重复引用），严禁新增、删除或改写任何数字与标记，"
+    "严禁输出 [[n]] 之外的任何数字。只输出整段正文，不要解释、不要标题。"
+)
+
+
+def compose_text(topic: str, facts: list[str], safe: str, *, label: str, veto=None) -> dict:
+    """默认走模型的解读生成：模型文本过盾 + veto，失败回落 safe。→ {"text", "mode"}。"""
+    try:
+        from ai import _attempt, _writer as _w
+        fl = [str(x).strip() for x in facts if str(x).strip()]
+        task = f"【节主题】\n{topic}\n\n【事实摘要】\n" + "\n".join(f"- {x}" for x in fl)
+        res = _attempt.attempt(task, system=_SYS, ability="polish", anchored=True)
+        fallback, result = None, safe
+        if res.attempted and res.text is not None:
+            result = res.text
+            if veto is not None and veto(result):
+                fallback, result = "guard_reject", safe
+        mode = "model" if (res.attempted and res.text is not None and fallback is None) else "rule"
+        backend = res.backend if res.attempted else "rule"
+        try:
+            _w._record_call(res, period="", label=label, fallback=fallback,
+                            mode=mode, backend=backend)
+        except Exception:                                       # noqa: BLE001
+            pass
+        return {"text": result, "mode": mode}
+    except Exception:                                           # noqa: BLE001
+        return {"text": safe, "mode": "rule"}
+
+
 def _skeleton(facts: list[str]) -> str:
     """句骨架兜底：事实行直接成句（model 不可用时解读者就是它）。"""
     return "；".join(facts) + "。各章数字与派生算法见上文。"
@@ -111,17 +146,11 @@ def insight(cn: str, period: str, cache: dict) -> dict | None:
         facts = facts_of(cn, cache)
         if not facts:
             return None
+        facts = [f"数据期次 {period}（Clarivate ESI）"] + facts
         safe = _skeleton(facts)
-        topic = (f"为 {cn} 的 {period} 期 ESI 学科站位监测报告写一段总体解读："
-                 "150 字以内、不分点、不写建议，只概括学科格局与位次关系；"
+        topic = (f"为 {cn} 的 {period} 期 ESI 学科站位监测报告写一段总体解读；"
                  "数字只准用事实摘要里出现过的。")
-        from ai import _writer                                          # noqa: PLC0415
-        st: dict = {}
-        text = _writer.compose(topic, facts=facts, safe=safe, period="",
-                               label="monitor/insight",
-                               veto=lambda t: number_guard(t, [topic, *facts]),
-                               status=st)
-        mode = "model" if st.get("mode") == "model" else "rule"
-        return {"text": text, "mode": mode}
+        return compose_text(topic, facts, safe, label="monitor/insight",
+                            veto=lambda t: number_guard(t, [topic, *facts]))
     except Exception:                                                   # noqa: BLE001
         return {"text": _skeleton(facts_of(cn, cache)), "mode": "rule"}

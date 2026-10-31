@@ -403,7 +403,7 @@ def _report_data(cn: str, period: str, cache: dict, insight: dict | None = None)
 
 def insight_how(mode: str | None) -> str:
     """解读来源标注（HTML 与 docx 共用同一句文案）。"""
-    return "模型解读（数字已过盾校验）" if mode == "model" else "规则拼装（写作位未开或模型不可用）"
+    return "模型解读（数字已过盾校验）" if mode == "model" else "规则拼装（模型不可用或校验未过的兜底）"
 
 
 def _table_html(t: dict) -> str:

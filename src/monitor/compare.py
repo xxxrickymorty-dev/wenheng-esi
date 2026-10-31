@@ -51,11 +51,11 @@ def facts_of(cns: list[str], cache: dict) -> list[str]:
     if len(rows) < 2:
         return []
     out: list[str] = []
-    ordered = sorted(rows, key=lambda r: r["total"][3])
+    ordered = sorted(rows, key=lambda r: -r["total"][3])
     out.append(f"本次对比 {len(ordered)} 校，按总被引排序："
                + "、".join(f"{r['cn']}（第 {r['total'][1]} 名）" for r in ordered))
     lead, lag = ordered[0], ordered[-1]
-    out.append(f"总被引最强是{lead['cn']}（{_fmt(lead['total'][3])}），最弱是{lag['cn']}（{_fmt(lag['total'][3])}）")
+    out.append(f"总被引最强是{lead['cn']}（{_fmt(lead['total'][3])}），末位是{lag['cn']}（{_fmt(lag['total'][3])}）")
     tops = [(r["cn"], r["n"], r["n_entered"], r["n_pm"]) for r in ordered]
     out.append("；".join(f"{cn}上榜 {n}/22、前1% {ne}、前1‰ {np_}"
                         for cn, n, ne, np_ in tops))
@@ -255,13 +255,8 @@ def generate(cns: list[str], period: str | None = None) -> pathlib.Path:
             topic = (f"为 {len(seen)} 所高校的 {period} 期 ESI 学科对比报告写一段总体解读："
                      "150 字以内、不分点、不写建议，只概括校间格局与分学科强弱；"
                      "数字只准用事实摘要里出现过的。")
-            from ai import _writer                                          # noqa: PLC0415
-            st: dict = {}
-            text = _writer.compose(topic, facts=facts, safe=safe, period="",
-                                   label="monitor/insight_compare",
-                                   veto=lambda t: mi.number_guard(t, [topic, *facts]),
-                                   status=st)
-            ins = {"text": text, "mode": "model" if st.get("mode") == "model" else "rule"}
+            ins = mi.compose_text(topic, facts, safe, label="monitor/insight_compare",
+                                  veto=lambda t: mi.number_guard(t, [topic, *facts]))
     except Exception:                                                   # noqa: BLE001
         ins = None
     out = compare_path(seen, period)
