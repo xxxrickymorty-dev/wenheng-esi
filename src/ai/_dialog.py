@@ -6,7 +6,7 @@
 缺就停 + 两条路（等发布 / 先做最新一期）、齐就给「去核对」。应答里出现的数字只有
 解析与盘点的回显，逐条登记为 `fact` 来源——对话不产生任何台账数字。
 
-**两意图（票 07，本能力只做路由）**：`kind ∈ {report, query, proceed, unclear, compare}`——
+**两意图（票 07，本能力只做路由）**：`kind ∈ {report, query, proceed, unclear, compare, qa}`——
 - `report`：写报告（认期次 → 盘点 → 核对 → 出稿），现有链路不动；
 - `query`：查数据——本能力**只判意图**，回答由服务器按意图调 `ai.run("qa", …)`
   （模型出口仍只有 `src/ai` 一处；这里不触网）；
@@ -19,6 +19,10 @@
   形态选「规则命中直调」而不是「给内核加 panel 工具」：演示时不允许出现模型编数字的
   可能，且离线（无 key）也要能答；内核只出 `{period,intent}` 两个槽，加数字工具就得
   放宽 `parse_slots` 的零数字校验，等于拆掉唯一那条护栏。
+- `qa`（2026-10-31）：问数并入——问数句式（指标词命中，见 `_METRIC`）且这轮**没有
+  任何期次可依**（句里没有、槽位没有）时，不再反问「查哪一期」，**直接调问数引擎
+  `aiqa_engine.plan/execute`**（白名单参数化 SQL、只读连接、零模型，照 compare 先例）；
+  人话渲染＋逐行来源＋图型建议折进对话流，并照 `qa_log` 留痕。库缺席 → 讲人话空态。
 
 **模型只在兜底位**（2026-10-13 票 03，ADR-0008）：规则 parse 与全部既有分支原样优先；
 仅在「句内没有期次、有对话上文、规则未命中」的兜底点，若内核可用（qa 开关开 +
@@ -66,8 +70,8 @@ from ._numbered import NumberedText
 #: latest（「最新的」——落期次由 build 用 payload.periods 完成）/ no_period（没听出）。
 CASES = ("period", "publication_month", "latest", "no_period")
 
-#: 意图路由（票 07 + 阶段 2）：一句话只归一类；认不准＝unclear（不猜，交给反问）。
-KINDS = ("report", "query", "proceed", "unclear", "compare")
+#: 意图路由（票 07 + 阶段 2 + 问数并入）：一句话只归一类；认不准＝unclear（不猜，交给反问）。
+KINDS = ("report", "query", "proceed", "unclear", "compare", "qa")
 
 #: 一句里出现这些词 → 「继续/出稿」动作（核对回来后的推进；只在没带期次的句子上生效）。
 _PROCEED = re.compile(r"继续|核完|核过|核对完了|出稿|开跑|开生成|开始生成|开始出稿|跑一遍")
@@ -99,6 +103,10 @@ _PUBLICATION = re.compile(r"出稿|发布")
 #: 「最新的 / 最近一期」（2026-10-13）：只认「最新/最近 + 的/一期/那期」的形态——
 #: **不碰**「最近六期 / 最近几期 / 最新的几期」（序列问法，走 qa 的多期口径）。
 _LATEST = re.compile(r"(?:最新|最近)(?:的(?![几哪])|[一那]?期|的那?一?期)|最新(?![几哪的])")
+
+#: 序列问法（「最近六期 / 最近几期 / 最新的几期」）：不落 qa 直调——这轮照旧反问
+#: （2026-10-13 的既定话术钉着；引擎的多期序列以后再并，先不改这轮的路由面）。
+_SERIES_SPAN = re.compile(r"(?:最近|最新)\s*的?\s*(?:[几六两三四五七八九十多]|\d+)\s*期")
 
 _REPORT_INTENT = re.compile(r"报告|出稿|生成|重出|再出|改做|做")
 
@@ -246,17 +254,23 @@ def _compare_schools(norm: str) -> list[str]:
 
 
 def _kind_for(case: str, *, ask: bool, intent: str, hint: bool, act: str,
-              compare: bool = False) -> str:
-    """路由（票 07 + 阶段 2，纯规则、确定性）：始终只有一个类别。
+              compare: bool = False, metric: bool = False) -> str:
+    """路由（票 07 + 阶段 2 + 问数并入，纯规则、确定性）：始终只有一个类别。
 
     顺序即优先级：他校简报 → 出稿月纠正（问句除外）→ 显式查（查/问）→ 推进 →
-    写报告 → 弱查（多少/接近度/进了没…）→ 认出了期次但没表态＝含糊（不猜、给反问）；
+    写报告 → 弱查（多少/接近度/进了没…）→ 问数句式（指标词，弱查没盖住的
+    CNCI/顶尖等）→ 认出了期次但没表态＝含糊（不猜、给反问）；
     都没中＝空（照旧反问期次，不硬塞进几类）。
+
+    指标词**不落给写报告**（2026-10-31）：出稿月纠正里没带「查/问」的指标句归
+    `qa`（问数），不再给出稿链路；其余分支的既有优先级原样保留。
     """
     if compare:
         return "compare"
     if case == "publication_month":
-        return "query" if ask else "report"
+        if ask:
+            return "query"
+        return "qa" if metric else "report"
     if ask:
         return "query"
     if act == "proceed":
@@ -265,6 +279,8 @@ def _kind_for(case: str, *, ask: bool, intent: str, hint: bool, act: str,
         return "report"
     if hint:
         return "query"
+    if metric:
+        return "qa"
     if case == "period":
         return "unclear"
     return ""
@@ -277,12 +293,13 @@ def parse(text, *, today: datetime.date | None = None) -> Parse:
     intent = "出报告" if _REPORT_INTENT.search(norm) else ""
     ask = bool(_ASK.search(norm))
     hint = bool(_QUERY_HINT.search(norm))
+    metric = bool(_METRIC.search(norm))
     schools = tuple(_compare_schools(norm))
     compare = bool(schools)
 
     def route(case: str, **kw) -> str:
         return _kind_for(case, ask=ask, intent=intent, hint=hint,
-                         compare=compare, **kw)
+                         compare=compare, metric=metric, **kw)
 
     m_period = _PERIOD.search(norm)
     if m_period:
@@ -775,6 +792,100 @@ def _register_panel(srcs):
     return register
 
 
+# ---------------------------------------------------------------- 问数（aiqa）
+#: 底表缺席的空态（UX §十：一句 + 下一步；不讲技术术语）。
+_QA_ABSENT = ("问数的底表还没生成，这一轮答不了数。",
+              "下一步：让管理员先把台账汇总成问数库，再回来问一次。")
+
+
+def _qa_pointer(row: dict) -> tuple[str, str]:
+    """执行行 → (来源指针, 标签)：回答里的数字能回 aiqa.sqlite 的对应表逐格核。"""
+    t = row.get("type")
+    if t == "compare":
+        return f"aiqa/facts/{row.get('period', '')}/{row.get('metric', '')}", "台账事实（问数库）"
+    if t == "at":
+        return (f"aiqa/facts/{row.get('disc', '')}/{row.get('metric', '')}"
+                f"/{row.get('period', '')}", "台账事实（问数库）")
+    if t == "overview":
+        return f"aiqa/report_overview/{row.get('period', '')}", "报告概述（问数库）"
+    if t == "table2":
+        return f"aiqa/report_table2/{row.get('period', '')}", "报告大表（问数库）"
+    if t == "province_compare":
+        return (f"aiqa/province_fact/{row.get('period', '')}/{row.get('metric', '')}",
+                "省域高校快照（问数库）")
+    if t == "ynd_rank":
+        return "aiqa/ynd_rank_series", "云大排名序列（问数库）"
+    return f"aiqa/facts/{row.get('disc', '')}/{row.get('metric', '')}", "台账事实（问数库）"
+
+
+def _aiqa_reply(question: str, root):
+    """问数直调（2026-10-31）：一句话 → 问数引擎的数字＋图型建议。
+
+    **照他校简报的先例**：不经模型、不经既有 qa 能力——`plan/execute` 是白名单
+    参数化 SQL 于只读连接，回答里的每个数字都能回问数库逐格核。行与来源一一对应
+    （同 `_compare_reply` 的形状，登记直接复用 `_register_panel`）。
+
+    `root` 是数据根（out/ 一层）；库在 `<root>/../out/_aidata/aiqa.sqlite`
+    （`aiqa_db.db_path` 唯一口径）。缺席 → 讲人话空态（ok=False），不把
+    FileNotFoundError 甩给对话。留痕走 `qa_log` 既有 API，写失败只返回 -1 不阻断。
+    返回 `(lines, line_sources, data, ok)`；`data` 携带图块与留痕号，服务端照它折进响应面。
+    """
+    try:
+        import aiqa_db as _aiqa_db                           # noqa: PLC0415
+        import aiqa_engine as _aiqa_engine                   # noqa: PLC0415
+    except Exception as e:                                   # noqa: BLE001
+        lines = [f"问数引擎这一轮没接上（{type(e).__name__}），换个问法或稍后再试。"]
+        return lines, [{"pointer": "aiqa/error", "label": "问数引擎"}], None, False
+    repo_root = pathlib.Path(root).parent
+    try:
+        con = _aiqa_db.connect_ro(repo_root)
+    except FileNotFoundError:
+        return (list(_QA_ABSENT),
+                [{"pointer": "aiqa/absent", "label": "问数底表"}] * len(_QA_ABSENT),
+                None, False)
+    t0 = time.perf_counter()
+    try:
+        qp = _aiqa_engine.plan(question, con)
+        result = _aiqa_engine.execute(con, qp["specs"])
+        chart = _aiqa_engine.suggest_chart(con, qp["specs"], result)
+        chart_data = _aiqa_engine.to_chart_data(con, chart, result)
+        lines: list[str] = []
+        srcs: list[dict] = []
+        for row in result.get("rows") or []:
+            # 整行空结果的两种类型不产行，逐行渲染会把引擎的兜底句误带进来——跳过。
+            if row.get("type") == "table2" and not (row.get("rows") or []):
+                continue
+            if row.get("type") == "overview" and not (row.get("facts") or {}):
+                continue
+            ptr, label = _qa_pointer(row)
+            for ln in _aiqa_engine.render_text(con, question, {"rows": [row]}).split("\n"):
+                if ln.strip():
+                    lines.append(ln)
+                    srcs.append({"pointer": ptr, "label": label})
+        if not lines:
+            # 没认出指标/学科等：用引擎自己的人话兜底（「可问…」），不另写一套。
+            lines = _aiqa_engine.render_text(con, question, {"rows": []}).split("\n")
+            srcs = [{"pointer": "aiqa/plan", "label": "问数口径"}] * len(lines)
+        if result.get("note"):
+            lines.append(result["note"])
+            srcs.append({"pointer": "aiqa/plan", "label": "问数口径"})
+        elapsed = int((time.perf_counter() - t0) * 1000)
+        n_rows = sum(len(r.get("points") or r.get("items") or r.get("rows") or [])
+                     for r in result.get("rows") or [])
+        record_id = _aiqa_db.log_qa(
+            repo_root, user="", question=question, specs=qp["specs"],
+            plan_origin=qp["origin"], n_rows=n_rows, elapsed_ms=elapsed,
+            answer_text="\n".join(lines), chart_kind=str(chart.get("kind") or ""))
+        data = {"chart": chart, "chart_data": chart_data, "record_id": record_id,
+                "elapsed_ms": elapsed, "answered": bool(result.get("rows"))}
+        return lines, srcs, data, True
+    except Exception as e:                                   # noqa: BLE001
+        lines = [f"这一轮没查成（{type(e).__name__}）。换个问法，或稍后再问一次。"]
+        return lines, [{"pointer": "aiqa/error", "label": "问数引擎"}], None, False
+    finally:
+        con.close()
+
+
 # ---------------------------------------------------------------- 构建器
 def build(root, period, payload):                                  # noqa: ARG001
     """构建器入口：一句话 → RuleDraft（应答 + 来源 + 槽位/盘点数据 + 记账期次）。
@@ -850,17 +961,41 @@ def build(root, period, payload):                                  # noqa: ARG00
         p = replace(p, kind="unclear")
         kind = "unclear"
 
+    # 问数（aiqa，2026-10-31）：问数句式（指标词）且这轮**没有任何期次可依**
+    # （句里没有、槽位没有、也不是「最新的」）——今天这条路只会反问「查哪一期」，
+    # 现在落 qa 直调问数引擎（引擎自带期次解析，缺省最新一期）。有期次的查数据轮
+    # 照旧走既有路由（服务器按意图调 qa 能力），不破坏既有 query 优先级。
+    norm_text = unicodedata.normalize("NFKC", text)
+    metric_hit = bool(_METRIC.search(norm_text))
+    if (kind == "query" and metric_hit and not p.period and not slot
+            and not was_latest and not _SERIES_SPAN.search(norm_text)):
+        p = replace(p, kind="qa")
+        kind = "qa"
+
     run = None
     actions: list = []
     rcpts: list = []                     # 规则轮回执（receipts-lite：只登记下面真调用的工具）
     lines: list | None = None            # 他校简报按行出（逐行登记来源）；其余仍是单段
     register = None
     compare_data = None
+    qa_data = None
     if kind != "compare":
         # 冷启动 20 多秒不能让人干等（阶段 2）：在这一轮就把 panel 的读表缓存焐热，
         # 后台线程、进程内一次；对比轮自己不预热（免得与 panel 抢同一批读表）。
         _warm_async()
-    if kind == "query":
+    if kind == "qa":
+        # 问数直调（2026-10-31，照他校简报先例）：不经模型、不经既有 qa 能力；
+        # 行与来源一一对应，图块（chart/chart_data）与留痕号随 data 折给前端。
+        tc0 = time.perf_counter()
+        lines, srcs, qa_data, qa_ok = _aiqa_reply(text, root)
+        reply = "\n".join(lines)
+        register = _register_panel(srcs)
+        rcpts.append(_dialog_kernel.tool_receipt(
+            "aiqa", "问数", {"question": text},
+            "问数引擎按台账答了这一句" if qa_ok else "问数底表还没生成",
+            ok=qa_ok, t0=tc0))
+        verdict, inv = "", None
+    elif kind == "query":
         # 查数据（票 07）：不盘点、不出稿；正文本地只在「没期次」时出声，
         # 有期次时的回答由服务器调 qa 能力给出（本能力只做路由）。
         reply = _query_reply(p, slot, latest=latest)
@@ -948,10 +1083,12 @@ def build(root, period, payload):                                  # noqa: ARG00
     number = NumberedText.of(lines, register)
     data = {**p.as_data(), "verdict": verdict, "actions": actions,
             "inventory": inv, "run": run}
-    if kind in ("query", "unclear", "compare"):
-        data["intent"] = ""            # 查数据/含糊/简报轮不动意图槽
+    if kind in ("query", "unclear", "compare", "qa"):
+        data["intent"] = ""            # 查数据/含糊/简报/问数轮不动意图槽
     if compare_data is not None:
         data["compare"] = compare_data
+    if qa_data is not None:
+        data["qa"] = qa_data
     if kernel_record is not None:
         # 内核轮记录面（票 03）：核心据此把该轮 ai_calls 的 mode/backend/fallback/
         # egress/elapsed 记成 model|fallback 如实；不进 as_dict()（Answer 字段面冻结）。

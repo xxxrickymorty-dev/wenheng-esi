@@ -2038,8 +2038,19 @@ async def _dialog_turn_impl(body: dict, user: str, progress=None) -> tuple:
     resp["run"] = turn.get("run") if isinstance(turn.get("run"), dict) else None
     # 查数据（票 07）：dialog 只判意图；回答由**服务器**按意图调 qa 能力。
     # 没产物先提示出稿；qa 关闭照旧说「已关闭」——都在聊天里说清楚，不 404/409 摔出去。
+    # 问数（aiqa，2026-10-31）：问数句式命中时构建器已直调问数引擎出好回答与图块
+    # （白名单参数化 SQL、零模型，照他校简报先例）——这里只折进响应面：正文走
+    # answer（带角标来源，query 同款），图块走 qa；顶层 text 清空防整段重显
+    # （流式 delta 的 _visible_body 优先 answer.text，落库回读也优先 answer）。
     resp["answer"] = None
-    if resp["kind"] == "query":
+    resp["qa"] = None
+    qa_block = turn.get("qa") if isinstance(turn.get("qa"), dict) else None
+    if qa_block is not None:
+        resp["qa"] = qa_block
+        resp["answer"] = {k: resp[k] for k in ("mode", "backend", "text", "rule_text",
+                                               "notice", "sources", "shield", "record_id")}
+        resp["text"] = ""
+    elif resp["kind"] == "query":
         target = resp["slots"]["period"]
         if target:
             if resolve_period_dir(target) is None:

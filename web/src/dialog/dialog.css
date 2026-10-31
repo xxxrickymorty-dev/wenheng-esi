@@ -429,3 +429,8 @@ body.dlg-resizing{cursor:col-resize;user-select:none}
   .dlg-shell *,.mdl-modal *{transition:none!important;animation:none!important}
   .dlg-caret{animation:none}
 }
+
+/* 问数图块（2026-10-31）：回答块下方的 ECharts 画布，只管间距——
+   画布本身用图册的 .gal-chart（index.css），宽随气泡。 */
+.dlg-qachart{margin-top:8px}
+.dlg-qachart .gal-chart{border:1px solid var(--dsr-line-2);background:#fff}

@@ -8,13 +8,15 @@
    出好了＝报告初稿 / 对勘本 / 红件清单；覆盖确认＝行内二次确认（复用 `ConfirmButton`），
    回滚走既有 `rollback-points` / `rollback`（旧稿在 `_superseded/`）。 */
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import type { EChartsOption } from 'echarts'
 import { req, getArtifacts, getJobProgress, getMe, getPeriods,
          getRollbackPoints, postJob, rollbackPeriod,
          type Me, type RollbackPoint } from '../api'
 import { getDialogHome, postDialogTurnStream,
-         type DialogAction, type DialogAnswer, type DialogHome, type DialogReceipt, type DialogReply,
+         type DialogAction, type DialogAnswer, type DialogHome, type DialogQa, type DialogReceipt, type DialogReply,
          type DialogRun } from '../api-dialog'
+import { ChartFigure } from '../charts/ChartFigure'
 import { runFlexibleStream, stopFlexible, type FlexCheck, type FlexStreamEvent } from '../api-flexible'
 import { ConfirmButton } from '../ConfirmButton'
 import { clearSlot, conversationTitle, emptySlots, hasSlots,
@@ -54,6 +56,8 @@ type TraceResult = {
 type Turn = { who: 'me' | 'wh' | 'sys'; text: string; notice?: string; actions?: DialogAction[]
               /** 追问卡选了第几颗（已选态）；undefined＝还没选 */
               picked?: number; run?: DialogRun; trace?: Trace; answer?: DialogAnswer
+              /** 问数图块（2026-10-31）：kind="qa" 轮后端直调引擎出的图；没图就缺省 */
+              qa?: DialogQa
               /** 工具回执（AI 层双面回执）；本轮没有就缺省/为空，界面不出回执条 */
               receipts?: DialogReceipt[]
               /** 这一轮的工具调用轨迹（2026-10-29）：模型查了哪些台账、查到没有 */
@@ -376,6 +380,7 @@ export default function DialogPage() {
         turns: [...c.turns, { who: 'wh', text: r.text, notice: r.notice,
                               actions: r.actions, run: r.run ?? undefined,
                               answer: r.answer ?? undefined,
+                              qa: r.qa ?? undefined,
                               receipts: r.receipts,
                               tools: calls.length ? calls : undefined }],
       }))
@@ -895,6 +900,7 @@ export default function DialogPage() {
                   {!!t.tools?.length && <ToolTrace calls={t.tools} />}
                   {t.text}
                   {t.answer && <AnswerBlock answer={t.answer} />}
+                  {t.qa && <QaChart qa={t.qa} />}
                   {t.notice && <p className="dlg-notice">{t.notice}</p>}
                   {t.trace && (
                     <div className="dlg-trk" aria-live="polite">
@@ -1161,6 +1167,74 @@ function AnswerBlock({ answer }: { answer: DialogAnswer }) {
       ) : (
         !!answer.notice && <p className="dlg-notice">{answer.notice}</p>
       )}
+    </div>
+  )
+}
+
+/** 问数图块（2026-10-31）：图型建议是柱/折/饼且引擎给了序列才画（table／空序列不画）。
+    option 照问数工作台同款（颜色取站内令牌）；复用图册的 ChartFigure 画布——
+    进入视野才初始化、随宽自适应、卸载销毁。前端只做形状搬运，不换算数值。 */
+function qaOption(qa: DialogQa): EChartsOption | null {
+  const cd = qa.chart_data
+  const kind = qa.chart?.kind
+  if (!cd || !cd.series?.length || (kind !== 'bar' && kind !== 'line' && kind !== 'pie')) {
+    return null
+  }
+  const styles = getComputedStyle(document.documentElement)
+  const ink = styles.getPropertyValue('--ink').trim() || '#15222B'
+  const accent = styles.getPropertyValue('--zhu').trim() || '#26483B'
+  const line = styles.getPropertyValue('--line').trim() || '#D6D0C0'
+  if (kind === 'pie') {
+    return {
+      textStyle: { color: ink },
+      tooltip: { trigger: 'item' },
+      legend: { bottom: 0, textStyle: { color: ink } },
+      series: [{
+        type: 'pie', radius: ['35%', '68%'],
+        data: cd.categories
+          .map((c, i) => ({ name: String(c), value: cd.series[0].data[i] }))
+          .filter((d): d is { name: string; value: number } => d.value != null),
+        label: { color: ink },
+      }],
+    }
+  }
+  if (kind === 'line') {
+    return {
+      textStyle: { color: ink },
+      tooltip: { trigger: 'axis' },
+      grid: { left: 70, right: 24, top: 30, bottom: 40 },
+      xAxis: { type: 'category', data: cd.categories,
+               axisLine: { lineStyle: { color: line } }, axisLabel: { color: ink } },
+      yAxis: { type: 'value', splitLine: { lineStyle: { color: line } },
+               axisLabel: { color: ink } },
+      series: cd.series.map((s) => ({
+        type: 'line', name: s.name, data: s.data,
+        itemStyle: { color: accent }, lineStyle: { color: accent, width: 2 }, symbolSize: 5,
+      })),
+    }
+  }
+  return {
+    textStyle: { color: ink },
+    tooltip: { trigger: 'axis' },
+    grid: { left: 70, right: 24, top: 30, bottom: 60 },
+    xAxis: { type: 'category', data: cd.categories,
+             axisLine: { lineStyle: { color: line } },
+             axisLabel: { color: ink, rotate: cd.categories.length > 8 ? 30 : 0 } },
+    yAxis: { type: 'value', splitLine: { lineStyle: { color: line } },
+             axisLabel: { color: ink } },
+    series: cd.series.map((s) => ({
+      type: 'bar', name: s.name, data: s.data, itemStyle: { color: accent },
+    })),
+  }
+}
+
+function QaChart({ qa }: { qa: DialogQa }) {
+  const option = useMemo(() => qaOption(qa), [qa])
+  if (!option) return null
+  return (
+    <div className="dlg-qachart">
+      <ChartFigure option={option} height={230}
+                   ariaLabel={qa.chart_data.title || '问数图表'} />
     </div>
   )
 }

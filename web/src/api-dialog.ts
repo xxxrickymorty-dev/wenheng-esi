@@ -72,6 +72,18 @@ export type DialogReceipt = {
   refused: boolean
 }
 
+/** 问数图块（2026-10-31）：kind="qa" 轮后端直调问数引擎出的图型建议与就绪数据。
+    chart.kind: bar|pie|line|table（table＝这轮没图）；categories/series 是 ECharts
+    就绪形状（同问数工作台 /api/aiqa/ask 的 chart_data），前端只画，不换算。 */
+export type DialogQa = {
+  chart: { kind: string; x: string; y: string[]; title: string }
+  chart_data: { kind: string; title: string; categories: (string | number)[]
+                series: { name: string; data: (number | null)[] }[] }
+  record_id: number
+  elapsed_ms: number
+  answered: boolean
+}
+
 export type DialogReply = {
   mode: string
   backend: string
@@ -81,8 +93,9 @@ export type DialogReply = {
   sources: { index: number; kind: string; pointer: string; label: string; detail: string; value: string }[]
   shield: { checked: number; passed: number }
   record_id: string | null
-  /** 两意图路由（票 07）：report（写报告）/ query（查数据）/ proceed（继续推进）/ unclear（认不准） */
-  kind: 'report' | 'query' | 'proceed' | 'unclear' | ''
+  /** 两意图路由（票 07）：report（写报告）/ query（查数据）/ proceed（继续推进）/ unclear（认不准）/
+      qa（问数直答，2026-10-31：问数句式且无期次可依时直调问数引擎） */
+  kind: 'report' | 'query' | 'proceed' | 'unclear' | 'qa' | ''
   /** 合并后的槽位：本轮解析到的才覆盖，其余不变 */
   slots: DialogSlots
   /** 盘点裁决：unpublished（未发布）/ missing（缺件）/ ready（齐）/ 空（本轮没判） */
@@ -93,6 +106,8 @@ export type DialogReply = {
   run: DialogRun | null
   /** 查数据的回答（票 07）；其余轮次为 null */
   answer: DialogAnswer | null
+  /** 问数图块（2026-10-31）；kind="qa" 且引擎出了图时非空，其余轮次为 null */
+  qa: DialogQa | null
   /** 工具回执（AI 层双面回执）；本轮没有工具调用时缺省/为空 */
   receipts?: DialogReceipt[]
   /** 本回合的会话 id（票 11）：续聊把它回传（刷新/换设备恢复用） */
