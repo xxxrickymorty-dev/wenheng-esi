@@ -288,8 +288,8 @@ def main():
             page.goto(BASE + "/app/?view=acquire&period=202609", wait_until="domcontentloaded")
             page.wait_for_selector(".aq-head", timeout=20000)
             navs = page.eval_on_selector_all("nav[aria-label='工作区'] a", "els => els.map(e => e.innerText.trim())")
-            check("导航前四项（出报告 / 可视化工作流 / 灵活报告 / 问文衡；2026-10-24 加全景、导航瘦身）",
-                  navs[:4] == ["出报告", "可视化工作流", "灵活报告", "问文衡"], str(navs))
+            check("导航两项＋管理（出报告 / 问文衡 / 运行档案；2026-10-31 灵活·简报·问数撤出，深链保留）",
+                  navs == ["出报告", "问文衡", "运行档案"], str(navs))
             check("导航已瘦身（主台账 / 自愈沙盘 / 换馆沙盘不在导航；2026-10-24 rick，深链保留）",
                   not any(n in navs for n in ("主台账", "自愈沙盘", "换馆沙盘")) and "运行档案" in navs,
                   str(navs))

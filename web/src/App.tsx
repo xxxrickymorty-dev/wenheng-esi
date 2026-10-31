@@ -489,14 +489,9 @@ export default function App() {
      不再是平级入口，降为「出报告」四步流水里的步骤或报告的下钻；深链 ?view=… 一律保留。 */
   const NAV: { key: string; label: string; href: string }[] = [
     { key: 'flow', label: '出报告', href: '/app/' },
-    /* 2026-10-29 rick：可视化工作台移到陈列馆（展示面归展示面），工作区不再挂这个入口；
-       页面与深链 ?view=pano 保留，从陈列馆进。 */
-    { key: 'flexible', label: '灵活报告', href: '/app/?view=analysis' },
-    /* 2026-10-30：他校简报（多校六期折线 + 事件标注）单独一页，地址 /app/panel/ */
-    { key: 'panel', label: '他校简报', href: '/app/panel/' },
-    { key: 'aiqa', label: 'AI 问数', href: '/app/?view=aiqa' },
-    /* 2026-10-19 rick：「报告」入口关闭（只读阅稿屏，日常走 出报告→核验定稿，用不上）——
-       页面与深链 ?view=report 保留；子屏（红件/图册/对勘/溯源）的「回报告」链接照旧。 */
+    /* 2026-10-31 rick：灵活报告 / 他校简报 / AI 问数 撤出导航——动线并入高校ESI报告与问文衡，
+       能力下沉（问数并进对话、简报赛后收编监测版趋势章）。页面与深链全保留：
+       /app/?view=analysis · /app/panel/ · /app/?view=aiqa；可视化工作流 2026-10-29 已移陈列馆。 */
     { key: 'ask', label: '问文衡', href: '/app/dialog/' },
   ]
   /* 子屏归到哪个主区（决定顶栏高亮）；report 区已无导航项，子屏顶栏不高亮，属预期 */

@@ -123,10 +123,7 @@ export default function SchoolsPage() {
         <div className="msch-bm"><b>文衡</b><span>云南大学图书馆<br />学科信息参考</span></div>
         <nav className="msch-nav" aria-label="工作区">
           <a href="/app/">出报告</a>
-          <a href="/app/?view=analysis">灵活报告</a>
-          <a href="/app/panel/">他校简报</a>
           <a href="/app/schools/" aria-current="page">高校 ESI 报告</a>
-          <a href="/app/?view=aiqa">AI 问数</a>
           <a href="/app/dialog/">问文衡</a>
           <span className="msch-m">管 理</span>
           <a href="/app/?view=archive">运行档案</a>
