@@ -80,12 +80,28 @@ def permille_strip(rows, *, width=860):
     return "".join(s)
 
 
+def _short_num(v):
+    """纵轴刻度可读缩写：≥1e8 缩「x 亿」、≥1e4 缩「x.x 万」，其余千分位——
+    保证千位分隔的长数字（如 395,215）不把绘图区左缘顶满。"""
+    a = abs(v)
+    if a >= 1e8:
+        return f"{v / 1e8:.1f}".rstrip("0").rstrip(".") + " 亿"
+    if a >= 1e4:
+        return f"{v / 1e4:.1f} 万"
+    return f"{v:,.0f}"
+
+
+def _tick_idx(n):
+    """n 个均匀刻度里取 ~8 个的索引（升序去重）。"""
+    return sorted({round(k * (n - 1) / 7) for k in range(8)}) if n > 8 else list(range(n))
+
+
 def line_chart(series, *, width=860, height=280, y_invert=False, ref_lines=(), y_fmt=None):
     """折线图。series = [(线名, [(x 标签, 值)…])]；x＝期次（各线标签并集按首现序均匀布点，
     刻度 ~8 个），多线按 OK/WARN/INK 轮换，图例在图下方；缺值（None）断线不连线；
     y_invert＝纵轴反转（排名类：小者好，视觉向上）；ref_lines = [(值, 标签)] 横向虚线；
-    y_fmt＝纵轴刻度格式（默认千分位整数）。风格与 hbar_log 同族。纯函数，返回 <svg> 字符串。"""
-    y_fmt = y_fmt or (lambda v: f"{v:,.0f}")
+    y_fmt＝纵轴刻度格式（默认 _short_num 可读缩写）。风格与 hbar_log 同族。纯函数。"""
+    y_fmt = y_fmt or _short_num
     cols = list(dict.fromkeys(x for _name, pts in series for x, _v in pts))
     vals = [v for _name, pts in series for _x, v in pts if v is not None]
     vals += [v for v, _lab in ref_lines]
@@ -97,7 +113,7 @@ def line_chart(series, *, width=860, height=280, y_invert=False, ref_lines=(), y
         lo, hi = lo - abs(lo) * 0.1 - 1, hi + abs(hi) * 0.1 + 1
     pad = (hi - lo) * 0.06
     lo, hi = lo - pad, hi + pad
-    ml, mr, mt, mb = 56, 14, 10, 24
+    ml, mr, mt, mb = 52, 14, 10, 24
     plot_w, plot_h = width - ml - mr, height - mt - mb
     colors = [OK, WARN, INK]
 
@@ -116,8 +132,7 @@ def line_chart(series, *, width=860, height=280, y_invert=False, ref_lines=(), y
         s.append(f'<line x1="{ml}" y1="{y:.1f}" x2="{ml + plot_w}" y2="{y:.1f}" stroke="{LINE}" stroke-width="1"/>')
         s.append(f'<text x="{ml - 6}" y="{y + 3.5:.1f}" text-anchor="end" font-size="10" fill="{MUT}" {FONT}>{_esc(y_fmt(v))}</text>')
     n = len(cols)
-    tick_idx = sorted({round(k * (n - 1) / 7) for k in range(8)}) if n > 8 else list(range(n))
-    for i in tick_idx:
+    for i in _tick_idx(n):
         s.append(f'<text x="{xi(cols[i]):.1f}" y="{height - 6}" text-anchor="middle" font-size="10" fill="{MUT}" {FONT}>{_esc(cols[i])}</text>')
     for v, lab in ref_lines:
         y = yi(v)
@@ -176,5 +191,111 @@ def dumbbell(rows, *, width=860, name_a="", name_b=""):
         s.append(f'<circle cx="{xb:.1f}" cy="{y:.1f}" r="4" fill="{INK}"/>')
         s.append(f'<text x="{xa:.1f}" y="{y - 8:.1f}" text-anchor="middle" font-size="10" fill="{OK}" {FONT}>{_esc(f"{a:g}")}</text>')
         s.append(f'<text x="{xb:.1f}" y="{y + 18:.1f}" text-anchor="middle" font-size="10" fill="{INK}" {FONT}>{_esc(f"{b:g}")}</text>')
+    s.append("</svg>")
+    return "".join(s)
+
+
+DONUT_COLORS = [OK, WARN, INK, "#7FB79B", "#A8B8D0", "#C9A66B"]
+
+
+def donut(items, *, width=420, title=""):
+    """环形图。items = [(标签, 数值)]，占比自动算；六色循环（够 22 学科用）；
+    中心留白放 title（「\\n」分行，末行加重）；右侧图例＝色块＋标签＋「数值 · 占比」
+    （数值千分位整数显示；标签超 9 字截断加「…」防与数值列相撞）。
+    缺项/空列表/合计为 0 → 空 svg 壳。风格与 hbar_log 同族。纯函数，返回 <svg> 字符串。"""
+    items = [(str(lab), v) for lab, v in items if v is not None and v > 0]
+    total = sum(v for _lab, v in items)
+    if not items or total <= 0:
+        return (f'<svg viewBox="0 0 {width} 40" width="100%" role="img" '
+                'xmlns="http://www.w3.org/2000/svg"></svg>')
+    row_h = 20
+    h = max(210, len(items) * row_h + 14)
+    cx, cy, r, sw = 118, h / 2, 78, 34
+    circ = 2 * math.pi * r
+    s = [f'<svg viewBox="0 0 {width} {h:.0f}" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">']
+    acc = 0.0
+    for i, (label, v) in enumerate(items):
+        c = DONUT_COLORS[i % len(DONUT_COLORS)]
+        seg = v / total * circ
+        s.append(f'<circle cx="{cx}" cy="{cy:.1f}" r="{r}" fill="none" stroke="{c}" stroke-width="{sw}" '
+                 f'stroke-dasharray="{max(seg - 1.5, 0.4):.2f} {circ:.2f}" stroke-dashoffset="{-acc * circ:.2f}" '
+                 f'transform="rotate(-90 {cx} {cy:.1f})"/>')
+        acc += v / total
+    lines = str(title).split("\n") if title else []
+    y0 = cy - (len(lines) - 1) * 8 + 4
+    for k, ln in enumerate(lines):
+        last = k == len(lines) - 1
+        s.append(f'<text x="{cx}" y="{y0 + k * 16:.1f}" text-anchor="middle" '
+                 f'font-size="{15 if last else 11}" fill="{INK if last else MUT}" {FONT}>{_esc(ln)}</text>')
+    lx = 228
+    ly = (h - len(items) * row_h) / 2 + 4
+    for i, (label, v) in enumerate(items):
+        y = ly + i * row_h
+        c = DONUT_COLORS[i % len(DONUT_COLORS)]
+        s.append(f'<rect x="{lx}" y="{y - 9:.1f}" width="10" height="10" fill="{c}"/>')
+        if len(label) > 9:
+            label = label[:8] + "…"
+        s.append(f'<text x="{lx + 15}" y="{y:.1f}" font-size="11" fill="{INK}">{_esc(label)}</text>')
+        s.append(f'<text x="{width - 6}" y="{y:.1f}" text-anchor="end" font-size="10.5" fill="{MUT}" {FONT}>'
+                 f'{_esc(f"{v:,.0f} · {v / total * 100:.1f}%")}</text>')
+    s.append("</svg>")
+    return "".join(s)
+
+
+def _star(cx, cy, r_out=5.0, r_in=2.0):
+    """五角星 polygon points（尖朝上），entry_timeline 的 1‰ 事件标记。"""
+    pts = []
+    for k in range(10):
+        r = r_out if k % 2 == 0 else r_in
+        a = math.radians(-90 + k * 36)
+        pts.append(f"{cx + r * math.cos(a):.1f},{cy + r * math.sin(a):.1f}")
+    return " ".join(pts)
+
+
+def entry_timeline(rows, *, periods, width=960):
+    """入榜时间轴（甘特式）。periods＝全期次标签列表（x 轴，均匀 ~8 刻度）；
+    rows = [{"label", "first_seen", "entry1"?, "entrypm"?, "pre"?}]，每行一条细轨道
+    （从 first_seen 到最右）：entry1 期次画 OK 色菱形（进入前 1%），entrypm 期次画
+    WARN 色五角星（进入前 1‰），pre=True 的行（档案起点前已入围）轨道起点画实心圆
+    ＋浅色延伸；行高 18px，标签列左对齐，底部 x 刻度与图例。不在 periods 里的期次
+    标记跳过（不编造位置）。缺行/空 periods → 空 svg 壳。纯函数，返回 <svg> 字符串。"""
+    if not rows or not periods:
+        return (f'<svg viewBox="0 0 {width} 30" width="100%" role="img" '
+                'xmlns="http://www.w3.org/2000/svg"></svg>')
+    idx = {p: i for i, p in enumerate(periods)}
+    label_w, right_w, row_h, top = 150, 16, 18, 8
+    h = top + len(rows) * row_h + 30 + 18
+    track_w = width - label_w - right_w
+    x = lambda p: label_w + track_w * idx[p] / max(len(periods) - 1, 1)
+    x_end = x(periods[-1])
+    s = [f'<svg viewBox="0 0 {width} {h:.0f}" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">']
+    for i, r0 in enumerate(rows):
+        y = top + i * row_h + row_h / 2
+        s.append(f'<text x="{label_w - 8}" y="{y + 4:.1f}" text-anchor="end" font-size="11" fill="{INK}">{_esc(r0["label"])}</text>')
+        fs = r0.get("first_seen")
+        if fs not in idx:
+            continue
+        x0 = x(fs)
+        if r0.get("pre"):
+            s.append(f'<line x1="{x(periods[0]):.1f}" y1="{y:.1f}" x2="{x0:.1f}" y2="{y:.1f}" stroke="{BAR_BG}" stroke-width="2"/>')
+            s.append(f'<circle cx="{x0:.1f}" cy="{y:.1f}" r="3" fill="{INK}"/>')
+        s.append(f'<line x1="{x0:.1f}" y1="{y:.1f}" x2="{x_end:.1f}" y2="{y:.1f}" stroke="{LINE}" stroke-width="2"/>')
+        e1, epm = r0.get("entry1"), r0.get("entrypm")
+        same = e1 is not None and e1 == epm
+        if e1 in idx:
+            x1 = x(e1) - (4 if same else 0)
+            s.append(f'<polygon points="{x1:.1f},{y - 4:.1f} {x1 + 4:.1f},{y:.1f} {x1:.1f},{y + 4:.1f} {x1 - 4:.1f},{y:.1f}" fill="{OK}"/>')
+        if epm in idx:
+            xp = x(epm) + (4 if same else 0)
+            s.append(f'<polygon points="{_star(xp, y)}" fill="{WARN}"/>')
+    for i in _tick_idx(len(periods)):
+        s.append(f'<text x="{x(periods[i]):.1f}" y="{top + len(rows) * row_h + 16:.1f}" text-anchor="middle" '
+                 f'font-size="9.5" fill="{MUT}" {FONT}>{_esc(periods[i])}</text>')
+    gy = h - 10
+    gx = label_w
+    s.append(f'<polygon points="{_star(gx + 4, gy - 3, 4.5, 1.8)}" fill="{WARN}"/>')
+    s.append(f'<text x="{gx + 13}" y="{gy}" font-size="10.5" fill="{MUT}">进入前 1‰</text>')
+    s.append(f'<polygon points="{gx + 96},{gy - 7:.1f} {gx + 100},{gy - 3:.1f} {gx + 96},{gy + 1:.1f} {gx + 92},{gy - 3:.1f}" fill="{OK}"/>')
+    s.append(f'<text x="{gx + 107}" y="{gy}" font-size="10.5" fill="{MUT}">进入前 1%</text>')
     s.append("</svg>")
     return "".join(s)

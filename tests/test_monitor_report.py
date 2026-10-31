@@ -142,7 +142,7 @@ _trend_probe = lambda: (mr.MONITOR_ROOT / "_trend" / "_index.json").exists()   #
 
 
 def test_render_trend_section_hainan():
-    """趋势章（海大，_trend 已入库）：三章趋势 + ≥2 张 svg + 时间线；后续章号顺延四五。"""
+    """趋势章（海大，_trend 已入库）：三章趋势 + 折线/时间轴图 + 章号四五顺延 + 文字清单退场。"""
     if not _PERIOD or not mr.cache_path(_PERIOD).exists():
         skip_unless("监测版期次缓存未建", _cache_probe)
     if not _trend_probe():
@@ -150,10 +150,10 @@ def test_render_trend_section_hainan():
     cache = mr.load_cache(_PERIOD)
     html = mr.render("海南大学", _PERIOD, cache)
     assert '<span class="num">三</span>趋势' in html
-    assert html.count("<svg") >= 2, "总被引轨迹 + 最强学科排名两张折线图"
+    assert html.count("<svg") >= 3, "总被引轨迹 + 最强学科排名 + 入榜与进位时间轴"
     assert "滚动十年窗" in html, "章首 note 应交代回填口径"
-    assert "进位时间线" in html, "海大 12 在榜学科应算得出进位事件"
-    assert "起进入前 1%" in html and "期在榜" in html
+    assert "入榜与进位时间轴" in html, "甘特轴替代文字清单"
+    assert html.count("起进入前 1%（") <= 3, "文字清单形态大幅退场（归并句另算）"
     assert '<span class="num">四</span>进位预警' in html
     assert '<span class="num">五</span>对标' in html
 
@@ -273,6 +273,9 @@ def test_docx_export_hainan():
     from monitor import docx as mdx
     cache = mr.load_cache(_PERIOD)
     d = mr._report_data("海南大学", _PERIOD, cache)
+    p0 = mr.MONITOR_ROOT / "海南大学" / f"{_PERIOD}.docx"
+    if p0.exists():
+        p0.unlink()          # 装配层措辞升级后重建一次，保证读回的是当前 _report_data
     p = mdx.export("海南大学", _PERIOD, cache)
     assert p == mr.MONITOR_ROOT / "海南大学" / f"{_PERIOD}.docx" and p.exists()
     mtime = p.stat().st_mtime
@@ -283,7 +286,7 @@ def test_docx_export_hainan():
     assert texts[0] == f"海南大学 · 学科监测报告 · {_PERIOD}"
     joined = "\n".join(texts)
     assert d["nums"][2]["value"] in joined, "总被引与 HTML 同源（同一 _report_data）"
-    assert "三、趋势" in joined and "进位时间线" in joined, "趋势章文字保留（图不放 docx）"
+    assert "三、趋势" in joined and "入榜与进位时间轴" in joined, "趋势章文字保留（图不放 docx）"
     t = doc.tables[0]
     assert [t.rows[0].cells[i].text for i in range(3)] == ["学科", "全球排名", "分位"]
     assert t.rows[1].cells[0].text == d["sections"][0]["table"]["rows"][0][0]
@@ -296,3 +299,66 @@ def test_print_css_present():
         skip_unless("监测版期次缓存未建", _cache_probe)
     html = mr.render("海南大学", _PERIOD, mr.load_cache(_PERIOD))
     assert "@media print" in html and "break-inside:avoid" in html
+
+
+# ---------------------------------------------------------------- 呈现层二段（环图/甘特轴/条形）
+
+def test_charts_donut():
+    """donut：段＝stroke circle、图例带占比、中心 title；空输入/全零返回空壳。"""
+    from monitor import charts as mc
+    svg = mc.donut([("农业科学", 5000), ("化学", 3424), ("工程学", 2000)],
+                   title="在榜论文合计\n10,424")
+    assert svg.startswith("<svg") and svg.endswith("</svg>")
+    assert svg.count("<circle") == 3, "三段环形"
+    assert "48.0%" in svg and "32.8%" in svg, "图例自动算占比"
+    assert "10,424" in svg and "农业科学" in svg
+    assert mc.donut([]).count("<circle") == 0, "空输入 → 空 svg 壳"
+    assert mc.donut([("甲", 0), ("乙", 0)]).count("<circle") == 0, "合计为 0 → 空壳"
+
+
+def test_charts_entry_timeline():
+    """entry_timeline：事件行有菱形/五角星标记，pre 行有实心圆＋浅色延伸；空输入空壳。"""
+    from monitor import charts as mc
+    svg = mc.entry_timeline(
+        [{"label": "植物与动物学", "first_seen": "202001", "entry1": None,
+          "entrypm": "202007", "pre": True},
+         {"label": "农业科学", "first_seen": "202003", "entry1": "202005", "entrypm": None}],
+        periods=["202001", "202003", "202005", "202007"])
+    assert svg.startswith("<svg") and svg.endswith("</svg>")
+    assert svg.count("<polygon") >= 4, "菱形＋五角星事件标记＋图例"
+    assert svg.count("<circle") == 1, "pre 行轨道起点实心圆"
+    assert ">202005<" in svg and ">202007<" in svg, "x 轴期次刻度"
+    assert "进入前 1%" in svg and "进入前 1‰" in svg, "底部图例"
+    assert mc.entry_timeline([], periods=["202001"]).count("<polygon") == 0, "空输入 → 空壳"
+
+
+def test_render_presentation_charts_hainan():
+    """海大呈现面：站位环图、1‰ 条带、预警接近度条形、入榜时间轴俱全；文字清单退场。"""
+    if not _PERIOD or not mr.cache_path(_PERIOD).exists():
+        skip_unless("监测版期次缓存未建", _cache_probe)
+    if not _trend_probe():
+        skip_unless("趋势库未建", _trend_probe)
+    cache = mr.load_cache(_PERIOD)
+    html = mr.render("海南大学", _PERIOD, cache)
+    assert "在榜学科论文结构" in html, "站位章 donut"
+    assert "1‰线 第" in html, "俱乐部章 permille_strip 行内标注"
+    assert "1× 阈值" in html, "预警章接近度条形（ref 线）"
+    assert "入榜与进位时间轴" in html, "趋势章甘特轴"
+    assert html.count("<svg") >= 5, "两折线 + 时间轴 + 环图 + 条带 + 条形"
+    assert html.count("起进入前 1%（") <= 3, "文字清单形态大幅退场"
+
+
+def test_render_timeline_all_pre_tsinghua():
+    """清华（全 pre 极端）：无 1% 进位事件行，归并成一句 note；页面文字清单残留 ≤3。"""
+    if not _PERIOD or not mr.cache_path(_PERIOD).exists():
+        skip_unless("监测版期次缓存未建", _cache_probe)
+    if not _trend_probe():
+        skip_unless("趋势库未建", _trend_probe)
+    cache = mr.load_cache(_PERIOD)
+    d = mr._report_data("清华大学", _PERIOD, cache)
+    tl = d["sections"][2].get("timeline") or {}
+    assert tl, "清华趋势点充足，时间轴规格应在"
+    assert tl["pre_note"].startswith("档案起点前已入围"), "归并 note 承载 pre 学科"
+    html = mr.render("清华大学", _PERIOD, cache)
+    assert html.count("起进入前 1%（") <= 3, "全 pre 场景无进位文字复读"
+    assert "档案起点前已入围" in html

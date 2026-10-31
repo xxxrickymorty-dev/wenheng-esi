@@ -272,6 +272,11 @@ def _report_data(cn: str, period: str, cache: dict, insight: dict | None = None)
                       "分母为本校上榜学科合计，部分覆盖下指数偏高，仅作结构参考。"]}
     if not pairs:
         sec1["table"]["placeholder"] = "22 学科榜内未搜到该校——低于收录线或未入册，本期不出学科行。"
+    else:
+        sec1["charts"] = [{"cap": "在榜学科论文结构",
+                           "svg": charts.donut([(CN[stem], r[2] or 0) for stem, r in
+                                                sorted(pairs, key=lambda kv: -(kv[1][2] or 0))],
+                                               title=f"在榜论文合计\n{mine_sum:,.0f}")}]
 
     pm_cells = [[CN[stem], f"{r[0]} / {cache['fields'][stem]['m']}",
                  f"第 {cache['fields'][stem]['line']} 位",
@@ -281,6 +286,9 @@ def _report_data(cn: str, period: str, cache: dict, insight: dict | None = None)
     if pm_cells:
         sec2["table"] = {"head": ["学科", "全球排名", "1‰ 线", "线上被引"],
                          "colclasses": ["", "n", "n", "n"], "rows": pm_cells}
+        sec2["charts"] = [{"svg": charts.permille_strip(
+            [(CN[stem], r[0], cache["fields"][stem]["m"], cache["fields"][stem]["line"])
+             for stem, r in pairs if r[0] <= cache["fields"][stem]["line"]])}]
     sec2["notes"] = ([] if pm_cells else ["本期无学科进入前 1‰。"])
     sec2["notes"].append("1‰ 线＝榜内第 ⌊(m+1)/10⌋ 位机构的被引（m＝榜内机构数），与 extract_1permille 同法。")
 
@@ -309,24 +317,53 @@ def _report_data(cn: str, period: str, cache: dict, insight: dict | None = None)
                 figs.append({"cap": f"{CN[stem]} · 全球排名轨迹",
                              "svg": charts.line_chart([(_e(CN[stem]), seq)], y_invert=True)})
                 break
-        tl: list[tuple[str, str]] = []
+        # ---- 入榜与进位时间轴：文字清单换甘特轴。每在榜学科 first_seen＝序列首个有 rank
+        # 的期次，entry1＝首次 cites≥thr1，entrypm＝首次 rank≤(m+1)//10（m/thr1 缺的期跳过）。
+        # pre（档案起点前已入围）＝首个可判定观测点即满足 1% 且 first_seen 在档案首期——
+        # 状态与档案同起、无法定位跨越点：有窗内 1‰ 事件的 pre 行照画（起点实心圆＋浅色
+        # 延伸），无任何事件的归并成一句 note；中途入榜后达标＝真实事件行，按 entry1 升序。
+        sec3 = {"num": "三", "title": "趋势", "flow": True,
+                "notes": [_trend_note()], "charts": figs}
+        periods = _trend_periods() or sorted({p["period"] for p in pts}
+                                             | {f["period"] for seq in flds.values() for f in seq})
+        p0 = periods[0] if periods else ""
+        ev: list[dict] = []
+        pre_names: list[str] = []
+        items: list[str] = []
         for stem in STEMS:
             seq = flds.get(stem) or []
             if stem not in present or not seq:
                 continue
-            first1 = next((f["period"] for f in seq if f.get("thr1") is not None
-                           and f.get("cites") is not None and f["cites"] >= f["thr1"]), None)
-            firstpm = next((f["period"] for f in seq
-                            if f.get("m") and f["rank"] <= (f["m"] + 1) // 10), None)
-            if first1:
-                tl.append((first1, f"{CN[stem]}：{first1} 起进入前 1%（{len(seq)} 期在榜）"))
-            if firstpm:
-                tl.append((firstpm, f"{CN[stem]}：{firstpm} 起进入前 1‰（{len(seq)} 期在榜）"))
-        sec3 = {"num": "三", "title": "趋势", "flow": True,
-                "notes": [_trend_note()], "charts": figs}
-        if tl:
-            tl.sort(key=lambda kv: kv[0])
-            sec3["timeline"] = {"cap": "进位时间线", "items": [txt for _p, txt in tl]}
+            fs = next((f["period"] for f in seq if f.get("rank") is not None), None)
+            if fs is None:
+                continue
+            judge = [f for f in seq if f.get("thr1") is not None and f.get("cites") is not None]
+            f1 = next((f["period"] for f in judge if f["cites"] >= f["thr1"]), None)
+            fpm = next((f["period"] for f in seq
+                        if f.get("m") and f["rank"] <= (f["m"] + 1) // 10), None)
+            if f1:
+                items.append(f"{CN[stem]}：{f1} 起进入前 1%（{len(seq)} 期在榜）")
+            if fpm:
+                items.append(f"{CN[stem]}：{fpm} 起进入前 1‰（{len(seq)} 期在榜）")
+            pre = bool(judge) and f1 == judge[0]["period"] and fs == p0
+            entry1 = None if pre else f1
+            if pre and (fpm is None or fpm == fs):
+                pre_names.append(CN[stem])                       # 无窗内事件 → 归并不逐行画
+                continue
+            if entry1 or fpm:
+                ev.append({"label": CN[stem], "first_seen": fs,
+                           "entry1": entry1, "entrypm": fpm, "pre": pre})
+            # 其余（从未进 1% 也无 1‰ 事件）＝窗内无动作可画，不外推
+        if ev or pre_names:
+            periods = sorted(set(periods) | {r0[k] for r0 in ev
+                                             for k in ("first_seen", "entry1", "entrypm") if r0[k]})
+            ev.sort(key=lambda r0: (r0["entry1"] or r0["entrypm"] or "9999", r0["label"]))
+            sec3["timeline"] = {
+                "cap": "入榜与进位时间轴",
+                "svg": charts.entry_timeline(ev, periods=periods) if ev else "",
+                "pre_note": (f"档案起点前已入围 {len(pre_names)} 学科：{'、'.join(pre_names)}。"
+                             if pre_names else ""),
+                "items": items}
 
     sec4 = {"num": "四", "title": "进位预警"}
     near_cells = [[x["cn"], _fmt(x["r"][3]), _fmt(cache["thr1"].get(_norm(x["stem"]), 0)),
@@ -341,6 +378,14 @@ def _report_data(cn: str, period: str, cache: dict, insight: dict | None = None)
                       f"{min(x['prox'] for x in entered):.1f}×阈值），无临阈学科。")
     else:
         notes4.append("本期全球机构总表未收录该校，无法计算接近度。")
+    # 接近度条形（log 轴，ref=1× 阈值线）：ESI 学科榜收录线≈1% 阈值，真实数据下 near
+    # 恒空（在榜即入围），所以 entered 的入围余量与 near 的临阈距离画同一张图——
+    # 余量最小（最临阈）的学科排最前，预警章从此有图。
+    bars = sorted((x["cn"], x["prox"]) for x in (*entered, *near) if x["prox"])
+    if bars:
+        sec4["charts"] = [{"svg": charts.hbar_log(bars, lo=0.5, ref=1.0, ref_label="1× 阈值",
+                                                  fmt=lambda v: f"{v:.2f}",
+                                                  tick_fmt=lambda v: f"{v:g}×")} ]
     if miss_list:
         notes4.append(f"未上榜 {len(miss_list)} 学科（{'、'.join(miss_list)}）低于榜内收录线或未导出，"
                       "无被引数据，接近度不可算，不外推。")
@@ -394,12 +439,17 @@ def _section_html(sec: dict) -> str:
     for note in sec.get("notes", []):
         parts.append(f'<p class="note">{_e(note)}</p>')
     for fig in sec.get("charts", []):
-        parts.append(f'<p class="cap">{_e(fig["cap"])}</p>')
+        if fig.get("cap"):
+            parts.append(f'<p class="cap">{_e(fig["cap"])}</p>')
         parts.append(fig["svg"])
     tl = sec.get("timeline")
     if tl:
-        parts.append(f'<p class="cap">{_e(tl["cap"])}</p>')
-        parts.append('<p class="note">' + "<br>".join(_e(x) for x in tl["items"]) + "</p>")
+        if tl.get("svg"):                                        # 图（HTML）；全 pre 场景整图省略
+            parts.append(f'<p class="cap">{_e(tl["cap"])}</p>')
+            parts.append(tl["svg"])
+        if tl.get("pre_note"):
+            parts.append(f'<p class="note">{_e(tl["pre_note"])}</p>')
+        # tl["items"]（文字清单）只供 Word 导出（docx v1 不内联 svg），HTML 不再复读
     attr = ' class="flow"' if sec.get("flow") else ""
     return f"<section{attr}>\n" + "\n".join(parts) + "\n</section>"
 
@@ -519,6 +569,16 @@ def _insight_section(insight: dict | None, num: str = "六") -> str:
 <p style="margin-top:14px;max-width:70ch;color:var(--ink-2)">{body}</p>
 <p class="note">{_e(how)}。</p>
 </section>"""
+
+
+def _trend_periods() -> list[str]:
+    """趋势档案的 ok 期次列表（_index 现读，作时间轴 x 轴）；索引缺席 → []。"""
+    try:
+        from monitor import trend as mt                              # noqa: PLC0415
+        idx = json.loads((mt.TREND_ROOT / "_index.json").read_text(encoding="utf-8"))
+        return sorted(p for p, v in (idx.get("periods") or {}).items() if v.get("status") == "ok")
+    except (OSError, json.JSONDecodeError, ImportError, AttributeError):
+        return []
 
 
 def _trend_note() -> str:
