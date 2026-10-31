@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="huize">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<title>主壳跨页 · 方案D 双主题（静态稿）</title>
+<style>
+  /* 主壳跨页 · 方案D 双主题工程版（静态稿 20261031）
+     布局与「高校ESI报告-插件市场」基线同构：左页会泽品牌面 / 右页至公任务面，订口一条金线。
+     本稿验三件事：
+     ① 右上角主题切换器双击打开即真能切——
+        「会泽」＝基线样式（#143729 族＋纸面）；「现有绿」＝同一布局、色值全部映射到
+        src/tokens.css 现有令牌（场＝--field #26483B、纸面＝--bg #EDE9DE、卡＝--card #FAF8F0），
+        证明这套跨页布局不换令牌也能跑；
+     ② 两主题布局完全一致，只有色板变（全部颜色走 CSS 变量，零结构差异）；
+     ③ 页脚令牌映射表（8 行）给落码留路：哪些色直落现有令牌、哪些需新登记。
+     右页任务视图演示数据：202611 第 40 期在产（取数 41/64），202609 / 202607 已签发，期次切换可点。
+     硬约束：单文件零依赖、系统字体、零圆角、六档字号 11/12/13.5/15/19/26、tabular-nums、
+     状态三重编码（色＋图标＋文字）、左栏一屏放全禁滚动、点击区 ≥44px（左栏导航随壳栏一屏先压间距）。 */
+  :root{
+    --lw:26%;
+    /* 字族（＝tokens.css） */
+    --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    /* 六档字号（＝tokens.css --fs-*） */
+    --fs-xs:11px; --fs-sm:12px; --fs-label:13.5px; --fs-body:15px; --fs-h:19px; --fs-sh:26px;
+    /* 语义色不随主题变（UX.md §九） */
+    --ok:#276B4C; --ok-soft:#DFEDE6; --warn:#7C5A16; --warn-soft:#F3E9CF;
+    --shadow:0 1px 2px rgba(21,34,43,.07);
+  }
+  /* ── 主题一 · 会泽（基线样式） ── */
+  html[data-theme="huize"]{
+    --deep:#143729; --deep-2:#0F2C21;
+    --ivory:#F6F1DE; --ivory-2:rgba(246,241,222,.80); --ivory-3:rgba(246,241,222,.56);
+    --mark-l:#C8B584;                                   /* 场上金标记 */
+    --paper:#F5F3EC; --card:#FAF8F0; --card-hi:#FDFAF3;
+    --ink:#1E2A23; --ink-2:#4A564D; --ink-3:#66716A;    /* ink-3 较基线加深一档达 AA 4.5:1 */
+    --line:#DFDBCB; --line-2:#EAE7DB;
+    --act:#1A4B27; --act-h:#143729;                     /* 行动绿 / 按下更深 */
+    --mark-p:#C8B584; --seam:#B08E48;                   /* 纸面亮标记 / 订口金线 */
+  }
+  /* ── 主题二 · 现有绿（全部映射 src/tokens.css，注释标令牌名） ── */
+  html[data-theme="tokens"]{
+    --deep:#26483B; --deep-2:#163228;                   /* --field / --field-2 */
+    --ivory:#DFEDE6; --ivory-2:rgba(223,237,230,.80); --ivory-3:rgba(223,237,230,.70); /* --field-5 ＋透明度分级 */
+    --mark-l:#7FB79B;                                   /* --field-4 */
+    --paper:#EDE9DE; --card:#FAF8F0; --card-hi:#FDFAF3; /* --bg / --card / --card-hi */
+    --ink:#15222B; --ink-2:#43525C; --ink-3:#556169;    /* --ink / --ink-2 / --ink-3 */
+    --line:#D8D2C2; --line-2:#E6E1D3;                   /* --line / --line-2 */
+    --act:#26483B; --act-h:#163228;                     /* --zhu（＝--field）/ --field-2 */
+    --mark-p:#2F7A58; --seam:#2F7A58;                   /* --gold（现值即绿）；真金订口需新登记 */
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--deep)}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);
+    -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;background:none;border:none;color:inherit}
+  h1,h2,h3{font-family:var(--serif);font-weight:600}
+  :focus-visible{outline:2px solid var(--act);outline-offset:2px}
+  .page-l :focus-visible{outline-color:var(--mark-l)}
+  ::selection{background:var(--act);color:var(--ivory)}
+  .ic{width:13px;height:13px;flex:none}
+
+  .spread{display:grid;grid-template-columns:var(--lw) minmax(0,1fr);min-height:100dvh;position:relative}
+  .spread::after{content:"";position:absolute;top:0;bottom:0;left:var(--lw);width:1px;
+    background:var(--seam);pointer-events:none;z-index:2}
+
+  /* ───── 左页 · 会泽（品牌面，一屏放全，禁栏内滚动） ───── */
+  .page-l{background:var(--deep);color:var(--ivory);
+    padding:clamp(14px,2vh,26px) clamp(18px,2vw,30px);
+    display:flex;flex-direction:column;position:sticky;top:0;height:100dvh;overflow:hidden}
+  .bm{display:flex;align-items:baseline;gap:10px}
+  .bm b{font-family:var(--serif);font-size:var(--fs-sh);letter-spacing:.14em}
+  .bm span{font-family:var(--kai);font-size:var(--fs-xs);letter-spacing:.16em;color:var(--ivory-3);line-height:1.7}
+  .nav{margin-top:clamp(10px,1.9vh,20px);display:flex;flex-direction:column;
+    font-size:var(--fs-label);letter-spacing:.04em;color:var(--ivory-2)}
+  .nav a{padding:clamp(3px,.65vh,7px) 0;display:flex;align-items:center;gap:10px}
+  .nav a::before{content:"";width:9px;height:2px;flex:none;background:transparent}
+  .nav a[aria-current]{color:var(--ivory)}
+  .nav a[aria-current]::before{background:var(--mark-l)}
+  .nav a:hover{color:var(--ivory)}
+  .nav .m{margin-top:clamp(7px,1.2vh,13px);font-family:var(--kai);font-size:var(--fs-xs);
+    letter-spacing:.24em;color:var(--ivory-3)}
+  .hero-l{margin-top:auto;padding-top:clamp(10px,1.6vh,18px)}
+  .hero-l h1{font-size:clamp(26px,3.4vh,32px);letter-spacing:.08em;line-height:1.16}
+  .hero-l .vol{display:flex;align-items:baseline;gap:12px;margin-top:8px}
+  .hero-l .vol .b{font-family:var(--serif);font-size:var(--fs-h);letter-spacing:.18em}
+  .hero-l .vol .c{font-family:var(--kai);font-size:var(--fs-xs);letter-spacing:.22em;color:var(--ivory-3)}
+  .hero-l .rule{width:34px;height:1px;background:var(--seam);margin:clamp(9px,1.5vh,15px) 0}
+  .hero-l .stm{font-family:var(--serif);font-size:var(--fs-h);letter-spacing:.06em;line-height:1.55}
+  .footline{margin-top:auto;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    font-family:var(--kai);font-size:var(--fs-xs);letter-spacing:.2em;color:var(--ivory-3);
+    border-top:1px solid rgba(246,241,222,.14);padding-top:clamp(7px,1.2vh,11px)}
+  html[data-theme="tokens"] .footline{border-top-color:rgba(223,237,230,.16)}
+
+  /* ───── 右页 · 至公（任务视图） ───── */
+  .page-r{padding:clamp(14px,2vh,24px) clamp(18px,2.6vw,40px) 0;min-height:100dvh;
+    display:flex;flex-direction:column;min-width:0}
+
+  .bar{display:flex;align-items:center;gap:14px 18px;flex-wrap:wrap}
+  .bar .t{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .bar h2{font-size:var(--fs-h);letter-spacing:.08em}
+  .pn{display:flex;align-items:baseline;gap:10px}
+  .pn b{font-family:var(--serif);font-size:var(--fs-sh);letter-spacing:.04em;line-height:1.2}
+  .pn-s{font-size:var(--fs-sm);letter-spacing:.05em;color:var(--ink-3);white-space:nowrap;
+    display:inline-flex;align-items:center;gap:5px}
+  .pn-s.ok{color:var(--ok)}
+  .pn-s .ic{width:12px;height:12px}
+  .ctrls{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+  .seg{display:inline-flex;border:1px solid var(--line);background:var(--card);box-shadow:var(--shadow)}
+  .seg button{min-height:44px;padding:0 14px;font-size:var(--fs-sm);letter-spacing:.05em;
+    color:var(--ink-3);border-right:1px solid var(--line-2);display:inline-flex;align-items:center}
+  .seg button:last-child{border-right:0}
+  .seg button:hover:not([aria-pressed="true"]){color:var(--ink);background:var(--card-hi)}
+  .seg button[aria-pressed="true"]{background:var(--act);color:var(--ivory)}
+
+  /* 本期任务条：①②③＋主按钮（垂直居中：上下 auto 均分余量） */
+  .rail{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(180px,215px);
+    gap:10px;margin-top:auto;padding-top:clamp(14px,2.2vh,22px)}
+  .tasks{display:contents}
+  .task{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);
+    padding:13px 14px 12px;display:flex;flex-direction:column;gap:9px;min-height:112px}
+  .task .th{display:flex;align-items:baseline;gap:9px}
+  .tno{font-family:var(--kai);font-size:var(--fs-sm);color:var(--ink-3)}
+  .task h3{font-size:var(--fs-h);letter-spacing:.03em;line-height:1.3}
+  .stt{margin-left:auto;display:inline-flex;align-items:center;gap:5px;
+    font-size:var(--fs-xs);letter-spacing:.05em;white-space:nowrap}
+  .task.todo .stt{color:var(--ink-3)}
+  .task.run  .stt{color:var(--act)}
+  .task.done .stt{color:var(--ok)}
+  .prog{height:2px;background:var(--line-2);margin-top:auto}
+  .prog i{display:block;height:100%;background:var(--act)}
+  .task.done .prog i{background:var(--ok)}
+  .tc{font-size:var(--fs-sm);color:var(--ink-2);letter-spacing:.04em}
+  .task.todo .prog,.task.todo .tc{visibility:hidden}
+  .go{display:flex;align-items:center;justify-content:center;gap:10px;min-height:44px;
+    background:var(--act);color:var(--ivory);box-shadow:var(--shadow);padding:0 16px}
+  .go b{font-size:var(--fs-body);font-weight:600;letter-spacing:.14em;white-space:nowrap}
+  .go .ic{width:16px;height:16px}
+  .go:hover{background:var(--act-h)}
+
+  /* 四步流水（出报告导航） */
+  .flowsec{margin-top:auto;padding-top:clamp(14px,2.2vh,22px)}
+  .fl{font-family:var(--kai);font-size:var(--fs-xs);letter-spacing:.26em;color:var(--ink-3)}
+  .fband{position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+    margin-top:10px;border-top:2px solid var(--line-2)}
+  .ffill{position:absolute;top:-2px;left:0;height:2px;background:var(--act);width:0}
+  .fn{display:block;padding:12px 14px 12px 0}
+  .fn:not(:last-child){border-right:1px solid var(--line-2)}
+  .fnm{display:block;font-family:var(--serif);font-size:var(--fs-label);font-weight:600;
+    letter-spacing:.06em;color:var(--ink-2)}
+  .ms{display:inline-flex;align-items:center;gap:5px;margin-top:5px;
+    font-size:var(--fs-xs);letter-spacing:.04em;color:var(--ink-3)}
+  .fn.run  .ms{color:var(--act)}
+  .fn.done .ms{color:var(--ok)}
+  .fn.run .fnm,.fn.done .fnm{color:var(--ink)}
+  .fn:hover .fnm{color:var(--ink)}
+
+  /* 页脚：令牌映射表＋稿线（与四步流水同簇，压在页底） */
+  .foot{margin-top:clamp(10px,1.8vh,18px);border-top:1px solid var(--line);padding-top:2px}
+  .tmap summary{cursor:pointer;display:flex;align-items:center;gap:9px;padding:9px 0;
+    font-family:var(--kai);font-size:var(--fs-xs);letter-spacing:.22em;color:var(--ink-3);list-style:none}
+  .tmap summary::-webkit-details-marker{display:none}
+  .tmap summary::before{content:"▸";flex:none}
+  .tmap[open] summary::before{content:"▾"}
+  .tmap summary:hover{color:var(--ink-2)}
+  .tmap table{width:100%;border-collapse:collapse;font-size:var(--fs-xs);margin:0 0 10px;line-height:1.6}
+  .tmap th{font-family:var(--kai);font-weight:400;letter-spacing:.14em;color:var(--ink-3);
+    text-align:left;padding:4px 12px 4px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+  .tmap td{padding:4px 12px 4px 0;border-bottom:1px solid var(--line-2);color:var(--ink-2);vertical-align:top}
+  .tmap tr:last-child td{border-bottom:0}
+  .tmap code{font-family:var(--mono);font-size:var(--fs-xs)}
+  .tmap .mono{font-family:var(--mono);letter-spacing:.02em}
+  .tmap .need{color:var(--warn)}
+  .sw{display:inline-block;width:10px;height:10px;border:1px solid var(--line);
+    margin-right:6px;vertical-align:-1px}
+  .fline{display:flex;justify-content:space-between;gap:8px 14px;flex-wrap:wrap;
+    padding:8px 0 14px;border-top:1px solid var(--line-2);
+    font-size:var(--fs-xs);letter-spacing:.06em;color:var(--ink-3)}
+
+  /* 换主题的色过渡（動效仅色相，结构零位移） */
+  .page-l,.page-r,.task,.go,.seg,.seg button,.fband,.ffill,.foot,.tmap td,.tmap th,
+  .footline,.hero-l .rule{transition:background-color .18s ease,color .18s ease,border-color .18s ease}
+  @media (prefers-reduced-motion:reduce){
+    .page-l,.page-r,.task,.go,.seg,.seg button,.fband,.ffill,.foot,.tmap td,.tmap th,
+    .footline,.hero-l .rule{transition:none}
+  }
+
+  /* ───── 窄屏：左栏折成顶带 ───── */
+  @media (max-width:1100px){
+    .spread{display:block}
+    .spread::after{display:none}
+    .page-l{position:static;height:auto;overflow:visible}
+    .nav{flex-direction:row;flex-wrap:wrap;gap:2px 18px;margin-top:12px}
+    .nav .m{margin-top:6px}
+    .hero-l{margin:14px 0 0;padding-top:12px}
+    .footline{margin-top:16px}
+    .page-r{min-height:0;padding-top:18px}
+    .rail{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .go{grid-column:1/-1}
+    .fband{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .fn{padding:12px 12px 12px 0;border-bottom:1px solid var(--line-2)}
+    .fn:nth-child(odd){border-right:1px solid var(--line-2)}
+    .fn:nth-last-child(-n+2){border-bottom:0}
+  }
+  @media (max-width:640px){
+    .rail{grid-template-columns:minmax(0,1fr)}
+    .fband{grid-template-columns:minmax(0,1fr)}
+    .fn{border-right:0!important;border-bottom:1px solid var(--line-2)}
+    .fn:last-child{border-bottom:0}
+  }
+</style>
+</head>
+<body>
+
+<!-- 内联 SVG 图标（24 视框 / 1.7 描边 / 圆头，UX.md §九） -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-todo" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="8.3" fill="none" stroke="currentColor" stroke-width="1.7"/>
+  </symbol>
+  <symbol id="i-run" viewBox="0 0 24 24">
+    <path d="M12 3.7a8.3 8.3 0 1 1-8.3 8.3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+    <circle cx="12" cy="12" r="2.6" fill="currentColor"/>
+  </symbol>
+  <symbol id="i-done" viewBox="0 0 24 24">
+    <path d="M5 12.6l4.4 4.4L19 7.4" fill="none" stroke="currentColor" stroke-width="1.9"
+      stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24">
+    <path d="M4.5 12h14M13 6.5l5.5 5.5-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.7"
+      stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24">
+    <path d="M10 5.5h8.5V14M18.5 5.5L6 18" fill="none" stroke="currentColor" stroke-width="1.7"
+      stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+</defs></svg>
+
+<div class="spread">
+
+  <!-- ═══ 左页 · 会泽（品牌面） ═══ -->
+  <aside class="page-l">
+    <div class="bm"><b>文衡</b><span>云南大学图书馆</span></div>
+    <nav class="nav" aria-label="工作区">
+      <a href="#" aria-current="page">出报告</a>
+      <a href="#">灵活报告</a>
+      <a href="#">他校简报</a>
+      <a href="#">高校 ESI 报告</a>
+      <a href="#">AI 问数</a>
+      <a href="#">问文衡</a>
+      <p class="m">管 理</p>
+      <a href="#">运行档案</a>
+      <a href="#">陈列馆 <svg class="ic" aria-hidden="true"><use href="#i-ext"></use></svg></a>
+    </nav>
+    <div class="hero-l">
+      <h1>学科信息参考</h1>
+      <p class="vol"><span class="b">双 月 刊</span><span class="c">E S I 学 科 分 析</span></p>
+      <div class="rule"></div>
+      <p class="stm">两端是人，中间是产线。</p>
+    </div>
+    <div class="footline">
+      <span>会 泽 百 家 · 至 公 天 下</span>
+      <span>admin · 管理员</span>
+    </div>
+  </aside>
+
+  <!-- ═══ 右页 · 至公（任务视图） ═══ -->
+  <main class="page-r">
+    <div class="bar">
+      <div class="t">
+        <h2>本期动态</h2>
+        <p class="pn"><b id="pNo">202611</b><span class="pn-s" id="pMeta">第 40 期 · 本期</span></p>
+      </div>
+      <div class="ctrls">
+        <div class="seg" role="group" aria-label="期次切换" id="segP">
+          <button type="button" data-p="202611" aria-pressed="true">202611</button>
+          <button type="button" data-p="202609" aria-pressed="false">202609 · 已签发</button>
+          <button type="button" data-p="202607" aria-pressed="false">202607 · 已签发</button>
+        </div>
+        <div class="seg" role="group" aria-label="主题切换" id="segT">
+          <button type="button" data-t="huize" aria-pressed="true">会泽</button>
+          <button type="button" data-t="tokens" aria-pressed="false">现有绿</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="rail" aria-label="本期三步任务">
+      <ol class="tasks">
+        <li class="task run" data-i="0">
+          <div class="th"><span class="tno">①</span><h3>取数</h3>
+            <span class="stt"><svg class="ic" aria-hidden="true"><use href="#i-run"></use></svg><span class="stx">进行中</span></span>
+          </div>
+          <div class="prog" aria-hidden="true"><i style="width:64%"></i></div>
+          <p class="tc">41 / 64 份</p>
+        </li>
+        <li class="task todo" data-i="1">
+          <div class="th"><span class="tno">②</span><h3>核对并并入</h3>
+            <span class="stt"><svg class="ic" aria-hidden="true"><use href="#i-todo"></use></svg><span class="stx">未开始</span></span>
+          </div>
+          <div class="prog" aria-hidden="true"><i></i></div>
+          <p class="tc"></p>
+        </li>
+        <li class="task todo" data-i="2">
+          <div class="th"><span class="tno">③</span><h3>一键生成</h3>
+            <span class="stt"><svg class="ic" aria-hidden="true"><use href="#i-todo"></use></svg><span class="stx">未开始</span></span>
+          </div>
+          <div class="prog" aria-hidden="true"><i></i></div>
+          <p class="tc"></p>
+        </li>
+      </ol>
+      <a class="go" id="go" href="#"><b>去取数台</b><svg class="ic" aria-hidden="true"><use href="#i-arrow"></use></svg></a>
+    </section>
+
+    <section class="flowsec">
+      <p class="fl">四 步 流 水</p>
+      <nav class="fband" aria-label="出报告 · 四步流水">
+        <i class="ffill" id="ffill" aria-hidden="true"></i>
+        <a class="fn run" data-i="0" href="#"><span class="fnm">取数核验</span>
+          <span class="ms"><svg class="ic" aria-hidden="true"><use href="#i-run"></use></svg><span class="mtx">进行中</span></span></a>
+        <a class="fn todo" data-i="1" href="#"><span class="fnm">预测选模</span>
+          <span class="ms"><svg class="ic" aria-hidden="true"><use href="#i-todo"></use></svg><span class="mtx">未开始</span></span></a>
+        <a class="fn todo" data-i="2" href="#"><span class="fnm">生成初稿</span>
+          <span class="ms"><svg class="ic" aria-hidden="true"><use href="#i-todo"></use></svg><span class="mtx">未开始</span></span></a>
+        <a class="fn todo" data-i="3" href="#"><span class="fnm">核验定稿</span>
+          <span class="ms"><svg class="ic" aria-hidden="true"><use href="#i-todo"></use></svg><span class="mtx">未开始</span></span></a>
+      </nav>
+    </section>
+
+    <footer class="foot">
+      <details class="tmap" open>
+        <summary>令 牌 映 射 表 · 落 码 对 照</summary>
+        <table>
+          <thead>
+            <tr><th>方案D 新色（会泽稿）</th><th>现有令牌（src/tokens.css）</th><th>令牌现值</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><span class="sw" style="background:#143729"></span>左页场底 <span class="mono">#143729</span></td>
+                <td><code>--field</code>（场＝绿·器 #26483B，场深档走 <code>--field-2</code>）</td>
+                <td><span class="sw" style="background:#26483B"></span><span class="mono">#26483B</span></td></tr>
+            <tr><td><span class="sw" style="background:#F6F1DE"></span>场上文字 <span class="mono">#F6F1DE</span></td>
+                <td><code>--field-5</code>，弱字按透明度分级（.80/.56 → .80/.70）</td>
+                <td><span class="sw" style="background:#DFEDE6"></span><span class="mono">#DFEDE6</span></td></tr>
+            <tr><td><span class="sw" style="background:#F5F3EC"></span>纸面右页 <span class="mono">#F5F3EC</span></td>
+                <td><code>--bg</code></td>
+                <td><span class="sw" style="background:#EDE9DE"></span><span class="mono">#EDE9DE</span></td></tr>
+            <tr><td><span class="sw" style="background:#FAF8F0"></span>卡片 <span class="mono">#FAF8F0</span></td>
+                <td><code>--card</code> / <code>--card-hi</code></td>
+                <td>同值直落</td></tr>
+            <tr><td><span class="sw" style="background:#1A4B27"></span>行动绿（按钮/进度） <span class="mono">#1A4B27</span></td>
+                <td><code>--zhu</code>（hover 走 <code>--field-2</code>）</td>
+                <td><span class="sw" style="background:#26483B"></span><span class="mono">#26483B</span></td></tr>
+            <tr><td><span class="sw" style="background:#C8B584"></span>金线·活跃标记 <span class="mono">#C8B584 / #B08E48</span></td>
+                <td>场上标记 → <code>--field-4</code>；纸面标记 → <code>--gold</code>；<span class="need">真金订口需新登记 --seam</span></td>
+                <td><span class="sw" style="background:#7FB79B"></span><span class="mono">#7FB79B</span> / <span class="sw" style="background:#2F7A58"></span><span class="mono">#2F7A58</span></td></tr>
+            <tr><td><span class="sw" style="background:#1E2A23"></span>墨阶·线阶 <span class="mono">#1E2A23</span> 族</td>
+                <td><code>--ink</code>–<code>--ink-4</code> / <code>--line</code>–<code>--line-2</code>（值微移达 AA 4.5:1）</td>
+                <td><span class="sw" style="background:#15222B"></span><span class="mono">#15222B</span> 族</td></tr>
+            <tr><td>字族·六档字号·零圆角·阴影</td>
+                <td><code>--serif</code> / <code>--kai</code> / <code>--fs-xs</code>…<code>--fs-sh</code> / <code>--r:0px</code> / <code>--shadow</code></td>
+                <td>全同直落</td></tr>
+          </tbody>
+        </table>
+      </details>
+      <p class="fline">
+        <span>静态稿 · 演示数据 · 20261031</span>
+        <span>会泽 / 现有绿 · 布局同构，只换色板</span>
+      </p>
+    </footer>
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ── 主题切换：只换 html[data-theme]，布局零差异 ── */
+  var segT = document.getElementById("segT");
+  segT.addEventListener("click", function(e){
+    var b = e.target.closest("button[data-t]");
+    if (!b) return;
+    document.documentElement.setAttribute("data-theme", b.getAttribute("data-t"));
+    Array.prototype.forEach.call(segT.querySelectorAll("button"), function(x){
+      x.setAttribute("aria-pressed", x === b ? "true" : "false");
+    });
+  });
+
+  /* ── 期次数据（演示）：任务三步＋四步流水＋主按钮 ──
+     状态三词：未开始 / 进行中 / 已完成；签发：已签发 */
+  var ST = {run:"进行中", todo:"未开始", done:"已完成"};
+  var ICON = {run:"i-run", todo:"i-todo", done:"i-done"};
+  var P = {
+    "202611": { no:"第 40 期", signed:false,
+      steps:[ {s:"run",  bar:64,  n:"41 / 64 份"},
+              {s:"todo", bar:0,   n:""},
+              {s:"todo", bar:0,   n:""} ],
+      flow:[ {s:"run",  t:"进行中"},
+             {s:"todo", t:"未开始"},
+             {s:"todo", t:"未开始"},
+             {s:"todo", t:"未开始"} ],
+      track:0, btn:"去取数台" },
+    "202609": { no:"第 39 期", signed:true,
+      steps:[ {s:"done", bar:100, n:"64 / 64 份"},
+              {s:"done", bar:100, n:"已并入台账"},
+              {s:"done", bar:100, n:"已出初稿"} ],
+      flow:[ {s:"done", t:"已完成 · 64 / 64"},
+             {s:"done", t:"已完成 · 五家已保存"},
+             {s:"done", t:"已完成 · 10-13 15:03"},
+             {s:"done", t:"已签发"} ],
+      track:100, btn:"查看报告" },
+    "202607": { no:"第 38 期", signed:true,
+      steps:[ {s:"done", bar:100, n:"64 / 64 份"},
+              {s:"done", bar:100, n:"已并入台账"},
+              {s:"done", bar:100, n:"已出初稿"} ],
+      flow:[ {s:"done", t:"已完成 · 64 / 64"},
+             {s:"done", t:"已完成 · 五家已保存"},
+             {s:"done", t:"已完成 · 08-30 10:12"},
+             {s:"done", t:"已签发"} ],
+      track:100, btn:"查看报告" }
+  };
+
+  function render(key){
+    var p = P[key];
+    if (!p) return;
+    document.getElementById("pNo").textContent = key;
+    var meta = document.getElementById("pMeta");
+    meta.className = "pn-s" + (p.signed ? " ok" : "");
+    meta.innerHTML = p.signed
+      ? p.no + " · <svg class='ic' aria-hidden='true'><use href='#i-done'></use></svg>已签发"
+      : p.no + " · 本期";
+    p.steps.forEach(function(st, i){
+      var el = document.querySelector('.task[data-i="' + i + '"]');
+      el.className = "task " + st.s;
+      el.querySelector("use").setAttribute("href", "#" + ICON[st.s]);
+      el.querySelector(".stx").textContent = ST[st.s];
+      el.querySelector(".prog i").style.width = st.bar + "%";
+      el.querySelector(".tc").textContent = st.n;
+    });
+    p.flow.forEach(function(nd, i){
+      var el = document.querySelector('.fn[data-i="' + i + '"]');
+      el.className = "fn " + nd.s;
+      if (nd.s === "run") el.setAttribute("aria-current", "step");
+      else el.removeAttribute("aria-current");
+      el.querySelector("use").setAttribute("href", "#" + ICON[nd.s]);
+      el.querySelector(".mtx").textContent = nd.t;
+    });
+    document.getElementById("ffill").style.width = p.track + "%";
+    document.getElementById("go").querySelector("b").textContent = p.btn;
+  }
+
+  var segP = document.getElementById("segP");
+  segP.addEventListener("click", function(e){
+    var b = e.target.closest("button[data-p]");
+    if (!b) return;
+    Array.prototype.forEach.call(segP.querySelectorAll("button"), function(x){
+      x.setAttribute("aria-pressed", x === b ? "true" : "false");
+    });
+    render(b.getAttribute("data-p"));
+  });
+
+  /* 静态稿占位链接不跳页 */
+  document.addEventListener("click", function(e){
+    var a = e.target.closest ? e.target.closest('a[href="#"]') : null;
+    if (a) e.preventDefault();
+  });
+
+  /* 深链：#theme=tokens / #p=202609 直接以指定主题或期次打开（评审可分享指定状态） */
+  if (location.hash.indexOf("theme=tokens") > -1) {
+    var tb = segT.querySelector('button[data-t="tokens"]');
+    if (tb) tb.click();
+  }
+  var mp = location.hash.match(/p=(\d{6})/);
+  var initP = mp && P[mp[1]] ? mp[1] : "202611";
+  Array.prototype.forEach.call(segP.querySelectorAll("button"), function(x){
+    x.setAttribute("aria-pressed", x.getAttribute("data-p") === initP ? "true" : "false");
+  });
+
+  render(initP);
+})();
+</script>
+</body>
+</html>
