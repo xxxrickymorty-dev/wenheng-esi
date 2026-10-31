@@ -5,7 +5,13 @@
    点书后原样载入连续册页 /app/shelf/pages.html（iframe 层），关闭路径两条：
    Escape / iframe 内左栏 ← 或品牌点击 postMessage('backToShelf')；另支持 #v-期次 深链。
    书架往期册封面由素材图叠「期号铭牌」（.reissue，比例照连续册页稿 cp-*）盖住素材内
-   烧死的当期号——2026-10-25 rick 裁定解决素材期号债。 */
+   烧死的当期号——2026-10-25 rick 裁定解决素材期号债。
+   动效（2026-10-27）：按 rick 钦定的「大胆稿」落地
+   （web/mockups/陈列馆-动效·大胆稿（静态稿 20261027）.html）——
+   开馆仪式（光柱/书册画外飞入/标题逐字砸印/句号金印泥）、常驻鼠标视差（四层按深度）、
+   滚动镜头（首屏滚出时场景后退变暗）、每站自触发的段内错峰揭示、四站截图 3D 翻入、
+   大数印章砸落/边界清单逐条盖入。标题拆字用 Chars（aria-label 保全文）。
+   旧约束「不循环/位移≤20px」已被 rick 口谕推翻；reduced-motion 全降级仍守。 */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
@@ -115,6 +121,19 @@ function designLabel(design: string) {
   return design === '待装帧' ? design : `${design}装帧`
 }
 
+/* 标题拆字（大胆稿）：砸印动效逐字播，--ci 是字序号；h2 的金线划出按字数计时（--ch-n）。
+   读屏走外层的 aria-label 整句，字符层 aria-hidden——动效不承载信息。 */
+function Chars({ text, sealLast = false, from = 0 }: { text: string; sealLast?: boolean; from?: number }) {
+  return (
+    <span aria-hidden="true">
+      {Array.from(text).map((ch, i) => (
+        <span key={i} className={`ch${sealLast && i === text.length - 1 ? ' seal' : ''}`}
+              style={{ '--ci': i + from } as CSSProperties}>{ch}</span>
+      ))}
+    </span>
+  )
+}
+
 function fmt(n?: number) {
   return n === undefined ? '—' : String(n)
 }
@@ -122,7 +141,7 @@ function fmt(n?: number) {
 type DetailState = { open: boolean; period: string }
 const DETAIL_CLOSED: DetailState = { open: false, period: '' }
 
-/* 浮尘（2026-10-26 动效）：6 粒金色微尘，各自不同的周期与延时，避免同频成阵。
+/* 浮尘（2026-10-27 大胆稿：8 粒，照进光柱的微尘）：金色微尘，各自不同的周期与延时，避免同频成阵。
    只是氛围，不放数字、不代表状态；prefers-reduced-motion 下整层不渲染。 */
 const DUST = [
   { x: '14%', dur: '24s', delay: '0s' },
@@ -131,6 +150,8 @@ const DUST = [
   { x: '58%', dur: '34s', delay: '2s' },
   { x: '71%', dur: '29s', delay: '13s' },
   { x: '86%', dur: '26s', delay: '6s' },
+  { x: '35%', dur: '36s', delay: '16s' },
+  { x: '64%', dur: '22s', delay: '11s' },
 ]
 
 export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHomeProps) {
@@ -186,15 +207,15 @@ export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHom
     return () => window.removeEventListener('hashchange', apply)
   }, [vols, openDetail])
 
-  /* 章节揭示（2026-10-26）：只把「挂载时在折叠线以下」的段先藏起来，再滚动淡入。
-     首屏内容永不隐藏；IntersectionObserver 不触发时 2.5 s 整体放行——
-     这一页是给评委看的，宁可不做动画，也不能出现空白段。 */
+  /* 章节揭示（2026-10-27 大胆稿 ⑮）：粒度从「整段」细化到「每站」——.sec 与 .stn 各自 arm，
+     段内件按阅读序错峰（样式见 shelf-landing.css）。只把「挂载时在折叠线以下」的先藏，
+     首屏内容永不隐藏；IO 不触发时 2.5 s 整体放行——宁可不做动画，也不能出现空白段。 */
   useEffect(() => {
-    const secs = Array.from(document.querySelectorAll<HTMLElement>('.flow .sec'))
-    if (!secs.length) return
+    const els = Array.from(document.querySelectorAll<HTMLElement>('.flow .sec, .flow .sec > .wrap > .stn'))
+    if (!els.length) return
     if (!('IntersectionObserver' in window)) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const armed = secs.filter((s) => s.getBoundingClientRect().top > window.innerHeight * 0.9)
+    const armed = els.filter((s) => s.getBoundingClientRect().top > window.innerHeight * 0.9)
     if (!armed.length) return
     armed.forEach((s) => s.classList.add('reveal-arm'))
     let fired = false
@@ -217,6 +238,59 @@ export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHom
     }
   }, [])
 
+  /* 视差 + 滚动镜头（大胆稿 B/C）：标题/书架/浮尘/光柱四层按 data-depth 3D 倾斜；
+     离开首屏时场景后退＋变暗（镜头拉远离馆）。桌面指针 + 非降级才启动；
+     一个 rAF 循环双输入（pointermove / scroll），lerp 0.08 缓动。
+     开场亮场动画 fill both 会占住 filter——滚动镜头一启动就杀掉它（dataset.litKilled 一次性）。 */
+  useEffect(() => {
+    if (!window.matchMedia('(hover:hover) and (pointer:fine)').matches) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const view = document.querySelector<HTMLElement>('.shelf-view')
+    if (!view) return
+    const layers = Array.from(view.querySelectorAll<HTMLElement>('[data-depth]'))
+    if (!layers.length) return
+    let mx = 0, my = 0, cx = 0, cy = 0, raf = 0
+    const frame = () => {
+      cx += (mx - cx) * 0.08
+      cy += (my - cy) * 0.08
+      const vh = window.innerHeight || 1
+      const p = Math.min(1, Math.max(0, window.scrollY / (vh * 0.9)))
+      for (const el of layers) {
+        const d = parseFloat(el.dataset.depth || '1')
+        /* rotate 独立属性一次只认一根轴：书架/浮尘走双轴 transform，标题/光柱走单轴 rotate */
+        if (el.classList.contains('lit') || el.classList.contains('dust')) {
+          el.style.transform = `rotateX(${(-cy * 1.2 * d).toFixed(3)}deg) rotateY(${(cx * 1.6 * d).toFixed(3)}deg)`
+        } else {
+          el.style.rotate = `y ${(cx * 1.6 * d).toFixed(3)}deg`
+        }
+        if (el.classList.contains('lit')) {
+          if (p > 0 && !el.dataset.litKilled) { el.style.animation = 'none'; el.dataset.litKilled = '1' }
+          el.style.translate = `0 ${(-p * 6).toFixed(2)}%`
+          el.style.scale = String(1 - p * 0.05)
+          el.style.filter = `brightness(${(1 - p * 0.28).toFixed(3)})`
+        }
+      }
+      view.style.opacity = String(1 - p * 0.35)
+      if (Math.abs(mx - cx) > 0.001 || Math.abs(my - cy) > 0.001 || p < 1) raf = requestAnimationFrame(frame)
+      else raf = 0
+    }
+    const kick = () => { if (!raf) raf = requestAnimationFrame(frame) }
+    const onMove = (e: PointerEvent) => {
+      mx = (e.clientX / window.innerWidth) * 2 - 1
+      my = (e.clientY / window.innerHeight) * 2 - 1
+      kick()
+    }
+    const onScroll = () => kick()
+    window.addEventListener('pointermove', onMove, { passive: true })
+    window.addEventListener('scroll', onScroll, { passive: true })
+    kick()
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('scroll', onScroll)
+    }
+  }, [])
+
   const frameSrc = detail.open ? `/app/shelf/pages.html#issue-${detail.period}` : 'about:blank'
 
   return (
@@ -229,18 +303,21 @@ export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHom
         <div className="brand-txt"><b>文衡 · 陈列馆</b><span>云南大学图书馆</span></div>
       </header>
 
-      {/* 首屏 · 书架 */}
+      {/* 首屏 · 书架（data-depth＝视差层深度：越接近 1 越在「架」这一层） */}
       <section className="shelf-view">
-        <span className="dust" aria-hidden="true">
+        <span className="lightbeam" data-depth="0.3" aria-hidden="true" />
+        <span className="dust" data-depth="1.5" aria-hidden="true">
           {DUST.map((d) => (
             <i key={d.x} style={{ '--x': d.x, '--dur': d.dur, '--delay': d.delay } as CSSProperties} />
           ))}
         </span>
-        <div className="headline">
-          <h1>一年六期，一期一册。</h1>
+        <div className="headline" data-depth="0.55">
+          <h1 aria-label="一年六期，一期一册。">
+            <Chars text="一年六期，一期一册。" sealLast />
+          </h1>
           <p>云南大学图书馆 · 学科信息参考 · 2026 年馆藏</p>
         </div>
-        <div className="shelf" id="shelf" aria-label={`2026 年馆藏，共 ${realCount} 册`}>
+        <div className="shelf lit" id="shelf" data-depth="1" aria-label={`2026 年馆藏，共 ${realCount} 册`}>
           {/* 新书期次待装帧：DESIGN_MAP 查不到封面时用深绿底期号占位（样式见 shelf-landing.css）。
               往期册封面叠期号铭牌：素材图里印的是当期号，铭牌盖住并印正确期号/月份 */}
           {vols.map((v, i) => {
@@ -291,7 +368,9 @@ export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHom
         {/* 四站 */}
         <section className="sec" id="how">
           <div className="wrap">
-            <h2 className="sec-title">一期一册，<br />是这么来的。</h2>
+            <h2 className="sec-title" style={{ '--ch-n': 11 } as CSSProperties} aria-label="一期一册，是这么来的。">
+              <span aria-hidden="true"><Chars text="一期一册，" /><br /><Chars text="是这么来的。" from={5} /></span>
+            </h2>
             <p className="deck">四站走完，才允许装帧。每一步都留痕，每一步都能回去看。</p>
 
             <article className="stn">
@@ -339,7 +418,9 @@ export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHom
         <section className="sec" id="boundary">
           <div className="wrap bnd">
             <div>
-              <h2 className="sec-title">看得见的边界</h2>
+              <h2 className="sec-title" style={{ '--ch-n': 6 } as CSSProperties} aria-label="看得见的边界">
+                <Chars text="看得见的边界" />
+              </h2>
               <p className="deck">陈列馆只开放三样内容。要看正文与数值，<a href="/app/?period=202609">进工作区</a>——那里每一步都留痕。</p>
             </div>
             <div className="bndbox">
@@ -360,7 +441,9 @@ export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHom
         <section className="sec ask" id="ask">
           <div className="wrap askgrid">
             <div>
-              <h2 className="sec-title">问文衡</h2>
+              <h2 className="sec-title" style={{ '--ch-n': 3 } as CSSProperties} aria-label="问文衡">
+                <Chars text="问文衡" />
+              </h2>
               <p className="deck">工作台里能查的，这里都能问。先问一句，点进去接着聊。</p>
             </div>
             <div>
@@ -383,7 +466,9 @@ export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHom
         <section className="sec about" id="about">
           <div className="wrap about-grid">
             <div>
-              <h2 className="sec-title">关于本册</h2>
+              <h2 className="sec-title" style={{ '--ch-n': 4 } as CSSProperties} aria-label="关于本册">
+                <Chars text="关于本册" />
+              </h2>
               <p className="deck">《学科信息参考》是云南大学图书馆的双月刊。每期取数、核对、出稿、签发，一步一步留痕，再装帧成册，陈列于此。</p>
               <p className="deck">馆藏位置　学科情报馆藏 A 区 01　·　<a href="/app/?period=202609">回 工 作 台 ↖</a></p>
             </div>

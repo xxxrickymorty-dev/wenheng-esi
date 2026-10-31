@@ -24,6 +24,12 @@
   --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
   --mono:"Cascadia Mono",Consolas,monospace;
   --ease:cubic-bezier(.22,.61,.36,1);
+  /* 动效曲线（大胆稿）：--me 入场快出缓停、--slam 砸印过冲、--mio 扫光/刻度。
+     🔴 animation 简写里引用 var() 时，变量必须在此可解析——否则整条简写被静默丢弃
+    （同块的 animation-delay 长手却照常生效，排查时看到 name:none 而 delay 有值就是它）。 */
+  --me:cubic-bezier(0.16,1,0.3,1);
+  --slam:cubic-bezier(0.34,1.35,0.64,1);
+  --mio:cubic-bezier(0.65,0,0.35,1);
 }
 *,::after,::before{box-sizing:border-box;margin:0;padding:0}
 body{min-width:320px;background:var(--night);color:var(--ivory);font:15px/1.8 var(--serif);
@@ -45,7 +51,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
   font:11px var(--mono);letter-spacing:.18em;color:var(--lib-ink-3)}
 
 /* ══════ 首屏 · 书架 ══════ */
-.shelf-view{position:relative;min-height:100svh;display:grid;place-items:center;isolation:isolate}
+.shelf-view{position:relative;min-height:100svh;display:grid;place-items:center;isolation:isolate;
+  perspective:1200px;overflow:hidden}
 .headline{position:absolute;left:50%;top:8.5%;transform:translateX(-50%);z-index:3;text-align:center;
   width:min(92%,760px);pointer-events:none}
 .headline h1{font-size:clamp(24px,2.5vw,38px);font-weight:600;line-height:1.3;letter-spacing:.06em;
@@ -56,7 +63,21 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
   background-image:linear-gradient(rgba(20,52,42,.18),rgba(20,52,42,.18)),
     url("/app/shelf/assets/shelf-walnut.webp");
   background-size:100% 100%,100% 100%;background-position:center,center;
-  background-repeat:no-repeat,no-repeat;background-blend-mode:multiply,normal}
+  background-repeat:no-repeat,no-repeat;background-blend-mode:multiply,normal;
+  transform-style:preserve-3d}
+/* 开场亮场（大胆稿 A）：全暗 0.35s 后 1.1s 内亮起。fill both 会占住 filter——
+   滚动镜头（LibraryHome 的视差 effect）一启动就 style.animation='none' 杀掉它。 */
+@keyframes scene-lit{from{filter:brightness(.12)}to{filter:brightness(1)}}
+.shelf.lit{animation:scene-lit 1.1s var(--ease) .35s both}
+/* 光柱（大胆稿 A/G）：顶部斜打的光锥，开场亮起后常驻极轻呼吸——全场唯一循环。
+   transform 留给摇曳动画；鼠标视差走单轴 rotate 属性（LibraryHome effect），互不覆盖。 */
+.lightbeam{position:absolute;left:14%;top:-12%;width:34%;height:88%;z-index:1;pointer-events:none;
+  background:linear-gradient(188deg,rgba(224,203,146,.30) 0%,rgba(224,203,146,.10) 46%,transparent 78%);
+  clip-path:polygon(38% 0,62% 0,100% 100%,0 100%);
+  filter:blur(6px);mix-blend-mode:screen;opacity:0;
+  animation:beam-in 1.6s var(--ease) .2s both,beam-sway 8s ease-in-out 1.8s infinite}
+@keyframes beam-in{from{opacity:0}to{opacity:.85}}
+@keyframes beam-sway{0%,100%{opacity:.85;transform:rotate(0deg)}50%{opacity:.6;transform:rotate(1.2deg)}}
 /* 书架底边渐入纸色，不让深场与纸场硬切 */
 .shelf-view::after{content:"";position:absolute;left:0;right:0;bottom:0;height:min(38vh,360px);
   z-index:4;pointer-events:none;
@@ -118,77 +139,190 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 /* 书册被 hover / 键盘聚焦时，这条提示让位——否则它一定压在该册的书目行上 */
 .shelf:has(.vol:hover) .down,.shelf:has(.vol:focus-visible) .down{opacity:0;animation-play-state:paused}
 
-/* ══════ 动效（2026-10-26 rick：「整个网站的动效太少了，很死板」）══════
-   取「光 / 尘 / 纸」三种物理感，不用弹跳、不用霓虹、不加依赖：
-   ① 书册依次落架（像一册册摆上架）  ② 标题淡入 + 字距收拢
-   ③ 开场一道金光沿托板走过（一次性）  ④ 浮尘常驻（6 粒，极轻）
-   ⑤ 书册 hover 时金线亮起（配合已有的抬升）  ⑥ 章节进入视口淡入上浮
-   全部在 prefers-reduced-motion 下停在终态；不碰任何数字，不做计数动画
-   ——数字跳起来会让人以为在编数。 */
+/* ══════ 动效（2026-10-27 大胆稿落地，rick 钦定）══════
+   rick 两轮口谕：「整个网站的动效太少、很死板」→「还是太少了，大胆一点，突破常规」。
+   新口径＝开馆仪式一次性 + 常驻视差 + 大幅入场；旧约束「不循环 / 位移≤20px」已推翻。
+   仍守的：数字不前端算（不做计数——数字跳起来会让人以为在编数）、不加依赖、
+   动效不承载信息（aria 保全文；reduced-motion 全终态，关掉一字不少）。
+   段内错峰的触发机制在 LibraryHome.tsx（.sec 与 .stn 各自 arm + IO + 2.5s 兜底）。 */
 
-/* ① 书册依次落架：用独立的 translate 属性做入场，transform 留给 hover，两者互不覆盖。
-   animation-fill-mode:both 保证动画结束后 translate 停在 0，hover 的 transform 照常生效。 */
-@keyframes vol-in{from{translate:0 22px;opacity:0}to{translate:0 0;opacity:1}}
-.vol{translate:0 22px;opacity:0;
-  animation:vol-in .62s var(--ease) both;
-  animation-delay:calc(var(--i, 0) * 55ms + 60ms)}
+/* A① 书册画外飞入落架：translate/rotate 独立属性做入场（transform 留给 hover 抽书），
+   落定带一次微弹（78% 处上浮 7px）。fill both 保证结束停在 0。 */
+@keyframes vol-land{0%{translate:0 150px;rotate:2.4deg;opacity:0}
+  62%{opacity:1}
+  78%{translate:0 -7px;rotate:-.4deg}
+  100%{translate:0 0;rotate:0deg;opacity:1}}
+.vol{translate:0 150px;rotate:2.4deg;opacity:0;
+  animation:vol-land .95s var(--me) both;
+  animation-delay:calc(var(--i, 0) * 90ms + .6s)}
 
-/* ② 标题淡入 + 字距从松收到标准（衬线大字收字距＝「落定」的感觉） */
+/* A② 标题逐字「砸印」（scale 1.6→1 ＋ blur 归焦），字间 70ms；
+   句号是最后一字，落定时盖一圈金印泥（seal-halo）。char 由 React 的 <Chars> 拆好。 */
 @keyframes rise-in{from{opacity:0;translate:0 14px}to{opacity:1;translate:0 0}}
-@keyframes track-in{from{opacity:0;letter-spacing:.2em}to{opacity:1;letter-spacing:.06em}}
-.headline h1{animation:track-in 1.05s var(--ease) both .04s}
-.headline p{animation:rise-in .85s var(--ease) both .32s}
+@keyframes slam-in{0%{opacity:0;transform:scale(1.6) rotate(-1.5deg);filter:blur(8px)}
+  70%{filter:blur(0)}
+  100%{opacity:1;transform:scale(1) rotate(0deg);filter:blur(0)}}
+@keyframes seal-halo{0%{box-shadow:0 0 0 0 rgba(224,203,146,.75)}
+  100%{box-shadow:0 0 0 26px rgba(224,203,146,0)}}
+.headline h1 .ch,.sec-title .ch{display:inline-block;white-space:pre}
+.headline h1 .ch{opacity:0;
+  animation:slam-in .55s var(--slam) both;
+  animation-delay:calc(var(--ci,0) * 70ms + 1.4s)}
+.headline h1 .ch.seal{animation:slam-in .55s var(--slam) both,
+  seal-halo .9s var(--ease) calc(var(--ci,0) * 70ms + 1.75s)}
+.headline p{animation:rise-in .85s var(--ease) 2.15s both}
 
-/* ③ 开场一道金光沿托板前沿走过，2.8s 一次，之后不再出现 */
+/* A③ 开场一道金光沿托板前沿走过，收尾动作（书册落架、标题砸印完成之后） */
 @keyframes board-sheen{
   0%{opacity:0;background-position:130% 0}
-  16%{opacity:.95}
-  68%{opacity:.5}
+  16%{opacity:1}
+  68%{opacity:.55}
   100%{opacity:0;background-position:-30% 0}}
 .shelf-view::before{content:"";position:absolute;left:50%;translate:-50% 0;
   bottom:calc(43.4% - 1px);width:min(100%,1560px);height:2px;z-index:4;pointer-events:none;
   background:linear-gradient(90deg,transparent 0%,transparent 36%,rgba(224,203,146,.95) 50%,
     transparent 64%,transparent 100%);
   background-size:260% 100%;
-  animation:board-sheen 2.8s var(--ease) .45s both}
+  animation:board-sheen 2.2s var(--ease) 2.2s both}
 
-/* ④ 浮尘：6 粒金色微尘缓慢上浮，周期各不相同，避免同频 */
+/* ④ 浮尘：8 粒金色微尘缓慢上浮，周期各不相同，避免同频（照进光柱的微尘） */
 @keyframes drift{
   0%{opacity:0;translate:0 0}
-  10%{opacity:.30}
-  55%{opacity:.14;translate:8px -110px}
-  88%{opacity:.22}
-  100%{opacity:0;translate:16px -230px}}
+  10%{opacity:.38}
+  55%{opacity:.16;translate:10px -120px}
+  88%{opacity:.26}
+  100%{opacity:0;translate:20px -250px}}
 .dust{position:absolute;inset:0;z-index:2;overflow:hidden;pointer-events:none}
 .dust i{position:absolute;left:var(--x);bottom:6%;width:2px;height:2px;border-radius:50%;
   background:var(--gold-2);opacity:0;
   animation:drift var(--dur) linear var(--delay) infinite}
 
-/* ⑤ 书册 hover：书脊金线亮起（抬升与阴影已在 .vol:hover 里） */
-.vol:hover::before,.vol:focus-visible::before{border-right-color:rgba(224,203,146,.85)}
+/* D 书册 hover＝「抽书」：往观者方向抽出并微转（rotateY 走 transform，入场 rotate 属性不冲突），
+   书脊金线全亮。perspective 由 .shelf-view 的 1200px 经 .shelf 的 preserve-3d 传下来。 */
+.vol{transform-style:preserve-3d}
+.vol:hover,.vol:focus-visible{transform:translateY(-14px) scale(1.075) rotateY(-4deg);z-index:6;
+  filter:drop-shadow(0 24px 30px rgba(20,12,4,.55))}
+.vol:hover::before,.vol:focus-visible::before{border-right-color:rgba(232,212,158,.95)}
+.vol:active{transform:translateY(-10px) scale(1.05) rotateY(-2deg)}
 
-/* ⑦ 四站截图：鼠标经过时极轻微推近 + 边框转金——让人知道它是「真系统的一屏」而不是插图 */
-.shot{overflow:hidden}
+/* E⑦ 四站截图：入场「3D 翻入」（rotateY 16°→0 ＋ blur 14→0 ＋ 微去饱和归位），
+   hover 仍只做极轻微推近 + 边框转金——让人知道它是「真系统的一屏」而不是插图。
+   入场走 translate/rotate 独立属性 + animation，transform 留给 hover，互不覆盖。
+   --rvd（reveal delay）挂在 .shot 上：正序站图先动，flip 站文字列先动、图随后。 */
+.shot{overflow:hidden;position:relative}
+.stn .shot{--rvd:.08s}
+.stn.flip .shot{--rvd:.26s}
+@keyframes shot-flip{from{opacity:0;translate:60px 0;rotate:y 16deg;filter:blur(14px) saturate(.7)}
+  to{opacity:1;translate:0 0;rotate:y 0deg;filter:blur(0) saturate(1)}}
 .shot img{transition:transform .55s var(--ease),border-color .35s var(--ease)}
 .shot:hover img{transform:scale(1.015);border-color:rgba(201,169,97,.75)}
+/* E⑭ 相框金光：显影落定后一道金色发丝光扫过一次，方向按图序交替（呼应托板扫光） */
+.shot::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;
+  background:linear-gradient(90deg,transparent 0%,transparent 36%,rgba(224,203,146,.5) 50%,
+    transparent 64%,transparent 100%);
+  background-size:260% 100%;background-position:130% 0}
+@keyframes shot-sheen{0%{opacity:0;background-position:130% 0}
+  18%{opacity:.9}70%{opacity:.4}100%{opacity:0;background-position:-30% 0}}
+@keyframes shot-sheen-rev{0%{opacity:0;background-position:-30% 0}
+  18%{opacity:.9}70%{opacity:.4}100%{opacity:0;background-position:130% 0}}
+.stn.reveal-arm.is-in .shot::after{animation:shot-sheen .9s var(--mio) both;
+  animation-delay:calc(var(--rvd,.08s) + .85s)}
+.stn.flip .shot::after{background-position:-30% 0}
+.stn.reveal-arm.is-in.flip .shot::after{animation-name:shot-sheen-rev}
 
-/* ⑧ 问文衡输入框：聚焦时底线从中间向两侧展开 */
+/* ⑧ 问文衡输入框：聚焦时底线从中间向两侧展开（保留） */
 .askform{position:relative}
 .askform::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;
   background:var(--g-mid);transform:scaleX(0);transform-origin:50% 50%;
   transition:transform .42s var(--ease)}
 .askform:focus-within::after{transform:scaleX(1)}
 
-/* ⑥ 章节进入视口：只对「挂载时在折叠线以下」的段生效，首屏内容永不隐藏 */
-.sec.reveal-arm{opacity:0;translate:0 26px;
-  transition:opacity .72s var(--ease),translate .72s var(--ease)}
-.sec.reveal-arm.is-in{opacity:1;translate:0 0}
+/* F 章节大标题「砸印」＋金线划出：逐字砸落（--ci 字序），字尾一道金线从左划出
+   （--ch-n＝字数，JSX 里写死）。标题盒 fit-content 让金线贴着字宽。 */
+h2.sec-title{position:relative;width:fit-content;max-width:100%}
+h2.sec-title::after{content:"";position:absolute;left:0;bottom:-12px;height:2px;
+  width:min(9em,100%);background:linear-gradient(90deg,var(--gold),transparent);
+  transform:scaleX(0);transform-origin:0 50%}
+.sec.reveal-arm .sec-title .ch{opacity:0}
+.sec.reveal-arm.is-in .sec-title .ch{animation:slam-in .5s var(--slam) both;
+  animation-delay:calc(var(--ci,0) * 70ms)}
+.sec.reveal-arm.is-in h2.sec-title::after{animation:tick-in .8s var(--mio) both;
+  animation-delay:calc(var(--ch-n,8) * 70ms + .25s)}
+@keyframes tick-in{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes soft-in{from{opacity:0}to{opacity:1}}
 
+/* ⑮ 段内错峰（粒度＝每站自己 arm）：正序站（图左文右）图 .08s → h3 .2s → 段落 .3s → 刻度；
+   flip 站（文左图右）文字列先动、图随后——「先看哪、再动哪」。窄屏单列回到图先。 */
+.stn.reveal-arm .shot img{opacity:0;translate:60px 0;rotate:y 16deg;filter:blur(14px) saturate(.7)}
+.stn.reveal-arm.is-in .shot img{animation:shot-flip .95s var(--me) var(--rvd,.08s) both}
+.stn.reveal-arm h3{opacity:0;translate:0 16px}
+.stn.reveal-arm p{opacity:0;translate:0 16px}
+.stn.reveal-arm.is-in h3{animation:rise-in .65s var(--me) .2s both}
+.stn.reveal-arm.is-in p{animation:rise-in .65s var(--me) .3s both}
+.stn.flip h3{animation-delay:.08s !important}
+.stn.flip p{animation-delay:.18s !important}
+/* ⑪ metric 事实行：既有灰线上叠一道金色刻度从左画到右（线才能从零画起），文字随后显 */
+.stn .metric{position:relative}
+.stn .metric::before{content:"";position:absolute;left:0;top:-1px;width:100%;height:1px;
+  background:var(--gold);transform:scaleX(0);transform-origin:0 50%}
+.stn.reveal-arm .metric{opacity:0}
+.stn.reveal-arm.is-in .metric::before{animation:tick-in .6s var(--mio) .34s both}
+.stn.reveal-arm.is-in .metric{animation:soft-in .5s cubic-bezier(.33,1,.68,1) .42s both}
+
+/* 其它段的件：说明行 / 边界盒 / 问文衡右列 / 全景——随所在段揭示，段内次序在 delay 里 */
+@keyframes deck-in{from{opacity:0;translate:0 10px;filter:blur(3px)}
+  to{opacity:1;translate:0 0;filter:blur(0)}}
+.sec.reveal-arm .deck,.sec.reveal-arm .lib-pano-head{opacity:0;translate:0 10px;filter:blur(3px)}
+.sec.reveal-arm.is-in .deck,.sec.reveal-arm.is-in .lib-pano-head{
+  animation:deck-in .7s var(--me) .5s both}
+.sec.reveal-arm .bndbox,.sec.reveal-arm .askgrid>div:last-child,.sec.reveal-arm .pano-stage{
+  opacity:0;translate:0 10px}
+.sec.reveal-arm.is-in .bndbox,.sec.reveal-arm.is-in .askgrid>div:last-child,
+.sec.reveal-arm.is-in .pano-stage{animation:rise-in .65s var(--me) .15s both}
+/* F 边界清单逐条「盖入」（--bi 按行序，-22px 横向盖落） */
+.bndbox li{--bi:0}
+.bndbox li:nth-child(2){--bi:1}.bndbox li:nth-child(3){--bi:2}
+.bndbox li:nth-child(4){--bi:3}.bndbox li:nth-child(5){--bi:4}.bndbox li:nth-child(6){--bi:5}
+@keyframes stamp-row{from{opacity:0;translate:-22px 0}to{opacity:1;translate:0 0}}
+.sec.reveal-arm .bndbox li{opacity:0;translate:-22px 0}
+.sec.reveal-arm.is-in .bndbox li{animation:stamp-row .5s var(--slam) both;
+  animation-delay:calc(.35s + var(--bi) * 90ms)}
+/* F 关于页大数「印章砸落」（scale 1.9→1 ＋ 微转），四格 90ms 错峰。
+   不做计数——数字跳起来会让人以为在编数，落章只是盖印。 */
+.facts .f{--fi:0}
+.facts .f:nth-child(2){--fi:1}.facts .f:nth-child(3){--fi:2}.facts .f:nth-child(4){--fi:3}
+@keyframes stamp-slam{0%{opacity:0;transform:scale(1.9) rotate(-3deg);filter:blur(6px)}
+  100%{opacity:1;transform:scale(1) rotate(0deg);filter:blur(0)}}
+/* 印从左落（origin 左中）：fill both 的 delay 期 from 帧 scale 1.9 仍在布局记账里，
+   左中 origin 让窄屏（.v.sm 约 140px 宽）向右最多扩 0.4×宽，不再探出 390 视口。 */
+.sec.reveal-arm .facts .v{transform-origin:0 50%}
+.sec.reveal-arm .facts .k{opacity:0}
+.sec.reveal-arm .facts .v{opacity:0}
+.sec.reveal-arm.is-in .facts .k{animation:soft-in .4s ease .12s both;
+  animation-delay:calc(.12s + var(--fi) * 90ms)}
+.sec.reveal-arm.is-in .facts .v{animation:stamp-slam .5s var(--slam) both;
+  animation-delay:calc(.22s + var(--fi) * 90ms)}
+
+/* ── 降级：reduced-motion 下全部停在终态，信息一字不少 ──
+   arming 在 JS 里就不会发生（matchMedia 早退）；这里兜底「万一挂了」。 */
 @media (prefers-reduced-motion:reduce){
-  .vol,.headline h1,.headline p,.shelf-view::before,.dust i,.down{animation:none}
-  .vol{translate:0 0;opacity:1}
+  .vol,.lightbeam,.shelf.lit,.headline h1 .ch,.headline p,.shelf-view::before,
+  .dust i,.down{animation:none}
+  .vol{translate:0 0;rotate:0deg;opacity:1}
+  .shelf.lit{filter:none}
+  .lightbeam{opacity:.5}
   .dust{display:none}
-  .sec.reveal-arm{opacity:1;translate:0 0;transition:none}
+  .shot,.shelf-view{perspective:none}
+  .sec.reveal-arm .sec-title .ch,.sec.reveal-arm .deck,.sec.reveal-arm .lib-pano-head,
+  .stn.reveal-arm .metric,.sec.reveal-arm .facts .k,.sec.reveal-arm .facts .v,
+  .stn.reveal-arm .shot img,.stn.reveal-arm h3,.stn.reveal-arm p,
+  .sec.reveal-arm .bndbox,.sec.reveal-arm .bndbox li,
+  .sec.reveal-arm .askgrid>div:last-child,.sec.reveal-arm .pano-stage{
+    opacity:1;translate:0 0;rotate:0deg;transform:none;filter:none;animation:none}
+  .stn.reveal-arm .metric::before,.sec.reveal-arm.is-in h2.sec-title::after{animation:none}
+  .stn.reveal-arm .metric::before{transform:scaleX(1)}
+  .sec.reveal-arm.is-in h2.sec-title::after{transform:scaleX(1)}
+  .stn.reveal-arm.is-in .shot::after{animation:none}
   .shot img,.askform::after{transition:none}
   .shot:hover img{transform:none}
 }
@@ -303,6 +437,10 @@ h2.sec-title{font-size:clamp(30px,3.6vw,46px);font-weight:600;line-height:1.24;l
 @media (max-width:900px){
   .idx,.stn,.bnd,.askgrid,.about-grid{grid-template-columns:minmax(0,1fr)}
   .stn.flip .shot{order:0}
+  /* 窄屏单列回到 DOM 序：图先（flip 站的文字先动是桌面双栏的阅读序） */
+  .stn.flip .shot{--rvd:.08s}
+  .stn.flip h3{animation-delay:.2s !important}
+  .stn.flip p{animation-delay:.3s !important}
   .term-item{grid-template-columns:minmax(0,1fr)}
   .term-item .use{grid-column:1}
 }
@@ -333,7 +471,7 @@ h2.sec-title{font-size:clamp(30px,3.6vw,46px);font-weight:600;line-height:1.24;l
   .vol .cap b{font-size:12px;margin:0}
   .vol.is-featured .cap b{font-size:13px}
   .vol .cap em{display:none}
-  .down,.index{display:none}
+  .down,.index,.lightbeam{display:none}
   .brand{position:absolute}
 }
 @media (prefers-reduced-motion:reduce){
