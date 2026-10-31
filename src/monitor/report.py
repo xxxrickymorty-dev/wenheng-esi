@@ -183,6 +183,227 @@ def _school_total(cache: dict, en: str) -> list | None:
     return None
 
 
+def _report_data(cn: str, period: str, cache: dict, insight: dict | None = None) -> dict:
+    """数据装配层：HTML 渲染与 Word 导出（monitor/docx.py）共用的唯一数据源。
+
+    显示值在此一次算好并字符串化（千分位、×1.83、前 16.9%），两个消费者都不做第二套
+    换算；趋势 combine 的装配同样收在这里。零 LLM、零网络。
+    """
+    s = sch.find(cn)
+    if s is None:
+        raise KeyError(cn)
+    en = s["en"]
+    tag = "985 工程" if s["is985"] else "211 工程"
+
+    rows = {stem: d0["schools"].get(en) for stem, d0 in cache["fields"].items()}
+    present = {stem: r for stem, r in rows.items() if r}
+    total = _school_total(cache, en)
+    entered, near = [], []
+    for stem in STEMS:
+        r = rows.get(stem)
+        if not r:
+            continue
+        t1 = cache["thr1"].get(_norm(stem))
+        prox = (r[3] / t1) if t1 else None
+        item = {"stem": stem, "cn": CN[stem], "r": r, "prox": prox}
+        (entered if prox and prox >= 1 else near).append(item)
+    pairs = sorted(((stem, r) for stem, r in present.items()), key=lambda kv: -kv[1][3])
+    pm_set = {stem for stem, r in pairs if r[0] <= cache["fields"][stem]["line"]}
+    # 相对强度（RCA）分母：缓存无 global_papers（老缓存/缺全球学科.xlsx）→ 显示 —
+    gp = cache.get("global_papers") or {}
+    g_sum = sum(gp.values())
+    mine_sum = sum((r[2] or 0.0) for r in present.values())
+    miss_list = [CN[stem] for stem in STEMS if stem not in present]
+    nb = cache["neighbors"].get(en) or []
+    download = cache.get("download") or "—"
+
+    def field_cells(kv):
+        stem, r = kv
+        m = cache["fields"][stem]["m"]
+        pct = f"前 {r[0] / m * 100:.1f}%" if m else "—"
+        gf = gp.get(_norm(stem))
+        rca = (f"×{(r[2] / mine_sum) / (gf / g_sum):.2f}"
+               if g_sum and mine_sum and gf and r[2] is not None else "—")
+        return [CN[stem], f"{r[0]} / {m}", pct, str(r[1]), _fmt(r[2]), _fmt(r[3]),
+                f"{r[4]:.2f}", f"{r[5]:.0f}", f"{r[6]:.0f}", rca,
+                "前 1‰" if r[0] <= cache["fields"][stem]["line"] else "前 1%"]
+
+    out: dict = {
+        "cn": cn, "en": en, "tag": tag, "period": period, "built": cache["built"],
+        "download": download, "n_present": len(present),
+        "meta": (f"数据源：Clarivate ESI {period} 期（下载 {download}）· "
+                 f"{cn}上榜 {len(present)} / {len(STEMS)} 学科 · ESI 名 {en}"),
+        "nums": [], "absent_note": None, "sections": [], "insight": insight,
+        "algorithms": ["国内排名＝榜内 CHINA MAINLAND 计数", "1‰ 线＝第 ⌊(m+1)/10⌋ 位被引",
+                       "接近度＝被引 ÷ 前 1% 机构阈值"],
+        "footer": {
+            "source": (f"数据来源：Clarivate ESI（Essential Science Indicators）{period} 期全局件，"
+                       f"云南大学图书馆订阅账号下载（{download}）；本报告是监测版包契约的验证件，"
+                       "不是对外报告，数字未经该校核对。"),
+            "trend": "期 1 无历史台账，趋势章由历史全球档案回填生成；预测章随期次积累后解锁。",
+            "engine": f"生成：文衡监测版引擎 src/monitor/（{cache['built']}）。"},
+    }
+    if total:
+        out["nums"] = [
+            {"label": "入围 ESI 前 1% 学科", "value": str(len(entered)), "suffix": " / 22",
+             "note": "被引 ≥ 该学科机构阈值"},
+            {"label": "全球机构总排名", "value": f"{total[1]:,}", "suffix": f" / {cache['n_inst']:,}",
+             "note": "按总被引"},
+            {"label": "总被引", "value": _fmt(total[3]), "suffix": "",
+             "note": f"论文 {_fmt(total[2])} · 篇均 {total[4]:.2f}"},
+            {"label": "进入全球前 1‰ 的学科", "value": str(len(pm_set)), "suffix": "",
+             "note": "、".join(CN[stem] for stem, _r in pairs if stem in pm_set) or "—"},
+        ]
+    else:
+        out["absent_note"] = (f"本期全球机构总表未收录该校（ESI 名 {en}）——可能低于收录线"
+                              "或名称待人工核对。下方表格只呈现 22 学科榜里搜得到的学科行。")
+
+    sec1 = {"num": "一", "title": f"学科站位（上榜 {len(present)} 学科，按被引降序）",
+            "flow": True,
+            "table": {"head": ["学科", "全球排名", "分位", "国内排名*", "论文", "被引", "篇均",
+                               "高被引", "热点", "相对强度", "档位"],
+                      "colclasses": ["", "n", "n", "n", "n", "n", "n", "n", "n", "n", ""],
+                      "pill_cols": [10],
+                      "rows": [field_cells(kv) for kv in pairs],
+                      "subs": [stem for stem, _r in pairs]},
+            "notes": ["* 国内排名＝榜内 CHINA MAINLAND 计数推导，非 ESI 原生指标。"
+                      "排名写法「全球第 N / 榜内 M 所」。分位＝rank ÷ m；"
+                      "相对强度＝(本校该学科论文 ÷ 本校上榜学科论文合计) ÷ (全球该学科论文 ÷ 全球 22 学科论文合计)，"
+                      "分母为本校上榜学科合计，部分覆盖下指数偏高，仅作结构参考。"]}
+    if not pairs:
+        sec1["table"]["placeholder"] = "22 学科榜内未搜到该校——低于收录线或未入册，本期不出学科行。"
+
+    pm_cells = [[CN[stem], f"{r[0]} / {cache['fields'][stem]['m']}",
+                 f"第 {cache['fields'][stem]['line']} 位",
+                 _fmt(cache["fields"][stem]["line_cites"])]
+                for stem, r in pairs if r[0] <= cache["fields"][stem]["line"]]
+    sec2 = {"num": "二", "title": f"前 1‰ 俱乐部（{len(pm_cells)} 学科）"}
+    if pm_cells:
+        sec2["table"] = {"head": ["学科", "全球排名", "1‰ 线", "线上被引"],
+                         "colclasses": ["", "n", "n", "n"], "rows": pm_cells}
+    sec2["notes"] = ([] if pm_cells else ["本期无学科进入前 1‰。"])
+    sec2["notes"].append("1‰ 线＝榜内第 ⌊(m+1)/10⌋ 位机构的被引（m＝榜内机构数），与 extract_1permille 同法。")
+
+    # ---- 三 趋势：trend.combine 跨期序列 → 总被引轨迹 + 最强学科排名轨迹 + 进位时间线 ----
+    # 排名轨迹取当前在榜学科中 rank/m 分位最好、且趋势里有 ≥2 点序列的一个（y 轴反转）；
+    # 时间线逐在榜学科找首次「被引 ≥ 前 1% 阈值」与「排名 ≤ 1‰ 线」的期次（thr1/m 缺的期
+    # 跳过），按期升序。点数 <3 或读取异常 → 整章替换为一句 note，不报错。
+    try:
+        from monitor import trend as mt                              # noqa: PLC0415
+        t = mt.combine(en)
+    except Exception:                                                   # noqa: BLE001
+        t = {"en": en, "points": [], "fields": {}}
+    pts = t.get("points") or []
+    flds = t.get("fields") or {}
+    if len(pts) < 3:
+        sec3 = {"num": "三", "title": "趋势", "notes": ["趋势数据不足，随期次积累解锁。"]}
+    else:
+        figs = [{"cap": "总被引轨迹",
+                 "svg": charts.line_chart([("总被引",
+                                            [(p["period"], p.get("total_cites")) for p in pts])])}]
+        best = sorted((r[0] / cache["fields"][stem]["m"], stem) for stem, r in present.items()
+                      if cache["fields"][stem].get("m"))
+        for _pct, stem in best:
+            seq = [(f["period"], f.get("rank")) for f in flds.get(stem) or []]
+            if len(seq) >= 2:
+                figs.append({"cap": f"{CN[stem]} · 全球排名轨迹",
+                             "svg": charts.line_chart([(_e(CN[stem]), seq)], y_invert=True)})
+                break
+        tl: list[tuple[str, str]] = []
+        for stem in STEMS:
+            seq = flds.get(stem) or []
+            if stem not in present or not seq:
+                continue
+            first1 = next((f["period"] for f in seq if f.get("thr1") is not None
+                           and f.get("cites") is not None and f["cites"] >= f["thr1"]), None)
+            firstpm = next((f["period"] for f in seq
+                            if f.get("m") and f["rank"] <= (f["m"] + 1) // 10), None)
+            if first1:
+                tl.append((first1, f"{CN[stem]}：{first1} 起进入前 1%（{len(seq)} 期在榜）"))
+            if firstpm:
+                tl.append((firstpm, f"{CN[stem]}：{firstpm} 起进入前 1‰（{len(seq)} 期在榜）"))
+        sec3 = {"num": "三", "title": "趋势", "flow": True,
+                "notes": [_trend_note()], "charts": figs}
+        if tl:
+            tl.sort(key=lambda kv: kv[0])
+            sec3["timeline"] = {"cap": "进位时间线", "items": [txt for _p, txt in tl]}
+
+    sec4 = {"num": "四", "title": "进位预警"}
+    near_cells = [[x["cn"], _fmt(x["r"][3]), _fmt(cache["thr1"].get(_norm(x["stem"]), 0)),
+                   f"{x['prox']:.2f}"]
+                  for x in sorted(near, key=lambda x0: -(x0["prox"] or 0))]
+    notes4 = []
+    if near_cells:
+        sec4["table"] = {"head": ["学科", "本校被引", "前 1% 阈值", "接近度"],
+                         "colclasses": ["", "n", "n", "n"], "rows": near_cells}
+    elif entered:
+        notes4.append(f"上榜学科全部已在前 1% 内（最小接近度 "
+                      f"{min(x['prox'] for x in entered):.1f}×阈值），无临阈学科。")
+    else:
+        notes4.append("本期全球机构总表未收录该校，无法计算接近度。")
+    if miss_list:
+        notes4.append(f"未上榜 {len(miss_list)} 学科（{'、'.join(miss_list)}）低于榜内收录线或未导出，"
+                      "无被引数据，接近度不可算，不外推。")
+    sec4["notes"] = notes4
+
+    sec5 = {"num": "五", "title": "对标 · 总排名邻近（±3 名）",
+            "table": {"head": ["机构", "总排名", "论文", "被引", "篇均", "高被引"],
+                      "colclasses": ["", "n", "n", "n", "n", "n"],
+                      "rows": [[str(r[0]).title(), str(r[2]), _fmt(r[3]), _fmt(r[4]),
+                                f"{r[5]:.2f}", f"{r[6]:.0f}"] for r in nb]},
+            "notes": ["自动邻近窗；跨省自由对比用插件页右上角「＋」进队列，一键出对比件（不限数量）。"]}
+    out["sections"] = [sec1, sec2, sec3, sec4, sec5]
+    return out
+
+
+def insight_how(mode: str | None) -> str:
+    """解读来源标注（HTML 与 docx 共用同一句文案）。"""
+    return "模型解读（数字已过盾校验）" if mode == "model" else "规则拼装（写作位未开或模型不可用）"
+
+
+def _table_html(t: dict) -> str:
+    """table 规格 → <table>：首列加粗＋可选英文名 subline；pill_cols 列出档位徽标；
+    空表落 placeholder 合并行。"""
+    ths = "".join(f'<th class="n">{_e(h)}</th>' if c == "n" else f"<th>{_e(h)}</th>"
+                  for h, c in zip(t["head"], t["colclasses"]))
+    pills = set(t.get("pill_cols") or ())
+    trs: list[str] = []
+    for i, row in enumerate(t["rows"]):
+        tds = []
+        for j, (cell, c) in enumerate(zip(row, t["colclasses"])):
+            if j == 0:
+                sub = f'<span class="en">{_e(t["subs"][i])}</span>' if t.get("subs") else ""
+                tds.append(f"<td><b>{_e(cell)}</b>{sub}</td>")
+            elif j in pills:
+                pill = "pill pm" if "‰" in str(cell) else "pill ok"
+                tds.append(f'<td><span class="{pill}">{_e(cell)}</span></td>')
+            else:
+                cls = ' class="n"' if c == "n" else ""
+                tds.append(f"<td{cls}>{_e(cell)}</td>")
+        trs.append("<tr>" + "".join(tds) + "</tr>")
+    if not trs and t.get("placeholder"):
+        trs.append(f'<tr><td colspan="{len(t["head"])}" class="note">{_e(t["placeholder"])}</td></tr>')
+    return f'<table>\n<thead><tr>{ths}</tr></thead>\n<tbody>{"".join(trs)}</tbody>\n</table>'
+
+
+def _section_html(sec: dict) -> str:
+    """section 规格 → <section>：标题＋表格＋notes＋图表＋时间线，顺序固定。"""
+    parts = [f'<h2><span class="num">{sec["num"]}</span>{_e(sec["title"])}</h2>']
+    if sec.get("table"):
+        parts.append(_table_html(sec["table"]))
+    for note in sec.get("notes", []):
+        parts.append(f'<p class="note">{_e(note)}</p>')
+    for fig in sec.get("charts", []):
+        parts.append(f'<p class="cap">{_e(fig["cap"])}</p>')
+        parts.append(fig["svg"])
+    tl = sec.get("timeline")
+    if tl:
+        parts.append(f'<p class="cap">{_e(tl["cap"])}</p>')
+        parts.append('<p class="note">' + "<br>".join(_e(x) for x in tl["items"]) + "</p>")
+    attr = ' class="flow"' if sec.get("flow") else ""
+    return f"<section{attr}>\n" + "\n".join(parts) + "\n</section>"
+
+
 _CSS = """
 :root{--bg:#faf9f6;--card:#fff;--ink:#17181a;--ink-2:#3a3c40;--muted:#6f7278;--line:#e4e1da;
 --line-2:#efede7;--ok:#2f6f5e;--ok-bg:#e8f1ed;--warn:#9a6b14;--warn-bg:#f6efdf;--radius:5px}
@@ -215,170 +436,69 @@ td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
 .cap{font-size:12.5px;color:var(--muted);margin-top:16px}
 footer{margin-top:clamp(48px,8vh,76px);padding:22px 0 46px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted);line-height:1.8}
 @media (max-width:760px){.nums{grid-template-columns:repeat(2,1fr)}}
+@media print{
+@page{size:A4;margin:14mm}
+body{background:#fff}
+.nm{box-shadow:none;border-color:#ccc}
+th{border-color:#bbb}td{border-color:#ccc}
+section{break-inside:avoid}
+section.flow{break-inside:auto}
+h2{break-after:avoid}
+table{break-inside:auto}
+thead{display:table-header-group}
+a{color:inherit}
+}
 """
 
 
 def render(cn: str, period: str, cache: dict, insight: dict | None = None) -> str:
-    """最简版站位报告：纯全局件，无论文清单、无图表。insight＝AI/骨架解读（可缺省）。"""
-    s = sch.find(cn)
-    if s is None:
-        raise KeyError(cn)
-    en = s["en"]
-    tag = "985 工程" if s["is985"] else "211 工程"
-
-    rows = {stem: d["schools"].get(en) for stem, d in cache["fields"].items()}
-    present = {stem: r for stem, r in rows.items() if r}
-    total = _school_total(cache, en)
-    entered, pm, near = [], [], []
-    for stem in STEMS:
-        r = rows.get(stem)
-        if not r:
-            continue
-        t1 = cache["thr1"].get(_norm(stem))
-        prox = (r[3] / t1) if t1 else None
-        d = {"stem": stem, "cn": CN[stem], "r": r, "prox": prox}
-        (entered if prox and prox >= 1 else near).append(d)
-        if r[0] <= cache["fields"][stem]["line"]:
-            pm.append(d)
-    entered.sort(key=lambda d: -d["r"][3])
-    pm_set = set()
-    # 站位表按被引降序；1‰ 集合同步算
-    pairs = sorted(((stem, r) for stem, r in present.items()), key=lambda kv: -kv[1][3])
-    for stem, r in pairs:
-        if r[0] <= cache["fields"][stem]["line"]:
-            pm_set.add(stem)
-    # 相对强度（RCA）分母：缓存无 global_papers（老缓存/缺全球学科.xlsx）→ 显示 —
-    gp = cache.get("global_papers") or {}
-    g_sum = sum(gp.values())
-    mine_sum = sum((r[2] or 0.0) for r in present.values())
-
-    def field_row(kv):
-        stem, r = kv
-        m = cache["fields"][stem]["m"]
-        line = cache["fields"][stem]["line"]
-        badge = ('<span class="pill pm">前 1‰</span>' if r[0] <= line
-                 else '<span class="pill ok">前 1%</span>')
-        pct = f"前 {r[0] / m * 100:.1f}%" if m else "—"
-        gf = gp.get(_norm(stem))
-        rca = (f"×{(r[2] / mine_sum) / (gf / g_sum):.2f}"
-               if g_sum and mine_sum and gf and r[2] is not None else "—")
-        return (f'<tr><td><b>{_e(CN[stem])}</b><span class="en">{_e(stem)}</span></td>'
-                f'<td class="n">{r[0]} / {m}</td>'
-                f'<td class="n">{pct}</td>'
-                f'<td class="n">{r[1]}</td><td class="n">{_fmt(r[2])}</td>'
-                f'<td class="n">{_fmt(r[3])}</td><td class="n">{r[4]:.2f}</td>'
-                f'<td class="n">{r[5]:.0f}</td><td class="n">{r[6]:.0f}</td>'
-                f'<td class="n">{rca}</td><td>{badge}</td></tr>')
-
-    def inst_row(r):
-        return (f'<tr><td><b>{_e(str(r[0]).title())}</b></td><td class="n">{r[1]}</td>'
-                f'<td class="n">{_fmt(r[2])}</td><td class="n">{_fmt(r[3])}</td>'
-                f'<td class="n">{r[4]:.2f}</td><td class="n">{r[5]:.0f}</td></tr>')
-
-    pm_rows = "".join(
-        f'<tr><td><b>{_e(CN[stem])}</b></td>'
-        f'<td class="n">{r[0]} / {cache["fields"][stem]["m"]}</td>'
-        f'<td class="n">第 {cache["fields"][stem]["line"]} 位</td>'
-        f'<td class="n">{_fmt(cache["fields"][stem]["line_cites"])}</td></tr>'
-        for stem, r in pairs if r[0] <= cache["fields"][stem]["line"])
-    near_rows = "".join(
-        f'<tr><td><b>{_e(d["cn"])}</b></td><td class="n">{_fmt(d["r"][3])}</td>'
-        f'<td class="n">{_fmt(cache["thr1"].get(_norm(d["stem"]), 0))}</td>'
-        f'<td class="n">{d["prox"]:.2f}</td></tr>'
-        for d in sorted(near, key=lambda x: -(x["prox"] or 0)))
-    near_block = (
-        f'<table><thead><tr><th>学科</th><th class="n">本校被引</th>'
-        f'<th class="n">前 1% 阈值</th><th class="n">接近度</th></tr></thead>'
-        f'<tbody>{near_rows}</tbody></table>' if near_rows else
-        (f'<p class="note">上榜学科全部已在前 1% 内（最小接近度 '
-         f'{min(d["prox"] for d in entered):.1f}×阈值），无临阈学科。</p>' if entered
-         else '<p class="note">本期全球机构总表未收录该校，无法计算接近度。</p>'))
-    miss_list = [CN[stem] for stem in STEMS if stem not in present]
-
-    if total:
-        nums = (f'<div class="nm"><div class="nl">入围 ESI 前 1% 学科</div>'
-                f'<div class="nv">{len(entered)}<small> / 22</small></div>'
-                f'<div class="nx">被引 ≥ 该学科机构阈值</div></div>'
-                f'<div class="nm"><div class="nl">全球机构总排名</div>'
-                f'<div class="nv">{total[1]:,}<small> / {cache["n_inst"]:,}</small></div>'
-                f'<div class="nx">按总被引</div></div>'
-                f'<div class="nm"><div class="nl">总被引</div><div class="nv">{_fmt(total[3])}</div>'
-                f'<div class="nx">论文 {_fmt(total[2])} · 篇均 {total[4]:.2f}</div></div>'
-                f'<div class="nm"><div class="nl">进入全球前 1‰ 的学科</div>'
-                f'<div class="nv">{len(pm_set)}</div>'
-                f'<div class="nx">{"、".join(_e(CN[stem]) for stem, _rr in pairs if stem in pm_set) or "—"}</div></div>')
-        absent = ""
-    else:
-        nums = ""
-        absent = ('<p class="note" style="margin-top:18px">本期全球机构总表未收录该校'
-                  f'（ESI 名 <code>{_e(en)}</code>）——可能低于收录线或名称待人工核对。'
-                  '下方表格只呈现 22 学科榜里搜得到的学科行。</p>')
-    table_body = "".join(field_row(kv) for kv in pairs) or (
-        '<tr><td colspan="11" class="note">22 学科榜内未搜到该校——低于收录线或未入册，'
-        '本期不出学科行。</td></tr>')
-    nb = cache["neighbors"].get(en) or []
+    """最简版站位报告：_report_data() 的 HTML 消费者（Word 导出与其共用同一份数据装配）。"""
+    d = _report_data(cn, period, cache, insight)
+    nums_html = "".join(
+        f'<div class="nm"><div class="nl">{_e(n["label"])}</div>'
+        + (f'<div class="nv">{_e(n["value"])}<small>{_e(n["suffix"])}</small></div>'
+           if n.get("suffix") else f'<div class="nv">{_e(n["value"])}</div>')
+        + f'<div class="nx">{_e(n["note"])}</div></div>'
+        for n in d["nums"])
+    absent_html = (f'<p class="note" style="margin-top:18px">{_e(d["absent_note"])}</p>'
+                   if d["absent_note"] else "")
+    sh = {sec["num"]: _section_html(sec) for sec in d["sections"]}
 
     return f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{_e(cn)} · 学科监测报告 · {period}</title>
+<title>{_e(d["cn"])} · 学科监测报告 · {d["period"]}</title>
 <style>{_CSS}</style>
 </head>
 <body>
-<header class="top wrap"><span>监测版 · 包契约验证件 · {_e(tag)}</span><span>生成 {_e(cache["built"])}</span></header>
+<header class="top wrap"><span>监测版 · 包契约验证件 · {_e(d["tag"])}</span><span>生成 {_e(d["built"])} · <a href="{d["period"]}.docx" style="color:inherit;text-decoration:underline">导出 Word</a></span></header>
 <div class="wrap">
-<h1>{_e(cn)} · 学科监测报告</h1>
-<p class="lead">期 1 · 站位报告。数据面＝<b>{_e(period)} 期 ESI 全局件</b>（机构总表、22 学科全球榜、阈值表）——
+<h1>{_e(d["cn"])} · 学科监测报告</h1>
+<p class="lead">期 1 · 站位报告。数据面＝<b>{_e(d["period"])} 期 ESI 全局件</b>（机构总表、22 学科全球榜、阈值表）——
 未取论文清单，论文层分析不在本版。所有数字可回溯到包内原始表。</p>
-<p class="meta">数据源：Clarivate ESI {_e(period)} 期（下载 {_e(cache.get("download") or "—")}）·
-{_e(cn)}上榜 {len(present)} / 22 学科 · ESI 名 <code>{_e(en)}</code></p>
-<div class="nums">{nums}</div>
-{absent}
+<p class="meta">{_e(d["meta"])}</p>
+<div class="nums">{nums_html}</div>
+{absent_html}
 
-<section>
-<h2><span class="num">一</span>学科站位（上榜 {len(present)} 学科，按被引降序）</h2>
-<table>
-<thead><tr><th>学科</th><th class="n">全球排名</th><th class="n">分位</th><th class="n">国内排名*</th><th class="n">论文</th><th class="n">被引</th><th class="n">篇均</th><th class="n">高被引</th><th class="n">热点</th><th class="n">相对强度</th><th>档位</th></tr></thead>
-<tbody>{table_body}</tbody>
-</table>
-<p class="note">* 国内排名＝榜内 CHINA MAINLAND 计数推导，非 ESI 原生指标。排名写法「全球第 N / 榜内 M 所」。
-分位＝rank ÷ m；相对强度＝(本校该学科论文 ÷ 本校上榜学科论文合计) ÷ (全球该学科论文 ÷ 全球 22 学科论文合计)，
-分母为本校上榜学科合计，部分覆盖下指数偏高，仅作结构参考。</p>
-</section>
+{sh["一"]}
 
-<section>
-<h2><span class="num">二</span>前 1‰ 俱乐部（{len(pm)} 学科）</h2>
-{f'<table><thead><tr><th>学科</th><th class="n">全球排名</th><th class="n">1‰ 线</th><th class="n">线上被引</th></tr></thead><tbody>{pm_rows}</tbody></table>' if pm_rows else '<p class="note">本期无学科进入前 1‰。</p>'}
-<p class="note">1‰ 线＝榜内第 ⌊(m+1)/10⌋ 位机构的被引（m＝榜内机构数），与 <code>extract_1permille</code> 同法。</p>
-</section>
+{sh["二"]}
 
-{_trend_section(en, cache, present)}
+{sh["三"]}
 
-<section>
-<h2><span class="num">四</span>进位预警</h2>
-{near_block}
-{f'<p class="note">未上榜 {len(miss_list)} 学科（{"、".join(_e(m) for m in miss_list)}）低于榜内收录线或未导出，无被引数据，接近度不可算，不外推。</p>' if miss_list else ''}
-</section>
+{sh["四"]}
 
-<section>
-<h2><span class="num">五</span>对标 · 总排名邻近（±3 名）</h2>
-<table>
-<thead><tr><th>机构</th><th class="n">总排名</th><th class="n">论文</th><th class="n">被引</th><th class="n">篇均</th><th class="n">高被引</th></tr></thead>
-<tbody>{"".join(f'<tr><td><b>{_e(str(r[0]).title())}</b></td><td class="n">{r[2]}</td><td class="n">{_fmt(r[3])}</td><td class="n">{_fmt(r[4])}</td><td class="n">{r[5]:.2f}</td><td class="n">{r[6]:.0f}</td></tr>' for r in nb)}</tbody>
-</table>
-<p class="note">自动邻近窗；跨省自由对比用插件页右上角「＋」进队列，一键出对比件（不限数量）。</p>
-</section>
+{sh["五"]}
 
-{_insight_section(insight)}
+{_insight_section(d["insight"])}
 
 <footer>
-数据来源：Clarivate ESI（Essential Science Indicators）{_e(period)} 期全局件，云南大学图书馆订阅账号下载
-（{_e(cache.get("download") or "—")}）；本报告是监测版包契约的验证件，不是对外报告，数字未经该校核对。<br>
-期 1 无历史台账，趋势章由历史全球档案回填生成；预测章随期次积累后解锁。
-派生算法：国内排名＝榜内 CHINA MAINLAND 计数 · 1‰ 线＝第 ⌊(m+1)/10⌋ 位被引 · 接近度＝被引 ÷ 前 1% 机构阈值。<br>
-生成：文衡监测版引擎 <code>src/monitor/</code>（{_e(cache["built"])}）。
+{_e(d["footer"]["source"])}<br>
+{_e(d["footer"]["trend"])}
+派生算法：{" · ".join(d["algorithms"])}。<br>
+{_e(d["footer"]["engine"])}
 </footer>
 </div>
 </body>
@@ -391,7 +511,7 @@ def _insight_section(insight: dict | None, num: str = "六") -> str:
     num＝章号（单校报告六章制的「六」；对比件按自身章数显式传）。"""
     if not insight or not (insight.get("text") or "").strip():
         return ""
-    how = "模型解读（数字已过盾校验）" if insight.get("mode") == "model" else "规则拼装（写作位未开或模型不可用）"
+    how = insight_how(insight.get("mode"))
     body = _e(insight["text"]).replace("；", "；\n")
     return f"""
 <section>
@@ -414,57 +534,6 @@ def _trend_note() -> str:
     except (OSError, json.JSONDecodeError, ImportError, AttributeError):
         pass
     return "趋势由历史全球档案回填；ESI 每期为滚动十年窗的当期快照。"
-
-
-def _trend_section(en: str, cache: dict, present: dict) -> str:
-    """「三 趋势」章：trend.combine 跨期序列 → 总被引轨迹 + 最强学科排名轨迹 + 进位时间线。
-
-    排名轨迹取当前在榜学科中 rank/m 分位最好、且趋势里有 ≥2 点序列的一个（y 轴反转）；
-    时间线逐在榜学科找首次「被引 ≥ 前 1% 阈值」与「排名 ≤ 1‰ 线」的期次（thr1/m 缺的期
-    跳过），按期升序。点数 <3 或读取异常 → 整章替换为一句 note，不报错。"""
-    try:
-        from monitor import trend as mt                              # noqa: PLC0415
-        t = mt.combine(en)
-    except Exception:                                                   # noqa: BLE001
-        t = {"en": en, "points": [], "fields": {}}
-    pts = t.get("points") or []
-    flds = t.get("fields") or {}
-    if len(pts) < 3:
-        return ('<section>\n<h2><span class="num">三</span>趋势</h2>\n'
-                '<p class="note">趋势数据不足，随期次积累解锁。</p>\n</section>')
-    body = [f'<p class="note" style="margin-top:2px">{_trend_note()}</p>',
-            '<p class="cap">总被引轨迹</p>',
-            charts.line_chart([("总被引", [(p["period"], p.get("total_cites")) for p in pts])])]
-    best = []
-    for stem, r in present.items():
-        m = cache["fields"][stem].get("m")
-        if m:
-            best.append((r[0] / m, stem))
-    best.sort()
-    for _pct, stem in best:
-        seq = [(f["period"], f.get("rank")) for f in flds.get(stem) or []]
-        if len(seq) >= 2:
-            body.append(f'<p class="cap">{_e(CN[stem])} · 全球排名轨迹</p>')
-            body.append(charts.line_chart([(_e(CN[stem]), seq)], y_invert=True))
-            break
-    tl: list[tuple[str, str]] = []
-    for stem in STEMS:
-        seq = flds.get(stem) or []
-        if stem not in present or not seq:
-            continue
-        first1 = next((f["period"] for f in seq if f.get("thr1") is not None
-                       and f.get("cites") is not None and f["cites"] >= f["thr1"]), None)
-        firstpm = next((f["period"] for f in seq
-                        if f.get("m") and f["rank"] <= (f["m"] + 1) // 10), None)
-        if first1:
-            tl.append((first1, f"{_e(CN[stem])}：{first1} 起进入前 1%（{len(seq)} 期在榜）"))
-        if firstpm:
-            tl.append((firstpm, f"{_e(CN[stem])}：{firstpm} 起进入前 1‰（{len(seq)} 期在榜）"))
-    if tl:
-        tl.sort(key=lambda kv: kv[0])
-        body.append('<p class="cap">进位时间线</p>')
-        body.append('<p class="note">' + "<br>".join(txt for _p, txt in tl) + "</p>")
-    return ('<section>\n<h2><span class="num">三</span>趋势</h2>\n' + "\n".join(body) + "\n</section>")
 
 
 def generate(cn: str, period: str | None = None) -> pathlib.Path:

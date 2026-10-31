@@ -236,3 +236,63 @@ def test_compare_dumbbell_section():
     html3 = mcmp.render(["海南大学", "清华大学", "贵州大学"], _PERIOD, cache)
     assert "逐学科位次哑铃" not in html3
     assert '<span class="num">二</span>学科矩阵' in html3
+
+
+# ---------------------------------------------------------------- 数据装配层 + 打印 + Word 导出（P1 收尾）
+
+
+def test_report_data_structure():
+    """_report_data：五段齐＋解读段、nums 4 项、站位表 11 列头、显示值全部字符串化。"""
+    if not _PERIOD or not mr.cache_path(_PERIOD).exists():
+        skip_unless("监测版期次缓存未建", _cache_probe)
+    cache = mr.load_cache(_PERIOD)
+    d = mr._report_data("海南大学", _PERIOD, cache,
+                        insight={"text": "总体格局稳中有进。", "mode": "rule"})
+    assert [s["num"] for s in d["sections"]] == ["一", "二", "三", "四", "五"]
+    assert d["insight"] == {"text": "总体格局稳中有进。", "mode": "rule"}
+    assert len(d["nums"]) == 4
+    assert all(isinstance(n["value"], str) and isinstance(n["note"], str) for n in d["nums"])
+    t1 = d["sections"][0]["table"]
+    assert len(t1["head"]) == 11 and len(t1["colclasses"]) == 11
+    assert len(t1["subs"]) == len(t1["rows"]) == 12, "海大 12 学科行，英文名逐行对齐"
+    assert all(isinstance(c, str) for row in t1["rows"] for c in row), "显示值一律字符串化"
+    assert d["sections"][1]["title"] == "前 1‰ 俱乐部（2 学科）"
+    assert len(d["algorithms"]) == 3
+    d2 = mr._report_data("中国政法大学", _PERIOD, cache)
+    assert d2["nums"] == [] and d2["insight"] is None and d2["absent_note"]
+    assert d2["sections"][0]["table"]["placeholder"], "未入册校站位表带 placeholder 合并行"
+    html = mr.render("海南大学", _PERIOD, cache)
+    assert '<span class="pill pm">前 1‰</span>' in html, "档位徽标经 pill_cols 保留"
+
+
+def test_docx_export_hainan():
+    """docx 导出：落 monitor_data/<校>/<期次>.docx；读回标题/表头与 _report_data 同源；幂等。"""
+    if not _PERIOD or not mr.cache_path(_PERIOD).exists():
+        skip_unless("监测版期次缓存未建", _cache_probe)
+    import docx as pydocx
+    from monitor import docx as mdx
+    cache = mr.load_cache(_PERIOD)
+    d = mr._report_data("海南大学", _PERIOD, cache)
+    p = mdx.export("海南大学", _PERIOD, cache)
+    assert p == mr.MONITOR_ROOT / "海南大学" / f"{_PERIOD}.docx" and p.exists()
+    mtime = p.stat().st_mtime
+    p2 = mdx.export("海南大学", _PERIOD, cache)
+    assert p2 == p and p2.stat().st_mtime == mtime, "已存在直接返回，不重写"
+    doc = pydocx.Document(str(p))
+    texts = [q.text for q in doc.paragraphs]
+    assert texts[0] == f"海南大学 · 学科监测报告 · {_PERIOD}"
+    joined = "\n".join(texts)
+    assert d["nums"][2]["value"] in joined, "总被引与 HTML 同源（同一 _report_data）"
+    assert "三、趋势" in joined and "进位时间线" in joined, "趋势章文字保留（图不放 docx）"
+    t = doc.tables[0]
+    assert [t.rows[0].cells[i].text for i in range(3)] == ["学科", "全球排名", "分位"]
+    assert t.rows[1].cells[0].text == d["sections"][0]["table"]["rows"][0][0]
+
+
+def test_print_css_present():
+    """打印样式：@media print 进 _CSS 并随之进入渲染产物。"""
+    assert "@media print" in mr._CSS and "@page" in mr._CSS
+    if not _PERIOD or not mr.cache_path(_PERIOD).exists():
+        skip_unless("监测版期次缓存未建", _cache_probe)
+    html = mr.render("海南大学", _PERIOD, mr.load_cache(_PERIOD))
+    assert "@media print" in html and "break-inside:avoid" in html

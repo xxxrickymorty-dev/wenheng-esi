@@ -2899,6 +2899,8 @@ async def api_aiqa_log(request: Request, limit: int = 50):
 # 契约：《监测版包契约-ESIonly（2026-10-31）》（工作区仓库① 设计文档）。
 
 from src.monitor import compare as monitor_compare        # noqa: E402
+from src.monitor import docx as monitor_docx              # noqa: E402
+from src.monitor import docx as monitor_docx              # noqa: E402
 from src.monitor import report as monitor_report          # noqa: E402
 from src.monitor import schools as monitor_schools        # noqa: E402
 
@@ -3008,11 +3010,27 @@ def monitor_compare_page(request: Request, period: str, fname: str):
 @app.get("/monitor/report/{cn}/{fname}")
 @user_file_route
 def monitor_report_page(request: Request, cn: str, fname: str):
-    """监测版报告页（登录后可看；admin 与操作员同权——只读验证件）。"""
-    if not re.fullmatch(r"20\d{4}\.html", fname or ""):
+    """监测版报告页（登录后可看；admin 与操作员同权——只读验证件）。docx 缺文件时现生成。"""
+    m = re.fullmatch(r"(20\d{4})\.(html|docx)", fname or "")
+    if not m:
         raise HTTPException(status_code=404)
     p = monitor_report.MONITOR_ROOT / cn / fname
-    if not p.is_relative_to(monitor_report.MONITOR_ROOT) or not p.exists():
+    if not p.is_relative_to(monitor_report.MONITOR_ROOT):
         raise HTTPException(status_code=404)
+    if not p.exists():
+        if m.group(2) != "docx" or monitor_schools.find(cn) is None:
+            raise HTTPException(status_code=404)
+        period = m.group(1)
+        if period != (monitor_report.latest_period() or ""):
+            raise HTTPException(status_code=404)    # docx 只随当期生成；老期次连 html 都不存在
+        try:
+            cache = monitor_report.load_cache(period) or monitor_report.build_cache(period)
+            p = monitor_docx.export(cn, period, cache)          # 幂等：缺文件才生成，不调模型
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if fname.endswith(".docx"):
+        return FileResponse(p, media_type="application/vnd.openxmlformats-officedocument"
+                                     ".wordprocessingml.document",
+                            headers={"Cache-Control": "no-cache"})
     return FileResponse(p, media_type="text/html; charset=utf-8",
                         headers={"Cache-Control": "no-cache"})
