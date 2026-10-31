@@ -16,6 +16,7 @@ import re
 
 import openpyxl
 
+from monitor import charts
 from monitor import schools as sch
 
 WENHENG_ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -51,6 +52,37 @@ def latest_period() -> str | None:
                  if re.fullmatch(r"20\d{4}", d.name) and (d / "Institutions.xlsx").exists()),
                 reverse=True)
     return ds[0] if ds else None
+
+
+def _global_papers(base: pathlib.Path) -> dict[str, float]:
+    """全球学科.xlsx → {学科 stem（规范大写）: WoS Documents}；文件缺失/不可解析 → {}。
+
+    表头行＝「Research Fields」所在行，列序＝排名/Research Fields/WoS Documents/…；
+    文件里学科名大写可带 /（如 ENVIRONMENT/ECOLOGY），经 _norm 归一后必须落在 STEMS
+    内（版权行等杂行跳过）。站位表「相对强度」的全球分母数据源。"""
+    path = base / "全球学科.xlsx"
+    if not path.exists():
+        return {}
+    try:
+        wb = openpyxl.load_workbook(path)
+        rows = [r for r in wb.active.iter_rows(values_only=True)
+                if any(c is not None and str(c).strip() for c in r)]
+        wb.close()
+        hdr = next((i for i, r in enumerate(rows) if len(r) > 1 and r[1] is not None
+                    and str(r[1]).strip() == "Research Fields"), None)
+        if hdr is None:
+            return {}
+        stems = {_norm(s) for s in STEMS}
+        out: dict[str, float] = {}
+        for r in rows[hdr + 1:]:
+            if len(r) < 3 or r[1] is None or not str(r[1]).strip() or r[2] is None:
+                continue
+            key = _norm(str(r[1]).strip())
+            if key in stems:
+                out[key] = _f(r[2])
+        return out
+    except (OSError, ValueError, TypeError):
+        return {}
 
 
 def cache_path(period: str) -> pathlib.Path:
@@ -125,6 +157,7 @@ def build_cache(period: str) -> dict:
     cache = {"period": period, "built": datetime.date.today().isoformat(),
              "download": download, "n_inst": len(inst),
              "fields": fields, "thr1": thr1,
+             "global_papers": _global_papers(base),
              "cn_inst": cn_inst, "neighbors": neighbors}
     MONITOR_ROOT.mkdir(parents=True, exist_ok=True)
     cache_path(period).write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
@@ -179,6 +212,7 @@ td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
 .pill.ok{background:var(--ok-bg);color:var(--ok)}
 .pill.pm{background:var(--warn-bg);color:var(--warn);font-weight:600}
 .note{font-size:12.5px;color:var(--muted);margin-top:10px}
+.cap{font-size:12.5px;color:var(--muted);margin-top:16px}
 footer{margin-top:clamp(48px,8vh,76px);padding:22px 0 46px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted);line-height:1.8}
 @media (max-width:760px){.nums{grid-template-columns:repeat(2,1fr)}}
 """
@@ -213,17 +247,28 @@ def render(cn: str, period: str, cache: dict, insight: dict | None = None) -> st
     for stem, r in pairs:
         if r[0] <= cache["fields"][stem]["line"]:
             pm_set.add(stem)
+    # 相对强度（RCA）分母：缓存无 global_papers（老缓存/缺全球学科.xlsx）→ 显示 —
+    gp = cache.get("global_papers") or {}
+    g_sum = sum(gp.values())
+    mine_sum = sum((r[2] or 0.0) for r in present.values())
 
     def field_row(kv):
         stem, r = kv
+        m = cache["fields"][stem]["m"]
         line = cache["fields"][stem]["line"]
         badge = ('<span class="pill pm">前 1‰</span>' if r[0] <= line
                  else '<span class="pill ok">前 1%</span>')
+        pct = f"前 {r[0] / m * 100:.1f}%" if m else "—"
+        gf = gp.get(_norm(stem))
+        rca = (f"×{(r[2] / mine_sum) / (gf / g_sum):.2f}"
+               if g_sum and mine_sum and gf and r[2] is not None else "—")
         return (f'<tr><td><b>{_e(CN[stem])}</b><span class="en">{_e(stem)}</span></td>'
-                f'<td class="n">{r[0]} / {cache["fields"][stem]["m"]}</td>'
+                f'<td class="n">{r[0]} / {m}</td>'
+                f'<td class="n">{pct}</td>'
                 f'<td class="n">{r[1]}</td><td class="n">{_fmt(r[2])}</td>'
                 f'<td class="n">{_fmt(r[3])}</td><td class="n">{r[4]:.2f}</td>'
-                f'<td class="n">{r[5]:.0f}</td><td class="n">{r[6]:.0f}</td><td>{badge}</td></tr>')
+                f'<td class="n">{r[5]:.0f}</td><td class="n">{r[6]:.0f}</td>'
+                f'<td class="n">{rca}</td><td>{badge}</td></tr>')
 
     def inst_row(r):
         return (f'<tr><td><b>{_e(str(r[0]).title())}</b></td><td class="n">{r[1]}</td>'
@@ -269,7 +314,7 @@ def render(cn: str, period: str, cache: dict, insight: dict | None = None) -> st
                   f'（ESI 名 <code>{_e(en)}</code>）——可能低于收录线或名称待人工核对。'
                   '下方表格只呈现 22 学科榜里搜得到的学科行。</p>')
     table_body = "".join(field_row(kv) for kv in pairs) or (
-        '<tr><td colspan="9" class="note">22 学科榜内未搜到该校——低于收录线或未入册，'
+        '<tr><td colspan="11" class="note">22 学科榜内未搜到该校——低于收录线或未入册，'
         '本期不出学科行。</td></tr>')
     nb = cache["neighbors"].get(en) or []
 
@@ -295,10 +340,12 @@ def render(cn: str, period: str, cache: dict, insight: dict | None = None) -> st
 <section>
 <h2><span class="num">一</span>学科站位（上榜 {len(present)} 学科，按被引降序）</h2>
 <table>
-<thead><tr><th>学科</th><th class="n">全球排名</th><th class="n">国内排名*</th><th class="n">论文</th><th class="n">被引</th><th class="n">篇均</th><th class="n">高被引</th><th class="n">热点</th><th>档位</th></tr></thead>
+<thead><tr><th>学科</th><th class="n">全球排名</th><th class="n">分位</th><th class="n">国内排名*</th><th class="n">论文</th><th class="n">被引</th><th class="n">篇均</th><th class="n">高被引</th><th class="n">热点</th><th class="n">相对强度</th><th>档位</th></tr></thead>
 <tbody>{table_body}</tbody>
 </table>
-<p class="note">* 国内排名＝榜内 CHINA MAINLAND 计数推导，非 ESI 原生指标。排名写法「全球第 N / 榜内 M 所」。</p>
+<p class="note">* 国内排名＝榜内 CHINA MAINLAND 计数推导，非 ESI 原生指标。排名写法「全球第 N / 榜内 M 所」。
+分位＝rank ÷ m；相对强度＝(本校该学科论文 ÷ 本校上榜学科论文合计) ÷ (全球该学科论文 ÷ 全球 22 学科论文合计)，
+分母为本校上榜学科合计，部分覆盖下指数偏高，仅作结构参考。</p>
 </section>
 
 <section>
@@ -307,14 +354,16 @@ def render(cn: str, period: str, cache: dict, insight: dict | None = None) -> st
 <p class="note">1‰ 线＝榜内第 ⌊(m+1)/10⌋ 位机构的被引（m＝榜内机构数），与 <code>extract_1permille</code> 同法。</p>
 </section>
 
+{_trend_section(en, cache, present)}
+
 <section>
-<h2><span class="num">三</span>进位预警</h2>
+<h2><span class="num">四</span>进位预警</h2>
 {near_block}
 {f'<p class="note">未上榜 {len(miss_list)} 学科（{"、".join(_e(m) for m in miss_list)}）低于榜内收录线或未导出，无被引数据，接近度不可算，不外推。</p>' if miss_list else ''}
 </section>
 
 <section>
-<h2><span class="num">四</span>对标 · 总排名邻近（±3 名）</h2>
+<h2><span class="num">五</span>对标 · 总排名邻近（±3 名）</h2>
 <table>
 <thead><tr><th>机构</th><th class="n">总排名</th><th class="n">论文</th><th class="n">被引</th><th class="n">篇均</th><th class="n">高被引</th></tr></thead>
 <tbody>{"".join(f'<tr><td><b>{_e(str(r[0]).title())}</b></td><td class="n">{r[2]}</td><td class="n">{_fmt(r[3])}</td><td class="n">{_fmt(r[4])}</td><td class="n">{r[5]:.2f}</td><td class="n">{r[6]:.0f}</td></tr>' for r in nb)}</tbody>
@@ -327,7 +376,7 @@ def render(cn: str, period: str, cache: dict, insight: dict | None = None) -> st
 <footer>
 数据来源：Clarivate ESI（Essential Science Indicators）{_e(period)} 期全局件，云南大学图书馆订阅账号下载
 （{_e(cache.get("download") or "—")}）；本报告是监测版包契约的验证件，不是对外报告，数字未经该校核对。<br>
-期 1 无历史台账，趋势章与预测章随期次自建后解锁（期 3+／期 6+）。
+期 1 无历史台账，趋势章由历史全球档案回填生成；预测章随期次积累后解锁。
 派生算法：国内排名＝榜内 CHINA MAINLAND 计数 · 1‰ 线＝第 ⌊(m+1)/10⌋ 位被引 · 接近度＝被引 ÷ 前 1% 机构阈值。<br>
 生成：文衡监测版引擎 <code>src/monitor/</code>（{_e(cache["built"])}）。
 </footer>
@@ -337,18 +386,85 @@ def render(cn: str, period: str, cache: dict, insight: dict | None = None) -> st
 """
 
 
-def _insight_section(insight: dict | None) -> str:
-    """篇尾解读段：AI 模型文本或句骨架（mode 如实标注；缺省＝无此段）。"""
+def _insight_section(insight: dict | None, num: str = "六") -> str:
+    """篇尾解读段：AI 模型文本或句骨架（mode 如实标注；缺省＝无此段）。
+    num＝章号（单校报告六章制的「六」；对比件按自身章数显式传）。"""
     if not insight or not (insight.get("text") or "").strip():
         return ""
     how = "模型解读（数字已过盾校验）" if insight.get("mode") == "model" else "规则拼装（写作位未开或模型不可用）"
     body = _e(insight["text"]).replace("；", "；\n")
     return f"""
 <section>
-<h2><span class="num">五</span>解读</h2>
+<h2><span class="num">{num}</span>解读</h2>
 <p style="margin-top:14px;max-width:70ch;color:var(--ink-2)">{body}</p>
 <p class="note">{_e(how)}。</p>
 </section>"""
+
+
+def _trend_note() -> str:
+    """趋势章首注：期次范围与期数从 _trend/_index.json 读，不写死；索引缺席退化为定性句。"""
+    try:
+        from monitor import trend as mt                              # noqa: PLC0415
+        idx = json.loads((mt.TREND_ROOT / "_index.json").read_text(encoding="utf-8"))
+        ok = sorted(p for p, v in (idx.get("periods") or {}).items() if v.get("status") == "ok")
+        n_bad = sum(1 for v in (idx.get("periods") or {}).values() if v.get("status") != "ok")
+        if ok:
+            return (f"趋势由 {ok[0]}–{ok[-1]} 共 {len(ok)} 期全球档案回填"
+                    f"（{n_bad} 期坏档已剔除）；ESI 每期为滚动十年窗的当期快照。")
+    except (OSError, json.JSONDecodeError, ImportError, AttributeError):
+        pass
+    return "趋势由历史全球档案回填；ESI 每期为滚动十年窗的当期快照。"
+
+
+def _trend_section(en: str, cache: dict, present: dict) -> str:
+    """「三 趋势」章：trend.combine 跨期序列 → 总被引轨迹 + 最强学科排名轨迹 + 进位时间线。
+
+    排名轨迹取当前在榜学科中 rank/m 分位最好、且趋势里有 ≥2 点序列的一个（y 轴反转）；
+    时间线逐在榜学科找首次「被引 ≥ 前 1% 阈值」与「排名 ≤ 1‰ 线」的期次（thr1/m 缺的期
+    跳过），按期升序。点数 <3 或读取异常 → 整章替换为一句 note，不报错。"""
+    try:
+        from monitor import trend as mt                              # noqa: PLC0415
+        t = mt.combine(en)
+    except Exception:                                                   # noqa: BLE001
+        t = {"en": en, "points": [], "fields": {}}
+    pts = t.get("points") or []
+    flds = t.get("fields") or {}
+    if len(pts) < 3:
+        return ('<section>\n<h2><span class="num">三</span>趋势</h2>\n'
+                '<p class="note">趋势数据不足，随期次积累解锁。</p>\n</section>')
+    body = [f'<p class="note" style="margin-top:2px">{_trend_note()}</p>',
+            '<p class="cap">总被引轨迹</p>',
+            charts.line_chart([("总被引", [(p["period"], p.get("total_cites")) for p in pts])])]
+    best = []
+    for stem, r in present.items():
+        m = cache["fields"][stem].get("m")
+        if m:
+            best.append((r[0] / m, stem))
+    best.sort()
+    for _pct, stem in best:
+        seq = [(f["period"], f.get("rank")) for f in flds.get(stem) or []]
+        if len(seq) >= 2:
+            body.append(f'<p class="cap">{_e(CN[stem])} · 全球排名轨迹</p>')
+            body.append(charts.line_chart([(_e(CN[stem]), seq)], y_invert=True))
+            break
+    tl: list[tuple[str, str]] = []
+    for stem in STEMS:
+        seq = flds.get(stem) or []
+        if stem not in present or not seq:
+            continue
+        first1 = next((f["period"] for f in seq if f.get("thr1") is not None
+                       and f.get("cites") is not None and f["cites"] >= f["thr1"]), None)
+        firstpm = next((f["period"] for f in seq
+                        if f.get("m") and f["rank"] <= (f["m"] + 1) // 10), None)
+        if first1:
+            tl.append((first1, f"{_e(CN[stem])}：{first1} 起进入前 1%（{len(seq)} 期在榜）"))
+        if firstpm:
+            tl.append((firstpm, f"{_e(CN[stem])}：{firstpm} 起进入前 1‰（{len(seq)} 期在榜）"))
+    if tl:
+        tl.sort(key=lambda kv: kv[0])
+        body.append('<p class="cap">进位时间线</p>')
+        body.append('<p class="note">' + "<br>".join(txt for _p, txt in tl) + "</p>")
+    return ('<section>\n<h2><span class="num">三</span>趋势</h2>\n' + "\n".join(body) + "\n</section>")
 
 
 def generate(cn: str, period: str | None = None) -> pathlib.Path:

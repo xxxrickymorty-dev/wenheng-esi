@@ -44,7 +44,7 @@ def test_cache_covers_built_in_schools():
 
 
 def test_render_minimal_report_hainan():
-    """最简版渲染（海大）：12 学科行、2 个前 1‰、五段俱全、无论文层无图表。"""
+    """基础渲染（海大）：12 学科行、2 个前 1‰、站位/俱乐部/预警/对标章俱全、无论文层。"""
     if not _PERIOD or not mr.cache_path(_PERIOD).exists():
         skip_unless("监测版期次缓存未建", _cache_probe)
     cache = mr.load_cache(_PERIOD)
@@ -55,7 +55,7 @@ def test_render_minimal_report_hainan():
         assert sec in html
     assert "省内对比" not in html, "对标不限省内，省内章已撤（rick 2026-10-31 裁）"
     assert "期刊集中度" not in html and "高被引 / 热点论文" not in html, "最简版不含论文层章"
-    assert "data:image" not in html and "<svg" not in html, "最简版不带图表"
+    assert "data:image" not in html, "图表只许内联 svg，不许 base64 位图"
     assert "红件清单" not in html, "监测版不借云大产线的红件清单语言"
 
 
@@ -135,3 +135,104 @@ def test_compare_insight_facts():
     assert "本次对比 3 校" in joined and "清华大学" in joined
     assert any("位次最靠前" in x for x in facts)
     assert mi.number_guard("编造 12345 名", facts) is True
+
+
+# ---------------------------------------------------------------- 渲染层丰富（趋势/分位/哑铃）
+_trend_probe = lambda: (mr.MONITOR_ROOT / "_trend" / "_index.json").exists()   # noqa: E731
+
+
+def test_render_trend_section_hainan():
+    """趋势章（海大，_trend 已入库）：三章趋势 + ≥2 张 svg + 时间线；后续章号顺延四五。"""
+    if not _PERIOD or not mr.cache_path(_PERIOD).exists():
+        skip_unless("监测版期次缓存未建", _cache_probe)
+    if not _trend_probe():
+        skip_unless("趋势库未建（monitor_data/_trend/_index.json 缺）", _trend_probe)
+    cache = mr.load_cache(_PERIOD)
+    html = mr.render("海南大学", _PERIOD, cache)
+    assert '<span class="num">三</span>趋势' in html
+    assert html.count("<svg") >= 2, "总被引轨迹 + 最强学科排名两张折线图"
+    assert "滚动十年窗" in html, "章首 note 应交代回填口径"
+    assert "进位时间线" in html, "海大 12 在榜学科应算得出进位事件"
+    assert "起进入前 1%" in html and "期在榜" in html
+    assert '<span class="num">四</span>进位预警' in html
+    assert '<span class="num">五</span>对标' in html
+
+
+def test_render_trend_insufficient_school():
+    """无趋势学校（政法不在任何一期档案里）：整章替换为不足 note，不出图。"""
+    if not _PERIOD or not mr.cache_path(_PERIOD).exists():
+        skip_unless("监测版期次缓存未建", _cache_probe)
+    cache = mr.load_cache(_PERIOD)
+    html = mr.render("中国政法大学", _PERIOD, cache)
+    assert "趋势数据不足，随期次积累解锁" in html
+    assert "<svg" not in html
+
+
+def test_render_percentile_and_rca_columns():
+    """站位表新增分位/相对强度列：分位恒有（rank/m），RCA 缺全球学科时降级 —，注入后出 ×值。"""
+    import re
+    if not _PERIOD or not mr.cache_path(_PERIOD).exists():
+        skip_unless("监测版期次缓存未建", _cache_probe)
+    cache = mr.load_cache(_PERIOD)
+    html = mr.render("海南大学", _PERIOD, cache)
+    assert "分位" in html and "相对强度" in html
+    assert re.search(r"前 \d+\.\d%", html), "分位应是一位小数百分比"
+    assert "部分覆盖下指数偏高" in html, "RCA 算法与局限必须写在 note 里"
+    if not cache.get("global_papers"):
+        assert '<td class="n">—</td>' in html, "缓存无全球学科时 RCA 降级为 —"
+    gp_file = mr.ESI_ROOT / _PERIOD / "全球学科.xlsx"
+    if not gp_file.exists():
+        skip_unless("全球学科.xlsx 缺", lambda: gp_file.exists())
+    gp = mr._global_papers(mr.ESI_ROOT / _PERIOD)
+    assert len(gp) == 22, "全球学科应解析出 22 行"
+    assert mr._global_papers(mr.ESI_ROOT / "190001") == {}, "缺文件 → 空字典不报错"
+    cache2 = dict(cache)
+    cache2["global_papers"] = gp
+    html2 = mr.render("海南大学", _PERIOD, cache2)
+    en = sch.find("海南大学")["en"]
+    mine = sum(r["schools"][en][2] for r in cache["fields"].values() if r["schools"].get(en))
+    g_sum = sum(gp.values())
+    chem = cache["fields"]["Chemistry"]["schools"][en]
+    rca = (chem[2] / mine) / (gp["CHEMISTRY"] / g_sum)
+    assert f"×{rca:.2f}" in html2, "化学行相对强度应与手算一致"
+
+
+def test_charts_line_chart():
+    """line_chart：polyline + 图例 + 缺值断段 + ref 虚线 + y_invert，纯函数输出 svg。"""
+    from monitor import charts as mc
+    svg = mc.line_chart([("甲", [("202001", 100.0), ("202003", 150.0), ("202005", None),
+                                 ("202007", 220.0)]),
+                         ("乙", [("202001", 80.0), ("202003", 150.0), ("202005", 190.0),
+                                 ("202007", 210.0)])])
+    assert svg.startswith("<svg") and svg.endswith("</svg>")
+    assert svg.count("<polyline") == 2, "两条线各一段连续 polyline"
+    assert "<rect" in svg, "甲的 202005 缺值后成孤点，应以点标记承接断线"
+    assert "甲" in svg and "乙" in svg, "图例放图下方"
+    svg2 = mc.line_chart([("排名", [("202001", 390), ("202005", 120)])],
+                         y_invert=True, ref_lines=[(30, "1‰ 线")])
+    assert "stroke-dasharray" in svg2 and "1‰ 线" in svg2
+
+
+def test_charts_dumbbell():
+    """dumbbell：每行两圆点（a/b 各一）+ 值标注 + 图例，纯函数输出 svg。"""
+    from monitor import charts as mc
+    svg = mc.dumbbell([("化学", 390, 45), ("数学", 120, 96)],
+                      name_a="海南大学", name_b="清华大学")
+    assert svg.startswith("<svg") and svg.endswith("</svg>")
+    assert svg.count("<circle") == 4, "两行 × 两端圆点"
+    assert "海南大学" in svg and "清华大学" in svg
+    assert "390" in svg and "45" in svg, "值标注在点旁"
+
+
+def test_compare_dumbbell_section():
+    """恰两校 → 哑铃小节（章二），矩阵顺延章三；三校不出现哑铃（矩阵已足够）。"""
+    if not _PERIOD or not mr.cache_path(_PERIOD).exists():
+        skip_unless("监测版期次缓存未建", _cache_probe)
+    cache = mr.load_cache(_PERIOD)
+    html2 = mcmp.render(["海南大学", "清华大学"], _PERIOD, cache)
+    assert "逐学科位次哑铃" in html2
+    assert "<svg" in html2 and "排名越小越好" in html2
+    assert '<span class="num">三</span>学科矩阵' in html2
+    html3 = mcmp.render(["海南大学", "清华大学", "贵州大学"], _PERIOD, cache)
+    assert "逐学科位次哑铃" not in html3
+    assert '<span class="num">二</span>学科矩阵' in html3

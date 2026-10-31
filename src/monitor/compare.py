@@ -12,6 +12,7 @@ import hashlib
 import html
 import pathlib
 
+from monitor import charts as mch
 from monitor import insight as mi
 from monitor import report as mr
 from monitor import schools as sch
@@ -114,6 +115,20 @@ def render(cns: list[str], period: str, cache: dict, insight: dict | None = None
             + "".join(cells) + "</tr>")
     matrix_head = "".join(f'<th class="n">{_e(n)}</th>' for n in col_names)
 
+    # ---- 恰好 2 校：逐学科位次哑铃（都上榜学科按位次差降序取前 8）；>2 校矩阵已足够 ----
+    dumbbell_html, num_matrix = "", "二"
+    if len(cols) == 2:
+        a, b = cols
+        shared = sorted((st for st in stems if st in a["present"] and st in b["present"]),
+                        key=lambda st: -abs(a["present"][st][0] - b["present"][st][0]))[:8]
+        if shared:
+            rows_dl = [(_cn(st), a["present"][st][0], b["present"][st][0]) for st in shared]
+            dumbbell_html = (
+                '<section>\n<h2><span class="num">二</span>逐学科位次哑铃</h2>\n'
+                + mch.dumbbell(rows_dl, name_a=a["cn"], name_b=b["cn"])
+                + '\n<p class="note">排名越小越好；只取两校都上榜学科中位次差最大的前 8 个。</p>\n</section>')
+            num_matrix = "三"
+
     return f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -145,8 +160,9 @@ td.dim{{color:var(--muted)}}td.n i{{font-style:normal;font-size:11px;color:var(-
 <p class="note">上榜＝22 学科全球榜内搜到该校；前 1%＝被引 ≥ 该学科机构阈值；前 1‰＝排名压过 1‰ 线（第 ⌊(m+1)/10⌋ 位）。</p>
 </section>
 
+{dumbbell_html}
 <section>
-<h2><span class="num">二</span>学科矩阵（全球排名 / 榜内所数）</h2>
+<h2><span class="num">{num_matrix}</span>学科矩阵（全球排名 / 榜内所数）</h2>
 <div class="mwrap"><table class="mtable">
 <thead><tr><th>学科</th>{matrix_head}</tr></thead>
 <tbody>{''.join(matrix_rows)}</tbody>
@@ -154,7 +170,7 @@ td.dim{{color:var(--muted)}}td.n i{{font-style:normal;font-size:11px;color:var(-
 <p class="note">着色＝档位：<span class="pill pm">前 1‰</span> <span class="pill ok">前 1%</span>；「—」＝该校该学科未上榜（无被引数据，不外推）。未入册校不进矩阵。</p>
 </section>
 
-{mr._insight_section(insight)}
+{mr._insight_section(insight, num="四" if dumbbell_html else "三")}
 
 <footer>
 数据来源：Clarivate ESI（Essential Science Indicators）{_e(period)} 期全局件（{_e(cache.get("download") or "—")} 下载）；
