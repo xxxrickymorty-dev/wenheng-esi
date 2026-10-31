@@ -150,19 +150,6 @@ def _school_total(cache: dict, en: str) -> list | None:
     return None
 
 
-def _province_rows(cache: dict, s: dict) -> list[list]:
-    """省内机构＝机构名含省关键词的 CHINA MAINLAND 行 ∪ 内置名单同省院校。"""
-    prov = s["prov"]
-    tokens = sch.PROVINCE_TOKENS.get(prov, [])
-    out: dict[str, list] = {}
-    builtin = {x["en"] for x in sch.SCHOOLS if x["prov"] == prov}
-    for row in cache["cn_inst"]:
-        name = row[0]
-        if name in builtin or any(t in name for t in tokens):
-            out[name] = row
-    return sorted(out.values(), key=lambda r: r[1])
-
-
 _CSS = """
 :root{--bg:#faf9f6;--card:#fff;--ink:#17181a;--ink-2:#3a3c40;--muted:#6f7278;--line:#e4e1da;
 --line-2:#efede7;--ok:#2f6f5e;--ok-bg:#e8f1ed;--warn:#9a6b14;--warn-bg:#f6efdf;--radius:5px}
@@ -203,7 +190,6 @@ def render(cn: str, period: str, cache: dict, insight: dict | None = None) -> st
     if s is None:
         raise KeyError(cn)
     en = s["en"]
-    prov = s["prov"]
     tag = "985 工程" if s["is985"] else "211 工程"
 
     rows = {stem: d["schools"].get(en) for stem, d in cache["fields"].items()}
@@ -285,7 +271,6 @@ def render(cn: str, period: str, cache: dict, insight: dict | None = None) -> st
     table_body = "".join(field_row(kv) for kv in pairs) or (
         '<tr><td colspan="9" class="note">22 学科榜内未搜到该校——低于收录线或未入册，'
         '本期不出学科行。</td></tr>')
-    prov_rows = _province_rows(cache, s)
     nb = cache["neighbors"].get(en) or []
 
     return f"""<!DOCTYPE html>
@@ -329,21 +314,12 @@ def render(cn: str, period: str, cache: dict, insight: dict | None = None) -> st
 </section>
 
 <section>
-<h2><span class="num">四</span>省内对比（{prov} · {len(prov_rows)} 所在册）</h2>
-<table>
-<thead><tr><th>机构</th><th class="n">总排名</th><th class="n">论文</th><th class="n">被引</th><th class="n">篇均</th><th class="n">高被引</th></tr></thead>
-<tbody>{"".join(inst_row(r) for r in prov_rows[:20])}</tbody>
-</table>
-<p class="note">名单＝机构名含「{prov}」关键词的内地机构 ∪ 内置名单同省院校；正式版进 org.provincial 配置人工确认。</p>
-</section>
-
-<section>
-<h2><span class="num">五</span>对标 · 总排名邻近（±3 名）</h2>
+<h2><span class="num">四</span>对标 · 总排名邻近（±3 名）</h2>
 <table>
 <thead><tr><th>机构</th><th class="n">总排名</th><th class="n">论文</th><th class="n">被引</th><th class="n">篇均</th><th class="n">高被引</th></tr></thead>
 <tbody>{"".join(f'<tr><td><b>{_e(str(r[0]).title())}</b></td><td class="n">{r[2]}</td><td class="n">{_fmt(r[3])}</td><td class="n">{_fmt(r[4])}</td><td class="n">{r[5]:.2f}</td><td class="n">{r[6]:.0f}</td></tr>' for r in nb)}</tbody>
 </table>
-<p class="note">样例用「总被引排名邻近」规则；正式版对标校进 org.peers 配置，可按学科分别设定。</p>
+<p class="note">自动邻近窗；跨省自由对比用插件页右上角「＋」进队列，一键出对比件（不限数量）。</p>
 </section>
 
 {_insight_section(insight)}
@@ -369,7 +345,7 @@ def _insight_section(insight: dict | None) -> str:
     body = _e(insight["text"]).replace("；", "；\n")
     return f"""
 <section>
-<h2><span class="num">六</span>解读</h2>
+<h2><span class="num">五</span>解读</h2>
 <p style="margin-top:14px;max-width:70ch;color:var(--ink-2)">{body}</p>
 <p class="note">{_e(how)}。</p>
 </section>"""

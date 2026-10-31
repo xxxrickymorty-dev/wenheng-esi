@@ -72,15 +72,6 @@ def facts_of(cn: str, cache: dict) -> list[str]:
         out.append(f"论文体量最大的是{cn_name(top_papers[0])}（{top_papers[1][2]:,.0f} 篇）")
     if total:
         out.append(f"全球机构总排名 {total[1]}/{cache['n_inst']}（按总被引）")
-    prov = s["prov"]
-    prov_rows = [r for r in cache["cn_inst"]
-                 if any(t in r[0] for t in sch.PROVINCE_TOKENS.get(prov, []))
-                 or r[0] in {x["en"] for x in sch.SCHOOLS if x["prov"] == prov}]
-    if prov_rows:
-        ordered = sorted(prov_rows, key=lambda r: r[3])
-        me_i = next((i for i, r in enumerate(ordered) if r[0] == en), None)
-        if me_i is not None:
-            out.append(f"省内（{prov}）在册机构 {len(ordered)} 所，本校按总被引列第 {me_i + 1} 位")
     nb = cache["neighbors"].get(en) or []
     if nb:
         me = next((r for r in nb if r[0] == en), None)

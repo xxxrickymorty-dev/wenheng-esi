@@ -1538,3 +1538,20 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
   .msch-grid{overflow:visible}
 }
 @media (prefers-reduced-motion:reduce){.msch-fl{transition:none}}
+
+/* 对比队列（2026-10-31 rick 定：对标不限省内——卡片＋入队，一键出对比件，不限数量） */
+.msch-topr{display:inline-flex;align-items:center;gap:6px}
+.msch-add{width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid var(--line);background:var(--card);color:var(--ink-2);
+  font-size:14px;line-height:1;cursor:pointer;padding:0;font-family:inherit}
+.msch-add:hover{border-color:var(--msgreen);color:var(--msgreen)}
+.msch-add.on{background:var(--msgreen);border-color:var(--msgreen);color:#F6F1DE}
+.msch-queue{position:sticky;bottom:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  border:1px solid var(--line);background:var(--card-hi);box-shadow:var(--shadow);
+  padding:10px 14px;margin-top:12px;z-index:2}
+.msch-queue-n{font-size:var(--fs-label);font-weight:600;color:var(--ink);white-space:nowrap}
+.msch-chips{display:inline-flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
+.msch-chip{border:1px solid var(--line);background:var(--card);color:var(--ink-2);
+  font-size:var(--fs-xs);padding:3px 9px;cursor:pointer;font-family:inherit}
+.msch-chip:hover{border-color:var(--bad);color:var(--bad)}
+.msch-go{flex:none}

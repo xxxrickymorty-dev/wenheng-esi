@@ -2887,6 +2887,7 @@ async def api_aiqa_log(request: Request, limit: int = 50):
 # 第三条产线（src/monitor/）：ESI-only 全校站位报告，只读全局件，不碰台账与 out/。
 # 契约：《监测版包契约-ESIonly（2026-10-31）》（工作区仓库① 设计文档）。
 
+from src.monitor import compare as monitor_compare        # noqa: E402
 from src.monitor import report as monitor_report          # noqa: E402
 from src.monitor import schools as monitor_schools        # noqa: E402
 
@@ -2948,6 +2949,49 @@ async def api_monitor_report(request: Request):
         return JSONResponse({"error": str(exc)}, status_code=404)
     url = f"/monitor/report/{urllib.parse.quote(cn)}/{period}.html"
     return {"period": period, "url": url, "cached": path.exists() and path.stat().st_size > 0}
+
+
+@app.post("/api/monitor/compare")
+@user_route
+async def api_monitor_compare(request: Request):
+    """对比队列一键生成：体 {schools: [中文名...]}，去重保序、不限数量（≥2）。"""
+    try:
+        body = await request.json()
+    except Exception:                                          # noqa: BLE001
+        body = {}
+    cns = [str(x).strip() for x in (body.get("schools") or []) if str(x).strip()]
+    if len(cns) < 2:
+        return JSONResponse({"error": "对比至少选 2 所学校",
+                             "hint": "点卡片右上角「＋」把学校放进对比队列"}, status_code=400)
+    unknown = [cn for cn in cns if monitor_schools.find(cn) is None]
+    if unknown:
+        return JSONResponse({"error": f"名单里没有：{'、'.join(unknown)}",
+                             "hint": "从清单里选，或先在 src/monitor/schools.py 里补录"}, status_code=404)
+    period = monitor_report.latest_period()
+    if not period:
+        return JSONResponse({"error": "没有可用的 ESI 期次数据"}, status_code=404)
+
+    def _gen():
+        return monitor_compare.generate(cns, period)
+    try:
+        path = await run_in_threadpool(_gen)
+    except FileNotFoundError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    url = f"/monitor/compare/{period}/{path.name}"
+    return {"period": period, "url": url, "n": len(cns)}
+
+
+@app.get("/monitor/compare/{period}/{fname}")
+@user_file_route
+def monitor_compare_page(request: Request, period: str, fname: str):
+    """对比报告页（登录后可看）。文件名确定性（校名集合哈希），重生成覆盖。"""
+    if not re.fullmatch(r"20\d{4}", period or "") or             not re.fullmatch(r"cmp_[0-9a-f]{12}\.html", fname or ""):
+        raise HTTPException(status_code=404)
+    p = monitor_report.MONITOR_ROOT / "_compare" / period / fname
+    if not p.exists():
+        raise HTTPException(status_code=404)
+    return FileResponse(p, media_type="text/html; charset=utf-8",
+                        headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/monitor/report/{cn}/{fname}")

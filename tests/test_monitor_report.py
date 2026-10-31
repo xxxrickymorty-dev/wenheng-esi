@@ -12,6 +12,7 @@ import pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 
 from _guard_registry import skip_unless            # noqa: E402
+from monitor import compare as mcmp                # noqa: E402
 from monitor import insight as mi                  # noqa: E402
 from monitor import report as mr                   # noqa: E402
 from monitor import schools as sch                 # noqa: E402
@@ -50,8 +51,9 @@ def test_render_minimal_report_hainan():
     html = mr.render("海南大学", _PERIOD, cache)
     assert html.count('<span class="en">') == 12, "海大应上榜 12 学科"
     assert "前 1‰ 俱乐部（2 学科）" in html
-    for sec in ("学科站位", "前 1‰ 俱乐部", "进位预警", "省内对比", "对标"):
+    for sec in ("学科站位", "前 1‰ 俱乐部", "进位预警", "对标"):
         assert sec in html
+    assert "省内对比" not in html, "对标不限省内，省内章已撤（rick 2026-10-31 裁）"
     assert "期刊集中度" not in html and "高被引 / 热点论文" not in html, "最简版不含论文层章"
     assert "data:image" not in html and "<svg" not in html, "最简版不带图表"
     assert "红件清单" not in html, "监测版不借云大产线的红件清单语言"
@@ -105,3 +107,31 @@ def test_render_insight_section():
     modelled = mr.render("海南大学", _PERIOD, cache,
                          insight={"text": "格局概括。", "mode": "model"})
     assert "模型解读（数字已过盾校验）" in modelled
+
+def test_compare_report_render_and_generate():
+    """对比件：两校矩阵、总量表、解读段；文件名确定性；未知校拒绝。"""
+    if not _PERIOD or not mr.cache_path(_PERIOD).exists():
+        skip_unless("监测版期次缓存未建", _cache_probe)
+    cache = mr.load_cache(_PERIOD)
+    html = mcmp.render(["海南大学", "清华大学", "中国政法大学"], _PERIOD, cache)
+    assert "总量对比" in html and "学科矩阵" in html
+    assert "海南大学" in html and "清华大学" in html
+    assert "未入册" in html, "政法大学应在总量表如实标注未入册"
+    assert html.count('<i>/') >= 12, "矩阵格应是 排名/榜内所数"
+    f1 = mcmp.generate(["海南大学", "清华大学"], _PERIOD)
+    f2 = mcmp.generate(["清华大学", "海南大学"], _PERIOD)
+    assert f1 == f2 and f1.exists(), "同集合不同顺序＝同一份文件（幂等）"
+    import pytest
+    with pytest.raises(KeyError):
+        mcmp.generate(["海南大学", "不存在大学"], _PERIOD)
+
+
+def test_compare_insight_facts():
+    """对比事实行：总量序＋分学科龙头，全带数字（数字白名单同源）。"""
+    if not _PERIOD or not mr.cache_path(_PERIOD).exists():
+        skip_unless("监测版期次缓存未建", _cache_probe)
+    facts = mcmp.facts_of(["海南大学", "清华大学", "贵州大学"], mr.load_cache(_PERIOD))
+    joined = "；".join(facts)
+    assert "本次对比 3 校" in joined and "清华大学" in joined
+    assert any("位次最靠前" in x for x in facts)
+    assert mi.number_guard("编造 12345 名", facts) is True
