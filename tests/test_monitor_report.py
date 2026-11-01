@@ -183,9 +183,9 @@ def test_render_percentile_and_rca_columns():
     gp_file = mr.ESI_ROOT / _PERIOD / "全球学科.xlsx"
     if not gp_file.exists():
         skip_unless("全球学科.xlsx 缺", lambda: gp_file.exists())
-    gp = mr._global_papers(mr.ESI_ROOT / _PERIOD)
+    gp = mr.global_papers(mr.ESI_ROOT / _PERIOD)
     assert len(gp) == 22, "全球学科应解析出 22 行"
-    assert mr._global_papers(mr.ESI_ROOT / "190001") == {}, "缺文件 → 空字典不报错"
+    assert mr.global_papers(mr.ESI_ROOT / "190001") == {}, "缺文件 → 空字典不报错"
     cache2 = dict(cache)
     cache2["global_papers"] = gp
     html2 = mr.render("海南大学", _PERIOD, cache2)
@@ -243,12 +243,12 @@ def test_compare_dumbbell_section():
 
 
 def test_report_data_structure():
-    """_report_data：五段齐＋解读段、nums 4 项、站位表 11 列头、显示值全部字符串化。"""
+    """report_data：五段齐＋解读段、nums 4 项、站位表 11 列头、显示值全部字符串化。"""
     if not _PERIOD or not mr.cache_path(_PERIOD).exists():
         skip_unless("监测版期次缓存未建", _cache_probe)
     cache = mr.load_cache(_PERIOD)
-    d = mr._report_data("海南大学", _PERIOD, cache,
-                        insight={"text": "总体格局稳中有进。", "mode": "rule"})
+    d = mr.report_data("海南大学", _PERIOD, cache,
+                       insight={"text": "总体格局稳中有进。", "mode": "rule"})
     assert [s["num"] for s in d["sections"]] == ["一", "二", "三", "四", "五"]
     assert d["insight"] == {"text": "总体格局稳中有进。", "mode": "rule"}
     assert len(d["nums"]) == 4
@@ -259,7 +259,7 @@ def test_report_data_structure():
     assert all(isinstance(c, str) for row in t1["rows"] for c in row), "显示值一律字符串化"
     assert d["sections"][1]["title"] == "前 1‰ 俱乐部（2 学科）"
     assert len(d["algorithms"]) == 3
-    d2 = mr._report_data("中国政法大学", _PERIOD, cache)
+    d2 = mr.report_data("中国政法大学", _PERIOD, cache)
     assert d2["nums"] == [] and d2["insight"] is None and d2["absent_note"]
     assert d2["sections"][0]["table"]["placeholder"], "未入册校站位表带 placeholder 合并行"
     html = mr.render("海南大学", _PERIOD, cache)
@@ -267,16 +267,16 @@ def test_report_data_structure():
 
 
 def test_docx_export_hainan():
-    """docx 导出：落 monitor_data/<校>/<期次>.docx；读回标题/表头与 _report_data 同源；幂等。"""
+    """docx 导出：落 monitor_data/<校>/<期次>.docx；读回标题/表头与 report_data 同源；幂等。"""
     if not _PERIOD or not mr.cache_path(_PERIOD).exists():
         skip_unless("监测版期次缓存未建", _cache_probe)
     import docx as pydocx
     from monitor import docx as mdx
     cache = mr.load_cache(_PERIOD)
-    d = mr._report_data("海南大学", _PERIOD, cache)
+    d = mr.report_data("海南大学", _PERIOD, cache)
     p0 = mr.MONITOR_ROOT / "海南大学" / f"{_PERIOD}.docx"
     if p0.exists():
-        p0.unlink()          # 装配层措辞升级后重建一次，保证读回的是当前 _report_data
+        p0.unlink()          # 装配层措辞升级后重建一次，保证读回的是当前 report_data
     p = mdx.export("海南大学", _PERIOD, cache)
     assert p == mr.MONITOR_ROOT / "海南大学" / f"{_PERIOD}.docx" and p.exists()
     mtime = p.stat().st_mtime
@@ -286,7 +286,7 @@ def test_docx_export_hainan():
     texts = [q.text for q in doc.paragraphs]
     assert texts[0] == f"海南大学 · 学科监测报告 · {_PERIOD}"
     joined = "\n".join(texts)
-    assert d["nums"][2]["value"] in joined, "总被引与 HTML 同源（同一 _report_data）"
+    assert d["nums"][2]["value"] in joined, "总被引与 HTML 同源（同一 report_data）"
     assert "三、趋势" in joined and "入榜与进位时间轴" in joined, "趋势章文字保留（图不放 docx）"
     t = doc.tables[0]
     assert [t.rows[0].cells[i].text for i in range(3)] == ["学科", "全球排名", "分位"]
@@ -356,7 +356,7 @@ def test_render_timeline_all_pre_tsinghua():
     if not _trend_probe():
         skip_unless("趋势库未建", _trend_probe)
     cache = mr.load_cache(_PERIOD)
-    d = mr._report_data("清华大学", _PERIOD, cache)
+    d = mr.report_data("清华大学", _PERIOD, cache)
     tl = d["sections"][2].get("timeline") or {}
     assert tl, "清华趋势点充足，时间轴规格应在"
     assert tl["pre_note"].startswith("档案起点前已入围"), "归并 note 承载 pre 学科"

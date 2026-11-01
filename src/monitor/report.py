@@ -20,6 +20,7 @@ import ledger_contract
 from parse_ledger import DISCIPLINES_CN
 
 from monitor import charts
+from monitor import facts as mfacts
 from monitor import schools as sch
 
 WENHENG_ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -62,11 +63,11 @@ def latest_period() -> str | None:
     return ds[0] if ds else None
 
 
-def _global_papers(base: pathlib.Path) -> dict[str, float]:
+def global_papers(base: pathlib.Path) -> dict[str, float]:
     """全球学科.xlsx → {学科 stem（规范大写）: WoS Documents}；文件缺失/不可解析 → {}。
 
     表头行＝「Research Fields」所在行，列序＝排名/Research Fields/WoS Documents/…；
-    文件里学科名大写可带 /（如 ENVIRONMENT/ECOLOGY），经 _norm 归一后必须落在 STEMS
+    文件里学科名大写可带 /（如 ENVIRONMENT/ECOLOGY），经 norm 归一后必须落在 STEMS
     内（版权行等杂行跳过）。站位表「相对强度」的全球分母数据源。"""
     path = base / "全球学科.xlsx"
     if not path.exists():
@@ -151,7 +152,7 @@ def build_cache(period: str) -> dict:
     cache = {"period": period, "built": t["built"],
              "download": download, "n_inst": t["n_inst"],
              "fields": t["fields"], "thr1": t["thr1"],
-             "global_papers": _global_papers(base),
+             "global_papers": global_papers(base),
              "cn_inst": cn_inst, "neighbors": neighbors}
     MONITOR_ROOT.mkdir(parents=True, exist_ok=True)
     cache_path(period).write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
@@ -170,18 +171,13 @@ _e = html.escape
 _fmt = lambda v: f"{v:,.0f}"
 
 
-def _school_total(cache: dict, en: str) -> list | None:
-    for row in cache["cn_inst"]:
-        if row[0] == en:
-            return row
-    return None
-
-
-def _report_data(cn: str, period: str, cache: dict, insight: dict | None = None) -> dict:
+def report_data(cn: str, period: str, cache: dict, insight: dict | None = None) -> dict:
     """数据装配层：HTML 渲染与 Word 导出（monitor/docx.py）共用的唯一数据源。
 
-    显示值在此一次算好并字符串化（千分位、×1.83、前 16.9%），两个消费者都不做第二套
-    换算；趋势 combine 的装配同样收在这里。零 LLM、零网络。
+    站位事实（上榜/前 1%/前 1‰/排名/接近度）统一取自 facts 层（monitor/facts.py，
+    20261101 C6 唯一派生），本函数只做显示值换算与章节装配：千分位、×1.83、
+    前 16.9%，两个消费者都不做第二套换算；趋势 combine 的装配同样收在这里。
+    零 LLM、零网络。
     """
     s = sch.find(cn)
     if s is None:
@@ -189,26 +185,24 @@ def _report_data(cn: str, period: str, cache: dict, insight: dict | None = None)
     en = s["en"]
     tag = "985 工程" if s["is985"] else "211 工程"
 
-    rows = {stem: d0["schools"].get(en) for stem, d0 in cache["fields"].items()}
-    present = {stem: r for stem, r in rows.items() if r}
-    total = _school_total(cache, en)
+    sf = mfacts.school_facts(cache, en)
+    present = sf["present"]
+    total = sf["total"]
     entered, near = [], []
     for stem in STEMS:
-        r = rows.get(stem)
-        if not r:
+        px = sf["prox"].get(stem)
+        if px is None:
             continue
-        t1 = cache["thr1"].get(norm(stem))
-        prox = (r[3] / t1) if t1 else None
-        item = {"stem": stem, "cn": CN[stem], "r": r, "prox": prox}
-        (entered if prox and prox >= 1 else near).append(item)
-    pairs = sorted(((stem, r) for stem, r in present.items()), key=lambda kv: -kv[1][3])
-    pm_set = {stem for stem, r in pairs if r[0] <= cache["fields"][stem]["line"]}
+        item = {"stem": stem, "cn": CN[stem], "r": present[stem], "prox": px}
+        (entered if px >= 1 else near).append(item)
+    pairs = sf["pairs"]
+    pm_set = set(sf["pm"])
     # 相对强度（RCA）分母：缓存无 global_papers（老缓存/缺全球学科.xlsx）→ 显示 —
     gp = cache.get("global_papers") or {}
     g_sum = sum(gp.values())
-    mine_sum = sum((r[2] or 0.0) for r in present.values())
-    miss_list = [CN[stem] for stem in STEMS if stem not in present]
-    nb = cache["neighbors"].get(en) or []
+    mine_sum = sf["mine_sum"]
+    miss_list = [CN[stem] for stem in sf["miss"]]
+    nb = sf["neighbors"]
     download = cache.get("download") or "—"
 
     def field_cells(kv):
@@ -312,35 +306,32 @@ def _report_data(cn: str, period: str, cache: dict, insight: dict | None = None)
                 figs.append({"cap": f"{CN[stem]} · 全球排名轨迹",
                              "svg": charts.line_chart([(_e(CN[stem]), seq)], y_invert=True)})
                 break
-        # ---- 入榜与进位时间轴：文字清单换甘特轴。每在榜学科 first_seen＝序列首个有 rank
-        # 的期次，entry1＝首次 cites≥thr1，entrypm＝首次 rank≤(m+1)//10（m/thr1 缺的期跳过）。
-        # pre（档案起点前已入围）＝首个可判定观测点即满足 1% 且 first_seen 在档案首期——
-        # 状态与档案同起、无法定位跨越点：有窗内 1‰ 事件的 pre 行照画（起点实心圆＋浅色
-        # 延伸），无任何事件的归并成一句 note；中途入榜后达标＝真实事件行，按 entry1 升序。
+        # ---- 入榜与进位时间轴：文字清单换甘特轴。事件判定唯一在 facts.entry_events
+        # （20261101 C6）：每在榜学科 first_seen＝序列首个有 rank 的期次，first1＝首次
+        # cites≥thr1，firstpm＝首次 rank≤(m+1)//10（m/thr1 缺的期跳过）。本函数只做
+        # pre 判定与装配：pre（档案起点前已入围）＝首个可判定观测点即满足 1% 且
+        # first_seen 在档案首期——状态与档案同起、无法定位跨越点：有窗内 1‰ 事件的
+        # pre 行照画（起点实心圆＋浅色延伸），无任何事件的归并成一句 note；中途入榜
+        # 后达标＝真实事件行，按 entry1 升序。
         sec3 = {"num": "三", "title": "趋势", "flow": True,
                 "notes": [_trend_note()], "charts": figs}
         periods = _trend_periods() or sorted({p["period"] for p in pts}
                                              | {f["period"] for seq in flds.values() for f in seq})
         p0 = periods[0] if periods else ""
+        evf = mfacts.entry_events(t, present)
         ev: list[dict] = []
         pre_names: list[str] = []
         items: list[str] = []
         for stem in STEMS:
-            seq = flds.get(stem) or []
-            if stem not in present or not seq:
+            ef = evf.get(stem)
+            if not ef:
                 continue
-            fs = next((f["period"] for f in seq if f.get("rank") is not None), None)
-            if fs is None:
-                continue
-            judge = [f for f in seq if f.get("thr1") is not None and f.get("cites") is not None]
-            f1 = next((f["period"] for f in judge if f["cites"] >= f["thr1"]), None)
-            fpm = next((f["period"] for f in seq
-                        if f.get("m") and f["rank"] <= (f["m"] + 1) // 10), None)
+            fs, f1, fpm = ef["first_seen"], ef["first1"], ef["firstpm"]
             if f1:
-                items.append(f"{CN[stem]}：{f1} 起进入前 1%（{len(seq)} 期在榜）")
+                items.append(f"{CN[stem]}：{f1} 起进入前 1%（{ef['n_seq']} 期在榜）")
             if fpm:
-                items.append(f"{CN[stem]}：{fpm} 起进入前 1‰（{len(seq)} 期在榜）")
-            pre = bool(judge) and f1 == judge[0]["period"] and fs == p0
+                items.append(f"{CN[stem]}：{fpm} 起进入前 1‰（{ef['n_seq']} 期在榜）")
+            pre = bool(ef["judge0"]) and f1 == ef["judge0"] and fs == p0
             entry1 = None if pre else f1
             if pre and (fpm is None or fpm == fs):
                 pre_names.append(CN[stem])                       # 无窗内事件 → 归并不逐行画
@@ -497,8 +488,8 @@ a{color:inherit}
 
 
 def render(cn: str, period: str, cache: dict, insight: dict | None = None) -> str:
-    """最简版站位报告：_report_data() 的 HTML 消费者（Word 导出与其共用同一份数据装配）。"""
-    d = _report_data(cn, period, cache, insight)
+    """最简版站位报告：report_data() 的 HTML 消费者（Word 导出与其共用同一份数据装配）。"""
+    d = report_data(cn, period, cache, insight)
     nums_html = "".join(
         f'<div class="nm"><div class="nl">{_e(n["label"])}</div>'
         + (f'<div class="nv">{_e(n["value"])}<small>{_e(n["suffix"])}</small></div>'

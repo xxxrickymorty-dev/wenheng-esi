@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""监测版 Word 导出：消费 report._report_data() 的同一份数据装配，出简洁公文版式。
+"""监测版 Word 导出：消费 report.report_data() 的同一份数据装配，出简洁公文版式。
 
-数字与 HTML 同源（共用 _report_data，无第二套换算）；导出不调模型（路由侧
+数字与 HTML 同源（共用 report_data，无第二套换算）；导出不调模型（路由侧
 insight=None，缺省即无解读段）。v1 取舍：图表（svg）不放 docx，趋势章保留章首注
 与进位时间线文字。落盘 monitor_data/<校名>/<期次>.docx，已存在直接返回（幂等）。
 """
@@ -47,7 +47,7 @@ def export(cn: str, period: str, cache: dict, insight: dict | None = None) -> pa
     out = mr.MONITOR_ROOT / cn / f"{period}.docx"
     if out.exists():
         return out
-    d = mr._report_data(cn, period, cache, insight)
+    d = mr.report_data(cn, period, cache, insight)
     doc = docx.Document()
     doc.add_heading(f'{d["cn"]} · 学科监测报告 · {d["period"]}', level=0)
     _small(doc, d["meta"])

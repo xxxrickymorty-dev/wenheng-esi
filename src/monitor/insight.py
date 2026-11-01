@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import re
 
+from monitor import facts as mfacts
 from monitor import report as mr
 from monitor import schools as sch
 
@@ -38,35 +39,28 @@ cn_name = lambda stem: mr.CN.get(stem, stem)  # noqa: E731
 def facts_of(cn: str, cache: dict, tr: dict | None = None) -> list[str]:
     """确定性事实行（一条一个关系，数字随行；渲染侧零换算）。
 
-    tr＝`trend.combine(en)` 的跨期序列（可缺）：给了才出趋势/进位/增幅类事实。
+    站位事实取自 facts 层（monitor/facts.py，20261101 C6 唯一派生），本函数只把
+    事实行化。tr＝`trend.combine(en)` 的跨期序列（可缺）：给了才出趋势/进位/增幅类
+    事实，进位判定同样走 facts.entry_events（与 report 时间轴同源）。
     """
     s = sch.find(cn)
     if s is None:
         return []
     en = s["en"]
     tag = "985 工程" if s["is985"] else "211 工程"
-    out: list[str] = []
-    total = next((r for r in cache["cn_inst"] if r[0] == en), None)
-    rows: dict[str, list] = {}
-    for stem, d in cache["fields"].items():
-        r = d["schools"].get(en)
-        if r:
-            rows[stem] = r
+    sf = mfacts.school_facts(cache, en)
+    rows = sf["present"]
     if not rows:
         return [f"{cn}（{tag}）本期未进入 22 学科全球机构榜（低于收录线或未入册），报告如实呈现，不外推"]
     n = len(rows)
-    thr1 = cache["thr1"]
-    entered = [stem for stem, r in rows.items()
-               if thr1.get(mr.norm(stem)) and r[3] >= thr1[mr.norm(stem)]]
-    near = [(stem, r[3] / thr1[mr.norm(stem)]) for stem, r in rows.items()
-            if thr1.get(mr.norm(stem)) and r[3] < thr1[mr.norm(stem)]]
-    pm = [stem for stem, r in rows.items() if r[0] <= cache["fields"][stem]["line"]]
-    out.append(f"{cn}（{tag}）本期上榜 {n}/22 学科")
-    if len(entered) == n:
+    out: list[str] = [f"{cn}（{tag}）本期上榜 {n}/22 学科"]
+    if len(sf["entered"]) == n:
         out.append(f"全部 {n} 个上榜学科已进入 ESI 前 1%")
+    near = [(stem, sf["prox"][stem]) for stem in sf["near"]]
     if near:
         stem, px = max(near, key=lambda kv: kv[1])
         out.append(f"离前 1% 最近的是{cn_name(stem)}（接近度 {px:.1f} 倍阈值）")
+    pm = sf["pm"]
     if pm:
         best = min(pm, key=lambda stem: rows[stem][0])
         d = cache["fields"][best]
@@ -80,15 +74,15 @@ def facts_of(cn: str, cache: dict, tr: dict | None = None) -> list[str]:
         out.append(f"论文体量最大的是{cn_name(top_papers[0])}（{top_papers[1][2]:,.0f} 篇）")
     if top_cp[0] not in (top_cites[0], top_papers[0]):
         out.append(f"篇均最高的是{cn_name(top_cp[0])}（{top_cp[1][4]:.2f}）")
-    if total:
-        out.append(f"全球机构总排名 {total[1]}/{cache['n_inst']}（按总被引）")
+    if sf["total"]:
+        out.append(f"全球机构总排名 {sf['total'][1]}/{cache['n_inst']}（按总被引）")
     # ---- 结构（top3 份额，与环图同口径）----
     psum = sum(r[2] for r in rows.values())
     if psum > 0:
         tops = sorted(rows.items(), key=lambda kv: -kv[1][2])[:3]
         shares = "、".join(f"{cn_name(st)} {r[2] / psum * 100:.1f}%" for st, r in tops)
         out.append(f"论文结构前三位：{shares}")
-    # ---- 趋势/进位（tr 给了才有）----
+    # ---- 趋势/进位（tr 给了才有；进位判定与 report 时间轴同源＝facts.entry_events）----
     if tr:
         pts = tr.get("points") or []
         if len(pts) >= 2:
@@ -101,25 +95,18 @@ def facts_of(cn: str, cache: dict, tr: dict | None = None) -> list[str]:
                 out.append(f"全球总排名同期自第 {first['total_rank']} 位进至第 {last['total_rank']} 位"
                            f"（{len(pts)} 期在档）")
         tl: list[tuple[str, str]] = []
-        for stem, seq in (tr.get("fields") or {}).items():
-            if stem not in rows or not seq:
-                continue
-            first1 = next((f["period"] for f in seq if f.get("thr1") is not None
-                           and f.get("cites") is not None and f["cites"] >= f["thr1"]), None)
-            firstpm = next((f["period"] for f in seq
-                            if f.get("m") and f.get("rank") is not None
-                            and f["rank"] <= (f["m"] + 1) // 10), None)
-            if first1:
-                tl.append((first1, f"{cn_name(stem)} {first1} 起进入前 1%"))
-            if firstpm:
-                tl.append((firstpm, f"{cn_name(stem)} {firstpm} 起进入前 1‰"))
+        for stem, ef in mfacts.entry_events(tr, rows).items():
+            if ef["first1"]:
+                tl.append((ef["first1"], f"{cn_name(stem)} {ef['first1']} 起进入前 1%"))
+            if ef["firstpm"]:
+                tl.append((ef["firstpm"], f"{cn_name(stem)} {ef['firstpm']} 起进入前 1‰"))
         if tl:
             tl.sort()
             out.append("进位时间线上最早的是" + tl[0][1] + "；最近的一次是" + tl[-1][1])
             pm_recent = [x for _, x in tl if "1‰" in x]
             if len(pm_recent) >= 2:
                 out.append(f"前 1‰ 事件共 {len(pm_recent)} 次，近一次为{pm_recent[-1].split(' ', 1)[-1]}")
-    nb = cache["neighbors"].get(en) or []
+    nb = sf["neighbors"]
     if nb:
         me = next((r for r in nb if r[0] == en), None)
         if me:

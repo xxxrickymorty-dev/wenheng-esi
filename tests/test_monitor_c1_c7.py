@@ -143,7 +143,7 @@ def test_c7_compare_generate_idempotent(monkeypatch, tmp_path: pathlib.Path):
 
 
 def test_c7_docx_export_checks_existence_first(monkeypatch, tmp_path: pathlib.Path):
-    """export 存在性检查在装配之前——命中时 _report_data（含 trend.combine 全库扫描）不执行。"""
+    """export 存在性检查在装配之前——命中时 report_data（含 trend.combine 全库扫描）不执行。"""
     from monitor import docx as mdx
     monkeypatch.setattr(mr, "MONITOR_ROOT", tmp_path)
     out = tmp_path / "海南大学" / f"{_PERIOD}.docx"
@@ -153,7 +153,7 @@ def test_c7_docx_export_checks_existence_first(monkeypatch, tmp_path: pathlib.Pa
     def boom(*a, **k):
         raise AssertionError("已存在时不得进入装配（trend.combine 全库扫描不该付费）")
 
-    monkeypatch.setattr(mr, "_report_data", boom)
+    monkeypatch.setattr(mr, "report_data", boom)
     p = mdx.export("海南大学", _PERIOD, {})
     assert p == out and p.read_bytes() == b"stale", "命中直接返回，旧件不被重写"
 

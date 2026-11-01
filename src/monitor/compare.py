@@ -4,6 +4,8 @@
 数据全部来自期次缓存（全局件一次读盘的产物）：总量表（每校一行）＋学科矩阵
 （学科 × 校，格＝全球排名/榜内所数，1‰ 与 1% 分档着色）＋解读段（与单校同构：
 确定性事实行 → `ai._writer.compose` 过盾 → 数字白名单 veto → 句骨架回落）。
+一校站位事实（上榜/前 1%/前 1‰/总排名）统一取自 facts 层（monitor/facts.py，
+20261101 C6 唯一派生），本模块只做对比版式的渲染。
 省份不设限——这正是对比队列对「省内无对手」场景（如贵州）的意义。
 """
 from __future__ import annotations
@@ -13,6 +15,7 @@ import html
 import pathlib
 
 from monitor import charts as mch
+from monitor import facts as mfacts
 from monitor import insight as mi
 from monitor import report as mr
 from monitor import schools as sch
@@ -29,20 +32,14 @@ def compare_path(cns: list[str], period: str) -> pathlib.Path:
 
 
 def _school_row(cache: dict, cn: str) -> dict | None:
+    """一校一行的对比列：数全取自 facts 层（school_facts，20261101 C6 唯一派生）。"""
     s = sch.find(cn)
     if s is None:
         return None
-    en = s["en"]
-    total = next((r for r in cache["cn_inst"] if r[0] == en), None)
-    rows = {stem: d["schools"].get(en) for stem, d in cache["fields"].items()}
-    present = {stem: r for stem, r in rows.items() if r}
-    norm = mr.norm                       # 归一单处实现（20261101 C1，原 lambda 已删）
-    entered = [stem for stem, r in present.items()
-               if cache["thr1"].get(norm(stem)) and r[3] >= cache["thr1"][norm(stem)]]
-    pm = [stem for stem, r in present.items() if r[0] <= cache["fields"][stem]["line"]]
-    return {"cn": cn, "en": en, "tag": "985" if s["is985"] else "211",
-            "total": total, "present": present, "n": len(present),
-            "n_entered": len(entered), "n_pm": len(pm)}
+    sf = mfacts.school_facts(cache, s["en"])
+    return {"cn": cn, "en": s["en"], "tag": "985" if s["is985"] else "211",
+            "total": sf["total"], "present": sf["present"], "n": len(sf["present"]),
+            "n_entered": len(sf["entered"]), "n_pm": len(sf["pm"])}
 
 
 def facts_of(cns: list[str], cache: dict) -> list[str]:
