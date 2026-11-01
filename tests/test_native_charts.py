@@ -192,6 +192,40 @@ def test_开关默认关_可用环境变量开回原生(monkeypatch):
     assert fill_docx.native_charts_enabled() is False
 
 
+def test_学院饼归并与_chart_data_同构():
+    """C9 收敛判据：三条渲染路径（PNG / 原生 XML / 图册 JSON）同一份归并。
+
+    同一份院系输入下，native 消费的归并条目（`charts.college_merged`，含色号）
+    必须与 `chart_data._college_items` 导出逐项相等；再用 `ov_college_pie`
+    实际写进 XML 的类目/数值缓存钉住消费链。输入对齐
+    tests/test_chart_data.py::test_college_items_merge_small_into_other。
+    """
+    import chart_data  # noqa: PLC0415
+
+    stats = {"units": [
+        {"unit": "A 学院", "cites": 900, "papers": 60},
+        {"unit": "B 学院", "cites": 80, "papers": 8},
+        {"unit": "C 中心", "cites": 10, "papers": 1},
+        {"unit": "D 所", "cites": 10, "papers": 1},
+    ]}
+    for mode in ("cites", "papers"):
+        merged, total = charts.college_merged(stats["units"], mode)
+        want = chart_data._college_items(stats, mode)
+        # 名称与色号逐项相等：「其他」恒为中性灰，真实学院按调色板顺序取色
+        assert [(m["name"], m["color"]) for m in merged] == \
+               [(w["name"], w["color"]) for w in want]
+        assert [float(m["value"]) for m in merged] == [w["value"] for w in want]
+        assert [w["pct"] for w in want] == \
+               pytest.approx([m["value"] / total * 100 for m in merged])
+        # native 实际画进 XML 的类目/数值与上述同源（ov_college_pie 不许私改归并）
+        xml = nrc.ov_college_pie(stats, mode)["xml"]
+        cat_seg = xml[xml.find("<c:cat>"):xml.find("</c:cat>")]
+        val_seg = xml[xml.find("<c:val>"):xml.find("</c:val>")]
+        assert re.findall(r"<c:v>([^<]*)</c:v>", cat_seg) == [w["name"] for w in want]
+        assert [float(v) for v in re.findall(r"<c:v>([^<]*)</c:v>", val_seg)] == \
+               [w["value"] for w in want]
+
+
 def test_原生轴刻度与_matplotlib_路径逐学科一致():
     """16 学科 × 6 图：`native_charts.auto_axis` 的刻度必须等于 `charts._auto_ylim`。"""
     if not _ledger_available():

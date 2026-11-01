@@ -211,28 +211,15 @@ def _overview_payload(wide: dict, periods: list[str], P: str, n_periods: int,
 
 
 def _college_items(stats, mode: str) -> list | None:
-    """学院饼图条目（合并口径与 `chart_college_pie` 逐行一致）。None＝本期无学院统计。"""
+    """学院饼图条目（归并唯一实现＝`charts.college_merged`）。None＝本期无学院统计。"""
     if not stats or not stats.get("units"):
         return None
-    raw = [((u["cites"] if mode == "cites" else u["papers"]), u["unit"])
-           for u in stats["units"]]
-    total = sum(v for v, _u in raw) or 1
-    TH = 0.015
-    keep = [(v, u) for v, u in raw if v / total >= TH]
-    small = [(v, u) for v, u in raw if v / total < TH]
-    if small:
-        keep.append((sum(v for v, _u in small), f"其他（{len(small)} 个单位）"))
-    palette = ["#4472C4", "#70AD47", "#FFC000", "#ED7D31", "#7030A0", "#00B0F0", "#C00000",
-               "#F4B183", "#8FAADC", "#C5E0B4", "#FFE699", "#B4A7D6", "#9DC3E6", "#A9D18E",
-               "#D9D9D9"]
-    out = []
-    for i, (v, u) in enumerate(keep):
-        gray = (small and i == len(keep) - 1)
-        out.append({"name": u, "value": _num(v),
-                    # 饼图标签的百分比也是画进 PNG 的数（v/total*100），一并导出
-                    "pct": _num(v / total * 100),
-                    "color": "#D9D9D9" if gray else palette[i % len(palette)]})
-    return out
+    merged, total = charts.college_merged(stats["units"], mode)
+    return [{"name": it["name"], "value": _num(it["value"]),
+             # 饼图标签的百分比也是画进 PNG 的数（v/total*100），一并导出
+             "pct": _num(it["value"] / total * 100),
+             "color": it["color"]}
+            for it in merged]
 
 
 # ---------- 预测图（序列由 report_forecast 出图时落档，这里只搬运） ----------

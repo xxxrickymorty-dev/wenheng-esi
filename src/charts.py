@@ -1033,29 +1033,49 @@ def _trim_white(path, pad=12):
               min(img.width, x1 + pad), min(img.height, y1 + pad))).save(path)
 
 
+#: 学院贡献度：<1.5% 的份额合并为「其他（k 个单位）」（与第 4 期原件同口径）。
+COLLEGE_TH = 0.015
+#: 配色：Office 家族蓝/绿/金/橙/紫/青/红 + 浅色系（不含褐/橄榄；rick 反馈配色不协调）。
+#: 最后一格的中性灰是「其他」专用（`COLLEGE_OTHER_COLOR`），真实学院按序取色。
+COLLEGE_PALETTE = ["#4472C4", "#70AD47", "#FFC000", "#ED7D31", "#7030A0", "#00B0F0", "#C00000",
+                   "#F4B183", "#8FAADC", "#C5E0B4", "#FFE699", "#B4A7D6", "#9DC3E6", "#A9D18E",
+                   "#D9D9D9"]
+COLLEGE_OTHER_COLOR = "#D9D9D9"     # 「其他」恒为中性灰（与真实学院区分，不靠调色板位置）
+
+
+def college_merged(units, mode):
+    """学院饼图条目归并——**唯一实现**（chart_data / native_report_charts 同吃本函数）。
+
+    <1.5% 的份额合并为「其他（k 个单位）」，条目保持输入顺序（不做排序，与
+    `chart_college_pie` 历史口径一致）；「其他」恒为中性灰。
+    返回 `(items, total)`：items＝[{"name", "value", "color"}]（value 为原始数值，
+    转 float/None 由调用方自理），total＝合并前总份（全 0 时按 1 算——标签百分比
+    `v / total * 100` 的分母与画图同源）。
+    """
+    raw = [((u["cites"] if mode == "cites" else u["papers"]), u["unit"]) for u in units]
+    total = sum(v for v, _u in raw) or 1
+    keep = [(v, u) for v, u in raw if v / total >= COLLEGE_TH]
+    small = [(v, u) for v, u in raw if v / total < COLLEGE_TH]
+    if small:
+        keep.append((sum(v for v, _u in small), f"其他（{len(small)} 个单位）"))
+    items = []
+    for i, (v, u) in enumerate(keep):
+        gray = (small and i == len(keep) - 1)
+        items.append({"name": u, "value": v,
+                      "color": COLLEGE_OTHER_COLOR if gray
+                      else COLLEGE_PALETTE[i % len(COLLEGE_PALETTE)]})
+    return items, total
+
+
 def chart_college_pie(stats, out_png, mode):
     """学院贡献度饼图（对标第4期两张）：mode='cites' 被引频次实心饼 / 'papers' 发文量环形。
 
-    <1.5% 的份额合并为「其他（k 个单位）」，避免小份额标签挤成一团。
+    <1.5% 的份额合并为「其他（k 个单位）」，避免小份额标签挤成一团（口径见 `college_merged`）。
     """
-    units = stats["units"]
-    raw = [((u["cites"] if mode == "cites" else u["papers"]), u["unit"]) for u in units]
-    total = sum(v for v, _u in raw) or 1
-    TH = 0.015
-    keep = [(v, u) for v, u in raw if v / total >= TH]
-    small = [(v, u) for v, u in raw if v / total < TH]
-    if small:
-        keep.append((sum(v for v, _u in small), f"其他（{len(small)} 个单位）"))
-    vals = [v for v, _u in keep]
-    labels = [u for _v, u in keep]
-    # 配色：Office 家族蓝/绿/金/橙/紫/青/红 + 浅色系（不含褐/橄榄；rick 反馈配色不协调）。
-    # 「其他」永远排最后 → 拿最后一格的**中性灰**，和真实学院区分开。
-    palette = ["#4472C4", "#70AD47", "#FFC000", "#ED7D31", "#7030A0", "#00B0F0", "#C00000",
-               "#F4B183", "#8FAADC", "#C5E0B4", "#FFE699", "#B4A7D6", "#9DC3E6", "#A9D18E",
-               "#D9D9D9"]
-    colors_list = [palette[i % len(palette)] for i in range(len(vals))]
-    if small:
-        colors_list[-1] = "#D9D9D9"     # 「其他」恒为中性灰（与真实学院区分，不靠调色板位置）
+    items, total = college_merged(stats["units"], mode)
+    vals = [it["value"] for it in items]
+    labels = [it["name"] for it in items]
+    colors_list = [it["color"] for it in items]
     fig = Figure(figsize=(6.6, 3.6))
     ax = fig.add_axes([0.005, 0.005, 0.99, 0.99])
     # adjustable="datalim"：保持图区铺满画布（不压边留白带），超出的那一维自动放限。

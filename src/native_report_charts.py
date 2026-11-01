@@ -315,23 +315,14 @@ def ov_top_by_year(w, period):
     return _body("top_by_year", xml, nc.build_data_xlsx(cats, series))
 
 
-#: 学院贡献度：<1.5% 的份额合并为「其他（k 个单位）」（与 `charts.chart_college_pie` 同口径）
-COLLEGE_TH = 0.015
-COLLEGE_PALETTE = ["4472C4", "70AD47", "FFC000", "ED7D31", "7030A0", "00B0F0", "C00000",
-                   "F4B183", "8FAADC", "C5E0B4", "FFE699", "B4A7D6", "9DC3E6", "A9D18E",
-                   "D9D9D9"]
-
-
 def ov_college_pie(cs, mode):
-    """学院贡献度饼图 / 环形图（mode='cites' 实心饼 / 'papers' 环形）。"""
-    raw = [((u["cites"] if mode == "cites" else u["papers"]), u["unit"]) for u in cs["units"]]
-    total = sum(v for v, _u in raw) or 1
-    keep = [(v, u) for v, u in raw if v / total >= COLLEGE_TH]
-    small = [(v, u) for v, u in raw if v / total < COLLEGE_TH]
-    if small:
-        keep.append((sum(v for v, _u in small), f"其他（{len(small)} 个单位）"))
-    cats = [u for _v, u in keep]
-    vals = [float(v) for v, _u in keep]
+    """学院贡献度饼图 / 环形图（mode='cites' 实心饼 / 'papers' 环形）。
+
+    归并口径（<1.5% 并入「其他」、条目顺序、色号）＝`charts.college_merged` 唯一实现。
+    """
+    merged, _total = charts.college_merged(cs["units"], mode)
+    cats = [it["name"] for it in merged]
+    vals = [float(it["value"]) for it in merged]
     series = [{"name": "被引频次" if mode == "cites" else "发文量", "values": vals}]
     key = "college_cites" if mode == "cites" else "college_papers"
     xml = nc.pie_chart_xml(series, cats, doughnut=(mode == "papers"), hole=42,
