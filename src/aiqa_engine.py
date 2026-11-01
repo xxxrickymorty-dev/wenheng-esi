@@ -24,29 +24,17 @@ try:                                       # 包内导入（server / src.ai 路�
     from . import aiqa_db
 except ImportError:                        # 直接以 src/ 为 sys.path 的脚本
     import aiqa_db
+try:                                       # 仓根在 sys.path 上（server / tests）
+    from src import metric_face
+except ImportError:                        # 只有 src/ 在 sys.path 上（流水线内部）
+    import metric_face
 
 # ---------------------------------------------------------------- 白名单
 
-#: 指标别名（中文问法 → 白名单指标名）。
-_METRIC_ALIAS = {
-    "总被引": "total_cites", "总被引频次": "total_cites", "被引": "total_cites",
-    "被引频次": "total_cites", "引用": "total_cites", "引用频次": "total_cites",
-    "论文": "papers", "论文数": "papers", "发文": "papers", "发文量": "papers",
-    "cnci": "cnci", "学科规范化的引文影响力": "cnci",
-    "接近度": "proximity_1pct", "前1%接近度": "proximity_1pct",
-    "esipref1接近度": "proximity_1pct",
-    "阈值": "threshold_1pct", "前1%阈值": "threshold_1pct",
-    "被引阈值": "threshold_1pct", "前百分之一阈值": "threshold_1pct",
-    "顶尖论文": "top_papers", "顶尖论文数": "top_papers",
-    "热点论文": "top_papers", "高被引论文": "top_papers", "高被引": "top_papers",
-    "千分之一阈值": "threshold_1permille", "前1‰阈值": "threshold_1permille",
-    "千分位": "permille_rank",
-    "国内排名": "rank", "排名": "rank",
-    "国际排名": "rank_intl", "世界排名": "rank_intl",
-    "百分位": "rank_pct", "排名百分位": "rank_pct",
-    "前1%机构数": "n_inst_1pct", "机构数": "n_inst_1pct",
-    "篇均被引": "avg_cites",
-}
+#: 指标别名（中文问法 → 白名单指标名）：唯一口径 `metric_face.FACE`（C5 收敛，
+#: 原 37 条字面量表删除；`ask` 列即本表，匹配姿势不变——按长度降序包含）。
+_METRIC_ALIAS = {alias: row["canon"] for row in metric_face.FACE
+                 for alias in row["ask"]}
 
 #: 白名单 SQL 列（report_table2 的列 → 中文名）。问数大表面。
 _TABLE2_COLS = {
@@ -134,21 +122,63 @@ def _metric_of(text: str) -> str | None:
     return None
 
 
-def _periods_in(text: str, filled: list[str]) -> list[str]:
-    """问句里的期次（YYYYMM）；「最新/当期/最新一期」→ 最新有数据期。"""
-    # 优先级：句内显式期次 > 上一期（有数据期倒数第二） > 最新。
+#: 相对期次词（唯一一份词表，C3 收敛）：对话前门（`ai/_dialog`）与引擎共用——
+#: 「上一期」锚着对话走，不是全局倒数第二。
+PREV_WORDS = ("上一期", "上期", "前一期")
+
+
+def relative_period(text: str, periods: list[str], anchor: str = "") -> str | None:
+    """相对期次指代（「上一期/上期/前一期」）→ 指代解析出的那一期；解析不出 → None。
+
+    相对期次解析的唯一一口（C3 收敛；原 `_dialog` 的锚点下一位与引擎的
+    `filled[-2]` 各一份实现，皆删）：
+    - `periods`＝候选期次（任意序；函数内统一降序去重）；
+    - `anchor`＝对话锚点（句内期次 > 槽位期次 > 最新，由对话前门裁定）——指代
+      相对锚点取「锚点的上一个候选期」；**缺省＝锚最新一期**（即全局倒数第二，
+      工作台直进的口径）；
+    - 锚点不在候选里、或锚点已是最早期（没有更早的可指）→ None（不猜，调用方
+      各自按既有回退走：对话侧不传参让引擎自解，引擎侧落最新/空）；
+    - 只有无锚（全局口径）且候选仅剩一期时退回该期本身（既有引擎口径：单期库
+      的「上一期」就是那一期，不猜更早）。
+    """
+    if not any(w in str(text or "") for w in PREV_WORDS):
+        return None
+    desc = sorted({str(p) for p in periods if p}, reverse=True)
+    if not desc:
+        return None
+    a = anchor or desc[0]
+    if a not in desc:
+        return None
+    i = desc.index(a)
+    if i + 1 < len(desc):
+        return desc[i + 1]
+    return None if anchor else a
+
+
+def _periods_in(text: str, filled: list[str], carried: str = "") -> list[str]:
+    """问句里的期次（YYYYMM）；「最新/当期/最新一期」→ 最新有数据期。
+
+    `carried`＝对话前门解出的期次（C3：槽位带过轮/「上一期」指代，显式传参，
+    不再拼进问句字符串）——与句内显式期次同权：落在有数据期里才生效，不在则
+    当没有它（对话侧期次列表与问数库的「有数据期」可以不同，此前的字符串拼接
+    天然就是这个口径）。
+    """
+    # 优先级：句内显式期次（含 carried） > 上一期（relative_period；缺省锚＝
+    # 全局倒数第二） > 最新。
     # 显式期次必须最先扫——「上一期呢（阈值）（物理学） 202605」里上一期词和
     # 显式期次并存时，答句内点名的那个（2026-10-31 追问链的教训）。
     found = [p for p in _PERIOD_RE.findall(text) if p in filled]
+    if carried and carried in filled:
+        found.append(carried)
     for y, m in re.findall(r"(20\d\d)年(\d{1,2})月", text):
         p = f"{y}{int(m):02d}"
         if p in filled:
             found.append(p)
     if found:
         return sorted(set(found))
-    if any(w in text for w in ("上一期", "上期", "前一期")):
-        # 上一期＝有数据期里的倒数第二期；只有一期时退回最新（不猜更早）
-        return [filled[-2]] if len(filled) >= 2 else ([filled[-1]] if filled else [])
+    prev = relative_period(text, filled)
+    if prev is not None:
+        return [prev]
     if any(w in text for w in ("最新", "当期", "本期", "最近一期", "最近")):
         return [filled[-1]] if filled else []
     return []
@@ -184,8 +214,12 @@ def _ynd_col_of(text: str) -> str:
 
 # ============================================================ 规划器（规则版）
 
-def plan(question: str, con) -> dict:
-    """规则规划器：问句 → 白名单查询规格（零数字出口；期次走确定性解析）。"""
+def plan(question: str, con, *, carried_period: str = "") -> dict:
+    """规则规划器：问句 → 白名单查询规格（零数字出口；期次走确定性解析）。
+
+    `carried_period`＝对话前门解出的期次（C3：槽位带过轮/「上一期」指代，
+    显式传参不进问句字符串）；工作台直进不传，指代按全局口径（倒数第二）自解。
+    """
     q = str(question or "").strip()
     filled = aiqa_db.view_periods(con)
     discs = _disc_map(con)
@@ -195,7 +229,7 @@ def plan(question: str, con) -> dict:
     # 去重保序（英文名自身也会命中）
     seen: set = set()
     hit_discs = [d for d in hit_discs if not (d in seen or seen.add(d))]
-    periods = _periods_in(q, filled)
+    periods = _periods_in(q, filled, carried=carried_period)
     metric = _metric_of(q)
 
     specs: list[dict] = []
@@ -471,17 +505,21 @@ def _disc_cn(con, disc) -> str:
     return r[0] if r else disc
 
 
-def render_text(con, question, result) -> str:
-    """结果 → 人话句子（模板拼装，零模型、零计算——数都来自执行器）。"""
+def render_row(con, r) -> str:
+    """单行渲染口（C5）：一行执行结果 → 人话；渲染不出（空大表/空概述）→ 空串。
+
+    与整块口 `render_text` 分开：**整块兜底句（「没有查到匹配的数据…」）只属
+    整块口**，单行口永不产出——对话前门逐行消费时不会把兜底句漏进对话流。
+    零模型、零计算——数都来自执行器。
+    """
     lines: list[str] = []
-    for r in result.get("rows") or []:
-        t = r.get("type")
-        if t == "series":
-            pts = [p for p in r["points"] if p["value"] is not None]
-            if not pts:
-                lines.append(f"{_disc_cn(con, r['disc'])}的"
-                             f"{_metric_cn(con, r['metric'])}暂无数据。")
-                continue
+    t = r.get("type")
+    if t == "series":
+        pts = [p for p in r["points"] if p["value"] is not None]
+        if not pts:
+            lines.append(f"{_disc_cn(con, r['disc'])}的"
+                         f"{_metric_cn(con, r['metric'])}暂无数据。")
+        else:
             first, last = pts[0], pts[-1]
             span = f"{first['period']} 至 {last['period']}" if len(pts) > 1 \
                 else last["period"]
@@ -489,55 +527,55 @@ def render_text(con, question, result) -> str:
                          f"{_metric_cn(con, r['metric'])}（{span}）："
                          f"共 {len(pts)} 期，最新 {last['period']} 为 "
                          f"{_fmt_val(r['metric'], last['value'])}。")
-        elif t == "compare":
-            items = r.get("items") or []
-            if not items:
-                lines.append(f"{r['period']} 期{_metric_cn(con, r['metric'])}"
-                             "无数据。")
-                continue
+    elif t == "compare":
+        items = r.get("items") or []
+        if not items:
+            lines.append(f"{r['period']} 期{_metric_cn(con, r['metric'])}"
+                         "无数据。")
+        else:
             head = "、".join(
                 f"{c['discipline_cn']} {_fmt_val(r['metric'], c['value'])}"
                 for c in items[:8])
             more = f"（等共 {len(items)} 个学科）" if len(items) > 8 else ""
             lines.append(f"{r['period']} 期{_metric_cn(con, r['metric'])}：{head}{more}。")
-        elif t == "at":
-            lines.append(f"{_disc_cn(con, r['disc'])}在 {r['period']} 的"
-                         f"{_metric_cn(con, r['metric'])}为 "
-                         f"{_fmt_val(r['metric'], r.get('value'))}。")
-        elif t == "overview":
-            facts = r.get("facts") or {}
-            for k in ("n_disc_1pct", "top_papers_now", "top_papers_delta",
-                      "rank_intl_now", "rank_intl_delta"):
-                if k in facts:
-                    lines.append(f"{_OVERVIEW_CN.get(k, k)}：{facts[k]}")
-        elif t == "table2":
-            for row in (r.get("rows") or []):
-                d_cn = _disc_cn(con, row.get("discipline", ""))
-                lines.append(
-                    f"{d_cn}（{r['period']}）：论文 {row.get('papers') or '—'}，"
-                    f"总被引 {(row.get('total_cites') or 0):,}，"
-                    f"CNCI {row.get('cnci') if row.get('cnci') is not None else '—'}，"
-                    f"顶尖论文 {row.get('top_papers') if row.get('top_papers') is not None else '—'}，"
-                    f"国内排名 {row.get('rank_cn_change') or '—'}，"
-                    f"千分位 {row.get('permille_rank') if row.get('permille_rank') is not None else '—'}，"
-                    f"接近度变化 {row.get('prox_change') or '—'}。")
-        elif t == "province_compare":
-            cn = _province_metric_cn(con, r.get("metric", ""))
-            items = r.get("items") or []
-            if not items:
-                lines.append(f"{r.get('period', '')} 期省域高校{cn}暂无数据。")
-                continue
+    elif t == "at":
+        lines.append(f"{_disc_cn(con, r['disc'])}在 {r['period']} 的"
+                     f"{_metric_cn(con, r['metric'])}为 "
+                     f"{_fmt_val(r['metric'], r.get('value'))}。")
+    elif t == "overview":
+        facts = r.get("facts") or {}
+        for k in ("n_disc_1pct", "top_papers_now", "top_papers_delta",
+                  "rank_intl_now", "rank_intl_delta"):
+            if k in facts:
+                lines.append(f"{_OVERVIEW_CN.get(k, k)}：{facts[k]}")
+    elif t == "table2":
+        for row in (r.get("rows") or []):
+            d_cn = _disc_cn(con, row.get("discipline", ""))
+            lines.append(
+                f"{d_cn}（{r['period']}）：论文 {row.get('papers') or '—'}，"
+                f"总被引 {(row.get('total_cites') or 0):,}，"
+                f"CNCI {row.get('cnci') if row.get('cnci') is not None else '—'}，"
+                f"顶尖论文 {row.get('top_papers') if row.get('top_papers') is not None else '—'}，"
+                f"国内排名 {row.get('rank_cn_change') or '—'}，"
+                f"千分位 {row.get('permille_rank') if row.get('permille_rank') is not None else '—'}，"
+                f"接近度变化 {row.get('prox_change') or '—'}。")
+    elif t == "province_compare":
+        cn = _province_metric_cn(con, r.get("metric", ""))
+        items = r.get("items") or []
+        if not items:
+            lines.append(f"{r.get('period', '')} 期省域高校{cn}暂无数据。")
+        else:
             head = "、".join(
                 f"{c['university']} {_fmt_val(r['metric'], c['value'])}"
                 for c in items)
             lines.append(f"{r.get('period', '')} 期省域高校{cn}：{head}。")
-        elif t == "ynd_rank":
-            cols = list(r.get("cols") or ["rank_intl"])
-            if r.get("mode") == "series":
-                pts = r.get("points") or []
-                if not pts:
-                    lines.append("云南大学排名序列暂无数据。")
-                    continue
+    elif t == "ynd_rank":
+        cols = list(r.get("cols") or ["rank_intl"])
+        if r.get("mode") == "series":
+            pts = r.get("points") or []
+            if not pts:
+                lines.append("云南大学排名序列暂无数据。")
+            else:
                 for c in cols:
                     vals = [(p["period"], p.get(c)) for p in pts
                             if p.get(c) is not None]
@@ -548,11 +586,11 @@ def render_text(con, question, result) -> str:
                         f"云南大学{_YND_COL_CN.get(c, c)}"
                         f"（{vals[0][0]} 至 {vals[-1][0]}）：共 {len(vals)} 期，"
                         f"最新 {vals[-1][0]} 为 {vals[-1][1]:,.0f}。")
+        else:
+            p = r.get("point") or {}
+            if not p:
+                lines.append("云南大学排名序列暂无数据。")
             else:
-                p = r.get("point") or {}
-                if not p:
-                    lines.append("云南大学排名序列暂无数据。")
-                    continue
                 got = [(c, p.get(c)) for c in cols if p.get(c) is not None]
                 if not got:
                     lines.append("云南大学排名序列暂无数据。")
@@ -564,6 +602,18 @@ def render_text(con, question, result) -> str:
                     body = "；".join(f"{_YND_COL_CN.get(c, c)} {v:,.0f}"
                                     for c, v in got)
                     lines.append(f"云南大学 {p['period']}：{body}。")
+    return "\n".join(lines)
+
+
+def render_text(con, question, result) -> str:
+    """整块渲染口：结果 → 人话句子（模板拼装，零模型、零计算——数都来自执行器）。
+
+    `question` 为兼容面保留（历史上就未参与渲染）。整块兜底句只在此出口：
+    一行都没渲染出来时给「可问…」的指引；单行消费者请走 `render_row`。
+    """
+    lines: list[str] = []
+    for r in result.get("rows") or []:
+        lines.extend(ln for ln in render_row(con, r).split("\n") if ln)
     if result.get("note"):
         lines.append(result["note"])
     if not lines:

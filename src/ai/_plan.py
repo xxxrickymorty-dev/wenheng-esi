@@ -31,6 +31,11 @@ from __future__ import annotations
 import json
 import pathlib
 
+try:                                        # 仓根在 sys.path 上（server / tests）
+    from src import metric_face
+except ImportError:                         # 只有 src/ 在 sys.path 上（流水线内部）
+    import metric_face
+
 #: 指标关键词（按具体到宽泛排序）→ 引擎规范名。**顺序即优先级**：
 #: 「1‰ / 千分之一」必须在「阈值」之前，否则「前 1‰ 阈值」会被误判成前 1% 阈值；
 #: 排名关键词放最后（与 v1「先指标表、后排名表」的判定顺序一致）。
@@ -93,17 +98,11 @@ def rule_specs(question, discs=(), period="") -> list:
 # ================================================================ 模型面（票 03）
 
 #: 规划面词汇：**无数字别名** → 引擎规范名（模型面零数字；规则面直接用规范名）。
-MODEL_METRICS = (
-    ("proximity", "proximity_1pct", "接近度"),
-    ("threshold", "threshold_1pct", "前 1% 被引阈值"),
-    ("threshold_permille", "threshold_1permille", "前 1‰ 被引阈值"),
-    ("total_cites", "total_cites", "总被引频次"),
-    ("papers", "papers", "论文数"),
-    ("cnci", "cnci", "CNCI"),
-    ("top_papers", "top_papers", "顶尖论文"),
-    ("rank_cn", "rank_cn", "国内排名"),
-    ("rank_intl", "rank_intl", "国际排名"),
-)
+#: 数据唯一来源＝`metric_face.FACE`（C5 收敛；此处只是模型面视图——顺序＝表中
+#: `model` 别名非空行的顺序，原字面量表删除）。
+MODEL_METRICS = tuple(
+    (row["model"], row["canon"], row["cn"])
+    for row in metric_face.FACE if row["model"])
 
 #: 别名 → 规范名。
 _ALIAS = {alias: canon for alias, canon, _cn in MODEL_METRICS}

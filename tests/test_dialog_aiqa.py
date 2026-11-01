@@ -40,9 +40,11 @@ class _Bomb:
 
 
 def run_dialog(text, *, root, slot="", history=None, qmetric="", qdisc="",
-               qa_direct=None, **ov):
+               qa_direct=None, periods=None, **ov):
     payload = {"text": text, "history": history or [],
                "qmetric": qmetric, "qdisc": qdisc}
+    if periods is not None:
+        payload["periods"] = periods
     if qa_direct is not None:
         payload["qa_direct"] = qa_direct
     with ai.using(data_root=root, brain=_Bomb(), **ov):
@@ -86,6 +88,42 @@ def _make_aiqa_db(data_root: pathlib.Path) -> None:
 def aiqa_root(tmp_path):
     """data_root = tmp_path/"out"（out/ 一层）；库在其下 _aidata/。"""
     _make_aiqa_db(tmp_path / "out")
+    return tmp_path / "out"
+
+
+def _make_aiqa_db3(data_root: pathlib.Path) -> None:
+    """三期最小库（202605/202607/202609）：全局倒数第二（202607）≠ 对话锚下一位
+    （槽位 202607 的上一期＝202605）——两入口在「上一期」上分岔，各自钉死。"""
+    from aiqa_db import _DDL
+
+    d = data_root / "_aidata"
+    d.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(str(d / "aiqa.sqlite"))
+    try:
+        con.executescript(_DDL)
+        con.executemany(
+            "INSERT OR REPLACE INTO dim_discipline (discipline, discipline_cn, ord) "
+            "VALUES (?,?,?)", [("Chemistry", "化学", 1)])
+        con.executemany(
+            "INSERT OR REPLACE INTO dim_metric (metric, metric_cn, better) VALUES (?,?,?)",
+            [("proximity_1pct", "ESI前1%接近度", "up")])
+        con.executemany(
+            "INSERT OR REPLACE INTO dim_period (period, label, ord, filled) VALUES (?,?,?,?)",
+            [("202605", "2026年5月", 0, 1), ("202607", "2026年7月", 1, 1),
+             ("202609", "2026年9月", 2, 1)])
+        con.executemany(
+            "INSERT OR REPLACE INTO facts (discipline, period, metric, source, value) "
+            "VALUES (?,?,?,?,?)",
+            [("Chemistry", p, "proximity_1pct", "", v)
+             for p, v in (("202605", 0.487), ("202607", 0.512), ("202609", 0.548))])
+        con.commit()
+    finally:
+        con.close()
+
+
+@pytest.fixture()
+def aiqa_root3(tmp_path):
+    _make_aiqa_db3(tmp_path / "out")
     return tmp_path / "out"
 
 
@@ -319,6 +357,109 @@ class TestEngine:
             con.close()
         kinds = [(s["metric"], s["kind"]) for s in qp["specs"]]
         assert kinds == [("threshold_1pct", "at"), ("proximity_1pct", "at")], kinds
+
+    def test_相对期次解析_唯一口带锚点(self):
+        from aiqa_engine import relative_period
+
+        filled3 = ["202605", "202607", "202609"]
+        # 显式锚：「上一期」相对锚点走（对话前门口径）
+        assert relative_period("上一期呢", filled3, anchor="202607") == "202605"
+        assert relative_period("上期的阈值", filled3, anchor="202609") == "202607"
+        # 缺省锚＝最新一期 → 全局倒数第二（工作台直进口径）
+        assert relative_period("上一期呢", filled3) == "202607"
+        assert relative_period("上一期呢", ["202607", "202609"]) == "202607"
+        # 单期库且无锚：退回该期本身（不猜更早）；显式锚已是最早期 → None（不猜）
+        assert relative_period("上一期呢", ["202609"]) == "202609"
+        assert relative_period("上一期呢", ["202605", "202607"], anchor="202605") is None
+        # 锚不在候选里 → None；没有相对词 → None
+        assert relative_period("上一期呢", filled3, anchor="202608") is None
+        assert relative_period("最新一期呢", filled3) is None
+
+    def test_工作台直进_上一期_全局倒数第二(self, aiqa_root3):
+        import sqlite3
+        from aiqa_engine import plan
+        con = sqlite3.connect(str(aiqa_root3 / "_aidata" / "aiqa.sqlite"))
+        try:
+            qp = plan("上一期的接近度", con)
+        finally:
+            con.close()
+        assert qp["specs"], qp
+        assert qp["specs"][0]["period"] == "202607", \
+            "工作台直进不传锚：上一期＝filled[-2]（202607），不追问对话"
+
+    def test_对话锚_上一期相对槽位走_不是全局倒数第二(self, aiqa_root3):
+        # 答过 202607（槽位）再问「上一期呢」→ 202605（锚点的上一个有数据期）；
+        # 全局倒数第二是 202607——同一句话两入口分岔，各自钉死（C3 行为不变）。
+        ans = run_dialog("上一期呢", root=aiqa_root3, qmetric="接近度", qdisc="化学",
+                         slot="202607", periods=["202609", "202607", "202605"])
+        assert ans.data["kind"] == "qa"
+        assert "202605" in ans.text and "0.487" in ans.text, ans.text
+        assert "0.512" not in ans.text, ans.text
+        assert ans.data["period"] == "202605", "答的是哪期就锚哪期（写回槽位）"
+
+    def test_词表单处_对话与引擎同一份(self):
+        import aiqa_engine
+        assert _dialog._PREV_WORDS is aiqa_engine.PREV_WORDS
+        assert _dialog._PREV_RE.pattern == "|".join(aiqa_engine.PREV_WORDS)
+        assert aiqa_engine.PREV_WORDS == ("上一期", "上期", "前一期")
+
+    def test_学科词唯一来源_parse_ledger(self):
+        from parse_ledger import DISCIPLINES_CN
+
+        rx = _dialog._disc_re()
+        assert len(DISCIPLINES_CN) == 22
+        for cn in DISCIPLINES_CN.values():
+            m = rx.search(cn)
+            assert m and m.group(0) == cn, cn
+
+
+# ============================================================ ⑨ 单行渲染口（C5）
+class TestSingleRow:
+    """C5：整块兜底句只属 render_text；对话逐行消费走 render_row 不漏兜底句。"""
+
+    def test_单行口_渲染不出的行_空串且不漏兜底句(self):
+        from aiqa_engine import render_row
+
+        for row in ({"type": "table2", "period": "202607", "rows": []},
+                    {"type": "overview", "period": "202607", "facts": {}},
+                    {"type": "overview", "facts": {"unknown_key": 1}}):
+            assert render_row(None, row) == "", row
+            assert "没有查到匹配的数据" not in render_row(None, row)
+
+    def test_单行口与整块口_非空行逐字一致(self):
+        import sqlite3
+        from aiqa_db import _DDL
+        from aiqa_engine import render_row, render_text
+
+        con = sqlite3.connect(":memory:")
+        try:
+            con.executescript(_DDL)
+            con.execute("INSERT INTO dim_discipline (discipline, discipline_cn, ord) "
+                        "VALUES ('Chemistry', '化学', 1)")
+            con.execute("INSERT INTO dim_metric (metric, metric_cn, better) "
+                        "VALUES ('proximity_1pct', 'ESI前1%接近度', 'up')")
+            series = {"type": "series", "metric": "proximity_1pct", "disc": "Chemistry",
+                      "points": [{"period": "202607", "value": 0.512},
+                                 {"period": "202609", "value": 0.548}]}
+            assert render_row(con, series) == render_text(con, "", {"rows": [series]})
+            one, two = series, dict(series, disc="Chemistry", points=[
+                {"period": "202609", "value": 0.548}])
+            assert render_text(con, "", {"rows": [one, two]}) == "\n".join(
+                [render_row(con, one), render_row(con, two)])
+        finally:
+            con.close()
+
+    def test_对话问数_没认出时兜底恰一段(self, aiqa_root):
+        ans = run_dialog("几百篇呢", root=aiqa_root)
+        assert ans.data["kind"] == "qa"
+        assert ans.text.count("没有查到匹配的数据") == 1, ans.text
+
+    def test_对话问数_空概述行跳过_兜底恰一段(self, aiqa_root):
+        # 最小库没有 report_overview 行：overview 行渲染不出 → 单行口自然跳过，
+        # 整块兜底（引擎自己的「可问…」）只出现一段——不随行数翻倍。
+        lines, _srcs, data, ok = _dialog._aiqa_reply("整体概况", aiqa_root)
+        assert ok is True and data["answered"] is True
+        assert len(lines) == 1 and "没有查到匹配的数据" in lines[0], lines
 
 
 # ============================================================ ⑧ 直答开关（二步补）

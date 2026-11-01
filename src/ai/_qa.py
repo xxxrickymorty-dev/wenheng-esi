@@ -54,6 +54,10 @@ try:                                        # 仓根在 sys.path 上（server / 
     from src import state_store
 except ImportError:                         # 只有 src/ 在 sys.path 上（流水线内部）
     import state_store                      # type: ignore[no-redef]
+try:                                        # 指标脸面唯一口径（C5；叶子模块两向可引）
+    from src import metric_face
+except ImportError:
+    import metric_face
 
 #: 检索词里没有信息量的常见词（切词后过滤）。
 _STOP = {"什么", "多少", "几门", "几个", "哪些", "这期", "本期", "请问", "怎么", "如何",
@@ -194,32 +198,19 @@ _TOOL_OPS = {"query_series": "series", "query_at": "at",
              "query_events": "events", "query_overall_rank": "overall_rank",
              "query_compare": "compare"}
 
-#: 指标脸面（工具面零数字——`MODEL_METRICS` 的中文名带「1%」，不能直接进 schema）：
-#: 别名 → (短名, 话术)。短名进回执摘要（给人看），话术进工具说明（给模型看）。
-_METRIC_FACE = {
-    "proximity": ("接近度", "接近度（被引与门槛的比值）"),
-    "threshold": ("前百分之一阈值", "进入前百分之一所需的被引门槛"),
-    "threshold_permille": ("前千分之一阈值", "进入前千分之一所需的被引门槛"),
-    "total_cites": ("总被引频次", "总被引频次"),
-    "papers": ("论文数", "论文数"),
-    "cnci": ("CNCI", "篇均被引影响力"),
-    "top_papers": ("顶尖论文", "顶尖论文数"),
-    "rank_cn": ("国内排名", "国内排名"),
-    "rank_intl": ("国际排名", "国际排名"),
-}
+#: 指标脸面（工具面零数字）唯一口径＝`metric_face.FACE`：短名进回执摘要（给人看），
+#: 话术进工具说明（给模型看）；原本地 `_METRIC_FACE` 表随 C5 删除。
 
 #: 默认看最近若干期（与台账段「最近六期」同口径）。
 _SPAN_N = 6
 
 
 def _metric_index() -> dict:
-    """别名 → (引擎规范名, 短名, 话术)：与 `_plan.MODEL_METRICS` 同一张表（唯一口径）。"""
-    from . import _plan                                        # noqa: PLC0415
-
+    """别名 → (引擎规范名, 短名, 话术)：唯一口径 `metric_face.FACE` 的模型面行。"""
     out = {}
-    for alias, canon, _cn in _plan.MODEL_METRICS:
-        short, hint = _METRIC_FACE.get(alias, (canon, canon))
-        out[alias] = (canon, short, hint)
+    for row in metric_face.FACE:
+        if row["model"]:
+            out[row["model"]] = (row["canon"], row["short"], row["hint"])
     return out
 
 
@@ -508,7 +499,8 @@ def _disc_segment(item, entered=None):
     if top is not None:
         parts.append(f"顶尖论文 {top} 篇；")
     if cites is not None and thr:
-        parts.append(f"前 1% 阈值 {thr}，前 1% 接近度 {cites / thr * 100:.2f}%（＝总被引÷阈值）；")
+        parts.append(f"前 1% 阈值 {thr}，前 1% 接近度 "
+                     f"{metric_face.proximity_pct(cites, thr):.2f}%（＝总被引÷阈值）；")
         gap = _row_num(row, "thr_1pct_gap", int)
         tail = ""
         if gap is not None:
@@ -524,7 +516,8 @@ def _disc_segment(item, entered=None):
         if tail:
             parts.append(tail + "；")
     if cites is not None and thr_m:
-        parts.append(f"前 1‰ 阈值 {thr_m}，前 1‰ 接近度 {cites / thr_m * 100:.2f}%；")
+        parts.append(f"前 1‰ 阈值 {thr_m}，前 1‰ 接近度 "
+                     f"{metric_face.proximity_pct(cites, thr_m):.2f}%；")
     if str(row.get("prox_change") or "").strip():
         parts.append(f"接近度较上期 {str(row['prox_change']).strip()}；")
     if str(row.get("rank_cn_change") or "").strip():
@@ -578,9 +571,9 @@ def _disc_index(items):
         cites, thr = _row_num(row, "total_cites"), _row_num(row, "thr_1pct")
         thr_m = _row_num(row, "thr_1permille")
         if cites and thr:
-            add(f"{cites / thr * 100:.2f}", "derived_1pct")
+            add(f"{metric_face.proximity_pct(cites, thr):.2f}", "derived_1pct")
         if cites and thr_m:
-            add(f"{cites / thr_m * 100:.2f}", "derived_1permille")
+            add(f"{metric_face.proximity_pct(cites, thr_m):.2f}", "derived_1permille")
         idx[item["en"]] = per
     return idx
 

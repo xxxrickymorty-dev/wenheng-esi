@@ -109,15 +109,35 @@ _LATEST = re.compile(r"(?:最新|最近)(?:的(?![几哪])|[一那]?期|的那?�
 #: （2026-10-13 的既定话术钉着；引擎的多期序列以后再并，先不改这轮的路由面）。
 _SERIES_SPAN = re.compile(r"(?:最近|最新)\s*的?\s*(?:[几六两三四五七八九十多]|\d+)\s*期")
 
-#: 学科词（22 规范学科的中文面，抄 `parse_ledger.DISCIPLINES_CN` 的值）：问数槽要认
-#: 「那材料科学呢」这类换学科追问；对话只认词，不产生任何台账数字。
-_DISC_CN = ("农业科学", "生物学与生物化学", "化学", "临床医学", "计算机科学", "经济与商业",
-            "工程学", "环境生态学", "地球科学", "免疫学", "材料科学", "数学", "微生物学",
-            "分子生物学与遗传学", "多学科", "神经系统科学与行为学", "药理学与毒理学",
-            "物理学", "植物与动物学", "精神病学与心理学", "社会科学", "空间科学")
-_DISC_RE = re.compile("|".join(sorted(_DISC_CN, key=len, reverse=True)))
-#: 上一期/上期/前一期：问数续聊的期次偏移词（引擎侧 `_periods_in` 同词表）。
-_PREV_RE = re.compile(r"上一期|上期|前一期")
+#: 相对期次词（唯一词表＝`aiqa_engine.PREV_WORDS`，C3 收敛，原字面量正则删除）：
+#: 问数续聊的期次偏移词，对话侧只编译正则。护卫：dialog 会被 `src.ai` 与 `ai`
+#: 两种姿势导入，只挂仓库根时顶层引擎引不进来——该环境下 qa 直调本也不可用，
+#: 词表回退内置一份，对话其余分支照常。
+try:
+    from aiqa_engine import (PREV_WORDS as _PREV_WORDS,                   # noqa: PLC0415
+                             relative_period as _relative_period)
+except ImportError:                                            # pragma: no cover
+    _PREV_WORDS = ("上一期", "上期", "前一期")
+    _relative_period = None
+_PREV_RE = re.compile("|".join(_PREV_WORDS))
+
+#: 学科词（22 规范学科的中文面）：问数槽要认「那材料科学呢」这类换学科追问；
+#: 对话只认词，不产生任何台账数字。唯一来源＝`parse_ledger.DISCIPLINES_CN`
+#: （C5 收敛，原手抄表删除，值已核对逐条一致）；parse_ledger 顶层带
+#: pandas/openpyxl，不进 AI 层启动路径 → 首用惰性编译。
+_DISC_RE_CACHE: list = []
+
+
+def _disc_re() -> re.Pattern:
+    """学科词正则（22 规范学科中文面，按名长降序交替）。台账缺席 → 永不匹配。"""
+    if not _DISC_RE_CACHE:
+        try:
+            from parse_ledger import DISCIPLINES_CN             # noqa: PLC0415
+            names = sorted(DISCIPLINES_CN.values(), key=len, reverse=True)
+        except ImportError:                                     # pragma: no cover
+            names = []
+        _DISC_RE_CACHE.append(re.compile("|".join(names) if names else r"(?!x)x"))
+    return _DISC_RE_CACHE[0]
 
 _REPORT_INTENT = re.compile(r"报告|出稿|生成|重出|再出|改做|做")
 
@@ -838,12 +858,15 @@ def _qa_pointer(row: dict) -> tuple[str, str]:
     return f"aiqa/facts/{row.get('disc', '')}/{row.get('metric', '')}", "台账事实（问数库）"
 
 
-def _aiqa_reply(question: str, root):
+def _aiqa_reply(question: str, root, carried_period: str = ""):
     """问数直调（2026-10-31）：一句话 → 问数引擎的数字＋图型建议。
 
     **照他校简报的先例**：不经模型、不经既有 qa 能力——`plan/execute` 是白名单
     参数化 SQL 于只读连接，回答里的每个数字都能回问数库逐格核。行与来源一一对应
     （同 `_compare_reply` 的形状，登记直接复用 `_register_panel`）。
+
+    `carried_period`＝对话前门解出的期次（C3：槽位带过轮/「上一期」指代，显式
+    传参，不再拼进问句字符串；引擎侧与句内显式期次同权）。
 
     `root` 是数据根（out/ 一层）；库在 `<root>/../out/_aidata/aiqa.sqlite`
     （`aiqa_db.db_path` 唯一口径）。缺席 → 讲人话空态（ok=False），不把
@@ -865,25 +888,25 @@ def _aiqa_reply(question: str, root):
                 None, False)
     t0 = time.perf_counter()
     try:
-        qp = _aiqa_engine.plan(question, con)
+        qp = _aiqa_engine.plan(question, con, carried_period=carried_period)
         result = _aiqa_engine.execute(con, qp["specs"])
         chart = _aiqa_engine.suggest_chart(con, qp["specs"], result)
         chart_data = _aiqa_engine.to_chart_data(con, chart, result)
         lines: list[str] = []
         srcs: list[dict] = []
         for row in result.get("rows") or []:
-            # 整行空结果的两种类型不产行，逐行渲染会把引擎的兜底句误带进来——跳过。
-            if row.get("type") == "table2" and not (row.get("rows") or []):
+            # 单行口（C5）：一行一行渲染；渲染不出（空大表/空概述）＝空串自然跳过。
+            # 整块兜底句只属整块口，不会漏进对话流（原「跳空行＋两处预过滤」随删）。
+            body = _aiqa_engine.render_row(con, row)
+            if not body.strip():
                 continue
-            if row.get("type") == "overview" and not (row.get("facts") or {}):
-                continue
+            row_lines = body.split("\n")
             ptr, label = _qa_pointer(row)
-            for ln in _aiqa_engine.render_text(con, question, {"rows": [row]}).split("\n"):
-                if ln.strip():
-                    lines.append(ln)
-                    srcs.append({"pointer": ptr, "label": label})
+            lines.extend(row_lines)
+            srcs.extend({"pointer": ptr, "label": label} for _ in row_lines)
         if not lines:
             # 没认出指标/学科等：用引擎自己的人话兜底（「可问…」），不另写一套。
+            # C5 后这是整块兜底句进对话流的唯一位置。
             lines = _aiqa_engine.render_text(con, question, {"rows": []}).split("\n")
             srcs = [{"pointer": "aiqa/plan", "label": "问数口径"}] * len(lines)
         if result.get("note"):
@@ -949,7 +972,7 @@ def build(root, period, payload):                                  # noqa: ARG00
     norm_text = unicodedata.normalize("NFKC", text)
     metric_hit = bool(_METRIC.search(norm_text))
     rel_hit = bool(_PREV_RE.search(norm_text))
-    m_disc_now = _DISC_RE.search(norm_text)
+    m_disc_now = _disc_re().search(norm_text)
     slot_qm = str(payload.get("qmetric") or "")
     slot_qd = str(payload.get("qdisc") or "")
     qctx = bool(slot_qm or slot_qd)
@@ -1027,22 +1050,24 @@ def build(root, period, payload):                                  # noqa: ARG00
             eff += f"（{slot_qm}）"
         if slot_qd and (not m_disc_now or m_disc_now.group(0) != slot_qd):
             eff += f"（{slot_qd}）"
+        periods_desc = _periods_from(payload)
+        carry_period = ""
         if rel_hit and not _PERIOD.search(norm_text):
-            # 上一期锚点：句内期次 > 槽位期次 > 最近有效期次；取「有数据期」降序列的下一位
+            # 上一期锚点（C3：相对期次解析唯一口＝aiqa_engine.relative_period）：
+            # 句内期次 > 槽位期次 > 最近有效期次；「上一期」＝锚点的上一个候选期
             # （答过 202607 再问上一期＝202605——锚着对话走，不是全局倒数第二）。
-            periods_desc = _periods_from(payload)
+            # 解出的期次以**参数**传引擎（不再拼进问句字符串）；解析不出（锚点已
+            # 是最早期/不在候选）→ 不传，引擎按全局口径自解——与旧的拼接逐字一致。
             anchor = next((x for x in (_period_in_text(norm_text, periods_desc),
                                        slot, periods_desc[0] if periods_desc else "") if x), "")
-            prev = ""
-            if anchor and anchor in periods_desc:
-                i = periods_desc.index(anchor)
-                prev = periods_desc[i + 1] if i + 1 < len(periods_desc) else ""
-            if prev:
-                eff += f" {prev}"
+            if _relative_period is not None:
+                carry_period = _relative_period(norm_text, periods_desc,
+                                                anchor=anchor) or ""
         elif slot and not _PERIOD.search(norm_text):
-            eff += f" {slot}"
+            carry_period = slot
         with _record.tool_call("aiqa", "问数", {"question": eff}) as tc:
-            lines, srcs, qa_data, qa_ok = _aiqa_reply(eff, root)
+            lines, srcs, qa_data, qa_ok = _aiqa_reply(eff, root,
+                                                      carried_period=carry_period)
             tc.finish("问数引擎按台账答了这一句" if qa_ok else "问数底表还没生成",
                       ok=qa_ok)
         rcpts.append(tc.receipt)
@@ -1140,9 +1165,13 @@ def build(root, period, payload):                                  # noqa: ARG00
         data["qa"] = qa_data
         _m_hits = [m.group(0) for m in _METRIC.finditer(norm_text)]
         data["qmetric"] = slot_qm or (max(_m_hits, key=len) if _m_hits else "")
-        # 答的是哪期就锚哪期（写回 period 槽）：「上一期呢」的锚点跟着对话走
-        data["period"] = _period_in_text(unicodedata.normalize("NFKC", eff),
-                                         _periods_from(payload))
+        # 答的是哪期就锚哪期（写回 period 槽）：「上一期呢」的锚点跟着对话走。
+        # C3 后期次以参数传引擎（eff 里不再有它）：句内可辨的期次优先，否则落
+        # carry（槽位带过/「上一期」解出的那一期；不在候选里则不写回——与旧的
+        # 「拼接后按候选扫」同口径）。
+        _hit = _period_in_text(unicodedata.normalize("NFKC", eff), periods_desc)
+        data["period"] = _hit or (carry_period if carry_period in periods_desc
+                                  else "")
         data["qdisc"] = slot_qd or (m_disc_now.group(0) if m_disc_now else "")
     if kernel_record is not None:
         # 内核轮记录面（票 03）：核心据此把该轮 ai_calls 的 mode/backend/fallback/
