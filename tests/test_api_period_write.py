@@ -245,14 +245,16 @@ class Test权限门:
 
 class Test路由存在:
     def test_sign路由是POST_api(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.post("/api/periods/{period}/sign")' in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.post("/api/periods/{period}/sign")' in src
 
     def test_forecast_choice读回路由是GET_api(self):
         """读回是 GET。2026-09-24 修：曾被误挂成 @app.post，把保存请求抢走了。"""
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.get("/api/periods/{period}/forecast-choice")' in src
-        assert '@app.post("/api/periods/{period}/forecast-choice")' not in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.get("/api/periods/{period}/forecast-choice")' in src
+        assert '@router.post("/api/periods/{period}/forecast-choice")' not in src
 
 
 class Test路由顺序不打架:
@@ -264,11 +266,17 @@ class Test路由顺序不打架:
 
     @staticmethod
     def _first_hit(path, method):
+        # FastAPI 0.141 起 include_router 只往 app.routes 放惰性 _IncludedRouter，
+        # 不再把子路由摊平（见 test_api_acquisition_open.Test路由 的说明）。
+        # 注册事实看 OpenAPI（公开契约，跨版本稳）；「哪条处理器接住」看分册
+        # router 上的注册顺序——forecast-choice 读口在写口之前就是行为契约。
         from server.app import app
-        for r in app.routes:
-            if getattr(r, "path", "") == path and method in (getattr(r, "methods", None) or set()):
-                return r.endpoint.__name__
-        return None
+        from server.routes import periods as periods_routes
+        ops = app.openapi()["paths"].get(path) or {}
+        assert method.lower() in ops, f"OpenAPI 里没有 {path} 的 {method}"
+        return next((r.endpoint.__name__ for r in periods_routes.router.routes
+                     if getattr(r, "path", "") == path
+                     and method.upper() in (getattr(r, "methods", None) or set())), None)
 
     def test_POST_forecast_choice由写入处理器接住(self):
         assert self._first_hit("/api/periods/{period}/forecast-choice", "POST") == "api_forecast_choice"
@@ -278,16 +286,19 @@ class Test路由顺序不打架:
 
 class TestP2写操作:
     def test_revoke路由存在(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.post("/api/periods/{period}/revoke")' in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.post("/api/periods/{period}/revoke")' in src
 
     def test_fill路由存在(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.post("/api/periods/{period}/fill")' in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.post("/api/periods/{period}/fill")' in src
 
     def test_flag路由存在(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.post("/api/periods/{period}/flag")' in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.post("/api/periods/{period}/flag")' in src
 
     def test_revoke放行操作员_匿名401(self):
         """2026-10-12：撤回随审批一并对操作员开放——不存在的期次回 404（不是 403）。"""

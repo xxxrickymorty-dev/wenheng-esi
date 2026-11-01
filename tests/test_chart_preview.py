@@ -128,7 +128,8 @@ def test_真实期次下越界请求读不到env():
 # ============================================================ 路由契约
 def test_图片路由是GET且接受多级路径():
     """`charts/<学科>/<图名>.png` 带斜杠，路由参数必须是 `{rel:path}`。"""
-    src = (ROOT / "server" / "app.py").read_text(encoding="utf-8")
+    src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+        [ROOT / "server" / "app.py", *(ROOT / "server" / "routes").glob("*.py")]))
     assert "/p/{period}/chart/{rel:path}" in src, \
         "图表路由丢了 `:path` 转换器——带斜杠的路径会被截成 404"
 

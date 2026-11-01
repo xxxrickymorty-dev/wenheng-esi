@@ -63,12 +63,14 @@ class TestFlexible组装:
 
 class Test路由与权限:
     def test_GET路由(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.get("/api/periods/{period}/flexible")' in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.get("/api/periods/{period}/flexible")' in src
 
     def test_POST路由(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.post("/api/periods/{period}/flexible")' in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.post("/api/periods/{period}/flexible")' in src
 
     def test_读口放行操作员_写口仍admin(self):
         """2026-10-11：GET 读口对操作员放行（404＝门放行后未找到期次）；POST 生成口仍只管理员。"""
@@ -111,9 +113,10 @@ class Test流式与润色两口:
     """契约 #21③/#21④（2026-09-29 流式对话框 + AI 润色按钮）。"""
 
     def test_路由存在(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.post("/api/periods/{period}/flexible/stream")' in src
-        assert '@app.post("/api/periods/{period}/flexible/polish")' in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.post("/api/periods/{period}/flexible/stream")' in src
+        assert '@router.post("/api/periods/{period}/flexible/polish")' in src
 
     def test_流式与停止放行操作员_润色仍管理员(self):
         """2026-10-12（rick 定案）：出报告对操作员开放——stream/stop 放行

@@ -58,12 +58,12 @@ class Test_门禁:
 
     def test_消费点同一判据(self, monkeypatch):
         """flexible 出稿模式与 server 按钮状态必须同开同关。"""
-        import server.app as app_mod
         from flexible import report as flex_report
+        from server.routes.flexible import _flex_write_state
         monkeypatch.setenv("WENHENG_FLEX_WRITE", "1")
         with ai.using(brain=ScriptedBrain([])):
             assert flex_report._resolve_write_mode(None, True) == "write"
-            assert app_mod._flex_write_state() == {"enabled": True, "available": True}
+            assert _flex_write_state() == {"enabled": True, "available": True}
         with ai.using(brain=RuleBrain()):
             assert flex_report._resolve_write_mode(None, True) == "off"
-            assert app_mod._flex_write_state() == {"enabled": True, "available": False}
+            assert _flex_write_state() == {"enabled": True, "available": False}

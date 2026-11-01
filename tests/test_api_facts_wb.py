@@ -32,8 +32,9 @@ class TestFacts:
         assert "coverage_window" in data
 
     def test_facts路由是GET_api(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.get("/api/periods/{period}/facts")' in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.get("/api/periods/{period}/facts")' in src
 
     def test_facts放行操作员_匿名401(self):
         # 不存在的期次回 404——若门没放行会是 403（2026-10-11 起只读端点对操作员放行）。
@@ -57,8 +58,9 @@ class TestWorkbench:
         assert "n_filled" in data
 
     def test_workbench路由是GET_api(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.get("/api/periods/{period}/workbench")' in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.get("/api/periods/{period}/workbench")' in src
 
     def test_workbench放行操作员_匿名401(self):
         assert asyncio.run(app_module.api_period_workbench(

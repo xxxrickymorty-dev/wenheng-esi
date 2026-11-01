@@ -389,9 +389,10 @@ def test_能力关闭映射409(monkeypatch):
 
 
 def test_路由存在且带登录门():
-    src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-    assert '@app.post("/api/dialog/turn")' in src
-    assert "@user_route" in src.split('@app.post("/api/dialog/turn")')[1][:200]
+    src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+        [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+    assert '@router.post("/api/dialog/turn")' in src
+    assert "@user_route" in src.split('@router.post("/api/dialog/turn")')[1][:200]
 
 
 # ============================================================ 4. 回执（receipts-lite）随响应透出

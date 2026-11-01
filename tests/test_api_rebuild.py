@@ -43,8 +43,9 @@ def _rebuild_dir(tmp_path, monkeypatch):
 
 class Test路由与权限:
     def test_rebuild路由是POST_api(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.post("/api/periods/{period}/rebuild")' in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.post("/api/periods/{period}/rebuild")' in src
 
     def test_rebuild用require_admin(self):
         assert asyncio.run(app_module.api_period_rebuild_json(

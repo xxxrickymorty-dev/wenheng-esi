@@ -163,9 +163,10 @@ def test_未装配会话库_不落库不炸(monkeypatch, fake_ai):
 
 # ============================================================ 4. 路由契约
 def test_路由存在且带登录门():
-    src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-    assert '@app.get("/api/dialog/session/{session_id}")' in src
-    assert "@user_route" in src.split('@app.get("/api/dialog/session/{session_id}")')[1][:200]
+    src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+        [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+    assert '@router.get("/api/dialog/session/{session_id}")' in src
+    assert "@user_route" in src.split('@router.get("/api/dialog/session/{session_id}")')[1][:200]
 
 
 # ============================================================ 5. 会话清单与删除（2026-10-24 rick：要能看到之前的对话）

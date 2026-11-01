@@ -80,5 +80,6 @@ class Test权限:
             _Req(None), "202609")).status_code == 401
 
     def test_路由是GET(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.get("/api/periods/{period}/archive")' in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.get("/api/periods/{period}/archive")' in src

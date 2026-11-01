@@ -98,9 +98,10 @@ class Test解析:
 
 class Test路由:
     def test_路由是GET_api(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.get("/api/periods/{period}/report-preview")' in src
-        assert '@app.get("/api/periods/{period}/report-image/{rid}")' in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.get("/api/periods/{period}/report-preview")' in src
+        assert '@router.get("/api/periods/{period}/report-image/{rid}")' in src
 
     def test_预览放行操作员_匿名401(self):
         # 2026-10-11：报告正文预览是只读，操作员放行（404＝门放行后未找到期次）。

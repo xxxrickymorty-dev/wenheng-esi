@@ -102,8 +102,9 @@ class Test真实任务:
 
 class Test路由与权限:
     def test_路由是GET_api(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.get("/api/jobs/{job_id}/progress")' in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.get("/api/jobs/{job_id}/progress")' in src
 
     def test_放行操作员_匿名401(self):
         # 2026-10-11：进度是只读，操作员放行（404＝门放行后未找到任务）。

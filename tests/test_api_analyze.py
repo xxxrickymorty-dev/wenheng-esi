@@ -155,9 +155,11 @@ class Test权限门:
         assert asyncio.run(app_module.api_ledger_sheets(_Req(None))).status_code == 401
 
     def test_analyze路由存在(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.post("/api/analyze")' in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.post("/api/analyze")' in src
 
     def test_ledger_sheets路由存在(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.get("/api/ledger/sheets")' in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.get("/api/ledger/sheets")' in src

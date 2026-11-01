@@ -208,17 +208,20 @@ def test_运行时依赖不含web框架():
 
 # ============================================================ 边界约定
 def _routes():
-    """从 app.py 源码里抽 (method, path)。源码解析而非导入 app——
+    """从 app.py 与 server/routes/*.py 源码里抽 (method, path)。源码解析而非导入 app——
     避免测试引入 FastAPI 依赖与导入副作用。
 
-    两类写法都要认：`@app.get("…")` 这类单方法装饰器，以及
+    两类写法都要认：`@app.get("…")` / `@router.get("…")` 这类单方法装饰器，以及
     `@app.api_route("…", methods=["GET", "POST"])`（methods 可跨行、带空格）。
+    2026-11-01 C8 路由分册：路由定义在装配壳（app.py）与各产线分册
+    （server/routes/*.py）——两边都扫，断言不变。
     """
-    src = (SERVER / "app.py").read_text(encoding="utf-8")
+    src = "\n".join(p.read_text(encoding="utf-8")
+                    for p in [SERVER / "app.py", *sorted((SERVER / "routes").glob("*.py"))])
     routes = [(m, p) for m, p in
-              re.findall(r'@app\.(get|post|put|patch|delete)\(\s*"([^"]+)"', src)]
+              re.findall(r'@(?:app|router)\.(get|post|put|patch|delete)\(\s*"([^"]+)"', src)]
     for path, methods in re.findall(
-            r'@app\.api_route\(\s*"([^"]+)"\s*,\s*methods\s*=\s*\[([^\]]*)\]',
+            r'@(?:app|router)\.api_route\(\s*"([^"]+)"\s*,\s*methods\s*=\s*\[([^\]]*)\]',
             src, flags=re.S):
         routes.extend((m.lower(), path) for m in re.findall(r'"([^"]+)"', methods))
     return routes
@@ -277,9 +280,10 @@ def test_状态变更都走表单POST而非AJAX():
 
 
 def test_JSON接口都有登录保护():
-    """app.py 里除白名单外的 /api 端点（含 `api_route` 多方法写法）都要检查登录。"""
-    src = (SERVER / "app.py").read_text(encoding="utf-8")
-    blocks = re.split(r"\n@app\.", src)
+    """app.py 与 routes/* 分册里除白名单外的 /api 端点（含 `api_route` 多方法写法）都要检查登录。"""
+    src = "\n".join(p.read_text(encoding="utf-8")
+                    for p in [SERVER / "app.py", *sorted((SERVER / "routes").glob("*.py"))])
+    blocks = re.split(r"\n@(?:app|router)\.", src)
     pat_single = re.compile(r'(?:get|post)\("(/api/[^"]+)"\)')
     pat_route = re.compile(r'api_route\("(/api/[^"]+)"')
     unguarded = []

@@ -97,8 +97,9 @@ class Test权限与安全:
             _Req(None), "202609")).status_code == 401
 
     def test_trace路由是GET_api(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.get("/api/periods/{period}/trace")' in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.get("/api/periods/{period}/trace")' in src
 
     def test_ledger只回文件名不回绝对路径(self, tmp_path, monkeypatch):
         """接口层只回文件名，别把服务器目录结构发给前端。"""

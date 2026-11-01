@@ -81,8 +81,9 @@ class TestBoard解析:
 
 class TestBoard路由与权限:
     def test_路由是GET_api(self):
-        src = (REPO / "server" / "app.py").read_text(encoding="utf-8")
-        assert '@app.get("/api/forecast/board")' in src
+        src = "\n".join(p.read_text(encoding="utf-8") for p in sorted(
+            [REPO / "server" / "app.py", *(REPO / "server" / "routes").glob("*.py")]))
+        assert '@router.get("/api/forecast/board")' in src
 
     def test_放行操作员_匿名401(self):
         # 2026-10-11：预测看板是只读，操作员放行（拿到看板形状即证明门已放行）。
