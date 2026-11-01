@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import re
 
+from monitor import report as mr
 from monitor import schools as sch
 
 
@@ -30,17 +31,8 @@ def number_guard(output: str, sources: list[str]) -> bool:
     return False
 
 
-_CN = {"Agricultural Sciences": "农业科学", "Biology & Biochemistry": "生物学与生物化学",
-       "Chemistry": "化学", "Clinical Medicine": "临床医学", "Computer Science": "计算机科学",
-       "Economics & Business": "经济与商业", "Engineering": "工程学",
-       "Environment Ecology": "环境生态学", "Geosciences": "地球科学", "Immunology": "免疫学",
-       "Materials Science": "材料科学", "Mathematics": "数学", "Microbiology": "微生物学",
-       "Molecular Biology & Genetics": "分子生物学与遗传学", "Multidisciplinary": "多学科",
-       "Neuroscience & Behavior": "神经系统科学与行为学",
-       "Pharmacology & Toxicology": "药理学与毒理学", "Physics": "物理学",
-       "Plant & Animal Science": "植物与动物学", "Psychiatry Psychology": "精神病学与心理学",
-       "Social Sciences, General": "社会科学", "Space Science": "空间科学"}
-cn_name = lambda stem: _CN.get(stem, stem)  # noqa: E731
+cn_name = lambda stem: mr.CN.get(stem, stem)  # noqa: E731
+# 中文名唯一来源＝report.CN（＝parse_ledger.DISCIPLINES_CN，20261101 C1 收敛，原 _CN 已删）
 
 
 def facts_of(cn: str, cache: dict, tr: dict | None = None) -> list[str]:
@@ -64,11 +56,10 @@ def facts_of(cn: str, cache: dict, tr: dict | None = None) -> list[str]:
         return [f"{cn}（{tag}）本期未进入 22 学科全球机构榜（低于收录线或未入册），报告如实呈现，不外推"]
     n = len(rows)
     thr1 = cache["thr1"]
-    norm = lambda x: " ".join(str(x).upper().replace("/", " ").split())  # noqa: E731
     entered = [stem for stem, r in rows.items()
-               if thr1.get(norm(stem)) and r[3] >= thr1[norm(stem)]]
-    near = [(stem, r[3] / thr1[norm(stem)]) for stem, r in rows.items()
-            if thr1.get(norm(stem)) and r[3] < thr1[norm(stem)]]
+               if thr1.get(mr.norm(stem)) and r[3] >= thr1[mr.norm(stem)]]
+    near = [(stem, r[3] / thr1[mr.norm(stem)]) for stem, r in rows.items()
+            if thr1.get(mr.norm(stem)) and r[3] < thr1[mr.norm(stem)]]
     pm = [stem for stem, r in rows.items() if r[0] <= cache["fields"][stem]["line"]]
     out.append(f"{cn}（{tag}）本期上榜 {n}/22 学科")
     if len(entered) == n:

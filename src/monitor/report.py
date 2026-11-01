@@ -16,11 +16,14 @@ import re
 
 import openpyxl
 
+import ledger_contract
+from parse_ledger import DISCIPLINES_CN
+
 from monitor import charts
 from monitor import schools as sch
 
 WENHENG_ROOT = pathlib.Path(__file__).resolve().parents[2]
-ESI_ROOT = WENHENG_ROOT.parent / "数据与复现" / "ESI数据"
+ESI_ROOT = ledger_contract.esi_root()      # 路径口径唯一在 ledger_contract（20261101 C1）
 MONITOR_ROOT = WENHENG_ROOT / "monitor_data"
 
 STEMS = ["Agricultural Sciences", "Biology & Biochemistry", "Chemistry", "Clinical Medicine",
@@ -29,18 +32,23 @@ STEMS = ["Agricultural Sciences", "Biology & Biochemistry", "Chemistry", "Clinic
          "Molecular Biology & Genetics", "Multidisciplinary", "Neuroscience & Behavior",
          "Pharmacology & Toxicology", "Physics", "Plant & Animal Science",
          "Psychiatry Psychology", "Social Sciences, General", "Space Science"]
-CN = {"Agricultural Sciences": "农业科学", "Biology & Biochemistry": "生物学与生物化学",
-      "Chemistry": "化学", "Clinical Medicine": "临床医学", "Computer Science": "计算机科学",
-      "Economics & Business": "经济与商业", "Engineering": "工程学",
-      "Environment Ecology": "环境生态学", "Geosciences": "地球科学", "Immunology": "免疫学",
-      "Materials Science": "材料科学", "Mathematics": "数学", "Microbiology": "微生物学",
-      "Molecular Biology & Genetics": "分子生物学与遗传学", "Multidisciplinary": "多学科",
-      "Neuroscience & Behavior": "神经系统科学与行为学",
-      "Pharmacology & Toxicology": "药理学与毒理学", "Physics": "物理学",
-      "Plant & Animal Science": "植物与动物学", "Psychiatry Psychology": "精神病学与心理学",
-      "Social Sciences, General": "社会科学", "Space Science": "空间科学"}
 
-_norm = lambda s: " ".join(str(s).upper().replace("/", " ").split())
+
+def norm(s) -> str:
+    """学科/表头名归一：大写、/ 归空格、压空白；None → 空串。
+
+    monitor 包内唯一实现（20261101 C1 收敛，原 report/trend/insight/compare 四份各抄一遍；
+    None 兜底沿表头空单元格语义——trend._cols 会喂 None 表头，其余调用点从不传 None）。
+    """
+    return " ".join(str(s).upper().replace("/", " ").split()) if s is not None else ""
+
+
+#: 22 学科中文名——唯一来源＝parse_ledger.DISCIPLINES_CN（20261101 C1 收敛，原
+#: report.CN / insight._CN 两份）。台账键为 slash 风格，经 norm 按 monitor STEM 键重排；
+#: 台账与 monitor 两表的中文值经核对逐条一致，键对不上会在导入期 KeyError 暴露。
+_CN_LEDGER = {norm(k): v for k, v in DISCIPLINES_CN.items()}
+CN = {s: _CN_LEDGER[norm(s)] for s in STEMS}
+
 _f = lambda x: float(x)
 
 
@@ -72,12 +80,12 @@ def _global_papers(base: pathlib.Path) -> dict[str, float]:
                     and str(r[1]).strip() == "Research Fields"), None)
         if hdr is None:
             return {}
-        stems = {_norm(s) for s in STEMS}
+        stems = {norm(s) for s in STEMS}
         out: dict[str, float] = {}
         for r in rows[hdr + 1:]:
             if len(r) < 3 or r[1] is None or not str(r[1]).strip() or r[2] is None:
                 continue
-            key = _norm(str(r[1]).strip())
+            key = norm(str(r[1]).strip())
             if key in stems:
                 out[key] = _f(r[2])
         return out
@@ -90,61 +98,47 @@ def cache_path(period: str) -> pathlib.Path:
 
 
 def build_cache(period: str) -> dict:
-    """按期次建缓存：一次读盘，全名单受益。产物写入 monitor_data/。"""
+    """按期次建缓存：一次读盘，全名单受益。产物写入 monitor_data/。
+
+    解析整体复用 trend 的强解析器（多版式候选名＋内容门禁＋重排拒收；20261101 C1
+    收敛——原本地解析段是 trend 的严格子集）。本函数只做缓存形态组装：机构表衍生面
+    （cn_inst/neighbors）、全球学科分母、下载元数据与落盘；fields/thr1/inst/n_inst
+    与 trend.extract_period 逐键同构（tests/test_monitor_trend.py 钉）。"""
+    from monitor import trend as mt                              # noqa: PLC0415
+    # 函数级 import：trend 顶层 import report，模块级会成环
     base = ESI_ROOT / period
+    if not base.is_dir():
+        raise FileNotFoundError(f"期次目录不存在：{base}")
     en_names = [s["en"] for s in sch.SCHOOLS]
     en_set = set(en_names)
 
-    def load_ranking(path: pathlib.Path):
-        wb = openpyxl.load_workbook(path)
-        rows = [r for r in wb.active.iter_rows(values_only=True)
-                if any(c is not None and str(c).strip() for c in r)]
-        hdr = next(i for i, r in enumerate(rows) if str(r[1]).strip() == "Institutions")
-        data = sorted((r for r in rows[hdr + 1:] if r[1]), key=lambda r: int(_f(r[0])))
-        wb.close()
-        return data
+    t, raw = mt.extract_period_full(period)
+    if not t["fields"] or t["n_inst"] is None:
+        # 老版式/残表是趋势库的合法输入，但缓存直接喂渲染（分母、总排名窗），
+        # 缺内容宁可炸在建造期也不落一份静默残缓存（与旧严格解析同失败面）。
+        raise ValueError(f"{period}: 期次包解析不出机构总表/学科榜内容"
+                         f"（trend._notes：{'；'.join(t['_notes'][:3])}）")
+    inst_raw = raw["inst"]
 
-    # ---- 机构总表：全量（±3 邻近需要全球行）＋ CHINA MAINLAND 子集（省内关键词） ----
-    inst = load_ranking(base / "Institutions.xlsx")
+    # ---- 机构总表衍生面：全量（±3 邻近需要全球行）＋ CHINA MAINLAND 子集（省内关键词） ----
     neighbors: dict[str, list] = {n: [] for n in en_names}
-    for i, r in enumerate(inst):
-        name = str(r[1]).strip()
-        if name in en_set:
-            k = int(_f(r[0]))
-            rows = []
-            for x in inst[max(0, k - 4):k + 3]:
-                rows.append([str(x[1]).strip(), str(x[2]).strip(), int(_f(x[0])),
-                             _f(x[3]), _f(x[4]), _f(x[5]), _f(x[9])])
-            neighbors[name] = rows
-    cn_inst = [[str(r[1]).strip(), int(_f(r[0])), _f(r[3]), _f(r[4]), _f(r[5]), _f(r[9])]
-               for r in inst
-               if str(r[2]).strip() in ("CHINA MAINLAND", "N/A")]  # N/A＝属地未标注（如部属医院），按名关键词进省内
-
-    # ---- 阈值 + 22 榜本校行（国内排名在建缓存时一次算好） ----
-    wbt = openpyxl.load_workbook(base / "ThresholdESI.xlsx")
-    trows = [r for r in wbt.active.iter_rows(values_only=True)
-             if any(c is not None and str(c).strip() for c in r)]
-    wbt.close()
-    thr1 = {norm_row[0]: _f(norm_row[3]) for norm_row in trows
-            if str(norm_row[0]).strip() not in ("THRESHOLD-ESI", "RESEARCH FIELDS")
-            and norm_row[3] is not None and str(norm_row[3]).strip()}
-    thr1 = {_norm(k): v for k, v in thr1.items()}
-
-    fields: dict[str, dict] = {}
-    for stem in STEMS:
-        data = load_ranking(base / f"{stem}.xlsx")
-        m = len(data)
-        line = (m + 1) // 10
-        line_cites = _f(data[line - 1][4]) if 0 < line <= m else None
-        rows: dict[str, list] = {}
-        for i, r in enumerate(data):
+    cn_inst: list[list] = []
+    if inst_raw and inst_raw["kind"] == "std":
+        cols = inst_raw["cols"]
+        ci = cols["country"] if cols["country"] is not None else 2
+        data = inst_raw["data"]
+        # N/A＝属地未标注（如部属医院），与 CHINA MAINLAND 一并按名关键词进省内
+        cn_inst = [[str(r[1]).strip(), mt._rank_of(r[0]), mt._cell(r, cols["papers"]),
+                    mt._cell(r, cols["cites"]), mt._cell(r, cols["cp"]), mt._cell(r, cols["hcp"])]
+                   for r in data if mt._country(r, ci) in ("CHINA MAINLAND", "N/A")]
+        for r in data:
             name = str(r[1]).strip()
-            if name not in en_set:
-                continue
-            rank = int(_f(r[0]))
-            cn_rank = 1 + sum(1 for x in data[:i] if str(x[2]).strip() == "CHINA MAINLAND")
-            rows[name] = [rank, cn_rank, _f(r[3]), _f(r[4]), _f(r[5]), _f(r[9]), _f(r[12])]
-        fields[stem] = {"m": m, "line": line, "line_cites": line_cites, "schools": rows}
+            if name in en_set:
+                k = mt._rank_of(r[0])
+                neighbors[name] = [[str(x[1]).strip(), mt._country(x, ci), mt._rank_of(x[0]),
+                                    mt._cell(x, cols["papers"]), mt._cell(x, cols["cites"]),
+                                    mt._cell(x, cols["cp"]), mt._cell(x, cols["hcp"])]
+                                   for x in data[max(0, k - 4):k + 3]]
 
     meta_path = base / "_下载信息.json"
     download = ""
@@ -154,9 +148,9 @@ def build_cache(period: str) -> dict:
             download = f"{meta.get('首次下载', '')}/{meta.get('最近下载', '')}"
         except (json.JSONDecodeError, OSError):
             download = ""
-    cache = {"period": period, "built": datetime.date.today().isoformat(),
-             "download": download, "n_inst": len(inst),
-             "fields": fields, "thr1": thr1,
+    cache = {"period": period, "built": t["built"],
+             "download": download, "n_inst": t["n_inst"],
+             "fields": t["fields"], "thr1": t["thr1"],
              "global_papers": _global_papers(base),
              "cn_inst": cn_inst, "neighbors": neighbors}
     MONITOR_ROOT.mkdir(parents=True, exist_ok=True)
@@ -203,7 +197,7 @@ def _report_data(cn: str, period: str, cache: dict, insight: dict | None = None)
         r = rows.get(stem)
         if not r:
             continue
-        t1 = cache["thr1"].get(_norm(stem))
+        t1 = cache["thr1"].get(norm(stem))
         prox = (r[3] / t1) if t1 else None
         item = {"stem": stem, "cn": CN[stem], "r": r, "prox": prox}
         (entered if prox and prox >= 1 else near).append(item)
@@ -221,7 +215,7 @@ def _report_data(cn: str, period: str, cache: dict, insight: dict | None = None)
         stem, r = kv
         m = cache["fields"][stem]["m"]
         pct = f"前 {r[0] / m * 100:.1f}%" if m else "—"
-        gf = gp.get(_norm(stem))
+        gf = gp.get(norm(stem))
         rca = (f"×{(r[2] / mine_sum) / (gf / g_sum):.2f}"
                if g_sum and mine_sum and gf and r[2] is not None else "—")
         return [CN[stem], f"{r[0]} / {m}", pct, str(r[1]), _fmt(r[2]), _fmt(r[3]),
@@ -234,7 +228,8 @@ def _report_data(cn: str, period: str, cache: dict, insight: dict | None = None)
         "meta": (f"数据源：Clarivate ESI {period} 期（下载 {download}）· "
                  f"{cn}上榜 {len(present)} / {len(STEMS)} 学科 · ESI 名 {en}"),
         "nums": [], "absent_note": None, "sections": [], "insight": insight,
-        "algorithms": ["国内排名＝榜内 CHINA MAINLAND 计数", "1‰ 线＝第 ⌊(m+1)/10⌋ 位被引",
+        "algorithms": ["国内排名＝榜内 CHINA MAINLAND ∪ N/A（属地）行计数",
+                       "1‰ 线＝第 ⌊(m+1)/10⌋ 位被引",
                        "接近度＝被引 ÷ 前 1% 机构阈值"],
         "footer": {
             "source": (f"数据来源：Clarivate ESI（Essential Science Indicators）{period} 期全局件，"
@@ -266,7 +261,7 @@ def _report_data(cn: str, period: str, cache: dict, insight: dict | None = None)
                       "pill_cols": [10],
                       "rows": [field_cells(kv) for kv in pairs],
                       "subs": [stem for stem, _r in pairs]},
-            "notes": ["* 国内排名＝榜内 CHINA MAINLAND 计数推导，非 ESI 原生指标。"
+            "notes": ["* 国内排名＝榜内 CHINA MAINLAND ∪ N/A（属地）行计数推导，非 ESI 原生指标。"
                       "排名写法「全球第 N / 榜内 M 所」。分位＝rank ÷ m；"
                       "相对强度＝(本校该学科论文 ÷ 本校上榜学科论文合计) ÷ (全球该学科论文 ÷ 全球 22 学科论文合计)，"
                       "分母为本校上榜学科合计，部分覆盖下指数偏高，仅作结构参考。"]}
@@ -366,7 +361,7 @@ def _report_data(cn: str, period: str, cache: dict, insight: dict | None = None)
                 "items": items}
 
     sec4 = {"num": "四", "title": "进位预警"}
-    near_cells = [[x["cn"], _fmt(x["r"][3]), _fmt(cache["thr1"].get(_norm(x["stem"]), 0)),
+    near_cells = [[x["cn"], _fmt(x["r"][3]), _fmt(cache["thr1"].get(norm(x["stem"]), 0)),
                    f"{x['prox']:.2f}"]
                   for x in sorted(near, key=lambda x0: -(x0["prox"] or 0))]
     notes4 = []
@@ -598,10 +593,16 @@ def _trend_note() -> str:
 
 
 def generate(cn: str, period: str | None = None) -> pathlib.Path:
-    """生成（或复用）一所学校的站位报告，返回文件路径。"""
+    """生成（或复用）一所学校的站位报告，返回文件路径。
+
+    幂等（20261101 C7）：同校同期产物已存在 → 直接返回该路径，不再重跑 insight
+    （LLM 不重复调用）；要重新生成先删旧件。"""
     period = period or latest_period()
     if not period:
         raise FileNotFoundError("数据与复现/ESI数据/ 下没有可用的 ESI 期次目录")
+    out = MONITOR_ROOT / cn / f"{period}.html"
+    if out.exists():
+        return out
     cache = load_cache(period) or build_cache(period)
     ins: dict | None = None
     try:
@@ -609,7 +610,6 @@ def generate(cn: str, period: str | None = None) -> pathlib.Path:
         ins = _ins.insight(cn, period, cache)
     except Exception:                                                   # noqa: BLE001
         ins = None
-    out = MONITOR_ROOT / cn / f"{period}.html"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(render(cn, period, cache, insight=ins), encoding="utf-8")
     return out

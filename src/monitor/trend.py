@@ -119,11 +119,6 @@ _MIN_FIELD_ROWS_FULL = 100   # 学科榜「全量全球榜」行数下限
 _TOPN_CHECK = 50             # 中国/非中国行判定的抽查窗口
 
 
-def _norm_head(cell) -> str:
-    """表头单元格 → 规范名（大写、/ 归空格、压空白；与 mr._norm 同风格）。"""
-    return " ".join(str(cell).upper().replace("/", " ").split()) if cell is not None else ""
-
-
 def _is_num(v) -> bool:
     if v is None:
         return False
@@ -153,7 +148,7 @@ def _load_rows(path: pathlib.Path, data_only: bool = False) -> list:
 def _cols(header) -> dict:
     """表头名 → 列号；缺列（9/7 列老版式）→ None。Cites 必须精确匹配，
     避免吃掉 Cites to X / Cites/X Paper 系列列。"""
-    heads = [_norm_head(c) for c in header]
+    heads = [mr.norm(c) for c in header]
 
     def exact(name: str) -> int | None:
         return heads.index(name) if name in heads else None
@@ -238,8 +233,11 @@ def _stem_candidates(stem: str) -> list[str]:
 
 
 # ---------------------------------------------------------------- 单期提取
-def _extract_inst(base: pathlib.Path) -> tuple[dict, int | None, str | None]:
-    """机构总表等价物 → (inst, n_inst, note)。永不抛错：候选逐个试，全不可用 → 空表 + note。"""
+def _parse_inst(base: pathlib.Path) -> tuple[dict, int | None, str | None, dict | None]:
+    """机构总表等价物 → (inst, n_inst, note, raw)。永不抛错：候选逐个试，全不可用 → 空表 + note。
+
+    raw＝{"kind", "cols", "data"}：命中候选的**未过滤全行**与列映射（全败 → None），
+    供 report.build_cache 组装 cn_inst/neighbors——机构表整包只读一遍（20261101 C1）。"""
     errs = []
     for name in _INST_CANDIDATES:
         path = base / name
@@ -250,11 +248,12 @@ def _extract_inst(base: pathlib.Path) -> tuple[dict, int | None, str | None]:
         except ValueError as exc:
             errs.append(f"{name} 不可解析（{exc}）")
             continue
+        raw = {"kind": kind, "cols": cols, "data": data}
         if kind == "name_rank":                            # 残表：只取总排名
             name_col, rank_col = cols
             inst = {str(r[name_col]).strip(): [_rank_of(r[rank_col]), None, None, None]
                     for r in data if str(r[name_col]).strip() in _EN_SET}
-            return inst, None, f"{name}: 排名残表，n_inst=None"
+            return inst, None, f"{name}: 排名残表，n_inst=None", raw
         top = data[:_TOPN_CHECK]
         has_non_china = any(_country(r, cols["country"]) not in ("CHINA MAINLAND", "N/A")
                             for r in top)
@@ -269,11 +268,11 @@ def _extract_inst(base: pathlib.Path) -> tuple[dict, int | None, str | None]:
                 inst[nm] = [_rank_of(r[0]), _cell(r, cols["papers"]),
                             _cell(r, cols["cites"]), _cell(r, cols["cp"])]
         if full:
-            return inst, len(data), None
-        return inst, None, f"{name}: 保排名子集，n_inst=None"
+            return inst, len(data), None, raw
+        return inst, None, f"{name}: 保排名子集，n_inst=None", raw
     if errs:
-        return {}, None, "机构表候选均不可用：" + "；".join(errs)
-    return {}, None, "机构总表等价物缺失"
+        return {}, None, "机构表候选均不可用：" + "；".join(errs), None
+    return {}, None, "机构总表等价物缺失", None
 
 
 def _extract_field(period: str, stem: str) -> tuple[dict | None, str | None]:
@@ -309,8 +308,9 @@ def _extract_field(period: str, stem: str) -> tuple[dict | None, str | None]:
         name = str(r[1]).strip()
         if name not in _EN_SET:
             continue
-        # cn_rank（brief 口径）：榜内 CHINA MAINLAND ∪ N/A 行中排在本次之前的数量 + 1；
-        # 全中国子集下退化为行序＝国内排名，公式自适应。
+        # cn_rank＝国内排名（20261101 裁决·宽口径，全库单处声明在此）：榜内
+        # CHINA MAINLAND ∪ N/A 属地行中排在本次之前的数量 + 1；全中国子集下退化为
+        # 行序＝国内排名，公式自适应。
         cn_rank = 1 + sum(1 for x in data[:i]
                           if _country(x, ci) in ("CHINA MAINLAND", "N/A"))
         rows[name] = [_rank_of(r[0]), cn_rank, _cell(r, cols["papers"]),
@@ -326,11 +326,11 @@ def _thresholds(path: pathlib.Path) -> dict:
     """阈值表 → {规范学科名: 机构阈值}。INSTITUTION 列按表头定位（无表头紧凑版取第 2 列，
     已与邻期宽表互证）；VLOOKUP 公式串以 data_only=True 读缓存值；缺值学科如实缺键。"""
     rows = _load_rows(path, data_only=True)
-    expected = {mr._norm(s) for s in mr.STEMS}
+    expected = {mr.norm(s) for s in mr.STEMS}
     hdr = next((i for i, r in enumerate(rows)
                 if r and r[0] is not None and str(r[0]).strip() == "RESEARCH FIELDS"), None)
     if hdr is not None:
-        heads = [_norm_head(c) for c in rows[hdr]]
+        heads = [mr.norm(c) for c in rows[hdr]]
         col = heads.index("INSTITUTION") if "INSTITUTION" in heads else None
         body = rows[hdr + 1:]
     else:
@@ -342,7 +342,7 @@ def _thresholds(path: pathlib.Path) -> dict:
     for r in body:
         if not r or r[0] is None:
             continue
-        key = mr._norm(str(r[0]).strip())
+        key = mr.norm(str(r[0]).strip())
         if key not in expected:
             continue                                       # 杂行/版权行——只认 22 学科行
         v = r[col] if col < len(r) else None
@@ -355,11 +355,13 @@ def _thresholds(path: pathlib.Path) -> dict:
     return thr
 
 
-def extract_period(period: str) -> dict:
-    """单期提取：schema 与 build_cache 的 cache 同构
-    （少 cn_inst/neighbors/download，多 inst）。不写盘；老版式缺的维度如实 None。"""
+def extract_period_full(period: str) -> tuple[dict, dict]:
+    """单期提取全量版 → (extract_period 形态, raw)。
+
+    raw["inst"]＝_parse_inst 的第 4 返回值（机构表未过滤全行与列映射，全败 → None），
+    供 report.build_cache 组装 cn_inst/neighbors——机构表整包只读一遍（20261101 C1）。"""
     base = mr.ESI_ROOT / period
-    inst, n_inst, inst_note = _extract_inst(base)
+    inst, n_inst, inst_note, raw_inst = _parse_inst(base)
     fields: dict[str, dict] = {}
     notes: list[str] = []
     if inst_note:
@@ -374,9 +376,16 @@ def extract_period(period: str) -> dict:
             notes.append(f"{stem}: {note}")
     thr_path = _resolve(base, _THR_CANDIDATES)
     thr = _thresholds(thr_path) if thr_path else {}
-    return {"period": period, "built": datetime.date.today().isoformat(),
+    data = {"period": period, "built": datetime.date.today().isoformat(),
             "n_inst": n_inst, "fields": fields, "thr1": thr, "inst": inst,
             "_notes": notes}
+    return data, {"inst": raw_inst}
+
+
+def extract_period(period: str) -> dict:
+    """单期提取：schema 与 build_cache 的 cache 同构
+    （少 cn_inst/neighbors/download，多 inst）。不写盘；老版式缺的维度如实 None。"""
+    return extract_period_full(period)[0]
 
 
 # ---------------------------------------------------------------- 落盘与门禁
@@ -505,7 +514,7 @@ def combine(en: str, root: str | pathlib.Path | None = None) -> dict:
             fields.setdefault(stem, []).append(
                 {"period": name[:-5], "rank": srow[0], "m": fd.get("m"),
                  "cites": srow[3], "line_cites": fd.get("line_cites"),
-                 "thr1": (t.get("thr1") or {}).get(mr._norm(stem))})
+                 "thr1": (t.get("thr1") or {}).get(mr.norm(stem))})
     return {"en": en, "points": points, "fields": fields}
 
 

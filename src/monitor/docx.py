@@ -13,6 +13,7 @@ import docx
 from docx.shared import Pt
 
 from monitor import report as mr
+from monitor import schools as sch
 
 
 def _small(doc, text: str) -> None:
@@ -40,11 +41,13 @@ def _table(doc, t: dict) -> None:
 
 
 def export(cn: str, period: str, cache: dict, insight: dict | None = None) -> pathlib.Path:
-    """导出一所学校的 Word 版监测报告，返回文件路径（已存在直接返回，幂等）。"""
-    d = mr._report_data(cn, period, cache, insight)
+    """导出一所学校的 Word 版监测报告，返回文件路径（已存在直接返回，幂等）。
+
+    存在性检查在装配（含 trend.combine 全库扫描）之前——缓存命中不付全额（20261101 C7）。"""
     out = mr.MONITOR_ROOT / cn / f"{period}.docx"
     if out.exists():
         return out
+    d = mr._report_data(cn, period, cache, insight)
     doc = docx.Document()
     doc.add_heading(f'{d["cn"]} · 学科监测报告 · {d["period"]}', level=0)
     _small(doc, d["meta"])
@@ -81,3 +84,21 @@ def export(cn: str, period: str, cache: dict, insight: dict | None = None) -> pa
     out.parent.mkdir(parents=True, exist_ok=True)
     doc.save(str(out))
     return out
+
+
+def ensure(cn: str, period: str) -> pathlib.Path | None:
+    """缺件兜底（20261101 C7，供服务端 docx 触发段接线）：当期 docx 缺失 → 现算导出
+    （不调模型，insight=None）；已存在 → 直接返回该路径。
+
+    老期次缺失 → 不补（返回 None）——docx 只随当期生成，老期次连 html 都不随档；
+    名单外校 / 无可用期次 → None。期次目录存在但包坏 → build_cache 的异常照抛
+    （调用方按 404/500 处理），与 server 内联段语义一致。"""
+    if sch.find(cn) is None:
+        return None
+    if period != (mr.latest_period() or ""):
+        return None
+    out = mr.MONITOR_ROOT / cn / f"{period}.docx"
+    if out.exists():
+        return out
+    cache = mr.load_cache(period) or mr.build_cache(period)
+    return export(cn, period, cache)

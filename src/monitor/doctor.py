@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """监测版 doctor——包契约 D1/D2/D3/D6 的机器核验（D4 对拍见 tools/monitor_derive_backtest.py，
-D5 台账自建检查待多期台账出现后补）。
+D5 台账自建检查待多期台账出现后补；D7 趋势库在册为 20261101 施工单 C7 增补）。
 
 独立可跑（自举 src/ 进 sys.path，不依赖 server.config 的副作用）：
     uv run python src/monitor/doctor.py [--period 202609] [--json]
@@ -9,7 +9,8 @@ D5 台账自建检查待多期台账出现后补）。
 - D1 全局件核验：31 张源文件在位、tag/表头/行数下限；
 - D2 校本绑定：缓存里的机构行全部来自内置名单的 ESI 写法（名字绑定有断言）；
 - D3 本校行存在性三级判定：榜内=入围；总表在而榜不在=未入围（正常）；两边无=写法错（fail）；
-- D6 元数据：_下载信息.json 在位且下载日可解析。
+- D6 元数据：_下载信息.json 在位且下载日可解析；
+- D7 趋势库在册：_trend/_index.json 在、当期趋势文件在且索引判 ok、在册件无缺盘——缺哪件说哪件。
 产出 `monitor_data/_doctor_<期次>.json`；有 fail 时退出码 1。
 """
 from __future__ import annotations
@@ -43,8 +44,37 @@ def _load_names_and_header(path: pathlib.Path, name_col: str) -> tuple[list[str]
     return data, len(data), hdr
 
 
+def _trend_in_register(period: str) -> tuple[bool, str]:
+    """D7 趋势库在册（20261101 施工单 C7）：索引在、当期件在且索引判 ok、在册件无缺盘。
+    → (ok, detail)；缺哪件说哪件，修复口令统一指 trend CLI。"""
+    tip = "先跑 uv run python -m src.monitor.trend"
+    troot = mr.MONITOR_ROOT / "_trend"
+    idx_path = troot / "_index.json"
+    idx: dict = {}
+    if idx_path.exists():
+        try:
+            idx = json.loads(idx_path.read_text(encoding="utf-8")).get("periods", {})
+        except (json.JSONDecodeError, OSError):
+            idx = {}
+    if not idx:
+        return False, f"趋势库索引缺失或不可读（{idx_path.name}）——{tip}"
+    miss = sorted(p for p, v in idx.items()
+                  if v.get("status") == "ok" and not (troot / f"{p}.json").exists())
+    cur = idx.get(period, {})
+    tfile = troot / f"{period}.json"
+    if not tfile.exists():
+        return False, f"当期趋势文件缺失（{tfile.name}）——{tip}"
+    if cur.get("status") != "ok":
+        return False, (f"当期趋势文件在册但索引判 {cur.get('status', '未知')}"
+                       f"（{cur.get('reason', '')}）——{tip}")
+    if miss:
+        return False, "索引在册但趋势文件缺失：" + "、".join(miss) + f"——{tip}"
+    n_ok = sum(1 for v in idx.values() if v.get("status") == "ok")
+    return True, f"趋势库在册：当期 {period}.json ok，全库 {n_ok} 期"
+
+
 def check(period: str, *, deep_d1: bool = True) -> dict:
-    """跑 D1/D2/D3/D6，返回报告 dict（含 items 与 fail 数）。"""
+    """跑 D1/D2/D3/D7/D6，返回报告 dict（含 items 与 fail 数）。"""
     base = mr.ESI_ROOT / period
     items: list[dict] = []
 
@@ -109,6 +139,10 @@ def check(period: str, *, deep_d1: bool = True) -> dict:
             f"入围 {len(entered)} · 未入围 {len(near)} · 未入册 {len(unreg)}"
             + ("" if not wrong else f" · 写法错待核：{wrong}（名单与总表都搜不到）"))
 
+    # ---- D7 趋势库在册（20261101 施工单 C7）：缺哪件说哪件 ----
+    ok7, detail7 = _trend_in_register(period)
+    add("D7", ok7, detail7)
+
     # ---- D6 元数据 ----
     meta = base / "_下载信息.json"
     if not meta.exists():
@@ -127,7 +161,7 @@ def check(period: str, *, deep_d1: bool = True) -> dict:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="监测版包契约核验（D1/D2/D3/D6）")
+    ap = argparse.ArgumentParser(description="监测版包契约核验（D1/D2/D3/D6/D7）")
     ap.add_argument("--period", default=None, help="期次（默认取最新可用）")
     ap.add_argument("--json", action="store_true", help="只打印 JSON")
     args = ap.parse_args()

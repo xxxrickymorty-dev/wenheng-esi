@@ -61,9 +61,10 @@ def test_extract_schema_isomorphic_to_cache(t202609):
         assert set(fd) == {"m", "line", "line_cites", "schools"} == set(cache["fields"][stem])
         for en, row in fd["schools"].items():
             assert len(row) == 7 == len(cache["fields"][stem]["schools"][en])
-    # cn_rank 口径差：trend 计 CHINA MAINLAND ∪ N/A，cache 只计 CHINA MAINLAND——差 1
+    # cn_rank＝国内排名（20261101 施工单 C1 裁决·宽口径）：单处声明在 trend._extract_field——
+    # 榜内 CHINA MAINLAND ∪ N/A 属地行计数＋1；cache 复用同一解析器，两侧必然同值。
     assert t["fields"]["Chemistry"]["schools"][_EN][1] == 123
-    assert cache["fields"]["Chemistry"]["schools"][_EN][1] == 122
+    assert cache["fields"]["Chemistry"]["schools"][_EN][1] == 123
 
 
 def test_extract_201911_oldest():

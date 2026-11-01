@@ -36,7 +36,7 @@ def _school_row(cache: dict, cn: str) -> dict | None:
     total = next((r for r in cache["cn_inst"] if r[0] == en), None)
     rows = {stem: d["schools"].get(en) for stem, d in cache["fields"].items()}
     present = {stem: r for stem, r in rows.items() if r}
-    norm = lambda x: " ".join(str(x).upper().replace("/", " ").split())  # noqa: E731
+    norm = mr.norm                       # 归一单处实现（20261101 C1，原 lambda 已删）
     entered = [stem for stem, r in present.items()
                if cache["thr1"].get(norm(stem)) and r[3] >= cache["thr1"][norm(stem)]]
     pm = [stem for stem, r in present.items() if r[0] <= cache["fields"][stem]["line"]]
@@ -245,7 +245,10 @@ td.dim{{color:var(--muted)}}
 
 
 def generate(cns: list[str], period: str | None = None) -> pathlib.Path:
-    """生成（或复用）一份多校对比报告。名单内有未知校 → KeyError（编程错误面）。"""
+    """生成（或复用）一份多校对比报告。名单内有未知校 → KeyError（编程错误面）。
+
+    幂等（20261101 C7）：同校集合同期产物已存在 → 直接返回，不再重跑 insight
+    （LLM 不重复调用）；要重新生成先删旧件。"""
     period = period or mr.latest_period()
     if not period:
         raise FileNotFoundError("数据与复现/ESI数据/ 下没有可用的 ESI 期次目录")
@@ -257,6 +260,9 @@ def generate(cns: list[str], period: str | None = None) -> pathlib.Path:
     for cn in cns:
         if cn not in seen:
             seen.append(cn)
+    out = compare_path(seen, period)
+    if out.exists():
+        return out
     cache = mr.load_cache(period) or mr.build_cache(period)
     ins: dict | None = None
     try:
@@ -270,7 +276,6 @@ def generate(cns: list[str], period: str | None = None) -> pathlib.Path:
                                   veto=lambda t: mi.number_guard(t, [topic, *facts]))
     except Exception:                                                   # noqa: BLE001
         ins = None
-    out = compare_path(seen, period)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(render(seen, period, cache, insight=ins), encoding="utf-8")
     return out
