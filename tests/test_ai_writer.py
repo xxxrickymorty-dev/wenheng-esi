@@ -92,7 +92,8 @@ class Test写作位:
 
     def test_盾拒_游离数字或丢占位符(self, tmp_path, monkeypatch):
         monkeypatch.setenv(_writer.ENV_ON, "1")
-        brain = ScriptedBrain([lambda b: Turn(text="化学的总被引激增，涨幅明显。")])
+        # 盾拒恢复一轮（exp/dsh-recovery）：坏稿给两份，恢复重问后再拒才落回落语义。
+        brain = ScriptedBrain([lambda b: Turn(text="化学的总被引激增，涨幅明显。")] * 2)
         with ai.using(data_root=tmp_path, brain=brain):
             out = _writer.write(TEXT, facts=FACTS, period="202607")
         assert out == TEXT
@@ -213,7 +214,8 @@ class Test创写:
 
     def test_盾拒_游离数字或丢占位符(self, tmp_path, monkeypatch):
         monkeypatch.setenv(_writer.ENV_ON, "1")
-        brain = ScriptedBrain([lambda b: Turn(text="化学学科接近度持续上行，判断为积累效应。")])
+        # 盾拒恢复一轮（exp/dsh-recovery）：坏稿给两份，恢复重问后再拒才落回落语义。
+        brain = ScriptedBrain([lambda b: Turn(text="化学学科接近度持续上行，判断为积累效应。")] * 2)
         with ai.using(data_root=tmp_path, brain=brain):
             out = _writer.compose(TOPIC, facts=COMPOSE_FACTS, safe=SAFE, period="202607")
         assert out == SAFE
@@ -333,6 +335,9 @@ class Test写作位模型与预算:
         seen: list = []
 
         class _Resp:
+            def __init__(self, content):
+                self._content = content
+
             def __enter__(self):
                 return self
 
@@ -341,12 +346,14 @@ class Test写作位模型与预算:
 
             def read(self):
                 return json.dumps(
-                    {"choices": [{"message": {"content": "候选"}}]}).encode("utf-8")
+                    {"choices": [{"message": {"content": self._content}}]}).encode("utf-8")
 
         def fake_urlopen(req, timeout=None):
             payload = json.loads(req.data.decode("utf-8"))
             seen.append((payload["model"], timeout))
-            return _Resp()
+            # 回显外发用户面（全占位）＝合法候选稿。本例只钉模型路由与超时——
+            # 恒回「候选」会触发盾拒恢复轮（exp/dsh-recovery），请求数翻倍。
+            return _Resp(payload["messages"][1]["content"])
 
         monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
         with ai.using(data_root=tmp_path):

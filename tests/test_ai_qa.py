@@ -119,7 +119,8 @@ def test_只引用问句数字也判越题_照发(tmp_path):
 def test_自由型盾_游离数字_未知标记都拒(tmp_path, suffix):
     # 2026-10-31：盾拒不顶规则版——显式失败态（规则版只留「看规则版」参照）
     seed_period(tmp_path)
-    brain = ScriptedBrain([lambda b: Turn(text=b.task + suffix)])
+    # 盾拒恢复一轮（exp/dsh-recovery）：坏稿给两份，恢复重问后再拒才落显式失败态。
+    brain = ScriptedBrain([lambda b: Turn(text=b.task + suffix)] * 2)
     ans = qa(tmp_path, question="995 是什么", brain=brain)
     assert ans.mode == "failed" and "没有作答" in ans.text
     assert ans.rule_text, "规则版留作参照"
@@ -515,7 +516,8 @@ class Test模型规划器:
 
     def _plan_with(self, text, *, question="最近有什么变化", discs=(), history=None):
         from ai import _plan
-        brain = ScriptedBrain([Turn(text=text)])
+        # 盾拒恢复一轮（exp/dsh-recovery）：坏稿要给两份——恢复重问后再拒才落盾拒语义。
+        brain = ScriptedBrain([Turn(text=text)] * 2)
         with ai.using(brain=brain):
             got = _plan.plan(question, discs=discs, history=history or [],
                              disciplines=self.DISC)

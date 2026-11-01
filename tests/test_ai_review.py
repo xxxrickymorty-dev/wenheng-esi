@@ -101,7 +101,8 @@ def test_越题_不引用清单回落(tmp_path):
 
 def test_盾拒_游离数字回落(tmp_path):
     seed_period(tmp_path)
-    brain = ScriptedBrain([lambda b: Turn(text=b.evidence[0] + " 另见 7 处。")])
+    # 盾拒恢复一轮（exp/dsh-recovery）：坏稿给两份，恢复重问后再拒才落回落语义。
+    brain = ScriptedBrain([lambda b: Turn(text=b.evidence[0] + " 另见 7 处。")] * 2)
     ans = review(tmp_path, brain=brain)
     assert ans.mode == "rule" and "数字校验" in ans.notice
     assert records(tmp_path)[0]["fallback"] == "shield_reject"

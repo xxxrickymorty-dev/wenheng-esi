@@ -90,7 +90,8 @@ def test_模型版_外发零值_捕获Brief(tmp_path):
 
 # ============================================================ 3. 盾拒 / 超时 / 空回 → 整段回落
 def test_盾拒_新增数字_整段回落且模型文本不发布(tmp_path):
-    brain = ScriptedBrain([lambda brief: Turn(text=brief.task + "新增 99。")])
+    # 盾拒恢复一轮（exp/dsh-recovery）：坏稿给两份，恢复重问后再拒才落整段回落语义。
+    brain = ScriptedBrain([lambda brief: Turn(text=brief.task + "新增 99。")] * 2)
     with ai.using(data_root=tmp_path, brain=brain):
         ans = ai.run("diagnose", "202607", payload={"failure": FAIL}, actor="system")
     assert ans.mode == "rule" and ans.text == ans.rule_text, "整段丢弃，不做局部修补"
@@ -102,7 +103,7 @@ def test_盾拒_新增数字_整段回落且模型文本不发布(tmp_path):
 def test_盾拒_丢占位符也回落(tmp_path):
     def drop(brief):
         return Turn(text=re.sub(r"\[\[2\]\]", "某数", brief.task))
-    brain = ScriptedBrain([drop])
+    brain = ScriptedBrain([drop] * 2)
     with ai.using(data_root=tmp_path, brain=brain):
         ans = ai.run("diagnose", "202607", payload={"failure": FAIL}, actor="system")
     assert ans.mode == "rule" and ans.text == ans.rule_text
