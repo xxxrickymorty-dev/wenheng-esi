@@ -54,11 +54,33 @@ class Test_边界:
         out = _run(ScriptedBrain([Turn(text="")]))
         assert out.reason == "empty_reply" and "模型未返回正文" in out.notice
 
-    def test_盾拒_游离数字进detail(self):
-        out = _run(ScriptedBrain([Turn(text="涨了 5%")]))
+    def test_盾拒_恢复一轮_隐去稿带反馈重试成功(self):
+        """dsh 协议闭合（实验分支）：首轮裸数字稿 → 隐去稿带零数字反馈重问 → 次轮干净稿成功。"""
+        brain = ScriptedBrain([Turn(text="涨了 [[1]] 倍，另有 5%"),
+                               lambda b: Turn(text="答：" + b.task)])
+        out = _run(brain)
+        assert out.text == "答：共 3 项，其中 2 项超线。" and out.reason is None
+        assert len(brain.briefs) == 2, "盾拒不立即回落：恢复一轮再 think"
+        (fb,) = brain.briefs[1].history
+        assert fb["role"] == "user" and "退回" in fb["content"] and "▇" in fb["content"]
+        assert "涨了 [[1]] 倍，另有 ▇%" in fb["content"], "标记原样保留、标记外数字隐去"
+        assert "请只输出回答正文本身" in fb["content"]
+        assert not raw_digits(fb["content"]), "反馈零数字（[[n]] 标记里的数字不算）"
+
+    def test_盾拒_恢复后再盾拒_按原样回落只恢复一次(self):
+        brain = ScriptedBrain([Turn(text="涨了 5%"), Turn(text="又涨了 7%")])
+        out = _run(brain)
         assert out.text is None and out.reason == "shield_reject"
-        assert out.detail and out.detail["stray"] == ["5"] and out.shield["passed"] == 0
+        assert out.detail["stray"] == ["7"] and out.shield["passed"] == 0
         assert "数字校验" in out.notice
+        assert len(brain.briefs) == 2, "每个 attempt 至多恢复一次"
+
+    def test_规则部署_不触发恢复(self):
+        # RuleBrain 物理上过不了盾拒分支（规则物与 mapping 同源恒过盾）；
+        # 传入违盾 rule_protected 钉死：attempted=False 不进恢复循环，照原样回落。
+        out = _run(RuleBrain(), rule_protected="涨了 5%")
+        assert out.attempted is False and out.text is None
+        assert out.reason == "shield_reject" and out.detail["stray"] == ["5"]
 
     def test_自由型_允许子集_allow_substrings(self):
         out = _run(ScriptedBrain([Turn(text="overview_1permille 与 [[1]]")]),

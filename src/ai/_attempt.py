@@ -14,10 +14,16 @@
   （专用模型与预算在调用方装配，边界只负责用它——向后兼容，其余调用不动）。
 - `attempted=False`（规则部署）不算失败：`reason=None`、`text`＝规则物；
   只有真实模型的失败才带回落码。
+- 盾拒恢复一轮（实验分支 exp/dsh-recovery：dsh 式协议闭合）：真模型校验失败且本
+  attempt 尚未恢复过时，不立即回落——把上一稿的未标记数字隐去为 ▇（[[n]] 标记
+  原样保留、至多引用前 1200 字符），以一条零数字的用户反馈进 history 重问一次；
+  恢复后再盾拒按原样回落（detail/notice 口径不变），每个 attempt 至多恢复一次。
+  规则部署与 GUARD_REJECT、执行器异常路径一概不恢复。
 """
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -90,6 +96,28 @@ def _round_items(brief: _brain.Brief) -> int:
             + (1 if brief.history else 0))
 
 
+#: 盾拒恢复（实验分支）：上一稿引用上限（字符）与「标记或数字」的匹配正则
+#: （交替里标记在前——[[3]] 整体吃掉，段外数字才隐去）。
+_HIDDEN_MAX = 1200
+_MARK_OR_NUM = re.compile(r"\[\[\d+\]\]|\d+")
+
+
+def _mask_digits(text: str) -> str:
+    """上一稿的隐去面：[[n]] 标记原样保留，标记外数字一律 → ▇（模型只见占位面）。"""
+    return _MARK_OR_NUM.sub(lambda m: m.group(0) if m.group(0).startswith("[[") else "▇",
+                            str(text or ""))
+
+
+def _reject_feedback(candidate: str) -> str:
+    """盾拒恢复的用户反馈（零数字：[[n]] 标记之外一个阿拉伯数字都没有）。"""
+    hidden = _mask_digits(candidate)
+    if len(hidden) > _HIDDEN_MAX:
+        hidden = hidden[:_HIDDEN_MAX] + "……"
+    return ("你的上一稿未通过数字校验，已被退回。上一稿原文（未标记数字已隐去为 ▇）：\n"
+            f"{hidden}\n\n请只输出回答正文本身：先直接回答所问；"
+            "所有数值一律原样引用 [[n]] 标记；不要输出任何思考过程、分析或解释。")
+
+
 def attempt(task, *, system: str, ability: str, anchored: bool = True, evidence=(),
             tools=(), execute=None, max_steps: int = 1,
             rule_protected: str | None = None, mapping: dict | None = None,
@@ -129,6 +157,7 @@ def attempt(task, *, system: str, ability: str, anchored: bool = True, evidence=
     history: tuple = ()        # 原生协议轮消息（assistant tool_calls + role:"tool"）
     done_keys: set = set()     # 本次 attempt 已执行调用 (工具名, 参数规范 JSON) —— 同参去重
     step_now = 1               # 当前轮次（进 Brief.step；1 起，max_steps 轮内必须作答）
+    recovered = False          # 盾拒已恢复过一轮（实验分支：每个 attempt 至多一次）
     # 末轮物理收口：tool_loop 下最后一轮 Brief.tools=()（等价 tool_choice:"none"，
     # 兼容一切 OpenAI 兼容网关）；非环路径（规则部署 / 未给执行器）与从前逐字一致。
     brief = _brain.Brief(ability=ability, system=system, task=protected,
@@ -222,40 +251,51 @@ def attempt(task, *, system: str, ability: str, anchored: bool = True, evidence=
             egress = {"items": egress["items"] + _round_items(brief),
                       "bytes": egress["bytes"] + brief.egress_bytes()}
             continue
-        break
 
-    note = turn.note or ""
-    candidate = turn.text if not turn.calls else None
+        note = turn.note or ""
+        candidate = turn.text if not turn.calls else None
 
-    if turn.calls:
-        return done(
-            reason=FallbackReason.CALLS_UNSUPPORTED,
-            shield={"checked": len(mapping), "passed": 0},
-            notice=("模型请求了工具，但本轮未开放工具调用。已回退规则版，内容与规则库一致。"
-                    if attempted else note))
+        if turn.calls:
+            return done(
+                reason=FallbackReason.CALLS_UNSUPPORTED,
+                shield={"checked": len(mapping), "passed": 0},
+                notice=("模型请求了工具，但本轮未开放工具调用。已回退规则版，内容与规则库一致。"
+                        if attempted else note))
 
-    if candidate is None or not candidate.strip():
-        if not attempted:
-            # 规则物为空（如规划器没传规则稿）：不是失败，也没有可用文本。
-            return done(text=(candidate or ""), shield={"checked": 0, "passed": 0}, notice=note)
-        return done(reason=FallbackReason.EMPTY_REPLY,
-                    shield={"checked": len(mapping), "passed": 0},
-                    notice=(note or "模型未返回正文。已回退规则版，内容与规则库一致。"))
+        if candidate is None or not candidate.strip():
+            if not attempted:
+                # 规则物为空（如规划器没传规则稿）：不是失败，也没有可用文本。
+                return done(text=(candidate or ""), shield={"checked": 0, "passed": 0}, notice=note)
+            return done(reason=FallbackReason.EMPTY_REPLY,
+                        shield={"checked": len(mapping), "passed": 0},
+                        notice=(note or "模型未返回正文。已回退规则版，内容与规则库一致。"))
 
-    if anchored:
-        ok, detail = _shield.validate(candidate, mapping)
-    else:
-        probe = candidate
-        for s in allow_substrings:
-            probe = probe.replace(s, "")
-        ok, detail = _shield.validate_free(probe, mapping)
-    if not ok:
-        return done(reason=FallbackReason.SHIELD_REJECT, detail=detail,
-                    shield={"checked": len(mapping), "passed": 0},
-                    notice=(("模型输出未通过数字校验，已回退规则版，内容与规则库一致。"
-                             if attempted else "") or note))
-
-    return done(text=_shield.restore(candidate, mapping),
-                candidate_protected=candidate,
-                shield={"checked": len(mapping), "passed": len(mapping)},
-                notice=note, receipts=tuple(receipts))
+        if anchored:
+            ok, detail = _shield.validate(candidate, mapping)
+        else:
+            probe = candidate
+            for s in allow_substrings:
+                probe = probe.replace(s, "")
+            ok, detail = _shield.validate_free(probe, mapping)
+        if ok:
+            return done(text=_shield.restore(candidate, mapping),
+                        candidate_protected=candidate,
+                        shield={"checked": len(mapping), "passed": len(mapping)},
+                        notice=note, receipts=tuple(receipts))
+        if not (attempted and not recovered):
+            # 恢复后再盾拒 / 规则部署：按原样回落（detail/notice 口径不变）。
+            return done(reason=FallbackReason.SHIELD_REJECT, detail=detail,
+                        shield={"checked": len(mapping), "passed": 0},
+                        notice=(("模型输出未通过数字校验，已回退规则版，内容与规则库一致。"
+                                 if attempted else "") or note))
+        # 盾拒恢复一轮（实验分支，dsh 协议闭合）：隐去上一稿的未标记数字，
+        # 以零数字反馈重问一次；成败下一轮定型（evidence/tools/step 均不变——
+        # tools 取当前 Brief 的现值，末轮已收口就保持收口）。
+        recovered = True
+        history = history + ({"role": "user", "content": _reject_feedback(candidate)},)
+        brief = _brain.Brief(ability=ability, system=system, task=protected,
+                             step=step_now, max_steps=steps,
+                             evidence=tuple(evidence), tools=brief.tools,
+                             history=history, rule_protected=rule_protected)
+        egress = {"items": egress["items"] + _round_items(brief),
+                  "bytes": egress["bytes"] + brief.egress_bytes()}
