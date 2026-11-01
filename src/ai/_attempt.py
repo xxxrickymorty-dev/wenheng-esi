@@ -28,7 +28,7 @@ import time
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from . import _brain, _config, _runtime, _shield
+from . import _brain, _config, _record, _runtime, _shield
 
 
 class FallbackReason(StrEnum):
@@ -216,15 +216,11 @@ def attempt(task, *, system: str, ability: str, anchored: bool = True, evidence=
                                         "已回退规则版，内容与规则库一致。"))
                 receipts.append(receipt)
                 # 工具调用轨迹（2026-10-29）：只报「查了什么、查到没有、用多久」——
-                # 给界面的「工具调用」面板；不含模型原文、不含台账数值。
-                _runtime.trace({"step": step_now,
-                                "tool": getattr(receipt, "tool", "") or
-                                str((call or {}).get("name") or ""),
-                                "label": getattr(receipt, "label", "") or "查台账",
-                                "summary": getattr(receipt, "summary", "") or "",
-                                "ok": bool(getattr(receipt, "ok", True)),
-                                "refused": bool(getattr(receipt, "refused", False)),
-                                "ms": int(getattr(receipt, "elapsed_ms", 0) or 0)})
+                # 形状唯一出处 `_record.emit_trace`；执行器回执按鸭子类型读
+                # （测试替身回裸串时用调用名/「查台账」兜底，与从前逐字一致）。
+                _record.emit_trace(receipt, step=step_now,
+                                   tool=str((call or {}).get("name") or ""),
+                                   label="查台账")
                 stray = _shield.visible_digits(str(text or ""))    # 内含 strip_marks
                 if stray:
                     # 执行器违约（结果必须已是占位面）：防线不依赖执行器自觉。

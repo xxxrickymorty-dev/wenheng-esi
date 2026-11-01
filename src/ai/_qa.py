@@ -49,7 +49,6 @@ import time
 from . import _record, _shield
 from ._draft import RuleDraft
 from ._numbered import NumberedText
-from ._types import Receipt
 
 try:                                        # 仓根在 sys.path 上（server / tests）
     from src import state_store
@@ -272,9 +271,9 @@ def _qa_executor(view, period, number):
     memo: dict = {}
 
     def receipt(name, args, summary, t0, *, ok, refused):
-        return Receipt(tool=name, label="查台账", args_digest=_record.digest(args),
-                       summary=summary, ok=ok, refused=refused,
-                       elapsed_ms=int((time.time() - t0) * 1000))
+        # 回执唯一出口（C4 收口）：与对话层工具同一份双面实现；t0 用 perf_counter。
+        return _record.tool_receipt(name, "查台账", args, summary,
+                                    ok=ok, refused=refused, t0=t0)
 
     def refuse(name, args, why, t0):
         return (f"该查询不在可查范围（{why}）。请依据已有数据作答。",
@@ -289,7 +288,7 @@ def _qa_executor(view, period, number):
             return str(en or "")
 
     def run(call):
-        t0 = time.time()
+        t0 = time.perf_counter()
         name = str((call or {}).get("name") or "")
         args = (call or {}).get("arguments") or {}
         args = dict(args) if isinstance(args, dict) else {}

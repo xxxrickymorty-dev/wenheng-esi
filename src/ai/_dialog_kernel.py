@@ -28,14 +28,10 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-import socket
 import time
-import urllib.error
-import urllib.request
 from dataclasses import dataclass, field, replace
 
 from . import _brain, _config, _record, _runtime
-from ._types import Receipt
 
 #: 内核工具轮上限（1 次首答 + 至多 3 轮工具）——防模型空转；超限＝回落。
 MAX_STEPS = 4
@@ -95,24 +91,8 @@ class KernelResult:
 
 
 # ---------------------------------------------------------------- 回执（receipts-lite）
-def tool_receipt(tool: str, label: str, args: dict, summary: str, *,
-                 ok: bool, t0: float, refused: bool = False) -> Receipt:
-    """确定性工具调用的回执（双面，C2）。放本模块、`_dialog` 复用——反向导入会成环。
-
-    `t0` 是调用方取的 `time.perf_counter()` 起点（把真实工具调用包住）；
-    `args` 只进 `args_digest`（记录面）；`summary` 是界面面人话（一句以内）——
-    数字只许用对话界面已显示的盘点件数这类，不放任何报告数值。
-    """
-    return Receipt(tool=tool, label=label, args_digest=_record.digest(args),
-                   summary=summary, elapsed_ms=int((time.perf_counter() - t0) * 1000),
-                   ok=ok, refused=refused)
-
-
-def _emit_trace(receipt) -> None:
-    """回执 → 界面的「工具调用」一条（2026-10-29）。旁路，失败不影响主流程。"""
-    _runtime.trace({"step": 1, "tool": receipt.tool, "label": receipt.label,
-                    "summary": receipt.summary, "ok": receipt.ok,
-                    "refused": receipt.refused, "ms": receipt.elapsed_ms})
+# 回执与轨迹的出口在 `_record`（C4 收口）：`tool_receipt` / `tool_call` / `emit_trace`，
+# 与 `_dialog` 规则轮共用同一份实现与摘要文案（`scan_summary` / `product_summary`）。
 
 
 # ---------------------------------------------------------------- 装配（懒导入/注入）
@@ -195,8 +175,8 @@ def _blocks_text(content) -> str:
 def _build_tools(pi, periods, callables, used: list, receipts: list):
     async def list_periods(tool_call_id, params, cancel_event=None, on_update=None):  # noqa: ARG001
         used.append("list_periods")
-        _runtime.trace({"step": 1, "tool": "list_periods", "label": "期次清单",
-                        "summary": "列出已知期次", "ok": True, "refused": False, "ms": 0})
+        _runtime.trace(_record.trace_event(
+            tool="list_periods", label="期次清单", summary="列出已知期次"))
         return pi.AgentToolResult(
             content=[pi.TextContent(text=json.dumps(list(periods), ensure_ascii=False))])
 
@@ -205,28 +185,18 @@ def _build_tools(pi, periods, callables, used: list, receipts: list):
         period = str((params or {}).get("period") or "").strip()
         fn = callables.get("scan_inventory")
         inv = None
-        t0 = time.perf_counter()
-        if fn is not None and _PERIOD_RE.fullmatch(period):
-            try:
-                inv = fn(period)
-            except Exception:                                      # noqa: BLE001
-                inv = None
-        if inv:
-            pieces = [p for p in (inv.get("pieces") or []) if isinstance(p, dict)]
-            n_pieces = int(inv.get("n_pieces") or len(pieces))
-            n_missing = int(inv.get("n_missing") or 0)
-            missing = f"，缺 {n_missing} 件" if n_missing else ""
-            receipts.append(tool_receipt(
-                "scan_inventory", "盘点", {"period": period},
-                f"盘点 · {inv.get('period') or period}（必需件 {n_pieces} 件{missing}）",
-                ok=True, t0=t0))
-        else:
-            receipts.append(tool_receipt(
-                "scan_inventory", "盘点", {"period": period},
-                "该期数据状态在这里看不到", ok=False, t0=t0))
-        _emit_trace(receipts[-1])
+        with _record.tool_call("scan_inventory", "盘点", {"period": period},
+                               trace=True) as tc:
+            if fn is not None and _PERIOD_RE.fullmatch(period):
+                try:
+                    inv = fn(period)
+                except Exception:                                  # noqa: BLE001
+                    inv = None
+            tc.finish(_record.scan_summary(inv, period), ok=bool(inv))
+        receipts.append(tc.receipt)
         payload = {"period": period, "found": bool(inv)}
         if inv:
+            pieces = [p for p in (inv.get("pieces") or []) if isinstance(p, dict)]
             payload["released"] = bool(inv.get("released"))
             payload["ok"] = [str(p.get("label") or "") for p in pieces if p.get("state") == "ok"]
             payload["missing"] = [str(p.get("label") or "") for p in pieces if p.get("state") != "ok"]
@@ -239,17 +209,16 @@ def _build_tools(pi, periods, callables, used: list, receipts: list):
         fn = callables.get("product_status")
         has = False
         ok = True
-        t0 = time.perf_counter()
-        if fn is not None and _PERIOD_RE.fullmatch(period):
-            try:
-                has = bool(fn(period))
-            except Exception:                                      # noqa: BLE001
-                has = False
-                ok = False
-        receipts.append(tool_receipt(
-            "product_status", "产物核对", {"period": period},
-            "该期已有成品" if has else "该期暂无成品", ok=ok, t0=t0))
-        _emit_trace(receipts[-1])
+        with _record.tool_call("product_status", "产物核对", {"period": period},
+                               trace=True) as tc:
+            if fn is not None and _PERIOD_RE.fullmatch(period):
+                try:
+                    has = bool(fn(period))
+                except Exception:                                  # noqa: BLE001
+                    has = False
+                    ok = False
+            tc.finish(_record.product_summary(has), ok=ok)
+        receipts.append(tc.receipt)
         return pi.AgentToolResult(
             content=[pi.TextContent(text=json.dumps(
                 {"period": period, "has_products": has}, ensure_ascii=False))])
@@ -322,84 +291,67 @@ def _stream_result(pi, msg):
 
 
 def _make_openai_stream(pi, cfg, egress):
-    """OpenAI 兼容单发（姿势与 `_brain.OpenAIBrain.think` 同源：同配置、同错误码）。"""
+    """OpenAI 兼容单发的内核包装（C2 一阶段：传输收敛到 `_brain`）。
+
+    HTTP、错误码映射、外发预算、JSON 解析只剩 `_brain.OpenAIBrain` 一份实现；
+    本包装只留**内核策略**：MAX_STEPS 步数上限、truncated 判定（推理型模型思考
+    占满输出预算 → 终答为空，2026-10-14 实测）、pi 协议翻译与 egress 记账。
+    错误码对外集合不变：rate_limit / http_N / timeout / unreachable / bad_response /
+    egress_budget（_brain 出）＋ truncated / too_many_steps（内核层出）。
+
+    cfg → OpenAIBrain 构造参数（显式映射；内核钳制原样保留）：
+    - base_url / model / key / timeout：部署配置直传（opencode.ai 网关头由
+      `_brain` 统一带上——旧内核单发不带，收敛后与主路径同姿势）；
+    - temperature=0.0：补槽要确定性（内核恒定，不随部署配置）；
+    - max_tokens=min(cfg 或 2048, 2048)：补槽只要一个 JSON 对象，封顶防思考占满预算；
+    - max_egress_chars 原值透传：预算判定在 `_brain.think`（字符口径，超限不发包）。
+    """
+
+    brain = _brain.OpenAIBrain(
+        base_url=cfg["base_url"], model=cfg["model"], key=cfg["key"],
+        timeout=float(cfg["timeout"]), temperature=0.0,
+        max_tokens=min(int(cfg["max_tokens"] or 2048), 2048),
+        max_egress_chars=int(cfg["max_egress_chars"] or 0))
 
     class _OpenAIStream:
         def __init__(self):
-            self.name = f"openai:{cfg['model']}"
+            self.name = brain.name
             self._calls = 0
 
         def __call__(self, model, context, options):               # noqa: ARG002
             self._calls += 1
             if self._calls > MAX_STEPS:
                 raise _brain.BrainError("内核工具轮数超限", code="too_many_steps")
+            # pi 上下文 → Brief：system 原样；首条 user 消息＝task；其余（assistant
+            # tool_calls / role:"tool"）＝history（OpenAI 官方多轮协议消息，原样透传）。
             messages = _openai_messages(context.system_prompt, context.messages)
-            tools = _openai_tools(context.tools)
-            egress_chars = (sum(len(m.get("content") or "") for m in messages)
-                            + (len(json.dumps(tools, ensure_ascii=False)) if tools else 0))
-            if egress_chars > int(cfg["max_egress_chars"] or 0):
-                raise _brain.BrainError(
-                    f"外发 {egress_chars} 字符超过上限 {cfg['max_egress_chars']}",
-                    code="egress_budget")
-            payload = {"model": cfg["model"], "messages": messages,
-                       "temperature": 0.0,
-                       "max_tokens": min(int(cfg["max_tokens"] or 2048), 2048)}
-            if tools:
-                payload["tools"] = tools
-            body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-            egress["items"] += 1 + (1 if tools else 0)
-            egress["bytes"] += len(body)
-            req = urllib.request.Request(
-                f"{str(cfg['base_url']).rstrip('/')}/chat/completions", data=body,
-                headers={"Authorization": f"Bearer {cfg['key']}",
-                         "Content-Type": "application/json"})
-            try:
-                with urllib.request.urlopen(req, timeout=float(cfg["timeout"])) as r:  # noqa: S310
-                    data = json.loads(r.read().decode("utf-8"))
-            except urllib.error.HTTPError as e:
-                code = "rate_limit" if e.code == 429 else f"http_{e.code}"
-                raise _brain.BrainError(f"HTTP {e.code}", code=code) from e
-            except (TimeoutError, socket.timeout) as e:
-                raise _brain.BrainError(f"超时（{cfg['timeout']:g}s）", code="timeout") from e
-            except (urllib.error.URLError, OSError) as e:
-                raise _brain.BrainError(f"连不上：{e}", code="unreachable") from e
-            except (json.JSONDecodeError, UnicodeDecodeError) as e:
-                raise _brain.BrainError("响应不是合法 JSON", code="bad_response") from e
-            try:
-                msg = data["choices"][0]["message"]
-            except (KeyError, IndexError, TypeError) as e:
-                raise _brain.BrainError("响应缺 choices/message", code="bad_response") from e
-            tool_calls = msg.get("tool_calls") or []
-            finish = ""
-            try:
-                finish = str(data["choices"][0].get("finish_reason") or "")
-            except (KeyError, IndexError, TypeError):
-                finish = ""
-            if not tool_calls and finish == "length" \
-                    and not str(msg.get("content") or "").strip():
+            rest = list(messages[1:])
+            task = ""
+            if rest and rest[0].get("role") == "user":
+                task = str(rest[0].get("content") or "")
+                rest = rest[1:]
+            brief = _brain.Brief(ability="dialog", system=str(context.system_prompt or ""),
+                                 task=task, tools=tuple(_openai_tools(context.tools)),
+                                 history=tuple(rest))
+            # egress 记账取 Brief 的等价值（items 公式与 `_attempt._round_items` 同构）。
+            egress["items"] += 1 + (1 if brief.tools else 0)
+            egress["bytes"] += brief.egress_bytes()
+            turn = brain.think(brief)
+            if not turn.calls and turn.finish == "length" \
+                    and not str(turn.text or "").strip():
                 # 推理型模型（deepseek-flash）思考占满输出预算 → 终答为空（2026-10-14 实测）
                 raise _brain.BrainError("输出被 max_tokens 截断", code="truncated")
-            if tool_calls:
-                blocks = []
-                for tc in tool_calls:
-                    fn = tc.get("function") if isinstance(tc, dict) else None
-                    if not isinstance(fn, dict):
-                        continue
-                    args_raw = fn.get("arguments")
-                    try:
-                        args = (json.loads(args_raw)
-                                if isinstance(args_raw, str) and args_raw.strip()
-                                else (args_raw if isinstance(args_raw, dict) else {}))
-                    except json.JSONDecodeError:
-                        args = {}
-                    blocks.append(pi.ToolCall(id=str(tc.get("id") or f"call-{len(blocks)}"),
-                                              name=str(fn.get("name") or ""), arguments=args))
+            if turn.calls:
+                blocks = [pi.ToolCall(id=str(c.get("id") or f"call-{i}"),
+                                      name=str(c.get("name") or ""),
+                                      arguments=dict(c.get("arguments") or {}))
+                          for i, c in enumerate(turn.calls)]
                 out = pi.AssistantMessage(content=blocks, stop_reason="toolUse",
                                           api="openai", provider="openai",
                                           model=str(cfg["model"]))
             else:
                 out = pi.AssistantMessage(
-                    content=[pi.TextContent(text=str(msg.get("content") or ""))],
+                    content=[pi.TextContent(text=str(turn.text or ""))],
                     stop_reason="stop", api="openai", provider="openai",
                     model=str(cfg["model"]))
             return _stream_result(pi, out)

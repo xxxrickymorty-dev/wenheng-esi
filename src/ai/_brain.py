@@ -93,6 +93,9 @@ class Turn:
     text: str | None = None
     calls: tuple[dict, ...] = ()
     note: str = ""
+    #: 响应的 finish_reason（协议事实：如 "length"／"stop"；无＝空）。云适配器如实带出，
+    #: 截断**判定**归调用方策略（内核据此报 truncated；主路径不看它）。
+    finish: str = ""
 
 
 def _user_content(brief: Brief) -> str:
@@ -188,14 +191,17 @@ class OpenAIBrain:
         except (json.JSONDecodeError, UnicodeDecodeError) as e:
             raise BrainError("响应不是合法 JSON", code="bad_response") from e
         try:
-            message = data["choices"][0]["message"]
+            choice = data["choices"][0]
+            message = choice["message"]
+            finish = str(choice.get("finish_reason") or "")
             content = message.get("content")
             raw_calls = message.get("tool_calls")
         except (KeyError, IndexError, TypeError, AttributeError) as e:
             raise BrainError("响应缺 choices/content", code="bad_response") from e
         if raw_calls:
-            return Turn(calls=tuple(self._decode_call(c, i) for i, c in enumerate(raw_calls)))
-        return Turn(text=_strip_think(content))
+            return Turn(calls=tuple(self._decode_call(c, i) for i, c in enumerate(raw_calls)),
+                        finish=finish)
+        return Turn(text=_strip_think(content), finish=finish)
 
     @staticmethod
     def _decode_call(item, seq: int) -> dict:

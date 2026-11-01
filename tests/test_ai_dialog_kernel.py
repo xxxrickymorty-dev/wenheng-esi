@@ -13,11 +13,13 @@ from __future__ import annotations
 import asyncio
 import json
 import pathlib
+import urllib.error
+import urllib.request
 
 import pytest
 
 import ai
-from ai import _dialog_kernel
+from ai import _brain, _dialog_kernel
 from _vendor import pi_agent_core as pi
 
 TODAY = "2026-10-10"
@@ -429,3 +431,168 @@ def test_内核回执_盘点不到_ok为假(tmp_path):
     scans = [r for r in ans.receipts if r.tool == "scan_inventory"]
     assert len(scans) == 1 and scans[0].ok is False
     assert scans[0].summary == "该期数据状态在这里看不到"
+
+
+# ============================================================ 9. 传输收敛（C2 一阶段）：与 OpenAIBrain 对拍
+class _FakeResp:
+    def __init__(self, body: bytes):
+        self._body = body
+
+    def read(self) -> bytes:
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):                                        # noqa: ARG002
+        return False
+
+
+class _FakeHTTP:
+    """`urllib.request.urlopen` 打桩（零网络）：按脚本回异常或响应体，并捕获请求。
+
+    内核流与 `OpenAIBrain` 收敛后走同一根管子——同一根桩两边各打一发，
+    对拍错误码与外发形状。
+    """
+
+    def __init__(self, monkeypatch, script=(),
+                 default_body=b'{"choices": [{"message": {"content": "ok"}}]}'):
+        self.script = list(script)
+        self.default_body = default_body
+        self.requests: list = []
+        monkeypatch.setattr(urllib.request, "urlopen", self._open)
+
+    def _open(self, req, timeout=None):                            # noqa: ARG002
+        self.requests.append(json.loads(req.data.decode("utf-8")))
+        item = self.script.pop(0) if self.script else self.default_body
+        if isinstance(item, BaseException):
+            raise item
+        return _FakeResp(item)
+
+
+def _cfg():
+    return {"profile": "live", "backend": "openai", "base_url": "https://gw.invalid/v1",
+            "model": "deepseek-flash", "key": "sk-test", "timeout": 5.0,
+            "max_tokens": 4096, "max_egress_chars": 20000}
+
+
+def _ctx(text="上上期呢"):
+    return pi.AgentContext(
+        system_prompt=_dialog_kernel.KERNEL_SYSTEM,
+        messages=[pi.UserMessage(content=[pi.TextContent(text=text)])],
+        tools=[])
+
+
+def _stream(egress=None):
+    return _dialog_kernel._make_openai_stream(pi, _cfg(), egress or {"items": 0, "bytes": 0})
+
+
+def _model():
+    return pi.Model(api="openai", provider="openai", id="deepseek-flash")
+
+
+@pytest.mark.parametrize("throw,code", [
+    (urllib.error.HTTPError("https://gw.invalid/v1/chat/completions", 429, "慢", {}, None),
+     "rate_limit"),
+    (urllib.error.HTTPError("https://gw.invalid/v1/chat/completions", 500, "坏", {}, None),
+     "http_500"),
+    (TimeoutError(), "timeout"),
+    (urllib.error.URLError("连不上"), "unreachable"),
+])
+def test_内核流与云适配器_同错误码_网络面(monkeypatch, throw, code):
+    """对拍（C2 一阶段验收）：同一 fake HTTP 错误，内核 StreamFn 与 OpenAIBrain.think
+    产生相同回落码（同一份 _brain 实现出码）。"""
+    def hit(adapter):
+        http = _FakeHTTP(monkeypatch, script=[throw])
+        try:
+            if adapter == "brain":
+                _brain.OpenAIBrain(
+                    base_url=_cfg()["base_url"], model=_cfg()["model"], key=_cfg()["key"],
+                    timeout=_cfg()["timeout"], temperature=0.0,
+                    max_tokens=min(int(_cfg()["max_tokens"] or 2048), 2048),
+                    max_egress_chars=int(_cfg()["max_egress_chars"] or 0),
+                ).think(_brain.Brief(ability="dialog",
+                                     system=_dialog_kernel.KERNEL_SYSTEM, task="上上期呢"))
+            else:
+                _stream()(_model(), _ctx(), None)
+        except _brain.BrainError as e:
+            return e.code
+        raise AssertionError("该炸没炸")
+
+    assert hit("brain") == code
+    assert hit("kernel") == code
+
+
+def test_内核流与云适配器_坏响应同码(monkeypatch):
+    for adapter in ("brain", "kernel"):
+        _FakeHTTP(monkeypatch, script=["这不是 JSON".encode("utf-8")])
+        with pytest.raises(_brain.BrainError) as ei:
+            if adapter == "brain":
+                _brain.OpenAIBrain(
+                    base_url=_cfg()["base_url"], model=_cfg()["model"], key=_cfg()["key"],
+                    timeout=_cfg()["timeout"], temperature=0.0,
+                    max_tokens=min(int(_cfg()["max_tokens"] or 2048), 2048),
+                    max_egress_chars=int(_cfg()["max_egress_chars"] or 0),
+                ).think(_brain.Brief(ability="dialog",
+                                     system=_dialog_kernel.KERNEL_SYSTEM, task="上上期呢"))
+            else:
+                _stream()(_model(), _ctx(), None)
+        assert ei.value.code == "bad_response", adapter
+
+
+def test_内核流_外发形状与钳制_同brain一条线(monkeypatch):
+    """cfg→Brief 映射做实：temperature=0.0、max_tokens 封顶 2048（cfg 4096）；
+    内核流与 OpenAIBrain 对同一输入发出逐字相同的 payload；egress 记账同在。"""
+    http = _FakeHTTP(monkeypatch)
+    egress = {"items": 0, "bytes": 0}
+    _stream(egress)(_model(), _ctx(), None)
+    body = http.requests[0]
+    assert body["temperature"] == 0.0, "内核钳制：补槽要确定性"
+    assert body["max_tokens"] == 2048, "内核钳制：cfg 4096 封顶 2048"
+    assert body["messages"][0]["content"] == _dialog_kernel.KERNEL_SYSTEM
+    assert body["messages"][1]["content"] == "上上期呢"
+    assert egress["items"] == 1 and egress["bytes"] > 0
+
+    brain = _brain.OpenAIBrain(
+        base_url=_cfg()["base_url"], model=_cfg()["model"], key=_cfg()["key"],
+        timeout=_cfg()["timeout"], temperature=0.0,
+        max_tokens=min(int(_cfg()["max_tokens"] or 2048), 2048),
+        max_egress_chars=int(_cfg()["max_egress_chars"] or 0))
+    http.requests.clear()
+    brain.think(_brain.Brief(ability="dialog",
+                             system=_dialog_kernel.KERNEL_SYSTEM, task="上上期呢"))
+    assert http.requests[0] == body, "两路 payload 逐字一致（传输只剩一份实现）"
+
+
+def test_内核流_tool_calls_解出ToolCall_占位参数(monkeypatch):
+    body = json.dumps({"choices": [{"message": {
+        "content": None,
+        "tool_calls": [{"id": "c9", "type": "function",
+                        "function": {"name": "scan_inventory",
+                                     "arguments": '{"period": "202607"}'}}]}}]}).encode()
+    _FakeHTTP(monkeypatch, script=[body])
+    res = _stream()(_model(), _ctx(), None)
+    msg = asyncio.run(res["result"]())
+    assert msg.stop_reason == "toolUse"
+    (tc,) = msg.content
+    assert (tc.id, tc.name, tc.arguments) == ("c9", "scan_inventory", {"period": "202607"})
+
+
+def test_内核流_truncated_码保留(monkeypatch):
+    """收敛不减错误码：finish=length 且终答为空（推理模型思考占满预算）仍报 truncated。"""
+    body = json.dumps({"choices": [{"finish_reason": "length",
+                                    "message": {"content": ""}}]}).encode()
+    _FakeHTTP(monkeypatch, script=[body])
+    with pytest.raises(_brain.BrainError) as ei:
+        _stream()(_model(), _ctx(), None)
+    assert ei.value.code == "truncated"
+
+
+def test_内核流_步数超限_too_many_steps(monkeypatch):
+    _FakeHTTP(monkeypatch)
+    stream = _stream()
+    for _ in range(_dialog_kernel.MAX_STEPS):
+        stream(_model(), _ctx(), None)
+    with pytest.raises(_brain.BrainError) as ei:
+        stream(_model(), _ctx(), None)
+    assert ei.value.code == "too_many_steps"

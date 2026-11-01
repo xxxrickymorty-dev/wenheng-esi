@@ -13,6 +13,7 @@ import secrets
 import time
 
 from . import _runtime
+from ._types import Receipt
 
 #: 记录 schema 版本；追加字段向后兼容，不原地改旧行。
 SCHEMA = 1
@@ -36,6 +37,114 @@ QUESTION_PREVIEW = 200
 def digest(obj) -> str:
     s = json.dumps(obj, ensure_ascii=False, sort_keys=True, default=str)
     return hashlib.sha256(s.encode("utf-8")).hexdigest()[:12]
+
+
+# ---------------------------------------------------------------- 确定性工具调用收口（C4）
+def tool_receipt(tool: str, label: str, args, summary: str, *,
+                 ok: bool, t0: float, refused: bool = False) -> Receipt:
+    """确定性工具调用的回执（双面，C2）。唯一出口——`tool_call` 收口与各调用方共用。
+
+    `t0` 是调用方取的 `time.perf_counter()` 起点（把真实工具调用包住）；
+    `args` 只进 `args_digest`（记录面）；`summary` 是界面面人话（一句以内）——
+    数字只许用对话界面已显示的盘点件数这类，不放任何报告数值（回执红线）。
+    """
+    return Receipt(tool=tool, label=label, args_digest=digest(args),
+                   summary=summary, elapsed_ms=int((time.perf_counter() - t0) * 1000),
+                   ok=ok, refused=refused)
+
+
+def trace_event(*, step: int = 1, tool: str, label: str, summary: str,
+                ok: bool = True, refused: bool = False, ms: int = 0) -> dict:
+    """「工具调用」轨迹一条的标准形状（2026-10-29）：唯一手写处。
+
+    事件只放**本就给界面看**的东西（工具名、中文摘要、耗时、成没成）——
+    不放模型原文、不放台账数值。
+    """
+    return {"step": int(step), "tool": str(tool), "label": str(label),
+            "summary": str(summary), "ok": bool(ok),
+            "refused": bool(refused), "ms": int(ms)}
+
+
+def emit_trace(receipt, *, step: int = 1, tool: str = "", label: str = "") -> None:
+    """回执 → 界面「工具调用」轨迹一条。旁路：回调异常不挡主流程（`_runtime.trace`）。
+
+    回执按鸭子类型读——写作位边界允许执行器返回非 Receipt（测试替身回裸串），
+    缺 attr 时用 `tool` / `label` 兜底。
+    """
+    _runtime.trace(trace_event(
+        step=step,
+        tool=str(getattr(receipt, "tool", "") or tool),
+        label=str(getattr(receipt, "label", "") or label),
+        summary=str(getattr(receipt, "summary", "") or ""),
+        ok=bool(getattr(receipt, "ok", True)),
+        refused=bool(getattr(receipt, "refused", False)),
+        ms=int(getattr(receipt, "elapsed_ms", 0) or 0)))
+
+
+def scan_summary(inv, period: str = "") -> str:
+    """盘点回执的人话摘要（工具声明的一部分，**单处定义**）：
+    `_dialog` 规则轮与 `_dialog_kernel` 内核轮共用——同一工具同一摘要。
+    """
+    if not inv:
+        return "该期数据状态在这里看不到"
+    n_missing = int(inv.get("n_missing") or 0)
+    missing = f"，缺 {n_missing} 件" if n_missing else ""
+    return (f"盘点 · {inv.get('period') or period}"
+            f"（必需件 {int(inv.get('n_pieces') or 0)} 件{missing}）")
+
+
+def product_summary(has) -> str:
+    """产物核对回执的人话摘要（单处定义，同上）。"""
+    return "该期已有成品" if has else "该期暂无成品"
+
+
+class tool_call:
+    """确定性工具调用的上下文收口（C4）：计时＋回执＋（可选）轨迹一处出。
+
+    用法（with 包住真实调用，退出后取 `.receipt`）：
+
+        with _record.tool_call("product_status", "产物核对",
+                               {"period": p.period}) as tc:
+            has = _products_exist(root, p.period)
+            tc.finish(_record.product_summary(has))
+        rcpts.append(tc.receipt)
+
+    - 摘要在 `finish()` 给一次（文案按工具单处定义，见 `scan_summary` 等）；
+    - `trace=True` 时退出即发轨迹一条（内核工具轮要；规则轮回执只进
+      `Answer.receipts`、不发轨迹——与现状逐字一致）；
+    - `ok=False` 表「查了但没查到/看不到」，与 `refused`（越权拒答）分开；
+    - with 体内异常照常外抛（旧样板同样不出回执），不留半张回执。
+    """
+
+    def __init__(self, tool: str, label: str, args, *, trace: bool = False):
+        self.tool = tool
+        self.label = label
+        self.args = args
+        self._trace = trace
+        self._t0 = 0.0
+        self._receipt: Receipt | None = None
+
+    def __enter__(self) -> "tool_call":
+        self._t0 = time.perf_counter()
+        return self
+
+    def finish(self, summary: str, *, ok: bool = True, refused: bool = False) -> None:
+        """给一次摘要并定型回执（with 体内对真实调用包完后调用）。"""
+        self._receipt = tool_receipt(self.tool, self.label, self.args, summary,
+                                     ok=ok, t0=self._t0, refused=refused)
+
+    @property
+    def receipt(self) -> Receipt:
+        if self._receipt is None:
+            # finish 没调（异常/编程错误）：照实出一张失败回执，不让旁路面炸掉。
+            self._receipt = tool_receipt(self.tool, self.label, self.args,
+                                         "这次没查成", ok=False, t0=self._t0)
+        return self._receipt
+
+    def __exit__(self, exc_type, exc, tb) -> bool:                 # noqa: ARG002
+        if self._trace:
+            emit_trace(self.receipt)
+        return False
 
 
 def make_record_id(capability: str, now: float | None = None) -> str:

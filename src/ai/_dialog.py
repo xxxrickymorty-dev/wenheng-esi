@@ -62,6 +62,7 @@ import unicodedata
 from dataclasses import dataclass, replace
 
 from . import _dialog_kernel
+from . import _record
 from . import _runtime
 from ._draft import RuleDraft
 from ._numbered import NumberedText
@@ -705,8 +706,9 @@ def _compare_reply(schools, period_end):
     """
     from discipline_list import cn_of                        # noqa: PLC0415
 
-    _runtime.trace({"step": 1, "tool": "panel", "label": "他校取数",
-                    "summary": "正在读各期学科表", "ok": True, "refused": False, "ms": 0})
+    # 起手轨迹（形状唯一出处 `_record.trace_event`；收尾回执在 build 的收口里）。
+    _runtime.trace(_record.trace_event(tool="panel", label="他校取数",
+                                       summary="正在读各期学科表"))
     p, err = _panel_of(schools, period_end)
     if p is None:
         lines = [f"这次没取到数：{err}",
@@ -1039,14 +1041,13 @@ def build(root, period, payload):                                  # noqa: ARG00
                 eff += f" {prev}"
         elif slot and not _PERIOD.search(norm_text):
             eff += f" {slot}"
-        tc0 = time.perf_counter()
-        lines, srcs, qa_data, qa_ok = _aiqa_reply(eff, root)
+        with _record.tool_call("aiqa", "问数", {"question": eff}) as tc:
+            lines, srcs, qa_data, qa_ok = _aiqa_reply(eff, root)
+            tc.finish("问数引擎按台账答了这一句" if qa_ok else "问数底表还没生成",
+                      ok=qa_ok)
+        rcpts.append(tc.receipt)
         reply = "\n".join(lines)
         register = _register_panel(srcs)
-        rcpts.append(_dialog_kernel.tool_receipt(
-            "aiqa", "问数", {"question": eff},
-            "问数引擎按台账答了这一句" if qa_ok else "问数底表还没生成",
-            ok=qa_ok, t0=tc0))
         verdict, inv = "", None
     elif kind == "query":
         # 查数据（票 07）：不盘点、不出稿；正文本地只在「没期次」时出声，
@@ -1063,16 +1064,15 @@ def build(root, period, payload):                                  # noqa: ARG00
         # 他校简报（阶段 2）：期次优先句子里的，其次会话槽位，再次台账最近一期；
         # 都没有就交给 panel 自己取数据目录最新一期（它会在回答里写明是哪一期）。
         target = p.period or slot or latest
-        tc0 = time.perf_counter()
-        lines, srcs, compare_data, cmp_ok = _compare_reply(p.schools, target)
+        with _record.tool_call("panel", "他校取数",
+                               {"schools": list(p.schools), "period": target}) as tc:
+            lines, srcs, compare_data, cmp_ok = _compare_reply(p.schools, target)
+            tc.finish((f"他校简报 · {compare_data.get('period_end') or target or '—'}"
+                       f"（{len(p.schools)} 所）") if cmp_ok else "这一轮没取到数",
+                      ok=cmp_ok)
+        rcpts.append(tc.receipt)
         reply = "\n".join(lines)
         register = _register_panel(srcs)
-        rcpts.append(_dialog_kernel.tool_receipt(
-            "panel", "他校取数",
-            {"schools": list(p.schools), "period": target},
-            (f"他校简报 · {compare_data.get('period_end') or target or '—'}"
-             f"（{len(p.schools)} 所）") if cmp_ok else "这一轮没取到数",
-            ok=cmp_ok, t0=tc0))
         verdict, inv = "", None
     elif kind == "proceed":
         # 内核补槽轮：目标期次用补出来的（规则轮原样用槽位，逐字不变）。
@@ -1082,11 +1082,11 @@ def build(root, period, payload):                                  # noqa: ARG00
         has_products = False
         if p.case == "period" and p.period:
             # 产物核对（确定性工具，receipts-lite）：True/False 都照实出回执。
-            tc0 = time.perf_counter()
-            has_products = _products_exist(root, p.period)
-            rcpts.append(_dialog_kernel.tool_receipt(
-                "product_status", "产物核对", {"period": p.period},
-                "该期已有成品" if has_products else "该期暂无成品", ok=True, t0=tc0))
+            with _record.tool_call("product_status", "产物核对",
+                                   {"period": p.period}) as tc:
+                has_products = _products_exist(root, p.period)
+                tc.finish(_record.product_summary(has_products))
+            rcpts.append(tc.receipt)
         if has_products:
             # 这期已出过稿（2026-10-11 rick 实问「帮我做 9 月的报告」）——
             # 先问一次覆盖，不静默重出、也不再报「还差几件」。
@@ -1105,18 +1105,11 @@ def build(root, period, payload):                                  # noqa: ARG00
             inv = None
             if p.case == "period" and p.period:
                 # 盘点（确定性工具，receipts-lite）：盘到与否都照实出回执。
-                tc0 = time.perf_counter()
-                inv = _scan_inventory(p.period)
-                if inv is None:
-                    rcpts.append(_dialog_kernel.tool_receipt(
-                        "scan_inventory", "盘点", {"period": p.period},
-                        "该期数据状态在这里看不到", ok=False, t0=tc0))
-                else:
-                    missing = f"，缺 {inv['n_missing']} 件" if inv["n_missing"] else ""
-                    rcpts.append(_dialog_kernel.tool_receipt(
-                        "scan_inventory", "盘点", {"period": p.period},
-                        f"盘点 · {inv['period']}（必需件 {inv['n_pieces']} 件{missing}）",
-                        ok=True, t0=tc0))
+                with _record.tool_call("scan_inventory", "盘点",
+                                       {"period": p.period}) as tc:
+                    inv = _scan_inventory(p.period)
+                    tc.finish(_record.scan_summary(inv, p.period), ok=bool(inv))
+                rcpts.append(tc.receipt)
             if inv is None:
                 if p.case == "period" and p.period:
                     # 有期次但盘点不到（如演示站没有台账/数据与复现）——如实说，别演。
