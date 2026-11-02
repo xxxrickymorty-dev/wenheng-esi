@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<title>问文衡 · 静态稿 20261102</title>
+<style>
+  /* 主工作台壳 · 跨页书式 · 方案C「书卷编辑风」（静态稿 20261031，待 rick 审）。
+     同族《高校ESI报告-插件市场（静态稿 20261031）》：左页会泽深绿品牌面 / 右页纸面工作面、订口一条金线、
+     圆角三档（窗件 12 ／ 卡片 8 ／ 气泡 6）、一档浅阴影。与方案A（守正会泽·三步大卡）/ B（流程为纲·全屏流程图）/ D（双主题工程版）同壳异面，
+     方案C 只做一件事：把「期次」当一期刊物的当期目次来排——
+     衬线大题、细金线目次分隔、点线引渡、进度点代替页码、签发印记；气质来自排版，不靠卡片与装饰堆叠。
+     本稿验六件事：
+     ① 左栏 44px 行一屏放全（品牌＋导航＋管理组＋身份行，720 高不滚、栏内禁滚动）；
+     ② 本期动态三步＝目次行：点线引渡到行尾，进度点代替页码（金方脉冲＝进行中，空方＝未开始，色＋形＋字）；
+     ③ 全页唯一主动作＝「去取数台」；琥珀 #7C5A16 全稿仅此一处＝「可继续的提醒」（UX.md §九 语义分色）；
+     ④ 四步流水＝目录条目式：壹贰叁肆章号＋行间细线，与目次行（一二三＋点线）两档排印；
+     ⑤ 上期一行像「上期已出刊」：202609 ·「签」印＋绿字已签发（印即色＋形，字补第三重）；
+     ⑥ 衬线大数点缀：论文 27,220 ／ 被引 360,379（tabular-nums；大题与印记为音阶豁免件）。
+     演示数据：202611 第 22 期在产（取数进行中）；202609 已签发（2026-09-23）。
+     硬约束：单文件零依赖零 JS、系统字体、六档字号 11/12/13.5/15/19/26、tabular-nums、
+     点击区 ≥44px、页脚「静态稿 · 演示数据 · 20261031」。 */
+  :root{
+    --deep:#143729; --green:#1A4B27; --seam:#B08E48;
+    --ivory:#F6F1DE; --ivory-2:rgba(246,241,222,.80); --ivory-3:rgba(246,241,222,.55);
+    --paper:#F5F3EC; --card:#FAF8F0;
+    --ink:#15222B; --ink-2:rgba(21,34,43,.78); --ink-3:rgba(21,34,43,.66);
+    --line:#D8D2C2; --hair:rgba(216,210,194,.55); --dot:rgba(21,34,43,.32);
+    --warn:#7C5A16;                        /* 全稿唯一：可继续的提醒 */
+    --shadow:0 1px 2px rgba(21,34,43,.07);
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --lw:clamp(232px,26%,360px);
+    --e:cubic-bezier(.32,.72,0,1);
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--paper)}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);
+    font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;background:none;border:none;color:inherit}
+  ol{list-style:none}
+  :focus-visible{outline:2px solid var(--green);outline-offset:2px}
+  .page-l :focus-visible{outline-color:var(--seam)}
+  ::selection{background:var(--seam);color:var(--ink)}
+
+  /* ───── 跨页本体 ───── */
+  .spread{display:grid;grid-template-columns:var(--lw) minmax(0,1fr);min-height:100dvh;position:relative}
+  .spread::after{content:"";position:absolute;top:0;bottom:0;left:var(--lw);width:1px;background:var(--seam);pointer-events:none}
+
+  /* ───── 左页 · 会泽（品牌面，一屏放全，禁栏内滚动） ───── */
+  .page-l{background:var(--deep);color:var(--ivory);padding:clamp(16px,2.8vh,30px) clamp(18px,1.9vw,30px);
+    display:flex;flex-direction:column;position:sticky;top:0;height:100dvh;overflow:hidden}
+  .bm{display:flex;align-items:baseline;gap:10px}
+  .bm b{font-family:var(--serif);font-weight:600;font-size:19px;letter-spacing:.14em}
+  .bm span{font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--ivory-3);line-height:1.7}
+  /* 藏书印：左页右上角一枚，品牌印记（豁免件） */
+  .seal-b{position:absolute;top:clamp(16px,2.8vh,30px);right:clamp(18px,1.9vw,30px);width:22px;height:22px;
+    background:var(--ivory);color:var(--deep);font-family:var(--kai);font-style:normal;font-size:12px;line-height:1;
+    display:grid;place-items:center;transform:rotate(-6deg);box-shadow:var(--shadow)}
+  .seal-b::after{content:"";position:absolute;inset:2px;border:1px solid rgba(20,55,41,.5)}
+  .nav{margin:auto 0;display:flex;flex-direction:column;font-size:13.5px;letter-spacing:.05em;color:var(--ivory-2)}
+  .nav a{padding:11px 0;min-height:44px;display:flex;align-items:center;gap:10px;transition:color .3s var(--e)}
+  .nav a::before{content:"";width:9px;height:2px;flex:none;background:transparent;transition:background-color .3s var(--e)}
+  .nav a[aria-current]{color:var(--ivory)}
+  .nav a[aria-current]::before{background:var(--seam)}
+  .nav a:hover{color:var(--ivory)}
+  .nav .m{padding:6px 0 4px;font-family:var(--kai);font-size:11px;letter-spacing:.26em;color:var(--ivory-3)}
+  .nav .q{opacity:.62}
+  .idb{padding-top:14px}
+  .idb .rule{width:34px;height:1px;background:var(--seam);margin-bottom:12px}
+  .who{font-size:12px;letter-spacing:.14em;color:var(--ivory-2)}
+
+  /* ───── 右页 · 至公（当期目次） ───── */
+  .page-r{display:flex;min-height:100dvh;min-width:0;
+    padding:clamp(18px,3.2vh,34px) clamp(22px,3.4vw,48px) clamp(14px,2vh,20px)}
+  .sheet{width:100%;max-width:940px;display:flex;flex-direction:column}
+
+  /* 题头：大题＋大数 */
+  .mast{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 32px;flex-wrap:wrap}
+  .eyebrow{font-family:var(--kai);font-size:11px;letter-spacing:.34em;color:var(--ink-3)}
+  .mast h1{font-family:var(--serif);font-weight:600;font-size:clamp(26px,4.4vh,36px);line-height:1.3;
+    letter-spacing:.05em;margin-top:10px}
+  .mast h1 .sep{color:var(--seam);font-weight:400;margin:0 .16em}
+  .figs{display:flex;align-items:flex-end;gap:20px;padding-bottom:7px}
+  .fig + .fig{border-left:1px solid var(--line);padding-left:20px}
+  .fig span{display:block;font-family:var(--kai);font-size:11px;letter-spacing:.3em;color:var(--ink-3);margin-bottom:6px}
+  .fig b{display:block;font-family:var(--serif);font-weight:600;font-size:26px;line-height:1.15;letter-spacing:.02em}
+  .info{position:relative;width:22px;height:22px;flex:none;border:1px solid var(--line);color:var(--ink-3);
+    font-family:var(--serif);font-style:italic;font-size:12px;line-height:1;display:grid;place-items:center;
+    margin-bottom:7px;transition:border-color .3s var(--e),color .3s var(--e)}
+  .info::before{content:"";position:absolute;inset:-11px}   /* 点击区扩到 44px */
+  .info:hover{border-color:var(--ink-3);color:var(--ink)}
+
+  /* 细金线 · 目次分隔 */
+  .sheet .rule{height:1px;background:var(--seam);margin:clamp(14px,2.4vh,24px) 0 clamp(12px,2vh,20px)}
+
+  /* 目次行：本期动态三步（进度点代替页码） */
+  .toc h2,.pipe h2{font-family:var(--kai);font-weight:400;font-size:11px;letter-spacing:.34em;
+    color:var(--ink-3);margin-bottom:clamp(6px,1.2vh,12px)}
+  .toc li{display:flex;align-items:flex-end;min-height:44px;padding:2px 0}
+  .toc .num{font-family:var(--kai);font-size:15px;color:var(--green);width:28px;flex:none;margin-bottom:6px}
+  .toc .name{font-family:var(--serif);font-weight:600;font-size:19px;line-height:1.45;letter-spacing:.06em;color:var(--ink)}
+  .toc li.w .name{color:var(--ink-2)}
+  .toc .lead{flex:1;min-width:28px;border-bottom:1px dotted var(--dot);margin:0 16px 10px}
+  .toc .st{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.1em;
+    white-space:nowrap;margin-bottom:6px}
+  .toc li.r .st{color:var(--ink);font-weight:600}
+  .toc li.w .st{color:var(--ink-3);font-weight:400}
+  .mk{width:8px;height:8px;flex:none}
+  .mk-run{background:var(--seam);animation:pulse 2.2s var(--e) infinite}
+  .mk-wait{border:1px solid var(--ink-3)}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.78)}}
+
+  /* 唯一主动作＋可继续的提醒 */
+  .acts{display:flex;align-items:center;gap:12px 20px;flex-wrap:wrap;margin-top:clamp(14px,2.4vh,24px);
+    padding-bottom:clamp(16px,3vh,30px)}
+  .btn{display:inline-flex;align-items:center;gap:12px;min-height:44px;padding:0 26px;background:var(--deep);
+    color:var(--ivory);font-size:15px;letter-spacing:.14em;box-shadow:var(--shadow);
+    transition:background-color .35s var(--e),transform .35s var(--e)}
+  .btn:hover{background:var(--green)}
+  .btn:active{transform:translateY(1px)}
+  .btn i{font-style:normal;transition:transform .35s var(--e)}
+  .btn:hover i{transform:translateX(4px)}
+  .hint{display:inline-flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.04em;color:var(--warn)}
+  .hint::before{content:"";width:7px;height:7px;flex:none;background:var(--warn)}
+
+  /* 目录条目式：四步流水（壹贰叁肆＋行间细线） */
+  .pipe{margin-top:auto;border-top:1px solid var(--seam);padding-top:clamp(12px,2vh,20px)}
+  .pipe a{display:flex;align-items:center;gap:14px;min-height:44px;padding:0 10px 0 12px;
+    border-bottom:1px solid var(--hair);transition:background-color .3s var(--e)}
+  .pipe a:hover{background:var(--card)}
+  .pipe a[aria-current="step"]{box-shadow:inset 2px 0 0 var(--seam)}
+  .chap{font-family:var(--kai);font-size:15px;color:var(--green);width:24px;flex:none}
+  .pipe .name{font-size:15px;letter-spacing:.08em;color:var(--ink)}
+  .pipe .st{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:12px;
+    letter-spacing:.1em;color:var(--ink-3);white-space:nowrap}
+  .pipe .st .mk{width:7px;height:7px}
+  .pipe a[aria-current="step"] .st{color:var(--ink);font-weight:600}
+
+  /* 上期已出刊 */
+  .prev{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:clamp(10px,1.8vh,16px) 2px 0}
+  .prev .k{font-family:var(--kai);font-size:11px;letter-spacing:.3em;color:var(--ink-3)}
+  .prev .rl{width:18px;height:1px;background:var(--seam)}
+  .prev .iss{font-family:var(--serif);font-weight:600;font-size:15px;letter-spacing:.06em}
+  .prev .sg{display:inline-flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.1em;
+    color:var(--green);font-weight:600}
+  .seal{position:relative;width:20px;height:20px;background:var(--deep);color:var(--ivory);
+    font-family:var(--kai);font-style:normal;font-size:12px;line-height:1;display:grid;place-items:center;
+    transform:rotate(-4deg);box-shadow:var(--shadow)}
+  .seal::after{content:"";position:absolute;inset:2px;border:1px solid rgba(246,241,222,.5)}
+
+  .foot{margin-top:clamp(10px,1.8vh,16px);border-top:1px solid var(--hair);padding-top:10px;
+    font-size:11px;letter-spacing:.08em;color:var(--ink-3)}
+
+  /* ───── 窄屏：左栏折成顶带 ───── */
+  @media (max-width:960px){
+    .spread{display:block}
+    .spread::after{display:none}
+    .page-l{position:static;height:auto;overflow:visible}
+    .nav{margin:14px 0 0}
+    .page-r{min-height:0}
+    .pipe{margin-top:clamp(20px,4vh,36px)}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .mk-run{animation:none}
+    *{transition:none!important}
+  }
+
+  /* ── 本页专属 ──
+     问文衡＝复刻参考站（openhanako.com）第二屏的「应用窗口」：标题栏（交通灯＋侧栏图标＋文档名＋面包屑＋右侧三图标）
+     → 渐隐蒙版 → 聊天流（用户气泡／助手头像＋正文＋内嵌卡）→ 输入栏。
+     窗口与页内组件按三档放开圆角（12/8/6），主壳方角。 */
+  :root{
+    --accent:#276B4C; --border:#DDD7C6; --muted:#6C706A;
+    --ease-soft:cubic-bezier(.22,1,.36,1);
+    --fs:Georgia,"Songti SC","Noto Serif SC",SimSun,serif;
+    --fm:ui-monospace,SFMono-Regular,"Cascadia Mono",Menlo,Consolas,monospace;
+  }
+
+  /* 题头 */
+  .intro{padding-bottom:clamp(16px,2.8vh,24px)}
+  .intro .eyebrow{font-family:var(--fs);font-size:.72rem;letter-spacing:.25em;color:var(--accent);margin-bottom:.9rem}
+  .intro h1{font-family:var(--fs);font-weight:400;font-size:clamp(1.6rem,2.6vw,2.1rem);
+    letter-spacing:.06em;line-height:1.35;color:var(--ink)}
+  .intro .lede{margin-top:.7rem;max-width:38em;font-size:.95rem;line-height:1.8;color:var(--muted)}
+
+  .stage{border-top:1px solid var(--border);padding-top:clamp(18px,3vh,26px)}
+
+  /* 窗口本体 */
+  .win{--barh:44px;position:relative;background:var(--card);
+    border:.5px solid rgba(0,0,0,.08);border-radius:12px;
+    box-shadow:0 30px 90px rgba(20,30,15,.18),0 4px 16px rgba(20,30,15,.1);
+    overflow:hidden}
+  .bar{height:var(--barh);display:flex;align-items:center;gap:11px;padding:10px 14px;
+    border-bottom:.5px solid rgba(0,0,0,.06);background:var(--card)}
+  .lights{display:flex;gap:7px;flex:none}
+  .lights i{width:12px;height:12px;border-radius:50%;background:#E0D6C4;display:block}
+  .sicon{display:flex;flex:none;color:var(--muted);margin-left:4px}
+  .doc{font-size:14px;font-weight:700;color:var(--accent);letter-spacing:.02em;white-space:nowrap}
+  .crumb{font-size:11.5px;color:var(--muted);letter-spacing:.04em;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;margin-left:2px;padding-left:11px;
+    border-left:1px solid rgba(0,0,0,.10)}
+  .tools{margin-left:auto;display:flex;gap:14px;color:var(--muted);flex:none}
+  .fade{position:absolute;left:0;right:0;top:var(--barh);height:16px;z-index:2;pointer-events:none;
+    background:linear-gradient(to bottom,var(--card),rgba(250,248,240,0))}
+
+  /* 聊天流 */
+  .chat{padding:26px 34px 30px;display:flex;flex-direction:column;gap:26px}
+  .turn-u{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .bubble{background:#E8E4DB;border:.5px solid #DED9CC;border-radius:6px;
+    padding:9px 13px;max-width:82%;font-size:14px;line-height:1.65;color:var(--ink)}
+  .t{font-size:11px;letter-spacing:.04em;color:var(--muted)}
+  .turn-b{display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;align-items:start}
+  .av{width:32px;height:32px;border-radius:50%;background:var(--deep);color:var(--ivory);
+    display:grid;place-items:center;font-family:var(--fs);font-size:13px;line-height:1;
+    font-style:normal;user-select:none}
+  .who{font-size:13px;color:var(--muted);margin-bottom:4px;letter-spacing:.04em}
+  .say{font-size:14px;line-height:1.75;color:var(--ink);max-width:34em}
+
+  /* 卡：表格卡／折线卡／阈值卡，同一套壳 */
+  .card{width:400px;max-width:100%;margin-top:12px;background:var(--card);
+    border:.5px solid var(--border);border-radius:8px;overflow:hidden;
+    box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  .card-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+    padding:10px 12px 8px;border-bottom:.5px solid rgba(221,215,198,.75)}
+  .card-h b{font-family:var(--fs);font-weight:400;font-size:12.5px;letter-spacing:.06em;color:var(--ink)}
+  .card-h span{font-size:11px;letter-spacing:.03em;color:var(--muted);white-space:nowrap}
+  .card table{width:100%;border-collapse:collapse}
+  .card th{font-family:var(--fs);font-weight:400;font-size:12.5px;color:var(--muted);
+    text-align:left;padding:8px 12px;border-bottom:.5px solid var(--border);letter-spacing:.05em}
+  .card td{padding:9px 12px;font-size:13px;color:var(--ink);
+    border-bottom:.5px solid rgba(221,215,198,.5)}
+  .card tr:last-child td{border-bottom:0}
+  .card .n{text-align:right;font-variant-numeric:tabular-nums}
+  .card .per{font-family:var(--fm);font-size:12.5px;letter-spacing:0}
+
+  /* 折线卡 */
+  .chart{padding:9px 12px 6px}
+  .chart svg{display:block;width:100%;height:auto;color:var(--ink)}
+  .chart text{font-family:var(--sans);font-size:10px;fill:var(--muted);letter-spacing:.02em}
+  .chart .yl{text-anchor:end}
+  .chart .xl{text-anchor:middle}
+  .chart .gl{stroke:var(--hair);stroke-width:1}
+  .chart .base{stroke:var(--line);stroke-width:1}
+  .chart polyline{fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round}
+  .chart .last{fill:var(--accent)}
+  .chart .lv{fill:var(--ink);font-size:10px;font-weight:600;text-anchor:end}
+
+  /* 阈值卡 */
+  .thr-b{padding:12px}
+  .track{position:relative;height:8px;border-radius:4px;background:#E8E4DB}
+  .track .fill{position:absolute;left:0;top:0;bottom:0;width:84.5%;background:var(--accent);border-radius:4px}
+  .track .tick{position:absolute;left:12.5%;top:-4px;bottom:-4px;width:2px;background:var(--card)}
+  .track .dot{position:absolute;left:84.5%;top:50%;width:10px;height:10px;border-radius:50%;
+    background:var(--card);border:2px solid var(--accent);transform:translate(-50%,-50%)}
+  .nums{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:12px}
+  .nums .n{display:flex;flex-direction:column;gap:2px}
+  .nums .n b{font-family:var(--fm);font-weight:400;font-size:19px;line-height:1.2;color:var(--ink)}
+  .nums .n span{font-size:11px;letter-spacing:.06em;color:var(--muted)}
+  .nums .r{text-align:right;align-items:flex-end}
+  .note{margin-top:8px;font-size:11px;letter-spacing:.03em;color:var(--muted)}
+  .scale{position:relative;height:13px;margin-top:7px}
+  .scale span{position:absolute;top:0;font-family:var(--fm);font-size:10.5px;
+    letter-spacing:.04em;color:var(--muted);transform:translateX(-50%);white-space:nowrap}
+  .scale span:first-child{transform:none}
+  .scale span:last-child{transform:translateX(-100%)}
+  .src{margin-top:8px;font-size:11px;letter-spacing:.04em;color:var(--muted)}
+
+  /* 输入栏 */
+  .composer{border-top:.5px solid rgba(0,0,0,.07);padding:10px 14px 8px;background:var(--card)}
+  .composer input{width:100%;height:44px;border:0;background:none;color:var(--ink);
+    font-family:var(--sans);font-size:14px;letter-spacing:.01em}
+  .composer input::placeholder{color:var(--muted);opacity:1}
+  .composer input:focus{outline:0}
+  .composer input:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:6px}
+  .crow{display:flex;align-items:center;gap:2px;margin-top:2px}
+  .crow .ic{display:flex;gap:2px;color:var(--muted)}
+  .ib{width:44px;height:44px;display:grid;place-items:center;border-radius:8px;
+    color:var(--muted);transition:background-color .3s var(--ease-soft),color .3s var(--ease-soft)}
+  .ib:hover{background:#F1EDE2;color:var(--ink)}
+  .send{margin-left:auto;height:44px;min-width:88px;padding:0 16px;border-radius:8px;
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--accent);color:#F6F1DE;font-size:14px;letter-spacing:.08em;
+    transition:background-color .3s var(--ease-soft)}
+  .send:hover{background:var(--deep)}
+  .send svg{display:block}
+
+  /* 渐入 */
+  .js .reveal{opacity:0;transform:translateY(26px);
+    transition:opacity 1s var(--ease-soft) var(--d,0s),transform 1s var(--ease-soft) var(--d,0s)}
+  .js .reveal.visible{opacity:1;transform:translateY(0)}
+
+  @media (max-width:960px){
+    .chat{padding:22px 20px 26px}
+    .card{width:100%}
+  }
+  @media (max-width:520px){
+    .crumb{display:none}
+    .nums .n b{font-size:17px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .js .reveal{opacity:1;transform:none;transition:none}
+  }
+</style>
+<script>document.documentElement.classList.add('js');</script>
+</head>
+<body>
+<div class="spread">
+
+  <!-- ═══ 左页 · 会泽（品牌面） ═══ -->
+  <aside class="page-l">
+    <i class="seal-b" aria-hidden="true">衡</i>
+    <header class="bm">
+      <b>文衡</b>
+      <span>云南大学图书馆<br>学科信息参考</span>
+    </header>
+    <nav class="nav" aria-label="工作区">
+      <a href="#">出报告</a>
+      <a href="#">分析台</a>
+      <a href="#">高校 ESI 报告</a>
+      <a href="#" aria-current="page">问文衡</a>
+      <span class="m" aria-hidden="true">管 理</span>
+      <a href="#">运行档案</a>
+      <a class="q" href="#">陈列馆 ↗</a>
+    </nav>
+    <footer class="idb">
+      <div class="rule" aria-hidden="true"></div>
+      <p class="who">admin · 馆员</p>
+    </footer>
+  </aside>
+
+  <!-- ═══ 右页 · 问一句，答一条 ═══ -->
+  <main class="page-r">
+    <div class="sheet">
+
+      <header class="intro">
+        <p class="eyebrow reveal">问文衡</p>
+        <h1 class="reveal" style="--d:.1s">问一句，答一条</h1>
+        <p class="lede reveal" style="--d:.2s"></p>
+      </header>
+
+      <section class="stage reveal" style="--d:.3s">
+        <div class="win" role="group" aria-label="问文衡会话窗口">
+
+          <!-- 标题栏 -->
+          <div class="bar">
+            <span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="sicon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+                <rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M6 3v10"/>
+              </svg>
+            </span>
+            <span class="doc">化学 · 总被引</span>
+            <span class="crumb">问文衡 / 会话 / 202609</span>
+            <span class="tools" aria-hidden="true">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+                <circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2 14 14"/>
+              </svg>
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+                <path d="M8 10.5V2.5M5.2 5.3 8 2.5l2.8 2.8"/><path d="M2.8 10v2.2c0 .7.6 1.3 1.3 1.3h7.8c.7 0 1.3-.6 1.3-1.3V10"/>
+              </svg>
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
+                <circle cx="3.2" cy="8" r="1.2"/><circle cx="8" cy="8" r="1.2"/><circle cx="12.8" cy="8" r="1.2"/>
+              </svg>
+            </span>
+          </div>
+          <div class="fade" aria-hidden="true"></div>
+
+          <!-- 聊天流 -->
+          <div class="chat">
+
+            <!-- 第一问 -->
+            <div class="turn-u">
+              <p class="bubble">化学的总被引这几年怎么走的？</p>
+              <p class="t">13:02 · 问文衡</p>
+            </div>
+
+            <div class="turn-b">
+              <i class="av" aria-hidden="true">衡</i>
+              <div class="msg">
+                <p class="who">文衡</p>
+                <p class="say">一路往上：七年半从 13,423 涨到 51,529，是 2019 年的 3.8 倍，中间只回落过几次。</p>
+
+                <!-- 表格卡 -->
+                <div class="card">
+                  <div class="card-h"><b>化学 · 总被引</b><span>期末值 · 2019–2026</span></div>
+                  <table>
+                    <thead>
+                      <tr><th scope="col">年份段</th><th scope="col" class="n">总被引</th><th scope="col" class="n">较上期</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td class="per">2019–2021</td><td class="n">21,347</td><td class="n">—</td></tr>
+                      <tr><td class="per">2022–2023</td><td class="n">31,553</td><td class="n">+47.8%</td></tr>
+                      <tr><td class="per">2024–2025</td><td class="n">43,788</td><td class="n">+38.8%</td></tr>
+                      <tr><td class="per">2026</td><td class="n">51,529</td><td class="n">+17.7%</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- 折线卡 -->
+                <div class="card">
+                  <div class="card-h"><b>46 期走势</b><span>201903–202609</span></div>
+                  <div class="chart">
+                    <svg viewBox="0 0 372 150" role="img" aria-label="化学总被引 46 期走势，自 201903 的 13,423 升至 202609 的 51,529">
+                      <line class="gl" x1="46" y1="99.7" x2="344" y2="99.7"/>
+                      <line class="gl" x1="46" y1="60.5" x2="344" y2="60.5"/>
+                      <line class="gl" x1="46" y1="21.2" x2="344" y2="21.2"/>
+                      <text class="yl" x="42" y="103">20,000</text>
+                      <text class="yl" x="42" y="63.8">35,000</text>
+                      <text class="yl" x="42" y="24.5">50,000</text>
+                      <line class="base" x1="46" y1="118" x2="344" y2="118"/>
+                      <polyline points="46.0,116.9 52.6,117.5 59.2,115.7 65.9,114.6 72.5,112.9 79.1,110.7 85.7,108.8 92.4,111.4 99.0,109.4 105.6,107.6 112.2,105.7 118.8,103.3 125.5,101.1 132.1,103.2 138.7,100.7 145.3,98.4 152.0,96.2 158.6,93.5 165.2,90.9 171.8,91.0 178.4,88.9 185.1,85.8 191.7,83.1 198.3,79.9 204.9,76.4 211.6,79.0 218.2,75.6 224.8,71.9 231.4,69.5 238.0,65.7 244.7,61.7 251.3,66.1 257.9,62.6 264.5,58.0 271.2,53.4 277.8,48.6 284.4,43.9 291.0,52.0 297.6,46.7 304.3,42.4 310.9,37.5 317.5,31.7 324.1,24.0 330.8,27.3 337.4,22.8 344.0,17.2"/>
+                      <circle class="last" cx="344" cy="17.2" r="3"/>
+                      <text class="lv" x="342" y="10">51,529</text>
+                      <text class="xl" x="46" y="132">201903</text>
+                      <text class="xl" x="105.6" y="132">202009</text>
+                      <text class="xl" x="165.2" y="132">202203</text>
+                      <text class="xl" x="224.8" y="132">202309</text>
+                      <text class="xl" x="284.4" y="132">202503</text>
+                      <text class="xl" x="344" y="132">202609</text>
+                    </svg>
+                  </div>
+                </div>
+                <p class="src">来源：问数库 facts · Chemistry · total_cites · 46 期</p>
+                <p class="t">13:02</p>
+              </div>
+            </div>
+
+            <!-- 第二问：小组件示范 -->
+            <div class="turn-u">
+              <p class="bubble">化学过 ESI 前 1% 的门槛了吗？</p>
+              <p class="t">13:04 · 问文衡</p>
+            </div>
+
+            <div class="turn-b">
+              <i class="av" aria-hidden="true">衡</i>
+              <div class="msg">
+                <p class="who">文衡</p>
+                <p class="say">过了，而且余量很大：总被引是门槛的 6.76 倍。</p>
+
+                <!-- 阈值卡 -->
+                <div class="card">
+                  <div class="card-h"><b>ESI 前 1% 门槛 · 化学</b><span>202609</span></div>
+                  <div class="thr-b">
+                    <div class="track" role="img" aria-label="化学总被引 51,529，为前 1% 门槛 7,622 的 6.76 倍">
+                      <span class="fill"></span>
+                      <span class="tick"></span>
+                      <span class="dot"></span>
+                    </div>
+                    <div class="nums">
+                      <p class="n"><b>51,529</b><span>总被引</span></p>
+                      <p class="n r"><b>7,622</b><span>前 1% 门槛</span></p>
+                    </div>
+                    <div class="scale" aria-hidden="true">
+                      <span style="left:0">0</span>
+                      <span style="left:12.5%">1×</span>
+                      <span style="left:100%">8×</span>
+                    </div>
+                  </div>
+                </div>
+                <p class="t">13:04</p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- 输入栏 -->
+          <form class="composer" onsubmit="return false">
+            <input type="text" placeholder="再问一句… 化学 · 总被引 · 201903–202609" aria-label="继续提问">
+            <div class="crow">
+              <div class="ic">
+                <button class="ib" type="button" aria-label="添加数据源">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+                    <path d="M11.5 7.2 7.3 11.4a2.7 2.7 0 0 1-3.8-3.8l4.9-4.9a1.8 1.8 0 0 1 2.5 2.5L6.1 9a.9.9 0 0 1-1.3-1.3l4.2-4.2"/>
+                  </svg>
+                </button>
+                <button class="ib" type="button" aria-label="插入图表">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+                    <path d="M2.5 13.5h11"/><path d="M4.5 13.5V8M8 13.5V3.5M11.5 13.5V6"/>
+                  </svg>
+                </button>
+                <button class="ib" type="button" aria-label="选择期次">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+                    <rect x="2.5" y="3.5" width="11" height="10" rx="1.5"/><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"/>
+                  </svg>
+                </button>
+              </div>
+              <button class="send" type="submit">发送
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+                  <path d="M8 13V3M4 7l4-4 4 4"/>
+                </svg>
+              </button>
+            </div>
+          </form>
+
+        </div>
+      </section>
+
+      <footer class="foot">静态稿 · 真实数据 · 20261102</footer>
+    </div>
+  </main>
+</div>
+
+<script>
+(function(){
+  var els = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function showAll(){ els.forEach(function(el){ el.classList.add('visible'); }); }
+
+  /* ① 降级兜底：无 IO 或用户要求减少动效 —— 直接全部可见 */
+  if (reduce || !('IntersectionObserver' in window)) { showAll(); return; }
+
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if (en.isIntersecting) {
+        en.target.classList.add('visible');
+        io.unobserve(en.target);       /* 只渐入一次，回滚不重播 */
+      }
+    });
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.06 });
+
+  els.forEach(function(el){ io.observe(el); });
+
+  /* ② 首帧兜底：2.4s 后仍在视口内却没被标记的（IO 未回调/异常），直接显示 */
+  setTimeout(function(){
+    var h = window.innerHeight || document.documentElement.clientHeight;
+    els.forEach(function(el){
+      if (el.classList.contains('visible')) return;
+      var r = el.getBoundingClientRect();
+      if (r.top < h && r.bottom > 0) el.classList.add('visible');
+    });
+  }, 2400);
+})();
+</script>
+<!-- 圆角：全站放开——主壳（左栏／金线／导航）方角；页内组件 窗件 12px、卡片 8px、气泡与内联块 6px。 -->
+</body>
+</html>

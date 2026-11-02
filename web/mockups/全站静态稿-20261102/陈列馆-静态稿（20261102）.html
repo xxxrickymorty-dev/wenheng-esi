@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<title>陈列馆 · 静态稿 20261102</title>
+<style>
+  /* 主工作台壳 · 跨页书式 · 方案C「书卷编辑风」（静态稿 20261031，待 rick 审）。
+     同族《高校ESI报告-插件市场（静态稿 20261031）》：左页会泽深绿品牌面 / 右页纸面工作面、订口一条金线、
+     圆角三档（窗件 12 ／ 卡片 8 ／ 气泡 6）、一档浅阴影。与方案A（守正会泽·三步大卡）/ B（流程为纲·全屏流程图）/ D（双主题工程版）同壳异面，
+     方案C 只做一件事：把「期次」当一期刊物的当期目次来排——
+     衬线大题、细金线目次分隔、点线引渡、进度点代替页码、签发印记；气质来自排版，不靠卡片与装饰堆叠。
+     本稿验六件事：
+     ① 左栏 44px 行一屏放全（品牌＋导航＋管理组＋身份行，720 高不滚、栏内禁滚动）；
+     ② 本期动态三步＝目次行：点线引渡到行尾，进度点代替页码（金方脉冲＝进行中，空方＝未开始，色＋形＋字）；
+     ③ 全页唯一主动作＝「去取数台」；琥珀 #7C5A16 全稿仅此一处＝「可继续的提醒」（UX.md §九 语义分色）；
+     ④ 四步流水＝目录条目式：壹贰叁肆章号＋行间细线，与目次行（一二三＋点线）两档排印；
+     ⑤ 上期一行像「上期已出刊」：202609 ·「签」印＋绿字已签发（印即色＋形，字补第三重）；
+     ⑥ 衬线大数点缀：论文 27,220 ／ 被引 360,379（tabular-nums；大题与印记为音阶豁免件）。
+     演示数据：202611 第 22 期在产（取数进行中）；202609 已签发（2026-09-23）。
+     硬约束：单文件零依赖零 JS、系统字体、六档字号 11/12/13.5/15/19/26、tabular-nums、
+     点击区 ≥44px、页脚「静态稿 · 演示数据 · 20261031」。 */
+  :root{
+    --deep:#143729; --green:#1A4B27; --seam:#B08E48;
+    --ivory:#F6F1DE; --ivory-2:rgba(246,241,222,.80); --ivory-3:rgba(246,241,222,.55);
+    --paper:#F5F3EC; --card:#FAF8F0;
+    --ink:#15222B; --ink-2:rgba(21,34,43,.78); --ink-3:rgba(21,34,43,.66);
+    --line:#D8D2C2; --hair:rgba(216,210,194,.55); --dot:rgba(21,34,43,.32);
+    --warn:#7C5A16;                        /* 全稿唯一：可继续的提醒 */
+    --shadow:0 1px 2px rgba(21,34,43,.07);
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --lw:clamp(232px,26%,360px);
+    --e:cubic-bezier(.32,.72,0,1);
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--paper)}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);
+    font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;background:none;border:none;color:inherit}
+  ol{list-style:none}
+  :focus-visible{outline:2px solid var(--green);outline-offset:2px}
+  .page-l :focus-visible{outline-color:var(--seam)}
+  ::selection{background:var(--seam);color:var(--ink)}
+
+  /* ───── 跨页本体 ───── */
+  .spread{display:grid;grid-template-columns:var(--lw) minmax(0,1fr);min-height:100dvh;position:relative}
+  .spread::after{content:"";position:absolute;top:0;bottom:0;left:var(--lw);width:1px;background:var(--seam);pointer-events:none}
+
+  /* ───── 左页 · 会泽（品牌面，一屏放全，禁栏内滚动） ───── */
+  .page-l{background:var(--deep);color:var(--ivory);padding:clamp(16px,2.8vh,30px) clamp(18px,1.9vw,30px);
+    display:flex;flex-direction:column;position:sticky;top:0;height:100dvh;overflow:hidden}
+  .bm{display:flex;align-items:baseline;gap:10px}
+  .bm b{font-family:var(--serif);font-weight:600;font-size:19px;letter-spacing:.14em}
+  .bm span{font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--ivory-3);line-height:1.7}
+  /* 藏书印：左页右上角一枚，品牌印记（豁免件） */
+  .seal-b{position:absolute;top:clamp(16px,2.8vh,30px);right:clamp(18px,1.9vw,30px);width:22px;height:22px;
+    background:var(--ivory);color:var(--deep);font-family:var(--kai);font-style:normal;font-size:12px;line-height:1;
+    display:grid;place-items:center;transform:rotate(-6deg);box-shadow:var(--shadow)}
+  .seal-b::after{content:"";position:absolute;inset:2px;border:1px solid rgba(20,55,41,.5)}
+  .nav{margin:auto 0;display:flex;flex-direction:column;font-size:13.5px;letter-spacing:.05em;color:var(--ivory-2)}
+  .nav a{padding:11px 0;min-height:44px;display:flex;align-items:center;gap:10px;transition:color .3s var(--e)}
+  .nav a::before{content:"";width:9px;height:2px;flex:none;background:transparent;transition:background-color .3s var(--e)}
+  .nav a[aria-current]{color:var(--ivory)}
+  .nav a[aria-current]::before{background:var(--seam)}
+  .nav a:hover{color:var(--ivory)}
+  .nav .m{padding:6px 0 4px;font-family:var(--kai);font-size:11px;letter-spacing:.26em;color:var(--ivory-3)}
+  .nav .q{opacity:.62}
+  .idb{padding-top:14px}
+  .idb .rule{width:34px;height:1px;background:var(--seam);margin-bottom:12px}
+  .who{font-size:12px;letter-spacing:.14em;color:var(--ivory-2)}
+
+  /* ───── 右页 · 至公（当期目次） ───── */
+  .page-r{display:flex;min-height:100dvh;min-width:0;
+    padding:clamp(18px,3.2vh,34px) clamp(22px,3.4vw,48px) clamp(14px,2vh,20px)}
+  .sheet{width:100%;max-width:940px;display:flex;flex-direction:column}
+
+  /* 题头：大题＋大数 */
+  .mast{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 32px;flex-wrap:wrap}
+  .eyebrow{font-family:var(--kai);font-size:11px;letter-spacing:.34em;color:var(--ink-3)}
+  .mast h1{font-family:var(--serif);font-weight:600;font-size:clamp(26px,4.4vh,36px);line-height:1.3;
+    letter-spacing:.05em;margin-top:10px}
+  .mast h1 .sep{color:var(--seam);font-weight:400;margin:0 .16em}
+  .figs{display:flex;align-items:flex-end;gap:20px;padding-bottom:7px}
+  .fig + .fig{border-left:1px solid var(--line);padding-left:20px}
+  .fig span{display:block;font-family:var(--kai);font-size:11px;letter-spacing:.3em;color:var(--ink-3);margin-bottom:6px}
+  .fig b{display:block;font-family:var(--serif);font-weight:600;font-size:26px;line-height:1.15;letter-spacing:.02em}
+  .info{position:relative;width:22px;height:22px;flex:none;border:1px solid var(--line);color:var(--ink-3);
+    font-family:var(--serif);font-style:italic;font-size:12px;line-height:1;display:grid;place-items:center;
+    margin-bottom:7px;transition:border-color .3s var(--e),color .3s var(--e)}
+  .info::before{content:"";position:absolute;inset:-11px}   /* 点击区扩到 44px */
+  .info:hover{border-color:var(--ink-3);color:var(--ink)}
+
+  /* 细金线 · 目次分隔 */
+  .sheet .rule{height:1px;background:var(--seam);margin:clamp(14px,2.4vh,24px) 0 clamp(12px,2vh,20px)}
+
+  /* 目次行：本期动态三步（进度点代替页码） */
+  .toc h2,.pipe h2{font-family:var(--kai);font-weight:400;font-size:11px;letter-spacing:.34em;
+    color:var(--ink-3);margin-bottom:clamp(6px,1.2vh,12px)}
+  .toc li{display:flex;align-items:flex-end;min-height:44px;padding:2px 0}
+  .toc .num{font-family:var(--kai);font-size:15px;color:var(--green);width:28px;flex:none;margin-bottom:6px}
+  .toc .name{font-family:var(--serif);font-weight:600;font-size:19px;line-height:1.45;letter-spacing:.06em;color:var(--ink)}
+  .toc li.w .name{color:var(--ink-2)}
+  .toc .lead{flex:1;min-width:28px;border-bottom:1px dotted var(--dot);margin:0 16px 10px}
+  .toc .st{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.1em;
+    white-space:nowrap;margin-bottom:6px}
+  .toc li.r .st{color:var(--ink);font-weight:600}
+  .toc li.w .st{color:var(--ink-3);font-weight:400}
+  .mk{width:8px;height:8px;flex:none}
+  .mk-run{background:var(--seam);animation:pulse 2.2s var(--e) infinite}
+  .mk-wait{border:1px solid var(--ink-3)}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.78)}}
+
+  /* 唯一主动作＋可继续的提醒 */
+  .acts{display:flex;align-items:center;gap:12px 20px;flex-wrap:wrap;margin-top:clamp(14px,2.4vh,24px);
+    padding-bottom:clamp(16px,3vh,30px)}
+  .btn{display:inline-flex;align-items:center;gap:12px;min-height:44px;padding:0 26px;background:var(--deep);
+    color:var(--ivory);font-size:15px;letter-spacing:.14em;box-shadow:var(--shadow);
+    transition:background-color .35s var(--e),transform .35s var(--e)}
+  .btn:hover{background:var(--green)}
+  .btn:active{transform:translateY(1px)}
+  .btn i{font-style:normal;transition:transform .35s var(--e)}
+  .btn:hover i{transform:translateX(4px)}
+  .hint{display:inline-flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.04em;color:var(--warn)}
+  .hint::before{content:"";width:7px;height:7px;flex:none;background:var(--warn)}
+
+  /* 目录条目式：四步流水（壹贰叁肆＋行间细线） */
+  .pipe{margin-top:auto;border-top:1px solid var(--seam);padding-top:clamp(12px,2vh,20px)}
+  .pipe a{display:flex;align-items:center;gap:14px;min-height:44px;padding:0 10px 0 12px;
+    border-bottom:1px solid var(--hair);transition:background-color .3s var(--e)}
+  .pipe a:hover{background:var(--card)}
+  .pipe a[aria-current="step"]{box-shadow:inset 2px 0 0 var(--seam)}
+  .chap{font-family:var(--kai);font-size:15px;color:var(--green);width:24px;flex:none}
+  .pipe .name{font-size:15px;letter-spacing:.08em;color:var(--ink)}
+  .pipe .st{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:12px;
+    letter-spacing:.1em;color:var(--ink-3);white-space:nowrap}
+  .pipe .st .mk{width:7px;height:7px}
+  .pipe a[aria-current="step"] .st{color:var(--ink);font-weight:600}
+
+  /* 上期已出刊 */
+  .prev{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:clamp(10px,1.8vh,16px) 2px 0}
+  .prev .k{font-family:var(--kai);font-size:11px;letter-spacing:.3em;color:var(--ink-3)}
+  .prev .rl{width:18px;height:1px;background:var(--seam)}
+  .prev .iss{font-family:var(--serif);font-weight:600;font-size:15px;letter-spacing:.06em}
+  .prev .sg{display:inline-flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.1em;
+    color:var(--green);font-weight:600}
+  .seal{position:relative;width:20px;height:20px;background:var(--deep);color:var(--ivory);
+    font-family:var(--kai);font-style:normal;font-size:12px;line-height:1;display:grid;place-items:center;
+    transform:rotate(-4deg);box-shadow:var(--shadow)}
+  .seal::after{content:"";position:absolute;inset:2px;border:1px solid rgba(246,241,222,.5)}
+
+  .foot{margin-top:clamp(10px,1.8vh,16px);border-top:1px solid var(--hair);padding-top:10px;
+    font-size:11px;letter-spacing:.08em;color:var(--ink-3)}
+
+  /* ───── 窄屏：左栏折成顶带 ───── */
+  @media (max-width:960px){
+    .spread{display:block}
+    .spread::after{display:none}
+    .page-l{position:static;height:auto;overflow:visible}
+    .nav{margin:14px 0 0}
+    .page-r{min-height:0}
+    .pipe{margin-top:clamp(20px,4vh,36px)}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .mk-run{animation:none}
+    *{transition:none!important}
+  }
+
+  /* ── 本页专属 ──
+     陈列馆＝把已签发的各期当藏品摆出来。参考站（openhanako.com）的骨架：
+     ① 深绿页眉带（hero）＋右下 SCROLL ↓；② 一条发丝线接一件，竖着排，不做卡片墙；
+     ③ 每件左右两栏：左是期次/装帧/签发，右是色块叠出来的书脊（不画假封面）；
+     ④ 滚动到才渐入，同组错时 .1s。 */
+  :root{
+    --accent:#276B4C; --border:#DDD7C6; --muted:#6C706A;
+    --ease-soft:cubic-bezier(.22,1,.36,1);
+    --fs:Georgia,"Songti SC","Noto Serif SC",SimSun,serif;
+    --fm:ui-monospace,SFMono-Regular,"Cascadia Mono",Menlo,Consolas,monospace;
+  }
+
+  .sheet{max-width:none}   /* 本页要让页眉带出血到右页边，取消 940 上限 */
+
+  /* 页眉带：深绿＋暗角（参考站 hero 的暗角换成绿），出血到右页边 */
+  .hero{
+    margin:calc(-1 * clamp(18px,3.2vh,34px)) calc(-1 * clamp(22px,3.4vw,48px)) 0;
+    min-height:clamp(250px,37vh,340px);
+    display:flex;align-items:flex-end;justify-content:space-between;gap:18px 28px;
+    padding:clamp(28px,4.2vh,44px) clamp(22px,3.4vw,48px) clamp(24px,3.4vh,34px);
+    color:var(--ivory);position:relative;overflow:hidden;
+    background:
+      radial-gradient(ellipse 120% 105% at 50% 42%,
+        rgba(20,55,41,0) 52%, rgba(20,55,41,.28) 68%,
+        rgba(20,55,41,.60) 84%, rgba(20,55,41,.92) 100%),
+      linear-gradient(158deg,#21604A 0%,#1B4E3A 46%,#16402E 100%);
+  }
+
+  .hero .eyebrow{font-family:var(--fs);font-size:.72rem;letter-spacing:.25em;
+    color:rgba(246,241,222,.74);margin-bottom:.9rem}
+  .hero h1{font-family:var(--fs);font-weight:400;font-size:clamp(2.4rem,4.6vw,3.6rem);
+    line-height:1.06;letter-spacing:.16em;margin-left:-.16em}
+  .hero .lede{margin-top:1rem;max-width:30em;font-size:.95rem;line-height:1.8;
+    color:rgba(246,241,222,.80)}
+  .scroll{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 2px;
+    font-family:var(--fs);font-size:.72rem;letter-spacing:.22em;white-space:nowrap;
+    color:rgba(246,241,222,.72);transition:color .35s var(--ease-soft)}
+  .scroll i{font-style:normal;letter-spacing:0;transition:transform .35s var(--ease-soft)}
+  .scroll:hover{color:var(--ivory)}
+  .scroll:hover i{transform:translateY(3px)}
+
+  /* 三件：一件一行，行间发丝线 */
+  .plates{margin-top:clamp(6px,1.2vh,12px)}
+  .row-a{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr);
+    align-items:center;gap:clamp(18px,3.4vw,52px);
+    padding:clamp(26px,4vh,40px) 0;
+    border-top:1px solid var(--border);
+    transition:transform .35s var(--ease-soft),box-shadow .35s var(--ease-soft),background-color .35s var(--ease-soft)}
+  .row-a:hover,.row-a:focus-visible{transform:translateY(-2px);background:var(--card);
+    box-shadow:0 14px 34px rgba(20,30,15,.10),0 2px 6px rgba(20,30,15,.05)}
+  .row-a .no{font-family:var(--fs);font-weight:400;font-size:clamp(30px,3.1vw,40px);
+    line-height:1.08;letter-spacing:.02em;color:var(--deep)}
+  .row-a .bind{margin-top:.5rem;font-family:var(--fs);font-weight:400;
+    font-size:clamp(17px,1.55vw,21px);letter-spacing:.12em;color:var(--ink)}
+  .row-a .meta{display:flex;align-items:center;gap:10px;margin-top:.9rem;
+    font-size:12px;letter-spacing:.1em;color:var(--accent);font-weight:600}
+  .row-a .date{font-family:var(--fm);font-size:11.5px;letter-spacing:.02em;
+    color:var(--muted);font-weight:400}
+  .row-a .meta .seal{flex:none}
+
+  /* 封面预览：三块色板叠出书脊，不画假封面 */
+  .plinth{position:relative;height:clamp(132px,17vh,160px);
+    width:min(100%,420px);margin-left:auto}
+  .plinth > span{position:absolute}
+  .b3{left:6.8%;top:0;width:74%;height:84%;background:var(--deep)}
+  .b2{left:3.4%;top:7%;width:74%;height:85%;background:#E7DFC7;border:1px solid var(--border)}
+  .b1{left:0;top:14%;width:74%;height:86%;background:var(--card);border:1px solid var(--border);
+    box-shadow:10px 12px 28px rgba(20,30,15,.14);display:flex;overflow:hidden}
+  .b1 .spine{display:block;position:relative;width:22px;flex:none;
+    background:linear-gradient(90deg,#10301F 0%,#1D4E3A 62%,#143729 100%)}
+  .b1 .spine::after{content:"";position:absolute;left:6px;top:10px;bottom:10px;width:1px;
+    background:rgba(176,142,72,.75)}
+  .b1 .rules{display:block;flex:1;position:relative}
+  .b1 .rules::before{content:"";position:absolute;left:14%;top:18%;width:27%;height:19%;
+    background:#F2EDDD}
+  .b1 .rules::after{content:"";position:absolute;left:14%;top:52%;width:60%;height:1px;
+    background:rgba(21,34,43,.16);box-shadow:0 9px 0 rgba(21,34,43,.11),0 18px 0 rgba(21,34,43,.07)}
+
+  /* 渐入：观察器加 .visible；同组错时 .1s */
+  .js .reveal{opacity:0;transform:translateY(26px);
+    transition:opacity 1s var(--ease-soft) var(--d,0s),transform 1s var(--ease-soft) var(--d,0s)}
+  .js .reveal.visible{opacity:1;transform:translateY(0)}
+  .row:nth-child(1){--d:0s}
+  .row:nth-child(2){--d:.1s}
+  .row:nth-child(3){--d:.2s}
+  .row .row-r{--d:.12s}      /* 同屏两栏：文字先到，封面晚 .12s */
+  .row:nth-child(2) .row-r{--d:.22s}
+  .row:nth-child(3) .row-r{--d:.32s}
+
+  @media (max-width:960px){
+    .hero{margin:calc(-1 * clamp(18px,3.2vh,34px)) 0 0}
+    .row-a{grid-template-columns:1fr;gap:18px}
+    .plinth{margin:0;width:100%;max-width:320px}
+  }
+  @media (max-width:640px){
+    .hero{flex-direction:column;align-items:flex-start}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .js .reveal{opacity:1;transform:none;transition:none}
+    .row-a{transition:none}
+  }
+</style>
+<script>document.documentElement.classList.add('js');</script>
+</head>
+<body>
+<div class="spread">
+
+  <!-- ═══ 左页 · 会泽（品牌面） ═══ -->
+  <aside class="page-l">
+    <i class="seal-b" aria-hidden="true">衡</i>
+    <header class="bm">
+      <b>文衡</b>
+      <span>云南大学图书馆<br>学科信息参考</span>
+    </header>
+    <nav class="nav" aria-label="工作区">
+      <a href="#">出报告</a>
+      <a href="#">分析台</a>
+      <a href="#">高校 ESI 报告</a>
+      <a href="#">问文衡</a>
+      <span class="m" aria-hidden="true">管 理</span>
+      <a href="#">运行档案</a>
+      <a class="q" href="#" aria-current="page">陈列馆 ↗</a>
+    </nav>
+    <footer class="idb">
+      <div class="rule" aria-hidden="true"></div>
+      <p class="who">admin · 馆员</p>
+    </footer>
+  </aside>
+
+  <!-- ═══ 右页 · 馆藏陈列 ═══ -->
+  <main class="page-r">
+    <div class="sheet">
+
+      <header class="hero">
+        <div class="hero-t">
+          <p class="eyebrow reveal">陈列馆</p>
+          <h1 class="reveal" style="--d:.1s">陈列</h1>
+          <p class="lede reveal" style="--d:.2s"></p>
+        </div>
+        <a class="scroll reveal" href="#plates" style="--d:.3s">SCROLL <i aria-hidden="true">↓</i></a>
+      </header>
+
+      <ol class="plates" id="plates" aria-label="馆藏三件">
+        <li class="row reveal">
+          <a class="row-a" href="#">
+            <div class="row-l">
+              <p class="no">202609</p>
+              <h2 class="bind">会泽院装帧</h2>
+              <p class="meta"><i class="seal" aria-hidden="true">签</i>已签发<time class="date" datetime="2026-10-28">2026-10-28</time></p>
+            </div>
+            <div class="row-r reveal">
+              <div class="plinth" aria-hidden="true">
+                <span class="b3"></span><span class="b2"></span>
+                <span class="b1"><i class="spine"></i><i class="rules"></i></span>
+              </div>
+            </div>
+          </a>
+        </li>
+        <li class="row reveal">
+          <a class="row-a" href="#">
+            <div class="row-l">
+              <p class="no">202607</p>
+              <h2 class="bind">至公堂装帧</h2>
+              <p class="meta"><i class="seal" aria-hidden="true">签</i>已签发<time class="date" datetime="2026-10-23">2026-10-23</time></p>
+            </div>
+            <div class="row-r reveal">
+              <div class="plinth" aria-hidden="true">
+                <span class="b3"></span><span class="b2"></span>
+                <span class="b1"><i class="spine"></i><i class="rules"></i></span>
+              </div>
+            </div>
+          </a>
+        </li>
+        <li class="row reveal">
+          <a class="row-a" href="#">
+            <div class="row-l">
+              <p class="no">202603</p>
+              <h2 class="bind">阅览室装帧</h2>
+              <p class="meta"><i class="seal" aria-hidden="true">签</i>已签发<time class="date" datetime="2026-10-13">2026-10-13</time></p>
+            </div>
+            <div class="row-r reveal">
+              <div class="plinth" aria-hidden="true">
+                <span class="b3"></span><span class="b2"></span>
+                <span class="b1"><i class="spine"></i><i class="rules"></i></span>
+              </div>
+            </div>
+          </a>
+        </li>
+      </ol>
+
+      <footer class="foot">静态稿 · 真实数据 · 20261102</footer>
+    </div>
+  </main>
+</div>
+
+<script>
+(function(){
+  var els = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function showAll(){ els.forEach(function(el){ el.classList.add('visible'); }); }
+
+  /* ① 降级兜底：无 IO 或用户要求减少动效 —— 直接全部可见 */
+  if (reduce || !('IntersectionObserver' in window)) { showAll(); return; }
+
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if (en.isIntersecting) {
+        en.target.classList.add('visible');
+        io.unobserve(en.target);       /* 只渐入一次，回滚不重播 */
+      }
+    });
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.06 });
+
+  els.forEach(function(el){ io.observe(el); });
+
+  /* ② 首帧兜底：2.4s 后仍在视口内却没被标记的（IO 未回调/异常），直接显示 */
+  setTimeout(function(){
+    var h = window.innerHeight || document.documentElement.clientHeight;
+    els.forEach(function(el){
+      if (el.classList.contains('visible')) return;
+      var r = el.getBoundingClientRect();
+      if (r.top < h && r.bottom > 0) el.classList.add('visible');
+    });
+  }, 2400);
+})();
+</script>
+<!-- 圆角：全站放开（窗件 12 ／ 卡片 8 ／ 气泡 6）；本页三行按行排版、无卡片，故不出现圆角。 -->
+</body>
+</html>

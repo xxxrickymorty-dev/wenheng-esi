@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<title>分析台 · 静态稿 20261102</title>
+<style>
+  /* 主工作台壳 · 跨页书式 · 方案C「书卷编辑风」（静态稿 20261031，待 rick 审）。
+     同族《高校ESI报告-插件市场（静态稿 20261031）》：左页会泽深绿品牌面 / 右页纸面工作面、订口一条金线、
+     圆角三档（窗件 12 ／ 卡片 8 ／ 气泡 6）、一档浅阴影。与方案A（守正会泽·三步大卡）/ B（流程为纲·全屏流程图）/ D（双主题工程版）同壳异面，
+     方案C 只做一件事：把「期次」当一期刊物的当期目次来排——
+     衬线大题、细金线目次分隔、点线引渡、进度点代替页码、签发印记；气质来自排版，不靠卡片与装饰堆叠。
+     本稿验六件事：
+     ① 左栏 44px 行一屏放全（品牌＋导航＋管理组＋身份行，720 高不滚、栏内禁滚动）；
+     ② 本期动态三步＝目次行：点线引渡到行尾，进度点代替页码（金方脉冲＝进行中，空方＝未开始，色＋形＋字）；
+     ③ 全页唯一主动作＝「去取数台」；琥珀 #7C5A16 全稿仅此一处＝「可继续的提醒」（UX.md §九 语义分色）；
+     ④ 四步流水＝目录条目式：壹贰叁肆章号＋行间细线，与目次行（一二三＋点线）两档排印；
+     ⑤ 上期一行像「上期已出刊」：202609 ·「签」印＋绿字已签发（印即色＋形，字补第三重）；
+     ⑥ 衬线大数点缀：论文 27,220 ／ 被引 360,379（tabular-nums；大题与印记为音阶豁免件）。
+     演示数据：202611 第 22 期在产（取数进行中）；202609 已签发（2026-09-23）。
+     硬约束：单文件零依赖零 JS、系统字体、六档字号 11/12/13.5/15/19/26、tabular-nums、
+     点击区 ≥44px、页脚「静态稿 · 演示数据 · 20261031」。 */
+  :root{
+    --deep:#143729; --green:#1A4B27; --seam:#B08E48;
+    --ivory:#F6F1DE; --ivory-2:rgba(246,241,222,.80); --ivory-3:rgba(246,241,222,.55);
+    --paper:#F5F3EC; --card:#FAF8F0;
+    --ink:#15222B; --ink-2:rgba(21,34,43,.78); --ink-3:rgba(21,34,43,.66);
+    --line:#D8D2C2; --hair:rgba(216,210,194,.55); --dot:rgba(21,34,43,.32);
+    --warn:#7C5A16;                        /* 全稿唯一：可继续的提醒 */
+    --shadow:0 1px 2px rgba(21,34,43,.07);
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --lw:clamp(232px,26%,360px);
+    --e:cubic-bezier(.32,.72,0,1);
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--paper)}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);
+    font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;background:none;border:none;color:inherit}
+  ol{list-style:none}
+  :focus-visible{outline:2px solid var(--green);outline-offset:2px}
+  .page-l :focus-visible{outline-color:var(--seam)}
+  ::selection{background:var(--seam);color:var(--ink)}
+
+  /* ───── 跨页本体 ───── */
+  .spread{display:grid;grid-template-columns:var(--lw) minmax(0,1fr);min-height:100dvh;position:relative}
+  .spread::after{content:"";position:absolute;top:0;bottom:0;left:var(--lw);width:1px;background:var(--seam);pointer-events:none}
+
+  /* ───── 左页 · 会泽（品牌面，一屏放全，禁栏内滚动） ───── */
+  .page-l{background:var(--deep);color:var(--ivory);padding:clamp(16px,2.8vh,30px) clamp(18px,1.9vw,30px);
+    display:flex;flex-direction:column;position:sticky;top:0;height:100dvh;overflow:hidden}
+  .bm{display:flex;align-items:baseline;gap:10px}
+  .bm b{font-family:var(--serif);font-weight:600;font-size:19px;letter-spacing:.14em}
+  .bm span{font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--ivory-3);line-height:1.7}
+  /* 藏书印：左页右上角一枚，品牌印记（豁免件） */
+  .seal-b{position:absolute;top:clamp(16px,2.8vh,30px);right:clamp(18px,1.9vw,30px);width:22px;height:22px;
+    background:var(--ivory);color:var(--deep);font-family:var(--kai);font-style:normal;font-size:12px;line-height:1;
+    display:grid;place-items:center;transform:rotate(-6deg);box-shadow:var(--shadow)}
+  .seal-b::after{content:"";position:absolute;inset:2px;border:1px solid rgba(20,55,41,.5)}
+  .nav{margin:auto 0;display:flex;flex-direction:column;font-size:13.5px;letter-spacing:.05em;color:var(--ivory-2)}
+  .nav a{padding:11px 0;min-height:44px;display:flex;align-items:center;gap:10px;transition:color .3s var(--e)}
+  .nav a::before{content:"";width:9px;height:2px;flex:none;background:transparent;transition:background-color .3s var(--e)}
+  .nav a[aria-current]{color:var(--ivory)}
+  .nav a[aria-current]::before{background:var(--seam)}
+  .nav a:hover{color:var(--ivory)}
+  .nav .m{padding:6px 0 4px;font-family:var(--kai);font-size:11px;letter-spacing:.26em;color:var(--ivory-3)}
+  .nav .q{opacity:.62}
+  .idb{padding-top:14px}
+  .idb .rule{width:34px;height:1px;background:var(--seam);margin-bottom:12px}
+  .who{font-size:12px;letter-spacing:.14em;color:var(--ivory-2)}
+
+  /* ───── 右页 · 至公（当期目次） ───── */
+  .page-r{display:flex;min-height:100dvh;min-width:0;
+    padding:clamp(18px,3.2vh,34px) clamp(22px,3.4vw,48px) clamp(14px,2vh,20px)}
+  .sheet{width:100%;max-width:940px;display:flex;flex-direction:column}
+
+  /* 题头：大题＋大数 */
+  .mast{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 32px;flex-wrap:wrap}
+  .eyebrow{font-family:var(--kai);font-size:11px;letter-spacing:.34em;color:var(--ink-3)}
+  .mast h1{font-family:var(--serif);font-weight:600;font-size:clamp(26px,4.4vh,36px);line-height:1.3;
+    letter-spacing:.05em;margin-top:10px}
+  .mast h1 .sep{color:var(--seam);font-weight:400;margin:0 .16em}
+  .figs{display:flex;align-items:flex-end;gap:20px;padding-bottom:7px}
+  .fig + .fig{border-left:1px solid var(--line);padding-left:20px}
+  .fig span{display:block;font-family:var(--kai);font-size:11px;letter-spacing:.3em;color:var(--ink-3);margin-bottom:6px}
+  .fig b{display:block;font-family:var(--serif);font-weight:600;font-size:26px;line-height:1.15;letter-spacing:.02em}
+  .info{position:relative;width:22px;height:22px;flex:none;border:1px solid var(--line);color:var(--ink-3);
+    font-family:var(--serif);font-style:italic;font-size:12px;line-height:1;display:grid;place-items:center;
+    margin-bottom:7px;transition:border-color .3s var(--e),color .3s var(--e)}
+  .info::before{content:"";position:absolute;inset:-11px}   /* 点击区扩到 44px */
+  .info:hover{border-color:var(--ink-3);color:var(--ink)}
+
+  /* 细金线 · 目次分隔 */
+  .sheet .rule{height:1px;background:var(--seam);margin:clamp(14px,2.4vh,24px) 0 clamp(12px,2vh,20px)}
+
+  /* 目次行：本期动态三步（进度点代替页码） */
+  .toc h2,.pipe h2{font-family:var(--kai);font-weight:400;font-size:11px;letter-spacing:.34em;
+    color:var(--ink-3);margin-bottom:clamp(6px,1.2vh,12px)}
+  .toc li{display:flex;align-items:flex-end;min-height:44px;padding:2px 0}
+  .toc .num{font-family:var(--kai);font-size:15px;color:var(--green);width:28px;flex:none;margin-bottom:6px}
+  .toc .name{font-family:var(--serif);font-weight:600;font-size:19px;line-height:1.45;letter-spacing:.06em;color:var(--ink)}
+  .toc li.w .name{color:var(--ink-2)}
+  .toc .lead{flex:1;min-width:28px;border-bottom:1px dotted var(--dot);margin:0 16px 10px}
+  .toc .st{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.1em;
+    white-space:nowrap;margin-bottom:6px}
+  .toc li.r .st{color:var(--ink);font-weight:600}
+  .toc li.w .st{color:var(--ink-3);font-weight:400}
+  .mk{width:8px;height:8px;flex:none}
+  .mk-run{background:var(--seam);animation:pulse 2.2s var(--e) infinite}
+  .mk-wait{border:1px solid var(--ink-3)}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.78)}}
+
+  /* 唯一主动作＋可继续的提醒 */
+  .acts{display:flex;align-items:center;gap:12px 20px;flex-wrap:wrap;margin-top:clamp(14px,2.4vh,24px);
+    padding-bottom:clamp(16px,3vh,30px)}
+  .btn{display:inline-flex;align-items:center;gap:12px;min-height:44px;padding:0 26px;background:var(--deep);
+    color:var(--ivory);font-size:15px;letter-spacing:.14em;box-shadow:var(--shadow);
+    transition:background-color .35s var(--e),transform .35s var(--e)}
+  .btn:hover{background:var(--green)}
+  .btn:active{transform:translateY(1px)}
+  .btn i{font-style:normal;transition:transform .35s var(--e)}
+  .btn:hover i{transform:translateX(4px)}
+  .hint{display:inline-flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.04em;color:var(--warn)}
+  .hint::before{content:"";width:7px;height:7px;flex:none;background:var(--warn)}
+
+  /* 目录条目式：四步流水（壹贰叁肆＋行间细线） */
+  .pipe{margin-top:auto;border-top:1px solid var(--seam);padding-top:clamp(12px,2vh,20px)}
+  .pipe a{display:flex;align-items:center;gap:14px;min-height:44px;padding:0 10px 0 12px;
+    border-bottom:1px solid var(--hair);transition:background-color .3s var(--e)}
+  .pipe a:hover{background:var(--card)}
+  .pipe a[aria-current="step"]{box-shadow:inset 2px 0 0 var(--seam)}
+  .chap{font-family:var(--kai);font-size:15px;color:var(--green);width:24px;flex:none}
+  .pipe .name{font-size:15px;letter-spacing:.08em;color:var(--ink)}
+  .pipe .st{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:12px;
+    letter-spacing:.1em;color:var(--ink-3);white-space:nowrap}
+  .pipe .st .mk{width:7px;height:7px}
+  .pipe a[aria-current="step"] .st{color:var(--ink);font-weight:600}
+
+  /* 上期已出刊 */
+  .prev{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:clamp(10px,1.8vh,16px) 2px 0}
+  .prev .k{font-family:var(--kai);font-size:11px;letter-spacing:.3em;color:var(--ink-3)}
+  .prev .rl{width:18px;height:1px;background:var(--seam)}
+  .prev .iss{font-family:var(--serif);font-weight:600;font-size:15px;letter-spacing:.06em}
+  .prev .sg{display:inline-flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.1em;
+    color:var(--green);font-weight:600}
+  .seal{position:relative;width:20px;height:20px;background:var(--deep);color:var(--ivory);
+    font-family:var(--kai);font-style:normal;font-size:12px;line-height:1;display:grid;place-items:center;
+    transform:rotate(-4deg);box-shadow:var(--shadow)}
+  .seal::after{content:"";position:absolute;inset:2px;border:1px solid rgba(246,241,222,.5)}
+
+  .foot{margin-top:clamp(10px,1.8vh,16px);border-top:1px solid var(--hair);padding-top:10px;
+    font-size:11px;letter-spacing:.08em;color:var(--ink-3)}
+
+  /* ───── 窄屏：左栏折成顶带 ───── */
+  @media (max-width:960px){
+    .spread{display:block}
+    .spread::after{display:none}
+    .page-l{position:static;height:auto;overflow:visible}
+    .nav{margin:14px 0 0}
+    .page-r{min-height:0}
+    .pipe{margin-top:clamp(20px,4vh,36px)}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .mk-run{animation:none}
+    *{transition:none!important}
+  }
+
+  /* ── 本页专属 ──
+     分析台＝同一期的两种看法：上面看分布（四组卡片），下面查数（22 行表）。
+     卡片只放三样：学科名、接近度、进度条；分组标题已说明状态，格内不再重复。
+     未入组多一行「还需」，把「离 1% 还差多少」从排行并回卡片，排行视图不再单独存在。 */
+  .sel{position:relative;display:inline-flex;align-items:center;margin-bottom:6px}
+  .sel select{appearance:none;-webkit-appearance:none;border-radius:0;border:1px solid var(--line);
+    background:var(--card);color:var(--ink);height:44px;min-width:130px;padding:0 40px 0 14px;
+    font:13.5px/1 var(--sans);letter-spacing:.12em;font-variant-numeric:tabular-nums;
+    transition:border-color .3s var(--e)}
+  .sel select:hover{border-color:var(--ink-3)}
+  .sel i{position:absolute;right:16px;top:calc(50% - 3px);width:6px;height:6px;pointer-events:none;
+    border-right:1px solid var(--ink-3);border-bottom:1px solid var(--ink-3);
+    transform:rotate(45deg)}
+
+  .sec-h{margin-top:clamp(16px,2.6vh,26px);font-family:var(--kai);font-weight:400;font-size:11px;
+    letter-spacing:.34em;color:var(--ink-3)}
+
+  .grp{margin-top:clamp(12px,2vh,18px)}
+  .gh{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:7px;
+    border-bottom:1px solid var(--hair);font-size:12px;letter-spacing:.1em;color:var(--ink-2)}
+  .grp.is-empty .gh{border-bottom:0;padding-bottom:0}
+  .gh b{font-family:var(--serif);font-weight:600;font-size:13.5px;letter-spacing:.02em;color:var(--ink)}
+  .cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:8px}
+  .dc{background:var(--card);border:1px solid var(--hair);box-shadow:var(--shadow);padding:9px 11px 11px;
+    border-radius:8px}
+  .dn{font-family:var(--serif);font-size:13.5px;line-height:1.45;letter-spacing:.04em;color:var(--ink);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dp{font-family:var(--serif);font-weight:600;font-size:21px;line-height:1.2;margin-top:1px;
+    letter-spacing:.01em;font-variant-numeric:tabular-nums}
+  .dp i{font-style:normal;font-weight:400;font-size:11px;color:var(--ink-3);margin-left:2px}
+  .db{position:relative;display:block;height:2px;margin-top:7px;background:var(--hair)}
+  .db i{display:block;height:2px;background:var(--seam)}
+  /* 刻度直接标在条上：右端一道 1× 阈值短竖线——条满即达标，刻度就是终点 */
+  .db::after{content:"";position:absolute;right:0;top:-3px;width:1px;height:8px;background:var(--ink-3)}
+  .dg{margin-top:6px;font-size:11px;letter-spacing:.04em;color:var(--ink-3)}
+
+  .tw{margin-top:clamp(10px,1.6vh,14px);margin-bottom:clamp(18px,3vh,26px);overflow-x:auto}
+  .tt{width:100%;min-width:600px;border-collapse:collapse;table-layout:fixed}
+  .tt th{font-family:var(--kai);font-weight:400;font-size:11px;letter-spacing:.16em;color:var(--ink-3);
+    text-align:right;padding:0 0 8px;border-bottom:1px solid var(--seam);white-space:nowrap}
+  .tt th:first-child{text-align:left;letter-spacing:.24em}
+  .tt td{height:36px;padding:0;text-align:right;font-size:13.5px;color:var(--ink-2);
+    border-bottom:1px solid var(--hair);font-variant-numeric:tabular-nums}
+  .tt td:first-child{text-align:left;font-family:var(--serif);color:var(--ink);letter-spacing:.04em}
+  .tt tbody tr:last-child td{border-bottom:0}
+
+  .empty{margin:0;padding:clamp(46px,9vh,88px) 0;font-family:var(--serif);font-size:19px;
+    letter-spacing:.08em;color:var(--ink-2)}
+  .empty[hidden],.board[hidden]{display:none}
+  .foot{margin-top:auto}
+
+  @media (max-width:760px){
+    .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+</style>
+</head>
+<body>
+<div class="spread">
+
+  <!-- ═══ 左页 · 会泽（品牌面） ═══ -->
+  <aside class="page-l">
+    <i class="seal-b" aria-hidden="true">衡</i>
+    <header class="bm">
+      <b>文衡</b>
+      <span>云南大学图书馆<br>学科信息参考</span>
+    </header>
+    <nav class="nav" aria-label="工作区">
+      <a href="#">出报告</a>
+      <a href="#" aria-current="page">分析台</a>
+      <a href="#">高校 ESI 报告</a>
+      <a href="#">问文衡</a>
+      <span class="m" aria-hidden="true">管 理</span>
+      <a href="#">运行档案</a>
+      <a class="q" href="#">陈列馆 ↗</a>
+    </nav>
+    <footer class="idb">
+      <div class="rule" aria-hidden="true"></div>
+      <p class="who">admin · 馆员</p>
+    </footer>
+  </aside>
+
+  <!-- ═══ 右页 · 至公（当期分布与查表） ═══ -->
+  <main class="page-r">
+    <div class="sheet">
+
+      <header class="mast">
+        <div>
+          <p class="eyebrow">分析台</p>
+          <h1 id="iss-t">202609</h1>
+        </div>
+        <label class="sel">
+          <select id="iss" aria-label="期次">
+          <option value="202609" selected>202609</option>
+          <option value="202607">202607</option>
+          <option value="202605">202605</option>
+          <option value="202603">202603</option>
+          <option value="202601">202601</option>
+          <option value="202511">202511</option>
+          <option value="202509">202509</option>
+          <option value="202507">202507</option>
+          <option value="202505">202505</option>
+          <option value="202503">202503</option>
+          <option value="202501">202501</option>
+          <option value="202411">202411</option>
+          <option value="202409">202409</option>
+          <option value="202407">202407</option>
+          <option value="202405">202405</option>
+          <option value="202403">202403</option>
+          <option value="202401">202401</option>
+          <option value="202311">202311</option>
+          <option value="202309">202309</option>
+          <option value="202307">202307</option>
+          <option value="202305">202305</option>
+          <option value="202301">202301</option>
+          <option value="202211">202211</option>
+          <option value="202209">202209</option>
+          <option value="202207">202207</option>
+          <option value="202205">202205</option>
+          <option value="202203">202203</option>
+          <option value="202201">202201</option>
+          <option value="202111">202111</option>
+          <option value="202109">202109</option>
+          <option value="202107">202107</option>
+          <option value="202105">202105</option>
+          <option value="202103">202103</option>
+          <option value="202101">202101</option>
+          <option value="202011">202011</option>
+          <option value="202009">202009</option>
+          <option value="202007">202007</option>
+          <option value="202005">202005</option>
+          <option value="202003">202003</option>
+          <option value="202001">202001</option>
+          <option value="201911">201911</option>
+          <option value="201907">201907</option>
+          <option value="201905">201905</option>
+          </select>
+          <i aria-hidden="true"></i>
+        </label>
+      </header>
+
+      <div class="rule" aria-hidden="true"></div>
+
+      <div class="board" id="board">
+
+        <section aria-labelledby="s-pan">
+          <h2 class="sec-h" id="s-pan">学科全景</h2>
+          <div class="grp">
+            <p class="gh"><span>已入 1%</span><b>14</b></p>
+            <ol class="cards">
+              <li class="dc">
+                <p class="dn">工程学</p>
+                <p class="dp">746.57<i>%</i></p>
+                <span class="db"><i style="width:100.00%"></i></span>
+              </li>
+              <li class="dc">
+                <p class="dn">植物与动物学</p>
+                <p class="dp">699.84<i>%</i></p>
+                <span class="db"><i style="width:100.00%"></i></span>
+              </li>
+              <li class="dc">
+                <p class="dn">化学</p>
+                <p class="dp">676.06<i>%</i></p>
+                <span class="db"><i style="width:100.00%"></i></span>
+              </li>
+              <li class="dc">
+                <p class="dn">环境生态学</p>
+                <p class="dp">656.16<i>%</i></p>
+                <span class="db"><i style="width:100.00%"></i></span>
+              </li>
+              <li class="dc">
+                <p class="dn">材料科学</p>
+                <p class="dp">494.82<i>%</i></p>
+                <span class="db"><i style="width:100.00%"></i></span>
+              </li>
+              <li class="dc">
+                <p class="dn">地球科学</p>
+                <p class="dp">452.37<i>%</i></p>
+                <span class="db"><i style="width:100.00%"></i></span>
+              </li>
+              <li class="dc">
+                <p class="dn">临床医学</p>
+                <p class="dp">319.26<i>%</i></p>
+                <span class="db"><i style="width:100.00%"></i></span>
+              </li>
+              <li class="dc">
+                <p class="dn">农业科学</p>
+                <p class="dp">245.64<i>%</i></p>
+                <span class="db"><i style="width:100.00%"></i></span>
+              </li>
+              <li class="dc">
+                <p class="dn">计算机科学</p>
+                <p class="dp">241.59<i>%</i></p>
+                <span class="db"><i style="width:100.00%"></i></span>
+              </li>
+              <li class="dc">
+                <p class="dn">社会科学</p>
+                <p class="dp">200.24<i>%</i></p>
+                <span class="db"><i style="width:100.00%"></i></span>
+              </li>
+              <li class="dc">
+                <p class="dn">药理学与毒理学</p>
+                <p class="dp">180.23<i>%</i></p>
+                <span class="db"><i style="width:100.00%"></i></span>
+              </li>
+              <li class="dc">
+                <p class="dn">生物学与生物化学</p>
+                <p class="dp">155.92<i>%</i></p>
+                <span class="db"><i style="width:100.00%"></i></span>
+              </li>
+              <li class="dc">
+                <p class="dn">微生物学</p>
+                <p class="dp">123.98<i>%</i></p>
+                <span class="db"><i style="width:100.00%"></i></span>
+              </li>
+              <li class="dc">
+                <p class="dn">数学</p>
+                <p class="dp">107.39<i>%</i></p>
+                <span class="db"><i style="width:100.00%"></i></span>
+              </li>
+            </ol>
+          </div>
+          <div class="grp">
+            <p class="gh"><span>接近</span><b>2</b></p>
+            <ol class="cards">
+              <li class="dc">
+                <p class="dn">分子生物学与遗传学</p>
+                <p class="dp">88.01<i>%</i></p>
+                <span class="db"><i style="width:88.01%"></i></span>
+              </li>
+              <li class="dc">
+                <p class="dn">物理学</p>
+                <p class="dp">81.21<i>%</i></p>
+                <span class="db"><i style="width:81.21%"></i></span>
+              </li>
+            </ol>
+          </div>
+          <div class="grp">
+            <p class="gh"><span>未入</span><b>6</b></p>
+            <ol class="cards">
+              <li class="dc">
+                <p class="dn">空间科学</p>
+                <p class="dp">30.16<i>%</i></p>
+                <span class="db"><i style="width:30.16%"></i></span>
+                <p class="dg">还需 39,230 次</p>
+              </li>
+              <li class="dc">
+                <p class="dn">精神病学与心理学</p>
+                <p class="dp">28.88<i>%</i></p>
+                <span class="db"><i style="width:28.88%"></i></span>
+                <p class="dg">还需 3,009 次</p>
+              </li>
+              <li class="dc">
+                <p class="dn">免疫学</p>
+                <p class="dp">21.03<i>%</i></p>
+                <span class="db"><i style="width:21.03%"></i></span>
+                <p class="dg">还需 4,261 次</p>
+              </li>
+              <li class="dc">
+                <p class="dn">神经系统科学与行为学</p>
+                <p class="dp">18.41<i>%</i></p>
+                <span class="db"><i style="width:18.41%"></i></span>
+                <p class="dg">还需 6,698 次</p>
+              </li>
+              <li class="dc">
+                <p class="dn">多学科</p>
+                <p class="dp">15.22<i>%</i></p>
+                <span class="db"><i style="width:15.22%"></i></span>
+                <p class="dg">还需 2,929 次</p>
+              </li>
+              <li class="dc">
+                <p class="dn">经济与商业</p>
+                <p class="dp">15.07<i>%</i></p>
+                <span class="db"><i style="width:15.07%"></i></span>
+                <p class="dg">还需 6,858 次</p>
+              </li>
+            </ol>
+          </div>
+          <div class="grp is-empty">
+            <p class="gh"><span>未参评</span><b>0</b></p>
+          </div>
+        </section>
+
+        <section aria-labelledby="s-thr">
+          <h2 class="sec-h" id="s-thr">阈值查表</h2>
+          <div class="tw">
+            <table class="tt">
+              <colgroup>
+                <col style="width:25%"><col style="width:12.5%"><col style="width:12.5%">
+                <col style="width:12.5%"><col style="width:12.5%"><col style="width:12.5%">
+                <col style="width:12.5%">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th scope="col">学科</th><th scope="col">论文</th><th scope="col">被引</th>
+                  <th scope="col">1% 阈值</th><th scope="col">接近度</th>
+                  <th scope="col">1‰ 阈值</th><th scope="col">距 1‰</th>
+                </tr>
+              </thead>
+              <tbody>
+          <tr><td>工程学</td><td>1,928</td><td>28,907</td><td>3,872</td><td>746.57%</td><td>67,231</td><td>38,324</td></tr>
+          <tr><td>植物与动物学</td><td>1,727</td><td>21,296</td><td>3,043</td><td>699.84%</td><td>37,535</td><td>16,239</td></tr>
+          <tr><td>化学</td><td>2,590</td><td>51,529</td><td>7,622</td><td>676.06%</td><td>99,622</td><td>48,093</td></tr>
+          <tr><td>环境生态学</td><td>2,084</td><td>35,551</td><td>5,418</td><td>656.16%</td><td>74,235</td><td>38,684</td></tr>
+          <tr><td>材料科学</td><td>1,760</td><td>41,802</td><td>8,448</td><td>494.82%</td><td>122,368</td><td>80,566</td></tr>
+          <tr><td>地球科学</td><td>2,059</td><td>27,011</td><td>5,971</td><td>452.37%</td><td>88,542</td><td>61,531</td></tr>
+          <tr><td>临床医学</td><td>745</td><td>13,310</td><td>4,169</td><td>319.26%</td><td>127,547</td><td>114,237</td></tr>
+          <tr><td>农业科学</td><td>691</td><td>9,192</td><td>3,742</td><td>245.64%</td><td>35,345</td><td>26,153</td></tr>
+          <tr><td>计算机科学</td><td>1,155</td><td>14,087</td><td>5,831</td><td>241.59%</td><td>46,933</td><td>32,846</td></tr>
+          <tr><td>社会科学</td><td>435</td><td>4,213</td><td>2,104</td><td>200.24%</td><td>37,080</td><td>32,867</td></tr>
+          <tr><td>药理学与毒理学</td><td>540</td><td>7,519</td><td>4,172</td><td>180.23%</td><td>32,377</td><td>24,858</td></tr>
+          <tr><td>生物学与生物化学</td><td>670</td><td>11,463</td><td>7,352</td><td>155.92%</td><td>82,553</td><td>71,090</td></tr>
+          <tr><td>微生物学</td><td>638</td><td>6,757</td><td>5,450</td><td>123.98%</td><td>43,143</td><td>36,386</td></tr>
+          <tr><td>数学</td><td>902</td><td>5,568</td><td>5,185</td><td>107.39%</td><td>21,080</td><td>15,512</td></tr>
+          <tr><td>分子生物学与遗传学</td><td>646</td><td>11,902</td><td>13,523</td><td>88.01%</td><td>141,416</td><td>129,514</td></tr>
+          <tr><td>物理学</td><td>1,410</td><td>14,765</td><td>18,181</td><td>81.21%</td><td>170,438</td><td>155,673</td></tr>
+          <tr><td>空间科学</td><td>1,214</td><td>16,940</td><td>56,170</td><td>30.16%</td><td>263,711</td><td>246,771</td></tr>
+          <tr><td>精神病学与心理学</td><td>112</td><td>1,222</td><td>4,231</td><td>28.88%</td><td>56,157</td><td>54,935</td></tr>
+          <tr><td>免疫学</td><td>105</td><td>1,135</td><td>5,396</td><td>21.03%</td><td>60,175</td><td>59,040</td></tr>
+          <tr><td>神经系统科学与行为学</td><td>123</td><td>1,511</td><td>8,209</td><td>18.41%</td><td>96,867</td><td>95,356</td></tr>
+          <tr><td>多学科</td><td>35</td><td>526</td><td>3,455</td><td>15.22%</td><td>15,339</td><td>14,813</td></tr>
+          <tr><td>经济与商业</td><td>135</td><td>1,217</td><td>8,075</td><td>15.07%</td><td>44,500</td><td>43,283</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+
+      <p class="empty" id="empty" hidden>该期明细未载入。</p>
+
+      <footer class="foot">静态稿 · 真实数据 · 20261102</footer>
+    </div>
+  </main>
+</div>
+<script>
+  (function () {
+    var sel = document.getElementById('iss'),
+        title = document.getElementById('iss-t'),
+        board = document.getElementById('board'),
+        empty = document.getElementById('empty');
+    function sync() {
+      var loaded = sel.value === '202609';
+      title.textContent = sel.value;
+      board.hidden = !loaded;
+      empty.hidden = loaded;
+    }
+    sel.addEventListener('change', sync);
+    sync();
+  })();
+</script>
+</body>
+</html>

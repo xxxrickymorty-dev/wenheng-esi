@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<title>高校 ESI 报告 · 云南大学（静态稿 20261102）</title>
+<style>
+  /* 主工作台壳 · 跨页书式 · 方案C「书卷编辑风」（静态稿 20261031，待 rick 审）。
+     同族《高校ESI报告-插件市场（静态稿 20261031）》：左页会泽深绿品牌面 / 右页纸面工作面、订口一条金线、
+     圆角三档（窗件 12 ／ 卡片 8 ／ 气泡 6）、一档浅阴影。与方案A（守正会泽·三步大卡）/ B（流程为纲·全屏流程图）/ D（双主题工程版）同壳异面，
+     方案C 只做一件事：把「期次」当一期刊物的当期目次来排——
+     衬线大题、细金线目次分隔、点线引渡、进度点代替页码、签发印记；气质来自排版，不靠卡片与装饰堆叠。
+     本稿验六件事：
+     ① 左栏 44px 行一屏放全（品牌＋导航＋管理组＋身份行，720 高不滚、栏内禁滚动）；
+     ② 本期动态三步＝目次行：点线引渡到行尾，进度点代替页码（金方脉冲＝进行中，空方＝未开始，色＋形＋字）；
+     ③ 全页唯一主动作＝「去取数台」；琥珀 #7C5A16 全稿仅此一处＝「可继续的提醒」（UX.md §九 语义分色）；
+     ④ 四步流水＝目录条目式：壹贰叁肆章号＋行间细线，与目次行（一二三＋点线）两档排印；
+     ⑤ 上期一行像「上期已出刊」：202609 ·「签」印＋绿字已签发（印即色＋形，字补第三重）；
+     ⑥ 衬线大数点缀：论文 27,220 ／ 被引 360,379（tabular-nums；大题与印记为音阶豁免件）。
+     演示数据：202611 第 22 期在产（取数进行中）；202609 已签发（2026-09-23）。
+     硬约束：单文件零依赖零 JS、系统字体、六档字号 11/12/13.5/15/19/26、tabular-nums、
+     点击区 ≥44px、页脚「静态稿 · 演示数据 · 20261031」。 */
+  :root{
+    --deep:#143729; --green:#1A4B27; --seam:#B08E48;
+    --ivory:#F6F1DE; --ivory-2:rgba(246,241,222,.80); --ivory-3:rgba(246,241,222,.55);
+    --paper:#F5F3EC; --card:#FAF8F0;
+    --ink:#15222B; --ink-2:rgba(21,34,43,.78); --ink-3:rgba(21,34,43,.66);
+    --line:#D8D2C2; --hair:rgba(216,210,194,.55); --dot:rgba(21,34,43,.32);
+    --warn:#7C5A16;                        /* 全稿唯一：可继续的提醒 */
+    --shadow:0 1px 2px rgba(21,34,43,.07);
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --lw:clamp(232px,26%,360px);
+    --e:cubic-bezier(.32,.72,0,1);
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--paper)}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);
+    font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;background:none;border:none;color:inherit}
+  ol{list-style:none}
+  :focus-visible{outline:2px solid var(--green);outline-offset:2px}
+  .page-l :focus-visible{outline-color:var(--seam)}
+  ::selection{background:var(--seam);color:var(--ink)}
+
+  /* ───── 跨页本体 ───── */
+  .spread{display:grid;grid-template-columns:var(--lw) minmax(0,1fr);min-height:100dvh;position:relative}
+  .spread::after{content:"";position:absolute;top:0;bottom:0;left:var(--lw);width:1px;background:var(--seam);pointer-events:none}
+
+  /* ───── 左页 · 会泽（品牌面，一屏放全，禁栏内滚动） ───── */
+  .page-l{background:var(--deep);color:var(--ivory);padding:clamp(16px,2.8vh,30px) clamp(18px,1.9vw,30px);
+    display:flex;flex-direction:column;position:sticky;top:0;height:100dvh;overflow:hidden}
+  .bm{display:flex;align-items:baseline;gap:10px}
+  .bm b{font-family:var(--serif);font-weight:600;font-size:19px;letter-spacing:.14em}
+  .bm span{font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--ivory-3);line-height:1.7}
+  /* 藏书印：左页右上角一枚，品牌印记（豁免件） */
+  .seal-b{position:absolute;top:clamp(16px,2.8vh,30px);right:clamp(18px,1.9vw,30px);width:22px;height:22px;
+    background:var(--ivory);color:var(--deep);font-family:var(--kai);font-style:normal;font-size:12px;line-height:1;
+    display:grid;place-items:center;transform:rotate(-6deg);box-shadow:var(--shadow)}
+  .seal-b::after{content:"";position:absolute;inset:2px;border:1px solid rgba(20,55,41,.5)}
+  .nav{margin:auto 0;display:flex;flex-direction:column;font-size:13.5px;letter-spacing:.05em;color:var(--ivory-2)}
+  .nav a{padding:11px 0;min-height:44px;display:flex;align-items:center;gap:10px;transition:color .3s var(--e)}
+  .nav a::before{content:"";width:9px;height:2px;flex:none;background:transparent;transition:background-color .3s var(--e)}
+  .nav a[aria-current]{color:var(--ivory)}
+  .nav a[aria-current]::before{background:var(--seam)}
+  .nav a:hover{color:var(--ivory)}
+  .nav .m{padding:6px 0 4px;font-family:var(--kai);font-size:11px;letter-spacing:.26em;color:var(--ivory-3)}
+  .nav .q{opacity:.62}
+  .idb{padding-top:14px}
+  .idb .rule{width:34px;height:1px;background:var(--seam);margin-bottom:12px}
+  .who{font-size:12px;letter-spacing:.14em;color:var(--ivory-2)}
+
+  /* ───── 右页 · 至公（当期目次） ───── */
+  .page-r{display:flex;min-height:100dvh;min-width:0;
+    padding:clamp(18px,3.2vh,34px) clamp(22px,3.4vw,48px) clamp(14px,2vh,20px)}
+  .sheet{width:100%;max-width:940px;display:flex;flex-direction:column}
+
+  /* 题头：大题＋大数 */
+  .mast{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 32px;flex-wrap:wrap}
+  .eyebrow{font-family:var(--kai);font-size:11px;letter-spacing:.34em;color:var(--ink-3)}
+  .mast h1{font-family:var(--serif);font-weight:600;font-size:clamp(26px,4.4vh,36px);line-height:1.3;
+    letter-spacing:.05em;margin-top:10px}
+  .mast h1 .sep{color:var(--seam);font-weight:400;margin:0 .16em}
+  .figs{display:flex;align-items:flex-end;gap:20px;padding-bottom:7px}
+  .fig + .fig{border-left:1px solid var(--line);padding-left:20px}
+  .fig span{display:block;font-family:var(--kai);font-size:11px;letter-spacing:.3em;color:var(--ink-3);margin-bottom:6px}
+  .fig b{display:block;font-family:var(--serif);font-weight:600;font-size:26px;line-height:1.15;letter-spacing:.02em}
+  .info{position:relative;width:22px;height:22px;flex:none;border:1px solid var(--line);color:var(--ink-3);
+    font-family:var(--serif);font-style:italic;font-size:12px;line-height:1;display:grid;place-items:center;
+    margin-bottom:7px;transition:border-color .3s var(--e),color .3s var(--e)}
+  .info::before{content:"";position:absolute;inset:-11px}   /* 点击区扩到 44px */
+  .info:hover{border-color:var(--ink-3);color:var(--ink)}
+
+  /* 细金线 · 目次分隔 */
+  .sheet .rule{height:1px;background:var(--seam);margin:clamp(14px,2.4vh,24px) 0 clamp(12px,2vh,20px)}
+
+  /* 目次行：本期动态三步（进度点代替页码） */
+  .toc h2,.pipe h2{font-family:var(--kai);font-weight:400;font-size:11px;letter-spacing:.34em;
+    color:var(--ink-3);margin-bottom:clamp(6px,1.2vh,12px)}
+  .toc li{display:flex;align-items:flex-end;min-height:44px;padding:2px 0}
+  .toc .num{font-family:var(--kai);font-size:15px;color:var(--green);width:28px;flex:none;margin-bottom:6px}
+  .toc .name{font-family:var(--serif);font-weight:600;font-size:19px;line-height:1.45;letter-spacing:.06em;color:var(--ink)}
+  .toc li.w .name{color:var(--ink-2)}
+  .toc .lead{flex:1;min-width:28px;border-bottom:1px dotted var(--dot);margin:0 16px 10px}
+  .toc .st{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.1em;
+    white-space:nowrap;margin-bottom:6px}
+  .toc li.r .st{color:var(--ink);font-weight:600}
+  .toc li.w .st{color:var(--ink-3);font-weight:400}
+  .mk{width:8px;height:8px;flex:none}
+  .mk-run{background:var(--seam);animation:pulse 2.2s var(--e) infinite}
+  .mk-wait{border:1px solid var(--ink-3)}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.78)}}
+
+  /* 唯一主动作＋可继续的提醒 */
+  .acts{display:flex;align-items:center;gap:12px 20px;flex-wrap:wrap;margin-top:clamp(14px,2.4vh,24px);
+    padding-bottom:clamp(16px,3vh,30px)}
+  .btn{display:inline-flex;align-items:center;gap:12px;min-height:44px;padding:0 26px;background:var(--deep);
+    color:var(--ivory);font-size:15px;letter-spacing:.14em;box-shadow:var(--shadow);
+    transition:background-color .35s var(--e),transform .35s var(--e)}
+  .btn:hover{background:var(--green)}
+  .btn:active{transform:translateY(1px)}
+  .btn i{font-style:normal;transition:transform .35s var(--e)}
+  .btn:hover i{transform:translateX(4px)}
+  .hint{display:inline-flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.04em;color:var(--warn)}
+  .hint::before{content:"";width:7px;height:7px;flex:none;background:var(--warn)}
+
+  /* 目录条目式：四步流水（壹贰叁肆＋行间细线） */
+  .pipe{margin-top:auto;border-top:1px solid var(--seam);padding-top:clamp(12px,2vh,20px)}
+  .pipe a{display:flex;align-items:center;gap:14px;min-height:44px;padding:0 10px 0 12px;
+    border-bottom:1px solid var(--hair);transition:background-color .3s var(--e)}
+  .pipe a:hover{background:var(--card)}
+  .pipe a[aria-current="step"]{box-shadow:inset 2px 0 0 var(--seam)}
+  .chap{font-family:var(--kai);font-size:15px;color:var(--green);width:24px;flex:none}
+  .pipe .name{font-size:15px;letter-spacing:.08em;color:var(--ink)}
+  .pipe .st{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:12px;
+    letter-spacing:.1em;color:var(--ink-3);white-space:nowrap}
+  .pipe .st .mk{width:7px;height:7px}
+  .pipe a[aria-current="step"] .st{color:var(--ink);font-weight:600}
+
+  /* 上期已出刊 */
+  .prev{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:clamp(10px,1.8vh,16px) 2px 0}
+  .prev .k{font-family:var(--kai);font-size:11px;letter-spacing:.3em;color:var(--ink-3)}
+  .prev .rl{width:18px;height:1px;background:var(--seam)}
+  .prev .iss{font-family:var(--serif);font-weight:600;font-size:15px;letter-spacing:.06em}
+  .prev .sg{display:inline-flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.1em;
+    color:var(--green);font-weight:600}
+  .seal{position:relative;width:20px;height:20px;background:var(--deep);color:var(--ivory);
+    font-family:var(--kai);font-style:normal;font-size:12px;line-height:1;display:grid;place-items:center;
+    transform:rotate(-4deg);box-shadow:var(--shadow)}
+  .seal::after{content:"";position:absolute;inset:2px;border:1px solid rgba(246,241,222,.5)}
+
+  .foot{margin-top:clamp(10px,1.8vh,16px);border-top:1px solid var(--hair);padding-top:10px;
+    font-size:11px;letter-spacing:.08em;color:var(--ink-3)}
+
+  /* ───── 窄屏：左栏折成顶带 ───── */
+  @media (max-width:960px){
+    .spread{display:block}
+    .spread::after{display:none}
+    .page-l{position:static;height:auto;overflow:visible}
+    .nav{margin:14px 0 0}
+    .page-r{min-height:0}
+    .pipe{margin-top:clamp(20px,4vh,36px)}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .mk-run{animation:none}
+    *{transition:none!important}
+  }
+
+  /* ── 本页专属 ── */
+  .nav .q{opacity:.78}   /* 陈列馆 13.5px 文字，提一档保证 ≥4.5:1 */
+  .sheet{max-width:840px}
+  .page-r{padding-top:clamp(16px,2.4vh,26px)}
+  .bar{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;min-height:44px}
+  .pick{display:flex;align-items:center;gap:12px;margin-bottom:2px}
+  .pick .k{font-family:var(--kai);font-size:11px;letter-spacing:.3em;color:var(--ink-3)}
+  .sel{position:relative;display:block;height:44px;border-bottom:1px solid var(--line)}
+  .sel select{height:44px;padding:0 26px 0 2px;border:0;border-radius:0;background:none;
+    -webkit-appearance:none;appearance:none;font-family:var(--serif);font-size:19px;
+    letter-spacing:.06em;color:var(--ink);font-variant-numeric:tabular-nums;cursor:pointer}
+  .sel::after{content:"";position:absolute;right:4px;top:17px;width:6px;height:6px;
+    border-right:1px solid var(--ink-3);border-bottom:1px solid var(--ink-3);
+    transform:rotate(45deg);pointer-events:none}
+  .sel:hover{border-bottom-color:var(--ink-3)}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 30px;
+    flex-wrap:wrap;margin-top:clamp(6px,1.4vh,14px)}
+  .head h1{font-family:var(--serif);font-weight:600;font-size:26px;line-height:1.3;letter-spacing:.16em}
+  .head .figs{padding-bottom:5px;gap:18px}
+  .head .fig + .fig{padding-left:18px}
+  .head .fig span{margin-bottom:3px;letter-spacing:.22em}
+  .head .fig b{font-size:26px;font-weight:600;line-height:1.2}
+  .head .fig b i{font-family:var(--sans);font-style:normal;font-size:12px;font-weight:400;
+    letter-spacing:.02em;color:var(--ink-3);margin-left:5px}
+  .head .fig .unit{font-size:12px;color:var(--ink-3);margin-left:3px;letter-spacing:0}
+
+  /* 22 行学科表：无竖线、无行线，只有表头一条细线与中段一条金线 */
+  .tbl{margin-top:clamp(8px,1.4vh,16px)}
+  .sheet .rule{margin:clamp(10px,1.8vh,22px) 0 clamp(8px,1.4vh,16px)}
+  .tbl .hd,.tbl .rw{display:grid;grid-template-columns:minmax(0,1fr) 84px 84px 92px 104px 76px;
+    align-items:baseline}
+  .tbl .hd{font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--ink-3);
+    padding-bottom:6px;border-bottom:1px solid var(--line)}
+  .tbl .hd span+span,.tbl .rw span{text-align:right}
+  .tbl .rw{height:clamp(19.5px,2.9vh,28px);align-items:center;line-height:1.3}
+  .tbl .rw .nm{display:flex;align-items:baseline;text-align:left;min-width:0;
+    font-family:var(--serif);font-size:13.5px;letter-spacing:.04em;color:var(--ink);white-space:nowrap}
+  .tbl .rw .nm i{flex:1;height:0;border-bottom:1px dotted var(--line);margin:0 12px 3px}
+  .tbl .rw .rn{font-size:13.5px;color:var(--ink-2)}
+  .tbl .rw .nv{font-size:13.5px;color:var(--ink)}
+  .tbl .seg{height:1px;background:var(--seam);margin:8px 0 6px}
+  .tbl .rw.off .nm,.tbl .rw.off span{color:var(--ink-3)}
+  .foot{margin-top:auto}
+</style>
+</head>
+<body>
+<div class="spread">
+
+  <!-- ═══ 左页 · 会泽（品牌面） ═══ -->
+  <aside class="page-l">
+    <i class="seal-b" aria-hidden="true">衡</i>
+    <header class="bm">
+      <b>文衡</b>
+      <span>云南大学图书馆<br>学科信息参考</span>
+    </header>
+    <nav class="nav" aria-label="工作区">
+      <a href="#">出报告</a>
+      <a href="#">分析台</a>
+      <a href="#" aria-current="page">高校 ESI 报告</a>
+      <a href="#">问文衡</a>
+      <span class="m" aria-hidden="true">管 理</span>
+      <a href="#">运行档案</a>
+      <a class="q" href="#">陈列馆 ↗</a>
+    </nav>
+    <footer class="idb">
+      <div class="rule" aria-hidden="true"></div>
+      <p class="who">admin · 馆员</p>
+    </footer>
+  </aside>
+
+  <!-- ═══ 右页 · 云南大学 202609 站位 ═══ -->
+  <main class="page-r">
+    <div class="sheet">
+
+      <div class="bar">
+        <p class="eyebrow">高校 ESI 报告</p>
+        <label class="pick">
+          <span class="k">期次</span>
+          <span class="sel">
+            <select aria-label="期次">
+              <option selected>202609</option>
+              <option>202607</option>
+              <option>202605</option>
+              <option>202603</option>
+              <option>202601</option>
+              <option>202511</option>
+              <option>202509</option>
+              <option>202507</option>
+              <option>202505</option>
+              <option>202503</option>
+              <option>202501</option>
+              <option>202411</option>
+              <option>202409</option>
+              <option>202407</option>
+              <option>202405</option>
+              <option>202403</option>
+              <option>202401</option>
+              <option>202311</option>
+              <option>202309</option>
+              <option>202307</option>
+              <option>202305</option>
+              <option>202301</option>
+              <option>202211</option>
+              <option>202209</option>
+              <option>202207</option>
+              <option>202205</option>
+              <option>202203</option>
+              <option>202201</option>
+              <option>202111</option>
+              <option>202109</option>
+              <option>202107</option>
+              <option>202105</option>
+              <option>202103</option>
+              <option>202101</option>
+              <option>202011</option>
+              <option>202009</option>
+              <option>202007</option>
+              <option>202005</option>
+              <option>202003</option>
+              <option>202001</option>
+              <option>201911</option>
+              <option>201907</option>
+              <option>201905</option>
+            </select>
+          </span>
+        </label>
+      </div>
+
+      <header class="head">
+        <h1>云南大学</h1>
+        <div class="figs">
+          <div class="fig"><span>全球排名</span><b>973<i>/ 10,674</i></b></div>
+          <div class="fig"><span>国内排名</span><b>156</b></div>
+          <div class="fig"><span>论文</span><b>21,720</b></div>
+          <div class="fig"><span>被引</span><b>327,007</b></div>
+          <div class="fig"><span>篇均</span><b>15.06</b></div>
+        </div>
+      </header>
+
+      <div class="rule" aria-hidden="true"></div>
+
+      <section class="tbl" role="table" aria-label="22 学科站位">
+        <div class="hd" role="row">
+          <span role="columnheader">学科</span><span role="columnheader">全球排名</span><span role="columnheader">国内排名</span><span role="columnheader">论文</span><span role="columnheader">被引</span><span role="columnheader">篇均</span>
+        </div>
+
+        <div class="rw" role="row"><span class="nm" role="cell">化学<i></i></span><span class="rn" role="cell">552</span><span class="rn" role="cell">155</span><span class="nv" role="cell">2,590</span><span class="nv" role="cell">51,529</span><span class="nv" role="cell">19.90</span></div>
+        <div class="rw" role="row"><span class="nm" role="cell">材料科学<i></i></span><span class="rn" role="cell">521</span><span class="rn" role="cell">182</span><span class="nv" role="cell">1,760</span><span class="nv" role="cell">41,802</span><span class="nv" role="cell">23.75</span></div>
+        <div class="rw" role="row"><span class="nm" role="cell">环境生态学<i></i></span><span class="rn" role="cell">517</span><span class="rn" role="cell">101</span><span class="nv" role="cell">2,084</span><span class="nv" role="cell">35,551</span><span class="nv" role="cell">17.06</span></div>
+        <div class="rw" role="row"><span class="nm" role="cell">工程学<i></i></span><span class="rn" role="cell">732</span><span class="rn" role="cell">202</span><span class="nv" role="cell">1,928</span><span class="nv" role="cell">28,907</span><span class="nv" role="cell">14.99</span></div>
+        <div class="rw" role="row"><span class="nm" role="cell">地球科学<i></i></span><span class="rn" role="cell">454</span><span class="rn" role="cell">81</span><span class="nv" role="cell">2,059</span><span class="nv" role="cell">27,011</span><span class="nv" role="cell">13.12</span></div>
+        <div class="rw" role="row"><span class="nm" role="cell">植物与动物学<i></i></span><span class="rn" role="cell">442</span><span class="rn" role="cell">73</span><span class="nv" role="cell">1,727</span><span class="nv" role="cell">21,296</span><span class="nv" role="cell">12.33</span></div>
+        <div class="rw" role="row"><span class="nm" role="cell">计算机科学<i></i></span><span class="rn" role="cell">417</span><span class="rn" role="cell">121</span><span class="nv" role="cell">1,155</span><span class="nv" role="cell">14,087</span><span class="nv" role="cell">12.20</span></div>
+        <div class="rw" role="row"><span class="nm" role="cell">临床医学<i></i></span><span class="rn" role="cell">3,603</span><span class="rn" role="cell">726</span><span class="nv" role="cell">745</span><span class="nv" role="cell">13,310</span><span class="nv" role="cell">17.87</span></div>
+        <div class="rw" role="row"><span class="nm" role="cell">生物学与生物化学<i></i></span><span class="rn" role="cell">1,231</span><span class="rn" role="cell">176</span><span class="nv" role="cell">670</span><span class="nv" role="cell">11,463</span><span class="nv" role="cell">17.11</span></div>
+        <div class="rw" role="row"><span class="nm" role="cell">农业科学<i></i></span><span class="rn" role="cell">690</span><span class="rn" role="cell">164</span><span class="nv" role="cell">691</span><span class="nv" role="cell">9,192</span><span class="nv" role="cell">13.30</span></div>
+        <div class="rw" role="row"><span class="nm" role="cell">药理学与毒理学<i></i></span><span class="rn" role="cell">882</span><span class="rn" role="cell">149</span><span class="nv" role="cell">540</span><span class="nv" role="cell">7,519</span><span class="nv" role="cell">13.92</span></div>
+        <div class="rw" role="row"><span class="nm" role="cell">微生物学<i></i></span><span class="rn" role="cell">734</span><span class="rn" role="cell">99</span><span class="nv" role="cell">638</span><span class="nv" role="cell">6,757</span><span class="nv" role="cell">10.59</span></div>
+        <div class="rw" role="row"><span class="nm" role="cell">数学<i></i></span><span class="rn" role="cell">389</span><span class="rn" role="cell">91</span><span class="nv" role="cell">902</span><span class="nv" role="cell">5,568</span><span class="nv" role="cell">6.17</span></div>
+        <div class="rw" role="row"><span class="nm" role="cell">社会科学<i></i></span><span class="rn" role="cell">1,643</span><span class="rn" role="cell">171</span><span class="nv" role="cell">435</span><span class="nv" role="cell">4,213</span><span class="nv" role="cell">9.69</span></div>
+
+        <div class="seg" role="presentation"></div>
+
+        <div class="rw off" role="row"><span class="nm" role="cell">经济与商业</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span></div>
+        <div class="rw off" role="row"><span class="nm" role="cell">免疫学</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span></div>
+        <div class="rw off" role="row"><span class="nm" role="cell">分子生物学与遗传学</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span></div>
+        <div class="rw off" role="row"><span class="nm" role="cell">多学科</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span></div>
+        <div class="rw off" role="row"><span class="nm" role="cell">神经系统科学与行为学</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span></div>
+        <div class="rw off" role="row"><span class="nm" role="cell">物理学</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span></div>
+        <div class="rw off" role="row"><span class="nm" role="cell">精神病学与心理学</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span></div>
+        <div class="rw off" role="row"><span class="nm" role="cell">空间科学</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span></div>
+      </section>
+
+      <footer class="foot">静态稿 · 真实数据 · 20261102</footer>
+    </div>
+  </main>
+</div>
+</body>
+</html>
