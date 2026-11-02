@@ -5,7 +5,7 @@
    数据全部来自后端 API；接口没就绪的地方**如实标注"未就绪"**，不编数据。 */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, KeyboardEvent as RKeyEvent, PointerEvent as RPointerEvent } from 'react'
+import { SideRail, useSideRail } from './SideRail'
 import {
   getHealth, getMe, getPeriodDetail, getPeriods, getStatus, postJob,
   type ApiError, type Me, type Period, type PeriodDetail,
@@ -16,16 +16,14 @@ import {
 } from './api-forecast'
 import { applyPeriod, buildPeriodUrl } from './lib/period'
 import { forecastAppliedDiffs, forecastAppliedStale, sameForecastChoice, savedForecastChoice } from './lib/forecast'
-import { approvalLabel, errorNote } from './lib/status'
+import { errorNote } from './lib/status'
 import { stateDbAlert, type StateDbAlert } from './lib/stateDb'
 import { wireEnter } from './lib/motion'
 import { pickRunForPeriod } from './lib/run'
-import { UserChip } from './lib/UserChip'
 import { useJobRun, type Run } from './hooks/useJobRun'
 import { usePeriodResource } from './hooks/usePeriodResource'
 import { Icon, Sprite } from './icons'
 import { SealInkDefs } from './StateSeal'
-import { Info } from './Info'
 import { Acquire } from './Acquire'
 import { Pick } from './Pick'
 import { Workbench } from './Workbench'
@@ -49,27 +47,6 @@ import { deriveWorkbench, isTerminal, statusToWB, type WBState } from './wb'
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'warned', 'waiting-approval', 'fail-ledger', 'fail-other', 'stalled', 'signed']
 
-/* ── 侧栏宽度与收起（2026-11-02 rick：侧栏要能拉伸、能收进去）──
-   宽度落在 CSS 变量 --app-lw 上，网格列与订口金线都跟着它走；
-   偏好存本地——它只是偏好，读不到（隐私模式/清过缓存）就用默认，绝不挡住页面。
-   收起宽 64px：放得下 18px 图标与呼吸，再窄就只能靠猜。 */
-const SIDE_MIN = 232
-const SIDE_MAX = 420
-const SIDE_FOLD = 64
-const SIDE_KEY = 'wenheng.side.v1'
-
-function readSidePref(): { w: number; fold: boolean } {
-  try {
-    const raw = localStorage.getItem(SIDE_KEY)
-    if (raw) {
-      const o = JSON.parse(raw) as { w?: number; fold?: boolean }
-      const w = Number(o.w)
-      return { w: Number.isFinite(w) ? Math.min(SIDE_MAX, Math.max(SIDE_MIN, w)) : 280, fold: !!o.fold }
-    }
-  } catch { /* 存储不可用：用默认宽度 */ }
-  return { w: 280, fold: false }
-}
-
 export default function App() {
   const [healthy, setHealthy] = useState<boolean | null>(null)
   const [me, setMe] = useState<Me | null>(null)
@@ -78,38 +55,9 @@ export default function App() {
   /* 角色是否已有结论：false = 还没问过（探活失败 / 首屏）；true = 问过了（me 为 null 即未登录） */
   const [roleKnown, setRoleKnown] = useState(false)
 
-  /* 侧栏：宽度 + 收起。拖动只改宽度，不改收起；收起态下把手不响应拖动（那会儿没有宽度可拖）。 */
-  const [side, setSide] = useState(readSidePref)
-  const sideDrag = useRef<{ x: number; w: number } | null>(null)
-  useEffect(() => {
-    try { localStorage.setItem(SIDE_KEY, JSON.stringify(side)) } catch { /* 存不下就算了 */ }
-  }, [side])
-  const toggleSide = useCallback(() => setSide((s) => ({ ...s, fold: !s.fold })), [])
-  const onGripDown = (e: RPointerEvent<HTMLDivElement>) => {
-    if (side.fold) return
-    e.currentTarget.setPointerCapture(e.pointerId)
-    sideDrag.current = { x: e.clientX, w: side.w }
-  }
-  const onGripMove = (e: RPointerEvent<HTMLDivElement>) => {
-    const d = sideDrag.current
-    if (!d) return
-    const w = Math.min(SIDE_MAX, Math.max(SIDE_MIN, d.w + (e.clientX - d.x)))
-    setSide((s) => (s.w === w ? s : { ...s, w }))
-  }
-  const onGripUp = (e: RPointerEvent<HTMLDivElement>) => {
-    sideDrag.current = null
-    try { e.currentTarget.releasePointerCapture(e.pointerId) } catch { /* 已经释放了 */ }
-  }
-  const onGripKey = (e: RKeyEvent<HTMLDivElement>) => {
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      e.preventDefault()
-      const step = e.key === 'ArrowLeft' ? -16 : 16
-      setSide((s) => ({ ...s, w: Math.min(SIDE_MAX, Math.max(SIDE_MIN, s.w + step)) }))
-    } else if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      toggleSide()
-    }
-  }
+  /* 侧栏（与问文衡同一套组件、同一份本地偏好）：宽度 + 收起，
+     拖到最左收起、收起态拖右展开——交互与状态都在 SideRail（src/SideRail.tsx）。 */
+  const rail = useSideRail()
   const [periods, setPeriods] = useState<Period[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [urlRestorePeriod, setUrlRestorePeriod] = useState<string | null>(null)
@@ -541,26 +489,10 @@ export default function App() {
   }
 
   /* 工作区导航（契约 §4：前端按 /api/me 的 role 决定显示什么；**真门在后端**，这里只是不打扰）。
-     角色（2026-10-11 改两级）：admin＝管理员（全可见）；operator＝操作员（评委/馆员）——
-     主台账仅管理员；运行档案、红件清单、逐格溯源、水位、沙盘只读开放；签单/出稿/取数
-     按既有政策开放。写动作真门在后端，前端只表达当前角色能看到的入口。
-     2026-11-02 rick 定稿（跨页书式：左页导航 / 右页工作面）：导航就这五项＋管理组两项，
-     顺序即版式顺序——主区四屏在上、管理区两项在下。少了谁就是少了谁，不再补「即将」占位。
+     导航五项＋管理组两项在 SideRail（src/SideRail.tsx），工作区与问文衡同一份。
+     2026-11-02 rick 定稿（跨页书式：左页导航 / 右页工作面）。
      2026-10-31 撤出的灵活报告 / 他校简报 / AI 问数不回来（能力已并入高校ESI报告与问文衡，
      深链 ?view=analysis · /app/panel/ · ?view=aiqa 仍保留，只是不再占导航位）。 */
-  const NAV: { key: string; label: string; href: string; icon: string }[] = [
-    { key: 'flow', label: '出报告', href: '/app/', icon: 'doc' },
-    { key: 'analysis', label: '分析台', href: '/app/?view=analysis', icon: 'chart' },
-    /* 高校 ESI 报告自成一个静态入口（web/schools），不归工作区路由，故不参与高亮判断 */
-    { key: 'schools', label: '高校 ESI 报告', href: '/app/schools/', icon: 'trend' },
-    { key: 'ask', label: '问文衡', href: '/app/dialog/', icon: 'chat' },
-  ]
-  /* 管理组：只有两项，排在「管 理」题签之后。陈列馆是离开工作区的展示面，
-     2026-11-02 从右上角移到左栏末位（方位变了，去的是同一个地方，↗ 照旧标着）。 */
-  const MANAGE: { key: string; label: string; href: string; jump?: boolean; icon: string }[] = [
-    { key: 'archive', label: '运行档案', href: '/app/?view=archive', icon: 'archive' },
-    { key: 'shelf', label: '陈列馆 ↗', href: '/app/shelf/', jump: true, icon: 'book' },
-  ]
   /* 子屏归到哪个主区（决定左栏高亮）；report 区已无导航项，子屏一律归「出报告」，
      因为报告与它的下钻屏都是从四步流水里长出来的；台账/沙盘从运行档案进，跟着它高亮。 */
   const GROUP: Record<string, string> = {
@@ -613,97 +545,18 @@ export default function App() {
   const flowActiveIdx = Math.max(0, FLOW_STEPS.findIndex((s) => s.key === flowActive))
 
   return (
-    <div className="app-shell" data-view={view} data-fold={side.fold ? '1' : undefined}
-         style={{ '--app-lw': side.fold ? `${SIDE_FOLD}px` : `${side.w}px` } as CSSProperties}>
+    <div className="app-shell" data-view={view} {...rail.rootProps}>
       <Sprite />
       <SealInkDefs />
       <a className="skip-link" href="#main">跳到主要内容</a>
 
-      {/* 左页 · 会泽（2026-11-02 跨页书式）：品牌 / 导航 / 管理组 / 期次与身份。
+      {/* 左页 · 会泽（跨页书式）：品牌 / 导航 / 管理组 / 期次与身份。
           一屏放全、栏内不滚——所以这里不设 overflow（设了 auto 就会出滚动条，设了 hidden
           又会裁掉 ⓘ 与身份弹层）；靠 clamp 与 44px 行高把总高压在 720px 以内。
-          2026-11-02 晚：可拖宽、可收起（把手在订口金线上，收起后只留图标＋悬停浮全名）。 */}
-      <aside className="app-page-l">
-        <i className="app-seal" aria-hidden="true">衡</i>
-        <div className="app-lhead">
-          <a className="app-brand" href={navHref('/app/')}>
-            <b>文衡</b>
-            <span>云南大学图书馆<br />学科信息参考</span>
-          </a>
-          <button className="app-fold" type="button" onClick={toggleSide}
-                  aria-expanded={!side.fold} aria-controls="app-nav"
-                  aria-label={side.fold ? '展开侧栏' : '收起侧栏'}
-                  title={side.fold ? '展开侧栏' : '收起侧栏'}>
-            <Icon name="menu" size={16} />
-          </button>
-        </div>
-        <nav className="app-nav" id="app-nav" aria-label="工作区">
-          {NAV.map((n) => (
-            <a key={n.key} href={navHref(n.href)}
-               aria-current={activeNav === n.key ? 'page' : undefined}>
-              <Icon name={n.icon} size={18} />
-              <span className="app-nav-lbl">{n.label}</span>
-              <span className="app-tip" aria-hidden="true">{n.label}</span>
-            </a>
-          ))}
-          <span className="app-nav-grp" aria-hidden="true">管 理</span>
-          {MANAGE.map((n) => (
-            /* 运行档案是管理面：未登录不渲染（真门在后端）；陈列馆是展示面，谁都能去。 */
-            (n.jump || me) && (
-              <a key={n.key} href={navHref(n.href)}
-                 className={n.jump ? 'app-jump-link' : undefined}
-                 aria-current={activeNav === n.key ? 'page' : undefined}>
-                <Icon name={n.icon} size={18} />
-                <span className="app-nav-lbl">{n.label}</span>
-                <span className="app-tip" aria-hidden="true">{n.label}</span>
-              </a>
-            )
-          ))}
-        </nav>
-        <footer className="app-idb">
-          <span className="app-idb-rule" aria-hidden="true" />
-          {/* 期次是全局控件（各屏同一份）：落到左页底部，正文区不再重复一遍。 */}
-          {periods.length > 0 && (
-            <label className="app-period">
-              <span>期次</span>
-              <select value={selected ?? ''} onChange={(e) => pickPeriod(e.target.value)} aria-label="切换期次">
-                {periods.map((p) => <option key={p.period} value={p.period}>{p.period} · {approvalLabel(p.status)}</option>)}
-                {selected && !periods.some((p) => p.period === selected) && <option value={selected}>{selected}</option>}
-              </select>
-            </label>
-          )}
-          <div className="app-idb-row">
-            {/* 全站唯一一份口径/来源/只读声明（原在顶栏 ⓘ；位置变了，内容一字未改）。 */}
-            <Info label="口径、来源与只读声明">
-              <p>① 数字只来自馆员维护的台账与派生产物，运行期大模型不进入数据路径；</p>
-              <p>② 本系统是只读视图，不修改台账与报告；③ 预测章按「本期已选」的已保存选择执行，未列学科用 V1 推荐；④ 期次与状态以任务记录为准，未签发报告不可下载。</p>
-              <p>来源：期内产物目录 · 运行档案 · 预测选模配置。</p>
-              <p>分析报告属于内部资料，仅用于参赛，禁止外传。</p>
-            </Info>
-            {me ? <UserChip me={me} /> : (
-              <span className="user-chip" aria-live="polite">
-                <span className="user-chip-btn" aria-disabled="true">
-                  <span className="av">？</span>
-                  <span className="user-chip-name">{roleKnown ? '未登录' : '角色确认中…'}</span>
-                </span>
-              </span>
-            )}
-          </div>
-        </footer>
-      </aside>
-
-      {/* 订口把手：有形状的双竖线＋中段刻度，骑在金线上。拖＝调宽（232–420），
-          双击/回车＝收起或展开，←→＝每次 16px。收起态下不接拖动——那会儿没有宽度可拖。 */}
-      <div className="app-grip" role="separator" aria-orientation="vertical" tabIndex={0}
-           aria-label="拖动调整侧栏宽度，回车收起侧栏"
-           aria-valuenow={side.fold ? SIDE_FOLD : side.w}
-           aria-valuemin={SIDE_MIN} aria-valuemax={SIDE_MAX}
-           title={side.fold ? '展开侧栏' : '拖动调宽 · 双击收起'}
-           onPointerDown={onGripDown} onPointerMove={onGripMove}
-           onPointerUp={onGripUp} onPointerCancel={onGripUp}
-           onKeyDown={onGripKey} onDoubleClick={toggleSide}>
-        <i aria-hidden="true" />
-      </div>
+          与问文衡同一套组件（src/SideRail.tsx）：拖宽、拖到最左收起、收起浮全名。 */}
+      <SideRail rail={rail} active={activeNav} me={me} roleKnown={roleKnown}
+                navHref={navHref}
+                period={{ list: periods, selected, onPick: pickPeriod }} />
 
       <main className="wrap app-main" id="main">
         {/* 本机数据存储只读降级：常驻、不遮操作（不是 toast，自己不会消失）。

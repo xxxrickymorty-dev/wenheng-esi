@@ -25,6 +25,8 @@ import { latestProgress } from '../lib/runMachine'
 import { appHref, errorNote, isTerminalState, taskLabel } from '../lib/status'
 import { markLabel, taskView } from '../lib/taskview'
 import { NumberedText } from '../NumberedText'
+import { SideRail, useSideRail } from '../SideRail'
+import { Sprite } from '../icons'
 import { getModels, setActiveModel, type ModelsPayload } from '../api-models'
 import { ModelMenu, ModelSettings } from './ModelPanel'
 import { ToolTrace, type ToolCall } from './ToolTrace'
@@ -168,9 +170,7 @@ export default function DialogPage() {
   /* 本轮正在发生的工具调用（流式时实时追加；答完随回合落进 turns[i].tools） */
   const [liveTools, setLiveTools] = useState<ToolCall[]>([])
   const [modelMsg, setModelMsg] = useState('')
-  /* 侧栏（会话记录）／用户菜单／搜索（2026-10-29 照 DeepSeek harness 的侧栏；20261102 收进抽屉） */
-  const [histOpen, setHistOpen] = useState(false)
-  const [meMenu, setMeMenu] = useState(false)
+  /* 对话历史搜索（侧栏中段，2026-11-02 起常驻左栏，不再是抽屉） */
   const [q, setQ] = useState('')
   const [qOpen, setQOpen] = useState(false)
   const [me, setMe] = useState<Me | null>(null)
@@ -195,6 +195,8 @@ export default function DialogPage() {
   /* 保存的对话（服务端清单）：左栏「保存的对话」组；这次打开的本地对话仍归「这次打开」组 */
   const [saved, setSaved] = useState<SavedSession[]>([])
   const savedSeqRef = useRef(0)
+  /* 侧栏（与工作区同一套组件、同一份本地偏好）：宽度 + 收起，交互在 src/SideRail.tsx。 */
+  const rail = useSideRail()
 
   function refreshSaved() {
     const seq = ++savedSeqRef.current
@@ -644,22 +646,8 @@ export default function DialogPage() {
     }
   }
 
-  /* 用户菜单：点外面或按 Esc 就收（2026-10-29，DeepSeek 同款手感） */
-  useEffect(() => {
-    if (!meMenu) return
-    const onDoc = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest('.dlg-me-wrap')) setMeMenu(false)
-    }
-    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setMeMenu(false) }
-    document.addEventListener('click', onDoc)
-    document.addEventListener('keydown', onEsc)
-    return () => {
-      document.removeEventListener('click', onDoc)
-      document.removeEventListener('keydown', onEsc)
-    }
-  }, [meMenu])
-
-  /** Ctrl+, 开模型设置（与用户菜单里那行 kbd 一致；只有管理员能开）。 */
+  /* 用户菜单已并入侧栏身份行（UserChip，全站同一交互）；这里只留模型设置的快捷键。 */
+  /** Ctrl+, 开模型设置（与设置钮的悬停提示一致；只有管理员能开）。 */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === ',') {
@@ -670,14 +658,6 @@ export default function DialogPage() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [me])
-
-  /* 会话记录抽屉：Esc 收起（20261102）。 */
-  useEffect(() => {
-    if (!histOpen) return
-    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setHistOpen(false) }
-    document.addEventListener('keydown', onEsc)
-    return () => document.removeEventListener('keydown', onEsc)
-  }, [histOpen])
 
   /* 侧栏清单：本地这段对话不重复出现（它就是当前这段），搜索只按标题过滤。 */
   const savedList = saved.filter((x) => x.id !== active?.sessionId)
@@ -700,200 +680,92 @@ export default function DialogPage() {
   }
 
   const docName = active.title || '问文衡'
-  const period = active.slots.period || home?.period || ''
 
+  /* 左栏中段：对话历史（问文衡自有分组，侧栏同一套语言；收起态整块隐藏）。 */
+  const histSection = (
+    <div className="wd-hist">
+      <div className="wd-hist-bar">
+        <button type="button" className="wd-hist-new" onClick={newChat}>
+          <span aria-hidden="true">＋</span>新对话
+        </button>
+        <button type="button" className="wd-hist-find" aria-label="搜索对话" title="搜索对话"
+                aria-expanded={qOpen} onClick={() => setQOpen((v) => !v)}>⌕</button>
+      </div>
+      {qOpen && (
+        <input className="dlg-ws-q" value={q} autoFocus placeholder="搜索对话"
+               onChange={(e) => setQ(e.target.value)}
+               onKeyDown={(e) => { if (e.key === 'Escape') { setQ(''); setQOpen(false) } }} />
+      )}
+      <nav className="dlg-hist" aria-label="对话历史">
+        {savedShown.map((x) => (
+          <div key={x.id} className="dlg-hist-row">
+            <a href="#对话" title={`${x.title || '保存的对话'} · ${x.updated}`}
+               onClick={(e) => { e.preventDefault(); void openSaved(x) }}>
+              <span className="dlg-hist-t">{x.title || '保存的对话'}</span>
+              <span className="dlg-hist-w">{relTime(x.updated)}</span>
+            </a>
+            <ConfirmButton className="dlg-drop" confirmText="删除？"
+                           title="删除这段对话"
+                           onConfirm={() => { void dropSaved(x) }}>✕</ConfirmButton>
+          </div>
+        ))}
+        {others.map((c) => (
+          <div key={c.id} className="dlg-hist-row">
+            <a href="#对话" aria-current={c.id === activeId ? 'true' : undefined}
+               onClick={(e) => {
+                 e.preventDefault()
+                 setActiveId(c.id)
+                 writeSessionUrl(c.sessionId || '')
+               }}>
+              <span className="dlg-hist-t">{c.title || '新对话'}</span>
+              <span className="dlg-hist-w">当前</span>
+            </a>
+          </div>
+        ))}
+      </nav>
+    </div>
+  )
+
+  /* 照图一（HanaAgent）的会话页：顶栏＝会话题＋槽位；中＝对话流；底＝浮着的输入卡。
+     右边栏不要（rick 2026-11-02）；左侧栏与工作区同一套（SideRail），只是多一段对话历史。 */
   return (
-    <div className="wd-root">
+    <div className="wd-root" {...rail.rootProps}>
+      <Sprite />
       <a className="dlg-skip" href="#dlg-thread">跳到对话内容</a>
       <h1 className="dlg-vh">文衡 · 对话前门</h1>
 
-      {/* 会话记录：抽屉（历史一条不丢；Esc / 点蒙版收起） */}
-      <aside className={`dlg-side wd-drawer${histOpen ? ' open' : ''}`} aria-label="会话记录">
-        <div className="wd-dh">
-          <h2>会话记录</h2>
-          <span>问文衡</span>
-          <button type="button" className="wd-dx" aria-label="收起会话记录"
-                  onClick={() => setHistOpen(false)}>✕</button>
-        </div>
-
-        <button className="dlg-newchat" type="button" onClick={newChat}>
-          <span className="dlg-newchat-i" aria-hidden="true">＋</span>新对话
-        </button>
-
-        <div className="dlg-ws">
-          <div className="dlg-ws-h">
-            <span>最近</span>
-            <div className="dlg-ws-tools">
-              <button type="button" aria-label="搜索对话" title="搜索对话"
-                      onClick={() => setQOpen((v) => !v)}>⌕</button>
-              <button type="button" aria-label="新对话" title="新对话" onClick={newChat}>＋</button>
-            </div>
-          </div>
-          {qOpen && (
-            <input className="dlg-ws-q" value={q} autoFocus placeholder="搜索对话"
-                   onChange={(e) => setQ(e.target.value)}
-                   onKeyDown={(e) => { if (e.key === 'Escape') { setQ(''); setQOpen(false) } }} />
-          )}
-          <nav className="dlg-hist" aria-label="对话历史">
-            {savedShown.map((x) => (
-              <div key={x.id} className="dlg-hist-row">
-                <a href="#对话" title={`${x.title || '保存的对话'} · ${x.updated}`}
-                   onClick={(e) => { e.preventDefault(); void openSaved(x) }}>
-                  <span className="dlg-hist-t">{x.title || '保存的对话'}</span>
-                  <span className="dlg-hist-w">{relTime(x.updated)}</span>
-                </a>
-                <ConfirmButton className="dlg-drop" confirmText="删除？"
-                               title="删除这段对话"
-                               onConfirm={() => { void dropSaved(x) }}>✕</ConfirmButton>
-              </div>
-            ))}
-            {others.map((c) => (
-              <div key={c.id} className="dlg-hist-row">
-                <a href="#对话" aria-current={c.id === activeId ? 'true' : undefined}
-                   onClick={(e) => {
-                     e.preventDefault()
-                     setActiveId(c.id)
-                     writeSessionUrl(c.sessionId || '')
-                   }}>
-                  <span className="dlg-hist-t">{c.title || '新对话'}</span>
-                  <span className="dlg-hist-w">当前</span>
-                </a>
-              </div>
-            ))}
-          </nav>
-        </div>
-
-        <div className="dlg-me-wrap">
-          <button type="button" className="dlg-me" aria-haspopup="menu" aria-expanded={meMenu}
-                  title={me ? `${me.name} · ${me.role === 'admin' ? '管理员' : '操作员'}` : ''}
-                  onClick={() => setMeMenu((v) => !v)}>
-            <span className="dlg-av" aria-hidden="true">{(me?.name || '·').slice(0, 1)}</span>
-            <span className="dlg-me-n">{me?.name || '…'}</span>
-            <span className="dlg-me-i" aria-hidden="true">⋯</span>
-          </button>
-          {meMenu && (
-            <div className="dlg-me-menu" role="menu">
-              {me?.role === 'admin' && (
-                <button type="button" role="menuitem"
-                        onClick={() => { setMeMenu(false); setSettingsOpen(true) }}>
-                  <span aria-hidden="true">⚙</span>设置
-                  <kbd>Ctrl + ,</kbd>
-                </button>
-              )}
-              <a role="menuitem" href="/logout">
-                <span aria-hidden="true">→</span>退出登录
-              </a>
-            </div>
-          )}
-        </div>
-
-      </aside>
-
-      {histOpen && <div className="wd-mask" role="presentation" onClick={() => setHistOpen(false)} />}
-
       <div className="wd-spread">
-        <aside className="wd-l">
-          <i className="wd-seal" aria-hidden="true">衡</i>
-          <header className="wd-bm">
-            <b>文衡</b>
-            <span>云南大学图书馆<br />学科信息参考</span>
-          </header>
-          <nav className="wd-nav" aria-label="工作区">
-            <a href="/app/">出报告</a>
-            <a href="/app/?view=analysis">分析台</a>
-            <a href="/app/schools/">高校 ESI 报告</a>
-            <a href="/app/dialog/" aria-current="page">问文衡</a>
-            <span className="wd-m" aria-hidden="true">管 理</span>
-            <a href="/app/?view=archive">运行档案</a>
-            <a className="wd-q" href="/app/shelf/">陈列馆 ↗</a>
-          </nav>
-          <footer className="wd-idb">
-            <div className="wd-hair" aria-hidden="true" />
-            <p>{me?.name || '馆员'} · {me?.role === 'admin' ? '管理员' : '馆员'}</p>
-          </footer>
-        </aside>
+        <SideRail rail={rail} active="ask" me={me} roleKnown={roleKnown} middle={histSection} />
 
         <main className="wd-r">
-          <div className="wd-sheet">
-            <header className="wd-intro">
-              <p className="wd-eyebrow">问文衡</p>
-              <h1>问一句，答一条</h1>
-            </header>
+          <header className="wd-chat-top">
+            <h1 className="wd-chat-ttl" title={docName}>{docName}</h1>
+            <div className="wd-chat-slots">
+              <SlotChip label="期次" value={active.slots.period}
+                        onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'period') }))} />
+              <SlotChip label="意图" value={active.slots.intent}
+                        onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'intent') }))} />
+              <SlotChip label="学科" value={active.slots.qdisc}
+                        onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'qdisc') }))} />
+              <SlotChip label="指标" value={active.slots.qmetric}
+                        onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'qmetric') }))} />
+              {hasSlots(active.slots) && (
+                <span className="dlg-vh" role="status">
+                  {`当前槽位：期次 ${active.slots.period || '未设'}，意图 ${active.slots.intent || '未设'}`}
+                </span>
+              )}
+            </div>
+            {me?.role === 'admin' && (
+              <button type="button" className="wd-chat-set" title="模型设置（Ctrl + ,）"
+                      onClick={() => setSettingsOpen(true)}>设置</button>
+            )}
+          </header>
 
-            <section className="wd-stage">
-              <div className="wd-win" role="group" aria-label="问文衡会话窗口">
-
-                <div className="wd-bar">
-                  <span className="wd-lights" aria-hidden="true"><i /><i /><i /></span>
-                  <button type="button" className="wd-ibar" aria-label="会话记录" title="会话记录"
-                          onClick={() => setHistOpen(true)}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
-                         stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
-                      <rect x="2" y="3" width="12" height="10" rx="1.5" /><path d="M6 3v10" />
-                    </svg>
-                  </button>
-                  <span className="wd-doc" title={docName}>{docName}</span>
-                  <span className="wd-crumb">问文衡 / 会话{period ? ` / ${period}` : ''}</span>
-                  <div className="wd-slots">
-                    <SlotChip label="期次" value={active.slots.period}
-                              onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'period') }))} />
-                    <SlotChip label="意图" value={active.slots.intent}
-                              onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'intent') }))} />
-                    <SlotChip label="学科" value={active.slots.qdisc}
-                              onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'qdisc') }))} />
-                    <SlotChip label="指标" value={active.slots.qmetric}
-                              onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'qmetric') }))} />
-                    {hasSlots(active.slots) && (
-                      <span className="dlg-vh" role="status">
-                        {`当前槽位：期次 ${active.slots.period || '未设'}，意图 ${active.slots.intent || '未设'}`}
-                      </span>
-                    )}
-                  </div>
-                  <div className="wd-tools">
-                    <button type="button" className="wd-tool" aria-label="搜索会话" title="搜索会话"
-                            onClick={() => { setHistOpen(true); setQOpen(true) }}>
-                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none"
-                           stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
-                        <circle cx="7" cy="7" r="4.2" /><path d="M10.2 10.2 14 14" />
-                      </svg>
-                    </button>
-                    <button type="button" className="wd-tool" aria-label="新对话" title="新对话"
-                            onClick={newChat}>
-                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none"
-                           stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
-                        <path d="M8 3v10M3 8h10" />
-                      </svg>
-                    </button>
-                    <span className="wd-menus">
-                      <button type="button" className="wd-tool" aria-label="更多" title="更多"
-                              aria-haspopup="menu" aria-expanded={meMenu}
-                              onClick={() => setMeMenu((v) => !v)}>
-                        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                          <circle cx="3.2" cy="8" r="1.2" /><circle cx="8" cy="8" r="1.2" />
-                          <circle cx="12.8" cy="8" r="1.2" />
-                        </svg>
-                      </button>
-                      {meMenu && (
-                        <div className="wd-menu" role="menu">
-                          {me?.role === 'admin' && (
-                            <button type="button" role="menuitem"
-                                    onClick={() => { setMeMenu(false); setSettingsOpen(true) }}>
-                              模型设置<kbd>Ctrl + ,</kbd>
-                            </button>
-                          )}
-                          <a role="menuitem" href="/logout">退出登录</a>
-                        </div>
-                      )}
-                    </span>
-                  </div>
-                </div>
-                <div className="wd-fade" aria-hidden="true" />
-
-                <div className="dlg-thread" ref={threadRef} id="dlg-thread" aria-live="polite">
+          <div className="dlg-thread" ref={threadRef} id="dlg-thread" aria-live="polite">
           <div className="dlg-thread-in">
             {active.turns.length === 0 && (
               <section className="dlg-land" aria-label="文衡首页">
-                <h1 className="dlg-land-title">文衡，帮你做报告、查数据</h1>
+                <h1 className="dlg-land-title">问一句，答一条</h1>
                 {/* 2026-10-24 rick 红框删：副题段与「想做什么」提示行（内容太多，一页展示不用下滑） */}
                 <div className="dlg-land-modes">
                   {LANDING_MODES.map((mode) => (
@@ -1104,9 +976,6 @@ export default function DialogPage() {
             {modelMsg && <p className="dlg-composer-note">{modelMsg}</p>}
           </form>
         </div>
-              </div>
-            </section>
-          </div>
         </main>
       </div>
 

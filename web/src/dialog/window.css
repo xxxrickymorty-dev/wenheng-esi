@@ -1,6 +1,8 @@
-/* 问文衡 · 入口私有外观（照《问文衡-静态稿 20261102》）。
-   主壳＝跨页书式（左页会泽深绿＋金线＋纸面，主壳方角）；
-   窗件＝应用窗口（标题栏 / 渐隐蒙版 / 聊天流 / 输入栏），窗件内放开圆角 12/8/6。
+/* 问文衡 · 会话页（复刻图一 HanaAgent，2026-11-02 rick 口谕）。
+   左侧栏＝工作区同一套（src/SideRail.tsx，样式在 index.css 的 app-*），
+   本页只补「对话历史」中段（wd-hist）；右页＝聊天三段：
+   顶栏（会话题＋槽位）／对话流（居中 760px）／浮着的输入卡；右边栏不要。
+   主色仍是会泽深绿＋纸面；圆角走令牌 --r-win/--r-card/--r-inline。
    内件（工具轨迹 tt-、模型面板 mdl-、出稿轨迹 dlg-trk 等）沿用 dialog.css：
    这里只把它们的 --dsr-* 变量接到本页纸面令牌，并收一下圆角与描边。 */
 
@@ -16,7 +18,8 @@
   --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
   --mono:ui-monospace,SFMono-Regular,"Cascadia Mono",Menlo,Consolas,monospace;
   --ease:cubic-bezier(.22,1,.36,1);
-  --lw:clamp(232px,24%,300px);
+  /* 对话流与顶栏、输入卡共用同一列宽（左缘对齐，照图一） */
+  --dlg-col:760px;
   /* 内件（dialog.css）读的变量：接到本页纸面 */
   --dsr-accent:#276B4C; --dsr-accent-soft:rgba(39,107,76,.10); --dsr-accent-ink:#F6F1DE;
   --dsr-ink:#15222B; --dsr-ink-2:rgba(21,34,43,.78); --dsr-ink-3:#6C706A;
@@ -37,105 +40,44 @@
 .wd-root a{color:inherit;text-decoration:none}
 .wd-root button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .wd-root :focus-visible{outline:2px solid var(--ok);outline-offset:2px}
-.wd-l :focus-visible{outline-color:var(--seam)}
+.app-page-l :focus-visible{outline-color:var(--seam)}
 .wd-root ::selection{background:var(--seam);color:var(--ink)}
 
-/* ── 跨页 ── */
-.wd-spread{display:grid;grid-template-columns:var(--lw) minmax(0,1fr);min-height:100dvh;position:relative}
-.wd-spread::after{content:"";position:absolute;top:0;bottom:0;left:var(--lw);width:1px;
-  background:var(--seam);pointer-events:none}
-
-/* ── 左页 · 会泽 ── */
-.wd-l{background:var(--deep);color:var(--ivory);padding:clamp(16px,2.8vh,30px) clamp(18px,1.9vw,30px);
-  display:flex;flex-direction:column;position:sticky;top:0;height:100dvh;overflow:hidden}
-.wd-seal{position:absolute;top:clamp(16px,2.8vh,30px);right:clamp(18px,1.9vw,30px);
-  width:22px;height:22px;background:var(--ivory);color:var(--deep);font-family:var(--kai);
-  font-style:normal;font-size:12px;line-height:1;display:grid;place-items:center;
-  transform:rotate(-6deg);box-shadow:0 1px 2px rgba(21,34,43,.07)}
-.wd-seal::after{content:"";position:absolute;inset:2px;border:1px solid rgba(20,55,41,.5)}
-.wd-bm{display:flex;align-items:baseline;gap:10px}
-.wd-bm b{font-family:var(--serif);font-weight:600;font-size:19px;letter-spacing:.14em}
-.wd-bm span{font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--ivory-3);line-height:1.7}
-.wd-nav{margin:auto 0;display:flex;flex-direction:column;font-size:13.5px;letter-spacing:.05em;color:var(--ivory-2)}
-.wd-nav a{padding:11px 0;min-height:44px;display:flex;align-items:center;gap:10px;
-  transition:color .3s var(--ease)}
-.wd-nav a::before{content:"";width:9px;height:2px;flex:none;background:transparent;
-  transition:background-color .3s var(--ease)}
-.wd-nav a[aria-current]{color:var(--ivory)}
-.wd-nav a[aria-current]::before{background:var(--seam)}
-.wd-nav a:hover{color:var(--ivory)}
-.wd-nav .wd-m{padding:6px 0 4px;font-family:var(--kai);font-size:11px;letter-spacing:.26em;color:var(--ivory-3)}
-.wd-nav .wd-q{opacity:.78}
-.wd-idb{padding-top:14px}
-.wd-idb .wd-hair{width:34px;height:1px;background:var(--seam);margin-bottom:12px}
-.wd-idb p{font-size:12px;letter-spacing:.14em;color:var(--ivory-2)}
-
-/* ── 右页 ── */
-.wd-r{display:flex;height:100dvh;min-width:0;
-  padding:clamp(16px,2.6vh,26px) clamp(22px,3.2vw,46px) clamp(14px,2vh,20px)}
-.wd-sheet{width:100%;max-width:940px;height:100%;display:flex;flex-direction:column;
+/* ── 跨页：左页侧栏共用（SideRail），右页聊天 ── */
+.wd-spread{display:grid;
+  grid-template-columns:var(--app-lw,clamp(232px,24%,300px)) minmax(0,1fr);
+  min-height:100dvh;position:relative}
+.wd-spread::after{content:"";position:absolute;top:0;bottom:0;
+  left:var(--app-lw,clamp(232px,24%,300px));width:1px;
+  background:var(--seam);pointer-events:none;z-index:20}
+.wd-r{grid-column:2;display:flex;flex-direction:column;height:100dvh;
   min-width:0;min-height:0}
-.wd-intro{padding-bottom:clamp(12px,2.2vh,20px)}
-.wd-eyebrow{font-family:var(--serif);font-size:11px;letter-spacing:.34em;
-  color:var(--ok);margin-bottom:8px}
-.wd-intro h1{font-family:var(--serif);font-weight:600;font-size:clamp(24px,3.4vh,32px);
-  line-height:1.35;letter-spacing:.06em;color:var(--ink)}
-.wd-stage{flex:1;min-height:0;display:flex;border-top:1px solid var(--line);
-  padding-top:clamp(16px,2.6vh,24px)}
 
-/* ── 应用窗口 ── */
-.wd-win{--barh:44px;position:relative;flex:1;min-width:0;min-height:0;display:flex;
-  flex-direction:column;background:var(--card);
-  border:.5px solid rgba(0,0,0,.08);border-radius:12px;
-  box-shadow:0 30px 90px rgba(20,30,15,.18),0 4px 16px rgba(20,30,15,.1);
-  overflow:hidden}
-.wd-bar{height:var(--barh);display:flex;align-items:center;gap:11px;padding:10px 14px;
-  border-bottom:.5px solid rgba(0,0,0,.06);background:var(--card);flex:none;min-width:0}
-.wd-lights{display:flex;gap:7px;flex:none}
-.wd-lights i{width:12px;height:12px;border-radius:50%;background:#E0D6C4;display:block}
-.wd-ibar{width:24px;height:24px;flex:none;display:grid;place-items:center;border-radius:6px;
-  color:var(--muted);margin-left:2px;transition:background .2s var(--ease),color .2s var(--ease)}
-.wd-ibar:hover{background:#F1EDE2;color:var(--ink)}
-.wd-doc{font-size:14px;font-weight:700;color:var(--ok);letter-spacing:.02em;white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis;max-width:32ch}
-.wd-crumb{font-size:11.5px;color:var(--muted);letter-spacing:.04em;white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis;margin-left:2px;padding-left:11px;
-  border-left:1px solid rgba(0,0,0,.10)}
-.wd-slots{margin-left:auto;display:flex;gap:8px;align-items:center;flex:none;
-  font-size:11px;color:var(--muted);white-space:nowrap}
-.wd-tools{display:flex;gap:2px;color:var(--muted);flex:none;margin-left:auto}
-.wd-slots+.wd-tools{margin-left:0}
-.wd-tool{width:30px;height:30px;display:grid;place-items:center;border-radius:6px;
-  color:var(--muted);transition:background .2s var(--ease),color .2s var(--ease)}
-.wd-tool:hover{background:#F1EDE2;color:var(--ink)}
-.wd-menus{position:relative;display:inline-flex}
-.wd-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:40;min-width:168px;padding:6px;
-  background:var(--card);border:.5px solid var(--line);border-radius:8px;
-  box-shadow:0 12px 34px rgba(20,30,15,.16)}
-.wd-menu button,.wd-menu a{display:flex;align-items:center;gap:8px;width:100%;min-height:32px;
-  padding:0 9px;border-radius:6px;font-size:12.5px;color:var(--ink);text-align:left}
-.wd-menu button:hover,.wd-menu a:hover{background:#EFEBDF}
-.wd-menu kbd{margin-left:auto;font:inherit;font-size:11px;color:var(--muted)}
-.wd-fade{position:absolute;left:0;right:0;top:var(--barh);height:16px;z-index:2;
-  pointer-events:none;
-  background:linear-gradient(to bottom,var(--card),rgba(250,248,240,0))}
-.wd-root .dlg-slot{display:inline-flex;align-items:center;gap:4px;background:none;
-  border:0;border-radius:0;padding:0;font-size:11px;line-height:1.2;color:var(--muted)}
-.wd-root .dlg-slot-k{font-size:11px;color:var(--muted)}
-.wd-root .dlg-slot-v{font-weight:600;font-size:11px;color:var(--ink)}
-.wd-root .dlg-slot-x{border:0;background:none;color:var(--muted);font-size:10px;
-  padding:2px;border-radius:3px;cursor:pointer;line-height:1}
-.wd-root .dlg-slot-x:hover{background:#F1EDE2;color:var(--ink)}
+/* ── 顶栏：会话题 ＋ 槽位（图一顶部那行题，与对话流同列对齐） ── */
+.wd-chat-top{flex:none;display:flex;align-items:center;gap:14px;min-width:0;
+  width:100%;max-width:var(--dlg-col);margin:0 auto;
+  padding:18px 12px 12px}
+.wd-chat-ttl{font-family:var(--serif);font-size:15px;font-weight:600;
+  letter-spacing:.06em;color:var(--ink);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;max-width:30ch}
+.wd-chat-slots{margin-left:auto;display:flex;gap:12px;align-items:center;
+  flex:none;white-space:nowrap}
+.wd-chat-set{flex:none;min-height:32px;padding:0 12px;font-size:12px;
+  letter-spacing:.06em;color:var(--muted);border:.5px solid var(--line);
+  border-radius:var(--r-inline);background:var(--card);
+  transition:color .2s var(--ease),border-color .2s var(--ease)}
+.wd-chat-set:hover{color:var(--ok);border-color:var(--ok)}
 
-/* ── 聊天流（沿用旧结构，换纸面尺度） ── */
-.wd-root .dlg-thread{flex:1;min-height:0;overflow-y:auto;padding:26px 34px 30px;
-  background:var(--card);scrollbar-width:thin;
-  scrollbar-color:rgba(21,34,43,.18) transparent}
-.wd-root .dlg-thread-in{max-width:none;margin:0;display:flex;flex-direction:column;gap:0}
-.wd-root .dlg-turn{margin-bottom:26px;display:flex;gap:0}
+/* ── 对话流：居中一列，纸面直出（图一：助手通栏、用户右气泡） ── */
+.wd-root .dlg-thread{flex:1;min-height:0;overflow-y:auto;
+  padding:20px clamp(18px,3vw,40px) 10px;
+  scrollbar-width:thin;scrollbar-color:rgba(21,34,43,.18) transparent}
+.wd-root .dlg-thread-in{max-width:var(--dlg-col);margin:0 auto;
+  display:flex;flex-direction:column;gap:0;min-height:100%}
+.wd-root .dlg-turn{margin-bottom:26px}
 .wd-root .dlg-turn:last-child{margin-bottom:0}
-.wd-root .dlg-turn.wh{display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;
-  align-items:start}
+.wd-root .dlg-turn.wh{display:grid;grid-template-columns:32px minmax(0,1fr);
+  gap:12px;align-items:start}
 .wd-root .dlg-turn.wh .dlg-who{display:grid;place-items:center;width:32px;height:32px;
   border-radius:50%;background:var(--deep);color:var(--ivory);font-family:var(--serif);
   font-size:13px;line-height:1;user-select:none}
@@ -144,7 +86,7 @@
 .wd-root .dlg-bub{min-width:0;white-space:pre-wrap;overflow-wrap:anywhere;
   font-size:14px;line-height:1.75;color:var(--ink);max-width:34em;padding:0}
 .wd-root .dlg-turn.me .dlg-bub{flex:0 1 auto;max-width:82%;background:#E8E4DB;
-  border:.5px solid #DED9CC;border-radius:6px;padding:9px 13px;line-height:1.65}
+  border-radius:var(--r-win);padding:10px 14px;line-height:1.65}
 .wd-root .dlg-turn.wh .dlg-bub{max-width:34em}
 .wd-root .dlg-nm{display:block;font-size:13px;color:var(--muted);letter-spacing:.04em;
   margin-bottom:4px;font-family:var(--sans)}
@@ -152,13 +94,98 @@
 .wd-root .dlg-wait{padding-top:2px}
 .wd-root .dlg-t{font-size:11px;letter-spacing:.04em;color:var(--muted);margin-top:2px}
 
+/* ── 输入卡：浮在纸面上的一张圆角卡（图一底部那块） ── */
+.wd-root .dlg-composer{flex:0 0 auto;padding:8px clamp(18px,3vw,40px) 20px}
+.wd-root .dlg-composer-in{max-width:var(--dlg-col);margin:0 auto}
+.wd-root .dlg-box{border:.5px solid var(--line);border-radius:var(--r-win);
+  background:var(--card);box-shadow:0 10px 30px rgba(20,30,15,.08);
+  padding:10px 14px}
+.wd-root .dlg-box:focus-within{border-color:rgba(39,107,76,.45);
+  box-shadow:0 14px 36px rgba(20,30,15,.10)}
+.wd-root .dlg-box textarea{display:block;width:100%;height:44px;min-height:44px;
+  max-height:132px;border:0;background:none;resize:none;font:inherit;
+  font-size:14px;line-height:1.6;color:var(--ink);outline:none;padding:8px 2px 0}
+.wd-root .dlg-box textarea::placeholder{color:var(--muted);opacity:1}
+.wd-root .dlg-box textarea:focus-visible{outline:2px solid var(--ok);
+  outline-offset:-2px;border-radius:6px}
+/* 模型 chip 挨着发送键，都在右下角（图一同款位置） */
+.wd-root .dlg-box-bar{display:flex;align-items:center;justify-content:flex-end;
+  gap:8px;margin-top:6px}
+.wd-root .dlg-send{flex:0 0 auto;width:auto;min-width:88px;height:40px;padding:0 16px;
+  border-radius:var(--r-card);border:0;background:var(--ok);color:#F6F1DE;
+  font-size:14px;letter-spacing:.08em;display:inline-flex;align-items:center;
+  justify-content:center;gap:8px}
+.wd-root .dlg-send:hover{background:var(--deep);filter:none}
+.wd-root .dlg-send:disabled{background:var(--ok);opacity:.45}
+.wd-root .dlg-send.stop{background:var(--deep)}
+.wd-root .dlg-composer-note{margin:6px 2px 0;font-size:12px;color:var(--warn)}
+
+/* ── 空态：居中一屏（大题＋三个意图＋示例句＋本期动态） ── */
+.wd-root .dlg-land{flex:1 1 auto;padding:32px 12px 24px}
+.wd-root .dlg-land-title{font-family:var(--serif);font-weight:600;
+  font-size:clamp(24px,3.4vh,32px);line-height:1.35;letter-spacing:.06em;
+  margin-bottom:18px;color:var(--ink)}
+.wd-root .dlg-land-modes{gap:8px}
+.wd-root .dlg-land-mode{border:.5px solid var(--line);background:var(--card);
+  border-radius:var(--r-inline);padding:0 12px;height:32px;min-height:32px;
+  font-size:12.5px;font-weight:400;letter-spacing:.04em;color:var(--ink);
+  box-shadow:0 1px 4px rgba(0,0,0,.06);animation:none}
+.wd-root .dlg-land-mode:hover{background:var(--card);border-color:var(--ok);color:var(--ok)}
+.wd-root .dlg-land-pills{gap:12px;max-width:none;margin:10px 0 0}
+.wd-root .dlg-land-pill{border:0;border-bottom:1px dotted var(--line);background:none;
+  border-radius:0;padding:2px 0;font-size:12px;color:var(--muted)}
+.wd-root .dlg-land-pill:hover{background:none;color:var(--ink);border-bottom-color:var(--muted)}
+.wd-root .dlg-land-dyn{margin-top:18px;border:0;border-top:1px solid var(--hair);
+  border-radius:0;background:none;padding:12px 0 0;font-size:12px;color:var(--muted)}
+.wd-root .dlg-land-dyn b{font-family:var(--kai);font-size:11px;letter-spacing:.24em;
+  font-weight:400;color:var(--muted)}
+.wd-root .dlg-land-dyn .ok{color:var(--ok)}
+.wd-root .dlg-land-dyn .cur{color:var(--ink)}
+.wd-root .dlg-land-dyn a{color:var(--ok);border-bottom:1px solid rgba(39,107,76,.3)}
+.wd-root .dlg-dyn-step{font-size:12px}
+
+/* ── 左栏中段：对话历史（问文衡自有分组，侧栏同一套语言；收起态整块隐藏） ── */
+[data-fold="1"] .wd-hist{display:none}
+.wd-hist{flex:1;min-height:0;display:flex;flex-direction:column;margin-top:12px;
+  padding:10px 0 0;border-top:1px solid rgba(246,241,222,.14)}
+.wd-hist-bar{flex:none;display:flex;align-items:center;gap:6px;padding:0 10px 8px}
+.wd-hist-new{flex:1;min-width:0;display:flex;align-items:center;gap:9px;min-height:38px;
+  padding:0 10px;border:1px solid rgba(246,241,222,.22);border-radius:var(--r-inline);
+  background:transparent;color:var(--ivory-2);font:inherit;font-size:13px;
+  letter-spacing:.06em;white-space:nowrap;
+  transition:background .2s var(--ease),color .2s var(--ease),border-color .2s var(--ease)}
+.wd-hist-new:hover{background:rgba(246,241,222,.08);color:var(--ivory);
+  border-color:rgba(176,142,72,.55)}
+.wd-hist-find{flex:none;width:34px;height:34px;display:grid;place-items:center;
+  border-radius:var(--r-inline);color:var(--ivory-3);font-size:14px;
+  transition:background .2s var(--ease),color .2s var(--ease)}
+.wd-hist-find:hover{background:rgba(246,241,222,.09);color:var(--ivory)}
+.wd-hist .dlg-ws-q{margin:0 10px 8px;padding:6px 9px;border-radius:var(--r-inline);
+  border:1px solid rgba(246,241,222,.22);background:rgba(246,241,222,.06);
+  color:var(--ivory);font:inherit;font-size:13px;outline:none}
+.wd-hist .dlg-ws-q::placeholder{color:var(--ivory-3)}
+.wd-hist .dlg-hist{flex:1;min-height:0;padding:0 8px 10px;scrollbar-width:thin;
+  scrollbar-color:rgba(246,241,222,.25) transparent}
+.wd-hist .dlg-hist-row>a{border-radius:var(--r-inline)}
+.wd-hist .dlg-drop{border-radius:var(--r-inline)}
+
+/* ── 槽位 chips（顶栏右侧：期次／意图／学科／指标） ── */
+.wd-root .dlg-slot{display:inline-flex;align-items:center;gap:4px;background:none;
+  border:0;border-radius:0;padding:0;font-size:11px;line-height:1.2;color:var(--muted)}
+.wd-root .dlg-slot-k{font-size:11px;color:var(--muted)}
+.wd-root .dlg-slot-v{font-weight:600;font-size:11px;color:var(--ink)}
+.wd-root .dlg-slot-x{border:0;background:none;color:var(--muted);font-size:10px;
+  padding:2px;border-radius:3px;cursor:pointer;line-height:1}
+.wd-root .dlg-slot-x:hover{background:#F1EDE2;color:var(--ink)}
+
 /* ── 嵌入卡（表格卡 / 折线卡 / 阈值卡，同一套壳） ── */
 .wd-card{width:400px;max-width:100%;margin-top:12px;background:var(--card);
-  border:.5px solid var(--line);border-radius:8px;overflow:hidden;
+  border:.5px solid var(--line);border-radius:var(--r-card);overflow:hidden;
   box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .wd-card-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
   padding:10px 12px 8px;border-bottom:.5px solid rgba(221,215,198,.75)}
-.wd-card-h b{font-family:var(--serif);font-weight:400;font-size:12.5px;letter-spacing:.06em;color:var(--ink)}
+.wd-card-h b{font-family:var(--serif);font-weight:400;font-size:12.5px;
+  letter-spacing:.06em;color:var(--ink)}
 .wd-card-h span{font-size:11px;letter-spacing:.03em;color:var(--muted);white-space:nowrap}
 .wd-card table{width:100%;border-collapse:collapse}
 .wd-card th{font-family:var(--serif);font-weight:400;font-size:12.5px;color:var(--muted);
@@ -198,108 +225,20 @@
 .wd-scale span:first-child{transform:none}
 .wd-scale span:last-child{transform:translateX(-100%)}
 
-/* ── 输入栏 ── */
-.wd-root .dlg-composer{flex:0 0 auto;background:var(--card);padding:10px 14px 8px;
-  border-top:.5px solid rgba(0,0,0,.07)}
-.wd-root .dlg-composer-in{max-width:none;margin:0}
-.wd-root .dlg-box{border:0;border-radius:0;background:none;box-shadow:none;padding:0}
-.wd-root .dlg-box:focus-within{border:0;box-shadow:none}
-.wd-root .dlg-box textarea{display:block;width:100%;height:44px;min-height:44px;max-height:132px;
-  border:0;background:none;resize:none;font:inherit;font-size:14px;line-height:1.6;
-  color:var(--ink);outline:none;padding:10px 2px}
-.wd-root .dlg-box textarea::placeholder{color:var(--muted);opacity:1}
-.wd-root .dlg-box textarea:focus-visible{outline:2px solid var(--ok);outline-offset:-2px;border-radius:6px}
-.wd-root .dlg-box-bar{display:flex;align-items:center;gap:2px;margin-top:2px}
-.wd-root .dlg-send{flex:0 0 auto;width:auto;min-width:88px;height:44px;padding:0 16px;
-  border-radius:8px;border:0;background:var(--ok);color:#F6F1DE;font-size:14px;
-  letter-spacing:.08em;display:inline-flex;align-items:center;justify-content:center;gap:8px;
-  margin-left:auto}
-.wd-root .dlg-send:hover{background:var(--deep);filter:none}
-.wd-root .dlg-send:disabled{background:var(--ok);opacity:.45}
-.wd-root .dlg-send.stop{background:var(--deep)}
-.wd-root .dlg-composer-note{margin:6px 2px 0;font-size:12px;color:var(--warn)}
-
-/* ── 空态：收紧、左对齐（大题已在页头，不再重复） ── */
-.wd-root .dlg-land{min-height:0;align-items:flex-start;justify-content:flex-start;
-  text-align:left;padding:2px 0 0;color:var(--ink)}
-.wd-root .dlg-land-title{display:none}
-.wd-root .dlg-land-modes{justify-content:flex-start;gap:8px;margin:0}
-.wd-root .dlg-land-mode{border:.5px solid var(--line);background:var(--card);
-  border-radius:6px;padding:0 12px;height:32px;min-height:32px;font-size:12.5px;font-weight:400;
-  letter-spacing:.04em;color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.06);animation:none}
-.wd-root .dlg-land-mode:hover{background:var(--card);border-color:var(--ok);color:var(--ok)}
-.wd-root .dlg-land-pills{justify-content:flex-start;gap:12px;max-width:none;margin:10px 0 0}
-.wd-root .dlg-land-pill{border:0;border-bottom:1px dotted var(--line);background:none;
-  border-radius:0;padding:2px 0;font-size:12px;color:var(--muted)}
-.wd-root .dlg-land-pill:hover{background:none;color:var(--ink);border-bottom-color:var(--muted)}
-.wd-root .dlg-land-dyn{margin-top:18px;justify-content:flex-start;border:0;border-top:1px solid var(--hair);
-  border-radius:0;background:none;padding:12px 0 0;font-size:12px;color:var(--muted)}
-.wd-root .dlg-land-dyn b{font-family:var(--kai);font-size:11px;letter-spacing:.24em;font-weight:400;color:var(--muted)}
-.wd-root .dlg-land-dyn .ok{color:var(--ok)}
-.wd-root .dlg-land-dyn .cur{color:var(--ink)}
-.wd-root .dlg-land-dyn a{color:var(--ok);border-bottom:1px solid rgba(39,107,76,.3)}
-.wd-root .dlg-dyn-step{font-size:12px}
-
-/* ── 会话记录抽屉（沿用 dlg-side 的深绿面；默认收起） ── */
-.wd-mask{position:fixed;inset:0;z-index:71;background:rgba(20,30,15,.30)}
-.wd-root .wd-drawer{position:fixed;left:0;top:0;z-index:72;width:min(340px,90vw);
-  height:100dvh;display:flex;flex-direction:column;min-height:0;overflow:hidden;
-  background:var(--deep);border-right:1px solid var(--seam);
-  box-shadow:24px 0 70px rgba(20,30,15,.22);
-  transform:translateX(-102%);visibility:hidden;
-  transition:transform .32s var(--ease),visibility .32s var(--ease)}
-.wd-root .wd-drawer.open{transform:none;visibility:visible}
-.wd-dh{display:flex;align-items:baseline;gap:10px;padding:18px 18px 10px}
-.wd-dh h2{font-family:var(--serif);font-size:19px;font-weight:600;letter-spacing:.12em;color:var(--ivory)}
-.wd-dh span{margin-left:auto;font-family:var(--kai);font-size:11px;letter-spacing:.2em;color:var(--ivory-3)}
-.wd-dx{width:30px;height:30px;display:grid;place-items:center;color:var(--ivory-3);border-radius:6px}
-.wd-dx:hover{background:rgba(246,241,222,.10);color:var(--ivory)}
-.wd-root .wd-mask{z-index:71;background:rgba(20,30,15,.30)}
-.wd-root .wd-drawer .dlg-newchat{margin:0 14px 10px;min-height:40px;
-  border:1px solid rgba(246,241,222,.24);background:transparent;color:var(--ivory);
-  font-size:13px;letter-spacing:.08em;display:flex;align-items:center;justify-content:center;gap:8px}
-.wd-root .wd-drawer .dlg-newchat:hover{background:rgba(246,241,222,.08)}
-.wd-root .wd-drawer .dlg-ws{flex:1;min-height:0;display:flex;flex-direction:column;
-  padding-top:0;border-top:1px solid rgba(246,241,222,.14)}
-.wd-root .wd-drawer .dlg-ws-h{padding:12px 14px 6px}
-.wd-root .wd-drawer .dlg-ws-q{margin:0 12px 8px;padding:6px 9px;border-radius:6px;
-  border:1px solid rgba(246,241,222,.22);background:rgba(246,241,222,.06);color:var(--ivory);
-  font:inherit;font-size:13px}
-.wd-root .wd-drawer .dlg-ws-q::placeholder{color:var(--ivory-3)}
-.wd-root .wd-drawer .dlg-hist{padding:0 8px 10px}
-.wd-root .wd-drawer .dlg-hist-row>a{padding:6px 8px;border-radius:6px}
-.wd-root .wd-drawer .dlg-hist-row>a:hover{background:rgba(246,241,222,.09)}
-.wd-root .wd-drawer .dlg-hist-row>a[aria-current="true"]{background:rgba(246,241,222,.14)}
-.wd-root .wd-drawer .dlg-hist-t{font-size:13px;color:var(--ivory-2)}
-.wd-root .wd-drawer .dlg-hist-row>a[aria-current="true"] .dlg-hist-t{color:var(--ivory);font-weight:600}
-.wd-root .wd-drawer .dlg-hist-w{color:var(--ivory-3)}
-.wd-root .wd-drawer .dlg-drop{color:var(--ivory-3);border-radius:6px}
-.wd-root .wd-drawer .dlg-drop:hover,.wd-root .wd-drawer .dlg-drop.confirming{
-  color:#F0B9AE;background:rgba(246,241,222,.10)}
-.wd-root .wd-drawer .dlg-me-wrap{border-top:1px solid rgba(246,241,222,.14);padding:8px 8px 12px}
-.wd-root .wd-drawer .dlg-me{border-radius:6px;padding:6px 8px}
-.wd-root .wd-drawer .dlg-me:hover{background:rgba(246,241,222,.09)}
-.wd-root .wd-drawer .dlg-me-n{color:var(--ivory-2)}
-.wd-root .wd-drawer .dlg-me-i{color:var(--ivory-3)}
-.wd-root .wd-drawer .dlg-av{background:var(--ivory);color:var(--deep);border-radius:50%}
-.wd-root .wd-drawer .dlg-me-menu{left:8px;right:8px;bottom:calc(100% - 2px);border-radius:8px;
-  background:#FAF8F0;border:1px solid var(--line);box-shadow:0 12px 34px rgba(20,30,15,.18)}
-.wd-root .wd-drawer .dlg-me-menu button,.wd-root .wd-drawer .dlg-me-menu a{color:var(--ink)}
-.wd-root .wd-drawer .dlg-me-menu button:hover,.wd-root .wd-drawer .dlg-me-menu a:hover{background:#EFEBDF}
-
-/* 内件收口：随窗件圆角（轨迹 / 回执 / 动作 / 模型菜单） */
-.wd-root .tt{border-radius:8px;border-color:var(--line);background:var(--card);margin-top:8px}
+/* 内件收口：随纸面圆角（轨迹 / 回执 / 动作 / 模型菜单） */
+.wd-root .tt{border-radius:var(--r-card);border-color:var(--line);background:var(--card);margin-top:8px}
 .wd-root .tt-h{font-size:12.5px}
 .wd-root .tt-h-t{font-weight:600}
 .wd-root .tt-tool{border-radius:4px;border-color:var(--line);background:#fff;color:var(--ok)}
-.wd-root .dlg-trk{border-radius:8px;border-color:var(--line);background:var(--card)}
-.wd-root .dlg-act{border-radius:6px;min-height:34px}
-.wd-root .mdl-menu{border-radius:8px;border-color:var(--line);box-shadow:0 12px 34px rgba(20,30,15,.14)}
-.wd-root .mdl-menu-btn{border-radius:6px;border-color:var(--line);background:var(--card);
-  font-size:12px;padding:5px 10px;max-width:200px}
-.wd-root .mdl-modal-in{border-radius:8px}
-.wd-root .mdl-act{border-radius:6px}
-.wd-root .mdl-row{border-radius:6px}
+.wd-root .dlg-trk{border-radius:var(--r-card);border-color:var(--line);background:var(--card)}
+.wd-root .dlg-act{border-radius:var(--r-inline);min-height:34px}
+.wd-root .mdl-menu{border-radius:var(--r-card);border-color:var(--line);
+  box-shadow:0 12px 34px rgba(20,30,15,.14)}
+.wd-root .mdl-menu-btn{border-radius:var(--r-inline);border-color:var(--line);
+  background:var(--card);font-size:12px;padding:5px 10px;max-width:200px}
+.wd-root .mdl-modal-in{border-radius:var(--r-card)}
+.wd-root .mdl-act{border-radius:var(--r-inline)}
+.wd-root .mdl-row{border-radius:var(--r-inline)}
 .wd-root .dlg-notice{font-size:12px;color:var(--muted)}
 .wd-root .dlg-ans .an-footer .pill{border-radius:3px}
 .wd-root .chips{margin-top:8px}
@@ -312,19 +251,15 @@
 @media (max-width:960px){
   .wd-spread{display:block}
   .wd-spread::after{display:none}
-  .wd-l{position:static;height:auto;overflow:visible}
-  .wd-nav{margin:14px 0 0}
-  .wd-r{height:auto;min-height:0;padding-bottom:20px}
-  .wd-sheet{height:auto}
-  .wd-stage{flex:none;height:min(72vh,640px)}
-  .wd-root .dlg-thread{padding:22px 20px 26px}
+  .app-page-l{position:static;height:auto;overflow:visible}
+  .app-mid{max-height:38vh}
+  .wd-r{height:auto;min-height:0}
+  .wd-root .dlg-thread{min-height:56vh}
   .wd-card{width:100%}
 }
 @media (max-width:680px){
-  .wd-crumb{display:none}
-  .wd-slots{display:none}
+  .wd-chat-slots{display:none}
   .wd-nums .wd-n b{font-size:17px}
-  .wd-r{padding-left:16px;padding-right:16px}
 }
 @media (prefers-reduced-motion:reduce){
   .wd-root *{transition:none!important}

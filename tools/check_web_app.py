@@ -288,8 +288,9 @@ def main():
             page.goto(BASE + "/app/?view=acquire&period=202609", wait_until="domcontentloaded")
             page.wait_for_selector(".aq-head", timeout=20000)
             navs = page.eval_on_selector_all("nav[aria-label='工作区'] a", "els => els.map(e => e.innerText.trim())")
-            check("导航两项＋管理（出报告 / 问文衡 / 运行档案；2026-10-31 灵活·简报·问数撤出，深链保留）",
-                  navs == ["出报告", "问文衡", "运行档案"], str(navs))
+            check("导航五项＋管理（2026-11-02 跨页书式左页：出报告/分析台/高校ESI/问文衡｜运行档案/陈列馆）",
+                  navs == ["出报告", "分析台", "高校 ESI 报告", "问文衡", "运行档案", "陈列馆 ↗"],
+                  str(navs))
             check("导航已瘦身（主台账 / 自愈沙盘 / 换馆沙盘不在导航；2026-10-24 rick，深链保留）",
                   not any(n in navs for n in ("主台账", "自愈沙盘", "换馆沙盘")) and "运行档案" in navs,
                   str(navs))
@@ -568,12 +569,12 @@ def main():
             check("点书进连续册页（iframe 载 pages.html）", False, str(e)[:80])
         operator.screenshot(path=str(SHOT_SHELF))
 
-        # ---- 2b) 对话页（2026-10-12）：空态＝文衡首页；顶栏＝去生成台；?ask= 自动发送 ----
+        # ---- 2b) 对话页（2026-10-12；2026-11-02 复刻图一 HanaAgent：顶栏会话题＋槽位） ----
         operator.goto(BASE + "/app/dialog/", wait_until="networkidle")
         operator.wait_for_timeout(900)
         dlg_text = operator.inner_text("body")
-        check("对话页空态有大标题", "文衡，帮你做报告、查数据" in dlg_text, "")
-        # 2026-10-24 rick：一页全显、不见滚动条——线程/左栏滚动条一律隐藏（内容仍可滚）
+        check("对话页空态有大标题", "问一句，答一条" in dlg_text, "")
+        # 2026-10-24 rick：一页全显、滚动条不占布局——线程/左栏细滚动条（内容仍可滚）
         sb = operator.evaluate("""() => {
           const out = []
           for (const s of ['.dlg-thread', '.dlg-hist']) {
@@ -582,12 +583,12 @@ def main():
                              layout: el.offsetWidth - el.clientWidth})
           }
           return out }""")
-        check("对话页滚动条隐藏（线程+左栏；scrollbar-width none 且不占布局）",
-              all(r["computed"] == "none" and r["layout"] == 0 for r in sb), str(sb))
+        check("对话页滚动条不占布局（线程+左栏；thin 且不挤内容）",
+              all(r["computed"] in ("none", "thin") and r["layout"] == 0 for r in sb), str(sb))
         n_pills = operator.eval_on_selector_all(".dlg-land-pill", "els => els.length")
         check("对话页空态有示例胶囊（≥6）", n_pills >= 6, f"{n_pills} 个")
-        check("对话页顶栏是「去生成台」（无工作台下拉）",
-              "去生成台" in dlg_text and "工作台 ▾" not in dlg_text, "")
+        check("对话页顶栏是会话题（问文衡；槽位在顶栏不在窗件）",
+              "问文衡" in (operator.inner_text(".wd-chat-ttl") or ""), "")
         operator.goto(BASE + "/app/dialog/?ask=" + urllib.parse.quote("查一下化学的接近度"),
                       wait_until="networkidle")
         try:
