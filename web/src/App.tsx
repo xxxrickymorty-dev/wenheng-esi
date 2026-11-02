@@ -25,14 +25,12 @@ import { usePeriodResource } from './hooks/usePeriodResource'
 import { Icon, Sprite } from './icons'
 import { SealInkDefs } from './StateSeal'
 import { Acquire } from './Acquire'
-import { Pick } from './Pick'
 import { Workbench } from './Workbench'
 import { Tools } from './Tools'
 import { Report } from './Report'
 import { Review } from './Review'
 import { Ledger } from './Ledger'
 import { AnalysisPage } from './AnalysisPage'
-import { Aiqa } from './Aiqa'
 import { RedList } from './RedList'
 import { Charts } from './Charts'
 import { Reading } from './Reading'
@@ -46,6 +44,14 @@ import { MigrateSandbox } from './MigrateSandbox'
 import { deriveWorkbench, isTerminal, statusToWB, type WBState } from './wb'
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'warned', 'waiting-approval', 'fail-ledger', 'fail-other', 'stalled', 'signed']
+
+/* 39 分册 B：旧「AI 问数」页（?view=aiqa）退役——深链 replace 到问文衡。
+   查证（2026-11-03）：Aiqa 仅 App.tsx 一处 import＋一处分支，摘除后无活引用；
+   Aiqa.tsx 组件文件暂留仓库（不再被打包），确认无回滚需求后再删。 */
+function LegacyRedirect({ to, label }: { to: string; label: string }) {
+  useEffect(() => { location.replace(to) }, [to])
+  return <div className="pending-box mt-0">这一页已并入{label}，正在带您过去……</div>
+}
 
 export default function App() {
   const [healthy, setHealthy] = useState<boolean | null>(null)
@@ -158,9 +164,10 @@ export default function App() {
   /* 运行档案（2026-11-02）：默认是全部期次的留痕总账；`&one=<期次>` 才进那一期详情。
      总账与详情是两屏，用同一个 view 加一个参数区分——不新增导航位。 */
   const archiveOne = new URLSearchParams(location.search).get('one')
-  const view: 'workbench' | 'acquire' | 'pick' | 'report' | 'review' | 'ledger' | 'analysis' | 'red' | 'charts' | 'reading' | 'trace' | 'forecast' | 'pano' | 'archive' | 'heal' | 'migrate' | 'aiqa' =
+  const view: 'workbench' | 'acquire' | 'report' | 'review' | 'ledger' | 'analysis' | 'red' | 'charts' | 'reading' | 'trace' | 'forecast' | 'pano' | 'archive' | 'heal' | 'migrate' | 'aiqa' =
     _v === 'acquire' ? 'acquire'
-      : _v === 'pick' ? 'pick'
+      /* 39 分册 C：旧「选章节」页退役（四步流水无此步，纯深链孤儿）——落预测选模现行入口 */
+      : _v === 'pick' ? 'forecast'
       : _v === 'report' ? 'report'
         : _v === 'review' ? 'review'
           : _v === 'ledger' ? 'ledger'
@@ -191,6 +198,16 @@ export default function App() {
     url.searchParams.delete('rerun')
     window.history.replaceState(null, '', url.pathname + url.search + url.hash)
   }, [autoConfirmRerun])
+
+  /* 39 分册 C：?view=pick 深链已改落预测选模——地址栏同步改写（照 ?rerun=1「读完就摘」同款），
+     刷新/复制链接不再带回已退役的 view 值。 */
+  const isPickLegacy = _v === 'pick'
+  useEffect(() => {
+    if (!isPickLegacy) return
+    const url = new URL(window.location.href)
+    url.searchParams.set('view', 'forecast')
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash)
+  }, [isPickLegacy])
 
   const onActivePeriod = useCallback((period: string) => {
     restoredActivePeriodRef.current = period
@@ -491,27 +508,36 @@ export default function App() {
   /* 工作区导航（契约 §4：前端按 /api/me 的 role 决定显示什么；**真门在后端**，这里只是不打扰）。
      导航五项＋管理组两项在 SideRail（src/SideRail.tsx），工作区与问文衡同一份。
      2026-11-02 rick 定稿（跨页书式：左页导航 / 右页工作面）。
-     2026-10-31 撤出的灵活报告 / 他校简报 / AI 问数不回来（能力已并入高校ESI报告与问文衡，
-     深链 ?view=analysis · /app/panel/ · ?view=aiqa 仍保留，只是不再占导航位）。 */
+     2026-10-31 撤出的灵活报告 / 他校简报 / AI 问数不回来（能力已并入高校ESI报告与问文衡）。
+     深链 ?view=analysis · /app/panel/ 仍保留（不占导航位）；?view=aiqa 重定向到问文衡（39 分册 B）、
+     ?view=pick 重定向到预测选模（39 分册 C）。 */
   /* 子屏归到哪个主区（决定左栏高亮）；report 区已无导航项，子屏一律归「出报告」，
      因为报告与它的下钻屏都是从四步流水里长出来的；台账/沙盘从运行档案进，跟着它高亮。 */
   const GROUP: Record<string, string> = {
-    workbench: 'flow', acquire: 'flow', pick: 'flow', review: 'flow', forecast: 'flow',
+    workbench: 'flow', acquire: 'flow', review: 'flow', forecast: 'flow',
     report: 'flow', red: 'flow', charts: 'flow', reading: 'flow', trace: 'flow',
     analysis: 'analysis', aiqa: 'ask', dialog: 'ask', pano: 'flow',
     archive: 'archive', ledger: 'archive', heal: 'archive', migrate: 'archive',
   }
   /* 「出报告」四步流水（2026-10-19 rick：「选章节」入口关闭——一直空着，核验定稿里已有章节选择）。
      步骤条只在流水屏出现；2026-10-16 二版（rick 拍板）：不画序号——顺序由位置与细线方向表达。
-     深链 ?view=pick 保留（页面不删），只是不再有入口。 */
+     深链 ?view=pick 已重定向到预测选模（39 分册 C；Pick.tsx 文件暂留不删）。 */
   const FLOW_STEPS: { key: string; label: string; href?: string }[] = [
     { key: 'acquire', label: '取数核验', href: '/app/?view=acquire' },
     { key: 'forecast', label: '预测选模', href: '/app/?view=forecast' },
     { key: 'gen', label: '生成初稿', href: '/app/' },
     { key: 'review', label: '核验定稿', href: '/app/?view=review' },
   ]
-  const FLOW_ACTIVE: Record<string, string> = {
-    acquire: 'acquire', workbench: 'gen', review: 'review', forecast: 'forecast',
+  /* 流程条「进行中」按这一期的真实状态推进（39 分册 C：原 FLOW_ACTIVE 按屏恒映射会说谎——
+     已签发期次打开生成台仍点亮第叁步）。未取数亮壹、取数完亮贰、生成中亮叁、生成完未签亮肆；
+     已签发四步全「完成态」不亮进行中（activeIdx = 步骤数 → 四卡全落 done、无 now）。
+     waiting-approval 的界面口径是「报告已出，等你在审核台签单」（wb.ts FOCUS），归肆。 */
+  const FLOW_STEP_BY_STATE: Record<WBState, string | null> = {
+    empty: 'acquire',
+    ready: 'forecast',
+    running: 'gen', stalled: 'gen', 'fail-ledger': 'gen', 'fail-other': 'gen',
+    done: 'review', warned: 'review', 'waiting-approval': 'review',
+    signed: null,
   }
   const isOperator = me?.role === 'operator'
   const notLoggedIn = roleKnown && !me
@@ -540,9 +566,11 @@ export default function App() {
   const activeNav = GROUP[view] ?? 'flow'
   /* 步骤条只在四步流水自身的屏上出现（报告/图册/红件等是流水长出来的下钻屏，
      没有「当前第几步」这回事，画一条全是灰的进度线只会误导）。 */
-  const inFlow = ['workbench', 'acquire', 'pick', 'review', 'forecast'].includes(view)
-  const flowActive = FLOW_ACTIVE[view] ?? ''
-  const flowActiveIdx = Math.max(0, FLOW_STEPS.findIndex((s) => s.key === flowActive))
+  const inFlow = ['workbench', 'acquire', 'review', 'forecast'].includes(view)
+  const flowActive = FLOW_STEP_BY_STATE[wb.state] ?? ''
+  const flowActiveIdx = flowActive
+    ? Math.max(0, FLOW_STEPS.findIndex((s) => s.key === flowActive))
+    : FLOW_STEPS.length   /* 已签发：无进行中步，四步全落「完成态」 */
 
   return (
     <div className="app-shell" data-view={view} {...rail.rootProps}>
@@ -681,8 +709,6 @@ export default function App() {
           <HealSandbox />
         ) : view === 'migrate' ? (
           <MigrateSandbox />
-        ) : view === 'pick' ? (
-          <Pick period={selected} />
         ) : view === 'acquire' ? (
           <Acquire period={selected} onOpenPeriod={pickPeriod} />
         ) : view === 'forecast' ? (
@@ -710,7 +736,8 @@ export default function App() {
              数据全走后端产物（water / charts-data），前端不换算、不聚合。 */
           <AnalysisPage period={selected} periods={periods} onPick={pickPeriod} />
         ) : view === 'aiqa' ? (
-          <Aiqa />
+          /* 39 分册 B：旧「AI 问数」页退役，深链落问文衡新页 */
+          <LegacyRedirect to="/app/dialog/" label="问文衡" />
         ) : view === 'ledger' ? (
           <Ledger />
         ) : view === 'review' ? (

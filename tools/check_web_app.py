@@ -322,7 +322,7 @@ def main():
             gate_btn = page.eval_on_selector_all(
                 "button", "els => els.some(e => /开始取数/.test(e.innerText))")
             check("三段式门禁：没检查过 → 取数段锁着（无「开始取数」，写明等检查）",
-                  (not gate_btn) and ("等 ① 检查通过" in gate_txt), f"btn={gate_btn}")
+                  (not gate_btn) and ("等第一段检查通过" in gate_txt), f"btn={gate_btn}")
             page.goto(BASE + "/app/?view=acquire&period=202609", wait_until="domcontentloaded")
             page.wait_for_selector(".aq-head", timeout=20000)
             # 拍板 2026-10-16 中午：头条去重——只留**采集**进度行；「已并入（期次 列）」的结论归焦点卡。
@@ -492,11 +492,13 @@ def main():
         acq_txt = operator.inner_text("main")
         check("操作员可进取数核验（2026-10-17 放开）",
               "操作员不可见" not in acq_txt and "取数核验" in acq_txt, "")
+        # 39 分册 C（2026-11-03）：旧「选章节」页退役——深链重定向到预测选模
         operator.goto(BASE + "/app/?view=pick&period=202609", wait_until="networkidle")
         operator.wait_for_timeout(600)
-        check("操作员可进选章节（2026-10-17 放开）",
+        check("操作员直开旧选章节 → 落预测选模（39 分册 C 重定向）",
               "操作员不可见" not in operator.inner_text("main")
-              and "选章节" in operator.inner_text("main"), "")
+              and "预测选模" in operator.inner_text("main")
+              and "view=forecast" in operator.url, "")
         # 报告页：红件/溯源入口只读开放；红件三件与运行日志的下载产物仍过滤
         operator.goto(BASE + "/app/?view=report", wait_until="networkidle")
         operator.wait_for_timeout(600)

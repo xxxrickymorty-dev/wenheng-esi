@@ -138,7 +138,7 @@ export function Acquire({ period, onOpenPeriod }: {
   const [openForm, setOpenForm] = useState(false)
   const [newPeriod, setNewPeriod] = useState('')
   const [openErr, setOpenErr] = useState('')
-  /* ② 段收起后，「下载清单」仍可点开看（2026-10-19 三段式：明细不常驻，但要够得着） */
+  /* 第二段收起后，「下载清单」仍可点开看（2026-10-19 三段式：明细不常驻，但要够得着） */
   const [showGroups, setShowGroups] = useState(false)
   const stateRef = useRef<AcquisitionState | null>(null)
   const reloadTimer = useRef<number | undefined>(undefined)
@@ -331,12 +331,13 @@ export function Acquire({ period, onOpenPeriod }: {
   const pf = state?.preflight
   const pfPassed = !!pf && pf.browser === 'ok' && pf.esi === 'ok'
     && pf.incites === 'ok' && pf.data?.ok !== false
-  /* ===== 三段式（2026-10-19 rick 定：① 开始前检查 → ② 下载数据 → ③ 并入台账，逐段解锁） =====
+  /* ===== 三段式（2026-10-19 rick 定：一 开始前检查 → 二 下载数据 → 三 并入台账，逐段解锁；
+     2026-11-03 编号并入「一二三」——39 分册 C，原圈码数字与全站中文序数并存） =====
      每段三态：done（收起成一行结论＋重入口）/ now（展开）/ locked（虚线＋等什么）；
      上一段没通过，下一段的按钮不出现（rick：检查无误后才显示下载）。 */
   const fetchBusy = opBusy && (op?.kind === 'fetch' || op?.kind === 'stop')
   const copyBusy = opBusy && (op?.kind === 'copy' || op?.kind === 'merge')
-  /* ① 的结论只认**这四盏灯本身**：不看「期次走到哪一步」——已并入的老期次如果现在没登录网站，
+  /* 第一段的结论只认**这四盏灯本身**：不看「期次走到哪一步」——已并入的老期次如果现在没登录网站，
      也必须如实说「有没通过的项」，不能因为历史上下载过就打 ✓（2026-10-20 rick 逮到的假话）。 */
   const pfHasBad = !!pf && (pf.browser === 'bad' || pf.esi === 'bad' || pf.incites === 'bad'
     || pf.data?.ok === false)
@@ -351,12 +352,12 @@ export function Acquire({ period, onOpenPeriod }: {
   const s2stat: [string, string] = s2collapsed ? [`✓ 已取到 ${verified} / ${expected}`, 'ok']
     : fetchBusy ? [`取数中 · ${verified} / ${expected}`, 'run']
       : opStory ? [(opStopped ? '已停止' : '已中断'), (opStopped ? 'wait' : 'bad')]
-        : s2locked ? ['等 ① 检查通过', 'wait']
+        : s2locked ? ['等第一段检查通过', 'wait']
           : view === 'partial' ? [`有 ${failed} 份没通过`, 'bad']
             : ro ? ['往期只读', 'wait'] : ['可以取数', 'wait']
   const s3stat: [string, string] = view === 'merged' ? [`✓ 已并入（${period} 列）`, 'ok']
     : copyBusy ? [`${op?.kind === 'merge' ? '正在并入' : '正在建核对副本'}……`, 'run']
-      : view === 'review' ? ['核对表已生成 · 待核对', 'run'] : ['等 ② 取数齐了自动解锁', 'wait']
+      : view === 'review' ? ['核对表已生成 · 待核对', 'run'] : ['等第二段取数齐了自动解锁', 'wait']
   const s2big = showOpHero
     ? (opStopped ? '取数已停止' : '上次取数中断了')
     : fetchBusy ? `正在按组取数${liveGroup?.title ? `：${liveGroup.title}` : ''}……`
@@ -373,11 +374,11 @@ export function Acquire({ period, onOpenPeriod }: {
       : view === 'partial' ? '重试只补这一组，通过的不重复取。'
         : view === 'running' ? `已取到 ${verified} / ${expected}；继续取数只补缺的文件。`
           : pfPassed ? '9 组、共 64 份；取数中随时可停，停下的补缺不重复取。'
-            : '① 的检查都过了，这里会出现「开始取数」。'
-  /* 失败的一行话：下载相关留 ②，建副本/并入相关留 ③（按 op.kind 归位） */
+            : '第一段的检查都过了，这里会出现「开始取数」。'
+  /* 失败的一行话：下载相关留第二段，建副本/并入相关留第三段（按 op.kind 归位） */
   const opNoteLine = op?.state === 'failed' && !opStory
     ? (humanOpNote(op.note ?? '') || `上一步没有完成：${op.note || '原因见取数状态'}`) : ''
-  /* 下载清单（组卡）：② 展开时常驻一处；收起后从「下载清单」按钮点开——不重复造两份 */
+  /* 下载清单（组卡）：第二段展开时常驻一处；收起后从「下载清单」按钮点开——不重复造两份 */
   const groupsFold = (open?: boolean) => (
     <details className="fold" open={open}>
       <summary>取数清单<span className="sm">{totals.groups ?? groups.length ?? 9} 组 · {expected > 0 ? `${expected} 份` : '份数待定'}</span></summary>
@@ -431,12 +432,12 @@ export function Acquire({ period, onOpenPeriod }: {
             )}
           </section>
 
-          {/* ===== 三段式：① 开始前检查 → ② 下载数据 → ③ 并入台账（2026-10-19 rick 定） ===== */}
+          {/* ===== 三段式：一 开始前检查 → 二 下载数据 → 三 并入台账（2026-10-19 rick 定） ===== */}
           <div className="flow">
 
-            {/* ── ① 开始前检查（最上面；过了才显示下载） ── */}
+            {/* ── 一 开始前检查（最上面；过了才显示下载） ── */}
             <section className={`stg ${s1done ? 'done' : 'now'}`}>
-              <div className="node"><i>①</i></div>
+              <div className="node"><i>一</i></div>
               <div className="body"><div className="stg-card">
                 <div className="stg-top">
                   <span className="stg-title">开始前检查</span>
@@ -459,7 +460,7 @@ export function Acquire({ period, onOpenPeriod }: {
                 )}
                 {/* 还没过：展开（四盏灯 + 检查按钮）。
                     2026-10-24 rick 红框：往期档案只读——浏览器/登录状态与检查按钮无需显示，
-                    「连接浏览器登录下载」只属于当期（要补档只能在当期取，见②的说明）。 */}
+                    「连接浏览器登录下载」只属于当期（要补档只能在当期取，见「下载数据」段的说明）。 */}
                 <div className="stg-body">
                   <div className="stg-big">{view === 'blocked' ? '下载数据专用浏览器还没准备好'
                     : ro ? '往期档案只读'
@@ -503,9 +504,9 @@ export function Acquire({ period, onOpenPeriod }: {
               </div></div>
             </section>
 
-            {/* ── ② 下载数据（① 过了才亮；下载中/中断都在这段讲） ── */}
+            {/* ── 二 下载数据（第一段过了才亮；下载中/中断都在这段讲） ── */}
             <section className={`stg ${s2collapsed ? 'done' : s2locked ? 'locked' : 'now'}`}>
-              <div className="node"><i>②</i></div>
+              <div className="node"><i>二</i></div>
               <div className="body"><div className="stg-card">
                 <div className="stg-top">
                   <span className="stg-title">取数</span>
@@ -644,9 +645,9 @@ export function Acquire({ period, onOpenPeriod }: {
               </div></div>
             </section>
 
-            {/* ── ③ 并入台账（② 取齐后自动解锁） ── */}
+            {/* ── 三 并入台账（第二段取齐后自动解锁） ── */}
             <section className={`stg ${view === 'merged' ? 'done' : view === 'review' ? 'now' : 'locked'}`}>
-              <div className="node"><i>③</i></div>
+              <div className="node"><i>三</i></div>
               <div className="body"><div className="stg-card">
                 <div className="stg-top">
                   <span className="stg-title">并入台账</span>
@@ -700,7 +701,7 @@ export function Acquire({ period, onOpenPeriod }: {
                       )}
                     </>
                   ) : (
-                    <div className="stg-sub">这一段不用手动开：② 的 {expected > 0 ? expected : 64} 份都核验通过后，这里会自动生成核对表。</div>
+                    <div className="stg-sub">这一段不用手动开：第二段的 {expected > 0 ? expected : 64} 份都核验通过后，这里会自动生成核对表。</div>
                   )}
                 </div>
               </div></div>

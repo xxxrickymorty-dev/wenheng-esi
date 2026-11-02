@@ -53,8 +53,7 @@ export function HealSandbox() {
       <>
         <section className="card pad-card-lg">
           <h1 className="fs-24">自愈沙盘</h1>
-          <p className="fc-lead">还没跑过。先在终端执行一次，再刷新本页：</p>
-          <p className="mono mt-10">uv run python tools\heal_sandbox.py</p>
+          <p className="fc-lead">这是一页演示沙盘：内容要管理员在这台服务器上跑一次沙盘工具才会生成，跑完刷新本页即可看到。</p>
           <p className="hint mt-10">{d.hint || '沙盘不在这里跑，避免把演示变成不可控的长任务。'}</p>
         </section>
       </>

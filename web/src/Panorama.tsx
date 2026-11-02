@@ -289,8 +289,8 @@ function buildModel(
       title: '质检',
       rows: [
         audit?.exists
-          ? { name: '机器断言', state: (aFail || aReview ? 'warn' : 'done') as RowState, note: `${aPass} / ${aRows.length} 通过` }
-          : { name: '机器断言', state: 'idle', note: '未执行' },
+          ? { name: '数据校验', state: (aFail || aReview ? 'warn' : 'done') as RowState, note: `${aPass} / ${aRows.length} 通过` }
+          : { name: '数据校验', state: 'idle', note: '未执行' },
         redTotal != null
           ? { name: '红色件清单', state: (signed ? 'done' : 'run') as RowState, note: `${redTotal} 项${signed ? ' · 已随签发' : ' · 待看'}` }
           : { name: '红色件清单', state: 'idle', note: '未生成' },

@@ -41,7 +41,7 @@ function Chain({
       <p className="cap">
         按时间从左到右。已签发是朱印，签发已失效是金印，未签发是墨线框。
         <br />
-        （期号与月份来自后端；换期次用顶栏的期次选择。）
+        （期号与月份来自后端；换期次用左栏底部的期次选择。）
       </p>
       <div className="seals">
         {periods.map((p) => {

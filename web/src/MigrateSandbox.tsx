@@ -30,8 +30,7 @@ export function MigrateSandbox() {
       <>
         <section className="card pad-card-lg">
           <h1 className="fs-24">换馆沙盘</h1>
-          <p className="fc-lead">还没跑过。先在终端执行一次，再刷新本页：</p>
-          <p className="mono mt-10">uv run python tools\migration_check.py</p>
+          <p className="fc-lead">这是一页演示沙盘：内容要管理员在这台服务器上跑一次换馆检查工具才会生成，跑完刷新本页即可看到。</p>
           <p className="hint mt-10">{d.hint || '只做结构检查，不跑流水线、不改原件。'}</p>
         </section>
       </>
