@@ -102,6 +102,7 @@ from .routes.misc import router as misc_router            # noqa: E402
 from .routes.monitor import router as monitor_router      # noqa: E402
 from .routes.pages import router as pages_router          # noqa: E402
 from .routes.periods import router as periods_router      # noqa: E402
+from .routes.speech import router as speech_router        # noqa: E402
 
 app.include_router(acquisition_router)
 app.include_router(pages_router)
@@ -112,6 +113,7 @@ app.include_router(monitor_router)
 app.include_router(forecast_router)
 app.include_router(jobs_router)
 app.include_router(misc_router)
+app.include_router(speech_router)
 
 
 # ---- 静态资源不能被浏览器自作主张缓存（2026-09-17）----------------------------
