@@ -1,13 +1,10 @@
-/* 高校 ESI 报告 · 插件市场（监测版）。
-   布局与文案照静态稿（mockups/高校ESI报告-插件市场（静态稿 20261031）.html，rick 已审）：
-   左会泽品牌面（金句「换校，不换产线。」）+ 右至公槽位面（985/211 页签 + 搜校名 + 卡片网格）。
-   与静态稿的三处落码差异（都是把演示态换成真状态）：
-   ① 状态机收成 未生成 / 生成中 / 已生成（静态稿的「建档/初稿待签/已签发」是云大产线语言，
-      监测版 v1 没有签单流程，不挂假状态）；
-   ② 生成是真实请求（缓存已建时秒回），五步进度条照播、播完即真完成；
-   ③ 名单按教育部名录与 ESI 机构写法校准：109 所（矿大/石油/地大分址并一卡；
-      北京体育大学/中央音乐学院非 211 不收；西南交通大学已补）。
-   数字零口径：清单与状态全来自 /api/monitor/schools，生成走 /api/monitor/report。 */
+/* 高校 ESI 报告 · 监测版（入口整页）。
+   版面照已审静态稿 `mockups/全站静态稿-20261102/高校ESI报告-静态稿（20261102）.html`：
+   左页会泽品牌面（导航逐字一致）＋ 右页报头（眉标 / 校名 / 期次）→ 总站位 → 22 行学科表；
+   已入 1% 与未入之间一道 1px 金线，未在榜格子写 `—`。
+   能力一件不少：院校清单（选校抽屉）、多校对比（队列）、生成报告（既有 POST 口）。
+   数字零口径：总站位与学科行全部解析自后端已生成的站位报告（`/monitor/report/…`），
+   前端只搬运显示值，不换算、不补数、不猜期次；后端没有的指标写 `—`。 */
 
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -18,7 +15,80 @@ import { HttpError } from '../api'
 
 const RUN_STEPS = ['取数', '拼表', '出稿', '核验', '签发']
 
-/* 预开页的加载反馈：点击手势内开窗后立刻写入五步动画，生成完由 opener 回填报告地址；
+/* ESI 22 学科（固定名录；只列名字，不带任何数字）。未在榜行按英文名排序补 `—`。 */
+const DISCIPLINES: { en: string; cn: string }[] = [
+  { en: 'Agricultural Sciences', cn: '农业科学' },
+  { en: 'Biology & Biochemistry', cn: '生物学与生物化学' },
+  { en: 'Chemistry', cn: '化学' },
+  { en: 'Clinical Medicine', cn: '临床医学' },
+  { en: 'Computer Science', cn: '计算机科学' },
+  { en: 'Economics & Business', cn: '经济与商业' },
+  { en: 'Engineering', cn: '工程学' },
+  { en: 'Environment/Ecology', cn: '环境生态学' },
+  { en: 'Geosciences', cn: '地球科学' },
+  { en: 'Immunology', cn: '免疫学' },
+  { en: 'Materials Science', cn: '材料科学' },
+  { en: 'Mathematics', cn: '数学' },
+  { en: 'Microbiology', cn: '微生物学' },
+  { en: 'Molecular Biology & Genetics', cn: '分子生物学与遗传学' },
+  { en: 'Multidisciplinary', cn: '多学科' },
+  { en: 'Neuroscience & Behavior', cn: '神经系统科学与行为学' },
+  { en: 'Pharmacology & Toxicology', cn: '药理学与毒理学' },
+  { en: 'Physics', cn: '物理学' },
+  { en: 'Plant & Animal Science', cn: '植物与动物学' },
+  { en: 'Psychiatry/Psychology', cn: '精神病学与心理学' },
+  { en: 'Social Sciences, general', cn: '社会科学' },
+  { en: 'Space Science', cn: '空间科学' },
+]
+
+type Row = { cn: string; rank: string; rankCn: string; papers: string; cites: string; per: string }
+type Totals = { rank: string; rankAll: string; papers: string; cites: string; per: string }
+type Standing = { rows: Row[]; totals: Totals | null }
+
+const txt = (el: Element | null | undefined) =>
+  (el?.textContent ?? '').replace(/\s+/g, ' ').trim()
+
+/** 从后端生成的站位报告里取显示值：只读 HTML 里的成品字串，不重算。 */
+function parseStanding(html: string): Standing {
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  const blocks = Array.from(doc.querySelectorAll('.nums .nm'))
+  const block = (label: string) =>
+    blocks.find((b) => txt(b.querySelector('.nl')) === label) ?? null
+
+  let totals: Totals | null = null
+  const rankBlock = block('全球机构总排名')
+  const citeBlock = block('总被引')
+  if (rankBlock || citeBlock) {
+    const rankText = txt(rankBlock?.querySelector('.nv'))
+    const [rank = '', rankAll = ''] = rankText.split('/').map((s) => s.trim())
+    const nx = txt(citeBlock?.querySelector('.nx'))
+    totals = {
+      rank,
+      rankAll,
+      papers: /论文\s*([\d,]+)/.exec(nx)?.[1] ?? '—',
+      cites: txt(citeBlock?.querySelector('.nv')) || '—',
+      per: /篇均\s*([\d.]+)/.exec(nx)?.[1] ?? '—',
+    }
+  }
+
+  const table = doc.querySelector('section.flow table')
+  const rows: Row[] = Array.from(table?.querySelectorAll('tbody tr') ?? []).map((tr) => {
+    const td = Array.from(tr.querySelectorAll('td'))
+    const name = txt(td[0]?.querySelector('b')) || txt(td[0]).split(' ')[0]
+    return {
+      cn: name,
+      rank: txt(td[1]).split('/')[0].trim(),
+      rankCn: txt(td[3]),
+      papers: txt(td[4]),
+      cites: txt(td[5]),
+      per: txt(td[6]),
+    }
+  }).filter((r) => r.cn)
+
+  return { rows, totals }
+}
+
+/* 预开页的加载反馈：点击手势内开窗后立刻写入五步动画，生成完由本页回填报告地址；
    失败则在原页显示原因。离开这个加载页前，用户不是在盯空白。 */
 function loadingDoc(label: string): string {
   const stepsJs = JSON.stringify(RUN_STEPS)
@@ -38,7 +108,7 @@ function loadingDoc(label: string): string {
     `<p class="sub">完成后本页自动跳转为报告。</p>` +
     `<div class="bar"><div class="fl" id="fl"></div></div>` +
     `<p class="step" id="st">第 1/5 步 · 取数</p>` +
-    `<p class="hint">若长时间停留在此页，回插件页看卡片状态或重新生成。</p>` +
+    `<p class="hint">若长时间停留在此页，回本页看状态或重新生成。</p>` +
     `<script>var s=${stepsJs},i=0;setInterval(function(){i=(i+1)%s.length;document.getElementById('fl').style.width=((i+1)/s.length*100)+'%';document.getElementById('st').textContent='第 '+(i+1)+'/'+s.length+' 步 · '+s[i];},600);</script>` +
     `</div></body></html>`
 }
@@ -46,7 +116,7 @@ function loadingDoc(label: string): string {
 function errDoc(msg: string): string {
   return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>生成失败 · 文衡监测版</title>` +
     `<style>body{margin:0;background:#F5F3EC;color:#1E2A23;font-family:system-ui,"Microsoft YaHei",sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}.box{width:min(420px,86vw);background:#FAF8F0;border:1px solid #DFDBCB;padding:26px 30px}.t{font-size:15px;font-weight:600;color:#B23A2B;margin:0 0 8px}.m{font-size:12.5px;color:#4A564D;line-height:1.8;margin:0}</style></head>` +
-    `<body><div class="box"><p class="t">生成没跑成</p><p class="m">${msg}<br>回到插件页重试；本页可关闭。</p></div></body></html>`
+    `<body><div class="box"><p class="t">生成没跑成</p><p class="m">${msg}<br>回本页重试；本页可关闭。</p></div></body></html>`
 }
 
 function writeDoc(w: Window, html: string) {
@@ -57,15 +127,19 @@ function writeDoc(w: Window, html: string) {
   } catch { /* opener 已断开等场景：放弃回写，不影响主流程 */ }
 }
 
-type CardState = { busy: boolean; step: number; done: boolean; url: string | null; err: string }
-
 export default function SchoolsPage() {
   const [data, setData] = useState<MonitorSchools | null>(null)
   const [loadErr, setLoadErr] = useState('')
+  const [cn, setCn] = useState('')
+  const [standing, setStanding] = useState<Standing | null>(null)
+  const [htmlErr, setHtmlErr] = useState('')
+  const [htmlBusy, setHtmlBusy] = useState(false)
+  const [pickOpen, setPickOpen] = useState(false)
   const [tier, setTier] = useState<'all' | '985' | '211'>('all')
   const [q, setQ] = useState('')
-  const [cards, setCards] = useState<Record<string, CardState>>({})
   const [queue, setQueue] = useState<string[]>([])
+  const [genBusy, setGenBusy] = useState('')
+  const [genErr, setGenErr] = useState('')
   const [cmpBusy, setCmpBusy] = useState(false)
   const reqRef = useRef(0)
   const aliveRef = useRef(true)
@@ -78,6 +152,8 @@ export default function SchoolsPage() {
       const next = await getMonitorSchools()
       if (!aliveRef.current || id !== reqRef.current) return
       setData(next)
+      setCn((cur) => cur || next.schools.find((s) => s.generated)?.cn
+        || next.schools.find((s) => s.known)?.cn || next.schools[0]?.cn || '')
     } catch (e) {
       if (!aliveRef.current || id !== reqRef.current) return
       setLoadErr(e instanceof HttpError ? e.message : '院校清单没读到——确认服务在运行后重试')
@@ -85,8 +161,33 @@ export default function SchoolsPage() {
   }
   useEffect(() => { void load() }, [])
 
-  const toggleQueue = (cn: string) => {
-    setQueue((qq) => qq.includes(cn) ? qq.filter((x) => x !== cn) : [...qq, cn])
+  const school = data?.schools.find((s) => s.cn === cn) ?? null
+
+  /* 站位数字只从后端产物来：有已生成报告就取，没生成就不出数（不拿演示值顶）。 */
+  useEffect(() => {
+    let alive = true
+    setStanding(null)
+    setHtmlErr('')
+    if (!school?.url) { setHtmlBusy(false); return }
+    setHtmlBusy(true)
+    void (async () => {
+      try {
+        const res = await fetch(school.url as string, { credentials: 'same-origin' })
+        if (!res.ok) throw new Error(String(res.status))
+        const html = await res.text()
+        if (!alive) return
+        setStanding(parseStanding(html))
+      } catch {
+        if (alive) setHtmlErr('报告正文没读到——可重新生成，或稍后刷新重试')
+      } finally {
+        if (alive) setHtmlBusy(false)
+      }
+    })()
+    return () => { alive = false }
+  }, [school?.url, school?.cn])
+
+  const toggleQueue = (name: string) => {
+    setQueue((qq) => qq.includes(name) ? qq.filter((x) => x !== name) : [...qq, name])
   }
 
   const genCompare = async () => {
@@ -104,191 +205,261 @@ export default function SchoolsPage() {
       else window.open(abs1, '_blank', 'noopener')
     } catch (e) {
       if (w && !w.closed) writeDoc(w, errDoc(e instanceof HttpError ? e.message : '生成没跑成，稍后再试'))
-      setQueue((qq) => [...qq])
       window.alert(e instanceof HttpError ? e.message : '对比报告没跑成，稍后再试')
     } finally {
       setCmpBusy(false)
     }
   }
 
-  const gen = async (cn: string) => {
-    /* 进度条按静态稿节奏播（5 步）；真实请求并行跑，两边都齐才算完成。
-       报告页在点击手势内先开（预开空白页，到手后再回填地址）——await 之后开窗会被弹窗策略拦。 */
+  const gen = async (name: string) => {
+    if (genBusy === name) return
+    setGenErr('')
+    setGenBusy(name)
+    /* 报告页在点击手势内先开（预开空白页，到手后再回填地址）——await 之后开窗会被弹窗策略拦。 */
     const w = window.open('about:blank', '_blank')
     if (w) {
       w.opener = null
-      writeDoc(w, loadingDoc(cn + ' · 监测报告'))
+      writeDoc(w, loadingDoc(name))
     }
-    setCards((c): Record<string, CardState> => ({ ...c, [cn]: { busy: true, step: 0, done: false, url: null, err: '' } }))
-    const anim = setInterval(() => {
-      setCards((c): Record<string, CardState> => {
-        const cur = c[cn]
-        if (!cur || !cur.busy) return c
-        return { ...c, [cn]: { ...cur, step: Math.min(cur.step + 1, RUN_STEPS.length - 1) } }
-      })
-    }, 600)
     try {
-      const r = await generateMonitorReport(cn)
-      await new Promise((res) => setTimeout(res, RUN_STEPS.length * 600 + 350))
-      clearInterval(anim)
+      const r = await generateMonitorReport(name)
+      const abs1 = new URL(r.url, window.location.origin).href
+      if (w && !w.closed) w.location.href = abs1
+      else window.open(abs1, '_blank', 'noopener')
       if (!aliveRef.current) return
-      setCards((c): Record<string, CardState> => ({ ...c, [cn]: { busy: false, step: 0, done: true, url: r.url, err: '' } }))
       setData((d) => d && ({
         ...d,
-        schools: d.schools.map((s) => s.cn === cn ? { ...s, generated: true, url: r.url } : s),
+        schools: d.schools.map((s) => s.cn === name ? { ...s, generated: true, url: r.url } : s),
       }))
-      if (w && !w.closed) {
-        w.location.href = new URL(r.url, window.location.origin).href
-      } else {
-        window.open(new URL(r.url, window.location.origin).href, '_blank', 'noopener')
-      }
     } catch (e) {
-      clearInterval(anim)
-      if (w && !w.closed) writeDoc(w, errDoc(e instanceof HttpError ? e.message : '生成没跑成，稍后再试'))
-      setCards((c): Record<string, CardState> => ({
-        ...c, [cn]: {
-          busy: false, step: 0, done: false, url: null,
-          err: e instanceof HttpError ? e.message : '生成没跑成，稍后再试',
-        },
-      }))
+      const msg = e instanceof HttpError ? e.message : '生成没跑成，稍后再试'
+      if (w && !w.closed) writeDoc(w, errDoc(msg))
+      if (aliveRef.current) setGenErr(msg)
+    } finally {
+      if (aliveRef.current) setGenBusy('')
     }
   }
 
   const list = (data?.schools ?? []).filter((s) =>
     (tier === 'all' || (tier === '985' ? s.is985 : !s.is985)) &&
     (!q.trim() || s.cn.includes(q.trim()) || s.en.toLowerCase().includes(q.trim().toLowerCase())))
-  const groups = tier === 'all'
-    ? [{ label: '985 工程', items: list.filter((s) => s.is985) },
-       { label: '211 工程', items: list.filter((s) => !s.is985) }]
-    : [{ label: tier === '985' ? '985 工程' : '211 工程', items: list }]
   const n985 = data?.schools.filter((s) => s.is985).length ?? 0
+  const nAll = data?.schools.length ?? 0
+
+  const rows = standing?.rows ?? []
+  const entered = new Set(rows.map((r) => r.cn))
+  const absent = DISCIPLINES.filter((d) => !entered.has(d.cn))
+    .sort((a, b) => a.en.localeCompare(b.en))
 
   return (
-    <div className="msch-spread">
-      <aside className="msch-l">
-        <div className="msch-bm"><b>文衡</b><span>云南大学图书馆<br />学科信息参考</span></div>
-        <nav className="msch-nav" aria-label="工作区">
-          <a href="/app/">出报告</a>
-          <a href="/app/schools/" aria-current="page">高校 ESI 报告</a>
-          <a href="/app/dialog/">问文衡</a>
-          <span className="msch-m">管 理</span>
-          <a href="/app/?view=archive">运行档案</a>
-          <a className="msch-q" href="/app/shelf/">陈列馆 ↗</a>
-        </nav>
-        <div className="msch-hero">
-          <p className="msch-ov">监 测 版 · 全 国 槽 位</p>
-          <h1>高校 ESI 报告</h1>
-          <p className="msch-vol"><span className="msch-b">{data ? `内置 ${data.schools.length} 所` : '— 所'}</span><span className="msch-c">{n985 ? `985 · 211` : ''}</span></p>
-          <div className="msch-rule" />
-          <p className="msch-stm">换校，不换产线。</p>
-          <p className="msch-sub">数据只要 ESI 每期导出；监测表由系统一期一期替学校攒，从接入当期开始。</p>
-          <div className="msch-acts"><a className="msch-btn" href="#msch-grid">从榜单选校 ↓</a></div>
-        </div>
-      </aside>
+    <div className="whs-root">
+      <div className="whs-spread">
+        <aside className="whs-l">
+          <i className="whs-seal" aria-hidden="true">衡</i>
+          <header className="whs-bm">
+            <b>文衡</b>
+            <span>云南大学图书馆<br />学科信息参考</span>
+          </header>
+          <nav className="whs-nav" aria-label="工作区">
+            <a href="/app/">出报告</a>
+            <a href="/app/?view=analysis">分析台</a>
+            <a href="/app/schools/" aria-current="page">高校 ESI 报告</a>
+            <a href="/app/dialog/">问文衡</a>
+            <span className="whs-m" aria-hidden="true">管 理</span>
+            <a href="/app/?view=archive">运行档案</a>
+            <a className="whs-q" href="/app/shelf/">陈列馆 ↗</a>
+          </nav>
+          <footer className="whs-idb">
+            <div className="whs-rule" aria-hidden="true" />
+            <p>{nAll ? `院校 ${nAll} 所` : '院校清单'}</p>
+          </footer>
+        </aside>
 
-      <main className="msch-r">
-        <div className="msch-bar" role="toolbar" aria-label="筛选">
-          <div className="msch-tabs" role="tablist" aria-label="院校分组">
-            {(['all', '985', '211'] as const).map((t) => (
-              <button key={t} type="button" role="tab" aria-pressed={tier === t}
-                      onClick={() => setTier(t)}>
-                {t === 'all' ? '全部' : t.toUpperCase()}<em>
-                  {t === 'all' ? (data?.schools.length ?? 0) : t === '985' ? n985 : (data?.schools.length ?? 0) - n985}
-                </em>
+        <main className="whs-r">
+          <div className="whs-sheet">
+
+            <div className="whs-bar">
+              <p className="whs-eyebrow">高校 ESI 报告</p>
+              <label className="whs-pick">
+                <span className="whs-k">期次</span>
+                <span className="whs-sel">
+                  <select aria-label="期次" value={data?.period ?? ''} disabled={!data}>
+                    {data?.period
+                      ? <option value={data.period}>{data.period}</option>
+                      : <option value="">—</option>}
+                  </select>
+                </span>
+              </label>
+            </div>
+
+            <header className="whs-head">
+              <button type="button" className="whs-name" aria-haspopup="dialog"
+                      onClick={() => setPickOpen(true)}>
+                {cn || '选校'}
+                <i aria-hidden="true">⌄</i>
               </button>
-            ))}
-          </div>
-          <div className="msch-search">
-            <input type="search" value={q} placeholder="搜校名" aria-label="搜校名"
-                   onChange={(e) => setQ(e.target.value)} />
-          </div>
-        </div>
+              <div className="whs-figs">
+                <div className="whs-fig">
+                  <span>全球排名</span>
+                  <b>{standing?.totals?.rank || '—'}
+                    {standing?.totals?.rankAll ? <i>/ {standing.totals.rankAll}</i> : null}</b>
+                </div>
+                <div className="whs-fig"><span>国内排名</span><b>—</b></div>
+                <div className="whs-fig"><span>论文</span><b>{standing?.totals?.papers || '—'}</b></div>
+                <div className="whs-fig"><span>被引</span><b>{standing?.totals?.cites || '—'}</b></div>
+                <div className="whs-fig"><span>篇均</span><b>{standing?.totals?.per || '—'}</b></div>
+              </div>
+            </header>
 
-        <div className="msch-grid" id="msch-grid" aria-live="polite">
-          {loadErr && <p className="msch-empty">{loadErr}<br />
-            <button type="button" className="msch-act" onClick={() => { void load() }}>重新读取</button></p>}
-          {!loadErr && !data && <p className="msch-empty">院校清单读取中……</p>}
-          {data && list.length === 0 && <p className="msch-empty">没有匹配的学校</p>}
-          {groups.map((g) => g.items.length > 0 && (
-            <div key={g.label} className="msch-gsec">
-              <h2 className="msch-gtitle">{g.label}</h2>
-              <div className="msch-ggrid">
-                {g.items.map((s) => (
-                  <Slot key={s.cn} s={s} st={cards[s.cn]} inQueue={queue.includes(s.cn)}
-                        onGen={() => { void gen(s.cn) }} onQueue={() => toggleQueue(s.cn)} />
+            <div className="whs-rule" aria-hidden="true" />
+
+            <div className="whs-tools">
+              {school?.url && (
+                <a className="whs-tool" href={school.url} target="_blank" rel="noopener">打开报告 ↗</a>
+              )}
+              {school && (
+                school.generated
+                  ? <button type="button" className="whs-tool"
+                            disabled={!!genBusy}
+                            onClick={() => { void gen(school.cn) }}>
+                      {genBusy === school.cn ? '重新生成中…' : '重新生成'}
+                    </button>
+                  : <button type="button" className="whs-tool go"
+                              disabled={!!genBusy}
+                              onClick={() => { void gen(school.cn) }}>
+                      {genBusy === school.cn ? '生成中…' : '生成报告'}
+                    </button>
+              )}
+              <button type="button" className="whs-tool" onClick={() => setPickOpen(true)}>院校清单</button>
+            </div>
+
+            {genErr && <p className="whs-empty" role="alert">{genErr}</p>}
+
+            {loadErr && (
+              <p className="whs-empty">
+                <b>清单没读到</b>{loadErr}
+                <button type="button" className="whs-tool" onClick={() => { void load() }}>重新读取</button>
+              </p>
+            )}
+            {!loadErr && !data && <p className="whs-empty">院校清单读取中……</p>}
+
+            {data && !htmlBusy && !standing && !htmlErr && school && (
+              <p className="whs-empty">
+                <b>{school.known ? '这一期还没有报告' : '本期 ESI 未收录该校'}</b>
+              </p>
+            )}
+            {htmlErr && <p className="whs-empty" role="alert">{htmlErr}</p>}
+
+            {standing && (
+              <section className="whs-tbl" role="table" aria-label="22 学科站位">
+                <div className="whs-hd" role="row">
+                  <span role="columnheader">学科</span>
+                  <span role="columnheader">全球排名</span>
+                  <span role="columnheader">国内排名</span>
+                  <span role="columnheader">论文</span>
+                  <span role="columnheader">被引</span>
+                  <span role="columnheader">篇均</span>
+                </div>
+                {rows.map((r) => (
+                  <div key={r.cn} className="whs-rw" role="row">
+                    <span className="whs-nm" role="cell">{r.cn}<i aria-hidden="true" /></span>
+                    <span className="whs-rn" role="cell">{r.rank}</span>
+                    <span className="whs-rn" role="cell">{r.rankCn}</span>
+                    <span className="whs-nv" role="cell">{r.papers}</span>
+                    <span className="whs-nv" role="cell">{r.cites}</span>
+                    <span className="whs-nv" role="cell">{r.per}</span>
+                  </div>
+                ))}
+                {rows.length > 0 && absent.length > 0 && <div className="whs-seg" role="presentation" />}
+                {absent.map((d) => (
+                  <div key={d.cn} className="whs-rw off" role="row">
+                    <span className="whs-nm" role="cell">{d.cn}</span>
+                    <span role="cell">—</span>
+                    <span role="cell">—</span>
+                    <span role="cell">—</span>
+                    <span role="cell">—</span>
+                    <span role="cell">—</span>
+                  </div>
+                ))}
+              </section>
+            )}
+
+            {queue.length > 0 && (
+              <div className="whs-queue" role="region" aria-label="对比队列">
+                <span className="whs-qn">对 比</span>
+                <span className="whs-chips">
+                  {queue.map((name) => (
+                    <button key={name} type="button" className="whs-chip" title="移出队列"
+                            onClick={() => toggleQueue(name)}>{name}<i aria-hidden="true">×</i></button>
+                  ))}
+                </span>
+                <button type="button" className="whs-qgo"
+                        disabled={cmpBusy || queue.length < 2}
+                        onClick={() => { void genCompare() }}>
+                  {cmpBusy ? '生成中…' : '一键生成对比'}
+                </button>
+              </div>
+            )}
+
+            <footer className="whs-foot">文衡 · Clarivate ESI {data?.period ?? '—'}</footer>
+          </div>
+        </main>
+      </div>
+
+      {pickOpen && (
+        <div className="whs-mask" onClick={() => setPickOpen(false)}>
+          <aside className="whs-drawer" role="dialog" aria-modal="true" aria-label="院校清单"
+                 onClick={(e) => e.stopPropagation()}>
+            <header className="whs-dh">
+              <h2>院校清单</h2>
+              <span>{nAll} 所</span>
+              <button type="button" className="whs-dx" aria-label="关闭"
+                      onClick={() => setPickOpen(false)}>✕</button>
+            </header>
+            <div className="whs-dbar">
+              <div className="whs-tabs" role="tablist" aria-label="院校分组">
+                {(['all', '985', '211'] as const).map((t) => (
+                  <button key={t} type="button" role="tab" className="whs-tab"
+                          aria-pressed={tier === t} onClick={() => setTier(t)}>
+                    {t === 'all' ? '全部' : t === '985' ? '985' : '211'}
+                    <em>{t === 'all' ? nAll : t === '985' ? n985 : nAll - n985}</em>
+                  </button>
                 ))}
               </div>
+              <div className="whs-search">
+                <input type="search" value={q} placeholder="搜校名" aria-label="搜校名"
+                       onChange={(e) => setQ(e.target.value)} />
+              </div>
             </div>
-          ))}
-        </div>
-
-        {queue.length > 0 && (
-          <div className="msch-queue" role="region" aria-label="对比队列">
-            <span className="msch-queue-n">对比队列 {queue.length}</span>
-            <span className="msch-chips">
-              {queue.map((cn) => (
-                <button key={cn} type="button" className="msch-chip" title="移出队列"
-                        onClick={() => toggleQueue(cn)}>{cn} ×</button>
+            <ul className="whs-list">
+              {list.map((s: MonitorSchool) => (
+                <li key={s.cn} className={`whs-li${s.cn === cn ? ' now' : ''}`}>
+                  <button type="button" onClick={() => { setCn(s.cn); setPickOpen(false) }}>
+                    <span className="whs-ln">{s.cn}</span>
+                    <span className={`whs-ls ${s.generated ? 'ok' : s.known ? '' : 'warn'}`}>
+                      {s.generated ? '已生成' : s.known ? '未生成' : '未入册'}
+                    </span>
+                  </button>
+                  <button type="button" className="whs-plus" aria-pressed={queue.includes(s.cn)}
+                          aria-label={`${queue.includes(s.cn) ? '移出' : '加入'}对比队列：${s.cn}`}
+                          title={queue.includes(s.cn) ? '移出对比队列' : '加入对比队列'}
+                          onClick={() => toggleQueue(s.cn)}>＋</button>
+                </li>
               ))}
-            </span>
-            <button type="button" className="msch-act go msch-go"
-                    disabled={cmpBusy || queue.length < 2}
-                    title={queue.length < 2 ? '至少选 2 所' : '生成对比报告（不限数量）'}
-                    onClick={() => { void genCompare() }}>
-              {cmpBusy ? '生成中…' : '一键生成对比'}
-            </button>
-          </div>
-        )}
-        {data?.built && <p className="msch-foot">数据期 {data.period} · 缓存建于 {data.built} ·
-          名单按教育部名录与 ESI 机构写法校准（分址院校在 ESI 为单一实体，并一卡呈现）</p>}
-      </main>
-    </div>
-  )
-}
-
-function Slot({ s, st, inQueue, onGen, onQueue }:
-              { s: MonitorSchool; st?: CardState; inQueue: boolean;
-                onGen: () => void; onQueue: () => void }) {
-  const busy = st?.busy
-  const qHas = inQueue
-  const done = st?.done || s.generated
-  return (
-    <article className="msch-slot">
-      <div className="msch-top">
-        <i className="msch-mg" aria-hidden="true">{s.cn.charAt(0)}</i>
-        <span className="msch-topr">
-          <button type="button"
-                  className={`msch-add ${qHas ? 'on' : ''}`}
-                  aria-pressed={qHas}
-                  title={qHas ? '移出对比队列' : '加入对比队列'}
-                  aria-label={`${qHas ? '移出' : '加入'}对比队列：${s.cn}`}
-                  onClick={(e) => { e.stopPropagation(); onQueue() }}>＋</button>
-          <span className={`msch-bdg ${s.is985 ? 'b985' : 'b211'}`}>{s.is985 ? '985' : '211'}</span>
-        </span>
-      </div>
-      <h3>{s.cn}</h3>
-      <div className="msch-foot-row">
-        {st?.err
-          ? <span className="msch-st msch-st-err">{st.err}</span>
-          : <span className={`msch-st ${busy ? 'msch-st-run' : done ? 'msch-st-draft' : 'msch-st-new'}`}>
-              {busy ? '生成中' : done ? '已生成' : s.known ? '未生成' : '未入册'}
-            </span>}
-        {busy
-          ? <span className="msch-act" aria-disabled="true" />
-          : done && s.url
-            ? <a className="msch-act go" href={s.url} target="_blank" rel="noopener">查看</a>
-            : <button className="msch-act go" type="button" onClick={onGen}
-                      title={s.known ? `生成 ${s.cn} 的站位报告` : '本期 ESI 未收录该校——报告会如实呈现未上榜'}>
-                生成
-              </button>}
-      </div>
-      {busy && (
-        <div className="msch-prog">
-          <div className="msch-tr"><div className="msch-fl"
-            style={{ width: `${(Math.min(st?.step ?? 0, RUN_STEPS.length - 1) + 1) / RUN_STEPS.length * 100}%` }} /></div>
-          <p className="msch-lb">第 {Math.min((st?.step ?? 0) + 1, RUN_STEPS.length)}/{RUN_STEPS.length} 步 · {RUN_STEPS[Math.min(st?.step ?? 0, RUN_STEPS.length - 1)]}</p>
+              {data && list.length === 0 && <li className="whs-empty">没有匹配的学校</li>}
+            </ul>
+            <div className="whs-dfoot">
+              <button type="button" className="whs-dbtn go"
+                      disabled={cmpBusy || queue.length < 2}
+                      onClick={() => { void genCompare() }}>
+                {cmpBusy ? '生成中…' : `生成对比（${queue.length}）`}
+              </button>
+              <button type="button" className="whs-dbtn" onClick={() => setQueue([])}
+                      disabled={!queue.length}>清空对比</button>
+            </div>
+          </aside>
         </div>
       )}
-    </article>
+    </div>
   )
 }

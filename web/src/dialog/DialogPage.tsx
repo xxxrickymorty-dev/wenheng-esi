@@ -8,15 +8,13 @@
    出好了＝报告初稿 / 对勘本 / 红件清单；覆盖确认＝行内二次确认（复用 `ConfirmButton`），
    回滚走既有 `rollback-points` / `rollback`（旧稿在 `_superseded/`）。 */
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import type { EChartsOption } from 'echarts'
+import { useEffect, useRef, useState } from 'react'
 import { req, getArtifacts, getJobProgress, getMe, getPeriods,
          getRollbackPoints, postJob, rollbackPeriod,
          type Me, type RollbackPoint } from '../api'
 import { getDialogHome, postDialogTurnStream,
          type DialogAction, type DialogAnswer, type DialogHome, type DialogQa, type DialogReceipt, type DialogReply,
          type DialogRun } from '../api-dialog'
-import { ChartFigure } from '../charts/ChartFigure'
 import { runFlexibleStream, stopFlexible, type FlexCheck, type FlexStreamEvent } from '../api-flexible'
 import { ConfirmButton } from '../ConfirmButton'
 import { clearSlot, conversationTitle, emptySlots, hasSlots,
@@ -81,19 +79,6 @@ const LANDING_EXAMPLES = [
 ]
 
 const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms))
-
-/** 侧栏宽度（2026-10-29 rick：要能拖着调）。范围与默认值都写死一处，别处只读。 */
-const SIDE_KEY = 'wenheng-dlg-side'
-const SIDE_MIN = 208
-const SIDE_MAX = 420
-const SIDE_DEF = 264
-function initialSideWidth(): number {
-  try {
-    const v = Number(localStorage.getItem(SIDE_KEY))
-    if (Number.isFinite(v) && v >= SIDE_MIN && v <= SIDE_MAX) return v
-  } catch { /* 浏览器不许存就用默认宽 */ }
-  return SIDE_DEF
-}
 
 /** 相对时间（2026-10-29）：列表右侧只写「3天」这种量级——精确到秒没人看。 */
 function relTime(iso: string): string {
@@ -183,8 +168,8 @@ export default function DialogPage() {
   /* 本轮正在发生的工具调用（流式时实时追加；答完随回合落进 turns[i].tools） */
   const [liveTools, setLiveTools] = useState<ToolCall[]>([])
   const [modelMsg, setModelMsg] = useState('')
-  /* 侧栏宽度／用户菜单／搜索（2026-10-29 照 DeepSeek harness 的侧栏） */
-  const [sideW, setSideW] = useState(initialSideWidth)
+  /* 侧栏（会话记录）／用户菜单／搜索（2026-10-29 照 DeepSeek harness 的侧栏；20261102 收进抽屉） */
+  const [histOpen, setHistOpen] = useState(false)
   const [meMenu, setMeMenu] = useState(false)
   const [q, setQ] = useState('')
   const [qOpen, setQOpen] = useState(false)
@@ -686,27 +671,13 @@ export default function DialogPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [me])
 
-  /** 拖侧栏右缘调宽（2026-10-29）：pointer 事件整套走 window，拖出侧栏也不断。 */
-  function startResize(e: ReactPointerEvent<HTMLDivElement>) {
-    e.preventDefault()
-    const startX = e.clientX
-    const startW = sideW
-    const move = (ev: PointerEvent) => {
-      setSideW(Math.min(SIDE_MAX, Math.max(SIDE_MIN, startW + ev.clientX - startX)))
-    }
-    const up = () => {
-      window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', up)
-      document.body.classList.remove('dlg-resizing')
-      setSideW((w) => {
-        try { localStorage.setItem(SIDE_KEY, String(Math.round(w))) } catch { /* 存不了就这页有效 */ }
-        return w
-      })
-    }
-    document.body.classList.add('dlg-resizing')
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', up)
-  }
+  /* 会话记录抽屉：Esc 收起（20261102）。 */
+  useEffect(() => {
+    if (!histOpen) return
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setHistOpen(false) }
+    document.addEventListener('keydown', onEsc)
+    return () => document.removeEventListener('keydown', onEsc)
+  }, [histOpen])
 
   /* 侧栏清单：本地这段对话不重复出现（它就是当前这段），搜索只按标题过滤。 */
   const savedList = saved.filter((x) => x.id !== active?.sessionId)
@@ -728,42 +699,30 @@ export default function DialogPage() {
     return period && href !== '/app/shelf/' ? buildPeriodUrl(href, period) : href
   }
 
+  const docName = active.title || '问文衡'
+  const period = active.slots.period || home?.period || ''
+
   return (
-    <div className="dlg-shell">
+    <div className="wd-root">
       <a className="dlg-skip" href="#dlg-thread">跳到对话内容</a>
       <h1 className="dlg-vh">文衡 · 对话前门</h1>
 
-      <aside className="dlg-side" style={{ width: `${sideW}px` }}>
-        {/* 顶部两页签（照 DeepSeek harness：应用 / 编辑 → 对话 / 工作台） */}
-        <div className="dlg-tabs">
-          <a className="dlg-tab on" href="/app/dialog/" aria-current="page">对话</a>
-          <a className="dlg-tab" href={withPeriod('/app/')}>工作台</a>
+      {/* 会话记录：抽屉（历史一条不丢；Esc / 点蒙版收起） */}
+      <aside className={`dlg-side wd-drawer${histOpen ? ' open' : ''}`} aria-label="会话记录">
+        <div className="wd-dh">
+          <h2>会话记录</h2>
+          <span>问文衡</span>
+          <button type="button" className="wd-dx" aria-label="收起会话记录"
+                  onClick={() => setHistOpen(false)}>✕</button>
         </div>
-
-        <div className="dlg-brand"><strong>文衡</strong><span>ESI 报告台</span></div>
 
         <button className="dlg-newchat" type="button" onClick={newChat}>
           <span className="dlg-newchat-i" aria-hidden="true">＋</span>新对话
         </button>
 
-        <nav className="dlg-nav" aria-label="功能入口">
-          <a href={withPeriod('/app/?view=tools')}>
-            <span className="dlg-nav-i" aria-hidden="true">◈</span>工具
-          </a>
-          <a href={withPeriod('/app/?view=archive')}>
-            <span className="dlg-nav-i" aria-hidden="true">▤</span>运行档案
-          </a>
-          <a href={withPeriod('/app/?view=review')}>
-            <span className="dlg-nav-i" aria-hidden="true">✎</span>审核台
-          </a>
-          <a href="/app/schools/">
-            <span className="dlg-nav-i" aria-hidden="true">▦</span>高校ESI报告
-          </a>
-        </nav>
-
         <div className="dlg-ws">
           <div className="dlg-ws-h">
-            <span>工作区</span>
+            <span>最近</span>
             <div className="dlg-ws-tools">
               <button type="button" aria-label="搜索对话" title="搜索对话"
                       onClick={() => setQOpen((v) => !v)}>⌕</button>
@@ -828,32 +787,109 @@ export default function DialogPage() {
           )}
         </div>
 
-        <div className="dlg-resize" role="separator" aria-orientation="vertical"
-             aria-label="拖动调节侧栏宽度" title="拖动调节宽度"
-             onPointerDown={startResize} />
       </aside>
 
-      <section className="dlg-main">
-        <header className="dlg-topbar">
-          <span className="dlg-ttl">{active.title || '新对话'}</span>
-          <div className="dlg-right">
-            <SlotChip label="期次" value={active.slots.period}
-                      onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'period') }))} />
-            <SlotChip label="意图" value={active.slots.intent}
-                      onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'intent') }))} />
-            <SlotChip label="学科" value={active.slots.qdisc}
-                      onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'qdisc') }))} />
-            <SlotChip label="指标" value={active.slots.qmetric}
-                      onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'qmetric') }))} />
-            {hasSlots(active.slots) && (
-              <span className="dlg-vh" role="status">
-                {`当前槽位：期次 ${active.slots.period || '未设'}，意图 ${active.slots.intent || '未设'}`}
-              </span>
-            )}
-          </div>
-        </header>
+      {histOpen && <div className="wd-mask" role="presentation" onClick={() => setHistOpen(false)} />}
 
-        <div className="dlg-thread" ref={threadRef} id="dlg-thread" aria-live="polite">
+      <div className="wd-spread">
+        <aside className="wd-l">
+          <i className="wd-seal" aria-hidden="true">衡</i>
+          <header className="wd-bm">
+            <b>文衡</b>
+            <span>云南大学图书馆<br />学科信息参考</span>
+          </header>
+          <nav className="wd-nav" aria-label="工作区">
+            <a href="/app/">出报告</a>
+            <a href="/app/?view=analysis">分析台</a>
+            <a href="/app/schools/">高校 ESI 报告</a>
+            <a href="/app/dialog/" aria-current="page">问文衡</a>
+            <span className="wd-m" aria-hidden="true">管 理</span>
+            <a href="/app/?view=archive">运行档案</a>
+            <a className="wd-q" href="/app/shelf/">陈列馆 ↗</a>
+          </nav>
+          <footer className="wd-idb">
+            <div className="wd-hair" aria-hidden="true" />
+            <p>{me?.name || '馆员'} · {me?.role === 'admin' ? '管理员' : '馆员'}</p>
+          </footer>
+        </aside>
+
+        <main className="wd-r">
+          <div className="wd-sheet">
+            <header className="wd-intro">
+              <p className="wd-eyebrow">问文衡</p>
+              <h1>问一句，答一条</h1>
+            </header>
+
+            <section className="wd-stage">
+              <div className="wd-win" role="group" aria-label="问文衡会话窗口">
+
+                <div className="wd-bar">
+                  <span className="wd-lights" aria-hidden="true"><i /><i /><i /></span>
+                  <button type="button" className="wd-ibar" aria-label="会话记录" title="会话记录"
+                          onClick={() => setHistOpen(true)}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                         stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
+                      <rect x="2" y="3" width="12" height="10" rx="1.5" /><path d="M6 3v10" />
+                    </svg>
+                  </button>
+                  <span className="wd-doc" title={docName}>{docName}</span>
+                  <span className="wd-crumb">问文衡 / 会话{period ? ` / ${period}` : ''}</span>
+                  <div className="wd-slots">
+                    <SlotChip label="期次" value={active.slots.period}
+                              onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'period') }))} />
+                    <SlotChip label="意图" value={active.slots.intent}
+                              onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'intent') }))} />
+                    <SlotChip label="学科" value={active.slots.qdisc}
+                              onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'qdisc') }))} />
+                    <SlotChip label="指标" value={active.slots.qmetric}
+                              onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'qmetric') }))} />
+                    {hasSlots(active.slots) && (
+                      <span className="dlg-vh" role="status">
+                        {`当前槽位：期次 ${active.slots.period || '未设'}，意图 ${active.slots.intent || '未设'}`}
+                      </span>
+                    )}
+                  </div>
+                  <div className="wd-tools">
+                    <button type="button" className="wd-tool" aria-label="搜索会话" title="搜索会话"
+                            onClick={() => { setHistOpen(true); setQOpen(true) }}>
+                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none"
+                           stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
+                        <circle cx="7" cy="7" r="4.2" /><path d="M10.2 10.2 14 14" />
+                      </svg>
+                    </button>
+                    <button type="button" className="wd-tool" aria-label="新对话" title="新对话"
+                            onClick={newChat}>
+                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none"
+                           stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
+                        <path d="M8 3v10M3 8h10" />
+                      </svg>
+                    </button>
+                    <span className="wd-menus">
+                      <button type="button" className="wd-tool" aria-label="更多" title="更多"
+                              aria-haspopup="menu" aria-expanded={meMenu}
+                              onClick={() => setMeMenu((v) => !v)}>
+                        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                          <circle cx="3.2" cy="8" r="1.2" /><circle cx="8" cy="8" r="1.2" />
+                          <circle cx="12.8" cy="8" r="1.2" />
+                        </svg>
+                      </button>
+                      {meMenu && (
+                        <div className="wd-menu" role="menu">
+                          {me?.role === 'admin' && (
+                            <button type="button" role="menuitem"
+                                    onClick={() => { setMeMenu(false); setSettingsOpen(true) }}>
+                              模型设置<kbd>Ctrl + ,</kbd>
+                            </button>
+                          )}
+                          <a role="menuitem" href="/logout">退出登录</a>
+                        </div>
+                      )}
+                    </span>
+                  </div>
+                </div>
+                <div className="wd-fade" aria-hidden="true" />
+
+                <div className="dlg-thread" ref={threadRef} id="dlg-thread" aria-live="polite">
           <div className="dlg-thread-in">
             {active.turns.length === 0 && (
               <section className="dlg-land" aria-label="文衡首页">
@@ -909,13 +945,9 @@ export default function DialogPage() {
                   {!!t.tools?.length && <ToolTrace calls={t.tools} />}
                   {t.text}
                   {t.answer && <AnswerBlock answer={t.answer} />}
-                  {t.qa && <QaChart qa={t.qa} />}
+                  {t.qa && <QaCards qa={t.qa} />}
                   {t.notice && <p className="dlg-notice">{t.notice}</p>}
-                  {t.who === 'wh' && t.elapsed != null && (
-                    <p className="dlg-notice">
-                      耗时 {(t.elapsed / 1000).toFixed(1)} 秒{t.ts ? ` · ${t.ts}` : ''}
-                    </p>
-                  )}
+                  {t.who === 'wh' && t.ts && <p className="dlg-notice">{t.ts}</p>}
                   {t.trace && (
                     <div className="dlg-trk" aria-live="polite">
                       <div className="dlg-trk-h">
@@ -1013,6 +1045,7 @@ export default function DialogPage() {
                     <ReceiptBar receipts={t.receipts} />
                   )}
                 </div>
+                {t.who === 'me' && t.ts && <p className="dlg-t">{t.ts}</p>}
               </div>
             ))}
             {busy && (
@@ -1055,18 +1088,27 @@ export default function DialogPage() {
                 <ModelMenu payload={models} busy={busy || !!running}
                            onPicked={(id) => void pickModel(id)} />
                 {running ? (
-                  <button className="dlg-send" type="button" aria-label="停止出稿"
-                          onClick={() => void stopRun()}>■</button>
+                  <button className="dlg-send stop" type="button" aria-label="停止出稿"
+                          onClick={() => void stopRun()}>停</button>
                 ) : (
                   <button className="dlg-send" type="submit" aria-label="发送"
-                          disabled={busy || !input.trim()}>↑</button>
+                          disabled={busy || !input.trim()}>发送
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"
+                         stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+                      <path d="M8 13V3M4 7l4-4 4 4" />
+                    </svg>
+                  </button>
                 )}
               </div>
             </div>
             {modelMsg && <p className="dlg-composer-note">{modelMsg}</p>}
           </form>
         </div>
-      </section>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
 
       <ModelSettings open={settingsOpen} me={me}
                      onClose={() => setSettingsOpen(false)}
@@ -1149,9 +1191,11 @@ function fallbackNote(notice: string): { human: string; detail: string } | null 
 function AnswerBlock({ answer }: { answer: DialogAnswer }) {
   const answered = answer.mode === 'model' || answer.mode === 'rule'
   const fb = fallbackNote(answer.notice)
+  const thr = thresholdOf(answer)
   return (
     <div className="dlg-ans">
       {!!answer.text && <NumberedText text={answer.text} sources={answer.sources} />}
+      {thr && <ThresholdCard vm={thr} />}
       {!!answer.rule_text && answer.rule_text !== answer.text && (
         <details className="dlg-rule">
           <summary>看规则版</summary>
@@ -1186,70 +1230,156 @@ function AnswerBlock({ answer }: { answer: DialogAnswer }) {
   )
 }
 
-/** 问数图块（2026-10-31）：图型建议是柱/折/饼且引擎给了序列才画（table／空序列不画）。
-    option 照问数工作台同款（颜色取站内令牌）；复用图册的 ChartFigure 画布——
-    进入视野才初始化、随宽自适应、卸载销毁。前端只做形状搬运，不换算数值。 */
-function qaOption(qa: DialogQa): EChartsOption | null {
+/** 嵌入卡（20261102）：表格卡 / 折线卡（内联 SVG）/ 阈值卡，同一套壳（8px、纸色、一档浅阴影）。
+    数据只搬后端 `qa.chart_data` 与 `answer.sources` 的成品字串；折线只算画布坐标，
+    不换算任何比率；阈值卡的倍数取后端「接近度」，前端不自己除。 */
+const fmtNum = (v: number | null | undefined) =>
+  v == null ? '—' : v.toLocaleString('en-US')
+
+function QaCards({ qa }: { qa: DialogQa }) {
   const cd = qa.chart_data
-  const kind = qa.chart?.kind
-  if (!cd || !cd.series?.length || (kind !== 'bar' && kind !== 'line' && kind !== 'pie')) {
-    return null
-  }
-  const styles = getComputedStyle(document.documentElement)
-  const ink = styles.getPropertyValue('--ink').trim() || '#15222B'
-  const accent = styles.getPropertyValue('--zhu').trim() || '#26483B'
-  const line = styles.getPropertyValue('--line').trim() || '#D6D0C0'
-  if (kind === 'pie') {
-    return {
-      textStyle: { color: ink },
-      tooltip: { trigger: 'item' },
-      legend: { bottom: 0, textStyle: { color: ink } },
-      series: [{
-        type: 'pie', radius: ['35%', '68%'],
-        data: cd.categories
-          .map((c, i) => ({ name: String(c), value: cd.series[0].data[i] }))
-          .filter((d): d is { name: string; value: number } => d.value != null),
-        label: { color: ink },
-      }],
-    }
-  }
-  if (kind === 'line') {
-    return {
-      textStyle: { color: ink },
-      tooltip: { trigger: 'axis' },
-      grid: { left: 70, right: 24, top: 30, bottom: 40 },
-      xAxis: { type: 'category', data: cd.categories,
-               axisLine: { lineStyle: { color: line } }, axisLabel: { color: ink } },
-      yAxis: { type: 'value', splitLine: { lineStyle: { color: line } },
-               axisLabel: { color: ink } },
-      series: cd.series.map((s) => ({
-        type: 'line', name: s.name, data: s.data,
-        itemStyle: { color: accent }, lineStyle: { color: accent, width: 2 }, symbolSize: 5,
-      })),
-    }
-  }
+  if (!cd?.series?.length) return null
+  if (qa.chart?.kind === 'line') return <LineCard qa={qa} />
+  return <TableCard qa={qa} />
+}
+
+function TableCard({ qa }: { qa: DialogQa }) {
+  const cd = qa.chart_data
+  const head = qa.chart?.x || '项目'
+  const title = cd.title || qa.chart?.title || '问数'
+  const sub = qa.chart?.y?.join(' / ') || ''
+  const showSub = !!sub && !title.replace(/\s/g, '').includes(sub.replace(/\s/g, ''))
+  return (
+    <div className="wd-card">
+      <div className="wd-card-h">
+        <b>{title}</b>
+        {showSub && <span>{sub}</span>}
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">{head}</th>
+            {cd.series.map((s) => (
+              <th key={s.name} scope="col" className="wd-n">{s.name}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {cd.categories.map((c, i) => (
+            <tr key={`${i}-${String(c)}`}>
+              <td className="wd-per">{String(c)}</td>
+              {cd.series.map((s) => (
+                <td key={s.name} className="wd-n">{fmtNum(s.data[i])}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+/** 折线卡：372×150 画布，三条浅网格＋基线；末点标后端原值。 */
+function LineCard({ qa }: { qa: DialogQa }) {
+  const cd = qa.chart_data
+  const series = cd.series[0]
+  const vals = series.data
+  const nums = vals.filter((v): v is number => v != null)
+  if (!nums.length) return null
+  const min = Math.min(...nums)
+  const max = Math.max(...nums)
+  const lo = 20
+  const hi = 118
+  const left = 46
+  const right = 344
+  const x = (i: number) => vals.length <= 1 ? left : left + (i / (vals.length - 1)) * (right - left)
+  const y = (v: number) => (max === min ? (lo + hi) / 2 : hi - ((v - min) / (max - min)) * (hi - lo))
+  const pts = vals.map((v, i) => v == null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`)
+    .filter((s): s is string => s != null).join(' ')
+  const lastIdx = vals.length - 1
+  const last = vals[lastIdx]
+  const grid = [0, 0.5, 1].map((t) => min + (max - min) * t)
+  const xTicks = vals.length > 1
+    ? Array.from(new Set([0, Math.floor(lastIdx / 2), lastIdx])).filter((i) => i >= 0)
+    : [0]
+  return (
+    <div className="wd-card">
+      <div className="wd-card-h">
+        <b>{cd.title || qa.chart?.title || '走势'}</b>
+      </div>
+      <div className="wd-chart">
+        <svg viewBox="0 0 372 150" role="img"
+             aria-label={`${cd.title || series.name}走势，末值 ${fmtNum(last)}`}>
+          {grid.map((v) => (
+            <line key={v} className="wd-gl" x1={left} y1={y(v).toFixed(1)}
+                  x2={right} y2={y(v).toFixed(1)} />
+          ))}
+          {grid.map((v) => (
+            <text key={`l-${v}`} className="wd-yl" x={left - 4} y={(y(v) + 3.5).toFixed(1)}>
+              {fmtNum(Math.round(v))}
+            </text>
+          ))}
+          <line className="wd-base" x1={left} y1="118" x2={right} y2="118" />
+          <polyline points={pts} />
+          {last != null && (
+            <>
+              <circle className="wd-last" cx={x(lastIdx).toFixed(1)} cy={y(last).toFixed(1)} r="3" />
+              <text className="wd-lv" x={x(lastIdx) - 2} y={y(last) - 8}>{fmtNum(last)}</text>
+            </>
+          )}
+          {xTicks.map((i) => (
+            <text key={`x-${i}`} className="wd-xl" x={x(i).toFixed(1)} y="132">
+              {String(cd.categories[i] ?? '')}
+            </text>
+          ))}
+        </svg>
+      </div>
+    </div>
+  )
+}
+
+/** 阈值卡：横条 ＋ 条上刻度 0 / 1× / 8×。两个数取后端来源；位置用后端「接近度」，
+    前端只做 0–8× 的画布映射（不显示任何自算倍数）。来源不齐就不出卡。 */
+type ThresholdVM = { label: string; value: string; threshold: string; ratio: number | null }
+
+function thresholdOf(answer: DialogAnswer): ThresholdVM | null {
+  const has = (re: RegExp) => answer.sources.find((s) => re.test(`${s.label} ${s.detail}`))
+  const thr = has(/阈值|门槛/)
+  const val = has(/总被引|被引/)
+  if (!thr?.value || !val?.value) return null
+  const prox = has(/接近度/)
+  const pct = Number(String(prox?.value ?? '').replace(/[^\d.]/g, ''))
   return {
-    textStyle: { color: ink },
-    tooltip: { trigger: 'axis' },
-    grid: { left: 70, right: 24, top: 30, bottom: 60 },
-    xAxis: { type: 'category', data: cd.categories,
-             axisLine: { lineStyle: { color: line } },
-             axisLabel: { color: ink, rotate: cd.categories.length > 8 ? 30 : 0 } },
-    yAxis: { type: 'value', splitLine: { lineStyle: { color: line } },
-             axisLabel: { color: ink } },
-    series: cd.series.map((s) => ({
-      type: 'bar', name: s.name, data: s.data, itemStyle: { color: accent },
-    })),
+    label: (thr.label.split('#').pop() || 'ESI 阈值').trim(),
+    value: val.value,
+    threshold: thr.value,
+    ratio: Number.isFinite(pct) && pct > 0 ? pct / 100 : null,
   }
 }
 
-function QaChart({ qa }: { qa: DialogQa }) {
-  const option = useMemo(() => qaOption(qa), [qa])
-  if (!option) return null
+function ThresholdCard({ vm }: { vm: ThresholdVM }) {
+  const at = vm.ratio == null ? null : Math.max(0, Math.min(8, vm.ratio))
+  const pct = at == null ? null : (at / 8) * 100
   return (
-    <div className="dlg-qachart">
-      <ChartFigure option={option} height={230}
-                   ariaLabel={qa.chart_data.title || '问数图表'} />
+    <div className="wd-card">
+      <div className="wd-card-h"><b>{vm.label}</b></div>
+      <div className="wd-thr">
+        <div className="wd-track" role="img"
+             aria-label={`${vm.label}：${vm.value}，门槛 ${vm.threshold}`}>
+          {pct != null && <span className="wd-fill" style={{ width: `${pct}%` }} />}
+          <span className="wd-tick" style={{ left: '12.5%' }} />
+          {pct != null && <span className="wd-dot" style={{ left: `${pct}%` }} />}
+        </div>
+        <div className="wd-nums">
+          <p className="wd-n"><b>{vm.value}</b><span>被引</span></p>
+          <p className="wd-n wd-nr"><b>{vm.threshold}</b><span>门槛</span></p>
+        </div>
+        <div className="wd-scale" aria-hidden="true">
+          <span style={{ left: 0 }}>0</span>
+          <span style={{ left: '12.5%' }}>1×</span>
+          <span style={{ left: '100%' }}>8×</span>
+        </div>
+      </div>
     </div>
   )
 }

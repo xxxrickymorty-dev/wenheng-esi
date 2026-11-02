@@ -19,10 +19,49 @@ from .. import acquisition, approval, archive, config, jobs
 from ..guards import admin_route, user_file_route, user_route
 from ..web_common import (_job_missing, _operator_download_guard,
                           _role_of_request, _serve_artifact,
-                          _visible_artifacts, current_user)
+                          _visible_artifacts, current_user, period_cards)
 from src import ledger as ledger_mod  # 动态监测表（母本）路径唯一口径（2026-10-13：input/ 只放母本）
 
 router = APIRouter()
+
+
+@router.get("/api/archive/ledger")
+@user_route
+async def api_archive_ledger(request: Request):
+    """运行档案总账：每一次运行一行（期次 / 状态 / 签发 / 时间 / 产物）。
+
+    《运行档案-静态稿（20261102）》要的是「全部期次的留痕总账」，单期详情仍走
+    `GET /api/periods/{period}/archive`（前端 `?view=archive&one=<期次>`）。
+    本口只透传任务记录与签单记录里**已有**的字段：没有 finished_at 就用 created_at，
+    没有产物字段就留空串——不推算、不补零，前端据此显示「—」。
+    """
+    cards = {c["period"]: c for c in period_cards()}
+    rows = []
+    for j in jobs.list_jobs(limit=500):
+        pid = j.get("out_period") or j.get("period") or ""
+        card = cards.get(pid) or {}
+        rows.append({
+            "id": j.get("id") or "",
+            "period": pid,
+            "status": j.get("status") or "",
+            "at": j.get("finished_at") or j.get("created_at") or "",
+            "artifact": "报告" if j.get("stats") else "",
+            "approval": card.get("status") or "",
+            "signed_at": card.get("signed_at") or "",
+        })
+    # 有成品但没有运行记录的期次也要露一行（静态稿里 202603 就是这种）：
+    # 它签过单，只是这一库没有它的任务记录——留白比不出现更诚实。
+    seen = {r["period"] for r in rows}
+    for pid, card in cards.items():
+        if pid in seen:
+            continue
+        rows.append({
+            "id": "", "period": pid, "status": "", "at": "", "artifact": "",
+            "approval": card.get("status") or "",
+            "signed_at": card.get("signed_at") or "",
+        })
+    rows.sort(key=lambda r: (r["period"], r["at"]), reverse=True)
+    return {"rows": rows, "periods": len({r["period"] for r in rows if r["period"]})}
 
 
 @router.get("/api/jobs/{job_id}/approval")

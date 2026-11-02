@@ -11,7 +11,11 @@
    开馆仪式（光柱/书册画外飞入/标题逐字砸印/句号金印泥）、常驻鼠标视差（四层按深度）、
    滚动镜头（首屏滚出时场景后退变暗）、每站自触发的段内错峰揭示、四站截图 3D 翻入、
    大数印章砸落/边界清单逐条盖入。标题拆字用 Chars（aria-label 保全文）。
-   旧约束「不循环/位移≤20px」已被 rick 口谕推翻；reduced-motion 全降级仍守。 */
+   旧约束「不循环/位移≤20px」已被 rick 口谕推翻；reduced-motion 全降级仍守。
+   2026-11-01 图一改版（rick：陈列馆由图二改为图一）：首屏由「深木书房」换成「银杏米墙」——
+   底图 shelf-ginkgo.webp（封面设计·书架陈列-银杏 web-assets/bg.jpg）＋金线画框＋右上题名栏
+   （学科信息参考 / 英文间隔字 / 期次行，期次行来自最新一册的真数据）；光柱与浮尘随暗场退役，
+   五册改等高纯陈列，主次信号移交题名栏；开馆动效（落架/砸印/托板扫光）保留只调色。 */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
@@ -39,29 +43,21 @@ const DESIGN_MAP: Record<string, { design: string; cover: string }> = {
   '202601': { design: '校门', cover: 'xiaomen.webp' },
 }
 
-/* 静态稿五册 x＝16.8% 起步、步长 13.7%；板右缘约 85%，超出五册时按剩余空间收紧步长 */
-/* 书架排布（2026-10-26 方案 C 重写）：改为「按总宽居中」。
-   旧法固定 16.8% 起、步长 13.7%，加册只压步长、压到 0 就叠——当期抬高后书更宽，
-   旧法必然压到下一册。新法：先按标准间距累加总宽，再整体居中。
-   n=5 无当期抬高时输出与旧法几乎一致（16.7 / 30.4 / 44.2 / 57.9 / 71.6），
-   当期抬高时靠自身宽度自然让位，6 册（含待装帧）时向两侧摊平。 */
-const H_STD = 24.9 // 与 .vol 的 height 一致
-const H_FEATURED = 30.4 // 与 .vol.is-featured 的 height 一致
-/** 书架高宽比 1600/1067 × 书封 210/297：把「高度百分比」换算成「宽度百分比」 */
-const W_RATIO = (1067 / 1600) * (210 / 297)
-const W_STD = H_STD * W_RATIO
-const W_FEATURED = H_FEATURED * W_RATIO
-const GAP = 1.96 // 标准间距（%），沿用旧法的步长 13.7 − 书宽 11.74
+/* 书架排布（2026-10-26 方案 C；2026-11-01 图一改版改宽度制）：
+   书宽按「架宽百分比」定（CSS .vol{width:12.4%}，高由 210/297 比例自derive），
+   先按标准间距累加总宽、再整体居中；6 册（含待装帧）总宽 ≈ 84%，两侧留边。
+   图一改版后五册等高，featured 不再加宽——主次信号在右上题名栏的期次行。 */
+const W_STD = 13 // 单册宽（架宽 %，与 shelf-landing.css .vol width 一致）
+const GAP = 1.9    // 标准间距（%）
 
-function volLayout(n: number, featuredIdx: number): string[] {
+function volLayout(n: number): string[] {
   if (n <= 0) return []
-  const widths = Array.from({ length: n }, (_, i) => (i === featuredIdx ? W_FEATURED : W_STD))
-  const total = widths.reduce((a, b) => a + b, 0) + GAP * (n - 1)
+  const total = W_STD * n + GAP * (n - 1)
   let x = Math.max(2, (100 - total) / 2)
   const out: string[] = []
   for (let i = 0; i < n; i++) {
     out.push(`${x.toFixed(1)}%`)
-    x += widths[i] + GAP
+    x += W_STD + GAP
   }
   return out
 }
@@ -123,11 +119,11 @@ function designLabel(design: string) {
 
 /* 标题拆字（大胆稿）：砸印动效逐字播，--ci 是字序号；h2 的金线划出按字数计时（--ch-n）。
    读屏走外层的 aria-label 整句，字符层 aria-hidden——动效不承载信息。 */
-function Chars({ text, sealLast = false, from = 0 }: { text: string; sealLast?: boolean; from?: number }) {
+function Chars({ text, from = 0 }: { text: string; from?: number }) {
   return (
     <span aria-hidden="true">
       {Array.from(text).map((ch, i) => (
-        <span key={i} className={`ch${sealLast && i === text.length - 1 ? ' seal' : ''}`}
+        <span key={i} className="ch"
               style={{ '--ci': i + from } as CSSProperties}>{ch}</span>
       ))}
     </span>
@@ -141,25 +137,18 @@ function fmt(n?: number) {
 type DetailState = { open: boolean; period: string }
 const DETAIL_CLOSED: DetailState = { open: false, period: '' }
 
-/* 浮尘（2026-10-27 大胆稿：8 粒，照进光柱的微尘）：金色微尘，各自不同的周期与延时，避免同频成阵。
-   只是氛围，不放数字、不代表状态；prefers-reduced-motion 下整层不渲染。 */
-const DUST = [
-  { x: '14%', dur: '24s', delay: '0s' },
-  { x: '27%', dur: '31s', delay: '4s' },
-  { x: '43%', dur: '27s', delay: '9s' },
-  { x: '58%', dur: '34s', delay: '2s' },
-  { x: '71%', dur: '29s', delay: '13s' },
-  { x: '86%', dur: '26s', delay: '6s' },
-  { x: '35%', dur: '36s', delay: '16s' },
-  { x: '64%', dur: '22s', delay: '11s' },
-]
-
 export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHomeProps) {
   const vols = useMemo(() => buildVols(books, pendingPeriods ?? []), [books, pendingPeriods])
-  /* 排布一次算好：当期下标决定每册多宽，宽度又决定后面每一册的起点 */
-  const xs = useMemo(() => volLayout(vols.length, vols.findIndex((v) => v.featured)), [vols])
+  /* 排布一次算好：等宽陈列，整体居中（图一改版后与当期无关） */
+  const xs = useMemo(() => volLayout(vols.length), [vols])
   const realCount = vols.filter((v) => !v.pending).length
   const [detail, setDetail] = useState<DetailState>(DETAIL_CLOSED)
+
+  /* 题名栏期次行（图一）：最新一册的「2026 年第 5 期 · 总第 39 期」——全部来自封面数据，不编数 */
+  const latest = vols.find((v) => !v.pending)
+  const issueLine = latest
+    ? (latest.total !== undefined ? `${latest.issue} · 总第 ${latest.total} 期` : latest.issue)
+    : ''
 
   /* 「連 續 記 錄 · N 期」的 N：取各册 cover[2] 解析出的总期数最大值 */
   let maxTotal: number | undefined
@@ -238,10 +227,9 @@ export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHom
     }
   }, [])
 
-  /* 视差 + 滚动镜头（大胆稿 B/C）：标题/书架/浮尘/光柱四层按 data-depth 3D 倾斜；
-     离开首屏时场景后退＋变暗（镜头拉远离馆）。桌面指针 + 非降级才启动；
-     一个 rAF 循环双输入（pointermove / scroll），lerp 0.08 缓动。
-     开场亮场动画 fill both 会占住 filter——滚动镜头一启动就杀掉它（dataset.litKilled 一次性）。 */
+  /* 视差 + 滚动镜头（大胆稿 B/C，图一改版收两）：题名栏/书架两层按 data-depth 3D 倾斜；
+     离开首屏时场景轻微退淡。桌面指针 + 非降级才启动；一个 rAF 循环双输入（pointermove / scroll），
+     lerp 0.08 缓动。亮场动画 fill both 停在终态（opacity:1），不再需要滚动时 kill。 */
   useEffect(() => {
     if (!window.matchMedia('(hover:hover) and (pointer:fine)').matches) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
@@ -257,20 +245,14 @@ export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHom
       const p = Math.min(1, Math.max(0, window.scrollY / (vh * 0.9)))
       for (const el of layers) {
         const d = parseFloat(el.dataset.depth || '1')
-        /* rotate 独立属性一次只认一根轴：书架/浮尘走双轴 transform，标题/光柱走单轴 rotate */
-        if (el.classList.contains('lit') || el.classList.contains('dust')) {
+        /* rotate 独立属性一次只认一根轴：书架（整场）走双轴 transform，题名栏走单轴 rotate */
+        if (el.classList.contains('shelf')) {
           el.style.transform = `rotateX(${(-cy * 1.2 * d).toFixed(3)}deg) rotateY(${(cx * 1.6 * d).toFixed(3)}deg)`
         } else {
           el.style.rotate = `y ${(cx * 1.6 * d).toFixed(3)}deg`
         }
-        if (el.classList.contains('lit')) {
-          if (p > 0 && !el.dataset.litKilled) { el.style.animation = 'none'; el.dataset.litKilled = '1' }
-          el.style.translate = `0 ${(-p * 6).toFixed(2)}%`
-          el.style.scale = String(1 - p * 0.05)
-          el.style.filter = `brightness(${(1 - p * 0.28).toFixed(3)})`
-        }
       }
-      view.style.opacity = String(1 - p * 0.35)
+      view.style.opacity = String(1 - p * 0.25)
       if (Math.abs(mx - cx) > 0.001 || Math.abs(my - cy) > 0.001 || p < 1) raf = requestAnimationFrame(frame)
       else raf = 0
     }
@@ -303,19 +285,16 @@ export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHom
         <div className="brand-txt"><b>文衡 · 陈列馆</b><span>云南大学图书馆</span></div>
       </header>
 
-      {/* 首屏 · 书架（data-depth＝视差层深度：越接近 1 越在「架」这一层） */}
+      {/* 首屏 · 书架（data-depth＝视差层深度：越接近 1 越在「架」这一层；图一：米墙＋金线框＋题名栏） */}
       <section className="shelf-view">
-        <span className="lightbeam" data-depth="0.3" aria-hidden="true" />
-        <span className="dust" data-depth="1.5" aria-hidden="true">
-          {DUST.map((d) => (
-            <i key={d.x} style={{ '--x': d.x, '--dur': d.dur, '--delay': d.delay } as CSSProperties} />
-          ))}
-        </span>
+        <span className="wallframe" aria-hidden="true" />
         <div className="headline" data-depth="0.55">
-          <h1 aria-label="一年六期，一期一册。">
-            <Chars text="一年六期，一期一册。" sealLast />
+          <p className="cap-rule" aria-hidden="true"><span className="line" /><span className="dia" /></p>
+          <h1 aria-label="学科信息参考">
+            <Chars text="学科信息参考" />
           </h1>
-          <p>云南大学图书馆 · 学科信息参考 · 2026 年馆藏</p>
+          <p className="cap-en" aria-hidden="true">DISCIPLINARY INFORMATION REFERENCE</p>
+          {issueLine && <p className="cap-issue">{issueLine}</p>}
         </div>
         <div className="shelf lit" id="shelf" data-depth="1" aria-label={`2026 年馆藏，共 ${realCount} 册`}>
           {/* 新书期次待装帧：DESIGN_MAP 查不到封面时用深绿底期号占位（样式见 shelf-landing.css）。
@@ -353,7 +332,8 @@ export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHom
               </a>
             )
           })}
-          {/* 滚动提示：2026-10-26 从 section 底部挪进书架内部，按托板线定位（见 shelf-landing.css .down） */}
+          {/* 滚动提示：图一改版后挂在 .shelf-view 层（.shelf 自成层叠上下文，
+              留在架层里会被纸色渐变盖住；按托板线定位见 shelf-landing.css .down） */}
           <p className="down">向 下 滚 动 · 逐 期 册 页</p>
         </div>
         {/* 角落编号：2026-10-26 收进 .shelf-view 内。原来挂在外层，

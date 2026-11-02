@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/noto-serif-sc'
 import '../index.css'
 import './dialog.css'
+import './window.css'
 import DialogPage from './DialogPage'
 
 const rootElement = document.getElementById('root')

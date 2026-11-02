@@ -218,6 +218,22 @@ export async function getArchive(period: string): Promise<ArchiveData> {
   return req<ArchiveData>(`/api/periods/${encodeURIComponent(period)}/archive`)
 }
 
+/** 运行档案总账的一行＝一次运行；字段与后端任务记录同口径，缺的留空（前端显示「—」）。 */
+export type ArchiveLedgerRow = {
+  id: string
+  period: string
+  status: string
+  at: string
+  artifact: string
+  approval: string
+  signed_at: string
+}
+
+/** 运行档案总账（2026-11-02 静态稿）：全部期次的每一次运行，新→旧 */
+export async function getArchiveLedger(): Promise<{ rows: ArchiveLedgerRow[]; periods: number }> {
+  return req<{ rows: ArchiveLedgerRow[]; periods: number }>('/api/archive/ledger')
+}
+
 /** 下载数据台状态（契约 §2.2 #26）：没有下载数据记录时只有 {period, started:false}。
     形状与 server/acquisition.py 的文档串一致；缺字段按「未就绪」显示，不编数据。 */
 export type AcqFile = { name?: string; label?: string; state?: string }

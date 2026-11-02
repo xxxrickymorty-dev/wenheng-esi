@@ -91,30 +91,14 @@ function Banners({ wb, err, healthy, onRerun, canRerun, period, approvalStatus }
   return null
 }
 
-/* ---------- v2 流程图：四节点（取数/生成/审计/签发）＋连接符（静态稿 v2 同构） ---------- */
+/* ---------- 本期动态：三步目次行（2026-11-02 静态稿「出报告」） ----------
+   点线引渡到行尾、状态用色＋形＋字三重；不再画四节点流程图——
+   「取数 / 生成 / 审计 / 签发」那套节点与四步流水（壹贰叁肆）重复，审计读数并进第三步的说明。 */
 
-type NodeSt = 'done' | 'now' | 'bad' | 'todo'
+type StepSt = 'done' | 'now' | 'wait' | 'bad'
 
-function FlowNode({ k, st, v, n }: { k: string; st: NodeSt; v: string; n?: string }) {
-  return (
-    <div className={`wb2-node ${st}`}>
-      <span className="k">{k}</span>
-      <span className="v">{v}</span>
-      {n && <span className="n">{n}</span>}
-      <span className="mark" aria-hidden="true">
-        {st === 'done' ? '✓' : st === 'bad' ? '✕' : st === 'now' ? '●' : ''}
-      </span>
-    </div>
-  )
-}
-
-function FlowLink({ st }: { st: 'ok' | 'bad' | 'todo' }) {
-  return (
-    <span className={`wb2-link ${st}`} aria-hidden="true">
-      {st === 'ok' ? '✓' : st === 'bad' ? '✕' : '·'}
-    </span>
-  )
-}
+const STEP_CN = ['一', '二', '三']
+const STEP_ST: Record<StepSt, string> = { done: '已完成', now: '进行中', wait: '未开始', bad: '未完成' }
 
 /** 差值只留两位小数、去尾零（接近度是百分数点值，两期相减会有浮点尾巴） */
 function fmtDelta(n: number): string {
@@ -221,45 +205,25 @@ export function Workbench({
   const gaugePotential = gaugePool.filter((r) => r.state !== 'in')
   const gaugeRows = gaugePotential.length ? gaugePotential : gaugePool
 
-  /* ── v2 四节点：空·待生成·生成中·已出稿·失败·已签发，同一张图（状态长在图上）── */
-  const acqSum = detail?.acquisition
-  const merged = acqSum?.copy === 'merged'
-  const av = acqSum?.verified, ae = acqSum?.expected
+  /* ── 本期动态三步（ADR-0004：取数 → 核对并并入 → 一键生成）──
+     状态长在目次行上：已完成为实心金方、进行中为脉冲金方、未开始为空方、未完成为一枚 ✕。
+     第三步的说明捎上审计读数（原四节点里的「N 项过」不再单独占一格）。 */
   const running = live || wb.state === 'running'
-  const lastAt = detail?.lastJob?.created_at
-    ? detail.lastJob.created_at.slice(5, 16).replace('T', ' ') : ''
-  const fetchNode: { st: NodeSt; v: string; n?: string } =
-    wb.state === 'fail-ledger' ? { st: 'bad', v: '✕ 数据没齐', n: '解析拦停' }
-      : merged ? { st: 'done', v: av != null && ae != null ? `${av} / ${ae}` : '已并入', n: '已并入台账' }
-        : acqSum?.started || detail?.steps?.fetch ? { st: 'now', v: '未并入', n: '在取数台' }
-          : { st: 'now', v: '未开始' }
-  const genNode: { st: NodeSt; v: string; n?: string } = running
-    ? { st: 'now', v: '⟳ 生成中', n: run?.last ?? '正在跑' }
-    : wb.state === 'fail-other' || wb.state === 'stalled' ? { st: 'bad', v: '✕ 没出稿', n: '上一版仍有效' }
-      : wb.state === 'fail-ledger' ? { st: 'todo', v: '—' }
-        : generated ? { st: 'done', v: '已出稿', n: lastAt || undefined }
-          : wb.state === 'ready' ? { st: 'now', v: '待生成', n: '约 3 分钟' }
-            : { st: 'todo', v: '—' }
-  const auditNode: { st: NodeSt; v: string; n?: string } = !generated && !running
-    ? { st: 'todo', v: '—' }
-    : audit
-      ? (audit.fail
-          ? { st: 'bad', v: `✕ ${audit.fail} 项不过`, n: '看校验说明' }
-          : { st: 'done', v: `${audit.pass} 项过`, n: audit.review ? `${audit.review} 项待签看` : '机器断言全过' })
-      : { st: 'done', v: '已审计', n: '读数在运行档案' }
-  const signNode: { st: NodeSt; v: string; n?: string } =
-    approvalStatus === 'signed' ? { st: 'done', v: '已签发', n: '报告可下载' }
-      : approvalStatus === 'stale' ? { st: 'now', v: '待重签', n: '内容改过，签名失效' }
-        : generated && !running ? { st: 'now', v: '待签发', n: '复核后签单' }
-          : { st: 'todo', v: '—' }
-  const linkSt = (a: NodeSt): 'ok' | 'bad' | 'todo' =>
-    a === 'done' ? 'ok' : a === 'bad' ? 'bad' : 'todo'
+  const genFailed = wb.state === 'fail-other' || wb.state === 'stalled' || wb.state === 'fail-ledger'
+  const genTail = running ? '进行中'
+    : genFailed ? (wb.state === 'fail-ledger' ? '数据没齐' : '没出稿')
+      : generated
+        ? (audit ? `已完成 · ${audit.fail ? `${audit.fail} 项不过` : `${audit.pass} 项过`}` : '已完成')
+        : '未开始'
+  const stepRows = wb.steps.map((s, i) => {
+    const st: StepSt = i !== 2 ? (s.on ? 'done' : s.now ? 'now' : 'wait')
+      : (running ? 'now' : genFailed ? 'bad' : s.on ? 'done' : s.now ? 'now' : 'wait')
+    return { key: s.key, title: s.title, st, tail: i === 2 ? genTail : STEP_ST[st] }
+  })
   /* 上一期一行（期次列表新→旧，右邻一位即上一期；不编日期） */
   const prevIdx = periods.findIndex(p => p.period === period)
   const prevP = prevIdx >= 0 ? periods[prevIdx + 1] : undefined
-  const prevLine = prevP
-    ? `上一期 ${prevP.period} · ${prevP.status === 'signed' ? '已签发' : prevP.status === 'stale' ? '待重签' : '未签发'}`
-    : ''
+  const prevWord = prevP?.status === 'signed' ? '已签发' : prevP?.status === 'stale' ? '待重签' : '未签发'
   /* 上一期水位（2026-10-24 本期读数）：单独再取一次，取不到 → 不出「较上一期」差值小签。
      只在本期已有矩阵读数时才取——本期没有（未出稿 / 临时期次），上一期多半也没有，
      白跑一趟只会给没开过的期次打出 404 噪声。 */
@@ -309,8 +273,9 @@ export function Workbench({
 
   return (
     <>
-      {/* v2 极致低密（2026-10-24 rick 过审，静态稿 v2 同构）：一行期次身份＋四节点流程图＋一行主动作。
-          旧题头（题句/状态药丸/翻牌）与故事条退役——故事回放迁往「可视化工作流」屏。 */}
+      {/* 当期目次（2026-11-02 静态稿「出报告」落 React）：一行期次身份＋本期动态三步目次行
+          ＋一行主动作＋上期已出刊。四节点流程图撤掉——它和上面四步流水（壹贰叁肆）重复，
+          审计读数并进第三步说明。 */}
       <section className="wb2" aria-label="本期进度">
         <div className="wb2-line">
           <h1 className="wb2-period">本期 {period ?? '——————'}</h1>
@@ -318,53 +283,69 @@ export function Workbench({
             {issueNo ? `第 ${issueNo} 期` : '期次待定'}
             {detail?.window ? ` · 数据截至 ${detail.window}` : ''}
           </span>
-          {prevLine && <span className="prev">{prevLine}</span>}
         </div>
-        <div className="wb2-flow">
-          <FlowNode k="取 数" st={fetchNode.st} v={fetchNode.v} n={fetchNode.n} />
-          <FlowLink st={linkSt(fetchNode.st)} />
-          <FlowNode k="生 成" st={genNode.st} v={genNode.v} n={genNode.n} />
-          <FlowLink st={linkSt(genNode.st)} />
-          <FlowNode k="审 计" st={auditNode.st} v={auditNode.v} n={auditNode.n} />
-          <FlowLink st={linkSt(auditNode.st)} />
-          <FlowNode k="签 发" st={signNode.st} v={signNode.v} n={signNode.n} />
-        </div>
-        <div className="wb2-cta">
-          {wb.focusAction === 'generate' && canRun && (
-            <button className="btn primary big" onClick={onGenerate} disabled={!canGenerate}>
-              <Icon name="play" size={20} />开始生成
-            </button>
-          )}
-          {wb.focusAction === 'rerun' && canRun && (
-            <ConfirmButton className="btn primary big" disabled={!canGenerate}
-                           confirmText="确认重跑？会撤下当前成品" onConfirm={onGenerate}
-                           autoConfirm={autoConfirmRerun}>
-              <Icon name="refresh" size={20} />重新生成
-            </ConfirmButton>
-          )}
-          {wb.focusAction === 'sign' && (
-            <a className="btn primary big" href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
-              <Icon name="seal" size={20} />复核并签单
+
+        <section className="wb-toc" aria-label="本期动态">
+          <h2>本期动态</h2>
+          <ol>
+            {stepRows.map((r, i) => (
+              <li key={r.key} className={r.st}>
+                <span className="num" aria-hidden="true">{STEP_CN[i]}</span>
+                <span className="name">{r.title}</span>
+                <span className="lead" aria-hidden="true" />
+                <span className="st"><i className={`mk mk-${r.st}`} aria-hidden="true" />{r.tail}</span>
+              </li>
+            ))}
+          </ol>
+          <div className="wb-acts">
+            {wb.focusAction === 'generate' && canRun && (
+              <button className="btn primary big" onClick={onGenerate} disabled={!canGenerate}>
+                <Icon name="play" size={20} />开始生成
+              </button>
+            )}
+            {wb.focusAction === 'rerun' && canRun && (
+              <ConfirmButton className="btn primary big" disabled={!canGenerate}
+                             confirmText="确认重跑？会撤下当前成品" onConfirm={onGenerate}
+                             autoConfirm={autoConfirmRerun}>
+                <Icon name="refresh" size={20} />重新生成
+              </ConfirmButton>
+            )}
+            {wb.focusAction === 'sign' && (
+              <a className="btn primary big" href={`/app/?view=review${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+                <Icon name="seal" size={20} />复核并签单
+              </a>
+            )}
+            {wb.focusAction === 'open' && (
+              <a className="btn primary big" href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+                <Icon name="doc" size={20} />打开报告
+              </a>
+            )}
+            {wb.focusAction === 'acquire' && isAdmin && (
+              <a className="btn primary big" href={`/app/?view=acquire${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+                <Icon name="download" size={20} />去取数台
+              </a>
+            )}
+            <a className="btn wb2-ghost" href={`/app/?view=pano${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
+              查看可视化工作流 →
             </a>
-          )}
-          {wb.focusAction === 'open' && (
-            <a className="btn primary big" href={`/app/?view=report${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
-              <Icon name="doc" size={20} />打开报告
-            </a>
-          )}
-          {wb.focusAction === 'acquire' && isAdmin && (
-            <a className="btn primary big" href={`/app/?view=acquire${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
-              <Icon name="download" size={20} />去取数台
-            </a>
-          )}
-          <a className="btn wb2-ghost" href={`/app/?view=pano${period ? `&period=${encodeURIComponent(period)}` : ''}`}>
-            查看可视化工作流 →
-          </a>
-          {why && <span className="why">{why}</span>}
-          <Info label="状态从哪来">
-            <p>取数/生成节点来自单期详情与任务记录；审计读数来自运行档案；签发状态来自审核台签单。本页只读，不改任何数据。</p>
-          </Info>
-        </div>
+            {why && <span className="why">{why}</span>}
+            <Info label="状态从哪来">
+              <p>取数与生成来自单期详情与任务记录；审计读数来自运行档案；签发状态来自审核台签单。本页只读，不改任何数据。</p>
+            </Info>
+          </div>
+        </section>
+
+        {prevP && (
+          <p className="wb-prev">
+            <span className="k">{prevWord === '已签发' ? '上期已出刊' : '上一期'}</span>
+            <span className="rl" aria-hidden="true" />
+            <span className="iss">{prevP.period}</span>
+            <span className={`sg ${prevP.status}`}>
+              {prevWord === '已签发' && <i className="sk" aria-hidden="true">签</i>}
+              {prevWord}
+            </span>
+          </p>
+        )}
       </section>
 
       {/* 本期读数（2026-10-24）：学科矩阵三枚真值＋较上一期差值小签（读法沿用报告读数带）。

@@ -1,0 +1,75 @@
+/* 运行档案 · 总账（右页排印，照《运行档案-静态稿（20261102）》）
+   只服务 ArchiveLedger.tsx：报头两枚数 / 一道金线 / 一期一组的留痕表。
+   令牌与壳在 index.css（--deep / --paper / --seam / --ink / --muted / --hair）；
+   字号只取六档 11 / 12 / 13.5 / 15 / 19 / 26，数字一律 tabular-nums。
+   圆角：本页是表与行，没有卡片/窗件/气泡，故不出现圆角（主壳方角照旧）。 */
+
+/* ───── 报头：大题 ＋ 两枚真值（期 / 运行） ───── */
+.al-mast{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 30px;flex-wrap:wrap}
+.al-mast h1{margin:0;font-family:var(--serif);font-weight:600;font-size:26px;line-height:1.3;
+  letter-spacing:.05em;color:var(--ink)}
+.al-figs{display:flex;gap:18px;padding-bottom:5px}
+.al-fig{display:flex;flex-direction:column;gap:3px}
+.al-fig span{font-family:var(--kai);font-size:11px;letter-spacing:.22em;color:var(--muted)}
+.al-fig b{font-family:var(--serif);font-weight:600;font-size:26px;line-height:1.2;
+  color:var(--ink);font-variant-numeric:tabular-nums}
+
+.al-rule{height:1px;background:var(--seam);margin:clamp(14px,2.4vh,24px) 0 clamp(12px,2vh,20px)}
+
+/* 详情屏左上角：回总账（总账 ↔ 详情是两屏，给一条回去的路） */
+.al-back{margin:0 0 10px}
+.al-back a{display:inline-flex;align-items:center;min-height:32px;font-size:12px;letter-spacing:.08em;
+  color:var(--muted);border-bottom:1px solid transparent;transition:color .3s cubic-bezier(.32,.72,0,1)}
+.al-back a:hover{color:var(--ink);border-bottom-color:var(--seam)}
+
+.al-hint{margin:0 0 8px;font-size:12px;letter-spacing:.04em;color:var(--warn)}
+.al-note{margin:0 0 10px;font-size:12px;letter-spacing:.02em;color:var(--warn)}
+.al-empty{margin:0;padding:clamp(46px,9vh,88px) 0;font-family:var(--serif);font-size:19px;
+  letter-spacing:.08em;color:var(--ink-2)}
+
+/* ───── 留痕表：去竖线，组间一道金线，组内发丝横线 ───── */
+.al-tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.al-led{width:100%;min-width:620px;border-collapse:collapse;table-layout:fixed}
+.al-led thead th{font-family:var(--kai);font-weight:400;font-size:11px;letter-spacing:.28em;
+  color:var(--muted);text-align:left;padding:0 12px 8px 0;border-bottom:1px solid var(--seam);
+  white-space:nowrap}
+.al-led td,.al-led tbody th{padding:0 12px 0 0;height:36px;text-align:left;font-size:13.5px;
+  color:var(--ink-2);vertical-align:middle;font-variant-numeric:tabular-nums}
+.al-led tbody tr>*{border-bottom:1px solid var(--hair)}
+.al-led tbody tr.gstart>*{border-top:1px solid var(--seam)}
+.al-led tbody:first-of-type tr.gstart>*{border-top:0}
+
+/* 期次：衬线大字，点一下进那一期详情 */
+.al-led .per{padding-right:14px}
+.al-led .per button{font-family:var(--serif);font-weight:600;font-size:19px;letter-spacing:.06em;
+  color:var(--ink);padding:6px 2px;min-height:36px;cursor:pointer;
+  border-bottom:1px solid transparent;transition:border-color .3s cubic-bezier(.32,.72,0,1)}
+.al-led .per button:hover{border-bottom-color:var(--seam)}
+
+/* 状态：色 ＋ 形 ＋ 字三重 */
+.al-led .st{display:inline-flex;align-items:center;gap:9px;letter-spacing:.04em}
+.al-led .mk{width:8px;height:8px;flex:none}
+.al-led .mk-ok{background:var(--ok)}
+.al-led .mk-warn{background:var(--warn);transform:rotate(45deg)}
+.al-led .mk-fail{background:var(--bad)}
+.al-led .mk-run{border:1px solid var(--muted)}
+.al-led .mk-none{border:1px solid var(--line)}
+.al-led .r-ok{color:var(--ink-2)}
+.al-led .r-warn{color:var(--warn);font-weight:600}
+.al-led .r-fail{color:var(--ink);font-weight:600}
+.al-led .r-run{color:var(--muted)}
+.al-led .r-none{color:var(--muted)}
+
+/* 签发：印即色＋形，字补第三重；日期压一档 */
+.al-led .signc{vertical-align:top;padding-top:11px}
+.al-led .sg{display:inline-flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.1em;
+  color:var(--muted);white-space:nowrap}
+.al-led .sg.signed{color:var(--ok);font-weight:600}
+.al-led .sg.stale{color:var(--warn);font-weight:600}
+.al-led .sk{width:20px;height:20px;display:grid;place-items:center;background:var(--deep);
+  color:var(--ivory);font-family:var(--kai);font-style:normal;font-size:12px;line-height:1;
+  transform:rotate(-4deg);box-shadow:var(--shadow)}
+.al-led .sd{display:block;margin:3px 0 0 29px;font-size:11px;letter-spacing:.02em;color:var(--muted)}
+
+.al-led .ts{white-space:nowrap;color:var(--muted);letter-spacing:.02em}
+.al-led .artc{vertical-align:top;padding-top:12px;color:var(--ink-2)}

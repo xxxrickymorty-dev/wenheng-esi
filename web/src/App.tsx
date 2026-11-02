@@ -32,7 +32,7 @@ import { Tools } from './Tools'
 import { Report } from './Report'
 import { Review } from './Review'
 import { Ledger } from './Ledger'
-import { Analysis } from './Analysis'
+import { AnalysisPage } from './AnalysisPage'
 import { Aiqa } from './Aiqa'
 import { RedList } from './RedList'
 import { Charts } from './Charts'
@@ -40,6 +40,7 @@ import { Reading } from './Reading'
 import { Trace } from './Trace'
 import { Forecast } from './Forecast'
 import { Archive } from './Archive'
+import { ArchiveLedger } from './ArchiveLedger'
 import { Panorama } from './Panorama'
 import { HealSandbox } from './HealSandbox'
 import { MigrateSandbox } from './MigrateSandbox'
@@ -151,6 +152,9 @@ export default function App() {
   /* ?period= 深链：从老站迁移过来的等价地址（老站 /p/<期次> → 新站 ?view=report&period=<期次>） */
   const wantPeriod = new URLSearchParams(location.search).get('period')
   const _v = new URLSearchParams(location.search).get('view')
+  /* 运行档案（2026-11-02）：默认是全部期次的留痕总账；`&one=<期次>` 才进那一期详情。
+     总账与详情是两屏，用同一个 view 加一个参数区分——不新增导航位。 */
+  const archiveOne = new URLSearchParams(location.search).get('one')
   const view: 'workbench' | 'acquire' | 'pick' | 'report' | 'review' | 'ledger' | 'analysis' | 'red' | 'charts' | 'reading' | 'trace' | 'forecast' | 'pano' | 'archive' | 'heal' | 'migrate' | 'aiqa' =
     _v === 'acquire' ? 'acquire'
       : _v === 'pick' ? 'pick'
@@ -485,21 +489,30 @@ export default function App() {
      角色（2026-10-11 改两级）：admin＝管理员（全可见）；operator＝操作员（评委/馆员）——
      主台账仅管理员；运行档案、红件清单、逐格溯源、水位、沙盘只读开放；签单/出稿/取数
      按既有政策开放。写动作真门在后端，前端只表达当前角色能看到的入口。
-     2026-10-15 新信息架构（rick 定 A 方案）：**4 主区 + 1 管理** —— 下载数据/审核/预测/红件/图册/对勘/溯源
-     不再是平级入口，降为「出报告」四步流水里的步骤或报告的下钻；深链 ?view=… 一律保留。 */
+     2026-11-02 rick 定稿（跨页书式：左页导航 / 右页工作面）：导航就这五项＋管理组两项，
+     顺序即版式顺序——主区四屏在上、管理区两项在下。少了谁就是少了谁，不再补「即将」占位。
+     2026-10-31 撤出的灵活报告 / 他校简报 / AI 问数不回来（能力已并入高校ESI报告与问文衡，
+     深链 ?view=analysis · /app/panel/ · ?view=aiqa 仍保留，只是不再占导航位）。 */
   const NAV: { key: string; label: string; href: string }[] = [
     { key: 'flow', label: '出报告', href: '/app/' },
-    /* 2026-10-31 rick：灵活报告 / 他校简报 / AI 问数 撤出导航——动线并入高校ESI报告与问文衡，
-       能力下沉（问数并进对话、简报赛后收编监测版趋势章）。页面与深链全保留：
-       /app/?view=analysis · /app/panel/ · /app/?view=aiqa；可视化工作流 2026-10-29 已移陈列馆。 */
+    { key: 'analysis', label: '分析台', href: '/app/?view=analysis' },
+    /* 高校 ESI 报告自成一个静态入口（web/schools），不归工作区路由，故不参与高亮判断 */
+    { key: 'schools', label: '高校 ESI 报告', href: '/app/schools/' },
     { key: 'ask', label: '问文衡', href: '/app/dialog/' },
   ]
-  /* 子屏归到哪个主区（决定顶栏高亮）；report 区已无导航项，子屏顶栏不高亮，属预期 */
+  /* 管理组：只有两项，排在「管 理」题签之后。陈列馆是离开工作区的展示面，
+     2026-11-02 从右上角移到左栏末位（方位变了，去的是同一个地方，↗ 照旧标着）。 */
+  const MANAGE: { key: string; label: string; href: string; jump?: boolean }[] = [
+    { key: 'archive', label: '运行档案', href: '/app/?view=archive' },
+    { key: 'shelf', label: '陈列馆 ↗', href: '/app/shelf/', jump: true },
+  ]
+  /* 子屏归到哪个主区（决定左栏高亮）；report 区已无导航项，子屏一律归「出报告」，
+     因为报告与它的下钻屏都是从四步流水里长出来的；台账/沙盘从运行档案进，跟着它高亮。 */
   const GROUP: Record<string, string> = {
     workbench: 'flow', acquire: 'flow', pick: 'flow', review: 'flow', forecast: 'flow',
-    report: 'report', red: 'report', charts: 'report', reading: 'report', trace: 'report',
-    analysis: 'flexible', aiqa: 'aiqa', pano: 'pano', dialog: 'ask', ledger: 'admin', archive: 'admin',
-    heal: 'admin', migrate: 'admin',
+    report: 'flow', red: 'flow', charts: 'flow', reading: 'flow', trace: 'flow',
+    analysis: 'analysis', aiqa: 'ask', dialog: 'ask', pano: 'flow',
+    archive: 'archive', ledger: 'archive', heal: 'archive', migrate: 'archive',
   }
   /* 「出报告」四步流水（2026-10-19 rick：「选章节」入口关闭——一直空着，核验定稿里已有章节选择）。
      步骤条只在流水屏出现；2026-10-16 二版（rick 拍板）：不画序号——顺序由位置与细线方向表达。
@@ -538,21 +551,26 @@ export default function App() {
         : h.startsWith('/app/?') ? buildPeriodUrl(h, selected) : h
       : h)
   const activeNav = GROUP[view] ?? 'flow'
-  const inFlow = activeNav === 'flow'
+  /* 步骤条只在四步流水自身的屏上出现（报告/图册/红件等是流水长出来的下钻屏，
+     没有「当前第几步」这回事，画一条全是灰的进度线只会误导）。 */
+  const inFlow = ['workbench', 'acquire', 'pick', 'review', 'forecast'].includes(view)
   const flowActive = FLOW_ACTIVE[view] ?? ''
   const flowActiveIdx = Math.max(0, FLOW_STEPS.findIndex((s) => s.key === flowActive))
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-view={view}>
       <Sprite />
       <SealInkDefs />
       <a className="skip-link" href="#main">跳到主要内容</a>
 
-      {/* 顶栏（2026-10-17 庚·卷宗）：品牌 / 导航 / 陈列馆 / 身份；正文自然滚动。 */}
-      <header className="app-top">
+      {/* 左页 · 会泽（2026-11-02 跨页书式）：品牌 / 导航 / 管理组 / 期次与身份。
+          一屏放全、栏内不滚——所以这里不设 overflow（设了 auto 就会出滚动条，设了 hidden
+          又会裁掉 ⓘ 与身份弹层）；靠 clamp 与 44px 行高把总高压在 720px 以内。 */}
+      <aside className="app-page-l">
+        <i className="app-seal" aria-hidden="true">衡</i>
         <a className="app-brand" href={navHref('/app/')}>
           <b>文衡</b>
-          <span>云南大学图书馆 · 学科信息参考</span>
+          <span>云南大学图书馆<br />学科信息参考</span>
         </a>
         <nav className="app-nav" aria-label="工作区">
           {NAV.map((n) => (
@@ -561,54 +579,51 @@ export default function App() {
               {n.label}
             </a>
           ))}
-          {me && (
-            <>
-              <span className="app-nav-sep" aria-hidden="true" />
-              {/* 2026-10-24 rick：导航瘦身——主台账 / 自愈沙盘 / 换馆沙盘撤出导航
-                 （页面与深链 ?view=ledger / heal / migrate 保留；沙盘属智能体演示，
-                 决赛需要时从地址或运行档案进）。运行档案是决赛证据面，留下。 */}
-              <a href={navHref('/app/?view=archive')} aria-current={view === 'archive' ? 'page' : undefined}>
-                运行档案
+          <span className="app-nav-grp" aria-hidden="true">管 理</span>
+          {MANAGE.map((n) => (
+            /* 运行档案是管理面：未登录不渲染（真门在后端）；陈列馆是展示面，谁都能去。 */
+            (n.jump || me) && (
+              <a key={n.key} href={navHref(n.href)}
+                 className={n.jump ? 'app-jump-link' : undefined}
+                 aria-current={activeNav === n.key ? 'page' : undefined}>
+                {n.label}
               </a>
-            </>
-          )}
+            )
+          ))}
         </nav>
-        <div className="app-side">
-          {/* 期次是全局控件（2026-10-17 冗余收敛稿③）：从报告屏印记链升到顶栏，各屏同一份。
-              2026-10-24 rick 工作台减负：生成台尾部「全部期次」折块撤除，签发状态并进这里的
-              option 文案（期次 · 已签发/待重签/未签发）——不再另铺一张状态表。 */}
+        <footer className="app-idb">
+          <span className="app-idb-rule" aria-hidden="true" />
+          {/* 期次是全局控件（各屏同一份）：落到左页底部，正文区不再重复一遍。 */}
           {periods.length > 0 && (
-            <label className="app-period">期次
+            <label className="app-period">
+              <span>期次</span>
               <select value={selected ?? ''} onChange={(e) => pickPeriod(e.target.value)} aria-label="切换期次">
                 {periods.map((p) => <option key={p.period} value={p.period}>{p.period} · {approvalLabel(p.status)}</option>)}
                 {selected && !periods.some((p) => p.period === selected) && <option value={selected}>{selected}</option>}
               </select>
             </label>
           )}
-          {/* 全站唯一一份口径/来源/只读声明（原页脚收进顶栏 ⓘ——2026-10-24 rick：页脚每页重复，徒增信息密度）。
-              合规声明（请勿外传，2026-10-14）一并入内。 */}
-          <Info label="口径、来源与只读声明">
-            <p>① 数字只来自馆员维护的台账与派生产物，运行期大模型不进入数据路径；</p>
-            <p>② 本系统是只读视图，不修改台账与报告；③ 预测章按「本期已选」的已保存选择执行，未列学科用 V1 推荐；④ 期次与状态以任务记录为准，未签发报告不可下载。</p>
-            <p>来源：期内产物目录 · 运行档案 · 预测选模配置。</p>
-            <p>分析报告属于内部资料，仅用于参赛，禁止外传。</p>
-          </Info>
-          {/* 陈列馆＝给人看的「展示面」，不在工作区里——顶栏给一个离开工作区的入口（2026-10-15） */}
-          <a className="app-jump" href="/app/shelf/" title="陈列馆（成品）">
-            陈列馆 <Icon name="arrow" size={14} />
-          </a>
-          {me ? <UserChip me={me} /> : (
-            <span className="user-chip" aria-live="polite">
-              <span className="user-chip-btn" aria-disabled="true">
-                <span className="av">？</span>
-                <span className="user-chip-name">{roleKnown ? '未登录' : '角色确认中…'}</span>
+          <div className="app-idb-row">
+            {/* 全站唯一一份口径/来源/只读声明（原在顶栏 ⓘ；位置变了，内容一字未改）。 */}
+            <Info label="口径、来源与只读声明">
+              <p>① 数字只来自馆员维护的台账与派生产物，运行期大模型不进入数据路径；</p>
+              <p>② 本系统是只读视图，不修改台账与报告；③ 预测章按「本期已选」的已保存选择执行，未列学科用 V1 推荐；④ 期次与状态以任务记录为准，未签发报告不可下载。</p>
+              <p>来源：期内产物目录 · 运行档案 · 预测选模配置。</p>
+              <p>分析报告属于内部资料，仅用于参赛，禁止外传。</p>
+            </Info>
+            {me ? <UserChip me={me} /> : (
+              <span className="user-chip" aria-live="polite">
+                <span className="user-chip-btn" aria-disabled="true">
+                  <span className="av">？</span>
+                  <span className="user-chip-name">{roleKnown ? '未登录' : '角色确认中…'}</span>
+                </span>
               </span>
-            </span>
-          )}
-        </div>
-      </header>
+            )}
+          </div>
+        </footer>
+      </aside>
 
-      <main className="wrap" id="main">
+      <main className="wrap app-main" id="main">
         {/* 本机数据存储只读降级：常驻、不遮操作（不是 toast，自己不会消失）。
             讲人话：哪些不受影响、哪些会失败、东西丢没丢。 */}
         {stateDbWarn && (
@@ -689,8 +704,12 @@ export default function App() {
             live={(!!runForSelected && !isTerminal(runForSelected.status ?? undefined)) || wb.state === 'running'}
             liveNote={runForSelected?.last ?? null} />
         ) : view === 'archive' ? (
+          archiveOne ? (
           <>
-            <Archive period={selected} approvalStatus={approvalStatus} />
+            <p className="al-back">
+              <a href="/app/?view=archive">← 回运行档案总账</a>
+            </p>
+            <Archive period={archiveOne} approvalStatus={approvalStatus} />
             {/* 「这一期的工具」折块（2026-10-24 rick 工作台减负）从生成台迁来：重跑/回滚/上传/
                 日志包都是管理向动作，放运行档案页（管理区）正合适，生成台首屏回归极致低密。
                 门控沿用生成台原条件（角色已确认且可编辑）；props 原样透传，组件本身未动。 */}
@@ -698,10 +717,10 @@ export default function App() {
               <details className="fold">
                 <summary>这一期的工具<span className="sm">重跑 · 回滚 · 台账 · 日志包</span></summary>
                 <p className="hint fold-lead">
-                  看数据源：<a href={`/app/?view=ledger${selected ? `&period=${encodeURIComponent(selected)}` : ''}`}>主台账（只读）→</a>
+                  看数据源：<a href={`/app/?view=ledger&period=${encodeURIComponent(archiveOne)}`}>主台账（只读）→</a>
                 </p>
                 <Tools
-                  period={selected}
+                  period={archiveOne}
                   jobId={runForSelected?.jobId ?? null}
                   approvalStatus={approvalStatus}
                   actionsLocked={jobActionsLocked}
@@ -709,11 +728,20 @@ export default function App() {
                   onActionStart={beginToolAction}
                   onActionEnd={endToolAction}
                   onUploaded={(jobId, period) => { pickPeriod(period); attach(jobId, period) }}
-                  refreshToken={selected ? artifactRefreshByPeriod[selected] ?? 0 : 0}
+                  refreshToken={artifactRefreshByPeriod[archiveOne] ?? 0}
                 />
               </details>
             )}
           </>
+          ) : (
+            /* 总账：一期一组，点期次进那一期详情（`?view=archive&one=<期次>`）。
+               切期次也一并带上，右页与左栏的期次不打架。 */
+            <ArchiveLedger
+              onOpen={(p) => {
+                location.href = `/app/?view=archive&one=${encodeURIComponent(p)}&period=${encodeURIComponent(p)}`
+              }}
+            />
+          )
         ) : view === 'heal' ? (
           <HealSandbox />
         ) : view === 'migrate' ? (
@@ -743,7 +771,9 @@ export default function App() {
         ) : view === 'red' ? (
           <RedList period={selected} canDownload={canDownloadRedList} />
         ) : view === 'analysis' ? (
-          <Analysis period={selected} canEdit={canEdit} />
+          /* 分析台（2026-11-02 静态稿）：同期的两种看法——上面看分布、下面查数。
+             数据全走后端产物（water / charts-data），前端不换算、不聚合。 */
+          <AnalysisPage period={selected} periods={periods} onPick={pickPeriod} />
         ) : view === 'aiqa' ? (
           <Aiqa />
         ) : view === 'ledger' ? (
