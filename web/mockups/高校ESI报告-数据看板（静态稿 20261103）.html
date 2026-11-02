@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<!-- 高校 ESI 报告 · 数据看板（静态稿 20261103）——rick 选定「重排成真看板」方向。
+     在已审的《高校ESI报告-静态稿（20261102）》跨页壳上报头不变，站位数字下新增三块看板：
+     ① 学科站位（14 门被引条形，报告「一 学科站位」表已有字段）
+     ② 进位时间线（报告「三 趋势·进位时间线」文本行：化学 201907 起进入前 1%（41 期在榜）…）
+     ③ 对标 ±3（报告「五 对标·总排名邻近」表，条形按论文——被引七校咬平，论文才是差异所在）
+     数据：云南大学 202609 真值，全部已在后端站位报告 HTML 里算好；前端只搬运显示值。
+     落码约定（React / SchoolsPage）：
+     · parseStanding 增读 td[2] 分位、td[7] 高被引、td[8] 热点；同一次 fetch 顺带解析
+       「三 趋势」的进位行与「五 对标」表——不新增后端接口、不重算任何口径
+     · 图表引擎用项目已有 ECharts（图册 ChartFigure 同源）；取数走 usePeriodResource
+     · 报告没有的校级指标（如国内总排名）继续不补数
+     · 期次仍取 latest_period 单选；选校抽屉 / 对比队列交互不变（本稿未画抽屉）
+     本稿零依赖：图表为按真值手绘的 CSS/SVG，仅作版式与密度规格。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>高校 ESI 报告 · 数据看板（静态稿 20261103）</title>
+<style>
+:root{
+  --deep:#143729; --paper:#F5F3EC; --card:#FAF8F0; --seam:#B08E48;
+  --ink:#15222B; --muted:#6C706A; --line:#DDD7C6;
+  --ok:#276B4C; --warn:#7C5A16; --bad:#B23A2B;
+  --ivory:#F6F1DE; --ivory-2:rgba(246,241,222,.80); --ivory-3:rgba(246,241,222,.55);
+  --hair:rgba(221,215,198,.6);
+  --c1:#15222B; --c2:#4A555E; --c3:#A9B0B4;
+  --serif:"Noto Serif SC Variable","Source Han Serif SC","Noto Serif SC","Songti SC",SimSun,serif;
+  --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --ease:cubic-bezier(.32,.72,0,1);
+  --lw:clamp(232px,24%,320px);
+  min-height:100dvh; background:var(--paper); color:var(--ink);
+  font:15px/1.75 var(--sans); font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:antialiased;
+}
+*,*::before,*::after{box-sizing:border-box}
+h1,h2,p,ul,li{margin:0;padding:0}
+ul{list-style:none}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--ok);outline-offset:2px}
+.whs-l :focus-visible{outline-color:var(--seam)}
+::selection{background:var(--seam);color:var(--ink)}
+
+/* ── 跨页 ── */
+.whs-spread{display:grid;grid-template-columns:var(--lw) minmax(0,1fr);min-height:100dvh;position:relative}
+.whs-spread::after{content:"";position:absolute;top:0;bottom:0;left:var(--lw);width:1px;
+  background:var(--seam);pointer-events:none}
+
+/* ── 左页 · 会泽 ── */
+.whs-l{background:var(--deep);color:var(--ivory);padding:clamp(16px,2.8vh,30px) clamp(18px,1.9vw,30px);
+  display:flex;flex-direction:column;position:sticky;top:0;height:100dvh;overflow:hidden}
+.whs-seal{position:absolute;top:clamp(16px,2.8vh,30px);right:clamp(18px,1.9vw,30px);
+  width:22px;height:22px;background:var(--ivory);color:var(--deep);font-family:var(--kai);
+  font-style:normal;font-size:12px;line-height:1;display:grid;place-items:center;
+  transform:rotate(-6deg);box-shadow:0 1px 2px rgba(21,34,43,.07)}
+.whs-seal::after{content:"";position:absolute;inset:2px;border:1px solid rgba(20,55,41,.5)}
+.whs-bm{display:flex;align-items:baseline;gap:10px}
+.whs-bm b{font-family:var(--serif);font-weight:600;font-size:19px;letter-spacing:.14em}
+.whs-bm span{font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--ivory-3);line-height:1.7}
+.whs-nav{margin:auto 0;display:flex;flex-direction:column;font-size:13.5px;letter-spacing:.05em;color:var(--ivory-2)}
+.whs-nav a{padding:11px 0;min-height:44px;display:flex;align-items:center;gap:10px;transition:color .3s var(--ease)}
+.whs-nav a::before{content:"";width:9px;height:2px;flex:none;background:transparent;transition:background-color .3s var(--ease)}
+.whs-nav a[aria-current]{color:var(--ivory)}
+.whs-nav a[aria-current]::before{background:var(--seam)}
+.whs-nav a:hover{color:var(--ivory)}
+.whs-nav .whs-m{padding:6px 0 4px;font-family:var(--kai);font-size:11px;letter-spacing:.26em;color:var(--ivory-3)}
+.whs-nav .whs-q{opacity:.78}
+.whs-idb{padding-top:14px}
+.whs-idb .whs-rule{width:34px;height:1px;background:var(--seam);margin-bottom:12px}
+.whs-idb p{font-size:12px;letter-spacing:.14em;color:var(--ivory-2)}
+
+/* ── 右页 ── */
+.whs-r{display:flex;min-height:100dvh;min-width:0;
+  padding:clamp(18px,3vh,30px) clamp(22px,3.2vw,46px) clamp(16px,2.4vh,26px)}
+.whs-sheet{width:100%;max-width:960px;display:flex;flex-direction:column;min-width:0}
+
+/* 报头 */
+.whs-bar{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;min-height:44px}
+.whs-eyebrow{font-family:var(--kai);font-size:11px;letter-spacing:.34em;color:var(--muted);
+  display:inline-flex;align-items:center;gap:8px}
+.whs-info{width:18px;height:18px;display:inline-grid;place-items:center;border:1px solid var(--hair);
+  border-radius:6px;font:11px/1 var(--serif);font-style:normal;color:var(--muted);cursor:help}
+.whs-pick{display:flex;align-items:center;gap:12px;margin-bottom:2px}
+.whs-pick .whs-k{font-family:var(--kai);font-size:11px;letter-spacing:.3em;color:var(--muted)}
+.whs-sel{position:relative;display:block;height:44px;border-bottom:1px solid var(--line)}
+.whs-sel select{height:44px;padding:0 26px 0 2px;border:0;border-radius:0;background:none;
+  appearance:none;-webkit-appearance:none;font-family:var(--serif);font-size:19px;
+  letter-spacing:.06em;color:var(--ink);font-variant-numeric:tabular-nums;cursor:pointer}
+.whs-sel select:disabled{cursor:default;color:var(--ink)}
+.whs-sel::after{content:"";position:absolute;right:4px;top:17px;width:6px;height:6px;
+  border-right:1px solid var(--muted);border-bottom:1px solid var(--muted);
+  transform:rotate(45deg);pointer-events:none}
+
+.whs-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 30px;
+  flex-wrap:wrap;margin-top:clamp(6px,1.4vh,14px)}
+.whs-name{display:inline-flex;align-items:baseline;gap:10px;padding:0;text-align:left;
+  font-family:var(--serif);font-weight:600;font-size:26px;line-height:1.3;letter-spacing:.16em;color:var(--ink)}
+.whs-name i{font-style:normal;font-size:11px;letter-spacing:0;color:var(--muted);
+  transform:translateY(-8px);transition:color .2s var(--ease)}
+.whs-name:hover i{color:var(--ok)}
+.whs-figs{display:flex;align-items:flex-end;gap:16px;padding-bottom:5px;flex-wrap:wrap}
+.whs-fig+.whs-fig{border-left:1px solid var(--line);padding-left:16px}
+.whs-fig span{display:block;font-family:var(--kai);font-size:11px;letter-spacing:.22em;
+  color:var(--muted);margin-bottom:3px}
+.whs-fig b{display:block;font-family:var(--serif);font-weight:600;font-size:26px;
+  line-height:1.2;letter-spacing:.02em;white-space:nowrap}
+.whs-fig b i{font-family:var(--sans);font-style:normal;font-size:12px;font-weight:400;
+  letter-spacing:.02em;color:var(--muted);margin-left:5px}
+
+.whs-rule{height:1px;background:var(--seam);margin:clamp(10px,1.8vh,22px) 0 clamp(8px,1.4vh,16px)}
+.whs-tools{display:flex;align-items:center;gap:14px;margin-left:auto;padding-bottom:6px}
+.whs-tool{display:inline-flex;align-items:center;gap:7px;min-height:32px;padding:0 2px;
+  font-size:12px;letter-spacing:.06em;color:var(--muted);
+  border-bottom:1px solid transparent;transition:color .2s var(--ease),border-color .2s var(--ease)}
+.whs-tool:hover{color:var(--ink);border-bottom-color:var(--line)}
+.whs-tool.go{color:var(--ok);border-bottom-color:rgba(39,107,76,.35)}
+.whs-tool.go:hover{color:var(--deep);border-bottom-color:var(--ok)}
+
+/* 章题 */
+.whs-sec{margin-top:clamp(18px,3vh,30px);display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.whs-sec h2{font-family:var(--kai);font-weight:400;font-size:11px;letter-spacing:.34em;color:var(--muted)}
+.whs-sec span{font-size:11px;letter-spacing:.06em;color:var(--muted)}
+
+/* 图表公共 */
+.whs-hd,.whs-rw{align-items:baseline}
+.chart-hd{display:grid;gap:10px;font-family:var(--kai);font-size:11px;letter-spacing:.14em;
+  color:var(--muted);padding-bottom:6px;border-bottom:1px solid var(--hair)}
+.chart-hd span{text-align:right}
+.chart-hd span:first-child,.chart-rw .nm{text-align:left}
+.chart-rw{display:grid;gap:10px;align-items:center;height:26px}
+.chart-rw .nm{font-family:var(--serif);font-size:13px;letter-spacing:.04em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chart-rw .tk{position:relative;height:12px;min-width:0}
+.chart-rw .tk i{position:absolute;inset:0 auto 0 0;background:var(--c1)}
+.chart-rw .v{font-size:12px;text-align:right;color:var(--ink)}
+.chart-rw .d{font-size:11px;text-align:right;color:var(--muted);white-space:nowrap}
+
+/* 学科站位 */
+.whs-st{grid-template-columns:minmax(0,1fr) 200px 96px 92px}
+.whs-st .chart-rw{grid-template-columns:minmax(0,1fr) 200px 96px 92px}
+
+/* 进位时间线 */
+.whs-tl{margin-top:10px}
+.whs-ticks{position:relative;height:20px;margin-left:calc(148px + 10px);margin-right:calc(52px + 10px)}
+.whs-ticks span{position:absolute;top:0;font-family:var(--kai);font-size:11px;letter-spacing:.06em;
+  color:var(--muted);transform:translateX(-50%);white-space:nowrap}
+.whs-ticks span:first-child{transform:none;left:0}
+.whs-ticks span:last-child{transform:none;left:auto;right:0;color:var(--ink-2)}
+.whs-lane{display:grid;grid-template-columns:148px 1fr 52px;gap:10px;align-items:center;height:25px}
+.whs-lane .nm{font-family:var(--serif);font-size:13px;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.whs-lane .tk{position:relative;height:8px}
+.whs-lane .tk i{position:absolute;top:0;bottom:0;background:var(--c2)}
+.whs-lane .tk em{position:absolute;top:50%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;
+  border-radius:50%;background:var(--seam);box-shadow:0 0 0 2px var(--paper)}
+.whs-lane .k{font-size:11px;text-align:right;color:var(--muted)}
+
+/* 对标 */
+.whs-cmp{grid-template-columns:44px minmax(0,1fr) 220px 64px 80px 52px 52px}
+.whs-cmp .chart-rw{grid-template-columns:44px minmax(0,1fr) 220px 64px 80px 52px 52px}
+.whs-cmp .rk{font-family:var(--serif);font-size:13.5px;color:var(--ink-2)}
+.whs-cmp .nm{font-family:var(--sans);font-size:12px;letter-spacing:.01em}
+.whs-cmp .now .rk,.whs-cmp .now .nm{color:var(--ink);font-weight:600}
+.whs-cmp .now .tk i{background:var(--seam)}
+
+/* 22 学科查表 */
+.whs-tbl{margin-top:clamp(4px,1vh,10px)}
+.whs-hd{display:grid;grid-template-columns:minmax(0,1.5fr) 96px 76px 64px 76px 92px 64px 68px 60px;
+  font-family:var(--kai);font-size:11px;letter-spacing:.14em;color:var(--muted);
+  padding-bottom:6px;border-bottom:1px solid var(--line)}
+.whs-hd span+span{text-align:right}
+.whs-rw2{display:grid;grid-template-columns:minmax(0,1.5fr) 96px 76px 64px 76px 92px 64px 68px 60px;
+  min-height:28px;align-items:center;line-height:1.3;border-bottom:1px solid var(--hair)}
+.whs-rw2 span{text-align:right;font-size:13.5px;color:var(--ink-2)}
+.whs-rw2 .whs-nm2{text-align:left;font-family:var(--serif);font-size:13.5px;letter-spacing:.04em;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.whs-seg{height:1px;background:var(--seam);margin:8px 0 6px}
+.whs-rw2.off span{color:var(--muted)}
+
+/* 对比队列 */
+.whs-queue{position:sticky;bottom:0;z-index:5;margin-top:18px;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px 0 12px;background:var(--paper);border-top:1px solid var(--seam)}
+.whs-qn{font-family:var(--kai);font-size:11px;letter-spacing:.24em;color:var(--muted)}
+.whs-chips{display:flex;gap:6px;flex-wrap:wrap;min-width:0}
+.whs-chip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 9px;
+  background:var(--card);border:1px solid var(--line);border-radius:6px;
+  font-size:12px;color:var(--ink)}
+.whs-chip i{font-style:normal;color:var(--muted)}
+.whs-qgo{margin-left:auto;height:36px;padding:0 18px;border-radius:6px;
+  background:var(--deep);color:var(--ivory);font-size:13px;letter-spacing:.1em;
+  box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.whs-qgo:not(:disabled):hover{background:var(--ok)}
+
+.whs-foot{margin-top:auto;padding-top:14px;border-top:1px solid var(--hair);
+  font-size:11px;letter-spacing:.08em;color:var(--muted)}
+
+@media (max-width:960px){
+  .whs-st,.whs-st .chart-rw{grid-template-columns:minmax(0,1fr) 140px 88px}
+  .whs-st span:last-child{display:none}
+  .whs-cmp,.whs-cmp .chart-rw{grid-template-columns:44px minmax(0,1fr) 120px 64px}
+  .whs-cmp span:nth-child(5),.whs-cmp span:nth-child(6),.whs-cmp span:nth-child(7){display:none}
+  .whs-lane{grid-template-columns:112px 1fr 44px}
+  .whs-ticks{margin-left:122px;margin-right:54px}
+  .whs-hd,.whs-rw2{grid-template-columns:minmax(0,1.4fr) 84px 68px 60px 72px 80px 60px 60px 52px}
+}
+@media (max-width:860px){
+  .whs-spread{display:block}
+  .whs-spread::after{display:none}
+  .whs-l{position:static;height:auto;overflow:visible}
+  .whs-nav{margin:14px 0 0}
+  .whs-r{min-height:0}
+  .whs-sheet{max-width:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="whs-spread">
+  <aside class="whs-l">
+    <i class="whs-seal" aria-hidden="true">衡</i>
+    <header class="whs-bm">
+      <b>文衡</b>
+      <span>云南大学图书馆<br>学科信息参考</span>
+    </header>
+    <nav class="whs-nav" aria-label="工作区">
+      <a href="#">出报告</a>
+      <a href="#">分析台</a>
+      <a href="#" aria-current="page">高校 ESI 报告</a>
+      <a href="#">问文衡</a>
+      <span class="whs-m" aria-hidden="true">管 理</span>
+      <a href="#">运行档案</a>
+      <a class="whs-q" href="#">陈列馆 ↗</a>
+    </nav>
+    <footer class="whs-idb">
+      <div class="whs-rule" aria-hidden="true"></div>
+      <p>院校 110 所</p>
+    </footer>
+  </aside>
+
+  <main class="whs-r">
+    <div class="whs-sheet">
+
+      <div class="whs-bar">
+        <p class="whs-eyebrow">高校 ESI 报告<i class="whs-info" title="数字来源：Clarivate ESI 202609 全局件生成的站位报告（/monitor/report），前端只搬运显示值。国内排名＝榜内 CHINA MAINLAND 计数推导，非 ESI 原生指标。">i</i></p>
+        <label class="whs-pick">
+          <span class="whs-k">期次</span>
+          <span class="whs-sel"><select aria-label="期次" disabled><option>202609</option></select></span>
+        </label>
+      </div>
+
+      <header class="whs-head">
+        <button type="button" class="whs-name" aria-haspopup="dialog">云南大学<i aria-hidden="true">⌄</i></button>
+        <div class="whs-tools">
+          <a class="whs-tool" href="#">打开报告 ↗</a>
+          <button type="button" class="whs-tool">重新生成</button>
+          <button type="button" class="whs-tool">院校清单</button>
+        </div>
+      </header>
+
+      <div class="whs-figs" style="margin-top:clamp(10px,2vh,18px)">
+        <div class="whs-fig"><span>入围学科</span><b>14<i>/ 22</i></b></div>
+        <div class="whs-fig"><span>全球排名</span><b>973<i>/ 10,674</i></b></div>
+        <div class="whs-fig"><span>总被引</span><b>327,007</b></div>
+        <div class="whs-fig"><span>论文</span><b>21,720</b></div>
+        <div class="whs-fig"><span>篇均</span><b>15.06</b></div>
+        <div class="whs-fig"><span>前 1‰</span><b>0</b></div>
+      </div>
+
+      <div class="whs-rule" aria-hidden="true"></div>
+
+      <!-- 学科站位 -->
+      <section class="whs-sec"><h2>学科站位</h2><span>条长＝被引 · 上榜 14 学科</span></section>
+      <div style="margin-top:10px">
+        <div class="chart-hd whs-st"><span>学科</span><span style="text-align:left">被引（条长）</span><span>全球排名</span><span>分位</span></div>
+        <div class="chart-rw whs-st"><span class="nm">化学</span><span class="tk"><i style="width:100%"></i></span><span class="v">51,529</span><span class="d">552 / 2315</span><span class="d">前 23.8%</span></div>
+        <div class="chart-rw whs-st"><span class="nm">材料科学</span><span class="tk"><i style="width:81.1%"></i></span><span class="v">41,802</span><span class="d">521 / 1726</span><span class="d">前 30.2%</span></div>
+        <div class="chart-rw whs-st"><span class="nm">环境生态学</span><span class="tk"><i style="width:69%"></i></span><span class="v">35,551</span><span class="d">517 / 2211</span><span class="d">前 23.4%</span></div>
+        <div class="chart-rw whs-st"><span class="nm">工程学</span><span class="tk"><i style="width:56.1%"></i></span><span class="v">28,907</span><span class="d">732 / 3065</span><span class="d">前 23.9%</span></div>
+        <div class="chart-rw whs-st"><span class="nm">地球科学</span><span class="tk"><i style="width:52.4%"></i></span><span class="v">27,011</span><span class="d">454 / 1271</span><span class="d">前 35.7%</span></div>
+        <div class="chart-rw whs-st"><span class="nm">植物与动物学</span><span class="tk"><i style="width:41.3%"></i></span><span class="v">21,296</span><span class="d">442 / 2103</span><span class="d">前 21.0%</span></div>
+        <div class="chart-rw whs-st"><span class="nm">计算机科学</span><span class="tk"><i style="width:27.3%"></i></span><span class="v">14,087</span><span class="d">417 / 938</span><span class="d">前 44.5%</span></div>
+        <div class="chart-rw whs-st"><span class="nm">临床医学</span><span class="tk"><i style="width:25.8%"></i></span><span class="v">13,310</span><span class="d">3603 / 7163</span><span class="d">前 50.3%</span></div>
+        <div class="chart-rw whs-st"><span class="nm">生物学与生物化学</span><span class="tk"><i style="width:22.2%"></i></span><span class="v">11,463</span><span class="d">1231 / 1749</span><span class="d">前 70.4%</span></div>
+        <div class="chart-rw whs-st"><span class="nm">农业科学</span><span class="tk"><i style="width:17.8%"></i></span><span class="v">9,192</span><span class="d">690 / 1496</span><span class="d">前 46.1%</span></div>
+        <div class="chart-rw whs-st"><span class="nm">药理学与毒理学</span><span class="tk"><i style="width:14.6%"></i></span><span class="v">7,519</span><span class="d">882 / 1469</span><span class="d">前 60.0%</span></div>
+        <div class="chart-rw whs-st"><span class="nm">微生物学</span><span class="tk"><i style="width:13.1%"></i></span><span class="v">6,757</span><span class="d">734 / 876</span><span class="d">前 83.8%</span></div>
+        <div class="chart-rw whs-st"><span class="nm">数学</span><span class="tk"><i style="width:10.8%"></i></span><span class="v">5,568</span><span class="d">389 / 416</span><span class="d">前 93.5%</span></div>
+        <div class="chart-rw whs-st"><span class="nm">社会科学</span><span class="tk"><i style="width:8.2%"></i></span><span class="v">4,213</span><span class="d">1643 / 2575</span><span class="d">前 63.8%</span></div>
+      </div>
+
+      <!-- 进位时间线 -->
+      <section class="whs-sec"><h2>进位时间线</h2><span>进入前 1% 起 · 在榜期数</span></section>
+      <div class="whs-tl">
+        <div class="whs-ticks" aria-hidden="true">
+          <span>201905</span><span style="left:15.9%">202007</span><span style="left:29.5%">202107</span>
+          <span style="left:43.2%">202207</span><span style="left:56.8%">202307</span><span style="left:70.5%">202407</span>
+          <span style="left:86.4%">202509</span><span>202609</span>
+        </div>
+        <div class="whs-lane"><span class="nm">植物与动物学</span><span class="tk"><em style="left:2.3%"></em><i style="left:2.3%"></i></span><span class="k">42 期</span></div>
+        <div class="whs-lane"><span class="nm">化学</span><span class="tk"><em style="left:2.3%"></em><i style="left:2.3%"></i></span><span class="k">41 期</span></div>
+        <div class="whs-lane"><span class="nm">材料科学</span><span class="tk"><em style="left:22.7%"></em><i style="left:22.7%"></i></span><span class="k">34 期</span></div>
+        <div class="whs-lane"><span class="nm">环境生态学</span><span class="tk"><em style="left:25%"></em><i style="left:25%"></i></span><span class="k">33 期</span></div>
+        <div class="whs-lane"><span class="nm">工程学</span><span class="tk"><em style="left:29.5%"></em><i style="left:29.5%"></i></span><span class="k">31 期</span></div>
+        <div class="whs-lane"><span class="nm">地球科学</span><span class="tk"><em style="left:43.2%"></em><i style="left:43.2%"></i></span><span class="k">26 期</span></div>
+        <div class="whs-lane"><span class="nm">计算机科学</span><span class="tk"><em style="left:56.8%"></em><i style="left:56.8%"></i></span><span class="k">20 期</span></div>
+        <div class="whs-lane"><span class="nm">农业科学</span><span class="tk"><em style="left:59.1%"></em><i style="left:59.1%"></i></span><span class="k">19 期</span></div>
+        <div class="whs-lane"><span class="nm">药理学与毒理学</span><span class="tk"><em style="left:59.1%"></em><i style="left:59.1%"></i></span><span class="k">19 期</span></div>
+        <div class="whs-lane"><span class="nm">生物学与生物化学</span><span class="tk"><em style="left:70.5%"></em><i style="left:70.5%"></i></span><span class="k">14 期</span></div>
+        <div class="whs-lane"><span class="nm">社会科学</span><span class="tk"><em style="left:72.7%"></em><i style="left:72.7%"></i></span><span class="k">13 期</span></div>
+        <div class="whs-lane"><span class="nm">微生物学</span><span class="tk"><em style="left:79.5%"></em><i style="left:79.5%"></i></span><span class="k">9 期</span></div>
+        <div class="whs-lane"><span class="nm">数学</span><span class="tk"><em style="left:72.7%"></em><i style="left:72.7%"></i></span><span class="k">8 期</span></div>
+        <div class="whs-lane"><span class="nm">临床医学</span><span class="tk"><em style="left:84.1%"></em><i style="left:84.1%"></i></span><span class="k">8 期</span></div>
+      </div>
+
+      <!-- 对标 -->
+      <section class="whs-sec"><h2>对标 · 总排名邻近 ±3</h2><span>条长＝论文 · 被引七校咬平</span></section>
+      <div style="margin-top:10px">
+        <div class="chart-hd whs-cmp"><span>排名</span><span style="text-align:left">机构</span><span style="text-align:left">论文（条长）</span><span>论文</span><span>被引</span><span>篇均</span><span>高被引</span></div>
+        <div class="chart-rw whs-cmp"><span class="rk">970</span><span class="nm" title="Google Incorporated">Google Incorporated</span><span class="tk"><i style="width:19.9%"></i></span><span class="v">4,326</span><span class="d">327,459</span><span class="d">75.70</span><span class="d">355</span></div>
+        <div class="chart-rw whs-cmp"><span class="rk">971</span><span class="nm" title="University Of Sharjah">University Of Sharjah</span><span class="tk"><i style="width:54.2%"></i></span><span class="v">11,767</span><span class="d">327,233</span><span class="d">27.81</span><span class="d">358</span></div>
+        <div class="chart-rw whs-cmp"><span class="rk">972</span><span class="nm" title="United Arab Emirates University">United Arab Emirates University</span><span class="tk"><i style="width:61.7%"></i></span><span class="v">13,404</span><span class="d">327,230</span><span class="d">24.41</span><span class="d">354</span></div>
+        <div class="chart-rw whs-cmp now"><span class="rk">973</span><span class="nm">云南大学</span><span class="tk"><i style="width:100%"></i></span><span class="v">21,720</span><span class="d">327,007</span><span class="d">15.06</span><span class="d">290</span></div>
+        <div class="chart-rw whs-cmp"><span class="rk">974</span><span class="nm" title="Liverpool John Moores University">Liverpool John Moores University</span><span class="tk"><i style="width:54.7%"></i></span><span class="v">11,891</span><span class="d">326,262</span><span class="d">27.44</span><span class="d">300</span></div>
+        <div class="chart-rw whs-cmp"><span class="rk">975</span><span class="nm" title="Hopital Universitaire Europeen Georges-Pompidou - Aphp">Hopital Universitaire Europeen Georges-Pompidou - Aphp</span><span class="tk"><i style="width:36.5%"></i></span><span class="v">7,922</span><span class="d">326,212</span><span class="d">41.18</span><span class="d">348</span></div>
+        <div class="chart-rw whs-cmp"><span class="rk">976</span><span class="nm" title="Chu De Montpellier">Chu De Montpellier</span><span class="tk"><i style="width:53.2%"></i></span><span class="v">11,548</span><span class="d">325,406</span><span class="d">28.18</span><span class="d">273</span></div>
+      </div>
+
+      <!-- 22 学科查表 -->
+      <section class="whs-sec"><h2>22 学科查表</h2></section>
+      <section class="whs-tbl" role="table" aria-label="22 学科站位">
+        <div class="whs-hd" role="row">
+          <span role="columnheader">学科</span>
+          <span role="columnheader">全球排名</span>
+          <span role="columnheader">分位</span>
+          <span role="columnheader" title="榜内 CHINA MAINLAND 计数推导，非 ESI 原生指标">国内</span>
+          <span role="columnheader">论文</span>
+          <span role="columnheader">被引</span>
+          <span role="columnheader">篇均</span>
+          <span role="columnheader">高被引</span>
+          <span role="columnheader">热点</span>
+        </div>
+        <div class="whs-rw2" role="row"><span class="whs-nm2" role="cell">化学</span><span role="cell">552 / 2315</span><span role="cell">前 23.8%</span><span role="cell">154</span><span role="cell">2,590</span><span role="cell">51,529</span><span role="cell">19.90</span><span role="cell">44</span><span role="cell">2</span></div>
+        <div class="whs-rw2" role="row"><span class="whs-nm2" role="cell">材料科学</span><span role="cell">521 / 1726</span><span role="cell">前 30.2%</span><span role="cell">181</span><span role="cell">1,760</span><span role="cell">41,802</span><span role="cell">23.75</span><span role="cell">33</span><span role="cell">2</span></div>
+        <div class="whs-rw2" role="row"><span class="whs-nm2" role="cell">环境生态学</span><span role="cell">517 / 2211</span><span role="cell">前 23.4%</span><span role="cell">98</span><span role="cell">2,084</span><span role="cell">35,551</span><span role="cell">17.06</span><span role="cell">29</span><span role="cell">0</span></div>
+        <div class="whs-rw2" role="row"><span class="whs-nm2" role="cell">工程学</span><span role="cell">732 / 3065</span><span role="cell">前 23.9%</span><span role="cell">201</span><span role="cell">1,928</span><span role="cell">28,907</span><span role="cell">14.99</span><span role="cell">30</span><span role="cell">1</span></div>
+        <div class="whs-rw2" role="row"><span class="whs-nm2" role="cell">地球科学</span><span role="cell">454 / 1271</span><span role="cell">前 35.7%</span><span role="cell">80</span><span role="cell">2,059</span><span role="cell">27,011</span><span role="cell">13.12</span><span role="cell">27</span><span role="cell">1</span></div>
+        <div class="whs-rw2" role="row"><span class="whs-nm2" role="cell">植物与动物学</span><span role="cell">442 / 2103</span><span role="cell">前 21.0%</span><span role="cell">69</span><span role="cell">1,727</span><span role="cell">21,296</span><span role="cell">12.33</span><span role="cell">32</span><span role="cell">1</span></div>
+        <div class="whs-rw2" role="row"><span class="whs-nm2" role="cell">计算机科学</span><span role="cell">417 / 938</span><span role="cell">前 44.5%</span><span role="cell">114</span><span role="cell">1,155</span><span role="cell">14,087</span><span role="cell">12.20</span><span role="cell">11</span><span role="cell">1</span></div>
+        <div class="whs-rw2" role="row"><span class="whs-nm2" role="cell">临床医学</span><span role="cell">3603 / 7163</span><span role="cell">前 50.3%</span><span role="cell">171</span><span role="cell">745</span><span role="cell">13,310</span><span role="cell">17.87</span><span role="cell">9</span><span role="cell">0</span></div>
+        <div class="whs-rw2" role="row"><span class="whs-nm2" role="cell">生物学与生物化学</span><span role="cell">1231 / 1749</span><span role="cell">前 70.4%</span><span role="cell">161</span><span role="cell">670</span><span role="cell">11,463</span><span role="cell">17.11</span><span role="cell">9</span><span role="cell">1</span></div>
+        <div class="whs-rw2" role="row"><span class="whs-nm2" role="cell">农业科学</span><span role="cell">690 / 1496</span><span role="cell">前 46.1%</span><span role="cell">156</span><span role="cell">691</span><span role="cell">9,192</span><span role="cell">13.30</span><span role="cell">3</span><span role="cell">0</span></div>
+        <div class="whs-rw2" role="row"><span class="whs-nm2" role="cell">药理学与毒理学</span><span role="cell">882 / 1469</span><span role="cell">前 60.0%</span><span role="cell">140</span><span role="cell">540</span><span role="cell">7,519</span><span role="cell">13.92</span><span role="cell">2</span><span role="cell">1</span></div>
+        <div class="whs-rw2" role="row"><span class="whs-nm2" role="cell">微生物学</span><span role="cell">734 / 876</span><span role="cell">前 83.8%</span><span role="cell">95</span><span role="cell">638</span><span role="cell">6,757</span><span role="cell">10.59</span><span role="cell">2</span><span role="cell">0</span></div>
+        <div class="whs-rw2" role="row"><span class="whs-nm2" role="cell">数学</span><span role="cell">389 / 416</span><span role="cell">前 93.5%</span><span role="cell">90</span><span role="cell">902</span><span role="cell">5,568</span><span role="cell">6.17</span><span role="cell">9</span><span role="cell">0</span></div>
+        <div class="whs-rw2" role="row"><span class="whs-nm2" role="cell">社会科学</span><span role="cell">1643 / 2575</span><span role="cell">前 63.8%</span><span role="cell">146</span><span role="cell">435</span><span role="cell">4,213</span><span role="cell">9.69</span><span role="cell">8</span><span role="cell">0</span></div>
+        <div class="whs-seg" role="presentation"></div>
+        <div class="whs-rw2 off" role="row"><span class="whs-nm2" role="cell">经济与商业</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span></div>
+        <div class="whs-rw2 off" role="row"><span class="whs-nm2" role="cell">免疫学</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span></div>
+        <div class="whs-rw2 off" role="row"><span class="whs-nm2" role="cell">分子生物学与遗传学</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span></div>
+        <div class="whs-rw2 off" role="row"><span class="whs-nm2" role="cell">多学科</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span></div>
+        <div class="whs-rw2 off" role="row"><span class="whs-nm2" role="cell">神经系统科学与行为学</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span></div>
+        <div class="whs-rw2 off" role="row"><span class="whs-nm2" role="cell">物理学</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span></div>
+        <div class="whs-rw2 off" role="row"><span class="whs-nm2" role="cell">精神病学与心理学</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span></div>
+        <div class="whs-rw2 off" role="row"><span class="whs-nm2" role="cell">空间科学</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span></div>
+      </section>
+
+      <div class="whs-queue" role="region" aria-label="对比队列">
+        <span class="whs-qn">对 比</span>
+        <span class="whs-chips">
+          <button type="button" class="whs-chip" title="移出队列">北京大学<i aria-hidden="true">×</i></button>
+          <button type="button" class="whs-chip" title="移出队列">四川大学<i aria-hidden="true">×</i></button>
+        </span>
+        <button type="button" class="whs-qgo">一键生成对比</button>
+      </div>
+
+      <footer class="whs-foot">文衡 · Clarivate ESI 202609</footer>
+    </div>
+  </main>
+</div>
+</body>
+</html>
