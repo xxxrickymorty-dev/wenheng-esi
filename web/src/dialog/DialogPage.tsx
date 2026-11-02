@@ -791,7 +791,8 @@ export default function DialogPage() {
                               className={`dlg-dyn-step ${row.mark === '✓' ? 'ok'
                                 : row.mark === '●' ? 'cur' : ''}`}
                               title={markLabel(row.mark)}>
-                          {['①', '②', '③'][index]} {row.label}
+                          {/* 39 分册 C：编号与工作台「本期动态」同用一套中文序数（一二三） */}
+                          {['一', '二', '三'][index]} {row.label}
                           <i className="dlg-dyn-glyph" aria-hidden="true">{row.mark}</i>
                         </span>
                       ))}
