@@ -21,6 +21,24 @@ function contentGroup(g: string): string {
   return '其他'
 }
 
+/* 位置坐标的人话读法（39 分册 D）：原始码 T01/r1c0 → 「第 1 表·第 1 行·第 1 列」
+   （列号 c 从 0 起，展示按第 N 列）；矩阵列是高校名（T20/r3c云大）→ 「第 20 表·第 3 行·云大」；
+   T01/表头 → 「第 1 表·表头」；正文/p2 → 「正文·第 2 段」；其余原样。
+   原始码一律收进 title 悬停。转换只改显示，行数据零改动。 */
+function posLabel(raw: string): string {
+  let m = /^T(\d{1,2})\/r(\d+)(?:c([^/]+))?$/.exec(raw)
+  if (m) {
+    const col = m[3]
+    const colTxt = col == null ? '' : /^\d+$/.test(col) ? `·第 ${Number(col) + 1} 列` : `·${col}`
+    return `第 ${Number(m[1])} 表·第 ${Number(m[2])} 行${colTxt}`
+  }
+  m = /^T(\d{1,2})\/(.+)$/.exec(raw)
+  if (m) return `第 ${Number(m[1])} 表·${m[2]}`
+  m = /^正文\/p(\d+)$/.exec(raw)
+  if (m) return `正文·第 ${m[1]} 段`
+  return raw
+}
+
 export function RedList({ period, canDownload = false }: {
   period: string | null
   /** 红件 Markdown 下载口仍只给管理员（操作员只读屏，不给一点就 403 的按钮）。 */
@@ -106,7 +124,9 @@ export function RedList({ period, canDownload = false }: {
               </Info>
             </p>
           )}
-          <div className="tablewrap">
+          {/* 39 分册 D：表头冻结＋窄屏横滑。滚动容器限高，thead 吸顶常驻。 */}
+          <p className="hint red-swipe mt-8">表格较宽，左右滑动查看 →</p>
+          <div className="red-wrap">
             <table>
               <thead>
                 <tr>
@@ -121,12 +141,12 @@ export function RedList({ period, canDownload = false }: {
                 {shown.map((r, i) => (
                   <tr key={`${r.group}-${r.label}-${i}`}>
                     <td className="mono ink-3">{i + 1}</td>
-                    <td className="mono fs-135 ink-3 nowrap">
-                      {r.label || r.group}
+                    <td className="fs-135 ink-3 red-pos" title={r.label || r.group}>
+                      {posLabel(r.label || r.group)}
                     </td>
                     <td className="ink-3">{r.old || '—'}</td>
                     <td className="ink-zhu">{r.new}</td>
-                    <td className="fs-14">{r.src}</td>
+                    <td className="fs-14 red-src" title={r.src}>{r.src}</td>
                   </tr>
                 ))}
               </tbody>
