@@ -5,6 +5,7 @@
    数据全部来自后端 API；接口没就绪的地方**如实标注"未就绪"**，不编数据。 */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties, KeyboardEvent as RKeyEvent, PointerEvent as RPointerEvent } from 'react'
 import {
   getHealth, getMe, getPeriodDetail, getPeriods, getStatus, postJob,
   type ApiError, type Me, type Period, type PeriodDetail,
@@ -48,6 +49,27 @@ import { deriveWorkbench, isTerminal, statusToWB, type WBState } from './wb'
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'warned', 'waiting-approval', 'fail-ledger', 'fail-other', 'stalled', 'signed']
 
+/* ── 侧栏宽度与收起（2026-11-02 rick：侧栏要能拉伸、能收进去）──
+   宽度落在 CSS 变量 --app-lw 上，网格列与订口金线都跟着它走；
+   偏好存本地——它只是偏好，读不到（隐私模式/清过缓存）就用默认，绝不挡住页面。
+   收起宽 64px：放得下 18px 图标与呼吸，再窄就只能靠猜。 */
+const SIDE_MIN = 232
+const SIDE_MAX = 420
+const SIDE_FOLD = 64
+const SIDE_KEY = 'wenheng.side.v1'
+
+function readSidePref(): { w: number; fold: boolean } {
+  try {
+    const raw = localStorage.getItem(SIDE_KEY)
+    if (raw) {
+      const o = JSON.parse(raw) as { w?: number; fold?: boolean }
+      const w = Number(o.w)
+      return { w: Number.isFinite(w) ? Math.min(SIDE_MAX, Math.max(SIDE_MIN, w)) : 280, fold: !!o.fold }
+    }
+  } catch { /* 存储不可用：用默认宽度 */ }
+  return { w: 280, fold: false }
+}
+
 export default function App() {
   const [healthy, setHealthy] = useState<boolean | null>(null)
   const [me, setMe] = useState<Me | null>(null)
@@ -55,6 +77,39 @@ export default function App() {
   const [stateDbWarn, setStateDbWarn] = useState<StateDbAlert | null>(null)
   /* 角色是否已有结论：false = 还没问过（探活失败 / 首屏）；true = 问过了（me 为 null 即未登录） */
   const [roleKnown, setRoleKnown] = useState(false)
+
+  /* 侧栏：宽度 + 收起。拖动只改宽度，不改收起；收起态下把手不响应拖动（那会儿没有宽度可拖）。 */
+  const [side, setSide] = useState(readSidePref)
+  const sideDrag = useRef<{ x: number; w: number } | null>(null)
+  useEffect(() => {
+    try { localStorage.setItem(SIDE_KEY, JSON.stringify(side)) } catch { /* 存不下就算了 */ }
+  }, [side])
+  const toggleSide = useCallback(() => setSide((s) => ({ ...s, fold: !s.fold })), [])
+  const onGripDown = (e: RPointerEvent<HTMLDivElement>) => {
+    if (side.fold) return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    sideDrag.current = { x: e.clientX, w: side.w }
+  }
+  const onGripMove = (e: RPointerEvent<HTMLDivElement>) => {
+    const d = sideDrag.current
+    if (!d) return
+    const w = Math.min(SIDE_MAX, Math.max(SIDE_MIN, d.w + (e.clientX - d.x)))
+    setSide((s) => (s.w === w ? s : { ...s, w }))
+  }
+  const onGripUp = (e: RPointerEvent<HTMLDivElement>) => {
+    sideDrag.current = null
+    try { e.currentTarget.releasePointerCapture(e.pointerId) } catch { /* 已经释放了 */ }
+  }
+  const onGripKey = (e: RKeyEvent<HTMLDivElement>) => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault()
+      const step = e.key === 'ArrowLeft' ? -16 : 16
+      setSide((s) => ({ ...s, w: Math.min(SIDE_MAX, Math.max(SIDE_MIN, s.w + step)) }))
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      toggleSide()
+    }
+  }
   const [periods, setPeriods] = useState<Period[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [urlRestorePeriod, setUrlRestorePeriod] = useState<string | null>(null)
@@ -493,18 +548,18 @@ export default function App() {
      顺序即版式顺序——主区四屏在上、管理区两项在下。少了谁就是少了谁，不再补「即将」占位。
      2026-10-31 撤出的灵活报告 / 他校简报 / AI 问数不回来（能力已并入高校ESI报告与问文衡，
      深链 ?view=analysis · /app/panel/ · ?view=aiqa 仍保留，只是不再占导航位）。 */
-  const NAV: { key: string; label: string; href: string }[] = [
-    { key: 'flow', label: '出报告', href: '/app/' },
-    { key: 'analysis', label: '分析台', href: '/app/?view=analysis' },
+  const NAV: { key: string; label: string; href: string; icon: string }[] = [
+    { key: 'flow', label: '出报告', href: '/app/', icon: 'doc' },
+    { key: 'analysis', label: '分析台', href: '/app/?view=analysis', icon: 'chart' },
     /* 高校 ESI 报告自成一个静态入口（web/schools），不归工作区路由，故不参与高亮判断 */
-    { key: 'schools', label: '高校 ESI 报告', href: '/app/schools/' },
-    { key: 'ask', label: '问文衡', href: '/app/dialog/' },
+    { key: 'schools', label: '高校 ESI 报告', href: '/app/schools/', icon: 'trend' },
+    { key: 'ask', label: '问文衡', href: '/app/dialog/', icon: 'chat' },
   ]
   /* 管理组：只有两项，排在「管 理」题签之后。陈列馆是离开工作区的展示面，
      2026-11-02 从右上角移到左栏末位（方位变了，去的是同一个地方，↗ 照旧标着）。 */
-  const MANAGE: { key: string; label: string; href: string; jump?: boolean }[] = [
-    { key: 'archive', label: '运行档案', href: '/app/?view=archive' },
-    { key: 'shelf', label: '陈列馆 ↗', href: '/app/shelf/', jump: true },
+  const MANAGE: { key: string; label: string; href: string; jump?: boolean; icon: string }[] = [
+    { key: 'archive', label: '运行档案', href: '/app/?view=archive', icon: 'archive' },
+    { key: 'shelf', label: '陈列馆 ↗', href: '/app/shelf/', jump: true, icon: 'book' },
   ]
   /* 子屏归到哪个主区（决定左栏高亮）；report 区已无导航项，子屏一律归「出报告」，
      因为报告与它的下钻屏都是从四步流水里长出来的；台账/沙盘从运行档案进，跟着它高亮。 */
@@ -558,25 +613,37 @@ export default function App() {
   const flowActiveIdx = Math.max(0, FLOW_STEPS.findIndex((s) => s.key === flowActive))
 
   return (
-    <div className="app-shell" data-view={view}>
+    <div className="app-shell" data-view={view} data-fold={side.fold ? '1' : undefined}
+         style={{ '--app-lw': side.fold ? `${SIDE_FOLD}px` : `${side.w}px` } as CSSProperties}>
       <Sprite />
       <SealInkDefs />
       <a className="skip-link" href="#main">跳到主要内容</a>
 
       {/* 左页 · 会泽（2026-11-02 跨页书式）：品牌 / 导航 / 管理组 / 期次与身份。
           一屏放全、栏内不滚——所以这里不设 overflow（设了 auto 就会出滚动条，设了 hidden
-          又会裁掉 ⓘ 与身份弹层）；靠 clamp 与 44px 行高把总高压在 720px 以内。 */}
+          又会裁掉 ⓘ 与身份弹层）；靠 clamp 与 44px 行高把总高压在 720px 以内。
+          2026-11-02 晚：可拖宽、可收起（把手在订口金线上，收起后只留图标＋悬停浮全名）。 */}
       <aside className="app-page-l">
         <i className="app-seal" aria-hidden="true">衡</i>
-        <a className="app-brand" href={navHref('/app/')}>
-          <b>文衡</b>
-          <span>云南大学图书馆<br />学科信息参考</span>
-        </a>
-        <nav className="app-nav" aria-label="工作区">
+        <div className="app-lhead">
+          <a className="app-brand" href={navHref('/app/')}>
+            <b>文衡</b>
+            <span>云南大学图书馆<br />学科信息参考</span>
+          </a>
+          <button className="app-fold" type="button" onClick={toggleSide}
+                  aria-expanded={!side.fold} aria-controls="app-nav"
+                  aria-label={side.fold ? '展开侧栏' : '收起侧栏'}
+                  title={side.fold ? '展开侧栏' : '收起侧栏'}>
+            <Icon name="menu" size={16} />
+          </button>
+        </div>
+        <nav className="app-nav" id="app-nav" aria-label="工作区">
           {NAV.map((n) => (
             <a key={n.key} href={navHref(n.href)}
                aria-current={activeNav === n.key ? 'page' : undefined}>
-              {n.label}
+              <Icon name={n.icon} size={18} />
+              <span className="app-nav-lbl">{n.label}</span>
+              <span className="app-tip" aria-hidden="true">{n.label}</span>
             </a>
           ))}
           <span className="app-nav-grp" aria-hidden="true">管 理</span>
@@ -586,7 +653,9 @@ export default function App() {
               <a key={n.key} href={navHref(n.href)}
                  className={n.jump ? 'app-jump-link' : undefined}
                  aria-current={activeNav === n.key ? 'page' : undefined}>
-                {n.label}
+                <Icon name={n.icon} size={18} />
+                <span className="app-nav-lbl">{n.label}</span>
+                <span className="app-tip" aria-hidden="true">{n.label}</span>
               </a>
             )
           ))}
@@ -622,6 +691,19 @@ export default function App() {
           </div>
         </footer>
       </aside>
+
+      {/* 订口把手：有形状的双竖线＋中段刻度，骑在金线上。拖＝调宽（232–420），
+          双击/回车＝收起或展开，←→＝每次 16px。收起态下不接拖动——那会儿没有宽度可拖。 */}
+      <div className="app-grip" role="separator" aria-orientation="vertical" tabIndex={0}
+           aria-label="拖动调整侧栏宽度，回车收起侧栏"
+           aria-valuenow={side.fold ? SIDE_FOLD : side.w}
+           aria-valuemin={SIDE_MIN} aria-valuemax={SIDE_MAX}
+           title={side.fold ? '展开侧栏' : '拖动调宽 · 双击收起'}
+           onPointerDown={onGripDown} onPointerMove={onGripMove}
+           onPointerUp={onGripUp} onPointerCancel={onGripUp}
+           onKeyDown={onGripKey} onDoubleClick={toggleSide}>
+        <i aria-hidden="true" />
+      </div>
 
       <main className="wrap app-main" id="main">
         {/* 本机数据存储只读降级：常驻、不遮操作（不是 toast，自己不会消失）。

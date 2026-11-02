@@ -1591,46 +1591,112 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
   display:grid;place-items:center;transform:rotate(-6deg);box-shadow:var(--shadow)}
 .app-seal::after{content:"";position:absolute;inset:2px;border:1px solid rgba(20,55,41,.5)}
 
-.app-shell .app-brand{display:block;flex:none;text-decoration:none;white-space:normal}
+/* 品牌行：品牌 ＋ 收起钮（收起钮在展开/收起两态都留在原位，位置不跳） */
+.app-lhead{position:relative;flex:none;display:flex;align-items:flex-start;gap:8px;min-width:0}
+.app-shell .app-brand{display:block;flex:1 1 auto;min-width:0;text-decoration:none;white-space:normal}
 .app-shell .app-brand b{display:block;font-family:var(--serif);font-weight:600;font-size:19px;
   letter-spacing:.16em;color:var(--ivory);line-height:1.35}
-.app-shell .app-brand span{display:block;margin-top:6px;font-family:var(--kai);font-size:11px;
-  letter-spacing:.16em;color:var(--ivory-3);line-height:1.7}
+/* 品牌小字：11px 楷体在深绿上发虚，提到 12px、亮度从 .54 抬到 .72 */
+.app-shell .app-brand span{display:block;margin-top:6px;font-family:var(--kai);font-size:12px;
+  letter-spacing:.14em;color:rgba(246,241,222,.72);line-height:1.7}
+.app-fold{position:relative;flex:none;width:28px;height:28px;margin-top:2px;display:grid;place-items:center;
+  color:rgba(246,241,222,.72);background:transparent;border:1px solid rgba(246,241,222,.22);
+  border-radius:var(--r-inline);cursor:pointer;transition:color .25s,border-color .25s}
+/* 视觉 28px、点击区 44px：手不用瞄准 */
+.app-fold::after{content:"";position:absolute;inset:-8px}
+.app-fold:hover{color:var(--ivory);border-color:var(--seam)}
 
 /* 导航：上下由 auto 外边距推开，居中落在品牌与身份之间（720px 高也放得下） */
 .app-shell .app-nav{margin:auto 0;display:flex;flex-direction:column;align-items:stretch;
   gap:0;min-width:0;overflow:visible;order:0;width:auto;
-  font-size:var(--fs-label);letter-spacing:.05em;color:var(--ivory-2)}
-.app-shell .app-nav a{display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 0;
-  color:inherit;text-decoration:none;border:0;transition:color .3s cubic-bezier(.32,.72,0,1)}
-.app-shell .app-nav a::before{content:"";width:9px;height:2px;flex:none;background:transparent;
-  transition:background-color .3s cubic-bezier(.32,.72,0,1)}
-.app-shell .app-nav a:hover{color:var(--ivory)}
-.app-shell .app-nav a[aria-current="page"]{color:var(--ivory);font-weight:600;border:0}
-.app-shell .app-nav a[aria-current="page"]::before{background:var(--seam)}
-.app-shell .app-nav-grp{padding:14px 0 4px;font-family:var(--kai);font-size:11px;
-  letter-spacing:.26em;color:var(--ivory-3)}
+  font-size:var(--fs-label);letter-spacing:.05em;color:rgba(246,241,222,.92)}
+.app-shell .app-nav a{position:relative;display:flex;align-items:center;gap:11px;min-height:44px;
+  padding:6px 0 6px 2px;color:inherit;text-decoration:none;border:0;
+  transition:color .3s cubic-bezier(.32,.72,0,1)}
+/* 当前项：图标转金 ＋ 左侧一道短金条（色＋形两重，不靠加粗一处表达） */
+.app-shell .app-nav a svg{flex:none;opacity:.9;transition:opacity .3s,color .3s}
+.app-shell .app-nav a:hover{color:#FFFDF4}
+.app-shell .app-nav a:hover svg{opacity:1}
+.app-shell .app-nav a[aria-current="page"]{color:#FFFDF4;font-weight:600;border:0}
+.app-shell .app-nav a[aria-current="page"] svg{color:var(--seam);opacity:1}
+.app-shell .app-nav a[aria-current="page"]::after{content:"";position:absolute;left:-10px;top:50%;
+  width:3px;height:18px;margin-top:-9px;background:var(--seam)}
+.app-shell .app-nav-grp{padding:14px 0 4px;font-family:var(--kai);font-size:12px;
+  letter-spacing:.26em;color:rgba(246,241,222,.62)}
 /* 陈列馆：离开工作区的门，压一档亮度——它不是这里的一屏 */
-.app-shell .app-nav a.app-jump-link{opacity:.62}
+.app-shell .app-nav a.app-jump-link{opacity:.78}
 .app-shell .app-nav a.app-jump-link:hover{opacity:1}
+
+/* 收起态：64px，只留图标；悬停/聚焦浮出中文全名（不让人靠一个字猜） */
+.app-tip{position:absolute;left:calc(100% + 14px);top:50%;transform:translateY(-50%);
+  padding:5px 11px;white-space:nowrap;z-index:80;pointer-events:none;
+  background:var(--deep);color:var(--ivory);font-size:12px;font-weight:400;letter-spacing:.08em;
+  border:1px solid rgba(176,142,72,.55);box-shadow:0 10px 30px rgba(15,25,18,.35);
+  opacity:0;visibility:hidden;transition:opacity .16s ease,visibility .16s ease}
+.app-shell:not([data-fold="1"]) .app-tip{display:none}
+.app-shell[data-fold="1"] .app-nav a:hover .app-tip,
+.app-shell[data-fold="1"] .app-nav a:focus-visible .app-tip{opacity:1;visibility:visible}
+.app-shell[data-fold="1"] .app-page-l{padding:14px 0;align-items:center}
+.app-shell[data-fold="1"] .app-lhead{flex-direction:column;align-items:center;gap:6px;width:100%}
+.app-shell[data-fold="1"] .app-brand{flex:none;text-align:center}
+.app-shell[data-fold="1"] .app-brand b{font-size:15px;letter-spacing:.06em}
+.app-shell[data-fold="1"] .app-brand span,
+.app-shell[data-fold="1"] .app-seal,
+.app-shell[data-fold="1"] .app-nav-lbl,
+.app-shell[data-fold="1"] .app-nav-grp,
+.app-shell[data-fold="1"] .app-idb .app-period,
+.app-shell[data-fold="1"] .app-idb .info,
+.app-shell[data-fold="1"] .app-idb .user-chip-name{display:none}
+.app-shell[data-fold="1"] .app-nav{width:100%}
+.app-shell[data-fold="1"] .app-nav a{justify-content:center;padding:6px 0}
+.app-shell[data-fold="1"] .app-nav a[aria-current="page"]::after{display:none}
+.app-shell[data-fold="1"] .app-idb{align-items:center;gap:8px}
+.app-shell[data-fold="1"] .app-idb-rule{width:20px}
+.app-shell[data-fold="1"] .app-idb-row{justify-content:center}
+
+/* 订口把手：骑在金线上的一道双竖线＋中段刻度。平时半隐，悬停/聚焦变实；
+   收起态只剩 9px 宽的一条，双击或回车展开。 */
+.app-grip{position:absolute;top:0;bottom:0;left:var(--app-lw);width:13px;margin-left:-6px;
+  z-index:30;display:flex;align-items:center;justify-content:center;
+  cursor:col-resize;touch-action:none;background:transparent}
+.app-grip i{position:relative;display:block;width:9px;height:52px;opacity:.35;
+  transition:opacity .2s ease}
+.app-grip i::before,.app-grip i::after{content:"";position:absolute;top:0;bottom:0;width:1px;
+  background:var(--seam)}
+.app-grip i::before{left:1px}
+.app-grip i::after{right:1px}
+.app-grip:hover i,.app-grip:focus-visible i{opacity:1}
+.app-grip:focus-visible{outline:2px solid var(--seam);outline-offset:-3px}
+.app-shell[data-fold="1"] .app-grip{cursor:pointer}
+@media (max-width:820px){ .app-grip{display:none} }
 
 /* 左页底部：金线短横 / 期次 / 口径ⓘ / 身份 */
 .app-idb{flex:none;display:flex;flex-direction:column;gap:10px;min-width:0}
 .app-idb-rule{width:34px;height:1px;flex:none;background:var(--seam)}
 .app-shell .app-idb .app-period{display:flex;flex-direction:column;align-items:stretch;gap:5px;
-  font-size:11px;letter-spacing:.24em;color:var(--ivory-3);white-space:normal}
-.app-shell .app-idb .app-period select{width:100%;min-height:36px;padding:0 8px;
-  border:1px solid rgba(246,241,222,.26);border-radius:0;
-  background:rgba(246,241,222,.06);color:var(--ivory);
-  font:12px/1 var(--sans);letter-spacing:.06em;font-variant-numeric:tabular-nums;
+  font-size:12px;letter-spacing:.2em;color:rgba(246,241,222,.72);white-space:normal}
+.app-shell .app-idb .app-period select{width:100%;min-height:44px;padding:0 10px;
+  border:1px solid rgba(246,241,222,.30);border-radius:var(--r-inline);
+  background:rgba(246,241,222,.08);color:var(--ivory);
+  font:13.5px/1 var(--sans);letter-spacing:.06em;font-variant-numeric:tabular-nums;
+  color-scheme:dark;
   transition:border-color .3s cubic-bezier(.32,.72,0,1)}
 .app-shell .app-idb .app-period select:hover{border-color:var(--seam)}
+/* 展开后的选项由系统画：不给颜色就是白底浅字（深色 select 的浅字被搬到浅底上），
+   这里把 option 的底色与字色钉死，收起/展开两处都读得清。 */
+.app-shell .app-idb .app-period select option{background:#FCFAF3;color:#15222B}
 .app-idb-row{display:flex;align-items:center;gap:10px;min-width:0}
 .app-shell .app-idb .info>summary{background:transparent;border-color:rgba(246,241,222,.26);color:var(--ivory-2)}
 .app-shell .app-idb .info>summary:hover,
 .app-shell .app-idb .info[open]>summary{border-color:var(--seam);color:var(--ivory)}
-/* 弹层向左上开：左栏窄，向下开会顶到订口 */
-.app-shell .app-idb .info-body{left:0;right:auto;top:auto;bottom:30px;width:min(320px,84vw);z-index:60}
+/* 弹层贴左栏右缘向右开：以 ⓘ 为锚会盖住旁边的期次与身份行，
+   所以锚整块底部区（.app-idb），让它落在订口外侧，正文里读。 */
+.app-shell .app-idb{position:relative}
+.app-shell .app-idb .info{position:static}
+.app-shell .app-idb .info-body{left:calc(100% + 14px);right:auto;top:auto;bottom:0;
+  width:min(360px,calc(100vw - var(--app-lw) - 44px));z-index:80;
+  border-radius:var(--r-win);box-shadow:0 30px 90px rgba(20,30,15,.18);
+  padding:14px 16px;line-height:1.85}
 .app-shell .app-idb .user-chip{min-width:0;color:var(--ivory-2)}
 .app-shell .app-idb .user-chip-btn{padding:4px 6px;min-width:0;background:transparent;color:inherit}
 .app-shell .app-idb .user-chip-btn:hover{background:rgba(246,241,222,.10)}

@@ -88,28 +88,39 @@ function parseStanding(html: string): Standing {
   return { rows, totals }
 }
 
-/* 预开页的加载反馈：点击手势内开窗后立刻写入五步动画，生成完由本页回填报告地址；
-   失败则在原页显示原因。离开这个加载页前，用户不是在盯空白。 */
+/* 预开页的加载反馈：点击手势内开窗后立刻写入「在跑」，生成完由本页回填报告地址；
+   失败则在原页显示原因。离开这个加载页前，用户不是在盯空白。
+
+   2026-11-02 改：原来的五步动画是**假的**——每 600ms 前进一格，第 5 步用 `%` 绕回第 1 步，
+   于是进度条从 100% 弹回 20%，看着像「退回去了」。生成接口是同步的（POST 一直挂到算完），
+   没有分步进度可读，所以这里改成不确定进度条（来回扫）＋真实已用秒数：
+   说清在干什么、已经等了多久，不假装知道干到哪一步。 */
 function loadingDoc(label: string): string {
-  const stepsJs = JSON.stringify(RUN_STEPS)
+  const steps = RUN_STEPS.join(' → ')
   return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">` +
     `<title>正在生成 · 文衡监测版</title><style>` +
     `body{margin:0;background:#F5F3EC;color:#1E2A23;font-family:system-ui,"Microsoft YaHei",sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}` +
-    `.box{width:min(420px,86vw);background:#FAF8F0;border:1px solid #DFDBCB;box-shadow:0 1px 2px rgba(21,34,43,.07);padding:26px 30px}` +
-    `.brand{font-family:serif;letter-spacing:.14em;font-size:14px;color:#143729}` +
-    `h1{font-size:17px;margin:10px 0 2px;font-weight:600}` +
-    `.sub{font-size:12px;color:#7C857B;margin:0 0 16px}` +
-    `.bar{height:3px;background:#EAE7DB;margin:12px 0 8px}.fl{height:100%;width:20%;background:#1A4B27;transition:width .5s}` +
-    `.step{font-size:12px;color:#1A4B27;letter-spacing:.06em}` +
-    `.hint{font-size:11px;color:#7C857B;margin-top:14px;line-height:1.7}` +
+    `.box{width:min(440px,86vw);background:#FAF8F0;border:1px solid #DFDBCB;border-radius:12px;box-shadow:0 1px 4px rgba(21,34,43,.08);padding:26px 30px}` +
+    `.brand{font-family:serif;letter-spacing:.14em;font-size:13px;color:#143729}` +
+    `h1{font-size:17px;margin:10px 0 4px;font-weight:600}` +
+    `.sub{font-size:13.5px;color:#5F6A63;margin:0 0 14px}` +
+    `.bar{position:relative;height:3px;background:#EAE7DB;overflow:hidden}` +
+    `.fl{position:absolute;top:0;left:0;height:100%;width:38%;background:#1A4B27;animation:sweep 1.4s cubic-bezier(.45,.05,.55,.95) infinite}` +
+    `@keyframes sweep{0%{left:-38%}100%{left:100%}}` +
+    `.steps{font-size:12px;color:#5F6A63;letter-spacing:.04em;margin:12px 0 0}` +
+    `.el{font-size:12px;color:#5F6A63;margin:8px 0 0;font-variant-numeric:tabular-nums}` +
+    `.el b{color:#1A4B27;font-weight:600}` +
+    `.hint{font-size:12px;color:#6C706A;margin-top:12px;line-height:1.75}` +
+    `@media (prefers-reduced-motion:reduce){.fl{animation:none;width:100%;opacity:.35}}` +
     `</style></head><body><div class="box">` +
     `<div class="brand">文衡 · 高校 ESI 报告</div>` +
     `<h1>正在生成：${label}</h1>` +
     `<p class="sub">完成后本页自动跳转为报告。</p>` +
-    `<div class="bar"><div class="fl" id="fl"></div></div>` +
-    `<p class="step" id="st">第 1/5 步 · 取数</p>` +
-    `<p class="hint">若长时间停留在此页，回本页看状态或重新生成。</p>` +
-    `<script>var s=${stepsJs},i=0;setInterval(function(){i=(i+1)%s.length;document.getElementById('fl').style.width=((i+1)/s.length*100)+'%';document.getElementById('st').textContent='第 '+(i+1)+'/'+s.length+' 步 · '+s[i];},600);</script>` +
+    `<div class="bar"><div class="fl"></div></div>` +
+    `<p class="steps">工序：${steps}</p>` +
+    `<p class="el">已用 <b id="el">0</b> 秒</p>` +
+    `<p class="hint">五道工序一次跑完，中途没有分步进度；跑完会自动跳转。若超过两三分钟没有动静，回上一页看状态或重新生成。</p>` +
+    `<script>var t=0,el=document.getElementById('el');setInterval(function(){t+=1;el.textContent=t},1000);</script>` +
     `</div></body></html>`
 }
 
