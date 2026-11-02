@@ -53,6 +53,17 @@ body{margin:0;background:var(--bg);color:var(--ink);
   font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
 h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0}
 :focus-visible{outline:2px solid var(--zhu);outline-offset:2px;border-radius:0}
+/* 深色面焦点环（39 分册 A1）：--zhu 器绿在深绿底上仅 1.29–1.36:1（WCAG 2.4.7 / 1.4.11 要 ≥3:1），
+   深色容器内一律改浅色 --field-5——对各深底实算 8.39–11.44:1（WCAG 相对亮度公式）。
+   受害面＝工作区左页（.app-page-l，含问文衡）、他校简报顶栏（.app-top，底 field-2）、
+   水尺深绿带（.gaugeband）、高校ESI报告左页（.msch-l）。
+   问文衡左页另有 window.css 的 --seam 焦点色（后加载、实算 4.23:1 达标），不在此覆盖。 */
+.app-page-l :focus-visible,
+.app-top :focus-visible,
+.gaugeband :focus-visible,
+.msch-l :focus-visible{outline-color:var(--field-5)}
+/* 例外：身份弹层是卡片纸底，浅环在纸上只剩 1.14:1——弹层内改回器色 */
+.app-page-l .user-chip-pop :focus-visible{outline-color:var(--zhu)}
 a{color:inherit}
 
 /* ---------- 工作台外壳（2026-10-17 起的顶栏制，深色「场」条） ----------
@@ -385,7 +396,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .app-period select{min-height:32px;padding:0 8px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:var(--fs-label);border-radius:0}
 
 /* ---------- 绿蓝融合 U2（2026-10-17，据 汇-绿蓝.html）：场色题头 / 水尺 / 橡皮戳 / 钤印 ---------- */
-.kik{font-family:var(--kai);font-size:var(--fs-xs);letter-spacing:.36em;color:var(--field-4)}
+.kik{font-family:var(--kai);font-size:var(--fs-xs);letter-spacing:.36em;color:var(--tool-5)}
 /* ---------- 生成台 v2 极致低密（2026-10-24 rick 过审，静态稿 v2 同构）：一行身份＋四节点流程图＋主动作 ----------
    旧题头（题句/药丸/翻牌）随之退役；gaugeband 水尺与折叠工具保留 */
 .wb2{padding:22px clamp(16px,3vw,36px) 4px;margin-top:14px}
@@ -430,7 +441,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .gaugeband{background:var(--tool);color:var(--tool-5);padding:40px clamp(20px,4vw,56px) 30px;margin-top:16px}
 .gb-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,520px);gap:36px;align-items:start}
 .gb-copy h2{font-family:var(--serif);font-size:clamp(24px,2.6vw,34px);line-height:1.45;color:#fff;margin:12px 0 14px}
-.gb-note{color:var(--tool-4);font-size:var(--fs-label);line-height:1.9;max-width:34em}
+.gb-note{color:var(--tool-5);font-size:var(--fs-label);line-height:1.9;max-width:34em}
 .gauge{background:var(--tool-2);border:1px solid var(--tool-3);padding:16px 18px}
 .gauge-head{display:flex;justify-content:space-between;font-family:var(--kai);font-size:var(--fs-xs);letter-spacing:.32em;color:var(--tool-4);margin-bottom:12px}
 .gauge-row{display:grid;grid-template-columns:minmax(96px,150px) minmax(0,1fr) 72px;gap:10px;align-items:center;padding:5px 0}
