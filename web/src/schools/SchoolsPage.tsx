@@ -95,22 +95,33 @@ function parseStanding(html: string): Standing {
    于是进度条从 100% 弹回 20%，看着像「退回去了」。生成接口是同步的（POST 一直挂到算完），
    没有分步进度可读，所以这里改成不确定进度条（来回扫）＋真实已用秒数：
    说清在干什么、已经等了多久，不假装知道干到哪一步。 */
+/* 预开页取色器：预开页是 document.write 进新窗口的独立文档，够不着本页样式表、
+   读不到 schools.css 的 --whs-* 变量——开窗时从活页 .whs-root 把令牌值读出来，
+   拼进预开页自己的 <style>。色值单一来源仍是 schools.css 顶部 --whs-* 段
+   （2026-11-03 批三 J，39 分册）。本函数只被本页的生成动作调用，.whs-root 必在 DOM。 */
+function docPalette(): (name: string) => string {
+  const el = document.querySelector('.whs-root')
+  const css = el ? getComputedStyle(el) : null
+  return (name) => (css ? css.getPropertyValue(name).trim() : '')
+}
+
 function loadingDoc(label: string): string {
   const steps = RUN_STEPS.join(' → ')
+  const v = docPalette()
   return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">` +
     `<title>正在生成 · 文衡监测版</title><style>` +
-    `body{margin:0;background:#F5F3EC;color:#1E2A23;font-family:system-ui,"Microsoft YaHei",sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}` +
-    `.box{width:min(440px,86vw);background:#FAF8F0;border:1px solid #DFDBCB;border-radius:12px;box-shadow:0 1px 4px rgba(21,34,43,.08);padding:26px 30px}` +
-    `.brand{font-family:serif;letter-spacing:.14em;font-size:13px;color:#143729}` +
+    `body{margin:0;background:${v('--whs-paper')};color:${v('--whs-doc-ink')};font-family:system-ui,"Microsoft YaHei",sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}` +
+    `.box{width:min(440px,86vw);background:${v('--whs-card')};border:1px solid ${v('--whs-doc-line')};border-radius:${v('--whs-r-l')};box-shadow:0 1px 4px rgba(21,34,43,.08);padding:26px 30px}` +
+    `.brand{font-family:serif;letter-spacing:.14em;font-size:13px;color:${v('--whs-deep')}}` +
     `h1{font-size:17px;margin:10px 0 4px;font-weight:600}` +
-    `.sub{font-size:13.5px;color:#5F6A63;margin:0 0 14px}` +
-    `.bar{position:relative;height:3px;background:#EAE7DB;overflow:hidden}` +
-    `.fl{position:absolute;top:0;left:0;height:100%;width:38%;background:#1A4B27;animation:sweep 1.4s cubic-bezier(.45,.05,.55,.95) infinite}` +
+    `.sub{font-size:13.5px;color:${v('--whs-doc-sub')};margin:0 0 14px}` +
+    `.bar{position:relative;height:3px;background:${v('--whs-doc-track')};overflow:hidden}` +
+    `.fl{position:absolute;top:0;left:0;height:100%;width:38%;background:${v('--whs-doc-flow')};animation:sweep 1.4s cubic-bezier(.45,.05,.55,.95) infinite}` +
     `@keyframes sweep{0%{left:-38%}100%{left:100%}}` +
-    `.steps{font-size:12px;color:#5F6A63;letter-spacing:.04em;margin:12px 0 0}` +
-    `.el{font-size:12px;color:#5F6A63;margin:8px 0 0;font-variant-numeric:tabular-nums}` +
-    `.el b{color:#1A4B27;font-weight:600}` +
-    `.hint{font-size:12px;color:#6C706A;margin-top:12px;line-height:1.75}` +
+    `.steps{font-size:12px;color:${v('--whs-doc-sub')};letter-spacing:.04em;margin:12px 0 0}` +
+    `.el{font-size:12px;color:${v('--whs-doc-sub')};margin:8px 0 0;font-variant-numeric:tabular-nums}` +
+    `.el b{color:${v('--whs-doc-flow')};font-weight:600}` +
+    `.hint{font-size:12px;color:${v('--whs-muted')};margin-top:12px;line-height:1.75}` +
     `@media (prefers-reduced-motion:reduce){.fl{animation:none;width:100%;opacity:.35}}` +
     `</style></head><body><div class="box">` +
     `<div class="brand">文衡 · 高校 ESI 报告</div>` +
@@ -125,8 +136,9 @@ function loadingDoc(label: string): string {
 }
 
 function errDoc(msg: string): string {
+  const v = docPalette()
   return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>生成失败 · 文衡监测版</title>` +
-    `<style>body{margin:0;background:#F5F3EC;color:#1E2A23;font-family:system-ui,"Microsoft YaHei",sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}.box{width:min(420px,86vw);background:#FAF8F0;border:1px solid #DFDBCB;padding:26px 30px}.t{font-size:15px;font-weight:600;color:#B23A2B;margin:0 0 8px}.m{font-size:12.5px;color:#4A564D;line-height:1.8;margin:0}</style></head>` +
+    `<style>body{margin:0;background:${v('--whs-paper')};color:${v('--whs-doc-ink')};font-family:system-ui,"Microsoft YaHei",sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}.box{width:min(420px,86vw);background:${v('--whs-card')};border:1px solid ${v('--whs-doc-line')};padding:26px 30px}.t{font-size:15px;font-weight:600;color:${v('--whs-bad')};margin:0 0 8px}.m{font-size:12.5px;color:${v('--whs-doc-ink-2')};line-height:1.8;margin:0}</style></head>` +
     `<body><div class="box"><p class="t">生成没跑成</p><p class="m">${msg}<br>回本页重试；本页可关闭。</p></div></body></html>`
 }
 

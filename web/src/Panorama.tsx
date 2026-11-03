@@ -2,7 +2,12 @@
    设计稿：web/mockups/文衡-产线全景（静态稿 20261023）.html（并行会话出品）。
    🔴 只做两件事：把已有状态摆到空间里（回放）、任务在跑时如实点亮（实时）。
    不新增数字、不演没发生的动画——流动动画只在任务真在跑时出现。
-   真值四个只读源：取数记录 · 运行档案 · 红色件清单 · 签单状态；期次由顶栏全局选择器切换。 */
+   真值四个只读源：取数记录 · 运行档案 · 红色件清单 · 签单状态；期次由顶栏全局选择器切换。
+   等轴测画板色板登记（39 分册批三 J，2026-11-03）：画布几何（Road/IsoBox/Tree 等）的
+   fill/stroke 直写一组纸黄/土石/绿常量——C 表的 wallT/wallL/wallR/idleTop/paper，
+   与散落的 #C7C0AE #8A7C63 #3E7F5F #EDE8DA #DFDAC9 #E9E3D4 #FFFDF6 #E2B3A8——
+   值全部平移自上述静态稿，是本屏的登记豁免板外色：改色先回静态稿对版，不并入全局令牌；
+   卡/地/线/墨等面层色仍走工作区令牌（C 表 var(--…) 部分，随主题）。 */
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
 import {

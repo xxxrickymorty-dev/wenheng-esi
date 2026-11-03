@@ -48,6 +48,13 @@ code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,
   --lib-red:#B23A2B;
 }
 
+/* ----------------------------------------------------------------------------
+   高校 ESI 报告（/app/schools/，展陈面）色板豁免 —— 仿上段陈列馆格式（2026-11-03 批三登记）
+   会泽深绿 + 金线 + 纸面自有色板与 6px/12px 圆角不进 core.json、不随主题；
+   唯一来源＝web/src/schools/schools.css 顶部 .whs-root 内 --whs-* 段
+   （SchoolsPage 预开页经 getComputedStyle 取同源值）。改色只改 schools.css。
+   ========================================================================== */
+
 html,body,#root{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);
   font:15px/1.75 var(--sans);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
