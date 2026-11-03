@@ -48,6 +48,13 @@ code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,
   --lib-red:#B23A2B;
 }
 
+/* 正文阅读字体（设置·界面三选，2026-11-03 票 3）：缺省＝衬线；data-font 由 ModelPanel
+   挂在 <html> 上（localStorage["wenheng.ui.font"]）。只把正文阅读面接到 --font-body
+   （.serif-prose 流式稿/答文、.rv-report 报告纸）；标题/品牌/印章等展示面保持 --serif 不动。 */
+:root{--font-body:var(--serif)}
+[data-font="sans"]{--font-body:var(--sans)}
+[data-font="kai"]{--font-body:var(--kai)}
+
 /* ----------------------------------------------------------------------------
    高校 ESI 报告（/app/schools/，展陈面）色板豁免 —— 仿上段陈列馆格式（2026-11-03 批三登记）
    会泽深绿 + 金线 + 纸面自有色板与 6px/12px 圆角不进 core.json、不随主题；
@@ -867,8 +874,8 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
   .rv-side{position:static!important;max-height:none!important;overflow:visible!important}
 }
 
-/* 报告纸（庚：纸面＝card 纸色，不另设白） */
-.rv-report{background:var(--card);padding:30px 38px 42px;font-family:var(--serif);min-width:0}
+/* 报告纸（庚：纸面＝card 纸色，不另设白）；阅读字体走 --font-body（设置·界面可选） */
+.rv-report{background:var(--card);padding:30px 38px 42px;font-family:var(--font-body);min-width:0}
 .rv-toc{position:sticky;top:68px;z-index:3;display:flex;gap:4px;flex-wrap:wrap;padding:8px 0;margin:0 0 14px;
   background:var(--card);border-bottom:1px solid var(--line)}
 /* 目录跳转目标留出顶栏高度（顶栏 60px + 目录自身） */
@@ -1160,7 +1167,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .block-12-16{margin:12px 0 16px}
 .btn-xs{padding:4px 10px;font-size:var(--fs-label)}
 .row-end{display:flex;gap:8px;align-items:center;margin-left:auto}
-.serif-prose{margin:0;font-family:var(--serif);font-size:16.5px;line-height:1.9}
+.serif-prose{margin:0;font-family:var(--font-body);font-size:16.5px;line-height:1.9}
 /* 第三批（2026-10-01）：值族工具类 + 组件类，收掉最后一批静态内联。
    规则见 web/AGENTS.md 第 4 条：新增静态样式先翻这里，没有再添。 */
 .m-b-8{margin:0 0 8px}.m-b-10{margin:0 0 10px}
@@ -1711,6 +1718,12 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
    这里把 option 的底色与字色钉死，收起/展开两处都读得清。 */
 .app-page-l .app-idb .app-period select option{background:#FCFAF3;color:#15222B}
 .app-idb-row{display:flex;align-items:center;gap:10px;min-width:0}
+/* 设置齿轮（2026-11-03 票 2）：身份行旁的图标钮——与 ⓘ 同一姿势（深栏里的描边钮）。
+   传了 onSettings 才渲染（SideRail）；收起态随行居中，照样可达。 */
+.app-idb-set{flex:none;width:20px;height:20px;display:inline-grid;place-items:center;
+  border:1px solid rgba(246,241,222,.26);background:transparent;color:var(--ivory-2);
+  cursor:pointer;transition:border-color .15s,color .15s}
+.app-idb-set:hover{border-color:var(--seam);color:var(--ivory)}
 .app-page-l .app-idb .info>summary{background:transparent;border-color:rgba(246,241,222,.26);color:var(--ivory-2)}
 .app-page-l .app-idb .info>summary:hover,
 .app-page-l .app-idb .info[open]>summary{border-color:var(--seam);color:var(--ivory)}

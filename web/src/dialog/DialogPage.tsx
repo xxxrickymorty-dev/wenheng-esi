@@ -646,18 +646,25 @@ export default function DialogPage() {
     }
   }
 
-  /* 用户菜单已并入侧栏身份行（UserChip，全站同一交互）；这里只留模型设置的快捷键。 */
-  /** Ctrl+, 开模型设置（与设置钮的悬停提示一致；只有管理员能开）。 */
+  /* 用户菜单已并入侧栏身份行（UserChip，全站同一交互）；这里只留设置中心的快捷键。 */
+  /** Ctrl+, 开设置中心（与齿轮钮的悬停提示一致）；界面节人人可用，供应商节管理员才可写。 */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === ',') {
         e.preventDefault()
-        if (me?.role === 'admin') setSettingsOpen(true)
+        setSettingsOpen(true)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [me])
+  }, [])
+
+  /* 票 1（2026-11-03）：顶栏整条撤了——会话题与侧栏当前项重复（工程原则 7）。
+     题名只作 document.title 语义保留：切页签/收藏时仍能认出这段对话。 */
+  const docName = active.title || '问文衡'
+  useEffect(() => {
+    document.title = docName === '问文衡' ? '文衡 · 对话前门' : `${docName} · 问文衡`
+  }, [docName])
 
   /* 侧栏清单：本地这段对话不重复出现（它就是当前这段），搜索只按标题过滤。 */
   const savedList = saved.filter((x) => x.id !== active?.sessionId)
@@ -678,8 +685,6 @@ export default function DialogPage() {
     const period = active.slots.period || home?.period || ''
     return period && href !== '/app/shelf/' ? buildPeriodUrl(href, period) : href
   }
-
-  const docName = active.title || '问文衡'
 
   /* 左栏中段：对话历史（问文衡自有分组，侧栏同一套语言；收起态整块隐藏）。 */
   const histSection = (
@@ -735,34 +740,29 @@ export default function DialogPage() {
       <h1 className="dlg-vh">文衡 · 对话前门</h1>
 
       <div className="wd-spread">
-        <SideRail rail={rail} active="ask" me={me} roleKnown={roleKnown} middle={histSection} />
+        <SideRail rail={rail} active="ask" me={me} roleKnown={roleKnown} middle={histSection}
+                  onSettings={() => setSettingsOpen(true)} />
 
         <main className="wd-r">
-          <header className="wd-chat-top">
-            <h1 className="wd-chat-ttl" title={docName}>{docName}</h1>
-            <div className="wd-chat-slots">
-              <SlotChip label="期次" value={active.slots.period}
-                        onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'period') }))} />
-              <SlotChip label="意图" value={active.slots.intent}
-                        onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'intent') }))} />
-              <SlotChip label="学科" value={active.slots.qdisc}
-                        onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'qdisc') }))} />
-              <SlotChip label="指标" value={active.slots.qmetric}
-                        onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'qmetric') }))} />
-              {hasSlots(active.slots) && (
+          <div className="dlg-thread" ref={threadRef} id="dlg-thread" aria-live="polite">
+          <div className="dlg-thread-in">
+            {hasSlots(active.slots) && (
+              /* 槽位条（票 1）：从顶栏搬进线程区顶部——有槽位才渲染，无槽位零占位；
+                 清槽交互不变。 */
+              <div className="dlg-slotbar">
+                <SlotChip label="期次" value={active.slots.period}
+                          onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'period') }))} />
+                <SlotChip label="意图" value={active.slots.intent}
+                          onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'intent') }))} />
+                <SlotChip label="学科" value={active.slots.qdisc}
+                          onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'qdisc') }))} />
+                <SlotChip label="指标" value={active.slots.qmetric}
+                          onClear={() => updateActive((c) => ({ ...c, slots: clearSlot(c.slots, 'qmetric') }))} />
                 <span className="dlg-vh" role="status">
                   {`当前槽位：期次 ${active.slots.period || '未设'}，意图 ${active.slots.intent || '未设'}`}
                 </span>
-              )}
-            </div>
-            {me?.role === 'admin' && (
-              <button type="button" className="wd-chat-set" title="模型设置（Ctrl + ,）"
-                      onClick={() => setSettingsOpen(true)}>设置</button>
+              </div>
             )}
-          </header>
-
-          <div className="dlg-thread" ref={threadRef} id="dlg-thread" aria-live="polite">
-          <div className="dlg-thread-in">
             {active.turns.length === 0 && (
               <section className="dlg-land" aria-label="文衡首页">
                 <h1 className="dlg-land-title">问一句，答一条</h1>

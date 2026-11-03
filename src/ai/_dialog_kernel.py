@@ -311,7 +311,8 @@ def _make_openai_stream(pi, cfg, egress):
         base_url=cfg["base_url"], model=cfg["model"], key=cfg["key"],
         timeout=float(cfg["timeout"]), temperature=0.0,
         max_tokens=min(int(cfg["max_tokens"] or 2048), 2048),
-        max_egress_chars=int(cfg["max_egress_chars"] or 0))
+        max_egress_chars=int(cfg["max_egress_chars"] or 0),
+        extra_headers=cfg.get("headers") or None)
 
     class _OpenAIStream:
         def __init__(self):

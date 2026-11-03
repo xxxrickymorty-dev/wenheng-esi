@@ -129,6 +129,8 @@ class OpenAIBrain:
       不做半句模型半句规则（SPEC §2.5）。
     - 外发预算：字符上限（`max_egress_chars`），超限**不发包**直接回落（code=egress_budget），
       预算内只发占位面（Brief 构造已保证零数字）。
+    - 自定义请求头（`extra_headers`，票 4）：来自模型清单条目，与请求头合并时
+      **只叠加**——Authorization/Content-Type 与 opencode 会话头优先（`_merge_headers`）。
     - 原生工具环（2026-10-31 升级为 OpenAI 官方多轮协议）：`Brief.tools` 非空 → payload 带
       `tools`（OpenAI function schema，只有名字/描述，零数字）；`Brief.history` 非空 →
       追加在 system+user 之后（assistant `tool_calls` + `role:"tool"`，arguments 为 JSON 串）；
@@ -140,7 +142,7 @@ class OpenAIBrain:
     is_rule = False
 
     def __init__(self, *, base_url, model, key, timeout=30.0, max_tokens=2048,
-                 max_egress_chars=20000, temperature=0.2):
+                 max_egress_chars=20000, temperature=0.2, extra_headers: dict | None = None):
         self.base_url = str(base_url).rstrip("/")
         self.model = str(model)
         self.name = f"openai:{self.model}"
@@ -151,9 +153,21 @@ class OpenAIBrain:
         self.temperature = float(temperature)
         # OpenCode Go 网关要求带 `x-opencode-session`（路由/提示缓存）与自报 UA；
         # 其它 provider（如 api.deepseek.com）不加这两个头，行为与从前逐字一致。
-        self.extra_headers = (
+        self._session_headers = (
             {"User-Agent": _UA, "x-opencode-session": _SESSION}
             if "opencode.ai" in self.base_url else {})
+        # 清单条目的自定义头（票 4，2026-11-03）：只叠加，见 `_merge_headers`。
+        self._entry_headers = {str(k): str(v)
+                               for k, v in (extra_headers or {}).items() if str(v).strip()}
+
+    def _merge_headers(self) -> dict:
+        """请求头合并（票 4）：清单条目的 headers **只叠加**——
+        Authorization/Content-Type 与 opencode 内建会话头放在后面合并，优先不被覆盖；
+        entry headers 只补自定义头（网关路由/租户标识这类）。"""
+        return {**self._entry_headers,
+                "Authorization": f"Bearer {self._key}",
+                "Content-Type": "application/json",
+                **self._session_headers}
 
     def think(self, brief: Brief) -> Turn:
         egress_chars = sum(len(t) for t in brief.egress_texts())
@@ -175,9 +189,7 @@ class OpenAIBrain:
         req = urllib.request.Request(
             f"{self.base_url}/chat/completions",
             data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-            headers={"Authorization": f"Bearer {self._key}",
-                     "Content-Type": "application/json",
-                     **self.extra_headers})
+            headers=self._merge_headers())
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as r:   # noqa: S310
                 data = json.loads(r.read().decode("utf-8"))

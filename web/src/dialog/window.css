@@ -53,20 +53,12 @@
 .wd-r{grid-column:2;display:flex;flex-direction:column;height:100dvh;
   min-width:0;min-height:0}
 
-/* ── 顶栏：会话题 ＋ 槽位（图一顶部那行题，与对话流同列对齐） ── */
-.wd-chat-top{flex:none;display:flex;align-items:center;gap:14px;min-width:0;
-  width:100%;max-width:var(--dlg-col);margin:0 auto;
-  padding:18px 12px 12px}
-.wd-chat-ttl{font-family:var(--serif);font-size:15px;font-weight:600;
-  letter-spacing:.06em;color:var(--ink);white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis;max-width:30ch}
-.wd-chat-slots{margin-left:auto;display:flex;gap:12px;align-items:center;
-  flex:none;white-space:nowrap}
-.wd-chat-set{flex:none;min-height:32px;padding:0 12px;font-size:12px;
-  letter-spacing:.06em;color:var(--muted);border:.5px solid var(--line);
-  border-radius:var(--r-inline);background:var(--card);
-  transition:color .2s var(--ease),border-color .2s var(--ease)}
-.wd-chat-set:hover{color:var(--ok);border-color:var(--ok)}
+/* ── 槽位条（票 1，2026-11-03）：线程区顶部的窄条。顶栏整条撤了——
+   会话题与侧栏当前项重复（工程原则 7），题名只作 document.title；
+   设置钮移到侧栏身份行旁（齿轮，index.css 的 .app-idb-set）。
+   槽位条仅当有槽位才渲染，无槽位零占位；清槽交互不变。 ── */
+.wd-root .dlg-slotbar{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;
+  flex:none;padding:2px 0 16px}
 
 /* ── 对话流：居中一列，纸面直出（图一：助手通栏、用户右气泡） ── */
 .wd-root .dlg-thread{flex:1;min-height:0;overflow-y:auto;
@@ -85,6 +77,11 @@
 .wd-root .dlg-turn.me .dlg-who{display:none}
 .wd-root .dlg-bub{min-width:0;white-space:pre-wrap;overflow-wrap:anywhere;
   font-size:14px;line-height:1.75;color:var(--ink);max-width:34em;padding:0}
+/* 正文阅读字体（设置·界面，票 3）：data-font 挂在 <html>。对话页缺省是聊天界面的
+   无衬线（.wd-root 的 font），只在明确选了非衬线/楷体时让气泡正文跟过去；
+   流式稿（.serif-prose）与报告纸走 --font-body（index.css），标题/品牌/印章各守其面。 */
+.wd-root [data-font="sans"] .dlg-bub{font-family:var(--sans)}
+.wd-root [data-font="kai"] .dlg-bub{font-family:var(--kai)}
 .wd-root .dlg-turn.me .dlg-bub{flex:0 1 auto;max-width:82%;background:#E8E4DB;
   border-radius:var(--r-win);padding:10px 14px;line-height:1.65}
 .wd-root .dlg-turn.wh .dlg-bub{max-width:34em}
@@ -258,7 +255,7 @@
   .wd-card{width:100%}
 }
 @media (max-width:680px){
-  .wd-chat-slots{display:none}
+  .wd-root .dlg-slotbar{display:none}
   .wd-nums .wd-n b{font-size:17px}
 }
 @media (prefers-reduced-motion:reduce){

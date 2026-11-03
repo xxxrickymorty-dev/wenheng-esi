@@ -130,7 +130,9 @@ export function useSideRail(): SideRailState {
 }
 
 /** 左页侧栏本体（含订口把手）。`middle`＝页自有的中段（问文衡＝对话历史），
-    插在导航与身份行之间，收起态整块隐藏。 */
+    插在导航与身份行之间，收起态整块隐藏。
+    `onSettings`（2026-11-03 票 2）：传了才在身份行旁渲染齿轮图标钮（设置中心入口；
+    目前只有问文衡接线，收起态也在——64px 放得下一枚 16px 图标）。 */
 export function SideRail(props: {
   rail: SideRailState
   active: string
@@ -141,8 +143,10 @@ export function SideRail(props: {
   /** 期次是工作区的全局控件；问文衡的期次在会话槽位里，不给 */
   period?: { list: Period[]; selected: string | null; onPick: (p: string) => void }
   middle?: ReactNode
+  /** 设置中心入口（齿轮）；不传＝这一页没有设置（其他页面暂不接线） */
+  onSettings?: () => void
 }) {
-  const { rail, active, me, roleKnown, period, middle } = props
+  const { rail, active, me, roleKnown, period, middle, onSettings } = props
   const navHref = props.navHref ?? ((href: string) => href)
   return (
     <>
@@ -215,6 +219,12 @@ export function SideRail(props: {
                   <span className="user-chip-name">{roleKnown ? '未登录' : '角色确认中…'}</span>
                 </span>
               </span>
+            )}
+            {onSettings && (
+              <button type="button" className="app-idb-set" title="设置（Ctrl + ,）"
+                      aria-label="设置" onClick={onSettings}>
+                <Icon name="gear" size={16} />
+              </button>
             )}
           </div>
         </footer>

@@ -211,22 +211,27 @@ async def api_models_active(request: Request):
 @router.post("/api/models/test")
 @admin_route
 async def api_models_test(request: Request):
-    """探活：地址 + key + 型号能不能用。`id` 给了就测清单里那条（可用已存的 key）。"""
+    """探活：地址 + key + 型号能不能用。`id` 给了就测清单里那条（可用已存的 key）；
+    `headers`（票 4）＝表单/条目的自定义头，透传给探活——测的就是要真发的那一套头。"""
     body = await request.json()
     from ai import _models                                        # noqa: PLC0415
     mid = str(body.get("id") or "")
     base_url = str(body.get("base_url") or "")
     key = str(body.get("key") or "")
     model = str(body.get("model") or "")
+    headers = body.get("headers") if isinstance(body.get("headers"), dict) else None
     if mid:
         row = next((m for m in _models.read()["models"] if m["id"] == mid), None)
         if row is None:
             return JSONResponse({"error": "没有这条模型"}, status_code=404)
         base_url, model = row["base_url"], row["model"]
         key = key or row["key"]
+        if headers is None:
+            headers = row.get("headers") or None
     try:
         result = await run_in_threadpool(
-            _models.probe, base_url=base_url, key=key, model=model, timeout=15.0)
+            _models.probe, base_url=base_url, key=key, model=model,
+            headers=headers, timeout=15.0)
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     return result

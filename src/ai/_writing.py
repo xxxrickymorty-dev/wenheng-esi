@@ -91,7 +91,8 @@ def flex_brain():
     return _brain.OpenAIBrain(base_url=cfg["base_url"], model=flex_model(),
                               key=cfg["key"], timeout=FLEX_TIMEOUT,
                               max_tokens=FLEX_MAX_TOKENS,
-                              max_egress_chars=cfg["max_egress_chars"])
+                              max_egress_chars=cfg["max_egress_chars"],
+                              extra_headers=cfg.get("headers") or None)
 
 
 def writing_state(position: str = "write", *, default: bool = False) -> WritingState:

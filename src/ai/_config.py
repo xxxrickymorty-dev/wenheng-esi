@@ -60,7 +60,7 @@ def cloud_config() -> dict:
 
     两条来源，优先级从高到低：
     1. **运行期模型清单**（`out/_ai/models.json` 的当前项，界面上可切）——
-       只补地址/型号/key，超时与预算仍由环境变量定；
+       只补地址/型号/key/自定义头（headers，票 4），超时与预算仍由环境变量定；
     2. **环境变量**（`.env`，运维改）。
     `WENHENG_AI_PROFILE=demo` 仍然一票否决：演示锁规则版时清单不生效（不出网）。
     """
@@ -77,6 +77,7 @@ def cloud_config() -> dict:
     if picked:
         cfg.update({"backend": "openai", "base_url": picked["base_url"],
                     "model": picked["model"], "key": picked["key"],
+                    "headers": picked.get("headers") or {},
                     "source": f"清单：{picked['label']}"})
     return cfg
 
@@ -100,4 +101,5 @@ def build_brain():
         return RuleBrain()                       # 无 key 不构造云适配器
     return OpenAIBrain(base_url=cfg["base_url"], model=cfg["model"], key=cfg["key"],
                        timeout=cfg["timeout"], max_tokens=cfg["max_tokens"],
-                       max_egress_chars=cfg["max_egress_chars"])
+                       max_egress_chars=cfg["max_egress_chars"],
+                       extra_headers=cfg.get("headers") or None)

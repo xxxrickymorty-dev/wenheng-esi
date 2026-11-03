@@ -1,5 +1,6 @@
-/* 全站统一的身份控件（2026-10-12 rick 定）：头像 + 「名字 · 角色」；
-   不摆显眼退出按钮——点击才弹出「退出登录」；两页（工作区 / 对话页）同一组件、同一交互。 */
+/* 全站统一的身份控件（2026-10-12 rick 定）：头像 + 名字；
+   不摆显眼退出按钮——点击才弹出「退出登录」；两页（工作区 / 对话页）同一组件、同一交互。
+   2026-11-03 票 2：行内只写名字——「admin · 管理员」是重复声明，角色收进悬停说明。 */
 import { useEffect, useRef, useState } from 'react'
 import type { Me } from '../api'
 
@@ -38,7 +39,7 @@ export function UserChip({ me, dock = false }: { me: Me | null; dock?: boolean }
               title={`${me.name} · ${role}——点这里可退出登录`}
               onClick={() => setOpen((v) => !v)}>
         <span className="av">{me.name.slice(0, 1)}</span>
-        <span className="user-chip-name">{me.name} · {role}</span>
+        <span className="user-chip-name">{me.name}</span>
       </button>
       {open && (
         <span className="user-chip-pop" role="menu">

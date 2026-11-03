@@ -47,6 +47,7 @@ class FakeOpenAI:
                     req_json = {}
                 outer.requests.append({"path": self.path,
                                        "auth": self.headers.get("Authorization", ""),
+                                       "headers": dict(self.headers.items()),
                                        "json": req_json})
                 if outer.delay:
                     time.sleep(outer.delay)
@@ -199,6 +200,36 @@ def test_外发预算_默认20000_env覆盖仍生效(monkeypatch):
     assert _config._env_config()["max_egress_chars"] == 1234, "env 覆盖生效（部署可收紧）"
     monkeypatch.delenv("WENHENG_AI_MAX_CHARS")
     assert _config._env_config()["max_egress_chars"] == 20000, "用完 delenv 回默认"
+
+
+# ----------------------------------------------------------- 票 4：entry headers 只叠加（2026-11-03）
+def test_entry_headers只叠加_鉴权与内容类型优先():
+    """清单条目的自定义头只补缺——Authorization/Content-Type 是调用本体出的，不许被覆盖。"""
+    b = OpenAIBrain(base_url="https://api.example.com/v1", model="m", key="sk-test",
+                    extra_headers={"Authorization": "Bearer evil",
+                                   "Content-Type": "text/plain",
+                                   "X-Org": "ynu"})
+    h = b._merge_headers()
+    assert h["Authorization"] == "Bearer sk-test"
+    assert h["Content-Type"] == "application/json"
+    assert h["X-Org"] == "ynu", "自定义头要随请求发出"
+
+
+def test_opencode会话头优先于entry_headers():
+    """网关路由靠 `x-opencode-session`（否则 400 MissingSessionID）——内建会话头盖过条目头。"""
+    b = OpenAIBrain(base_url="https://gateway.opencode.ai/v1", model="m", key="sk-test",
+                    extra_headers={"x-opencode-session": "evil", "User-Agent": "evil"})
+    h = b._merge_headers()
+    assert h["x-opencode-session"] == b._session_headers["x-opencode-session"]
+    assert h["User-Agent"] == "wenheng-esi/1.0"
+
+
+def test_请求真发出entry_headers(fake):
+    fake.reply = lambda req: "答"
+    brain(fake, extra_headers={"X-Org": "ynu"}).think(
+        Brief(ability="qa", system="s", task="问"))
+    assert fake.requests[0]["headers"].get("X-Org") == "ynu"
+    assert fake.requests[0]["auth"] == "Bearer sk-test"
 
 
 # ============================================================ 原生工具环（2026-10-28 fc 定稿）

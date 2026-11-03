@@ -15,7 +15,8 @@
 文件形状：
     {"schema": 1,
      "active": "ynu-minimax",            # ""＝用 `.env` 的部署配置
-     "models": [{"id","label","base_url","model","key","note","added"}],
+     "models": [{"id","label","base_url","model","key","note","added",
+                 "protocol","headers"}],
      "updated": {"ts", "by"}}
 """
 from __future__ import annotations
@@ -35,6 +36,30 @@ SCHEMA = 1
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
 #: 地址必须是 http(s)；尾部的 `/chat/completions` 由保存时剥掉（本层只存到 `/v1`）
 _URL_RE = re.compile(r"^https?://[^\s/]+", re.I)
+#: 自定义请求头（票 4，2026-11-03）：名字只许字母数字连字符（合法 HTTP 头字符的收紧集），
+#: 最多 8 条，值不能空——有的网关要靠自定义头路由/鉴权，但头是外发面，收着来。
+_HEADER_KEY_RE = re.compile(r"^[A-Za-z0-9-]+$")
+_HEADERS_MAX = 8
+
+
+def _clean_headers(raw) -> dict[str, str]:
+    """表单提交的 headers 对象 → 干净的 dict；不合法当场报错（保存前拦下，不静默清洗）。"""
+    if raw is None or raw == {}:
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError("Headers 要是「名字=值」的集合（界面上每行一条 K=V）")
+    out: dict[str, str] = {}
+    for k, v in raw.items():
+        key = str(k).strip()
+        value = str(v).strip()
+        if not _HEADER_KEY_RE.fullmatch(key):
+            raise ValueError(f"头名字只能用字母、数字和连字符：{key or '（空名字）'}")
+        if not value:
+            raise ValueError(f"头「{key}」的值不能为空")
+        out[key] = value
+    if len(out) > _HEADERS_MAX:
+        raise ValueError(f"Headers 最多 {_HEADERS_MAX} 条（现在 {len(out)} 条）")
+    return out
 
 #: 设置面板里的预置（只有地址与型号，**不含 key**——key 由人当场填）
 PRESETS = (
@@ -84,6 +109,10 @@ def read() -> dict:
             "key": str(item.get("key") or ""),
             "note": str(item.get("note") or ""),
             "added": str(item.get("added") or ""),
+            "protocol": str(item.get("protocol") or "openai"),
+            # headers 原样回（票 4）：保存前已校验过，读口不再清洗
+            "headers": {str(k): str(v) for k, v in item["headers"].items()}
+            if isinstance(item.get("headers"), dict) else {},
         })
     return {"schema": int(raw.get("schema") or SCHEMA),
             "active": str(raw.get("active") or ""),
@@ -116,16 +145,21 @@ def public() -> dict:
             "note": "改它要动服务器上的 .env，界面里改不了",
             "builtin": True, "ready": bool(cfg["key"] and cfg["model"]),
             "active": data["active"] == "",
+            "protocol": "openai",
         })
     for m in data["models"]:
-        rows.append({
+        row = {
             "id": m["id"], "label": m["label"],
             "base_url": m["base_url"], "model": m["model"],
             "key_hint": _mask(m["key"]) or "未配置 key",
             "note": m["note"], "builtin": False,
             "ready": bool(m["key"] and m["model"] and m["base_url"]),
             "active": data["active"] == m["id"],
-        })
+            "protocol": m.get("protocol") or "openai",
+        }
+        if m.get("headers"):
+            row["headers"] = dict(m["headers"])    # 界面面只在配了时带（可选字段）
+        rows.append(row)
     return {"active": data["active"], "models": rows, "presets": list(PRESETS)}
 
 
@@ -140,7 +174,8 @@ def active_credentials() -> dict | None:
         if not (m["base_url"] and m["model"] and m["key"]):
             return None                            # 配了一半＝不可用，别发半个包
         return {"id": m["id"], "label": m["label"], "base_url": m["base_url"],
-                "model": m["model"], "key": m["key"]}
+                "model": m["model"], "key": m["key"],
+                "headers": dict(m.get("headers") or {})}
     return None                                    # active 指向已删掉的条目
 
 
@@ -171,6 +206,7 @@ def upsert(payload: dict, *, actor: str = "admin") -> dict:
     data = read()
     old = next((m for m in data["models"] if m["id"] == mid), None)
     key = str(payload.get("key") or "").strip() or (old["key"] if old else "")
+    headers = _clean_headers(payload.get("headers"))
     row = {
         "id": mid,
         "label": str(payload.get("label") or model).strip()[:60],
@@ -179,7 +215,10 @@ def upsert(payload: dict, *, actor: str = "admin") -> dict:
         "key": key,
         "note": str(payload.get("note") or "").strip()[:120],
         "added": old["added"] if old else time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "protocol": "openai",                      # 前端展示用；目前只有这一种协议
     }
+    if headers:
+        row["headers"] = headers
     models = [m for m in data["models"] if m["id"] != mid] + [row]
     models.sort(key=lambda m: (m["label"], m["id"]))
     active = data["active"]
@@ -221,23 +260,27 @@ def _save(data: dict) -> None:
 
 
 # ---------------------------------------------------------------- 探活
-def probe(*, base_url: str, key: str, model: str = "", timeout: float = 15.0) -> dict:
+def probe(*, base_url: str, key: str, model: str = "",
+          headers: dict | None = None, timeout: float = 15.0) -> dict:
     """发一次最小请求，看这条配置能不能用（不落库、不改当前）。
 
     只用 `/models` 清单＋一次 1 token 的对话：前者验地址与 key，后者验型号真的在。
-    错误一律转成人话（超时/鉴权/地址不对），调用方直接给界面显示。
+    `headers`＝清单条目/表单的自定义头（票 4）：与请求头合并探活，但 Authorization
+    由这里出（测的就是这把 key），不许被覆盖。错误一律转成人话（超时/鉴权/地址不对），
+    调用方直接给界面显示。
     """
     import socket
     import urllib.error
     import urllib.request
 
     base = _clean_base_url(base_url)
+    extra = _clean_headers(headers)
     if not key:
         return {"ok": False, "ms": 0, "msg": "这条没有 key，先填 key 再测"}
     t0 = time.perf_counter()
 
     def _get(url):
-        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {key}"})
+        req = urllib.request.Request(url, headers={**extra, "Authorization": f"Bearer {key}"})
         with urllib.request.urlopen(req, timeout=timeout) as r:      # noqa: S310
             return json.loads(r.read().decode("utf-8"))
 

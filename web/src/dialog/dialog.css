@@ -372,11 +372,19 @@ body.dlg-resizing{cursor:col-resize;user-select:none}
   font-size:13px}
 .mdl-menu-item.ghost{margin-top:4px;border-top:1px solid var(--dsr-line);border-radius:0px}
 
-/* ---------- 模型设置弹层 ---------- */
+/* ---------- 设置弹层（2026-11-03 票 3：双节 hub——左栏导航 供应商/界面，右栏内容） ---------- */
 .mdl-modal{position:fixed;inset:0;z-index:80;background:rgba(17,24,39,.38);
   display:flex;align-items:center;justify-content:center;padding:24px}
-.mdl-modal-in{width:min(680px,100%);max-height:86vh;overflow-y:auto;background:#fff;
+.mdl-modal-in{width:min(760px,100%);max-height:86vh;overflow-y:auto;background:#fff;
   border-radius:0px;padding:18px 20px 22px;box-shadow:0 24px 60px rgba(15,23,42,.28)}
+.mdl-hub{display:grid;grid-template-columns:132px minmax(0,1fr);margin-top:12px;min-height:300px}
+.mdl-hub-nav{border-right:1px solid #ebedf0;padding-right:10px;
+  display:flex;flex-direction:column;gap:4px;align-items:stretch}
+.mdl-hub-item{border:0;background:transparent;border-radius:0px;padding:8px 10px;
+  font-size:13px;color:#6b7280;cursor:pointer;text-align:left}
+.mdl-hub-item:hover{background:#f5f6f8;color:#1a1a1a}
+.mdl-hub-item.on{background:#eef5f1;color:#2f7a58;font-weight:600}
+.mdl-hub-body{padding-left:16px;min-width:0}
 .mdl-modal-h{display:flex;align-items:center;gap:10px}
 .mdl-modal-h h2{margin:0;font-size:17px;font-weight:700;color:#1a1a1a}
 .mdl-x{margin-left:auto;border:0;background:transparent;cursor:pointer;font-size:14px;
@@ -414,16 +422,38 @@ body.dlg-resizing{cursor:col-resize;user-select:none}
 .mdl-preset{border:1px dashed #d6dae1;background:#fafbfc;border-radius:0px;padding:6px 12px;
   font-size:12.5px;color:#4b5563;cursor:pointer}
 .mdl-preset:hover{border-color:#2f7a58;color:#2f7a58}
+/* 表单（票 3 图五字段序）：单列纵排；Headers 是多行 K=V 文本，API 协议是单选 */
 .mdl-form{margin-top:14px;border-top:1px dashed #ebedf0;padding-top:12px;
-  display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  display:grid;grid-template-columns:1fr;gap:10px}
 .mdl-form .mdl-hint{grid-column:1 / -1;margin:0}
 .mdl-form label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#6b7280}
-.mdl-form label:nth-of-type(1),.mdl-form label:nth-of-type(2){grid-column:1 / -1}
 .mdl-form input{border:1px solid #e5e7eb;border-radius:0px;padding:8px 10px;font:inherit;
   font-size:13.5px;color:#1a1a1a;outline:none}
 .mdl-form input:focus{border-color:#2f7a58}
+.mdl-form textarea{border:1px solid #e5e7eb;border-radius:0px;padding:8px 10px;font:inherit;
+  font-size:12.5px;line-height:1.6;color:#1a1a1a;outline:none;resize:vertical;
+  font-family:var(--mono,ui-monospace,Consolas,monospace)}
+.mdl-form textarea:focus{border-color:#2f7a58}
+.mdl-form select{border:1px solid #e5e7eb;border-radius:0px;padding:8px 10px;font:inherit;
+  font-size:13.5px;color:#1a1a1a;background:#fff;outline:none}
+.mdl-form select:focus{border-color:#2f7a58}
 .mdl-form-acts{grid-column:1 / -1;display:flex;gap:8px;margin-top:2px}
 .mdl-err{grid-column:1 / -1;margin:10px 0 0;font-size:12.5px;color:#b91c1c}
+
+/* 设置·界面（票 3）：正文字体三选卡——卡名各用自家的字体，看见即所选 */
+.mdl-ui{padding-top:2px}
+.mdl-font-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mdl-font-card{display:flex;flex-direction:column;gap:4px;align-items:flex-start;
+  border:1px solid #e5e7eb;background:#fff;border-radius:0px;padding:10px 12px;
+  cursor:pointer;text-align:left}
+.mdl-font-card:hover{border-color:#2f7a58}
+.mdl-font-card.on{border-color:#2f7a58;background:#f2f8f4;
+  box-shadow:inset 0 0 0 1px #2f7a58}
+.mdl-font-card b{font-size:13.5px;font-weight:600;color:#1a1a1a}
+.mdl-font-card span{font-size:11.5px;color:#6b7280}
+.mdl-font-card[data-font="serif"] b{font-family:var(--serif)}
+.mdl-font-card[data-font="sans"] b{font-family:var(--sans)}
+.mdl-font-card[data-font="kai"] b{font-family:var(--kai)}
 
 @media (prefers-reduced-motion: reduce){
   .dlg-shell *,.mdl-modal *{transition:none!important;animation:none!important}

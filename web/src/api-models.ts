@@ -20,6 +20,10 @@ export type ModelRow = {
   /** 地址/型号/key 齐了才算能用 */
   ready: boolean
   active: boolean
+  /** 目前只有 OpenAI Compatible 一种（后端存 "openai" 缺省，展示用） */
+  protocol?: string
+  /** 自定义请求头（票 4）：探活与调用时叠加；只在配了时才出现 */
+  headers?: Record<string, string>
 }
 
 export type Preset = { key: string; label: string; base_url: string; models: string[] }
@@ -34,6 +38,10 @@ export type ModelDraft = {
   /** 留空＝沿用已存的 key（新增时必须填） */
   key: string
   note?: string
+  /** 目前只有 OpenAI Compatible 一种，随表单提交（后端存 "openai" 缺省） */
+  protocol?: string
+  /** 自定义请求头（表单 Headers 每行 K=V 解析成对象提交）；空对象＝没有 */
+  headers?: Record<string, string>
 }
 
 export type ProbeResult = {
@@ -75,8 +83,9 @@ export async function setActiveModel(id: string): Promise<ModelsPayload> {
   return r.models
 }
 
-/** 探活：给了 id 就测清单里那条（后端用已存的 key），否则测表单里这一组。 */
-export async function testModel(p: { id?: string; base_url?: string; key?: string; model?: string }):
+/** 探活：给了 id 就测清单里那条（后端用已存的 key 与 headers），否则测表单里这一组。 */
+export async function testModel(p: { id?: string; base_url?: string; key?: string; model?: string;
+                                     headers?: Record<string, string> }):
   Promise<ProbeResult> {
   return req<ProbeResult>('/api/models/test', {
     method: 'POST',
