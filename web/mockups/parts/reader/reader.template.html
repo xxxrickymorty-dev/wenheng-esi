@@ -1,0 +1,915 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#12100C">
+<title>学科信息参考 · 阅览桌（静态稿 20261103）</title>
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   陈列馆 · 阅览桌（静态稿）
+   一册书摊在桌上：翻页是动作，纸声是回执，其余都退到边上去。
+   色板取陈列馆既有三族（night / paper / gold），不新起一套。
+   ══════════════════════════════════════════════════════════════════ */
+:root{
+  --night:#191310; --deep:#14342A; --deep-2:#0F241C;
+  --paper:#F4F1E8; --paper-2:#EAE4D3; --paper-3:#DDD6C2;
+  --ink:#12201A; --ink-2:#3F5248; --ink-3:#556169;
+  --gold:#C9A961; --gold-2:#E0CB92; --gold-dim:#927E56;
+  --red:#B23A2B;
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,Georgia,serif;
+  --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Mono",Consolas,monospace;
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --turn:cubic-bezier(.45,.05,.22,1);
+  --dur:660ms;
+
+  --pw:520px; --ph:735px;
+  --pad-t:calc(var(--pw) * .083);
+  --pad-x:calc(var(--pw) * .096);
+  --pad-b:calc(var(--pw) * .072);
+  --fs-body:clamp(13.6px, calc(var(--pw) * .0296), 17px);
+  --fs-small:clamp(11px, calc(var(--pw) * .0224), 12.6px);
+  --fs-kick:clamp(9.8px, calc(var(--pw) * .0196), 11px);
+  --fs-h1:clamp(20px, calc(var(--pw) * .0505), 28px);
+  --fs-h2:clamp(16px, calc(var(--pw) * .0350), 20px);
+  --fs-num:calc(var(--pw) * .105);
+}
+*,::after,::before{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:#0E120F;color:var(--paper);font-family:var(--serif);
+  -webkit-font-smoothing:antialiased;overflow:hidden;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--gold-2);outline-offset:4px}
+::selection{background:var(--gold);color:var(--night)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+
+/* ── 房间：深墨绿案面，一束暖光落在书上 ── */
+.room{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(58% 46% at 50% 34%,rgba(201,169,97,.13),transparent 72%),
+    radial-gradient(120% 88% at 50% 8%,#1C2A22 0%,#141C17 48%,#0C100D 100%)}
+.room::after{content:"";position:absolute;inset:0;opacity:.30;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.78' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E")}
+
+/* ── 顶栏：一行字，两个动作 ── */
+.bar{position:fixed;z-index:40;left:0;right:0;top:0;height:58px;
+  display:flex;align-items:center;gap:22px;padding:0 clamp(18px,2.4vw,34px);
+  color:var(--gold-2);font-size:12px;letter-spacing:.06em}
+.bar::after{content:"";position:absolute;left:clamp(18px,2.4vw,34px);right:clamp(18px,2.4vw,34px);bottom:0;height:1px;
+  background:linear-gradient(90deg,rgba(201,169,97,.34),rgba(201,169,97,.10) 46%,transparent)}
+.bar .back{display:flex;align-items:center;gap:9px;min-height:44px;
+  color:var(--gold-2);opacity:.82;transition:opacity .2s var(--ease)}
+.bar .back:hover{opacity:1}
+.bar .back svg{width:17px;height:17px}
+.bar .slip{display:flex;align-items:baseline;gap:13px;min-width:0}
+.bar .slip b{font-weight:600;font-size:13px;letter-spacing:.14em;color:var(--paper);white-space:nowrap}
+.bar .slip span{font-size:11px;letter-spacing:.1em;color:rgba(242,237,225,.56);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.bar .snd{margin-left:auto;display:flex;align-items:center;min-height:44px;padding:0 4px;
+  color:var(--gold-2);opacity:.82;transition:opacity .2s var(--ease)}
+.bar .snd:hover{opacity:1}
+.bar .snd svg{width:18px;height:18px}
+.bar .snd[aria-pressed="false"]{opacity:.40}
+.bar .snd .off{display:none}
+.bar .snd[aria-pressed="false"] .on{display:none}
+.bar .snd[aria-pressed="false"] .off{display:block}
+
+/* ── 案面 ── */
+.desk{position:relative;z-index:10;height:100%;display:grid;place-items:center;padding:58px 0 44px}
+.book{position:relative;display:grid;grid-template-columns:var(--pw) var(--pw);
+  transform-style:preserve-3d;perspective:7200px;transition:transform 560ms var(--ease)}
+.book[data-shut="true"]{transform:translateX(calc(var(--pw) * -.5))}
+.book[data-shut="true"] .page-l{opacity:0}
+
+/* 书下方的一团影：书在桌上，不在空中 */
+.shadow{position:absolute;z-index:0;left:50%;bottom:-34px;width:196%;height:60px;translate:-50% 0;
+  pointer-events:none;
+  background:radial-gradient(ellipse at 50% 42%,rgba(0,0,0,.62),rgba(0,0,0,.24) 48%,transparent 76%);
+  filter:blur(12px)}
+
+/* ── 页 ── */
+.page{position:relative;width:var(--pw);height:var(--ph);background:var(--paper);
+  color:var(--ink);overflow:hidden;isolation:isolate;transition:opacity 260ms var(--ease)}
+.page-l{border-radius:1px 0 0 1px}
+.page-r{border-radius:0 1px 1px 0}
+.page::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.38;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='.34'/%3E%3C/svg%3E")}
+.page-l::after,.page-r::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none}
+.page-l::after{background:linear-gradient(270deg,rgba(20,30,24,.17),transparent 9%)}
+.page-r::after{background:linear-gradient(90deg,rgba(20,30,24,.17),transparent 9%)}
+.gutter{position:absolute;z-index:6;left:calc(50% - .5px);top:0;width:1px;height:var(--ph);pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(146,126,86,.46) 7%,rgba(146,126,86,.46) 93%,transparent)}
+
+/* 页眉 / 页脚：眉在外侧，页码在外角 */
+.ph{position:absolute;z-index:2;left:var(--pad-x);right:var(--pad-x);top:calc(var(--pad-t) * .46);
+  display:flex;font-size:var(--fs-kick);letter-spacing:.2em;color:var(--ink-3)}
+.page-l .ph{justify-content:flex-start}
+.page-r .ph{justify-content:flex-end}
+.pf{position:absolute;z-index:2;left:var(--pad-x);right:var(--pad-x);bottom:calc(var(--pad-b) * .42);
+  display:flex;justify-content:space-between;
+  font-family:var(--mono);font-size:var(--fs-kick);letter-spacing:.14em;color:var(--ink-3)}
+.page-l .pf{flex-direction:row-reverse}
+.pb{position:absolute;z-index:2;left:var(--pad-x);right:var(--pad-x);
+  top:var(--pad-t);bottom:var(--pad-b);overflow:hidden}
+
+/* 全幅封面页 */
+.cover-page{position:absolute;inset:0;z-index:2;width:100%;height:100%;object-fit:cover}
+
+/* ── 正文排法 ── */
+.pb p{font-size:var(--fs-body);line-height:1.98;text-indent:2em;text-align:justify;
+  margin:0 0 .62em;color:var(--ink)}
+.pb h2{font-size:var(--fs-h2);font-weight:600;line-height:1.5;margin:1.05em 0 .7em;color:var(--ink);letter-spacing:.02em}
+.pb h2:first-child{margin-top:0}
+.pb .kick,.pb .cat-note,.pb .check,.pb .notes p{text-indent:0}
+.plate{margin:.85em auto 1em;padding:calc(var(--pw) * .014);background:transparent;
+  border:1px solid rgba(146,126,86,.26);display:block}
+.plate img{display:block;width:100%;object-fit:contain;filter:sepia(.17) saturate(.94) brightness(.985) contrast(.97)}
+
+/* 章首：大写的「一」，一条金线，然后才是正文 */
+.chap{margin:0 0 1.5em}
+.chap .no{display:block;font-size:calc(var(--pw) * .062);line-height:1;color:var(--gold-dim);margin-bottom:.34em}
+.chap h1{font-size:var(--fs-h1);font-weight:600;line-height:1.44;letter-spacing:.01em;color:var(--ink)}
+.chap .rule{display:block;width:calc(var(--pw) * .16);height:1px;background:var(--gold-dim);margin-top:1.05em}
+.chap.mid{padding-top:calc(var(--ph) * .02)}
+
+/* 馆藏登记：一张卡片，一枚在架章 */
+.cat{margin-top:.4em}
+.cat div{display:grid;grid-template-columns:5.4em 1fr;gap:.6em;padding:.72em 0;
+  border-bottom:1px solid rgba(146,126,86,.22)}
+.cat dt{font-size:var(--fs-small);letter-spacing:.18em;color:var(--ink-3)}
+.cat dd{font-size:calc(var(--fs-body) * .95);line-height:1.6;color:var(--ink)}
+.cat-note{margin-top:1.7em;font-size:var(--fs-small);line-height:2;color:var(--ink-3);letter-spacing:.06em}
+.stamp{position:absolute;right:2%;bottom:4%;display:grid;place-items:center;width:64px;height:64px;
+  border:2px solid rgba(178,58,43,.62);color:rgba(178,58,43,.72);
+  font-size:13px;letter-spacing:.24em;rotate:-7deg;opacity:.86}
+
+/* 目录 */
+.kick{font-size:var(--fs-kick);letter-spacing:.26em;color:var(--ink-3);margin-bottom:.9em}
+.pb h2.ttl{font-size:var(--fs-h1);font-weight:600;letter-spacing:.16em;margin:0 0 1.5em;line-height:1.35}
+.toc{list-style:none}
+.toc li{margin:0}
+.toc a{display:flex;align-items:baseline;gap:6px;padding:.95em 0;
+  border-bottom:1px solid rgba(146,126,86,.20);min-height:44px}
+.toc .t{font-size:var(--fs-body);letter-spacing:.02em}
+.toc .lead{flex:1;border-bottom:1px dotted rgba(85,97,105,.38);translate:0 -.2em}
+.toc .pg{font-family:var(--mono);font-size:var(--fs-small);color:var(--ink-3)}
+.toc a:hover .t{color:var(--deep)}
+.toc a:hover .pg{color:var(--ink)}
+
+/* 名词解释 */
+.gloss{list-style:none}
+.gloss li{margin:0 0 1.4em;padding-left:1.15em;position:relative}
+.gloss li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;background:var(--gold-dim)}
+.gloss b{display:block;font-size:var(--fs-body);font-weight:600;margin-bottom:.22em}
+.gloss span{display:block;font-size:calc(var(--fs-body) * .88);line-height:1.94;color:var(--ink-2);text-align:justify}
+
+/* 表格：细线，数字右齐 */
+.data{width:100%;border-collapse:collapse;font-family:var(--sans);
+  font-size:clamp(10.2px, calc(var(--pw) * .0210), 12px);line-height:1.55;color:var(--ink)}
+.data th{font-weight:500;font-size:clamp(9.6px, calc(var(--pw) * .0194), 11px);letter-spacing:.04em;color:var(--ink-3);
+  text-align:right;padding:.44em .3em;border-bottom:1px solid var(--gold-dim);white-space:nowrap;vertical-align:bottom}
+.data td{text-align:right;padding:.46em .3em;border-bottom:1px solid rgba(146,126,86,.17);white-space:nowrap}
+.data th:first-child,.data td:first-child{text-align:left;white-space:normal}
+.data td.cn{font-family:var(--serif)}
+.data tbody tr:last-child td{border-bottom:0}
+.data.dense{table-layout:fixed;font-size:clamp(7.8px, calc(var(--pw) * .0164), 9.2px)}
+.data.dense th{padding:.38em .14em;white-space:normal;line-height:1.34;letter-spacing:0;word-break:break-word}
+.data.dense td{padding:.38em .14em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.data.dense th:first-child,.data.dense td:first-child{width:26%;white-space:normal;word-break:break-word}
+.data.dense tbody tr{height:calc(var(--pw) * .042)}
+.data .imgs{display:grid;grid-template-columns:1fr;gap:3px;padding:2px 0}
+.data .imgs img{display:block;width:100%;height:auto;filter:sepia(.17) saturate(.94) brightness(.985) contrast(.97)}
+
+/* 本期数据 */
+.nums{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid rgba(146,126,86,.30);margin-top:.2em}
+.nums div{padding:2.3em .2em 2.2em;border-bottom:1px solid rgba(146,126,86,.30)}
+.nums div:nth-child(odd){border-right:1px solid rgba(146,126,86,.30);padding-right:1.1em}
+.nums div:nth-child(even){padding-left:1.1em}
+.nums span{display:block;font-size:var(--fs-small);letter-spacing:.12em;color:var(--ink-3);margin-bottom:.4em}
+.nums b{font-size:calc(var(--pw) * .105);font-weight:600;line-height:1;letter-spacing:.01em}
+.nums b i{font-style:normal;font-family:var(--sans);font-size:var(--fs-small);color:var(--deep);
+  margin-left:.36em;vertical-align:.5em}
+.check{margin-top:2.2em;font-size:var(--fs-small);line-height:2.1;color:var(--ink-2);padding-top:1.1em;border-top:1px solid rgba(146,126,86,.26)}
+
+/* 顶尖论文 */
+.notes h2{font-size:var(--fs-h2);margin:2.3em 0 .7em;display:flex;align-items:center;gap:.55em}
+.notes h2:first-child{margin-top:0}
+.notes h2::before{content:"";width:6px;height:6px;background:var(--gold-dim);flex:none}
+.notes p{font-size:calc(var(--fs-body) * .9);line-height:1.95;color:var(--ink-2);text-indent:0;margin:0 0 .3em}
+
+/* 末页 */
+.end{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.end .mk{font-size:calc(var(--pw) * .075);color:var(--gold-dim);font-weight:600;line-height:1}
+.end h2{font-size:var(--fs-h2);font-weight:600;letter-spacing:.3em;margin:1.5em 0 .9em;text-indent:.3em}
+.end p{font-size:var(--fs-small);line-height:2;color:var(--ink-2);letter-spacing:.04em}
+.end .rule{width:44px;height:1px;background:var(--gold-dim);margin:1.7em 0}
+.end .org{font-size:var(--fs-kick);letter-spacing:.2em;color:var(--ink-3)}
+.end .back-shelf{margin-top:2.2em;font-size:var(--fs-small);letter-spacing:.18em;color:var(--ink);
+  border-bottom:1px solid var(--gold-dim);padding:0 0 .34em;min-height:44px}
+
+/* ── 翻动中的那一叶 ── */
+.turning{position:absolute;z-index:30;left:50%;top:0;width:var(--pw);height:var(--ph);
+  transform-origin:left center;transform:rotateY(0deg);transform-style:preserve-3d;
+  display:none;will-change:transform}
+.turning.on{display:block}
+.turning .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  background:var(--paper);overflow:hidden;box-shadow:0 0 22px rgba(0,0,0,.28)}
+.turning .tf{transform:rotateY(0deg)}
+.turning .tb{transform:rotateY(180deg)}
+.turning .face::after{content:"";position:absolute;inset:0;z-index:9;pointer-events:none}
+.turning .tf::after{background:linear-gradient(90deg,rgba(20,30,24,.18),transparent 14%)}
+.turning .tb::after{background:linear-gradient(270deg,rgba(20,30,24,.18),transparent 14%)}
+
+/* ── 合着的书：封面立在桌上 ── */
+.closed{position:absolute;z-index:12;left:50%;top:0;width:var(--pw);height:var(--ph);
+  filter:drop-shadow(0 30px 38px rgba(0,0,0,.52));transition:opacity 220ms var(--ease)}
+.closed[hidden]{display:none}
+.closed .bd{position:relative;width:100%;height:100%;cursor:pointer;
+  transition:transform 640ms var(--ease)}
+.closed .bd img{display:block;width:100%;height:100%;object-fit:cover}
+.closed .bd::before{content:"";position:absolute;left:0;top:0;bottom:0;width:10px;z-index:3;
+  background:linear-gradient(90deg,rgba(0,0,0,.58),rgba(0,0,0,.12) 64%,transparent)}
+.closed .bd::after{content:"";position:absolute;right:-3px;top:1px;bottom:1px;width:3px;border-radius:0 1px 1px 0;background:linear-gradient(90deg,rgba(0,0,0,.34),rgba(0,0,0,.06))}
+  background:linear-gradient(90deg,var(--paper-3),var(--paper))}
+.closed .bd:hover,.closed .bd:focus-visible{transform:translateY(-8px) rotateX(1.6deg)}
+.closed .fold{position:absolute;right:0;bottom:0;width:0;height:0;z-index:4;pointer-events:none;
+  background:linear-gradient(315deg,var(--paper-2) 0 50%,transparent 50%);
+  transition:width .3s var(--ease),height .3s var(--ease)}
+.closed .bd:hover .fold,.closed .bd:focus-visible .fold{width:48px;height:48px}
+
+/* ── 底边进度：一条金线 ── */
+.foot{position:fixed;z-index:40;left:0;right:0;bottom:0;height:3px;background:rgba(201,169,97,.10)}
+.foot i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold-dim),var(--gold-2));
+  transition:width .45s var(--ease)}
+
+/* ── 量页用的暗页（参与排字，不给人看） ── */
+.probe{position:absolute;left:-9999px;top:0;visibility:hidden;pointer-events:none}
+
+/* ── 窄屏：一次一页 ── */
+html.portrait .book{grid-template-columns:var(--pw)}
+html.portrait .book[data-shut="true"]{transform:none}
+html.portrait .book[data-shut="true"] .page-r{opacity:0}
+html.portrait .page-l{display:none}
+html.portrait .gutter{display:none}
+html.portrait .turning{left:0}
+html.portrait .closed{left:0}
+html.portrait .page-r .ph{justify-content:flex-start}
+html.portrait .page{border-radius:1px}
+.slide-page{position:absolute;inset:0;z-index:30;transition:transform .40s var(--ease),opacity .40s var(--ease)}
+.slide-page.go{transform:translateX(-13%);opacity:0}
+
+@media (max-width:900px){
+  .bar{gap:14px}
+  .bar .slip span{display:none}
+}
+@media (max-width:420px){
+  .bar{height:52px;padding:0 14px}
+  .bar .slip b{font-size:12px;letter-spacing:.1em}
+  .desk{padding:52px 0 34px}
+}
+@media (prefers-reduced-motion:reduce){
+  :root{--dur:1ms}
+  .book,.page,.closed,.closed .bd,.foot i{transition-duration:1ms}
+}
+</style>
+</head>
+<body>
+<div class="room" aria-hidden="true"></div>
+
+<header class="bar">
+  <button class="back" id="back" type="button" aria-label="归架，合上这一册">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M15 5 8 12l7 7"/></svg>
+    归架
+  </button>
+  <p class="slip"><b>学科信息参考</b><span id="slip">—</span></p>
+  <button class="snd" id="snd" type="button" aria-pressed="true" aria-label="翻页声">
+    <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h3l5 4V5L7 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8 8 0 0 1 0 12"/></svg>
+    <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h3l5 4V5L7 9H4z"/><path d="m16 9 5 6M21 9l-5 6"/></svg>
+  </button>
+</header>
+
+<main class="desk" id="desk" aria-label="阅览桌">
+  <div class="book" id="book" data-shut="true">
+    <span class="shadow" aria-hidden="true"></span>
+    <section class="page page-l" id="pageL" aria-label="左页"></section>
+    <section class="page page-r" id="pageR" aria-label="右页"></section>
+    <span class="gutter" aria-hidden="true"></span>
+    <div class="closed" id="closed">
+      <div class="bd" id="coverBtn" role="button" tabindex="0" aria-label="翻开本期">
+        <img id="coverImg" alt="">
+        <span class="fold"></span>
+      </div>
+    </div>
+    <div class="turning" id="turning" aria-hidden="true">
+      <div class="face tf" id="tf"></div>
+      <div class="face tb" id="tb"></div>
+    </div>
+  </div>
+  <div class="probe" id="probe"><section class="page"><div class="pb" id="probeBody"></div></section></div>
+</main>
+
+<div class="foot" aria-hidden="true"><i id="prog"></i></div>
+<p class="sr" id="live" aria-live="polite"></p>
+
+<script>
+const B = /*__PAYLOAD__*/null;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pad2 = (n) => String(n).padStart(2, '0');
+const reduce = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ═══════════ 一、声音：纸声是翻页的回执 ═══════════ */
+const Sound = {
+  on: true, last: -1, at: 0, pool: [],
+  init() {
+    try { const v = localStorage.getItem('wh-reader-sound'); if (v !== null) this.on = v === '1'; } catch (e) {}
+    this.pool = (B.sounds || []).map((src) => { const a = new Audio(src); a.preload = 'auto'; return a; });
+    this.paint();
+  },
+  paint() {
+    const b = $('snd');
+    b.setAttribute('aria-pressed', this.on ? 'true' : 'false');
+    b.setAttribute('aria-label', this.on ? '翻页声已开，点一下关闭' : '翻页声已关，点一下打开');
+  },
+  toggle() {
+    this.on = !this.on;
+    try { localStorage.setItem('wh-reader-sound', this.on ? '1' : '0'); } catch (e) {}
+    this.paint();
+    if (this.on) this.play(1, .9);
+  },
+  play(rate = 1, gain = 1) {
+    if (!this.on || !this.pool.length) return;
+    const now = performance.now();
+    if (now - this.at < 110) return;
+    this.at = now;
+    let i = Math.floor(Math.random() * this.pool.length);
+    if (this.pool.length > 1 && i === this.last) i = (i + 1) % this.pool.length;
+    this.last = i;
+    const a = this.pool[i].cloneNode(true);
+    a.volume = Math.min(1, .52 * gain);
+    a.playbackRate = rate;
+    a.currentTime = 0;
+    a.play().catch(() => {});
+  },
+};
+
+/* ═══════════ 二、尺寸：书占满案面又不顶到栏 ═══════════ */
+const RATIO = 210 / 297;
+let SPREAD_MODE = true;
+function fit() {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  SPREAD_MODE = vw > 900;
+  document.documentElement.classList.toggle('portrait', !SPREAD_MODE);
+  const availH = vh - 58 - 44 - 26;
+  const availW = vw - (SPREAD_MODE ? 148 : 48);
+  let ph = availH, pw = ph * RATIO;
+  const maxPw = SPREAD_MODE ? availW / 2 : availW;
+  if (pw > maxPw) { pw = maxPw; ph = pw / RATIO; }
+  const root = document.documentElement.style;
+  root.setProperty('--pw', Math.round(pw) + 'px');
+  root.setProperty('--ph', Math.round(ph) + 'px');
+}
+
+/* ═══════════ 三、排字：先量后分页，宁可多一页也不切字 ═══════════ */
+let PAGES = [], LEAVES = [], spread = 1, open = false, busy = false, pending = 0;
+const probeBody = $('probeBody');
+const overflow = () => probeBody.scrollHeight - probeBody.clientHeight > 1;
+
+let cur = {};
+function newPage(opt = {}) { cur = { chapter: opt.chapter || null, cont: !!opt.cont }; }
+function commit() {
+  if (!probeBody.childNodes.length) return;
+  PAGES.push({ inner: probeBody.innerHTML, chapter: cur.chapter || null, cont: !!cur.cont });
+  probeBody.innerHTML = '';
+  cur = { chapter: null, cont: false };
+}
+/* 这一页已经用掉多高（不算外边距） */
+function usedHeight() {
+  const last = probeBody.lastElementChild;
+  if (!last) return 0;
+  return last.getBoundingClientRect().bottom - probeBody.getBoundingClientRect().top;
+}
+
+function pageHTML(inner, no, side, plain) {
+  if (plain) return inner;
+  const head = side === 'r' ? (B.period + ' · ' + (B.design || '装帧')) : '学科信息参考';
+  return '<div class="ph"><span>' + esc(head) + '</span></div>'
+       + '<div class="pb">' + inner + '</div>'
+       + '<div class="pf"><span>YNU · DIR · ' + esc(B.period) + '</span><span>' + pad2(no) + '</span></div>';
+}
+
+function blockNode(b, avail) {
+  if (b.t === 'h2') { const el = document.createElement('h2'); el.textContent = b.text; return el; }
+  if (b.t === 'p') { const el = document.createElement('p'); el.textContent = b.text; return el; }
+  if (b.t === 'img') {
+    const ph = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ph')) || 735;
+    const innerW = probeBody.clientWidth;
+    const pad = innerW * .016 * 2 + 2;
+    const cap = ph * .50;
+    const ratio = b.ratio || 1.4;
+    let w = innerW - pad, h = w / ratio;
+    if (h > cap) { h = cap; w = h * ratio; }
+    /* 这一页剩下的位置够，就把图缩到剩下的高度里放进去；不够就翻页，别留一个大坑 */
+    if (h + pad > avail) {
+      if (avail - pad >= ph * .30) { h = avail - pad; w = h * ratio; }
+      else return null;
+    }
+    const fig = document.createElement('figure');
+    fig.className = 'plate';
+    fig.style.width = Math.round(w + pad) + 'px';
+    const img = document.createElement('img');
+    img.src = b.src; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
+    img.style.height = Math.round(h) + 'px';
+    img.style.width = '100%';
+    fig.appendChild(img);
+    return fig;
+  }
+  return null;
+}
+
+/* 宽表拆列：一页最多五列；头一列是主键，每段都带上 */
+const MAX_COLS = 6;
+function columnChunks(rows) {
+  const wide = Math.max(...rows.map((r) => r.length));
+  const spanned = rows.some((r) => r.some((c) => (c.span || 1) > 1));
+  if (wide <= MAX_COLS || spanned) return [{ rows, cont: false }];
+  const out = [];
+  for (let start = 1; start < wide; start += MAX_COLS - 1) {
+    const cols = [0].concat(Array.from({ length: MAX_COLS - 1 }, (_, i) => start + i).filter((c) => c < wide));
+    out.push({ rows: rows.map((r) => cols.map((c) => r[c] || { text: '', span: 1, imgs: [] })), cont: out.length > 0 });
+  }
+  return out;
+}
+function tableShell(header) {
+  const table = document.createElement('table');
+  table.className = header.length > 6 ? 'data dense' : 'data';
+  const thead = document.createElement('thead');
+  const tr = document.createElement('tr');
+  header.forEach((cell) => {
+    const th = document.createElement('th');
+    th.textContent = (cell.text || '').replace(/\n/g, ' ');
+    tr.appendChild(th);
+  });
+  thead.appendChild(tr);
+  table.appendChild(thead);
+  table.appendChild(document.createElement('tbody'));
+  return table;
+}
+function rowNode(row) {
+  const tr = document.createElement('tr');
+  row.forEach((cell) => {
+    const td = document.createElement('td');
+    const imgs = cell.imgs || [];
+    if (imgs.length) {
+      const box = document.createElement('div');
+      box.className = 'imgs';
+      imgs.forEach((src) => { const im = document.createElement('img'); im.src = src; im.alt = ''; box.appendChild(im); });
+      td.appendChild(box);
+    } else {
+      td.textContent = cell.text || '';
+      td.className = 'cn';
+    }
+    tr.appendChild(td);
+  });
+  return tr;
+}
+
+function placeTable(rows) {
+  if (!rows || rows.length < 1) return;
+  columnChunks(rows).forEach((chunk, ci) => {
+    let i = 1, pageStart = true;
+    while (true) {
+      if (chunk.cont || ci > 0) {
+        const tag = document.createElement('p');
+        tag.className = 'kick';
+        tag.style.cssText = 'margin:0 0 .55em';
+        tag.textContent = '续 表';
+        probeBody.appendChild(tag);
+      }
+      const table = tableShell(chunk.rows[0]);
+      probeBody.appendChild(table);
+      const tbody = table.tBodies[0];
+      let placed = 0;
+      while (i < chunk.rows.length) {
+        const tr = rowNode(chunk.rows[i]);
+        tbody.appendChild(tr);
+        if (overflow() && placed > 0) { tbody.removeChild(tr); break; }
+        i += 1; placed += 1;
+      }
+      pageStart = false;
+      if (i >= chunk.rows.length) break;
+      commit();
+    }
+  });
+}
+
+function buildPages() {
+  PAGES = []; probeBody.innerHTML = ''; newPage({});
+
+  /* ① 封面（整幅，无眉无页码） */
+  probeBody.innerHTML = '<img class="cover-page" src="' + B.cover + '" alt="">';
+  PAGES.push({ inner: probeBody.innerHTML, chapter: null, cover: true });
+  probeBody.innerHTML = '';
+
+  /* ② 馆藏登记 */
+  probeBody.innerHTML = recordHTML(); commit();
+
+  /* ③ 目录 */
+  probeBody.innerHTML = tocHTML(); commit();
+
+  /* ④ 名词解释 */
+  B.glossary.forEach((g, i) => {
+    if (i === 0) probeBody.innerHTML = '<p class="kick">GLOSSARY</p><h2 class="ttl">名词解释</h2><ol class="gloss"></ol>';
+    const list = probeBody.querySelector('.gloss');
+    const li = document.createElement('li');
+    li.innerHTML = '<b>' + esc(g.term) + '</b><span>' + esc(g.definition) + '</span>';
+    list.appendChild(li);
+    if (overflow() && i > 0) {
+      list.removeChild(li);
+      commit();
+      probeBody.innerHTML = '<p class="kick">GLOSSARY</p><h2 class="ttl">名词解释（续）</h2><ol class="gloss"></ol>';
+      probeBody.querySelector('.gloss').appendChild(li);
+    }
+  });
+  commit();
+
+  /* ⑤ 正文 */
+  for (const b of B.blocks) {
+    if (b.t === 'h1') {
+      commit();
+      const m = /^([一二三四五六七八九十]+)\s*(.*)$/.exec(b.text);
+      const chap = document.createElement('header');
+      chap.className = 'chap' + (PAGES.length > 1 ? ' mid' : '');
+      chap.innerHTML = (m ? '<span class="no">' + esc(m[1]) + '</span>' : '')
+        + '<h1>' + esc(m ? m[2] : b.text) + '</h1><span class="rule"></span>';
+      probeBody.appendChild(chap);
+      newPage({ chapter: b.text });
+      continue;
+    }
+    if (b.t === 'tbl') { placeTable(b.rows); commit(); continue; }
+    const avail = probeBody.clientHeight - usedHeight() - 30;
+    let node = blockNode(b, avail);
+    if (!node) {                       /* 剩下的位置放不下这张图：翻页再放 */
+      commit();
+      node = blockNode(b, probeBody.clientHeight);
+      if (!node) continue;
+    }
+    probeBody.appendChild(node);
+    if (overflow()) {
+      probeBody.removeChild(node);
+      commit();
+      const fresh = blockNode(b, probeBody.clientHeight);
+      if (fresh) probeBody.appendChild(fresh);
+    }
+  }
+  commit();
+
+  /* ⑥ 本期数据 */
+  probeBody.innerHTML = kpiHTML(); commit();
+
+  /* ⑦ 学科大表 */
+  if (B.table && B.table.length) {
+    probeBody.innerHTML = '<p class="kick">DISCIPLINE TABLE</p><h2 class="ttl">学科大表</h2>';
+    const rows = [['学科', '论文', '被引', 'CNCI', '顶尖', '接近度'].map((t) => ({ text: t }))]
+      .concat(B.table.map((r) => [r.cn || r.en, r.papers ?? '—', r.cites ?? '—',
+        typeof r.cnci === 'number' ? r.cnci.toFixed(2) : '—', r.top ?? '—', r.prox || '—'].map((t) => ({ text: t }))));
+    placeTable(rows);
+    commit();
+  }
+
+  /* ⑧ 顶尖论文与近线 */
+  probeBody.innerHTML = topHTML(); commit();
+
+  /* ⑨ 末页 */
+  probeBody.innerHTML = endHTML(); commit();
+
+  PAGES.forEach((p, i) => { p.no = i + 1; p.side = i % 2 === 0 ? 'r' : 'l'; });
+}
+
+function recordHTML() {
+  const rows = [
+    ['刊名', '学科信息参考'],
+    ['期次', (B.issue || '') + (B.total ? '（总第 ' + B.total + ' 期）' : '')],
+    ['编印', B.org || ''],
+    ['装帧', (B.design || '') + '装帧'],
+    ['开本', '210 × 297'],
+    ['索取号', 'YNU / DIR / ' + B.period],
+    ['状态', '在架 · 可取阅'],
+  ];
+  return '<p class="kick">COLLECTION RECORD</p><h2 class="ttl">馆藏登记</h2>'
+    + '<dl class="cat">' + rows.map(([k, v]) => '<div><dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd></div>').join('') + '</dl>'
+    + '<p class="cat-note">一册一档，循数而读。</p>'
+    + '<span class="stamp" aria-hidden="true">在 架</span>';
+}
+function tocHTML() {
+  const items = [{ title: '名词解释', page: '' }].concat(B.toc.filter((t) => t.title !== '名词解释'));
+  return '<p class="kick">CONTENTS</p><h2 class="ttl">目录</h2><ol class="toc">'
+    + items.map((t) => '<li><a href="#" data-toc="' + esc(t.title) + '"><span class="t">' + esc(t.title)
+      + '</span><span class="lead"></span><span class="pg">' + esc(t.page || '') + '</span></a></li>').join('')
+    + '</ol><p class="cat-note">页码为印本页码；点一条，翻到该章。</p>';
+}
+function kpiHTML() {
+  const k = B.kpi;
+  const delta = (v) => (typeof v === 'number' && v > 0 ? '<i>↑' + v + '</i>' : '');
+  return '<p class="kick">THIS ISSUE</p><h2 class="ttl">本期数据</h2><div class="nums">'
+    + '<div><span>国际排名</span><b>' + (k.rankIntl ?? '—') + delta(k.rankIntlDelta) + '</b></div>'
+    + '<div><span>国内高校排名</span><b>' + (k.rankCn ?? '—') + '</b></div>'
+    + '<div><span>前 1% 学科</span><b>' + (k.nDisc ?? '—') + '</b></div>'
+    + '<div><span>顶尖论文</span><b>' + (k.topPapers ?? '—') + delta(k.topPapersDelta) + '</b></div></div>'
+    + '<p class="check">出稿前自检 ' + (k.pass ?? '—') + ' / ' + (k.total ?? '—') + ' 项通过'
+    + (k.coverage ? '，覆盖窗口 ' + esc(k.coverage) : '') + '。'
+    + (k.prev ? '与上期（' + esc(k.prev) + '）相比。' : '')
+    + '数字取自本期部署产物，与工作台同一份事实。</p>';
+}
+function topHTML() {
+  const t = B.top || {};
+  const cn = new Map((B.table || []).map((r) => [r.en, r.cn]));
+  const top3 = (t.top3 || []).map(([en, n]) => (cn.get(en) || en) + ' ' + n + ' 篇').join(' · ');
+  const best = t.best;
+  const near = t.near || [];
+  const pct = (v) => (typeof v === 'number' ? v.toFixed(2) + '%' : '—');
+  return '<p class="kick">TOP PAPERS &amp; NEAR LINE</p><h2 class="ttl">顶尖论文与近线</h2><div class="notes">'
+    + '<h2>顶尖论文学科前 3</h2><p>' + esc(top3 || '—') + '</p>'
+    + '<h2>最接近 ESI 前 1‰</h2><p>' + (best
+      ? esc(cn.get(best.discipline) || best.discipline) + ' —— 接近度 ' + pct(best.prox_pct) : '—') + '</p>'
+    + '<h2>未进榜但已接近 1% 阈值</h2>'
+    + (near.length ? near.map((n) => '<p>' + esc(cn.get(n.discipline) || n.discipline) + ' —— 接近度 ' + pct(n.prox_pct)
+        + (typeof n.chg === 'number' ? '（较上期 ' + (n.chg >= 0 ? '+' : '') + n.chg.toFixed(2) + 'pp）' : '') + '</p>').join('')
+      : '<p>—</p>')
+    + '</div>';
+}
+function endHTML() {
+  return '<div class="end"><span class="mk" aria-hidden="true">雲</span><h2>阅毕归架</h2>'
+    + '<p>' + esc(B.issue) + (B.total ? ' · 总第 ' + B.total + ' 期' : '') + '</p>'
+    + '<p>' + esc(B.org) + '</p><span class="rule"></span>'
+    + '<p class="org">YUNNAN UNIVERSITY LIBRARY</p>'
+    + '<button class="back-shelf" type="button" id="endBack">回 到 书 架</button></div>';
+}
+
+/* ═══════════ 四、装订 ═══════════ */
+function makeLeaves() {
+  LEAVES = [];
+  if (!SPREAD_MODE) {                     /* 窄屏：一页一叶，只留正面 */
+    PAGES.forEach((p) => LEAVES.push({
+      front: pageHTML(p.inner, p.no, 'l', p.cover), back: '', chapter: p.chapter || null,
+    }));
+    return;
+  }
+  const pages = PAGES.slice();
+  if (pages.length % 2) pages.push({ inner: '', no: pages.length + 1, side: 'l' });
+  for (let i = 0; i < pages.length; i += 2) {
+    const a = pages[i], b = pages[i + 1];
+    LEAVES.push({
+      front: pageHTML(a.inner, a.no, 'r', a.cover),
+      back: pageHTML(b.inner, b.no, 'l'),
+      chapter: a.chapter || b.chapter || null,
+    });
+  }
+}
+
+function paint() {
+  if (SPREAD_MODE) {
+    const l = spread > 0 ? LEAVES[spread - 1] : null;
+    const r = LEAVES[spread];
+    $('pageL').innerHTML = l ? l.back : '';
+    $('pageR').innerHTML = r ? r.front : '';
+  } else {
+    const p = LEAVES[spread];
+    $('pageL').innerHTML = '';
+    $('pageR').innerHTML = p ? p.front : '';
+  }
+  $('prog').style.width = (spread / Math.max(1, LEAVES.length - 1) * 100) + '%';
+  const back = $('endBack');
+  if (back) back.addEventListener('click', closeBook);
+  $('live').textContent = SPREAD_MODE
+    ? ('第 ' + (spread + 1) + ' 叶，共 ' + LEAVES.length + ' 叶')
+    : ('第 ' + (spread + 1) + ' 页，共 ' + LEAVES.length + ' 页');
+}
+
+/* ═══════════ 五、翻页 ═══════════ */
+function turn(dir, after) {
+  if (busy) { if (!after) pending = dir; return; }
+  const next = spread + dir;
+  if (next < 0 || next > LEAVES.length - 1) return;
+
+  /* 窄屏：整页横移，不做 3D 翻页（一只手就能翻） */
+  if (!SPREAD_MODE) {
+    if (reduce()) { spread = next; paint(); Sound.play(dir > 0 ? 1 : 1.04); if (after) after(); return; }
+    busy = true;
+    const out = $('turning');
+    out.className = 'turning on';
+    out.innerHTML = '<div class="slide-page page page-r">' + (LEAVES[spread] ? LEAVES[spread].front : '') + '</div>';
+    spread = next;
+    paint();
+    Sound.play(dir > 0 ? 1 : 1.05, 1);
+    requestAnimationFrame(() => out.querySelector('.slide-page').classList.add('go'));
+    window.setTimeout(() => {
+      out.className = 'turning';
+      out.innerHTML = '';
+      busy = false;
+      if (after) after();
+      else if (pending) { const d = pending; pending = 0; if (d < 0) back(); else turn(d); }
+    }, 430);
+    return;
+  }
+
+  if (reduce()) { spread = next; paint(); Sound.play(dir > 0 ? 1 : 1.04); if (after) after(); return; }
+
+  busy = true;
+  const leaf = dir > 0 ? LEAVES[spread] : LEAVES[spread - 1];
+  const tf = $('tf'), tb = $('tb'), turning = $('turning');
+  const fa = PAGES[dir > 0 ? spread * 2 : (spread - 1) * 2];
+  const ba = PAGES[dir > 0 ? spread * 2 + 1 : (spread - 1) * 2 + 1];
+  tf.innerHTML = pageHTML(leaf ? leaf.front : '', fa ? fa.no : 0, 'r', fa && fa.cover);
+  tb.innerHTML = pageHTML(leaf ? leaf.back : '', ba ? ba.no : 0, 'l');
+
+  if (dir > 0) $('pageR').innerHTML = (LEAVES[spread + 1] || {}).front || '';
+  else $('pageL').innerHTML = (LEAVES[spread - 2] || {}).back || '';
+
+  turning.classList.add('on');
+  const from = dir > 0 ? 0 : -180;
+  const to = dir > 0 ? -180 : 0;
+  turning.style.transition = 'none';
+  turning.style.transform = 'translateZ(-26px) rotateY(' + from + 'deg)';
+  void turning.offsetWidth;
+  turning.style.transition = 'transform var(--dur) var(--turn)';
+  turning.style.transform = 'translateZ(-26px) rotateY(' + to + 'deg)';
+  Sound.play(dir > 0 ? 1 : 1.05, 1);
+
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    turning.classList.remove('on');
+    turning.style.transition = 'none';
+    turning.style.transform = 'translateZ(-26px) rotateY(0deg)';
+    busy = false;
+    spread = next;
+    paint();
+    if (after) after();
+    else if (pending) { const d = pending; pending = 0; if (d < 0) back(); else turn(d); }
+  };
+  turning.addEventListener('transitionend', finish, { once: true });
+  window.setTimeout(finish, 900);
+}
+
+function openBook() {
+  if (open || busy) return;
+  open = true;
+  spread = 1;
+  paint();
+  $('closed').hidden = true;
+  $('live').textContent = '已翻开';
+  if (!SPREAD_MODE) {
+    $('book').dataset.shut = 'false';
+    Sound.play(.88, 1.1);
+    return;
+  }
+  if (reduce()) { $('book').dataset.shut = 'false'; Sound.play(.88, 1.1); return; }
+
+  const tf = $('tf'), tb = $('tb'), turning = $('turning');
+  tf.innerHTML = LEAVES[0].front;
+  tb.innerHTML = LEAVES[0].back;
+  turning.classList.add('on');
+  turning.style.transition = 'none';
+  turning.style.transform = 'translateZ(-26px) rotateY(0deg)';
+  void turning.offsetWidth;
+  requestAnimationFrame(() => {
+    $('book').dataset.shut = 'false';
+    turning.style.transition = 'transform var(--dur) var(--turn)';
+    turning.style.transform = 'translateZ(-26px) rotateY(-180deg)';
+  });
+  Sound.play(.88, 1.15);
+  window.setTimeout(() => {
+    turning.classList.remove('on');
+    turning.style.transition = 'none';
+    turning.style.transform = 'translateZ(-26px) rotateY(0deg)';
+    paint();
+    $('live').textContent = '已翻开，第 2 页';
+  }, 780);
+}
+
+function back() {
+  if (busy) { pending = -1; return; }
+  if (spread <= 1) closeBook();
+  else turn(-1);
+}
+function closeBook() {
+  if (!open || busy) return;
+  if (!SPREAD_MODE) {
+    open = false; spread = 0; paint();
+    $('book').dataset.shut = 'true';
+    $('closed').hidden = false;
+    Sound.play(.78, .95);
+    $('live').textContent = '已合上';
+    return;
+  }
+  const shut = () => {
+    $('book').dataset.shut = 'true';
+    Sound.play(.78, .95);
+    window.setTimeout(() => {
+      open = false;
+      $('closed').hidden = false;
+      $('live').textContent = '已合上';
+    }, 300);
+  };
+  if (spread > 1) { spread = 1; paint(); window.setTimeout(() => turn(-1, shut), 40); }
+  else turn(-1, shut);
+}
+
+function jump(title) {
+  const key = title.replace(/（.*$/, '').trim();
+  let idx = PAGES.findIndex((p) => p.chapter && p.chapter.replace(/（.*$/, '').trim() === key);
+  if (idx < 0) idx = PAGES.findIndex((p) => p.chapter && p.chapter.replace(/（.*$/, '').trim().startsWith(key));
+  if (idx < 0 && key === '名词解释') idx = PAGES.findIndex((p) => /名词解释/.test(p.inner));
+  if (idx < 0) return;
+  if (SPREAD_MODE) spread = Math.max(1, Math.ceil(idx / 2));
+  else spread = idx;
+  paint();
+  Sound.play(1.02, .8);
+}
+
+/* ═══════════ 六、接线 ═══════════ */
+function wire() {
+  $('back').addEventListener('click', closeBook);
+  $('snd').addEventListener('click', () => Sound.toggle());
+
+  const cover = $('coverBtn');
+  cover.addEventListener('click', openBook);
+  cover.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBook(); } });
+
+  ['pageL', 'pageR'].forEach((id) => {
+    const el = $(id);
+    el.addEventListener('click', (e) => {
+      const link = e.target.closest('[data-toc]');
+      if (link) { e.preventDefault(); jump(link.dataset.toc); return; }
+      if (e.target.closest('a,button')) return;
+      const rect = el.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      if (id === 'pageR' && x > rect.width * .74) turn(1);
+      if (id === 'pageL' && x < rect.width * .26) back();
+    });
+    el.addEventListener('wheel', (e) => {
+      if (Math.abs(e.deltaY) < 14) return;
+      e.preventDefault();
+      if (e.deltaY > 0) turn(1); else back();
+    }, { passive: false });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey || e.isComposing) return;
+    if (e.target.closest('input,textarea')) return;
+    if (!open) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBook(); }
+      return;
+    }
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); turn(1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); back(); }
+    else if (e.key === 'Home') { spread = 1; paint(); }
+    else if (e.key === 'End') { spread = LEAVES.length - 1; paint(); }
+    else if (e.key === 'Escape') closeBook();
+    else if (e.key === 's' || e.key === 'S') Sound.toggle();
+  });
+
+  let tx = 0, ty = 0;
+  $('desk').addEventListener('touchstart', (e) => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive: true });
+  $('desk').addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - tx;
+    const dy = e.changedTouches[0].clientY - ty;
+    if (Math.abs(dx) < 46 || Math.abs(dx) < Math.abs(dy)) return;
+    if (!open) { if (dx < 0) openBook(); return; }
+    if (dx < 0) turn(1); else back();
+  }, { passive: true });
+
+  let t = 0;
+  window.addEventListener('resize', () => {
+    window.clearTimeout(t);
+    t = window.setTimeout(() => {
+      fit(); buildPages(); makeLeaves();
+      spread = open ? Math.min(Math.max(1, spread), LEAVES.length - 1) : 0;
+      paint();
+    }, 240);
+  });
+}
+
+/* ═══════════ 七、开箱 ═══════════ */
+function boot() {
+  fit();
+  buildPages();
+  makeLeaves();
+  $('slip').textContent = (B.issue || '') + (B.total ? ' · 总第 ' + B.total + ' 期' : '') + ' · ' + (B.month || '');
+  $('coverImg').src = B.cover;
+  $('coverImg').alt = '《学科信息参考》' + (B.issue || '') + '，' + (B.design || '') + '装帧封面';
+  spread = 0;
+  paint();
+}
+
+Sound.init();
+boot();
+wire();
+</script>
+</body>
+</html>
