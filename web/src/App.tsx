@@ -4,7 +4,7 @@
    按既有政策对操作员开放（真门在后端，前端不假拦）。
    数据全部来自后端 API；接口没就绪的地方**如实标注"未就绪"**，不编数据。 */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { SideRail, useSideRail } from './SideRail'
 import {
   getHealth, getMe, getPeriodDetail, getPeriods, getStatus, postJob,
@@ -28,20 +28,27 @@ import { Acquire } from './Acquire'
 import { Workbench } from './Workbench'
 import { Tools } from './Tools'
 import { Report } from './Report'
-import { Review } from './Review'
 import { Ledger } from './Ledger'
 import { AnalysisPage } from './AnalysisPage'
 import { RedList } from './RedList'
-import { Charts } from './Charts'
 import { Reading } from './Reading'
 import { Trace } from './Trace'
-import { Forecast } from './Forecast'
 import { Archive } from './Archive'
 import { ArchiveLedger } from './ArchiveLedger'
 import { Panorama } from './Panorama'
 import { HealSandbox } from './HealSandbox'
 import { MigrateSandbox } from './MigrateSandbox'
 import { deriveWorkbench, isTerminal, statusToWB, type WBState } from './wb'
+
+/* 39 分册 F：图表三屏懒载。图册/审核台/预测台都经 ChartFigure 拖 echarts 整包（约 1.13MB），
+   静态 import 让工作台首屏也背上它；改 React.lazy 分包后 echarts chunk 只在这三屏进入时才拉，
+   等待的一两帧落现有降级样式（见下方视图分支的 Suspense）。他校简报 Panel 是独立入口
+   /app/panel/（panel/main.tsx 自己拉 ChartFigure），不在工作台首屏图里，不动。 */
+const Charts = lazy(() => import('./Charts').then((m) => ({ default: m.Charts })))
+const Review = lazy(() => import('./Review').then((m) => ({ default: m.Review })))
+const Forecast = lazy(() => import('./Forecast').then((m) => ({ default: m.Forecast })))
+/* 懒载帧的兜底（复用 .degraded 诚实态样式，不新造骨架组件） */
+const screenFallback = <div className="degraded mt-0">这一屏正在加载……</div>
 
 const DEMO_STATES: WBState[] = ['empty', 'ready', 'running', 'done', 'warned', 'waiting-approval', 'fail-ledger', 'fail-other', 'stalled', 'signed']
 
@@ -712,23 +719,25 @@ export default function App() {
         ) : view === 'acquire' ? (
           <Acquire period={selected} onOpenPeriod={pickPeriod} />
         ) : view === 'forecast' ? (
-          <Forecast
-            period={selected}
-            meta={forecastMeta}
-            metaError={forecastMetaError}
-            choice={selectedForecastChoice}
-            choiceDirty={selectedForecastChoiceDirty}
-            onChoiceChange={changeForecastChoice}
-            onSaveChoice={saveSelectedForecastChoice}
-            onReloadChoice={reloadForecastChoice}
-            canEdit={canSwitchModel}
-          />
+          <Suspense fallback={screenFallback}>
+            <Forecast
+              period={selected}
+              meta={forecastMeta}
+              metaError={forecastMetaError}
+              choice={selectedForecastChoice}
+              choiceDirty={selectedForecastChoiceDirty}
+              onChoiceChange={changeForecastChoice}
+              onSaveChoice={saveSelectedForecastChoice}
+              onReloadChoice={reloadForecastChoice}
+              canEdit={canSwitchModel}
+            />
+          </Suspense>
         ) : view === 'trace' ? (
           <Trace period={selected} />
         ) : view === 'reading' ? (
           <Reading period={selected} />
         ) : view === 'charts' ? (
-          <Charts period={selected} />
+          <Suspense fallback={screenFallback}><Charts period={selected} /></Suspense>
         ) : view === 'red' ? (
           <RedList period={selected} canDownload={canDownloadRedList} />
         ) : view === 'analysis' ? (
@@ -741,12 +750,14 @@ export default function App() {
         ) : view === 'ledger' ? (
           <Ledger />
         ) : view === 'review' ? (
-          <Review
-            period={selected}
-            me={me}
-            periods={periods}
-            onChanged={() => { void refreshPeriods().catch(() => { /* 刷新失败不影响操作结果 */ }) }}
-          />
+          <Suspense fallback={screenFallback}>
+            <Review
+              period={selected}
+              me={me}
+              periods={periods}
+              onChanged={() => { void refreshPeriods().catch(() => { /* 刷新失败不影响操作结果 */ }) }}
+            />
+          </Suspense>
         ) : view === 'report' ? (
           <Report periods={periods} current={selected} guest={noAdminBits}
             canSeeAdminBits={canSeeAdminBits}
