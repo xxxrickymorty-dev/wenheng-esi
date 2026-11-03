@@ -1,7 +1,8 @@
 /* 对话前门（2026-10-29 版式重做：照 DeepSeek 的对话壳子）：
    浅灰侧栏 ＋ 白对话区 ＋ 浅蓝用户气泡 ＋ 圆角输入框；模型在输入框左下角切换。
    这一页**不跟随工作区主题**——它有自己的配色（下表的 --dsr-*），
-   类名前缀仍用 `dlg-`（结构没变、只换皮），新件用 `mdl-`（模型设置）与 `tt-`（工具轨迹）。
+   类名前缀仍用 `dlg-`（结构没变、只换皮），新件用 `tt-`（工具轨迹）；
+   模型面板 `mdl-*` 样式 2026-11-03 票 2 起上移 index.css（设置 hub 要进 schools 页）。
    字号与行距照聊天产品：正文 15px / 行高 1.8，说明字 12–13px。 */
 
 .dlg-shell h1,.dlg-shell h2,.dlg-shell h3,.dlg-shell p,.dlg-shell li,
@@ -345,118 +346,8 @@ body.dlg-resizing{cursor:col-resize;user-select:none}
 .dlg-detail summary{cursor:pointer;color:var(--dsr-ink-3);min-height:22px;display:inline-flex;
   align-items:center}
 
-/* ---------- 模型菜单（输入框左下角） ---------- */
-.mdl-menu-wrap{position:relative;flex:0 0 auto}
-.mdl-menu-btn{display:inline-flex;align-items:center;gap:6px;max-width:230px;border:1px solid var(--dsr-line);
-  background:#fff;border-radius:999px;padding:6px 11px;font:inherit;font-size:12.5px;
-  color:var(--dsr-ink-2);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mdl-menu-btn:hover{border-color:var(--dsr-accent);color:var(--dsr-accent)}
-.mdl-menu-btn:disabled{opacity:.55;cursor:default}
-.mdl-menu-dot{width:6px;height:6px;border-radius:50%;background:#c8ccd4;flex:0 0 auto}
-.mdl-menu-dot[data-ready="1"]{background:var(--dsr-ok)}
-.mdl-caret{font-size:11px;color:var(--dsr-ink-3)}
-.mdl-menu{position:absolute;bottom:calc(100% + 8px);left:0;z-index:30;width:320px;
-  background:#fff;border:1px solid var(--dsr-line);border-radius:0px;padding:6px;
-  box-shadow:0 16px 40px rgba(15,23,42,.16);max-height:60vh;overflow-y:auto}
-.mdl-menu-cap{margin:6px 8px 4px;font-size:11.5px;color:var(--dsr-ink-3)}
-.mdl-menu-item{display:grid;grid-template-columns:1fr auto;gap:2px 8px;width:100%;
-  border:0;background:transparent;border-radius:0px;padding:8px 10px;text-align:left;
-  cursor:pointer;font:inherit}
-.mdl-menu-item:hover{background:var(--dsr-hover)}
-.mdl-menu-item:disabled{opacity:.5;cursor:default;background:transparent}
-.mdl-menu-item.on{background:var(--dsr-accent-soft)}
-.mdl-menu-k{font-size:13px;font-weight:600;color:var(--dsr-ink)}
-.mdl-menu-v{grid-column:1 / 2;font-size:11.5px;color:var(--dsr-ink-3);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mdl-menu-tick{grid-row:1 / span 2;grid-column:2;align-self:center;color:var(--dsr-accent);
-  font-size:13px}
-.mdl-menu-item.ghost{margin-top:4px;border-top:1px solid var(--dsr-line);border-radius:0px}
-
-/* ---------- 设置弹层（2026-11-03 票 3：双节 hub——左栏导航 供应商/界面，右栏内容） ---------- */
-.mdl-modal{position:fixed;inset:0;z-index:80;background:rgba(17,24,39,.38);
-  display:flex;align-items:center;justify-content:center;padding:24px}
-.mdl-modal-in{width:min(760px,100%);max-height:86vh;overflow-y:auto;background:#fff;
-  border-radius:0px;padding:18px 20px 22px;box-shadow:0 24px 60px rgba(15,23,42,.28)}
-.mdl-hub{display:grid;grid-template-columns:132px minmax(0,1fr);margin-top:12px;min-height:300px}
-.mdl-hub-nav{border-right:1px solid #ebedf0;padding-right:10px;
-  display:flex;flex-direction:column;gap:4px;align-items:stretch}
-.mdl-hub-item{border:0;background:transparent;border-radius:0px;padding:8px 10px;
-  font-size:13px;color:#6b7280;cursor:pointer;text-align:left}
-.mdl-hub-item:hover{background:#f5f6f8;color:#1a1a1a}
-.mdl-hub-item.on{background:#eef5f1;color:#2f7a58;font-weight:600}
-.mdl-hub-body{padding-left:16px;min-width:0}
-.mdl-modal-h{display:flex;align-items:center;gap:10px}
-.mdl-modal-h h2{margin:0;font-size:17px;font-weight:700;color:#1a1a1a}
-.mdl-x{margin-left:auto;border:0;background:transparent;cursor:pointer;font-size:14px;
-  color:#8b93a1;width:30px;height:30px;border-radius:0px}
-.mdl-x:hover{background:#f1f2f4;color:#1a1a1a}
-.mdl-hint{margin:8px 0 10px;font-size:12.5px;line-height:1.65;color:#6b7280}
-.mdl-list{display:flex;flex-direction:column;gap:8px}
-.mdl-row{display:flex;gap:10px;align-items:flex-start;border:1px solid #ebedf0;
-  border-radius:0px;padding:10px 12px;background:#fff}
-.mdl-row.on{border-color:#bcd9c8;background:#f7f9ff}
-.mdl-row-main{flex:1;min-width:0}
-.mdl-row-k{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:600;color:#1a1a1a}
-.mdl-row-v{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:3px;font-size:12px;color:#6b7280}
-.mdl-row-v b{font-family:var(--mono,ui-monospace,Consolas,monospace);font-weight:600;
-  color:#374151}
-.mdl-row-note{margin-top:4px;font-size:11.5px;color:#8b93a1}
-.mdl-row-acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.mdl-tag{font-size:10.5px;font-weight:600;border-radius:999px;padding:1px 7px;
-  background:#eef0f3;color:#5b6472}
-.mdl-tag.on{background:#e6f0e9;color:#2f7a58}
-.mdl-tag.warn{background:#fdf1e3;color:#b45309}
-.mdl-act{border:1px solid #e5e7eb;background:#fff;border-radius:0px;padding:5px 11px;
-  font-size:12.5px;color:#374151;cursor:pointer;white-space:nowrap}
-.mdl-act:hover{border-color:#2f7a58;color:#2f7a58}
-.mdl-act:disabled{opacity:.5;cursor:default;border-color:#e5e7eb;color:#9ca3af}
-.mdl-act.primary{background:#2f7a58;border-color:#2f7a58;color:#fff;font-weight:600}
-.mdl-act.primary:hover{filter:brightness(1.06);color:#fff}
-.mdl-act.ghost{background:transparent;color:#6b7280}
-.mdl-act.confirming{border-color:#b45309;color:#b45309;background:#fff7ed}
-.mdl-probe{margin:10px 0 0;font-size:12.5px;border-radius:0px;padding:8px 12px}
-.mdl-probe.ok{background:#f0fdf4;color:#15803d}
-.mdl-probe.bad{background:#fef2f2;color:#b91c1c}
-.mdl-new{margin-top:14px;border-top:1px dashed #ebedf0;padding-top:12px}
-.mdl-presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-.mdl-preset{border:1px dashed #d6dae1;background:#fafbfc;border-radius:0px;padding:6px 12px;
-  font-size:12.5px;color:#4b5563;cursor:pointer}
-.mdl-preset:hover{border-color:#2f7a58;color:#2f7a58}
-/* 表单（票 3 图五字段序）：单列纵排；Headers 是多行 K=V 文本，API 协议是单选 */
-.mdl-form{margin-top:14px;border-top:1px dashed #ebedf0;padding-top:12px;
-  display:grid;grid-template-columns:1fr;gap:10px}
-.mdl-form .mdl-hint{grid-column:1 / -1;margin:0}
-.mdl-form label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#6b7280}
-.mdl-form input{border:1px solid #e5e7eb;border-radius:0px;padding:8px 10px;font:inherit;
-  font-size:13.5px;color:#1a1a1a;outline:none}
-.mdl-form input:focus{border-color:#2f7a58}
-.mdl-form textarea{border:1px solid #e5e7eb;border-radius:0px;padding:8px 10px;font:inherit;
-  font-size:12.5px;line-height:1.6;color:#1a1a1a;outline:none;resize:vertical;
-  font-family:var(--mono,ui-monospace,Consolas,monospace)}
-.mdl-form textarea:focus{border-color:#2f7a58}
-.mdl-form select{border:1px solid #e5e7eb;border-radius:0px;padding:8px 10px;font:inherit;
-  font-size:13.5px;color:#1a1a1a;background:#fff;outline:none}
-.mdl-form select:focus{border-color:#2f7a58}
-.mdl-form-acts{grid-column:1 / -1;display:flex;gap:8px;margin-top:2px}
-.mdl-err{grid-column:1 / -1;margin:10px 0 0;font-size:12.5px;color:#b91c1c}
-
-/* 设置·界面（票 3）：正文字体三选卡——卡名各用自家的字体，看见即所选 */
-.mdl-ui{padding-top:2px}
-.mdl-font-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.mdl-font-card{display:flex;flex-direction:column;gap:4px;align-items:flex-start;
-  border:1px solid #e5e7eb;background:#fff;border-radius:0px;padding:10px 12px;
-  cursor:pointer;text-align:left}
-.mdl-font-card:hover{border-color:#2f7a58}
-.mdl-font-card.on{border-color:#2f7a58;background:#f2f8f4;
-  box-shadow:inset 0 0 0 1px #2f7a58}
-.mdl-font-card b{font-size:13.5px;font-weight:600;color:#1a1a1a}
-.mdl-font-card span{font-size:11.5px;color:#6b7280}
-.mdl-font-card[data-font="serif"] b{font-family:var(--serif)}
-.mdl-font-card[data-font="sans"] b{font-family:var(--sans)}
-.mdl-font-card[data-font="kai"] b{font-family:var(--kai)}
-
 @media (prefers-reduced-motion: reduce){
-  .dlg-shell *,.mdl-modal *{transition:none!important;animation:none!important}
+  .dlg-shell *{transition:none!important;animation:none!important}
   .dlg-caret{animation:none}
 }
 

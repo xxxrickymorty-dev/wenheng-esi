@@ -1,6 +1,7 @@
 /* 高校 ESI 报告 · 监测版（入口整页）。
    版面照已审静态稿 `mockups/全站静态稿-20261102/高校ESI报告-静态稿（20261102）.html`：
-   左页会泽品牌面（导航逐字一致）＋ 右页报头（眉标 / 校名 / 期次）→ 总站位 → 22 行学科表；
+   左页会泽品牌面（2026-11-03 起换装共用件 SideRail：导航/折叠/身份行与全站同一套）＋
+   右页报头（眉标 / 校名 / 期次）→ 总站位 → 22 行学科表；
    已入 1% 与未入之间一道 1px 金线，未在榜格子写 `—`。
    能力一件不少：院校清单（选校抽屉）、多校对比（队列）、生成报告（既有 POST 口）。
    数字零口径：总站位与学科行全部解析自后端已生成的站位报告（`/monitor/report/…`），
@@ -11,7 +12,9 @@ import {
   type MonitorSchool, type MonitorSchools,
   generateCompareReport, generateMonitorReport, getMonitorSchools,
 } from '../api-monitor'
-import { HttpError } from '../api'
+import { HttpError, getMe, type Me } from '../api'
+import { SideRail, useSideRail } from '../SideRail'
+import { ModelSettings } from '../dialog/ModelPanel'
 
 const RUN_STEPS = ['取数', '拼表', '出稿', '核验', '签发']
 
@@ -168,6 +171,31 @@ export default function SchoolsPage() {
   const aliveRef = useRef(true)
   useEffect(() => () => { aliveRef.current = false; reqRef.current++ }, [])
 
+  /* 左页侧栏换装 SideRail（2026-11-03 票 1）：宽度/收起偏好与工作区、问文衡同键同件。
+     me/roleKnown 用 api.ts 现成 getMe（内部吞错）：拿不到就是未登录占位，不冒充馆员。 */
+  const rail = useSideRail()
+  const [me, setMe] = useState<Me | null>(null)
+  const [roleKnown, setRoleKnown] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  useEffect(() => {
+    void getMe().then((m) => {
+      if (!aliveRef.current) return
+      setMe(m)
+      setRoleKnown(true)
+    })
+  }, [])
+  /* Ctrl+, 开设置中心：齿轮悬停提示承诺了这个快捷键（问文衡同款接线）。 */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault()
+        setSettingsOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const load = async () => {
     const id = ++reqRef.current
     setLoadErr('')
@@ -275,28 +303,14 @@ export default function SchoolsPage() {
     .sort((a, b) => a.en.localeCompare(b.en))
 
   return (
-    <div className="whs-root">
+    <div className="whs-root" {...rail.rootProps}>
       <div className="whs-spread">
-        <aside className="whs-l">
-          <i className="whs-seal" aria-hidden="true">衡</i>
-          <header className="whs-bm">
-            <b>文衡</b>
-            <span>云南大学图书馆<br />学科信息参考</span>
-          </header>
-          <nav className="whs-nav" aria-label="工作区">
-            <a href="/app/">出报告</a>
-            <a href="/app/?view=analysis">分析台</a>
-            <a href="/app/schools/" aria-current="page">高校 ESI 报告</a>
-            <a href="/app/dialog/">问文衡</a>
-            <span className="whs-m" aria-hidden="true">管 理</span>
-            <a href="/app/?view=archive">运行档案</a>
-            <a className="whs-q" href="/app/shelf/">陈列馆 ↗</a>
-          </nav>
-          <footer className="whs-idb">
-            <div className="whs-rule" aria-hidden="true" />
-            <p>{nAll ? `院校 ${nAll} 所` : '院校清单'}</p>
-          </footer>
-        </aside>
+        {/* 左页侧栏（2026-11-03 票 1 换装）：共用件 SideRail——折叠把手/图标导航/口径ⓘ/
+            身份行/齿轮与全站同一套；「院校 N 所」收进中段（whs 皮肤样式，清单为空显示
+            「院校清单」）；不传 period——期次控件在右页报头。 */}
+        <SideRail rail={rail} active="schools" me={me} roleKnown={roleKnown}
+                  onSettings={() => setSettingsOpen(true)}
+                  middle={<p className="whs-mid-cap">{nAll ? `院校 ${nAll} 所` : '院校清单'}</p>} />
 
         <main className="whs-r">
           <div className="whs-sheet">
@@ -483,6 +497,11 @@ export default function SchoolsPage() {
           </aside>
         </div>
       )}
+
+      {/* 设置中心（2026-11-03 票 2）：齿轮 / Ctrl+, 带出；清单自拉，onChanged 空实现
+          ——本页不消费模型清单。非 admin / 未登录照 hint 只读。 */}
+      <ModelSettings open={settingsOpen} me={me}
+                     onClose={() => setSettingsOpen(false)} onChanged={() => {}} />
     </div>
   )
 }

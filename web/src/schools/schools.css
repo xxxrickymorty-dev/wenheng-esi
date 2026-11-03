@@ -1,6 +1,7 @@
 /* 高校 ESI 报告 · 入口私有样式（照《高校ESI报告-静态稿 20261102》）。
    主壳沿用跨页书式：左页会泽深绿品牌面／右页纸面工作面、订口一条金线、主壳方角；
-   窗件以外的圆角一律不放开（本页无窗件）。类名统一 `whs-` 前缀，避免与 index.css 撞名。
+   窗件以外的圆角一律不放开（本页无窗件）。右页类名统一 `whs-` 前缀，避免与 index.css 撞名；
+   左页 2026-11-03 起换装共用件 SideRail（app-* 样式在 index.css），本文件只留皮肤覆盖段。
    色板与圆角收编（2026-11-03 批三 J，39 分册）：色值与圆角集中在下方 .whs-root 顶部的
    --whs-* 段（本页唯一来源，index.css 豁免登记段指向这里），页内规则只引用令牌；
    预开页（SchoolsPage 预开新窗的独立文档）经 getComputedStyle 取同源值，不另抄一份。
@@ -21,7 +22,11 @@
   --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
   --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
   --ease:cubic-bezier(.32,.72,0,1);
-  --lw:clamp(232px,24%,320px);
+  /* SideRail 换装（2026-11-03 票 1）：app-* 侧栏与订口把手吃全站短名令牌，
+     这里把别名接回本页 --whs-* 段（改色仍只改上面几行）；列宽 --app-lw 与收起态
+     data-fold 由 useSideRail 的 rootProps 挂在本元素上，.whs-spread 只管消费。 */
+  --deep:var(--whs-deep); --seam:var(--whs-seam);
+  --ivory:var(--whs-ivory); --ivory-2:var(--whs-ivory-2);
   min-height:100dvh; background:var(--whs-paper); color:var(--whs-ink);
   font:15px/1.75 var(--sans); font-variant-numeric:tabular-nums;
   -webkit-font-smoothing:antialiased;
@@ -32,38 +37,33 @@
 .whs-root a{color:inherit;text-decoration:none}
 .whs-root button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .whs-root :focus-visible{outline:2px solid var(--whs-ok);outline-offset:2px}
-.whs-l :focus-visible{outline-color:var(--whs-seam)}
 .whs-root ::selection{background:var(--whs-seam);color:var(--whs-ink)}
 
-/* ── 跨页 ── */
-.whs-spread{display:grid;grid-template-columns:var(--lw) minmax(0,1fr);min-height:100dvh;position:relative}
-.whs-spread::after{content:"";position:absolute;top:0;bottom:0;left:var(--lw);width:1px;
-  background:var(--whs-seam);pointer-events:none}
+/* ── 跨页：列宽由 SideRail 自身宽度驱动（展开 232–420 拖宽 / 收起 64，rootProps 供值） ── */
+.whs-spread{display:grid;
+  grid-template-columns:var(--app-lw,clamp(232px,24%,320px)) minmax(0,1fr);
+  min-height:100dvh;position:relative}
+.whs-spread::after{content:"";position:absolute;top:0;bottom:0;
+  left:var(--app-lw,clamp(232px,24%,320px));width:1px;
+  background:var(--whs-seam);pointer-events:none;z-index:20}
 
-/* ── 左页 · 会泽 ── */
-.whs-l{background:var(--whs-deep);color:var(--whs-ivory);padding:clamp(16px,2.8vh,30px) clamp(18px,1.9vw,30px);
-  display:flex;flex-direction:column;position:sticky;top:0;height:100dvh;overflow:hidden}
-.whs-seal{position:absolute;top:clamp(16px,2.8vh,30px);right:clamp(18px,1.9vw,30px);
-  width:22px;height:22px;background:var(--whs-ivory);color:var(--whs-deep);font-family:var(--kai);
-  font-style:normal;font-size:12px;line-height:1;display:grid;place-items:center;
-  transform:rotate(-6deg);box-shadow:0 1px 2px rgba(21,34,43,.07)}
-.whs-seal::after{content:"";position:absolute;inset:2px;border:1px solid rgba(20,55,41,.5)}
-.whs-bm{display:flex;align-items:baseline;gap:10px}
-.whs-bm b{font-family:var(--serif);font-weight:600;font-size:19px;letter-spacing:.14em}
-.whs-bm span{font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--whs-ivory-3);line-height:1.7}
-.whs-nav{margin:auto 0;display:flex;flex-direction:column;font-size:13.5px;letter-spacing:.05em;color:var(--whs-ivory-2)}
-.whs-nav a{padding:11px 0;min-height:44px;display:flex;align-items:center;gap:10px;
-  transition:color .3s var(--ease)}
-.whs-nav a::before{content:"";width:9px;height:2px;flex:none;background:transparent;
-  transition:background-color .3s var(--ease)}
-.whs-nav a[aria-current]{color:var(--whs-ivory)}
-.whs-nav a[aria-current]::before{background:var(--whs-seam)}
-.whs-nav a:hover{color:var(--whs-ivory)}
-.whs-nav .whs-m{padding:6px 0 4px;font-family:var(--kai);font-size:11px;letter-spacing:.26em;color:var(--whs-ivory-3)}
-.whs-nav .whs-q{opacity:.78}
-.whs-idb{padding-top:14px}
-.whs-idb .whs-rule{width:34px;height:1px;background:var(--whs-seam);margin-bottom:12px}
-.whs-idb p{font-size:12px;letter-spacing:.14em;color:var(--whs-ivory-2)}
+/* ── 左页 · SideRail 换装皮肤（2026-11-03 票 1，.whs-root 作用域，SideRail 组件零改动） ──
+   侧栏本体＝共用件 SideRail（app-* 样式在 index.css）：底色/品牌字/当前项与悬停金线/
+   折叠把手订口色全部走 .whs-root 顶部的短名令牌别名（--deep/--seam/--ivory*），
+   这里只补静态稿钉死的两处＋中段小字。导航图标保留 SideRail 现行样式
+   （与静态稿「短横线」的差异是已登记取舍）。 */
+/* 深栏焦点环：全局深底规则给 --field-5，本页按静态稿改金线（订口色）；
+   身份弹层是纸面卡片，照 39 分册 A1 例外改回器色。 */
+.whs-root .app-page-l :focus-visible{outline-color:var(--whs-seam)}
+.whs-root .app-page-l .user-chip-pop :focus-visible{outline-color:var(--zhu)}
+/* 导航字号与字色钉静态稿原值（13.5px／ivory-2）；当前项与悬停由 index.css 接管 */
+.whs-root .app-page-l .app-nav{font-size:13.5px;color:var(--whs-ivory-2)}
+/* 中段：「院校 N 所」小字沉底（贴身份行），收起态随 .app-mid 整块隐藏 */
+.whs-root .app-mid{justify-content:flex-end}
+.whs-mid-cap{font-size:12px;letter-spacing:.14em;color:var(--whs-ivory-2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.whs-mid-cap::before{content:"";display:block;width:34px;height:1px;
+  background:var(--whs-seam);margin-bottom:12px}
 
 /* ── 右页 ── */
 .whs-r{display:flex;min-height:100dvh;min-width:0;
@@ -208,8 +208,8 @@
 @media (max-width:960px){
   .whs-spread{display:block}
   .whs-spread::after{display:none}
-  .whs-l{position:static;height:auto;overflow:visible}
-  .whs-nav{margin:14px 0 0}
+  .whs-root .app-page-l{position:static;height:auto;min-height:0;overflow:visible}
+  .whs-root .app-grip{display:none}
   .whs-r{min-height:0}
   .whs-sheet{max-width:none}
 }
