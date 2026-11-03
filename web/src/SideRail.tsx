@@ -20,12 +20,14 @@ import { UserChip } from './lib/UserChip'
 
 export type SideNavItem = { key: string; label: string; href: string; icon: string; jump?: boolean }
 
-/* 导航就这五项＋管理组两项，顺序即版式顺序——主区四屏在上、管理区两项在下。
+/* 导航就这六项＋管理组两项，顺序即版式顺序——主区五屏在上、管理区两项在下。
    高校 ESI 报告自成一个静态入口（web/schools），不归工作区路由，故不参与高亮判断。
-   2026-10-31 撤出的灵活报告 / 他校简报 / AI 问数不回来（能力已并入高校ESI报告与问文衡）。 */
+   2026-10-31 撤出的他校简报 / AI 问数不回来（能力已并入高校ESI报告与问文衡）；
+   学科分析于 2026-11-04 回归（＝灵活报告的卡片式入口，spec 2026-11-04）。 */
 export const SIDE_NAV: SideNavItem[] = [
   { key: 'flow', label: '出报告', href: '/app/', icon: 'doc' },
   { key: 'analysis', label: '分析台', href: '/app/?view=analysis', icon: 'chart' },
+  { key: 'discipline', label: '学科分析', href: '/app/?view=discipline', icon: 'list' },
   { key: 'schools', label: '高校 ESI 报告', href: '/app/schools/', icon: 'trend' },
   { key: 'ask', label: '问文衡', href: '/app/dialog/', icon: 'chat' },
 ]
