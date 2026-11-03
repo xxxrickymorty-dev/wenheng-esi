@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>阅读面宋体对照与浅灰对账（静态稿 20261103）</title>
+<style>
+  /* 世界＝方案C（主壳跨页-方案C-书卷编辑，20261031 锁定），令牌照抄不改 */
+  :root{
+    --deep:#143729; --green:#1A4B27; --seam:#B08E48;
+    --ivory:#F6F1DE; --ivory-2:rgba(246,241,222,.80); --ivory-3:rgba(246,241,222,.55);
+    --paper:#F5F3EC; --card:#FAF8F0;
+    --ink:#15222B; --ink-2:rgba(21,34,43,.78); --ink-3:rgba(21,34,43,.66);
+    --line:#D8D2C2; --hair:rgba(216,210,194,.55); --dot:rgba(21,34,43,.32);
+    --warn:#7C5A16;
+    --shadow:0 1px 2px rgba(21,34,43,.07);
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --e:cubic-bezier(.32,.72,0,1);
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--paper)}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);
+    font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--seam);color:var(--ink)}
+  :focus-visible{outline:2px solid var(--green);outline-offset:2px}
+  *::-webkit-scrollbar{width:8px;height:8px}
+  *::-webkit-scrollbar-track{background:transparent}
+  *::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+  *::-webkit-scrollbar-thumb:hover{background:var(--dot)}
+
+  /* ── 报头：方案C 左页的一角（品牌面），金线收底 ── */
+  .band{background:var(--deep);color:var(--ivory);
+    padding:18px clamp(20px,4vw,48px);display:flex;align-items:baseline;gap:14px}
+  .band b{font-family:var(--serif);font-weight:600;font-size:19px;letter-spacing:.14em}
+  .band span{font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--ivory-3);line-height:1.7}
+  .band em{margin-left:auto;font-style:normal;font-size:12px;color:var(--ivory-2);letter-spacing:.08em}
+  .band::after{content:none}
+  .seamline{height:1px;background:var(--seam)}
+
+  main{max-width:880px;margin:0 auto;padding:44px clamp(20px,4vw,40px) 72px}
+
+  h1{font-family:var(--serif);font-weight:600;font-size:26px;line-height:1.5;letter-spacing:.02em}
+
+  .kick{font-size:11px;letter-spacing:.18em;color:var(--ink-3);margin:56px 0 10px}
+  .kick b{color:var(--ink);font-weight:600}
+  .lead{font-size:15px;color:var(--ink-2);max-width:66ch;margin-bottom:20px}
+  .lead b{color:var(--ink);font-weight:600}
+
+  /* ── A/B 对照块 ── */
+  .lab{font-size:12px;color:var(--ink-3);letter-spacing:.04em;margin:0 0 8px 2px}
+  .lab b{color:var(--ink);font-weight:600}
+  .panel{background:var(--card);border:.5px solid var(--line);border-radius:8px;
+    box-shadow:var(--shadow);padding:30px clamp(20px,3.4vw,34px) 26px}
+  .panel + .lab{margin-top:26px}
+
+  /* 阅读面片段：A/B 同构，只换正文声音 */
+  .frag .kick{margin:0 0 8px}
+  .frag h2{font-family:var(--serif);font-weight:600;font-size:26px;line-height:1.55;letter-spacing:.02em;margin-bottom:14px}
+  .frag p{max-width:66ch;color:var(--ink);margin-bottom:12px}
+  .frag-a p{font:15px/1.75 var(--sans)}
+  .frag-b p{font:15px/1.9 var(--serif)}
+  .frag p:last-of-type{margin-bottom:18px}
+  .frag .n{font-variant-numeric:tabular-nums}
+  .frag-b .n{font-family:var(--sans)}   /* B 档提案：文读宋、数读黑 */
+  .frag table{width:100%;border-collapse:collapse;font:12.5px/1.6 var(--sans);margin:6px 0 10px}
+  .frag caption{caption-side:bottom;text-align:left;font-size:12px;color:var(--ink-3);
+    padding-top:8px;letter-spacing:.02em}
+  .frag th{font-size:11px;font-weight:400;color:var(--ink-3);letter-spacing:.08em;
+    text-align:right;padding:6px 2px;border-bottom:1px solid var(--line)}
+  .frag th:first-child,.frag td:first-child{text-align:left}
+  .frag td{padding:7px 2px;text-align:right;border-bottom:1px solid var(--hair);color:var(--ink)}
+  .frag tr:last-child td{border-bottom:0}
+
+  .note{font-size:12.5px;line-height:1.8;color:var(--ink-2);max-width:70ch;
+    border-top:1px solid var(--hair);padding-top:14px;margin-top:22px}
+  .note b{color:var(--ink);font-weight:600}
+
+  /* ── 对账表 ── */
+  .audit{width:100%;border-collapse:collapse;font:12.5px/1.7 var(--sans)}
+  .audit th{font-size:11px;font-weight:400;color:var(--ink-3);letter-spacing:.08em;
+    text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+  .audit td{padding:9px 10px;border-bottom:1px solid var(--hair);vertical-align:middle}
+  .audit td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .audit .sw{display:inline-block;min-width:64px;text-align:center;padding:3px 10px;
+    border-radius:6px;font-size:12px;letter-spacing:.06em}
+  .audit .ok{color:var(--green);font-weight:600}
+  .audit .edge{color:var(--warn);font-weight:600}
+  .audit .no{color:#B23A2B;font-weight:600}
+  .audit .dim{color:var(--ink-3)}
+  .audit tr.oh td{color:var(--ink-2)}
+  .audit .grp td{border-bottom:0;padding-top:18px;font-size:11px;letter-spacing:.14em;color:var(--ink-3)}
+
+  .ban{font-size:12.5px;line-height:1.8;color:var(--ink-2);max-width:70ch;
+    border-top:1px solid var(--hair);padding-top:14px;margin-top:20px}
+  .ban b{color:var(--ink);font-weight:600}
+
+  footer{border-top:1px solid var(--seam);margin-top:64px;padding-top:14px;
+    font-size:12px;color:var(--ink-3);letter-spacing:.03em;display:flex;gap:18px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<header class="band">
+  <b>文衡</b><span>会泽百家 · 至公天下</span>
+  <em>对照稿 · 20261103</em>
+</header>
+<div class="seamline"></div>
+
+<main>
+  <h1>阅读面两桩悬置：宋体正文 × 浅灰对账</h1>
+
+  <!-- ─────────────── 01 ─────────────── -->
+  <p class="kick"><b>01</b> · 宋体正文（阅读面限定）</p>
+  <p class="lead">标题宋体是既定，不重议；比的只是<b>正文的声音</b>。A 现行＝黑体正文，B 提案＝宋体正文、数字与表格保持黑体。两块同稿同数据（202609 实测）。</p>
+
+  <p class="lab"><b>A · 现行</b> —— 黑体正文 15/1.75</p>
+  <div class="panel frag frag-a">
+    <div class="fragbody">
+      <p class="kick"><b>03</b> · 学科进位</p>
+      <h2>三 趋势</h2>
+      <p>202609 期，全校 <span class="n">22</span> 个学科 <span class="n">14</span> 个进入 ESI 前 <span class="n">1%</span>。综合排名国际第 <span class="n">973</span> 位，较上期前进 <span class="n">22</span> 位；国内第 <span class="n">154</span> 位、国内高校第 <span class="n">129</span> 位，各前进 <span class="n">1</span> 位。</p>
+      <p>顶尖论文 <span class="n">291</span> 篇，较上期增加 <span class="n">17</span> 篇，化学（<span class="n">44</span> 篇）、材料科学（<span class="n">33</span> 篇）、植物与动物学（<span class="n">32</span> 篇）居前。<span class="n">8</span> 个未入学科中，经济与商业（<span class="n">15.1%</span>）、多学科（<span class="n">15.2%</span>）距前 <span class="n">1%</span> 线最远。</p>
+      <table>
+        <thead><tr><th>学科</th><th>被引次数</th><th>前 1% 阈值</th><th>超出阈值</th></tr></thead>
+        <tbody>
+          <tr><td>化学</td><td>51,529</td><td>7,622</td><td>676%</td></tr>
+          <tr><td>植物与动物学</td><td>21,296</td><td>3,043</td><td>700%</td></tr>
+          <tr><td>环境生态学</td><td>35,551</td><td>5,418</td><td>656%</td></tr>
+        </tbody>
+        <caption>表 三-1　学科被引与前 1% 阈值（202609，动态监测表）</caption>
+      </table>
+    </div>
+  </div>
+
+  <p class="lab"><b>B · 提案</b> —— 正文宋体 15/1.9，数字与表格保持黑体</p>
+  <div class="panel frag frag-b">
+    <div class="fragbody">
+      <p class="kick"><b>03</b> · 学科进位</p>
+      <h2>三 趋势</h2>
+      <p>202609 期，全校 <span class="n">22</span> 个学科 <span class="n">14</span> 个进入 ESI 前 <span class="n">1%</span>。综合排名国际第 <span class="n">973</span> 位，较上期前进 <span class="n">22</span> 位；国内第 <span class="n">154</span> 位、国内高校第 <span class="n">129</span> 位，各前进 <span class="n">1</span> 位。</p>
+      <p>顶尖论文 <span class="n">291</span> 篇，较上期增加 <span class="n">17</span> 篇，化学（<span class="n">44</span> 篇）、材料科学（<span class="n">33</span> 篇）、植物与动物学（<span class="n">32</span> 篇）居前。<span class="n">8</span> 个未入学科中，经济与商业（<span class="n">15.1%</span>）、多学科（<span class="n">15.2%</span>）距前 <span class="n">1%</span> 线最远。</p>
+      <table>
+        <thead><tr><th>学科</th><th>被引次数</th><th>前 1% 阈值</th><th>超出阈值</th></tr></thead>
+        <tbody>
+          <tr><td>化学</td><td>51,529</td><td>7,622</td><td>676%</td></tr>
+          <tr><td>植物与动物学</td><td>21,296</td><td>3,043</td><td>700%</td></tr>
+          <tr><td>环境生态学</td><td>35,551</td><td>5,418</td><td>656%</td></tr>
+        </tbody>
+        <caption>表 三-1　学科被引与前 1% 阈值（202609，动态监测表）</caption>
+      </table>
+    </div>
+  </div>
+
+  <p class="note"><b>推荐采纳 B（仅阅读面：报告初稿、陈列馆；工作台不动）。</b>落码路径：霞鹜新致宋 woff2 子集入库（参考站同款做法，约 139KB，本机构建零外链），font-display: swap＋preload。现状是项目未带任何衬线 webfont——标题宋体在本机实际渲染为 SimSun，字重发虚；入库子集把标题一并解掉，是「标题＋正文」一次到位的理由。</p>
+
+  <!-- ─────────────── 02 ─────────────── -->
+  <p class="kick"><b>02</b> · 浅灰对账</p>
+  <p class="lead">WCAG 相对亮度实算（20261103）：现行灰阶<b>全部达标</b>，两档贴线；参考站的两档次级灰坐实不达标，是本节反例。</p>
+
+  <table class="audit">
+    <thead><tr><th>令牌</th><th>样字</th><th>底色</th><th style="text-align:right">对比度</th><th>判定</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td>ink <span class="dim">#15222B</span></td><td><span class="sw" style="background:var(--paper);color:var(--ink)">文衡</span></td><td>纸面</td><td class="num">14.60</td><td class="ok">✓</td><td class="dim">正文 / 数字</td></tr>
+      <tr><td>ink-2 <span class="dim">α.78</span></td><td><span class="sw" style="background:var(--paper);color:var(--ink-2)">文衡</span></td><td>纸面</td><td class="num">7.44</td><td class="ok">✓</td><td class="dim">次级正文</td></tr>
+      <tr><td>ink-3 <span class="dim">α.66</span></td><td><span class="sw" style="background:var(--paper);color:var(--ink-3)">文衡</span></td><td>纸面</td><td class="num">5.04</td><td class="edge">✓ 贴线</td><td class="dim">眉标 / 注记 11–12px</td></tr>
+      <tr><td>ink-3 <span class="dim">α.66</span></td><td><span class="sw" style="background:var(--card);color:var(--ink-3)">文衡</span></td><td>卡面</td><td class="num">5.13</td><td class="ok">✓</td><td class="dim">卡内注记</td></tr>
+      <tr><td>warn <span class="dim">#7C5A16</span></td><td><span class="sw" style="background:var(--paper);color:var(--warn)">文衡</span></td><td>纸面</td><td class="num">5.68</td><td class="ok">✓</td><td class="dim">琥珀（全页一处）</td></tr>
+      <tr><td>语义绿 <span class="dim">#276B4C</span></td><td><span class="sw" style="background:var(--paper);color:#276B4C">文衡</span></td><td>纸面</td><td class="num">5.74</td><td class="ok">✓</td><td class="dim">已入 / 已签发</td></tr>
+      <tr><td>红 <span class="dim">#B23A2B</span></td><td><span class="sw" style="background:var(--paper);color:#B23A2B">文衡</span></td><td>纸面</td><td class="num">5.35</td><td class="ok">✓</td><td class="dim">失败 / 破坏性</td></tr>
+      <tr><td>ivory-3 <span class="dim">α.55</span></td><td><span class="sw" style="background:var(--deep);color:var(--ivory-3)">文衡</span></td><td>左页深绿</td><td class="num">4.61</td><td class="edge">✓ 贴线</td><td class="dim">左页小字 11px</td></tr>
+      <tr><td>seam 金 <span class="dim">#B08E48</span></td><td><span class="sw" style="background:var(--paper);color:var(--seam)">文衡</span></td><td>纸面</td><td class="num">2.78</td><td class="dim">装饰豁免</td><td class="dim">订口金线 / 分隔线</td></tr>
+      <tr class="grp"><td colspan="6">参考站反例 · openhanako.com 检测器实测（20261103）</td></tr>
+      <tr class="oh"><td>OH 次级灰 <span class="dim">#8a847a</span></td><td><span class="sw" style="background:#f8f4ed;color:#8a847a">文衡</span></td><td>米纸</td><td class="num">3.38</td><td class="no">✗</td><td class="dim">12px 演示注释 / 页脚</td></tr>
+      <tr class="oh"><td>OH 最浅灰 <span class="dim">#b0aa9e</span></td><td><span class="sw" style="background:#f8f4ed;color:#b0aa9e">文衡</span></td><td>米纸</td><td class="num">2.11</td><td class="no">✗</td><td class="dim">11.5px 页脚声明</td></tr>
+    </tbody>
+  </table>
+
+  <p class="ban"><b>推荐：令牌不改，立两条禁令。</b>① ink-3 与左页 ivory-3 已贴 4.5 线——禁再降透明度、禁再提亮；凡新配浅灰先过实算再入 core.json 生成流程。② 金 <b>#B08E48</b> 纸面 2.78:1——只作订口与装饰线，禁作焦点环、禁作可交互指示色（深底焦点环走 field-5 的既有规则不变）。</p>
+
+  <footer>
+    <span>静态稿 · 未评审</span>
+    <span>数据＝202609 实测（tmp/charts_202609.json）</span>
+    <span>对比度＝WCAG 2.x 相对亮度实算</span>
+    <span>世界＝方案C（20261031 锁定）</span>
+  </footer>
+</main>
+
+</body>
+</html>
