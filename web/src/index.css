@@ -860,9 +860,10 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .rv-lead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 2px 0}
 .rv-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start;margin-top:14px}
 .rv-main{min-width:0}
-@media (max-width:1080px){
+@media (max-width:1100px){
   .rv-grid{grid-template-columns:1fr}
-  /* 窄屏单列：右栏回到普通流，取消吸顶与内滚（!important 压过后面的基础规则） */
+  /* 窄屏单列：右栏回到普通流，取消吸顶与内滚（!important 压过后面的基础规则）。
+     1080→1100（2026-11-03 批三 K）：唯一散值并入四档，两版式在 1081–1100 带内均安全 */
   .rv-side{position:static!important;max-height:none!important;overflow:visible!important}
 }
 
