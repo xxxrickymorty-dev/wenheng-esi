@@ -4,7 +4,10 @@
    把手骑在订口金线上：拖＝调宽（232–420），**一直向左拖过最小宽＝收起**
    （2026-11-02 rick 口谕）；收起态向右拖回、双击或回车＝展开；
    收起态只留图标，悬停浮出中文全名（不让人靠一个字猜）。
-   收起宽 64px：放得下 18px 图标与呼吸，再窄就只能靠猜。 */
+   收起宽 64px：放得下 18px 图标与呼吸，再窄就只能靠猜。
+   窄窗（≤900px）自动收成图标轨（2026-11-04 票 1）——任何窗宽侧栏都不整条消失。
+   收展的唯一点击控制位＝订口顶端的 28px 切换钮（2026-11-04 票 2）；
+   把手只管拖与双击，点击归钮、拖拽归把手，两层不打架。 */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent as RKeyEvent,
@@ -66,6 +69,18 @@ export function useSideRail(): SideRailState {
   useEffect(() => {
     try { localStorage.setItem(SIDE_KEY, JSON.stringify(side)) } catch { /* 存不下就算了 */ }
   }, [side])
+  /* 窄窗自动折叠（2026-11-04 票 1）：跨进 ≤900px 且当前未折叠 → 收成图标轨；
+     由窄变宽不做任何事（用户偏好说了算）。加载时已在窄窗也照此办理——
+     否则窄窗直开时侧栏以展开态挤住右页。置 state 即可，localStorage effect 照常存。 */
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 900px)')
+    const onNarrow = (e: MediaQueryListEvent) => {
+      if (e.matches) setSide((s) => (s.fold ? s : { ...s, fold: true }))
+    }
+    if (mq.matches) setSide((s) => (s.fold ? s : { ...s, fold: true }))
+    mq.addEventListener('change', onNarrow)
+    return () => mq.removeEventListener('change', onNarrow)
+  }, [])
   const toggle = useCallback(() => setSide((s) => ({ ...s, fold: !s.fold })), [])
   const release = (e: RPointerEvent<HTMLDivElement>) => {
     try { e.currentTarget.releasePointerCapture(e.pointerId) } catch { /* 已经释放了 */ }
@@ -157,12 +172,6 @@ export function SideRail(props: {
             <b>文衡</b>
             <span>云南大学图书馆<br />学科信息参考</span>
           </a>
-          <button className="app-fold" type="button" onClick={rail.toggle}
-                  aria-expanded={!rail.side.fold} aria-controls="app-nav"
-                  aria-label={rail.side.fold ? '展开侧栏' : '收起侧栏'}
-                  title={rail.side.fold ? '展开侧栏' : '收起侧栏'}>
-            <Icon name="menu" size={16} />
-          </button>
         </div>
         <nav className="app-nav" id="app-nav" aria-label="工作区">
           {SIDE_NAV.map((n) => (
@@ -235,6 +244,16 @@ export function SideRail(props: {
       <div className="app-grip" {...rail.gripProps}>
         <i aria-hidden="true" />
       </div>
+
+      {/* 订口顶端切换钮（2026-11-04 票 2）：收展的唯一点击控制位，三入口共用。
+          骑在金线顶端（left 用 --app-lw，收展变宽自动跟随）；钮浮在把手层之上
+          （z-index 40 > 30），点下去事件只归钮，拖拽仍归把手，互不串。 */}
+      <button className="app-seam-toggle" type="button" onClick={rail.toggle}
+              aria-expanded={!rail.side.fold} aria-controls="app-nav"
+              aria-label={rail.side.fold ? '展开侧栏' : '收起侧栏'}
+              title={rail.side.fold ? '展开侧栏' : '收起侧栏'}>
+        <Icon name={rail.side.fold ? 'chev-right' : 'chev-left'} size={16} />
+      </button>
     </>
   )
 }

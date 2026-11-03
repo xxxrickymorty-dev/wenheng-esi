@@ -64,6 +64,9 @@
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .whs-mid-cap::before{content:"";display:block;width:34px;height:1px;
   background:var(--whs-seam);margin-bottom:12px}
+/* 订口顶端切换钮（2026-11-04 票 2）：配色钉本页 --whs-*（与 --deep/--seam 别名同源，
+   显式对齐静态稿原值；钮浮在订口金线顶端，规则本体在 index.css）。 */
+.whs-root .app-seam-toggle{background:var(--whs-deep);border-color:var(--whs-seam)}
 
 /* ── 右页 ── */
 .whs-r{display:flex;min-height:100dvh;min-width:0;
@@ -205,12 +208,9 @@
 .whs-qgo:disabled{opacity:.45;cursor:default}
 .whs-qgo:not(:disabled):hover{background:var(--whs-ok)}
 
-@media (max-width:960px){
-  .whs-spread{display:block}
-  .whs-spread::after{display:none}
-  .whs-root .app-page-l{position:static;height:auto;min-height:0;overflow:visible}
-  .whs-root .app-grip{display:none}
-  .whs-r{min-height:0}
+/* 窄窗（2026-11-04 票 1）：断点并入 900px，侧栏不再转顶置块——任何窗宽都是左列
+   （≤900px 由 useSideRail 自动折叠成 64px 图标轨，金线与把手照常）；只放宽右页版面。 */
+@media (max-width:900px){
   .whs-sheet{max-width:none}
 }
 @media (max-width:680px){

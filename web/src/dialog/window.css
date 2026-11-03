@@ -246,13 +246,10 @@
   background:var(--paper);color:var(--ink);font-size:14px;padding:24px;text-align:center}
 .wd-root .dlg-gate a{color:var(--ok);border-bottom:1px solid rgba(39,107,76,.35)}
 
-@media (max-width:960px){
-  .wd-spread{display:block}
-  .wd-spread::after{display:none}
-  .app-page-l{position:static;height:auto;overflow:visible}
-  .app-mid{max-height:38vh}
-  .wd-r{height:auto;min-height:0}
-  .wd-root .dlg-thread{min-height:56vh}
+/* 窄窗（2026-11-04 票 1）：断点并入 900px，侧栏不再转顶置块——任何窗宽都是左列
+   （≤900px 由 useSideRail 自动折叠成 64px 图标轨，金线与把手照常）；
+   侧栏转置与金线隐藏的旧规则已删，.app-mid 回归 100dvh 栏内伸缩，只留右页收口。 */
+@media (max-width:900px){
   .wd-card{width:100%}
 }
 @media (max-width:680px){
