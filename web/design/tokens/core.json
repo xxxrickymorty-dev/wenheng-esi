@@ -20,6 +20,8 @@
     "bg": "#EDE9DE",
     "card": "#FAF8F0",
     "panel": "#E6E1D3",
+    "$panel-2": "一级安静的纸面：亮度取 card 与 bg 之间（.col-r 右栏 / .chg-h 头带 / .switch 底）。文字配比实算：ink-3 5.53:1、ink-2 7.02:1、zhu 8.81:1",
+    "panel-2": "#F2EFE5",
     "card-hi": "#FDFAF3",
     "ink": "#15222B",
     "ink-2": "#43525C",

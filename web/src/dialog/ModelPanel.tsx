@@ -1,7 +1,7 @@
 /* 模型面板（2026-10-29）：输入框左下那颗「模型」按钮 ＋ 设置里的模型清单。
    两件事分开：切当前模型（谁都能点，写口在后端）、配模型（只有管理员，写口也在后端）。 */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Me } from '../api'
 import {
   getModels, removeModel, saveModel, setActiveModel, testModel,
@@ -85,6 +85,21 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
 
   const presets = useMemo(() => payload?.presets ?? [], [payload])
 
+  /* 39 分册 I：焦点圈禁。弹层挂在 .wd-root 末尾，打开时记住触发钮、把底下的工作面
+     （弹层的前一个兄弟＝.wd-spread 整块）设 inert——Tab 就在弹层内打转，出不穿底层；
+     关闭（点 ✕ / 点遮罩 / Esc）一律把焦点还给触发钮。 */
+  const backdropRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const opener = document.activeElement as HTMLElement | null
+    const under = backdropRef.current?.previousElementSibling as HTMLElement | null
+    if (under) under.inert = true
+    return () => {
+      if (under) under.inert = false
+      opener?.focus()
+    }
+  }, [open])
+
   if (!open) return null
 
   async function run(fn: () => Promise<ModelsPayload>) {
@@ -111,7 +126,7 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
   }
 
   return (
-    <div className="mdl-modal" role="presentation" onClick={onClose}>
+    <div className="mdl-modal" role="presentation" onClick={onClose} ref={backdropRef}>
       <div className="mdl-modal-in" role="dialog" aria-modal="true" aria-label="模型设置"
            onClick={(e) => e.stopPropagation()}>
         <header className="mdl-modal-h">
