@@ -288,28 +288,30 @@ html.portrait .stamp{display:none}
    ══════════════════════════════════════════════════════════════════ */
 .walk-track{position:relative;z-index:0;height:200vh}
 .walk-stage{position:sticky;top:0;height:100svh;overflow:hidden;isolation:isolate}
-.walk{position:absolute;inset:0;z-index:0;overflow:hidden;background:#0B0F0C}
-.walk-img{position:absolute;inset:-4%;width:108%;height:108%;object-fit:cover;object-position:50% 58%;
-  transform-origin:50% 46%;will-change:transform,filter;transition:filter 120ms linear}
-.walk-veil{position:absolute;inset:0;pointer-events:none;
+.wall{position:absolute;inset:0;z-index:0;
   background:
-    radial-gradient(120% 88% at 50% 42%,transparent 30%,rgba(6,10,8,.66) 100%),
-    linear-gradient(180deg,rgba(6,10,8,.62),transparent 26%,transparent 62%,rgba(4,8,6,.88))}
-.walk::after{content:"";position:absolute;inset:0;opacity:.16;mix-blend-mode:overlay;pointer-events:none;
+    radial-gradient(72% 46% at 50% 10%,rgba(126,99,56,.22),transparent 72%),
+    radial-gradient(130% 94% at 50% 104%,#151A10 0%,#0B100C 46%,#060907 100%)}
+.wall::after{content:"";position:absolute;inset:0;opacity:.14;mix-blend-mode:overlay;pointer-events:none;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E")}
 
-/* 门前：馆名与一句刊训 */
-.foyer::before{content:"";position:absolute;z-index:-1;left:-16%;right:-34%;top:-70%;bottom:-50%;
-  background:radial-gradient(54% 52% at 32% 58%,rgba(3,7,5,.74),rgba(3,7,5,.34) 48%,transparent 76%)}
-.foyer{position:absolute;z-index:4;left:clamp(28px,7.5vw,132px);bottom:15vh;display:flex;flex-direction:column;
-  align-items:flex-start;gap:0;text-align:left;color:var(--ivory);pointer-events:none;
-  text-shadow:0 2px 22px rgba(0,0,0,.6)}
-.foyer .eye{font:11px/1 var(--sans);letter-spacing:.36em;color:rgba(232,214,168,.92);margin-bottom:1.6em}
-.foyer h1{font-size:clamp(32px,4.2vw,58px);font-weight:600;letter-spacing:.18em;
-  color:#F8F3E4;line-height:1.15}
-.foyer .motto{margin-top:1.5em;font-size:13px;letter-spacing:.34em;color:rgba(242,237,225,.72);text-indent:.34em}
-.foyer .motto i{font-style:normal;margin:0 .7em;color:rgba(201,169,97,.7)}
-.foyer .rule{width:56px;height:1px;margin:2.2em 0 0;background:linear-gradient(90deg,rgba(201,169,97,.85),transparent)}
+/* 门前：一排照片（按原尺寸缩到小，不放大）＋题名 */
+.foyer{position:absolute;inset:0;z-index:3;pointer-events:none}
+.plates{position:absolute;z-index:3;left:0;right:0;top:21vh;display:flex;align-items:flex-end;
+  justify-content:center;gap:clamp(16px,2.4vw,40px);padding:0 24px}
+.plate{position:relative;margin:0;padding:7px;border:1px solid rgba(201,169,97,.22);
+  background:linear-gradient(180deg,rgba(244,241,232,.05),rgba(0,0,0,.26));
+  box-shadow:0 22px 44px -20px rgba(0,0,0,.85);will-change:transform,opacity}
+.plate img{display:block;height:clamp(128px,27vh,296px);width:auto}
+.plate figcaption{position:absolute;left:0;right:0;top:calc(100% + 11px);text-align:center;
+  font-size:11px;letter-spacing:.32em;text-indent:.32em;color:rgba(242,237,225,.55)}
+.tblock{position:absolute;z-index:4;left:0;right:0;top:6.5vh;display:flex;flex-direction:column;
+  align-items:center;text-align:center;color:var(--ivory);pointer-events:none;will-change:transform,opacity}
+.tblock .eye{font:11px/1 var(--sans);letter-spacing:.36em;text-indent:.36em;color:rgba(232,214,168,.9);margin-bottom:1.5em}
+.tblock h1{font-size:clamp(32px,4vw,56px);font-weight:600;letter-spacing:.18em;text-indent:.18em;
+  color:#F8F3E4;line-height:1.16;text-shadow:0 2px 20px rgba(0,0,0,.55)}
+.tblock .motto{margin-top:1.25em;font-size:12.5px;letter-spacing:.32em;text-indent:.32em;color:rgba(242,237,225,.66)}
+.tblock .motto i{font-style:normal;margin:0 .7em;color:rgba(201,169,97,.75)}
 .cue{position:absolute;z-index:5;left:50%;bottom:3.2vh;translate:-50% 0;color:rgba(224,203,146,.82);
   transition:opacity .3s var(--ease)}
 .cue svg{width:22px;height:22px;animation:cue 2.4s var(--ease) infinite}
@@ -327,7 +329,7 @@ html.portrait .stamp{display:none}
   pointer-events:none;opacity:.5;
   background:radial-gradient(46% 40% at 50% 46%,rgba(201,169,97,.20),rgba(201,169,97,.06) 46%,transparent 72%)}
 .shelf{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;
-  -webkit-box-reflect:below 2px linear-gradient(transparent 62%,rgba(255,255,255,.10))}
+  -webkit-box-reflect:below 2px linear-gradient(transparent 84%,rgba(255,255,255,.06))}
 .slots{display:flex;align-items:flex-end;justify-content:center;gap:2.4%;width:100%}
 .svol{position:relative;flex:0 0 15.4%;aspect-ratio:210/297;padding:0;border:0;background:none;
   cursor:pointer;transform-origin:50% 100%;transition:transform 460ms var(--ease),filter 460ms var(--ease);
@@ -362,12 +364,119 @@ html.portrait .stamp{display:none}
 .take{position:fixed;z-index:60;pointer-events:none;left:0;top:0;width:0;height:0}
 .take img{position:absolute;object-fit:cover;box-shadow:0 30px 60px rgba(0,0,0,.6);
   will-change:transform}
-body.is-taking .walk-img{filter:blur(9px) brightness(.34)!important}
-body.is-taking .foyer,body.is-taking .cue{opacity:0}
+body.is-taking .plates,body.is-taking .tblock,body.is-taking .cue{opacity:0!important}
 body.is-taking .exhibit{filter:blur(3px) brightness(.6)}
 
 /* 桌面态：世界退到后面去 */
-body.scene-desk .walk-img{filter:blur(14px) brightness(.22)!important}
+body.scene-desk .foyer,body.scene-desk .cue{opacity:0;pointer-events:none}
+body.scene-desk .exhibit{opacity:.16;filter:blur(6px)}
+
+/* 走完展台之后：一句交代，不多占 */
+.after::before{content:"";position:absolute;left:0;right:0;top:-140px;height:140px;pointer-events:none;
+  background:linear-gradient(180deg,transparent,#0C120E)}
+.after{position:relative;z-index:2;background:#0C120E;color:var(--ivory);
+  padding:clamp(56px,9vh,110px) clamp(24px,6vw,120px)}
+.after .wrap{max-width:1080px;margin:0 auto}
+.after h2{font-size:clamp(20px,2.2vw,28px);font-weight:600;letter-spacing:.14em;margin-bottom:.5em}
+.after p{font-size:14px;line-height:2;color:rgba(242,237,225,.6);max-width:44em}
+.after .chain{display:flex;flex-wrap:wrap;gap:10px 0;margin-top:2.4em;
+  font-size:12.5px;letter-spacing:.16em;color:rgba(224,203,146,.9)}
+.after .chain span{display:flex;align-items:center}
+.after .chain span+span::before{content:"";width:34px;height:1px;margin:0 16px;
+  background:linear-gradient(90deg,rgba(201,169,97,.5),rgba(201,169,97,.12))}
+
+
+@media (prefers-reduced-motion:reduce){
+  :root{--dur:1ms}
+  .book,.page,.closed,.closed .bd,.foot i{transition-duration:1ms}
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   动线：进馆（中庭）→ 走近（展台）→ 取书（桌面）→ 归架
+   一个空间，一次推近；书离架留下的空槽就是仪式留下的凭据。
+   ══════════════════════════════════════════════════════════════════ */
+.walk-track{position:relative;z-index:0;height:200vh}
+.walk-stage{position:sticky;top:0;height:100svh;overflow:hidden;isolation:isolate}
+.wall{position:absolute;inset:0;z-index:0;
+  background:
+    radial-gradient(72% 46% at 50% 10%,rgba(126,99,56,.22),transparent 72%),
+    radial-gradient(130% 94% at 50% 104%,#151A10 0%,#0B100C 46%,#060907 100%)}
+.wall::after{content:"";position:absolute;inset:0;opacity:.14;mix-blend-mode:overlay;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E")}
+
+/* 门前：一排照片（按原尺寸缩到小，不放大）＋题名 */
+.foyer{position:absolute;inset:0;z-index:3;pointer-events:none}
+.plates{position:absolute;z-index:3;left:0;right:0;top:21vh;display:flex;align-items:flex-end;
+  justify-content:center;gap:clamp(16px,2.4vw,40px);padding:0 24px}
+.plate{position:relative;margin:0;padding:7px;border:1px solid rgba(201,169,97,.22);
+  background:linear-gradient(180deg,rgba(244,241,232,.05),rgba(0,0,0,.26));
+  box-shadow:0 22px 44px -20px rgba(0,0,0,.85);will-change:transform,opacity}
+.plate img{display:block;height:clamp(128px,27vh,296px);width:auto}
+.plate figcaption{position:absolute;left:0;right:0;top:calc(100% + 11px);text-align:center;
+  font-size:11px;letter-spacing:.32em;text-indent:.32em;color:rgba(242,237,225,.55)}
+.tblock{position:absolute;z-index:4;left:0;right:0;top:6.5vh;display:flex;flex-direction:column;
+  align-items:center;text-align:center;color:var(--ivory);pointer-events:none;will-change:transform,opacity}
+.tblock .eye{font:11px/1 var(--sans);letter-spacing:.36em;text-indent:.36em;color:rgba(232,214,168,.9);margin-bottom:1.5em}
+.tblock h1{font-size:clamp(32px,4vw,56px);font-weight:600;letter-spacing:.18em;text-indent:.18em;
+  color:#F8F3E4;line-height:1.16;text-shadow:0 2px 20px rgba(0,0,0,.55)}
+.tblock .motto{margin-top:1.25em;font-size:12.5px;letter-spacing:.32em;text-indent:.32em;color:rgba(242,237,225,.66)}
+.tblock .motto i{font-style:normal;margin:0 .7em;color:rgba(201,169,97,.75)}
+.cue{position:absolute;z-index:5;left:50%;bottom:3.2vh;translate:-50% 0;color:rgba(224,203,146,.82);
+  transition:opacity .3s var(--ease)}
+.cue svg{width:22px;height:22px;animation:cue 2.4s var(--ease) infinite}
+@keyframes cue{0%,100%{transform:translateY(0);opacity:.35}50%{transform:translateY(7px);opacity:.95}}
+
+/* 展台：一张托板，五册书 */
+.exhibit{position:absolute;z-index:3;left:50%;top:52%;width:min(76vw,1240px);
+  translate:-50% -50%;transform-origin:50% 62%;opacity:0;pointer-events:none;will-change:transform,opacity;
+  transition:filter 420ms var(--ease)}
+.exhibit.is-live{pointer-events:auto}
+.exhibit::after{content:"";position:absolute;z-index:1;left:1%;right:1%;bottom:-30%;height:24%;
+  pointer-events:none;filter:blur(16px);
+  background:radial-gradient(ellipse at 50% 0%,rgba(0,0,0,.55),rgba(0,0,0,.2) 46%,transparent 74%)}
+.lamp{position:absolute;z-index:0;left:50%;top:48%;width:132%;height:150%;translate:-50% -50%;
+  pointer-events:none;opacity:.5;
+  background:radial-gradient(46% 40% at 50% 46%,rgba(201,169,97,.20),rgba(201,169,97,.06) 46%,transparent 72%)}
+.shelf{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;
+  -webkit-box-reflect:below 2px linear-gradient(transparent 84%,rgba(255,255,255,.06))}
+.slots{display:flex;align-items:flex-end;justify-content:center;gap:2.4%;width:100%}
+.svol{position:relative;flex:0 0 15.4%;aspect-ratio:210/297;padding:0;border:0;background:none;
+  cursor:pointer;transform-origin:50% 100%;transition:transform 460ms var(--ease),filter 460ms var(--ease);
+  filter:drop-shadow(0 16px 18px rgba(0,0,0,.5))}
+.svol img{display:block;width:100%;height:100%;object-fit:cover;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);transition:opacity .35s var(--ease)}
+.svol::before{content:"";position:absolute;left:0;top:0;bottom:0;width:9%;z-index:2;pointer-events:none;
+  background:linear-gradient(90deg,rgba(0,0,0,.5),rgba(0,0,0,.06) 62%,transparent);opacity:.9}
+.svol::after{content:"";position:absolute;inset:-6% -8% -10%;z-index:-1;pointer-events:none;opacity:0;
+  background:radial-gradient(60% 46% at 50% 92%,rgba(0,0,0,.6),transparent 72%);
+  transition:opacity .4s var(--ease)}
+.svol:hover,.svol:focus-visible{transform:translateY(-14px)}
+.svol:hover::after,.svol:focus-visible::after{opacity:1}
+.svol .re{position:absolute;z-index:3;left:0;top:78.5%;width:63%;height:13.5%;pointer-events:none;
+  background:linear-gradient(90deg,rgba(8,27,20,1) 0 66%,rgba(8,27,20,.92) 78%,transparent)}
+.svol .re b{position:absolute;left:13.6%;top:21%;font:600 clamp(9px,.86vw,12px)/1.1 Georgia,"Noto Serif SC",serif;
+  letter-spacing:.05em;color:#d7c18a}
+.svol .re i{position:absolute;left:14%;top:64%;font:400 clamp(6px,.5vw,8px)/1 var(--sans);
+  letter-spacing:.2em;color:rgba(229,221,200,.8);font-style:normal}
+/* 取走的那一册：槽位空着，书名留着淡淡的影——这是仪式留下的凭据 */
+.svol.is-gone img,.svol.is-gone .re{opacity:.10}
+.svol.is-gone{box-shadow:inset 0 0 0 1px rgba(201,169,97,.30),inset 0 18px 40px rgba(0,0,0,.7);
+  background:linear-gradient(180deg,rgba(0,0,0,.5),rgba(0,0,0,.22))}
+.svol.is-gone::before{opacity:0}
+.plank{position:relative;z-index:3;width:108%;height:16px;margin-top:0;border-radius:1px;
+  background:linear-gradient(180deg,#5A3D24,#3A2515 62%,#2A1A0E);
+  box-shadow:0 16px 26px -8px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.14)}
+.plank::after{content:"";position:absolute;left:0;right:0;top:100%;height:12px;
+  background:linear-gradient(180deg,rgba(0,0,0,.55),transparent)}
+
+/* 取书：一册离架，飞到手边 */
+.take{position:fixed;z-index:60;pointer-events:none;left:0;top:0;width:0;height:0}
+.take img{position:absolute;object-fit:cover;box-shadow:0 30px 60px rgba(0,0,0,.6);
+  will-change:transform}
+body.is-taking .plates,body.is-taking .tblock,body.is-taking .cue{opacity:0!important}
+body.is-taking .exhibit{filter:blur(3px) brightness(.6)}
+
+/* 桌面态：世界退到后面去 */
 body.scene-desk .foyer,body.scene-desk .cue{opacity:0;pointer-events:none}
 body.scene-desk .exhibit{opacity:.16;filter:blur(6px)}
 
@@ -404,6 +513,29 @@ body.scene-desk .exhibit{opacity:.16;filter:blur(6px)}
   .cue{display:none}
 }
 
+@media (max-width:900px){
+  .walk-track{height:100svh}
+  .plates{top:7vh;left:0;right:0;display:flex;justify-content:center;gap:10px;padding:0 20px;
+    overflow:visible;pointer-events:auto}
+  .plate{flex:0 0 calc((100% - 60px) / 3);padding:4px}
+  .plate img{width:100%;height:auto;aspect-ratio:4/3;object-fit:cover}
+  .plate figcaption{display:none}
+  .tblock{top:33vh;padding:0 24px}
+  .tblock .eye{font-size:9.5px;letter-spacing:.24em;text-indent:.24em;margin-bottom:1.1em}
+  .tblock h1{font-size:28px;letter-spacing:.14em;text-indent:.14em}
+  .tblock .motto{font-size:11px;letter-spacing:.18em;text-indent:.18em;margin-top:1em}
+  .exhibit{width:92vw;top:68%}
+  .shelf{width:100%}
+  .slots{overflow-x:auto;justify-content:flex-start;gap:3.4%;padding:2px 2px 4px;
+    scroll-snap-type:x mandatory;scrollbar-width:none}
+  .slots::-webkit-scrollbar{display:none}
+  .svol{flex:0 0 31%;scroll-snap-align:center}
+  .svol .re b{font-size:11px}
+  .svol .re i{font-size:7px}
+  .plank{width:100%;height:12px}
+  .svol:hover,.svol:focus-visible{transform:translateY(-9px)}
+  .cue{display:none}
+}
 </style>
 </head>
 <body>
@@ -411,16 +543,19 @@ body.scene-desk .exhibit{opacity:.16;filter:blur(6px)}
 
 <div class="walk-track" id="walkTrack">
   <div class="walk-stage" id="walkStage">
-    <div class="walk">
-      <img class="walk-img" id="walkImg" alt="" aria-hidden="true">
-      <span class="walk-veil" aria-hidden="true"></span>
-    </div>
+    <div class="wall" aria-hidden="true"></div>
 
-    <section class="foyer" id="foyer" aria-label="陈列馆">
-      <p class="eye">雲南大學圖書館 · 學科情報館藏</p>
-      <h1>学科信息参考</h1>
-      <p class="motto">一年六期<i>·</i>一期一册</p>
-      <span class="rule" aria-hidden="true"></span>
+    <section class="foyer" aria-label="陈列馆">
+      <div class="plates" id="plates">
+        <figure class="plate"><img id="plateA" alt="云南大学图书馆外景"><figcaption>馆 外</figcaption></figure>
+        <figure class="plate"><img id="plateB" alt="中庭"><figcaption>中 庭</figcaption></figure>
+        <figure class="plate"><img id="plateC" alt="穹顶"><figcaption>穹 顶</figcaption></figure>
+      </div>
+      <div class="tblock" id="tblock">
+        <p class="eye">雲南大學圖書館 · 學科情報館藏</p>
+        <h1>学科信息参考</h1>
+        <p class="motto">一年六期<i>·</i>一期一册</p>
+      </div>
     </section>
 
     <div class="exhibit" id="exhibit">
@@ -1118,33 +1253,30 @@ function buildShelf() {
 const CUE = $('cue');
 function place() {
   const narrow = window.innerWidth <= 900;
-  const img = $('walkImg');
-  const exhibit = $('exhibit');
-  const foyer = $('foyer');
-  if (!img || !exhibit) return;
-  if (narrow) {
-    img.style.transform = 'none';
-    img.style.filter = 'brightness(.74) saturate(.96)';
+  const exhibit = $('exhibit'), plates = $('plates'), tblock = $('tblock');
+  if (!exhibit) return;
+  if (narrow) {                       /* 手机不做推镜：照片、题名、书架各就各位 */
+    plates.style.opacity = '1'; plates.style.transform = 'none';
+    tblock.style.opacity = '1'; tblock.style.transform = 'none';
     exhibit.style.opacity = '1';
-    exhibit.style.transform = 'scale(1)';
+    exhibit.style.transform = 'scale(.98)';
     exhibit.classList.add('is-live');
-    foyer.style.opacity = '1';
-    foyer.style.transform = 'none';
     if (CUE) CUE.style.opacity = '0';
     return;
   }
   const track = $('walkTrack');
   const span = Math.max(1, track.offsetHeight - window.innerHeight);
   const p = Math.min(1, Math.max(0, window.scrollY / span));
-  exhibit.style.opacity = String(narrow ? 1 : Math.min(1, Math.max(0, (p - .18) / .62)));
-  exhibit.style.transform = 'scale(' + (0.52 + p * 0.48).toFixed(3) + ')'
-    + ' translateY(' + ((1 - p) * 12).toFixed(2) + '%)';
-  exhibit.classList.toggle('is-live', p > .82 || narrow);
-  img.style.transform = 'scale(' + (1 + p * 0.26).toFixed(3) + ') translateY(' + (p * -1.5).toFixed(2) + '%)';
-  img.style.filter = 'blur(' + (p * 6).toFixed(1) + 'px) brightness(' + (1 - p * 0.5).toFixed(3) + ')';
-  foyer.style.opacity = String(Math.max(0, 1 - p * 1.9));
-  foyer.style.transform = 'translateY(' + (-p * 40).toFixed(1) + 'px)';
-  if (CUE) CUE.style.opacity = p > .06 ? '0' : '1';
+  /* 照片与题名随走近退场，书架从远处升上来 */
+  plates.style.opacity = String(Math.max(0, 1 - p * 2.6));
+  plates.style.transform = 'translateY(' + (-p * 86).toFixed(1) + 'px)';
+  tblock.style.opacity = String(Math.max(0, 1 - p * 1.35));
+  tblock.style.transform = 'translateY(' + (-p * 26).toFixed(1) + 'px)';
+  exhibit.style.opacity = String(0.86 + p * 0.14);
+  exhibit.style.transform = 'translateY(' + ((1 - p) * 17).toFixed(2) + 'vh) scale('
+    + (0.78 + p * 0.22).toFixed(3) + ')';
+  exhibit.classList.toggle('is-live', p > .12);
+  if (CUE) CUE.style.opacity = p > .08 ? '0' : '1';
 }
 
 function takeBook(period, el) {
@@ -1238,13 +1370,17 @@ function unlockScroll() {
 
 function wireFlow() {
   onClosed = () => window.setTimeout(returnBook, 260);
-  $('walkImg').src = window.innerWidth <= 900 ? (ALL.interior || ALL.panorama) : ALL.panorama;
+  $('plateA').src = ALL.plateExterior;
+  $('plateB').src = ALL.plateInterior;
+  $('plateC').src = ALL.plateDome;
 
   let raf = 0;
   const kick = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; place(); }); };
   window.addEventListener('scroll', kick, { passive: true });
   window.addEventListener('resize', () => {
-    $('walkImg').src = window.innerWidth <= 900 ? (ALL.interior || ALL.panorama) : ALL.panorama;
+    $('plateA').src = ALL.plateExterior;
+  $('plateB').src = ALL.plateInterior;
+  $('plateC').src = ALL.plateDome;
     kick();
   }, { passive: true });
   place();

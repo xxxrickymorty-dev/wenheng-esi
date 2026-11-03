@@ -128,8 +128,9 @@ def main() -> None:
         "books": books,
         "sounds": [b64((WEB / "public" / "audio" / f"page-{n}.mp3").read_bytes(), "audio/mpeg")
                    for n in (1, 2, 3, 4)],
-        "panorama": b64(to_webp((ASSETS / "library-panorama.png").read_bytes(), 1800, 80), "image/webp"),
-        "interior": b64(to_webp((ASSETS / "library-interior.png").read_bytes(), 1200, 80), "image/webp"),
+        "plateExterior": b64(to_webp((ASSETS / "library-exterior.png").read_bytes(), 1000, 84), "image/webp"),
+        "plateInterior": b64(to_webp((ASSETS / "library-interior.png").read_bytes(), 900, 84), "image/webp"),
+        "plateDome": b64(to_webp((ASSETS / "top.png").read_bytes(), 700, 84), "image/webp"),
     }
 
     script = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
