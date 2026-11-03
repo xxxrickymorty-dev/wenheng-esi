@@ -482,6 +482,43 @@ class Test证据装配:
         assert ("676.06", "接近度", "化学", "202607") in ev["cells"][key]
         assert ("202605", "接近度", "化学", "202605") in ev["cells"][key]
 
+    # ------------------------------------------------ 票 B：单期值（期号错引修复）
+    def _at_res(self):
+        return {"kind": "at", "metric": "proximity_1pct", "metric_cn": "ESI前1%接近度",
+                "disc": "Chemistry", "disc_cn": "化学", "period": "202607",
+                "value": 6.760561,
+                "source": {"origin_sheet": "接近度", "discipline": "Chemistry",
+                           "discipline_cn": "化学", "period": "202607"}}
+
+    def test_单期渲染_期次进括注_值紧贴冒号_到格(self):
+        """票 B（2026-10-31）：期次与值的标记不相邻——期次进括注，值紧贴冒号后；
+        旧版「单期值（台账《X》表）：202609 [[58]]」期号在前与值相邻，模型把期号写进了数值槽。"""
+        from ai import _evidence
+        ev = _evidence.assemble([self._at_res()])
+        key, text = ev["chunks"][0]
+        assert key == "台账数据·化学·接近度·202607"
+        assert text == "化学 · 接近度 · 单期值（202607 期，台账《接近度》表）：676.06%。"
+        assert "202607" not in text.split("：", 1)[1], "期次不得出现在冒号之后（值槽只放值）"
+        # cells 注册口径不变：值与期次都指到格
+        assert ("676.06", "接近度", "化学", "202607") in ev["cells"][key]
+        assert ("202607", "接近度", "化学", "202607") in ev["cells"][key]
+
+    def test_单期渲染_整数与排名的单位仍在值槽(self):
+        from ai import _evidence
+        papers = {**self._at_res(), "metric": "papers", "metric_cn": "论文数",
+                  "value": 2590.0, "source": {"origin_sheet": "论文数",
+                                              "discipline": "Chemistry",
+                                              "discipline_cn": "化学", "period": "202607"}}
+        key, text = _evidence.assemble([papers])["chunks"][0]
+        assert text == "化学 · 论文数 · 单期值（202607 期，台账《论文数》表）：2590。"
+        rank = {**self._at_res(), "metric": "rank_intl", "metric_cn": "国际排名",
+                "value": 552.0, "source": {"origin_sheet": "国际排名",
+                                           "discipline": "Chemistry",
+                                           "discipline_cn": "化学", "period": "202607"}}
+        key2, text2 = _evidence.assemble([rank])["chunks"][0]
+        assert text2 == "化学 · 国际排名 · 单期值（202607 期，台账《国际排名》表）：第 552 位。"
+        assert ("552", "国际排名", "化学", "202607") in _evidence.assemble([rank])["cells"][key2]
+
     def test_事件_一直在内(self):
         from ai import _evidence
         res = {"kind": "events", "disc": "Chemistry", "disc_cn": "化学", "n": 0,
@@ -899,6 +936,20 @@ class Test原生工具环:
         ans, _ = self._qa_tool(root, [Turn(calls=(call,)), _cite_static])
         assert ans.mode == "model"
         assert ans.receipts[0].refused is True
+
+    def test_执行器裸数字_guard_reject_留痕维持len口径(self, tmp_path, monkeypatch):
+        # 票 C 只对 shield_reject 原样透传：guard_reject 的 detail 仍按 len 记（数量面）。
+        from ai import _qa as _qa_mod
+        root = _seed_ledger(tmp_path, monkeypatch)
+        monkeypatch.setattr(_qa_mod, "_qa_executor",
+                            lambda view, period, number: (lambda call: ("涨了 5%", None)))
+        call = {"name": "query_series",
+                "arguments": {"metric": "proximity", "disc": "Chemistry"}}
+        ans, _ = self._qa_tool(root, [Turn(calls=(call,)), _cite_static])
+        assert ans.mode == "failed", "问答必须模型作答：guard_reject 也是失败态"
+        rec = records(root)[0]
+        assert rec["fallback"] == "guard_reject"
+        assert rec["fallback_detail"] == {"tool": len("query_series"), "stray": 1}
 
     def test_未知工具名_拒(self, tmp_path, monkeypatch):
         root = _seed_ledger(tmp_path, monkeypatch)

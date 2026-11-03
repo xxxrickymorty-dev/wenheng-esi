@@ -72,6 +72,9 @@ class Test_边界:
         out = _run(brain)
         assert out.text is None and out.reason == "shield_reject"
         assert out.detail["stray"] == ["7"] and out.shield["passed"] == 0
+        assert out.detail["masked_head"] == "又涨了 ▇%", \
+            "票 C：被拒稿的隐去面落 detail（标记保留、标记外数字→▇）"
+        assert not raw_digits(out.detail["masked_head"]), "masked_head 构造上零未标记数字"
         assert "数字校验" in out.notice
         assert len(brain.briefs) == 2, "每个 attempt 至多恢复一次"
 
@@ -81,6 +84,7 @@ class Test_边界:
         out = _run(RuleBrain(), rule_protected="涨了 5%")
         assert out.attempted is False and out.text is None
         assert out.reason == "shield_reject" and out.detail["stray"] == ["5"]
+        assert out.detail["masked_head"] == "涨了 ▇%", "规则部署的盾拒同样带 masked_head"
 
     def test_自由型_允许子集_allow_substrings(self):
         out = _run(ScriptedBrain([Turn(text="overview_1permille 与 [[1]]")]),

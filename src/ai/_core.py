@@ -289,8 +289,14 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
                 # 传输/校验回落：码与文案由边界给。问答（qa）必须模型作答——失败与
                 # 超时显式化（不顶规则版；规则版只留「看规则版」数字对照）。
                 fallback = outcome.reason
-                fallback_detail = ({k: len(v) for k, v in (outcome.detail or {}).items()}
-                                   if outcome.detail else None)
+                if outcome.detail:
+                    if fallback == _attempt.FallbackReason.SHIELD_REJECT:
+                        # 票 C：盾拒 detail **原样透传**（masked_head 是占位面、
+                        # stray 是可留痕面——被拒稿可复盘，不必再抓包）；
+                        # 其余回落码维持 len 口径（只记数量）。
+                        fallback_detail = dict(outcome.detail)
+                    else:
+                        fallback_detail = ({k: len(v) for k, v in outcome.detail.items()})
                 notice = outcome.notice
                 if cap.id == "qa":
                     mode, backend = "failed", outcome.backend

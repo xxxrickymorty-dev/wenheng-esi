@@ -110,6 +110,19 @@ def test_盾拒_丢占位符也回落(tmp_path):
     assert records(tmp_path)[0]["fallback"] == "shield_reject"
 
 
+def test_盾拒留痕_detail原样透传_masked_head落盘(tmp_path):
+    # 票 C（2026-10-31）：shield_reject 的 fallback_detail 不再一律 {k: len(v)}——
+    # masked_head（被拒稿隐去面）与 stray 原样落盘，复盘不必再抓包。
+    brain = ScriptedBrain([lambda b: Turn(text=b.task + "又涨了 7。")] * 2)
+    with ai.using(data_root=tmp_path, brain=brain):
+        ans = ai.run("diagnose", "202607", payload={"failure": FAIL}, actor="system")
+    assert ans.mode == "rule" and "数字校验" in ans.notice
+    det = records(tmp_path)[0]["fallback_detail"]
+    assert det["stray"] == ["7"], "原样透传：stray 是列表，不是 len 数量"
+    assert "masked_head" in det
+    assert not raw_digits(det["masked_head"]), "masked_head 是占位面（标记外数字已隐去）"
+
+
 def test_模型调用失败_回落原因如实(tmp_path):
     with ai.using(data_root=tmp_path, brain=FailingBrain()):
         ans = ai.run("diagnose", "202607", payload={"failure": FAIL}, actor="system")

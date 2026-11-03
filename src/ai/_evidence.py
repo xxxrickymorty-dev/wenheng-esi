@@ -51,6 +51,16 @@ def _sheet_of(point) -> str:
     return str((point.get("source") or {}).get("origin_sheet") or "")
 
 
+def value_face(metric: str, value):
+    """指标值 → 答案面的数字串（`_fmt` 的指标级入口；取不到 → None）。
+
+    排名一律整数面（「第 552 位」，与 _series/_at 同口径）。评测 runner
+    （`tools/qa_eval.py`）用它运行时解期望值——答案里的数字就是这里出的串。
+    """
+    fmt = _FMT.get(str(metric), "int")
+    return _fmt(value, "int" if fmt == "rank" else fmt)
+
+
 def _series(res):
     """`series` Result → (key, text, cells)；无点 → None。"""
     metric, disc = str(res.get("metric") or ""), str(res.get("disc") or "")
@@ -139,22 +149,26 @@ def _at(res):
     """`at` Result → (key, text, cells)；无值/无期次 → None（P0-1，2026-10-14）。
 
     单值段：点名的那一期只给这一行——不让写手在全序列里自己找。
+    票 B（2026-10-31 期号错引修复）：期次进括注、值的标记紧贴冒号后——
+    旧版「…单期值（台账《X》表）：202609 [[58]]」里期次与值的标记相邻且期次在前，
+    模型扫读时把期号当成了值（「接近度 202609%」）；括注隔开后两者不再相邻。
     """
     metric, disc = str(res.get("metric") or ""), str(res.get("disc") or "")
-    cn, fmt = str(res.get("disc_cn") or disc), _FMT.get(metric, "int")
+    cn = str(res.get("disc_cn") or disc)
+    fmt = _FMT.get(metric, "int")
     cn_metric = _CN.get(metric, str(res.get("metric_cn") or metric))
     p = str(res.get("period") or "")
-    v = _fmt(res.get("value"), fmt)
+    v = value_face(metric, res.get("value"))   # 排名「第 552 位」（同 _series）
     if not p or v is None:
         return None
     sheet = _sheet_of(res)
     if fmt == "rank":
-        seg = f"{p} 第 {v} 位"
+        face = f"第 {v} 位"
     elif fmt == "pct":
-        seg = f"{p} {v}%"
+        face = f"{v}%"
     else:
-        seg = f"{p} {v}"
-    text = f"{cn} · {cn_metric} · 单期值（台账《{sheet}》表）：{seg}。"
+        face = v
+    text = f"{cn} · {cn_metric} · 单期值（{p} 期，台账《{sheet}》表）：{face}。"
     cells = [(v, sheet, cn, p), (p, sheet, cn, p)]
     return f"台账数据·{cn}·{cn_metric}·{p}", text, cells
 

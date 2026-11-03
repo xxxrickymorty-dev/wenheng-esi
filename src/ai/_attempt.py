@@ -279,8 +279,12 @@ def attempt(task, *, system: str, ability: str, anchored: bool = True, evidence=
                         shield={"checked": len(mapping), "passed": len(mapping)},
                         notice=note, receipts=tuple(receipts))
         if not (attempted and not recovered):
-            # 恢复后再盾拒 / 规则部署：按原样回落（detail/notice 口径不变）。
-            return done(reason=FallbackReason.SHIELD_REJECT, detail=detail,
+            # 恢复后再盾拒 / 规则部署：按原样回落（notice 口径不变）。detail 增
+            # masked_head＝被拒稿的隐去面（票 C：model-visible means logged，
+            # 失败尝试也可复盘，不必再抓包；stray 照旧）。
+            return done(reason=FallbackReason.SHIELD_REJECT,
+                        detail={**(detail or {}),
+                                "masked_head": _mask_digits(candidate)[:200]},
                         shield={"checked": len(mapping), "passed": 0},
                         notice=(("模型输出未通过数字校验，已回退规则版，内容与规则库一致。"
                                  if attempted else "") or note))

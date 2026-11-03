@@ -1,0 +1,137 @@
+[
+  {"id": "direct-prox-chem", "group": "直问单指标", "period": "202609",
+   "question": "化学的接近度是多少",
+   "expect": {"values": [{"metric": "proximity", "disc": "Chemistry"}]}},
+
+  {"id": "direct-thr-chem", "group": "直问单指标", "period": "202609",
+   "question": "化学进入前1%的阈值是多少",
+   "expect": {"values": [{"metric": "threshold", "disc": "Chemistry"}]}},
+
+  {"id": "direct-thrpermille-chem", "group": "直问单指标", "period": "202609",
+   "question": "化学的前1‰阈值是多少",
+   "expect": {"values": [{"metric": "threshold_permille", "disc": "Chemistry"}]}},
+
+  {"id": "direct-papers-chem", "group": "直问单指标", "period": "202609",
+   "question": "化学的论文数有多少",
+   "expect": {"values": [{"metric": "papers", "disc": "Chemistry"}]}},
+
+  {"id": "direct-cnci-chem", "group": "直问单指标", "period": "202609",
+   "question": "化学的CNCI是多少",
+   "expect": {"values": [{"metric": "cnci", "disc": "Chemistry"}]}},
+
+  {"id": "direct-top-alias", "group": "直问单指标", "period": "202609",
+   "question": "化学的热点论文有多少篇",
+   "expect": {"values": [{"metric": "top_papers", "disc": "Chemistry"}]}},
+
+  {"id": "fu-latest", "group": "追问省略", "period": "202609",
+   "question": "查最新的",
+   "history": [
+     {"who": "me", "text": "化学的接近度是多少"},
+     {"who": "wh", "text": "化学的接近度已在上一轮按本期数据回答。"}
+   ],
+   "expect": {"values": [{"metric": "proximity", "disc": "Chemistry"}]}},
+
+  {"id": "fu-switch-disc", "group": "追问省略", "period": "202609",
+   "question": "那物理学呢",
+   "history": [
+     {"who": "me", "text": "化学的接近度是多少"},
+     {"who": "wh", "text": "化学的接近度已在上一轮按本期数据回答。"}
+   ],
+   "expect": {"values": [{"metric": "proximity", "disc": "Physics"}]}},
+
+  {"id": "fu-switch-metric", "group": "追问省略", "period": "202609",
+   "question": "那论文数呢",
+   "history": [
+     {"who": "me", "text": "化学的接近度是多少"},
+     {"who": "wh", "text": "化学的接近度已在上一轮按本期数据回答。"}
+   ],
+   "expect": {"values": [{"metric": "papers", "disc": "Chemistry"}]}},
+
+  {"id": "fu-prev", "group": "追问期次", "period": "202609",
+   "question": "那上一期呢",
+   "history": [
+     {"who": "me", "text": "化学的接近度是多少"},
+     {"who": "wh", "text": "化学的接近度已在上一轮按本期数据回答。"}
+   ],
+   "expect": {"values": [{"metric": "proximity", "disc": "Chemistry", "period": "202607"}]}},
+
+  {"id": "fu-prev-papers", "group": "追问期次", "period": "202609",
+   "question": "上一期呢",
+   "history": [
+     {"who": "me", "text": "物理学的论文数是多少"},
+     {"who": "wh", "text": "物理学的论文数已在上一轮按本期数据回答。"}
+   ],
+   "expect": {"values": [{"metric": "papers", "disc": "Physics", "period": "202607"}]}},
+
+  {"id": "cmp-cnci", "group": "比较题", "period": "202609",
+   "question": "化学和临床医学谁的CNCI更高",
+   "expect": {"values": [{"metric": "cnci", "disc": "Chemistry"},
+                          {"metric": "cnci", "disc": "Clinical Medicine"}],
+               "ops": ["query_compare"]}},
+
+  {"id": "cmp-papers", "group": "比较题", "period": "202609",
+   "question": "物理学与材料科学哪个论文数更多",
+   "expect": {"values": [{"metric": "papers", "disc": "Physics"},
+                          {"metric": "papers", "disc": "Materials Science"}],
+               "ops": ["query_compare"]}},
+
+  {"id": "multi-two-discs", "group": "多学科多指标", "period": "202609",
+   "question": "化学和物理学的论文数分别是多少",
+   "expect": {"values": [{"metric": "papers", "disc": "Chemistry"},
+                          {"metric": "papers", "disc": "Physics"}]}},
+
+  {"id": "multi-two-metrics", "group": "多学科多指标", "period": "202609",
+   "question": "化学的论文数和总被引频次各是多少",
+   "expect": {"values": [{"metric": "papers", "disc": "Chemistry"},
+                          {"metric": "total_cites", "disc": "Chemistry"}]}},
+
+  {"id": "rank-disc-intl", "group": "学科排名", "period": "202609",
+   "question": "化学的国际排名是多少",
+   "expect": {"values": [{"metric": "rank_intl", "disc": "Chemistry"}]}},
+
+  {"id": "rank-overall", "group": "学科排名", "period": "202609",
+   "question": "云南大学最近几期的国际排名走势怎么样",
+   "expect": {}},
+
+  {"id": "hist-at-202605", "group": "点名历史期次", "period": "202609",
+   "question": "202605 那一期的化学接近度是多少",
+   "expect": {"values": [{"metric": "proximity", "disc": "Chemistry",
+                           "period": "202605"}]}},
+
+  {"id": "hist-at-202607", "group": "点名历史期次", "period": "202609",
+   "question": "202607 的物理学论文数是多少",
+   "expect": {"values": [{"metric": "papers", "disc": "Physics",
+                           "period": "202607"}]}},
+
+  {"id": "ev-in-math", "group": "进出名单", "period": "202609",
+   "question": "数学是什么时候进入前1%的",
+   "expect": {}},
+
+  {"id": "ev-out-bio", "group": "进出名单", "period": "202609",
+   "question": "生物学与生物化学有没有退出过前1%名单",
+   "expect": {}},
+
+  {"id": "oob-disc-trend", "group": "越权学科", "period": "202609",
+   "question": "天文学的论文数最近几期是怎么变化的",
+   "expect": {"ops": ["query_series"]}},
+
+  {"id": "oob-disc-single", "group": "越权学科", "period": "202609",
+   "question": "昆明理工大学的CNCI是多少",
+   "expect": {}},
+
+  {"id": "vague-no-target", "group": "笼统问句", "period": "202609",
+   "question": "帮我查一下数据",
+   "expect": {}},
+
+  {"id": "vague-no-metric", "group": "笼统问句", "period": "202609",
+   "question": "这个学科的表现怎么样",
+   "expect": {}},
+
+  {"id": "trend-prox", "group": "走势", "period": "202609",
+   "question": "化学的接近度最近几期是怎么变化的",
+   "expect": {"values": [{"metric": "proximity", "disc": "Chemistry"}]}},
+
+  {"id": "trend-cites", "group": "走势", "period": "202609",
+   "question": "物理学的总被引频次最近几期走势如何",
+   "expect": {"values": [{"metric": "total_cites", "disc": "Physics"}]}}
+]
