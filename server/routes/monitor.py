@@ -31,34 +31,68 @@ def _ai_required_response(exc: Exception) -> JSONResponse:
     return JSONResponse({"error": str(exc)}, status_code=503)
 
 
-def _monitor_school_payload(period: str) -> dict:
+def _monitor_school_payload(period: str, field: str | None = None) -> dict:
     cache = monitor_report.load_cache(period)
     en_set_known = set()
     if cache:
         en_set_known = {row[0] for row in cache["cn_inst"]}
         en_set_known |= {en for v in cache["fields"].values() for en in v["schools"]}
+    # 在榜查询（2026-11-04，P2 分析台契约）：带 field → items 增 in_field。
+    # 数据源＝监测期次缓存 fields[field]["schools"]（键＝ESI 机构英文名，
+    # 与 src/monitor/schools.py 的 en 名同源匹配）；不带 → 行为与从前逐字一致。
+    field_stem = None
+    in_field_set: set[str] = set()
+    if field is not None and str(field).strip():
+        field_stem = next(
+            (s for s in monitor_report.STEMS
+             if monitor_report.norm(s) == monitor_report.norm(str(field))),
+            None)
+        if field_stem is None:
+            return JSONResponse(
+                {"error": f"「{field}」不是 ESI 22 学科",
+                 "hint": "学科英文名从 22 学科里选，如："
+                         + "、".join(monitor_report.STEMS)},
+                status_code=400)
+        if not cache or field_stem not in cache["fields"]:
+            return JSONResponse(
+                {"error": f"本期（{period}）监测缓存里没有「{field_stem}」学科榜",
+                 "hint": "先跑监测版缓存（monitor.build_cache），或换一个学科"},
+                status_code=400)
+        in_field_set = set(cache["fields"][field_stem]["schools"])
     items = []
     for s in monitor_schools.SCHOOLS:
         f = monitor_report.MONITOR_ROOT / s["cn"] / f"{period}.html"
-        items.append({
+        it = {
             "cn": s["cn"], "en": s["en"], "prov": s["prov"], "is985": s["is985"],
             "known": (not cache) or (s["en"] in en_set_known),
             "generated": f.exists(),
             "url": f"/monitor/report/{urllib.parse.quote(s['cn'])}/{period}.html" if f.exists() else None,
-        })
-    return {"period": period, "built": (cache or {}).get("built"), "schools": items}
+        }
+        if field_stem is not None:
+            it["in_field"] = s["en"] in in_field_set
+        items.append(it)
+    payload = {"period": period, "built": (cache or {}).get("built"), "schools": items}
+    if field_stem is not None:
+        payload["field"] = field_stem
+    return payload
 
 
 @router.get("/api/monitor/schools")
 @user_route
 async def api_monitor_schools(request: Request):
-    """监测版内置院校清单：985/211 槽位 + 每校「ESI 是否在册 / 报告是否已生成」。"""
+    """监测版内置院校清单：985/211 槽位 + 每校「ESI 是否在册 / 报告是否已生成」。
+
+    可选查询参数 `field`（ESI 学科英文名，如 `Computer Science`，大小写不敏感）：
+    带了 → items 每条加 `in_field`（该校该学科是否进入本期 ESI 前 1% 榜单），
+    顶层回显 `field`（规范名）；不在 22 学科 / 本期缓存缺该学科 → 400 人话；
+    不带 → 行为与从前完全一致（不加字段）。"""
     period = monitor_report.latest_period()
     if not period:
         return JSONResponse({"error": "没有可用的 ESI 期次数据",
                              "hint": "数据与复现/ESI数据/ 下需要有带 Institutions.xlsx 的期次目录"},
                             status_code=404)
-    return _monitor_school_payload(period)
+    field = request.query_params.get("field")
+    return _monitor_school_payload(period, field=field)
 
 
 @router.post("/api/monitor/report")
