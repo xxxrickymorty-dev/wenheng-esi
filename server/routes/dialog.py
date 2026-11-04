@@ -136,6 +136,21 @@ async def api_period_ai_calls(request: Request, period: str, limit: int = 100):
     return {"period": period, "calls": calls, "stats": stats}
 
 
+@router.get("/api/ai/call-stats")
+@admin_route
+async def api_ai_call_stats(request: Request):               # noqa: ARG001
+    """模型调用统计口（契约 #40，2026-11-04）：聚合全部留痕记录。
+
+    数据面＝`ai._record.aggregate_calls`：扫 `out/<期次>/ai_calls.jsonl`
+    与 `out/_ai/ai_calls.jsonl`（kind=call 才算）。modes 口径——
+    `model`＝模型轮成功、`failed`＝模型轮回落（原因码进 labels[].fallback）、
+    `rule`＝其余（纯规则轮 / 关闭态）。label 缺失按 capability 归组。
+    无任何记录 → 全零结构，不报错。
+    """
+    from ai import _record                                    # noqa: PLC0415
+    return await run_in_threadpool(_record.aggregate_calls)
+
+
 @router.post("/api/ai/switch")
 @admin_route
 async def api_ai_switch(request: Request):

@@ -271,6 +271,62 @@ class Recorder:
         return append(switch_path(self.root), audit)
 
 
+def aggregate_calls(root=None) -> dict:
+    """聚合全部调用记录（`GET /api/ai/call-stats` 的数据面，2026-11-04）。
+
+    扫 `<root>/*/ai_calls.jsonl`（`_ai/` 同 glob 覆盖；只算 `kind="call"`，
+    开关审计 kind=switch 不算；坏行/坏文件跳过不炸）。口径：
+
+    - `model`＝模型轮成功（mode=model）；
+    - `failed`＝模型轮回落（mode=fallback，dialog 内核轮记录面）——
+      原因码进 `labels[].fallback`；
+    - `rule`＝其余（纯规则轮、关闭态等），保证 total ＝ 三者之和。
+
+    `label` 缺失的记录（qa / dialog 这类不带 label 的能力）按 `capability`
+    归组。labels 按 total 降序、同名按字典序——确定性输出。
+    没有任何记录 → 全零结构，不报错。
+    """
+    root = pathlib.Path(root or data_root())
+    modes = {"model": 0, "rule": 0, "failed": 0}
+    labels: dict[str, dict] = {}
+    total = 0
+    for path in sorted(root.glob("*/ai_calls.jsonl")):
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except ValueError:
+                continue
+            if not isinstance(rec, dict) or rec.get("kind") != "call":
+                continue
+            total += 1
+            mode = str(rec.get("mode") or "")
+            key = ("model" if mode == "model"
+                   else "failed" if mode == "fallback" else "rule")
+            modes[key] += 1
+            name = str(rec.get("label") or rec.get("capability") or "(未标注)")
+            bucket = labels.setdefault(name, {"label": name, "total": 0,
+                                              "model": 0, "rule": 0, "failed": 0,
+                                              "fallback": {}})
+            bucket["total"] += 1
+            bucket[key] += 1
+            if key == "failed":
+                fb = str(rec.get("fallback") or "(未知)")
+                bucket["fallback"][fb] = bucket["fallback"].get(fb, 0) + 1
+    out_labels = sorted(labels.values(),
+                        key=lambda b: (-b["total"], b["label"]))
+    for bucket in out_labels:
+        bucket["fallback"] = dict(sorted(bucket["fallback"].items(),
+                                         key=lambda kv: (-kv[1], kv[0])))
+    return {"total": total, "modes": modes, "labels": out_labels}
+
+
 def _atomic_io():
     """公用原子写模块（`src/atomic_io.py`）。两种导入姿势都盖住：
 

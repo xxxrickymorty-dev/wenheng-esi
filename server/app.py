@@ -280,7 +280,8 @@ from .routes.flexible import (_flex_ctx, api_period_flexible,  # noqa: E402
                               api_period_panel_data, period_flexible_chart)
 
 # dialog 册（对话 / 问文衡 / 问数 / AI 能力 / 模型清单）
-from .routes.dialog import (api_ai_capabilities, api_ai_switch,  # noqa: E402
+from .routes.dialog import (api_ai_call_stats, api_ai_capabilities,  # noqa: E402
+                            api_ai_switch,
                             api_aiqa_ask, api_aiqa_log, api_aiqa_meta,
                             api_analyze, api_dialog_home, api_dialog_session,
                             api_dialog_session_drop, api_dialog_sessions,
