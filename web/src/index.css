@@ -2006,6 +2006,27 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
 .mdl-form-acts{grid-column:1 / -1;display:flex;gap:8px;margin-top:2px}
 .mdl-err{grid-column:1 / -1;margin:10px 0 0;font-size:12.5px;color:#b91c1c}
 
+/* 模型目录（2026-11-04 v2 图二）：已选型号成 chip（可删），
+   手动加一行，拉来的清单以可点 chip 追加 */
+.mdl-field{display:flex;flex-direction:column;gap:6px;font-size:12px;color:#6b7280}
+.mdl-field-k{font-size:12px}
+.mdl-cat{display:flex;flex-wrap:wrap;gap:6px;min-height:36px;
+  border:1px solid #e5e7eb;border-radius:0px;padding:6px 8px;align-items:center}
+.mdl-chip{display:inline-flex;align-items:center;gap:3px;
+  border:1px solid #d6dae1;background:#f3f5f7;border-radius:0px;
+  padding:3px 4px 3px 9px;font-size:12px;color:#1a1a1a;
+  font-family:var(--mono,ui-monospace,Consolas,monospace)}
+.mdl-chip-x{border:0;background:transparent;color:#6b7280;font-size:14px;
+  line-height:1;padding:0 4px;cursor:pointer}
+.mdl-chip-x:hover{color:#b91c1c}
+.mdl-cat-empty{color:#9ca3af;font-size:12px}
+.mdl-cat-add{display:flex;gap:6px}
+.mdl-cat-add input{flex:1;min-width:0;border:1px solid #e5e7eb;border-radius:0px;
+  padding:6px 10px;font:inherit;font-size:12.5px;color:#1a1a1a;outline:none}
+.mdl-cat-add input:focus{border-color:#2f7a58}
+.mdl-cat-acts{display:flex;gap:8px}
+.mdl-cat.remote{border:0;padding:0;min-height:0}
+
 /* 设置·界面（票 3）：正文字体三选卡——卡名各用自家的字体，看见即所选 */
 .mdl-ui{padding-top:2px}
 .mdl-font-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}

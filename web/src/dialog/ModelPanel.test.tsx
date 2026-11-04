@@ -1,7 +1,10 @@
-/* 设置中心（2026-11-03 票 3/4）的纯逻辑与表单渲染测试（不引 jsdom——与全站同口径）：
+/* 设置中心（2026-11-03 票 3/4；2026-11-04 v2 供应商＋模型目录）的
+   纯逻辑与表单渲染测试（不引 jsdom——与全站同口径）：
    - Headers 表单文本 K=V 解析（非法行保存前报错）；
    - 字体偏好：存储值归一 + localStorage 选择 → <html data-font>（document 桩）；
-   - 供应商表单字段序照图五（renderToStaticMarkup 出静态结构验 label 顺序）。 */
+   - 供应商状态位（规则稿/模型模式）；
+   - 供应商表单字段序照图二（renderToStaticMarkup 出静态结构验 label 顺序）、
+     三协议选项、模型目录块。 */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -9,7 +12,7 @@ import {
   applyFontChoice, fontChoiceFromStorage, headersToText, parseHeadersText,
   FONT_CHOICES, FONT_KEY, ModelForm, providerModeOf,
 } from './ModelPanel'
-import type { ModelDraft, ModelRow } from '../api-models'
+import type { ProviderDraft, ProviderRow } from '../api-models'
 
 /* ---------------------------------------------------------------- Headers K=V（票 4） */
 describe('Headers 表单文本解析：每行 K=V，空行忽略，非法行报错', () => {
@@ -101,13 +104,14 @@ describe('正文字体三选：存储值归一 + localStorage → <html data-fon
 
 /* ---------------------------------------------------------------- 供应商状态显性（2026-11-04） */
 describe('供应商状态显性：未配置＝规则稿模式，已配置＝模型模式', () => {
-  const row = (over: Partial<ModelRow> = {}): ModelRow => ({
-    id: 't1', label: 'T', base_url: 'https://x/v1', model: 'm',
-    key_hint: 'sk-…1234', note: '', builtin: false, ready: true, active: false,
+  const row = (over: Partial<ProviderRow> = {}): ProviderRow => ({
+    id: 't1', label: 'T', base_url: 'https://x/v1', protocol: 'openai',
+    key_hint: 'sk-…1234', note: '', builtin: false, ready: true,
+    active: false, active_model: 'm', models: ['m'],
     ...over,
   })
 
-  it('清单未到 / 空清单 / 全是没配齐的条目 ＝ 规则稿模式', () => {
+  it('清单未到 / 空清单 / 全是没配齐的供应商 ＝ 规则稿模式', () => {
     expect(providerModeOf(undefined)).toBe('规则稿模式')
     expect(providerModeOf([])).toBe('规则稿模式')
     expect(providerModeOf([row({ ready: false })])).toBe('规则稿模式')
@@ -120,31 +124,55 @@ describe('供应商状态显性：未配置＝规则稿模式，已配置＝模�
   })
 })
 
-/* ---------------------------------------------------------------- 供应商表单（票 3 图五） */
-const BLANK_DRAFT: ModelDraft = { label: '', base_url: '', model: '', key: '', note: '', protocol: 'openai' }
-
-function renderForm(draft: ModelDraft = BLANK_DRAFT, headersText = ''): string {
-  return renderToStaticMarkup(
-    <ModelForm draft={draft} headersText={headersText} busy={false}
-               onDraft={() => {}} onHeadersText={() => {}}
-               onProbe={() => {}} onCancel={() => {}} onSubmit={() => {}} />)
+/* ---------------------------------------------------------------- 供应商表单（图二） */
+const BLANK_DRAFT: ProviderDraft = {
+  label: '', base_url: '', key: '', note: '', protocol: 'openai', models: [],
 }
 
-describe('供应商表单字段序照图五：名称 → Base URL → API Key → 模型 → Headers → API 协议', () => {
-  it('label 顺序逐字对上（备注殿后收尾）', () => {
+function renderForm(draft: ProviderDraft = BLANK_DRAFT, headersText = '',
+                    defaultModels?: string[]): string {
+  return renderToStaticMarkup(
+    <ModelForm draft={draft} headersText={headersText} busy={false}
+               defaultModels={defaultModels}
+               onDraft={() => {}} onHeadersText={() => {}} onProbe={() => {}}
+               onError={() => {}} onCancel={() => {}} onSubmit={() => {}} />)
+}
+
+describe('供应商表单字段序照图二：API 密钥 → 显示名称 → API 地址 → API 协议 → 模型目录', () => {
+  it('label 顺序逐字对上（Headers/备注殿后），模型目录是字段块', () => {
     const html = renderForm()
     const labels = [...html.matchAll(/<label[^>]*>([^<]{1,20})</g)].map((m) => m[1])
-    expect(labels).toEqual(['名称', 'Base URL', 'API Key', '模型', 'Headers（可选）', 'API 协议', '备注'])
+    expect(labels).toEqual(['API 密钥', '显示名称', 'API 地址', 'API 协议',
+                             'Headers（可选）', '备注'])
+    expect(html).toContain('模型目录')
   })
 
-  it('Headers 是多行文本框；API 协议单选 OpenAI Compatible；key 输入留空＝不改', () => {
-    const html = renderForm(BLANK_DRAFT, 'X-Org=ynu')
-    expect(html).toContain('<textarea')
-    expect(html).toContain('X-Org=ynu')
-    expect(html).toContain('OpenAI Compatible')
-    expect(html).toContain('type="password"')
-    /* 「留空＝不改原来那把」是编辑态（draft.id 在）的占位提示 */
+  it('API 协议三选（图三）：Chat Completions / Responses / Anthropic Messages', () => {
+    const html = renderForm()
+    expect(html).toContain('OpenAI Chat Completions')
+    expect(html).toContain('OpenAI Responses')
+    expect(html).toContain('Anthropic Messages')
+  })
+
+  it('模型目录：已选型号成 chip，空目录有一句空态', () => {
+    const empty = renderForm()
+    expect(empty).toContain('目录还空着')
+    const filled = renderForm({ ...BLANK_DRAFT, models: ['A/B-1', 'C/D-2'] })
+    expect(filled).toContain('A/B-1')
+    expect(filled).toContain('C/D-2')
+    expect(filled).toContain('从目录移除 A/B-1')
+  })
+
+  it('「恢复默认模型」只在预置给了默认目录时出现；「获取可用模型」常在', () => {
+    const html = renderForm()
+    expect(html).toContain('获取可用模型')
+    expect(html).not.toContain('恢复默认模型')
+    expect(renderForm(BLANK_DRAFT, '', ['a', 'b'])).toContain('恢复默认模型')
+  })
+
+  it('key 输入留空＝沿用已存凭据（编辑态占位提示）', () => {
     const editing = renderForm({ ...BLANK_DRAFT, id: 't1', label: '旧名' })
-    expect(editing).toContain('留空＝不改原来那把')
+    expect(editing).toContain('留空使用已保存凭据')
+    expect(renderForm()).toContain('sk-…')
   })
 })

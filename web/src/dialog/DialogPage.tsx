@@ -628,10 +628,11 @@ export default function DialogPage() {
     }
   }
 
-  /** 换当前模型（2026-10-29）：写服务端，下一句话即生效；失败只说一句，不挡对话。 */
-  async function pickModel(id: string) {
+  /** 换当前模型（2026-10-29；2026-11-04 v2 供应商＋型号）：写服务端，
+      下一句话即生效；失败只说一句，不挡对话。 */
+  async function pickModel(provider: string, model: string) {
     try {
-      setModels(await setActiveModel(id))
+      setModels(await setActiveModel(provider, model))
     } catch (e) {
       setModelMsg(errorNote(e, '换模型'))
     }
@@ -952,7 +953,7 @@ export default function DialogPage() {
                         }} />
               <div className="dlg-box-bar">
                 <ModelMenu payload={models} busy={busy || !!running}
-                           onPicked={(id) => void pickModel(id)} />
+                           onPicked={(provider, model) => void pickModel(provider, model)} />
                 {running ? (
                   <button className="dlg-send stop" type="button" aria-label="停止出稿"
                           onClick={() => void stopRun()}>停</button>

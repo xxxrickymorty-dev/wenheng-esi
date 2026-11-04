@@ -1,17 +1,22 @@
-/* 模型面板（2026-10-29；2026-11-03 票 3 重构为设置中心双节 hub）：
+/* 模型面板（2026-10-29；2026-11-03 设置中心双节 hub；2026-11-04 v2
+   供应商＋模型目录，照 DSH 图二形制）：
    两件事分开——切当前模型（输入框左下「模型」菜单，谁都能点，写口在后端）、
-   配置与偏好（设置弹窗，左栏两节：供应商＝管理员配模型；界面＝正文字体，人人可用）。 */
+   配置与偏好（设置弹窗，左栏两节：供应商＝管理员配网关与模型目录；界面＝正文字体）。 */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Me } from '../api'
 import {
-  getModels, removeModel, saveModel, setActiveModel, testModel,
-  type ModelDraft, type ModelRow, type ModelsPayload, type ProbeResult,
+  getModels, listRemoteModels, removeProvider, saveProvider, setActiveModel,
+  testModel, PROTOCOL_LABELS,
+  type ModelsPayload, type ProviderDraft, type ProviderRow, type Protocol,
+  type RemoteModels,
 } from '../api-models'
 import { ConfirmButton } from '../ConfirmButton'
 import { errorNote } from '../lib/status'
 
-const EMPTY_DRAFT: ModelDraft = { label: '', base_url: '', model: '', key: '', note: '', protocol: 'openai' }
+const EMPTY_DRAFT: ProviderDraft = {
+  label: '', base_url: '', key: '', note: '', protocol: 'openai', models: [],
+}
 
 /* ── 界面节·正文字体（票 3）：三选卡片，存 localStorage、挂 <html data-font> ── */
 export type FontChoice = 'serif' | 'sans' | 'kai'
@@ -60,22 +65,25 @@ export function headersToText(headers: Record<string, string> | undefined): stri
 
 /* ── 供应商状态显性（2026-11-04 rick 定）：一枚状态位，两态——
    供应商未配置＝「规则稿模式」（全系统三产线＋问文衡直接规则稿）；已配置＝「模型模式」。
-   判据＝清单里存在配齐的条目（地址/型号/key 全；含 `.env` 部署配置行）——
+   判据＝清单里存在配齐的供应商（地址/key/模型目录全；含 `.env` 部署配置行）——
    只读 `/api/models` 现有字段，不新造口径、不猜字段；供应商开启后强制不回落
    的语义由后端改，界面只如实展示。规则稿模式表单照常可填（保存即「添加供应商」）。 */
-export function providerModeOf(models: ModelRow[] | undefined): '模型模式' | '规则稿模式' {
-  return (models ?? []).some((m) => m.ready) ? '模型模式' : '规则稿模式'
+export function providerModeOf(providers: ProviderRow[] | undefined): '模型模式' | '规则稿模式' {
+  return (providers ?? []).some((p) => p.ready) ? '模型模式' : '规则稿模式'
 }
 
-/** 输入框左下那颗按钮 ＋ 向上弹出的清单。 */
+/** 输入框左下那颗按钮 ＋ 向上弹出的清单：每个配齐供应商的目录型号平铺一列。 */
 export function ModelMenu({ payload, busy, onPicked }: {
   payload: ModelsPayload | null
   busy: boolean
-  onPicked: (id: string) => void
+  onPicked: (provider: string, model: string) => void
 }) {
   const [open, setOpen] = useState(false)
-  const active = payload?.models.find((m) => m.active)
-  const current = active?.label || '未配置模型'
+  const active = payload?.active ?? { provider: '', model: '' }
+  const currentProvider = (payload?.providers ?? []).find(
+    (p) => p.active && (!active.model || p.models.includes(active.model)))
+  const current = active.model || currentProvider?.active_model
+    || currentProvider?.label || '未配置模型'
 
   useEffect(() => {
     if (!open) return
@@ -90,23 +98,27 @@ export function ModelMenu({ payload, busy, onPicked }: {
               aria-haspopup="menu" aria-expanded={open}
               title="换一个模型来回答"
               onClick={() => setOpen((v) => !v)}>
-        <span className="mdl-menu-dot" data-ready={active?.ready ? '1' : '0'} aria-hidden="true" />
+        <span className="mdl-menu-dot" data-ready={currentProvider?.ready ? '1' : '0'} aria-hidden="true" />
         {current}
         <span className="mdl-caret" aria-hidden="true">⌄</span>
       </button>
       {open && (
         <div className="mdl-menu" role="menu">
-          {(payload?.models ?? []).map((m) => (
-            <button key={m.id || 'env'} type="button" role="menuitemradio"
-                    aria-checked={m.active} disabled={!m.ready}
-                    className={`mdl-menu-item${m.active ? ' on' : ''}`}
-                    title={m.ready ? `${m.model} · ${m.base_url}` : '这条还没配齐（地址/型号/key）'}
-                    onClick={() => { setOpen(false); if (!m.active) onPicked(m.id) }}>
-              <span className="mdl-menu-k">{m.label}</span>
-              <span className="mdl-menu-v">{m.model || '—'}{!m.ready && ' · 未配齐'}</span>
-              {m.active && <span className="mdl-menu-tick" aria-hidden="true">✓</span>}
-            </button>
-          ))}
+          {(payload?.providers ?? []).filter((p) => p.ready && p.models.length).flatMap((p) =>
+            p.models.map((m) => {
+              const on = p.active && active.model === m
+              return (
+                <button key={`${p.id}:${m}`} type="button" role="menuitemradio"
+                        aria-checked={on}
+                        className={`mdl-menu-item${on ? ' on' : ''}`}
+                        title={`${p.label} · ${p.base_url}`}
+                        onClick={() => { setOpen(false); if (!on) onPicked(p.id, m) }}>
+                  <span className="mdl-menu-k">{m}</span>
+                  <span className="mdl-menu-v">{p.label}</span>
+                  {on && <span className="mdl-menu-tick" aria-hidden="true">✓</span>}
+                </button>
+              )
+            }))}
           {!payload && <p className="mdl-menu-cap">正在读模型清单…</p>}
         </div>
       )}
@@ -114,38 +126,130 @@ export function ModelMenu({ payload, busy, onPicked }: {
   )
 }
 
-/** 新增/编辑表单（票 3 图五字段序）：名称 / Base URL / API Key（留空＝不改）/ 模型 /
-    Headers（可选，多行 K=V）/ API 协议（单选 OpenAI Compatible）；备注殿后（卡片上还显示它，
-    后端保存会把缺省的备注清掉——去了这格，改一次就把原备注抹了）。 */
-export function ModelForm({ draft, headersText, busy, onDraft, onHeadersText, onProbe, onCancel, onSubmit }: {
-  draft: ModelDraft
+/** 新增/编辑供应商表单（图二字段序）：API 密钥（留空使用已保存凭据）/
+    显示名称 / API 地址 / API 协议（三选）/ 模型目录（挑过的型号子集：
+    获取可用模型点选加入、可手动加、恢复默认）/ Headers（可选，多行 K=V）/ 备注。 */
+export function ModelForm({ draft, headersText, busy, defaultModels, onDraft,
+                            onHeadersText, onProbe, onCancel, onSubmit, onError }: {
+  draft: ProviderDraft
   headersText: string
   busy: boolean
-  onDraft: (d: ModelDraft) => void
+  /** 预置目录（地址匹配上预置时给）：「恢复默认模型」用 */
+  defaultModels?: string[]
+  onDraft: (d: ProviderDraft) => void
   onHeadersText: (t: string) => void
   onProbe: () => void
   onCancel: () => void
   onSubmit: () => void
+  onError: (msg: string) => void
 }) {
+  const [newModel, setNewModel] = useState('')
+  const [remote, setRemote] = useState<RemoteModels | null>(null)
+  const [fetching, setFetching] = useState(false)
+
+  const inCatalog = useMemo(() => new Set(draft.models ?? []), [draft.models])
+
+  function addModel(m: string) {
+    const model = m.trim()
+    if (!model || inCatalog.has(model)) return
+    onDraft({ ...draft, models: [...(draft.models ?? []), model] })
+  }
+  function removeModel(m: string) {
+    onDraft({ ...draft, models: (draft.models ?? []).filter((x) => x !== m) })
+  }
+
+  async function fetchRemote() {
+    setFetching(true); onError(''); setRemote(null)
+    try {
+      const { headers, error } = parseHeadersText(headersText)
+      if (error) { onError(error); return }
+      const r = draft.id
+        ? await listRemoteModels({ id: draft.id, headers: headers || undefined })
+        : await listRemoteModels({ base_url: draft.base_url, key: draft.key,
+                                   headers: headers || undefined })
+      setRemote(r)
+      if (!r.ok) onError(r.msg)
+    } catch (e) {
+      onError(errorNote(e, '拉型号清单'))
+    } finally {
+      setFetching(false)
+    }
+  }
+
+  const remoteLeft = (remote?.ids ?? []).filter((m) => !inCatalog.has(m))
+
   return (
     <form className="mdl-form" onSubmit={(e) => { e.preventDefault(); onSubmit() }}>
-      <p className="mdl-hint">{draft.id ? `修改「${draft.label}」` : '新增一条模型'}</p>
-      <label>名称<input value={draft.label} placeholder="例如 MiniMax M2.7"
-              onChange={(e) => onDraft({ ...draft, label: e.target.value })} /></label>
-      <label>Base URL<input value={draft.base_url} placeholder="服务商给的接口地址，一般以 v1 结尾"
-              onChange={(e) => onDraft({ ...draft, base_url: e.target.value })} /></label>
-      <label>API Key<input value={draft.key} type="password" autoComplete="off"
-              placeholder={draft.id ? '留空＝不改原来那把' : 'sk-…'}
+      <p className="mdl-hint">{draft.id ? `修改「${draft.label}」` : '新增一条供应商'}</p>
+      <label>API 密钥<input value={draft.key} type="password" autoComplete="off"
+              placeholder={draft.id ? '留空使用已保存凭据' : 'sk-…'}
               onChange={(e) => onDraft({ ...draft, key: e.target.value })} /></label>
-      <label>模型<input value={draft.model} placeholder="MiniMax/MiniMax-M2.7"
-              onChange={(e) => onDraft({ ...draft, model: e.target.value })} /></label>
+      <label>显示名称<input value={draft.label} placeholder="例如 云南大学网关（new-api）"
+              onChange={(e) => onDraft({ ...draft, label: e.target.value })} /></label>
+      <label>API 地址<input value={draft.base_url} placeholder="服务商给的接口地址，一般以 v1 结尾"
+              onChange={(e) => onDraft({ ...draft, base_url: e.target.value })} /></label>
+      <label>API 协议<select value={draft.protocol ?? 'openai'}
+              onChange={(e) => onDraft({ ...draft, protocol: e.target.value as Protocol })}>
+        {(Object.entries(PROTOCOL_LABELS) as [Protocol, string][]).map(([v, name]) => (
+          <option key={v} value={v}>{name}</option>
+        ))}
+      </select></label>
+      <div className="mdl-field">
+        <span className="mdl-field-k">模型目录</span>
+        <div className="mdl-cat">
+          {(draft.models ?? []).map((m) => (
+            <span key={m} className="mdl-chip">
+              {m}
+              <button type="button" className="mdl-chip-x" aria-label={`从目录移除 ${m}`}
+                      title={`从目录移除 ${m}`}
+                      onClick={() => removeModel(m)}>×</button>
+            </span>
+          ))}
+          {!(draft.models ?? []).length && (
+            <span className="mdl-cat-empty">目录还空着——点「获取可用模型」挑，或手动加</span>
+          )}
+        </div>
+        <div className="mdl-cat-add">
+          <input value={newModel} placeholder="手动加一个型号"
+                 onChange={(e) => setNewModel(e.target.value)}
+                 onKeyDown={(e) => {
+                   if (e.key === 'Enter') {
+                     e.preventDefault()
+                     addModel(newModel); setNewModel('')
+                   }
+                 }} />
+          <button type="button" className="mdl-act ghost" disabled={!newModel.trim()}
+                  onClick={() => { addModel(newModel); setNewModel('') }}>加进目录</button>
+        </div>
+        <div className="mdl-cat-acts">
+          <button type="button" className="mdl-act ghost" disabled={busy || fetching}
+                  title="从这条网关拉型号清单，点选加进目录"
+                  onClick={() => void fetchRemote()}>
+            {fetching ? '拉取中…' : '获取可用模型'}
+          </button>
+          {defaultModels && defaultModels.length > 0 && (
+            <button type="button" className="mdl-act ghost" disabled={busy}
+                    title={`恢复成预置的 ${defaultModels.length} 个型号`}
+                    onClick={() => { setRemote(null); onDraft({ ...draft, models: [...defaultModels] }) }}>
+              恢复默认模型
+            </button>
+          )}
+        </div>
+        {remoteLeft.length > 0 && (
+          <div className="mdl-cat remote">
+            {remoteLeft.map((m) => (
+              <button key={m} type="button" className="mdl-preset"
+                      title={`加进目录：${m}`}
+                      onClick={() => addModel(m)}>
+                {m}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <label>Headers（可选）<textarea rows={3} value={headersText}
               placeholder={'每行一条：名字=值（空行忽略）\n例如 X-Org=ynu'}
               onChange={(e) => onHeadersText(e.target.value)} /></label>
-      <label>API 协议<select value={draft.protocol ?? 'openai'}
-              onChange={(e) => onDraft({ ...draft, protocol: e.target.value })}>
-        <option value="openai">OpenAI Compatible</option>
-      </select></label>
       <label>备注<input value={draft.note ?? ''} placeholder="给馆员看的一句话"
               onChange={(e) => onDraft({ ...draft, note: e.target.value })} /></label>
       <div className="mdl-form-acts">
@@ -172,9 +276,9 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
   const canEdit = me?.role === 'admin'
   const [section, setSection] = useState<'provider' | 'ui'>('provider')
   const [payload, setPayload] = useState<ModelsPayload | null>(null)
-  const [draft, setDraft] = useState<ModelDraft | null>(null)
+  const [draft, setDraft] = useState<ProviderDraft | null>(null)
   const [headersText, setHeadersText] = useState('')
-  const [probe, setProbe] = useState<ProbeResult | null>(null)
+  const [probe, setProbe] = useState<{ ok: boolean; ms: number; msg: string } | null>(null)
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -198,8 +302,12 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
   }, [open])                                          // eslint-disable-line react-hooks/exhaustive-deps
 
   const presets = useMemo(() => payload?.presets ?? [], [payload])
+  /* 「恢复默认模型」：编辑中的地址匹配上预置，才给这个动作（预置目录即默认目录）。 */
+  const defaultModels = useMemo(
+    () => presets.find((p) => p.base_url === (draft?.base_url ?? ''))?.models,
+    [presets, draft?.base_url])
   /* 供应商状态位：一枚徽标一行，不写解释段落（UX §十）；说明收进悬停。 */
-  const mode = providerModeOf(payload?.models)
+  const mode = providerModeOf(payload?.providers)
 
   const backdropRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -239,7 +347,7 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
     }
   }
 
-  function openDraft(d: ModelDraft, withHeaders = '') {
+  function openDraft(d: ProviderDraft, withHeaders = '') {
     setDraft(d)
     setHeadersText(withHeaders)                 // 「改」时把已存的 headers 预填回表单
     setProbe(null); setMsg('')
@@ -247,16 +355,17 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
 
   function submitDraft() {
     if (!draft) return
-    if (!draft.model.trim()) { setMsg('型号不能为空'); return }
     const { headers, error } = parseHeadersText(headersText)
     if (error) { setMsg(error); return }                // 非法行保存前报错，不发请求
     void (async () => {
       setBusy(true); setMsg('')
       try {
-        const p = await saveModel({ ...draft, headers, protocol: draft.protocol || 'openai' })
+        const p = await saveProvider({ ...draft, headers,
+                                       protocol: draft.protocol || 'openai',
+                                       models: draft.models ?? [] })
         setPayload(p); onChanged(p); setDraft(null); setHeadersText('')
       } catch (err) {
-        setMsg(errorNote(err, '保存这条模型'))
+        setMsg(errorNote(err, '保存这条供应商'))
       } finally {
         setBusy(false)
       }
@@ -267,7 +376,10 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
     if (!draft) return
     const { headers, error } = parseHeadersText(headersText)
     if (error) { setMsg(error); return }
-    void doProbe({ base_url: draft.base_url, key: draft.key, model: draft.model, headers })
+    void doProbe({ base_url: draft.base_url, key: draft.key,
+                   model: (draft.models ?? []).length === 1
+                     ? draft.models![0] : '',
+                   headers })
   }
 
   return (
@@ -296,7 +408,7 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
                   <p className="mdl-mode">
                     <span className={`mdl-tag${mode === '模型模式' ? ' on' : ''}`}
                           title={mode === '模型模式'
-                            ? '已有配齐的模型服务（地址、型号、key）'
+                            ? '已有配齐的模型服务（地址、key、模型目录）'
                             : '还没有配齐的模型服务——填好一条保存即接入'}>
                       {mode}
                     </span>
@@ -305,40 +417,47 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
                 {!canEdit && <p className="mdl-hint">要加或改模型，请让管理员来操作。</p>}
 
                 <div className="mdl-list">
-                  {(payload?.models ?? []).map((m) => (
-                    <div key={m.id || 'env'} className={`mdl-row${m.active ? ' on' : ''}`}>
+                  {(payload?.providers ?? []).map((p) => (
+                    <div key={p.id || 'env'} className={`mdl-row${p.active ? ' on' : ''}`}>
                       <div className="mdl-row-main">
                         <div className="mdl-row-k">
-                          {m.label}
-                          {m.active && <span className="mdl-tag on">当前</span>}
-                          {m.builtin && <span className="mdl-tag">部署</span>}
-                          {!m.ready && <span className="mdl-tag warn">未配齐</span>}
+                          {p.label}
+                          {p.active && <span className="mdl-tag on">当前</span>}
+                          {p.builtin && <span className="mdl-tag">部署</span>}
+                          {!p.ready && <span className="mdl-tag warn">未配齐</span>}
                         </div>
                         <div className="mdl-row-v">
-                          <b>{m.model || '—'}</b>
-                          <span>{m.base_url || '未填地址'}</span>
-                          <span>密钥 {m.key_hint}</span>
+                          <b>{p.active_model || '—'}</b>
+                          <span>{p.base_url || '未填地址'}</span>
+                          <span>密钥 {p.key_hint}</span>
+                          {!p.builtin && <span>{p.models.length} 个型号</span>}
                         </div>
-                        {m.note && <div className="mdl-row-note">{m.note}</div>}
+                        {p.note && <div className="mdl-row-note">{p.note}</div>}
                       </div>
                       <div className="mdl-row-acts">
-                        {!m.active && (
-                          <button type="button" className="mdl-act" disabled={busy || !m.ready}
-                                  onClick={() => void run(() => setActiveModel(m.id))}>用这个</button>
+                        {!p.active && (
+                          <button type="button" className="mdl-act" disabled={busy || !p.ready}
+                                  title={p.active_model ? `用 ${p.active_model} 回答` : undefined}
+                                  onClick={() => void run(() => setActiveModel(p.id, p.active_model))}>
+                            用这个
+                          </button>
                         )}
-                        {canEdit && !m.builtin && (
+                        {canEdit && !p.builtin && (
                           <>
                             <button type="button" className="mdl-act ghost" disabled={busy}
-                                    onClick={() => void doProbe({ id: m.id })}>测一下</button>
+                                    onClick={() => void doProbe({ id: p.id })}>测一下</button>
                             <button type="button" className="mdl-act ghost" disabled={busy}
                                     onClick={() => openDraft({
-                                      id: m.id, label: m.label, base_url: m.base_url,
-                                      model: m.model, key: '', note: m.note,
-                                      protocol: m.protocol || 'openai',
-                                    }, headersToText(m.headers))}>改</button>
+                                      id: p.id, label: p.label, base_url: p.base_url,
+                                      key: '', note: p.note,
+                                      protocol: p.protocol || 'openai',
+                                      models: [...p.models],
+                                    }, headersToText(p.headers))}>改</button>
                             <ConfirmButton className="mdl-act ghost" confirmText="确认删除？"
                                            disabled={busy}
-                                           onConfirm={() => void run(() => removeModel(m.id))}>删</ConfirmButton>
+                                           onConfirm={() => void run(() => removeProvider(p.id))}>
+                              删
+                            </ConfirmButton>
                           </>
                         )}
                       </div>
@@ -357,8 +476,10 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
                     <div className="mdl-presets">
                       {presets.map((p) => (
                         <button key={p.key} type="button" className="mdl-preset"
+                                title="预置：地址与默认模型目录已填好，key 由你填"
                                 onClick={() => openDraft({ ...EMPTY_DRAFT, label: p.label,
-                                                           base_url: p.base_url, model: p.models[0] })}>
+                                                           base_url: p.base_url,
+                                                           models: [...p.models] })}>
                           {p.label}
                         </button>
                       ))}
@@ -372,8 +493,9 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
 
                 {canEdit && draft && (
                   <ModelForm draft={draft} headersText={headersText} busy={busy}
+                             defaultModels={defaultModels}
                              onDraft={setDraft} onHeadersText={setHeadersText}
-                             onProbe={probeDraft}
+                             onProbe={probeDraft} onError={setMsg}
                              onCancel={() => { setDraft(null); setProbe(null) }}
                              onSubmit={submitDraft} />
                 )}
