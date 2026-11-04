@@ -309,8 +309,17 @@ def plan(question: str, con, *, carried_period: str = "") -> dict:
                       (filled[-1] if filled else ""), "top": m_top})
         return {"specs": specs, "origin": "rule", "note": ""}
 
-    # ④ 学科无指标：给该学科当期大表整行
+    # ④ 学科无指标：给该学科当期大表整行；句里带走势/趋势 → 接近度序列
+    #    （2026-11-04 rick 截图实问「化学近年走势」：裸走势原来落大表——
+    #    只有一期的行，答不了走势。报告趋势章的主轴就是接近度，就按它出
+    #    序列；回答里写明指标名，口径看得见。不是猜数字，是定口径。）
     if hit_discs and not metric:
+        if any(w in q for w in ("趋势", "走势")):
+            specs.append({"kind": "series", "metric": "proximity_1pct",
+                          "disc": hit_discs[0],
+                          "period_max": periods[-1] if periods else None})
+            return {"specs": specs, "origin": "rule",
+                    "note": "走势按「前 1% 接近度」口径（要别的指标，问句里点名）"}
         specs.append({"kind": "table2", "discs": hit_discs,
                       "period": periods[-1] if periods else
                       (filled[-1] if filled else "")})
@@ -503,6 +512,45 @@ def _disc_cn(con, disc) -> str:
     r = con.execute("SELECT discipline_cn FROM dim_discipline WHERE discipline=?",
                     (disc,)).fetchone()
     return r[0] if r else disc
+
+
+#: 查询类型 → 界面人话（describe_specs 用；单处定义）。
+_KIND_CN = {"series": "走势序列", "compare": "横比", "at": "本期取值",
+            "overview": "整体概况", "table2": "当期大表",
+            "province_compare": "省域对比", "ynd_rank": "云大整体排名"}
+
+
+def describe_specs(con, specs) -> str:
+    """查询规格清单 → 一句界面人话（问数过程轨迹的摘要；零数值出口）。
+
+    例：「化学·ESI前1%接近度 走势序列（截至 202609）」。认不出 → 照实说，
+    不编——这条摘要只给界面看，不进任何答案面。
+    """
+    parts: list[str] = []
+    for spec in specs or []:
+        spec = spec or {}
+        kind = str(spec.get("kind") or "")
+        per = str(spec.get("period") or spec.get("period_max") or "")
+        tail = (f"（截至 {per}）" if kind == "series" and per
+                else f"（{per}）" if per else "")
+        if kind == "ynd_rank":
+            col = _YND_COL_CN.get(str(spec.get("metric") or ""), "")
+            mode = "走势" if spec.get("mode") == "series" else "本期"
+            parts.append(f"云大{col}{mode}{tail}")
+            continue
+        if kind == "province_compare":
+            uni = spec.get("universities") or []
+            who = "、".join(str(u) for u in uni) or "省内高校"
+            parts.append(f"{who}·{_province_metric_cn(con, str(spec.get('metric') or ''))}{tail}")
+            continue
+        name = _disc_cn(con, str(spec.get("disc") or ""))
+        if spec.get("discs"):
+            name = "、".join(_disc_cn(con, str(d)) for d in spec["discs"])
+        mcn = _metric_cn(con, str(spec.get("metric") or "")) if spec.get("metric") else ""
+        head = "·".join(x for x in (name, mcn) if x)
+        kcn = _KIND_CN.get(kind, kind)
+        parts.append(" ".join(x for x in (head, kcn) if x) + tail)
+    return "；".join(parts) if parts else "没认出要查什么"
 
 
 def render_row(con, r) -> str:

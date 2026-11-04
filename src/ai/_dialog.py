@@ -151,7 +151,9 @@ PANEL_N = 6
 _COMPARE = re.compile(r"对比|比较|比对|比一比|对照|各校|多校|他校|兄弟院校|横向")
 
 #: 指标词：出现就**不**归简报——那是单学科问数（qa）的口径，交给既有路由，不改旧行为。
-_METRIC = re.compile(r"接近度|被引|CNCI|阈值|顶尖|热点|发文|篇|排名|千分之一|1‰|前\s*1")
+#: 2026-11-04 rick 截图实问「化学近年走势」被反问期次：走势/趋势本是问数句式
+#: （引擎 plan 的 series 分支本来就认），词表放行即可直调——不再落「反问期次」。
+_METRIC = re.compile(r"接近度|被引|CNCI|阈值|顶尖|热点|发文|篇|排名|千分之一|1‰|前\s*1|走势|趋势")
 
 #: 校名候选：中文名 2–10 字 + 大学/学院/学校。
 _SCHOOL = re.compile(r"[\u4e00-\u9fff]{2,10}?(?:大学|学院|学校)")
@@ -889,7 +891,20 @@ def _aiqa_reply(question: str, root, carried_period: str = ""):
     t0 = time.perf_counter()
     try:
         qp = _aiqa_engine.plan(question, con, carried_period=carried_period)
+        # 过程轨迹（2026-11-04）：认出了什么、查了什么、查到没有——对话
+        # 界面的「工具调用」逐条亮出来，不再是黑箱一口出答案。
+        # 旁路性质同 trace 本身：回调缺席（规则轮直跑）＝静默。
+        _runtime.trace(_record.trace_event(
+            tool="aiqa", label="问数规划",
+            summary=_aiqa_engine.describe_specs(con, qp.get("specs") or [])))
         result = _aiqa_engine.execute(con, qp["specs"])
+        n_rows = sum(len(r.get("points") or r.get("items") or r.get("rows") or [])
+                     for r in result.get("rows") or [])
+        _runtime.trace(_record.trace_event(
+            tool="aiqa", label="问数取数",
+            summary=(f"查到 {n_rows} 个数，正在排版" if n_rows
+                     else "没查到数，看下面的说明"),
+            ok=bool(result.get("rows"))))
         chart = _aiqa_engine.suggest_chart(con, qp["specs"], result)
         chart_data = _aiqa_engine.to_chart_data(con, chart, result)
         lines: list[str] = []
@@ -913,8 +928,6 @@ def _aiqa_reply(question: str, root, carried_period: str = ""):
             lines.append(result["note"])
             srcs.append({"pointer": "aiqa/plan", "label": "问数口径"})
         elapsed = int((time.perf_counter() - t0) * 1000)
-        n_rows = sum(len(r.get("points") or r.get("items") or r.get("rows") or [])
-                     for r in result.get("rows") or [])
         record_id = _aiqa_db.log_qa(
             repo_root, user="", question=question, specs=qp["specs"],
             plan_origin=qp["origin"], n_rows=n_rows, elapsed_ms=elapsed,

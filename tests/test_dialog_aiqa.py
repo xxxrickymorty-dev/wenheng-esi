@@ -151,6 +151,12 @@ class TestRoute:
     def test_序列问法_不落qa直调(self):
         assert _dialog.parse("化学的接近度最近六期怎么变的").kind == "query"
 
+    def test_走势句式_词表放行_落qa(self):
+        # 2026-11-04 rick 截图实问「化学近年走势」被反问期次——
+        # 走势/趋势是问数句式（引擎 series 分支本就认），词表放行即直调。
+        assert _dialog.parse("化学近年走势").kind == "qa"
+        assert _dialog.parse("材料科学发展趋势如何").kind == "qa"
+
 
 # ============================================================ ② 直调引擎：数字逐字一致
 class TestDirect:
@@ -193,6 +199,24 @@ class TestDirect:
     def test_问数轮有工具回执(self, aiqa_root):
         ans = run_dialog("查一下化学的接近度", root=aiqa_root)
         assert any(r.tool == "aiqa" and r.ok for r in ans.receipts)
+
+    def test_走势句_直调引擎出序列(self, aiqa_root):
+        ans = run_dialog("化学近年走势", root=aiqa_root)
+        assert ans.data["kind"] == "qa"
+        assert "0.548" in ans.text, ans.text
+
+    def test_回答过程折进轨迹(self, aiqa_root):
+        # 2026-11-04：问数轮逐条发「工具调用」轨迹（规划→取数），
+        # 界面实时可见它在查什么；摘要人话、零台账数值。
+        events: list = []
+        run_dialog("化学近年走势", root=aiqa_root, trace=events.append)
+        labels = [e.get("label") for e in events]
+        assert "问数规划" in labels and "问数取数" in labels, labels
+        plan_ev = next(e for e in events if e.get("label") == "问数规划")
+        assert "化学" in plan_ev["summary"], plan_ev["summary"]
+        assert "走势序列" in plan_ev["summary"], plan_ev["summary"]
+        take_ev = next(e for e in events if e.get("label") == "问数取数")
+        assert take_ev["ok"] is True and take_ev["ms"] >= 0, take_ev
 
 
 # ============================================================ ③ 底表缺席：讲人话空态
