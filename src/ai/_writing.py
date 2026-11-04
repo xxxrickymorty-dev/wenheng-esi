@@ -7,9 +7,9 @@
 - `available`＝开关开且模型可达。`server` 的按钮状态、`flexible/report` 的
   模式判定、写作/润色位自身的入口检查都走这一条判据——需求方别再各判一份，
   否则会出现「按钮放行、出稿时落 off」这类静默不一致。
-- 写作位有**专用模型与预算**（2026-10-14 判断草稿规格）：`WENHENG_FLEX_MODEL`
-  （缺省 reasoner 级）+ 超时 180s / 输出 8000——慢写不牵动对话/规划的快模型，
-  装配口是 `flex_brain()`（注入优先，只有这里读写作位预算）。
+- 写作位有**专用预算**（2026-10-14 判断草稿规格）：超时 180s / 输出 8000——
+  慢写不牵动对话/规划的快模型，装配口是 `flex_brain()`（注入优先，
+  只有这里读写作位预算）；模型名未显式覆盖时跟随清单当前型号（2026-11-04）。
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ _OFF = ("0", "off", "false", "no")
 #: 位 → 环境开关名。加新位先登记在这里。
 ENV = {"write": "WENHENG_FLEX_WRITE", "polish": "WENHENG_FLEX_POLISH"}
 
-#: 写作位专用模型变量；未设取 reasoner 级默认（对话/规划仍走 `WENHENG_AI_MODEL` 快模型）。
+#: 写作位专用模型变量；未设**跟随当前模型**（清单当前项，见 `flex_model`）。
 ENV_MODEL = "WENHENG_FLEX_MODEL"
 DEFAULT_MODEL = "deepseek-reasoner"
 
@@ -66,8 +66,16 @@ def model_reachable() -> bool:
 
 
 def flex_model() -> str:
-    """写作位模型名：`WENHENG_FLEX_MODEL` 覆盖，未设取 reasoner 级默认。"""
-    return os.environ.get(ENV_MODEL, "").strip() or DEFAULT_MODEL
+    """写作位模型名：`WENHENG_FLEX_MODEL` 显式覆盖；未设**跟随当前模型**
+    （清单当前项型号，缺省回落部署 env 的 `WENHENG_AI_MODEL`）。
+    2026-11-04 修：清单时代专用名不再各写一份——旧的写死名在
+    云大网关上没有对应渠道（503 无可用渠道），换供应商即断。"""
+    explicit = os.environ.get(ENV_MODEL, "").strip()
+    if explicit:
+        return explicit
+    from . import _config                                          # noqa: PLC0415
+
+    return _config.cloud_config().get("model") or DEFAULT_MODEL
 
 
 def flex_brain():

@@ -10,7 +10,11 @@ import pathlib
 import pytest
 
 import ai
-from ai import _writer, _writing
+from ai import _writer, _writing, _models
+
+#: conftest 的 `_isolate_ai_env` 会把 `active_credentials` 蒙成 None；
+#: 本文件有一例要真函数（与 test_ai_models 同一姿势）。
+_REAL_ACTIVE = _models.active_credentials
 
 from _ai_helpers import FailingBrain, ScriptedBrain, Turn, raw_digits
 
@@ -279,11 +283,31 @@ class Test创写:
 class Test写作位模型与预算:
     """`WENHENG_FLEX_MODEL` 与 180s/8000：只在写作位生效，对话/规划不动（装配口在 `_writing`）。"""
 
-    def test_模型名_默认reasoner级_env覆盖(self, monkeypatch):
+    def test_模型名_未设跟随当前型号_env显式覆盖优先(self, monkeypatch):
         monkeypatch.delenv(_writing.ENV_MODEL, raising=False)
+        # 什么都没配（无清单当前项、无部署 env）：回 reasoner 级缺省
         assert _writing.flex_model() == _writing.DEFAULT_MODEL
+        # 显式覆盖永远最大（部署想钉死慢模型就写 env）
         monkeypatch.setenv(_writing.ENV_MODEL, "reasoner-x")
         assert _writing.flex_model() == "reasoner-x"
+
+    def test_模型名_清单当前项优先于部署env(self, monkeypatch, tmp_path):
+        """2026-11-04 修：写作位跟随清单当前型号——旧的写死名在云大
+        网关上没有渠道（503），换供应商即断。"""
+        from ai import _models
+
+        monkeypatch.delenv(_writing.ENV_MODEL, raising=False)
+        monkeypatch.setenv("WENHENG_AI_MODEL", "env-fast-model")
+        monkeypatch.setattr(_models, "active_credentials", _REAL_ACTIVE)
+        with ai.using(data_root=tmp_path):
+            _models.upsert({"id": "gw", "label": "网关", "key": "sk-k" * 3,
+                             "base_url": "https://a.test/v1",
+                             "models": ["zai-org/GLM-5.3-Flash"]}, actor="admin")
+            _models.set_active("gw", "zai-org/GLM-5.3-Flash", actor="admin")
+            assert _writing.flex_model() == "zai-org/GLM-5.3-Flash"
+        # 没有清单当前项时才轮到部署 env 的型号
+        monkeypatch.setattr(_models, "active_credentials", lambda: None)
+        assert _writing.flex_model() == "env-fast-model"
 
     def test_装配_写作位专用模型与预算_快模型不动(self, monkeypatch):
         monkeypatch.setenv("WENHENG_AI_BACKEND", "openai")
