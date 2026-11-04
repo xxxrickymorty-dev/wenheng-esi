@@ -108,7 +108,7 @@ function docPalette(): (name: string) => string {
   return (name) => (css ? css.getPropertyValue(name).trim() : '')
 }
 
-function loadingDoc(label: string): string {
+function loadingDoc(label: string, pollUrl?: string): string {
   const steps = RUN_STEPS.join(' → ')
   const v = docPalette()
   return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">` +
@@ -125,6 +125,12 @@ function loadingDoc(label: string): string {
     `.el{font-size:12px;color:${v('--whs-doc-sub')};margin:8px 0 0;font-variant-numeric:tabular-nums}` +
     `.el b{color:${v('--whs-doc-flow')};font-weight:600}` +
     `.hint{font-size:12px;color:${v('--whs-muted')};margin-top:12px;line-height:1.75}` +
+    `.rec{display:none;margin-top:14px;gap:8px}` +
+    `.rec.on{display:flex}` +
+    `.rec a{font-size:12.5px;color:${v('--whs-doc-ink')};background:${v('--whs-doc-flow')};` +
+    `color:#fff;padding:7px 14px;border-radius:6px;text-decoration:none;font-weight:600}` +
+    `.rec button{font-size:12.5px;color:${v('--whs-doc-sub')};background:none;` +
+    `border:1px solid ${v('--whs-doc-line')};padding:7px 14px;border-radius:6px;cursor:pointer}` +
     `@media (prefers-reduced-motion:reduce){.fl{animation:none;width:100%;opacity:.35}}` +
     `</style></head><body><div class="box">` +
     `<div class="brand">文衡 · 高校 ESI 报告</div>` +
@@ -133,8 +139,23 @@ function loadingDoc(label: string): string {
     `<div class="bar"><div class="fl"></div></div>` +
     `<p class="steps">工序：${steps}</p>` +
     `<p class="el">已用 <b id="el">0</b> 秒</p>` +
-    `<p class="hint">五道工序一次跑完，中途没有分步进度；跑完会自动跳转。若超过两三分钟没有动静，回上一页看状态或重新生成。</p>` +
-    `<script>var t=0,el=document.getElementById('el');setInterval(function(){t+=1;el.textContent=t},1000);</script>` +
+    `<p class="hint" id="hint">五道工序一次跑完，中途没有分步进度；跑完会自动跳转。若超过两三分钟没有动静，回上一页看状态或重新生成。</p>` +
+    `<div class="rec" id="rec">` +
+    (pollUrl ? `<a id="go" href="${pollUrl}">打开报告</a>` : ``) +
+    `<button type="button" onclick="history.length>1?history.back():close()">回上一页</button>` +
+    `</div>` +
+    `<script>` +
+    `var t=0,el=document.getElementById('el');setInterval(function(){t+=1;el.textContent=t},1000);` +
+    // 看门狗（2026-11-04）：生成口的请求如果断在半路，本页会永远转圈——
+    // 单校报告地址可预知，每 10s 探测一次，落盘即跳；60s 仍未跳（对比报告
+    // 探测不了地址）亮出兜底按钮，不让用户干等。
+    (pollUrl
+      ? `var poll=function(){fetch('${pollUrl}',{method:'GET',credentials:'same-origin',cache:'no-store'})` +
+        `.then(function(r){if(r.ok)location.replace('${pollUrl}')}).catch(function(){})};` +
+        `setInterval(poll,10000);setTimeout(poll,1500);`
+      : ``) +
+    `setTimeout(function(){document.getElementById('rec').className='rec on'},60000);` +
+    `</script>` +
     `</div></body></html>`
 }
 
@@ -266,11 +287,15 @@ export default function SchoolsPage() {
     if (genBusy === name) return
     setGenErr('')
     setGenBusy(name)
-    /* 报告页在点击手势内先开（预开空白页，到手后再回填地址）——await 之后开窗会被弹窗策略拦。 */
+    /* 报告页在点击手势内先开（预开空白页，到手后再回填地址）——await 之后开窗会被弹窗策略拦。
+       单校报告地址可预知（/monitor/report/<校名>/<期次>.html），预开页拿它做轮询兜底。 */
+    const pollUrl = data?.period
+      ? `/monitor/report/${encodeURIComponent(name)}/${data.period}.html`
+      : undefined
     const w = window.open('about:blank', '_blank')
     if (w) {
       w.opener = null
-      writeDoc(w, loadingDoc(name))
+      writeDoc(w, loadingDoc(name, pollUrl))
     }
     try {
       const r = await generateMonitorReport(name)
