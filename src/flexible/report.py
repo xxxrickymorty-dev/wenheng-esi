@@ -972,6 +972,9 @@ def generate_stream(out_dir, intent: str = "single_trend", *, disc=None,
 
     事件在**真实的节点**发出（规划完成 / 每节完成），不做假进度；
     生成在后台线程跑，本生成器只负责把事件转出来（FastAPI 同步生成器逐块发）。
+    唯一的非真实节点是心跳 `ping`（2026-11-04 票 2）：写作位逐段润色一节可长到分钟级，
+    10s 没有真实事件就发一条 `ping` 保活——前端的看门狗靠它分辨「还在写」与「链路断了」，
+    它不是进度，前端不渲染。
 
     `should_stop`：可选回调（停止键喊停）——每次事件前询问，为真即收手，
     终态事件 `stopped`；**产物在收尾才写盘**，停在中途就什么都没落（图的半成品除外）。
@@ -998,7 +1001,11 @@ def generate_stream(out_dir, intent: str = "single_trend", *, disc=None,
 
     threading.Thread(target=worker, daemon=True).start()
     while True:
-        kind, payload = q.get()
+        try:
+            kind, payload = q.get(timeout=10)
+        except queue.Empty:                          # 10s 无真实事件 → 心跳保活（不是进度）
+            yield {"event": "ping"}
+            continue
         yield {"event": kind, **payload}
         if kind in ("done", "error", "stopped"):
             return

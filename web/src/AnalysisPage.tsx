@@ -11,12 +11,17 @@
    · 被引 / 1% 阈值：/charts-data 的 disciplines[*].cites_threshold 取窗口最后一期＝当期。
    · 论文数、1‰ 阈值、距 1‰ 次数：接口没有给（charts-data 只导出「论文的相邻期差分」
      papers_new，以及 1permille 的**百分数**差，不是次数；table2 的原始列没有 JSON 出口）。
-     按纪律显示「—」，不在前端拿 cites/threshold 现算缺口——那正是被禁的「自己算」。 */
+     按纪律显示「—」，不在前端拿 cites/threshold 现算缺口——那正是被禁的「自己算」。
+
+   2026-11-04 票 1：学科分析并入本页成「学科报告」区（单学科灵活报告的卡片式入口，
+   点卡流式生成）——组件与样式在 ./discipline/，自身取数（getFlexible），
+   与下面的水位/图明细互不牵连。 */
 
 import { useEffect, useMemo, useState } from 'react'
 import { getWaterLevel, type WaterRow } from './api-forecast'
 import { getChartsData, type ChartsData } from './lib/chartsData'
-import type { Period } from './api'
+import type { Me, Period } from './api'
+import { DisciplineSection } from './discipline/DisciplineSection'
 import './analysis.css'
 
 /** 四组：已入 1% / 接近 / 未入 / 未参评（顺序即版式顺序，与静态稿一致） */
@@ -42,10 +47,12 @@ const nf = new Intl.NumberFormat('zh-CN')
 const fmtInt = (n: number | null) => (n == null ? '—' : nf.format(n))
 const fmtPct = (n: number | null) => (n == null ? '—' : n.toFixed(2))
 
-export function AnalysisPage({ period, periods, onPick }: {
+export function AnalysisPage({ period, periods, onPick, me }: {
   period: string | null
   periods: Period[]
   onPick: (period: string) => void
+  /** 供学科报告区的权限分流（生成口后端 admin-only，这里只管提示口径） */
+  me: Me | null
 }) {
   const [rows, setRows] = useState<WaterRow[]>([])
   const [charts, setCharts] = useState<ChartsData | null>(null)
@@ -133,6 +140,10 @@ export function AnalysisPage({ period, periods, onPick }: {
       </header>
 
       <div className="an-rule" aria-hidden="true" />
+
+      {/* 学科报告（2026-11-04 票 1）：分析台页头之后、既有内容之前的一个区。
+          期次没定时不挂载（区里没有可生成的对象），与明细是否载入无关。 */}
+      {period && <DisciplineSection period={period} me={me} />}
 
       {phase === 'pending' ? null : phase === 'empty' ? (
         <p className="an-empty">该期明细未载入。</p>

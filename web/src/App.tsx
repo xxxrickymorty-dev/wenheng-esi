@@ -30,7 +30,6 @@ import { Tools } from './Tools'
 import { Report } from './Report'
 import { Ledger } from './Ledger'
 import { AnalysisPage } from './AnalysisPage'
-import { DisciplinePage } from './DisciplinePage'
 import { RedList } from './RedList'
 import { Reading } from './Reading'
 import { Trace } from './Trace'
@@ -172,7 +171,7 @@ export default function App() {
   /* 运行档案（2026-11-02）：默认是全部期次的留痕总账；`&one=<期次>` 才进那一期详情。
      总账与详情是两屏，用同一个 view 加一个参数区分——不新增导航位。 */
   const archiveOne = new URLSearchParams(location.search).get('one')
-  const view: 'workbench' | 'acquire' | 'report' | 'review' | 'ledger' | 'analysis' | 'discipline' | 'red' | 'charts' | 'reading' | 'trace' | 'forecast' | 'pano' | 'archive' | 'heal' | 'migrate' | 'aiqa' =
+  const view: 'workbench' | 'acquire' | 'report' | 'review' | 'ledger' | 'analysis' | 'red' | 'charts' | 'reading' | 'trace' | 'forecast' | 'pano' | 'archive' | 'heal' | 'migrate' | 'aiqa' =
     _v === 'acquire' ? 'acquire'
       /* 39 分册 C：旧「选章节」页退役（四步流水无此步，纯深链孤儿）——落预测选模现行入口 */
       : _v === 'pick' ? 'forecast'
@@ -180,7 +179,6 @@ export default function App() {
         : _v === 'review' ? 'review'
           : _v === 'ledger' ? 'ledger'
             : _v === 'analysis' ? 'analysis'
-              : _v === 'discipline' ? 'discipline'
               : _v === 'red' ? 'red'
                 : _v === 'charts' ? 'charts'
                   : _v === 'reading' ? 'reading'
@@ -518,15 +516,15 @@ export default function App() {
      导航六项＋管理组两项在 SideRail（src/SideRail.tsx），工作区与问文衡同一份。
      2026-11-02 rick 定稿（跨页书式：左页导航 / 右页工作面）。
      2026-10-31 撤出的他校简报 / AI 问数不回来（能力已并入高校ESI报告与问文衡）；
-     学科分析 2026-11-04 回归（＝灵活报告的卡片式入口）。
+     学科分析 2026-11-04 并入分析台（＝学科报告区），不再单列导航项。
      深链 ?view=analysis · /app/panel/ 仍保留（不占导航位）；?view=aiqa 重定向到问文衡（39 分册 B）、
-     ?view=pick 重定向到预测选模（39 分册 C）。 */
+     ?view=pick 重定向到预测选模（39 分册 C）；?view=discipline 落回工作台（学科分析已并入分析台）。 */
   /* 子屏归到哪个主区（决定左栏高亮）；report 区已无导航项，子屏一律归「出报告」，
      因为报告与它的下钻屏都是从四步流水里长出来的；台账/沙盘从运行档案进，跟着它高亮。 */
   const GROUP: Record<string, string> = {
     workbench: 'flow', acquire: 'flow', review: 'flow', forecast: 'flow',
     report: 'flow', red: 'flow', charts: 'flow', reading: 'flow', trace: 'flow',
-    analysis: 'analysis', discipline: 'discipline', aiqa: 'ask', dialog: 'ask', pano: 'flow',
+    analysis: 'analysis', aiqa: 'ask', dialog: 'ask', pano: 'flow',
     archive: 'archive', ledger: 'archive', heal: 'archive', migrate: 'archive',
   }
   /* 「出报告」四步流水（2026-10-19 rick：「选章节」入口关闭——一直空着，核验定稿里已有章节选择）。
@@ -745,12 +743,9 @@ export default function App() {
           <RedList period={selected} canDownload={canDownloadRedList} />
         ) : view === 'analysis' ? (
           /* 分析台（2026-11-02 静态稿）：同期的两种看法——上面看分布、下面查数。
-             数据全走后端产物（water / charts-data），前端不换算、不聚合。 */
-          <AnalysisPage period={selected} periods={periods} onPick={pickPeriod} />
-        ) : view === 'discipline' ? (
-          /* 学科分析（2026-11-04 spec）：灵活报告的卡片式入口——22 学科卡，
-             点卡流式生成单学科分析报告（真门在后端 admin-only，me 供提示口径）。 */
-          <DisciplinePage period={selected} me={me} />
+             数据全走后端产物（water / charts-data），前端不换算、不聚合。
+             2026-11-04 票 1：学科报告区并入（原学科分析页，me 供其权限分流提示口径）。 */
+          <AnalysisPage period={selected} periods={periods} onPick={pickPeriod} me={me} />
         ) : view === 'aiqa' ? (
           /* 39 分册 B：旧「AI 问数」页退役，深链落问文衡新页 */
           <LegacyRedirect to="/app/dialog/" label="问文衡" />

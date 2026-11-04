@@ -1,5 +1,7 @@
 /* 灵活报告（第二条产线）与写作位的数据口（契约 §21）。
    🔴 正文由后端自己的 md 渲染器出稿；这一层只取形状与流事件，不改一个字。
+   心跳口径（2026-11-04 票 2）：出稿流里后端每 10s 没有真实事件就发一条 `ping` 保活——
+   它不是进度，前端不渲染，只喂看门狗（收到任何事件含 ping 都重置 90s 无事件计时）。
    预测台的数据口在 api-forecast.ts（原 api5 一拆为二，2026-10-01）。 */
 
 import { req } from './api'
@@ -82,6 +84,8 @@ export type FlexStreamEvent =
       n_sources?: number; n_sections?: number }
   | { event: 'stopped' }
   | { event: 'error'; message: string }
+  /** 心跳（2026-11-04 票 2）：后端 q.get 每 10s 无真实事件就发一条；只喂看门狗，不渲染。 */
+  | { event: 'ping' }
 
 /** 逐行读取 NDJSON 流（fetch + ReadableStream；不引依赖、不用 EventSource）。 */
 export async function runFlexibleStream(
