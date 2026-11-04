@@ -172,6 +172,15 @@ describe('CompareView：生成中与成稿', () => {
     expect(html).toContain('贵州大学全球第 194 位')
   })
 
+  it('「规则稿」小标（2026-11-04 票 1）：draft.backend=rule 才标；缺省/模型稿不标（不误标）', () => {
+    const tagged = view({ draft: { title: 't', html: '', backend: 'rule' } })
+    expect(tagged).toContain('rule-tag')
+    expect(tagged).toContain('规则稿')
+    expect(view({ draft: { title: 't', html: '' } })).not.toContain('rule-tag')
+    expect(view({ draft: { title: 't', html: '', backend: 'deepseek-chat' } }))
+      .not.toContain('rule-tag')
+  })
+
   it('空稿位：一句话＋下一步（勾选对比学校），不只有解释', () => {
     const html = view({ schools: [] })
     expect(html).toContain('勾选对比学校')
@@ -229,8 +238,28 @@ describe('runCompare（生成按钮走的同一份代码，stream 整体 mock）
     expect(done).toBe(1)
   })
 
-  it('流事件 error → 原话上屏一句，不标完成', async () => {
-    emit([{ event: 'error', message: '对比学科的机构表还没取到' }])
+  it('done 的 backend 原样回传（「规则稿」小标用它）；事件缺字段回空串', async () => {
+    emit([{ event: 'done', elapsed: 1, n_charts: 0, backend: 'rule', mode: 'write',
+            title: 't', check_pass: true, write: null }])
+    let got = ''
+    await runCompare('202607', 'Chemistry', ['云南大学', '贵州大学'], {
+      onRun: () => {}, onPlan: () => {}, onSection: () => {},
+      onDone: (b) => { got = b }, onError: () => {}, onInterrupted: () => {},
+    })
+    expect(got).toBe('rule')
+    emit([{ event: 'status', stage: 'start', run: 'r-2' },
+          // 事件缺 backend 字段（类型上有，运行时防一手）：控制器回空串
+          { event: 'done', elapsed: 1, n_charts: 0, mode: 'write',
+            title: 't', check_pass: true, write: null } as FlexStreamEvent])
+    let bare = 'x'
+    await runCompare('202607', 'Chemistry', ['云南大学', '贵州大学'], {
+      onRun: () => {}, onPlan: () => {}, onSection: () => {},
+      onDone: (b) => { bare = b }, onError: () => {}, onInterrupted: () => {},
+    })
+    expect(bare).toBe('')
+  })
+
+  it('流事件 error → 原话上屏一句，不标完成', async () => {    emit([{ event: 'error', message: '对比学科的机构表还没取到' }])
     const errors: string[] = []
     let done = 0
     await runCompare('202607', 'Chemistry', ['云南大学', '贵州大学'], {

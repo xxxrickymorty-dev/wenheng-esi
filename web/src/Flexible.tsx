@@ -15,7 +15,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import {
-  getFlexible, runFlexibleStream,
+  getFlexible, runFlexibleStream, reportBackend,
   type FlexStreamEvent, type FlexibleDiscipline,
 } from './api-flexible'
 import { Icon } from './icons'
@@ -30,6 +30,8 @@ type Pane = {
   has: boolean
   hasRule: boolean
   meta: Record<string, unknown> | null
+  /** 这份成稿的出稿后端（flex_meta 口径；'rule'＝规则稿）——空串＝未知不标 */
+  backend: string
   variant: '' | 'rule'
   /** 正文缓存：normal＝标准稿，rule＝规则稿留底（切回去不重取） */
   bodies: { normal?: string; rule?: string }
@@ -47,7 +49,7 @@ type Pane = {
 }
 
 function emptyPane(): Pane {
-  return { loading: true, has: false, hasRule: false, meta: null,
+  return { loading: true, has: false, hasRule: false, meta: null, backend: '',
            variant: '', bodies: {}, stream: null, error: '' }
 }
 
@@ -139,6 +141,7 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
             setPan((p) => ({ ...p, [it.id]: {
               ...(p[it.id] ?? emptyPane()),
               loading: false, has: true, hasRule: !!jj.has_rule, meta: r.meta ?? null,
+              backend: r ? reportBackend(r) : '',
               bodies: { normal: jj.body_html } } }))
           } catch (e) {
             if (!alive) return
@@ -194,6 +197,8 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
     t0Ref.current[targetIntent] = Date.now()
     liveRef.current += 1
     if (liveRef.current === 1) startTimer()
+    /** 流终态的出稿后端（done 事件带回）；成稿重取失败时兜底用 */
+    let doneBackend = ''
     try {
       const peerList = (peers[targetIntent] ?? '')
         .split(/[,，、;；\n]+/).map((s) => s.trim()).filter(Boolean)
@@ -213,6 +218,10 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
               return { ...p, [targetIntent]: { ...pane, stream: {
                 ...st, sections: [...st.sections, { title: ev.title, html: ev.html }] } } }
             }
+            if (ev.event === 'done') {
+              doneBackend = typeof ev.backend === 'string' ? ev.backend : ''
+              return p
+            }
             if (ev.event === 'stopped') {
               return { ...p, [targetIntent]: { ...pane, stream: {
                 ...st, status: 'error', error: '这次生成被停了——栏里还是上一版。' } } }
@@ -230,6 +239,7 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
       setPan((p) => ({ ...p, [targetIntent]: {
         ...(p[targetIntent] ?? emptyPane()),
         loading: false, has: true, hasRule: !!jj.has_rule, meta: r?.meta ?? null,
+        backend: (r ? reportBackend(r) : '') || doneBackend,
         variant: '', bodies: { normal: jj.body_html }, stream: null, error: '' } }))
     } catch (e) {
       const msg = e instanceof Error ? e.message : '生成失败。'
@@ -302,7 +312,14 @@ export function Flexible({ period, canEdit }: { period: string | null; canEdit: 
             <section className="fx-pane" key={it.id} aria-label={it.cn}>
               <header className="fx-pane-h">
                 <div>
-                  <h3>{it.cn}</h3>
+                  <h3>{it.cn}
+                    {/* 规则稿时代的旧产物（模型模式已开但没重出）：一枚灰标诚实标注；
+                        后端没给 backend（缺省/拉取失败）一律不标。 */}
+                    {pane.has && !pane.stream && pane.backend === 'rule' && (
+                      <span className="rule-tag"
+                            title="本稿由规则版式生成，可在配置模型后重新生成">规则稿</span>
+                    )}
+                  </h3>
                   <p className="fx-pane-meta">
                     {pane.stream ? '正在出稿'
                       : (pane.has ? (metaLine(pane.meta) || '已出稿') : '还没有出稿')}

@@ -116,7 +116,9 @@
   font-size:var(--fs-label);letter-spacing:.3em;max-height:340px;overflow:hidden}
 .cp-vp{writing-mode:vertical-rl;font-family:var(--mono);font-size:var(--fs-xs);
   letter-spacing:.2em;color:var(--ivory-3)}
-.cp-rbody{padding:22px clamp(16px,2.6vw,32px) 26px;min-width:0}
+.cp-rbody{padding:22px clamp(16px,2.6vw,32px) 26px;min-width:0;position:relative}
+/* 「规则稿」小标（样式在 index.css .rule-tag）：缩略正文右上角浮一枚 */
+.cp-ruletag{position:absolute;top:10px;right:12px;margin:0}
 
 @media (max-width:900px){
   .cp-work{grid-template-columns:1fr}

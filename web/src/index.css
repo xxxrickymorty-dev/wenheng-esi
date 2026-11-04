@@ -763,6 +763,12 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
   padding:14px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
 .fx-pane-h h3{font-size:var(--fs-h);letter-spacing:.04em}
 .fx-pane-meta{font-size:var(--fs-sm);color:var(--ink-3);margin:4px 0 0}
+/* 「规则稿」小标（2026-11-04）：成稿由规则版式生成时的诚实标注——
+   灰一枚、悬停一句话（§十：不写解释段）；分析台窗格头与跨校对比缩略同用。 */
+.rule-tag{display:inline-block;margin-left:8px;padding:1px 8px;
+  font-size:var(--fs-label);font-weight:400;letter-spacing:.06em;
+  vertical-align:middle;border-radius:6px;
+  background:var(--panel);color:var(--ink-3);border:1px solid var(--line)}
 .fx-pane-acts{display:flex;gap:8px;flex:0 0 auto;padding-top:2px;flex-wrap:wrap}
 /* 生成详情折叠（票 05）：模型名等技术串收在这里，默认不占屏；正文里的「规划后端」已换人话 */
 .fx-backend{margin-top:6px;font-size:var(--fs-sm);color:var(--ink-3)}
@@ -1972,6 +1978,20 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
    说明收悬停（UX §十：不写解释段落）。 */
 .mdl-mode{margin:0 0 10px}
 .mdl-mode .mdl-tag{font-size:11px;padding:2px 9px}
+/* AI 调用统计（2026-11-04 票 2）：供应商节一行三数＋按位折叠明细。
+   403 / 拉不到整块不出（组件回 null）；一排 0 也不出。 */
+.mdl-stats{margin:0 0 10px;font-size:var(--fs-sm);color:var(--ink-3)}
+.mdl-stats>summary{cursor:pointer;list-style:none}
+.mdl-stats>summary::-webkit-details-marker{display:none}
+.mdl-stats>summary::before{content:"▸ ";color:var(--zhu)}
+.mdl-stats[open]>summary::before{content:"▾ "}
+.mdl-stats b{font-family:var(--mono);font-weight:600;color:var(--ink)}
+.mdl-stats-tbl{width:100%;border-collapse:collapse;margin-top:8px}
+.mdl-stats-tbl th{font-weight:400;color:var(--ink-3);text-align:left;
+  padding:2px 12px 2px 0;border-bottom:1px solid var(--line)}
+.mdl-stats-tbl td{padding:3px 12px 3px 0;border-bottom:1px solid var(--line);
+  font-family:var(--mono);font-size:var(--fs-sm)}
+.mdl-stats-tbl td:first-child{font-family:var(--serif);color:var(--ink)}
 .mdl-act{border:1px solid #e5e7eb;background:#fff;border-radius:0px;padding:5px 11px;
   font-size:12.5px;color:#374151;cursor:pointer;white-space:nowrap}
 .mdl-act:hover{border-color:#2f7a58;color:#2f7a58}

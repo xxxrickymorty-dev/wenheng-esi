@@ -8,6 +8,18 @@ import { req } from './api'
 
 export type FlexibleReport = {
   intent: string; title: string; meta: Record<string, unknown>; has_rule?: boolean
+  /** 每意图出稿后端（契约：ctx 每意图 backend/mode，取自 flex_meta.json）；
+      后端没这字段时前端从 meta 里读同一来源（旧产物也能标）。 */
+  backend?: string; mode?: string
+}
+
+/** 这份报告的出稿后端标记：新契约字段优先，缺了回 meta.backend（同出 flex_meta.json）。
+    都没有 → 空串（调用方不显示标记，不误标）。 */
+export function reportBackend(
+  r: { backend?: unknown; meta?: Record<string, unknown> | null }): string {
+  if (typeof r.backend === 'string' && r.backend) return r.backend
+  const m = r.meta ?? {}
+  return typeof m.backend === 'string' ? m.backend : ''
 }
 
 /** 监测学科（下拉）：en 是数据里的英文名，cn 是界面显示的中文名 */

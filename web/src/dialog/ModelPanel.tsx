@@ -13,6 +13,7 @@ import {
 } from '../api-models'
 import { ConfirmButton } from '../ConfirmButton'
 import { errorNote } from '../lib/status'
+import { CallStatsBlock } from './CallStats'
 
 const EMPTY_DRAFT: ProviderDraft = {
   label: '', base_url: '', key: '', note: '', protocol: 'openai', models: [],
@@ -401,6 +402,7 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
                   </p>
                 )}
                 {!canEdit && <p className="mdl-hint">要加或改模型，请让管理员来操作。</p>}
+                {canEdit && <CallStatsBlock open={open} />}
 
                 <div className="mdl-list">
                   {(payload?.providers ?? []).map((p) => (

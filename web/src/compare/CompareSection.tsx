@@ -18,6 +18,8 @@
       节渲染照灵活报告（fx-md）、停止键照问文衡（status 事件带 run 令牌，
       stopFlexible 喊停，终态 stopped 从原流回来）、成稿照灵活报告流完重取
       getFlexible(period,'school_compare') 上屏——前端不造数，只摆后端正文。
+      done 事件的 backend 也带回：'rule'＝规则稿时代的旧产物，缩略上一枚
+      「规则稿」小标（缺省不标）。
 
     🔴 本区没有一个是前端算的数字：对比数据全在后端正文里，界面上只有
     学校名单、勾选状态与流事件文案。
@@ -27,7 +29,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import {
-  getFlexible, runFlexibleStream, stopFlexible,
+  getFlexible, runFlexibleStream, stopFlexible, reportBackend,
   type FlexStreamEvent, type FlexibleData,
 } from '../api-flexible'
 import { getMonitorSchools, type MonitorSchool } from '../api-monitor'
@@ -52,8 +54,10 @@ export type CompareStream = {
   sections: { title: string; html: string }[]
 }
 
-/** 稿位缩略（后端成稿正文；title 取 plan/done 的报告题）。 */
-export type CompareDraft = { title: string; html: string }
+/** 稿位缩略（后端成稿正文；title 取 plan/done 的报告题）。
+    backend＝这份稿的出稿后端（'rule'＝规则稿 → 缩略上一枚小标；
+    缺省不标）。 */
+export type CompareDraft = { title: string; html: string; backend?: string }
 
 /** 进度表每节的状态（GLOSSARY 任务状态三词）。 */
 export type ProgState = 'done' | 'run' | 'idle'
@@ -76,7 +80,7 @@ export async function runCompare(
   h: { onRun: (run: string) => void
        onPlan: (title: string, outline: string[]) => void
        onSection: (title: string, html: string) => void
-       onDone: () => void
+       onDone: (backend: string) => void
        onError: (message: string) => void
        onInterrupted: () => void },
 ): Promise<void> {
@@ -101,7 +105,11 @@ export async function runCompare(
         if (ev.event === 'status') { h.onRun(ev.run ?? ''); return }
         if (ev.event === 'plan') { h.onPlan(ev.title, ev.outline); return }
         if (ev.event === 'section') { h.onSection(ev.title, ev.html); return }
-        if (ev.event === 'done') { doneSeen = true; h.onDone(); return }
+        if (ev.event === 'done') {
+          doneSeen = true
+          h.onDone(typeof ev.backend === 'string' ? ev.backend : '')
+          return
+        }
         if (ev.event === 'stopped') { failed = true; h.onError(STOPPED_NOTE); return }
         if (ev.event === 'error') { failed = true; h.onError(ev.message); return }
       }, { signal: ctrl.signal })
@@ -276,6 +284,11 @@ export function CompareView(props: {
                 <span className="cp-vp">{period}</span>
               </div>
               <div className="cp-rbody">
+                {/* 规则稿时代的旧产物：一枚灰标诚实标注；backend 缺省不标 */}
+                {draft.backend === 'rule' && (
+                  <span className="rule-tag cp-ruletag"
+                        title="本稿由规则版式生成，可在配置模型后重新生成">规则稿</span>
+                )}
                 <div className="fx-md" dangerouslySetInnerHTML={{ __html: humanBody(draft.html) }} />
               </div>
             </article>
@@ -330,7 +343,8 @@ export function CompareSection({ period, me }: { period: string; me: Me | null }
           const jj = await getFlexible(period, 'school_compare')
           if (!alive) return
           const r = jj.reports.find((x) => x.intent === 'school_compare')
-          setDraft({ title: r?.title || '跨校单学科对比', html: jj.body_html })
+        setDraft({ title: r?.title || '跨校单学科对比', html: jj.body_html,
+                   backend: r ? reportBackend(r) : '' })
         } catch { /* 有名无正文：缩略不出，「打开报告」链还在 */ }
       }
     }).catch((e) => {
@@ -374,13 +388,14 @@ export function CompareSection({ period, me }: { period: string; me: Me | null }
     setDraft(null)
     setStream({ title: '', outline: [], sections: [] })
     let doneSeen = false
+    let doneBackend = ''
     void runCompare(period, disc, picked, {
       onRun: (run) => { runRef.current = run },
       onPlan: (title, outline) =>
         setStream((s) => s ? { ...s, title, outline } : s),
       onSection: (title, html) =>
         setStream((s) => s ? { ...s, sections: [...s.sections, { title, html }] } : s),
-      onDone: () => { doneSeen = true },
+      onDone: (backend) => { doneSeen = true; doneBackend = backend },
       onError: (m) => { if (aliveRef.current) { setNote(m); setStream(null) } },
       onInterrupted: () => {
         if (aliveRef.current) {
@@ -396,7 +411,8 @@ export function CompareSection({ period, me }: { period: string; me: Me | null }
         if (!aliveRef.current) return
         const r = jj.reports.find((x) => x.intent === 'school_compare')
         setDraft({ title: r?.title || streamRef.current?.title || '跨校单学科对比',
-                   html: jj.body_html })
+                   html: jj.body_html,
+                   backend: (r ? reportBackend(r) : '') || doneBackend })
         setHasReport(true)
         setStream(null)
         setNote(null)
