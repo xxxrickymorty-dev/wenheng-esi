@@ -40,6 +40,13 @@ _Avoid_: 主台账、本期监测表（旧名）；「贴表」「入库」（�
 与「盘点」分工：盘点判「件在不在」，清单判「文件是不是原来那一份」（2026-10-22 定）。
 _Avoid_: 「数据备份」「原始包入库」；也不要拿它指盘点或台账派生物
 
+**学科键名**：
+22 学科两套英文键——**台账口径键**（slash 风格，`parse_ledger.DISCIPLINES_EN`）与
+**ESI 文件 stem**（`discipline_list.DISCIPLINES`，监测缓存 `fields` 与灵活产线同用这套），
+换算唯一经 `discipline_list.LEDGER_KEY`（2026-11-04 契约 §10 有全表）。
+_Avoid_: 自建映射或模糊匹配；**把 `Agricultural Sciences`（农业科学）与
+`Plant & Animal Science`（植物与动物学）当成同一学科的两个名字**——它们是两个不同学科
+
 **档案库**：
 ESI / InCites 原始包的**解析副本**库（`../档案库/wenheng_archive.sqlite`，ADR-0015）——
 机构级明细（谁 × 哪科 × 哪期什么数）存档备用，`tools/archive_import.py` 单向 ETL 构建，
