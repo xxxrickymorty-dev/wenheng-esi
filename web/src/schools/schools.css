@@ -39,51 +39,45 @@
 .whs-root :focus-visible{outline:2px solid var(--whs-ok);outline-offset:2px}
 .whs-root ::selection{background:var(--whs-seam);color:var(--whs-ink)}
 
-/* ── 跨页：列宽由 SideRail 自身宽度驱动（展开 232–420 拖宽 / 收起 64，rootProps 供值） ── */
+/* ── 跨页：列宽由 SideRail 自身宽度驱动（展开 232–420 拖宽 / 收起 64，rootProps 供值；
+   fallback 与 .app-shell 同值）── */
 .whs-spread{display:grid;
-  grid-template-columns:var(--app-lw,clamp(232px,24%,320px)) minmax(0,1fr);
+  grid-template-columns:var(--app-lw,clamp(232px,26%,320px)) minmax(0,1fr);
   min-height:100dvh;position:relative}
 .whs-spread::after{content:"";position:absolute;top:0;bottom:0;
-  left:var(--app-lw,clamp(232px,24%,320px));width:1px;
+  left:var(--app-lw,clamp(232px,26%,320px));width:1px;
   background:var(--whs-seam);pointer-events:none;z-index:20}
 
-/* ── 左页 · SideRail 换装皮肤（2026-11-03 票 1，.whs-root 作用域，SideRail 组件零改动） ──
-   侧栏本体＝共用件 SideRail（app-* 样式在 index.css）：底色/品牌字/当前项与悬停金线/
-   折叠把手订口色全部走 .whs-root 顶部的短名令牌别名（--deep/--seam/--ivory*），
-   这里只补静态稿钉死的两处＋中段小字。导航图标保留 SideRail 现行样式
-   （与静态稿「短横线」的差异是已登记取舍）。 */
-/* 深栏焦点环：全局深底规则给 --field-5，本页按静态稿改金线（订口色）；
-   身份弹层是纸面卡片，照 39 分册 A1 例外改回器色。 */
+/* ── 左页 · SideRail 皮肤（2026-11-04 票 3 收敛）──
+   侧栏本体＝共用件 SideRail（app-* 样式在 index.css），底色/品牌/导航/当前项/
+   收展钮/身份行全部走 .whs-root 顶部的短名令牌别名（--deep/--seam/--ivory*，
+   值与全站壳逐字相同）——页内不再有任何侧栏覆盖，两态与工作区/问文衡逐项一致。
+   只留一条：深栏焦点环按静态稿改金线（与问文衡 window.css 同一豁免姿势）。 */
 .whs-root .app-page-l :focus-visible{outline-color:var(--whs-seam)}
-.whs-root .app-page-l .user-chip-pop :focus-visible{outline-color:var(--zhu)}
-/* 导航字号与字色钉静态稿原值（13.5px／ivory-2）；当前项与悬停由 index.css 接管 */
-.whs-root .app-page-l .app-nav{font-size:13.5px;color:var(--whs-ivory-2)}
-/* 中段：「院校 N 所」小字沉底（贴身份行），收起态随 .app-mid 整块隐藏 */
-.whs-root .app-mid{justify-content:flex-end}
-.whs-mid-cap{font-size:12px;letter-spacing:.14em;color:var(--whs-ivory-2);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.whs-mid-cap::before{content:"";display:block;width:34px;height:1px;
-  background:var(--whs-seam);margin-bottom:12px}
-/* 订口顶端切换钮（2026-11-04 票 2）：配色钉本页 --whs-*（与 --deep/--seam 别名同源，
-   显式对齐静态稿原值；钮浮在订口金线顶端，规则本体在 index.css）。 */
-.whs-root .app-seam-toggle{background:var(--whs-deep);border-color:var(--whs-seam)}
 
-/* ── 右页 ── */
+/* ── 右页 ──
+   留白节奏与内容栅格对齐工作区右页（.app-main，2026-11-04 票 3）：
+   同一组 padding clamp，内容measure 同为 1080px 居中。 */
 .whs-r{display:flex;min-height:100dvh;min-width:0;
-  padding:clamp(18px,3vh,30px) clamp(22px,3.2vw,46px) clamp(16px,2.4vh,26px)}
-.whs-sheet{width:100%;max-width:840px;display:flex;flex-direction:column;min-width:0}
+  padding:clamp(18px,3.2vh,34px) clamp(22px,3.4vw,48px) clamp(28px,4vh,48px)}
+.whs-sheet{width:100%;max-width:1080px;margin:0 auto;
+  display:flex;flex-direction:column;min-width:0}
 
-/* 报头 */
+/* 报头（结构与 .an-mast 同构：眉标左／期次右） */
 .whs-bar{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;min-height:44px}
 .whs-eyebrow{font-family:var(--kai);font-size:11px;letter-spacing:.34em;color:var(--whs-muted)}
-.whs-pick{display:flex;align-items:center;gap:12px;margin-bottom:2px}
-.whs-pick .whs-k{font-family:var(--kai);font-size:11px;letter-spacing:.3em;color:var(--whs-muted)}
-.whs-sel{position:relative;display:block;height:44px;border-bottom:1px solid var(--whs-line)}
-.whs-sel select{height:44px;padding:0 26px 0 2px;border:0;border-radius:0;background:none;
-  appearance:none;-webkit-appearance:none;font-family:var(--serif);font-size:19px;
-  letter-spacing:.06em;color:var(--whs-ink);font-variant-numeric:tabular-nums;cursor:pointer}
+/* 期次下拉：对齐工作区 .an-sel 的描边小盒（2026-11-04 票 3）——
+   盒 40px 高、6px 圆角、13.5px sans；只有一期，禁用即可读，去掉「期次」小标。 */
+.whs-pick{display:flex;align-items:center;margin-bottom:6px}
+.whs-sel{position:relative;display:block}
+.whs-sel select{height:40px;min-width:130px;padding:0 38px 0 12px;
+  border:1px solid var(--whs-line);border-radius:var(--whs-r);background:var(--whs-card);
+  appearance:none;-webkit-appearance:none;
+  font:13.5px/1 var(--sans);letter-spacing:.12em;
+  color:var(--whs-ink);font-variant-numeric:tabular-nums;cursor:pointer;
+  transition:border-color .3s cubic-bezier(.32,.72,0,1)}
 .whs-sel select:disabled{cursor:default;color:var(--whs-ink)}
-.whs-sel::after{content:"";position:absolute;right:4px;top:17px;width:6px;height:6px;
+.whs-sel::after{content:"";position:absolute;right:15px;top:calc(50% - 3px);width:6px;height:6px;
   border-right:1px solid var(--whs-muted);border-bottom:1px solid var(--whs-muted);
   transform:rotate(45deg);pointer-events:none}
 
@@ -104,7 +98,8 @@
   letter-spacing:.02em;color:var(--whs-muted);margin-left:5px}
 .whs-fig b em{font-family:var(--serif);font-style:normal}
 
-.whs-rule{height:1px;background:var(--whs-seam);margin:clamp(10px,1.8vh,22px) 0 clamp(8px,1.4vh,16px)}
+/* 金线分界：节奏对齐工作区 .an-rule（2026-11-04 票 3） */
+.whs-rule{height:1px;background:var(--whs-seam);margin:clamp(14px,2.4vh,24px) 0 clamp(12px,2vh,20px)}
 .whs-tools{display:flex;align-items:center;gap:14px;margin-left:auto;padding-bottom:6px}
 .whs-tool{display:inline-flex;align-items:center;gap:7px;min-height:32px;padding:0 2px;
   font-size:12px;letter-spacing:.06em;color:var(--whs-muted);
@@ -119,14 +114,19 @@
   padding:2px 0 4px}
 .whs-total .whs-fig b{font-size:26px}
 
-/* 22 行学科表：无竖线、无行线，只有表头一条细线与中段一条金线 */
+/* 22 行学科表：形制对齐工作区表（.an-tt，2026-11-04 票 3）——
+   表头一条金线、行间发丝线、行高 36px；去竖线不变；
+   学科名到数字的点线引渡是本页报告纸面的自有形，保留。 */
 .whs-tbl{margin-top:clamp(4px,1vh,10px)}
 .whs-hd,.whs-rw{display:grid;grid-template-columns:minmax(0,1fr) 84px 84px 92px 104px 76px;
   align-items:baseline}
 .whs-hd{font-family:var(--kai);font-size:11px;letter-spacing:.16em;color:var(--whs-muted);
-  padding-bottom:6px;border-bottom:1px solid var(--whs-line)}
+  padding-bottom:8px;border-bottom:1px solid var(--whs-seam)}
+.whs-hd span:first-child{letter-spacing:.24em}
 .whs-hd span+span,.whs-rw span{text-align:right}
-.whs-rw{min-height:28px;align-items:center;line-height:1.3}
+.whs-rw{min-height:36px;align-items:center;line-height:1.3;
+  border-bottom:1px solid var(--whs-hair)}
+.whs-rw:last-of-type{border-bottom:0}
 .whs-rw .whs-nm{display:flex;align-items:baseline;text-align:left;min-width:0;
   font-family:var(--serif);font-size:13.5px;letter-spacing:.04em;color:var(--whs-ink);
   white-space:nowrap;overflow:hidden}

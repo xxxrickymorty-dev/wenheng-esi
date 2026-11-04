@@ -6,8 +6,8 @@
    收起态只留图标，悬停浮出中文全名（不让人靠一个字猜）。
    收起宽 64px：放得下 18px 图标与呼吸，再窄就只能靠猜。
    窄窗（≤900px）自动收成图标轨（2026-11-04 票 1）——任何窗宽侧栏都不整条消失。
-   收展的唯一点击控制位＝订口顶端的 28px 切换钮（2026-11-04 票 2）；
-   把手只管拖与双击，点击归钮、拖拽归把手，两层不打架。 */
+   收展的唯一点击控制位＝侧栏本体最后一行的固定钮（2026-11-04 票 3 重做：
+   订口顶端的贴边漂浮签退役）；把手只管拖与双击，点击归钮、拖拽归把手，两层不打架。 */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent as RKeyEvent,
@@ -237,6 +237,18 @@ export function SideRail(props: {
             </button>
           </div>
         </footer>
+
+        {/* 收展钮（2026-11-04 票 3 重做）：侧栏本体最后一行的固定钮位——
+            与身份行同区，不再骑在订口上做贴边漂浮签。展开态＝左箭头＋「收起」，
+            收起态＝整宽居中的右箭头，悬停/聚焦浮出全名（.app-tip，与导航同一套）；
+            button 本位，键盘可达。三入口共用本组件，天然跨页一致。 */}
+        <button className="app-fold" type="button" onClick={rail.toggle}
+                aria-expanded={!rail.side.fold} aria-controls="app-nav"
+                aria-label={rail.side.fold ? '展开侧栏' : '收起侧栏'}>
+          <Icon name={rail.side.fold ? 'chev-right' : 'chev-left'} size={16} />
+          <span className="app-fold-lbl" aria-hidden="true">收起</span>
+          <span className="app-tip" aria-hidden="true">展开侧栏</span>
+        </button>
       </aside>
 
       {/* 订口把手：有形状的双竖线＋中段刻度，骑在金线上。拖＝调宽（232–420），
@@ -244,16 +256,6 @@ export function SideRail(props: {
       <div className="app-grip" {...rail.gripProps}>
         <i aria-hidden="true" />
       </div>
-
-      {/* 订口顶端切换钮（2026-11-04 票 2）：收展的唯一点击控制位，三入口共用。
-          骑在金线顶端（left 用 --app-lw，收展变宽自动跟随）；钮浮在把手层之上
-          （z-index 40 > 30），点下去事件只归钮，拖拽仍归把手，互不串。 */}
-      <button className="app-seam-toggle" type="button" onClick={rail.toggle}
-              aria-expanded={!rail.side.fold} aria-controls="app-nav"
-              aria-label={rail.side.fold ? '展开侧栏' : '收起侧栏'}
-              title={rail.side.fold ? '展开侧栏' : '收起侧栏'}>
-        <Icon name={rail.side.fold ? 'chev-right' : 'chev-left'} size={16} />
-      </button>
     </>
   )
 }

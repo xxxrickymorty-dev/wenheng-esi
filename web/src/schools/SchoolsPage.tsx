@@ -1,7 +1,11 @@
 /* 高校 ESI 报告 · 监测版（入口整页）。
-   版面照已审静态稿 `mockups/全站静态稿-20261102/高校ESI报告-静态稿（20261102）.html`：
-   左页会泽品牌面（2026-11-03 起换装共用件 SideRail：导航/折叠/身份行与全站同一套）＋
-   右页报头（眉标 / 校名 / 期次）→ 总站位 → 22 行学科表；
+   版面照已审静态稿 `mockups/全站静态稿-20261102/高校ESI报告-静态稿（20261102）.html`；
+   2026-11-04 票 3 版式对齐工作区：侧栏零覆盖（共用件 SideRail 原样，与工作区/
+   问文衡逐项一致），右页 padding/内容栅格/金线节奏/期次下拉/表格形制对齐
+   .app-main 与分析台（.an-*）的版式语言；「院校 N 所」从侧栏挪回
+   「院校清单」入口。内容与功能（院校选择、重新生成、院校清单、报告打开、
+   轮询兜底）一件未动。
+   左页会泽品牌面＋右页报头（眉标 / 校名 / 期次）→ 总站位 → 22 行学科表；
    已入 1% 与未入之间一道 1px 金线，未在榜格子写 `—`。
    能力一件不少：院校清单（选校抽屉）、多校对比（队列）、生成报告（既有 POST 口）。
    数字零口径：总站位与学科行全部解析自后端已生成的站位报告（`/monitor/report/…`），
@@ -331,22 +335,22 @@ export default function SchoolsPage() {
   return (
     <div className="whs-root" {...rail.rootProps}>
       <div className="whs-spread">
-        {/* 左页侧栏（2026-11-03 票 1 换装）：共用件 SideRail——折叠把手/图标导航/口径ⓘ/
-            身份行/齿轮与全站同一套；「院校 N 所」收进中段（whs 皮肤样式，清单为空显示
-            「院校清单」）；不传 period——期次控件在右页报头。 */}
+        {/* 左页侧栏（2026-11-03 票 1 换装；2026-11-04 票 3 起与工作区/问文衡完全同一套）：
+            共用件 SideRail——品牌/导航/管理组/折叠/口径ⓘ/身份行/齿轮/收展钮零覆盖；
+            「院校 N 所」是页内信息，收进右页「院校清单」入口（不再塞进侧栏中段）；
+            不传 period——期次控件在右页报头（2026-11-03 登记的分工，保留）。 */}
         <SideRail rail={rail} active="schools" me={me} roleKnown={roleKnown}
-                  onSettings={settings.show}
-                  middle={<p className="whs-mid-cap">{nAll ? `院校 ${nAll} 所` : '院校清单'}</p>} />
+                  onSettings={settings.show} />
 
         <main className="whs-r">
           <div className="whs-sheet">
 
             <div className="whs-bar">
               <p className="whs-eyebrow">高校 ESI 报告</p>
+              {/* 期次下拉与工作区同形（描边小盒，悬停提示；只有一期，禁用即可读） */}
               <label className="whs-pick">
-                <span className="whs-k">期次</span>
                 <span className="whs-sel">
-                  <select aria-label="期次" value={data?.period ?? ''} disabled={!data}>
+                  <select aria-label="期次" title="期次" value={data?.period ?? ''} disabled={!data}>
                     {data?.period
                       ? <option value={data.period}>{data.period}</option>
                       : <option value="">—</option>}
@@ -393,7 +397,10 @@ export default function SchoolsPage() {
                       {genBusy === school.cn ? '生成中…' : '生成报告'}
                     </button>
               )}
-              <button type="button" className="whs-tool" onClick={() => setPickOpen(true)}>院校清单</button>
+              {/* 清单规模长在入口上（2026-11-04 票 3：原侧栏「院校 N 所」挪回页内） */}
+              <button type="button" className="whs-tool" onClick={() => setPickOpen(true)}>
+                {nAll ? `院校清单 · ${nAll}` : '院校清单'}
+              </button>
             </div>
 
             {genErr && <p className="whs-empty" role="alert">{genErr}</p>}
