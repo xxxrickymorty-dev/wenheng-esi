@@ -7,9 +7,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import {
   applyFontChoice, fontChoiceFromStorage, headersToText, parseHeadersText,
-  FONT_CHOICES, FONT_KEY, ModelForm,
+  FONT_CHOICES, FONT_KEY, ModelForm, providerModeOf,
 } from './ModelPanel'
-import type { ModelDraft } from '../api-models'
+import type { ModelDraft, ModelRow } from '../api-models'
 
 /* ---------------------------------------------------------------- Headers K=V（票 4） */
 describe('Headers 表单文本解析：每行 K=V，空行忽略，非法行报错', () => {
@@ -96,6 +96,27 @@ describe('正文字体三选：存储值归一 + localStorage → <html data-fon
     document.documentElement.dataset.font = 'kai'
     applyFontChoice('serif')
     expect('font' in dataset).toBe(false)
+  })
+})
+
+/* ---------------------------------------------------------------- 供应商状态显性（2026-11-04） */
+describe('供应商状态显性：未配置＝规则稿模式，已配置＝模型模式', () => {
+  const row = (over: Partial<ModelRow> = {}): ModelRow => ({
+    id: 't1', label: 'T', base_url: 'https://x/v1', model: 'm',
+    key_hint: 'sk-…1234', note: '', builtin: false, ready: true, active: false,
+    ...over,
+  })
+
+  it('清单未到 / 空清单 / 全是没配齐的条目 ＝ 规则稿模式', () => {
+    expect(providerModeOf(undefined)).toBe('规则稿模式')
+    expect(providerModeOf([])).toBe('规则稿模式')
+    expect(providerModeOf([row({ ready: false })])).toBe('规则稿模式')
+  })
+
+  it('有一条配齐的（含 .env 部署配置行）＝ 模型模式', () => {
+    expect(providerModeOf([row({ ready: false }), row({ id: '', builtin: true })]))
+      .toBe('模型模式')
+    expect(providerModeOf([row()])).toBe('模型模式')
   })
 })
 

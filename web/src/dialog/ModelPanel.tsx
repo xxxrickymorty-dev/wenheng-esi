@@ -2,11 +2,11 @@
    两件事分开——切当前模型（输入框左下「模型」菜单，谁都能点，写口在后端）、
    配置与偏好（设置弹窗，左栏两节：供应商＝管理员配模型；界面＝正文字体，人人可用）。 */
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Me } from '../api'
 import {
   getModels, removeModel, saveModel, setActiveModel, testModel,
-  type ModelDraft, type ModelsPayload, type ProbeResult,
+  type ModelDraft, type ModelRow, type ModelsPayload, type ProbeResult,
 } from '../api-models'
 import { ConfirmButton } from '../ConfirmButton'
 import { errorNote } from '../lib/status'
@@ -56,6 +56,15 @@ export function parseHeadersText(text: string): { headers: Record<string, string
 /** 已存 headers 对象 → 表单文本（K=V 每行一条，「改」时预填用）。 */
 export function headersToText(headers: Record<string, string> | undefined): string {
   return Object.entries(headers ?? {}).map(([k, v]) => `${k}=${v}`).join('\n')
+}
+
+/* ── 供应商状态显性（2026-11-04 rick 定）：一枚状态位，两态——
+   供应商未配置＝「规则稿模式」（全系统三产线＋问文衡直接规则稿）；已配置＝「模型模式」。
+   判据＝清单里存在配齐的条目（地址/型号/key 全；含 `.env` 部署配置行）——
+   只读 `/api/models` 现有字段，不新造口径、不猜字段；供应商开启后强制不回落
+   的语义由后端改，界面只如实展示。规则稿模式表单照常可填（保存即「添加供应商」）。 */
+export function providerModeOf(models: ModelRow[] | undefined): '模型模式' | '规则稿模式' {
+  return (models ?? []).some((m) => m.ready) ? '模型模式' : '规则稿模式'
 }
 
 /** 输入框左下那颗按钮 ＋ 向上弹出的清单。 */
@@ -189,6 +198,8 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
   }, [open])                                          // eslint-disable-line react-hooks/exhaustive-deps
 
   const presets = useMemo(() => payload?.presets ?? [], [payload])
+  /* 供应商状态位：一枚徽标一行，不写解释段落（UX §十）；说明收进悬停。 */
+  const mode = providerModeOf(payload?.models)
 
   const backdropRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -281,6 +292,16 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
           <div className="mdl-hub-body">
             {section === 'provider' ? (
               <>
+                {payload && (
+                  <p className="mdl-mode">
+                    <span className={`mdl-tag${mode === '模型模式' ? ' on' : ''}`}
+                          title={mode === '模型模式'
+                            ? '已有配齐的模型服务（地址、型号、key）'
+                            : '还没有配齐的模型服务——填好一条保存即接入'}>
+                      {mode}
+                    </span>
+                  </p>
+                )}
                 {!canEdit && <p className="mdl-hint">要加或改模型，请让管理员来操作。</p>}
 
                 <div className="mdl-list">
@@ -380,4 +401,30 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
       </div>
     </div>
   )
+}
+
+/* ── 设置中心接线（2026-11-04 票 1）：齿轮全站常驻，接线收进这一处 hook，
+   不再每页复制。用法（三页同款）：show 挂给 SideRail 的 onSettings（齿轮钮），
+   node 渲染在页面根容器末尾（与问文衡现行位置同款——inert 圈禁
+   依赖弹层是根容器的最后一个元素）。Ctrl+, 随齿轮走（悬停提示承诺过）；
+   onChanged 给要同步模型清单的页（问文衡：设置里改完，模型菜单立刻跟上）。 */
+export function useSettingsCenter(me: Me | null,
+                                   onChanged?: (p: ModelsPayload) => void) {
+  const [open, setOpen] = useState(false)
+  const show = useCallback(() => setOpen(true), [])
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault()
+        setOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+  const node = (
+    <ModelSettings open={open} me={me} onClose={() => setOpen(false)}
+                   onChanged={onChanged ?? (() => {})} />
+  )
+  return { open, show, node }
 }

@@ -14,7 +14,7 @@ import {
 } from '../api-monitor'
 import { HttpError, getMe, type Me } from '../api'
 import { SideRail, useSideRail } from '../SideRail'
-import { ModelSettings } from '../dialog/ModelPanel'
+import { useSettingsCenter } from '../dialog/ModelPanel'
 
 const RUN_STEPS = ['取数', '拼表', '出稿', '核验', '签发']
 
@@ -200,7 +200,6 @@ export default function SchoolsPage() {
   const rail = useSideRail()
   const [me, setMe] = useState<Me | null>(null)
   const [roleKnown, setRoleKnown] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
   useEffect(() => {
     void getMe().then((m) => {
       if (!aliveRef.current) return
@@ -208,17 +207,10 @@ export default function SchoolsPage() {
       setRoleKnown(true)
     })
   }, [])
-  /* Ctrl+, 开设置中心：齿轮悬停提示承诺了这个快捷键（问文衡同款接线）。 */
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
-        e.preventDefault()
-        setSettingsOpen(true)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  /* 设置中心（2026-11-04 票 1 收进共享接线 useSettingsCenter）：
+     齿轮 / Ctrl+, 带出；清单自拉，本页不消费模型清单。
+     非 admin / 未登录照 hint 只读。 */
+  const settings = useSettingsCenter(me)
 
   const load = async () => {
     const id = ++reqRef.current
@@ -343,7 +335,7 @@ export default function SchoolsPage() {
             身份行/齿轮与全站同一套；「院校 N 所」收进中段（whs 皮肤样式，清单为空显示
             「院校清单」）；不传 period——期次控件在右页报头。 */}
         <SideRail rail={rail} active="schools" me={me} roleKnown={roleKnown}
-                  onSettings={() => setSettingsOpen(true)}
+                  onSettings={settings.show}
                   middle={<p className="whs-mid-cap">{nAll ? `院校 ${nAll} 所` : '院校清单'}</p>} />
 
         <main className="whs-r">
@@ -532,10 +524,9 @@ export default function SchoolsPage() {
         </div>
       )}
 
-      {/* 设置中心（2026-11-03 票 2）：齿轮 / Ctrl+, 带出；清单自拉，onChanged 空实现
+      {/* 设置中心（useSettingsCenter 接线）：清单自拉，onChanged 空实现
           ——本页不消费模型清单。非 admin / 未登录照 hint 只读。 */}
-      <ModelSettings open={settingsOpen} me={me}
-                     onClose={() => setSettingsOpen(false)} onChanged={() => {}} />
+      {settings.node}
     </div>
   )
 }

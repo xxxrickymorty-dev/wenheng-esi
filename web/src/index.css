@@ -1724,7 +1724,7 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
 .app-page-l .app-idb .app-period select option{background:#FCFAF3;color:#15222B}
 .app-idb-row{display:flex;align-items:center;gap:10px;min-width:0}
 /* 设置齿轮（2026-11-03 票 2）：身份行旁的图标钮——与 ⓘ 同一姿势（深栏里的描边钮）。
-   传了 onSettings 才渲染（SideRail）；收起态随行居中，照样可达。 */
+   全站常驻（2026-11-04 票 1，SideRail 无条件渲染）；收起态随行居中，照样可达。 */
 .app-idb-set{flex:none;width:20px;height:20px;display:inline-grid;place-items:center;
   border:1px solid rgba(246,241,222,.26);background:transparent;color:var(--ivory-2);
   cursor:pointer;transition:border-color .15s,color .15s}
@@ -1947,6 +1947,10 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
   background:#eef0f3;color:#5b6472}
 .mdl-tag.on{background:#e6f0e9;color:#2f7a58}
 .mdl-tag.warn{background:#fdf1e3;color:#b45309}
+/* 供应商状态位（2026-11-04）：一枚徽标一行——规则稿模式／模型模式，
+   说明收悬停（UX §十：不写解释段落）。 */
+.mdl-mode{margin:0 0 10px}
+.mdl-mode .mdl-tag{font-size:11px;padding:2px 9px}
 .mdl-act{border:1px solid #e5e7eb;background:#fff;border-radius:0px;padding:5px 11px;
   font-size:12.5px;color:#374151;cursor:pointer;white-space:nowrap}
 .mdl-act:hover{border-color:#2f7a58;color:#2f7a58}

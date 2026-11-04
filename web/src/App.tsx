@@ -39,6 +39,7 @@ import { Panorama } from './Panorama'
 import { HealSandbox } from './HealSandbox'
 import { MigrateSandbox } from './MigrateSandbox'
 import { deriveWorkbench, isTerminal, statusToWB, type WBState } from './wb'
+import { useSettingsCenter } from './dialog/ModelPanel'
 
 /* 39 分册 F：图表三屏懒载。图册/审核台/预测台都经 ChartFigure 拖 echarts 整包（约 1.13MB），
    静态 import 让工作台首屏也背上它；改 React.lazy 分包后 echarts chunk 只在这三屏进入时才拉，
@@ -71,6 +72,9 @@ export default function App() {
   /* 侧栏（与问文衡同一套组件、同一份本地偏好）：宽度 + 收起，
      拖到最左收起、收起态拖右展开——交互与状态都在 SideRail（src/SideRail.tsx）。 */
   const rail = useSideRail()
+  /* 设置中心（2026-11-04 票 1）：齿轮全站常驻——出报告 / 分析台 / 运行档案等
+     工作区每一屏共用这一份接线（齿轮 / Ctrl+, 带出）。 */
+  const settings = useSettingsCenter(me)
   const [periods, setPeriods] = useState<Period[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [urlRestorePeriod, setUrlRestorePeriod] = useState<string | null>(null)
@@ -591,7 +595,7 @@ export default function App() {
           又会裁掉 ⓘ 与身份弹层）；靠 clamp 与 44px 行高把总高压在 720px 以内。
           与问文衡同一套组件（src/SideRail.tsx）：拖宽、拖到最左收起、收起浮全名。 */}
       <SideRail rail={rail} active={activeNav} me={me} roleKnown={roleKnown}
-                navHref={navHref}
+                navHref={navHref} onSettings={settings.show}
                 period={{ list: periods, selected, onPick: pickPeriod }} />
 
       <main className="wrap app-main" id="main">
@@ -794,6 +798,10 @@ export default function App() {
 
         {busy && <p className="hint mt-14">正在提交生成请求……</p>}
       </main>
+
+      {/* 设置中心（useSettingsCenter 接线）：挂在根容器末尾——inert 圈禁
+          依赖弹层是最后一个元素，问文衡同款。 */}
+      {settings.node}
     </div>
   )
 }

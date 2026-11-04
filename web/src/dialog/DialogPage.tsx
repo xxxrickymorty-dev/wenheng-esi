@@ -28,7 +28,7 @@ import { NumberedText } from '../NumberedText'
 import { SideRail, useSideRail } from '../SideRail'
 import { Sprite } from '../icons'
 import { getModels, setActiveModel, type ModelsPayload } from '../api-models'
-import { ModelMenu, ModelSettings } from './ModelPanel'
+import { ModelMenu, useSettingsCenter } from './ModelPanel'
 import { ToolTrace, type ToolCall } from './ToolTrace'
 
 /** 出稿轨迹（票 04）：逐段出（挑学科 / 配图 / 下载数据 / 数据校验 / 收尾 / 复刻）。
@@ -166,7 +166,6 @@ function writeSessionUrl(id: string) {
 export default function DialogPage() {
   /* 模型清单（2026-10-29）：当前用哪个模型由服务端保存，这里只读写清单 */
   const [models, setModels] = useState<ModelsPayload | null>(null)
-  const [settingsOpen, setSettingsOpen] = useState(false)
   /* 本轮正在发生的工具调用（流式时实时追加；答完随回合落进 turns[i].tools） */
   const [liveTools, setLiveTools] = useState<ToolCall[]>([])
   const [modelMsg, setModelMsg] = useState('')
@@ -197,6 +196,10 @@ export default function DialogPage() {
   const savedSeqRef = useRef(0)
   /* 侧栏（与工作区同一套组件、同一份本地偏好）：宽度 + 收起，交互在 src/SideRail.tsx。 */
   const rail = useSideRail()
+  /* 设置中心（2026-11-04 票 1 收进共享接线 useSettingsCenter）：
+     齿轮 / Ctrl+, 带出；onChanged 同步模型清单——设置里改完，
+     输入框左下的模型菜单立刻跟上。 */
+  const settings = useSettingsCenter(me, (p) => { setModels(p); setModelMsg('') })
 
   function refreshSaved() {
     const seq = ++savedSeqRef.current
@@ -646,18 +649,8 @@ export default function DialogPage() {
     }
   }
 
-  /* 用户菜单已并入侧栏身份行（UserChip，全站同一交互）；这里只留设置中心的快捷键。 */
-  /** Ctrl+, 开设置中心（与齿轮钮的悬停提示一致）；界面节人人可用，供应商节管理员才可写。 */
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
-        e.preventDefault()
-        setSettingsOpen(true)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  /* 用户菜单已并入侧栏身份行（UserChip，全站同一交互）；
+     设置中心的快捷键（Ctrl+,）随共享接线 useSettingsCenter 走。 */
 
   /* 票 1（2026-11-03）：顶栏整条撤了——会话题与侧栏当前项重复（工程原则 7）。
      题名只作 document.title 语义保留：切页签/收藏时仍能认出这段对话。 */
@@ -741,7 +734,7 @@ export default function DialogPage() {
 
       <div className="wd-spread">
         <SideRail rail={rail} active="ask" me={me} roleKnown={roleKnown} middle={histSection}
-                  onSettings={() => setSettingsOpen(true)} />
+                  onSettings={settings.show} />
 
         <main className="wd-r">
           <div className="dlg-thread" ref={threadRef} id="dlg-thread" aria-live="polite">
@@ -980,9 +973,9 @@ export default function DialogPage() {
         </main>
       </div>
 
-      <ModelSettings open={settingsOpen} me={me}
-                     onClose={() => setSettingsOpen(false)}
-                     onChanged={(p) => { setModels(p); setModelMsg('') }} />
+      {/* 设置中心（useSettingsCenter 接线）：挂在 .wd-root 末尾——
+          inert 圈禁依赖弹层是最后一个元素。 */}
+      {settings.node}
     </div>
   )
 }
