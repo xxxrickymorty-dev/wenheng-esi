@@ -511,6 +511,7 @@ var fmt=function(n){return n==null?'':Number(n).toLocaleString('en-US')};
 var FMT={
   int:function(v){return fmt(Math.round(v))},
   dec3:function(v){return Number(v).toFixed(3)},
+  dec2:function(v){return Number(v).toFixed(2)},
   pct2:function(v){return Number(v).toFixed(2)+'%'}
 };
 function base(p){

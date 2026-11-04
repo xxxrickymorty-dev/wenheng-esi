@@ -365,43 +365,40 @@ _METRICS = (("rank", "全球位次"), ("papers", "发文量"), ("cites", "总被
             ("cites_per_paper", "篇均被引"), ("top_papers", "顶尖论文"))
 
 
-def compare(period: str, disc_en: str, queries) -> dict:
-    """云南大学 vs 用户指定高校（同一学科）。"""
+def compare_multi(period: str, disc_en: str, queries) -> dict:
+    """任意高校集合 × 单学科（不强制含云南大学）。
+
+    单学科分析台（2026-11-04 rick 定：分析台＝单学科 × 多校）的取数层：
+    选一个学科、勾几所学校就比几所。未进入本期 ESI 前 1% 的学校给
+    `present=False` 行——正文写「无数据」，不猜数、不留空格。
+    `compare()`（云南大学 vs 对标高校）是它的特例。
+    """
     data = fetch(period, disc_en)
     rows = data["rows"]
     tpl = _latest_template()
     name_map = _name_map(str(tpl)) if tpl else {}
-    ynu = _ynu(rows)
-    if ynu is None:
-        raise PeerError(f"{period}「{cn_name(disc_en) or disc_en}」机构表里没有云南大学。")
-
     # 报错文案里「查了哪张表」：原表的工作表名是占位的 SheetN，那就报文件名
     label = (data["source"] if re.fullmatch(r"Sheet\d+", str(data["sheet"]))
              else data["sheet"])
-    wanted = []
+    wanted: list[dict] = []
     for q in _split_queries(queries):
         got = _match_ex(rows, name_map, q, sheet=label)
-        if _norm(got["en"]) == _norm(ynu["en"]):
-            continue
         if all(_norm(got["en"]) != _norm(w["en"]) for w in wanted):
             wanted.append(got)
-
-    picked = [ynu] + [next((r for r in rows if _norm(r["en"]) == _norm(w["en"])), None)
-                      for w in wanted]
+    picked = [next((r for r in rows if _norm(r["en"]) == _norm(w["en"])), None)
+              for w in wanted]
     out_rows = []
-    for r, w in zip(picked, [None] + wanted):
+    for r, w in zip(picked, wanted):
         # `match` 让调用方区分「精确」「兜底」「未上榜」：唯一命中不等于对上了
-        how = "table" if w is None else w["how"]
         if r is None:
-            assert w is not None
             out_rows.append({"en": w["en"], "cn": w["cn"], "present": False,
                              "match": "absent",
                              "values": {k: None for k, _ in _METRICS},
                              "rank_cn": None})
             continue
         out_rows.append({
-            "en": r["en"], "cn": r["cn"] or (w["cn"] if w else r["en"]),
-            "present": True, "match": how,
+            "en": r["en"], "cn": r["cn"] or w["cn"],
+            "present": True, "match": w["how"],
             "values": {k: r.get(k) for k, _ in _METRICS},
             "rank_cn": _domestic_rank(rows, r),
         })
@@ -410,13 +407,31 @@ def compare(period: str, disc_en: str, queries) -> dict:
     return {
         "period": actual, "requested_period": period, "discipline": disc_en,
         "discipline_cn": cn_name(disc_en) or disc_en,
-        "ynu": {"en": ynu["en"], "cn": ynu["cn"] or "云南大学"},
         "rows": out_rows, "requested": [w["cn"] for w in wanted],
         "n_global": len(rows),
         "source": {"dataset": _display_path(actual, data["source"]),
                    "sheet": data["sheet"], "period": actual},
         "metrics": [{"key": k, "cn": v} for k, v in _METRICS],
     }
+
+
+def compare(period: str, disc_en: str, queries) -> dict:
+    """云南大学 vs 用户指定高校（同一学科）＝ `compare_multi` 的特例。
+
+    旧形状（云大恒为首行 + `ynu` 键 + `requested` 不含云大）原样保留，
+    `single_trend` 第四节（sec_peers）不改。
+    """
+    names = ["云南大学"] + _split_queries(queries)
+    out = compare_multi(period, disc_en, names)
+    if not out["rows"] or not out["rows"][0]["present"]:
+        raise PeerError(f"{out['requested_period']}"
+                        f"「{out['discipline_cn']}」机构表里没有云南大学。")
+    out["ynu"] = {"en": out["rows"][0]["en"],
+                  "cn": out["rows"][0]["cn"] or "云南大学"}
+    out["requested"] = out["requested"][1:]
+    # 云大行是机构表直读的隐式主校行，不是按名解析出来的 → 档位恒为 table
+    out["rows"][0]["match"] = "table"
+    return out
 
 
 def rows_for_prompt(period: str, disc_en: str, queries) -> list[dict]:

@@ -216,7 +216,11 @@ class Ledger:
             payload={"kind": "chart", "chart_kind": chart.get("kind"),
                      "kind_cn": chart.get("kind_cn"), "periods": periods,
                      "file": f"charts/{name}" if name else "",
-                     "sources": sources},
+                     "sources": sources,
+                     # 跨校对比图（2026-11-04）：数据 payload 随账本走，
+                     # 下载口重渲染不用再回 parquet 取点。
+                     **({"payload": chart["payload"]}
+                        if chart.get("payload") is not None else {})},
             file=f"charts/{name}" if name else ""))
 
     def _record_peer(self, sec: Section, data: dict) -> None:
@@ -235,6 +239,11 @@ class Ledger:
                     values.append(float(v))
             if isinstance(row.get("rank_cn"), (int, float)):
                 values.append(float(row["rank_cn"]))
+        # 榜内规模与对比校数是这份证据自身的属性（正文导语引用）——
+        # 随同一证据登记，避免「无源派生」。
+        for extra in (data.get("n_global"), len(rows)):
+            if isinstance(extra, (int, float)) and not isinstance(extra, bool):
+                values.append(float(extra))
         self._add(_Entry(
             kind="peers", section=sec.title,
             label=f"{data.get('discipline_cn') or data.get('discipline')}机构表",

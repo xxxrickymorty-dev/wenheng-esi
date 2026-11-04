@@ -27,9 +27,11 @@ from . import queries as q
 from . import spec as sp
 from .datasource import METRICS, DataSource, cn_name, period_label
 
-#: 灵活报告只有一个意图：单学科分析（跨校对比是其中一节，2026-10-20 定）。
+#: 灵活报告意图（2026-11-04 rick 定）：单学科分析（云南大学）+
+#: 跨校单学科对比（一科 × 多校，不强制云大——单学科分析台数据面）。
 INTENTS = {
     "single_trend": "单学科分析报告",
+    "school_compare": "跨校单学科对比",
 }
 
 #: 规划的合法键（模型多给的键一律丢弃；纵轴类键在这里也进不来）
@@ -124,6 +126,22 @@ def _rule_plan(src: DataSource, intent: str, *, disc=None, metric=None,
         if considered:
             plan["considered"] = considered
         return plan
+
+    if intent == "school_compare":
+        # 一科 × 多校：学科是硬前提（用户在分析台选的），没给就人话报错。
+        if not disc:
+            raise ValueError("跨校单学科对比需要先选定学科"
+                             "（可选：" + "、".join(cn_name(d) for d in src.disciplines) + "）")
+        charts = [
+            {"kind": "schools_rank", "disc": disc,
+             "why": "全球位次对比（反向轴，越短越靠前）"},
+            {"kind": "schools_cites", "disc": disc, "why": "总被引频次对比"},
+            {"kind": "schools_per", "disc": disc, "why": "篇均被引对比"},
+        ]
+        return {"intent": intent, "disc": disc, "metric": "rank",
+                "periods": [period], "charts": charts,
+                "title": f"{cn_name(disc)}跨校对比分析（{period_label(period)}）",
+                "peers": peers or []}
 
     raise ValueError(f"未登记的意图 {intent!r}（允许：{sorted(INTENTS)}）")
 

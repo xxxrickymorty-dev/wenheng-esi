@@ -33,6 +33,31 @@ def _series_vals(tbl: pd.DataFrame, disc: str, periods: list[str]) -> list:
     return [None if pd.isna(v) else round(float(v), 4) for v in row]
 
 
+#: 🔴 内嵌 payload 也要过的红线：轴范围字段（前缀匹配）一律拒收
+_FORBIDDEN_STEMS = ("min", "max", "scale")
+
+
+def _axis_guard(p, depth: int = 0):
+    """跨校对比图的内嵌 payload 过同一道红线：带轴范围字段 → None。
+
+    递归检查嵌套 dict（yaxis.min 这类藏一层也不行）；payload 是
+    浅结构，深度保险丝只是防御。
+    """
+    if depth > 6 or not isinstance(p, dict):
+        return None
+    for k in p:
+        if any(str(k).lower().startswith(s) for s in _FORBIDDEN_STEMS):
+            return None
+    for v in p.values():
+        if isinstance(v, dict) and _axis_guard(v, depth + 1) is None:
+            return None
+        if isinstance(v, list):
+            for x in v:
+                if isinstance(x, dict) and _axis_guard(x, depth + 1) is None:
+                    return None
+    return p
+
+
 def payload_for(chart: dict, ld) -> dict | None:
     """chart（`spec.make` 返回 dict 或 flex_sources.json 的 chart 条目）→
     ECharts 数据 payload；不支持的图型返回 None。
@@ -40,6 +65,10 @@ def payload_for(chart: dict, ld) -> dict | None:
     🔴 数据语义与 `charts.py` 各图函数逐点对齐（同一张表、同一个窗口、
     同一种差分/百分位换算）——两条出口呈现同一份数据。
     """
+    # 跨校对比图：数据 payload 在取数时已随账本走（无台账查询链），
+    # 这里只过红线守卫后原样带回。
+    if chart.get("payload") is not None:
+        return _axis_guard(chart["payload"])
     kind = chart.get("chart_kind") if chart.get("kind") == "chart" else chart.get("kind")
     spec = chart.get("spec") or {}
     disc = spec.get("disc") or (chart.get("source") or {}).get("discipline")

@@ -465,13 +465,177 @@ def _single_sections(c: _ReportCtx) -> list:
             ("建议事项（判断草稿）", sec_judge_advice)]
 
 
+# ------------------------------------------------------- 跨校单学科对比
+#: 跨校对比图清单：（图型名, 人话名, peers 指标键, y 轴反向, 小数位, fmt）
+_SCHOOL_CHARTS = (
+    ("schools_rank", "全球位次对比", "rank", True, 0, "int"),
+    ("schools_cites", "总被引频次对比", "cites", False, 0, "int"),
+    ("schools_per", "篇均被引对比", "cites_per_paper", False, 2, "dec2"),
+)
+
+
+def _school_png(path: pathlib.Path, data: dict, key: str, invert: bool) -> None:
+    """PNG 兜底（docx 出口用；HTML 出口走 ECharts payload）。MONO 灰阶。"""
+    try:
+        import matplotlib                                       # noqa: PLC0415
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt                         # noqa: PLC0415
+    except Exception:                                            # noqa: BLE001
+        return                                                   # 图缺不挡出稿
+    rows = [r for r in data["rows"] if r["present"]]
+    names = [(r["cn"] or r["en"]) for r in rows]
+    vals = [float(r["values"][key]) for r in rows]
+    fig, ax = plt.subplots(figsize=(7, 0.62 * max(len(rows), 2) + 1.1), dpi=150)
+    ax.barh(range(len(rows)), vals, color="#1C1C1A", height=0.55)
+    ax.set_yticks(range(len(rows)))
+    ax.set_yticklabels(names, fontsize=9, color="#1C1C1A")
+    for i, v in enumerate(vals):
+        ax.text(v, i, f" {v:,.0f}" if float(v).is_integer() else f" {v:,.2f}",
+                va="center", fontsize=8.5, color="#8F8E88")
+    if invert:
+        ax.invert_xaxis()               # 位次：条越短位次越靠前
+    ax.spines[["top", "right", "left"]].set_visible(False)
+    ax.tick_params(left=False, bottom=False, labelbottom=False)
+    ax.margins(x=0.18)
+    fig.tight_layout()
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _school_charts(c: _ReportCtx, sec: pv.Section, data: dict) -> str:
+    """跨校对比三图。payload 随 chart 条目走（flex_sources 原样带回），
+    HTML 出口 ECharts；🔴 payload 不含轴范围字段，位次反向由
+    `invert` 语义位表达，渲染层 scale:true 自适应。
+    """
+    disc, dcn = c.plan["disc"], cn_name(c.plan["disc"])
+    srow = data["source"]
+    out = []
+    for kind, kcn, key, invert, nd, fmt in _SCHOOL_CHARTS:
+        vals = []
+        for r in data["rows"]:
+            v = r["values"].get(key) if r["present"] else None
+            vals.append(None if v is None else round(float(v), nd))
+        payload = {"kind": kind, "type": "bar",
+                   "cats": [(r["cn"] or r["en"]) for r in data["rows"]],
+                   "series": [{"name": kcn, "data": vals, "dash": False}],
+                   "fmt": fmt}
+        if invert:
+            payload["invert"] = True
+        source = {"dataset": srow["dataset"], "origin_sheet": srow["sheet"],
+                  "period": data["period"], "discipline": disc,
+                  "discipline_cn": dcn,
+                  "locator": f"{srow['sheet']}：{kcn}（{data['period']}）"}
+        chart = {"kind": kind, "kind_cn": kcn,
+                 "path": str(c.chart_dir / f"{kind}.png"),
+                 "spec": {"kind": kind, "disc": disc},
+                 "periods": [data["period"]],
+                 "sources": [source], "payload": payload}
+        _school_png(c.chart_dir / f"{kind}.png", data, key, invert)
+        c.specs_out.append(chart)
+        sec.chart(chart)
+        out.append(f"\n\n![{kcn}](charts/{kind}.png)\n\n*{kcn}*")
+    return "".join(out)
+
+
+def _school_compare_sections(c: _ReportCtx) -> list:
+    """跨校单学科对比（2026-11-04 rick 定）：一科 × 多校，不强制云大。
+
+    数据面＝`peers.compare_multi`（ESI 机构表，只读；当期缺失只向前回退
+    并标实际期次）。未上榜校 `present=False` → 正文写「未进入榜单，
+    无数据」，不猜数、不留空格。本意图**不走台账查询链**：数字全部
+    作为第一类证据（kind=peers）进账，研判节 inherit 全篇事实摘要。
+    """
+    disc, dcn = c.plan["disc"], cn_name(c.plan["disc"])
+    from . import peers as peer_mod                               # noqa: PLC0415
+    data = peer_mod.compare_multi(c.plan["periods"][-1], disc,
+                                  c.plan.get("peers") or [])
+    c.selected = {"disc": disc, "disc_cn": dcn, "period": data["period"],
+                  "peers": data["requested"], "peer_source": data["source"]}
+    present = [r for r in data["rows"] if r["present"]]
+
+    def sec_overview() -> str:
+        # 一、对比总览：证据登记（kind=peers）+ 每校一句；未上榜写无数据。
+        #    榜内规模/对比校数随 peers 证据登记（provenance._record_peer）。
+        sec = c.ledger.section("对比总览")
+        sec.peer(data)
+        parts, facts = [], []
+        for r in data["rows"]:
+            name = r["cn"] or r["en"]
+            if not r["present"]:
+                parts.append(f"{name}未进入本期 ESI {dcn}榜单，无数据。")
+                facts.append(f"{name}：未上榜，无数据")
+                continue
+            v = r["values"]
+            rc = (f"（大陆第 {_fmt(r['rank_cn'])} 位）" if r["rank_cn"] else "")
+            parts.append(f"{name}全球第 {_fmt(v['rank'])} 位{rc}，"
+                         f"总被引 {_fmt(v['cites'])} 次，"
+                         f"篇均被引 {_fmt(v['cites_per_paper'])} 次/篇。")
+            facts.append(f"{name}：全球第 {_fmt(v['rank'])} 位，"
+                         f"总被引 {_fmt(v['cites'])} 次，"
+                         f"篇均 {_fmt(v['cites_per_paper'])} 次/篇")
+        c.pool += facts
+        lead = (f"{period_label(data['period'])}机构表：{dcn}学科"
+                f"（榜内 {_fmt(data['n_global'])} 家机构），"
+                f"共对比 {_fmt(len(data['rows']))} 所高校。")
+        return (c.P(lead, "flexible/school_compare/总览", facts)
+                + "\n\n" + "".join(parts))
+
+    def sec_metrics() -> str:
+        # 二、指标对比：dense 表 + 三张对比图
+        sec = c.ledger.section("指标对比")
+        sec.inherit()                 # 数字来自总览节的 peers 证据
+        lines = [
+            "| 高校 | 全球位次 | 国内位次 | 发文量 | 总被引 | 篇均被引 | 顶尖论文 |",
+            "|---|---:|---:|---:|---:|---:|---:|",
+        ]
+        for r in data["rows"]:
+            name = r["cn"] or r["en"]
+            if not r["present"]:
+                lines.append(f"| {name} | 未上榜 | 未上榜 | 未上榜 | 未上榜 | 未上榜 | 未上榜 |")
+                continue
+            v = r["values"]
+            lines.append(
+                f"| {name} | {_fmt(v['rank'])} | {_fmt(r['rank_cn'])} | "
+                f"{_fmt(v['papers'])} | {_fmt(v['cites'])} | "
+                f"{_fmt(v['cites_per_paper'])} | {_fmt(v['top_papers'])} |")
+        lead = (f"{dcn}学科里位次最靠前的是"
+                f"{(lambda b: b['cn'] or b['en'])(min(present, key=lambda r: r['values']['rank']))}"
+                f"（全球第 {_fmt(min(r['values']['rank'] for r in present))} 位）。"
+                if present else
+                f"本次对比的高校均未进入本期 ESI {dcn}榜单。")
+        return (c.P(lead, "flexible/school_compare/指标", c.pool)
+                + "\n\n" + "\n".join(lines)
+                + f"\n\n来源：`{data['source']['dataset']}`"
+                  f"（{data['source']['sheet']}）。"
+                + _school_charts(c, sec, data))
+
+    def sec_judge() -> str:
+        sec = c.ledger.section("研判（判断草稿）")
+        sec.inherit()
+        safe = "\n".join([op.manual(f"{dcn}跨校位次格局研判"),
+                          op.manual(f"{dcn}与对标高校差距研判")])
+        return c.J("研判", f"{dcn}跨校对比研判", safe, list(c.pool))
+
+    def sec_advice() -> str:
+        sec = c.ledger.section("建议（判断草稿）")
+        sec.inherit()
+        safe = "\n".join([op.manual(f"{dcn}对标学习建议"),
+                          "- " + op.manual("是否需要向学院核实数据口径")])
+        return c.J("建议", f"{dcn}跨校对比建议", safe, list(c.pool))
+
+    return [("对比总览", sec_overview), ("指标对比", sec_metrics),
+            ("研判（判断草稿）", sec_judge), ("建议（判断草稿）", sec_advice)]
+
+
 def _build(c: _ReportCtx, on_section=None, on_outline=None) -> dict:
     """取节表 → 逐节构建 → 返回既有形状的 built dict。
 
     `built["sources"]` 与 `built["charts"]` 都从**同一本账**读出：附录、自检、
     `flex_sources.json` 不可能再各看各的。
     """
-    sections = _single_sections(c)
+    sections = (_school_compare_sections(c)
+                if c.plan.get("intent") == "school_compare"
+                else _single_sections(c))
     c.blocks = _collect(sections, on_section, on_outline)
     return {"blocks": c.blocks, "sources": c.ledger.sources_json(),
             "charts": c.ledger.charts(), "ledger": c.ledger,

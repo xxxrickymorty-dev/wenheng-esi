@@ -46,6 +46,7 @@ class TestFlexible组装:
         _d, ctx = _ctx_or_skip()
         assert ctx["intents"] == [
             {"id": "single_trend", "cn": "单学科分析报告"},
+            {"id": "school_compare", "cn": "跨校单学科对比"},
         ]
 
     def test_body_html指向保留的图表路由(self):

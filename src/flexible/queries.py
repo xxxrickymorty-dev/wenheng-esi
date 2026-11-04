@@ -31,8 +31,8 @@ import pandas as pd
 from . import datasource as ds
 from .datasource import METRICS, LedgerView, cn_name, period_label
 
-#: 允许的分析意图（演示级先做 ①②，③④ 已可查询，章节骨架后续补）
-INTENTS = ("single_trend",)
+#: 允许的分析意图（single_trend＝云大单学科；school_compare＝跨校单学科）
+INTENTS = ("single_trend", "school_compare")
 
 #: 发给模型的工具说明。**不含任何数值**，只有字段字典与可查询范围。
 SCHEMA = {
