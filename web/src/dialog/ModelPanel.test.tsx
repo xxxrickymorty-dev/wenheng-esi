@@ -154,7 +154,7 @@ describe('供应商表单字段序照图二：API 密钥 → 显示名称 → AP
     expect(html).toContain('Anthropic Messages')
   })
 
-  it('模型目录：已选型号成 chip，空目录有一句空态', () => {
+  it('模型目录：行式列表（型号名＋移除钮），空目录有一句空态', () => {
     const empty = renderForm()
     expect(empty).toContain('目录还空着')
     const filled = renderForm({ ...BLANK_DRAFT, models: ['A/B-1', 'C/D-2'] })
@@ -163,11 +163,20 @@ describe('供应商表单字段序照图二：API 密钥 → 显示名称 → AP
     expect(filled).toContain('从目录移除 A/B-1')
   })
 
-  it('「恢复默认模型」只在预置给了默认目录时出现；「获取可用模型」常在', () => {
+  it('加型号走下拉直接选（rick 2026-11-04 裁决）：没有手动输入框', () => {
+    const html = renderForm()
+    expect(html).not.toContain('手动加')
+    expect(html).not.toContain('加进目录')
+  })
+
+  it('「恢复默认模型」只在预置给了默认目录时出现；「获取可用模型」常在（都在目录标题行右侧）', () => {
     const html = renderForm()
     expect(html).toContain('获取可用模型')
     expect(html).not.toContain('恢复默认模型')
-    expect(renderForm(BLANK_DRAFT, '', ['a', 'b'])).toContain('恢复默认模型')
+    const withDefault = renderForm(BLANK_DRAFT, '', ['a', 'b'])
+    expect(withDefault).toContain('恢复默认模型')
+    expect(withDefault.indexOf('恢复默认模型')).toBeLessThan(
+      withDefault.indexOf('获取可用模型'))
   })
 
   it('key 输入留空＝沿用已存凭据（编辑态占位提示）', () => {

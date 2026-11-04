@@ -143,10 +143,8 @@ export function ModelForm({ draft, headersText, busy, defaultModels, onDraft,
   onSubmit: () => void
   onError: (msg: string) => void
 }) {
-  const [newModel, setNewModel] = useState('')
   const [remote, setRemote] = useState<RemoteModels | null>(null)
   const [fetching, setFetching] = useState(false)
-
   const inCatalog = useMemo(() => new Set(draft.models ?? []), [draft.models])
 
   function addModel(m: string) {
@@ -195,56 +193,42 @@ export function ModelForm({ draft, headersText, busy, defaultModels, onDraft,
         ))}
       </select></label>
       <div className="mdl-field">
-        <span className="mdl-field-k">模型目录</span>
+        <div className="mdl-cat-head">
+          <span className="mdl-field-k">模型目录</span>
+          <span className="mdl-cat-links">
+            {defaultModels && defaultModels.length > 0 && (
+              <button type="button" className="mdl-cat-link" disabled={busy}
+                      title={`恢复成预置的 ${defaultModels.length} 个型号`}
+                      onClick={() => { setRemote(null); onDraft({ ...draft, models: [...defaultModels] }) }}>
+                恢复默认模型
+              </button>
+            )}
+            <button type="button" className="mdl-cat-link" disabled={busy || fetching}
+                    title="从这条网关拉型号清单，下拉直接选"
+                    onClick={() => void fetchRemote()}>
+              {fetching ? '拉取中…' : '获取可用模型'}
+            </button>
+          </span>
+        </div>
         <div className="mdl-cat">
           {(draft.models ?? []).map((m) => (
-            <span key={m} className="mdl-chip">
-              {m}
-              <button type="button" className="mdl-chip-x" aria-label={`从目录移除 ${m}`}
+            <div key={m} className="mdl-cat-row">
+              <code title={m}>{m}</code>
+              <button type="button" className="mdl-cat-x" aria-label={`从目录移除 ${m}`}
                       title={`从目录移除 ${m}`}
-                      onClick={() => removeModel(m)}>×</button>
-            </span>
+                      onClick={() => removeModel(m)}>✕</button>
+            </div>
           ))}
           {!(draft.models ?? []).length && (
-            <span className="mdl-cat-empty">目录还空着——点「获取可用模型」挑，或手动加</span>
-          )}
-        </div>
-        <div className="mdl-cat-add">
-          <input value={newModel} placeholder="手动加一个型号"
-                 onChange={(e) => setNewModel(e.target.value)}
-                 onKeyDown={(e) => {
-                   if (e.key === 'Enter') {
-                     e.preventDefault()
-                     addModel(newModel); setNewModel('')
-                   }
-                 }} />
-          <button type="button" className="mdl-act ghost" disabled={!newModel.trim()}
-                  onClick={() => { addModel(newModel); setNewModel('') }}>加进目录</button>
-        </div>
-        <div className="mdl-cat-acts">
-          <button type="button" className="mdl-act ghost" disabled={busy || fetching}
-                  title="从这条网关拉型号清单，点选加进目录"
-                  onClick={() => void fetchRemote()}>
-            {fetching ? '拉取中…' : '获取可用模型'}
-          </button>
-          {defaultModels && defaultModels.length > 0 && (
-            <button type="button" className="mdl-act ghost" disabled={busy}
-                    title={`恢复成预置的 ${defaultModels.length} 个型号`}
-                    onClick={() => { setRemote(null); onDraft({ ...draft, models: [...defaultModels] }) }}>
-              恢复默认模型
-            </button>
+            <p className="mdl-cat-empty">目录还空着——「获取可用模型」后下拉直接选</p>
           )}
         </div>
         {remoteLeft.length > 0 && (
-          <div className="mdl-cat remote">
-            {remoteLeft.map((m) => (
-              <button key={m} type="button" className="mdl-preset"
-                      title={`加进目录：${m}`}
-                      onClick={() => addModel(m)}>
-                {m}
-              </button>
-            ))}
-          </div>
+          <select className="mdl-cat-pick" value="" aria-label="选一个可用型号加进目录"
+                  onChange={(e) => addModel(e.target.value)}>
+            <option value="">从 {remoteLeft.length} 个可用型号里选…</option>
+            {remoteLeft.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
         )}
       </div>
       <label>Headers（可选）<textarea rows={3} value={headersText}
