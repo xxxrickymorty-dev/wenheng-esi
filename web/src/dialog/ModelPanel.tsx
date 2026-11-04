@@ -168,7 +168,8 @@ export function ModelForm({ draft, headersText, busy, defaultModels, onDraft,
       setRemote(r)
       if (!r.ok) onError(r.msg)
     } catch (e) {
-      onError(errorNote(e, '拉型号清单'))
+      onError(errorNote(e, '拉型号清单',
+        { n404: '演示服务还没更新到这一版——重启服务后再点一次。' }))
     } finally {
       setFetching(false)
     }
@@ -325,7 +326,8 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
     try {
       setProbe(await testModel(p))
     } catch (e) {
-      setMsg(errorNote(e, '测这一条'))
+      setMsg(errorNote(e, '测这一条',
+        { n404: '演示服务还没更新到这一版——重启服务后再试。' }))
     } finally {
       setBusy(false)
     }
