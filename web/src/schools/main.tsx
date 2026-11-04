@@ -7,10 +7,14 @@ import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/noto-serif-sc'
 import '../index.css'
 import './schools.css'
+import { Sprite } from '../icons'
 import SchoolsPage from './SchoolsPage'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
+    {/* 全站图标符号表只挂一次（2026-11-04 补）：侧栏换装共用件 SideRail
+        后本页也用 <Icon>，缺了它所有 <use href="#i-…"> 落空＝整页图标空白。 */}
+    <Sprite />
     <SchoolsPage />
   </StrictMode>,
 )
