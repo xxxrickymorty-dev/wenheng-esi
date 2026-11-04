@@ -370,6 +370,68 @@ class Test独立件:
         assert ".fx-mark{" in h and "text-decoration-thickness:1px" in h
 
 
+# ================================================================ 9.2 R04 版式（2026-11-04）
+class TestR04版式:
+    """骨架照搬 Lieflat 报告模板 R04（lieflat-charts skill）：书脊 /
+    右对齐节标题 / 大数统计行 / fit-width。"""
+
+    MD = ("# 农业科学学科发展趋势分析报告\n"
+          "\n"
+          "> 期次：**2026年9月**（上期 2026年7月）\n"
+          "> 意图：单学科分析报告\n"
+          "> 生成时间：2026-11-04 09:20:58\n"
+          "\n"
+          "## 一、学科概况\n\n正文。\n"
+          "\n"
+          "| 指标 | 数值 | 来源（台账工作表：定位） |\n"
+          "|---|---|---|\n"
+          "| ESI前1%接近度 | **2.456** | `接近度`：农业科学 行 × 202609 列 |\n"
+          "| 国内排名 | **156** | `国内排名`：农业科学 行 × 202609 列 |\n"
+          "\n"
+          "## 二、学术影响力\n\n后续。\n"
+          "| 左 | 右 |\n|---|---|\n| 1 | 2 |\n")
+
+    def test_书脊承题_正文不重复(self):
+        h = mdview.standalone(self.MD, "农业科学学科发展趋势分析报告")
+        assert 'class="spine"' in h and "农业科学学科发展趋势分析报告" in h
+        assert h.count("农业科学学科发展趋势分析报告") == 2  # <title> + 书脊
+        assert "<h2>农业科学" not in h
+
+    def test_元信息进顶注_稿首引用块摘除(self):
+        h = mdview.standalone(self.MD, "t")
+        assert "期次 2026年9月（上期 2026年7月）" in h
+        assert "生成时间 2026-11-04 09:20:58" in h
+        assert "<blockquote>" not in h.split("<p>")[0] or "<blockquote>" not in h
+
+    def test_h2升级为右对齐节标题(self):
+        h = mdview.standalone(self.MD, "t")
+        assert ('<div class="secthead first"><span class="line"></span>'
+                '<span class="t">一、学科概况</span></div>') in h
+        assert ('<div class="secthead"><span class="line"></span>'
+                '<span class="t">二、学术影响力</span></div>') in h
+        assert "<h3>一、" not in h, "render 把 ## 升成 h3，升级后不该残留"
+
+    def test_首张指标表升级大数统计行_来源不丢(self):
+        h = mdview.standalone(self.MD, "t")
+        assert '<div class="stats">' in h
+        assert '<div class="v">2.456</div>' in h
+        assert '<div class="l">ESI前1%接近度</div>' in h
+        assert "农业科学 行 × 202609 列" in h, "来源（账本定位）降小字但保留"
+        assert "<th>指标</th>" not in h, "首张指标表不再以表格出现"
+
+    def test_其余表保持dense(self):
+        h = mdview.standalone(self.MD, "t")
+        assert '<table class="dense">' in h and "<td>1</td><td>2</td>" in h
+
+    def test_fitwidth等比缩放脚本(self):
+        h = mdview.standalone("正文。", "t")
+        assert "sheet.style.zoom" in h and "addEventListener('resize',fit)" in h
+
+    def test_无元信息时顶注回落默认(self):
+        h = mdview.standalone("正文。", "t")
+        assert "学科信息参考 · 第二条产线" in h
+
+
 # ================================================================ 9.5 ECharts 图（2026-11-04）
 class TestECharts图:
     PAYLOAD = {"kind": "cnci", "type": "line", "cats": ["202509", "202609"],

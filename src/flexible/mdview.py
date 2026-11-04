@@ -211,33 +211,57 @@ def _img_url(src: str, prefix: str, img_map) -> str:
 
 
 #: 独立 HTML 件的外壳（自包含、无外部资源 —— 与 collation 离线快照同思路）
-#: 2026-11-04 视觉升级：版式语言对齐 `数学稿`（Lieflat R04 观感）——
-#: MONO 灰阶、无衬线、表格数字 tabular-nums、节标题引线；class 名全部保留
-#: （dense / fx-mark / fx-about / figrow / export-mark），渲染逻辑不变。
+#: 2026-11-04（二）：骨架照搬 Lieflat 报告模板 R04「月度运营一页纸」
+#: （`lieflat-charts` skill · templates/reports/report-04.zh.html）——
+#: 竖排书脊 / 右对齐节标题引线 / 大数统计行 / fit-width 等比缩放；
+#: 色板仍走 MONO 灰阶，字体本地栈零外链（数学稿同款）。
+#: class 名保留（wrap / dense / fx-mark / fx-about / figrow / export-mark）。
 SHELL = """<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title>
 <style>
 :root{{--bg:#F0EFEB;--ink:#1C1C1A;--ink-2:#57564F;--ink-3:#8F8E88;--faint:#C6C5BF;
---line:#DEDDD6;--zhu:#1C1C1A;
+--line:#DEDDD6;
 --sans:"Inter","Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
 --mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace}}
 *{{margin:0;padding:0;box-sizing:border-box}}
 body{{margin:0;background:var(--bg);color:var(--ink);font:15px/1.8 var(--sans);
--webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums lining-nums}}
-.wrap{{max-width:880px;margin:0 auto;padding:44px 28px 72px}}
-/* 顶注：站名 · 标签 · 横幅（数学稿 tophead 同款） */
+-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums lining-nums;
+display:flex;justify-content:center;padding:52px 24px 72px}}
+/* R04 骨架：书脊 + 版心（版心列沿用 .wrap 类名） */
+.sheet{{width:1080px;max-width:1080px;display:grid;grid-template-columns:110px 1fr}}
+.spine{{position:relative;border-right:1px solid var(--ink)}}
+.spine .t{{position:absolute;top:0;left:12px;writing-mode:vertical-rl;
+font-weight:900;line-height:1.15;letter-spacing:.08em;white-space:nowrap}}
+.spine .b{{position:absolute;bottom:0;left:46px;writing-mode:vertical-rl;
+font-size:9px;font-weight:700;letter-spacing:.26em;color:var(--ink-3)}}
+.wrap{{padding-left:38px;min-width:0}}
+/* 顶注：站名 · 元信息（R04 tophead 同款；声明只在页脚出现一次） */
 .tophead{{display:flex;gap:14px;align-items:baseline;border-bottom:1px solid var(--ink);
 padding-bottom:10px;margin-bottom:34px;flex-wrap:wrap}}
 .tophead .site{{font-weight:700;font-size:13px;letter-spacing:.08em}}
 .tophead .sep{{color:var(--faint)}}
-.tophead .tag{{font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--ink-3)}}
-.tophead .banner{{margin-left:auto;font-size:10px;font-weight:700;letter-spacing:.14em;
-color:var(--ink);border:1px solid var(--ink);padding:3px 10px}}
+.tophead .tag{{font-size:10.5px;font-weight:600;letter-spacing:.1em;color:var(--ink-3)}}
+/* R04 节标题：右对齐 + 引线 */
+.secthead{{display:flex;align-items:baseline;gap:14px;margin:42px 0 10px}}
+.secthead.first{{margin-top:0}}
+.secthead .line{{flex:1;border-top:1px solid var(--ink)}}
+.secthead .t{{font-weight:700;font-size:15px;letter-spacing:.14em;white-space:nowrap}}
+/* R04 大数统计行（首个「指标/数值/来源」表升级而来；来源降为小字，账本信息不丢） */
+.stats{{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+margin:16px 0 8px;border-top:1px solid var(--ink)}}
+.stats>div{{padding:20px 18px 8px;border-right:1px dotted var(--faint)}}
+.stats>div:first-child{{padding-left:0}}
+.stats>div:last-child{{border-right:0;padding-right:0}}
+.stats .kpi .v{{font-size:34px;font-weight:700;line-height:1.1}}
+.stats .kpi .l{{font-size:12px;font-weight:600;margin-top:6px}}
+.stats .kpi .r{{font-size:10.5px;color:var(--ink-3);margin-top:3px;line-height:1.6}}
+.stats .kpi .r code{{background:none;padding:0;font-family:var(--sans);color:var(--ink-3)}}
 h2,h3,h4{{font-weight:700;line-height:1.4;margin:30px 0 12px}}
-h2{{font-size:19px;border-bottom:1px solid var(--line);padding-bottom:8px}}
-h3{{font-size:16px}} h4{{font-size:14.5px}}
+h2{{font-size:19px}}
+h3{{font-size:16.5px;margin:20px 0 8px}} h4{{font-size:14.5px}}
+details.fx-about h2{{font-size:15px;border-bottom:0;padding-bottom:0;margin:16px 0 6px}}
 p{{margin:10px 0}}
 table.dense{{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px}}
 table.dense th,table.dense td{{border:1px solid var(--line);padding:7px 10px;text-align:left}}
@@ -263,25 +287,37 @@ letter-spacing:.02em}}
 /* ECharts 图卡（数学稿观感：卡片白底 + 细线描边 + 图题小字） */
 figure.fx-echart{{background:#FBFAF7;border:1px solid var(--line);border-radius:4px;
 padding:14px 10px 8px;text-align:left}}
-.fx-chart{{width:100%;height:300px}}
+.fx-chart{{width:100%;height:320px}}
 .figrow .fx-chart{{height:260px}}
 details.fx-about{{margin-top:22px;border:1px dashed var(--faint);border-radius:3px;background:#E9E8E2}}
 details.fx-about>summary{{cursor:pointer;padding:10px 14px;font-size:13.5px;color:var(--ink-2)}}
 details.fx-about .fx-about-in{{padding:2px 14px 12px;border-top:1px solid var(--line)}}
-details.fx-about h2{{font-size:15px;border-bottom:0;padding-bottom:0;margin:16px 0 6px}}
 hr{{border:0;border-top:1px solid var(--line);margin:28px 0}}
 ul,ol{{padding-left:22px}} li{{margin:5px 0}}
 a{{color:var(--ink);text-decoration:underline;text-decoration-color:var(--faint)}}
 /* 导出件页脚标注（2026-10-15）：报告内不再重复声明，声明在下载件页脚出现一次 */
 .export-mark{{margin-top:34px;padding-top:10px;border-top:1px solid var(--line);
 font-size:12px;color:var(--ink-3);text-align:center;letter-spacing:.06em}}
-</style></head><body><div class="wrap">
-<div class="tophead"><span class="site">文衡 · 灵活报告</span><span class="sep">/</span>
-<span class="tag">学科信息参考 · 第二条产线</span></div>
+</style></head><body><div class="sheet">
+<div class="spine"><div class="t" style="font-size:{spine_px}px">{spine}</div>
+<div class="b">{spine_b}</div></div>
+<div class="wrap">
+<div class="tophead"><span class="site">文衡 · 灵活报告</span><span class="sep">|</span>
+<span class="tag">{tophead}</span></div>
 {body}
 <p class="export-mark">内部参考 · 非报送件　｜　灵活报告（第二条产线）　｜　不带盖章位</p>
 {scripts}
-</div></body></html>
+</div></div>
+<script>
+(function(){{
+var sheet=document.querySelector('.sheet');var W=1080;
+var fit=function(){{var cs=getComputedStyle(document.body);
+var avail=document.documentElement.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);
+sheet.style.zoom=Math.min(1,avail/W)}};
+fit();addEventListener('resize',fit);
+}})();
+</script>
+</body></html>
 """
 
 
@@ -311,8 +347,79 @@ def inline_images(html_text: str, base_dir) -> str:
     return re.sub(r'(<img\b[^>]*?\bsrc=")([^"]+)(")', _repl, html_text)
 
 
+#: 稿首元信息行（`report._render` 写的稿首引用块）：
+#: `> 期次：…` / `> 意图：…` / `> 生成时间：…` —— 摘去进顶注，正文不再重复。
+_META_LINE = re.compile(r"(?m)^> (期次|意图|规划后端|生成时间)：(.*)$")
+
+
+def _split_meta(md: str) -> tuple[str, dict[str, str]]:
+    """摘出稿首元信息行，返回 (剩余 md, {键: 值})。幂等。"""
+    metas: dict[str, str] = {}
+
+    def _repl(m):
+        metas[m.group(1)] = m.group(2).strip()
+        return ""
+
+    md = _META_LINE.sub(_repl, md)
+    md = re.sub(r"(?m)^> ?\n", "", md)      # 摘走后剩下的空引用行
+    return md, metas
+
+
+def _plain(s: str) -> str:
+    """顶注小字用：去强调标记。"""
+    return s.replace("**", "")
+
+
+def _spine_px(title: str) -> int:
+    n = len(title)
+    return 52 if n <= 8 else (42 if n <= 13 else 34)
+
+
+#: 首个「指标 / 数值 / 来源」表 → R04 大数统计行（只升第一张；其余表保持 dense）。
+#: v＝数值（去强调），l＝指标名，r＝来源（账本定位小字，信息不丢）。
+_KPI_TABLE = re.compile(
+    r'<table class="dense"><thead><tr><th>指标</th><th>数值</th><th>[^<]*</th>'
+    r"</tr></thead><tbody>(.*?)</tbody></table>", re.S)
+_KPI_ROW = re.compile(r"<tr><td>(.*?)</td><td>(.*?)</td><td>(.*?)</td></tr>")
+
+
+def _stats_row(body: str) -> str:
+    m = _KPI_TABLE.search(body)
+    if not m:
+        return body
+    kpis = []
+    for name, val, src in _KPI_ROW.findall(m.group(1)):
+        v = val.replace("<strong>", "").replace("</strong>", "")
+        kpis.append(f'<div><div class="kpi"><div class="v">{v}</div>'
+                    f'<div class="l">{name}</div>'
+                    f'<div class="r">{src}</div></div></div>')
+    if not kpis:
+        return body
+    return (body[:m.start()] + '<div class="stats">' + "".join(kpis)
+            + "</div>" + body[m.end():])
+
+
+def _sectheads(body: str) -> str:
+    """节标题 → R04 右对齐引线样式；「关于本稿」折叠块内不动。
+
+    `render` 把 `##` 升一级输出 `<h3>`（h1→h2 是稿题，已在 standalone 摘除），
+    所以这里抓 h3。"""
+    cut = body.find('<details class="fx-about">')
+    head, tail = (body, "") if cut < 0 else (body[:cut], body[cut:])
+    n = [0]
+
+    def _repl(m):
+        first = " first" if n[0] == 0 else ""
+        n[0] += 1
+        return (f'<div class="secthead{first}">'
+                f'<span class="line"></span>'
+                f'<span class="t">{m.group(1)}</span></div>')
+
+    return re.sub(r"<h3>(.*?)</h3>", _repl, head) + tail
+
+
 def standalone(md: str, title: str, *, base_dir=None, chart_payloads=None) -> str:
-    """渲染成可离线打开的**独立** HTML 件。
+    """渲染成可离线打开的**独立** HTML 件（R04 骨架）。
 
     `base_dir`（＝报告所在目录）：给了就把 `charts/*.png` 内联成 data URI——
     「下载报告」拿到的是**单文件**，离开 `charts/` 目录也带图。
@@ -321,8 +428,13 @@ def standalone(md: str, title: str, *, base_dir=None, chart_payloads=None) -> st
     `<img>` 图替换成 ECharts 容器（数学稿观感），库与数据全部内联，
     仍是单文件零外链；没给的图保持 PNG 内联（docx 出口不受影响）。
     🔴 payload 不含轴范围——渲染层 `scale:true` 让轴由数据自适应。
+
+    稿首元信息（期次 / 意图 / 规划后端）摘进顶注；首个「指标/数值/来源」表
+    升级为大数统计行；`h2` 升级为右对齐节标题。
     """
-    body = render(md)
+    md, metas = _split_meta(md)
+    md = re.sub(r"(?m)^#\s+.+\n", "", md, count=1)   # 标题进书脊，正文不重复
+    body = _sectheads(_stats_row(render(md)))
     scripts = ""
     if chart_payloads:
         body, fx = _swap_charts(body, chart_payloads)
@@ -330,7 +442,20 @@ def standalone(md: str, title: str, *, base_dir=None, chart_payloads=None) -> st
             scripts = _chart_scripts(fx)
     if base_dir is not None:
         body = inline_images(body, base_dir)
-    return SHELL.format(title=html.escape(title), body=body, scripts=scripts)
+    if metas:
+        parts = []
+        if "期次" in metas:
+            parts.append("期次 " + _plain(metas["期次"]))
+        if "意图" in metas:
+            parts.append(_plain(metas["意图"]))
+        if "生成时间" in metas:
+            parts.append("生成时间 " + _plain(metas["生成时间"]))
+        tag = " · ".join(parts)
+    else:
+        tag = "学科信息参考 · 第二条产线"
+    return SHELL.format(title=html.escape(title), body=body, scripts=scripts,
+                        spine=html.escape(title), spine_px=_spine_px(title),
+                        spine_b="灵活报告 · 第二条产线", tophead=tag)
 
 
 _FIG = re.compile(
