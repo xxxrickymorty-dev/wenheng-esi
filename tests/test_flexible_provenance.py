@@ -144,6 +144,22 @@ class Test不能空过:
         assert c["coverage"]["uncovered"] == [{"section": "学科概况",
                                                "value": "99,999"}]
 
+    def test_数字贴汉字完整认账(self):
+        """2026-11-04 修复回归：Python 的 `\\w` 匹配汉字，旧正则把
+        「总被引频次12,345」劈成「345」（1 前面是汉字被拦）→ 账本没有
+        345 → 覆盖校验误报「需人工接手」。润色稿把数字紧贴汉字写是
+        常态；数字贴汉字必须完整认账，后跟「次/篇」也不许静默跳过。"""
+        led = _ledger()
+        led.section("学科概况").query(_series())
+        led.section("学科概况").chart(_chart())
+        c = report.self_check(
+            "# 标题\n\n正文", _View(),
+            _built(led, [("一、学科概况", "总被引频次12,345，篇均12,345次")],
+                   ["charts/cnci__Chemistry.png"]))
+        assert c["coverage"]["checked"] == 2, c["coverage"]
+        assert c["coverage"]["uncovered"] == [], c["coverage"]
+        assert c["pass"], c
+
     def test_本节没登记的数字不能用别节的账顶替(self):
         led = _ledger()
         led.section("学科概况").query(_series())
