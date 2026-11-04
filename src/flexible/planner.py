@@ -203,9 +203,20 @@ def _brain_plan(src, intent, target=None, critic_hint: str | None = None):
                            allow_substrings=tuple(sp.KINDS))
     if not res.attempted:
         return None, None, ""                                       # 规则部署：用规则规划
+    strict = _attempt.strict_enabled()
     if res.text is None:
+        # 供应商强制语义（rick 2026-11-04）：开启态下模型规划失败不许拿
+        # 规则规划顶包——显式报错，不落任何规则稿产物。
+        if strict:
+            raise _attempt.AIRequiredError(str(res.reason or ""),
+                                            what="灵活报告规划")
         return None, res.reason, ""
-    return _parse_json(res.text), None, res.backend
+    got = _parse_json(res.text)
+    if got is None:
+        if strict:
+            raise _attempt.AIRequiredError("bad_json", what="灵活报告规划")
+        return None, None, res.backend
+    return got, None, res.backend
 
 
 def _parse_json(raw: str) -> dict | None:
@@ -354,6 +365,9 @@ def build(src: DataSource, intent: str = "single_trend", *,
           critic_hint: str | None = None) -> dict:
     """产出章节规划：默认规则；配了云才问模型（不合法/失败一律回退规则）。
 
+    **供应商强制语义（rick 2026-11-04）**：开启态（装配非规则版）下
+    模型规划失败/输出不合法 → 抛 `ai._attempt.AIRequiredError`，不再回退规则。
+
     `disc` 收英文规范名或中文名；未知学科直接 `ValueError`（不再静默忽略）。
     `critic_hint`（票 03 成环）：校验失败原因的人话短句，**只进模型提示**
     （数字已在喂回侧占位）；规则后端是确定性的，喂回对它不改变输出——
@@ -378,6 +392,13 @@ def build(src: DataSource, intent: str = "single_trend", *,
         fallback["checks"] = checks_for(intent)       # 两条路径都要带校验点
         return fallback
     plan = _validate_plan(src, got, intent, fallback, target)
+    if plan.get("fallback_reason"):
+        from ai import _attempt                                     # noqa: PLC0415
+        if _attempt.strict_enabled():
+            # 供应商强制语义：模型规划被清洗回规则规划（如越权键）＝
+            # 规划位失败——不拿规则规划顶包。
+            raise _attempt.AIRequiredError(
+                "invalid_plan", what=f"灵活报告规划（{plan['fallback_reason']}）")
     plan["backend"] = backend_name if plan.get("fallback_reason") is None else "rule"
     plan["checks"] = checks_for(intent)               # 规则产出，模型给的在上面已被剥
     # considered 同 checks：两条路径都带规则算出的候选（模型给的一律剥）。

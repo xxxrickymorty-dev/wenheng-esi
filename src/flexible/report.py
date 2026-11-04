@@ -206,6 +206,13 @@ def _render_charts(src: DataSource, plan: dict, chart_dir, specs_out, sec: pv.Se
     return "".join(out)
 
 
+def _strict() -> bool:
+    """供应商开启判定（rick 2026-11-04）：口径唯一在 `ai._attempt`
+    （装配结果 `brain.is_rule == False`）——本模块不发明第二个旋钮。"""
+    from ai import _attempt                                         # noqa: PLC0415
+    return _attempt.strict_enabled()
+
+
 def _polish(mode, text: str, label: str = "", *, facts=(), period: str = "",
             log: list | None = None) -> str:
     """写作/润色位。`mode ∈ {"off","polish","write"}`；假值 → 原样返回，不碰模型。
@@ -214,9 +221,17 @@ def _polish(mode, text: str, label: str = "", *, facts=(), period: str = "",
       `veto` 传入——ai 层不 import flexible）。
     - `polish`：旧润色位（只顺措辞），行为不变。
     任何失败都返回原文（写作/润色不是产出步骤）。
+    **例外（供应商强制语义，rick 2026-11-04）**：`AIRequiredError`
+    （开启态下模型位失败）原样上抛——不落任何规则稿产物。
     """
     if not text or mode in (None, False, "off"):
         return text
+    _AIRequiredError = None
+    try:
+        from ai._attempt import AIRequiredError as _e               # noqa: PLC0415
+        _AIRequiredError = _e
+    except Exception:                                                  # noqa: BLE001
+        pass
     try:
         if mode == "write":
             from ai import _writer                                     # noqa: PLC0415
@@ -227,9 +242,11 @@ def _polish(mode, text: str, label: str = "", *, facts=(), period: str = "",
                 log.append({"label": label, "fallback": st.get("fallback"),
                             "changed": got != text})
             return got
-        from . import polish as _p                                      # noqa: PLC0415
+        from . import polish as _p                                  # noqa: PLC0415
         return _p.rewrite(text)
-    except Exception:                                                   # noqa: BLE001
+    except Exception as e:                                             # noqa: BLE001
+        if _AIRequiredError is not None and isinstance(e, _AIRequiredError):
+            raise          # 供应商强制语义（rick 2026-11-04）：不落规则稿
         return text
 
 
@@ -240,9 +257,17 @@ def _compose(topic: str, safe: str, *, facts=(), period: str = "", label: str = 
     - 模型自标待审线为主；漏标句由 `opinion.backfill_marks` 确定性补标并计数；
     - `veto`＝标记完备性复查：**补标后仍有漏标**（如标记语法损坏）→ 整节回退安全值；
     - 任何失败都返回安全值（`【手工：】`空位），不抛。
+    **例外（供应商强制语义，rick 2026-11-04）**：开启态下模型位失败 /
+    兜底补标（规则补丁）→ 抛 `AIRequiredError`，不落半份规则稿。
     """
     if not topic:
         return safe, 0
+    _AIRequiredError = None
+    try:
+        from ai._attempt import AIRequiredError as _e               # noqa: PLC0415
+        _AIRequiredError = _e
+    except Exception:                                                  # noqa: BLE001
+        pass
     try:
         from ai import _writer                                     # noqa: PLC0415
 
@@ -255,6 +280,11 @@ def _compose(topic: str, safe: str, *, facts=(), period: str = "", label: str = 
                               veto=_veto, status=st)
         if st.get("mode") == "model":
             got, n = op.backfill_marks(got)
+            if n and _strict():
+                # 供应商强制语义（rick 2026-11-04）：兜底补标＝规则补丁，
+                # 开启态下不许出现——显式失败，不落半份规则稿。
+                raise _AIRequiredError("backstop",
+                                          what=f"判断节兜底补标（{label}）")
             if log is not None:
                 log.append({"label": label, "fallback": None, "changed": True, "backstop": n})
             return got, n
@@ -262,7 +292,9 @@ def _compose(topic: str, safe: str, *, facts=(), period: str = "", label: str = 
             log.append({"label": label, "fallback": st.get("fallback"), "changed": False,
                         "backstop": 0})
         return safe, 0
-    except Exception:                                                   # noqa: BLE001
+    except Exception as e:                                               # noqa: BLE001
+        if _AIRequiredError is not None and isinstance(e, _AIRequiredError):
+            raise          # 供应商强制语义（rick 2026-11-04）：不落规则稿
         return safe, 0
 
 
