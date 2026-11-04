@@ -19,6 +19,8 @@
 - 留痕：每次调用记一条 `ai_calls`（`capability="polish"`，票 03 口径）；
   记账失败不影响产出（只写进程日志）。
 - 失败不抛：写作不是产出步骤——任何失败都返回安全值（`write` 为原文）。
+  **例外（供应商强制语义，rick 2026-11-04）**：开启态（`_attempt.strict_enabled()`）
+  下失败不再回落原文/安全值——照记一条后抛 `AIRequiredError`，整单显式失败。
 """
 from __future__ import annotations
 
@@ -108,6 +110,10 @@ def write(text: str, *, facts=(), keep=DEFAULT_KEEP, period: str = "", label: st
                  mode=mode, backend=backend)
     if status is not None:
         status.update({"mode": mode, "backend": backend, "fallback": fallback})
+    # 供应商强制语义（rick 2026-11-04）：开启态下失败不许拿原文顶包——
+    # 照记一条（上方）后上抛，调用方整单失败。
+    if fallback is not None and _attempt.strict_enabled():
+        raise _attempt.AIRequiredError(fallback, what=f"写作位（{label or '改写'}）")
     return result
 
 
@@ -158,6 +164,10 @@ def compose(topic: str, *, facts=(), safe: str = "", keep=DEFAULT_KEEP, period: 
                  mode=mode, backend=backend)
     if status is not None:
         status.update({"mode": mode, "backend": backend, "fallback": fallback})
+    # 供应商强制语义（rick 2026-11-04）：开启态下失败不许拿安全值空位顶包
+    # ——照记一条（上方）后上抛，调用方整单失败。
+    if fallback is not None and _attempt.strict_enabled():
+        raise _attempt.AIRequiredError(fallback, what=f"写作位（{label or '创写'}）")
     return result
 
 

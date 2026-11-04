@@ -8,7 +8,8 @@
 策略（v1，2026-10-12 定）：**规则先算**——规则给出规格时直接用（模型不参与：
 省一次调用、行为稳定）；规则为空时才问模型（若配了真模型）：合法 JSON 才用，
 否则回落规则。演示站规则锁（`WENHENG_AI_PROFILE=demo`）下模型路径不触发——
-**无模型也能跑**。
+**无模型也能跑**。**供应商强制语义（rick 2026-11-04）**：开启态下模型规划
+失败不回落规则——抛 `AIRequiredError`（问文衡那轮显式失败）。
 
 模型面（票 03）：
 - 经 `_attempt` 统一边界（盾保护 + 校验 + 回落语义；先例 `flexible/planner.py`）；
@@ -30,6 +31,8 @@ from __future__ import annotations
 
 import json
 import pathlib
+
+from . import _attempt
 
 try:                                        # 仓根在 sys.path 上（server / tests）
     from src import metric_face
@@ -208,8 +211,6 @@ def _model_plan(question, *, discs, disciplines, history):
 
     返回 `(got | None, reason)`；规则部署（未配模型）→ `(None, "")`。
     """
-    from . import _attempt                                 # noqa: PLC0415
-
     prompt = _model_prompt(question, discs=discs, disciplines=disciplines,
                            history=history)
     res = _attempt.attempt(prompt, system=_PLAN_SYSTEM, ability="qa-plan", anchored=False)
@@ -235,6 +236,10 @@ def plan(question, *, discs=(), history=(), disciplines=(), period="") -> dict:
     got, reason = _model_plan(question, discs=discs, disciplines=disciplines,
                               history=history)
     if got is None:
+        # 供应商强制语义（rick 2026-11-04）：开启态下模型规划失败不许拿规则
+        # 规划顶包（reason 非空＝模型真被调用且失败；空串＝规则部署，照旧）。
+        if reason and _attempt.strict_enabled():
+            raise _attempt.AIRequiredError(reason, what="问文衡取数规划")
         return {**rule, "note": reason}
     specs = _clean_specs(got, {str(d) for d in disciplines})
     if not specs:

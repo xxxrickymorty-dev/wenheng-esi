@@ -14,6 +14,9 @@
   （专用模型与预算在调用方装配，边界只负责用它——向后兼容，其余调用不动）。
 - `attempted=False`（规则部署）不算失败：`reason=None`、`text`＝规则物；
   只有真实模型的失败才带回落码。
+- 供应商强制语义（rick 2026-11-04）：部署配置非规则版（`strict_enabled()`）
+  时，各回落点**不许拿规则物顶包**——能整单失败的抛 `AIRequiredError`，
+  只能逐位失败的以失败态表达；记录面照记（审计不丢）。
 - 盾拒恢复一轮（实验分支 exp/dsh-recovery：dsh 式协议闭合）：真模型校验失败且本
   attempt 尚未恢复过时，不立即回落——把上一稿的未标记数字隐去为 ▇（[[n]] 标记
   原样保留、至多引用前 1200 字符），以一条零数字的用户反馈进 history 重问一次；
@@ -43,6 +46,45 @@ class FallbackReason(StrEnum):
     #: （边界拦执行器返回的裸数字，2026-10-28 fc 定稿）。
     GUARD_REJECT = "guard_reject"
     RECORD_FAILED = "record_failed"
+
+
+class AIRequiredError(RuntimeError):
+    """供应商开启（强制模型）态下的模型位失败（rick 2026-11-04 供应商强制语义）。
+
+    语义：添加了模型供应商＝全系统强制模型——模型位失败**不许回落规则稿
+    占位**，必须以人话显式失败（能整单失败的抛本异常；只能逐位失败的
+    以失败态 Answer 表达，也由本异常的文案给话）。判定「供应商开启」
+    的唯一口径见 `strict_enabled()`；规则部署（默认关闭）**不抛**本异常，
+    一切照旧。`reason`＝回落原因码（与 `Outcome.reason` 同一张码表），
+    进文案与记录面；`what`＝模型位的人话位置（如「灵活报告规划」）。
+    """
+
+    def __init__(self, reason: str = "", what: str = ""):
+        self.reason = str(reason or "unknown")
+        self.what = str(what or "模型位")
+        super().__init__(
+            f"{self.what}失败：模型生成未成功（原因码 {self.reason}）。"
+            "系统已配置模型供应商，按供应商强制语义不再回落规则稿——"
+            "请重试，或检查模型服务后重试。")
+
+
+def strict_enabled() -> bool:
+    """「供应商开启」判定（rick 2026-11-04）：唯一口径＝**装配结果
+    `brain.is_rule == False`**——即 `attempt()` 的 `attempted` 同一判据。
+
+    实现按**部署配置**（`_config.cloud_config()`）判，与 `build_brain()`
+    构造非规则适配器的条件逐条一致（非 demo 锁 + backend=openai +
+    base/model/key 齐备；模型清单生效即开启）——**不读测试/脚本注入**
+    （`using(brain=…)` 只影响当次调用，不代表部署事实），
+    也**不发明第二个开关旋钮**（禁新 `WENHENG_AI_*` 环境变量）。
+    未添加供应商（默认）→ False：规则稿直出、一切照旧。
+    """
+    cfg = _config.cloud_config()
+    if cfg["profile"] == "demo":
+        return False                      # 演示锁＝关闭（部署事实）
+    if cfg["backend"] != "openai":
+        return False                      # 默认 / 未配置
+    return bool(cfg["base_url"] and cfg["model"] and cfg["key"])
 
 
 def brain_error(code) -> str:

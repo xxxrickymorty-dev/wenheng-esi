@@ -93,9 +93,20 @@ _SYSTEM_PROMPTS = {"diagnose": SYSTEM_PROMPT, "qa": QA_SYSTEM_PROMPT,
                    "review": REVIEW_SYSTEM_PROMPT}
 
 #: 问答必须模型作答（rick 2026-10-31）：模型失败/超时不再顶规则版，显式失败态。
-#: 文案讲人话＋给下一步；规则版只留「看规则版」参照（数字对照用）。
+#: 文案讲人话＋给下一步＋原因码（rick 2026-11-04 供应商强制语义）；
+#: 规则版只留「看规则版」参照（数字对照用）。
 _QA_TIMEOUT_TEXT = "模型超时了，这一句没答成。稍等再问一次，或换个问法。"
 _QA_FAILED_TEXT = "模型这一轮没有作答。稍等再问一次，或换个问法。"
+
+
+def _fail_text(fallback, detail=None, strict=False) -> str:
+    """失败态正文：人话；开启态附原因码（码来自 `_attempt`
+    回落码表，照实）；关闭态文案与 2026-10-31 定稿逐字一致。"""
+    blob = str(fallback or "") + str(detail or "")
+    base = _QA_TIMEOUT_TEXT if "timeout" in blob.lower() else _QA_FAILED_TEXT
+    if not strict:
+        return base
+    return f"{base}（原因码：{fallback or 'unknown'}）"
 
 #: 无数字地板文案（构造上不可能违反盾；规则版自身也过不了盾时的最后一格）。
 FLOOR_TEXT = "本次建议未通过数字校验，请直接打开台账与规则库核对。"
@@ -266,6 +277,26 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
     # ---- 规则层成形（构建器：规则版正文＋逐数字来源＋外发面）----
     try:
         draft = build(_root(), period, payload)
+    except _attempt.AIRequiredError as e:
+        # 供应商强制语义（rick 2026-11-04）：构建器内的模型位（如问文衡
+        # 取数规划）开启态失败 → 显式失败态 Answer，不落任何规则稿产物。
+        log.warning("ai.%s 模型位失败（强制语义）：%s", cap.id, e.reason)
+        return _publish(cap, period, role, mode="failed",
+                         backend=_backend_name(), notice=str(e), text=str(e),
+                         rule_text="", sources=(), parts=(),
+                         shield_res=Shield(0, 0),
+                         fallback=(e.reason or "model_required"),
+                         question_face=_question_face(payload), t0=t0)
+    except _attempt.AIRequiredError as e:
+        # 供应商强制语义（rick 2026-11-04）：构建器内的模型位（如问文衡
+        # 取数规划）开启态失败 → 显式失败态 Answer，不落任何规则稿产物。
+        log.warning("ai.%s 模型位失败（强制语义）：%s", cap.id, e.reason)
+        return _publish(cap, period, role, mode="failed",
+                        backend=_backend_name(), notice=str(e), text=str(e),
+                        rule_text="", sources=(), parts=(),
+                        shield_res=Shield(0, 0),
+                        fallback=(e.reason or "model_required"),
+                        question_face=_question_face(payload), t0=t0)
     except Exception as e:                                     # noqa: BLE001
         log.warning("ai.%s 构建失败：%s: %s", cap.id, type(e).__name__, e)
         return _terminal(cap, period, role, mode="unavailable",
@@ -277,6 +308,8 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
     outcome = None
     mode, backend, text = "rule", "rule", draft.rule_text
     notice, fallback, fallback_detail = "", None, None
+    _strict_raise: _attempt.AIRequiredError | None = None
+    strict = _attempt.strict_enabled()
     if cap.modeled:
         outcome = _attempt.attempt(
             draft.task, system=_system_for(cap.id), ability=cap.id,
@@ -298,16 +331,31 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
                     else:
                         fallback_detail = ({k: len(v) for k, v in outcome.detail.items()})
                 notice = outcome.notice
-                if cap.id == "qa":
+                if cap.id == "diagnose":
+                    if strict:
+                        # 供应商强制语义（rick 2026-11-04）：主产线 AI 位
+                        # 整单失败——收尾照记一条失败记录后上抛，
+                        # 不落任何规则稿产物。
+                        _strict_raise = _attempt.AIRequiredError(
+                            str(fallback or ""), what="诊断报告（主产线 AI 位）")
+                        mode, backend = "failed", outcome.backend
+                        text = _fail_text(fallback, strict=True)
+                    # 关闭态：照旧规则稿（flow/run_pipeline 各有防御回落）。
+                else:
                     mode, backend = "failed", outcome.backend
-                    _fail_blob = str(fallback) + str(outcome.detail or "")
-                    text = (_QA_TIMEOUT_TEXT if "timeout" in _fail_blob.lower()
-                            else _QA_FAILED_TEXT)
+                    text = _fail_text(fallback, outcome.detail, strict)
             elif (cap.id == "review"
                   and not draft.number.cited_facts(outcome.candidate_protected)):
                 # 越题：review 保持回落（政策留在能力口）。
                 fallback = _attempt.FallbackReason.OFF_TOPIC
-                notice = "模型作答未引用本期事实，已回退规则版。"
+                if strict:
+                    # 供应商强制语义：不拿规则稿顶包——显式失败态。
+                    mode, backend = "failed", outcome.backend
+                    text = ("模型作答未引用本期事实，已按供应商强制语义"
+                            "放弃本次作答。请重试。（原因码：off_topic）")
+                    notice = "模型作答未引用本期事实（强制语义，不回落规则稿）。"
+                else:
+                    notice = "模型作答未引用本期事实，已回退规则版。"
             elif cap.id == "qa" and not draft.number.cited_facts(outcome.candidate_protected):
                 # 问答越题（未引用事实）＝多是澄清/换口径的回答：模型必须作答（rick
                 # 2026-10-31），照发——盾已验证无未标记数字，来源计数如实为 0；
@@ -339,16 +387,27 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
         kernel = draft.data.get("kernel")
         if isinstance(kernel, dict) and kernel.get("mode") in ("model", "fallback"):
             record = kernel
-    return _publish(cap, record_period, role, mode=mode, backend=backend, notice=notice,
-                    text=text, rule_text=draft.rule_text, sources=used, parts=draft.parts,
-                    shield_res=shield_res, fallback=fallback,
-                    question_face=_question_face(payload),
-                    egress=(outcome.egress if outcome is not None else None),
-                    elapsed_ms=(outcome.elapsed_ms if outcome is not None else None),
-                    t0=t0, fallback_detail=fallback_detail, data=draft.data,
-                    plan=draft.plan, record=record,
-                    receipts=draft.receipts + tuple(
-                        (outcome.receipts if outcome is not None else ()) or ()))
+            if strict and kernel.get("mode") == "fallback":
+                # 供应商强制语义（rick 2026-11-04）：内核轮失败＝这轮对话
+                # 失败——不拿规则拼装正文顶包；记录面照记（kernel 自带
+                # fallback 码），Answer.mode 照实（failed，不说 model）。
+                reason = str(kernel.get("fallback") or "unknown")
+                mode, backend = "failed", str(kernel.get("backend") or "rule")
+                text = f"模型生成失败，请重试。（原因码：{reason}）"
+                notice = "本轮对话模型失败（强制语义，不回落规则稿）。"
+    ans = _publish(cap, record_period, role, mode=mode, backend=backend, notice=notice,
+                   text=text, rule_text=draft.rule_text, sources=used, parts=draft.parts,
+                   shield_res=shield_res, fallback=fallback,
+                   question_face=_question_face(payload),
+                   egress=(outcome.egress if outcome is not None else None),
+                   elapsed_ms=(outcome.elapsed_ms if outcome is not None else None),
+                   t0=t0, fallback_detail=fallback_detail, data=draft.data,
+                   plan=draft.plan, record=record,
+                   receipts=draft.receipts + tuple(
+                       (outcome.receipts if outcome is not None else ()) or ()))
+    if _strict_raise is not None:
+        raise _strict_raise          # 供应商强制语义：照记（上方）后上抛
+    return ans
 
 
 def capabilities(actor=None) -> tuple[CapabilityInfo, ...]:

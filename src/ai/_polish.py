@@ -5,12 +5,14 @@
 - 无云配置（规则版）时直接原样返回，不探活、不出网；
 - 只碰措辞、不碰数字：文本先过盾，候选占位符一个不少一个不多才还原；
 - 失败/盾未过/不许动的标记被弄坏 → **原样返回**（润色不是产出步骤：不报错、不降级标记）。
+  **例外（供应商强制语义，rick 2026-11-04）**：开启态（`_attempt.strict_enabled()`）
+  下失败/标记弄坏不再回落原文——抛 `AIRequiredError`，显式失败。
 """
 from __future__ import annotations
 
 import logging
 
-from . import _writing
+from . import _attempt, _writing
 
 LOG = logging.getLogger(__name__)
 
@@ -34,16 +36,21 @@ def rewrite(text: str, *, keep=("【手工：", "待验证假设")) -> str:
         return text
     if not enabled():
         return text
-    from . import _attempt                                         # noqa: PLC0415
-
     res = _attempt.attempt(text, system=SYSTEM, ability="polish", anchored=True)
     if not res.attempted:
         return text                                                # 规则部署：原文照发
     if res.text is None:
+        # 供应商强制语义（rick 2026-11-04）：开启态下失败不许拿原文顶包。
+        if _attempt.strict_enabled():
+            raise _attempt.AIRequiredError(str(res.reason or ""),
+                                            what="语言润色位")
         LOG.warning("润色未生效（%s），原样返回", res.reason)
         return text
     out = res.text
     for tag in keep:
         if tag in text and tag not in out:
+            # 该保留的标记被弄坏＝模型产出不可用：开启态同样不回落原文。
+            if _attempt.strict_enabled():
+                raise _attempt.AIRequiredError("keep_broken", what="语言润色位")
             return text
     return out
