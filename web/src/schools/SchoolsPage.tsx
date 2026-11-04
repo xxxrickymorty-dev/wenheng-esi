@@ -7,20 +7,29 @@
    轮询兜底）一件未动。
    左页会泽品牌面＋右页报头（眉标 / 校名 / 期次）→ 总站位 → 22 行学科表；
    已入 1% 与未入之间一道 1px 金线，未在榜格子写 `—`。
-   能力一件不少：院校清单（选校抽屉）、多校对比（队列）、生成报告（既有 POST 口）。
+   能力一件不少：院校清单（选校抽屉）、多校对比（队列）、生成报告
+   （2026-11-04 起走任务口：开任务 → 轮询任务状态到终态，旧同步口不再调用）。
    数字零口径：总站位与学科行全部解析自后端已生成的站位报告（`/monitor/report/…`），
    前端只搬运显示值，不换算、不补数、不猜期次；后端没有的指标写 `—`。 */
 
 import { useEffect, useRef, useState } from 'react'
 import {
-  type MonitorSchool, type MonitorSchools,
-  generateCompareReport, generateMonitorReport, getMonitorSchools,
+  type MonitorJob, type MonitorSchool, type MonitorSchools,
+  getMonitorJob, getMonitorSchools, monitorJobUrl,
+  startMonitorCompareJob, startMonitorReportJob,
 } from '../api-monitor'
 import { HttpError, getMe, type Me } from '../api'
 import { SideRail, useSideRail } from '../SideRail'
 import { useSettingsCenter } from '../dialog/ModelPanel'
 
 const RUN_STEPS = ['取数', '拼表', '出稿', '核验', '签发']
+
+/* 生成任务的状态轮询节奏（2026-11-04 迁任务口）：开任务后先快探一次，
+   之后每 10 秒读一次任务状态直到终态——与预开页原 compare-status
+   兜底探针同一节奏。预开页与主页面各盯一份，互不依赖：
+   预开页负责跳转（主页面关掉也不影响），主页面负责按钮与清单回填。 */
+const JOB_POLL_FIRST_MS = 1500
+const JOB_POLL_MS = 10000
 
 /* ESI 22 学科（固定名录；只列名字，不带任何数字）。未在榜行按英文名排序补 `—`。 */
 const DISCIPLINES: { en: string; cn: string }[] = [
@@ -95,13 +104,14 @@ function parseStanding(html: string): Standing {
   return { rows, totals }
 }
 
-/* 预开页的加载反馈：点击手势内开窗后立刻写入「在跑」，生成完由本页回填报告地址；
-   失败则在原页显示原因。离开这个加载页前，用户不是在盯空白。
+/* 预开页的加载反馈：点击手势内开窗后立刻写入「在跑」，拿到任务号后
+   重写成「盯任务」版——由预开页自己轮询任务状态，completed 跳报告、
+   failed 原地亮出后端给的人话。离开这个加载页前，用户不是在盯空白。
 
-   2026-11-02 改：原来的五步动画是**假的**——每 600ms 前进一格，第 5 步用 `%` 绕回第 1 步，
-   于是进度条从 100% 弹回 20%，看着像「退回去了」。生成接口是同步的（POST 一直挂到算完），
-   没有分步进度可读，所以这里改成不确定进度条（来回扫）＋真实已用秒数：
-   说清在干什么、已经等了多久，不假装知道干到哪一步。 */
+   2026-11-04 迁任务口后生成在后台进行：本页关掉也不影响任务，
+   跑完自动跳转；进度依旧没有分步可读，保持不确定进度条＋真实已用秒数
+   （说清在干什么、已经等了多久，不假装知道干到哪一步）。
+   jobUrl 不传＝开任务前的静态版（无计时、无轮询；拿到任务号即被替换）。 */
 /* 预开页取色器：预开页是 document.write 进新窗口的独立文档，够不着本页样式表、
    读不到 schools.css 的 --whs-* 变量——开窗时从活页 .whs-root 把令牌值读出来，
    拼进预开页自己的 <style>。色值单一来源仍是 schools.css 顶部 --whs-* 段
@@ -112,7 +122,7 @@ function docPalette(): (name: string) => string {
   return (name) => (css ? css.getPropertyValue(name).trim() : '')
 }
 
-function loadingDoc(label: string, pollUrl?: string): string {
+function loadingDoc(label: string, jobUrl?: string): string {
   const steps = RUN_STEPS.join(' → ')
   const v = docPalette()
   return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">` +
@@ -129,10 +139,8 @@ function loadingDoc(label: string, pollUrl?: string): string {
     `.el{font-size:12px;color:${v('--whs-doc-sub')};margin:8px 0 0;font-variant-numeric:tabular-nums}` +
     `.el b{color:${v('--whs-doc-flow')};font-weight:600}` +
     `.hint{font-size:12px;color:${v('--whs-muted')};margin-top:12px;line-height:1.75}` +
-    `.rec{display:none;margin-top:14px;gap:8px}` +
-    `.rec.on{display:flex}` +
-    `.rec a{font-size:12.5px;color:${v('--whs-doc-ink')};background:${v('--whs-doc-flow')};` +
-    `color:#fff;padding:7px 14px;border-radius:6px;text-decoration:none;font-weight:600}` +
+    `.hint.bad{color:${v('--whs-bad')};font-weight:600}` +
+    `.rec{display:flex;margin-top:14px;gap:8px}` +
     `.rec button{font-size:12.5px;color:${v('--whs-doc-sub')};background:none;` +
     `border:1px solid ${v('--whs-doc-line')};padding:7px 14px;border-radius:6px;cursor:pointer}` +
     `@media (prefers-reduced-motion:reduce){.fl{animation:none;width:100%;opacity:.35}}` +
@@ -140,29 +148,40 @@ function loadingDoc(label: string, pollUrl?: string): string {
     `<div class="brand">文衡 · 高校 ESI 报告</div>` +
     `<h1>正在生成：${label}</h1>` +
     `<p class="sub">完成后本页自动跳转为报告。</p>` +
-    `<div class="bar"><div class="fl"></div></div>` +
+    `<div class="bar" id="bar"><div class="fl"></div></div>` +
     `<p class="steps">工序：${steps}</p>` +
-    `<p class="el">已用 <b id="el">0</b> 秒</p>` +
-    `<p class="hint" id="hint">五道工序一次跑完，中途没有分步进度；跑完会自动跳转。若超过两三分钟没有动静，回上一页看状态或重新生成。</p>` +
-    `<div class="rec" id="rec">` +
-    (pollUrl ? `<a id="go" href="${pollUrl}">打开报告</a>` : ``) +
+    (jobUrl
+      ? `<p class="el">已用 <b id="el">0</b> 秒</p>` +
+        `<p class="hint" id="hint">生成在后台进行，本页关掉也不影响；完成后自动跳转。若长时间没有动静，回上一页看状态。</p>`
+      : `<p class="hint">正在开任务……</p>`) +
+    `<div class="rec">` +
     `<button type="button" onclick="history.length>1?history.back():close()">回上一页</button>` +
     `</div>` +
-    `<script>` +
-    `var t=0,el=document.getElementById('el');setInterval(function(){t+=1;el.textContent=t},1000);` +
-    // 看门狗（2026-11-04）：生成口的请求如果断在半路，本页会永远转圈——
-    // 单校与对比报告的落盘地址都可探测（对比件走 /api/monitor/compare-status），
-    // 每 10s 探测一次，落盘即跳；探测口不可用时 60s 亮出兜底按钮，不让用户干等。
-    (pollUrl
-      ? `var poll=function(){fetch('${pollUrl}',{method:'GET',credentials:'same-origin',cache:'no-store'})` +
-        `.then(function(r){if(!r.ok)throw 0;` +
-        `return r.json().then(function(j){return (j&&j.url)?j.url:'${pollUrl}'},` +
-        `function(){return '${pollUrl}'})})` +
-        `.then(function(u){if(u)location.replace(u)}).catch(function(){})};` +
-        `setInterval(poll,10000);setTimeout(poll,1500);`
+    (jobUrl
+      ? `<script>` +
+        `var t=0,el=document.getElementById('el');` +
+        `setInterval(function(){t+=1;if(el)el.textContent=t},1000);` +
+        // 盯任务：每 10s 读一次任务状态（先 1.5s 快探一次），到终态为止。
+        // completed → 跳产物页；failed → 原地亮出后端给的人话（textContent 写入，不拼 HTML）。
+        // 状态口暂时读不到就下一轮再试，不当作失败。
+        `var done=false;` +
+        `var poll=function(){` +
+        `if(done)return;` +
+        `fetch('${jobUrl}',{method:'GET',credentials:'same-origin',cache:'no-store'})` +
+        `.then(function(r){if(!r.ok)throw 0;return r.json()})` +
+        `.then(function(j){` +
+        `if(done||!j)return;` +
+        `if(j.status==='completed'&&j.url){done=true;location.replace(j.url);return}` +
+        `if(j.status==='failed'){` +
+        `done=true;` +
+        `var bar=document.getElementById('bar');if(bar)bar.style.display='none';` +
+        `var hint=document.getElementById('hint');` +
+        `if(hint){hint.textContent=j.error||'生成没跑成，回上一页重试。';hint.className='hint bad'}` +
+        `}` +
+        `}).catch(function(){})};` +
+        `setInterval(poll,${JOB_POLL_MS});setTimeout(poll,${JOB_POLL_FIRST_MS});` +
+        `</script>`
       : ``) +
-    `setTimeout(function(){document.getElementById('rec').className='rec on'},60000);` +
-    `</script>` +
     `</div></body></html>`
 }
 
@@ -197,7 +216,35 @@ export default function SchoolsPage() {
   const [cmpBusy, setCmpBusy] = useState(false)
   const reqRef = useRef(0)
   const aliveRef = useRef(true)
+  /* 盯任务的序号：开出新任务就作废旧盯（迟到的旧任务回执不再落到本页）；
+     页面卸载由 aliveRef 一并拦住——竞态守卫按 UX.md §十一「任务维度」办理。 */
+  const jobSeqRef = useRef(0)
   useEffect(() => () => { aliveRef.current = false; reqRef.current++ }, [])
+
+  /** 盯一个监测生成任务到终态：先快探一次，之后每 10 秒读一次任务状态。
+      completed → onDone(产物地址)；failed → onFail(后端人话)；
+      状态口暂时读不到就下一轮再试，不当作失败。 */
+  const watchJob = (jobId: string,
+                    onDone: (url: string) => void,
+                    onFail: (msg: string) => void) => {
+    const seq = ++jobSeqRef.current
+    const alive = () => aliveRef.current && jobSeqRef.current === seq
+    const tick = async () => {
+      if (!alive()) return
+      let job: MonitorJob | null = null
+      try {
+        job = await getMonitorJob(jobId)
+      } catch { /* 状态口暂时读不到，下一轮再试 */ }
+      if (!alive()) return
+      if (job?.status === 'completed' && job.url) { onDone(job.url); return }
+      if (job?.status === 'failed') {
+        onFail(job.error || '生成没跑成，回本页重试')
+        return
+      }
+      setTimeout(() => { void tick() }, JOB_POLL_MS)
+    }
+    setTimeout(() => { void tick() }, JOB_POLL_FIRST_MS)
+  }
 
   /* 左页侧栏换装 SideRail（2026-11-03 票 1）：宽度/收回偏好与工作区、问文衡同键同件。
      me/roleKnown 用 api.ts 现成 getMe（内部吞错）：拿不到就是未登录占位，不冒充馆员。 */
@@ -261,64 +308,81 @@ export default function SchoolsPage() {
     setQueue((qq) => qq.includes(name) ? qq.filter((x) => x !== name) : [...qq, name])
   }
 
-  const genCompare = async () => {
+  const genCompare = () => {
     if (queue.length < 2 || cmpBusy) return
     setCmpBusy(true)
-    /* 对比件地址也确定性（后端按校名集合哈希落盘），状态口探测落盘即跳（20261104）：
-       与单校同一套轮询兜底——生成口请求断在半路时本页不再永远转圈。 */
-    const pollUrl = data?.period && queue.length >= 2
-      ? `/api/monitor/compare-status?schools=${encodeURIComponent(queue.join(','))}` +
-        `&period=${encodeURIComponent(data.period)}`
-      : undefined
+    const label = `${queue.length} 所学校 · 对比报告`
+    /* 报告页在点击手势内先开（预开空白页，到手后再回填地址）——await 之后开窗会被弹窗策略拦。 */
     const w = window.open('about:blank', '_blank')
     if (w) {
       w.opener = null
-      writeDoc(w, loadingDoc(`${queue.length} 所学校 · 对比报告`, pollUrl))
+      writeDoc(w, loadingDoc(label))
     }
-    try {
-      const r = await generateCompareReport(queue)
-      const abs1 = new URL(r.url, window.location.origin).href
-      if (w && !w.closed) w.location.href = abs1
-      else window.open(abs1, '_blank', 'noopener')
-    } catch (e) {
-      if (w && !w.closed) writeDoc(w, errDoc(e instanceof HttpError ? e.message : '生成没跑成，稍后再试'))
-      window.alert(e instanceof HttpError ? e.message : '对比报告没跑成，稍后再试')
-    } finally {
-      setCmpBusy(false)
-    }
+    void (async () => {
+      /* 开任务：409（另有监测任务在跑）与校验 4xx 都是后端给的人话，原样亮出。 */
+      let jobId = ''
+      try {
+        const started = await startMonitorCompareJob(queue)
+        jobId = started.job_id
+      } catch (e) {
+        const msg = e instanceof HttpError ? e.message : '对比报告没跑成，稍后再试'
+        if (w && !w.closed) writeDoc(w, errDoc(msg))
+        if (aliveRef.current) { setGenErr(msg); setCmpBusy(false) }
+        return
+      }
+      /* 预开页换成「盯任务」版：它自己轮询任务状态，落定即跳（主页面关掉也不影响）。 */
+      if (w && !w.closed) writeDoc(w, loadingDoc(label, monitorJobUrl(jobId)))
+      watchJob(jobId, (url) => {
+        const abs = new URL(url, window.location.origin).href
+        if (w && !w.closed) w.location.href = abs
+        else window.open(abs, '_blank', 'noopener')
+        if (aliveRef.current) setCmpBusy(false)
+      }, (msg) => {
+        if (w && !w.closed) writeDoc(w, errDoc(msg))
+        if (aliveRef.current) { setGenErr(msg); setCmpBusy(false) }
+      })
+    })()
   }
 
-  const gen = async (name: string) => {
-    if (genBusy === name) return
+  const gen = (name: string) => {
+    if (genBusy) return
     setGenErr('')
     setGenBusy(name)
-    /* 报告页在点击手势内先开（预开空白页，到手后再回填地址）——await 之后开窗会被弹窗策略拦。
-       单校报告地址可预知（/monitor/report/<校名>/<期次>.html），预开页拿它做轮询兜底。 */
-    const pollUrl = data?.period
-      ? `/monitor/report/${encodeURIComponent(name)}/${data.period}.html`
-      : undefined
+    /* 报告页在点击手势内先开（预开空白页，到手后再回填地址）——await 之后开窗会被弹窗策略拦。 */
     const w = window.open('about:blank', '_blank')
     if (w) {
       w.opener = null
-      writeDoc(w, loadingDoc(name, pollUrl))
+      writeDoc(w, loadingDoc(name))
     }
-    try {
-      const r = await generateMonitorReport(name)
-      const abs1 = new URL(r.url, window.location.origin).href
-      if (w && !w.closed) w.location.href = abs1
-      else window.open(abs1, '_blank', 'noopener')
-      if (!aliveRef.current) return
-      setData((d) => d && ({
-        ...d,
-        schools: d.schools.map((s) => s.cn === name ? { ...s, generated: true, url: r.url } : s),
-      }))
-    } catch (e) {
-      const msg = e instanceof HttpError ? e.message : '生成没跑成，稍后再试'
-      if (w && !w.closed) writeDoc(w, errDoc(msg))
-      if (aliveRef.current) setGenErr(msg)
-    } finally {
-      if (aliveRef.current) setGenBusy('')
-    }
+    void (async () => {
+      /* 开任务：409（另有监测任务在跑）与校名/期次预检 4xx 都是后端给的人话，原样亮出。 */
+      let jobId = ''
+      try {
+        const started = await startMonitorReportJob(name)
+        jobId = started.job_id
+      } catch (e) {
+        const msg = e instanceof HttpError ? e.message : '生成没跑成，稍后再试'
+        if (w && !w.closed) writeDoc(w, errDoc(msg))
+        if (aliveRef.current) { setGenErr(msg); setGenBusy('') }
+        return
+      }
+      /* 预开页换成「盯任务」版：它自己轮询任务状态，落定即跳（主页面关掉也不影响）。 */
+      if (w && !w.closed) writeDoc(w, loadingDoc(name, monitorJobUrl(jobId)))
+      watchJob(jobId, (url) => {
+        const abs = new URL(url, window.location.origin).href
+        if (w && !w.closed) w.location.href = abs
+        else window.open(abs, '_blank', 'noopener')
+        if (!aliveRef.current) return
+        setData((d) => d && ({
+          ...d,
+          schools: d.schools.map((s) => s.cn === name ? { ...s, generated: true, url } : s),
+        }))
+        setGenBusy('')
+      }, (msg) => {
+        if (w && !w.closed) writeDoc(w, errDoc(msg))
+        if (aliveRef.current) { setGenErr(msg); setGenBusy('') }
+      })
+    })()
   }
 
   const list = (data?.schools ?? []).filter((s) =>

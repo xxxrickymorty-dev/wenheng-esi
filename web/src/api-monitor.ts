@@ -25,7 +25,64 @@ export type MonitorSchools = {
   schools: MonitorSchool[]
 }
 
-export type MonitorReportDone = { period: string; url: string; cached: boolean }
+/* ---- 生成任务口（2026-11-04 任务制迁移；契约 §9）----
+   生成不再走同步 POST（旧口 /api/monitor/report、/api/monitor/compare
+   后端原样并存，前端不再调用）：先开任务（立刻回 job_id），再轮询
+   任务状态到终态。单飞由后端把守：另有监测任务在跑 → 409 人话
+   （HttpError.message 即后端原文，直接亮给馆员）。 */
+
+/** 开任务的回执：job_id＋状态口地址。reused:true＝同参任务已在跑，
+    直接复用它的 job_id（前端当普通任务盯即可）。 */
+export type MonitorJobStart = {
+  job_id: string
+  /** 状态口地址（/api/monitor/jobs/{id}）；前端用 monitorJobUrl 拼同款 */
+  url: string
+  status: 'running'
+  reused?: boolean
+}
+
+/** 任务状态（轮询口 GET /api/monitor/jobs/{id} 的响应）：
+    completed 的 url＝产物页地址（直接用）；
+    failed 的 error＝给人看的原因全文（后端已写成人话）。 */
+export type MonitorJob = {
+  id: string
+  kind: 'monitor_report' | 'monitor_compare'
+  period: string
+  params: Record<string, unknown>
+  status: 'running' | 'completed' | 'failed'
+  url: string | null
+  error: string | null
+  created_at: string
+  started_at: string | null
+  finished_at: string | null
+}
+
+export function monitorJobUrl(jobId: string): string {
+  return `/api/monitor/jobs/${encodeURIComponent(jobId)}`
+}
+
+/** 开一个单校报告生成任务。 */
+export async function startMonitorReportJob(cn: string): Promise<MonitorJobStart> {
+  return req<MonitorJobStart>('/api/monitor/report/job', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ school: cn }),
+  })
+}
+
+/** 开一个多校对比报告生成任务（名单去重保序由后端做）。 */
+export async function startMonitorCompareJob(cns: string[]): Promise<MonitorJobStart> {
+  return req<MonitorJobStart>('/api/monitor/compare/job', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ schools: cns }),
+  })
+}
+
+/** 读任务状态（轮询）。 */
+export async function getMonitorJob(jobId: string): Promise<MonitorJob> {
+  return req<MonitorJob>(monitorJobUrl(jobId))
+}
 
 /** 学校名单。`field`＝学科英文名（2026-11-04 契约新增）：
     带上它，items[].in_field 才标「该校在该学科是否在榜」；
@@ -33,20 +90,4 @@ export type MonitorReportDone = { period: string; url: string; cached: boolean }
 export async function getMonitorSchools(field?: string): Promise<MonitorSchools> {
   return req<MonitorSchools>(
     `/api/monitor/schools${field ? `?field=${encodeURIComponent(field)}` : ''}`)
-}
-
-export async function generateMonitorReport(cn: string): Promise<MonitorReportDone> {
-  return req<MonitorReportDone>('/api/monitor/report', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ school: cn }),
-  })
-}
-
-export async function generateCompareReport(cns: string[]): Promise<{ period: string; url: string; n: number }> {
-  return req('/api/monitor/compare', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ schools: cns }),
-  })
 }
