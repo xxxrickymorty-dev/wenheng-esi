@@ -211,51 +211,76 @@ def _img_url(src: str, prefix: str, img_map) -> str:
 
 
 #: 独立 HTML 件的外壳（自包含、无外部资源 —— 与 collation 离线快照同思路）
+#: 2026-11-04 视觉升级：版式语言对齐 `数学稿`（Lieflat R04 观感）——
+#: MONO 灰阶、无衬线、表格数字 tabular-nums、节标题引线；class 名全部保留
+#: （dense / fx-mark / fx-about / figrow / export-mark），渲染逻辑不变。
 SHELL = """<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title>
 <style>
-:root{{--paper:#FBF8F3;--ink:#2B2622;--ink-2:#5A5148;--ink-3:#8A7F72;--line:#DED5C6;
---zhu:#B23A2A;--mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace}}
-body{{margin:0;background:var(--paper);color:var(--ink);
-font:15px/1.75 "Songti SC","Noto Serif CJK SC",SimSun,serif}}
-.wrap{{max-width:860px;margin:0 auto;padding:40px 28px 80px}}
-h2,h3,h4{{font-weight:600;line-height:1.35;margin:26px 0 10px}}
-h2{{font-size:20px;border-bottom:1px solid var(--line);padding-bottom:6px}}
-h3{{font-size:17px}} h4{{font-size:15px}}
-table.dense{{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px}}
-table.dense th,table.dense td{{border:1px solid var(--line);padding:6px 9px;text-align:left}}
-table.dense th{{background:#F3EDE3;font-weight:600}}
+:root{{--bg:#F0EFEB;--ink:#1C1C1A;--ink-2:#57564F;--ink-3:#8F8E88;--faint:#C6C5BF;
+--line:#DEDDD6;--zhu:#1C1C1A;
+--sans:"Inter","Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+--mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace}}
+*{{margin:0;padding:0;box-sizing:border-box}}
+body{{margin:0;background:var(--bg);color:var(--ink);font:15px/1.8 var(--sans);
+-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums lining-nums}}
+.wrap{{max-width:880px;margin:0 auto;padding:44px 28px 72px}}
+/* 顶注：站名 · 标签 · 横幅（数学稿 tophead 同款） */
+.tophead{{display:flex;gap:14px;align-items:baseline;border-bottom:1px solid var(--ink);
+padding-bottom:10px;margin-bottom:34px;flex-wrap:wrap}}
+.tophead .site{{font-weight:700;font-size:13px;letter-spacing:.08em}}
+.tophead .sep{{color:var(--faint)}}
+.tophead .tag{{font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--ink-3)}}
+.tophead .banner{{margin-left:auto;font-size:10px;font-weight:700;letter-spacing:.14em;
+color:var(--ink);border:1px solid var(--ink);padding:3px 10px}}
+h2,h3,h4{{font-weight:700;line-height:1.4;margin:30px 0 12px}}
+h2{{font-size:19px;border-bottom:1px solid var(--line);padding-bottom:8px}}
+h3{{font-size:16px}} h4{{font-size:14.5px}}
+p{{margin:10px 0}}
+table.dense{{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px}}
+table.dense th,table.dense td{{border:1px solid var(--line);padding:7px 10px;text-align:left}}
+table.dense th{{background:#E7E6E0;font-weight:600;font-size:12px;letter-spacing:.04em}}
 table.dense td:first-child{{white-space:nowrap}}
-blockquote{{margin:12px 0;padding:10px 14px;background:#F5F0E7;
-border-left:3px solid var(--zhu);border-radius:0 3px 3px 0;color:var(--ink-2)}}
+table.dense td:nth-child(2){{font-variant-numeric:tabular-nums;font-weight:600}}
+blockquote{{margin:14px 0;padding:10px 14px;background:#E9E8E2;
+border-left:3px solid var(--ink);color:var(--ink-2)}}
 blockquote p{{margin:4px 0}}
-code{{font-family:var(--mono);font-size:12.5px;background:#F0EAE0;
+code{{font-family:var(--mono);font-size:12px;background:#E7E6E0;
 padding:1px 5px;border-radius:3px}}
 /* 待审线（票 01）：==句子== → 细下划线；与网页 .fx-md .fx-mark 同款（同 class、同参数） */
 .fx-mark{{text-decoration:underline;text-decoration-thickness:1px;
-text-underline-offset:2px;text-decoration-color:var(--ink-2)}}
-figure{{margin:16px 0;text-align:center}}
+text-underline-offset:2px;text-decoration-color:var(--ink-3)}}
+figure{{margin:18px 0;text-align:center}}
 figure img{{max-width:100%;border:1px solid var(--line);border-radius:3px;background:#fff}}
 /* 连续图两列一组（一篇里图不占满宽，观感更紧凑） */
 .figrow{{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}}
 .figrow figure{{margin:0}}
-.figrow figcaption{{font-size:12.5px;color:var(--ink-3);margin-top:5px}}
+.figrow figcaption{{font-size:12px;color:var(--ink-3);margin-top:6px;
+letter-spacing:.02em}}
 @media (max-width:640px){{.figrow{{grid-template-columns:1fr}}}}
-details.fx-about{{margin-top:22px;border:1px dashed var(--line);border-radius:3px;background:#F5F0E7}}
-details.fx-about>summary{{cursor:pointer;padding:10px 14px;font-size:14px;color:var(--ink-2)}}
+/* ECharts 图卡（数学稿观感：卡片白底 + 细线描边 + 图题小字） */
+figure.fx-echart{{background:#FBFAF7;border:1px solid var(--line);border-radius:4px;
+padding:14px 10px 8px;text-align:left}}
+.fx-chart{{width:100%;height:300px}}
+.figrow .fx-chart{{height:260px}}
+details.fx-about{{margin-top:22px;border:1px dashed var(--faint);border-radius:3px;background:#E9E8E2}}
+details.fx-about>summary{{cursor:pointer;padding:10px 14px;font-size:13.5px;color:var(--ink-2)}}
 details.fx-about .fx-about-in{{padding:2px 14px 12px;border-top:1px solid var(--line)}}
-details.fx-about h2{{font-size:16px;border-bottom:0;padding-bottom:0;margin:16px 0 6px}}
-hr{{border:0;border-top:1px solid var(--line);margin:26px 0}}
+details.fx-about h2{{font-size:15px;border-bottom:0;padding-bottom:0;margin:16px 0 6px}}
+hr{{border:0;border-top:1px solid var(--line);margin:28px 0}}
 ul,ol{{padding-left:22px}} li{{margin:5px 0}}
-a{{color:var(--zhu)}}
+a{{color:var(--ink);text-decoration:underline;text-decoration-color:var(--faint)}}
 /* 导出件页脚标注（2026-10-15）：报告内不再重复声明，声明在下载件页脚出现一次 */
 .export-mark{{margin-top:34px;padding-top:10px;border-top:1px solid var(--line);
-font-size:12.5px;color:var(--ink-3);text-align:center}}
+font-size:12px;color:var(--ink-3);text-align:center;letter-spacing:.06em}}
 </style></head><body><div class="wrap">
+<div class="tophead"><span class="site">文衡 · 灵活报告</span><span class="sep">/</span>
+<span class="tag">学科信息参考 · 第二条产线</span></div>
 {body}
 <p class="export-mark">内部参考 · 非报送件　｜　灵活报告（第二条产线）　｜　不带盖章位</p>
+{scripts}
 </div></body></html>
 """
 
@@ -286,13 +311,150 @@ def inline_images(html_text: str, base_dir) -> str:
     return re.sub(r'(<img\b[^>]*?\bsrc=")([^"]+)(")', _repl, html_text)
 
 
-def standalone(md: str, title: str, *, base_dir=None) -> str:
+def standalone(md: str, title: str, *, base_dir=None, chart_payloads=None) -> str:
     """渲染成可离线打开的**独立** HTML 件。
 
     `base_dir`（＝报告所在目录）：给了就把 `charts/*.png` 内联成 data URI——
     「下载报告」拿到的是**单文件**，离开 `charts/` 目录也带图。
+
+    `chart_payloads`（`echart.payloads_for` 的结果）：给了就把对应
+    `<img>` 图替换成 ECharts 容器（数学稿观感），库与数据全部内联，
+    仍是单文件零外链；没给的图保持 PNG 内联（docx 出口不受影响）。
+    🔴 payload 不含轴范围——渲染层 `scale:true` 让轴由数据自适应。
     """
     body = render(md)
+    scripts = ""
+    if chart_payloads:
+        body, fx = _swap_charts(body, chart_payloads)
+        if fx:
+            scripts = _chart_scripts(fx)
     if base_dir is not None:
         body = inline_images(body, base_dir)
-    return SHELL.format(title=html.escape(title), body=body)
+    return SHELL.format(title=html.escape(title), body=body, scripts=scripts)
+
+
+_FIG = re.compile(
+    r'<figure><img src="([^"]+)" alt="([^"]*)">'
+    r'(?:<figcaption>(.*?)</figcaption>)?</figure>', re.S)
+
+
+def _swap_charts(body: str, payloads: dict) -> tuple[str, list[dict]]:
+    """把 payload 覆盖到的 `<figure><img …>` 换成 ECharts 容器。
+
+    返回 (新 body, 按文档顺序的 payload 列表)。未覆盖的图原样保留。
+    """
+    fx: list[dict] = []
+
+    def _repl(m):
+        src, alt, cap = m.group(1), m.group(2), m.group(3)
+        name = src.split("/")[-1]
+        p = payloads.get(name)
+        if p is None:
+            return m.group(0)
+        idx = len(fx)
+        fx.append(p)
+        cap_html = cap or html.escape(alt)
+        return (f'<figure class="fx-echart">'
+                f'<div class="fx-chart" id="fxc{idx}"></div>'
+                f'<figcaption>{cap_html}</figcaption></figure>')
+
+    return _FIG.sub(_repl, body), fx
+
+
+_LIB_PATH = pathlib.Path(__file__).parent / "vendor" / "echarts.min.js"
+_LIB_CACHE: str | None = None
+
+
+def _echarts_lib() -> str:
+    global _LIB_CACHE
+    if _LIB_CACHE is None:
+        _LIB_CACHE = _LIB_PATH.read_text(encoding="utf-8")
+    return _LIB_CACHE
+
+
+#: 渲染层（2026-11-04）：样式常量与 `数学稿` 逐字一致（MONO 灰阶、
+#: 实线＝实测 / 虚线＝阈值对标、endLabel 大数、dotted 网格）。
+#: 🔴 红线遵守方式：y 轴不写 min/max，用 `scale:true` 按数据自适应；
+#: payload 里也没有轴范围字段（结构上不存在，同 spec.py）。
+_INIT_JS = """
+(function(){
+var FONT='"Inter","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif';
+var INK='#1C1C1A',MUT='#8F8E88',GRID='#DEDDD6';
+var fmt=function(n){return n==null?'':Number(n).toLocaleString('en-US')};
+var FMT={
+  int:function(v){return fmt(Math.round(v))},
+  dec3:function(v){return Number(v).toFixed(3)},
+  pct2:function(v){return Number(v).toFixed(2)+'%'}
+};
+function base(p){
+  return {
+    textStyle:{fontFamily:FONT,color:INK},
+    color:[INK,MUT,'#A9A89F'],
+    grid:{left:8,right:86,top:32,bottom:8,containLabel:true},
+    tooltip:{trigger:'axis',backgroundColor:'#fff',borderColor:GRID,borderWidth:1,
+      textStyle:{color:INK,fontSize:11,fontFamily:FONT},
+      axisPointer:{lineStyle:{color:MUT,type:'dashed'}}},
+    legend:{top:0,left:0,itemWidth:22,itemHeight:8,itemGap:16,
+      textStyle:{color:MUT,fontSize:10,fontFamily:FONT}},
+    xAxis:{type:'category',boundaryGap:p.type!=='line',data:p.cats.map(lbl),
+      axisLine:{lineStyle:{color:INK}},axisTick:{show:false},
+      axisLabel:{color:MUT,fontSize:10,fontFamily:FONT},splitLine:{show:false}},
+    yAxis:yaxis(p),
+    animationDuration:900,animationEasing:'cubicOut',
+    series:p.series.map(function(s){return serie(p,s)})
+  };
+}
+function lbl(p){return p.length===6?p.slice(0,4)+'-'+p.slice(4):p}
+function yaxis(p){
+  var f=FMT[p.fmt]||fmt;
+  var y={type:'value',scale:true,             /* 🔴 轴范围由数据决定，无 min/max */
+    axisLine:{show:false},axisTick:{show:false},
+    axisLabel:{color:MUT,fontSize:10,fontFamily:FONT,formatter:f},
+    splitLine:{lineStyle:{color:GRID,type:'dotted'}}};
+  if(p.invert)y.inverse=true;
+  if(p.type==='bar'&&p.fmt==='int')y.minInterval=1;
+  return y;
+}
+function serie(p,s){
+  var f=FMT[p.fmt]||fmt;
+  if(p.type==='bar'){
+    return {name:s.name,type:'bar',data:s.data,barWidth:'38%',
+      itemStyle:{color:s.dash?MUT:INK},label:{show:true,position:'top',
+      color:s.dash?MUT:INK,fontSize:10,fontFamily:FONT,formatter:o=>f(o.value)}};
+  }
+  var c=s.dash?MUT:INK;
+  var o={name:s.name,type:'line',data:s.data,smooth:false,
+    symbol:'circle',symbolSize:s.dash?5:6,
+    lineStyle:{width:s.dash?1.6:2,color:c,type:s.dash?'dashed':'solid'},
+    itemStyle:{color:c},
+    endLabel:{show:true,color:c,fontSize:11,fontWeight:s.dash?400:'bold',
+      fontFamily:FONT,formatter:o=>f(o.value)}};
+  if(p.markline&&!s.dash){
+    o.markLine={silent:true,symbol:'none',
+      lineStyle:{color:MUT,type:'dashed',width:1.4},
+      label:{formatter:p.markline.label,color:MUT,fontSize:10,
+        fontFamily:FONT,position:'insideEndTop'},
+      data:[{yAxis:p.markline.value}]};
+  }
+  return o;
+}
+var FX=window.FX_CHARTS||[];
+FX.forEach(function(p,i){
+  var el=document.getElementById('fxc'+i);
+  if(!el||!window.echarts)return;
+  var opt=base(p);
+  if(p.fmt==='pct2'){
+    opt.tooltip.valueFormatter=function(v){return FMT.pct2(v)};
+  }
+  echarts.init(el).setOption(opt);
+});
+})();
+"""
+
+
+def _chart_scripts(fx: list[dict]) -> str:
+    import json as _json
+    data = _json.dumps(fx, ensure_ascii=False, separators=(",", ":"))
+    return (f'<script>window.FX_CHARTS={data};</script>'
+            f'<script>{_echarts_lib()}</script>'
+            f'<script>{_INIT_JS}</script>')

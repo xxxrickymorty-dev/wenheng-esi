@@ -370,6 +370,45 @@ class Test独立件:
         assert ".fx-mark{" in h and "text-decoration-thickness:1px" in h
 
 
+# ================================================================ 9.5 ECharts 图（2026-11-04）
+class TestECharts图:
+    PAYLOAD = {"kind": "cnci", "type": "line", "cats": ["202509", "202609"],
+               "series": [{"name": "CNCI", "data": [1.04, 1.08], "dash": False}],
+               "markline": {"value": 1.0, "label": "全球平均 1.0"}, "fmt": "dec3"}
+
+    def test_payload图替换img_未覆盖图保留(self):
+        md = "![CNCI](charts/a.png)\n\n![缺](charts/none.png)"
+        h = mdview.standalone(md, "t", chart_payloads={"a.png": self.PAYLOAD})
+        assert 'class="fx-chart"' in h and 'id="fxc0"' in h
+        assert "charts/none.png" in h, "payload 没覆盖的图原样保留"
+        assert '<figure><img src="charts/a.png"' not in h
+
+    def test_lib与数据全内联_仍零外链(self):
+        h = mdview.standalone("![CNCI](charts/a.png)", "t",
+                               chart_payloads={"a.png": self.PAYLOAD})
+        assert "window.FX_CHARTS=" in h
+        assert '"kind":"cnci"' in h                      # payload JSON 内联
+        assert "Apache Software Foundation" in h         # echarts 库内联
+        # 无外链**资源**（许可证文本里的 URL 不算）：不许出现远程 src/href
+        assert 'src="http' not in h and 'href="http' not in h
+
+    def test_渲染层无轴范围红线(self):
+        """🔴 初始化 JS 不得给 y 轴写 min/max——轴范围由数据决定。"""
+        js = mdview._INIT_JS
+        assert "scale:true" in js
+        assert "min:" not in js and "max:" not in js
+
+    def test_图注随图保留(self):
+        md = "![CNCI](charts/a.png)\n\n*CNCI 变化（近 7 期）*"
+        h = mdview.standalone(md, "t", chart_payloads={"a.png": self.PAYLOAD})
+        assert "<figcaption>CNCI 变化（近 7 期）</figcaption>" in h
+
+    def test_无payload时与旧逻辑一致(self):
+        h = mdview.standalone("![图](charts/a.png)", "t")
+        assert '<figure><img src="charts/a.png"' in h
+        assert "FX_CHARTS" not in h
+
+
 # ================================================================ 10. 整篇合成
 class Test整篇合成:
     def test_产线形态的稿子各块各就各位(self):

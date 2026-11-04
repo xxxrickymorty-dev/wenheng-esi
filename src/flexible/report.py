@@ -879,10 +879,17 @@ def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
         md = _render(plan, built, meta)   # 重规划轨迹/交人标注进报告（纯拼接）
 
     (d / "report.md").write_text(md, encoding="utf-8")
-    # 独立可打开的 HTML（可导出、可离线看；不依赖任何 CDN）
-    from . import mdview
+    # 独立可打开的 HTML（可导出、可离线看；不依赖任何 CDN）。
+    # 2026-11-04：图在 HTML 出口升级为 ECharts（数学稿观感）；数据
+    # payload 由 echart 从台账 parquet 取点，PNG 产线不动（docx 仍用）。
+    from . import mdview, echart
+    try:
+        payloads = echart.payloads_for(built.get("charts") or [], src.dir)
+    except Exception:                                             # noqa: BLE001
+        payloads = {}            # payload 失败不挡出稿，图回落 PNG
     (d / "report.html").write_text(
-        mdview.standalone(md, plan.get("title") or "灵活分析稿", base_dir=d),
+        mdview.standalone(md, plan.get("title") or "灵活分析稿",
+                          base_dir=d, chart_payloads=payloads),
         encoding="utf-8")
     # DOCX（2026-10-15 rick：下载报告给 docx、方便馆员修改；页脚标注一次）
     try:

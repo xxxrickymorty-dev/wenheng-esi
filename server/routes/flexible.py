@@ -110,7 +110,29 @@ async def period_flexible_report(request: Request, period: str, intent: str):
     if not p.exists():
         raise HTTPException(status_code=404)
     import flexible.mdview as flex_mdview                            # noqa: PLC0415
-    text = flex_mdview.inline_images(p.read_text(encoding="utf-8"), base_dir=p.parent)
+    text = None
+    # 2026-11-04：下载口即时 ECharts 升级——从 report.md + flex_sources.json
+    # 现场重渲染（新稿幂等；旧稿也立刻拿到 ECharts 版，磁盘原件不动）。
+    # 任一前置缺失/失败 → 回落原文件 + PNG 内联（绝不编数据）。
+    try:
+        md_p = p.parent / "report.md"
+        srcs_p = p.parent / "flex_sources.json"
+        if md_p.is_file() and srcs_p.is_file():
+            from flexible import echart as fx_echart                 # noqa: PLC0415
+            entries = json.loads(srcs_p.read_text(encoding="utf-8"))
+            charts = [e for e in entries if e.get("kind") == "chart"]
+            payloads = fx_echart.payloads_for(charts, d)
+            md_text = md_p.read_text(encoding="utf-8")
+            m = re.match(r"(?m)^#\s+(.+)$", md_text)
+            title = m.group(1).strip() if m else "灵活分析稿"
+            text = flex_mdview.standalone(md_text, title,
+                                           base_dir=p.parent,
+                                           chart_payloads=payloads)
+    except Exception:                                                # noqa: BLE001
+        text = None
+    if text is None:
+        text = flex_mdview.inline_images(p.read_text(encoding="utf-8"),
+                                          base_dir=p.parent)
     fn = urllib.parse.quote(f"灵活报告_{period}_{intent}.html")
     return Response(text, media_type="text/html; charset=utf-8",
                     headers={"Cache-Control": "no-cache",
