@@ -589,8 +589,8 @@ def main():
               all(r["computed"] in ("none", "thin") and r["layout"] == 0 for r in sb), str(sb))
         n_pills = operator.eval_on_selector_all(".dlg-land-pill", "els => els.length")
         check("对话页空态有示例胶囊（≥6）", n_pills >= 6, f"{n_pills} 个")
-        check("对话页顶栏是会话题（问文衡；槽位在顶栏不在窗件）",
-              "问文衡" in (operator.inner_text(".wd-chat-ttl") or ""), "")
+        check("对话页标题是会话题（对话前门；20261103 HanaAgent 改版撤顶栏题）",
+              "对话前门" in (operator.title() or ""), operator.title()[:40])
         operator.goto(BASE + "/app/dialog/?ask=" + urllib.parse.quote("查一下化学的接近度"),
                       wait_until="networkidle")
         try:
