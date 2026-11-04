@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<title>侧栏-完全收回（静态稿 20261104）· 文衡</title>
+<!--
+  侧栏第三态「完全收回」静态稿（2026-11-04）——待 rick 审
+  - 单文件零依赖，双击即开；配色/字体照 web/src/index.css 的 .app-shell 真样式。
+  - 三态：展开 280 / 图标轨 64 / 完全收回 0，右上芯片切换，也可按稿内路径交互。
+  - 完全收回＝宽 0，订口金线仍在原位，线上骑 8px 细把手：
+    悬停滑出（overlay，200ms，右页不回流）、点击固定、Enter 切换、Esc 收回。
+  - 地址栏 hash 可直达状态：#expand / #rail / #zero / #zero,peek（供截图与分享）。
+-->
+<style>
+  :root{
+    --deep:#143729; --deep-2:#0F2C21; --deep-3:#1B4433;
+    --seam:#B08E48; --mark:#C8B584;
+    --paper:#F5F3EC; --card:#FAF8F0;
+    --ink:#1E2A23; --ink-2:#4A564D; --ink-3:#6C706A;
+    --line:#DFDBCB; --hair:rgba(223,219,203,.6);
+    --act:#1F5B4A;
+    --ivory:#F6F1DE; --ivory-2:rgba(246,241,222,.80); --ivory-3:rgba(246,241,222,.54);
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",STSong,SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:"JetBrains Mono",Consolas,"Courier New",monospace;
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:#EDE9DE;color:var(--ink);font:15px/1.7 var(--sans);
+    -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;
+    padding:22px 24px 46px;overflow-x:hidden}
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+
+  /* ───── 稿首说明条 ───── */
+  .note{max-width:1320px;margin:0 auto 18px;background:var(--deep);color:#E8E2CD;
+    padding:13px 20px;font-size:12.5px;line-height:1.9}
+  .note b{color:#F2E9CF}
+  .note ol{margin:4px 0 0;padding-left:19px}
+
+  /* ───── 演示控制条 ───── */
+  .ctrl{max-width:1320px;margin:0 auto 14px;display:flex;align-items:center;
+    gap:10px;flex-wrap:wrap}
+  .chip{display:inline-flex;align-items:baseline;gap:7px;padding:7px 14px;
+    border:1px solid #C9C3B0;background:var(--card);font-size:13px;
+    letter-spacing:.05em;color:var(--ink-2)}
+  .chip i{font-style:normal;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+  .chip:hover{border-color:var(--seam)}
+  .chip.on{background:var(--deep);border-color:var(--deep);color:var(--ivory)}
+  .chip.on i{color:var(--mark)}
+  .path{margin-left:auto;font-size:12px;color:var(--ink-3);letter-spacing:.03em}
+  .path b{color:var(--ink-2);font-weight:600}
+
+  /* ═════ 跨页书壳 ═════ */
+  .shell{--sw:280px; --lw:var(--sw);
+    max-width:1320px;margin:0 auto;height:620px;position:relative;
+    background:var(--paper);border:1px solid #D4CFBD;overflow:hidden}
+  .shell[data-state="rail"]{--lw:64px}
+  .shell[data-state="zero"]{--lw:0px}
+
+  /* 订口金线：三态都在原位，不吃鼠标 */
+  .shell::after{content:"";position:absolute;top:0;bottom:0;left:var(--lw);width:1px;
+    background:var(--seam);pointer-events:none;z-index:20;
+    transition:left .2s cubic-bezier(.2,.7,.3,1)}
+
+  /* ───── 左页侧栏：宽随态，收回态整体滑出成 overlay ───── */
+  .side{position:absolute;top:0;bottom:0;left:0;width:var(--sw);z-index:10;
+    display:flex;flex-direction:column;background:var(--deep);color:var(--ivory);
+    padding:clamp(14px,2.4vh,24px) clamp(18px,1.6vw,24px);
+    transition:width .2s cubic-bezier(.2,.7,.3,1),transform .2s cubic-bezier(.2,.7,.3,1),
+      visibility .2s,box-shadow .2s}
+  .shell[data-state="rail"] .side{width:64px;padding:14px 0}
+  .shell[data-state="zero"] .side{transform:translateX(-101%);visibility:hidden}
+  /* overlay 滑出态：右页之上，投影（裁决点②的「一线分隔」备选见稿尾） */
+  .shell[data-state="zero"][data-peek] .side{transform:none;visibility:visible;z-index:30;
+    box-shadow:10px 0 30px rgba(15,25,18,.30)}
+
+  /* 藏书印 */
+  .seal{position:absolute;top:16px;right:20px;width:22px;height:22px;
+    background:var(--ivory);color:var(--deep);font-family:var(--kai);font-style:normal;
+    font-size:12px;line-height:1;display:grid;place-items:center;transform:rotate(-6deg)}
+  .seal::after{content:"";position:absolute;inset:2px;border:1px solid rgba(20,55,41,.5)}
+  .shell[data-state="rail"] .seal{display:none}
+
+  /* 品牌 */
+  .lhead{flex:none;position:relative}
+  .brand{display:block;text-decoration:none;color:inherit}
+  .brand b{display:block;font-family:var(--serif);font-weight:600;font-size:19px;
+    letter-spacing:.16em;line-height:1.35;color:var(--ivory)}
+  .brand span{display:block;margin-top:6px;font-family:var(--kai);font-size:12px;
+    letter-spacing:.14em;color:rgba(246,241,222,.72);line-height:1.7}
+  .bmark{display:none;font-family:var(--serif);font-weight:600;font-size:17px;
+    letter-spacing:.06em;color:var(--mark);text-align:center;line-height:1.4}
+  .shell[data-state="rail"] .brand b,.shell[data-state="rail"] .brand span{display:none}
+  .shell[data-state="rail"] .bmark{display:block}
+
+  /* 导航 */
+  .nav{margin:auto 0;display:flex;flex-direction:column;overflow:visible;
+    font-family:var(--serif);font-size:15px;letter-spacing:.05em;
+    color:rgba(246,241,222,.92)}
+  .nav a{position:relative;display:flex;align-items:center;gap:11px;min-height:44px;
+    padding:6px 0 6px 2px;text-decoration:none;color:inherit}
+  .nav a svg{flex:none;opacity:.9;transition:color .3s,opacity .3s}
+  .nav a:hover{color:#FFFDF4}
+  .nav a[aria-current]{color:#FFFDF4;font-weight:600}
+  .nav a[aria-current] svg{color:var(--seam);opacity:1}
+  .nav a[aria-current]::after{content:"";position:absolute;left:-10px;top:50%;
+    width:3px;height:18px;margin-top:-9px;background:var(--seam)}
+  .grp{padding:14px 0 4px;font-family:var(--kai);font-size:12px;
+    letter-spacing:.26em;color:rgba(246,241,222,.62)}
+  .nav a.jump{opacity:.78}
+  .nav a.jump:hover{opacity:1}
+  .nav .ext{margin-left:auto;font-size:12px;color:var(--ivory-3)}
+  .shell[data-state="rail"] .nav a{justify-content:center;padding:6px 0}
+  .shell[data-state="rail"] .nav .lbl,
+  .shell[data-state="rail"] .nav .ext,
+  .shell[data-state="rail"] .grp{display:none}
+  .shell[data-state="rail"] .nav a[aria-current]::after{display:none}
+
+  /* 悬停浮出中文全名（与现行 .app-tip 同思路；祖先全部 overflow:visible） */
+  .tip{position:absolute;left:calc(100% + 14px);top:50%;transform:translateY(-50%);
+    padding:5px 11px;white-space:nowrap;z-index:80;pointer-events:none;
+    background:var(--deep);color:var(--ivory);font-family:var(--sans);
+    font-size:12px;font-weight:400;letter-spacing:.08em;
+    border:1px solid rgba(176,142,72,.55);box-shadow:0 10px 30px rgba(15,25,18,.35);
+    opacity:0;visibility:hidden;transition:opacity .16s,visibility .16s}
+  .shell[data-state="rail"] .nav a:hover .tip,
+  .shell[data-state="rail"] .nav a:focus-visible .tip,
+  .shell[data-state="rail"] .fold:hover .tip,
+  .shell[data-state="rail"] .fold:focus-visible .tip{opacity:1;visibility:visible}
+
+  /* 身份行 */
+  .idb{flex:none;display:flex;flex-direction:column;gap:10px}
+  .idb-rule{width:34px;height:1px;background:var(--seam)}
+  .idb-tag{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;
+    padding:4px 9px;border:1px solid rgba(246,241,222,.26);color:var(--ivory-2);
+    font-size:12px;letter-spacing:.08em}
+  .idb-tag svg{opacity:.8}
+  .idb-row{display:flex;align-items:center;gap:10px}
+  .uchip{display:inline-flex;align-items:center;gap:8px;min-width:0;color:var(--ivory-2)}
+  .uchip .av{width:24px;height:24px;flex:none;display:grid;place-items:center;
+    background:var(--deep-3);color:var(--mark);font-family:var(--kai);font-size:12px;
+    font-style:normal}
+  .uchip .uname{font-size:12px;letter-spacing:.06em}
+  .gear{flex:none;width:26px;height:26px;display:inline-grid;place-items:center;
+    margin-left:auto;color:var(--ivory-3);border:1px solid transparent}
+  .gear:hover{border-color:var(--seam);color:var(--ivory)}
+  .shell[data-state="rail"] .idb{align-items:center;gap:8px}
+  .shell[data-state="rail"] .idb-rule{width:20px}
+  .shell[data-state="rail"] .idb-tag,
+  .shell[data-state="rail"] .uname{display:none}
+  .shell[data-state="rail"] .gear{margin-left:0}
+
+  /* 收展钮：侧栏本体最后一行 */
+  .fold{position:relative;flex:none;display:flex;align-items:center;gap:11px;
+    width:100%;min-height:44px;margin-top:6px;padding:6px 0 6px 2px;
+    color:rgba(246,241,222,.72);letter-spacing:.05em;font-family:var(--serif);
+    font-size:15px;text-align:left}
+  .fold:hover,.fold:focus-visible{color:#FFFDF4}
+  .fold:focus-visible{outline:2px solid var(--seam);outline-offset:-2px}
+  .shell[data-state="rail"] .fold{justify-content:center;padding:6px 0}
+  .shell[data-state="rail"] .fold .flbl{display:none}
+
+  /* ───── 订口把手：展开/图标轨＝拖宽把手；完全收回＝细把手 ───── */
+  .grip{position:absolute;top:0;bottom:0;left:var(--lw);width:13px;margin-left:-6.5px;
+    z-index:30;display:flex;align-items:center;justify-content:center;
+    cursor:col-resize;touch-action:none;transition:left .2s cubic-bezier(.2,.7,.3,1);
+    outline:none}
+  .grip i{position:relative;display:block;width:9px;height:52px;opacity:.35;
+    transition:opacity .2s}
+  .grip i::before,.grip i::after{content:"";position:absolute;top:0;bottom:0;width:1px;
+    background:var(--seam)}
+  .grip i::before{left:1px}
+  .grip i::after{right:1px}
+  .grip:hover i,.grip:focus-visible i{opacity:1}
+  .grip:focus-visible{outline:2px solid var(--seam);outline-offset:-3px}
+
+  /* 完全收回态：8px 命中区，贴边 3px 金条；悬停/聚焦浮出小箭头芯片 */
+  .gchev{display:none;position:absolute;left:8px;top:50%;transform:translateY(-50%);
+    width:26px;height:44px;align-items:center;justify-content:center;
+    background:var(--deep);color:var(--mark);border:1px solid rgba(176,142,72,.55);
+    box-shadow:0 6px 18px rgba(15,25,18,.30)}
+  .shell[data-state="zero"] .grip{left:0;width:8px;margin:0;cursor:pointer}
+  .shell[data-state="zero"] .grip i{display:none}
+  .shell[data-state="zero"] .grip::before{content:"";position:absolute;left:0;top:0;
+    bottom:0;width:3px;background:var(--seam)}
+  .shell[data-state="zero"] .grip:hover .gchev,
+  .shell[data-state="zero"] .grip:focus-visible .gchev{display:inline-flex}
+
+  /* ───── 右页 ───── */
+  .pager{margin-left:var(--lw);height:100%;padding:24px 30px;overflow:hidden;
+    transition:margin-left .2s cubic-bezier(.2,.7,.3,1)}
+  .ptitle{font-family:var(--serif);font-size:20px;font-weight:600;letter-spacing:.1em;
+    padding-bottom:10px;border-bottom:2px solid var(--ink);position:relative}
+  .ptitle::after{content:"";position:absolute;left:0;bottom:-2px;width:30px;height:2px;
+    background:var(--seam)}
+  .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;
+    background:var(--line);border:1px solid var(--line);margin-top:16px}
+  .stat{background:var(--card);padding:12px 14px}
+  .stat dt{font-family:var(--kai);font-size:11px;letter-spacing:.12em;color:var(--ink-3)}
+  .stat dd{margin-top:3px;font-family:var(--mono);font-size:22px;font-weight:600;
+    color:var(--ink)}
+  .stat dd small{font-size:12px;font-weight:400;color:var(--ink-3);margin-left:2px}
+  table{width:100%;border-collapse:collapse;margin-top:16px;font-size:13.5px}
+  th{font-family:var(--kai);font-weight:400;font-size:12px;letter-spacing:.12em;
+    color:var(--ink-3);text-align:left;padding:8px 10px;border-bottom:1px solid #C9C3B0}
+  td{padding:9px 10px;border-bottom:1px solid var(--hair);color:var(--ink-2)}
+  td.num{font-family:var(--mono);color:var(--ink)}
+  td .top{display:inline-block;padding:1px 8px;border:1px solid var(--seam);
+    color:#7A5E1E;font-size:11px;letter-spacing:.08em}
+  td .dim{color:var(--ink-3)}
+
+  /* ───── 稿尾裁决清单 ───── */
+  .verdict{max-width:1320px;margin:20px auto 0;border:1px solid var(--line);
+    background:var(--card);padding:16px 20px 18px}
+  .verdict h2{font-family:var(--serif);font-size:17px;font-weight:600;
+    letter-spacing:.1em;margin-bottom:10px}
+  .verdict ol{list-style:none;counter-reset:v;display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px 26px}
+  .verdict li{counter-increment:v;font-size:13px;color:var(--ink-2);line-height:1.75;
+    display:flex;gap:9px}
+  .verdict li::before{content:counter(v,cjk-ideographic) "、";font-family:var(--serif);
+    color:var(--ink);white-space:nowrap}
+  .verdict li b{color:var(--ink);font-weight:600}
+  .kbd{display:inline-block;border:1px solid var(--line);background:var(--paper);
+    padding:0 5px;font-family:var(--mono);font-size:11px;color:var(--ink-2)}
+</style>
+</head>
+<body>
+
+<div class="note">
+  <b>静态稿 · 待 rick 审：侧栏第三态「完全收回」（2026-11-04）</b>
+  <ol>
+    <li><b>三态可演</b>：展开 280 / 图标轨 64 / 完全收回 0——右上芯片直接切，或按下方路径交互；右页是本期 202609 读数带＋学科表。</li>
+    <li><b>完全收回</b>＝宽 0，订口金线仍在原位，线上骑一根 8px 细把手：<b>悬停滑出</b>（overlay 压在右页上，200ms，右页不回流）、<b>点击固定</b>、<b><span class="kbd">Enter</span> 切换</b>、<span class="kbd">Esc</span> 收回。</li>
+    <li><b>身份行与齿轮</b>：滑出的 overlay 自带完整身份行（口径ⓘ＋用户＋齿轮），把手本身不放齿轮——把手只做门，不做功能件堆。</li>
+  </ol>
+</div>
+
+<div class="ctrl">
+  <button class="chip on" type="button" data-go="expand">展开 <i>280</i></button>
+  <button class="chip" type="button" data-go="rail">图标轨 <i>64</i></button>
+  <button class="chip" type="button" data-go="zero">完全收回 <i>0</i></button>
+  <span class="path"><b>路径</b>：展开 —收展钮→ 图标轨 —再点一次收展钮→ 完全收回；或把手一直向左拖过图标轨。收回后悬停订口把手＝滑出，点击＝固定。</span>
+</div>
+
+<div class="shell" id="shell" data-state="expand">
+
+  <!-- 左页侧栏 -->
+  <aside class="side" id="side">
+    <i class="seal" aria-hidden="true">衡</i>
+    <div class="lhead">
+      <a class="brand" href="#"><b>文衡</b><span>云南大学图书馆<br>学科信息参考</span></a>
+      <span class="bmark" aria-hidden="true">衡</span>
+    </div>
+    <nav class="nav" aria-label="工作区">
+      <a href="#" aria-current="page">
+        <svg width="18" height="18" aria-hidden="true"><use href="#i-doc"/></svg>
+        <span class="lbl">出报告</span><span class="tip" aria-hidden="true">出报告</span>
+      </a>
+      <a href="#">
+        <svg width="18" height="18" aria-hidden="true"><use href="#i-chart"/></svg>
+        <span class="lbl">分析台</span><span class="tip" aria-hidden="true">分析台</span>
+      </a>
+      <a href="#">
+        <svg width="18" height="18" aria-hidden="true"><use href="#i-trend"/></svg>
+        <span class="lbl">高校 ESI 报告</span><span class="tip" aria-hidden="true">高校 ESI 报告</span>
+      </a>
+      <a href="#">
+        <svg width="18" height="18" aria-hidden="true"><use href="#i-chat"/></svg>
+        <span class="lbl">问文衡</span><span class="tip" aria-hidden="true">问文衡</span>
+      </a>
+      <span class="grp" aria-hidden="true">管 理</span>
+      <a href="#">
+        <svg width="18" height="18" aria-hidden="true"><use href="#i-archive"/></svg>
+        <span class="lbl">运行档案</span><span class="tip" aria-hidden="true">运行档案</span>
+      </a>
+      <a href="#" class="jump">
+        <svg width="18" height="18" aria-hidden="true"><use href="#i-book"/></svg>
+        <span class="lbl">陈列馆</span><span class="ext" aria-hidden="true">↗</span>
+        <span class="tip" aria-hidden="true">陈列馆 ↗</span>
+      </a>
+    </nav>
+    <div class="idb">
+      <span class="idb-rule" aria-hidden="true"></span>
+      <span class="idb-tag" title="口径、来源与只读声明">口径
+        <svg width="13" height="13" aria-hidden="true"><use href="#i-info"/></svg></span>
+      <div class="idb-row">
+        <span class="uchip"><i class="av" aria-hidden="true">馆</i><span class="uname">文衡馆员</span></span>
+        <button class="gear" type="button" title="设置（Ctrl + ,）" aria-label="设置">
+          <svg width="16" height="16" aria-hidden="true"><use href="#i-gear"/></svg>
+        </button>
+      </div>
+    </div>
+    <button class="fold" id="fold" type="button" aria-controls="side">
+      <svg width="16" height="16" aria-hidden="true"><use href="#i-chev-left"/></svg>
+      <span class="flbl" id="foldlbl">收起</span>
+      <span class="tip" id="foldtip" aria-hidden="true">展开侧栏</span>
+    </button>
+  </aside>
+
+  <!-- 订口把手：三态同一元素 -->
+  <div class="grip" id="grip" tabindex="0">
+    <i aria-hidden="true"></i>
+    <span class="gchev" aria-hidden="true">
+      <svg width="14" height="14"><use href="#i-chev-right"/></svg>
+    </span>
+  </div>
+
+  <!-- 右页：三态共用同一份内容 -->
+  <main class="pager">
+    <div class="ptitle">本期 202609</div>
+    <dl class="stats">
+      <div class="stat"><dt>学科总数</dt><dd>22</dd></div>
+      <div class="stat"><dt>已进入前 1%</dt><dd>14</dd></div>
+      <div class="stat"><dt>分子生物学与遗传学</dt><dd>88.01<small>%</small></dd></div>
+      <div class="stat"><dt>物理学</dt><dd>81.21<small>%</small></dd></div>
+    </dl>
+    <table>
+      <thead><tr><th>学 科</th><th>ESI 千分位</th><th>档 位</th></tr></thead>
+      <tbody>
+        <tr><td>分子生物学与遗传学</td><td class="num">88.01%</td><td><span class="top">前 1%</span></td></tr>
+        <tr><td>物理学</td><td class="num">81.21%</td><td><span class="top">前 1%</span></td></tr>
+        <tr><td>其余 12 个前 1% 学科</td><td class="num dim">…</td><td><span class="top">前 1%</span></td></tr>
+        <tr><td>未进入前 1%</td><td class="num dim">—</td><td><span class="dim">8 学科</span></td></tr>
+      </tbody>
+    </table>
+  </main>
+</div>
+
+<section class="verdict">
+  <h2>待拍板</h2>
+  <ol>
+    <li><b>悬停滑出 vs 仅点击</b>：本稿悬停即滑出＋点击固定；若嫌 hover 抢戏，可只留点击（把手＝一枚开门钮）。</li>
+    <li><b>overlay 分隔</b>：本稿用投影（10px 0 30px 墨绿晕）；备选＝右缘一线金/墨分隔，更平、更接近纸面压痕。</li>
+    <li><b>图标轨 64px 保不保留</b>：本稿保留（收起分两段：64 → 0，路径与「一直向左＝收」一致）；也可收起钮一下到 0、跳过图标轨。</li>
+    <li><b>窄窗 ≤900px 自动收</b>：收成图标轨（现行票 1 口径）还是直接完全收回（右页更宽，但导航只余把手）。</li>
+  </ol>
+</section>
+
+<!-- 图标集：与 web/src/icons.tsx 同源（24 视框 / 1.7 描边 / 圆头），内联手绘 -->
+<svg width="0" height="0" style="position:absolute;width:0;height:0" aria-hidden="true">
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7zm0 0v4h4M9 13h6M9 17h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10m5 10V5m5 15v-7m5 7V8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24"><path d="M4 17.5 9.5 11l3.5 3L20 6M15.5 6H20v4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-archive" viewBox="0 0 24 24"><path d="M4 8h16v12H4zM3 3h18v5H3zM10 12h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v16H6.5A2.5 2.5 0 0 0 4 21zM4 5.5v15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chev-left" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chev-right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 11v5M12 7.6v.1" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<script>
+(function(){
+  var shell=document.getElementById('shell'),
+      side=document.getElementById('side'),
+      grip=document.getElementById('grip'),
+      fold=document.getElementById('fold'),
+      foldlbl=document.getElementById('foldlbl'),
+      foldtip=document.getElementById('foldtip'),
+      chips=[].slice.call(document.querySelectorAll('.chip'));
+
+  var state='expand', pinned=false, peek=false, dragW=280, dragging=null;
+
+  function render(){
+    shell.setAttribute('data-state',state);
+    if(state==='zero'&&(peek||pinned)) shell.setAttribute('data-peek','1');
+    else shell.removeAttribute('data-peek');
+    chips.forEach(function(c){c.classList.toggle('on',c.dataset.go===state)});
+    if(state==='zero'){
+      foldlbl.textContent='收回';
+      fold.setAttribute('aria-label','收回侧栏');
+      grip.setAttribute('role','button');
+      grip.setAttribute('aria-label',pinned?'收回侧栏（Enter）':'滑出侧栏：悬停预览，点击固定，Enter 切换');
+      grip.setAttribute('aria-expanded',pinned?'true':'false');
+      grip.title='悬停滑出 · 点击固定';
+    }else{
+      foldlbl.textContent='收起';
+      fold.setAttribute('aria-label','收起侧栏');
+      grip.setAttribute('role','separator');
+      grip.setAttribute('aria-orientation','vertical');
+      grip.setAttribute('aria-label',state==='rail'?'拖右或回车展开侧栏':'拖动调宽，拖到最左完全收回');
+      grip.removeAttribute('aria-expanded');
+      grip.title=state==='rail'?'向右拖或回车＝展开':'拖动调宽 · 拖到最左完全收回';
+    }
+    foldtip.textContent=state==='rail'?'完全收回侧栏':'展开侧栏';
+  }
+  function setState(s){
+    state=s;
+    if(s!=='zero'){pinned=false;peek=false;}
+    render();
+  }
+
+  /* 芯片直达 */
+  chips.forEach(function(c){c.addEventListener('click',function(){setState(c.dataset.go)})});
+
+  /* 收展钮：展开→图标轨；图标轨→完全收回；固定 overlay→收回 */
+  fold.addEventListener('click',function(){
+    if(state==='expand')setState('rail');
+    else if(state==='rail')setState('zero');
+    else if(pinned){pinned=false;render();}
+  });
+
+  /* 完全收回态：悬停滑出、点击固定 */
+  grip.addEventListener('pointerenter',function(){
+    if(state==='zero'&&!pinned){peek=true;render();}
+  });
+  grip.addEventListener('pointerleave',function(e){
+    if(state!=='zero'||pinned)return;
+    if(e.relatedTarget&&side.contains(e.relatedTarget))return;
+    peek=false;render();
+  });
+  side.addEventListener('pointerleave',function(e){
+    if(state!=='zero'||pinned)return;
+    if(e.relatedTarget&&(grip.contains(e.relatedTarget)||e.relatedTarget===grip))return;
+    peek=false;render();
+  });
+  grip.addEventListener('click',function(){
+    if(state==='zero'){pinned=true;peek=false;render();}
+  });
+
+  /* 键盘：Enter／空格切换；Esc 收回 */
+  grip.addEventListener('keydown',function(e){
+    if(e.key==='Enter'||e.key===' '){
+      e.preventDefault();
+      if(state==='zero'){pinned=!pinned;if(pinned)peek=false;render();}
+      else if(state==='rail')setState('expand');
+      else setState('rail');
+    }else if(state==='expand'&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){
+      e.preventDefault();
+      dragW=Math.min(420,Math.max(232,dragW+(e.key==='ArrowLeft'?-16:16)));
+      shell.style.setProperty('--sw',dragW+'px');
+    }
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'&&state==='zero'&&pinned){pinned=false;render();}
+  });
+
+  /* 拖拽：展开态拖宽（232–420），拖过 160＝完全收回，落在 232 下＝图标轨；
+     图标轨向右拖一点＝展开 */
+  grip.addEventListener('pointerdown',function(e){
+    if(state==='zero')return;
+    dragging={x:e.clientX,base:state==='rail'?64:dragW,rail:state==='rail'};
+    grip.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  grip.addEventListener('pointermove',function(e){
+    if(!dragging)return;
+    var dx=e.clientX-dragging.x;
+    if(dragging.rail){if(dx>12){dragging=null;setState('expand');}return;}
+    var w=dragging.base+dx;
+    if(w<160){dragging=null;setState('zero');return;}
+    dragW=Math.min(420,Math.max(232,w));
+    shell.style.setProperty('--sw',dragW+'px');
+  });
+  function endDrag(){
+    if(!dragging)return;
+    var wasRail=dragging.rail;dragging=null;
+    if(!wasRail&&dragW<232)setState('rail');
+  }
+  grip.addEventListener('pointerup',endDrag);
+  grip.addEventListener('pointercancel',endDrag);
+
+  /* hash 直达：#expand / #rail / #zero / #zero,peek */
+  var h=(location.hash||'').replace('#','');
+  if(h){
+    var parts=h.split(',');
+    if(['expand','rail','zero'].indexOf(parts[0])>-1)state=parts[0];
+    if(state==='zero'&&parts.indexOf('peek')>-1)peek=true;
+  }
+  render();
+})();
+</script>
+</body>
+</html>
