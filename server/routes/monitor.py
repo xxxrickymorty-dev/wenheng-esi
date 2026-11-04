@@ -6,22 +6,38 @@ ESI-only 全校站位报告，只读全局件，不碰台账与 out/。
 生成口幂等（20261101 C7）：同校/同校集合同期产物已存在 → 直接复用，不重跑 insight。
 生成口供应商强制语义（rick 2026-11-04）：开启态下 insight 模型位失败
 （`AIRequiredError`）→ 503 人话返回，不落半份产物。
+任务制生成口（rick 2026-11-04 批，低优先）：`POST /api/monitor/report/job`
+与 `POST /api/monitor/compare/job` 立刻回 `{job_id}`，后台线程跑生成，
+轮询/SSE 到终态取产物——长生成不再占死 HTTP 请求；状态与失败人话
+沿用既有任务制契约（`src/monitor/jobs.py`）。旧同步口**原样并存**，
+前端迁移另派。重启残留由 `recover_stale()` 收口（import 时一次）。
 docx 缺件兜底走 `monitor.docx.ensure`（当期缺失现算、老期次不补）。
 """
+import asyncio
+import json
 import re
+import time
 import urllib.parse
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import (FileResponse, JSONResponse,
+                                 StreamingResponse)
 from starlette.concurrency import run_in_threadpool
 
 from ..guards import user_file_route, user_route
+from ..web_common import _job_missing, current_user
+from .jobs import _sse
 from src.monitor import compare as monitor_compare
 from src.monitor import docx as monitor_docx
+from src.monitor import jobs as monitor_jobs
 from src.monitor import report as monitor_report
 from src.monitor import schools as monitor_schools
 
 router = APIRouter()
+
+# 服务启动收尾：生成线程是守护线程，随进程消失；重启后残留的 running
+# 记录结成 failed，否则单飞判据会把新任务永远挡在门外。
+monitor_jobs.recover_stale()
 
 
 def _ai_required_response(exc: Exception) -> JSONResponse:
@@ -29,6 +45,38 @@ def _ai_required_response(exc: Exception) -> JSONResponse:
     （`AIRequiredError`）→ 人话错误返回，不落半份产物。
     文案本身已是人话（位置 + 原因码 + 重试指引），原样透传。"""
     return JSONResponse({"error": str(exc)}, status_code=503)
+
+
+def _validated_report(cn: str):
+    """单校生成的前置校验（同步口与任务口共用）。→ (校名, 期次, 错误响应)。"""
+    if monitor_schools.find(cn) is None:
+        return None, None, JSONResponse(
+            {"error": f"名单里没有「{cn}」这所学校",
+             "hint": "从清单里选，或先在 src/monitor/schools.py 里补录"},
+            status_code=404)
+    period = monitor_report.latest_period()
+    if not period:
+        return None, None, JSONResponse(
+            {"error": "没有可用的 ESI 期次数据",
+             "hint": "数据与复现/ESI数据/ 下需要有带 Institutions.xlsx 的期次目录"},
+            status_code=404)
+    return cn, period, None
+
+
+def _validated_compare(cns_raw):
+    """对比生成的前置校验（同步口与任务口共用）。→ (校名表, 错误响应)。"""
+    cns = [str(x).strip() for x in (cns_raw or []) if str(x).strip()]
+    if len(cns) < 2:
+        return None, JSONResponse({"error": "对比至少选 2 所学校",
+                                   "hint": "点卡片右上角「＋」把学校放进对比队列"},
+                                  status_code=400)
+    unknown = [cn for cn in cns if monitor_schools.find(cn) is None]
+    if unknown:
+        return None, JSONResponse(
+            {"error": f"名单里没有：{'、'.join(unknown)}",
+             "hint": "从清单里选，或先在 src/monitor/schools.py 里补录"},
+            status_code=404)
+    return cns, None
 
 
 def _monitor_school_payload(period: str, field: str | None = None) -> dict:
@@ -98,22 +146,19 @@ async def api_monitor_schools(request: Request):
 @router.post("/api/monitor/report")
 @user_route
 async def api_monitor_report(request: Request):
-    """生成一所学校的站位报告（同校同期已生成则直接复用，不重复算）。"""
+    """生成一所学校的站位报告（同校同期已生成则直接复用，不重复算）。
+
+    同步口原样并存（2026-11-04 任务化）：长生成改走
+    `POST /api/monitor/report/job`，本口行为不变。
+    """
     try:
         body = await request.json()
     except Exception:                                          # noqa: BLE001
         body = {}
     cn = str(body.get("school") or "").strip()
-    s = monitor_schools.find(cn)
-    if s is None:
-        return JSONResponse({"error": f"名单里没有「{cn}」这所学校",
-                             "hint": "从清单里选，或先在 src/monitor/schools.py 里补录"},
-                            status_code=404)
-    period = monitor_report.latest_period()
-    if not period:
-        return JSONResponse({"error": "没有可用的 ESI 期次数据",
-                             "hint": "数据与复现/ESI数据/ 下需要有带 Institutions.xlsx 的期次目录"},
-                            status_code=404)
+    cn, period, err = _validated_report(cn)
+    if err is not None:
+        return err
     def _gen():
         return monitor_report.generate(cn, period)
     try:
@@ -140,14 +185,9 @@ async def api_monitor_compare(request: Request):
         body = await request.json()
     except Exception:                                          # noqa: BLE001
         body = {}
-    cns = [str(x).strip() for x in (body.get("schools") or []) if str(x).strip()]
-    if len(cns) < 2:
-        return JSONResponse({"error": "对比至少选 2 所学校",
-                             "hint": "点卡片右上角「＋」把学校放进对比队列"}, status_code=400)
-    unknown = [cn for cn in cns if monitor_schools.find(cn) is None]
-    if unknown:
-        return JSONResponse({"error": f"名单里没有：{'、'.join(unknown)}",
-                             "hint": "从清单里选，或先在 src/monitor/schools.py 里补录"}, status_code=404)
+    cns, err = _validated_compare(body.get("schools"))
+    if err is not None:
+        return err
     period = monitor_report.latest_period()
     if not period:
         return JSONResponse({"error": "没有可用的 ESI 期次数据"}, status_code=404)
@@ -166,6 +206,147 @@ async def api_monitor_compare(request: Request):
         raise
     url = f"/monitor/compare/{period}/{path.name}"
     return {"period": period, "url": url, "n": len(cns)}
+
+
+# ---------------- 任务制生成口（rick 2026-11-04 批） ----------------
+# 契约沿用既有任务制：POST → {job_id, url, status} → 轮询
+# GET /api/monitor/jobs/{id}（或 SSE …/events）→ 终态
+# completed（产物 url）/ failed（error 人话）。记录与单飞在
+# src/monitor/jobs.py；同步口（上面两条）原样并存，前端迁移另派。
+
+def _job_accepted(job: dict, reused: bool = False) -> dict:
+    out = {"job_id": job["id"], "url": f"/api/monitor/jobs/{job['id']}",
+           "status": job["status"]}
+    if reused:
+        out["reused"] = True
+    return out
+
+
+def _report_job_create(cn: str, actor: str):
+    """单校任务口同步内核（路由层只是透传；测试直测这里）。"""
+    cn, period, err = _validated_report(cn)
+    if err is not None:
+        return err
+    params = {"school": cn, "period": period}
+    same = monitor_jobs.find_running(monitor_jobs.KIND_REPORT, params)
+    if same is not None:
+        return _job_accepted(same, reused=True)
+    try:
+        job = monitor_jobs.create(monitor_jobs.KIND_REPORT, params,
+                                  actor, period=period)
+    except RuntimeError as e:
+        return JSONResponse({"error": str(e)}, status_code=409)
+    monitor_jobs.launch(
+        job,
+        lambda: monitor_report.generate(cn, period),
+        to_url=lambda p: f"/monitor/report/{urllib.parse.quote(cn)}/{period}.html")
+    return _job_accepted(job)
+
+
+@router.post("/api/monitor/report/job")
+@user_route
+async def api_monitor_report_job(request: Request):
+    """任务制生成单校站位报告（2026-11-04）：立刻回 `{job_id}`。
+
+    体 `{school: 中文名}`；校名/期次预检与同步口同一套（不过 → 同款 4xx）。
+    过了 → 建 running 任务（守护线程跑 `monitor_report.generate`，幂等与
+    供应商强制语义都在 generate 里），返回 `{job_id, url, status:"running"}`。
+    同参任务已在跑 → 直接复用其 job_id（`reused: true`）；
+    另有监测任务在跑（单飞）→ 409 人话。
+    """
+    try:
+        body = await request.json()
+    except Exception:                                          # noqa: BLE001
+        body = {}
+    cn = str(body.get("school") or "").strip()
+    return _report_job_create(cn, current_user(request))
+
+
+def _compare_job_create(cns_raw, actor: str):
+    """对比任务口同步内核（路由层只是透传；测试直测这里）。"""
+    cns, err = _validated_compare(cns_raw)
+    if err is not None:
+        return err
+    period = monitor_report.latest_period()
+    if not period:
+        return JSONResponse({"error": "没有可用的 ESI 期次数据"}, status_code=404)
+    seen: list[str] = []
+    for cn in cns:
+        if cn not in seen:
+            seen.append(cn)
+    params = {"schools": seen, "period": period}
+    same = monitor_jobs.find_running(monitor_jobs.KIND_COMPARE, params)
+    if same is not None:
+        return _job_accepted(same, reused=True)
+    try:
+        job = monitor_jobs.create(monitor_jobs.KIND_COMPARE, params,
+                                  actor, period=period)
+    except RuntimeError as e:
+        return JSONResponse({"error": str(e)}, status_code=409)
+    monitor_jobs.launch(
+        job,
+        lambda: monitor_compare.generate(seen, period),
+        to_url=lambda p: f"/monitor/compare/{period}/{p.name}")
+    return _job_accepted(job)
+
+
+@router.post("/api/monitor/compare/job")
+@user_route
+async def api_monitor_compare_job(request: Request):
+    """任务制生成多校对比报告（2026-11-04）：体 `{schools:[中文名]}`。
+
+    校验、去重保序与同步口同一套；`params` 以去重保序后的名单为幂等键。
+    终态 `url` 与 `/api/monitor/compare-status` 探测口同形
+    （`/monitor/compare/<期次>/<文件>`）。
+    """
+    try:
+        body = await request.json()
+    except Exception:                                          # noqa: BLE001
+        body = {}
+    return _compare_job_create(body.get("schools"), current_user(request))
+
+
+@router.get("/api/monitor/jobs/{job_id}")
+@user_route
+async def api_monitor_job(request: Request, job_id: str):      # noqa: ARG001
+    """监测生成任务状态（轮询口）：running → completed（`url`＝产物）
+    / failed（`error`＝人话）。记录不存在 → 404（`_job_missing` 同款）。"""
+    job = monitor_jobs.read(job_id)
+    if not job:
+        return _job_missing()
+    return job
+
+
+@router.get("/api/monitor/jobs/{job_id}/events")
+@user_route
+async def api_monitor_job_events(request: Request, job_id: str):
+    """监测生成任务 SSE（事件形制与 `/api/jobs/{id}/events` 同款）：
+    `event: status`（记录全量 JSON，变化即推）＋ 15s ping；到终态即收。"""
+    job = monitor_jobs.read(job_id)
+    if not job:
+        return _job_missing()
+
+    async def gen():
+        last = time.time()
+        payload = job
+        yield _sse("status", json.dumps(payload, ensure_ascii=False))
+        while True:
+            if await request.is_disconnected():
+                return
+            cur = monitor_jobs.read(job_id)
+            if cur is not None and cur != payload:
+                payload = cur
+                yield _sse("status", json.dumps(cur, ensure_ascii=False))
+            if monitor_jobs.is_terminal(payload.get("status")):
+                return
+            if time.time() - last > 15:
+                yield ": ping\n\n"
+                last = time.time()
+            await asyncio.sleep(0.4)
+
+    return StreamingResponse(gen(), media_type="text/event-stream", headers={
+        "Cache-Control": "no-cache", "X-Accel-Buffering": "no",
+        "Connection": "keep-alive"})
 
 
 @router.get("/api/monitor/compare-status")
