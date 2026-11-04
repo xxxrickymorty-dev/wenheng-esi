@@ -113,6 +113,32 @@ async def api_monitor_compare(request: Request):
     return {"period": period, "url": url, "n": len(cns)}
 
 
+@router.get("/api/monitor/compare-status")
+@user_route
+async def api_monitor_compare_status(request: Request):
+    """对比件落盘探测（前端轮询兜底，20261104）：`?schools=A,B&period=YYYYMM`。
+
+    文件名确定性同 `compare.compare_path`；已落盘 → 200 + {exists,url}，
+    未落盘 → 404 + {exists:false,url}（前端只认 r.ok，落盘即跳）。"""
+    qp = request.query_params
+    cns = [x.strip() for x in (qp.get("schools") or "").split(",") if x.strip()]
+    if len(cns) < 2:
+        return JSONResponse({"error": "对比至少选 2 所学校",
+                             "hint": "点卡片右上角「＋」把学校放进对比队列"}, status_code=400)
+    unknown = [cn for cn in cns if monitor_schools.find(cn) is None]
+    if unknown:
+        return JSONResponse({"error": f"名单里没有：{'、'.join(unknown)}",
+                             "hint": "从清单里选，或先在 src/monitor/schools.py 里补录"}, status_code=404)
+    period = qp.get("period") or monitor_report.latest_period()
+    if not period or not re.fullmatch(r"20\d{4}", period):
+        return JSONResponse({"error": "没有可用的 ESI 期次数据"}, status_code=404)
+    path = monitor_compare.compare_path(cns, period)
+    url = f"/monitor/compare/{period}/{path.name}"
+    if path.exists():
+        return {"exists": True, "url": url}
+    return JSONResponse({"exists": False, "url": url}, status_code=404)
+
+
 @router.get("/monitor/compare/{period}/{fname}")
 @user_file_route
 def monitor_compare_page(request: Request, period: str, fname: str):

@@ -147,11 +147,14 @@ function loadingDoc(label: string, pollUrl?: string): string {
     `<script>` +
     `var t=0,el=document.getElementById('el');setInterval(function(){t+=1;el.textContent=t},1000);` +
     // 看门狗（2026-11-04）：生成口的请求如果断在半路，本页会永远转圈——
-    // 单校报告地址可预知，每 10s 探测一次，落盘即跳；60s 仍未跳（对比报告
-    // 探测不了地址）亮出兜底按钮，不让用户干等。
+    // 单校与对比报告的落盘地址都可探测（对比件走 /api/monitor/compare-status），
+    // 每 10s 探测一次，落盘即跳；探测口不可用时 60s 亮出兜底按钮，不让用户干等。
     (pollUrl
       ? `var poll=function(){fetch('${pollUrl}',{method:'GET',credentials:'same-origin',cache:'no-store'})` +
-        `.then(function(r){if(r.ok)location.replace('${pollUrl}')}).catch(function(){})};` +
+        `.then(function(r){if(!r.ok)throw 0;` +
+        `return r.json().then(function(j){return (j&&j.url)?j.url:'${pollUrl}'},` +
+        `function(){return '${pollUrl}'})})` +
+        `.then(function(u){if(u)location.replace(u)}).catch(function(){})};` +
         `setInterval(poll,10000);setTimeout(poll,1500);`
       : ``) +
     `setTimeout(function(){document.getElementById('rec').className='rec on'},60000);` +
@@ -265,10 +268,16 @@ export default function SchoolsPage() {
   const genCompare = async () => {
     if (queue.length < 2 || cmpBusy) return
     setCmpBusy(true)
+    /* 对比件地址也确定性（后端按校名集合哈希落盘），状态口探测落盘即跳（20261104）：
+       与单校同一套轮询兜底——生成口请求断在半路时本页不再永远转圈。 */
+    const pollUrl = data?.period && queue.length >= 2
+      ? `/api/monitor/compare-status?schools=${encodeURIComponent(queue.join(','))}` +
+        `&period=${encodeURIComponent(data.period)}`
+      : undefined
     const w = window.open('about:blank', '_blank')
     if (w) {
       w.opener = null
-      writeDoc(w, loadingDoc(`${queue.length} 所学校 · 对比报告`))
+      writeDoc(w, loadingDoc(`${queue.length} 所学校 · 对比报告`, pollUrl))
     }
     try {
       const r = await generateCompareReport(queue)
