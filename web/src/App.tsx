@@ -69,8 +69,8 @@ export default function App() {
   /* 角色是否已有结论：false = 还没问过（探活失败 / 首屏）；true = 问过了（me 为 null 即未登录） */
   const [roleKnown, setRoleKnown] = useState(false)
 
-  /* 侧栏（与问文衡同一套组件、同一份本地偏好）：宽度 + 收起，
-     拖到最左收起、收起态拖右展开——交互与状态都在 SideRail（src/SideRail.tsx）。 */
+  /* 侧栏（与问文衡同一套组件、同一份本地偏好）：宽度 + 完全收回两态，
+     拖到最左收回、收回态悬停滑出——交互与状态都在 SideRail（src/SideRail.tsx）。 */
   const rail = useSideRail()
   /* 设置中心（2026-11-04 票 1）：齿轮全站常驻——出报告 / 分析台 / 运行档案等
      工作区每一屏共用这一份接线（齿轮 / Ctrl+, 带出）。 */
@@ -593,7 +593,7 @@ export default function App() {
       {/* 左页 · 会泽（跨页书式）：品牌 / 导航 / 管理组 / 期次与身份。
           一屏放全、栏内不滚——所以这里不设 overflow（设了 auto 就会出滚动条，设了 hidden
           又会裁掉 ⓘ 与身份弹层）；靠 clamp 与 44px 行高把总高压在 720px 以内。
-          与问文衡同一套组件（src/SideRail.tsx）：拖宽、拖到最左收起、收起浮全名。 */}
+          与问文衡同一套组件（src/SideRail.tsx）：拖宽、拖到最左收回、收展合一。 */}
       <SideRail rail={rail} active={activeNav} me={me} roleKnown={roleKnown}
                 navHref={navHref} onSettings={settings.show}
                 period={{ list: periods, selected, onPick: pickPeriod }} />

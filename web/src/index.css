@@ -1600,16 +1600,23 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
   --app-lw:clamp(232px,26%,320px);
   display:grid;grid-template-columns:var(--app-lw) minmax(0,1fr);
   min-height:100dvh;position:relative;background:var(--paper);color:var(--ink);
-  font-size:var(--fs-body);line-height:1.75;font-variant-numeric:tabular-nums}
-/* 订口金线：贯穿整页（右页再长也跟着长），不吃鼠标事件 */
+  font-size:var(--fs-body);line-height:1.75;font-variant-numeric:tabular-nums;
+  /* 两态收放（静态稿 20261104 rev2）：左列宽随收回/展开过渡，
+     右页跟回流（收展钮与拖动的那一次）；悬停预览不改列宽＝右页不回流。 */
+  transition:grid-template-columns .2s cubic-bezier(.2,.7,.3,1)}
+/* 订口金线：贯穿整页（右页再长也跟着长），不吃鼠标事件；
+   收回时金线收到页面左缘（线仍在，把手骑线）。 */
 .app-shell::after{content:"";position:absolute;top:0;bottom:0;left:var(--app-lw);width:1px;
-  background:var(--seam);pointer-events:none;z-index:20}
+  background:var(--seam);pointer-events:none;z-index:20;
+  transition:left .2s cubic-bezier(.2,.7,.3,1)}
 
 /* ---------- 左页：一屏放全，栏内不滚 ---------- */
 .app-page-l{grid-column:1;grid-row:1;position:sticky;top:0;height:100dvh;
   display:flex;flex-direction:column;align-items:stretch;
   padding:clamp(14px,2.4vh,26px) clamp(18px,1.8vw,26px);
-  background:var(--deep);color:var(--ivory)}
+  background:var(--deep);color:var(--ivory);
+  /* 滑出/收回（收回态与预览态之间）走这组过渡；展开态不变换 */
+  transition:transform .2s cubic-bezier(.2,.7,.3,1),visibility .2s,box-shadow .2s}
 /* 藏书印：左页右上角一枚，品牌印记 */
 .app-seal{position:absolute;top:clamp(14px,2.4vh,26px);right:clamp(18px,1.8vw,26px);
   width:22px;height:22px;background:var(--ivory);color:var(--deep);
@@ -1617,7 +1624,7 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
   display:grid;place-items:center;transform:rotate(-6deg);box-shadow:var(--shadow)}
 .app-seal::after{content:"";position:absolute;inset:2px;border:1px solid rgba(20,55,41,.5)}
 
-/* 品牌行：只有品牌。收展控制位收进侧栏本体最后一行（.app-fold，见收展钮段） */
+/* 品牌行：只有品牌。收展控制（合一的那枚钮）在品牌印正下方（.app-ctrl，见收展钮段） */
 .app-lhead{position:relative;flex:none;display:flex;align-items:flex-start;gap:8px;min-width:0}
 .app-lhead .app-brand{display:block;flex:1 1 auto;min-width:0;text-decoration:none;white-space:normal}
 .app-lhead .app-brand b{display:block;font-family:var(--serif);font-weight:600;font-size:19px;
@@ -1648,46 +1655,58 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
 .app-page-l .app-nav a.app-jump-link:hover{opacity:1}
 
 /* 页自有的中段（问文衡＝对话历史）：导航不再上下居中，富余高度交给中段；
-   收起态整块隐藏（window.css 里 .wd-hist 还有一份，双保险）。 */
+   完全收回时整块隐藏（悬停滑出的预览态照常显示——overlay 自带完整中段）。 */
 .app-page-l.has-mid .app-nav{margin:0 0 6px}
 .app-mid{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;margin-top:10px}
-[data-fold="1"] .app-mid{display:none}
+[data-fold="1"]:not([data-peek="1"]) .app-mid{display:none}
 
-/* 收起态：64px，只留图标；悬停/聚焦浮出中文全名（不让人靠一个字猜） */
-.app-tip{position:absolute;left:calc(100% + 14px);top:50%;transform:translateY(-50%);
-  padding:5px 11px;white-space:nowrap;z-index:80;pointer-events:none;
-  background:var(--deep);color:var(--ivory);font-size:12px;font-weight:400;letter-spacing:.08em;
+/* ---------- 完全收回（静态稿 20261104 rev2，两态之二）----------
+   收回＝宽 0：--app-lw 由 rootProps 给 0，右页满宽；侧栏本体退出可见
+   （藏到订口外）。悬停订口把手 → overlay 滑出预览：压在右页上、
+   右页不回流（列宽仍是 0），投影只许出现在预览态。
+   64px 图标轨整态删除（2026-11-04 rick 裁决）——不再有第三态。 */
+[data-fold="1"] .app-page-l{width:var(--side-w,280px);min-width:0;
+  transform:translateX(-101%);visibility:hidden}
+[data-fold="1"][data-peek="1"] .app-page-l{transform:none;visibility:visible;
+  z-index:40;box-shadow:10px 0 30px rgba(15,25,18,.30)}
+
+/* 收展钮（收展合一，2026-11-04 rev2）：一枚钮、两个锚位。
+   展开态：侧栏本体右上角，品牌印「衡」正下方、右缘与印对齐，
+   ‹ 悬停浮「收起」，点击＝收回到 0；
+   完全收回态：同一枚钮落回订口把手上，左缘贴金线探出
+   （整枚可见、命中 28×28），› 点击＝固定展开。
+   button 本位，键盘 Enter/空格＝切换，Esc 全局收回；
+   配色走 --deep/--seam/--ivory（高校 ESI 页在 .whs-root 里别名同值）。 */
+.app-ctrl{position:absolute;z-index:40;width:28px;height:28px;padding:0;
+  /* 两个锚位同一高度：品牌印「衡」正下方（印顶 14–26px＋印高 22px＋呼吸 8px） */
+  top:calc(clamp(14px,2.4vh,26px) + 30px);
+  display:grid;place-items:center;
+  background:var(--deep);color:var(--mark);
+  border:1px solid rgba(176,142,72,.55);cursor:pointer;
+  transition:color .15s ease,border-color .15s ease}
+.app-ctrl:hover,.app-ctrl:focus-visible{color:#F2E9CF;border-color:var(--seam)}
+.app-ctrl:focus-visible{outline:2px solid var(--seam);outline-offset:-2px}
+/* 展开态锚位（在 .app-page-l 内）：右缘与印对齐 */
+.app-page-l .app-ctrl{right:clamp(18px,1.8vw,26px)}
+/* 收回态锚位（在 .app-grip 内）：左缘贴订口金线探出，印顶同一高度 */
+.app-grip .app-ctrl{right:auto;left:0}
+/* 浮名（收起线索不让人猜）：悬停/聚焦可见；展开态向左探，收回态向右探 */
+.app-ctrl-tip{position:absolute;top:50%;transform:translateY(-50%);
+  right:calc(100% + 10px);padding:5px 11px;white-space:nowrap;
+  pointer-events:none;z-index:80;
+  background:var(--deep);color:var(--ivory);
+  font-size:12px;font-weight:400;letter-spacing:.08em;
   border:1px solid rgba(176,142,72,.55);box-shadow:0 10px 30px rgba(15,25,18,.35);
   opacity:0;visibility:hidden;transition:opacity .16s ease,visibility .16s ease}
-:not([data-fold="1"]) .app-tip{display:none}
-[data-fold="1"] .app-nav a:hover .app-tip,
-[data-fold="1"] .app-nav a:focus-visible .app-tip,
-[data-fold="1"] .app-fold:hover .app-tip,
-[data-fold="1"] .app-fold:focus-visible .app-tip{opacity:1;visibility:visible}
-[data-fold="1"] .app-page-l{padding:14px 0;align-items:center}
-[data-fold="1"] .app-lhead{flex-direction:column;align-items:center;gap:6px;width:100%}
-[data-fold="1"] .app-brand{flex:none;text-align:center}
-[data-fold="1"] .app-brand b{font-size:15px;letter-spacing:.06em}
-[data-fold="1"] .app-brand span,
-[data-fold="1"] .app-seal,
-[data-fold="1"] .app-nav-lbl,
-[data-fold="1"] .app-nav-grp,
-[data-fold="1"] .app-idb .app-period,
-[data-fold="1"] .app-idb .info,
-[data-fold="1"] .app-idb .user-chip-name{display:none}
-[data-fold="1"] .app-nav{width:100%}
-[data-fold="1"] .app-nav a{justify-content:center;padding:6px 0}
-[data-fold="1"] .app-nav a[aria-current="page"]::after{display:none}
-[data-fold="1"] .app-idb{align-items:center;gap:8px}
-[data-fold="1"] .app-idb-rule{width:20px}
-[data-fold="1"] .app-idb-row{justify-content:center}
-[data-fold="1"] .app-fold-lbl{display:none}
+.app-grip .app-ctrl .app-ctrl-tip{right:auto;left:calc(100% + 10px)}
+.app-ctrl:hover .app-ctrl-tip,.app-ctrl:focus-visible .app-ctrl-tip{opacity:1;visibility:visible}
 
 /* 订口把手：骑在金线上的一道双竖线＋中段刻度。平时半隐，悬停/聚焦变实；
-   收起态只剩 9px 宽的一条，双击或回车展开。 */
+   拖＝调宽（232–420），一直向左拖过 160＝完全收回。 */
 .app-grip{position:absolute;top:0;bottom:0;left:var(--app-lw);width:13px;margin-left:-6px;
   z-index:30;display:flex;align-items:center;justify-content:center;
-  cursor:col-resize;touch-action:none;background:transparent}
+  cursor:col-resize;touch-action:none;background:transparent;
+  transition:left .2s cubic-bezier(.2,.7,.3,1)}
 .app-grip i{position:relative;display:block;width:9px;height:52px;opacity:.35;
   transition:opacity .2s ease}
 .app-grip i::before,.app-grip i::after{content:"";position:absolute;top:0;bottom:0;width:1px;
@@ -1696,23 +1715,12 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
 .app-grip i::after{right:1px}
 .app-grip:hover i,.app-grip:focus-visible i{opacity:1}
 .app-grip:focus-visible{outline:2px solid var(--seam);outline-offset:-3px}
-[data-fold="1"] .app-grip{cursor:pointer}
-
-/* 收展钮（2026-11-04 票 3 重做）：订口顶端的贴边漂浮签退役，
-   收展点击位收进侧栏本体——身份行之下的固定钮行，三入口同一位置。
-   展开态＝左箭头＋「收起」，与导航行同一排印；收起态＝整宽居中右箭头，
-   悬停/聚焦浮出全名（.app-tip，与导航同一套）。button 本位，键盘可达；
-   配色走 --deep/--seam/--ivory（高校 ESI 页在 .whs-root 里别名同值）。 */
-.app-fold{position:relative;flex:none;display:flex;align-items:center;gap:11px;
-  width:100%;min-height:44px;padding:6px 0 6px 2px;margin-top:6px;
-  color:rgba(246,241,222,.72);background:transparent;border:0;cursor:pointer;
-  font-size:var(--fs-label);letter-spacing:.05em;text-align:left;
-  transition:color .3s cubic-bezier(.32,.72,0,1)}
-.app-fold svg{flex:none;opacity:.9;transition:opacity .3s,color .3s}
-.app-fold:hover,.app-fold:focus-visible{color:#FFFDF4}
-.app-fold:hover svg,.app-fold:focus-visible svg{opacity:1}
-.app-fold:focus-visible{outline:2px solid var(--seam);outline-offset:-2px}
-[data-fold="1"] .app-fold{justify-content:center;padding:6px 0;margin-top:2px}
+/* 完全收回态：订口只剩 8px 细把手（贴边 3px 金条）——把手只做门：
+   悬停＝滑出预览，向右拖＝固定展开；点击归收展钮（骑在其上，z 提到预览之上）。 */
+[data-fold="1"] .app-grip{left:0;width:8px;margin:0;cursor:pointer;z-index:50}
+[data-fold="1"] .app-grip i{display:none}
+[data-fold="1"] .app-grip::before{content:"";position:absolute;left:0;top:0;bottom:0;
+  width:3px;background:var(--seam)}
 
 /* 左页底部：金线短横 / 期次 / 口径ⓘ / 身份 */
 .app-idb{flex:none;display:flex;flex-direction:column;gap:10px;min-width:0}
@@ -1759,11 +1767,17 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
 .app-shell>.app-main{grid-column:2;grid-row:1;min-width:0;width:100%;max-width:1080px;
   margin:0 auto;padding:clamp(18px,3.2vh,34px) clamp(22px,3.4vw,48px) clamp(28px,4vh,48px)}
 
-/* 窄窗（2026-11-04 票 1）：侧栏不再转顶置块——任何窗宽都是左列
-   （≤900px 由 useSideRail 自动折叠成 64px 图标轨，把手照常可拖回）；
+/* 窄窗：侧栏不再转顶置块——任何窗宽都是左列
+   （≤900px 由 useSideRail 自动完全收回＝宽 0，订口把手照常；由窄变宽不做任何事）；
    侧栏转置与金线隐藏的旧规则已删，本段只留右页间距收口。 */
 @media (max-width:900px){
   .app-shell>.app-main{padding:18px 16px 48px}
+}
+
+/* 收放过渡的减档：系统要求减动效时，滑出与回流一步到位 */
+@media (prefers-reduced-motion:reduce){
+  .app-shell,.app-shell::after,.app-page-l,.app-grip,
+  .wd-spread,.wd-spread::after,.whs-spread,.whs-spread::after{transition:none!important}
 }
 
 /* ---------- 圆角（2026-11-02 rick 定案）：卡片 8 / 内联块 6 / 窗件 12 ---------- */

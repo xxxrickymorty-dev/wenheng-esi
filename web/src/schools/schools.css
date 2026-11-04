@@ -39,14 +39,16 @@
 .whs-root :focus-visible{outline:2px solid var(--whs-ok);outline-offset:2px}
 .whs-root ::selection{background:var(--whs-seam);color:var(--whs-ink)}
 
-/* ── 跨页：列宽由 SideRail 自身宽度驱动（展开 232–420 拖宽 / 收起 64，rootProps 供值；
-   fallback 与 .app-shell 同值）── */
+/* ── 跨页：列宽由 SideRail 自身宽度驱动（展开 232–420 拖宽 / 完全收回 0，
+   rootProps 供值；fallback 与 .app-shell 同值）；两态收放的过渡同步 ── */
 .whs-spread{display:grid;
   grid-template-columns:var(--app-lw,clamp(232px,26%,320px)) minmax(0,1fr);
-  min-height:100dvh;position:relative}
+  min-height:100dvh;position:relative;
+  transition:grid-template-columns .2s cubic-bezier(.2,.7,.3,1)}
 .whs-spread::after{content:"";position:absolute;top:0;bottom:0;
   left:var(--app-lw,clamp(232px,26%,320px));width:1px;
-  background:var(--whs-seam);pointer-events:none;z-index:20}
+  background:var(--whs-seam);pointer-events:none;z-index:20;
+  transition:left .2s cubic-bezier(.2,.7,.3,1)}
 
 /* ── 左页 · SideRail 皮肤（2026-11-04 票 3 收敛）──
    侧栏本体＝共用件 SideRail（app-* 样式在 index.css），底色/品牌/导航/当前项/
@@ -209,7 +211,7 @@
 .whs-qgo:not(:disabled):hover{background:var(--whs-ok)}
 
 /* 窄窗（2026-11-04 票 1）：断点并入 900px，侧栏不再转顶置块——任何窗宽都是左列
-   （≤900px 由 useSideRail 自动折叠成 64px 图标轨，金线与把手照常）；只放宽右页版面。 */
+   （≤900px 由 useSideRail 自动完全收回＝宽 0，金线与把手照常）；只放宽右页版面。 */
 @media (max-width:900px){
   .whs-sheet{max-width:none}
 }

@@ -199,7 +199,7 @@ export default function SchoolsPage() {
   const aliveRef = useRef(true)
   useEffect(() => () => { aliveRef.current = false; reqRef.current++ }, [])
 
-  /* 左页侧栏换装 SideRail（2026-11-03 票 1）：宽度/收起偏好与工作区、问文衡同键同件。
+  /* 左页侧栏换装 SideRail（2026-11-03 票 1）：宽度/收回偏好与工作区、问文衡同键同件。
      me/roleKnown 用 api.ts 现成 getMe（内部吞错）：拿不到就是未登录占位，不冒充馆员。 */
   const rail = useSideRail()
   const [me, setMe] = useState<Me | null>(null)

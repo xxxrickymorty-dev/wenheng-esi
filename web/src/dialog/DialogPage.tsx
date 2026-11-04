@@ -194,7 +194,7 @@ export default function DialogPage() {
   /* 保存的对话（服务端清单）：左栏「保存的对话」组；这次打开的本地对话仍归「这次打开」组 */
   const [saved, setSaved] = useState<SavedSession[]>([])
   const savedSeqRef = useRef(0)
-  /* 侧栏（与工作区同一套组件、同一份本地偏好）：宽度 + 收起，交互在 src/SideRail.tsx。 */
+  /* 侧栏（与工作区同一套组件、同一份本地偏好）：宽度 + 完全收回，交互在 src/SideRail.tsx。 */
   const rail = useSideRail()
   /* 设置中心（2026-11-04 票 1 收进共享接线 useSettingsCenter）：
      齿轮 / Ctrl+, 带出；onChanged 同步模型清单——设置里改完，

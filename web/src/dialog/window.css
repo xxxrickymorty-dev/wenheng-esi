@@ -44,13 +44,16 @@
 .app-page-l :focus-visible{outline-color:var(--seam)}
 .wd-root ::selection{background:var(--seam);color:var(--ink)}
 
-/* ── 跨页：左页侧栏共用（SideRail），右页聊天 ── */
+/* ── 跨页：左页侧栏共用（SideRail），右页聊天；
+      两态收放的列宽过渡与 .app-shell 同步 ── */
 .wd-spread{display:grid;
   grid-template-columns:var(--app-lw,clamp(232px,24%,300px)) minmax(0,1fr);
-  min-height:100dvh;position:relative}
+  min-height:100dvh;position:relative;
+  transition:grid-template-columns .2s cubic-bezier(.2,.7,.3,1)}
 .wd-spread::after{content:"";position:absolute;top:0;bottom:0;
   left:var(--app-lw,clamp(232px,24%,300px));width:1px;
-  background:var(--seam);pointer-events:none;z-index:20}
+  background:var(--seam);pointer-events:none;z-index:20;
+  transition:left .2s cubic-bezier(.2,.7,.3,1)}
 .wd-r{grid-column:2;display:flex;flex-direction:column;height:100dvh;
   min-width:0;min-height:0}
 
@@ -142,8 +145,8 @@
 .wd-root .dlg-land-dyn a{color:var(--ok);border-bottom:1px solid rgba(39,107,76,.3)}
 .wd-root .dlg-dyn-step{font-size:12px}
 
-/* ── 左栏中段：对话历史（问文衡自有分组，侧栏同一套语言；收起态整块隐藏） ── */
-[data-fold="1"] .wd-hist{display:none}
+/* ── 左栏中段：对话历史（问文衡自有分组，侧栏同一套语言；
+      完全收回时随侧栏本体整块隐藏，预览态照常显示——见 index.css 的 .app-mid） ── */
 .wd-hist{flex:1;min-height:0;display:flex;flex-direction:column;margin-top:12px;
   padding:10px 0 0;border-top:1px solid rgba(246,241,222,.14)}
 .wd-hist-bar{flex:none;display:flex;align-items:center;gap:6px;padding:0 10px 8px}
@@ -247,7 +250,7 @@
 .wd-root .dlg-gate a{color:var(--ok);border-bottom:1px solid rgba(39,107,76,.35)}
 
 /* 窄窗（2026-11-04 票 1）：断点并入 900px，侧栏不再转顶置块——任何窗宽都是左列
-   （≤900px 由 useSideRail 自动折叠成 64px 图标轨，金线与把手照常）；
+   （≤900px 由 useSideRail 自动完全收回＝宽 0，金线与把手照常）；
    侧栏转置与金线隐藏的旧规则已删，.app-mid 回归 100dvh 栏内伸缩，只留右页收口。 */
 @media (max-width:900px){
   .wd-card{width:100%}

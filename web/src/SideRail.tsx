@@ -1,13 +1,14 @@
 /* 左页 · 会泽（跨页书式的左页）——工作区与问文衡共用同一套侧栏。
    同一块品牌、同一组导航、同样的口径ⓘ与身份行：换页不换脸（静态稿 20261102 定）。
-   宽度与收起态存本地偏好（两页同键）：翻页保持同一形态，读不到就用默认，绝不挡页面。
-   把手骑在订口金线上：拖＝调宽（232–420），**一直向左拖过最小宽＝收起**
-   （2026-11-02 rick 口谕）；收起态向右拖回、双击或回车＝展开；
-   收起态只留图标，悬停浮出中文全名（不让人靠一个字猜）。
-   收起宽 64px：放得下 18px 图标与呼吸，再窄就只能靠猜。
-   窄窗（≤900px）自动收成图标轨（2026-11-04 票 1）——任何窗宽侧栏都不整条消失。
-   收展的唯一点击控制位＝侧栏本体最后一行的固定钮（2026-11-04 票 3 重做：
-   订口顶端的贴边漂浮签退役）；把手只管拖与双击，点击归钮、拖拽归把手，两层不打架。 */
+   宽度与收回态存本地偏好（两页同键）：翻页保持同一形态，读不到就用默认，绝不挡页面。
+   两态（静态稿 20261104 rev2，commit 54777fed 落码）：展开（宽 side.w，
+   232–420，默认 280）/ 完全收回（宽 0）。64px 图标轨整态删除——
+   收回＝订口只剩 8px 细把手，悬停滑出预览（overlay，右页不回流），
+   收展合一在一枚钮上：展开态骑在品牌印「衡」正下方（‹ 收起），
+   收回态左缘贴金线探出（› 固定展开）。
+   把手拖动照旧：拖＝调宽（232–420），向左拖过 160＝收回；
+   收回态向右拖＝展开（固定）。点击归钮、拖拽归把手，两层不打架。
+   窄窗（≤900px）自动完全收回（落点只有一个＝0）；由窄变宽不做任何事。 */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent as RKeyEvent,
@@ -38,7 +39,11 @@ export const SIDE_MANAGE: SideNavItem[] = [
 
 export const SIDE_MIN = 232
 export const SIDE_MAX = 420
-export const SIDE_FOLD = 64
+/* 拖动收起点：展开态向左拖过这条线＝完全收回（静态稿 20261104）。 */
+const SIDE_COLLAPSE_AT = 160
+/* 本地偏好：键与形状不变（wenheng.side.v1 / { w, fold }）。
+   2026-11-04 两态化：fold 的含义从「64px 图标轨」改为「完全收回（宽 0）」，
+   旧偏好里的 fold:true 直接当「收回」读入——语义迁移，无需换键。 */
 const SIDE_KEY = 'wenheng.side.v1'
 const SIDE_STEP = 16
 
@@ -57,36 +62,60 @@ function readSidePref(): { w: number; fold: boolean } {
 export type SideRailState = {
   side: { w: number; fold: boolean }
   toggle: () => void
-  /** 挂在页面根容器上：列宽变量与收起态都由它一处声明 */
-  rootProps: { 'data-fold'?: '1'; style: CSSProperties }
-  /** 挂在订口把手上 */
+  /** 挂在页面根容器上：列宽变量与收回/预览态都由它一处声明 */
+  rootProps: { 'data-fold'?: '1'; 'data-peek'?: '1'; style: CSSProperties }
+  /** 挂在订口把手上（拖动＋收回态的悬停滑出） */
   gripProps: Record<string, unknown>
+  /** 挂在侧栏本体上：收回态移出侧栏与把手条 → 撤预览 */
+  onAsideLeave: (e: RPointerEvent<HTMLElement>) => void
 }
 
 export function useSideRail(): SideRailState {
-  /* 侧栏：宽度 + 收起。拖动左过最小宽＝收起；收起态拖右＝展开。 */
+  /* 侧栏：宽度 + 收回（fold＝宽 0）。悬停预览（peek）是临时态，不写偏好。 */
   const [side, setSide] = useState(readSidePref)
+  const [peek, setPeek] = useState(false)
   const drag = useRef<{ x: number; w: number; fold: boolean } | null>(null)
   useEffect(() => {
     try { localStorage.setItem(SIDE_KEY, JSON.stringify(side)) } catch { /* 存不下就算了 */ }
   }, [side])
-  /* 窄窗自动折叠（2026-11-04 票 1）：跨进 ≤900px 且当前未折叠 → 收成图标轨；
-     由窄变宽不做任何事（用户偏好说了算）。加载时已在窄窗也照此办理——
-     否则窄窗直开时侧栏以展开态挤住右页。置 state 即可，localStorage effect 照常存。 */
+  /* 窄窗自动收回（≤900px，2026-11-04 票 1；rev2 起落点只有一个＝宽 0）：
+      跨进窄窗且当前展开 → 收回；由窄变宽不做任何事（用户偏好说了算）。
+      加载时已在窄窗也照此办理——否则窄窗直开时侧栏以展开态挤住右页。
+      置 state 即可，localStorage effect 照常存。 */
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 900px)')
     const onNarrow = (e: MediaQueryListEvent) => {
       if (e.matches) setSide((s) => (s.fold ? s : { ...s, fold: true }))
     }
-    if (mq.matches) setSide((s) => (s.fold ? s : { ...s, fold: true }))
+    if (mq.matches) {
+      setSide((s) => (s.fold ? s : { ...s, fold: true }))
+      setPeek(false)
+    }
     mq.addEventListener('change', onNarrow)
     return () => mq.removeEventListener('change', onNarrow)
   }, [])
-  const toggle = useCallback(() => setSide((s) => ({ ...s, fold: !s.fold })), [])
+  /* Esc＝全局收回（静态稿）：展开态收回；收回态撤掉悬停预览。
+      已被别处处理（defaultPrevented）的 Esc 不抢。 */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      setPeek(false)
+      setSide((s) => (s.fold ? s : { ...s, fold: true }))
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+  const toggle = useCallback(() => {
+    setPeek(false)
+    setSide((s) => ({ ...s, fold: !s.fold }))
+  }, [])
   const release = (e: RPointerEvent<HTMLDivElement>) => {
     try { e.currentTarget.releasePointerCapture(e.pointerId) } catch { /* 已经释放了 */ }
   }
   const onGripDown = (e: RPointerEvent<HTMLDivElement>) => {
+    /* 收回态：把手上的点击归收展钮（钮骑在把手上），只有按在把手条上才算拖 */
+    const t = e.target as Element | null
+    if (side.fold && t?.closest('button')) return
     e.currentTarget.setPointerCapture(e.pointerId)
     drag.current = { x: e.clientX, w: side.w, fold: side.fold }
   }
@@ -95,19 +124,45 @@ export function useSideRail(): SideRailState {
     if (!d) return
     const dx = e.clientX - d.x
     if (d.fold) {
-      /* 收起态向右拖回一点＝展开（和向左拖收起对称） */
-      if (dx > 12) { drag.current = null; release(e); setSide((s) => ({ ...s, fold: false })) }
+      /* 完全收回态向右拖一点＝固定展开（和向左拖收回对称） */
+      if (dx > 12) {
+        drag.current = null
+        release(e)
+        setPeek(false)
+        setSide((s) => ({ ...s, fold: false }))
+      }
       return
     }
     const next = d.w + dx
-    /* 一直向左拖，过了最小宽就是「收起来」的意思 */
-    if (next < SIDE_MIN) { drag.current = null; release(e); setSide((s) => ({ ...s, fold: true })); return }
+    /* 一直向左拖，过了收起点就是「收起来」的意思 */
+    if (next < SIDE_COLLAPSE_AT) {
+      drag.current = null
+      release(e)
+      setPeek(false)
+      setSide((s) => ({ ...s, fold: true }))
+      return
+    }
     const w = Math.min(SIDE_MAX, next)
     setSide((s) => (s.w === w ? s : { ...s, w }))
   }
   const onGripUp = (e: RPointerEvent<HTMLDivElement>) => {
     drag.current = null
     release(e)
+  }
+  /* 悬停滑出（仅收回态）：悬停把手条 → overlay 预览；移出（且不进侧栏本体）→ 撤。
+     悬停意图用 closest 判（免传 ref）：从把手移进侧栏本体＝还想用，不撤。 */
+  const onGripEnter = () => { if (side.fold) setPeek(true) }
+  const onGripLeave = (e: RPointerEvent<HTMLDivElement>) => {
+    if (!side.fold) return
+    const rel = e.relatedTarget as Element | null
+    if (rel?.closest('.app-page-l')) return
+    setPeek(false)
+  }
+  const onAsideLeave = (e: RPointerEvent<HTMLElement>) => {
+    if (!side.fold) return
+    const rel = e.relatedTarget as Element | null
+    if (rel?.closest('.app-grip')) return
+    setPeek(false)
   }
   const onGripKey = (e: RKeyEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -124,32 +179,41 @@ export function useSideRail(): SideRailState {
     toggle,
     rootProps: {
       'data-fold': side.fold ? '1' : undefined,
-      style: { '--app-lw': side.fold ? `${SIDE_FOLD}px` : `${side.w}px` } as CSSProperties,
+      'data-peek': side.fold && peek ? '1' : undefined,
+      /* --app-lw＝右页看到的列宽（收回＝0，右页满宽；预览不改它＝右页不回流）；
+         --side-w＝侧栏本体的自然宽度（收回态滑出预览用）。 */
+      style: {
+        '--app-lw': side.fold ? '0px' : `${side.w}px`,
+        '--side-w': `${side.w}px`,
+      } as CSSProperties,
     },
     gripProps: {
       role: 'separator',
       'aria-orientation': 'vertical',
       tabIndex: 0,
-      'aria-label': side.fold ? '拖动或双击展开侧栏' : '拖动调整侧栏宽度，拖到最左收起',
-      'aria-valuenow': side.fold ? SIDE_FOLD : side.w,
-      'aria-valuemin': SIDE_MIN,
+      'aria-label': side.fold
+        ? '侧栏订口：悬停滑出预览，向右拖＝展开'
+        : '拖动调整侧栏宽度，拖到最左完全收回',
+      'aria-valuenow': side.fold ? 0 : side.w,
+      'aria-valuemin': side.fold ? 0 : SIDE_MIN,
       'aria-valuemax': SIDE_MAX,
-      title: side.fold ? '展开侧栏' : '拖动调宽 · 拖到最左收起 · 双击收起',
+      title: side.fold ? '悬停滑出 · 向右拖＝展开' : '拖动调宽 · 拖到最左完全收回',
       onPointerDown: onGripDown,
       onPointerMove: onGripMove,
       onPointerUp: onGripUp,
       onPointerCancel: onGripUp,
+      onPointerEnter: onGripEnter,
+      onPointerLeave: onGripLeave,
       onKeyDown: onGripKey,
-      onDoubleClick: toggle,
     },
+    onAsideLeave,
   }
 }
 
-/** 左页侧栏本体（含订口把手）。`middle`＝页自有的中段（问文衡＝对话历史），
-    插在导航与身份行之间，收起态整块隐藏。
-    齿轮钮常驻（2026-11-04 rick 定：设置中心是全站入口，收起态也在——
-    64px 放得下一枚 16px 图标）；`onSettings`＝页面接的设置中心
-    （useSettingsCenter 的 show，三页都接线）。 */
+/** 左页侧栏本体（含订口把手与收展钮）。`middle`＝页自有的中段（问文衡＝对话历史），
+    插在导航与身份行之间，完全收回时随本体整块隐藏（滑出预览时照常显示）。
+    齿轮钮常驻（2026-11-04 rick 定：设置中心是全站入口）；
+    `onSettings`＝页面接的设置中心（useSettingsCenter 的 show，三页都接线）。 */
 export function SideRail(props: {
   rail: SideRailState
   active: string
@@ -165,10 +229,33 @@ export function SideRail(props: {
 }) {
   const { rail, active, me, roleKnown, period, middle, onSettings } = props
   const navHref = props.navHref ?? ((href: string) => href)
+  const folded = rail.side.fold
+  /* 收展钮（收展合一，静态稿 20261104 rev2）：一枚钮两个锚位——
+     展开态在侧栏本体右上角（品牌印正下方、右缘与印对齐，‹ 收起），
+     收回态挂到订口把手上（左缘贴金线探出，› 固定展开）。
+     aria-expanded / aria-controls / 键盘可达保留。 */
+  const ctrlRef = useRef<HTMLButtonElement>(null)
+  /* 两态换挂（侧栏本体 ↔ 订口把手）后钮会重挂：点钮引起的换挂把焦点接回去，
+     键盘不断线；Esc 等别的原因引起的换挂不抢焦点。 */
+  const wantCtrlFocus = useRef(false)
+  useEffect(() => {
+    if (wantCtrlFocus.current) { wantCtrlFocus.current = false; ctrlRef.current?.focus() }
+  }, [folded])
+  const onCtrlClick = () => { wantCtrlFocus.current = true; rail.toggle() }
   return (
     <>
-      <aside className={`app-page-l${middle ? ' has-mid' : ''}`}>
+      <aside className={`app-page-l${middle ? ' has-mid' : ''}`}
+             onPointerLeave={rail.onAsideLeave}>
         <i className="app-seal" aria-hidden="true">衡</i>
+        {!folded && (
+          <button ref={ctrlRef} className="app-ctrl" type="button"
+                  onClick={onCtrlClick}
+                  aria-expanded="true" aria-controls="app-nav"
+                  aria-label="收起侧栏" title="收起侧栏">
+            <Icon name="chev-left" size={16} />
+            <span className="app-ctrl-tip" aria-hidden="true">收起</span>
+          </button>
+        )}
         <div className="app-lhead">
           <a className="app-brand" href={navHref('/app/')}>
             <b>文衡</b>
@@ -181,7 +268,6 @@ export function SideRail(props: {
                aria-current={active === n.key ? 'page' : undefined}>
               <Icon name={n.icon} size={18} />
               <span className="app-nav-lbl">{n.label}</span>
-              <span className="app-tip" aria-hidden="true">{n.label}</span>
             </a>
           ))}
           <span className="app-nav-grp" aria-hidden="true">管 理</span>
@@ -193,7 +279,6 @@ export function SideRail(props: {
                  aria-current={active === n.key ? 'page' : undefined}>
                 <Icon name={n.icon} size={18} />
                 <span className="app-nav-lbl">{n.label}</span>
-                <span className="app-tip" aria-hidden="true">{n.label}</span>
               </a>
             )
           ))}
@@ -237,24 +322,22 @@ export function SideRail(props: {
             </button>
           </div>
         </footer>
-
-        {/* 收展钮（2026-11-04 票 3 重做）：侧栏本体最后一行的固定钮位——
-            与身份行同区，不再骑在订口上做贴边漂浮签。展开态＝左箭头＋「收起」，
-            收起态＝整宽居中的右箭头，悬停/聚焦浮出全名（.app-tip，与导航同一套）；
-            button 本位，键盘可达。三入口共用本组件，天然跨页一致。 */}
-        <button className="app-fold" type="button" onClick={rail.toggle}
-                aria-expanded={!rail.side.fold} aria-controls="app-nav"
-                aria-label={rail.side.fold ? '展开侧栏' : '收起侧栏'}>
-          <Icon name={rail.side.fold ? 'chev-right' : 'chev-left'} size={16} />
-          <span className="app-fold-lbl" aria-hidden="true">收起</span>
-          <span className="app-tip" aria-hidden="true">展开侧栏</span>
-        </button>
       </aside>
 
-      {/* 订口把手：有形状的双竖线＋中段刻度，骑在金线上。拖＝调宽（232–420），
-          一直向左拖＝收起；收起态向右拖回、双击/回车＝展开。 */}
+      {/* 订口把手：两态同一元素。展开态＝骑在金线上的双竖线，拖＝调宽（232–420），
+          一直向左拖过 160＝完全收回；完全收回态＝8px 细把手，
+          悬停＝滑出预览，向右拖＝固定展开，收展钮骑在其上。 */}
       <div className="app-grip" {...rail.gripProps}>
         <i aria-hidden="true" />
+        {folded && (
+          <button ref={ctrlRef} className="app-ctrl" type="button"
+                  onClick={onCtrlClick}
+                  aria-expanded="false" aria-controls="app-nav"
+                  aria-label="固定展开侧栏" title="点击固定展开">
+            <Icon name="chev-right" size={16} />
+            <span className="app-ctrl-tip" aria-hidden="true">固定展开</span>
+          </button>
+        )}
       </div>
     </>
   )
