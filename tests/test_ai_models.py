@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
-"""运行期模型清单（2026-10-29）：落盘、掩码、当前项生效、写口校验。
+"""运行期模型清单（2026-10-29；2026-11-04 v2 供应商＋模型目录）：
+落盘、掩码、当前项生效、写口校验、旧清单迁移。
 
 口径：
 - key **只落 out/**，读口只给掩码；
-- 清单没配齐（地址/型号/key 缺一）→ 不算可用，回落 `.env` → 再回落规则版；
-- 切当前模型＝下一次调用就生效（`cloud_config` 现读，不重建单例）。
+- 供应商没配齐（地址/key/目录缺一）→ 不算可用，回落 `.env` → 再回落规则版；
+- 当前模型＝「哪条供应商＋目录里哪个型号」，切完下一次调用就生效
+  （`cloud_config` 现读，不重建单例）。
 """
 from __future__ import annotations
 
@@ -23,8 +25,8 @@ _REAL_ACTIVE = _models.active_credentials
 
 
 def _seed(root, **kw):
-    row = {"id": "", "label": "测试模型", "base_url": "https://example.test/v1",
-           "model": "Test/Model-1", "key": "sk-abcdef123456", "note": ""}
+    row = {"id": "test-prov", "label": "测试模型", "base_url": "https://example.test/v1",
+           "key": "sk-abcdef123456", "note": "", "models": ["Test/Model-1"]}
     row.update(kw)
     with ai.using(data_root=root):
         return _models.upsert(row, actor="admin")
@@ -37,26 +39,52 @@ def test_保存后读口只给掩码_原文在文件里(tmp_path):
         got = _models.public()
     dump = json.dumps(got, ensure_ascii=False)
     assert "sk-abcdef123456" not in dump, "读口不得回显 key 原文"
-    row = next(r for r in got["models"] if r["model"] == "Test/Model-1")
+    row = got["providers"][0]
     assert row["key_hint"].endswith("3456") and row["ready"] is True
+    assert row["models"] == ["Test/Model-1"], "模型目录随供应商读出"
     raw = json.loads((tmp_path / "_ai" / "models.json").read_text(encoding="utf-8"))
-    assert raw["models"][0]["key"] == "sk-abcdef123456", "key 落在 out/ 里（不入库）"
+    assert raw["providers"][0]["key"] == "sk-abcdef123456", "key 落在 out/ 里（不入库）"
 
 
-def test_第一条带key的模型自动成为当前(tmp_path):
+def test_第一条配齐的供应商自动成为当前(tmp_path):
     _seed(tmp_path)
     with ai.using(data_root=tmp_path):
-        assert _models.public()["active"] == "test-model-1"
+        active = _models.public()["active"]
+    assert active["provider"] == "test-prov" and active["model"] == "Test/Model-1"
+
+
+def test_名字能拼id就用名字_拼不出用主机名(tmp_path):
+    with ai.using(data_root=tmp_path):
+        row = _models.upsert({"label": "云南大学网关（new-api）", "key": "k" * 10,
+                              "base_url": "https://new-api-itc.ynu.edu.cn/v1",
+                              "models": ["MiniMax/MiniMax-M2.7"]}, actor="admin")
+        assert row["id"] == "new-api", "名字里的西文拼出 id"
+        row = _models.upsert({"label": "云南大学网关", "key": "k" * 10,
+                              "base_url": "https://new-api-itc.ynu.edu.cn/v1",
+                              "models": ["MiniMax/MiniMax-M2.7"]}, actor="admin")
+        assert row["id"] == "new-api-itc-ynu-edu-cn", "纯中文名拼不出，用主机名"
 
 
 def test_key留空沿用旧key(tmp_path):
     _seed(tmp_path)
     with ai.using(data_root=tmp_path):
-        _models.upsert({"id": "test-model-1", "label": "改了名字",
+        _models.upsert({"id": "test-prov", "label": "改了名字",
                         "base_url": "https://example.test/v1",
-                        "model": "Test/Model-1", "key": ""}, actor="admin")
-        row = _models.read()["models"][0]
+                        "models": ["Test/Model-1"], "key": ""}, actor="admin")
+        row = _models.read()["providers"][0]
     assert row["label"] == "改了名字" and row["key"] == "sk-abcdef123456"
+
+
+def test_目录去重保序_型号限量(tmp_path):
+    with ai.using(data_root=tmp_path):
+        row = _models.upsert({"id": "t1", "label": "网关", "key": "k" * 10,
+                              "base_url": "https://a.test/v1",
+                              "models": ["B", "A", "B", " ", "A"]}, actor="admin")
+        assert row["models"] == ["B", "A"], "去重保序，空白丢弃"
+        with pytest.raises(ValueError):
+            _models.upsert({"id": "t1", "label": "网关", "key": "k" * 10,
+                            "base_url": "https://a.test/v1",
+                            "models": [f"m{i}" for i in range(65)]}, actor="admin")
 
 
 # ============================================================ 可用性
@@ -68,18 +96,26 @@ def test_没配齐就不可用_回落部署配置(tmp_path):
     assert cfg.get("source") != "清单", "没 key 不得被当成可用模型"
 
 
+def test_目录空也不可用(tmp_path):
+    _seed(tmp_path, models=[])
+    with ai.using(data_root=tmp_path):
+        assert _models.active_credentials() is None
+        assert _models.public()["providers"][0]["ready"] is False
+
+
 def test_切当前模型_下一次调用即生效(tmp_path, monkeypatch):
     monkeypatch.setattr(_models, "active_credentials", _REAL_ACTIVE)
     _seed(tmp_path, key="")
     with ai.using(data_root=tmp_path):
         _models.upsert({"id": "second", "label": "第二个",
                         "base_url": "https://example.test/v1",
-                        "model": "Test/Model-2", "key": "sk-second-9876"}, actor="admin")
-        _models.set_active("second", actor="admin")
+                        "key": "sk-second-9876",
+                        "models": ["Test/Model-2", "Test/Model-3"]}, actor="admin")
+        _models.set_active("second", "Test/Model-3", actor="admin")
         cred = _models.active_credentials()
         cfg = _config.cloud_config()
-    assert cred["model"] == "Test/Model-2"
-    assert cfg["backend"] == "openai" and cfg["model"] == "Test/Model-2"
+    assert cred["model"] == "Test/Model-3"
+    assert cfg["backend"] == "openai" and cfg["model"] == "Test/Model-3"
 
 
 def test_演示锁仍然一票否决(tmp_path, monkeypatch):
@@ -96,36 +132,77 @@ def test_演示锁仍然一票否决(tmp_path, monkeypatch):
 def test_地址不合法被拒(tmp_path):
     with ai.using(data_root=tmp_path):
         with pytest.raises(ValueError):
-            _models.upsert({"model": "X", "base_url": "example.test"}, actor="admin")
+            _models.upsert({"label": "X", "base_url": "example.test"}, actor="admin")
         with pytest.raises(ValueError):
-            _models.upsert({"model": "", "base_url": "https://a.test"}, actor="admin")
+            _models.upsert({"label": "X", "base_url": "https://"}, actor="admin")
 
 
 def test_地址尾部补全到v1(tmp_path):
     with ai.using(data_root=tmp_path):
-        row = _models.upsert({"model": "X", "key": "k" * 10,
-                              "base_url": "https://a.test/v1/chat/completions/"}, actor="admin")
-    assert row["base_url"] == "https://a.test/v1"
+        row = _models.upsert({"id": "t1", "label": "X", "key": "k" * 10,
+                              "base_url": "https://a.test/v1/chat/completions/",
+                              "models": ["X"]}, actor="admin")
+        assert row["base_url"] == "https://a.test/v1"
+        row = _models.upsert({"id": "t2", "label": "Y", "key": "k" * 10,
+                              "base_url": "https://b.test/v1/messages",
+                              "models": ["Y"]}, actor="admin")
+        assert row["base_url"] == "https://b.test/v1", "anthropic 系尾部一并剥掉"
 
 
-def test_切到不存在或没配齐的模型报错(tmp_path):
+def test_协议三选_保存读取_非法拒收(tmp_path):
+    with ai.using(data_root=tmp_path):
+        for p in ("openai", "openai-responses", "anthropic"):
+            row = _models.upsert({"id": "t1", "label": "X", "key": "k" * 10,
+                                  "base_url": "https://a.test/v1",
+                                  "protocol": p, "models": ["X"]}, actor="admin")
+            assert row["protocol"] == p
+        row = _models.upsert({"id": "t1", "label": "X", "key": "k" * 10,
+                              "base_url": "https://a.test/v1",
+                              "models": ["X"]}, actor="admin")
+        assert row["protocol"] == "openai", "不给协议＝缺省 openai"
+        with pytest.raises(ValueError):
+            _models.upsert({"id": "t1", "label": "X", "key": "k" * 10,
+                            "base_url": "https://a.test/v1", "protocol": "gemini",
+                            "models": ["X"]}, actor="admin")
+
+
+def test_切到不存在或没配齐的报错(tmp_path):
     _seed(tmp_path, key="")
     with ai.using(data_root=tmp_path):
         with pytest.raises(ValueError):
             _models.set_active("nope", actor="admin")
         with pytest.raises(ValueError):
-            _models.set_active("test-model-1", actor="admin")   # 没 key
-        _models.remove("test-model-1", actor="admin")
+            _models.set_active("test-prov", actor="admin")   # 没 key
+        _models.remove("test-prov", actor="admin")
         with pytest.raises(ValueError):
-            _models.remove("test-model-1", actor="admin")        # 已经删了
+            _models.remove("test-prov", actor="admin")        # 已经删了
+
+
+def test_切到目录外的型号报错(tmp_path):
+    _seed(tmp_path)
+    with ai.using(data_root=tmp_path):
+        with pytest.raises(ValueError):
+            _models.set_active("test-prov", "Test/Not-In-Catalog", actor="admin")
 
 
 def test_删掉当前项_回到部署配置(tmp_path):
     _seed(tmp_path)
     with ai.using(data_root=tmp_path):
-        _models.remove("test-model-1", actor="admin")
-        assert _models.public()["active"] == ""
+        _models.remove("test-prov", actor="admin")
+        got = _models.public()
+        assert got["active"]["provider"] == ""
         assert _models.active_credentials() is None
+
+
+def test_目录改了_当前型号跟着目录走(tmp_path):
+    _seed(tmp_path)
+    with ai.using(data_root=tmp_path):
+        _models.upsert({"id": "test-prov", "label": "测试模型",
+                        "base_url": "https://example.test/v1",
+                        "key": "sk-abcdef123456",
+                        "models": ["Test/Model-9"]}, actor="admin")
+        active = _models.read()["active"]
+    assert active["model"] == "Test/Model-9", "原型号被移出目录＝回目录第一个"
 
 
 def test_坏文件按空清单处理不炸(tmp_path):
@@ -134,37 +211,99 @@ def test_坏文件按空清单处理不炸(tmp_path):
     p.write_text("{ 这不是 JSON", encoding="utf-8")
     with ai.using(data_root=tmp_path):
         got = _models.public()
-        assert got["active"] == "" and got["models"] == [] or all(
-            not m["active"] for m in got["models"])
+        assert got["providers"] == [] and got["active"]["provider"] == ""
 
 
+# ============================================================ 旧清单迁移（schema 1 → 2）
+def test_schema1旧清单自动迁移(tmp_path, monkeypatch):
+    monkeypatch.setattr(_models, "active_credentials", _REAL_ACTIVE)
+    p = tmp_path / "_ai" / "models.json"
+    p.parent.mkdir(parents=True)
+    p.write_text(json.dumps({
+        "schema": 1, "active": "ynu-minimax",
+        "models": [
+            {"id": "ynu-deepseek", "label": "DeepSeek", "note": "",
+             "base_url": "https://a.test/v1", "model": "deepseek-ai/DeepSeek-V4.1-Flash",
+             "key": "sk-v1key123456", "added": "2026-10-29"},
+            {"id": "ynu-minimax", "label": "MiniMax", "note": "",
+             "base_url": "https://a.test/v1", "model": "MiniMax/MiniMax-M2.7",
+             "key": "sk-v1key123456", "added": "2026-10-29"},
+        ],
+    }, ensure_ascii=False), encoding="utf-8")
+    with ai.using(data_root=tmp_path):
+        data = _models.read()
+        assert data["schema"] == 2
+        assert len(data["providers"]) == 2
+        mini = next(q for q in data["providers"] if q["id"] == "ynu-minimax")
+        assert mini["models"] == ["MiniMax/MiniMax-M2.7"], "旧型号进目录"
+        pub = _models.public()
+        assert pub["active"] == {"provider": "ynu-minimax",
+                                 "model": "MiniMax/MiniMax-M2.7"}, \
+            "旧的当前项迁移成「供应商＋型号」"
+        cred = _models.active_credentials()
+    assert cred is not None and cred["model"] == "MiniMax/MiniMax-M2.7"
+
+
+# ============================================================ 探活／获取可用模型
 def test_探活没key直接说清楚(tmp_path):
     out = _models.probe(base_url="https://example.test/v1", key="", model="X")
     assert out["ok"] is False and "key" in out["msg"]
 
 
+def test_fetch_models_拉回型号清单(tmp_path):
+    seen: dict[str, str] = {}
+
+    class H(BaseHTTPRequestHandler):
+        def do_GET(self):
+            seen.update(dict(self.headers.items()))
+            body = json.dumps({"data": [{"id": "MiniMax/MiniMax-M2.7"},
+                                        {"id": "deepseek-ai/DeepSeek-V4.1-Flash"},
+                                        {"id": ""}]}).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):                       # noqa: ARG002
+            pass
+
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    try:
+        url = f"http://127.0.0.1:{httpd.server_address[1]}/v1"
+        out = _models.fetch_models(base_url=url, key="sk-fetch")
+        assert out["ok"] is True
+        assert out["ids"] == ["MiniMax/MiniMax-M2.7",
+                              "deepseek-ai/DeepSeek-V4.1-Flash"], "空 id 丢弃"
+    finally:
+        httpd.server_close()
+
+
 # ============================================================ headers（票 4，2026-11-03）
 def test_headers保存读取round_trip(tmp_path):
-    """条目可选 headers：保存什么读回什么（read 原样回）；public 也带给界面（改时预填）。"""
+    """供应商可选 headers：保存什么读回什么（read 原样回）；public 也带给界面（改时预填）。"""
     _seed(tmp_path, headers={"X-Org": "ynu", "X-Trace-Id": "abc-123"})
     with ai.using(data_root=tmp_path):
-        row = _models.read()["models"][0]
+        row = _models.read()["providers"][0]
         assert row["headers"] == {"X-Org": "ynu", "X-Trace-Id": "abc-123"}
-        pub = next(r for r in _models.public()["models"] if r["model"] == "Test/Model-1")
+        pub = _models.public()["providers"][0]
         assert pub["headers"] == {"X-Org": "ynu", "X-Trace-Id": "abc-123"}
         assert pub["protocol"] == "openai"
 
 
 def test_headers没给就不落字段_清空即删(tmp_path):
     with ai.using(data_root=tmp_path):
-        row = _models.upsert({"id": "t1", "model": "X", "key": "k" * 10,
-                              "base_url": "https://a.test/v1"}, actor="admin")
+        row = _models.upsert({"id": "t1", "label": "X", "key": "k" * 10,
+                              "base_url": "https://a.test/v1",
+                              "models": ["X"]}, actor="admin")
         assert "headers" not in row, "没配 headers＝不出现这个字段"
-        _models.upsert({"id": "t1", "model": "X", "key": "k" * 10,
-                        "base_url": "https://a.test/v1",
+        _models.upsert({"id": "t1", "label": "X", "key": "k" * 10,
+                        "base_url": "https://a.test/v1", "models": ["X"],
                         "headers": {"X-Org": "ynu"}}, actor="admin")
-        row = _models.upsert({"id": "t1", "model": "X", "key": "k" * 10,
-                              "base_url": "https://a.test/v1"}, actor="admin")
+        row = _models.upsert({"id": "t1", "label": "X", "key": "k" * 10,
+                              "base_url": "https://a.test/v1",
+                              "models": ["X"]}, actor="admin")
         assert "headers" not in row, "再存一次不带 headers＝清掉（表单删了行就是删了头）"
 
 
@@ -176,13 +315,13 @@ def test_非法headers拒收(tmp_path):
                     {"X-Ok": "   "},                     # 全空白值
                     {f"X-H{i}": "v" for i in range(9)}):  # 超过 8 条
             with pytest.raises(ValueError):
-                _models.upsert({"model": "X", "key": "k" * 10,
-                                "base_url": "https://a.test/v1", "headers": bad},
-                               actor="admin")
+                _models.upsert({"label": "X", "key": "k" * 10,
+                                "base_url": "https://a.test/v1", "headers": bad,
+                                "models": ["X"]}, actor="admin")
         with pytest.raises(ValueError):
-            _models.upsert({"model": "X", "key": "k" * 10,
-                            "base_url": "https://a.test/v1", "headers": "X-Org=ynu"},
-                           actor="admin")                    # headers 要是对象，不是字符串
+            _models.upsert({"label": "X", "key": "k" * 10,
+                            "base_url": "https://a.test/v1", "headers": "X-Org=ynu",
+                            "models": ["X"]}, actor="admin")   # headers 要是对象，不是字符串
 
 
 def test_当前条目的headers传进brain(tmp_path, monkeypatch):

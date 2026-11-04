@@ -7,7 +7,8 @@
 
 用法（wenheng/ 下）：
 
-    uv run python tools/qa_eval.py --model ynu-deepseek   # 用模型清单里的指定模型
+    uv run python tools/qa_eval.py --provider ynu-minimax  # 用清单里的指定供应商（型号缺省目录第一个）
+    uv run python tools/qa_eval.py --provider ynu --model MiniMax/MiniMax-M2.7
     uv run python tools/qa_eval.py                        # 缺省＝当前部署（清单 active 或 .env）
     uv run python tools/qa_eval.py --case direct-prox-chem    # 只跑一例
     uv run python tools/qa_eval.py --repeat 3                 # 每例跑 3 遍
@@ -61,7 +62,7 @@ sys.path.insert(0, str(REPO / "src"))
 
 import ai                                                # noqa: E402
 from ai import _config, _evidence, _models, _plan, _qa, _record   # noqa: E402
-from ai._brain import OpenAIBrain                        # noqa: E402
+from ai._brain import make_brain                                  # noqa: E402
 from flexible import queries                             # noqa: E402
 
 CASES_PATH = REPO / "config" / "qa_eval_cases.json"
@@ -77,7 +78,7 @@ _PERIOD_RE = re.compile(r"20\d{4}$")
 
 def load_env():
     """照 `server/config.py` 的姿势读 server/.env（setdefault，不打印值）——
-    缺省部署路径（不带 --model）靠它拿到 .env 的后端配置。"""
+    缺省部署路径（不带 --provider）靠它拿到 .env 的后端配置。"""
     env_file = REPO / "server" / ".env"
     if not env_file.exists():
         return
@@ -234,21 +235,32 @@ def judge(case, answer, resolved=()) -> tuple[bool, list[str]]:
 
 
 # ================================================================ 执行（真网关）
-def _brain_for(model_id: str):
-    """`--model <models.json 的 id>` → OpenAIBrain（不改清单、不写 out/_ai）。"""
-    entry = next((m for m in _models.read()["models"] if m["id"] == model_id), None)
+def _brain_for(provider_id: str, model: str = ""):
+    """`--provider <清单里的供应商 id>` → 协议适配器（不改清单、不写 out/_ai）。
+
+    `--model` 给了用给的（必须在目录里），没给用该供应商目录第一个。
+    """
+    entry = next((p for p in _models.read()["providers"]
+                  if p["id"] == provider_id), None)
     if entry is None:
-        print(f"模型清单里没有 id {model_id!r}（清单见 out/_ai/models.json）。")
+        print(f"模型清单里没有供应商 id {provider_id!r}（清单见 out/_ai/models.json）。")
         return None
-    if not (entry["base_url"] and entry["model"] and entry["key"]):
-        print(f"模型 {model_id!r} 配置不齐（base_url/model/key），不发包。")
+    if not (entry["base_url"] and entry["key"] and entry["models"]):
+        print(f"供应商 {provider_id!r} 配置不齐（base_url/key/模型目录），不发包。")
+        return None
+    model = str(model or "").strip() or entry["models"][0]
+    if model not in entry["models"]:
+        print(f"「{model}」不在 {provider_id!r} 的模型目录里"
+              f"（目录：{'、'.join(entry['models'])}）。")
         return None
     cfg = _config._env_config()          # 超时与预算跟部署同一口（.env / 默认）
-    print(f"模型：{model_id}（{entry['model']} @ {entry['base_url']}）")
-    return OpenAIBrain(base_url=entry["base_url"], model=entry["model"],
-                       key=entry["key"], timeout=cfg["timeout"],
-                       max_tokens=cfg["max_tokens"],
-                       max_egress_chars=cfg["max_egress_chars"])
+    print(f"模型：{model}（{entry['protocol']} @ {entry['base_url']}）")
+    return make_brain(base_url=entry["base_url"], model=model,
+                      key=entry["key"], protocol=entry["protocol"],
+                      timeout=cfg["timeout"],
+                      max_tokens=cfg["max_tokens"],
+                      max_egress_chars=cfg["max_egress_chars"],
+                      extra_headers=entry.get("headers") or None)
 
 
 def find_record(root, period: str, rid) -> dict | None:
@@ -322,7 +334,11 @@ def print_stats(rows) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="qa 金问集评测（真网关，手动工具，不进 pytest）")
-    ap.add_argument("--model", default="", help="models.json 里的模型 id（缺省＝当前部署）")
+    ap.add_argument("--provider", default="",
+                    help="models.json 里的供应商标识（缺省＝当前部署）")
+    ap.add_argument("--model", default="",
+                    help="模型目录里的型号（缺省＝该供应商目录第一个；"
+                         "不带 --provider 时忽略）")
     ap.add_argument("--case", default="", help="只跑指定 id 的一例")
     ap.add_argument("--repeat", type=int, default=1, help="每例跑几遍（默认 1）")
     args = ap.parse_args()
@@ -347,8 +363,8 @@ def main() -> int:
         print("--repeat 至少 1。")
         return 2
 
-    override = _brain_for(args.model) if args.model else None
-    if args.model and override is None:
+    override = _brain_for(args.provider, args.model) if args.provider else None
+    if args.provider and override is None:
         return 2
 
     root = _record.data_root()

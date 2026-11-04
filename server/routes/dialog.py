@@ -154,13 +154,14 @@ async def api_ai_switch(request: Request):
     return {"ok": True, "capability": capability, "enabled": enabled}
 
 
-# ---------------------------------------------------------------- 模型清单（2026-10-29）
+# ---------------------------------------------------------------- 模型清单（2026-10-29；2026-11-04 v2：供应商＋模型目录）
 # 「对话框能切模型、设置里能配模型」的后端：清单落 `out/_ai/models.json`（不入库），
 # 当前项即刻生效（`ai._config.cloud_config` 现读）。key 只出掩码，写口仅 admin。
 @router.get("/api/models")
 @user_route
 async def api_models(request: Request):                          # noqa: ARG001
-    """可选模型清单 + 当前用的是哪一条（读口对已登录用户开放，key 只给掩码）。"""
+    """供应商清单（含各自模型目录）+ 当前用的是哪条哪个型号
+    （读口对已登录用户开放，key 只给掩码）。"""
     from ai import _models                                        # noqa: PLC0415
     return await run_in_threadpool(_models.public)
 
@@ -168,7 +169,7 @@ async def api_models(request: Request):                          # noqa: ARG001
 @router.post("/api/models/save")
 @admin_route
 async def api_models_save(request: Request):
-    """新增/改一条模型（key 留空＝沿用旧 key）。"""
+    """新增/改一条供应商（key 留空＝沿用旧 key；models＝整份模型目录）。"""
     body = await request.json()
     from ai import _models                                        # noqa: PLC0415
     actor = config.role_of(current_user(request) or "")
@@ -178,7 +179,7 @@ async def api_models_save(request: Request):
         return JSONResponse({"error": str(e)}, status_code=400)
     except OSError as e:
         return JSONResponse({"error": f"写不进服务器上的配置文件：{e}"}, status_code=500)
-    return {"ok": True, "model": row, "models": (await run_in_threadpool(_models.public))}
+    return {"ok": True, "provider": row, "models": (await run_in_threadpool(_models.public))}
 
 
 @router.post("/api/models/remove")
@@ -197,12 +198,14 @@ async def api_models_remove(request: Request):
 @router.post("/api/models/active")
 @admin_route
 async def api_models_active(request: Request):
-    """切当前模型（`id` 空串＝用服务器 `.env` 的部署配置）；下一句话即生效。"""
+    """切当前模型（`{provider, model}`；provider 空串＝用服务器 `.env` 的部署配置，
+    model 省略＝该供应商目录里第一个）；下一句话即生效。"""
     body = await request.json()
     from ai import _models                                        # noqa: PLC0415
     actor = config.role_of(current_user(request) or "")
     try:
-        await run_in_threadpool(_models.set_active, str(body.get("id") or ""), actor=actor)
+        await run_in_threadpool(_models.set_active, str(body.get("provider") or ""),
+                                str(body.get("model") or ""), actor=actor)
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     return {"ok": True, "models": await run_in_threadpool(_models.public)}
@@ -211,20 +214,21 @@ async def api_models_active(request: Request):
 @router.post("/api/models/test")
 @admin_route
 async def api_models_test(request: Request):
-    """探活：地址 + key + 型号能不能用。`id` 给了就测清单里那条（可用已存的 key）；
-    `headers`（票 4）＝表单/条目的自定义头，透传给探活——测的就是要真发的那一套头。"""
+    """探活：地址 + key（＋型号在不在网关上）。`id` 给了就测清单里那条供应商
+    （用已存的 key 与 headers）；`headers`（票 4）＝表单/条目的自定义头，透传给探活
+    ——测的就是要真发的那一套头。"""
     body = await request.json()
     from ai import _models                                        # noqa: PLC0415
-    mid = str(body.get("id") or "")
+    pid = str(body.get("id") or "")
     base_url = str(body.get("base_url") or "")
     key = str(body.get("key") or "")
     model = str(body.get("model") or "")
     headers = body.get("headers") if isinstance(body.get("headers"), dict) else None
-    if mid:
-        row = next((m for m in _models.read()["models"] if m["id"] == mid), None)
+    if pid:
+        row = next((p for p in _models.read()["providers"] if p["id"] == pid), None)
         if row is None:
-            return JSONResponse({"error": "没有这条模型"}, status_code=404)
-        base_url, model = row["base_url"], row["model"]
+            return JSONResponse({"error": "没有这条供应商"}, status_code=404)
+        base_url = row["base_url"]
         key = key or row["key"]
         if headers is None:
             headers = row.get("headers") or None
@@ -235,6 +239,33 @@ async def api_models_test(request: Request):
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     return result
+
+
+@router.post("/api/models/list-remote")
+@admin_route
+async def api_models_list_remote(request: Request):
+    """「获取可用模型」（图二按钮）：拉网关的型号清单给界面挑。
+    `id` 给了就用清单里那条供应商的地址与已存 key；否则用表单这组。"""
+    body = await request.json()
+    from ai import _models                                        # noqa: PLC0415
+    pid = str(body.get("id") or "")
+    base_url = str(body.get("base_url") or "")
+    key = str(body.get("key") or "")
+    headers = body.get("headers") if isinstance(body.get("headers"), dict) else None
+    if pid:
+        row = next((p for p in _models.read()["providers"] if p["id"] == pid), None)
+        if row is None:
+            return JSONResponse({"error": "没有这条供应商"}, status_code=404)
+        base_url = row["base_url"]
+        key = key or row["key"]
+        if headers is None:
+            headers = row.get("headers") or None
+    try:
+        return await run_in_threadpool(
+            _models.fetch_models, base_url=base_url, key=key,
+            headers=headers, timeout=15.0)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
 
 
 @router.post("/api/dialog/turn")
