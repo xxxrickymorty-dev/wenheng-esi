@@ -132,6 +132,8 @@ def _advice_block(err, repair, out_root=None):
     🔴 这里**兜底到旧写法**而不是让异常冒出去：《诊断报告》是升级态交给人工的
     唯一交接物，写不出来比写得朴素严重得多。回落语义已在 AI 层内部完成，
     这层 try/except 只作「报告不能因任何事中断」的防御。
+    **例外（供应商强制语义，rick 2026-11-04）**：`AIRequiredError`
+    （开启态下模型位失败）原样上抛——主产线步骤整单失败，不落规则稿。
     """
     def legacy():
         out = []
@@ -156,7 +158,12 @@ def _advice_block(err, repair, out_root=None):
                          "segments": [s.as_dict() for s in ans.segments],
                          "record_id": ans.record_id, "notice": ans.notice}
         return legacy()                     # 拼不出任何一句 → 退回静态文案
-    except Exception:                                          # noqa: BLE001
+    except Exception as e:                                     # noqa: BLE001
+        from ai._attempt import AIRequiredError                 # noqa: PLC0415
+        if isinstance(e, AIRequiredError):
+            # 供应商强制语义（rick 2026-11-04）：开启态下模型位失败
+            # 不落规则稿产物——上抛，让主产线步骤显式失败。
+            raise
         return legacy()
 
 

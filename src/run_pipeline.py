@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """每期一条命令：动态监测表（母本）xlsx → 规整数据 + 断言 + 大表 + 概述 + 预测 + 图表 + 报告初稿。
 
 用法（母本在 `input/`，2026-10-13 起 input/ 只放母本）：
@@ -81,7 +81,12 @@ def _write_diagnosis(led, P, out_dir, report, n_fail, run_dir=None):
     try:
         lines, meta = narrator.compose(failure, repair,
                                        data_root=pathlib.Path(out_dir).parent)
-    except Exception:                                          # noqa: BLE001
+    except Exception as e:                                     # noqa: BLE001
+        from ai._attempt import AIRequiredError                 # noqa: PLC0415
+        if isinstance(e, AIRequiredError):
+            # 供应商强制语义（rick 2026-11-04）：开启态下模型位失败
+            # 不落规则稿产物——上抛，让本次出稿显式失败。
+            raise
         lines, meta = [], {"backend": "rule"}
 
     body = [f"# 诊断报告 · 台账断言未过", "",
