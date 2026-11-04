@@ -2,10 +2,13 @@
 """Brain 端口（唯一接缝，内部）与规则适配器（SPEC §3）。
 
 - 端口判据（D-ports）：只有「跨网络、不受控、且真实适配器 ≥2」的依赖才开端口；
-  云模型满足（rule 生产 / openai 生产 / 测试替身），其余依赖（工具/台账/记录）并入内部。
+  云模型满足（rule 生产 / openai·responses·anthropic 生产 / 测试替身），其余依赖
+  （工具/台账/记录）并入内部。
 - **回落＝同一端口的另一个适配器**：`RuleBrain` 是默认、演示站与一切回落的终点；
   两条路共享盾、白名单、留痕与标注，机械上不易分叉。
-- `OpenAIBrain` 列后（D3，等 key）；Scripted/Failing 只进 tests。
+- 云适配器三家（2026-11-04 三协议，rick 定）：`OpenAIBrain`（Chat Completions）、
+  `ResponsesBrain`（OpenAI Responses）、`AnthropicBrain`（Messages）；
+  分派只走 `make_brain`（协议 → 类，唯一分派点）。Scripted/Failing 只进 tests。
 """
 from __future__ import annotations
 
@@ -121,8 +124,10 @@ class RuleBrain:
         return Turn(text=brief.rule_protected)
 
 
-class OpenAIBrain:
-    """OpenAI 兼容云适配器（生产；DeepSeek `deepseek-flash` / 百炼等同协议）。
+class _HTTPBrain:
+    """三家云适配器的公共骨架（2026-11-04 三协议时抽出）：
+    构造、请求头合并、HTTP 发包与错误码映射、外发预算——各协议只差
+    endpoint / payload / 响应解析（子类各出一半，`think` 在这里模板化）。
 
     - key 只从构造参数（= 部署 env，见 `_config.py`）来；本模块不读环境、不落盘（SPEC §2.5）。
     - **单次尝试**：超时 / 限额 / 协议坏 → `BrainError`（带原因码），由核心回落规则版；
@@ -130,22 +135,18 @@ class OpenAIBrain:
     - 外发预算：字符上限（`max_egress_chars`），超限**不发包**直接回落（code=egress_budget），
       预算内只发占位面（Brief 构造已保证零数字）。
     - 自定义请求头（`extra_headers`，票 4）：来自模型清单条目，与请求头合并时
-      **只叠加**——Authorization/Content-Type 与 opencode 会话头优先（`_merge_headers`）。
-    - 原生工具环（2026-10-31 升级为 OpenAI 官方多轮协议）：`Brief.tools` 非空 → payload 带
-      `tools`（OpenAI function schema，只有名字/描述，零数字）；`Brief.history` 非空 →
-      追加在 system+user 之后（assistant `tool_calls` + `role:"tool"`，arguments 为 JSON 串）；
-      响应 `message.tool_calls` → `Turn(calls=({"name", "arguments"(已解码 dict), "id"}, …))`
-      （text 与 calls 互斥）。
-      单发语义不变——工具环的循环、守卫与回落都在边界（`_attempt`），本适配器只翻译协议。
+      **只叠加**——鉴权/Content-Type 与 opencode 会话头优先（`_merge_headers`）。
     """
 
     is_rule = False
+    #: 适配器名前缀（进留痕 backend，如 openai:deepseek-flash）
+    _kind = "openai"
 
     def __init__(self, *, base_url, model, key, timeout=30.0, max_tokens=2048,
                  max_egress_chars=20000, temperature=0.2, extra_headers: dict | None = None):
         self.base_url = str(base_url).rstrip("/")
         self.model = str(model)
-        self.name = f"openai:{self.model}"
+        self.name = f"{self._kind}:{self.model}"
         self._key = str(key)
         self.timeout = float(timeout)
         self.max_tokens = int(max_tokens)
@@ -169,12 +170,74 @@ class OpenAIBrain:
                 "Content-Type": "application/json",
                 **self._session_headers}
 
+    def _endpoint(self) -> str:
+        raise NotImplementedError
+
+    def _payload(self, brief: Brief) -> dict:
+        raise NotImplementedError
+
+    def _parse(self, data: dict) -> Turn:
+        raise NotImplementedError
+
+    def _post(self, payload: dict) -> dict:
+        """发一次请求并解 JSON；网络/HTTP 层错误统一映射成回落原因码。"""
+        req = urllib.request.Request(
+            self._endpoint(),
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers=self._merge_headers())
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as r:   # noqa: S310
+                return json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            code = "rate_limit" if e.code == 429 else f"http_{e.code}"
+            raise BrainError(f"HTTP {e.code}", code=code) from e
+        except (TimeoutError, socket.timeout) as e:
+            raise BrainError(f"超时（{self.timeout:g}s）", code="timeout") from e
+        except (urllib.error.URLError, OSError) as e:
+            raise BrainError(f"连不上：{e}", code="unreachable") from e
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            raise BrainError("响应不是合法 JSON", code="bad_response") from e
+
+    @staticmethod
+    def _decode_args(name: str, raw) -> dict:
+        """工具调用参数 → dict：对象直收、JSON 串解码、空串＝空对象；
+        形状坏 → 协议失败（bad_response）。"""
+        if isinstance(raw, dict):
+            return raw                                    # 有的 provider 直发对象
+        try:
+            args = json.loads(raw) if str(raw or "").strip() else {}
+        except (TypeError, ValueError) as e:
+            raise BrainError("工具调用参数不是合法 JSON", code="bad_response") from e
+        if not isinstance(args, dict):
+            raise BrainError("工具调用参数不是对象", code="bad_response")
+        return args
+
     def think(self, brief: Brief) -> Turn:
         egress_chars = sum(len(t) for t in brief.egress_texts())
         if egress_chars > self.max_egress_chars:
             raise BrainError(
                 f"外发 {egress_chars} 字符超过上限 {self.max_egress_chars}",
                 code="egress_budget")
+        return self._parse(self._post(self._payload(brief)))
+
+
+class OpenAIBrain(_HTTPBrain):
+    """OpenAI 兼容云适配器（Chat Completions；DeepSeek `deepseek-flash` / 百炼等同协议）。
+
+    - 原生工具环（2026-10-31 升级为 OpenAI 官方多轮协议）：`Brief.tools` 非空 → payload 带
+      `tools`（OpenAI function schema，只有名字/描述，零数字）；`Brief.history` 非空 →
+      追加在 system+user 之后（assistant `tool_calls` + `role:"tool"`，arguments 为 JSON 串）；
+      响应 `message.tool_calls` → `Turn(calls=({"name", "arguments"(已解码 dict), "id"}, …))`
+      （text 与 calls 互斥）。
+      单发语义不变——工具环的循环、守卫与回落都在边界（`_attempt`），本适配器只翻译协议。
+    """
+
+    _kind = "openai"
+
+    def _endpoint(self) -> str:
+        return f"{self.base_url}/chat/completions"
+
+    def _payload(self, brief: Brief) -> dict:
         payload = {
             "model": self.model,
             "messages": [
@@ -186,22 +249,9 @@ class OpenAIBrain:
         }
         if brief.tools:
             payload["tools"] = [dict(t) for t in brief.tools]
-        req = urllib.request.Request(
-            f"{self.base_url}/chat/completions",
-            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-            headers=self._merge_headers())
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as r:   # noqa: S310
-                data = json.loads(r.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
-            code = "rate_limit" if e.code == 429 else f"http_{e.code}"
-            raise BrainError(f"HTTP {e.code}", code=code) from e
-        except (TimeoutError, socket.timeout) as e:
-            raise BrainError(f"超时（{self.timeout:g}s）", code="timeout") from e
-        except (urllib.error.URLError, OSError) as e:
-            raise BrainError(f"连不上：{e}", code="unreachable") from e
-        except (json.JSONDecodeError, UnicodeDecodeError) as e:
-            raise BrainError("响应不是合法 JSON", code="bad_response") from e
+        return payload
+
+    def _parse(self, data: dict) -> Turn:
         try:
             choice = data["choices"][0]
             message = choice["message"]
@@ -215,9 +265,9 @@ class OpenAIBrain:
                         finish=finish)
         return Turn(text=_strip_think(content), finish=finish)
 
-    @staticmethod
-    def _decode_call(item, seq: int) -> dict:
-        """一条 tool_calls → `{"name", "arguments"(dict), "id"}`；形状坏/参数坏 JSON → 协议失败。
+    @classmethod
+    def _decode_call(cls, item, seq: int) -> dict:
+        """一条 tool_calls → `{"name", "arguments"(dict), "id"}`；形状坏 → 协议失败。
 
         `id` 取响应 `tool_calls[].id`（回传工具消息时配对用）；缺省合成 `call_<seq>`。
         """
@@ -225,16 +275,202 @@ class OpenAIBrain:
             cid = item.get("id")
             fn = item.get("function") or {}
             name = str(fn["name"])
-            raw = fn.get("arguments")
         except (KeyError, TypeError, ValueError, AttributeError) as e:
             raise BrainError("工具调用缺 function/name", code="bad_response") from e
-        if isinstance(raw, dict):
-            args = raw                                   # 有的 provider 直发对象
-        else:
-            try:
-                args = json.loads(raw) if str(raw or "").strip() else {}
-            except (TypeError, ValueError) as e:
-                raise BrainError("工具调用参数不是合法 JSON", code="bad_response") from e
-        if not isinstance(args, dict):
-            raise BrainError("工具调用参数不是对象", code="bad_response")
-        return {"name": name, "arguments": args, "id": str(cid) if cid else f"call_{seq}"}
+        return {"name": name, "arguments": cls._decode_args(name, fn.get("arguments")),
+                "id": str(cid) if cid else f"call_{seq}"}
+
+
+class ResponsesBrain(_HTTPBrain):
+    """OpenAI Responses 适配器（`POST /responses`；新一代 OpenAI 系网关）。
+
+    与 Chat Completions 同一套 Brief，翻译成 Responses 形状：
+    system→`instructions`；user→`input_text` 项；assistant 文本→`output_text` 项；
+    assistant 工具调用→`function_call` 项；工具结果→`function_call_output` 项；
+    工具 schema 摊平（Responses 要 `{type:"function", name, description, parameters}`）。
+    响应从 `output[]` 收 `message.output_text`（正文）与 `function_call`（工具调用）；
+    `status:"incomplete"` 的截断如实带出（finish="length" 供内核判 truncated）。
+    """
+
+    _kind = "responses"
+
+    def _endpoint(self) -> str:
+        return f"{self.base_url}/responses"
+
+    @staticmethod
+    def _flat_tool(t) -> dict:
+        """OpenAI 包装形状的 function schema → Responses 摊平形状；已是摊平的原样透传。"""
+        fn = t.get("function") if isinstance(t, dict) else None
+        if isinstance(fn, dict):
+            return {"type": "function", "name": fn.get("name"),
+                    "description": fn.get("description") or "",
+                    "parameters": fn.get("parameters") or {"type": "object", "properties": {}}}
+        return dict(t)
+
+    def _payload(self, brief: Brief) -> dict:
+        items: list[dict] = [{"role": "user",
+                              "content": [{"type": "input_text",
+                                           "text": _user_content(brief)}]}]
+        for m in brief.history:
+            role = m.get("role")
+            if role == "assistant":
+                if m.get("content"):
+                    items.append({"role": "assistant",
+                                  "content": [{"type": "output_text",
+                                               "text": str(m["content"])}]})
+                for c in (m.get("tool_calls") or []):
+                    fn = c.get("function") or {}
+                    items.append({"type": "function_call",
+                                  "call_id": str(c.get("id") or ""),
+                                  "name": str(fn.get("name") or ""),
+                                  "arguments": str(fn.get("arguments") or "{}")})
+            elif role == "tool":
+                items.append({"type": "function_call_output",
+                              "call_id": str(m.get("tool_call_id") or ""),
+                              "output": str(m.get("content") or "")})
+        payload = {"model": self.model, "instructions": brief.system,
+                   "input": items, "temperature": self.temperature,
+                   "max_output_tokens": self.max_tokens}
+        if brief.tools:
+            payload["tools"] = [self._flat_tool(t) for t in brief.tools]
+        return payload
+
+    def _parse(self, data: dict) -> Turn:
+        try:
+            output = data["output"]
+        except (KeyError, TypeError) as e:
+            raise BrainError("响应缺 output", code="bad_response") from e
+        texts: list[str] = []
+        calls: list[dict] = []
+        try:
+            for item in output:
+                kind = item.get("type")
+                if kind == "message":
+                    for c in (item.get("content") or []):
+                        if c.get("type") == "output_text":
+                            texts.append(str(c.get("text") or ""))
+                elif kind == "function_call":
+                    name = str(item["name"])
+                    calls.append({"name": name,
+                                  "arguments": self._decode_args(name, item.get("arguments")),
+                                  "id": str(item.get("call_id") or "")})
+        except (TypeError, AttributeError, KeyError) as e:
+            raise BrainError("响应形状不对", code="bad_response") from e
+        finish = ""
+        if data.get("status") == "incomplete":
+            reason = str((data.get("incomplete_details") or {}).get("reason") or "")
+            finish = "length" if "token" in reason else (reason or "incomplete")
+        if calls:
+            return Turn(calls=tuple(calls), finish=finish or "tool_calls")
+        return Turn(text=_strip_think("".join(texts)), finish=finish)
+
+
+class AnthropicBrain(_HTTPBrain):
+    """Anthropic Messages 适配器（`POST /messages`；Claude 系，经网关同样适用）。
+
+    与 OpenAI 系的差别都在本类内消化：鉴权 `x-api-key`（不是 Bearer）＋
+    必带 `anthropic-version`；`max_tokens` 是必填参数；system 走 `system` 键；
+    消息要 user/assistant 严格交替（相邻同角色并块）；工具结果回传是
+    role:"user" 的 `tool_result` 块；工具 schema 用 `input_schema`。
+    响应 `content[]` 收 `text` 块（正文）与 `tool_use` 块（工具调用）；
+    `stop_reason:"max_tokens"` 如实带出（finish="length"）。
+    """
+
+    _kind = "anthropic"
+    _VERSION = "2023-06-01"
+
+    def _merge_headers(self) -> dict:
+        return {**self._entry_headers,
+                "x-api-key": self._key,
+                "anthropic-version": self._VERSION,
+                "Content-Type": "application/json",
+                **self._session_headers}
+
+    def _endpoint(self) -> str:
+        return f"{self.base_url}/messages"
+
+    @staticmethod
+    def _anthropic_tool(t) -> dict:
+        fn = t.get("function") if isinstance(t, dict) else None
+        if isinstance(fn, dict):
+            return {"name": fn.get("name"), "description": fn.get("description") or "",
+                    "input_schema": fn.get("parameters") or {"type": "object", "properties": {}}}
+        return dict(t)
+
+    def _payload(self, brief: Brief) -> dict:
+        messages: list[dict] = []
+
+        def push(role: str, blocks: list[dict]) -> None:
+            if messages and messages[-1]["role"] == role:
+                messages[-1]["content"].extend(blocks)
+            else:
+                messages.append({"role": role, "content": list(blocks)})
+
+        push("user", [{"type": "text", "text": _user_content(brief)}])
+        for m in brief.history:
+            if m.get("role") == "assistant":
+                blocks = []
+                if m.get("content"):
+                    blocks.append({"type": "text", "text": str(m["content"])})
+                for c in (m.get("tool_calls") or []):
+                    fn = c.get("function") or {}
+                    name = str(fn.get("name") or "")
+                    blocks.append({"type": "tool_use",
+                                   "id": str(c.get("id") or ""),
+                                   "name": name,
+                                   "input": self._decode_args(name, fn.get("arguments"))})
+                if blocks:
+                    push("assistant", blocks)
+            elif m.get("role") == "tool":
+                push("user", [{"type": "tool_result",
+                               "tool_use_id": str(m.get("tool_call_id") or ""),
+                               "content": [{"type": "text",
+                                            "text": str(m.get("content") or "")}]}])
+        payload = {"model": self.model, "system": brief.system,
+                   "max_tokens": self.max_tokens, "temperature": self.temperature,
+                   "messages": messages}
+        if brief.tools:
+            payload["tools"] = [self._anthropic_tool(t) for t in brief.tools]
+        return payload
+
+    def _parse(self, data: dict) -> Turn:
+        try:
+            content = data["content"]
+        except (KeyError, TypeError) as e:
+            raise BrainError("响应缺 content", code="bad_response") from e
+        texts: list[str] = []
+        calls: list[dict] = []
+        try:
+            for block in content:
+                kind = block.get("type")
+                if kind == "text":
+                    texts.append(str(block.get("text") or ""))
+                elif kind == "tool_use":
+                    name = str(block["name"])
+                    calls.append({"name": name,
+                                  "arguments": self._decode_args(name, block.get("input")),
+                                  "id": str(block.get("id") or "")})
+        except (TypeError, AttributeError, KeyError) as e:
+            raise BrainError("响应形状不对", code="bad_response") from e
+        stop = str(data.get("stop_reason") or "")
+        finish = "length" if stop == "max_tokens" else stop
+        if calls:
+            return Turn(calls=tuple(calls), finish=finish or "tool_use")
+        return Turn(text=_strip_think("".join(texts)), finish=finish)
+
+
+#: 协议 → 适配器（唯一分派点；`_models.PROTOCOLS` 与这里同一份词表口径）
+_PROTOCOL_CLASSES = {"openai": OpenAIBrain, "openai-responses": ResponsesBrain,
+                     "anthropic": AnthropicBrain}
+
+
+def make_brain(*, base_url, model, key, protocol: str = "openai", **kwargs):
+    """按协议装配合适的云适配器（2026-11-04 三协议，rick 定）。
+
+    `protocol` 来自模型清单条目（`_models.PROTOCOLS` 三选）；认不出＝ValueError
+    （清单保存层早校验过，这里兜底不静默）。其余构造参数原样透传。
+    """
+    cls = _PROTOCOL_CLASSES.get(str(protocol or "openai"))
+    if cls is None:
+        raise ValueError(f"不认识的协议：{protocol}（只认 {' / '.join(_PROTOCOL_CLASSES)}）")
+    return cls(base_url=base_url, model=model, key=key, **kwargs)

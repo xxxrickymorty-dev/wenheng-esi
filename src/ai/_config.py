@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 import os
 
-from ._brain import OpenAIBrain, RuleBrain
+from ._brain import RuleBrain, make_brain
 
 log = logging.getLogger("wenheng.ai")
 
@@ -49,6 +49,9 @@ def _env_config() -> dict:
         "base_url": _env("WENHENG_AI_BASE_URL"),
         "model": _env("WENHENG_AI_MODEL"),
         "key": _env("WENHENG_AI_KEY"),
+        # 协议（2026-11-04）：.env 部署配置固定 OpenAI Chat Completions；
+        # 清单里的供应商各自带协议（三选，见 _models.PROTOCOLS）
+        "protocol": "openai",
         "timeout": _num("WENHENG_AI_TIMEOUT", 30.0, float),
         "max_tokens": _num("WENHENG_AI_MAX_TOKENS", 4096, int),
         "max_egress_chars": _num("WENHENG_AI_MAX_CHARS", 20000, int),
@@ -77,6 +80,7 @@ def cloud_config() -> dict:
     if picked:
         cfg.update({"backend": "openai", "base_url": picked["base_url"],
                     "model": picked["model"], "key": picked["key"],
+                    "protocol": picked.get("protocol") or "openai",
                     "headers": picked.get("headers") or {},
                     "source": f"清单：{picked['label']}"})
     return cfg
@@ -99,7 +103,8 @@ def build_brain():
         return RuleBrain()                       # 默认 / 未配置
     if not (cfg["base_url"] and cfg["model"] and cfg["key"]):
         return RuleBrain()                       # 无 key 不构造云适配器
-    return OpenAIBrain(base_url=cfg["base_url"], model=cfg["model"], key=cfg["key"],
-                       timeout=cfg["timeout"], max_tokens=cfg["max_tokens"],
-                       max_egress_chars=cfg["max_egress_chars"],
-                       extra_headers=cfg.get("headers") or None)
+    return make_brain(base_url=cfg["base_url"], model=cfg["model"], key=cfg["key"],
+                      protocol=cfg.get("protocol") or "openai",
+                      timeout=cfg["timeout"], max_tokens=cfg["max_tokens"],
+                      max_egress_chars=cfg["max_egress_chars"],
+                      extra_headers=cfg.get("headers") or None)

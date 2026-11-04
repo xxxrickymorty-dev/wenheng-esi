@@ -291,15 +291,16 @@ def _stream_result(pi, msg):
 
 
 def _make_openai_stream(pi, cfg, egress):
-    """OpenAI 兼容单发的内核包装（C2 一阶段：传输收敛到 `_brain`）。
+    """云单发的内核包装（C2 一阶段：传输收敛到 `_brain`；2026-11-04 起三协议）。
 
-    HTTP、错误码映射、外发预算、JSON 解析只剩 `_brain.OpenAIBrain` 一份实现；
+    HTTP、错误码映射、外发预算、JSON 解析只剩 `_brain` 一份实现
+    （`make_brain` 按清单条目的协议装配：openai / openai-responses / anthropic）；
     本包装只留**内核策略**：MAX_STEPS 步数上限、truncated 判定（推理型模型思考
     占满输出预算 → 终答为空，2026-10-14 实测）、pi 协议翻译与 egress 记账。
     错误码对外集合不变：rate_limit / http_N / timeout / unreachable / bad_response /
     egress_budget（_brain 出）＋ truncated / too_many_steps（内核层出）。
 
-    cfg → OpenAIBrain 构造参数（显式映射；内核钳制原样保留）：
+    cfg → make_brain 构造参数（显式映射；内核钳制原样保留）：
     - base_url / model / key / timeout：部署配置直传（opencode.ai 网关头由
       `_brain` 统一带上——旧内核单发不带，收敛后与主路径同姿势）；
     - temperature=0.0：补槽要确定性（内核恒定，不随部署配置）；
@@ -307,8 +308,9 @@ def _make_openai_stream(pi, cfg, egress):
     - max_egress_chars 原值透传：预算判定在 `_brain.think`（字符口径，超限不发包）。
     """
 
-    brain = _brain.OpenAIBrain(
+    brain = _brain.make_brain(
         base_url=cfg["base_url"], model=cfg["model"], key=cfg["key"],
+        protocol=cfg.get("protocol") or "openai",
         timeout=float(cfg["timeout"]), temperature=0.0,
         max_tokens=min(int(cfg["max_tokens"] or 2048), 2048),
         max_egress_chars=int(cfg["max_egress_chars"] or 0),
