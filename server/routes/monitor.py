@@ -4,6 +4,8 @@
 ESI-only 全校站位报告，只读全局件，不碰台账与 out/。
 契约：《监测版包契约-ESIonly（2026-10-31）》（工作区仓库① 设计文档）。
 生成口幂等（20261101 C7）：同校/同校集合同期产物已存在 → 直接复用，不重跑 insight。
+生成口供应商强制语义（rick 2026-11-04）：开启态下 insight 模型位失败
+（`AIRequiredError`）→ 503 人话返回，不落半份产物。
 docx 缺件兜底走 `monitor.docx.ensure`（当期缺失现算、老期次不补）。
 """
 import re
@@ -20,6 +22,13 @@ from src.monitor import report as monitor_report
 from src.monitor import schools as monitor_schools
 
 router = APIRouter()
+
+
+def _ai_required_response(exc: Exception) -> JSONResponse:
+    """供应商强制语义（rick 2026-11-04）：开启态下模型位失败
+    （`AIRequiredError`）→ 人话错误返回，不落半份产物。
+    文案本身已是人话（位置 + 原因码 + 重试指引），原样透传。"""
+    return JSONResponse({"error": str(exc)}, status_code=503)
 
 
 def _monitor_school_payload(period: str) -> dict:
@@ -77,6 +86,12 @@ async def api_monitor_report(request: Request):
         path = await run_in_threadpool(_gen)
     except FileNotFoundError as exc:
         return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:                                    # noqa: BLE001
+        from ai._attempt import AIRequiredError                 # noqa: PLC0415
+        if isinstance(exc, AIRequiredError):
+            # 供应商强制语义（rick 2026-11-04）：不落半份产物，人话报错。
+            return _ai_required_response(exc)
+        raise
     url = f"/monitor/report/{urllib.parse.quote(cn)}/{period}.html"
     return {"period": period, "url": url, "cached": path.exists() and path.stat().st_size > 0}
 
@@ -109,6 +124,12 @@ async def api_monitor_compare(request: Request):
         path = await run_in_threadpool(_gen)
     except FileNotFoundError as exc:
         return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:                                    # noqa: BLE001
+        from ai._attempt import AIRequiredError                 # noqa: PLC0415
+        if isinstance(exc, AIRequiredError):
+            # 供应商强制语义（rick 2026-11-04）：不落半份产物，人话报错。
+            return _ai_required_response(exc)
+        raise
     url = f"/monitor/compare/{period}/{path.name}"
     return {"period": period, "url": url, "n": len(cns)}
 

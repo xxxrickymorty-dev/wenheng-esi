@@ -245,7 +245,11 @@ def generate(cns: list[str], period: str | None = None) -> pathlib.Path:
     """生成（或复用）一份多校对比报告。名单内有未知校 → KeyError（编程错误面）。
 
     幂等（20261101 C7）：同校集合同期产物已存在 → 直接返回，不再重跑 insight
-    （LLM 不重复调用）；要重新生成先删旧件。"""
+    （LLM 不重复调用）；要重新生成先删旧件。
+    **例外（供应商强制语义，rick 2026-11-04）**：开启态下 compose_text 的
+    模型位失败抛 `AIRequiredError`，原样穿透——解读算在写盘之前，
+    上抛即整单失败，不落半份产物。
+    """
     period = period or mr.latest_period()
     if not period:
         raise FileNotFoundError("数据与复现/ESI数据/ 下没有可用的 ESI 期次目录")
@@ -261,6 +265,12 @@ def generate(cns: list[str], period: str | None = None) -> pathlib.Path:
     if out.exists():
         return out
     cache = mr.load_cache(period) or mr.build_cache(period)
+    _AIRequiredError = None
+    try:
+        from ai._attempt import AIRequiredError as _e           # noqa: PLC0415
+        _AIRequiredError = _e
+    except Exception:                                           # noqa: BLE001
+        pass
     ins: dict | None = None
     try:
         facts = facts_of(seen, cache)
@@ -271,7 +281,9 @@ def generate(cns: list[str], period: str | None = None) -> pathlib.Path:
                      "数字只准用事实摘要里出现过的。")
             ins = mi.compose_text(topic, facts, safe, label="monitor/insight_compare",
                                   veto=lambda t: mi.number_guard(t, [topic, *facts]))
-    except Exception:                                                   # noqa: BLE001
+    except Exception as e:                                      # noqa: BLE001
+        if _AIRequiredError is not None and isinstance(e, _AIRequiredError):
+            raise   # 供应商强制语义：不落半份产物（rick 2026-11-04）
         ins = None
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(render(seen, period, cache, insight=ins), encoding="utf-8")

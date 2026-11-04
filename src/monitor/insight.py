@@ -10,7 +10,11 @@
   额外挂一道**调用侧数字白名单 veto**——输出里出现事实行没有的数字即拒收、回落骨架
   （fc 论证的教训：外发数字防线宁可两道）；
 - 无模型部署 / 调用失败 / 任一校验不过 → 返回句骨架（`mode="rule"`），报告照常完整。
-任何异常都不抛：解读是锦上添花，不是产出步骤。
+**例外（供应商强制语义，rick 2026-11-04）**：部署配置为供应商开启
+（`ai._attempt.strict_enabled()`）时，模型位失败（调用失败 / veto 拒收）
+不再回落句骨架——照记一条（记录面不丢）后抛 `ai._attempt.AIRequiredError`，
+由生成口显式失败（不落半份产物）。规则部署（默认关闭）一切照旧、不抛。
+任何其他异常都不抛：解读是锦上添花，不是产出步骤。
 """
 from __future__ import annotations
 
@@ -137,9 +141,22 @@ _SYS = (
 
 
 def compose_text(topic: str, facts: list[str], safe: str, *, label: str, veto=None) -> dict:
-    """默认走模型的解读生成：模型文本过盾 + veto，失败回落 safe。→ {"text", "mode"}。"""
+    """默认走模型的解读生成：模型文本过盾 + veto，失败回落 safe。→ {"text", "mode"}。
+
+    **例外（供应商强制语义，rick 2026-11-04）**：开启态
+    （`ai._attempt.strict_enabled()`）下模型位失败（调用失败 / veto 拒收）
+    照记一条后抛 `AIRequiredError`——不拿句骨架顶包。回落层共两层，
+    逐层判定：① compose 失败（调用失败/盾拒，回落码随 `Outcome.reason`）；
+    ② veto 拒收（guard_reject，调用侧数字白名单）——两层都属于
+    「模型位失败拿规则稿占位」，开启态都上抛。模型文本成功采用
+    （mode=model）不算回落，开启态照常返回。关闭态记录面逐字不变
+    （调用失败记 fallback=None、veto 拒收记 guard_reject，现状如此）；
+    开启态失败时记录面记回落码（审计不丢）。
+    """
+    _AIRequiredError = None
     try:
         from ai import _attempt, _writer as _w
+        _AIRequiredError = _attempt.AIRequiredError
         fl = [str(x).strip() for x in facts if str(x).strip()]
         task = f"【节主题】\n{topic}\n\n【事实摘要】\n" + "\n".join(f"- {x}" for x in fl)
         res = _attempt.attempt(task, system=_SYS, ability="polish", anchored=False)
@@ -150,18 +167,47 @@ def compose_text(topic: str, facts: list[str], safe: str, *, label: str, veto=No
                 fallback, result = "guard_reject", safe
         mode = "model" if (res.attempted and res.text is not None and fallback is None) else "rule"
         backend = res.backend if res.attempted else "rule"
+        # 供应商强制语义（rick 2026-11-04）：先判定是否模型位失败
+        # （调用失败 res.text=None / veto 拒收）；开启态记录面记回落码。
+        strict_reason: str | None = None
+        if _attempt.strict_enabled():
+            if res.attempted and res.text is None:
+                strict_reason = str(res.reason or _attempt.brain_error("unknown"))
+            elif fallback is not None:
+                strict_reason = fallback
         try:
-            _w._record_call(res, period="", label=label, fallback=fallback,
+            _w._record_call(res, period="", label=label,
+                            fallback=strict_reason if strict_reason is not None
+                            else fallback,
                             mode=mode, backend=backend)
         except Exception:                                       # noqa: BLE001
             pass
+        if strict_reason is not None:
+            # 开启态下模型位失败不许拿句骨架顶包——记录照记（上方）后
+            # 上抛，生成口显式失败。
+            raise _attempt.AIRequiredError(strict_reason,
+                                               what=f"监测版解读（{label}）")
         return {"text": result, "mode": mode}
-    except Exception:                                           # noqa: BLE001
+    except Exception as e:                                      # noqa: BLE001
+        if _AIRequiredError is not None and isinstance(e, _AIRequiredError):
+            raise          # 供应商强制语义（rick 2026-11-04）：不落规则稿
         return {"text": safe, "mode": "rule"}
 
 
 def insight(cn: str, period: str, cache: dict) -> dict | None:
-    """→ {"text", "mode"}（mode=model|rule）| None（名单外/无事实）。不抛。"""
+    """→ {"text", "mode"}（mode=model|rule）| None（名单外/无事实）。
+
+    关闭态（默认部署）不抛：任何异常都回落句骨架。
+    **例外（供应商强制语义，rick 2026-11-04）**：开启态下
+    `compose_text` 的模型位失败抛 `AIRequiredError`，原样穿透——
+    不在此处吞成句骨架（那是规则稿占位）。
+    """
+    _AIRequiredError = None
+    try:
+        from ai._attempt import AIRequiredError as _e           # noqa: PLC0415
+        _AIRequiredError = _e
+    except Exception:                                           # noqa: BLE001
+        pass
     try:
         s = sch.find(cn)
         if s is None or not cache:
@@ -181,5 +227,7 @@ def insight(cn: str, period: str, cache: dict) -> dict | None:
                  "数字只准用事实摘要里出现过的。")
         return compose_text(topic, facts, safe, label="monitor/insight",
                             veto=lambda t: number_guard(t, [topic, *facts]))
-    except Exception:                                           # noqa: BLE001
+    except Exception as e:                                      # noqa: BLE001
+        if _AIRequiredError is not None and isinstance(e, _AIRequiredError):
+            raise          # 供应商强制语义（rick 2026-11-04）：不落规则稿
         return {"text": _skeleton(facts_of(cn, cache)), "mode": "rule"}
