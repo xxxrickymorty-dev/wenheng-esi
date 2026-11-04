@@ -22,6 +22,7 @@ import { getWaterLevel, type WaterRow } from './api-forecast'
 import { getChartsData, type ChartsData } from './lib/chartsData'
 import type { Me, Period } from './api'
 import { DisciplineSection } from './discipline/DisciplineSection'
+import { CompareSection } from './compare/CompareSection'
 import './analysis.css'
 
 /** 四组：已入 1% / 接近 / 未入 / 未参评（顺序即版式顺序，与静态稿一致） */
@@ -144,6 +145,11 @@ export function AnalysisPage({ period, periods, onPick, me }: {
       {/* 学科报告（2026-11-04 票 1）：分析台页头之后、既有内容之前的一个区。
           期次没定时不挂载（区里没有可生成的对象），与明细是否载入无关。 */}
       {period && <DisciplineSection period={period} me={me} />}
+
+      {/* 跨校单学科对比（2026-11-04 静态稿 rick「过」）：选一个学科 × 勾任意几所高校
+          （默认不勾）流式生成对比稿；组件与样式在 ./compare/，自身取数，
+          与学科报告区、下面的水位/图明细互不牵连。 */}
+      {period && <CompareSection period={period} me={me} />}
 
       {phase === 'pending' ? null : phase === 'empty' ? (
         <p className="an-empty">该期明细未载入。</p>

@@ -74,8 +74,9 @@ function modelName(meta: Record<string, unknown> | null): string {
   return b && b !== 'rule' ? b : ''
 }
 
-/** 后端正文里的「规划后端：模型串」换成人话（UX.md §十 / 纪律②）；两栏同一处代码，天然一致。 */
-function humanBody(html: string): string {
+/** 后端正文里的「规划后端：模型串」换成人话（UX.md §十 / 纪律②）；两栏同一处代码，天然一致。
+    跨校单学科对比区（compare/）流式节渲染同用这一份——人话口径全站一处。 */
+export function humanBody(html: string): string {
   return html.replace(/规划后端：\s*(?:<strong>)?([^<）\s]+)(?:<\/strong>)?/g,
     (_m, raw: string) => `规划方式：${humanBackend(raw)}`)
 }

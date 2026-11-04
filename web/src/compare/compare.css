@@ -1,0 +1,132 @@
+/* 跨校单学科对比 · 分析台内区排印（2026-11-04 静态稿逐条搬入）
+   只服务 compare/CompareSection.tsx：区头 / 选校抽屉 / 进度表 / 稿位 / 成稿缩略。
+   令牌与壳在 index.css（--deep / --seam / --ivory / --card / --hair / --r-card），
+   版式语言照静态稿：左抽屉 minmax(300px,380px)＋右稿位两栏、行高 44px、
+   金线方角、卡片 8px（--r-card）。字号只取六档 11 / 12 / 13.5 / 15 / 19。 */
+
+/* ───── 区头：章题＋学科下拉（复用 .an-sel）＋「打开报告」 ───── */
+.cp-head{display:flex;align-items:baseline;gap:10px 16px;flex-wrap:wrap;margin:clamp(16px,2.6vh,26px) 0 0}
+.cp-head .an-sec{margin:0}
+.cp-sel{margin-bottom:2px}
+.cp-open{margin-left:auto;font-size:var(--fs-label);letter-spacing:.08em;color:var(--ink-2);
+  text-decoration:none;transition:color .3s cubic-bezier(.32,.72,0,1)}
+.cp-open:hover{color:var(--ink)}
+
+/* ───── 双栏工作位：左选校 · 右稿位 ───── */
+.cp-work{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);
+  gap:22px;margin-top:clamp(12px,2vh,18px);align-items:start}
+
+/* 选校抽屉 */
+.cp-picker{background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);
+  box-shadow:var(--shadow);overflow:hidden}
+.cp-pick-h{display:flex;align-items:baseline;gap:10px;padding:12px 14px 10px;
+  border-bottom:1px solid var(--hair)}
+.cp-pick-h h3{margin:0;font-family:var(--serif);font-weight:600;font-size:var(--fs-h);
+  letter-spacing:.06em;color:var(--ink)}
+.cp-cnt{margin-left:auto;font-family:var(--mono);font-size:var(--fs-sm);color:var(--muted)}
+.cp-cnt b{font-weight:600;color:var(--ink)}
+
+.cp-slist{max-height:428px;overflow:auto}
+.cp-srow{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 14px;
+  border-bottom:1px solid var(--hair);cursor:pointer}
+.cp-srow:last-child{border-bottom:0}
+.cp-srow:hover{background:var(--card)}
+.cp-srow input{position:absolute;opacity:0;pointer-events:none}
+.cp-box{width:18px;height:18px;flex:none;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--muted);border-radius:4px;color:transparent;background:var(--card);
+  transition:background .15s,border-color .15s,color .15s}
+.cp-srow input:checked ~ .cp-box{background:var(--deep);border-color:var(--deep);color:var(--ivory)}
+.cp-srow input:focus-visible ~ .cp-box{outline:2px solid var(--ink);outline-offset:2px}
+.cp-nm{font-family:var(--serif);font-size:var(--fs-body);color:var(--ink)}
+.cp-srow.nodata{background:var(--panel)}
+.cp-srow.nodata .cp-nm{color:var(--muted)}
+/* 「无数据」徽标：不置灰拦死——可勾入稿，稿里写「无数据」 */
+.cp-badge{margin-left:auto;display:inline-flex;align-items:center;gap:6px;
+  padding:3px 9px;border:1px solid var(--line);border-radius:4px;
+  font-size:var(--fs-sm);letter-spacing:.06em;color:var(--muted);white-space:nowrap}
+
+.cp-plan{margin:0;padding:22px 14px;font-size:var(--fs-body);color:var(--muted)}
+.cp-schools-err{margin:0;padding:18px 14px;font-size:var(--fs-label);color:var(--bad)}
+.cp-load-err{margin:clamp(10px,1.6vh,14px) 0 0;color:var(--bad);font-size:var(--fs-label)}
+
+.cp-pick-f{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:12px 14px;border-top:1px solid var(--hair)}
+.cp-go{display:inline-flex;align-items:center;justify-content:center;min-height:44px;
+  padding:8px 22px;border:0;background:var(--deep);color:var(--ivory);
+  font:inherit;font-size:var(--fs-body);letter-spacing:.1em;cursor:pointer;
+  border-radius:var(--r-inline);box-shadow:var(--shadow);
+  transition:background .15s}
+.cp-go:hover:not(:disabled){background:#1A4B27}   /* 深绿的按压档（静态稿 --act） */
+.cp-go:disabled{opacity:.45;cursor:not-allowed}
+.cp-stop{display:inline-flex;align-items:center;justify-content:center;min-height:44px;
+  padding:8px 22px;border:1px solid var(--bad);border-radius:var(--r-inline);
+  background:var(--card);color:var(--bad);font:inherit;font-size:var(--fs-body);
+  letter-spacing:.1em;cursor:pointer}
+.cp-need{font-size:var(--fs-sm);color:var(--gold-ink)}
+
+/* 已选 chips：点一下移除；无数据校虚线边——与抽屉徽标同一句话 */
+.cp-chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:12px 14px;border-top:1px solid var(--hair)}
+.cp-chip{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:6px 13px;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-inline);
+  box-shadow:var(--shadow);font:inherit;font-size:var(--fs-label);letter-spacing:.04em;
+  color:var(--ink);cursor:pointer}
+.cp-chip:hover{border-color:var(--muted)}
+.cp-chip .cp-x{color:var(--muted)}
+.cp-chip.nodata{color:var(--muted);border-style:dashed}
+
+.cp-note{margin:0;padding:10px 14px;border-top:1px solid var(--hair);
+  font-size:var(--fs-label);color:var(--bad)}
+.cp-note:only-child{border-top:0}
+
+/* 进度表（静态稿 ③：节名＋三态） */
+.cp-prog{margin:0;padding:0;list-style:none}
+.cp-prog li{display:flex;align-items:center;gap:10px;min-height:44px;
+  padding:0 14px;border-bottom:1px solid var(--hair);font-size:var(--fs-body)}
+.cp-prog li:last-child{border-bottom:0}
+.cp-secnm{font-family:var(--serif);color:var(--ink)}
+.cp-st{margin-left:auto;font-size:var(--fs-sm);letter-spacing:.06em;white-space:nowrap}
+.cp-st.done{color:var(--ok)}
+.cp-st.run{color:var(--gold-ink)}
+.cp-st.idle{color:var(--muted)}
+
+/* ───── 稿位：空态 / 流式 / 成稿缩略 ───── */
+.cp-stage{border:1px solid var(--hair);border-radius:var(--r-card);background:var(--card);
+  min-height:428px;padding:22px 24px;display:flex;flex-direction:column;min-width:0}
+.cp-stage .fx-status{margin:0}
+.cp-stage .fx-md{border-top:0;margin-top:14px;padding-top:0}
+.cp-stage .fx-sec-h{margin-top:18px}
+.cp-empty{margin:auto;text-align:center;color:var(--muted);font-size:var(--fs-body)}
+.cp-empty b{display:block;font-family:var(--serif);font-weight:600;font-size:var(--fs-h);
+  color:var(--ink-2);margin-bottom:6px;letter-spacing:.04em}
+
+/* 正在写的下一节：三根占位条（不演数字，只示意「还在写」） */
+.cp-skel{margin-top:14px}
+.cp-skel i{display:block;height:12px;background:var(--panel);margin-bottom:9px}
+.cp-skel i:nth-child(1){width:92%}
+.cp-skel i:nth-child(2){width:78%}
+.cp-skel i:nth-child(3){width:85%}
+
+/* 成稿缩略（R04 版式语言：深绿书脊＋竖排题名＋期次，正文全取后端） */
+.cp-report{display:grid;grid-template-columns:36px minmax(0,1fr);flex:1;
+  border:1px solid var(--line);background:var(--card)}
+.cp-spine{background:var(--deep);color:var(--ivory);display:flex;flex-direction:column;
+  align-items:center;gap:14px;padding:16px 0}
+.cp-vt{writing-mode:vertical-rl;font-family:var(--serif);font-weight:600;
+  font-size:var(--fs-label);letter-spacing:.3em;max-height:340px;overflow:hidden}
+.cp-vp{writing-mode:vertical-rl;font-family:var(--mono);font-size:var(--fs-xs);
+  letter-spacing:.2em;color:var(--ivory-3)}
+.cp-rbody{padding:22px clamp(16px,2.6vw,32px) 26px;min-width:0}
+
+@media (max-width:900px){
+  .cp-work{grid-template-columns:1fr}
+  .cp-stage{min-height:280px}
+}
+@media (max-width:420px){
+  .cp-report{grid-template-columns:1fr}
+  .cp-spine{flex-direction:row;padding:8px 14px}
+  .cp-vt,.cp-vp{writing-mode:horizontal-tb;letter-spacing:.1em}
+}
+@media (prefers-reduced-motion:reduce){
+  .cp-skel{animation:none}
+}
