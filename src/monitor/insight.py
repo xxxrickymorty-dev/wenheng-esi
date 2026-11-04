@@ -4,7 +4,9 @@
 红线姿势（与灵活产线同构）：
 - 数字只来自 `facts_of()` 的确定性事实行（全部可回溯到缓存/趋势库/全局件），模型只组织语言；
 - **默认走模型**（rick 2026-10-31 裁：解读默认 LLM 而非规则模板）：直调 `_attempt.attempt`
-  （anchored＝数字盾：输出数字必须来自题面+事实摘要），不经写作位开关；
+  （**自由校验 anchored=False**：用到的 [[n]] 标记必有来源、无游离数字；
+  允许子集与重复引用——锚定型「每个数字恰好一次」与提示词的
+  「按行文需要自由选取」天然冲突，数字一密必整篇被拒，20261104 修正）；
   额外挂一道**调用侧数字白名单 veto**——输出里出现事实行没有的数字即拒收、回落骨架
   （fc 论证的教训：外发数字防线宁可两道）；
 - 无模型部署 / 调用失败 / 任一校验不过 → 返回句骨架（`mode="rule"`），报告照常完整。
@@ -140,7 +142,7 @@ def compose_text(topic: str, facts: list[str], safe: str, *, label: str, veto=No
         from ai import _attempt, _writer as _w
         fl = [str(x).strip() for x in facts if str(x).strip()]
         task = f"【节主题】\n{topic}\n\n【事实摘要】\n" + "\n".join(f"- {x}" for x in fl)
-        res = _attempt.attempt(task, system=_SYS, ability="polish", anchored=True)
+        res = _attempt.attempt(task, system=_SYS, ability="polish", anchored=False)
         fallback, result = None, safe
         if res.attempted and res.text is not None:
             result = res.text
