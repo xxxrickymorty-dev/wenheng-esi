@@ -341,9 +341,14 @@ def run(capability, period, *, payload=None, actor=None) -> Answer:
                         mode, backend = "failed", outcome.backend
                         text = _fail_text(fallback, strict=True)
                     # 关闭态：照旧规则稿（flow/run_pipeline 各有防御回落）。
-                else:
+                elif cap.id == "qa" or strict:
+                    # qa：必须模型作答（rick 2026-10-31），失败态不顶规则版；
+                    # review：关闭态照旧回落规则稿（notice＝盾的数字校验话，
+                    # tests/test_ai_review 钉着），**开启态**才显式失败
+                    # （供应商强制语义，4f783e01 曾误把关闭态也翻成 failed）。
                     mode, backend = "failed", outcome.backend
                     text = _fail_text(fallback, outcome.detail, strict)
+                # review 关闭态落到这里：mode/text 维持规则稿初值。
             elif (cap.id == "review"
                   and not draft.number.cited_facts(outcome.candidate_protected)):
                 # 越题：review 保持回落（政策留在能力口）。
