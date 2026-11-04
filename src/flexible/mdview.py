@@ -281,14 +281,14 @@ figure img{{max-width:100%;border:1px solid var(--line);border-radius:3px;backgr
 /* 连续图两列一组（一篇里图不占满宽，观感更紧凑） */
 .figrow{{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}}
 .figrow figure{{margin:0}}
-.figrow figcaption{{font-size:12px;color:var(--ink-3);margin-top:6px;
-letter-spacing:.02em}}
 @media (max-width:640px){{.figrow{{grid-template-columns:1fr}}}}
-/* ECharts 图卡（数学稿观感：卡片白底 + 细线描边 + 图题小字） */
-figure.fx-echart{{background:#FBFAF7;border:1px solid var(--line);border-radius:4px;
-padding:14px 10px 8px;text-align:left}}
-.fx-chart{{width:100%;height:320px}}
-.figrow .fx-chart{{height:260px}}
+/* ECharts 图卡（数学稿同款：无卡片，图直接坐在纸面上，
+   图注走数学稿 srcline 小字；库与数据仍全内联） */
+figure.fx-echart{{margin:22px 0 4px;text-align:left}}
+.fx-chart{{width:100%;height:340px}}
+.figrow .fx-chart{{height:280px}}
+figure figcaption{{font-size:10px;font-weight:600;letter-spacing:.08em;
+color:var(--faint);margin-top:10px;text-align:left;line-height:1.8}}
 details.fx-about{{margin-top:22px;border:1px dashed var(--faint);border-radius:3px;background:#E9E8E2}}
 details.fx-about>summary{{cursor:pointer;padding:10px 14px;font-size:13.5px;color:var(--ink-2)}}
 details.fx-about .fx-about-in{{padding:2px 14px 12px;border-top:1px solid var(--line)}}
@@ -497,9 +497,11 @@ def _echarts_lib() -> str:
     return _LIB_CACHE
 
 
-#: 渲染层（2026-11-04）：样式常量与 `数学稿` 逐字一致（MONO 灰阶、
-#: 实线＝实测 / 虚线＝阈值对标、endLabel 大数、dotted 网格）。
-#: 🔴 红线遵守方式：y 轴不写 min/max，用 `scale:true` 按数据自适应；
+#: 渲染层（2026-11-04 三）：逐项对齐 `数学稿` 图表——无卡片、只留
+#: 底部轴线、点状网格、大字号、白底浮层 tooltip、粗端标；
+#: 实线＝实测 / 虚线＝阈值对标。色值与数学稿逐字一致。
+#: 🔴 红线遵守方式：y 轴不写 min/max（数学稿是硬编码 4,900，
+#: 产线版不许抄），用 `scale:true` 按数据自适应；
 #: payload 里也没有轴范围字段（结构上不存在，同 spec.py）。
 _INIT_JS = """
 (function(){
@@ -515,15 +517,18 @@ function base(p){
   return {
     textStyle:{fontFamily:FONT,color:INK},
     color:[INK,MUT,'#A9A89F'],
-    grid:{left:8,right:86,top:32,bottom:8,containLabel:true},
-    tooltip:{trigger:'axis',backgroundColor:'#fff',borderColor:GRID,borderWidth:1,
-      textStyle:{color:INK,fontSize:11,fontFamily:FONT},
+    grid:{left:10,right:104,top:46,bottom:10,containLabel:true},
+    tooltip:{trigger:'axis',backgroundColor:'#FFFFFF',borderColor:'#E3E2DC',
+      borderWidth:1,padding:[14,18],borderRadius:6,
+      textStyle:{color:INK,fontSize:13.5,fontFamily:FONT},
+      extraCssText:'box-shadow:0 4px 16px rgba(28,28,26,.10);',
       axisPointer:{lineStyle:{color:MUT,type:'dashed'}}},
-    legend:{top:0,left:0,itemWidth:22,itemHeight:8,itemGap:16,
-      textStyle:{color:MUT,fontSize:10,fontFamily:FONT}},
+    legend:{top:2,left:2,itemWidth:26,itemHeight:10,itemGap:24,
+      textStyle:{color:MUT,fontSize:13,fontFamily:FONT}},
     xAxis:{type:'category',boundaryGap:p.type!=='line',data:p.cats.map(lbl),
-      axisLine:{lineStyle:{color:INK}},axisTick:{show:false},
-      axisLabel:{color:MUT,fontSize:10,fontFamily:FONT},splitLine:{show:false}},
+      axisLine:{lineStyle:{color:INK,width:1.2}},axisTick:{show:false},
+      axisLabel:{color:MUT,fontSize:12.5,fontFamily:FONT,margin:14},
+      splitLine:{show:false}},
     yAxis:yaxis(p),
     animationDuration:900,animationEasing:'cubicOut',
     series:p.series.map(function(s){return serie(p,s)})
@@ -534,8 +539,8 @@ function yaxis(p){
   var f=FMT[p.fmt]||fmt;
   var y={type:'value',scale:true,             /* 🔴 轴范围由数据决定，无 min/max */
     axisLine:{show:false},axisTick:{show:false},
-    axisLabel:{color:MUT,fontSize:10,fontFamily:FONT,formatter:f},
-    splitLine:{lineStyle:{color:GRID,type:'dotted'}}};
+    axisLabel:{color:MUT,fontSize:12.5,fontFamily:FONT,formatter:f,margin:12},
+    splitLine:{lineStyle:{color:GRID,type:'dotted',width:1}}};
   if(p.invert)y.inverse=true;
   if(p.type==='bar'&&p.fmt==='int')y.minInterval=1;
   return y;
@@ -543,21 +548,23 @@ function yaxis(p){
 function serie(p,s){
   var f=FMT[p.fmt]||fmt;
   if(p.type==='bar'){
-    return {name:s.name,type:'bar',data:s.data,barWidth:'38%',
+    return {name:s.name,type:'bar',data:s.data,barWidth:'34%',
       itemStyle:{color:s.dash?MUT:INK},label:{show:true,position:'top',
-      color:s.dash?MUT:INK,fontSize:10,fontFamily:FONT,formatter:o=>f(o.value)}};
+      color:s.dash?MUT:INK,fontSize:12,fontWeight:600,fontFamily:FONT,
+      formatter:o=>f(o.value)}};
   }
   var c=s.dash?MUT:INK;
   var o={name:s.name,type:'line',data:s.data,smooth:false,
-    symbol:'circle',symbolSize:s.dash?5:6,
-    lineStyle:{width:s.dash?1.6:2,color:c,type:s.dash?'dashed':'solid'},
+    symbol:'circle',symbolSize:s.dash?7:8,
+    lineStyle:{width:s.dash?2.2:2.6,color:c,type:s.dash?'dashed':'solid'},
     itemStyle:{color:c},
-    endLabel:{show:true,color:c,fontSize:11,fontWeight:s.dash?400:'bold',
-      fontFamily:FONT,formatter:o=>f(o.value)}};
+    endLabel:{show:true,color:c,distance:10,fontSize:14,
+      fontWeight:s.dash?400:'bold',fontFamily:FONT,
+      formatter:o=>f(o.value)}};
   if(p.markline&&!s.dash){
     o.markLine={silent:true,symbol:'none',
-      lineStyle:{color:MUT,type:'dashed',width:1.4},
-      label:{formatter:p.markline.label,color:MUT,fontSize:10,
+      lineStyle:{color:MUT,type:'dashed',width:2},
+      label:{formatter:p.markline.label,color:MUT,fontSize:12,
         fontFamily:FONT,position:'insideEndTop'},
       data:[{yAxis:p.markline.value}]};
   }
