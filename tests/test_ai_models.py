@@ -280,6 +280,32 @@ def test_fetch_models_拉回型号清单(tmp_path):
         httpd.server_close()
 
 
+# ============================================================ 界面真实形状（2026-11-04 回归：/api/models/save 400）
+def test_界面真实形状payload_保存成功(tmp_path):
+    """rick 2026-11-04 两次保存 400 的回归钉：v2 表单交的是
+    `{label,base_url,key,protocol,note,models:[…],headers:{}}`——**没有 `model`
+    字段**。旧 v1 后端（478965a9）的 upsert 要求 `model` 字符串、为空即 400
+    「型号不能为空」；这条用例钉死 v2 校验必须照 v2 表单形状收
+    （探活 /api/models/test 在 v1 就存在，所以当时「test 200、save 400」）。"""
+    form = {"label": "云南大学网关（new-api）",                    # 预置名：纯中文＋括号英文
+            "base_url": "https://new-api-itc.ynu.edu.cn/v1",
+            "key": "sk-form-test-key", "note": "",
+            "protocol": "openai",
+            "models": ["MiniMax/MiniMax-M2.7", "deepseek-ai/DeepSeek-V4.1-Flash"],
+            "headers": {}}
+    with ai.using(data_root=tmp_path):
+        row = _models.upsert(form, actor="admin")
+        assert row["id"] == "new-api", "中文名拼不出 id → 用地址主机名（new-api）"
+        assert row["models"] == form["models"] and row["protocol"] == "openai"
+        # 编辑流：key 留空＝沿用；headers 空对象＝没有自定义头
+        row2 = _models.upsert({**form, "id": row["id"], "key": "",
+                                "protocol": "anthropic"}, actor="admin")
+        raw = json.loads((tmp_path / "_ai" / "models.json").read_text("utf-8"))
+        kept = raw["providers"][0]
+        assert kept["key"] == "sk-form-test-key", "key 留空沿用旧 key"
+        assert kept["protocol"] == "anthropic" and "headers" not in kept
+
+
 # ============================================================ headers（票 4，2026-11-03）
 def test_headers保存读取round_trip(tmp_path):
     """供应商可选 headers：保存什么读回什么（read 原样回）；public 也带给界面（改时预填）。"""
