@@ -49,6 +49,23 @@ def _ensure_path():
 _ensure_path()
 
 
+# ---------------------------------------------------------------- 沙箱基线：tmp_path
+def pytest_configure(config):
+    """把 pytest 临时根（tmp_path / tmp_path_factory）钉到仓库内 tmp/。
+
+    2026-11-04 基线：DSH 沙箱拒绝对系统临时目录下 `pytest-of-<user>` 的
+    创建/清理（`PermissionError: [WinError 5]`），全量 1137 条用例里凡是用
+    tmp_path 的统统 ERROR，真实回归信号被完全淹没。basetemp 指进仓库
+    `tmp/`（已 gitignore）后，创建与清理都发生在工作区内，沙箱放行。
+
+    - 带 PID 后缀：并行会话（多个代理同仓各自跑 pytest）互不清对方的目录
+      （pytest 对显式 basetemp 会在会话开始时整体删掉重建）。
+    - 只在未显式给 `--basetemp` 时生效；显式传参（CI / 单点排查）不受影响。
+    """
+    if config.option.basetemp is None:
+        config.option.basetemp = str(REPO / "tmp" / f"pytest-{os.getpid()}")
+
+
 def _ledgers():
     """仓库里的动态监测表（母本；2026-10-13 起 input/ 只放它）——数据驱动用例的探针。"""
     p = REPO / "input" / "云大全学科排名、阈值动态检测表.xlsx"
