@@ -444,10 +444,6 @@ export function Review({
     setCursor((c) => (c + 1) % emptyIds.length)
   }
 
-  function jumpToSign() {
-    document.getElementById('rv-sign')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
-  }
-
   if (!period) {
     return (
       <section className="card pad-card-lg">
@@ -531,31 +527,29 @@ export function Review({
           </div>
 
           <aside className="rv-side">
-            {/* ------- 签单 ------- */}
+            {/* ------- 签单：状态一句 + 三个动作；报告版本与生成时间收成一行 ------- */}
             <section className="card rv-card" id="rv-sign">
               <div className="rv-sign-head">
                 <h3><Icon name="seal" size={19} />审核 · 签单</h3>
                 <StateSeal state={signed ? 'signed' : status === 'stale' ? 'stale' : 'unsigned'}
-                           size={64} tilt="a" landing={sealLand} />
+                           size={52} tilt="a" landing={sealLand} />
               </div>
-              <div className="rv-kv"><span>报告版本</span><b className="rv-docname">{preview.docx ?? '—'}</b></div>
-              <div className="rv-kv"><span>生成时间</span><b>{preview.updated_at || '—'}</b></div>
-              <div className="rv-kv"><span>存疑</span><b style={doubtN > 0 ? { color: 'var(--gold-ink)' } : undefined}>{doubtN} 处</b></div>
-              {/* A（P1）：一句说清已填 / 待填 / 点签单会先写进报告——数字随真实值联动，不再与旧提示并置矛盾 */}
-              {nField > 0 && (
-                <p className="rv-warn" role="note">
-                  待人工项 {nField} 处：已填 {nField - nLeft} · 待填 {nLeft}。
-                  {signed
-                    ? writeN > 0
-                      ? `有 ${writeN} 处填写还没写进报告——点下方「保存并重出报告」写入；重出后签发失效，需重新签单。`
-                      : '已签单，这一版已定稿。'
-                    : writeN > 0
-                      ? `点「签单」会先把已填的 ${writeN} 处写进报告，再签发。`
-                      : nLeft > 0
-                        ? `还有 ${nLeft} 处待填，补齐后可点「签单」签发。`
-                        : '点「签单」即可签发。'}
+              {(wb?.todo_confirm ?? []).length > 0 && (
+                <p className="rv-check">
+                  签前另核对：{(wb!.todo_confirm).map((t) => t.title).join('；')}
                 </p>
               )}
+              <p className="rv-state">
+                {signed
+                  ? (writeN > 0
+                    ? `已签发；另有 ${writeN} 处填写没写进报告，重出后需重签。`
+                    : '已签单，这一版已定稿。')
+                  : status === 'stale'
+                    ? '签发已失效——确认这一版后重新签单。'
+                    : nLeft > 0
+                      ? `还有 ${nLeft} 处待填；现在签单会先把已填的 ${writeN} 处写进报告。`
+                      : '没有待填的，可以直接签单。'}
+              </p>
               <label className="rv-ack">
                 <input type="checkbox" checked={known} disabled={!canSign || busy !== null}
                        onChange={(e) => setKnown(e.target.checked)} />
@@ -583,35 +577,22 @@ export function Review({
               </div>
               {busyText && <p className="rv-busy" role="status">{busyText}</p>}
               {msg && <p className={msg.ok ? 'rv-msg ok' : 'rv-msg bad'} role="status">{msg.text}</p>}
-              <p className="hint mt-8">
+              <p className="rv-prov">{preview.docx ?? '—'} · {preview.updated_at || '—'}</p>
+              <p className="rv-links">
+                {signed
+                  ? <a href={`/api/periods/${encodeURIComponent(period)}/download/report`}>下载报告（Word）</a>
+                  : <span title="签单后可下载" className="rv-off">下载报告（Word）</span>}
+                <i aria-hidden="true">·</i>
                 <a href={appHref('reading', period)}>看对勘本 →</a>
               </p>
             </section>
 
-            {/* ------- 下载 ------- */}
+            {/* ------- 待填：只在真有待填/未写入时出现 ------- */}
+            {(nField > 0 || writeN > 0) && (
             <section className="card rv-card">
-              <h3><Icon name="doc" size={19} />报告文件</h3>
-              {signed ? (
-                <a className="btn primary rv-dl" href={`/api/periods/${encodeURIComponent(period)}/download/report`}>
-                  <Icon name="doc" size={19} />下载报告（Word）
-                </a>
-              ) : (
-                <button className="btn rv-dl" disabled>
-                  <Icon name="doc" size={19} />下载报告（Word）
-                </button>
-              )}
-              <p className="hint mt-8">
-                {signed ? '已签单，可下载。'
-                  : status === 'stale' ? '签发已失效，重签后可下载。'
-                    : '签单后可下载。'}
-              </p>
-            </section>
-
-            {/* ------- 报告里的空 ------- */}
-            <section className="card rv-card">
-              <h3><Icon name="list" size={19} />报告里的空
+              <h3><Icon name="list" size={19} />待填
                 <span className="hint fw-400 ml-auto">
-                  {nLeft > 0 ? `还剩 ${nLeft} 处` : '已填齐'}{doubtN > 0 ? ` · 存疑 ${doubtN} 处` : ''}
+                  {nLeft > 0 ? `还剩 ${nLeft} 处` : '已填齐'}
                 </span>
               </h3>
               {nField > 0 && (
@@ -632,13 +613,7 @@ export function Review({
                   </button>
                 </div>
               )}
-              {nField === 0 ? (
-                <p className="hint mt-8">
-                  没有要填的——可直接签单。
-                  <button type="button" className="btn ml-10 pad-4-12 fs-13" 
-                          onClick={jumpToSign}>去签单 ↓</button>
-                </p>
-              ) : fieldsShown.length === 0 ? (
+              {nField === 0 ? null : fieldsShown.length === 0 ? (
                 <p className="hint mt-8">没有标存疑的处。</p>
               ) : (
                 <ul className="rv-todo">
@@ -662,16 +637,6 @@ export function Review({
                   })}
                 </ul>
               )}
-              {(wb?.todo_confirm ?? []).length > 0 && (
-                <>
-                  <p className="hint mt-10">另需核对：</p>
-                  <ul className="rv-todo rv-confirm">
-                    {wb!.todo_confirm.map((t) => (
-                      <li key={t.id}><span className="rv-todo-t">{t.title}</span></li>
-                    ))}
-                  </ul>
-                </>
-              )}
               {wbNote && (
                 <p className="hint ink-bad">
                   {wbNote}
@@ -693,13 +658,14 @@ export function Review({
                                confirmText="确认重出？旧稿会先撤下、可回滚"
                                title="把填的值写进报告并重出（约 2–15 秒）"
                                onConfirm={doRebuild}>
-                  <Icon name="refresh" size={18} />{busy === 'rebuild' ? '正在重出……' : '保存并重出报告'}
+                  <Icon name="refresh" size={18} />{busy === 'rebuild' ? '正在重出……' : '保存并重出'}
                 </ConfirmButton>
               </div>
-              <p className="hint mt-8">
+              <p className="rv-prov">
                 填的值只进报告、不动台账{appliedN > 0 ? `；已写入 ${appliedN} 处` : ''}。
               </p>
             </section>
+            )}
           </aside>
         </div>
       )}

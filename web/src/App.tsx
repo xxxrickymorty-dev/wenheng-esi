@@ -616,17 +616,6 @@ export default function App() {
     { key: 'gen', label: '生成初稿', icon: 'doc', href: '/app/' },
     { key: 'review', label: '核验定稿', icon: 'seal', href: '/app/?view=review' },
   ]
-  /* 流程条「进行中」按这一期的真实状态推进（39 分册 C：原 FLOW_ACTIVE 按屏恒映射会说谎——
-     已签发期次打开生成台仍点亮第叁步）。未取数亮壹、取数完亮贰、生成中亮叁、生成完未签亮肆；
-     已签发四步全「完成态」不亮进行中（activeIdx = 步骤数 → 四卡全落 done、无 now）。
-     waiting-approval 的界面口径是「报告已出，等你在审核台签单」（wb.ts FOCUS），归肆。 */
-  const FLOW_STEP_BY_STATE: Record<WBState, string | null> = {
-    empty: 'acquire',
-    ready: 'forecast',
-    running: 'gen', stalled: 'gen', 'fail-ledger': 'gen', 'fail-other': 'gen',
-    done: 'review', warned: 'review', 'waiting-approval': 'review',
-    signed: null,
-  }
   const isOperator = me?.role === 'operator'
   const notLoggedIn = roleKnown && !me
   /* 未登录按最低待遇：管理入口不渲染（此前 fail-open——401 被当成「角色未知」，管理页照常开） */
@@ -655,10 +644,13 @@ export default function App() {
   /* 步骤条只在四步流水自身的屏上出现（报告/图册/红件等是流水长出来的下钻屏，
      没有「当前第几步」这回事，画一条全是灰的进度线只会误导）。 */
   const inFlow = ['workbench', 'acquire', 'review', 'forecast'].includes(view)
-  const flowActive = FLOW_STEP_BY_STATE[wb.state] ?? ''
+  /* 「当前步」＝你正在这一屏（2026-11-05 rick：顶栏没提示自己在哪）。
+     此前按 wb.state 推——已签发的期次打开预测台，一个都不亮，人就迷路了。
+     该做到哪一步另由每格右端的状态字表达（64/64 · 已保存 · 已完成 · 待签），两件事分开。 */
+  const flowActive = view === 'workbench' ? 'gen' : (['acquire', 'forecast', 'review'].includes(view) ? view : '')
   const flowActiveIdx = flowActive
     ? Math.max(0, FLOW_STEPS.findIndex((s) => s.key === flowActive))
-    : FLOW_STEPS.length   /* 已签发：无进行中步，四步全落「完成态」 */
+    : -1
 
   return (
     <div className="app-shell" data-view={view} {...rail.rootProps}>
