@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<title>四步页头统一（静态稿 20261105）· 文衡</title>
+<!--
+  四步页头统一 · 静态设计稿（2026-11-05）——待 rick 审
+  1. 顶部四步条＝唯一的步骤标识，页内不再用大卡片复述「取数核验 / 预测选模」。
+  2. 四屏页头统一为「本期 + 期号 + 数据截至」，页内分节一律用论文目录行（章号 + 名称 + 点线 + 右端状态）。
+  单文件零外链；四块面板的步骤条 / 本期头 / 目录行尺寸完全共用同一组类，用于核对「同一张脸」。
+-->
+<style>
+  :root{
+    --bg:#EDE9DE; --card:#FAF8F0; --panel:#E6E1D3; --panel-2:#F2EFE5; --card-hi:#FDFAF3;
+    --ink:#15222B; --ink-2:#43525C; --ink-3:#556169; --ink-4:#64717A;
+    --line:#D8D2C2; --line-2:#E6E1D3; --gline:#163228; --field:#26483B; --field-2:#163228; --field-3:#2F7A58;
+    --gold:#2F7A58; --ok:#276B4C; --warn:#7C5A16; --warn-soft:#F3E9CF;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:KaiTi,"STKaiti",serif;
+    --sans:system-ui,"Microsoft YaHei",sans-serif;
+    --mono:"Cascadia Mono",Consolas,monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+  html{background:var(--bg)}
+  body{
+    background:var(--bg);color:var(--ink);
+    font:14px/1.6 var(--sans);
+    -webkit-font-smoothing:antialiased;
+    font-variant-numeric:tabular-nums;
+    padding:56px 0 64px;
+  }
+  button{font:inherit;color:inherit;background:none;border:0}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+
+  .page{width:1480px;margin:0 auto}
+  .stage{position:relative;width:1080px;margin:0 auto 56px}
+
+  /* ── 面板标注（面板外、左上，骑在 56px 面板间距里） ── */
+  .stage__tag{
+    position:absolute;left:0;top:-23px;
+    font-family:var(--kai);font-size:13px;letter-spacing:.26em;
+    color:var(--ink-2);line-height:1;
+  }
+
+  /* ── 面板：1080 纸面，无框无阴影 ── */
+  .panel{
+    position:relative;width:1080px;background:var(--card);
+  }
+  .panel__body{
+    position:relative;width:1080px;margin-left:0;
+    padding:26px 48px 34px;
+  }
+
+  /* ── 步骤条：四栏目录表，唯一步骤标识 ── */
+  .steps{
+    list-style:none;display:grid;grid-template-columns:repeat(4,1fr);
+    border-top:1px solid var(--gline);
+  }
+  .step{
+    position:relative;height:48px;display:flex;align-items:center;
+    padding:0 12px;border-bottom:1px solid var(--line-2);
+  }
+  .step + .step{border-left:1px solid var(--line-2)}
+  .step::after{
+    content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;
+    background:transparent;
+  }
+  .step.is-current::after{background:var(--gold)}
+  .step__ico{flex:none;display:block;color:var(--ink-3)}
+  .step__ch{
+    flex:none;margin-left:8px;font-family:var(--kai);font-size:13px;line-height:1;
+    color:var(--ink-3);letter-spacing:.04em;
+  }
+  .step__name{
+    flex:none;margin-left:6px;font-size:13.5px;line-height:1;color:var(--ink-2);
+    letter-spacing:.05em;white-space:nowrap;
+  }
+  .step__stat{
+    margin-left:auto;flex:none;font-size:11.5px;line-height:1;
+    color:var(--ink-3);letter-spacing:.06em;white-space:nowrap;
+  }
+  .step.is-current .step__ico,
+  .step.is-current .step__ch{color:var(--ink)}
+  .step.is-current .step__name{color:var(--ink);font-weight:600}
+  .step.is-current .step__stat{color:var(--ink);font-weight:600}
+  .step.is-done .step__stat{color:var(--ok)}
+  .step.is-current .step__stat.is-ok{color:var(--ok)}
+  .step.is-current .step__stat.is-warn{color:var(--warn)}
+  .step.is-next{opacity:.5}
+
+  /* ── 本期头：本期 + 期号 + 数据截至 ── */
+  .issue{
+    display:flex;align-items:flex-end;justify-content:space-between;
+    margin-top:18px;padding-bottom:14px;border-bottom:1px solid var(--gline);
+  }
+  .issue__l{display:flex;align-items:baseline;min-width:0}
+  .issue__title{
+    flex:none;font-family:var(--serif);font-size:26px;font-weight:600;
+    letter-spacing:.05em;line-height:1;color:var(--ink);
+  }
+  .issue__title .num{font-size:24px;font-weight:500;letter-spacing:.03em}
+  .issue__sub{
+    margin-left:18px;font-size:12px;line-height:1;color:var(--ink-3);
+    letter-spacing:.04em;white-space:nowrap;
+  }
+  .issue__act{
+    flex:none;height:32px;display:inline-flex;align-items:center;
+    padding:0 14px;border:1px solid var(--line);background:var(--card-hi);
+    font-size:14px;line-height:1;color:var(--ink-2);letter-spacing:.06em;
+    white-space:nowrap;cursor:pointer;
+  }
+  .issue__act:hover{border-color:var(--ink-4);color:var(--ink)}
+  .issue__act.is-void{padding:0;border:0;background:none;width:0}
+
+  /* ── 目录行：章号 + 名称 + 点线 + 右端状态 ── */
+  .toc{list-style:none;margin-top:18px}
+  .toc__row{display:flex;align-items:baseline;height:44px;padding-top:10px}
+  .toc__no{
+    flex:none;width:28px;font-family:var(--kai);font-size:15px;line-height:1;
+    color:var(--ink-3);
+  }
+  .toc__name{
+    flex:none;font-family:var(--serif);font-size:19px;font-weight:600;
+    letter-spacing:.06em;line-height:1.3;color:var(--ink);white-space:nowrap;
+  }
+  .toc__lead{
+    flex:1;height:8px;margin:0 14px;
+    background-image:radial-gradient(circle, var(--line) 1px, transparent 1px);
+    background-size:5px 5px;
+    background-repeat:repeat-x;
+    background-position:0 100%;
+  }
+  .toc__stat{
+    flex:none;font-size:12px;line-height:1;letter-spacing:.1em;
+    color:var(--ink-2);white-space:nowrap;
+  }
+  .toc__stat .num{letter-spacing:.04em}
+  .sq{
+    display:inline-block;width:8px;height:8px;margin-right:8px;
+    vertical-align:-1px;background:var(--ok);
+  }
+  .sq.is-hollow{background:transparent;border:1px solid var(--ink-4)}
+  .sq.is-warn{background:var(--warn)}
+
+  /* ── ② 两科摘要 ── */
+  .sum{
+    display:flex;align-items:baseline;gap:44px;margin-top:14px;
+    padding-top:12px;border-top:1px solid var(--line-2);
+  }
+  .sum__item{display:flex;align-items:baseline;gap:8px;font-size:13px;color:var(--ink-2)}
+  .sum__tag{
+    flex:none;background:var(--field-2);color:#F2EFE5;
+    font-size:11px;line-height:1;letter-spacing:.1em;padding:4px 7px;
+  }
+  .sum__nm{letter-spacing:.03em;white-space:nowrap}
+  .sum__v{font-size:13px;color:var(--ink);white-space:nowrap}
+
+  /* ── ③ 主动作 ── */
+  .acts{display:flex;align-items:center;margin-top:18px}
+  .btn-solid{
+    height:40px;display:inline-flex;align-items:center;gap:9px;
+    padding:0 18px;background:var(--field-2);border:1px solid var(--field-2);
+    color:#F2EFE5;font-size:14px;line-height:1;letter-spacing:.12em;cursor:pointer;
+  }
+  .btn-solid svg{display:block;flex:none}
+  .acts__link{
+    margin-left:24px;font-size:13px;line-height:1;color:var(--ink-3);
+    letter-spacing:.05em;white-space:nowrap;
+  }
+  .acts__link:hover{color:var(--ink)}
+  .acts__info{
+    flex:none;margin-left:24px;width:16px;height:16px;
+    border:1px solid var(--ink-4);color:var(--ink-3);
+    font-family:var(--serif);font-style:italic;font-size:14px;
+    line-height:14px;text-align:center;
+  }
+
+  /* ── 页尾规则 ── */
+  .rule-note{
+    width:1080px;margin:0 auto;
+    font-family:var(--kai);font-size:11px;
+    letter-spacing:.16em;line-height:1.9;color:var(--ink-3);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ① 取数核验 -->
+  <div class="stage">
+    <div class="stage__tag">① 取数核验</div>
+    <section class="panel">
+      <div class="panel__body">
+        <ol class="steps">
+          <li class="step is-current">
+            <svg class="step__ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v10m0 0 4-4m-4 4-4-4M5 18h14"/></svg><span class="step__ch">壹</span>
+            <span class="step__name">取数核验</span>
+            <span class="step__stat is-ok"><span class="num">64 / 64</span></span>
+          </li>
+          <li class="step is-next">
+            <svg class="step__ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l5-6 4 3 7-8"/></svg><span class="step__ch">贰</span>
+            <span class="step__name">预测选模</span>
+            <span class="step__stat">未开始</span>
+          </li>
+          <li class="step is-next">
+            <svg class="step__ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7v18h10V7l-3-4zM14 3v4h3M9 13h6M9 17h6"/></svg><span class="step__ch">叁</span>
+            <span class="step__name">生成初稿</span>
+            <span class="step__stat">未开始</span>
+          </li>
+          <li class="step is-next">
+            <svg class="step__ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 7.7 8 9 4.6-1.3 8-4.5 8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-4.5"/></svg><span class="step__ch">肆</span>
+            <span class="step__name">核验定稿</span>
+            <span class="step__stat">未开始</span>
+          </li>
+        </ol>
+
+        <div class="issue">
+          <div class="issue__l">
+            <span class="issue__title">本期 <span class="num">202609</span></span>
+            <span class="issue__sub">第 39 期 · 数据截至 2016.1.1–2026.6.30</span>
+          </div>
+          <button class="issue__act" type="button">＋ 开新一期</button>
+        </div>
+
+        <ol class="toc">
+          <li class="toc__row">
+            <span class="toc__no">一</span>
+            <span class="toc__name">开始前检查</span>
+            <span class="toc__lead" aria-hidden="true"></span>
+            <span class="toc__stat"><i class="sq"></i>检查通过</span>
+          </li>
+          <li class="toc__row">
+            <span class="toc__no">二</span>
+            <span class="toc__name">取数</span>
+            <span class="toc__lead" aria-hidden="true"></span>
+            <span class="toc__stat"><i class="sq"></i>已取到 <span class="num">64 / 64</span></span>
+          </li>
+          <li class="toc__row">
+            <span class="toc__no">三</span>
+            <span class="toc__name">并入台账</span>
+            <span class="toc__lead" aria-hidden="true"></span>
+            <span class="toc__stat"><i class="sq"></i>已并入（<span class="num">202609</span> 列）</span>
+          </li>
+        </ol>
+      </div>
+    </section>
+  </div>
+
+  <!-- ② 预测选模 -->
+  <div class="stage">
+    <div class="stage__tag">② 预测选模</div>
+    <section class="panel">
+      <div class="panel__body">
+        <ol class="steps">
+          <li class="step is-done">
+            <svg class="step__ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v10m0 0 4-4m-4 4-4-4M5 18h14"/></svg><span class="step__ch">壹</span>
+            <span class="step__name">取数核验</span>
+            <span class="step__stat"><span class="num">64 / 64</span></span>
+          </li>
+          <li class="step is-current">
+            <svg class="step__ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l5-6 4 3 7-8"/></svg><span class="step__ch">贰</span>
+            <span class="step__name">预测选模</span>
+            <span class="step__stat">已保存</span>
+          </li>
+          <li class="step is-next">
+            <svg class="step__ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7v18h10V7l-3-4zM14 3v4h3M9 13h6M9 17h6"/></svg><span class="step__ch">叁</span>
+            <span class="step__name">生成初稿</span>
+            <span class="step__stat">未开始</span>
+          </li>
+          <li class="step is-next">
+            <svg class="step__ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 7.7 8 9 4.6-1.3 8-4.5 8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-4.5"/></svg><span class="step__ch">肆</span>
+            <span class="step__name">核验定稿</span>
+            <span class="step__stat">未开始</span>
+          </li>
+        </ol>
+
+        <div class="issue">
+          <div class="issue__l">
+            <span class="issue__title">本期 <span class="num">202609</span></span>
+            <span class="issue__sub">第 39 期 · 数据截至 2016.1.1–2026.6.30</span>
+          </div>
+          <button class="issue__act" type="button">← 回报告</button>
+        </div>
+
+        <ol class="toc">
+          <li class="toc__row">
+            <span class="toc__no">一</span>
+            <span class="toc__name">未入 ESI 前 1%</span>
+            <span class="toc__lead" aria-hidden="true"></span>
+            <span class="toc__stat"><i class="sq"></i><span class="num">8</span> 科</span>
+          </li>
+          <li class="toc__row">
+            <span class="toc__no">二</span>
+            <span class="toc__name">候选模型</span>
+            <span class="toc__lead" aria-hidden="true"></span>
+            <span class="toc__stat"><i class="sq is-hollow"></i>每科 <span class="num">5</span> 个</span>
+          </li>
+        </ol>
+
+        <div class="sum">
+          <div class="sum__item">
+            <span class="sum__tag">本期报告</span>
+            <span class="sum__nm">分子生物学与遗传学</span>
+            <span class="sum__v num">88.01%</span>
+          </div>
+          <div class="sum__item">
+            <span class="sum__tag">本期报告</span>
+            <span class="sum__nm">物理学</span>
+            <span class="sum__v num">81.21%</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ③ 生成初稿 -->
+  <div class="stage">
+    <div class="stage__tag">③ 生成初稿</div>
+    <section class="panel">
+      <div class="panel__body">
+        <ol class="steps">
+          <li class="step is-done">
+            <svg class="step__ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v10m0 0 4-4m-4 4-4-4M5 18h14"/></svg><span class="step__ch">壹</span>
+            <span class="step__name">取数核验</span>
+            <span class="step__stat"><span class="num">64 / 64</span></span>
+          </li>
+          <li class="step is-done">
+            <svg class="step__ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l5-6 4 3 7-8"/></svg><span class="step__ch">贰</span>
+            <span class="step__name">预测选模</span>
+            <span class="step__stat">已保存</span>
+          </li>
+          <li class="step is-current">
+            <svg class="step__ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7v18h10V7l-3-4zM14 3v4h3M9 13h6M9 17h6"/></svg><span class="step__ch">叁</span>
+            <span class="step__name">生成初稿</span>
+            <span class="step__stat">已完成</span>
+          </li>
+          <li class="step is-next">
+            <svg class="step__ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 7.7 8 9 4.6-1.3 8-4.5 8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-4.5"/></svg><span class="step__ch">肆</span>
+            <span class="step__name">核验定稿</span>
+            <span class="step__stat">未开始</span>
+          </li>
+        </ol>
+
+        <div class="issue">
+          <div class="issue__l">
+            <span class="issue__title">本期 <span class="num">202609</span></span>
+            <span class="issue__sub">第 39 期 · 数据截至 2016.1.1–2026.6.30</span>
+          </div>
+          <span class="issue__act is-void" aria-hidden="true"></span>
+        </div>
+
+        <ol class="toc">
+          <li class="toc__row">
+            <span class="toc__no">一</span>
+            <span class="toc__name">取数</span>
+            <span class="toc__lead" aria-hidden="true"></span>
+            <span class="toc__stat"><i class="sq"></i>已完成</span>
+          </li>
+          <li class="toc__row">
+            <span class="toc__no">二</span>
+            <span class="toc__name">核对并并入</span>
+            <span class="toc__lead" aria-hidden="true"></span>
+            <span class="toc__stat"><i class="sq"></i>已完成</span>
+          </li>
+          <li class="toc__row">
+            <span class="toc__no">三</span>
+            <span class="toc__name">一键生成</span>
+            <span class="toc__lead" aria-hidden="true"></span>
+            <span class="toc__stat"><i class="sq"></i>已完成 · <span class="num">4</span> 项过</span>
+          </li>
+        </ol>
+
+        <div class="acts">
+          <button class="btn-solid" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7v18h10V7l-3-4zM14 3v4h3M9 13h6M9 17h6"/></svg>
+            打开报告
+          </button>
+          <span class="acts__link">重新生成会使签发失效</span>
+          <span class="acts__info" title="口径提示">i</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ④ 核验定稿 -->
+  <div class="stage">
+    <div class="stage__tag">④ 核验定稿</div>
+    <section class="panel">
+      <div class="panel__body">
+        <ol class="steps">
+          <li class="step is-done">
+            <svg class="step__ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v10m0 0 4-4m-4 4-4-4M5 18h14"/></svg><span class="step__ch">壹</span>
+            <span class="step__name">取数核验</span>
+            <span class="step__stat"><span class="num">64 / 64</span></span>
+          </li>
+          <li class="step is-done">
+            <svg class="step__ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l5-6 4 3 7-8"/></svg><span class="step__ch">贰</span>
+            <span class="step__name">预测选模</span>
+            <span class="step__stat">已保存</span>
+          </li>
+          <li class="step is-done">
+            <svg class="step__ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7v18h10V7l-3-4zM14 3v4h3M9 13h6M9 17h6"/></svg><span class="step__ch">叁</span>
+            <span class="step__name">生成初稿</span>
+            <span class="step__stat">已完成</span>
+          </li>
+          <li class="step is-current">
+            <svg class="step__ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 7.7 8 9 4.6-1.3 8-4.5 8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-4.5"/></svg><span class="step__ch">肆</span>
+            <span class="step__name">核验定稿</span>
+            <span class="step__stat is-warn">待签</span>
+          </li>
+        </ol>
+
+        <div class="issue">
+          <div class="issue__l">
+            <span class="issue__title">本期 <span class="num">202609</span></span>
+            <span class="issue__sub">第 39 期 · 数据截至 2016.1.1–2026.6.30</span>
+          </div>
+          <button class="issue__act" type="button">← 回报告</button>
+        </div>
+
+        <ol class="toc">
+          <li class="toc__row">
+            <span class="toc__no">一</span>
+            <span class="toc__name">试排全文</span>
+            <span class="toc__lead" aria-hidden="true"></span>
+            <span class="toc__stat"><i class="sq is-warn"></i><span class="num">4</span> 处待填</span>
+          </li>
+          <li class="toc__row">
+            <span class="toc__no">二</span>
+            <span class="toc__name">审核签单</span>
+            <span class="toc__lead" aria-hidden="true"></span>
+            <span class="toc__stat"><i class="sq is-hollow"></i>存疑 <span class="num">0</span> 处</span>
+          </li>
+        </ol>
+      </div>
+    </section>
+  </div>
+
+  <p class="rule-note">统一规则：步骤条＝唯一的步骤标识（状态上移）；页头只写「本期 + 期号 + 数据截至」；页内分节一律用目录行。</p>
+
+</div>
+</body>
+</html>

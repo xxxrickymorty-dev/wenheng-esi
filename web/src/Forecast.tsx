@@ -6,10 +6,12 @@
    数字全部来自服务端产物——本页只显示，不重算。 */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { PeriodDetail } from './api'
 import {
   formatProvenanceTime, runForecast,
   type ForecastChoiceEntry, type ForecastMeta, type ForecastModelResult, type ForecastRun,
 } from './api-forecast'
+import { FlowHead, FlowToc } from './FlowHead'
 import { Info } from './Info'
 import { Icon } from './icons'
 import { forecastAppliedDiffs, forecastAppliedStale, resolveSubjects, shortRouteLabel } from './lib/forecast'
@@ -180,11 +182,14 @@ function ModelPanel({
 /* ---------------------------------------------------------------- 页面 */
 
 export function Forecast({
-  period, meta, metaError, choice, choiceDirty,
+  period, issue, detail, meta, metaError, choice, choiceDirty,
   onChoiceChange, onSubjectsChange, onSaveChoice, onReloadChoice, onRegenerate,
   regenBusy, regenNote, canEdit, canRegenerate,
 }: {
   period: string | null
+  issue?: string
+  /** 期次事实（数据窗口）——本期头用 */
+  detail: PeriodDetail | null
   meta: ForecastMeta | null
   metaError: string
   choice: ForecastChoiceEntry | null
@@ -296,26 +301,27 @@ export function Forecast({
 
   return (
     <>
-      <section className="card pad-20-22-18">
-        <div className="rowc12">
-          <h1 className="fs-25">预测选模</h1>
-          {period && <span className="pill unsigned mono">{period}</span>}
-          <a className="btn ml-auto" href={period ? `/app/?period=${encodeURIComponent(period)}` : '/app/'}>
+      <FlowHead
+        period={period}
+        issue={issue}
+        detail={detail}
+        hint={(
+          <Info label="期次与数据说明">
+            <p><b>期次 {period ?? '—'}</b>：本期配置与报告的归档期——保存写进这一期。</p>
+            <p><b>数据截至 {fmtMonth(meta?.source_period)}</b>：预测图与试跑读的那批完整数据；模型版本 {meta?.model_version ?? '—'}。</p>
+            <p>最近一次完整运行记录：{formatProvenanceTime(meta?.run_record_at)}；上次处理使用的文件：{meta?.processed_input?.name ?? '无法核实'}
+              {meta?.processed_input?.last_modified_at ? `（文件最后修改：${formatProvenanceTime(meta.processed_input.last_modified_at)}）` : ''}。</p>
+          </Info>
+        )}
+        right={(
+          <a className="btn" href={period ? `/app/?period=${encodeURIComponent(period)}` : '/app/'}>
             ← 回报告
           </a>
-        </div>
-      </section>
+        )}
+      />
 
-      {/* 一条带：数据截至 / 路线 / 保存与重出（页面上仅此一处） */}
-      <div className="fc-band" role="region" aria-label="数据期次、路线与保存">
-        <span className="kv">数据截至 <b className="mono">{fmtMonth(meta?.source_period)}</b></span>
-        <Info label="期次与数据说明">
-          <p><b>期次 {period ?? '—'}</b>：本期配置与报告的归档期——保存写进这一期。</p>
-          <p><b>数据截至 {fmtMonth(meta?.source_period)}</b>：预测图与试跑读的那批完整数据；模型版本 {meta?.model_version ?? '—'}。</p>
-          <p>最近一次完整运行记录：{formatProvenanceTime(meta?.run_record_at)}；上次处理使用的文件：{meta?.processed_input?.name ?? '无法核实'}
-            {meta?.processed_input?.last_modified_at ? `（文件最后修改：${formatProvenanceTime(meta.processed_input.last_modified_at)}）` : ''}。</p>
-        </Info>
-
+      {/* 一条带：路线 / 保存与重出（期次与数据截至已在本期头，不再重复） */}
+      <div className="fc-band" role="region" aria-label="路线与保存">
         {routes.length > 1 && (
           <div className="fc-seg" role="group" aria-label="预测路线">
             {routes.map((r) => (
@@ -411,10 +417,10 @@ export function Forecast({
 
       {meta?.available && (
         <section className="fc-wall" aria-label="未进入 ESI 前 1% 的潜力学科">
-          <div className="fc-wall-h">
-            <h2>未入 ESI 前 1%</h2>
-            <span className="n">{rows.length}</span>
-          </div>
+          <FlowToc rows={[
+            { no: '一', name: '未入 ESI 前 1%', status: `${rows.length} 科`, tone: 'ok' },
+            { no: '二', name: '候选模型', status: '每科 5 个，首张为推荐', tone: 'wait' },
+          ]} label="本期预测" />
           {pairNote && <p className="hint fc-pair-note" role="status">{pairNote}</p>}
           <div className="fc-cards">
             {rows.map((row) => (

@@ -8,6 +8,7 @@ import { getArchive } from './api'
 import { useEffect, useState } from 'react'
 import { getForecastBoard, getWaterLevel, type ForecastBoardRow, type ForecastChoiceEntry, type WaterRow } from './api-forecast'
 import { ConfirmButton } from './ConfirmButton'
+import { FlowHead } from './FlowHead'
 import { Info } from './Info'
 import { approvalLabel } from './lib/status'
 import { Icon } from './icons'
@@ -128,10 +129,11 @@ function countAudit(a: ArchiveData) {
 export function Workbench({
   period, me, wb, err, healthy, run, approvalStatus, activityState,
   actionLockReason, activeRun, actionsLocked, submitting, onGenerate,
-  periods, forecastChoice, detail,
+  periods, forecastChoice, detail, issue,
   forecastAppliedStale, forecastAppliedDiffs, autoConfirmRerun,
 }: {
   period: string | null
+  issue?: string
   me: Me | null
   wb: WB
   err: ApiError | null
@@ -177,7 +179,6 @@ export function Workbench({
       .catch(() => { if (alive) { setWater([]); setBoard([]) } })
     return () => { alive = false }
   }, [period, generated])
-  const issueNo = /第 (\d+) 期/.exec(periods.find((p) => p.period === period)?.label ?? '')?.[1] ?? ''
   /* 审计节点读数：运行档案（v2 把原故事条里的一枚数搬上节点；回放动画在「可视化工作流」屏） */
   const [audit, setAudit] = useState<{ total: number; pass: number; review: number; fail: number } | null>(null)
   const canReadArchive = !!detail?.steps?.generate
@@ -277,13 +278,7 @@ export function Workbench({
           ＋一行主动作＋上期已出刊。四节点流程图撤掉——它和上面四步流水（壹贰叁肆）重复，
           审计读数并进第三步说明。 */}
       <section className="wb2" aria-label="本期进度">
-        <div className="wb2-line">
-          <h1 className="wb2-period">本期 {period ?? '——————'}</h1>
-          <span className="dim">
-            {issueNo ? `第 ${issueNo} 期` : '期次待定'}
-            {detail?.window ? ` · 数据截至 ${detail.window}` : ''}
-          </span>
-        </div>
+        <FlowHead period={period} issue={issue} detail={detail} />
 
         <section className="wb-toc" aria-label="本期动态">
           <h2>本期动态</h2>

@@ -1031,28 +1031,52 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 /* ===== 取数核验三段式（2026-10-19 rick 定：① 开始前检查 → ② 下载数据 → ③ 并入台账，逐段解锁） =====
    上一段没过 → 下一段 locked（虚线 + 写明等什么）；做完的一段 done（内容收起、缩成一行结论＋重入口）。
    静态稿对照：web/mockups/取数核验-三段式重设计（静态稿）.html */
+/* ---------- 出报告四步的公共页头（2026-11-05 rick 定）：本期头 + 目录行 ----------
+   步骤条已经标出你在第几步，页头只写「本期 + 期号 + 数据截至」；页内分节一律目录行
+   （章号 + 名称 + 点线 + 右端状态），跟工作台「本期动态」同一套排法。 */
+.flow-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+  padding:2px 2px 12px;border-bottom:1px solid var(--gline)}
+.fh-period{font-family:var(--serif);font-size:26px;letter-spacing:.05em;margin:0;color:var(--ink)}
+.fh-sub{font-size:12px;color:var(--ink-3);letter-spacing:.02em}
+.fh-hint{display:inline-flex;align-items:center;font-size:12px}
+.fh-acts{margin-left:auto;display:flex;align-items:center;gap:10px}
+.flow-toc{list-style:none;margin:16px 0 12px;padding:0}
+.flow-toc li{display:flex;align-items:baseline;min-height:42px}
+.flow-toc .num{flex:none;width:28px;font-family:var(--kai);font-size:16px;color:var(--ink-3)}
+.flow-toc .name{flex:none;font-family:var(--serif);font-weight:600;font-size:19px;
+  letter-spacing:.05em;color:var(--ink)}
+.flow-toc .lead{flex:1;min-width:40px;height:8px;margin:0 14px 3px;align-self:flex-end;
+  background-image:radial-gradient(circle,var(--line) 1px,transparent 1px);
+  background-size:5px 5px;background-repeat:repeat-x;background-position:0 100%}
+.flow-toc .st{flex:none;align-self:flex-end;display:inline-flex;align-items:center;gap:8px;
+  padding-bottom:1px;font-size:12px;letter-spacing:.1em;color:var(--ink-2)}
+.flow-toc .mk{width:8px;height:8px;background:var(--ok);flex:none}
+.flow-toc li.wait .mk{background:none;border:1px solid var(--ink-4)}
+.flow-toc li.wait .st{color:var(--ink-3)}
+.flow-toc li.warn .mk{background:var(--warn)}
+.flow-toc li.warn .st{color:var(--warn);font-weight:600}
+.flow-toc li.now .mk{background:var(--gold)}
+.flow-toc li.now .st{color:var(--ink);font-weight:600}
+
 .flow{margin-top:18px}
-.stg{position:relative;display:grid;grid-template-columns:56px 1fr}
-.stg .node{position:relative;display:flex;justify-content:center}
-.stg .node i{width:34px;height:34px;display:flex;align-items:center;justify-content:center;
-  border:1px solid var(--line);background:var(--card);font-family:var(--serif);font-style:normal;
-  font-size:var(--fs-h);color:var(--ink-3);z-index:1}
-.stg .node::after{content:"";position:absolute;top:34px;bottom:0;width:2px;background:var(--line-2)}
-.stg:last-child .node::after{display:none}
-.stg.done .node i{background:var(--ok-soft);border-color:var(--ok-line);color:var(--ok)}
-.stg.done .node::after{background:var(--ok-line)}
-.stg.now .node i{background:var(--zhu);border-color:var(--zhu);color:#fff}
-.stg.locked .node i{border-style:dashed}
-.stg .body{min-width:0;padding:0 0 22px 12px}
-.stg-card{border:1px solid var(--line);background:var(--card)}
-.stg.now .stg-card{border-left:3px solid var(--zhu);background:var(--card-hi)}
-.stg.locked .stg-card{border-style:dashed;background:transparent}
-.stg-top{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
-.stg.done .stg-top{border-bottom:none;padding:10px 16px}
-.stg-title{font-family:var(--serif);font-size:var(--fs-h);font-weight:650}
-.stg-stat{margin-left:auto;font-size:var(--fs-label)}
-.stg-stat.ok{color:var(--ok)}
+/* 取数三段（2026-11-05）：撤数字柱与卡片盒，改成目录行 + 行下内容（内容缩进对齐名称） */
+.stg{position:relative;display:block}
+.stg .node{display:none}
+.stg .body{min-width:0;padding:0 0 14px}
+.stg-top{display:flex;align-items:baseline;min-height:42px;gap:0;border:0;padding:0}
+.stg-no{flex:none;width:28px;font-family:var(--kai);font-size:16px;color:var(--ink-3)}
+.stg-title{flex:none;font-family:var(--serif);font-size:19px;font-weight:600;
+  letter-spacing:.05em;color:var(--ink)}
+.stg-lead{flex:1;min-width:40px;height:8px;margin:0 14px 3px;align-self:flex-end;
+  background-image:radial-gradient(circle,var(--line) 1px,transparent 1px);
+  background-size:5px 5px;background-repeat:repeat-x;background-position:0 100%}
+.stg-stat{flex:none;align-self:flex-end;padding-bottom:1px;font-size:12px;
+  letter-spacing:.1em;color:var(--ink-2)}
+.stg-stat.ok{color:var(--ok);font-weight:600}
 .stg-stat.wait{color:var(--ink-3)}
+.stg-card{border:0;background:transparent;padding:0 0 0 28px}
+.stg.now .stg-card{border:0;background:transparent}
+.stg.locked .stg-card{border:0;background:transparent}
 .stg-stat.run{color:var(--gold)}
 .stg-stat.bad{color:var(--warn)}
 .stg-body{padding:14px 16px 15px}
@@ -1062,7 +1086,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 /* ② 收起后点「下载清单」展开的明细区（只在 done 段显示，不挤占常驻高度） */
 .stg-extra{display:none}
 .stg.done .stg-extra{display:block;padding:0 16px 12px}
-.stg-big{font-family:var(--serif);font-size:clamp(20px,2.2vw,26px);font-weight:600;color:var(--zhu);line-height:1.35}
+.stg-big{font-family:var(--serif);font-size:17px;font-weight:600;color:var(--zhu);line-height:1.5}
 .stg-sub{color:var(--ink-2);font-size:var(--fs-body);margin-top:2px}
 .stg-cta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
 /* ⓘ 进操作行行尾（票 13）：贴行右端，弹层向上开——盖住它解释的控件区，
@@ -1849,19 +1873,23 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
 .app-shell .ia-rail{display:none}
 .app-shell .ia-steps-list{grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin:0;
   border-top:1px solid var(--seam)}
-.app-shell .ia-card a,.app-shell .ia-card>span{justify-content:flex-start;gap:10px;
-  min-height:44px;padding:0 10px 0 12px;background:transparent;border:0;
+/* 四栏目录表（2026-11-05）：图标 + 章号 + 页名 + 右端状态；格间一道发丝竖线 */
+.app-shell .ia-card a,.app-shell .ia-card>span{display:flex;align-items:center;gap:8px;
+  min-height:48px;padding:0 12px;background:transparent;border:0;
   border-bottom:1px solid var(--hair);border-radius:0;
-  font-family:var(--sans);font-size:var(--fs-body);letter-spacing:.08em;color:var(--ink-2)}
+  font-family:var(--sans);font-size:13.5px;letter-spacing:.06em;color:var(--ink-2)}
+.app-shell .ia-card+.ia-card a,.app-shell .ia-card+.ia-card>span{border-left:1px solid var(--line-2)}
 .app-shell .ia-card a:hover{background:var(--card);color:var(--ink)}
-.app-shell .ia-card a::before,.app-shell .ia-card>span::before{font-family:var(--kai);
-  font-size:15px;color:var(--ok);flex:none}
-.app-shell .ia-card:nth-child(1) a::before,.app-shell .ia-card:nth-child(1)>span::before{content:"壹"}
-.app-shell .ia-card:nth-child(2) a::before,.app-shell .ia-card:nth-child(2)>span::before{content:"贰"}
-.app-shell .ia-card:nth-child(3) a::before,.app-shell .ia-card:nth-child(3)>span::before{content:"叁"}
-.app-shell .ia-card:nth-child(4) a::before,.app-shell .ia-card:nth-child(4)>span::before{content:"肆"}
-.app-shell .ia-card.now a,.app-shell .ia-card.now>span{background:transparent;border-color:var(--hair);
-  box-shadow:inset 2px 0 0 var(--seam);color:var(--ink);font-weight:600}
+.app-shell .ia-card a>svg,.app-shell .ia-card>span>svg{flex:none;color:var(--ink-3)}
+.app-shell .ia-no{font-family:var(--kai);font-size:13px;color:var(--ok);flex:none}
+.app-shell .ia-stat{margin-left:auto;font-size:11.5px;letter-spacing:.04em;color:var(--ink-4);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.app-shell .ia-card.now a,.app-shell .ia-card.now>span{background:transparent;
+  box-shadow:inset 0 -2px 0 var(--gold);color:var(--ink);font-weight:600}
+.app-shell .ia-card.now a>svg,.app-shell .ia-card.now>span>svg{color:var(--ink)}
+.app-shell .ia-card.now .ia-stat{color:var(--ink);font-weight:600}
+.app-shell .ia-card.done .ia-stat{color:var(--ok)}
+.app-shell .ia-card.todo a,.app-shell .ia-card.todo>span{opacity:.55}
 
 /* ---------- 运行档案：一张总账，不摆一排卡片 ----------
    Archive.tsx 的数据与结构一行未动，只把「卡片堆」按静态稿压成「目录页」：

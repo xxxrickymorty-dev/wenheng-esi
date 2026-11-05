@@ -10,7 +10,7 @@
    🔴 真门在后端：签单 / 重出 / 下载都由后端闸门把关，前端只把它们摆到顺手的位置。 */
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import type { Me, Period } from './api'
+import type { Me, Period, PeriodDetail } from './api'
 import { flagLoc, revokePeriod, signPeriod } from './api-sign'
 import { getWorkbench, postFill, type WorkbenchData } from './api-workbench'
 import {
@@ -22,6 +22,7 @@ import { buildOption } from './charts/build'
 import { ChartFigure } from './charts/ChartFigure'
 import { ConfirmButton } from './ConfirmButton'
 import { FactsStrip } from './Report'
+import { FlowHead } from './FlowHead'
 import { Icon } from './icons'
 import { StateSeal } from './StateSeal'
 import { appHref, errorNote } from './lib/status'
@@ -168,9 +169,12 @@ function BlockView({
 }
 
 export function Review({
-  period, me, periods, onChanged,
+  period, issue, detail, me, periods, onChanged,
 }: {
   period: string | null
+  issue?: string
+  /** 期次事实（数据窗口）——本期头用 */
+  detail: PeriodDetail | null
   me: Me | null
   periods: Period[]
   onChanged: () => void
@@ -462,14 +466,13 @@ export function Review({
 
   return (
     <>
-      <div className="rv-lead">
-        <a className="hint no-underline" href={back} >← 回报告</a>
-        <span className="ink-line">·</span>
-        <h2 className="h-sec h-lg ml-4">
-          <Icon name="seal" size={22} />核验定稿
-        </h2>
-        {doubtN > 0 && <span className="hint gold-650">存疑 {doubtN} 处</span>}
-      </div>
+      <FlowHead
+        period={period}
+        issue={issue}
+        detail={detail}
+        hint={doubtN > 0 ? <span className="hint gold-650">存疑 {doubtN} 处</span> : undefined}
+        right={<a className="btn" href={back}>← 回报告</a>}
+      />
 
       {!isAdmin && (
         <div className="pending-box mt-12">

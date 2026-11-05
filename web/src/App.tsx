@@ -477,6 +477,9 @@ export default function App() {
   }
   const runForSelected: Run | null = pickRunForPeriod(run, selected)
   const approvalStatus = periods.find((p) => p.period === selected)?.status ?? 'unsigned'
+  /* 总期号（第 39 期）——四屏本期头共用；从期次 label 里取，取不到就不写（不编） */
+  const issueNo = /第 (\d+) 期/.exec(periods.find((p) => p.period === selected)?.label ?? '')?.[1] ?? ''
+  const issueLabel = issueNo ? `第 ${issueNo} 期` : ''
   /* 票 05：执行条只画同期次的运行；别期在跑由工作台的一行提示说明（A3） */
   const runForWorkbench: Run | null = runForSelected
   const wb0 = deriveWorkbench(selected, periods, detail, healthy === true, demo)
@@ -491,6 +494,37 @@ export default function App() {
   const wb = runState
     ? { ...wb0, state: runState }
     : wb0
+  /* 步骤条上的四个真实状态（2026-11-05）：取数看采集计数、预测看保存态、
+     生成看产物/任务、核验看签发态。读不到就写「—」，不猜。 */
+  const acq = detail?.acquisition
+  const flowStatus: Record<string, { text: string; tone: 'ok' | 'wait' | 'warn' }> = {
+    acquire: acq?.expected
+      ? {
+        text: `${acq.verified ?? 0} / ${acq.expected}`,
+        tone: (acq.verified ?? 0) >= acq.expected ? 'ok' : 'wait',
+      }
+      : { text: acq?.started ? '进行中' : '未开始', tone: 'wait' },
+    forecast: !selectedForecastChoice?.loaded
+      ? { text: '读取中', tone: 'wait' }
+      : selectedForecastChoiceDirty
+        ? { text: '有改动', tone: 'warn' }
+        : { text: '已保存', tone: 'ok' },
+    gen: runForSelected?.status === 'running'
+      ? { text: '生成中', tone: 'wait' }
+      : detail?.steps?.generate
+        ? { text: '已完成', tone: 'ok' }
+        : { text: '待生成', tone: 'wait' },
+    review: approvalStatus === 'signed'
+      ? { text: '已签发', tone: 'ok' }
+      : approvalStatus === 'stale'
+        ? { text: '待重签', tone: 'warn' }
+        : { text: '待签', tone: 'wait' },
+  }
+  const flowStepClass = (key: string, on: boolean) => {
+    if (on) return 'ia-card now'
+    const tone = flowStatus[key]?.tone
+    return `ia-card${tone === 'ok' ? ' done' : tone === 'warn' ? ' done' : ' todo'}`
+  }
   const actionLockReason = healthy === false
     ? '服务未连接，生成、上传与重跑暂不能使用。'
     : healthy === null
@@ -573,13 +607,14 @@ export default function App() {
     archive: 'archive', ledger: 'archive', heal: 'archive', migrate: 'archive',
   }
   /* 「出报告」四步流水（2026-10-19 rick：「选章节」入口关闭——一直空着，核验定稿里已有章节选择）。
-     步骤条只在流水屏出现；2026-10-16 二版（rick 拍板）：不画序号——顺序由位置与细线方向表达。
-     深链 ?view=pick 已重定向到预测选模（39 分册 C；Pick.tsx 文件暂留不删）。 */
-  const FLOW_STEPS: { key: string; label: string; href?: string }[] = [
-    { key: 'acquire', label: '取数核验', href: '/app/?view=acquire' },
-    { key: 'forecast', label: '预测选模', href: '/app/?view=forecast' },
-    { key: 'gen', label: '生成初稿', href: '/app/' },
-    { key: 'review', label: '核验定稿', href: '/app/?view=review' },
+     步骤条只在流水屏出现；2026-11-05（rick）：步骤条兼目录——每格带一个真实状态，
+     页头不再重复写页名。不画序号之外的装饰：章号在左、页名在中、状态贴右。 */
+  const STEP_CN = ['壹', '贰', '叁', '肆']
+  const FLOW_STEPS: { key: string; label: string; icon: string; href?: string }[] = [
+    { key: 'acquire', label: '取数核验', icon: 'download', href: '/app/?view=acquire' },
+    { key: 'forecast', label: '预测选模', icon: 'chart', href: '/app/?view=forecast' },
+    { key: 'gen', label: '生成初稿', icon: 'doc', href: '/app/' },
+    { key: 'review', label: '核验定稿', icon: 'seal', href: '/app/?view=review' },
   ]
   /* 流程条「进行中」按这一期的真实状态推进（39 分册 C：原 FLOW_ACTIVE 按屏恒映射会说谎——
      已签发期次打开生成台仍点亮第叁步）。未取数亮壹、取数完亮贰、生成中亮叁、生成完未签亮肆；
@@ -680,15 +715,23 @@ export default function App() {
             <ol className="ia-steps-list">
               {FLOW_STEPS.map((s, i) => {
                 const on = s.key === flowActive
-                /* 2026-10-17 rick：demo 放开取数核验与选章节——五卡全员可点（后端同批改 @user_route）。 */
-                const cls = `ia-card${i < flowActiveIdx ? ' done' : ''}${on ? ' now' : ''}`
+                /* 2026-10-17 rick：demo 放开取数核验与选章节——四卡全员可点（后端同批改 @user_route）。 */
+                const cls = flowStepClass(s.key, on)
+                const stat = flowStatus[s.key]
                 return (
                   <li key={s.key} className={cls}>
                     {s.href ? (
-                      <a href={navHref(s.href)} aria-current={on ? 'step' : undefined}>{s.label}</a>
+                      <a href={navHref(s.href)} aria-current={on ? 'step' : undefined}>
+                        <Icon name={s.icon} size={16} />
+                        <span className="ia-no" aria-hidden="true">{STEP_CN[i]}</span>
+                        <span>{s.label}</span>
+                        <span className="ia-stat">{stat?.text ?? ''}</span>
+                      </a>
                     ) : (
                       <span title="还没做：从某期报告里勾选章节加进初稿（.scratch/ia-rework 票 06，待设计）">
-                        {s.label} · 即将
+                        <Icon name={s.icon} size={16} />
+                        <span className="ia-no" aria-hidden="true">{STEP_CN[i]}</span>
+                        <span>{s.label} · 即将</span>
                       </span>
                     )}
                   </li>
@@ -763,11 +806,13 @@ export default function App() {
         ) : view === 'migrate' ? (
           <MigrateSandbox />
         ) : view === 'acquire' ? (
-          <Acquire period={selected} onOpenPeriod={pickPeriod} />
+          <Acquire period={selected} issue={issueLabel} detail={detail} onOpenPeriod={pickPeriod} />
         ) : view === 'forecast' ? (
           <Suspense fallback={screenFallback}>
             <Forecast
               period={selected}
+              issue={issueLabel}
+              detail={detail}
               meta={forecastMeta}
               metaError={forecastMetaError}
               choice={selectedForecastChoice}
@@ -806,6 +851,8 @@ export default function App() {
           <Suspense fallback={screenFallback}>
             <Review
               period={selected}
+              issue={issueLabel}
+              detail={detail}
               me={me}
               periods={periods}
               onChanged={() => { void refreshPeriods().catch(() => { /* 刷新失败不影响操作结果 */ }) }}
@@ -836,6 +883,7 @@ export default function App() {
                         periods={periods}
                         forecastChoice={selectedForecastChoice}
                         detail={detail}
+                        issue={issueLabel}
                         forecastAppliedStale={selectedForecastStale}
                         forecastAppliedDiffs={selectedForecastStaleDiffs}
                         autoConfirmRerun={autoConfirmRerun}

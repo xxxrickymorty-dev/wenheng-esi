@@ -5,9 +5,10 @@
    静态稿对照：web/mockups/下载数据台.html；契约：§2.2 #26。 */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getAcquisition, openPeriod, postAcquisition, postAcqBrowser, type AcquisitionState, type AcqGroup } from './api'
+import { getAcquisition, openPeriod, postAcquisition, postAcqBrowser, type AcquisitionState, type AcqGroup, type PeriodDetail } from './api'
 import { ConfirmButton } from './ConfirmButton'
 import { Info } from './Info'
+import { FlowHead } from './FlowHead'
 import { Icon } from './icons'
 import { acqFileLabel, acqGroupLabel, errorNote } from './lib/status'
 
@@ -127,8 +128,12 @@ function GroupCard({ g, onRetry, busy, readonly }: {
   )
 }
 
-export function Acquire({ period, onOpenPeriod }: {
-  period: string | null; onOpenPeriod?: (period: string) => void
+export function Acquire({ period, issue, detail, onOpenPeriod }: {
+  period: string | null
+  issue?: string
+  /** 期次事实（数据窗口）——本期头用 */
+  detail: PeriodDetail | null
+  onOpenPeriod?: (period: string) => void
 }) {
   const [state, setState] = useState<AcquisitionState | null>(null)
   const [note, setNote] = useState<string | null>(null)
@@ -347,15 +352,15 @@ export function Acquire({ period, onOpenPeriod }: {
   /* 2026-10-24 rick 红框：往期只读不显示检查灯——右上角也不再报「有没通过的项」
      （只读期没有「通过」概念，报了是误导）；检查结论只属于当期。 */
   const s1stat: [string, string] = ro ? ['往期只读 · 无需检查', 'wait']
-    : s1done ? ['✓ 4 项都过了', 'ok']
+    : s1done ? ['4 项都过了', 'ok']
     : pfHasBad ? ['有没通过的项', 'bad'] : ['还没检查', 'wait']
-  const s2stat: [string, string] = s2collapsed ? [`✓ 已取到 ${verified} / ${expected}`, 'ok']
+  const s2stat: [string, string] = s2collapsed ? [`已取到 ${verified} / ${expected}`, 'ok']
     : fetchBusy ? [`取数中 · ${verified} / ${expected}`, 'run']
       : opStory ? [(opStopped ? '已停止' : '已中断'), (opStopped ? 'wait' : 'bad')]
         : s2locked ? ['等第一段检查通过', 'wait']
           : view === 'partial' ? [`有 ${failed} 份没通过`, 'bad']
             : ro ? ['往期只读', 'wait'] : ['可以取数', 'wait']
-  const s3stat: [string, string] = view === 'merged' ? [`✓ 已并入（${period} 列）`, 'ok']
+  const s3stat: [string, string] = view === 'merged' ? [`已并入（${period} 列）`, 'ok']
     : copyBusy ? [`${op?.kind === 'merge' ? '正在并入' : '正在建核对副本'}……`, 'run']
       : view === 'review' ? ['核对表已生成 · 待核对', 'run'] : ['等第二段取数齐了自动解锁', 'wait']
   const s2big = showOpHero
@@ -404,20 +409,22 @@ export function Acquire({ period, onOpenPeriod }: {
 
       {state && (
         <>
-          {/* ===== 期次数据状态 ===== */}
-          <section className="card pad-card-x">
-            <div className="aq-head">
-              <h1 className="fs-24">取数核验</h1>
-              <span className="pill unsigned mono">{period}</span>
-              <span className={`pill ${pillCls}`}>{pillText}</span>
-              <span className="hint aq-num" title={`最近取数 ${lastFetchAt ?? '—'} · 取数状态更新 ${state.updated_at ?? '—'}`}>采集 · {expected > 0 ? `已取到 ${verified} / ${expected}` : '未开始'}</span>
-              <button type="button" className="btn small ml-auto" aria-expanded={openForm}
+          {/* ===== 期次状态（本期头；采集计数在步骤条上，不再重复） ===== */}
+          <FlowHead
+            period={period}
+            issue={issue}
+            detail={detail}
+            hint={<span className={`pill ${pillCls}`}>{pillText}</span>}
+            right={(
+              <button type="button" className="btn small" aria-expanded={openForm}
+                      title={`最近取数 ${lastFetchAt ?? '—'} · 取数状态更新 ${state.updated_at ?? '—'}`}
                       onClick={() => { setOpenForm((v) => !v); setOpenErr('') }}>
                 <Icon name="plus" size={16} />开新一期
               </button>
-            </div>
-            {openForm && (
-              <div className="aq-open">
+            )}
+          />
+          {openForm && (
+            <div className="aq-open">
                 <label className="hint" htmlFor="aq-new-period">开一期新的</label>
                 <input id="aq-new-period" className="aq-open-in mono" inputMode="numeric"
                        maxLength={6} placeholder="YYYYMM，如 202611" value={newPeriod}
@@ -427,22 +434,23 @@ export function Acquire({ period, onOpenPeriod }: {
                         onClick={() => void onOpen()}>开这一期</button>
                 <button type="button" className="btn small" disabled={busy}
                         onClick={() => { setOpenForm(false); setOpenErr('') }}>取消</button>
-                {openErr && <span className="hint note-bad">{openErr}</span>}
-              </div>
-            )}
-          </section>
+              {openErr && <span className="hint note-bad">{openErr}</span>}
+            </div>
+          )}
 
           {/* ===== 三段式：一 开始前检查 → 二 下载数据 → 三 并入台账（2026-10-19 rick 定） ===== */}
           <div className="flow">
 
             {/* ── 一 开始前检查（最上面；过了才显示下载） ── */}
             <section className={`stg ${s1done ? 'done' : 'now'}`}>
-              <div className="node"><i>一</i></div>
-              <div className="body"><div className="stg-card">
+              <div className="body">
                 <div className="stg-top">
+                  <span className="stg-no" aria-hidden="true">一</span>
                   <span className="stg-title">开始前检查</span>
+                  <span className="stg-lead" aria-hidden="true" />
                   <span className={`stg-stat ${s1stat[1]}`}>{s1stat[0]}</span>
                 </div>
+                <div className="stg-card">
                 {/* 通过后：收起成一行（四盏小灯 + 重查）。
                     2026-10-24 rick：往期（01–07）与 05 一致——只读期连收起灯行也不显示
                     （「连接浏览器登录下载」只属于当期；09 等当期照旧）。 */}
@@ -506,12 +514,14 @@ export function Acquire({ period, onOpenPeriod }: {
 
             {/* ── 二 下载数据（第一段过了才亮；下载中/中断都在这段讲） ── */}
             <section className={`stg ${s2collapsed ? 'done' : s2locked ? 'locked' : 'now'}`}>
-              <div className="node"><i>二</i></div>
-              <div className="body"><div className="stg-card">
+              <div className="body">
                 <div className="stg-top">
+                  <span className="stg-no" aria-hidden="true">二</span>
                   <span className="stg-title">取数</span>
+                  <span className="stg-lead" aria-hidden="true" />
                   <span className={`stg-stat ${s2stat[1]}`}>{s2stat[0]}</span>
                 </div>
+                <div className="stg-card">
                 {/* 取齐后收起：结论 + 存回电脑 + 重取 */}
                 <div className="stg-inline">
                   {(hasEsiPack || hasIncitesPack) && <span className="hint">存回电脑：</span>}
@@ -647,12 +657,14 @@ export function Acquire({ period, onOpenPeriod }: {
 
             {/* ── 三 并入台账（第二段取齐后自动解锁） ── */}
             <section className={`stg ${view === 'merged' ? 'done' : view === 'review' ? 'now' : 'locked'}`}>
-              <div className="node"><i>三</i></div>
-              <div className="body"><div className="stg-card">
+              <div className="body">
                 <div className="stg-top">
+                  <span className="stg-no" aria-hidden="true">三</span>
                   <span className="stg-title">并入台账</span>
+                  <span className="stg-lead" aria-hidden="true" />
                   <span className={`stg-stat ${s3stat[1]}`}>{s3stat[0]}</span>
                 </div>
+                <div className="stg-card">
                 <div className="stg-inline">
                   <span className="hint">数据已写进主台账。</span>
                   <a className="btn small" href={`/app/?period=${encodeURIComponent(period)}`}>
