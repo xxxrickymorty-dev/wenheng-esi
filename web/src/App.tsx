@@ -15,7 +15,10 @@ import {
   type ForecastChoiceEntry, type ForecastMeta,
 } from './api-forecast'
 import { applyPeriod, buildPeriodUrl } from './lib/period'
-import { forecastAppliedDiffs, forecastAppliedStale, sameForecastChoice, savedForecastChoice } from './lib/forecast'
+import {
+  forecastAppliedDiffs, forecastAppliedStale, resolveSubjects, sameForecastChoice,
+  sameSubjects, savedForecastChoice,
+} from './lib/forecast'
 import { errorNote } from './lib/status'
 import { stateDbAlert, type StateDbAlert } from './lib/stateDb'
 import { wireEnter } from './lib/motion'
@@ -134,7 +137,9 @@ export default function App() {
           ...current,
           [period]: {
             loaded: true, loading: false, saving: false, error: '',
-            choice: record.choice ?? {}, saved: record.choice ?? {}, by: record.by ?? '', at: record.at ?? '',
+            choice: record.choice ?? {}, saved: record.choice ?? {},
+            subjects: record.subjects ?? [], savedSubjects: record.subjects ?? [],
+            by: record.by ?? '', at: record.at ?? '',
             applied: record.applied ?? null,
           },
         })),
@@ -144,7 +149,8 @@ export default function App() {
           [period]: {
             loaded: false, loading: false, saving: false,
             error: errorNote(e, '本期模型设置'),
-            choice: {}, saved: {}, by: '', at: '', applied: null,
+            choice: {}, saved: {}, subjects: [], savedSubjects: [],
+            by: '', at: '', applied: null,
           },
         })),
     }), []))
@@ -157,7 +163,7 @@ export default function App() {
       ...current,
       [period]: {
         loaded: false, loading: false, saving: false, error: '',
-        choice: {}, saved: {}, by: '', at: '', applied: null,
+        choice: {}, saved: {}, subjects: [], savedSubjects: [], by: '', at: '', applied: null,
       },
     }))
   }, [invalidateForecastChoice])
@@ -323,22 +329,28 @@ export default function App() {
       ...current,
       [selected]: {
         loaded: false, loading: true, saving: false, error: '',
-        choice: {}, saved: {}, by: '', at: '', applied: null,
+        choice: {}, saved: {}, subjects: [], savedSubjects: [], by: '', at: '', applied: null,
       },
     }))
   }, [forecastChoiceByPeriod, loadForecastChoice, me?.role, roleKnown, selected])
 
   const detail = selected ? detailsByPeriod[selected] ?? null : null
   const selectedForecastChoice = selected ? forecastChoiceByPeriod[selected] ?? null : null
+  /* 改动判定＝模型选择 + 进报告的两科（2026-11-05）；两科空＝缺省（接近度前二），
+     和缺省比不产生「未保存」——否则一进页面就红。 */
+  const choiceDirty = (entry: ForecastChoiceEntry) => !!forecastMeta
+    && (!sameForecastChoice(entry.choice, entry.saved, forecastMeta)
+      || !sameSubjects(resolveSubjects(entry.subjects, forecastMeta),
+        resolveSubjects(entry.savedSubjects, forecastMeta)))
   const selectedForecastChoiceDirty = !!(forecastMeta && selectedForecastChoice?.loaded
-    && !sameForecastChoice(selectedForecastChoice.choice, selectedForecastChoice.saved, forecastMeta))
+    && choiceDirty(selectedForecastChoice))
   /* 「报告还是旧的」：已保存的选择 ≠ 上次出稿实际用的选择（见 lib/forecast.ts；无快照不猜） */
   const selectedForecastStale = forecastAppliedStale(selectedForecastChoice, forecastMeta)
   const selectedForecastStaleDiffs = selectedForecastStale && selectedForecastChoice && forecastMeta
     ? forecastAppliedDiffs(selectedForecastChoice, forecastMeta)
     : []
   const anyForecastChoiceDirty = !!forecastMeta && Object.values(forecastChoiceByPeriod).some((entry) =>
-    entry.loaded && !sameForecastChoice(entry.choice, entry.saved, forecastMeta))
+    entry.loaded && choiceDirty(entry))
   const choiceLoadLockReason = selected && !forecastMeta
     ? forecastMetaError || '正在读取模型清单，读取完成后才能开始生成。'
     : selected && !selectedForecastChoice?.loaded
@@ -409,19 +421,35 @@ export default function App() {
     })
   }
 
-  async function saveSelectedForecastChoice() {
-    if (!selected || !forecastMeta || !selectedForecastChoice?.loaded || !selectedForecastChoiceDirty) return
+  /** 改「进报告正文的两科」（顺序＝报告 1/2 号位）。 */
+  function changeReportSubjects(subjects: string[]) {
+    if (!selected || !selectedForecastChoice?.loaded) return
+    setForecastChoiceByPeriod((current) => {
+      const entry = current[selected]
+      if (!entry?.loaded) return current
+      return { ...current, [selected]: { ...entry, error: '', subjects } }
+    })
+  }
+
+  /** 保存本期选择 → 成功返回 true（重出前要确认真的存进去了）。 */
+  async function saveSelectedForecastChoice(): Promise<boolean> {
+    if (!selected || !forecastMeta || !selectedForecastChoice?.loaded) return false
     const period = selected
     const entry = selectedForecastChoice
     const payload = savedForecastChoice(entry.choice, forecastMeta)
+    const subjects = resolveSubjects(entry.subjects, forecastMeta)
+    /* 老记录没有「两科」字段：即使模型没改，也把它写实——报告的两科从此有据可查，
+       不再依赖「接近度前二」的缺省推断（2026-11-05）。 */
+    if (!choiceDirty(entry) && entry.subjects.length) return true
     setForecastChoiceByPeriod((current) => ({
       ...current,
       [period]: { ...current[period], saving: true, error: '' },
     }))
     try {
-      await saveForecastChoice(period, payload)
+      await saveForecastChoice(period, payload, subjects)
       const readback = await getForecastChoice(period)
-      if (!sameForecastChoice(payload, readback.choice ?? {}, forecastMeta)) {
+      if (!sameForecastChoice(payload, readback.choice ?? {}, forecastMeta)
+          || !sameSubjects(subjects, readback.subjects ?? [])) {
         throw new Error('保存后确认到的选择与页面不一致，请重试。')
       }
       setForecastChoiceByPeriod((current) => ({
@@ -429,10 +457,12 @@ export default function App() {
         [period]: {
           loaded: true, loading: false, saving: false, error: '',
           choice: readback.choice ?? {}, saved: readback.choice ?? {},
+          subjects: readback.subjects ?? [], savedSubjects: readback.subjects ?? [],
           by: readback.by ?? '', at: readback.at ?? '',
           applied: readback.applied ?? null,
         },
       }))
+      return true
     } catch (e) {
       const h = e as { status?: number; body?: { error?: string }; message?: string }
       setForecastChoiceByPeriod((current) => ({
@@ -442,6 +472,7 @@ export default function App() {
           error: h.body?.error ?? h.message ?? '保存失败，选择仍未保存。',
         },
       }))
+      return false
     }
   }
   const runForSelected: Run | null = pickRunForPeriod(run, selected)
@@ -498,8 +529,8 @@ export default function App() {
     setToolAction(null)
   }, [])
 
-  async function onGenerate() {
-    if (!selected || jobActionsLocked || actionOwnerRef.current) return
+  async function onGenerate(): Promise<boolean> {
+    if (!selected || jobActionsLocked || actionOwnerRef.current) return false
     const requestedPeriod = selected
     actionOwnerRef.current = 'generate'
     setBusy(true)
@@ -507,13 +538,23 @@ export default function App() {
     try {
       const r = await postJob(requestedPeriod)
       attach(r.job_id, requestedPeriod)
+      return true
     } catch (e) {
       const h = e as { status?: number; body?: ApiError; message?: string }
       setErr(h.body ?? { error: h.message ?? '生成请求失败' })
+      return false
     } finally {
       if (actionOwnerRef.current === 'generate') actionOwnerRef.current = null
       setBusy(false)
     }
+  }
+
+  /** 预测台「重出报告」：先把改过的选择存进去，再直接开生成任务（2026-11-05）。
+      此前是跳到生成台再点一次二次确认——3 秒就缩回去，等于没重出。 */
+  async function regenerateReport(): Promise<boolean> {
+    if (!selected || jobActionsLocked) return false
+    if (!(await saveSelectedForecastChoice())) return false
+    return onGenerate()
   }
 
   /* 工作区导航（契约 §4：前端按 /api/me 的 role 决定显示什么；**真门在后端**，这里只是不打扰）。
@@ -732,9 +773,15 @@ export default function App() {
               choice={selectedForecastChoice}
               choiceDirty={selectedForecastChoiceDirty}
               onChoiceChange={changeForecastChoice}
+              onSubjectsChange={changeReportSubjects}
               onSaveChoice={saveSelectedForecastChoice}
               onReloadChoice={reloadForecastChoice}
+              onRegenerate={regenerateReport}
+              regenBusy={runForSelected?.status === 'running'
+                || runForSelected?.status === 'queued'}
+              regenNote={runForSelected?.last ?? ''}
               canEdit={canSwitchModel}
+              canRegenerate={canSwitchModel && !jobActionsLocked && healthy === true}
             />
           </Suspense>
         ) : view === 'trace' ? (

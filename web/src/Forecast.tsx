@@ -1,24 +1,23 @@
-/* 预测台（票 13）——看图选模 + 逐科定稿。
-   页头一条「期次 · 数据截至 · 路线 · 保存」带：路线只此一套控件、保存只此一处；
-   01 预测图打开即出图（单模型与五模型同一张卡）；02 逐科选择；03 学科板 · 现状（折叠）。
-   预测口径与边界（2026-10-24 rick 工作台减负）：底部折块撤除，内容原文收进页头带右端「口径与边界」ⓘ。
+/* 预测台（票 13；2026-11-05 按 rick 的新逻辑重做）——
+   八个未入 1% 的学科各一张卡：接近度看得见，点开在卡墙下方展开五个模型的预测图
+   （第一张＝AI 推荐，图例在面板顶上），点哪张图＝这次用哪个模型。
+   卡上有「进报告」开关：报告正文只有两个学科的位置，默认＝接近度前二
+   （分子生物学与遗传学、物理学），保存后重出，报告就按这两个学科出图。
    数字全部来自服务端产物——本页只显示，不重算。 */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  formatProvenanceTime, getForecastBoard, runForecast,
-  type ForecastBoard, type ForecastChoiceEntry, type ForecastMeta,
-  type ForecastModelResult, type ForecastRun,
+  formatProvenanceTime, runForecast,
+  type ForecastChoiceEntry, type ForecastMeta, type ForecastModelResult, type ForecastRun,
 } from './api-forecast'
 import { Info } from './Info'
 import { Icon } from './icons'
-import { forecastAppliedDiffs, forecastAppliedStale, shortRouteLabel } from './lib/forecast'
-import { MODEL_DESC } from './Workbench'
+import { forecastAppliedDiffs, forecastAppliedStale, resolveSubjects, shortRouteLabel } from './lib/forecast'
 import { ChartFigure } from './charts/ChartFigure'
-import { forecastRunOption } from './charts/options'
+import { FORECAST_SERIES_COLORS, forecastRunOption } from './charts/options'
 
-/** 显示格式（千分位 + 固定小数位）——只影响「怎么显示」，不参与任何计算；
-    位数沿用老站预测页。后端没给的数一律显示 —，不补零、不猜。 */
+/** 显示格式（千分位 + 固定小数位）——只影响「怎么显示」，不参与任何计算。
+    后端没给的数一律显示 —，不补零、不猜。 */
 function fmtNum(v: number | null | undefined, digits = 1): string {
   if (v == null || !Number.isFinite(Number(v))) return '—'
   return Number(v).toLocaleString('zh-CN', { maximumFractionDigits: digits, minimumFractionDigits: digits })
@@ -26,7 +25,7 @@ function fmtNum(v: number | null | undefined, digits = 1): string {
 
 /** 期次 202609 → 2026-09；空＝预测期内没过线 */
 function fmtPeriod(v: number | null | undefined): string {
-  return v == null ? '预测期内未过线' : `${String(v).slice(0, 4)}-${String(v).slice(4)}`
+  return v == null ? '窗口内未过线' : `${String(v).slice(0, 4)}-${String(v).slice(4)}`
 }
 
 /** 数据期次 202609 → 2026-09（页头「数据截至」的说法；期次本身仍原样 6 位） */
@@ -35,332 +34,146 @@ function fmtMonth(v: string | null | undefined): string {
   return v.length >= 6 ? `${v.slice(0, 4)}-${v.slice(4, 6)}` : v
 }
 
-/** 期数档位：默认 18 与报告一致；24 是模型包的硬上限（要更远得升模型版本） */
-const HORIZONS = [12, 18, 24]
+/** 与报告一致的外推期数（报告母版固定 18 期；本页不再给第二个旋钮） */
+const HORIZON = 18
 
-/** 图结果缓存：内存 + sessionStorage（刷新不用重跑；配额满就静默放弃）。
-    键里带数据期次——期次变了就重跑，不拿旧图冒充新数据。 */
-const STORE_PREFIX = 'wh-fc-gal:'
+/* ---------------------------------------------------------------- 单个模型图卡 */
 
-function loadStoredRun(key: string): ForecastRun | null {
-  try {
-    const raw = sessionStorage.getItem(STORE_PREFIX + key)
-    return raw ? JSON.parse(raw) as ForecastRun : null
-  } catch {
-    return null
-  }
-}
-
-function storeRun(key: string, run: ForecastRun) {
-  try {
-    sessionStorage.setItem(STORE_PREFIX + key, JSON.stringify(run))
-  } catch {
-    /* 配额满/隐私模式：不缓存，不影响运行 */
-  }
-}
-
-/* ---------------------------------------------------------------- 图卡（两种模式共用一张） */
-
-/** 逐期预测值表——图卡折叠块里的明细表。 */
-function ForecastTable({ run, r }: { run: ForecastRun; r: ForecastModelResult }) {
+function ModelCard({
+  run, r, active, onPick,
+}: {
+  run: ForecastRun
+  r: ForecastModelResult
+  /** 这一张就是这次要用的那个 */
+  active: boolean
+  onPick: () => void
+}) {
+  const option = useMemo(
+    () => forecastRunOption(run.history ?? [], r.forecast, run.metric_names, false),
+    [run.history, r.forecast, run.metric_names])
+  const recommended = r.model === run.recommended_model
   return (
-    <div className="tablewrap">
-      <table className="fc-tbl">
-        <thead>
-          <tr>
-            <th>期次</th>
-            <th className="ta-r">{run.metric_names[0]}</th>
-            <th className="ta-r">{run.metric_names[1]}</th>
-            <th className="ta-r">接近度</th>
-          </tr>
-        </thead>
-        <tbody>
-          {r.forecast.map((p) => (
-            <tr key={p.period} className={p.crossed ? 'crossed' : ''}>
-              <td>{fmtPeriod(p.period)}</td>
-              <td className="num">{fmtNum(p.metric1)}</td>
-              <td className="num">{fmtNum(p.metric2)}</td>
-              <td className="num">{fmtNum(p.proximity, 2)}%</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    /* 整张卡就是「点这张图」的靶子：图里嵌着 ECharts 的 canvas，不能用 <button> 包块级内容，
+       用 button 语义 + 键盘等效（Enter/Space）——与 ConfirmButton 同款口径。 */
+    <div className={`fc-mcard${active ? ' on' : ''}`} role="button" tabIndex={0}
+         aria-pressed={active} aria-label={`用 ${r.model} 预测 ${run.subject}`}
+         onClick={onPick}
+         onKeyDown={(e) => {
+           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick() }
+         }}>
+      <span className="fc-mcard-h">
+        <b>{r.model}</b>
+        {recommended && <span className="pill signed">推荐</span>}
+        {active && <span className="hint ml-auto">本次选用</span>}
+      </span>
+      {run.history && run.history.length > 0
+        ? <ChartFigure option={option} height={168} ariaLabel={`${run.subject} · ${r.model} 预测趋势图`} />
+        : <img className="fc-chart" src={r.chart} alt={`${run.subject} · ${r.model} 预测趋势图`}
+               loading="lazy" decoding="async" />}
+      <span className="fc-mcard-f">
+        <span>滚动 MAPE {fmtNum(r.rolling_mape, 2)}%</span>
+        <span>{fmtPeriod(r.first_crossing)}</span>
+      </span>
     </div>
   )
 }
 
-/** 试跑趋势图：与后端 _chart 同一批数字（run.history + r.forecast），前端只画不算。
-    历史行缺席（旧缓存 / 接口降级）时回退后端出的 PNG，不硬画。 */
-function ModelChart({ run, r }: { run: ForecastRun; r: ForecastModelResult }) {
-  const option = useMemo(
-    () => forecastRunOption(run.history ?? [], r.forecast, run.metric_names),
-    [run.history, r.forecast, run.metric_names])
-  return <ChartFigure option={option} height={220}
-                      ariaLabel={`${run.subject} · ${r.model} 预测趋势图`} />
-}
+/* ---------------------------------------------------------------- 卡墙里的一张卡 */
 
-/** 候选模型图卡：五模型比较和单模型试跑都走这一张（卡题、标签、按钮、折叠一致）。 */
-function ModelCard({
-  run, r, mine, active, pickable, onPick,
+function SubjectCard({
+  subject, prox, selected, open, onToggleOpen, onToggleSelect,
 }: {
-  run: ForecastRun
-  r: ForecastModelResult
-  /** 用户显式改选的那一个（空＝跟随推荐） */
-  mine: boolean
-  /** 现在生效的那一个 */
-  active: boolean
-  pickable: boolean
-  onPick: (model: string) => void
+  subject: string
+  prox: number | null
+  selected: boolean
+  open: boolean
+  onToggleOpen: () => void
+  onToggleSelect: () => void
 }) {
-  const isRec = r.model === run.recommended_model
-  const isBest = run.compared_all && r.model === run.comparison_best_model
   return (
-    <article className="fc-model">
-      <div className="fc-model-h">
-        <h3>{r.model}</h3>
-        {isRec && <span className="pill signed">V1 推荐</span>}
-        {isBest && <span className="pill stale">本次误差最低</span>}
-        {mine && <span className="pill manual">当前选用</span>}
-        {!mine && active && <span className="pill">正在使用</span>}
-        <span className="hint ml-auto">数据截至 {fmtMonth(run.source_period)}</span>
-      </div>
-
-      <div className="fc-metrics">
-        <div><b>{fmtNum(r.rolling_mape, 2)}%</b><span>滚动 MAPE</span></div>
-        <div><b>{fmtNum(r.fit_mape, 2)}%</b><span>拟合 MAPE</span></div>
-        <div><b>{fmtPeriod(r.first_crossing)}</b><span>首次过线</span></div>
-        <div><b>{r.status === 'PASS' ? '通过' : '需复核'}</b><span>运行状态</span></div>
-      </div>
-
-      {run.history && run.history.length > 0
-        ? <ModelChart run={run} r={r} />
-        : <img className="fc-chart" src={r.chart} alt={`${run.subject} · ${r.model} 预测趋势图`} loading="lazy" decoding="async" />}
-
-      <div className="fc-actions">
-        {active
-          ? <button type="button" className="btn" disabled>{mine ? '当前选用' : '正在使用'}</button>
-          : <button type="button" className="btn primary" disabled={!pickable}
-                    onClick={() => onPick(r.model)}>选用此模型</button>}
-      </div>
-
-      <details className="fc-more">
-        <summary>分项与逐期（{r.forecast.length} 期）</summary>
-        {r.metric_mapes && (
-          <p className="fc-break">
-            分项滚动：
-            {Object.entries(r.metric_mapes).map(([name, m]) => `${name} ${fmtNum(m.rolling, 2)}%`).join(' · ')}
-          </p>
-        )}
-        <ForecastTable run={run} r={r} />
-      </details>
-    </article>
+    <div className={`fc-subj${open ? ' on-view' : ''}`}>
+      <button type="button" className="fc-subj-main" aria-expanded={open}
+              aria-label={`${subject}，${open ? '收起' : '展开'}预测图`}
+              onClick={onToggleOpen}>
+        <span className="fc-subj-n">{subject}</span>
+        <span className="fc-subj-p">
+          {prox == null ? '—' : fmtNum(prox, 2)}<small>{prox == null ? '' : '%'}</small>
+        </span>
+        <span className="fc-subj-bar" aria-hidden="true">
+          <i style={{ transform: `scaleX(${Math.min(100, Math.max(0, prox ?? 0)) / 100})` }} />
+        </span>
+      </button>
+      <button type="button" className={`fc-subj-tag${selected ? ' on' : ''}`}
+              aria-pressed={selected} onClick={onToggleSelect}>
+        {selected ? '本期报告' : '进报告'}
+      </button>
+    </div>
   )
 }
 
-/* ---------------------------------------------------------------- 01 预测图 */
+/* ---------------------------------------------------------------- 展开的模型面板 */
 
-/** 打开即出图：任何「没跑过」的参数组合直接跑，跑过的秒回缓存——
-    路线切换不会再出现「图没了」的空档；单模型与五模型同一张卡渲染。 */
-function Trial({
-  meta, choice, route, onChoiceChange,
+function ModelPanel({
+  subject, run, busy, error, mine, recommended, onPick, onReload,
 }: {
-  meta: ForecastMeta
-  choice: ForecastChoiceEntry | null
-  route: string
-  onChoiceChange: (route: string, subject: string, model: string) => void
+  subject: string
+  run: ForecastRun | null
+  busy: boolean
+  error: string
+  mine: string
+  recommended: string
+  onPick: (model: string) => void
+  onReload: () => void
 }) {
-  const [subject, setSubject] = useState(meta.subjects[0] ?? '')
-  const [model, setModel] = useState('all')
-  const [horizon, setHorizon] = useState(18)
-  const [busy, setBusy] = useState(false)
-  const [data, setData] = useState<ForecastRun | null>(null)
-  const [err, setErr] = useState('')
-  const cache = useRef(new Map<string, ForecastRun>())
-  const selectedSubject = meta.subjects.includes(subject) ? subject : meta.subjects[0] ?? ''
-  const runKey = `${meta.source_period}|${selectedSubject}|${route}|${model}|${horizon}`
-  const runKeyRef = useRef(runKey)
-  runKeyRef.current = runKey
-
-  async function run(subjectName: string, routeName: string, modelName: string, h: number, key: string) {
-    setBusy(true)
-    setErr('')
-    try {
-      const result = await runForecast({ subject: subjectName, task: routeName, model: modelName, horizon: h })
-      cache.current.set(key, result)
-      storeRun(key, result)
-      /* 迟到的旧结果不覆盖当前参数（切选择快时会遇到） */
-      if (runKeyRef.current === key) setData(result)
-    } catch (e) {
-      if (runKeyRef.current !== key) return
-      const body = e as { body?: { error?: string; hint?: string }; message?: string }
-      setData(null)
-      setErr(body.body?.error ?? body.message ?? '运行失败')
-    } finally {
-      if (runKeyRef.current === key) setBusy(false)
-    }
-  }
-
-  // 参数一变先看缓存（内存 → 会话）；没有就跑——首屏与切路线都自动出图。
-  useEffect(() => {
-    if (!selectedSubject || !route) return
-    const cached = cache.current.get(runKey) ?? loadStoredRun(runKey)
-    if (cached) {
-      cache.current.set(runKey, cached)
-      setData(cached)
-      setErr('')
-      return
-    }
-    setData(null)
-    setErr('')
-    void run(selectedSubject, route, model, horizon, runKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runKey])
-
-  const mine = choice?.choice?.[route]?.[selectedSubject] ?? ''
-  const rec = meta.recommendations?.[route]?.[selectedSubject] ?? data?.recommended_model ?? ''
-  const effective = mine || rec
-  const pickable = !!choice?.loaded && !choice?.saving
+  const effective = mine || recommended || run?.recommended_model || ''
+  /* 推荐排第一（rick：第一张图就是 AI 默认推荐的那个），其余保持后端给的顺序 */
+  const rec = run?.recommended_model || recommended
+  const results = run
+    ? [...run.results].sort((a, b) => Number(b.model === rec) - Number(a.model === rec))
+    : []
 
   return (
-    <section className="card mt-18 pad-card">
-      <h2 className="h-sec">
-        预测图
-      </h2>
-
-      <div className="fc-form">
-        <label>学科
-          <select value={selectedSubject} onChange={(e) => setSubject(e.target.value)}>
-            {meta.subjects.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </label>
-        <label><span>模型 <Info label="模型怎么选">
-          <p><b>五模型全部运行比较</b>＝五个候选模型各出一张图，选前先看（默认）。</p>
-          <p>选单个模型＝只跑它一张；卡面与五图完全一致，看全部再切回「五模型全部运行比较」。</p>
-        </Info></span>
-          <select value={model} onChange={(e) => setModel(e.target.value)}>
-            {meta.models.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-          </select>
-        </label>
-        <label>期数
-          <select value={horizon} onChange={(e) => setHorizon(Number(e.target.value))}>
-            {HORIZONS.map((h) => <option key={h} value={h}>{h} 期{h === 18 ? '（与报告一致）' : h === 24 ? '（模型上限）' : ''}</option>)}
-          </select>
-        </label>
-      </div>
-
-      <p className="hint mt-9" role="status">
-        当前选用：<b>{effective || '未定'}</b>
-        {mine ? `（已从 V1 推荐「${rec}」改选）` : ''}
-        {mine && (
-          <button type="button" className="btn fc-gal-reset" disabled={!pickable}
-                  onClick={() => onChoiceChange(route, selectedSubject, '')}>恢复推荐</button>
-        )}
-      </p>
-
-      {err && (
-        <div className="pending-box mt-12">
-          {err}
-          <button type="button" className="btn ml-10" 
-                  onClick={() => void run(selectedSubject, route, model, horizon, runKey)}>重新运行</button>
-        </div>
-      )}
+    <div className="fc-open">
       {busy && (
-        <div className="fc-run" role="status">
+        <p className="fc-run" role="status">
           <span className="fc-run-dot" aria-hidden="true" />
-          正在跑{model === 'all' ? '五模型滚动回测与预测' : '模型'}……大约十几秒。
+          正在跑{subject}的五个模型……
+        </p>
+      )}
+      {!busy && error && (
+        <div className="pending-box">
+          {error}
+          <button type="button" className="btn ml-10" onClick={onReload}>再跑一次</button>
         </div>
       )}
-
-      {data && (
+      {!busy && !error && run && (
         <>
-          {data.errors.length > 0 && (
-            <div className="pending-box mt-12">
-              有 {data.errors.length} 个模型没跑成：{data.errors.map((x) => `${x.model}（${x.error}）`).join('；')}
-            </div>
+          {run.errors.length > 0 && (
+            <p className="hint fc-mcard-note">
+              有 {run.errors.length} 个模型没跑成：{run.errors.map((x) => `${x.model}（${x.error}）`).join('；')}
+            </p>
           )}
-          <div className="fc-gal">
-            {data.results.map((r) => (
-              <ModelCard key={r.model} run={data} r={r}
-                         mine={r.model === mine} active={r.model === effective}
-                         pickable={pickable}
-                         onPick={(m) => onChoiceChange(route, selectedSubject, m)} />
+          <div className="fc-open-h">
+            <b>{subject}</b>
+            <span className="fc-legend">
+              {run.metric_names.slice(0, 2).map((name, i) => (
+                <span key={name}>
+                  <i style={{ borderTopColor: FORECAST_SERIES_COLORS[i] }} />{name}
+                  <i className="dash" style={{ borderTopColor: FORECAST_SERIES_COLORS[i] }} />预测值
+                </span>
+              ))}
+            </span>
+          </div>
+          <div className="fc-models">
+            {results.map((r) => (
+              <ModelCard key={r.model} run={run} r={r}
+                         active={r.model === effective}
+                         onPick={() => onPick(r.model === rec ? '' : r.model)} />
             ))}
           </div>
         </>
       )}
-    </section>
-  )
-}
-
-/* ---------------------------------------------------------------- 02 逐科选择 */
-
-function PickTable({
-  meta, route, choice, onChange, canEdit,
-}: {
-  meta: ForecastMeta
-  route: string
-  choice: ForecastChoiceEntry | null
-  onChange: (route: string, subject: string, model: string) => void
-  canEdit: boolean
-}) {
-  const models = meta.models.filter((m) => m.value !== 'recommended' && m.value !== 'all')
-  const recOf = (s: string) => meta.recommendations?.[route]?.[s] ?? ''
-
-  return (
-    <section className="card mt-18 pad-card">
-      <h2 className="h-sec">
-        本期用哪个模型
-      </h2>
-
-      {!choice?.loaded && (
-        <div className="pending-box mt-12">
-          {choice?.error || '正在读取本期已保存的选择……'}
-        </div>
-      )}
-
-      <div className="tablewrap mt-12">
-        <table className="fc-pick">
-          <thead>
-            <tr>
-              <th className="w-170">潜力学科</th>
-              <th className="w-200">V1 推荐</th>
-              <th className="w-230">我的选择</th>
-              <th>模型说明（跟着选择变）</th>
-            </tr>
-          </thead>
-          <tbody>
-            {meta.subjects.map((s) => {
-              const mine = choice?.choice[route]?.[s] ?? ''
-              const rec = recOf(s)
-              return (
-                <tr key={s}>
-                  <td>{s}</td>
-                  <td className="fc-rec">{rec || 'V1 推荐'}</td>
-                  <td>
-                    <select value={mine} aria-label={`${s}的预测模型`}
-                            disabled={!canEdit || !choice?.loaded || choice.saving}
-                            onChange={(e) => onChange(route, s, e.target.value)}>
-                      <option value="">用 V1 推荐</option>
-                      {models.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                    </select>
-                  </td>
-                  <td>
-                    <span className="mdesc">{MODEL_DESC[mine || rec] ?? '由 V1 推荐按学科指定。'}</span>
-                    <span className="fc-stat">
-                      {mine ? (rec ? `已改：由 ${rec} 改为 ${mine}` : `已改：${mine}`) : '用推荐'}
-                    </span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <p className="hint mt-9">
-        {canEdit ? '保存后，从下次重出报告起生效。' : '操作员只读：改选与保存仅管理员可用。'}
-      </p>
-    </section>
+    </div>
   )
 }
 
@@ -368,7 +181,8 @@ function PickTable({
 
 export function Forecast({
   period, meta, metaError, choice, choiceDirty,
-  onChoiceChange, onSaveChoice, onReloadChoice, canEdit,
+  onChoiceChange, onSubjectsChange, onSaveChoice, onReloadChoice, onRegenerate,
+  regenBusy, regenNote, canEdit, canRegenerate,
 }: {
   period: string | null
   meta: ForecastMeta | null
@@ -376,68 +190,124 @@ export function Forecast({
   choice: ForecastChoiceEntry | null
   choiceDirty: boolean
   onChoiceChange: (route: string, subject: string, model: string) => void
-  onSaveChoice: () => void
+  onSubjectsChange: (subjects: string[]) => void
+  onSaveChoice: () => Promise<boolean>
   onReloadChoice: () => void
-  /** 2026-10-11：操作员只读——试跑/改选/保存仅管理员可用（真门在后端）。 */
+  onRegenerate: () => Promise<boolean>
+  /** 这一期正在出报告（按钮转「正在重出」） */
+  regenBusy: boolean
+  regenNote: string
+  /** 2026-10-11：操作员只读——改选/保存/重出仅管理员可用（真门在后端）。 */
   canEdit: boolean
+  canRegenerate: boolean
 }) {
   const routes = meta?.routes ?? []
   const [route, setRoute] = useState('')
   const currentRoute = routes.some((r) => r.value === route) ? route : (routes[0]?.value ?? '')
 
-  /* 学科板折在 03 里——数据在这里取，折头的一行摘要也要用（见下） */
-  const [board, setBoard] = useState<ForecastBoard | null>(null)
-  const [boardNote, setBoardNote] = useState<string | null>(null)
-  useEffect(() => {
-    let alive = true
-    setBoard(null); setBoardNote(null)
-    getForecastBoard()
-      .then((b) => { if (alive) setBoard(b) })
-      .catch(() => { if (alive) setBoardNote('学科板暂时读不到（这份选模表还没生成）。') })
-    return () => { alive = false }
-  }, [meta?.source_period])
+  /* 一张卡同时只开一张：八张全开＝一屏五张图 × 8，翻页翻到天亮 */
+  const [openSubject, setOpenSubject] = useState('')
+  const [runs, setRuns] = useState<Record<string, ForecastRun>>({})
+  const [busyKey, setBusyKey] = useState('')
+  const [runErrors, setRunErrors] = useState<Record<string, string>>({})
+  const loadingRef = useRef(new Set<string>())
 
-  const boardRows = board?.routes?.[currentRoute] ?? []
-  const crossings = boardRows.filter((r) => r.t1).map((r) => r.t1).sort()
-  const boardSm = boardNote ? boardNote
-    : !board ? '正在读取……'
-      : crossings.length ? `${crossings.length} 科预计过线 · 最早 ${crossings[0]}` : '本路线暂无预计过线'
+  const subjects = useMemo(() => resolveSubjects(choice?.subjects ?? [], meta), [choice?.subjects, meta])
+  const rows = meta?.subject_rows?.length
+    ? meta.subject_rows
+    : (meta?.subjects ?? []).map((subject) => ({ subject, prox: null as number | null }))
+
+  const runKey = (subject: string, routeName: string) =>
+    `${meta?.source_period ?? ''}|${subject}|${routeName}`
+
+  function loadRun(subject: string, routeName: string) {
+    const key = runKey(subject, routeName)
+    if (!subject || !routeName || runs[key] || loadingRef.current.has(key)) return
+    loadingRef.current.add(key)
+    setBusyKey(key)
+    setRunErrors((current) => ({ ...current, [key]: '' }))
+    runForecast({ subject, task: routeName, model: 'all', horizon: HORIZON })
+      .then((result) => setRuns((current) => ({ ...current, [key]: result })))
+      .catch((e: { body?: { error?: string }; message?: string }) => {
+        setRunErrors((current) => ({
+          ...current, [key]: e.body?.error ?? e.message ?? '预测跑不出来',
+        }))
+      })
+      .finally(() => {
+        loadingRef.current.delete(key)
+        setBusyKey((current) => (current === key ? '' : current))
+      })
+  }
+
+  useEffect(() => {
+    if (openSubject && currentRoute) loadRun(openSubject, currentRoute)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openSubject, currentRoute, meta?.source_period])
+
+  /* 两科名额：多选一个说清楚，不悄悄顶掉谁（2026-11-04 的教训） */
+  const [pairNote, setPairNote] = useState('')
+  function toggleSubject(subject: string) {
+    if (!canEdit) return
+    if (subjects.includes(subject)) {
+      if (subjects.length <= 1) { setPairNote('本期报告要放两个学科，至少留一个。'); return }
+      setPairNote('')
+      onSubjectsChange(subjects.filter((s) => s !== subject))
+      return
+    }
+    if (subjects.length >= 2) {
+      setPairNote('本期报告只放两个学科——先取消一个，再选这个。')
+      return
+    }
+    setPairNote('')
+    onSubjectsChange([...subjects, subject])
+  }
+
+  const [saving, setSaving] = useState(false)
+  const [regenError, setRegenError] = useState('')
+  async function save() {
+    setSaving(true)
+    try { await onSaveChoice() } finally { setSaving(false) }
+  }
+  async function regenerate() {
+    setRegenError('')
+    const ok = await onRegenerate()
+    if (!ok) setRegenError('没能开始重出——先看上面的报错，或检查服务是否在跑。')
+  }
 
   const freshnessText = meta?.data_freshness === 'needs_check'
     ? '检测到台账或输入文件比最近一次完整运行更新，请重新处理确认——图上读到的仍是预测数据。'
     : '无法确认上游台账的最新更新是否已进入预测数据；请以「数据截至」为准。'
 
-  const saveState = choice?.saving ? '正在保存……'
+  const saveState = choice?.saving || saving ? '正在保存……'
     : choice?.error ? choice.error
       : !choice?.loaded ? (metaError || '正在读取本期已保存的选择……')
         : choiceDirty ? '有未保存改动'
           : '已保存'
 
-  /* 改选已保存、但报告还没重出（2026-10-16，rick）：比「保存的选择 vs 出稿快照」；
-     「留在本页」只收本条提示（本次会话内），不隐藏事实。 */
+  /* 改选已保存、但报告还没重出（2026-10-16，rick）：比「保存的选择 vs 出稿快照」 */
   const appliedStale = forecastAppliedStale(choice, meta)
   const appliedDiffs = appliedStale && choice && meta ? forecastAppliedDiffs(choice, meta) : []
   const [staleHidden, setStaleHidden] = useState(false)
-  const rerunHref = period ? `/app/?period=${encodeURIComponent(period)}&rerun=1` : '/app/'
+
+  const openRow = rows.find((r) => r.subject === openSubject) ?? null
+  const openKey = openSubject ? runKey(openSubject, currentRoute) : ''
+  const recommendedOf = (subject: string) =>
+    meta?.recommendations?.[currentRoute]?.[subject] ?? ''
 
   return (
     <>
       <section className="card pad-20-22-18">
         <div className="rowc12">
-          <div>
-            <h1 className="fs-25">预测选模</h1>
-            <p className="fc-lead mt-6">先看图，再定稿。</p>
-          </div>
-          {/* 回程（2026-10-16，rick）：改完要不要重出、改没改，下方提示条说清；这里只负责回得去 */}
+          <h1 className="fs-25">预测选模</h1>
+          {period && <span className="pill unsigned mono">{period}</span>}
           <a className="btn ml-auto" href={period ? `/app/?period=${encodeURIComponent(period)}` : '/app/'}>
-            ← 回出报告
+            ← 回报告
           </a>
         </div>
       </section>
 
-      {/* 页头一条带：期次 / 数据截至 / 路线（唯一一套控件）/ 保存（唯一一处） */}
-      <div className="fc-band" role="region" aria-label="期次、路线与保存">
-        <span className="kv">期次 <b className="mono">{period ?? '未选'}</b></span>
+      {/* 一条带：数据截至 / 路线 / 保存与重出（页面上仅此一处） */}
+      <div className="fc-band" role="region" aria-label="数据期次、路线与保存">
         <span className="kv">数据截至 <b className="mono">{fmtMonth(meta?.source_period)}</b></span>
         <Info label="期次与数据说明">
           <p><b>期次 {period ?? '—'}</b>：本期配置与报告的归档期——保存写进这一期。</p>
@@ -474,14 +344,19 @@ export function Forecast({
           <button type="button" className="btn" onClick={onReloadChoice}>重新读取</button>
         )}
         {canEdit && (
-          <button className="btn primary" onClick={onSaveChoice}
-                  disabled={!choice?.loaded || !choiceDirty || choice.saving || !period}>
-            {choice?.saving ? '正在保存……' : '保存选择'}
-          </button>
+          <>
+            <button className="btn" onClick={() => void save()}
+                    disabled={!choice?.loaded || !choiceDirty || saving || !period}>
+              {saving ? '正在保存……' : '保存选择'}
+            </button>
+            <button className={`btn${choiceDirty || appliedStale ? ' primary' : ''}`}
+                    onClick={() => void regenerate()}
+                    disabled={!canRegenerate || regenBusy || !period || !choice?.loaded}>
+              {regenBusy ? '正在重出……' : '重出报告'}
+            </button>
+          </>
         )}
-        {/* 口径与边界 ⓘ（2026-10-24 rick 工作台减负）：原底部「预测口径与边界」折块撤除，
-            五条口径＋与报告的关系＋期次与数据说明原文照搬收进这里——页面少一块高密度折叠区，
-            内容一字未删；end＝弹层右对齐（ⓘ 在条带右端，弹层向左展开不出屏）。 */}
+        {/* 口径与边界 ⓘ（2026-10-24 rick 工作台减负）：五条口径＋与报告的关系＋期次说明收在这里 */}
         <Info label="口径与边界" end>
           <p><b>被引路线</b>：预测总被引达到或超过预测 ESI 前1%被引阈值时，记为模型过线。</p>
           <p><b>排名路线</b>：预测国内排名不大于预测国内前1%机构数时，记为辅助条件达到。</p>
@@ -489,9 +364,8 @@ export function Forecast({
           <p><b>多期外推</b>：正式验证范围是一步预测；页面逐期追加预测值并重新拟合，用于形成监测趋势。</p>
           <p><b>结果边界</b>：预测过线是滚动监测信号，不等同于正式入榜时间或入榜概率。</p>
           <p>
-            <b>与报告的关系</b>：这里保存的选择进报告——重出后，未进 1% 的学科都会按你的选择出图
-            （进本期图册）；报告正文<b>优先出改过模型的学科</b>，不足两个按接近度补齐；未改的学科用 V1 推荐；
-            所选模型若跑不出来，会自动退回推荐。
+            <b>与报告的关系</b>：报告正文只有两个学科的位置——标着「本期报告」的那两科进正文，
+            其余学科只进图册；所选模型跑不出来会自动退回推荐。
           </p>
           <p>
             <b>期次与数据说明</b>：{freshnessText} V1 推荐基线为 {meta?.recommendation_baseline ?? '—'}（不是预测数据期次）。
@@ -499,18 +373,27 @@ export function Forecast({
         </Info>
       </div>
 
+      {regenBusy && (
+        <div className="fc-run mt-14" role="status">
+          <span className="fc-run-dot" aria-hidden="true" />
+          正在按当前选择重出报告……{regenNote ? ` ${regenNote}` : ''}
+        </div>
+      )}
+      {regenError && <div className="pending-box mt-14">{regenError}</div>}
+
       {appliedStale && !staleHidden && (
         <div className="banner warn mt-14" role="status">
           <span className="ico"><Icon name="alert" size={22} /></span>
           <span>
-            <b className="title">改选已保存，报告还没重出</b>
+            <b className="title">选择已保存，报告还是旧的</b>
             <span>
-              {appliedDiffs.join('；')}。当前成品仍按改选前的选择出的；
-              重新生成后按你的选择出图——未进 1% 的学科都会重画；
-              报告正文优先出改过模型的学科（不足两个按接近度补齐）。
+              {appliedDiffs.join('；')}。重出后按上面这两科与所选模型出图。
             </span>
             <span className="acts">
-              <a className="btn" href={rerunHref}>回出报告并重新生成 →</a>
+              <button type="button" className="btn" disabled={!canRegenerate || regenBusy}
+                      onClick={() => void regenerate()}>
+                现在就重出 →
+              </button>
               <button type="button" className="btn" onClick={() => setStaleHidden(true)}>留在本页继续看图</button>
             </span>
           </span>
@@ -527,63 +410,38 @@ export function Forecast({
       )}
 
       {meta?.available && (
-        <>
-          {canEdit ? (
-            <Trial meta={meta} choice={choice} route={currentRoute} onChoiceChange={onChoiceChange} />
-          ) : (
-            <section className="card mt-18 pad-card">
-              <h2 className="h-sec">预测结论</h2>
-              <p className="hint mt-8">
-                本期报告采用「本期用哪个模型」里已保存的逐科选择；操作员只读，不在这里试跑模型。
-              </p>
-              <p className="hint mt-4">
-                要看这一期怎么跑出来的（状态、用时、审计、产物）：
-                <a href={`/app/?view=archive${period ? `&period=${encodeURIComponent(period)}` : ''}`}>运行档案 ▸</a>
-              </p>
-            </section>
+        <section className="fc-wall" aria-label="未进入 ESI 前 1% 的潜力学科">
+          <div className="fc-wall-h">
+            <h2>未入 ESI 前 1%</h2>
+            <span className="n">{rows.length}</span>
+          </div>
+          {pairNote && <p className="hint fc-pair-note" role="status">{pairNote}</p>}
+          <div className="fc-cards">
+            {rows.map((row) => (
+              <SubjectCard
+                key={row.subject}
+                subject={row.subject}
+                prox={row.prox}
+                selected={subjects.includes(row.subject)}
+                open={openSubject === row.subject}
+                onToggleOpen={() => setOpenSubject((current) => (current === row.subject ? '' : row.subject))}
+                onToggleSelect={() => toggleSubject(row.subject)}
+              />
+            ))}
+          </div>
+          {openRow && (
+            <ModelPanel
+              subject={openRow.subject}
+              run={runs[openKey] ?? null}
+              busy={busyKey === openKey}
+              error={runErrors[openKey] ?? ''}
+              mine={choice?.choice?.[currentRoute]?.[openRow.subject] ?? ''}
+              recommended={recommendedOf(openRow.subject)}
+              onPick={(model) => canEdit && onChoiceChange(currentRoute, openRow.subject, model)}
+              onReload={() => loadRun(openRow.subject, currentRoute)}
+            />
           )}
-
-          <PickTable meta={meta} route={currentRoute} choice={choice}
-                     onChange={onChoiceChange} canEdit={canEdit} />
-
-          <details className="fold">
-            <summary>学科板 · 现状（本路线 {boardRows.length || 8} 科）<span className="sm">{boardSm}</span></summary>
-            <div className="fold-inner">
-              <p className="hint mt-4">
-                接近度＝离门槛的百分数点值；过线是滚动监测信号，不等同于正式入榜时间。
-                这一板是预测阶段的选模记录，<b>不是</b>报告最终采用的模型——报告用哪套看上面「本期用哪个模型」。
-              </p>
-              {boardNote && <div className="pending-box mt-10">{boardNote}</div>}
-              {!!boardRows.length && (
-                <div className="bd-grid">
-                  {boardRows.map((r) => (
-                    <div className="bd-card" key={r.subject}>
-                      <div className="bd-top">
-                        <b>{r.subject}</b>
-                        <span className="bd-prox">{r.prox == null ? '—' : `${r.prox}%`}</span>
-                      </div>
-                      <span className="bd-bar" aria-hidden="true">
-                        <i style={{ transform: `scaleX(${Math.min(100, Math.max(0, r.prox ?? 0)) / 100})` }} />
-                      </span>
-                      <div className="bd-meta">
-                        <span>模型 {r.model}</span>
-                        <span>滚动 MAPE {r.rolling_mape == null ? '—' : `${r.rolling_mape}%`}</span>
-                      </div>
-                      <div className={`bd-cross${r.t1 ? ' on' : ''}`}>
-                        {r.t1 ? `预计过线 ${r.t1}${r.t3 && r.t3 !== r.t1 ? `（最晚 ${r.t3}）` : ''}` : '窗口内未过线'}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <p className="hint mt-10">
-                源：预测选模与过线.md · 数据截至 {fmtMonth(board?.period ?? meta.source_period)}
-                {board?.window ? ` · 窗口 ${board.window}` : ''}；t1/t2/t3 空＝该窗口内未过线。
-              </p>
-            </div>
-          </details>
-          {/* 原「预测口径与边界」折块已撤（2026-10-24）——内容收进页头带右端「口径与边界」ⓘ，见上。 */}
-        </>
+        </section>
       )}
     </>
   )

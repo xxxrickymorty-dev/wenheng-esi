@@ -63,13 +63,17 @@ def legacy_path(period, out_dir):
 
 
 def _clean(record):
-    """类型容错：choice 必须是 dict；by/at 必须是 str。"""
+    """类型容错：choice 必须是 dict；by/at 必须是 str；subjects 是字符串清单。"""
     record = record if isinstance(record, dict) else {}
     choice = record.get("choice", {})
     by = record.get("by", "")
     at = record.get("at", "")
+    subjects = record.get("subjects", [])
     return {
         "choice": choice if isinstance(choice, dict) else {},
+        # 本期进报告正文的两科（顺序＝报告 1/2 号位）；老记录没有这个字段＝[]
+        "subjects": [s for s in subjects if isinstance(s, str) and s]
+        if isinstance(subjects, list) else [],
         "by": by if isinstance(by, str) else "",
         "at": at if isinstance(at, str) else "",
     }
@@ -102,12 +106,20 @@ def read_entry(period, *, choices_dir, out_dir):
     return entry
 
 
-def write_entry(period, choice, *, by, at, choices_dir):
-    """写 primary 落点 out/_forecast_choices/<期次>.json；返回落盘路径。"""
+def write_entry(period, choice, *, by, at, choices_dir, subjects=None):
+    """写 primary 落点 out/_forecast_choices/<期次>.json；返回落盘路径。
+
+    `subjects`＝馆员在预测台点选的两科（进报告正文，顺序即 1/2 号位）。
+    不传＝不写这个字段（老记录形状，报告按接近度前二补齐）。
+    """
     target = primary_path(period, choices_dir)
     target.parent.mkdir(parents=True, exist_ok=True)
+    record = {"choice": choice}
+    if subjects:
+        record["subjects"] = list(subjects)
+    record.update({"by": by, "at": at})
     target.write_text(
-        json.dumps({"choice": choice, "by": by, "at": at}, ensure_ascii=False, indent=1),
+        json.dumps(record, ensure_ascii=False, indent=1),
         encoding="utf-8")
     return target
 
@@ -132,6 +144,9 @@ def read_applied(period, *, out_dir):
 
     return {
         "choice": record.get("choice") if isinstance(record.get("choice"), dict) else {},
+        # 出稿实际用的两科——和已保存的 `subjects` 比值，两科换了同样算「报告还是旧的」
+        "subjects": [s for s in record.get("subjects", []) if isinstance(s, str) and s]
+        if isinstance(record.get("subjects"), list) else [],
         "by": text("operator"),
         "at": text("config_updated_at"),
         "snapshot_at": text("snapshot_at"),
@@ -145,6 +160,7 @@ def snapshot(period, *, choices_dir, out_dir, snapshot_at):
         "request_period": period,
         "choice_period": period,
         "choice": entry["choice"],
+        "subjects": entry["subjects"],
         "by": entry["by"],
         "at": entry["at"],
         "snapshot_at": snapshot_at,
@@ -218,6 +234,33 @@ def provenance(period_dir, data_period, choice_path=None):
     }
 
 
+def _resolve_record(period_dir, choice_path=None):
+    """取一份原始记录 → `(record, error, label)`；读序与 `load` 完全一致。"""
+    period_dir = pathlib.Path(period_dir)
+    if choice_path is not None:
+        path = pathlib.Path(choice_path)
+        record, error = _read_file(path)
+        return record, error, path.name
+    entry = read_entry(period_dir.name,
+                       choices_dir=period_dir.parent / CHOICES_DIR,
+                       out_dir=period_dir.parent)
+    return entry["record"], entry["error"], CHOICE_FILE
+
+
+def load_subjects(period_dir, choice_path=None):
+    """本期进报告正文的两科（顺序即 1/2 号位）；没记录／老记录 → []。
+
+    不做任何推断——缺省由调用方回落到接近度前二（见 report_forecast.pick_report_subjects）。
+    """
+    record, _error, _label = _resolve_record(period_dir, choice_path)
+    if not isinstance(record, dict):
+        return []
+    subjects = record.get("subjects")
+    if not isinstance(subjects, list):
+        return []
+    return [s for s in subjects if isinstance(s, str) and s]
+
+
 def load(period_dir, choice_path=None):
     """宽松读取 → `({(路线, 学科): 模型名}, warnings)`。
 
@@ -226,17 +269,8 @@ def load(period_dir, choice_path=None):
     只认嵌套形状；旧扁平形状 / 形状不识别 → 整份忽略并警告；未知路线 / 未知模型
     → 忽略该条并警告；其余 (路线, 学科) 保持 "recommended"（不拦停出图）。
     """
-    period_dir = pathlib.Path(period_dir)
+    record, error, label = _resolve_record(period_dir, choice_path)
     warnings = []
-    if choice_path is not None:
-        path = pathlib.Path(choice_path)
-        record, error = _read_file(path)
-        label = path.name
-    else:
-        entry = read_entry(period_dir.name,
-                           choices_dir=period_dir.parent / CHOICES_DIR,
-                           out_dir=period_dir.parent)
-        record, error, label = entry["record"], entry["error"], CHOICE_FILE
     if error is not None:
         warnings.append(f"预测选模：{label} 读取失败（{error}），全部按 V1 推荐出图")
         return {}, warnings
@@ -267,10 +301,12 @@ def load(period_dir, choice_path=None):
     return picked, warnings
 
 
-def validate(choice, *, subjects):
+def validate(choice, *, subjects, report_subjects=None):
     """严格校验（HTTP 400 口径）→ `(ok, error)`。
 
     路线 / 模型用本 module 常量判定；学科候选由调用方传入（服务端按请求期次动态解析）。
+    `report_subjects`：本期进报告正文的两科——报告母版只有 2×2 个图槽，必须正好两个、
+    不重复、且都在候选学科里；不传＝不校验（老客户端只存模型选择）。
     """
     if not isinstance(choice, dict):
         return False, "choice 必须是 {路线: {学科: 模型名}}"
@@ -280,6 +316,13 @@ def validate(choice, *, subjects):
         for subject, model in entries.items():
             if subject not in subjects or not isinstance(model, str) or model not in VALID_MODELS:
                 return False, "choice 的学科或模型无效"
+    if report_subjects is not None:
+        if not isinstance(report_subjects, list) or len(report_subjects) != 2:
+            return False, "subjects 必须是两个学科（报告正文只有两个学科的位置）"
+        if len({str(s) for s in report_subjects}) != 2:
+            return False, "subjects 里两个学科不能重复"
+        if any(not isinstance(s, str) or s not in subjects for s in report_subjects):
+            return False, "subjects 的学科不在本期潜力学科里"
     return True, ""
 
 

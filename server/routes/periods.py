@@ -226,6 +226,7 @@ async def api_forecast_choice_get(request: Request, period: str):
     entry = forecast_choice.read_entry(
         period, choices_dir=config.FORECAST_CHOICES_DIR, out_dir=config.OUT_DIR)
     return {"period": period, "choice": entry["choice"],
+            "subjects": entry["subjects"],
             "by": entry["by"], "at": entry["at"],
             "applied": forecast_choice.read_applied(period, out_dir=config.OUT_DIR)}
 
@@ -257,12 +258,16 @@ async def api_forecast_choice(request: Request, period: str):
         return JSONResponse(
             {"error": "choice 必须是 {路线: {学科: 模型名}}",
              "hint": '例：{"citation": {"物理学": "SARIMA模型"}}'}, status_code=400)
+    # 报告正文两科（2026-11-05）：可选字段——老客户端只存模型选择时不校验也不落盘。
+    report_subjects = body.get("subjects")
     candidate_subjects = (set(forecasting.page_context().get("subjects") or [])
-                          if choice else set())
-    ok, error = forecast_choice.validate(choice, subjects=candidate_subjects)
+                          if (choice or report_subjects) else set())
+    ok, error = forecast_choice.validate(choice, subjects=candidate_subjects,
+                                         report_subjects=report_subjects)
     if not ok:
         return JSONResponse({"error": error}, status_code=400)
-    forecast_choice.write_entry(period, choice, by=current_user(request), at=forecast_choice.now(),
+    forecast_choice.write_entry(period, choice, subjects=report_subjects,
+                                by=current_user(request), at=forecast_choice.now(),
                                 choices_dir=config.FORECAST_CHOICES_DIR)
     n_subjects, n_routes = forecast_choice.count(choice)
     resp = {"ok": True, "saved": n_subjects,

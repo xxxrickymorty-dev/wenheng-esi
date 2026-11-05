@@ -166,14 +166,71 @@ def _data_provenance(period_dir: pathlib.Path) -> dict:
     }
 
 
+def _default_report_subjects(period: str, subjects: list[str]) -> list[str]:
+    """报告正文的缺省两科＝被引接近度前二（2026-11-05，rick：最接近阈值的两个学科）。
+
+    取自本期学科板（`预测选模与过线.md` 的被引维度行，按接近度降序），
+    与页面上那张卡片看到的是同一批数字——不在前端另算一遍。
+    板读不到时退回学科清单前两个（页面会显示「接近度 —」，馆员可自己点）。
+    """
+    rows = board_context(period=period)["routes"].get("citation") or []
+    ranked = sorted((r for r in rows if r.get("prox") is not None),
+                    key=lambda r: -float(r["prox"]))
+    picked = [r["subject"] for r in ranked if r["subject"] in set(subjects)][:2]
+    if len(picked) < 2:
+        picked += [s for s in subjects if s not in picked][:2 - len(picked)]
+    return picked
+
+
+def _proximity_rows(period_dir, subjects, upto) -> list[dict]:
+    """本期潜力学科的接近度（百分数点值，接近度降序）——卡片墙的唯一数字来源。
+
+    读的是 `wide/proximity_1pct.parquet` 里**截到本期**的那一列（与流水线
+    `report_forecast.pick_subjects` 同一列选法），只做 ×100 的展示换算。
+    读不到就回空表（页面显示「—」，不编数字）。
+    """
+    import pandas as pd                                          # noqa: PLC0415
+
+    path = pathlib.Path(period_dir) / "wide" / "proximity_1pct.parquet"
+    if not path.exists():
+        return []
+    frame = pd.read_parquet(path)
+    cols = [str(c) for c in frame.columns if re.fullmatch(r"\d{6}", str(c))]
+    cols = [c for c in cols if c <= str(upto)]
+    if not cols:
+        return []
+    column = frame[cols[-1]].dropna()
+    known = set(subjects)
+    rows = [{"subject": display_name(en), "prox": round(float(value) * 100, 2)}
+            for en, value in column.items() if display_name(en) in known]
+    rows.sort(key=lambda r: -r["prox"])
+    return rows
+
+
+def _default_report_subjects(rows: list[dict], subjects: list[str]) -> list[str]:
+    """报告正文的缺省两科＝接近度前二（2026-11-05，rick：最接近阈值的两个学科）。
+
+    与流水线 `pick_report_subjects` 的缺省口径一致；表读不到时退回学科清单前两个，
+    页面会显示「接近度 —」，馆员自己点。
+    """
+    picked = [r["subject"] for r in rows][:2]
+    if len(picked) < 2:
+        picked += [s for s in subjects if s not in picked][:2 - len(picked)]
+    return picked
+
+
 def page_context() -> dict:
     try:
         period_dir, _data, meta = _load()
+        rows = _proximity_rows(period_dir, meta["subjects"], meta["current_period"])
         return {
             "available": True,
             "source_period": period_dir.name,
             **_data_provenance(period_dir),
             "subjects": meta["subjects"],
+            # 卡片墙：学科＋接近度（降序）；缺省「进报告两科」＝前二
+            "subject_rows": rows,
+            "default_subjects": _default_report_subjects(rows, meta["subjects"]),
             "routes": ROUTES,
             "models": MODEL_OPTIONS,
             "model_version": MODEL_PACKAGE_VERSION,
@@ -195,6 +252,8 @@ def page_context() -> dict:
             "data_freshness": "unverified",
             "master_workbook_consumption_verified": False,
             "subjects": [],
+            "subject_rows": [],
+            "default_subjects": [],
             "routes": ROUTES,
             "models": MODEL_OPTIONS,
             "model_version": MODEL_PACKAGE_VERSION,

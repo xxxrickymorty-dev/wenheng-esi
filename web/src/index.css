@@ -653,69 +653,78 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
   padding:10px 13px;font-size:var(--fs-label);color:var(--ink-2);line-height:1.75;text-align:left}
 .info-body p{margin:5px 0}
 .info.end .info-body{left:auto;right:0}
-.fc-pick{width:100%;border-collapse:collapse;font-size:var(--fs-body);min-width:760px}
-.fc-pick th,.fc-pick td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line-2);
-  vertical-align:top}
-.fc-pick th{font-size:var(--fs-xs);letter-spacing:.22em;color:var(--ink-3);font-weight:400;
+/* 潜力学科卡墙（2026-11-05 rick 定）：八张同质的卡，接近度条＝离 1% 还有多远；
+   点开就地展开五个模型的预测图，第一张＝AI 推荐，点图即选用。
+   一套表格线把八张卡连成一块板（与台账/图册同一套纸面语言），不做漂浮卡片。 */
+.fc-wall{margin-top:18px}
+.fc-wall-h{display:flex;align-items:baseline;gap:10px;padding:0 2px 9px;
   border-bottom:1px solid var(--gline)}
-.fc-pick select{font:inherit;padding:7px 10px;border:1px solid var(--line);
-  background:var(--card);color:var(--ink)}
-.fc-pick .mdesc{display:block;color:var(--ink-3);font-size:var(--fs-label);max-width:46ch}
-.fc-stat{display:block;color:var(--ink-3);font-size:var(--fs-sm);margin-top:4px}
-.fc-rec{color:var(--ink-2)}
-.fc-form{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:14px}
-.fc-form label{display:flex;flex-direction:column;gap:6px;font-size:var(--fs-label);color:var(--ink-2)}
-.fc-form select{font:inherit;padding:7px 10px;border:1px solid var(--line);
-  background:var(--card);color:var(--ink)}
-.fc-model{border:1px solid var(--line);margin-top:16px;overflow:hidden}
-.fc-model-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;
-  background:var(--panel);border-bottom:1px solid var(--line)}
-.fc-model-h h3{font-size:var(--fs-h)}
-.fc-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
-  background:var(--line-2)}
-.fc-metrics div{background:var(--card);padding:12px 16px}
-.fc-metrics b{display:block;font-family:var(--serif);font-size:1.3rem}
-.fc-metrics span{font-size:var(--fs-label);color:var(--ink-3)}
-.fc-break{margin:0;padding:9px 16px;font-size:var(--fs-label);color:var(--ink-3);
-  border-top:1px solid var(--line-2)}
-.fc-chart{display:block;width:100%;height:auto;border-top:1px solid var(--line-2);background:var(--card)}
-.fc-tbl{width:100%;border-collapse:collapse;font-size:var(--fs-label);min-width:560px}
-.fc-tbl th,.fc-tbl td{padding:9px 14px;border-bottom:1px solid var(--line-2);text-align:left}
-.fc-tbl th{font-size:var(--fs-xs);letter-spacing:.2em;color:var(--ink-3);font-weight:400;
-  border-bottom:1px solid var(--gline)}
-.fc-tbl td.num{text-align:right;font-family:var(--mono)}
-.fc-tbl tr.crossed td{background:var(--zhu-soft);color:var(--zhu);font-weight:600}
-.fc-ticks{margin:10px 0 0;padding-left:22px;color:var(--ink-2)}
-.fc-ticks li{margin:5px 0}
-
-/* 全模型预测图（试跑 · 五模型两列网格 + 卡上改选，rick 2026-09-28） */
-.fc-gal{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
-.fc-gal .fc-model{margin-top:0}
-.fc-gal .fc-model-h{padding:10px 13px}
-.fc-gal .fc-model-h h3{font-size:var(--fs-body)}
-.fc-gal .fc-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
-.fc-gal .fc-metrics div{padding:9px 13px}
-.fc-gal .fc-metrics b{font-size:1.15rem}
-.fc-gal .fc-break{padding:7px 13px}
-.fc-gal .fc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 13px;border-top:1px solid var(--line-2)}
-.fc-gal-reset{margin-left:10px;padding:3px 9px;font-size:var(--fs-sm)}
-.fc-more{border-top:1px dashed var(--line-2)}
-.fc-more summary{padding:8px 13px;font-size:var(--fs-sm);color:var(--ink-3);cursor:pointer}
-@media (max-width:1020px){.fc-gal{grid-template-columns:1fr}}
-
-/* ============================================================================
-   学科板（预测台 01）——8 潜力学科 × 路线的现状卡：接近度条 / 模型 / 过线期
-   ========================================================================== */
-.bd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:14px}
-.bd-card{border:1px solid var(--line-2);background:var(--panel);padding:12px 14px}
-.bd-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-.bd-top b{font-size:var(--fs-body)}
-.bd-prox{font-family:var(--serif);font-size:var(--fs-h);color:var(--zhu)}
-.bd-bar{display:block;height:7px;background:var(--line-2);overflow:hidden;margin:8px 0 9px}
-.bd-bar i{display:block;height:100%;background:var(--gold);transform-origin:left;transition:transform .3s}
-.bd-meta{display:flex;justify-content:space-between;gap:10px;font-size:var(--fs-sm);color:var(--ink-3);flex-wrap:wrap}
-.bd-cross{margin-top:7px;font-size:var(--fs-label);color:var(--ink-3)}
-.bd-cross.on{color:var(--ok);font-weight:600}
+.fc-wall-h h2{font-family:var(--serif);font-size:var(--fs-h);letter-spacing:.02em}
+.fc-wall-h .n{margin-left:auto;font-family:var(--mono);font-size:var(--fs-label);color:var(--ink-3)}
+.fc-pair-note{margin:8px 2px 0;color:var(--warn)}
+.fc-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:14px;
+  border-top:1px solid var(--line);border-left:1px solid var(--line);background:var(--card)}
+.fc-subj{display:flex;flex-direction:column;
+  border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.fc-subj-main{display:flex;flex-direction:column;gap:7px;width:100%;padding:14px 16px 10px;
+  border:0;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.fc-subj-main:hover .fc-subj-n{color:var(--zhu)}
+.fc-subj-n{font-size:var(--fs-body);font-weight:650;letter-spacing:.01em;transition:color .15s}
+.fc-subj-p{font-family:var(--serif);font-size:23px;line-height:1;color:var(--zhu);
+  font-variant-numeric:tabular-nums}
+.fc-subj-p small{font-size:.58em;margin-left:1px}
+.fc-subj-bar{display:block;height:3px;background:var(--line-2);margin-top:2px}
+.fc-subj-bar i{display:block;height:100%;background:var(--field-3);transform-origin:left}
+.fc-subj-tag{align-self:flex-start;margin:0 16px 13px;padding:3px 0;border:0;
+  background:transparent;color:var(--ink-4);font:inherit;font-size:var(--fs-sm);cursor:pointer;
+  letter-spacing:.06em;border-bottom:1px dashed var(--line);transition:color .15s,border-color .15s}
+.fc-subj-tag:hover{color:var(--zhu);border-bottom-color:var(--zhu)}
+.fc-subj-tag.on{background:var(--zhu);border:1px solid var(--zhu);color:#F6F4EC;padding:3px 10px;
+  border-bottom-style:solid}
+.fc-subj-main{display:flex;flex-direction:column;gap:7px;width:100%;padding:14px 16px 10px;
+  border:0;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.fc-subj-main:hover .fc-subj-n{color:var(--zhu)}
+.fc-subj-n{font-size:var(--fs-body);font-weight:650;letter-spacing:.01em;transition:color .15s}
+.fc-subj-p{font-family:var(--serif);font-size:23px;line-height:1;color:var(--zhu);
+  font-variant-numeric:tabular-nums}
+.fc-subj-p small{font-size:.58em;margin-left:1px}
+.fc-subj-bar{display:block;height:3px;background:var(--line-2);margin-top:2px}
+.fc-subj-bar i{display:block;height:100%;background:var(--field-3);transform-origin:left}
+.fc-subj-tag{align-self:flex-start;margin:0 16px 13px;padding:3px 0;border:0;
+  background:transparent;color:var(--ink-4);font:inherit;font-size:var(--fs-sm);cursor:pointer;
+  letter-spacing:.06em;border-bottom:1px dashed var(--line);transition:color .15s,border-color .15s}
+.fc-subj-tag:hover{color:var(--zhu);border-bottom-color:var(--zhu)}
+.fc-subj-tag.on{background:var(--zhu);border:1px solid var(--zhu);color:#F6F4EC;padding:3px 10px;
+  border-bottom-style:solid}
+.fc-subj.on-view{background:var(--panel-2);box-shadow:inset 0 2px 0 var(--zhu)}
+.fc-subj.on-view .fc-subj-n{color:var(--zhu)}
+.fc-subj.on-view .fc-subj-bar i{background:var(--zhu)}
+.fc-open{border:1px solid var(--line);border-top:0;background:var(--panel-2);
+  padding:14px 16px 16px}
+.fc-open .fc-run{margin:0 0 12px}
+.fc-mcard-note{margin:0 0 10px}
+.fc-open-h{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;margin:0 0 11px}
+.fc-open-h>b{font-family:var(--serif);font-size:var(--fs-h);letter-spacing:.02em}
+.fc-legend{display:flex;gap:20px;flex-wrap:wrap;
+  font-size:var(--fs-sm);color:var(--ink-3)}
+.fc-legend span{display:inline-flex;align-items:center;gap:6px}
+.fc-legend i{display:inline-block;width:16px;height:0;border-top:2px solid;
+  border-top-color:currentColor}
+.fc-legend i.dash{border-top-style:dashed}
+.fc-models{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
+.fc-mcard{display:flex;flex-direction:column;padding:0;border:1px solid var(--line);
+  background:var(--card);text-align:left;font:inherit;color:inherit;cursor:pointer;
+  transition:border-color .15s}
+.fc-mcard:hover{border-color:var(--field-3)}
+.fc-mcard.on{border-color:var(--zhu);box-shadow:inset 0 0 0 1px var(--zhu)}
+.fc-mcard-h{display:flex;align-items:center;gap:8px;padding:9px 12px;
+  border-bottom:1px solid var(--line-2)}
+.fc-mcard-h b{font-size:var(--fs-label);font-weight:650}
+.fc-mcard-f{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;
+  border-top:1px solid var(--line-2);font-size:var(--fs-sm);color:var(--ink-3);
+  font-variant-numeric:tabular-nums}
+@media (max-width:1100px){.fc-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.fc-cards{grid-template-columns:1fr}}
 
 /* ============================================================================
    顶尖论文增长轨迹（报告页首屏，借「学科分析平台」那版版式）——纯 SVG，零依赖

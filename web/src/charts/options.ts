@@ -567,8 +567,13 @@ export function forecastOption(row: ForecastSeries): EChartsOption {
 export type RunHistoryRow = { period: number; metric1: Num; metric2: Num }
 export type RunForecastRow = { period: number; metric1: Num; metric2: Num }
 
+/** 预测图两条序列的配色（图例也用这两色——两处各写一份迟早会漂） */
+export const FORECAST_SERIES_COLORS = [C_BLUE, C_GREEN] as const
+
 export function forecastRunOption(
-  history: RunHistoryRow[], forecast: RunForecastRow[], metricNames: string[]): EChartsOption {
+  history: RunHistoryRow[], forecast: RunForecastRow[], metricNames: string[],
+  /** false＝图例由页面统一画（五张小图并排时，每张各挂一条图例会挤成一团） */
+  legend = true): EChartsOption {
   const hp = history.map((r) => String(r.period))
   const fp = forecast.map((r) => String(r.period))
   const allP = [...hp, ...fp]
@@ -593,9 +598,9 @@ export function forecastRunOption(
   }).flat()
   return {
     textStyle: baseText,
-    legend: legendTop(),
+    ...(legend ? { legend: legendTop() } : {}),
     tooltip: { trigger: 'axis', confine: true },
-    grid: { left: 52, right: 16, top: 28, bottom: 24 },
+    grid: { left: 52, right: 16, top: legend ? 28 : 10, bottom: 24 },
     xAxis: {
       ...catAxis(allP, 35, 9),
       axisLabel: { ...catAxis(allP, 35, 9).axisLabel,

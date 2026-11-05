@@ -7,6 +7,12 @@ import { req } from './api'
 export type ForecastRoute = { value: string; label: string }
 export type ForecastModelOption = { value: string; label: string }
 
+/** 潜力学科一行：接近度＝当前期被引 ÷ ESI 前1%阈值（百分数点值，如 84.5 表示 84.5%） */
+export type ForecastSubjectRow = {
+  subject: string
+  prox: number | null
+}
+
 /** GET /api/forecast/meta —— 数据期次 / 潜力学科 / 路线 / 模型池 */
 export type ForecastMeta = {
   available: boolean
@@ -17,6 +23,10 @@ export type ForecastMeta = {
   data_freshness: 'needs_check' | 'unverified'
   master_workbook_consumption_verified: boolean
   subjects: string[]
+  /** 卡片墙：学科＋接近度（降序） */
+  subject_rows: ForecastSubjectRow[]
+  /** 缺省「进报告两科」＝接近度前二（页面与报告同一口径） */
+  default_subjects: string[]
   routes: ForecastRoute[]
   models: ForecastModelOption[]
   model_version: string
@@ -100,6 +110,8 @@ export async function runForecast(body: {
 export type ForecastChoice = {
   period: string
   choice: Record<string, Record<string, string>>
+  /** 进报告正文的两科（顺序＝报告 1/2 号位）；空＝没保存过，按接近度前二 */
+  subjects: string[]
   by: string
   at: string
   /** 上次出稿**实际用的**选择（当期产物的出稿快照；没出过稿/老期次 = null）。
@@ -109,6 +121,7 @@ export type ForecastChoice = {
 
 export type ForecastChoiceApplied = {
   choice: Record<string, Record<string, string>>
+  subjects: string[]
   by: string
   at: string
   snapshot_at: string
@@ -121,6 +134,9 @@ export type ForecastChoiceEntry = {
   error: string
   choice: ForecastChoice['choice']
   saved: ForecastChoice['choice']
+  /** 当前编辑中的两科（进报告正文） */
+  subjects: string[]
+  savedSubjects: string[]
   by: string
   at: string
   applied: ForecastChoiceApplied | null
@@ -133,10 +149,15 @@ export async function getForecastChoice(period: string): Promise<ForecastChoice>
 export async function saveForecastChoice(
   period: string,
   choice: Record<string, Record<string, string>>,
+  subjects: string[],
 ): Promise<{ ok: boolean; saved: number; path: string }> {
   return req<{ ok: boolean; saved: number; path: string }>(
     `/api/periods/${encodeURIComponent(period)}/forecast-choice`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ choice }) },
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ choice, subjects }),
+    },
   )
 }
 

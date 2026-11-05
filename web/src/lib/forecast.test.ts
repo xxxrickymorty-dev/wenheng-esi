@@ -3,28 +3,38 @@
 import { describe, expect, it } from 'vitest'
 import type { ForecastChoice, ForecastChoiceEntry, ForecastMeta } from '../api-forecast'
 import {
-  forecastAppliedDiffs, forecastAppliedStale, sameForecastChoice,
-  savedForecastChoice, shortRouteLabel,
+  forecastAppliedDiffs, forecastAppliedStale, resolveSubjects, sameForecastChoice,
+  sameSubjects, savedForecastChoice, shortRouteLabel,
 } from './forecast'
 
-function meta(subjects: string[] = ['免疫学', '物理学']): ForecastMeta {
+function meta(
+  subjects: string[] = ['免疫学', '物理学'],
+  defaultSubjects: string[] = [],
+): ForecastMeta {
   return {
     routes: [
       { value: 'citation', label: '路线1 · 总被引 / ESI前1%被引阈值' },
       { value: 'rank', label: '路线2 · 国内排名 / 国内前1%机构数' },
     ],
     subjects,
+    default_subjects: defaultSubjects,
   } as unknown as ForecastMeta
 }
 
 function entry(
   saved: ForecastChoice['choice'],
   applied: ForecastChoice['choice'] | null,
+  subjects: string[] = [],
+  appliedSubjects: string[] = [],
 ): ForecastChoiceEntry {
   return {
     loaded: true, loading: false, saving: false, error: '',
-    choice: saved, saved, by: 'admin', at: '2026-10-16 12:12:42',
-    applied: applied === null ? null : { choice: applied, by: 'admin', at: '2026-10-13 14:59:44', snapshot_at: '' },
+    choice: saved, saved, subjects, savedSubjects: subjects,
+    by: 'admin', at: '2026-10-16 12:12:42',
+    applied: applied === null ? null : {
+      choice: applied, subjects: appliedSubjects,
+      by: 'admin', at: '2026-10-13 14:59:44', snapshot_at: '',
+    },
   }
 }
 
@@ -87,5 +97,37 @@ describe('forecastAppliedDiffs（改动清单）', () => {
     expect(forecastAppliedDiffs(e, meta())).toEqual([
       '总被引：免疫学 → SARIMA模型', '国内排名：物理学 → Holt趋势模型',
     ])
+  })
+})
+
+describe('报告两科（2026-11-05）', () => {
+  it('同一对且同序才相等：顺序＝报告 1/2 号位', () => {
+    expect(sameSubjects(['分子生物学与遗传学', '物理学'], ['分子生物学与遗传学', '物理学'])).toBe(true)
+    expect(sameSubjects(['物理学', '分子生物学与遗传学'], ['分子生物学与遗传学', '物理学'])).toBe(false)
+    expect(sameSubjects([], ['物理学'])).toBe(false)
+  })
+
+  it('没保存过→缺省两科（后端给的接近度前二）', () => {
+    expect(resolveSubjects([], meta(['免疫学', '物理学'], ['分子生物学与遗传学', '物理学'])))
+      .toEqual(['分子生物学与遗传学', '物理学'])
+    expect(resolveSubjects(['免疫学', '物理学'], meta([], ['分子生物学与遗传学', '物理学'])))
+      .toEqual(['免疫学', '物理学'])
+  })
+
+  it('换了学科也算「报告还是旧的」', () => {
+    const m = meta(['分子生物学与遗传学', '物理学', '免疫学'],
+      ['分子生物学与遗传学', '物理学'])
+    const appliedPair = ['分子生物学与遗传学', '物理学']
+    expect(forecastAppliedStale(entry({}, {}, appliedPair, appliedPair), m)).toBe(false)
+    expect(forecastAppliedStale(
+      entry({}, {}, ['免疫学', '物理学'], appliedPair), m)).toBe(true)
+    // 老快照没记两科（空）＝无法核实，不判旧
+    expect(forecastAppliedStale(entry({}, {}, ['免疫学', '物理学'], []), m)).toBe(false)
+  })
+
+  it('改动清单里两科单列一条', () => {
+    const e = entry({}, {}, ['免疫学', '物理学'], ['分子生物学与遗传学', '物理学'])
+    expect(forecastAppliedDiffs(e, meta(['分子生物学与遗传学', '物理学', '免疫学'])))
+      .toEqual(['报告两科：分子生物学与遗传学、物理学 → 免疫学、物理学'])
   })
 })

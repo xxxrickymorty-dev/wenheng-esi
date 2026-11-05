@@ -94,6 +94,26 @@ class Test写盘与计数:
         assert record == {"choice": {"citation": {"物理学": "SARIMA模型"}},
                           "by": "librarian", "at": "2026-09-27 10:00:00"}
 
+    def test_写盘带报告两科_读回同序(self, tmp_path):
+        """`subjects`＝进报告正文的两科（顺序即 1/2 号位）；不传＝不写这个字段。"""
+        choices = tmp_path / "out" / "_forecast_choices"
+        forecast_choice.write_entry(
+            "202607", {}, subjects=["分子生物学与遗传学", "物理学"],
+            by="admin", at="2026-11-05 09:00:00", choices_dir=choices)
+        entry = forecast_choice.read_entry(
+            "202607", choices_dir=choices, out_dir=tmp_path / "out")
+        assert entry["subjects"] == ["分子生物学与遗传学", "物理学"]
+        assert forecast_choice.load_subjects(
+            tmp_path / "out" / "202607", choices / "202607.json") == \
+            ["分子生物学与遗传学", "物理学"]
+
+    def test_没写报告两科_读回空(self, tmp_path):
+        choices = tmp_path / "out" / "_forecast_choices"
+        forecast_choice.write_entry("202607", {}, by="admin", at="t", choices_dir=choices)
+        entry = forecast_choice.read_entry(
+            "202607", choices_dir=choices, out_dir=tmp_path / "out")
+        assert entry["subjects"] == []
+
     def test_count_嵌套与扁平(self):
         assert forecast_choice.count(
             {"citation": {"A": "m1", "B": "m2"}, "rank": {"C": "m3"}}) == (3, 2)
@@ -251,6 +271,7 @@ class Test留痕:
         })
         assert forecast_choice.read_applied("202609", out_dir=out) == {
             "choice": {"citation": {"免疫学": "SARIMA模型"}},
+            "subjects": [],
             "by": "admin", "at": "2026-10-13 14:59:44",
             "snapshot_at": "2026-10-13 14:59:44",
         }
@@ -279,6 +300,18 @@ class Test严格校验与常量:
                     {"citation": {"物理学": "不存在的模型"}},
                     {"citation": []}):
             ok, error = forecast_choice.validate(bad, subjects=subjects)
+            assert not ok and error
+
+    def test_validate_报告两科必须两个且不重复(self):
+        """报告母版只有 2×2 个图槽：subjects 必须正好两个、不重复、都在候选里。"""
+        subjects = {"分子生物学与遗传学", "物理学", "免疫学"}
+        ok, _ = forecast_choice.validate(
+            {}, subjects=subjects, report_subjects=["物理学", "免疫学"])
+        assert ok
+        for bad in (["物理学"], ["物理学", "物理学"],
+                    ["物理学", "不存在的学科"], "物理学", [1, 2]):
+            ok, error = forecast_choice.validate(
+                {}, subjects=subjects, report_subjects=bad)
             assert not ok and error
 
     def test_server常量与module一致(self):

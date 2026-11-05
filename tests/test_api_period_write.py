@@ -82,6 +82,37 @@ class TestForecastChoice落盘:
         assert loaded["at"]
         assert loaded["applied"] is None      # 没出过稿：没有可比的出稿快照，不猜
 
+    def test_保存报告两科并读回(self, tmp_path, monkeypatch):
+        """2026-11-05：保存时带上进报告正文的两科；GET 原样读回（顺序即 1/2 号位）。"""
+        out_dir = tmp_path / "out"
+        choices_dir = out_dir / "_forecast_choices"
+        monkeypatch.setattr(config, "OUT_DIR", out_dir)
+        monkeypatch.setattr(config, "FORECAST_CHOICES_DIR", choices_dir)
+        monkeypatch.setattr(app_module.forecasting, "page_context",
+                            lambda: {"subjects": ["分子生物学与遗传学", "物理学", "免疫学"]})
+
+        saved = asyncio.run(app_module.api_forecast_choice(
+            _Req(config.ADMIN_USER, "POST", {
+                "choice": {"citation": {"物理学": "SARIMA模型"}},
+                "subjects": ["物理学", "分子生物学与遗传学"],
+            }), "202607"))
+        assert saved["ok"] is True
+
+        loaded = asyncio.run(app_module.api_forecast_choice_get(
+            _Req(config.ADMIN_USER), "202607"))
+        assert loaded["subjects"] == ["物理学", "分子生物学与遗传学"]
+
+    def test_报告两科不合法时400(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(config, "OUT_DIR", tmp_path / "out")
+        monkeypatch.setattr(config, "FORECAST_CHOICES_DIR", tmp_path / "out" / "_forecast_choices")
+        monkeypatch.setattr(app_module.forecasting, "page_context",
+                            lambda: {"subjects": ["分子生物学与遗传学", "物理学"]})
+        bad = asyncio.run(app_module.api_forecast_choice(
+            _Req(config.ADMIN_USER, "POST", {
+                "choice": {}, "subjects": ["物理学"],
+            }), "202607"))
+        assert bad.status_code == 400
+
     def test_GET带出稿快照_未重出时两边可比(self, tmp_path, monkeypatch):
         """2026-10-16：GET 附「上次出稿实际用的选择」——前端拿它和已保存选择比值。"""
         out_dir = tmp_path / "out"
@@ -104,7 +135,7 @@ class TestForecastChoice落盘:
         got = asyncio.run(app_module.api_forecast_choice_get(
             _Req(config.ADMIN_USER), period))
         assert got["choice"] == {"citation": {"免疫学": "SARIMA模型"}}
-        assert got["applied"] == {"choice": {}, "by": "", "at": "",
+        assert got["applied"] == {"choice": {}, "subjects": [], "by": "", "at": "",
                                   "snapshot_at": "2026-10-13 14:59:44"}
 
     def test_POST保存后缀期次时保留原名(self, tmp_path, monkeypatch):
@@ -158,7 +189,7 @@ class TestForecastChoice落盘:
         old = asyncio.run(app_module.api_forecast_choice_get(
             _Req(config.ADMIN_USER), period))
         assert old == {
-            "period": period, "choice": old_choice,
+            "period": period, "choice": old_choice, "subjects": [],
             "by": "old-admin", "at": "old-time", "applied": None,
         }
         assert not choices_dir.exists()
