@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-skin="mohui" data-font="song">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>方案E · 方志·双栏夹批 — 清华大学 · 学科监测报告 202609</title>
+<style>
+:root{
+  --f-song:"Noto Serif SC","Songti SC",SimSun,serif;
+  --f-kai:KaiTi,"Kaiti SC",SimKai,var(--f-song);
+  --f-fang:FangSong,"STFangsong",SimFang,var(--f-song);
+  --f-hei:"Microsoft YaHei","PingFang SC",SimHei,system-ui,sans-serif;
+  --f-li:LiSu,SimLi,"STLiti",var(--f-kai);
+  --gold:#B08E48;
+  --seal:#8B1E1E;
+  --rule:#D9D2C1;
+  --rule-2:#E4DFD2;
+  --rule-strong:#C6BEA9;
+  --fs-adj:0px;
+  --lh-adj:0;
+}
+[data-skin="daiqing"]{--accent:#2F5D62;--accent-2:#447C7A;--tint:#E6EFED;--paper:#F5F3EC;--ink:#22261F;--muted:#4E5A55;--accent-text:#2F5D62}
+[data-skin="zhusha"]{--accent:#8B1E1E;--accent-2:#B73A2C;--tint:#F6E7D7;--paper:#F7F2E8;--ink:#2A1E1A;--muted:#5A4A42;--accent-text:#8B1E1E}
+[data-skin="tenghuang"]{--accent:#C28C1A;--accent-2:#D4A72C;--tint:#FBF3D7;--paper:#FAF5E6;--ink:#2E2718;--muted:#574E36;--accent-text:#8A6410}
+[data-skin="piaolv"]{--accent:#5E8E7E;--accent-2:#7DAF9F;--tint:#E9F2EF;--paper:#F4F6EE;--ink:#1F2A22;--muted:#47554C;--accent-text:#476E60}
+[data-skin="wulan"]{--accent:#4A6B8A;--accent-2:#6E8CA8;--tint:#E6EDF3;--paper:#F4F6F8;--ink:#1C2530;--muted:#455264;--accent-text:#4A6B8A}
+[data-skin="mohui"]{--accent:#3C3C3F;--accent-2:#666668;--tint:#EDEDEA;--paper:#F3F1EA;--ink:#1A1A1A;--muted:#4A4A45;--accent-text:#3C3C3F}
+[data-skin="yebo"]{--accent:#C9A961;--accent-2:#C9A961;--tint:#2A3138;--paper:#20262B;--ink:#ECE8DF;--muted:#B9B4A6;--seal:#C0503F;--gold:#C9A961;--rule:#3A4249;--rule-2:#374046;--rule-strong:#4A545C;--accent-text:#C9A961}
+[data-font="song"]{--f-body:var(--f-song);--f-title:var(--f-song);--fs-adj:0px;--lh-adj:0}
+[data-font="kai"]{--f-body:var(--f-kai);--f-title:var(--f-kai);--fs-adj:.8px;--lh-adj:.06}
+[data-font="fang"]{--f-body:var(--f-fang);--f-title:var(--f-fang);--fs-adj:.8px;--lh-adj:.06}
+[data-font="hei"]{--f-body:var(--f-hei);--f-title:var(--f-hei);--fs-adj:0px;--lh-adj:0}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:var(--paper)}
+body{
+  background:var(--paper);color:var(--ink);
+  font-family:var(--f-body);
+  font-size:calc(13px + var(--fs-adj));
+  line-height:1.62;
+  font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+
+/* ── 控制条 ── */
+.bar{
+  height:44px;position:sticky;top:0;z-index:60;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;background:var(--paper);border-bottom:1px solid var(--rule);
+  font-size:12px;letter-spacing:.1em;color:var(--muted);
+}
+.bar .tag{color:var(--ink);letter-spacing:.14em;white-space:nowrap}
+.bar .ctl{display:flex;align-items:center;gap:10px}
+.bar select{
+  font-family:var(--f-body);font-size:11.5px;color:var(--ink);background:transparent;
+  border:1px solid var(--rule-strong);border-radius:0;padding:3px 6px;letter-spacing:.06em;
+}
+.bar select:focus{outline:1px solid var(--accent);outline-offset:1px}
+
+/* ── 方志纸面 ── */
+.zhi{max-width:1560px;margin:0 auto;padding:0 clamp(24px,4vw,56px)}
+
+/* ── 报头：卷/期式横排细线 ── */
+.mast{padding-top:34px}
+.juan{
+  display:flex;justify-content:space-between;align-items:center;gap:16px;
+  border-top:.5px solid var(--ink);border-bottom:.5px solid var(--ink);
+  background:var(--tint);padding:7px 14px;
+  font-size:11.5px;letter-spacing:.2em;color:var(--accent-text);white-space:nowrap;
+}
+.juan .rt{color:var(--muted);letter-spacing:.12em}
+h1{
+  font-family:var(--f-title);font-size:26px;font-weight:600;
+  letter-spacing:.1em;line-height:1.4;color:var(--ink);margin-top:22px;
+}
+.mast .lines{margin-top:10px;max-width:96ch}
+.mast .lines p{font-size:11px;line-height:1.75;letter-spacing:.02em;color:var(--muted)}
+.mast .lines p:first-child{color:var(--ink)}
+.mast .lines p + p{margin-top:2px}
+
+/* ── 主体：主文 + 右侧夹批（细竖线分隔） ── */
+.body{
+  display:grid;grid-template-columns:minmax(0,1fr) clamp(200px,17%,248px);
+  margin-top:26px;
+}
+.main{min-width:0;padding-right:26px}
+.jia{
+  min-width:0;border-left:.5px solid var(--rule-strong);
+  padding:2px 0 0 20px;
+}
+.jia .item{
+  font-size:calc(10.5px + var(--fs-adj));line-height:1.6;color:var(--muted);
+  letter-spacing:.01em;margin-bottom:16px;
+}
+.jia .item .no{color:var(--accent-text);font-weight:600;margin-right:5px}
+.jia .item b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+
+/* ── 志书数字行：无卡片、表格式横排 ── */
+.figures{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  border-top:.5px solid var(--rule-strong);border-bottom:.5px solid var(--rule-strong);
+}
+.fig{display:flex;flex-direction:column;gap:4px;padding:10px 14px;border-left:.5px solid var(--rule-2);min-width:0}
+.fig:first-child{border-left:0;padding-left:0}
+.fig .lb{font-size:10.5px;letter-spacing:.06em;color:var(--muted);line-height:1.4}
+.fig .vv{font-size:19px;font-weight:600;color:var(--ink);line-height:1.2;white-space:nowrap}
+.fig .vv small{font-size:12px;font-weight:400;color:var(--muted)}
+.jn{
+  font-size:9px;color:var(--accent-text);font-weight:600;
+  vertical-align:super;line-height:0;margin-left:2px;
+}
+
+/* ── 节：一、二 加短横线 ── */
+.sec{margin-top:28px}
+.sec-h{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.sec-h .no{font-family:var(--f-title);font-size:13.5px;font-weight:600;color:var(--accent-text);white-space:nowrap}
+.sec-h h2{font-family:var(--f-title);font-size:15px;font-weight:600;letter-spacing:.1em;color:var(--ink);white-space:nowrap}
+.sec-h .dash{width:44px;height:0;border-top:.5px solid var(--rule-strong);flex:none}
+.sec-h .sub{font-size:11px;color:var(--muted);letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── 表：密度最高，细横线，无斑马纹、无圆角 ── */
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+thead th{
+  font-size:10.5px;font-weight:600;letter-spacing:.04em;color:var(--muted);
+  text-align:left;padding:0 8px 7px 0;border-bottom:.5px solid var(--rule-strong);white-space:nowrap;
+}
+thead th.n{text-align:right;padding-right:10px}
+tbody td{
+  height:23px;font-size:calc(11.5px + var(--fs-adj));color:var(--ink);
+  padding:0 8px 0 0;border-bottom:.5px solid var(--rule-2);vertical-align:middle;white-space:nowrap;
+}
+tbody td.n{text-align:right;padding-right:10px;font-variant-numeric:tabular-nums}
+tbody tr:last-child td{border-bottom:.5px solid var(--rule-strong)}
+td.name{font-weight:600}
+td.g1{color:var(--accent-text);font-weight:600}
+td.g2{color:var(--muted)}
+tbody tr{break-inside:avoid}
+
+.tfoot{display:flex;justify-content:space-between;align-items:baseline;gap:20px;margin-top:9px}
+.tfoot .fn{font-size:10px;line-height:1.6;color:var(--muted);max-width:82ch;letter-spacing:.01em}
+.tfoot .cnt{font-size:10.5px;color:var(--ink);letter-spacing:.1em;white-space:nowrap}
+
+/* ── 六 · 解读：正文双栏，字更小、行距更紧 ── */
+.prose{
+  columns:2;column-gap:30px;column-rule:.5px solid var(--rule-strong);
+  font-size:calc(12.5px + var(--fs-adj));
+  line-height:calc(1.72 + var(--lh-adj));
+  color:var(--ink);text-align:justify;
+}
+.prose p{text-indent:2em;margin-top:.7em;break-inside:avoid}
+.prose p:first-child{margin-top:0}
+.prose .note{text-indent:0;margin-top:1.2em;font-size:10.5px;color:var(--muted);letter-spacing:.04em;break-inside:avoid}
+
+/* ── 页脚出处 ── */
+footer{
+  margin-top:40px;border-top:.5px solid var(--rule-strong);
+  padding:14px 0 56px;display:flex;justify-content:space-between;gap:24px;
+  font-size:10.5px;color:var(--muted);line-height:1.7;letter-spacing:.02em;
+}
+footer .src{max-width:104ch}
+footer .pg{white-space:nowrap;letter-spacing:.1em}
+
+/* ── 图表（lieflat 语法 · 国风换色，手写内联 SVG）── */
+:root{
+  --ch-ink:var(--ink);
+  --ch-muted:var(--muted,var(--ink));
+  --ch-faint:var(--rule,var(--rule-2,#cfccc4));
+  --ch-rule:var(--rule-strong,var(--rule,#cfccc4));
+  --ch-rule2:var(--rule-2,var(--rule,#e7e4db));
+  --ch-accent:var(--accent);
+  --ch-gold:var(--gold,#B08E48);
+}
+.ch-wrap{margin-top:10px}
+.ch-svg{display:block;width:100%;max-width:680px;height:auto;overflow:visible}
+.ch-ax{stroke:var(--ch-rule);stroke-width:1}
+.ch-rule2{stroke:var(--ch-rule2);stroke-width:1}
+.ch-faint{stroke:var(--ch-faint);stroke-width:1}
+.ch-ink{stroke:var(--ch-ink);stroke-width:1}
+.ch-acc{stroke:var(--ch-accent);stroke-width:1}
+.ch-gold{stroke:var(--ch-gold);stroke-width:1}
+.ch-f-ink{fill:var(--ch-ink)}
+.ch-f-acc{fill:var(--ch-accent)}
+.ch-f-gold{fill:var(--ch-gold)}
+.ch-dot{fill:var(--ch-accent)}
+.ch-f-muted{fill:var(--ch-muted)}
+.ch-svg text{font-family:var(--f-body);font-variant-numeric:tabular-nums}
+.ch-t-lab{fill:var(--ch-muted);font-size:13px}
+.ch-t-val{fill:var(--ch-ink);font-weight:600;font-size:15px}
+.ch-t-cap{fill:var(--ch-muted);font-size:12px}
+.ch-t-src{fill:var(--ch-faint);font-size:11px;letter-spacing:.14em;font-weight:500}
+.ch-lead{stroke:var(--ch-faint);stroke-width:1;stroke-dasharray:2 3}
+.ch-sub{font-size:12px;color:var(--muted);letter-spacing:.03em;margin-top:4px;line-height:1.7}
+
+@media screen and (max-width:1080px){
+  .body{grid-template-columns:1fr}
+  .main{padding-right:0}
+  .jia{border-left:0;border-top:.5px solid var(--rule-strong);padding-left:0;padding-top:16px;margin-top:22px}
+  .prose{columns:1}
+}
+@media print{
+  @page{size:A4;margin:13mm}
+  .bar{display:none}
+  html,body{background:#fff}
+  .juan{background:transparent}
+  .zhi{max-width:none;padding:0}
+  html[data-skin="yebo"]{--paper:#fff;--ink:#1A1A1A;--muted:#444;--accent:#3C3C3F;--accent-2:#666668;--accent-text:#3C3C3F;--gold:#8A6A2F;--rule:#BBBBBB;--rule-2:#CCCCCC;--rule-strong:#999999;--tint:#fff;--seal:#8B1E1E}
+  tr,.sec-h,.fig,.jia .item,.prose p{break-inside:avoid}
+  footer{margin-top:24px;padding-bottom:0}
+}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="tag">方案E · 方志·双栏夹批</span>
+  <span class="ctl">
+    <select id="skin" aria-label="皮肤">
+      <option value="daiqing">黛青</option>
+      <option value="zhusha">朱砂</option>
+      <option value="tenghuang">藤黄</option>
+      <option value="piaolv">缥绿</option>
+      <option value="wulan">雾蓝</option>
+      <option value="mohui" selected>墨灰</option>
+      <option value="yebo">夜泊（深）</option>
+    </select>
+    <select id="font" aria-label="字体">
+      <option value="song" selected>宋</option>
+      <option value="kai">楷</option>
+      <option value="fang">仿宋</option>
+      <option value="hei">黑</option>
+    </select>
+  </span>
+</div>
+
+<div class="zhi">
+
+  <header class="mast">
+    <div class="juan">
+      <span>文衡 · 学科志　卷一</span>
+      <span>学科站位</span>
+      <span class="rt">202609 期　期 1</span>
+    </div>
+    <h1>清华大学 · 学科监测报告</h1>
+    <div class="lines">
+      <p>监测版 · 包契约验证件 · 985 工程　｜　生成 2026-11-01</p>
+      <p>期 1 · 站位报告。数据面＝202609 期 ESI 全局件（机构总表、22 学科全球榜、阈值表）——未取论文清单，论文层分析不在本版。所有数字可回溯到包内原始表。</p>
+      <p>数据源：Clarivate ESI 202609 期（下载 2026-09-23/2026-10-17）· 清华大学上榜 22 / 22 学科 · ESI 名 TSINGHUA UNIVERSITY</p>
+    </div>
+  </header>
+
+  <div class="body">
+    <div class="main">
+
+      <section class="figures" aria-label="核心指标">
+        <div class="fig"><span class="lb">入围 ESI 前 1% 学科</span><span class="vv">22<small> / 22</small><sup class="jn">1</sup></span></div>
+        <div class="fig"><span class="lb">全球机构总排名</span><span class="vv">18<small> / 10,674</small><sup class="jn">2</sup></span></div>
+        <div class="fig"><span class="lb">总被引</span><span class="vv">4,540,752<sup class="jn">3</sup></span></div>
+        <div class="fig"><span class="lb">进入全球前 1‰ 的学科</span><span class="vv">11<sup class="jn">4</sup></span></div>
+      </section>
+
+      <section class="sec">
+        <div class="sec-h"><span class="no">一、</span><h2>学科站位</h2><span class="dash"></span><span class="sub">上榜 22 学科 · 按被引降序</span></div>
+        <table>
+          <colgroup>
+            <col style="width:16%"><col style="width:10%"><col style="width:8.5%"><col style="width:8.5%">
+            <col style="width:9%"><col style="width:10%"><col style="width:7%"><col style="width:7.5%">
+            <col style="width:6%"><col style="width:8%"><col style="width:9.5%">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>学科</th><th class="n">全球排名</th><th class="n">分位</th><th class="n">国内排名*</th>
+              <th class="n">论文</th><th class="n">被引</th><th class="n">篇均</th><th class="n">高被引</th>
+              <th class="n">热点</th><th class="n">相对强度</th><th class="n">档位</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="name">工程学</td><td class="n">2 / 3065<sup class="jn">5</sup></td><td class="n">前 0.1%</td><td class="n">2</td><td class="n">40,746</td><td class="n">940,162<sup class="jn">6</sup></td><td class="n">23.07</td><td class="n">785</td><td class="n">27</td><td class="n">×2.25</td><td class="n g1">前 1‰</td></tr>
+            <tr><td class="name">材料科学</td><td class="n">4 / 1726</td><td class="n">前 0.2%</td><td class="n">3</td><td class="n">20,612</td><td class="n">901,555</td><td class="n">43.74</td><td class="n">738</td><td class="n">21</td><td class="n">×1.91</td><td class="n g1">前 1‰</td></tr>
+            <tr><td class="name">化学</td><td class="n">7 / 2315</td><td class="n">前 0.3%</td><td class="n">4</td><td class="n">17,681</td><td class="n">652,313</td><td class="n">36.89</td><td class="n">764</td><td class="n">22</td><td class="n">×1.14</td><td class="n g1">前 1‰</td></tr>
+            <tr><td class="name">物理学</td><td class="n">11 / 1063</td><td class="n">前 1.0%</td><td class="n">2</td><td class="n">19,269</td><td class="n">525,757</td><td class="n">27.29</td><td class="n">566</td><td class="n">15</td><td class="n">×2.34</td><td class="n g1">前 1‰</td></tr>
+            <tr><td class="name">环境生态学</td><td class="n">8 / 2211</td><td class="n">前 0.4%</td><td class="n">3</td><td class="n">8,619</td><td class="n">332,372</td><td class="n">38.56</td><td class="n">357</td><td class="n">9</td><td class="n">×1.26</td><td class="n g1">前 1‰</td></tr>
+            <tr><td class="name">临床医学</td><td class="n">479 / 7163</td><td class="n">前 6.7%</td><td class="n">31</td><td class="n">5,778</td><td class="n">197,503</td><td class="n">34.18</td><td class="n">185</td><td class="n">14</td><td class="n">×0.22</td><td class="n g1">前 1‰</td></tr>
+            <tr><td class="name">计算机科学</td><td class="n">2 / 938</td><td class="n">前 0.2%</td><td class="n">2</td><td class="n">9,402</td><td class="n">188,857</td><td class="n">20.09</td><td class="n">237</td><td class="n">5</td><td class="n">×2.06</td><td class="n g1">前 1‰</td></tr>
+            <tr><td class="name">地球科学</td><td class="n">45 / 1271</td><td class="n">前 3.5%</td><td class="n">12</td><td class="n">5,083</td><td class="n">159,902</td><td class="n">31.46</td><td class="n">224</td><td class="n">15</td><td class="n">×1.04</td><td class="n g1">前 1‰</td></tr>
+            <tr><td class="name">分子生物学与遗传学</td><td class="n">131 / 1225</td><td class="n">前 10.7%</td><td class="n">15</td><td class="n">2,672</td><td class="n">134,854</td><td class="n">50.47</td><td class="n">70</td><td class="n">1</td><td class="n">×0.71</td><td class="n g2">前 1%</td></tr>
+            <tr><td class="name">生物学与生物化学</td><td class="n">83 / 1749</td><td class="n">前 4.7%</td><td class="n">8</td><td class="n">3,790</td><td class="n">129,537</td><td class="n">34.18</td><td class="n">101</td><td class="n">4</td><td class="n">×0.60</td><td class="n g1">前 1‰</td></tr>
+            <tr><td class="name">空间科学</td><td class="n">204 / 251</td><td class="n">前 81.3%</td><td class="n">10</td><td class="n">2,081</td><td class="n">66,309</td><td class="n">31.86</td><td class="n">70</td><td class="n">8</td><td class="n">×1.67</td><td class="n g2">前 1%</td></tr>
+            <tr><td class="name">社会科学</td><td class="n">150 / 2575</td><td class="n">前 5.8%</td><td class="n">6</td><td class="n">3,548</td><td class="n">61,627</td><td class="n">17.37</td><td class="n">127</td><td class="n">2</td><td class="n">×0.37</td><td class="n g1">前 1‰</td></tr>
+            <tr><td class="name">经济与商业</td><td class="n">52 / 575</td><td class="n">前 9.0%</td><td class="n">5</td><td class="n">2,227</td><td class="n">46,458</td><td class="n">20.86</td><td class="n">47</td><td class="n">0</td><td class="n">×0.77</td><td class="n g1">前 1‰</td></tr>
+            <tr><td class="name">免疫学</td><td class="n">244 / 1255</td><td class="n">前 19.4%</td><td class="n">19</td><td class="n">906</td><td class="n">33,956</td><td class="n">37.48</td><td class="n">36</td><td class="n">2</td><td class="n">×0.39</td><td class="n g2">前 1%</td></tr>
+            <tr><td class="name">神经系统科学与行为学</td><td class="n">446 / 1373</td><td class="n">前 32.5%</td><td class="n">28</td><td class="n">1,329</td><td class="n">33,329</td><td class="n">25.08</td><td class="n">30</td><td class="n">2</td><td class="n">×0.32</td><td class="n g2">前 1%</td></tr>
+            <tr><td class="name">微生物学</td><td class="n">138 / 876</td><td class="n">前 15.8%</td><td class="n">17</td><td class="n">748</td><td class="n">29,740</td><td class="n">39.76</td><td class="n">23</td><td class="n">0</td><td class="n">×0.37</td><td class="n g2">前 1%</td></tr>
+            <tr><td class="name">植物与动物学</td><td class="n">376 / 2103</td><td class="n">前 17.9%</td><td class="n">63</td><td class="n">819</td><td class="n">24,499</td><td class="n">29.91</td><td class="n">60</td><td class="n">2</td><td class="n">×0.12</td><td class="n g2">前 1%</td></tr>
+            <tr><td class="name">农业科学</td><td class="n">287 / 1496</td><td class="n">前 19.2%</td><td class="n">80</td><td class="n">913</td><td class="n">21,547</td><td class="n">23.60</td><td class="n">25</td><td class="n">0</td><td class="n">×0.19</td><td class="n g2">前 1%</td></tr>
+            <tr><td class="name">药理学与毒理学</td><td class="n">402 / 1469</td><td class="n">前 27.4%</td><td class="n">76</td><td class="n">826</td><td class="n">16,647</td><td class="n">20.15</td><td class="n">18</td><td class="n">0</td><td class="n">×0.21</td><td class="n g2">前 1%</td></tr>
+            <tr><td class="name">精神病学与心理学</td><td class="n">485 / 1231</td><td class="n">前 39.4%</td><td class="n">21</td><td class="n">1,265</td><td class="n">16,016</td><td class="n">12.66</td><td class="n">24</td><td class="n">1</td><td class="n">×0.30</td><td class="n g2">前 1%</td></tr>
+            <tr><td class="name">数学</td><td class="n">85 / 416</td><td class="n">前 20.4%</td><td class="n">19</td><td class="n">2,616</td><td class="n">15,257</td><td class="n">5.83</td><td class="n">20</td><td class="n">0</td><td class="n">×0.67</td><td class="n g2">前 1%</td></tr>
+            <tr><td class="name">多学科</td><td class="n">34 / 237</td><td class="n">前 14.3%</td><td class="n">2</td><td class="n">172</td><td class="n">12,555</td><td class="n">72.99</td><td class="n">15</td><td class="n">2</td><td class="n">×0.74</td><td class="n g2">前 1%</td></tr>
+          </tbody>
+        </table>
+        <div class="tfoot">
+          <p class="fn">* 国内排名＝榜内 CHINA MAINLAND ∪ N/A（属地）行计数推导，非 ESI 原生指标。排名写法「全球第 N / 榜内 M 所」。分位＝rank ÷ m；相对强度＝(本校该学科论文 ÷ 本校上榜学科论文合计) ÷ (全球该学科论文 ÷ 全球 22 学科论文合计)，分母为本校上榜学科合计，部分覆盖下指数偏高，仅作结构参考。</p>
+          <span class="cnt">共 22 行</span>
+        </div>
+      </section>
+
+      <section class="sec">
+        <div class="sec-h"><span class="no">图</span><h2>头部学科被引体量悬殊</h2><span class="dash"></span><span class="sub">前八位 · 单位 5 万被引</span></div>
+        <p class="ch-sub">数值为学科站位表原值，不四舍五入</p>
+        <div class="ch-wrap"><svg id="chE1" class="ch-svg" width="680" height="260" viewBox="0 0 680 260"></svg></div>
+        <p class="ch-t-src">TICK ROWS · CLARIVATE ESI 202609 · 学科站位表</p>
+      </section>
+
+      <section class="sec">
+        <div class="sec-h"><span class="no">图</span><h2>头部三学科相对强度高于基准</h2><span class="dash"></span><span class="sub">相对强度前三者</span></div>
+        <p class="ch-sub">单位：1 档 = 0.1× · 相对强度前三者（源报告原值）</p>
+        <div class="ch-wrap"><svg id="chE2" class="ch-svg" width="680" height="280" viewBox="0 0 680 280"></svg></div>
+        <p class="ch-t-src">PAIRED RUNGS · CLARIVATE ESI 202609 · 学科站位表</p>
+      </section>
+
+      <section class="sec">
+        <div class="sec-h"><span class="no">六、</span><h2>解读</h2><span class="dash"></span><span class="sub">模型解读 · 数字已过盾校验</span></div>
+        <div class="prose">
+          <p>从本期 202609 期数据看，清华大学的 ESI 学科格局已呈现典型的“全面高位、头部极强”特征：22 个上榜学科全部进入全球前 1%，无一处于中游或尾部，这在国内外高校中并不多见。更值得注意的是，11 个学科跻身全球前 1‰，覆盖了从计算机科学、工程学、材料科学、化学等传统工科与理科，到经济与商业、社会科学、临床医学等人文社科与医学门类，学科版图的宽度与高度兼备。以总被引计，学校位居全球机构第 18/10674 位，整体站位与其“985 工程”的定位相符。</p>
+          <p>头部阵营内部亦有层次。计算机科学以全球第 2/938 的位次领跑全校，是进位时间线上最早（201905 起）进入前 1‰ 的学科，先发优势稳固；工程学则是被引体量最大的学科（被引 940,162，篇均 23.07），构成学校 ESI 基本盘的压舱石。篇均被引最高者是多学科（72.99），提示交叉学科方向的单位产出效率突出，是值得持续培育的增量点。论文结构上，工程学（27.0%）、材料科学（13.6%）、物理学（12.8%）三大学科合计占据主体，与头部学科的分布高度一致，说明规模与质量基本同源。</p>
+          <p>从纵向趋势看，总被引自 201905 的 1,038,021 增至 202609 的 4,540,752，约 4.4 倍的增幅支撑全球总排名在 42 期在档期内由第 94 位进至第 18 位，进位节奏与被引积累基本同步。前 1‰ 事件累计 12 次，时间线从计算机科学的 201905 一路延伸至经济与商业的 202605（前 1‰），最近一次为 202605 起进入前 1‰，显示高位学科的扩容仍在持续，且新进者已从理工科扩展到社科与经济领域。</p>
+          <p>短板与看点方面，在 ±3 位的对标窗内，本校被引列第 2/7 位，说明与同档机构相比仍有可争取的位次空间。下一程的关注点宜放在两端：一是临床医学、生物学与生物化学等已入前 1‰ 但体量相对靠后的学科能否继续上探；二是尚未进入前 1‰ 的上榜学科中，谁最有可能成为下一个进位者。总体而言，本期数据反映的是一个存量稳固、增量有序的学科体系，监测重点应从“有没有”转向“强不强、进不进”。</p>
+          <p class="note">模型解读（数字已过盾校验）。</p>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="jia" aria-label="夹批">
+      <div class="item"><span class="no">1</span><b>22 / 22</b>　ESI 202609 期机构总表 · 上榜学科数</div>
+      <div class="item"><span class="no">2</span><b>18 / 10,674</b>　机构总表 · 按总被引降序</div>
+      <div class="item"><span class="no">3</span><b>4,540,752</b>　机构总表 · 总被引（论文 151,102 · 篇均 30.05）</div>
+      <div class="item"><span class="no">4</span><b>11</b>　1‰ 线＝榜内第 ⌊(m+1)/10⌋ 位被引</div>
+      <div class="item"><span class="no">5</span><b>2 / 3065</b>　22 学科全球榜 · 工程学全球排名</div>
+      <div class="item"><span class="no">6</span><b>940,162</b>　22 学科全球榜 · 工程学被引</div>
+      <div class="item"><span class="no">7</span><b>1,038,021 → 4,540,752</b>　201905 → 202609 总被引 · 历史全球档案回填</div>
+      <div class="item"><span class="no">8</span><b>第 94 → 第 18 位</b>　42 期在档期 · 全球总排名</div>
+    </aside>
+  </div>
+
+  <footer>
+    <p class="src">数据来源：Clarivate ESI（Essential Science Indicators）202609 期全局件，云南大学图书馆订阅账号下载（2026-09-23/2026-10-17）；本报告是监测版包契约的验证件，不是对外报告，数字未经该校核对。派生算法：国内排名＝榜内 CHINA MAINLAND ∪ N/A（属地）行计数 · 1‰ 线＝第 ⌊(m+1)/10⌋ 位被引 · 接近度＝被引 ÷ 前 1% 机构阈值。生成：文衡监测版引擎 src/monitor/（2026-11-01）。</p>
+    <span class="pg">文衡 · 202609 · 第 1 页</span>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  var d=document.documentElement, s=document.getElementById('skin'), f=document.getElementById('font');
+  s.addEventListener('change',function(){d.setAttribute('data-skin',s.value)});
+  f.addEventListener('change',function(){d.setAttribute('data-font',f.value)});
+})();
+window.CHARTS=[
+  {id:'chE1',type:'tickRows',cfg:{unit:50000,items:[
+    {name:'工程学',value:940162},{name:'材料科学',value:901555},{name:'化学',value:652313},
+    {name:'物理学',value:525757},{name:'环境生态学',value:332372},{name:'临床医学',value:197503},
+    {name:'计算机科学',value:188857},{name:'地球科学',value:159902}
+  ]}},
+  {id:'chE2',type:'pairedRungs',cfg:{unit:0.1,baseLabel:'基准',items:[
+    {name:'工程学',now:2.25,nowLabel:'×2.25',base:1.0},
+    {name:'材料科学',now:1.91,nowLabel:'×1.91',base:1.0},
+    {name:'化学',now:1.14,nowLabel:'×1.14',base:1.0}
+  ]}}
+];
+(function(){
+  function E(p,t,a){var n=p.ownerDocument.createElementNS(p.namespaceURI,t);for(var k in a)n.setAttribute(k,a[k]);p.appendChild(n);return n;}
+  function T(p,a,s){var n=E(p,'text',a);n.textContent=s;return n;}
+  var CM={ink:'ch-ink',acc:'ch-acc',gold:'ch-gold',faint:'ch-faint'};
+  function rungBars(svg,c){
+    var W=svg.width.baseVal.value,H=svg.height.baseVal.value;
+    var items=c.items,unit=c.unit;
+    var cnt=items.map(function(d){return Math.max(1,Math.round(d.value/unit));});
+    var maxC=Math.max.apply(null,cnt),left=64,right=W-24,base=H-44,area=base-26,step=area/maxC;
+    var n=items.length,slot=(right-left)/n,bw=Math.min(30,slot*0.42);
+    for(var k=0;k<=maxC;k+=5){var y=base-k*step;E(svg,'line',{x1:left-8,y1:y,x2:right,y2:y,class:'ch-rule2'});}
+    E(svg,'line',{x1:left-8,y1:base,x2:right,y2:base,class:'ch-ax'});
+    items.forEach(function(d,i){
+      var cx=left+slot*(i+0.5),v=cnt[i];
+      for(var k=0;k<v;k++){var y=base-k*step;E(svg,'line',{x1:cx-bw/2,y1:y,x2:cx+bw/2,y2:y,class:(k%5===4?'ch-acc':'ch-ink')});}
+      T(svg,{x:cx,y:base-v*step-12,'text-anchor':'middle',class:'ch-t-val'},d.value.toLocaleString('en-US'));
+      T(svg,{x:cx,y:base+18,'text-anchor':'middle',class:'ch-t-lab'},d.name);
+    });
+  }
+  function tickRows(svg,c){
+    var W=svg.width.baseVal.value,H=svg.height.baseVal.value;
+    var items=c.items,unit=c.unit;
+    var cnt=items.map(function(d){return Math.max(1,Math.round(d.value/unit));});
+    var maxC=Math.max.apply(null,cnt),leftLbl=120,x0=140,right=W-90,base=H-28,px=(right-x0)/maxC;
+    var rowH=(base-18)/items.length;
+    E(svg,'line',{x1:x0,y1:8,x2:x0,y2:base,class:'ch-faint',style:'stroke-dasharray:2 4'});
+    items.forEach(function(d,i){
+      var y=22+rowH*i+rowH/2;
+      T(svg,{x:leftLbl,y:y+4,'text-anchor':'end',class:'ch-t-lab'},d.name);
+      E(svg,'line',{x1:x0,y1:y,x2:x0+maxC*px,y2:y,class:'ch-rule2'});
+      for(var k=0;k<cnt[i];k++){var x=x0+k*px+px/2,h=rowH*0.46;E(svg,'line',{x1:x,y1:y+h/2,x2:x,y2:y-h/2,class:(k%5===4?'ch-acc':'ch-ink')});}
+      T(svg,{x:x0+cnt[i]*px+12,y:y+5,class:'ch-t-val'},d.value.toLocaleString('en-US'));
+    });
+    E(svg,'line',{x1:10,y1:base+8,x2:W-10,y2:base+8,class:'ch-ax'});
+  }
+  function tickDonut(svg,c){
+    var W=svg.width.baseVal.value,H=svg.height.baseVal.value;
+    var cx=W/2,cy=H/2-4,R0=56,segs=c.segments,total=c.total||segs.reduce(function(s,x){return s+x.value;},0),k0=0;
+    segs.forEach(function(seg){
+      var cls=CM[seg.cls]||'ch-ink';
+      for(var k=0;k<seg.value;k++){
+        var idx=k0+k,a=idx*(360/total)-90,ar=a*Math.PI/180,len=12;
+        var x1=cx+R0*Math.cos(ar),y1=cy+R0*Math.sin(ar),x2=cx+(R0+len)*Math.cos(ar),y2=cy+(R0+len)*Math.sin(ar);
+        E(svg,'line',{x1:x1,y1:y1,x2:x2,y2:y2,class:cls});
+      }
+      var mid=(k0+seg.value/2)*(360/total)-90,mr=mid*Math.PI/180;
+      var lx=cx+(R0+34)*Math.cos(mr),ly=cy+(R0+34)*Math.sin(mr),gx=cx+(R0+18)*Math.cos(mr),gy=cy+(R0+18)*Math.sin(mr);
+      E(svg,'line',{x1:gx,y1:gy,x2:lx,y2:ly,class:'ch-lead'});
+      var anchor=Math.cos(mr)>0.3?'start':(Math.cos(mr)<-0.3?'end':'middle');
+      var lab=seg.name+(seg.val!=null?(' · '+seg.val):'');
+      T(svg,{x:lx,y:ly+4,'text-anchor':anchor,class:'ch-t-lab'},lab);
+      k0+=seg.value;
+    });
+    T(svg,{x:cx,y:cy-2,'text-anchor':'middle',class:'ch-t-val',style:'font-size:26px'},total);
+    T(svg,{x:cx,y:cy+16,'text-anchor':'middle',class:'ch-t-cap'},'学科 · 1 档 = 1 学科');
+  }
+  function pairedRungs(svg,c){
+    var W=svg.width.baseVal.value,H=svg.height.baseVal.value;
+    var items=c.items,unit=c.unit,left=70,right=W-24,base=H-44,area=base-26,slot=(right-left)/items.length,bw=Math.min(11,slot*0.16);
+    var cnt=items.map(function(d){return {now:Math.round(d.now/unit),base:Math.round(d.base/unit)};});
+    var maxC=Math.max.apply(null,cnt.map(function(x){return Math.max(x.now,x.base);})),step=area/maxC;
+    for(var k=0;k<=maxC;k+=5){var y=base-k*step;E(svg,'line',{x1:left-8,y1:y,x2:right,y2:y,class:'ch-rule2'});}
+    E(svg,'line',{x1:left-8,y1:base,x2:right,y2:base,class:'ch-ax'});
+    if(c.baseLabel)T(svg,{x:left,y:14,class:'ch-t-cap'},c.baseLabel);
+    items.forEach(function(d,i){
+      var x=cnt[i],cx=left+slot*(i+0.5),xa=cx-bw-3,xb=cx+bw+3;
+      for(var k=0;k<x.base;k++){var y=base-k*step;E(svg,'line',{x1:xa-bw,y1:y,x2:xa+bw,y2:y,class:'ch-faint'});}
+      for(var k=0;k<x.now;k++){var y=base-k*step;E(svg,'line',{x1:xb-bw,y1:y,x2:xb+bw,y2:y,class:'ch-ink'});}
+      T(svg,{x:xb,y:base-x.now*step-12,'text-anchor':'middle',class:'ch-t-val'},d.nowLabel);
+      T(svg,{x:cx,y:base+18,'text-anchor':'middle',class:'ch-t-lab'},d.name);
+    });
+  }
+  function stackedRungs(svg,c){
+    var W=svg.width.baseVal.value,H=svg.height.baseVal.value;
+    var segs=c.segments,clsMap={ink:'ch-ink',acc:'ch-acc',gold:'ch-gold',faint:'ch-faint'};
+    var left=70,base=H-46,x=W/2,bw=48,area=base-28,step=area/100,k0=0;
+    for(var p=0;p<=100;p+=10){var y=base-p*step;E(svg,'line',{x1:left-10,y1:y,x2:W-24,y2:y,class:'ch-rule2'});}
+    segs.forEach(function(seg){
+      var cls=clsMap[seg.cls]||'ch-ink',c2=Math.round(seg.value);
+      for(var k=0;k<c2;k++){var y=base-(k0+k)*step;E(svg,'line',{x1:x-bw/2,y1:y,x2:x+bw/2,y2:y,class:cls});}
+      var midY=base-(k0+c2/2)*step;
+      T(svg,{x:x+bw/2+12,y:midY+4,class:'ch-t-lab'},seg.name+' '+seg.value.toFixed(1)+'%');
+      k0+=c2;
+    });
+    E(svg,'line',{x1:left-10,y1:base,x2:W-24,y2:base,class:'ch-ax'});
+    [0,50,100].forEach(function(p){T(svg,{x:left-16,y:base-p*step+4,'text-anchor':'end',class:'ch-t-cap'},p+'%');});
+  }
+  (window.CHARTS||[]).forEach(function(c){var svg=document.getElementById(c.id);if(!svg)return;
+    if(c.type==='rungBars')rungBars(svg,c.cfg);
+    else if(c.type==='tickRows')tickRows(svg,c.cfg);
+    else if(c.type==='tickDonut')tickDonut(svg,c.cfg);
+    else if(c.type==='pairedRungs')pairedRungs(svg,c.cfg);
+    else if(c.type==='stackedRungs')stackedRungs(svg,c.cfg);
+  });
+})();
+</script>
+</body>
+</html>

@@ -11,8 +11,18 @@ import {
   type ModelsPayload, type ProviderDraft, type ProviderRow, type Protocol,
   type RemoteModels,
 } from '../api-models'
+import {
+  TEMPLATES, SKINS, SKIN_GROUPS, FONTS,
+  readTemplate, writeTemplate,
+  readSkinSys, writeSkinSys, applySystemSkin,
+  readSkinRpt, writeSkinRpt,
+  readFont, writeFont, applyFontChoice,
+  readAppearance,
+  type TemplateId, type SkinId, type FontId,
+} from '../appearance'
 import { ConfirmButton } from '../ConfirmButton'
 import { errorNote } from '../lib/status'
+import { Icon } from '../icons'
 import { CallStatsBlock } from './CallStats'
 
 const EMPTY_DRAFT: ProviderDraft = {
@@ -29,26 +39,95 @@ export const EFFORT_CHOICES: { value: string; label: string }[] = [
   { value: 'high', label: '高' },
 ]
 
-/* ── 界面节·正文字体（票 3）：三选卡片，存 localStorage、挂 <html data-font> ── */
-export type FontChoice = 'serif' | 'sans' | 'kai'
-export const FONT_KEY = 'wenheng.ui.font'
-/** 三张字体卡（顺序即版面顺序；短说明照图四体例）。衬线＝缺省。 */
-export const FONT_CHOICES: { value: FontChoice; label: string; desc: string }[] = [
-  { value: 'serif', label: '衬线', desc: '适合正文阅读' },
-  { value: 'sans', label: '非衬线', desc: '更接近系统界面' },
-  { value: 'kai', label: '楷体', desc: '手写书卷气' },
-]
-/** 存储值 → 选择：读不到/不认得都回衬线（衬线是缺省＝<html> 上不挂属性）。 */
-export function fontChoiceFromStorage(raw: string | null): FontChoice {
-  return raw === 'sans' || raw === 'kai' ? raw : 'serif'
+/* ── 界面节·字体与外观轴：选项表、存储读写、挂 <html> 副作用都来自 src/appearance.ts
+   （四轴唯一真相）。旧接口名 FONT_KEY / fontChoiceFromStorage / applyFontChoice /
+   FONT_CHOICES 仍从这里再导出，测试照旧 import。 ── */
+export {
+  FONT_KEY, FONT_CHOICES, fontChoiceFromStorage, applyFontChoice,
+} from '../appearance'
+
+/* 模板缩略图（五套骨架，各画各的版式；色是固定示意，不随皮肤变） */
+function TemplateThumb({ id }: { id: TemplateId }) {
+  const common = { fill: 'none', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+  switch (id) {
+    case 'A': return (
+      <svg viewBox="0 0 72 50" stroke="#3D4A45" strokeWidth={1.7} {...common}>
+        <rect x="2" y="3" width="68" height="44" fill="#FFFDF7" stroke="#C7C0AF" />
+        <line x1="19" y1="3" x2="19" y2="47" stroke="#B08E48" />
+        <line x1="10" y1="9" x2="10" y2="22" strokeWidth={2.6} />
+        <line x1="10" y1="26" x2="10" y2="33" />
+        <line x1="25" y1="10" x2="62" y2="10" strokeWidth={2.6} />
+        <line x1="25" y1="15" x2="47" y2="15" stroke="#BAB3A3" />
+        <line x1="25" y1="19" x2="52" y2="19" stroke="#BAB3A3" />
+        <line x1="25" y1="26" x2="66" y2="26" stroke="#BAB3A3" />
+        <line x1="25" y1="31" x2="66" y2="31" stroke="#BAB3A3" />
+        <line x1="25" y1="36" x2="66" y2="36" stroke="#BAB3A3" />
+        <line x1="25" y1="41" x2="66" y2="41" stroke="#BAB3A3" />
+      </svg>)
+    case 'B': return (
+      <svg viewBox="0 0 72 50" stroke="#3D4A45" strokeWidth={1.7} {...common}>
+        <rect x="2" y="3" width="68" height="44" fill="#FFFDF7" stroke="#C7C0AF" />
+        <line x1="7" y1="8" x2="30" y2="8" stroke="#BAB3A3" />
+        <line x1="59" y1="8" x2="66" y2="8" stroke="#BAB3A3" />
+        <line x1="7" y1="15" x2="52" y2="15" strokeWidth={2.8} />
+        <line x1="7" y1="19" x2="44" y2="19" stroke="#BAB3A3" />
+        <line x1="7" y1="22" x2="38" y2="22" stroke="#BAB3A3" />
+        <rect x="6" y="26" width="14.5" height="8" fill="#F0EDE2" stroke="#B6AD98" />
+        <rect x="22.5" y="26" width="14.5" height="8" fill="#F0EDE2" stroke="#B6AD98" />
+        <rect x="39" y="26" width="14.5" height="8" fill="#F0EDE2" stroke="#B6AD98" />
+        <rect x="55.5" y="26" width="14.5" height="8" fill="#F0EDE2" stroke="#B6AD98" />
+        <line x1="6" y1="38" x2="66" y2="38" stroke="#3D4A45" />
+        <line x1="6" y1="41.5" x2="66" y2="41.5" stroke="#BAB3A3" />
+        <line x1="6" y1="45" x2="66" y2="45" stroke="#BAB3A3" />
+      </svg>)
+    case 'C': return (
+      <svg viewBox="0 0 72 50" stroke="#3D4A45" strokeWidth={1.7} {...common}>
+        <rect x="6" y="4" width="60" height="13" fill="#F0EDE2" stroke="#B6AD98" />
+        <rect x="10" y="20" width="56" height="13" fill="#F0EDE2" stroke="#B6AD98" />
+        <rect x="6" y="36" width="60" height="11" fill="#F0EDE2" stroke="#B6AD98" />
+        <rect x="58" y="6" width="6" height="6" fill="#B08E48" stroke="none" />
+        <rect x="58" y="22" width="6" height="6" fill="#B08E48" stroke="none" />
+        <rect x="58" y="38" width="6" height="6" fill="#B08E48" stroke="none" />
+        <line x1="10" y1="10" x2="40" y2="10" stroke="#BAB3A3" />
+        <line x1="14" y1="26" x2="44" y2="26" stroke="#BAB3A3" />
+        <line x1="10" y1="42" x2="40" y2="42" stroke="#BAB3A3" />
+      </svg>)
+    case 'D': return (
+      <svg viewBox="0 0 72 50" stroke="#C9A961" strokeWidth={1.7} {...common}>
+        <rect x="2" y="3" width="68" height="44" fill="#1D252B" stroke="#1D252B" />
+        <line x1="8" y1="12" x2="64" y2="12" />
+        <line x1="8" y1="15" x2="64" y2="15" />
+        <line x1="14" y1="23" x2="58" y2="23" stroke="#D6D0C2" strokeWidth={2.6} />
+        <line x1="8" y1="31" x2="64" y2="31" stroke="#D6D0C2" />
+        <line x1="8" y1="36" x2="64" y2="36" stroke="#D6D0C2" />
+        <line x1="8" y1="41" x2="50" y2="41" stroke="#D6D0C2" />
+      </svg>)
+    case 'E': return (
+      <svg viewBox="0 0 72 50" stroke="#3D4A45" strokeWidth={1.7} {...common}>
+        <rect x="2" y="3" width="68" height="44" fill="#FFFDF7" stroke="#C7C0AF" />
+        <rect x="2" y="3" width="68" height="7" fill="#DDE6E2" stroke="#9BA8A1" />
+        <line x1="7" y1="6.5" x2="30" y2="6.5" stroke="#5C6D65" />
+        <line x1="35" y1="14" x2="35" y2="45" />
+        <line x1="53" y1="14" x2="53" y2="45" stroke="#B08E48" />
+        <line x1="6" y1="16" x2="31" y2="16" stroke="#BAB3A3" />
+        <line x1="6" y1="21" x2="31" y2="21" stroke="#BAB3A3" />
+        <line x1="6" y1="26" x2="31" y2="26" stroke="#BAB3A3" />
+        <line x1="6" y1="31" x2="31" y2="31" stroke="#BAB3A3" />
+        <line x1="6" y1="36" x2="31" y2="36" stroke="#BAB3A3" />
+        <line x1="6" y1="41" x2="31" y2="41" stroke="#BAB3A3" />
+        <line x1="38" y1="16" x2="50" y2="16" stroke="#BAB3A3" />
+        <line x1="38" y1="21" x2="50" y2="21" stroke="#BAB3A3" />
+        <line x1="38" y1="26" x2="50" y2="26" stroke="#BAB3A3" />
+        <line x1="56" y1="16" x2="66" y2="16" stroke="#BAB3A3" />
+        <line x1="56" y1="20" x2="66" y2="20" stroke="#BAB3A3" />
+        <line x1="56" y1="24" x2="66" y2="24" stroke="#BAB3A3" />
+      </svg>)
+  }
 }
-/** 把选择挂到 <html data-font>：衬线＝删属性（回缺省），其余设值。 */
-export function applyFontChoice(choice: FontChoice): void {
-  if (choice === 'serif') delete document.documentElement.dataset.font
-  else document.documentElement.dataset.font = choice
-}
-function readStoredFont(): string | null {
-  try { return localStorage.getItem(FONT_KEY) } catch { return null }
+
+/* 选中勾：复用语站统一的 icons.tsx（24 视框 / 1.7 描边 / 圆头）。 */
+function Tick() {
+  return <Icon name="check" size={14} className="ap-tick" />
 }
 
 /* ── 供应商节·Headers 表单（票 4）：textarea 每行 `K=V`，空行忽略，非法行保存前报错 ── */
@@ -284,14 +363,21 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
 
-  /* 界面节·字体偏好：组件常驻（对话框页一直渲染本件），挂载即应用已存偏好——
-     不打开设置也生效；选择时写回 localStorage 并立即挂 <html data-font>。 */
-  const [font, setFont] = useState<FontChoice>(() => fontChoiceFromStorage(readStoredFont()))
+  /* 外观四轴偏好：组件常驻（对话框页一直渲染本件），挂载即应用已存偏好——
+     不打开设置也生效；选择时写回本机并立即挂到页面（系统皮肤／字体挂 <html>，
+     报告皮肤在下面预览块上即时反映）。 */
+  const [template, setTemplate] = useState<TemplateId>(() => readTemplate())
+  const [skinSys, setSkinSys] = useState<SkinId>(() => readSkinSys())
+  const [skinRpt, setSkinRpt] = useState<SkinId>(() => readSkinRpt())
+  const [font, setFont] = useState<FontId>(() => readFont())
+
+  /* 系统皮肤与字体是「全站界面」轴，挂到 <html>；挂载即生效。 */
+  useEffect(() => { applySystemSkin(skinSys) }, [skinSys])
   useEffect(() => { applyFontChoice(font) }, [font])
-  function pickFont(choice: FontChoice) {
-    setFont(choice)
-    try { localStorage.setItem(FONT_KEY, choice) } catch { /* 存不下＝只这次会话内生效 */ }
-  }
+  function pickTemplate(id: TemplateId) { setTemplate(id); writeTemplate(id) }
+  function pickSkinSys(id: SkinId) { setSkinSys(id); writeSkinSys(id) }
+  function pickSkinRpt(id: SkinId) { setSkinRpt(id); writeSkinRpt(id) }
+  function pickFont(choice: FontId) { setFont(choice); writeFont(choice) }
 
   useEffect(() => {
     if (!open) return
@@ -507,18 +593,104 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
               </>
             ) : (
               <div className="mdl-ui">
-                <div className="mdl-font-cards" role="radiogroup" aria-label="正文字体">
-                  {FONT_CHOICES.map((c) => (
-                    <button key={c.value} type="button" role="radio"
-                            aria-checked={font === c.value}
-                            className={`mdl-font-card${font === c.value ? ' on' : ''}`}
-                            data-font={c.value}
-                            onClick={() => pickFont(c.value)}>
-                      <b>{c.label}</b>
-                      <span>{c.desc}</span>
-                    </button>
+                {/* 报告模板 5 选 */}
+                <section className="ap-axis">
+                  <div className="ap-axis-h"><b>报告模板</b><i /><em>5</em></div>
+                  <div className="ap-tpl-grid" role="radiogroup" aria-label="报告模板">
+                    {TEMPLATES.map((t) => (
+                      <button key={t.id} type="button" role="radio"
+                              aria-checked={template === t.id}
+                              className={`ap-tpl${template === t.id ? ' on' : ''}`}
+                              onClick={() => pickTemplate(t.id)}>
+                        <span className="ap-th"><TemplateThumb id={t.id} /></span>
+                        <span className="ap-tx">
+                          <span className="ap-code">{t.code}</span>
+                          <span className="ap-name">{t.name}</span>
+                        </span>
+                        <Tick />
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                {/* 系统皮肤 12 选：换主壳／顶栏，不影响报告纸 */}
+                <section className="ap-axis">
+                  <div className="ap-axis-h"><b>系统皮肤</b><i /><em>12</em></div>
+                  {SKIN_GROUPS.map((grp) => (
+                    <div key={grp.group} className="ap-skin-group">
+                      <div className="ap-skin-gh">{grp.group}</div>
+                      <div className="ap-skin-grid" role="radiogroup" aria-label={`系统皮肤·${grp.group}`}>
+                        {grp.items.map((s) => (
+                          <button key={s.id} type="button" role="radio"
+                                  aria-checked={skinSys === s.id}
+                                  title={s.name}
+                                  className={`ap-skin${skinSys === s.id ? ' on' : ''}`}
+                                  onClick={() => pickSkinSys(s.id)}>
+                            <span className="ap-chip" style={{ background: s.accent }}>
+                              <span className="ap-chip2" style={{ background: s.accent2 }} />
+                            </span>
+                            <span className="ap-skin-name">{s.name}</span>
+                            <Tick />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   ))}
-                </div>
+                </section>
+
+                {/* 报告皮肤 12 选：只换报告纸，不影响界面；下方纸样即时反馈 */}
+                <section className="ap-axis">
+                  <div className="ap-axis-h"><b>报告皮肤</b><i /><em>12</em></div>
+                  <div className="ap-rpt" data-skin-rpt={skinRpt}>
+                    <span className="ap-rpt-name">{SKINS.find((s) => s.id === skinRpt)?.name}</span>
+                    <span className="ap-rpt-swatches">
+                      <span className="ap-rpt-sw"><i className="ap-sw-paper" />纸</span>
+                      <span className="ap-rpt-sw"><i className="ap-sw-ink" />墨</span>
+                      <span className="ap-rpt-sw"><i className="ap-sw-accent" />主</span>
+                      <span className="ap-rpt-sw"><i className="ap-sw-seal" />印</span>
+                    </span>
+                  </div>
+                  {SKIN_GROUPS.map((grp) => (
+                    <div key={grp.group} className="ap-skin-group">
+                      <div className="ap-skin-gh">{grp.group}</div>
+                      <div className="ap-skin-grid" role="radiogroup" aria-label={`报告皮肤·${grp.group}`}>
+                        {grp.items.map((s) => (
+                          <button key={s.id} type="button" role="radio"
+                                  aria-checked={skinRpt === s.id}
+                                  title={s.name}
+                                  className={`ap-skin${skinRpt === s.id ? ' on' : ''}`}
+                                  onClick={() => pickSkinRpt(s.id)}>
+                            <span className="ap-chip" style={{ background: s.accent }}>
+                              <span className="ap-chip2" style={{ background: s.accent2 }} />
+                            </span>
+                            <span className="ap-skin-name">{s.name}</span>
+                            <Tick />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </section>
+
+                {/* 字体 6 选：系统与报告同吃一套 */}
+                <section className="ap-axis">
+                  <div className="ap-axis-h"><b>字体</b><i /><em>6</em></div>
+                  <div className="ap-font-grid" role="radiogroup" aria-label="字体">
+                    {FONTS.map((f) => (
+                      <button key={f.id} type="button" role="radio"
+                              aria-checked={font === f.id}
+                              className={`ap-font${font === f.id ? ' on' : ''}`}
+                              onClick={() => pickFont(f.id)}>
+                        <span className="ap-font-name">{f.name}</span>
+                        <span className="ap-font-sample"
+                              style={{ fontFamily: f.title, fontSize: `calc(13px + ${f.sizeAdj})` }}>
+                          文衡 · 学科监测报告
+                        </span>
+                        <Tick />
+                      </button>
+                    ))}
+                  </div>
+                </section>
               </div>
             )}
           </div>
@@ -539,6 +711,13 @@ export function useSettingsCenter(me: Me | null,
                                    onChanged?: (p: ModelsPayload) => void) {
   const [open, setOpen] = useState(false)
   const show = useCallback(() => setOpen(true), [])
+  /* 本 hook 在应用根部挂载：一上来就把已存的外观偏好套到 <html>，
+     馆员不打开设置也立刻生效（系统皮肤＋字体）。 */
+  useEffect(() => {
+    const a = readAppearance()
+    applySystemSkin(a.skinSys)
+    applyFontChoice(a.font)
+  }, [])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === ',') {

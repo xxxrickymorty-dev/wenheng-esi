@@ -86,7 +86,8 @@ def facts_of(cns: list[str], cache: dict) -> list[str]:
     return out
 
 
-def render(cns: list[str], period: str, cache: dict, insight: dict | None = None) -> str:
+def render(cns: list[str], period: str, cache: dict, insight: dict | None = None,
+           *, appearance: dict | None = None) -> str:
     cols = [r for r in (_school_row(cache, cn) for cn in cns) if r is not None]
     unknown = [cn for cn in cns if sch.find(cn) is None]
     cols.sort(key=lambda r: -(r["total"][3] if r["total"] else 0))
@@ -183,13 +184,26 @@ def render(cns: list[str], period: str, cache: dict, insight: dict | None = None
                       + "".join(cells)
                       + '</div>\n<p class="note">各校在榜学科论文份额；口径同单校报告相对强度注。</p>\n</section>')
 
+    # 不带外观 → 三个占位留空，<html> / <head> / <style> 逐字节保持现状。
+    if appearance is None:
+        head_attrs = ""
+        extra_css = ""
+        appearance_meta = ""
+    else:
+        a = mr.normalize(appearance)
+        head_attrs = (f' data-template="{a["template"]}"'
+                      f' data-skin-rpt="{a["skin_rpt"]}"'
+                      f' data-font="{a["font"]}"')
+        extra_css = mr.appearance_css(appearance)
+        appearance_meta = mr.head_meta(appearance)
+
     return f"""<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN"{head_attrs}>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{len(cols)} 校对比 · {period}</title>
-<style>{mr._CSS}
+{appearance_meta}<title>{len(cols)} 校对比 · {period}</title>
+<style>{mr._CSS}{extra_css}
 .mwrap{{overflow-x:auto;margin-top:16px}}
 .mtable{{min-width:{520 + 110 * max(len(cols), 1)}px}}
 .mtable td.n,.mtable th.n{{text-align:right}}
@@ -241,11 +255,15 @@ td.dim{{color:var(--muted)}}
 """
 
 
-def generate(cns: list[str], period: str | None = None) -> pathlib.Path:
+def generate(cns: list[str], period: str | None = None, *,
+             appearance: dict | None = None) -> pathlib.Path:
     """生成（或复用）一份多校对比报告。名单内有未知校 → KeyError（编程错误面）。
 
     幂等（20261101 C7）：同校集合同期产物已存在 → 直接返回，不再重跑 insight
     （LLM 不重复调用）；要重新生成先删旧件。
+    **外观变了也要重出（2026-11-05 修，同 report.generate）**：带 appearance 时产物
+    <head> 留一枚签名标记；文件在但标记与本次不同、或旧件没标记（legacy）→ 覆盖重出。
+    不带 appearance 时完全照旧（文件在就返回，连读都不读）。
     **例外（供应商强制语义，rick 2026-11-04）**：开启态下 compose_text 的
     模型位失败抛 `AIRequiredError`，原样穿透——解读算在写盘之前，
     上抛即整单失败，不落半份产物。
@@ -263,7 +281,11 @@ def generate(cns: list[str], period: str | None = None) -> pathlib.Path:
             seen.append(cn)
     out = compare_path(seen, period)
     if out.exists():
-        return out
+        if appearance is None:
+            return out                       # 不带外观：完全照旧（不读、不改）
+        # 带外观：只读头部核对标记；同外观幂等，换了 / 旧件没标记（legacy）→ 往下重出
+        if mr.read_signature_from_file(out) == mr.signature(appearance):
+            return out
     cache = mr.load_cache(period) or mr.build_cache(period)
     _AIRequiredError = None
     try:
@@ -286,5 +308,6 @@ def generate(cns: list[str], period: str | None = None) -> pathlib.Path:
             raise   # 供应商强制语义：不落半份产物（rick 2026-11-04）
         ins = None
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(render(seen, period, cache, insight=ins), encoding="utf-8")
+    out.write_text(render(seen, period, cache, insight=ins,
+                          appearance=appearance), encoding="utf-8")
     return out

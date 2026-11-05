@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-skin="zhusha" data-font="song">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>方案B · 奏折 · 朱丝栏 — 清华大学 · 学科监测报告</title>
+<style>
+:root{
+  --f-song:"Noto Serif SC","Songti SC",SimSun,serif;
+  --f-kai:KaiTi,"Kaiti SC",SimKai,var(--f-song);
+  --f-fang:FangSong,"STFangsong",SimFang,var(--f-song);
+  --f-hei:"Microsoft YaHei","PingFang SC",SimHei,system-ui,sans-serif;
+
+  --f-body:var(--f-song); --f-title:var(--f-song); --fz:0px;
+  --seal:#8B1E1E;
+}
+html[data-font="kai"]{--f-body:var(--f-kai);--f-title:var(--f-kai);--fz:.5px}
+html[data-font="fang"]{--f-body:var(--f-fang);--f-title:var(--f-fang);--fz:.5px}
+html[data-font="hei"]{--f-body:var(--f-hei);--f-title:var(--f-hei);--fz:0px}
+
+html[data-skin="zhusha"]{
+  --paper:#F7F2E8; --desk:#E5DFD5; --ink:#2A1E1A; --ink-2:#4B403B; --ink-3:#6A605A;
+  --accent:#8B1E1E; --accent-2:#B73A2C; --accent-soft:#F6E7D7;
+  --zhu:rgba(139,30,30,.16); --gold:#B08C3A; --frame:#C9B9A4; --rule:rgba(42,30,26,.26);
+  --veil:rgba(247,242,232,.84);
+}
+html[data-skin="daiqing"]{
+  --paper:#F5F3EC; --desk:#E2E0D9; --ink:#22261F; --ink-2:#444740; --ink-3:#63665F;
+  --accent:#2F5D62; --accent-2:#447C7A; --accent-soft:#E6EFED;
+  --zhu:rgba(47,93,98,.17); --gold:#A88A45; --frame:#C3C8BE; --rule:rgba(34,38,31,.26);
+  --veil:rgba(245,243,236,.84);
+}
+html[data-skin="tenghuang"]{
+  --paper:#FAF5E6; --desk:#E8E3D3; --ink:#2E2718; --ink-2:#4F4839; --ink-3:#6D6758;
+  --accent:#C28C1A; --accent-2:#D4A72C; --accent-soft:#FBF3D7;
+  --zhu:rgba(194,140,26,.20); --gold:#8A6A2F; --frame:#D8C9A2; --rule:rgba(46,39,24,.26);
+  --veil:rgba(250,245,230,.84);
+}
+html[data-skin="piaolv"]{
+  --paper:#F4F6EE; --desk:#E1E4DC; --ink:#1F2A22; --ink-2:#414B43; --ink-3:#616961;
+  --accent:#5E8E7E; --accent-2:#7DAF9F; --accent-soft:#E9F2EF;
+  --zhu:rgba(94,142,126,.20); --gold:#9E8C58; --frame:#C2CCC4; --rule:rgba(31,42,34,.26);
+  --veil:rgba(244,246,238,.84);
+}
+html[data-skin="wulan"]{
+  --paper:#F4F6F8; --desk:#E1E3E6; --ink:#1C2530; --ink-2:#3F4650; --ink-3:#5F666E;
+  --accent:#4A6B8A; --accent-2:#6E8CA8; --accent-soft:#E6EDF3;
+  --zhu:rgba(74,107,138,.18); --gold:#A08B60; --frame:#C0C7CF; --rule:rgba(28,37,48,.26);
+  --veil:rgba(244,246,248,.84);
+}
+html[data-skin="mohui"]{
+  --paper:#F3F1EA; --desk:#DFDDD7; --ink:#1A1A1A; --ink-2:#3D3C3B; --ink-3:#5D5D5A;
+  --accent:#3C3C3F; --accent-2:#666668; --accent-soft:#EDEDEA;
+  --zhu:rgba(60,60,63,.15); --gold:#9C8F76; --frame:#C6C3B9; --rule:rgba(26,26,26,.26);
+  --veil:rgba(243,241,234,.84);
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:var(--desk)}
+body{
+  background:var(--desk); color:var(--ink);
+  font-family:var(--f-body); font-size:calc(15px + var(--fz)); line-height:1.9;
+  font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased;
+  padding:0 16px 48px;
+}
+
+/* 控制条 */
+.bar{
+  height:44px; position:sticky; top:0; z-index:20;
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:0 20px; background:var(--paper); border-bottom:1px solid var(--frame);
+  font-family:var(--f-hei); font-size:12.5px; color:var(--ink-2);
+  margin:0 -16px 0;
+}
+.bar .id{letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .ctl{display:flex;align-items:center;gap:14px;flex:none}
+.bar label{display:flex;align-items:center;gap:6px;color:var(--ink-3)}
+.bar select{
+  font:inherit; height:26px; padding:1px 4px; border:1px solid var(--frame);
+  border-radius:0; background:var(--paper); color:var(--ink);
+}
+
+/* 奏折纸面 */
+.scroll{
+  max-width:960px; margin:36px auto 0; background:var(--paper);
+  border:1px solid var(--frame);
+}
+.scroll-in{
+  border:.5px solid var(--frame); margin:4px; padding:56px 48px 64px;
+}
+
+/* 报头 */
+.mast{text-align:center}
+.eyebrow{font-size:11px; letter-spacing:.18em; text-indent:.18em; color:var(--ink-3)}
+.hair{width:88px; height:1px; background:var(--gold); margin:16px auto 0}
+.hair.b{margin:0 auto 20px}
+h1{
+  font-family:var(--f-title); font-weight:500; font-size:28px; line-height:1.6;
+  letter-spacing:.2em; text-indent:.2em; color:var(--ink); margin:9px 0;
+}
+.issue{
+  font-size:12px; line-height:1.9; color:var(--ink-3);
+  max-width:720px; margin:0 auto; text-wrap:balance;
+}
+.issue + .issue{margin-top:2px}
+
+/* 朱丝栏正文区 */
+.body{
+  margin:0 -48px; padding:0 48px;
+  background-image:repeating-linear-gradient(90deg,transparent 0 47px,var(--zhu) 47px 48px);
+  background-origin:border-box; background-clip:border-box;
+}
+
+/* 指标卡 */
+.meters{display:grid; grid-template-columns:repeat(4,1fr); margin-top:38px; padding-bottom:6px}
+.m{padding-left:22px}
+.m:first-child{padding-left:0}
+.ml{font-size:12px; letter-spacing:.02em; color:var(--ink-3); line-height:1.6}
+.mv{font-size:24px; line-height:1.4; font-weight:500; color:var(--ink); margin-top:1px}
+.mv small{font-size:12px; font-weight:400; color:var(--ink-3); margin-left:1px}
+.mn{font-size:11px; line-height:1.65; color:var(--ink-3); margin-top:5px}
+
+/* 节 */
+section{margin-top:46px}
+h2{
+  display:flex; align-items:center; justify-content:center; gap:16px;
+  font-family:var(--f-title); font-size:19px; font-weight:500; line-height:1.8;
+  letter-spacing:.1em; text-indent:.1em; color:var(--ink); margin-bottom:14px;
+}
+h2::before,h2::after{content:""; width:34px; height:.5px; background:var(--gold); flex:none}
+h2 .n{font-size:13px; letter-spacing:0; color:var(--ink-3); font-weight:400; margin-right:1px}
+
+/* 格线表 */
+table{width:100%; border-collapse:collapse; table-layout:fixed; border:1px solid var(--frame)}
+caption{caption-side:top; text-align:left; font-size:11px; color:var(--ink-3); padding-bottom:8px}
+th,td{
+  padding:0 5px; height:32px; border-right:.5px solid var(--rule); border-bottom:.5px solid var(--rule);
+  background:var(--veil); font-variant-numeric:tabular-nums; vertical-align:middle;
+}
+th:last-child,td:last-child{border-right:0}
+tbody tr:last-child td{border-bottom:0}
+th{
+  font-family:var(--f-body); font-weight:500; font-size:11.5px; letter-spacing:.02em;
+  color:var(--ink-2); text-align:right; background:var(--accent-soft);
+}
+th:first-child{text-align:left}
+td{font-size:12.5px; color:var(--ink-2); text-align:right; white-space:nowrap}
+td:first-child{text-align:left; color:var(--ink); font-weight:600; white-space:normal}
+th:last-child,td:last-child{padding-right:9px}
+
+.grade{
+  display:inline-block; position:relative; padding:1px 7px;
+  border:.5px solid var(--accent); color:var(--ink);
+  font-size:11px; line-height:1.4; letter-spacing:.04em; white-space:nowrap;
+}
+.grade::after{content:""; position:absolute; inset:1.5px; border:.5px solid var(--accent); opacity:.6}
+.grade.lo{opacity:.72}
+
+.tnote{font-size:11px; line-height:1.85; color:var(--ink-3); margin-top:10px}
+
+/* 解读 */
+.prose p{
+  font-size:calc(15px + var(--fz)); line-height:2; text-indent:2em;
+  color:var(--ink-2); margin-top:1.2em;
+}
+.prose p:first-child{margin-top:0}
+
+/* 页脚 */
+.foot{
+  margin:54px -48px 0; padding:26px 48px 0; border-top:.5px solid var(--gold);
+  position:relative;
+}
+.src{font-size:11px; line-height:1.95; color:var(--ink-3)}
+.foot-base{display:flex; align-items:flex-end; justify-content:space-between; margin-top:26px}
+.pageno{
+  writing-mode:vertical-rl; font-size:11px; letter-spacing:.1em; color:var(--ink-3);
+  line-height:1; height:44px;
+}
+.seal{
+  width:56px; height:56px; flex:none; position:relative;
+  border:1px solid var(--seal); color:var(--seal);
+  writing-mode:vertical-rl; display:flex; align-items:center; justify-content:center;
+  font-family:LiSu,SimLi,"STLiti",KaiTi,serif; font-size:18px;
+  letter-spacing:.3em; line-height:1; padding-left:.3em;
+}
+
+@media print{
+  @page{size:A4; margin:15mm}
+  html,body{background:#fff}
+  body{padding:0}
+  .bar{display:none}
+  .scroll{max-width:100%; margin:0; border-color:#8c8c8c}
+  .scroll-in{border-color:#8c8c8c}
+  .body{background-image:repeating-linear-gradient(90deg,transparent 0 47px,rgba(0,0,0,.10) 47px 48px)}
+  th{background:#f0eeea !important}
+  td{background:transparent !important}
+  section{break-inside:avoid}
+  tr{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="id">方案B · 奏折 · 朱丝栏</span>
+  <span class="ctl">
+    <label>皮肤
+      <select id="skin">
+        <option value="zhusha" selected>朱砂</option>
+        <option value="daiqing">黛青</option>
+        <option value="tenghuang">藤黄</option>
+        <option value="piaolv">缥绿</option>
+        <option value="wulan">雾蓝</option>
+        <option value="mohui">墨灰</option>
+      </select>
+    </label>
+    <label>字体
+      <select id="font">
+        <option value="song" selected>宋</option>
+        <option value="kai">楷</option>
+        <option value="fang">仿宋</option>
+        <option value="hei">黑</option>
+      </select>
+    </label>
+  </span>
+</div>
+
+<div class="scroll">
+<div class="scroll-in">
+
+  <header class="mast">
+    <div class="eyebrow">监测版 · 包契约验证件 · 985 工程</div>
+    <div class="hair"></div>
+    <h1>清华大学 · 学科监测报告</h1>
+    <div class="hair b"></div>
+    <p class="issue">期 1 · 站位报告。数据面＝202609 期 ESI 全局件（机构总表、22 学科全球榜、阈值表）——未取论文清单，论文层分析不在本版。</p>
+    <p class="issue">数据源：Clarivate ESI 202609 期（下载 2026-09-23/2026-10-17）· 清华大学上榜 22 / 22 学科 · ESI 名 TSINGHUA UNIVERSITY</p>
+  </header>
+
+  <div class="body">
+
+    <div class="meters">
+      <div class="m">
+        <div class="ml">入围 ESI 前 1% 学科</div>
+        <div class="mv">22<small> / 22</small></div>
+        <div class="mn">被引 ≥ 该学科机构阈值</div>
+      </div>
+      <div class="m">
+        <div class="ml">全球机构总排名</div>
+        <div class="mv">18<small> / 10,674</small></div>
+        <div class="mn">按总被引</div>
+      </div>
+      <div class="m">
+        <div class="ml">总被引</div>
+        <div class="mv">4,540,752</div>
+        <div class="mn">论文 151,102 · 篇均 30.05</div>
+      </div>
+      <div class="m">
+        <div class="ml">进入全球前 1‰ 的学科</div>
+        <div class="mv">11</div>
+        <div class="mn">工程学、材料科学、化学、物理学、环境生态学、临床医学、计算机科学、地球科学、生物学与生物化学、社会科学、经济与商业</div>
+      </div>
+    </div>
+
+    <section>
+      <h2><span class="n">一、</span>学科站位（上榜 22 学科，按被引降序）</h2>
+      <table>
+        <colgroup>
+          <col style="width:24.5%"><col style="width:9%"><col style="width:7%"><col style="width:8%">
+          <col style="width:7.5%"><col style="width:9%"><col style="width:6%"><col style="width:6%">
+          <col style="width:5%"><col style="width:7.5%"><col style="width:10.5%">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>学科</th><th>全球排名</th><th>分位</th><th>国内排名*</th><th>论文</th>
+            <th>被引</th><th>篇均</th><th>高被引</th><th>热点</th><th>相对强度</th><th>档位</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>工程学</td><td>2 / 3065</td><td>前 0.1%</td><td>2</td><td>40,746</td><td>940,162</td><td>23.07</td><td>785</td><td>27</td><td>×2.25</td><td><span class="grade">前 1‰</span></td></tr>
+          <tr><td>材料科学</td><td>4 / 1726</td><td>前 0.2%</td><td>3</td><td>20,612</td><td>901,555</td><td>43.74</td><td>738</td><td>21</td><td>×1.91</td><td><span class="grade">前 1‰</span></td></tr>
+          <tr><td>化学</td><td>7 / 2315</td><td>前 0.3%</td><td>4</td><td>17,681</td><td>652,313</td><td>36.89</td><td>764</td><td>22</td><td>×1.14</td><td><span class="grade">前 1‰</span></td></tr>
+          <tr><td>物理学</td><td>11 / 1063</td><td>前 1.0%</td><td>2</td><td>19,269</td><td>525,757</td><td>27.29</td><td>566</td><td>15</td><td>×2.34</td><td><span class="grade">前 1‰</span></td></tr>
+          <tr><td>环境生态学</td><td>8 / 2211</td><td>前 0.4%</td><td>3</td><td>8,619</td><td>332,372</td><td>38.56</td><td>357</td><td>9</td><td>×1.26</td><td><span class="grade">前 1‰</span></td></tr>
+          <tr><td>临床医学</td><td>479 / 7163</td><td>前 6.7%</td><td>31</td><td>5,778</td><td>197,503</td><td>34.18</td><td>185</td><td>14</td><td>×0.22</td><td><span class="grade">前 1‰</span></td></tr>
+          <tr><td>计算机科学</td><td>2 / 938</td><td>前 0.2%</td><td>2</td><td>9,402</td><td>188,857</td><td>20.09</td><td>237</td><td>5</td><td>×2.06</td><td><span class="grade">前 1‰</span></td></tr>
+          <tr><td>地球科学</td><td>45 / 1271</td><td>前 3.5%</td><td>12</td><td>5,083</td><td>159,902</td><td>31.46</td><td>224</td><td>15</td><td>×1.04</td><td><span class="grade">前 1‰</span></td></tr>
+          <tr><td>分子生物学与遗传学</td><td>131 / 1225</td><td>前 10.7%</td><td>15</td><td>2,672</td><td>134,854</td><td>50.47</td><td>70</td><td>1</td><td>×0.71</td><td><span class="grade">前 1%</span></td></tr>
+          <tr><td>生物学与生物化学</td><td>83 / 1749</td><td>前 4.7%</td><td>8</td><td>3,790</td><td>129,537</td><td>34.18</td><td>101</td><td>4</td><td>×0.60</td><td><span class="grade">前 1‰</span></td></tr>
+          <tr><td>空间科学</td><td>204 / 251</td><td>前 81.3%</td><td>10</td><td>2,081</td><td>66,309</td><td>31.86</td><td>70</td><td>8</td><td>×1.67</td><td><span class="grade">前 1%</span></td></tr>
+          <tr><td>社会科学</td><td>150 / 2575</td><td>前 5.8%</td><td>6</td><td>3,548</td><td>61,627</td><td>17.37</td><td>127</td><td>2</td><td>×0.37</td><td><span class="grade">前 1‰</span></td></tr>
+          <tr><td>经济与商业</td><td>52 / 575</td><td>前 9.0%</td><td>5</td><td>2,227</td><td>46,458</td><td>20.86</td><td>47</td><td>0</td><td>×0.77</td><td><span class="grade">前 1‰</span></td></tr>
+          <tr><td>免疫学</td><td>244 / 1255</td><td>前 19.4%</td><td>19</td><td>906</td><td>33,956</td><td>37.48</td><td>36</td><td>2</td><td>×0.39</td><td><span class="grade">前 1%</span></td></tr>
+          <tr><td>神经系统科学与行为学</td><td>446 / 1373</td><td>前 32.5%</td><td>28</td><td>1,329</td><td>33,329</td><td>25.08</td><td>30</td><td>2</td><td>×0.32</td><td><span class="grade">前 1%</span></td></tr>
+          <tr><td>微生物学</td><td>138 / 876</td><td>前 15.8%</td><td>17</td><td>748</td><td>29,740</td><td>39.76</td><td>23</td><td>0</td><td>×0.37</td><td><span class="grade">前 1%</span></td></tr>
+          <tr><td>植物与动物学</td><td>376 / 2103</td><td>前 17.9%</td><td>63</td><td>819</td><td>24,499</td><td>29.91</td><td>60</td><td>2</td><td>×0.12</td><td><span class="grade">前 1%</span></td></tr>
+          <tr><td>农业科学</td><td>287 / 1496</td><td>前 19.2%</td><td>80</td><td>913</td><td>21,547</td><td>23.60</td><td>25</td><td>0</td><td>×0.19</td><td><span class="grade">前 1%</span></td></tr>
+          <tr><td>药理学与毒理学</td><td>402 / 1469</td><td>前 27.4%</td><td>76</td><td>826</td><td>16,647</td><td>20.15</td><td>18</td><td>0</td><td>×0.21</td><td><span class="grade">前 1%</span></td></tr>
+          <tr><td>精神病学与心理学</td><td>485 / 1231</td><td>前 39.4%</td><td>21</td><td>1,265</td><td>16,016</td><td>12.66</td><td>24</td><td>1</td><td>×0.30</td><td><span class="grade">前 1%</span></td></tr>
+          <tr><td>数学</td><td>85 / 416</td><td>前 20.4%</td><td>19</td><td>2,616</td><td>15,257</td><td>5.83</td><td>20</td><td>0</td><td>×0.67</td><td><span class="grade">前 1%</span></td></tr>
+          <tr><td>多学科</td><td>34 / 237</td><td>前 14.3%</td><td>2</td><td>172</td><td>12,555</td><td>72.99</td><td>15</td><td>2</td><td>×0.74</td><td><span class="grade">前 1%</span></td></tr>
+        </tbody>
+      </table>
+      <p class="tnote">共 22 行。* 国内排名＝榜内 CHINA MAINLAND ∪ N/A（属地）行计数推导，非 ESI 原生指标。排名写法「全球第 N / 榜内 M 所」。分位＝rank ÷ m；相对强度＝(本校该学科论文 ÷ 本校上榜学科论文合计) ÷ (全球该学科论文 ÷ 全球 22 学科论文合计)，分母为本校上榜学科合计，部分覆盖下指数偏高，仅作结构参考。</p>
+    </section>
+
+    <section>
+      <h2><span class="n">六、</span>解读</h2>
+      <div class="prose">
+        <p>从本期 202609 期数据看，清华大学的 ESI 学科格局已呈现典型的“全面高位、头部极强”特征：22 个上榜学科全部进入全球前 1%，无一处于中游或尾部，这在国内外高校中并不多见。更值得注意的是，11 个学科跻身全球前 1‰，覆盖了从计算机科学、工程学、材料科学、化学等传统工科与理科，到经济与商业、社会科学、临床医学等人文社科与医学门类，学科版图的宽度与高度兼备。以总被引计，学校位居全球机构第 18/10674 位，整体站位与其“985 工程”的定位相符。</p>
+        <p>头部阵营内部亦有层次。计算机科学以全球第 2/938 的位次领跑全校，是进位时间线上最早（201905 起）进入前 1‰ 的学科，先发优势稳固；工程学则是被引体量最大的学科（被引 940,162，篇均 23.07），构成学校 ESI 基本盘的压舱石。篇均被引最高者是多学科（72.99），提示交叉学科方向的单位产出效率突出，是值得持续培育的增量点。论文结构上，工程学（27.0%）、材料科学（13.6%）、物理学（12.8%）三大学科合计占据主体，与头部学科的分布高度一致，说明规模与质量基本同源。</p>
+        <p>从纵向趋势看，总被引自 201905 的 1,038,021 增至 202609 的 4,540,752，约 4.4 倍的增幅支撑全球总排名在 42 期在档期内由第 94 位进至第 18 位，进位节奏与被引积累基本同步。前 1‰ 事件累计 12 次，时间线从计算机科学的 201905 一路延伸至经济与商业的 202605（前 1‰），最近一次为 202605 起进入前 1‰，显示高位学科的扩容仍在持续，且新进者已从理工科扩展到社科与经济领域。</p>
+        <p>短板与看点方面，在 ±3 位的对标窗内，本校被引列第 2/7 位，说明与同档机构相比仍有可争取的位次空间。下一程的关注点宜放在两端：一是临床医学、生物学与生物化学等已入前 1‰ 但体量相对靠后的学科能否继续上探；二是尚未进入前 1‰ 的上榜学科中，谁最有可能成为下一个进位者。总体而言，本期数据反映的是一个存量稳固、增量有序的学科体系，监测重点应从“有没有”转向“强不强、进不进”。</p>
+      </div>
+      <p class="tnote">模型解读（数字已过盾校验）。</p>
+    </section>
+
+  </div>
+
+  <footer class="foot">
+    <p class="src">数据来源：Clarivate ESI（Essential Science Indicators）202609 期全局件，云南大学图书馆订阅账号下载（2026-09-23/2026-10-17）；本报告是监测版包契约的验证件，不是对外报告，数字未经该校核对。<br>
+    期 1 无历史台账，趋势章由历史全球档案回填生成；预测章随期次积累后解锁。派生算法：国内排名＝榜内 CHINA MAINLAND ∪ N/A（属地）行计数 · 1‰ 线＝第 ⌊(m+1)/10⌋ 位被引 · 接近度＝被引 ÷ 前 1% 机构阈值。<br>
+    生成：文衡监测版引擎 src/monitor/（2026-11-01）。</p>
+    <div class="foot-base">
+      <span class="pageno">— 1 —</span>
+      <span class="seal">文衡</span>
+    </div>
+  </footer>
+
+</div>
+</div>
+
+<script>
+  var r = document.documentElement;
+  document.getElementById('skin').addEventListener('change', function(e){ r.dataset.skin = e.target.value; });
+  document.getElementById('font').addEventListener('change', function(e){ r.dataset.font = e.target.value; });
+</script>
+</body>
+</html>

@@ -47,6 +47,12 @@ def _ai_required_response(exc: Exception) -> JSONResponse:
     return JSONResponse({"error": str(exc)}, status_code=503)
 
 
+def _appearance_prefs(body) -> dict:
+    """生成请求体 → 报告外观偏好：只收确实带了的 template / skin_rpt / font，
+    已归一（不认识的值悄悄回落缺省，绝不报 400）。系统皮肤是前端的事，不下发、不认。"""
+    return monitor_report.appearance_from_body(body)
+
+
 def _validated_report(cn: str):
     """单校生成的前置校验（同步口与任务口共用）。→ (校名, 期次, 错误响应)。"""
     if monitor_schools.find(cn) is None:
@@ -157,11 +163,16 @@ async def api_monitor_report(request: Request):
         body = {}
     cn = str(body.get("school") or "").strip()
     force = bool(body.get("force"))
+    prefs = _appearance_prefs(body)
+    appearance = dict(prefs) if prefs else None
     cn, period, err = _validated_report(cn)
     if err is not None:
         return err
     def _gen():
-        return monitor_report.generate(cn, period, force=force)
+        gen_kw = {"force": force}
+        if appearance is not None:
+            gen_kw["appearance"] = appearance
+        return monitor_report.generate(cn, period, **gen_kw)
     try:
         path = await run_in_threadpool(_gen)
     except FileNotFoundError as exc:
@@ -189,12 +200,15 @@ async def api_monitor_compare(request: Request):
     cns, err = _validated_compare(body.get("schools"))
     if err is not None:
         return err
+    prefs = _appearance_prefs(body)
+    appearance = dict(prefs) if prefs else None
     period = monitor_report.latest_period()
     if not period:
         return JSONResponse({"error": "没有可用的 ESI 期次数据"}, status_code=404)
 
     def _gen():
-        return monitor_compare.generate(cns, period)
+        gen_kw = {} if appearance is None else {"appearance": appearance}
+        return monitor_compare.generate(cns, period, **gen_kw)
     try:
         path = await run_in_threadpool(_gen)
     except FileNotFoundError as exc:
@@ -223,16 +237,24 @@ def _job_accepted(job: dict, reused: bool = False) -> dict:
     return out
 
 
-def _report_job_create(cn: str, actor: str, force: bool = False):
+def _report_job_create(cn: str, actor: str, force: bool = False, prefs=None):
     """单校任务口同步内核（路由层只是透传；测试直测这里）。
 
     `force`＝界面上的「重新生成」：产物已存在也覆盖重出（2026-11-05）。
     不带＝幂等复用（首次生成/预开页照旧，不重复调模型）。
+    `prefs`＝请求体里确实带了的外观字段（已归一）；没带就一个键都不往 params 里加，
+    保证既有单飞 / 幂等断言里 params 形状不变。
     """
     cn, period, err = _validated_report(cn)
     if err is not None:
         return err
     params = {"school": cn, "period": period}
+    if prefs:
+        params.update(prefs)
+    appearance = dict(prefs) if prefs else None
+    gen_kw = {"force": force}
+    if appearance is not None:
+        gen_kw["appearance"] = appearance
     same = monitor_jobs.find_running(monitor_jobs.KIND_REPORT, params)
     if same is not None:
         return _job_accepted(same, reused=True)
@@ -243,7 +265,7 @@ def _report_job_create(cn: str, actor: str, force: bool = False):
         return JSONResponse({"error": str(e)}, status_code=409)
     monitor_jobs.launch(
         job,
-        lambda: monitor_report.generate(cn, period, force=force),
+        lambda: monitor_report.generate(cn, period, **gen_kw),
         to_url=lambda p: f"/monitor/report/{urllib.parse.quote(cn)}/{period}.html")
     return _job_accepted(job)
 
@@ -264,11 +286,16 @@ async def api_monitor_report_job(request: Request):
     except Exception:                                          # noqa: BLE001
         body = {}
     cn = str(body.get("school") or "").strip()
-    return _report_job_create(cn, current_user(request), force=bool(body.get("force")))
+    return _report_job_create(cn, current_user(request), force=bool(body.get("force")),
+                              prefs=_appearance_prefs(body))
 
 
-def _compare_job_create(cns_raw, actor: str):
-    """对比任务口同步内核（路由层只是透传；测试直测这里）。"""
+def _compare_job_create(cns_raw, actor: str, prefs=None):
+    """对比任务口同步内核（路由层只是透传；测试直测这里）。
+
+    `prefs`＝请求体里确实带了的外观字段（已归一）；没带就保持原调用形状
+    `generate(seen, period)` 一个字不改（既有测试桩吃这个签名）。
+    """
     cns, err = _validated_compare(cns_raw)
     if err is not None:
         return err
@@ -280,6 +307,10 @@ def _compare_job_create(cns_raw, actor: str):
         if cn not in seen:
             seen.append(cn)
     params = {"schools": seen, "period": period}
+    if prefs:
+        params.update(prefs)
+    appearance = dict(prefs) if prefs else None
+    gen_kw = {} if appearance is None else {"appearance": appearance}
     same = monitor_jobs.find_running(monitor_jobs.KIND_COMPARE, params)
     if same is not None:
         return _job_accepted(same, reused=True)
@@ -290,7 +321,7 @@ def _compare_job_create(cns_raw, actor: str):
         return JSONResponse({"error": str(e)}, status_code=409)
     monitor_jobs.launch(
         job,
-        lambda: monitor_compare.generate(seen, period),
+        lambda: monitor_compare.generate(seen, period, **gen_kw),
         to_url=lambda p: f"/monitor/compare/{period}/{p.name}")
     return _job_accepted(job)
 
@@ -308,7 +339,8 @@ async def api_monitor_compare_job(request: Request):
         body = await request.json()
     except Exception:                                          # noqa: BLE001
         body = {}
-    return _compare_job_create(body.get("schools"), current_user(request))
+    return _compare_job_create(body.get("schools"), current_user(request),
+                               prefs=_appearance_prefs(body))
 
 
 @router.get("/api/monitor/jobs/{job_id}")

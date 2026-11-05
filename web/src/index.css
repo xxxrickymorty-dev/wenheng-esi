@@ -1,4 +1,5 @@
 @import "./tokens.css";
+@import "./appearance.css";
 /* 基础 reset（2026-10-01 移除 Tailwind 时内置）：原样保留 Tailwind preflight 的关键行为，
    避免整站边距/列表/表单/图片默认样式发生变化。改动这里必须跑全站截图核对。 */
 *,::after,::before,::backdrop,::file-selector-button{box-sizing:border-box;margin:0;padding:0;border:0 solid}
@@ -48,12 +49,9 @@ code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,
   --lib-red:#B23A2B;
 }
 
-/* 正文阅读字体（设置·界面三选，2026-11-03 票 3）：缺省＝衬线；data-font 由 ModelPanel
-   挂在 <html> 上（localStorage["wenheng.ui.font"]）。只把正文阅读面接到 --font-body
-   （.serif-prose 流式稿/答文、.rv-report 报告纸）；标题/品牌/印章等展示面保持 --serif 不动。 */
-:root{--font-body:var(--serif)}
-[data-font="sans"]{--font-body:var(--sans)}
-[data-font="kai"]{--font-body:var(--kai)}
+/* 六套文衡字体与系统/报告皮肤令牌——见 src/appearance.css
+   （[data-font] 字体栈、[data-skin-sys] 系统品牌面、[data-skin-rpt] 报告纸面）。
+   正文阅读面走 --font-body（.serif-prose 流式稿/答文、.rv-report 报告纸）。 */
 
 /* ----------------------------------------------------------------------------
    高校 ESI 报告（/app/schools/，展陈面）色板豁免 —— 仿上段陈列馆格式（2026-11-03 批三登记）
@@ -1251,7 +1249,7 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .block-12-16{margin:12px 0 16px}
 .btn-xs{padding:4px 10px;font-size:var(--fs-label)}
 .row-end{display:flex;gap:8px;align-items:center;margin-left:auto}
-.serif-prose{margin:0;font-family:var(--font-body);font-size:16.5px;line-height:1.9}
+.serif-prose{margin:0;font-family:var(--font-body);font-size:calc(16.5px + var(--fs-adj));line-height:1.9}
 /* 第三批（2026-10-01）：值族工具类 + 组件类，收掉最后一批静态内联。
    规则见 web/AGENTS.md 第 4 条：新增静态样式先翻这里，没有再添。 */
 .m-b-8{margin:0 0 8px}.m-b-10{margin:0 0 10px}
@@ -2026,7 +2024,7 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
 /* ---------- 设置弹层（2026-11-03 票 3：双节 hub——左栏导航 供应商/界面，右栏内容） ---------- */
 .mdl-modal{position:fixed;inset:0;z-index:80;background:rgba(17,24,39,.38);
   display:flex;align-items:center;justify-content:center;padding:24px}
-.mdl-modal-in{width:min(760px,100%);max-height:86vh;overflow-y:auto;background:#fff;
+.mdl-modal-in{width:min(760px,100%);max-height:94vh;overflow-y:auto;background:#fff;
   border-radius:0px;padding:18px 20px 22px;box-shadow:0 24px 60px rgba(15,23,42,.28)}
 .mdl-hub{display:grid;grid-template-columns:132px minmax(0,1fr);margin-top:12px;min-height:300px}
 .mdl-hub-nav{border-right:1px solid #ebedf0;padding-right:10px;
@@ -2150,6 +2148,73 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
 .mdl-font-card[data-font="serif"] b{font-family:var(--serif)}
 .mdl-font-card[data-font="sans"] b{font-family:var(--sans)}
 .mdl-font-card[data-font="kai"] b{font-family:var(--kai)}
+
+/* 设置·界面（报告外观四轴，2026-11-05）：报告模板 / 系统皮肤 / 报告皮肤 / 字体。
+   面板自身用固定的白卡绿选中语言（与弹层其余一致），四轴选择互不干扰。 */
+.ap-axis{margin-bottom:10px}
+.ap-axis:last-child{margin-bottom:0}
+.ap-axis-h{display:flex;align-items:center;gap:10px;margin:0 0 6px}
+.ap-axis-h b{font-size:13px;font-weight:600;color:#1a1a1a;letter-spacing:.04em}
+.ap-axis-h i{flex:1;height:0;border-top:1px solid #ebedf0}
+.ap-axis-h em{font-style:normal;font-size:11px;color:#9ca3af}
+
+/* 报告模板 5 选（每项内联 SVG 缩略图，照静态稿；B＝现有版式骨架） */
+.ap-tpl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.ap-tpl{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  border:1px solid #e5e7eb;background:#fff;border-radius:0px;padding:6px 8px;cursor:pointer}
+.ap-tpl:hover{border-color:#2f7a58}
+.ap-tpl.on{border-color:#2f7a58;background:#f2f8f4;box-shadow:inset 0 0 0 1px #2f7a58}
+.ap-th{flex:0 0 auto;width:54px;height:38px;border:1px solid #eef0f2;background:#fff;overflow:hidden}
+.ap-th svg{display:block;width:100%;height:100%}
+.ap-tpl .ap-tx{flex:1;min-width:0;display:flex;align-items:baseline;gap:6px}
+.ap-tpl .ap-code{font-size:12px;font-weight:700;color:#2f7a58;font-family:var(--serif)}
+.ap-tpl .ap-name{font-size:12.5px;font-weight:600;color:#1a1a1a;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+
+/* 皮肤 12 选 × 两轨：紧凑横排芯片，色块内联色值（数据，不走类） */
+.ap-skin-group{margin-bottom:5px}
+.ap-skin-group:last-child{margin-bottom:0}
+.ap-skin-gh{font-size:10.5px;letter-spacing:.16em;color:#9ca3af;margin:0 0 3px}
+.ap-skin-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.ap-skin{position:relative;display:flex;align-items:center;gap:6px;min-width:0;
+  border:1px solid #e5e7eb;background:#fff;border-radius:0px;padding:3px 6px;cursor:pointer}
+.ap-skin:hover{border-color:#2f7a58}
+.ap-skin.on{border-color:#2f7a58;background:#f2f8f4;box-shadow:inset 0 0 0 1px #2f7a58}
+.ap-chip{position:relative;flex:0 0 auto;width:16px;height:16px;border-radius:0px;
+  border:1px solid rgba(20,40,25,.22)}
+.ap-chip2{position:absolute;right:-1px;bottom:-1px;width:7px;height:7px;
+  border:1px solid rgba(20,40,25,.16)}
+.ap-skin-name{font-size:11px;color:#4b5563;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;line-height:1.1}
+.ap-skin.on .ap-skin-name{color:#1a1a1a;font-weight:600}
+
+/* 报告皮肤纸样预览（即时反馈：切报告皮肤立刻变） */
+.ap-rpt{display:flex;align-items:center;gap:14px;margin:0 0 8px;
+  border:1px solid #e5e7eb;border-radius:0px;padding:8px 10px;background:#fff}
+.ap-rpt-name{font-size:12.5px;font-weight:600;color:#1a1a1a;flex:0 0 auto}
+.ap-rpt-swatches{display:flex;gap:14px;flex-wrap:wrap}
+.ap-rpt-sw{display:inline-flex;align-items:center;font-size:11.5px;color:#4b5563}
+.ap-rpt-sw i{display:inline-block;width:16px;height:16px;margin-right:5px;
+  border:1px solid rgba(20,40,25,.2);vertical-align:-3px}
+.ap-sw-paper{background:var(--rpt-paper)}
+.ap-sw-ink{background:var(--rpt-ink)}
+.ap-sw-accent{background:var(--rpt-accent)}
+.ap-sw-seal{background:var(--rpt-seal)}
+
+/* 字体 6 选：名＋本字体样例；两列三行，四轴一屏放全 */
+.ap-font-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px}
+.ap-font{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  border:1px solid #e5e7eb;background:#fff;border-radius:0px;padding:4px 8px;cursor:pointer}
+.ap-font:hover{border-color:#2f7a58}
+.ap-font.on{border-color:#2f7a58;background:#f2f8f4;box-shadow:inset 0 0 0 1px #2f7a58}
+.ap-font-name{font-size:12px;font-weight:600;color:#1a1a1a;flex:0 0 auto;width:64px}
+.ap-font-sample{font-size:13px;color:#374151;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;flex:1}
+
+/* 选中勾（内联 SVG，跟图标一套画法） */
+.ap-tick{display:none;color:#2f7a58;flex:0 0 auto}
+.ap-tpl.on .ap-tick,.ap-skin.on .ap-tick,.ap-font.on .ap-tick{display:block}
+.ap-skin .ap-tick{position:absolute;top:2px;right:3px}
 
 @media (prefers-reduced-motion: reduce){
   .mdl-modal *{transition:none!important;animation:none!important}

@@ -50,8 +50,8 @@ describe('Headers 表单文本解析：每行 K=V，空行忽略，非法行报�
   })
 })
 
-/* ---------------------------------------------------------------- 字体偏好（票 3） */
-describe('正文字体三选：存储值归一 + localStorage → <html data-font>', () => {
+/* ---------------------------------------------------------------- 字体偏好（六选） */
+describe('文衡字体六选：旧值归一 + localStorage → <html data-font>', () => {
   const store = new Map<string, string>()
   const dataset: Record<string, string> = {}
 
@@ -69,35 +69,41 @@ describe('正文字体三选：存储值归一 + localStorage → <html data-fon
     vi.stubGlobal('document', { documentElement: { dataset } })
   }
 
-  it('读不到 / 不认得 → 衬线（缺省）', () => {
-    expect(fontChoiceFromStorage(null)).toBe('serif')
-    expect(fontChoiceFromStorage('')).toBe('serif')
-    expect(fontChoiceFromStorage('weird')).toBe('serif')
+  it('读不到 / 不认得 → 会泽宋（缺省）', () => {
+    expect(fontChoiceFromStorage(null)).toBe('song')
+    expect(fontChoiceFromStorage('')).toBe('song')
+    expect(fontChoiceFromStorage('weird')).toBe('song')
   })
 
-  it('三张卡＝衬线/非衬线/楷体，衬线在前（缺省）', () => {
-    expect(FONT_CHOICES.map((c) => c.value)).toEqual(['serif', 'sans', 'kai'])
-    expect(FONT_CHOICES.map((c) => c.label)).toEqual(['衬线', '非衬线', '楷体'])
+  it('老版本存的 serif/sans 对应到新六套', () => {
+    expect(fontChoiceFromStorage('serif')).toBe('song')
+    expect(fontChoiceFromStorage('sans')).toBe('hei')
+    expect(fontChoiceFromStorage('kai')).toBe('kai')
   })
 
-  it('选非衬线/楷体：挂 <html data-font>，刷新后从 localStorage 归一回来仍一致', () => {
+  it('六张卡＝song/hei/kai/fang/li/xing，会泽宋在前（缺省）', () => {
+    expect(FONT_CHOICES.map((c) => c.value)).toEqual(['song', 'hei', 'kai', 'fang', 'li', 'xing'])
+    expect(FONT_CHOICES.map((c) => c.label)).toEqual(
+      ['会泽宋', '现代黑', '滇楷', '公文仿宋', '碑隶', '行楷题'])
+  })
+
+  it('选滇楷/现代黑：挂 <html data-font>，刷新后从 localStorage 归一回来仍一致', () => {
     stubDom()
-    // 界面节选「楷体」：立即生效 + 存进 localStorage（pickFont 的两步，这里验效果两端）
     applyFontChoice('kai')
     store.set(FONT_KEY, 'kai')
     expect(dataset.font).toBe('kai')
     expect(fontChoiceFromStorage(store.get(FONT_KEY) ?? null)).toBe('kai')
 
-    applyFontChoice('sans')
-    store.set(FONT_KEY, 'sans')
-    expect(dataset.font).toBe('sans')
-    expect(fontChoiceFromStorage(store.get(FONT_KEY) ?? null)).toBe('sans')
+    applyFontChoice('hei')
+    store.set(FONT_KEY, 'hei')
+    expect(dataset.font).toBe('hei')
+    expect(fontChoiceFromStorage(store.get(FONT_KEY) ?? null)).toBe('hei')
   })
 
-  it('选衬线＝回缺省：删掉 data-font 属性', () => {
+  it('选会泽宋＝回缺省：删掉 data-font 属性', () => {
     stubDom()
-    document.documentElement.dataset.font = 'kai'
-    applyFontChoice('serif')
+    dataset.font = 'kai'
+    applyFontChoice('song')
     expect('font' in dataset).toBe(false)
   })
 })

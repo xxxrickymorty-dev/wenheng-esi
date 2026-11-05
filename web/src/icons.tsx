@@ -70,9 +70,9 @@ function Sprite() {
   )
 }
 
-export function Icon({ name, size = 20 }: { name: string; size?: number }) {
+export function Icon({ name, size = 20, className }: { name: string; size?: number; className?: string }) {
   return (
-    <svg width={size} height={size} aria-hidden="true">
+    <svg width={size} height={size} className={className} aria-hidden="true">
       <use href={`#i-${name}`} />
     </svg>
   )

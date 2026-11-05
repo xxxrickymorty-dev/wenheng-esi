@@ -22,6 +22,9 @@ from parse_ledger import DISCIPLINES_CN
 from monitor import charts
 from monitor import facts as mfacts
 from monitor import schools as sch
+from monitor.appearance import (appearance_css, appearance_from_body,
+                                head_meta, normalize, read_signature_from_file,
+                                signature)
 
 WENHENG_ROOT = pathlib.Path(__file__).resolve().parents[2]
 ESI_ROOT = ledger_contract.esi_root()      # 路径口径唯一在 ledger_contract（20261101 C1）
@@ -487,8 +490,14 @@ a{color:inherit}
 """
 
 
-def render(cn: str, period: str, cache: dict, insight: dict | None = None) -> str:
-    """最简版站位报告：report_data() 的 HTML 消费者（Word 导出与其共用同一份数据装配）。"""
+def render(cn: str, period: str, cache: dict, insight: dict | None = None,
+           *, appearance: dict | None = None) -> str:
+    """最简版站位报告：report_data() 的 HTML 消费者（Word 导出与其共用同一份数据装配）。
+
+    appearance 为 None（不带外观参数）→ 逐字节保持现有输出：不挂 data-*、不追加 CSS，
+    现有取数链与回归全靠这条。非 None → 在 <html> 上挂三轴属性，并在 _CSS 之后
+    追加皮肤/字体/图表换色/模板 CSS；内容部分（数字、表格、章节）原样不动。
+    """
     d = report_data(cn, period, cache, insight)
     nums_html = "".join(
         f'<div class="nm"><div class="nl">{_e(n["label"])}</div>'
@@ -499,14 +508,26 @@ def render(cn: str, period: str, cache: dict, insight: dict | None = None) -> st
     absent_html = (f'<p class="note" style="margin-top:18px">{_e(d["absent_note"])}</p>'
                    if d["absent_note"] else "")
     sh = {sec["num"]: _section_html(sec) for sec in d["sections"]}
+    # 不带外观时，三个占位都留成空串——<html> / <head> / <style> 因此与改造前逐字节一致。
+    if appearance is None:
+        head_attrs = ""
+        extra_css = ""
+        appearance_meta = ""
+    else:
+        a = normalize(appearance)
+        head_attrs = (f' data-template="{a["template"]}"'
+                      f' data-skin-rpt="{a["skin_rpt"]}"'
+                      f' data-font="{a["font"]}"')
+        extra_css = appearance_css(appearance)
+        appearance_meta = head_meta(appearance)   # <head> 里那枚可核对的签名标记
 
     return f"""<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN"{head_attrs}>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{_e(d["cn"])} · 学科监测报告 · {d["period"]}</title>
-<style>{_CSS}</style>
+{appearance_meta}<title>{_e(d["cn"])} · 学科监测报告 · {d["period"]}</title>
+<style>{_CSS}{extra_css}</style>
 </head>
 <body>
 <header class="top wrap"><span>监测版 · 包契约验证件 · {_e(d["tag"])}</span><span>生成 {_e(d["built"])} · <a href="{d["period"]}.docx" style="color:inherit;text-decoration:underline">导出 Word</a></span></header>
@@ -583,12 +604,17 @@ def _trend_note() -> str:
     return "趋势由历史全球档案回填；ESI 每期为滚动十年窗的当期快照。"
 
 
-def generate(cn: str, period: str | None = None, *, force: bool = False) -> pathlib.Path:
+def generate(cn: str, period: str | None = None, *, force: bool = False,
+             appearance: dict | None = None) -> pathlib.Path:
     """生成（或复用）一所学校的站位报告，返回文件路径。
 
     幂等（20261101 C7）：同校同期产物已存在 → 直接返回该路径，不再重跑 insight
     （LLM 不重复调用）。
-    **`force=True`＝界面上的「重新生成」**（2026-11-05 修）：覆盖重出。此前只有幂等，
+    **外观变了也要重出（2026-11-05 修）**：带 appearance 时，产物 <head> 里留一枚
+    签名标记；文件已存在但标记与本次不同、或旧件压根没标记（legacy）→ 覆盖重出，
+    否则「换模板/皮肤/字体再点生成」会直接返回旧文件、控件等于死的。不带 appearance
+    时完全照旧（文件在就返回，连读都不读）。
+    **`force=True`＝界面上的「重新生成」**：无论同不同都覆盖重出。此前只有幂等，
     旧件若是规则兜底（模型当时不可用），按钮点了也原样返回，AI 解读永远出不来。
     重出写在临时件上再替换，失败不留半份（解读算在写盘之前，异常直接上抛）。
     **例外（供应商强制语义，rick 2026-11-04）**：开启态下 insight 的
@@ -599,7 +625,11 @@ def generate(cn: str, period: str | None = None, *, force: bool = False) -> path
         raise FileNotFoundError("数据与复现/ESI数据/ 下没有可用的 ESI 期次目录")
     out = MONITOR_ROOT / cn / f"{period}.html"
     if out.exists() and not force:
-        return out
+        if appearance is None:
+            return out                       # 不带外观：完全照旧（不读、不改）
+        # 带外观：只读文件头部核对标记——同外观幂等；外观变了 / 旧件没标记（legacy）→ 往下重出
+        if read_signature_from_file(out) == signature(appearance):
+            return out
     cache = load_cache(period) or build_cache(period)
     _AIRequiredError = None
     try:
@@ -617,5 +647,6 @@ def generate(cn: str, period: str | None = None, *, force: bool = False) -> path
         ins = None
     out.parent.mkdir(parents=True, exist_ok=True)
     from ai import _record                                            # noqa: PLC0415
-    _record.atomic_write_text(out, render(cn, period, cache, insight=ins))
+    _record.atomic_write_text(out, render(cn, period, cache, insight=ins,
+                                          appearance=appearance))
     return out

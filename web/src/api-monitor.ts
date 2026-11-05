@@ -2,6 +2,7 @@
    数字只来自后端（ESI 全局件的缓存与产物），本层原样透传。 */
 
 import { req } from './api'
+import { readAppearanceForRequest } from './appearance'
 
 export type MonitorSchool = {
   /** 中文名＝槽位主键（同一中文名一份报告） */
@@ -63,12 +64,22 @@ export function monitorJobUrl(jobId: string): string {
 
 /** 开一个单校报告生成任务。 */
 /** 开一个单校站位报告生成任务。`force`＝「重新生成」：产物已存在也覆盖重出
-    （不带则幂等复用旧件，模型解读不会重跑——2026-11-05 修）。 */
+    （不带则幂等复用旧件，模型解读不会重跑——2026-11-05 修）。
+    请求体带上外观三件套（模板 / 报告皮肤 / 字体，从本机偏好读，缺省回落）：
+    后端照着出报告纸面；系统皮肤纯前端、绝不下发。 */
+export function buildReportJobBody(school: string, force: boolean) {
+  return { school, force, ...readAppearanceForRequest() }
+}
+/** 开一个多校对比报告生成任务（名单去重保序由后端做）。同样带外观三件套。 */
+export function buildCompareJobBody(schools: string[]) {
+  return { schools, ...readAppearanceForRequest() }
+}
+
 export async function startMonitorReportJob(cn: string, force = false): Promise<MonitorJobStart> {
   return req<MonitorJobStart>('/api/monitor/report/job', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ school: cn, force }),
+    body: JSON.stringify(buildReportJobBody(cn, force)),
   })
 }
 
@@ -77,7 +88,7 @@ export async function startMonitorCompareJob(cns: string[]): Promise<MonitorJobS
   return req<MonitorJobStart>('/api/monitor/compare/job', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ schools: cns }),
+    body: JSON.stringify(buildCompareJobBody(cns)),
   })
 }
 

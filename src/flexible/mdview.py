@@ -505,8 +505,13 @@ def _echarts_lib() -> str:
 #: payload 里也没有轴范围字段（结构上不存在，同 spec.py）。
 _INIT_JS = """
 (function(){
-var FONT='"Inter","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif';
-var INK='#1C1C1A',MUT='#8F8E88',GRID='#DEDDD6';
+/* 图表颜色优先跟着报告皮肤：先认 window.__RPT__，再认注入的 --rpt-* 变量；
+   两者都读不到（旧稿 / 生成时没带外观参数）就回落原来的写死色值，行为与从前一致。 */
+var __R=window.__RPT__||{};
+var __css=function(n){try{var v=getComputedStyle(document.documentElement).getPropertyValue('--rpt-'+n);return v&&v.trim()?v.trim():null}catch(e){return null}};
+var __pick=function(key,name,fb){return __R[key]!=null?__R[key]:(__css(name)||fb)};
+var FONT=__pick('font','f-body','"Inter","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif');
+var INK=__pick('ink','ink','#1C1C1A'),MUT=__pick('muted','muted','#8F8E88'),GRID=__pick('grid','rule','#DEDDD6');
 var fmt=function(n){return n==null?'':Number(n).toLocaleString('en-US')};
 var FMT={
   int:function(v){return fmt(Math.round(v))},

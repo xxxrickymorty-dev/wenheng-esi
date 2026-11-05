@@ -1,0 +1,90 @@
+/* 报告外观令牌（2026-11-05）——系统皮肤 / 报告皮肤 / 字体三套轴。
+   这套 CSS 由 src/appearance.ts 的色值表对应而来，手动维护、不自动生成，
+   和自动生成的 tokens.css 各管各的（tokens.css 管的是工作面，这里只管外观轴）。
+
+   红线：系统皮肤只覆盖「品牌面」令牌（--field、--tool*、--zhu、--gold* 这组），
+   绝不碰 --bg、--card、--panel*、--ink*、--line*、--ok、--warn、--bad——
+   右页纸面工作面与语义状态色恒定，全站文字对比度保住。 */
+
+/* ───────────────────────── 系统皮肤：12 套，每套先给核心色 ─────────────────────────
+   主壳深底 chrome／强调 accent／次色 accent2／浅字 light／金线 gold。 */
+html[data-skin-sys="huize"]    { --sk-chrome:#143729; --sk-accent:#143729; --sk-accent2:#276B4C; --sk-light:#F5F3EC; --sk-gold:#B08E48; }
+html[data-skin-sys="daiqing"]  { --sk-chrome:#24494D; --sk-accent:#2F5D62; --sk-accent2:#447C7A; --sk-light:#F5F3EC; --sk-gold:#B08E48; }
+html[data-skin-sys="zhusha"]   { --sk-chrome:#741919; --sk-accent:#8B1E1E; --sk-accent2:#B73A2C; --sk-light:#F7F2E8; --sk-gold:#B08E48; }
+html[data-skin-sys="tenghuang"]{ --sk-chrome:#6B5012; --sk-accent:#C28C1A; --sk-accent2:#D4A72C; --sk-light:#FAF5E6; --sk-gold:#B08E48; }
+html[data-skin-sys="piaolv"]   { --sk-chrome:#3C6155; --sk-accent:#5E8E7E; --sk-accent2:#7DAF9F; --sk-light:#F4F6EE; --sk-gold:#B08E48; }
+html[data-skin-sys="wulan"]    { --sk-chrome:#35506C; --sk-accent:#4A6B8A; --sk-accent2:#6E8CA8; --sk-light:#F4F6F8; --sk-gold:#B08E48; }
+html[data-skin-sys="mohui"]    { --sk-chrome:#2E2E31; --sk-accent:#3C3C3F; --sk-accent2:#666668; --sk-light:#F3F1EA; --sk-gold:#B08E48; }
+html[data-skin-sys="qingshan"] { --sk-chrome:#375E69; --sk-accent:#4E7E8C; --sk-accent2:#6E8F6A; --sk-light:#F5F0E6; --sk-gold:#B08E48; }
+html[data-skin-sys="taohua"]   { --sk-chrome:#6B4A4D; --sk-accent:#D6A5AB; --sk-accent2:#A9C5C2; --sk-light:#F7F3EC; --sk-gold:#B08E48; }
+html[data-skin-sys="hetang"]   { --sk-chrome:#4E6550; --sk-accent:#7E9A7D; --sk-accent2:#A9C8C7; --sk-light:#F2F0EA; --sk-gold:#B08E48; }
+html[data-skin-sys="qiushan"]  { --sk-chrome:#6B432A; --sk-accent:#A56A43; --sk-accent2:#7B4A36; --sk-light:#EAD9BF; --sk-gold:#B08E48; }
+html[data-skin-sys="yebo"]     { --sk-chrome:#161C21; --sk-accent:#C9A961; --sk-accent2:#8FA3B0; --sk-light:#ECE8DF; --sk-gold:#C9A961; }
+
+/* 一套规则把核心色摊成品牌面令牌：主壳、顶栏、导航高亮、订口金线跟着换。 */
+html[data-skin-sys] {
+  --field: var(--sk-chrome);
+  --field-2: color-mix(in srgb, var(--sk-chrome) 84%, #000);
+  --field-3: var(--sk-accent2);
+  --field-4: color-mix(in srgb, var(--sk-light) 76%, var(--sk-chrome) 24%);
+  --field-5: var(--sk-light);
+  --tool: var(--sk-chrome);
+  --tool-2: color-mix(in srgb, var(--sk-chrome) 84%, #000);
+  --tool-3: var(--sk-accent2);
+  --tool-4: color-mix(in srgb, var(--sk-light) 76%, var(--sk-chrome) 24%);
+  --tool-5: var(--sk-light);
+  --zhu: var(--sk-accent);
+  --zhu-soft: var(--sk-light);
+  --gline: color-mix(in srgb, var(--sk-chrome) 84%, #000);
+  --gold: var(--sk-gold);
+  --gold-soft: var(--sk-light);
+  --gold-ink: color-mix(in srgb, var(--sk-chrome) 84%, #000);
+}
+
+/* ───────────────────────── 报告皮肤：12 套，纸/墨/主/印，自成一套不和系统串色 ───────────────────────── */
+[data-skin-rpt="huize"]    { --rpt-accent:#143729; --rpt-accent-2:#276B4C; --rpt-tint:#E8F1ED; --rpt-paper:#F5F3EC; --rpt-ink:#15222B; --rpt-seal:#8B1E1E; --rpt-gold:#B08E48; }
+[data-skin-rpt="daiqing"]  { --rpt-accent:#2F5D62; --rpt-accent-2:#447C7A; --rpt-tint:#E6EFED; --rpt-paper:#F5F3EC; --rpt-ink:#22261F; --rpt-seal:#8B1E1E; --rpt-gold:#B08E48; }
+[data-skin-rpt="zhusha"]   { --rpt-accent:#8B1E1E; --rpt-accent-2:#B73A2C; --rpt-tint:#F6E7D7; --rpt-paper:#F7F2E8; --rpt-ink:#2A1E1A; --rpt-seal:#8B1E1E; --rpt-gold:#B08E48; }
+[data-skin-rpt="tenghuang"]{ --rpt-accent:#C28C1A; --rpt-accent-2:#D4A72C; --rpt-tint:#FBF3D7; --rpt-paper:#FAF5E6; --rpt-ink:#2E2718; --rpt-seal:#8B1E1E; --rpt-gold:#B08E48; }
+[data-skin-rpt="piaolv"]   { --rpt-accent:#5E8E7E; --rpt-accent-2:#7DAF9F; --rpt-tint:#E9F2EF; --rpt-paper:#F4F6EE; --rpt-ink:#1F2A22; --rpt-seal:#8B1E1E; --rpt-gold:#B08E48; }
+[data-skin-rpt="wulan"]    { --rpt-accent:#4A6B8A; --rpt-accent-2:#6E8CA8; --rpt-tint:#E6EDF3; --rpt-paper:#F4F6F8; --rpt-ink:#1C2530; --rpt-seal:#8B1E1E; --rpt-gold:#B08E48; }
+[data-skin-rpt="mohui"]    { --rpt-accent:#3C3C3F; --rpt-accent-2:#666668; --rpt-tint:#EDEDEA; --rpt-paper:#F3F1EA; --rpt-ink:#1A1A1A; --rpt-seal:#8B1E1E; --rpt-gold:#B08E48; }
+[data-skin-rpt="qingshan"] { --rpt-accent:#4E7E8C; --rpt-accent-2:#6E8F6A; --rpt-tint:#E6EDEA; --rpt-paper:#F5F0E6; --rpt-ink:#2E3E42; --rpt-seal:#8B1E1E; --rpt-gold:#B08E48; }
+[data-skin-rpt="taohua"]   { --rpt-accent:#D6A5AB; --rpt-accent-2:#A9C5C2; --rpt-tint:#F7EDEF; --rpt-paper:#F7F3EC; --rpt-ink:#4A4142; --rpt-seal:#8B1E1E; --rpt-gold:#B08E48; }
+[data-skin-rpt="hetang"]   { --rpt-accent:#7E9A7D; --rpt-accent-2:#A9C8C7; --rpt-tint:#E8F0EB; --rpt-paper:#F2F0EA; --rpt-ink:#2B3A31; --rpt-seal:#8B1E1E; --rpt-gold:#B08E48; }
+[data-skin-rpt="qiushan"]  { --rpt-accent:#A56A43; --rpt-accent-2:#7B4A36; --rpt-tint:#F2E6D6; --rpt-paper:#EAD9BF; --rpt-ink:#38332E; --rpt-seal:#8B1E1E; --rpt-gold:#B08E48; }
+[data-skin-rpt="yebo"]     { --rpt-accent:#C9A961; --rpt-accent-2:#8FA3B0; --rpt-tint:#2A3138; --rpt-paper:#20262B; --rpt-ink:#ECE8DF; --rpt-seal:#C0503F; --rpt-gold:#C9A961; }
+
+/* 报告皮肤的派生量（细线、卡片底），由本轨基础量混合，绝不引用 --sys-*. */
+[data-skin-rpt] {
+  --rpt-rule: color-mix(in srgb, var(--rpt-ink) 20%, var(--rpt-paper));
+  --rpt-rule-2: color-mix(in srgb, var(--rpt-ink) 10%, var(--rpt-paper));
+  --rpt-rule-strong: color-mix(in srgb, var(--rpt-ink) 36%, var(--rpt-paper));
+  --rpt-card: var(--rpt-tint);
+}
+
+/* ───────────────────────── 六套文衡字体 ─────────────────────────
+   系统界面与报告同吃一套：标题 / 正文各自取对应字族，楷/仿宋/隶/行楷略放大。 */
+:root {
+  --f-song: "Noto Serif SC", "Songti SC", SimSun, serif;
+  --f-kai: KaiTi, "Kaiti SC", "STKaiti", var(--f-song);
+  --f-fang: FangSong, "STFangsong", SimFang, var(--f-song);
+  --f-hei: "Microsoft YaHei", "PingFang SC", SimHei, system-ui, sans-serif;
+  --f-li: LiSu, SimLi, "STLiti", var(--f-kai);
+  --f-xing: "STXingkai", "华文行楷", var(--f-fang);
+  /* 正文阅读面接 --font-body；缺省＝会泽宋 */
+  --font-body: var(--f-song);
+  --font-title: var(--f-song);
+  --fs-adj: 0px;
+}
+[data-font="song"] { --font-body: var(--f-song); --font-title: var(--f-song); --fs-adj: 0px; }
+[data-font="hei"]  { --font-body: var(--f-hei);  --font-title: var(--f-hei);  --fs-adj: 0px; }
+[data-font="kai"]  { --font-body: var(--f-kai);  --font-title: var(--f-kai);  --fs-adj: .8px; }
+[data-font="fang"] { --font-body: var(--f-fang); --font-title: var(--f-fang); --fs-adj: .8px; }
+[data-font="li"]   { --font-body: var(--f-song); --font-title: var(--f-li);   --fs-adj: .8px; }
+[data-font="xing"] { --font-body: var(--f-fang); --font-title: var(--f-xing); --fs-adj: .9px; }
+
+/* 阅读面的居中标题行取标题字族：碑隶、行楷题只落在标题上，正文仍用上面的
+   --font-body。缺省会泽宋时标题与正文同族，版面一点不变；选了碑隶／行楷题，
+   报告纸上的标题才换字，正文照旧好读。 */
+.rv-report .rv-para.rv-center{font-family:var(--font-title)}
