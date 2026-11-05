@@ -941,6 +941,13 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 /* 带图的表：首行是数据（图），不是表头——不上底色、不加粗（2026-10-29 rick：图被垫成深色） */
 .rv-tblwrap table.has-figs tr:first-child td{background:transparent;font-weight:inherit}
 .rv-tblwrap img{max-width:230px;vertical-align:top}
+/* 长表（顶尖论文清单 290 行）在预览里先印 30 行——开关就贴在表下沿，不藏菜单 */
+.rv-more{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:-6px 0 18px;
+  padding:8px 2px 0;border-top:1px solid var(--line);font-size:var(--fs-sm);color:var(--ink-3)}
+.rv-more span{flex:1;min-width:200px;font-variant-numeric:tabular-nums}
+.rv-more button{border:1px solid var(--line);background:var(--card);color:var(--ink-2);
+  font:inherit;font-size:var(--fs-sm);padding:3px 12px;cursor:pointer}
+.rv-more button:hover{border-color:var(--zhu);color:var(--zhu)}
 
 /* 就地填空：虚线朱框 = 待填；浅底实线 = 已填（还没重出） */
 .rv-in{font:inherit;font-size:.92em;color:var(--bad);min-width:110px;max-width:26em;

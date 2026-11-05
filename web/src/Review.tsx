@@ -69,6 +69,11 @@ function Runs({
 }
 
 /** 一个块：段落 / 表格（可带图）/ 插图。全部按 docx 原顺序、原内容。 */
+/* 长表在预览里先印前 30 行（Word 稿仍是完整清单）：2026-11-05 rick ——
+   「顶尖论文清单」290 行把这一页撑到 5.6 万像素，翻到「报告里的空」要滚半天。 */
+const LONG_TABLE_ROWS = 40
+const PREVIEW_TABLE_ROWS = 30
+
 function BlockView({
   block, vals, onVal, disabled, period, data,
 }: {
@@ -79,6 +84,7 @@ function BlockView({
   period: string
   data: ChartsData | null
 }) {
+  const [showAllRows, setShowAllRows] = useState(false)
   if (block.t === 'p') {
     const cls = `rv-para${block.align === 'center' ? ' rv-center' : ''}`
     const ta = block.align && block.align !== 'justify'
@@ -123,11 +129,15 @@ function BlockView({
   }
   /* 学科表第一行装的是图，不是表头——首行刷 --panel 会把图垫成深色（2026-10-29 rick 指出） */
   const hasFigs = block.rows.some((row) => row.some((c) => (c.imgs ?? []).length > 0))
+  const longTable = block.rows.length > LONG_TABLE_ROWS
+  const visibleRows = longTable && !showAllRows
+    ? block.rows.slice(0, PREVIEW_TABLE_ROWS) : block.rows
   return (
+    <>
     <div className="rv-tblwrap">
       <table className={hasFigs ? 'has-figs' : undefined}>
         <tbody>
-          {block.rows.map((row, ri) => (
+          {visibleRows.map((row, ri) => (
             <tr key={ri}>
               {row.map((cell, ci) => (
                 <td key={ci} colSpan={cell.span || undefined}>
@@ -165,6 +175,18 @@ function BlockView({
         </tbody>
       </table>
     </div>
+    {longTable && (
+      <p className="rv-more">
+        <span>
+          共 {block.rows.length - 1} 条
+          {showAllRows ? '' : ` · 预览先显示前 ${PREVIEW_TABLE_ROWS} 条`}
+        </span>
+        <button type="button" onClick={() => setShowAllRows((v) => !v)}>
+          {showAllRows ? '收起 ↑' : '展开全部 ↓'}
+        </button>
+      </p>
+    )}
+    </>
   )
 }
 
