@@ -711,7 +711,15 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .fc-legend i{display:inline-block;width:16px;height:0;border-top:2px solid;
   border-top-color:currentColor}
 .fc-legend i.dash{border-top-style:dashed}
-.fc-models{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
+/* 一行两张（2026-11-05 rick）：五模型并排三张时每张只有三百来像素，折线看不清 */
+.fc-models{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+/* 五个模型两列排，最后一个落单时就居中——不把右半行空成一块 */
+.fc-models>.fc-mcard:last-child:nth-child(odd){grid-column:1/-1;justify-self:center;
+  width:calc(50% - 6px)}
+@media (max-width:900px){
+  .fc-models{grid-template-columns:1fr}
+  .fc-models>.fc-mcard:last-child:nth-child(odd){grid-column:auto;justify-self:auto;width:auto}
+}
 .fc-mcard{display:flex;flex-direction:column;padding:0;border:1px solid var(--line);
   background:var(--card);text-align:left;font:inherit;color:inherit;cursor:pointer;
   transition:border-color .15s}

@@ -69,7 +69,7 @@ function ModelCard({
         {active && <span className="hint ml-auto">本次选用</span>}
       </span>
       {run.history && run.history.length > 0
-        ? <ChartFigure option={option} height={168} ariaLabel={`${run.subject} · ${r.model} 预测趋势图`} />
+        ? <ChartFigure option={option} height={250} ariaLabel={`${run.subject} · ${r.model} 预测趋势图`} />
         : <img className="fc-chart" src={r.chart} alt={`${run.subject} · ${r.model} 预测趋势图`}
                loading="lazy" decoding="async" />}
       <span className="fc-mcard-f">
