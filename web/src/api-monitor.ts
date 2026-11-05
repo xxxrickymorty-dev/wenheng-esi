@@ -62,11 +62,13 @@ export function monitorJobUrl(jobId: string): string {
 }
 
 /** 开一个单校报告生成任务。 */
-export async function startMonitorReportJob(cn: string): Promise<MonitorJobStart> {
+/** 开一个单校站位报告生成任务。`force`＝「重新生成」：产物已存在也覆盖重出
+    （不带则幂等复用旧件，模型解读不会重跑——2026-11-05 修）。 */
+export async function startMonitorReportJob(cn: string, force = false): Promise<MonitorJobStart> {
   return req<MonitorJobStart>('/api/monitor/report/job', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ school: cn }),
+    body: JSON.stringify({ school: cn, force }),
   })
 }
 

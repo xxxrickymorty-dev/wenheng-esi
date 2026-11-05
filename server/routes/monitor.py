@@ -156,11 +156,12 @@ async def api_monitor_report(request: Request):
     except Exception:                                          # noqa: BLE001
         body = {}
     cn = str(body.get("school") or "").strip()
+    force = bool(body.get("force"))
     cn, period, err = _validated_report(cn)
     if err is not None:
         return err
     def _gen():
-        return monitor_report.generate(cn, period)
+        return monitor_report.generate(cn, period, force=force)
     try:
         path = await run_in_threadpool(_gen)
     except FileNotFoundError as exc:
@@ -222,8 +223,12 @@ def _job_accepted(job: dict, reused: bool = False) -> dict:
     return out
 
 
-def _report_job_create(cn: str, actor: str):
-    """单校任务口同步内核（路由层只是透传；测试直测这里）。"""
+def _report_job_create(cn: str, actor: str, force: bool = False):
+    """单校任务口同步内核（路由层只是透传；测试直测这里）。
+
+    `force`＝界面上的「重新生成」：产物已存在也覆盖重出（2026-11-05）。
+    不带＝幂等复用（首次生成/预开页照旧，不重复调模型）。
+    """
     cn, period, err = _validated_report(cn)
     if err is not None:
         return err
@@ -238,7 +243,7 @@ def _report_job_create(cn: str, actor: str):
         return JSONResponse({"error": str(e)}, status_code=409)
     monitor_jobs.launch(
         job,
-        lambda: monitor_report.generate(cn, period),
+        lambda: monitor_report.generate(cn, period, force=force),
         to_url=lambda p: f"/monitor/report/{urllib.parse.quote(cn)}/{period}.html")
     return _job_accepted(job)
 
@@ -259,7 +264,7 @@ async def api_monitor_report_job(request: Request):
     except Exception:                                          # noqa: BLE001
         body = {}
     cn = str(body.get("school") or "").strip()
-    return _report_job_create(cn, current_user(request))
+    return _report_job_create(cn, current_user(request), force=bool(body.get("force")))
 
 
 def _compare_job_create(cns_raw, actor: str):

@@ -140,6 +140,13 @@ _SYS = (
 )
 
 
+#: 盾拒重问提示（2026-11-05）：低思考档型号偶发把「1%」写成字面数字、或自造占位标记。
+#: 零数字——与其它外发文本一样过盾。
+_RETRY_NOTE = (
+    "【上一稿没通过数字校验】里面出现了没登记过的数字或标记。"
+    "请重写：只引用事实摘要里已有的 [[n]] 标记，一个数字都不要写，也不要新造标记。")
+
+
 def compose_text(topic: str, facts: list[str], safe: str, *, label: str, veto=None) -> dict:
     """默认走模型的解读生成：模型文本过盾 + veto，失败回落 safe。→ {"text", "mode"}。
 
@@ -160,6 +167,14 @@ def compose_text(topic: str, facts: list[str], safe: str, *, label: str, veto=No
         fl = [str(x).strip() for x in facts if str(x).strip()]
         task = f"【节主题】\n{topic}\n\n【事实摘要】\n" + "\n".join(f"- {x}" for x in fl)
         res = _attempt.attempt(task, system=_SYS, ability="polish", anchored=False)
+        if res.attempted and res.text is None and str(res.reason) == "shield_reject":
+            # 一次自愈（2026-11-05，GLM 低思考档实测）：模型偶尔把「1%」写成字面数字
+            # 或自造占位标记 → 盾整份拒收。重问一次比整单失败便宜；重问没救回来
+            # （仍是盾拒 / 空回）就按第一稿的原因报，别被第二次的空回顶掉。
+            retry = _attempt.attempt(task + _RETRY_NOTE, system=_SYS,
+                                     ability="polish", anchored=False)
+            if retry.text is not None or str(retry.reason or "").startswith("brain_error:"):
+                res = retry
         fallback, result = None, safe
         if res.attempted and res.text is not None:
             result = res.text

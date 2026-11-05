@@ -122,6 +122,35 @@ def test_c7_report_generate_idempotent(monkeypatch, tmp_path: pathlib.Path):
     assert len(calls) == 1, "第二次生成不得再触发 insight"
 
 
+def test_c7_重新生成必须真的重出_force(monkeypatch, tmp_path: pathlib.Path):
+    """2026-11-05 修：旧件是规则兜底时，幂等让「重新生成」空跑 → AI 解读永远出不来。
+
+    `force=True` 覆盖重出、重跑 insight；不传照旧幂等（模型不重复调）。
+    """
+    if not _cache_probe():
+        skip_unless("监测版期次缓存未建", _cache_probe)
+    cache = mr.load_cache(_PERIOD)
+    monkeypatch.setattr(mr, "load_cache", lambda p: cache)
+    monkeypatch.setattr(mr, "MONITOR_ROOT", tmp_path)
+    calls: list[str] = []
+    mode = {"now": "rule"}
+
+    def fake_insight(cn, period, c):
+        calls.append(cn)
+        return {"text": "打桩解读。", "mode": mode["now"]}
+
+    monkeypatch.setattr(mi, "insight", fake_insight)
+    p1 = mr.generate("海南大学", _PERIOD)
+    assert "规则拼装" in p1.read_text(encoding="utf-8")
+    mode["now"] = "model"                       # 模型修好了
+    p2 = mr.generate("海南大学", _PERIOD)
+    assert p2 == p1 and "规则拼装" in p2.read_text(encoding="utf-8"), "不传 force＝幂等"
+    assert len(calls) == 1
+    p3 = mr.generate("海南大学", _PERIOD, force=True)
+    assert len(calls) == 2, "force 要重跑 insight"
+    assert p3 == p1 and "模型解读" in p3.read_text(encoding="utf-8"), "旧件被覆盖成模型解读"
+
+
 def test_c7_compare_generate_idempotent(monkeypatch, tmp_path: pathlib.Path):
     """对比件同校集合同期已存在 → 直接返回，不重跑 insight（compose_text 打桩计数）。"""
     if not _cache_probe():

@@ -76,7 +76,7 @@ def _wait(job_id, timeout=10.0):
 
 def _stub_report_generate(monkeypatch, work_root):
     """路由名的 generate 替身：按 generate 的真实契约落盘并返回路径。"""
-    def _gen(cn, period):
+    def _gen(cn, period, **_kw):
         p = work_root / cn / f"{period}.html"
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text("<html></html>", encoding="utf-8")
@@ -122,10 +122,32 @@ class Test单校任务口:
         assert not (work_root / "清华大学" / "202609.html").exists(), \
             "解读算在写盘之前：不落半份产物"
 
+    def test_重新生成把force透到generate(self, monkeypatch, work_root):
+        """2026-11-05：界面「重新生成」必须真的重出——force 一路传到 generate。
+
+        不传 force 的老路径（首生成/预开页）保持幂等，不动。
+        """
+        seen: list[bool] = []
+
+        def _gen(cn, period, **kw):                          # noqa: ARG002
+            seen.append(bool(kw.get("force")))
+            p = work_root / cn / f"{period}.html"
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text("<html></html>", encoding="utf-8")
+            return p
+
+        monkeypatch.setattr(mr_routes, "generate", _gen)
+        out = mon_routes._report_job_create("清华大学", "tester", force=True)
+        _wait(out["job_id"])
+        assert seen == [True], "重新生成要覆盖重出（重跑解读）"
+        out2 = mon_routes._report_job_create("清华大学", "tester")
+        _wait(out2["job_id"])
+        assert seen == [True, False], "普通生成仍走幂等"
+
     def test_进行中可见_同参复用job_id(self, monkeypatch, work_root):
         release = threading.Event()
 
-        def _slow(cn, period):                                # noqa: ARG002
+        def _slow(cn, period, **_kw):                          # noqa: ARG002
             release.wait(10)
             p = work_root / cn / f"{period}.html"
             p.parent.mkdir(parents=True, exist_ok=True)
@@ -148,7 +170,7 @@ class Test单校任务口:
         release = threading.Event()
         monkeypatch.setattr(
             mr_routes, "generate",
-            lambda cn, period: (release.wait(10),
+            lambda cn, period, **_kw: (release.wait(10),
                                 (work_root / cn / f"{period}.html"))[1])
         first = mon_routes._report_job_create("清华大学", "tester")
         busy = mon_routes._report_job_create("云南大学", "tester")
@@ -230,7 +252,7 @@ class Test关闭态与收口:
         assert (work_root / "清华大学" / "202609.html").exists()
 
     def test_普通异常_失败入档带类型摘要(self, monkeypatch, work_root):
-        def _boom(cn, period):                                # noqa: ARG002
+        def _boom(cn, period, **_kw):                          # noqa: ARG002
             raise ValueError("缓存坏了")
 
         monkeypatch.setattr(mr_routes, "generate", _boom)

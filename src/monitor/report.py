@@ -583,20 +583,22 @@ def _trend_note() -> str:
     return "趋势由历史全球档案回填；ESI 每期为滚动十年窗的当期快照。"
 
 
-def generate(cn: str, period: str | None = None) -> pathlib.Path:
+def generate(cn: str, period: str | None = None, *, force: bool = False) -> pathlib.Path:
     """生成（或复用）一所学校的站位报告，返回文件路径。
 
     幂等（20261101 C7）：同校同期产物已存在 → 直接返回该路径，不再重跑 insight
-    （LLM 不重复调用）；要重新生成先删旧件。
+    （LLM 不重复调用）。
+    **`force=True`＝界面上的「重新生成」**（2026-11-05 修）：覆盖重出。此前只有幂等，
+    旧件若是规则兜底（模型当时不可用），按钮点了也原样返回，AI 解读永远出不来。
+    重出写在临时件上再替换，失败不留半份（解读算在写盘之前，异常直接上抛）。
     **例外（供应商强制语义，rick 2026-11-04）**：开启态下 insight 的
-    模型位失败抛 `AIRequiredError`，原样穿透——解读算在写盘之前，
-    上抛即整单失败，不落半份产物（insight=None 的静默残件不出）。
+    模型位失败抛 `AIRequiredError`，原样穿透——上抛即整单失败，不落半份产物。
     """
     period = period or latest_period()
     if not period:
         raise FileNotFoundError("数据与复现/ESI数据/ 下没有可用的 ESI 期次目录")
     out = MONITOR_ROOT / cn / f"{period}.html"
-    if out.exists():
+    if out.exists() and not force:
         return out
     cache = load_cache(period) or build_cache(period)
     _AIRequiredError = None
@@ -614,5 +616,6 @@ def generate(cn: str, period: str | None = None) -> pathlib.Path:
             raise   # 供应商强制语义：不落半份产物（rick 2026-11-04）
         ins = None
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(render(cn, period, cache, insight=ins), encoding="utf-8")
+    from ai import _record                                            # noqa: PLC0415
+    _record.atomic_write_text(out, render(cn, period, cache, insight=ins))
     return out

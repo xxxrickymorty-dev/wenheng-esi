@@ -344,7 +344,7 @@ export default function SchoolsPage() {
     })()
   }
 
-  const gen = (name: string) => {
+  const gen = (name: string, force = false) => {
     if (genBusy) return
     setGenErr('')
     setGenBusy(name)
@@ -358,7 +358,7 @@ export default function SchoolsPage() {
       /* 开任务：409（另有监测任务在跑）与校名/期次预检 4xx 都是后端给的人话，原样亮出。 */
       let jobId = ''
       try {
-        const started = await startMonitorReportJob(name)
+        const started = await startMonitorReportJob(name, force)
         jobId = started.job_id
       } catch (e) {
         const msg = e instanceof HttpError ? e.message : '生成没跑成，稍后再试'
@@ -452,7 +452,7 @@ export default function SchoolsPage() {
                 school.generated
                   ? <button type="button" className="whs-tool"
                             disabled={!!genBusy}
-                            onClick={() => { void gen(school.cn) }}>
+                            onClick={() => { void gen(school.cn, true) }}>
                       {genBusy === school.cn ? '重新生成中…' : '重新生成'}
                     </button>
                   : <button type="button" className="whs-tool go"
