@@ -893,14 +893,20 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 
 /* 报告纸（庚：纸面＝card 纸色，不另设白）；阅读字体走 --font-body（设置·界面可选） */
 .rv-report{background:var(--card);padding:26px 30px 40px;font-family:var(--font-body);min-width:0}
-.rv-toc{position:sticky;top:68px;z-index:3;display:flex;gap:4px;flex-wrap:wrap;padding:8px 0;margin:0 0 14px;
-  background:var(--card);border-bottom:1px solid var(--line)}
-/* 目录跳转目标留出顶栏高度（顶栏 60px + 目录自身） */
-[id^="rv-b-"]{scroll-margin-top:76px}
-.rv-toc button{border:1px solid var(--line);background:transparent;color:var(--ink-2);
-  font-family:var(--sans);font-size:var(--fs-sm);padding:4px 10px;cursor:pointer}
-.rv-toc button:hover{border-color:var(--zhu);color:var(--zhu)}
-.rv-toc button[aria-current="true"]{border-color:var(--zhu);color:var(--zhu);font-weight:600;background:var(--zhu-soft)}
+/* 章节目录搬到右栏（2026-11-05 rick：横条 sticky 在报告上会遮挡图表）——
+   纸面上不再有任何浮层；跳转目标只给顶栏留高度 */
+[id^="rv-b-"]{scroll-margin-top:72px}
+.rv-toclist{list-style:none;margin:8px 0 0;padding:0;counter-reset:rv-toc}
+.rv-toclist li{border-bottom:1px solid var(--line-2)}
+.rv-toclist li:last-child{border-bottom:0}
+.rv-toclist button{display:flex;align-items:baseline;gap:8px;width:100%;padding:7px 2px;
+  border:0;background:transparent;font:inherit;font-size:var(--fs-label);color:var(--ink-2);
+  text-align:left;cursor:pointer;line-height:1.45}
+.rv-toclist button::before{counter-increment:rv-toc;content:counter(rv-toc);
+  font-family:var(--mono);font-size:var(--fs-sm);color:var(--ink-4);flex:none;width:14px}
+.rv-toclist button:hover{color:var(--zhu)}
+.rv-toclist button[aria-current="true"]{color:var(--zhu);font-weight:650}
+.rv-toclist button[aria-current="true"]::before{color:var(--zhu);font-weight:700}
 /* 破坏性动作的静息降级（UX §十）：撤回这类按钮平时退成灰字无边框，确认态仍醒目 */
 .btn.ghost{border-color:transparent;background:transparent;color:var(--ink-3)}
 .btn.ghost:hover{color:var(--bad);border-color:var(--line)}
@@ -1827,7 +1833,7 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
   background:var(--card);color:var(--ink);border-radius:var(--r-win)}
 
 /* ---------- 右页：纸面，内容居中约 1080px ---------- */
-.app-shell>.app-main{grid-column:2;grid-row:1;min-width:0;width:100%;max-width:1080px;
+.app-shell>.app-main{grid-column:2;grid-row:1;min-width:0;width:100%;max-width:1360px;
   margin:0 auto;padding:clamp(18px,3.2vh,34px) clamp(22px,3.4vw,48px) clamp(28px,4vh,48px)}
 
 /* 窄窗：侧栏不再转顶置块——任何窗宽都是左列

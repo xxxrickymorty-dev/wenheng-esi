@@ -276,6 +276,26 @@ export function Review({
     return out
   }, [preview])
   const headingAt = (i: number) => sections.find((s) => s.i === i)
+  /* 滚到哪一章，右栏目录就亮哪一个（2026-11-05）。只看锚点、不监听 scroll——
+     这份报告 5 万余像素，监听 scroll 会把主线程拖住。 */
+  useEffect(() => {
+    if (!sections.length) return
+    const nodes = sections
+      .map((s) => document.getElementById(`rv-b-${s.i}`))
+      .filter((el): el is HTMLElement => !!el)
+    if (!nodes.length) return
+    const io = new IntersectionObserver((entries) => {
+      const hit = entries
+        .filter((e) => e.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0]
+      const idx = Number((hit?.target as HTMLElement | undefined)?.dataset.sec)
+      if (Number.isFinite(idx)) setCurSec(idx)
+    }, { rootMargin: '-80px 0px -65% 0px' })
+    nodes.forEach((el) => io.observe(el))
+    return () => io.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sections.length, preview?.docx])
+
   // 未填的空（按报告顺序）：清单高亮、「下一处」跳转、计数共用这一份
   const emptyIds = useMemo(
     () => fields.filter(([id]) => !(vals[id] ?? '').trim()).map(([id]) => id),
@@ -502,20 +522,8 @@ export function Review({
                 </button>
               )}
             </p>
-            {sections.length > 0 && (
-              <nav className="rv-toc" aria-label="报告章节">
-                {sections.map((s) => (
-                  <button key={s.i} type="button" title={s.title}
-                          aria-current={curSec === s.i ? 'true' : undefined}
-                          onClick={() => { setCurSec(s.i); document.getElementById(`rv-b-${s.i}`)
-                            ?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}>
-                    {s.title}
-                  </button>
-                ))}
-              </nav>
-            )}
             {preview.blocks.map((b, i) => headingAt(i) ? (
-              <div id={`rv-b-${i}`} key={i}>
+              <div id={`rv-b-${i}`} key={i} data-sec={i}>
                 <BlockView block={b} vals={vals} onVal={(id, v) => setVals((s) => ({ ...s, [id]: v }))}
                            disabled={!isAdmin || busy !== null} period={period} data={data} />
               </div>
@@ -527,6 +535,25 @@ export function Review({
           </div>
 
           <aside className="rv-side">
+            {/* ------- 目录：从纸面上方搬进来，跟着右栏吸顶 ------- */}
+            {sections.length > 0 && (
+              <section className="card rv-card" aria-label="报告章节">
+                <h3><Icon name="list" size={19} />目录</h3>
+                <ol className="rv-toclist">
+                  {sections.map((s) => (
+                    <li key={s.i}>
+                      <button type="button" title={s.title}
+                              aria-current={curSec === s.i ? 'true' : undefined}
+                              onClick={() => { setCurSec(s.i); document.getElementById(`rv-b-${s.i}`)
+                                ?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}>
+                        {s.title}
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+
             {/* ------- 签单：状态一句 + 三个动作；报告版本与生成时间收成一行 ------- */}
             <section className="card rv-card" id="rv-sign">
               <div className="rv-sign-head">
