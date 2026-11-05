@@ -78,6 +78,20 @@ def _flex_write_state() -> dict:
         return {"enabled": False, "available": False}
 
 
+def _flex_appearance_from_meta(d, intent: str):
+    """从 flex_meta.json 读回生成时的外观（下载 / 润色用）。
+
+    meta 缺失、解析失败、旧稿没记外观、值不是 dict → None：
+    调用方按「不带外观」走，回落行为与从前逐字节一致。
+    """
+    p = d / "flexible" / intent / "flex_meta.json"
+    try:
+        a = json.loads(p.read_text(encoding="utf-8")).get("appearance")
+    except (OSError, ValueError):                                  # noqa: BLE001
+        return None
+    return a if isinstance(a, dict) else None
+
+
 @router.get("/p/{period}/flexible/chart/{intent}/{name}")
 @user_file_route
 async def period_flexible_chart(request: Request, period: str,
@@ -125,9 +139,12 @@ async def period_flexible_report(request: Request, period: str, intent: str):
             md_text = md_p.read_text(encoding="utf-8")
             m = re.match(r"(?m)^#\s+(.+)$", md_text)
             title = m.group(1).strip() if m else "灵活分析稿"
+            # 外观跟着生成件走：从 flex_meta.json 读回（旧稿没记 → None，
+            # 与从前逐字节一致）；重渲染与磁盘原件无关，读不了也不编。
             text = flex_mdview.standalone(md_text, title,
                                            base_dir=p.parent,
-                                           chart_payloads=payloads)
+                                           chart_payloads=payloads,
+                                           appearance=_flex_appearance_from_meta(d, intent))
     except Exception:                                                # noqa: BLE001
         text = None
     if text is None:
@@ -222,9 +239,16 @@ async def api_period_flexible_generate(request: Request, period: str):
         return JSONResponse({"error": f"未知意图：{intent}",
                              "hint": "可选：" + "、".join(flex_planner.INTENTS)}, status_code=400)
     import flexible.report as flex_report                           # noqa: PLC0415
+    # 报告外观三轴：请求带了才抽（不认识的值静默回落，绝不 400）。
+    from monitor.appearance import appearance_from_body             # noqa: PLC0415
+    appearance = appearance_from_body(body) or None
     t0 = time.time()
     try:
-        r = flex_report.generate(d, intent, disc=disc, peers=peers)
+        if appearance is None:
+            r = flex_report.generate(d, intent, disc=disc, peers=peers)
+        else:
+            r = flex_report.generate(d, intent, disc=disc, peers=peers,
+                                     appearance=appearance)
     except ValueError as e:
         return JSONResponse({"error": str(e)[:200],
                              "hint": "学科请从名单中选择（支持中文名）"}, status_code=400)
@@ -283,6 +307,9 @@ async def api_period_flexible_stream(request: Request, period: str):
         return JSONResponse({"error": f"未知意图：{intent}",
                              "hint": "可选：" + "、".join(flex_planner.INTENTS)}, status_code=400)
     import flexible.report as flex_report                           # noqa: PLC0415
+    # 报告外观三轴：同同步口——带了才传，不认识的值静默回落，绝不 400。
+    from monitor.appearance import appearance_from_body             # noqa: PLC0415
+    appearance = appearance_from_body(body) or None
 
     token = uuid.uuid4().hex[:12]
     stop = threading.Event()
@@ -291,9 +318,16 @@ async def api_period_flexible_stream(request: Request, period: str):
     def gen():
         try:
             first = True
-            for ev in flex_report.generate_stream(d, intent, disc=disc,
+            if appearance is None:
+                evs = flex_report.generate_stream(d, intent, disc=disc,
                                                   should_stop=stop.is_set,
-                                                  peers=peers):
+                                                  peers=peers)
+            else:
+                evs = flex_report.generate_stream(d, intent, disc=disc,
+                                                  should_stop=stop.is_set,
+                                                  peers=peers,
+                                                  appearance=appearance)
+            for ev in evs:
                 line = _flex_stream_line(ev, d, intent)
                 if first:                                # 首行带令牌（停止键要用）
                     rec = json.loads(line)
@@ -357,8 +391,15 @@ async def api_period_flexible_polish(request: Request, period: str):
     except Exception:                                                # noqa: BLE001
         plan = None
     t0 = time.time()
+    # 润色只重写叙述段，外观要原样保留：从 flex_meta.json 读回生成时的
+    # 三轴传下去（旧稿没记 → None，行为不变），免得润色把外观洗掉。
+    appearance = _flex_appearance_from_meta(d, intent)
     try:
-        r = flex_report.generate(d, intent, plan=plan, write=True)
+        if appearance is None:
+            r = flex_report.generate(d, intent, plan=plan, write=True)
+        else:
+            r = flex_report.generate(d, intent, plan=plan, write=True,
+                                     appearance=appearance)
     except Exception as e:                                           # noqa: BLE001
         return JSONResponse({"error": f"润色失败：{type(e).__name__}",
                              "hint": str(e)[:200]}, status_code=500)

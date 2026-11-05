@@ -1010,8 +1010,13 @@ def _critic_hint(check: dict) -> str:
 
 def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
               n_periods=None, polish=None, plan=None, write=False, on_event=None,
-              peers=None) -> dict:
-    """产出灵活报告（含逐节回调）。`on_event(kind, payload)` 用于流式包装。"""
+              peers=None, appearance: dict | None = None) -> dict:
+    """产出灵活报告（含逐节回调）。`on_event(kind, payload)` 用于流式包装。
+
+    `appearance`（报告外观三轴，同监测版）：给了才注入 report.html
+    并记进 flex_meta.json（下载口复用，保证生成件与下载件同外观）；
+    None 时一切照旧。外观只动版式/颜色/字体，数字与正文一个字不改。
+    """
     t0 = time.time()
     src = DataSource(out_dir)
     # 票 03：调用方显式传入 plan（「AI 润色」重出稿）＝要求同大纲同数字，
@@ -1106,7 +1111,8 @@ def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
         payloads = {}            # payload 失败不挡出稿，图回落 PNG
     (d / "report.html").write_text(
         mdview.standalone(md, plan.get("title") or "灵活分析稿",
-                          base_dir=d, chart_payloads=payloads),
+                          base_dir=d, chart_payloads=payloads,
+                          appearance=appearance),
         encoding="utf-8")
     # DOCX（2026-10-15 rick：下载报告给 docx、方便馆员修改；页脚标注一次）
     try:
@@ -1122,15 +1128,20 @@ def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
     (d / "flex_sources.json").write_text(
         json.dumps(built["sources"], ensure_ascii=False, indent=1, default=str),
         encoding="utf-8")
+    # 外观（报告三轴）：带了才记——旧稿 / 未带外观的 meta 没有这个键，
+    # 下载口读不到就按 None 走（回落行为与从前逐字节一致）。
+    meta_out = {"check": check,
+                # 票 06（度量三指标）：单份时长的数据面——运行档案
+                # 汇总时从这里读；口径见 docs/metrics-三指标口径.md。
+                "elapsed": round(time.time() - t0, 1),
+                "selected": built["selected"],
+                "n_charts": len(built["charts"]),
+                "charts": [pathlib.Path(s["path"]).name for s in built["charts"]],
+                "banner": BANNER}
+    if appearance is not None:
+        meta_out["appearance"] = appearance
     (d / "flex_meta.json").write_text(
-        json.dumps({**meta, "check": check,
-                    # 票 06（度量三指标）：单份时长的数据面——运行档案
-                    # 汇总时从这里读；口径见 docs/metrics-三指标口径.md。
-                    "elapsed": round(time.time() - t0, 1),
-                    "selected": built["selected"],
-                    "n_charts": len(built["charts"]),
-                    "charts": [pathlib.Path(s["path"]).name for s in built["charts"]],
-                    "banner": BANNER},
+        json.dumps({**meta, **meta_out},
                    ensure_ascii=False, indent=1), encoding="utf-8")
     result = {"report": str(d / "report.md"), "dir": str(d), "plan": plan,
               "check": check, "n_charts": len(built["charts"]),
@@ -1168,7 +1179,8 @@ def _generate(out_dir, intent: str = "single_trend", *, disc=None, metric=None,
 
 def generate(out_dir, intent: str = "single_trend", *,
              disc=None, metric=None, n_periods=None, polish=None,
-             plan=None, write=False, peers=None) -> dict:
+             plan=None, write=False, peers=None,
+             appearance: dict | None = None) -> dict:
     """产出灵活报告。返回产物路径与自检结果。
 
     🔴 `out_dir` 是**期次目录**（`out/202607`）。产物一律落在
@@ -1180,9 +1192,14 @@ def generate(out_dir, intent: str = "single_trend", *,
     `plan`：复用已有规划（「AI 润色」重出稿时用——同大纲、同数字，只重写叙述段）。
     `write`：保留兼容参数（旧按钮/CLI 的显式触发）——2026-10-14 票 04 起，
       写作位配好即默认启用，传入与否不再改变行为。
+    `appearance`：报告外观三轴（模板/皮肤/字体，同监测版）——只动
+      report.html 的版式与配色，数字与正文一个字不改；润色（带 plan
+      重出稿）时调用方要把 flex_meta.json 里存的外观读回传进来，
+      免得润色把外观洗掉。
     """
     return _generate(out_dir, intent, disc=disc, metric=metric, n_periods=n_periods,
-                     polish=polish, plan=plan, write=write, peers=peers)
+                     polish=polish, plan=plan, write=write, peers=peers,
+                     appearance=appearance)
 
 
 class _StopGeneration(Exception):
@@ -1191,7 +1208,7 @@ class _StopGeneration(Exception):
 
 def generate_stream(out_dir, intent: str = "single_trend", *, disc=None,
                     metric=None, plan=None, write=False, should_stop=None,
-                    peers=None):
+                    peers=None, appearance: dict | None = None):
     """流式产出（NDJSON 事件）：`status → plan → section×N → done`（或 `error`/`stopped`）。
 
     事件在**真实的节点**发出（规划完成 / 每节完成），不做假进度；
@@ -1217,7 +1234,8 @@ def generate_stream(out_dir, intent: str = "single_trend", *, disc=None,
     def worker():
         try:
             _generate(out_dir, intent, disc=disc, metric=metric, plan=plan,
-                      write=write, on_event=ev, peers=peers)
+                      write=write, on_event=ev, peers=peers,
+                      appearance=appearance)
         except _StopGeneration:
             q.put(("stopped", {}))
         except Exception as e:                                       # noqa: BLE001

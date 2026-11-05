@@ -149,9 +149,9 @@ def render(cns: list[str], period: str, cache: dict, insight: dict | None = None
         prange = f"{series_c[0][1][0][0]}–{series_c[0][1][-1][0]}"
         trend_html = (
             '<section>\n<h2><span class="num">' + _nxt() + '</span>趋势对比</h2>\n'
-            + '<p class="cap">总被引轨迹</p>' + mch.line_chart(series_c)
+            + '<p class="cap">总被引轨迹</p>' + mch.line_chart(series_c, appearance=appearance)
             + '<p class="cap">总排名轨迹（越上越好）</p>'
-            + mch.line_chart(series_r, y_invert=True)
+            + mch.line_chart(series_r, y_invert=True, appearance=appearance)
             + f'\n<p class="note">期次 {prange}，由历史全球档案回填；口径同单校报告趋势章。</p>\n</section>')
 
     # ---- 恰好 2 校：逐学科位次哑铃（都上榜学科按位次差降序取前 8）；>2 校矩阵已足够 ----
@@ -164,7 +164,8 @@ def render(cns: list[str], period: str, cache: dict, insight: dict | None = None
             rows_dl = [(_cn(st), a["present"][st][0], b["present"][st][0]) for st in shared]
             dumbbell_html = (
                 '<section>\n<h2><span class="num">' + _nxt() + '</span>逐学科位次哑铃</h2>\n'
-                + mch.dumbbell(rows_dl, name_a=a["cn"], name_b=b["cn"])
+                + mch.dumbbell(rows_dl, name_a=a["cn"], name_b=b["cn"],
+                               appearance=appearance)
                 + '\n<p class="note">排名越小越好；只取两校都上榜学科中位次差最大的前 8 个。</p>\n</section>')
     num_matrix = _nxt()
 
@@ -177,7 +178,8 @@ def render(cns: list[str], period: str, cache: dict, insight: dict | None = None
                            key=lambda kv: -kv[1])
             total_p = sum(v for _n, v in items)
             cells.append('<div class="mdonut">'
-                         + mch.donut(items, title=r["cn"] + "\n" + _fmt(total_p))
+                         + mch.donut(items, title=r["cn"] + "\n" + _fmt(total_p),
+                                     appearance=appearance)
                          + '</div>')
         donut_grid = ('<section>\n<h2><span class="num">' + _nxt()
                       + '</span>学科结构</h2>\n<div class="mdonuts">'

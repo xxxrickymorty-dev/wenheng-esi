@@ -183,28 +183,31 @@ def _root_css(skin_id: str, font: dict) -> str:
 _FONT_CSS = """html[data-font] body{font-family:var(--rpt-f-body);font-size:calc(15.5px + var(--rpt-fs-adj))}
 html[data-font] h1,html[data-font] h2{font-family:var(--rpt-f-title)}"""
 
-#: 图表发丝线换色：monitor/charts.py 的内联 SVG 把颜色写成 fill/stroke 表现属性，
-#: CSS 声明可以盖过表现属性。按属性值精确对上号，让每张图跟着报告皮肤走。
-#: （charts.py 本身一行不改，覆盖规则集中在这里。）
-_CHART_COLORS = {
-    "#17181a": "var(--rpt-ink)",
-    "#6f7278": "var(--rpt-muted)",
-    "#e4e1da": "var(--rpt-rule)",
-    "#2f6f5e": "var(--rpt-accent)",
-    "#9a6b14": "var(--rpt-gold)",
-    "#eef0ee": "var(--rpt-tint)",
-    "#7FB79B": "var(--rpt-accent-2)",
-    "#A8B8D0": "var(--rpt-muted)",
-    "#C9A66B": "var(--rpt-gold)",
-}
+#: 图表上色（2026-11-05 v3）：monitor/charts.py 带外观时输出 class 名
+#: （gk-*＝fill、gl-*＝stroke、gf-mono＝等宽字族），不再写死 hex——实测 var() 在
+#: SVG 表现属性里各引擎解析不一致（svgwg#1031），class + 注入 CSS 跨引擎稳，
+#: 且 CSS 规则优先级恒高于表现属性；None 路径（SVG 里无 class）零影响。
+#: 派生系列色（s4/s5）向 --rpt-ink 方向 color-mix：浅皮变深、深皮（yebo）变浅，
+#: 两头对比度都不丢。发丝线线宽/虚线档在 charts.py 侧（数据 > 参考线 > 网格）。
+_CHART_CSS = """section svg .gk-ink{fill:var(--rpt-ink)}section svg .gl-ink{stroke:var(--rpt-ink)}
+section svg .gk-mut{fill:var(--rpt-muted)}section svg .gl-mut{stroke:var(--rpt-muted)}
+section svg .gk-rule{fill:var(--rpt-rule)}section svg .gl-rule{stroke:var(--rpt-rule)}
+section svg .gk-rule2{fill:var(--rpt-rule-2)}section svg .gl-rule2{stroke:var(--rpt-rule-2)}
+section svg .gk-acc{fill:var(--rpt-accent)}section svg .gl-acc{stroke:var(--rpt-accent)}
+section svg .gk-gold{fill:var(--rpt-gold)}section svg .gl-gold{stroke:var(--rpt-gold)}
+section svg .gk-s0{fill:var(--rpt-accent)}section svg .gl-s0{stroke:var(--rpt-accent)}
+section svg .gk-s1{fill:var(--rpt-gold)}section svg .gl-s1{stroke:var(--rpt-gold)}
+section svg .gk-s2{fill:var(--rpt-accent-2)}section svg .gl-s2{stroke:var(--rpt-accent-2)}
+section svg .gk-s3{fill:var(--rpt-muted)}section svg .gl-s3{stroke:var(--rpt-muted)}
+section svg .gk-s4{fill:color-mix(in srgb,var(--rpt-accent) 62%,var(--rpt-ink))}section svg .gl-s4{stroke:color-mix(in srgb,var(--rpt-accent) 62%,var(--rpt-ink))}
+section svg .gk-s5{fill:color-mix(in srgb,var(--rpt-accent-2) 62%,var(--rpt-ink))}section svg .gl-s5{stroke:color-mix(in srgb,var(--rpt-accent-2) 62%,var(--rpt-ink))}
+section svg .gf-mono{font-family:var(--rpt-f-body),ui-monospace,Consolas,monospace}"""
 
 
 def _chart_css() -> str:
-    rules = []
-    for hexv, var in _CHART_COLORS.items():
-        rules.append(f'section svg [fill="{hexv}"]{{fill:{var}}}')
-        rules.append(f'section svg [stroke="{hexv}"]{{stroke:{var}}}')
-    return "\n".join(rules)
+    """图表 class 上色规则（charts.py 带外观时的配套注入；v2 的按 hex 属性值
+    覆盖做法已退役——图表现在自带 class，不再有 hex 可对号）。"""
+    return _CHART_CSS
 
 
 #: yebo 深色皮打印时反白：纸转白、墨转深，免得深色底吃光墨粉、浅字印不出来。

@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """复刻报告的原生图表规格：C1–C6（96 个学科槽位）＋ 正文总览图。
 
 与 `charts.py` 的分工：
@@ -24,6 +24,28 @@ import native_charts as nc  # noqa: E402
 import period as period_mod  # noqa: E402
 
 C_BLUE, C_GREEN, C_YELLOW = nc.C_BLUE, nc.C_GREEN, nc.C_YELLOW
+
+# ---------------------------------------------------------------- 色板参数化
+#: 正文图色板（2026-11-05 参数化；色值＝原件第 4/5 期同一张图取色，见各函数注）。
+#: **palette=None → 全部落回现值**（复刻线逐字节钉死，默认输出一个字节不变）；
+#: 皮肤出图接线是后续轮次，本轮只参数化不接线。hex 不带 #（chart XML 直用）。
+RPT_PALETTE = {
+    "ov_ratio_1pct": "B3A2C7",     # 1% 接近度＝紫
+    "ov_gap_1pct": "92D050",       # 1% 差距＝绿
+    "ov_ratio_1pm": "92D050",      # 1‰ 接近度＝绿
+    "ov_gap_1pm": "FFC000",        # 1‰ 差距＝橙黄
+    "baseline": "FF0000",          # 100% 基线
+    "top_subject": "7BDAEA",       # 顶尖论文学科分布＝浅青
+    "top_year": "FFC000",          # 顶尖论文年代分布＝金黄
+    "rank_cn": "ED7D31",           # 排名图：国内排名＝橙
+    "rank_uni": "FFC000",          # 排名图：国内高校排名＝金
+    "rank_intl": "4472C4",         # 排名图：国际排名＝蓝
+}
+
+
+def _PR(palette: dict | None) -> dict:
+    """合并自定义色板：None/空 → 现值（默认输出逐字节不变）。"""
+    return {**RPT_PALETTE, **palette} if palette else RPT_PALETTE
 
 #: 学科槽位图文件名（与 `fill_docx.CHART_SLOTS` 同序）
 SLOT_FILES = ["rank_pct.png", "cnci.png", "papers_new.png",
@@ -206,10 +228,11 @@ def _body(key, xml, xlsx):
     return {"xml": xml, "xlsx": xlsx, "w_cm": w, "h_cm": h}
 
 
-def ov_1pct(w, period):
+def ov_1pct(w, period, palette=None):
     """1% 接近度：22 学科横向堆叠柱（紫＝实际接近度、绿＝到 100% 的差距）+ 红色 100% 基线。"""
     import math  # noqa: PLC0415
 
+    p = _PR(palette)
     ratio = ((w["total_cites"][period] / w["threshold_1pct"][period]) * 100).dropna().sort_values()
     cats = [charts._cn(d) for d in ratio.index]
     vals = [float(v) for v in ratio]
@@ -221,12 +244,12 @@ def ov_1pct(w, period):
          # 🔴 Word 不渲染**堆叠柱**的系列级数值标签（inBase/ctr/outEnd 都试过，见验证报告 §6.1），
          #    与其留一套不生效的配置，不如显式关掉：数值由柱长与横轴刻度读出。
          # 色值＝原件第 5 期同一张图取色（2026-10-26 实测 #B3A2C7 紫 / #92D050 绿）
-         "series": [{"name": "与ESI前1%的接近度", "values": vals, "color": "B3A2C7",
+         "series": [{"name": "与ESI前1%的接近度", "values": vals, "color": p["ov_ratio_1pct"],
                      "label_fmt": PCT_LITERAL, "show_labels": False},
-                    {"name": "与ESI前1%的差距", "values": gap, "color": "92D050",
+                    {"name": "与ESI前1%的差距", "values": gap, "color": p["ov_gap_1pct"],
                      "label_fmt": PCT_LITERAL, "show_labels": False}]},
         {"kind": "line", "cat_ax": "c1", "val_ax": "v1",
-         "series": [{"name": "ESI前1%基线", "values": [100.0] * len(vals), "color": "FF0000",
+         "series": [{"name": "ESI前1%基线", "values": [100.0] * len(vals), "color": p["baseline"],
                      "lw": 19050, "show_labels": False}]},
     ]
     axes = [{"id": "c1", "kind": "cat", "cross": "v1", "pos": "l", "fontsize": 7},
@@ -234,14 +257,15 @@ def ov_1pct(w, period):
              "maximum": xmax, "major_unit": 100, "numfmt": PCT_LITERAL, "gridlines": False,
              "fontsize": 6.5}]
     xml = nc.combo_chart_xml(groups, axes, cats, legend_pos="b")
-    series = [{"name": "与ESI前1%的接近度", "values": vals, "color": "B3A2C7"},
-              {"name": "与ESI前1%的差距", "values": gap, "color": "92D050"},
-              {"name": "ESI前1%基线", "values": [100.0] * len(vals), "color": "FF0000"}]
+    series = [{"name": "与ESI前1%的接近度", "values": vals, "color": p["ov_ratio_1pct"]},
+              {"name": "与ESI前1%的差距", "values": gap, "color": p["ov_gap_1pct"]},
+              {"name": "ESI前1%基线", "values": [100.0] * len(vals), "color": p["baseline"]}]
     return _body("1pct", xml, nc.build_data_xlsx(cats, series))
 
 
-def ov_1permille(w, period):
+def ov_1permille(w, period, palette=None):
     """1‰ 潜力：已进入 1% 的学科，接近度 + 到 1‰ 的差距（横向堆叠柱）。"""
+    p = _PR(palette)
     entered = w["entered_1pct"][period][w["entered_1pct"][period] >= 1].index
     ratio = (w["total_cites"][period][entered]
              / w["threshold_1permille"][period][entered] * 100).dropna().sort_values()
@@ -255,14 +279,14 @@ def ov_1permille(w, period):
         {"kind": "bar", "cat_ax": "c1", "val_ax": "v1", "bar_dir": "bar",
          "grouping": "stacked", "gap_width": 60, "overlap": 100,
          # 同 1pct：Word 不渲染堆叠柱的系列级数值标签 → 显式关掉（见验证报告 §6.1）
-         "series": [{"name": "1‰接近度", "values": vals, "color": "92D050",
+         "series": [{"name": "1‰接近度", "values": vals, "color": p["ov_ratio_1pm"],
                      "label_fmt": PCT_LITERAL, "show_labels": False},
-                    {"name": "与前1‰差距", "values": gap, "color": "FFC000",
+                    {"name": "与前1‰差距", "values": gap, "color": p["ov_gap_1pm"],
                      "label_fmt": PCT_LITERAL, "show_labels": False}]},
         # 100% 基线：与 1pct 图同法（横条图的 line 组＝一根竖线），rick 2026-09-24 对
         # 趋势图提过「这张图必须要有阈值线」，1‰ 图同理。
         {"kind": "line", "cat_ax": "c1", "val_ax": "v1",
-         "series": [{"name": "1‰基线", "values": [100.0] * len(cats), "color": "FF0000",
+         "series": [{"name": "1‰基线", "values": [100.0] * len(cats), "color": p["baseline"],
                      "lw": 19050, "show_labels": False}]},
     ]
     axes = [{"id": "c1", "kind": "cat", "cross": "v1", "pos": "l", "fontsize": 9.5},
@@ -270,14 +294,15 @@ def ov_1permille(w, period):
              "maximum": 105, "major_unit": 20, "numfmt": PCT_LITERAL, "gridlines": True,
              "fontsize": 9.5}]
     xml = nc.combo_chart_xml(groups, axes, cats, legend_pos="b")
-    series = [{"name": "1‰接近度", "values": vals, "color": "92D050"},
-              {"name": "与前1‰差距", "values": gap, "color": "FFC000"},
-              {"name": "1‰基线", "values": [100.0] * len(cats), "color": "FF0000"}]
+    series = [{"name": "1‰接近度", "values": vals, "color": p["ov_ratio_1pm"]},
+              {"name": "与前1‰差距", "values": gap, "color": p["ov_gap_1pm"]},
+              {"name": "1‰基线", "values": [100.0] * len(cats), "color": p["baseline"]}]
     return _body("1permille", xml, nc.build_data_xlsx(cats, series))
 
 
-def ov_top_by_subject(w, period):
+def ov_top_by_subject(w, period, palette=None):
     """顶尖论文学科分布（篇）。"""
+    p = _PR(palette)
     s = w["top_papers"][period].dropna() if period in w["top_papers"].columns \
         else w["top_papers"].iloc[:, -1].dropna()
     s = s[s > 0].sort_values(ascending=False)
@@ -288,7 +313,7 @@ def ov_top_by_subject(w, period):
     b = nc.auto_axis([vals], floor_zero=True, intervals=6, pad=0.12, integer=True)
     # 原件：浅青柱 #7BDAEA、学科名竖排、无图例、纵轴 0–45（2026-10-26 取色/量轴）
     top = int(math.ceil(max(vals) / 5.0) * 5) or 5
-    series = [{"name": "顶尖论文发文量", "values": vals, "color": "7BDAEA", "label_fmt": "0"}]
+    series = [{"name": "顶尖论文发文量", "values": vals, "color": p["top_subject"], "label_fmt": "0"}]
     xml = nc.bar_chart_xml(series, cats, gap_width=350, overlap=-27, label_fmt="0",
                            major_unit=b[2], minimum=0, maximum=top, numfmt="0",
                            legend_pos=None,
@@ -296,8 +321,9 @@ def ov_top_by_subject(w, period):
     return _body("top_by_subject", xml, nc.build_data_xlsx(cats, series))
 
 
-def ov_top_by_year(w, period):
+def ov_top_by_year(w, period, palette=None):
     """顶尖论文年代分布（篇）。"""
+    p = _PR(palette)
     s = w["top_by_year"][period].dropna() if period in w["top_by_year"].columns \
         else w["top_by_year"].iloc[:, -1].dropna()
     s = s[s > 0]
@@ -308,7 +334,7 @@ def ov_top_by_year(w, period):
     b = nc.auto_axis([vals], floor_zero=True, intervals=5, pad=0.12, integer=True)
     # 原件：金黄柱 #FFC000、纵轴 0–80（2026-10-26 取色/量轴）；向上取 20 的倍数，不裁数据
     top = int(math.ceil(max(vals) / 20.0) * 20) or 20
-    series = [{"name": "顶尖论文发文量", "values": vals, "color": "FFC000", "label_fmt": "0"}]
+    series = [{"name": "顶尖论文发文量", "values": vals, "color": p["top_year"], "label_fmt": "0"}]
     xml = nc.bar_chart_xml(series, cats, gap_width=100, overlap=-27, label_fmt="0",
                            major_unit=b[2], minimum=0, maximum=top, numfmt="0",
                            legend_pos=None)
@@ -335,8 +361,9 @@ TREND_COLORS = ["5B9BD5", "7030A0", "8C8C8C", "FFC000"]
 TREND_MARKERS = ["circle", "square", "triangle", "diamond"]
 
 
-def ov_trend_table(w, *, n_periods=7, end_period=None, top_k=4):
+def ov_trend_table(w, *, n_periods=7, end_period=None, top_k=4, palette=None):
     """我校主要学科近期发展趋势（4 学科 × 7 期的 1‰ 接近度 + 100% 红基线 + 原生数据表）。"""
+    p = _PR(palette)
     picked, periods, picks = charts.trend_picks(
         w["total_cites"], w["threshold_1permille"], end_period=end_period,
         n=n_periods, top_k=top_k, entered=w["entered_1pct"])
@@ -350,7 +377,7 @@ def ov_trend_table(w, *, n_periods=7, end_period=None, top_k=4):
                        # 只标**末点**（4 线 × 7 期全标会挤成一团，同 PNG 口径）
                        "hide_labels": tuple(range(len(vals) - 1))})
     # 100% 基线：常量线画进图里（rick 2026-09-24「这张图必须要有千分之一的阈值线」）
-    series.append({"name": "ESI1‰ 基线", "values": [100.0] * len(periods), "color": "FF0000",
+    series.append({"name": "ESI1‰ 基线", "values": [100.0] * len(periods), "color": p["baseline"],
                    "lw": 20320, "marker": "none", "show_labels": False})
     # 纵轴 0–100%（10 格）＝原件口径；旧值 minimum=20 让数据区顶到一半高度（2026-10-26 改）
     xml = nc.line_chart_xml(series, periods, numfmt=PCT_LITERAL, label_fmt=PCT_LITERAL,
@@ -362,24 +389,25 @@ def ov_trend_table(w, *, n_periods=7, end_period=None, top_k=4):
     return _body("trend_table", xml, nc.build_data_xlsx(periods, data))
 
 
-def ov_rank_table(w, *, n_periods=7, end_period=None):
+def ov_rank_table(w, *, n_periods=7, end_period=None, palette=None):
     """我校 ESI 排名情况：国内排名 / 国内高校排名（左轴柱）+ 国际排名（右轴折线），双轴反序。"""
+    p = _PR(palette)
     df = w["ynd_rank"].set_index("period").sort_index()
     df = df[df["rank_intl"].notna() | df["rank_cn"].notna()]
     if end_period:
         df = df[df.index <= str(end_period)]
     df = df.tail(n_periods)
     periods = [str(p) for p in df.index]
-    bars = [{"name": "国内排名", "values": [float(v) for v in df["rank_cn"]], "color": "ED7D31"},
+    bars = [{"name": "国内排名", "values": [float(v) for v in df["rank_cn"]], "color": p["rank_cn"]},
             {"name": "国内高校排名", "values": [float(v) for v in df["rank_cn_uni"]],
-             "color": "FFC000"}]
+             "color": p["rank_uni"]}]
     groups = [
         {"kind": "bar", "cat_ax": "c1", "val_ax": "v1", "bar_dir": "col",
          "grouping": "clustered", "gap_width": 120, "overlap": -10,
          "series": [dict(s, label_fmt="0", show_labels=False) for s in bars]},
         {"kind": "line", "cat_ax": "c2", "val_ax": "v2",
          "series": [{"name": "国际排名（右标）", "values": [float(v) for v in df["rank_intl"]],
-                     "color": "4472C4", "marker": "circle", "lw": 22860,
+                     "color": p["rank_intl"], "marker": "circle", "lw": 22860,
                      "label_fmt": "0", "show_labels": False}]},
     ]
     axes = [
@@ -400,23 +428,27 @@ def ov_rank_table(w, *, n_periods=7, end_period=None):
     return _body("rank_table", xml, nc.build_data_xlsx(periods, data))
 
 
-def body_charts(ledger_dir, *, n_periods=7, end_period=None, college=None):
+def body_charts(ledger_dir, *, n_periods=7, end_period=None, college=None,
+                palette=None):
     """产出正文图表规格：`{key: {"xml","xlsx","w_cm","h_cm"}}`。
 
     `college` 传 `college_stats.load()` 的结果（`fill_docx.fill_college` 已经 load 过，
     别在这里再读一遍盘）。单张失败不影响其它——调用方逐张 try，失败即回落 PNG。
+    palette＝色板覆盖（None→现值，见 RPT_PALETTE）。
     """
     w = load_wide(ledger_dir)
     _periods, _delta, P = window(ledger_dir, n_periods, end_period)
     w["top_by_year"] = pd.read_parquet(pathlib.Path(ledger_dir) / "wide" / "top_by_year.parquet")
     w["by_year"] = w["top_by_year"]
     out = {}
-    out["1pct"] = ov_1pct(w, P)
-    out["1permille"] = ov_1permille(w, P)
-    out["top_by_subject"] = ov_top_by_subject(w, P)
-    out["top_by_year"] = ov_top_by_year(w, P)
-    out["trend_table"] = ov_trend_table(w, n_periods=n_periods, end_period=end_period)
-    out["rank_table"] = ov_rank_table(w, n_periods=n_periods, end_period=end_period)
+    out["1pct"] = ov_1pct(w, P, palette)
+    out["1permille"] = ov_1permille(w, P, palette)
+    out["top_by_subject"] = ov_top_by_subject(w, P, palette)
+    out["top_by_year"] = ov_top_by_year(w, P, palette)
+    out["trend_table"] = ov_trend_table(w, n_periods=n_periods, end_period=end_period,
+                                         palette=palette)
+    out["rank_table"] = ov_rank_table(w, n_periods=n_periods, end_period=end_period,
+                                       palette=palette)
     if college:
         out["college_cites"] = ov_college_pie(college, "cites")
         out["college_papers"] = ov_college_pie(college, "papers")

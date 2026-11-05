@@ -72,6 +72,30 @@ C_AXIS, C_GRID, C_TEXT = "#D1D5DB", "#E8EAED", "#1F2937"
 FONT_SIZE, TITLE_SIZE = 8, 11
 FIG_W, FIG_H = 8.26 / 2.54, 5.50 / 2.54  # 3.25 x 2.17 inch
 
+# ---------------------------------------------------------------- 色板参数化
+#: 图表色板总表（2026-11-05 参数化，WH-DOC-13 观感不动）：把散在函数体内的
+#: 硬编码色收进一份 dict。**palette=None → 全部落回现值**（复刻线 99 张 PNG 与
+#: out/202607/charts 逐字节钉死，默认输出一个字节都不许变）；带皮肤出图的
+#: 接线是后续轮次——本轮只参数化不接线，调用方一律不传。
+PALETTE = {
+    "title_ink": "#111827",              # _title 的标题字与描边
+    "table_edge": "#BFBFBF",             # 数据表网格线
+    "ink": "#1F1F1F",                    # 正文图加深墨色（rick 反馈加大加深那批）
+    "trend_series": [C_LIGHTBLUE, "#7030A0", "#8C8C8C", "#FFC000"],
+    "threshold_red": "#FF0000",          # 1‰ / 1% 阈值基线
+    "ov_ratio": "#B4A7D6",               # 1% 接近度＝紫柱（rick：紫=实际数据）
+    "ov_gap": "#A9D18E",                 # 差距段＝浅绿
+    "ov_baseline": "red",                # 100% 基线（matplotlib 具名色）
+    "leader": "#A6A6A6",                 # 饼图指引线
+    "ok_green": "#2E7D32",               # v0 概览图 ≥100% 的柱
+    "rank_cn": C_ORANGE, "rank_uni": C_YELLOW, "rank_intl": C_BLUE,
+}
+
+
+def _P(palette: dict | None) -> dict:
+    """合并自定义色板：None/空 → 现值（默认输出逐字节不变）。"""
+    return {**PALETTE, **palette} if palette else PALETTE
+
 plt.rcParams.update({
     # 🔴 必须把字体名列表直接给 font.family：matplotlib 的**逐字形 fallback 只认这一条路径**。
     # 写成 font.family="serif" + font.serif=[...] 不会 fallback（实测 matplotlib 3.11.2：
@@ -188,11 +212,12 @@ def _style(ax):
     ax.set_axisbelow(True)
 
 
-def _title(ax, text):
+def _title(ax, text, palette=None):
     """标题：加大 + 加粗（描边假粗——微软雅黑/Noto Sans 在 matplotlib 里没有可命中的
     bold 字面，直接 fontweight="bold" 会静默回退；描边在两端口径一致）。"""
-    t = ax.set_title(text, fontsize=TITLE_SIZE, color="#111827", pad=30)
-    t.set_path_effects([path_effects.withStroke(linewidth=0.7, foreground="#111827")])
+    p = _P(palette)
+    t = ax.set_title(text, fontsize=TITLE_SIZE, color=p["title_ink"], pad=30)
+    t.set_path_effects([path_effects.withStroke(linewidth=0.7, foreground=p["title_ink"])])
     return t
 
 
@@ -764,8 +789,10 @@ def _save_raw(fig, path):
     plt.close(fig)
 
 
-def _data_table(fig, rect, col_labels, row_labels, rows, *, fontsize=7.2, color=None):
+def _data_table(fig, rect, col_labels, row_labels, rows, *, fontsize=7.2, color=None,
+                palette=None):
     """在 fig 指定区域放一张数据表（第4期原生图表下方的数据表样式）。"""
+    p = _P(palette)
     tax = fig.add_axes(rect)
     tax.axis("off")
     text = [[("" if v is None else (f"{v:g}" if isinstance(v, float) else str(v))) for v in row] for row in rows]
@@ -775,7 +802,7 @@ def _data_table(fig, rect, col_labels, row_labels, rows, *, fontsize=7.2, color=
     tb.set_fontsize(fontsize)
     for cell in tb.get_celld().values():
         cell.set_linewidth(0.4)
-        cell.set_edgecolor("#BFBFBF")
+        cell.set_edgecolor(p["table_edge"])
         try:
             cell.get_text().set_color(color or C_TEXT)
         except AttributeError:
@@ -783,29 +810,31 @@ def _data_table(fig, rect, col_labels, row_labels, rows, *, fontsize=7.2, color=
     return tb
 
 
-def chart_rank_table(ynd_rank, out_png, end_period=None, n=7):
+def chart_rank_table(ynd_rank, out_png, end_period=None, n=7, palette=None):
     """我校 ESI 排名情况（对标第4期 chart1：图内标题 + 逐点数值 + 底部图例 + 数据表，双轴反序）。
 
     配色对齐原件：国内排名=橙、国内高校排名=金、国际排名=蓝（右轴）；轴范围亦照原件
     固定（左 120–170、右 400–1400，反序），7 期窗口内数据形貌与原件一致。
+    palette＝色板覆盖（None→现值，见模块 PALETTE；下同）。
     """
+    p = _P(palette)
     df = ynd_rank.set_index("period").sort_index()
     df = df[df["rank_intl"].notna() | df["rank_cn"].notna()]
     if end_period:
         df = df[df.index <= str(end_period)]
     df = df.tail(n)
-    periods = [str(p) for p in df.index]
+    periods = [str(p0) for p0 in df.index]
 
     # 字号/颜色按 rick 反馈加大加深（只影响本图；全局常量不动）
-    ink = "#1F1F1F"
+    ink = p["ink"]
     fig = Figure(figsize=(5.6, 4.9))
     FigureCanvasAgg(fig)   # 🔴 _labels 要量像素包围盒，裸 Figure 的 FigureCanvasBase 没有 get_renderer
     ax = fig.add_axes([0.15, 0.47, 0.64, 0.38])
     ax2 = ax.twinx()
     x = list(range(len(df)))
-    ln1, = ax.plot(x, df["rank_cn"], marker="o", ms=4.5, lw=1.8, color="#ED7D31", label="国内排名")
-    ln2, = ax.plot(x, df["rank_cn_uni"], marker="o", ms=4.5, lw=1.8, color="#FFC000", label="国内高校排名")
-    ln3, = ax2.plot(x, df["rank_intl"], marker="o", ms=4.5, lw=1.8, color="#4472C4", label="国际排名（右标）")
+    ln1, = ax.plot(x, df["rank_cn"], marker="o", ms=4.5, lw=1.8, color=p["rank_cn"], label="国内排名")
+    ln2, = ax.plot(x, df["rank_cn_uni"], marker="o", ms=4.5, lw=1.8, color=p["rank_uni"], label="国内高校排名")
+    ln3, = ax2.plot(x, df["rank_intl"], marker="o", ms=4.5, lw=1.8, color=p["rank_intl"], label="国际排名（右标）")
     ax.set_xticks(x)
     ax.set_xticklabels(periods, fontsize=10)
     ax.set_xlim(-0.6, len(df) - 0.4)
@@ -913,7 +942,7 @@ def trend_picks(cites, thr_1permille, end_period=None, n=7, top_k=4, entered=Non
 
 
 def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k=4,
-                      entered=None):
+                      entered=None, palette=None):
     """我校主要学科近期发展趋势（对标第 3/4/5 期原生图：1‰ 接近度前 4 学科 + ESI1‰ 线 + 图下数据表）。
 
     与原件逐项对齐（其 chart XML 口径）：粗体标题；纵轴 20–100%、`0.00%` 两位小数，
@@ -930,9 +959,10 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
     # 原件配色＝Office 主题色按系列序（其 chart XML 只显式写了 #7030A0 与红）：化学=accent1、
     # 植物与动物学=#7030A0、环境生态学=accent3、工程学=accent4。
     # accent3 原色 #A5A5A5 太浅（rick 反馈颜色浅）→ 稍加深到 #8C8C8C（线/标签同色）。
-    colors = [C_LIGHTBLUE, "#7030A0", "#8C8C8C", "#FFC000"]
+    p = _P(palette)
+    colors = p["trend_series"]
 
-    ink = "#1F1F1F"
+    ink = p["ink"]
     markers = ("o", "s", "^", "D")
     fig = Figure(figsize=(6.6, 6.6))
     FigureCanvasAgg(fig)   # 🔴 _labels 要量像素包围盒，裸 Figure 的 FigureCanvasBase 没有 get_renderer
@@ -954,9 +984,9 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
     ax.set_ylim(20, 100)
     ax.set_yticks(range(20, 101, 20))
     ax.set_yticklabels([f"{v:.2f}%" for v in range(20, 101, 20)], fontsize=10)
-    ax.axhline(100, color="#FF0000", lw=1.6, zorder=2)
+    ax.axhline(100, color=p["threshold_red"], lw=1.6, zorder=2)
     ax.text(0.99, 98.2, "ESI1‰ 基线 = 100%", transform=ax.get_yaxis_transform(),
-            ha="right", va="top", color="#FF0000", fontsize=9)
+            ha="right", va="top", color=p["threshold_red"], fontsize=9)
     for s in ("top", "right", "bottom"):    # 底轴不画线：表格顶边框就是那条线（原件同款）
         ax.spines[s].set_visible(False)
     ax.tick_params(length=0, labelsize=10, colors=ink)
@@ -968,10 +998,10 @@ def chart_trend_table(cites, thr_1permille, out_png, end_period=None, n=7, top_k
                frameon=False, labelcolor=ink, bbox_to_anchor=(0.5, 0.008),
                bbox_transform=fig.transFigure)
     title = fig.text(0.517, 0.975, "我校主要学科近期发展趋势", ha="center", va="top",
-                     fontsize=14, color="#1F1F1F")
+                     fontsize=14, color=ink)
     # 宋体/Noto Serif 没有可命中的 bold 字面（matplotlib 会静默回退成常规字重）→ 用描边假粗，
     # 与原件「标题加粗」观感一致，且 Windows/Linux 两端表现一致。
-    title.set_path_effects([path_effects.withStroke(linewidth=0.7, foreground="#1F1F1F")])
+    title.set_path_effects([path_effects.withStroke(linewidth=0.7, foreground=ink)])
     # 数值标注：4 线 × 7 期全标会挤成一团 → 每条线只标最后一期，全量数值在下方数据表。
     # 🔴 `dodge=False`：**别开避让**——避让按整行字高挪标签，会把「47.89%」挪到紫线头上，
     # 数字与线错配（实测）。纵轴 0–105% 后 4 个末点只差 ~10pt，靠加大画幅（6.6×6.0in）
@@ -1067,11 +1097,12 @@ def college_merged(units, mode):
     return items, total
 
 
-def chart_college_pie(stats, out_png, mode):
+def chart_college_pie(stats, out_png, mode, palette=None):
     """学院贡献度饼图（对标第4期两张）：mode='cites' 被引频次实心饼 / 'papers' 发文量环形。
 
     <1.5% 的份额合并为「其他（k 个单位）」，避免小份额标签挤成一团（口径见 `college_merged`）。
     """
+    p = _P(palette)
     items, total = college_merged(stats["units"], mode)
     vals = [it["value"] for it in items]
     labels = [it["name"] for it in items]
@@ -1103,8 +1134,8 @@ def chart_college_pie(stats, out_png, mode):
         ax.annotate(f"{lab}：{v / total * 100:.2f}%", xy=(x * 0.98, y * 0.98),
                     xytext=(1.58 if right else -1.58, ty_of[k]),
                     ha="left" if right else "right", va="center",
-                    fontsize=8, color="#1F1F1F",
-                    arrowprops=dict(arrowstyle="-", color="#A6A6A6", lw=0.6))
+                    fontsize=8, color=p["ink"],
+                    arrowprops=dict(arrowstyle="-", color=p["leader"], lw=0.6))
     ax.set_xlim(-3.3, 3.3)
     ax.set_ylim(-1.85, 1.85)
     _save_raw(fig, out_png)
@@ -1113,7 +1144,8 @@ def chart_college_pie(stats, out_png, mode):
 
 # ---------- 预测章配图：实际 + 模型（拟合历史 + 递推预测）----------
 def chart_forecast(hist_periods, hist, model_hist, fut_periods, fut,
-                   labels, colors, out_png, grid=True, figsize=(7.2, 3.2)):
+                   labels, colors, out_png, grid=True, figsize=(7.2, 3.2),
+                   palette=None):
     """预测章「模型预测图」：两个指标各画「实际（实线）+ 模型（虚线，含历史拟合段）」。
 
     · `hist` / `model_hist` / `fut` 均为 **(指标1, 指标2)** 二元组；
@@ -1127,7 +1159,7 @@ def chart_forecast(hist_periods, hist, model_hist, fut_periods, fut,
       「段落 + 两图」（母版里第 2 张图段还埋了硬分页符，见 fill_docx.fill_forecast_charts），
       图再高一点第 2 张就会被挤到下一页（Word 实测）。
     """
-    ink = "#1F1F1F"
+    ink = _P(palette)["ink"]
     fig, ax = _fig(*figsize)
     xh = list(range(len(hist_periods)))
     n_h = len(hist_periods)
@@ -1178,7 +1210,7 @@ def chart_forecast(hist_periods, hist, model_hist, fut_periods, fut,
 
 
 # ---------- 概览图：1% 接近度（红基线；对标第4期风格）----------
-def chart_overview_1pct(cites, threshold, out_png, period):
+def chart_overview_1pct(cites, threshold, out_png, period, palette=None):
     """1% 接近度（对标第 4 期原件）。
 
     🔴 rick 2026-09-24：「**紫色是实际数据，绿色是差距**」——
@@ -1186,13 +1218,14 @@ def chart_overview_1pct(cites, threshold, out_png, period):
     ≥100% 只有紫柱；**不能把 <100% 整根画成绿柱**（那等于把实际值当差距，
     图例与图形自相矛盾）。横轴＝整百刻度、两位小数带 %；图例在轴下一行（同原件）。
     """
-    ink = "#1F1F1F"
+    p = _P(palette)
+    ink = p["ink"]
     fig, ax = _fig(5.75, 5.9)                   # 与第4期原件同规格（14.6×15.0cm 插图）：字号 1:1
     ratio = ((cites[period] / threshold[period]) * 100).dropna().sort_values()
     y = list(range(len(ratio)))
     gap = (100 - ratio).clip(lower=0)           # 已进 1% 的不画差距段
-    ax.barh(y, ratio, color="#B4A7D6", height=0.7, label="与ESI前1%的接近度")
-    ax.barh(y, gap, left=ratio, color="#A9D18E", height=0.7, label="与ESI前1%的差距")
+    ax.barh(y, ratio, color=p["ov_ratio"], height=0.7, label="与ESI前1%的接近度")
+    ax.barh(y, gap, left=ratio, color=p["ov_gap"], height=0.7, label="与ESI前1%的差距")
     # 数值标签放**柱左端**（rick 2026-09-24 对照第4期原件定的）：统一贴在轴右侧一点点，
     # 读起来是「标签 + 柱长」；小柱的标签会越过柱尾落到差距段上（原件同款，深色字在
     # 浅紫/浅绿上都清楚）。
@@ -1200,7 +1233,7 @@ def chart_overview_1pct(cites, threshold, out_png, period):
     for i, v in enumerate(ratio):
         ax.text(xmax * 0.004, i, f"{v:.2f}%", va="center", ha="left", fontsize=8,
                 color=C_TEXT)
-    ax.axvline(100, color="red", lw=1.6)
+    ax.axvline(100, color=p["ov_baseline"], lw=1.6)
     ax.set_xlim(0, xmax)
     ticks = list(range(0, xmax + 1, 100))
     ax.set_xticks(ticks)
@@ -1211,9 +1244,9 @@ def chart_overview_1pct(cites, threshold, out_png, period):
     ax.grid(False)          # 原件无网格线（rick 2026-09-24 定）
     ax.tick_params(length=0, pad=4)      # 原件无刻度短线（默认那截短线会插在学科名后面）
     from matplotlib.patches import Patch
-    ax.legend(handles=[Patch(color="#B4A7D6", label="与ESI前1%的接近度"),
-                       Patch(color="#A9D18E", label="与ESI前1%的差距"),
-                       Patch(color="red", label="ESI前1%基线")],
+    ax.legend(handles=[Patch(color=p["ov_ratio"], label="与ESI前1%的接近度"),
+                       Patch(color=p["ov_gap"], label="与ESI前1%的差距"),
+                       Patch(color=p["ov_baseline"], label="ESI前1%基线")],
               fontsize=10, loc="upper center", bbox_to_anchor=(0.5, -0.075),
               ncol=3, frameon=False, labelcolor=ink,
               handlelength=1.3, columnspacing=1.2, handletextpad=0.6)
@@ -1221,21 +1254,23 @@ def chart_overview_1pct(cites, threshold, out_png, period):
 
 
 # ---------- 概览图：1‰ 潜力（已进入1%学科，接近度+差距堆叠）----------
-def chart_overview_1permille(cites, thr_1permille, entered_1pct, out_png, period):
+def chart_overview_1permille(cites, thr_1permille, entered_1pct, out_png, period,
+                             palette=None):
     """🔴 `entered_1pct` 必须是**事件表推导的 0/1 矩阵**，不是接近度。
 
     两者在第 1 期 202601 会差一个学科（数学）：接近度口径多算 → 图里多一条，
     而正文按事件表写 13 个，图文自相矛盾。口径源见 `parse_ledger.build_entered_1pct`。
     """
     # 字号/颜色按 rick 反馈加大加深（与排名图同规格；原图表图例在底部：chart2 legendPos=b）
-    ink = "#1F1F1F"
+    p = _P(palette)
+    ink = p["ink"]
     fig, ax = _fig(3.7, 2.95)
     entered = entered_1pct[period][entered_1pct[period] >= 1].index
     ratio = (cites[period][entered] / thr_1permille[period][entered] * 100).dropna().sort_values()
     gap = 100 - ratio
     y = range(len(ratio))
-    ax.barh(y, ratio, color="#B4A7D6", height=0.7, label="1‰接近度")
-    ax.barh(y, gap, left=ratio, color="#A9D18E", height=0.7, label="与前1‰差距")
+    ax.barh(y, ratio, color=p["ov_ratio"], height=0.7, label="1‰接近度")
+    ax.barh(y, gap, left=ratio, color=p["ov_gap"], height=0.7, label="与前1‰差距")
     for i, v in enumerate(ratio):
         ax.text(v + 1.5, i, f"{v:.2f}%", va="center", fontsize=8.5, color=ink)
     ax.set_yticks(list(y))
@@ -1250,11 +1285,12 @@ def chart_overview_1permille(cites, thr_1permille, entered_1pct, out_png, period
 
 
 # ---------- 旧版概览图（保留兼容）----------
-def chart_overview_1pct_v0(cites, threshold, out_png, period):
+def chart_overview_1pct_v0(cites, threshold, out_png, period, palette=None):
     fig, ax = _fig()
+    p = _P(palette)
     ratio = (cites[period] / threshold[period]) * 100
     ratio = ratio.dropna().sort_values()
-    colors = [C_BLUE if v < 100 else "#2E7D32" for v in ratio]
+    colors = [C_BLUE if v < 100 else p["ok_green"] for v in ratio]
     ax.barh(range(len(ratio)), ratio, color=colors, height=0.65)
     ax.axvline(100, color="red", lw=1.4)
     ax.set_yticks(range(len(ratio)))

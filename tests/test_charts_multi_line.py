@@ -29,19 +29,23 @@ FROZEN = {
                               "zero_base", "include"),
     "chart_top_papers": ("top", "disc", "out_png", "periods", "floor_zero"),
     "chart_q_dist": ("q1q4", "disc", "out_png", "period", "floor_zero"),
-    "chart_rank_table": ("ynd_rank", "out_png", "end_period", "n"),
+    "chart_rank_table": ("ynd_rank", "out_png", "end_period", "n", "palette"),
     "chart_ynd_rank": ("ynd_rank", "out_png", "end_period", "n"),
     "chart_trend_table": ("cites", "thr_1permille", "out_png", "end_period", "n",
-                          "top_k", "entered"),
+                          "top_k", "entered", "palette"),
     "chart_top_by_year": ("by_year", "out_png", "period"),
     "chart_top_by_subject": ("top_papers", "out_png", "period"),
-    "chart_college_pie": ("stats", "out_png", "mode"),
-    "chart_overview_1pct": ("cites", "threshold", "out_png", "period"),
-    "chart_overview_1pct_v0": ("cites", "threshold", "out_png", "period"),
-    "chart_overview_1permille": ("cites", "thr_1permille", "entered_1pct", "out_png", "period"),
+    "chart_college_pie": ("stats", "out_png", "mode", "palette"),
+    "chart_overview_1pct": ("cites", "threshold", "out_png", "period", "palette"),
+    "chart_overview_1pct_v0": ("cites", "threshold", "out_png", "period", "palette"),
+    "chart_overview_1permille": ("cites", "thr_1permille", "entered_1pct", "out_png", "period",
+                                  "palette"),
     "chart_forecast": ("hist_periods", "hist", "model_hist", "fut_periods", "fut",
-                       "labels", "colors", "out_png", "grid", "figsize"),
+                       "labels", "colors", "out_png", "grid", "figsize", "palette"),
 }
+# 2026-11-05 色板参数化（默认不接线）：上列 7 图型各追加**可选** `palette`
+# 关键字参数——palette=None → 现值、默认输出逐字节不变（tmp/_flex_verify_bytes2.py
+# 复刻线逐字节比对佐证），正是本文件「只许追加可选参数、默认值＝原行为」允许的追加。
 
 
 def _series() -> dict:

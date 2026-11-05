@@ -217,7 +217,7 @@ def _img_url(src: str, prefix: str, img_map) -> str:
 #: 色板仍走 MONO 灰阶，字体本地栈零外链（数学稿同款）。
 #: class 名保留（wrap / dense / fx-mark / fx-about / figrow / export-mark）。
 SHELL = """<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8">
+<html lang="zh-CN"{attrs}><head><meta charset="utf-8">{meta}
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title>
 <style>
@@ -298,7 +298,7 @@ a{{color:var(--ink);text-decoration:underline;text-decoration-color:var(--faint)
 /* 导出件页脚标注（2026-10-15）：报告内不再重复声明，声明在下载件页脚出现一次 */
 .export-mark{{margin-top:34px;padding-top:10px;border-top:1px solid var(--line);
 font-size:12px;color:var(--ink-3);text-align:center;letter-spacing:.06em}}
-</style></head><body><div class="sheet">
+</style>{xstyle}</head><body><div class="sheet">
 <div class="spine"><div class="t" style="font-size:{spine_px}px">{spine}</div>
 <div class="b">{spine_b}</div></div>
 <div class="wrap">
@@ -418,7 +418,8 @@ def _sectheads(body: str) -> str:
     return re.sub(r"<h3>(.*?)</h3>", _repl, head) + tail
 
 
-def standalone(md: str, title: str, *, base_dir=None, chart_payloads=None) -> str:
+def standalone(md: str, title: str, *, base_dir=None, chart_payloads=None,
+               appearance=None) -> str:
     """渲染成可离线打开的**独立** HTML 件（R04 骨架）。
 
     `base_dir`（＝报告所在目录）：给了就把 `charts/*.png` 内联成 data URI——
@@ -428,6 +429,12 @@ def standalone(md: str, title: str, *, base_dir=None, chart_payloads=None) -> st
     `<img>` 图替换成 ECharts 容器（数学稿观感），库与数据全部内联，
     仍是单文件零外链；没给的图保持 PNG 内联（docx 出口不受影响）。
     🔴 payload 不含轴范围——渲染层 `scale:true` 让轴由数据自适应。
+
+    `appearance`（报告外观三轴，同 monitor 模式）：给了才在
+    `<html>` 上挂 data-* 属性、在 SHELL `<style>` 后追加一段
+    `--rpt-*` 皮肤/模板 CSS、并在 <head> 里写外观签名 meta；
+    **None 时一个字节都不加**——输出与不带外观参数逐字节相同
+    （渲染层 `_INIT_JS` 本就读 `--rpt-*`，读不到就回落写死色值）。
 
     稿首元信息（期次 / 意图 / 规划后端）摘进顶注；首个「指标/数值/来源」表
     升级为大数统计行；`h2` 升级为右对齐节标题。
@@ -453,9 +460,23 @@ def standalone(md: str, title: str, *, base_dir=None, chart_payloads=None) -> st
         tag = " · ".join(parts)
     else:
         tag = "学科信息参考 · 第二条产线"
+    if appearance is None:
+        # 不带外观：三个占位符全空串，SHELL 输出与从前逐字节一致。
+        attrs = meta = xstyle = ""
+    else:
+        # 带外观：属性挂 <html>，CSS 追加在 SHELL <style> 之后（后写覆盖），
+        # 签名 meta 写 <head>（生成件与下载件可对签）。
+        from .appearance import flex_appearance_css, head_meta, normalize
+        a = normalize(appearance)
+        attrs = (f' data-template="{a["template"]}"'
+                 f' data-skin-rpt="{a["skin_rpt"]}"'
+                 f' data-font="{a["font"]}"')
+        meta = head_meta(appearance).rstrip("\n")
+        xstyle = f"<style>{flex_appearance_css(a)}</style>"
     return SHELL.format(title=html.escape(title), body=body, scripts=scripts,
                         spine=html.escape(title), spine_px=_spine_px(title),
-                        spine_b="灵活报告 · 第二条产线", tophead=tag)
+                        spine_b="灵活报告 · 第二条产线", tophead=tag,
+                        attrs=attrs, meta=meta, xstyle=xstyle)
 
 
 _FIG = re.compile(

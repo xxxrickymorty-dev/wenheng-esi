@@ -174,13 +174,15 @@ _e = html.escape
 _fmt = lambda v: f"{v:,.0f}"
 
 
-def report_data(cn: str, period: str, cache: dict, insight: dict | None = None) -> dict:
+def report_data(cn: str, period: str, cache: dict, insight: dict | None = None,
+                *, appearance: dict | None = None) -> dict:
     """数据装配层：HTML 渲染与 Word 导出（monitor/docx.py）共用的唯一数据源。
 
     站位事实（上榜/前 1%/前 1‰/排名/接近度）统一取自 facts 层（monitor/facts.py，
     20261101 C6 唯一派生），本函数只做显示值换算与章节装配：千分位、×1.83、
     前 16.9%，两个消费者都不做第二套换算；趋势 combine 的装配同样收在这里。
-    零 LLM、零网络。
+    零 LLM、零网络。appearance 只进图表生成器（charts.* 的外观参数），
+    不碰任何数字与文本；None（Word 出口与旧调用路径）＝图表原样。
     """
     s = sch.find(cn)
     if s is None:
@@ -268,7 +270,8 @@ def report_data(cn: str, period: str, cache: dict, insight: dict | None = None) 
         sec1["charts"] = [{"cap": "在榜学科论文结构",
                            "svg": charts.donut([(CN[stem], r[2] or 0) for stem, r in
                                                 sorted(pairs, key=lambda kv: -(kv[1][2] or 0))],
-                                               title=f"在榜论文合计\n{mine_sum:,.0f}")}]
+                                               title=f"在榜论文合计\n{mine_sum:,.0f}",
+                                               appearance=appearance)}]
 
     pm_cells = [[CN[stem], f"{r[0]} / {cache['fields'][stem]['m']}",
                  f"第 {cache['fields'][stem]['line']} 位",
@@ -280,7 +283,8 @@ def report_data(cn: str, period: str, cache: dict, insight: dict | None = None) 
                          "colclasses": ["", "n", "n", "n"], "rows": pm_cells}
         sec2["charts"] = [{"svg": charts.permille_strip(
             [(CN[stem], r[0], cache["fields"][stem]["m"], cache["fields"][stem]["line"])
-             for stem, r in pairs if r[0] <= cache["fields"][stem]["line"]])}]
+             for stem, r in pairs if r[0] <= cache["fields"][stem]["line"]],
+            appearance=appearance)}]
     sec2["notes"] = ([] if pm_cells else ["本期无学科进入前 1‰。"])
     sec2["notes"].append("1‰ 线＝榜内第 ⌊(m+1)/10⌋ 位机构的被引（m＝榜内机构数），与 extract_1permille 同法。")
 
@@ -300,14 +304,16 @@ def report_data(cn: str, period: str, cache: dict, insight: dict | None = None) 
     else:
         figs = [{"cap": "总被引轨迹",
                  "svg": charts.line_chart([("总被引",
-                                            [(p["period"], p.get("total_cites")) for p in pts])])}]
+                                            [(p["period"], p.get("total_cites")) for p in pts])],
+                                         appearance=appearance)}]
         best = sorted((r[0] / cache["fields"][stem]["m"], stem) for stem, r in present.items()
                       if cache["fields"][stem].get("m"))
         for _pct, stem in best:
             seq = [(f["period"], f.get("rank")) for f in flds.get(stem) or []]
             if len(seq) >= 2:
                 figs.append({"cap": f"{CN[stem]} · 全球排名轨迹",
-                             "svg": charts.line_chart([(_e(CN[stem]), seq)], y_invert=True)})
+                             "svg": charts.line_chart([(_e(CN[stem]), seq)], y_invert=True,
+                                                        appearance=appearance)})
                 break
         # ---- 入榜与进位时间轴：文字清单换甘特轴。事件判定唯一在 facts.entry_events
         # （20261101 C6）：每在榜学科 first_seen＝序列首个有 rank 的期次，first1＝首次
@@ -349,7 +355,8 @@ def report_data(cn: str, period: str, cache: dict, insight: dict | None = None) 
             ev.sort(key=lambda r0: (r0["entry1"] or r0["entrypm"] or "9999", r0["label"]))
             sec3["timeline"] = {
                 "cap": "入榜与进位时间轴",
-                "svg": charts.entry_timeline(ev, periods=periods) if ev else "",
+                "svg": charts.entry_timeline(ev, periods=periods,
+                                              appearance=appearance) if ev else "",
                 "pre_note": (f"档案起点前已入围 {len(pre_names)} 学科：{'、'.join(pre_names)}。"
                              if pre_names else ""),
                 "items": items}
@@ -374,7 +381,8 @@ def report_data(cn: str, period: str, cache: dict, insight: dict | None = None) 
     if bars:
         sec4["charts"] = [{"svg": charts.hbar_log(bars, lo=0.5, ref=1.0, ref_label="1× 阈值",
                                                   fmt=lambda v: f"{v:.2f}",
-                                                  tick_fmt=lambda v: f"{v:g}×")} ]
+                                                  tick_fmt=lambda v: f"{v:g}×",
+                                                  appearance=appearance)}]
     if miss_list:
         notes4.append(f"未上榜 {len(miss_list)} 学科（{'、'.join(miss_list)}）低于榜内收录线或未导出，"
                       "无被引数据，接近度不可算，不外推。")
@@ -498,7 +506,7 @@ def render(cn: str, period: str, cache: dict, insight: dict | None = None,
     现有取数链与回归全靠这条。非 None → 在 <html> 上挂三轴属性，并在 _CSS 之后
     追加皮肤/字体/图表换色/模板 CSS；内容部分（数字、表格、章节）原样不动。
     """
-    d = report_data(cn, period, cache, insight)
+    d = report_data(cn, period, cache, insight, appearance=appearance)
     nums_html = "".join(
         f'<div class="nm"><div class="nl">{_e(n["label"])}</div>'
         + (f'<div class="nv">{_e(n["value"])}<small>{_e(n["suffix"])}</small></div>'
