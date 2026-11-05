@@ -250,6 +250,13 @@ def _polish(mode, text: str, label: str = "", *, facts=(), period: str = "",
         return text
 
 
+#: 待审线纠偏提示（2026-11-05）：低思考档型号常写成整段判断却一条待审线都不标。
+#: 零数字——与其它外发文本一样过盾。
+_MARK_HINT = (
+    "【上一稿待审线缺失】需要馆员拍板的判断句要用两个等号包住（如 ==本期位次仍不稳==），"
+    "证据句与过渡句不要标；只输出正文。")
+
+
 def _compose(topic: str, safe: str, *, facts=(), period: str = "", label: str = "",
              log: list | None = None) -> tuple[str, int]:
     """判断节创写（票 04）：节主题＋事实摘要 → 判断草稿；返回 (文本, 兜底补标句数)。
@@ -280,6 +287,20 @@ def _compose(topic: str, safe: str, *, facts=(), period: str = "", label: str = 
                               veto=_veto, status=st)
         if st.get("mode") == "model":
             got, n = op.backfill_marks(got)
+            if n and _strict():
+                # 一次自愈（2026-11-05，GLM 低思考档实测）：模型写了一整段判断却
+                # 一条待审线都没标 → 规则补标在开启态下不许用。给它一次机会自己标，
+                # 仍不标才显式失败（比直接让馆员点重试便宜）。
+                try:
+                    again = _writer.compose(topic, facts=facts, safe=safe, period=period,
+                                            label=label, veto=_veto, status=st,
+                                            hint=_MARK_HINT)
+                except Exception as e:                                  # noqa: BLE001
+                    if _AIRequiredError is None or not isinstance(e, _AIRequiredError):
+                        raise
+                    again = None            # 重问整段失败：仍按「漏标」报，不换成空回
+                if again is not None and st.get("mode") == "model":
+                    got, n = op.backfill_marks(again)
             if n and _strict():
                 # 供应商强制语义（rick 2026-11-04）：兜底补标＝规则补丁，
                 # 开启态下不许出现——显式失败，不落半份规则稿。

@@ -393,3 +393,50 @@ def test_探活透传headers_鉴权头不被覆盖(tmp_path):
         assert seen.get("Authorization") == "Bearer sk-probe", "鉴权头不许被覆盖"
     finally:
         httpd.server_close()
+
+
+# ============================================================ params（2026-11-05，GLM 适配）
+def test_params保存读取round_trip(tmp_path):
+    """推理型型号的思考深度随供应商保存；读口/界面面都带出来（改时预填）。"""
+    _seed(tmp_path, params={"reasoning_effort": "low"})
+    with ai.using(data_root=tmp_path):
+        assert _models.read()["providers"][0]["params"] == {"reasoning_effort": "low"}
+        assert _models.public()["providers"][0]["params"] == {"reasoning_effort": "low"}
+    raw = json.loads((tmp_path / "_ai" / "models.json").read_text(encoding="utf-8"))
+    assert raw["providers"][0]["params"] == {"reasoning_effort": "low"}, "落在 out/ 清单里"
+
+
+def test_params不给就沿用_给空即清空(tmp_path):
+    """三态：不给＝沿用旧值（别静默抹掉别人的调参）；给 {} ＝明确清空（回网关缺省）。"""
+    _seed(tmp_path, params={"reasoning_effort": "low"})
+    with ai.using(data_root=tmp_path):
+        kept = _models.upsert({"id": "test-prov", "label": "测试模型", "key": "",
+                               "base_url": "https://example.test/v1",
+                               "models": ["Test/Model-1"]}, actor="admin")
+        assert kept["params"] == {"reasoning_effort": "low"}, "没提 params＝沿用"
+        gone = _models.upsert({"id": "test-prov", "label": "测试模型", "key": "",
+                               "base_url": "https://example.test/v1",
+                               "models": ["Test/Model-1"], "params": {}}, actor="admin")
+        assert "params" not in gone, "给空对象＝清掉（回网关缺省）"
+
+
+def test_params白名单与取值校验(tmp_path):
+    with ai.using(data_root=tmp_path):
+        for bad in ({"temperature": "0.9"},                  # 不认识的结构键
+                    {"reasoning_effort": "huge"},            # 取值不在四档里
+                    "reasoning_effort=low"):                 # 形状不对（要对象）
+            with pytest.raises(ValueError):
+                _models.upsert({"label": "X", "key": "k" * 10,
+                                "base_url": "https://a.test/v1", "params": bad,
+                                "models": ["X"]}, actor="admin")
+
+
+def test_当前条目的params传进brain(tmp_path, monkeypatch):
+    monkeypatch.setattr(_models, "active_credentials", _REAL_ACTIVE)
+    _seed(tmp_path, params={"reasoning_effort": "low"})
+    with ai.using(data_root=tmp_path):
+        brain = _config.build_brain()
+        assert brain._extra_params == {"reasoning_effort": "low"}, "清单条目的调参随调用发出"
+    _seed(tmp_path, params={})          # 明确清空（不给＝沿用，见上一条用例）
+    with ai.using(data_root=tmp_path):
+        assert _config.build_brain()._extra_params == {}, "没配＝不发（网关缺省）"

@@ -138,11 +138,11 @@ function renderForm(draft: ProviderDraft = BLANK_DRAFT, headersText = '',
                onError={() => {}} onCancel={() => {}} onSubmit={() => {}} />)
 }
 
-describe('供应商表单字段序照图二：API 密钥 → 显示名称 → API 地址 → API 协议 → 模型目录', () => {
+describe('供应商表单字段序照图二：API 密钥 → 显示名称 → API 地址 → API 协议 → 思考深度 → 模型目录', () => {
   it('label 顺序逐字对上（Headers/备注殿后），模型目录是字段块', () => {
     const html = renderForm()
     const labels = [...html.matchAll(/<label[^>]*>([^<]{1,20})</g)].map((m) => m[1])
-    expect(labels).toEqual(['API 密钥', '显示名称', 'API 地址', 'API 协议',
+    expect(labels).toEqual(['API 密钥', '显示名称', 'API 地址', 'API 协议', '思考深度',
                              'Headers（可选）', '备注'])
     expect(html).toContain('模型目录')
   })

@@ -154,6 +154,38 @@ def test_空回复回落(tmp_path, fake):
     assert row["fallback"] == "empty_reply"
 
 
+def test_思考吃光预算_原因码分明(tmp_path, fake):
+    """推理型型号：正文空、思考有字 → 原因码说「思考用满预算」，别让人去查网关。
+
+    实测原型：GLM-5.3-Flash 缺省档 8192 tokens 全进 reasoning_content、正文 0 字。
+    """
+    fake.raw = json.dumps({"choices": [{"message": {"content": "",
+                                                   "reasoning_content": "先看学科，再看阈值…"},
+                                        "finish_reason": "length"}]})
+    ans = diag(tmp_path, brain(fake))
+    assert ans.mode == "rule"
+    assert "思考深度" in ans.notice, "人话要说清该调哪个旋钮"
+    row = json.loads((tmp_path / "202607" / "ai_calls.jsonl").read_text(encoding="utf-8"))
+    assert row["fallback"] == "brain_error:reasoning_budget"
+
+
+def test_附加参数进请求体_结构键不许覆盖(fake):
+    """清单条目的 params 只补「软」旋钮；model/messages/max_tokens 这些结构键由适配器写。"""
+    b = brain(fake, extra_params={"reasoning_effort": "low", "max_tokens": 1,
+                                  "messages": [], "model": "evil"})
+    b.think(Brief(ability="t", system="s", task="u", step=1, max_steps=1))
+    body = fake.requests[0]["json"]
+    assert body["reasoning_effort"] == "low", "调参要真发出去"
+    assert body["max_tokens"] > 1 and body["model"] == "deepseek-flash", "结构键不许被覆盖"
+    assert body["messages"] and body["messages"][0]["role"] == "system"
+
+
+def test_附加参数没配_请求体与从前逐字一致(fake):
+    b = brain(fake)
+    b.think(Brief(ability="t", system="s", task="u", step=1, max_steps=1))
+    assert "reasoning_effort" not in fake.requests[0]["json"]
+
+
 def test_外发预算超限_不发包(tmp_path, fake):
     ans = diag(tmp_path, brain(fake, max_egress_chars=10))
     assert ans.mode == "rule"

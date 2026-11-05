@@ -314,7 +314,10 @@ def _make_openai_stream(pi, cfg, egress):
         timeout=float(cfg["timeout"]), temperature=0.0,
         max_tokens=min(int(cfg["max_tokens"] or 2048), 2048),
         max_egress_chars=int(cfg["max_egress_chars"] or 0),
-        extra_headers=cfg.get("headers") or None)
+        extra_headers=cfg.get("headers") or None,
+        # 清单条目的思考深度（2026-11-05）：补槽只要一个 JSON 对象，2048 的预算
+        # 经不起推理型型号先想几千字——不带这个参数，GLM 这类型号会「只想不答」。
+        extra_params=cfg.get("params") or None)
 
     class _OpenAIStream:
         def __init__(self):

@@ -66,6 +66,13 @@ _PLAN_SYSTEM = (
     "其中 charts 是数组，元素形如 {\"kind\": \"图型名\", \"disc\": \"学科英文名\"}。"
 )
 
+#: 规划重问提示（2026-11-05）：模型自造占位标记 / 不是 JSON 时用一句话纠偏。
+#: 本身零数字——它和其它外发文本一样过盾。
+_PLAN_RETRY_HINT = (
+    "上一稿没通过数字校验：里面出现了没有登记过的标记编号（方括号带编号那种）。"
+    "本轮只填学科名与图型名，任何数字、任何取数标记都不要写；periods 留空，"
+    "n_periods 只给一个整数。")
+
 
 def resolve_disc(src: DataSource, disc) -> str | None:
     """把用户给的学科（英文规范名 / 中文名 / 空）解析成英文名。
@@ -185,6 +192,7 @@ def _model_prompt(src: DataSource, intent: str, target=None,
         "不要输出任何数字、不要计算、不要给纵轴范围。\n"
         "只输出一个 JSON 对象，键仅允许：" + "、".join(_PLAN_KEYS) + "。\n"
         "其中 charts 是数组，元素形如 {\"kind\": \"图型名\", \"disc\": \"学科英文名\"}。\n"
+        "periods 不要填；n_periods 只填 2–30 的整数。\n"
         + ("🔴 用户已指定学科：单学科类图（disc_scope=single）的 disc 只许填它，"
            "标题必须含它。\n" if target else "")
         + "\n可用信息（其中『规划依据_摘要』仅供挑选方向，不是可引用数值）：\n"
@@ -197,26 +205,42 @@ def _brain_plan(src, intent, target=None, critic_hint: str | None = None):
     """经 AI 层模型边界问云端（盾保护 + 校验）。返回 `(规划 JSON | None, 原因, 后端名)`。"""
     from ai import _attempt                                         # noqa: PLC0415
 
-    res = _attempt.attempt(_model_prompt(src, intent, target, critic_hint),
-                           system=_PLAN_SYSTEM,
-                           ability="flex-plan", anchored=False,
-                           allow_substrings=tuple(sp.KINDS))
-    if not res.attempted:
-        return None, None, ""                                       # 规则部署：用规则规划
+    def _ask(hint: str | None):
+        res = _attempt.attempt(_model_prompt(src, intent, target, hint),
+                               system=_PLAN_SYSTEM,
+                               ability="flex-plan", anchored=False,
+                               allow_substrings=tuple(sp.KINDS))
+        if not res.attempted:
+            return None, None, "", res                              # 规则部署：用规则规划
+        if res.text is None:
+            return None, res.reason, "", res
+        got = _parse_json(res.text)
+        if got is None:
+            return None, "bad_json", res.backend, res
+        return got, None, res.backend, res
+
+    got, reason, backend, res = _ask(critic_hint)
+    # 一次自愈（2026-11-05，GLM 低思考档实测）：模型偶尔自己编占位标记（写成 [[21]]，
+    # 超出本次登记的 20 个编号）→ 盾按「未登记数字」整份拒收。这不是模型坏了，
+    # 是它把摘要里的编号当成了可用值；重问一次比让馆员点重试便宜（2 秒级）。
+    # 只对「模型应了但内容不合格」重问；超时/限流/连不上不重问，不浪费第二次。
+    if got is None and reason in ("shield_reject", "bad_json"):
+        first_reason = reason
+        got, reason, backend, res = _ask(_PLAN_RETRY_HINT)
+        if got is None and not str(reason or "").startswith("brain_error:"):
+            # 重问没救回来（还是不合格 / 空回）：报**第一稿**的原因——它才说明问题
+            # 在哪；第二次的 empty_reply 会把馆员引去查网关。
+            reason = first_reason
     strict = _attempt.strict_enabled()
-    if res.text is None:
+    if got is None:
+        if reason is None:
+            return None, None, ""                                   # 规则部署（backend 空）
         # 供应商强制语义（rick 2026-11-04）：开启态下模型规划失败不许拿
         # 规则规划顶包——显式报错，不落任何规则稿产物。
         if strict:
-            raise _attempt.AIRequiredError(str(res.reason or ""),
-                                            what="灵活报告规划")
-        return None, res.reason, ""
-    got = _parse_json(res.text)
-    if got is None:
-        if strict:
-            raise _attempt.AIRequiredError("bad_json", what="灵活报告规划")
-        return None, None, res.backend
-    return got, None, res.backend
+            raise _attempt.AIRequiredError(str(reason or ""), what="灵活报告规划")
+        return None, reason, ""
+    return got, None, backend
 
 
 def _parse_json(raw: str) -> dict | None:
@@ -260,7 +284,11 @@ def _validate_plan(src: DataSource, got: dict, intent: str, fallback: dict,
         if not isinstance(c, dict) or c.get("kind") not in sp.KINDS:
             continue
         kind = c["kind"]
-        if sp.KINDS[kind]["disc_scope"] != "single":
+        meta = sp.KINDS.get(kind)
+        # 跨校对比的 schools_* 图型**不在** `spec.KINDS`（那份是单学科图型目录）——
+        # 2026-11-05 修：这里曾直接下标，配了模型后跨校稿必然 KeyError（模型一给出
+        # charts 就进本循环）。未知图型一律丢，最后由规则清单补齐。
+        if meta is None or meta["disc_scope"] != "single":
             continue                     # 单学科稿没有总览节，概览图一律不要
         disc = target or c.get("disc")
         if disc not in src.disciplines:
@@ -270,7 +298,7 @@ def _validate_plan(src: DataSource, got: dict, intent: str, fallback: dict,
                 continue
         charts.append({"kind": kind, "disc": disc,
                        # 模型没写理由时补图型的馆员话术（轨迹里不出英文键名）
-                       "why": str(c.get("why") or sp.KINDS[kind]["cn"])[:80]})
+                       "why": str(c.get("why") or meta["cn"])[:80]})
     # 五节结构固定 → 图也固定为四张。模型多给的（papers_delta/q_dist…）一律丢掉，
     # 缺的用规则版补齐；否则模型偶尔漏一张，展望节就没图了。
     fixed = [c["kind"] for c in fallback.get("charts") or []]
@@ -279,9 +307,10 @@ def _validate_plan(src: DataSource, got: dict, intent: str, fallback: dict,
     charts = []
     for kind in fixed:
         c = by_kind.get(kind) or template[kind]
+        meta = sp.KINDS.get(kind) or {}
         charts.append({"kind": kind,
                        "disc": target or c.get("disc") or fallback.get("disc"),
-                       "why": c.get("why") or sp.KINDS[kind]["cn"]})
+                       "why": c.get("why") or meta.get("cn") or kind})
     # 🔴 必须写回！否则返回的是模型原始 charts（非法学科/未知图型全漏出去）——
     #    这类失效不抛异常，只有逐项回读才发现。
     clean["charts"] = charts
@@ -292,7 +321,7 @@ def _validate_plan(src: DataSource, got: dict, intent: str, fallback: dict,
     if d not in src.disciplines:
         d = fallback.get("disc")
     for c in charts:
-        if sp.KINDS[c["kind"]]["disc_scope"] == "single":
+        if (sp.KINDS.get(c["kind"]) or {}).get("disc_scope") == "single":
             c["disc"] = d            # 单学科稿的图一律锚定选中的学科
     clean["disc"] = d
 
@@ -354,6 +383,7 @@ def _fallback_text(reason: str) -> str:
             "http_403": "模型拒绝访问（403）——请检查 key 权限",
             "http_429": "模型限流（429），请稍后重试",
             "timeout": "模型超时",
+            "reasoning_budget": "模型把输出预算全花在思考上、没写出正文——把「思考深度」调低",
             "unreachable": "模型连接失败",
         }
         return table.get(code, f"模型服务异常（{code}）") + "，已回退规则规划"

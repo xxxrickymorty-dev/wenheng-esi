@@ -55,6 +55,9 @@ def _env_config() -> dict:
         "timeout": _num("WENHENG_AI_TIMEOUT", 30.0, float),
         "max_tokens": _num("WENHENG_AI_MAX_TOKENS", 4096, int),
         "max_egress_chars": _num("WENHENG_AI_MAX_CHARS", 20000, int),
+        # 请求体附加参数（2026-11-05）：只有清单条目带（`.env` 部署配置不带，
+        # 免得给运维加第二个开关旋钮）；空＝不传，网关缺省。
+        "params": {},
     }
 
 
@@ -82,6 +85,7 @@ def cloud_config() -> dict:
                     "model": picked["model"], "key": picked["key"],
                     "protocol": picked.get("protocol") or "openai",
                     "headers": picked.get("headers") or {},
+                    "params": picked.get("params") or {},
                     "source": f"清单：{picked['label']}"})
     return cfg
 
@@ -107,4 +111,5 @@ def build_brain():
                       protocol=cfg.get("protocol") or "openai",
                       timeout=cfg["timeout"], max_tokens=cfg["max_tokens"],
                       max_egress_chars=cfg["max_egress_chars"],
-                      extra_headers=cfg.get("headers") or None)
+                      extra_headers=cfg.get("headers") or None,
+                      extra_params=cfg.get("params") or None)

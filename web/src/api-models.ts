@@ -38,6 +38,10 @@ export type ProviderRow = {
   models: string[]
   /** 自定义请求头；只在配了时才出现 */
   headers?: Record<string, string>
+  /** 请求体附加参数（2026-11-05）；只在配了时才出现。现用一个键：
+      `reasoning_effort`＝推理型型号的思考深度——GLM-5.3-Flash 缺省档会把输出预算
+      全花在思考上（正文空、几十秒），低档秒级出正文。 */
+  params?: Record<string, string>
 }
 
 export type Preset = { key: string; label: string; base_url: string; models: string[] }
@@ -61,6 +65,8 @@ export type ProviderDraft = {
   models?: string[]
   /** 自定义请求头（表单 Headers 每行 K=V 解析成对象提交）；空对象＝没有 */
   headers?: Record<string, string>
+  /** 请求体附加参数；空对象＝不带（网关缺省） */
+  params?: Record<string, string>
 }
 
 export type ProbeResult = {

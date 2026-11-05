@@ -101,7 +101,8 @@ def flex_brain():
                              timeout=FLEX_TIMEOUT,
                              max_tokens=FLEX_MAX_TOKENS,
                              max_egress_chars=cfg["max_egress_chars"],
-                             extra_headers=cfg.get("headers") or None)
+                             extra_headers=cfg.get("headers") or None,
+                             extra_params=cfg.get("params") or None)
 
 
 def writing_state(position: str = "write", *, default: bool = False) -> WritingState:

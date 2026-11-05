@@ -62,10 +62,15 @@ class AIRequiredError(RuntimeError):
     def __init__(self, reason: str = "", what: str = ""):
         self.reason = str(reason or "unknown")
         self.what = str(what or "模型位")
+        tail = ("请重试，或检查模型服务后重试。")
+        if "reasoning_budget" in self.reason:
+            # 推理型型号专用（2026-11-05）：这不是网络故障，是思考把预算吃光了——
+            # 通用文案会把人引去查网关，得直指「思考深度」这个旋钮。
+            tail = ("这个型号把输出预算全用在思考上：把该供应商的「思考深度」调低"
+                    "（或换一个非推理型号）后重试。")
         super().__init__(
             f"{self.what}失败：模型生成未成功（原因码 {self.reason}）。"
-            "系统已配置模型供应商，按供应商强制语义不再回落规则稿——"
-            "请重试，或检查模型服务后重试。")
+            "系统已配置模型供应商，按供应商强制语义不再回落规则稿——" + tail)
 
 
 def strict_enabled() -> bool:

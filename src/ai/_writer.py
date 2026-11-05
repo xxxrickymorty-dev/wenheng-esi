@@ -64,6 +64,31 @@ def enabled(default: bool = False) -> bool:
     return _writing.enabled("write", default)
 
 
+#: 盾拒重问提示（2026-11-05）：低思考档的推理型型号（GLM-5.3-Flash 实测）偶尔
+#: 会把「1%」这类字面数字写进正文，或自造占位标记 → 盾按未登记数字整份拒收。
+#: 重问一次比让馆员点重试便宜（一次几秒）；提示本身零数字，同样过盾。
+_RETRY_NOTE = (
+    "\n\n【上一稿没通过数字校验】里面出现了没登记过的数字或标记。"
+    "请重写：只引用上面已经出现的 [[n]] 标记，一个数字都不要写，也不要新造标记。")
+
+
+def _think(task: str, system: str):
+    """一次模型尝试；盾拒时**重问一次**（只为「应了但内容不合格」重试）。
+
+    超时/限流/连不上不重问——第二次也只会同样失败，白等。重问没救回来（还是盾拒、
+    或干脆空回）时**报第一稿的原因**：`shield_reject` 才说明问题在哪，
+    被第二次的 `empty_reply` 顶掉会把人引去查网关。
+    """
+    res = _attempt.attempt(task, system=system, ability="polish", anchored=True,
+                           brain=_writing.flex_brain())
+    if res.attempted and res.text is None and str(res.reason) == "shield_reject":
+        retry = _attempt.attempt(task + _RETRY_NOTE, system=system, ability="polish",
+                                 anchored=True, brain=_writing.flex_brain())
+        if retry.text is not None or str(retry.reason or "").startswith("brain_error:"):
+            return retry                    # 救回来了／第二次是真故障（超时、限流）→ 用第二次
+    return res
+
+
 def write(text: str, *, facts=(), keep=DEFAULT_KEEP, period: str = "", label: str = "",
           veto=None, status: dict | None = None) -> str:
     """规则稿 + 事实摘要 → 分析体叙述。任何失败都返回原文。
@@ -87,8 +112,7 @@ def write(text: str, *, facts=(), keep=DEFAULT_KEEP, period: str = "", label: st
     if fl:
         task += "\n\n【事实摘要】\n" + "\n".join(f"- {x}" for x in fl)
 
-    res = _attempt.attempt(task, system=SYSTEM, ability="polish", anchored=True,
-                           brain=_writing.flex_brain())
+    res = _think(task, SYSTEM)
     fallback: str | None = None
     result = text
     if not res.attempted:
@@ -118,7 +142,8 @@ def write(text: str, *, facts=(), keep=DEFAULT_KEEP, period: str = "", label: st
 
 
 def compose(topic: str, *, facts=(), safe: str = "", keep=DEFAULT_KEEP, period: str = "",
-            label: str = "", veto=None, status: dict | None = None) -> str:
+            label: str = "", veto=None, status: dict | None = None,
+            hint: str = "") -> str:
     """节主题 + 事实摘要 → 判断草稿（创写形态；无规则稿输入）。任何失败都返回安全值。
 
     Args:
@@ -130,6 +155,7 @@ def compose(topic: str, *, facts=(), safe: str = "", keep=DEFAULT_KEEP, period: 
         label:  稳定块名（如 `flexible/single_judge/成因研判`），写进记录可回放
         veto:   调用侧复核钩子（返回 True = 拒绝候选；flexible 侧传标记完备性复查）
         status: 可选状态回填（`mode` / `backend` / `fallback`），供调用侧汇总展示
+        hint:  纠偏重问时附在题面后的短句（上一稿哪里不合格；零数字）
     """
     if not topic or not topic.strip():
         return safe
@@ -140,9 +166,11 @@ def compose(topic: str, *, facts=(), safe: str = "", keep=DEFAULT_KEEP, period: 
     task = f"【节主题】\n{topic}"
     if fl:
         task += "\n\n【事实摘要】\n" + "\n".join(f"- {x}" for x in fl)
+    if hint:
+        # 纠偏重问（2026-11-05）：上一稿漏标待审线之类的「形状」问题，由调用方给一句话。
+        task += "\n\n" + str(hint).strip()
 
-    res = _attempt.attempt(task, system=SYSTEM_COMPOSE, ability="polish", anchored=True,
-                           brain=_writing.flex_brain())
+    res = _think(task, SYSTEM_COMPOSE)
     fallback: str | None = None
     result = safe
     if not res.attempted:

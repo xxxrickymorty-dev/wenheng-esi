@@ -124,9 +124,14 @@
   状态文件写/读带重试（并发读不再 WinError 5 暴死）——见 `docs/adr/0010`。
   前端「疑似中断」＝ GET 只读字段 `op.liveness`（`alive/dead/stale`）；「停止下载」＝
   `POST …/acquisition/stop`（杀进程树落「已停止」，文件保留可续下；无任务 409 不写状态）。
+- **推理型型号的「思考深度」是模型清单条目字段**（2026-11-05）：`models.json` 每条供应商可带
+  `params.reasoning_effort`（minimal/low/medium/high；界面＝供应商表单「思考深度」）。
+  缺省档的 GLM-5.3-Flash 实测把 8192 tokens 全花在 `reasoning_content`、正文 0 字、50–90 秒
+  → 规划位 60 秒超时；低档 1.7 秒出正文。唯一合并点 `_brain._HTTPBrain.think`（结构键
+  model/messages/max_tokens 不许被清单覆盖）；规划位、写作位、对话内核都吃同一个值。
+  「正文空但思考有字」→ 原因码 `brain_error:reasoning_budget`——这不是网关故障。
 
 ## 界面用语
-
 > 词条已独立为 `GLOSSARY.md`（一词一义，含 `_Avoid_` 禁用词）——界面文案一律用其中的词。
 > 执行细节见 `web/UX.md` 第十节。
 > **界面文案禁用词**（技术术语黑名单）的执行单源是 `web/src/lib/banned.ts`（检查：`tools/check_web_app.py`）。

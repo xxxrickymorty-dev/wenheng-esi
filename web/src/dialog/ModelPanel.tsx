@@ -16,8 +16,18 @@ import { errorNote } from '../lib/status'
 import { CallStatsBlock } from './CallStats'
 
 const EMPTY_DRAFT: ProviderDraft = {
-  label: '', base_url: '', key: '', note: '', protocol: 'openai', models: [],
+  label: '', base_url: '', key: '', note: '', protocol: 'openai', models: [], params: {},
 }
+
+/* ── 思考深度（2026-11-05）：推理型型号的输出预算花在「想」上还是「写」上 ──
+   空串＝不带这个参数（网关缺省）；GLM-5.3-Flash 缺省档实测把 8192 tokens 全花在
+   思考上、正文 0 字（50–90 秒），低档 1.7 秒出正文——报告生成能不能跑通就靠这一档。 */
+export const EFFORT_CHOICES: { value: string; label: string }[] = [
+  { value: '', label: '网关缺省' },
+  { value: 'low', label: '低（思考型型号建议）' },
+  { value: 'medium', label: '中' },
+  { value: 'high', label: '高' },
+]
 
 /* ── 界面节·正文字体（票 3）：三选卡片，存 localStorage、挂 <html data-font> ── */
 export type FontChoice = 'serif' | 'sans' | 'kai'
@@ -193,6 +203,12 @@ export function ModelForm({ draft, headersText, busy, defaultModels, onDraft,
         {(Object.entries(PROTOCOL_LABELS) as [Protocol, string][]).map(([v, name]) => (
           <option key={v} value={v}>{name}</option>
         ))}
+      </select></label>
+      <label title="思考型型号（如 GLM-5.3-Flash）把档位调低才写得出正文；普通型号保持缺省">
+        思考深度<select value={draft.params?.reasoning_effort ?? ''}
+              onChange={(e) => onDraft({ ...draft, params: { ...(draft.params ?? {}),
+                                                             reasoning_effort: e.target.value } })}>
+        {EFFORT_CHOICES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
       </select></label>
       <div className="mdl-field">
         <div className="mdl-cat-head">
@@ -440,6 +456,7 @@ export function ModelSettings({ open, me, onClose, onChanged }: {
                                       key: '', note: p.note,
                                       protocol: p.protocol || 'openai',
                                       models: [...p.models],
+                                      params: { ...(p.params ?? {}) },
                                     }, headersToText(p.headers))}>改</button>
                             <ConfirmButton className="mdl-act ghost" confirmText="确认删除？"
                                            disabled={busy}

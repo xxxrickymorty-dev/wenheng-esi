@@ -53,6 +53,12 @@ _HEADER_KEY_RE = re.compile(r"^[A-Za-z0-9-]+$")
 _HEADERS_MAX = 8
 #: 一条供应商的模型目录上限（网关动辄几十个型号，目录是挑过的子集）
 _MODELS_MAX = 64
+#: 请求体附加参数的白名单（`params`，2026-11-05 rick：GLM-5.3-Flash 作默认模型）。
+#: 只收「软」旋钮——结构键（model / messages / max_tokens / tools…）由适配器自己写，
+#: 清单条目不许覆盖。`reasoning_effort`：推理型型号的思考深度，**空/不给＝网关缺省**；
+#: 实测 GLM-5.3-Flash 缺省档会把整份输出预算花在思考上（正文 0 字、50–90 秒），
+#: 低档 1.7 秒出正文——报告生成能否跑通全在这一个值上。
+PARAM_CHOICES = {"reasoning_effort": ("minimal", "low", "medium", "high")}
 
 
 def _clean_headers(raw) -> dict[str, str]:
@@ -72,6 +78,31 @@ def _clean_headers(raw) -> dict[str, str]:
         out[key] = value
     if len(out) > _HEADERS_MAX:
         raise ValueError(f"Headers 最多 {_HEADERS_MAX} 条（现在 {len(out)} 条）")
+    return out
+
+
+def _clean_params(raw) -> dict[str, str]:
+    """表单提交的 params 对象 → 干净的 dict（白名单键 + 取值校验，不合法当场报错）。
+
+    形状与 `_clean_headers` 同规矩：保存前拦下，不静默清洗、不猜。
+    """
+    if raw is None or raw == {}:
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError("附加参数要是「名字=值」的集合")
+    out: dict[str, str] = {}
+    for k, v in raw.items():
+        key = str(k).strip()
+        value = str(v).strip()
+        if key not in PARAM_CHOICES:
+            raise ValueError(f"不认识的附加参数：{key}"
+                             f"（只认 {'、'.join(PARAM_CHOICES)}）")
+        if not value:
+            continue                                   # 空值＝不传（网关缺省）
+        allowed = PARAM_CHOICES[key]
+        if value not in allowed:
+            raise ValueError(f"「{key}」只能是 {' / '.join(allowed)}（现在 {value}）")
+        out[key] = value
     return out
 
 
@@ -152,6 +183,9 @@ def _provider_item(item: dict) -> dict | None:
         # headers 原样回（票 4）：保存前已校验过，读口不再清洗
         "headers": {str(k): str(v) for k, v in item["headers"].items()}
         if isinstance(item.get("headers"), dict) else {},
+        # params 同规矩（2026-11-05）：只回白名单键，脏键丢弃不猜
+        "params": {str(k): str(v) for k, v in item["params"].items()
+                   if str(k) in PARAM_CHOICES} if isinstance(item.get("params"), dict) else {},
         "models": [str(m) for m in (item.get("models") or [])
                    if str(m or "").strip()],
     }
@@ -251,6 +285,8 @@ def public() -> dict:
         }
         if p["headers"]:
             row["headers"] = dict(p["headers"])    # 界面面只在配了时带（可选字段）
+        if p["params"]:
+            row["params"] = dict(p["params"])      # 同上：只配了才带
         rows.append(row)
     return {"active": dict(data["active"]), "providers": rows,
             "presets": list(PRESETS)}
@@ -271,7 +307,8 @@ def active_credentials() -> dict | None:
         return {"provider_id": p["id"], "label": p["label"],
                 "base_url": p["base_url"], "model": model, "key": p["key"],
                 "protocol": p["protocol"] or "openai",
-                "headers": dict(p.get("headers") or {})}
+                "headers": dict(p.get("headers") or {}),
+                "params": dict(p.get("params") or {})}
     return None                                    # active 指向已删掉的供应商
 
 
@@ -302,6 +339,9 @@ def upsert(payload: dict, *, actor: str = "admin") -> dict:
     old = next((p for p in data["providers"] if p["id"] == pid), None)
     key = str(payload.get("key") or "").strip() or (old["key"] if old else "")
     headers = _clean_headers(payload.get("headers"))
+    # params 三态（2026-11-05）：不给＝沿用旧值；给 {}＝清空；给值＝整份替换。
+    params = (_clean_params(payload.get("params")) if payload.get("params") is not None
+              else dict(old.get("params") or {}) if old else {})
     row = {
         "id": pid,
         "label": label or pid,
@@ -314,6 +354,8 @@ def upsert(payload: dict, *, actor: str = "admin") -> dict:
     }
     if headers:
         row["headers"] = headers
+    if params:
+        row["params"] = params
     providers = [p for p in data["providers"] if p["id"] != pid] + [row]
     providers.sort(key=lambda p: (p["label"], p["id"]))
     active = dict(data["active"])

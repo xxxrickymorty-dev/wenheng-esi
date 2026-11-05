@@ -266,6 +266,32 @@ class TestPlanner无模型也能跑:
             plan = planner.build(src, "single_trend")
         assert plan["backend"] == "rule"
 
+    def test_盾拒后重问一次而不是直接失败(self, src):
+        """2026-11-05：低思考档的推理型型号偶尔自造占位标记（[[21]] 超编号）→ 盾整份拒。
+        重问一次比让馆员点重试便宜；第二次合规则照用模型规划。"""
+        from _ai_helpers import ScriptedBrain, Turn
+        import ai
+        brain = ScriptedBrain([Turn(text='{"disc": "Chemistry", "n_periods": 7}'),  # 带数字 → 盾拒
+                               Turn(text='{"disc": "Chemistry", '
+                                         '"charts": [{"kind": "cnci", "disc": "Chemistry"}]}')])
+        with ai.using(brain=brain):
+            plan = planner.build(src, "single_trend")
+        assert len(brain.briefs) == 2, "盾拒后应重问一次（超时/限流才不重问）"
+        assert plan["backend"] == "scripted", "第二稿合规 → 照用模型规划，不回落"
+
+    def test_跨校意图的图型不在单学科目录也不崩(self, src):
+        """2026-11-05 修：`schools_*` 图型不在 `spec.KINDS`（那份是单学科目录），
+        校验曾直接下标 → 只要模型给出 charts 就 KeyError。现在一律滤掉、由规则三图补齐。"""
+        from _ai_helpers import ScriptedBrain, Turn
+        import ai
+        with ai.using(brain=ScriptedBrain(
+                [Turn(text='{"intent": "school_compare", "disc": "Chemistry", '
+                           '"charts": [{"kind": "schools_rank", "disc": "Chemistry"}, '
+                           '{"kind": "rank_pct", "disc": "Chemistry"}]}')])):
+            plan = planner.build(src, "school_compare", disc="Chemistry")
+        assert [c["kind"] for c in plan["charts"]] == [
+            "schools_rank", "schools_cites", "schools_per"], "跨校稿的图型恒为规则三图"
+
 
 class Test计划含校验点:
     """票 01：规划带 `checks`（规则生成、白名单键）；**模型塞不进来**。"""

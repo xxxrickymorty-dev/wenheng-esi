@@ -139,11 +139,18 @@ class _HTTPBrain:
     """
 
     is_rule = False
+    #: 适配器自己写的请求体结构键（2026-11-05）：清单条目的 `params` **不许覆盖**它们
+    #: （能改的只有「软」旋钮，如 reasoning_effort）。
+    _RESERVED_PAYLOAD = frozenset({
+        "model", "messages", "input", "instructions", "system", "max_tokens",
+        "max_output_tokens", "temperature", "stream", "tools", "tool_choice",
+    })
     #: 适配器名前缀（进留痕 backend，如 openai:deepseek-flash）
     _kind = "openai"
 
     def __init__(self, *, base_url, model, key, timeout=30.0, max_tokens=2048,
-                 max_egress_chars=20000, temperature=0.2, extra_headers: dict | None = None):
+                 max_egress_chars=20000, temperature=0.2, extra_headers: dict | None = None,
+                 extra_params: dict | None = None):
         self.base_url = str(base_url).rstrip("/")
         self.model = str(model)
         self.name = f"{self._kind}:{self.model}"
@@ -160,6 +167,12 @@ class _HTTPBrain:
         # 清单条目的自定义头（票 4，2026-11-03）：只叠加，见 `_merge_headers`。
         self._entry_headers = {str(k): str(v)
                                for k, v in (extra_headers or {}).items() if str(v).strip()}
+        # 请求体附加参数（2026-11-05，清单条目 `params`）：只叠加，结构键不许覆盖。
+        # 现用一个键：`reasoning_effort`——推理型型号的思考深度。GLM-5.3-Flash 缺省档
+        # 会把整份输出预算花在 reasoning 上（正文 0 字、50–90 秒），低档 1.7 秒出正文。
+        self._extra_params = {str(k): str(v)
+                              for k, v in (extra_params or {}).items()
+                              if str(k) not in self._RESERVED_PAYLOAD and str(v).strip()}
 
     def _merge_headers(self) -> dict:
         """请求头合并（票 4）：清单条目的 headers **只叠加**——
@@ -218,7 +231,10 @@ class _HTTPBrain:
             raise BrainError(
                 f"外发 {egress_chars} 字符超过上限 {self.max_egress_chars}",
                 code="egress_budget")
-        return self._parse(self._post(self._payload(brief)))
+        payload = self._payload(brief)
+        if self._extra_params:                    # 清单条目 params：只补，不覆盖结构键
+            payload = {**payload, **self._extra_params}
+        return self._parse(self._post(payload))
 
 
 class OpenAIBrain(_HTTPBrain):
@@ -263,7 +279,19 @@ class OpenAIBrain(_HTTPBrain):
         if raw_calls:
             return Turn(calls=tuple(self._decode_call(c, i) for i, c in enumerate(raw_calls)),
                         finish=finish)
-        return Turn(text=_strip_think(content), finish=finish)
+        text = _strip_think(content)
+        if not text:
+            # 推理型型号把预算全花在思考上（GLM-5.3-Flash 缺省档实测：8192 tokens 全进
+            # `reasoning_content`、正文 0 字、耗时 55–90 秒）。这不是「模型应了空」，
+            # 是思考没刹住——单给 `empty_reply` 会把人引去查网关，得说清该调「思考深度」。
+            reasoning = (message.get("reasoning_content")
+                         or message.get("reasoning") or "")
+            if str(reasoning).strip():
+                raise BrainError(
+                    f"思考用满输出预算（{self.max_tokens} tokens），没写出正文——"
+                    "把「思考深度」调低，或换一个非推理型号",
+                    code="reasoning_budget")
+        return Turn(text=text, finish=finish)
 
     @classmethod
     def _decode_call(cls, item, seq: int) -> dict:
