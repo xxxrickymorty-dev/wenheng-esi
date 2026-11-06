@@ -14,6 +14,7 @@ uv run python -m pytest            # 默认套件（跳过 slow）
 uv run python -m pytest -m ""      # 全量（含端到端；PowerShell 里空串会丢，用 -m "slow or not slow"）
 uv run ruff check .                # lint（致命级，见 pyproject [tool.ruff.lint]）
 uv run python tools\doc_counts.py  # 用例数/断言数 ↔ 文档 对齐检查（--write 回写）
+uv run python tools\adr_consistency.py  # ADR 一致性检查（只读；EXIT 0/1）
 ```
 
 演示站与验收（先起服务再跑）：
