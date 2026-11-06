@@ -24,6 +24,7 @@ from __future__ import annotations
 import hashlib
 import os
 import pathlib
+import re
 import sqlite3
 import unicodedata
 
@@ -37,8 +38,14 @@ DB_NAME = "wenheng_archive.sqlite"
 ENV_VAR = "WENHENG_ARCHIVE_DB"
 #: 库目录（工作区根下，与 `数据与复现/` 同级；目录不存在由 connect 前的调用方建）。
 ARCHIVE_DIR = REPO.parent / "档案库"
-#: InCites 指标列 slug 数量护栏：表头字典并集超过它 → 报错停（防脏表头炸表）。
-MAX_METRIC_COLUMNS = 200
+#: InCites 指标列 slug 数量护栏：表头字典并集超过它 → 报错停（防脏表头炸表 / 防 4.3GB 库炸宽表）。
+#: 实测依据（阶段 3b，2026-11-06）：45 个 InCites 快照学科机构榜（含云大22学科总体）表头字典并集——
+#:   当前 norm_label 并集 = 326（正是阶段 3 全量导入触发 1108 件 InCites failed 的根因：326 > 200）；
+#:   归一化年份/时间窗口片段（见 `norm_label`）后并集 = 290。
+#: 取 400：覆盖实测 290 并留 ~38% 余量（防个别快照模板微小漂移、未来快照），
+#: 远低于 SQLite 默认 2000 列上限，宽表 = 身份列 9 + ≤400 指标列，库体积可控。
+#: 🔴 这是护栏不是上限封顶——保留它才能在真脏表头（并集异常暴涨）时仍 FAIL 而非静默写坏。
+MAX_METRIC_COLUMNS = 400
 
 #: 静态表 DDL（动态的 `incites_subject_rows` 由 `ensure_subject_columns` 管）。
 _DDL: tuple[str, ...] = (
@@ -240,9 +247,25 @@ def set_file_parse(conn, file_id: int, *, status: str, rows: int = 0,
 
 
 # ---------------------------------------------------------------- InCites 列字典
+#: 跨期漂移的年份/时间窗口片段：同概念列（如「% First Author (2008-Present)」）在不同快照
+#: 仅窗口终点不同（Present / 2020 / 2021 / 2024），归一化成占位符让同名表头复用 slug，
+#: 否则 45 快照表头字典并集从 ~92 撑到 326，触发 MAX_METRIC_COLUMNS 护栏（阶段 3 实测
+#: 1108 件 InCites 因触顶 200 而 failed）。半角/全角括号都覆盖。
+_YEAR_WINDOW = re.compile(
+    r"[\(（]\s*\d{4}\s*[-–—]\s*(?:\d{4}(?:\.\d{1,2}(?:\.\d{1,2})?)?|present)\s*[\)）]",
+    re.IGNORECASE)
+
+
 def norm_label(label) -> str:
-    """表头归一化：NFC + 去首尾空白 + 压内部空白（跨 vintage 的半全角/空格漂移）。"""
-    return " ".join(unicodedata.normalize("NFC", str(label)).split())
+    """表头归一化：NFC + 年份/时间窗口片段归一 + 去首尾空白 + 压内部空白。
+
+    年份窗口（如 `(2008-Present)` / `(2008-2024)` / `（2008-2020）`）跨快照仅终点不同、概念
+    相同，归一成 `(WINDOW)` 让同名表头复用 slug——否则表头字典并集（incites_metrics）被撑爆。
+    确定性不变：同输入 → 同 slug（content_sha256 依赖重放顺序）。
+    """
+    s = unicodedata.normalize("NFC", str(label)).strip()
+    s = _YEAR_WINDOW.sub("(WINDOW)", s)
+    return " ".join(s.split())
 
 
 def metric_slug(conn, label: str) -> str:

@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import argparse
+import codecs
 import csv
 import datetime
 import json
@@ -212,6 +213,19 @@ def _is_desc_line(row) -> bool:
     return text.lower().startswith("documents result list")
 
 
+#: CSV 解码兜底 handler：UTF-8 文件里偶有孤立的 cp1252/latin-1 控制字节（0x80–0x9F，
+#: UTF-8 与 cp1252 均无法 strict 解），把每个坏字节按 latin-1 逐字节映射。
+#: 确定性、无损（字节↔码点 1:1），**不是** `errors="replace"`（后者会把坏字节吞成 U+FFFD、
+#: 污染 content_sha256 指纹且不可逆）。仅作用于 UTF-8 解不开的单字节，主体中文仍是 UTF-8。
+def _utf8_latin1(exc):
+    if isinstance(exc, UnicodeDecodeError):
+        return "".join(bytes([b]).decode("latin-1") for b in exc.object[exc.start:exc.end]), exc.end
+    raise exc
+
+
+codecs.register_error("utf8_latin1", _utf8_latin1)
+
+
 def read_csv_rows(path: pathlib.Path) -> list[list[str]]:
     """CSV 全行（utf-8-sig → gb18030 → cp1252 兜底；首行是说明行则跳过）。
 
@@ -240,7 +254,15 @@ def read_csv_rows(path: pathlib.Path) -> list[list[str]]:
         except UnicodeDecodeError:
             continue
     if rows is None:
-        raise ValueError(f"CSV 编码识别失败（utf-8-sig/gb18030/cp1252 均失败）：{path.name}")
+        # 最后兜底：主体 UTF-8、偶有孤立 cp1252/latin-1 控制字节（实测
+        # `201905/Web Of Science 论文数植物动物学2009-2019.csv`：UTF-8 中文 + 0x8d/0x8f/0x90/0x9d
+        # 这类字节 UTF-8/cp1252 都 strict 解不开）→ 用 utf8_latin1 handler 逐字节保真，不丢字节。
+        try:
+            with open(path, newline="", encoding="utf-8", errors="utf8_latin1") as fh:
+                rows = [list(r) for r in csv.reader(fh)]
+        except UnicodeDecodeError:
+            raise ValueError(
+                f"CSV 编码识别失败（utf-8-sig/gb18030/cp1252/utf-8-latin1 均失败）：{path.name}")
     # 跳过首行说明行（"Documents Result List: ..."），第 2 行才是真正表头。
     if rows and _is_desc_line(rows[0]):
         rows = rows[1:]
@@ -360,10 +382,12 @@ def classify_esi(scope: str, rel_under: str, name: str) -> tuple[str, str]:
     if scope == "_归档统一命名":
         return R_DERIVED, ""
     if suffix not in (".xlsx", ".xls", ".csv"):
-        return R_MISC, suffix
+        return R_DERIVED, suffix  # 非数据件（压缩包/配置等），只登记、不解析也不 stash
     if "总表" in name:
         return R_MASTER, ""
     if p.parent != pathlib.Path("."):
+        if suffix not in (".xlsx", ".xls", ".csv"):
+            return R_DERIVED, f"非数据子目录件（{suffix}）"
         return R_MISC, "子目录件（他校数据/杂件）"
     if stem_l == "institutions":
         return R_INST, ""
@@ -406,7 +430,7 @@ def classify_incites(scope: str, rel_under: str, name: str) -> tuple[str, str]:
     if suffix == ".json":
         return R_RENAME, ""
     if suffix not in (".xlsx", ".xls", ".csv"):
-        return R_MISC, suffix
+        return R_DERIVED, suffix  # 非数据件（压缩包/配置等），只登记、不解析也不 stash
     scope_f = _research_scope(stem_l, name)
     if scope_f:
         return R_RESEARCH, scope_f
@@ -1185,8 +1209,21 @@ def import_kind(conn, kind: str, scopes=None, *, force: bool = False, emit=print
                 n, status, note = _parse_one(conn, kind, scope, fid, path, role, extra,
                                              root_stems, rel_under)
             except Exception as exc:  # 解析失败不炸全局：记账继续
-                conn.rollback()
-                n, status, note = 0, ST_FAILED, f"{type(exc).__name__}: {exc}"
+                # 表头未识别的件（64 件研究领域/论文清单）→ 按 §3「散件 stash 保真是预期行为」
+                # 转 stash 而非 failed：这些是解析器确实认不出的表头，设计上就该整件 misc_rows
+                # 保真，不是真损坏。其它一切错误仍 failed——**不洗白真失败**。
+                if isinstance(exc, ValueError) and (
+                        "未识别表头" in str(exc) or "没有可解析行" in str(exc)):
+                    conn.rollback()
+                    try:
+                        n = stash_misc(conn, path, fid)
+                        status, note = (ST_STASHED,
+                                        f"表头未识别，整件 misc_rows 保真（原报错：{exc}）")
+                    except Exception as exc2:
+                        n, status, note = 0, ST_FAILED, f"{type(exc2).__name__}: {exc2}"
+                else:
+                    conn.rollback()
+                    n, status, note = 0, ST_FAILED, f"{type(exc).__name__}: {exc}"
             DB.set_file_parse(conn, fid, status=status, rows=n,
                               error=note if status in (ST_FAILED, ST_CORRUPTED) else "",
                               note=note if status in (ST_RECOVERED, ST_DUP, ST_STASHED) else "")
@@ -1425,6 +1462,14 @@ def main(argv=None) -> int:
              f" · failed {stats['failed']} · 行数 {stats['rows']}")
     DB.put_meta(conn, "built_at", datetime.datetime.now().isoformat(timespec="seconds"))
     conn.commit()
+    # 退出码语义（根治「软失败被绿码掩盖」，与 §7 行数假绿同类）：
+    # 任何非预期 failed（解析抛错 / 编码失败）一律 EXIT 1，不再静默 0。
+    failed_total = conn.execute(
+        "SELECT COUNT(*) AS n FROM files WHERE parse_status='failed'").fetchone()["n"]
+    if failed_total:
+        emit(f"!! 导入结束但有 {failed_total} 件 failed（非预期失败），EXIT 1")
+        conn.close()
+        return 1
     emit(f"结束（{datetime.datetime.now().strftime('%H:%M:%S')}）；"
          f"后续：--verify 对账 / --report 覆盖报告")
     conn.close()
