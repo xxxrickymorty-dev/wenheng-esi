@@ -9,7 +9,8 @@
 检查项：
   1. ADR 之间 `docs/adr/xxxx-*.md` 引用路径存在性；
   2. 状态字段是否属于 5 值枚举；被取代件不得被别处标为「现行」/「继承来源」；
-  3. 数字口径单源（ESI 期数 / InCites 快照数 / 槽位数 / 用例数），已知时点冲突报 WARNING；
+  3. 数字口径单源（ESI 期数 / InCites 快照数 / 槽位数 / 用例数）：命中已知多口径组
+     或检出多值冲突报 WARNING，未登记的新冲突报 FAIL；扫描含 CONTEXT 与根仓 MEMORY（存在才读）；
   4. GLOSSARY `_Avoid_` 禁用词扫描（提示级 WARNING，需人工判读）；
   5. 每份 ADR 头部三字段（Supersedes / Amends / Superseded-by）完整性。
 
@@ -25,6 +26,7 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 ADR_DIR = REPO / "docs" / "adr"
 GLOSSARY = REPO / "GLOSSARY.md"
 CONTEXT = REPO / "CONTEXT.md"
+MEMORY = REPO.parent / ".workbuddy" / "memory" / "MEMORY.md"
 
 STATUS_ENUM = ["已接受", "提案", "待确认", "已取代", "已修订"]
 THREE_FIELDS = ["Supersedes", "Amends", "Superseded-by"]
@@ -105,7 +107,7 @@ def _check_three_fields(files, problems):
 
 
 def _check_numbers(files, problems, warns):
-    scan = files + ([CONTEXT] if CONTEXT.exists() else [])
+    scan = files + [p for p in (CONTEXT, MEMORY) if p.exists()]
     metrics = {
         "ESI 期数": re.compile(r"ESI[^\d]{0,6}?(\d+)\s*期"),
         "InCites 快照数": re.compile(r"InCites[^\d]{0,6}?(\d+)\s*(?:个)?快照"),
@@ -118,6 +120,17 @@ def _check_numbers(files, problems, warns):
             for m in pat.finditer(_load(f)):
                 found.setdefault(int(m.group(1)), []).append(f.name)
         vals = set(found)
+        known_group = next((k for k in KNOWN_NUMBER_CONFLICTS if k[0] == metric), None)
+        # 只检出一个值、且该值属于已登记的多口径组时也要出声——否则
+        # KNOWN_NUMBER_CONFLICTS 会变成永不触发的死配置，检查成了摆设。
+        if len(vals) == 1 and known_group:
+            v = next(iter(vals))
+            if v in known_group[1]:
+                warns.append(
+                    f"[数字口径][WARNING] {metric} 仅检出 {v}"
+                    f"（{', '.join(sorted(set(found[v])))}），属已知多口径组"
+                    f" {sorted(known_group[1])} —— {known_group[2]}")
+                continue
         if len(vals) <= 1:
             continue
         known = next((k for k in KNOWN_NUMBER_CONFLICTS if k[0] == metric and vals <= k[1]), None)
