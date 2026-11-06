@@ -147,6 +147,40 @@ _RETRY_NOTE = (
     "请重写：只引用事实摘要里已有的 [[n]] 标记，一个数字都不要写，也不要新造标记。")
 
 
+#: 解读位专用预算（2026-11-06）：解读是 500 字以上长文，却一直用对话档
+#: 30s 预算——网关上经常没写完就被掐（留痕：`monitor/insight*` 的超时
+#: 记录几乎全部精确死在 ~30.1s）。照写作位先例（`_writing.FLEX_TIMEOUT`）
+#: 单独放宽；**模型仍跟当前清单项**，不新增部署旋钮。
+INSIGHT_TIMEOUT = 180.0
+
+
+def _insight_brain():
+    """解读位专用装配：当前模型 + 长文预算（`_writing.flex_brain` 同款，不换模型）。
+
+    - `using(brain=…)` 注入优先（测试替身照走）；
+    - 未配云 / `profile=demo` / 无 key → `RuleBrain`（与 `_config.build_brain`
+      同判定，只是预算不同）。
+    """
+    from ai import _brain, _config, _runtime                    # noqa: PLC0415
+
+    override = _runtime.overrides().get("brain")
+    if override is not None:
+        return override
+    cfg = _config.cloud_config()
+    if cfg["profile"] == "demo" or cfg["backend"] != "openai":
+        return _brain.RuleBrain()
+    if not (cfg["base_url"] and cfg["key"]):
+        return _brain.RuleBrain()                              # 无 key 不构造云适配器
+    return _brain.make_brain(base_url=cfg["base_url"], model=cfg["model"],
+                              key=cfg["key"],
+                              protocol=cfg.get("protocol") or "openai",
+                              timeout=INSIGHT_TIMEOUT,
+                              max_tokens=cfg["max_tokens"],
+                              max_egress_chars=cfg["max_egress_chars"],
+                              extra_headers=cfg.get("headers") or None,
+                              extra_params=cfg.get("params") or None)
+
+
 def compose_text(topic: str, facts: list[str], safe: str, *, label: str, veto=None) -> dict:
     """默认走模型的解读生成：模型文本过盾 + veto，失败回落 safe。→ {"text", "mode"}。
 
@@ -166,13 +200,17 @@ def compose_text(topic: str, facts: list[str], safe: str, *, label: str, veto=No
         _AIRequiredError = _attempt.AIRequiredError
         fl = [str(x).strip() for x in facts if str(x).strip()]
         task = f"【节主题】\n{topic}\n\n【事实摘要】\n" + "\n".join(f"- {x}" for x in fl)
-        res = _attempt.attempt(task, system=_SYS, ability="polish", anchored=False)
-        if res.attempted and res.text is None and str(res.reason) == "shield_reject":
-            # 一次自愈（2026-11-05，GLM 低思考档实测）：模型偶尔把「1%」写成字面数字
-            # 或自造占位标记 → 盾整份拒收。重问一次比整单失败便宜；重问没救回来
-            # （仍是盾拒 / 空回）就按第一稿的原因报，别被第二次的空回顶掉。
+        res = _attempt.attempt(task, system=_SYS, ability="polish",
+                               anchored=False, brain=_insight_brain())
+        if (res.attempted and res.text is None
+                and str(res.reason) in ("shield_reject", "brain_error:timeout")):
+            # 一次自愈：盾拒（2026-11-05，GLM 低思考档实测：模型偶尔把「1%」写成
+            # 字面数字或自造占位标记 → 盾整份拒收）与超时（2026-11-06：长文在
+            # 网关偶发仍超时）都重问一次——重问比整单失败便宜；重问没救回来
+            # （仍 brain_error / 空回）就按第一稿的原因报，别被第二次的空回顶掉。
             retry = _attempt.attempt(task + _RETRY_NOTE, system=_SYS,
-                                     ability="polish", anchored=False)
+                                     ability="polish", anchored=False,
+                                     brain=_insight_brain())
             if retry.text is not None or str(retry.reason or "").startswith("brain_error:"):
                 res = retry
         fallback, result = None, safe

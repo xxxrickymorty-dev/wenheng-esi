@@ -215,3 +215,50 @@ class Test关闭态:
         monkeypatch.setattr(_ins_mod, "insight", _boom)
         out = mr.generate("云南大学", "202609")
         assert out.exists(), "关闭态：普通异常照旧兜底出件（现状不变）"
+
+
+# ================================================================ 预算与自愈（2026-11-06）
+class Test预算与自愈:
+    """解读位长文预算 + 超时自愈（2026-11-06）。
+
+    背景：解读是 500 字以上长文，却一直用对话档 30s 预算——留痕里
+    `monitor/insight*` 的超时记录几乎全部精确死在 ~30.1s；且超时原本
+    不在自愈重问之列，一次超时＝开启态整页失败（rick 截图 2026-11-06）。
+    """
+
+    def test_解读位专用预算_180s_模型跟当前项(self, open_state):
+        b = mi._insight_brain()
+        assert b.is_rule is False
+        assert b.timeout == 180.0, "长文预算照写作位先例放宽"
+        assert b.model == "fast-model", "模型仍跟部署配置（清单/env），不另立旋钮"
+
+    def test_注入替身优先_预算装配不顶掉替身(self, open_state):
+        inject = ScriptedBrain([Turn(text=VALID)])
+        with ai.using(brain=inject):
+            assert mi._insight_brain() is inject, "using(brain=…) 注入优先（测试替身照走）"
+
+    def test_超时自愈_重问一次即成(self, open_state):
+        brain = ScriptedBrain([BrainError("超时", code="timeout"),
+                                Turn(text=VALID)])
+        with ai.using(data_root=open_state, brain=brain):
+            res = _compose()
+        assert res["mode"] == "model"
+        assert len(brain.briefs) == 2, "第一稿超时 → 恰好重问一次"
+
+    def test_超时自愈_重问仍超时_照抛原因码不变(self, open_state):
+        brain = ScriptedBrain([BrainError("超时", code="timeout"),
+                                BrainError("超时", code="timeout")])
+        with ai.using(data_root=open_state, brain=brain):
+            with pytest.raises(AIRequiredError) as ei:
+                _compose()
+        assert "原因码 brain_error:timeout" in str(ei.value)
+        assert len(brain.briefs) == 2
+        row = _rows(open_state)[0]
+        assert row["fallback"] == "brain_error:timeout", "记录面照记（审计不丢）"
+
+    def test_空回不自愈_只此一稿(self, open_state):
+        brain = ScriptedBrain([Turn(text=None)])
+        with ai.using(data_root=open_state, brain=brain):
+            with pytest.raises(AIRequiredError):
+                _compose()
+        assert len(brain.briefs) == 1, "empty_reply 不在自愈之列（现状不变）"
