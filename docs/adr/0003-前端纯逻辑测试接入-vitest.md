@@ -1,6 +1,9 @@
 # 前端纯逻辑测试接入 vitest：给 tdd 一个落点
 
 - **状态**：已接受（2026-09-28，rick 确认；mattpocock 技能链适配）
+- **Supersedes**：无
+- **Amends**：无
+- **Superseded-by**：无
 - **依据**：`docs/specs/2026-09-28-地基与信息减负.md`；`web/UX.md` 第十节
 
 ## 背景
