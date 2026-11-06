@@ -1,5 +1,5 @@
 {
- "built_at": "2026-10-31T13:32:48",
+ "built_at": "2026-11-06T16:24:34",
  "periods": {
   "201903": {
    "status": "bad",
@@ -40,11 +40,6 @@
    "status": "ok",
    "n_files": 28,
    "notes": "无阈值表：thr1 整期省略；Plant & Animal Science: Plant & Animal Science.xlsx: 手工摘录榜，只取全局排名（m/line=None）；保排名子集榜 1 张（m/line=None，名次为真实全局值）"
-  },
-  "202007": {
-   "status": "ok",
-   "n_files": 28,
-   "notes": "无阈值表：thr1 整期省略；全球机构.xlsx: 排名残表，n_inst=None；Agricultural Sciences: Agricultural Sciences.xlsx: 保排名子集；Biology & Biochemistry: Biology & Biochemistry.xlsx: 保排名子集；Chemistry: Chemistry.xlsx: 保排名子集；Clinical Medicine: Clinical Medicine.xlsx: 保排名子集；Computer Science: Computer Science.xlsx: 保排名子集；Environment Ecology: Environment Ecology.xlsx: 保排名子集；Geosciences: Geosciences.xlsx: 保排名子集；Mathematics: Mathematics.xlsx: 保排名子集；Microbiology: Microbiology.xlsx: 保排名子集；Multidisciplinary: Multidisciplinary.xlsx: 手工摘录榜，只取全局排名（m/line=None）；Pharmacology & Toxicology: Pharmacology & Toxicology.xlsx: 保排名子集；Plant & Animal Science: Plant & Animal Science.xlsx: 手工摘录榜，只取全局排名（m/line=None）；Psychiatry Psychology: Psychiatry Psychology.xlsx: 手工摘录榜，只取全局排名（m/line=None）；Social Sciences, General: Social Sciences, General.xlsx: 保排名子集；Space Science: 不可解析（Space Science.xlsx: 无 Institutions 表头行且首行不像数据行（版式不识别））；保排名子集榜 14 张（m/line=None，名次为真实全局值）；机构表为子集/残表：n_inst=None、points 缺或仅总排名"
   },
   "202009": {
    "status": "ok",
@@ -168,11 +163,6 @@
    "n_files": 36,
    "notes": "Geosciences: Geosciences.xlsx: 保排名子集；Immunology: Immunology.xlsx: 保排名子集；Materials Science: Materials Science.xlsx: 保排名子集；Microbiology: Microbiology.xlsx: 保排名子集；Multidisciplinary: Multidisciplinary.xlsx: 保排名子集；Neuroscience & Behavior: Neuroscience & Behavior.xlsx: 保排名子集；Pharmacology & Toxicology: Pharmacology & Toxicology.xlsx: 保排名子集；Physics: Physics.xlsx: 保排名子集；Plant & Animal Science: Plant & Animal Science.xlsx: 保排名子集；Psychiatry Psychology: Psychiatry Psychology.xlsx: 保排名子集；Social Sciences, General: Social Sciences, General.xlsx: 保排名子集；Space Science: Space Science.xlsx: 保排名子集；保排名子集榜 12 张（m/line=None，名次为真实全局值）"
   },
-  "202501": {
-   "status": "ok",
-   "n_files": 37,
-   "notes": "机构表候选均不可用：Institutions.xlsx 不可解析（Institutions.xlsx: 无 Institutions 表头行且首行不像数据行（版式不识别））；机构表为子集/残表：n_inst=None、points 缺或仅总排名"
-  },
   "202503": {
    "status": "ok",
    "n_files": 37,
@@ -216,6 +206,16 @@
   "202609": {
    "status": "ok",
    "n_files": 39
+  },
+  "202007": {
+   "status": "ok",
+   "n_files": 28,
+   "notes": "无阈值表：thr1 整期省略；全球机构.xlsx: 排名残表，n_inst=None；全球机构.xlsx!Sheet1: 二级机构表（中国子集，有效行 477）（回填 95 校指标）；Agricultural Sciences: Agricultural Sciences.xlsx: 保排名子集；Biology & Biochemistry: Biology & Biochemistry.xlsx: 保排名子集；Chemistry: Chemistry.xlsx: 保排名子集；Clinical Medicine: Clinical Medicine.xlsx: 保排名子集；Computer Science: Computer Science.xlsx: 保排名子集；Environment Ecology: Environment Ecology.xlsx: 保排名子集；Geosciences: Geosciences.xlsx: 保排名子集；Mathematics: Mathematics.xlsx: 保排名子集；Microbiology: Microbiology.xlsx: 保排名子集；Multidisciplinary: Multidisciplinary.xlsx: 手工摘录榜，只取全局排名（m/line=None）；Pharmacology & Toxicology: Pharmacology & Toxicology.xlsx: 保排名子集；Plant & Animal Science: Plant & Animal Science.xlsx: 手工摘录榜，只取全局排名（m/line=None）；Psychiatry Psychology: Psychiatry Psychology.xlsx: 手工摘录榜，只取全局排名（m/line=None）；Social Sciences, General: Social Sciences, General.xlsx: 保排名子集；Space Science: 不可解析（Space Science.xlsx: 无 Institutions 表头行且首行不像数据行（版式不识别））；保排名子集榜 14 张（m/line=None，名次为真实全局值）；机构表为子集/残表：n_inst=None、points 缺或仅总排名"
+  },
+  "202501": {
+   "status": "ok",
+   "n_files": 37,
+   "notes": "机构表候选均不可用：Institutions.xlsx 不可解析（Institutions.xlsx: 无 Institutions 表头行且首行不像数据行（版式不识别））；202501ESI总表.xlsx!学校总表: 二级机构表（全量，有效行 9717）"
   }
  }
 }

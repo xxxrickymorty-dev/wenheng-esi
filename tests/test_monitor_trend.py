@@ -100,6 +100,31 @@ def test_extract_202211_subset_fields():
     assert t["n_inst"] is not None and t["n_inst"] > 8000
 
 
+def test_extract_202007_secondary_inst():
+    """202007 机构表残表 → 二级来源（全球机构.xlsx!Sheet1 中国子表）回填指标：
+    排名保留主表值，论文/被引/篇均为同期真值（清华被引序列与 202005/202011 连续）。"""
+    probe = lambda: (mr.ESI_ROOT / "202007" / "全球机构.xlsx").exists()   # noqa: E731
+    if not probe():
+        skip_unless("监测版源数据缺席（数据与复现/ESI数据/202007）", probe)
+    t = mt.extract_period("202007")
+    assert t["inst"]["TSINGHUA UNIVERSITY"] == [75, 81227.0, 1394446.0, 17.17]
+    assert t["inst"]["PEKING UNIVERSITY"] == [79, 78829.0, 1360618.0, 17.26]
+    assert t["n_inst"] is None                       # 二级表为中国子集
+    assert any("二级" in n for n in t["_notes"])
+
+
+def test_extract_202501_secondary_inst():
+    """202501 机构主候选不可解析（中英映射表）→ 二级来源（202501ESI总表!学校总表，
+    全量全球榜）整表替身：n_inst＝有效行数，两校行值钉死。"""
+    probe = lambda: (mr.ESI_ROOT / "202501" / "202501ESI总表.xlsx").exists()  # noqa: E731
+    if not probe():
+        skip_unless("监测版源数据缺席（数据与复现/ESI数据/202501）", probe)
+    t = mt.extract_period("202501")
+    assert t["inst"]["TSINGHUA UNIVERSITY"] == [32, 128682.0, 3504947.0, 27.24]
+    assert t["inst"]["PEKING UNIVERSITY"] == [47, 124342.0, 2970867.0, 23.89]
+    assert t["n_inst"] is not None and t["n_inst"] > 9000
+
+
 def test_202303_is_202603_copy():
     """202303 整期拒绝入库的证据：22 榜与 institutions.xlsx 逐字等于 202603 期内容。"""
     if not (mr.ESI_ROOT / "202303" / "Chemistry.xlsx").exists():

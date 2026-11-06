@@ -141,9 +141,16 @@ def render(cns: list[str], period: str, cache: dict, insight: dict | None = None
         except Exception:                                          # noqa: BLE001
             tt = {"points": []}
         pts = tt.get("points") or []
-        if len(pts) >= 2:
-            series_c.append((r["cn"], [(p["period"], p.get("total_cites")) for p in pts]))
-            series_r.append((r["cn"], [(p["period"], p.get("total_rank")) for p in pts]))
+        # 缺值期（残表期只有排名）不落点，折线由相邻真值点直接连线跨过；
+        # 被引/排名两轴各自独立过滤，互不拖累。
+        pts_c = [(p["period"], p["total_cites"]) for p in pts
+                  if p.get("total_cites") is not None]
+        pts_r = [(p["period"], p["total_rank"]) for p in pts
+                  if p.get("total_rank") is not None]
+        if len(pts_c) >= 2:
+            series_c.append((r["cn"], pts_c))
+        if len(pts_r) >= 2:
+            series_r.append((r["cn"], pts_r))
     trend_html = ""
     if len(series_c) >= 2:
         prange = f"{series_c[0][1][0][0]}–{series_c[0][1][-1][0]}"

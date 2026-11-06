@@ -8,7 +8,9 @@
 - 机构总表等价物按候选名解析、按内容二次确认，共四种形态——
   a) 全量全球榜（7/9/15 列，有/无表头行）→ n_inst=行数；
   b) 中国子集（保 ESI 全局排名，名次有空洞，如 202107/202511）→ n_inst=None，行值仍为真值；
-  c) [机构名, 排名, ...] 残表（202007/202009 四列）→ 只取总排名，论文/被引 None；
+  c) [机构名, 排名, ...] 残表（202007/202009 四列）→ 只取总排名，论文/被引 None
+     （202007 已由二级来源回填，见 _SECONDARY_INST；202009 原始包任何文件都无
+     机构级被引，如实留空——ESI 平台取不回历史期，不外推）；
   d) 不可解析（如 202501 的中英文名映射表）→ inst 空、points 缺。
 - 22 张学科榜：规范名（Windows 大小写不敏感）+ 个别别名（COMPUTER SCIENC / PSYCHIATRY
   SYCHOLOGY / AGRICULTURAL）+ 201905/201907 的「全球机构-<中文学科>.xlsx」。每张榜按内容
@@ -111,6 +113,18 @@ _KNOWN_POISONED = {
     "202303": "22 张学科榜与 institutions.xlsx 为 202603 期内容的拷贝（CAS 化学行 "
               "118832/3668874 与 m=2275 逐字一致；m 序列上 202303 较 202301/202305 邻域 "
               "+30% 级跳变而 202603 平滑）——证据见 tests::test_202303_is_202603_copy",
+}
+
+#: 机构表残表/缺失期的**已核实二级来源**（期次 → 解剖配置）。这些期的主候选
+#: 只是 VLOOKUP 辅助簿（仅机构名＋全局排名）或中英映射表，同目录另存有带被引
+#: 的机构表。列位经内容核验并跨期序列互证：清华 202007 被引 1,394,446 落在
+#: 202005（1,317,946）与 202011（1,549,181）之间；202501 的 3,504,947 落在
+#: 202411 与 202503 之间，排名 32 与两邻期一致。
+#: 值＝(文件, sheet, ESI名, 排名, 论文, 被引, 篇均) 列号（0 基）＋是否全量
+#: 全球榜（定 n_inst：全量＝有效行数，子集＝None）。
+_SECONDARY_INST: dict[str, tuple[str, str, int, int, int, int, int, bool]] = {
+    "202007": ("全球机构.xlsx", "Sheet1", 3, 2, 5, 6, 7, False),
+    "202501": ("202501ESI总表.xlsx", "学校总表", 1, 0, 4, 5, 6, True),
 }
 
 _MIN_STEMS = 20            # 有效学科榜下限（缺/拒收超过 2 张 → 整期 bad）
@@ -275,6 +289,57 @@ def _parse_inst(base: pathlib.Path) -> tuple[dict, int | None, str | None, dict 
     return {}, None, "机构总表等价物缺失", None
 
 
+def _parse_secondary(period: str, base: pathlib.Path
+                     ) -> tuple[dict, int | None, str | None]:
+    """二级机构表 → (inst, n_inst, note)。永不抛错。
+
+    表头逐列核验（排名列含「排名」、论文列含「发文/论文」、被引列含「被引」），
+    不认识的版式一律拒收返回空表——二级来源只准补数，不准引入没核实过的口径。
+    """
+    fname, sheet, c_name, c_rank, c_pap, c_cit, c_cp, full = _SECONDARY_INST[period]
+    path = base / fname
+    if not path.exists():
+        return {}, None, f"二级来源缺失（{fname}）"
+    try:
+        wb = openpyxl.load_workbook(path)
+    except Exception as exc:                               # noqa: BLE001
+        return {}, None, f"二级来源不可读（{fname}: {type(exc).__name__}）"
+    try:
+        if sheet not in wb.sheetnames:
+            return {}, None, f"二级来源缺 sheet（{fname}!{sheet}）"
+        rows = [r for r in wb[sheet].iter_rows(values_only=True)
+                if any(c is not None and str(c).strip() for c in r)]
+    finally:
+        wb.close()
+    if not rows:
+        return {}, None, f"二级来源空表（{fname}!{sheet}）"
+
+    def _h(i: int) -> str:
+        v = head[i] if i < len(head) else None
+        return mr.norm(v) if v is not None else ""
+
+    head = rows[0]
+    if not ("排名" in _h(c_rank)
+            and ("发文" in _h(c_pap) or "论文" in _h(c_pap))
+            and "被引" in _h(c_cit)):
+        return {}, None, f"二级来源表头不符（{fname}!{sheet}），拒收"
+    inst: dict[str, list] = {}
+    n = 0
+    for r in rows[1:]:
+        if c_rank >= len(r) or not _is_num(r[c_rank]):
+            continue
+        n += 1
+        nm = str(r[c_name]).strip() if (c_name < len(r) and r[c_name] is not None) else ""
+        if nm in _EN_SET:
+            inst[nm] = [_rank_of(r[c_rank]), _cell(r, c_pap),
+                        _cell(r, c_cit), _cell(r, c_cp)]
+    if not inst:
+        return {}, None, f"二级来源无监测名单行（{fname}!{sheet}），拒收"
+    note = (f"{fname}!{sheet}: 二级机构表（{'全量' if full else '中国子集'}，"
+            f"有效行 {n}）")
+    return inst, (n if full else None), note
+
+
 def _extract_field(period: str, stem: str) -> tuple[dict | None, str | None]:
     """单张学科榜 → (fields[stem] 子典, note)；重排稠密榜/未登记手工件 → (None, note)。"""
     path = _resolve(mr.ESI_ROOT / period, _stem_candidates(stem))
@@ -362,10 +427,30 @@ def extract_period_full(period: str) -> tuple[dict, dict]:
     供 report.build_cache 组装 cn_inst/neighbors——机构表整包只读一遍（20261101 C1）。"""
     base = mr.ESI_ROOT / period
     inst, n_inst, inst_note, raw_inst = _parse_inst(base)
+    sec_note = None
+    if period in _SECONDARY_INST:
+        inst2, n_inst2, sec_note = _parse_secondary(period, base)
+        if inst2:
+            if not inst:                    # 主候选全不可用 → 二级表整表替身
+                inst, n_inst = inst2, n_inst2
+            else:                           # 残表 → 排名保留主表值，指标按二级表补
+                filled = 0
+                for nm, row in inst2.items():
+                    cur = inst.get(nm)
+                    if cur is None:
+                        inst[nm] = row
+                        filled += 1
+                    elif cur[2] is None and row[2] is not None:
+                        inst[nm] = [cur[0] if cur[0] is not None else row[0],
+                                    row[1], row[2], row[3]]
+                        filled += 1
+                sec_note = f"{sec_note}（回填 {filled} 校指标）"
     fields: dict[str, dict] = {}
     notes: list[str] = []
     if inst_note:
         notes.append(inst_note)
+    if sec_note:
+        notes.append(sec_note)
     for stem in mr.STEMS:
         fd, note = _extract_field(period, stem)
         if fd is None:

@@ -302,10 +302,12 @@ def report_data(cn: str, period: str, cache: dict, insight: dict | None = None,
     if len(pts) < 3:
         sec3 = {"num": "三", "title": "趋势", "notes": ["趋势数据不足，随期次积累解锁。"]}
     else:
+        # 缺值期不落点，折线由相邻真值点直接连线跨过（同 compare 趋势章口径）。
+        seq_c = [(p["period"], p["total_cites"]) for p in pts
+                  if p.get("total_cites") is not None]
         figs = [{"cap": "总被引轨迹",
-                 "svg": charts.line_chart([("总被引",
-                                            [(p["period"], p.get("total_cites")) for p in pts])],
-                                         appearance=appearance)}]
+                 "svg": charts.line_chart([("总被引", seq_c)],
+                                          appearance=appearance)}]
         best = sorted((r[0] / cache["fields"][stem]["m"], stem) for stem, r in present.items()
                       if cache["fields"][stem].get("m"))
         for _pct, stem in best:
