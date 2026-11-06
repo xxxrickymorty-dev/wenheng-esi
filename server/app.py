@@ -286,7 +286,8 @@ from .routes.dialog import (api_ai_call_stats, api_ai_capabilities,  # noqa: E40
                             api_analyze, api_dialog_home, api_dialog_session,
                             api_dialog_session_drop, api_dialog_sessions,
                             api_dialog_turn, api_dialog_turn_stream,
-                            api_models, api_models_active, api_models_remove,
+                            api_models, api_models_active,
+                            api_models_reasoning, api_models_remove,
                             api_models_save, api_models_test,
                             api_period_ai_calls, api_period_review_advice)
 

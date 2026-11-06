@@ -117,6 +117,17 @@ export async function setActiveModel(provider: string, model = ''): Promise<Mode
   return r.models
 }
 
+/** 改「当前供应商」的思考深度（effort 空串＝网关缺省）——
+    输入框菜单与供应商表单写的是同一个值；下一句话即生效。 */
+export async function setReasoningEffort(effort: string): Promise<ModelsPayload> {
+  const r = await req<{ models: ModelsPayload }>('/api/models/reasoning', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ effort }),
+  })
+  return r.models
+}
+
 /** 探活：给了 id 就测清单里那条供应商（后端用已存的 key 与 headers），否则测表单里这组。 */
 export async function testModel(p: { id?: string; base_url?: string; key?: string;
                                      model?: string; headers?: Record<string, string> }):

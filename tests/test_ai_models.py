@@ -185,6 +185,45 @@ def test_切到目录外的型号报错(tmp_path):
             _models.set_active("test-prov", "Test/Not-In-Catalog", actor="admin")
 
 
+# ============================================================ 思考深度（2026-11-06：输入框菜单与表单同值）
+def test_思考深度_写到当前供应商_下一读即生效(tmp_path, monkeypatch):
+    monkeypatch.setattr(_models, "active_credentials", _REAL_ACTIVE)
+    _seed(tmp_path, params={"reasoning_effort": "low"})
+    with ai.using(data_root=tmp_path):
+        _models.set_reasoning_effort("high", actor="admin")
+        cred = _models.active_credentials()
+        cfg = _config.cloud_config()
+    assert cred["params"]["reasoning_effort"] == "high"
+    assert cfg["params"]["reasoning_effort"] == "high", "cloud_config 现读，下一次调用即生效"
+
+
+def test_思考深度_空串清掉_参数键不落(tmp_path):
+    _seed(tmp_path, params={"reasoning_effort": "low"})
+    with ai.using(data_root=tmp_path):
+        _models.set_reasoning_effort("", actor="admin")
+        row = _models.read()["providers"][0]
+        raw = json.loads((tmp_path / "_ai" / "models.json").read_text(encoding="utf-8"))
+    assert "reasoning_effort" not in (row.get("params") or {})
+    assert "params" not in raw["providers"][0], "清空后盘上不落空 params 键（与 upsert 同形）"
+
+
+def test_思考深度_非法档拒收(tmp_path):
+    _seed(tmp_path)
+    with ai.using(data_root=tmp_path):
+        with pytest.raises(ValueError):
+            _models.set_reasoning_effort("ultra", actor="admin")
+
+
+def test_思考深度_当前是部署配置行_拒收并指路(tmp_path):
+    _seed(tmp_path)
+    with ai.using(data_root=tmp_path):
+        _models.set_active("", actor="admin")            # 回到 .env 部署配置
+        with pytest.raises(ValueError, match="\\.env"):
+            _models.set_reasoning_effort("low", actor="admin")
+        row = _models.read()["providers"][0]
+    assert (row.get("params") or {}).get("reasoning_effort") is None, "拒绝时一个字节都不写"
+
+
 def test_删掉当前项_回到部署配置(tmp_path):
     _seed(tmp_path)
     with ai.using(data_root=tmp_path):

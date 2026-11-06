@@ -216,6 +216,58 @@ export function ModelMenu({ payload, busy, onPicked }: {
   )
 }
 
+/** 输入框里那颗「思考深度」按钮 ＋ 向上弹的档位清单（2026-11-06，
+    照 DSH 输入框的推理等级位形制）：改的是「当前供应商」的
+    reasoning_effort——与供应商表单里那份是同一个值，一处存、两处改。 */
+export function ReasoningMenu({ payload, busy, onPicked }: {
+  payload: ModelsPayload | null
+  busy: boolean
+  onPicked: (effort: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const active = (payload?.providers ?? []).find((p) => p.active)
+  const current = String(active?.params?.reasoning_effort ?? '')
+  /* 按钮上用短档名；菜单项用表单同款全称。未知档（如网关新档位）照实显原串。 */
+  const SHORT: Record<string, string> = { low: '低', medium: '中', high: '高' }
+  const label = current ? (SHORT[current] ?? current) : '网关缺省'
+
+  useEffect(() => {
+    if (!open) return
+    const close = () => setOpen(false)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [open])
+
+  return (
+    <div className="mdl-menu-wrap" onClick={(e) => e.stopPropagation()}>
+      <button type="button" className="mdl-menu-btn" disabled={busy}
+              aria-haspopup="menu" aria-expanded={open}
+              title="思考型型号把档位调低才写得出正文；与设置里供应商表单的「思考深度」是同一个值"
+              onClick={() => setOpen((v) => !v)}>
+        思考深度·{label}
+        <span className="mdl-caret" aria-hidden="true">⌄</span>
+      </button>
+      {open && (
+        <div className="mdl-menu" role="menu">
+          {EFFORT_CHOICES.map((c) => {
+            const on = c.value === current
+            return (
+              <button key={c.value || 'default'} type="button" role="menuitemradio"
+                      aria-checked={on}
+                      className={`mdl-menu-item${on ? ' on' : ''}`}
+                      onClick={() => { setOpen(false); if (!on) onPicked(c.value) }}>
+                <span className="mdl-menu-k">{c.label}</span>
+                {on && <span className="mdl-menu-tick" aria-hidden="true">✓</span>}
+              </button>
+            )
+          })}
+          {!payload && <p className="mdl-menu-cap">正在读模型清单…</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** 新增/编辑供应商表单（图二字段序）：API 密钥（留空使用已保存凭据）/
     显示名称 / API 地址 / API 协议（三选）/ 模型目录（挑过的型号子集：
     获取可用模型点选加入、可手动加、恢复默认）/ Headers（可选，多行 K=V）/ 备注。 */

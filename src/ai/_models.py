@@ -406,6 +406,41 @@ def set_active(pid: str, model: str = "", *, actor: str = "admin") -> None:
            "updated": {"ts": time.strftime("%Y-%m-%dT%H:%M:%S"), "by": actor}})
 
 
+def set_reasoning_effort(effort: str, *, actor: str = "admin") -> None:
+    """改「当前供应商」的思考深度（reasoning_effort；空串＝清掉＝网关缺省）。
+
+    输入框菜单（2026-11-06，照 DSH 输入框的推理等级位）与供应商表单里的
+    「思考深度」写的是**同一个值**：当前项的 `params.reasoning_effort`——
+    一处存，两处改，下一句话即生效（`cloud_config` 现读）。
+    当前项是 `.env` 部署配置（provider 空串）时拒绝：那行按 2026-11-05
+    的决定不带 params（不给运维加第二个旋钮），要改去服务器 `.env`。
+    """
+    effort = str(effort or "").strip().lower()
+    if effort and effort not in PARAM_CHOICES["reasoning_effort"]:
+        raise ValueError("思考深度只认 minimal / low / medium / high"
+                          "（或清掉＝用网关缺省）")
+    data = read()
+    pid = str(data["active"]["provider"] or "")
+    if not pid:
+        raise ValueError("当前用的是服务器部署配置（.env）——"
+                          "思考深度在服务器的 .env 里配，界面改不了")
+    row = next((p for p in data["providers"] if p["id"] == pid), None)
+    if row is None:
+        raise ValueError("没有这条供应商")
+    params = dict(row.get("params") or {})
+    if effort:
+        params["reasoning_effort"] = effort
+    else:
+        params.pop("reasoning_effort", None)
+    if params:
+        row["params"] = params
+    else:
+        row.pop("params", None)                    # 空了就不落这个键（与 upsert 同形）
+    _save({"schema": SCHEMA, "active": dict(data["active"]),
+           "providers": data["providers"],
+           "updated": {"ts": time.strftime("%Y-%m-%dT%H:%M:%S"), "by": actor}})
+
+
 def _save(data: dict) -> None:
     p = path()
     p.parent.mkdir(parents=True, exist_ok=True)

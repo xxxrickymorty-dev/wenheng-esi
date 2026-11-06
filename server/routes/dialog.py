@@ -226,6 +226,24 @@ async def api_models_active(request: Request):
     return {"ok": True, "models": await run_in_threadpool(_models.public)}
 
 
+@router.post("/api/models/reasoning")
+@admin_route
+async def api_models_reasoning(request: Request):
+    """改「当前供应商」的思考深度（`{effort}`；空串＝网关缺省）——
+    输入框菜单与供应商表单写的是同一个值；下一句话即生效。"""
+    body = await request.json()
+    from ai import _models                                        # noqa: PLC0415
+    actor = config.role_of(current_user(request) or "")
+    try:
+        await run_in_threadpool(_models.set_reasoning_effort,
+                                 str(body.get("effort") or ""), actor=actor)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except OSError as e:
+        return JSONResponse({"error": f"写不进服务器上的配置文件：{e}"}, status_code=500)
+    return {"ok": True, "models": await run_in_threadpool(_models.public)}
+
+
 @router.post("/api/models/test")
 @admin_route
 async def api_models_test(request: Request):

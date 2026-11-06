@@ -10,9 +10,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import {
   applyFontChoice, fontChoiceFromStorage, headersToText, parseHeadersText,
-  FONT_CHOICES, FONT_KEY, ModelForm, providerModeOf,
+  EFFORT_CHOICES, FONT_CHOICES, FONT_KEY, ModelForm, providerModeOf,
+  ReasoningMenu,
 } from './ModelPanel'
-import type { ProviderDraft, ProviderRow } from '../api-models'
+import type { ModelsPayload, ProviderDraft, ProviderRow } from '../api-models'
 
 /* ---------------------------------------------------------------- Headers K=V（票 4） */
 describe('Headers 表单文本解析：每行 K=V，空行忽略，非法行报错', () => {
@@ -189,5 +190,51 @@ describe('供应商表单字段序照图二：API 密钥 → 显示名称 → AP
     const editing = renderForm({ ...BLANK_DRAFT, id: 't1', label: '旧名' })
     expect(editing).toContain('留空使用已保存凭据')
     expect(renderForm()).toContain('sk-…')
+  })
+})
+
+/* ---------------------------------------------------------------- 思考深度菜单（2026-11-06） */
+describe('输入框思考深度菜单：与供应商表单同值，按钮如实显档', () => {
+  const row = (over: Partial<ProviderRow> = {}): ProviderRow => ({
+    id: 't1', label: 'T', base_url: 'https://x/v1', protocol: 'openai',
+    key_hint: 'sk-…1234', note: '', builtin: false, ready: true,
+    active: true, active_model: 'm', models: ['m'],
+    ...over,
+  })
+  const payload = (providers: ProviderRow[]): ModelsPayload => ({
+    active: { provider: providers.find((p) => p.active)?.id ?? '', model: 'm' },
+    providers,
+    presets: [],
+  })
+
+  it('档位表＝网关缺省 / 低 / 中 / 高（与表单同一份 EFFORT_CHOICES）', () => {
+    expect(EFFORT_CHOICES.map((c) => c.value)).toEqual(['', 'low', 'medium', 'high'])
+  })
+
+  it('当前供应商没配档 → 按钮显「网关缺省」', () => {
+    const html = renderToStaticMarkup(
+      <ReasoningMenu payload={payload([row()])} busy={false} onPicked={() => {}} />)
+    expect(html).toContain('思考深度·网关缺省')
+  })
+
+  it('当前供应商配了 low → 按钮显短档名「低」', () => {
+    const html = renderToStaticMarkup(
+      <ReasoningMenu payload={payload([row({ params: { reasoning_effort: 'low' } })])}
+                     busy={false} onPicked={() => {}} />)
+    expect(html).toContain('思考深度·低')
+  })
+
+  it('当前项是 .env 部署配置行（无 params）→ 显「网关缺省」不炸', () => {
+    const html = renderToStaticMarkup(
+      <ReasoningMenu payload={payload([row({ id: '', builtin: true })])}
+                     busy={false} onPicked={() => {}} />)
+    expect(html).toContain('思考深度·网关缺省')
+  })
+
+  it('菜单默认收起（清单只在点开时出现）', () => {
+    const html = renderToStaticMarkup(
+      <ReasoningMenu payload={payload([row()])} busy={false} onPicked={() => {}} />)
+    expect(html).not.toContain('mdl-menu"')
+    expect(html).toContain('mdl-menu-btn')
   })
 })

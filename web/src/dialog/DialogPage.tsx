@@ -27,8 +27,8 @@ import { markLabel, taskView } from '../lib/taskview'
 import { NumberedText } from '../NumberedText'
 import { SideRail, useSideRail } from '../SideRail'
 import { Sprite } from '../icons'
-import { getModels, setActiveModel, type ModelsPayload } from '../api-models'
-import { ModelMenu, useSettingsCenter } from './ModelPanel'
+import { getModels, setActiveModel, setReasoningEffort, type ModelsPayload } from '../api-models'
+import { ModelMenu, ReasoningMenu, useSettingsCenter } from './ModelPanel'
 import { ToolTrace, type ToolCall } from './ToolTrace'
 
 /** 出稿轨迹（票 04）：逐段出（挑学科 / 配图 / 下载数据 / 数据校验 / 收尾 / 复刻）。
@@ -638,6 +638,18 @@ export default function DialogPage() {
     }
   }
 
+  /** 换思考深度（2026-11-06）：改「当前供应商」的档位，与设置里
+      供应商表单同值；成功后同步清单（菜单勾选位跟着走）。 */
+  async function pickReasoning(effort: string) {
+    try {
+      setModels(await setReasoningEffort(effort))
+      setModelMsg('')
+    } catch (e) {
+      setModelMsg(errorNote(e, '换思考深度',
+        { n404: '演示服务还没更新到这一版——重启服务后再试。' }))
+    }
+  }
+
   /** 停止出稿：拿 run 令牌喊停（终态 `stopped` 从原流回来，这里不掐连接）。 */
   async function stopRun() {
     if (!running) return
@@ -954,6 +966,8 @@ export default function DialogPage() {
               <div className="dlg-box-bar">
                 <ModelMenu payload={models} busy={busy || !!running}
                            onPicked={(provider, model) => void pickModel(provider, model)} />
+                <ReasoningMenu payload={models} busy={busy || !!running}
+                               onPicked={(effort) => void pickReasoning(effort)} />
                 {running ? (
                   <button className="dlg-send stop" type="button" aria-label="停止出稿"
                           onClick={() => void stopRun()}>停</button>
