@@ -445,10 +445,15 @@ def _find_header(rows, *keys, max_scan: int = 12, mode: str = "all"):
 
     mode="all"：keys 全部命中才算；mode="any"：任一命中即算（论文清单表头
     各世代叫法不同——Article Name / 论文标题 / Times Cited / 被引频次…）。
+
+    🔴 防静默失效：候选行必须 **≥ 2 个非空单元格**才可能是多列表头。Clarivate 导出
+    常在表头前塞一行「Documents / Indicators Results List: …」段落说明——只有一个超长
+    单元格、里面嵌着 'Institutions' 等词，子串匹配会误命中它 → h 坐标系错位、整表废数据
+    被标 parsed（202607 Chemistry 实测：这段说明行仅 1 个非空单元格，真实表头有 ≥5）。
     """
     for i, r in enumerate(rows[:max_scan]):
         h = [_s(c) for c in r]
-        if not any(h):
+        if sum(1 for x in h if x) < 2:          # 段落说明行 / 空行：不可能是多列表头
             continue
         if mode == "any":
             if any(k.lower() in x.lower() for k in keys for x in h if x):
@@ -463,12 +468,28 @@ def _find_header(rows, *keys, max_scan: int = 12, mode: str = "all"):
 
 
 def _esi_cols(h):
-    """ESI 榜表头 → 各 canonical 列号（找不到给 None；旧 9/7 列版式天然缺列）。"""
+    """ESI 榜表头 → 各 canonical 列号（找不到给 None；旧 9/7 列版式天然缺列）。
+
+    🔴 修复静默失效：
+      · 'inst' / 'cites' 用**精确单元格匹配优先**，修掉 `or` 对下标 0 的 falsy 陷阱——
+        'Indicators Results List: Institutions …' 段落行里 'institutions' 子串命中列 0，
+        原 `idx(..., exact=True) or idx(...)` 在精确命中列 0 时会因 `0 or …` 丢掉列 0；
+      · 'rank' 当第 0 列为空表头时显式认作排名列（202607 英文版式：第 0 列空表头存排名）。
+    """
     def idx(*keys, exact=False):
         for j, x in enumerate(h):
             if exact and x == keys[0]:
                 return j
-            if not exact and all(k.lower() in x.lower() for k in keys):
+            if not exact and any(k.lower() in x.lower() for k in keys):
+                return j
+        return None
+
+    def idx_cell(*keys):
+        """精确单元格匹配（大小写不敏感）：'Institutions' 必须是独立单元格，
+        不被 'Indicators Results List: Institutions' 段落行吞掉。"""
+        for j, x in enumerate(h):
+            xl = x.lower()
+            if xl and any(k.lower() == xl for k in keys):
                 return j
         return None
 
@@ -486,12 +507,23 @@ def _esi_cols(h):
     top_c, top_p = group("Top Papers")
     hc_c, hc_p = group("Highly Cited")
     hot_c, hot_p = group("Hot Papers")
+    # 排名列：中文/英文精确优先；否则「第 0 列空表头」视为排名（202607 英文版式）。
+    rank = idx_cell("序号", "Rank", "排名")
+    if rank is None and h and not h[0].strip():
+        rank = 0
+    # 机构列：精确单元格优先（修掉 `or` 对下标 0 的 falsy 陷阱），再退回原单键子串匹配。
+    inst_cell = idx_cell("Institutions", "机构", "Institution")
+    inst = inst_cell if inst_cell is not None else idx("Institutions")
+    # 引文数：同理修 trap。
+    cites_cell = idx_cell("Cites", "Citations", "被引")
+    cites = cites_cell if cites_cell is not None else idx("Cites")
     return {
-        "rank": idx("序号", exact=True),
-        "inst": idx("Institutions", exact=True) or idx("Institutions"),
-        "country": idx("Countr"), "documents": idx("Document"),
-        "cites": idx("Cites", exact=True) or idx("Cites"),
-        "cpp": idx("Cites/Paper"),
+        "rank": rank,
+        "inst": inst,
+        "country": idx("Countr", "国家", "Country"),
+        "documents": idx("Document", "文献", "Docum"),
+        "cites": cites,
+        "cpp": idx("Cites/Paper", "篇均", "Cites per Paper"),
         "top": top_c, "top_pct": top_p, "hc": hc_c, "hc_pct": hc_p,
         "hot": hot_c, "hot_pct": hot_p,
     }
@@ -1186,6 +1218,48 @@ def import_kind(conn, kind: str, scopes=None, *, force: bool = False, emit=print
 
 
 # ------------------------------------------------------------------ verify / report
+def _value_health(conn, emit) -> bool:
+    """值域防复发：机构榜 `esi_discipline_rank` 的「行数假绿但列全空／错位」当场报 FAIL。
+
+    🔴 血泪教训：按名称匹配填表会**静默失效、不抛异常**（202607 Chemistry 整张 35810 行
+    institution 错存成排名字符串、指标全 NULL 却标 parsed、行数对账「不符 0」）。
+    仅依赖行数对账发现不了，必须把列值域也纳入对账：
+      · `institution` 不得大面积纯数字（错位时存成排名 '1'/'2'…，真机构名永不纯数字）；
+      · `documents`/`cites` 不得大面积双空（该表确有指标列落库时才考核非空率，
+        兼容旧版缺列 NULL）。
+    """
+    total = conn.execute("SELECT COUNT(*) n FROM esi_discipline_rank").fetchone()["n"]
+    ok = True
+    if total:
+        # 纯数字机构名 = 非空、且不含任何非数字字符（GLOB '*[^0-9]*' 命中即含非数字）。
+        num_inst = conn.execute(
+            "SELECT COUNT(*) n FROM esi_discipline_rank"
+            " WHERE institution IS NOT NULL AND institution <> ''"
+            " AND institution NOT GLOB '*[^0-9]*'"
+        ).fetchone()["n"]
+        any_metric = conn.execute(
+            "SELECT COUNT(*) n FROM esi_discipline_rank"
+            " WHERE documents IS NOT NULL OR cites IS NOT NULL"
+        ).fetchone()["n"]
+        null_metrics = total - any_metric
+        num_ratio = num_inst / total
+        emit("值域体检：institution 纯数字 %d/%d（%.1f%%）"
+             % (num_inst, total, num_ratio * 100)
+             + (f" · documents/cites 双空 {null_metrics}/{total}（{null_metrics / total * 100:.1f}%）"
+                if total else ""))
+        if num_ratio > 0.01:
+            emit(f"  值域异常：institution 纯数字占比 {num_ratio:.1%}"
+                 f"（≥1% 视为机构榜错位废数据，列全错位）")
+            ok = False
+        elif any_metric:                      # 该表确有指标列落库时才考核双空率
+            null_ratio = null_metrics / total
+            if null_ratio > 0.5:
+                emit(f"  值域异常：documents/cites 双空占比 {null_ratio:.1%}"
+                     f"（>50% 视为列全空失效）")
+                ok = False
+    return ok
+
+
 def verify(conn, *, emit=print, fingerprint: bool = False) -> bool:
     """对账：解析状态分布 / 行数对账 / 损坏 219 件核对 / 抽样值对拍。纯读。"""
     ok = True
@@ -1218,6 +1292,9 @@ def verify(conn, *, emit=print, fingerprint: bool = False) -> bool:
     if bad:
         ok = False
     emit(f"行数对账：不符 {bad}")
+    # ③.5 值域防复发：机构榜「行数假绿但列全空／错位」当场报 FAIL
+    if not _value_health(conn, emit):
+        ok = False
     # ③ 损坏 219 件核对：清单里的每件都必须 recovered / corrupted / skipped_duplicate
     corrupt = load_corrupt_relpaths()
     if corrupt:

@@ -125,6 +125,84 @@ def test_is_desc_line():
     assert not AI._is_desc_line(["Documents", "Result"])    # 断词不命中
 
 
+# ---------------------------------------------------------------- ESI 榜映射（阶段 1b 修复）
+def _esi_rows_202607_like():
+    """模拟 202607 Chemistry.xlsx 的版式：4 空行 + 1 段落实说明行 + 真表头 + 数据。"""
+    blank = [None] * 7
+    para = ["Documents Result List: Institutions - 'YUNNAN UNIVERSITY' Show - Top Papers",
+            None, None, None, None, None, None]     # 仅 1 个非空单元格（段落行）
+    header = ["", "Institutions", "Countries/Regions", "Web of Science Documents",
+              "Cites", "Cites/Paper", "Top Papers"]
+    data = ["1", "CHINESE ACADEMY OF SCIENCES", "CHINA MAINLAND", "113595",
+            "3433820", "30.23", "3095"]
+    return [blank, blank, blank, blank, para, header, data]
+
+
+def test_find_header_skips_paragraph_row():
+    """表头前的段落说明行（仅 1 个非空单元格、嵌 'Institutions'）必须被跳过。
+
+    这是阶段 1b 的真实 bug：段落行里 'institutions' 子串命中 → hi 错位 → 整表废数据。
+    `_find_header` 现在要求候选行 ≥ 2 个非空单元格，段落行被排除。
+    """
+    rows = _esi_rows_202607_like()
+    hi, h = AI._find_header(rows, "Institutions")
+    assert hi == 5, hi
+    assert h[1] == "Institutions"
+    c = AI._esi_cols(h)
+    assert c["inst"] == 1                       # 真实机构列
+    assert c["rank"] == 0                        # 第 0 列空表头 = 排名列
+    assert c["documents"] == 3
+    assert c["cites"] == 4
+
+
+def test_esi_cols_inst_column_zero_not_trapped():
+    """机构列在 0 号位时，精确匹配 0 必须被认作机构列，不被 `or` 当 falsy 丢掉。"""
+    h = ["Institutions", "Country", "Documents", "Cites"]
+    c = AI._esi_cols(h)
+    assert c["inst"] == 0                        # 精确单元格命中列 0，修复 `or` 陷阱
+
+
+def test_esi_cols_202607_resolves_real_values():
+    """给定 202607 表头，能正确解析出首条数据行的机构/国家/文档数/引文。"""
+    rows = _esi_rows_202607_like()
+    hi, h = AI._find_header(rows, "Institutions")
+    c = AI._esi_cols(h)
+    r = rows[6]
+    inst = AI._s(r[c["inst"]]) if c["inst"] is not None and c["inst"] < len(r) else ""
+    country = AI._s(r[c["country"]]) if c["country"] is not None and c["country"] < len(r) else ""
+    docs = AI._int(AI._num(r[c["documents"]])) if c["documents"] is not None and c["documents"] < len(r) else None
+    cites = AI._int(AI._num(r[c["cites"]])) if c["cites"] is not None and c["cites"] < len(r) else None
+    assert inst == "CHINESE ACADEMY OF SCIENCES"
+    assert country == "CHINA MAINLAND"
+    assert docs == 113595 and cites == 3433820   # 不再是排名字符串
+
+
+def _seed_discipline_rank(c, rows):
+    DB.insert_rows(c, "esi_discipline_rank",
+                   ["period", "discipline", "rank_no", "institution", "country", "documents",
+                    "cites", "cites_per_paper", "top_papers", "top_pct", "highly_cited",
+                    "highly_cited_pct", "hot_papers", "hot_pct", "file_id", "row_no"],
+                   rows)
+
+
+def test_value_health_rejects_broken(conn):
+    """反例：整表错位（institution 存成排名、指标全 NULL）→ 必须报 FAIL。"""
+    broken = [( "202607", "Chemistry", i, str(i), "", None, None,
+                None, None, None, None, None, None, None, 1, i)
+              for i in range(1, 101)]
+    _seed_discipline_rank(conn, broken)
+    assert AI._value_health(conn, emit=lambda *_: None) is False
+
+
+def test_value_health_passes_good(conn):
+    """正例：机构名非数字、指标非 NULL → 通过。"""
+    good = [("202607", "Chemistry", i, f"INST{i}", "CHINA", 100 + i, 1000 + i,
+             None, None, None, None, None, None, None, 1, i)
+            for i in range(1, 101)]
+    _seed_discipline_rank(conn, good)
+    assert AI._value_health(conn, emit=lambda *_: None) is True
+
+
 # ---------------------------------------------------------------- archive_db 收口
 @pytest.fixture
 def conn(tmp_path, monkeypatch):
