@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<!--
+  登录与工作台-纸墨风（静态稿 20261107）
+  ══════════════════════════════════════════════════════════════
+  依据 rick 20261107 口谕：Hear.ai 复刻稿风格（a529ec7e）已获认可，
+  推演登录页与工作台如何吸收。两块 artboard，禁滚动，双击即开。
+
+  前提（先核查后动笔）：
+  · 工作台已是跨页书：SideRail 会泽左页（深绿+金线+品牌印）+ 纸面右页
+    （SideRail.tsx 20261102 rev2 落码 54777fed）；StateSeal 六印已在 React
+    （印面与谱 20261025 逐字一致）。本稿不推翻这些，只渗入复刻稿新词汇。
+  · 全站放开圆角（rick 20261102 口谕，方案 C 零圆角条款作废）——
+    本稿仍走方角：许可不是要求，纸墨风的语言是刻口与压边。
+  · 色板归属：登录门属展陈面（访客第一眼）→ 走陈列馆豁免色板 --lib-*
+    （ivory/gold/deep）+ 印泥朱砂，不进 core.json；工作台右页令牌不动，
+    只升组件（宋体标题/等宽台账数/描边/水尺/落章）。
+
+  真值落值（与 a529ec7e 复刻稿同源，零前端运算）：
+    973 升 22 · 前1% 14/22 · 顶尖 291 增 17 · 总第 39 期 · 202609
+    2026-09-23 并入 · 台账 43 期 · 包 45 期 · 22 学科口径
+    8 家潜力 · 图 117 · 表 20（说服页 spec 20261029）· 全链路 150.1 秒
+
+  三条底线：数字落值直出；reduced-motion 全降级；无 idle 动效
+  （环形印文在真实页为入场一次性落定，本稿即落定态）。
+-->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>登录与工作台 · 纸墨风（静态稿 20261107）</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --paper:#F5F3EC; --paper2:#E8DCC8; --ink:#1E2A23; --ink2:#4A564D;
+  --deep:#143729; --deep2:#14342A; --gold:#C8B584; --gold2:#8A6B2E;
+  --seal:#A82F22; --line:#DDE1D8;
+  --serif:'Noto Serif SC','Songti SC',SimSun,serif;
+  --mono:Consolas,'Courier New',SimSun,monospace;
+  --sans:system-ui,-apple-system,'Microsoft YaHei','PingFang SC',sans-serif;
+}
+body { background:#101914; font-family:var(--sans); padding:56px 0 72px; }
+
+/* ── artboard 台座 ── */
+.board { width:1440px; margin:0 auto 64px; position:relative;
+  box-shadow:0 24px 80px rgba(0,0,0,.5); outline:1px solid rgba(200,181,132,.28); }
+.board-tag { position:absolute; top:-30px; left:2px;
+  font-family:var(--mono); font-size:11px; letter-spacing:.45em;
+  color:var(--gold); }
+
+/* ════════════ 甲 · 登录门 ════════════ */
+#login { height:900px; background:
+  radial-gradient(110% 90% at 82% 12%, rgba(38,74,53,.55) 0%, transparent 56%),
+  var(--deep); color:var(--paper); position:relative; overflow:hidden; }
+#login .eyebrow { position:absolute; top:44px; left:52px;
+  font-family:var(--mono); font-size:11px; letter-spacing:.45em; color:var(--gold); }
+/* 环形印文：绕巨字后方，落定态（真实页入场一次性 rotate -14°→0） */
+#login .ring { position:absolute; left:-140px; top:96px; width:600px; height:600px;
+  opacity:.5; transform:rotate(-12deg); }
+#login .ring text { font-family:var(--mono); font-size:12.5px; letter-spacing:6px;
+  fill:var(--gold); }
+#login .copy { position:absolute; left:52px; top:300px; }
+#login h1 { font-family:var(--serif); font-weight:700; font-size:118px;
+  line-height:1.04; letter-spacing:.08em; }
+#login .claim { margin-top:22px; font-size:19px; letter-spacing:.13em; color:var(--paper2); }
+#login .claim em { font-style:normal; color:#E06A50; }
+#login .stats { position:absolute; left:52px; bottom:64px;
+  display:flex; gap:52px; }
+#login .stats .cell { border-top:1px solid rgba(200,181,132,.45); padding-top:18px;
+  min-width:128px; }
+#login .stats .num { font-family:var(--mono); font-size:40px; line-height:1;
+  font-weight:700; letter-spacing:.02em; }
+#login .stats .lab { margin-top:10px; font-size:12px; letter-spacing:.12em;
+  color:rgba(245,243,236,.72); }
+#login .stats .delta { margin-top:5px; font-family:var(--mono); font-size:11px;
+  letter-spacing:.18em; color:var(--gold); }
+#login .issue { position:absolute; right:52px; bottom:64px; text-align:right;
+  font-family:var(--mono); font-size:11px; letter-spacing:.3em;
+  color:rgba(200,181,132,.62); line-height:2.1; }
+/* 登录卡：纸面 + 金细线内衬（语言与旧 plaque 双框一致，明暗对调） */
+#login .card { position:absolute; right:96px; top:50%; transform:translateY(-50%);
+  width:392px; background:var(--paper); color:var(--ink);
+  box-shadow:0 30px 60px rgba(4,12,8,.45); padding:38px 34px 30px; }
+#login .card::before { content:""; position:absolute; inset:7px;
+  border:1px solid rgba(138,107,46,.45); pointer-events:none; }
+#login .card .who { display:flex; align-items:center; gap:12px; margin-bottom:26px; }
+#login .card .mini-seal { width:30px; height:30px; background:var(--seal);
+  color:var(--paper); font-family:var(--serif); font-weight:700; font-size:17px;
+  display:flex; align-items:center; justify-content:center; }
+#login .card .who b { font-family:var(--serif); font-size:19px; letter-spacing:.2em; }
+#login .field { margin-top:22px; }
+#login .field label { display:block; font-size:11px; letter-spacing:.3em;
+  color:var(--ink2); font-family:var(--mono); }
+#login .field input { width:100%; margin-top:6px; padding:8px 2px 10px;
+  font-family:var(--mono); font-size:15px; letter-spacing:.1em; color:var(--ink);
+  background:transparent; border:0; border-bottom:1px solid rgba(30,42,35,.35);
+  outline:none; }
+#login .field input:focus { border-bottom:2px solid var(--seal); }
+#login .go { margin-top:30px; width:100%; height:46px;
+  background:var(--deep2); color:var(--paper); border:0; cursor:pointer;
+  font-family:var(--serif); font-weight:700; font-size:15px; letter-spacing:.35em; }
+#login .go:hover { background:var(--seal); }
+#login .go:active { transform:scale(.98); }
+#login .qr { margin-top:16px; display:flex; align-items:center; gap:10px;
+  font-family:var(--mono); font-size:11px; letter-spacing:.22em; color:var(--ink2); }
+#login .qr .box { width:22px; height:22px; border:1px solid rgba(30,42,35,.5);
+  position:relative; }
+#login .qr .box::after { content:""; position:absolute; inset:5px;
+  background:rgba(30,42,35,.5); }
+
+/* ════════════ 乙 · 工作台 ════════════ */
+#bench { height:900px; display:flex; background:var(--paper); color:var(--ink); }
+/* 左页 · 会泽（现状保留，仅字升级宋体） */
+#rail { width:280px; background:var(--deep2); color:var(--paper);
+  border-right:1px solid rgba(200,181,132,.5); padding:34px 0 26px;
+  display:flex; flex-direction:column; }
+#rail .brand { padding:0 26px; display:flex; align-items:center; gap:12px; }
+#rail .brand .mini-seal { width:32px; height:32px; background:var(--seal); color:var(--paper);
+  font-family:var(--serif); font-weight:700; font-size:18px;
+  display:flex; align-items:center; justify-content:center; }
+#rail .brand b { font-family:var(--serif); font-size:19px; letter-spacing:.24em; }
+#rail .brand-sub { padding:2px 26px 0 70px; font-family:var(--mono); font-size:10px;
+  letter-spacing:.3em; color:rgba(200,181,132,.6); }
+#rail .handle { margin:20px 26px 0; font-family:var(--mono); font-size:10px;
+  letter-spacing:.3em; color:rgba(245,243,236,.5); }
+#rail nav { margin-top:34px; flex:1; }
+#rail .it { display:flex; align-items:center; gap:12px; padding:12px 26px;
+  font-size:13.5px; letter-spacing:.14em; color:rgba(245,243,236,.78);
+  position:relative; }
+#rail .it .ic { width:12px; height:12px; border:1px solid rgba(245,243,236,.55); }
+#rail .it.on { color:var(--paper); background:rgba(245,243,236,.07); }
+#rail .it.on::before { content:""; position:absolute; left:0; top:8px; bottom:8px;
+  width:2px; background:var(--seal); }
+#rail .it.on .ic { border-color:var(--seal); background:rgba(168,47,34,.25); }
+#rail .div { margin:20px 26px; border-top:1px solid rgba(200,181,132,.35); }
+#rail .it.dim { color:rgba(245,243,236,.45); }
+#rail .me { padding:0 26px; font-family:var(--mono); font-size:10px;
+  letter-spacing:.28em; color:rgba(200,181,132,.6); }
+
+/* 右页 */
+#desk { flex:1; padding:44px 52px 40px; display:flex; flex-direction:column; position:relative; }
+/* 页眉：宋体期号 + 印（现状 FlowHead 的组件级升级） */
+#desk .head { display:flex; align-items:flex-start; justify-content:space-between; }
+#desk .head h1 { font-family:var(--serif); font-weight:700; font-size:38px;
+  letter-spacing:.1em; }
+#desk .head .sub { margin-top:8px; font-family:var(--mono); font-size:12px;
+  letter-spacing:.22em; color:var(--ink2); }
+#desk .seal-slot { width:76px; height:76px; }
+#desk .seal-slot text { font-family:var(--serif); }
+/* 水尺：金刻度 + 朱砂游标（「条上直接标刻度」语言的页级版） */
+#desk .gauge { margin-top:26px; position:relative; height:14px; }
+#desk .gauge .rail { position:absolute; top:6px; left:0; right:0; height:2px;
+  background:repeating-linear-gradient(to right, var(--gold2) 0 2px, transparent 2px 14px);
+  opacity:.6; }
+#desk .gauge .needle { position:absolute; top:0; left:58%; width:2px; height:14px;
+  background:var(--seal); }
+/* 三步目次（点线引渡，Workbench v2 版式 + 宋体站名） */
+#desk .steps { margin-top:34px; display:flex; align-items:baseline; gap:18px; }
+#desk .step { display:flex; align-items:baseline; gap:10px; }
+#desk .step .no { font-family:var(--mono); font-size:11px; letter-spacing:.2em;
+  color:var(--gold2); }
+#desk .step .nm { font-family:var(--serif); font-size:21px; letter-spacing:.14em; }
+#desk .step .st { font-family:var(--mono); font-size:11px; letter-spacing:.2em;
+  color:var(--ink2); }
+#desk .step.now .nm { color:var(--seal); }
+#desk .step.now { position:relative; }
+#desk .step.now::after { content:""; position:absolute; left:0; right:0; bottom:-7px;
+  height:2px; background:var(--seal); }
+#desk .dots { flex:1; border-bottom:2px dotted rgba(30,42,35,.3); transform:translateY(-5px); }
+/* 对账读数（顶线 + 大等宽数落值） */
+#desk .ledger { margin-top:56px; display:grid; grid-template-columns:repeat(4,1fr);
+  gap:40px; }
+#desk .ledger .cell { border-top:1px solid rgba(30,42,35,.3); padding-top:20px; }
+#desk .ledger .num { font-family:var(--mono); font-size:44px; line-height:1;
+  font-weight:700; }
+#desk .ledger .lab { margin-top:10px; font-size:12.5px; letter-spacing:.14em;
+  color:var(--ink2); }
+/* 主动作行 */
+#desk .acts { margin-top:auto; display:flex; align-items:center; gap:16px; }
+#desk .acts .main { height:46px; padding:0 30px; background:var(--deep2);
+  color:var(--paper); border:0; cursor:pointer; font-family:var(--serif);
+  font-weight:700; font-size:15px; letter-spacing:.3em; }
+#desk .acts .main:hover { background:var(--seal); }
+#desk .acts .ghost { height:46px; padding:0 22px; background:transparent;
+  border:1px solid rgba(30,42,35,.4); color:var(--ink); cursor:pointer;
+  font-size:13px; letter-spacing:.2em; }
+#desk .acts .meta { margin-left:auto; font-family:var(--mono); font-size:11px;
+  letter-spacing:.22em; color:var(--ink2); }
+@media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
+</style>
+</head>
+<body>
+
+<!-- ════════ 甲 · 登录门 ════════ -->
+<section class="board" id="login">
+  <span class="board-tag">甲 · 登录门</span>
+  <svg class="ring" viewBox="0 0 400 400" aria-hidden="true">
+    <defs><path id="rc" d="M200,52 a148,148 0 1,1 -0.01,0 z"/></defs>
+    <text><textPath href="#rc">学科信息参考 · 总第三十九期 · 二〇二六年九月 · 云南大学图书馆 · </textPath></text>
+  </svg>
+  <span class="eyebrow">云南大学图书馆 · 学科信息参考 · 演示环境</span>
+  <div class="copy">
+    <h1>文衡</h1>
+    <p class="claim">数字不出自模型，只出自<em>台账</em>。</p>
+  </div>
+  <div class="stats">
+    <div class="cell"><div class="num">973</div>
+      <div class="lab">ESI 全学科国际排名</div><div class="delta">升 22</div></div>
+    <div class="cell"><div class="num">14/22</div>
+      <div class="lab">进入前 1% 学科</div><div class="delta">22 个学科口径</div></div>
+    <div class="cell"><div class="num">291</div>
+      <div class="lab">顶尖论文</div><div class="delta">增 17</div></div>
+  </div>
+  <p class="issue">总第 39 期 · 202609<br>已并入台账 · 2026-09-23</p>
+  <form class="card" onsubmit="return false">
+    <div class="who"><span class="mini-seal">衡</span><b>馆员登录</b></div>
+    <div class="field"><label>账号</label><input type="text" autocomplete="username"></div>
+    <div class="field"><label>通行字</label><input type="password" autocomplete="current-password"></div>
+    <button class="go" type="submit">进入工作台</button>
+    <p class="qr"><span class="box" aria-hidden="true"></span>或扫码 · 手机上接着看</p>
+  </form>
+</section>
+
+<!-- ════════ 乙 · 工作台 ════════ -->
+<section class="board" id="bench">
+  <span class="board-tag">乙 · 工作台</span>
+  <aside id="rail">
+    <div class="brand"><span class="mini-seal">衡</span><b>文衡</b></div>
+    <p class="brand-sub">学科信息参考</p>
+    <p class="handle">‹ 收起</p>
+    <nav>
+      <div class="it on"><span class="ic"></span>出报告</div>
+      <div class="it"><span class="ic"></span>分析台</div>
+      <div class="it"><span class="ic"></span>高校 ESI 报告</div>
+      <div class="it"><span class="ic"></span>问文衡</div>
+      <div class="div"></div>
+      <div class="it dim"><span class="ic"></span>运行档案</div>
+      <div class="it dim"><span class="ic"></span>陈列馆 ↗</div>
+    </nav>
+    <p class="me">馆员 · 云大图书馆</p>
+  </aside>
+  <main id="desk">
+    <div class="head">
+      <div>
+        <h1>本期 202609</h1>
+        <p class="sub">第 39 期 · 2026-09-23 并入</p>
+      </div>
+      <!-- 已出稿 · 墨绿干印（机器做完的活；印面同谱 20261025） -->
+      <svg class="seal-slot" viewBox="0 0 220 220" aria-label="已出稿印">
+        <g filter="url(#ir)">
+          <rect x="10" y="10" width="200" height="200" fill="none" stroke="#264A35" stroke-width="5"/>
+          <rect x="23" y="23" width="174" height="174" fill="none" stroke="#264A35" stroke-width="1.6"/>
+          <g font-weight="700" font-size="56" text-anchor="middle" fill="#264A35">
+            <text x="64" y="94">已</text><text x="156" y="94">出</text>
+            <text x="110" y="180">稿</text>
+          </g>
+        </g>
+      </svg>
+    </div>
+    <div class="gauge" aria-hidden="true"><div class="rail"></div><div class="needle" style="left:78%"></div></div>
+    <!-- 三步目次＝ADR-0004 现行（取数 → 核对并并入 → 一键生成），非四步流水 -->
+    <div class="steps">
+      <div class="step"><span class="no">01</span><span class="nm">取数</span><span class="st">完</span></div>
+      <span class="dots"></span>
+      <div class="step"><span class="no">02</span><span class="nm">核对并并入</span><span class="st">完</span></div>
+      <span class="dots"></span>
+      <div class="step now"><span class="no">03</span><span class="nm">一键生成</span><span class="st">断言 48 过</span></div>
+    </div>
+    <div class="ledger">
+      <div class="cell"><div class="num">22</div><div class="lab">学科口径</div></div>
+      <div class="cell"><div class="num">8</div><div class="lab">家潜力学科</div></div>
+      <div class="cell"><div class="num">117</div><div class="lab">张图</div></div>
+      <div class="cell"><div class="num">20</div><div class="lab">张表</div></div>
+    </div>
+    <div class="acts">
+      <button class="main" type="button">一键生成</button>
+      <button class="ghost" type="button">看可视化工作流</button>
+      <span class="meta">全链路 150.1 秒 · 202609 实跑</span>
+    </div>
+  </main>
+</section>
+
+<!-- 毛边滤镜（与 StateSeal SealInkDefs 同源工艺，全稿挂一次） -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="ir" x="-8%" y="-8%" width="116%" height="116%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="3" seed="7" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="4"/>
+  </filter>
+</svg>
+</body>
+</html>
