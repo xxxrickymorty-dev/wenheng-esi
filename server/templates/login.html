@@ -1,258 +1,311 @@
 {% extends "base.html" %}
 {% block title %}欢迎 · 文衡{% endblock %}
-{% block sub %}学 科 信 息 参 考 · 演 示 环 境{% endblock %}
-{% block body_attrs %}class="theme-ynu"{% endblock %}
+{% block topbar %}{% endblock %}{# 2026-11-07 granola 复刻：登录页脱旧站页框全幅 #}
+{% block foot %}{% endblock %}
+{% block body_attrs %}class="gate-page"{% endblock %}
 
-{# 欢迎页 ＝ 登录页（rick 2026-09-21 定：把建筑图做首屏；2026-09-28 二改：满屏图书馆背景；
-   2026-09-28 三改：登录卡玻璃拟态；2026-10-16 四改（taste 评审：玻璃是禁项、眉标与小菱形是装饰）：
-   登录卡改**深绿实色面板**、顶部眉标文字折进导语、列表菱形点删除。
-   适配本仓铁律：**零 CDN**——系统字体 + 内联 SVG；背景仍是本馆照片，不给卡通渐变。
-   为什么放在登录页而不是 `/`：`/` 是馆员工作台（2026-09-19 刻意改过去的，
-   回答"这次要我做什么决定"），不该被一张宣传图顶掉；而未登录的人第一眼看到的
-   就是这一页 —— 它才是系统真正的门面。
-   🔴 背景图走 `asset()` 拿版本号（改图后浏览器才不会吃缓存），这是本仓的守卫要求。 #}
+{# ══════════════════════════════════════════════════════════════════════════════
+   登录页 · granola.ai 复刻（rick 2026-11-07 第六次口谕定稿方向）
+   语法对译（依据实站截图校对）：衬线大题／胶囊 CTA／拟真产品窗口浮于真馆照片画板／
+   暖色状态签／逐行浮现微动效。橄榄绿胶囊 → 会泽绿；彩色画板 → 真馆照片（图集 50fe）。
+   数字红线：右侧拟真窗口的全部数字来自 routes/pages.py `_gate_facts()`——
+   最近一期已生成（优先已签发）期次的 overview_facts + approval 快照；
+   读不到就整块不渲染，登录页不编数。评估演进后窗口自动跟新。
+   零 CDN、系统字体；无 JS 时表单照常 POST /login（303 落陈列馆）。
+   🔴 图片一律走 asset() 版本号（e2e_check 钉死）。
+   ══════════════════════════════════════════════════════════════════════════ #}
 {% block head %}
 <style>
-  /* 背景图 + 两层渐变（左侧压暗保文案对比度，底部收暗接页脚）。
-     令牌取自 style.css（:root + body.theme-ynu 云大绿主题），别在本页另开色板。 */
-  body.theme-ynu {
-    background-color: #123619;
-    background-image:
-      linear-gradient(92deg, rgba(8, 30, 23, .92) 0%, rgba(8, 30, 23, .58) 44%,
-                      rgba(8, 30, 23, .30) 66%, rgba(8, 30, 23, .52) 100%),
-      linear-gradient(0deg, rgba(6, 26, 20, .74) 0%, rgba(6, 26, 20, 0) 46%),
-      url("{{ asset('img/library-exterior.jpg') }}");
-    background-size: cover;
-    background-position: center 58%;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+  :root{
+    --gbg:#F7F5EF; --gcard:#FFFFFF; --ghair:#E5E1D6; --ghair2:#D9D4C6;
+    --gink:#15222B; --gink2:rgba(21,34,43,.72); --gink3:rgba(21,34,43,.67);  /* detect 后两度加深：纸面 ≥4.9:1 */
+    --gdeep:#143729; --gdeep2:#1A4B27; --ggold:#C9A961; --ggold2:#8F7128;    /* 大字金强调 3:1 起，detect 后两度加深 */
+    --ggoldbg:rgba(201,169,97,.16); --ggreen:#276B4C; --gred:#B23A2B;
+    --gserif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --gkai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --gsans:system-ui,-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    --ge:cubic-bezier(.32,.72,0,1);
+    --grwin:12px; --grcard:8px; --grchip:6px;
+    --gshcard:0 1px 2px rgba(21,34,43,.05),0 12px 32px rgba(21,34,43,.09);
+    --gshwin:0 1px 2px rgba(21,34,43,.05),0 30px 80px rgba(21,34,43,.16);
   }
-  main.wrap { max-width: 1200px; }
-  /* 左文案 / 右登录卡；高度扣掉顶栏与页脚，视觉重心居中 */
-  .welcome {
-    display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(340px, .75fr);
-    gap: 40px; align-items: center; min-height: calc(100vh - 164px); padding: 34px 0;
-  }
-  /* --- 左：文案（暗底上全部转米白，强调符用金） --- */
-  .welcome-copy { padding: 0 4px; }
-  .welcome-copy .emblem {
-    display: block; width: 38px; height: 38px; margin: 0 0 16px;
-    background: #F2EDDC; border-radius: 50%; padding: 2px;
-  }
-  .welcome-copy h1 {
-    margin: 0; font-family: var(--serif); font-weight: 700;
-    font-size: 46px; letter-spacing: .1em; line-height: 1.15; color: #F6F1DE;
-  }
-  .welcome-copy h1 i { font-style: normal; color: var(--gold); }
-  .welcome-copy .lede {
-    margin: 14px 0 0; max-width: 44em; font-size: 14px; line-height: 1.85;
-    color: rgba(240, 236, 220, .88);
-  }
-  .welcome-copy .lede strong { color: #F6F1DE; }
-  .welcome-facts { list-style: none; margin: 22px 0 0; padding: 0; display: grid; gap: 9px; }
-  .welcome-facts li {
-    font-size: 12.5px; color: rgba(240, 236, 220, .78);
-  }
-  .welcome-facts li strong { color: #F6F1DE; }
+  body.gate-page{background:var(--gbg);color:var(--gink);font:15px/1.75 var(--gsans);
+    font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  /* 画板 -18px 出血会撑出横滚（390 实测）：钳制，同 shelf body 惯例 */
+  body.gate-page .reg{display:none}  /* 旧站四角套准十字：granola 版式不带仪器角标 */
+  body.gate-page main.wrap{max-width:none;padding:0;margin:0}
+  body.gate-page ::selection{background:var(--ggold);color:#fff}
+  body.gate-page a{color:inherit;text-decoration:none}
+  body.gate-page button{font:inherit;cursor:pointer;background:none;border:none;color:inherit}
+  body.gate-page input{font:inherit}
+  body.gate-page :focus-visible{outline:2px solid var(--ggold2);outline-offset:2px}
+  @keyframes grise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  @keyframes gpop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
 
-  /* ===================== 右：登录卡（实色面板——2026-10-16 taste：玻璃拟态退场） ===================== */
-  .welcome .login-wrap {
-    min-height: 0; padding: 0; height: 100%;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .glass-wrap { position: relative; width: 100%; max-width: 430px; }
+  /* ── 顶栏 ── */
+  .gt{display:flex;align-items:center;gap:14px;padding:18px clamp(28px,4vw,56px)}
+  .gt .emblem{width:30px;height:30px}
+  .gt b{font-family:var(--gserif);font-weight:600;font-size:17px;letter-spacing:.14em}
+  .gt .sub{font-family:var(--gkai);font-size:11px;letter-spacing:.2em;color:var(--gink3);
+    border-left:1px solid var(--ghair2);padding-left:14px}
+  .gt .claim{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:11px;
+    letter-spacing:.1em;color:var(--gink3);background:var(--gcard);border:1px solid var(--ghair);
+    border-radius:999px;padding:5px 14px}
+  .gt .claim i{width:6px;height:6px;border-radius:50%;background:var(--ggold)}
 
-  /* 卡片本体：深绿实色方角面板（2026-10-17 高级版：金色细线双框＋入场动效；零 CDN 不变） */
-  body.theme-ynu .plaque {
-    position: relative; z-index: 1;
-    width: 100%; background: #0F2E21;
-    border: 1px solid rgba(246, 241, 222, .22); border-radius: 0;
-    box-shadow: 0 30px 60px rgba(0, 0, 0, .42);
-    animation: wh-card-in .65s ease both;
-  }
-  body.theme-ynu .plaque::before {
-    content: ""; position: absolute; inset: 7px; pointer-events: none;
-    border: 1px solid rgba(177, 154, 101, .38);
-  }
-  @keyframes wh-card-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
-  body.theme-ynu .plaque .body { padding: 38px 34px 30px; position: relative; z-index: 1; }
-  body.theme-ynu .plaque .kicker {
-    margin: 0 0 14px; font-family: var(--kai, "KaiTi", serif); font-size: 10px;
-    letter-spacing: .5em; color: rgba(240, 236, 220, .62);
-  }
-  body.theme-ynu .plaque .mark {
-    color: #F6F1DE; font-family: var(--serif); font-size: 40px; font-weight: 700;
-    letter-spacing: .22em; line-height: 1.1;
-  }
-  body.theme-ynu .plaque .mark i { font-style: normal; color: var(--gold); }
-  body.theme-ynu .plaque .tagline {
-    color: rgba(240, 236, 220, .72); font-family: var(--kai, "KaiTi", serif);
-    font-size: 12px; letter-spacing: .18em; margin-top: 12px;
-  }
-  body.theme-ynu .plaque hr { border-top: 1px solid rgba(177, 154, 101, .42); margin: 22px 0; }
+  /* ── 主区 ── */
+  .ghero{display:grid;grid-template-columns:minmax(0,46fr) minmax(0,54fr);gap:clamp(28px,4vw,64px);
+    align-items:center;padding:clamp(10px,3vh,36px) clamp(28px,4vw,56px) 0;
+    min-height:calc(100vh - 128px)}
+  .gcopy{max-width:520px}
+  .gcopy .new{display:inline-flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.06em;
+    color:var(--gink2);background:var(--ggoldbg);border-radius:999px;padding:5px 14px;
+    margin-bottom:20px;animation:grise .6s var(--ge) .05s both}
+  .gcopy .new i{font-style:normal;background:var(--gdeep);color:#fff;font-size:11px;
+    border-radius:999px;padding:1px 8px;letter-spacing:.12em}
+  .gcopy h1{font-family:var(--gserif);font-weight:700;font-size:clamp(40px,3.8vw,56px);line-height:1.24;
+    letter-spacing:.02em;margin:0;animation:grise .7s var(--ge) .1s both}
+  .gcopy h1 em{font-style:normal;color:var(--ggold2)}
+  .gcopy .frag{margin-top:16px;display:flex;flex-direction:column;gap:2px;font-family:var(--gkai);
+    font-size:17px;letter-spacing:.14em;color:var(--gink2)}
+  .gcopy .frag span{animation:grise .6s var(--ge) both}
+  .gcopy .frag span:nth-child(1){animation-delay:.24s}
+  .gcopy .frag span:nth-child(2){animation-delay:.34s}
+  .gcopy .frag span:nth-child(3){animation-delay:.44s}
 
-  /* 输入框：浮动标签（input 在前、span 在后，`:focus`/`:valid` 提起）+ 内联 SVG 前导图标 */
-  body.theme-ynu .plaque .inputBx { position: relative; margin-bottom: 18px; }
-  body.theme-ynu .plaque .inputBx input {
-    width: 100%; margin-top: 0; padding: 11px 42px 11px 40px;
-    background: rgba(255, 255, 255, .10); border: 1px solid rgba(246, 241, 222, .26);
-    border-radius: 0; color: #fff; font-size: 14.5px;
-    box-shadow: none;
-    transition: border-color .2s, background .2s;
-  }
-  body.theme-ynu .plaque .inputBx input:focus {
-    border-color: rgba(177, 154, 101, .85); background: rgba(255, 255, 255, .16);
-  }
-  body.theme-ynu .plaque .inputBx input:focus-visible {
-    outline: 2px solid rgba(255, 255, 255, .7); outline-offset: 1px;
-  }
-  body.theme-ynu .plaque .inputBx input:-webkit-autofill {
-    -webkit-text-fill-color: #fff; transition: background-color 9999s ease-out;
-  }
-  body.theme-ynu .plaque .inputBx span {
-    position: absolute; left: 40px; top: 10px; color: rgba(255, 255, 255, .85);
-    font-size: 14px; line-height: 1.4; letter-spacing: .04em; pointer-events: none;
-    transition: .25s ease;
-  }
-  body.theme-ynu .plaque .inputBx input:focus ~ span,
-  body.theme-ynu .plaque .inputBx input:valid ~ span {
-    transform: translate(-32px, -26px) scale(.78);
-    transform-origin: left top; color: rgba(255, 255, 255, .78);
-  }
-  body.theme-ynu .plaque .inputBx .lead-ic {
-    position: absolute; left: 12px; top: 11px; width: 18px; height: 18px;
-    stroke: rgba(255, 255, 255, .85); fill: none; stroke-width: 1.7;
-    stroke-linecap: round; stroke-linejoin: round; pointer-events: none;
-  }
-  /* 密码显示切换（原稿的眼睛；内联 SVG 替代外链图标） */
-  body.theme-ynu .plaque .pwd-toggle {
-    position: absolute; right: 6px; top: 6px; width: 30px; height: 30px;
-    display: grid; place-items: center; border: 0; background: transparent;
-    cursor: pointer; border-radius: 9px;
-  }
-  body.theme-ynu .plaque .pwd-toggle svg {
-    width: 18px; height: 18px; stroke: rgba(255, 255, 255, .8); fill: none;
-    stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
-  }
-  body.theme-ynu .plaque .pwd-toggle:hover { background: rgba(255, 255, 255, .12); }
-  body.theme-ynu .plaque .pwd-toggle .slash { opacity: 0; transition: opacity .15s; }
-  body.theme-ynu .plaque .pwd-toggle.is-visible .slash { opacity: 1; }
+  /* 登录卡 */
+  .gauth{margin-top:26px;background:var(--gcard);border:1px solid var(--ghair);border-radius:var(--grwin);
+    box-shadow:var(--gshcard);padding:20px 20px 18px;max-width:400px;animation:grise .7s var(--ge) .5s both}
+  .gauth .row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .gauth label{font-size:12.5px;color:var(--gink2);width:34px;flex:none;letter-spacing:.1em}
+  .gauth input{flex:1;min-height:40px;background:var(--gbg);border:1px solid var(--ghair2);
+    border-radius:var(--grcard);padding:0 12px;color:var(--gink);letter-spacing:.04em;
+    transition:border-color .25s var(--ge),box-shadow .25s var(--ge)}
+  .gauth input:focus{border-color:var(--ggold);box-shadow:0 0 0 3px var(--ggoldbg);outline:none}
+  .gauth .pwd{position:relative;display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .gauth .pwd input{padding-right:38px}
+  .gauth .pwd-toggle{position:absolute;right:6px;width:30px;height:30px;display:grid;place-items:center;
+    border-radius:var(--grchip)}
+  .gauth .pwd-toggle svg{width:17px;height:17px;stroke:var(--gink3);fill:none;stroke-width:1.7;
+    stroke-linecap:round;stroke-linejoin:round}
+  .gauth .pwd-toggle:hover{background:var(--gbg)}
+  .gauth .pwd-toggle .slash{opacity:0;transition:opacity .15s}
+  .gauth .pwd-toggle.is-visible .slash{opacity:1}
+  .gauth .go{width:100%;min-height:44px;border-radius:999px;background:var(--gdeep);color:var(--gbg);
+    font-size:14.5px;letter-spacing:.3em;text-indent:.3em;transition:background-color .3s var(--ge),
+    transform .3s var(--ge);animation:gpop .5s var(--ge) .66s both}
+  .gauth .go:hover{background:var(--gdeep2)}
+  .gauth .go:active{transform:translateY(1px)}
+  .gauth .err{display:none;background:rgba(178,58,43,.07);border:1px solid rgba(178,58,43,.25);
+    color:var(--gred);font-size:12px;letter-spacing:.04em;padding:7px 11px;border-radius:var(--grchip);
+    margin-bottom:12px}
+  .gauth.has-err .err{display:block}
+  .gauth .fineprint{margin-top:12px;font-size:11px;letter-spacing:.08em;color:var(--gink3)}
 
-  /* 提交（原稿 input[type=submit]：白底深字，hover 玻璃化）/ 游客次按钮 */
-  body.theme-ynu .plaque .btn.primary {
-    background: #F6F1DE; color: #123619; border: 0; border-radius: 0;
-    padding: 15px 16px; font-size: 15px; letter-spacing: .5em; text-indent: .5em;
-    box-shadow: none;
-    transition: background .3s, color .3s, letter-spacing .3s;
-  }
-  body.theme-ynu .plaque .btn.primary:hover {
-    background: var(--gold); color: #0F2E21; letter-spacing: .58em;
-  }
-  body.theme-ynu .plaque .btn.line {
-    background: transparent; color: rgba(255, 255, 255, .92);
-    border: 1px solid rgba(255, 255, 255, .4); border-radius: 14px;
-  }
-  body.theme-ynu .plaque .btn.line:hover {
-    background: rgba(255, 255, 255, .14); color: #fff; border-color: rgba(255, 255, 255, .65);
-  }
-  body.theme-ynu .plaque .muted { color: rgba(240, 236, 220, .66); }
-  body.theme-ynu .plaque code {
-    background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .2); color: #F6F1DE;
-  }
-  body.theme-ynu .plaque .alert.err {
-    background: rgba(255, 120, 100, .16); border: 1px solid rgba(255, 120, 100, .35);
-    border-left: 3px solid #FF9C86; color: #FFD9D0; border-radius: 10px;
-  }
+  /* 三卖点 */
+  .gpoints{margin-top:22px;display:flex;flex-direction:column;gap:7px;font-size:12.5px;color:var(--gink2)}
+  .gpoints span{display:flex;align-items:center;gap:9px;animation:grise .6s var(--ge) both}
+  .gpoints span:nth-child(1){animation-delay:.72s}
+  .gpoints span:nth-child(2){animation-delay:.8s}
+  .gpoints span:nth-child(3){animation-delay:.88s}
+  .gpoints i{width:5px;height:5px;border-radius:50%;background:var(--ggold);flex:none}
 
-  /* --- 窄屏：文案在上、卡在下；固定背景跟随滚动 --- */
-  @media (max-width: 940px) {
-    body.theme-ynu { background-attachment: scroll; }
-    .welcome { grid-template-columns: 1fr; gap: 28px; min-height: 0; padding: 26px 0; }
-    .welcome-copy h1 { font-size: 34px; }
-    .glass-wrap { max-width: 430px; margin: 0 auto; }
+  /* 拟真报告窗口（浮于真馆照片画板） */
+  .gstage{position:relative;animation:gpop .8s var(--ge) .3s both}
+  .gstage .backdrop{position:absolute;inset:-14px -18px 34px 26px;border-radius:16px;overflow:hidden;
+    box-shadow:var(--gshcard)}
+  .gstage .backdrop img{width:100%;height:100%;object-fit:cover;object-position:center 58%;
+    filter:saturate(.92)}
+  .gstage .backdrop::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(247,245,239,.14),rgba(21,34,43,.2))}
+  .gate-win{position:relative;background:var(--gcard);border:1px solid var(--ghair);border-radius:var(--grwin);
+    box-shadow:var(--gshwin);overflow:hidden;margin:14px 26px 44px 0}
+  .gate-win .bar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--ghair);
+    background:linear-gradient(180deg,#FCFBF7,var(--gcard))}
+  .gate-win .bar i{width:11px;height:11px;border-radius:50%;background:var(--ghair2)}
+  .gate-win .bar i:nth-child(1){background:#E8A79C}
+  .gate-win .bar i:nth-child(2){background:#EFD9A0}
+  .gate-win .bar i:nth-child(3){background:#B8D4BC}
+  .gate-win .bar .t{margin-left:8px;font-family:var(--gkai);font-size:12.5px;letter-spacing:.14em;color:var(--gink2);
+    flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gate-win .bar .tab{margin-left:auto;display:inline-flex;background:var(--gbg);border:1px solid var(--ghair);
+    border-radius:var(--grchip);overflow:hidden;font-size:11px;color:var(--gink3);flex:none}
+  .gate-win .bar .tab span{padding:4px 12px;white-space:nowrap}
+  .gate-win .bar .tab .on{background:var(--gdeep);color:#fff;letter-spacing:.08em}
+  .gate-win .body{padding:22px 24px 20px}
+  .gate-win .head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px}
+  .gate-win .head .tt{font-family:var(--gserif);font-weight:600;font-size:21px;letter-spacing:.1em}
+  .gate-win .head .iss{font-size:12.5px;color:var(--gink3);font-family:var(--gkai);letter-spacing:.14em}
+  .gate-win .head .sg{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;letter-spacing:.1em;
+    color:var(--ggreen);font-weight:600;background:var(--ggoldbg);border-radius:var(--grchip);padding:4px 10px}
+  .gate-win .head .sg i{width:15px;height:15px;background:var(--gdeep);color:#fff;font-family:var(--gkai);
+    font-style:normal;font-size:10px;line-height:1;display:grid;place-items:center;transform:rotate(-5deg)}
+  .gate-win .figs{margin-top:18px;display:grid;grid-template-columns:repeat(3,1fr)}
+  .gate-win .fig{padding:2px 18px 4px}
+  .gate-win .fig+.fig{border-left:1px solid var(--ghair)}
+  .gate-win .fig .k{font-family:var(--gkai);font-size:11px;letter-spacing:.22em;color:var(--gink3)}
+  .gate-win .fig .v{margin-top:2px;font-family:var(--gserif);font-weight:600;font-size:27px;line-height:1.2}
+  .gate-win .fig .d{font-size:11px;color:var(--gink3);letter-spacing:.04em}
+  .gate-win .fig .d b{color:var(--ggreen);font-weight:600}
+  .gate-win .steps{margin-top:18px;border-top:1px solid var(--ghair);padding-top:14px;
+    display:flex;flex-direction:column;gap:8px}
+  .gate-win .st{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--gink2);
+    animation-name:grise;animation-duration:.5s;animation-timing-function:var(--ge);
+    animation-fill-mode:both}  /* 不写基线 opacity:0：fill both 已守首帧，reduced-motion 下步骤不消失 */
+  .gate-win .st:nth-child(1){animation-delay:.75s}
+  .gate-win .st:nth-child(2){animation-delay:.87s}
+  .gate-win .st:nth-child(3){animation-delay:.99s}
+  .gate-win .st:nth-child(4){animation-delay:1.11s}
+  .gate-win .st .chip{margin-left:auto;font-size:11px;letter-spacing:.08em;color:var(--ggreen);
+    background:var(--ggoldbg);border-radius:var(--grchip);padding:2px 9px}
+  .gate-win .st .tick{width:16px;height:16px;border-radius:50%;background:var(--ggoldbg);display:grid;
+    place-items:center;color:var(--gdeep);font-size:11px;font-weight:700}
+  .gate-win .wfoot{display:flex;justify-content:space-between;gap:12px;padding:10px 24px 14px;font-size:10.5px;
+    letter-spacing:.08em;color:var(--gink3);border-top:1px solid var(--ghair)}
+  .gstage .tag{position:absolute;right:-8px;bottom:-14px;transform:rotate(-2deg);background:var(--gdeep);
+    color:#fff;font-family:var(--gkai);font-size:11.5px;letter-spacing:.18em;border-radius:var(--grchip);
+    padding:7px 14px;box-shadow:var(--gshcard)}
+
+  /* 页脚合规 */
+  .gfoot{display:flex;justify-content:space-between;gap:16px;padding:14px clamp(28px,4vw,56px) 18px;
+    font-size:11px;letter-spacing:.1em;color:var(--gink3)}
+
+  @media (max-width:1080px){
+    .ghero{grid-template-columns:1fr;min-height:0;padding-bottom:30px}
+    .ghero>*{min-width:0}  /* grid 子项默认 min-width:auto，登录卡 400px 会撑破 390（实测） */
+    .gcopy{max-width:560px}
+    .gauth{max-width:none}
+    .gstage{margin-top:6px}
   }
-  /* 手机顶栏：品牌不折行；副标题让位（否则「文衡」会被挤成两行） */
-  @media (max-width: 760px) {
-    body.theme-ynu .topbar .sub { display: none; }
-    body.theme-ynu .topbar .logo { white-space: nowrap; }
+  @media (max-width:760px){
+    .gt .sub{display:none}  /* 窄屏顶栏：副题让位，防折行（同旧站 topbar 惯例） */
+    .gt .claim{max-width:52vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .gcopy h1{font-size:clamp(30px,9.2vw,38px);text-wrap:balance}
+    .gcopy h1 br{display:none}  /* 评审 F2：窄屏撤手断行，防单字孤行 */
+  }
+  @media (prefers-reduced-motion:reduce){
+    body.gate-page *{animation:none!important;transition:none!important}
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="welcome">
+<header class="gt">
+  <img class="emblem" src="{{ asset('img/ynu-emblem.png') }}" alt="云南大学校徽" width="30" height="30">
+  <b>文衡</b>
+  <span class="sub">雲南大學圖書館 · 學科信息參考</span>
+  {% if gate %}
+  <span class="claim"><i aria-hidden="true"></i>{{ gate.period }} {{ "已签发" if gate.signed else "已出稿 · 未签发" }}{% if gate.issue_total %} · 总第 {{ gate.issue_total }} 期{% endif %}</span>
+  {% endif %}
+</header>
 
-  <section class="welcome-copy">
-    <img class="emblem" src="{{ asset('img/ynu-emblem.png') }}" alt="云南大学校徽" width="38" height="38">
-    <h1>文<i>衡</i></h1>
-    <p class="lede">
-      云南大学图书馆《学科信息参考》双月报告，从「人工下载数据」变成一条<strong>可复核的流水线</strong>：
-      解析台账 → 数据校验 → 出数 → 出图 → 填母版，每一步都留下可回查的痕迹。
-    </p>
-    <ul class="welcome-facts">
-      <li>复刻产线按馆约定出稿，母版 <strong>704 槽位</strong>逐格替换，可签发盖章</li>
-      <li>报告里每一个数字都能指回<strong>台账的某一个单元格</strong></li>
-      <li>大模型<strong>不进入数据路径</strong> —— 数字只来自台账</li>
-    </ul>
-  </section>
+<div class="ghero">
+  <div class="gcopy">
+    {% if gate and gate.signed %}
+    <p class="new"><i>New</i>{{ gate.period }} 已签发{% if gate.issue_total %} · 总第 {{ gate.issue_total }} 期{% endif %}</p>
+    {% endif %}
+    <h1>把数月的手工活，<br>收成一条<em>流水线</em>。</h1>
+    <div class="frag" aria-hidden="true">
+      <span>解析台账。</span>
+      <span>逐格校验。</span>
+      <span>签发留痕。</span>
+    </div>
 
-  <section>
-    <div class="login-wrap">
-      <div class="glass-wrap">
-        <div class="plaque">
-          <div class="body">
-            <p class="kicker">雲 南 大 學 圖 書 館 · 學 科 情 報 參 考</p>
-            <div class="mark">文<i>衡</i></div>
-            <p class="tagline">首届高校图书馆「AI+管理服务」大赛 · 演示环境</p>
-            <hr>
-            {% if err %}<div class="alert err">{{ err }}</div>{% endif %}
-            <form method="post" action="/login" class="login-form">
-              <div class="inputBx">
-                <input name="username" autocomplete="username" required autofocus aria-label="账号">
-                <span>账号</span>
-                <svg class="lead-ic" viewBox="0 0 24 24" aria-hidden="true">
-                  <circle cx="12" cy="8" r="4"></circle>
-                  <path d="M4.5 20c1.6-3.7 4.6-5.5 7.5-5.5s5.9 1.8 7.5 5.5"></path>
-                </svg>
-              </div>
-              <div class="inputBx">
-                <input id="wh-password" name="password" type="password"
-                       autocomplete="current-password" required aria-label="密码">
-                <span>密码</span>
-                <svg class="lead-ic" viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"></rect>
-                  <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"></path>
-                </svg>
-                <button type="button" class="pwd-toggle" onclick="whTogglePassword(this)" aria-label="显示密码">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"></path>
-                    <circle cx="12" cy="12" r="2.7"></circle>
-                    <path class="slash" d="M4.5 19.5 19.5 4.5"></path>
-                  </svg>
-                </button>
-              </div>
-              <button class="btn primary wide" type="submit">登 录</button>
-            </form>
+    <form class="gauth{% if err %} has-err{% endif %}" method="post" action="/login">
+      {% if err %}<div class="err" role="alert">{{ err }}</div>{% endif %}
+      <div class="row">
+        <label for="wh-username">账号</label>
+        <input id="wh-username" name="username" autocomplete="username" required autofocus>
+      </div>
+      <div class="pwd">
+        <label for="wh-password">密码</label>
+        <input id="wh-password" name="password" type="password" autocomplete="current-password" required>
+        <button type="button" class="pwd-toggle" onclick="whTogglePassword(this)" aria-label="显示密码">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"></path>
+            <circle cx="12" cy="12" r="2.7"></circle>
+            <path class="slash" d="M4.5 19.5 19.5 4.5"></path>
+          </svg>
+        </button>
+      </div>
+      <button class="go" type="submit">登 录</button>
+      <p class="fineprint">演示环境 · 管理员与评委两种角色，权限不同</p>
+    </form>
 
-          </div>
+    <div class="gpoints">
+      <span><i aria-hidden="true"></i>每个数字都能指回台账的某一格</span>
+      <span><i aria-hidden="true"></i>大模型不进入数据路径——它只选，不造</span>
+      <span><i aria-hidden="true"></i>45 期 ESI 数据齐备，逐期可复现</span>
+    </div>
+  </div>
+
+  {% if gate %}
+  <div class="gstage">
+    <div class="backdrop" aria-hidden="true"><img src="{{ asset('img/zhichang-front.webp') }}" alt=""></div>
+    <div class="gate-win">
+      <div class="bar">
+        <i aria-hidden="true"></i><i aria-hidden="true"></i><i aria-hidden="true"></i>
+        <span class="t">学科信息参考 · 出稿台</span>
+        <span class="tab" aria-hidden="true"><span>初稿</span><span class="on">{{ "签发版" if gate.signed else "初稿" }}</span></span>
+      </div>
+      <div class="body">
+        <div class="head">
+          <div class="tt">{{ gate.period }} 期{% if gate.issue_line %}<br><span class="iss">{{ gate.issue_line }}</span>{% endif %}</div>
+          <span class="sg">{% if gate.signed %}<i aria-hidden="true">签</i>已签发{% else %}未签发{% endif %}</span>
+        </div>
+        {% if gate.rank or gate.disc or gate.papers %}
+        <div class="figs">
+          {% if gate.rank %}
+          <div class="fig"><div class="k">国际排名</div><div class="v">{{ gate.rank }}</div>
+            <div class="d">{% if gate.rank_prev %}上期 {{ gate.rank_prev }}{% endif %}
+              {% if gate.rank_delta %} · <b>{% if gate.rank_delta > 0 %}升 {{ gate.rank_delta }} 位{% elif gate.rank_delta < 0 %}降 {{ -gate.rank_delta }} 位{% else %}持平{% endif %}</b>{% endif %}</div></div>
+          {% endif %}
+          {% if gate.disc %}
+          <div class="fig"><div class="k">进入前 1% 学科</div><div class="v">{{ gate.disc }} 门</div>
+            <div class="d">全球前 1%</div></div>
+          {% endif %}
+          {% if gate.papers %}
+          <div class="fig"><div class="k">顶尖论文</div><div class="v">{{ gate.papers }} 篇</div>
+            <div class="d">{% if gate.papers_prev %}上期 {{ gate.papers_prev }}{% endif %}
+              {% if gate.papers_delta %} · <b>{% if gate.papers_delta > 0 %}增 {{ gate.papers_delta }}{% elif gate.papers_delta < 0 %}减 {{ -gate.papers_delta }}{% endif %}</b>{% endif %}</div></div>
+          {% endif %}
+        </div>
+        {% endif %}
+        <div class="steps">
+          <div class="st"><span class="tick" aria-hidden="true">✓</span>取数核验<span class="chip">已完成</span></div>
+          <div class="st"><span class="tick" aria-hidden="true">✓</span>预测选模<span class="chip">已完成</span></div>
+          <div class="st"><span class="tick" aria-hidden="true">✓</span>生成初稿<span class="chip">已完成</span></div>
+          <div class="st"><span class="tick" aria-hidden="true">✓</span>核验定稿<span class="chip">{{ "已完成" if gate.signed else "未签发" }}</span></div>
         </div>
       </div>
+      {% if gate.slots or gate.checks_total %}
+      <div class="wfoot">
+        {% if gate.slots %}<span>{{ gate.slots }} 槽位逐格替换</span>{% endif %}
+        {% if gate.checks_total %}<span>断言 {{ gate.checks_total }} 项 · {{ gate.checks_fail }} 失败</span>{% endif %}
+      </div>
+      {% endif %}
     </div>
-  </section>
-
+    <span class="tag" aria-hidden="true">签发即盖章 · 数字 100% 可回溯</span>
+  </div>
+  {% endif %}
 </div>
+
+<footer class="gfoot">
+  <span>内部资料 · 仅用于参赛 · 禁止外传</span>
+  <span>云南大学图书馆 · 学科信息参考 · 演示环境</span>
+</footer>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  /* 密码显示切换（原稿 show_hide_password）：原生 JS、无依赖；无 JS 时表单照常 POST。 */
-  function whTogglePassword(btn) {
-    var input = document.getElementById('wh-password');
-    if (!input) return;
-    var show = input.type === 'password';
-    input.type = show ? 'text' : 'password';
-    btn.classList.toggle('is-visible', show);
-    btn.setAttribute('aria-label', show ? '隐藏密码' : '显示密码');
+  /* 密码显示切换（沿用原稿 show_hide_password 的原生实现）；无 JS 时表单照常 POST。 */
+  function whTogglePassword(btn){
+    var input=document.getElementById('wh-password');
+    if(!input)return;
+    var show=input.type==='password';
+    input.type=show?'text':'password';
+    btn.classList.toggle('is-visible',show);
+    btn.setAttribute('aria-label',show?'隐藏密码':'显示密码');
   }
 </script>
 {% endblock %}

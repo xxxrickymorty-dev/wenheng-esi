@@ -36,12 +36,98 @@ def check_credentials(username: str, password: str) -> bool:
     )
 
 
+def _gate_facts():
+    """登录页拟真窗口的事实层（2026-11-07 granola 复刻）：
+    最近一期**已生成**期次（优先已签发）的 overview_facts + approval 快照。
+
+    数字只有一个出处——文件读不到就整项给 None，模板整块不渲染；
+    登录页不编数、不写死期次，签发推进后窗口自动跟新。
+    """
+    import json
+
+    from src import period_facts
+    from src.period import issue_of
+
+    periods = sorted(period_facts.product_periods(config.OUT_DIR, allow_suffix=True),
+                     reverse=True)
+    chosen = None
+    for name in periods:
+        d = config.OUT_DIR / name
+        facts_path = d / "overview_facts.json"
+        if not facts_path.exists():
+            continue
+        try:
+            facts = json.loads(facts_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        approved_path = d / "approval.json"
+        signed = False
+        signed_at = ""
+        if approved_path.exists():
+            try:
+                ap = json.loads(approved_path.read_text(encoding="utf-8"))
+                signed = bool(ap.get("signed"))
+                signed_at = str(ap.get("signed_at") or "")
+            except (OSError, ValueError):
+                pass
+        # 只认最新已生成期次：更旧的候选不得覆盖（评审 F5——无签发期时回退最新而非最旧）
+        if chosen is None or signed:
+            chosen = (name, facts, signed, signed_at)
+        if signed:
+            break
+    if chosen is None:
+        return None
+
+    name, facts, signed, signed_at = chosen
+    period = str(name)[:6]
+    issue_idx = issue_total = None
+    try:
+        issue_idx, issue_total = issue_of(period)
+        issue_line = f"{period[:4]} 年第 {issue_idx} 期 · 总第 {issue_total} 期"
+    except Exception:  # noqa: BLE001——期号推不出就留空，不给假期号
+        issue_line = ""
+
+    snap: dict = {}
+    approved_path = config.OUT_DIR / name / "approval.json"
+    if approved_path.exists():
+        try:
+            snap = json.loads(approved_path.read_text(encoding="utf-8")).get("snapshot") or {}
+        except (OSError, ValueError):
+            snap = {}
+    counts = snap.get("counts") or {}
+    asserts = snap.get("assertions") or {}
+
+    def num(key):
+        v = facts.get(key)
+        return int(v) if isinstance(v, (int, float)) else None
+
+    return {
+        "period": period,
+        "issue_line": issue_line,
+        "issue_idx": issue_idx,
+        "issue_total": issue_total,
+        "signed": signed,
+        "signed_at": signed_at.split(" ")[0] if signed_at else "",
+        "rank": num("rank_intl_now"),
+        "rank_prev": num("rank_intl_prev"),
+        "rank_delta": num("rank_intl_delta"),
+        "disc": num("n_disc_1pct"),
+        "papers": num("top_papers_now"),
+        "papers_prev": num("top_papers_prev"),
+        "papers_delta": num("top_papers_delta"),
+        "slots": counts.get("total"),
+        "checks_total": asserts.get("total"),
+        "checks_fail": asserts.get("fail"),
+    }
+
+
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, err: str = ""):
     return templates.TemplateResponse(
         request, "login.html",
         {"request": request, "err": err, "hint": config.SHOW_HINT,
-         "show_hint_user": config.ADMIN_USER if config.SHOW_HINT else ""})
+         "show_hint_user": config.ADMIN_USER if config.SHOW_HINT else "",
+         "gate": _gate_facts()})
 
 
 @router.post("/login")

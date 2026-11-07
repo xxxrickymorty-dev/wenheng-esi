@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#F4F1E8">
+<title>文衡 · 进馆三段 · 登录与陈列馆（静态稿 20261107）</title>
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     进馆三段叙事（静态评审稿，供 rick 审）　日期：2026-11-07（v3：满屏真楼＋米墙案上）
+     ────────────────────────────────────────────────────────────────────────────
+     rick 2026-11-07 四次口谕后的收敛：
+     ① 三段叙事不变——进馆（登录）→ 进阅览室（陈列馆第一屏）→ 书架（第二屏）→ 翻书；
+     ② 全亮调；
+     ③ 假图零容忍：与真楼不符的直出图一律删；馆舍图用图书馆本体（呈贡馆）；
+     ④ 回归「原来的风格」：满屏馆舍照片背景＋左文右卡，不做左右分页跨页；
+     ⑤ 最终素材＝rick 提供的 yunnan-library-360 图集（直接用图，不再生成）。
+
+     ── 三段 ──────────────────────────────────────────────────────────────────
+     壹 · 进馆（登录页 /login，Jinja 直改落地）：满屏会泽院秋日正面（忠实复刻图），
+         左侧亮纱上落校徽＋雲南大學圖書館＋文衡＋格言＋表单（纸面卡）；金线画框＝馆门框；
+         入场＝推镜＋错峰升起；提交＝开门仪式（门廊暖光亮起 → 放行）。
+     贰 · 阅览室（陈列馆第一屏，React 落地——审过后再动代码）：银杏米墙＋搁板陈列
+         当期一册（真实报告封面），馆名牌在上，翻开＝连续册页；假穹厅图（AI 中庭）
+         同类问题一并退场。
+     叁 · 书架（陈列馆第二屏＝现行书架屏顺延）：不动。
+
+     ── 素材来源（生图留痕）─────────────────────────────────────────────────
+     rick 2026-11-07 第五次口谕：直接用 Desktop\yunnan-library-360 图集
+       （rick 提供的云大图书馆图组，另一会话产出）。
+     zhichang-front.webp（397KB，1672×941 横）：呈贡馆正面白天 crisp，
+       源 50fe27c8-…png；登录页壹段满屏背景。
+     atrium-desk.webp（408KB，1122×1402 竖）：真馆环形中庭仰拍
+       （玻璃穹顶＋红栏环廊＋八角桌花艺），源 47c3e09e-…png；贰段满屏背景。
+     过程留档（本轮已退役）：qwen 直出假会泽院三张（rick 判致命，已删）、
+       鲁班奖实照参照的图生图 faithful 版（像素不足，rick 判弃）、
+       精修 HD 版（被 rick 图集替代）；参照照仅作生成依据不入发布件。
+     其余素材：assets/wenheng-covers/*.webp（真实产物装帧封面）、
+       ../public/shelf/assets/shelf-ginkgo.webp（书架屏底板）、assets/ynu-emblem.png（真校徽）。
+     ──────────────────────────────────────────────────────────────────────── -->
+<style>
+  :root{
+    --deep:#143729; --gold:#C9A961; --gold-2:#E0CB92; --gold-dim:rgba(201,169,97,.55);
+    --paper:#F4F1E8; --paper-2:#E8E3D4; --wall:#F5EDDA;
+    --ink:#15222B; --ink-2:rgba(21,34,43,.78); --ink-3:rgba(21,34,43,.6);
+    --green:#276B4C; --red:#B23A2B; --hair:rgba(216,210,194,.55);
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
+    --e:cubic-bezier(.32,.72,0,1);
+    --frame-in:clamp(16px,2.2vw,26px);
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.75 var(--sans);
+    font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;background:none;border:none;color:inherit}
+  input{font:inherit}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+  ::selection{background:var(--gold);color:#fff}
+  .beat{position:relative;min-height:100vh;overflow:hidden}
+  @keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+  @keyframes fadein{from{opacity:0}to{opacity:1}}
+
+  /* ═══════ 壹 · 进馆（登录页 · 满屏真楼，亮调） ═══════ */
+  .beat-gate{background:var(--paper)}
+  .gate-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+    object-position:center 62%;animation:push 2.4s var(--e) both}
+  @keyframes push{from{transform:scale(1.06)}to{transform:scale(1)}}
+  /* 左侧亮纱：保墨字可读，照片右半保持通透 */
+  .gate-veil{position:absolute;inset:0;
+    background:linear-gradient(92deg,rgba(244,241,232,.92) 0%,rgba(244,241,232,.72) 30%,
+      rgba(244,241,232,.30) 52%,rgba(244,241,232,.04) 68%)}
+  .doorframe{position:absolute;inset:var(--frame-in);border:1px solid var(--gold-dim);pointer-events:none;
+    animation:fadein 1s var(--e) .3s both}
+  .door-glow{position:absolute;inset:0;pointer-events:none;opacity:0;z-index:1;
+    background:radial-gradient(24% 18% at 50% 64%,rgba(224,203,146,.6),rgba(224,203,146,0) 72%);
+    transition:opacity .8s var(--e)}
+  .beat-gate.is-open .door-glow{opacity:1}
+  /* 推镜动画 fill both 会占住 transform：开门时先卸动画再走过渡 */
+  .beat-gate.is-open .gate-photo{animation:none;transform:scale(1.03);transition:transform 1s var(--e)}
+
+  .gate-grid{position:absolute;inset:0;display:grid;grid-template-columns:minmax(0,44fr) minmax(0,56fr)}
+  .gate-l{display:flex;flex-direction:column;justify-content:center;padding:0 clamp(30px,4.5vw,60px)}
+  .gate-l .emblem{width:56px;height:56px;display:block;animation:rise .7s var(--e) .15s both}
+  .gate-l .inst{margin-top:14px;font-family:var(--kai);font-size:12px;letter-spacing:.42em;color:var(--ink-3);
+    animation:rise .7s var(--e) .22s both}
+  .gate-l h1{margin-top:10px;font-family:var(--serif);font-weight:600;font-size:clamp(44px,4vw,58px);
+    line-height:1.14;letter-spacing:.16em;color:var(--deep);display:flex}
+  .gate-l h1 span{animation:rise .75s var(--e) both}
+  .gate-l h1 span:nth-child(1){animation-delay:.3s}
+  .gate-l h1 span:nth-child(2){animation-delay:.42s}
+  .gate-l .grule{display:block;width:34px;height:1px;background:var(--gold);margin:18px 0 14px;
+    animation:rise .7s var(--e) .5s both}
+  .gate-l .motto{font-family:var(--kai);font-size:13px;letter-spacing:.4em;color:var(--ink-3);
+    animation:rise .7s var(--e) .56s both}
+
+  /* 表单：纸面卡，方角，一档浅阴影＋金发丝边 */
+  .signin{width:100%;max-width:340px;margin-top:clamp(24px,4.5vh,44px);background:rgba(244,241,232,.92);
+    border:1px solid var(--gold-dim);box-shadow:0 1px 2px rgba(21,34,43,.08),0 18px 44px rgba(21,34,43,.14);
+    padding:26px 26px 24px;animation:rise .8s var(--e) .42s both}
+  .signin .eyebrow{font-family:var(--kai);font-size:11px;letter-spacing:.34em;color:var(--ink-3);margin-bottom:18px}
+  .signin .err{display:none;background:rgba(178,58,43,.08);border-left:2px solid var(--red);
+    color:var(--red);font-size:12.5px;letter-spacing:.06em;padding:8px 12px;margin-bottom:16px}
+  .signin.has-err .err{display:block}
+  .f{margin-bottom:16px;animation:rise .7s var(--e) both}
+  .f:nth-of-type(1){animation-delay:.55s}
+  .f:nth-of-type(2){animation-delay:.65s}
+  .f label{display:block;font-family:var(--kai);font-size:12px;letter-spacing:.3em;color:var(--ink-2);margin-bottom:2px}
+  .f .ctrl{position:relative}
+  .f input{width:100%;background:transparent;border:0;border-bottom:1px solid rgba(21,34,43,.32);
+    border-radius:0;color:var(--ink);font-size:15.5px;padding:10px 34px 10px 2px;letter-spacing:.06em;
+    transition:border-color .3s var(--e)}
+  .f input:focus{border-bottom-color:var(--gold);outline:none}
+  .f .pwd-toggle{position:absolute;right:0;top:4px;width:30px;height:30px;display:grid;place-items:center}
+  .f .pwd-toggle svg{width:18px;height:18px;stroke:var(--ink-2);fill:none;stroke-width:1.7;
+    stroke-linecap:round;stroke-linejoin:round}
+  .f .pwd-toggle:hover svg{stroke:var(--ink)}
+  .f .pwd-toggle .slash{opacity:0;transition:opacity .15s}
+  .f .pwd-toggle.is-visible .slash{opacity:1}
+  .signin .go{width:100%;margin-top:8px;min-height:46px;background:var(--deep);color:var(--paper);
+    font-size:15px;letter-spacing:.42em;text-indent:.42em;transition:background-color .35s var(--e),
+    transform .35s var(--e);animation:rise .7s var(--e) .78s both}
+  .signin .go:hover{background:#1A4B27}
+  .signin .go:active{transform:translateY(1px)}
+  .signin .go.is-open{background:var(--gold-2);color:var(--deep)}
+
+  .gate-foot{position:absolute;left:0;right:0;bottom:0;padding:10px clamp(30px,4.5vw,60px) 16px;
+    display:flex;justify-content:space-between;gap:18px;font-size:11px;letter-spacing:.12em;
+    color:var(--ink-3);background:linear-gradient(180deg,rgba(244,241,232,0),rgba(244,241,232,.72));
+    animation:rise .7s var(--e) .9s both}
+
+  /* ═══════ 贰 · 阅览室（陈列馆第一屏 · 真馆环形阅览大厅复刻） ═══════ */
+  .beat-room{background:var(--wall) url("assets/library/atrium-desk.webp") center 58%/cover no-repeat;
+    color:var(--ink)}
+  .room-veil{position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(244,241,232,.66),rgba(244,241,232,.18) 42%,rgba(244,241,232,.36) 100%)}
+  .roomframe{position:absolute;inset:var(--frame-in);border:1px solid var(--gold-dim);pointer-events:none}
+  .room-mark{position:absolute;top:clamp(30px,5vh,52px);right:clamp(26px,3.4vw,44px);writing-mode:vertical-rl;
+    font-family:var(--kai);font-size:13px;letter-spacing:.6em;color:var(--ink-2);
+    background:rgba(244,241,232,.85);padding:14px 5px;animation:rise .8s var(--e) .2s both}
+  .room-plaque{position:absolute;top:clamp(34px,6vh,58px);left:50%;transform:translateX(-50%);text-align:center;
+    animation:rise .8s var(--e) .1s both}
+  .room-plaque h2{font-family:var(--serif);font-weight:600;font-size:clamp(22px,2.2vw,28px);letter-spacing:.24em;
+    text-indent:.24em;color:var(--ink)}
+  .room-plaque .en{margin-top:8px;font-size:10.5px;letter-spacing:.44em;color:var(--ink-3)}
+  .room-plaque .grule{display:block;width:34px;height:1px;background:var(--gold);margin:14px auto 0}
+
+  /* 案上卡：当期一册立在阅览案上——翻书入口 */
+  .on-desk{position:absolute;left:clamp(6vw,9vw,9vw);bottom:clamp(72px,14vh,132px);width:252px;
+    background:rgba(244,241,232,.94);border:1px solid var(--gold-dim);box-shadow:0 1px 2px rgba(21,34,43,.1),0 18px 44px rgba(21,34,43,.16);
+    padding:20px 20px 18px;animation:rise .8s var(--e) .5s both}
+  .desk-book{width:122px;flex:none;perspective:520px}
+  .desk-book img{display:block;width:100%;box-shadow:2px 3px 0 rgba(21,34,43,.14),0 14px 30px rgba(21,34,43,.22);
+    animation:standup .9s var(--e) .75s both}
+  @keyframes standup{from{opacity:0;transform:rotateX(14deg) translateY(10px)}to{opacity:1;transform:none}}
+  .on-desk .cap{font-family:var(--kai);font-size:11px;letter-spacing:.34em;color:var(--ink-3)}
+  .on-desk .sg{position:absolute;top:14px;right:14px;display:inline-flex;align-items:center;gap:7px;
+    font-size:11px;letter-spacing:.12em;color:var(--green);font-weight:600}
+  .on-desk .t{font-family:var(--serif);font-size:16px;letter-spacing:.08em;color:var(--ink);margin-top:6px}
+  .on-desk .s{font-size:12px;letter-spacing:.1em;color:var(--ink-3);margin-top:2px}
+  .on-desk .sg{display:flex;align-items:center;gap:7px;margin-top:8px;
+    font-size:11px;letter-spacing:.12em;color:var(--green);font-weight:600}
+  .on-desk .sg i{width:16px;height:16px;background:var(--deep);color:var(--paper);font-family:var(--kai);
+    font-style:normal;font-size:10px;line-height:1;display:grid;place-items:center;transform:rotate(-5deg)}
+  .on-desk .open-book{display:inline-flex;align-items:center;gap:10px;margin-top:14px;min-height:40px;
+    padding:0 20px;background:var(--deep);color:var(--paper);font-size:13px;letter-spacing:.2em;
+    transition:background-color .35s var(--e)}
+  .on-desk .open-book:hover{background:#1A4B27}
+  .on-desk .open-book i{font-style:normal}
+
+  .room-cue{position:absolute;left:50%;bottom:clamp(18px,3.4vh,30px);transform:translateX(-50%);
+    font-family:var(--kai);font-size:12px;letter-spacing:.4em;color:var(--ink-2);
+    background:rgba(244,241,232,.8);padding:7px 16px 8px;animation:cue 2.6s ease-in-out 1.4s infinite}
+  @keyframes cue{0%,100%{opacity:.9;transform:translateX(-50%) translateY(0)}50%{opacity:.55;transform:translateX(-50%) translateY(4px)}}
+
+  /* ═══════ 叁 · 书架（陈列馆第二屏＝现行书架屏顺延） ═══════ */
+  .beat-shelf{background:var(--wall) url("../public/shelf/assets/shelf-ginkgo.webp") center bottom/cover no-repeat;
+    color:var(--ink)}
+  .wallframe{position:absolute;inset:var(--frame-in);border:1px solid var(--gold-dim);pointer-events:none}
+  .shelf-head{position:absolute;top:clamp(34px,6vh,58px);right:clamp(30px,4.4vw,60px);text-align:right;
+    animation:rise .8s var(--e) .1s both}
+  .shelf-head h2{font-family:var(--serif);font-weight:600;font-size:clamp(24px,2.4vw,30px);letter-spacing:.2em}
+  .shelf-head .en{margin-top:8px;font-size:10.5px;letter-spacing:.4em;color:var(--ink-3)}
+  .shelf-head .issue{margin-top:8px;font-family:var(--kai);font-size:12px;letter-spacing:.2em;color:var(--ink-2)}
+  .shelf-mark{position:absolute;top:clamp(30px,5vh,52px);left:clamp(26px,3.4vw,44px);writing-mode:vertical-rl;
+    font-family:var(--kai);font-size:13px;letter-spacing:.6em;color:var(--ink-2);
+    background:rgba(244,241,232,.85);padding:14px 5px;animation:rise .8s var(--e) .2s both}
+  .vols{position:absolute;left:0;right:0;bottom:21.5%;display:flex;justify-content:center;align-items:flex-end;gap:2.4%}
+  .vol{position:relative;width:12%;display:block;transition:transform .45s var(--e)}
+  .vol:hover{transform:translateY(-8px)}
+  .vol img{display:block;width:100%;box-shadow:0 14px 30px rgba(21,34,43,.22)}
+  .vol .re{position:absolute;left:4%;bottom:8%;min-width:58%;text-align:center;background:rgba(20,55,41,.92);
+    color:var(--paper);font-size:11px;letter-spacing:.14em;padding:3px 8px;font-variant-numeric:tabular-nums}
+  .shelf-foot{position:absolute;left:clamp(6vw,10vw,10vw);bottom:26px;right:clamp(6vw,10vw,10vw);
+    display:flex;justify-content:space-between;font-size:11px;letter-spacing:.14em;color:var(--ink-3)}
+
+  @media (max-width:940px){
+    .gate-grid{grid-template-columns:1fr}
+    .gate-l{padding:64px 8vw 90px}
+    .signin{max-width:420px}
+    .on-desk{bottom:90px}
+    .vol{width:16%}
+    .shelf-head{right:8vw}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+    .gate-photo{transform:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════ 壹 · 进馆（登录页 · 满屏真楼，亮调） ══════ -->
+<section class="beat beat-gate" id="gate" aria-label="登录 · 进馆">
+  <img class="gate-photo" src="assets/library/zhichang-front.webp" alt="云南大学图书馆呈贡馆正面">
+  <div class="gate-veil" aria-hidden="true"></div>
+  <span class="doorframe" aria-hidden="true"></span>
+  <span class="door-glow" aria-hidden="true"></span>
+
+  <div class="gate-grid">
+    <div class="gate-l">
+      <img class="emblem" src="assets/ynu-emblem.png" alt="云南大学校徽" width="56" height="56">
+      <p class="inst">雲 南 大 學 圖 書 館</p>
+      <h1 aria-label="文衡"><span>文</span><span>衡</span></h1>
+      <span class="grule" aria-hidden="true"></span>
+      <p class="motto">会 泽 百 家 · 至 公 天 下</p>
+
+      <form class="signin" method="post" action="#" onsubmit="return whDemoEnter(event)">
+        <p class="eyebrow">學 科 信 息 參 考 · 演 示 環 境</p>
+        <div class="err" role="alert">账号或密码不正确</div>
+        <div class="f">
+          <label for="wh-username">账号</label>
+          <div class="ctrl">
+            <input id="wh-username" name="username" autocomplete="username" required>
+          </div>
+        </div>
+        <div class="f">
+          <label for="wh-password">密码</label>
+          <div class="ctrl">
+            <input id="wh-password" name="password" type="password" autocomplete="current-password" required>
+            <button type="button" class="pwd-toggle" onclick="whTogglePassword(this)" aria-label="显示密码">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"></path>
+                <circle cx="12" cy="12" r="2.7"></circle>
+                <path class="slash" d="M4.5 19.5 19.5 4.5"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <button class="go" type="submit">登 录</button>
+      </form>
+    </div>
+  </div>
+
+  <footer class="gate-foot">
+    <span>内部资料 · 仅用于参赛 · 禁止外传</span>
+    <span>大模型不进入数据路径 · 数字 100% 可回溯台账单元格</span>
+  </footer>
+</section>
+
+<!-- ══════ 贰 · 阅览室（陈列馆第一屏 · 米墙案上） ══════ -->
+  <section class="beat beat-room" id="room" aria-label="陈列馆 · 阅览室">
+    <div class="room-veil" aria-hidden="true"></div>
+    <span class="roomframe" aria-hidden="true"></span>
+    <p class="room-mark" aria-hidden="true">閱 覽 室</p>
+
+  <header class="room-plaque">
+    <h2>云南大学图书馆</h2>
+    <p class="en">YUNNAN UNIVERSITY LIBRARY</p>
+    <span class="grule" aria-hidden="true"></span>
+  </header>
+
+  <div class="on-desk">
+    <p class="cap">案 上 · 当 期</p>
+    <span class="sg"><i aria-hidden="true">签</i>已签发</span>
+    <div class="desk-book"><img src="assets/wenheng-covers/huizeyuan.webp" alt="202609 会泽院装帧封面"></div>
+    <p class="t"><b>202609</b> · 会泽院装帧</p>
+    <p class="s">2026 年第 5 期 · 总第 39 期</p>
+    <a class="open-book" href="#shelf">翻 开<i aria-hidden="true">→</i></a>
+  </div>
+
+  <p class="room-cue">向 下 · 到 架 前</p>
+</section>
+
+<!-- ══════ 叁 · 书架（陈列馆第二屏＝现行书架屏顺延） ══════ -->
+<section class="beat beat-shelf" id="shelf" aria-label="陈列馆 · 书架">
+  <span class="wallframe" aria-hidden="true"></span>
+  <p class="shelf-mark" aria-hidden="true">書 架</p>
+
+  <header class="shelf-head">
+    <h2>学科信息参考</h2>
+    <p class="en">DISCIPLINARY INFORMATION REFERENCE</p>
+    <p class="issue">2026 年第 5 期 · 总第 39 期</p>
+  </header>
+
+  <div class="vols">
+    <a class="vol" href="#shelf" title="点书翻开 · 202609 会泽院装帧">
+      <img src="assets/wenheng-covers/huizeyuan.webp" alt="202609 会泽院装帧封面"><span class="re">202609</span>
+    </a>
+    <a class="vol" href="#shelf" title="点书翻开 · 202607 至公堂装帧">
+      <img src="assets/wenheng-covers/zhigongtang.webp" alt="202607 至公堂装帧封面"><span class="re">202607</span>
+    </a>
+    <a class="vol" href="#shelf" title="点书翻开 · 202605 银杏装帧">
+      <img src="assets/wenheng-covers/yinxing.webp" alt="202605 银杏装帧封面"><span class="re">202605</span>
+    </a>
+    <a class="vol" href="#shelf" title="点书翻开 · 202603 阅览室装帧">
+      <img src="assets/wenheng-covers/yuelanshi.webp" alt="202603 阅览室装帧封面"><span class="re">202603</span>
+    </a>
+    <a class="vol" href="#shelf" title="点书翻开 · 202601 校门装帧">
+      <img src="assets/wenheng-covers/xiaomen.webp" alt="202601 校门装帧封面"><span class="re">202601</span>
+    </a>
+  </div>
+
+  <footer class="shelf-foot">
+    <span>逐 期 装 帧　·　A 区 01</span>
+    <span>YUNNAN UNIVERSITY LIBRARY / A–01</span>
+  </footer>
+</section>
+
+<script>
+  /* 密码显示切换（沿用现行 login.html 的原生实现）；无 JS 时表单照常提交。 */
+  function whTogglePassword(btn){
+    var input=document.getElementById('wh-password');
+    if(!input)return;
+    var show=input.type==='password';
+    input.type=show?'text':'password';
+    btn.classList.toggle('is-visible',show);
+    btn.setAttribute('aria-label',show?'隐藏密码':'显示密码');
+  }
+  /* 开门仪式（演示）：本稿不真提交——门廊暖光亮起、照片轻推，1.6s 后复位。 */
+  function whDemoEnter(e){
+    e.preventDefault();
+    var gate=document.getElementById('gate');
+    var btn=gate.querySelector('.go');
+    gate.classList.add('is-open');
+    btn.classList.add('is-open');
+    btn.textContent='已 开 门 · 正 在 入 馆';
+    window.setTimeout(function(){
+      gate.classList.remove('is-open');
+      btn.classList.remove('is-open');
+      btn.textContent='登 录';
+    },2200);
+    return false;
+  }
+</script>
+</body>
+</html>

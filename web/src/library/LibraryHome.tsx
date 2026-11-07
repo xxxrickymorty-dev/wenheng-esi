@@ -242,7 +242,10 @@ export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHom
       cx += (mx - cx) * 0.08
       cy += (my - cy) * 0.08
       const vh = window.innerHeight || 1
-      const p = Math.min(1, Math.max(0, window.scrollY / (vh * 0.9)))
+      /* 2026-11-07 阅览室屏插到书架上方：改按 .shelf-view 自身位置取进度，
+         否则绝对 scrollY 会让第二屏到达时恒定变暗（评审 F3）。 */
+      const rect = view.getBoundingClientRect()
+      const p = Math.min(1, Math.max(0, -rect.top / (vh * 0.9)))
       for (const el of layers) {
         const d = parseFloat(el.dataset.depth || '1')
         /* rotate 独立属性一次只认一根轴：书架（整场）走双轴 transform，题名栏走单轴 rotate */
@@ -284,6 +287,80 @@ export default function LibraryHome({ books, stats, pendingPeriods }: LibraryHom
         </svg>
         <div className="brand-txt"><b>文衡 · 陈列馆</b><span>云南大学图书馆</span></div>
       </header>
+
+      {/* 阅览室 · granola 复刻首屏（2026-11-07 rick 定稿方向）：拟真册页窗口浮于真馆中庭画板，
+          案上当期一册＝取阅对象，唯一主动作「翻开」进连续册页；书架顺延为第二屏。
+          数字红线：馆藏册数 / 连续记录 / 期次行全部来自 books（cover[2] 解析）与 stats，
+          不写死期次；陈设用 --lib-* 色板（豁免段登记，不参与主题切换）。 */}
+      <section className="lib-read" aria-label="陈列馆 · 阅览室">
+        <div className="read-grid">
+          <div className="read-copy">
+            <h1>云南大学图书馆</h1>
+            <div className="read-frag" aria-hidden="true">
+              <span>逐期装帧。</span>
+              <span>案上取阅。</span>
+              <span>留痕可查。</span>
+            </div>
+            {latest && (
+              <aside className="read-desk">
+                <p className="cap">案 上 · 当 期</p>
+                {latest.cover
+                  ? <img className="desk-face" src={`/app/shelf/assets/wenheng-covers/${latest.cover}`}
+                         alt={`${latest.period} ${designLabel(latest.design)}封面`} draggable={false} />
+                  : <span className="desk-face placeholder" aria-hidden="true"><b>{latest.period}</b>待装帧</span>}
+                <p className="t"><b>{latest.period}</b> · {designLabel(latest.design)}</p>
+                {issueLine && <p className="s">{issueLine}</p>}
+              </aside>
+            )}
+            <div className="read-points">
+              <span><i aria-hidden="true" />馆藏逐期装帧{maxTotal !== undefined ? `，总第 ${maxTotal} 期` : ''}</span>
+              <span><i aria-hidden="true" />封面、目录、名词解释馆内可读</span>
+              <span><i aria-hidden="true" />正文数值不出馆——要看进工作区</span>
+            </div>
+            {latest && (
+              <button className="read-open" type="button" onClick={() => openDetail(latest.period)}>
+                翻 开 当 期<i aria-hidden="true">→</i>
+              </button>
+            )}
+          </div>
+          <div className="read-stage">
+            <div className="read-backdrop" aria-hidden="true">
+              <img src="/app/shelf/assets/library/atrium-desk.webp" alt="" draggable={false} />
+            </div>
+            <div className="read-win">
+              <div className="rbar">
+                <i aria-hidden="true" /><i aria-hidden="true" /><i aria-hidden="true" />
+                <span className="t">学科信息参考 · 阅览台</span>
+                <span className="rtab" aria-hidden="true">A 区 01</span>
+              </div>
+              <div className="rbody">
+                <p className="rtt">{latest ? latest.period : '—'} 期</p>
+                {issueLine && <p className="riss">{issueLine}</p>}
+                <div className="rfigs">
+                  <div className="rfig"><span className="k">馆 藏</span><b>{realCount} 册</b></div>
+                  {maxTotal !== undefined && (
+                    <div className="rfig"><span className="k">连 续 记 录</span><b className="sm">2019 年起 · {maxTotal} 期</b></div>
+                  )}
+                  {stats?.monitored !== undefined && (
+                    <div className="rfig"><span className="k">学 科 监 测</span><b>{fmt(stats.monitored)} 门</b></div>
+                  )}
+                </div>
+                <div className="racts">
+                  {latest && (
+                    <button className="rbtn" type="button" onClick={() => openDetail(latest.period)}>
+                      翻 开 这 册<i aria-hidden="true">→</i>
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="rfoot"><span>取阅即留痕 · 点书进册页</span><span>REF · A–01</span></div>
+            </div>
+          </div>
+        </div>
+        <p className="read-cue">向 下 · 到 架 前
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v15M6 13l6 6 6-6" /></svg>
+        </p>
+      </section>
 
       {/* 首屏 · 书架（data-depth＝视差层深度：越接近 1 越在「架」这一层；图一：米墙＋金线框＋题名栏） */}
       <section className="shelf-view">

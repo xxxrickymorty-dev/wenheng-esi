@@ -521,3 +521,109 @@ h2.sec-title{font-size:clamp(30px,3.6vw,46px);font-weight:600;line-height:1.24;l
 @media (max-width: 900px) {
   .lib-pano .pano-stage { height: 380px; }
 }
+
+/* ══════ 阅览室 · granola 复刻首屏（2026-11-07 rick 定稿方向，工程新增段） ══════
+   拟真册页窗口浮于真馆中庭画板（/app/shelf/assets/library/atrium-desk.webp，
+   rick 2026-11-07 提供的云大图书馆图集）；案上当期一册＝取阅对象，唯一主动作「翻开」，
+   书架顺延为第二屏。色值全部取顶部 --lib-* 别名段；白卡 rgba(255,255,255,.94) 是
+   granola 语法件——lib 色板无白，若过审随下次色板登记入 index.css。 */
+.lib-read{position:relative;min-height:100svh;overflow:hidden;background:var(--paper);isolation:isolate}
+.read-grid{display:grid;grid-template-columns:minmax(0,46fr) minmax(0,54fr);gap:clamp(28px,4vw,64px);
+  align-items:center;min-height:100svh;padding:clamp(92px,13vh,132px) clamp(28px,4vw,56px) clamp(66px,9vh,98px)}
+.read-copy{max-width:520px}
+.read-copy h1{font-family:var(--serif);font-weight:600;font-size:clamp(34px,3.2vw,46px);
+  line-height:1.3;letter-spacing:.06em;color:var(--lib-ink);margin:0;
+  animation:read-rise .7s var(--me) .08s both}
+.read-frag{margin-top:14px;display:flex;flex-direction:column;gap:2px;font-family:var(--kai);
+  font-size:16.5px;letter-spacing:.16em;color:var(--lib-ink-2)}
+.read-frag span{animation:read-rise .6s var(--me) both}
+.read-frag span:nth-child(1){animation-delay:.22s}
+.read-frag span:nth-child(2){animation-delay:.32s}
+.read-frag span:nth-child(3){animation-delay:.42s}
+.read-desk{margin-top:24px;display:flex;align-items:flex-end;gap:18px;background:rgba(255,255,255,.94);
+  border:1px solid var(--lib-line);border-radius:12px;
+  box-shadow:0 1px 2px rgba(21,34,43,.06),0 16px 40px rgba(21,34,43,.1);
+  padding:16px 18px 14px;max-width:380px;animation:read-rise .7s var(--me) .5s both;position:relative}
+.read-desk .cap{position:absolute;top:11px;right:14px;font-family:var(--kai);font-size:10.5px;
+  letter-spacing:.28em;color:var(--lib-ink-3)}
+.read-desk .desk-face{width:86px;flex:none;display:block;box-shadow:2px 3px 0 rgba(21,34,43,.12),0 10px 22px rgba(21,34,43,.18)}
+.read-desk .placeholder{aspect-ratio:210/297;background:var(--g-deep);color:var(--ivory);
+  display:grid;place-items:center;font-family:var(--kai);font-size:12px;letter-spacing:.2em}
+.read-desk .t{font-family:var(--serif);font-size:15.5px;letter-spacing:.05em;color:var(--lib-ink);margin:0}
+.read-desk .t b{font-weight:600}
+.read-desk .s{margin:3px 0 0;font-size:11.5px;letter-spacing:.06em;color:var(--lib-ink-3)}
+.read-points{margin-top:20px;display:flex;flex-direction:column;gap:7px;font-size:12.5px;color:var(--lib-ink-2)}
+.read-points span{display:flex;align-items:center;gap:9px;animation:read-rise .6s var(--me) both}
+.read-points span:nth-child(1){animation-delay:.68s}
+.read-points span:nth-child(2){animation-delay:.76s}
+.read-points span:nth-child(3){animation-delay:.84s}
+.read-points i{width:5px;height:5px;border-radius:50%;background:var(--gold);flex:none}
+.read-open{margin-top:22px;display:inline-flex;align-items:center;gap:11px;min-height:44px;padding:0 26px;
+  border-radius:999px;background:var(--g-deep);color:var(--ivory);font-size:14px;letter-spacing:.22em;
+  text-indent:.1em;transition:background-color .3s var(--ease),transform .3s var(--ease);
+  animation:read-pop .5s var(--me) .62s both}
+.read-open:hover{background:var(--lib-mid,var(--g-deep))}
+.read-open:active{transform:translateY(1px)}
+.read-open i{font-style:normal}
+.read-open i{transition:transform .3s var(--ease)}
+.read-open:hover i{transform:translateX(4px)}
+
+.read-stage{position:relative;animation:read-pop .8s var(--me) .3s both}
+.read-backdrop{position:absolute;inset:-14px -18px 36px 26px;border-radius:16px;overflow:hidden;
+  box-shadow:0 1px 2px rgba(21,34,43,.06),0 16px 44px rgba(21,34,43,.12)}
+.read-backdrop img{width:100%;height:100%;object-fit:cover;object-position:center 55%;filter:saturate(.94)}
+.read-backdrop::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(244,241,232,.16),rgba(25,19,16,.24))}
+.read-win{position:relative;background:rgba(255,255,255,.96);border:1px solid var(--lib-line);
+  border-radius:12px;box-shadow:0 1px 2px rgba(21,34,43,.06),0 30px 80px rgba(21,34,43,.16);
+  overflow:hidden;margin:14px 26px 46px 0}
+.rbar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--lib-line);
+  background:linear-gradient(180deg,#FCFBF7,rgba(255,255,255,.96))}
+.rbar i{width:11px;height:11px;border-radius:50%;background:var(--lib-line)}
+.rbar i:nth-child(1){background:#E8A79C}
+.rbar i:nth-child(2){background:#EFD9A0}
+.rbar i:nth-child(3){background:#B8D4BC}
+.rbar .t{margin-left:8px;font-family:var(--kai);font-size:12.5px;letter-spacing:.14em;color:var(--lib-ink-2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}  /* 390 防标签中折（评审 F4） */
+.rbar .rtab{margin-left:auto;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;
+  color:var(--lib-ink-3);border:1px solid var(--lib-line);border-radius:6px;padding:3px 10px;
+  white-space:nowrap;flex:none}
+.rbody{padding:22px 24px 20px}
+.rtt{font-family:var(--serif);font-weight:600;font-size:23px;letter-spacing:.08em;color:var(--lib-ink);margin:0}
+.riss{margin:6px 0 0;font-family:var(--kai);font-size:12.5px;letter-spacing:.14em;color:var(--lib-ink-3)}
+.rfigs{margin-top:18px;display:grid;grid-template-columns:repeat(3,1fr)}
+.rfig{padding:2px 16px 4px}
+.rfig+.rfig{border-left:1px solid var(--lib-line)}
+.rfig .k{display:block;font-family:var(--kai);font-size:10.5px;letter-spacing:.2em;color:var(--lib-ink-3)}
+.rfig b{display:block;margin-top:2px;font-family:var(--serif);font-weight:600;font-size:23px;
+  line-height:1.25;color:var(--lib-ink);font-variant-numeric:tabular-nums}
+.rfig b.sm{font-size:15px;letter-spacing:.04em;padding-top:5px}
+.racts{margin-top:18px;border-top:1px solid var(--lib-line);padding-top:16px;display:flex;align-items:center}
+.rbtn{display:inline-flex;align-items:center;gap:11px;min-height:44px;padding:0 24px;border-radius:999px;
+  background:var(--g-deep);color:var(--ivory);font-size:13.5px;letter-spacing:.2em;text-indent:.1em;
+  transition:background-color .3s var(--ease)}
+.rbtn:hover{background:var(--lib-mid,var(--g-deep))}
+.rbtn i{font-style:normal}
+.rfoot{display:flex;justify-content:space-between;gap:12px;padding:10px 24px 14px;font-size:10.5px;
+  letter-spacing:.08em;color:var(--lib-ink-3);border-top:1px solid var(--lib-line)}
+.read-cue{position:absolute;left:50%;bottom:clamp(16px,3vh,30px);transform:translateX(-50%);
+  font-family:var(--kai);font-size:12px;letter-spacing:.4em;color:var(--lib-ink-2);
+  background:rgba(244,241,232,.85);padding:7px 16px 8px;border-radius:6px;
+  animation:read-cue 2.6s ease-in-out 1.6s infinite}
+.read-cue svg{width:15px;height:15px;stroke:var(--lib-ink-2);fill:none;stroke-width:1.6;
+  stroke-linecap:round;vertical-align:-3px;margin-left:4px}
+@keyframes read-rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes read-pop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+@keyframes read-cue{0%,100%{opacity:.9;transform:translateX(-50%) translateY(0)}
+  50%{opacity:.55;transform:translateX(-50%) translateY(4px)}}
+@media (max-width:1080px){
+  .read-grid{grid-template-columns:1fr;min-height:0;padding-top:96px;padding-bottom:70px}
+  .read-copy{max-width:560px}
+  .read-stage{margin-top:8px}
+}
+@media (prefers-reduced-motion:reduce){
+  .lib-read *,.lib-read{animation:none!important;transition:none!important}
+}
+@media (max-width:1080px){
+  .read-grid>*{min-width:0}  /* 同登录页：grid 子项 min-width:auto 会撑破 390 */
+}

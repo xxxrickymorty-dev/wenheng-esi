@@ -13,6 +13,9 @@
 <!-- 套准十字：B 骨架的语言——这是一台被校准过的仪器，不是一张宣传页 -->
 <div class="reg tl"></div><div class="reg tr"></div><div class="reg bl"></div><div class="reg br"></div>
 
+<!-- 页框开关（2026-11-07 登录页 granola 复刻）：topbar/foot 收进 block，
+     默认内容不变——其余页面逐字节保持原样；登录页置空即脱框全幅。 -->
+{% block topbar %}
 <header class="topbar">
   <div class="wrap">
     <a class="brand" href="/"><span class="seal seal-sm">衡</span><span class="logo">文衡</span><span class="sub">{% block sub %}学科信息参考 · 自动化流水线{% endblock %}</span></a>
@@ -29,12 +32,15 @@
     </nav>
   </div>
 </header>
+{% endblock %}
 <main class="wrap" id="main">
 {% block content %}{% endblock %}
 </main>
+{% block foot %}
 <footer class="foot">
   <span>演示环境 · 数据为公开 ESI/InCites 指标 · 大模型不进入数据路径 · 数字 100% 可回溯台账单元格</span>
 </footer>
+{% endblock %}
 {% block scripts %}{% endblock %}
 </body>
 </html>

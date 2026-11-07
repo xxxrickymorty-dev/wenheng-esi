@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#F7F5EF">
+<title>文衡 · 登录 · granola 复刻（静态稿 20261107）</title>
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     登录页 · granola.ai 复刻（静态评审稿，供 rick 审）　日期：2026-11-07
+     ────────────────────────────────────────────────────────────────────────────
+     rick 2026-11-07 第六次口谕：参考 https://www.granola.ai/ 重新复刻登录页。
+     （语法依据 WebFetch 全文拆解＋实站截图校对：大题为衬线、CTA 深橄榄胶囊、
+     产品窗口浮于彩色画板之上、暖色状态签、逐行浮现微动效。）
+     对译校准：granola 橄榄绿胶囊 → 会泽绿；彩色画板 → 真馆照片画板（图集 50fe）。
+
+     ── granola 语法 → 文衡 对译 ─────────────────────────────────────────────
+     拟真笔记窗口（Enhancing/Transcribing 状态签）→ 拟真报告窗口：
+       真实产物 202609 的真实数字（973 ↑22／14 门／291 ↑17，PRODUCT.md Evidence）
+       ＋真实四步状态（取数核验/预测选模/生成初稿/核验定稿，全部已完成）＋签印。
+     三短句卖点 → 台账可回溯／大模型不进数据路径／45 期数据齐备（均真实口径）。
+     手写感点缀 → 楷体（kai）眉标与短句，中文书卷气承接 granola 的「人味儿」。
+     胶囊 CTA（999px）→ 深绿胶囊「登 录」。
+       ⚠ 胶囊超出 11-02「圆角三档 12/8/6」条款——本稿按复刻先出，落码前需你裁定豁免。
+     暖橙点缀 → 文衡金 #C9A961（状态签/圆点/对勾），主 CTA 用 granola 式深色胶囊
+       ＝会泽绿 #143729（品牌色不外借）。
+     米白纸感 → 纸面 #F7F5EF／白卡＋细边框＋柔和阴影（SaaS 卡片语法）。
+
+     ── 硬约束 ────────────────────────────────────────────────────────────────
+     零 CDN、系统字体、无 JS 也可正常提交（演示开门复位 2.2s）、真实数字不编造、
+     合规行保留（09-29 裁定）。表单落地：POST /login，e2e 断言随新版式更新。
+
+     陈列馆第一屏若此方向过审，再按同一语法复刻（书架＝产品网格＋拟真册页窗口）。
+     ══════════════════════════════════════════════════════════════════════════ -->
+<style>
+  :root{
+    --bg:#F7F5EF; --card:#FFFFFF; --hair:#E5E1D6; --hair-2:#D9D4C6;
+    --ink:#15222B; --ink-2:rgba(21,34,43,.72); --ink-3:rgba(21,34,43,.5);
+    --deep:#143729; --deep-2:#1A4B27; --gold:#C9A961; --gold-2:#B8944A;
+    --gold-bg:rgba(201,169,97,.16); --green:#276B4C;
+    --serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,serif;
+    --kai:"KaiTi","STKaiti","FangSong","STFangsong",serif;
+    --sans:system-ui,-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    --mono:ui-monospace,"SF Mono",Consolas,"Courier New",monospace;
+    --e:cubic-bezier(.32,.72,0,1);
+    --r-win:12px; --r-card:8px; --r-chip:6px;
+    --sh-card:0 1px 2px rgba(21,34,43,.05),0 12px 32px rgba(21,34,43,.09);
+    --sh-win:0 1px 2px rgba(21,34,43,.05),0 30px 80px rgba(21,34,43,.16);
+  }
+  *,::after,::before{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font:15px/1.75 var(--sans);
+    font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;background:none;border:none;color:inherit}
+  input{font:inherit}
+  :focus-visible{outline:2px solid var(--gold-2);outline-offset:2px}
+  ::selection{background:var(--gold);color:#fff}
+  @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  @keyframes pop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+
+  /* ── 顶栏 ── */
+  .top{display:flex;align-items:center;gap:14px;padding:18px clamp(28px,4vw,56px)}
+  .top .emblem{width:30px;height:30px}
+  .top b{font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.14em}
+  .top .sub{font-family:var(--kai);font-size:11px;letter-spacing:.2em;color:var(--ink-3);
+    border-left:1px solid var(--hair-2);padding-left:14px}
+  .top .claim{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:11px;
+    letter-spacing:.1em;color:var(--ink-3);background:var(--card);border:1px solid var(--hair);
+    border-radius:999px;padding:5px 14px}
+  .top .claim i{width:6px;height:6px;border-radius:50%;background:var(--gold)}
+
+  /* ── 主区：左文右窗 ── */
+  .hero{display:grid;grid-template-columns:minmax(0,46fr) minmax(0,54fr);gap:clamp(28px,4vw,64px);
+    align-items:center;padding:clamp(10px,3vh,36px) clamp(28px,4vw,56px) 0;min-height:calc(100vh - 128px)}
+  .copy{max-width:520px}
+  .copy .new{display:inline-flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.06em;
+    color:var(--ink-2);background:var(--gold-bg);border-radius:999px;padding:5px 14px;
+    margin-bottom:20px;animation:rise .6s var(--e) .05s both}
+  .copy .new i{font-style:normal;background:var(--gold-2);color:#fff;font-size:10.5px;
+    border-radius:999px;padding:1px 8px;letter-spacing:.12em}
+  .copy h1{font-family:var(--serif);font-weight:700;font-size:clamp(40px,3.8vw,56px);line-height:1.24;
+    letter-spacing:.02em;animation:rise .7s var(--e) .1s both}
+  .copy h1 em{font-style:normal;color:var(--gold-2)}
+  .copy .frag{margin-top:16px;display:flex;flex-direction:column;gap:2px;font-family:var(--kai);
+    font-size:17px;letter-spacing:.14em;color:var(--ink-2)}
+  .copy .frag span{animation:rise .6s var(--e) both}
+  .copy .frag span:nth-child(1){animation-delay:.24s}
+  .copy .frag span:nth-child(2){animation-delay:.34s}
+  .copy .frag span:nth-child(3){animation-delay:.44s}
+
+  /* 登录卡：granola 输入语法（白底细描边）＋胶囊 CTA */
+  .auth{margin-top:26px;background:var(--card);border:1px solid var(--hair);border-radius:var(--r-win);
+    box-shadow:var(--sh-card);padding:20px 20px 18px;max-width:400px;animation:rise .7s var(--e) .5s both}
+  .auth .row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .auth label{font-size:12.5px;color:var(--ink-2);width:34px;flex:none;letter-spacing:.1em}
+  .auth input{flex:1;min-height:40px;background:var(--bg);border:1px solid var(--hair-2);
+    border-radius:var(--r-card);padding:0 12px;color:var(--ink);letter-spacing:.04em;
+    transition:border-color .25s var(--e),box-shadow .25s var(--e)}
+  .auth input:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-bg);outline:none}
+  .auth .pwd{position:relative;display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .auth .pwd input{padding-right:38px}
+  .auth .pwd-toggle{position:absolute;right:6px;width:30px;height:30px;display:grid;place-items:center;
+    border-radius:var(--r-chip)}
+  .auth .pwd-toggle svg{width:17px;height:17px;stroke:var(--ink-3);fill:none;stroke-width:1.7;
+    stroke-linecap:round;stroke-linejoin:round}
+  .auth .pwd-toggle:hover{background:var(--bg)}
+  .auth .go{width:100%;min-height:44px;border-radius:999px;background:var(--deep);color:var(--bg);
+    font-size:14.5px;letter-spacing:.3em;text-indent:.3em;transition:background-color .3s var(--e),
+    transform .3s var(--e);animation:pop .5s var(--e) .66s both}
+  .auth .go:hover{background:var(--deep-2)}
+  .auth .go:active{transform:translateY(1px)}
+  .auth .go.is-open{background:var(--gold-2);color:#fff}
+  .auth .err{display:none;background:rgba(178,58,43,.07);border:1px solid rgba(178,58,43,.25);
+    color:var(--red,#B23A2B);font-size:12px;letter-spacing:.04em;padding:7px 11px;border-radius:var(--r-chip);
+    margin-bottom:12px}
+  .auth.has-err .err{display:block}
+  .auth .fineprint{margin-top:12px;font-size:11px;letter-spacing:.08em;color:var(--ink-3)}
+
+  /* 三卖点：granola 小字节奏＋金点 */
+  .points{margin-top:22px;display:flex;flex-direction:column;gap:7px;font-size:12.5px;color:var(--ink-2)}
+  .points span{display:flex;align-items:center;gap:9px;animation:rise .6s var(--e) both}
+  .points span:nth-child(1){animation-delay:.72s}
+  .points span:nth-child(2){animation-delay:.8s}
+  .points span:nth-child(3){animation-delay:.88s}
+  .points i{width:5px;height:5px;border-radius:50%;background:var(--gold);flex:none}
+
+  /* ── 拟真报告窗口（granola 拟真笔记窗口的对译；垫真馆照片画板） ── */
+  .stage{position:relative;animation:pop .8s var(--e) .3s both}
+  .stage .backdrop{position:absolute;inset:-14px -18px 34px 26px;border-radius:16px;overflow:hidden;
+    box-shadow:var(--sh-card)}
+  .stage .backdrop img{width:100%;height:100%;object-fit:cover;object-position:center 58%;
+    filter:saturate(.92)}
+  .stage .backdrop::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(247,245,239,.14),rgba(21,34,43,.2))}
+  .win{position:relative;background:var(--card);border:1px solid var(--hair);border-radius:var(--r-win);
+    box-shadow:var(--sh-win);overflow:hidden;margin:14px 26px 44px 0}
+  .win .bar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--hair);
+    background:linear-gradient(180deg,#FCFBF7,var(--card))}
+  .win .bar i{width:11px;height:11px;border-radius:50%;background:var(--hair-2)}
+  .win .bar i:nth-child(1){background:#E8A79C}
+  .win .bar i:nth-child(2){background:#EFD9A0}
+  .win .bar i:nth-child(3){background:#B8D4BC}
+  .win .bar .t{margin-left:8px;font-family:var(--kai);font-size:12.5px;letter-spacing:.14em;color:var(--ink-2)}
+  .win .bar .tab{margin-left:auto;display:inline-flex;background:var(--bg);border:1px solid var(--hair);
+    border-radius:var(--r-chip);overflow:hidden;font-size:11px;color:var(--ink-3)}
+  .win .bar .tab span{padding:4px 12px}
+  .win .bar .tab .on{background:var(--deep);color:#fff;letter-spacing:.08em}
+  .win .body{padding:22px 24px 20px}
+  .win .head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px}
+  .win .head .tt{font-family:var(--serif);font-weight:600;font-size:21px;letter-spacing:.1em}
+  .win .head .sg{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;letter-spacing:.1em;
+    color:var(--green);font-weight:600;background:var(--gold-bg);border-radius:var(--r-chip);padding:4px 10px}
+  .win .head .sg i{width:15px;height:15px;background:var(--deep);color:#fff;font-family:var(--kai);
+    font-style:normal;font-size:10px;line-height:1;display:grid;place-items:center;transform:rotate(-5deg)}
+  .win .figs{margin-top:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:0}
+  .win .fig{padding:2px 18px 4px}
+  .win .fig+.fig{border-left:1px solid var(--hair)}
+  .win .fig .k{font-family:var(--kai);font-size:11px;letter-spacing:.22em;color:var(--ink-3)}
+  .win .fig .v{margin-top:2px;font-family:var(--serif);font-weight:600;font-size:27px;line-height:1.2}
+  .win .fig .d{font-size:11px;color:var(--ink-3);letter-spacing:.04em}
+  .win .fig .d b{color:var(--green);font-weight:600}
+  .win .steps{margin-top:18px;border-top:1px solid var(--hair);padding-top:14px;
+    display:flex;flex-direction:column;gap:8px}
+  .win .st{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-2);
+    opacity:0;animation-name:rise;animation-duration:.5s;animation-timing-function:var(--e);
+    animation-fill-mode:both}
+  .win .st:nth-child(1){animation-delay:.75s}
+  .win .st:nth-child(2){animation-delay:.87s}
+  .win .st:nth-child(3){animation-delay:.99s}
+  .win .st:nth-child(4){animation-delay:1.11s}
+  .win .st .chip{margin-left:auto;font-size:11px;letter-spacing:.08em;color:var(--green);
+    background:var(--gold-bg);border-radius:var(--r-chip);padding:2px 9px}
+  .win .st .tick{width:16px;height:16px;border-radius:50%;background:var(--gold-bg);display:grid;
+    place-items:center;color:var(--gold-2);font-size:11px;font-weight:700}
+  .win .foot{display:flex;justify-content:space-between;gap:12px;padding:10px 24px 14px;font-size:10.5px;
+    letter-spacing:.08em;color:var(--ink-3);border-top:1px solid var(--hair)}
+  /* 窗下浮签：granola 式小注 */
+  .stage .tag{position:absolute;right:-8px;bottom:-14px;transform:rotate(-2deg);background:var(--deep);
+    color:#fff;font-family:var(--kai);font-size:11.5px;letter-spacing:.18em;border-radius:var(--r-chip);
+    padding:7px 14px;box-shadow:var(--sh-card)}
+
+  /* ── 页脚 ── */
+  .foot{display:flex;justify-content:space-between;gap:16px;padding:14px clamp(28px,4vw,56px) 18px;
+    font-size:11px;letter-spacing:.1em;color:var(--ink-3)}
+
+  @media (max-width:1080px){
+    .hero{grid-template-columns:1fr;min-height:0;padding-bottom:30px}
+    .copy{max-width:560px}
+    .stage{margin-top:6px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <img class="emblem" src="assets/ynu-emblem.png" alt="云南大学校徽" width="30" height="30">
+  <b>文衡</b>
+  <span class="sub">雲南大學圖書館 · 學科信息參考</span>
+  <span class="claim"><i aria-hidden="true"></i>202609 已签发 · 总第 39 期</span>
+</header>
+
+<main class="hero">
+  <div class="copy">
+    <p class="new"><i>New</i>202609 已签发 · 总第 39 期</p>
+    <h1>把数月的手工活，<br>收成一条<em>流水线</em>。</h1>
+    <div class="frag" aria-hidden="true">
+      <span>解析台账。</span>
+      <span>逐格校验。</span>
+      <span>签发留痕。</span>
+    </div>
+
+    <form class="auth" method="post" action="#" onsubmit="return whDemoEnter(event)">
+      <div class="err" role="alert">账号或密码不正确</div>
+      <div class="row">
+        <label for="wh-username">账号</label>
+        <input id="wh-username" name="username" autocomplete="username" required>
+      </div>
+      <div class="pwd">
+        <label for="wh-password">密码</label>
+        <input id="wh-password" name="password" type="password" autocomplete="current-password" required>
+        <button type="button" class="pwd-toggle" onclick="whTogglePassword(this)" aria-label="显示密码">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"></path>
+            <circle cx="12" cy="12" r="2.7"></circle>
+            <path class="slash" d="M4.5 19.5 19.5 4.5"></path>
+          </svg>
+        </button>
+      </div>
+      <button class="go" type="submit">登 录</button>
+      <p class="fineprint">演示环境 · 管理员与评委两种角色，权限不同</p>
+    </form>
+
+    <div class="points">
+      <span><i aria-hidden="true"></i>每个数字都能指回台账的某一格</span>
+      <span><i aria-hidden="true"></i>大模型不进入数据路径——它只选，不造</span>
+      <span><i aria-hidden="true"></i>45 期 ESI 数据齐备，逐期可复现</span>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="backdrop" aria-hidden="true"><img src="assets/library/zhichang-front.webp" alt=""></div>
+    <div class="win">
+      <div class="bar">
+        <i aria-hidden="true"></i><i aria-hidden="true"></i><i aria-hidden="true"></i>
+        <span class="t">学科信息参考 · 出稿台</span>
+        <span class="tab" aria-hidden="true"><span>初稿</span><span class="on">签发版</span></span>
+      </div>
+      <div class="body">
+        <div class="head">
+          <div class="tt">202609 期<br><span style="font-size:12.5px;color:var(--ink-3);font-family:var(--kai);letter-spacing:.14em">2026 年第 5 期 · 总第 39 期</span></div>
+          <span class="sg"><i aria-hidden="true">签</i>已签发</span>
+        </div>
+        <div class="figs">
+          <div class="fig"><div class="k">国际排名</div><div class="v">973</div><div class="d">上期 995 · <b>升 22 位</b></div></div>
+          <div class="fig"><div class="k">进入前 1% 学科</div><div class="v">14 门</div><div class="d">全球前 1%</div></div>
+          <div class="fig"><div class="k">顶尖论文</div><div class="v">291 篇</div><div class="d">上期 274 · <b>增 17</b></div></div>
+        </div>
+        <div class="steps">
+          <div class="st"><span class="tick" aria-hidden="true">✓</span>取数核验<span class="chip">已完成</span></div>
+          <div class="st"><span class="tick" aria-hidden="true">✓</span>预测选模<span class="chip">已完成</span></div>
+          <div class="st"><span class="tick" aria-hidden="true">✓</span>生成初稿<span class="chip">已完成</span></div>
+          <div class="st"><span class="tick" aria-hidden="true">✓</span>核验定稿<span class="chip">已完成</span></div>
+        </div>
+      </div>
+      <div class="foot"><span>19 张台账表 · 704 槽位逐格替换</span><span>断言 48 项 · 0 失败</span></div>
+    </div>
+    <span class="tag" aria-hidden="true">签发即盖章 · 数字 100% 可回溯</span>
+  </div>
+</main>
+
+<footer class="foot">
+  <span>内部资料 · 仅用于参赛 · 禁止外传</span>
+  <span>云南大学图书馆 · 学科信息参考 · 演示环境</span>
+</footer>
+
+<script>
+  /* 密码显示切换（沿用现行 login.html 的原生实现）；无 JS 时表单照常提交。 */
+  function whTogglePassword(btn){
+    var input=document.getElementById('wh-password');
+    if(!input)return;
+    var show=input.type==='password';
+    input.type=show?'text':'password';
+    btn.classList.toggle('is-visible',show);
+    btn.setAttribute('aria-label',show?'隐藏密码':'显示密码');
+  }
+  /* granola 无开门仪式——本稿用按钮转金＋状态签轻点做提交反馈，2.2s 后复位演示。 */
+  function whDemoEnter(e){
+    e.preventDefault();
+    var btn=document.querySelector('.auth .go');
+    var auth=document.querySelector('.auth');
+    btn.classList.add('is-open');
+    auth.classList.add('is-open');
+    btn.textContent='验 证 中 · 正 在 入 馆';
+    window.setTimeout(function(){
+      btn.classList.remove('is-open');
+      auth.classList.remove('is-open');
+      btn.textContent='登 录';
+    },2200);
+    return false;
+  }
+</script>
+</body>
+</html>

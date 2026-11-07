@@ -165,13 +165,15 @@ out("=== 3. 登录 ===")
 # 欢迎页 = 登录页（rick 2026-09-21 定：建筑图做首屏；2026-09-28 二改：满屏背景 + 云大绿）。
 # 断言三件事：背景图与校徽在且走 asset（版本号，否则改图后浏览器吃缓存）、登录表单没被改坏。
 st, lp, _ = call("GET", "/login")
-check("欢迎页背景图 + 校徽走 asset 版本号",
-      "/static/img/library-exterior.jpg?v=" in lp and "/static/img/ynu-emblem.png?v=" in lp,
+check("欢迎页背景图 + 校徽走 asset 版本号（2026-11-07 granola 复刻换真馆图）",
+      "/static/img/zhichang-front.webp?v=" in lp and "/static/img/ynu-emblem.png?v=" in lp,
       f"got {st}")
 check("登录表单完好（账号/密码/action）",
       'name="username"' in lp and 'name="password"' in lp and 'action="/login"' in lp)
 check("登录页只有登录表单（入口已移入工作区导航）",
       lp.count('action="/login"') == 1 and "陈列馆" not in lp)
+check("登录页拟真窗口读真值（期次行 + 事实层标记）",
+      "总第" in lp and 'gate-win' in lp and ("已签发" in lp or "未签发" in lp))
 st, body, final = call("POST", "/login", {"username": ADMIN_U, "password": ADMIN_P})
 # ⚠ 别写死 8080：用 `WENHENG_BASE` 换端口跑时，写死会让这条**假失败**
 #    （2026-09-19 用 8099 实测：final 明明是首页，断言却判未过）。
