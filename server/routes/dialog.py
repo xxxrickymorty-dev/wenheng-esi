@@ -244,6 +244,27 @@ async def api_models_reasoning(request: Request):
     return {"ok": True, "models": await run_in_threadpool(_models.public)}
 
 
+@router.post("/api/models/position")
+@admin_route
+async def api_models_position(request: Request):
+    """位级型号覆盖（2026-11-07：问答与写作位的模型开关独立）——
+    `{position, provider, model}`；provider 空＝清除该位覆盖（回到跟随当前模型）。
+    现 `position='write'`；qa 等对话位跟随当前模型，不接受位级覆盖。"""
+    body = await request.json()
+    from ai import _models                                        # noqa: PLC0415
+    actor = config.role_of(current_user(request) or "")
+    try:
+        await run_in_threadpool(_models.set_position_model,
+                                 str(body.get("position") or ""),
+                                 str(body.get("provider") or ""),
+                                 str(body.get("model") or ""), actor=actor)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except OSError as e:
+        return JSONResponse({"error": f"写不进服务器上的配置文件：{e}"}, status_code=500)
+    return {"ok": True, "models": await run_in_threadpool(_models.public)}
+
+
 @router.post("/api/models/test")
 @admin_route
 async def api_models_test(request: Request):

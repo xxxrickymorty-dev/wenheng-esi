@@ -65,11 +65,26 @@ def model_reachable() -> bool:
     return not getattr(_config.build_brain(), "is_rule", True)
 
 
+def _position_credentials():
+    """写作位的清单级型号覆盖（`positions.write`，2026-11-07）；读失败＝没有覆盖，不炸。"""
+    try:
+        from . import _models                                       # noqa: PLC0415
+
+        return _models.position_credentials("write")
+    except Exception:                                              # noqa: BLE001
+        return None
+
+
 def flex_model() -> str:
-    """写作位模型名：`WENHENG_FLEX_MODEL` 显式覆盖；未设**跟随当前模型**
-    （清单当前项型号，缺省回落部署 env 的 `WENHENG_AI_MODEL`）。
+    """写作位模型名，三态取值：**清单位级覆盖（`positions.write`）＞
+    `WENHENG_FLEX_MODEL` 显式覆盖 ＞ 跟随当前模型**（清单当前项型号，
+    缺省回落部署 env 的 `WENHENG_AI_MODEL`）。
     2026-11-04 修：清单时代专用名不再各写一份——旧的写死名在
-    云大网关上没有对应渠道（503 无可用渠道），换供应商即断。"""
+    云大网关上没有对应渠道（503 无可用渠道），换供应商即断。
+    2026-11-07 起：位级覆盖最高（界面操作是最新意图），问答换型不再牵动写作位。"""
+    pos = _position_credentials()
+    if pos and pos.get("model"):
+        return str(pos["model"])
     explicit = os.environ.get(ENV_MODEL, "").strip()
     if explicit:
         return explicit
@@ -85,6 +100,8 @@ def flex_brain():
     - 未配云 / `profile=demo` / 无 key → `RuleBrain`（写作位不可用，调用方回退安全值）；
     - 与 `_config.build_brain()` 的唯一差别：**只有这里**把模型换成 `flex_model()`、
       预算换成 `FLEX_TIMEOUT / FLEX_MAX_TOKENS`——对话/规划的快模型与既有预算不动。
+    - 2026-11-07 起：清单位级覆盖（`positions.write`）存在时，地址/key/协议/头/params
+      **整套**用位级的（可以跟当前模型不同供应商），预算仍写作位专用。
     """
     from . import _brain, _config, _runtime                        # noqa: PLC0415
 
@@ -92,17 +109,21 @@ def flex_brain():
     if override is not None:
         return override
     cfg = _config.cloud_config()
-    if cfg["profile"] == "demo" or cfg["backend"] != "openai":
+    if cfg["profile"] == "demo":
         return _brain.RuleBrain()
-    if not (cfg["base_url"] and cfg["key"]):
+    pos = _position_credentials()
+    src = pos or cfg
+    if not pos and cfg["backend"] != "openai":
+        return _brain.RuleBrain()
+    if not (src.get("base_url") and src.get("key")):
         return _brain.RuleBrain()                                  # 无 key 不构造云适配器
-    return _brain.make_brain(base_url=cfg["base_url"], model=flex_model(),
-                             key=cfg["key"], protocol=cfg.get("protocol") or "openai",
+    return _brain.make_brain(base_url=src["base_url"], model=flex_model(),
+                             key=src["key"], protocol=src.get("protocol") or "openai",
                              timeout=FLEX_TIMEOUT,
                              max_tokens=FLEX_MAX_TOKENS,
                              max_egress_chars=cfg["max_egress_chars"],
-                             extra_headers=cfg.get("headers") or None,
-                             extra_params=cfg.get("params") or None)
+                             extra_headers=src.get("headers") or None,
+                             extra_params=src.get("params") or None)
 
 
 def writing_state(position: str = "write", *, default: bool = False) -> WritingState:

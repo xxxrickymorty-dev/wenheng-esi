@@ -17,7 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import pytest
 
 import ai
-from ai import _config, _models
+from ai import _config, _models, _writing
 
 #: conftest 的 `_isolate_ai_env` 会把 `active_credentials` 蒙成 None（开发机清单隐身）；
 #: 本模块就是测清单本身的，所以先留一份真函数，需要时在测试里装回去。
@@ -479,3 +479,82 @@ def test_当前条目的params传进brain(tmp_path, monkeypatch):
     _seed(tmp_path, params={})          # 明确清空（不给＝沿用，见上一条用例）
     with ai.using(data_root=tmp_path):
         assert _config.build_brain()._extra_params == {}, "没配＝不发（网关缺省）"
+
+
+# ============================================================ 位级型号覆盖（2026-11-07）
+def _seed_b(root):
+    """第二条供应商（写作位覆盖测试用，与 active 不同源）。"""
+    with ai.using(data_root=root):
+        _models.upsert({"id": "prov-b", "label": "写作位专用",
+                        "base_url": "https://b.test/v1", "key": "k" * 10,
+                        "models": ["Write/Model-9"], "params": {}}, actor="admin")
+
+
+def test_位级覆盖_写入读取清除(tmp_path):
+    _seed(tmp_path)
+    _seed_b(tmp_path)
+    with ai.using(data_root=tmp_path):
+        _models.set_position_model("write", "prov-b", "Write/Model-9", actor="admin")
+        ov = _models.position_credentials("write")
+        assert ov and ov["model"] == "Write/Model-9"
+        assert ov["base_url"] == "https://b.test/v1", "凭据整套来自位级供应商"
+        assert _models.public()["positions"]["write"]["provider"] == "prov-b"
+        _models.set_position_model("write", "", actor="admin")       # 空＝清除
+        assert _models.position_credentials("write") is None
+
+
+def test_位级覆盖_校验不静默(tmp_path):
+    _seed(tmp_path)
+    _seed_b(tmp_path)
+    with ai.using(data_root=tmp_path):
+        with pytest.raises(ValueError):
+            _models.set_position_model("qa", "prov-b", actor="admin")   # 未登记的位
+        with pytest.raises(ValueError):
+            _models.set_position_model("write", "no-such", actor="admin")
+        with pytest.raises(ValueError):
+            _models.set_position_model("write", "prov-b", "No/Such", actor="admin")
+
+
+def test_切当前模型不抹位级覆盖(tmp_path):
+    _seed(tmp_path)
+    _seed_b(tmp_path)
+    with ai.using(data_root=tmp_path):
+        _models.set_position_model("write", "prov-b", "Write/Model-9", actor="admin")
+        _models.set_active("test-prov", "Test/Model-1", actor="admin")
+        _models.set_reasoning_effort("low", actor="admin")
+        assert _models.position_credentials("write")["model"] == "Write/Model-9", \
+            "普通写口不感知位级键，不得顺手抹掉"
+
+
+def test_失效覆盖读口自动清(tmp_path):
+    _seed(tmp_path)
+    _seed_b(tmp_path)
+    with ai.using(data_root=tmp_path):
+        _models.set_position_model("write", "prov-b", "Write/Model-9", actor="admin")
+        _models.remove("prov-b", actor="admin")
+        assert _models.position_credentials("write") is None, "指向已删供应商＝清掉"
+
+
+def test_flex_model_优先级_位级大于env大于当前(tmp_path, monkeypatch):
+    monkeypatch.setattr(_models, "active_credentials", _REAL_ACTIVE)
+    _seed(tmp_path)
+    _seed_b(tmp_path)
+    with ai.using(data_root=tmp_path):
+        assert _writing.flex_model() == "Test/Model-1", "无覆盖＝跟随当前模型"
+        monkeypatch.setenv("WENHENG_FLEX_MODEL", "Env/Model")
+        assert _writing.flex_model() == "Env/Model", "env 显式覆盖次之"
+        _models.set_position_model("write", "prov-b", "Write/Model-9", actor="admin")
+        assert _writing.flex_model() == "Write/Model-9", "清单位级覆盖最高"
+
+
+def test_flex_brain用位级凭据_预算仍写作位(tmp_path, monkeypatch):
+    monkeypatch.setattr(_models, "active_credentials", _REAL_ACTIVE)
+    _seed(tmp_path)
+    _seed_b(tmp_path)
+    with ai.using(data_root=tmp_path):
+        _models.set_position_model("write", "prov-b", "Write/Model-9", actor="admin")
+        brain = _writing.flex_brain()
+        assert brain.name == "openai:Write/Model-9", "型号取位级覆盖"
+        assert brain.base_url == "https://b.test/v1", "地址/key 整套用位级供应商"
+        assert brain.timeout == _writing.FLEX_TIMEOUT, "预算仍写作位专用（180s）"
+        assert brain.max_tokens == _writing.FLEX_MAX_TOKENS

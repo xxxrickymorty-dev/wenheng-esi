@@ -59,6 +59,10 @@ _MODELS_MAX = 64
 #: 实测 GLM-5.3-Flash 缺省档会把整份输出预算花在思考上（正文 0 字、50–90 秒），
 #: 低档 1.7 秒出正文——报告生成能否跑通全在这一个值上。
 PARAM_CHOICES = {"reasoning_effort": ("minimal", "low", "medium", "high")}
+#: 位级型号覆盖的登记位（2026-11-07 rick：问答与写作位的模型开关独立）。
+#: 写作位先立（它有专用预算，型号常常与问答快模型不同）；qa 等对话位**跟随当前模型**，
+#: 不设位级覆盖——要拆再加登记，不为未来需求提前长。
+POSITION_IDS = ("write",)
 
 
 def _clean_headers(raw) -> dict[str, str]:
@@ -163,7 +167,7 @@ def path() -> pathlib.Path:
 
 def _empty() -> dict:
     return {"schema": SCHEMA, "active": {"provider": "", "model": ""},
-            "providers": [], "updated": {}}
+            "positions": {}, "providers": [], "updated": {}}
 
 
 # ---------------------------------------------------------------- 读
@@ -236,7 +240,19 @@ def read() -> dict:
             active = {"provider": "", "model": ""}
         elif active["model"] not in prov["models"]:
             active["model"] = prov["models"][0] if prov["models"] else ""
-    return {"schema": SCHEMA, "active": active,
+    # 位级型号覆盖（POSITION_IDS 之外的键丢弃；指向失效＝清掉，同 active 的规矩）
+    positions: dict = {}
+    raw_positions = raw.get("positions")
+    if isinstance(raw_positions, dict):
+        for k, v in raw_positions.items():
+            if str(k) not in POSITION_IDS or not isinstance(v, dict):
+                continue
+            pid_p, model_p = str(v.get("provider") or ""), str(v.get("model") or "")
+            prov = next((q for q in providers if q["id"] == pid_p), None)
+            if prov is None or model_p not in prov["models"]:
+                continue
+            positions[str(k)] = {"provider": pid_p, "model": model_p}
+    return {"schema": SCHEMA, "active": active, "positions": positions,
             "providers": providers,
             "updated": raw.get("updated") if isinstance(raw.get("updated"), dict) else {}}
 
@@ -288,7 +304,9 @@ def public() -> dict:
         if p["params"]:
             row["params"] = dict(p["params"])      # 同上：只配了才带
         rows.append(row)
-    return {"active": dict(data["active"]), "providers": rows,
+    return {"active": dict(data["active"]),
+            "positions": {k: dict(v) for k, v in (data.get("positions") or {}).items()},
+            "providers": rows,
             "presets": list(PRESETS)}
 
 
@@ -441,7 +459,65 @@ def set_reasoning_effort(effort: str, *, actor: str = "admin") -> None:
            "updated": {"ts": time.strftime("%Y-%m-%dT%H:%M:%S"), "by": actor}})
 
 
+def set_position_model(position: str, pid: str, model: str = "", *,
+                       actor: str = "admin") -> None:
+    """位级型号覆盖（2026-11-07 rick：问答与写作位的模型开关独立）。
+
+    - `position` 只认登记位（`POSITION_IDS`，现 `write`）；qa 等对话位**跟随当前模型**，
+      不设位级覆盖——写作位从此不被迫跟着问答换型。
+    - `pid` 空＝清除该位覆盖（回到「跟随当前模型」）；给了就校验供应商配齐、型号在目录，
+      不静默（同 `set_active` 的口子）。
+    - 与 active 互不影响；清单位级 ＞ `WENHENG_FLEX_MODEL` env ＞ 跟随当前模型
+      （`_writing.flex_model` 的取值顺序）。
+    """
+    if position not in POSITION_IDS:
+        raise ValueError(f"不认识的位：{position}（只认 {' / '.join(POSITION_IDS)}）")
+    data = read()
+    positions = {k: dict(v) for k, v in (data.get("positions") or {}).items()}
+    pid = str(pid or "").strip()
+    if not pid:
+        positions.pop(position, None)
+    else:
+        row = next((p for p in data["providers"] if p["id"] == pid), None)
+        if row is None:
+            raise ValueError("没有这条供应商")
+        if not (row["key"] and row["base_url"] and row["models"]):
+            raise ValueError("这条供应商还没配齐（地址/key/模型目录），不能设为位级型号")
+        model = str(model or "").strip() or row["models"][0]
+        if model not in row["models"]:
+            raise ValueError(f"「{model}」不在这条供应商的模型目录里")
+        positions[position] = {"provider": pid, "model": model}
+    _save({"schema": SCHEMA, "active": dict(data["active"]), "positions": positions,
+           "providers": data["providers"],
+           "updated": {"ts": time.strftime("%Y-%m-%dT%H:%M:%S"), "by": actor}})
+
+
+def position_credentials(position: str) -> dict | None:
+    """位级型号覆盖的凭据（`active_credentials` 同款形状）；None＝该位没有覆盖，
+    调用方走「跟随当前模型」。覆盖指向已失效的供应商/型号时按 read() 的规矩已清。"""
+    if position not in POSITION_IDS:
+        return None
+    data = read()
+    ov = (data.get("positions") or {}).get(position)
+    if not ov or not ov.get("provider"):
+        return None
+    row = next((p for p in data["providers"] if p["id"] == ov["provider"]), None)
+    if row is None or not (row["base_url"] and row["key"] and ov.get("model")):
+        return None
+    return {"provider_id": row["id"], "label": row["label"],
+            "base_url": row["base_url"], "model": ov["model"], "key": row["key"],
+            "protocol": row["protocol"] or "openai",
+            "headers": dict(row.get("headers") or {}),
+            "params": dict(row.get("params") or {})}
+
+
 def _save(data: dict) -> None:
+    if "positions" not in data:
+        # 既有调用点（upsert / set_active / set_reasoning_effort…）不感知位级键：
+        # 沿用已存的覆盖，别让一次普通的写把它抹掉
+        old = read().get("positions") or {}
+        if old:
+            data["positions"] = old
     p = path()
     p.parent.mkdir(parents=True, exist_ok=True)
     _record.atomic_write_text(p, json.dumps(data, ensure_ascii=False, indent=1) + "\n")
