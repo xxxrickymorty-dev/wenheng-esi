@@ -14,10 +14,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent as RKeyEvent,
               PointerEvent as RPointerEvent, ReactNode } from 'react'
 import type { Me, Period } from './api'
-import { Info } from './Info'
 import { Icon } from './icons'
 import { approvalLabel } from './lib/status'
 import { UserChip } from './lib/UserChip'
+import { FeedbackDialog } from './lib/FeedbackDialog'
 
 export type SideNavItem = { key: string; label: string; href: string; icon: string; jump?: boolean }
 
@@ -242,6 +242,7 @@ export function SideRail(props: {
     if (wantCtrlFocus.current) { wantCtrlFocus.current = false; ctrlRef.current?.focus() }
   }, [folded])
   const onCtrlClick = () => { wantCtrlFocus.current = true; rail.toggle() }
+  const [fbOpen, setFbOpen] = useState(false)
   return (
     <>
       <aside className={`app-page-l${middle ? ' has-mid' : ''}`}
@@ -301,14 +302,17 @@ export function SideRail(props: {
             </label>
           )}
           <div className="app-idb-row">
-            {/* 全站唯一一份口径/来源/只读声明（原在顶栏 ⓘ；位置变了，内容一字未改）。 */}
-            <Info label="口径、来源与只读声明">
-              <p>① 数字只来自馆员维护的台账与派生产物，运行期大模型不进入数据路径；</p>
-              <p>② 本系统是只读视图，不修改台账与报告；③ 预测章按「本期已选」的已保存选择执行，未列学科用 V1 推荐；④ 期次与状态以任务记录为准，未签发报告不可下载。</p>
-              <p>来源：期内产物目录 · 运行档案 · 预测选模配置。</p>
-              <p>分析报告属于内部资料，仅用于参赛，禁止外传。</p>
-            </Info>
-            {me ? <UserChip me={me} /> : (
+            {/* 2026-11-07 rick 定（按图一复刻）：ⓘ 口径声明与 ⚙ 设置钮收进用户菜单，
+                行内只剩身份行一个件；声明内容一字未改，改由菜单「口径与声明」行承载。 */}
+            {me ? (
+              <UserChip me={me} onSettings={onSettings} onFeedback={() => setFbOpen(true)}
+                        info={<>
+                          <p>① 数字只来自馆员维护的台账与派生产物，运行期大模型不进入数据路径；</p>
+                          <p>② 本系统是只读视图，不修改台账与报告；③ 预测章按「本期已选」的已保存选择执行，未列学科用 V1 推荐；④ 期次与状态以任务记录为准，未签发报告不可下载。</p>
+                          <p>来源：期内产物目录 · 运行档案 · 预测选模配置。</p>
+                          <p>分析报告属于内部资料，仅用于参赛，禁止外传。</p>
+                        </>} />
+            ) : (
               <span className="user-chip" aria-live="polite">
                 <span className="user-chip-btn" aria-disabled="true">
                   <span className="av">？</span>
@@ -316,13 +320,11 @@ export function SideRail(props: {
                 </span>
               </span>
             )}
-            <button type="button" className="app-idb-set" title="设置（Ctrl + ,）"
-                    aria-label="设置" onClick={onSettings}>
-              <Icon name="gear" size={16} />
-            </button>
           </div>
         </footer>
       </aside>
+
+      <FeedbackDialog open={fbOpen} onClose={() => setFbOpen(false)} />
 
       {/* 订口把手：两态同一元素。展开态＝骑在金线上的双竖线，拖＝调宽（232–420），
           一直向左拖过 160＝完全收回；完全收回态＝8px 细把手，

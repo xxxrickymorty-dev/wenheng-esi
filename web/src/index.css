@@ -75,7 +75,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0}
 .gaugeband :focus-visible,
 .msch-l :focus-visible{outline-color:var(--field-5)}
 /* 例外：身份弹层是卡片纸底，浅环在纸上只剩 1.14:1——弹层内改回器色 */
-.app-page-l .user-chip-pop :focus-visible{outline-color:var(--zhu)}
+.app-page-l .user-chip-pop :focus-visible{outline-color:var(--seam)}
 a{color:inherit}
 
 /* ---------- 工作台外壳（2026-10-17 起的顶栏制，深色「场」条） ----------
@@ -1356,9 +1356,51 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .user-chip-btn{display:inline-flex;align-items:center;gap:9px;border:1px solid transparent;background:transparent;font:inherit;color:inherit;cursor:pointer;padding:5px 12px 5px 5px;transition:background .15s}
 .user-chip-btn:hover{background:var(--panel)}
 .user-chip .av{width:26px;height:26px;background:var(--zhu);color:#F6F4EC;display:grid;place-items:center;font-family:var(--serif);font-size:var(--fs-label)}
-.user-chip-pop{position:absolute;left:0;bottom:calc(100% + 8px);min-width:140px;background:var(--card);border:1px solid var(--gline);padding:6px;z-index:50}
-.user-chip-pop a{display:block;padding:9px 12px;color:var(--ink-2);text-decoration:none;font-size:var(--fs-label);transition:background .15s,color .15s}
-.user-chip-pop a:hover{background:var(--panel);color:var(--zhu)}
+/* 用户菜单（2026-11-07 按图一复刻：暗面板＋图标行＋底部身份行；浮层深阴影） */
+.user-chip-pop{position:absolute;left:0;bottom:calc(100% + 10px);width:232px;background:#0F2A20;
+  border:1px solid rgba(201,169,97,.32);border-radius:12px;padding:8px;z-index:50;color:var(--ivory);
+  box-shadow:0 24px 64px rgba(4,12,9,.52)}
+.user-menu .um-item,.user-menu .um-row{display:flex;align-items:center;gap:11px;width:100%;min-height:40px;
+  padding:0 12px;border-radius:8px;color:var(--ivory);font-size:13.5px;letter-spacing:.02em;
+  cursor:pointer;background:none;border:none;font-family:inherit;text-align:left;
+  transition:background .15s}
+.user-menu .um-item:hover,.user-menu .um-row:hover,.user-menu .um-info[open]>.um-row{background:rgba(246,244,236,.09)}
+.user-menu .um-item svg,.user-menu .um-row svg{color:rgba(246,244,236,.75);flex:none}
+.user-menu .um-lbl{flex:1;min-width:0}
+.user-menu .um-kbd{font-family:var(--mono);font-size:11px;color:rgba(246,244,236,.48)}
+.user-menu .um-sep{display:block;height:1px;background:rgba(201,169,97,.28);margin:6px 8px}
+.user-menu .um-info{display:block}
+.user-menu .um-info summary{list-style:none}
+.user-menu .um-info summary::-webkit-details-marker{display:none}
+.user-menu .um-info-body{padding:4px 12px 10px 39px;font-size:12px;line-height:1.9;
+  color:rgba(246,244,236,.62);cursor:default}
+.user-menu .um-info-body p{margin:0 0 6px}
+.user-menu .um-id{display:flex;align-items:center;gap:10px;padding:9px 10px 5px;
+  border-top:1px solid rgba(201,169,97,.22);margin-top:6px;padding-top:12px}
+.user-menu .um-id .av{width:28px;height:28px;background:var(--zhu);color:#F6F4EC;display:grid;
+  place-items:center;font-family:var(--serif);font-size:var(--fs-label)}
+.user-menu .um-id-txt b{display:block;font-size:13.5px;font-weight:600;color:var(--ivory);line-height:1.4}
+.user-menu .um-id-txt span{display:block;font-size:11.5px;color:rgba(246,244,236,.55);line-height:1.5}
+.user-menu :focus-visible{outline:2px solid var(--seam);outline-offset:-2px}
+/* 意见反馈对话框（用户菜单收编件） */
+.fb-overlay{position:fixed;inset:0;background:rgba(10,18,13,.55);z-index:200;display:grid;place-items:center}
+.fb-panel{width:min(460px,92vw);background:var(--card);border:1px solid var(--gline);border-radius:12px;
+  box-shadow:0 30px 90px rgba(4,12,9,.4);padding:18px 20px 16px}
+.fb-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.fb-head b{font-family:var(--serif);font-size:16px;letter-spacing:.08em;color:var(--ink)}
+.fb-x{width:30px;height:30px;font-size:17px;color:var(--ink-3);border-radius:6px}
+.fb-x:hover{background:var(--panel);color:var(--ink)}
+.fb-text{width:100%;min-height:110px;border:1px solid var(--gline);border-radius:8px;padding:10px 12px;
+  font:inherit;color:var(--ink);resize:vertical;background:var(--paper,#FCFAF3)}
+.fb-text:focus{border-color:var(--zhu);outline:none}
+.fb-acts{display:flex;align-items:center;justify-content:flex-end;gap:14px;margin-top:10px}
+.fb-hint{font-size:11px;color:var(--ink-3);margin-right:auto}
+.fb-send{min-height:36px;padding:0 20px;background:var(--zhu);color:#F6F4EC;border-radius:8px;
+  font:inherit;font-weight:600;letter-spacing:.1em;cursor:pointer;transition:filter .15s}
+.fb-send:hover{filter:brightness(1.06)}
+.fb-send:disabled{opacity:.45;cursor:default}
+.fb-ok{font-size:13.5px;color:var(--ok,var(--zhu));margin:6px 0 2px}
+.fb-err{font-size:12.5px;color:var(--red,#B23A2B);margin:4px 0 0}
 
 /* ============================================================================
    UX 基线（票 01 · W0，2026-10-15）：功能性文本 ≥13.5px、可点区 ≥44/32px。
@@ -1857,7 +1899,8 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
 .app-page-l .app-idb .user-chip-name{font-size:12px;letter-spacing:.06em;max-width:9.5em;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .app-page-l .app-idb .user-chip-pop{top:auto;bottom:calc(100% + 8px);left:0;right:auto;
-  background:var(--card);color:var(--ink);border-radius:var(--r-win)}
+  /* 2026-11-07 用户菜单收编：三级特异性这里原来压着浅底——菜单统一暗面板 */
+  background:#0F2A20;color:var(--ivory);border-radius:12px}
 
 /* ---------- 右页：纸面，内容居中约 1080px ---------- */
 .app-shell>.app-main{grid-column:2;grid-row:1;min-width:0;width:100%;max-width:1360px;

@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from .. import config, jobs, visibility
 from ..guards import admin_route, current_user, user_route
+from datetime import datetime
 from src import ledger as ledger_mod  # 动态监测表（母本）路径唯一口径（2026-10-13：input/ 只放母本）
 from src import state_store      # 系统状态库：/api/status 报「能不能写」（ADR-0012 决定 7）
 
@@ -69,6 +70,28 @@ async def api_status(request: Request):
                  if last else None),
         "state_db": _state_db_status(),
     }
+
+
+@router.post("/api/feedback")
+async def api_feedback(request: Request):
+    """意见反馈（2026-11-07 用户菜单收编件）：登录用户写一句，落 _feedback/feedback.jsonl。
+    目录在 ROOT/_feedback——刻意不放 out/（数据红线：out/ 只读）。"""
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"error": "未登录", "hint": "请先登录"}, status_code=401)
+    try:
+        payload = await request.json()
+    except Exception:  # noqa: BLE001
+        return JSONResponse({"error": "无法解析", "hint": "请重试"}, status_code=400)
+    text = str(payload.get("text") or "").strip()
+    if not text:
+        return JSONResponse({"error": "内容为空", "hint": "写一句再提交"}, status_code=400)
+    fb_dir = config.ROOT / "_feedback"
+    fb_dir.mkdir(parents=True, exist_ok=True)
+    rec = {"at": datetime.now().isoformat(timespec="seconds"), "user": user, "text": text[:2000]}
+    with (fb_dir / "feedback.jsonl").open("a", encoding="utf-8") as f:
+        f.write(json.dumps(rec, ensure_ascii=False) + chr(10))
+    return {"ok": True}
 
 
 @router.get("/api/me")
