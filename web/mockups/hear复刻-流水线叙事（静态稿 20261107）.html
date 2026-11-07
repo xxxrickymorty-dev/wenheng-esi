@@ -135,38 +135,66 @@ h2.stmt { font-size:clamp(30px,4.2vw,56px); line-height:1.28;
 h2.stmt em { font-style:normal; color:var(--seal); }
 .onpaper h2.stmt em { color:var(--seal); }
 
-/* ═══ S2 五站（纸底）：站牌×5 ＋ 金轨走线 ═══ */
+/* ═══ S2 五站（纸底）：站牌×5 ＋ 金轨走线 ＋ 入场时间轴（依次登场，一次播完）═══ */
 .onpaper { background:var(--paper); color:var(--ink); }
 #pipe { position:relative; max-width:1080px; margin:6vh auto 0; }
 #pipe .rail { display:block; width:100%; height:24px; overflow:visible; }
-#pipe .rail .track { fill:none; stroke:var(--ink); stroke-width:2.5;
+/* 基态（未播）：全部藏；.play 后按 --i 序数依次登场 */
+#pipe .seg { fill:none; stroke:var(--ink); stroke-width:2.5;
   stroke-dasharray:1; stroke-dashoffset:1; }
-#pipe .rail .arw { fill:var(--ink); opacity:0; transition:opacity .35s ease; }
-#pipe .rail .arw.on { opacity:1; }
+#pipe .arw { fill:var(--ink); opacity:0; transform:scale(.3);
+  transform-box:fill-box; transform-origin:center; }
 #pipe .stations { display:grid; grid-template-columns:repeat(5,1fr); margin-top:-23px; }
 #pipe .station { position:relative; padding:0 8px; text-align:center; }
+#pipe .station:nth-child(1){--i:0} #pipe .station:nth-child(2){--i:1}
+#pipe .station:nth-child(3){--i:2} #pipe .station:nth-child(4){--i:3}
+#pipe .station:nth-child(5){--i:4}
 #pipe .dot { display:block; width:12px; height:12px; margin:0 auto 18px;
-  border:2.5px solid var(--ink); background:var(--paper); }
-#pipe .station.human .dot { border-color:var(--seal); background:var(--seal); }
+  border:2.5px solid var(--ink); background:var(--paper);
+  opacity:0; transform:scale(0); }
 #pipe .plaque { border:1.5px solid var(--ink); background:var(--paper);
   padding:14px 10px 13px; min-height:148px;
-  box-shadow:0 1px 0 rgba(30,42,35,.08); }
-#pipe .station.human .plaque { border-color:var(--seal); border-width:2.5px; }
-#pipe .p-head { display:flex; justify-content:space-between; align-items:center; }
-#pipe .p-no { font-family:var(--mono); font-size:11px; letter-spacing:.2em; color:var(--gold2); }
-#pipe .station.human .p-no { color:var(--seal); }
+  box-shadow:0 1px 0 rgba(30,42,35,.08);
+  opacity:0; transform:translateY(26px); }
 #pipe .p-who { font-family:var(--mono); font-size:10px; letter-spacing:.18em;
-  color:var(--ink2); border:1px solid rgba(30,42,35,.4); padding:2px 7px; }
-#pipe .station.human .p-who { color:var(--seal); border-color:rgba(168,47,34,.6); }
-#pipe .p-name { font-family:var(--serif); font-weight:700; font-size:20px;
-  letter-spacing:.14em; margin:12px 0 0; color:var(--ink); }
-#pipe .station.human .p-name { color:var(--seal); }
-#pipe .p-rule { height:1px; background:rgba(30,42,35,.25); margin:12px 6px 10px; }
+  color:var(--ink2); border:1px solid rgba(30,42,35,.4); padding:2px 7px;
+  opacity:0; }
+#pipe .p-rule { height:1px; background:rgba(30,42,35,.25); margin:12px 6px 10px;
+  transform:scaleX(0); transform-origin:left; }
 #pipe .p-out { font-family:var(--mono); font-size:11px; letter-spacing:.14em;
-  color:var(--ink2); margin:0; }
-.pipe-cap { margin-top:4vh; font-family:var(--mono); font-size:11px;
-  letter-spacing:.35em; color:var(--ink2); }
+  color:var(--ink2); margin:0; opacity:0; transform:translateY(8px); }
+#pipe .pipe-cap { margin-top:4vh; font-family:var(--mono); font-size:11px;
+  letter-spacing:.35em; color:var(--ink2); opacity:0; }
 .pipe-cap b { color:var(--seal); font-weight:400; }
+/* 播放：轨道逐段画（.24s/段）→ 点弹现 → 站牌升起 → 章落 → 产出线扫 → 箭头爆点 */
+#pipe.play .seg { animation:rail-seg .24s cubic-bezier(.4,0,.2,1) both; }
+#pipe.play .seg:nth-of-type(1){animation-delay:.05s}
+#pipe.play .seg:nth-of-type(2){animation-delay:.29s}
+#pipe.play .seg:nth-of-type(3){animation-delay:.53s}
+#pipe.play .seg:nth-of-type(4){animation-delay:.77s}
+#pipe.play .dot { animation:dot-pop .34s cubic-bezier(.2,1.4,.4,1) both;
+  animation-delay:calc(.05s + var(--i)*.24s); }
+#pipe.play .plaque { animation:plaque-in .5s cubic-bezier(.22,1,.36,1) both;
+  animation-delay:calc(.17s + var(--i)*.24s); }
+#pipe.play .p-who { animation:chip-stamp .32s cubic-bezier(.18,1.32,.36,1) both;
+  animation-delay:calc(.47s + var(--i)*.24s); }
+#pipe.play .p-rule { animation:rule-sweep .4s ease both;
+  animation-delay:calc(.52s + var(--i)*.24s); }
+#pipe.play .p-out { animation:out-up .35s ease both;
+  animation-delay:calc(.59s + var(--i)*.24s); }
+#pipe.play .arw { animation:arw-pop .3s cubic-bezier(.2,1.4,.4,1) both; }
+#pipe.play .arw:nth-of-type(1){animation-delay:.32s}
+#pipe.play .arw:nth-of-type(2){animation-delay:.56s}
+#pipe.play .arw:nth-of-type(3){animation-delay:.8s}
+#pipe.play .arw:nth-of-type(4){animation-delay:1.04s}
+#pipe.play .pipe-cap { animation:out-up .45s ease both; animation-delay:1.75s; }
+@keyframes rail-seg { from{stroke-dashoffset:1} to{stroke-dashoffset:0} }
+@keyframes dot-pop { 0%{opacity:0;transform:scale(0)} 60%{opacity:1;transform:scale(1.25)} 100%{opacity:1;transform:scale(1)} }
+@keyframes plaque-in { from{opacity:0;transform:translateY(26px) scale(.97)} to{opacity:1;transform:none} }
+@keyframes chip-stamp { 0%{opacity:0;transform:scale(1.7) rotate(-6deg)} 100%{opacity:1;transform:none} }
+@keyframes rule-sweep { from{transform:scaleX(0)} to{transform:scaleX(1)} }
+@keyframes out-up { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+@keyframes arw-pop { from{opacity:0;transform:scale(.3)} to{opacity:1;transform:none} }
 
 /* ═══ S3 期次翻牌（深底）：真书（陈列馆五期真封面，base64 内嵌）═══ */
 .ondeep { background:var(--deep); color:var(--paper); }
@@ -288,13 +316,30 @@ footer p { font-family:var(--mono); font-size:11px; letter-spacing:.3em;
 @media (prefers-reduced-motion: reduce) {
   .rv, .mask > span, #deck .card, #seal .plate, #signoff .after {
     transition:none !important; opacity:1 !important; transform:none !important; }
-  #pipe .track { stroke-dashoffset:0 !important; }
+  #pipe .seg { stroke-dashoffset:0 !important; }
+  #pipe .arw, #pipe .plaque, #pipe .p-who, #pipe .p-out, #pipe .pipe-cap {
+    opacity:1 !important; transform:none !important; }
+  #pipe .dot { opacity:1 !important; transform:none !important; }
+  #pipe .p-rule { transform:none !important; }
+  #pipe .seg, #pipe .arw, #pipe .dot, #pipe .plaque, #pipe .p-who,
+  #pipe .p-rule, #pipe .p-out, #pipe .pipe-cap { animation:none !important; }
   #ledger .zero-ring rect { stroke-dashoffset:0 !important; }
   #deck .card { position:relative; }
   #deck .card:not(.active) { display:none; }
   #gauge { display:none; }
 }
 </style>
+<noscript>
+<style>
+  .rv, .mask > span, #deck .card, #seal .plate, #signoff .after,
+  #pipe .arw, #pipe .plaque, #pipe .p-who, #pipe .p-out, #pipe .pipe-cap,
+  #pipe .dot { opacity:1 !important; transform:none !important; }
+  #pipe .seg { stroke-dashoffset:0 !important; }
+  #pipe .p-rule { transform:none !important; }
+  #ledger .zero-ring rect { stroke-dashoffset:0 !important; }
+  #deck .card { position:relative; margin-bottom:16px; }
+</style>
+</noscript>
 </head>
 <body>
 
@@ -341,15 +386,17 @@ footer p { font-family:var(--mono); font-size:11px; letter-spacing:.3em;
 
     <div id="pipe">
       <svg class="rail" viewBox="0 0 1000 24" preserveAspectRatio="none" aria-hidden="true">
-        <path class="track" pathLength="1"
-          d="M100,12 H300 M300,12 H500 M500,12 H700 M700,12 H900"/>
-        <polygon class="arw" data-t="0.125" points="192,5 206,12 192,19"/>
-        <polygon class="arw" data-t="0.375" points="392,5 406,12 392,19"/>
-        <polygon class="arw" data-t="0.625" points="592,5 606,12 592,19"/>
-        <polygon class="arw" data-t="0.875" points="792,5 806,12 792,19"/>
+        <path class="seg" pathLength="1" d="M100,12 H300"/>
+        <path class="seg" pathLength="1" d="M300,12 H500"/>
+        <path class="seg" pathLength="1" d="M500,12 H700"/>
+        <path class="seg" pathLength="1" d="M700,12 H900"/>
+        <polygon class="arw" points="192,5 206,12 192,19"/>
+        <polygon class="arw" points="392,5 406,12 392,19"/>
+        <polygon class="arw" points="592,5 606,12 592,19"/>
+        <polygon class="arw" points="792,5 806,12 792,19"/>
       </svg>
       <div class="stations">
-        <div class="station human rv"><span class="dot"></span>
+        <div class="station human"><span class="dot"></span>
           <div class="plaque">
             <div class="p-head"><span class="p-no">壹</span><span class="p-who">人</span></div>
             <h3 class="p-name">取数核验</h3>
@@ -357,7 +404,7 @@ footer p { font-family:var(--mono); font-size:11px; letter-spacing:.3em;
             <p class="p-out">产出 · ESI 原始包</p>
           </div>
         </div>
-        <div class="station rv rv-d1"><span class="dot"></span>
+        <div class="station"><span class="dot"></span>
           <div class="plaque">
             <div class="p-head"><span class="p-no">贰</span><span class="p-who">机器</span></div>
             <h3 class="p-name">选章节</h3>
@@ -365,7 +412,7 @@ footer p { font-family:var(--mono); font-size:11px; letter-spacing:.3em;
             <p class="p-out">产出 · 本期章节</p>
           </div>
         </div>
-        <div class="station rv rv-d2"><span class="dot"></span>
+        <div class="station"><span class="dot"></span>
           <div class="plaque">
             <div class="p-head"><span class="p-no">叁</span><span class="p-who">机器</span></div>
             <h3 class="p-name">预测选模</h3>
@@ -373,7 +420,7 @@ footer p { font-family:var(--mono); font-size:11px; letter-spacing:.3em;
             <p class="p-out">产出 · 模型选择</p>
           </div>
         </div>
-        <div class="station rv rv-d1"><span class="dot"></span>
+        <div class="station"><span class="dot"></span>
           <div class="plaque">
             <div class="p-head"><span class="p-no">肆</span><span class="p-who">机器</span></div>
             <h3 class="p-name">生成初稿</h3>
@@ -381,7 +428,7 @@ footer p { font-family:var(--mono); font-size:11px; letter-spacing:.3em;
             <p class="p-out">产出 · 报告初稿</p>
           </div>
         </div>
-        <div class="station human rv rv-d2"><span class="dot"></span>
+        <div class="station human"><span class="dot"></span>
           <div class="plaque">
             <div class="p-head"><span class="p-no">伍</span><span class="p-who">人</span></div>
             <h3 class="p-name">核验定稿</h3>
@@ -391,7 +438,7 @@ footer p { font-family:var(--mono); font-size:11px; letter-spacing:.3em;
         </div>
       </div>
     </div>
-    <p class="pipe-cap rv">运行期 LLM 不进数据路径 —— 正文全部由 <b>sentences.py</b> 骨架拼装</p>
+    <p class="pipe-cap">运行期 LLM 不进数据路径 —— 正文全部由 <b>sentences.py</b> 骨架拼装</p>
   </div>
 </section>
 
@@ -579,15 +626,19 @@ footer p { font-family:var(--mono); font-size:11px; letter-spacing:.3em;
   }, { threshold: 0.55 });
   ioSeal.observe(signoff);
 
+  /* 五站时间轴：入视口一次触发（依次登场，播完即终态）*/
+  var pipe = document.getElementById('pipe');
+  var ioPipe = new IntersectionObserver(function (es) {
+    es.forEach(function (en) { if (en.isIntersecting) { pipe.classList.add('play'); ioPipe.disconnect(); } });
+  }, { threshold: 0.3 });
+  ioPipe.observe(pipe);
+
   /* ── 运动循环 ── */
   var heroTitle = document.getElementById('heroTitle');
   var ringOuter = document.getElementById('ringOuter');
   var ringInner = document.getElementById('ringInner');
   var sealRing  = document.getElementById('sealRing');
   var needle    = document.querySelector('#gauge .needle');
-  var pipePath  = document.querySelector('#pipe .track');
-  var pipeArws  = Array.prototype.slice.call(document.querySelectorAll('#pipe .arw'));
-  var secStations = document.getElementById('stations');
   var secStack  = document.getElementById('stack');
   var secPeriods= document.getElementById('periods');
   var deckCards = Array.prototype.slice.call(document.querySelectorAll('#deck .card'));
@@ -631,14 +682,6 @@ footer p { font-family:var(--mono); font-size:11px; letter-spacing:.3em;
     /* 水尺游标 */
     if (needle) needle.style.top = (clamp(y / max, 0, 1) * 100).toFixed(2) + '%';
 
-    /* 五站描边：按段滚动进度走笔，箭头随各自段位点亮 */
-    var r2 = secStations.getBoundingClientRect();
-    var pp = clamp((vh - r2.top) / (vh * 0.9), 0, 1);
-    pipePath.style.strokeDashoffset = (1 - pp).toFixed(4);
-    pipeArws.forEach(function (a) {
-      a.classList.toggle('on', pp >= parseFloat(a.dataset.t));
-    });
-
     /* 期次翻牌：段内进度切成 4 档，落定即真值 */
     var r3 = secPeriods.getBoundingClientRect();
     var dp = clamp((vh * 0.85 - r3.top) / (vh * 0.75), 0, 1);
@@ -667,8 +710,7 @@ footer p { font-family:var(--mono); font-size:11px; letter-spacing:.3em;
 
   if (reduce) {
     /* 降级：终态直出，运动循环不启动 */
-    pipePath.style.strokeDashoffset = '0';
-    pipeArws.forEach(function (a) { a.classList.add('on'); });
+    pipe.classList.add('play');
     deckCards.forEach(function (c, i) { c.classList.toggle('active', i === 3); });
     pieces.forEach(function (p) { p.style.transform = 'none'; });
     document.querySelectorAll('.rv,.mask').forEach(function (el) { el.classList.add('in'); });
