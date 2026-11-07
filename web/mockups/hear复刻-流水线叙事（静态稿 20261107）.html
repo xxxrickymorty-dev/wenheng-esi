@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<!--
+  hear复刻-流水线叙事（静态稿 20261107）
+  ══════════════════════════════════════════════════════════════
+  依据 rick 20261107 口谕：Hear.ai（Ecrin Digital，Awwwards HM）
+  公式复刻 —— 「首页即 demo · 一屏一句一装置 · 动效即论证」。
+
+  复刻的是动词表，不是配色。色板沿用项目谱（状态印章·谱 20261025）：
+    纸 #F5F3EC / 纸二 #E8DCC8 / 墨绿 #1E2A23 / 会泽深绿 #143729
+    绿 #264A35 / 金 #C8B584 / 金刻度 #8A6B2E / 朱砂 #A82F22
+  印面工艺同谱稿：方形双框 + feTurbulence 毛边 + 宋体印文。
+
+  真值落值（全部来自台账/谱稿/04a08da5 陈列馆稿，非前端计算）：
+    · 202609：国际 973（升 22）· 前1% 14/22 学科 · 顶尖论文 291（增 17）
+    · 总第 39 期（PRODUCT.md「第 40 期」勘误案，以钦定稿为准）
+    · 202609 已发布并入台账（2026-09-23）；台账回填 43 期；ESI 原始包 45 期
+    · 手工时代每期 90+ 张图（AGENTS.md 项目总览）
+    · 五站：取数核验→选章节→预测选模→生成初稿→核验定稿（DESIGN_MAP）
+    · 六印：已并入台账/已出稿/待核验/未签发/已签发/签发失效
+
+  三条底线自检：
+    1. 数字不前端算 —— 页面无任何数值运算插值；数字一律落值直出，
+       动效只演过程（描边/翻牌/堆叠/盖印），不演数字渐变。
+    2. 降级 —— prefers-reduced-motion 下全部终态直出，JS 运动循环不启动。
+    3. 不演没发生的动画 —— 无 idle 循环动效；一切运动由滚动/入场触发，
+       环形印文只随滚动方向旋转（滚停即停）。
+
+  动效五坑规避：rotate 单轴；animation 简写不带 var()；
+  大 scale 走 transform 不占布局；初始态显式写死；无等轴测。
+  零外链零 CDN，双击即开；字号下限 11px。
+-->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文衡 · 从取数到签单（Hear.ai 复刻静态稿）</title>
+<style>
+/* ═══ 底座 ═══ */
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:auto; }
+body {
+  background:#143729; color:#F5F3EC;
+  font-family:'Noto Serif SC','Songti SC',SimSun,serif;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+::selection { background:#A82F22; color:#F5F3EC; }
+
+:root {
+  --paper:#F5F3EC; --paper2:#E8DCC8; --ink:#1E2A23; --ink2:#4A564D;
+  --green:#264A35; --deep:#143729; --gold:#C8B584; --gold2:#8A6B2E;
+  --seal:#A82F22; --mono:Consolas,'Courier New',SimSun,monospace;
+}
+
+/* 段落编号眉 —— 金色等宽，目录柜语汇 */
+.eyebrow {
+  font-family:var(--mono); font-size:11px; letter-spacing:.45em;
+  color:var(--gold); text-transform:uppercase;
+}
+
+/* 入场显隐（mask reveal / 平移）：IO 加 .in，reduced-motion 全直出 */
+.rv { opacity:0; transform:translateY(26px);
+      transition:opacity .7s ease, transform .7s cubic-bezier(.22,1,.36,1); }
+.rv.in { opacity:1; transform:none; }
+.rv-d1 { transition-delay:.08s; } .rv-d2 { transition-delay:.16s; }
+
+/* 大标题：遮罩逐行显现（Hear.ai 动词：div apparition with mask） */
+.mask { overflow:hidden; display:block; }
+.mask > span { display:block; transform:translateY(112%);
+  transition:transform .85s cubic-bezier(.22,1,.36,1); }
+.mask.in > span { transform:none; }
+
+/* ═══ 水尺（左缘常驻装置）═══ */
+#gauge {
+  position:fixed; left:26px; top:50%; transform:translateY(-50%);
+  height:56vh; width:14px; z-index:40; pointer-events:none;
+}
+#gauge .rail {
+  position:absolute; left:6px; top:0; bottom:0; width:2px;
+  background:repeating-linear-gradient(to bottom,
+    var(--gold2) 0 2px, transparent 2px 18px);
+  opacity:.55;
+}
+#gauge .needle {
+  position:absolute; left:0; top:0; width:14px; height:2px;
+  background:var(--seal); box-shadow:0 0 0 .5px rgba(24,20,16,.35);
+}
+#gauge .lab {
+  position:absolute; left:0; font-family:var(--mono);
+  font-size:11px; color:var(--gold); letter-spacing:.2em; writing-mode:vertical-rl;
+}
+#gauge .lab.top { top:-26px; } #gauge .lab.bot { bottom:-26px; }
+
+/* ═══ S1 入馆 ═══ */
+#hero { position:relative; min-height:100vh;
+  display:flex; align-items:center; overflow:hidden;
+  background:
+    radial-gradient(120% 90% at 78% 18%, rgba(38,74,53,.55) 0%, transparent 55%),
+    var(--deep);
+}
+#hero .inner { position:relative; z-index:2; padding:0 9vw; }
+#hero .eyebrow { margin-bottom:3.2vh; display:block; }
+#hero h1 {
+  font-size:clamp(96px,17vw,228px); line-height:1.02; font-weight:700;
+  letter-spacing:.06em; color:var(--paper); will-change:transform,opacity;
+}
+#hero .sub { margin-top:3.4vh; font-size:clamp(16px,1.5vw,22px);
+  letter-spacing:.14em; color:var(--paper2); }
+#hero .sub b { color:var(--seal); font-weight:700; }
+#hero .hint {
+  position:absolute; z-index:2; bottom:4.5vh; left:9vw;
+  font-family:var(--mono); font-size:11px; letter-spacing:.5em; color:var(--gold);
+}
+/* 环形印文：随滚动方向旋转 */
+#ring { position:absolute; z-index:1; right:6vw; top:50%;
+  width:min(44vw,520px); height:min(44vw,520px); margin-top:calc(min(44vw,520px)/-2);
+  will-change:transform; }
+#ring text { font-family:var(--mono); font-size:12.5px; letter-spacing:6px;
+  fill:var(--gold); opacity:.9; }
+#ring .ring2 text { fill:rgba(200,181,132,.38); font-size:11px; }
+#ring .hub rect { fill:none; stroke:var(--seal); stroke-width:3; }
+#ring .hub text { font-family:var(--serif); font-size:30px; font-weight:700;
+  fill:var(--seal); letter-spacing:8px; }
+
+/* ═══ 通用段 ═══ */
+section { position:relative; }
+.pad { padding:0 9vw; }
+.center { min-height:100vh; display:flex; flex-direction:column;
+  justify-content:center; }
+.snum { font-family:var(--mono); font-size:11px; letter-spacing:.45em;
+  color:var(--gold2); margin-bottom:2.6vh; }
+.ondeep .snum { color:var(--gold); }
+h2.stmt { font-size:clamp(30px,4.2vw,56px); line-height:1.28;
+  letter-spacing:.1em; font-weight:700; }
+h2.stmt em { font-style:normal; color:var(--seal); }
+.onpaper h2.stmt em { color:var(--seal); }
+
+/* ═══ S2 五站描边（纸底）═══ */
+.onpaper { background:var(--paper); color:var(--ink); }
+#pipe { display:block; width:100%; max-width:1080px; margin:6vh auto 0; overflow:visible; }
+#pipe .track { fill:none; stroke:var(--ink); stroke-width:2.5;
+  stroke-dasharray:1; stroke-dashoffset:1; }
+#pipe .node rect { fill:var(--paper); stroke:var(--ink); stroke-width:2; }
+#pipe .node.end rect { stroke:var(--seal); stroke-width:3.5; }
+#pipe .node text { font-family:var(--serif); font-size:17px; fill:var(--ink);
+  letter-spacing:2px; text-anchor:middle; }
+#pipe .node.end text { fill:var(--seal); font-weight:700; }
+#pipe .mnote { font-family:var(--mono); font-size:11px; fill:var(--ink2);
+  letter-spacing:2px; }
+#pipe .mnote.seal { fill:var(--seal); }
+.pipe-cap { margin-top:4vh; font-family:var(--mono); font-size:11px;
+  letter-spacing:.35em; color:var(--ink2); }
+.pipe-cap b { color:var(--seal); font-weight:400; }
+
+/* ═══ S3 期次翻牌（深底）═══ */
+.ondeep { background:var(--deep); color:var(--paper); }
+#deckwrap { display:flex; gap:7vw; align-items:center; margin-top:5vh; }
+#deck { position:relative; width:min(34vw,400px); height:min(24vw,280px);
+  perspective:1200px; }
+#deck .card {
+  position:absolute; inset:0; background:var(--paper); color:var(--ink);
+  border:2px solid var(--ink); display:flex; flex-direction:column;
+  justify-content:space-between; padding:22px 24px;
+  opacity:0; transform:translateY(30px) rotateX(24deg);
+  transition:opacity .38s ease, transform .38s cubic-bezier(.22,1,.36,1);
+  box-shadow:0 14px 34px rgba(10,16,12,.45);
+  will-change:transform,opacity;
+}
+#deck .card.active { opacity:1; transform:none; }
+#deck .card.gone { opacity:0; transform:translateY(-30px) rotateX(-24deg); }
+#deck .card .no { font-family:var(--mono); font-size:11px; letter-spacing:.3em;
+  color:var(--ink2); }
+#deck .card .iss { font-family:var(--mono); font-size:clamp(40px,4.6vw,62px);
+  font-weight:700; letter-spacing:.06em; }
+#deck .card .foot { display:flex; justify-content:space-between; align-items:center;
+  font-family:var(--mono); font-size:11px; letter-spacing:.2em; color:var(--ink2); }
+#deck .card.now { border-color:var(--seal); border-width:3px; }
+#deck .card.now .iss { color:var(--seal); }
+#deck .card.now .foot .st { color:var(--seal); }
+#decknote { font-family:var(--mono); font-size:11px; line-height:2.2;
+  letter-spacing:.25em; color:var(--gold); }
+#decknote .big { font-size:15px; color:var(--paper); letter-spacing:.3em; }
+
+/* ═══ S4 对账（纸底）═══ */
+#ledger { display:grid; grid-template-columns:repeat(4,1fr); gap:4vw;
+  margin-top:7vh; }
+#ledger .cell { border-top:2px solid var(--ink); padding-top:2.6vh; position:relative; }
+#ledger .cell.hl { border-top-color:var(--seal); }
+#ledger .num { font-family:var(--mono); font-size:clamp(44px,5vw,76px);
+  font-weight:700; line-height:1; letter-spacing:.02em; }
+#ledger .cell.hl .num { color:var(--seal); }
+#ledger .lab { margin-top:1.6vh; font-size:14px; letter-spacing:.16em;
+  color:var(--ink); line-height:1.7; }
+#ledger .delta { font-family:var(--mono); font-size:11px; letter-spacing:.2em;
+  color:var(--ink2); margin-top:.8vh; }
+#ledger .cell.hl .delta { color:var(--seal); }
+/* 「0」的印圈：滚动到位后描入 */
+#ledger .zero-ring { position:absolute; top:-2px; left:-10px;
+  width:64px; height:64px; }
+#ledger .zero-ring rect { fill:none; stroke:var(--seal); stroke-width:3;
+  stroke-dasharray:1; stroke-dashoffset:1;
+  transition:stroke-dashoffset .9s cubic-bezier(.4,0,.2,1) .25s; }
+#ledger .cell.hl.on .zero-ring rect { stroke-dashoffset:0; }
+
+/* ═══ S5 三件套堆叠（深底）═══ */
+#stack { height:340vh; }
+#stack .pin { position:sticky; top:0; height:100vh; overflow:hidden;
+  display:flex; flex-direction:column; justify-content:center; padding:0 9vw; }
+#stack h2.stmt { margin-bottom:6vh; }
+#cards { position:relative; height:min(52vh,430px); max-width:760px; }
+#cards .piece {
+  position:absolute; inset:0; background:var(--paper); color:var(--ink);
+  border:2px solid var(--ink); padding:34px 38px;
+  display:flex; flex-direction:column; justify-content:space-between;
+  box-shadow:0 18px 44px rgba(8,14,10,.5);
+  will-change:transform; transform-origin:50% 0%;
+}
+#cards .piece .head { display:flex; justify-content:space-between; align-items:baseline; }
+#cards .piece .idx { font-family:var(--mono); font-size:11px; letter-spacing:.35em;
+  color:var(--ink2); }
+#cards .piece .name { font-size:clamp(24px,2.6vw,36px); font-weight:700;
+  letter-spacing:.12em; }
+#cards .piece .meta { font-family:var(--mono); font-size:11px; letter-spacing:.22em;
+  color:var(--ink2); line-height:2; }
+#cards .piece.red { border-color:var(--seal); border-width:3px; }
+#cards .piece.red .name { color:var(--seal); }
+
+/* ═══ S6 盖印（深底→朱）═══ */
+#signoff { min-height:120vh; display:flex; align-items:center; overflow:hidden;
+  background:
+    radial-gradient(90% 70% at 50% 100%, rgba(168,47,34,.16) 0%, transparent 60%),
+    var(--deep);
+}
+#signoff .inner { padding:0 9vw; width:100%;
+  display:grid; grid-template-columns:1.1fr .9fr; gap:6vw; align-items:center; }
+#signoff .after { margin-top:4vh; font-family:var(--mono); font-size:13px;
+  letter-spacing:.3em; color:var(--paper2); opacity:0; transform:translateY(14px);
+  transition:opacity .6s ease .5s, transform .6s ease .5s; }
+#signoff.stamped .after { opacity:1; transform:none; }
+#signoff .after b { color:var(--seal); font-weight:400; }
+/* 巨印：谱稿形制 —— 方形双框 + 毛边 + 四字田字格 */
+#seal { width:min(34vw,380px); height:min(34vw,380px); }
+#seal .plate { opacity:0; transform:scale(1.9) rotate(-8deg);
+  transform-origin:50% 50%; }
+#signoff.stamped #seal .plate {
+  opacity:1; transform:scale(1) rotate(-3deg);
+  transition:transform .5s cubic-bezier(.18,1.32,.36,1), opacity .18s ease;
+}
+#seal .ringT { will-change:transform; }
+#seal .ringT text { font-family:var(--mono); font-size:11.5px; letter-spacing:5px;
+  fill:rgba(200,181,132,.5); }
+
+/* ═══ 页脚 ═══ */
+footer { border-top:1px solid rgba(200,181,132,.25);
+  padding:5vh 9vw 7vh; display:flex; justify-content:space-between; gap:4vw; }
+footer p { font-family:var(--mono); font-size:11px; letter-spacing:.3em;
+  color:var(--gold); line-height:2.1; }
+
+/* ═══ 降级 ═══ */
+@media (prefers-reduced-motion: reduce) {
+  .rv, .mask > span, #deck .card, #seal .plate, #signoff .after {
+    transition:none !important; opacity:1 !important; transform:none !important; }
+  #pipe .track { stroke-dashoffset:0 !important; }
+  #ledger .zero-ring rect { stroke-dashoffset:0 !important; }
+  #deck .card { position:relative; }
+  #deck .card:not(.active) { display:none; }
+  #gauge { display:none; }
+}
+</style>
+</head>
+<body>
+
+<!-- 水尺 -->
+<aside id="gauge" aria-hidden="true">
+  <span class="lab top">取</span>
+  <div class="rail"></div>
+  <div class="needle" style="top:0"></div>
+  <span class="lab bot">签</span>
+</aside>
+
+<!-- ═══ S1 入馆 ═══ -->
+<section id="hero">
+  <svg id="ring" viewBox="0 0 400 400" aria-hidden="true">
+    <defs>
+      <path id="c1" d="M200,58 a142,142 0 1,1 -0.01,0 z"/>
+      <path id="c2" d="M200,86 a114,114 0 1,1 -0.01,0 z"/>
+    </defs>
+    <g class="ringT" id="ringOuter">
+      <text><textPath href="#c1">学科信息参考 · 总第三十九期 · 二〇二六年九月 · 云南大学图书馆 · </textPath></text>
+    </g>
+    <g class="ring2 ringT" id="ringInner">
+      <text><textPath href="#c2">DATA→CHART→TABLE→REPORT · 43 · 202609 · </textPath></text>
+    </g>
+    <g class="hub">
+      <rect x="152" y="152" width="96" height="96"/>
+      <text x="200" y="212" text-anchor="middle">文衡</text>
+    </g>
+  </svg>
+  <div class="inner">
+    <span class="eyebrow rv in">云南大学图书馆 · ESI 学科分析</span>
+    <h1 id="heroTitle" aria-label="文衡">文衡</h1>
+    <p class="sub rv rv-d1 in">从取数到签单，<b>一条确定性流水线</b>。</p>
+  </div>
+  <span class="hint">滚动即生产 ↓ SCROLL</span>
+</section>
+
+<!-- ═══ S2 五站描边 ═══ -->
+<section id="stations" class="onpaper">
+  <div class="pad center">
+    <div class="snum rv">壹 · 五站</div>
+    <h2 class="stmt"><span class="mask"><span>一期五站，机器走中间，</span></span>
+      <span class="mask"><span>人守<em>两端</em>。</span></span></h2>
+
+    <svg id="pipe" viewBox="0 0 1080 250" aria-label="五站工序：取数核验、选章节、预测选模、生成初稿、核验定稿">
+      <path class="track" pathLength="1"
+        d="M40,125 H248 M332,125 H516 M600,125 H784 M868,125 H1020"/>
+      <g class="node" transform="translate(40,85)">
+        <rect x="0" y="0" width="176" height="80"/>
+        <text x="88" y="48">取数核验</text>
+      </g>
+      <g class="node" transform="translate(254,85)">
+        <rect x="0" y="0" width="156" height="80"/>
+        <text x="78" y="48">选章节</text>
+      </g>
+      <g class="node" transform="translate(538,85)">
+        <rect x="0" y="0" width="156" height="80"/>
+        <text x="78" y="48">预测选模</text>
+      </g>
+      <g class="node" transform="translate(706,85)">
+        <rect x="0" y="0" width="156" height="80"/>
+        <text x="78" y="48">生成初稿</text>
+      </g>
+      <g class="node end" transform="translate(868,85)">
+        <rect x="0" y="0" width="176" height="80"/>
+        <text x="88" y="48">核验定稿</text>
+      </g>
+      <text class="mnote" x="40" y="235">① 人 · 取数</text>
+      <text class="mnote" x="420" y="235">②–④ 机器 · 无人介入</text>
+      <text class="mnote seal" x="868" y="235">⑤ 人 · 定稿，签单在后</text>
+    </svg>
+    <p class="pipe-cap rv">运行期 LLM 不进数据路径 —— 正文全部由 <b>sentences.py</b> 骨架拼装</p>
+  </div>
+</section>
+
+<!-- ═══ S3 期次翻牌 ═══ -->
+<section id="periods" class="ondeep center pad">
+  <div class="snum rv">贰 · 期次</div>
+  <h2 class="stmt"><span class="mask"><span>双月一期，</span></span>
+    <span class="mask"><span>总第三十九期。</span></span></h2>
+  <div id="deckwrap">
+    <div id="deck">
+      <div class="card" data-i="0">
+        <span class="no">第 36 期</span>
+        <span class="iss">202603</span>
+        <span class="foot"><span>ESI 原始包</span><span class="st">已并入台账</span></span>
+      </div>
+      <div class="card" data-i="1">
+        <span class="no">第 37 期</span>
+        <span class="iss">202605</span>
+        <span class="foot"><span>ESI 原始包</span><span class="st">已并入台账</span></span>
+      </div>
+      <div class="card" data-i="2">
+        <span class="no">第 38 期</span>
+        <span class="iss">202607</span>
+        <span class="foot"><span>ESI 原始包</span><span class="st">已并入台账</span></span>
+      </div>
+      <div class="card now" data-i="3">
+        <span class="no">第 39 期</span>
+        <span class="iss">202609</span>
+        <span class="foot"><span>发布 2026-09-23</span><span class="st">已并入台账</span></span>
+      </div>
+    </div>
+    <p id="decknote">
+      <span class="big">台账 43 期回填</span><br>
+      ESI 原始包 45 期 · InCites 快照<br>
+      无一手工誊抄
+    </p>
+  </div>
+</section>
+
+<!-- ═══ S4 对账 ═══ -->
+<section id="accounts" class="onpaper">
+  <div class="pad center">
+    <div class="snum rv">叁 · 对账</div>
+    <h2 class="stmt"><span class="mask"><span>这一期的账，</span></span>
+      <span class="mask"><span>直接<em>落值</em>。</span></span></h2>
+    <div id="ledger">
+      <div class="cell rv">
+        <div class="num">973</div>
+        <div class="lab">ESI 全学科<br>国际排名</div>
+        <div class="delta">升 22</div>
+      </div>
+      <div class="cell rv rv-d1">
+        <div class="num">14/22</div>
+        <div class="lab">进入 ESI<br>前 1% 学科</div>
+        <div class="delta">22 个学科口径</div>
+      </div>
+      <div class="cell rv rv-d2">
+        <div class="num">291</div>
+        <div class="lab">顶尖论文</div>
+        <div class="delta">增 17</div>
+      </div>
+      <div class="cell hl" id="zeroCell">
+        <svg class="zero-ring" viewBox="0 0 64 64" aria-hidden="true">
+          <rect x="4" y="4" width="56" height="56" pathLength="1"/>
+        </svg>
+        <div class="num">0</div>
+        <div class="lab">经过 LLM 的<br>数字</div>
+        <div class="delta">运行期 · 数据路径</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ S5 三件套堆叠 ═══ -->
+<section id="stack" class="ondeep">
+  <div class="pin">
+    <div class="snum">肆 · 三件套</div>
+    <h2 class="stmt">一次签单，三件产出。</h2>
+    <div id="cards">
+      <article class="piece" data-i="0">
+        <div class="head"><span class="idx">其一 · 报告</span><span class="idx">202609</span></div>
+        <h3 class="name">报告初稿</h3>
+        <p class="meta">正文由 sentences.py 骨架拼装<br>图表 90+ 张，全部脚本直出</p>
+      </article>
+      <article class="piece" data-i="1">
+        <div class="head"><span class="idx">其二 · 对照</span><span class="idx">202609</span></div>
+        <h3 class="name">对照差异报告</h3>
+        <p class="meta">与人工原件逐格比对<br>数字对得上，才许签单</p>
+      </article>
+      <article class="piece red" data-i="2">
+        <div class="head"><span class="idx">其三 · 清单</span><span class="idx">202609</span></div>
+        <h3 class="name">红色件清单</h3>
+        <p class="meta">跌破阈值的学科预警<br>签单前最后一道闸</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ S6 盖印 ═══ -->
+<section id="signoff" class="ondeep">
+  <div class="inner">
+    <div>
+      <div class="snum rv">伍 · 签单</div>
+      <h2 class="stmt"><span class="mask"><span>核验无异议，</span></span>
+        <span class="mask"><span>钤印<em>签单</em>。</span></span></h2>
+      <p class="after">可交付 —— 总第三十九期 · <b>202609</b> · 六印终态「已签发」</p>
+    </div>
+    <svg id="seal" viewBox="0 0 400 400" aria-label="已签发印">
+      <defs>
+        <filter id="ink-rough" x="-8%" y="-8%" width="116%" height="116%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="3" seed="7" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="5"/>
+        </filter>
+        <path id="c3" d="M200,44 a156,156 0 1,1 -0.01,0 z"/>
+      </defs>
+      <g class="ringT" id="sealRing">
+        <text><textPath href="#c3">可交付 · DELIVERABLE · 202609 · 已签发 · </textPath></text>
+      </g>
+      <!-- 印面与「状态印章·谱 20261025」已签发印逐字一致：实底朱砂 + 纸色内框 + 已签/发 -->
+      <g transform="translate(90,90)"><g class="plate" filter="url(#ink-rough)">
+        <rect x="10" y="10" width="200" height="200" fill="#A82F22"/>
+        <rect x="22" y="22" width="176" height="176" fill="none" stroke="#F5F3EC" stroke-width="2.6"/>
+        <g font-family="'Noto Serif SC','Songti SC',SimSun,serif" font-weight="700"
+           font-size="56" text-anchor="middle" fill="#F5F3EC">
+          <text x="64" y="94">已</text><text x="156" y="94">签</text>
+          <text x="110" y="180">发</text>
+        </g>
+      </g></g>
+    </svg>
+  </div>
+</section>
+
+<footer>
+  <p>文衡 · 数据 → 图表 → 表格 → 报告</p>
+  <p>云南大学图书馆 · 可审计 / 可交接 / 可复现</p>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var touch  = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
+  /* ── 平滑滚动（Lenis 式：劫持滚轮，rAF 插值；键盘/滚动条保持原生）── */
+  var target = window.scrollY, current = window.scrollY, lastSet = -1, external = false;
+  function maxScroll() {
+    return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  }
+  if (!reduce && !touch) {
+    window.addEventListener('wheel', function (e) {
+      if (e.ctrlKey) return;            /* 让位给缩放 */
+      e.preventDefault();
+      var d = e.deltaY;
+      if (e.deltaMode === 1) d *= 16; else if (e.deltaMode === 2) d *= window.innerHeight;
+      target = Math.min(maxScroll(), Math.max(0, target + d));
+    }, { passive: false });
+    window.addEventListener('scroll', function () {
+      /* 键盘 / 滚动条等外部滚动：吸收为锚点并令本帧放弃写回，不与用户对抗 */
+      if (Math.abs(window.scrollY - lastSet) > 2) {
+        target = current = lastSet = window.scrollY;
+        external = true;
+      }
+    }, { passive: true });
+  }
+
+  /* ── 入场显隐 ── */
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (en) { if (en.isIntersecting) en.target.classList.add('in'); });
+  }, { threshold: 0.25 });
+  document.querySelectorAll('.rv:not(.in), .mask').forEach(function (el) { io.observe(el); });
+
+  /* 「0」印圈描入 */
+  var zeroCell = document.getElementById('zeroCell');
+  var ioZero = new IntersectionObserver(function (es) {
+    es.forEach(function (en) { if (en.isIntersecting) { zeroCell.classList.add('on'); ioZero.disconnect(); } });
+  }, { threshold: 0.6 });
+  ioZero.observe(zeroCell);
+
+  /* 巨印盖章（一次性，滚到 0.55 触发）*/
+  var signoff = document.getElementById('signoff');
+  var ioSeal = new IntersectionObserver(function (es) {
+    es.forEach(function (en) { if (en.isIntersecting) { signoff.classList.add('stamped'); ioSeal.disconnect(); } });
+  }, { threshold: 0.55 });
+  ioSeal.observe(signoff);
+
+  /* ── 运动循环 ── */
+  var heroTitle = document.getElementById('heroTitle');
+  var ringOuter = document.getElementById('ringOuter');
+  var ringInner = document.getElementById('ringInner');
+  var sealRing  = document.getElementById('sealRing');
+  var needle    = document.querySelector('#gauge .needle');
+  var pipePath  = document.querySelector('#pipe .track');
+  var secStations = document.getElementById('stations');
+  var secStack  = document.getElementById('stack');
+  var secPeriods= document.getElementById('periods');
+  var deckCards = Array.prototype.slice.call(document.querySelectorAll('#deck .card'));
+  var pieces    = Array.prototype.slice.call(document.querySelectorAll('#cards .piece'));
+  var rotA = 0, rotB = 0, lastY = window.scrollY;
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+
+  function frame() {
+    /* 平滑滚动插值：本帧若吸收过外部滚动，则放弃写回，防竞态锁死 */
+    if (!reduce && !touch) {
+      if (external) { external = false; }
+      else {
+        current = lerp(current, target, 0.115);
+        if (Math.abs(target - current) < 0.4) current = target;
+        if (Math.abs(window.scrollY - current) >= 1) {
+          window.scrollTo(0, current);
+          lastSet = current;
+        }
+      }
+    } else { current = window.scrollY; }
+
+    var y = window.scrollY;
+    var dY = y - lastY; lastY = y;
+    var vh = window.innerHeight;
+    var max = maxScroll();
+
+    /* 滚动方向 → 环形印文（滚停即停，无 idle 循环）*/
+    rotA += dY * 0.045; rotB -= dY * 0.028;
+    ringOuter.setAttribute('transform', 'rotate(' + rotA.toFixed(2) + ' 200 200)');
+    ringInner.setAttribute('transform', 'rotate(' + rotB.toFixed(2) + ' 200 200)');
+    var sr = document.getElementById('sealRing');
+    sr.setAttribute('transform', 'rotate(' + (rotA * 0.35).toFixed(2) + ' 200 200)');
+
+    /* 入馆视差：巨字随滚动放大淡出（transform 不占布局）*/
+    var hp = clamp(y / vh, 0, 1);
+    heroTitle.style.transform = 'scale(' + (1 + hp * 0.14).toFixed(4) + ') translateY(' + (-hp * 6).toFixed(2) + 'vh)';
+    heroTitle.style.opacity = (1 - hp * 0.9).toFixed(3);
+
+    /* 水尺游标 */
+    if (needle) needle.style.top = (clamp(y / max, 0, 1) * 100).toFixed(2) + '%';
+
+    /* 五站描边：按段滚动进度走笔 */
+    var r2 = secStations.getBoundingClientRect();
+    var pp = clamp((vh - r2.top) / (vh * 0.9), 0, 1);
+    pipePath.style.strokeDashoffset = (1 - pp).toFixed(4);
+
+    /* 期次翻牌：段内进度切成 4 档，落定即真值 */
+    var r3 = secPeriods.getBoundingClientRect();
+    var dp = clamp((vh * 0.85 - r3.top) / (vh * 0.75), 0, 1);
+    var idx = Math.min(3, Math.floor(dp * 4));
+    deckCards.forEach(function (c, i) {
+      c.classList.toggle('active', i === idx);
+      c.classList.toggle('gone', i < idx);
+    });
+
+    /* 三件套堆叠：后卡压上前卡时，前卡上移露出标题带 */
+    var rs = secStack.getBoundingClientRect();
+    var sp = clamp(-rs.top / (rs.height - vh), 0, 1);
+    pieces.forEach(function (p, i) {
+      var t = clamp(sp * 3 - i, 0, 1);          /* 本卡入场进度 */
+      var e = 1 - Math.pow(1 - t, 3);           /* easeOutCubic */
+      var ty = (1 - e) * 105;
+      var lvl = clamp(sp * 3 - (i + 1), 0, 1);  /* 被后卡覆盖的深度 */
+      var sc = 1 - lvl * 0.055;
+      var up = lvl * 56 * (2 - i);              /* 层级递增：三件标题带都露头 */
+      p.style.transform = 'translateY(' + ty.toFixed(2) + '%) translateY(' + (-up).toFixed(1) + 'px) scale(' + sc.toFixed(4) + ')';
+      p.style.zIndex = String(10 + i);
+    });
+
+    requestAnimationFrame(frame);
+  }
+
+  if (reduce) {
+    /* 降级：终态直出，运动循环不启动 */
+    pipePath.style.strokeDashoffset = '0';
+    deckCards.forEach(function (c, i) { c.classList.toggle('active', i === 3); });
+    pieces.forEach(function (p) { p.style.transform = 'none'; });
+    document.querySelectorAll('.rv,.mask').forEach(function (el) { el.classList.add('in'); });
+    zeroCell.classList.add('on'); signoff.classList.add('stamped');
+    var h = document.getElementById('heroTitle'); h.style.transform = 'none'; h.style.opacity = '1';
+  } else {
+    requestAnimationFrame(frame);
+  }
+})();
+</script>
+</body>
+</html>
