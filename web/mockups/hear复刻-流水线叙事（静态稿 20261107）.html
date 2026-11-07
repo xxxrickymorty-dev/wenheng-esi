@@ -41,7 +41,7 @@ html { scroll-behavior:auto; }
 body {
   background:#143729; color:#F5F3EC;
   font-family:'Noto Serif SC','Songti SC',SimSun,serif;
-  overflow-x:hidden;
+  overflow-x:clip;   /* clip 不产生滚动容器——hidden 会破坏 #stack .pin 的 sticky */
   -webkit-font-smoothing:antialiased;
 }
 ::selection { background:#A82F22; color:#F5F3EC; }
