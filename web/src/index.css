@@ -379,14 +379,14 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
 .readout .d.delta.down{color:var(--bad);border-color:var(--bad);background:var(--bad-soft)}
 /* 工作台读数带·对账式（纸墨风 20261107 静态稿乙）：撤通栏盒，格各一条顶线＋大等宽数落值。
    数照旧只来自学科矩阵/运行档案，排版升级不换数据源。报告页读数带（.readouts 原样）不受影响。 */
-[data-view="workbench"] .readouts{gap:0 clamp(20px,3.4vw,48px);margin-top:clamp(18px,3vh,26px);
+[data-view="workbench"] .readouts{gap:0 clamp(24px,4vw,56px);margin-top:clamp(22px,3.6vh,32px);
   border-top:0;border-bottom:0;padding:0}
 [data-view="workbench"] .readout{border-right:0;border-top:2px solid var(--ink);border-radius:0;
-  padding:16px 2px 6px;background:none}
+  padding:18px 2px 8px;background:none}
 [data-view="workbench"] .readout:last-child{border-right:0}
 [data-view="workbench"] .readout .k{font-size:11px;letter-spacing:.22em;color:var(--ink-3)}
 [data-view="workbench"] .readout .v{font-family:var(--mono);font-weight:700;
-  font-size:clamp(2.2rem,3.2vw,2.75rem);line-height:1;margin-top:12px;letter-spacing:.02em}
+  font-size:clamp(2.4rem,3.6vw,3rem);line-height:1;margin-top:14px;letter-spacing:.02em}
 [data-view="workbench"] .readout .v.tx{font-size:clamp(1.3rem,1.9vw,1.6rem);line-height:1.35;padding-top:.2em}
 [data-view="workbench"] .readout .v.pending{font-size:1.5rem;color:var(--ink-4)}
 [data-view="workbench"] .readout .d.delta{background:none}
@@ -1091,8 +1091,8 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
    步骤条已经标出你在第几步，页头只写「本期 + 期号 + 数据截至」；页内分节一律目录行
    （章号 + 名称 + 点线 + 右端状态），跟工作台「本期动态」同一套排法。 */
 .flow-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
-  padding:2px 2px 12px;border-bottom:1px solid var(--gline)}
-.fh-period{font-family:var(--serif);font-size:30px;letter-spacing:.08em;margin:0;color:var(--ink)}
+  padding:2px 2px 18px;border-bottom:1px solid var(--gline)}
+.fh-period{font-family:var(--serif);font-size:38px;letter-spacing:.1em;margin:0;color:var(--ink)}
 .fh-sub{font-family:var(--mono);font-size:12px;color:var(--ink-3);letter-spacing:.08em;
   font-variant-numeric:tabular-nums}
 .fh-hint{display:inline-flex;align-items:center;font-size:12px}
@@ -1892,10 +1892,10 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
 [data-view="workbench"] .wb-toc h2{margin:0 0 clamp(6px,1.2vh,10px);font-family:var(--kai);font-weight:400;
   font-size:11px;letter-spacing:.34em;color:var(--muted)}
 [data-view="workbench"] .wb-toc ol{list-style:none;margin:0;padding:0}
-[data-view="workbench"] .wb-toc li{display:flex;align-items:flex-end;min-height:44px;padding:2px 0}
+[data-view="workbench"] .wb-toc li{display:flex;align-items:flex-end;min-height:58px;padding:4px 0}
 [data-view="workbench"] .wb-toc .num{flex:none;width:28px;margin-bottom:6px;font-family:var(--kai);
   font-size:15px;color:var(--ok)}
-[data-view="workbench"] .wb-toc .name{font-family:var(--serif);font-weight:600;font-size:19px;
+[data-view="workbench"] .wb-toc .name{font-family:var(--serif);font-weight:600;font-size:21px;
   line-height:1.45;letter-spacing:.06em;color:var(--ink)}
 [data-view="workbench"] .wb-toc li.wait .name,[data-view="workbench"] .wb-toc li.now .name{color:var(--ink-2)}
 [data-view="workbench"] .wb-toc .lead{flex:1;min-width:28px;margin:0 16px 10px;
@@ -1911,9 +1911,9 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
 /* 本期动态刻度轨（纸墨风 20261107 静态稿乙）：金刻度细线＋朱砂游标，只标「你在第几步」。
    朱砂 #A82F22＝印泥资产色，不随主题（与 StateSeal 同约定）。
    「水尺」一词让给水位標尺（一词一义），此件叫刻度轨。 */
-[data-view="workbench"] .toc-rail{position:relative;height:14px;margin:clamp(8px,1.4vh,12px) 0 0}
-[data-view="workbench"] .toc-rail .rail{position:absolute;left:0;right:0;bottom:6px;height:2px;
-  background:repeating-linear-gradient(to right,var(--seam) 0 2px,transparent 2px 14px);opacity:.65}
+[data-view="workbench"] .toc-rail{position:relative;height:16px;margin:clamp(10px,1.8vh,16px) 0 0}
+[data-view="workbench"] .toc-rail .rail{position:absolute;left:0;right:0;bottom:7px;height:2px;
+  background:repeating-linear-gradient(to right,var(--seam) 0 2px,transparent 2px 14px);opacity:.8}
 [data-view="workbench"] .toc-rail .needle{position:absolute;top:0;width:2px;height:14px;
   background:#A82F22;transition:left .5s cubic-bezier(.4,0,.2,1)}
 @media (prefers-reduced-motion: reduce){
