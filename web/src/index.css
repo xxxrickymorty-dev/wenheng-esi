@@ -377,6 +377,19 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
   background:var(--card);color:var(--ink-2);letter-spacing:.02em}
 .readout .d.delta.up{color:var(--ok);border-color:var(--ok-line);background:var(--ok-soft)}
 .readout .d.delta.down{color:var(--bad);border-color:var(--bad);background:var(--bad-soft)}
+/* 工作台读数带·对账式（纸墨风 20261107 静态稿乙）：撤通栏盒，格各一条顶线＋大等宽数落值。
+   数照旧只来自学科矩阵/运行档案，排版升级不换数据源。报告页读数带（.readouts 原样）不受影响。 */
+[data-view="workbench"] .readouts{gap:0 clamp(20px,3.4vw,48px);margin-top:clamp(18px,3vh,26px);
+  border-top:0;border-bottom:0;padding:0}
+[data-view="workbench"] .readout{border-right:0;border-top:2px solid var(--ink);border-radius:0;
+  padding:16px 2px 6px;background:none}
+[data-view="workbench"] .readout:last-child{border-right:0}
+[data-view="workbench"] .readout .k{font-size:11px;letter-spacing:.22em;color:var(--ink-3)}
+[data-view="workbench"] .readout .v{font-family:var(--mono);font-weight:700;
+  font-size:clamp(2.2rem,3.2vw,2.75rem);line-height:1;margin-top:12px;letter-spacing:.02em}
+[data-view="workbench"] .readout .v.tx{font-size:clamp(1.3rem,1.9vw,1.6rem);line-height:1.35;padding-top:.2em}
+[data-view="workbench"] .readout .v.pending{font-size:1.5rem;color:var(--ink-4)}
+[data-view="workbench"] .readout .d.delta{background:none}
 
 /* 待接口的整块说明（诚实态，不填假数） */
 .pending-box{border:1px dashed var(--line);padding:16px 18px;
@@ -1079,8 +1092,9 @@ main table td{padding:10px;border-bottom:1px solid var(--line-2);font-size:var(-
    （章号 + 名称 + 点线 + 右端状态），跟工作台「本期动态」同一套排法。 */
 .flow-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
   padding:2px 2px 12px;border-bottom:1px solid var(--gline)}
-.fh-period{font-family:var(--serif);font-size:26px;letter-spacing:.05em;margin:0;color:var(--ink)}
-.fh-sub{font-size:12px;color:var(--ink-3);letter-spacing:.02em}
+.fh-period{font-family:var(--serif);font-size:30px;letter-spacing:.08em;margin:0;color:var(--ink)}
+.fh-sub{font-family:var(--mono);font-size:12px;color:var(--ink-3);letter-spacing:.08em;
+  font-variant-numeric:tabular-nums}
 .fh-hint{display:inline-flex;align-items:center;font-size:12px}
 .fh-acts{margin-left:auto;display:flex;align-items:center;gap:10px}
 .flow-toc{list-style:none;margin:16px 0 12px;padding:0}
@@ -1890,6 +1904,21 @@ html.m-done .m-enter{opacity:1!important;transform:none!important;transition:non
   font-size:12px;letter-spacing:.1em;white-space:nowrap;color:var(--muted)}
 [data-view="workbench"] .wb-toc li.done .st,[data-view="workbench"] .wb-toc li.now .st{color:var(--ink);font-weight:600}
 [data-view="workbench"] .wb-toc li.bad .st{color:var(--warn);font-weight:600}
+/* 当前步朱砂短线（纸墨风 20261107 静态稿乙）：只加一道位置记号，不动色＋形＋字三重编码 */
+[data-view="workbench"] .wb-toc li.now .name{position:relative;color:var(--ink)}
+[data-view="workbench"] .wb-toc li.now .name::after{content:"";position:absolute;left:0;right:0;
+  bottom:-3px;height:2px;background:#A82F22}
+/* 本期动态刻度轨（纸墨风 20261107 静态稿乙）：金刻度细线＋朱砂游标，只标「你在第几步」。
+   朱砂 #A82F22＝印泥资产色，不随主题（与 StateSeal 同约定）。
+   「水尺」一词让给水位標尺（一词一义），此件叫刻度轨。 */
+[data-view="workbench"] .toc-rail{position:relative;height:14px;margin:clamp(8px,1.4vh,12px) 0 0}
+[data-view="workbench"] .toc-rail .rail{position:absolute;left:0;right:0;bottom:6px;height:2px;
+  background:repeating-linear-gradient(to right,var(--seam) 0 2px,transparent 2px 14px);opacity:.65}
+[data-view="workbench"] .toc-rail .needle{position:absolute;top:0;width:2px;height:14px;
+  background:#A82F22;transition:left .5s cubic-bezier(.4,0,.2,1)}
+@media (prefers-reduced-motion: reduce){
+  [data-view="workbench"] .toc-rail .needle{transition:none}
+}
 [data-view="workbench"] .mk{width:8px;height:8px;flex:none}
 [data-view="workbench"] .mk-done{background:var(--ok)}
 [data-view="workbench"] .mk-now{background:var(--seam);animation:wb-pulse 2.2s cubic-bezier(.32,.72,0,1) infinite}

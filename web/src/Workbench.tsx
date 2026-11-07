@@ -5,7 +5,7 @@
 
 import type { ApiError, ArchiveData, Me, Period, PeriodDetail } from './api'
 import { getArchive } from './api'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getForecastBoard, getWaterLevel, type ForecastBoardRow, type ForecastChoiceEntry, type WaterRow } from './api-forecast'
 import { ConfirmButton } from './ConfirmButton'
 import { FlowHead } from './FlowHead'
@@ -13,6 +13,7 @@ import { Info } from './Info'
 import { approvalLabel } from './lib/status'
 import { Icon } from './icons'
 import { failureCopy, isTerminal, type Workbench as WB, type WBState } from './wb'
+import { StateSeal, type SealState } from './StateSeal'
 import type { ActivityState, Run } from './hooks/useJobRun'
 
 /** 五个模型的一句话说明（界面上"帮馆员选"的文案；预测台也用同一份，改一处两边一致） */
@@ -225,6 +226,29 @@ export function Workbench({
   const prevIdx = periods.findIndex(p => p.period === period)
   const prevP = prevIdx >= 0 ? periods[prevIdx + 1] : undefined
   const prevWord = prevP?.status === 'signed' ? '已签发' : prevP?.status === 'stale' ? '待重签' : '未签发'
+  /* 状态印（纸墨风 20261107 静态稿乙）：印面语义＝谱 20261025，映射只认事实——
+     签发/失效看期次状态，出稿看生成步，并入看前两步，都不到＝未签发。
+     落章只在状态真实转移那一刻放一次（首挂不演，landing 已带 reduced-motion 关停）。 */
+  const curStatus = periods.find(p => p.period === period)?.status
+  const sealState: SealState = curStatus === 'signed' ? 'signed'
+    : curStatus === 'stale' ? 'stale'
+      : generated ? 'drafted'
+        : (wb.steps[0]?.on && wb.steps[1]?.on) ? 'merged'
+          : 'unsigned'
+  const sealPrev = useRef<SealState>(sealState)
+  const [sealLand, setSealLand] = useState(false)
+  useEffect(() => {
+    if (sealPrev.current === sealState) return
+    sealPrev.current = sealState
+    setSealLand(true)
+    const t = window.setTimeout(() => setSealLand(false), 650)
+    return () => window.clearTimeout(t)
+  }, [sealState])
+  /* 刻度轨游标：只标「你在第几步」——当前步序号 / 步数-1；无当前步时全完＝100%、全未开＝0 */
+  const nowIdx = stepRows.findIndex(r => r.st === 'now')
+  const railPct = nowIdx >= 0
+    ? Math.round((nowIdx / Math.max(1, stepRows.length - 1)) * 100)
+    : (stepRows.every(r => r.st === 'done') ? 100 : 0)
   /* 上一期水位（2026-10-24 本期读数）：单独再取一次，取不到 → 不出「较上一期」差值小签。
      只在本期已有矩阵读数时才取——本期没有（未出稿 / 临时期次），上一期多半也没有，
      白跑一趟只会给没开过的期次打出 404 噪声。 */
@@ -278,10 +302,15 @@ export function Workbench({
           ＋一行主动作＋上期已出刊。四节点流程图撤掉——它和上面四步流水（壹贰叁肆）重复，
           审计读数并进第三步说明。 */}
       <section className="wb2" aria-label="本期进度">
-        <FlowHead period={period} issue={issue} detail={detail} />
+        <FlowHead period={period} issue={issue} detail={detail}
+                  right={<StateSeal state={sealState} size={64} tilt="a" landing={sealLand} />} />
 
         <section className="wb-toc" aria-label="本期动态">
           <h2>本期动态</h2>
+          <div className="toc-rail" aria-hidden="true">
+            <div className="rail" />
+            <div className="needle" style={{ left: `${railPct}%` }} />
+          </div>
           <ol>
             {stepRows.map((r, i) => (
               <li key={r.key} className={r.st}>
