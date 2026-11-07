@@ -119,6 +119,10 @@ class DirectClient:
         """一次对话调用。传输失败（超时/429/5xx/连不上）重试 retries 次。"""
         payload = {"model": self.model, "messages": messages,
                    "temperature": self.temperature, "max_tokens": self.max_tokens}
+        if OVERRIDE_MODEL:                              # 评测点位旗标（2026-11-07）
+            payload["model"] = OVERRIDE_MODEL
+        if OVERRIDE_EFFORT:
+            payload["reasoning_effort"] = OVERRIDE_EFFORT
         t0 = time.time()
         last = ""
         for attempt in range(retries + 1):
@@ -270,6 +274,34 @@ def prepare_snapshot():
     return ABL_ROOT
 
 
+#: 评测点位旗标（2026-11-07）：`--model` / `--reasoning-effort` 缺省空＝逐字沿用部署事实。
+#: 背景：A4 的 brain 走 `cloud_config()`（清单优先，params 已含 low），直连组只认 .env——
+#: 两边点位不一致时消融测的不是站点真实配置；这两面旗把点位显式钉死。
+OVERRIDE_MODEL = ""
+OVERRIDE_EFFORT = ""
+_OV_BRAIN = None
+
+
+def _override_brain():
+    """旗标启用时构造覆盖 brain（凭证仍取部署事实 cloud_config()；型号/推理档按旗标）。"""
+    global _OV_BRAIN
+    if _OV_BRAIN is None:
+        from ai._brain import make_brain                        # noqa: PLC0415
+        from ai._config import cloud_config                     # noqa: PLC0415
+
+        cfg = cloud_config()
+        params = ({"reasoning_effort": OVERRIDE_EFFORT} if OVERRIDE_EFFORT
+                  else dict(cfg.get("params") or {}))
+        _OV_BRAIN = make_brain(
+            base_url=cfg["base_url"], model=OVERRIDE_MODEL or cfg["model"],
+            key=cfg["key"], protocol=cfg.get("protocol") or "openai",
+            timeout=cfg["timeout"], max_tokens=cfg["max_tokens"],
+            max_egress_chars=cfg["max_egress_chars"],
+            extra_headers=cfg.get("headers") or None,
+            extra_params=params or None)
+    return _OV_BRAIN
+
+
 def run_pipeline(group, question, history):
     """A4/A5：ai.run('qa')。A5 临时锁 WENHENG_AI_PROFILE=demo。
 
@@ -283,7 +315,10 @@ def run_pipeline(group, question, history):
         if profile_demo:
             os.environ["WENHENG_AI_PROFILE"] = "demo"
         try:
-            with ai.using(data_root=ABL_ROOT):
+            ctx = {"data_root": ABL_ROOT}
+            if OVERRIDE_MODEL or OVERRIDE_EFFORT:
+                ctx["brain"] = _override_brain()
+            with ai.using(**ctx):
                 ans = ai.run("qa", PERIOD, actor="admin",
                              payload={"question": question, "history": list(history or [])})
         finally:
@@ -525,7 +560,16 @@ def main():
     ap.add_argument("--rescore", action="store_true",
                     help="不改答案、用当前题库/评分口径重评最新 results.jsonl 并重出报告")
     ap.add_argument("--dir", default="", help="配合 --rescore/--report-only 指定结果目录")
+    ap.add_argument("--model", default="",
+                    help="评测点位：覆盖模型 id（直连组与 A4 同点；缺省＝部署事实）")
+    ap.add_argument("--reasoning-effort", default="", choices=["", "minimal", "low", "medium", "high"],
+                    help="评测点位：reasoning_effort（缺省空＝不带该参数/沿用清单 params）")
     args = ap.parse_args()
+    global OVERRIDE_MODEL, OVERRIDE_EFFORT
+    OVERRIDE_MODEL = str(args.model or "").strip()
+    OVERRIDE_EFFORT = str(args.reasoning_effort or "").strip()
+    if (OVERRIDE_MODEL or OVERRIDE_EFFORT) and args.report_only:
+        print("--report-only 不发包，--model/--reasoning-effort 忽略")
 
     if args.report_only:
         return report_only(args)
@@ -560,6 +604,8 @@ def main():
         "question_file": str(QFILE.relative_to(REPO)),
         "data_root_ablation": str(ABL_ROOT.relative_to(REPO)) if need_pipeline else None,
         "n_questions": len(items),
+        "override_model": OVERRIDE_MODEL or None,
+        "override_reasoning_effort": OVERRIDE_EFFORT or None,
     }
     (out_dir / "config.json").write_text(
         json.dumps(config, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
